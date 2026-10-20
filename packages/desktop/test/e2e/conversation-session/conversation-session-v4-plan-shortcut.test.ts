@@ -1,6 +1,6 @@
 // 计划模式列表操作：真实 Tab / Enter / 点击只修改 Composer，发送复用标准 Plan。
 import { clearAppData, setInputValueByTestIdDom } from "../helpers/desktop-app.js";
-import { TID_V4_COMPOSER_INPUT } from "@zcode/shared/test-ids";
+import { TID_V4_COMPOSER_INPUT } from "@codez/shared/test-ids";
 import {
   clickV4Send,
   getV4ComposerAttachments,

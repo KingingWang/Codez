@@ -2,7 +2,7 @@ import type {
   GitCommitGraphCommit,
   GitCommitGraphRef,
   GitCommitGraphRefKind,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   createGitGraphLayoutModel,
   type BranchLineSeed,

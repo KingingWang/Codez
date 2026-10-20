@@ -3,7 +3,7 @@ import {
   getRemoteRuntimeToolsForPlatform,
   normalizeRemoteResourcePackageSelection,
   remoteTargetSchema,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 describe("remote resource packages", () => {
   it("ignores historical selections and always returns active packages", () => {

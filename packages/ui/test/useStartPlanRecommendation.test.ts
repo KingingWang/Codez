@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ModelSelectionView } from "@zcode/provider";
+import type { ModelSelectionView } from "@codez/provider";
 import { useStartPlanRecommendation } from "@/hooks/useStartPlanRecommendation.js";
 import { useConfirmDialogStore } from "@/store/confirmDialogStore.js";
 const fixture = vi.hoisted(() => ({
@@ -66,7 +66,7 @@ vi.mock("@/hooks/useUsageEntitlement.js", () => ({
   },
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 const paid = {
   providerId: "account:bigmodel-individual-coding-plan",

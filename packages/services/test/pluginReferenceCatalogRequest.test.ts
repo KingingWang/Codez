@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { requestPluginReferenceCatalog } from "../src/zcode-agent/pluginReferenceCatalogRequest.js";
+import { requestPluginReferenceCatalog } from "../src/codez-agent/pluginReferenceCatalogRequest.js";
 const params = { workspace: { workspacePath: "/w", workspaceKey: "/identity" }, sessionId: "s" };
 const result = { authority: "session", plugins: [] };
 it("新入口保留 workspace/session 参数，旧 Agent 仅 -32601 回退", async () => {

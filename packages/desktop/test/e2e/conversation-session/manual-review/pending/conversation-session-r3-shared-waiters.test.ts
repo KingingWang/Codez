@@ -7,8 +7,8 @@ import {
 } from "#e2e/helpers/remote-project-actions";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
-import { TID_SETTINGS_BACK_BUTTON } from "@zcode/shared/test-ids";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
+import { TID_SETTINGS_BACK_BUTTON } from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -35,11 +35,11 @@ import { prepareV4ConversationE2E } from "../../../helpers/v4-conversation.js";
 
 const CASE_MARKER = "E2E_R3_SHARED_WAITERS";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-shared-waiters",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-shared-waiters",
 );
 
 async function readHostConnectRequests(): Promise<Set<string>> {
-  const directory = process.env.ZCODE_E2E_RUNTIME_LOG_DIR;
+  const directory = process.env.CODEZ_E2E_RUNTIME_LOG_DIR;
   if (!directory) throw new Error(`${CASE_MARKER}: 缺少本 worker 的日志目录`);
   const files = (await readdir(directory)).filter((name) => name.endsWith(".log"));
   const ids = new Set<string>();
@@ -268,7 +268,7 @@ describe(`${CASE_MARKER}: 同一 target 的多个等待者与连接中项目入�
     expect(entryPresent(projectBId)).toBe(false);
     expect(await readHostProcesses()).toEqual(initialHosts);
     // agent spawnArgs 恒为 "app-server --stdio"(3.12+ release 优先 glm 原生二进制,
-    // 旧 dev 态才是 node zcode.cjs);按 args 匹配与实现形态无关。
+    // 旧 dev 态才是 node codez.cjs);按 args 匹配与实现形态无关。
     const remoteAgents = await runSSHCommand(
       direct,
       `for d in /proc/[0-9]*; do c=$(tr "\\0" " " < "$d/cmdline" 2>/dev/null) || continue; case "$c" in *"app-server --stdi"[o]*) echo "$(readlink $d/cwd)";; esac; done`,

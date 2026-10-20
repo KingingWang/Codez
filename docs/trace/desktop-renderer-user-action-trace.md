@@ -3,7 +3,7 @@
 ## 状态
 
 - 本文是 Electron Desktop Renderer 用户语义操作 Trace 的实现规范。
-- 只新增 `ui_action` Span；Web、手机、Host、CLI、RPC 与 ZCode Protocol 不接入。
+- 只新增 `ui_action` Span；Web、手机、Host、CLI、RPC 与 Codez Protocol 不接入。
 - `/event/report` 保持现有事件、字段与计数，不复用本 Catalog。
 
 ## 架构
@@ -85,7 +85,7 @@ Main 只分发灰度配置、校验 batch 并使用自身凭据导出。Main 不
 固定 result source：`local_commit` / `shared_settings` / `setting_service` /
 `platform_result` / `authority_ack` / `optimistic_projection`。
 
-Span Name 固定为 `ui_action`，service.name 固定为 `zcode-desktop-renderer`。允许字段仅包括
+Span Name 固定为 `ui_action`，service.name 固定为 `codez-desktop-renderer`。允许字段仅包括
 Catalog 标识、surface/trigger、结果、受控状态、workspace/remote 类型和 action_id。禁止 prompt、
 回复、文件内容、路径、workspaceIdentity、remoteSessionId、代理地址、证书路径、字体名称、
 Cookie、浏览记录、Model I/O、完整错误和 stack。

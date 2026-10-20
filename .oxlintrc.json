@@ -10,22 +10,22 @@
       // 本次上游整合保留既有职责完整的实现；这些文件超 800 行只告警，不机械拆分。
       "files": [
         // 插件市场沿用上游存量大文件，只补充目录字段投影；不为行数机械拆分安装流程。
-        "**/apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts",
+        "**/apps/codez-cli/packages/adapters/src/plugins/marketplace.ts",
         // MCP 连接入口沿用上游存量实现；连接屏障修复不为行数重排整个 adapter。
-        "**/apps/zcode-cli/packages/adapters/src/mcp/index.ts",
-        "**/apps/zcode-cli/packages/bootstrap/src/plugins.ts",
-        "**/apps/zcode-cli/packages/adapters/src/storage/session-store/migrations.ts",
-        "**/apps/zcode-cli/packages/adapters/src/storage/session-store/sqlite-session-store.ts",
-        "**/apps/zcode-cli/packages/bootstrap/src/app/create-app.ts",
-        "**/apps/zcode-cli/packages/bootstrap/src/app/session-facade.ts",
-        "**/apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/v4-gateway.ts",
-        "**/apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server.ts",
-        "**/apps/zcode-cli/packages/bootstrap/src/zcode-protocol/session-mapper.ts",
-        "**/apps/zcode-cli/packages/bootstrap/src/zcode-protocol/v4-bridge.ts",
-        "**/apps/zcode-cli/packages/contracts/src/interfaces/session-store.port.ts",
-        "**/apps/zcode-cli/packages/core/src/runtime/methods/steering.ts",
-        "**/apps/zcode-cli/packages/core/src/runtime/methods/turn.ts",
-        "**/apps/zcode-cli/packages/core/src/runtime/methods/turn-model-step.ts",
+        "**/apps/codez-cli/packages/adapters/src/mcp/index.ts",
+        "**/apps/codez-cli/packages/bootstrap/src/plugins.ts",
+        "**/apps/codez-cli/packages/adapters/src/storage/session-store/migrations.ts",
+        "**/apps/codez-cli/packages/adapters/src/storage/session-store/sqlite-session-store.ts",
+        "**/apps/codez-cli/packages/bootstrap/src/app/create-app.ts",
+        "**/apps/codez-cli/packages/bootstrap/src/app/session-facade.ts",
+        "**/apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/v4-gateway.ts",
+        "**/apps/codez-cli/packages/bootstrap/src/codez-protocol/server.ts",
+        "**/apps/codez-cli/packages/bootstrap/src/codez-protocol/session-mapper.ts",
+        "**/apps/codez-cli/packages/bootstrap/src/codez-protocol/v4-bridge.ts",
+        "**/apps/codez-cli/packages/contracts/src/interfaces/session-store.port.ts",
+        "**/apps/codez-cli/packages/core/src/runtime/methods/steering.ts",
+        "**/apps/codez-cli/packages/core/src/runtime/methods/turn.ts",
+        "**/apps/codez-cli/packages/core/src/runtime/methods/turn-model-step.ts",
         // core 包内以 --no-ignore 运行时，oxlint 按 cwd 相对路径匹配同一组存量文件。
         "src/runtime/methods/steering.ts",
         "src/runtime/methods/turn.ts",
@@ -91,8 +91,8 @@
     ".claude/skills",
     ".agents/skills",
     "packages/formal-proof",
-    "apps/zcode-cli",
-    "packages/zcode-cua",
+    "apps/codez-cli",
+    "packages/codez-cua",
     "docs/electron"
   ]
 }

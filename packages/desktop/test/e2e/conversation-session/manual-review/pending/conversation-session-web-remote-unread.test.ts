@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright-core";
-import { ServiceChannels, parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { ServiceChannels, parseRemoteWorkspaceIdentity } from "@codez/shared";
 import {
   TID_TASK_ITEM,
   TID_TASK_NEW_BUTTON,
@@ -9,8 +9,8 @@ import {
   TID_V4_COMPOSER_SEND,
   TID_V4_STOP,
   testId,
-} from "@zcode/shared/test-ids";
-import type { ProjectTask, ProjectTree } from "@zcode/services";
+} from "@codez/shared/test-ids";
+import type { ProjectTask, ProjectTree } from "@codez/services";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import { releaseControlledReplay } from "#e2e/helpers/controlled-replay";
 import { openMobilePairingPage, redactMobileDiagnosticText } from "#e2e/helpers/mobile-pairing";
@@ -54,7 +54,7 @@ import {
 import { createWebRemoteVisibilityBrowser } from "#e2e/helpers/web-remote-visibility-browser";
 
 const CASE = "E2E_MRO03";
-const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR;
+const artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR;
 const evidence: Record<string, unknown> = {};
 
 async function readTask(address: UnreadTaskAddress): Promise<ProjectTask> {
@@ -203,7 +203,7 @@ describe(`${CASE}: 实际 Web 查看与桌面唯一未读写者`, () => {
 
   it("MRO03 本地：宽窄屏前台完成不未读，Home/断线完成后回看清除，Web首发晋升立即查看", async function () {
     this.timeout(15 * 60_000);
-    if (!artifacts || !process.env.ZCODE_E2E_HOME_DIR)
+    if (!artifacts || !process.env.CODEZ_E2E_HOME_DIR)
       throw new Error("MRO03 isolated runner required");
     await prepareSSHConnectionPage(CASE);
     await ensureUpstreamProviderForE2E({ skipToolbarSelection: true });
@@ -213,10 +213,10 @@ describe(`${CASE}: 实际 Web 查看与桌面唯一未读写者`, () => {
     await selectUpstreamThoughtLevelValue("disabled");
     await installHandoffRpcProbe();
     webBrowser = await chromium.launch({
-      ...(process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE || process.env.R3_MOBILE_CHROME
+      ...(process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE || process.env.R3_MOBILE_CHROME
         ? {
             executablePath:
-              process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE || process.env.R3_MOBILE_CHROME,
+              process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE || process.env.R3_MOBILE_CHROME,
           }
         : { channel: "chrome" }),
       headless: true,
@@ -337,14 +337,14 @@ describe(`${CASE}: 实际 Web 查看与桌面唯一未读写者`, () => {
       const promoted: UnreadTaskAddress = await page.evaluate((taskId) => {
         const tabs = (
           window as Window & {
-            __zcodeTabStoreE2E?: {
+            __codezTabStoreE2E?: {
               getState(): {
                 activeWorkspacePath: string | null;
                 activeWorkspaceIdentity?: string | null;
               };
             };
           }
-        ).__zcodeTabStoreE2E?.getState();
+        ).__codezTabStoreE2E?.getState();
         if (!tabs?.activeWorkspacePath) throw new Error("MRO03 promoted workspace missing");
         return {
           taskId,

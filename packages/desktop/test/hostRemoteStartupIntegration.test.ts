@@ -245,7 +245,7 @@ describe("Window Host 的 Source 重连与数据库启动整合", () => {
         browserControlMainBridge: {},
         cuaOperationStateReporter: {},
         pluginSandboxRegistrationBridge: { register() {} },
-        IZCodeTaskService: {},
+        ICodezTaskService: {},
         ISettingService: {},
         ICredentialService: {},
         ISourceServerManagementService: {},

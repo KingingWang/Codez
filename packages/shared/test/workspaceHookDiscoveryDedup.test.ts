@@ -10,7 +10,7 @@ import {
 const roots: string[] = [];
 
 function makeRoot(): string {
-  const root = mkdtempSync(join(tmpdir(), "zcode-hook-dedup-"));
+  const root = mkdtempSync(join(tmpdir(), "codez-hook-dedup-"));
   roots.push(root);
   return root;
 }
@@ -29,7 +29,7 @@ describe("workspace hook config discovery 去重（#10）", () => {
   it("explicit path 与 auto-discovery 重叠时只保留一个条目", () => {
     const workspace = makeRoot();
     mkdirSync(join(workspace, ".git"));
-    const configPath = join(workspace, ".zcode", "config.json");
+    const configPath = join(workspace, ".codez", "config.json");
     writeJson(configPath, {
       hooks: {
         enabled: true,
@@ -60,7 +60,7 @@ describe("workspace hook config discovery 去重（#10）", () => {
   it("explicit path 指向 auto-discovery 未发现的文件时正常追加", () => {
     const workspace = makeRoot();
     mkdirSync(join(workspace, ".git"));
-    writeJson(join(workspace, ".zcode", "config.json"), {
+    writeJson(join(workspace, ".codez", "config.json"), {
       hooks: {
         enabled: true,
         events: {
@@ -93,7 +93,7 @@ describe("workspace hook config discovery 去重（#10）", () => {
   it("无 explicit path 时异步 discovery 从零编号且保留来源", async () => {
     const workspace = makeRoot();
     mkdirSync(join(workspace, ".git"));
-    writeJson(join(workspace, ".zcode", "config.json"), {
+    writeJson(join(workspace, ".codez", "config.json"), {
       hooks: {
         enabled: true,
         events: {
@@ -114,7 +114,7 @@ describe("workspace hook config discovery 去重（#10）", () => {
   it("explicit 重叠时 async discovery 也只产生一个 source", async () => {
     const workspace = makeRoot();
     mkdirSync(join(workspace, ".git"));
-    const configPath = join(workspace, ".zcode", "config.json");
+    const configPath = join(workspace, ".codez", "config.json");
     writeJson(configPath, {
       hooks: {
         enabled: true,

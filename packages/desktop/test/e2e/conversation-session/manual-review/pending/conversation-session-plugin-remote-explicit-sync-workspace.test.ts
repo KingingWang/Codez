@@ -10,7 +10,7 @@ import {
   TID_WORKSPACE_HEADER,
   TID_WORKSPACE_MORE_BUTTON,
   TID_WORKSPACE_PATH,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, getE2EAppDataPaths } from "../../../helpers/desktop-app.js";
 import {
   addMarketplaceSourceThroughAgent,
@@ -115,7 +115,7 @@ describe("WPL-011 remote Workspace Plugin explicit sync E2E", () => {
     const localInstalledBefore = await readFile(localInstalledPath, "utf8");
     const workspaceConfigBefore = await readRemoteFile(
       target,
-      posix.join(workspacePath, ".zcode", "config.json"),
+      posix.join(workspacePath, ".codez", "config.json"),
     );
 
     provider = await createSSHLifecycleProvider(target, CASE_MARKER);
@@ -147,7 +147,7 @@ describe("WPL-011 remote Workspace Plugin explicit sync E2E", () => {
       packageStatus: "missing",
       source: "missing",
     });
-    expect(await readRemoteFile(target, posix.join(workspacePath, ".zcode", "config.json"))).toBe(
+    expect(await readRemoteFile(target, posix.join(workspacePath, ".codez", "config.json"))).toBe(
       workspaceConfigBefore,
     );
 
@@ -170,7 +170,7 @@ describe("WPL-011 remote Workspace Plugin explicit sync E2E", () => {
         timeoutMsg: `${CASE_MARKER}: 显式同步完成后 remote package/cache 没有物化`,
       },
     );
-    expect(await readRemoteFile(target, posix.join(workspacePath, ".zcode", "config.json"))).toBe(
+    expect(await readRemoteFile(target, posix.join(workspacePath, ".codez", "config.json"))).toBe(
       workspaceConfigBefore,
     );
     expect(await readFile(localConfigPath, "utf8")).toBe(localConfigBefore);
@@ -245,9 +245,9 @@ describe("WPL-011 remote Workspace Plugin explicit sync E2E", () => {
 
 // 本 case 会 rm -rf 远端 workspace，所以只允许重置一个约定路径，不接受任意路径。默认值
 // /root/workspace 是历史上唯一跑过的 root 目标；Linux e2e 服务器用 dev 用户，通过
-// ZCODE_E2E_WPL011_WORKSPACE 指定该机的专用目录（不能指向共享 workspace 根）。
+// CODEZ_E2E_WPL011_WORKSPACE 指定该机的专用目录（不能指向共享 workspace 根）。
 const ALLOWED_REMOTE_WORKSPACE =
-  process.env.ZCODE_E2E_WPL011_WORKSPACE?.trim() || "/root/workspace";
+  process.env.CODEZ_E2E_WPL011_WORKSPACE?.trim() || "/root/workspace";
 
 async function seedRemoteWorkspace(
   target: SSHConnectionConfig,
@@ -266,10 +266,10 @@ async function seedRemoteWorkspace(
   const command = [
     "set -eu",
     // 远端用户不一定是 root（服务器上是 dev），配置目录一律走 $HOME 展开。
-    `rm -rf -- "$HOME/.zcode" ${quoteShell(workspacePath)}`,
-    `mkdir -p -- ${quoteShell(posix.join(workspacePath, ".zcode"))}`,
+    `rm -rf -- "$HOME/.codez" ${quoteShell(workspacePath)}`,
+    `mkdir -p -- ${quoteShell(posix.join(workspacePath, ".codez"))}`,
     writeBase64Command(
-      posix.join(workspacePath, ".zcode", "config.json"),
+      posix.join(workspacePath, ".codez", "config.json"),
       `${JSON.stringify(config, null, 2)}\n`,
     ),
   ].join(" && ");
@@ -295,11 +295,11 @@ async function readRemotePluginStorageState(target: SSHConnectionConfig): Promis
 }> {
   const command = [
     "installed=false",
-    `if test -f "$HOME/.zcode/cli/plugins/installed_plugins.json" && grep -Fq -- ${quoteShell(PLUGIN_LIFECYCLE_ID)} "$HOME/.zcode/cli/plugins/installed_plugins.json"; then installed=true; fi`,
+    `if test -f "$HOME/.codez/cli/plugins/installed_plugins.json" && grep -Fq -- ${quoteShell(PLUGIN_LIFECYCLE_ID)} "$HOME/.codez/cli/plugins/installed_plugins.json"; then installed=true; fi`,
     "cached=false",
-    `if test -d "$HOME/.zcode/cli/plugins/cache" && find "$HOME/.zcode/cli/plugins/cache" -path ${quoteShell(`*${PLUGIN_LIFECYCLE_NAME}*`)} -print -quit | grep -q .; then cached=true; fi`,
+    `if test -d "$HOME/.codez/cli/plugins/cache" && find "$HOME/.codez/cli/plugins/cache" -path ${quoteShell(`*${PLUGIN_LIFECYCLE_NAME}*`)} -print -quit | grep -q .; then cached=true; fi`,
     "marketplace=false",
-    `if test -f "$HOME/.zcode/cli/plugins/known_marketplaces.json" && grep -Fq -- ${quoteShell(PLUGIN_LIFECYCLE_MARKETPLACE_ID)} "$HOME/.zcode/cli/plugins/known_marketplaces.json"; then marketplace=true; fi`,
+    `if test -f "$HOME/.codez/cli/plugins/known_marketplaces.json" && grep -Fq -- ${quoteShell(PLUGIN_LIFECYCLE_MARKETPLACE_ID)} "$HOME/.codez/cli/plugins/known_marketplaces.json"; then marketplace=true; fi`,
     "printf '%s\\n' \"$installed $cached $marketplace\"",
   ].join("; ");
   const result = await runSSHCommand(target, command);

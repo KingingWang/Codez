@@ -42,7 +42,7 @@ describe("desktop e2e process cleanup", () => {
   it("passes both run and HOME identity markers through Electron appArgs", () => {
     const wdioSource = readFileSync(new URL("../wdio.conf.ts", import.meta.url), "utf8");
 
-    expect(CURRENT_HOME_MARKER).toBe(`--zcode-e2e-home=${CURRENT_HOME}`);
+    expect(CURRENT_HOME_MARKER).toBe(`--codez-e2e-home=${CURRENT_HOME}`);
     expect(wdioSource).toMatch(
       /appArgs:\s*\[[\s\S]*?buildE2ERunIdArg\(E2E_RUN_ID\)[\s\S]*?createWindowsE2EHomeMarkerArg\(E2E_HOME_DIR\)[\s\S]*?\]/u,
     );
@@ -72,7 +72,7 @@ describe("desktop e2e process cleanup", () => {
       /const exitAfterLastWindowClosed[\s\S]*?exitPreparedApp\("all-windows-closed-after-preparation"\)/u,
     );
     expect(mainSource).toMatch(
-      /process\.env\.ZCODE_E2E_RUN_ID\?\.trim\(\)[\s\S]*?spawn\("taskkill"[\s\S]*?spawn\("kill", \["-9", String\(process\.pid\)\]/u,
+      /process\.env\.CODEZ_E2E_RUN_ID\?\.trim\(\)[\s\S]*?spawn\("taskkill"[\s\S]*?spawn\("kill", \["-9", String\(process\.pid\)\]/u,
     );
   });
 
@@ -148,7 +148,7 @@ describe("desktop e2e process cleanup", () => {
         ppid: 1,
       },
       { command: "node host-process", pid: 11, ppid: 10 },
-      { command: "node zcode-agent", pid: 12, ppid: 11 },
+      { command: "node codez-agent", pid: 12, ppid: 11 },
       {
         command: `Electron --app=${sharedEntryPoint} --no-sandbox ${buildE2ERunIdArg("run-b")}`,
         pid: 20,
@@ -160,7 +160,7 @@ describe("desktop e2e process cleanup", () => {
     expect(
       collectE2EProcessTreePids(processes, {
         currentPid: 999,
-        homeDir: "/tmp/zcode-e2e-run-a",
+        homeDir: "/tmp/codez-e2e-run-a",
         runId: "run-a",
       }),
     ).toEqual([12, 11, 10]);
@@ -171,13 +171,13 @@ describe("desktop e2e process cleanup", () => {
       { command: "Electron", pid: 10, ppid: 1 },
       { command: "Electron Helper (Renderer)", pid: 11, ppid: 10 },
       { command: "node host-process", pid: 12, ppid: 10 },
-      { command: "node zcode-agent", pid: 13, ppid: 12 },
+      { command: "node codez-agent", pid: 13, ppid: 12 },
     ];
 
     expect(
       collectE2EProcessTreePids(processes, {
         currentPid: 999,
-        homeDir: "/tmp/zcode-e2e-run-a",
+        homeDir: "/tmp/codez-e2e-run-a",
         rootPids: [10],
         runId: "run-a",
       }),
@@ -185,13 +185,13 @@ describe("desktop e2e process cleanup", () => {
   });
 
   it("recovers markerless ChromeDriver and Electron ancestors from a marked renderer", () => {
-    const currentHome = "/tmp/zcode-e2e-run-a";
+    const currentHome = "/tmp/codez-e2e-run-a";
     const processes = [
       { command: "node wdio.conf.ts", pid: 9, ppid: 1 },
       { command: "chromedriver --port=55089", pid: 10, ppid: 9 },
-      { command: "ZCode E2E", pid: 11, ppid: 10 },
+      { command: "Codez E2E", pid: 11, ppid: 10 },
       {
-        command: `Electron Helper (Renderer) --user-data-dir=/repo/.e2e-cache/run-a/chromium-profiles/0-51 --config=${currentHome}/.zcode/config.json`,
+        command: `Electron Helper (Renderer) --user-data-dir=/repo/.e2e-cache/run-a/chromium-profiles/0-51 --config=${currentHome}/.codez/config.json`,
         pid: 12,
         ppid: 11,
       },
@@ -201,7 +201,7 @@ describe("desktop e2e process cleanup", () => {
         pid: 22,
         ppid: 21,
       },
-      { command: "ZCode E2E", pid: 21, ppid: 20 },
+      { command: "Codez E2E", pid: 21, ppid: 20 },
     ];
 
     expect(
@@ -214,13 +214,13 @@ describe("desktop e2e process cleanup", () => {
   });
 
   it("keeps ChromeDriver out of the per-session reload exit barrier", () => {
-    const currentHome = "/tmp/zcode-e2e-run-a";
+    const currentHome = "/tmp/codez-e2e-run-a";
     const processes = [
       { command: "node wdio.conf.ts", pid: 9, ppid: 1 },
       { command: "chromedriver --port=55089", pid: 10, ppid: 9 },
-      { command: "ZCode E2E", pid: 11, ppid: 10 },
+      { command: "Codez E2E", pid: 11, ppid: 10 },
       {
-        command: `Electron Helper (Renderer) --config=${currentHome}/.zcode/config.json`,
+        command: `Electron Helper (Renderer) --config=${currentHome}/.codez/config.json`,
         pid: 12,
         ppid: 11,
       },
@@ -242,21 +242,21 @@ describe("desktop e2e process cleanup", () => {
     const processes = [
       { command: "node wdio.conf.ts", pid: 9, ppid: 1 },
       { command: "chromedriver --port=55089", pid: 10, ppid: 9 },
-      { command: "ZCode E2E", pid: 11, ppid: 10 },
+      { command: "Codez E2E", pid: 11, ppid: 10 },
       {
         command: `Electron Helper --type=gpu-process --user-data-dir=${chromiumProfileRootDir}/0-2`,
         pid: 12,
         ppid: 11,
       },
       { command: "Electron Helper", pid: 13, ppid: 11 },
-      { command: "node zcode-agent", pid: 14, ppid: 13 },
+      { command: "node codez-agent", pid: 14, ppid: 13 },
       {
-        command: "chrome_crashpad_handler --database=/tmp/zcode-e2e-run-a/.zcode/crash",
+        command: "chrome_crashpad_handler --database=/tmp/codez-e2e-run-a/.codez/crash",
         pid: 15,
         ppid: 1,
       },
       { command: "chromedriver --port=55090", pid: 20, ppid: 9 },
-      { command: "ZCode E2E", pid: 21, ppid: 20 },
+      { command: "Codez E2E", pid: 21, ppid: 20 },
       {
         command:
           "Electron Helper --user-data-dir=/repo/.e2e-cache/run-a-other/chromium-profiles/0-2",
@@ -272,7 +272,7 @@ describe("desktop e2e process cleanup", () => {
     const identity = {
       chromiumProfileRootDir,
       currentPid: 9,
-      homeDir: "/tmp/zcode-e2e-run-a",
+      homeDir: "/tmp/codez-e2e-run-a",
       runId: "run-a",
     };
 
@@ -323,10 +323,10 @@ describe("desktop e2e process cleanup", () => {
       { command: "zsh", pid: 6, ppid: 5 },
       { command: "node old-wdio-worker.js", pid: 7, ppid: 6 },
       { command: "chromedriver --port=55089", pid: 10, ppid: 7 },
-      { command: "ZCode E2E", pid: 11, ppid: 10 },
+      { command: "Codez E2E", pid: 11, ppid: 10 },
       {
         command:
-          "Electron Helper --user-data-dir=/repo/.e2e-cache/run-a/chromium-profiles/0-51 --config=/tmp/zcode-e2e-run-a/.zcode/config.json",
+          "Electron Helper --user-data-dir=/repo/.e2e-cache/run-a/chromium-profiles/0-51 --config=/tmp/codez-e2e-run-a/.codez/config.json",
         pid: 12,
         ppid: 11,
       },
@@ -335,7 +335,7 @@ describe("desktop e2e process cleanup", () => {
     expect(
       collectE2EProcessTreePids(processes, {
         currentPid: 99,
-        homeDir: "/tmp/zcode-e2e-run-a",
+        homeDir: "/tmp/codez-e2e-run-a",
         runId: "run-a",
       }),
     ).toEqual([12, 11, 10]);
@@ -346,13 +346,13 @@ describe("desktop e2e process cleanup", () => {
       [
         `10 1 Electron ${buildE2ERunIdArg("run-a")}`,
         "11 10 node host-process",
-        "12 11 node zcode-agent",
+        "12 11 node codez-agent",
       ].join("\n"),
     );
 
     expect(
       listE2EProcessTreePids(
-        { currentPid: 999, homeDir: "/tmp/zcode-e2e-run-a", runId: "run-a" },
+        { currentPid: 999, homeDir: "/tmp/codez-e2e-run-a", runId: "run-a" },
         { platform: "linux", runCommand },
       ),
     ).toEqual([12, 11, 10]);
@@ -362,10 +362,10 @@ describe("desktop e2e process cleanup", () => {
   it("lists and scopes a read-only system process snapshot by explicit roots", async () => {
     const runCommand = vi.fn(async () =>
       [
-        "10 1 ZCode E2E",
-        "11 10 zcode-host-local-1",
-        "12 11 zcode-cli",
-        "13 12 zcode-browser-use-mcp",
+        "10 1 Codez E2E",
+        "11 10 codez-host-local-1",
+        "12 11 codez-cli",
+        "13 12 codez-browser-use-mcp",
         "20 1 unrelated",
       ].join("\n"),
     );
@@ -376,10 +376,10 @@ describe("desktop e2e process cleanup", () => {
     });
 
     expect(collectProcessTreeByRootPids(processes, [10])).toEqual([
-      { command: "ZCode E2E", pid: 10, ppid: 1 },
-      { command: "zcode-host-local-1", pid: 11, ppid: 10 },
-      { command: "zcode-cli", pid: 12, ppid: 11 },
-      { command: "zcode-browser-use-mcp", pid: 13, ppid: 12 },
+      { command: "Codez E2E", pid: 10, ppid: 1 },
+      { command: "codez-host-local-1", pid: 11, ppid: 10 },
+      { command: "codez-cli", pid: 12, ppid: 11 },
+      { command: "codez-browser-use-mcp", pid: 13, ppid: 12 },
     ]);
   });
 
@@ -414,7 +414,7 @@ describe("desktop e2e process cleanup", () => {
     const sharedMainDir = "/repo/packages/desktop/out/main";
     const processes = [
       {
-        command: `Electron "ZCode E2E" --app=${sharedEntryPoint} --inspect=${sharedMainDir}`,
+        command: `Electron "Codez E2E" --app=${sharedEntryPoint} --inspect=${sharedMainDir}`,
         pid: 10,
         ppid: 1,
       },
@@ -424,7 +424,7 @@ describe("desktop e2e process cleanup", () => {
     expect(
       collectE2EProcessTreePids(processes, {
         currentPid: 999,
-        homeDir: "/tmp/zcode-e2e-run-a",
+        homeDir: "/tmp/codez-e2e-run-a",
         runId: "run-a",
       }),
     ).toEqual([]);
@@ -438,7 +438,7 @@ describe("desktop e2e process cleanup", () => {
         pid: 101,
       },
       {
-        command: "node.exe --config=C:/e2e/shards/current/.zcode/cli/config.json",
+        command: "node.exe --config=C:/e2e/shards/current/.codez/cli/config.json",
         parentPid: 101,
         pid: 102,
       },
@@ -456,17 +456,17 @@ describe("desktop e2e process cleanup", () => {
     const sharedApp = "C:\\repo\\packages\\desktop\\out\\main\\index.js";
     const output = toProcessJson([
       {
-        command: `electron.exe --app=${sharedApp} --name="ZCode E2E" ${CURRENT_HOME_MARKER}`,
+        command: `electron.exe --app=${sharedApp} --name="Codez E2E" ${CURRENT_HOME_MARKER}`,
         parentPid: 1,
         pid: 201,
       },
       {
-        command: `electron.exe --app=${sharedApp} --name="ZCode E2E" ${createWindowsE2EHomeMarkerArg("C:\\e2e\\shards\\other")}`,
+        command: `electron.exe --app=${sharedApp} --name="Codez E2E" ${createWindowsE2EHomeMarkerArg("C:\\e2e\\shards\\other")}`,
         parentPid: 1,
         pid: 202,
       },
       {
-        command: `electron.exe --app=${sharedApp} --name="ZCode E2E" ${createWindowsE2EHomeMarkerArg(`${CURRENT_HOME}-copy`)}`,
+        command: `electron.exe --app=${sharedApp} --name="Codez E2E" ${createWindowsE2EHomeMarkerArg(`${CURRENT_HOME}-copy`)}`,
         parentPid: 1,
         pid: 203,
       },
@@ -514,7 +514,7 @@ describe("desktop e2e process cleanup", () => {
     expect(
       collectE2EProcessTreePids(processes, {
         currentPid: 999,
-        homeDir: "/tmp/zcode-e2e-run-1",
+        homeDir: "/tmp/codez-e2e-run-1",
         runId: "run-1",
       }),
     ).toEqual([20]);

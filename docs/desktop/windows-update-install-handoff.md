@@ -4,7 +4,7 @@
 
 Windows 桌面端继续使用 `electron-updater` 下载和校验更新，并通过
 `quitAndInstall()` 交给 `electron-builder 26.8.1` 生成的 NSIS 安装器完成覆盖安装。
-本方案不自定义下载器、增量更新算法或安装引擎，只补齐 ZCode 多进程退出和 NSIS
+本方案不自定义下载器、增量更新算法或安装引擎，只补齐 Codez 多进程退出和 NSIS
 快捷方式保留策略之间的边界。
 
 ## 交接时序
@@ -20,7 +20,7 @@ update-downloaded
   -> electron-updater.quitAndInstall()
   -> NSIS CHECK_APP_RUNNING 做最终安装目录进程检查
   -> NSIS 覆盖安装并保留已有快捷方式身份
-  -> 完成页直接启动新安装目录下的 ZCode.exe
+  -> 完成页直接启动新安装目录下的 Codez.exe
 ```
 
 Main 进程不能在调用 `quitAndInstall()` 前按整个安装目录杀进程，因为 renderer、GPU
@@ -70,7 +70,7 @@ Main 进程不能在调用 `quitAndInstall()` 前按整个安装目录杀进程�
     -> 若继承的目标失效，则原位修复 .lnk
   ```
 - 覆盖更新时，开始菜单和桌面快捷方式先由 electron-builder 的 `KeepShortcuts` 机制保留。
-  ZCode 的 `customInstall` 必须读取已有 `.lnk` 的目标：目标已经等于本次 `$appExe` 时原样保留，
+  Codez 的 `customInstall` 必须读取已有 `.lnk` 的目标：目标已经等于本次 `$appExe` 时原样保留，
   不得再次调用 `CreateShortCut`；目标不同、为空或无法读取时才原位修复为 `$appExe`。修复原因
   是无条件覆盖 `.lnk` 会改变 Shell 观察到的快捷方式对象，在部分 Windows 11 版本或缓存状态
   下丢失“所有应用”索引或用户固定关系，而完全不修复又会让历史错误目标在升级后继续失效。
@@ -79,7 +79,7 @@ Main 进程不能在调用 `quitAndInstall()` 前按整个安装目录杀进程�
 - 快捷方式名称或菜单目录确需迁移时，继续由 electron-builder 内建流程执行重命名、AUMID
   写入与 `SHChangeNotify`；不得在其通知 Shell 之后再静默修改 `.lnk`。
 - assisted installer 完成页不得依赖可能由旧版本保留下来的 `.lnk`，必须直接启动
-  `$INSTDIR\ZCode.exe`。
+  `$INSTDIR\Codez.exe`。
 - `config.json.lock` 属于服务层跨进程原子写锁，不属于 Electron 更新器。等待者自身的等待
   时长只能决定何时返回超时，不能作为当前锁 stale 的证据；PID 仍存活的 owner 不允许被
   运行期等待者强制接管，正常并发写入必须保持串行。
@@ -105,7 +105,7 @@ Main 进程不能在调用 `quitAndInstall()` 前按整个安装目录杀进程�
   已退出 owner 遗留的锁。正常竞争最多等待 8 秒；活跃 owner 到期后返回锁超时，只有
   owner 已退出，或锁缺少有效 PID 且当前锁自身已 stale 时才允许接管，不能沿用等待者在
   旧锁上的等待时长判断后来出现的新锁。删除权限不足时返回明确错误，禁止无限重试。
-- 等待预算耗尽统一返回 `ZCODE_FILE_LOCK_TIMEOUT`。该错误码由 `@zcode/shared` 定义并由
+- 等待预算耗尽统一返回 `CODEZ_FILE_LOCK_TIMEOUT`。该错误码由 `@codez/shared` 定义并由
   UI/服务消费者按 code 识别为瞬时锁竞争，不得依赖错误消息恰好包含 `config.json.lock`。
 - sessions-index 订阅是幂等读，可在 UI 层按锁超时重试；provider/settings 写入
   已在原子写入口内等待并恢复，不在上层盲重放非幂等写操作，失败时保留明确错误交给调用方。
@@ -118,7 +118,7 @@ Main 进程不能在调用 `quitAndInstall()` 前按整个安装目录杀进程�
 - NSIS 隔离夹具在临时安装目录执行覆盖更新宏：目标已经正确的桌面/开始菜单快捷方式必须
   保留目标、参数和 Shell 身份；目标失效的快捷方式必须修复为 `$appExe`；用户已删除的快捷
   方式不得重新创建，且 `$launchLink` 必须直接等于 `$appExe`。
-  夹具不得写入真实桌面、开始菜单、ZCode 安装目录或产品注册表。
+  夹具不得写入真实桌面、开始菜单、Codez 安装目录或产品注册表。
 - 完整安装包 smoke test 继续覆盖 electron-builder 生成脚本中的宏插入位置和真实 NSIS 覆盖安装；
   独立夹具负责在不重打完整应用包时快速发现变量作用域、label、插件和快捷方式语义回归。
 

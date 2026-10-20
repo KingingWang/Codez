@@ -18,10 +18,10 @@ vi.mock("react-dom/client", async (importOriginal) => {
   };
 });
 
-vi.mock("@zcode/ui", () => ({
+vi.mock("@codez/ui", () => ({
   AppErrorBoundary: () => null,
   Root: () => null,
-  ZCodeIntlProvider: () => null,
+  CodezIntlProvider: () => null,
   Button: () => null,
   generateMobileDeviceFingerprint: () => "oauth-entry-test",
   installDocumentHiddenMotionPause: vi.fn(),

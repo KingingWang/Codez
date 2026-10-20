@@ -8,7 +8,7 @@ import { openWorkspaceDraftFromSidebar } from "../helpers/workspace-agent-warmup
  * - UI/交互：pending banner、Settings 钩子行内“信任”按钮、锁定 Switch
  * - Runtime：`.hook-trust-e2e/executions.jsonl` 执行证据（未信任零执行、不补跑、
  *   信任后自然事件执行）
- * - 持久化：`<E2E_HOME>/.zcode/security/workspace-hook-trust-v1.json` 精确落盘
+ * - 持久化：`<E2E_HOME>/.codez/security/workspace-hook-trust-v1.json` 精确落盘
  *
  * fixture 由 wdio.conf.ts 在 beforeSession 阶段（resetE2EHome 内）落盘，
  * 首个 agent 进程冷启动即加载 workspace hooks；spec 内不重复安装。
@@ -22,7 +22,7 @@ import {
   TID_V4_WORKSPACE_HOOK_PENDING_DISMISS,
   TID_V4_WORKSPACE_HOOK_PENDING_REVIEW,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,

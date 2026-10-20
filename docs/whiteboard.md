@@ -13,5 +13,5 @@
 ## 边界
 
 - 画板是 UI 层能力，不新增 Agent runtime、relay、main process 或服务端状态。
-- 图片发送复用现有 `ZCodePromptAttachment.kind === "image"` 路径；Agent 不支持图片时沿用现有错误处理。
+- 图片发送复用现有 `CodezPromptAttachment.kind === "image"` 路径；Agent 不支持图片时沿用现有错误处理。
 - Web 远控和桌面端都走同一条 composer 附件链路，不改变 desktop continuous 与 web remote replayable 的 task stream 边界。

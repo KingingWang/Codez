@@ -55,10 +55,10 @@ describe("parseMarkdownFileLinkTarget", () => {
   it("decodes uri-encoded path text while preserving line suffixes", () => {
     expect(
       parseMarkdownFileLinkTarget(
-        "/Users/dev/ZCodeProject/323/Auto%20Snake/src/game/engine.ts:42",
+        "/Users/dev/CodezProject/323/Auto%20Snake/src/game/engine.ts:42",
       ),
     ).toEqual({
-      path: "/Users/dev/ZCodeProject/323/Auto Snake/src/game/engine.ts",
+      path: "/Users/dev/CodezProject/323/Auto Snake/src/game/engine.ts",
       lineNumber: 42,
       columnNumber: null,
     });
@@ -85,10 +85,10 @@ describe("parseMarkdownFileLinkTarget", () => {
   it("converts file URL targets to local file paths", () => {
     expect(
       parseMarkdownFileLinkTarget(
-        "file:///Users/dev/ZCodeProject/todolist/src/app/gomoku/components/GameControls.tsx:18",
+        "file:///Users/dev/CodezProject/todolist/src/app/gomoku/components/GameControls.tsx:18",
       ),
     ).toEqual({
-      path: "/Users/dev/ZCodeProject/todolist/src/app/gomoku/components/GameControls.tsx",
+      path: "/Users/dev/CodezProject/todolist/src/app/gomoku/components/GameControls.tsx",
       lineNumber: 18,
       columnNumber: null,
     });
@@ -269,10 +269,10 @@ describe("resolveMarkdownFileLink", () => {
     expect(
       resolveMarkdownFileLink(
         "/workspace",
-        "file:///Users/dev/ZCodeProject/todolist/src/app/gomoku/components/GameControls.tsx",
+        "file:///Users/dev/CodezProject/todolist/src/app/gomoku/components/GameControls.tsx",
       ),
     ).toEqual({
-      path: "/Users/dev/ZCodeProject/todolist/src/app/gomoku/components/GameControls.tsx",
+      path: "/Users/dev/CodezProject/todolist/src/app/gomoku/components/GameControls.tsx",
       lineNumber: null,
       columnNumber: null,
     });

@@ -1,6 +1,6 @@
 // 生产 renderer 的独立 CDP E2E；使用 node:test，不能放入 WDIO/Docker preset。
 // 前置：隔离 HOME 中播种 8 个 sess_probe_retention_0..7 已完成会话，启动未开启 E2E bridge 的 App。
-// ZCODE_RETENTION_CDP_URL=http://127.0.0.1:9326 ZCODE_RETENTION_ARTIFACT_DIR=<dir>
+// CODEZ_RETENTION_CDP_URL=http://127.0.0.1:9326 CODEZ_RETENTION_ARTIFACT_DIR=<dir>
 // pnpm exec tsx --test packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-snapshot-retention.test.ts
 import assert from "node:assert/strict";
 import { createWriteStream } from "node:fs";
@@ -97,8 +97,8 @@ test(
   "SPR01: 136 session switches release inactive snapshots and closed stores",
   { timeout: 1_200_000 },
   async () => {
-    const endpoint = process.env.ZCODE_RETENTION_CDP_URL;
-    const artifactDir = process.env.ZCODE_RETENTION_ARTIFACT_DIR;
+    const endpoint = process.env.CODEZ_RETENTION_CDP_URL;
+    const artifactDir = process.env.CODEZ_RETENTION_ARTIFACT_DIR;
     assert(endpoint && artifactDir, "需要显式指定隔离 App CDP 与证据目录");
     const output = resolve(artifactDir);
     await mkdir(output, { recursive: true });

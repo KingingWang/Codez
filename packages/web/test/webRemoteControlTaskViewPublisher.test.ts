@@ -27,7 +27,7 @@ it("MRO03：先有可见事实再收到 epoch 仍立即声明，bootstrap 不覆
   expect(send).not.toHaveBeenCalled();
   publisher.request("epoch-new");
   expect(send).toHaveBeenLastCalledWith({
-    zcode_type: "mobile-task-view-update",
+    codez_type: "mobile-task-view-update",
     epoch: "epoch-new",
     seq: 1,
     bridgeSessionId: "first",

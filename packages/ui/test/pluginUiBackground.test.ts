@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { IServiceAccessor } from "@zcode/services";
-import type { IPlatformService } from "@zcode/shared";
+import type { IServiceAccessor } from "@codez/services";
+import type { IPlatformService } from "@codez/shared";
 import { attachPluginUiToolResults } from "@/plugin-ui/adapters/pluginUiBackground.js";
 import { acquirePluginUiPage, pluginUiPages } from "@/plugin-ui/adapters/pluginUiPageRegistry.js";
 import { createPage } from "@/plugin-ui/adapters/pluginUiManagedPage.js";
@@ -41,7 +41,7 @@ function setup(supported = true) {
     return { dispose };
   });
   const services = {
-    zcodeAgentService: { onDynamicPluginUiToolResult: subscribe },
+    codezAgentService: { onDynamicPluginUiToolResult: subscribe },
     pluginUiBridgeService: {},
   } as unknown as IServiceAccessor;
   const platform = (supported ? { pluginSandbox: {} } : {}) as IPlatformService;

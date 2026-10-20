@@ -8,8 +8,8 @@ const scope = {
   accountId: "user",
 };
 const team = { organizationId: "org", projectId: "project" };
-const teamKey = { apiKey: "key", name: "zcode-team-api-key", keyType: 2 };
-const personalKey = { apiKey: "key", name: "zcode-api-key" };
+const teamKey = { apiKey: "key", name: "codez-team-api-key", keyType: 2 };
+const personalKey = { apiKey: "key", name: "codez-api-key" };
 function fixture(options: { keys?: unknown[]; created?: unknown; organizations?: unknown[] } = {}) {
   const request = vi.fn(async (url: string, init: RequestInit) => {
     let data: unknown;
@@ -82,7 +82,7 @@ describe("专用 Key 管理兼容契约", () => {
   });
 
   it("个人同名 Key 缺 ID 时失败，不重复创建", async () => {
-    const f = fixture({ keys: [{ name: "zcode-api-key", apiKey: "" }], created: personalKey });
+    const f = fixture({ keys: [{ name: "codez-api-key", apiKey: "" }], created: personalKey });
     await expect(f.client.resolve(scope)).rejects.toThrow("project_token_invalid_response");
     expect(f.request.mock.calls.some(([, init]) => init.method === "POST")).toBe(false);
   });

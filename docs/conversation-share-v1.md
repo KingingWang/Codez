@@ -27,7 +27,7 @@ Desktop UI
 
 Web preview
   -> https://zcode.z.ai/cn/share/<share_code>
-  -> zcode://share/import?code=<share_code>
+  -> codez://share/import?code=<share_code>
   -> Desktop continuation
   -> 当前本地 workspace 新 task/session + shared_context + 全部产物
 ```
@@ -37,10 +37,10 @@ Share 落地页是独立静态构建：`pnpm run build:web-share` 使用 Vite `b
 两者共用同一份 SPA 和静态资源，路径前缀决定中文或英文 UI locale；它与 `/remote/v4` 使用独立镜像、
 Deployment、CI Job 和回滚版本；公开 Preview 匿名访问，private Preview 使用同源 Web OAuth。
 
-裁剪构建只安装 `@zcode/web-share` 的依赖闭包。复用的 Web/UI 源文件不能依赖完整工作区的
-`node_modules` 链接；Vite 对 `@zcode/shared` 根入口使用精确匹配的源码别名，避免从 Web
-目录解析失败，同时不得把 `@zcode/shared/*` 子路径改写到 `index.ts/*`。Share 闭包用到的每个
-`@zcode/shared/*` 子路径（如 `test-ids`、`zcode-protocol-v4`）都要在 `packages/web-share/vite.config.ts`
+裁剪构建只安装 `@codez/web-share` 的依赖闭包。复用的 Web/UI 源文件不能依赖完整工作区的
+`node_modules` 链接；Vite 对 `@codez/shared` 根入口使用精确匹配的源码别名，避免从 Web
+目录解析失败，同时不得把 `@codez/shared/*` 子路径改写到 `index.ts/*`。Share 闭包用到的每个
+`@codez/shared/*` 子路径（如 `test-ids`、`codez-protocol-v4`）都要在 `packages/web-share/vite.config.ts`
 登记精确的源码别名。隔离构建回归覆盖此约束。
 
 镜像和 nginx 路由的手工验收用 `scripts/test-web-share-build.sh`（需要本机 Docker，不需要 CUA Git
@@ -87,7 +87,7 @@ Preview not_found → 现有 Loader
 另覆盖中英文、320px 手机/桌面视口、深浅主题、无横向溢出及过期页不出现新增内容。
 首页请求由浏览器测试拦截，不依赖外网。组件单测补充其他错误状态的隔离断言。
 
-本地 Share 验证入口：`pnpm dev:web-share:test` 启动与生产相同的 `@zcode/web-share` Vite 入口，
+本地 Share 验证入口：`pnpm dev:web-share:test` 启动与生产相同的 `@codez/web-share` Vite 入口，
 固定连接测试环境；启动后手动打开
 `http://localhost:5173/cn/share/<share_code>` 或 `http://localhost:5173/share/<share_code>`，分享码只从 URL
 路径读取，不需要环境变量；前者显示中文，后者显示英文。`pnpm dev:web-share:mock` 使用开发态
@@ -95,9 +95,9 @@ Preview not_found → 现有 Loader
 和 `/cn/share/mock-not-found` fixture。两者都只启动 Vite，
 不启动 Desktop、relay 或独立 Agent。跨版本兼容另有两个 fixture：
 `/cn/share/mock-partial-unsupported`（认不出的行被跳过，顶部出软提示）和
-`/cn/share/mock-outdated-client`（载荷版本高于本 build，显示「需要更新 ZCode」而不是「格式无效」）。
+`/cn/share/mock-outdated-client`（载荷版本高于本 build，显示「需要更新 Codez」而不是「格式无效」）。
 
-目标 Environment 的分享运行时始终使用真实 Share API，API 地址由 `ZCODE_ENV` 解析；不再提供运行时
+目标 Environment 的分享运行时始终使用真实 Share API，API 地址由 `CODEZ_ENV` 解析；不再提供运行时
 Mock 开关。`ConversationShareMockApiClient` 仅用于服务单测和协议 fixture，不能生成可跨进程访问的分享链接。
 
 公开页正文展示复用 `packages/ui` 的只读 presentation 层：通过
@@ -113,13 +113,13 @@ Share 自己承接页面级纵向滚动，不改变全局 `body/#root { overflow
 滚动之间保持独立。`MessageResponse` 的公开模式由一次性的 `TooltipProvider`、只读外链 handler 和
 citation 清理组成：本地 citation 不泄漏路径，无法匹配公开 artifact 时不渲染协议 directive。
 
-公开分享页顶部固定栏始终保持单行 64px 高度。`ZCode` 品牌、分享标题和继续 CTA 使用同一条连续
+公开分享页顶部固定栏始终保持单行 64px 高度。`Codez` 品牌、分享标题和继续 CTA 使用同一条连续
 几何轨道；完整 CTA 无法为标题保留最小可见宽度时，切换为保留可访问名称的图标 CTA，再让标题
 通过 CSS ellipsis 收缩。完整标题仍保留在可访问名称/`title` 中。`public_readonly` 始终不显示
 CTA；该响应式策略只影响 Web landing page 的展示，不改变 Deep Link、权限或 Desktop/remote 行为。
 
-当分享可继续导入时，正文时间线末尾还显示一个与顶部 CTA 样式和行为一致的“去 ZCode 继续”按钮，
-按钮在正文内容栏内水平居中并复用同一个 `zcode://share/import` deep link。点击顶部或底部任一入口
+当分享可继续导入时，正文时间线末尾还显示一个与顶部 CTA 样式和行为一致的“去 Codez 继续”按钮，
+按钮在正文内容栏内水平居中并复用同一个 `codez://share/import` deep link。点击顶部或底部任一入口
 都进入相同的自动打开提示流程；`public_readonly` 仍不显示任何继续入口。底部按钮属于正文流，
 不能遮挡最后一条分享内容，也不改变分享内容的只读语义。
 
@@ -160,11 +160,11 @@ Assistant 结果物卡片。`preview.artifacts` 是结果物和 `userInput.attac
 3. **rows 只能 additive。** 新字段必须 `optional`；**永不删字段、永不收窄 enum、永不改字段
    语义**——删字段和收窄枚举同样会让对端丢内容，方向只是反过来。
 4. **新增 row kind 或 enum 取值 = 老客户端会跳过该行**（`decodeConversationShareRows` 逐行降级，
-   UI 出「部分内容需要更新 ZCode 查看」软提示）。加之前先问：这行被跳过后，分享是否仍然自洽？
+   UI 出「部分内容需要更新 Codez 查看」软提示）。加之前先问：这行被跳过后，分享是否仍然自洽？
    需要「不可跳过」的语义变化，才谈得上第 5 条。
 5. **`schema_version` 只在 rows 出现不可跳过的破坏性变化时才 bump**，且 bump 前先确认存量
    客户端与已部署落地页镜像的版本占比——bump 一次就等于让它们同时看不了新分享。版本高于
-   本端认知时走 `unsupported_schema_version`（「请升级 ZCode」），不得混进 `invalid_contract`
+   本端认知时走 `unsupported_schema_version`（「请升级 Codez」），不得混进 `invalid_contract`
    （「分享格式无效」）。
 6. **`projectRow`（`conversationSharePublicProjection.ts`）的穷尽 switch 是故意的编译期闸门，
    不要给它加 `default`。** 新增 row kind 必须让构建失败，强制开发者按第 4 条做决定，而不是
@@ -233,7 +233,7 @@ CSP 的两个硬约束（改动前先读，否则会静默打断线上页面）�
 - `script-src` 必须带 `'wasm-unsafe-eval'`：shiki 代码高亮默认走 oniguruma wasm
   （`packages/ui/src/lib/shikiHighlighter.ts` 的 `createHighlighter`），只给 `'self'` 会让分享页
   所有代码高亮失效。它只放开 wasm 编译，`eval` / `new Function` 仍然被挡住（已实测）。
-- `connect-src` 保持 `https:`：API origin 是 vite 构建期按 `ZCODE_ENV` 注入的
+- `connect-src` 保持 `https:`：API origin 是 vite 构建期按 `CODEZ_ENV` 注入的
   （`packages/web-share/vite.config.ts`），写死具体 origin 会让 test/production 各自需要一份 conf。
 
 artifact 只经 `window.open` 打开、不做 `<img src>`，因此不受 `img-src` 收紧影响。
@@ -247,7 +247,7 @@ artifact 只经 `window.open` 打开、不做 `<img src>`，因此不受 `img-sr
 - 每类 Row 使用 allow-list 新建对象，删除 actions、source/root command ID、client ID、approval ID、
   active progress 和本地 artifact 引用。
 - 确定性重建 public product-turn、turn、row、entity、tool-call、artifact ID；保持 Row 稳定顺序和引用闭包。
-- descriptor 不发送 `original_path`。artifact ref 固定为 `zcode-artifact://share/<artifact_id>`。
+- descriptor 不发送 `original_path`。artifact ref 固定为 `codez-artifact://share/<artifact_id>`。
 
 选择至少包含一个 terminal product turn。每个被选 ID 必须只有一个 `turnHeader`，且状态不是
 `running`。任一分页 revision/log epoch 不一致时必须在 preparation 前失败。
@@ -359,10 +359,10 @@ PDF、Office、Markdown/HTML、视频和音频都可以成为预览候选，但 
 
 `userInput.attachments` 通过当前 Agent connection scope 按 `rowId + entityId + attachmentIndex`
 授权读取，不允许 Renderer 直接把附件路径作为读取目标。长文本粘贴保持现有
-`~/.zcode/tmp/paste-attachments/<date>/<uuid>.txt` 路径处理，不在发送时重新内联正文；分享时
+`~/.codez/tmp/paste-attachments/<date>/<uuid>.txt` 路径处理，不在发送时重新内联正文；分享时
 复用同一读取链路。文件已被清理、读取失败或字节发生变化时，只跳过该附件并在发布成功态展示
 `input_attachment_unavailable` warning，不把失效路径写入公开 projection。可用附件统一改写为
-`zcode-artifact://share/<artifact_id>`，不额外插入 `artifact` Row，直接通过 manifest 闭合。
+`codez-artifact://share/<artifact_id>`，不额外插入 `artifact` Row，直接通过 manifest 闭合。
 
 分享 artifact 类型增加 `text`，对应 `txt` / `text/plain`；服务端按 UTF-8 文本走与 Markdown/HTML
 一致的同步安全审核。`text` 类型与客户端、服务端和独立分享落地页同步升级后开启。
@@ -453,7 +453,7 @@ Zai Light/Dark 和中英文。手机 remote 与普通 Web 继续不提供分享�
 - **延后确认**：权限不足、远端断开或 stat 超时等无法证明文件不存在的情况。选择阶段只提示“发布时会再次确认”，
   发布阶段以实际读取结果为准。
 
-  分类依据必须是协议侧的稳定 fault 码（`ZCODE_ATTACHMENT_FAULT_CODES`），不能匹配错误文本。
+  分类依据必须是协议侧的稳定 fault 码（`CODEZ_ATTACHMENT_FAULT_CODES`），不能匹配错误文本。
   `conversationAttachmentStat` 是 metadata-only 探测，其 `totalBytes` 上界（`attachmentStatMaxBytes`）
   与搬运字节的读取通道上界（`attachmentPreviewMaxBytes`）是两个独立边界：stat 必须能表达超出传输能力的
   真实文件大小，否则“已知容量超限”这一确定阻断会退化成“延后确认”，发布时静默丢掉附件。
@@ -516,7 +516,7 @@ HTTP 错误分类以故障源为先：网关/负载均衡返回的 5xx 非 JSON 
 3217 提示安全检查服务暂不可用、稍后重试；通用 5xx 提示分享服务暂不可用。原始数字 code 必须保留，
 包括未知业务码。401/429 空响应分别提示登录和稍后重试，HTML 错误页也按 HTTP 状态判断。
 3211/3212 在发布阶段提示重新生成链接，并清除旧 attempt 以生成新请求 ID；导入的 3211/3212/3214 和不支持的版本不提供原样重试，
-分别提示检查链接或账号、让分享者重新生成、只读分享无法导入、更新 ZCode。3210 不断言文件丢失，
+分别提示检查链接或账号、让分享者重新生成、只读分享无法导入、更新 Codez。3210 不断言文件丢失，
 统一提示上传未完成或分享状态已变化。3215 保持现有有界串行轮询，优先使用合法 Retry-After-Ms。
 
 服务端校验失败的 data 只接收有界的 rule/path/field/row_index/row_kind 结构字段，忽略原始内容与
@@ -556,21 +556,21 @@ request-id。错误按钮与错误文案保持同一内容列，使用 24px 点�
 
 成功 HTTP 响应解析失败时，HTTP 客户端记录 `responseFormat`（`invalid_json` 或 `schema_mismatch`）、
 响应字节数、接口路径、请求 ID，以及最多 10 条校验问题的安全字段路径和类型；不记录原始响应、
-字段值或校验器原始错误消息。未知动态字段名以占位符隐藏。界面说明 ZCode 无法读取分享服务的返回结果，
+字段值或校验器原始错误消息。未知动态字段名以占位符隐藏。界面说明 Codez 无法读取分享服务的返回结果，
 引导稍后重试，并在持续失败时通过错误详情复制请求 ID 联系支持；不把 HTTP 200 描述为发布成功。
 
 ## 导入与继续工作
 
-Web CTA 使用 `zcode://share/import?code=<share_code>`，deep link 只能携带 share code。main process
+Web CTA 使用 `codez://share/import?code=<share_code>`，deep link 只能携带 share code。main process
 只解析、缓存和投递 intent；Renderer 不按本地登录态前置拦截，统一调用 Host import service，
 由 continuation API 返回最终访问判定。share deep link 的目标窗口解析与其他 deep link 一致，
 必须走调用方注入的 `resolveApplicationWindow`（排除 CUA indicator 等辅助窗口）；窗口未就绪时
 缓存的 pending import 必须绑定目标窗口的 webContents id，只投递给目标窗口，目标窗口关闭时
 清理，不得投递给先 ready 的任意 renderer——导入会写入目标窗口激活 workspace 的
-`.zcode-share`，投递错窗口等于在错误 workspace 创建会话。
+`.codez-share`，投递错窗口等于在错误 workspace 创建会话。
 
 导入在当前本地 workspace 下创建新的 conversation task/session；远程 workspace 回退到默认本地
-conversation workspace。产物固定写入 `<workspace>/.zcode-share/<share-id>/shared-artifacts/`，
+conversation workspace。产物固定写入 `<workspace>/.codez-share/<share-id>/shared-artifacts/`，
 同一 `workspaceKey = workspaceIdentity?.trim() || workspacePath` 与分享码幂等复用，不同 workspace 各自创建 session。
 创建 import-owned pending marker 后：
 
@@ -614,7 +614,7 @@ V4 projection 会通过 additive 的 `sharedContextImport` snapshot 元数据携
 canonical Share URL 和 `pending/reserved/attached/discarded` 状态。删除会话不删除普通
 workspace 文件；导入完成后分享过期不影响本地副本。
 
-导入时把公开 rows 与结果物元数据一并落到 `<workspace>/.zcode-share/<share-id>/shared-conversation.json`；
+导入时把公开 rows 与结果物元数据一并落到 `<workspace>/.codez-share/<share-id>/shared-conversation.json`；
 会话顶部据此渲染**只读块 + 分割线**（复用分享页的 `ConversationShareReadonlyTimeline`），
 分割线的可点击与静态形态统一使用 Lucide `SquareArrowRightEnter` 图标，避免与 Fork 的分支图标混淆；保持现有尺寸、主题色和多端布局。
 分割线之下是用户自己的实时对话。只读块不回源，因此分享过期或未上线也能离线打开；它不是
@@ -622,8 +622,8 @@ workspace 文件；导入完成后分享过期不影响本地副本。
 
 Desktop 导入块中的 artifact 卡片只在本地副本存在合法 `workspaceRelativePath` 时提供打开动作：
 主按钮复用正常预览卡片的 `OpenSplitButton` 打开 PreviewPane，下拉菜单复用同一套编辑器选择与
-复制绝对/相对路径能力。该路径必须仍位于 `.zcode-share/<share-id>/shared-artifacts/` 内；
-渲染侧校验为形状白名单（`.zcode-share/<dir>/shared-artifacts/<file>` 恰四段、无 `..`/`.`/绝对
+复制绝对/相对路径能力。该路径必须仍位于 `.codez-share/<share-id>/shared-artifacts/` 内；
+渲染侧校验为形状白名单（`.codez-share/<dir>/shared-artifacts/<file>` 恰四段、无 `..`/`.`/绝对
 路径），不与 shareId 交叉比对——元数据由导入服务自写自洽，复制 sanitize 规则到 UI 反而有漂移风险，
 取舍详见 `ConversationShareReadonlyTimeline.tsx` 的 `resolveImportedArtifactPath` 注释；
 缺失、绝对路径或包含 `..` 的元数据一律退回纯只读展示。公开 Share 落地页仍只使用服务端
@@ -634,7 +634,7 @@ Desktop 导入块中的 artifact 卡片只在本地副本存在合法 `workspace
 **不由该文件静态引入**，而是由 Desktop 消费方（`ConversationShareImportNotice`）通过
 `artifactOpenAction` 组件注入；时间线文件对 `@/OpenSplitButton.js` 只保留 `import type`
 （构建期擦除）。这保证匿名公开页 bundle 物理上不含该子树，未来往共用时间线里追加依赖时
-必须先考虑公开页包体与无 Desktop 宿主（`window.zcode`、PlatformProvider）的运行环境。
+必须先考虑公开页包体与无 Desktop 宿主（`window.codez`、PlatformProvider）的运行环境。
 该约束由 `packages/ui/test/conversationShareBundleBoundary.test.ts` 机械守卫：守卫把边界
 文件里的 import specifier 统一归一化（相对路径按边界文件目录 resolve 后折算回 `@/` 别名
 形态）再比对 denylist，覆盖四种引入形态——带 from 子句的 `import`/`export ... from`（仅
@@ -646,7 +646,7 @@ Desktop 导入块中的 artifact 卡片只在本地副本存在合法 `workspace
 分享页改由用户点分割线主动打开。`discardSharedContext` 命令与 `discarded` 状态保留但暂无 UI 入口。
 会话标题在导入时定型为带前缀的形式（`来自分享：…` / `From Share: …`，`titleSource: "custom"`）。
 
-启动清理器只扫描 `.zcode-share/<share-id>/` 下具有匹配 import ID 的 marker。无 provenance 的
+启动清理器只扫描 `.codez-share/<share-id>/` 下具有匹配 import ID 的 marker。无 provenance 的
 导入目录删除；已有事务记录但尚未激活的 session 补建索引并激活。失败清理只能删除本次
 importRoot/staging，禁止递归删除用户 workspace。
 

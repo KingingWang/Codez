@@ -6,20 +6,20 @@
 >
 > 范围：Windows 本地 desktop continuous 源码开发链路
 >
-> 关联仓库：`z-code`、`C:\Users\dev\zcode-cua`
+> 关联仓库：`z-code`、`C:\Users\dev\codez-cua`
 
 ## 1. 运行时证据与根因
 
 失败会话 `sess_4acdf746-a6c2-4518-8ed9-bd9f587a6cea` 和
 `sess_f89ac19d-ceb1-4bf5-bcdd-07504d226bb2` 的模型 I/O 与 Agent 日志共同证明：
 
-- 官方 `zcode-cua` MCP 已连接，30 个工具全部注册，Helper 和 plugin-host 都不是本次
+- 官方 `codez-cua` MCP 已连接，30 个工具全部注册，Helper 和 plugin-host 都不是本次
   失败根因；
 - 当前远端上游基线通过通用 MCP descriptor 生成 provider-visible 规范名称
-  `mcp__plugin_zcode-cua_computer-use__*`；请求中注入的名称保留 `zcode-cua` 和
+  `mcp__plugin_codez-cua_computer-use__*`；请求中注入的名称保留 `codez-cua` 和
   `computer-use` 两个连字符片段；
 - provider/model 返回了未在请求工具集合中声明的
-  `mcp__plugin_zcode_cua_computer_use__*`，把两个连字符片段都改成了下划线；
+  `mcp__plugin_codez_cua_computer_use__*`，把两个连字符片段都改成了下划线；
 - registry 按精确工具名查找，因此在 permission、hook 和 MCP dispatch 之前返回
   `Tool not found`；
 - `e04766f2a9` 后由 Windows 移植增加的 alias 假设规范名称是
@@ -43,7 +43,7 @@
 ## 2. 目标
 
 1. 以当前远端上游实现为唯一基线：provider-visible 名称继续由通用 descriptor
-   生成，当前官方 CUA 名称为 `mcp__plugin_zcode-cua_computer-use__*`。
+   生成，当前官方 CUA 名称为 `mcp__plugin_codez-cua_computer-use__*`。
 2. 删除 Windows 移植增加的短名称/下划线 Registry alias；任何未在本次请求工具集合中精确声明的
    名称都不能进入 permission、hook、event、history 或 MCP dispatch。
 3. 当且仅当错误名称通过“仅用于诊断的比较”唯一对应某个规范名称时，允许在没有提交任何
@@ -84,7 +84,7 @@
 #### 方案 A：保留 Windows 移植的 Registry alias
 
 不采用。现有 alias 建立在短名称 `mcp__computer-use__*` 假设上，无法命中当前远端
-`mcp__plugin_zcode-cua_computer-use__*`；生产 runtime 也没有传入它要求的 authority 集合。
+`mcp__plugin_codez-cua_computer-use__*`；生产 runtime 也没有传入它要求的 authority 集合。
 即使补齐匹配，Registry 直接 alias 仍会把请求契约外的模型输出变成可执行调用，掩盖
 provider/model 契约错误。
 
@@ -111,7 +111,7 @@ tool name 必须与集合成员字节级一致。连字符转下划线比较只�
 ```text
 上游当前 descriptor
     |
-    +-- mcp__plugin_zcode-cua_computer-use__list_apps
+    +-- mcp__plugin_codez-cua_computer-use__list_apps
     |
 provider request tools[]（精确名称集合）
     |
@@ -203,7 +203,7 @@ AUMID；之后完全复用方案 C。这样既修复模型把展示名当 execut
 - 一次性纠正提示只存在于物理重试请求，不写入 conversation history；
 - UI renderer 和 Core result display 的上游比较逻辑不参与执行路由并保持不变。
 
-### `zcode-cua`
+### `codez-cua`
 
 - `windowsSystemSurface` 负责区分 executable name 与 AUMID；
 - Windows broker 在 launch 前负责把受支持的内置 packaged app exact name alias 规范化
@@ -237,9 +237,9 @@ AUMID；之后完全复用方案 C。这样既修复模型把展示名当 execut
 ### RED：模型工具名精确契约
 
 - 当前上游 descriptor 继续生成
-  `mcp__plugin_zcode-cua_computer-use__list_apps`，本次不修改该实现；
+  `mcp__plugin_codez-cua_computer-use__list_apps`，本次不修改该实现；
 - 请求工具集合中的精确名称可正常通过流式与非流式响应校验；
-- `mcp__plugin_zcode_cua_computer_use__list_apps` 在 Registry、permission、hook、event、
+- `mcp__plugin_codez_cua_computer_use__list_apps` 在 Registry、permission、hook、event、
   history 和 MCP 调用前被拒绝；
 - 唯一候选且尚未提交事件时只重试一次，第二次返回精确名称后只执行一次；
 - 第二次仍错误、无候选、多个候选或已提交不可重放事件时 fail closed；
@@ -264,7 +264,7 @@ AUMID；之后完全复用方案 C。这样既修复模型把展示名当 execut
 
 - 删除 Windows 移植增加的无效 CUA alias、短名称常量用途及对应错误测试；
 - 两个仓库的定向测试、`pnpm typecheck`、`pnpm lint` 通过；
-- `zcode-cua` Windows native addon 在本机重新构建；
+- `codez-cua` Windows native addon 在本机重新构建；
 - source desktop 启动后，最新模型请求只声明上游 namespaced 连字符名称；若第一次返回
   下划线错误名称，日志显示一次无副作用纠正重试，最终不再落入 Registry 的
   `Tool not found`；

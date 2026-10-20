@@ -2,7 +2,7 @@
 import { createElement } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { EmbeddedBrowserSitePermissionsSnapshot } from "@zcode/shared";
+import type { EmbeddedBrowserSitePermissionsSnapshot } from "@codez/shared";
 import { BrowserSitePermissionsPage } from "@/browser-use/BrowserSitePermissionsPage.js";
 
 const h = vi.hoisted(() => ({
@@ -14,7 +14,7 @@ const h = vi.hoisted(() => ({
 }));
 vi.mock("@/hooks/usePlatform.js", () => ({ usePlatform: () => h.platform }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 const origin = "https://site.test";
 

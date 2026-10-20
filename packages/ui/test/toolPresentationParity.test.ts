@@ -3,9 +3,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ToolPresentation } from "@/ToolCallBlocks/ToolPresentation.js";
 import { ToolCallBlock } from "@/ToolCallBlocks.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { toolCallRowToLegacyNode } from "@/v4/toolCallRowAdapter.js";
-import type { ToolCallRow } from "@zcode/shared/zcode-protocol-v4";
+import type { ToolCallRow } from "@codez/shared/codez-protocol-v4";
 const cases = [
   ["WebFetch", { url: "https://example.com/paper", prompt: "hidden extraction" }, "Fetch"],
   ["WebSearch", { query: "test query" }, "Search"],
@@ -33,7 +33,7 @@ describe("common readonly tool renderer", () => {
       const render = (component: typeof ToolPresentation | typeof ToolCallBlock) =>
         renderToStaticMarkup(
           createElement(
-            ZCodeIntlProvider,
+            CodezIntlProvider,
             { initialLocale: "en-US" },
             createElement(component, {
               toolCallNode: node,

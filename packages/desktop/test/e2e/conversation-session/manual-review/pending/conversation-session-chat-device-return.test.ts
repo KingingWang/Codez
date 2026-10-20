@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { writeFile } from "node:fs/promises";
-import type { ProjectTree, RemoteProjectDirectory } from "@zcode/services";
-import { ServiceChannels, type SourceServerManagementSnapshot } from "@zcode/shared";
+import type { ProjectTree, RemoteProjectDirectory } from "@codez/services";
+import { ServiceChannels, type SourceServerManagementSnapshot } from "@codez/shared";
 import {
   TID_COMPOSER_WORKSPACE_TRIGGER,
   TID_COMPOSER_REMOTE_CONNECTION,
@@ -11,7 +11,7 @@ import {
   TID_TASK_ITEM,
   TID_VIRTUAL_PROJECT_CREATE_TASK,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import {
   getV4ComposerAttachments,
@@ -48,7 +48,7 @@ async function openFromChat(locale = "zh-CN", evidence?: string) {
   );
   if (evidence) {
     await settlePresentation();
-    await browser.saveScreenshot(join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `menu-${evidence}.png`));
+    await browser.saveScreenshot(join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `menu-${evidence}.png`));
   }
   await entry.click();
   await $(`[data-testid="${TID_SETTINGS_PAGE}"]`).waitForDisplayed();
@@ -58,10 +58,10 @@ async function openFromChat(locale = "zh-CN", evidence?: string) {
 function readChatIdentity() {
   return browser.execute(() => {
     const windowState = window as Window & {
-      __zcodeTabStoreE2E?: {
+      __codezTabStoreE2E?: {
         getState(): { activeWorkspacePath: string | null; activeWorkspaceIdentity: string | null };
       };
-      __zcodeSessionStoreE2E?: {
+      __codezSessionStoreE2E?: {
         getState(): {
           workspaces: Record<
             string,
@@ -70,9 +70,9 @@ function readChatIdentity() {
         };
       };
     };
-    const tabs = windowState.__zcodeTabStoreE2E!.getState();
+    const tabs = windowState.__codezTabStoreE2E!.getState();
     const workspaceKey = tabs.activeWorkspaceIdentity?.trim() || tabs.activeWorkspacePath!;
-    const workspace = windowState.__zcodeSessionStoreE2E!.getState().workspaces[workspaceKey]!;
+    const workspace = windowState.__codezSessionStoreE2E!.getState().workspaces[workspaceKey]!;
     return {
       workspaceKey,
       workspacePath: tabs.activeWorkspacePath!,
@@ -98,7 +98,7 @@ async function readTaskIdentity(taskId: string) {
 async function createOriginalTask(target: Awaited<ReturnType<typeof readChatIdentity>>) {
   if (!target.projectId) throw new Error(`${marker}: project selection is not committed`);
   const result = await callHandoffHost<{ session: { sessionId: string } }>(
-    ServiceChannels.ZCodeAgent,
+    ServiceChannels.CodezAgent,
     "createSession",
     [
       {
@@ -118,7 +118,7 @@ async function createOriginalTask(target: Awaited<ReturnType<typeof readChatIden
     ],
   );
   const taskId = result.session.sessionId;
-  await callHandoffHost(ServiceChannels.ZCodeTask, "resumeTask", [
+  await callHandoffHost(ServiceChannels.CodezTask, "resumeTask", [
     { taskId, workspacePath: target.workspacePath },
   ]);
   const toggle = $(
@@ -199,11 +199,11 @@ describe(marker, () => {
         events: (window as Window & { __chatDeviceFocus?: unknown[] }).__chatDeviceFocus,
       }));
       await writeFile(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "chat-device-focus.json"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "chat-device-focus.json"),
         JSON.stringify(focus, null, 2),
       );
       await browser.saveScreenshot(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "chat-device-failure.png"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "chat-device-failure.png"),
       );
     }
   });
@@ -289,7 +289,7 @@ describe(marker, () => {
           await settlePresentation();
           await browser.saveScreenshot(
             join(
-              process.env.ZCODE_E2E_ARTIFACT_DIR!,
+              process.env.CODEZ_E2E_ARTIFACT_DIR!,
               `cancel-return-${locale}-${theme}-${width}.png`,
             ),
           );
@@ -329,7 +329,7 @@ describe(marker, () => {
           const bounds = await folder.getLocation();
           expect(bounds.x).toBeGreaterThanOrEqual(0);
           await browser.saveScreenshot(
-            join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `folder-${locale}-${theme}-${width}.png`),
+            join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `folder-${locale}-${theme}-${width}.png`),
           );
         }
       }

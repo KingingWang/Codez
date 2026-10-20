@@ -130,7 +130,7 @@ async function handleRequest(
     sendJson(response, 200, {
       authorization_servers: [context.baseUrl],
       resource: context.mcpUrl,
-      resource_name: "ZCode MCP OAuth status isolation E2E",
+      resource_name: "Codez MCP OAuth status isolation E2E",
       scopes_supported: [SCOPE],
     });
     return;

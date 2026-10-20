@@ -2,11 +2,11 @@
 import { createElement } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ConnectionProfile, SourceServerRecord } from "@zcode/shared";
+import type { ConnectionProfile, SourceServerRecord } from "@codez/shared";
 import { EditConnectionProfileDialog } from "@/remote-connection/EditConnectionProfileDialog.js";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: { formatMessage: ({ id }: { id: string }) => id },
   }),
 }));
@@ -337,8 +337,8 @@ describe("EditConnectionProfileDialog", () => {
       transport: "docker" as const,
       target: { kind: "docker" as const, container: "old-container" },
       fieldLabel: "docker.container",
-      fieldValue: "zcode-dev",
-      expectedTarget: { kind: "docker", container: "zcode-dev" },
+      fieldValue: "codez-dev",
+      expectedTarget: { kind: "docker", container: "codez-dev" },
     },
   ])("updates a $transport connection without exposing SSH-only fields", async (entry) => {
     const profile: ConnectionProfile = {

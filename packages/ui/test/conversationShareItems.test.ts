@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { expect, it } from "vitest";
-import { conversationRowSchema } from "@zcode/shared/zcode-protocol-v4";
+import { conversationRowSchema } from "@codez/shared/codez-protocol-v4";
 import { buildConversationTurnRenderUnits } from "@/v4/conversationTurnRenderUnits.js";
 import { buildConversationShareItems } from "@/v4/conversationShareItems.js";
 import { buildConversationTurnNavigatorItems } from "@/v4/conversationTurnNavigatorHelpers.js";

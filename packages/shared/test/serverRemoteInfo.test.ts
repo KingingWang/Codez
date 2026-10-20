@@ -3,7 +3,7 @@ import {
   SERVER_REMOTE_PROTOCOL_VERSION,
   serverRemoteInfoSchema,
   serverRemoteInfoOutputSchema,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 const serverInfo = {
   serverId: "remote-server",

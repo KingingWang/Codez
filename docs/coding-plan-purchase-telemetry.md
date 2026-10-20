@@ -32,7 +32,7 @@ funnelContext 的内部调用不伪造来源。网络失败沿用 helper 的 war
 官网当前分支的 `0f20939` 已删除入口上报，必须先发布该官网版本，再发布本 App
 改动；旧官网仍会上报入口，混用会重复计数。未升级的旧 App 与新官网组合在迁移窗口
 可能缺少入口事件，需在发布记录中标注。官网同时保留 `entry_plan_list` 到产品、周期、
-支付和结果事件。App 通过 `__zcodeReportContext__` 注入，不依赖 URL query。
+支付和结果事件。App 通过 `__codezReportContext__` 注入，不依赖 URL query。
 
 MR !2508 兼容修复：有 funnelContext 的 App 购买上下文必须同时注入
 `purchase_entry_reporter: "app"`，通过现有 window、localStorage 与 bridge 同步路径传递，
@@ -55,7 +55,7 @@ E2E 运行 ID：`desktop-e2e-20260909110500640-p67041-68bb882e397264f5`。
 > 2026-09 死代码清理：App 原生面板（`CodingPlanPurchasePanel` 及
 > `packages/ui/src/lib/codingPlanPurchaseTelemetry.ts`）已整体删除，App 侧不再有
 > `purchase_pay_ck` / `purchase_result` 的原生上报方，购买过程埋点完全由官网
-> webview 页面上报（依赖 App 注入的 `__zcodeReportContext__` 漏斗上下文）。
+> webview 页面上报（依赖 App 注入的 `__codezReportContext__` 漏斗上下文）。
 
 App 原生面板时期主链路复用 UI 侧
 `reportAppTelemetryEvent(platform, payload, "codingPlanPurchaseTelemetry")`，由 desktop main
@@ -210,7 +210,7 @@ Desktop/Web 使用相同聚合；不改变 continuous/replayable
 
 - 16 个相关单测通过，覆盖跨 family 汇总、未启用连接、过期过滤、团队登录切换和点击快照冻结。
 - 桌面 CPUW-01 / CPUW-03 两例通过；CPUW-01 在 App `net.fetch` 边界断言
-  `coding_plan__personal_pro,start_plan__zcode_v3_start_plan`，并核对 WebView 上下文完全一致。
+  `coding_plan__personal_pro,start_plan__codez_v3_start_plan`，并核对 WebView 上下文完全一致。
   预置 Start 连接为 disabled，证明已购但未激活连接也被统计；网关响应仍为 mock。
 - CUA 点击当前开发账号个人 Pro 的升级入口，通过只读 CDP 检查 WebView 上下文，
   得到 `coding_plan__personal_pro,coding_plan__team_pro`，包含未点击的团队套餐。

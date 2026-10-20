@@ -5,7 +5,7 @@
 import { cleanup, fireEvent, render, within } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import type { WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import type { WorkflowCausalityGraphData } from "@/components/workflow-graph/types.js";
 import {
   FRAME_OUTSET,
@@ -25,7 +25,7 @@ import {
 import { buildWorkflowTimeline } from "@/components/workflow-timeline/timeline-model.js";
 import { WorkflowTimeline } from "@/components/workflow-timeline/WorkflowTimeline.js";
 import { WorkflowRunPhaseList } from "@/app-shell/WorkflowRunPhaseList.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 // 留白 id 是名字键 `hole#<8 位十六进制>`（docs/analysis.md「Sites」）；渲染器只认形状。
 const H1 = "hole#a0000001"; // 决定分组（体里两个阶段）
@@ -105,7 +105,7 @@ function run(filledAt = 1): WorkflowRunState {
 }
 
 function wrap(node: ReturnType<typeof createElement>) {
-  return render(createElement(ZCodeIntlProvider, { initialLocale: "zh-CN" }, node));
+  return render(createElement(CodezIntlProvider, { initialLocale: "zh-CN" }, node));
 }
 
 afterEach(cleanup);

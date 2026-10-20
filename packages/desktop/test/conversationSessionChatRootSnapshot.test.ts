@@ -38,10 +38,10 @@ function installV4SnapshotBrowser(options: {
     querySelectorAll: () => ({ length: 0 }),
   });
   vi.stubGlobal("window", {
-    __zcodeSessionStoreE2E: {
+    __codezSessionStoreE2E: {
       getState: () => ({ workspaces: options.workspaces }),
     },
-    __zcodeTabStoreE2E: {
+    __codezTabStoreE2E: {
       getState: () => ({
         activeWorkspaceIdentity: options.activeWorkspaceIdentity ?? null,
         activeWorkspacePath: options.activeWorkspacePath,
@@ -53,7 +53,7 @@ function installV4SnapshotBrowser(options: {
 function installTaskStoreBrowser(workspace: Record<string, unknown>) {
   vi.stubGlobal("window", {
     localStorage: {},
-    __zcodeSessionStoreE2E: {
+    __codezSessionStoreE2E: {
       getState: () => ({ workspaces: { workspace } }),
     },
   });

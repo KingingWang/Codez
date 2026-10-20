@@ -8,27 +8,27 @@
   ],
   "fileFixtures": [
     {
-      "path": "~/.zcode/agents/e2e-prompt-assembly-reviewer.md",
+      "path": "~/.codez/agents/e2e-prompt-assembly-reviewer.md",
       "source": "created-by-spec",
       "description": "覆盖 custom subagent prompt assembly，验证 markdown body 进入 child provider-visible system[1]。"
     },
     {
-      "path": "~/.zcode/cli/agents/e2e-prompt-assembly-reviewer.md",
+      "path": "~/.codez/cli/agents/e2e-prompt-assembly-reviewer.md",
       "source": "created-by-spec",
       "description": "兼容 CLI legacy agents root，避免路径差异让 custom subagent 解析停在 not found。"
     },
     {
-      "path": "~/.zcode/agents/e2e-prompt-assembly-isolated.md",
+      "path": "~/.codez/agents/e2e-prompt-assembly-isolated.md",
       "source": "created-by-spec",
       "description": "覆盖显式 injectAgentsMd=false 的 custom subagent。"
     },
     {
-      "path": "~/.zcode/cli/agents/e2e-prompt-assembly-isolated.md",
+      "path": "~/.codez/cli/agents/e2e-prompt-assembly-isolated.md",
       "source": "created-by-spec",
       "description": "兼容 CLI legacy agents root，确保显式关闭继承的 custom profile 可加载。"
     },
     {
-      "path": "~/.zcode/AGENTS.md",
+      "path": "~/.codez/AGENTS.md",
       "source": "created-by-spec",
       "description": "提供唯一 user AGENTS marker，验证 child trajectory 的继承次数和顺序。"
     },

@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { ProxyChannel } from "@zcode/rpc";
-import { BIGMODEL_PROVIDER_ID, ZAI_PROVIDER_ID, type OAuthTokenSet } from "@zcode/shared";
+import { ProxyChannel } from "@codez/rpc";
+import { BIGMODEL_PROVIDER_ID, ZAI_PROVIDER_ID, type OAuthTokenSet } from "@codez/shared";
 import type { IOAuthService } from "#src/oauth/oauth.js";
 import { OAuthService } from "#src/oauth/oauthService.js";
 
@@ -23,7 +23,7 @@ function fixture(onProviderLogout = vi.fn(async () => {})) {
   const exchangeToken = vi.fn(
     async (): Promise<OAuthTokenSet> => ({
       accessToken: "access",
-      zcodeJwtToken: "jwt",
+      codezJwtToken: "jwt",
     }),
   );
   const service = new OAuthService(credentialService, {
@@ -33,7 +33,7 @@ function fixture(onProviderLogout = vi.fn(async () => {})) {
         providerId: ZAI_PROVIDER_ID,
         apiClient: { request: vi.fn<typeof fetch>() },
         meta: { id: ZAI_PROVIDER_ID, displayName: "Z.ai", enabled: true, order: 1 },
-        redirectUri: "zcode://oauth/callback",
+        redirectUri: "codez://oauth/callback",
         buildAuthorizeUrl: ({ state }) => `https://example.com/authorize?state=${state}`,
         parseCallbackParams: (url) => ({
           state: new URL(url).searchParams.get("state") ?? "",
@@ -53,7 +53,7 @@ function fixture(onProviderLogout = vi.fn(async () => {})) {
   });
   async function login() {
     const { state } = await client.startOAuth(ZAI_PROVIDER_ID);
-    return client.handleCallback(`zcode://oauth/callback?state=${state}&code=code`);
+    return client.handleCallback(`codez://oauth/callback?state=${state}&code=code`);
   }
   return { service, client, credentials, credentialService, exchangeToken, login };
 }
@@ -62,7 +62,7 @@ it("同账号每次凭据落盘均经 RPC 发布完成事件，先于调用结�
   const f = fixture();
   const changes: string[] = [];
   const subscription = f.client.onDidChangeSession((state) => {
-    expect(f.credentials.get("zcodejwttoken")).toBe("jwt");
+    expect(f.credentials.get("codezjwttoken")).toBe("jwt");
     expect(f.credentials.get("oauth:active_provider")).toBe(ZAI_PROVIDER_ID);
     changes.push(state);
   });
@@ -82,7 +82,7 @@ it.each(["active", "provider", "all"] as const)(
     await f.login();
     const changes: string[] = [];
     const subscription = f.client.onDidChangeSession((state) => {
-      expect(f.credentials.has("zcodejwttoken")).toBe(false);
+      expect(f.credentials.has("codezjwttoken")).toBe(false);
       expect(onProviderLogout).not.toHaveBeenCalled();
       changes.push(state);
     });
@@ -105,7 +105,7 @@ it("取消中的登录和非当前 provider 的 unlink 不发布会话变更", a
   const login = f.login();
   await vi.waitFor(() => expect(f.exchangeToken).toHaveBeenCalled());
   await f.client.cancelPending();
-  exchange.resolve({ accessToken: "cancelled", zcodeJwtToken: "cancelled" });
+  exchange.resolve({ accessToken: "cancelled", codezJwtToken: "cancelled" });
   await login;
   await f.client.logout(BIGMODEL_PROVIDER_ID);
   expect(changed).not.toHaveBeenCalled();
@@ -132,7 +132,7 @@ it("active provider 落盘期间取消并回滚的登录不发布 signed-in", as
   await f.client.cancelPending();
   continueSave.resolve();
   await rejected;
-  expect(f.credentials.has("zcodejwttoken")).toBe(false);
+  expect(f.credentials.has("codezjwttoken")).toBe(false);
   expect(changed).not.toHaveBeenCalled();
   subscription.dispose();
 });

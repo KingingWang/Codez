@@ -2,60 +2,60 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 新增 ZCode client-side `AnalyzeImage` 工具，内部通过单独模型请求只带 provider-native `analyze_image` 工具，避免 provider 自发输出的 `analyze_image` transcript 被误当作普通 ZCode 工具执行。
+**Goal:** 新增 Codez client-side `AnalyzeImage` 工具，内部通过单独模型请求只带 provider-native `analyze_image` 工具，避免 provider 自发输出的 `analyze_image` transcript 被误当作普通 Codez 工具执行。
 
 **Architecture:** 公开工具面只暴露 `AnalyzeImage`，不把 provider-native `analyze_image` 暴露到主 turn。`AnalyzeImage` handler 复用现有图片读取/压缩能力，把本地图片和用户问题发到 `querySource: "analyze_image_tool"` 的内部流式模型请求；adapter 只在这个内部请求的工具名为 `analyze_image` 时把函数工具投影成 provider-native `analyze_image`。主 turn 中未经请求的 `server_tool_use analyze_image` 仍按 provider anomaly 隔离，不进入 Bash 或任意本地工具调度。
 
-**Tech Stack:** TypeScript、Zod、Vercel AI SDK v6、`@zcode/contracts`、`@zcode/core` tool runtime、Vitest、现有 model-io/fake-fetch 验证链路。
+**Tech Stack:** TypeScript、Zod、Vercel AI SDK v6、`@codez/contracts`、`@codez/core` tool runtime、Vitest、现有 model-io/fake-fetch 验证链路。
 
 ---
 
 ## 设计边界
 
-- `AnalyzeImage` 是 ZCode client-side built-in tool，模型可见名称使用 PascalCase：`AnalyzeImage`。
+- `AnalyzeImage` 是 Codez client-side built-in tool，模型可见名称使用 PascalCase：`AnalyzeImage`。
 - `analyze_image` 是 provider-native server tool 名称，只允许出现在 `AnalyzeImage` 内部 side request。
 - v1 输入显式使用本地图片路径：`image_path` 和可选 `prompt`。不在 v1 中实现“从整个历史里自动猜当前图片”的隐式图片选择，避免把 prompt attachment、Read image result、MCP image artifact 三类来源混在一起。
-- 图片读取复用 `apps/zcode-cli/packages/core/src/tool/handlers/read-image.ts` 的 `inferImageMimeFromPath()` 与 `readImageFile()`，继承当前跨平台文件读取、尺寸限制、压缩和错误语义。
+- 图片读取复用 `apps/codez-cli/packages/core/src/tool/handlers/read-image.ts` 的 `inferImageMimeFromPath()` 与 `readImageFile()`，继承当前跨平台文件读取、尺寸限制、压缩和错误语义。
 - enable 逻辑对齐 `WebSearch`：只有 provider connection 满足 `providerKind === "anthropic"` 且 baseURL 命中 allowlist 时，主工具池才暴露 `AnalyzeImage`。
 - provider-visible 验收面是最终 HTTP request body，不是中间 `ModelToolContract`：
   - 主 turn `request.body.tools` 包含 `AnalyzeImage` function tool，不包含 provider-native `analyze_image`。
   - `querySource: "analyze_image_tool"` 的内部请求 `request.body.tools` 只包含 `{"type":"analyze_image","name":"analyze_image"}`。
-  - provider 未授权输出的主 turn `server_tool_use analyze_image` 不产生可执行 ZCode tool call。
+  - provider 未授权输出的主 turn `server_tool_use analyze_image` 不产生可执行 Codez tool call。
 
 ## 文件结构
 
-- Create: `apps/zcode-cli/packages/contracts/src/tools/analyze-image.ts`
+- Create: `apps/codez-cli/packages/contracts/src/tools/analyze-image.ts`
   - 定义 `AnalyzeImageInputSchema`、`AnalyzeImageOutputSchema`、provider-native spec、baseURL allowlist 和参数转换。
-- Modify: `apps/zcode-cli/packages/contracts/src/tools/index.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/tools/index.ts`
   - 导出 `analyze-image.ts`。
-- Create: `apps/zcode-cli/packages/core/src/tool/handlers/analyze-image.ts`
+- Create: `apps/codez-cli/packages/core/src/tool/handlers/analyze-image.ts`
   - 实现 client-side tool handler、内部 side request、结果格式化。
-- Create: `apps/zcode-cli/packages/core/src/tool/handlers/analyze-image-support.ts`
+- Create: `apps/codez-cli/packages/core/src/tool/handlers/analyze-image-support.ts`
   - 实现 provider enable 检查、statusSink、trace helper，结构对齐 `websearch-support.ts`。
-- Modify: `apps/zcode-cli/packages/core/src/tool/handlers/index.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/handlers/index.ts`
   - 注册 `analyzeImageToolEntry`。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/config.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/config.ts`
   - 用 `supportsProviderNativeAnalyzeImage()` 过滤工具暴露。
-- Modify: `apps/zcode-cli/packages/adapters/src/model/tool-transform.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/model/tool-transform.ts`
   - 为内部 provider-native `AnalyzeImage` 合同生成 `analyze_image` sentinel function tool。
-- Modify: `apps/zcode-cli/packages/adapters/src/model/anthropic-stream-compat.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/model/anthropic-stream-compat.ts`
   - 在发给 Anthropic-compatible provider 前，把 sentinel function tool 改写为 provider-native `analyze_image`。
   - 在主 turn 中隔离未授权 `server_tool_use analyze_image` 流式块。
-- Create: `apps/zcode-cli/packages/contracts/tests/analyze-image.test.ts`
-- Create: `apps/zcode-cli/packages/core/tests/analyze-image.test.ts`
-- Modify: `apps/zcode-cli/packages/adapters/tests/websearch.test.ts`
-- Modify: `apps/zcode-cli/packages/adapters/tests/registry.test.ts`
-- Modify: `apps/zcode-cli/packages/adapters/tests/runner.test.ts`
-- Modify: `apps/zcode-cli/packages/core/tests/main-tool-pool.test.ts`
+- Create: `apps/codez-cli/packages/contracts/tests/analyze-image.test.ts`
+- Create: `apps/codez-cli/packages/core/tests/analyze-image.test.ts`
+- Modify: `apps/codez-cli/packages/adapters/tests/websearch.test.ts`
+- Modify: `apps/codez-cli/packages/adapters/tests/registry.test.ts`
+- Modify: `apps/codez-cli/packages/adapters/tests/runner.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/main-tool-pool.test.ts`
 
 ---
 
 ### Task 1: 新增 AnalyzeImage contracts
 
 **Files:**
-- Create: `apps/zcode-cli/packages/contracts/src/tools/analyze-image.ts`
-- Modify: `apps/zcode-cli/packages/contracts/src/tools/index.ts`
-- Test: `apps/zcode-cli/packages/contracts/tests/analyze-image.test.ts`
+- Create: `apps/codez-cli/packages/contracts/src/tools/analyze-image.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/tools/index.ts`
+- Test: `apps/codez-cli/packages/contracts/tests/analyze-image.test.ts`
 
 - [ ] **Step 1: 写 contracts 失败测试**
 
@@ -113,14 +113,14 @@ describe("analyze-image contracts", () => {
 Run:
 
 ```bash
-pnpm --filter @zcode/contracts test -- analyze-image.test.ts
+pnpm --filter @codez/contracts test -- analyze-image.test.ts
 ```
 
 Expected: fail，错误包含 `Cannot find module` 或 `AnalyzeImageInputSchema` 未导出。
 
 - [ ] **Step 3: 新增 contract 文件**
 
-Create `apps/zcode-cli/packages/contracts/src/tools/analyze-image.ts`:
+Create `apps/codez-cli/packages/contracts/src/tools/analyze-image.ts`:
 
 ```ts
 import { z } from "zod";
@@ -258,7 +258,7 @@ export const ANALYZE_IMAGE_TOOL_CONTRACT: ToolContractDeclaration = {
 
 - [ ] **Step 4: 导出 contract**
 
-Modify `apps/zcode-cli/packages/contracts/src/tools/index.ts`:
+Modify `apps/codez-cli/packages/contracts/src/tools/index.ts`:
 
 ```ts
 export * from "./analyze-image.js";
@@ -269,7 +269,7 @@ export * from "./analyze-image.js";
 Run:
 
 ```bash
-pnpm --filter @zcode/contracts test -- analyze-image.test.ts
+pnpm --filter @codez/contracts test -- analyze-image.test.ts
 ```
 
 Expected: pass。
@@ -277,28 +277,28 @@ Expected: pass。
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/zcode-cli/packages/contracts/src/tools/analyze-image.ts apps/zcode-cli/packages/contracts/src/tools/index.ts apps/zcode-cli/packages/contracts/tests/analyze-image.test.ts
-git commit -m "feat(zcode-cli): add analyze image tool contract"
+git add apps/codez-cli/packages/contracts/src/tools/analyze-image.ts apps/codez-cli/packages/contracts/src/tools/index.ts apps/codez-cli/packages/contracts/tests/analyze-image.test.ts
+git commit -m "feat(codez-cli): add analyze image tool contract"
 ```
 
 ### Task 2: 新增 core AnalyzeImage tool handler
 
 **Files:**
-- Create: `apps/zcode-cli/packages/core/src/tool/handlers/analyze-image-support.ts`
-- Create: `apps/zcode-cli/packages/core/src/tool/handlers/analyze-image.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/handlers/index.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/config.ts`
-- Test: `apps/zcode-cli/packages/core/tests/analyze-image.test.ts`
-- Test: `apps/zcode-cli/packages/core/tests/main-tool-pool.test.ts`
+- Create: `apps/codez-cli/packages/core/src/tool/handlers/analyze-image-support.ts`
+- Create: `apps/codez-cli/packages/core/src/tool/handlers/analyze-image.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/handlers/index.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/config.ts`
+- Test: `apps/codez-cli/packages/core/tests/analyze-image.test.ts`
+- Test: `apps/codez-cli/packages/core/tests/main-tool-pool.test.ts`
 
 - [ ] **Step 1: 写 handler 失败测试**
 
-Add to `apps/zcode-cli/packages/core/tests/analyze-image.test.ts`:
+Add to `apps/codez-cli/packages/core/tests/analyze-image.test.ts`:
 
 ```ts
 import { AgentRuntime } from "../src/runtime/agent-runtime.js";
-import { createSessionId } from "@zcode/contracts";
-import { SessionEventType, ModelRole, type ModelRef } from "@zcode/contracts";
+import { createSessionId } from "@codez/contracts";
+import { SessionEventType, ModelRole, type ModelRef } from "@codez/contracts";
 import { createTestSessionEventStore } from "./helpers/session-event-store.js";
 
 const modelRef: ModelRef = {
@@ -438,7 +438,7 @@ describe("AnalyzeImage client wrapper", () => {
 
 - [ ] **Step 2: 写工具暴露测试**
 
-Add to `apps/zcode-cli/packages/core/tests/analyze-image.test.ts`:
+Add to `apps/codez-cli/packages/core/tests/analyze-image.test.ts`:
 
 ```ts
 it("exposes AnalyzeImage only for supported Anthropic-compatible hosts", () => {
@@ -456,21 +456,21 @@ it("exposes AnalyzeImage only for supported Anthropic-compatible hosts", () => {
 });
 ```
 
-Use the same local `createRuntime(...)` helper shape as the WebSearch tests in `apps/zcode-cli/packages/core/tests/websearch.test.ts`; keep `modelConnectionPort.resolveConnection()` returning the provided `baseURL` and `providerKind`.
+Use the same local `createRuntime(...)` helper shape as the WebSearch tests in `apps/codez-cli/packages/core/tests/websearch.test.ts`; keep `modelConnectionPort.resolveConnection()` returning the provided `baseURL` and `providerKind`.
 
 - [ ] **Step 3: 运行测试确认失败**
 
 Run:
 
 ```bash
-pnpm --filter @zcode/core test -- analyze-image.test.ts
+pnpm --filter @codez/core test -- analyze-image.test.ts
 ```
 
 Expected: fail，错误包含 `AnalyzeImage` 未注册或 handler 文件不存在。
 
 - [ ] **Step 4: 新增 support helper**
 
-Create `apps/zcode-cli/packages/core/src/tool/handlers/analyze-image-support.ts`:
+Create `apps/codez-cli/packages/core/src/tool/handlers/analyze-image-support.ts`:
 
 ```ts
 import {
@@ -482,7 +482,7 @@ import {
   type ModelNetworkStatusEvent,
   type ModelStatusSink,
   type TraceContext,
-} from "@zcode/contracts";
+} from "@codez/contracts";
 import type { ToolExecutionContext } from "../types.js";
 
 const ANALYZE_IMAGE_TOOL_NAME = "AnalyzeImage";
@@ -584,7 +584,7 @@ export function analyzeImageTraceFromContext(context: ToolExecutionContext): Tra
 
 - [ ] **Step 5: 新增 handler**
 
-Create `apps/zcode-cli/packages/core/src/tool/handlers/analyze-image.ts`:
+Create `apps/codez-cli/packages/core/src/tool/handlers/analyze-image.ts`:
 
 ```ts
 import path from "node:path";
@@ -608,7 +608,7 @@ import {
   type ModelUsage,
   type ModelToolCall,
   type ModelToolContract,
-} from "@zcode/contracts";
+} from "@codez/contracts";
 import type { ToolEntry, ToolHandler } from "../types.js";
 import { inferImageMimeFromPath, readImageFile } from "./read-image.js";
 import {
@@ -836,7 +836,7 @@ function normalizeStreamError(error: unknown): Error {
 
 - [ ] **Step 6: 注册内建工具**
 
-Modify `apps/zcode-cli/packages/core/src/tool/handlers/index.ts`:
+Modify `apps/codez-cli/packages/core/src/tool/handlers/index.ts`:
 
 ```ts
 import { analyzeImageToolEntry } from "./analyze-image.js";
@@ -852,7 +852,7 @@ Add it near `webSearchToolEntry`:
 
 - [ ] **Step 7: 添加 runtime visible filter**
 
-Modify `apps/zcode-cli/packages/core/src/runtime/methods/config.ts`:
+Modify `apps/codez-cli/packages/core/src/runtime/methods/config.ts`:
 
 ```ts
 import { supportsProviderNativeAnalyzeImage } from "../../tool/handlers/analyze-image-support.js";
@@ -885,7 +885,7 @@ function shouldExposeAnalyzeImage(this: AgentRuntimeInternal): boolean {
 
 - [ ] **Step 8: 更新 main tool pool 断言**
 
-Modify `apps/zcode-cli/packages/core/tests/main-tool-pool.test.ts` in the supported provider case:
+Modify `apps/codez-cli/packages/core/tests/main-tool-pool.test.ts` in the supported provider case:
 
 ```ts
 expect(toolNames).toContain("AnalyzeImage");
@@ -913,7 +913,7 @@ expect(
 Run:
 
 ```bash
-pnpm --filter @zcode/core test -- analyze-image.test.ts main-tool-pool.test.ts
+pnpm --filter @codez/core test -- analyze-image.test.ts main-tool-pool.test.ts
 ```
 
 Expected: pass。
@@ -921,22 +921,22 @@ Expected: pass。
 - [ ] **Step 10: Commit**
 
 ```bash
-git add apps/zcode-cli/packages/core/src/tool/handlers/analyze-image.ts apps/zcode-cli/packages/core/src/tool/handlers/analyze-image-support.ts apps/zcode-cli/packages/core/src/tool/handlers/index.ts apps/zcode-cli/packages/core/src/runtime/methods/config.ts apps/zcode-cli/packages/core/tests/analyze-image.test.ts apps/zcode-cli/packages/core/tests/main-tool-pool.test.ts
-git commit -m "feat(zcode-cli): add AnalyzeImage client wrapper"
+git add apps/codez-cli/packages/core/src/tool/handlers/analyze-image.ts apps/codez-cli/packages/core/src/tool/handlers/analyze-image-support.ts apps/codez-cli/packages/core/src/tool/handlers/index.ts apps/codez-cli/packages/core/src/runtime/methods/config.ts apps/codez-cli/packages/core/tests/analyze-image.test.ts apps/codez-cli/packages/core/tests/main-tool-pool.test.ts
+git commit -m "feat(codez-cli): add AnalyzeImage client wrapper"
 ```
 
 ### Task 3: Adapter 投影 provider-native analyze_image
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/adapters/src/model/tool-transform.ts`
-- Modify: `apps/zcode-cli/packages/adapters/src/model/anthropic-stream-compat.ts`
-- Test: `apps/zcode-cli/packages/adapters/tests/websearch.test.ts`
-- Test: `apps/zcode-cli/packages/adapters/tests/registry.test.ts`
-- Test: `apps/zcode-cli/packages/adapters/tests/runner.test.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/model/tool-transform.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/model/anthropic-stream-compat.ts`
+- Test: `apps/codez-cli/packages/adapters/tests/websearch.test.ts`
+- Test: `apps/codez-cli/packages/adapters/tests/registry.test.ts`
+- Test: `apps/codez-cli/packages/adapters/tests/runner.test.ts`
 
 - [ ] **Step 1: 写 tool-transform 失败测试**
 
-Add to `apps/zcode-cli/packages/adapters/tests/websearch.test.ts` or split a new `analyze-image.test.ts` in the same package:
+Add to `apps/codez-cli/packages/adapters/tests/websearch.test.ts` or split a new `analyze-image.test.ts` in the same package:
 
 ```ts
 function createInternalProviderNativeAnalyzeImageContract(): ModelToolContract {
@@ -993,7 +993,7 @@ it("omits internal AnalyzeImage for unsupported provider hosts", () => {
 
 - [ ] **Step 2: 写 request body rewrite 失败测试**
 
-Add to `apps/zcode-cli/packages/adapters/tests/registry.test.ts`:
+Add to `apps/codez-cli/packages/adapters/tests/registry.test.ts`:
 
 ```ts
 it("rewrites internal analyze_image function tools to Anthropic provider-native tools", async () => {
@@ -1059,14 +1059,14 @@ it("does not rewrite public AnalyzeImage function tools", async () => {
 Run:
 
 ```bash
-pnpm --filter @zcode/adapters test -- websearch.test.ts registry.test.ts
+pnpm --filter @codez/adapters test -- websearch.test.ts registry.test.ts
 ```
 
 Expected: fail，原因是 `AnalyzeImage` provider-native 分支不存在，request body rewrite 不存在。
 
 - [ ] **Step 4: 修改 tool transform**
 
-Modify `apps/zcode-cli/packages/adapters/src/model/tool-transform.ts` imports:
+Modify `apps/codez-cli/packages/adapters/src/model/tool-transform.ts` imports:
 
 ```ts
 import {
@@ -1074,7 +1074,7 @@ import {
   isWebSearchCapableBaseURL,
   type JsonSchema,
   type ModelToolContract,
-} from "@zcode/contracts";
+} from "@codez/contracts";
 ```
 
 Replace provider-native dispatch:
@@ -1110,7 +1110,7 @@ function toAiSdkProviderNativeAnalyzeImageTool(
   }
 
   // AI SDK Anthropic provider only allowlists known provider-defined tool ids.
-  // ZCode sends a normal function-shaped sentinel here and rewrites it to
+  // Codez sends a normal function-shaped sentinel here and rewrites it to
   // provider-native analyze_image at the Anthropic-compatible fetch boundary.
   return tool<unknown, never>({
     description: contract.description,
@@ -1127,7 +1127,7 @@ function toAiSdkProviderNativeAnalyzeImageTool(
 
 - [ ] **Step 5: 修改 Anthropic compat fetch 的 request rewrite**
 
-Modify `apps/zcode-cli/packages/adapters/src/model/anthropic-stream-compat.ts`:
+Modify `apps/codez-cli/packages/adapters/src/model/anthropic-stream-compat.ts`:
 
 ```ts
 const PROVIDER_NATIVE_ANALYZE_IMAGE_TOOL_NAME = "analyze_image";
@@ -1182,7 +1182,7 @@ function rewriteAnthropicAnalyzeImageRequest(init: RequestInit | undefined): Req
 
 - [ ] **Step 6: 隔离主 turn 未授权 analyze_image server_tool_use**
 
-Modify `shouldEmitFrame(...)` in `apps/zcode-cli/packages/adapters/src/model/anthropic-stream-compat.ts`.
+Modify `shouldEmitFrame(...)` in `apps/codez-cli/packages/adapters/src/model/anthropic-stream-compat.ts`.
 
 Add `suppressedProviderToolUseIds` state to the transform and suppress `server_tool_use analyze_image` plus matching bare `tool_result` when it appears in provider output without being part of the side request. The initial implementation can key off the stream content only:
 
@@ -1221,7 +1221,7 @@ Keep the existing generic bare `tool_result` suppression after this specific bra
 
 - [ ] **Step 7: 增加 final request body 验证**
 
-Add to `apps/zcode-cli/packages/adapters/tests/runner.test.ts` a fake-fetch test that executes `streamText` with a side request containing only internal provider-native `AnalyzeImage` and asserts the captured JSON body:
+Add to `apps/codez-cli/packages/adapters/tests/runner.test.ts` a fake-fetch test that executes `streamText` with a side request containing only internal provider-native `AnalyzeImage` and asserts the captured JSON body:
 
 ```ts
 expect(capturedBody.tools).toEqual([{ type: "analyze_image", name: "analyze_image" }]);
@@ -1240,7 +1240,7 @@ expect(JSON.stringify(capturedMainBody.tools)).not.toContain('"type":"analyze_im
 Run:
 
 ```bash
-pnpm --filter @zcode/adapters test -- websearch.test.ts registry.test.ts runner.test.ts
+pnpm --filter @codez/adapters test -- websearch.test.ts registry.test.ts runner.test.ts
 ```
 
 Expected: pass。
@@ -1248,17 +1248,17 @@ Expected: pass。
 - [ ] **Step 9: Commit**
 
 ```bash
-git add apps/zcode-cli/packages/adapters/src/model/tool-transform.ts apps/zcode-cli/packages/adapters/src/model/anthropic-stream-compat.ts apps/zcode-cli/packages/adapters/tests/websearch.test.ts apps/zcode-cli/packages/adapters/tests/registry.test.ts apps/zcode-cli/packages/adapters/tests/runner.test.ts
-git commit -m "feat(zcode-cli): route analyze image through provider-native side request"
+git add apps/codez-cli/packages/adapters/src/model/tool-transform.ts apps/codez-cli/packages/adapters/src/model/anthropic-stream-compat.ts apps/codez-cli/packages/adapters/tests/websearch.test.ts apps/codez-cli/packages/adapters/tests/registry.test.ts apps/codez-cli/packages/adapters/tests/runner.test.ts
+git commit -m "feat(codez-cli): route analyze image through provider-native side request"
 ```
 
 ### Task 4: Provider anomaly 与损坏 tool input 回归
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/adapters/tests/registry.test.ts`
-- Modify: `apps/zcode-cli/packages/adapters/src/model/anthropic-stream-compat.ts`
-- Modify: `apps/zcode-cli/packages/adapters/src/model/streaming-tool-call-assembler.ts`
-- Test: `apps/zcode-cli/packages/adapters/tests/registry.test.ts`
+- Modify: `apps/codez-cli/packages/adapters/tests/registry.test.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/model/anthropic-stream-compat.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/model/streaming-tool-call-assembler.ts`
+- Test: `apps/codez-cli/packages/adapters/tests/registry.test.ts`
 
 - [ ] **Step 1: 写未授权 transcript 隔离测试**
 
@@ -1311,7 +1311,7 @@ it("drops malformed provider-injected analyze_image input before tool input norm
 Run:
 
 ```bash
-pnpm --filter @zcode/adapters test -- registry.test.ts
+pnpm --filter @codez/adapters test -- registry.test.ts
 ```
 
 Expected before implementation: fail，当前实现仍保留 `server_tool_use analyze_image`。
@@ -1322,13 +1322,13 @@ If Task 3 Step 6 did not already finish the suppression, finish it here. The fin
 
 ```ts
 // 修复原因：部分 Anthropic-compatible provider 会在未请求 analyze_image 时返回
-// server_tool_use transcript；这不是 ZCode 注册的工具调用，必须在进入 AI SDK
+// server_tool_use transcript；这不是 Codez 注册的工具调用，必须在进入 AI SDK
 // tool input normalization 前隔离，避免损坏参数继续流向 Bash 或普通工具调度。
 ```
 
 - [ ] **Step 4: 增加 assembler 防线**
 
-Add an adapter-level guard in `streaming-tool-call-assembler.ts` so provider-executed `analyze_image` cannot become a ZCode-executable tool call even if a future provider response shape bypasses fetch-level frame suppression:
+Add an adapter-level guard in `streaming-tool-call-assembler.ts` so provider-executed `analyze_image` cannot become a Codez-executable tool call even if a future provider response shape bypasses fetch-level frame suppression:
 
 ```ts
 const UNAUTHORIZED_PROVIDER_TOOL_NAMES = new Set(["analyze_image"]);
@@ -1360,7 +1360,7 @@ The side request does not rely on `tool_call` events from provider-native `analy
 Run:
 
 ```bash
-pnpm --filter @zcode/adapters test -- registry.test.ts
+pnpm --filter @codez/adapters test -- registry.test.ts
 ```
 
 Expected: pass，且 test output 不包含 `model.tool_input.normalize_failed`。
@@ -1368,15 +1368,15 @@ Expected: pass，且 test output 不包含 `model.tool_input.normalize_failed`�
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/zcode-cli/packages/adapters/src/model/anthropic-stream-compat.ts apps/zcode-cli/packages/adapters/src/model/streaming-tool-call-assembler.ts apps/zcode-cli/packages/adapters/tests/registry.test.ts
-git commit -m "fix(zcode-cli): isolate unauthorized analyze_image provider tool output"
+git add apps/codez-cli/packages/adapters/src/model/anthropic-stream-compat.ts apps/codez-cli/packages/adapters/src/model/streaming-tool-call-assembler.ts apps/codez-cli/packages/adapters/tests/registry.test.ts
+git commit -m "fix(codez-cli): isolate unauthorized analyze_image provider tool output"
 ```
 
 ### Task 5: 端到端 provider-visible 验收
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/tests/analyze-image.test.ts`
-- Modify: `apps/zcode-cli/packages/adapters/tests/runner.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/analyze-image.test.ts`
+- Modify: `apps/codez-cli/packages/adapters/tests/runner.test.ts`
 - Optional generated evidence: local model-io debug JSONL, not committed
 
 - [ ] **Step 1: 验证主 turn tool surface**
@@ -1384,14 +1384,14 @@ git commit -m "fix(zcode-cli): isolate unauthorized analyze_image provider tool 
 Run:
 
 ```bash
-pnpm --filter @zcode/core test -- analyze-image.test.ts main-tool-pool.test.ts
+pnpm --filter @codez/core test -- analyze-image.test.ts main-tool-pool.test.ts
 ```
 
 Expected:
 
 ```text
-PASS apps/zcode-cli/packages/core/tests/analyze-image.test.ts
-PASS apps/zcode-cli/packages/core/tests/main-tool-pool.test.ts
+PASS apps/codez-cli/packages/core/tests/analyze-image.test.ts
+PASS apps/codez-cli/packages/core/tests/main-tool-pool.test.ts
 ```
 
 - [ ] **Step 2: 验证 adapter final request body**
@@ -1399,15 +1399,15 @@ PASS apps/zcode-cli/packages/core/tests/main-tool-pool.test.ts
 Run:
 
 ```bash
-pnpm --filter @zcode/adapters test -- runner.test.ts registry.test.ts websearch.test.ts
+pnpm --filter @codez/adapters test -- runner.test.ts registry.test.ts websearch.test.ts
 ```
 
 Expected:
 
 ```text
-PASS apps/zcode-cli/packages/adapters/tests/runner.test.ts
-PASS apps/zcode-cli/packages/adapters/tests/registry.test.ts
-PASS apps/zcode-cli/packages/adapters/tests/websearch.test.ts
+PASS apps/codez-cli/packages/adapters/tests/runner.test.ts
+PASS apps/codez-cli/packages/adapters/tests/registry.test.ts
+PASS apps/codez-cli/packages/adapters/tests/websearch.test.ts
 ```
 
 The `runner.test.ts` assertions must prove:
@@ -1425,9 +1425,9 @@ expect(JSON.stringify(capturedMainTurn.tools)).not.toContain('"type":"analyze_im
 Run:
 
 ```bash
-pnpm --filter @zcode/contracts test -- analyze-image.test.ts
-pnpm --filter @zcode/core test -- analyze-image.test.ts main-tool-pool.test.ts
-pnpm --filter @zcode/adapters test -- runner.test.ts registry.test.ts websearch.test.ts
+pnpm --filter @codez/contracts test -- analyze-image.test.ts
+pnpm --filter @codez/core test -- analyze-image.test.ts main-tool-pool.test.ts
+pnpm --filter @codez/adapters test -- runner.test.ts registry.test.ts websearch.test.ts
 ```
 
 Expected: all pass。
@@ -1470,8 +1470,8 @@ Do not treat a green object-level `ModelToolContract` test as sufficient without
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/zcode-cli/packages/contracts apps/zcode-cli/packages/core apps/zcode-cli/packages/adapters
-git commit -m "test(zcode-cli): verify AnalyzeImage provider-visible request bodies"
+git add apps/codez-cli/packages/contracts apps/codez-cli/packages/core apps/codez-cli/packages/adapters
+git commit -m "test(codez-cli): verify AnalyzeImage provider-visible request bodies"
 ```
 
 ## 风险与处理

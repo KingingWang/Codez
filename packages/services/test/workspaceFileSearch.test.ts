@@ -4,11 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFileService } from "../src/file/fileService.js";
-import { unpackWorkspaceFileEntries } from "@zcode/shared/workspaceFileEntriesCodec";
+import { unpackWorkspaceFileEntries } from "@codez/shared/workspaceFileEntriesCodec";
 import {
   filterWorkspaceFileSearchCandidates,
   mapWorkspaceFileEntriesToSearchCandidates,
-} from "@zcode/shared/workspaceFileSearch";
+} from "@codez/shared/workspaceFileSearch";
 
 vi.mock("node:fs/promises", async (importOriginal) => {
   const actual = await importOriginal<typeof fsPromises>();
@@ -19,7 +19,7 @@ const roots: string[] = [];
 async function workspace() {
   const rootPath = await mkdtemp(join(tmpdir(), "mention-host-search-"));
   roots.push(rootPath);
-  await writeFile(join(rootPath, ".zcodeignore"), "node_modules/\n");
+  await writeFile(join(rootPath, ".codezignore"), "node_modules/\n");
   await mkdir(join(rootPath, "src"));
   await Promise.all(
     ["Main.ts", "main.test.ts", "README.md", "中文.txt"].map((name) =>

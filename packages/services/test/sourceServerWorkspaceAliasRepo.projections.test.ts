@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { ZCodeTaskMeta } from "@zcode/shared";
+import type { CodezTaskMeta } from "@codez/shared";
 import { SourceServerWorkspaceAliasRepo } from "#src/session/sourceServerWorkspaceAliasRepo.js";
 import { TaskIndexRepo } from "#src/session/taskIndexRepo.js";
 import { seedTaskIndex } from "./helpers/taskIndexFixture.js";
@@ -16,7 +16,7 @@ let taskDbPath: string;
 let index: TaskIndexRepo;
 let aliases: SourceServerWorkspaceAliasRepo;
 
-function task(key: string, patch: Partial<ZCodeTaskMeta> = {}): ZCodeTaskMeta {
+function task(key: string, patch: Partial<CodezTaskMeta> = {}): CodezTaskMeta {
   return {
     taskId: "shared-task",
     traceId: "trace-shared",
@@ -32,7 +32,7 @@ function task(key: string, patch: Partial<ZCodeTaskMeta> = {}): ZCodeTaskMeta {
 }
 
 /** CLI 事实与组织态由夹具分别写入；正文索引随展示投影一起落库。 */
-async function seed(meta: ZCodeTaskMeta, searchableText?: string): Promise<void> {
+async function seed(meta: CodezTaskMeta, searchableText?: string): Promise<void> {
   await seedTaskIndex(index, { meta, searchableText });
 }
 
@@ -58,7 +58,7 @@ async function restartFromPreProjectionLegacyDb(wrapperKey: string): Promise<voi
 }
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), "zcode-alias-projections-"));
+  root = await mkdtemp(join(tmpdir(), "codez-alias-projections-"));
   taskDbPath = join(root, "tasks-index.sqlite");
   index = new TaskIndexRepo(undefined, undefined, taskDbPath);
   await index.ensureReady();

@@ -13,7 +13,7 @@ import {
   TID_WORKSPACE_FILE_TREE_PANEL,
   testId,
   virtualProjectActionTestId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 
 /** 开始真实项目拖拽；调用方继续验证并通过 Escape / releaseActions 取消。 */
 export async function startProjectPointerDrag(selector: string) {
@@ -61,7 +61,7 @@ export async function startProjectPointerDrag(selector: string) {
  * 老 workspace 首次迁移成「同名单 root 项目」：项目名 = 目录 basename
  * （与 packages/services/src/project-storage/migrate-projects.ts 同规则），
  * 项目 `<section>` 带 data-project-id / data-project-name。这里统一按项目名定位，
- * E2E 夹具的 workspace basename 彼此唯一（ZCodeProject、PassiveWorkspace-01…）。
+ * E2E 夹具的 workspace basename 彼此唯一（CodezProject、PassiveWorkspace-01…）。
  */
 export function projectNameForWorkspace(workspacePath: string): string {
   return (
@@ -229,11 +229,11 @@ export async function startDraftFromProject(
   const previousDraftVersion = await browser.execute((key) => {
     const bridge = (
       window as unknown as {
-        __zcodeSessionStoreE2E?: {
+        __codezSessionStoreE2E?: {
           getState(): { workspaces: Record<string, { draftFocusVersion?: number }> };
         };
       }
-    ).__zcodeSessionStoreE2E;
+    ).__codezSessionStoreE2E;
     return bridge?.getState().workspaces[key]?.draftFocusVersion ?? 0;
   }, draftKey);
   if (options.workspaceIdentity) {
@@ -265,21 +265,21 @@ export async function startDraftFromProject(
           const activeIdentity = identity
             ? (
                 window as Window & {
-                  __zcodeTabStoreE2E?: {
+                  __codezTabStoreE2E?: {
                     getState(): { activeWorkspaceIdentity?: string | null };
                   };
                 }
-              ).__zcodeTabStoreE2E?.getState().activeWorkspaceIdentity
+              ).__codezTabStoreE2E?.getState().activeWorkspaceIdentity
             : undefined;
           return (
             // 目录准备是异步的；同项目已经显示草稿时，旧 DOM 不能证明本次新建已提交。
             ((
               window as unknown as {
-                __zcodeSessionStoreE2E?: {
+                __codezSessionStoreE2E?: {
                   getState(): { workspaces: Record<string, { draftFocusVersion?: number }> };
                 };
               }
-            ).__zcodeSessionStoreE2E?.getState().workspaces[key]?.draftFocusVersion ?? 0) >
+            ).__codezSessionStoreE2E?.getState().workspaces[key]?.draftFocusVersion ?? 0) >
               previousVersion &&
             (!identity || activeIdentity === identity) &&
             inputs.length === 1 &&

@@ -4,7 +4,7 @@
 
 ## 背景
 
-BigModel / Z.AI 兼容接口会把一部分可恢复失败包装成业务错误码返回，甚至可能出现在 HTTP 200 的 SSE error frame 中。ZCode adapter 已经在 provider fetch 边界把这类响应归一为 `ProviderBusinessError`，再由 model runner 分类并进入统一 retry budget。
+BigModel / Z.AI 兼容接口会把一部分可恢复失败包装成业务错误码返回，甚至可能出现在 HTTP 200 的 SSE error frame 中。Codez adapter 已经在 provider fetch 边界把这类响应归一为 `ProviderBusinessError`，再由 model runner 分类并进入统一 retry budget。
 
 这次是保守改动：不重构 retry 目录，不新增协议字段，只补充 BigModel 业务码到现有分类表，并复用已有的失败事件、重试事件和日志。若 SSE error chunk 没有结构化 `code` 字段、只在 message 里返回 `[1302][...][request_id]` 这类 BigModel 强格式前缀，adapter 也会先提取四位业务码再进入同一张分类表。
 
@@ -12,20 +12,20 @@ BigModel / Z.AI 兼容接口会把一部分可恢复失败包装成业务错误�
 
 ## 实现位置
 
-- `apps/zcode-cli/packages/adapters/src/model/failure-provider-business-codes.ts`
-- `apps/zcode-cli/packages/adapters/src/model/failure-classifier.ts`
-- `apps/zcode-cli/packages/adapters/src/model/failure-inspection.ts`
-- `apps/zcode-cli/packages/adapters/src/model/provider-finish-business-error.ts`
-- `apps/zcode-cli/packages/adapters/src/model/runner-generate.ts`
-- `apps/zcode-cli/packages/adapters/src/model/runner-retry.ts`
-- `apps/zcode-cli/packages/adapters/src/model/runner-stream.ts`
-- `apps/zcode-cli/packages/adapters/src/model/runner-status.ts`
+- `apps/codez-cli/packages/adapters/src/model/failure-provider-business-codes.ts`
+- `apps/codez-cli/packages/adapters/src/model/failure-classifier.ts`
+- `apps/codez-cli/packages/adapters/src/model/failure-inspection.ts`
+- `apps/codez-cli/packages/adapters/src/model/provider-finish-business-error.ts`
+- `apps/codez-cli/packages/adapters/src/model/runner-generate.ts`
+- `apps/codez-cli/packages/adapters/src/model/runner-retry.ts`
+- `apps/codez-cli/packages/adapters/src/model/runner-stream.ts`
+- `apps/codez-cli/packages/adapters/src/model/runner-status.ts`
 
 实现继续复用既有 retry loop、stream retry 边界和日志发布路径；业务码分类、错误对象检查、SSE error chunk 重建和 delay 计算分别保持在上述文件中，避免把 provider 特例扩散到 core runtime。
 
 ## 会重试的 BigModel 业务码
 
-| 业务码 | 语义 | ZCode 分类 | retry reason |
+| 业务码 | 语义 | Codez 分类 | retry reason |
 | --- | --- | --- | --- |
 | `1120` | 临时账号访问异常，文档建议稍后重试 | `model_request_failed` | `server_error` |
 | `1230` | API 调用流程异常 | `model_request_failed` | `server_error` |
@@ -83,4 +83,4 @@ BigModel / Z.AI 兼容接口会把一部分可恢复失败包装成业务错误�
 
 ## 后续方向
 
-如果后续要把 retry 逻辑进一步集中，可以把 provider business code mapping、HTTP status fallback、network inspection 和 retry budget 配置统一收敛到 `apps/zcode-cli/packages/adapters/src/model/retry/`。这次先不做目录级搬迁，避免扩大改动面。
+如果后续要把 retry 逻辑进一步集中，可以把 provider business code mapping、HTTP status fallback、network inspection 和 retry budget 配置统一收敛到 `apps/codez-cli/packages/adapters/src/model/retry/`。这次先不做目录级搬迁，避免扩大改动面。

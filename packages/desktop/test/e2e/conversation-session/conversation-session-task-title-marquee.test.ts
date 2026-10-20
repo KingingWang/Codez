@@ -4,7 +4,7 @@ import {
   TID_WORKSPACE_PATH,
   TID_WORKSPACE_TITLE,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { DEFAULT_WORKSPACE, clearAppData, waitForWorkspaceApp } from "../helpers/desktop-app.js";
 import { ensureProjectExpanded } from "../helpers/project-sidebar.js";
 import {
@@ -158,8 +158,8 @@ describe("TTL：Task 名称溢出走马灯", () => {
     await icon.moveTo();
     const info = await $("[data-workspace-header-context-info]");
     await info.waitForDisplayed({ timeout: 5000 });
-    expect(await info.getText()).toContain("ZCodeProject");
-    expect(await info.$("[data-workspace-context-path]").getText()).toContain("ZCodeProject");
+    expect(await info.getText()).toContain("CodezProject");
+    expect(await info.$("[data-workspace-context-path]").getText()).toContain("CodezProject");
     const activity = await info.$("[data-workspace-last-activity]");
     await activity.waitForDisplayed({ timeout: 10000 });
     expect(await activity.getText()).toMatch(/Last active|最近活动/);

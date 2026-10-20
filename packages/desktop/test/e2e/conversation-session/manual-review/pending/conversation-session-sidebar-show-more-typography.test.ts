@@ -11,12 +11,12 @@ const title = `${project} [data-task-title-copy="original"]`;
 
 // 合成 Host 索引仅用于样式和分页，不恢复任务或请求模型；node:sqlite 仅提供同步 API。
 async function seedRows() {
-  const home = process.env.ZCODE_E2E_HOME_DIR;
+  const home = process.env.CODEZ_E2E_HOME_DIR;
   if (!home || !basename(home).startsWith(".e2e-home-show-more-"))
     throw new Error("需要本 case 的隔离 HOME");
-  const root = join(DEFAULT_WORKSPACE, ".zcode-e2e", "show-more");
+  const root = join(DEFAULT_WORKSPACE, ".codez-e2e", "show-more");
   await mkdir(root, { recursive: true });
-  const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
+  const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"));
   try {
     const now = Date.now();
     db.exec("BEGIN IMMEDIATE");
@@ -131,12 +131,12 @@ describe("侧栏显示更多文字", () => {
           const normal = await sample();
           evidence.push({ width, theme, fontSize, normal });
           await writeFile(
-            join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "show-more-styles.json"),
+            join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "show-more-styles.json"),
             JSON.stringify(evidence, null, 2),
           );
           await browser.saveScreenshot(
             join(
-              process.env.ZCODE_E2E_ARTIFACT_DIR!,
+              process.env.CODEZ_E2E_ARTIFACT_DIR!,
               `show-more-${width}-${theme}-${fontSize}.png`,
             ),
           );

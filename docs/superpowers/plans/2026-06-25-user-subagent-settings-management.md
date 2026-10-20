@@ -2,20 +2,20 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 在 Settings 面板新增用户级 subagent 管理界面，支持全局 user agents 的查看、创建、编辑、删除、启用和禁用，并保证 GUI 写出的 Markdown 被当前 zcode-cli runtime 真实加载和消费。
+**Goal:** 在 Settings 面板新增用户级 subagent 管理界面，支持全局 user agents 的查看、创建、编辑、删除、启用和禁用，并保证 GUI 写出的 Markdown 被当前 codez-cli runtime 真实加载和消费。
 
 **Architecture:** 先把 subagent 的用户级文件路径、profile 字段、启用状态从 UI/service 的临时实现收敛到 runtime 实际消费的边界，再接入 Settings UI。P0 只管理 global/user agents；workspace/project agents、plugin agents、structured MCP object editor 和 provider-visible agent 列表载体调整都不进入本计划。
 
-**Tech Stack:** TypeScript、React、Zustand、@zcode/services、@zcode/shared、zcode-cli bootstrap/core、Vitest、Tailwind semantic tokens、现有 Settings 页面组件。
+**Tech Stack:** TypeScript、React、Zustand、@codez/services、@codez/shared、codez-cli bootstrap/core、Vitest、Tailwind semantic tokens、现有 Settings 页面组件。
 
 ## Global Constraints
 
 - P0 只支持用户级/global subagent 管理；不支持工作区级创建/编辑。
-- 用户级 agent Markdown 的默认运行时根目录是 `~/.zcode/agents`，不是 `~/.zcode/cli/agents`。
-- GUI 的 enabled/disabled 状态必须被 zcode-cli runtime 启动时消费；不能只影响 Settings 列表或 mention 面板。
+- 用户级 agent Markdown 的默认运行时根目录是 `~/.codez/agents`，不是 `~/.codez/cli/agents`。
+- GUI 的 enabled/disabled 状态必须被 codez-cli runtime 启动时消费；不能只影响 Settings 列表或 mention 面板。
 - built-in agents `general-purpose` 和 `Explore` 在 P0 只读展示，不支持编辑/删除。
-- workspace/project agents 如果需要继续供 mention 使用，必须从 runtime 实际路径 `<workspace>/.zcode/agents` 读取；Settings P0 不提供编辑入口。
-- 不让 `packages/services` 直接依赖 `@zcode/core` 或 runtime 具体实现。
+- workspace/project agents 如果需要继续供 mention 使用，必须从 runtime 实际路径 `<workspace>/.codez/agents` 读取；Settings P0 不提供编辑入口。
+- 不让 `packages/services` 直接依赖 `@codez/core` 或 runtime 具体实现。
 - 涉及 `packages/ui` 必须遵守根目录 `DESIGN.md`：使用 semantic color tokens、现有 Button/Input/Switch/Select/Dialog primitives、紧凑 settings 布局、支持 Zai Light/Dark 和响应式。
 - UI 文案必须走 i18n：`packages/ui/src/i18n/locales/zh-CN.ts` 与 `packages/ui/src/i18n/locales/en-US.ts` 同步补齐。
 - 不自动提交；执行本计划时只有用户明确允许后才提交 commit。
@@ -24,12 +24,12 @@
 
 ## 当前事实基线
 
-- CLI runtime 加载 profile 的入口是 `apps/zcode-cli/packages/bootstrap/src/subagents.ts`。
+- CLI runtime 加载 profile 的入口是 `apps/codez-cli/packages/bootstrap/src/subagents.ts`。
 - CLI runtime 当前读取：
   - user root: `join(storageRoot, "agents")`
-  - project root: `join(workingDirectory, ".zcode", "agents")`
-- `storageRoot` 默认来自 `DefaultRuntimeConfig.storage.dir = "~/.zcode"`。
-- App service 当前 `packages/services/src/subagents/subagentsService.ts` 仍用 `ZCODE_AGENT_RUNTIME.nativeConfigDir` 推导 `~/.zcode/cli/agents` 和 `<workspace>/.zcode/cli/agents`，这和 runtime loader 不一致。
+  - project root: `join(workingDirectory, ".codez", "agents")`
+- `storageRoot` 默认来自 `DefaultRuntimeConfig.storage.dir = "~/.codez"`。
+- App service 当前 `packages/services/src/subagents/subagentsService.ts` 仍用 `CODEZ_AGENT_RUNTIME.nativeConfigDir` 推导 `~/.codez/cli/agents` 和 `<workspace>/.codez/cli/agents`，这和 runtime loader 不一致。
 - App service 当前只解析/写回 `name`、`description`、`color`、`model`、`tools`、body；runtime profile 还支持 `disallowedTools`、`skills`、`permissionMode`、`maxTurns`、`background`、`mcpServers`。
 - `agents-state.json` 当前只被 service 读写，runtime 不消费。
 
@@ -42,10 +42,10 @@
   - 保留旧字段兼容，但把 `tools` 等字段转为 string array 语义。
 - Create: `packages/services/src/subagents/subagentMarkdown.ts`
   - Service 侧 Markdown parse/serialize helper。
-  - 不依赖 `@zcode/core`。
+  - 不依赖 `@codez/core`。
 - Create: `packages/services/src/subagents/subagentStorage.ts`
   - 统一解析 user/global agent root、project agent root、state file path。
-  - 读取 `~/.zcode/cli/config.json` 中的 `storage.dir`，fallback 到 `~/.zcode`。
+  - 读取 `~/.codez/cli/config.json` 中的 `storage.dir`，fallback 到 `~/.codez`。
 - Modify: `packages/services/src/subagents/subagents.ts`
   - 扩展 service interface，支持 settings user-only list、create/update/delete 的 user scope。
 - Modify: `packages/services/src/subagents/subagentsService.ts`
@@ -56,13 +56,13 @@
 
 ### Runtime consumption
 
-- Modify: `apps/zcode-cli/packages/bootstrap/src/subagents.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/subagents.ts`
   - 读取同一份 disabled state。
   - 加载 user/project Markdown 后过滤 disabled user profiles。
   - 保持 project profiles 继续加载，但 P0 UI 不管理它们。
-- Modify: `apps/zcode-cli/packages/bootstrap/src/app/create-app.ts`
-  - 如果需要，把 state file path 或 disabled set 传入 `loadZCodeAgentProfiles`。
-- Modify: `apps/zcode-cli/packages/core/src/subagent/profile.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/app/create-app.ts`
+  - 如果需要，把 state file path 或 disabled set 传入 `loadCodezAgentProfiles`。
+- Modify: `apps/codez-cli/packages/core/src/subagent/profile.ts`
   - 如需暴露 builtin summary helper，保持 core 内部，不让 service 依赖 core。
 
 ### Settings UI
@@ -91,8 +91,8 @@
 ### Tests
 
 - Create or modify: `packages/services/test/subagentsService.test.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/tests/subagents.test.ts`
-- Modify: `apps/zcode-cli/packages/core/tests/subagent-profile.test.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/tests/subagents.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/subagent-profile.test.ts`
 - Create: `packages/ui/test/subagentsSettingsSection.test.tsx`
 - Modify: `packages/ui/test/settingsPageConfig.test.ts`
 - Modify: `packages/ui/test/settingsNavigation.test.ts`
@@ -175,7 +175,7 @@ export type SubagentsListMode = "allRuntimeScopes" | "settingsUserOnly";
 interface SubagentsListParams {
   workspacePath: string;
   workspaceIdentity?: string;
-  provider?: ZCodeProvider;
+  provider?: CodezProvider;
   mode?: SubagentsListMode;
 }
 ```
@@ -260,13 +260,13 @@ const toolSummary = agent.tools?.length ? agent.tools.join(", ") : "";
 Run:
 
 ```bash
-pnpm --filter @zcode/shared lint
-pnpm --filter @zcode/ui test -- --run test/subagentsMentionProvider.test.ts
+pnpm --filter @codez/shared lint
+pnpm --filter @codez/ui test -- --run test/subagentsMentionProvider.test.ts
 ```
 
 Expected:
 
-- `@zcode/shared lint` PASS。
+- `@codez/shared lint` PASS。
 - mention provider test 如有 fixture 编译错误，更新 fixture 字段后 PASS。
 
 ---
@@ -280,7 +280,7 @@ Expected:
 
 **Interfaces:**
 
-- Consumes: `SubAgentConfig` from `@zcode/shared`。
+- Consumes: `SubAgentConfig` from `@codez/shared`。
 - Produces:
   - `parseSubagentMarkdown(content: string, path: string, scope: AgentScope): AgentSummary | SubagentMarkdownDiagnostic`
   - `serializeSubagentMarkdown(config: SubAgentConfig): string`
@@ -322,7 +322,7 @@ it("serializes user subagent markdown with runtime profile fields", () => {
 
 ```ts
 import YAML from "yaml";
-import type { SubAgentConfig } from "@zcode/shared";
+import type { SubAgentConfig } from "@codez/shared";
 
 export function serializeSubagentMarkdown(config: SubAgentConfig): string {
   const frontmatter: Record<string, unknown> = {
@@ -362,13 +362,13 @@ export interface SubagentMarkdownDiagnostic {
 Run:
 
 ```bash
-pnpm --filter @zcode/services test -- --run test/subagentsService.test.ts
+pnpm --filter @codez/services test -- --run test/subagentsService.test.ts
 ```
 
 Expected:
 
 - 新增 parser/serializer tests PASS。
-- 如果 `@zcode/services` 当前没有 test script，用根命令运行：
+- 如果 `@codez/services` 当前没有 test script，用根命令运行：
 
 ```bash
 pnpm test -- --run packages/services/test/subagentsService.test.ts
@@ -390,19 +390,19 @@ pnpm test -- --run packages/services/test/subagentsService.test.ts
   - `resolveUserSubagentRoot(): Promise<string>`
   - `resolveWorkspaceSubagentRoot(workspacePath: string): string`
   - `resolveSubagentStateFile(): Promise<string>`
-- Consumes: `~/.zcode/cli/config.json` 的 `storage.dir`，fallback `~/.zcode`。
+- Consumes: `~/.codez/cli/config.json` 的 `storage.dir`，fallback `~/.codez`。
 
 - [ ] **Step 1: 写 failing root resolution test**
 
-使用临时 HOME，创建 `~/.zcode/cli/config.json`：
+使用临时 HOME，创建 `~/.codez/cli/config.json`：
 
 ```ts
 it("uses runtime storage.dir agents root for user subagents", async () => {
-  const home = await mkdtemp(join(tmpdir(), "zcode-subagents-home-"));
+  const home = await mkdtemp(join(tmpdir(), "codez-subagents-home-"));
   const storageRoot = join(home, "custom-storage");
-  await mkdir(join(home, ".zcode", "cli"), { recursive: true });
+  await mkdir(join(home, ".codez", "cli"), { recursive: true });
   await writeFile(
-    join(home, ".zcode", "cli", "config.json"),
+    join(home, ".codez", "cli", "config.json"),
     JSON.stringify({ storage: { dir: storageRoot } }),
     "utf8",
   );
@@ -415,11 +415,11 @@ it("uses runtime storage.dir agents root for user subagents", async () => {
 
 - [ ] **Step 2: 实现 storage helper**
 
-`subagentStorage.ts` 不直接使用 `ZCODE_AGENT_RUNTIME.nativeConfigDir` 推导 agent root。它只用 native config path 读取 config 文件：
+`subagentStorage.ts` 不直接使用 `CODEZ_AGENT_RUNTIME.nativeConfigDir` 推导 agent root。它只用 native config path 读取 config 文件：
 
 ```ts
-const DEFAULT_STORAGE_DIR = "~/.zcode";
-const ZCODE_CONFIG_PATH = join(resolveUserHomeDir(), ".zcode", "cli", "config.json");
+const DEFAULT_STORAGE_DIR = "~/.codez";
+const CODEZ_CONFIG_PATH = join(resolveUserHomeDir(), ".codez", "cli", "config.json");
 
 export async function resolveUserSubagentRoot(): Promise<string> {
   const storageDir = await readStorageDirFromCliConfig();
@@ -427,7 +427,7 @@ export async function resolveUserSubagentRoot(): Promise<string> {
 }
 
 export function resolveWorkspaceSubagentRoot(workspacePath: string): string {
-  return join(workspacePath, ".zcode", "agents");
+  return join(workspacePath, ".codez", "agents");
 }
 
 export async function resolveSubagentStateFile(): Promise<string> {
@@ -442,7 +442,7 @@ export async function resolveSubagentStateFile(): Promise<string> {
 
 - [ ] **Step 4: 保留兼容迁移读取**
 
-为了不让已有 `~/.zcode/cli/agents` 用户立刻消失，P0 可以只读 legacy root 但不再写 legacy root。实现为：
+为了不让已有 `~/.codez/cli/agents` 用户立刻消失，P0 可以只读 legacy root 但不再写 legacy root。实现为：
 
 ```ts
 const roots = [
@@ -472,22 +472,22 @@ Expected:
 
 **Files:**
 
-- Modify: `apps/zcode-cli/packages/bootstrap/src/subagents.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/app/create-app.ts`
-- Test: `apps/zcode-cli/packages/bootstrap/tests/subagents.test.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/subagents.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/app/create-app.ts`
+- Test: `apps/codez-cli/packages/bootstrap/tests/subagents.test.ts`
 
 **Interfaces:**
 
 - Consumes: `${storageRoot}/v2/agents-state.json`
-- Produces: `loadZCodeAgentProfiles(...)` 返回已过滤 disabled user profiles。
+- Produces: `loadCodezAgentProfiles(...)` 返回已过滤 disabled user profiles。
 
 - [ ] **Step 1: 写 failing runtime disabled test**
 
-在 `apps/zcode-cli/packages/bootstrap/tests/subagents.test.ts` 增加：
+在 `apps/codez-cli/packages/bootstrap/tests/subagents.test.ts` 增加：
 
 ```ts
 it("does not load disabled user agent profiles into runtime config", async () => {
-  const root = await mkdtemp(join(tmpdir(), "zcode-subagents-disabled-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-subagents-disabled-"));
   const storageRoot = join(root, "home");
   const workingDirectory = join(root, "workspace");
   await mkdir(join(storageRoot, "agents"), { recursive: true });
@@ -507,7 +507,7 @@ review prompt`,
     "utf8",
   );
 
-  const result = loadZCodeAgentProfiles({ storageRoot, workingDirectory });
+  const result = loadCodezAgentProfiles({ storageRoot, workingDirectory });
 
   expect(result.profiles.map((profile) => profile.name)).not.toContain("reviewer");
 });
@@ -548,13 +548,13 @@ P0 只让 user disabled 影响 runtime。Project disabled 留给 P1。
 
 - [ ] **Step 4: 确认 provider-visible list 不包含 disabled**
 
-在 `apps/zcode-cli/packages/core/tests/subagent-profile.test.ts` 增加或更新测试：传入 profiles 不包含 disabled user 时，`formatAgentProfilesForPrompt` 不输出该 agent。
+在 `apps/codez-cli/packages/core/tests/subagent-profile.test.ts` 增加或更新测试：传入 profiles 不包含 disabled user 时，`formatAgentProfilesForPrompt` 不输出该 agent。
 
 Run:
 
 ```bash
-pnpm --filter @zcode/bootstrap test -- --run tests/subagents.test.ts
-pnpm --filter @zcode/core test -- --run tests/subagent-profile.test.ts
+pnpm --filter @codez/bootstrap test -- --run tests/subagents.test.ts
+pnpm --filter @codez/core test -- --run tests/subagent-profile.test.ts
 ```
 
 Expected:
@@ -596,7 +596,7 @@ it("settings user-only list hides workspace agents", async () => {
 
 - [ ] **Step 2: 添加 built-in readonly summaries**
 
-Service 不能依赖 `@zcode/core`。在 service 内定义与 runtime built-ins 同名的 summary 常量：
+Service 不能依赖 `@codez/core`。在 service 内定义与 runtime built-ins 同名的 summary 常量：
 
 ```ts
 const BUILT_IN_AGENT_SUMMARIES: AgentSummary[] = [
@@ -659,7 +659,7 @@ Run:
 
 ```bash
 pnpm test -- --run packages/services/test/subagentsService.test.ts
-pnpm --filter @zcode/ui test -- --run test/subagentsMentionProvider.test.ts
+pnpm --filter @codez/ui test -- --run test/subagentsMentionProvider.test.ts
 ```
 
 Expected:
@@ -688,7 +688,7 @@ Expected:
 ```ts
 export function useSubagents(
   workspacePath: string | null,
-  provider: ZCodeProvider,
+  provider: CodezProvider,
   options: { mode?: SubagentsListMode } = {},
 ) {
   // existing logic
@@ -702,7 +702,7 @@ Current key is workspace + provider。改为：
 ```ts
 function getAgentLoadKey(
   workspacePath: string,
-  provider: ZCodeProvider,
+  provider: CodezProvider,
   mode: SubagentsListMode,
   workspaceIdentity?: string,
 ): string {
@@ -719,7 +719,7 @@ function getAgentLoadKey(
 Run:
 
 ```bash
-pnpm --filter @zcode/ui test -- --run test/subagentsMentionProvider.test.ts
+pnpm --filter @codez/ui test -- --run test/subagentsMentionProvider.test.ts
 ```
 
 Expected:
@@ -828,7 +828,7 @@ export type SettingsSectionId =
 Run:
 
 ```bash
-pnpm --filter @zcode/ui test -- --run test/settingsPageConfig.test.ts test/settingsNavigation.test.ts
+pnpm --filter @codez/ui test -- --run test/settingsPageConfig.test.ts test/settingsNavigation.test.ts
 ```
 
 Expected: PASS。
@@ -847,7 +847,7 @@ Expected: PASS。
 
 **Interfaces:**
 
-- Consumes: `useSubagents(activeWorkspacePath, ZCODE_AGENT_PROVIDER, { mode: "settingsUserOnly" })`
+- Consumes: `useSubagents(activeWorkspacePath, CODEZ_AGENT_PROVIDER, { mode: "settingsUserOnly" })`
 - Produces: search/filter/list/toggle/edit/delete entry points。
 
 - [ ] **Step 1: 写 failing render test**
@@ -907,7 +907,7 @@ Rules:
 
 - [ ] **Step 4: open user folder**
 
-Use existing `subagentsService.getPrimaryUserAgentsDirectory({ provider: ZCODE_AGENT_PROVIDER })` then `platform.openInFileManager(path)`。Failure toast uses existing `appHeader.openInFileManagerFailed`。
+Use existing `subagentsService.getPrimaryUserAgentsDirectory({ provider: CODEZ_AGENT_PROVIDER })` then `platform.openInFileManager(path)`。Failure toast uses existing `appHeader.openInFileManagerFailed`。
 
 - [ ] **Step 5: toggle enabled**
 
@@ -918,7 +918,7 @@ Call store/hook `setEnabled(agent.id, enabled)`。On failure show toast and keep
 Run:
 
 ```bash
-pnpm --filter @zcode/ui test -- --run test/subagentsSettingsSection.test.tsx
+pnpm --filter @codez/ui test -- --run test/subagentsSettingsSection.test.tsx
 ```
 
 Expected:
@@ -1014,13 +1014,13 @@ Errors:
 Create:
 
 ```ts
-await createAgent(config, ZCODE_AGENT_PROVIDER, subagentsService);
+await createAgent(config, CODEZ_AGENT_PROVIDER, subagentsService);
 ```
 
 Edit:
 
 ```ts
-await updateAgent(agent.id, config, agent.path, ZCODE_AGENT_PROVIDER, subagentsService);
+await updateAgent(agent.id, config, agent.path, CODEZ_AGENT_PROVIDER, subagentsService);
 ```
 
 After success:
@@ -1044,7 +1044,7 @@ Follow `DESIGN.md`:
 Run:
 
 ```bash
-pnpm --filter @zcode/ui test -- --run test/subagentsSettingsSection.test.tsx
+pnpm --filter @codez/ui test -- --run test/subagentsSettingsSection.test.tsx
 ```
 
 Expected:
@@ -1118,7 +1118,7 @@ Do not block valid agents from rendering.
 Run:
 
 ```bash
-pnpm --filter @zcode/ui test -- --run test/subagentsSettingsSection.test.tsx
+pnpm --filter @codez/ui test -- --run test/subagentsSettingsSection.test.tsx
 ```
 
 Expected:
@@ -1133,8 +1133,8 @@ Expected:
 
 **Files:**
 
-- Modify: `apps/zcode-cli/packages/bootstrap/tests/subagents.test.ts`
-- Modify: `apps/zcode-cli/packages/core/tests/subagent-profile.test.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/tests/subagents.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/subagent-profile.test.ts`
 - Optional Modify: 历史差异审计文档（已删除）
 
 **Interfaces:**
@@ -1204,8 +1204,8 @@ If implementation changes current diff facts, update 历史差异审计文档（
 Run:
 
 ```bash
-pnpm --filter @zcode/bootstrap test -- --run tests/subagents.test.ts
-pnpm --filter @zcode/core test -- --run tests/subagent-profile.test.ts
+pnpm --filter @codez/bootstrap test -- --run tests/subagents.test.ts
+pnpm --filter @codez/core test -- --run tests/subagent-profile.test.ts
 ```
 
 Expected: PASS。
@@ -1228,7 +1228,7 @@ Expected: PASS。
 Run:
 
 ```bash
-pnpm --filter @zcode/ui test -- --run \
+pnpm --filter @codez/ui test -- --run \
   test/settingsPageConfig.test.ts \
   test/settingsNavigation.test.ts \
   test/subagentsMentionProvider.test.ts \
@@ -1243,8 +1243,8 @@ Run:
 
 ```bash
 pnpm test -- --run packages/services/test/subagentsService.test.ts
-pnpm --filter @zcode/bootstrap test -- --run tests/subagents.test.ts
-pnpm --filter @zcode/core test -- --run tests/subagent-profile.test.ts
+pnpm --filter @codez/bootstrap test -- --run tests/subagents.test.ts
+pnpm --filter @codez/core test -- --run tests/subagent-profile.test.ts
 ```
 
 Expected: PASS。
@@ -1267,7 +1267,7 @@ Start the app using the repo's normal dev command for this worktree. Then:
 1. Open Settings.
 2. Open Subagents section.
 3. Create user agent `code-reviewer`.
-4. Confirm file exists at `~/.zcode/agents/code-reviewer.md` or configured `${storage.dir}/agents/code-reviewer.md`.
+4. Confirm file exists at `~/.codez/agents/code-reviewer.md` or configured `${storage.dir}/agents/code-reviewer.md`.
 5. Disable `code-reviewer`.
 6. Start a new agent session.
 7. Inspect model-io/provider-visible request and confirm `code-reviewer` is absent from available agent list.
@@ -1284,7 +1284,7 @@ Expected:
 
 ## Risks and Non-goals
 
-- This plan does not change the separate provider-visible carrier question: ZCode currently injects the agent list through `context_prefix` rather than the Agent tool prompt.
+- This plan does not change the separate provider-visible carrier question: Codez currently injects the agent list through `context_prefix` rather than the Agent tool prompt.
 - This plan does not add workspace/project agent creation or editing.
 - This plan does not add plugin agents.
 - This plan does not implement nested YAML object editing for `mcpServers`; P0 preserves simple array values and can expose raw text only.
@@ -1298,6 +1298,6 @@ Expected:
 - [ ] Mention provider is not accidentally narrowed to settings user-only mode.
 - [ ] Workspace editing is not exposed in UI.
 - [ ] Built-in agents are readonly.
-- [ ] No service import from `@zcode/core`.
+- [ ] No service import from `@codez/core`.
 - [ ] i18n keys exist in both zh-CN and en-US.
 - [ ] `pnpm typecheck` and `pnpm lint` are included in validation.

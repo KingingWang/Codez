@@ -8,11 +8,11 @@ import type {
 } from "../src/onboarding/onboardingRecord.js";
 
 const originalHome = process.env.HOME;
-const originalDataBaseDir = process.env.ZCODE_DATA_BASE_DIR;
+const originalDataBaseDir = process.env.CODEZ_DATA_BASE_DIR;
 const tempHomes: string[] = [];
 
 function recordFilePath(home: string): string {
-  return join(home, ".zcode", "v2", "onboarding-record.json");
+  return join(home, ".codez", "v2", "onboarding-record.json");
 }
 
 async function createServiceInHome(
@@ -47,8 +47,8 @@ afterEach(() => {
   vi.restoreAllMocks();
   if (originalHome === undefined) delete process.env.HOME;
   else process.env.HOME = originalHome;
-  if (originalDataBaseDir === undefined) delete process.env.ZCODE_DATA_BASE_DIR;
-  else process.env.ZCODE_DATA_BASE_DIR = originalDataBaseDir;
+  if (originalDataBaseDir === undefined) delete process.env.CODEZ_DATA_BASE_DIR;
+  else process.env.CODEZ_DATA_BASE_DIR = originalDataBaseDir;
   while (tempHomes.length > 0) {
     const home = tempHomes.pop();
     if (home) rmSync(home, { recursive: true, force: true });
@@ -57,14 +57,14 @@ afterEach(() => {
 
 describe("onboardingRecordService", () => {
   it("本地无持久化文件时 shouldOnboard 为 true", async () => {
-    const home = mkdtempSync(join(tmpdir(), "zcode-onboarding-home-"));
+    const home = mkdtempSync(join(tmpdir(), "codez-onboarding-home-"));
     tempHomes.push(home);
     const service = await createServiceInHome(home, "u1");
     expect(await service.shouldOnboard("device-a")).toBe(true);
   });
 
   it("无作答但已有真实 Task 时记为本机存量用户，后续不再展示", async () => {
-    const home = mkdtempSync(join(tmpdir(), "zcode-onboarding-home-"));
+    const home = mkdtempSync(join(tmpdir(), "codez-onboarding-home-"));
     tempHomes.push(home);
     const service = await createServiceInHome(home, "u1", true);
 
@@ -79,7 +79,7 @@ describe("onboardingRecordService", () => {
   });
 
   it("关闭首次引导持久化 dismissed，且不伪造作答 entry", async () => {
-    const home = mkdtempSync(join(tmpdir(), "zcode-onboarding-home-"));
+    const home = mkdtempSync(join(tmpdir(), "codez-onboarding-home-"));
     tempHomes.push(home);
     const service = await createServiceInHome(home, "u1");
 
@@ -92,9 +92,9 @@ describe("onboardingRecordService", () => {
   });
 
   it("v1 文件按空 decisions 读取，发生写入后自然升级 v2", async () => {
-    const home = mkdtempSync(join(tmpdir(), "zcode-onboarding-home-"));
+    const home = mkdtempSync(join(tmpdir(), "codez-onboarding-home-"));
     tempHomes.push(home);
-    mkdirSync(join(home, ".zcode", "v2"), { recursive: true });
+    mkdirSync(join(home, ".codez", "v2"), { recursive: true });
     writeFileSync(
       recordFilePath(home),
       JSON.stringify({ version: 1, deviceMid: "device-a", entries: [] }),
@@ -110,7 +110,7 @@ describe("onboardingRecordService", () => {
   });
 
   it("匿名 dismissal 登录后移交给当前用户，不重复展示", async () => {
-    const home = mkdtempSync(join(tmpdir(), "zcode-onboarding-home-"));
+    const home = mkdtempSync(join(tmpdir(), "codez-onboarding-home-"));
     tempHomes.push(home);
     const anonymous = await createServiceInHome(home, null);
     await anonymous.dismissOnboarding("device-a");
@@ -124,7 +124,7 @@ describe("onboardingRecordService", () => {
   });
 
   it("append 首次创建文件并固化 deviceMid，同 userId 覆盖、不同 userId 各占一条", async () => {
-    const home = mkdtempSync(join(tmpdir(), "zcode-onboarding-home-"));
+    const home = mkdtempSync(join(tmpdir(), "codez-onboarding-home-"));
     tempHomes.push(home);
     const service = await createServiceInHome(home, "u1");
     await service.appendRecord("device-a", makeEntry());
@@ -146,7 +146,7 @@ describe("onboardingRecordService", () => {
   });
 
   it("append 由服务补全 userId 并默认 uploadState=pending", async () => {
-    const home = mkdtempSync(join(tmpdir(), "zcode-onboarding-home-"));
+    const home = mkdtempSync(join(tmpdir(), "codez-onboarding-home-"));
     tempHomes.push(home);
     const service = await createServiceInHome(home, "u1");
     await service.appendRecord("device-a", makeEntry());
@@ -157,7 +157,7 @@ describe("onboardingRecordService", () => {
   });
 
   it("当前用户已有记录时不再触发；其他用户的记录不满足当前用户", async () => {
-    const home = mkdtempSync(join(tmpdir(), "zcode-onboarding-home-"));
+    const home = mkdtempSync(join(tmpdir(), "codez-onboarding-home-"));
     tempHomes.push(home);
     const service = await createServiceInHome(home, "u1");
     await service.appendRecord("device-a", makeEntry());
@@ -168,7 +168,7 @@ describe("onboardingRecordService", () => {
   });
 
   it("未登录（userId=null）按 null 记录匹配，登录用户记录不抵扣 null", async () => {
-    const home = mkdtempSync(join(tmpdir(), "zcode-onboarding-home-"));
+    const home = mkdtempSync(join(tmpdir(), "codez-onboarding-home-"));
     tempHomes.push(home);
     const logged = await createServiceInHome(home, "u1");
     await logged.appendRecord("device-a", makeEntry());
@@ -183,7 +183,7 @@ describe("onboardingRecordService", () => {
   });
 
   it("非法 entry（空职业）被 schema 拒绝且不落盘", async () => {
-    const home = mkdtempSync(join(tmpdir(), "zcode-onboarding-home-"));
+    const home = mkdtempSync(join(tmpdir(), "codez-onboarding-home-"));
     tempHomes.push(home);
     const service = await createServiceInHome(home, "u1");
     await expect(service.appendRecord("device-a", makeEntry({ occupation: "" }))).rejects.toThrow();
@@ -191,9 +191,9 @@ describe("onboardingRecordService", () => {
   });
 
   it("损坏的记录文件触发重新引导，append 会重建合法文件", async () => {
-    const home = mkdtempSync(join(tmpdir(), "zcode-onboarding-home-"));
+    const home = mkdtempSync(join(tmpdir(), "codez-onboarding-home-"));
     tempHomes.push(home);
-    mkdirSync(join(home, ".zcode", "v2"), { recursive: true });
+    mkdirSync(join(home, ".codez", "v2"), { recursive: true });
     writeFileSync(recordFilePath(home), "{not-json", { flag: "wx" });
 
     const service = await createServiceInHome(home, "u1");
@@ -204,7 +204,7 @@ describe("onboardingRecordService", () => {
   });
 
   it("clearRecords 删除文件后再次触发引导", async () => {
-    const home = mkdtempSync(join(tmpdir(), "zcode-onboarding-home-"));
+    const home = mkdtempSync(join(tmpdir(), "codez-onboarding-home-"));
     tempHomes.push(home);
     const service = await createServiceInHome(home, "u1");
     await service.appendRecord("device-a", makeEntry());
@@ -214,13 +214,13 @@ describe("onboardingRecordService", () => {
   });
 
   it("自定义 dataBaseDir 时记录跟随数据目录而非 home", async () => {
-    const home = mkdtempSync(join(tmpdir(), "zcode-onboarding-home-"));
+    const home = mkdtempSync(join(tmpdir(), "codez-onboarding-home-"));
     tempHomes.push(home);
-    const dataBaseDir = mkdtempSync(join(tmpdir(), "zcode-onboarding-data-"));
+    const dataBaseDir = mkdtempSync(join(tmpdir(), "codez-onboarding-data-"));
     tempHomes.push(dataBaseDir);
     process.env.HOME = home;
-    // paths.ts 在模块导入时捕获 ZCODE_DATA_BASE_DIR；host 进程正是经该环境变量下发 dataBaseDir。
-    process.env.ZCODE_DATA_BASE_DIR = dataBaseDir;
+    // paths.ts 在模块导入时捕获 CODEZ_DATA_BASE_DIR；host 进程正是经该环境变量下发 dataBaseDir。
+    process.env.CODEZ_DATA_BASE_DIR = dataBaseDir;
     vi.resetModules();
     const mod = await import("../src/onboarding/onboardingRecordService.js");
     const service = mod.createOnboardingRecordService({
@@ -229,13 +229,13 @@ describe("onboardingRecordService", () => {
     });
     await service.appendRecord("device-a", makeEntry());
 
-    const expected = join(dataBaseDir, ".zcode", "v2", "onboarding-record.json");
+    const expected = join(dataBaseDir, ".codez", "v2", "onboarding-record.json");
     expect(existsSync(expected)).toBe(true);
     expect(existsSync(recordFilePath(home))).toBe(false);
   });
 
   it("跳过页记 null 也能通过 schema 落盘", async () => {
-    const home = mkdtempSync(join(tmpdir(), "zcode-onboarding-home-"));
+    const home = mkdtempSync(join(tmpdir(), "codez-onboarding-home-"));
     tempHomes.push(home);
     const service = await createServiceInHome(home, null);
     await service.appendRecord(
@@ -258,7 +258,7 @@ describe("onboardingRecordService", () => {
   });
 
   it("登录认领：null 条目移交给无条目的登录用户，已有条目/匿名态为空操作", async () => {
-    const home = mkdtempSync(join(tmpdir(), "zcode-onboarding-home-"));
+    const home = mkdtempSync(join(tmpdir(), "codez-onboarding-home-"));
     tempHomes.push(home);
     // 匿名答一次
     const anonymous = await createServiceInHome(home, null);
@@ -284,7 +284,7 @@ describe("onboardingRecordService", () => {
   });
 
   it("syncSettingsFromRecord 回填当前用户最近作答；跳过 null 回填保守默认", async () => {
-    const home = mkdtempSync(join(tmpdir(), "zcode-onboarding-home-"));
+    const home = mkdtempSync(join(tmpdir(), "codez-onboarding-home-"));
     tempHomes.push(home);
     const service = await createServiceInHome(home, "u1");
     await service.appendRecord(
@@ -313,7 +313,7 @@ describe("onboardingRecordService", () => {
   });
 
   it("syncSettingsFromRecord 回填非 null 作答原值", async () => {
-    const home = mkdtempSync(join(tmpdir(), "zcode-onboarding-home-"));
+    const home = mkdtempSync(join(tmpdir(), "codez-onboarding-home-"));
     tempHomes.push(home);
     const service = await createServiceInHome(home, "u1");
     await service.appendRecord(
@@ -328,7 +328,7 @@ describe("onboardingRecordService", () => {
   });
 
   it("updateRecordPreferences 更新当前用户条目；无条目时忽略", async () => {
-    const home = mkdtempSync(join(tmpdir(), "zcode-onboarding-home-"));
+    const home = mkdtempSync(join(tmpdir(), "codez-onboarding-home-"));
     tempHomes.push(home);
     const service = await createServiceInHome(home, "u1");
     await service.appendRecord("device-a", makeEntry({ proactiveSuggestionsEnabled: true }));
@@ -353,7 +353,7 @@ describe("onboardingRecordService", () => {
   });
 
   it("getRecords 返回整份文件供后续上传使用", async () => {
-    const home = mkdtempSync(join(tmpdir(), "zcode-onboarding-home-"));
+    const home = mkdtempSync(join(tmpdir(), "codez-onboarding-home-"));
     tempHomes.push(home);
     const service = await createServiceInHome(home, "u1");
     expect(await service.getRecords()).toBeNull();

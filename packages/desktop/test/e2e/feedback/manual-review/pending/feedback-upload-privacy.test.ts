@@ -1,7 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { build } from "esbuild";
-import { TID_FEEDBACK_LOGS_OPT_IN } from "@zcode/shared/test-ids";
+import { TID_FEEDBACK_LOGS_OPT_IN } from "@codez/shared/test-ids";
 import {
   readSettings,
   seedSettings,
@@ -73,7 +73,7 @@ describe("反馈上传授权（manual review）", () => {
     ["zh-CN", 430, 900, "帮助", "问题上报", "默认开启"],
   ] as const) {
     it(`FB-PRIV-01/08 / FB-DESC-01 / FB-REQ-A11Y-01: ${locale} ${width}px 反馈必填标识与日志选择`, async () => {
-      await seedSettings({ locale, localePreference: locale, zcodeEndpointOrigin: server.origin });
+      await seedSettings({ locale, localePreference: locale, codezEndpointOrigin: server.origin });
       await browser.electron.execute(
         (electron, size) => {
           electron.BrowserWindow.getAllWindows()[0]!.setSize(size.width, size.height);
@@ -122,7 +122,7 @@ describe("反馈上传授权（manual review）", () => {
         await logs.scrollIntoView();
         await expect(logs).toBeDisplayed();
         await browser.saveScreenshot(
-          join(screenshotDirectory, `zcode-feedback-${locale}-${theme}.png`),
+          join(screenshotDirectory, `codez-feedback-${locale}-${theme}.png`),
         );
       }
       await browser.keys("Escape");
@@ -160,7 +160,7 @@ describe("反馈上传授权（manual review）", () => {
         }, theme);
         for (const marker of requiredMarkers) await expect(marker).toBeDisplayed();
         await browser.saveScreenshot(
-          join(screenshotDirectory, `zcode-feature-request-${locale}-${theme}.png`),
+          join(screenshotDirectory, `codez-feature-request-${locale}-${theme}.png`),
         );
       }
       await browser.keys("Escape");

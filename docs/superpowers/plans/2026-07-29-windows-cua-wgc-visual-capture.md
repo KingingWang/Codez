@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - 先写测试并观察 RED，再写最小实现并观察 GREEN；每个任务独立提交。
-- 只修改 `C:\Users\dev\zcode-cua` 的本地 Windows source Helper 和 `C:\Users\dev\z-code` 的事实/计划文档；不启动或修改 SSH、WSL、Docker、remote workspace、手机 `/remote`。
+- 只修改 `C:\Users\dev\codez-cua` 的本地 Windows source Helper 和 `C:\Users\dev\z-code` 的事实/计划文档；不启动或修改 SSH、WSL、Docker、remote workspace、手机 `/remote`。
 - 复用现有 C++ addon，不新增 Rust sidecar、常驻进程或 Electron 依赖。
 - 像素来源只能是 WGC；禁止 BitBlt、PrintWindow、PowerShell 截图、外部截图命令、Electron `desktopCapturer` 和私有二进制 fallback。
 - source 开发接受 Windows 系统默认 WGC 捕获边框，不申请或绕过受限无边框 capability。
@@ -30,14 +30,14 @@
 - macOS/Linux 现有截图路径保持兼容；Windows SystemSurface 继续是无截图 fallback。
 - 默认测试不得启动 GUI 或读取屏幕；live smoke 必须显式 opt-in，且在启动 Helper/fixture 前验证普通已解锁桌面。
 - live smoke 只能控制自己启动的 fixture 进程，`finally` 恢复/关闭所有资源；输出不得包含截图、marker、窗口标题、路径、token 或 pipe。
-- 必须执行 zcode-cua focused/full tests、native rebuild、build、typecheck、lint；ZCode 执行 source Helper integration、CUA focused tests、official plugin test、typecheck、lint。
-- ZCode 当前 `pnpm test:unit:affected` 的非 CUA baseline 仍要重跑并逐项记录，不能把非零结果称为通过。
+- 必须执行 codez-cua focused/full tests、native rebuild、build、typecheck、lint；Codez 执行 source Helper integration、CUA focused tests、official plugin test、typecheck、lint。
+- Codez 当前 `pnpm test:unit:affected` 的非 CUA baseline 仍要重跑并逐项记录，不能把非零结果称为通过。
 
 ---
 
 ## File Structure
 
-### `C:\Users\dev\zcode-cua`
+### `C:\Users\dev\codez-cua`
 
 - Create `src/native/windowsScreenCapture.ts` — Windows 三导出成组 gate、outcome runtime validation、固定错误类型。
 - Modify `src/native/types.ts` — Windows screen capture outcome、success DTO 与 additive native methods。
@@ -128,10 +128,10 @@ malformed / rejection    screenshot=null + warning             sanitized interna
 
 **Files:**
 
-- Create: `C:\Users\dev\zcode-cua\src\native\windowsScreenCapture.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\native\types.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\nativeAxSource.ts`
-- Test: `C:\Users\dev\zcode-cua\test\windows-native-screen-capture-adapter.test.ts`
+- Create: `C:\Users\dev\codez-cua\src\native\windowsScreenCapture.ts`
+- Modify: `C:\Users\dev\codez-cua\src\native\types.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\nativeAxSource.ts`
+- Test: `C:\Users\dev\codez-cua\test\windows-native-screen-capture-adapter.test.ts`
 
 **Interfaces:**
 
@@ -254,10 +254,10 @@ git commit -m "feat(windows): define native screen capture bridge"
 
 **Files:**
 
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\nodeAutomationAdapter.ts`
-- Modify: `C:\Users\dev\zcode-cua\test\windows-native-screen-capture-adapter.test.ts`
-- Modify: `C:\Users\dev\zcode-cua\test\windows-capability-truthfulness.test.ts`
-- Modify: `C:\Users\dev\zcode-cua\test\broker\windowsSystemSurface.test.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\nodeAutomationAdapter.ts`
+- Modify: `C:\Users\dev\codez-cua\test\windows-native-screen-capture-adapter.test.ts`
+- Modify: `C:\Users\dev\codez-cua\test\windows-capability-truthfulness.test.ts`
+- Modify: `C:\Users\dev\codez-cua\test\broker\windowsSystemSurface.test.ts`
 
 **Interfaces:**
 
@@ -357,15 +357,15 @@ git commit -m "feat(windows): route monitor capture through native WGC"
 
 **Files:**
 
-- Modify: `C:\Users\dev\zcode-cua\src\native\win.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\platformAxSource.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\axReadOnly.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\ax-types.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\targeting\types.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\targeting\snapshot.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\targeting\resolver.ts`
-- Test: `C:\Users\dev\zcode-cua\test\windows-app-state-screen-capture.test.ts`
-- Modify: `C:\Users\dev\zcode-cua\test\targeting-resolver.test.ts`
+- Modify: `C:\Users\dev\codez-cua\src\native\win.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\platformAxSource.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\axReadOnly.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\ax-types.ts`
+- Modify: `C:\Users\dev\codez-cua\src\targeting\types.ts`
+- Modify: `C:\Users\dev\codez-cua\src\targeting\snapshot.ts`
+- Modify: `C:\Users\dev\codez-cua\src\targeting\resolver.ts`
+- Test: `C:\Users\dev\codez-cua\test\windows-app-state-screen-capture.test.ts`
+- Modify: `C:\Users\dev\codez-cua\test\targeting-resolver.test.ts`
 
 **Interfaces:**
 
@@ -492,12 +492,12 @@ git commit -m "feat(windows): attach verified window images to app state"
 
 **Files:**
 
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\electronNativeBackend.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\backend\broker-client.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\tools\observation.ts`
-- Modify: `C:\Users\dev\zcode-cua\test\observation-tools.test.ts`
-- Modify: `C:\Users\dev\zcode-cua\test\targeting-screenshot-space.test.ts`
-- Modify: `C:\Users\dev\zcode-cua\test\windows-capability-truthfulness.test.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\electronNativeBackend.ts`
+- Modify: `C:\Users\dev\codez-cua\src\backend\broker-client.ts`
+- Modify: `C:\Users\dev\codez-cua\src\tools\observation.ts`
+- Modify: `C:\Users\dev\codez-cua\test\observation-tools.test.ts`
+- Modify: `C:\Users\dev\codez-cua\test\targeting-screenshot-space.test.ts`
+- Modify: `C:\Users\dev\codez-cua\test\windows-capability-truthfulness.test.ts`
 
 **Interfaces:**
 
@@ -565,12 +565,12 @@ git commit -m "fix(cua): preserve selected display screenshot origin"
 
 **Files:**
 
-- Create: `C:\Users\dev\zcode-cua\src\native\screen_capture_win.h`
-- Create: `C:\Users\dev\zcode-cua\src\native\screen_capture_win.cc`
-- Modify: `C:\Users\dev\zcode-cua\src\native\ax_win.cc`
-- Modify: `C:\Users\dev\zcode-cua\binding.gyp`
-- Test: `C:\Users\dev\zcode-cua\test\native\windows-wgc-screen-capture.test.ts`
-- Modify: `C:\Users\dev\zcode-cua\test\native\windows-capability-truthfulness.test.ts`
+- Create: `C:\Users\dev\codez-cua\src\native\screen_capture_win.h`
+- Create: `C:\Users\dev\codez-cua\src\native\screen_capture_win.cc`
+- Modify: `C:\Users\dev\codez-cua\src\native\ax_win.cc`
+- Modify: `C:\Users\dev\codez-cua\binding.gyp`
+- Test: `C:\Users\dev\codez-cua\test\native\windows-wgc-screen-capture.test.ts`
+- Modify: `C:\Users\dev\codez-cua\test\native\windows-capability-truthfulness.test.ts`
 
 **Interfaces:**
 
@@ -727,14 +727,14 @@ git commit -m "feat(windows): implement WGC visual capture"
 
 **Files:**
 
-- Create: `C:\Users\dev\zcode-cua\scripts\fixtures\windows-capture-smoke-window.ps1`
-- Create: `C:\Users\dev\zcode-cua\scripts\windows-screen-capture-live-smoke.mjs`
-- Create: `C:\Users\dev\zcode-cua\test\windows-screen-capture-live-smoke.test.ts`
-- Modify: `C:\Users\dev\zcode-cua\package.json`
+- Create: `C:\Users\dev\codez-cua\scripts\fixtures\windows-capture-smoke-window.ps1`
+- Create: `C:\Users\dev\codez-cua\scripts\windows-screen-capture-live-smoke.mjs`
+- Create: `C:\Users\dev\codez-cua\test\windows-screen-capture-live-smoke.test.ts`
+- Modify: `C:\Users\dev\codez-cua\package.json`
 
 **Interfaces:**
 
-- Env gate: `ZCODE_CUA_WINDOWS_SCREEN_CAPTURE_LIVE=1`.
+- Env gate: `CODEZ_CUA_WINDOWS_SCREEN_CAPTURE_LIVE=1`.
 - Fixture writes only PID/HWND/bounds to a caller-created private temp file and exits on a private close signal.
 - Smoke controls only its two fixture processes.
 
@@ -803,9 +803,9 @@ Expected: PASS; without opt-in no GUI process starts.
 - [ ] **Step 7: Attempt live smoke**
 
 ```powershell
-$env:ZCODE_CUA_WINDOWS_SCREEN_CAPTURE_LIVE='1'
+$env:CODEZ_CUA_WINDOWS_SCREEN_CAPTURE_LIVE='1'
 pnpm smoke:windows:screen-capture
-Remove-Item Env:ZCODE_CUA_WINDOWS_SCREEN_CAPTURE_LIVE
+Remove-Item Env:CODEZ_CUA_WINDOWS_SCREEN_CAPTURE_LIVE
 ```
 
 Expected on ordinary unlocked desktop: exit 0 and every fixed acceptance boolean true. On LockApp/noninteractive desktop: exit 2 before Helper/fixture startup; record as environment-blocked, not passed.
@@ -823,9 +823,9 @@ git commit -m "test(windows): add WGC live acceptance"
 
 **Files:**
 
-- Modify: `C:\Users\dev\zcode-cua\docs\platforms.md`
+- Modify: `C:\Users\dev\codez-cua\docs\platforms.md`
 - Modify: `C:\Users\dev\z-code\docs\cua\windows-source-development.md`
-- Regenerate: `C:\Users\dev\zcode-cua\dist\**`
+- Regenerate: `C:\Users\dev\codez-cua\dist\**`
 
 - [ ] **Step 1: Update platform facts**
 
@@ -849,7 +849,7 @@ Expected: remaining pending claims refer only to packaging/HDR/border or other e
 
 - [ ] **Step 4: Commit each repository**
 
-In `zcode-cua`:
+In `codez-cua`:
 
 ```powershell
 git add -- docs/platforms.md dist
@@ -871,7 +871,7 @@ git commit -m "docs(cua): record Windows WGC source flow"
 
 - No planned source edits. Any failure follows `superpowers:systematic-debugging`; do not patch by guess.
 
-- [x] **Step 1: Run zcode-cua focused verification**
+- [x] **Step 1: Run codez-cua focused verification**
 
 ```powershell
 pnpm exec vitest run test/windows-native-screen-capture-adapter.test.ts test/windows-app-state-screen-capture.test.ts test/windows-capability-truthfulness.test.ts test/observation-tools.test.ts test/targeting-resolver.test.ts test/targeting-screenshot-space.test.ts test/native/windows-wgc-screen-capture.test.ts test/native/windows-capability-truthfulness.test.ts test/windows-screen-capture-live-smoke.test.ts
@@ -883,7 +883,7 @@ pnpm lint
 
 Expected: every command exit 0.
 
-- [x] **Step 2: Run zcode-cua full suite**
+- [x] **Step 2: Run codez-cua full suite**
 
 ```powershell
 pnpm test
@@ -891,13 +891,13 @@ pnpm test
 
 Expected: exit 0; platform/live skips are explicit.
 
-- [x] **Step 3: Run ZCode integration gates**
+- [x] **Step 3: Run Codez integration gates**
 
 Use the existing source-helper environment and execute:
 
 ```powershell
 pnpm exec vitest run packages/services/test/cuaPermissionBroker.server.win32.test.ts packages/services/test/cuaPermissionBrokerNodeHelper.test.ts packages/services/test/cuaPermissionBroker.platformAxSource.test.ts packages/services/test/cuaPermissionBroker.electronBackend.test.ts
-pnpm --filter @zcode/zcode-cua-plugin test
+pnpm --filter @codez/codez-cua-plugin test
 pnpm typecheck
 pnpm lint
 pnpm test:unit:affected
@@ -910,9 +910,9 @@ Expected: focused/plugin/typecheck/lint exit 0. Record `test:unit:affected` exac
 On an ordinary unlocked desktop:
 
 ```powershell
-$env:ZCODE_CUA_WINDOWS_SCREEN_CAPTURE_LIVE='1'
-$env:ZCODE_CUA_WINDOWS_POINTER_LIVE='1'
-$env:ZCODE_CUA_WINDOWS_CLIPBOARD_LIVE='1'
+$env:CODEZ_CUA_WINDOWS_SCREEN_CAPTURE_LIVE='1'
+$env:CODEZ_CUA_WINDOWS_POINTER_LIVE='1'
+$env:CODEZ_CUA_WINDOWS_CLIPBOARD_LIVE='1'
 pnpm smoke:windows:screen-capture
 pnpm smoke:windows:pointer
 pnpm smoke:windows:clipboard
@@ -952,11 +952,11 @@ files.
 
 **Files:**
 
-- Create: `C:\Users\dev\zcode-cua\scripts\fixtures\windows-tool-surface-smoke-window.ps1`
-- Create: `C:\Users\dev\zcode-cua\scripts\windows-tool-surface-live-smoke.mjs`
-- Create: `C:\Users\dev\zcode-cua\test\windows-tool-surface-live-smoke.test.ts`
-- Modify: `C:\Users\dev\zcode-cua\package.json`
-- Modify: `C:\Users\dev\zcode-cua\docs\platforms.md`
+- Create: `C:\Users\dev\codez-cua\scripts\fixtures\windows-tool-surface-smoke-window.ps1`
+- Create: `C:\Users\dev\codez-cua\scripts\windows-tool-surface-live-smoke.mjs`
+- Create: `C:\Users\dev\codez-cua\test\windows-tool-surface-live-smoke.test.ts`
+- Modify: `C:\Users\dev\codez-cua\package.json`
+- Modify: `C:\Users\dev\codez-cua\docs\platforms.md`
 - Modify: `C:\Users\dev\z-code\docs\cua\windows-source-development.md`
 
 **State and event chain:**
@@ -991,7 +991,7 @@ children it spawned, and print only booleans/counts/fixed status codes.
 
 Lock:
 
-- explicit `ZCODE_CUA_WINDOWS_TOOL_SURFACE_LIVE=1` before any child spawn;
+- explicit `CODEZ_CUA_WINDOWS_TOOL_SURFACE_LIVE=1` before any child spawn;
 - simulated locked-desktop exit `2` before any child spawn;
 - fixed total/per-operation deadlines;
 - private fixture paths and owned-child cleanup;
@@ -1035,9 +1035,9 @@ MCP invocation set plus the two companion tool names do not equal the canonical
 - [x] **Step 4: Run live acceptance and companion smokes**
 
 ```powershell
-$env:ZCODE_CUA_WINDOWS_TOOL_SURFACE_LIVE='1'
+$env:CODEZ_CUA_WINDOWS_TOOL_SURFACE_LIVE='1'
 pnpm smoke:windows:tool-surface
-Remove-Item Env:ZCODE_CUA_WINDOWS_TOOL_SURFACE_LIVE
+Remove-Item Env:CODEZ_CUA_WINDOWS_TOOL_SURFACE_LIVE
 ```
 
 Then rerun screen capture, pointer and clipboard live smokes with their existing
@@ -1061,7 +1061,7 @@ repository gates.
   minimized-window fail-closed, cursor restoration and clean child exit;
 - pointer, text-only clipboard and 30-tool surface acceptances all exited `0`;
   clipboard text and cursor were restored, and no owned Helper/fixture remained;
-- ZCode focused integration was 4 files / 175 passed / 1 skipped; the official
+- Codez focused integration was 4 files / 175 passed / 1 skipped; the official
   plugin package's 6 tests, root typecheck and lint all exited `0`;
 - `pnpm test:unit:affected` remained a documented non-CUA repository baseline:
   13 failed files / 20 failed tests, 940 passed files / 8132 passed tests.

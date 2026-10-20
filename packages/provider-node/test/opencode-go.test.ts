@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { beforeAll, describe, expect, it } from "vitest";
-import { compileModelOptionMaps } from "@zcode/model-option-map";
-import { ModelConfig, ModelConfigRules, parseZCodeBuiltinModelConfigRules } from "@zcode/provider";
+import { compileModelOptionMaps } from "@codez/model-option-map";
+import { ModelConfig, ModelConfigRules, parseCodezBuiltinModelConfigRules } from "@codez/provider";
 
 const url = "https://opencode.ai/zen/go/v1";
 const members = {
@@ -61,9 +61,9 @@ let templates: {
 }[];
 beforeAll(async () => {
   const release = JSON.parse(
-    await readFile(new URL("../../../config/provider/zcode-builtin.json", import.meta.url), "utf8"),
+    await readFile(new URL("../../../config/provider/codez-builtin.json", import.meta.url), "utf8"),
   );
-  rules = parseZCodeBuiltinModelConfigRules(release.config.modelConfigRules);
+  rules = parseCodezBuiltinModelConfigRules(release.config.modelConfigRules);
   templates = release.config.providerConfigRules.templateRules;
 });
 const input = (modelId: string, apiType = "openai-chat-completions", baseUrl = url) => ({

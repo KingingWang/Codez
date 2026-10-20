@@ -12,22 +12,22 @@
 
 **app 从不手搓 runtimeModel。** 老版 toolbar 只推「模型 ref 选择」，真正的 `runtimeModel`
 （凭据/endpoint/Start-Plan JWT 头/Team-Plan projectId+key/官方版本安全校验头/thought 收窄）由
-**存活的 service 层**（`packages/services/.../zcodeAgentService.ts` + `modelProviderService.ts`）
+**存活的 service 层**（`packages/services/.../codezAgentService.ts` + `modelProviderService.ts`）
 在每次 RPC 派发时**从 app 的 provider registry 快照惰性解析**。该 service 层是**共享基建，
-不是被删的 UI toolbar，也不在 CLI 的 `zcode-protocol/` 禁区**——v4 可整体复用。
+不是被删的 UI toolbar，也不在 CLI 的 `codez-protocol/` 禁区**——v4 可整体复用。
 → **「保留 coding-plan + 默认兜底」几乎白送：只要复用 service 层的解析/registry 快照，不重写。**
 
 ## 1. 现状事实（两侧勘查）
 
 ### CLI 侧（apply 原语 + 兜底）
 
-- v4 handler `zcode-protocol-v4/commands/handlers/model-config.ts:41` 只 `app.setModel(formatModelRef)`
+- v4 handler `codez-protocol-v4/commands/handlers/model-config.ts:41` 只 `app.setModel(formatModelRef)`
   ——**只在当前 registry 内重选模型，不换 provider client**（注释 :36 自认）。
 - 真正换 provider client 的核心原语（v4 可原生调，不碰禁区）：
   **`record.app.setModelCatalogOverlay(overlay)`（装带凭据的 provider registry → `modelAdapter.replaceRegistryConfig`，`app/model-catalog-overlay.ts:69`）→ 再 `app.setModel(...)` + 可选 `setThoughtLevel`。**
-- overlay 由 `createModelCatalogOverlay(catalog, env)`（`zcode-protocol/workspace-model-catalog.ts:1181`）
+- overlay 由 `createModelCatalogOverlay(catalog, env)`（`codez-protocol/workspace-model-catalog.ts:1181`）
   从 `context.workspaceModelCatalogs` 构建；catalog 由 `updateProviderRegistry` 推入。
-- **无桥禁令**（`bootstrap/tests/v4-native-boundary.test.ts`）：v4 目录禁 import 任何 `zcode-protocol/`
+- **无桥禁令**（`bootstrap/tests/v4-native-boundary.test.ts`）：v4 目录禁 import 任何 `codez-protocol/`
   路径（含 server-operations **与** workspace-model-catalog）；但 `record.app.*` / `record.app.runtime.*`
   自由可调。**binder `v4-bridge.ts` 在旧目录，合法 import workspace-model-catalog 的原语** → overlay 构建走 host capability 注入。
 - **要保留的 CLI 兜底**（都在 apply 写路径之外，本 Phase 不动、原样保留）：
@@ -37,8 +37,8 @@
 ### App/service 侧（解析 runtimeModel + coding-plan + 兜底）
 
 - **两层**：toolbar（`modelChangeActions.ts` 三条 handler：推 model-ref + 决定 restart + 推 registry）
-  → service（`zcodeAgentService.ts`：`const runtimeModel = params.runtimeModel ?? await resolveRuntimeModelConfig({...})`，从 `modelProviderService.getProviderRegistrySnapshot()` 惰性解析并随 RPC 下发）。
-- **runtimeModel 解析引擎**（service，共享，**复用不重写**）：`resolveRuntimeModelConfig`（`zcodeAgentService.ts:1569`）+ `createRuntimeModelConfig`（:645）+ `modelProviderService.buildProviderRegistrySnapshot`（:803）。
+  → service（`codezAgentService.ts`：`const runtimeModel = params.runtimeModel ?? await resolveRuntimeModelConfig({...})`，从 `modelProviderService.getProviderRegistrySnapshot()` 惰性解析并随 RPC 下发）。
+- **runtimeModel 解析引擎**（service，共享，**复用不重写**）：`resolveRuntimeModelConfig`（`codezAgentService.ts:1569`）+ `createRuntimeModelConfig`（:645）+ `modelProviderService.buildProviderRegistrySnapshot`（:803）。
 - **coding-plan/start-plan/team-plan 凭据注入全在 service 层**（⚠️ 保留）：
   `pickResolvedFamilyProvider`（连接方式 Start/APIKey/Coding/Team 选型，:196）、
   `buildStartPlanRuntimeAuthorizationHeaders`（Start Plan `Authorization: Bearer <jwt>`，:541）、
@@ -46,9 +46,9 @@
   剥离官方版本安全校验一次性头的 helper（:516）、
   `resolveSupportedRuntimeThoughtLevel`（目标模型不支持 thought 则丢弃，:615）、
   Team Plan 移除守卫（provider 被过滤则抛 unavailable 不静默兜底个人 key，:1615/:855）。
-- **runtimeModel schema**（`shared/zcode-protocol/index.ts:523` `zcodeModelRuntimeConfigSchema`）：
+- **runtimeModel schema**（`shared/codez-protocol/index.ts:523` `codezModelRuntimeConfigSchema`）：
   `{revision, generatedAt, model{providerId,modelId,variant?}, provider(providerId,kind,apiFormat?,baseURL?,apiKey?(inline/credential/env),apiKeyRequired?,headers?,providerOptions?,models[]…), thoughtLevel?}`。
-- **service 契约**：`IZCodeAgentService.setModel({..., model, runtimeModel?, modelProviderFamilySelectedKeys?})` / `updateRuntimeModelConfig({..., runtimeModel, applyModelSelection?})` / `updateProviderRegistry({..., registry})`。
+- **service 契约**：`ICodezAgentService.setModel({..., model, runtimeModel?, modelProviderFamilySelectedKeys?})` / `updateRuntimeModelConfig({..., runtimeModel, applyModelSelection?})` / `updateProviderRegistry({..., registry})`。
 - **要保留的 app 兜底**（多数属 Phase 2，本 Phase 只需复用 service resolver 自带的那部分）：
   `resolveRuntimeModelConfig` 内建兜底（历史缺失→undefined 让 agent 恢复 :1583；provider 被移除→抛 unavailable :1615；stale 默认→registry 首个可用 :1678）。
   toolbar 侧的 `resolveUnavailableModelListFallback` / `resolveLoginProviderFirstModel` / `<synthetic>` / context-window guard / recovery path 归 **Phase 2**（本 Phase 不做，但设计不能挡它们）。
@@ -69,9 +69,9 @@ registry 解析），provider 不在 registry（刚加/竞态/远端）时回落
 
 ## 3. 分步实现（1c）
 
-**Layer A — v4 协议（additive）** `packages/shared/src/zcode-protocol-v4/command.ts:65`
+**Layer A — v4 协议（additive）** `packages/shared/src/codez-protocol-v4/command.ts:65`
 
-- `switchModelConfig` 加 `runtimeModel?`（可选）。schema 复用 `@zcode/shared/zcode-protocol` 的 `zcodeModelRuntimeConfigSchema`（共享包内引用，非 CLI 服务桥；若嫌耦合可定义 v4 mirror——决策见 §5）。
+- `switchModelConfig` 加 `runtimeModel?`（可选）。schema 复用 `@codez/shared/codez-protocol` 的 `codezModelRuntimeConfigSchema`（共享包内引用，非 CLI 服务桥；若嫌耦合可定义 v4 mirror——决策见 §5）。
 - `createSession.config` 同样支持携带（首发即用正确 provider），`applyRequestedSessionConfig` 消费。
 
 **Layer B — CLI binder + handler**
@@ -86,7 +86,7 @@ registry 解析），provider 不在 registry（刚加/竞态/远端）时回落
 **Layer C — renderer/service（app 侧）**
 
 - 1b 常态：保证 registry 时效——沿用现有 `updateProviderRegistry` 推送；**连接方式变更（P4b）/加 provider 时触发 re-push**（对齐老版 `syncModelProviderRegistryBeforeCustomModelWrite`）。
-- 1a 回落：暴露 service resolver 供 v4 调——`IZCodeAgentService` 加 `resolveRuntimeModelForV4({model, modelProviderFamilySelectedKeys})`（薄封装现有 `resolveRuntimeModelConfig`，**零重写 coding-plan/兜底**）；SessionPane `handleSelectModel` 在 `provider_not_in_registry` 回执时解析 runtimeModel 重发一次。
+- 1a 回落：暴露 service resolver 供 v4 调——`ICodezAgentService` 加 `resolveRuntimeModelForV4({model, modelProviderFamilySelectedKeys})`（薄封装现有 `resolveRuntimeModelConfig`，**零重写 coding-plan/兜底**）；SessionPane `handleSelectModel` 在 `provider_not_in_registry` 回执时解析 runtimeModel 重发一次。
 - 保留 toolbar 兜底（Phase 2 主体，但本 Phase 不得挡）：context-window guard 在会话态切小窗模型时的确认/压缩（`modelSwitchContextWindowGuard`，reserve 64k）；restart-runtime 决策（非 GLM 的外部 agent 类型切模型需 restart，**GLM 不 restart**——v4 主力 GLM 基本不触发）。
 
 ### 3.1 Phase 2 app fallback 收口语义（2026-07-09）
@@ -133,7 +133,7 @@ workspace configOptionsStatus=error
 ## 5. 决策点
 
 1. ~~1a/1b/1c~~ **已定：1c 混合（2026-07-07 用户裁决）**。实现顺序：先 1b 核心闭环（CLI 从 registry 解析），再叠 1a 回落（app 解析 runtimeModel + `provider.notInRegistry` 重发）。
-2. v4 命令 `runtimeModel` schema：**倾向引用共享 `zcodeModelRuntimeConfigSchema`**（DRY，共享包内非 CLI 服务桥）+ 注释溯源；实现时若发现耦合过重再改 v4 mirror。
+2. v4 命令 `runtimeModel` schema：**倾向引用共享 `codezModelRuntimeConfigSchema`**（DRY，共享包内非 CLI 服务桥）+ 注释溯源；实现时若发现耦合过重再改 v4 mirror。
 3. 官方版本安全校验一次性头（Start Plan 子 agent，`applyModelSelection:false`）：**本 Phase 记 TODO 不接**（边缘场景，属子 agent 安全校验路径）。
 
 ## 7. 实现顺序（1c）—— 进度

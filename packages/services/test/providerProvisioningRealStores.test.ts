@@ -11,9 +11,9 @@ import {
   ProviderConfigMap,
   parsePersonalProviderConfigMap,
   resolveInitialModelSelection,
-} from "@zcode/provider";
-import { encodeProviderConfigFile, NodeModelSelectionConfigRepository } from "@zcode/provider-node";
-import type { ProviderProvisioningEnvelope } from "@zcode/shared";
+} from "@codez/provider";
+import { encodeProviderConfigFile, NodeModelSelectionConfigRepository } from "@codez/provider-node";
+import type { ProviderProvisioningEnvelope } from "@codez/shared";
 import { createCredentialService } from "../src/credential/credentialService.js";
 import { createCredentialCipherProvider } from "../src/credential/providers/credentialCipherProvider.js";
 import { createSettingService } from "../src/setting/settingService.js";
@@ -90,7 +90,7 @@ async function createFixture(root: string) {
   setDataBaseDir(root);
   // 设置服务独立读取HOME；仅在Vitest worker中模拟系统用户目录，避免触及真实用户设置。
   vi.stubEnv("HOME", root);
-  const dir = join(root, ".zcode/v2");
+  const dir = join(root, ".codez/v2");
   await mkdir(dir, { recursive: true });
   const builtin = join(root, "builtin.json");
   await writeFile(
@@ -113,7 +113,7 @@ async function createFixture(root: string) {
   const personal = join(dir, "provider_config.json");
   const state = join(dir, "provisioning-state.json");
   const config = createProviderConfigRuntime({
-    zcodeBuiltinFilePath: builtin,
+    codezBuiltinFilePath: builtin,
     personalFilePath: personal,
     watch: false,
     personalPollingIntervalMs: false,
@@ -133,7 +133,7 @@ async function createFixture(root: string) {
   });
   const credentials = createCredentialService({
     cipherProvider: createCredentialCipherProvider({
-      env: { ZCODE_CREDENTIAL_SECRET: "r3-real-stores-test-cipher" },
+      env: { CODEZ_CREDENTIAL_SECRET: "r3-real-stores-test-cipher" },
     }),
   });
   const settings = createSettingService();

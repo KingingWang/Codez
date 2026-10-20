@@ -1,5 +1,5 @@
 import { updateModelDraft } from "@/settings/model-provider-section/ProviderModelDraftState.js";
-import { extractManualModelConfig } from "@zcode/provider";
+import { extractManualModelConfig } from "@codez/provider";
 import { describe, expect, it } from "vitest";
 import type {
   ProviderSettingsFormModel,

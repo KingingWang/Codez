@@ -2,11 +2,11 @@
 
 ## 背景
 
-CNVD 报告「ZCode 内置浏览器未授权访问」（中危）：内置浏览器对不可信网页缺少默认拒绝的权限控制，攻击者页面可在无产品弹窗确认的情况下静默获取摄像头/麦克风、剪贴板、地理位置等敏感能力。
+CNVD 报告「Codez 内置浏览器未授权访问」（中危）：内置浏览器对不可信网页缺少默认拒绝的权限控制，攻击者页面可在无产品弹窗确认的情况下静默获取摄像头/麦克风、剪贴板、地理位置等敏感能力。
 
 现状核实（2026-10-08）：
 
-- 内置浏览器为标准 Electron 41 `<webview>`（`packages/ui/src/browser-use/BrowserViewportSurface.tsx:151`），session 为持久分区 `persist:zcode-embedded-browser`（`packages/desktop/src/main/browserDataManager.ts:32`）。
+- 内置浏览器为标准 Electron 41 `<webview>`（`packages/ui/src/browser-use/BrowserViewportSurface.tsx:151`），session 为持久分区 `persist:codez-embedded-browser`（`packages/desktop/src/main/browserDataManager.ts:32`）。
 - 该 partition 未注册任何 `setPermissionRequestHandler` / `setPermissionCheckHandler` / `setDevicePermissionHandler`；`desktopNetworkPolicy.ts` 只覆盖代理与证书。Electron 默认行为是**自动批准所有权限请求**，因此恶意页面 `getUserMedia` / `clipboard.readText` / `geolocation` 等请求被静默放行，无 UI、无日志。
 - 现有加固（`desktopWindowChrome.ts` `will-attach-webview`：sandbox / contextIsolation / URL 协议白名单 / 开窗路由）只做进程隔离，不做能力闸门。插件沙箱 partition 已有权限闸门（`pluginSandbox/session.ts` + `permissionGate.ts`），其 inflight 去重与内存同意模式被本 spec 复用。
 - 设备类（WebHID/WebUSB/WebSerial/蓝牙）在 Electron 中未监听 `select-*` 事件时**默认静默授权第一个匹配设备**；屏幕共享在未注册 `setDisplayMediaRequestHandler` 时请求直接失败。

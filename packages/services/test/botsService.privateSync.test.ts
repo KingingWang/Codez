@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { BotsConfigFile, BotsStateFile, ZCodeStreamEvent } from "@zcode/shared";
+import type { BotsConfigFile, BotsStateFile, CodezStreamEvent } from "@codez/shared";
 import * as f from "./botsService.fixtures.js";
 
 const services: ReturnType<typeof f.createBotsService>[] = [];
@@ -25,11 +25,11 @@ function setup(config: BotsConfigFile = f.telegramConfig) {
     ),
   };
   const repo = f.createMemoryRepo(config, state);
-  const listeners = new Map<string, (event: ZCodeStreamEvent) => Promise<void> | void>();
+  const listeners = new Map<string, (event: CodezStreamEvent) => Promise<void> | void>();
   const tasks = f.createLegacyTaskService();
   const subscribe = vi.fn(
     (address: { taskId: string }) =>
-      (listener: (event: ZCodeStreamEvent) => Promise<void> | void) => {
+      (listener: (event: CodezStreamEvent) => Promise<void> | void) => {
         listeners.set(address.taskId, listener);
         return { dispose: vi.fn(() => listeners.delete(address.taskId)) };
       },
@@ -77,7 +77,7 @@ function setup(config: BotsConfigFile = f.telegramConfig) {
       traceId: run,
       inputId: run,
       ...extras,
-    } as ZCodeStreamEvent);
+    } as CodezStreamEvent);
   };
   const run = async (id: string, content: string, origin = "desktop") => {
     await emit("task_run_started", id, { inputOrigin: origin, startedAt: Date.now() });

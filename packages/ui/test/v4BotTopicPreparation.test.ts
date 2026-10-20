@@ -1,8 +1,8 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
-import type { UserInputRow } from "@zcode/shared/zcode-protocol-v4";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
+import type { UserInputRow } from "@codez/shared/codez-protocol-v4";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import { BotTopicPreparationList as PreparationList } from "@/v4/BotTopicPreparation.js";
 
@@ -17,7 +17,7 @@ describe("topic preparation presentation", () => {
   it("shows active preparation but omits failed rows entirely", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN", children: null },
         createElement(BotTopicPreparationList, {
           items: [
@@ -47,7 +47,7 @@ describe("topic preparation presentation", () => {
   it("shows channel and loading in the source row, keeping an empty input bubble absent", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN", children: null },
         createElement(BotTopicPreparationList, {
           items: [
@@ -79,7 +79,7 @@ describe("topic preparation presentation", () => {
     ] as UserInputRow[];
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US", children: null },
         createElement(BotTopicPreparationList, {
           items: ["a", "b", "c"].map((messageId) => ({
@@ -99,7 +99,7 @@ describe("topic preparation presentation", () => {
   it("keeps the Lark channel name", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN", children: null },
         createElement(BotTopicPreparationList, {
           provider: "lark",

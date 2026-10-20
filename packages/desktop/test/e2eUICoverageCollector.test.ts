@@ -4,14 +4,14 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { createE2EUICoverageCollector } from "./e2e/reporting/e2e-ui-coverage.js";
 
-const previousCoverageEnv = process.env.ZCODE_E2E_COVERAGE;
+const previousCoverageEnv = process.env.CODEZ_E2E_COVERAGE;
 const temporaryDirectories: string[] = [];
 
 afterEach(async () => {
   if (previousCoverageEnv === undefined) {
-    delete process.env.ZCODE_E2E_COVERAGE;
+    delete process.env.CODEZ_E2E_COVERAGE;
   } else {
-    process.env.ZCODE_E2E_COVERAGE = previousCoverageEnv;
+    process.env.CODEZ_E2E_COVERAGE = previousCoverageEnv;
   }
   await Promise.all(
     temporaryDirectories.splice(0).map((directory) =>
@@ -22,8 +22,8 @@ afterEach(async () => {
 
 describe("E2E UI coverage collector", () => {
   it("快照失败后 stop 仍会复位，after hook 重入不再访问已关闭 CDP", async () => {
-    process.env.ZCODE_E2E_COVERAGE = "1";
-    const artifactDir = await mkdtemp(join(tmpdir(), "zcode-e2e-ui-coverage-"));
+    process.env.CODEZ_E2E_COVERAGE = "1";
+    const artifactDir = await mkdtemp(join(tmpdir(), "codez-e2e-ui-coverage-"));
     temporaryDirectories.push(artifactDir);
     const collector = createE2EUICoverageCollector({
       artifactDir,

@@ -1,10 +1,10 @@
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Emitter } from "@zcode/rpc";
-import type { IServiceAccessor } from "@zcode/services";
-import type { IPlatformService } from "@zcode/shared";
-import type { ConversationTelemetryFact } from "@zcode/shared/zcode-protocol-v4";
+import { Emitter } from "@codez/rpc";
+import type { IServiceAccessor } from "@codez/services";
+import type { IPlatformService } from "@codez/shared";
+import type { ConversationTelemetryFact } from "@codez/shared/codez-protocol-v4";
 import { PlatformProvider } from "@/hooks/usePlatform.js";
 import {
   ConversationTelemetryWorkspaceAttachment,
@@ -97,7 +97,7 @@ function createServices(): ServiceHarness {
   const onFact = vi.fn(() => facts.event);
   return {
     services: {
-      zcodeAgentService: {
+      codezAgentService: {
         onDynamicConversationTelemetryFact: onFact,
       },
     } as unknown as IServiceAccessor,
@@ -476,7 +476,7 @@ async function emitSuccessfulConversation(
     toolCallId: `${commandId}-skill`,
     toolName: "Skill",
     skillName: `${sessionId}-skill`,
-    skillSource: "zcode",
+    skillSource: "codez",
   });
   supervisor.handleFact({
     version: 1,

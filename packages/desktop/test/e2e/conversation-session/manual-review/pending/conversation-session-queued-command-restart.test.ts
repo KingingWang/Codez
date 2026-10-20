@@ -15,7 +15,7 @@ import {
 import { ensureProjectExpanded } from "../../../helpers/project-sidebar.js";
 
 const CASE_TIMEOUT_MS = 180_000;
-const PENDING_COMMAND_STORAGE_KEY = "zcode-v4-pending-commands:v1";
+const PENDING_COMMAND_STORAGE_KEY = "codez-v4-pending-commands:v1";
 const RUNNING_MARKER = "E2E_QUEUED_COMMAND_RESTART_RUNNING";
 const QUEUED_MARKER = "E2E_QUEUED_COMMAND_RESTART_DISCARDED";
 
@@ -108,7 +108,7 @@ async function waitForSessionInput(
 }
 
 function readSessionInput(sessionId: string): SessionInputRow | null {
-  const database = new DatabaseSync(join(homedir(), ".zcode", "cli", "db", "db.sqlite"), {
+  const database = new DatabaseSync(join(homedir(), ".codez", "cli", "db", "db.sqlite"), {
     readOnly: true,
   });
   try {

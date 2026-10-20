@@ -1,14 +1,14 @@
-import { remoteHostIdFromWorkspaceIdentity } from "@zcode/shared";
+import { remoteHostIdFromWorkspaceIdentity } from "@codez/shared";
 import { readFile } from "node:fs/promises";
 
-import type { ModelSelectionView } from "@zcode/provider";
+import type { ModelSelectionView } from "@codez/provider";
 import type {
   BotsConfigFile,
   BotsStateFile,
   ModelSelection,
-  ZCodeStreamEvent,
-} from "@zcode/shared";
-import { createBotsService, type IModelSelectionService } from "@zcode/services/node";
+  CodezStreamEvent,
+} from "@codez/shared";
+import { createBotsService, type IModelSelectionService } from "@codez/services/node";
 import { resolveE2ERuntimePath } from "../../helpers/e2e-runtime-paths.js";
 
 const E2E_BOT_WORKSPACE = resolveE2ERuntimePath("bots", "e2e-bot-workspace");
@@ -53,9 +53,9 @@ export interface BotsServiceHarness {
   service: ReturnType<typeof createBotsService>;
   subscriptions: Array<{
     params: Record<string, unknown>;
-    listener: (event: ZCodeStreamEvent) => Promise<void> | void;
+    listener: (event: CodezStreamEvent) => Promise<void> | void;
   }>;
-  zcodeTaskService: Record<string, unknown>;
+  codezTaskService: Record<string, unknown>;
 }
 
 export function createBotModelSelectionView(): ModelSelectionView {
@@ -121,10 +121,10 @@ export function createBotsServiceHarness(options: BotsServiceHarnessOptions): Bo
   const respondElicitationCalls: unknown[] = [];
   const subscriptions: Array<{
     params: Record<string, unknown>;
-    listener: (event: ZCodeStreamEvent) => Promise<void> | void;
+    listener: (event: CodezStreamEvent) => Promise<void> | void;
   }> = [];
 
-  const zcodeTaskService = {
+  const codezTaskService = {
     listTasks: async () => [],
     listDeletedTaskIds: async () => [],
     createTask: async (params: unknown) => {
@@ -176,7 +176,7 @@ export function createBotsServiceHarness(options: BotsServiceHarnessOptions): Bo
     stopGeneration: async () => undefined,
     onDynamicTaskEvent:
       (params: Record<string, unknown>) =>
-      (listener: (event: ZCodeStreamEvent) => Promise<void> | void) => {
+      (listener: (event: CodezStreamEvent) => Promise<void> | void) => {
         subscriptions.push({ params, listener });
         return { dispose() {} };
       },
@@ -190,7 +190,7 @@ export function createBotsServiceHarness(options: BotsServiceHarnessOptions): Bo
       save: async () => undefined,
       delete: async () => undefined,
     },
-    zcodeTaskService,
+    codezTaskService,
     settingService: {
       get: async () => ({
         locale: "zh-CN",
@@ -234,7 +234,7 @@ export function createBotsServiceHarness(options: BotsServiceHarnessOptions): Bo
     sendPromptCalls,
     service,
     subscriptions,
-    zcodeTaskService,
+    codezTaskService,
   };
 }
 

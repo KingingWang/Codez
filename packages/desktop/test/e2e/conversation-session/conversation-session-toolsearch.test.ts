@@ -1,4 +1,4 @@
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 import { clearAppData } from "../helpers/desktop-app.js";
 import { skipOccupationOnboardingIfPresent } from "../helpers/occupation-onboarding.js";
 import {

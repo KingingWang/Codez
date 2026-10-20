@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { Emitter } from "@zcode/rpc";
-import type { SourceServerConnectionStateSnapshot } from "@zcode/shared";
+import { Emitter } from "@codez/rpc";
+import type { SourceServerConnectionStateSnapshot } from "@codez/shared";
 import type { ManagedSourceServerConnection } from "../src/host/sourceServerConnectionManager.js";
 import { createSourceServerManagementService } from "../src/host/sourceServerManagementService.js";
 

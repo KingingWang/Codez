@@ -1,8 +1,8 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
-import type { Locale, LocalePreference } from "@zcode/shared";
-import { DEFAULT_LOCALE } from "@zcode/shared";
-import type { BroadcastMessage, IBroadcastService, ISettingService } from "@zcode/services";
+import type { Locale, LocalePreference } from "@codez/shared";
+import { DEFAULT_LOCALE } from "@codez/shared";
+import type { BroadcastMessage, IBroadcastService, ISettingService } from "@codez/services";
 import { readNavigatorLanguage, readSafeLocalStorage, writeSafeLocalStorage } from "@/lib/browserEnvironment.js";
 import zhCN from "./locales/zh-CN.js";
 import enUS from "./locales/en-US.js";
@@ -18,7 +18,7 @@ export interface IntlInstance {
   formatMessage(descriptor: { id: string }, values?: Record<string, string | number>): string;
 }
 
-const LOCALE_PREFERENCE_KEY = "zcode-locale-preference";
+const LOCALE_PREFERENCE_KEY = "codez-locale-preference";
 const STATE_LOCALE_CHANNEL = "state:locale";
 
 interface LocaleBroadcastPayload {
@@ -131,7 +131,7 @@ const IntlContext = createContext<IntlContextValue | null>(null);
  * 国际化 Provider —— 管理当前语言和 intl 实例。
  * 如果传入 settingService，会从设置中读取初始语言并在切换时持久化。
  */
-export function ZCodeIntlProvider({
+export function CodezIntlProvider({
   children,
   settingService,
   broadcastService,
@@ -355,10 +355,10 @@ export function ZCodeIntlProvider({
 }
 
 /** 获取 intl 上下文 */
-export function useZCodeIntl(): IntlContextValue {
+export function useCodezIntl(): IntlContextValue {
   const ctx = useContext(IntlContext);
   if (!ctx) {
-    throw new Error("useZCodeIntl 必须在 ZCodeIntlProvider 内使用");
+    throw new Error("useCodezIntl 必须在 CodezIntlProvider 内使用");
   }
   return ctx;
 }

@@ -67,12 +67,12 @@ Anthropic thinking 请求需要保留现有 thinking budget 扣减：先把 conf
 
 ## 验证
 
-- `apps/zcode-cli/packages/core/tests/compact-policy.test.ts` 覆盖未配置 `maxOutputTokens` 时默认 reserve 为 `64_000`。
-- `apps/zcode-cli/packages/core/tests/compact-policy.test.ts` 覆盖 `maxOutputTokens > 64_000` 时 auto compact reserve 封顶为 `64_000`。
-- `apps/zcode-cli/packages/core/tests/runtime-model-anomaly.test.ts` 覆盖 runtime 传给 model adapter 的 `maxOutputTokens` 封顶。
-- `apps/zcode-cli/packages/adapters/tests/runner-options.test.ts` 覆盖 AI SDK 请求 options 的 `maxOutputTokens` 封顶，以及 Anthropic thinking 扣减后的最终请求不超过 `64_000`。
+- `apps/codez-cli/packages/core/tests/compact-policy.test.ts` 覆盖未配置 `maxOutputTokens` 时默认 reserve 为 `64_000`。
+- `apps/codez-cli/packages/core/tests/compact-policy.test.ts` 覆盖 `maxOutputTokens > 64_000` 时 auto compact reserve 封顶为 `64_000`。
+- `apps/codez-cli/packages/core/tests/runtime-model-anomaly.test.ts` 覆盖 runtime 传给 model adapter 的 `maxOutputTokens` 封顶。
+- `apps/codez-cli/packages/adapters/tests/runner-options.test.ts` 覆盖 AI SDK 请求 options 的 `maxOutputTokens` 封顶，以及 Anthropic thinking 扣减后的最终请求不超过 `64_000`。
 - 回归执行：
-  - `pnpm --dir apps/zcode-cli/packages/adapters exec vitest run tests/runner-options.test.ts tests/runner.test.ts`
-  - `pnpm --dir apps/zcode-cli/packages/core exec vitest run tests/runtime-model-anomaly.test.ts tests/compact-policy.test.ts`
+  - `pnpm --dir apps/codez-cli/packages/adapters exec vitest run tests/runner-options.test.ts tests/runner.test.ts`
+  - `pnpm --dir apps/codez-cli/packages/core exec vitest run tests/runtime-model-anomaly.test.ts tests/compact-policy.test.ts`
   - `pnpm typecheck`
   - `pnpm lint`

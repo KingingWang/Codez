@@ -12,7 +12,7 @@ import {
   type RefObject,
 } from "react";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import type { ProviderConfigObject } from "@zcode/provider";
+import type { ProviderConfigObject } from "@codez/provider";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
 import {
@@ -42,7 +42,7 @@ import {
   TID_CHAT_MODEL_SELECT_ITEM,
   TID_CHAT_MODEL_SELECT_TRIGGER,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   isCoarseTouchDevice,
   shouldRestoreChatInputFocusAfterPickerClose,

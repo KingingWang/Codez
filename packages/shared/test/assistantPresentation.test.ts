@@ -1,19 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
   appendAssistantMessagePart,
-  buildZCodeAssistantPresentation,
-  type ZCodeAssistantMessagePart,
+  buildCodezAssistantPresentation,
+  type CodezAssistantMessagePart,
 } from "../src/index.js";
 
 describe("assistant presentation", () => {
   it("uses the final content block as latestPart", () => {
-    const parts: ZCodeAssistantMessagePart[] = [
+    const parts: CodezAssistantMessagePart[] = [
       { type: "content", content: "历史正文" },
       { type: "tool-call", toolId: "tool-1" },
       { type: "content", content: "最终正文" },
     ];
 
-    const presentation = buildZCodeAssistantPresentation({
+    const presentation = buildCodezAssistantPresentation({
       content: "",
       parts,
       toolCalls: [
@@ -41,7 +41,7 @@ describe("assistant presentation", () => {
       { settling: true },
     ]) {
       expect(
-        buildZCodeAssistantPresentation({
+        buildCodezAssistantPresentation({
           content: "正文",
           ...state,
         }).latestPart,
@@ -55,13 +55,13 @@ describe("assistant presentation", () => {
       { type: "content", content: "B" },
     );
 
-    expect(buildZCodeAssistantPresentation({ content: "", parts }).blocks).toEqual([
+    expect(buildCodezAssistantPresentation({ content: "", parts }).blocks).toEqual([
       { type: "content", content: "AB" },
     ]);
   });
 
   it("keeps child tool calls inside the parent tree instead of rendering duplicate root blocks", () => {
-    const presentation = buildZCodeAssistantPresentation({
+    const presentation = buildCodezAssistantPresentation({
       content: "",
       parts: [
         { type: "tool-call", toolId: "parent" },

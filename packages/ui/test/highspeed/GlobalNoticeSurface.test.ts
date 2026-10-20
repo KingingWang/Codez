@@ -8,7 +8,7 @@ import {
   type GlobalNoticeStorage,
 } from "@/global-notice/globalNoticeStore.js";
 import { GlobalNoticeSurface } from "@/global-notice/GlobalNoticeSurface.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 function memoryStorage(): GlobalNoticeStorage {
   const values = new Map<string, string>();
@@ -68,7 +68,7 @@ describe("GlobalNoticeSurface", () => {
 
     const { container } = render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(GlobalNoticeSurface, { store }),
       ),

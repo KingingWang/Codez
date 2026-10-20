@@ -15,7 +15,7 @@ describe("mobile entry public boundary", () => {
     const unsubscribe = vi.fn();
     const entry = new WebRemoteControlEntry({
       auth: {
-        getZCodeJwtToken: () => "jwt",
+        getCodezJwtToken: () => "jwt",
         getActiveAccount: () => null,
         startLogin: vi.fn(),
         logout: vi.fn(async () => {}),

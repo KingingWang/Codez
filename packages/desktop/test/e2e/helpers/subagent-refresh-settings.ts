@@ -2,7 +2,7 @@ import { subagentUpdateCursor } from "./subagent-snapshot-wait.js";
 import { basename, join } from "node:path";
 import { stat } from "node:fs/promises";
 import { Key } from "webdriverio";
-import { encodeCustomModelValue } from "@zcode/shared";
+import { encodeCustomModelValue } from "@codez/shared";
 import {
   TID_CHAT_MODEL_SELECT_GROUP,
   TID_CHAT_MODEL_SELECT_ITEM,
@@ -16,7 +16,7 @@ import {
   TID_SUBAGENT_BUILT_IN_MODEL_TRIGGER,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clickTestIdByDom,
   waitForTestIdByDom,
@@ -172,7 +172,7 @@ async function selectProfileModel(profile: Pick<RefreshProfile, "provider" | "mo
 
 async function submitProfile(name: string, previousName?: string, workspacePath?: string) {
   const root = workspacePath
-    ? join(workspacePath, ".zcode", "agents")
+    ? join(workspacePath, ".codez", "agents")
     : join(getE2EAppDataPaths().storageRoot, "agents");
   const exists = await stat(root).then(
     () => true,

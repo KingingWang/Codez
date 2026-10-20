@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_REMOTE_ASSET_INSTALL_MODE } from "@zcode/shared";
+import { DEFAULT_REMOTE_ASSET_INSTALL_MODE } from "@codez/shared";
 import { useRemoteConnectionForm } from "@/hooks/useRemoteConnectionForm.js";
 
 const listSSHConfigAliases = vi.fn(async () => []);

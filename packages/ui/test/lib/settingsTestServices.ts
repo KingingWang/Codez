@@ -1,4 +1,4 @@
-import type { IServiceAccessor } from "@zcode/services";
+import type { IServiceAccessor } from "@codez/services";
 
 /**
  * 快捷键 label 链（useShortcutCommandLabel → useSettings → useServices）所需的最小服务工厂。

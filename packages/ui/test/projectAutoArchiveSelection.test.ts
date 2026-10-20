@@ -13,15 +13,15 @@ const services = {
   projectService: {},
   remoteProjectService: {},
   broadcastService: { onMessage: () => ({ dispose() {} }) },
-  zcodeTaskService: { onDynamicWorkspaceEvent: () => () => ({ dispose() {} }) },
+  codezTaskService: { onDynamicWorkspaceEvent: () => () => ({ dispose() {} }) },
 };
 vi.mock("@/hooks/useWorkspaceServices.js", () => ({ useBaseWorkspaceServices: () => services }));
 vi.mock("@/store/TabStoreProvider.js", () => ({
   useTabStore: (select: (state: unknown) => unknown) => select({ tabs: fixture.tabs }),
   useTabStoreApi: () => ({ subscribe: () => () => {} }),
 }));
-vi.mock("@/store/zcodeSessionStore.js", () => ({
-  useZCodeSessionStore: Object.assign(
+vi.mock("@/store/codezSessionStore.js", () => ({
+  useCodezSessionStore: Object.assign(
     (select: (state: unknown) => unknown) =>
       select({ workspaces: {}, removeTaskState: fixture.remove }),
     { subscribe: () => () => {} },

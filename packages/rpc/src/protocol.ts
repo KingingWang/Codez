@@ -41,7 +41,7 @@ export interface ConnectionFlowControl {
 export type MessagePortFlowState = "saturated" | "drained";
 
 export interface MessagePortFlowControl {
-  __zcodeRpcControl: "connection-flow-v1";
+  __codezRpcControl: "connection-flow-v1";
   state: MessagePortFlowState;
 }
 
@@ -52,7 +52,7 @@ function isMessagePortFlowControl(value: unknown): value is MessagePortFlowContr
   const record = value as Record<string, unknown>;
   return (
     // 二进制载荷可能有数百万字节；先看控制标记，避免为排除普通消息逐字节枚举。
-    record.__zcodeRpcControl === "connection-flow-v1" &&
+    record.__codezRpcControl === "connection-flow-v1" &&
     (record.state === "saturated" || record.state === "drained") &&
     Object.keys(record).length === 2
   );
@@ -386,7 +386,7 @@ export class MessagePortProtocol implements IMessagePassingProtocol {
   }
 
   sendFlowState(state: MessagePortFlowState): void {
-    this.port.postMessage({ __zcodeRpcControl: "connection-flow-v1", state });
+    this.port.postMessage({ __codezRpcControl: "connection-flow-v1", state });
   }
 
   disconnect(): void {

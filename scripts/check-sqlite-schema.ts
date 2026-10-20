@@ -11,7 +11,7 @@ import { TaskIndexRepo } from "../packages/services/src/session/taskIndexRepo.js
 import { AutomationRepo } from "../packages/services/src/session/automationRepo.js";
 import { OffPeakTaskRepo } from "../packages/services/src/session/offPeakTaskRepo.js";
 import { getTasksIndexDatabasePath, setDataBaseDir } from "../packages/services/src/paths.js";
-import { SQLITE_MIGRATIONS } from "../apps/zcode-cli/packages/adapters/src/storage/session-store/migrations.js";
+import { SQLITE_MIGRATIONS } from "../apps/codez-cli/packages/adapters/src/storage/session-store/migrations.js";
 import { sqliteMigrations } from "../packages/shared/src/sqlite-migrations/index.js";
 import { assertAdditiveSchema, dumpSqliteSchema } from "./sqlite-schema-contract.mjs";
 
@@ -21,7 +21,7 @@ const base =
   process.env.CI_MERGE_REQUEST_DIFF_BASE_SHA || process.env.SQLITE_SCHEMA_BASE_REF || "HEAD";
 const exec = promisify(execFile);
 await exec("git", ["rev-parse", "--verify", `${base}^{commit}`]);
-const directory = await mkdtemp(join(tmpdir(), "zcode-schema-check-"));
+const directory = await mkdtemp(join(tmpdir(), "codez-schema-check-"));
 const cli = new DatabaseSync(":memory:");
 setDataBaseDir(directory);
 const repos = [new AutomationRepo(), new OffPeakTaskRepo(), new TaskIndexRepo()];
@@ -42,7 +42,7 @@ try {
   const schemas = [
     ["packages/services/src/project-storage/schema.baseline.sql", appSql],
     [
-      "apps/zcode-cli/packages/adapters/src/storage/session-store/schema.baseline.sql",
+      "apps/codez-cli/packages/adapters/src/storage/session-store/schema.baseline.sql",
       dumpSqliteSchema(cli),
     ],
   ];

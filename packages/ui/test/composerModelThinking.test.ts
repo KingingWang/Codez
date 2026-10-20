@@ -3,7 +3,7 @@ import { createElement, useState } from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ModelConfigSelect } from "@/ModelConfigSelect.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 
 const groups = [
@@ -58,7 +58,7 @@ function Harness({
           { value: "high", label: "High" },
         ];
   return createElement(
-    ZCodeIntlProvider,
+    CodezIntlProvider,
     { initialLocale: "en-US" },
     createElement(
       TooltipProvider,

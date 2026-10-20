@@ -7,8 +7,8 @@ import { Buffer } from "node:buffer";
 import { selectUpstreamModel } from "#e2e/helpers/upstream-provider";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
-import { TID_TASK_ARCHIVE, TID_TASK_ITEM, testId } from "@zcode/shared/test-ids";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
+import { TID_TASK_ARCHIVE, TID_TASK_ITEM, testId } from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom } from "../../../helpers/desktop-app.js";
 import {
   connectSSHWorkspaceAndSendFirstTurn,
@@ -24,7 +24,7 @@ import {
 } from "../../../helpers/v4-conversation.js";
 
 const CASE_MARKER = "E2E_R3_TASK_ACTIONS";
-const artifactDir = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-task-actions");
+const artifactDir = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-task-actions");
 
 async function readTaskOrder(): Promise<string[]> {
   return browser.execute(
@@ -185,7 +185,7 @@ describe(`${CASE_MARKER}: 多 Source task 的置顶/归档写操作命中原 Sou
           `python3 - <<'PY'
 import base64,json,os,sqlite3
 ids=json.loads(base64.b64decode("${idsBase64}"))
-path=os.path.expanduser("~/.zcode/v2/tasks-index.sqlite")
+path=os.path.expanduser("~/.codez/v2/tasks-index.sqlite")
 with sqlite3.connect("file:"+path+"?mode=ro",uri=True) as connection:
     connection.row_factory=sqlite3.Row
     rows=connection.execute("SELECT task_id,workspace_path,pinned,archived FROM tasks WHERE task_id IN (?,?)",ids).fetchall()

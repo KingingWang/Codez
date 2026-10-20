@@ -1,11 +1,11 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { IPlatformService } from "@zcode/shared";
+import type { IPlatformService } from "@codez/shared";
 import { NewTaskButtonGroup } from "@/NewTaskButtonGroup.js";
 import { PlatformProvider } from "@/hooks/usePlatform.js";
 import { ServiceProvider } from "@/hooks/useServices.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { formatCommandShortcutLabel } from "@/lib/keyboardShortcuts.js";
 import { TabStoreProvider } from "@/store/TabStoreProvider.js";
 import { createSettingsTestServices } from "./lib/settingsTestServices.js";
@@ -21,7 +21,7 @@ function renderNewTaskButtonGroup() {
         PlatformProvider,
         { platform: {} as unknown as IPlatformService },
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(
             TabStoreProvider,

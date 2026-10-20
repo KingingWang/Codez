@@ -67,7 +67,7 @@ const localStorageImporter = vi.fn(async () => localStorageResult);
 let tempRoot = "";
 
 beforeEach(async () => {
-  tempRoot = await mkdtemp(join(tmpdir(), "zcode-browser-data-test-"));
+  tempRoot = await mkdtemp(join(tmpdir(), "codez-browser-data-test-"));
   lockedChromeSidecars.clear();
   vi.clearAllMocks();
 });

@@ -14,10 +14,10 @@ const h = vi.hoisted(() => ({
   external: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStore: (select: (s: typeof h.state) => unknown) => select(h.state),
+  useCodezStore: (select: (s: typeof h.state) => unknown) => select(h.state),
 }));
 vi.mock("@/hooks/usePlatform.js", () => ({ usePlatform: () => ({ openExternal: h.external }) }));
-vi.mock("@/i18n/IntlProvider.js", () => ({ useZCodeIntl: () => ({ locale: "en-US" }) }));
+vi.mock("@/i18n/IntlProvider.js", () => ({ useCodezIntl: () => ({ locale: "en-US" }) }));
 vi.mock("@/rewards/RewardsWebview.js", () => ({
   RewardsWebview: () => createElement("div", { "data-testid": "rewards-view" }),
 }));

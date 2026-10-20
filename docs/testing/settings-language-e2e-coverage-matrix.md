@@ -11,7 +11,7 @@ Settings language coverage verifies that the General settings language selector 
 | Platform locale source    | Electron `app.getPreferredSystemLanguages()` preferred list, Electron `app.getLocale()` fallback |
 | User preference           | `system`, `zh-CN`, `en-US`                                                                       |
 | Persisted resolved locale | `zh-CN`, `en-US`                                                                                 |
-| UI surface                | Settings General section, application chrome driven by `ZCodeIntlProvider`                       |
+| UI surface                | Settings General section, application chrome driven by `CodezIntlProvider`                       |
 
 ## Accepted Cases
 
@@ -47,7 +47,7 @@ Settings language coverage verifies that the General settings language selector 
 ### Promotion (2026-09-18)
 
 - User reviewed and approved all four PN-01/02 family/locale cases. The spec is now in the formal `settings/` directory with helper imports updated. The promotion dry run only supports conversation-session paths, so this follows the existing settings-domain migration procedure.
-- Formal macOS Electron replay without `ZCODE_E2E_MANUAL_REVIEW`: **4/4 passed**. Evidence: `packages/desktop/.e2e-artifacts/desktop-e2e-20260918-010520-642/summary.json`. The first skip-build attempt stopped before tests because the existing renderer lacked the E2E store bridge; the successful run rebuilt the application and agent.
+- Formal macOS Electron replay without `CODEZ_E2E_MANUAL_REVIEW`: **4/4 passed**. Evidence: `packages/desktop/.e2e-artifacts/desktop-e2e-20260918-010520-642/summary.json`. The first skip-build attempt stopped before tests because the existing renderer lacked the E2E store bridge; the successful run rebuilt the application and agent.
 - Workspace typecheck, desktop E2E typecheck, lint (55 existing warnings, 0 errors), architecture and formatting checks passed. Product behavior and test assertions are unchanged.
 - Docker verification/admission is excluded at the user's request. This macOS replay does not establish phone remote transport or Windows/Linux coverage.
 

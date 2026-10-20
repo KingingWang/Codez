@@ -2,8 +2,8 @@ import { once } from "node:events";
 import { createConnection } from "node:net";
 import type { Duplex } from "node:stream";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createHttpServer } from "@zcode/server";
-import { ISystemService, ServiceCollection } from "@zcode/services";
+import { createHttpServer } from "@codez/server";
+import { ISystemService, ServiceCollection } from "@codez/services";
 import {
   connectServerRemote,
   connectServerRemoteOverDuplex,

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { withPluginTelemetry } from "../src/plugins/pluginManagement.js";
 import { createPluginManagementService } from "../src/plugins/pluginManagementService.js";
-import type { IZCodeAgentService } from "../src/zcode-agent/zcodeAgent.js";
+import type { ICodezAgentService } from "../src/codez-agent/codezAgent.js";
 
 describe("plugin management terminal telemetry", () => {
   const plugin = {
@@ -18,7 +18,7 @@ describe("plugin management terminal telemetry", () => {
       ? vi.fn().mockRejectedValue(result)
       : vi.fn().mockResolvedValue(result);
     const service = createPluginManagementService({
-      zcodeAgentService: { installPlugin } as unknown as IZCodeAgentService,
+      codezAgentService: { installPlugin } as unknown as ICodezAgentService,
       reportTelemetryEvent,
     });
     return { service, installPlugin, reportTelemetryEvent };
@@ -96,10 +96,10 @@ describe("plugin telemetry operation boundaries", () => {
     const reportTelemetryEvent = vi.fn();
     const cancelPluginOperation = vi.fn(async () => ({ cancelled: true, operationId: "cancel-1" }));
     const service = createPluginManagementService({
-      zcodeAgentService: {
+      codezAgentService: {
         uninstallPlugin: vi.fn(async () => ({ diagnostics: [] })),
         cancelPluginOperation,
-      } as unknown as IZCodeAgentService,
+      } as unknown as ICodezAgentService,
       reportTelemetryEvent,
     });
     await service.uninstallPlugin({ workspacePath: "/work", pluginId: "demo@market" });
@@ -114,7 +114,7 @@ describe("plugin telemetry operation boundaries", () => {
   it("records explicit cancellation and batch partial separately", async () => {
     const reportTelemetryEvent = vi.fn();
     const service = createPluginManagementService({
-      zcodeAgentService: {
+      codezAgentService: {
         installPlugin: vi.fn(async () => {
           throw Object.assign(new Error("private"), { name: "AbortError" });
         }),
@@ -123,7 +123,7 @@ describe("plugin telemetry operation boundaries", () => {
           diagnostics: [{ severity: "error", code: "failed", message: "secret" }],
           dependencyClosure: [],
         })),
-      } as unknown as IZCodeAgentService,
+      } as unknown as ICodezAgentService,
       reportTelemetryEvent,
     });
     await expect(
@@ -140,9 +140,9 @@ describe("plugin telemetry operation boundaries", () => {
     let clock = 0;
     const finishes: Array<(value: unknown) => void> = [];
     const service = createPluginManagementService({
-      zcodeAgentService: {
+      codezAgentService: {
         installPlugin: vi.fn(() => new Promise((resolve) => finishes.push(resolve))),
-      } as unknown as IZCodeAgentService,
+      } as unknown as ICodezAgentService,
       reportTelemetryEvent,
       now: () => clock,
     });
@@ -190,9 +190,9 @@ describe("serialized cancellation telemetry", () => {
     });
     const reportTelemetryEvent = vi.fn();
     const service = createPluginManagementService({
-      zcodeAgentService: {
+      codezAgentService: {
         installPlugin: vi.fn().mockRejectedValue(error),
-      } as unknown as IZCodeAgentService,
+      } as unknown as ICodezAgentService,
       reportTelemetryEvent,
     });
     await expect(

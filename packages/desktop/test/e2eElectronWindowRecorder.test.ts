@@ -13,7 +13,7 @@ afterEach(async () => {
 
 describe("Electron window recorder", () => {
   it("records renderer frames through Electron capturePage metadata", async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), "zcode-electron-recorder-"));
+    const tempDir = await mkdtemp(join(tmpdir(), "codez-electron-recorder-"));
     tempDirs.push(tempDir);
     const outputPath = join(tempDir, "electron-repro.webm");
     const encodedFrameCounts: number[] = [];
@@ -39,7 +39,7 @@ describe("Electron window recorder", () => {
   });
 
   it("discards passing-case frames without invoking the encoder", async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), "zcode-electron-recorder-"));
+    const tempDir = await mkdtemp(join(tmpdir(), "codez-electron-recorder-"));
     tempDirs.push(tempDir);
     const outputPath = join(tempDir, "electron-repro.webm");
     const frameDir = join(tempDir, "frames");
@@ -61,7 +61,7 @@ describe("Electron window recorder", () => {
   });
 
   it("collects a pre-roll before allowing the case to start", async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), "zcode-electron-recorder-"));
+    const tempDir = await mkdtemp(join(tmpdir(), "codez-electron-recorder-"));
     tempDirs.push(tempDir);
     const startedAt = Date.now();
     const session = await startElectronWindowRecording({
@@ -76,7 +76,7 @@ describe("Electron window recorder", () => {
   });
 
   it("keeps the video timeline aligned with the case when later captures are missed", async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), "zcode-electron-recorder-"));
+    const tempDir = await mkdtemp(join(tmpdir(), "codez-electron-recorder-"));
     tempDirs.push(tempDir);
     const outputPath = join(tempDir, "electron-repro.webm");
     const encodedFrameCounts: number[] = [];
@@ -107,7 +107,7 @@ describe("Electron window recorder", () => {
   });
 
   it("bounds a capturePage request that never settles", async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), "zcode-electron-recorder-"));
+    const tempDir = await mkdtemp(join(tmpdir(), "codez-electron-recorder-"));
     tempDirs.push(tempDir);
     const startedAt = Date.now();
 
@@ -123,7 +123,7 @@ describe("Electron window recorder", () => {
   });
 
   it("bounds a custom encoder that never settles", async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), "zcode-electron-recorder-"));
+    const tempDir = await mkdtemp(join(tmpdir(), "codez-electron-recorder-"));
     tempDirs.push(tempDir);
     const session = await startElectronWindowRecording({
       captureFrame: async () => Buffer.from("fake-png-frame"),
@@ -138,7 +138,7 @@ describe("Electron window recorder", () => {
   });
 
   it("bounds the complete stop path even while tail recording", async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), "zcode-electron-recorder-"));
+    const tempDir = await mkdtemp(join(tmpdir(), "codez-electron-recorder-"));
     tempDirs.push(tempDir);
     const session = await startElectronWindowRecording({
       captureFrame: async () => Buffer.from("fake-png-frame"),

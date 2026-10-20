@@ -1,4 +1,4 @@
-import type { BotActor, BotContextState } from "@zcode/shared";
+import type { BotActor, BotContextState } from "@codez/shared";
 
 /** 群身份不能用发送者代替，否则多人会串到私聊或各自创建任务。 */
 export function getBotConversationKey(

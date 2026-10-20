@@ -1,7 +1,7 @@
 import { runConfirmedProcess } from "#e2e/helpers/confirmed-process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { buildServerRemoteWorkspaceIdentity } from "@zcode/shared";
+import { buildServerRemoteWorkspaceIdentity } from "@codez/shared";
 import {
   TID_SETTINGS_PAGE,
   TID_SETTINGS_BACK_BUTTON,
@@ -10,7 +10,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -50,19 +50,19 @@ const variant = process.env.R3_UNINSTALL_CASE ?? "preserve-data";
 if (variant !== "preserve-data" && variant !== "replace-environment") {
   throw new Error(`Unsupported R3_UNINSTALL_CASE: ${variant}`);
 }
-const artifactDir = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-uninstall");
+const artifactDir = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-uninstall");
 
 async function readInstallFacts(config: SSHConnectionConfig) {
   const result = await runSSHCommand(
     config,
-    'echo "installationId=$(grep -o \'"installationId": *"[^"]*"\' "$HOME/.zcode/server/install.json" 2>/dev/null | grep -oE "[0-9a-f-]{36}")"; ' +
-      'echo "current=$(test -f "$HOME/.zcode/server/current.json" && echo present || echo none)"; ' +
-      'echo "releases=$(ls "$HOME/.zcode/server/releases" 2>/dev/null | tr "\\n" ",")"; ' +
-      'echo "configSentinel=$(cat "$HOME/.zcode/server/config/e2e-sentinel.txt" 2>/dev/null || echo none)"; ' +
-      'echo "legacyAsset=$(test -e "$HOME/.zcode/server/e2e-legacy-asset.bin" && echo present || echo none)"; ' +
-      'echo "userData=$(cat "$HOME/.zcode/e2e-user-data.txt" 2>/dev/null || echo none)"; ' +
-      'echo "serverEntries=$(ls -A "$HOME/.zcode/server" 2>/dev/null | tr "\\n" ",")"; ' +
-      'echo "uninstalledMarker=$(cat "$HOME/.zcode/server/uninstalled.json" 2>/dev/null | tr -d "\\n ")"',
+    'echo "installationId=$(grep -o \'"installationId": *"[^"]*"\' "$HOME/.codez/server/install.json" 2>/dev/null | grep -oE "[0-9a-f-]{36}")"; ' +
+      'echo "current=$(test -f "$HOME/.codez/server/current.json" && echo present || echo none)"; ' +
+      'echo "releases=$(ls "$HOME/.codez/server/releases" 2>/dev/null | tr "\\n" ",")"; ' +
+      'echo "configSentinel=$(cat "$HOME/.codez/server/config/e2e-sentinel.txt" 2>/dev/null || echo none)"; ' +
+      'echo "legacyAsset=$(test -e "$HOME/.codez/server/e2e-legacy-asset.bin" && echo present || echo none)"; ' +
+      'echo "userData=$(cat "$HOME/.codez/e2e-user-data.txt" 2>/dev/null || echo none)"; ' +
+      'echo "serverEntries=$(ls -A "$HOME/.codez/server" 2>/dev/null | tr "\\n" ",")"; ' +
+      'echo "uninstalledMarker=$(cat "$HOME/.codez/server/uninstalled.json" 2>/dev/null | tr -d "\\n ")"',
   );
   return Object.fromEntries(
     result.stdout
@@ -144,8 +144,8 @@ describe(`${CASE_MARKER}: ${variant}，卸载重装与独立环境替换`, () =>
     // 前置：已安装目标；放置 config 哨兵、旧散资产、用户数据哨兵。
     const seed = await runSSHCommand(
       config,
-      'mkdir -p "$HOME/.zcode/server/config" && echo R3_CONFIG_SENTINEL > "$HOME/.zcode/server/config/e2e-sentinel.txt" && ' +
-        'head -c 1024 /dev/zero > "$HOME/.zcode/server/e2e-legacy-asset.bin" && echo R3_USER_DATA > "$HOME/.zcode/e2e-user-data.txt" && echo ok',
+      'mkdir -p "$HOME/.codez/server/config" && echo R3_CONFIG_SENTINEL > "$HOME/.codez/server/config/e2e-sentinel.txt" && ' +
+        'head -c 1024 /dev/zero > "$HOME/.codez/server/e2e-legacy-asset.bin" && echo R3_USER_DATA > "$HOME/.codez/e2e-user-data.txt" && echo ok',
     );
     expect(seed.stdout.trim()).toBe("ok");
     const before = await readInstallFacts(config);
@@ -156,8 +156,8 @@ describe(`${CASE_MARKER}: ${variant}，卸载重装与独立环境替换`, () =>
     if (before.current === "present") {
       // 正式 CLI 卸载：收到每次确认提示后分别输入 DELETE，避免旧管道固定等待 33 秒。
       // 保留两次人工确认协议与 docker exec -i；不使用 --force 或直接删除目录代替卸载。
-      const container = process.env.ZCODE_E2E_SSH_CONTAINER?.trim();
-      if (!container) throw new Error(`${CASE_MARKER}: 缺少 ZCODE_E2E_SSH_CONTAINER`);
+      const container = process.env.CODEZ_E2E_SSH_CONTAINER?.trim();
+      if (!container) throw new Error(`${CASE_MARKER}: 缺少 CODEZ_E2E_SSH_CONTAINER`);
       const uninstallStarted = performance.now();
       const uninstall = await runConfirmedProcess(
         "docker",
@@ -169,10 +169,10 @@ describe(`${CASE_MARKER}: ${variant}，卸载重装与独立环境替换`, () =>
           container,
           "bash",
           "-lc",
-          '"$HOME/.zcode/server/bin/zcode" uninstall --server-root "$HOME/.zcode/server" --json',
+          '"$HOME/.codez/server/bin/codez" uninstall --server-root "$HOME/.codez/server" --json',
         ],
         {
-          prompts: ["Type DELETE to uninstall ZCode Server: ", "Type DELETE again to confirm: "],
+          prompts: ["Type DELETE to uninstall Codez Server: ", "Type DELETE again to confirm: "],
           answer: "DELETE",
           timeoutMs: 120_000,
         },
@@ -294,12 +294,12 @@ describe(`${CASE_MARKER}: ${variant}，卸载重装与独立环境替换`, () =>
     // 身份变化只由真正独立的数据环境触发。完整封存旧数据，不能只删 UUID 却共享历史库。
     const replaced = await runSSHCommand(
       config,
-      'test ! -e "$HOME/r3-uninstall-preserved-data" && mv "$HOME/.zcode" "$HOME/r3-uninstall-preserved-data"',
+      'test ! -e "$HOME/r3-uninstall-preserved-data" && mv "$HOME/.codez" "$HOME/r3-uninstall-preserved-data"',
     );
     expect(replaced.code).toBe(0);
     facts.originalDataArchived = true;
     // 同一线路安装到空环境，检测到不同身份后必须等待确认；取消不改绑原连接。
-    await openWorkspaceDraftFromSidebar(resolve(getE2EAppDataPaths().homeDir, "ZCodeProject"));
+    await openWorkspaceDraftFromSidebar(resolve(getE2EAppDataPaths().homeDir, "CodezProject"));
     await openSSHRemoteDialog(CASE_MARKER);
     await fillSSHPasswordSettings(config);
     await clickLastEnabledSSHDialogButton(CASE_MARKER);
@@ -482,7 +482,7 @@ describe(`${CASE_MARKER}: ${variant}，卸载重装与独立环境替换`, () =>
     expect(reinstalled.userData).toBe("none");
     // 真实旧任务保留在封存的数据环境；新环境不能因目录相同而得到旧历史。
     const runtime = JSON.parse(
-      (await runSSHCommand(config, 'cat "$HOME/.zcode/server/current.json"')).stdout,
+      (await runSSHCommand(config, 'cat "$HOME/.codez/server/current.json"')).stdout,
     );
     const history = await runSSHCommand(
       config,

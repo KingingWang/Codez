@@ -64,4 +64,4 @@ E2E 继续使用 conversation-session-database-startup pending spec；无真实�
 - React 实际挂载测试：静默期间无正文、无计时器；确认迁移后开启计时器；失败清理计时器，重试清空显示。多库中间提交/维护不显示全局保存/收尾。
 - 复审修正：成功 COMMIT 立即发布已提交事实，后续关闭失败不把提交数丢为 0；预检前后每个拿锁阶段独立发布等待，未知等待不会吞掉确认迁移后的提示；异步 realpath 完成时检查 Worker 是否已退出，避免迟到写回。
 - E2E 用例已更新（静默锁等待、刷新、Host 重建、释放锁后 DOM 全程无文字），执行在创建浏览器会话前失败：`session not created: Chrome instance exited`。报告：`packages/desktop/.e2e-artifacts/desktop-e2e-20260915073633586-p297237-e0c4161e03b58901/summary.json`。pending 不晋级；Windows/macOS、手机远控、ARMS 后台入库尚未实测。
-- 日志：本机 `/tmp/zcode-silent-startup-*.log`。静默仅是展示合同，数据库检查/原维护仍会执行；缓存限同次成功准备，不提供跨启动永久跳过。迁移总耗时/内存不作下降承诺，磁盘采样频率不变。
+- 日志：本机 `/tmp/codez-silent-startup-*.log`。静默仅是展示合同，数据库检查/原维护仍会执行；缓存限同次成功准备，不提供跨启动永久跳过。迁移总耗时/内存不作下降承诺，磁盘采样频率不变。

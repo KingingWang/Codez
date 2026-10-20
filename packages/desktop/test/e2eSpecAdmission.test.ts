@@ -42,9 +42,9 @@ describe("desktop E2E environment-gated formal spec admission", () => {
 
   it("keeps explicit SSH runs fail-closed and admits configured default runs", () => {
     const env = {
-      ZCODE_E2E_SSH_HOST: "ssh.example.test",
-      ZCODE_E2E_SSH_USERNAME: "root",
-      ZCODE_E2E_SSH_PASSWORD: "secret-from-test-env",
+      CODEZ_E2E_SSH_HOST: "ssh.example.test",
+      CODEZ_E2E_SSH_USERNAME: "root",
+      CODEZ_E2E_SSH_PASSWORD: "secret-from-test-env",
     };
     expect(hasRequiredSshE2EEnvironment(env)).toBe(true);
     expect(resolveEnvironmentGatedFormalSpecExcludes({ env, targeted: false })).toEqual([]);

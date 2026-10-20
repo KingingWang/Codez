@@ -2,8 +2,8 @@
 
 聊天输入框 placeholder 现在按任务状态和终端宽度分流：
 
-- 空闲态，无历史消息（桌面端）：`Ask ZCode anything, @ for files, folders, or whiteboards, / for commands or agents, $ for skills, # for related conversations`
-- 空闲态，无历史消息（手机 Web 远控）：`Ask ZCode anything…`
+- 空闲态，无历史消息（桌面端）：`Ask Codez anything, @ for files, folders, or whiteboards, / for commands or agents, $ for skills, # for related conversations`
+- 空闲态，无历史消息（手机 Web 远控）：`Ask Codez anything…`
 - 空闲态，有历史消息：`Ask for follow-up changes`
 - 处理任务中：`Keep typing to queue follow-up changes`
 

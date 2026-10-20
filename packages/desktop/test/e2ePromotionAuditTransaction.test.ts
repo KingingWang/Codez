@@ -19,7 +19,7 @@ afterEach(async () => {
 
 describe("conversation E2E promotion audit transaction", () => {
   it("rewrites pending spec imports for the formal spec location", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-e2e-promotion-imports-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-e2e-promotion-imports-"));
     temporaryRoots.push(root);
     const specPath = join(root, "case.test.ts");
     await writeFile(
@@ -47,7 +47,7 @@ describe("conversation E2E promotion audit transaction", () => {
   });
 
   it("returns the real coverage audit process result to the promotion gate", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-e2e-promotion-audit-command-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-e2e-promotion-audit-command-"));
     temporaryRoots.push(root);
     const auditPath = join(root, "audit.mjs");
     await writeFile(
@@ -132,7 +132,7 @@ describe("conversation E2E promotion audit transaction", () => {
 });
 
 async function createPromotionFixture() {
-  const root = await mkdtemp(join(tmpdir(), "zcode-e2e-promotion-audit-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-e2e-promotion-audit-"));
   temporaryRoots.push(root);
   const sourcePath = join(root, "pending", "case.test.ts");
   const targetPath = join(root, "formal", "case.test.ts");

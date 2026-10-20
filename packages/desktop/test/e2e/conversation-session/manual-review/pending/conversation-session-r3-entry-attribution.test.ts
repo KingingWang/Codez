@@ -1,7 +1,7 @@
 import { startDraftFromProject } from "#e2e/helpers/project-sidebar";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { parseRemoteWorkspaceIdentity, providerProvisioningResultSchema } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity, providerProvisioningResultSchema } from "@codez/shared";
 import { clearAppData } from "../../../helpers/desktop-app.js";
 import {
   getUpstreamRequestRecordCount,
@@ -46,13 +46,13 @@ import {
 const CASE_MARKER = "E2E_R3_ENTRY_ATTRIBUTION";
 const REPLY = "R3_ENTRY_ATTRIBUTION_REPLY";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-entry-attribution",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-entry-attribution",
 );
 
 async function readProvisioningApplied(config: SSHConnectionConfig): Promise<number> {
   const result = await runSSHCommand(
     config,
-    'cat "$HOME/.zcode/v2/runtime/provider/provisioning.json"',
+    'cat "$HOME/.codez/v2/runtime/provider/provisioning.json"',
   );
   // 旧路径不存在时 before/after 都变成 0，会让整个同步断言假通过。
   expect(result.code).toBe(0);
@@ -283,7 +283,7 @@ describe(`${CASE_MARKER}: 两个 Source 下全局新建/项目入口的目标归
     const appliedBAfter = await readProvisioningApplied(targetB);
     const coreB = await runSSHCommand(
       targetB,
-      'tr -d "\\n " < "$HOME/.zcode/server/run/status.json" | cut -c1-200; pgrep -fc "app-server --stdio" || true',
+      'tr -d "\\n " < "$HOME/.codez/server/run/status.json" | cut -c1-200; pgrep -fc "app-server --stdio" || true',
     );
     facts.secondProjectOnB = {
       identity: projectB.workspaceIdentity,

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { IPlatformService } from "@zcode/shared";
+import type { IPlatformService } from "@codez/shared";
 import {
   CHAT_ERROR_BANNER_ARMS_EVENT_NAME,
   CHAT_ERROR_BANNER_ARMS_GROUP,

@@ -5,9 +5,9 @@
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import type { WorkflowCausalityGraphData } from "@/components/workflow-graph/types.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 vi.mock("@/ControlHintTooltip.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/ControlHintTooltip.js")>()),
@@ -55,7 +55,7 @@ const H2 = "hole#a0000002"; // 评判
 const H11 = "hole#a0000011"; // 挑选（在 H1 的体里）
 
 function html(node: ReactNode, locale: "zh-CN" | "en-US" = "zh-CN"): string {
-  return renderToStaticMarkup(createElement(ZCodeIntlProvider, { initialLocale: locale }, node));
+  return renderToStaticMarkup(createElement(CodezIntlProvider, { initialLocale: locale }, node));
 }
 
 const OPEN: WorkflowCausalityGraphData = {

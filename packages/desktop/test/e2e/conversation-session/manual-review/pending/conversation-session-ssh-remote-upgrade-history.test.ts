@@ -1,6 +1,6 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { buildRemoteWorkspaceIdentity, parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { buildRemoteWorkspaceIdentity, parseRemoteWorkspaceIdentity } from "@codez/shared";
 import {
   TID_COMPOSER_REMOTE_CONNECTION,
   TID_COMPOSER_WORKSPACE_TRIGGER,
@@ -10,7 +10,7 @@ import {
   TID_TASK_SETTINGS_BUTTON,
   TID_TASK_ITEM,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -63,12 +63,12 @@ const scenario = process.env.R3_HISTORY_CASE ?? "single";
 // conflict：canonical 与 source 的身份冲突；conflict-sources：canonical 不含该任务，两个 source 之间冲突。
 const conflictScenario = scenario === "conflict" || scenario === "conflict-sources";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-upgrade-history",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-upgrade-history",
 );
 
 async function replaceRunApplication(base: string) {
   const desktopRoot = resolve(import.meta.dirname, "../../../../..");
-  const runId = process.env.ZCODE_E2E_RUN_ID;
+  const runId = process.env.CODEZ_E2E_RUN_ID;
   if (!runId) throw new Error("缺少隔离应用路径");
   const cache = join(desktopRoot, ".e2e-cache", runId);
   const copies: Array<[string, string]> = [
@@ -188,7 +188,7 @@ async function readHistoryStore(
   await writeFile(
     script,
     `import { DatabaseSync } from 'node:sqlite';
-const db = new DatabaseSync(process.env.HOME+'/.zcode/v2/tasks-index.sqlite');
+const db = new DatabaseSync(process.env.HOME+'/.codez/v2/tasks-index.sqlite');
 db.exec('PRAGMA busy_timeout=5000');
 if(process.argv[2]==='conflict') {
  const first=db.prepare('SELECT * FROM tasks WHERE task_id=?').get(process.argv[3]);
@@ -219,13 +219,13 @@ const hasProject= db.prepare('PRAGMA table_info(tasks)').all().some(row=>row.nam
 const result={injected,tasks:db.prepare('SELECT task_id,workspace_key,'+(hasProject?'project_id':'NULL AS project_id')+' FROM tasks').all(),projects:tables.has('projects')?db.prepare('SELECT project_id,name FROM projects WHERE deleted=0').all():[],roots:tables.has('project_roots')?db.prepare('SELECT project_id,root_path FROM project_roots').all():[],aliases:tables.has('workspace_alias')?db.prepare('SELECT * FROM workspace_alias').all():[],ledgers:tables.has('workspace_migration_ledger')?db.prepare('SELECT * FROM workspace_migration_ledger').all():[],conflicts:tables.has('workspace_migration_conflicts')?db.prepare('SELECT task_id,source_key,canonical_key FROM workspace_migration_conflicts').all():[]};
 db.close();process.stdout.write(JSON.stringify(result));\n`,
   );
-  const remoteRoot = "/home/" + config.username + "/r3-workspace-a/.zcode-e2e/history-fixture";
+  const remoteRoot = "/home/" + config.username + "/r3-workspace-a/.codez-e2e/history-fixture";
   expect((await runSSHCommand(config, `mkdir -p '${remoteRoot}'`)).code).toBe(0);
   await uploadSSHFixtureFile(config, script, `${remoteRoot}/history-store.mjs`);
   // 冲突必须在旧程序停止后、当前程序启动前注入；旧主链没有 Server runtime，不能先偷跑迁移。
   const node = mode.startsWith("conflict")
     ? await prepareSSHHistoryFixtureNode(config, remoteRoot)
-    : `${JSON.parse((await runSSHCommand(config, 'cat "$HOME/.zcode/server/current.json"')).stdout).releaseDir}/runtime/node`;
+    : `${JSON.parse((await runSSHCommand(config, 'cat "$HOME/.codez/server/current.json"')).stdout).releaseDir}/runtime/node`;
   const result = await runSSHCommand(
     config,
     `'${node}' '${remoteRoot}/history-store.mjs' '${mode}' '${firstId}' '${secondId}'`,
@@ -252,7 +252,7 @@ db.close();process.stdout.write(JSON.stringify(result));\n`,
 async function listMigrationBackups(config: SSHConnectionConfig): Promise<string> {
   const result = await runSSHCommand(
     config,
-    'find "$HOME/.zcode/server/migration-backups" -name tasks-index.sqlite -type f 2>/dev/null || true',
+    'find "$HOME/.codez/server/migration-backups" -name tasks-index.sqlite -type f 2>/dev/null || true',
   );
   return result.stdout.trim();
 }
@@ -346,14 +346,14 @@ async function selectMigratedTask(taskId: string, facts: Record<string, unknown>
       after: await browser.execute(() => {
         const state = (
           window as Window & {
-            __zcodeTabStoreE2E?: {
+            __codezTabStoreE2E?: {
               getState(): {
                 activeWorkspaceIdentity?: string | null;
                 tabs?: Array<{ workspaceIdentity?: string; remoteSessionId?: string }>;
               };
             };
           }
-        ).__zcodeTabStoreE2E?.getState();
+        ).__codezTabStoreE2E?.getState();
         return {
           activeIdentity: state?.activeWorkspaceIdentity,
           tabs: state?.tabs?.map((tab) => ({
@@ -589,7 +589,7 @@ describe(`${MARKER}: staging 自然历史升级与回退`, () => {
       expect(store.ledgers.some((ledger) => ledger.status === "completed")).toBe(true);
       const backups = await runSSHCommand(
         prepared.config,
-        'find "$HOME/.zcode/server/migration-backups" -name tasks-index.sqlite -type f',
+        'find "$HOME/.codez/server/migration-backups" -name tasks-index.sqlite -type f',
       );
       expect(backups.stdout.trim()).not.toBe("");
       facts.mergeLedgerAndBackups = store;

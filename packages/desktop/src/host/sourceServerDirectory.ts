@@ -1,7 +1,7 @@
 /* eslint-disable max-lines -- Source/Profile/Workspace 三实体迁移与凭据重定向需要保持同一事务编排。 */
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import { Emitter, type Event } from "@zcode/rpc";
+import { Emitter, type Event } from "@codez/rpc";
 import {
   buildServerRemoteWorkspaceIdentity,
   isValidWslUser,
@@ -16,17 +16,17 @@ import {
   type RemoteWorkspaceSessionEntry,
   type RemoteTarget,
   type SourceServerDeclaredWorkspaceWire,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type {
   ICredentialService,
   ISettingService,
   UpdateConnectionProfileInput,
-} from "@zcode/services";
+} from "@codez/services";
 import {
   getDataBaseDir,
   migrateControllerRemoteWorkspaceIdentity,
   type ControllerRemoteIdentityMigrationReport,
-} from "@zcode/services/node";
+} from "@codez/services/node";
 
 export interface SourceServerDirectoryOptions {
   settingService: ISettingService;
@@ -167,7 +167,7 @@ export class SourceServerDirectory {
       options.migrateControllerIdentity ??
       (async (input) =>
         await migrateControllerRemoteWorkspaceIdentity({
-          dbPath: join(getDataBaseDir(), ".zcode", "v2", "tasks-index.sqlite"),
+          dbPath: join(getDataBaseDir(), ".codez", "v2", "tasks-index.sqlite"),
           ...input,
         }));
   }

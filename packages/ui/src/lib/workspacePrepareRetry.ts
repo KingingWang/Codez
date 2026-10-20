@@ -1,7 +1,7 @@
-import { isNonRetryableWorkspacePrepareError, type ZCodeProvider } from "@zcode/shared";
+import { isNonRetryableWorkspacePrepareError, type CodezProvider } from "@codez/shared";
 
 export function shouldAutoRetryWorkspacePrepare(errorMessage: string) {
-  // Bugfix: 远端 ZCode Agent 在 Docker 里经常会因为资源不匹配、可选依赖缺失或进程启动即退出而失败。
+  // Bugfix: 远端 Codez Agent 在 Docker 里经常会因为资源不匹配、可选依赖缺失或进程启动即退出而失败。
   // 这些错误之前没有命中“不可自动重试”名单，草稿态预热会不断回到 loading，用户看起来像永远卡住。
   // 这里把“初始化前退出/超时/依赖缺失”统一视为确定性失败，停止自动重试，让 UI 尽快落成 failed。
   // Bugfix: provider 未登录时 prepareWorkspace 会触发 OAuth；若用户未完成登录，
@@ -13,7 +13,7 @@ export function shouldAutoRetryWorkspacePrepare(errorMessage: string) {
 }
 
 export function shouldRestartWorkspaceProcessBeforePrepareRetry(_params: {
-  provider: ZCodeProvider;
+  provider: CodezProvider;
   errorMessage: string;
 }): boolean {
   // 仅剩 glm provider：不再需要针对三方 CLI 崩溃文案的重启重试策略。

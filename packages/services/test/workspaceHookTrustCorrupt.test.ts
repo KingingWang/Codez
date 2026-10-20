@@ -7,7 +7,7 @@ import { createHooksService } from "../src/hooks/hooksService.js";
 const roots: string[] = [];
 
 function makeRoot(): string {
-  const root = mkdtempSync(join(tmpdir(), "zcode-hook-trust-corrupt-"));
+  const root = mkdtempSync(join(tmpdir(), "codez-hook-trust-corrupt-"));
   roots.push(root);
   return root;
 }
@@ -33,7 +33,7 @@ describe("readPersistentWorkspaceHookTrustDigests corrupt 检测（#7）", () =>
     const home = makeRoot();
     const workspace = makeRoot();
     mkdirSync(join(workspace, ".git"));
-    writeJson(join(workspace, ".zcode", "config.json"), {
+    writeJson(join(workspace, ".codez", "config.json"), {
       hooks: {
         enabled: true,
         events: {
@@ -60,7 +60,7 @@ describe("readPersistentWorkspaceHookTrustDigests corrupt 检测（#7）", () =>
     const home = makeRoot();
     const workspace = makeRoot();
     mkdirSync(join(workspace, ".git"));
-    writeJson(join(workspace, ".zcode", "config.json"), {
+    writeJson(join(workspace, ".codez", "config.json"), {
       hooks: {
         enabled: true,
         events: {
@@ -82,7 +82,7 @@ describe("readPersistentWorkspaceHookTrustDigests corrupt 检测（#7）", () =>
     // 写入合法完整的 trust 记录以证明：若 trust store 畸形，即使存在有效记录也不会被采纳。
     // CR-01 后 services 使用与 runtime 相同的完整 strict schema——记录必须包含全部
     // 必需字段（旧测试只写 identity+digest，恰好依赖了被修复的局部校验 bug）。
-    writeJson(join(home, ".zcode", "security", "workspace-hook-trust-v1.json"), {
+    writeJson(join(home, ".codez", "security", "workspace-hook-trust-v1.json"), {
       schemaVersion: 1,
       records: [
         {
@@ -93,7 +93,7 @@ describe("readPersistentWorkspaceHookTrustDigests corrupt 检测（#7）", () =>
           grantedAt: "2026-08-17T09:00:00.000Z",
           eventAtGrant: "SessionStart",
           displayCommandAtGrant: "echo hello",
-          sourcePathAtGrant: ".zcode/config.json",
+          sourcePathAtGrant: ".codez/config.json",
         },
       ],
     });
@@ -106,7 +106,7 @@ describe("readPersistentWorkspaceHookTrustDigests corrupt 检测（#7）", () =>
 
     // 覆盖为畸形 JSON。
     writeJson(
-      join(home, ".zcode", "security", "workspace-hook-trust-v1.json"),
+      join(home, ".codez", "security", "workspace-hook-trust-v1.json"),
       "{ this is :: not valid JSON !!!",
     );
 
@@ -134,7 +134,7 @@ describe("readPersistentWorkspaceHookTrustDigests corrupt 检测（#7）", () =>
     const home = makeRoot();
     const workspace = makeRoot();
     mkdirSync(join(workspace, ".git"));
-    writeJson(join(workspace, ".zcode", "config.json"), {
+    writeJson(join(workspace, ".codez", "config.json"), {
       hooks: {
         enabled: true,
         events: {
@@ -146,7 +146,7 @@ describe("readPersistentWorkspaceHookTrustDigests corrupt 检测（#7）", () =>
     vi.stubEnv("USERPROFILE", home);
 
     // 根节点为数组（非对象）。
-    writeJson(join(home, ".zcode", "security", "workspace-hook-trust-v1.json"), []);
+    writeJson(join(home, ".codez", "security", "workspace-hook-trust-v1.json"), []);
 
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 

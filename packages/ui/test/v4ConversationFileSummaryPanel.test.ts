@@ -4,9 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   TurnHeaderRow,
   V4ConversationFileChangesResult,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { DEFAULT_CODE_PREVIEW_SETTINGS } from "@/lib/codePreviewSettings.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { ConversationFileSummaryPanel } from "@/v4/ConversationFileSummaryPanel.js";
 import type { ConversationRowRenderContext } from "@/v4/conversationRowContext.js";
 
@@ -201,7 +201,7 @@ describe("ConversationFileSummaryPanel", () => {
       await act(async () => {
         root.render(
           createElement(
-            ZCodeIntlProvider,
+            CodezIntlProvider,
             { initialLocale: "zh-CN" },
             createElement(ConversationFileSummaryPanel, {
               header: header({
@@ -239,7 +239,7 @@ describe("ConversationFileSummaryPanel", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationFileSummaryPanel, {
             header: header(),
@@ -282,7 +282,7 @@ describe("ConversationFileSummaryPanel", () => {
     };
     const render = (rowId: number) =>
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ConversationFileSummaryPanel, {
           header: header({ rowId, entityId: `header-${rowId}` }),
@@ -320,7 +320,7 @@ describe("ConversationFileSummaryPanel", () => {
     await act(async () =>
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationFileSummaryPanel, {
             header: header(),
@@ -379,7 +379,7 @@ describe("ConversationFileSummaryPanel", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(ConversationFileSummaryPanel, {
             header: header(),
@@ -464,7 +464,7 @@ describe("ConversationFileSummaryPanel", () => {
     };
     const renderPanelForState = (state: TurnHeaderRow["state"]) =>
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ConversationFileSummaryPanel, {
           header: header({ state }),
@@ -527,7 +527,7 @@ describe("ConversationFileSummaryPanel", () => {
     };
     const renderPanelForFileState = (state: "active" | "reverted") =>
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ConversationFileSummaryPanel, {
           header: header({

@@ -5,7 +5,7 @@ import type {
   ProviderFamilyConnectionSelectionSettings,
   UsageEntitlementSubscriptionDetail,
   UsageQuotaLimit,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { ProviderSettingsFormProvider } from "@/lib/providerSettingsFormTypes.js";
 import {
   getModelProviderFamilySpec,
@@ -13,7 +13,7 @@ import {
   isStartPlanModelProviderId,
   MODEL_PROVIDER_FAMILY_SPECS,
   resolveModelProviderFamilySpecByProviderId,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { resolveMcpQuotaLimit } from "@/lib/codingPlanQuotaPresentation.js";
 import { resolveUsageEntitlementOutcome } from "@/lib/codingPlanProvider.js";
 import { formatTeamPlanDisplayName } from "@/lib/teamPlanDisplayName.js";
@@ -66,8 +66,8 @@ export function resolveCodingPlanEntitlementState({
   providerId: string;
   /** 当前账号是否明确拥有该 Provider 对应的产品权益。 */
   accountEntitled: boolean;
-  accountAvailability?: import("@zcode/provider").AccountProviderState["availability"];
-  accountUnavailableReason?: import("@zcode/provider").AccountProviderState["unavailableReason"];
+  accountAvailability?: import("@codez/provider").AccountProviderState["availability"];
+  accountUnavailableReason?: import("@codez/provider").AccountProviderState["unavailableReason"];
   entitlement?: CodingPlanEntitlementState;
   modelProvidersLoading: boolean;
 }): ResolvedCodingPlanEntitlementState {

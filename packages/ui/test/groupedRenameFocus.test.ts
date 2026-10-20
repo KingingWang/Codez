@@ -5,7 +5,7 @@ import { createElement, type ComponentProps, type ReactNode } from "react";
 import { GroupItem } from "@/project-sidebar/grouped/group-item.js";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 vi.mock("@/ControlHintTooltip.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/ControlHintTooltip.js")>()),

@@ -19,7 +19,7 @@ afterEach(async () => {
 });
 
 async function createFixture(mode: MigrationMode) {
-  const root = await mkdtemp(join(tmpdir(), "zcode-offpeak-identity-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-offpeak-identity-"));
   const dbPath = join(root, "tasks-index.sqlite");
   const db = new DatabaseSync(dbPath);
   cleanup.push(async () => {

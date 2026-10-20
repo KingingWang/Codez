@@ -2,28 +2,28 @@
 import { createElement } from "react";
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ZCodeOffPeakTask } from "@zcode/shared";
-import { TID_OFFPEAK_CARD } from "@zcode/shared/test-ids";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import type { CodezOffPeakTask } from "@codez/shared";
+import { TID_OFFPEAK_CARD } from "@codez/shared/test-ids";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { OffPeakTaskList } from "@/settings/OffPeakTaskList.js";
 
 afterEach(cleanup);
 
-function task(overrides: Partial<ZCodeOffPeakTask> & { offPeakTaskId: string }): ZCodeOffPeakTask {
+function task(overrides: Partial<CodezOffPeakTask> & { offPeakTaskId: string }): CodezOffPeakTask {
   return {
     title: overrides.offPeakTaskId,
     prompt: "prompt",
     status: "queued",
     createdAt: 1,
     ...overrides,
-  } as ZCodeOffPeakTask;
+  } as CodezOffPeakTask;
 }
 
-function renderList(tasks: ZCodeOffPeakTask[]) {
+function renderList(tasks: CodezOffPeakTask[]) {
   const noop = vi.fn();
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(OffPeakTaskList, {
         tasks,
@@ -48,7 +48,7 @@ describe("OffPeakTaskList render", () => {
 
     view.rerender(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(OffPeakTaskList, {
           tasks: [...eight, task({ offPeakTaskId: "t-8" })],

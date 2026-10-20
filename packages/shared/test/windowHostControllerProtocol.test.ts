@@ -8,7 +8,7 @@ import {
   windowHostControllerTaskFrameSchema,
   windowHostControllerWorkspaceFrameSchema,
   windowHostTaskAddressSchema,
-} from "../src/zcode-protocol-v4/index.js";
+} from "../src/codez-protocol-v4/index.js";
 
 const remoteAddress = {
   remoteSessionId: "remote-session-1",

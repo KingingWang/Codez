@@ -2,7 +2,7 @@
 
 ## 状态
 
-- 范围：Agent 内的 MCP connection pool / stdio transport、ZCode Protocol 动态通知、Host 转发和 Desktop main ARMS 上报。
+- 范围：Agent 内的 MCP connection pool / stdio transport、Codez Protocol 动态通知、Host 转发和 Desktop main ARMS 上报。
 - 改动层级：`commit-effect`（新增低频、旁路的运行时观测）。
 - 不改变 MCP 连接、工具调用、session 回收、desktop continuous 或 mobile replayable 交付语义。
 
@@ -21,20 +21,20 @@ HTTP/SSE MCP 没有本地 OS 子进程，不发 process start/crash 与资源样
 
 ## 安全标识
 
-- `mcp_source`：按运行时分发渠道分为三类：内置宿主 MCP 与 ZCode Official Marketplace
+- `mcp_source`：按运行时分发渠道分为三类：内置宿主 MCP 与 Codez Official Marketplace
   （`zcode-plugins-official`，包含 Builtin Plugin 与 CDN Plugin）声明的 MCP 统一为
   `builtin`；Personal Source / Inline Plugin 声明的 MCP 为 `plugin`；用户、项目等普通 MCP
   配置为 `custom`。Plugin runtime namespace 只表达工具命名空间，不能单凭
   `plugin:<pluginName>:<serverName>` 推断分发渠道；Plugin loader 必须在公共配置校验之后附加
   runtime-only provenance，public config schema 不接受该字段。
 - `mcp_id`：同一种 MCP 在当前安装内稳定。内置 `node_repl` 使用公开 ID
-  `builtin:node_repl`；ZCode Official Marketplace Plugin 使用公开 manifest identity
+  `builtin:node_repl`；Codez Official Marketplace Plugin 使用公开 manifest identity
   `builtin:<pluginName>:<serverKey>`；Personal Source Plugin 与用户配置 MCP 继续使用设备盐 HMAC
   后的 `plugin:<digest>` / `custom:<digest>`。公开 ID 的每个 `:` 分段只保留
   `[A-Za-z0-9._~-]`，其他 UTF-8 字节使用大写 `%HH` 编码，因此可读、可逆且不会把控制字符直接
   送入 ARMS。
 - `mcp_instance_id`：每次正式 stdio 连接成功时生成的随机 ID；重连会产生新 ID。
-- 除 ZCode 官方市场公开的 `<pluginName>:<serverKey>` identity 外，ARMS 禁止上传原始 server
+- 除 Codez 官方市场公开的 `<pluginName>:<serverKey>` identity 外，ARMS 禁止上传原始 server
   name；command、args、cwd、workspace identity/path、env、header、stderr 和 PID 始终禁止上传。
 - 本地结构化日志同时记录 `mcp_id`、`mcp_instance_id`与原有 server name / PID，用于反查。
 
@@ -99,7 +99,7 @@ AND OS 资源采样仍能观察到该进程
 MCP adapter / pool
   -> process-scoped McpTelemetryTracker
   -> process/mcpTelemetry strict notification
-  -> ZCodeAgentService dynamic event
+  -> CodezAgentService dynamic event
   -> trusted Desktop Host relay
   -> Host parentPort strict response
   -> Desktop main ARMS sendCustom
@@ -157,7 +157,7 @@ task snapshot / queue / replay / owner command ------------ X
 3. 不上传原始 MCP 名、命令、路径、凭据、stderr 或 PID。
 4. workspace-shared 进程用 owner lease 计数，不伪造单一 session owner。
 5. Desktop main/relay 不持有 MCP 业务状态；mobile 不重复上报。
-6. ZCode Official Marketplace 的 Builtin/CDN Plugin MCP 与宿主 `node_repl` 均按
+6. Codez Official Marketplace 的 Builtin/CDN Plugin MCP 与宿主 `node_repl` 均按
    `mcp_source=builtin` 聚合；Personal Source / Inline Plugin MCP 继续按 `plugin` 聚合，
    不能用相同的 `plugin:` runtime namespace 混淆两种渠道。
 
@@ -169,13 +169,13 @@ task snapshot / queue / replay / owner command ------------ X
 | ------------------------------------- | ------------------------------------------------ | ----- | ------------------------- |
 | `createMcpAdapterConnectionPool`      | protocol entrypoint -> session lease             | 2     | process tracker owner     |
 | `NodeMcpAdapter.openServerConnection` | pool adapter -> stdio transport                  | 2     | start/crash/PID authority |
-| `createZCodeProcessResourceSampler`   | protocol notification -> service -> Host -> main | 2     | forwarding pattern        |
+| `createCodezProcessResourceSampler`   | protocol notification -> service -> Host -> main | 2     | forwarding pattern        |
 
 ### Graph Drift / Delta
 
 - feature graph 的 `capability.data-observability` 已登记本 spec、`createMcpTelemetryTracker`
   与 `reportMcpTelemetryToArms` 两个 code seed，见
-  `.agents/skills/feature-boundary-planner/references/zcode-feature-graph.yaml`。
+  `.agents/skills/feature-boundary-planner/references/codez-feature-graph.yaml`。
 - 当前保留三类生命周期事件；CPU / 内存采样与资源属性统一以全进程 spec 为准。
   超过 60 秒的疑似孤儿只保留为 tracker 内部事实。
 
@@ -187,7 +187,7 @@ task snapshot / queue / replay / owner command ------------ X
 | ----- | ----------------------------------- | -------------------------------------------- |
 | 2     | 需要定位具体 MCP                    | 公开 ID + 匿名设备稳定 ID + 随机 instance ID |
 | 3     | 加孤儿判定，稳妥按超过 60 秒        | `unowned_ms > 60_000` 且 OS 仍存活           |
-| 4     | ZCode 官方市场的 MCP 都归为内置来源 | Builtin/CDN Plugin 均为 `mcp_source=builtin` |
+| 4     | Codez 官方市场的 MCP 都归为内置来源 | Builtin/CDN Plugin 均为 `mcp_source=builtin` |
 | 5     | 内置来源 MCP 不匿名                 | 官方 Plugin 使用公开 canonical `mcp_id`      |
 
 ### Boundary Decisions
@@ -210,6 +210,6 @@ task snapshot / queue / replay / owner command ------------ X
 | MCP-ARMS-006 | tracked process has no owners                            | sample at 60s / 60s+1ms  | false at 60s, true after 60s                                                    | tracker                 | unit                |
 | MCP-ARMS-007 | valid/invalid notification and Host message              | forward                  | strict validation, local/remote only, mobile excluded                           | shared/service/Host     | unit                |
 | MCP-ARMS-008 | main receives each event kind                            | report                   | exact three lifecycle ARMS names; legacy memory ignored                         | Desktop reporter        | unit                |
-| MCP-ARMS-009 | ZCode 官方市场与 Personal Source Plugin 各声明 stdio MCP | discover + process start | 官方 Plugin source=builtin 且 ID 可读；Personal Source source=plugin 且 ID 匿名 | loader + pool + tracker | unit                |
+| MCP-ARMS-009 | Codez 官方市场与 Personal Source Plugin 各声明 stdio MCP | discover + process start | 官方 Plugin source=builtin 且 ID 可读；Personal Source source=plugin 且 ID 匿名 | loader + pool + tracker | unit                |
 
 GUI/conversation 产品状态不变，不新增 conversation case catalog/E2E matrix 组合。

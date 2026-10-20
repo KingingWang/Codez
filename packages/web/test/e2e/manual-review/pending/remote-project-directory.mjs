@@ -1,12 +1,12 @@
 // MRO02：真实 Web 页面、RPC、Host 项目服务和隔离 SQLite；不发送模型请求。
-// 启动：pnpm --filter @zcode/web exec vite --host 127.0.0.1 --port 5178 --strictPort
+// 启动：pnpm --filter @codez/web exec vite --host 127.0.0.1 --port 5178 --strictPort
 // 运行：pnpm exec tsx packages/web/test/e2e/manual-review/pending/remote-project-directory.mjs
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium } from "playwright-core";
-import { ServiceChannels } from "@zcode/shared";
-import { V4_WIRE_PROTOCOL_VERSION } from "@zcode/shared/zcode-protocol-v4";
+import { ServiceChannels } from "@codez/shared";
+import { V4_WIRE_PROTOCOL_VERSION } from "@codez/shared/codez-protocol-v4";
 import { BufferReader, deserialize, Emitter, VSBuffer } from "../../../../../rpc/src/index.ts";
 import { taskSnapshotFrame } from "./remote-task-open.fixture.mjs";
 import { createProjectDirectoryFixture } from "./remote-project-directory.fixture.mjs";
@@ -71,9 +71,9 @@ try {
           socket.send(JSON.stringify({ type: "pair_status_ack", pair_status: "matched" }));
         const payload = message.payload;
         if (!payload) return;
-        if (payload.zcode_type === "rpc-frame" || payload.zcode_type === "rpc-frame-ack") {
+        if (payload.codez_type === "rpc-frame" || payload.codez_type === "rpc-frame-ack") {
           if (
-            payload.zcode_type === "rpc-frame" &&
+            payload.codez_type === "rpc-frame" &&
             payload.bridgeSessionId === directoryReadinessRecovery.bridgeSessionId &&
             payload.fragmentCount === 1
           ) {
@@ -102,26 +102,26 @@ try {
           workspaces: fixture.workspaces,
           initialViewState: view,
         };
-        if (payload.zcode_type === "bootstrap-request")
+        if (payload.codez_type === "bootstrap-request")
           send(socket, {
-            zcode_type: "bootstrap-response",
+            codez_type: "bootstrap-response",
             requestId: payload.requestId,
             success: true,
             result,
           });
-        if (payload.zcode_type === "workspace-list-request")
+        if (payload.codez_type === "workspace-list-request")
           send(socket, {
-            zcode_type: "workspace-list-response",
+            codez_type: "workspace-list-response",
             requestId: payload.requestId,
             success: true,
             result,
           });
-        if (payload.zcode_type === "mobile-view-state-update") {
+        if (payload.codez_type === "mobile-view-state-update") {
           fixture.traffic.views.push(payload);
           view = payload.viewState;
-          send(socket, { zcode_type: "mobile-view-state-updated", requestId: payload.requestId });
+          send(socket, { codez_type: "mobile-view-state-updated", requestId: payload.requestId });
         }
-        if (payload.zcode_type !== "workspace-bridge-open") return;
+        if (payload.codez_type !== "workspace-bridge-open") return;
         fixture.traffic.opens.push(payload);
         const target = fixture.workspaces.find(
           (item) => (item.workspaceIdentity || item.workspacePath) === payload.workspaceKey,
@@ -142,7 +142,7 @@ try {
         const channels = fixture.channels(remoteBridge);
         // relay RPC 首帧只能在客户端收到 ready、登记桥接代际后发送，顺序沿用共享夹具。
         send(socket, {
-          zcode_type: "workspace-bridge-ready",
+          codez_type: "workspace-bridge-ready",
           requestId: payload.requestId,
           bridgeSessionId: payload.bridgeSessionId,
           bridgeGeneration: payload.bridgeGeneration,
@@ -153,7 +153,7 @@ try {
           theme,
           events: {
             ...channels.events,
-            [`${ServiceChannels.ZCodeAgent}:onDynamicConversationFrame`]: frames.event,
+            [`${ServiceChannels.CodezAgent}:onDynamicConversationFrame`]: frames.event,
           },
           responses: {
             ...channels.responses,
@@ -163,7 +163,7 @@ try {
               return channels.responses["window-project-changes:getCapabilities"](...args);
             },
             [`${ServiceChannels.SettingsSync}:getFirstRunPromptState`]: { handled: true },
-            [`${ServiceChannels.ZCodeAgent}:helloConversationV4`]: {
+            [`${ServiceChannels.CodezAgent}:helloConversationV4`]: {
               kind: "hello",
               protocolVersion: V4_WIRE_PROTOCOL_VERSION,
               connectionId: bridge.bridgeSessionId,
@@ -178,17 +178,17 @@ try {
                 compression: "none",
               },
             },
-            [`${ServiceChannels.ZCodeAgent}:initializeConversationV4`]: null,
-            [`${ServiceChannels.ZCodeAgent}:subscribeConversationV4`]: (input) => {
+            [`${ServiceChannels.CodezAgent}:initializeConversationV4`]: null,
+            [`${ServiceChannels.CodezAgent}:subscribeConversationV4`]: (input) => {
               const subscriptionId = `sub-${bridge.bridgeSessionId}-${input.sessionId}`;
               snapshots.set(input.sessionId, () =>
                 frames.fire(taskSnapshotFrame(input.sessionId, subscriptionId)),
               );
               return { ack: { subscriptionId, mode: "snapshot", logEpoch: "e2e" } };
             },
-            [`${ServiceChannels.ZCodeAgent}:unsubscribeConversationV4`]: null,
-            [`${ServiceChannels.ZCodeAgent}:conversationWorkflowRunsV4`]: { runs: [] },
-            [`${ServiceChannels.ZCodeAgent}:conversationPlansV4`]: { plans: [] },
+            [`${ServiceChannels.CodezAgent}:unsubscribeConversationV4`]: null,
+            [`${ServiceChannels.CodezAgent}:conversationWorkflowRunsV4`]: { runs: [] },
+            [`${ServiceChannels.CodezAgent}:conversationPlansV4`]: { plans: [] },
           },
         });
         bridges.set(bridge.bridgeSessionId, desktopBridge);
@@ -230,7 +230,7 @@ try {
         new URL("/remote/v4?app_version=3.15.1&sid=e2e-device&mid=e2e-mid", origin).href,
       );
       const onboarding = page.getByTestId("onboarding-page");
-      const welcome = page.getByRole("dialog", { name: /欢迎使用 ZCode|Welcome to ZCode/ });
+      const welcome = page.getByRole("dialog", { name: /欢迎使用 Codez|Welcome to Codez/ });
       await local().or(onboarding).or(welcome).first().waitFor();
       if (await onboarding.isVisible())
         await onboarding.getByRole("button", { name: /退出引导|Exit onboarding/ }).click();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createFakeRelayV2 } from "@zcode/shared/testing/fake-relay-v2";
+import { createFakeRelayV2 } from "@codez/shared/testing/fake-relay-v2";
 import { createWebRemoteControlDeviceClient } from "#src/web-remote-control/index.js";
 
 describe("设备列表 HTTP", () => {

@@ -1,7 +1,7 @@
 import { createElement, type ComponentType } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import type { TaskChatToolCallTreeNode } from "@/lib/toolCallTree.js";
 import { ToolCallBlock } from "@/ToolCallBlocks.js";
 import { RespondToCoordinatorToolCallBlock } from "@/ToolCallBlocks/renderers/respond-to-coordinator.js";
@@ -24,7 +24,7 @@ const displayModel = {
 function renderToolCall(toolCall: TaskChatToolCallTreeNode["toolCall"]) {
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(ToolCallBlock, {
         toolCallNode: {
@@ -44,7 +44,7 @@ function renderDedicatedToolCall(
 ) {
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(Renderer, {
         toolCallNode: {

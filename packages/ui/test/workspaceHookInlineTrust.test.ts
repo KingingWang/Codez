@@ -1,5 +1,5 @@
-import type { CommandAck, CommandEnvelope } from "@zcode/shared/zcode-protocol-v4";
-import type { Hook } from "@zcode/shared";
+import type { CommandAck, CommandEnvelope } from "@codez/shared/codez-protocol-v4";
+import type { Hook } from "@codez/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { trustWorkspaceHookWithReview } from "@/settings/workspaceHookReviewCommands.js";
 import {
@@ -26,7 +26,7 @@ function workspaceHook(): Hook {
       declarationEnabled: false,
       runtimeHooksEnabled: true,
       configuredEnabled: false,
-      sourcePath: ".zcode/config.json",
+      sourcePath: ".codez/config.json",
       trustState: "pending_trust",
     },
   };
@@ -60,7 +60,7 @@ function reviewBinding(
           type: "command",
           displayName: "SessionStart",
           displayCommand: "echo project",
-          sourcePath: ".zcode/config.json",
+          sourcePath: ".codez/config.json",
           resolvedTimeoutMs: 60_000,
           resolvedMaxOutputBytes: 32_768,
           executionMode: "foreground",

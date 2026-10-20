@@ -6,7 +6,7 @@ OpenAI Responses sessions must continue tool-call turns without leaking Response
 
 ## Problem
 
-ZCode keeps provider-visible history in a protocol-neutral message list. After a Responses model emits reasoning and tool calls, the next model request replays the assistant message plus tool results. Some OpenAI Responses-compatible providers accept `function_call` and `function_call_output` replay, but fail when a stored reasoning `item_reference` is included without `previous_response_id` or a conversation boundary.
+Codez keeps provider-visible history in a protocol-neutral message list. After a Responses model emits reasoning and tool calls, the next model request replays the assistant message plus tool results. Some OpenAI Responses-compatible providers accept `function_call` and `function_call_output` replay, but fail when a stored reasoning `item_reference` is included without `previous_response_id` or a conversation boundary.
 
 The observed failure mode is:
 
@@ -19,7 +19,7 @@ The observed failure mode is:
 - The compatibility behavior is limited to OpenAI Responses transport:
   - `providerKind === "openai"`
   - `apiFormat === "openai-responses"`
-- It applies only when ZCode is doing stateless history replay:
+- It applies only when Codez is doing stateless history replay:
   - no `openai.previousResponseId`
   - no `openai.conversation`
   - `openai.store` is not explicitly `false`

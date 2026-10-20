@@ -19,7 +19,7 @@ M3 需要同时完成两件事：
 
 ## 2. 核心边界
 
-所有配置的共同目标，是帮助 ZCode 封装一次正确的模型 API 调用：选择 Provider、确定 Endpoint 和 API 类型、确定模型成员、解析模型能力与选项，并形成最终请求。
+所有配置的共同目标，是帮助 Codez 封装一次正确的模型 API 调用：选择 Provider、确定 Endpoint 和 API 类型、确定模型成员、解析模型能力与选项，并形成最终请求。
 
 配置体系不把“凭据”一概排除在外：普通 API Provider 可以在 Personal Provider Config 中直接保存静态 API Key。账号类型 Provider 的 Config 不管理账号凭据，只表达账号连接标识和账号态模型成员；实际账号凭据由 Services 在请求期解析并注入，模型服务负责最终鉴权与授权裁决。
 
@@ -48,18 +48,18 @@ M3 需要同时完成两件事：
 
 | 名称                           | 建议代码名              | 含义                                                       |
 | ------------------------------ | ----------------------- | ---------------------------------------------------------- |
-| ZCode Built-in Provider Config | `zcodeBuiltinProviders` | ZCode 随产品提供的 Provider 静态默认值和账号 Provider 声明 |
+| Codez Built-in Provider Config | `codezBuiltinProviders` | Codez 随产品提供的 Provider 静态默认值和账号 Provider 声明 |
 | Account Provider Config        | `accountProviders`      | 对 Built-in 中账号相关 Provider 的账号态补充或约束         |
 | Personal Provider Config       | `personalProviders`     | 用户自定义 Provider，以及对已有 Provider 的最终覆盖        |
 | Effective Provider Config      | `effectiveProviders`    | 三层 Provider 配置叠加后的最终 Provider 集合               |
 
-当前实现中的 `officialProviders` 对应目标语义里的 `zcodeBuiltinProviders`。是否在 M3 内完成机械改名由实现阶段决定，但新增设计和测试统一使用本文词汇。
+当前实现中的 `officialProviders` 对应目标语义里的 `codezBuiltinProviders`。是否在 M3 内完成机械改名由实现阶段决定，但新增设计和测试统一使用本文词汇。
 
 ### 3.2 Model 配置
 
 | 名称                              | 建议代码名               | 含义                                                      |
 | --------------------------------- | ------------------------ | --------------------------------------------------------- |
-| ZCode Built-in Model Config Rules | `zcodeBuiltinModelRules` | ZCode 随产品提供的模型静态事实和默认行为规则              |
+| Codez Built-in Model Config Rules | `codezBuiltinModelRules` | Codez 随产品提供的模型静态事实和默认行为规则              |
 | Personal Model Config Rules       | `personalModelRules`     | 用户对模型事实和行为的追加覆盖规则                        |
 | Effective Model Config Rules      | `effectiveModelRules`    | 两组规则按顺序拼接后的最终规则序列                        |
 | Effective Model Config            | `effectiveModelConfig`   | 针对一个最终 Provider / Model / API type 解析出的模型配置 |
@@ -71,7 +71,7 @@ Provider Config 的 `models[]` 回答“这个 Provider 有哪些模型以及展
 ```text
 Provider 配置路径                              Model 规则路径
 
-ZCode Built-in Provider Config                ZCode Built-in Model Config Rules[]
+Codez Built-in Provider Config                Codez Built-in Model Config Rules[]
               |                                            |
               v                                            |
      overlay Account Provider Config                       +
@@ -103,18 +103,18 @@ ZCode Built-in Provider Config                ZCode Built-in Model Config Rules[
 最终顺序固定为：
 
 ```ts
-effectiveProviders = zcodeBuiltinProviders.overlay(accountProviders).overlay(personalProviders);
+effectiveProviders = codezBuiltinProviders.overlay(accountProviders).overlay(personalProviders);
 ```
 
 优先级为：
 
 ```text
-Personal > Account > ZCode Built-in
+Personal > Account > Codez Built-in
 ```
 
 ### 5.1 Account 的职责边界
 
-Account Provider Config 只处理 ZCode Built-in Provider Config 已经声明的账号类型 Provider：
+Account Provider Config 只处理 Codez Built-in Provider Config 已经声明的账号类型 Provider：
 
 - 可以补充账号连接标识；
 - 可以在账号接口确实返回模型集合时，覆盖该 Provider 的 `models[]`；
@@ -122,7 +122,7 @@ Account Provider Config 只处理 ZCode Built-in Provider Config 已经声明的
 - 不读取、约束或改写 Personal 新建的自定义 Provider；
 - 不保存或管理账号凭据。
 
-因此 Account Provider Service 的输入必须是 ZCode Built-in Provider Config，而不是已经叠加 Personal 的 Provider 集合。
+因此 Account Provider Service 的输入必须是 Codez Built-in Provider Config，而不是已经叠加 Personal 的 Provider 集合。
 
 ### 5.2 Personal 为什么最后生效
 
@@ -153,7 +153,7 @@ Personal Provider.models（存在时）
 
 ```ts
 effectiveModelRules = new ModelConfigRules([
-  ...zcodeBuiltinModelRules.rules(),
+  ...codezBuiltinModelRules.rules(),
   ...personalModelRules.rules(),
 ]);
 ```
@@ -209,15 +209,15 @@ Start Plan 从余额桶的 `capabilities` 中提取 `model:<id>`，做大小写�
 - `providers`：旧的单体兼容结构，把 Provider 和模型配置混在一起；
 - 当前 staging 在 `builtinProviders` 非空时优先使用它，`providers` 只作为 fallback。
 
-目标不是长期保留两套入口，而是把仍有效的静态事实迁入 ZCode Built-in Provider Config 和 ZCode Built-in Model Config Rules，然后删除远端 Provider 同步和旧协议 fallback。
+目标不是长期保留两套入口，而是把仍有效的静态事实迁入 Codez Built-in Provider Config 和 Codez Built-in Model Config Rules，然后删除远端 Provider 同步和旧协议 fallback。
 
 ### 8.2 字段迁移裁决
 
 | 远端配置                      | 当前作用                                             | M3 目标                                                     |
 | ----------------------------- | ---------------------------------------------------- | ----------------------------------------------------------- |
-| `builtinProviders`            | Provider ID、名称、模型成员、Endpoint、API Schema    | 迁入 ZCode Built-in Provider Config 后删除远端入口          |
+| `builtinProviders`            | Provider ID、名称、模型成员、Endpoint、API Schema    | 迁入 Codez Built-in Provider Config 后删除远端入口          |
 | `providers`                   | 旧协议下的 Provider + Model 混合配置                 | 迁入现有体系后删除兼容入口                                  |
-| `builtinModels`               | context、max output、modalities、reasoning、priority | 迁入 ZCode Built-in Model Config Rules                      |
+| `builtinModels`               | context、max output、modalities、reasoning、priority | 迁入 Codez Built-in Model Config Rules                      |
 | `magic_name`                  | 按模型名匹配 reasoning 策略                          | 删除远端 matcher；有效行为写成通用 Model Config Rules       |
 | `offPeak.allowed_models`      | 闲时任务模型白名单                                   | 不再作为模型事实权威；静态成员进入 Built-in Provider Config |
 | `modelContextBudget.strategy` | Agent 上下文预算灰度                                 | 与模型配置无关，本轮不动                                    |
@@ -235,7 +235,7 @@ Start Plan 从余额桶的 `capabilities` 中提取 `model:<id>`，做大小写�
 
 ```text
 具体模型的静态行为
-└─ ZCode Built-in / Personal Model Config Rules
+└─ Codez Built-in / Personal Model Config Rules
              |
              v
       Effective Model Config
@@ -264,14 +264,14 @@ anthropic-messages      -> adaptive thinking + effort
 openai-responses        -> 暂不启用专属 reasoning
 ```
 
-这些行为写入 ZCode Built-in Model Config Rules；按模型名识别的 helper、远端 regex matcher、Default Policy 特例和 Catalog 特例删除。规则本身可以使用通用的 model match 表达式，它只是声明式匹配条件，不是业务代码中的模型特判。
+这些行为写入 Codez Built-in Model Config Rules；按模型名识别的 helper、远端 regex matcher、Default Policy 特例和 Catalog 特例删除。规则本身可以使用通用的 model match 表达式，它只是声明式匹配条件，不是业务代码中的模型特判。
 
 ## 10. 闲时任务边界
 
 闲时任务的最新目标是把“模型静态事实”和“单次执行访问材料”分开：
 
 ```text
-ZCode Built-in Provider Config + ZCode Built-in Model Config Rules
+Codez Built-in Provider Config + Codez Built-in Model Config Rules
 └─ builtin:offpeak-idle-plan 的静态 Provider / Model 事实
 
 Execution context
@@ -328,8 +328,8 @@ Remote Environment -> 使用远端环境自己的 Config / Registry
 | 区域                          | M3 结果                                                                        |
 | ----------------------------- | ------------------------------------------------------------------------------ |
 | Provider overlay              | 固定为 `built-in -> account -> personal`                                       |
-| Account Provider Service 输入 | 只读取 ZCode Built-in Provider Config，不读取 Personal                         |
-| Model rules                   | ZCode Built-in 与 Personal 两组数组拼接，Personal 在后                         |
+| Account Provider Service 输入 | 只读取 Codez Built-in Provider Config，不读取 Personal                         |
+| Model rules                   | Codez Built-in 与 Personal 两组数组拼接，Personal 在后                         |
 | Model rules 的解析对象        | 使用 Effective Provider 的最终 `providerId / modelId / api.type`               |
 | `/client/configs`             | 删除 Provider / Model 静态事实、旧协议 fallback 与 `magic_name` 解析           |
 | reasoning                     | 具体模型策略进入 Built-in Rules；Adapter 只保留协议级序列化                    |
@@ -359,7 +359,7 @@ Remote Environment -> 使用远端环境自己的 Config / Registry
 
 1. Personal Provider Config 最后生效；
 2. Account 只约束 Built-in 中的账号 Provider，不碰 Personal 自定义 Provider；
-3. Personal Model Config Rules 在 ZCode Built-in Rules 后；
+3. Personal Model Config Rules 在 Codez Built-in Rules 后；
 4. Model Rules 解析 Effective Provider Config 的最终 API type；
 5. `models[]` 是 Provider 成员整列表覆盖，不被悄悄改成授权交集；
 6. 普通 API Provider 仍可保存静态 API Key；账号类型 Provider Config 不管理账号凭据；
@@ -387,7 +387,7 @@ M3 按以下顺序执行：
 
 - Provider overlay 顺序是 Built-in -> Account -> Personal；
 - Account Service 不读取 Personal Providers；
-- Model Rules 是 ZCode Built-in + Personal 数组拼接，且作用于 Effective Provider；
+- Model Rules 是 Codez Built-in + Personal 数组拼接，且作用于 Effective Provider；
 - Start Plan 动态模型集合正确覆盖 Built-in 默认集合，Coding/Team Plan 仍保留 Built-in models；
 - 普通 API Key 与账号凭据走各自正确的配置/解析路径；
 - `/client/configs` 不再下发 Provider / Model Registry 静态事实；
@@ -418,7 +418,7 @@ M3 按以下顺序执行：
 | 验证范围                                                    | 结果                                                                                                                               |
 | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `pnpm typecheck`                                            | 通过                                                                                                                               |
-| `pnpm --dir apps/zcode-cli -r --if-present typecheck`       | 通过；具有 typecheck script 的 CLI workspace package 全部通过                                                                      |
+| `pnpm --dir apps/codez-cli -r --if-present typecheck`       | 通过；具有 typecheck script 的 CLI workspace package 全部通过                                                                      |
 | `pnpm lint`                                                 | 通过；0 error，39 条 staging 既有 warning                                                                                          |
 | Provider / Account / Registry / OffPeak / Settings 聚焦单测 | 9 个文件、117 个测试通过                                                                                                           |
 | CLI Video / reasoning / Registry 聚焦单测                   | 13 个文件、185 个测试通过                                                                                                          |
@@ -427,6 +427,6 @@ M3 按以下顺序执行：
 | 本轮 78 个修改/新增文件的 `oxfmt --check`                   | 通过                                                                                                                               |
 | `git diff --check`                                          | 通过                                                                                                                               |
 
-仓库级 `pnpm fmt:check` 仍会被既有的二进制 `apps/zcode-cli/tests/gb2312.js` 和用于测试解析失败的 Electron HTML fixture 阻断，因此本轮以实际修改/新增文件的格式检查作为变更门禁，没有改写这些无关 fixture。
+仓库级 `pnpm fmt:check` 仍会被既有的二进制 `apps/codez-cli/tests/gb2312.js` 和用于测试解析失败的 Electron HTML fixture 阻断，因此本轮以实际修改/新增文件的格式检查作为变更门禁，没有改写这些无关 fixture。
 
 本轮只生成本地 merge commit，不 push、不改写远端分支。

@@ -4,8 +4,8 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { createElement, isValidElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { SKILL_SYNC_SIZE_LIMIT_ERROR_CODE } from "@zcode/shared";
-import type { ISkillSyncService } from "@zcode/services";
+import { SKILL_SYNC_SIZE_LIMIT_ERROR_CODE } from "@codez/shared";
+import type { ISkillSyncService } from "@codez/services";
 import {
   buildRemoteSkillSyncRows,
   filterRemoteSkillSyncRows,
@@ -90,7 +90,7 @@ vi.mock("@/components/ui/dialog.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => {
+  useCodezIntl: () => {
     const locale = remoteSkillSyncIntlMockState.locale;
     return {
       intl: {
@@ -153,7 +153,7 @@ function createSkillSyncServiceStub(): ISkillSyncService {
     })),
     checkRemoteUserSkillWriteAccess: vi.fn(async () => ({
       ok: true,
-      path: "/home/dev/.zcode/skills",
+      path: "/home/dev/.codez/skills",
     })),
     importSkillsArchive: vi.fn(async () => ({ results: [] })),
   };
@@ -210,7 +210,7 @@ describe("RemoteSkillSyncDialog helpers", () => {
           name: "review",
           directoryName: "review",
           description: "Review code",
-          path: "/Users/me/.zcode/skills/review/SKILL.md",
+          path: "/Users/me/.codez/skills/review/SKILL.md",
           sizeBytes: 128,
         },
         {
@@ -218,7 +218,7 @@ describe("RemoteSkillSyncDialog helpers", () => {
           name: "docs",
           directoryName: "docs",
           description: "Write docs",
-          path: "/Users/me/.zcode/skills/docs/SKILL.md",
+          path: "/Users/me/.codez/skills/docs/SKILL.md",
           sizeBytes: 64,
         },
       ],
@@ -303,7 +303,7 @@ describe("RemoteSkillSyncDialog helpers", () => {
           name: "review",
           directoryName: "review",
           description: "Review code",
-          path: "/Users/me/.zcode/skills/review/SKILL.md",
+          path: "/Users/me/.codez/skills/review/SKILL.md",
           sizeBytes: 128,
         },
         {
@@ -311,7 +311,7 @@ describe("RemoteSkillSyncDialog helpers", () => {
           name: "docs",
           directoryName: "docs",
           description: "Write docs",
-          path: "/Users/me/.zcode/skills/docs/SKILL.md",
+          path: "/Users/me/.codez/skills/docs/SKILL.md",
           sizeBytes: 64,
         },
       ],

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ensureIndependentPlanSupport,
   supportsHistoryFirst,
-} from "../src/zcode-agent/independentPlanSupport.js";
+} from "../src/codez-agent/independentPlanSupport.js";
 
 describe("独立 Plan 执行端能力", () => {
   it("复用同一 CLI 的成功检查，重建 CLI 后重新检查", async () => {

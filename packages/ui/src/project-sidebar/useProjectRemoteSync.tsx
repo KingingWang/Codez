@@ -14,8 +14,8 @@ import {
   useWorkspaceServicesResolution,
 } from "@/hooks/useWorkspaceServices.js";
 import { RemoteSyncDialogs, shouldShowRemoteSyncActions } from "@/settings/RemoteSyncActions.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { invalidateDeferredDraftSessionForSkillChange } from "@/lib/zcodeDraftSkillInvalidation.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
+import { invalidateDeferredDraftSessionForSkillChange } from "@/lib/codezDraftSkillInvalidation.js";
 import { refreshSharedSkillStoreForWorkspace } from "@/lib/skillStoreRefresh.js";
 import { refreshWorkspacePluginCapabilitiesAfterRemoteSync } from "@/lib/remotePluginSyncRefresh.js";
 import { useMcpStore } from "@/store/mcpStore.js";
@@ -40,7 +40,7 @@ export function useProjectRemoteSync(
   const base = useBaseWorkspaceServices();
   const sessions = useRemoteWorkspaceSessionStore((state) => state.sessionsById);
   const tabs = useOptionalTabStore((state) => state.tabs);
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [selection, setSelection] = useState<SyncTarget | null>(null);
   const selectedHost =
     selection &&
@@ -145,8 +145,8 @@ function ProjectRemoteSyncDialog({ target, onClose }: { target: SyncTarget; onCl
       remoteMcpSyncService={services.mcpSyncService}
       localPluginSyncService={base.pluginSyncService}
       remotePluginSyncService={services.pluginSyncService}
-      localZCodeAgentService={base.zcodeAgentService}
-      remoteZCodeAgentService={services.zcodeAgentService}
+      localCodezAgentService={base.codezAgentService}
+      remoteCodezAgentService={services.codezAgentService}
       remoteTarget={target.host.target}
       workspaceIdentity={target.identity}
       skillWorkspacePath={target.path}
@@ -175,7 +175,7 @@ function ProjectRemoteSyncDialog({ target, onClose }: { target: SyncTarget; onCl
         refreshWorkspacePluginCapabilitiesAfterRemoteSync({
           commandsService: services.commandsService,
           mcpSyncService: services.mcpSyncService,
-          zcodeAgentService: services.zcodeAgentService,
+          codezAgentService: services.codezAgentService,
           reason: "project-remote-plugin-sync",
           skillsService: services.skillsService,
           workspaceIdentity: target.identity,

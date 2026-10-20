@@ -8,7 +8,7 @@
 - `draft-default`：新增模型默认 context=1M、maxOutput=128K、input/output=Text；旧模型回显输入事实并保留 unknown 来源。
 - `validation`：ID 必填、数字字段为正整数、input Text 必选且不可取消、output 固定 Text。
 - `commit-effect`：模态与显式来源原子写入 provider model config。
-- `persistence`：OpenCode config 的 `modalities` + `zcode` 来源标记 round-trip。
+- `persistence`：OpenCode config 的 `modalities` + `codez` 来源标记 round-trip。
 - `recovery`：不新增恢复状态；仅验证 provider registry 热更新与远端显式同步。
 
 ## 影响分级
@@ -18,7 +18,7 @@
 | must-inspect   | `ProviderModelMetadataDialog` / draft helpers    | 直接新增交互、默认和提交字段                         | `packages/ui/src/settings/model-provider-section/*` |
 | must-inspect   | shared model provider type/schema                | modalities 已存在，但缺少显式来源语义                | `packages/shared/src/model-provider-types.ts`       |
 | must-inspect   | provider storage                                 | 所有模型都会写 modalities，当前无法由数组判断来源    | `modelProviderServiceStorage.ts`                    |
-| must-inspect   | provider -> ZCode protocol projection            | custom legacy unknown 与 explicit false 的分界在这里 | `packages/shared/src/zcode-protocol/index.ts`       |
+| must-inspect   | provider -> Codez protocol projection            | custom legacy unknown 与 explicit false 的分界在这里 | `packages/shared/src/codez-protocol/index.ts`       |
 | must-inspect   | active session registry refresh                  | 保存后要无需切模型即生效                             | bootstrap provider registry tests                   |
 | conditional    | desktop-attached remote sync                     | 远端 runtime 依赖本地 provider snapshot              | `remoteWorkspaceProviderSync.ts` 与架构文档         |
 | should-inspect | chat/automation/Subagent/Repo Wiki model options | 共用 registry，但 commit sink 必须保持隔离           | feature graph model surfaces                        |
@@ -38,7 +38,7 @@
 
 - `ModelProviderModelConfig` 能表达显式来源，但旧对象不要求该字段。
 - `createModelProviderModelConfig` 保留/归一化 input/output 和来源。
-- OpenCode config 写入 `modalities`，来源写入 `model.zcode`。
+- OpenCode config 写入 `modalities`，来源写入 `model.codez`。
 - 读写 round-trip 不丢来源；旧配置缺少来源时保持 `undefined`。
 - 只修改 context/max token 不会把 legacy text-only 升级成 explicit false。
 

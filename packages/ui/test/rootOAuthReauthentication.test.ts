@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ZCODE_JWT_INVALID_BROADCAST_CHANNEL } from "@zcode/shared";
+import { CODEZ_JWT_INVALID_BROADCAST_CHANNEL } from "@codez/shared";
 
 const { effects, requestAlert } = vi.hoisted(() => ({
   effects: [] as Array<() => unknown>,
@@ -12,7 +12,7 @@ vi.mock("react", async (original) => ({
 }));
 vi.mock("@/hooks/useAlertDialog.js", () => ({ useAlertDialog: () => requestAlert }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 vi.mock("@/root/useAccountConnectionLossNotification.js", () => ({
   useAccountConnectionLossNotification: vi.fn(),
@@ -58,8 +58,8 @@ describe("运行时登录失效进入重新登录", () => {
       onReauthenticationRequired,
     });
     const dispose = effects[1]() as () => void;
-    receive({ channel: ZCODE_JWT_INVALID_BROADCAST_CHANNEL });
-    receive({ channel: ZCODE_JWT_INVALID_BROADCAST_CHANNEL });
+    receive({ channel: CODEZ_JWT_INVALID_BROADCAST_CHANNEL });
+    receive({ channel: CODEZ_JWT_INVALID_BROADCAST_CHANNEL });
     await vi.waitFor(() => expect(setUser).toHaveBeenCalledWith(null));
     expect(requestAlert).toHaveBeenCalledOnce();
     expect(requestAlert).toHaveBeenCalledWith(
@@ -108,7 +108,7 @@ describe("运行时登录失效进入重新登录", () => {
         onReauthenticationRequired,
       });
       const dispose = effects[1]() as () => void;
-      receive({ channel: ZCODE_JWT_INVALID_BROADCAST_CHANNEL });
+      receive({ channel: CODEZ_JWT_INVALID_BROADCAST_CHANNEL });
       if (timing === "before-alert") {
         await vi.waitFor(() => expect(getActiveProvider).toHaveBeenCalledOnce());
         expect(requestAlert).not.toHaveBeenCalled();

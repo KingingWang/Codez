@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { botConfigSchema, DEFAULT_BOT_COMMANDS } from "@zcode/shared";
+import { botConfigSchema, DEFAULT_BOT_COMMANDS } from "@codez/shared";
 import { BotsRepo } from "../src/bots/repo.js";
 import { normalizeBotCurrentOptions } from "../src/bots/config.js";
 import { setDataBaseDir } from "../src/paths.js";
@@ -15,7 +15,7 @@ describe("Bot v3 单向导入与回滚文件隔离", () => {
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), "bot-v3-"));
     setDataBaseDir(root);
-    dir = join(root, ".zcode", "v2");
+    dir = join(root, ".codez", "v2");
     await mkdir(dir, { recursive: true });
   });
   afterEach(async () => {

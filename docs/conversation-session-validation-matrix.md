@@ -176,7 +176,7 @@ Catalog：M06a、M06b、M06c
 
 | 层            | 断言                                                                                                                                                                                    |
 | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| UI            | 初始 settings 明确为 `zcodeInteractionBehavior=guide`；`running, queue=0` 时继续发送普通文本；引导消息显示为 `turn-steer` queue item，或投影为 user message；短暂等待后不得从两处都消失 |
+| UI            | 初始 settings 明确为 `codezInteractionBehavior=guide`；`running, queue=0` 时继续发送普通文本；引导消息显示为 `turn-steer` queue item，或投影为 user message；短暂等待后不得从两处都消失 |
 | Runtime/Store | 选中 provider 为 `glm`，发送前本地 queue=0；引导 item 带 `turnSteer.status=submitting/queued`；若运行时终态先到，必须 strip turnSteer 回退本地 queue，而不是移除消息                    |
 | Protocol      | guide 模式仍发送 `sendText`；CLI 根据 `inputRouting`/follow-up mode 投影为 guide 输入，不创建独立普通 turn；不满足 guide 条件时由 CLI queue 收口，不回退 renderer-local queue           |
 | Log           | 记录 agent-side steer queued / drained / rejected / fallback；若事件乱序，应能从 pendingInputId/messageId 关联回原引导 item                                                             |

@@ -37,7 +37,7 @@ async function fixturePreview() {
         producer_product_turn_id: "share-product-turn-1",
         artifact_version: 1,
         state: "current",
-        ref: `zcode-artifact://share/${artifact.resource_id}`,
+        ref: `codez-artifact://share/${artifact.resource_id}`,
         artifact_type: "text",
         display_name: `${artifact.title}.md`,
         extension: "md",
@@ -127,7 +127,7 @@ try {
           viewport: { width, height: 1000 },
           reducedMotion: "reduce",
         });
-        await context.addInitScript((theme) => localStorage.setItem("zcode-theme", theme), theme);
+        await context.addInitScript((theme) => localStorage.setItem("codez-theme", theme), theme);
         const page = await context.newPage();
         const errors = [],
           external = [];

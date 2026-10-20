@@ -1,5 +1,5 @@
 import {
-  isPublicZCodeErrorCode,
+  isPublicCodezErrorCode,
   REMOTE_BIND_CANCELED_ERROR_CODE,
   REMOTE_RECOVERY_BUDGET_EXHAUSTED_ERROR_CODE,
   REMOTE_WORKSPACE_BIND_SESSION_MISSING_ERROR_CODE,
@@ -15,10 +15,10 @@ import {
   WORKSPACE_MIGRATION_PLAN_DIVERGED_ERROR_CODE,
   WORKSPACE_SESSION_GENERATION_CHANGED_ERROR_CODE,
   WORKSPACE_TASK_IDENTITY_CONFLICT_ERROR_CODE,
-  type PublicZCodeErrorCode,
-} from "@zcode/shared";
+  type PublicCodezErrorCode,
+} from "@codez/shared";
 
-import type { RemoteTarget } from "@zcode/shared";
+import type { RemoteTarget } from "@codez/shared";
 import type { RemoteConnectionAction } from "@/lib/remoteConnectionPresentationTypes.js";
 
 export interface RemoteConnectionErrorPresentation {
@@ -31,7 +31,7 @@ export interface RemoteConnectionErrorPresentation {
   allowRemoteDownload: boolean;
 }
 
-const messageIdByCode: Record<PublicZCodeErrorCode, string> = {
+const messageIdByCode: Record<PublicCodezErrorCode, string> = {
   "remote-authentication-failed": "remote.error.authentication",
   "remote-host-unreachable": "remote.error.hostUnreachable",
   "remote-connection-timeout": "remote.error.connectionTimeout",
@@ -77,15 +77,15 @@ export function classifyRemoteConnectionError(input: {
   recoveryLimit?: number;
 }): RemoteConnectionErrorPresentation {
   const code = input.errorCode ?? "";
-  let titleId = isPublicZCodeErrorCode(code) ? messageIdByCode[code] : "remote.error.unknown";
-  let category = isPublicZCodeErrorCode(code) ? code : "unrecognized";
+  let titleId = isPublicCodezErrorCode(code) ? messageIdByCode[code] : "remote.error.unknown";
+  let category = isPublicCodezErrorCode(code) ? code : "unrecognized";
   let primaryAction: RemoteConnectionAction = "retry";
   switch (code) {
     case "remote-authentication-failed":
       category = "authentication";
       primaryAction = "edit-auth";
       break;
-    case "ZCODE_REMOTE_WORKSPACE_DISCONNECTED":
+    case "CODEZ_REMOTE_WORKSPACE_DISCONNECTED":
       category = "disconnected";
       titleId = "remote.conversation.sendUnavailable";
       primaryAction = "connect";

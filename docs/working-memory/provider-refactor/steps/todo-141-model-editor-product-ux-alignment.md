@@ -63,6 +63,6 @@
 - 浏览器先红后绿；完整 `provider-settings-batch.test.mjs` **26/26 通过**，其中 Todo141 四例覆盖新增／编辑、390px 中文浅色／1200px 英文深色、普通／减弱动画、重复校验、局部草稿、基础错误、联合保存、重开和取消。原批次的重置竞态、保存锁定、手动配置及帮助交互一并通过。
 - `providerModelMetadataDialog.test.ts`、`providerModelSmartDraft.test.ts`、`providerModelMaxOutputLookup.test.ts` 与 `modelConfigHelpCopy.test.ts` **51/51 通过**；根 `pnpm typecheck` 通过（包含 Desktop E2E 类型检查）；`pnpm lint` 0 errors，42 条既有 warnings；`pnpm architecture:check --changed` 0 violations；修改文件格式检查和 `git diff --check` 通过。
 - 推送门禁首轮扩大到 328 个测试文件，发现两份旧测试的四项预期未对齐：高级字段要先展开、最大输出不再属于高级区、“推理档位”改为“推理等级”。已修正定位／文案预期，保留迟到查询不覆盖用户输入、编辑和展开不触发额外查询的实质断言，并补充重置文案检查；上述四文件重新合跑通过。
-- 已查看真实浏览器截图，字段间距实测 16px、窄屏无横向溢出，展开后正文可滚动而标题／页脚保留；截图与 Playwright trace 位于 `/tmp/zcode-provider-settings-batch/todo141-*`。
+- 已查看真实浏览器截图，字段间距实测 16px、窄屏无横向溢出，展开后正文可滚动而标题／页脚保留；截图与 Playwright trace 位于 `/tmp/codez-provider-settings-batch/todo141-*`。
 - 逐项复审确认：推理等级和映射位于同一无边框组，最大输出回到基础区；文本复用原 checkbox 指示及锁图标，不改选项辅助功能语义和覆盖颜色；重置仍只改草稿并保留 ID、enabled；隐藏系统字段不加入手动必填规则。
 - 边界：本轮实跑是 Linux Chromium 的真实共享 UI＋隔离服务夹具，不冒充 Mac Electron 或手机 shared-host 联合实机验证。原生 `provider-model-smart-config.test.ts` 已更新选择器／文案并通过类型检查，本轮未重跑原生用例；pending 用例未擅自晋级。Codegraph 不可用，沿共享弹窗、两入口、草稿 Hook、校验及控件定向复审。

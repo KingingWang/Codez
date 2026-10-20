@@ -4,7 +4,7 @@
 > 不是 Todo103 整合版本的当前验收，也不据此扩大本轮修复范围。
 > 本轮 Bot 重接与新证据见 `../working-memory/provider-refactor/research/todo103-staging-integration-ledger.md` 第 20 节。
 
-日期：2026-09-07。环境：macOS arm64、本地生产环境配置的 ZCode Dev、Ryan Bob 飞书私聊、
+日期：2026-09-07。环境：macOS arm64、本地生产环境配置的 Codez Dev、Ryan Bob 飞书私聊、
 BigModel Coding Plan / GLM-5.3-Flash。操作通过 Computer Use 完成，未向群聊发送测试消息。
 
 ## 修复范围

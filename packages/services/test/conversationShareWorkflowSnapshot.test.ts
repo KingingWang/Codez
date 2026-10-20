@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { readFile } from "node:fs/promises";
-import { conversationRowSchema } from "@zcode/shared/zcode-protocol-v4";
+import { conversationRowSchema } from "@codez/shared/codez-protocol-v4";
 import {
   collectConversationShareWorkflowSnapshot,
   type ShareWorkflowReader,
@@ -10,8 +10,8 @@ import {
   buildConversationShareConfirmRequest,
   verifyConversationShareIntegrity,
 } from "../src/conversation-share/conversationShareIntegrity.js";
-import type { ConversationShareCapabilities } from "@zcode/shared";
-import type { ConversationRow } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationShareCapabilities } from "@codez/shared";
+import type { ConversationRow } from "@codez/shared/codez-protocol-v4";
 
 const capabilities: ConversationShareCapabilities = {
   schema_version: 1,

@@ -52,8 +52,8 @@ function runGit(cwd: string | undefined, args: string[]): string {
 }
 
 function createRepo() {
-  const repoPath = makeTempDir("zcode-git-checkpoint-repo-");
-  const dataBaseDir = makeTempDir("zcode-git-checkpoint-data-");
+  const repoPath = makeTempDir("codez-git-checkpoint-repo-");
+  const dataBaseDir = makeTempDir("codez-git-checkpoint-data-");
   setDataBaseDir(dataBaseDir);
   const workspacePath = join(repoPath, "packages", "app");
   mkdirSync(workspacePath, { recursive: true });
@@ -67,7 +67,7 @@ function createRepo() {
 
   runGit(repoPath, ["init"]);
   runGit(repoPath, ["branch", "-M", "main"]);
-  runGit(repoPath, ["config", "user.name", "ZCode Tester"]);
+  runGit(repoPath, ["config", "user.name", "Codez Tester"]);
   runGit(repoPath, ["config", "user.email", "tester@example.com"]);
   runGit(repoPath, ["config", "commit.gpgsign", "false"]);
   runGit(repoPath, ["config", "core.autocrlf", "false"]);
@@ -91,7 +91,7 @@ describeIfGit("gitCheckpointService", () => {
   it("creates workspace-scoped checkpoints, diffs them, and restores files without touching staged state", async () => {
     const { dataBaseDir, repoPath, workspacePath } = createRepo();
     const service = createGitCheckpointService({
-      store: new GitCheckpointStore({ rootDir: join(repoPath, ".zcode-test-checkpoints") }),
+      store: new GitCheckpointStore({ rootDir: join(repoPath, ".codez-test-checkpoints") }),
     });
 
     const base = await service.createCheckpoint({ workspacePath });
@@ -137,13 +137,13 @@ describeIfGit("gitCheckpointService", () => {
       "skip changed\n",
     );
     expect(runGit(repoPath, ["diff", "--cached", "--name-only"])).toBe(stagedBeforeRestore);
-    expect(readdirSync(join(dataBaseDir, ".zcode", "git-checkpoint-index"))).toEqual([]);
+    expect(readdirSync(join(dataBaseDir, ".codez", "git-checkpoint-index"))).toEqual([]);
   }, GIT_INTEGRATION_TEST_TIMEOUT_MS);
 
   it("returns conflicts when affected files drift away from the declared fromCheckpoint and supports force restore", async () => {
     const { repoPath, workspacePath } = createRepo();
     const service = createGitCheckpointService({
-      store: new GitCheckpointStore({ rootDir: join(repoPath, ".zcode-test-checkpoints") }),
+      store: new GitCheckpointStore({ rootDir: join(repoPath, ".codez-test-checkpoints") }),
     });
 
     const base = await service.createCheckpoint({ workspacePath });

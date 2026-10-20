@@ -77,7 +77,7 @@ vi.mock("@/hooks/useGitBranchSwitcher.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
     },
@@ -99,7 +99,7 @@ describe("GitBranchSwitcher", () => {
           isRepository: true,
         },
         onRefreshGit: vi.fn(),
-        workspacePath: "/workspace/zcode-cli",
+        workspacePath: "/workspace/codez-cli",
       }),
     );
 
@@ -122,7 +122,7 @@ describe("GitBranchSwitcher", () => {
           isRepository: true,
         },
         onRefreshGit: vi.fn(),
-        workspacePath: "/workspace/zcode-cli",
+        workspacePath: "/workspace/codez-cli",
       }),
     );
 
@@ -145,7 +145,7 @@ describe("GitBranchSwitcher", () => {
         },
         onRefreshGit: vi.fn(),
         showFooterActions: false,
-        workspacePath: "/workspace/zcode-cli",
+        workspacePath: "/workspace/codez-cli",
       }),
     );
 

@@ -1,6 +1,6 @@
 {
-  "title": "ZCode 本地发送 TTFT",
-  "uid": "zcode-local-ttft-v1",
+  "title": "Codez 本地发送 TTFT",
+  "uid": "codez-local-ttft-v1",
   "schemaVersion": 39,
   "version": 2,
   "refresh": "30s",
@@ -22,19 +22,19 @@
       {
         "name": "total_metric",
         "type": "textbox",
-        "query": "zcode_local_ttft_duration",
+        "query": "codez_local_ttft_duration",
         "current": {
-          "text": "zcode_local_ttft_duration",
-          "value": "zcode_local_ttft_duration"
+          "text": "codez_local_ttft_duration",
+          "value": "codez_local_ttft_duration"
         }
       },
       {
         "name": "stage_metric",
         "type": "textbox",
-        "query": "zcode_local_ttft_stage_duration",
+        "query": "codez_local_ttft_stage_duration",
         "current": {
-          "text": "zcode_local_ttft_stage_duration",
-          "value": "zcode_local_ttft_stage_duration"
+          "text": "codez_local_ttft_stage_duration",
+          "value": "codez_local_ttft_stage_duration"
         }
       },
       {
@@ -216,7 +216,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "单位 ms；分桶边界：1,5,10,20,50,100,200,500,1000,2000,5000,10000,30000,60000,300000。P50/P95 是桶内插值；须同时读取样本数，不相加分位数。\n\n在 ARMS Trace Explorer 选择 service.name=zcode-local-ttft，按 observation_id 精确过滤，展开 local_ttft 及六阶段。trace ID 为 observation UUID 去掉连字符。Trace 数据源跳转地址需在目标租户验证后配置；当前未通过平台验收。"
+        "content": "单位 ms；分桶边界：1,5,10,20,50,100,200,500,1000,2000,5000,10000,30000,60000,300000。P50/P95 是桶内插值；须同时读取样本数，不相加分位数。\n\n在 ARMS Trace Explorer 选择 service.name=codez-local-ttft，按 observation_id 精确过滤，展开 local_ttft 及六阶段。trace ID 为 observation UUID 去掉连字符。Trace 数据源跳转地址需在目标租户验证后配置；当前未通过平台验收。"
       }
     },
     {
@@ -241,12 +241,12 @@
       "targets": [
         {
           "refId": "P50",
-          "expr": "histogram_quantile(0.5, sum by (le,stage) (sum_over_time(zcode_local_ttft_preparation_duration_bucket{quality=\"complete\",visibility=\"foreground\"}[5m])))",
+          "expr": "histogram_quantile(0.5, sum by (le,stage) (sum_over_time(codez_local_ttft_preparation_duration_bucket{quality=\"complete\",visibility=\"foreground\"}[5m])))",
           "legendFormat": "P50 {{stage}}"
         },
         {
           "refId": "P95",
-          "expr": "histogram_quantile(0.95, sum by (le,stage) (sum_over_time(zcode_local_ttft_preparation_duration_bucket{quality=\"complete\",visibility=\"foreground\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le,stage) (sum_over_time(codez_local_ttft_preparation_duration_bucket{quality=\"complete\",visibility=\"foreground\"}[5m])))",
           "legendFormat": "P95 {{stage}}"
         }
       ]
@@ -268,7 +268,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (stage) (sum_over_time(zcode_local_ttft_preparation_duration_count{quality=\"complete\",visibility=\"foreground\"}[$__range]))"
+          "expr": "sum by (stage) (sum_over_time(codez_local_ttft_preparation_duration_count{quality=\"complete\",visibility=\"foreground\"}[$__range]))"
         }
       ]
     },
@@ -294,12 +294,12 @@
       "targets": [
         {
           "refId": "P50",
-          "expr": "histogram_quantile(0.5, sum by (le,send_mode) (sum_over_time(zcode_local_ttft_execution_duration_bucket{quality=\"complete\",visibility=\"foreground\"}[5m])))",
+          "expr": "histogram_quantile(0.5, sum by (le,send_mode) (sum_over_time(codez_local_ttft_execution_duration_bucket{quality=\"complete\",visibility=\"foreground\"}[5m])))",
           "legendFormat": "P50 {{send_mode}}"
         },
         {
           "refId": "P95",
-          "expr": "histogram_quantile(0.95, sum by (le,send_mode) (sum_over_time(zcode_local_ttft_execution_duration_bucket{quality=\"complete\",visibility=\"foreground\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le,send_mode) (sum_over_time(codez_local_ttft_execution_duration_bucket{quality=\"complete\",visibility=\"foreground\"}[5m])))",
           "legendFormat": "P95 {{send_mode}}"
         }
       ]
@@ -321,7 +321,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (send_mode) (sum_over_time(zcode_local_ttft_execution_duration_count{quality=\"complete\",visibility=\"foreground\"}[$__range]))"
+          "expr": "sum by (send_mode) (sum_over_time(codez_local_ttft_execution_duration_count{quality=\"complete\",visibility=\"foreground\"}[$__range]))"
         }
       ]
     },
@@ -347,12 +347,12 @@
       "targets": [
         {
           "refId": "P50",
-          "expr": "histogram_quantile(0.5, sum by (le,send_mode) (sum_over_time(zcode_local_ttft_system_duration_bucket{quality=\"complete\",visibility=\"foreground\"}[5m])))",
+          "expr": "histogram_quantile(0.5, sum by (le,send_mode) (sum_over_time(codez_local_ttft_system_duration_bucket{quality=\"complete\",visibility=\"foreground\"}[5m])))",
           "legendFormat": "P50 {{send_mode}}"
         },
         {
           "refId": "P95",
-          "expr": "histogram_quantile(0.95, sum by (le,send_mode) (sum_over_time(zcode_local_ttft_system_duration_bucket{quality=\"complete\",visibility=\"foreground\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le,send_mode) (sum_over_time(codez_local_ttft_system_duration_bucket{quality=\"complete\",visibility=\"foreground\"}[5m])))",
           "legendFormat": "P95 {{send_mode}}"
         }
       ]
@@ -374,7 +374,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (send_mode) (sum_over_time(zcode_local_ttft_system_duration_count{quality=\"complete\",visibility=\"foreground\"}[$__range]))"
+          "expr": "sum by (send_mode) (sum_over_time(codez_local_ttft_system_duration_count{quality=\"complete\",visibility=\"foreground\"}[$__range]))"
         }
       ]
     },
@@ -400,12 +400,12 @@
       "targets": [
         {
           "refId": "P50",
-          "expr": "histogram_quantile(0.5, sum by (le,outcome) (sum_over_time(zcode_local_ttft_no_output_wait_bucket[5m])))",
+          "expr": "histogram_quantile(0.5, sum by (le,outcome) (sum_over_time(codez_local_ttft_no_output_wait_bucket[5m])))",
           "legendFormat": "P50 {{outcome}}"
         },
         {
           "refId": "P95",
-          "expr": "histogram_quantile(0.95, sum by (le,outcome) (sum_over_time(zcode_local_ttft_no_output_wait_bucket[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le,outcome) (sum_over_time(codez_local_ttft_no_output_wait_bucket[5m])))",
           "legendFormat": "P95 {{outcome}}"
         }
       ]
@@ -427,7 +427,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (outcome) (sum_over_time(zcode_local_ttft_no_output_wait_count[$__range]))"
+          "expr": "sum by (outcome) (sum_over_time(codez_local_ttft_no_output_wait_count[$__range]))"
         }
       ]
     },
@@ -453,12 +453,12 @@
       "targets": [
         {
           "refId": "P50",
-          "expr": "histogram_quantile(0.5, sum by (le,role,outcome) (sum_over_time(zcode_local_ttft_attempt_duration_bucket[5m])))",
+          "expr": "histogram_quantile(0.5, sum by (le,role,outcome) (sum_over_time(codez_local_ttft_attempt_duration_bucket[5m])))",
           "legendFormat": "P50 {{role}}"
         },
         {
           "refId": "P95",
-          "expr": "histogram_quantile(0.95, sum by (le,role,outcome) (sum_over_time(zcode_local_ttft_attempt_duration_bucket[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le,role,outcome) (sum_over_time(codez_local_ttft_attempt_duration_bucket[5m])))",
           "legendFormat": "P95 {{role}}"
         }
       ]
@@ -480,7 +480,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (role,outcome) (sum_over_time(zcode_local_ttft_attempt_duration_count[$__range]))"
+          "expr": "sum by (role,outcome) (sum_over_time(codez_local_ttft_attempt_duration_count[$__range]))"
         }
       ]
     },
@@ -506,12 +506,12 @@
       "targets": [
         {
           "refId": "P50",
-          "expr": "histogram_quantile(0.5, sum by (le,stage) (sum_over_time(zcode_local_ttft_preparation_observation_duration_bucket[5m])))",
+          "expr": "histogram_quantile(0.5, sum by (le,stage) (sum_over_time(codez_local_ttft_preparation_observation_duration_bucket[5m])))",
           "legendFormat": "P50 {{stage}}"
         },
         {
           "refId": "P95",
-          "expr": "histogram_quantile(0.95, sum by (le,stage) (sum_over_time(zcode_local_ttft_preparation_observation_duration_bucket[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le,stage) (sum_over_time(codez_local_ttft_preparation_observation_duration_bucket[5m])))",
           "legendFormat": "P95 {{stage}}"
         }
       ]
@@ -533,7 +533,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (stage) (sum_over_time(zcode_local_ttft_preparation_observation_duration_count[$__range]))"
+          "expr": "sum by (stage) (sum_over_time(codez_local_ttft_preparation_observation_duration_count[$__range]))"
         }
       ]
     },
@@ -559,12 +559,12 @@
       "targets": [
         {
           "refId": "P50",
-          "expr": "histogram_quantile(0.5, sum by (le,visibility,quality) (sum_over_time(zcode_local_ttft_duration_bucket[5m])))",
+          "expr": "histogram_quantile(0.5, sum by (le,visibility,quality) (sum_over_time(codez_local_ttft_duration_bucket[5m])))",
           "legendFormat": "P50 {{visibility}}"
         },
         {
           "refId": "P95",
-          "expr": "histogram_quantile(0.95, sum by (le,visibility,quality) (sum_over_time(zcode_local_ttft_duration_bucket[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le,visibility,quality) (sum_over_time(codez_local_ttft_duration_bucket[5m])))",
           "legendFormat": "P95 {{visibility}}"
         }
       ]
@@ -586,7 +586,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (visibility,quality) (sum_over_time(zcode_local_ttft_duration_count[$__range]))"
+          "expr": "sum by (visibility,quality) (sum_over_time(codez_local_ttft_duration_count[$__range]))"
         }
       ]
     },
@@ -607,7 +607,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (kind,outcome) (sum_over_time(zcode_local_ttft_records{kind=~\"start|first_output|excluded\"}[$__range]))"
+          "expr": "sum by (kind,outcome) (sum_over_time(codez_local_ttft_records{kind=~\"start|first_output|excluded\"}[$__range]))"
         }
       ]
     },
@@ -628,7 +628,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (outcome) (sum_over_time(zcode_local_ttft_records{kind=\"excluded\",outcome=~\"failed|cancelled|rejected|interrupted\"}[$__range])) / scalar(sum(sum_over_time(zcode_local_ttft_records{kind=\"start\"}[$__range])))"
+          "expr": "sum by (outcome) (sum_over_time(codez_local_ttft_records{kind=\"excluded\",outcome=~\"failed|cancelled|rejected|interrupted\"}[$__range])) / scalar(sum(sum_over_time(codez_local_ttft_records{kind=\"start\"}[$__range])))"
         }
       ]
     },
@@ -649,7 +649,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (reason) (sum_over_time(zcode_local_ttft_dropped[$__range]))"
+          "expr": "sum by (reason) (sum_over_time(codez_local_ttft_dropped[$__range]))"
         }
       ]
     },

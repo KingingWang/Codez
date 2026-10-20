@@ -203,7 +203,7 @@ interface ZhipuAccountAccessConfig {
 
 ## 4. entitled 的裁决与调用背景
 
-用户的最终解释：这份 Config 决定 ZCode 认为能不能用这个模型、请求时怎么用；最终是否有资格使用，仍由账号和远端等共同决定。因此 `entitled` 放在 Provider Config 中说得通。
+用户的最终解释：这份 Config 决定 Codez 认为能不能用这个模型、请求时怎么用；最终是否有资格使用，仍由账号和远端等共同决定。因此 `entitled` 放在 Provider Config 中说得通。
 
 ```text
 内置 / 账号 / 个人配置
@@ -212,7 +212,7 @@ interface ZhipuAccountAccessConfig {
 Effective Provider Config（可以包含动态事实）
           |
           v
-ZCode 本地可用性判断与请求装配
+Codez 本地可用性判断与请求装配
           |
           v
 账号服务提供请求期访问材料 -> 模型服务端最终鉴权 / 授权
@@ -246,13 +246,13 @@ ZCode 本地可用性判断与请求装配
 - [Account 结果解析与状态投影](../../../../packages/provider/src/account-provider-resolution.ts)
 - [执行资格判断](../../../../packages/provider/src/resolver.ts)
 - [App 账号连接解析](../../../../packages/services/src/model-provider/accountProviderConnectionResolver.ts)
-- [独立 CLI 账号配置](../../../../apps/zcode-cli/packages/bootstrap/src/app/standalone-account-provider-runtime.ts)
+- [独立 CLI 账号配置](../../../../apps/codez-cli/packages/bootstrap/src/app/standalone-account-provider-runtime.ts)
 - [UI Account Access helpers](../../../../packages/ui/src/lib/accountProviderAccess.ts)
 - [Provider 设置页](../../../../packages/ui/src/settings/ModelProviderSection.tsx)
 - [套餐状态计算](../../../../packages/ui/src/settings/model-provider-section/providerFamilyConnectionVisibility.ts)
 - [套餐身份快照](../../../../packages/ui/src/hooks/usePlanIdentitySnapshot.ts)
 - [购买入口埋点](../../../../packages/ui/src/lib/codingPlanFunnelTelemetry.ts)
-- [协议账号访问对象](../../../../packages/shared/src/zcode-protocol/index.ts)
+- [协议账号访问对象](../../../../packages/shared/src/codez-protocol/index.ts)
 
 ## 5. ModelConfig：已确认的变更与分层目标结构
 
@@ -578,7 +578,7 @@ Endpoint 依据当前配置 / 模板记录，实施时按对应路径生成匹�
 
 最终删除 providerMatch 字段及对应解析、匹配、序列化逻辑；四条原规则改为站点规则，不以兼容新格式为由保留第二套 Provider 正则匹配入口。按 providerId + modelId 的精确实例规则仍保留。
 
-证据：[当前 Built-in 配置](../../../../config/provider/zcode-builtin.json)、[规则解析及序列化](../../../../packages/provider/src/config/model-config.ts)。账号媒体通配规则在模板重构提交 `9d3289240d4` 中加入；这些是静态实现事实和本轮设计裁决，不宣称已完成真实服务端能力验证。
+证据：[当前 Built-in 配置](../../../../config/provider/codez-builtin.json)、[规则解析及序列化](../../../../packages/provider/src/config/model-config.ts)。账号媒体通配规则在模板重构提交 `9d3289240d4` 中加入；这些是静态实现事实和本轮设计裁决，不宣称已完成真实服务端能力验证。
 
 ### 6.4 Provider 模板、实例与规则集合：已确认
 
@@ -700,7 +700,7 @@ Provider 名称在外层 ProviderConfigRule 中叫 providerName，可选性和 n
 内置文件层：保留版本、发布 revision 和 config 内容层。用户已确认本分支新增、未发布的内置格式从当前 schemaVersion: 3 收口为 schemaVersion: 1；发布 revision 的规则及 review 见 6.12。
 
 ```ts
-interface ZCodeBuiltinRelease {
+interface CodezBuiltinRelease {
   schemaVersion: 1;
   revision: number;
   config: BuiltinProviderConfig;
@@ -787,7 +787,7 @@ providerOrder 继续独立表达展示顺序，不用规则数组顺序代替。
 
 验证依据：provider-config-kinds、config-overlay、config-service、todo21-source-contracts 四个现有测试文件共 66 个用例通过。此处验证的是当前限制和合并行为，不代表目标结构已经实现；产品代码未修改。
 
-证据：[当前来源专用 schema](../../../../packages/provider/src/config/schema.ts)、[个人文件 codec](../../../../packages/provider-node/src/provider-config-file-codec.ts)、[内置发布外壳](../../../../packages/provider-node/src/zcode-builtin-release.ts)。本轮没有实现这些结构改造或数据迁移。
+证据：[当前来源专用 schema](../../../../packages/provider/src/config/schema.ts)、[个人文件 codec](../../../../packages/provider-node/src/provider-config-file-codec.ts)、[内置发布外壳](../../../../packages/provider-node/src/codez-builtin-release.ts)。本轮没有实现这些结构改造或数据迁移。
 
 ### 6.9 默认模型选择合并进个人配置文件：已确认
 
@@ -844,18 +844,18 @@ Provider / Model / 排序修改 --+
 程序维护层：统一放进环境目录下 runtime/provider/。runtime 在这里表示程序维护的数据，不表示可随意清空的临时文件。此前讨论的 cache/、state/ 两套顶层目录方案均被替代。
 
 ```text
-~/.zcode/v2/
+~/.codez/v2/
 |-- provider_config.json
 |-- bot-config.v3.json
 |-- bot-state.v3.json
 `-- runtime/
     `-- provider/
         |-- <平台>/<应用版本>/<服务端地址标识>/
-        |   |-- zcode-builtin.json
-        |   `-- zcode-builtin-refresh.json
+        |   |-- codez-builtin.json
+        |   `-- codez-builtin-refresh.json
         |-- provisioning.json
         `-- bundled/
-            `-- zcode-builtin.json
+            `-- codez-builtin.json
 ```
 
 图中用户目录是默认环境示意，实际路径继续由所属环境的路径解析和宿主注入决定，不能硬编码用户主目录。下载配置及刷新记录继续保留现有平台 / 应用版本 / 服务端地址的隔离维度。
@@ -866,21 +866,21 @@ Provider / Model / 排序修改 --+
 | ----------------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | provider_config.json                            | 保留                                               | 个人 Provider / Model 配置集中保存，不占用旧综合 config.json                                                   |
 | model-selection.json                            | 合并进 config.defaultModelSelection                | 逻辑成员独立不要求再开物理文件，见 6.9                                                                         |
-| active.json                                     | runtime/provider/隔离目录/zcode-builtin.json       | 名字直接说明配置内容；作为下载后当前采用的内置配置，缺失时可用随包配置重建                                     |
-| refresh-control.json                            | 与下载文件同目录的 zcode-builtin-refresh.json      | 记录多进程刷新占用、刷新时间和失败重试信息；不是用户配置                                                       |
+| active.json                                     | runtime/provider/隔离目录/codez-builtin.json       | 名字直接说明配置内容；作为下载后当前采用的内置配置，缺失时可用随包配置重建                                     |
+| refresh-control.json                            | 与下载文件同目录的 codez-builtin-refresh.json      | 记录多进程刷新占用、刷新时间和失败重试信息；不是用户配置                                                       |
 | provider-provisioning-state.json                | runtime/provider/provisioning.json                 | 保存已成功执行的分发请求 ID 和结果，避免重发请求重复覆盖目标配置；不是完整配置副本，丢失后去重历史不能直接重建 |
 | bot-config.v3.json                              | 保留当前新文件方案                                 | 从 staging 的 bot-config.json 导入，旧文件保持；不持续双写，不改回原文件覆盖                                   |
 | bot-state.v3.json                               | 保留当前新文件方案                                 | 从 staging 的 bot-state.v2.json 等既有输入导入，旧文件保持；不改回原文件覆盖                                   |
-| 随包 zcode-builtin.json                         | 保留随包资源                                       | 为首次启动和离线提供内置基线；与远端下载内容使用同一种发布 schema                                              |
-| 内嵌资源释放出的 zcode-builtin-<内容 hash>.json | 固定为 runtime/provider/bundled/zcode-builtin.json | 单文件 CLI / Server 等形态复用文件读取链路；是资源副本，不是新的用户配置 schema                                |
+| 随包 codez-builtin.json                         | 保留随包资源                                       | 为首次启动和离线提供内置基线；与远端下载内容使用同一种发布 schema                                              |
+| 内嵌资源释放出的 codez-builtin-<内容 hash>.json | 固定为 runtime/provider/bundled/codez-builtin.json | 单文件 CLI / Server 等形态复用文件读取链路；是资源副本，不是新的用户配置 schema                                |
 
-资源副本的覆盖语义：用户随后明确要求覆盖，不保留按 hash 命名的历史副本。因此固定使用 runtime/provider/bundled/zcode-builtin.json，新程序启动时比较包内配置，内容不同则写临时文件后原子替换；内容相同可以复用。该裁决取代此前按 hash 保留历史副本的方案，下载配置与随包资源仍分开。讨论以正常退出旧程序及子进程后升级为前提，不再要求并行的新旧程序各自保留旧基线；若旧进程仍在运行，之后重读固定路径会看到新内容。替换由程序启动完成，不要求安装器额外处理。
+资源副本的覆盖语义：用户随后明确要求覆盖，不保留按 hash 命名的历史副本。因此固定使用 runtime/provider/bundled/codez-builtin.json，新程序启动时比较包内配置，内容不同则写临时文件后原子替换；内容相同可以复用。该裁决取代此前按 hash 保留历史副本的方案，下载配置与随包资源仍分开。讨论以正常退出旧程序及子进程后升级为前提，不再要求并行的新旧程序各自保留旧基线；若旧进程仍在运行，之后重读固定路径会看到新内容。替换由程序启动完成，不要求安装器额外处理。
 
 兼容边界：staging 已发布数据需要升级到最终格式；本分支开发过程中产生的未发布中间格式不要求兼容或迁移。不把“保留不支持格式的文件”与“支持读取该格式”混为一谈；非法文件、未来版本文件的处理没有在本节扩展成新的实现要求。
 
 Bot 误记纠正：此前本文将“沿用原文件迁移”写成用户裁决，并据此提出改变迁移触发条件，这是记录错误。用户明确指出本来就要换文件，要求撤销误记；不是用户撤回原本认可的方案。最终保留当前 bot-config.v3.json / bot-state.v3.json 及其 version: 3，新文件不存在时从旧文件导入，不再实施原路径覆盖或相应触发条件重构。图中只展示当前写入文件，旧文件继续作为导入输入保留；不把既有 Bot version 纳入 6.11 的五处新增 schemaVersion 重置。
 
-证据：[既有独立个人文件裁决](./todo-33-personal-provider-config-file-cutover.md)、[当前下载路径](../../../../packages/provider-node/src/zcode-builtin-cache-paths.ts)、[分发状态记录](../../../../packages/services/src/model-provider/providerProvisioningTarget.ts)、[Bot 文件与迁移入口](../../../../packages/services/src/bots/repo.ts)、[内置资源释放](../../../../packages/provider-node/src/zcode-builtin-provider-config-materializer.ts)、[CLI 内嵌资源释放](../../../../apps/zcode-cli/packages/cli/src/provider-runtime-env.ts)。本轮仅记录目标，文件移动、改名等尚未实施；Bot 继续使用已有 v3 文件方案。
+证据：[既有独立个人文件裁决](./todo-33-personal-provider-config-file-cutover.md)、[当前下载路径](../../../../packages/provider-node/src/codez-builtin-cache-paths.ts)、[分发状态记录](../../../../packages/services/src/model-provider/providerProvisioningTarget.ts)、[Bot 文件与迁移入口](../../../../packages/services/src/bots/repo.ts)、[内置资源释放](../../../../packages/provider-node/src/codez-builtin-provider-config-materializer.ts)、[CLI 内嵌资源释放](../../../../apps/codez-cli/packages/cli/src/provider-runtime-env.ts)。本轮仅记录目标，文件移动、改名等尚未实施；Bot 继续使用已有 v3 文件方案。
 
 ### 6.11 schemaVersion 的范围与用途：已确认
 
@@ -889,7 +889,7 @@ Bot 误记纠正：此前本文将“沿用原文件迁移”写成用户裁决�
 | 版本边界                   | 目标版本         | 管理范围                                                          |
 | -------------------------- | ---------------- | ----------------------------------------------------------------- |
 | PersonalProviderConfigFile | schemaVersion: 1 | 个人文件的整份 config，包括 defaultModelSelection                 |
-| ZCodeBuiltinRelease        | schemaVersion: 1 | 随包、释放副本、下载内容共用的内置发布格式；当前实现的 3 收口为 1 |
+| CodezBuiltinRelease        | schemaVersion: 1 | 随包、释放副本、下载内容共用的内置发布格式；当前实现的 3 收口为 1 |
 | 内置刷新记录               | schemaVersion: 1 | 刷新占用、时间、失败计数等记录                                    |
 | Provider 分发状态文件      | schemaVersion: 1 | 已完成请求及结果的保存格式                                        |
 | Provider 分发信封          | schemaVersion: 1 | 发往目标环境的整包配置、设置、凭据等内容                          |
@@ -915,7 +915,7 @@ revision 保留当前非负安全整数约束（不大于 Number.MAX_SAFE_INTEGE
 
 Review 结论：内置新旧序号比较、同序号内容冲突检查、个人配置在文件锁内校验保存依据的主路径暂未发现问题。另有一个行为问题已用真实文件 Source / ConfigService / RegistryService 组合复现，两处字段精简 / 命名问题已核实。用户询问的是三个修复方向本身是否有明显问题，并在无明显设计障碍的前提下要求落盘；以下记录为待实施方案，不表示当前实现已修好。
 
-1. 运行时内置标识包含来源范围。当前 snapshotFromRelease 仅产生 zcode-builtin:<发布序号>，不同 Endpoint 有独立缓存且可出现相同发布序号。两个地址的配置序号相同、内容不同时，切换后 Source 已读取新内容，Registry 却因组合标识未变而跳过发布。运行时标识应纳入规范化 Endpoint 来源，并贯穿内置、组合配置及 Account 的依据标识；文件里的数值发布 revision 和比较规则保持。直接文件 Source / Worker 的来源传递也需一起核对，不能只在一个界面补刷新。
+1. 运行时内置标识包含来源范围。当前 snapshotFromRelease 仅产生 codez-builtin:<发布序号>，不同 Endpoint 有独立缓存且可出现相同发布序号。两个地址的配置序号相同、内容不同时，切换后 Source 已读取新内容，Registry 却因组合标识未变而跳过发布。运行时标识应纳入规范化 Endpoint 来源，并贯穿内置、组合配置及 Account 的依据标识；文件里的数值发布 revision 和比较规则保持。直接文件 Source / Worker 的来源传递也需一起核对，不能只在一个界面补刷新。
 
 ```text
 地址 A：revision 20，model-a
@@ -934,7 +934,7 @@ Review 结论：内置新旧序号比较、同序号内容冲突检查、个人�
 
 验证依据：8 个现有相关测试文件共 95 个用例通过；额外临时测试确认了同序号跨 Endpoint 切换后 Registry 不更新的问题。临时复现文件已从工作区移除，产品代码没有修改。修复实施时应把该场景补成正式回归测试，并验证真实 Host / Worker 的来源传递。以上三个方案没有发现明显的设计障碍，仍需实施后的验证，不能将本节理解成“现有实现全部无问题”。
 
-证据：[内置运行时标识](../../../../packages/provider-node/src/zcode-builtin-provider-config-source.ts)、[Endpoint 切换](../../../../packages/provider-node/src/endpoint-scoped-zcode-builtin-source.ts)、[Registry 依据标识去重](../../../../packages/provider/src/registry-service.ts)、[分发标识生成](../../../../packages/services/src/model-provider/providerProvisioningSource.ts)、[分发结果写入](../../../../packages/services/src/model-provider/providerProvisioningTarget.ts)、[共享分发 schema](../../../../packages/shared/src/provider-provisioning.ts)。
+证据：[内置运行时标识](../../../../packages/provider-node/src/codez-builtin-provider-config-source.ts)、[Endpoint 切换](../../../../packages/provider-node/src/endpoint-scoped-codez-builtin-source.ts)、[Registry 依据标识去重](../../../../packages/provider/src/registry-service.ts)、[分发标识生成](../../../../packages/services/src/model-provider/providerProvisioningSource.ts)、[分发结果写入](../../../../packages/services/src/model-provider/providerProvisioningTarget.ts)、[共享分发 schema](../../../../packages/shared/src/provider-provisioning.ts)。
 
 ### 6.13 刷新 / 分发记录：按最小必要改动收口
 
@@ -1045,7 +1045,7 @@ interface ProviderProvisioningResult {
                                       `-- 失败：按实际写入范围回滚
 ```
 
-证据：[刷新控制](../../../../packages/provider-node/src/zcode-builtin-remote-synchronizer.ts)、[共享分发 schema](../../../../packages/shared/src/provider-provisioning.ts)、[发送](../../../../packages/services/src/model-provider/providerProvisioningSource.ts)、[接收 / 回滚 / 状态记录](../../../../packages/services/src/model-provider/providerProvisioningTarget.ts)。
+证据：[刷新控制](../../../../packages/provider-node/src/codez-builtin-remote-synchronizer.ts)、[共享分发 schema](../../../../packages/shared/src/provider-provisioning.ts)、[发送](../../../../packages/services/src/model-provider/providerProvisioningSource.ts)、[接收 / 回滚 / 状态记录](../../../../packages/services/src/model-provider/providerProvisioningTarget.ts)。
 
 ### 6.14 明确通过或不调整的其他结构
 
@@ -1063,7 +1063,7 @@ interface ProviderProvisioningResult {
 | automation_runs | model_selection TEXT | 复用 ModelSelection，通过 |
 | off_peak_tasks  | model_selection TEXT | 复用 ModelSelection，通过 |
 
-最近选择的新 localStorage key（zcode-model-selection-recent-v1 加工作区身份）属于客户端存储，不是新 JSON 文件或数据表。Subagent Markdown 仍有原有 model / thoughtLevel 文本表达，不因本次通过而要求全改为 JSON。Bot 按 6.10 纠正后的裁决保留 v3 新文件；“通过选择结构”不要求额外调整 Bot 路径。
+最近选择的新 localStorage key（codez-model-selection-recent-v1 加工作区身份）属于客户端存储，不是新 JSON 文件或数据表。Subagent Markdown 仍有原有 model / thoughtLevel 文本表达，不因本次通过而要求全改为 JSON。Bot 按 6.10 纠正后的裁决保留 v3 新文件；“通过选择结构”不要求额外调整 Bot 路径。
 
 通过的是 schema 设计，不豁免 staging 数据迁移验证；例如 SQL NULL、JSON null 和明确选择的既有区别，实施时仍需保留其上层语义。
 
@@ -1116,14 +1116,14 @@ staging 已发布数据 --升级----> 同一最终格式
 
 | 已有裁决                       | 必须一起核对的入口                                                                                                                                                                                                  |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 字段改名、规则分组及去掉 type  | provider/config/schema.ts 的解析、provider-config.ts / model-config.ts 的构造及 toJSON、toPersonalJSON、toZCodeBuiltinJSON；不能只改展示类型，写回仍出现旧字段                                                      |
+| 字段改名、规则分组及去掉 type  | provider/config/schema.ts 的解析、provider-config.ts / model-config.ts 的构造及 toJSON、toPersonalJSON、toCodezBuiltinJSON；不能只改展示类型，写回仍出现旧字段                                                      |
 | 个人 config 包装和默认选择合并 | provider-node 的 provider-config-file-codec.ts、personal-provider-config-repository.ts、model-selection-config-repository.ts，以及宿主装配和默认选择订阅；不得保留第二个持续写入的 model-selection.json             |
 | staging 个人配置导入           | App 的 legacyPersonalProviderConfigImporter.ts 与独立 CLI 的 legacy-cli-personal-provider-config-importer.ts 都输出最终格式；保留现有用户意图提取和旧身份转换，不把旧 Effective Config 的系统默认能力冻结成用户覆盖 |
 | Bot 保留 v3 新文件             | bots/repo.ts 与 storageMigration.ts 沿用当前新文件导入链路；验证旧配置 / 草稿选择进入 v3 文件，旧文件不被覆盖，不实施此前误记的原路径迁移                                                                           |
-| 内置发布和运行时来源标识       | config/provider/zcode-builtin.json、release codec、下载 Source、固定资源释放路径及 CLI / Server 内嵌资源链路一起核对，随包与下载使用同一最终发布 schema                                                             |
+| 内置发布和运行时来源标识       | config/provider/codez-builtin.json、release codec、下载 Source、固定资源释放路径及 CLI / Server 内嵌资源链路一起核对，随包与下载使用同一最终发布 schema                                                             |
 | 分发适配                       | shared/provider-provisioning.ts 与 Source / Target / 状态结果编解码一起变更；发送、接收和失败回滚读取同一份 personalConfig                                                                                          |
 
-已有迁移入口证据：[App 个人配置导入](../../../../packages/services/src/model-provider/legacyPersonalProviderConfigImporter.ts)、[独立 CLI 个人配置导入](../../../../apps/zcode-cli/packages/bootstrap/src/app/legacy-cli-personal-provider-config-importer.ts)、[Bot 存储迁移](../../../../packages/services/src/bots/storageMigration.ts)。其他代码入口见相应裁决章节，不再复制一套实现设计。
+已有迁移入口证据：[App 个人配置导入](../../../../packages/services/src/model-provider/legacyPersonalProviderConfigImporter.ts)、[独立 CLI 个人配置导入](../../../../apps/codez-cli/packages/bootstrap/src/app/legacy-cli-personal-provider-config-importer.ts)、[Bot 存储迁移](../../../../packages/services/src/bots/storageMigration.ts)。其他代码入口见相应裁决章节，不再复制一套实现设计。
 
 文档复核补全的是：公共 Match 示例与正式 schema 的区别、完整 / 手动配置关系、enabled 与 null 覆盖语义、规则顺序及身份唯一性、默认选择合并后的完整读写与回滚、最终版本 1 和旧数据导入的区别。以上均用于把已有裁决和必须保留的现有行为写明确；若实施发现需要改变这些行为，另报具体原因，不能将“文档完善”当作扩大产品改造的授权。
 
@@ -1246,7 +1246,7 @@ modelSelection 层：复用第 2 节通用结构，不另建一套 Provider / Mo
 
 旧版行为核查仅为当前静态证据：上述 staging 的桌面 / Web 恢复链路能读陌生 ID，但将对应模型判为不可用；有可用模型时有回退路径，无可用模型时历史可打开、发送受阻。旧版不读取 options.reasoningLevel。因此本裁决解决的是原选择快照丢失，不应声称旧版必然打不开整个会话；也未宣称已完成旧 App 实机回滚。
 
-证据：[Off-Peak 编辑](../../../../packages/services/src/session/offPeakTaskRepo.ts)、[Wiki 存储](../../../../packages/services/src/repo-wiki/repoWikiStorage.ts)、[Session 选择迁移](../../../../apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/model-selection-migration.ts)、[旧身份转换](../../../../packages/shared/src/legacy-model-provider-identity.ts)、[实用回滚原边界](./todo-69-provider-refactor-practical-rollback-compatibility.md)。
+证据：[Off-Peak 编辑](../../../../packages/services/src/session/offPeakTaskRepo.ts)、[Wiki 存储](../../../../packages/services/src/repo-wiki/repoWikiStorage.ts)、[Session 选择迁移](../../../../apps/codez-cli/packages/adapters/src/storage/session-store/repositories/model-selection-migration.ts)、[旧身份转换](../../../../packages/shared/src/legacy-model-provider-identity.ts)、[实用回滚原边界](./todo-69-provider-refactor-practical-rollback-compatibility.md)。
 
 #### 6.18.4 仍需留意的具体边界
 
@@ -1268,10 +1268,10 @@ modelSelection 层：复用第 2 节通用结构，不另建一套 Provider / Mo
 | 2    | Off-Peak 保存      | 当前 UPDATE 不再将旧 model / thought_level 置 NULL；沿用既有保存链路，见 6.18.1。                                                                                            |
 | 3    | Wiki / Draft 保存  | 存储层保存时保留旧模型、档位及 maxOutputTokens 原值，复用已有锁与原子写；不恢复旧预算功能，不重构保存机制，见 6.18.2。                                                       |
 | 4    | 默认选择文件合并   | model-selection.json 合并到 provider_config.json 的 config.defaultModelSelection；调整读写、持锁更新、冲突检查和通知。清除选择不删除整个文件，不授权顺带删除旧文件，见 6.9。 |
-| 5    | 下载配置路径       | active.json 改为 runtime/provider/<平台>/<应用版本>/<服务端地址标识>/zcode-builtin.json，保留三个隔离维度。                                                                  |
-| 6    | 刷新记录路径       | refresh-control.json 改为上述同目录的 zcode-builtin-refresh.json；内部字段、占用和重试机制保持。                                                                             |
+| 5    | 下载配置路径       | active.json 改为 runtime/provider/<平台>/<应用版本>/<服务端地址标识>/codez-builtin.json，保留三个隔离维度。                                                                  |
+| 6    | 刷新记录路径       | refresh-control.json 改为上述同目录的 codez-builtin-refresh.json；内部字段、占用和重试机制保持。                                                                             |
 | 7    | 分发记录路径       | provider-provisioning-state.json 改为 runtime/provider/provisioning.json；保留 records / syncId 及去重语义。                                                                 |
-| 8    | 内嵌资源副本       | 固定 runtime/provider/bundled/zcode-builtin.json，启动时内容不同则原子覆盖，不再按 hash 产生多份资源副本。以上路径见 6.10。                                                  |
+| 8    | 内嵌资源副本       | 固定 runtime/provider/bundled/codez-builtin.json，启动时内容不同则原子覆盖，不再按 hash 产生多份资源副本。以上路径见 6.10。                                                  |
 | 9    | 格式版本收口       | 最终五处 schemaVersion 统一为 1；默认选择独立版本外壳随合并取消，Bot 仍保留 version: 3，见 6.11。                                                                            |
 | 10   | 来源切换刷新修复   | 运行时内置标识纳入 Endpoint 来源，并贯穿现有消费者；修复不同地址同 revision、不同内容时不刷新，不新增持久化 revision 字段，见 6.12。                                         |
 | 11   | 分发信封与回滚适配 | 删除无调用的 sourceRevision；默认选择随 personalConfig 传递，移除外层 configuredDefault；整份个人文件统一应用、校验和失败回滚，保留并发修改保护，见 6.13。                   |
@@ -1320,10 +1320,10 @@ modelSelection 层：复用第 2 节通用结构，不另建一套 Provider / Mo
 | ModelConfig、Properties、输入输出格式、OptionSpecs | config/schema.ts 有运行时定义，model-config.ts 另手写 Input / Object 等字段                                                             | 共享 schema，推导数据类型；不把 class 删除视作前提                                                          |
 | ModelConfigRule 三种成员                           | schema 工厂定义规则结构，model-config.ts 又手写规则接口                                                                                 | 从各具体规则 schema 推导；工厂参数当前使用 ZodTypeAny，实施时需保留 config 的具体类型，不能让推导退化为 any |
 | Registry 完整配置                                  | resolver.ts 另手写 RegistryModelConfig / RegistryModelConfigObject 等完整成员；目前完整性依靠 validateComplete，而非已有独立完整 schema | 与完整 / 稀疏 / 固定配置共享字段定义，不错误声称这里已存在完整 schema 只是没 infer                          |
-| 协议 ZCodeProviderAccountAccess                    | shared/zcode-protocol/index.ts 已从 schema infer；Resolver 中仍有手写的同形 Registry 账号访问结构                                       | 保留已推导协议类型；共享数据形状时遵守包依赖方向                                                            |
+| 协议 CodezProviderAccountAccess                    | shared/codez-protocol/index.ts 已从 schema infer；Resolver 中仍有手写的同形 Registry 账号访问结构                                       | 保留已推导协议类型；共享数据形状时遵守包依赖方向                                                            |
 | 账号连接选择及设置                                 | shared/provider-family-connection-selection.ts 已定义两个 schema，但又手写联合类型及设置映射类型                                        | 改为从 schema 推导；不改变 kind、团队 ID 或持久化形状，用户已跳过结构调整                                   |
 
-证据：[ModelSelection](../../../../packages/shared/src/model-selection.ts)、[Registry Selection 重用](../../../../packages/provider/src/registry.ts)、[配置 schema](../../../../packages/provider/src/config/schema.ts)、[Provider 类型](../../../../packages/provider/src/config/provider-config.ts)、[Model / Rule 类型](../../../../packages/provider/src/config/model-config.ts)、[Registry 完整类型](../../../../packages/provider/src/resolver.ts)、[协议类型](../../../../packages/shared/src/zcode-protocol/index.ts)。
+证据：[ModelSelection](../../../../packages/shared/src/model-selection.ts)、[Registry Selection 重用](../../../../packages/provider/src/registry.ts)、[配置 schema](../../../../packages/provider/src/config/schema.ts)、[Provider 类型](../../../../packages/provider/src/config/provider-config.ts)、[Model / Rule 类型](../../../../packages/provider/src/config/model-config.ts)、[Registry 完整类型](../../../../packages/provider/src/resolver.ts)、[协议类型](../../../../packages/shared/src/codez-protocol/index.ts)。
 
 ## 8. 后续 Todo 与当前边界
 

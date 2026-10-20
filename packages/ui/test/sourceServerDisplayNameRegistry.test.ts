@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { Emitter } from "@zcode/rpc";
-import type { ISourceServerManagementService } from "@zcode/services";
+import { Emitter } from "@codez/rpc";
+import type { ISourceServerManagementService } from "@codez/services";
 import { getSourceServerDisplayNameRegistry } from "@/store/sourceServerDisplayNameRegistry.js";
 
 describe("Source Server display-name registry", () => {

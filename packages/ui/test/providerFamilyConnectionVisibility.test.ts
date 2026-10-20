@@ -4,7 +4,7 @@ import {
   getModelProviderFamilySpec,
   ZAI_PROVIDER_ID,
   type UsageEntitlementSnapshot,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { ProviderSettingsFormProvider } from "@/lib/providerSettingsFormTypes.js";
 import { describe, expect, it } from "vitest";
 import {

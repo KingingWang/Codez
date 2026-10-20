@@ -19,8 +19,8 @@ async function fixture(t) {
   for (const key of Object.keys(env))
     if (
       key.startsWith("GIT_") ||
-      key.startsWith("ZCODE_PRE_PUSH_") ||
-      key === "ZCODE_AFFECTED_TEST_BASE"
+      key.startsWith("CODEZ_PRE_PUSH_") ||
+      key === "CODEZ_AFFECTED_TEST_BASE"
     )
       delete env[key];
   await symlink(
@@ -78,7 +78,7 @@ async function fixture(t) {
   };
   const hook = (remote = base, local = "HEAD") =>
     git("rev-parse", local).then((sha) => ({
-      ZCODE_PRE_PUSH_STDIN: `refs/heads/main ${sha} refs/heads/main ${remote}`,
+      CODEZ_PRE_PUSH_STDIN: `refs/heads/main ${sha} refs/heads/main ${remote}`,
     }));
   return { root, write, git, base, invoke, hook, env };
 }
@@ -201,13 +201,13 @@ test("无基线、无效基线、非 HEAD 推送均报错；删除 ref 不测试
     [["--scope", "push"], await hook("1".repeat(40))],
     [
       ["--scope", "push"],
-      { ZCODE_PRE_PUSH_STDIN: `refs/heads/x ${"1".repeat(40)} refs/heads/x ${base}` },
+      { CODEZ_PRE_PUSH_STDIN: `refs/heads/x ${"1".repeat(40)} refs/heads/x ${base}` },
     ],
     [["--scope", "invalid"], {}],
   ])
     assert.equal((await invoke(args, env)).code, 2);
   const deleted = await invoke(["--scope", "push"], {
-    ZCODE_PRE_PUSH_STDIN: `(delete) ${zero} refs/heads/x ${base}`,
+    CODEZ_PRE_PUSH_STDIN: `(delete) ${zero} refs/heads/x ${base}`,
   });
   assert.equal(deleted.code, 0, deleted.stderr);
   assert.match(deleted.stdout, /无选中测试/u);
@@ -276,7 +276,7 @@ test("多个 Push ref 的官方选择合并去重，完整并集成功跳过", a
   const first = await hook(base);
   const second = await hook(middle);
   const result = await invoke(["--scope", "push", "--dry-run", "--json"], {
-    ZCODE_PRE_PUSH_STDIN: `${first.ZCODE_PRE_PUSH_STDIN}\n${second.ZCODE_PRE_PUSH_STDIN}`,
+    CODEZ_PRE_PUSH_STDIN: `${first.CODEZ_PRE_PUSH_STDIN}\n${second.CODEZ_PRE_PUSH_STDIN}`,
   });
   assert.equal(result.code, 0, result.stderr);
   assert.match(result.stderr, /跳过 UT/u);
@@ -323,7 +323,7 @@ test("真实 git push 在配置触发全量时继续推送，不执行 UT", asyn
   const quote = (value) => `'${value.replaceAll("\\", "/").replaceAll("'", "'\\''")}'`;
   await writeFile(
     join(root, ".git/hooks/pre-push"),
-    `#!/bin/sh\npre_push_stdin=$(cat)\nZCODE_PRE_PUSH_STDIN="$pre_push_stdin" ${quote(process.execPath)} ${quote(entry)} --scope push\n`,
+    `#!/bin/sh\npre_push_stdin=$(cat)\nCODEZ_PRE_PUSH_STDIN="$pre_push_stdin" ${quote(process.execPath)} ${quote(entry)} --scope push\n`,
     { mode: 0o755 },
   );
   await write("vitest.setup.ts", "// changed shared setup\n");
@@ -345,10 +345,10 @@ test("Push 显式 ref 优先于 hook 基线，首次推送也不依赖 staging",
   for (const remote of [head, zero]) {
     const input = await hook(remote);
     for (const [args, override] of [
-      [[], { ZCODE_AFFECTED_TEST_BASE: "comparison-ref" }],
-      [[], { ZCODE_PRE_PUSH_BASE: base }],
-      [["--base", base], { ZCODE_AFFECTED_TEST_BASE: "missing" }],
-      [[], { ZCODE_AFFECTED_TEST_BASE: base, ZCODE_PRE_PUSH_BASE: "missing" }],
+      [[], { CODEZ_AFFECTED_TEST_BASE: "comparison-ref" }],
+      [[], { CODEZ_PRE_PUSH_BASE: base }],
+      [["--base", base], { CODEZ_AFFECTED_TEST_BASE: "missing" }],
+      [[], { CODEZ_AFFECTED_TEST_BASE: base, CODEZ_PRE_PUSH_BASE: "missing" }],
     ]) {
       const result = await invoke(["--scope", "push", "--dry-run", "--json", ...args], {
         ...input,
@@ -360,20 +360,20 @@ test("Push 显式 ref 优先于 hook 基线，首次推送也不依赖 staging",
   }
   const invalid = await invoke(["--scope", "push"], {
     ...(await hook(head)),
-    ZCODE_AFFECTED_TEST_BASE: "missing",
+    CODEZ_AFFECTED_TEST_BASE: "missing",
   });
   assert.equal(invalid.code, 2);
   assert.match(invalid.stderr, /missing/u);
   const notHead = await invoke(["--scope", "push"], {
     ...(await hook(head, base)),
-    ZCODE_AFFECTED_TEST_BASE: base,
+    CODEZ_AFFECTED_TEST_BASE: base,
   });
   assert.equal(notHead.code, 2);
   assert.match(notHead.stderr, /不是当前 HEAD/u);
   await write("source.mjs", "export const value = 3;");
   const dirty = await invoke(["--scope", "push"], {
     ...(await hook(head)),
-    ZCODE_AFFECTED_TEST_BASE: base,
+    CODEZ_AFFECTED_TEST_BASE: base,
   });
   assert.equal(dirty.code, 2);
   assert.match(dirty.stderr, /工作区.*不干净/u);
@@ -393,7 +393,7 @@ test("真实 git push 消费任意显式基线，而不是 remote SHA", async (t
   const quote = (value) => `'${value.replaceAll("\\", "/").replaceAll("'", "'\\''")}'`;
   await writeFile(
     join(root, ".git/hooks/pre-push"),
-    `#!/bin/sh\npre_push_stdin=$(cat)\nZCODE_PRE_PUSH_STDIN="$pre_push_stdin" ${quote(process.execPath)} ${quote(entry)} --scope push\n`,
+    `#!/bin/sh\npre_push_stdin=$(cat)\nCODEZ_PRE_PUSH_STDIN="$pre_push_stdin" ${quote(process.execPath)} ${quote(entry)} --scope push\n`,
     { mode: 0o755 },
   );
   await write("vitest.setup.ts", "// setup changed on remote\n");
@@ -406,7 +406,7 @@ test("真实 git push 消费任意显式基线，而不是 remote SHA", async (t
   // remote SHA 的范围只有无关联文本；显式 comparison-ref 的范围含公共 setup，应选中整个套件并跳过。
   const result = await exec("git", ["push", "origin", "main"], {
     cwd: root,
-    env: { ...env, ZCODE_AFFECTED_TEST_BASE: "comparison-ref" },
+    env: { ...env, CODEZ_AFFECTED_TEST_BASE: "comparison-ref" },
   });
   assert.match(result.stdout, /选中 2\/2/u);
   assert.match(result.stderr, /跳过 UT/u);

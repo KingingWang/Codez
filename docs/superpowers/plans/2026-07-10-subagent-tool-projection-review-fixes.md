@@ -14,10 +14,10 @@
 
 ## Phase 1：Running Snapshot 单调合并
 
-- [x] 在 `zcodeChatMessages.test.ts` 增加“live terminal + stale running snapshot”失败测试。
+- [x] 在 `codezChatMessages.test.ts` 增加“live terminal + stale running snapshot”失败测试。
 - [x] 确认测试在实现前失败。
 - [x] 将 tool status 合并改为单调状态合并，并复用统一 display identity 合并。
-- [x] 运行 `zcodeChatMessages.test.ts`，确认新增和现有测试通过。
+- [x] 运行 `codezChatMessages.test.ts`，确认新增和现有测试通过。
 
 通过标准：已 terminal 的 child tool 不会被 running snapshot 复活；snapshot terminal 仍可收口 live running。
 

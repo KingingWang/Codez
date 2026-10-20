@@ -1,12 +1,12 @@
 import {
   WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS,
   type WebRemoteControlFailure,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   parseWebRemoteControlRelayV2IncomingMessage,
   type WebRemoteControlRelayV2IncomingMessage,
   type WebRemoteControlRelayV2OutgoingMessage,
-} from "@zcode/shared/web-remote-relay";
+} from "@codez/shared/web-remote-relay";
 
 export async function readWebSocketData(data: unknown): Promise<string | null> {
   if (typeof data === "string") {
@@ -72,7 +72,7 @@ export function safePayloadMetadata(payload: unknown): Record<string, string | u
   }
   const record = payload as Record<string, unknown>;
   return {
-    zcode_type: typeof record.zcode_type === "string" ? record.zcode_type : undefined,
+    codez_type: typeof record.codez_type === "string" ? record.codez_type : undefined,
     requestId: typeof record.requestId === "string" ? record.requestId : undefined,
     bridgeSessionId:
       typeof record.bridgeSessionId === "string" ? record.bridgeSessionId : undefined,
@@ -81,7 +81,7 @@ export function safePayloadMetadata(payload: unknown): Record<string, string | u
 
 export function isRawTransportCandidate(payload: unknown): boolean {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
-  const type = (payload as { zcode_type?: unknown }).zcode_type;
+  const type = (payload as { codez_type?: unknown }).codez_type;
   return type === "rpc-frame" || type === "rpc-frame-ack";
 }
 

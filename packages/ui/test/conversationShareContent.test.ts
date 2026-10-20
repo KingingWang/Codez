@@ -2,9 +2,9 @@ import { readFile } from "node:fs/promises";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it } from "vitest";
-import { conversationShareContentBlockSchema } from "@zcode/shared";
+import { conversationShareContentBlockSchema } from "@codez/shared";
 import { ConversationShareReadonlyTimeline } from "@/v4/ConversationShareReadonlyTimeline.js";
-import type { ConversationRow } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationRow } from "@codez/shared/codez-protocol-v4";
 const blocks = JSON.parse(
   await readFile(
     new URL("../../services/test/fixtures/share-content-blocks.json", import.meta.url),

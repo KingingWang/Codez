@@ -2,9 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   BIGMODEL_PROVIDER_ID,
   BUILTIN_MODEL_PROVIDER_IDS,
-  ZCODE_VERSION,
+  CODEZ_VERSION,
   type ApiClient,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { BigModelUsageQuotaProvider } from "../src/usage-stats/providers/bigmodelUsageQuotaProvider.js";
 
 const TEST_BIGMODEL_PROVIDER_ID = "test-bigmodel-api-provider";
@@ -51,7 +51,7 @@ function createProviderForTest(
           };
         }
         if (providerId.includes("start-plan")) {
-          const token = await options.credentialService?.load("zcodejwttoken");
+          const token = await options.credentialService?.load("codezjwttoken");
           return { apiKey: token ?? undefined };
         }
         const providers = await options.modelProviderService?.getAllCached();
@@ -124,7 +124,7 @@ function createZaiStartPlanProvider(): TestUsageProvider {
   return {
     ...createZaiCodingPlanProvider(),
     id: BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan,
-    apiKey: "provider-zcode-jwt",
+    apiKey: "provider-codez-jwt",
   };
 }
 
@@ -151,9 +151,9 @@ describe("BigModelUsageQuotaProvider", () => {
                 data: {
                   server_time: 1788448680,
                   plans: [
-                    { plan_id: "zcode-v3-start-plan", status: "active", ends_at: 1788796799 },
+                    { plan_id: "codez-v3-start-plan", status: "active", ends_at: 1788796799 },
                   ],
-                  balances: [{ plan_id: "zcode-v3-start-plan", remaining_units: 3000000 }],
+                  balances: [{ plan_id: "codez-v3-start-plan", remaining_units: 3000000 }],
                 },
               }),
               { headers: { Date: "Thu, 17 Sep 2026 13:42:46 GMT" } },
@@ -163,7 +163,7 @@ describe("BigModelUsageQuotaProvider", () => {
       modelProviderService: {
         getAllCached: vi.fn(async () => [createZaiStartPlanProvider()]),
       } as LegacyModelProviderReader,
-      credentialService: { load: vi.fn(async () => "credential-zcode-jwt") },
+      credentialService: { load: vi.fn(async () => "credential-codez-jwt") },
     });
     expect(
       await provider.getSnapshotForRequest({
@@ -179,15 +179,15 @@ describe("BigModelUsageQuotaProvider", () => {
     });
   });
 
-  it("Z.ai Start Plan 用 zcodejwttoken 读取当前套餐和到期时间", async () => {
-    const balanceUrl = `https://zcode.z.ai/api/v1/zcode-plan/billing/balance?app_version=${ZCODE_VERSION}`;
+  it("Z.ai Start Plan 用 codezjwttoken 读取当前套餐和到期时间", async () => {
+    const balanceUrl = `https://zcode.z.ai/api/v1/zcode-plan/billing/balance?app_version=${CODEZ_VERSION}`;
     const requestUrls: string[] = [];
     const apiClient: ApiClient = {
       request: vi.fn(async (input, init) => {
         const url = input.toString();
         requestUrls.push(url);
         expect(init?.headers).toMatchObject({
-          Authorization: "Bearer credential-zcode-jwt",
+          Authorization: "Bearer credential-codez-jwt",
         });
         expect(url).toBe(balanceUrl);
         return createJsonResponse({
@@ -197,14 +197,14 @@ describe("BigModelUsageQuotaProvider", () => {
             server_time: 1_780_400_123,
             plans: [
               {
-                plan_id: "zcode-v3-start-plan",
-                name: "ZCode V3 Start Plan",
+                plan_id: "codez-v3-start-plan",
+                name: "Codez V3 Start Plan",
                 status: "active",
                 starts_at: 1_780_291_200,
                 ends_at: 1_781_500_800,
                 entitlements: [
                   {
-                    entitlement_id: "ent_zcode_v3_glm_52",
+                    entitlement_id: "ent_codez_v3_glm_52",
                     meter: "model_usage",
                     period: "daily",
                   },
@@ -219,8 +219,8 @@ describe("BigModelUsageQuotaProvider", () => {
                 period_end: 1_780_502_399,
                 meter: "model_usage",
                 unit_type: "token",
-                plan_id: "zcode-v3-start-plan",
-                entitlement_id: "ent_zcode_v3_glm_52",
+                plan_id: "codez-v3-start-plan",
+                entitlement_id: "ent_codez_v3_glm_52",
                 show_name: "GLM-5.2",
                 capabilities: ["model:glm-5.2"],
                 total_units: 3_000_000,
@@ -241,7 +241,7 @@ describe("BigModelUsageQuotaProvider", () => {
       } as LegacyModelProviderReader,
       credentialService: {
         load: vi.fn(async (key: string) =>
-          key === "zcodejwttoken" ? "credential-zcode-jwt" : null,
+          key === "codezjwttoken" ? "credential-codez-jwt" : null,
         ),
       },
     });
@@ -258,8 +258,8 @@ describe("BigModelUsageQuotaProvider", () => {
       name: "Z.ai - Coding Plan",
     });
     expect(snapshot.subscription?.details[0]).toMatchObject({
-      productId: "zcode-v3-start-plan",
-      productName: "ZCode V3 Start Plan",
+      productId: "codez-v3-start-plan",
+      productName: "Codez V3 Start Plan",
       billingCycle: "daily",
       // Start Plan 卡片不再展示套餐级续期时间；桶刷新时间由各 limit 的 nextResetTime 表达。
       renewTime: null,
@@ -269,7 +269,7 @@ describe("BigModelUsageQuotaProvider", () => {
       level: "Start",
       limits: [
         {
-          type: "ent_zcode_v3_glm_52",
+          type: "ent_codez_v3_glm_52",
           bucketId: "bucket-glm-52",
           userPlanId: "user-plan-52",
           periodStart: 1_780_416_000_000,
@@ -342,7 +342,7 @@ describe("BigModelUsageQuotaProvider", () => {
         getAllCached: vi.fn(async () => [createZaiStartPlanProvider()]),
       } as LegacyModelProviderReader,
       credentialService: {
-        load: vi.fn(async () => "credential-zcode-jwt"),
+        load: vi.fn(async () => "credential-codez-jwt"),
       },
     });
 
@@ -390,7 +390,7 @@ describe("BigModelUsageQuotaProvider", () => {
             plans: [
               {
                 plan_id: "start-plan-welcome",
-                name: "ZCode V3 Start Plan",
+                name: "Codez V3 Start Plan",
                 status: "active",
                 ends_at: 1_781_500_800,
               },
@@ -431,7 +431,7 @@ describe("BigModelUsageQuotaProvider", () => {
         getAllCached: vi.fn(async () => [createZaiStartPlanProvider()]),
       } as LegacyModelProviderReader,
       credentialService: {
-        load: vi.fn(async () => "credential-zcode-jwt"),
+        load: vi.fn(async () => "credential-codez-jwt"),
       },
     });
 
@@ -509,7 +509,7 @@ describe("BigModelUsageQuotaProvider", () => {
         getAllCached: vi.fn(async () => [createZaiStartPlanProvider()]),
       } as LegacyModelProviderReader,
       credentialService: {
-        load: vi.fn(async () => "credential-zcode-jwt"),
+        load: vi.fn(async () => "credential-codez-jwt"),
       },
     });
 
@@ -533,16 +533,16 @@ describe("BigModelUsageQuotaProvider", () => {
           data: {
             plans: [
               {
-                plan_id: "zcode-v3-start-plan",
-                name: "ZCode V3 Start Plan",
+                plan_id: "codez-v3-start-plan",
+                name: "Codez V3 Start Plan",
                 status: "active",
                 ends_at: 1_781_500_800,
               },
             ],
             balances: [
               {
-                plan_id: "zcode-v3-start-plan",
-                entitlement_id: "ent_zcode_v3_glm_52",
+                plan_id: "codez-v3-start-plan",
+                entitlement_id: "ent_codez_v3_glm_52",
                 show_name: "GLM-5.2",
                 capabilities: ["model:glm-5.2"],
                 total_units: 3_000_000,
@@ -561,7 +561,7 @@ describe("BigModelUsageQuotaProvider", () => {
         getAllCached: vi.fn(async () => [createZaiStartPlanProvider()]),
       } as LegacyModelProviderReader,
       credentialService: {
-        load: vi.fn(async () => "credential-zcode-jwt"),
+        load: vi.fn(async () => "credential-codez-jwt"),
       },
     });
 
@@ -572,7 +572,7 @@ describe("BigModelUsageQuotaProvider", () => {
 
     expect(snapshot.quota?.limits).toMatchObject([
       {
-        type: "ent_zcode_v3_glm_52",
+        type: "ent_codez_v3_glm_52",
         remaining: 2_500_000,
         nextResetTime: undefined,
       },
@@ -591,14 +591,14 @@ describe("BigModelUsageQuotaProvider", () => {
           data: {
             plans: [
               {
-                plan_id: "zcode-v3-start-plan",
-                name: "ZCode V3 Start Plan",
+                plan_id: "codez-v3-start-plan",
+                name: "Codez V3 Start Plan",
                 status: "active",
               },
             ],
             balances: [
               {
-                entitlement_id: "ent_zcode_v3_glm_52",
+                entitlement_id: "ent_codez_v3_glm_52",
                 show_name: "GLM-5.2",
                 capabilities: ["model:glm-5.2"],
                 total_units: 3_000_000,
@@ -620,7 +620,7 @@ describe("BigModelUsageQuotaProvider", () => {
       } as LegacyModelProviderReader,
       credentialService: {
         load: vi.fn(async (key: string) =>
-          key === "zcodejwttoken" ? "credential-zcode-jwt" : null,
+          key === "codezjwttoken" ? "credential-codez-jwt" : null,
         ),
       },
     });
@@ -643,7 +643,7 @@ describe("BigModelUsageQuotaProvider", () => {
   });
 
   it("Z.ai Start Plan 只请求一次 billing/balance 并从 plans 判定套餐", async () => {
-    const balanceUrl = `https://zcode.z.ai/api/v1/zcode-plan/billing/balance?app_version=${ZCODE_VERSION}`;
+    const balanceUrl = `https://zcode.z.ai/api/v1/zcode-plan/billing/balance?app_version=${CODEZ_VERSION}`;
     const requestOrder: string[] = [];
     const apiClient: ApiClient = {
       request: vi.fn(async (input) => {
@@ -656,13 +656,13 @@ describe("BigModelUsageQuotaProvider", () => {
           data: {
             plans: [
               {
-                plan_id: "zcode-v3-start-plan",
-                name: "ZCode V3 Start Plan",
+                plan_id: "codez-v3-start-plan",
+                name: "Codez V3 Start Plan",
                 status: "active",
                 starts_at: 1_787_900_000,
                 entitlements: [
                   {
-                    entitlement_id: "ent_zcode_v3_glm_52",
+                    entitlement_id: "ent_codez_v3_glm_52",
                     show_name: "GLM-5.2",
                     period: "one_time",
                     effective_at: 1_788_000_000,
@@ -672,7 +672,7 @@ describe("BigModelUsageQuotaProvider", () => {
             ],
             balances: [
               {
-                entitlement_id: "ent_zcode_v3_glm_52",
+                entitlement_id: "ent_codez_v3_glm_52",
                 show_name: "GLM-5.2",
                 capabilities: ["model:glm-5.2"],
                 total_units: 100,
@@ -691,7 +691,7 @@ describe("BigModelUsageQuotaProvider", () => {
       } as LegacyModelProviderReader,
       credentialService: {
         load: vi.fn(async (key: string) =>
-          key === "zcodejwttoken" ? "credential-zcode-jwt" : null,
+          key === "codezjwttoken" ? "credential-codez-jwt" : null,
         ),
       },
     });
@@ -704,19 +704,19 @@ describe("BigModelUsageQuotaProvider", () => {
     expect(requestOrder).toEqual(["balance"]);
     expect(apiClient.request).toHaveBeenCalledTimes(1);
     expect(snapshot.quota?.limits[0]).toMatchObject({
-      type: "ent_zcode_v3_glm_52",
+      type: "ent_codez_v3_glm_52",
       remaining: 75,
     });
     expect(snapshot.subscription?.details[0]?.entitlements).toEqual([
       {
-        entitlementId: "ent_zcode_v3_glm_52",
+        entitlementId: "ent_codez_v3_glm_52",
         showName: "GLM-5.2",
         effectiveTime: new Date(1_788_000_000 * 1_000).toISOString(),
       },
     ]);
   });
 
-  it("Z.ai Start Plan 缺少 zcodejwttoken 时不调用远端状态接口", async () => {
+  it("Z.ai Start Plan 缺少 codezjwttoken 时不调用远端状态接口", async () => {
     const apiClient: ApiClient = {
       request: vi.fn(async () =>
         createJsonResponse({
@@ -750,7 +750,7 @@ describe("BigModelUsageQuotaProvider", () => {
     expect(snapshot.provider).toBeNull();
   });
 
-  it("BigModel Start Plan 使用 OAuth callback 已落盘的 zcode JWT 读取当前套餐", async () => {
+  it("BigModel Start Plan 使用 OAuth callback 已落盘的 codez JWT 读取当前套餐", async () => {
     const requestHeaders: Array<HeadersInit | undefined> = [];
     const apiClient: ApiClient = {
       request: vi.fn(async (input, init) => {
@@ -764,8 +764,8 @@ describe("BigModelUsageQuotaProvider", () => {
           data: {
             plans: [
               {
-                plan_id: "zcode-v3-start-plan",
-                name: "ZCode V3 Start Plan",
+                plan_id: "codez-v3-start-plan",
+                name: "Codez V3 Start Plan",
                 status: "active",
                 starts_at: 1_780_291_200,
                 ends_at: 1_781_500_800,
@@ -811,8 +811,8 @@ describe("BigModelUsageQuotaProvider", () => {
         load: vi.fn(async (key: string) =>
           key === "oauth:active_provider"
             ? BIGMODEL_PROVIDER_ID
-            : key === "zcodejwttoken"
-              ? "bigmodel-zcode-jwt"
+            : key === "codezjwttoken"
+              ? "bigmodel-codez-jwt"
               : null,
         ),
       },
@@ -824,7 +824,7 @@ describe("BigModelUsageQuotaProvider", () => {
     });
 
     expect(requestHeaders).toEqual([
-      expect.objectContaining({ Authorization: "Bearer bigmodel-zcode-jwt" }),
+      expect.objectContaining({ Authorization: "Bearer bigmodel-codez-jwt" }),
     ]);
     expect(apiClient.request).toHaveBeenCalledTimes(1);
     expect(apiClient.request).not.toHaveBeenCalledWith(
@@ -1009,7 +1009,7 @@ describe("BigModelUsageQuotaProvider", () => {
     expect(snapshot.unavailableReason).toBeUndefined();
   });
 
-  it("ZCODE_ENV=test 时 BigModel Coding Plan quota 使用 bigmodel.cn", async () => {
+  it("CODEZ_ENV=test 时 BigModel Coding Plan quota 使用 bigmodel.cn", async () => {
     const requestUrls: string[] = [];
     const apiClient: ApiClient = {
       request: vi.fn(async (input) => {
@@ -1031,7 +1031,7 @@ describe("BigModelUsageQuotaProvider", () => {
     const provider = createProviderForTest({
       apiClient,
       env: {
-        ZCODE_ENV: "test",
+        CODEZ_ENV: "test",
       },
       modelProviderService: {
         getAllCached: vi.fn(async () => [createBigModelCodingPlanProvider()]),
@@ -1059,7 +1059,7 @@ describe("BigModelUsageQuotaProvider", () => {
         if (url.endsWith("/api_keys")) {
           return createJsonResponse({
             code: 200,
-            data: [{ apiKey: "team-ak", keyType: 2, name: "zcode-team-api-key" }],
+            data: [{ apiKey: "team-ak", keyType: 2, name: "codez-team-api-key" }],
           });
         }
         if (url.endsWith("/api_keys/copy/team-ak")) {
@@ -1147,9 +1147,9 @@ describe("BigModelUsageQuotaProvider", () => {
               {
                 apiKey: "wrong-type-ak",
                 keyType: 1,
-                name: "zcode-team-api-key",
+                name: "codez-team-api-key",
               },
-              { name: "zcode-api-key" },
+              { name: "codez-api-key" },
             ],
           });
         }
@@ -1158,13 +1158,13 @@ describe("BigModelUsageQuotaProvider", () => {
             "bigmodel-organization": "org-team-a",
             "bigmodel-project": "proj-team-a",
           });
-          expect(init.body).toBe(JSON.stringify({ name: "zcode-team-api-key", keyType: 2 }));
+          expect(init.body).toBe(JSON.stringify({ name: "codez-team-api-key", keyType: 2 }));
           return createJsonResponse({
             code: 200,
             data: {
               apiKey: "created-team-ak",
               keyType: 2,
-              name: "zcode-team-api-key",
+              name: "codez-team-api-key",
             },
           });
         }
@@ -1245,7 +1245,7 @@ describe("BigModelUsageQuotaProvider", () => {
         if (url.endsWith("/api_keys")) {
           return createJsonResponse({
             code: 200,
-            data: [{ apiKey: "team-ak", keyType: 2, name: "zcode-team-api-key" }],
+            data: [{ apiKey: "team-ak", keyType: 2, name: "codez-team-api-key" }],
           });
         }
         if (url.endsWith("/api_keys/copy/team-ak")) {
@@ -1415,7 +1415,7 @@ describe("BigModelUsageQuotaProvider", () => {
         getAllCached: vi.fn(async () => [createBigModelCodingPlanProvider()]),
       } as LegacyModelProviderReader,
       env: {
-        ZCODE_BIGMODEL_USAGE_API_KEY: "env-usage-key",
+        CODEZ_BIGMODEL_USAGE_API_KEY: "env-usage-key",
       },
     });
 

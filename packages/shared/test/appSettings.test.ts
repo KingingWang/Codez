@@ -84,7 +84,7 @@ describe("app settings", () => {
   it("round-trips Source-scoped conversation backing paths without extending strict project history", () => {
     const record = {
       "11111111-1111-4111-8111-111111111111": {
-        workspacePath: "/home/dev/.zcode/workspace/default",
+        workspacePath: "/home/dev/.codez/workspace/default",
         lastResolvedAt: 123,
       },
     };
@@ -102,7 +102,7 @@ describe("app settings", () => {
       appSettingsSchema.safeParse({
         remoteConversationWorkspaceBySourceServerId: {
           "11111111-1111-4111-8111-111111111111": {
-            workspacePath: "/home/dev/.zcode/workspace/default",
+            workspacePath: "/home/dev/.codez/workspace/default",
             lastResolvedAt: -1,
           },
         },
@@ -343,11 +343,11 @@ describe("app settings", () => {
       releaseDate: "2026-06-23T13:48:54.438Z",
       releaseNotesByLocale: {
         "zh-CN": {
-          title: "ZCode v3.1.4",
+          title: "Codez v3.1.4",
           markdown: "## 新功能\n- 中文说明",
         },
         "en-US": {
-          title: "ZCode v3.1.4",
+          title: "Codez v3.1.4",
           markdown: "## New Features\n- English notes",
         },
       },

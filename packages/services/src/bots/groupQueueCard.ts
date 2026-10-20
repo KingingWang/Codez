@@ -1,4 +1,4 @@
-import type { BotGroupInputProgress, BotGroupInputStatus } from "@zcode/shared";
+import type { BotGroupInputProgress, BotGroupInputStatus } from "@codez/shared";
 
 const rank = (state: BotGroupInputStatus) =>
   state === "waiting" ? 0 : state === "working" ? 1 : 2;

@@ -31,7 +31,7 @@ const CASE = "conversation-session-permission-hook-rewrite";
 const MARKER = "E2E_PERMISSION_HOOK_REWRITE";
 const TOOL_ID = "toolu_e2e_permission_hook_rewrite";
 const ROOT = resolveE2ERuntimePath(CASE);
-const ARTIFACT = join(process.env.ZCODE_E2E_ARTIFACT_DIR ?? process.cwd(), CASE);
+const ARTIFACT = join(process.env.CODEZ_E2E_ARTIFACT_DIR ?? process.cwd(), CASE);
 const DIALOG =
   '[role="listbox"][aria-label="Permission required"], [role="listbox"][aria-label="需要权限"]';
 const ALLOW = '[role="listbox"] [data-permission-option-kind="allowOnce"]';
@@ -116,7 +116,7 @@ describe("PermissionRequest Hook 改写后的确认替换", () => {
     this.timeout(180000);
     await observeAndDelayFirstApproval();
     // 转正后强制录屏会让无 ffmpeg 的默认回放在业务通过后失败；仅人工审核需要视频。
-    const recording = process.env.ZCODE_E2E_MANUAL_REVIEW === "1"
+    const recording = process.env.CODEZ_E2E_MANUAL_REVIEW === "1"
       ? await startElectronWindowRecording({
           outputPath: join(ARTIFACT, "approval-replacement.webm"),
           frameIntervalMs: 100,
@@ -235,13 +235,13 @@ async function readTrace(): Promise<Array<{ phase: string }>> {
 
 async function readStaleResponse(id: string): Promise<Record<string, unknown> | undefined> {
   const logDir =
-    process.env.ZCODE_LOG_DIR?.trim() || join(getE2EAppDataPaths().storageRoot, "cli", "log");
+    process.env.CODEZ_LOG_DIR?.trim() || join(getE2EAppDataPaths().storageRoot, "cli", "log");
   for (const name of await readdir(logDir)) {
     if (!name.endsWith(".jsonl")) continue;
     const lines = (await readFile(join(logDir, name), "utf8")).split("\n");
     for (const line of lines.slice(0, -1)) {
       if (
-        line.includes('"event":"zcode_protocol.v4.interaction_already_resolved"') &&
+        line.includes('"event":"codez_protocol.v4.interaction_already_resolved"') &&
         line.includes(id)
       )
         return JSON.parse(line) as Record<string, unknown>;

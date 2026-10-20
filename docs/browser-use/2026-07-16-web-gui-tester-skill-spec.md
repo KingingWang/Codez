@@ -9,7 +9,7 @@
 网页 GUI 黑盒测试，并输出带语义证据和视觉证据的测试报告。
 
 该 skill 只定义测试方法。具体 runtime bootstrap、浏览器选择、tab 恢复、API 文档和安全约束由当前
-会话的 Browser skill/tool contract 决定；当 ZCode Browser Use 可用时遵循 `control-browser`，但 tester
+会话的 Browser skill/tool contract 决定；当 Codez Browser Use 可用时遵循 `control-browser`，但 tester
 正文不硬编码 `agent.browsers`、Playwright MCP 或另一套专有对象图。
 
 ## 2. 非目标
@@ -33,7 +33,7 @@
 
 ## 4. 核心语义
 
-1. 每个新的 tab 操作批次先按当前 Browser contract 列出完整 tab 状态并让模型确认目标。ZCode Browser
+1. 每个新的 tab 操作批次先按当前 Browser contract 列出完整 tab 状态并让模型确认目标。Codez Browser
    Use 场景继续遵守“操作前完整 controlled list → verified match → get/claim”；action 可能打开 popup
    且源 tab 未出现预期效果时，在同一 observation cell 返回 controlled/user 两套状态后只决策一次。
 2. 当前工具提供的 DOM snapshot / accessibility tree 是页面理解和 locator 构造的事实来源。禁止猜测
@@ -43,7 +43,7 @@
 4. 每个给出通过/失败结论的测试点至少包含：
    - 一项 snapshot 或 locator read 得到的语义证据；
    - 一张由当前工具返回并实际查看的视觉证据。
-   - ZCode 显式 Browser 截图进入模型结果时，宿主会在相邻 text block 返回
+   - Codez 显式 Browser 截图进入模型结果时，宿主会在相邻 text block 返回
      `Browser screenshot saved to: <absolute path>`；证据目录应从该真实 artifact path 复制，不能假设
      browser API 自带任意路径保存能力。
 5. 不要求对每次输入、点击都重复截图；只在初始、断言、瞬态或故障状态形成有意义的视觉检查点。
@@ -66,12 +66,12 @@
 
 ## 6. 交付与验收
 
-- skill 位于 `apps/zcode-cli/packages/browser-use-plugin/skills/web-gui-tester/SKILL.md`，目录名与
+- skill 位于 `apps/codez-cli/packages/browser-use-plugin/skills/web-gui-tester/SKILL.md`，目录名与
   frontmatter `name` 一致。
 - `SKILL.md` 的 frontmatter、正文、代码示例和报告字段全部使用英文。
-- ZCode UI 通过 `builtinSkillI18n.ts` 为该官方 skill 提供 `zh-CN` 与 `en-US` 展示描述；
+- Codez UI 通过 `builtinSkillI18n.ts` 为该官方 skill 提供 `zh-CN` 与 `en-US` 展示描述；
   pluginName 为 `browser-use` 时即使路径不带官方 cache 标记，也必须按官方 skill 本地化。
-- 原临时根目录 `apps/zcode-cli/packages/browser-use-plugin/SKILL.md` 不再保留。
+- 原临时根目录 `apps/codez-cli/packages/browser-use-plugin/SKILL.md` 不再保留。
 - 插件 README 同时列出 `control-browser` 与 `web-gui-tester`。
 - 官方插件技能发现测试覆盖 `web-gui-tester`。
 - 静态合同测试确认 tester 保持工具无关、要求语义/视觉双证据并识别宿主截图 artifact path，且不包含

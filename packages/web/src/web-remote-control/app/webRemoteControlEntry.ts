@@ -4,9 +4,9 @@ import type {
   WebRemoteControlEntryOptions,
   WebRemoteControlDeviceGroup,
 } from "#src/web-remote-control/contract.js";
-import type { WebRemoteControlRelayV2Device } from "@zcode/shared/web-remote-relay";
-import { parseWebRemoteControlExternalQrParams } from "@zcode/shared";
-import { WebRemoteControlV2ConnectionError } from "@zcode/shared/web-remote-relay";
+import type { WebRemoteControlRelayV2Device } from "@codez/shared/web-remote-relay";
+import { parseWebRemoteControlExternalQrParams } from "@codez/shared";
+import { WebRemoteControlV2ConnectionError } from "@codez/shared/web-remote-relay";
 import type { WebOAuthProviderId } from "#src/auth/browserOAuthCredentialRepo.js";
 import { groupWebRemoteControlDevices } from "#src/web-remote-control/domain/webRemoteControlDeviceGroups.js";
 import {
@@ -25,8 +25,8 @@ export function isWebRemoteControlOAuthCallback(url: URL): boolean {
   );
 }
 
-const LAST_DEVICE_KEY = "zcode-web-remote-last-device-sid";
-const LAST_DEVICE_MID_KEY = "zcode-web-remote-last-device-mid";
+const LAST_DEVICE_KEY = "codez-web-remote-last-device-sid";
+const LAST_DEVICE_MID_KEY = "codez-web-remote-last-device-mid";
 
 /**
  * 最近设备的自动落点：最近 SID 在线优先；否则同一台电脑（最近 MID）恰好一个在线 SID 时接上它。
@@ -81,7 +81,7 @@ export class WebRemoteControlEntry {
       this.options.onView({ kind: "callback" });
       return;
     }
-    if (!this.options.auth.getZCodeJwtToken()) {
+    if (!this.options.auth.getCodezJwtToken()) {
       this.options.onView({ kind: "login" });
       return;
     }
@@ -131,7 +131,7 @@ export class WebRemoteControlEntry {
     const list = this.list;
     if (!list) return;
     if (list.request) return list.request;
-    const jwt = this.options.auth.getZCodeJwtToken();
+    const jwt = this.options.auth.getCodezJwtToken();
     if (!jwt) return this.switchAccount();
     if (list.acceptedJwt && list.acceptedJwt !== jwt) return this.start();
     const { signal } = this.scope;
@@ -142,7 +142,7 @@ export class WebRemoteControlEntry {
         const devices = await this.options.devices(jwt, signal);
         if (signal.aborted) return;
         // 账号变更后的响应不能为新账号提供设备或自动连接依据。
-        if (this.options.auth.getZCodeJwtToken() !== jwt) return this.start();
+        if (this.options.auth.getCodezJwtToken() !== jwt) return this.start();
         list.acceptedJwt = jwt;
         // 先读缓存补全离线记录的名字/平台，再把本次在线记录写回；它们只是展示偏好，不进入 admission。
         const knownDevices = readKnownDevices(this.options.storage);
@@ -157,7 +157,7 @@ export class WebRemoteControlEntry {
         else this.options.onView(list.view);
       } catch (error) {
         if (signal.aborted) return;
-        if (this.options.auth.getZCodeJwtToken() !== jwt) return this.start();
+        if (this.options.auth.getCodezJwtToken() !== jwt) return this.start();
         if (
           error instanceof WebRemoteControlV2ConnectionError &&
           error.reason === "auth-required"
@@ -176,7 +176,7 @@ export class WebRemoteControlEntry {
 
   selectDevice(sid: string): void {
     if (!this.list || this.list.view.loading || this.list.view.error) return;
-    if (this.list.acceptedJwt !== this.options.auth.getZCodeJwtToken()) {
+    if (this.list.acceptedJwt !== this.options.auth.getCodezJwtToken()) {
       void this.start();
       return;
     }
@@ -224,7 +224,7 @@ export class WebRemoteControlEntry {
       params,
       signal,
       getToken: (tokenSignal) => {
-        const jwt = this.options.auth.getZCodeJwtToken();
+        const jwt = this.options.auth.getCodezJwtToken();
         if (!jwt) return Promise.reject(new WebRemoteControlV2ConnectionError("auth-required"));
         return this.options.token(jwt, tokenSignal);
       },

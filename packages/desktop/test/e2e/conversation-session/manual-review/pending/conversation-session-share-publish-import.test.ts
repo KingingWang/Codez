@@ -12,7 +12,7 @@ import { selectV4TaskById, startNewV4Draft } from "../../../helpers/v4-conversat
 
 const CASE_MARKER = "E2E_CONVERSATION_SHARE_LOCAL_V1";
 const PREVIEW_CASE_MARKER = "E2E_CONVERSATION_SHARE_PREVIEW_V1";
-const PREVIEW_CASE_ROOT = join(DEFAULT_WORKSPACE, ".zcode-e2e", "conversation-share-preview");
+const PREVIEW_CASE_ROOT = join(DEFAULT_WORKSPACE, ".codez-e2e", "conversation-share-preview");
 const PREVIEW_PDF = "晨报_2026-09-08_早会版.pdf";
 const PREVIEW_VIDEOS = ["condensed.mp4", "纵横四海_电影解说.mp4", "final_subtitled.mp4"] as const;
 

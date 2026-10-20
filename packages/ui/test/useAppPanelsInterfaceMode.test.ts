@@ -7,7 +7,7 @@ import { clearTaskSidePaneMemoryStateForTest } from "@/lib/taskSidePaneMemory.js
 const mode = vi.hoisted(() => ({ general: false }));
 vi.mock("@/hooks/useInterfaceMode.js", () => ({ useIsOfficeMode: () => mode.general }));
 vi.mock("@/hooks/useServices.js", () => ({
-  useServices: () => ({ zcodeSessionService: { closeSession: vi.fn(async () => {}) } }),
+  useServices: () => ({ codezSessionService: { closeSession: vi.fn(async () => {}) } }),
 }));
 
 function renderPanels() {

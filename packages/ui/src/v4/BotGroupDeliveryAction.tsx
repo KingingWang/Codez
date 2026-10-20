@@ -1,10 +1,10 @@
 import { DeliveryContext } from "@/v4/botGroupDeliveryContext.js";
 import { useContext, useMemo, type ReactNode } from "react";
 import { CircleAlertIcon } from "lucide-react";
-import type { BotGroupDelivery } from "@zcode/shared";
+import type { BotGroupDelivery } from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useBotGroupTask } from "@/hooks/useBotGroupTask.js";
 
 import { useBotGroupMemberNames } from "@/hooks/useBotGroupMemberNames.js";
@@ -66,7 +66,7 @@ export function BotGroupDeliveryAction({
   onRetry: (id: string) => void;
   onReconcile: (id: string, received: boolean) => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   // Bug 原因：任务级恢复面板与队列浮层重叠，还重复展示正文；只在已关联轮次的操作栏展示。
   const unresolved = results.filter(
     (result) =>

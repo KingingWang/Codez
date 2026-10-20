@@ -11,8 +11,8 @@ import {
   Pin,
   Smartphone,
 } from "lucide-react";
-import { isCronTask, isOffPeakTask, type ZCodeTaskMeta } from "@zcode/shared";
-import { TID_TASK_ARCHIVE, TID_TASK_ITEM, testId } from "@zcode/shared/test-ids";
+import { isCronTask, isOffPeakTask, type CodezTaskMeta } from "@codez/shared";
+import { TID_TASK_ARCHIVE, TID_TASK_ITEM, testId } from "@codez/shared/test-ids";
 import { Badge } from "@/components/ui/badge.js";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
@@ -58,7 +58,7 @@ type TaskListItemIntl = {
 interface TaskListItemProps {
   workspacePath: string;
   remoteSessionId?: string;
-  task: ZCodeTaskMeta;
+  task: CodezTaskMeta;
   isPinned: boolean;
   isArchived?: boolean;
   isActive: boolean;
@@ -94,11 +94,11 @@ function areJsonFieldsEqual(left: unknown, right: unknown) {
   return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
 }
 
-function getTaskAutomationIdentity(task: ZCodeTaskMeta): string | undefined {
-  return task.cronAutomationId ?? (task as ZCodeTaskMeta & { automationId?: string }).automationId;
+function getTaskAutomationIdentity(task: CodezTaskMeta): string | undefined {
+  return task.cronAutomationId ?? (task as CodezTaskMeta & { automationId?: string }).automationId;
 }
 
-function areTaskListItemTaskFieldsEqual(left: ZCodeTaskMeta, right: ZCodeTaskMeta) {
+function areTaskListItemTaskFieldsEqual(left: CodezTaskMeta, right: CodezTaskMeta) {
   if (left === right) {
     return true;
   }
@@ -286,7 +286,7 @@ export const MemoTaskItem = memo(function TaskListItem({
       // 原因：此行同时可复制到分屏、移动到项目；只允许 copy 会让浏览器拒绝项目的 move/drop。
       event.dataTransfer.effectAllowed = "copyMove";
       const payload = {
-        kind: "zcode/session" as const,
+        kind: "codez/session" as const,
         workspacePath,
         ...(task.workspaceIdentity?.trim() ? { workspaceIdentity: task.workspaceIdentity } : {}),
         ...(remoteSessionId ? { remoteSessionId } : {}),
@@ -841,7 +841,7 @@ export function TaskListItemContextMenuContent({
   organizationActions?: React.ReactNode;
   workspacePath: string;
   remoteSessionId?: string;
-  task: ZCodeTaskMeta;
+  task: CodezTaskMeta;
   isPinned: boolean;
   isArchived?: boolean;
   intl: TaskListItemIntl;

@@ -13,12 +13,12 @@
 静态配置现在只有两条明确路径：
 
 ```text
-ZCode Built-in Provider Config
+Codez Built-in Provider Config
     -> Account Provider Config
     -> Personal Provider Config
     -> Effective Provider Config
 
-ZCode Built-in Model Config Rules[]
+Codez Built-in Model Config Rules[]
     + Personal Model Config Rules[]
     -> Effective Model Config Rules[]
     -> 作用于 Effective Provider Config
@@ -56,4 +56,4 @@ Built-in Provider `builtin:offpeak-idle-plan` 的 models
 
 旧实现曾把远端模型事实合并到本地 Provider，并使用 `modified` / `deletedModels` 处理用户覆盖和删除。
 这套同步、墓碑与 fallback 语义已经退出，不应被重新作为兼容路径引入。需要新增或调整模型事实时，
-应修改 ZCode Built-in Provider Config / ZCode Built-in Model Config Rules，或由用户通过 Personal Config 覆盖。
+应修改 Codez Built-in Provider Config / Codez Built-in Model Config Rules，或由用户通过 Personal Config 覆盖。

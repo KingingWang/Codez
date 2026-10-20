@@ -2,7 +2,7 @@
 // 的对偶契约测试：格式一旦漂移（任一侧改动），此处红——防止两侧手写规则分叉
 // （Workspace Identity 约束：构造与解析必须复用统一工具）。
 import { describe, expect, it } from "vitest";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 import { buildRemoteWorkspaceIdentity } from "@/lib/remoteWorkspaceHistory.js";
 
 describe("远程 workspace identity 构造↔解析对偶", () => {

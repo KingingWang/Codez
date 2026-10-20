@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode/cli/debug/model-io-<runtime-task-id>.jsonl",
+      "path": ".codez/cli/debug/model-io-<runtime-task-id>.jsonl",
       "source": "created-by-spec",
       "description": "spec 按真实 task id 写入 80 条确定性 model-io 记录，覆盖投影、错误、虚拟列表、搜索与窄布局。"
     }

@@ -6,7 +6,7 @@ import { expect, it } from "vitest";
 import { startRemoteAssetHttpProxy } from "./e2e/helpers/remote-asset-http-proxy.js";
 
 it("serves the fake CDN through the CONNECT tunnel used by Host ProxyAgent", async () => {
-  const root = await mkdtemp(join(tmpdir(), "zcode-proxy-connect-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-proxy-connect-"));
   await mkdir(join(root, "releases", "test"), { recursive: true });
   await writeFile(join(root, "releases", "test", "source-server-release.json"), "fixture");
   const proxy = await startRemoteAssetHttpProxy({

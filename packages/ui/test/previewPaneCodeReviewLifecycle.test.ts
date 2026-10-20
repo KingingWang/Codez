@@ -2,7 +2,7 @@
 import { createElement } from "react";
 import { render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 const mocks = vi.hoisted(() => {
   const fileService = {
@@ -50,7 +50,7 @@ vi.mock("@/hooks/useFileContextActions.js", () => ({
 }));
 
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStore: <T,>(selector: (state: Record<string, unknown>) => T) =>
+  useCodezStore: <T,>(selector: (state: Record<string, unknown>) => T) =>
     selector({
       codePreviewSettings: {
         darkTheme: "github-dark",
@@ -83,7 +83,7 @@ describe("PreviewPane code-review lifecycle", () => {
     const { PreviewPane } = await import("@/PreviewPane.js");
     const view = render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(PreviewPane, {
           onClose: vi.fn(),

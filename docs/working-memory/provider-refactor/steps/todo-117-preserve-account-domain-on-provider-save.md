@@ -66,5 +66,5 @@ Air 日志显示 15:12:34 保存 Provider Overlay 后，`providerFamilyDomain` �
 - mounted React 回归额外复现“后台团队空列表 → 自动存个人”，移除该 effect 及专用函数/过时测试。dep:refs 全域只发现该业务调用；测试引用另用 rg 核对。团队列表仍正常展示、资格仍由公共结果提供，未新增账号查询或自动改选。
 - 公共 Resolver 忽略账号旧 false，公共 save 拒绝新账号 false；不删除原数据。设置 Facade 与 Registry 用同一解析结果。两 family × 四模式、无权益/非当前、模型 disabled 及手动 Key 禁用均覆盖。
 - 503 项合批单测通过；之后补充系统禁用原因/缺 Key 与团队项目变更断言，18 项重跑通过（有重合，不累加）。四项真实浏览器卡片用例通过，中英文/浅深/390与1200尺寸，账号无总开关而模型开关保留，手动 Key 启停/Key 保留/单链接及错误重试不回退。
-- 根 typecheck 通过，lint 0 errors / 41 warnings，架构 0 violations。首次浏览器启动缺 libatk，使用已有 `/tmp/zcode-xvfb-LMxR8B/root/usr/lib/x86_64-linux-gnu` 隔离依赖后运行通过；没有修改系统或用户配置。
+- 根 typecheck 通过，lint 0 errors / 41 warnings，架构 0 violations。首次浏览器启动缺 libatk，使用已有 `/tmp/codez-xvfb-LMxR8B/root/usr/lib/x86_64-linux-gnu` 隔离依赖后运行通过；没有修改系统或用户配置。
 - 范围 review：没有改 Model Selection、执行对象、账号同步、Overlay 合并或远控协议。整页回调/挂载测试与共享卡片浏览器覆盖不冒充真实 Host/手机链路；最终批次仍补交付复审。

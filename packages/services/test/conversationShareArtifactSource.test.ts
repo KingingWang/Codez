@@ -12,7 +12,7 @@ const temporaryDirectories: string[] = [];
 
 // Windows 无开发者模式时创建 symlink 会 EPERM；symlink 边界断言按能力探测跳过
 const canCreateSymlink = await (async () => {
-  const probeRoot = await mkdtemp(join(tmpdir(), "zcode-symlink-probe-"));
+  const probeRoot = await mkdtemp(join(tmpdir(), "codez-symlink-probe-"));
   try {
     await symlink(probeRoot, join(probeRoot, "link"));
     return true;
@@ -31,7 +31,7 @@ afterEach(async () => {
 
 describe("conversation share local artifact source", () => {
   it("SHARE06：异步读取 workspace 内文件并执行大小上限", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-share-artifact-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-share-artifact-"));
     temporaryDirectories.push(root);
     const path = join(root, "report.pdf");
     await writeFile(path, "pdf!");
@@ -52,7 +52,7 @@ describe("conversation share local artifact source", () => {
   });
 
   it("SHARE06：拒绝 workspace 外路径和指向外部的符号链接", async () => {
-    const parent = await mkdtemp(join(tmpdir(), "zcode-share-boundary-"));
+    const parent = await mkdtemp(join(tmpdir(), "codez-share-boundary-"));
     temporaryDirectories.push(parent);
     const root = join(parent, "workspace");
     await mkdir(root);
@@ -74,7 +74,7 @@ describe("conversation share local artifact source", () => {
   });
 
   it("缺失文件报 artifact_read_failed 并保留 errno 与 cause", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-share-missing-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-share-missing-"));
     temporaryDirectories.push(root);
     const source = createLocalConversationShareArtifactSource();
 
@@ -90,7 +90,7 @@ describe("conversation share local artifact source", () => {
   });
 
   it("目录形状的引用报 artifact_read_failed 而非崩溃", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-share-dir-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-share-dir-"));
     temporaryDirectories.push(root);
     await mkdir(join(root, "report.pdf"));
     const source = createLocalConversationShareArtifactSource();
@@ -101,7 +101,7 @@ describe("conversation share local artifact source", () => {
   });
 
   it("metadata stat 对缺失文件返回可分类的 artifact_read_failed", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-share-stat-missing-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-share-stat-missing-"));
     temporaryDirectories.push(root);
     const source = createLocalConversationShareArtifactSource();
 

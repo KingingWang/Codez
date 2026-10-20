@@ -65,7 +65,7 @@ Host 设置/账号查询                     Host/Worker 各自的配置来源
              只证明已送达                 供 View/解析/执行读取
 ~~~
 
-这段来源匹配和保留旧快照是基线 Registry 已有机制，不是本项新建的同步状态机。这里的“配套配置”具体指 Account 的 basedOnZCodeBuiltinRevision 与 Config 的 zcodeBuiltinRevision 相符，不是要求所有配置内容或两端全局版本一模一样。
+这段来源匹配和保留旧快照是基线 Registry 已有机制，不是本项新建的同步状态机。这里的“配套配置”具体指 Account 的 basedOnCodezBuiltinRevision 与 Config 的 codezBuiltinRevision 相符，不是要求所有配置内容或两端全局版本一模一样。
 
 允许 Host 已应用 B、Worker 暂时应用完整 A。不允许 Worker 把 A 的模型和 B 的账号事实混用，也不允许实际 A 却报告 B 已应用。初始没有完整可用结果时明确不可用，不伪造账号可执行性。
 
@@ -131,7 +131,7 @@ R100-01 的局部发布保护：本轮读取的设置与账号身份在查询结
 4. states 不是凭据；不把 OAuth token、Key secret 塞进新字段或日志。连接身份沿现有可信通道，诊断脱敏。
 5. Host/Worker 使用相同配置基础时，对比最终可执行集合；基础暂时不同则验证各自完整快照，不要求瞬时相等。
 
-主要入口：packages/provider/src 的 sources、registry-service、resolver；services 的 zcodeAgentService；shared/zcode-protocol；bootstrap 的 process-provider-registry-runtime 和 zcode-protocol/account-provider-config。
+主要入口：packages/provider/src 的 sources、registry-service、resolver；services 的 codezAgentService；shared/codez-protocol；bootstrap 的 process-provider-registry-runtime 和 codez-protocol/account-provider-config。
 
 ### B. 同步保留旧机制，只修确定的局部错误
 
@@ -358,7 +358,7 @@ W99-E04 实机补充（2026-09-09）：ModelFactory 在 Turn 内层错误处理�
 本批最终补验：
 
 - `botsService.messageFlow.test.ts`：85/85；shared attachment schema、Task adapter、Bot config/status：110/110；新的 adapter 用例确认无效档位原值及 workspaceIdentity 原样读取、不写模型。
-- `session-selection-protocol` + `session-facade` + 原 `zcode-protocol`：112 通过、1 失败；仅剩原远程 Cron denylist 差异，不能标全包绿灯。没有借此新增远程定时任务禁用策略。
+- `session-selection-protocol` + `session-facade` + 原 `codez-protocol`：112 通过、1 失败；仅剩原远程 Cron denylist 差异，不能标全包绿灯。没有借此新增远程定时任务禁用策略。
 - `account-config-delivery`、Core 显式选择/实际子执行/执行作用域、原 script-workflow：31/31；额外真实 Core resume 用例 1/1：已完成 child 接收新输入时重新解析显式 profile，前后请求的 Provider 各自正确，原 profile 不变。该用例不是重映射运行中 turn。
 - 既有 Bot pending spec 在 Vitest Node harness 下 5/5（SR87 三条 + SR99 两条）；不是 Electron/WDIO/真实模型运行，无人工晋级。
 - 根 typecheck、desktop typecheck:e2e、Bootstrap typecheck、lint 通过；lint 39 条既有 warning、0 error。`git diff --check` 通过。未提交/推送；没有已确认的当前 SessionStart ID 可写 commit trailer，且真实产品验收仍待补。

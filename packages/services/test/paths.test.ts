@@ -15,7 +15,7 @@ const originalHome = process.env.HOME;
 const tempHomes: string[] = [];
 
 function makeTempHome(): string {
-  const home = mkdtempSync(join(tmpdir(), "zcode-paths-home-"));
+  const home = mkdtempSync(join(tmpdir(), "codez-paths-home-"));
   tempHomes.push(home);
   return home;
 }
@@ -38,7 +38,7 @@ describe("paths", () => {
     vi.resetModules();
 
     const { copyDataDirectory } = await import("../src/paths.js");
-    const oldV2Dir = join(oldBase, ".zcode", "v2");
+    const oldV2Dir = join(oldBase, ".codez", "v2");
     const oldSharedSkillRoot = join(oldV2Dir, "agent-config", "claude", "skills");
     const oldSharedPluginRoot = join(oldV2Dir, "agent-config", "claude", "plugins");
     const oldWorkspaceRoot = join(oldV2Dir, "agent-config", "claude", "workspace-hash-1");
@@ -54,7 +54,7 @@ describe("paths", () => {
 
     await copyDataDirectory(oldBase, newBase);
 
-    const newV2Dir = join(newBase, ".zcode", "v2");
+    const newV2Dir = join(newBase, ".codez", "v2");
     const newWorkspaceRoot = join(newV2Dir, "agent-config", "claude", "workspace-hash-1");
     const newSkillLink = join(newWorkspaceRoot, "skills");
     const newPluginLink = join(newWorkspaceRoot, "plugins");
@@ -67,8 +67,8 @@ describe("paths", () => {
   it("copyDataDirectory 会跳过 setting.json 及其原子写入瞬时文件", async () => {
     const oldBase = makeTempHome();
     const newBase = makeTempHome();
-    const oldV2Dir = join(oldBase, ".zcode", "v2");
-    const newV2Dir = join(newBase, ".zcode", "v2");
+    const oldV2Dir = join(oldBase, ".codez", "v2");
+    const newV2Dir = join(newBase, ".codez", "v2");
     mkdirSync(oldV2Dir, { recursive: true });
     writeFileSync(join(oldV2Dir, "setting.json"), '{"dataBaseDir":"/old"}', "utf-8");
     writeFileSync(join(oldV2Dir, "setting.json.lock"), "lock", "utf-8");
@@ -85,24 +85,24 @@ describe("paths", () => {
     expect(existsSync(join(newV2Dir, "setting.json.123.tmp"))).toBe(false);
   });
 
-  it("Windows 数据目录不能选择 ZCode 安装目录或其子目录", async () => {
+  it("Windows 数据目录不能选择 Codez 安装目录或其子目录", async () => {
     vi.resetModules();
 
     const { validateDataBaseDirTarget } = await import("../src/paths.js");
     const env = {
       ProgramFiles: "C:\\Program Files",
       LOCALAPPDATA: "C:\\Users\\tester\\AppData\\Local",
-      ZCODE_WINDOWS_APP_INSTALL_DIR: "C:\\Users\\tester\\AppData\\Local\\Programs\\ZCode",
+      CODEZ_WINDOWS_APP_INSTALL_DIR: "C:\\Users\\tester\\AppData\\Local\\Programs\\Codez",
     };
 
     expect(
-      validateDataBaseDirTarget("c:\\program files\\zcode", {
+      validateDataBaseDirTarget("c:\\program files\\codez", {
         platform: "win32",
         env,
       }),
     ).toMatchObject({ ok: false });
     expect(
-      validateDataBaseDirTarget("C:\\Users\\tester\\AppData\\Local\\Programs\\ZCode\\data", {
+      validateDataBaseDirTarget("C:\\Users\\tester\\AppData\\Local\\Programs\\Codez\\data", {
         platform: "win32",
         env,
       }),
@@ -115,17 +115,17 @@ describe("paths", () => {
     const { validateDataBaseDirTarget } = await import("../src/paths.js");
     const env = {
       LOCALAPPDATA: "C:\\Users\\tester\\AppData\\Local",
-      ZCODE_WINDOWS_APP_INSTALL_DIR: "C:\\Users\\tester\\AppData\\Local\\Programs\\ZCode",
+      CODEZ_WINDOWS_APP_INSTALL_DIR: "C:\\Users\\tester\\AppData\\Local\\Programs\\Codez",
     };
 
     expect(
-      validateDataBaseDirTarget("C:\\Users\\tester\\AppData\\Local\\Programs\\ZCodeData", {
+      validateDataBaseDirTarget("C:\\Users\\tester\\AppData\\Local\\Programs\\CodezData", {
         platform: "win32",
         env,
       }),
     ).toEqual({ ok: true });
     expect(
-      validateDataBaseDirTarget("C:\\Users\\tester\\Documents\\ZCode", {
+      validateDataBaseDirTarget("C:\\Users\\tester\\Documents\\Codez", {
         platform: "win32",
         env,
       }),

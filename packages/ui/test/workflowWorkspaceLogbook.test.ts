@@ -1,7 +1,7 @@
 // 脚本 transcript 的日志簿模型（docs/dynamic-workflow/presentation.md「The pill」
 // 视觉修订）：章节切分与轮次、时间标尺、命令输出的尾巴、展开态记忆。
 import { describe, expect, it } from "vitest";
-import type { WorkflowRunWorkspaceNode } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunWorkspaceNode } from "@codez/shared/codez-protocol-v4";
 import type { WorkspaceCardModel } from "@/app-shell/workflowWorkspaceTranscript.js";
 import {
   buildWorkspaceChapters,

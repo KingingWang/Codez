@@ -144,7 +144,7 @@ SPT-E2E-009 补充：末标签关闭后面板收起且无补建；重新展开�
 
 - Setup：接 003，浮窗收起态。
 - Action：拖动 ⠿ 到 slot 左上区域松手；点击 ⠿ 打开菜单，选「在完整视图中打开」。
-- Assertions：松手后浮窗贴 slot 左上（16px）；全局偏好 `zcode:side-pane-full-view:floating-anchor` 写为 `top-left`；菜单项选择后切到对话 tab，且浮窗展开态不被菜单点击改变（回归：portal 事件沿 React 树冒泡）。
+- Assertions：松手后浮窗贴 slot 左上（16px）；全局偏好 `codez:side-pane-full-view:floating-anchor` 写为 `top-left`；菜单项选择后切到对话 tab，且浮窗展开态不被菜单点击改变（回归：portal 事件沿 React 树冒泡）。
 
 ### SPFV-MODEL-001 浮窗模型菜单关闭（pending）
 

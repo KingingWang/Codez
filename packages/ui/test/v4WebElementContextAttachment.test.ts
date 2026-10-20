@@ -11,7 +11,7 @@ import {
   type CodeCommentPayload,
 } from "@/lib/codeCommentContext.js";
 import { ConversationComposer } from "@/v4/ConversationComposer.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 const { chatPromptEditorProps } = vi.hoisted(() => ({
   chatPromptEditorProps: [] as Array<Record<string, unknown>>,
@@ -282,7 +282,7 @@ function renderComposer(onSendText: (text: string, options?: unknown) => Promise
   act(() => {
     root.render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(ConversationComposer, {
           composerDraft: { text: "", updatedAt: 0 },

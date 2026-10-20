@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { TaskGroupRepository } from "#src/task-groups/index.js";
 import type { GroupTaskRef } from "#src/task-groups/contract.js";
-import { CRON_DEFAULT_GROUP_ID } from "@zcode/shared";
+import { CRON_DEFAULT_GROUP_ID } from "@codez/shared";
 
 const databases: DatabaseSync[] = [];
 const directories: string[] = [];

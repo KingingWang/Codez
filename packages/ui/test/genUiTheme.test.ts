@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { readGenUiStyleContext } from "@/gen-ui/adapters/theme.js";
-import { GEN_UI_STYLE_CONTEXT_KEY } from "@zcode/shared/gen-ui";
+import { GEN_UI_STYLE_CONTEXT_KEY } from "@codez/shared/gen-ui";
 import { McpUiHostContextSchema } from "@modelcontextprotocol/ext-apps";
 
 afterEach(() => vi.unstubAllGlobals());

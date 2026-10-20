@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
-import type { WorkspaceFileEntry } from "@zcode/shared";
+import type { WorkspaceFileEntry } from "@codez/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useFileMentionProvider } from "@/mentions/providers/fileMentionProvider.js";
 

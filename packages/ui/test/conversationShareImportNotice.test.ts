@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { ConversationShareImportNotice } from "@/v4/ConversationShareImportNotice.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 vi.mock("@/OpenSplitButton.js", async () => {
   const React = await import("react");
@@ -55,7 +55,7 @@ const rows = [
 function render(props: Parameters<typeof ConversationShareImportNotice>[0]) {
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: props.locale },
       createElement(ConversationShareImportNotice, props),
     ),
@@ -89,7 +89,7 @@ describe("conversation share import notice", () => {
   });
 
   it("不给 artifactUrls：结果物不出现点不开的预览按钮", () => {
-    // 本地结果物在 .zcode-share/<share-id>/shared-artifacts/ 下，渲染器的预览按钮走
+    // 本地结果物在 .codez-share/<share-id>/shared-artifacts/ 下，渲染器的预览按钮走
     // window.open，给本地路径会点不开；这里与实时时间线的 ArtifactRowView 保持一致。
     const html = render({
       rows: [
@@ -108,7 +108,7 @@ describe("conversation share import notice", () => {
           mimeType: "application/pdf",
           sizeBytes: 1024,
           sha256: "a".repeat(64),
-          ref: "zcode-artifact://share/artifact-1",
+          ref: "codez-artifact://share/artifact-1",
           state: "current" as const,
         },
       ],
@@ -136,21 +136,21 @@ describe("conversation share import notice", () => {
           mimeType: "application/pdf",
           sizeBytes: 1024,
           sha256: "a".repeat(64),
-          ref: "zcode-artifact://share/artifact-1",
+          ref: "codez-artifact://share/artifact-1",
           state: "current" as const,
         },
       ],
       locale: "zh-CN",
       workspacePath: "/workspace",
       artifactWorkspaceRelativePaths: new Map([
-        ["artifact-1", ".zcode-share/share-1/shared-artifacts/报告.pdf"],
+        ["artifact-1", ".codez-share/share-1/shared-artifacts/报告.pdf"],
       ]),
       onOpenCodeViewer: () => undefined,
     });
 
     expect(html).toContain('data-open-split-button="true"');
     expect(html).toContain(
-      'data-target-path="/workspace/.zcode-share/share-1/shared-artifacts/报告.pdf"',
+      'data-target-path="/workspace/.codez-share/share-1/shared-artifacts/报告.pdf"',
     );
   });
 });

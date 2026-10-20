@@ -12,7 +12,7 @@ vi.mock("@/project-sidebar/ProjectNode.js", () => ({
   },
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 vi.mock("@/store/TabStoreProvider.js", () => ({ useTabStoreApi: () => ({}) }));
 vi.mock("@/hooks/useConfirmDialog.js", () => ({ useConfirmDialog: () => async () => true }));

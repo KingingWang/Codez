@@ -32,7 +32,7 @@
 
 Skill 按 scaffold -> optional components -> validate -> install/update 流程组织；正文路由到脚本与参考资料。脚手架使用 Node 标准库、异步 IO，默认 `<cwd>/plugins/<slug>`，名称规范化为小写连字符，目录名与 manifest 一致。已有文件默认拒绝覆盖，显式 force 才能更新选定文件；市场无关字段与条目顺序保留。组件只声明实际生成的路径。
 
-生成 ZCode `.zcode-plugin/plugin.json`；marketplace listing 承载显示名与 i18n。2026-09-17 收敛：默认交付源码、测试市场清单和手动添加/安装/更新/试用指引，由用户在界面完成市场与安装操作。普通桌面用户不需要安装 CLI 或 Node；已有开发运行时可选用辅助脚本，无运行时则使用文件工具准备源码与 JSON。检查结构、资源路径和占位符；只有已有可用开发 CLI 时才额外调用 `zcode plugins validate`，未执行时不声称协议校验通过。
+生成 Codez `.codez-plugin/plugin.json`；marketplace listing 承载显示名与 i18n。2026-09-17 收敛：默认交付源码、测试市场清单和手动添加/安装/更新/试用指引，由用户在界面完成市场与安装操作。普通桌面用户不需要安装 CLI 或 Node；已有开发运行时可选用辅助脚本，无运行时则使用文件工具准备源码与 JSON。检查结构、资源路径和占位符；只有已有可用开发 CLI 时才额外调用 `codez plugins validate`，未执行时不声称协议校验通过。
 
 ## 本地 dev 市场闭环
 
@@ -67,12 +67,12 @@ Skill 按 scaffold -> optional components -> validate -> install/update 流程�
 | PLM-LC-020 | 添加来源成功/失败/取消 | 一次导航消费；成功个人分段；失败输入保留；取消无写入 |
 | creator-boundary | 重复点击、切换 identity/attachment、禁用/缺失 | 仅当前目标提交一次，错误无预填/启用副作用 |
 | creator-assets | Node/SEA/Desktop/remote | manifest、skill、scripts、references 齐全且可发现 |
-| creator-scaffold | 最小、skill、MCP、hook、市场、更新 | ZCode 校验通过；非法输入、越界、重复/覆盖、TODO 被拒绝 |
+| creator-scaffold | 最小、skill、MCP、hook、市场、更新 | Codez 校验通过；非法输入、越界、重复/覆盖、TODO 被拒绝 |
 | creator-dev-market | 创建/更新 dev listing、同名工作区与写入竞争 | 稳定 ID、无关数据与源码保留；来源冲突、重复、越界、锁占用拒绝；独占临时文件失败不删除已有文件 |
 | creator-dev-workflow | 实际 CLI 创建、登记、安装、版本更新 | available/installed ID 与版本一致；安装目录与源码分离；内容更新生效且保留显式禁用 |
 | creator-manual-handoff | 无 CLI/Node、首次添加、已有插件更新、取消/失败 | 给出真实目录与界面步骤；无自动登记安装；不编造安装引用；未完成状态明确 |
 
-UI/草稿 owner：管理和商店组件负责展示/入口，Root 负责新任务，Composer draft store 负责预填事实；Skill/Plugin 内容以目标 host discovery 为准。共享菜单、prefill builder 和两处搜索是 must-inspect，runtime 是 invariant-only。Codegraph 已用于旧工作区定位；实现工作区未建索引，按已定位文件读当前源码。架构门禁的 ui/zcode-cli 当前非 managed，门禁通过不能替代语义检查。
+UI/草稿 owner：管理和商店组件负责展示/入口，Root 负责新任务，Composer draft store 负责预填事实；Skill/Plugin 内容以目标 host discovery 为准。共享菜单、prefill builder 和两处搜索是 must-inspect，runtime 是 invariant-only。Codegraph 已用于旧工作区定位；实现工作区未建索引，按已定位文件读当前源码。架构门禁的 ui/codez-cli 当前非 managed，门禁通过不能替代语义检查。
 
 对应 E2E 保留在 plugins/manual-review/pending，需人工审核后另行转正；桌面宽屏中文浅色、窄屏英文深色覆盖展示，远控身份用定向单测覆盖，未运行真实手机/SSH 时必须列为待验。
 
@@ -80,9 +80,9 @@ UI/草稿 owner：管理和商店组件负责展示/入口，Root 负责新任�
 
 以下为先前 helper/CLI 与 UI 实现的验证记录，当前手动交付规则见上文；这些记录不表示用户已执行添加、安装或试用。
 
-- UI 定向单测 66 条、bootstrap 54 条、分发资产 92 条、Node scaffold/SEA 6 条通过；最小、Skills、MCP、hooks、组合五种脚手架均通过实际构建的 ZCode CLI 校验。
+- UI 定向单测 66 条、bootstrap 54 条、分发资产 92 条、Node scaffold/SEA 6 条通过；最小、Skills、MCP、hooks、组合五种脚手架均通过实际构建的 Codez CLI 校验。
 - Electron E2E `plugin-localization-creator.test.ts` 通过：两处菜单、真实引用与尾空格/焦点、未发送、返回后草稿恢复、中文和拼音搜索、添加来源成功/失败保留输入/取消；覆盖 1440px 中文浅色和 480px 英文深色。480px 是 Electron 最小窗口宽度，进入共享 UI 手机断点；未代替真实手机远控验证。
-- 当前基线 WDIO 注入的自定义 agent command 不支持 storage startup。此轮使用临时 WDIO 配置清空 `ZCODE_AGENT_SERVER_COMMAND`、`ZCODE_AGENT_SERVER_ARGS_JSON`（包括 worker runnerEnv），复用原 hooks 和已构建 bundle，恢复内置 Agent 启动；未修改生产 runtime 或仓库 E2E 配置。
+- 当前基线 WDIO 注入的自定义 agent command 不支持 storage startup。此轮使用临时 WDIO 配置清空 `CODEZ_AGENT_SERVER_COMMAND`、`CODEZ_AGENT_SERVER_ARGS_JSON`（包括 worker runnerEnv），复用原 hooks 和已构建 bundle，恢复内置 Agent 启动；未修改生产 runtime 或仓库 E2E 配置。
 - 根 typecheck、CLI typecheck、根 lint（初次验证 47 个既有 warning、0 error）、架构检查通过。初次 CLI 全量 lint 未通过：所报告的 103 个文件与初始 staging 基线 `94cc393296` 内容完全一致；本次改动的 CLI 脚本和定义单独 lint 为 0 warning、0 error。
 - feature graph 保留 4 条既有悬空边，无新增悬空边，新 code seeds 均存在；本 worktree 无 Codegraph 索引。未生成正式安装包、未连接真实 SSH/手机；已验证各分发资产清单及打包 fixture，远端身份/attachment 切换由定向单测覆盖。
 - 扩展门禁已补齐远端部署 fixture 的 creator 清单、旧创建按钮断言和 E2E 隔离路径；对应回归通过。合并 staging `c32957bdad` 后，92 条 UI/导航定向测试、根 typecheck、lint（51 warning、0 error）和架构检查通过；Electron E2E 运行记录为 `desktop-e2e-20260916-110001-302`。本机通过 uv 启动 MR helper 时需确保其子进程 PATH 优先使用 Node 24.14.0，避免 Homebrew Node 26 覆盖仓库运行时。

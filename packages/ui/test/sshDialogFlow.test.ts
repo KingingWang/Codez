@@ -16,7 +16,7 @@ import type {
   SSHConfigAliasOption,
   DockerContainerInfo,
   WSLDistro,
-} from "@zcode/shared";
+} from "@codez/shared";
 import zhCN from "@/i18n/locales/zh-CN.js";
 import enUS from "@/i18n/locales/en-US.js";
 
@@ -47,7 +47,7 @@ const ports = vi.hoisted(() => ({
   confirm: vi.fn(async () => true),
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     locale: ports.locale,
     intl: {
       formatMessage: ({ id }: { id: string }, values: Record<string, string> = {}) => {
@@ -258,7 +258,7 @@ async function closeAndReopen(
 function registerSession(
   readdir: (params: {
     path: string;
-  }) => Promise<import("@zcode/shared").FileEntry[]> = async () => [],
+  }) => Promise<import("@codez/shared").FileEntry[]> = async () => [],
 ) {
   useRemoteWorkspaceSessionStore.getState().registerSession({
     sessionId: "session-a",
@@ -266,7 +266,7 @@ function registerSession(
     services: {
       systemService: { info: async () => ({ homedir: "/srv/project" }) },
       fileService: { readdir },
-    } as unknown as import("@zcode/services").IServiceAccessor,
+    } as unknown as import("@codez/services").IServiceAccessor,
   });
   HTMLElement.prototype.scrollTo = vi.fn();
 }
@@ -1189,7 +1189,7 @@ it("配置和目录屏收起都有恢复卡片，恢复后保留表单及已导�
 });
 
 it("旧目录浏览器的迟到结果不能覆盖收起恢复后选择的目录", async () => {
-  const slow = pending<import("@zcode/shared").FileEntry[]>();
+  const slow = pending<import("@codez/shared").FileEntry[]>();
   registerSession(async ({ path }) => (path === "/slow" ? slow.promise : []));
   const view = mountDialog({ preferredTarget: sshTarget });
   await clickStart();

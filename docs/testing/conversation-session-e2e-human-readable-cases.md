@@ -247,7 +247,7 @@
 | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------- |
 | 冷启动时 subagent profile 绑定 alternate provider → 主会话直接触发 child             | CLI 在 child 执行前已拿到完整 provider registry；child 使用 alternate provider/model 正常完成                                              | 来源：I19；已覆盖                |
 | Settings 为内置 `general-purpose` / `Explore` 设置模型覆盖 → 冷启动 → 分别触发 child | Settings 回显覆盖；child 使用覆盖模型，父 continuation 仍用主模型；Explore 工具能力按最终 child 模型计算                                   | 来源：I20、BSM-01-BSM-07；已覆盖 |
-| 连续触发内置和 custom subagent → 检查 child provider request                         | system prompt 保留 ZCode prefix，并把 agent-specific prompt、common Notes、env/model context 分段；custom markdown 进入约定 system message | 来源：I21；已覆盖                |
+| 连续触发内置和 custom subagent → 检查 child provider request                         | system prompt 保留 Codez prefix，并把 agent-specific prompt、common Notes、env/model context 分段；custom markdown 进入约定 system message | 来源：I21；已覆盖                |
 
 ## 9. 多端、恢复与剪枝口径
 

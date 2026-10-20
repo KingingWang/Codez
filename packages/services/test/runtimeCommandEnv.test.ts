@@ -3,9 +3,9 @@ import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  ZCODE_TOOL_ENV_PASSTHROUGH_ENV_KEY,
-  readZCodeToolEnvPassthroughEnv,
-} from "@zcode/shared";
+  CODEZ_TOOL_ENV_PASSTHROUGH_ENV_KEY,
+  readCodezToolEnvPassthroughEnv,
+} from "@codez/shared";
 import {
   buildLoginShellEnvPatch,
   buildRuntimeProcessEnvPatch,
@@ -40,8 +40,8 @@ describe("runtimeCommandEnv", () => {
     expect(patch.HTTP_PROXY).toBeUndefined();
     expect(patch.NODE_ENV).toBeUndefined();
     expect(patch.NODE_EXTRA_CA_CERTS).toBeUndefined();
-    expect(patch[ZCODE_TOOL_ENV_PASSTHROUGH_ENV_KEY]).toBeDefined();
-    expect(readZCodeToolEnvPassthroughEnv(patch)).toMatchObject({
+    expect(patch[CODEZ_TOOL_ENV_PASSTHROUGH_ENV_KEY]).toBeDefined();
+    expect(readCodezToolEnvPassthroughEnv(patch)).toMatchObject({
       HTTP_PROXY: "http://shell-proxy:8080",
       NODE_EXTRA_CA_CERTS: "/tmp/shell-ca.pem",
       npm_config_proxy: "http://npm-proxy:8080",
@@ -67,13 +67,13 @@ describe("runtimeCommandEnv", () => {
 
   it("keeps user commands ahead of bundled runtime tools on PATH", () => {
     process.env.VITEST = "1";
-    const root = mkdtempSync(join(tmpdir(), "zcode-runtime-tool-path-order-"));
+    const root = mkdtempSync(join(tmpdir(), "codez-runtime-tool-path-order-"));
     const systemBin = join(root, "system-bin");
     const binarySuffix = process.platform === "win32" ? ".exe" : "";
     const runtimeBinaries = {
-      ZCODE_BFS_BINARY: join(root, "runtime", "bfs", `bfs${binarySuffix}`),
-      ZCODE_RG_BINARY: join(root, "runtime", "ripgrep", `rg${binarySuffix}`),
-      ZCODE_UGREP_BINARY: join(root, "runtime", "ugrep", `ugrep${binarySuffix}`),
+      CODEZ_BFS_BINARY: join(root, "runtime", "bfs", `bfs${binarySuffix}`),
+      CODEZ_RG_BINARY: join(root, "runtime", "ripgrep", `rg${binarySuffix}`),
+      CODEZ_UGREP_BINARY: join(root, "runtime", "ugrep", `ugrep${binarySuffix}`),
     } as const;
 
     try {
@@ -175,7 +175,7 @@ describe("runtimeCommandEnv", () => {
     });
     expect(patch.HTTP_PROXY).toBeUndefined();
     expect(patch.NODE_OPTIONS).toBeUndefined();
-    const passthrough = readZCodeToolEnvPassthroughEnv(patch);
+    const passthrough = readCodezToolEnvPassthroughEnv(patch);
     expect(passthrough).toMatchObject({
       HTTP_PROXY: "http://shell-proxy:8080",
     });
@@ -186,11 +186,11 @@ describe("runtimeCommandEnv", () => {
     const executeShell = vi.fn(async () =>
       [
         "shell startup chatter",
-        "__ZCODE_LOGIN_ENV_START__\0",
+        "__CODEZ_LOGIN_ENV_START__\0",
         "PATH=/Users/dev/.local/bin:/usr/bin:/bin\0",
         "FNM_DIR=/Users/dev/.fnm\0",
         "HTTP_PROXY=http://shell-proxy:8080\0",
-        "__ZCODE_LOGIN_ENV_END__\0",
+        "__CODEZ_LOGIN_ENV_END__\0",
       ].join(""),
     );
 
@@ -239,7 +239,7 @@ describe("runtimeCommandEnv", () => {
   it.runIf(process.platform !== "win32")(
     "kills the login-shell process group when a descendant keeps stdio open",
     async () => {
-      const root = mkdtempSync(join(tmpdir(), "zcode-login-shell-deadline-"));
+      const root = mkdtempSync(join(tmpdir(), "codez-login-shell-deadline-"));
       const shellPath = join(root, "shell-with-background-child.sh");
       try {
         writeFileSync(
@@ -279,7 +279,7 @@ describe("runtimeCommandEnv", () => {
     expect(captureSnapshot).toHaveBeenCalledTimes(1);
     expect(patch.PATH?.split(delimiter)[0]).toBe("/Users/dev/.local/bin");
     expect(patch.FNM_DIR).toBe("/Users/dev/.fnm");
-    expect(readZCodeToolEnvPassthroughEnv(patch)).toMatchObject({
+    expect(readCodezToolEnvPassthroughEnv(patch)).toMatchObject({
       HTTP_PROXY: "http://shell-proxy:8080",
     });
   });

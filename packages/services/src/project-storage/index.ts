@@ -1,5 +1,5 @@
 import { ProjectRepository } from "#src/project-storage/project-repository.js";
-import { sqliteMigrations } from "@zcode/shared/sqlite-migrations";
+import { sqliteMigrations } from "@codez/shared/sqlite-migrations";
 import type { ProjectStorageContract } from "#src/project-storage/contract.js";
 import { reconcileLegacy, admitTaskIdentity } from "#src/project-storage/legacy-tasks.js";
 import { migrateProjects } from "#src/project-storage/migrate-projects.js";

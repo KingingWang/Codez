@@ -1,12 +1,12 @@
 import { createSourceServerManagementService } from "../src/host/sourceServerManagementService.js";
 import { SourceServerDirectory } from "../src/host/sourceServerDirectory.js";
 import { connectSourceServerTarget } from "../src/host/connectSourceServerTarget.js";
-import { appSettingsSchema } from "@zcode/shared";
+import { appSettingsSchema } from "@codez/shared";
 import { PassThrough } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
-import type { ConnectionProfile, RemoteTarget, ServerRemoteInfo } from "@zcode/shared";
-import type { IServiceAccessor } from "@zcode/services";
-import type { ServerReleaseAsset, SourceServerTransportAdapter } from "@zcode/server/source-server";
+import type { ConnectionProfile, RemoteTarget, ServerRemoteInfo } from "@codez/shared";
+import type { IServiceAccessor } from "@codez/services";
+import type { ServerReleaseAsset, SourceServerTransportAdapter } from "@codez/server/source-server";
 import {
   SourceServerConnectionManager,
   SourceServerIdentityChangePendingError,
@@ -19,10 +19,10 @@ const sourceServerId = "3cd4f9da-cd79-426c-9d70-75f36e9f6a87";
 const profile: ConnectionProfile = {
   profileId,
   transport: "docker",
-  target: { kind: "docker", container: "zcode-dev" },
+  target: { kind: "docker", container: "codez-dev" },
   createdAt: 1,
 };
-const target: RemoteTarget = { kind: "docker", container: "zcode-dev" };
+const target: RemoteTarget = { kind: "docker", container: "codez-dev" };
 const sshProfile: ConnectionProfile = {
   ...profile,
   transport: "ssh",
@@ -31,7 +31,7 @@ const sshProfile: ConnectionProfile = {
 const sshTarget: RemoteTarget = sshProfile.target;
 function createRelease(
   version: string,
-  localArchivePath = "/tmp/zcode-server-linux-x64.tar.gz",
+  localArchivePath = "/tmp/codez-server-linux-x64.tar.gz",
 ): ServerReleaseAsset {
   return {
     localArchivePath,
@@ -39,7 +39,7 @@ function createRelease(
     version,
     sha256: "a".repeat(64),
     sizeBytes: 1024,
-    urls: ["https://cdn.example.test/zcode-server-linux-x64.tar.gz"],
+    urls: ["https://cdn.example.test/codez-server-linux-x64.tar.gz"],
   };
 }
 const serverInfo: ServerRemoteInfo = {
@@ -648,14 +648,14 @@ describe("SourceServerConnectionManager", () => {
             ...profile,
             profileId: "08484abc-244e-43cb-a54e-599941885224",
           },
-          target: { kind: "docker", container: "zcode-dev-2" },
+          target: { kind: "docker", container: "codez-dev-2" },
         },
         {
           profile: {
             ...profile,
             profileId: "ad187998-9185-42bc-bd9b-5750441a1aec",
           },
-          target: { kind: "docker", container: "zcode-dev-3" },
+          target: { kind: "docker", container: "codez-dev-3" },
         },
         {
           profile: {
@@ -1198,7 +1198,7 @@ describe("SourceServerConnectionManager", () => {
       platform: "linux",
       arch: "x64",
       installed: false,
-      installPath: "/srv/custom-home/.zcode/server",
+      installPath: "/srv/custom-home/.codez/server",
     });
     const resolveRelease = vi.fn(async () => createRelease("3.8.0"));
     const manager = new SourceServerConnectionManager({
@@ -1213,7 +1213,7 @@ describe("SourceServerConnectionManager", () => {
       state: "needs-install",
       installPreview: {
         version: "3.8.0",
-        installPath: "/srv/custom-home/.zcode/server",
+        installPath: "/srv/custom-home/.codez/server",
         sizeBytes: 1024,
       },
     });
@@ -2366,7 +2366,7 @@ describe("SourceServerConnectionManager", () => {
       const secondProfile: ConnectionProfile = {
         ...profile,
         profileId: "3d317149-48a0-4f50-81bd-021273d0aa48",
-        target: { kind: "docker", container: "zcode-dev-alias" },
+        target: { kind: "docker", container: "codez-dev-alias" },
       };
       await manager.connect({ profile, target });
       await manager.connect({ profile: secondProfile, target: secondProfile.target });
@@ -2598,7 +2598,7 @@ describe("SourceServerConnectionManager", () => {
     const siblingProfile: ConnectionProfile = {
       ...profile,
       profileId: "3d317149-48a0-4f50-81bd-021273d0aa48",
-      target: { kind: "docker", container: "zcode-dev-alias" },
+      target: { kind: "docker", container: "codez-dev-alias" },
     };
 
     const joining = manager.connect({ profile: siblingProfile, target: siblingProfile.target });

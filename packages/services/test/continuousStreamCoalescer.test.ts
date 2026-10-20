@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ZCodeStreamEvent } from "@zcode/shared";
+import type { CodezStreamEvent } from "@codez/shared";
 import { createContinuousStreamCoalescer } from "../src/session/continuousStreamCoalescer.js";
 
-function messageChunk(content: string, overrides: Partial<Extract<ZCodeStreamEvent, { type: "agent_message_chunk" }>> = {}) {
+function messageChunk(content: string, overrides: Partial<Extract<CodezStreamEvent, { type: "agent_message_chunk" }>> = {}) {
   return {
     type: "agent_message_chunk",
     taskId: "task-1",
     traceId: "trace-1",
     content,
     ...overrides,
-  } satisfies Extract<ZCodeStreamEvent, { type: "agent_message_chunk" }>;
+  } satisfies Extract<CodezStreamEvent, { type: "agent_message_chunk" }>;
 }
 
 function thoughtChunk(content: string) {
@@ -18,7 +18,7 @@ function thoughtChunk(content: string) {
     taskId: "task-1",
     traceId: "trace-1",
     content,
-  } satisfies Extract<ZCodeStreamEvent, { type: "agent_thought_chunk" }>;
+  } satisfies Extract<CodezStreamEvent, { type: "agent_thought_chunk" }>;
 }
 
 function toolCall() {
@@ -31,12 +31,12 @@ function toolCall() {
     kind: "execute",
     title: "Bash",
     raw: {},
-  } satisfies Extract<ZCodeStreamEvent, { type: "tool_call" }>;
+  } satisfies Extract<CodezStreamEvent, { type: "tool_call" }>;
 }
 
 function usageUpdate(
   used: number,
-): Extract<ZCodeStreamEvent, { type: "usage_update" }> {
+): Extract<CodezStreamEvent, { type: "usage_update" }> {
   return {
     type: "usage_update",
     taskId: "task-1",
@@ -48,7 +48,7 @@ function usageUpdate(
 
 function apiRetryUpdate(
   attempt: number,
-): Extract<ZCodeStreamEvent, { type: "session_info_update" }> {
+): Extract<CodezStreamEvent, { type: "session_info_update" }> {
   return {
     type: "session_info_update",
     taskId: "task-1",
@@ -70,7 +70,7 @@ afterEach(() => {
 
 describe("createContinuousStreamCoalescer", () => {
   it("coalesces adjacent message chunks with the same stream key", () => {
-    const emitted: ZCodeStreamEvent[] = [];
+    const emitted: CodezStreamEvent[] = [];
     const coalescer = createContinuousStreamCoalescer({
       emit: (event) => emitted.push(event),
       flushDelayMs: 100,
@@ -87,7 +87,7 @@ describe("createContinuousStreamCoalescer", () => {
   });
 
   it("flushes pending chunks before structural events", () => {
-    const emitted: ZCodeStreamEvent[] = [];
+    const emitted: CodezStreamEvent[] = [];
     const coalescer = createContinuousStreamCoalescer({
       emit: (event) => emitted.push(event),
       flushDelayMs: 100,
@@ -101,7 +101,7 @@ describe("createContinuousStreamCoalescer", () => {
   });
 
   it("keeps different chunk keys separated", () => {
-    const emitted: ZCodeStreamEvent[] = [];
+    const emitted: CodezStreamEvent[] = [];
     const coalescer = createContinuousStreamCoalescer({
       emit: (event) => emitted.push(event),
       flushDelayMs: 100,
@@ -118,14 +118,14 @@ describe("createContinuousStreamCoalescer", () => {
   });
 
   it("does not coalesce timeline chunks", () => {
-    const emitted: ZCodeStreamEvent[] = [];
+    const emitted: CodezStreamEvent[] = [];
     const coalescer = createContinuousStreamCoalescer({
       emit: (event) => emitted.push(event),
       flushDelayMs: 100,
     });
     const timeline = messageChunk("timeline", {
       messageId: "timeline-1",
-      zcodeTimeline: {
+      codezTimeline: {
         version: 1,
         kind: "synthetic",
         type: "context_compaction",
@@ -146,7 +146,7 @@ describe("createContinuousStreamCoalescer", () => {
 
   it("flushes pending chunks on the configured timer", () => {
     vi.useFakeTimers();
-    const emitted: ZCodeStreamEvent[] = [];
+    const emitted: CodezStreamEvent[] = [];
     const coalescer = createContinuousStreamCoalescer({
       emit: (event) => emitted.push(event),
       flushDelayMs: 16,
@@ -162,7 +162,7 @@ describe("createContinuousStreamCoalescer", () => {
 
   it("keeps only the latest usage update in one continuous frame", () => {
     vi.useFakeTimers();
-    const emitted: ZCodeStreamEvent[] = [];
+    const emitted: CodezStreamEvent[] = [];
     const coalescer = createContinuousStreamCoalescer({
       emit: (event) => emitted.push(event),
       flushDelayMs: 16,
@@ -180,7 +180,7 @@ describe("createContinuousStreamCoalescer", () => {
 
   it("keeps only the latest api retry session update in one continuous frame", () => {
     vi.useFakeTimers();
-    const emitted: ZCodeStreamEvent[] = [];
+    const emitted: CodezStreamEvent[] = [];
     const coalescer = createContinuousStreamCoalescer({
       emit: (event) => emitted.push(event),
       flushDelayMs: 16,
@@ -195,7 +195,7 @@ describe("createContinuousStreamCoalescer", () => {
   });
 
   it("flushes pending continuous state before structural events", () => {
-    const emitted: ZCodeStreamEvent[] = [];
+    const emitted: CodezStreamEvent[] = [];
     const coalescer = createContinuousStreamCoalescer({
       emit: (event) => emitted.push(event),
       flushDelayMs: 100,
@@ -211,7 +211,7 @@ describe("createContinuousStreamCoalescer", () => {
   });
 
   it("does not delay session title updates as continuous state", () => {
-    const emitted: ZCodeStreamEvent[] = [];
+    const emitted: CodezStreamEvent[] = [];
     const coalescer = createContinuousStreamCoalescer({
       emit: (event) => emitted.push(event),
       flushDelayMs: 100,
@@ -221,7 +221,7 @@ describe("createContinuousStreamCoalescer", () => {
       taskId: "task-1",
       traceId: "trace-1",
       title: "新标题",
-    } satisfies Extract<ZCodeStreamEvent, { type: "session_info_update" }>;
+    } satisfies Extract<CodezStreamEvent, { type: "session_info_update" }>;
 
     coalescer.accept(usageUpdate(10));
     coalescer.accept(titleUpdate);

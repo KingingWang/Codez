@@ -19,7 +19,7 @@ async function seed(files: Record<string, string>): Promise<void> {
 }
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), "zcode-storage-"));
+  root = await mkdtemp(join(tmpdir(), "codez-storage-"));
 });
 
 afterEach(async () => {
@@ -181,7 +181,7 @@ describe("runStorageScan", () => {
       "v2/logs/2026-09-01.log": "123",
       "junk/x": "1",
     });
-    const custom = await mkdtemp(join(tmpdir(), "zcode-storage-custom-"));
+    const custom = await mkdtemp(join(tmpdir(), "codez-storage-custom-"));
     await mkdir(join(custom, "v2/logs"), { recursive: true });
     await writeFile(join(custom, "v2/logs/a.log"), "1234");
     await utimes(join(custom, "v2/logs/a.log"), new Date(), new Date());

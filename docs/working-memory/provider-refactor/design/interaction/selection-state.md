@@ -122,7 +122,7 @@ Session Selection 保存 Session 后续执行延续使用的 ModelSelection。�
 
 ### CLI 默认与加速卡回退
 
-`cliDefaultSelection` 由 Bootstrap 按会话维护，只给没有显式选择的 CLI/TUI 用户输入补齐模型。新会话从 `~/.zcode/v2/provider_config.json` 的 `config.defaultModelSelection` 初始化，恢复会话复用已有普通用户选择；不会在每次请求时重读全局默认。`/model`、`/effort` 修改并保存这个默认值，消息尚未接受时不改 Session 续跑选择。App 继续维护 Composer 草稿，不新增第二份 CLI 默认状态。
+`cliDefaultSelection` 由 Bootstrap 按会话维护，只给没有显式选择的 CLI/TUI 用户输入补齐模型。新会话从 `~/.codez/v2/provider_config.json` 的 `config.defaultModelSelection` 初始化，恢复会话复用已有普通用户选择；不会在每次请求时重读全局默认。`/model`、`/effort` 修改并保存这个默认值，消息尚未接受时不改 Session 续跑选择。App 继续维护 Composer 草稿，不新增第二份 CLI 默认状态。
 
 `highspeedFallbackSelection` 仅指**加速卡过期的回退选择**：在加速轮启动、任何异步初始化之前，从当时的普通 Session 选择复制并冻结。错误处理只读这份快照，不能读取后来被新消息更新的 Session。回退保留本轮历史，移除加速卡请求鉴权；没有普通选择时保留真实卡过期错误。它不是闲时换票或通用错误回退。
 
@@ -183,14 +183,14 @@ Provider、Endpoint、凭据或模型能力，因此与 Provider Config 使用�
 }
 ```
 
-本地 Node Workspace 的缺省物理位置是 `.zcode/v2/model-selection.json`。Host、Prompt CLI 与 TUI 可以共享
+本地 Node Workspace 的缺省物理位置是 `.codez/v2/model-selection.json`。Host、Prompt CLI 与 TUI 可以共享
 这份 Workspace 偏好；App Recent 仍是 App 专属状态，不写入这里。
 
 旧 CLI 用户文件中的 `model` 字段只在新文档不存在时单向迁入 `configuredDefault`。旧文件中的 Provider 定义由 Personal Provider Config 迁移处理，两者不会重新合成一份旧 Runtime Model Config。
 
 目标 Host 在生成同一份 `ModelSelectionView` 时解析 Configured Default 与 Fallback，并返回
 `preferredSelection`。仍可选择的 Configured Default 优先；Provider 或模型已经消失时进入 Fallback Policy。
-当前 Fallback Policy 取 Model Selection Facade 有序 View 中第一个用户可见模型，后续可以由 ZCode Built-in
+当前 Fallback Policy 取 Model Selection Facade 有序 View 中第一个用户可见模型，后续可以由 Codez Built-in
 推荐策略替换。hidden Provider 不参与 Fallback。Fallback 只初始化本次 Composer/Session，不自动覆写持久
 Configured Default。
 

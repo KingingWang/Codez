@@ -5,7 +5,7 @@
 - 状态：P0/P1/P2 已实现；默认装配的定时健康探测与其自动 recovery 已移除
 - 日期：2026-09-02
 - 最近更新：2026-09-03
-- 适用范围：Desktop 本地 Host、Computer Use Helper、ZCode Agent runtime、`zcode-cua` MCP broker
+- 适用范围：Desktop 本地 Host、Computer Use Helper、Codez Agent runtime、`codez-cua` MCP broker
 - 关联问题：`ZCT-2094300783841067008`、`ZCT-2095050283542110208`
 - 替代关系：本规范确认后，替代“Helper ready/recovery 必须 recycle persistent Agent”的旧约定；
   [CUA Helper 恢复期 Agent 启动准入规范](./cua-agent-recovery-admission-gate.md)中的 Agent recycle
@@ -69,9 +69,9 @@ Helper 定时 liveness/recovery（历史路径，现已移除）
 - Agent spawn 环节在 [node.ts](../../packages/services/src/node.ts) 中等待 Helper env 解析；
 - `reconcileRecoveredHelper()` 历史上会执行 persistent-agent recycle；当前仅清理后续 spawn
   admission marker，见
-  [cuaProductMcpResolver.ts](/Users/dev/zcode-cua/src/broker/server/cuaProductMcpResolver.ts)；
+  [cuaProductMcpResolver.ts](/Users/dev/codez-cua/src/broker/server/cuaProductMcpResolver.ts)；
 - `disposeWorkspace()` 最终以 `workspace-dispose` 清理 Agent，见
-  [zcodeAgentProcessManager.ts](../../packages/services/src/zcode-agent/zcodeAgentProcessManager.ts)；
+  [codezAgentProcessManager.ts](../../packages/services/src/codez-agent/codezAgentProcessManager.ts)；
 - 两张工单均出现 `Helper unreachable -> Helper ready -> Agent SIGTERM(workspace-dispose) -> 新 Agent`。
 
 ### 冷启动预占与恢复回收不是同一条路径
@@ -199,7 +199,7 @@ runtime restart。重试必须有绝对 deadline，不得在 Host 内无限后�
 ```text
 plugin disable committed
   -> persist plugin enabled=false
-  -> show “已有对话需重启 ZCode 后生效”
+  -> show “已有对话需重启 Codez 后生效”
   -> leave existing Agent/MCP/Helper untouched
 
 next session create/resume (including the same workspace Agent process)
@@ -209,7 +209,7 @@ next session create/resume (including the same workspace Agent process)
 ```
 
 这条链路不得依赖周期 watchdog、后台 health probe 或 Agent restart。正在运行的 Agent 进程、session、
-已有 CUA MCP、Helper、普通 MCP 和非 CUA 子进程保持不变；因此设置关闭后已有对话需要重启 ZCode
+已有 CUA MCP、Helper、普通 MCP 和非 CUA 子进程保持不变；因此设置关闭后已有对话需要重启 Codez
 才能完全切换到新的启动配置。Agent 子进程可以继续按 workspace 复用，但每个新建或重新 materialize 的
 session runtime 都必须重新读取插件门控；禁用后新开对话不得注入 CUA MCP，也不得因为后台仍有 Helper
 就重新获得 CUA 能力。Helper 可继续驻留到 Host/App 生命周期结束，但不被新 session 消费。
@@ -272,7 +272,7 @@ Workspace 隔离继续使用 `workspaceIdentity?.trim() || workspacePath`；Help
 | HLR-11 | Helper token/identity 校验失败 | recovery 完成 | CUA fail-closed；Agent 与普通模块继续运行 |
 | HLR-12 | 用户关闭 workspace / Agent 自身崩溃 | 非 Helper 事件 | 允许既有 Agent dispose/restart 语义；不得归因于 Helper recovery |
 | HLR-13 | Helper 已不可用 | 下一次 CUA resolve/spawn 边界 | 执行一次有界按需 probe/recovery；不启动周期 timer，不回收 Agent |
-| HLR-14 | CUA 插件已运行且存在活动 Agent | 设置页提交禁用 | 只写启动配置；不关闭已有 CUA MCP/Helper，不重启 Agent；已有对话保持原能力，新开对话不注入 CUA MCP；提示已有对话需重启 ZCode 后生效 |
+| HLR-14 | CUA 插件已运行且存在活动 Agent | 设置页提交禁用 | 只写启动配置；不关闭已有 CUA MCP/Helper，不重启 Agent；已有对话保持原能力，新开对话不注入 CUA MCP；提示已有对话需重启 Codez 后生效 |
 
 必须断言：
 
@@ -343,4 +343,4 @@ stop 已开始但旧子进程尚未退出时，迟到的 ready/transport_ready �
   `resolver.restart()` 的链路；spawn env 与 Producer resolver 中的有界 `checkHealth` 仍保留为按需检查。
 - CUA 插件开关与 BUA 对齐为启动时门控：显式禁用只写配置，不处理已运行 Agent、已有 CUA MCP
   或 Helper；新 Host/Agent/App 启动时读取 disabled 后不注入 CUA MCP，也不启动 Helper。设置页需提示
-  已有对话需重启 ZCode 后生效。
+  已有对话需重启 Codez 后生效。

@@ -15,7 +15,7 @@ afterEach(() => {
 
 describe("FeedbackLocalTicketStore", () => {
   it("读取旧版匿名反馈时将待评估状态迁移为已提交", async () => {
-    const rootDir = mkdtempSync(join(tmpdir(), "zcode-feedback-ticket-store-"));
+    const rootDir = mkdtempSync(join(tmpdir(), "codez-feedback-ticket-store-"));
     tempDirs.push(rootDir);
     writeFileSync(
       join(rootDir, "tickets.json"),
@@ -49,7 +49,7 @@ describe("FeedbackLocalTicketStore", () => {
   });
 
   it("读取未知缓存状态时按接口契约归一为已提交", async () => {
-    const rootDir = mkdtempSync(join(tmpdir(), "zcode-feedback-ticket-store-"));
+    const rootDir = mkdtempSync(join(tmpdir(), "codez-feedback-ticket-store-"));
     tempDirs.push(rootDir);
     writeFileSync(
       join(rootDir, "tickets.json"),

@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/conversation-session-tool-detail-toggle-stability",
+      "path": ".codez-e2e/conversation-session-tool-detail-toggle-stability",
       "source": "created-by-spec",
       "description": "P08 spec 为两次连续 Read 创建独立沙箱文件，结束后删除。"
     }

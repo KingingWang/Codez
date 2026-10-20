@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 const capturedRemoteSyncDialogProps = vi.hoisted(() => [] as Array<Record<string, unknown>>);
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
     },
@@ -73,7 +73,7 @@ describe("RemoteConnectionDialogContent layout", () => {
     expect(
       getRecentRemoteWorkspaceHistory([
         {
-          workspacePath: "/home/dev/.zcode",
+          workspacePath: "/home/dev/.codez",
           profileId: "p",
           sourceServerId: "s",
           lastOpenedAt: 9,
@@ -93,7 +93,7 @@ describe("RemoteConnectionDialogContent layout", () => {
       getRecentRemoteWorkspaceHistory(
         [
           {
-            workspacePath: "/remote/.zcode/workspace/default",
+            workspacePath: "/remote/.codez/workspace/default",
             sourceServerId: "source-1",
             profileId: "p",
             lastOpenedAt: 3,
@@ -107,7 +107,7 @@ describe("RemoteConnectionDialogContent layout", () => {
         ],
         {
           "source-1": {
-            workspacePath: "/remote/.zcode/workspace/default",
+            workspacePath: "/remote/.codez/workspace/default",
             lastResolvedAt: 4,
           },
         },

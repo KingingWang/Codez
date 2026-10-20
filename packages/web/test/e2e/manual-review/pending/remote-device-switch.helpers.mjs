@@ -1,5 +1,5 @@
 // 设备导航验证用桌面 RPC 替身；复用真实帧协议，不模拟 UI 或修改产品模块。
-import { createAcknowledgedWebRemoteControlRelayProtocol } from "@zcode/client";
+import { createAcknowledgedWebRemoteControlRelayProtocol } from "@codez/client";
 import * as contracts from "../../../../../services/src/index.ts";
 import { ChannelServer, Event } from "../../../../../rpc/src/index.ts";
 

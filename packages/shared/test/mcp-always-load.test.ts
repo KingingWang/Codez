@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { convertToZCodeAgentMcpServer, zcodeProtocolMcpServerSchema } from "@zcode/shared";
+import { convertToCodezAgentMcpServer, codezProtocolMcpServerSchema } from "@codez/shared";
 
 describe.each([
   { type: "stdio", command: "node" },
@@ -9,17 +9,17 @@ describe.each([
   it.each([true, false])(
     "preserves alwaysLoad=%s through JSON and protocol validation",
     (alwaysLoad) => {
-      const server = convertToZCodeAgentMcpServer("demo", { ...config, alwaysLoad });
+      const server = convertToCodezAgentMcpServer("demo", { ...config, alwaysLoad });
       expect(server?.alwaysLoad).toBe(alwaysLoad);
-      const received = zcodeProtocolMcpServerSchema.parse(JSON.parse(JSON.stringify(server)));
+      const received = codezProtocolMcpServerSchema.parse(JSON.parse(JSON.stringify(server)));
       expect(received.alwaysLoad).toBe(alwaysLoad);
     },
   );
 
   it.each([undefined, null, "true", 1])("omits missing or invalid alwaysLoad=%s", (alwaysLoad) => {
-    const server = convertToZCodeAgentMcpServer("demo", { ...config, alwaysLoad });
+    const server = convertToCodezAgentMcpServer("demo", { ...config, alwaysLoad });
     expect(server).not.toHaveProperty("alwaysLoad");
-    const received = zcodeProtocolMcpServerSchema.parse(JSON.parse(JSON.stringify(server)));
+    const received = codezProtocolMcpServerSchema.parse(JSON.parse(JSON.stringify(server)));
     expect(received).not.toHaveProperty("alwaysLoad");
   });
 });

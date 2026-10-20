@@ -3,7 +3,7 @@ import { cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { useRootPlatformEffects } from "@/root/useRootPlatformEffects.js";
 import { persistV4ComposerDraft, V4_DRAFT_SCOPE_ROOT } from "@/v4/composer/composerDraftStore.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 vi.mock("@/hooks/useWorkspaceServices.js", () => ({
   useOptionalBaseWorkspaceServices: () => null,
 }));
@@ -13,7 +13,7 @@ vi.mock("@/store/TabStoreProvider.js", () => ({
 vi.mock("@/lib/rendererNavigation.js", () => ({ isRendererReloadNavigation: () => false }));
 beforeEach(() => {
   localStorage.clear();
-  useZCodeSessionStore.setState({ workspaces: {} });
+  useCodezSessionStore.setState({ workspaces: {} });
 });
 afterEach(cleanup);
 function mount(options: Partial<Parameters<typeof useRootPlatformEffects>[0]> = {}) {
@@ -89,6 +89,6 @@ it("an explicit task opens directly and never initializes a project draft", () =
   const start = mount({ initialTaskId: "existing" });
   expect(start).not.toHaveBeenCalled();
   expect(
-    useZCodeSessionStore.getState().getWorkspaceState("/cwd", "remote:server:s:/cwd").activeTaskId,
+    useCodezSessionStore.getState().getWorkspaceState("/cwd", "remote:server:s:/cwd").activeTaskId,
   ).toBe("existing");
 });

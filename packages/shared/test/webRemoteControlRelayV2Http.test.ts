@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import {
   parseWebRemoteControlRelayV2HttpRequest,
   parseWebRemoteControlRelayV2HttpResponse,
-} from "@zcode/shared/web-remote-relay";
+} from "@codez/shared/web-remote-relay";
 
 it("accepts device/token HTTP contracts and the server's omitted null data", () => {
   const device = {

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { HostAgentProcessExceptionResponse } from "@zcode/shared";
+import type { HostAgentProcessExceptionResponse } from "@codez/shared";
 
 const { sendEvent, sendCustom } = vi.hoisted(() => ({ sendEvent: vi.fn(), sendCustom: vi.fn() }));
 vi.mock("@arms/rum-electron", () => ({ default: { sendEvent, sendCustom, setConfig: vi.fn() } }));

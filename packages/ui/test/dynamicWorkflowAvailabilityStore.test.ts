@@ -1,12 +1,12 @@
 // 动态工作流灰度快照在 renderer 的唯一副本（docs/dynamic-workflow/launch.md「Gray release」DWG-07）。
 // 只钉三件事：一个 app 会话取一次、失败 fail-closed、换了 service 实例会重试。
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ICodingPlanSubscriptionService } from "@zcode/services";
+import type { ICodingPlanSubscriptionService } from "@codez/services";
 import {
   applyDynamicWorkflowUserMode,
   createDynamicWorkflowClientConfig,
   type DynamicWorkflowClientConfig,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   resetDynamicWorkflowAvailabilityStoreForTests,
   useDynamicWorkflowAvailabilityStore,

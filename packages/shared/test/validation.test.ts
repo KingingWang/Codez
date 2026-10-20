@@ -7,7 +7,7 @@ import {
   webRemoteControlAppPayloadSchema,
   hostResponseMessageSchema,
   wslConnectOptionsSchema,
-  zcodePersistedMessageSchema,
+  codezPersistedMessageSchema,
 } from "../src/validation.js";
 
 it("PD01 手机任务草稿身份通过两层协议，且不能注入路径或混用项目", () => {
@@ -17,7 +17,7 @@ it("PD01 手机任务草稿身份通过两层协议，且不能注入路径或�
     reuseDraft: true,
   };
   const bridge = {
-    zcode_type: "workspace-bridge-open",
+    codez_type: "workspace-bridge-open",
     requestId: "draft",
     bridgeSessionId: "bridge",
     workspaceKey: "draft",
@@ -56,7 +56,7 @@ it("资源查询取消必须指定 requestId 且不接受附加字段", () => {
 
 it("accepts persisted user messages with video attachments", () => {
   expect(
-    zcodePersistedMessageSchema.safeParse({
+    codezPersistedMessageSchema.safeParse({
       role: "user",
       content: "Summarize the video.",
       timestamp: 1,
@@ -115,7 +115,7 @@ describe("hostResponseMessageSchema", () => {
       pid: 12345,
       provider: "glm",
       workspacePath: "/repo/demo",
-      command: "/tmp/zcode-agent",
+      command: "/tmp/codez-agent",
       args: ["--stdio"],
       startedAt: Date.now(),
       runtimeGeneration: 2,
@@ -155,7 +155,7 @@ describe("hostResponseMessageSchema", () => {
       pid: null,
       provider: "glm",
       workspacePath: "/repo/demo",
-      command: "/tmp/missing-zcode-agent",
+      command: "/tmp/missing-codez-agent",
       args: ["app-server", "--stdio"],
       errorName: "Error",
       errorCode: "ENOENT",
@@ -178,7 +178,7 @@ describe("hostResponseMessageSchema", () => {
       pid: 12345,
       provider: "glm",
       workspacePath: "/repo/demo",
-      command: "/tmp/zcode-agent",
+      command: "/tmp/codez-agent",
       args: ["--stdio"],
       startedAt: Date.now(),
     });
@@ -314,7 +314,7 @@ describe("hostResponseMessageSchema", () => {
       type: "init-local",
       workspacePath: "/repo/active",
       agentWarmupTargets: [{ workspacePath: "/repo/active" }],
-      zcodeBuiltinProviderConfigFilePath: "/repo/config/provider/zcode-builtin.json",
+      codezBuiltinProviderConfigFilePath: "/repo/config/provider/codez-builtin.json",
       runtimeProcessEnvPatch: {
         PATH: "/Users/demo/.local/bin:/usr/bin:/bin",
         FNM_DIR: "/Users/demo/.fnm",
@@ -324,13 +324,13 @@ describe("hostResponseMessageSchema", () => {
     expect(parsed.success).toBe(true);
     if (parsed.success && parsed.data.type === "init-local") {
       expect(parsed.data.runtimeProcessEnvPatch?.PATH).toContain("/Users/demo/.local/bin");
-      expect(parsed.data.zcodeBuiltinProviderConfigFilePath).toBe(
-        "/repo/config/provider/zcode-builtin.json",
+      expect(parsed.data.codezBuiltinProviderConfigFilePath).toBe(
+        "/repo/config/provider/codez-builtin.json",
       );
     }
   });
 
-  it("rejects local host init without an ZCode Built-in Provider Config", () => {
+  it("rejects local host init without an Codez Built-in Provider Config", () => {
     expect(
       hostIncomingMessageSchema.safeParse({
         type: "init-local",
@@ -342,7 +342,7 @@ describe("hostResponseMessageSchema", () => {
     expect(
       hostIncomingMessageSchema.safeParse({
         type: "init-local",
-        zcodeBuiltinProviderConfigFilePath: "/repo/config/provider/zcode-builtin.json",
+        codezBuiltinProviderConfigFilePath: "/repo/config/provider/codez-builtin.json",
         runtimeProcessEnvPatch: { PATH: ["/usr/bin"] },
       }).success,
     ).toBe(false);
@@ -351,7 +351,7 @@ describe("hostResponseMessageSchema", () => {
   it("rejects more than one local host agent warmup target", () => {
     const parsed = hostIncomingMessageSchema.safeParse({
       type: "init-local",
-      zcodeBuiltinProviderConfigFilePath: "/repo/config/provider/zcode-builtin.json",
+      codezBuiltinProviderConfigFilePath: "/repo/config/provider/codez-builtin.json",
       agentWarmupTargets: ["a", "b"].map((name) => ({
         workspacePath: `/repo/${name}`,
       })),
@@ -360,7 +360,7 @@ describe("hostResponseMessageSchema", () => {
     expect(parsed.success).toBe(false);
   });
 
-  it("accepts window Host connect payload with remote ZCode Agent asset dirs", () => {
+  it("accepts window Host connect payload with remote Codez Agent asset dirs", () => {
     const parsed = hostIncomingMessageSchema.safeParse({
       type: "connect-remote-workspace",
       requestId: "connect-docker-1",
@@ -371,7 +371,7 @@ describe("hostResponseMessageSchema", () => {
       remoteAssets: {
         mockCdnDir: "/tmp/mock-cdn",
         remoteCdnBaseUrl: "",
-        remoteCdnBaseUrls: ["https://cdn.codegeex.cn/zcode/electron/releases/0.0.0-test"],
+        remoteCdnBaseUrls: ["https://cdn.codegeex.cn/codez/electron/releases/0.0.0-test"],
         remoteCacheDir: "/tmp/remote-cache",
         sourceServerArtifactPolicy: "development-content-addressed",
       },
@@ -679,15 +679,15 @@ describe("hostResponseMessageSchema", () => {
     expect(patch.computerUseComposerEntryHidden).toBe(false);
   });
 
-  it("defaults ZCode interaction behavior to queue and accepts guide patches", () => {
+  it("defaults Codez interaction behavior to queue and accepts guide patches", () => {
     const parsed = appSettingsSchema.parse({});
     const patch = appSettingsPatchSchema.parse({
-      zcodeInteractionBehavior: "guide",
+      codezInteractionBehavior: "guide",
     });
 
-    expect(parsed.zcodeInteractionBehavior).toBe("queue");
+    expect(parsed.codezInteractionBehavior).toBe("queue");
     expect(patch).toMatchObject({
-      zcodeInteractionBehavior: "guide",
+      codezInteractionBehavior: "guide",
     });
   });
 
@@ -713,7 +713,7 @@ describe("hostResponseMessageSchema", () => {
     expect(patch.providerFamilyDomainUpdatedAt).toBe(456);
   });
 
-  it("normalizes legacy enabled agent CLI providers to ZCode Agent", () => {
+  it("normalizes legacy enabled agent CLI providers to Codez Agent", () => {
     const parsed = appSettingsSchema.parse({
       enabledBuiltinAgentCliProviders: ["claude", "codex", "gemini", "opencode"],
     });

@@ -9,7 +9,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -50,7 +50,7 @@ const GPT_OPENAI_PROVIDER_NAME_PREFIX = "GPT OpenAI-compatible E2E";
 const GPT_OPENAI_LOW_LEVEL = "low";
 const GPT_OPENAI_XHIGH_LEVEL = "xhigh";
 const E2E_PROVIDER_RUNTIME_FILE = resolve(
-  process.env.ZCODE_E2E_NETWORK_CAPTURE_DIR?.trim() ||
+  process.env.CODEZ_E2E_NETWORK_CAPTURE_DIR?.trim() ||
     resolve(homedir(), "..", ".e2e-network-capture"),
   "upstream-runtime.json",
 );

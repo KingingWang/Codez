@@ -3,7 +3,7 @@ import {
   buildRemoteWorkspaceIdentity,
   buildServerRemoteWorkspaceIdentity,
   type ConnectionProfile,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { resolveBotRemoteWorkspace } from "../src/host/botRemoteWorkspaceResolver.js";
 import type { WindowRemoteLogicalSessionSnapshot } from "../src/host/windowRemoteConnectionRegistry.js";
 

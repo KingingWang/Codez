@@ -82,7 +82,7 @@ function parseArgs(args) {
 
 function printUsage() {
   console.log(`Usage:
-  pnpm --filter @zcode/desktop e2e:promote -- --spec ./test/e2e/conversation-session/manual-review/pending/<case>.test.ts --reviewed --apply
+  pnpm --filter @codez/desktop e2e:promote -- --spec ./test/e2e/conversation-session/manual-review/pending/<case>.test.ts --reviewed --apply
 
 Options:
   --apply     Write changes. Without this flag the tool only prints a dry run.
@@ -355,9 +355,9 @@ function printResult(result) {
     console.log(
       `- Complete the canonical fixtures and requests in ${relative(repoRoot, result.providerFixturePath)} and ${relative(repoRoot, result.caseManifestPath)} while the spec is still pending.`,
     );
-    console.log(`- pnpm --filter @zcode/desktop e2e:fixture:check -- --spec ${pendingSpecArg}`);
+    console.log(`- pnpm --filter @codez/desktop e2e:fixture:check -- --spec ${pendingSpecArg}`);
     console.log(
-      `- pnpm --filter @zcode/desktop e2e:promote -- --spec ${pendingSpecArg} --reviewed --apply`,
+      `- pnpm --filter @codez/desktop e2e:promote -- --spec ${pendingSpecArg} --reviewed --apply`,
     );
     console.log(
       "- The apply command keeps the formal promotion only after pnpm audit:conversation-session-coverage passes.",
@@ -366,13 +366,13 @@ function printResult(result) {
   }
   const caseFixture = `packages/desktop/test/e2e/fixtures/upstream/conversation-session/${result.caseName}.json`;
   console.log("\nNext:");
-  console.log(`- pnpm --filter @zcode/desktop e2e:fixture:check -- --spec ${specArg}`);
+  console.log(`- pnpm --filter @codez/desktop e2e:fixture:check -- --spec ${specArg}`);
   console.log(
-    `- E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json,${caseFixture} pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec '${specArg}'`,
+    `- E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json,${caseFixture} pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec '${specArg}'`,
   );
-  console.log(`- pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec '${specArg}'`);
+  console.log(`- pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec '${specArg}'`);
   console.log(`- E2E_SPEC=${specArg} pnpm run test:e2e:container`);
   console.log(
-    `- pnpm --filter @zcode/desktop e2e:docker:admit -- --spec ${specArg} --verified --artifact packages/desktop/.e2e-artifacts/<run-id> --apply`,
+    `- pnpm --filter @codez/desktop e2e:docker:admit -- --spec ${specArg} --verified --artifact packages/desktop/.e2e-artifacts/<run-id> --apply`,
   );
 }

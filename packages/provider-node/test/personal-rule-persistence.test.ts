@@ -12,7 +12,7 @@ import {
   ProviderConfigService,
   ProviderTemplateMap,
   parseProviderTemplateMap,
-} from "@zcode/provider";
+} from "@codez/provider";
 import { NodePersonalProviderConfigRepository } from "../src/personal-provider-config-repository.js";
 import { encodeProviderConfigFile } from "../src/provider-config-file-codec.js";
 import { NodeModelSelectionConfigRepository } from "../src/model-selection-config-repository.js";
@@ -41,7 +41,7 @@ function service(
 ) {
   return new ProviderConfigService({
     personalRepository: repo,
-    zcodeBuiltinSource: {
+    codezBuiltinSource: {
       read: async () => ({
         revision: "builtin",
         providers: ProviderConfigMap.empty(),

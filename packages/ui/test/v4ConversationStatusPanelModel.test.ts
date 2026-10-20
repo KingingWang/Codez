@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { GitRepositorySummary } from "@zcode/shared";
+import type { GitRepositorySummary } from "@codez/shared";
 import type {
   BackgroundWorkSummary,
   GoalState,
@@ -7,7 +7,7 @@ import type {
   ToolCallRow,
   WorkflowRunNode,
   WorkflowRunState,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import {
   buildConversationStatusPanelModel,
   resolveSoleRunningWorkflowRunTarget,

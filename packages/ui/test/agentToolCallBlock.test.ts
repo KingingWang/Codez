@@ -1,11 +1,11 @@
 import { ToolCallBlock } from "@/ToolCallBlocks.js";
-import type { IBroadcastService, IServiceAccessor } from "@zcode/services";
+import type { IBroadcastService, IServiceAccessor } from "@codez/services";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { testId, TID_TOOL_SUMMARY_TRIGGER } from "@zcode/shared/test-ids";
+import { testId, TID_TOOL_SUMMARY_TRIGGER } from "@codez/shared/test-ids";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ServiceProvider } from "@/hooks/useServices.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { StoreProvider } from "@/store/StoreProvider.js";
 import { useSubagentsStore } from "@/store/subagentsStore.js";
 import { AgentToolCallBlock } from "../src/ToolCallBlocks/renderers/agent.js";
@@ -64,7 +64,7 @@ describe("AgentToolCallBlock", () => {
   it("keeps an Agent without a persisted child as a static one-line summary", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           ServiceProvider,
@@ -86,7 +86,7 @@ describe("AgentToolCallBlock", () => {
                   status: "running",
                   raw: {
                     _meta: {
-                      zcode: {
+                      codez: {
                         toolName: "Agent",
                       },
                     },
@@ -131,7 +131,7 @@ describe("AgentToolCallBlock", () => {
   it("uses a side-pane summary action instead of expandable details", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           ServiceProvider,
@@ -153,7 +153,7 @@ describe("AgentToolCallBlock", () => {
                   status: "running",
                   raw: {
                     _meta: {
-                      zcode: {
+                      codez: {
                         toolName: "Agent",
                       },
                     },
@@ -201,7 +201,7 @@ describe("AgentToolCallBlock", () => {
   it("never falls back to inline prompt or child output", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           ServiceProvider,
@@ -223,7 +223,7 @@ describe("AgentToolCallBlock", () => {
                   status: "running",
                   raw: {
                     _meta: {
-                      zcode: {
+                      codez: {
                         toolName: "Agent",
                       },
                     },
@@ -276,7 +276,7 @@ describe("AgentToolCallBlock", () => {
           description: "Explore workspace",
           systemPrompt: "Explore",
           color: "red",
-          path: "/workspace/.zcode/agents/explore.md",
+          path: "/workspace/.codez/agents/explore.md",
           scope: "user",
           source: "user",
           enabled: true,
@@ -286,7 +286,7 @@ describe("AgentToolCallBlock", () => {
 
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           ServiceProvider,
@@ -344,7 +344,7 @@ describe("AgentToolCallBlock", () => {
   it("keeps the agent type blank while subagent_type may still be streaming", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           ServiceProvider,
@@ -405,7 +405,7 @@ describe("AgentToolCallBlock", () => {
   it("falls back to the default general-purpose agent type only after complete input omits subagent_type", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           ServiceProvider,
@@ -429,7 +429,7 @@ describe("AgentToolCallBlock", () => {
                   raw: {
                     inputPreviewComplete: true,
                     _meta: {
-                      zcode: {
+                      codez: {
                         toolName: "Agent",
                       },
                     },
@@ -470,7 +470,7 @@ describe("AgentToolCallBlock", () => {
   it("uses the latest child tool summary for a collapsed running subagent", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           ServiceProvider,
@@ -492,7 +492,7 @@ describe("AgentToolCallBlock", () => {
                   status: "running",
                   raw: {
                     _meta: {
-                      zcode: {
+                      codez: {
                         toolName: "Agent",
                       },
                     },
@@ -553,7 +553,7 @@ describe("AgentToolCallBlock", () => {
   it("does not keep a completed subagent visually running while a child tool is running", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           ServiceProvider,
@@ -575,7 +575,7 @@ describe("AgentToolCallBlock", () => {
                   status: "completed",
                   raw: {
                     _meta: {
-                      zcode: {
+                      codez: {
                         toolName: "Agent",
                       },
                     },
@@ -638,7 +638,7 @@ describe("AgentToolCallBlock", () => {
   it("keeps the child action label for completed subagent child summaries", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           ServiceProvider,
@@ -660,7 +660,7 @@ describe("AgentToolCallBlock", () => {
                   status: "running",
                   raw: {
                     _meta: {
-                      zcode: {
+                      codez: {
                         toolName: "Agent",
                       },
                     },
@@ -718,7 +718,7 @@ describe("AgentToolCallBlock", () => {
   it("summarizes TodoWrite child tools with todo progress and active content", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           ServiceProvider,
@@ -740,7 +740,7 @@ describe("AgentToolCallBlock", () => {
                   status: "running",
                   raw: {
                     _meta: {
-                      zcode: {
+                      codez: {
                         toolName: "Agent",
                       },
                     },
@@ -814,7 +814,7 @@ describe("AgentToolCallBlock", () => {
   it("uses SubAgent as the outer kind instead of the resolved agent type", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           ServiceProvider,
@@ -841,7 +841,7 @@ describe("AgentToolCallBlock", () => {
                   status: "completed",
                   raw: {
                     _meta: {
-                      zcode: {
+                      codez: {
                         toolName: "Agent",
                       },
                     },
@@ -889,7 +889,7 @@ describe("AgentToolCallBlock", () => {
   it("uses spawn_agent subagent nickname as the summary primary text", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           ServiceProvider,
@@ -912,7 +912,7 @@ describe("AgentToolCallBlock", () => {
                   raw: {
                     name: "spawn_agent",
                     _meta: {
-                      zcode: {
+                      codez: {
                         toolName: "spawn_agent",
                         nickname: "Locke",
                       },
@@ -961,7 +961,7 @@ describe("AgentToolCallBlock", () => {
   it("falls back to spawn_agent agent_type when nickname is not available", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           ServiceProvider,
@@ -1023,7 +1023,7 @@ describe("AgentToolCallBlock", () => {
   it("renders prompt and child tool calls without result content", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           ServiceProvider,
@@ -1050,7 +1050,7 @@ describe("AgentToolCallBlock", () => {
                   status: "completed",
                   raw: {
                     _meta: {
-                      zcode: {
+                      codez: {
                         toolName: "Agent",
                       },
                     },
@@ -1114,7 +1114,7 @@ describe("AgentToolCallBlock", () => {
   it("keeps background agent internals out of the static summary", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           ServiceProvider,
@@ -1141,7 +1141,7 @@ describe("AgentToolCallBlock", () => {
                   status: "completed",
                   raw: {
                     _meta: {
-                      zcode: {
+                      codez: {
                         toolName: "Agent",
                         backgroundAgent: {
                           runInBackground: true,
@@ -1189,7 +1189,7 @@ describe("AgentToolCallBlock", () => {
   it("does not inline background child activity", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           ServiceProvider,
@@ -1213,7 +1213,7 @@ describe("AgentToolCallBlock", () => {
                   status: "completed",
                   raw: {
                     _meta: {
-                      zcode: {
+                      codez: {
                         toolName: "Agent",
                         backgroundAgent: {
                           runInBackground: true,
@@ -1259,7 +1259,7 @@ describe("AgentToolCallBlock", () => {
   it("does not inline either task notification or raw background transcript", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           ServiceProvider,
@@ -1282,7 +1282,7 @@ describe("AgentToolCallBlock", () => {
                   status: "completed",
                   raw: {
                     _meta: {
-                      zcode: {
+                      codez: {
                         toolName: "Agent",
                         backgroundAgent: {
                           runInBackground: true,

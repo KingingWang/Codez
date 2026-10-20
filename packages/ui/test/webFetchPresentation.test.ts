@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { getZCodeToolFamilyForName } from "@zcode/shared";
+import { getCodezToolFamilyForName } from "@codez/shared";
 import { resolveToolCallIdentity } from "@/lib/toolIdentity.js";
 import { getWebFetchPrimaryText } from "@/ToolCallBlocks/renderers/web-fetch.js";
 
 describe("WebFetch presentation", () => {
   it("separates fetching from searching", () => {
-    expect(getZCodeToolFamilyForName("WebFetch")).toBe("web-fetch");
+    expect(getCodezToolFamilyForName("WebFetch")).toBe("web-fetch");
     for (const kind of ["fetch", "web_fetch", "webfetch"]) {
       expect(resolveToolCallIdentity({ kind }).family).toBe("web-fetch");
       expect(resolveToolCallIdentity({ toolName: kind, kind: "other" }).family).toBe("web-fetch");

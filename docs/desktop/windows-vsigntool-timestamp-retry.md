@@ -14,8 +14,8 @@ Windows 打包阶段通过 `scripts/sign-windows.ps1` 调用 VSigntool/SafeNet �
 - 重试是第一层策略：当前规则失败后，必须先用同一规则耗尽标准重试次数，不因单次错误立即切换规则。
 - 时间戳服务商切换是第二层策略：只有当前规则重试耗尽，且最后一次子进程原始输出仍命中明确的时间戳/TSA/`0x80072ee2` 特征，才切换到下一个 VSigntool 规则；新规则重新获得完整的重试次数。脚本自身注入的 attempt-timeout 诊断不参与该判定，避免 PIN、SafeNet 或本机工具挂起被误判为 TSA 故障。
 - SafeNet/智能卡错误（例如 `0x8010006a`）不做特殊分类，按当前规则执行标准重试；重试耗尽后直接失败，不因 SafeNet 错误切换时间戳规则。
-- 默认 fallback 规则是 `zcodedigicert`，要求 CI 机器的 VSigntool GUI 已保存同名规则，且该规则使用 DigiCert 时间戳。
-- 可通过 `VSIGNTOOL_TIMESTAMP_FALLBACK_RULES` 或 `-TimestampFallbackRules` 覆盖规则名列表，例如 `zcodedigicert,zcodeglobalsign`。
+- 默认 fallback 规则是 `codezdigicert`，要求 CI 机器的 VSigntool GUI 已保存同名规则，且该规则使用 DigiCert 时间戳。
+- 可通过 `VSIGNTOOL_TIMESTAMP_FALLBACK_RULES` 或 `-TimestampFallbackRules` 覆盖规则名列表，例如 `codezdigicert,codezglobalsign`。
 - 规则列表按大小写不敏感去重。脚本启动时校验主规则存在；fallback 只在准备切换时检查 `config.xml`，若缺失则明确报错并停止，不为不存在的规则再消耗一轮重试。
 - VSigntool 当前 sign 命令只暴露 `-i/-m/-r`，没有单独 TSA 参数；脚本通过切换 `-r <rule>` 改变时间戳服务商，不修改 `config.xml`。
 - 脚本并发读取 `stdout` 和 `stderr`，避免错误输出填满管道导致 CI 卡死。

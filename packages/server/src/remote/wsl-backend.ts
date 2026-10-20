@@ -4,20 +4,20 @@ import type { ChildProcess } from "node:child_process";
 import { access, copyFile, mkdir, readFile, stat } from "node:fs/promises";
 import { createReadStream } from "node:fs";
 import { dirname, posix } from "node:path";
-import type { WSLConnectOptions } from "@zcode/shared";
+import type { WSLConnectOptions } from "@codez/shared";
 import type {
   IRemoteBackend,
   RemoteEnvironment,
   RemoteUploadOptions,
   StdioStream,
-} from "@zcode/server/remote/backend.js";
-import { createCloseEventController } from "@zcode/server/remote/closeEvent.js";
+} from "@codez/server/remote/backend.js";
+import { createCloseEventController } from "@codez/server/remote/closeEvent.js";
 import {
   normalizeRemoteArch,
   normalizeRemotePlatform,
   resolveRemotePlatform,
-} from "@zcode/server/remote/detectEnv.js";
-import { isWSLAvailable, listWSLDistros, type WSLDistro } from "@zcode/server/remote/wsl-detect.js";
+} from "@codez/server/remote/detectEnv.js";
+import { isWSLAvailable, listWSLDistros, type WSLDistro } from "@codez/server/remote/wsl-detect.js";
 import {
   buildWslHostGatewayCommand,
   buildWslProxyPortProbeCommand,
@@ -26,7 +26,7 @@ import {
   parseWslHostGatewayOutput,
   parseWslProxyPortProbeOutput,
   replaceProxyHostname,
-} from "@zcode/server/remote/wslProxy.js";
+} from "@codez/server/remote/wslProxy.js";
 
 interface ResolvedWSLInfo {
   distroName: string | null;

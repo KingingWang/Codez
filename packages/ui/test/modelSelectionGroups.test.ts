@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
-import type { ModelSelectionView } from "@zcode/services";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
+import type { ModelSelectionView } from "@codez/services";
 import { buildRegistryModelSelectGroups } from "../src/lib/modelSelectionGroups.js";
 
 describe("model selection groups", () => {

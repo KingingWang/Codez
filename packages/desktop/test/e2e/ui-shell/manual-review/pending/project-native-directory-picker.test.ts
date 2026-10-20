@@ -2,8 +2,8 @@ import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { DEFAULT_WORKSPACE, waitForDefaultWorkspaceReady } from "../../../helpers/desktop-app.js";
 import { selectNativeProjectDirectories } from "../../../helpers/project-sidebar.js";
-import { ServiceChannels } from "@zcode/shared";
-import type { VirtualProject } from "@zcode/services";
+import { ServiceChannels } from "@codez/shared";
+import type { VirtualProject } from "@codez/services";
 import {
   installHandoffRpcProbe,
   callHandoffHost,
@@ -20,7 +20,7 @@ type ThemeWindow = typeof window & {
 };
 
 describe("本地项目原生多目录选择", () => {
-  const root = join(DEFAULT_WORKSPACE, ".zcode-e2e", "native-project-picker");
+  const root = join(DEFAULT_WORKSPACE, ".codez-e2e", "native-project-picker");
   const paths = ["one", "two", "three"].map((name) => join(root, name));
   const project = '[data-project-name="E2E_NATIVE_PROJECT_PICKER"]';
 
@@ -157,7 +157,7 @@ describe("本地项目原生多目录选择", () => {
             width === 1200 ? "This computer" : "此电脑",
           );
           await browser.saveScreenshot(
-            join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `PCFT-trust-${width}-${theme}.png`),
+            join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `PCFT-trust-${width}-${theme}.png`),
           );
         }
       }
@@ -219,7 +219,7 @@ describe("本地项目原生多目录选择", () => {
           ),
         );
         await browser.saveScreenshot(
-          join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `native-project-${theme}.png`),
+          join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `native-project-${theme}.png`),
         );
       }
     } finally {

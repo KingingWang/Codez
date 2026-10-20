@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildServerRemoteWorkspaceIdentity } from "@zcode/shared";
+import { buildServerRemoteWorkspaceIdentity } from "@codez/shared";
 import { getWorkspaceHash } from "#src/paths.js";
 import {
   SourceServerWorkspaceAliasRepo,
@@ -24,7 +24,7 @@ afterEach(async () => {
 });
 
 async function setup(options: SourceServerWorkspaceAliasRepoOptions = {}) {
-  const root = await mkdtemp(join(tmpdir(), "zcode-alias-concurrent-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-alias-concurrent-"));
   roots.push(root);
   const taskDbPath = join(root, "tasks-index.sqlite");
   const index = new TaskIndexRepo(undefined, undefined, taskDbPath);

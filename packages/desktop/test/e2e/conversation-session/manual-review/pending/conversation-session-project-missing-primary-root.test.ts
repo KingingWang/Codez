@@ -11,7 +11,7 @@ const HISTORY_BODY = "E2E_MISSING_PRIMARY_HISTORY_BODY";
 const REASON = "该项目主文件夹已被删除或移动";
 type TestWindow = Window & {
   __testActions?: { setLocale(locale: "zh-CN"): void; setTheme(theme: string): void };
-  __zcodeTabStoreE2E?: { getState(): { activeWorkspacePath: string | null } };
+  __codezTabStoreE2E?: { getState(): { activeWorkspacePath: string | null } };
 };
 
 describe("项目主目录失效", () => {
@@ -19,7 +19,7 @@ describe("项目主目录失效", () => {
     this.timeout(150_000);
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 45_000);
     await browser.execute(() => (window as TestWindow).__testActions!.setLocale("zh-CN"));
-    const root = join(DEFAULT_WORKSPACE, ".zcode-e2e", "missing-primary");
+    const root = join(DEFAULT_WORKSPACE, ".codez-e2e", "missing-primary");
     const primary = join(root, "primary");
     const extra = join(root, "extra");
     const moved = join(root, "moved");
@@ -53,7 +53,7 @@ describe("项目主目录失效", () => {
     await empty.waitForDisplayed();
     const readActive = () =>
       browser.execute(
-        () => (window as TestWindow).__zcodeTabStoreE2E!.getState().activeWorkspacePath,
+        () => (window as TestWindow).__codezTabStoreE2E!.getState().activeWorkspacePath,
       );
     if ((await toggle.getAttribute("aria-expanded")) === "true") await toggle.click();
     const activeBefore = await readActive();
@@ -91,14 +91,14 @@ describe("项目主目录失效", () => {
         await toggle.parentElement().moveTo();
         await expectNoReason();
         await browser.saveScreenshot(
-          join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `missing-primary-${theme}.png`),
+          join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `missing-primary-${theme}.png`),
         );
         await leaveTooltip();
         await create.parentElement().moveTo({ xOffset: -2 });
         await create.parentElement().moveTo({ xOffset: 2 });
         await waitForReason();
         await browser.saveScreenshot(
-          join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `missing-primary-create-${theme}.png`),
+          join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `missing-primary-create-${theme}.png`),
         );
         for (const [name, button] of [
           ["multi", files],
@@ -109,7 +109,7 @@ describe("项目主目录失效", () => {
           await button.parentElement().moveTo({ xOffset: 2 });
           await waitForReason();
           await browser.saveScreenshot(
-            join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `missing-primary-files-${name}-${theme}.png`),
+            join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `missing-primary-files-${name}-${theme}.png`),
           );
           await browser.execute(
             (selector) => {
@@ -155,7 +155,7 @@ describe("项目主目录失效", () => {
       expect(await create.isEnabled()).toBe(false);
       await expect(stat(primary)).rejects.toMatchObject({ code: "ENOENT" });
       await browser.saveScreenshot(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "missing-primary-history.png"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "missing-primary-history.png"),
       );
       await project.$('[data-testid="virtual-project-row"]').click({ button: "right" });
       const contextCreate = $('[data-testid="virtual-project-context-create-task"]');
@@ -288,7 +288,7 @@ describe("项目主目录失效", () => {
           expect(bounds.hintLeft).toBeGreaterThanOrEqual(0);
           expect(bounds.hintRight).toBeLessThanOrEqual(390);
           await browser.saveScreenshot(
-            join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `missing-primary-390-${testId}-${theme}.png`),
+            join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `missing-primary-390-${testId}-${theme}.png`),
           );
         }
       }
@@ -367,7 +367,7 @@ async function waitForReason() {
         PROJECT,
       );
       await browser.saveScreenshot(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "tooltip-failure.png"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "tooltip-failure.png"),
       );
       throw new Error(JSON.stringify(state), { cause: error });
     });
@@ -384,10 +384,10 @@ async function leaveTooltip() {
 
 function seedHistory(workspacePath: string) {
   // 只写 runner 的隔离 HOME；复用真实 Host/CLI 两库数据合同，不 mock 消息或目录状态。
-  const home = process.env.ZCODE_E2E_HOME_DIR;
+  const home = process.env.CODEZ_E2E_HOME_DIR;
   if (!home || !DEFAULT_WORKSPACE.startsWith(home)) throw new Error("isolated HOME required");
-  const app = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
-  const cli = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"));
+  const app = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"));
+  const cli = new DatabaseSync(join(home, ".codez/cli/db/db.sqlite"));
   try {
     const projectId = app
       .prepare("SELECT project_id FROM project_roots WHERE root_path=? LIMIT 1")

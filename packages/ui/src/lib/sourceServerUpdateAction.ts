@@ -1,6 +1,6 @@
-import { SOURCE_SERVER_UPDATE_RUNNING_TASKS_ERROR_CODE } from "@zcode/shared";
-import type { SourceServerManagementSnapshot, SourceServerUpdateTarget } from "@zcode/shared";
-import type { ISourceServerManagementService } from "@zcode/services";
+import { SOURCE_SERVER_UPDATE_RUNNING_TASKS_ERROR_CODE } from "@codez/shared";
+import type { SourceServerManagementSnapshot, SourceServerUpdateTarget } from "@codez/shared";
+import type { ISourceServerManagementService } from "@codez/services";
 
 function getErrorCode(error: unknown): string | undefined {
   if (!error || typeof error !== "object" || !("code" in error)) return undefined;

@@ -2,13 +2,13 @@
 
 ## 背景
 
-ZCode 的本地工作区和远程工作区都会启动独立 Agent 进程；同一系统用户下的 Agent
-共享 `~/.zcode/cli/db/db.sqlite`。窗口级 SSH host pooling 允许同一 SSH 主机上的多个
+Codez 的本地工作区和远程工作区都会启动独立 Agent 进程；同一系统用户下的 Agent
+共享 `~/.codez/cli/db/db.sqlite`。窗口级 SSH host pooling 允许同一 SSH 主机上的多个
 workspace 在 host 就绪后并行启动 Agent，因此数据库初始化必须支持多个进程同时进入。
 
 2026-07-15 在 `mac-studio` 上观测到两个远程 workspace 同时启动时：两个 Agent 都进入
 SQLite migration，其中一个在 migration prelude 抛出 `database is locked` 并退出。App
-随后只看到 `ZCode agent transport closed`，表现为同组的另一个 workspace 未重连。
+随后只看到 `Codez agent transport closed`，表现为同组的另一个 workspace 未重连。
 
 现有 `migration-runner` 先执行 `pragma journal_mode = wal`，之后才设置
 `pragma busy_timeout = 5000`；同时 `schema_migration` 建表也位于 migration transaction

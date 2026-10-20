@@ -211,19 +211,19 @@ async function prepareArmsCapture(): Promise<FinalArmsCaptureMode> {
   const hasFinalBridge = await browser.execute(
     async (targetArmsEvents) => {
       type DebugWindow = Window & {
-        __zcodeArmsCustomEventsE2E?: Array<ArmsCustomEventPayload & { recordedAt?: number }>;
-        __zcodeFinalArmsCustomEventsE2E?: {
+        __codezArmsCustomEventsE2E?: Array<ArmsCustomEventPayload & { recordedAt?: number }>;
+        __codezFinalArmsCustomEventsE2E?: {
           clear(): Promise<void>;
           configure(request: { suppressedEventNames: string[] }): Promise<void>;
         };
-        zcode?: {
+        codez?: {
           reportArmsCustomEvent?: (payload: ArmsCustomEventPayload) => Promise<unknown>;
         };
       };
       const host = window as DebugWindow;
-      host.__zcodeArmsCustomEventsE2E = [];
+      host.__codezArmsCustomEventsE2E = [];
 
-      const finalBridge = host.__zcodeFinalArmsCustomEventsE2E;
+      const finalBridge = host.__codezFinalArmsCustomEventsE2E;
       if (finalBridge) {
         await finalBridge.clear();
         await finalBridge.configure({ suppressedEventNames: [...targetArmsEvents] });
@@ -235,7 +235,7 @@ async function prepareArmsCapture(): Promise<FinalArmsCaptureMode> {
   );
   if (hasFinalBridge) return "bridge";
 
-  if (!process.env.ZCODE_TELEMETRY_PARITY_LEGACY_ARMS_PATH?.trim()) {
+  if (!process.env.CODEZ_TELEMETRY_PARITY_LEGACY_ARMS_PATH?.trim()) {
     throw new Error("旧版缺少 main sendCustom 临时捕获路径，已在发送前停止");
   }
   return "legacy-file";
@@ -288,9 +288,9 @@ async function readTargetRendererArms(): Promise<ArmsCustomEventPayload[]> {
       const buffer =
         (
           window as Window & {
-            __zcodeArmsCustomEventsE2E?: Array<ArmsCustomEventPayload & { recordedAt?: number }>;
+            __codezArmsCustomEventsE2E?: Array<ArmsCustomEventPayload & { recordedAt?: number }>;
           }
-        ).__zcodeArmsCustomEventsE2E ?? [];
+        ).__codezArmsCustomEventsE2E ?? [];
       return buffer
         .filter(
           (entry) =>
@@ -335,7 +335,7 @@ async function waitForTargetFinalArms(
 
 async function readTargetFinalArms(mode: FinalArmsCaptureMode): Promise<JsonRecord[]> {
   if (mode === "legacy-file") {
-    const capturePath = process.env.ZCODE_TELEMETRY_PARITY_LEGACY_ARMS_PATH?.trim();
+    const capturePath = process.env.CODEZ_TELEMETRY_PARITY_LEGACY_ARMS_PATH?.trim();
     if (!capturePath) return [];
     try {
       const contents = await readFile(capturePath, "utf8");
@@ -360,11 +360,11 @@ async function readTargetFinalArms(mode: FinalArmsCaptureMode): Promise<JsonReco
     async (targetArmsEvents) => {
       const bridge = (
         window as Window & {
-          __zcodeFinalArmsCustomEventsE2E?: {
+          __codezFinalArmsCustomEventsE2E?: {
             read(): Promise<Array<{ payload: JsonRecord }>>;
           };
         }
-      ).__zcodeFinalArmsCustomEventsE2E;
+      ).__codezFinalArmsCustomEventsE2E;
       if (!bridge) return [];
       const entries = await bridge.read();
       return entries
@@ -385,7 +385,7 @@ async function writeParityArtifact(params: {
   armsRenderer?: ArmsCustomEventPayload[];
   armsFinal?: JsonRecord[];
 }): Promise<void> {
-  const artifactPath = process.env.ZCODE_TELEMETRY_PARITY_CAPTURE_PATH?.trim();
+  const artifactPath = process.env.CODEZ_TELEMETRY_PARITY_CAPTURE_PATH?.trim();
   if (!artifactPath) return;
   const artifact: TelemetryParityArtifact = {
     version: 1,

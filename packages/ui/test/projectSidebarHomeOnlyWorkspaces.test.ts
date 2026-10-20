@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   WebRemoteControlWorkspaceListResult,
   WebRemoteControlWorkspaceTarget,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { ProjectSidebarProps } from "@/project-sidebar/contract.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import { WorkspaceSidebar } from "@/WorkspaceSidebar.js";
@@ -34,7 +34,7 @@ vi.mock("@/hooks/useWorkspaceServices.js", () => {
     get remoteProjectService() {
       return fixture.hasProjectService ? remoteProjectService : undefined;
     },
-    zcodeTaskService: { onDynamicWorkspaceEvent: () => () => ({ dispose() {} }) },
+    codezTaskService: { onDynamicWorkspaceEvent: () => () => ({ dispose() {} }) },
     broadcastService: { onMessage: () => ({ dispose() {} }) },
   };
   return { useBaseWorkspaceServices: () => base };
@@ -46,21 +46,21 @@ vi.mock("@/store/TabStoreProvider.js", () => ({
   // 项目目录的未读监听使用原 store 的订阅接口，首页夹具也需提供可释放的订阅。
   useTabStoreApi: () => ({ getState: () => fixture.state, subscribe: () => () => {} }),
 }));
-vi.mock("@/store/zcodeSessionStore.js", () => ({
-  useZCodeSessionStore: Object.assign(
+vi.mock("@/store/codezSessionStore.js", () => ({
+  useCodezSessionStore: Object.assign(
     (selector: (state: unknown) => unknown) => selector({ workspaces: {} }),
     { subscribe: () => () => {} },
   ),
 }));
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStoreWithDefault: () => true,
-  useZCodeStore: (selector: (state: unknown) => unknown) => selector({ setTheme: () => {} }),
+  useCodezStoreWithDefault: () => true,
+  useCodezStore: (selector: (state: unknown) => unknown) => selector({ setTheme: () => {} }),
 }));
 vi.mock("@/v4/useWorkspaceSessionsIndexItems.js", () => ({
   useWorkspaceSessionsIndexItems: () => ({ items: [] }),
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: { formatMessage: ({ id }: { id: string }) => id },
     localePreference: "en-US",
     setLocalePreference: () => {},

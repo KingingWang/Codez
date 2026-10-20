@@ -1,4 +1,4 @@
-import { BufferReader, BufferWriter, deserialize, serialize, VSBuffer } from "@zcode/rpc";
+import { BufferReader, BufferWriter, deserialize, serialize, VSBuffer } from "@codez/rpc";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
@@ -6,7 +6,7 @@ import {
   PlatformChannels,
   InternalChannels,
   buildRemoteHostWorkspaceIdentity,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   TID_VIRTUAL_PROJECT_CREATE_TASK,
   TID_TASK_ITEM,
@@ -16,7 +16,7 @@ import {
   TID_REMOTE_KIND_SSH,
   TID_CONFIRM_DIALOG_CONFIRM,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clickTestIdByDom, clearAppData, DEFAULT_WORKSPACE } from "#e2e/helpers/desktop-app";
 import {
   selectNativeProjectDirectories,
@@ -35,7 +35,7 @@ import {
   waitForSSHDirectoryStep,
   waitForRemoteTab,
 } from "#e2e/helpers/ssh-remote-p0";
-import type { RemoteProjectDirectory, VirtualProject } from "@zcode/services";
+import type { RemoteProjectDirectory, VirtualProject } from "@codez/services";
 const marker = "E2E_PROJECT_DEVICE_SELECTION";
 const projectName = `${marker}_${Date.now()}`;
 interface DirectoryDelay {
@@ -58,9 +58,9 @@ async function activeTabId() {
     () =>
       (
         window as Window & {
-          __zcodeTabStoreE2E?: { getState(): { activeTabId: string | null } };
+          __codezTabStoreE2E?: { getState(): { activeTabId: string | null } };
         }
-      ).__zcodeTabStoreE2E!.getState().activeTabId,
+      ).__codezTabStoreE2E!.getState().activeTabId,
   );
 }
 async function holdProjectConnection() {
@@ -162,7 +162,7 @@ async function readDirectory() {
 }
 describe(marker, () => {
   afterEach(async () => {
-    await browser.saveScreenshot(join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "last-state.png"));
+    await browser.saveScreenshot(join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "last-state.png"));
   });
   after(async () => {
     await browser.electron.execute(() => globalThis.__projectConnectionRestore?.());
@@ -304,7 +304,7 @@ describe(marker, () => {
       `${projectName}_OFFLINE`,
     );
 
-    const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR!;
+    const artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR!;
     for (const locale of ["zh-CN", "en-US"])
       for (const theme of ["light", "dark"]) {
         await browser.execute(
@@ -520,7 +520,7 @@ describe(marker, () => {
     });
     expect(taskHover).toEqual({ identityDetailsOpened: false });
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "task-hover-no-identity.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "task-hover-no-identity.png"),
     );
     await openForm();
     await expectSelectedDevice(remote.hostId);
@@ -575,7 +575,7 @@ async function createHistoryTask(
   // 空 createSession 是草稿，正式任务前置走公开历史导入，不发送模型请求。
   const call = remote ? callRemoteFixture : callHandoffHost;
   const snapshot = await call<{ session: { sessionId: string } }>(
-    ServiceChannels.ZCodeAgent,
+    ServiceChannels.CodezAgent,
     "createSession",
     [
       {
@@ -593,7 +593,7 @@ async function createHistoryTask(
     ],
   );
   const taskId = snapshot.session.sessionId;
-  await call(ServiceChannels.ZCodeTask, "resumeTask", [
+  await call(ServiceChannels.CodezTask, "resumeTask", [
     {
       taskId,
       workspacePath: target.workspacePath,

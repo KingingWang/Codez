@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { InternalChannels, PlatformChannels, type RemoteTarget } from "@zcode/shared";
+import { InternalChannels, PlatformChannels, type RemoteTarget } from "@codez/shared";
 import { isAllowedExternalOpenUrl } from "../src/main/desktopMainIpcRemote.js";
 
 type IpcHandler = (...args: unknown[]) => unknown;
@@ -212,7 +212,7 @@ describe("remote workspace connect telemetry IPC", () => {
     expect(listener).toBeDefined();
 
     const sender = {
-      getURL: vi.fn(() => "file:///Applications/ZCode/index.html"),
+      getURL: vi.fn(() => "file:///Applications/Codez/index.html"),
       loadURL: vi.fn(() => Promise.resolve()),
     };
     const returnTo = encodeURIComponent(

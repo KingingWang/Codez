@@ -1,16 +1,16 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
-import { parseModelConfig, parseZCodeBuiltinModelConfigRules } from "@zcode/provider";
+import { parseModelConfig, parseCodezBuiltinModelConfigRules } from "@codez/provider";
 
 describe("MCS published capability boundaries", () => {
   it("supports known Claude models across sites, without granting Sonnet or a different API", async () => {
     const release = JSON.parse(
       await readFile(
-        new URL("../../../config/provider/zcode-builtin.json", import.meta.url),
+        new URL("../../../config/provider/codez-builtin.json", import.meta.url),
         "utf8",
       ),
     );
-    const rules = parseZCodeBuiltinModelConfigRules(release.config.modelConfigRules);
+    const rules = parseCodezBuiltinModelConfigRules(release.config.modelConfigRules);
     for (const baseUrl of ["https://api.anthropic.com/v1", "https://proxy.example/v1"]) {
       for (const modelId of [
         "claude-opus-4-8",

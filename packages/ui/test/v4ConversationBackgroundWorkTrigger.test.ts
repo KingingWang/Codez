@@ -1,7 +1,7 @@
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { BackgroundWorkSummary } from "@zcode/shared/zcode-protocol-v4";
+import type { BackgroundWorkSummary } from "@codez/shared/codez-protocol-v4";
 
 vi.mock("@/ControlHintTooltip.js", () => ({
   ControlHintTooltip: ({ children, title }: { children: ReactNode; title: string }) =>
@@ -9,7 +9,7 @@ vi.mock("@/ControlHintTooltip.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: (descriptor: { id: string }, values?: Record<string, string>) =>
         values

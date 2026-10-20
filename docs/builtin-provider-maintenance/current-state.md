@@ -11,7 +11,7 @@
 - 正式文件 SHA-256：`361b778f89496a37540d23a9d309efe6cb8fc97d557119cefbffc67df2f93998`。
 - 测试文件 SHA-256：`ae897a66877b52ff4b227e2a972e9a1aa15ac33de7493ab78d72a15dd68c6374`。hash 针对基线 Git 内容（LF）；本地 CRLF checkout 需要按仓库换行归一后比较。
 
-清单直接从[正式 JSON](../../config/provider/zcode-builtin.json)提取。下面的启停是模板精确规则，不包含用户覆盖或实际 Key/权益；存在于列表不等于该入口在本轮已真实验证。
+清单直接从[正式 JSON](../../config/provider/codez-builtin.json)提取。下面的启停是模板精确规则，不包含用户覆盖或实际 Key/权益；存在于列表不等于该入口在本轮已真实验证。
 
 ## 模板摘要
 
@@ -201,7 +201,7 @@
 ```bash
 node --input-type=module - <<'JS'
 import { readFile } from 'node:fs/promises';
-const release = JSON.parse(await readFile('config/provider/zcode-builtin.json', 'utf8'));
+const release = JSON.parse(await readFile('config/provider/codez-builtin.json', 'utf8'));
 const rules = release.config.modelConfigRules.templateModelRules;
 for (const template of release.config.providerConfigRules.templateRules) {
   console.log(template.templateId, template.config.api);

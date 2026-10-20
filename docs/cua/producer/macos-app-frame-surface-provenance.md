@@ -169,7 +169,7 @@ verification is target-specific:
 Even `return_state="none"` reports the actual dispatch surface, whether retrying the action is
 safe, and why an effect is unverified. Post-send uncertainty is never replayed automatically.
 These fields are broker-internal surface evidence; the model-facing action result remains
-`zcode-cua-action-receipt-v1`. The existing flat permission response remains
+`codez-cua-action-receipt-v1`. The existing flat permission response remains
 unchanged.
 
 The same rule applies to PID-only `type`: it resolves the focused attached surface, records its
@@ -201,12 +201,12 @@ M17 background Chrome file panel -> confirmed exact-surface activation -> exact 
 Run the current implementation:
 
 ```bash
-node evals/zcode-gui-eval/bin/zge.mjs validate M14
-node evals/zcode-gui-eval/bin/zge.mjs validate M15
-node evals/zcode-gui-eval/bin/zge.mjs validate M16
+node evals/codez-gui-eval/bin/zge.mjs validate M14
+node evals/codez-gui-eval/bin/zge.mjs validate M15
+node evals/codez-gui-eval/bin/zge.mjs validate M16
 ```
 
-For a before/after checkout comparison, point `ZCODE_CUA_TS_SERVER_DIST` at the built `dist/cli.js`
+For a before/after checkout comparison, point `CODEZ_CUA_TS_SERVER_DIST` at the built `dist/cli.js`
 for each revision while running the same task definitions. Performance latency is retained as a
 non-blocking diagnostic; all behavior, safety, lifecycle, and oracle checks are blocking.
 

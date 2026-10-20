@@ -1,6 +1,6 @@
 # Context Cache Hit Rate
 
-ZCode context usage now carries provider cache hit information on the same path as the input toolbar context meter.
+Codez context usage now carries provider cache hit information on the same path as the input toolbar context meter.
 
 The toolbar cache hit rate is a main-session aggregate, not the last provider request.
 
@@ -18,7 +18,7 @@ sum(cacheReadTokens) / sum(inputTokens)
 Anthropic path, so the denominator must not add cache fields again.
 
 - `hitRateRequestCount`, `totalInputTokens`, `totalCacheReadTokens`, and `totalCacheWriteTokens` describe the aggregate window used to compute `hitRate`.
-- ZCode Protocol snapshot returns the value at `runtime.contextUsage.cache`.
+- Codez Protocol snapshot returns the value at `runtime.contextUsage.cache`.
 - Task stream emits the same value on `usage_update.cache`, so desktop `continuous` and mobile `/remote` `replayable` clients consume one shared payload.
 - UI displays `cache.hitRate` in the chat input context panel when the field is present. Production builds keep the aggregate `0.78` (78%) threshold so lower rates do not distract from context capacity; development builds always display every valid rate to make provider cache diagnostics observable. It does not invent a fallback when the provider omits cache usage, and it does not infer cache hit rate from task cumulative token usage.
 
@@ -40,8 +40,8 @@ recovered cache aggregate.
 
 ## Developer Tools Panel
 
-When localStorage contains `zcode:developer-tools:enabled` or the legacy alias
-`zcode:token-debug:enabled`, the right-side panel add menu shows a Developer Tools
+When localStorage contains `codez:developer-tools:enabled` or the legacy alias
+`codez:token-debug:enabled`, the right-side panel add menu shows a Developer Tools
 entry. Values `0`, `false`, `off`, and `no` disable the entry; any other stored value enables it.
 
 The Developer Tools panel is scoped to the active task and includes the token debug view for

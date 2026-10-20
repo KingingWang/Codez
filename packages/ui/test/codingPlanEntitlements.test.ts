@@ -4,8 +4,8 @@ import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { ProviderSettingsView } from "@zcode/services";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+import type { ProviderSettingsView } from "@codez/services";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 import {
   resolveCodingPlanProviderFingerprintAutoRefresh,
   useCodingPlanAccessRefresh,

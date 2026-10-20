@@ -33,7 +33,7 @@ vi.mock("@/ControlHintTooltip.js", () => ({
   }) => createElement("div", null, children, open ? createPortal(title, document.body) : null),
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: { formatMessage: ({ id }: { id: string }) => id },
     locale: "en-US",
   }),

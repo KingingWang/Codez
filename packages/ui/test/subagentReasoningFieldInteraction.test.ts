@@ -3,7 +3,7 @@
 import { createElement } from "react";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import type { ZCodeConfigOption } from "@zcode/shared";
+import type { CodezConfigOption } from "@codez/shared";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import {
   SubagentReasoningField,
@@ -30,7 +30,7 @@ const intl = {
   },
 };
 
-const option: ZCodeConfigOption = {
+const option: CodezConfigOption = {
   id: "thought_level",
   category: "thought_level",
   type: "select",

@@ -5,11 +5,11 @@ import { isSettingsSectionAvailable } from "../src/settings/settingsPageConfig.j
 
 async function loadSettingsPageConfig(env: "test" | "production") {
   vi.resetModules();
-  vi.doMock("@zcode/shared", async () => {
-    const actual = await vi.importActual<typeof import("@zcode/shared")>("@zcode/shared");
+  vi.doMock("@codez/shared", async () => {
+    const actual = await vi.importActual<typeof import("@codez/shared")>("@codez/shared");
     return {
       ...actual,
-      ZCODE_ENV: env,
+      CODEZ_ENV: env,
     };
   });
   return import("../src/settings/settingsPageConfig.js");

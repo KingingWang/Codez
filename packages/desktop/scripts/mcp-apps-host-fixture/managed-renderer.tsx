@@ -41,7 +41,7 @@ const subscribe = (name: string, handler: (value: any) => void) => {
 window.addEventListener("message", (event) => {
   if (event.data?.type === "fixture-notification")
     emit(event.data.payload.kind, event.data.payload.value);
-  if (event.data?.type === "zcode:plugin-sandbox-ports")
+  if (event.data?.type === "codez:plugin-sandbox-ports")
     emit("ports", { ...event.data, port: event.ports[0] });
 });
 const proxy = (send: (method: string, p: unknown) => Promise<unknown>) =>
@@ -63,15 +63,15 @@ const agent = {
   onAgentRuntimeLifecycle: (handler: any) => subscribe("lifecycle", handler),
 };
 const services = {
-  zcodeAgentService: agent,
-  zcodeTaskService: { onDynamicWorkspaceEvent: () => (handler: any) => subscribe("task", handler) },
+  codezAgentService: agent,
+  codezTaskService: { onDynamicWorkspaceEvent: () => (handler: any) => subscribe("task", handler) },
   pluginUiBridgeService: proxy(harness.bridge),
   pluginUiSamplingService: proxy(harness.bridge),
   pluginUiAppToolsService: proxy(harness.appTools),
 };
 const platform = {
   pluginSandbox: {
-    setExecutionActive: window.zcodePluginSandbox?.setExecutionActive,
+    setExecutionActive: window.codezPluginSandbox?.setExecutionActive,
     getOwnerWebContentsId: () => harness.owner(),
     disposeSandbox: (id: string, init: number) => harness.dispose(id, init),
     consumeUserGesture: async () => false,

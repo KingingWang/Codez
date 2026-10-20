@@ -1,11 +1,11 @@
-import type { AppSettings } from "@zcode/shared";
-import type { InputRouting, SessionConfigState } from "@zcode/shared/zcode-protocol-v4";
+import type { AppSettings } from "@codez/shared";
+import type { InputRouting, SessionConfigState } from "@codez/shared/codez-protocol-v4";
 
 export function resolveAppFollowupMode(
   settings: AppSettings | null | undefined,
 ): SessionConfigState["followupMode"] | null {
   if (!settings) return null;
-  return settings.zcodeInteractionBehavior === "guide" ? "guide" : "queue";
+  return settings.codezInteractionBehavior === "guide" ? "guide" : "queue";
 }
 
 export function resolveOppositeFollowupDelivery(

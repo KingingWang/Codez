@@ -41,4 +41,4 @@ Status: done
 - [x] **更新规格**：把"已在线复用提示"写进 UX 规格。其余缺陷用回归测试留痕。
 - [x] **必跑检查**：`pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed`、受影响的单测、受影响的 SSH E2E 全部通过后，本地提交。
 
-验收记录（2026-09-27）：`pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed`、`pnpm --filter @zcode/desktop typecheck:e2e` 通过；`pnpm test:unit --retry=1` 全量 2,028 文件、18,628 测试通过（既有 14 测试跳过），最后的流程收尾变更另经向导 DOM 34 用例验证。SSH CONN-01/02、CONN-03、CONN-06/07 对应三份 spec 实跑通过，artifact 见 [SSH P0 计划](../../testing/ssh-remote-p0-e2e-plan.md#rdux-04-向导回归)。Standards / Spec 两轴评审无未解决项；新 E2E 保留 pending，尚未人工转正。
+验收记录（2026-09-27）：`pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed`、`pnpm --filter @codez/desktop typecheck:e2e` 通过；`pnpm test:unit --retry=1` 全量 2,028 文件、18,628 测试通过（既有 14 测试跳过），最后的流程收尾变更另经向导 DOM 34 用例验证。SSH CONN-01/02、CONN-03、CONN-06/07 对应三份 spec 实跑通过，artifact 见 [SSH P0 计划](../../testing/ssh-remote-p0-e2e-plan.md#rdux-04-向导回归)。Standards / Spec 两轴评审无未解决项；新 E2E 保留 pending，尚未人工转正。

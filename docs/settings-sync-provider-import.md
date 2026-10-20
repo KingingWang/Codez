@@ -3,7 +3,7 @@
 `settings-sync` 在导入 `providers` 分类时，会同时写入两条链路：
 
 1. 运行时配置镜像
-2. 设置页 `模型供应商` 的数据源 `~/.zcode/v2/model-providers.json`
+2. 设置页 `模型供应商` 的数据源 `~/.codez/v2/model-providers.json`
 
 ## 导入策略
 

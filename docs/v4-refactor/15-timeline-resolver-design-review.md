@@ -17,7 +17,7 @@
 
 ## 需要先纠正被评审文档的一处判断
 
-**fork 复制 transcript 并没有绕过 sequence 写入。** `copySessionMessagesForFork`（`apps/zcode-cli/packages/core/src/runtime/methods/workspace-checkpoints.ts:51-93`）走 `persistMessage/persistPart` → `sessionStore.saveMessage/savePart`（`.../methods/message-persistence.ts:331-364`），而 saveMessage/savePart 一定会分配 sequence（`apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/messages.ts:32-35,73-77`）。所以文档「fork/copy 之类路径绕过统一 saveMessage」的猜测，对当前 fork 主路径不成立（见 F5）。
+**fork 复制 transcript 并没有绕过 sequence 写入。** `copySessionMessagesForFork`（`apps/codez-cli/packages/core/src/runtime/methods/workspace-checkpoints.ts:51-93`）走 `persistMessage/persistPart` → `sessionStore.saveMessage/savePart`（`.../methods/message-persistence.ts:331-364`），而 saveMessage/savePart 一定会分配 sequence（`apps/codez-cli/packages/adapters/src/storage/session-store/repositories/messages.ts:32-35,73-77`）。所以文档「fork/copy 之类路径绕过统一 saveMessage」的猜测，对当前 fork 主路径不成立（见 F5）。
 
 ---
 
@@ -98,7 +98,7 @@ background wake 同理：model-only user 不是 real-user-starter（`isRealUserT
 
 ### F9 —【Moderate，命中 Q3 持久化判断】三层存储判断总体成立，但 session_entry 是 goal verify 的真实权威源，需并入 normalizer 并与新 timeline part 去重
 
-**问题/肯定。** 文档对三库定位（CLI `db.sqlite` = transcript 权威；app `zcode.db` = 元数据/通知；`tasks-index.sqlite` = 列表/搜索，不作顺序源）与存储文档一致，判断成立。但文档自己列出 `session_entry`（1,402 行，主体 `target_completion_verification`）是 goal verify 事实，而 §「读路径」/迁移建议里对 session_entry 的读取地位着墨很轻，hydration 也完全不读它（F1）。真实数据里 `timelineType=goal_verification` 只有 10 条、session_entry 却是主体 → **goal verify 现阶段主要活在 session_entry**。
+**问题/肯定。** 文档对三库定位（CLI `db.sqlite` = transcript 权威；app `codez.db` = 元数据/通知；`tasks-index.sqlite` = 列表/搜索，不作顺序源）与存储文档一致，判断成立。但文档自己列出 `session_entry`（1,402 行，主体 `target_completion_verification`）是 goal verify 事实，而 §「读路径」/迁移建议里对 session_entry 的读取地位着墨很轻，hydration 也完全不读它（F1）。真实数据里 `timelineType=goal_verification` 只有 10 条、session_entry 却是主体 → **goal verify 现阶段主要活在 session_entry**。
 
 **建议改法。** 把 session_entry 显式列为 Event Normalizer 的一等输入源；goal verify 去重键 = `targetId+iteration`，跨 `session_entry`（legacy）与 `timeline/goal_verification`（new）合并。fork 侧已有 `copyGoalVerificationEntriesForFork` 改写 anchor 到 child message id（`session-fork.ts:282-354`），说明 session_entry 的 anchor 语义已在用，resolver 不能忽略它。
 
@@ -163,12 +163,12 @@ constraint graph 反而是最不该先重的一层（F6）：排序骨架近乎�
 | 层 | 路径 |
 | --- | --- |
 | 设计文档 | `docs/v4-refactor/15-timeline-resolver-design.md` |
-| 投影 reducer | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/product-projection.ts` |
-| 冷恢复反合成 | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/transcript-hydration.ts` |
-| message/part 仓库 | `apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/messages.ts` |
-| 迁移 0014 | `apps/zcode-cli/packages/adapters/src/storage/session-store/migrations.ts` |
-| drain/turn 运行时 | `apps/zcode-cli/packages/core/src/runtime/methods/steering.ts`、`turn-loop.ts`、`turn.ts` |
-| fork copy | `apps/zcode-cli/packages/core/src/runtime/methods/workspace-checkpoints.ts`、`session-fork.ts`、`message-persistence.ts` |
+| 投影 reducer | `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/product-projection.ts` |
+| 冷恢复反合成 | `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/transcript-hydration.ts` |
+| message/part 仓库 | `apps/codez-cli/packages/adapters/src/storage/session-store/repositories/messages.ts` |
+| 迁移 0014 | `apps/codez-cli/packages/adapters/src/storage/session-store/migrations.ts` |
+| drain/turn 运行时 | `apps/codez-cli/packages/core/src/runtime/methods/steering.ts`、`turn-loop.ts`、`turn.ts` |
+| fork copy | `apps/codez-cli/packages/core/src/runtime/methods/workspace-checkpoints.ts`、`session-fork.ts`、`message-persistence.ts` |
 | 存储契约 | `docs/chat/conversation-transcript-storage.md` |
 | case catalog | `docs/conversation-session-case-catalog.md` |
 | coverage matrix | `docs/testing/conversation-session-e2e-coverage-matrix.md` |

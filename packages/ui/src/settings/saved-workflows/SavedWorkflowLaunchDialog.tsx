@@ -7,9 +7,9 @@ import {
   TID_WORKFLOW_LAUNCH_FIELDS,
   TID_WORKFLOW_LAUNCH_SUBMIT,
   TID_WORKFLOW_LAUNCH_TARGET,
-  type ZCodeSavedWorkflowEntry,
-} from "@zcode/shared";
-import { testId } from "@zcode/shared/test-ids";
+  type CodezSavedWorkflowEntry,
+} from "@codez/shared";
+import { testId } from "@codez/shared/test-ids";
 import { Button } from "@/components/ui/button.js";
 import {
   Dialog,
@@ -29,7 +29,7 @@ import {
 import { Spinner } from "@/components/ui/spinner.js";
 import { Switch } from "@/components/ui/switch.js";
 import { cn } from "@/components/lib/utils.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { AutomationRunNowIcon } from "@/settings/AutomationDesignPrimitives.js";
 import { SettingsFormTextarea } from "@/settings/SettingsFormTextarea.js";
 import {
@@ -52,7 +52,7 @@ function workflowArgInputId(name: string): string {
 }
 
 interface SavedWorkflowLaunchDialogProps {
-  entry: ZCodeSavedWorkflowEntry | null;
+  entry: CodezSavedWorkflowEntry | null;
   /** 作用域徽标与「将立即在 X 的新会话中运行」文案都要它；也决定启动命令的 scope。 */
   scope: "project" | "global";
   /**
@@ -62,7 +62,7 @@ interface SavedWorkflowLaunchDialogProps {
   projectLabel: string;
   onOpenChange: (open: boolean) => void;
   onSubmit: (
-    entry: ZCodeSavedWorkflowEntry,
+    entry: CodezSavedWorkflowEntry,
     args: Record<string, unknown>,
     target?: AutomationWorkspaceOption,
   ) => void;
@@ -108,7 +108,7 @@ export function SavedWorkflowLaunchDialog({
   pending = false,
   error = null,
 }: SavedWorkflowLaunchDialogProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [fields, setFields] = useState<SavedWorkflowArgField[]>([]);
   const [errors, setErrors] = useState<Record<string, SavedWorkflowArgFieldError>>({});
   const [targetKey, setTargetKey] = useState<string | null>(null);

@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": "~/.zcode/agents/e2e-refresh-{a,b}-{user,mcs}.md",
+      "path": "~/.codez/agents/e2e-refresh-{a,b}-{user,mcs}.md",
       "source": "created-by-spec",
       "description": "Settings 在同一已运行父 session 下创建、更名、编辑、启停和删除；不重启当前 session。"
     }

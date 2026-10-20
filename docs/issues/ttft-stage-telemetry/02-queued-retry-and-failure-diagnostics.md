@@ -91,7 +91,7 @@ ARMS再次只读查询近1小时新service为0；可查询既有logstore，不�
 
 ### 平台验收（2026-09-15）
 
-上一段"新service为0"已被取代。接入值取自 CI 变量 `ZCODE_PACKAGED_AGENT_OTEL_ENDPOINT`/`_HEADERS` 后，本 ticket 的诊断用例（`conversation-session-ttft-diagnostics`，6/6 通过）与 01 的 stages 用例样本共 12 次发送写入北京 ARMS 并可查。
+上一段"新service为0"已被取代。接入值取自 CI 变量 `CODEZ_PACKAGED_AGENT_OTEL_ENDPOINT`/`_HEADERS` 后，本 ticket 的诊断用例（`conversation-session-ttft-diagnostics`，6/6 通过）与 01 的 stages 用例样本共 12 次发送写入北京 ARMS 并可查。
 
 - 诊断口径全部落地：`records` 按 kind 齐全（start 16 / first_output 12 / first_text 12 / excluded 4 / checkpoint 442）；`excluded` 区分 cancelled 2 / failed 1 / guided 1；`attempt` 按 role+outcome 区分 response/failed 2 与 response/first_output 12，主 TTFT 未被重试放大；`no_output.wait` 记录 cancelled 2 / failed 1。
 - 准备与等待区间齐全：context、hooks、persistence、mcp、tools、request_assembly、user_confirmation、retry_wait 均有样本及 P95。
@@ -115,4 +115,4 @@ ARMS再次只读查询近1小时新service为0；可查询既有logstore，不�
 - 复用测试的Electron回调用了形参解构，但wdio-electron-service会移除第一个形参，导致窗口操作静默未执行；已改成函数体内读取electron，最终回归验证真实焦点与最小化/恢复。
 - 停止可能发生在provider请求之前；未消费的PAUSE fixture曾抢匹配随后合并的CONFIRM user content。根据最终network capture修正case-local排除条件，并给后台标题生成独立common fixture，避免无关Missing Fixture重试污染性能观察。未改业务发送逻辑来迎合回放。
 
-架构复核：变更模块为 `ui / shared / services / desktop / zcode-cli`，Renderer独占点击/可见性/内容终点，CLI recorder独占执行事实，Main仅做有界导出。状态顺序沿本文件时序图，未新增owner或accepted queue。提交前架构检查 baseline=0、new=0；生产源码新增1269行、删除299行、净增970行（不含测试、看板和证据）。
+架构复核：变更模块为 `ui / shared / services / desktop / codez-cli`，Renderer独占点击/可见性/内容终点，CLI recorder独占执行事实，Main仅做有界导出。状态顺序沿本文件时序图，未新增owner或accepted queue。提交前架构检查 baseline=0、new=0；生产源码新增1269行、删除299行、净增970行（不含测试、看板和证据）。

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { normalizeRemoteConnectionError, publicZCodeErrorCodeSchema } from "@zcode/shared";
+import { normalizeRemoteConnectionError, publicCodezErrorCodeSchema } from "@codez/shared";
 import {
   buildSSHConnectConfig,
   createKeyboardInteractiveResponder,
@@ -112,7 +112,7 @@ describe("sshAuth", () => {
     expect(error.cause).toBe(cause);
     const failure = normalizeRemoteConnectionError(error, "preflight");
     expect(failure.code).toBe("remote-authentication-failed");
-    expect(publicZCodeErrorCodeSchema.parse(failure.code)).toBe(failure.code);
+    expect(publicCodezErrorCodeSchema.parse(failure.code)).toBe(failure.code);
   });
 
   it("文件权限错误不被认证分类吞掉", () => {

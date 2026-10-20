@@ -19,8 +19,8 @@ Browser Use 需要拿到桌面窗口或 CLI managed headless runtime 的宿主�
 
 - core `Agent` 子代理：`taskType: "subagent_child"`、`runtimeScope: "subagent"`，即本文的主体。
 - 动态工作流（dwf）子代理：`taskType: "workflow_child"`，仍使用子会话自己的 tab，run dispose 时
-  连 tab 一起关闭。见 `apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md` 的
-  「Subagent sessions」，以及 `docs/zcode-protocol-model-backed-control-requests.md` 契约 4。
+  连 tab 一起关闭。见 `apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md` 的
+  「Subagent sessions」，以及 `docs/codez-protocol-model-backed-control-requests.md` 契约 4。
 
 ## 目标语义
 

@@ -70,7 +70,7 @@ vi.mock("@/settings/SettingsPageParts.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => {
         const messages: Record<string, string> = {
@@ -114,10 +114,10 @@ vi.mock("@/i18n/IntlProvider.js", () => ({
           "settings.toolGroupingTerminalDescription": "desc",
           "settings.toolGroupingChanges": "分组文件更改",
           "settings.toolGroupingChangesDescription": "desc",
-          "settings.zcodeInteractionBehavior": "交互行为",
-          "settings.zcodeInteractionBehaviorDescription": "desc",
-          "settings.zcodeInteractionBehavior.option.queue": "队列",
-          "settings.zcodeInteractionBehavior.option.guide": "引导",
+          "settings.codezInteractionBehavior": "交互行为",
+          "settings.codezInteractionBehaviorDescription": "desc",
+          "settings.codezInteractionBehavior.option.queue": "队列",
+          "settings.codezInteractionBehavior.option.guide": "引导",
           "settings.askUserQuestionAutoResolution": "提问自动继续",
           "settings.askUserQuestionAutoResolutionDescription": "desc",
           "settings.modelIoFullRetention": "完整保留模型 I/O",
@@ -181,7 +181,7 @@ async function renderGeneralSection(
       toolGroupingExploreEnabled: true,
       toolGroupingTerminalEnabled: true,
       toolGroupingChangesEnabled: false,
-      zcodeInteractionBehavior: "queue",
+      codezInteractionBehavior: "queue",
       askUserQuestionAutoResolutionEnabled: true,
       modelIoFullRetentionEnabled: false,
       onDataBaseDirChange: vi.fn(async () => {}),
@@ -200,7 +200,7 @@ async function renderGeneralSection(
       onToolGroupingExploreEnabledChange: vi.fn(async () => {}),
       onToolGroupingTerminalEnabledChange: vi.fn(async () => {}),
       onToolGroupingChangesEnabledChange: vi.fn(async () => {}),
-      onZCodeInteractionBehaviorChange: vi.fn(async () => {}),
+      onCodezInteractionBehaviorChange: vi.fn(async () => {}),
       onAskUserQuestionAutoResolutionEnabledChange: vi.fn(async () => {}),
       onModelIoFullRetentionEnabledChange: vi.fn(async () => {}),
       onOptimizeAgentExperienceEnabledChange: vi.fn(async () => {}),

@@ -19,7 +19,7 @@ import {
 
 const CASE_MARKER = "E2E_R3_INSTALL_ENVIRONMENT";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-install-environment",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-install-environment",
 );
 type InstallEnvironmentCase = "noexec-tmp" | "no-tar" | "no-forwarding" | "old-glibc";
 const SUBCASE = (process.env.R3_INSTALL_ENV_CASE ?? "") as InstallEnvironmentCase;
@@ -29,11 +29,11 @@ async function readRemoteFacts(config: SSHConnectionConfig) {
     config,
     'echo "tmp=$(mount | grep " /tmp " | head -n1)"; echo "tar=$(command -v tar || echo none)"; ' +
       'echo "forwarding=$(grep -iE "^AllowTcpForwarding" /etc/ssh/sshd_config | tail -n1)"; ' +
-      'echo "current=$(test -f "$HOME/.zcode/server/current.json" && grep -o \'"archiveSha256": *"[0-9a-f]*"\' "$HOME/.zcode/server/current.json" || echo none)"; ' +
-      'echo "staging=$(ls -d "$HOME"/.zcode/server/staging* "$HOME"/.zcode/server/bootstrap* 2>/dev/null | tr "\\n" ",")"; ' +
-      'echo "serverRoot=$(ls -A "$HOME/.zcode/server" 2>/dev/null | tr "\\n" ",")"; ' +
+      'echo "current=$(test -f "$HOME/.codez/server/current.json" && grep -o \'"archiveSha256": *"[0-9a-f]*"\' "$HOME/.codez/server/current.json" || echo none)"; ' +
+      'echo "staging=$(ls -d "$HOME"/.codez/server/staging* "$HOME"/.codez/server/bootstrap* 2>/dev/null | tr "\\n" ",")"; ' +
+      'echo "serverRoot=$(ls -A "$HOME/.codez/server" 2>/dev/null | tr "\\n" ",")"; ' +
       'echo "libc=$(getconf GNU_LIBC_VERSION 2>/dev/null || echo none)"; ' +
-      'echo "tmpEntries=$(ls /tmp 2>/dev/null | tr "\\n" ",")"; echo "status=$(cat "$HOME/.zcode/server/run/status.json" 2>/dev/null | tr -d "\\n ")"',
+      'echo "tmpEntries=$(ls /tmp 2>/dev/null | tr "\\n" ",")"; echo "status=$(cat "$HOME/.codez/server/run/status.json" 2>/dev/null | tr -d "\\n ")"',
   );
   return Object.fromEntries(
     facts.stdout
@@ -120,7 +120,7 @@ describe(`${CASE_MARKER}: 受限远端环境下的安装与连接（${SUBCASE}�
         throw new Error(`${CASE_MARKER}: noexec-tmp 安装失败: ${outcome.errorText}`);
       expect(after.current).toMatch(/archiveSha256/u);
       expect(after.status).toContain('"state":"ready"');
-      expect(after.tmpEntries).not.toContain("zcode-server");
+      expect(after.tmpEntries).not.toContain("codez-server");
       return;
     }
     if (SUBCASE === "no-tar") {

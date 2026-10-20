@@ -2,7 +2,7 @@
 import { act, createElement } from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { createLegacySingleRootProjectService } from "@zcode/services/node";
+import { createLegacySingleRootProjectService } from "@codez/services/node";
 import type {
   IProjectService,
   IRemoteProjectService,
@@ -19,7 +19,7 @@ vi.mock("@/hooks/useWorkspaceServices.js", () => ({
   useOptionalBaseWorkspaceServices: () => null,
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 vi.mock("@/logger.js", () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },

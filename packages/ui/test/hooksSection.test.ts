@@ -1,15 +1,15 @@
-import type { IHooksService } from "@zcode/services";
-import type { Hook } from "@zcode/shared";
+import type { IHooksService } from "@codez/services";
+import type { Hook } from "@codez/shared";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { HooksList, groupHookSections } from "@/settings/HooksList.js";
 import {
   buildPluginHookRows,
   filterPluginHooksByScope,
-  isReadOnlyZCodeHook,
+  isReadOnlyCodezHook,
   resolveHookScopeTarget,
   resolveLatestReviewScopeTarget,
 } from "@/settings/HooksSection.js";
@@ -41,8 +41,8 @@ describe("Hooks settings page", () => {
           pluginEnabled: true,
         },
         {
-          pluginId: "zcode-cua@custom-marketplace",
-          pluginName: "zcode-cua",
+          pluginId: "codez-cua@custom-marketplace",
+          pluginName: "codez-cua",
           detail: { event: "PreToolUse", type: "command", command: "custom" },
           pluginEnabled: true,
         },
@@ -54,7 +54,7 @@ describe("Hooks settings page", () => {
       sections
         .filter((section) => section.kind === "plugin")
         .flatMap((section) => section.hooks.map((hook) => hook.pluginId)),
-    ).toEqual(["computer-use@zcode-plugins-official", "zcode-cua@custom-marketplace"]);
+    ).toEqual(["computer-use@zcode-plugins-official", "codez-cua@custom-marketplace"]);
   });
 
   it("keeps a selected local workspace scope on the base host while a remote workspace is active", () => {
@@ -202,7 +202,7 @@ describe("Hooks settings page", () => {
     expect(saved[0]?.hooks.map((hook) => hook.id)).toEqual(["hook-b"]);
   });
 
-  it("imports a compatibility hook as an enabled ZCode hook", async () => {
+  it("imports a compatibility hook as an enabled Codez hook", async () => {
     const legacy: Hook = {
       id: "legacy",
       event: "Stop",
@@ -241,7 +241,7 @@ describe("Hooks settings page", () => {
         command: "echo legacy",
         enabled: true,
         location: expect.objectContaining({
-          source: "zcode",
+          source: "codez",
           scope: "project",
         }),
       }),
@@ -287,7 +287,7 @@ describe("Hooks settings page", () => {
 
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(
           TooltipProvider,
@@ -366,7 +366,7 @@ describe("Hooks settings page", () => {
 
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(
           TooltipProvider,
@@ -394,7 +394,7 @@ describe("Hooks settings page", () => {
     const untrustedConfiguredOn = workspaceConfiguredHook("pending_trust");
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(
           TooltipProvider,
@@ -424,7 +424,7 @@ describe("Hooks settings page", () => {
   it("持久信任后隐藏 Trust，并恢复配置开关的真实值与可操作性", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(
           TooltipProvider,
@@ -450,25 +450,25 @@ describe("Hooks settings page", () => {
     expect(html).not.toMatch(/role="switch"[^>]*disabled=""/u);
   });
 
-  // P3 回归：editable=false 的上游/祖先 zcode.json Hook 是只读工作区 Hook，必须留在
+  // P3 回归：editable=false 的上游/祖先 codez.json Hook 是只读工作区 Hook，必须留在
   // Installed 分组走行内 Trust，而不是进 Legacy 显示必然失败的 Import。
-  it("readonly zcode workspace hook stays in installed section with trust, not legacy import", () => {
+  it("readonly codez workspace hook stays in installed section with trust, not legacy import", () => {
     const readOnlyHook: Hook = {
       ...workspaceConfiguredHook("pending_trust"),
       editable: false,
       location: {
-        source: "zcode",
+        source: "codez",
         scope: "project",
-        directoryPath: "/ancestor/.zcode",
+        directoryPath: "/ancestor/.codez",
         projectPath: "/workspace",
       },
     };
-    expect(isReadOnlyZCodeHook(readOnlyHook)).toBe(true);
-    expect(isReadOnlyZCodeHook(workspaceConfiguredHook("pending_trust"))).toBe(false);
+    expect(isReadOnlyCodezHook(readOnlyHook)).toBe(true);
+    expect(isReadOnlyCodezHook(workspaceConfiguredHook("pending_trust"))).toBe(false);
 
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(
           TooltipProvider,
@@ -641,9 +641,9 @@ function configuredHook(): Hook {
     args: ["hook.mjs"],
     enabled: true,
     location: {
-      source: "zcode",
+      source: "codez",
       scope: "project",
-      directoryPath: "/workspace/.zcode",
+      directoryPath: "/workspace/.codez",
       projectPath: "/workspace",
     },
   };
@@ -664,7 +664,7 @@ function workspaceConfiguredHook(
       declarationEnabled: true,
       runtimeHooksEnabled: true,
       configuredEnabled: true,
-      sourcePath: ".zcode/config.json",
+      sourcePath: ".codez/config.json",
       trustState,
     },
   };

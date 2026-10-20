@@ -1,13 +1,13 @@
 import { useEffect, useRef } from "react";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
 import { useOptionalServices } from "@/hooks/useServices.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { attachPluginUiToolResults } from "@/plugin-ui/adapters/pluginUiBackground.js";
 
 export function PluginUiBackgroundHost() {
   const platform = useOptionalPlatform();
   const services = useOptionalServices();
-  const { locale } = useZCodeIntl();
+  const { locale } = useCodezIntl();
   const latestLocale = useRef(locale);
   latestLocale.current = locale;
   useEffect(() => {

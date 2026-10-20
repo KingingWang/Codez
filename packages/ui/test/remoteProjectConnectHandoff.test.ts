@@ -2,8 +2,8 @@ import { requestRetainedRemoteProjectConnection } from "@/project-sidebar/remote
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import type { IServiceAccessor } from "@zcode/services";
-import type { IPlatformService, SourceServerManagementSnapshot } from "@zcode/shared";
+import type { IServiceAccessor } from "@codez/services";
+import type { IPlatformService, SourceServerManagementSnapshot } from "@codez/shared";
 import { useRemoteWorkspaceHistory } from "@/root/useRemoteWorkspaceHistory.js";
 import { createTabStore } from "@/store/tabStore.js";
 

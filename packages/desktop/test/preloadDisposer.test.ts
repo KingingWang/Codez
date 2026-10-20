@@ -1,4 +1,4 @@
-import { InternalChannels, PlatformChannels } from "@zcode/shared";
+import { InternalChannels, PlatformChannels } from "@codez/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseRemoteWorkspaceServicePortMessage } from "../src/renderer/src/remoteWorkspaceServicePortBridge.js";
 
@@ -42,9 +42,9 @@ function stubProcessPlatform(platform: NodeJS.Platform): void {
 
 vi.mock("electron", () => ({
   contextBridge: {
-    // preload 还会暴露插件 UI 沙箱的 zcodePluginSandbox；这里只截获 window.zcode 本身。
+    // preload 还会暴露插件 UI 沙箱的 codezPluginSandbox；这里只截获 window.codez 本身。
     exposeInMainWorld: (name: string, api: Record<string, unknown>) => {
-      if (name === "zcode") exposedApi = api as Record<string, (...args: unknown[]) => unknown>;
+      if (name === "codez") exposedApi = api as Record<string, (...args: unknown[]) => unknown>;
     },
     executeInMainWorld: () => false,
   },
@@ -90,7 +90,7 @@ describe("preload IPC disposer", () => {
 
     await loadPreload();
 
-    expect(mockIpcSend).toHaveBeenCalledWith("zcode:window-controls-overlay-ready", {
+    expect(mockIpcSend).toHaveBeenCalledWith("codez:window-controls-overlay-ready", {
       zoomLevel: 2,
       metrics: { leftPaddingPx: 79 },
     });
@@ -102,7 +102,7 @@ describe("preload IPC disposer", () => {
 
     await loadPreload();
 
-    expect(mockIpcSend).toHaveBeenCalledWith("zcode:window-controls-overlay-ready", {
+    expect(mockIpcSend).toHaveBeenCalledWith("codez:window-controls-overlay-ready", {
       zoomLevel: 2,
       metrics: { rightPaddingPx: 112, titleBarHeightPx: 58 },
     });

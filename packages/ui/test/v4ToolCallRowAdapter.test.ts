@@ -1,6 +1,6 @@
 // M5④ 阶段2：v4 ToolCallRow → 旧 ToolCallBlocks 输入形态适配单测。
 import { describe, expect, it } from "vitest";
-import type { ToolCallRow } from "@zcode/shared/zcode-protocol-v4";
+import type { ToolCallRow } from "@codez/shared/codez-protocol-v4";
 import { buildToolDisplayModel } from "@/lib/toolDisplay.js";
 import { toolCallRowToLegacyNode } from "@/v4/toolCallRowAdapter.js";
 

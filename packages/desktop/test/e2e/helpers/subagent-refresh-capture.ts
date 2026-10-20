@@ -73,12 +73,12 @@ export function readSubagentId(record: E2ENetworkCaptureRecord) {
 }
 export async function failBoundaryReads(sessionIds: string[]) {
   await writeFile(
-    join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "subagent-config-control.json"),
+    join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "subagent-config-control.json"),
     JSON.stringify({ failedSessionIds: sessionIds }),
   );
 }
 export async function boundaryRpcReads() {
-  const root = process.env.ZCODE_E2E_ARTIFACT_DIR!;
+  const root = process.env.CODEZ_E2E_ARTIFACT_DIR!;
   const paths = (await readdir(root)).filter((p) => /^subagent-config-rpc-\d+\.jsonl$/u.test(p));
   return (
     await Promise.all(

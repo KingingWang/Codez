@@ -4,8 +4,8 @@ import crypto from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { renderMarkerPng } from "./multimodal-marker-png.mjs";
 
-const MODEL = process.env.ZCODE_MODEL?.trim() || "glm-x-preview-f";
-const BASE_URL = (process.env.ZCODE_BASE_URL?.trim() || "https://open.bigmodel.cn/api/anthropic")
+const MODEL = process.env.CODEZ_MODEL?.trim() || "glm-x-preview-f";
+const BASE_URL = (process.env.CODEZ_BASE_URL?.trim() || "https://open.bigmodel.cn/api/anthropic")
   .replace(/\/+$/u, "")
   .replace(/\/v1$/u, "");
 const ENDPOINT = `${BASE_URL}/v1/messages`;

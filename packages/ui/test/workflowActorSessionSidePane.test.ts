@@ -13,7 +13,7 @@
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import type { WorkflowActorSessionSidePaneTab } from "@/lib/workspaceSidePane.js";
 
 const paneState = vi.hoisted(() => ({
@@ -89,7 +89,7 @@ vi.mock("@/v4/useConversationProjection.js", () => ({
 // eslint-disable-next-line import/first -- 必须在 mock 之后再引入被测组件。
 import { cleanup, render } from "@testing-library/react";
 // eslint-disable-next-line import/first
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 // eslint-disable-next-line import/first
 import { WorkflowActorSessionSidePane } from "@/app-shell/WorkflowActorSessionSidePane.js";
 // eslint-disable-next-line import/first
@@ -145,7 +145,7 @@ function snapshotWith(
 
 function renderTab(tab: WorkflowActorSessionSidePaneTab, locale: "en-US" | "zh-CN" = "en-US") {
   return createElement(
-    ZCodeIntlProvider,
+    CodezIntlProvider,
     { initialLocale: locale },
     createElement(WorkflowActorSessionSidePane, { tab, focused: true }),
   );
@@ -154,7 +154,7 @@ function renderTab(tab: WorkflowActorSessionSidePaneTab, locale: "en-US" | "zh-C
 function renderPane(locale: "en-US" | "zh-CN" = "en-US") {
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: locale },
       createElement(WorkflowActorSessionSidePane, { tab: tabOf(), focused: true }),
     ),
@@ -277,7 +277,7 @@ describe("WorkflowActorSessionSidePane 未启动门", () => {
     ]);
     view.rerender(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(WorkflowActorSessionSidePane, { tab: tabOf(), focused: true }),
       ),

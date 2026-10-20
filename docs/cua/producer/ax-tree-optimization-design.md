@@ -1,12 +1,12 @@
-ZCode CUA AX 树优化方案
-本文给出 ZCode Computer Use（CUA）AX 树的完整优化方案，覆盖数据采集、跨平台归一化、模型可见格式、稳定节点身份、full/delta/no-change 状态、复杂 Web 树裁剪、动作后验证、持久化恢复、迁移和量化验收。方案基于 ZCode CUA 的真实 Calculator、TextEdit、System Settings、Chrome 轨迹分析。
+Codez CUA AX 树优化方案
+本文给出 Codez Computer Use（CUA）AX 树的完整优化方案，覆盖数据采集、跨平台归一化、模型可见格式、稳定节点身份、full/delta/no-change 状态、复杂 Web 树裁剪、动作后验证、持久化恢复、迁移和量化验收。方案基于 Codez CUA 的真实 Calculator、TextEdit、System Settings、Chrome 轨迹分析。
 
-核心结论：目标架构保留 ZCode 的 state_id、window owner、坐标系和 stale 校验等执行安全与跨平台契约，同时采用层级语义表示和真正的增量 patch，降低模型上下文成本。
+核心结论：目标架构保留 Codez 的 state_id、window owner、坐标系和 stale 校验等执行安全与跨平台契约，同时采用层级语义表示和真正的增量 patch，降低模型上下文成本。
 1. 实测基线
 
-以下为 ZCode CUA 在真机轨迹上的现状测量：
+以下为 Codez CUA 在真机轨迹上的现状测量：
 
-| 场景 | ZCode CUA 实测 |
+| 场景 | Codez CUA 实测 |
 |---|---|
 | Calculator full | 约 9,435 字符 / 58 元素 |
 | Calculator 小变化 | 9,351–11,684 字符（仍倾倒完整树） |
@@ -14,7 +14,7 @@ ZCode CUA AX 树优化方案
 | TextEdit no-change | 仍返回约 3.6–4 KB 完整树 |
 | 复杂浏览器页 | 5,015–8,757 字符（不能只按长度判断质量） |
 
-ZCode Calculator 同一会话 11 个带 state_id 的结果合计 112,279 字符，平均每次约 10,207 字符。ZCode 的 changes 当前只是附加摘要，并没有替代完整 elements。
+Codez Calculator 同一会话 11 个带 state_id 的结果合计 112,279 字符，平均每次约 10,207 字符。Codez 的 changes 当前只是附加摘要，并没有替代完整 elements。
 2. 两种模型格式的差异
 2.1 目标格式：层级文本 DSL
 目标 full DSL（完整规格见第 8 节）
@@ -30,7 +30,7 @@ ZCode Calculator 同一会话 11 个带 state_id 的结果合计 112,279 字符�
 ~ 14 name="Clear"
 目标格式用缩进保留父子关系，以连续 index 作为动作句柄，把 role、selected/editable/expanded、Description、Help、ID 和 Secondary Actions 内联到单行。小变化用 +、~ 和 removed ID range 表达；无变化只返回 no-change 与焦点。该格式面向模型，不承担跨进程结构化契约。
 2.2 现状：扁平 JSON 快照
-ZCode compact state
+Codez compact state
 {
   "state_id": "s-3",
   "focused_element": 18,
@@ -49,10 +49,10 @@ ZCode compact state
     "removed": []
   }
 }
-ZCode 的 app、window、state、coordinate space、elements、changes 和 action outcome 边界清楚，kind 屏蔽 macOS AX、Windows UIA 和 Linux AT-SPI 差异，state_id + index 支持过期快照防护。但扁平数组丢失父子上下文，JSON key 重复占用 token，changes 与完整 elements 同时返回，后面还可能附带 top_candidates 和长自然语言指导。
+Codez 的 app、window、state、coordinate space、elements、changes 和 action outcome 边界清楚，kind 屏蔽 macOS AX、Windows UIA 和 Linux AT-SPI 差异，state_id + index 支持过期快照防护。但扁平数组丢失父子上下文，JSON key 重复占用 token，changes 与完整 elements 同时返回，后面还可能附带 top_candidates 和长自然语言指导。
 3. 当前核心问题
 3.1 changes 不是增量
-当前 ZCode 状态流
+当前 Codez 状态流
 S0：完整 compact elements
         │
         ▼
@@ -67,9 +67,9 @@ S1：完整 compact elements
 3.2 节点身份与 stale fingerprint 混用
 现有 element fingerprint 包含 role、title、value 和 coarse bounds，同时用于 diff identity 与动作 stale/TOCTOU 校验。TextEdit 中同一个 textarea 仅 value 改变，就被 changes 表达为 removed + added；这不是节点替换，而是状态更新。两个用途必须拆开。
 3.3 扁平化丢失语义父链
-重复的“OK”“Edit”“More”控件需要父节点、row、dialog、toolbar 或 section 才能区分。ZCode compact 只保留扁平 kind/name，模型需要依赖 index、top_candidates 或位置提示猜上下文，无法直接表达“按钮属于哪个区域”。
+重复的“OK”“Edit”“More”控件需要父节点、row、dialog、toolbar 或 section 才能区分。Codez compact 只保留扁平 kind/name，模型需要依赖 index、top_candidates 或位置提示猜上下文，无法直接表达“按钮属于哪个区域”。
 3.4 复杂 Web 树的预算被容器占满
-ZCode Chrome 搜索结果页实测 80 个元素中有 56 个 AXGroup，75 个没有有效 name/value，且 truncated=true。无信息容器先占满 node cap，真正 link/text/button 可能被截掉；反向极端是保留太多重复链接和长 tracking URL，单页体积失控。
+Codez Chrome 搜索结果页实测 80 个元素中有 56 个 AXGroup，75 个没有有效 name/value，且 truncated=true。无信息容器先占满 node cap，真正 link/text/button 可能被截掉；反向极端是保留太多重复链接和长 tracking URL，单页体积失控。
 3.5 静态指导反复进入结果
 Calculator 单次结果前置指导约 728 字符；TextEdit menu-only 失败轨迹总计 3,741 字符，其中约 2,453 字符是策略指导，占 66%。这些内容应属于 skill/tool description 或结构化诊断码，不应随每个状态重复。
 4. 目标架构
@@ -201,7 +201,7 @@ disabled
 @focus none
 DSL 中保留 index、kind、name/value、关键状态与 capability；Help、native role 按 subtree 拉取；actions 已在 compact 中无条件返回，bounds 不再对模型暴露。长 URL 默认保留 origin/path 摘要，移除 tracking query；用户明确处理 URL 时再请求 full value。
 9. 动作结果与观察合并
-ZCode 当前动作后 settled state 是正确方向，但返回内容应改为 action_outcome + delta/no_change。动作执行、验证和后观察仍在同一 transaction/锁语义内，避免为了 token 优化重新引入 TOCTOU。
+Codez 当前动作后 settled state 是正确方向，但返回内容应改为 action_outcome + delta/no_change。动作执行、验证和后观察仍在同一 transaction/锁语义内，避免为了 token 优化重新引入 TOCTOU。
 动作结果
 {
   "action_outcome": {
@@ -272,13 +272,13 @@ P5 Rollout
 
 出现 base/diff 异常自动回退 full。
 14. 代码影响面
-src/zcode_cua/accessibility/models.py：增加 node_id、parent_node_id、semantic state/capability。
-src/zcode_cua/accessibility/state.py：拆分 identity/material fingerprint，实现 updated/full/delta/no-change。
-src/zcode_cua/accessibility/filtering.py：语义评分、父链和字符预算。
-src/zcode_cua/platforms/macos_ax.py、Windows UIA、Linux AT-SPI：提供 backend stable identity 候选。
-src/zcode_cua/observation/presentation.py：动作结果返回 delta/no-change，移除重复指导。
-src/zcode_cua/tools/observation_tools.py：能力协商、snapshot mode、subtree/cursor 工具契约。
-ZCode protocol/event/projection：持久化 snapshot/delta 与 base dependency，支持 replay/cold recovery。
+src/codez_cua/accessibility/models.py：增加 node_id、parent_node_id、semantic state/capability。
+src/codez_cua/accessibility/state.py：拆分 identity/material fingerprint，实现 updated/full/delta/no-change。
+src/codez_cua/accessibility/filtering.py：语义评分、父链和字符预算。
+src/codez_cua/platforms/macos_ax.py、Windows UIA、Linux AT-SPI：提供 backend stable identity 候选。
+src/codez_cua/observation/presentation.py：动作结果返回 delta/no-change，移除重复指导。
+src/codez_cua/tools/observation_tools.py：能力协商、snapshot mode、subtree/cursor 工具契约。
+Codez protocol/event/projection：持久化 snapshot/delta 与 base dependency，支持 replay/cold recovery。
 15. 测试方案
 Identity 单测。value、focus、selected 改变不改变 node_id；窗口/文档/语义路径变化正确换 id；重复兄弟节点稳定消歧；material fingerprint 对影响动作安全的变化敏感。
 Diff 单测。updated/added/removed/no-change、重复节点、focus、父节点变化、base mismatch、阈值回退 full、patch 应用后与新 full 完全一致。
@@ -341,7 +341,7 @@ token 优化不能牺牲动作正确性
 显著下降
 
 no-change 和 action outcome 应阻止观察循环
-运行时延迟需要单独基准：启动/settle 与序列化不能混为一个指标。ZCode 应拆分 backend capture、normalize、prune、diff、serialize、image capture 和 transport duration，分别设定目标。
+运行时延迟需要单独基准：启动/settle 与序列化不能混为一个指标。Codez 应拆分 backend capture、normalize、prune、diff、serialize、image capture 和 transport duration，分别设定目标。
 17. 验收标准
 state schema 明确区分 full、delta、no_change，并带 schema_version。
 delta 总是声明 base_state_id，base 丢失可自动回退 full。
@@ -360,8 +360,8 @@ Delta 依赖 base。如果模型上下文 compact 或 mobile replay 丢失 base�
 裁剪可能隐藏必要信息。因此保留 subtree/cursor 与 omitted summary；验收以任务成功率和语义保留率为准，不以最短字符为唯一目标。
 双格式维护风险。JSON 与 DSL 必须由同一 snapshot serializer pipeline 生成；禁止两套独立过滤和 diff 逻辑，否则会出现模型所见与执行 state 不一致。
 19. 轨迹与实现参考
-ZCode Calculator：~/.zcode/cli/debug/model-io-sess_4c0dec29-abc9-45db-b92a-85b734cfa5eb.jsonl
-ZCode TextEdit：~/.zcode/cli/debug/model-io-sess_9ce83024-e3ca-4a27-8bb7-352186b9c06e.jsonl
-ZCode Chrome：~/.zcode/cli/debug/model-io-sess_d7748be0-9015-464e-b6e1-7e35b3c8563c.jsonl
-核心实现：src/zcode_cua/accessibility/state.py、models.py、filtering.py、observation/presentation.py。
+Codez Calculator：~/.codez/cli/debug/model-io-sess_4c0dec29-abc9-45db-b92a-85b734cfa5eb.jsonl
+Codez TextEdit：~/.codez/cli/debug/model-io-sess_9ce83024-e3ca-4a27-8bb7-352186b9c06e.jsonl
+Codez Chrome：~/.codez/cli/debug/model-io-sess_d7748be0-9015-464e-b6e1-7e35b3c8563c.jsonl
+核心实现：src/codez_cua/accessibility/state.py、models.py、filtering.py、observation/presentation.py。
 

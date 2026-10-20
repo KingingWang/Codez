@@ -182,30 +182,30 @@ zai token 用 `Bearer` header（区别于 bigmodel 裸 token）。
 
 ### 注入流程运行时验证（dev:desktop:test）
 
-5 环节对称化在 zai 已端到端打通，证据来自 app 日志 + `~/.zcode-dev` 凭证手动调用 `api.z.ai`：
+5 环节对称化在 zai 已端到端打通，证据来自 app 日志 + `~/.codez-dev` 凭证手动调用 `api.z.ai`：
 
 1. **routing 正确**：`getEnterprisePricing` 由 `ZaiCodingPlanSubscriptionProvider` 处理，prewarm 日志带
    `family: "builtin:zai-coding-plan"`，请求落在测试环境 zai biz 域名 `api.z.ai`
-   （`TEST_ZAI_BUSINESS_BASE_URL`，不是 zcode 前端域 `zcode.z.ai`）。
+   （`TEST_ZAI_BUSINESS_BASE_URL`，不是 codez 前端域 `zcode.z.ai`）。
 2. **customerInfo 正确**：测试账号在 `org-2B118...` / `proj_50399...` 下有 `projectType: 2` 团队项目，
    `getCustomerInfo` 200 成功，结构与 bigmodel 同构。
-3. **注入流程复用**：prewarm 已对 zai 执行 list + POST create `zcode-team-api-key`：
+3. **注入流程复用**：prewarm 已对 zai 执行 list + POST create `codez-team-api-key`：
    ```
-   list:   { code: 200, apiKeyCount: 2, usableApiKeyCount: 0 }   ← 没有 name=zcode-team-api-key 的 key
+   list:   { code: 200, apiKeyCount: 2, usableApiKeyCount: 0 }   ← 没有 name=codez-team-api-key 的 key
    create: { code: 500, "You currently do not have a valid team subscription grant record,
                       unable to create API Key" }
    status: "missing"
    ```
 
 **看不到 team plan 的根因 = zai 测试账号后端 grant 缺失**（与对称化代码无关）：
-该 org/project 下不存在 `name=zcode-team-api-key, keyType=2` 的 key，且 POST 创建被 zai 后端拒绝。
+该 org/project 下不存在 `name=codez-team-api-key, keyType=2` 的 key，且 POST 创建被 zai 后端拒绝。
 `status: "missing"` → `apiKeyStatus: "unavailable"` → UI 按 `apiKeyStatus === "unavailable"` 过滤掉菜单项
 （`modelSelectionGroups.ts` / `providerFamilyConnectionVisibility.ts`）。
 
 > 注意：zai 后端虽然在该项目下返回了 `name="member-{userId}", keyType=2` 的 key，但客户端注入流程
-> **不应**放宽 `isUsableBigModelTeamPlanApiKey` 的 name 校验去识别它——`zcode-team-api-key` 是
-> zcode 客户端注入流程的统一命名契约，zai/bigmodel 都必须遵守。修复方式是给 zai 测试账号补 grant，
-> 让 POST 能成功创建 `zcode-team-api-key`，而不是在客户端做 family 特判。
+> **不应**放宽 `isUsableBigModelTeamPlanApiKey` 的 name 校验去识别它——`codez-team-api-key` 是
+> codez 客户端注入流程的统一命名契约，zai/bigmodel 都必须遵守。修复方式是给 zai 测试账号补 grant，
+> 让 POST 能成功创建 `codez-team-api-key`，而不是在客户端做 family 特判。
 
 ### 实际改动的文件清单
 
@@ -251,7 +251,7 @@ zai token 用 `Bearer` header（区别于 bigmodel 裸 token）。
 
 - `codingPlanProviderAvailability.ts` 的 `validateBigModelCodingPlanPairAvailability` — 函数本身按 family 分离，zai 有独立的 `validateZaiCodingPlanPairAvailability`
 - `modelProviderService.ts:178` 的 `resolveSelectedBigModelTeamContext` — 读 `selectedKeys.bigmodel`，bigmodel bucket 专用
-- `zcodeAgentService.ts:1024` — 守卫 `providerId !== bigmodelCodingPlan` 直接 return false，仅服务 bigmodel provider 的项目成员提示
+- `codezAgentService.ts:1024` — 守卫 `providerId !== bigmodelCodingPlan` 直接 return false，仅服务 bigmodel provider 的项目成员提示
 
 ### 待评估项
 
@@ -410,7 +410,7 @@ sidebar badge               WorkspaceSidebarFooterUsageSummary.tsx
 全量相关测试（codingPlanUsagePanel 17 + providerFamilyConnectionVisibility / modelSelectionGroups /
 sidebarUsageCodingPlanProviderPreference / codingPlanEntitlements / enterpriseCodingPlanProducts /
 v4ComposerToolbarRecovery / modelProviderCodingPlan / modelProviderCodingPlanI18n /
-zcodeModelSelectionResolution / modelProviderFamilyConnectionSelection /
+codezModelSelectionResolution / modelProviderFamilyConnectionSelection /
 workspaceSidebarFooterWebRemoteControlTooltip）共 **319 tests 全绿**。
 
 ### 多端 / 远控影响
@@ -487,12 +487,12 @@ zai/bigmodel 两个分支共享 `modelProviderFamilySelectedKeys`：
 
 ### 根因
 
-`buildZCodeProviderRegistrySnapshot`（`modelProviderService.ts`）——发消息时下发给 agent runtime 的
+`buildCodezProviderRegistrySnapshot`（`modelProviderService.ts`）——发消息时下发给 agent runtime 的
 provider 凭据快照——只有 bigmodel 的 team runtime key 投影（`resolveSelectedBigModelTeamPlanRuntimeApiKey`），
 **没有 zai 对应实现**：
 
 ```text
-buildZCodeProviderRegistrySnapshot
+buildCodezProviderRegistrySnapshot
   ├─ bigmodelTeamRuntimeApiKey = resolveSelectedBigModelTeamPlanRuntimeApiKey(...)  ✅
   ├─ zaiTeamRuntimeApiKey     = （不存在）                                          ❌
   └─ filter.map(provider):
@@ -512,11 +512,11 @@ team 选中后才会被 enable）会被 `pickResolvedFamilyProvider` 提前丢�
 1. **`resolveSelectedZaiTeamContext`**：对齐 `resolveSelectedBigModelTeamContext`，用 family-aware
    `parseTeamPlanConnectionKeyByFamily("zai", selectedKey)` 解析出 `organizationId` / `projectId`。
 2. **`resolveSelectedZaiTeamPlanRuntimeApiKey`**：对齐 `resolveSelectedBigModelTeamPlanRuntimeApiKey`，
-   读 `oauth:${ZAI_PROVIDER_ID}:access_token` → 校验 zcode JWT 未过期 → 调用 zai 业务域名
+   读 `oauth:${ZAI_PROVIDER_ID}:access_token` → 校验 codez JWT 未过期 → 调用 zai 业务域名
    （`resolveZaiBusinessBaseUrl` + `createZaiLoginAuthHeaders`）的 `getCustomerInfo` 校验 org/project
    存在 → `ensureBigModelTeamPlanProjectApiKey` + `copyBigModelTeamPlanProjectApiKeySecret`
    （zai/bigmodel 业务 API 路径同构，仅 host/providerId/token 不同）→ 返回 `${apiKey}.${secretKey}`。
-3. **`buildZCodeProviderRegistrySnapshot` 接入**：新增 `zaiTeamRuntimeApiKey` + `selectedZaiTeamContext`
+3. **`buildCodezProviderRegistrySnapshot` 接入**：新增 `zaiTeamRuntimeApiKey` + `selectedZaiTeamContext`
    计算；filter 阶段保留 zai coding provider；map 阶段 zai team 选中时覆盖 `apiKey` + `enabled: true`。
 4. **`filterResolvedProviderFamiliesForRegistry`**：zai 也传
    `forceCodingPlan: Boolean(resolveSelectedZaiTeamContext(familySelectedKeys))`，与 bigmodel 对称。
@@ -548,7 +548,7 @@ zai team selectedKey + zai 业务域名 `getCustomerInfo` / `api_keys` / `api_ke
 展示个人套餐来源；但个人用量查询只读取当前缓存 Coding Plan provider 的 `apiKey`。Team Plan 启动时
 该 provider 可能没有个人套餐 key，首次修复尝试调用通用 key 刷新仍不完整：个人 key 解析继续按
 “默认名称，否则第一个项目”猜项目，当 Team Plan 项目排在前面时会误入 `projectType=2` 的团队项目，
-在那里创建个人 `zcode-api-key` 被拒绝，刷新后 key 仍为空，最终抛出
+在那里创建个人 `codez-api-key` 被拒绝，刷新后 key 仍为空，最终抛出
 `bigmodel_coding_plan_api_key_required` / `zai_coding_plan_api_key_required`。
 
 ### 语义
@@ -721,7 +721,7 @@ stream / snapshot / queue / owner / replayable 等远控语义，桌面与手机
 
 | 风险                                                                          | 缓解                                                                                                                                                                                                                                |
 | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ~~zai 后端企业接口实际行为未知~~                                              | ✅ 已验证：测试环境 `api.z.ai` getCustomerInfo 成功，结构与 bigmodel 同构；注入流程（list + POST create `zcode-team-api-key`）已在 zai 复用，prewarm 日志可见。测试账号 POST 创建被拒（缺 grant）属后端侧问题，代码无需改动 |
+| ~~zai 后端企业接口实际行为未知~~                                              | ✅ 已验证：测试环境 `api.z.ai` getCustomerInfo 成功，结构与 bigmodel 同构；注入流程（list + POST create `codez-team-api-key`）已在 zai 复用，prewarm 日志可见。测试账号 POST 创建被拒（缺 grant）属后端侧问题，代码无需改动 |
 | ~~ModelProviderSection 清理 useEffect 重复（anomaly）~~                       | ✅ 已合并为单个 family-aware effect                                                                                                                                                                                                 |
 | ~~`WorkspaceSidebarFooterUsageSummary` 显式 `providerFamily !== "zai"` 排除~~ | ✅ 已修复：sidebar badge / 聊天框模型选择 / 使用统计页三个消费方已全部对称化（见上文「消费方对称化遗漏」章节）                                                                                                                      |
 | literal 前缀检查点遗漏                                                        | grep 全量 `team-plan:` literal 逐一评估，已覆盖核心路径                                                                                                                                                                             |

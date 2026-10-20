@@ -26,7 +26,7 @@ afterEach(() => {
 });
 
 function useTempDataDir() {
-  tempDir = mkdtempSync(join(tmpdir(), "zcode-bots-feishu-runtime-lock-"));
+  tempDir = mkdtempSync(join(tmpdir(), "codez-bots-feishu-runtime-lock-"));
   setDataBaseDir(tempDir);
 }
 
@@ -57,7 +57,7 @@ describe("botsService Feishu runtime lock", () => {
       const runtime = (await serviceB.getStatus()).botRuntime[0];
       expect(runtime).toMatchObject({
         status: "idle",
-        message: "Feishu WebSocket is handled by another ZCode window.",
+        message: "Feishu WebSocket is handled by another Codez window.",
       });
     });
 

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { ImagePreviewContent, SvgPreviewContent } from "@/previewPaneImageContent.js";
 import { resolvePreviewPaneImageFileReference } from "@/PreviewPane.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import {
   WORKSPACE_FILE_ADD_TO_CHAT_EVENT,
   createWorkspaceFileComposerMention,
@@ -11,7 +11,7 @@ import "@/styles.css";
 
 const params = new URLSearchParams(location.search);
 const locale = params.get("locale") === "en-US" ? "en-US" : "zh-CN";
-localStorage.setItem("zcode-locale-preference", locale);
+localStorage.setItem("codez-locale-preference", locale);
 document.documentElement.className =
   params.get("theme") === "light" ? "theme-zai-light" : "theme-zai-dark dark";
 const svg =
@@ -41,7 +41,7 @@ function Fixture() {
     return () => window.removeEventListener(WORKSPACE_FILE_ADD_TO_CHAT_EVENT, onAdd);
   }, []);
   return (
-    <ZCodeIntlProvider initialLocale={locale}>
+    <CodezIntlProvider initialLocale={locale}>
       <div style={{ height: "calc(100% - 52px)" }}>
         {kind === "svg" ? (
           <SvgPreviewContent title={ref.name} svgContent={svg} fileReference={ref} />
@@ -54,7 +54,7 @@ function Fixture() {
         )}
       </div>
       <textarea aria-label="Draft" readOnly value={draft} style={{ width: "100%", height: 52 }} />
-    </ZCodeIntlProvider>
+    </CodezIntlProvider>
   );
 }
 createRoot(document.getElementById("root")!).render(<Fixture />);

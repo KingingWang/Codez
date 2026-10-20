@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 下载并整理 GLM 平台二进制。
 #
-# 开发态优先走 ZCODE_AGENT_WORKDIR / 同级仓库源码启动；只有打包态、生产态和无源码的开发环境
+# 开发态优先走 CODEZ_AGENT_WORKDIR / 同级仓库源码启动；只有打包态、生产态和无源码的开发环境
 # 才需要依赖这个脚本提前准备平台二进制。目录布局统一服务本机打包与远程部署：
 # - 当前目标平台输出到 bundled-agents，供本机运行 / 打包直接内置
 # - 远程专用平台输出到 mock-cdn，供 remote deploy 按平台拉取
@@ -9,8 +9,8 @@
 set -euo pipefail
 INTRANET_MACHINE_HOST="${INTRANET_MACHINE_HOST:-10.0.0.100}"
 
-PLATFORM="${1:-${ZCODE_TARGET_OS:-$(uname -s | tr '[:upper:]' '[:lower:]')}}"
-RAW_ARCH="${2:-${ZCODE_TARGET_ARCH:-$(uname -m)}}"
+PLATFORM="${1:-${CODEZ_TARGET_OS:-$(uname -s | tr '[:upper:]' '[:lower:]')}}"
+RAW_ARCH="${2:-${CODEZ_TARGET_ARCH:-$(uname -m)}}"
 
 case "$PLATFORM" in
   mac|macos|darwin|osx) PLATFORM="darwin" ;;
@@ -26,9 +26,9 @@ esac
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-GLM_RUNTIME_VERSION="$(node -e "const fs=require('fs');const source=fs.readFileSync('$REPO_ROOT/packages/shared/src/zcode-agent-runtime.ts','utf8');const match=source.match(/version:\\s*['\"]([^'\"]+)['\"]/);if(!match){throw new Error('Unable to parse ZCode Agent runtime version');}process.stdout.write(match[1]);")"
-LOCAL_PLATFORM="${ZCODE_TARGET_OS:-$(uname -s | tr '[:upper:]' '[:lower:]')}"
-LOCAL_ARCH="${ZCODE_TARGET_ARCH:-$(uname -m)}"
+GLM_RUNTIME_VERSION="$(node -e "const fs=require('fs');const source=fs.readFileSync('$REPO_ROOT/packages/shared/src/codez-agent-runtime.ts','utf8');const match=source.match(/version:\\s*['\"]([^'\"]+)['\"]/);if(!match){throw new Error('Unable to parse Codez Agent runtime version');}process.stdout.write(match[1]);")"
+LOCAL_PLATFORM="${CODEZ_TARGET_OS:-$(uname -s | tr '[:upper:]' '[:lower:]')}"
+LOCAL_ARCH="${CODEZ_TARGET_ARCH:-$(uname -m)}"
 
 case "$LOCAL_PLATFORM" in
   mac|macos|darwin|osx) LOCAL_PLATFORM="darwin" ;;
@@ -50,17 +50,17 @@ else
   OUTPUT_DIR="$REPO_ROOT/packages/desktop/mock-cdn/releases/$(node -p "require('$REPO_ROOT/package.json').version")/glm/$PLATFORM_KEY"
 fi
 
-BINARY_NAME="zcode-agent"
+BINARY_NAME="codez-agent"
 if [ "$PLATFORM" = "win32" ]; then
-  BINARY_NAME="zcode-agent.exe"
+  BINARY_NAME="codez-agent.exe"
 fi
 
-# Bugfix: GLM 二进制按 zcode-cli 版本发布，默认下载目录必须跟随 shared runtime 里的 glm.version。
-DOWNLOAD_BASE_URL="${GLM_BINARY_DOWNLOAD_BASE_URL:-http://${INTRANET_MACHINE_HOST}:12345/zcode/deps/zcode-cli-${GLM_RUNTIME_VERSION}}"
-# Bugfix：Windows 制品命名恢复为 zcode-windows-*.exe，避免继续请求错误文件名。
-DOWNLOAD_NAME="zcode-${PLATFORM}-${ARCH}"
+# Bugfix: GLM 二进制按 codez-cli 版本发布，默认下载目录必须跟随 shared runtime 里的 glm.version。
+DOWNLOAD_BASE_URL="${GLM_BINARY_DOWNLOAD_BASE_URL:-http://${INTRANET_MACHINE_HOST}:12345/codez/deps/codez-cli-${GLM_RUNTIME_VERSION}}"
+# Bugfix：Windows 制品命名恢复为 codez-windows-*.exe，避免继续请求错误文件名。
+DOWNLOAD_NAME="codez-${PLATFORM}-${ARCH}"
 if [ "$PLATFORM" = "win32" ]; then
-  DOWNLOAD_NAME="zcode-windows-${ARCH}.exe"
+  DOWNLOAD_NAME="codez-windows-${ARCH}.exe"
 fi
 DOWNLOAD_URL="${DOWNLOAD_BASE_URL}/${DOWNLOAD_NAME}"
 

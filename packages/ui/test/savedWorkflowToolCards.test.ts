@@ -3,7 +3,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { resolveToolCallRenderer } from "@/ToolCallBlocks/resolveRenderer.js";
 import { CreateWorkflowToolCallBlock } from "@/ToolCallBlocks/renderers/create-workflow.js";
 import {
@@ -20,7 +20,7 @@ import { SaveWorkflowToolCallBlock } from "@/ToolCallBlocks/renderers/save-workf
 import type { ToolCallBlockRenderContext } from "@/ToolCallBlocks/shared.js";
 
 const SCRIPT = 'const r = await agent("a").ask<string>("检查");';
-const SAVED_PATH = "/workspace/.zcode/workflows/release-check.dwf.ts";
+const SAVED_PATH = "/workspace/.codez/workflows/release-check.dwf.ts";
 
 const LIST_RESULT = {
   workflows: [
@@ -36,10 +36,10 @@ const LIST_RESULT = {
       name: "translate-docs",
       description: "批量翻译文档目录",
       scope: "project",
-      path: "/workspace/.zcode/workflows/translate-docs.dwf.ts",
+      path: "/workspace/.codez/workflows/translate-docs.dwf.ts",
     },
   ],
-  invalid: [{ path: "/workspace/.zcode/workflows/broken.dwf.ts", reason: "yaml_invalid" }],
+  invalid: [{ path: "/workspace/.codez/workflows/broken.dwf.ts", reason: "yaml_invalid" }],
 };
 
 function buildContext(
@@ -79,7 +79,7 @@ function renderCard(
 ) {
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: locale },
       createElement(component as never, context),
     ),
@@ -396,7 +396,7 @@ describe("ListSavedWorkflowsToolCallBlock", () => {
               argNames: ["target", "skipTests"],
             },
           ],
-          invalid: [{ path: "/workspace/.zcode/workflows/broken.dwf.ts", reason: "yaml_invalid" }],
+          invalid: [{ path: "/workspace/.codez/workflows/broken.dwf.ts", reason: "yaml_invalid" }],
         },
       },
     };
@@ -431,7 +431,7 @@ describe("ListSavedWorkflowsToolCallBlock", () => {
     renderCard(ListSavedWorkflowsToolCallBlock, buildContext(buildListToolCall()));
 
     expect(screen.getByText("1 file could not be read")).toBeTruthy();
-    expect(screen.getByText("/workspace/.zcode/workflows/broken.dwf.ts")).toBeTruthy();
+    expect(screen.getByText("/workspace/.codez/workflows/broken.dwf.ts")).toBeTruthy();
     // 坏文件不该把好文件挤掉。
     expect(screen.getByText("release-check")).toBeTruthy();
   });
@@ -474,7 +474,7 @@ describe("ListSavedWorkflowsToolCallBlock", () => {
           name: "deep-research",
           description: "深度调研",
           scope: "global",
-          path: "/home/.zcode/workflows/deep-research.dwf.ts",
+          path: "/home/.codez/workflows/deep-research.dwf.ts",
         },
       ],
       invalid: [],

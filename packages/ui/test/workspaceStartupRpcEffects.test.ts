@@ -1,8 +1,8 @@
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { Emitter } from "@zcode/rpc";
+import { Emitter } from "@codez/rpc";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { IServiceAccessor } from "@zcode/services";
+import type { IServiceAccessor } from "@codez/services";
 import { useEnsureWorkspaceMcpLoaded } from "@/hooks/useEnsureWorkspaceMcpLoaded.js";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { useWorkspaceTerminalTaskNotifications } from "@/hooks/useTaskNotifications.js";
@@ -94,7 +94,7 @@ function makeServices() {
   }));
   const loadMcpFromUserDirectory = vi.fn(async () => ({ servers: [] }));
   const services = {
-    zcodeAgentService: {
+    codezAgentService: {
       helloConversationV4: vi.fn(async () => ({
         kind: "hello" as const,
         protocolVersion: 3 as const,

@@ -2,7 +2,7 @@ import { mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { MAX_SKILL_SCAN_DEPTH, SKILL_SYNC_SIZE_LIMIT_ERROR_CODE } from "@zcode/shared";
+import { MAX_SKILL_SCAN_DEPTH, SKILL_SYNC_SIZE_LIMIT_ERROR_CODE } from "@codez/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createSkillSyncService } from "../src/skill-sync/skillSyncService.js";
 
@@ -13,14 +13,14 @@ async function symlinkSkillDirectory(target: string, linkPath: string) {
 }
 
 function makeHome() {
-  return mkdtempSync(join(tmpdir(), "zcode-skill-sync-home-"));
+  return mkdtempSync(join(tmpdir(), "codez-skill-sync-home-"));
 }
 
 async function writeSkill(
   home: string,
   directoryName: string,
   name = directoryName,
-  root: ".zcode" | ".agents" = ".zcode",
+  root: ".codez" | ".agents" = ".codez",
 ) {
   const dir = join(home, root, "skills", directoryName);
   await mkdir(dir, { recursive: true });
@@ -34,7 +34,7 @@ async function writeSkill(
 async function writeBareSkill(
   home: string,
   directoryName: string,
-  root: ".zcode" | ".agents" = ".zcode",
+  root: ".codez" | ".agents" = ".codez",
 ) {
   const dir = join(home, root, "skills", directoryName);
   await mkdir(dir, { recursive: true });
@@ -53,7 +53,7 @@ describe("skill sync service", () => {
     process.env.HOME = originalHome;
   });
 
-  it("lists local user zcode skills as candidates", async () => {
+  it("lists local user codez skills as candidates", async () => {
     const home = makeHome();
     process.env.HOME = home;
     await writeSkill(home, "review");
@@ -79,25 +79,25 @@ describe("skill sync service", () => {
 
     expect(result).toMatchObject({
       ok: true,
-      path: join(remoteHome, ".zcode", "skills"),
+      path: join(remoteHome, ".codez", "skills"),
     });
   });
 
   it("reports remote skill write preflight failure when the target is not a directory", async () => {
     const remoteHome = makeHome();
     process.env.HOME = remoteHome;
-    await mkdir(join(remoteHome, ".zcode"), { recursive: true });
-    await writeFile(join(remoteHome, ".zcode", "skills"), "not a directory");
+    await mkdir(join(remoteHome, ".codez"), { recursive: true });
+    await writeFile(join(remoteHome, ".codez", "skills"), "not a directory");
     const service = createSkillSyncService({ maxArchiveBytes: 1024 * 1024 });
 
     const result = await service.checkRemoteUserSkillWriteAccess();
 
     expect(result.ok).toBe(false);
-    expect(result.path).toBe(join(remoteHome, ".zcode", "skills"));
+    expect(result.path).toBe(join(remoteHome, ".codez", "skills"));
     expect(result.error).toBeTruthy();
   });
 
-  it("lists local user agents skills as candidates when zcode skills are empty", async () => {
+  it("lists local user agents skills as candidates when codez skills are empty", async () => {
     const home = makeHome();
     process.env.HOME = home;
     await writeSkill(home, "lark-doc", "lark-doc", ".agents");
@@ -132,27 +132,27 @@ describe("skill sync service", () => {
     );
   });
 
-  it("deduplicates agents skills already covered by zcode skills", async () => {
+  it("deduplicates agents skills already covered by codez skills", async () => {
     const home = makeHome();
     process.env.HOME = home;
-    await writeSkill(home, "review-zcode", "review", ".zcode");
+    await writeSkill(home, "review-codez", "review", ".codez");
     await writeSkill(home, "review-agents", "review", ".agents");
     const service = createSkillSyncService({ maxArchiveBytes: 1024 * 1024 });
 
     const result = await service.listLocalUserSkillCandidates();
 
     expect(result.candidates.map((candidate) => candidate.directoryName)).toEqual([
-      "review-zcode",
+      "review-codez",
     ]);
   });
 
-  it("deduplicates agents skills already covered by zcode symlink realpath", async () => {
+  it("deduplicates agents skills already covered by codez symlink realpath", async () => {
     const home = makeHome();
     process.env.HOME = home;
     const sourceDir = await writeBareSkill(home, "external-source", ".agents");
-    const zcodeRoot = join(home, ".zcode", "skills");
-    await mkdir(zcodeRoot, { recursive: true });
-    await symlinkSkillDirectory(sourceDir, join(zcodeRoot, "linked-external"));
+    const codezRoot = join(home, ".codez", "skills");
+    await mkdir(codezRoot, { recursive: true });
+    await symlinkSkillDirectory(sourceDir, join(codezRoot, "linked-external"));
     const service = createSkillSyncService({ maxArchiveBytes: 1024 * 1024 });
 
     const result = await service.listLocalUserSkillCandidates();
@@ -162,16 +162,16 @@ describe("skill sync service", () => {
     ]);
   });
 
-  it("deduplicates agents skills covered by raw zcode directory names before realpath de-dupe", async () => {
+  it("deduplicates agents skills covered by raw codez directory names before realpath de-dupe", async () => {
     const home = makeHome();
     process.env.HOME = home;
     const sourceDir = join(home, "external-source");
     await mkdir(sourceDir, { recursive: true });
     await writeFile(join(sourceDir, "SKILL.md"), "Body");
-    const zcodeRoot = join(home, ".zcode", "skills");
-    await mkdir(zcodeRoot, { recursive: true });
-    await symlinkSkillDirectory(sourceDir, join(zcodeRoot, "aaa-link"));
-    await symlinkSkillDirectory(sourceDir, join(zcodeRoot, "agents-only"));
+    const codezRoot = join(home, ".codez", "skills");
+    await mkdir(codezRoot, { recursive: true });
+    await symlinkSkillDirectory(sourceDir, join(codezRoot, "aaa-link"));
+    await symlinkSkillDirectory(sourceDir, join(codezRoot, "agents-only"));
     await writeBareSkill(home, "agents-only", ".agents");
     const service = createSkillSyncService({ maxArchiveBytes: 1024 * 1024 });
 
@@ -207,17 +207,17 @@ describe("skill sync service", () => {
       status: "synced",
     });
     await expect(
-      readFile(join(remoteHome, ".zcode", "skills", "group", "review", "SKILL.md"), "utf-8"),
+      readFile(join(remoteHome, ".codez", "skills", "group", "review", "SKILL.md"), "utf-8"),
     ).resolves.toContain("name: review");
   });
 
-  it("exports zcode skill directory symlinks as regular remote skill directories", async () => {
+  it("exports codez skill directory symlinks as regular remote skill directories", async () => {
     const localHome = makeHome();
     process.env.HOME = localHome;
     const sourceDir = await writeSkill(localHome, "external-source", "external", ".agents");
-    const zcodeRoot = join(localHome, ".zcode", "skills");
-    await mkdir(zcodeRoot, { recursive: true });
-    await symlinkSkillDirectory(sourceDir, join(zcodeRoot, "linked-external"));
+    const codezRoot = join(localHome, ".codez", "skills");
+    await mkdir(codezRoot, { recursive: true });
+    await symlinkSkillDirectory(sourceDir, join(codezRoot, "linked-external"));
     const localService = createSkillSyncService({ maxArchiveBytes: 1024 * 1024 });
     const candidates = await localService.listLocalUserSkillCandidates();
 
@@ -225,7 +225,7 @@ describe("skill sync service", () => {
       {
         name: "external",
         directoryName: "linked-external",
-        path: join(zcodeRoot, "linked-external", "SKILL.md"),
+        path: join(codezRoot, "linked-external", "SKILL.md"),
       },
     ]);
 
@@ -243,7 +243,7 @@ describe("skill sync service", () => {
       status: "synced",
     });
     await expect(
-      readFile(join(remoteHome, ".zcode", "skills", "linked-external", "SKILL.md"), "utf-8"),
+      readFile(join(remoteHome, ".codez", "skills", "linked-external", "SKILL.md"), "utf-8"),
     ).resolves.toContain("name: external");
   });
 
@@ -268,7 +268,7 @@ describe("skill sync service", () => {
     expect(first.results[0]).toMatchObject({ directoryName: "review", status: "synced" });
     expect(second.results[0]).toMatchObject({ directoryName: "review", status: "skipped" });
     await expect(
-      readFile(join(remoteHome, ".zcode", "skills", "review", "SKILL.md"), "utf-8"),
+      readFile(join(remoteHome, ".codez", "skills", "review", "SKILL.md"), "utf-8"),
     ).resolves.toContain("name: review");
   });
 
@@ -287,7 +287,7 @@ describe("skill sync service", () => {
       {
         directoryName: "review",
         exists: true,
-        path: join(remoteHome, ".zcode", "skills", "remote-review-copy"),
+        path: join(remoteHome, ".codez", "skills", "remote-review-copy"),
       },
     ]);
   });
@@ -358,10 +358,10 @@ describe("skill sync service", () => {
     expect(result.results[0]).toMatchObject({
       directoryName: "local-review",
       status: "skipped",
-      path: join(remoteHome, ".zcode", "skills", "remote-review-copy"),
+      path: join(remoteHome, ".codez", "skills", "remote-review-copy"),
     });
     await expect(
-      readFile(join(remoteHome, ".zcode", "skills", "local-review", "SKILL.md"), "utf-8"),
+      readFile(join(remoteHome, ".codez", "skills", "local-review", "SKILL.md"), "utf-8"),
     ).rejects.toThrow();
   });
 
@@ -388,7 +388,7 @@ describe("skill sync service", () => {
       path: join(remoteHome, ".agents", "skills", "agents-review-copy"),
     });
     await expect(
-      readFile(join(remoteHome, ".zcode", "skills", "local-review", "SKILL.md"), "utf-8"),
+      readFile(join(remoteHome, ".codez", "skills", "local-review", "SKILL.md"), "utf-8"),
     ).rejects.toThrow();
   });
 
@@ -440,7 +440,7 @@ describe("skill sync service", () => {
       },
     });
     await expect(
-      readFile(join(remoteHome, ".zcode", "skills", "large-skill", "large.txt"), "utf-8"),
+      readFile(join(remoteHome, ".codez", "skills", "large-skill", "large.txt"), "utf-8"),
     ).rejects.toThrow();
   });
 });

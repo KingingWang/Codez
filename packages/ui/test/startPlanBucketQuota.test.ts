@@ -3,7 +3,7 @@ import {
   BUILTIN_MODEL_PROVIDER_IDS,
   type UsageEntitlementSnapshot,
   type UsageQuotaLimit,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { buildSessionQuotaBannerState } from "@/v4/sessionQuotaBannerState.js";
 
 const providerId = BUILTIN_MODEL_PROVIDER_IDS.bigmodelStartPlan;

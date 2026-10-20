@@ -1,16 +1,16 @@
 import {
   OFFICIAL_CUA_PERMISSION_RULE_TOOL_NAME,
-  type ZCodePermissionRequest,
-  type ZCodeProvider,
-} from "@zcode/shared";
+  type CodezPermissionRequest,
+  type CodezProvider,
+} from "@codez/shared";
 import { createElement } from "react";
 import type { ComponentType } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { PermissionDialog } from "../src/PermissionDialog.js";
-import { ZCodeIntlProvider } from "../src/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "../src/i18n/IntlProvider.js";
 
-const WORKSPACE_PATH = "/Users/dev/ZCodeProject/demo";
+const WORKSPACE_PATH = "/Users/dev/CodezProject/demo";
 const SUBAGENT_ORIGIN = {
   kind: "subagent" as const,
   agentId: "general-purpose",
@@ -21,14 +21,14 @@ const SUBAGENT_ORIGIN = {
 };
 
 function renderPermissionDialog(
-  request: ZCodePermissionRequest,
-  provider?: ZCodeProvider,
+  request: CodezPermissionRequest,
+  provider?: CodezProvider,
   extraProps: Record<string, unknown> = {},
 ) {
   const Dialog = PermissionDialog as ComponentType<Record<string, unknown>>;
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(Dialog, {
         request,
@@ -259,7 +259,7 @@ describe("PermissionDialog", () => {
   });
 
   it("shows a subagent source tag for delegated permission requests only", () => {
-    const baseRequest: ZCodePermissionRequest = {
+    const baseRequest: CodezPermissionRequest = {
       type: "permission_request",
       taskId: "task-1",
       traceId: "trace-1",
@@ -305,7 +305,7 @@ describe("PermissionDialog", () => {
       // 动态工作流子代理的 origin（docs/dynamic-workflow/launch.md「Permissions inside a run」）。
       origin: {
         ...SUBAGENT_ORIGIN,
-        agentType: "zcode-workflow",
+        agentType: "codez-workflow",
         description: "reviewer (agent#1@0)",
       },
     });
@@ -313,7 +313,7 @@ describe("PermissionDialog", () => {
     expect(html).toContain('data-interaction-origin-badge="subagent"');
     expect(html).toContain("子智能体 · reviewer (agent#1@0)");
     // 截断时完整文本留在 tooltip 里，且仍带 agentType。
-    expect(html).toContain("来自子智能体：zcode-workflow · reviewer (agent#1@0)");
+    expect(html).toContain("来自子智能体：codez-workflow · reviewer (agent#1@0)");
   });
 
   it("renders a compact implementation plan placeholder for switch mode requests", () => {
@@ -371,7 +371,7 @@ describe("PermissionDialog", () => {
     expect(html).not.toContain("ExitPlanMode changes session mode");
   });
 
-  it("prefers custom ZCode Agent option names over generic kind labels", () => {
+  it("prefers custom Codez Agent option names over generic kind labels", () => {
     const html = renderPermissionDialog({
       type: "permission_request",
       taskId: "task-1",
@@ -486,7 +486,7 @@ describe("PermissionDialog", () => {
       ],
       raw: {
         changes: {
-          "/Users/dev/ZCodeProject/demo/README.md": {
+          "/Users/dev/CodezProject/demo/README.md": {
             type: "add",
             content: "\n",
           },
@@ -496,10 +496,10 @@ describe("PermissionDialog", () => {
 
     expect(html).toContain("README.md");
     expect(html).toContain("等待确认");
-    expect(html).not.toContain("/Users/dev/ZCodeProject/demo/");
+    expect(html).not.toContain("/Users/dev/CodezProject/demo/");
   });
 
-  it("renders ZCode protocol Write input as an existing file preview", () => {
+  it("renders Codez protocol Write input as an existing file preview", () => {
     const html = renderPermissionDialog({
       type: "permission_request",
       taskId: "task-1",
@@ -519,7 +519,7 @@ describe("PermissionDialog", () => {
         requestId: "request-1",
         toolName: "Write",
         input: {
-          file_path: "/Users/dev/ZCodeProject/demo/quicksort.js",
+          file_path: "/Users/dev/CodezProject/demo/quicksort.js",
           content: "export function quicksort(items) {\n  return items;\n}\n",
         },
       },
@@ -532,7 +532,7 @@ describe("PermissionDialog", () => {
     expect(html).not.toContain("file_path");
   });
 
-  it("renders ZCode protocol Edit input as an existing file preview", () => {
+  it("renders Codez protocol Edit input as an existing file preview", () => {
     const html = renderPermissionDialog({
       type: "permission_request",
       taskId: "task-1",
@@ -552,7 +552,7 @@ describe("PermissionDialog", () => {
         requestId: "request-1",
         toolName: "Edit",
         input: {
-          file_path: "/Users/dev/ZCodeProject/demo/quicksort.js",
+          file_path: "/Users/dev/CodezProject/demo/quicksort.js",
           old_string: "平均时间复杂度 O(n log n)",
           new_string: "平均时间复杂度 O(n log n)，最坏 O(n^2)",
         },
@@ -585,15 +585,15 @@ describe("PermissionDialog", () => {
       ],
       raw: {
         changes: {
-          "/Users/dev/ZCodeProject/demo/index.html": {
+          "/Users/dev/CodezProject/demo/index.html": {
             type: "update",
             content: "<html></html>",
           },
-          "/Users/dev/ZCodeProject/demo/styles.css": {
+          "/Users/dev/CodezProject/demo/styles.css": {
             type: "update",
             content: "body {}",
           },
-          "/Users/dev/ZCodeProject/demo/script.js": {
+          "/Users/dev/CodezProject/demo/script.js": {
             type: "update",
             content: "console.log('ok')",
           },
@@ -605,7 +605,7 @@ describe("PermissionDialog", () => {
     expect(html).toContain("index.html");
     expect(html).toContain("styles.css");
     expect(html).toContain("script.js");
-    expect(html).not.toContain("/Users/dev/ZCodeProject/demo/");
+    expect(html).not.toContain("/Users/dev/CodezProject/demo/");
   });
 
   it("permission preview displays pending approval instead of execution state", () => {

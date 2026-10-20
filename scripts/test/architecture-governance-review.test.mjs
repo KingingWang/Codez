@@ -31,7 +31,7 @@ async function initializeGit(cwd) {
 }
 
 async function fixture(files, fn) {
-  const cwd = await mkdtemp(join(tmpdir(), "zcode-architecture-"));
+  const cwd = await mkdtemp(join(tmpdir(), "codez-architecture-"));
   try {
     for (const [relative, content] of Object.entries(files)) {
       const target = join(cwd, relative);
@@ -306,7 +306,7 @@ test("diff base prefers explicit, then CI, then pre-push stdin, then default bra
     assert.equal((await pick({}, baseSha)).base, baseSha);
     assert.equal((await pick({ CI_MERGE_REQUEST_DIFF_BASE_SHA: baseSha })).base, baseSha);
     const stdin = `refs/heads/feature ${headSha} refs/heads/feature ${baseSha}\n`;
-    assert.equal((await pick({ ZCODE_PRE_PUSH_STDIN: stdin })).base, baseSha);
+    assert.equal((await pick({ CODEZ_PRE_PUSH_STDIN: stdin })).base, baseSha);
     const fallback = await pick({});
     assert.equal(fallback.base, baseSha);
     assert.match(fallback.label, /merge-base/);

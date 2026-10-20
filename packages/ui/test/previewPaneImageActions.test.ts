@@ -3,7 +3,7 @@ import { createElement } from "react";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ImagePreviewContent, SvgPreviewContent } from "@/previewPaneImageContent.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { WORKSPACE_FILE_ADD_TO_CHAT_EVENT } from "@/lib/workspaceFileDrag.js";
 import { downloadImagePreview } from "@/components/ai-elements/image-preview-dialog.js";
 import { toast } from "@/components/ui/toast.js";
@@ -28,7 +28,7 @@ const reference = {
 function setup(fileReference: typeof reference | null = reference) {
   const result = render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(ImagePreviewContent, {
         title: "image.png",
@@ -112,7 +112,7 @@ describe("image preview actions", () => {
     vi.mocked(downloadImagePreview).mockResolvedValue({ kind: "started" });
     const view = render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(SvgPreviewContent, {
           title: "latin1.svg",

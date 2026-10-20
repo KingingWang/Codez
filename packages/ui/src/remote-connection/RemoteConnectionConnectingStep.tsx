@@ -1,4 +1,4 @@
-import { redactFeedbackText } from "@zcode/shared";
+import { redactFeedbackText } from "@codez/shared";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { RemotePasswordInput } from "@/remote-connection/RemotePasswordInput.js";
 import {
@@ -14,7 +14,7 @@ import {
   type SourceServerInstallPreview,
   type SourceServerOperationLog,
   type SourceServerRunningTask,
-} from "@zcode/shared";
+} from "@codez/shared";
 /* eslint-disable max-lines -- 连接阶段清单、日志和错误恢复共享同一视图状态，保持原子交互。 */
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import {
@@ -25,12 +25,12 @@ import {
   MinusIcon,
   XIcon,
 } from "lucide-react";
-import { type RemoteTarget } from "@zcode/shared";
-import { TID_SSH_ERROR } from "@zcode/shared/test-ids";
+import { type RemoteTarget } from "@codez/shared";
+import { TID_SSH_ERROR } from "@codez/shared/test-ids";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
 import type { RemoteConnectionLogEntry } from "@/hooks/useRemoteConnectionLogs.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useFeedbackStore } from "@/feedback/feedbackStore.js";
 import {
   formatRemoteLinkRailTarget,
@@ -286,7 +286,7 @@ export function RemoteConnectionConnectingStep({
   onCancelConnection?: () => void;
   onContinueToDirectory?: () => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const credentialInputId = useId();
   const platform = usePlatform();
   const openFeedbackSubmit = useFeedbackStore((state) => state.openSubmit);

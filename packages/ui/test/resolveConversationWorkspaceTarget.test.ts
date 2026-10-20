@@ -7,7 +7,7 @@ describe("RPN-11 conversation target", () => {
     "rejects a remote %s even when a local conversation has the same path",
     async (workspacePurpose) => {
       const store = createTabStore();
-      const path = "/home/dev/.zcode/workspace/default";
+      const path = "/home/dev/.codez/workspace/default";
       const identity = `remote:server:source-a:${path}`;
       store.getState().addTab(path, { workspacePurpose: "conversation" });
       store.getState().addTab(path, { workspacePurpose, workspaceIdentity: identity });

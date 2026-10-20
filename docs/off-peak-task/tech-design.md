@@ -52,7 +52,7 @@
 
 Session Selection 是运行时续跑选择，闲时执行驻留期间临时指向闲时模型。用户消息接纳后立即改为该消息的普通选择，旧排队消息不得倒写。普通持久化 entry 保留用户选择。票据寿命由 CLI `OffPeakLifecycle` 与 `OffPeakTicketAuthority` 管理，Host 通过严格 schema 的 `v4/offPeak/lifecycle` 和 `v4/conversation/offPeakControl` 交接票据，终态写回不依赖单轮 terminal。
 
-**当前服务端契约基线**：`zcode-server/main@ec2b18daa01b8e1b801f0691ac22153c2e56c6db`
+**当前服务端契约基线**：`codez-server/main@ec2b18daa01b8e1b801f0691ac22153c2e56c6db`
 已确认五个端点都要求客户端携带 `X-Coding-Plan-Api-Key`；BigModel Team 连接还必须从同一次
 selected credential snapshot 成对携带 `bigmodel-organization` / `bigmodel-project`，
 禁止依赖服务端从 access key 反查。availability、take 与 messages
@@ -73,7 +73,7 @@ AppSettings snapshot
   modelProviderFamilyModes[family]
   modelProviderFamilySelectedKeys[family]
 OAuth credential identity
-  activeProvider + zcode JWT
+  activeProvider + codez JWT
              |
              v
   exact supported-connection matrix
@@ -130,7 +130,7 @@ flowchart LR
     subgraph Host["window Local Host utilityProcess<br/>按 workspaceKey 路由"]
       TaskSvc["IOffPeakTaskService<br/>create/pause/continue/cancel/list"]
       OPTool["offPeak/create · offPeak/list handler（D49）<br/>缺省解析 + 白名单预校 + workspace 注入"]
-      RunSvc["IZCodeTaskService<br/>createTask / resume / sendPrompt"]
+      RunSvc["ICodezTaskService<br/>createTask / resume / sendPrompt"]
       Adapter["idle plan provider 适配层<br/>HTTP 429/3105 + Retry-After"]
       PollSync["OffPeakTaskService sync<br/>批量 POST /ticket/status → 写 sqlite"]
     end
@@ -166,14 +166,14 @@ flowchart LR
   `next_poll_at` 是快照而不是逐任务定时器。
 - **排队重试只在 provider 适配层特殊处理**：仅 `providerId=builtin:offpeak-idle-plan` 的
   HTTP `429/3105` 豁免普通重试预算；普通 provider 的 429 语义不变。
-- 与 automation 共用 scheduler 进程与派发管道，但**数据表、消息类型、状态机全部独立**，不往 `ZCodeAutomation` 加字段。
+- 与 automation 共用 scheduler 进程与派发管道，但**数据表、消息类型、状态机全部独立**，不往 `CodezAutomation` 加字段。
 
 ## 3. 领域模型与存储
 
 ### 3.1 TS 类型（`packages/shared/src/off-peak-types.ts`，已实现）
 
 ```ts
-export type ZCodeOffPeakTaskStatus =
+export type CodezOffPeakTaskStatus =
   | "queued"
   | "paused"
   | "running"
@@ -181,24 +181,24 @@ export type ZCodeOffPeakTaskStatus =
   | "failed"
   | "cancelled"; // paused 为 D30-10 新增
 
-// D29-4：权限四档全开放（Ask/Edit automatically/Plan/Full access），直接复用现有 ZCodeTaskMode；
+// D29-4：权限四档全开放（Ask/Edit automatically/Plan/Full access），直接复用现有 CodezTaskMode；
 // 现产品词表为 build/edit/plan/yolo（automationAgentConfigOptions 同源），默认 "build"（Ask for
 // approval）。旧稿的 "bypassPermissions" | "default" 两值类型作废。
 
-export interface ZCodeOffPeakTask {
+export interface CodezOffPeakTask {
   offPeakTaskId: string; // 本地主键，同时用作服务端 task_id（稳定，跨多个 ticket）
   serverTicketId?: string; // 服务端取号返回的 Snowflake ticket_id；每次重新取号更新（D26）
   title: string; // 表单 Task title（D28）
   conversationId?: string; // 宿主对话 taskId；D30-8 创建不预建对话，首次派发 createTask 后回填
   sessionId?: string; // 首跑后回填；续跑/中断恢复 resume 用
   prompt: string; // 表单 Instructions
-  permissionMode: ZCodeTaskMode; // 权限四档（D29-4），默认 "build"（Ask before changes）
+  permissionMode: CodezTaskMode; // 权限四档（D29-4），默认 "build"（Ask before changes）
   model?: string;
   thoughtLevel?: string; // 推理强度（D34，与 automation 对齐）；缺省走 workspace 默认
   workspaceKey: string; // resolveWorkspaceKey 规则
   workspacePath: string;
   workspaceIdentity?: string;
-  status: ZCodeOffPeakTaskStatus;
+  status: CodezOffPeakTaskStatus;
   queuedAt: number; // 本地 scheduler FIFO/展示排序；服务端 FIFO 以 ticket 创建序为准
   startedAt?: number;
   endedAt?: number;
@@ -220,7 +220,7 @@ export interface ZCodeOffPeakTask {
 // POST /ticket 的 429/3103 始终是最终准入权威。
 ```
 
-协议扩展点（遵守 AGENTS.md：改 `packages/shared/src/zcode-protocol/index.ts` + `validation.ts` 运行时 schema）：
+协议扩展点（遵守 AGENTS.md：改 `packages/shared/src/codez-protocol/index.ts` + `validation.ts` 运行时 schema）：
 
 - `HostMessageTypes.OffPeakRun` / `HostResponseTypes.OffPeakRunResult`（仿 CronRun/CronRunResult）。
 - `schedulerProtocol.ts` 新增 `offpeak-dispatch-request` / `offpeak-dispatch-result` 消息对。
@@ -229,10 +229,10 @@ export interface ZCodeOffPeakTask {
   `list` / `get`。取号、批量同步、重取号与 settle outbox 在 service 内部驱动；
   ~~`offPeakRunNow`~~ 已由 D32 删除。
 - **D49 会话内创建**：新增 agent→host 协议方法 `offPeak/create`（params
-  `zcodeOffPeakCreateParamsSchema` = title/prompt 必填 + permissionMode/model/thoughtLevel 可选；
+  `codezOffPeakCreateParamsSchema` = title/prompt 必填 + permissionMode/model/thoughtLevel 可选；
   result 为**判别联合** `{ok:true,task} | {ok:false,failureStage,errorCategory,errorCode}`，
   失败分类跨协议保真、禁止降级为字符串）与只读 `offPeak/list`。任务快照 schema
-  `zcodeOffPeakTaskSnapshotSchema` 是最小面：不暴露 `serverTicketId`（跨边界禁带）与
+  `codezOffPeakTaskSnapshotSchema` 是最小面：不暴露 `serverTicketId`（跨边界禁带）与
   `providerName`（纯埋点维度）。workspace 不进协议参数，由 host 从当前 session 闭包注入
   （对称 `automation/create`）。
 - **D49 工具面 flag**：`session/create` 与 `session/resume` params 各加
@@ -250,7 +250,7 @@ CREATE TABLE IF NOT EXISTS off_peak_tasks (
   conversation_id    TEXT,                 -- 宿主对话 taskId；D30-8 派发时 createTask 后回填
   session_id         TEXT,
   prompt             TEXT NOT NULL,
-  permission_mode    TEXT NOT NULL,        -- ZCodeTaskMode 权限四档（D29-4），默认 'build'
+  permission_mode    TEXT NOT NULL,        -- CodezTaskMode 权限四档（D29-4），默认 'build'
   model              TEXT,                 -- 仅存量选择迁移；新版写入 NULL
   thought_level      TEXT,                 -- 仅存量选择迁移；新版写入 NULL
   model_selection    TEXT,                 -- 完整冻结 ModelSelection JSON；执行不得回读旧两列
@@ -326,7 +326,7 @@ sequenceDiagram
   participant S as scheduler (utilityProcess)
   participant DB as tasks-index.sqlite
   participant M as main (desktopCronScheduler Off-Peak route)
-  participant H as host (IZCodeTaskService)
+  participant H as host (ICodezTaskService)
   participant A as idle plan 适配层
   participant G as 服务端网关
   loop 有非终态任务时，共享 timer 按 next_poll_after
@@ -375,7 +375,7 @@ sequenceDiagram
   A-->>L: 正常返回（loop 只感知"慢"）
 ```
 
-适配层规则（已实现于 `apps/zcode-cli/packages/adapters/src/model/offpeak-retry.ts`，并由
+适配层规则（已实现于 `apps/codez-cli/packages/adapters/src/model/offpeak-retry.ts`，并由
 generate/stream runner 调用；只对 `providerId=builtin:offpeak-idle-plan` 生效）：
 
 - **单次等待钳制**：等待时长 = `min(服务端 Retry-After 或默认 60 秒, 5 分钟)`；
@@ -468,7 +468,7 @@ sequenceDiagram
   participant M as 模型（用户交互 turn）
   participant H as CLI tool handler (off-peak.ts)
   participant P as offpeak-port (bootstrap)
-  participant S as zcodeAgentService (host)
+  participant S as codezAgentService (host)
   participant Svc as OffPeakTaskService
   participant G as 服务端 ticket API
   participant UI as ConversationTurnGroup
@@ -632,8 +632,8 @@ stateDiagram-v2
 | 通知                                                  | `useOffPeakTaskNotifications.ts` 轮询任务并对 completed/failed/awaiting 边沿发桌面通知；awaiting variant 因生产状态不可达而暂不触发                                                                                                               | —                                                              |
 | i18n                                                  | PRD §8 文案表落 `en-US.ts` / `zh-CN.ts`（删除已砍字段的条目）                                                                                                                                                                                     | —                                                              |
 | **会话内工具（D49）**                                 | `contracts/src/tools/off-peak.ts` + `interfaces/off-peak.port.ts`（zod v3 镜像，禁 import shared）；`core/src/tool/handlers/off-peak.ts`（handler + tool entry，`needsApproval:true`）；`core/runtime/methods/turn-loop-state.ts` 的 `isOffPeakCreateRestrictedTurn` 与独立常量；`registerBuiltInTools` 的 `includeOffPeak` 门 | `tools/automation.ts` / `handlers/cron.ts`（**防御方向相反，勿整体照抄**） |
-| **协议桥（D49）**                                     | `bootstrap/zcode-protocol/offpeak-port.ts`（比 automation-port 简化：无 checkTaskBinding、不注入会话运行态、不冻结标题）；`server-operations.ts` 仅在 `offPeakToolEnabled=true` 时注入端口；`prompt-turn.ts`/`session-flow.ts`/legacy 路径维护 `activeOffPeakTaskId` | `automation-port.ts`                                           |
-| **host 编排（D49）**                                  | `zcodeAgentService.ts` 的 `offPeak/create|list` handler、`isOffPeakToolSupported`、缺省解析（`resolveOffPeakToolSelection`）；`node.ts` 前向引用 holder 注入（service 单例创建晚于 agent service）                                        | `automation/create` handler                                    |
+| **协议桥（D49）**                                     | `bootstrap/codez-protocol/offpeak-port.ts`（比 automation-port 简化：无 checkTaskBinding、不注入会话运行态、不冻结标题）；`server-operations.ts` 仅在 `offPeakToolEnabled=true` 时注入端口；`prompt-turn.ts`/`session-flow.ts`/legacy 路径维护 `activeOffPeakTaskId` | `automation-port.ts`                                           |
+| **host 编排（D49）**                                  | `codezAgentService.ts` 的 `offPeak/create|list` handler、`isOffPeakToolSupported`、缺省解析（`resolveOffPeakToolSelection`）；`node.ts` 前向引用 holder 注入（service 单例创建晚于 agent service）                                        | `automation/create` handler                                    |
 
 UI 遵守：改 `packages/ui` 前读 `DESIGN.md`；日志走 `packages/ui/src/logger.ts`；服务层日志 `createServiceLogger("off-peak")`——排队重试逐次记录用 `debug`（高频），认领/派发/准入/终态用 `info`，见 AGENTS.md 日志级别规则。
 
@@ -661,7 +661,7 @@ UI 遵守：改 `packages/ui` 前读 `DESIGN.md`；日志走 `packages/ui/src/lo
 
 ```http
 # 0. 鉴权（全部接口通用；settle 仅需 JWT）
-Authorization: Bearer <zcode-jwt>
+Authorization: Bearer <codez-jwt>
 X-Coding-Plan-Api-Key: <coding-plan-api-key>     # 原始 key，服务端校验 coding plan 资格；settle 不需要
 bigmodel-organization: <organizationId>          # 仅 BigModel Team；与 project 成对发送
 bigmodel-project: <projectId>

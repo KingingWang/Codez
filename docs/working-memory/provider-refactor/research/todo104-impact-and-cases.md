@@ -8,7 +8,7 @@
 
 ## B4 路径与来源标识（2026-09-10，实施前补充）
 
-与 B2/B3 共用最终构建和 Pro 回归。下载/刷新路径统一到环境 `runtime/provider/<platform>/<version>/<endpoint-key>/`，分发记录为 `runtime/provider/provisioning.json`；随包释放入口统一复用 Node materializer，接收环境配置根目录，固定写 `runtime/provider/bundled/zcode-builtin.json`。正常退出旧程序后升级；不迁移未发布缓存、不删除旧目录，也不重做刷新 lease。
+与 B2/B3 共用最终构建和 Pro 回归。下载/刷新路径统一到环境 `runtime/provider/<platform>/<version>/<endpoint-key>/`，分发记录为 `runtime/provider/provisioning.json`；随包释放入口统一复用 Node materializer，接收环境配置根目录，固定写 `runtime/provider/bundled/codez-builtin.json`。正常退出旧程序后升级；不迁移未发布缓存、不删除旧目录，也不重做刷新 lease。
 
 来源标识沿用已注入的 Active 文件路径：该路径含规范化 Endpoint 的隔离 key。Node Source 对绝对规范化路径取 hash，与数值发布 revision 组成运行时 revision；Host 和读取同一 Active 文件的 Worker 使用同一个算法，不加第二份账号字段或传输协议。直接文件 Source 同样按其路径确定范围。文件内发布 revision 仍为原安全整数，不按路径重新编号。
 

@@ -1,7 +1,7 @@
 import type { CSSProperties, KeyboardEvent, RefCallback } from "react";
 import type { VirtualItem } from "@tanstack/react-virtual";
 import { AlertCircle, Files, LoaderCircle } from "lucide-react";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import {
   areWorkspaceFilePathsEqual,
   getWorkspaceDirectoryGitStatuses,
@@ -99,7 +99,7 @@ export function WorkspaceFileTreeList({
     row: WorkspaceFileTreeRow,
   ) => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   if (rootError) {
     return (
       <WorkspaceFileTreeNotice

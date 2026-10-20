@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ConversationRow } from "@zcode/shared";
+import type { ConversationRow } from "@codez/shared";
 import { ConversationShareService } from "../src/conversation-share/conversationShareService.js";
 import { ConversationShareHttpClient } from "../src/conversation-share/conversationShareHttpClient.js";
 import { scopeConversationShareServiceForAttachment } from "../src/conversation-share/conversationShareConnectionScope.js";
 import {
-  createZCodeAgentConnectionScope,
-  readTrustedZCodeAgentV4Connection,
-} from "../src/zcode-agent/zcodeAgentConnectionScope.js";
+  createCodezAgentConnectionScope,
+  readTrustedCodezAgentV4Connection,
+} from "../src/codez-agent/codezAgentConnectionScope.js";
 
 const input = {
   workspacePath: "/workspace",
@@ -66,7 +66,7 @@ function fixture() {
       ),
   );
   const conversationRowsRangeV4 = vi.fn(async (params: unknown) => {
-    expect(readTrustedZCodeAgentV4Connection(params)?.clientMode).toBe("desktop-continuous");
+    expect(readTrustedCodezAgentV4Connection(params)?.clientMode).toBe("desktop-continuous");
     return { rows, atSeq: 2, atRevision: 1, atLogEpoch: "epoch", hasMore: false };
   });
   const agent = {
@@ -80,9 +80,9 @@ function fixture() {
     clientMode: "desktop-continuous" as const,
     role: "trusted-host-relay" as const,
   };
-  const scope = createZCodeAgentConnectionScope(agent as never, relayContext);
+  const scope = createCodezAgentConnectionScope(agent as never, relayContext);
   const real = new ConversationShareService({
-    zcodeAgentService: agent as never,
+    codezAgentService: agent as never,
     client: new ConversationShareHttpClient({
       apiClient: { request },
       baseUrl: "https://remote-account-api.invalid/api/v1",
@@ -125,7 +125,7 @@ describe("Source Share RPC 的账号与连接边界", () => {
     try {
       const result = await f.desktop.preflight({
         ...input,
-        __zcodeTrustedV4Connection: { connectionId: "forged", clientMode: "web-remote-replayable" },
+        __codezTrustedV4Connection: { connectionId: "forged", clientMode: "web-remote-replayable" },
         jwt: "local-account-A",
       } as typeof input);
       expect(result.blockingIssues).toEqual([]);
@@ -136,17 +136,17 @@ describe("Source Share RPC 的账号与连接边界", () => {
           headers: expect.objectContaining({ authorization: "Bearer remote-account-B" }),
         }),
       );
-      const received = readTrustedZCodeAgentV4Connection(f.rpc.preflight.mock.calls[0]?.[0]);
+      const received = readTrustedCodezAgentV4Connection(f.rpc.preflight.mock.calls[0]?.[0]);
       expect(received).toEqual(context);
-      const shareRoute = readTrustedZCodeAgentV4Connection(
+      const shareRoute = readTrustedCodezAgentV4Connection(
         f.conversationRowsRangeV4.mock.calls[0]?.[0],
       );
       await f.scope.service.conversationRowsRangeV4({
         ...input,
-        __zcodeTrustedV4Connection: context,
+        __codezTrustedV4Connection: context,
       } as never);
       expect(
-        readTrustedZCodeAgentV4Connection(f.conversationRowsRangeV4.mock.calls[1]?.[0]),
+        readTrustedCodezAgentV4Connection(f.conversationRowsRangeV4.mock.calls[1]?.[0]),
       ).toEqual(shareRoute);
       expect(shareRoute?.connectionId).not.toBe(context.connectionId);
       expect(f.conversationRowsRangeV4.mock.calls[0]?.[0]).toMatchObject({
@@ -189,7 +189,7 @@ describe("Source Share RPC 的账号与连接边界", () => {
         "web-remote-replayable",
         f.scope.service,
       );
-      const forged = { ...input, __zcodeTrustedV4Connection: context };
+      const forged = { ...input, __codezTrustedV4Connection: context };
       await expect(web.preflight(forged)).rejects.toMatchObject({ kind: "feature_disabled" });
       await expect(web.publish(forged as never, "op")).rejects.toMatchObject({
         kind: "feature_disabled",

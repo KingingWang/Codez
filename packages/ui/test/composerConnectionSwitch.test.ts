@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { resolveEffectiveModelSelection, type ProviderRegistryView } from "@zcode/provider";
+import { resolveEffectiveModelSelection, type ProviderRegistryView } from "@codez/provider";
 import type { ComposerConnection } from "@/lib/composerPlanGroups.js";
 import { useComposerConnectionSwitch } from "@/hooks/useComposerConnectionSwitch.js";
 import { persistProviderFamilyConnection } from "@/lib/providerFamilyConnectionTransition.js";
-import type { AppSettings } from "@zcode/shared";
-import { encodeCustomModelValue } from "@/lib/zcodeCustomModelValue.js";
+import type { AppSettings } from "@codez/shared";
+import { encodeCustomModelValue } from "@/lib/codezCustomModelValue.js";
 import { useModelSelectionServiceView } from "@/hooks/useModelSelectionView.js";
 const mocks = vi.hoisted(() => {
   const settings = { providerFamilyConnectionSelections: {} } as Record<string, unknown>;
@@ -30,7 +30,7 @@ vi.mock("@/hooks/useWorkspaceServices.js", () => ({
 }));
 vi.mock("@/hooks/useSettingService.js", () => ({ useSettings: () => ({ update: mocks.update }) }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: () => "Switch failed; select again to retry" } }),
+  useCodezIntl: () => ({ intl: { formatMessage: () => "Switch failed; select again to retry" } }),
 }));
 const providerId = "account:bigmodel-team-coding-plan";
 const connection: ComposerConnection = {

@@ -3,12 +3,12 @@ import { useCallback, useMemo } from "react";
 import {
   getModelProviderFamilySpec,
   resolveModelProviderFamilyIdByProviderId,
-} from "@zcode/shared";
+} from "@codez/shared";
 // 分享页通过 ToolPresentation 复用本渲染器；从 thoughtLevelOptions 引入会经 display → CodingPlan 拉进
-// @zcode/provider 闭包，导致 web-share 构建失败，因此直接依赖纯词表模块。
+// @codez/provider 闭包，导致 web-share 构建失败，因此直接依赖纯词表模块。
 import { thoughtLevelLabelId } from "@/chat-input-toolbar/thoughtLevelLabels.js";
 import { useToolPresentationCapabilities } from "@/ToolCallBlocks/presentationCapabilities.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { ToolSnapshotFieldNotice } from "@/ToolCallBlocks/ToolSnapshotFieldNotice.js";
 import { FallbackToolCallBlock } from "@/ToolCallBlocks/renderers/fallback.js";
 import { readToolResultDisplay } from "@/ToolCallBlocks/toolResultDisplay.js";
@@ -169,7 +169,7 @@ function listModelsGroupName(
   if (label !== undefined && label.length > 0 && label !== providerId) {
     return label;
   }
-  // 会话清单查不到时会退回 providerId 本身（zcodeSessionSettingsToConfigOptions），当作没查到。
+  // 会话清单查不到时会退回 providerId 本身（codezSessionSettingsToConfigOptions），当作没查到。
   const resolved = providerName?.(providerId)?.trim();
   if (resolved !== undefined && resolved.length > 0 && resolved !== providerId) {
     return resolved;
@@ -253,7 +253,7 @@ function groupModelsByProvider(models: ListModelsEntryView[]): ListModelsGroup[]
  * providerId 一个字符都不上屏。
  */
 export function ListModelsToolCallBlock(context: ToolCallBlockRenderContext) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const { toolCall } = context.toolCallNode;
   const providerName = useToolPresentationCapabilities().modelProviderName;
 

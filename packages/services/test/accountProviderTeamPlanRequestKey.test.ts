@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { BIGMODEL_PROVIDER_ID, ZAI_PROVIDER_ID, type ApiClient } from "@zcode/shared";
+import { BIGMODEL_PROVIDER_ID, ZAI_PROVIDER_ID, type ApiClient } from "@codez/shared";
 import { resolveAccountTeamPlanRuntimeApiKey } from "../src/model-provider/accountProviderTeamPlanRequestKey.js";
 
 describe("accountProviderTeamPlanRequestKey", () => {
@@ -46,7 +46,7 @@ describe("accountProviderTeamPlanRequestKey", () => {
             {
               apiKey: "team-api-key",
               keyType: 2,
-              name: "zcode-team-api-key",
+              name: "codez-team-api-key",
             },
           ],
         });

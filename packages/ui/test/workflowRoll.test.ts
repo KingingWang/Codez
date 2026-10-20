@@ -6,7 +6,7 @@ import { cleanup, render } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { StepRunStatus } from "@/components/workflow-graph/types.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { rosterRoll, stationRoster } from "@/components/workflow-timeline/roster-model.js";
 import type { TimelinePill } from "@/components/workflow-timeline/timeline-model.js";
 import { WorkflowAgentPill } from "@/components/workflow-timeline/WorkflowAgentPill.js";
@@ -40,7 +40,7 @@ function renderRoll(list: TimelinePill[], locale: "en-US" | "zh-CN" = "en-US", u
   const roster = stationRoster(list, { pins: 5 })!;
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: locale },
       createElement(WorkflowRoll, {
         groups: rosterRoll(roster),

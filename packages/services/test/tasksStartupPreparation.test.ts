@@ -7,7 +7,7 @@ import { prepareTasksIndexStorage } from "../src/project-storage/startup.js";
 import { runTasksDatabaseMigrations } from "../src/session/tasksDatabase/migrations.js";
 
 it("prepares the same frozen ledger as the old runner and preserves completed data", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "zcode-startup-"));
+  const dir = await mkdtemp(join(tmpdir(), "codez-startup-"));
   const expected = new DatabaseSync(":memory:");
   try {
     await runTasksDatabaseMigrations(expected);
@@ -59,7 +59,7 @@ it("does not reuse an in-process preparation marker after the database was repla
 
 it("retains the primary preparation failure when repository cleanup also fails", async () => {
   const { TaskIndexRepo } = await import("../src/session/taskIndexRepo.js");
-  const dir = await mkdtemp(join(tmpdir(), "zcode-startup-cleanup-"));
+  const dir = await mkdtemp(join(tmpdir(), "codez-startup-cleanup-"));
   const primary = Object.assign(new Error("storage full"), { code: "ENOSPC" });
   const prepare = vi.spyOn(TaskIndexRepo.prototype, "ensureReady").mockRejectedValue(primary);
   const close = vi.spyOn(TaskIndexRepo.prototype, "close").mockImplementation(() => {
@@ -77,7 +77,7 @@ it("retains the primary preparation failure when repository cleanup also fails",
 });
 
 it("SILENTDB-01/02: reports maintenance separately and no migration for a prepared database", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "zcode-silent-startup-"));
+  const dir = await mkdtemp(join(tmpdir(), "codez-silent-startup-"));
   const path = join(dir, "tasks.sqlite");
   try {
     const first: unknown[] = [];
@@ -116,7 +116,7 @@ it("SILENTDB-01/02: reports maintenance separately and no migration for a prepar
 });
 
 it("retains committed facts if closing the migration connection fails", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "zcode-startup-close-facts-"));
+  const dir = await mkdtemp(join(tmpdir(), "codez-startup-close-facts-"));
   const primary = new Error("migration connection close failed");
   const original = DatabaseSync.prototype.close;
   const close = vi
@@ -148,7 +148,7 @@ it("retains committed facts if closing the migration connection fails", async ()
 });
 
 it("updates wait visibility after migration precheck even if journal setup already waited", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "zcode-startup-repeated-lock-"));
+  const dir = await mkdtemp(join(tmpdir(), "codez-startup-repeated-lock-"));
   const original = DatabaseSync.prototype.exec;
   const blocked = new Set(["PRAGMA journal_mode = WAL", "BEGIN IMMEDIATE"]);
   const exec = vi
@@ -170,7 +170,7 @@ it("updates wait visibility after migration precheck even if journal setup alrea
 });
 
 it("keeps the pre-upgrade task ledger ID after committing the remaining migration", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "zcode-task-baseline-"));
+  const dir = await mkdtemp(join(tmpdir(), "codez-task-baseline-"));
   const path = join(dir, "tasks.sqlite");
   try {
     await prepareTasksIndexStorage(path, () => {});
@@ -197,7 +197,7 @@ it("keeps the pre-upgrade task ledger ID after committing the remaining migratio
 });
 
 it("startup receives old settings before marking the project migration complete", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "zcode-startup-projects-"));
+  const dir = await mkdtemp(join(tmpdir(), "codez-startup-projects-"));
   const path = join(dir, "tasks.sqlite");
   try {
     await prepareTasksIndexStorage(path, () => {}, {

@@ -42,7 +42,7 @@ vi.mock("@/project-sidebar/ProjectDirectoryProvider.js", () => ({
     refresh: fixture.refresh,
   }),
 }));
-vi.mock("@/store/zcodeSessionStore.js", () => {
+vi.mock("@/store/codezSessionStore.js", () => {
   const getWorkspaceState = () => ({
     draftProjectId: fixture.projectId,
     draftTaskGroupId: fixture.taskGroupId,
@@ -57,7 +57,7 @@ vi.mock("@/store/zcodeSessionStore.js", () => {
     },
   });
   return {
-    useZCodeSessionStore: Object.assign(
+    useCodezSessionStore: Object.assign(
       (selector: (state: unknown) => unknown) => selector(getState()),
       { getState },
     ),
@@ -117,7 +117,7 @@ vi.mock("@/hooks/useRemoteConnectionEntryVisibility.js", () => ({
   useRemoteConnectionEntryVisibility: () => true,
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 vi.mock("@/logger.js", () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },

@@ -476,7 +476,7 @@ New task 首页和 Automations 闲时任务资格提示统一创建：
 执行：
 
 ```bash
-pnpm --filter @zcode/ui test
+pnpm --filter @codez/ui test
 pnpm typecheck
 pnpm lint
 ```

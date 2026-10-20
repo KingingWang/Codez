@@ -11,8 +11,8 @@ import { createGenUiVendorResources, type GenUiVendorResources } from "./genUiVe
 
 /** 打包产物在 out/renderer 下的文件名（vite input 名 `plugin-sandbox`）。 */
 export const PLUGIN_SANDBOX_SHELL_HTML_FILE = "plugin-sandbox.html";
-/** 注入插件 HTML 顶部的 `window.zcode` 别名脚本；同源加载，避免依赖 inline nonce。 */
-export const PLUGIN_SANDBOX_ALIAS_SCRIPT_PATH = "/__zcode__/alias.js";
+/** 注入插件 HTML 顶部的 `window.codez` 别名脚本；同源加载，避免依赖 inline nonce。 */
+export const PLUGIN_SANDBOX_ALIAS_SCRIPT_PATH = "/__codez__/alias.js";
 export const PLUGIN_SANDBOX_ALIAS_SCRIPT_FILE = "plugin-sandbox-alias.js";
 
 export interface PluginSandboxSchemeRegistrar {
@@ -21,7 +21,7 @@ export interface PluginSandboxSchemeRegistrar {
   ): void;
 }
 
-/** 与 zcode-media 必须在同一次 registerSchemesAsPrivileged 调用里注册（第二次调用会覆盖第一次）。 */
+/** 与 codez-media 必须在同一次 registerSchemesAsPrivileged 调用里注册（第二次调用会覆盖第一次）。 */
 export const PLUGIN_SANDBOX_PRIVILEGED_SCHEME = {
   scheme: PLUGIN_SANDBOX_SCHEME,
   privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: false },
@@ -51,7 +51,7 @@ export interface PluginSandboxRequestTarget {
   pathname: string;
 }
 
-/** 解析 zcode-sandbox:// URL；host 不匹配前缀、带凭据或端口一律 null。 */
+/** 解析 codez-sandbox:// URL；host 不匹配前缀、带凭据或端口一律 null。 */
 export function parsePluginSandboxUrl(rawUrl: string): PluginSandboxRequestTarget | null {
   let url: URL;
   try {
@@ -152,7 +152,7 @@ export function createPluginSandboxProtocolHandler(options: {
         "Permissions-Policy": buildPluginSandboxPermissionsPolicy(record.permissions, "shell"),
       };
       if (options.assets.devServerUrl) {
-        // dev：同源代理整个 shell 路径空间，vite 的模块脚本才能在 zcode-sandbox://shell-<id> 下解析。
+        // dev：同源代理整个 shell 路径空间，vite 的模块脚本才能在 codez-sandbox://shell-<id> 下解析。
         const upstreamPath =
           target.pathname === "/" || target.pathname === "/index.html"
             ? `/${PLUGIN_SANDBOX_SHELL_HTML_FILE}`
@@ -181,8 +181,8 @@ export function createPluginSandboxProtocolHandler(options: {
       return notFound();
     }
 
-    if (record.contentKind === "gen-ui" && target.pathname.startsWith("/__zcode__/vendor/")) {
-      const file = target.pathname.slice("/__zcode__/vendor/".length);
+    if (record.contentKind === "gen-ui" && target.pathname.startsWith("/__codez__/vendor/")) {
+      const file = target.pathname.slice("/__codez__/vendor/".length);
       try {
         if (!(await vendorResources.hasFile(file))) return notFound();
         return serveAsset(join(options.assets.aliasDir, "vendor"), file, {
@@ -192,7 +192,7 @@ export function createPluginSandboxProtocolHandler(options: {
         return new Response(null, { status: 500 });
       }
     }
-    if (record.contentKind === "gen-ui" && target.pathname === "/__zcode__/gen-ui.js") {
+    if (record.contentKind === "gen-ui" && target.pathname === "/__codez__/gen-ui.js") {
       return serveAsset(options.assets.aliasDir, "gen-ui.js", {
         "Content-Security-Policy": record.cspHeader,
       });
@@ -206,8 +206,8 @@ export function createPluginSandboxProtocolHandler(options: {
       let html =
         record.contentKind === "gen-ui"
           ? record.html.replace(
-              "__ZCODE_GEN_UI_RUNTIME__",
-              `/instance/${record.sandboxId}/__zcode__/gen-ui.js`,
+              "__CODEZ_GEN_UI_RUNTIME__",
+              `/instance/${record.sandboxId}/__codez__/gen-ui.js`,
             )
           : injectPluginSandboxAliasScript(record.html, record.sandboxId);
       if (record.contentKind === "gen-ui") {
@@ -219,7 +219,7 @@ export function createPluginSandboxProtocolHandler(options: {
           const decode = (value: Uint8Array) => new TextDecoder().decode(value);
           // bridge/Tweak 在作者脚本前，inner kit 在片段后；原手写 Widgets 改变了上游初始化语义。
           html = html.replace(
-            "<!--__ZCODE_GEN_UI_STYLES__-->",
+            "<!--__CODEZ_GEN_UI_STYLES__-->",
             `<style>${decode(styles)}\n:root { --visualize-paint-gutter: 5px; --viz-fg: var(--foreground); }</style>`,
           );
           if (/\bviz-calendar\b/i.test(record.html)) {
@@ -229,14 +229,14 @@ export function createPluginSandboxProtocolHandler(options: {
               `<script>${calendar.replaceAll("</script", "<\\/script")}</script></head>`,
             );
           }
-          const marker = "<!--__ZCODE_GEN_UI_INNER_KIT__-->";
+          const marker = "<!--__CODEZ_GEN_UI_INNER_KIT__-->";
           const index = html.lastIndexOf(marker);
           if (index < 0) throw new Error("Gen UI document is missing its runtime slot");
           html =
             html.slice(0, index) +
             decode(kit).replace("<!--__INLINE_VISUALIZATION_FRAGMENT__-->", "") +
             // 标签切换的短暂溢出可能在撑高后残留空滚动条；只隐藏根滚动条，不裁切内容或禁用作者滚动区。
-            '<style id="zcode-gen-ui-document-scrollbar">html,body{scrollbar-width:none!important}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none!important}</style>' +
+            '<style id="codez-gen-ui-document-scrollbar">html,body{scrollbar-width:none!important}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none!important}</style>' +
             html.slice(index + marker.length);
         } catch {
           // 资源缺失不能返回半成品文档，否则页面看似加载成功但交互静默失效。

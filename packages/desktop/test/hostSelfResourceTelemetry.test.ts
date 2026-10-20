@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { HostResponseTypes, hostResponseMessageSchema } from "@zcode/shared";
+import { HostResponseTypes, hostResponseMessageSchema } from "@codez/shared";
 import { startHostSelfResourceTelemetry } from "../src/host/hostSelfResourceTelemetry.js";
 
 const usage = (): NodeJS.MemoryUsage => ({

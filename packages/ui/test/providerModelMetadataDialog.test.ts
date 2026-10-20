@@ -53,7 +53,7 @@ vi.mock("@/components/ui/popover.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => {
         const messages: Record<string, string> = {

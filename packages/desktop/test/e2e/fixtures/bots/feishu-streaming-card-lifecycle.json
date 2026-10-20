@@ -1,7 +1,7 @@
 {
   "caseId": "BOT-E2E-SC-01",
   "classification": "synthetic",
-  "syntheticReason": "Deterministically controls ZCode task stream phases so the running and terminal Feishu card states can both be asserted without a real tenant or timing-dependent model stream.",
+  "syntheticReason": "Deterministically controls Codez task stream phases so the running and terminal Feishu card states can both be asserted without a real tenant or timing-dependent model stream.",
   "prompt": "E2E_BOT_STREAMING_CARD_LIFECYCLE 请检查当前项目",
   "events": [
     { "type": "agent_message_chunk", "content": "E2E_STREAM_MESSAGE_1 我先检查项目。" },

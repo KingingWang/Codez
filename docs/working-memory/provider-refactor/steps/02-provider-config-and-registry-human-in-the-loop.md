@@ -558,7 +558,7 @@ UsageStatsService
 请求期鉴权
 ├─ Personal Coding Plan -> Account Credential Store
 ├─ Team Plan            -> Team Plan Request Key Resolver
-└─ Start Plan           -> OAuth / ZCode JWT Store
+└─ Start Plan           -> OAuth / Codez JWT Store
         |
         v
 Usage / Entitlement API
@@ -649,7 +649,7 @@ M2 开发阶段曾把新的 Personal Provider Config 写入独立的 `provider-c
 同时，Desktop 正式用户原有的模型 Provider 配置已经位于：
 
 ```text
-~/.zcode/v2/config.json
+~/.codez/v2/config.json
 ```
 
 新建 `provider-config.json` 会改变用户熟悉的物理路径，并产生新旧两个文件的权威切换问题。最终架构不需要通过改文件名表达领域边界。
@@ -659,11 +659,11 @@ M2 开发阶段曾把新的 Personal Provider Config 写入独立的 `provider-c
 Personal Provider/Model Config 继续使用原来的 `config.json` 文件名和路径，不引入正式的 `provider-config.json`：
 
 ```text
-旧格式 ~/.zcode/v2/config.json
+旧格式 ~/.codez/v2/config.json
         |
         | 迁移前先完整备份
         v
-同路径 ~/.zcode/v2/config.json
+同路径 ~/.codez/v2/config.json
 └─ 新 ProviderConfigDocument
 ```
 
@@ -756,7 +756,7 @@ AI SDK 解析、Tool Call、Thinking Block、Signature 以及 Tool Result 后的
 
 > 裁决状态：已确认；模型声明 `reasoningLevel` 时必须提供完整的 `reasoningMapping`
 
-ZCode 内部使用 AI SDK 调用模型。OpenAI Responses、Anthropic Messages 和 OpenAI Compatible
+Codez 内部使用 AI SDK 调用模型。OpenAI Responses、Anthropic Messages 和 OpenAI Compatible
 分别由对应的 AI SDK Provider 执行。用户选择统一的 `reasoningLevel`，`reasoningMapping`
 负责把这个档位转换成当前 AI SDK Provider 接收的 Options：
 
@@ -844,7 +844,7 @@ enabled
 disabled
 ```
 
-OpenAI Compatible API 的映射使用 `thinking.type`。ZCode 作为长链 Coding Agent，在开启思考时
+OpenAI Compatible API 的映射使用 `thinking.type`。Codez 作为长链 Coding Agent，在开启思考时
 同时使用 `clear_thinking: false`，并由消息模型与 Adapter 完整、原样、按顺序回放历史
 `reasoning_content`。该行为是固定协议配置，不作为用户 Option 暴露。
 
@@ -1083,7 +1083,7 @@ Host 随旧协议携带的 `runtimeModel` 在 Registry 进程中不再写入 Wor
   revision 已删除；
 - App 不再公开 `setModelCatalogOverlay`，也不再保存 Workspace 级 Provider/Model Overlay；
   闲时等单次执行仍通过独立的 Turn Overlay 进入，不会恢复长期 Workspace Catalog；
-- `createZCodeApp` 必须注入进程 Registry；测试与内部工具使用显式测试 Registry，不再通过缺少
+- `createCodezApp` 必须注入进程 Registry；测试与内部工具使用显式测试 Registry，不再通过缺少
   可选参数进入旧 Runtime Model Config 装配；
 - 冷恢复 usage 的 context window 使用当前 App Runtime 已固定的模型属性；
 - `workspace/readState` 是纯投影接口，不接收 `runtimeModel`，也不修改 Active Session；

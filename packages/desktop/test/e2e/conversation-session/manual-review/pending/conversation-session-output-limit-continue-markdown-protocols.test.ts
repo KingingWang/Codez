@@ -1,6 +1,6 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { TID_V4_TIMELINE } from "@zcode/shared/test-ids";
+import { TID_V4_TIMELINE } from "@codez/shared/test-ids";
 import { clearAppData, DEFAULT_WORKSPACE } from "../../../helpers/desktop-app.js";
 import {
   countUpstreamRequests,
@@ -18,7 +18,7 @@ import {
 
 const CASE_MARKER = "E2E_OUTPUT_LIMIT_CONTINUE_MARKDOWN_PROTOCOLS";
 const FINAL_ANCHOR = "自动链接";
-const IMAGE_DIR = join(DEFAULT_WORKSPACE, ".zcode-e2e", "continue-markdown-protocols");
+const IMAGE_DIR = join(DEFAULT_WORKSPACE, ".codez-e2e", "continue-markdown-protocols");
 const IMAGE_PATH = join(IMAGE_DIR, "cross-seam.svg");
 const EXTERNAL_LINK = "https://example.com/continue-edge";
 const AUTOLINK = "https://example.com/autolink";
@@ -366,6 +366,6 @@ function readMarkdownContinueTurnSnapshot(
 }
 
 function readManualReviewHoldMs(): number {
-  const parsed = Number(process.env.ZCODE_E2E_MANUAL_REVIEW_HOLD_MS ?? "0");
+  const parsed = Number(process.env.CODEZ_E2E_MANUAL_REVIEW_HOLD_MS ?? "0");
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 0;
 }

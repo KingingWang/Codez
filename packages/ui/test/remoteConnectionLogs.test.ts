@@ -111,7 +111,7 @@ describe("remote connection log merge", () => {
       }),
       createLogEntry({
         id: "server-upload",
-        message: "upload progress [sftp] (zcode-server.cjs.new): 45.0% (4.5/10.0 MB, 1.80 MB/s)",
+        message: "upload progress [sftp] (codez-server.cjs.new): 45.0% (4.5/10.0 MB, 1.80 MB/s)",
       }),
     ];
 
@@ -140,13 +140,13 @@ describe("remote connection log merge", () => {
     const nextLogs = appendRemoteConnectionRuntimeLog(currentLogs, {
       id: "upload-2",
       level: "info",
-      message: "upload progress [exec] (zcode-server.cjs.new): 5.0% (0.5/10.0 MB, 1.50 MB/s)",
+      message: "upload progress [exec] (codez-server.cjs.new): 5.0% (0.5/10.0 MB, 1.50 MB/s)",
       timestamp: "10:00:04",
     });
 
     expect(nextLogs).toHaveLength(2);
     expect(nextLogs[1]?.id).toBe("upload-2");
-    expect(nextLogs[1]?.message).toContain("zcode-server.cjs.new");
+    expect(nextLogs[1]?.message).toContain("codez-server.cjs.new");
   });
 
   it("keeps separate rows for different upload transports of the same file", () => {

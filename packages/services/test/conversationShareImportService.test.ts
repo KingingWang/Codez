@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { resolveRuntimeZCodeEndpointOrigin } from "@zcode/shared";
+import { resolveRuntimeCodezEndpointOrigin } from "@codez/shared";
 
 import { ConversationShareHttpClient } from "../src/conversation-share/conversationShareHttpClient.js";
 import { sha256ConversationShareJson } from "../src/conversation-share/conversationShareIntegrity.js";
@@ -18,8 +18,8 @@ afterEach(async () => {
 
 describe("ConversationShareService import", () => {
   it("installs imported artifacts under the captured local workspace without deleting siblings on failure", async () => {
-    const conversationRoot = await mkdtemp(join(tmpdir(), "zcode-share-import-default-"));
-    const targetRoot = await mkdtemp(join(tmpdir(), "zcode-share-import-target-"));
+    const conversationRoot = await mkdtemp(join(tmpdir(), "codez-share-import-default-"));
+    const targetRoot = await mkdtemp(join(tmpdir(), "codez-share-import-target-"));
     roots.push(conversationRoot, targetRoot);
     await writeFile(join(targetRoot, "keep.txt"), "keep", "utf8");
     const apiClient = new ConversationShareMockApiClient({ now: () => 10_000 });
@@ -31,7 +31,7 @@ describe("ConversationShareService import", () => {
     const service = new ConversationShareService({
       client,
       conversationWorkspaceRoot: conversationRoot,
-      zcodeSessionService: {
+      codezSessionService: {
         createSession: vi.fn(async () => {
           throw new Error("injected commit failure");
         }) as never,
@@ -42,7 +42,7 @@ describe("ConversationShareService import", () => {
           throw new Error("unexpected artifact read");
         },
       },
-      zcodeAgentService: {
+      codezAgentService: {
         conversationRowsRangeV4: vi.fn(async () => ({
           rows: [
             {
@@ -94,7 +94,7 @@ describe("ConversationShareService import", () => {
   });
 
   it("发布后导入到新 workspace，并把 shared_context 交给原子 session create", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-share-import-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-share-import-"));
     roots.push(root);
     const apiClient = new ConversationShareMockApiClient({ now: () => 10_000 });
     const client = new ConversationShareHttpClient({
@@ -134,7 +134,7 @@ describe("ConversationShareService import", () => {
     const service = new ConversationShareService({
       client,
       conversationWorkspaceRoot: root,
-      zcodeSessionService: {
+      codezSessionService: {
         createSession: createSession as never,
         listSessions: vi.fn(async () => []),
       },
@@ -143,7 +143,7 @@ describe("ConversationShareService import", () => {
           throw new Error("unexpected artifact read");
         },
       },
-      zcodeAgentService: {
+      codezAgentService: {
         conversationRowsRangeV4: vi.fn(async () => ({
           rows,
           atSeq: 2,
@@ -172,12 +172,12 @@ describe("ConversationShareService import", () => {
       "operation-1",
     );
     expect(imported.sessionId).toBe("imported-session");
-    const shareRootEntries = await readdir(join(imported.workspacePath, ".zcode-share"));
+    const shareRootEntries = await readdir(join(imported.workspacePath, ".codez-share"));
     expect(shareRootEntries).toHaveLength(1);
     expect(
       (
         await stat(
-          join(imported.workspacePath, ".zcode-share", shareRootEntries[0]!, "shared-artifacts"),
+          join(imported.workspacePath, ".codez-share", shareRootEntries[0]!, "shared-artifacts"),
         )
       ).isDirectory(),
     ).toBe(true);
@@ -185,9 +185,9 @@ describe("ConversationShareService import", () => {
       readFile(
         join(
           imported.workspacePath,
-          ".zcode-share",
+          ".codez-share",
           shareRootEntries[0]!,
-          ".zcode-share-import.json",
+          ".codez-share-import.json",
         ),
       ),
     ).rejects.toThrow();
@@ -203,7 +203,7 @@ describe("ConversationShareService import", () => {
   });
 
   it("英文界面：标题带 From Share 前缀，但持久化的回链仍是规范 /cn/share/", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-share-import-locale-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-share-import-locale-"));
     roots.push(root);
     const apiClient = new ConversationShareMockApiClient({ now: () => 10_000 });
     const client = new ConversationShareHttpClient({
@@ -215,7 +215,7 @@ describe("ConversationShareService import", () => {
     const service = new ConversationShareService({
       client,
       conversationWorkspaceRoot: root,
-      zcodeSessionService: {
+      codezSessionService: {
         createSession: createSession as never,
         listSessions: vi.fn(async () => []),
       },
@@ -224,7 +224,7 @@ describe("ConversationShareService import", () => {
           throw new Error("unexpected artifact read");
         },
       },
-      zcodeAgentService: {
+      codezAgentService: {
         conversationRowsRangeV4: vi.fn(async () => ({
           rows: [
             {
@@ -284,7 +284,7 @@ describe("ConversationShareService import", () => {
   });
 
   it("落盘公开 rows，并能按 contextId 取回用于只读块", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-share-import-rows-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-share-import-rows-"));
     roots.push(root);
     const apiClient = new ConversationShareMockApiClient({ now: () => 10_000 });
     const client = new ConversationShareHttpClient({
@@ -295,7 +295,7 @@ describe("ConversationShareService import", () => {
     const service = new ConversationShareService({
       client,
       conversationWorkspaceRoot: root,
-      zcodeSessionService: {
+      codezSessionService: {
         createSession: vi.fn(async () => ({ session: { sessionId: "imported-session" } })) as never,
         listSessions: vi.fn(async () => []),
       },
@@ -304,7 +304,7 @@ describe("ConversationShareService import", () => {
           throw new Error("unexpected artifact read");
         },
       },
-      zcodeAgentService: {
+      codezAgentService: {
         conversationRowsRangeV4: vi.fn(async () => ({
           rows: [
             {
@@ -377,7 +377,7 @@ describe("ConversationShareService import", () => {
   });
 
   it("reuses the completed import for the same client request", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-share-import-dedupe-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-share-import-dedupe-"));
     roots.push(root);
     const apiClient = new ConversationShareMockApiClient({ now: () => 10_000 });
     const client = new ConversationShareHttpClient({
@@ -389,7 +389,7 @@ describe("ConversationShareService import", () => {
     const service = new ConversationShareService({
       client,
       conversationWorkspaceRoot: root,
-      zcodeSessionService: {
+      codezSessionService: {
         createSession: createSession as never,
         listSessions: vi.fn(async () => []),
       },
@@ -398,7 +398,7 @@ describe("ConversationShareService import", () => {
           throw new Error("unexpected artifact read");
         },
       },
-      zcodeAgentService: {
+      codezAgentService: {
         conversationRowsRangeV4: vi.fn(async () => ({
           rows: [
             {
@@ -452,7 +452,7 @@ describe("ConversationShareService import", () => {
 
   it("对象存储把 .md 标成别的 content-type 时仍能导入；SHA-256 不符仍然拒绝", async () => {
     const mdBytes = new TextEncoder().encode("# feature map\n");
-    const root = await mkdtemp(join(tmpdir(), "zcode-share-import-mime-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-share-import-mime-"));
     roots.push(root);
     const apiClient = new ConversationShareMockApiClient({ now: () => 10_000 });
     const client = new ConversationShareHttpClient({
@@ -492,7 +492,7 @@ describe("ConversationShareService import", () => {
         client,
         conversationWorkspaceRoot: root,
         download,
-        zcodeSessionService: {
+        codezSessionService: {
           createSession: vi.fn(async () => ({
             session: { sessionId: "imported-session" },
           })) as never,
@@ -501,7 +501,7 @@ describe("ConversationShareService import", () => {
         artifactSource: {
           read: async () => ({ bytes: mdBytes, canonicalPath: `${root}/feature_map.md` }),
         },
-        zcodeAgentService: {
+        codezAgentService: {
           conversationRowsRangeV4: vi.fn(async () => ({
             rows,
             atSeq: 2,
@@ -550,8 +550,8 @@ describe("ConversationShareService import", () => {
     );
     const artifactDir = join(
       imported.workspacePath,
-      ".zcode-share",
-      (await readdir(join(imported.workspacePath, ".zcode-share")))[0]!,
+      ".codez-share",
+      (await readdir(join(imported.workspacePath, ".codez-share")))[0]!,
       "shared-artifacts",
     );
     expect(await readdir(artifactDir)).toHaveLength(1);
@@ -588,7 +588,7 @@ describe("ConversationShareService import", () => {
 
   it("Content-Length 超过 manifest 声明时在读 body 前中断，不把超大响应读进内存", async () => {
     const mdBytes = new TextEncoder().encode("# feature map\n");
-    const root = await mkdtemp(join(tmpdir(), "zcode-share-import-oversize-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-share-import-oversize-"));
     roots.push(root);
     const apiClient = new ConversationShareMockApiClient({ now: () => 10_000 });
     const client = new ConversationShareHttpClient({
@@ -630,14 +630,14 @@ describe("ConversationShareService import", () => {
       client,
       conversationWorkspaceRoot: root,
       download,
-      zcodeSessionService: {
+      codezSessionService: {
         createSession: vi.fn(async () => ({ session: { sessionId: "s" } })) as never,
         listSessions: vi.fn(async () => []),
       },
       artifactSource: {
         read: async () => ({ bytes: mdBytes, canonicalPath: `${root}/feature_map.md` }),
       },
-      zcodeAgentService: {
+      codezAgentService: {
         conversationRowsRangeV4: vi.fn(async () => ({
           rows: [
             {
@@ -701,7 +701,7 @@ describe("ConversationShareService import", () => {
 
   it("下载挂住时按超时以 network 失败，不会无限停在 downloading 阶段", async () => {
     const mdBytes = new TextEncoder().encode("# feature map\n");
-    const root = await mkdtemp(join(tmpdir(), "zcode-share-import-timeout-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-share-import-timeout-"));
     roots.push(root);
     const apiClient = new ConversationShareMockApiClient({ now: () => 10_000 });
     const client = new ConversationShareHttpClient({
@@ -738,14 +738,14 @@ describe("ConversationShareService import", () => {
       conversationWorkspaceRoot: root,
       download,
       downloadTimeoutMs: 20,
-      zcodeSessionService: {
+      codezSessionService: {
         createSession: vi.fn(async () => ({ session: { sessionId: "s" } })) as never,
         listSessions: vi.fn(async () => []),
       },
       artifactSource: {
         read: async () => ({ bytes: mdBytes, canonicalPath: `${root}/feature_map.md` }),
       },
-      zcodeAgentService: {
+      codezAgentService: {
         conversationRowsRangeV4: vi.fn(async () => ({
           rows: [
             {
@@ -809,7 +809,7 @@ describe("ConversationShareService import", () => {
   it("回链跟随环境，不再写死生产站", async () => {
     // Bug 根因：兜底写死 https://zcode.z.ai/cn/share，测试环境（API base 走
     // zcode.z.ai）导入后点分割线会打开另一个环境的分享页。
-    const root = await mkdtemp(join(tmpdir(), "zcode-share-import-endpoint-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-share-import-endpoint-"));
     roots.push(root);
     const apiClient = new ConversationShareMockApiClient({ now: () => 10_000 });
     const client = new ConversationShareHttpClient({
@@ -822,7 +822,7 @@ describe("ConversationShareService import", () => {
         client,
         conversationWorkspaceRoot: root,
         ...(shareWebUrl ? { shareWebUrl } : {}),
-        zcodeSessionService: {
+        codezSessionService: {
           createSession: vi.fn(async () => ({
             session: { sessionId: "imported-session" },
           })) as never,
@@ -833,7 +833,7 @@ describe("ConversationShareService import", () => {
             throw new Error("unexpected artifact read");
           },
         },
-        zcodeAgentService: {
+        codezAgentService: {
           conversationRowsRangeV4: vi.fn(async () => ({
             rows: [
               {
@@ -859,7 +859,7 @@ describe("ConversationShareService import", () => {
         },
       });
 
-    const explicit = build("https://zcode.example.test/cn/share");
+    const explicit = build("https://codez.example.test/cn/share");
     const share = await explicit.publish(
       {
         workspacePath: root,
@@ -878,13 +878,13 @@ describe("ConversationShareService import", () => {
     );
     // 显式 option 仍是最高优先级。
     expect(imported.shareUrl).toBe(
-      `https://zcode.example.test/cn/share/${encodeURIComponent(share.share_code)}`,
+      `https://codez.example.test/cn/share/${encodeURIComponent(share.share_code)}`,
     );
 
     // 未显式指定时按环境推导：origin 必须与 API base 用的同一个解析器一致，
     // 路径仍是规范 /cn/share/<code>（sharedContextImport schema 要求）。
     // 必须真的切一个非生产 endpoint，否则推导值与旧的写死值恰好相同，测不出回归。
-    vi.stubEnv("ZCODE_BASE_URL", "https://zcode.z.ai");
+    vi.stubEnv("CODEZ_BASE_URL", "https://zcode.z.ai");
     const derived = build();
     const secondShare = await derived.publish(
       {
@@ -904,7 +904,7 @@ describe("ConversationShareService import", () => {
     );
     const derivedUrl = new URL(derivedImport.shareUrl);
     expect(derivedUrl.origin).toBe("https://zcode.z.ai");
-    expect(derivedUrl.origin).toBe(resolveRuntimeZCodeEndpointOrigin(process.env));
+    expect(derivedUrl.origin).toBe(resolveRuntimeCodezEndpointOrigin(process.env));
     expect(derivedUrl.pathname).toBe(`/cn/share/${encodeURIComponent(secondShare.share_code)}`);
     vi.unstubAllEnvs();
   });
@@ -914,7 +914,7 @@ describe("ConversationShareService import", () => {
   // 的 provenance 引用的 artifacts 删掉，用户拿到一个引用缺失文件的会话。
   // 失败半径必须止于 createSession 之前。
   it("createSession 成功后的失败不再删除已提交的 importRoot", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-share-import-commit-radius-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-share-import-commit-radius-"));
     roots.push(root);
     const apiClient = new ConversationShareMockApiClient({ now: () => 10_000 });
     const client = new ConversationShareHttpClient({
@@ -925,7 +925,7 @@ describe("ConversationShareService import", () => {
     const service = new ConversationShareService({
       client,
       conversationWorkspaceRoot: root,
-      zcodeSessionService: {
+      codezSessionService: {
         createSession: vi.fn(async () => ({ session: { sessionId: "imported-session" } })) as never,
         listSessions: vi.fn(async () => []),
       },
@@ -934,7 +934,7 @@ describe("ConversationShareService import", () => {
           throw new Error("unexpected artifact read");
         },
       },
-      zcodeAgentService: {
+      codezAgentService: {
         conversationRowsRangeV4: vi.fn(async () => ({
           rows: [
             {
@@ -989,9 +989,9 @@ describe("ConversationShareService import", () => {
       subscription.dispose();
     }
 
-    const shareRootEntries = await readdir(join(root, ".zcode-share"));
+    const shareRootEntries = await readdir(join(root, ".codez-share"));
     expect(shareRootEntries).toHaveLength(1);
-    const importRoot = join(root, ".zcode-share", shareRootEntries[0]!);
+    const importRoot = join(root, ".codez-share", shareRootEntries[0]!);
     expect((await stat(join(importRoot, "shared-artifacts"))).isDirectory()).toBe(true);
     await expect(readFile(join(importRoot, "shared-conversation.json"), "utf8")).resolves.toContain(
       "formatVersion",
@@ -1002,7 +1002,7 @@ describe("ConversationShareService import", () => {
   // rejected，之后每一次 persistCompletedImportIndex 都变成静默 no-op，导入索引永久
   // 丢失且没有自愈路径（marker 成功即删），再导入同一 share 会永久报 already in progress。
   it("索引写入失败一次后不会永久毒化写入链", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-share-import-index-chain-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-share-import-index-chain-"));
     roots.push(root);
     const apiClient = new ConversationShareMockApiClient({ now: () => 10_000 });
     const client = new ConversationShareHttpClient({
@@ -1028,7 +1028,7 @@ describe("ConversationShareService import", () => {
     const service = new ConversationShareService({
       client,
       conversationWorkspaceRoot: root,
-      zcodeSessionService: {
+      codezSessionService: {
         createSession: vi.fn(async () => ({ session: { sessionId: "imported-session" } })) as never,
         listSessions: vi.fn(async () => []),
       },
@@ -1037,7 +1037,7 @@ describe("ConversationShareService import", () => {
           throw new Error("unexpected artifact read");
         },
       },
-      zcodeAgentService: {
+      codezAgentService: {
         conversationRowsRangeV4: vi.fn(async () => ({
           rows,
           atSeq: 1,
@@ -1063,7 +1063,7 @@ describe("ConversationShareService import", () => {
       );
 
     // 用真实文件系统冲突让 rename 失败：索引路径先被一个非空目录占住。
-    const indexPath = join(root, ".zcode-share-imports.json");
+    const indexPath = join(root, ".codez-share-imports.json");
     await mkdir(indexPath, { recursive: true });
     await writeFile(join(indexPath, "blocker"), "blocked", "utf8");
 
@@ -1096,7 +1096,7 @@ describe("ConversationShareService import", () => {
    * projection_sha256，报「分享文件校验失败，已停止导入」并给一个永远不会成功的重试按钮。
    */
   it("导入更新版本发布的分享：未知字段不破坏完整性，未知 row kind 只被跳过", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-share-import-future-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-share-import-future-"));
     roots.push(root);
     // 一行带未来才有的 optional 字段，一行是本端完全不认识的 kind。
     const rawRows = [
@@ -1173,13 +1173,13 @@ describe("ConversationShareService import", () => {
     const service = new ConversationShareService({
       client,
       conversationWorkspaceRoot: root,
-      zcodeSessionService: { createSession: createSession as never, listSessions: async () => [] },
+      codezSessionService: { createSession: createSession as never, listSessions: async () => [] },
       artifactSource: {
         read: async () => {
           throw new Error("unexpected artifact read");
         },
       },
-      zcodeAgentService: {
+      codezAgentService: {
         conversationRowsRangeV4: vi.fn(),
         conversationFileChangesV4: vi.fn(),
       },
@@ -1202,10 +1202,10 @@ describe("ConversationShareService import", () => {
     expect(loaded?.unsupportedRowCount).toBe(1);
 
     // 落盘副本保存原始 rows：用户升级之后能看到当时认不出的内容，不被永久抹掉。
-    const shareDirs = await readdir(join(imported.workspacePath, ".zcode-share"));
+    const shareDirs = await readdir(join(imported.workspacePath, ".codez-share"));
     const persistedCopy = JSON.parse(
       await readFile(
-        join(imported.workspacePath, ".zcode-share", shareDirs[0]!, "shared-conversation.json"),
+        join(imported.workspacePath, ".codez-share", shareDirs[0]!, "shared-conversation.json"),
         "utf8",
       ),
     ) as { rows: unknown[] };

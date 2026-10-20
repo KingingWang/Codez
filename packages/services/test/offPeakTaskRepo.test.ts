@@ -8,15 +8,15 @@ import {
   OFF_PEAK_CLAIM_STALE_MS,
   isOffPeakBoundSessionConflict,
 } from "../src/session/offPeakTaskRepo.js";
-import type { ZCodeOffPeakTaskCreateParams } from "@zcode/shared";
+import type { CodezOffPeakTaskCreateParams } from "@codez/shared";
 
 // 固定基准时间，保证认领 / 回收断言可复现。
 const NOW = 1_700_000_000_000;
 const MINUTE = 60_000;
 
 function makeParams(
-  overrides: Partial<ZCodeOffPeakTaskCreateParams> = {},
-): ZCodeOffPeakTaskCreateParams {
+  overrides: Partial<CodezOffPeakTaskCreateParams> = {},
+): CodezOffPeakTaskCreateParams {
   return {
     title: "夜间重构",
     prompt: "把 utils 目录的重复代码抽公共函数",
@@ -40,7 +40,7 @@ describe("OffPeakTaskRepo 状态机与调度守卫", () => {
   let repo: OffPeakTaskRepo;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), "zcode-off-peak-repo-"));
+    tempDir = mkdtempSync(join(tmpdir(), "codez-off-peak-repo-"));
     dbPath = buildTempDbPath(tempDir);
     repo = new OffPeakTaskRepo(dbPath);
   });

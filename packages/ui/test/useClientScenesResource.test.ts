@@ -8,7 +8,7 @@ import type {
   ClientSceneConfig,
   ClientScenesResponse,
   IClientScenesService,
-} from "@zcode/services";
+} from "@codez/services";
 import {
   CLIENT_SCENES_DEDUPING_INTERVAL_MS,
   isClientScenesBusinessError,
@@ -21,7 +21,7 @@ function response(id: string): ClientScenesResponse {
     msg: "success",
     data: [
       {
-        namespace: "zcode",
+        namespace: "codez",
         scene: id,
         options: {},
         created_at: 0,

@@ -6,7 +6,7 @@
 
 模拟 BigModel 账号已登录但没有个人 Coding Plan 权益时，用户从设置页或 sidebar 头像菜单的升级入口进入
 `Upgrade Coding Plan` 购买页。个人套餐数据来自本地 E2E fixture server，
-不访问真实 BigModel / ZCode 后端。
+不访问真实 BigModel / Codez 后端。
 
 账号夹具提供可解析的个人项目和项目凭据；订阅列表为空，权益接口明确返回无套餐。
 不能以空项目列表模拟无权益，否则账号状态会变成查询失败，而不是已登录、未开通。
@@ -32,7 +32,7 @@ worker spec -> reset(scenario, marketingTouch) -> 同一 mock origin
 
 1. E2E 隔离 HOME 只写入 BigModel OAuth 凭据，表示账号已登录，不夹带其他账号族。
 2. 写入 BigModel Coding Plan provider，保持未开通套餐状态。
-3. 将 `ZCODE_TEST_BASE_URL` 和 `BIGMODEL_TEST_API_BASE_URL` 指向本地 mock server。
+3. 将 `CODEZ_TEST_BASE_URL` 和 `BIGMODEL_TEST_API_BASE_URL` 指向本地 mock server。
 4. `client/configs` 返回 BigModel 个人 Lite / Pro / Max 静态套餐。
 5. `pay/batch-preview` 返回同一批个人套餐，且每个 SKU `soldOut=true`。
 
@@ -88,9 +88,9 @@ worker spec -> reset(scenario, marketingTouch) -> 同一 mock origin
 ## 验证命令
 
 升级页的本地 mock origin 写入 renderer 构建产物。新建 run 时需正常构建，不能复用
-上一次 run 的 `ZCODE_E2E_SKIP_BUILD=1` 产物，否则 webview 会访问已关闭的旧端口。
+上一次 run 的 `CODEZ_E2E_SKIP_BUILD=1` 产物，否则 webview 会访问已关闭的旧端口。
 
-- `pnpm --filter @zcode/desktop typecheck:e2e`
+- `pnpm --filter @codez/desktop typecheck:e2e`
 - `pnpm typecheck`
 - `pnpm lint`
 - `pnpm test:e2e -- --spec ./test/e2e/coding-plan-upgrade-personal-sold-out.test.ts`

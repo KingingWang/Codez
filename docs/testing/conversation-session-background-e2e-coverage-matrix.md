@@ -16,7 +16,7 @@
 | User-visible surfaces | assistant tool block、统一 background control UI、runtime status、goal 状态、可见 user message 过滤、assistant fork/retry actions、底部 ChatLoading、renderer toolCall store、background Agent 子工具聚合、foreground long-running loading、composer queue count、queued prompt Send now |
 | Provider-visible surfaces | `<task-notification>` 作为 model-only user-like input；active-loop 合流或 idle wake fallback 的 request 顺序；TaskStop tool call/result；goal verifier request 顺序；subagent coordinator message |
 | Existing docs | `docs/bash-background-parity.md`、`docs/agent-background-subagent-join.md` |
-| Existing code owners | `apps/zcode-cli/packages/core/src/runtime/methods/runtime-command-queue.ts`、`apps/zcode-cli/packages/core/src/runtime/methods/target.ts`、`apps/zcode-cli/packages/core/src/subagent/runner.ts`、`apps/zcode-cli/packages/core/src/tool/executor/background-tasks.ts` |
+| Existing code owners | `apps/codez-cli/packages/core/src/runtime/methods/runtime-command-queue.ts`、`apps/codez-cli/packages/core/src/runtime/methods/target.ts`、`apps/codez-cli/packages/core/src/subagent/runner.ts`、`apps/codez-cli/packages/core/src/tool/executor/background-tasks.ts` |
 | Out of scope | 手动 foreground-to-background controls、手机 replayable 恢复、Workflow 完整 output-file artifact、Bash 单一 output-file provider surface 收敛 |
 
 ## Boundary Decisions

@@ -6,10 +6,10 @@ const candidate = {
   profile: {
     profileId: "17ef20b3-622d-4a53-98c1-0cdff29f3e6d",
     transport: "docker",
-    target: { kind: "docker", container: "zcode-dev" },
+    target: { kind: "docker", container: "codez-dev" },
     createdAt: 1,
   },
-  target: { kind: "docker", container: "zcode-dev" },
+  target: { kind: "docker", container: "codez-dev" },
 } as unknown as SourceServerReconnectCandidate;
 
 function createDeps(remoteStartupAutoReconnectEnabled?: boolean) {

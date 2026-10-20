@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { MessageResponse } from "@/components/ai-elements/message.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 describe("MessageResponse share-safe links", () => {
   it("renders an external link without requiring a Desktop platform provider", () => {
@@ -12,7 +12,7 @@ describe("MessageResponse share-safe links", () => {
         TooltipProvider,
         null,
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(
             MessageResponse,

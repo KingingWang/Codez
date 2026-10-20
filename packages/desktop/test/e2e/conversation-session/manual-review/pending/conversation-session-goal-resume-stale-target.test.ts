@@ -149,7 +149,7 @@ function setSessionTargetForE2E(
   objective: string,
   status: GoalStatusForE2E,
 ) {
-  const dbPath = join(homedir(), ".zcode", "cli", "db", "db.sqlite");
+  const dbPath = join(homedir(), ".codez", "cli", "db", "db.sqlite");
   const db = new DatabaseSync(dbPath);
   const now = Date.now();
   const targetId = `target_e2e_${randomUUID()}`;
@@ -234,7 +234,7 @@ function readTaskIndexMetaForE2E(
 }
 
 function taskIndexDbPath() {
-  return join(homedir(), ".zcode", "v2", "tasks-index.sqlite");
+  return join(homedir(), ".codez", "v2", "tasks-index.sqlite");
 }
 
 async function injectRendererTaskMetaTargetForE2E(
@@ -269,8 +269,8 @@ async function injectRendererTaskMetaTargetForE2E(
       };
 
       const storeApi = (
-        window as Window & { __zcodeSessionStoreE2E?: RendererStore }
-      ).__zcodeSessionStoreE2E;
+        window as Window & { __codezSessionStoreE2E?: RendererStore }
+      ).__codezSessionStoreE2E;
       const state = storeApi?.getState?.();
       if (!state?.upsertOptimisticTaskListItem) {
         return { ok: false, reason: "store-api-missing" };
@@ -366,8 +366,8 @@ function readRendererTaskMetaTargetStatusForE2E(taskId: string) {
       getState?: () => { workspaces?: Record<string, RendererWorkspace> };
     };
     const storeApi = (
-      window as Window & { __zcodeSessionStoreE2E?: RendererStore }
-    ).__zcodeSessionStoreE2E;
+      window as Window & { __codezSessionStoreE2E?: RendererStore }
+    ).__codezSessionStoreE2E;
     const state = storeApi?.getState?.();
     for (const workspace of Object.values(state?.workspaces ?? {})) {
       const task =
@@ -413,8 +413,8 @@ async function injectRendererQueuedPromptForE2E(taskId: string, content: string)
       };
 
       const storeApi = (
-        window as Window & { __zcodeSessionStoreE2E?: RendererStore }
-      ).__zcodeSessionStoreE2E;
+        window as Window & { __codezSessionStoreE2E?: RendererStore }
+      ).__codezSessionStoreE2E;
       const state = storeApi?.getState?.();
       if (!state?.enqueueTaskQueuedPrompt) {
         return { ok: false, reason: "store-api-missing" };

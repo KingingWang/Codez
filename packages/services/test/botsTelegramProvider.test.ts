@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { BotConfig } from "@zcode/shared";
+import type { BotConfig } from "@codez/shared";
 import { createTelegramBotProvider } from "../src/bots/providers/telegramProvider.js";
 
 const bot: BotConfig = {
@@ -230,7 +230,7 @@ describe("telegram bot provider", () => {
     const fetchMock = vi.fn(
       async () =>
         new Response(
-          JSON.stringify({ ok: true, result: { first_name: "ZCode Bot", username: "zcode_bot" } }),
+          JSON.stringify({ ok: true, result: { first_name: "Codez Bot", username: "codez_bot" } }),
         ),
     );
     vi.stubGlobal("fetch", fetchMock);
@@ -238,10 +238,10 @@ describe("telegram bot provider", () => {
       loadCredential: vi.fn(async () => "token"),
     });
 
-    await expect(provider.resolveName?.(bot)).resolves.toBe("ZCode Bot");
+    await expect(provider.resolveName?.(bot)).resolves.toBe("Codez Bot");
     await expect(provider.test(bot)).resolves.toMatchObject({
       ok: true,
-      name: "ZCode Bot",
+      name: "Codez Bot",
     });
   });
 

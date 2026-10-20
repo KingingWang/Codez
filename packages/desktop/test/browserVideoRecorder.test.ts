@@ -14,7 +14,7 @@ afterEach(async () => {
 });
 
 async function createTempRoot(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), "zcode-browser-recorder-test-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-browser-recorder-test-"));
   tempRoots.push(root);
   return root;
 }

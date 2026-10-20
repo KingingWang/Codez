@@ -296,12 +296,12 @@ Root 仅持有当前项目的恢复互斥；取消项目意图后立即释放。
 2026-09-16：
 
 - 定向/相关单测：96 个文件、673 个用例通过。覆盖项目用途过滤、同路径隔离、展开与排序、恢复保留数据、手动/后台恢复互斥、连接后目录选择、原目录跨升级保留、凭据门禁、收起后不重试、移动端历史投影与连接地址脱敏。
-- `pnpm typecheck`、`pnpm --filter @zcode/desktop typecheck:e2e` 通过；`pnpm lint` 0 错误，57 条存量警告，没有新增警告。
+- `pnpm typecheck`、`pnpm --filter @codez/desktop typecheck:e2e` 通过；`pnpm lint` 0 错误，57 条存量警告，没有新增警告。
 - `pnpm architecture:check --changed`：0 违规。Feature graph 节点唯一，新增悬空边为 0；全图存在 4 条相同的基线悬空边，本轮未处理无关图谱数据。
 - 全局 `audit:conversation-session-coverage` 未通过：37 项既有问题（27 个旧 pending fixture 元数据、旧矩阵统计/引用和生成文档）。在审计输入与 HEAD 一致的原型 worktree 上对照运行，37 项完全相同，新增问题为 0；未改写无关基线数据。
 - 新增本地 Electron E2E：`packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-rpn-project-navigation.test.ts`，已通过。
 - E2E run：`desktop-e2e-20260916060143354-p74119-7eab82eb8a75775c`。隔离 HOME 中预置两个设备的同路径离线项目及一个历史远程 conversation；确认平铺、单一项目/任务分组、设备详情隔离、查看详情无连接副作用、Escape 不重开 tooltip、旧 conversation 不恢复、canonical 数据保留、项目名点击进入唯一连接向导。截图 `rpn-project-sidebar.png` 保存在该 run artifact 下。
-- E2E 未发 prompt、未连接真实远端；复用未改动的已构建 CLI（`ZCODE_E2E_SKIP_AGENT_BUILD=1`），Desktop/UI 从当前工作树重新构建。
+- E2E 未发 prompt、未连接真实远端；复用未改动的已构建 CLI（`CODEZ_E2E_SKIP_AGENT_BUILD=1`），Desktop/UI 从当前工作树重新构建。
 - SSH helper 的普通连接流程已要求进入目录步骤，不再把向导关闭当作新建远程无项目聊天成功。
 
 新 E2E 仍位于 manual-review/pending，本轮未进行人工转正或 Docker 准入。旧设备组头/connect-and-chat 专用 pending 用例属于被替代的 UI 合同，不作为新功能验收；正式 E2E 未发现对这些撤销入口的直接引用。
@@ -319,7 +319,7 @@ Root 仅持有当前项目的恢复互斥；取消项目意图后立即释放。
 ```text
 ┌ 项目名 ─────────────────────── 连接中 ┐
 │ ┌──────────────────────────────────┐ │
-│ │ ⟳ 安装 ZCode Server 43%            │ │  当前阶段 + 仅上传/下载时的百分比
+│ │ ⟳ 安装 Codez Server 43%            │ │  当前阶段 + 仅上传/下载时的百分比
 │ │ ▬▬▬▬ ▬▬▬▬ ▬▬── ────               │ │  4 段：完成填满、当前按进度、未开始为空
 │ │ 第 3/4 步 · 已用 32 秒 · 自动恢复 2/3 │ │
 │ └──────────────────────────────────┘ │
@@ -327,7 +327,7 @@ Root 仅持有当前项目的恢复互斥；取消项目意图后立即释放。
 └──────────────────────────────────────┘
 ```
 
-- 阶段与连接向导（RDUX-11）共用同一阶段投影：连接设备 / 识别设备 / 安装 ZCode Server / 启动并检查兼容性；原始 phase 归并规则只有一份。跳过的阶段（如已安装时的安装阶段）随后续阶段一起显示为完成。尚无日志时显示第 1 步。
+- 阶段与连接向导（RDUX-11）共用同一阶段投影：连接设备 / 识别设备 / 安装 Codez Server / 启动并检查兼容性；原始 phase 归并规则只有一份。跳过的阶段（如已安装时的安装阶段）随后续阶段一起显示为完成。尚无日志时显示第 1 步。
 - 百分比只来自当前上传/下载日志的 `progress`；其他阶段的当前段整段呼吸。
 - 已用时间从本次操作首条日志时间算起；新操作（含自动恢复的每次尝试）替换旧日志，计时随之重置。计时器只在详情打开期间每秒刷新，仅用于展示，不参与超时判定。
 - Host 的最近日志保留的是“最近一次操作”，不一定是“进行中的操作”。最后一条为成功终态（`ready`）或失败（`error` 等级）时，该操作已结束：意外断线后首次重试前、两次重试之间都属于这种情况。此时按“尚无日志”展示（第 1 步、不显示耗时），只保留“自动恢复 n/m”；下一次尝试开始后 Host 替换日志，进度随之出现。

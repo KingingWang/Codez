@@ -1,7 +1,7 @@
 import { mkdir, writeFile, rm, readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { createServer, type Socket } from "node:net";
-import { TID_TASK_SETTINGS_BUTTON, TID_SETTINGS_SECTION_NAV, testId } from "@zcode/shared/test-ids";
+import { TID_TASK_SETTINGS_BUTTON, TID_SETTINGS_SECTION_NAV, testId } from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -20,7 +20,7 @@ import {
 
 const MARKER = "E2E_SSH_THREE_SCREEN";
 const alias = "rdux10-first-connect";
-const artifactDir = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/three-screen");
+const artifactDir = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/three-screen");
 
 async function clickButton(text: string) {
   await browser.waitUntil(
@@ -137,7 +137,7 @@ describe(`${MARKER}: 设置分类添加与连接反馈`, () => {
       ).version;
       expect(await $('[data-testid="remote-install-version"]').getText()).toBe(releaseVersion);
       expect(await $('[data-testid="remote-install-path"]').getText()).toBe(
-        `/home/${config.username}/.zcode/server`,
+        `/home/${config.username}/.codez/server`,
       );
       expect(
         await browser.execute(() =>

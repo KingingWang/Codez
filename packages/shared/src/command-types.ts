@@ -2,7 +2,7 @@
 import type { SettingsDirectoryLocation } from "./settings-source.js";
 
 export type CommandSource = "user" | "plugin";
-export type CommandAgentSource = "zcodeAgent";
+export type CommandAgentSource = "codezAgent";
 
 export interface CommandInfo {
   name: string;
@@ -34,13 +34,13 @@ export interface PluginCommand extends Omit<CommandInfo, "filePath"> {
   filePath: string;
 }
 
-export type ZCodeCommand = UserCommand | PluginCommand;
+export type CodezCommand = UserCommand | PluginCommand;
 
-export function isUserCommand(command: ZCodeCommand): command is UserCommand {
+export function isUserCommand(command: CodezCommand): command is UserCommand {
   return command.source === "user";
 }
 
-export function isPluginCommand(command: ZCodeCommand): command is PluginCommand {
+export function isPluginCommand(command: CodezCommand): command is PluginCommand {
   return command.source === "plugin";
 }
 
@@ -60,7 +60,7 @@ export interface CommandsCapability {
 }
 
 export interface CommandsListResult {
-  commands: ZCodeCommand[];
+  commands: CodezCommand[];
   userCommands: UserCommand[];
   pluginCommands: PluginCommand[];
   capability: CommandsCapability;

@@ -1,5 +1,5 @@
 import { cn } from "@/components/lib/utils.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import type { RemoteConnectionPresentation } from "@/lib/remoteConnectionPresentation.js";
 
 export function RemoteConnectionNavigationDot({
@@ -7,7 +7,7 @@ export function RemoteConnectionNavigationDot({
 }: {
   presentation: RemoteConnectionPresentation;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   return (
     <span
       role="img"

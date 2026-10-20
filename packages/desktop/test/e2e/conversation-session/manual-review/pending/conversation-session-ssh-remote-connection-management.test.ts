@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 import {
   TID_SETTINGS_BACK_BUTTON,
   TID_SETTINGS_PAGE,
@@ -10,7 +10,7 @@ import {
   TID_REMOTE_KIND_SSH,
   TID_CONFIRM_DIALOG_CONFIRM,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -42,7 +42,7 @@ const deviceName = "SSH guide device";
 const primaryName = "SSH guide primary";
 const scenario = process.env.R3_CONNECTION_MANAGEMENT_CASE ?? "edit";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-connection-management",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-connection-management",
 );
 
 async function openSettings() {
@@ -379,7 +379,7 @@ describe(`${MARKER}: 编辑、多连接默认值与移除`, () => {
     );
     const remote = await runSSHCommand(
       config,
-      `cat '${config.workspacePaths[0]}/guide-remove-sentinel.txt'; test -f "$HOME/.zcode/server/current.json"`,
+      `cat '${config.workspacePaths[0]}/guide-remove-sentinel.txt'; test -f "$HOME/.codez/server/current.json"`,
     );
     expect(remote.code).toBe(0);
     expect(remote.stdout).toBe("GUIDE_KEEP_REMOTE");

@@ -213,7 +213,7 @@ D5 只锁了 queued，本条补齐 running / awaiting_approval 的空档（"用�
 - **规则 2（单次钳制 × 无限探测）**：running 态单次等待 = `min(Retry-After, 5 分钟)`，无限次幂等探测（3h ≈ 36 次），资源提前空出即被下次探测捕获。钳制与 retry-after 解析复用 `bigmodel-business-error-retry` 既有逻辑；**预算豁免是新增开关**——新 retry reason `offpeak_queued` 绕开统一 retry budget（否则现状探四五次就 fail）。
 - **规则 3**：UI 如实展示重试提示，取消/立即执行随时可用；取消 abort 等待定时器。
 - **服务端两条义务**：小时级缺口用粗阀表达（schedulable=false + 长轮询间隔），勿 admit 后给小时级 Retry-After；排队应答必须在请求受理前返回（零模型副作用），SSE 流中途不得转排队。
-- 实现落点：`apps/zcode-cli/packages/adapters/src/model/{failure-inspection,failure-classifier,runner-retry}.ts`，详见 tech-design §4.3。
+- 实现落点：`apps/codez-cli/packages/adapters/src/model/{failure-inspection,failure-classifier,runner-retry}.ts`，详见 tech-design §4.3。
 
 ## D25 服务端契约收敛为任务生命周期四接口（已定 2026-07-13，取代 D21 的全局 poll，定案 7.8-1）
 
@@ -235,7 +235,7 @@ D5 只锁了 queued，本条补齐 running / awaiting_approval 的空档（"用�
 
 ## D26 服务端 v2 契约对齐（已定 2026-07-14，修正 D3/D9/D15/D24/D25）
 
-对照 `zcode-server` feat/off-peak 的 `off_peak_design.md`(v2)。服务端是一个**有严格时间盒的准入系统**，与我们「开跑跑到终态」的假设不同。
+对照 `codez-server` feat/off-peak 的 `off_peak_design.md`(v2)。服务端是一个**有严格时间盒的准入系统**，与我们「开跑跑到终态」的假设不同。
 
 **1. 双 ID（task_id / ticket_id）。** 客户端提交自己的 `task_id`（每个闲时任务一个稳定 id，用户内有意义、不要求全局唯一）；服务端取号生成 Snowflake `ticket_id`，此后 status/settle/messages **一律用 ticket_id**。本地表加 `server_ticket_id` 列，取号成功回填、重新取号更新。
 
@@ -308,7 +308,7 @@ Figma（⚫️ Z.ai - Zcode / 自动化 & 闲时任务页）定稿范式：闲�
 1. **一次性实体**：创建即取号排队 → 跑完进终态；不做 Run again（服务端 settled 票不可同 task_id 重取，再跑=新建新 task_id，从模板/复制入口走）。
 2. **History = 一行汇总整个执行**：3h 续跑分段对用户透明，不逐段成行；Go to session 跳唯一 session。
 3. **Pause/Continue（方案 A + 手动 Continue）**：Pause = 客户端停止派发，票留服务端队列继续排；暂停中排到 ready 未接 → 票 5min 自然过期 → **停在 Paused 态，不自动重取**；Continue：票活着=恢复派发（零成本），票已废=此刻手动重取号回队尾。额度消耗永远由用户显式动作触发。→ 给设计的文案微调：tooltip「会被重新放回队列」应改为「需手动继续以重新排队」。
-4. **权限默认 = Ask for approval**（安全优先），表单就地警示：「闲时执行时无人值守，需要确认的操作会暂停任务直到你响应」。四档全开放（Ask/Edit automatically/Plan/Full access，映射现有 ZCodeTaskMode）。派生：批准 = 接管 = 切用户 key 跑到完（D27，票此后不再需要）；拒绝跳过留 idle plan，票已过期时重取号搭在"拒绝"显式动作上。
+4. **权限默认 = Ask for approval**（安全优先），表单就地警示：「闲时执行时无人值守，需要确认的操作会暂停任务直到你响应」。四档全开放（Ask/Edit automatically/Plan/Full access，映射现有 CodezTaskMode）。派生：批准 = 接管 = 切用户 key 跑到完（D27，票此后不再需要）；拒绝跳过留 idle plan，票已过期时重取号搭在"拒绝"显式动作上。
 5. 照设计直接采纳（无争议）：达上限创建按钮置灰 + tooltip "Free tier limit reached"；非 coding plan 用户按钮带锁 + "仅限 coding plan 用户使用"；多任务同时排队（多卡同屏各带位次）；模型下拉=allowed_models 白名单形态。
 
 ## D30 设计稿交互定案·第二批 + 范式连带修订（grilling 2026-07-14 收官）
@@ -374,7 +374,7 @@ turn finally: restore user model ── clear active override ─────┴
 ```
 
 - 否决的备选 (b)：createSession 设 idle plan + 终态事件显式回切 + drain 前拦截——改动面小但存在回切与队列 drain 的竞态。
-- 代价（工程接受）：agent 服务/CLI 侧需要一条不落缓存的 per-turn runtimeModel 通道（现有 `ZCodeAgentSendPromptParams.runtimeModel` 未接 V4 sendText 主路径、且 send 后会写缓存，需扩展）。
+- 代价（工程接受）：agent 服务/CLI 侧需要一条不落缓存的 per-turn runtimeModel 通道（现有 `CodezAgentSendPromptParams.runtimeModel` 未接 V4 sendText 主路径、且 send 后会写缓存，需扩展）。
 - 配套工程决定（同日）：服务端 mock 交付为**进程内 mock + 环境开关**（真实 HTTP client 按契约实现，开关切 mock 可真机点通全流程，联调仅删开关）；E2E 本轮一并做（catalog/matrix 剪枝先与用户确认）。
 
 ## D34 补齐思考深度字段（已定 2026-07-16）
@@ -396,13 +396,13 @@ turn finally: restore user model ── clear active override ─────┴
 用 agent-browser 隔离实例对 Figma「自动化 & 闲时任务」页全部 idle 相关帧逐一实测后收敛：
 
 1. **已补实现（Figma 有、spec 已列或不冲突）**：丢弃草稿弹窗（4889-1942，spec §5 本就要求"沿用 scheduled"——但 scheduled 自身未实现，闲时先行）；History tab 表格化（Instructions/Triggered/Status/Duration + 行菜单，4866-2819）+ 创建态空态「No history yet.」（4866-3106）；权限下拉两行样式 + 选中 ✓（4835-4974，复用主 composer `mode.description.glm.*` 文案）；未开启完全访问右上提示（4970-2055）。
-2. **达上限置灰 = 反应式（过渡态，已被 D38 取代）**：当前客户端无配额查询 API（四接口契约无此端点），"Free tier limit reached" 置灰只能在创建收到 3103 后置位、下次创建成功清除。mock 网关补 `ZCODE_OFFPEAK_MOCK_QUOTA_COUNT` 注入以便验收。**后续计划**：新增配额查询接口后，改为在入口打开/创建按钮渲染前主动查配额，不再依赖 3103 失败事件做反应式置灰。当前实现仅作为无配额接口前的兜底方案。
-3. **非 coding plan 锁定态 = 客户端按当前时刻注册表判定（2026-07-16 用户拍板，推翻本条初版"暂缓"；资格真源已被 D40 取代）**：当时约定不等服务端 entitlement 字段——无有效订阅时 `codingPlanProviderAvailability` 已把 coding plan provider 置 `systemDisabledReason` 并实时同步 renderer 注册表，UI 判 `hasActiveCodingPlanProvider`（zai/bigmodel coding plan + bigmodel 团队套餐连接；Start plan 不算）即可，零新增请求。锁优先于达上限置灰；注册表加载中不闪锁。mock 演示走 `codingPlanActive` 强制通道（`ZCODE_OFFPEAK_MOCK_NO_PLAN=1` 演示锁态），真实路径不下发该字段。D40 进一步证明广泛扫描注册表会与 runtime credential 分叉，现状改为 host 解析当前 selected connection 后向 UI 返回脱敏 support。
+2. **达上限置灰 = 反应式（过渡态，已被 D38 取代）**：当前客户端无配额查询 API（四接口契约无此端点），"Free tier limit reached" 置灰只能在创建收到 3103 后置位、下次创建成功清除。mock 网关补 `CODEZ_OFFPEAK_MOCK_QUOTA_COUNT` 注入以便验收。**后续计划**：新增配额查询接口后，改为在入口打开/创建按钮渲染前主动查配额，不再依赖 3103 失败事件做反应式置灰。当前实现仅作为无配额接口前的兜底方案。
+3. **非 coding plan 锁定态 = 客户端按当前时刻注册表判定（2026-07-16 用户拍板，推翻本条初版"暂缓"；资格真源已被 D40 取代）**：当时约定不等服务端 entitlement 字段——无有效订阅时 `codingPlanProviderAvailability` 已把 coding plan provider 置 `systemDisabledReason` 并实时同步 renderer 注册表，UI 判 `hasActiveCodingPlanProvider`（zai/bigmodel coding plan + bigmodel 团队套餐连接；Start plan 不算）即可，零新增请求。锁优先于达上限置灰；注册表加载中不闪锁。mock 演示走 `codingPlanActive` 强制通道（`CODEZ_OFFPEAK_MOCK_NO_PLAN=1` 演示锁态），真实路径不下发该字段。D40 进一步证明广泛扫描注册表会与 runtime credential 分叉，现状改为 host 解析当前 selected connection 后向 UI 返回脱敏 support。
 4. **维持作废**：「超出排队时间」自动分组 + 自动放回队列 toast（4866-2175 局部，被 D 决策 §266 推翻）；对话中轻流量入口帧（4828-1642，D30-4 v1 作废）；All tab idle 卡 Est.（D30-1）。
 
 ## D36 达上限置灰 = 配置额度 + 本地记录预判（2026-07-16 用户拍板，已被 D39 取代）
 
-服务端契约真源：内部仓库 `zcode/zcode-server` 的 `docs/off_peak_design.md`（§11.1）。
+服务端契约真源：内部仓库 `codez/codez-server` 的 `docs/off_peak_design.md`（§11.1）。
 
 **目标形态**：不靠撞墙——按「服务端下发的取号额度上限 + 本地滚动窗口取号记录」提前置灰创建按钮。
 
@@ -458,7 +458,7 @@ turn finally: restore user model ── clear active override ─────┴
 
 ```http
 GET /api/v1/off-peak/ticket/availability
-Authorization: Bearer <zcode-jwt>
+Authorization: Bearer <codez-jwt>
 X-Coding-Plan-Api-Key: <coding-plan-api-key>
 
 → { code: 0, data: { can_take_number: true } }
@@ -696,7 +696,7 @@ grilling 定案的关键取舍（完整契约见 spec §5.1）：
 1. **幻影行保排队可见**（否决"严格照抄 cron、排队只留 Automations"的 3–5 人日方案）：
    创建时预分配 `sessionId` 写 tasks-index 行，不建会话——D30-8 继续成立；派发时
    `session/create` 携带同 id 无缝升级，行身份恒定。协议早已支持带 id 创建
-   （zcodeSessionCreateParamsSchema.sessionId optional）。
+   （codezSessionCreateParamsSchema.sessionId optional）。
 2. **作用域降级**：接受 grouped 视图的 open-workspaces-only scope，跨项目聚合入口收敛
    到 Automations 主视图；不给单个分组开查询例外。
 3. **成员关系照抄松散**：可拖出/拖入，不加封闭守卫；标记跟行不跟组。
@@ -706,7 +706,7 @@ grilling 定案的关键取舍（完整契约见 spec §5.1）：
    cron 的建草稿语义对闲时是错误）。
 6. **全面抑制**：幻影行仅侧栏闲时组可见，Project/Timeline/Pinned/搜索/web 远控一律
    不出现；点击幻影行 → Automations。
-7. **退役与迁移**：虚拟 id 机制、`zcode-off-peak-sidebar-order`、投影去重整体删除；
+7. **退役与迁移**：虚拟 id 机制、`codez-off-peak-sidebar-order`、投影去重整体删除；
    本地折叠/排序偏好接受重置（未随正式版发布）；存量迁移幂等（有 session 回填标记+
    成员，无 session 补幻影行）；`OFF_PEAK_DEFAULT_GROUP_ID` 进 shared 与
    CRON_DEFAULT_GROUP_ID 并列（"不进 shared"的旧边界前提随真实 membership 出现而消失）。

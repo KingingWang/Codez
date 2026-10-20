@@ -13,7 +13,7 @@ export function createE2EStartupCredentialSeed(
   // 根因：远程回放 runner 默认假 OAuth 触发真实控制面的登录过期弹窗，SSH 前置入口被遮挡。
   // 回放从匿名 Personal Provider 开始；live case 仍在自己的步骤中导入真实凭据。
   if (options.remoteProfile) return {};
-  const requiresZCodeJwt = options.specs?.some((spec) => {
+  const requiresCodezJwt = options.specs?.some((spec) => {
     const fileName = spec.replaceAll("\\", "/").split("/").at(-1);
     return (
       // 营销投放 spec 按主题拆成 marketing-touch-delivery*.test.ts，领取用例都需要本地 JWT。
@@ -33,9 +33,9 @@ export function createE2EStartupCredentialSeed(
   });
   // Bug 原因：默认假 OAuth 即使没有 JWT，仍会访问真实账号控制面并触发过期弹窗。
   // 默认空凭据；只有显式账号 mock 或 JWT 专项采用合成身份，不再逐条排除普通用例。
-  if (!options.accountMock && !requiresZCodeJwt) return {};
+  if (!options.accountMock && !requiresCodezJwt) return {};
   const restoredOAuthCredentials = { ...options.restoredOAuthCredentials };
-  if (!requiresZCodeJwt) delete restoredOAuthCredentials.zcodejwttoken;
+  if (!requiresCodezJwt) delete restoredOAuthCredentials.codezjwttoken;
   return {
     auth_token: options.legacyAuthToken,
     ...restoredOAuthCredentials,

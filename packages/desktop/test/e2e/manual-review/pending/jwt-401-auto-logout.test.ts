@@ -1,15 +1,15 @@
 import { readFile } from "node:fs/promises";
-import { TID_OAUTH_LOGIN_BUTTON, TID_LOGIN_USE_API_KEY_BUTTON } from "@zcode/shared/test-ids";
+import { TID_OAUTH_LOGIN_BUTTON, TID_LOGIN_USE_API_KEY_BUTTON } from "@codez/shared/test-ids";
 import { clearAppData, getE2EAppDataPaths } from "../../helpers/desktop-app.js";
 
 const OAUTH_CREDENTIAL_KEYS = [
   "oauth:active_provider",
   "oauth:zai:access_token",
   "oauth:zai:user_info",
-  "zcodejwttoken",
+  "codezjwttoken",
 ] as const;
 
-describe("ZCode JWT 401 自动退出", () => {
+describe("Codez JWT 401 自动退出", () => {
   after(async () => {
     await browser.electron.restoreAllMocks();
     await clearAppData();
@@ -18,7 +18,7 @@ describe("ZCode JWT 401 自动退出", () => {
   it("运行中共享 JWT 收到普通 401 后清理凭据并进入登录入口", async function () {
     this.timeout(120_000);
 
-    const baseUrl = process.env.ZCODE_E2E_ACCESS_TOKEN_401_URL;
+    const baseUrl = process.env.CODEZ_E2E_ACCESS_TOKEN_401_URL;
     if (!baseUrl) throw new Error("缺少隔离共享 JWT HTTP fixture");
     // 旧用例 mock main net.fetch，不能证明 Host transport。先确认真实 Host 使用共享 JWT。
     await browser.waitUntil(

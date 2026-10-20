@@ -8,7 +8,7 @@ const originalHome = process.env.HOME;
 const tempRoots: string[] = [];
 
 function makeTempRoot(): string {
-  const root = mkdtempSync(join(tmpdir(), "zcode-hooks-"));
+  const root = mkdtempSync(join(tmpdir(), "codez-hooks-"));
   tempRoots.push(root);
   return root;
 }
@@ -36,15 +36,15 @@ describe("hooksService", () => {
     const home = makeTempRoot();
     const workspacePath = join(makeTempRoot(), "workspace");
 
-    mkdirSync(join(home, ".zcode", "cli"), { recursive: true });
+    mkdirSync(join(home, ".codez", "cli"), { recursive: true });
     mkdirSync(join(home, ".agents"), { recursive: true });
     mkdirSync(join(home, ".claude"), { recursive: true });
-    mkdirSync(join(workspacePath, ".zcode"), { recursive: true });
+    mkdirSync(join(workspacePath, ".codez"), { recursive: true });
     mkdirSync(join(workspacePath, ".agents"), { recursive: true });
     mkdirSync(join(workspacePath, ".claude"), { recursive: true });
 
     writeFileSync(
-      join(home, ".zcode", "cli", "config.json"),
+      join(home, ".codez", "cli", "config.json"),
       JSON.stringify({
         hooks: {
           enabled: true,
@@ -53,7 +53,7 @@ describe("hooksService", () => {
               {
                 matcher: "startup",
                 hooks: [
-                  { type: "process", command: "node", args: ["user-zcode.mjs"], customFlag: true },
+                  { type: "process", command: "node", args: ["user-codez.mjs"], customFlag: true },
                 ],
               },
             ],
@@ -63,7 +63,7 @@ describe("hooksService", () => {
       "utf-8",
     );
     writeFileSync(
-      join(workspacePath, ".zcode", "config.json"),
+      join(workspacePath, ".codez", "config.json"),
       JSON.stringify({
         hooks: {
           enabled: true,
@@ -75,7 +75,7 @@ describe("hooksService", () => {
                   {
                     type: "process",
                     command: "node",
-                    args: ["project-zcode.mjs"],
+                    args: ["project-codez.mjs"],
                     timeoutMs: 5000,
                   },
                 ],
@@ -114,15 +114,15 @@ describe("hooksService", () => {
         (hook) => `${hook.location?.source}:${hook.location?.scope}:${hook.command}`,
       ),
     ).toEqual([
-      "zcode:project:node",
+      "codez:project:node",
       "claude:project:echo claude",
-      "zcode:user:node",
+      "codez:user:node",
       "agents:user:echo agents",
     ]);
     expect(result.hooks[0]).toEqual(expect.objectContaining({ timeout: 5 }));
-    expect(result.hooks[0]?.location?.directoryPath).toBe(join(workspacePath, ".zcode"));
+    expect(result.hooks[0]?.location?.directoryPath).toBe(join(workspacePath, ".codez"));
     expect(result.hooks[2]).toEqual(
-      expect.objectContaining({ args: ["user-zcode.mjs"], custom: { customFlag: true } }),
+      expect.objectContaining({ args: ["user-codez.mjs"], custom: { customFlag: true } }),
     );
   });
 
@@ -137,11 +137,11 @@ describe("hooksService", () => {
         },
       },
     };
-    mkdirSync(join(home, ".zcode", "cli"), { recursive: true });
-    mkdirSync(join(workspacePath, ".zcode"), { recursive: true });
-    writeFileSync(join(home, ".zcode", "cli", "config.json"), JSON.stringify(hookConfig), "utf-8");
+    mkdirSync(join(home, ".codez", "cli"), { recursive: true });
+    mkdirSync(join(workspacePath, ".codez"), { recursive: true });
+    writeFileSync(join(home, ".codez", "cli", "config.json"), JSON.stringify(hookConfig), "utf-8");
     writeFileSync(
-      join(workspacePath, ".zcode", "config.json"),
+      join(workspacePath, ".codez", "config.json"),
       JSON.stringify(hookConfig),
       "utf-8",
     );
@@ -153,12 +153,12 @@ describe("hooksService", () => {
     expect(result.hooks.map((hook) => hook.location?.scope)).toEqual(["project", "user"]);
   });
 
-  it("saves zcode hooks to user and workspace config files", async () => {
+  it("saves codez hooks to user and workspace config files", async () => {
     const home = makeTempRoot();
     const workspacePath = join(makeTempRoot(), "workspace");
-    mkdirSync(join(home, ".zcode", "cli"), { recursive: true });
+    mkdirSync(join(home, ".codez", "cli"), { recursive: true });
     writeFileSync(
-      join(home, ".zcode", "cli", "config.json"),
+      join(home, ".codez", "cli", "config.json"),
       JSON.stringify({ features: { mcp: true } }),
       "utf-8",
     );
@@ -176,9 +176,9 @@ describe("hooksService", () => {
           enabled: true,
           custom: { extra: "user" },
           location: {
-            source: "zcode",
+            source: "codez",
             scope: "user",
-            directoryPath: join(home, ".zcode", "cli"),
+            directoryPath: join(home, ".codez", "cli"),
           },
         },
         {
@@ -188,9 +188,9 @@ describe("hooksService", () => {
           command: "node",
           enabled: true,
           location: {
-            source: "zcode",
+            source: "codez",
             scope: "project",
-            directoryPath: join(workspacePath, ".zcode"),
+            directoryPath: join(workspacePath, ".codez"),
             projectPath: workspacePath,
           },
         },
@@ -209,7 +209,7 @@ describe("hooksService", () => {
       ],
     });
 
-    const saved = JSON.parse(readFileSync(join(home, ".zcode", "cli", "config.json"), "utf-8"));
+    const saved = JSON.parse(readFileSync(join(home, ".codez", "cli", "config.json"), "utf-8"));
     expect(saved.features).toEqual({ mcp: true });
     expect(saved.hooks.events.Stop).toEqual([
       {
@@ -221,7 +221,7 @@ describe("hooksService", () => {
     expect(saved.hooks.events.PreToolUse).toBeUndefined();
 
     const projectSaved = JSON.parse(
-      readFileSync(join(workspacePath, ".zcode", "config.json"), "utf-8"),
+      readFileSync(join(workspacePath, ".codez", "config.json"), "utf-8"),
     );
     expect(projectSaved.hooks.events.PreToolUse).toEqual([
       {
@@ -233,9 +233,9 @@ describe("hooksService", () => {
   it("Source user scope does not read or write the anchor workspace config", async () => {
     const home = makeTempRoot();
     const anchorPath = join(makeTempRoot(), "source-user-anchor");
-    mkdirSync(join(anchorPath, ".zcode"), { recursive: true });
+    mkdirSync(join(anchorPath, ".codez"), { recursive: true });
     writeFileSync(
-      join(anchorPath, ".zcode", "config.json"),
+      join(anchorPath, ".codez", "config.json"),
       JSON.stringify({
         hooks: {
           events: { Stop: [{ hooks: [{ type: "command", command: "echo project" }] }] },
@@ -245,7 +245,7 @@ describe("hooksService", () => {
     );
 
     const service = await createHooksServiceInEnv(home);
-    const before = readFileSync(join(anchorPath, ".zcode", "config.json"), "utf-8");
+    const before = readFileSync(join(anchorPath, ".codez", "config.json"), "utf-8");
     await service.saveHooks({
       workspacePath: anchorPath,
       scope: "user",
@@ -256,14 +256,14 @@ describe("hooksService", () => {
           type: "command",
           command: "echo user",
           enabled: true,
-          location: { source: "zcode", scope: "user", directoryPath: "" },
+          location: { source: "codez", scope: "user", directoryPath: "" },
         },
       ],
     });
     const loaded = await service.loadHooks({ workspacePath: anchorPath, scope: "user" });
 
-    expect(readFileSync(join(anchorPath, ".zcode", "config.json"), "utf-8")).toBe(before);
-    expect(existsSync(join(home, ".zcode", "cli", "config.json"))).toBe(true);
+    expect(readFileSync(join(anchorPath, ".codez", "config.json"), "utf-8")).toBe(before);
+    expect(existsSync(join(home, ".codez", "cli", "config.json"))).toBe(true);
     expect(loaded.hooks.map((hook) => hook.command)).toEqual(["echo user"]);
   });
 
@@ -287,9 +287,9 @@ describe("hooksService", () => {
           timeout: 12,
           enabled: true,
           location: {
-            source: "zcode",
+            source: "codez",
             scope: "project",
-            directoryPath: join(workspacePath, ".zcode"),
+            directoryPath: join(workspacePath, ".codez"),
             projectPath: workspacePath,
           },
         },
@@ -310,9 +310,9 @@ describe("hooksService", () => {
   it("persists a disabled hook in the runtime-readable project config", async () => {
     const home = makeTempRoot();
     const workspacePath = join(makeTempRoot(), "workspace");
-    mkdirSync(join(workspacePath, ".zcode"), { recursive: true });
+    mkdirSync(join(workspacePath, ".codez"), { recursive: true });
     writeFileSync(
-      join(workspacePath, ".zcode", "config.json"),
+      join(workspacePath, ".codez", "config.json"),
       JSON.stringify({
         hooks: {
           enabled: true,
@@ -341,7 +341,7 @@ describe("hooksService", () => {
       ),
     });
 
-    const saved = JSON.parse(readFileSync(join(workspacePath, ".zcode", "config.json"), "utf-8"));
+    const saved = JSON.parse(readFileSync(join(workspacePath, ".codez", "config.json"), "utf-8"));
     expect(saved.hooks.events.PreToolUse[0].hooks[0]).toMatchObject({
       type: "process",
       command: "node",
@@ -357,16 +357,16 @@ describe("hooksService", () => {
   it("trust store 不可读时使用可注入 service logger 并保持 fail closed", async () => {
     const home = makeTempRoot();
     const workspacePath = join(makeTempRoot(), "workspace");
-    mkdirSync(join(workspacePath, ".zcode"), { recursive: true });
+    mkdirSync(join(workspacePath, ".codez"), { recursive: true });
     // 修复原因：CR-01 后非法 JSON（如 "{broken"）统一走 schema 解析分支（文案"结构不符合
     // schema"，已由 workspaceHookTrustCorrupt.test.ts 覆盖）；本用例验证的是 IO 不可读分支，
     // 因此用目录占位 trust store 路径——readFile 对目录稳定返回 EISDIR/EPERM（非 ENOENT），
     // 在 macOS/Linux/Windows 上都能触发"不可读"日志分支。
-    mkdirSync(join(home, ".zcode", "security", "workspace-hook-trust-v1.json"), {
+    mkdirSync(join(home, ".codez", "security", "workspace-hook-trust-v1.json"), {
       recursive: true,
     });
     writeFileSync(
-      join(workspacePath, ".zcode", "config.json"),
+      join(workspacePath, ".codez", "config.json"),
       JSON.stringify({
         hooks: {
           enabled: true,

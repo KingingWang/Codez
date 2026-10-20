@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createGroupResultDelivery } from "../src/bots/groupResultDelivery.js";
-import { botGroupDeliverySchema, type BotGroupDelivery } from "@zcode/shared";
+import { botGroupDeliverySchema, type BotGroupDelivery } from "@codez/shared";
 
 describe("saved group results", () => {
   it.each(["root", "original"])(

@@ -19,7 +19,7 @@
     │  ProjectSidebar（权威树在 ProjectDirectoryProvider context）
     │  countProjectTreeUnreadTasks(tree)                   project-sidebar/view.ts
     ▼
-usePlatform().syncWindowUnreadCount(count)                 IPC: zcode:sync-window-unread-count
+usePlatform().syncWindowUnreadCount(count)                 IPC: codez:sync-window-unread-count
     │  （web 端为 no-op；树刷新时才触发，计数不变不发包）
     ▼
 [Main] desktopMainIpcPlatform.ts → handleWindowUnreadCountSync

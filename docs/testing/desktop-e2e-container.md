@@ -34,10 +34,10 @@ pnpm dev:e2e-report
 
 然后打开 `summary.md` 或 `summary.json` 里的 `files.viewerUrl`。
 
-默认采样间隔是 3 秒，可通过 `PERF_SAMPLE_INTERVAL_SECONDS=5` 调整容器采样间隔。Electron 进程采样间隔由 `ZCODE_E2E_PERF_SAMPLE_INTERVAL_MS` 控制；如果希望容器和 Electron 曲线按同一节奏采样，可以这样运行：
+默认采样间隔是 3 秒，可通过 `PERF_SAMPLE_INTERVAL_SECONDS=5` 调整容器采样间隔。Electron 进程采样间隔由 `CODEZ_E2E_PERF_SAMPLE_INTERVAL_MS` 控制；如果希望容器和 Electron 曲线按同一节奏采样，可以这样运行：
 
 ```bash
-ZCODE_E2E_PERF_SAMPLE_INTERVAL_MS=1000 \
+CODEZ_E2E_PERF_SAMPLE_INTERVAL_MS=1000 \
 PERF_SAMPLE_INTERVAL_SECONDS=1 \
 pnpm run test:e2e:container
 ```
@@ -76,7 +76,7 @@ E2E_SPEC=./test/e2e/conversation-session/<case>.test.ts \
 通过后用准入工具登记：
 
 ```bash
-pnpm --filter @zcode/desktop e2e:docker:admit -- \
+pnpm --filter @codez/desktop e2e:docker:admit -- \
   --spec ./test/e2e/conversation-session/<case>.test.ts \
   --verified \
   --artifact packages/desktop/.e2e-artifacts/<run-id> \
@@ -85,11 +85,11 @@ pnpm --filter @zcode/desktop e2e:docker:admit -- \
 
 `smoke.test.ts` 会进一步验证 renderer 是否进入可交互工作区主界面；如果它失败，应按普通桌面 E2E 问题继续排查，不把 workaround 写进业务默认路径。
 
-首次运行会下载 Electron 对应的 Chromedriver，并缓存到 Docker volume。默认平台是 `linux/amd64`，默认缓存名是 `zcode-desktop-e2e-driver-cache-linux-amd64`；后续运行会复用缓存。需要调整时可使用：
+首次运行会下载 Electron 对应的 Chromedriver，并缓存到 Docker volume。默认平台是 `linux/amd64`，默认缓存名是 `codez-desktop-e2e-driver-cache-linux-amd64`；后续运行会复用缓存。需要调整时可使用：
 
 ```bash
 DOCKER_PLATFORM=linux/amd64 \
-DRIVER_CACHE_VOLUME=my-zcode-e2e-driver-cache \
+DRIVER_CACHE_VOLUME=my-codez-e2e-driver-cache \
 DRIVER_PREFETCH_TIMEOUT=600 \
 pnpm run test:e2e:container
 ```
@@ -106,8 +106,8 @@ pnpm run test:e2e:container
 需要固定报告目录时可使用：
 
 ```bash
-ZCODE_E2E_RUN_ID=my-regression-run \
-E2E_ARTIFACT_DIR=/tmp/zcode-e2e-report \
+CODEZ_E2E_RUN_ID=my-regression-run \
+E2E_ARTIFACT_DIR=/tmp/codez-e2e-report \
 pnpm run test:e2e:container
 ```
 
@@ -132,6 +132,6 @@ pnpm run test:e2e:container
 
 - 镜像基于 `node:24.14.0-bookworm`，预装 Electron/Chromium 在 Linux 下需要的 GTK、X11、字体、DBus 和 `xvfb` 依赖。
 - 启动脚本默认使用 `linux/amd64`，让 Electron、Chrome-for-Testing Chromedriver 和系统动态链接器保持同一架构；在 Apple Silicon 上由 Docker Desktop 负责整容器模拟。
-- `packages/desktop/wdio.conf.ts` 只在 `ZCODE_E2E_CONTAINER=1` 时启用容器参数，包括 WDIO Xvfb 重试和 Chromium 测试参数。
+- `packages/desktop/wdio.conf.ts` 只在 `CODEZ_E2E_CONTAINER=1` 时启用容器参数，包括 WDIO Xvfb 重试和 Chromium 测试参数。
 - 容器模式固定 WDIO Chromedriver cache 到 `/workspace/.cache/wdio-browser-drivers`，启动脚本通过 Docker volume 复用缓存，避免每轮测试都依赖即时网络下载。
 - 这个 demo 不验证手机 `/remote` 的 `web-remote-replayable` 恢复语义；远控链路应继续使用独立的 web/mobile 回归。

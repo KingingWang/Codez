@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 import { buildCodingPlanUsageDetailLineChartSeries } from "@/settings/usage-stats/codingPlanUsageChartSeries.js";
 import { calculateCodingPlanBarChartMaxValue } from "@/settings/usage-stats/CodingPlanUsageBarChart.js";
 import {

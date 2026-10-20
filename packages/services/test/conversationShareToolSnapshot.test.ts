@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildConversationSharePublicProjection } from "../src/conversation-share/conversationSharePublicProjection.js";
-import type { ConversationRow } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationRow } from "@codez/shared/codez-protocol-v4";
 const rows: ConversationRow[] = [
   {
     kind: "turnHeader",

@@ -16,7 +16,7 @@ afterEach(() => {
 });
 
 function useTempDataDir() {
-  tempDir = mkdtempSync(join(tmpdir(), "zcode-bots-telegram-polling-"));
+  tempDir = mkdtempSync(join(tmpdir(), "codez-bots-telegram-polling-"));
   setDataBaseDir(tempDir);
 }
 
@@ -133,7 +133,7 @@ describe("botsService Telegram polling", () => {
         const runtime = (await serviceB.getStatus()).botRuntime[0];
         expect(runtime).toMatchObject({
           status: "idle",
-          message: "Telegram long polling is handled by another ZCode window.",
+          message: "Telegram long polling is handled by another Codez window.",
         });
       });
       expect(

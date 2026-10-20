@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { CommandEnvelope } from "@zcode/shared/zcode-protocol-v4";
+import type { CommandEnvelope } from "@codez/shared/codez-protocol-v4";
 import { sendInteractionAutoResolutionSnooze } from "../src/v4/interactionAutoResolutionCommand.js";
 
 describe("sendInteractionAutoResolutionSnooze", () => {

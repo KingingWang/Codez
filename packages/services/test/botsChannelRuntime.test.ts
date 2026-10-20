@@ -769,7 +769,7 @@ describe("bot channel runtime lock", () => {
   });
 
   it("atomically grants a concurrently initialized lock to one host", async () => {
-    tempDir = mkdtempSync(join(tmpdir(), "zcode-bot-runtime-lock-"));
+    tempDir = mkdtempSync(join(tmpdir(), "codez-bot-runtime-lock-"));
     setDataBaseDir(tempDir);
 
     // 回归：旧实现先发布空锁目录再写 owner，并发请求会把初始化中的锁当成 stale 删除。
@@ -785,7 +785,7 @@ describe("bot channel runtime lock", () => {
   });
 
   it("grants a Weixin token lock to one host and allows takeover after release", async () => {
-    tempDir = mkdtempSync(join(tmpdir(), "zcode-weixin-runtime-lock-"));
+    tempDir = mkdtempSync(join(tmpdir(), "codez-weixin-runtime-lock-"));
     setDataBaseDir(tempDir);
 
     const [owner, contender] = await Promise.all([
@@ -802,7 +802,7 @@ describe("bot channel runtime lock", () => {
   });
 
   it("locks the same Feishu App identity across local bot records", async () => {
-    tempDir = mkdtempSync(join(tmpdir(), "zcode-feishu-runtime-lock-"));
+    tempDir = mkdtempSync(join(tmpdir(), "codez-feishu-runtime-lock-"));
     setDataBaseDir(tempDir);
 
     const owner = await acquireFeishuWebSocketLock({
@@ -822,14 +822,14 @@ describe("bot channel runtime lock", () => {
   });
 
   it("takes over an expired lease even when its PID is alive", async () => {
-    tempDir = mkdtempSync(join(tmpdir(), "zcode-expired-runtime-lock-"));
+    tempDir = mkdtempSync(join(tmpdir(), "codez-expired-runtime-lock-"));
     setDataBaseDir(tempDir);
     const token = "pid-reuse-token";
     const nonce = "abandoned-owner";
     const lockHash = createHash("sha256").update(token).digest("hex");
     const lockPath = join(
       tempDir,
-      ".zcode",
+      ".codez",
       "v2",
       "bots-runtime-locks",
       "telegram-polling",

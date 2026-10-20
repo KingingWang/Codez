@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 
 import * as v4 from "#e2e/helpers/v4-conversation";
 import * as ssh from "#e2e/helpers/ssh-remote-p0";
@@ -14,7 +14,7 @@ const marker = "E2E_R3_SSH_READY";
 const providerId = "e2e-r3-ssh-ready";
 const providerName = "R3 SSH Ready";
 const modelId = "e2e-r3-ssh-ready-model";
-const artifactDir = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-ssh-ready");
+const artifactDir = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-ssh-ready");
 let tunnel: { baseURL: string; close(): Promise<void> } | undefined;
 
 describe(`${marker}: Provider 首连与远端项目对话`, () => {
@@ -42,7 +42,7 @@ describe(`${marker}: Provider 首连与远端项目对话`, () => {
     await mkdir(artifactDir, { recursive: true });
     // 不打开 Process Monitor，保证显式录制持续绑定主窗口。
     const recording =
-      process.env.ZCODE_E2E_FAILURE_ARTIFACTS === "1"
+      process.env.CODEZ_E2E_FAILURE_ARTIFACTS === "1"
         ? undefined
         : await recorder.startElectronWindowRecording({
             outputPath: resolve(artifactDir, "main-flow.webm"),
@@ -64,7 +64,7 @@ describe(`${marker}: Provider 首连与远端项目对话`, () => {
       // 凭据材料,按脱敏原则只断言存在性、不读内容不比对。
       const remote = await ssh.runSSHCommand(
         config,
-        'test -f "$HOME/.zcode/v2/provider_config.json" && echo provisioned',
+        'test -f "$HOME/.codez/v2/provider_config.json" && echo provisioned',
       );
       expect(remote.stdout).toContain("provisioned");
       // 本地同样只有 provider_config.json(round 41 取证:本地 v2/ 与远端一致,

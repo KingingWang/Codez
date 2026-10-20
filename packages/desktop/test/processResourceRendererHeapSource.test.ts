@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PlatformChannels, type ProcessResourceRole } from "@zcode/shared";
+import { PlatformChannels, type ProcessResourceRole } from "@codez/shared";
 
 const h = vi.hoisted(() => ({
   ipcListeners: new Map<string, Array<(...args: unknown[]) => unknown>>(),
@@ -13,7 +13,7 @@ vi.mock("electron", () => ({
     getAppMetrics: vi.fn(() => []),
     getPath: vi.fn(() => "/tmp"),
     isPackaged: false,
-    getAppPath: vi.fn(() => "/tmp/zcode-app"),
+    getAppPath: vi.fn(() => "/tmp/codez-app"),
   },
   BrowserWindow: { getAllWindows: vi.fn(() => []) },
   ipcMain: {

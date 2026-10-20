@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeTelemetryEventDetail } from "@zcode/shared";
+import { sanitizeTelemetryEventDetail } from "@codez/shared";
 
 describe("telemetry privacy boundary", () => {
   it.each([

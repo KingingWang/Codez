@@ -1,7 +1,7 @@
 // 插件 MCP skill 生命周期 e2e helper。
 // 仅在 conversation-session/manual-review/pending/conversation-session-plugin-mcp-skill-*.test.ts
 // 这几个 spec 里被使用；wdio 启动前在 seedE2EStartupState 阶段会把对应的
-// plugin 安装记录落到 <E2E_HOME>/.zcode/cli/plugins/，并 patch cli config。
+// plugin 安装记录落到 <E2E_HOME>/.codez/cli/plugins/，并 patch cli config。
 import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 
@@ -18,8 +18,8 @@ export const PLUGIN_MCP_PLUGIN_ROOT = PLUGIN_ROOT;
 export const PLUGIN_MCP_PLUGIN_ID = "e2e-plugin-mcp-ping@e2e-fixture";
 // Bugfix: agent adapter 注入 MCP 工具时把 namespaced server 名（`plugin:<name>:<server>`）
 // 重写成符合模型 API 工具名约束的 `mcp__plugin_<name>_<server>__<tool>`，实际发给模型的就是这个名。
-// 见 `apps/zcode-cli/packages/adapters/src/mcp/descriptor.ts` 与
-// `apps/zcode-cli/packages/adapters/src/mcp/index.ts:normalizeMcpToolDescriptor`。
+// 见 `apps/codez-cli/packages/adapters/src/mcp/descriptor.ts` 与
+// `apps/codez-cli/packages/adapters/src/mcp/index.ts:normalizeMcpToolDescriptor`。
 export const PLUGIN_MCP_TOOL_NAME = "mcp__plugin_e2e-plugin-mcp-ping_ping__ping";
 export const PLUGIN_MCP_MARKER_PREFIX = "E2E_PLUGIN_MCP_PING";
 

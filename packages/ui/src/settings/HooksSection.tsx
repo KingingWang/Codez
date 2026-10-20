@@ -3,15 +3,15 @@ import { SettingsUserScopeProvider } from "@/settings/SettingsMachine.js";
 /* eslint-disable max-lines -- Hooks 页面聚合 Scope、插件投影、搜索与配置写入流程。 */
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Plus } from "lucide-react";
-import type { Hook, HookConfig, ZCodeInstalledPluginSummary, ZCodePluginInfo } from "@zcode/shared";
-import type { IHooksService } from "@zcode/services";
+import type { Hook, HookConfig, CodezInstalledPluginSummary, CodezPluginInfo } from "@codez/shared";
+import type { IHooksService } from "@codez/services";
 import { Button } from "@/components/ui/button.js";
 import { toast } from "@/components/ui/toast.js";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
 import { useServices } from "@/hooks/useServices.js";
 import { useConfigWorkspaceServicesResolution as useWorkspaceServicesResolution } from "@/workspace-config-catalog/index.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { invalidateDeferredDraftSessionForRuntimeChange } from "@/lib/zcodeDraftSkillInvalidation.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
+import { invalidateDeferredDraftSessionForRuntimeChange } from "@/lib/codezDraftSkillInvalidation.js";
 import { useHooksStore } from "@/store/hooksStore.js";
 import { usePluginManagementStore } from "@/store/pluginManagementStore.js";
 import { HookForm } from "./HookForm.js";
@@ -42,19 +42,19 @@ interface HooksSectionProps {
 function isEditableHook(hook: Hook): boolean {
   // workspace-hook-trust：运行时 discovery 会下发 editable 标志（工作区 Hook 在
   // runtime 侧不可直接改配置），优先尊重；本地 Settings 发现路径无该标志时回退旧规则。
-  return hook.editable ?? (!hook.location || hook.location.source === "zcode");
+  return hook.editable ?? (!hook.location || hook.location.source === "codez");
 }
 
-// workspace-hook-trust：editable=false 且 source=zcode 的行是「上游/祖先 zcode.json
+// workspace-hook-trust：editable=false 且 source=codez 的行是「上游/祖先 codez.json
 // 里的只读工作区 Hook」。它们不是外部格式兼容导入源，塞进 Legacy 会让 Import 按钮
-// 必然失败（importHook 拒绝 source=zcode），也违反「只读但可逐条 Trust」的约定。
+// 必然失败（importHook 拒绝 source=codez），也违反「只读但可逐条 Trust」的约定。
 // 这类行应留在 Installed 分组，由信任状态门控 Switch，走行内 Trust 流程。
-export function isReadOnlyZCodeHook(hook: Hook): boolean {
-  return hook.editable === false && (hook.location?.source ?? "zcode") === "zcode";
+export function isReadOnlyCodezHook(hook: Hook): boolean {
+  return hook.editable === false && (hook.location?.source ?? "codez") === "codez";
 }
 
 function isInCompatibilitySection(hook: Hook): boolean {
-  return !isEditableHook(hook) && !isReadOnlyZCodeHook(hook);
+  return !isEditableHook(hook) && !isReadOnlyCodezHook(hook);
 }
 
 /**
@@ -124,8 +124,8 @@ export function resolveHookScopeTarget(
 }
 
 export function buildPluginHookRows(
-  plugins: readonly Pick<ZCodePluginInfo, "enabled" | "hookDetails" | "id" | "name">[],
-  installedPlugins: readonly Pick<ZCodeInstalledPluginSummary, "id" | "scope">[],
+  plugins: readonly Pick<CodezPluginInfo, "enabled" | "hookDetails" | "id" | "name">[],
+  installedPlugins: readonly Pick<CodezInstalledPluginSummary, "id" | "scope">[],
   scopeMetadataKnown: boolean,
 ): PluginHookRow[] {
   const scopeByPluginId = new Map(
@@ -159,7 +159,7 @@ export function HooksSection({
   workspaceIdentity,
   settingsSourceServerId,
 }: HooksSectionProps) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const confirmDialog = useConfirmDialog();
   const currentServices = useServices();
   const hooksState = useHooksStore();
@@ -208,7 +208,7 @@ export function HooksSection({
   const hooksService = useMemo<IHooksService>(() => {
     if (!settingsSourceServerId || activeScope !== "user") return targetHooksService;
     // Bug 原因：Source user scope 需要一个远端路径作 RPC 锚点，但该路径不是 project。
-    // 强制 user-only 合同，避免把 Source home 误当 workspace 并覆盖其 .zcode/config.json。
+    // 强制 user-only 合同，避免把 Source home 误当 workspace 并覆盖其 .codez/config.json。
     return {
       loadHooks: (params) => targetHooksService.loadHooks({ ...params, scope: "user" }),
       saveHooks: (params) => targetHooksService.saveHooks({ ...params, scope: "user" }),
@@ -237,7 +237,7 @@ export function HooksSection({
     () =>
       hooksState.hooks.filter(
         (hook) =>
-          (isEditableHook(hook) || isReadOnlyZCodeHook(hook)) &&
+          (isEditableHook(hook) || isReadOnlyCodezHook(hook)) &&
           (hook.location?.scope ?? "user") === activeScope,
       ),
     [activeScope, hooksState.hooks],

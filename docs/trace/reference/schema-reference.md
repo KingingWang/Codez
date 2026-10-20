@@ -29,15 +29,15 @@ model_attempt
 ### 1.2 Canonical Attribute
 
 ```text
-zcode.<span_name>.<property>
-zcode.execution.<property>
-zcode.telemetry.<property>
-zcode.runtime.<property>
-zcode.device.<property>
+codez.<span_name>.<property>
+codez.execution.<property>
+codez.telemetry.<property>
+codez.runtime.<property>
+codez.device.<property>
 ```
 
-Span Attribute 使用下划线 Span Name，例如 `zcode.model_attempt.requested_model`。Metric 名称使用
-OTel 风格的点分域，例如 `zcode.model.attempt.duration`。二者用途不同，不要机械互换。
+Span Attribute 使用下划线 Span Name，例如 `codez.model_attempt.requested_model`。Metric 名称使用
+OTel 风格的点分域，例如 `codez.model.attempt.duration`。二者用途不同，不要机械互换。
 
 约定：
 
@@ -69,21 +69,21 @@ Writer 方法是字段入口，Runtime 内的显式 Key 是输出映射。
 
 | 字段                             | 类型    | 含义与来源                                                           |
 | -------------------------------- | ------- | -------------------------------------------------------------------- |
-| `service.name`                   | string  | 默认 `zcode-cli-agent`，可由受控 OTEL 配置覆盖                       |
-| `service.version`                | string? | CLI bundle 实际内置版本，来自 `apps/zcode-cli/package.json` 构建注入 |
+| `service.name`                   | string  | 默认 `codez-cli-agent`，可由受控 OTEL 配置覆盖                       |
+| `service.version`                | string? | CLI bundle 实际内置版本，来自 `apps/codez-cli/package.json` 构建注入 |
 | `service.instance.id`            | string  | 每个 CLI 进程随机实例 ID                                             |
 | `deployment.environment.name`    | string? | 产品环境                                                             |
 | `process.runtime.name`           | string  | `nodejs`                                                             |
 | `process.runtime.version`        | string  | Node 版本                                                            |
 | `os.type`                        | string  | Node `process.platform`                                              |
 | `host.arch`                      | string  | 归一化 CPU 架构                                                      |
-| `zcode.telemetry.schema_owner`   | string  | 固定 `cli`                                                           |
-| `zcode.telemetry.schema_version` | integer | 当前为 `5`                                                           |
-| `zcode.product.version`          | string? | Desktop/产品构建版本                                                 |
-| `zcode.build.commit_id`          | string? | 可信构建 Commit                                                      |
-| `zcode.runtime.surface`          | enum    | `standalone_cli` / `desktop_local_host` / `remote_workspace_host`    |
-| `zcode.runtime.distribution`     | enum    | `source` / `development_bundle` / `packaged` / `unknown`             |
-| `zcode.device.installation_id`   | string? | 持久化随机安装假名，不是硬件 ID                                      |
+| `codez.telemetry.schema_owner`   | string  | 固定 `cli`                                                           |
+| `codez.telemetry.schema_version` | integer | 当前为 `5`                                                           |
+| `codez.product.version`          | string? | Desktop/产品构建版本                                                 |
+| `codez.build.commit_id`          | string? | 可信构建 Commit                                                      |
+| `codez.runtime.surface`          | enum    | `standalone_cli` / `desktop_local_host` / `remote_workspace_host`    |
+| `codez.runtime.distribution`     | enum    | `source` / `development_bundle` / `packaged` / `unknown`             |
+| `codez.device.installation_id`   | string? | 持久化随机安装假名，不是硬件 ID                                      |
 
 ### 2.2 Metric Resource
 
@@ -91,7 +91,7 @@ Metric 保留服务、版本、环境、Runtime、平台和构建字段，但省
 
 ```text
 service.instance.id
-zcode.device.installation_id
+codez.device.installation_id
 ```
 
 原因是它们会进入 Metric Series 身份，导致每个安装和进程产生独立时序。Metric Exporter 使用
@@ -104,20 +104,20 @@ DELTA Temporality，适配大量短生命周期 CLI 生产者。
 
 | 字段                                | 类型    | 含义                                                               | 主要出现位置                        |
 | ----------------------------------- | ------- | ------------------------------------------------------------------ | ----------------------------------- |
-| `zcode.execution.session_id`        | string? | 当前 Session                                                       | Turn、Detached、Call、Attempt       |
-| `zcode.execution.parent_session_id` | string? | Child 的父 Session                                                 | 同上                                |
-| `zcode.execution.turn_id`           | string? | 当前 Turn                                                          | 有 Turn Context 的所有关键 Span     |
-| `zcode.execution.parent_turn_id`    | string? | Child 的父 Turn                                                    | Turn、Detached、Call、Attempt       |
-| `zcode.execution.query_id`          | string? | 请求级 Query ID                                                    | Turn、Detached、Call、Attempt       |
-| `zcode.execution.actor_kind`        | enum?   | `main` / `subagent` / `workflow_child`                             | Turn、Tool、Detached、Call、Attempt |
-| `zcode.execution.agent_name`        | string? | 受控 Agent 名称                                                    | Turn                                |
-| `zcode.execution.identity_state`    | enum?   | `authenticated` / `anonymous` / `unknown`                          | Turn                                |
-| `zcode.execution.user_subject_id`   | string? | 受控用户主体 ID                                                    | Turn                                |
-| `zcode.execution.launch_surface`    | enum?   | `desktop` / `standalone_cli` / `web_remote` / `automation` / `bot` | 有 Execution Context 的 Span        |
-| `zcode.execution.tool_call_id`      | string? | Tool Call 关联 ID                                                  | Tool、Command、工具内 Call/Attempt  |
-| `zcode.execution.logical_call_id`   | string? | 逻辑模型调用 ID                                                    | Call、Attempt                       |
-| `zcode.execution.model_operation`   | enum?   | Attempt 的父 Call Operation 快照                                   | Attempt                             |
-| `zcode.execution.model_role`        | string? | Attempt 的父 Call Model Role 快照                                  | Attempt                             |
+| `codez.execution.session_id`        | string? | 当前 Session                                                       | Turn、Detached、Call、Attempt       |
+| `codez.execution.parent_session_id` | string? | Child 的父 Session                                                 | 同上                                |
+| `codez.execution.turn_id`           | string? | 当前 Turn                                                          | 有 Turn Context 的所有关键 Span     |
+| `codez.execution.parent_turn_id`    | string? | Child 的父 Turn                                                    | Turn、Detached、Call、Attempt       |
+| `codez.execution.query_id`          | string? | 请求级 Query ID                                                    | Turn、Detached、Call、Attempt       |
+| `codez.execution.actor_kind`        | enum?   | `main` / `subagent` / `workflow_child`                             | Turn、Tool、Detached、Call、Attempt |
+| `codez.execution.agent_name`        | string? | 受控 Agent 名称                                                    | Turn                                |
+| `codez.execution.identity_state`    | enum?   | `authenticated` / `anonymous` / `unknown`                          | Turn                                |
+| `codez.execution.user_subject_id`   | string? | 受控用户主体 ID                                                    | Turn                                |
+| `codez.execution.launch_surface`    | enum?   | `desktop` / `standalone_cli` / `web_remote` / `automation` / `bot` | 有 Execution Context 的 Span        |
+| `codez.execution.tool_call_id`      | string? | Tool Call 关联 ID                                                  | Tool、Command、工具内 Call/Attempt  |
+| `codez.execution.logical_call_id`   | string? | 逻辑模型调用 ID                                                    | Call、Attempt                       |
+| `codez.execution.model_operation`   | enum?   | Attempt 的父 Call Operation 快照                                   | Attempt                             |
+| `codez.execution.model_role`        | string? | Attempt 的父 Call Model Role 快照                                  | Attempt                             |
 
 `user_subject_id` 当前不是 Hash 字段；调用方只能注入经过产品身份边界确认的主体 ID。安装 ID 和
 用户主体 ID 都禁止作为 Metric Label。
@@ -127,14 +127,14 @@ DELTA Temporality，适配大量短生命周期 CLI 生产者。
 每个业务 Span 使用自己的前缀继承同一组生命周期语义。例如 `model_attempt` 产生：
 
 ```text
-zcode.model_attempt.outcome
-zcode.model_attempt.failure_stage
-zcode.model_attempt.error_category
-zcode.model_attempt.error_type
-zcode.model_attempt.error_code
-zcode.model_attempt.error_message
-zcode.model_attempt.cancel_reason
-zcode.model_attempt.abandon_reason
+codez.model_attempt.outcome
+codez.model_attempt.failure_stage
+codez.model_attempt.error_category
+codez.model_attempt.error_type
+codez.model_attempt.error_code
+codez.model_attempt.error_message
+codez.model_attempt.cancel_reason
+codez.model_attempt.abandon_reason
 ```
 
 | Property         | 类型    | 写入条件         | 含义                                 |
@@ -171,9 +171,9 @@ Parent：主 Turn 为 Root；前台 Child Agent 可为 Tool Child；后台 Child
 
 | 专属字段                        | 类型    | 含义                                                         |
 | ------------------------------- | ------- | ------------------------------------------------------------ |
-| `zcode.agent_turn.turn_number`  | integer | Session 内 Turn 序号                                         |
-| `zcode.agent_turn.input_source` | enum?   | `user` 或受控 Synthetic Message Source                       |
-| `zcode.agent_turn.result_type`  | enum?   | `assistant_message` / `tool_request` / `no_output` / `other` |
+| `codez.agent_turn.turn_number`  | integer | Session 内 Turn 序号                                         |
+| `codez.agent_turn.input_source` | enum?   | `user` 或受控 Synthetic Message Source                       |
+| `codez.agent_turn.result_type`  | enum?   | `assistant_message` / `tool_request` / `no_output` / `other` |
 
 ```text
 outcome       = completed | failed | cancelled | abandoned
@@ -188,9 +188,9 @@ Parent：`agent_turn`。
 
 | 专属字段                           | 类型    | 含义                         |
 | ---------------------------------- | ------- | ---------------------------- |
-| `zcode.agent_step.step_id`         | string  | Step 对应消息/执行 ID        |
-| `zcode.agent_step.step_index`      | integer | Turn 内从 0 开始的 Step 序号 |
-| `zcode.agent_step.terminal_reason` | enum?   | 正常结束原因                 |
+| `codez.agent_step.step_id`         | string  | Step 对应消息/执行 ID        |
+| `codez.agent_step.step_index`      | integer | Turn 内从 0 开始的 Step 序号 |
+| `codez.agent_step.terminal_reason` | enum?   | 正常结束原因                 |
 
 ```text
 terminal_reason =
@@ -206,11 +206,11 @@ Parent：通常为 `agent_step`；工具内部模型调用和命令均为它的 
 
 | 专属字段                                        | 类型     | 含义                                                        |
 | ----------------------------------------------- | -------- | ----------------------------------------------------------- |
-| `zcode.tool_execution.tool_name`                | string   | Tool Registry 中的受控名称                                  |
-| `zcode.tool_execution.permission_decision`      | enum?    | `granted` / `denied` / `not_required`                       |
-| `zcode.tool_execution.permission_denial_reason` | enum?    | `user_denied` / `policy_denied` / `unavailable` / `unknown` |
-| `zcode.tool_execution.output_bytes`             | number?  | Tool 结果序列化后的大小，不含正文                           |
-| `zcode.tool_execution.output_truncated`         | boolean? | 输出是否被截断；未知时省略                                  |
+| `codez.tool_execution.tool_name`                | string   | Tool Registry 中的受控名称                                  |
+| `codez.tool_execution.permission_decision`      | enum?    | `granted` / `denied` / `not_required`                       |
+| `codez.tool_execution.permission_denial_reason` | enum?    | `user_denied` / `policy_denied` / `unavailable` / `unknown` |
+| `codez.tool_execution.output_bytes`             | number?  | Tool 结果序列化后的大小，不含正文                           |
+| `codez.tool_execution.output_truncated`         | boolean? | 输出是否被截断；未知时省略                                  |
 
 ```text
 outcome = completed | denied | failed | cancelled | abandoned
@@ -231,16 +231,16 @@ Parent：`tool_execution`。只有实际启动 OS 进程才创建，不适用于
 
 | 专属字段                                  | 类型     | 含义                                                   |
 | ----------------------------------------- | -------- | ------------------------------------------------------ |
-| `zcode.command_execution.safe_name`       | string   | Allowlist 命令族，例如 `git.status`，不是原始命令      |
-| `zcode.command_execution.category`        | enum     | 命令类别                                               |
-| `zcode.command_execution.command_count`   | integer  | Pipeline 中命令数量                                    |
-| `zcode.command_execution.shell_kind`      | enum?    | `bash` / `zsh` / `sh` / `powershell` / `cmd` / `other` |
-| `zcode.command_execution.sandboxed`       | boolean  | 是否在 Sandbox 中执行                                  |
-| `zcode.command_execution.first_output_ms` | number?  | 首次输出耗时，毫秒                                     |
-| `zcode.command_execution.exit_code`       | integer? | OS 进程退出码；未产生退出码时省略                      |
-| `zcode.command_execution.signal`          | string?  | 终止 Signal 的受控标识                                 |
-| `zcode.command_execution.output_bytes`    | number?  | 输出字节数，不含正文                                   |
-| `zcode.command_execution.timed_out`       | boolean? | 是否明确超时                                           |
+| `codez.command_execution.safe_name`       | string   | Allowlist 命令族，例如 `git.status`，不是原始命令      |
+| `codez.command_execution.category`        | enum     | 命令类别                                               |
+| `codez.command_execution.command_count`   | integer  | Pipeline 中命令数量                                    |
+| `codez.command_execution.shell_kind`      | enum?    | `bash` / `zsh` / `sh` / `powershell` / `cmd` / `other` |
+| `codez.command_execution.sandboxed`       | boolean  | 是否在 Sandbox 中执行                                  |
+| `codez.command_execution.first_output_ms` | number?  | 首次输出耗时，毫秒                                     |
+| `codez.command_execution.exit_code`       | integer? | OS 进程退出码；未产生退出码时省略                      |
+| `codez.command_execution.signal`          | string?  | 终止 Signal 的受控标识                                 |
+| `codez.command_execution.output_bytes`    | number?  | 输出字节数，不含正文                                   |
+| `codez.command_execution.timed_out`       | boolean? | 是否明确超时                                           |
 
 ```text
 category = shell | git | package_manager | build | test | file | network | other
@@ -262,18 +262,18 @@ Parent：当前 Turn；通常与触发它的 Step 同属 Turn，但不是 Step �
 
 | 专属字段                                                  | 类型     | 含义                            |
 | --------------------------------------------------------- | -------- | ------------------------------- |
-| `zcode.context_compaction.trigger`                        | enum     | Contracts 中的 `CompactTrigger` |
-| `zcode.context_compaction.phase`                          | enum     | Contracts 中的 `CompactPhase`   |
-| `zcode.context_compaction.model_mode`                     | enum     | `streaming` / `non_streaming`   |
-| `zcode.context_compaction.outer_attempt`                  | integer? | 外层恢复尝试序号                |
-| `zcode.context_compaction.max_attempts`                   | integer? | 外层最大尝试数                  |
-| `zcode.context_compaction.triggering_step_index`          | integer? | 触发压缩的 Step 序号            |
-| `zcode.context_compaction.recovered_from_logical_call_id` | string?  | 恢复来源 Call ID                |
-| `zcode.context_compaction.input_tokens`                   | number?  | Auto / Reactive 触发压缩时的当前 provider-visible 上下文 Token |
-| `zcode.context_compaction.output_tokens`                  | number?  | 压缩输出 Token                  |
-| `zcode.context_compaction.policy_context_window_tokens`   | number?  | Auto / Reactive 本次执行模型使用的策略上下文窗口 |
-| `zcode.context_compaction.threshold_tokens`               | number?  | Auto Compact 本次决策使用的触发阈值；其他触发类型可省略 |
-| `zcode.context_compaction.token_source`                   | enum?    | `estimate` / `provider_usage`；说明 `input_tokens` 的来源 |
+| `codez.context_compaction.trigger`                        | enum     | Contracts 中的 `CompactTrigger` |
+| `codez.context_compaction.phase`                          | enum     | Contracts 中的 `CompactPhase`   |
+| `codez.context_compaction.model_mode`                     | enum     | `streaming` / `non_streaming`   |
+| `codez.context_compaction.outer_attempt`                  | integer? | 外层恢复尝试序号                |
+| `codez.context_compaction.max_attempts`                   | integer? | 外层最大尝试数                  |
+| `codez.context_compaction.triggering_step_index`          | integer? | 触发压缩的 Step 序号            |
+| `codez.context_compaction.recovered_from_logical_call_id` | string?  | 恢复来源 Call ID                |
+| `codez.context_compaction.input_tokens`                   | number?  | Auto / Reactive 触发压缩时的当前 provider-visible 上下文 Token |
+| `codez.context_compaction.output_tokens`                  | number?  | 压缩输出 Token                  |
+| `codez.context_compaction.policy_context_window_tokens`   | number?  | Auto / Reactive 本次执行模型使用的策略上下文窗口 |
+| `codez.context_compaction.threshold_tokens`               | number?  | Auto Compact 本次决策使用的触发阈值；其他触发类型可省略 |
+| `codez.context_compaction.token_source`                   | enum?    | `estimate` / `provider_usage`；说明 `input_tokens` 的来源 |
 
 ```text
 outcome = completed | discarded | failed | cancelled | abandoned
@@ -294,14 +294,14 @@ provider-visible 消息：优先使用最近一次 Provider Usage 并叠加快�
 
 | 专属字段                                  | 类型     | 含义                                                          |
 | ----------------------------------------- | -------- | ------------------------------------------------------------- |
-| `zcode.detached_operation.operation`      | enum     | 第 10.1 节操作类型                                            |
-| `zcode.detached_operation.execution_kind` | enum     | `foreground` / `queued` / `background`                        |
-| `zcode.detached_operation.trigger`        | enum     | `user` / `turn` / `tool` / `scheduler` / `recovery` / `other` |
-| `zcode.detached_operation.target_kind`    | enum?    | `session` / `goal` / `workspace` / `project_memory` / `other` |
-| `zcode.detached_operation.goal_iteration` | integer? | Goal 迭代序号                                                 |
-| `zcode.detached_operation.chunk_index`    | integer? | Chunk 序号                                                    |
-| `zcode.detached_operation.chunk_count`    | integer? | Chunk 总数                                                    |
-| `zcode.detached_operation.result_type`    | enum?    | `text` / `boolean` / `metadata` / `other`                     |
+| `codez.detached_operation.operation`      | enum     | 第 10.1 节操作类型                                            |
+| `codez.detached_operation.execution_kind` | enum     | `foreground` / `queued` / `background`                        |
+| `codez.detached_operation.trigger`        | enum     | `user` / `turn` / `tool` / `scheduler` / `recovery` / `other` |
+| `codez.detached_operation.target_kind`    | enum?    | `session` / `goal` / `workspace` / `project_memory` / `other` |
+| `codez.detached_operation.goal_iteration` | integer? | Goal 迭代序号                                                 |
+| `codez.detached_operation.chunk_index`    | integer? | Chunk 序号                                                    |
+| `codez.detached_operation.chunk_count`    | integer? | Chunk 总数                                                    |
+| `codez.detached_operation.result_type`    | enum?    | `text` / `boolean` / `metadata` / `other`                     |
 
 ```text
 outcome = completed | failed | cancelled | abandoned
@@ -329,7 +329,7 @@ failure_stage = schedule | execute | commit | unhandled
 `agent_step` 和 `context_compaction` 也属于 `AgentTelemetryOperation`，但有专属父 Span，不作为
 Detached Start 的 operation。
 
-“入口类别”只帮助理解 Operation，不是 `zcode.execution.actor_kind`。后者只描述执行该操作的
+“入口类别”只帮助理解 Operation，不是 `codez.execution.actor_kind`。后者只描述执行该操作的
 Agent Runtime：`main/subagent/workflow_child`。
 
 ## 11. `model_call`
@@ -339,18 +339,18 @@ Call 包含一个或多个物理 Attempt。
 
 | 专属字段                                             | 类型     | 含义                                                             |
 | ---------------------------------------------------- | -------- | ---------------------------------------------------------------- |
-| `zcode.model_call.operation`                         | enum     | 模型调用的业务用途                                               |
-| `zcode.model_call.streaming`                         | boolean  | 逻辑调用是否请求流式模式                                         |
-| `zcode.model_call.model_role`                        | string?  | 主模型、快速模型等受控角色                                       |
-| `zcode.model_call.requested_provider_id`             | string   | 解析后的 Provider 配置 ID                                        |
-| `zcode.model_call.requested_model`                   | string   | 用户/调用方请求的 Model                                          |
-| `zcode.model_call.call_cause`                        | enum     | `initial` / `continuation` / `fallback_replacement` / `recovery` |
-| `zcode.model_call.previous_logical_call_id`          | string?  | 非 initial 调用的前序逻辑 ID                                     |
-| `zcode.model_call.reasoning_capability`              | enum     | `supported` / `unsupported` / `unknown`                          |
-| `zcode.model_call.reasoning_requested_state`         | enum     | `enabled` / `disabled` / `provider_default` / `unknown`          |
-| `zcode.model_call.reasoning_requested_control`       | enum     | 控制方式，见下方                                                 |
-| `zcode.model_call.reasoning_requested_level`         | string?  | 请求的 effort/level 原值                                         |
-| `zcode.model_call.reasoning_requested_budget_tokens` | integer? | 请求的思考预算                                                   |
+| `codez.model_call.operation`                         | enum     | 模型调用的业务用途                                               |
+| `codez.model_call.streaming`                         | boolean  | 逻辑调用是否请求流式模式                                         |
+| `codez.model_call.model_role`                        | string?  | 主模型、快速模型等受控角色                                       |
+| `codez.model_call.requested_provider_id`             | string   | 解析后的 Provider 配置 ID                                        |
+| `codez.model_call.requested_model`                   | string   | 用户/调用方请求的 Model                                          |
+| `codez.model_call.call_cause`                        | enum     | `initial` / `continuation` / `fallback_replacement` / `recovery` |
+| `codez.model_call.previous_logical_call_id`          | string?  | 非 initial 调用的前序逻辑 ID                                     |
+| `codez.model_call.reasoning_capability`              | enum     | `supported` / `unsupported` / `unknown`                          |
+| `codez.model_call.reasoning_requested_state`         | enum     | `enabled` / `disabled` / `provider_default` / `unknown`          |
+| `codez.model_call.reasoning_requested_control`       | enum     | 控制方式，见下方                                                 |
+| `codez.model_call.reasoning_requested_level`         | string?  | 请求的 effort/level 原值                                         |
+| `codez.model_call.reasoning_requested_budget_tokens` | integer? | 请求的思考预算                                                   |
 
 ```text
 reasoning control =
@@ -371,26 +371,26 @@ Parent：`model_call`。SpanKind：`CLIENT`。一个 Attempt 对应一次真实 
 
 | 字段                                      | 类型    | 含义                                                                           |
 | ----------------------------------------- | ------- | ------------------------------------------------------------------------------ |
-| `zcode.model_attempt.request_id`          | string  | ZCode 物理请求 ID                                                              |
-| `zcode.model_attempt.attempt_number`      | integer | 从 1 开始的 Attempt 序号                                                       |
-| `zcode.model_attempt.max_attempts`        | integer | 当前策略最大尝试数                                                             |
-| `zcode.model_attempt.attempt_cause`       | enum    | `initial` / `retry` / `fallback`                                               |
-| `zcode.model_attempt.previous_request_id` | string? | Retry/Fallback 的前序请求 ID                                                   |
-| `zcode.model_attempt.retry_delay_ms`      | number? | 本 Attempt 前等待时间                                                          |
-| `zcode.model_attempt.transport`           | enum    | Adapter 的真实 Transport，如 `sse` / `json`                                    |
-| `zcode.model_attempt.api_operation`       | enum    | `messages` / `chat_completions` / `responses` / `generate_content` / `unknown` |
+| `codez.model_attempt.request_id`          | string  | Codez 物理请求 ID                                                              |
+| `codez.model_attempt.attempt_number`      | integer | 从 1 开始的 Attempt 序号                                                       |
+| `codez.model_attempt.max_attempts`        | integer | 当前策略最大尝试数                                                             |
+| `codez.model_attempt.attempt_cause`       | enum    | `initial` / `retry` / `fallback`                                               |
+| `codez.model_attempt.previous_request_id` | string? | Retry/Fallback 的前序请求 ID                                                   |
+| `codez.model_attempt.retry_delay_ms`      | number? | 本 Attempt 前等待时间                                                          |
+| `codez.model_attempt.transport`           | enum    | Adapter 的真实 Transport，如 `sse` / `json`                                    |
+| `codez.model_attempt.api_operation`       | enum    | `messages` / `chat_completions` / `responses` / `generate_content` / `unknown` |
 
 ### 12.2 Provider、Endpoint 与 Model
 
 | 字段                                      | 类型    | 含义                                    |
 | ----------------------------------------- | ------- | --------------------------------------- |
-| `zcode.model_attempt.provider_id`         | string  | 用户配置/路由实例 ID                    |
-| `zcode.model_attempt.provider_kind`       | enum    | 协议/厂商类型，如 `anthropic`、`openai` |
-| `zcode.model_attempt.provider_origin`     | string? | 清洗后的 `scheme://host[:port]`         |
-| `zcode.model_attempt.provider_route`      | string? | 清洗后的 Path，不含 Query/Fragment      |
-| `zcode.model_attempt.requested_model`     | string  | 该 Attempt 实际请求的 Model             |
-| `zcode.model_attempt.response_model`      | string? | Provider 响应返回的 Model               |
-| `zcode.model_attempt.provider_request_id` | string? | Provider 返回的请求 ID                  |
+| `codez.model_attempt.provider_id`         | string  | 用户配置/路由实例 ID                    |
+| `codez.model_attempt.provider_kind`       | enum    | 协议/厂商类型，如 `anthropic`、`openai` |
+| `codez.model_attempt.provider_origin`     | string? | 清洗后的 `scheme://host[:port]`         |
+| `codez.model_attempt.provider_route`      | string? | 清洗后的 Path，不含 Query/Fragment      |
+| `codez.model_attempt.requested_model`     | string  | 该 Attempt 实际请求的 Model             |
+| `codez.model_attempt.response_model`      | string? | Provider 响应返回的 Model               |
+| `codez.model_attempt.provider_request_id` | string? | Provider 返回的请求 ID                  |
 
 `provider_id` 与 `provider_kind` 不同：同一种 OpenAI 兼容协议可以有多个用户配置实例；Origin
 描述真正请求到的服务位置。Origin 缺失表示 Adapter 没提供或 Base URL 无法安全解析，不是
@@ -402,15 +402,15 @@ Attempt 重复 Call 的请求 Reasoning，是为了 Provider/Model 物理请求�
 后的 Effective 值：
 
 ```text
-zcode.model_attempt.reasoning_capability
-zcode.model_attempt.reasoning_requested_state
-zcode.model_attempt.reasoning_requested_control
-zcode.model_attempt.reasoning_requested_level
-zcode.model_attempt.reasoning_requested_budget_tokens
-zcode.model_attempt.reasoning_effective_state
-zcode.model_attempt.reasoning_effective_control
-zcode.model_attempt.reasoning_effective_level
-zcode.model_attempt.reasoning_effective_budget_tokens
+codez.model_attempt.reasoning_capability
+codez.model_attempt.reasoning_requested_state
+codez.model_attempt.reasoning_requested_control
+codez.model_attempt.reasoning_requested_level
+codez.model_attempt.reasoning_requested_budget_tokens
+codez.model_attempt.reasoning_effective_state
+codez.model_attempt.reasoning_effective_control
+codez.model_attempt.reasoning_effective_level
+codez.model_attempt.reasoning_effective_budget_tokens
 ```
 
 Requested 表示进入 Provider Adapter 的意图；Effective 表示 Adapter/Provider 最终采用的事实。
@@ -420,16 +420,16 @@ Requested 表示进入 Provider Adapter 的意图；Effective 表示 Adapter/Pro
 
 | 字段                                                  | 类型    | 含义                                                                               |
 | ----------------------------------------------------- | ------- | ---------------------------------------------------------------------------------- |
-| `zcode.model_attempt.input_tokens`                    | number? | Provider Usage 输入 Token                                                          |
-| `zcode.model_attempt.output_tokens`                   | number? | Provider Usage 输出 Token                                                          |
-| `zcode.model_attempt.reasoning_tokens`                | number? | Provider Usage Reasoning Token                                                     |
-| `zcode.model_attempt.cache_read_tokens`               | number? | Provider 报告的 Cache Read Token                                                   |
-| `zcode.model_attempt.cache_write_tokens`              | number? | Provider 报告的 Cache Write Token                                                  |
-| `zcode.model_attempt.finish_reason`                   | string? | Provider 原始有界结束原因                                                          |
-| `zcode.model_attempt.stream_output_committed`         | boolean | 终态时流输出是否已提交给业务消费者；当前 Status Sink 对缺失旧事件值按 false 归一化 |
-| `zcode.model_attempt.time_to_first_provider_event_ms` | number? | 首个 Provider Event 耗时                                                           |
-| `zcode.model_attempt.time_to_first_content_ms`        | number? | 首个有效内容耗时                                                                   |
-| `zcode.model_attempt.time_to_first_text_ms`           | number? | 首段文本耗时                                                                       |
+| `codez.model_attempt.input_tokens`                    | number? | Provider Usage 输入 Token                                                          |
+| `codez.model_attempt.output_tokens`                   | number? | Provider Usage 输出 Token                                                          |
+| `codez.model_attempt.reasoning_tokens`                | number? | Provider Usage Reasoning Token                                                     |
+| `codez.model_attempt.cache_read_tokens`               | number? | Provider 报告的 Cache Read Token                                                   |
+| `codez.model_attempt.cache_write_tokens`              | number? | Provider 报告的 Cache Write Token                                                  |
+| `codez.model_attempt.finish_reason`                   | string? | Provider 原始有界结束原因                                                          |
+| `codez.model_attempt.stream_output_committed`         | boolean | 终态时流输出是否已提交给业务消费者；当前 Status Sink 对缺失旧事件值按 false 归一化 |
+| `codez.model_attempt.time_to_first_provider_event_ms` | number? | 首个 Provider Event 耗时                                                           |
+| `codez.model_attempt.time_to_first_content_ms`        | number? | 首个有效内容耗时                                                                   |
+| `codez.model_attempt.time_to_first_text_ms`           | number? | 首段文本耗时                                                                       |
 
 Token Setter 接收累计值，Metric 内部只记录单调增量；回退值比已记录值小时忽略，避免重复计数。
 “是否命中缓存”不创造布尔摘要：Provider 返回 `cache_read_tokens > 0` 即可表达原始事实；没返回
@@ -439,10 +439,10 @@ Usage 时保持缺失。
 
 | 字段                                         | 类型     | 含义                                                           |
 | -------------------------------------------- | -------- | -------------------------------------------------------------- |
-| `zcode.model_attempt.http_status_code`       | integer? | Provider HTTP 状态，例如 429/500；当前由失败 Status Event 提供 |
-| `zcode.model_attempt.provider_error_code`    | string?  | Provider Response 中的原始错误码                               |
-| `zcode.model_attempt.provider_error_message` | string?  | Provider Response 原始错误信息，经脱敏和截断                   |
-| `zcode.model_attempt.retry_after_ms`         | number?  | Provider 指示的重试等待                                        |
+| `codez.model_attempt.http_status_code`       | integer? | Provider HTTP 状态，例如 429/500；当前由失败 Status Event 提供 |
+| `codez.model_attempt.provider_error_code`    | string?  | Provider Response 中的原始错误码                               |
+| `codez.model_attempt.provider_error_message` | string?  | Provider Response 原始错误信息，经脱敏和截断                   |
+| `codez.model_attempt.retry_after_ms`         | number?  | Provider 指示的重试等待                                        |
 
 Lifecycle 的 `error_code/error_message` 表示终止该 Span 的 Error（当前 Adapter 通常传入原始
 Transport/SDK Error；仅缺失 Error 对象时由 Status 事实构造）；`provider_error_*` 表示 Provider
@@ -485,7 +485,7 @@ Canonical 字段始终先写，兼容字段由独立 Adapter 从同一已清洗�
 | Lifecycle Error Type    | `error.type`                         | exact，首次认领 Error 时写    |
 | Lifecycle Error Message | `error.message`                      | exact，已脱敏                 |
 
-兼容字段不构成第二套内部 Schema。内部查询优先使用 `zcode.*`。
+兼容字段不构成第二套内部 Schema。内部查询优先使用 `codez.*`。
 
 ## 14. Event 目录
 
@@ -508,24 +508,24 @@ Canonical 字段始终先写，兼容字段由独立 Adapter 从同一已清洗�
 
 | Instrument                                         | 类型      | 含义                           | 允许 Label                                                                            |
 | -------------------------------------------------- | --------- | ------------------------------ | ------------------------------------------------------------------------------------- |
-| `zcode.agent.turn.duration`                        | Histogram | Turn 终态耗时/流量             | outcome、error_category、actor_kind、input_source、launch_surface                     |
-| `zcode.agent.step.duration`                        | Histogram | Step 终态耗时/流量             | outcome、error_category、actor_kind、terminal_reason                                  |
-| `zcode.tool.execution.duration`                    | Histogram | Tool 终态耗时/流量             | outcome、error_category、tool_name                                                    |
-| `zcode.command.execution.duration`                 | Histogram | Command 终态耗时/流量          | outcome、error_category、command_category、command_safe_name                          |
-| `zcode.context.compaction.duration`                | Histogram | Compaction 终态耗时/流量       | outcome、error_category、trigger、model_mode                                          |
-| `zcode.detached.operation.duration`                | Histogram | Detached 终态耗时/流量         | outcome、error_category、operation、execution_kind                                    |
-| `zcode.model.call.duration`                        | Histogram | Logical Call 终态耗时/流量     | outcome、error_category、model_operation、model_role、call_cause                      |
-| `zcode.model.attempt.duration`                     | Histogram | Provider Attempt 终态耗时/流量 | outcome、error_category、provider_kind、model、transport、model_operation、model_role |
-| `zcode.model.call.attempts`                        | Histogram | 每个 Call 的 Attempt 数        | 上述 Call Label + retry_state                                                         |
-| `zcode.model.attempt.tokens`                       | Counter   | Provider Token 增量            | provider_kind、model、transport、model_operation、model_role、token_type              |
-| `zcode.model.attempt.time_to_first_provider_event` | Histogram | TTF Provider Event             | Attempt Label                                                                         |
-| `zcode.model.attempt.time_to_first_content`        | Histogram | TTFC                           | Attempt Label                                                                         |
-| `zcode.model.attempt.time_to_first_text`           | Histogram | TTFT                           | Attempt Label                                                                         |
-| `zcode.model.attempt.stream_stall.count`           | Counter   | 流停顿次数                     | Attempt Label                                                                         |
-| `zcode.model.attempt.stream_max_idle`              | Histogram | 每 Attempt 最大停顿            | Attempt Label                                                                         |
-| `zcode.command.execution.time_to_first_output`     | Histogram | Command 首次输出               | Command Label                                                                         |
-| `zcode.telemetry.creation_drop.count`              | Counter   | Writer 创建前被容量保护拒绝    | span_name、drop_reason                                                                |
-| `zcode.telemetry.abandoned.count`                  | Counter   | 非正常收口 Span                | span_name、abandon_reason                                                             |
+| `codez.agent.turn.duration`                        | Histogram | Turn 终态耗时/流量             | outcome、error_category、actor_kind、input_source、launch_surface                     |
+| `codez.agent.step.duration`                        | Histogram | Step 终态耗时/流量             | outcome、error_category、actor_kind、terminal_reason                                  |
+| `codez.tool.execution.duration`                    | Histogram | Tool 终态耗时/流量             | outcome、error_category、tool_name                                                    |
+| `codez.command.execution.duration`                 | Histogram | Command 终态耗时/流量          | outcome、error_category、command_category、command_safe_name                          |
+| `codez.context.compaction.duration`                | Histogram | Compaction 终态耗时/流量       | outcome、error_category、trigger、model_mode                                          |
+| `codez.detached.operation.duration`                | Histogram | Detached 终态耗时/流量         | outcome、error_category、operation、execution_kind                                    |
+| `codez.model.call.duration`                        | Histogram | Logical Call 终态耗时/流量     | outcome、error_category、model_operation、model_role、call_cause                      |
+| `codez.model.attempt.duration`                     | Histogram | Provider Attempt 终态耗时/流量 | outcome、error_category、provider_kind、model、transport、model_operation、model_role |
+| `codez.model.call.attempts`                        | Histogram | 每个 Call 的 Attempt 数        | 上述 Call Label + retry_state                                                         |
+| `codez.model.attempt.tokens`                       | Counter   | Provider Token 增量            | provider_kind、model、transport、model_operation、model_role、token_type              |
+| `codez.model.attempt.time_to_first_provider_event` | Histogram | TTF Provider Event             | Attempt Label                                                                         |
+| `codez.model.attempt.time_to_first_content`        | Histogram | TTFC                           | Attempt Label                                                                         |
+| `codez.model.attempt.time_to_first_text`           | Histogram | TTFT                           | Attempt Label                                                                         |
+| `codez.model.attempt.stream_stall.count`           | Counter   | 流停顿次数                     | Attempt Label                                                                         |
+| `codez.model.attempt.stream_max_idle`              | Histogram | 每 Attempt 最大停顿            | Attempt Label                                                                         |
+| `codez.command.execution.time_to_first_output`     | Histogram | Command 首次输出               | Command Label                                                                         |
+| `codez.telemetry.creation_drop.count`              | Counter   | Writer 创建前被容量保护拒绝    | span_name、drop_reason                                                                |
+| `codez.telemetry.abandoned.count`                  | Counter   | 非正常收口 Span                | span_name、abandon_reason                                                             |
 
 ```text
 token_type = input | output | reasoning | cache_read | cache_write
@@ -549,13 +549,13 @@ Model ID 是允许的受控例外，保留原始值并由每个 View 的 250 Ser
 
 | Instrument Pattern                                                                                      | Boundaries                                                                              |
 | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `zcode.agent.turn.duration`                                                                             | `0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600`                                               |
-| `zcode.model.*.duration`                                                                                | `0.1, 0.25, 0.5, 1, 2, 5, 10, 30, 60, 120`                                              |
-| `zcode.agent.step.duration` / `zcode.context.compaction.duration` / `zcode.detached.operation.duration` | `0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 300, 600` |
-| `zcode.tool.execution.duration`                                                                         | `0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 30, 120, 300`                                |
-| `zcode.command.execution.duration`                                                                      | `0.01, 0.05, 0.1, 0.5, 1, 5, 30, 120, 300, 600`                                         |
-| `zcode.*.time_to_first_*`                                                                               | `0.1, 0.25, 0.5, 1, 2, 5, 10, 30, 60, 120`                                              |
-| `zcode.model.call.attempts`                                                                             | `1, 2, 3, 4, 5, 8, 13`                                                                  |
+| `codez.agent.turn.duration`                                                                             | `0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600`                                               |
+| `codez.model.*.duration`                                                                                | `0.1, 0.25, 0.5, 1, 2, 5, 10, 30, 60, 120`                                              |
+| `codez.agent.step.duration` / `codez.context.compaction.duration` / `codez.detached.operation.duration` | `0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 300, 600` |
+| `codez.tool.execution.duration`                                                                         | `0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 30, 120, 300`                                |
+| `codez.command.execution.duration`                                                                      | `0.01, 0.05, 0.1, 0.5, 1, 5, 30, 120, 300, 600`                                         |
+| `codez.*.time_to_first_*`                                                                               | `0.1, 0.25, 0.5, 1, 2, 5, 10, 30, 60, 120`                                              |
+| `codez.model.call.attempts`                                                                             | `1, 2, 3, 4, 5, 8, 13`                                                                  |
 
 所有显式 View 的 Series 基数上限为 250。未匹配这些 View 的 Histogram 使用当前 OTel SDK 默认
 Aggregation；若为它们新增 SLO，必须先显式定义 Bucket 并同步更新本表。

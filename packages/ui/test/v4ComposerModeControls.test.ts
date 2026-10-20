@@ -1,7 +1,7 @@
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TID_V4_COMPOSER_INPUT } from "@zcode/shared/test-ids";
+import { TID_V4_COMPOSER_INPUT } from "@codez/shared/test-ids";
 
 const captured = vi.hoisted(() => ({
   contentProps: null as Record<string, unknown> | null,
@@ -42,12 +42,12 @@ vi.mock("@/components/ui/dropdown-menu.js", () => {
 
 vi.mock("@/lib/pickerFocus.js", () => ({ isCoarseTouchDevice: () => false }));
 
-vi.mock("@/hooks/useZCodeConfig.js", () => ({
+vi.mock("@/hooks/useCodezConfig.js", () => ({
   useToolbarConfigOptions: () => ({ configOptions: [] }),
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
     },

@@ -10,9 +10,9 @@ import {
   resetExternalAppResourceSamples,
 } from "@desktop/main/processResourceExternalAppSamples";
 import type { ProcessRoleSample } from "@desktop/main/processResourceWindowAggregator";
-import { ZCODE_CLI_RESOURCE_SAMPLE_INTERVAL_MS } from "@zcode/shared";
+import { CODEZ_CLI_RESOURCE_SAMPLE_INTERVAL_MS } from "@codez/shared";
 
-const CLI_PERIOD_MS = ZCODE_CLI_RESOURCE_SAMPLE_INTERVAL_MS;
+const CLI_PERIOD_MS = CODEZ_CLI_RESOURCE_SAMPLE_INTERVAL_MS;
 
 function cliSample(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {

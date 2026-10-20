@@ -8,7 +8,7 @@ import {
   TID_WORKSPACE_FILE_TREE_REFRESH_BUTTON,
   TID_WORKSPACE_FILE_TREE_ROW,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom, waitForTestIdByDom } from "../helpers/desktop-app.js";
 import { prepareV4ConversationE2E } from "../helpers/v4-conversation.js";
 import {
@@ -41,7 +41,7 @@ describe(`${CASE_MARKER}: SSH 远端开发基础能力 P0`, () => {
     this.timeout(20 * 60_000);
     config = readSSHRuntimeConfig(CASE_MARKER);
     // Bugfix：远端 E2E fixture 也必须落在专用隔离根目录，不能写入系统临时目录。
-    fixturePath = posix.join(config.workspacePaths[0], ".zcode-e2e", `ssh-p0-dev-${Date.now()}`);
+    fixturePath = posix.join(config.workspacePaths[0], ".codez-e2e", `ssh-p0-dev-${Date.now()}`);
     if (!isCaseFixturePath(fixturePath, config.workspacePaths[0])) {
       throw new Error(`${CASE_MARKER}: 非法远端 fixture path`);
     }
@@ -54,8 +54,8 @@ describe(`${CASE_MARKER}: SSH 远端开发基础能力 P0`, () => {
         `cd '${fixturePath}'`,
         `printf '%s\\n' '${FILE_MARKER}' > README.txt`,
         "git init -q",
-        "git config user.email 'zcode-e2e@example.invalid'",
-        "git config user.name 'ZCode E2E'",
+        "git config user.email 'codez-e2e@example.invalid'",
+        "git config user.name 'Codez E2E'",
         "git add README.txt",
         "git commit -qm 'test fixture baseline'",
       ].join(" && "),
@@ -279,7 +279,7 @@ async function waitForWorkspaceFileTreeRow(path: string): Promise<void> {
 
 function isCaseFixturePath(value: string, workspaceRoot: string): boolean {
   return (
-    posix.dirname(value) === posix.join(workspaceRoot, ".zcode-e2e") &&
+    posix.dirname(value) === posix.join(workspaceRoot, ".codez-e2e") &&
     /^ssh-p0-dev-\d+$/u.test(posix.basename(value))
   );
 }

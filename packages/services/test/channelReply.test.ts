@@ -1,7 +1,7 @@
 import { createGroupResultDelivery } from "#src/bots/groupResultDelivery.js";
 import { describe, expect, it, vi } from "vitest";
 import { replyToBotChannel } from "../src/bots/channelReply.js";
-import type { BotsStateFile, BotsConfigFile, BotGroupDelivery } from "@zcode/shared";
+import type { BotsStateFile, BotsConfigFile, BotGroupDelivery } from "@codez/shared";
 const mention = {
   type: "channelMention" as const,
   refId: "m1",

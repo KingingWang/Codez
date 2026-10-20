@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { TID_V4_RETRY } from "@zcode/shared/test-ids";
+import { TID_V4_RETRY } from "@codez/shared/test-ids";
 import { clearAppData } from "../../../helpers/desktop-app.js";
 import {
   getUpstreamRequestRecordCount,
@@ -24,7 +24,7 @@ import {
 } from "../../../helpers/v4-conversation.js";
 
 const CASE_MARKER = "E2E_R3_TASK_FAULTS";
-const artifactDir = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-task-faults");
+const artifactDir = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-task-faults");
 
 async function readVisibleErrorText(): Promise<string> {
   return browser.execute(() => {

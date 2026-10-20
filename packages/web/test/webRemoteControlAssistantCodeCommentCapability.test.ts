@@ -3,7 +3,7 @@ import { createElement } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AssistantCodeCommentCards } from "@/AssistantCodeCommentCards.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import {
   buildAssistantCodeCommentCards,
   projectAssistantCodeComments,
@@ -25,7 +25,7 @@ describe("web remote control Assistant code-comment capability", () => {
 
     render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(AssistantCodeCommentCards, {
           cards,

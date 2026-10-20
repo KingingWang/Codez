@@ -14,13 +14,13 @@
 import { createElement, type ReactNode } from "react";
 import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { TID_WORKFLOW_ARTIFACT_PANE, type IPlatformService } from "@zcode/shared";
+import { TID_WORKFLOW_ARTIFACT_PANE, type IPlatformService } from "@codez/shared";
 import type {
   V4ConversationWorkflowRunArtifactDataResult,
   V4ConversationWorkflowRunArtifactReadResult,
   V4ConversationWorkflowRunArtifactsResult,
   WorkflowRunArtifact,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import type { WorkflowArtifactSidePaneTab } from "@/lib/workspaceSidePane.js";
 
 vi.mock("@/logger.js", () => ({
@@ -106,7 +106,7 @@ vi.mock("@/components/ai-elements/code-block.js", () => ({
 }));
 
 // eslint-disable-next-line import/first -- 必须在全部 mock 之后再引入被测组件。
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 // eslint-disable-next-line import/first
 import { WorkflowArtifactSidePane } from "@/app-shell/WorkflowArtifactSidePane.js";
 // eslint-disable-next-line import/first
@@ -171,7 +171,7 @@ function renderPane(
   });
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: options.locale ?? "zh-CN" },
       options.platform === undefined
         ? pane

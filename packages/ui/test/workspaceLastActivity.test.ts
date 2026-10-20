@@ -1,11 +1,11 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ZCodeTaskMeta } from "@zcode/shared";
+import type { CodezTaskMeta } from "@codez/shared";
 import zh from "@/i18n/locales/zh-CN.js";
 import { WorkspaceLastActivity } from "@/WorkspaceHeaderSections/WorkspaceLastActivity.js";
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }, values: Record<string, unknown> = {}) =>
         zh[id]!.replace(/\{(\w+)\}/g, (_, key) => String(values[key])),
@@ -19,7 +19,7 @@ describe("current task last activity", () => {
     vi.setSystemTime(1_000_000);
     expect(
       renderToStaticMarkup(
-        createElement(WorkspaceLastActivity, { task: { updatedAt: 880_000 } as ZCodeTaskMeta }),
+        createElement(WorkspaceLastActivity, { task: { updatedAt: 880_000 } as CodezTaskMeta }),
       ),
     ).toContain("最近活动 2 分钟前");
   });
@@ -28,8 +28,8 @@ describe("current task last activity", () => {
     vi.setSystemTime(1_000_000);
     const task = {
       updatedAt: 1,
-      __zcodeSessionActivity: { lastActivityAt: 999_000 },
-    } as unknown as ZCodeTaskMeta;
+      __codezSessionActivity: { lastActivityAt: 999_000 },
+    } as unknown as CodezTaskMeta;
     expect(renderToStaticMarkup(createElement(WorkspaceLastActivity, { task }))).toContain(
       "最近活动 刚刚",
     );

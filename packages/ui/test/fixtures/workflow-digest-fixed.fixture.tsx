@@ -2,9 +2,9 @@ import { AvatarCluster, SpineRail } from "@/app-shell/WorkflowRunSpineParts.js";
 import { buildWorkflowTimeline } from "@/components/workflow-timeline/timeline-model.js";
 import "@/styles.css";
 import { createRoot } from "react-dom/client";
-import type { WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import type { WorkflowRunCardSummary } from "@/ToolCallBlocks/shared.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import { WorkflowRunDigest } from "@/components/workflow-timeline/WorkflowRunDigest.js";
 const LOOP_GRAPH = {
@@ -91,7 +91,7 @@ function joined(
 }
 
 createRoot(document.getElementById("root")!).render(
-  <ZCodeIntlProvider initialLocale="en-US">
+  <CodezIntlProvider initialLocale="en-US">
     <TooltipProvider>
       <div className="relative h-8" data-testid="spine-preview">
         <SpineRail ink="march" position="above" />
@@ -126,5 +126,5 @@ createRoot(document.getElementById("root")!).render(
         }}
       />
     </TooltipProvider>
-  </ZCodeIntlProvider>,
+  </CodezIntlProvider>,
 );

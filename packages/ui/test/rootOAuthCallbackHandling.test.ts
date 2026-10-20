@@ -5,7 +5,7 @@ import {
   ZAI_PROVIDER_ID,
   type EnterpriseCodingPlanPricingProduct,
   type UsageEntitlementSnapshot,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 const reportAppTelemetryEventMock = vi.fn(async () => {});
 const resolveProviderTelemetryLabelMock = vi.fn((providerId: string) =>

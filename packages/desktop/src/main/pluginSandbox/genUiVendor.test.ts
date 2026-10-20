@@ -21,7 +21,7 @@ describe("bundled Gen UI scripts", () => {
     const readAsset = vi.fn(async () => new TextEncoder().encode(JSON.stringify(manifest)));
     const resources = createGenUiVendorResources("/assets", readAsset);
     expect(await resolveGenUiVendorRedirect(url, registry.get(genUi.sandboxId), resources)).toBe(
-      `zcode-sandbox://plugin-${input.instance.appIdentity}/instance/${genUi.sandboxId}/__zcode__/vendor/d3-7.9.0.min.js`,
+      `codez-sandbox://plugin-${input.instance.appIdentity}/instance/${genUi.sandboxId}/__codez__/vendor/d3-7.9.0.min.js`,
     );
     for (const candidate of [
       url + "?v=1",

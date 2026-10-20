@@ -4,7 +4,7 @@ import {
   prepareIncomingMessageCapability,
   switchIncomingMessageCapability,
 } from "../helpers/incoming-message-capability.js";
-import { TID_CHAT_ASSISTANT_HISTORY_TRIGGER, TID_V4_TIMELINE } from "@zcode/shared/test-ids";
+import { TID_CHAT_ASSISTANT_HISTORY_TRIGGER, TID_V4_TIMELINE } from "@codez/shared/test-ids";
 import {
   clearAppData,
   readSettings,
@@ -60,7 +60,7 @@ describe("会话区 Running Guide / Steer E2E", () => {
       // 修复原因：同一 worker 的前一条 steer/stop 会留下 completed 或 interrupted session；
       // guide、active goal 与 verifier 必须各自在新草稿中建立 owner，不能串用上一 case 的状态。
       await prepareIncomingMessageCapability(mcs);
-      expect((await readSettings()).zcodeInteractionBehavior).toBe("guide");
+      expect((await readSettings()).codezInteractionBehavior).toBe("guide");
 
       const runId = Date.now();
       const baseMarker = `E2E_GUIDE_TIMELINE_BASE_${runId}`;
@@ -233,7 +233,7 @@ Message from coordinator:
       expect(wireText(lastInput.content)).not.toContain(
         "The coordinator sent a message while you were working:",
       );
-      expect(wireText(lastInput.content)).not.toContain("Another ZCode session sent a message:");
+      expect(wireText(lastInput.content)).not.toContain("Another Codez session sent a message:");
       for (const [marker, body, role] of [
         [
           guideOneMarker,
@@ -262,7 +262,7 @@ Message from coordinator:
     this.timeout(150000);
 
     await prepareV4ConversationE2E({ resetDraftBeforeProvider: true });
-    expect((await readSettings()).zcodeInteractionBehavior).toBe("guide");
+    expect((await readSettings()).codezInteractionBehavior).toBe("guide");
 
     const runId = Date.now();
     const runningMarker = `E2E_RUNNING_GUIDE_STEER_BASE_${runId}`;
@@ -345,7 +345,7 @@ Message from coordinator:
     this.timeout(150000);
 
     await prepareV4ConversationE2E({ resetDraftBeforeProvider: true });
-    expect((await readSettings()).zcodeInteractionBehavior).toBe("guide");
+    expect((await readSettings()).codezInteractionBehavior).toBe("guide");
 
     const runId = Date.now();
     await establishGuideGoalSession(`E2E_RUNNING_GUIDE_GOAL_SEED_ACTIVE_${runId}`);
@@ -407,7 +407,7 @@ Message from coordinator:
     this.timeout(150000);
 
     await prepareV4ConversationE2E({ resetDraftBeforeProvider: true });
-    expect((await readSettings()).zcodeInteractionBehavior).toBe("guide");
+    expect((await readSettings()).codezInteractionBehavior).toBe("guide");
 
     const runId = Date.now();
     await establishGuideGoalSession(`E2E_RUNNING_GUIDE_GOAL_SEED_VERIFY_${runId}`);

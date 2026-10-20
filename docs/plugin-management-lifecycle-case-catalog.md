@@ -9,7 +9,7 @@
   Personal Source、inline 展示、重启恢复、代表性运行时注入、关键可恢复失败。
 - Excluded：Standalone Web、手机 `/remote`、remote workspace plugin sync、workspace-scope 安装、
   公网依赖的正式 CI、完整 locale/theme/viewport 笛卡尔积。
-- 安装、配置、enabled、来源和抑制状态由 `<E2E_HOME>/.zcode/cli/plugins` 与 CLI config 持久化；
+- 安装、配置、enabled、来源和抑制状态由 `<E2E_HOME>/.codez/cli/plugins` 与 CLI config 持久化；
   UI store 是投影，不是权威来源。
 - Desktop local workspace A/B 共用同一 E2E HOME，验证当前 user-scope 语义。
 
@@ -20,7 +20,7 @@ UI entry
 pluginManagementStore
   | typed plugin service
   v
-ZCode Agent plugin handlers
+Codez Agent plugin handlers
   |                     |
   v                     v
 user plugin storage     future session runtime discovery
@@ -57,7 +57,7 @@ user plugin storage     future session runtime discovery
 | `PLM-LC-014 builtin-uninstall-detail-parity`   | 隔离 HOME；内置插件已 seed、启用并有配置/data                                                     | 打开详情；卸载；在详情页重试；重启；点击 Install                                                                                  | `installed=false`；suppression 存在；Runtime 不提供 Skill/Command/MCP；Catalog/cache/完整组件详情仍可读；describe 不改变 config/data/cache；Install 恢复且不产生普通 installed record                                                                                                 | UI + protocol + config/data/cache/manifest + fresh discovery                    | `manual-review`                  |
 | `PLM-LC-015 bundled-install-ownership`         | suppressed builtin 与合并 official entry；另有 CDN 同名 source fixture                            | 分别走 UI Install 与 direct protocol install                                                                                      | bundled `filesystem/sea` 路径等价 restore；CDN source 仍走 Marketplace install；无 stale suppression、重复 ownership 或错误 installed record                                                                                                                                          | protocol + installed record + runtime                                           | `manual-review`                  |
 | `PLM-LC-016 seed-cache-runtime-separation`     | suppressed builtin 分别处于 cache 存在/缺失；filesystem 与 SEA seed fixture                       | resolve/list/describe/skills/commands；触发 cache 自愈                                                                            | suppression 始终过滤 Runtime；缺失 cache 可由 seed 恢复；describe 前后都成功；Catalog 不被过滤；无 seed↔uninstall 互删震荡                                                                                                                                                            | bootstrap + adapter + services tests                                            | `manual-review`                  |
-| `PLM-LC-017 installed-menu-layout`             | 内置插件在 Workspace `.zcode/config.json` 显式启用（enabledSource=workspace）                     | Settings > Plugins 切到 Workspace scope；打开已安装列表行内「…」菜单                                                              | 菜单仅启用/暂停、卸载，两项单行等高并按内容撑开；恢复继承与更新不放入菜单                                                                                                                                                                                                             | menuitem 文本 Range 行框计数 + 截图                                             | `manual-review`                  |
+| `PLM-LC-017 installed-menu-layout`             | 内置插件在 Workspace `.codez/config.json` 显式启用（enabledSource=workspace）                     | Settings > Plugins 切到 Workspace scope；打开已安装列表行内「…」菜单                                                              | 菜单仅启用/暂停、卸载，两项单行等高并按内容撑开；恢复继承与更新不放入菜单                                                                                                                                                                                                             | menuitem 文本 Range 行框计数 + 截图                                             | `manual-review`                  |
 | `PLM-LC-018 official-auto-refresh-throttled`   | 隔离 HOME；官方目录已有条目且一分钟前刷新                                                         | 进入、退出、重新进入商店                                                                                                          | 不再刷新；Claude 目录时间及失败状态不变；原候选仍可见                                                                                                                                                                                                                                 | DOM + overview + throttle 单测                                                  | `manual-review`                  |
 | `PLM-LC-019 official-auto-refresh-on-enter`    | 隔离 HOME；官方目录已有条目但时间过期；允许真实 CDN                                               | 不点刷新进入商店，再退出重进                                                                                                      | 官方时间更新且无失败诊断；重进不再次刷新                                                                                                                                                                                                                                              | DOM + overview + runtime logs                                                   | `manual-review`, never formal CI |
 | `PLM-LC-020 plugin-subagent-override-cold`     | 隔离 HOME；官方 judge 的结构化覆盖指定 alternate/high，主选择 primary/max                         | 完整重启后发送，通过 Agent 调用 document-skills:judge                                                                             | child 请求为 alternate/high，父 continuation 为 primary/max；Agent 正常完成；已保存覆盖不变                                                                                                                                                                                           | case-local replay + 实际请求 + UI + state                                       | `manual-review`                  |
@@ -155,7 +155,7 @@ PLM-LC-018（管理列表本地化）、PLM-LC-019（双入口创建插件草稿
 受控 Electron 回归入口：`node packages/desktop/scripts/mcp-apps-host-e2e.mjs --background-only`。
 无卡片冷启动、隐藏但仍挂载的 tab、握手后的多帧初始化、窗口最小化执行、session 空闲时内部工作继续、
 同窗空闲 guest 隔离、离屏期限保留内存、删除释放，详见 [后台执行契约](plugin-ui-background-execution.md)。
-设置 `ZCODE_PHOTOCRAFT_SERVER` 指向构建后的 PhotoCraft `dist/server.mjs`，使用
+设置 `CODEZ_PHOTOCRAFT_SERVER` 指向构建后的 PhotoCraft `dist/server.mjs`，使用
 `--photocraft-background-only` 使用未修改的 PhotoCraft 0.2.2 验证真实 WASM 后台启动、图片/图层操作、编辑状态保留，
 恢复后截图检查画布与新增图层；从可见编辑器切到其它主页面后，断言 UI 隐藏且不可命中，再后台新增图层并返回检查同一 guest 与文档。该入口不是正式 WDIO CI 准入，不自动晋级。
 

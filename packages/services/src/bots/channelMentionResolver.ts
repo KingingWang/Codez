@@ -5,7 +5,7 @@ import {
   type ChannelContentPart,
   type ChannelReplyHostRequest,
   type ChannelReplyResult,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 type Mention = Extract<ChannelContentPart, { type: "channelMention" }>;
 type Clarification = Extract<ChannelReplyResult, { status: "needs_clarification" }>;

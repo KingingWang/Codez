@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 import type { ModelSelectGroup } from "@/ModelConfigSelect.js";
 import {
   resolveV4ModelTriggerDisplay,

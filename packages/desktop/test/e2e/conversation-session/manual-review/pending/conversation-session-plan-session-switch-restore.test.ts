@@ -150,8 +150,8 @@ async function injectExitPlanStreamingPreview(taskId: string) {
       };
 
       const storeApi = (
-        window as Window & { __zcodeSessionStoreE2E?: RendererStore }
-      ).__zcodeSessionStoreE2E;
+        window as Window & { __codezSessionStoreE2E?: RendererStore }
+      ).__codezSessionStoreE2E;
       const state = storeApi?.getState?.();
       if (!state?.workspaces || !storeApi?.setState) {
         return { ok: false, reason: "store-api-missing" };

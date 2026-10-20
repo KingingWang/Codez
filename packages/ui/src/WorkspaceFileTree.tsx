@@ -6,8 +6,8 @@ import { PreviewPane } from "@/PreviewPane.js";
 import { WorkspaceFileTree } from "@/workspace-file-tree/WorkspaceFileTree.js";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { useZCodeStore } from "@/store/StoreProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
+import { useCodezStore } from "@/store/StoreProvider.js";
 import type { CodeViewerSource } from "@/lib/codeViewer.js";
 import type { FileManagerTarget } from "@/lib/workspaceSidePane.js";
 
@@ -37,7 +37,7 @@ export function FileManagerPane({
   onNavigate,
   ...previewProps
 }: FileManagerPaneProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [headerContainer, setHeaderContainer] = useState<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isNarrow, setIsNarrow] = useState(mobileOverlay);
@@ -51,10 +51,10 @@ export function FileManagerPane({
     return () => observer.disconnect();
   }, []);
   const workspaceKey = target.workspaceIdentity?.trim() || target.workspacePath;
-  const storedNavigationPreferenceOpen = useZCodeStore(
+  const storedNavigationPreferenceOpen = useCodezStore(
     (state) => state.fileManagerNavigationOpenByWorkspace[workspaceKey],
   );
-  const setNavigationPreferenceOpen = useZCodeStore((state) => state.setFileManagerNavigationOpen);
+  const setNavigationPreferenceOpen = useCodezStore((state) => state.setFileManagerNavigationOpen);
   const [compactNavigationOpenOverride, setCompactNavigationOpenOverride] = useState<
     boolean | null
   >(mobileOverlay ? !source : null);

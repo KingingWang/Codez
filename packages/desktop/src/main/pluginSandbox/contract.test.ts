@@ -11,9 +11,9 @@ import {
 describe("plugin-sandbox contract", () => {
   it("shell 与插件 iframe 落在不同 origin", () => {
     expect(buildPluginSandboxShellUrl("sb-1", "trusted")).toBe(
-      "zcode-sandbox://shell-trusted/instance/sb-1/",
+      "codez-sandbox://shell-trusted/instance/sb-1/",
     );
-    expect(buildPluginSandboxPluginOrigin("sb-1")).toBe("zcode-sandbox://plugin-sb-1");
+    expect(buildPluginSandboxPluginOrigin("sb-1")).toBe("codez-sandbox://plugin-sb-1");
   });
 
   it("partition 按可信 App 身份派生，所有来源均隔离工作区", () => {

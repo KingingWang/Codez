@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { TID_CHAT_MESSAGES, TID_GIT_PANE } from "@zcode/shared/test-ids";
+import { TID_CHAT_MESSAGES, TID_GIT_PANE } from "@codez/shared/test-ids";
 import { Key } from "webdriverio";
 import {
   DEFAULT_WORKSPACE,
@@ -13,7 +13,7 @@ const FIND_MARKER = "E2E_CHAT_FIND_REFOCUS_NEEDLE";
 const FILE_CHANGE_FIND_MARKER = "E2E_FILE_CHANGE_FIND_REFOCUS_NEEDLE";
 const FILE_CHANGE_FIXTURE_NAME = "chat-find-refocus.txt";
 const FILE_CHANGE_FIXTURE_PATH = join(DEFAULT_WORKSPACE, FILE_CHANGE_FIXTURE_NAME);
-const GIT_BINARY = process.env.ZCODE_GIT_BINARY?.trim() || "git";
+const GIT_BINARY = process.env.CODEZ_GIT_BINARY?.trim() || "git";
 const CONVERSATION_FIND_PLACEHOLDERS = ["Search messages...", "搜索消息..."];
 const FILE_CHANGE_FIND_PLACEHOLDERS = ["Search file changes...", "搜索文件变更..."];
 const FIND_PLACEHOLDERS = [
@@ -84,11 +84,11 @@ async function prepareFileChangeFindFixture() {
     createdFixtureRepository = true;
   }
 
-  execFileSync(GIT_BINARY, ["config", "user.name", "ZCode E2E"], {
+  execFileSync(GIT_BINARY, ["config", "user.name", "Codez E2E"], {
     cwd: DEFAULT_WORKSPACE,
     stdio: "ignore",
   });
-  execFileSync(GIT_BINARY, ["config", "user.email", "zcode-e2e@example.com"], {
+  execFileSync(GIT_BINARY, ["config", "user.email", "codez-e2e@example.com"], {
     cwd: DEFAULT_WORKSPACE,
     stdio: "ignore",
   });
@@ -138,7 +138,7 @@ async function injectLongCompletedConversation() {
     (workspacePath, injectedTaskId, assistantContent) => {
       const store = (
         window as Window & {
-          __zcodeSessionStoreE2E?: {
+          __codezSessionStoreE2E?: {
             getState?: () => {
               setActiveTaskId?: (workspacePath: string, taskId: string) => void;
               setTaskMessages?: (
@@ -161,7 +161,7 @@ async function injectLongCompletedConversation() {
             };
           };
         }
-      ).__zcodeSessionStoreE2E?.getState?.();
+      ).__codezSessionStoreE2E?.getState?.();
       if (
         !store?.setActiveTaskId ||
         !store.setTaskMessages ||

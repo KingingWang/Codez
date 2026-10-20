@@ -4,12 +4,12 @@ import { join } from "node:path";
 import { fork } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ModelConfigRules, ProviderConfig, ProviderConfigMap } from "@zcode/provider";
-import { atomicWritePrivateTextFile, withFileLock } from "@zcode/shared/node";
+import { ModelConfigRules, ProviderConfig, ProviderConfigMap } from "@codez/provider";
+import { atomicWritePrivateTextFile, withFileLock } from "@codez/shared/node";
 import {
   NodePersonalProviderConfigRepository,
   encodeProviderConfigFile,
-} from "@zcode/provider-node";
+} from "@codez/provider-node";
 
 vi.mock("node:fs/promises", async (importOriginal) => {
   const fs = await importOriginal<typeof import("node:fs/promises")>();

@@ -59,7 +59,7 @@ describe("toolIdentity", () => {
     expect(isFileDiffToolCall(patchTool)).toBe(true);
   });
 
-  it("keeps legacy ZCode Agent agent shapes behind fallback identity", () => {
+  it("keeps legacy Codez Agent agent shapes behind fallback identity", () => {
     expect(
       resolveToolCallIdentity({
         kind: "think",

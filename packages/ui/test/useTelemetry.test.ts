@@ -8,7 +8,7 @@ afterEach(() => {
 
 describe("useTelemetry helpers", () => {
   it("uses provided Intl-like options when collecting renderer telemetry context", async () => {
-    const { collectTelemetryRendererContext } = await import("@zcode/shared");
+    const { collectTelemetryRendererContext } = await import("@codez/shared");
 
     const context = collectTelemetryRendererContext({
       intlLocale: "en-US",
@@ -34,7 +34,7 @@ describe("useTelemetry helpers", () => {
       }),
     })) as typeof Intl.DateTimeFormat;
 
-    const { collectTelemetryRendererContext } = await import("@zcode/shared");
+    const { collectTelemetryRendererContext } = await import("@codez/shared");
 
     const context = collectTelemetryRendererContext({
       screen: {

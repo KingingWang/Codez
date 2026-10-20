@@ -13,8 +13,8 @@
 | Gemini                 | 未接入对应 SDK/provider kind | 不能视为已由现有 AI SDK 路径支持                                |
 | Bedrock                | 未接入对应 SDK/provider kind | 不能视为已由现有 AI SDK 路径支持                                |
 
-ZCode 负责模型能力预算、provider 条件省略和最终 JSON body 的 provider-specific 改名；
-AI SDK 只负责已接入协议的标准字段序列化，不负责 ZCode 的 provider/model 策略。
+Codez 负责模型能力预算、provider 条件省略和最终 JSON body 的 provider-specific 改名；
+AI SDK 只负责已接入协议的标准字段序列化，不负责 Codez 的 provider/model 策略。
 
 ## Action 1：统一 providerOptions 深合并边界
 

@@ -2,13 +2,13 @@
 
 ## 目的
 
-记录远控 relay 消息链路的历史设计与当前关闭策略，避免高频消息摘要继续落盘到 `~/.zcode/v2/logs/web-remote-control`。
+记录远控 relay 消息链路的历史设计与当前关闭策略，避免高频消息摘要继续落盘到 `~/.codez/v2/logs/web-remote-control`。
 
 ## 生效环境
 
-桌面端当前在开发环境和生产环境都不启用 relay message trace，不再写入 `~/.zcode/v2/logs/web-remote-control/web-remote-control-relay-YYYY-MM-DD.log`。
+桌面端当前在开发环境和生产环境都不启用 relay message trace，不再写入 `~/.codez/v2/logs/web-remote-control/web-remote-control-relay-YYYY-MM-DD.log`。
 
-普通 Web 远控生命周期日志不受影响，仍写入主日志 `~/.zcode/v2/logs/YYYY-MM-DD.log`。
+普通 Web 远控生命周期日志不受影响，仍写入主日志 `~/.codez/v2/logs/YYYY-MM-DD.log`。
 
 ## 覆盖范围
 
@@ -24,7 +24,7 @@
 - `pair_status`（若有）
 - `role`（若有）
 - `code`（若有）
-- `payload` 摘要：`zcode_type` / `requestId` / `bridgeSessionId`
+- `payload` 摘要：`codez_type` / `requestId` / `bridgeSessionId`
 - 桌面端 `recv` 额外带 `bytes`
 
 ## 不记录内容

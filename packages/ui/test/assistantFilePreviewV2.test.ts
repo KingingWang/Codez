@@ -50,15 +50,15 @@ describe("assistant file extraction", () => {
 
   it("citation 只向卡片抽取 DOCX、XLSX、PPTX 和 PDF，且不会重复抽取内部路径", async () => {
     const content = [
-      '::zcode-file-citation{path="docs/项目 简介.docx" purpose="output" artifact_kind="document" page_number=2}',
-      ':zcode-file-citation{path="sheets/年度 总结.xlsx" purpose="output"}',
-      '::zcode-file-citation{path="slides/产品 路线.pptx" artifact_kind="presentation" slide_number=3}',
-      '::zcode-file-citation{path="reports/审计 报告.pdf"}',
-      ':::zcode-file-citation{path="reports/论文.pdf"}',
-      '::zcode-file-citation{path="docs/说明.md"}',
-      '::zcode-file-citation{path="reports/冲突.pdf" artifact_kind="document"}',
-      '::zcode-file-citation{path="foo/../../private.pdf"}',
-      '::zcode-file-citation{file="reports/伪装.pdf"}',
+      '::codez-file-citation{path="docs/项目 简介.docx" purpose="output" artifact_kind="document" page_number=2}',
+      ':codez-file-citation{path="sheets/年度 总结.xlsx" purpose="output"}',
+      '::codez-file-citation{path="slides/产品 路线.pptx" artifact_kind="presentation" slide_number=3}',
+      '::codez-file-citation{path="reports/审计 报告.pdf"}',
+      ':::codez-file-citation{path="reports/论文.pdf"}',
+      '::codez-file-citation{path="docs/说明.md"}',
+      '::codez-file-citation{path="reports/冲突.pdf" artifact_kind="document"}',
+      '::codez-file-citation{path="foo/../../private.pdf"}',
+      '::codez-file-citation{file="reports/伪装.pdf"}',
     ].join("\n");
 
     const references = extractAssistantFileReferences(content, "/workspace");
@@ -117,9 +117,9 @@ describe("assistant file extraction", () => {
 
   it("citation 支持 video/audio artifact_kind 且要求后缀兼容", () => {
     const content = [
-      '::zcode-file-citation{path="media/片段.mp4" artifact_kind="video"}',
-      '::zcode-file-citation{path="media/声音.wav" artifact_kind="audio"}',
-      '::zcode-file-citation{path="media/错误.mp3" artifact_kind="video"}',
+      '::codez-file-citation{path="media/片段.mp4" artifact_kind="video"}',
+      '::codez-file-citation{path="media/声音.wav" artifact_kind="audio"}',
+      '::codez-file-citation{path="media/错误.mp3" artifact_kind="video"}',
     ].join("\n");
 
     expect(
@@ -135,7 +135,7 @@ describe("assistant file extraction", () => {
 
   it("支持智能引号 citation 和普通文件路径预览卡片", () => {
     const content = [
-      "::zcode-file-citation{path=“reports/冰岛 行程.pdf” purpose=‘output’}",
+      "::codez-file-citation{path=“reports/冰岛 行程.pdf” purpose=‘output’}",
       "普通输出 ‘docs/说明.md’ 和 “public/index.html”。",
       "Markdown 链接 [文档](<“docs/说明 文档.md”>)。",
     ].join("\n");
@@ -179,7 +179,7 @@ describe("assistant file extraction", () => {
       "输出 “docs/report.pdf。",
       "输出 docs/report.pdf”。",
       "这是“重点.md。",
-      '输出 ::zcode-file-citation{path=‘docs/report.pdf"}',
+      '输出 ::codez-file-citation{path=‘docs/report.pdf"}',
     ]) {
       expect(extractAssistantFileReferences(content, "/workspace")).toEqual([]);
     }

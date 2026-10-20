@@ -8,7 +8,7 @@ import zhCN from "@/i18n/locales/zh-CN.js";
  * mock 复刻 IntlProvider 真实语义（真实 zh-CN 消息 + replaceAll 插值）。
  */
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }, values?: Record<string, string | number>) => {
         let message = (zhCN as Record<string, string>)[id] ?? id;

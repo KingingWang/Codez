@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { hostResponseMessageSchema, buildRemoteWorkspaceIdentity } from "@zcode/shared";
+import { hostResponseMessageSchema, buildRemoteWorkspaceIdentity } from "@codez/shared";
 import { reportHostSessionCreate } from "../src/host/hostSessionCreateTelemetry.js";
 
 describe("Host session_create 转发合同", () => {

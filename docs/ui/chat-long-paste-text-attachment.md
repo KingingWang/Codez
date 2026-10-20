@@ -25,7 +25,7 @@
 - `filename`：机器可追踪的 `.txt` 文件名，例如 `pasted-text-20260627-153012.txt`。
 - `localPath`：宿主临时文件路径。
 
-长文本内容落盘到 `{ZCODE_DATA_BASE_DIR || HOME}/.zcode/tmp/paste-attachments/YYYY-MM-DD/`。文件名使用时间戳文件名加随机后缀，避免暴露正文内容或发生冲突。发送协议复用现有 `kind: "file"`、`mimeType: "text/plain"`、`localPath` 路径，并携带 `sourceKind: "clipboard-text"` 标记，不再携带 `textContent`，避免长文本直接进入 prompt payload 或模型上下文。
+长文本内容落盘到 `{CODEZ_DATA_BASE_DIR || HOME}/.codez/tmp/paste-attachments/YYYY-MM-DD/`。文件名使用时间戳文件名加随机后缀，避免暴露正文内容或发生冲突。发送协议复用现有 `kind: "file"`、`mimeType: "text/plain"`、`localPath` 路径，并携带 `sourceKind: "clipboard-text"` 标记，不再携带 `textContent`，避免长文本直接进入 prompt payload 或模型上下文。
 
 Agent 接收该标记后必须把它当作用户上传的临时本地文件附件处理：模型请求里只出现文件路径附件引用，不自动读取文件正文，也不生成 `prompt_attachment` system reminder。只有模型后续显式调用文件读取工具时，临时文件内容才进入上下文。普通用户上传的小型文本文件保持既有行为，可以继续被投影为 Read-like 附件上下文。
 

@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu.js";
 import { toast } from "@/components/ui/toast.js";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import {
   dispatchWorkspaceFileAddToChat,
   type WorkspaceFileDragPayload,
@@ -91,7 +91,7 @@ export function ImagePreviewContent({
   fileReference,
   loadDownloadSource,
 }: ImagePreviewContentProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const platform = useOptionalPlatform();
   const imageRef = useRef<HTMLImageElement>(null);
   const actionPendingRef = useRef(false);

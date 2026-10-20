@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import { createMarketingAssetRegistry } from "#src/marketing-touch/marketingAssetRegistry.js";
-import { parseMarketingTouchResponse } from "@zcode/shared";
+import { parseMarketingTouchResponse } from "@codez/shared";
 
 describe("published marketing assets", () => {
   it("authorizes banner ZIP and fallback only from a validated delivery", () => {

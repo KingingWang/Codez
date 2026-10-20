@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
-import { decodeConversationShareRows } from "@zcode/shared";
-import { toolCallDisplaySchema } from "@zcode/shared/zcode-protocol-v4";
-import type { ConversationRow } from "@zcode/shared";
+import { decodeConversationShareRows } from "@codez/shared";
+import { toolCallDisplaySchema } from "@codez/shared/codez-protocol-v4";
+import type { ConversationRow } from "@codez/shared";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -161,7 +161,7 @@ describe("conversation share public projection", () => {
       kind: "artifact",
       artifactVersionId: "share-artifact-1",
       logicalArtifactKey: "share-artifact-key-1",
-      ref: "zcode-artifact://share/share-artifact-1",
+      ref: "codez-artifact://share/share-artifact-1",
       productTurnId: "share-product-turn-1",
     });
     expect(result.artifacts).toEqual([
@@ -173,7 +173,7 @@ describe("conversation share public projection", () => {
           producer_product_turn_id: "share-product-turn-1",
           artifact_version: 1,
           state: "current",
-          ref: "zcode-artifact://share/share-artifact-1",
+          ref: "codez-artifact://share/share-artifact-1",
           artifact_type: "pdf",
           display_name: "report.pdf",
           extension: "pdf",
@@ -294,8 +294,8 @@ describe("conversation share public projection", () => {
       kind: "userInput",
       attachments: [
         {
-          ref: "zcode-artifact://share/share-input-artifact-1",
-          previewRef: "zcode-artifact://share/share-input-artifact-1",
+          ref: "codez-artifact://share/share-input-artifact-1",
+          previewRef: "codez-artifact://share/share-input-artifact-1",
           fileName: "pasted-text.txt",
           mime: "text/plain",
           bytes: 10,
@@ -305,7 +305,7 @@ describe("conversation share public projection", () => {
     const result = build(rows);
     expect(result.rows.find((row) => row.kind === "userInput")).toMatchObject({
       attachments: [
-        expect.objectContaining({ ref: "zcode-artifact://share/share-input-artifact-1" }),
+        expect.objectContaining({ ref: "codez-artifact://share/share-input-artifact-1" }),
       ],
     });
   });
@@ -313,7 +313,7 @@ describe("conversation share public projection", () => {
   it.each([
     ["data:text/plain;base64,YQ==", "unsafe_structure"],
     ["file:///tmp/report.html", "unsafe_structure"],
-    ["zcode-artifact://share/report", "artifact_protocol_not_ready"],
+    ["codez-artifact://share/report", "artifact_protocol_not_ready"],
   ] as const)("rejects unsupported local reference %s", (text, kind) => {
     const rows = rowsWithCompletedSubagent();
     rows[4] = {
@@ -345,7 +345,7 @@ describe("conversation share public projection", () => {
   });
 });
 
-// 与 zcode-server 的 testdata/workflow-displays.json 同步，覆盖跨语言分享契约。
+// 与 codez-server 的 testdata/workflow-displays.json 同步，覆盖跨语言分享契约。
 const workflowDisplays: unknown[] = JSON.parse(
   await readFile(new URL("./fixtures/workflow-displays.json", import.meta.url), "utf8"),
 );

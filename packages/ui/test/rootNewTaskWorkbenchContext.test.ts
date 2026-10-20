@@ -10,8 +10,8 @@ import {
 import { selectRemoteWorkspaceProjectFromDialog } from "@/root/useRemoteWorkspaceHistory.js";
 import type { CreateTaskOptions } from "@/app-shell/types.js";
 import { useRootWorkspaceActions } from "@/root/useRootWorkspaceActions.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
-import { onTaskNavigationCommitted } from "@/store/zcodeSessionStoreNavigation.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
+import { onTaskNavigationCommitted } from "@/store/codezSessionStoreNavigation.js";
 import {
   INITIAL_PANE_LAYOUT,
   V4_PRIMARY_PANE_ID,
@@ -90,7 +90,7 @@ function fixture(
 }
 beforeEach(() => {
   localStorage.clear();
-  useZCodeSessionStore.setState({ workspaces: {} });
+  useCodezSessionStore.setState({ workspaces: {} });
   usePaneLayoutStore.setState(INITIAL_PANE_LAYOUT);
   useWorkbenchGroupStore.getState().resetWorkbenchGroups();
 });
@@ -158,7 +158,7 @@ it.each([null, "other-project", "retained-project"])(
       workspaceIdentity: identity,
       projectId,
     });
-    expect(useZCodeSessionStore.getState().getWorkspaceState(path, identity).draftProjectId).toBe(
+    expect(useCodezSessionStore.getState().getWorkspaceState(path, identity).draftProjectId).toBe(
       projectId,
     );
     expect(readComposerWorkspaceScope(path, identity)?.projectId).toBe(projectId);
@@ -189,10 +189,10 @@ describe("project-aware new task creation", () => {
   it.each([true, false])(
     "publishes a settings return only after tab activation succeeds (%s)",
     (activated) => {
-      useZCodeSessionStore.getState().setActiveTaskId("/old", "old-session");
+      useCodezSessionStore.getState().setActiveTaskId("/old", "old-session");
       const { result, state } = fixture();
       state.activateTabByPath.mockReturnValue(activated);
-      const history = useZCodeSessionStore.getState().taskNavHistory;
+      const history = useCodezSessionStore.getState().taskNavHistory;
       const viewed = vi.fn();
       const subscription = onTaskNavigationCommitted(viewed);
       try {
@@ -205,7 +205,7 @@ describe("project-aware new task creation", () => {
             taskId: "old-session",
             workspaceIdentity: undefined,
           });
-        expect(useZCodeSessionStore.getState().taskNavHistory).toBe(history);
+        expect(useCodezSessionStore.getState().taskNavHistory).toBe(history);
       } finally {
         subscription.dispose();
       }
@@ -233,15 +233,15 @@ describe("project-aware new task creation", () => {
     );
     expect(addTab).not.toHaveBeenCalled();
     expect(
-      useZCodeSessionStore.getState().getWorkspaceState("/remote", "remote:server:s:/remote")
+      useCodezSessionStore.getState().getWorkspaceState("/remote", "remote:server:s:/remote")
         .draftProjectId,
     ).toBe("p");
-    expect(useZCodeSessionStore.getState().workspaces["/remote"]).toBeUndefined();
+    expect(useCodezSessionStore.getState().workspaces["/remote"]).toBeUndefined();
   });
   it.each(["desktop-continuous"] as const)(
     "PD01 连续新建复用未发送目录，显式 local Host 也保持同一身份（%s）",
     async (mode) => {
-      useZCodeSessionStore.getState().setActiveTaskId("/old", "old-session");
+      useCodezSessionStore.getState().setActiveTaskId("/old", "old-session");
       const { result, prepareSession, addTab } = fixture(mode);
       await act(async () => {
         await result.current.handleCreateTask({ projectId: null, hostId: "local" });
@@ -251,9 +251,9 @@ describe("project-aware new task creation", () => {
       expect(addTab).toHaveBeenNthCalledWith(1, "/managed/1", { workspacePurpose: "conversation" });
       expect(addTab).toHaveBeenNthCalledWith(2, "/managed/1", { workspacePurpose: "conversation" });
       expect(
-        useZCodeSessionStore.getState().getWorkspaceState("/managed/1").draftProjectId,
+        useCodezSessionStore.getState().getWorkspaceState("/managed/1").draftProjectId,
       ).toBeNull();
-      expect(useZCodeSessionStore.getState().getWorkspaceState("/old").activeTaskId).toBe(
+      expect(useCodezSessionStore.getState().getWorkspaceState("/old").activeTaskId).toBe(
         "old-session",
       );
     },
@@ -279,21 +279,21 @@ describe("project-aware new task creation", () => {
       });
     });
     expect(prepareSession).toHaveBeenCalledWith({ projectId: "project-a" });
-    const draft = useZCodeSessionStore.getState().getWorkspaceState("/project-primary");
+    const draft = useCodezSessionStore.getState().getWorkspaceState("/project-primary");
     expect(draft.draftProjectId).toBe("project-a");
     expect(draft.composerTextInsertRequest).toMatchObject({ text: "$creator ", mention });
     expect(countPanes(usePaneLayoutStore.getState())).toBe(1);
     expect(useWorkbenchGroupStore.getState().activeGroupId).toBeNull();
   });
   it("leaves the current session intact when directory preparation fails", async () => {
-    useZCodeSessionStore.getState().setActiveTaskId("/old", "old-session");
+    useCodezSessionStore.getState().setActiveTaskId("/old", "old-session");
     const { result, prepareSession, addTab } = fixture();
     prepareSession.mockRejectedValueOnce(new Error("directory unavailable"));
     await act(async () => {
       await result.current.handleCreateTask();
     });
     expect(addTab).not.toHaveBeenCalled();
-    expect(useZCodeSessionStore.getState().getWorkspaceState("/old").activeTaskId).toBe(
+    expect(useCodezSessionStore.getState().getWorkspaceState("/old").activeTaskId).toBe(
       "old-session",
     );
     expect(result.current.workspaceActionError).toContain("directory unavailable");
@@ -313,7 +313,7 @@ it("hands mobile project intent to the bridge owner without preparing or mutatin
     undefined,
     openMobileProjectDraft,
   );
-  useZCodeSessionStore.getState().setActiveTaskId("/old", "old-session");
+  useCodezSessionStore.getState().setActiveTaskId("/old", "old-session");
   const request = { projectId: "p", hostId: "remote:server:s", initialPrompt: "$creator " };
   let pending!: Promise<void>;
   await act(async () => {
@@ -321,7 +321,7 @@ it("hands mobile project intent to the bridge owner without preparing or mutatin
   });
   expect(openMobileProjectDraft).toHaveBeenCalledWith(request);
   expect(prepareSession).not.toHaveBeenCalled();
-  useZCodeSessionStore
+  useCodezSessionStore
     .getState()
     .startDraft("/new", undefined, "remote:server:s:/new", { projectId: "p" });
   await act(async () => {
@@ -329,11 +329,11 @@ it("hands mobile project intent to the bridge owner without preparing or mutatin
     await pending;
   });
   expect(addTab).not.toHaveBeenCalled();
-  expect(useZCodeSessionStore.getState().getWorkspaceState("/old").activeTaskId).toBe(
+  expect(useCodezSessionStore.getState().getWorkspaceState("/old").activeTaskId).toBe(
     "old-session",
   );
   expect(
-    useZCodeSessionStore.getState().getWorkspaceState("/new", "remote:server:s:/new")
+    useCodezSessionStore.getState().getWorkspaceState("/new", "remote:server:s:/new")
       .draftProjectId,
   ).toBe("p");
 });
@@ -349,15 +349,15 @@ it("initializes a handed off draft with its project and exact input under the ne
   act(() =>
     result.current.startDraftInWorkspace("/new", "remote:server:s:/new", {
       projectId: "p",
-      provider: "zcode",
+      provider: "codez",
       initialPrompt: "$creator ",
       initialPromptMention: mention,
     }),
   );
-  const draft = useZCodeSessionStore.getState().getWorkspaceState("/new", "remote:server:s:/new");
+  const draft = useCodezSessionStore.getState().getWorkspaceState("/new", "remote:server:s:/new");
   expect(draft.draftProjectId).toBe("p");
   expect(draft.composerTextInsertRequest).toMatchObject({ text: "$creator ", mention });
-  expect(useZCodeSessionStore.getState().workspaces["/new"]).toBeUndefined();
+  expect(useCodezSessionStore.getState().workspaces["/new"]).toBeUndefined();
 });
 
 it("does not allocate a directory when the mobile peer lacks project admission", async () => {
@@ -381,7 +381,7 @@ it.each(["desktop-continuous", "web-remote-replayable"] as const)(
       }),
     );
     expect(
-      useZCodeSessionStore.getState().getWorkspaceState("/metadata", "remote:server:s:/metadata"),
+      useCodezSessionStore.getState().getWorkspaceState("/metadata", "remote:server:s:/metadata"),
     ).toMatchObject({ draftProjectId: "p", draftTaskGroupId: "g" });
     expect(
       readV4ComposerDraft("/metadata", "remote:server:s:/metadata", "__draft__", {
@@ -410,7 +410,7 @@ it.each(["desktop-continuous", "web-remote-replayable"] as const)(
 it.each(["desktop-continuous", "web-remote-replayable"] as const)(
   "D3 %s inherits the current session project by exact task identity",
   async (mode) => {
-    useZCodeSessionStore.getState().setActiveTaskId("/old", "session");
+    useCodezSessionStore.getState().setActiveTaskId("/old", "session");
     const open = vi.fn(async () => {});
     const { result, prepareSession, readTree } = fixture(mode, undefined, open);
     readTree.mockResolvedValueOnce({
@@ -432,7 +432,7 @@ it.each(["desktop-continuous", "web-remote-replayable"] as const)(
 );
 
 it("D3 inherits draft project without reading task history; explicit null opts out", async () => {
-  useZCodeSessionStore
+  useCodezSessionStore
     .getState()
     .startDraft("/old", undefined, undefined, { projectId: "draft-project" });
   const { result, prepareSession, readTree } = fixture();
@@ -451,7 +451,7 @@ it("D3 inherits draft project without reading task history; explicit null opts o
 });
 
 it("D3 discards project lookup after the user selects another session", async () => {
-  useZCodeSessionStore.getState().setActiveTaskId("/old", "session");
+  useCodezSessionStore.getState().setActiveTaskId("/old", "session");
   const { result, prepareSession, readTree, addTab } = fixture();
   let finish!: (tree: Awaited<ReturnType<typeof readTree>>) => void;
   readTree.mockImplementationOnce(
@@ -464,7 +464,7 @@ it("D3 discards project lookup after the user selects another session", async ()
   await act(async () => {
     pending = result.current.handleCreateTask();
   });
-  act(() => useZCodeSessionStore.getState().setActiveTaskId("/old", "other"));
+  act(() => useCodezSessionStore.getState().setActiveTaskId("/old", "other"));
   await act(async () => {
     finish({ tasks: [{ taskId: "session", workspacePath: "/old", projectId: "current" }] });
     await pending;

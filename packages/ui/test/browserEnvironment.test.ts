@@ -17,8 +17,8 @@ describe("browserEnvironment localStorage helpers", () => {
 
     expect(getSafeReadableLocalStorage()).toBeNull();
     expect(getSafeLocalStorage()).toBeNull();
-    expect(readSafeLocalStorage("zcode-locale")).toBeNull();
-    expect(() => writeSafeLocalStorage("zcode-locale", "zh-CN")).not.toThrow();
+    expect(readSafeLocalStorage("codez-locale")).toBeNull();
+    expect(() => writeSafeLocalStorage("codez-locale", "zh-CN")).not.toThrow();
   });
 
   it("localStorage getter 抛错时读写都不抛出", () => {
@@ -33,8 +33,8 @@ describe("browserEnvironment localStorage helpers", () => {
 
     expect(getSafeReadableLocalStorage()).toBeNull();
     expect(getSafeLocalStorage()).toBeNull();
-    expect(readSafeLocalStorage("zcode-locale")).toBeNull();
-    expect(() => writeSafeLocalStorage("zcode-locale", "zh-CN")).not.toThrow();
+    expect(readSafeLocalStorage("codez-locale")).toBeNull();
+    expect(() => writeSafeLocalStorage("codez-locale", "zh-CN")).not.toThrow();
   });
 
   it("只读 storage 只开放读取能力，不作为可写 storage 返回", () => {
@@ -45,7 +45,7 @@ describe("browserEnvironment localStorage helpers", () => {
 
     expect(getSafeReadableLocalStorage()).toBe(storage);
     expect(getSafeLocalStorage()).toBeNull();
-    expect(readSafeLocalStorage("zcode-locale")).toBe("en-US");
-    expect(() => writeSafeLocalStorage("zcode-locale", "zh-CN")).not.toThrow();
+    expect(readSafeLocalStorage("codez-locale")).toBe("en-US");
+    expect(() => writeSafeLocalStorage("codez-locale", "zh-CN")).not.toThrow();
   });
 });

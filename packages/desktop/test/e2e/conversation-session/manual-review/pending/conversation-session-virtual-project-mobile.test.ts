@@ -2,14 +2,14 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { openMobilePairingPage } from "../../../helpers/mobile-pairing.js";
 import { selectNativeProjectDirectories } from "../../../helpers/project-sidebar.js";
-import { ServiceChannels } from "@zcode/shared";
+import { ServiceChannels } from "@codez/shared";
 import {
   TID_TASK_ITEM,
   TID_V4_COMPOSER_INPUT,
   TID_V4_COMPOSER_SEND,
   TID_COMPOSER_WORKSPACE_TRIGGER,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import { join, basename } from "node:path";
@@ -40,14 +40,14 @@ const SAVED_REMOTE_HOST = "remote:server:e2e-mobile-saved-device";
 
 type VirtualProjectTestWindow = Window & {
   __testActions?: { getTheme(): string; setTheme(theme: string): void };
-  __zcodeTabStoreE2E?: {
+  __codezTabStoreE2E?: {
     getState(): {
       tabs: unknown[];
       activeWorkspacePath: string | null;
       activeWorkspaceIdentity?: string | null;
     };
   };
-  __zcodeSessionStoreE2E?: {
+  __codezSessionStoreE2E?: {
     getState(): {
       getWorkspaceState(
         path: string,
@@ -78,7 +78,7 @@ async function longPressGroup(page: Page, title: string) {
   }
 }
 
-// wdio fixture 以 VITE_ZCODE_E2E_STORE_BRIDGE=1 自动启动本仓 Web :5173（端口需空闲）；desktop URL 指向同一地址。
+// wdio fixture 以 VITE_CODEZ_E2E_STORE_BRIDGE=1 自动启动本仓 Web :5173（端口需空闲）；desktop URL 指向同一地址。
 describe("虚拟项目手机 shared-host 导航", () => {
   after(async () => {
     await restoreHandoffProbes();
@@ -87,8 +87,8 @@ describe("虚拟项目手机 shared-host 导航", () => {
   it("VP13：手机实际首页复用项目列表，新目录草稿交接不增加桌面 tab", async function () {
     this.timeout(180_000);
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 45_000);
-    const testHome = process.env.ZCODE_E2E_HOME_DIR!;
-    if (!testHome || !basename(testHome).startsWith("zcode-virtual-project-e2e-"))
+    const testHome = process.env.CODEZ_E2E_HOME_DIR!;
+    if (!testHome || !basename(testHome).startsWith("codez-virtual-project-e2e-"))
       throw new Error("隔离 HOME required");
     const cwd = join(testHome, "E2E_VP13_UNOPENED");
     const additionalRoot = join(testHome, "E2E_VP13_ADDITIONAL");
@@ -97,7 +97,7 @@ describe("虚拟项目手机 shared-host 导航", () => {
     await promisify(execFile)("git", ["init", "--initial-branch=main", cwd]);
     await writeFile(join(cwd, "E2E_VP13_FILES.txt"), "file-only target");
     // 在项目登记目录前准备已迁移数据，避免直写绕过事件后 Controller 仍持有旧列表。
-    const db = new DatabaseSync(join(testHome, ".zcode/v2/tasks-index.sqlite"));
+    const db = new DatabaseSync(join(testHome, ".codez/v2/tasks-index.sqlite"));
     try {
       seedLegacyProviderTasks(db, cwd);
       db.prepare(`UPDATE tasks SET host_id='local',root_path=workspace_path,
@@ -133,7 +133,7 @@ describe("虚拟项目手机 shared-host 导航", () => {
     // 取证后关闭检查器：持续的 800ms 子进程查询会在 CLI 启动期间超时并回收 runtime。
     await closeResourceManagerWindow();
     const desktopTabs = await browser.execute(
-      () => (window as VirtualProjectTestWindow).__zcodeTabStoreE2E?.getState().tabs.length,
+      () => (window as VirtualProjectTestWindow).__codezTabStoreE2E?.getState().tabs.length,
     );
     let receivePair!: (url: string) => void;
     const pairing = new Promise<string>((resolve) => {
@@ -196,11 +196,11 @@ describe("虚拟项目手机 shared-host 导航", () => {
         throw new Error("VP13 requires current local Web build");
       // 本机抓包代理可能向 Chrome 签发不受信任证书；允许测试浏览器显式直连 relay。
       mobileBrowser = await chromium.launch({
-        ...(process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE
-          ? { executablePath: process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE }
+        ...(process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE
+          ? { executablePath: process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE }
           : { channel: "chrome" }),
         headless: true,
-        args: process.env.ZCODE_E2E_BROWSER_NO_PROXY === "1" ? ["--no-proxy-server"] : [],
+        args: process.env.CODEZ_E2E_BROWSER_NO_PROXY === "1" ? ["--no-proxy-server"] : [],
       });
       const context = await mobileBrowser.newContext({
         viewport: { width: 390, height: 844 },
@@ -240,7 +240,7 @@ describe("虚拟项目手机 shared-host 导航", () => {
       );
       enterStage("mobile relay admission");
       await openMobilePairingPage(page, pairUrl, {
-        artifactDir: process.env.ZCODE_E2E_ARTIFACT_DIR!,
+        artifactDir: process.env.CODEZ_E2E_ARTIFACT_DIR!,
         caseMarker: "VP13",
         phase: "file-navigation",
         readySelector: '[data-project-name="E2E_VP13_PROJECT"]',
@@ -333,7 +333,7 @@ describe("虚拟项目手机 shared-host 导航", () => {
         expect(groupLayout.left).toBeGreaterThanOrEqual(0);
         expect(groupLayout.right).toBeLessThanOrEqual(groupLayout.width);
         await page.screenshot({
-          path: join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `task-groups-mobile-${theme}.png`),
+          path: join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `task-groups-mobile-${theme}.png`),
         });
       }
       await longPressGroup(page, "E2E_MOBILE_RENAMED");
@@ -386,7 +386,7 @@ describe("虚拟项目手机 shared-host 导航", () => {
       await page.getByTestId("sidebar-view-menu").waitFor();
       expect(
         await page.evaluate(
-          () => JSON.parse(localStorage.getItem("zcode-project-sidebar-preferences") ?? "{}").view,
+          () => JSON.parse(localStorage.getItem("codez-project-sidebar-preferences") ?? "{}").view,
         ),
       ).toBe("timeline");
       await page.getByTestId("sidebar-view-menu").tap();
@@ -401,7 +401,7 @@ describe("虚拟项目手机 shared-host 导航", () => {
       await page.getByTestId("virtual-project-add").tap();
       await page.getByTestId("virtual-project-name").waitFor();
       await page.screenshot({
-        path: join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "VP19-mobile-form.png"),
+        path: join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "VP19-mobile-form.png"),
       });
       // 手机选择器使用真实触摸，并等待弹层关闭后再开始下一次选择。
       await page.getByTestId("virtual-project-device").tap();
@@ -455,7 +455,7 @@ describe("虚拟项目手机 shared-host 导航", () => {
       await directoryPicker.locator("input").press("Enter");
       await directoryPicker.getByRole("button", { name: /^(选择文件夹|Choose folder)$/ }).tap();
       await page.screenshot({
-        path: join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "VP19-mobile-editor.png"),
+        path: join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "VP19-mobile-editor.png"),
       });
       enterStage("mobile folder confirmation");
       await page.getByTestId("virtual-project-save").tap();
@@ -507,7 +507,7 @@ describe("虚拟项目手机 shared-host 导航", () => {
           });
         expect(visibleAndClickable).toBe(true);
         await page.screenshot({
-          path: join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `PCFT11-mobile-trust-${theme}.png`),
+          path: join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `PCFT11-mobile-trust-${theme}.png`),
           animations: "disabled",
         });
       }
@@ -522,7 +522,7 @@ describe("虚拟项目手机 shared-host 导航", () => {
         .filter({ hasText: "E2E_VP19_MOBILE_PROJECT" })
         .waitFor();
       await page.screenshot({
-        path: join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "PCD03-mobile-created-project.png"),
+        path: join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "PCD03-mobile-created-project.png"),
       });
       await page.getByRole("button", { name: /返回任务首页|Back to task home/ }).tap();
       enterStage("project draft");
@@ -530,10 +530,10 @@ describe("虚拟项目手机 shared-host 导航", () => {
       await mobileProject.getByTestId("virtual-project-create-task").click();
       const readDraft = () =>
         page.evaluate(() => {
-          const tabs = (window as VirtualProjectTestWindow).__zcodeTabStoreE2E?.getState();
+          const tabs = (window as VirtualProjectTestWindow).__codezTabStoreE2E?.getState();
           const path = tabs?.activeWorkspacePath;
           const draft = path
-            ? (window as VirtualProjectTestWindow).__zcodeSessionStoreE2E
+            ? (window as VirtualProjectTestWindow).__codezSessionStoreE2E
                 ?.getState()
                 .getWorkspaceState(path, tabs?.activeWorkspaceIdentity ?? undefined)
             : undefined;
@@ -596,7 +596,7 @@ describe("虚拟项目手机 shared-host 导航", () => {
         const beforeEdit = await readDraft();
         const draftText = await page.getByTestId(TID_V4_COMPOSER_INPUT).textContent();
         await page.screenshot({
-          path: join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `VP13-composer-edit-${theme}.png`),
+          path: join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `VP13-composer-edit-${theme}.png`),
           animations: "disabled",
         });
         const editBounds = await edit.boundingBox();
@@ -605,7 +605,7 @@ describe("虚拟项目手机 shared-host 导航", () => {
         const name = page.getByTestId("virtual-project-name");
         expect(await name.inputValue()).toBe("E2E_VP13_PROJECT");
         await page.screenshot({
-          path: join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `VP13-project-editor-${theme}.png`),
+          path: join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `VP13-project-editor-${theme}.png`),
           animations: "disabled",
         });
         await name.fill("E2E_MOBILE_EDIT_CANCELLED");
@@ -637,7 +637,7 @@ describe("虚拟项目手机 shared-host 导航", () => {
           return menu && getComputedStyle(menu).opacity === "1";
         });
         await page.screenshot({
-          path: join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `VP13-folders-composer-${theme}.png`),
+          path: join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `VP13-folders-composer-${theme}.png`),
           animations: "disabled",
         });
         if (theme === "zai-light") {
@@ -659,7 +659,7 @@ describe("虚拟项目手机 shared-host 导航", () => {
           await menu.getByTestId("composer-create-project").tap();
           await page.getByTestId("virtual-project-name").fill("E2E_COMPOSER_MOBILE_CREATED");
           await page.screenshot({
-            path: join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "VP13-composer-create.png"),
+            path: join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "VP13-composer-create.png"),
             animations: "disabled",
           });
           await page.getByTestId("virtual-project-save").tap();
@@ -682,7 +682,7 @@ describe("虚拟项目手机 shared-host 导航", () => {
             .filter({ hasText: "E2E_PCD_mobile.txt" })
             .waitFor();
           await page.screenshot({
-            path: join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "PCD03-mobile-preserved-draft.png"),
+            path: join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "PCD03-mobile-preserved-draft.png"),
           });
           await trigger.tap();
           await menu.locator('[data-project-name="E2E_COMPOSER_MOBILE_CREATED"]').waitFor();
@@ -727,7 +727,7 @@ describe("虚拟项目手机 shared-host 导航", () => {
       const globalDraft = await readDraft();
       expect(globalDraft.projectId).toBeNull();
       expect(await page.getByTestId("composer-edit-project").count()).toBe(0);
-      expect(globalDraft.path).toContain(join(testHome, ".zcode/workspace"));
+      expect(globalDraft.path).toContain(join(testHome, ".codez/workspace"));
       enterStage("PD01/02/10 mobile pending task directory and draft recovery");
       const taskInput = page.getByTestId(TID_V4_COMPOSER_INPUT);
       await taskInput.fill("E2E_PD_MOBILE_DRAFT");
@@ -751,7 +751,7 @@ describe("虚拟项目手机 shared-host 导航", () => {
       expect(await taskInput.textContent()).toBe("");
       expect(
         await browser.execute(
-          () => (window as VirtualProjectTestWindow).__zcodeTabStoreE2E?.getState().tabs.length,
+          () => (window as VirtualProjectTestWindow).__codezTabStoreE2E?.getState().tabs.length,
         ),
       ).toBe(desktopTabs);
       await page.getByRole("button", { name: /返回任务首页|Back to task home/ }).click();
@@ -815,7 +815,7 @@ describe("虚拟项目手机 shared-host 导航", () => {
         await toggle.tap();
         await toggle.locator(".lucide-folders").waitFor();
         await page.screenshot({
-          path: join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `VP13-folders-closed-${theme}.png`),
+          path: join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `VP13-folders-closed-${theme}.png`),
           animations: "disabled",
         });
         await toggle.tap();
@@ -825,7 +825,7 @@ describe("虚拟项目手机 shared-host 导航", () => {
         expect(bounds!.x).toBeGreaterThanOrEqual(0);
         expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
         await page.screenshot({
-          path: join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `VP15-mobile-project-${theme}.png`),
+          path: join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `VP15-mobile-project-${theme}.png`),
           animations: "disabled",
         });
       }
@@ -843,7 +843,7 @@ describe("虚拟项目手机 shared-host 导航", () => {
       expect(filesDraft.path).toBe(cwd);
       expect(filesDraft.activeTaskId).toBe(projectTaskState.activeTaskId);
       await page.screenshot({
-        path: join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "VP13-file-only-mobile.png"),
+        path: join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "VP13-file-only-mobile.png"),
       });
       await filesTab.getByRole("button").click();
       await filesTab.waitFor({ state: "detached" });
@@ -900,12 +900,12 @@ describe("虚拟项目手机 shared-host 导航", () => {
       await page.getByRole("menu").waitFor({ state: "hidden" });
       expect((await readDraft()).activeTaskId).toBe(createdTaskId);
       await page.screenshot({
-        path: join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "SBV06-mobile-recent.png"),
+        path: join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "SBV06-mobile-recent.png"),
       });
       await page.getByTestId(testId(TID_TASK_ITEM, createdTaskId!)).click();
       await page.getByText("E2E_VP13_HISTORY_READY", { exact: true }).waitFor();
       await page.screenshot({
-        path: join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "VP13-mobile-project-history.png"),
+        path: join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "VP13-mobile-project-history.png"),
       });
       // PCD01/02：同一隔离 Electron 内验证桌面两入口、深浅主题及已有会话隔离。
       const desktopConnection = await browser.getPuppeteer();
@@ -918,10 +918,10 @@ describe("虚拟项目手机 shared-host 导航", () => {
             "../ui/test/browser/manual-review/pending/project-created-draft.test.mjs",
           ),
         ],
-        { env: { ...process.env, ZCODE_E2E_CDP_URL: desktopConnection.wsEndpoint() } },
+        { env: { ...process.env, CODEZ_E2E_CDP_URL: desktopConnection.wsEndpoint() } },
       );
       await writeFile(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "PCD-desktop.log"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "PCD-desktop.log"),
         desktopResult.stdout,
       );
     } catch (error) {
@@ -934,7 +934,7 @@ describe("虚拟项目手机 shared-host 导航", () => {
         );
       await mobilePage
         ?.screenshot({
-          path: join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "VP13-failed-stage.png"),
+          path: join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "VP13-failed-stage.png"),
           timeout: 5_000,
         })
         .catch(() => {});

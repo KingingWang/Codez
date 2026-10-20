@@ -1,8 +1,8 @@
 import { PassThrough } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
-import { appSettingsSchema, type ServerRemoteInfo } from "@zcode/shared";
-import type { IServiceAccessor } from "@zcode/services";
-import type { ServerReleaseAsset, SourceServerTransportAdapter } from "@zcode/server/source-server";
+import { appSettingsSchema, type ServerRemoteInfo } from "@codez/shared";
+import type { IServiceAccessor } from "@codez/services";
+import type { ServerReleaseAsset, SourceServerTransportAdapter } from "@codez/server/source-server";
 import { SourceServerConnectionManager } from "@desktop/host/sourceServerConnectionManager.js";
 import { SourceServerDirectory } from "@desktop/host/sourceServerDirectory.js";
 import { createSourceServerManagementService } from "@desktop/host/sourceServerManagementService.js";

@@ -8,7 +8,7 @@
 
 - The Start Plan entry remains visible for disconnected users, but the Trial plan card is shown only when `client/configs.configs.startPlanPreview` exists and contains displayable entitlements.
 - The Trial plan card uses the remote `startPlanPreview.name` as its title.
-- The purchased Start Plan status card title stays `Start Plan` when the active entitlement name is a Start entitlement such as `Start` or `ZCode V3 Start Plan`.
+- The purchased Start Plan status card title stays `Start Plan` when the active entitlement name is a Start entitlement such as `Start` or `Codez V3 Start Plan`.
 - If a paid Coding Plan entitlement is temporarily rendered through the Start Plan provider branch, the status card title uses the entitlement/product name instead of the hardcoded `Start Plan`, so paid Coding Plan users see their actual plan name.
 - Every displayable `model_usage` entitlement with a positive `grantUnits` and non-empty `showName` contributes its model name to the supported model list.
 - The hero quota is the sum of all displayed entitlement `grantUnits` with the same unit and period, and is shown once as the Trial plan total. The English hero uses long compact wording such as `5 Million tokens per day`; the Chinese hero stays localized compact such as `500万 tokens/日`.

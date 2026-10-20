@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SHORTCUT_COMMANDS, isValidShortcutBinding } from "@zcode/shared";
+import { SHORTCUT_COMMANDS, isValidShortcutBinding } from "@codez/shared";
 import {
   buildShortcutOverridesAfterAppend,
   buildShortcutOverridesAfterSteal,

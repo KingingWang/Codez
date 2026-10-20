@@ -106,7 +106,7 @@ describe("verifyConversationShareIntegrity", () => {
     producer_product_turn_id: "product-turn-1",
     artifact_version: 1,
     state: "current",
-    ref: "zcode-artifact://share/artifact-1",
+    ref: "codez-artifact://share/artifact-1",
     artifact_type: "md",
     display_name: "report.md",
     extension: "md",

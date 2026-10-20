@@ -19,7 +19,7 @@ const CASE_NAME = "conversation-session-message-image-gallery";
 const MARKER = "E2E_MESSAGE_IMAGE_GALLERY";
 const IMAGE_DIR = join(
   DEFAULT_WORKSPACE,
-  ".zcode-e2e",
+  ".codez-e2e",
   "message-image-gallery",
 );
 const IMAGE_NAMES = [
@@ -30,7 +30,7 @@ const IMAGE_NAMES = [
 ] as const;
 const SAVED_IMAGE_PATH = join(
   tmpdir(),
-  `zcode-e2e-message-image-gallery-${Date.now()}.svg`,
+  `codez-e2e-message-image-gallery-${Date.now()}.svg`,
 );
 
 let replayServer: Awaited<

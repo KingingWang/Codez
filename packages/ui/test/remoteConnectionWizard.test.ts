@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeRemoteResourcePackageSelection } from "@zcode/shared";
+import { normalizeRemoteResourcePackageSelection } from "@codez/shared";
 import {
   buildRemoteTarget,
   buildRemoteTargetFromProfile,
@@ -291,7 +291,7 @@ describe("buildRemoteTarget", () => {
       privateKeyPassphrase: "",
       wslDistro: "",
       dockerContainer: "",
-      serverUrl: " https://studio.example.com/zcode/ ",
+      serverUrl: " https://studio.example.com/codez/ ",
       serverName: " Studio ",
       serverToken: " secret-token ",
       serverWorkspacePath: " /srv/project ",
@@ -300,7 +300,7 @@ describe("buildRemoteTarget", () => {
     expect(result).toEqual({
       target: {
         kind: "server",
-        url: "https://studio.example.com/zcode/",
+        url: "https://studio.example.com/codez/",
         name: "Studio",
         token: "secret-token",
         workspacePath: "/srv/project",

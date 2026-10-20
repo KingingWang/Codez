@@ -4,7 +4,7 @@ import type {
   McpUiHostContext,
   McpUiStyles,
 } from "@modelcontextprotocol/ext-apps/app-bridge";
-import type { McpAppsHostTitleBar, McpAppsStyleVariables } from "@zcode/shared/mcp-apps";
+import type { McpAppsHostTitleBar, McpAppsStyleVariables } from "@codez/shared/mcp-apps";
 import { PLUGIN_UI_CARD_MAX_HEIGHT_PX } from "../contract.js";
 
 export interface PluginUiHostContextInput {
@@ -38,7 +38,7 @@ export function buildPluginUiHostContext(input: PluginUiHostContextInput): McpUi
     },
     safeAreaInsets: { top: 0, right: 0, bottom: 0, left: 0 },
     platform: "desktop",
-    userAgent: "zcode",
+    userAgent: "codez",
     timeZone: input.timeZone ?? resolveTimeZone(),
     // 桌面宿主固定有 hover、无 touch。
     deviceCapabilities: { hover: true, touch: false },

@@ -27,7 +27,7 @@ before(async () => {
           if (id.endsWith("/store/TabStoreProvider.tsx"))
             return "export const useTabStoreApi=()=>window.__renderFixture.tabStore; export const useTabStore=s=>s(window.__renderFixture.tabStore.getState()); export const useOptionalTabStore=useTabStore;";
           if (id.endsWith("/store/StoreProvider.tsx"))
-            return "const state={setTheme:()=>{},interfaceMode:'coding'}; export const useZCodeStore=s=>s(state); export const useZCodeStoreWithDefault=(_s,value)=>value;";
+            return "const state={setTheme:()=>{},interfaceMode:'coding'}; export const useCodezStore=s=>s(state); export const useCodezStoreWithDefault=(_s,value)=>value;";
           if (id.endsWith("/hooks/usePlatform.tsx"))
             return "export const useOptionalPlatform=()=>null; export const usePlatform=()=>({}); export const useSelectDirectory=()=>async()=>null;";
           if (id.endsWith("/hooks/useConfirmDialog.ts"))

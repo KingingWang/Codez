@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CodingPlanResetStatusSnapshot, UsageQuotaLimit } from "@zcode/shared";
+import type { CodingPlanResetStatusSnapshot, UsageQuotaLimit } from "@codez/shared";
 import {
   CODING_PLAN_QUOTA_RESET_AUTOMATIC_PROCESSING_MS,
   CODING_PLAN_QUOTA_RESET_DONE_DISPLAY_MS,

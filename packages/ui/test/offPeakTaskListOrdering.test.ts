@@ -1,12 +1,12 @@
-import type { ZCodeOffPeakTask, ZCodeOffPeakTaskStatus } from "@zcode/shared";
+import type { CodezOffPeakTask, CodezOffPeakTaskStatus } from "@codez/shared";
 import { describe, expect, it } from "vitest";
 import { sortOffPeakTasksByCreatedAt } from "@/settings/OffPeakTaskList.js";
 
 function createTask(
   offPeakTaskId: string,
-  status: ZCodeOffPeakTaskStatus,
+  status: CodezOffPeakTaskStatus,
   createdAt: number,
-): ZCodeOffPeakTask {
+): CodezOffPeakTask {
   return {
     offPeakTaskId,
     title: offPeakTaskId,

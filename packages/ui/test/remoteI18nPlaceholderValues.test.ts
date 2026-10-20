@@ -3,8 +3,8 @@ import { resolveRemoteConnectionPresentation } from "@/lib/remoteConnectionPrese
 import { createElement } from "react";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Emitter } from "@zcode/rpc";
-import type { SourceServerManagementSnapshot } from "@zcode/shared";
+import { Emitter } from "@codez/rpc";
+import type { SourceServerManagementSnapshot } from "@codez/shared";
 import zhCN from "@/i18n/locales/zh-CN.js";
 import { SourceServerManagementPanel } from "@/settings/SourceServerManagementPanel.js";
 
@@ -24,7 +24,7 @@ function formatZhMessage({ id }: { id: string }, values?: Record<string, string 
 }
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: { formatMessage: formatZhMessage },
     locale: "zh-CN",
   }),

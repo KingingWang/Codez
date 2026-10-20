@@ -5,7 +5,7 @@ import {
   isZaiCodingPlanProviderId,
   type OAuthProviderId,
   ZAI_PROVIDER_ID,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { type CodingPlanProviderId } from "@/settings/model-provider-section/constants.js";
 
 export type CodingPlanPurchaseAuthStatus =

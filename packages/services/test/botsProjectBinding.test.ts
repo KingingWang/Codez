@@ -40,7 +40,7 @@ function setup(initial = [project("p")], state?: Parameters<typeof f.createMemor
   const service = f.createBotsService({
     repo: repo as never,
     credentialService: f.createCredentialService({ "secret-1": "secret" }),
-    zcodeTaskService: task,
+    codezTaskService: task,
     projectService: {
       readProjects: async () => projects,
       prepareSession,
@@ -82,7 +82,7 @@ it("同 cwd 其他项目任务不进入 Bot 选择，旧菜单被移动后不能
     projectId,
     hostId: "local",
     title: taskId,
-    provider: "zcode",
+    provider: "codez",
     workspacePath: "/first",
     archived: false,
     pinned: false,
@@ -112,7 +112,7 @@ it("/task 切换保持项目授权 ID，之后 /new 仍保留原执行快照", a
         projectId: "p",
         hostId: "local",
         title: "existing",
-        provider: "zcode",
+        provider: "codez",
         workspacePath: "/first",
         archived: false,
         pinned: false,

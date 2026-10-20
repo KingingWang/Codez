@@ -2,7 +2,7 @@
 
 本页定义 [Relay V2](../issues/web-remote-control-relay-v2/01-relay-v2-login-pairing.md) 的最终共享契约、连接行为与验收边界。桌面 device、手机 terminal 与 shared 均只使用 V2。
 
-契约依据：zcode-server `origin/staging` 提交 `5a947caea3a022b12b5d051ef25c807952feefa7` 的 `docs/remote-relay.md`、`internal/domain/relay_v2/proto.go`、`service.go` 和 `internal/interfaces/web/{dto,controller}/remote_v2.go`。HTTP 请求及 WebSocket 消息采用严格字段校验，禁止把 V1 字段意外发到 V2；HTTP 响应采用下述兼容性校验。服务端 Go JSON 解码本身可能忽略多余字段。
+契约依据：codez-server `origin/staging` 提交 `5a947caea3a022b12b5d051ef25c807952feefa7` 的 `docs/remote-relay.md`、`internal/domain/relay_v2/proto.go`、`service.go` 和 `internal/interfaces/web/{dto,controller}/remote_v2.go`。HTTP 请求及 WebSocket 消息采用严格字段校验，禁止把 V1 字段意外发到 V2；HTTP 响应采用下述兼容性校验。服务端 Go JSON 解码本身可能忽略多余字段。
 
 ## HTTP 契约
 
@@ -72,7 +72,7 @@ Relay 不保有 task、workspace、stream 或已提交输入；桌面 `desktop-c
 
 ## 共用假 relay
 
-位置：`packages/shared/test/fixtures/fake-relay-v2.ts`，独立测试子路径 `@zcode/shared/testing/fake-relay-v2`。只在 Node 测试进程导入，不从生产 shared 根入口导出，不向浏览器 bundle 引入 Node HTTP 或 `ws`。真实 loopback HTTP/WS 可服务 Node `ws` 与浏览器 WebSocket API 兼容客户端。
+位置：`packages/shared/test/fixtures/fake-relay-v2.ts`，独立测试子路径 `@codez/shared/testing/fake-relay-v2`。只在 Node 测试进程导入，不从生产 shared 根入口导出，不向浏览器 bundle 引入 Node HTTP 或 `ws`。真实 loopback HTTP/WS 可服务 Node `ws` 与浏览器 WebSocket API 兼容客户端。
 
 `createFakeRelayV2({users: {测试JWT: 用户ID}, now?, onHttp?, onMessage?})` 返回 `httpUrl`、`wsUrl`、`httpCalls`、`messages`、`sendError(target, code)`、`disconnect(target)` 和异步 `close()`。`now` 返回毫秒；target 可按 `connectionId`、`deviceSid`、`role` 筛选。`onHttp(call)` 返回 `{status, body?}` 或 `{networkError: true}`；`onMessage(record)` 返回 `{pairStatus}`、`{error}`、`{disconnect: true}` 或 `{drop: true}`（忽略该条请求，不改变连接状态、不发 ACK），返回空值走正常行为。测试必须在清理阶段 `await relay.close()`。
 
@@ -334,7 +334,7 @@ helper 只拥有一次 HTTP 请求的取消资源；导航由 Entry 持有，soc
 `WebRemoteControlEntry` 是入口视图、设备列表请求和自动连接 admission 的唯一 owner；页面只渲染其投影并发送选择、刷新和切换账号命令。凭据继续由 `WebAuthService` 持有，设备在线事实来自当前账号的 `GET /api/v1/remote/device`，localStorage 最近 SID/MID 仅是偏好，不能证明归属或在线；同源 localStorage 记住的设备名和平台同样只是展示偏好，不参与身份、归属或在线判断。
 
 1. 回调模式和登录门禁保持优先；有 SID 沿用 05 直接连接，不查询设备列表。
-2. 已登录且无 SID 时，读取同源 localStorage 的 `zcode-web-remote-last-device-sid` 与 `zcode-web-remote-last-device-mid`，拉取当前账号的设备列表，按以下顺序决定落点：
+2. 已登录且无 SID 时，读取同源 localStorage 的 `codez-web-remote-last-device-sid` 与 `codez-web-remote-last-device-mid`，拉取当前账号的设备列表，按以下顺序决定落点：
    - 返回列表包含最近 SID 且 `online=true`：自动连接该 SID。
    - 最近 SID 不在线（离线或已被桌面重新注册删除），但最近 MID 在当前列表中恰好只有 1 个在线 SID：自动连接这个 SID。同一台电脑重新注册后 SID 会变化，MID 代表同一台机器，列表已限定为当前账号，因此可以直接接上。最近 MID 缺失（只记录过 SID 的旧偏好）时，取列表中最近 SID 记录的 MID。
    - 同 MID 有多个在线 SID、无记录、或上述都不满足：展示列表，不任选其他电脑或连接。
@@ -378,14 +378,14 @@ sequenceDiagram
 
 ```text
 ┌──────────────────────────────────────┐
-│ [Z] ZCode                            │
+│ [Z] Codez                            │
 │ 选择电脑                        (⟳) │
 │ (J) jyrong · Z.ai  切换              │
 │                                      │
 │ 在线 2                               │
 │ ┌──────────────────────────────────┐ │
 │ │ [] Alice’s MacBook Pro         › │ │
-│ │ ●  macOS · ZCode 3.15.0          │ │
+│ │ ●  macOS · Codez 3.15.0          │ │
 │ ├──────────────────────────────────┤ │
 │ │ [⊞] Workstation     2 个连接   › │ │
 │ │ ●   Windows                      │ │
@@ -398,7 +398,7 @@ sequenceDiagram
 │ │ [▭] 未命名设备                    │ │
 │ │      离线                         │ │
 │ └──────────────────────────────────┘ │
-│ 没看到你的电脑？在电脑端 ZCode 登录  │
+│ 没看到你的电脑？在电脑端 Codez 登录  │
 │ 同一账号并开启远程控制，然后刷新。   │
 └──────────────────────────────────────┘
 
@@ -409,28 +409,28 @@ sequenceDiagram
 和一个带文字的“刷新”按钮。
 ```
 
-- 页头左侧品牌为桌面端标题栏同款应用 logo 图标（`logo-zai.svg`，20px，自带底色，深浅主题共用）加“ZCode”文字，纯静态标识，不可点击；图标为装饰性图片，可读名称由文字承担。线框中的 `[Z]` 即该图标。
+- 页头左侧品牌为桌面端标题栏同款应用 logo 图标（`logo-zai.svg`，20px，自带底色，深浅主题共用）加“Codez”文字，纯静态标识，不可点击；图标为装饰性图片，可读名称由文字承担。线框中的 `[Z]` 即该图标。
 - 标题“选择电脑”右侧为刷新图标按钮（点击区域 40px，带可读名称“刷新”，请求中转圈并禁用）；不做下拉刷新，避免与移动浏览器及内置浏览器自带的下拉手势冲突。
 - 标题下一行是当前账号：头像（`avatarUrl`，缺失时取显示名首字）、显示名、“·”、登录平台（`Z.ai` / `BigModel`），右侧文字按钮“切换”打开[手动切换账号确认弹窗](./web-remote-login.md#手动切换账号确认)。账号资料只从本机已保存的登录资料只读读取，不校验或清理凭据；读取不到时该行只显示文字按钮“切换账号”。
 - 当前账号的注册记录按完整 `device_mid` 聚合为设备项，同 MID 始终只展示一项；SID 仍是连接与本地业务状态的隔离键，不合并不同 SID 的业务状态，不删除或改写服务端记录。
 - 设备项分为“在线 {n}”与“离线 {n}”两组，分组标题为弱化小字加数量；没有成员的分组整体不显示。离线组整体弱化，不折叠，不提供删除。
 - 每条记录的显示名取去除首尾空白的 `meta.name`，缺失时取本地记住的设备名（见下节），仍缺失为空名。在线记录在前、显示名非空在前，再按显示名以当前语言排序，同名/空名按完整 MID、SID 确定稳定顺序。入口编排按这个顺序聚合：设备名取首条记录的显示名；任意 SID 在线即归入在线组，全离线仅显示一项。每次成功刷新从当前响应重建在线事实与连接投影，不缓存历史连接；只有设备名和平台允许回退到本地记住的记录。
-- 设备行左侧为 36px 平台图标块：`meta.platform` 为 `darwin` / `win32` / `linux` 时分别显示 macOS / Windows / Linux 品牌图标（Simple Icons，CC0），未知或缺失显示通用电脑图标；在线设备在图标右下角叠加成功色圆点。首行为设备名（单行截断，空名显示“未命名设备”），次行为说明：在线单连接为“{平台} · ZCode {version}”，在线多连接为“{平台}”，离线为“{平台} · 离线”，平台未知时省略平台段。
+- 设备行左侧为 36px 平台图标块：`meta.platform` 为 `darwin` / `win32` / `linux` 时分别显示 macOS / Windows / Linux 品牌图标（Simple Icons，CC0），未知或缺失显示通用电脑图标；在线设备在图标右下角叠加成功色圆点。首行为设备名（单行截断，空名显示“未命名设备”），次行为说明：在线单连接为“{平台} · Codez {version}”，在线多连接为“{平台}”，离线为“{平台} · 离线”，平台未知时省略平台段。
 - 设备 ID 默认不显示；只有同一分组中出现同名设备项时，才在这些项的次行末尾追加 `device_mid` 前 8 位（“· ID a12b34c5”）用于区分，前 8 位不参与身份判断。不用 MID 片段冒充名字。
 - 只有一个在线 SID 时，在线整行是可聚焦按钮，支持触摸、Enter/Space，点击连接该 SID，右侧显示进入箭头。全离线行原生禁用、弱化、无进入箭头。状态不只依靠颜色区分：离线行次行带“离线”文字，在线行带进入箭头。
 - 多个 SID 在线时仍只有一个设备项，行右侧显示“{n} 个连接”和进入箭头；点击后从底部弹出选择层（见“多连接选择”），用户明确选择后才连接，不按注册时间猜测或丢弃连接目标。
-- 列表末尾为弱化说明“没看到你的电脑？在电脑端 ZCode 登录同一账号并开启远程控制，然后刷新。”。
+- 列表末尾为弱化说明“没看到你的电脑？在电脑端 Codez 登录同一账号并开启远程控制，然后刷新。”。
 - 标题使用 `text-ui-xl font-semibold`，设备名使用 `text-ui-base font-medium`，次行、分组标题与说明使用 `text-ui-sm`；颜色使用已有语义 token。
 
 ### 多连接选择
 
-底部弹层标题为设备名，说明为“这台电脑上有 {n} 个 ZCode 在线，选择要连接的一个”。每个在线连接一行：左侧平台图标，首行“ZCode {version}”（缺版本时为“ZCode”），次行“{相对时间}启动 · ID {SID 末 6 位}”，其中启动时间取该 SID 的 `created_at`；右侧进入箭头。底部为全宽“取消”按钮。弹层外壳遵守 DESIGN 的 `bg-popover`、`border-popover-border` 与 `rounded-t-2xl`；弹层遵循对话框的焦点与 Esc 关闭语义，选择后关闭弹层并走与单连接相同的 admission；刷新中或刷新失败时弹层内连接行同样禁用。完整 SID 不在界面展示，仍写入 URL 与最近记录。
+底部弹层标题为设备名，说明为“这台电脑上有 {n} 个 Codez 在线，选择要连接的一个”。每个在线连接一行：左侧平台图标，首行“Codez {version}”（缺版本时为“Codez”），次行“{相对时间}启动 · ID {SID 末 6 位}”，其中启动时间取该 SID 的 `created_at`；右侧进入箭头。底部为全宽“取消”按钮。弹层外壳遵守 DESIGN 的 `bg-popover`、`border-popover-border` 与 `rounded-t-2xl`；弹层遵循对话框的焦点与 Esc 关闭语义，选择后关闭弹层并走与单连接相同的 admission；刷新中或刷新失败时弹层内连接行同样禁用。完整 SID 不在界面展示，仍写入 URL 与最近记录。
 
 ### 本地记住的设备名与平台
 
 服务端只在设备在线时通过 `auth_init.meta` 携带主机名和平台，离线记录的 `meta` 为空。为了让离线设备仍可辨认，手机端把见过的在线设备名和平台记在本机，作用范围是这台手机的同源 localStorage，不同步到服务端或其他手机。
 
-- 存储键 `zcode-web-remote-device-names`，值为 JSON 数组 `[[device_mid, name, platform?], …]`，按最近更新顺序排列，最多 50 条；超出时淘汰最久未更新的条目。键是完整 `device_mid`，同一台电脑每次注册产生的新 SID 共用同一份记录。读取兼容只有 `[device_mid, name]` 两项的旧条目（平台视为未知）。
+- 存储键 `codez-web-remote-device-names`，值为 JSON 数组 `[[device_mid, name, platform?], …]`，按最近更新顺序排列，最多 50 条；超出时淘汰最久未更新的条目。键是完整 `device_mid`，同一台电脑每次注册产生的新 SID 共用同一份记录。读取兼容只有 `[device_mid, name]` 两项的旧条目（平台视为未知）。
 - 写入时机：每次设备列表刷新成功并通过账号校验后，把当前响应中有在线连接、且显示名或平台非空的设备项按 MID 写入，并移到最近位置；电脑改名后下次上线即覆盖旧名。选择设备、配对成功和扫码直连不额外写入。
 - 读取时机：同一次刷新中先读取缓存，再用它补全离线记录的显示名与平台。显示名的优先级为当前响应的 `meta.name`、本地记住的名字、空名（显示“未命名设备”）；平台同理。连接过程页的平台图标也按当前连接的 MID 读取这份记录，读不到时显示通用电脑图标。
 - 读取失败、内容不是合法 JSON 或条目形状不对，按没有记住任何记录处理；写入失败静默忽略。两者都不阻断列表展示与连接。
@@ -457,13 +457,13 @@ GET 设备记录成功 → 账号校验通过 → 读取本地设备名/平台�
 
 ### 连接过程页
 
-选中设备（或自动连接）后到任务首页之间的连接过程页改为全屏：左上角保留 ZCode 品牌，页面中部为 64px 平台图标块、“正在连接 {设备名}”（无名称时为“正在连接电脑”）、带转圈的当前阶段文案，以及 4 段进度条（连接中转服务 → 设备鉴权 → 等待桌面端配对 → 同步工作区）。只改呈现，阶段来源仍是 terminal transport 状态，不改变阶段逻辑或恢复语义；重连中、后台等待等非线性状态不高亮进度段，并在阶段文案下补充原有说明。
+选中设备（或自动连接）后到任务首页之间的连接过程页改为全屏：左上角保留 Codez 品牌，页面中部为 64px 平台图标块、“正在连接 {设备名}”（无名称时为“正在连接电脑”）、带转圈的当前阶段文案，以及 4 段进度条（连接中转服务 → 设备鉴权 → 等待桌面端配对 → 同步工作区）。只改呈现，阶段来源仍是 terminal transport 状态，不改变阶段逻辑或恢复语义；重连中、后台等待等非线性状态不高亮进度段，并在阶段文案下补充原有说明。
 
 ### 双语文案
 
 | 页面/元素    | zh-CN                                                                 | en-US                                                                                                        |
 | ------------ | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| 品牌         | ZCode                                                                 | ZCode                                                                                                        |
+| 品牌         | Codez                                                                 | Codez                                                                                                        |
 | 标题         | 选择电脑                                                              | Choose a computer                                                                                            |
 | 刷新按钮名   | 刷新                                                                  | Refresh                                                                                                      |
 | 账号行动作   | 切换                                                                  | Switch                                                                                                       |
@@ -474,10 +474,10 @@ GET 设备记录成功 → 账号校验通过 → 读取本地设备名/平台�
 | 离线说明     | 离线                                                                  | Offline                                                                                                      |
 | 无名称       | 未命名设备                                                            | Unnamed device                                                                                               |
 | 多连接       | {n} 个连接                                                            | {n} connections                                                                                              |
-| 多连接说明   | 这台电脑上有 {n} 个 ZCode 在线，选择要连接的一个                      | {n} ZCode instances are online on this computer. Choose one.                                                 |
+| 多连接说明   | 这台电脑上有 {n} 个 Codez 在线，选择要连接的一个                      | {n} Codez instances are online on this computer. Choose one.                                                 |
 | 连接启动时间 | {相对时间}启动                                                        | started {relative time}                                                                                      |
 | 取消         | 取消                                                                  | Cancel                                                                                                       |
-| 找不到提示   | 没看到你的电脑？在电脑端 ZCode 登录同一账号并开启远程控制，然后刷新。 | Don't see your computer? Sign in to ZCode on it with the same account, turn on remote control, then refresh. |
+| 找不到提示   | 没看到你的电脑？在电脑端 Codez 登录同一账号并开启远程控制，然后刷新。 | Don't see your computer? Sign in to Codez on it with the same account, turn on remote control, then refresh. |
 | 空态标题     | 暂无设备                                                              | No devices yet                                                                                               |
 | 空态说明     | 在电脑端登录同一账号并开启 Web 远程控制，然后刷新列表。               | Sign in with the same account on your computer, enable Web remote control, then refresh this list.           |
 | 加载失败     | 无法加载设备，请检查网络后刷新。                                      | Could not load devices. Check your connection and refresh.                                                   |
@@ -537,12 +537,12 @@ GET 设备记录成功 → 账号校验通过 → 读取本地设备名/平台�
 | ML01–ML06 / MD01–MD06 浏览器        | 41项通过：32张入口截图（其中设备列表16张）以及选设备/刷新恢复/最近设备分流/失败后换设备/切账号/矮屏滚动与键盘选择/原登录回跳路径                                                                                                                                                                                           |
 | 截图                                | `.tmp/remote-login-v2-e2e/index.html` 为完整索引；`device-matrix.html` / `device-matrix.png` 为设备列表16张概览，原图保留390px和1024px完整视口；`results.json` 保存逐项结果                                                                                                                                                |
 | 既有版本恢复 RV01–RV03              | 6组配置通过；既有 home-only 动态会话/工作区事件订阅告警仍存在，不声称覆盖其任务操作                                                                                                                                                                                                                                        |
-| 代码与构建                          | `pnpm typecheck`、`pnpm lint`（60 warning / 0 error）、`pnpm architecture:check --changed`、`pnpm --filter @zcode/desktop typecheck:e2e`、当时的 v4 单目录构建通过（该命令已在 07 删除，现使用 OSS 版本目录构建）；当时 Web 模块未纳入 managed architecture；当前范围见“模块边界与架构验收”，检查通过不替代 owner/时序核对 |
+| 代码与构建                          | `pnpm typecheck`、`pnpm lint`（60 warning / 0 error）、`pnpm architecture:check --changed`、`pnpm --filter @codez/desktop typecheck:e2e`、当时的 v4 单目录构建通过（该命令已在 07 删除，现使用 OSS 版本目录构建）；当时 Web 模块未纳入 managed architecture；当前范围见“模块边界与架构验收”，检查通过不替代 owner/时序核对 |
 | 双轴评审                            | Standards 与 Spec 的已报问题均关闭；为全局禁止滚动的根容器添加入口滚动层，为键盘提供焦点反馈，补齐离线背景/圆角；Web 入口增加自身 Tailwind 扫描，生产 CSS 与浏览器计算样式均验证状态类存在且生效                                                                                                                           |
 | 全量单测                            | 1921文件/18002项通过，3文件/3项失败，2文件/12项跳过，另1个 Vitest teardown 异常；详见下述边界，不宣称全量通过                                                                                                                                                                                                              |
 | 测试环境真机                        | 未执行：仍需真实手机无码选设备连接、刷新恢复、跨账号归属失败与切换账号；本地受控 OAuth/relay 不替代该项                                                                                                                                                                                                                    |
 
-全量失败中，`packages/desktop/test/e2eRuntimePaths.test.ts` 指出已有 `feedback/manual-review/pending/feedback-upload-privacy.test.ts` 使用裸系统临时路径，定向重跑仍失败且本票未修改该文件。`packages/provider-node/test/zcode-builtin-process.test.ts` 全量运行等待子进程超时、`packages/desktop/test/webRemoteControlTransport.test.ts` 的 KICKED 恢复时序断言失败，分别定向重跑通过（1项/11项）；`packages/services/test/conversationShareComposition.test.ts` 报 Vitest worker teardown 异常，定向2项通过。不能用这些定向通过替代全量成功。本票依根规则保留改动、不自动提交，issue 在真机与剩余验证完成前保持 `in-progress`。
+全量失败中，`packages/desktop/test/e2eRuntimePaths.test.ts` 指出已有 `feedback/manual-review/pending/feedback-upload-privacy.test.ts` 使用裸系统临时路径，定向重跑仍失败且本票未修改该文件。`packages/provider-node/test/codez-builtin-process.test.ts` 全量运行等待子进程超时、`packages/desktop/test/webRemoteControlTransport.test.ts` 的 KICKED 恢复时序断言失败，分别定向重跑通过（1项/11项）；`packages/services/test/conversationShareComposition.test.ts` 报 Vitest worker teardown 异常，定向2项通过。不能用这些定向通过替代全量成功。本票依根规则保留改动、不自动提交，issue 在真机与剩余验证完成前保持 `in-progress`。
 
 ## 模块边界与架构验收（2026-10-11）
 
@@ -612,7 +612,7 @@ Docker 镜像构建不在本轮验证范围。分享镜像验证本地 COPY 源�
 
 | 外部依赖                                                   | 归属         | 放行证据                                                                                                      |
 | ---------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------- |
-| 生产 zcode-server 部署 V2 HTTP/WS                          | 服务端维护方 | token 接口无 JWT 返回 401，合法账号完成设备注册与一次性 token 配对                                            |
+| 生产 codez-server 部署 V2 HTTP/WS                          | 服务端维护方 | token 接口无 JWT 返回 401，合法账号完成设备注册与一次性 token 配对                                            |
 | `/api/v1/remote/ws2` 精确路由，同 MID 双端落同一实例       | 网关维护方   | 无 token 返回 401，同 MID 稳定配对，滚动后恢复                                                                |
 | `/remote/v4` 按 `app_version` 取 OSS index，资源按目录路由 | 网关维护方   | 两个版本加载各自资源，release-manifest 返回 JSON，不能是 SPA HTML                                             |
 | ZAI/BigModel OAuth 回调白名单                              | OAuth 提供方 | `https://zcode.z.ai/remote/v4` 与 `https://zcode.z.ai/remote/v4` 已登记，测试环境真实登录后回跳原 URL |

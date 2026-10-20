@@ -1,11 +1,11 @@
 import { act, createElement, StrictMode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ZCodeConfigOption } from "@zcode/shared";
-import type { SessionConfigState } from "@zcode/shared/zcode-protocol-v4";
-import type { IModelSelectionService, ModelSelectionView } from "@zcode/services";
-import { resolveEffectiveModelSelection, type ProviderRegistryView } from "@zcode/provider";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import type { CodezConfigOption } from "@codez/shared";
+import type { SessionConfigState } from "@codez/shared/codez-protocol-v4";
+import type { IModelSelectionService, ModelSelectionView } from "@codez/services";
+import { resolveEffectiveModelSelection, type ProviderRegistryView } from "@codez/provider";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 import { useDraftConfigControl as useActualDraftConfigControl } from "@/v4/composer/useDraftConfigControl.js";
 import {
   persistV4ComposerDraft as persistScopedDraft,
@@ -18,7 +18,7 @@ import {
 } from "@/lib/composerRecent.js";
 function testScope(path: string, identity?: string) {
   return resolveComposerScope(
-    useZCodeSessionStore.getState().getWorkspaceState(path, identity).draftProjectId,
+    useCodezSessionStore.getState().getWorkspaceState(path, identity).draftProjectId,
     identity,
   );
 }
@@ -45,7 +45,7 @@ function captureComposerRecentSubmission(...args: Parameters<typeof captureScope
 }
 import { resolveImportedComposerConfig } from "@/v4/composer/newTaskDraft.js";
 function activateImportedSession(result: Parameters<typeof resolveImportedComposerConfig>[0]) {
-  useZCodeSessionStore
+  useCodezSessionStore
     .getState()
     .setActiveTaskId(
       result.workspacePath,
@@ -59,7 +59,7 @@ function readImportInitialization(
   workspaceIdentity: string | undefined,
   taskId: string,
 ) {
-  const value = useZCodeSessionStore
+  const value = useCodezSessionStore
     .getState()
     .getWorkspaceState(workspacePath, workspaceIdentity).composerInitialization;
   return value?.taskId === taskId ? value.config : undefined;
@@ -74,11 +74,11 @@ const { toastMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/hooks/useWorkspacePrepare.js", () => ({
-  prepareWorkspaceWithZCodeSessionService: prepareWorkspaceMock,
+  prepareWorkspaceWithCodezSessionService: prepareWorkspaceMock,
 }));
 
-vi.mock("@/hooks/useZCodeSessionService.js", () => ({
-  useZCodeSessionService: () => ({ readWorkspacePresentation: vi.fn() }),
+vi.mock("@/hooks/useCodezSessionService.js", () => ({
+  useCodezSessionService: () => ({ readWorkspacePresentation: vi.fn() }),
 }));
 
 vi.mock("@/hooks/useSettingService.js", () => ({
@@ -90,7 +90,7 @@ vi.mock("@/components/ui/toast.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: { formatMessage: ({ id }: { id: string }) => id },
   }),
 }));
@@ -103,7 +103,7 @@ vi.mock("@/logger.js", () => ({
   },
 }));
 
-const WORKSPACE_PRESENTATION: ZCodeConfigOption[] = [
+const WORKSPACE_PRESENTATION: CodezConfigOption[] = [
   {
     id: "mode",
     name: "Mode",
@@ -268,7 +268,7 @@ describe("useDraftConfigControl slash command hydration", () => {
       return null;
     }
     act(() =>
-      useZCodeSessionStore
+      useCodezSessionStore
         .getState()
         .startDraft(workspacePath, undefined, undefined, { projectId: "p" }),
     );
@@ -279,7 +279,7 @@ describe("useDraftConfigControl slash command hydration", () => {
     });
     const stale = control!.updateComposerContent;
     act(() =>
-      useZCodeSessionStore
+      useCodezSessionStore
         .getState()
         .startDraft(workspacePath, undefined, undefined, { projectId: "q" }),
     );
@@ -290,7 +290,7 @@ describe("useDraftConfigControl slash command hydration", () => {
     });
     expect(control!.composerDraft.text).toBe("Q");
     act(() =>
-      useZCodeSessionStore
+      useCodezSessionStore
         .getState()
         .startDraft(workspacePath, undefined, undefined, { projectId: "p" }),
     );
@@ -341,7 +341,7 @@ describe("useDraftConfigControl slash command hydration", () => {
     await act(async () => root.render(createElement(Probe, { sessionId: null })));
     expect(control!.draftConfig).toMatchObject({ mode: "build", model: "B" });
     act(() => control!.handleDraftSwitchMode("yolo"));
-    await act(async () => useZCodeSessionStore.getState().startDraft(workspacePath));
+    await act(async () => useCodezSessionStore.getState().startDraft(workspacePath));
     expect(control!.draftConfig).toMatchObject({ mode: "build", model: "B" });
     expect(readV4ComposerDraft(workspacePath, undefined, "__draft__")).toBeNull();
     act(() => root.unmount());
@@ -394,7 +394,7 @@ describe("useDraftConfigControl slash command hydration", () => {
       expect(readV4ComposerDraft(workspacePath, "remote:other", "__draft__")).toBeNull();
       expect(
         window.localStorage.getItem(
-          `zcode-model-selection-recent-v1:${workspaceIdentity ?? workspacePath}`,
+          `codez-model-selection-recent-v1:${workspaceIdentity ?? workspacePath}`,
         ),
       ).toBeNull();
       act(() => root.unmount());
@@ -479,7 +479,7 @@ describe("useDraftConfigControl slash command hydration", () => {
         });
       const originalRoot = readV4ComposerDraft(workspacePath, undefined, "__draft__");
       const recentBefore = window.localStorage.getItem(
-        `zcode-model-selection-recent-v1:${workspacePath}`,
+        `codez-model-selection-recent-v1:${workspacePath}`,
       );
       activateImportedSession({ workspacePath, sessionId: "imported", reused: false });
       let control: ReturnType<typeof useDraftConfigControl>;
@@ -511,7 +511,7 @@ describe("useDraftConfigControl slash command hydration", () => {
             }
           : imported,
       );
-      expect(window.localStorage.getItem(`zcode-model-selection-recent-v1:${workspacePath}`)).toBe(
+      expect(window.localStorage.getItem(`codez-model-selection-recent-v1:${workspacePath}`)).toBe(
         recentBefore,
       );
       act(() => root.unmount());
@@ -603,7 +603,7 @@ describe("useDraftConfigControl slash command hydration", () => {
     selectionServices.clear();
     prepareWorkspaceMock.mockReset();
     toastMock.mockReset();
-    useZCodeSessionStore.setState((state) => ({
+    useCodezSessionStore.setState((state) => ({
       ...state,
       workspaces: {},
     }));
@@ -619,7 +619,7 @@ describe("useDraftConfigControl slash command hydration", () => {
   it("task → draft 继承模型目录但 slashCommands 为空时重新拉取并写入 identity 桶", async () => {
     const workspacePath = "/workspace";
     const workspaceIdentity = "ssh://demo/workspace";
-    useZCodeSessionStore
+    useCodezSessionStore
       .getState()
       .setConfigOptions(workspacePath, WORKSPACE_PRESENTATION, workspaceIdentity);
     prepareWorkspaceMock.mockResolvedValue({
@@ -645,7 +645,7 @@ describe("useDraftConfigControl slash command hydration", () => {
 
     await vi.waitFor(() => {
       expect(
-        useZCodeSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
+        useCodezSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
           .slashCommands,
       ).toEqual(CUSTOM_COMMANDS);
     });
@@ -658,7 +658,7 @@ describe("useDraftConfigControl slash command hydration", () => {
 
   it("打开已有 session 且 workspace slashCommands 为空时独立补水合", async () => {
     const workspacePath = "/known-workspace";
-    useZCodeSessionStore.getState().setConfigOptions(workspacePath, WORKSPACE_PRESENTATION);
+    useCodezSessionStore.getState().setConfigOptions(workspacePath, WORKSPACE_PRESENTATION);
     prepareWorkspaceMock.mockResolvedValue({
       configOptions: WORKSPACE_PRESENTATION,
       slashCommands: CUSTOM_COMMANDS,
@@ -681,7 +681,7 @@ describe("useDraftConfigControl slash command hydration", () => {
 
     await vi.waitFor(() => {
       expect(
-        useZCodeSessionStore.getState().getWorkspaceState(workspacePath).slashCommands,
+        useCodezSessionStore.getState().getWorkspaceState(workspacePath).slashCommands,
       ).toEqual(CUSTOM_COMMANDS);
     });
     expect(prepareWorkspaceMock).toHaveBeenCalledWith(expect.objectContaining({ workspacePath }));
@@ -691,7 +691,7 @@ describe("useDraftConfigControl slash command hydration", () => {
 
   it("打开已有 session 时保留已经水合的 workspace slashCommands", async () => {
     const workspacePath = "/hydrated-workspace";
-    const store = useZCodeSessionStore.getState();
+    const store = useCodezSessionStore.getState();
     store.setConfigOptions(workspacePath, WORKSPACE_PRESENTATION);
     store.setSlashCommands(workspacePath, CUSTOM_COMMANDS);
 
@@ -710,7 +710,7 @@ describe("useDraftConfigControl slash command hydration", () => {
       root.render(createElement(Probe));
     });
 
-    expect(useZCodeSessionStore.getState().getWorkspaceState(workspacePath).slashCommands).toEqual(
+    expect(useCodezSessionStore.getState().getWorkspaceState(workspacePath).slashCommands).toEqual(
       CUSTOM_COMMANDS,
     );
     expect(prepareWorkspaceMock).not.toHaveBeenCalled();
@@ -721,7 +721,7 @@ describe("useDraftConfigControl slash command hydration", () => {
   it("从 active task 新建草稿时不再从旧 workspace presentation 继承选择", async () => {
     const workspacePath = "/inherited-draft-workspace";
     const taskId = "task-custom-model";
-    const inheritedOptions: ZCodeConfigOption[] = [
+    const inheritedOptions: CodezConfigOption[] = [
       {
         id: "model",
         name: "Model",
@@ -747,7 +747,7 @@ describe("useDraftConfigControl slash command hydration", () => {
         options: [{ value: "max", name: "Max" }],
       },
     ];
-    const store = useZCodeSessionStore.getState();
+    const store = useCodezSessionStore.getState();
     store.setActiveTaskId(workspacePath, taskId);
     store.setTaskConfigOptions(workspacePath, taskId, inheritedOptions);
     store.startDraft(workspacePath, "glm");
@@ -782,7 +782,7 @@ describe("useDraftConfigControl slash command hydration", () => {
   it("active session 切入草稿时，View 未 Ready 不提前用旧 task 配置初始化", async () => {
     const workspacePath = "/inherited-draft-render-transition";
     const taskId = "task-custom-model";
-    const inheritedOptions: ZCodeConfigOption[] = [
+    const inheritedOptions: CodezConfigOption[] = [
       {
         id: "model",
         name: "Model",
@@ -808,7 +808,7 @@ describe("useDraftConfigControl slash command hydration", () => {
         options: [{ value: "max", name: "Max" }],
       },
     ];
-    const store = useZCodeSessionStore.getState();
+    const store = useCodezSessionStore.getState();
     store.setConfigOptions(workspacePath, inheritedOptions);
     store.setActiveTaskId(workspacePath, taskId);
     store.setTaskConfigOptions(workspacePath, taskId, inheritedOptions);
@@ -838,7 +838,7 @@ describe("useDraftConfigControl slash command hydration", () => {
     });
 
     act(() => {
-      useZCodeSessionStore.getState().startDraft(workspacePath, "glm");
+      useCodezSessionStore.getState().startDraft(workspacePath, "glm");
       root.render(createElement(Probe, { sessionId: null }));
     });
 
@@ -851,8 +851,8 @@ describe("useDraftConfigControl slash command hydration", () => {
     const workspacePath = "/live-selection-invalidated";
     const firstView = modelSelectionView(1, ["old", "preferred"], "preferred");
     const nextView = modelSelectionView(2, ["preferred"], "preferred");
-    useZCodeSessionStore.getState().setSlashCommands(workspacePath, CUSTOM_COMMANDS);
-    useZCodeSessionStore.getState().setConfigOptions(workspacePath, WORKSPACE_PRESENTATION);
+    useCodezSessionStore.getState().setSlashCommands(workspacePath, CUSTOM_COMMANDS);
+    useCodezSessionStore.getState().setConfigOptions(workspacePath, WORKSPACE_PRESENTATION);
 
     let control: ReturnType<typeof useDraftConfigControl> | undefined;
     function Probe({ view }: { view: ModelSelectionView }) {
@@ -1568,7 +1568,7 @@ describe("useDraftConfigControl slash command hydration", () => {
     await act(async () => root.render(createElement(Probe)));
     const oldPromotion = control!.promoteComposerDraft;
     act(() => {
-      useZCodeSessionStore.getState().startDraft(workspacePath);
+      useCodezSessionStore.getState().startDraft(workspacePath);
       persistV4ComposerDraft(workspacePath, undefined, "__draft__", {
         text: "new page text",
         mode: "build",
@@ -1611,7 +1611,7 @@ describe("useDraftConfigControl slash command hydration", () => {
   it("CS04/07 StrictMode 只接收当前导入参数，切走或新建即取消未接收参数", async () => {
     const workspacePath = "/scoped-import";
     const root = createRoot(installMinimalDom());
-    const store = useZCodeSessionStore.getState();
+    const store = useCodezSessionStore.getState();
     store.setActiveTaskId(workspacePath, "cancelled", undefined, { mode: "yolo" });
     store.setActiveTaskId(workspacePath, "other");
     expect(readImportInitialization(workspacePath, undefined, "cancelled")).toBeUndefined();

@@ -2,7 +2,7 @@
 
 ## 背景
 
-当前 ZCode 支持 SSH 和 Docker 远程连接。本文档记录 WSL（Windows Subsystem for Linux）支持的实现方案。
+当前 Codez 支持 SSH 和 Docker 远程连接。本文档记录 WSL（Windows Subsystem for Linux）支持的实现方案。
 
 ## 实现状态
 
@@ -24,12 +24,12 @@
 | 连接方式 | TCP 网络协议，ssh2 库 | 本地子进程，wsl.exe |
 | 认证 | 密码/私钥/SSH Agent | Windows 用户身份（无需认证） |
 | 文件系统 | SFTP / exec pipe | Windows 路径映射 `\\wsl$\Distro` |
-| 部署路径 | 远程 `~/.zcode/server` | WSL 路径 `/home/user/.zcode/server` |
+| 部署路径 | 远程 `~/.codez/server` | WSL 路径 `/home/user/.codez/server` |
 
 ## 当前释放生命周期
 
 WSL 使用 window-scoped pooled Remote Host：同一窗口、同一 normalized distro/user 的 logical workspace
-session 共享一个 Host、一个 `wsl.exe` server launcher 和一个 `zcode-server`。每个 session 仍保留独立
+session 共享一个 Host、一个 `wsl.exe` server launcher 和一个 `codez-server`。每个 session 仍保留独立
 `remoteSessionId`、attachment 和 `workspaceKey`。最小化、隐藏到托盘、renderer reload、手机 `/remote`
 attachment 断开都不直接销毁 Host。
 
@@ -52,7 +52,7 @@ attachment 断开都不直接销毁 Host。
 ```
 
 释放过程禁止调用 `wsl --terminate` 或 `wsl --shutdown`。WSL distro 可能仍显示 Running，这是发行版级
-运行状态，不代表 ZCode 的 Host、`wsl.exe` 或远端 `zcode-server` 仍被持有。任何 fallback 只能作用于
+运行状态，不代表 Codez 的 Host、`wsl.exe` 或远端 `codez-server` 仍被持有。任何 fallback 只能作用于
 当前 backend 明确 spawn 的子进程，不能按进程名扫描或终止用户在同一 distro 中的其他任务。
 
 Main 的 Remote Host 集合包含 WSL/SSH shared Host、Docker/Server dedicated Host 和 Bot remote runtime。
@@ -81,12 +81,12 @@ packages/server/src/remote/
 // packages/server/src/remote/wsl-backend.ts
 import { spawn, execSync } from "node:child_process";
 import { createReadStream } from "node:fs";
-import { Emitter } from "@zcode/rpc";
+import { Emitter } from "@codez/rpc";
 import type {
   IRemoteBackend,
   RemoteEnvironment,
   StdioStream,
-} from "@zcode/server/remote/backend.js";
+} from "@codez/server/remote/backend.js";
 
 export interface WSLBackendOptions {
   distribution?: string;  // WSL 分发版名称，如 "Ubuntu"
@@ -219,8 +219,8 @@ export function createRemoteBackend(options: RemoteConnectOptions): IRemoteBacke
 ### 1. WSL 路径转换
 
 WSL 有两种访问方式：
-- WSL 内部路径：`/home/user/.zcode`
-- Windows 访问 WSL：`\\wsl$\Ubuntu\home\user\.zcode`
+- WSL 内部路径：`/home/user/.codez`
+- Windows 访问 WSL：`\\wsl$\Ubuntu\home\user\.codez`
 
 但为了保持与 SSH 的一致性，建议使用 WSL 内部路径。
 
@@ -230,15 +230,15 @@ WSL 有两种访问方式：
 - 小文件：`wsl.exe --exec cat` + stdin pipe
 - 大文件：考虑 `wsl.exe cp` 或直接写 `\\wsl$\Distro` 路径
 
-### 3. 部署 zcode-server
+### 3. 部署 codez-server
 
 与 SSH 完全相同：
 ```bash
 # SSH
-ssh user@host "ZCODE_SERVER_RUNTIME_ROOT=~/.zcode/server ~/.zcode/server/node ..."
+ssh user@host "CODEZ_SERVER_RUNTIME_ROOT=~/.codez/server ~/.codez/server/node ..."
 
 # WSL
-wsl.exe --exec bash -c "ZCODE_SERVER_RUNTIME_ROOT=~/.zcode/server ~/.zcode/server/node ..."
+wsl.exe --exec bash -c "CODEZ_SERVER_RUNTIME_ROOT=~/.codez/server ~/.codez/server/node ..."
 ```
 
 ### 4. 检测可用 WSL 分发版

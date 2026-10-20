@@ -29,7 +29,7 @@ Personal 实例 → Effective Provider → Registry → 新建模型请求
 设置页显式创建/编辑 → ProviderSettingsFacade → Personal 文件
 ```
 
-源文件为 `config/provider/zcode-builtin.json`，递增 revision，测试环境文件由 `pnpm provider:config:sync-test` 生成。下载、缓存和发布方式沿用现有合同，不随 MR 自动发布远端配置。
+源文件为 `config/provider/codez-builtin.json`，递增 revision，测试环境文件由 `pnpm provider:config:sync-test` 生成。下载、缓存和发布方式沿用现有合同，不随 MR 自动发布远端配置。
 
 ## 验收
 

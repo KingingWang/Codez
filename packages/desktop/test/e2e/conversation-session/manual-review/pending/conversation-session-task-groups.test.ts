@@ -12,8 +12,8 @@ import {
   waitForV4ComposerText,
 } from "#e2e/helpers/v4-conversation";
 import { installHandoffRpcProbe, callHandoffHost } from "#e2e/helpers/remote-project-handoff-probe";
-import { ServiceChannels, ZCODE_AGENT_PROVIDER } from "@zcode/shared";
-import { TID_TASK_ITEM, testId } from "@zcode/shared/test-ids";
+import { ServiceChannels, CODEZ_AGENT_PROVIDER } from "@codez/shared";
+import { TID_TASK_ITEM, testId } from "@codez/shared/test-ids";
 
 declare global {
   interface Window {
@@ -61,7 +61,7 @@ describe("任务分组独立视图", () => {
   afterEach(async function () {
     if (this.currentTest?.state === "failed") {
       const failureName = `task-groups-failure-${this.currentTest?.title.split("：")[0]?.replaceAll("/", "_")}`;
-      await browser.saveScreenshot(join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `${failureName}.png`));
+      await browser.saveScreenshot(join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `${failureName}.png`));
       const layout = await browser.execute(() => {
         const root = document.querySelector('[data-testid="task-grouped-view"]');
         const viewport = root?.closest("[data-scroll-mask]");
@@ -87,7 +87,7 @@ describe("任务分组独立视图", () => {
         };
       });
       await writeFile(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `${failureName}.json`),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `${failureName}.json`),
         JSON.stringify(layout, null, 2),
       );
       process.stderr.write(
@@ -102,9 +102,9 @@ describe("任务分组独立视图", () => {
   it("GRP02：旧分组偏好迁移，新选择在重载后优先", async function () {
     this.timeout(60_000);
     await browser.execute(() => {
-      localStorage.removeItem("zcode-project-sidebar-preferences");
+      localStorage.removeItem("codez-project-sidebar-preferences");
       localStorage.setItem(
-        "zcode-sidebar-task-preferences",
+        "codez-sidebar-task-preferences",
         JSON.stringify({ organizeBy: "grouped", sortBy: "updated" }),
       );
     });
@@ -204,7 +204,7 @@ describe("任务分组独立视图", () => {
           (locale === "zh-CN" ? "新建分组" : "New group"),
       );
       await browser.saveScreenshot(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `task-groups-${theme}.png`),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `task-groups-${theme}.png`),
       );
     }
     await renamed.$('[data-testid="task-group-menu"]').click({ button: "right" });
@@ -253,22 +253,22 @@ describe("任务分组独立视图", () => {
       await browser.keys("Escape");
       await $('[data-testid="task-group-move-menu"]').waitForExist({ reverse: true });
     }
-    await callHandoffHost(ServiceChannels.ZCodeTask, "setTaskPinned", [
+    await callHandoffHost(ServiceChannels.CodezTask, "setTaskPinned", [
       { ...target, pinned: true },
     ]);
     await browser.execute(() => window.dispatchEvent(new Event("focus")));
     await $('[data-testid="project-pinned-tasks"]').$(selector).waitForDisplayed();
     expect(await $$(`[data-testid="task-grouped-view"] ${selector}`)).toHaveLength(0);
-    await callHandoffHost(ServiceChannels.ZCodeTask, "setTaskPinned", [
+    await callHandoffHost(ServiceChannels.CodezTask, "setTaskPinned", [
       { ...target, pinned: false },
     ]);
-    await callHandoffHost(ServiceChannels.ZCodeTask, "archiveTask", [target]);
+    await callHandoffHost(ServiceChannels.CodezTask, "archiveTask", [target]);
     await browser.execute(() => window.dispatchEvent(new Event("focus")));
     await $(selector).waitForExist({ reverse: true });
     expect((await read()).members.some((m) => m.taskId === taskId && m.groupId === groupId)).toBe(
       true,
     );
-    await callHandoffHost(ServiceChannels.ZCodeTask, "unarchiveTask", [target]);
+    await callHandoffHost(ServiceChannels.CodezTask, "unarchiveTask", [target]);
     await browser.execute(() => window.dispatchEvent(new Event("focus")));
     await $(selector).waitForDisplayed();
     await $('[data-testid="task-group-add"]').click();
@@ -496,10 +496,10 @@ describe("任务分组独立视图", () => {
       "readTree",
     );
     const cwd = tree.tasks[0]?.workspacePath;
-    const home = process.env.ZCODE_E2E_HOME_DIR;
+    const home = process.env.CODEZ_E2E_HOME_DIR;
     if (!home || !basename(home).startsWith(".e2e-home-desktop-e2e-") || !cwd)
       throw new Error("隔离 HOME 和真实任务目录 required");
-    const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
+    const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"));
     try {
       db.exec("BEGIN IMMEDIATE");
       const task = db.prepare(
@@ -523,7 +523,7 @@ describe("任务分组独立视图", () => {
           id,
           now + i,
           now + i,
-          ZCODE_AGENT_PROVIDER,
+          CODEZ_AGENT_PROVIDER,
         );
         member.run(group.id, cwd, cwd, id, i, now, now, now);
       }
@@ -574,7 +574,7 @@ describe("任务分组独立视图", () => {
     });
     expect(Math.abs(geometry.header - geometry.top)).toBeLessThan(40);
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "task-groups-long-list.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "task-groups-long-list.png"),
     );
     await scroll(false);
     const header = $('[data-task-group-title="E2E_LARGE_GROUP"]');

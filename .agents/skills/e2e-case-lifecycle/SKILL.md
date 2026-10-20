@@ -1,6 +1,6 @@
 ---
 name: e2e-case-lifecycle
-description: Plan, maintain, replay, and promote ZCode desktop E2E cases and their fixtures, coverage matrices, and CI admission evidence.
+description: Plan, maintain, replay, and promote Codez desktop E2E cases and their fixtures, coverage matrices, and CI admission evidence.
 disable-model-invocation: true
 ---
 
@@ -44,7 +44,7 @@ For a new candidate case:
 5. Run manual/capture with:
 
 ```bash
-ZCODE_E2E_MANUAL_REVIEW=1 pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/conversation-session/manual-review/pending/<case>.test.ts'
+CODEZ_E2E_MANUAL_REVIEW=1 pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/conversation-session/manual-review/pending/<case>.test.ts'
 ```
 
 Manual/capture artifacts are review evidence, not the final test contract.
@@ -64,13 +64,13 @@ the normal evidence path.
 After the user confirms human review, run the promotion dry run first:
 
 ```bash
-pnpm --filter @zcode/desktop e2e:promote -- --spec ./test/e2e/conversation-session/manual-review/pending/<case>.test.ts --reviewed
+pnpm --filter @codez/desktop e2e:promote -- --spec ./test/e2e/conversation-session/manual-review/pending/<case>.test.ts --reviewed
 ```
 
 Then apply:
 
 ```bash
-pnpm --filter @zcode/desktop e2e:promote -- --spec ./test/e2e/conversation-session/manual-review/pending/<case>.test.ts --reviewed --apply
+pnpm --filter @codez/desktop e2e:promote -- --spec ./test/e2e/conversation-session/manual-review/pending/<case>.test.ts --reviewed --apply
 ```
 
 The tool moves the spec, fixes common helper imports, creates fixture/manifest scaffolds, and updates the coverage matrix path. It does not decide request semantics.
@@ -109,7 +109,7 @@ After filling fixtures:
 For a pending case, validate the current spec against its canonical formal-target fixture metadata before promotion:
 
 ```bash
-pnpm --filter @zcode/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/manual-review/pending/<case>.test.ts
+pnpm --filter @codez/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/manual-review/pending/<case>.test.ts
 ```
 
 The `spec` field in both the case manifest and case-local provider fixture remains
@@ -120,20 +120,20 @@ manual-review run still captures the live provider path.
 After promotion:
 
 ```bash
-pnpm --filter @zcode/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/<case>.test.ts
+pnpm --filter @codez/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/<case>.test.ts
 ```
 
 Prove the case does not depend on legacy shared fixtures:
 
 ```bash
 E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/conversation-session/<case>.json \
-  pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/<case>.test.ts'
+  pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/<case>.test.ts'
 ```
 
 Then run default replay:
 
 ```bash
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/<case>.test.ts'
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/<case>.test.ts'
 ```
 
 Before adding the case to the Docker suite, prove the formal case in isolated replay:
@@ -145,7 +145,7 @@ E2E_SPEC=./test/e2e/conversation-session/<case>.test.ts pnpm run test:e2e:contai
 After that passes, admit it to the Docker conversation preset:
 
 ```bash
-pnpm --filter @zcode/desktop e2e:docker:admit -- --spec ./test/e2e/conversation-session/<case>.test.ts --verified --artifact packages/desktop/.e2e-artifacts/<run-id> --apply
+pnpm --filter @codez/desktop e2e:docker:admit -- --spec ./test/e2e/conversation-session/<case>.test.ts --verified --artifact packages/desktop/.e2e-artifacts/<run-id> --apply
 pnpm run test:e2e:container:conversation
 ```
 
@@ -161,7 +161,7 @@ special network/file-system setup.
 For E2E code changes, run the following required code checks once for the final change. Documentation-only edits use the documentation checks in [AGENTS.md](../../../AGENTS.md):
 
 ```bash
-pnpm --filter @zcode/desktop typecheck:e2e
+pnpm --filter @codez/desktop typecheck:e2e
 pnpm typecheck
 pnpm lint
 ```

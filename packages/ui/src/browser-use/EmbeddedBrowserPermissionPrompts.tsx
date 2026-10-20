@@ -3,14 +3,14 @@ import { MonitorUp, Paperclip, ShieldAlert, Usb, X } from "lucide-react";
 import {
   type EmbeddedBrowserPermissionPromptEvent,
   type EmbeddedBrowserPermissionResolution,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   TID_BROWSER_PERMISSION_ALLOW_ALWAYS,
   TID_BROWSER_PERMISSION_ALLOW_ONCE,
   TID_BROWSER_PERMISSION_DENY,
   TID_BROWSER_PERMISSION_DISMISS,
   TID_BROWSER_PERMISSION_PROMPTS,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { BrowserPermissionIcon } from "@/browser-use/BrowserPermissionIcon.js";
 import { Button } from "@/components/ui/button.js";
 import {
@@ -22,7 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
-import { useZCodeIntl } from "@/i18n/index.js";
+import { useCodezIntl } from "@/i18n/index.js";
 import { logger } from "@/logger.js";
 import { useEmbeddedBrowserPermissionStore } from "@/store/embeddedBrowserPermissionStore.js";
 
@@ -105,7 +105,7 @@ export function EmbeddedBrowserPermissionPrompts({
   const platform = usePlatform();
   const {
     intl: { formatMessage },
-  } = useZCodeIntl();
+  } = useCodezIntl();
   const prompts = useEmbeddedBrowserPermissionStore((state) => state.prompts);
   const receivePrompt = useEmbeddedBrowserPermissionStore((state) => state.receivePrompt);
   const dropPrompt = useEmbeddedBrowserPermissionStore((state) => state.dropPrompt);

@@ -3,7 +3,7 @@
 // config.json#plugins.enabledPlugins[id]=false 关闭，agent 不会把
 // `mcp__plugin_e2e-plugin-mcp-ping_ping__ping` 注册到模型请求 tools 数组，模型也调不到它。
 // 软证据：chat 端没有任何该工具的 tool-call block（normal text 轮次）。
-// wdio 启动前已在 <E2E_HOME>/.zcode/cli/plugins/installed_plugins.json 写入带 installPath
+// wdio 启动前已在 <E2E_HOME>/.codez/cli/plugins/installed_plugins.json 写入带 installPath
 // 的记录，并把 config.json#plugins.enabledPlugins[id] 显式置为 false。
 import { clearAppData } from "../../../helpers/desktop-app.js";
 import {

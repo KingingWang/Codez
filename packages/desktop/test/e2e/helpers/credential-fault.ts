@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { atomicWritePrivateTextFile, withFileLock } from "@zcode/shared/node";
+import { atomicWritePrivateTextFile, withFileLock } from "@codez/shared/node";
 
 /** 故障期间连接流程也会保存凭据；不能用测试开始前的整文件快照覆盖这些新值。 */
 export async function withCredentialFault<T>(

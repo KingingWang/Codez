@@ -1,11 +1,11 @@
 ---
 name: session-management
-description: 修改 ZCode 会话管理（左侧任务列表、tasks-index.sqlite、sessions-index、CLI session store、标题/状态/置顶/归档/未读/删除、虚拟项目与 roots、workspace 身份、相关 migration）之前必读。它把 2026-09 「虚拟项目与数据归属收口」重构及分组恢复的设计理由、历史 bug 根因与不变量蒸馏成检查清单，让后来者知道为什么这样设计、哪些线不能踩。
+description: 修改 Codez 会话管理（左侧任务列表、tasks-index.sqlite、sessions-index、CLI session store、标题/状态/置顶/归档/未读/删除、虚拟项目与 roots、workspace 身份、相关 migration）之前必读。它把 2026-09 「虚拟项目与数据归属收口」重构及分组恢复的设计理由、历史 bug 根因与不变量蒸馏成检查清单，让后来者知道为什么这样设计、哪些线不能踩。
 ---
 
 # Session 管理设计蒸馏
 
-改动范围命中下列任一项时使用本 skill：`packages/services/src/session/taskIndexRepo.ts`、`packages/services/src/zcode-agent/zcodeTaskIndexSyncer.ts`、`zcodeTaskServiceAdapter.ts`、`packages/ui` 侧栏 / 任务列表 / 项目树、`apps/zcode-cli/packages/adapters/src/storage/session-store/*`、sessions-index 协议、workspace / project / roots 数据结构、两库 migration。
+改动范围命中下列任一项时使用本 skill：`packages/services/src/session/taskIndexRepo.ts`、`packages/services/src/codez-agent/codezTaskIndexSyncer.ts`、`codezTaskServiceAdapter.ts`、`packages/ui` 侧栏 / 任务列表 / 项目树、`apps/codez-cli/packages/adapters/src/storage/session-store/*`、sessions-index 协议、workspace / project / roots 数据结构、两库 migration。
 
 权威 spec：`docs/superpowers/specs/2026-09-09-virtual-project-design.md` 与 `docs/ui/task-grouped-view.md`。2026-10-13 分组恢复裁决覆盖历史 Group 合并 Project 方案。本 skill 不重复 spec，只讲「为什么」和「怎么不踩坑」。
 
@@ -22,7 +22,7 @@ Host tasks-index    project_id、pinned、archived、unread_at(+CAS)、sort_orde
 
 ### 为什么
 
-重构前 title / status 相关 Bugfix 注释有 30 多处（`rg "Bugfix" packages/services/src/zcode-agent/zcodeTaskIndexSyncer.ts packages/services/src/session/taskIndexRepo.ts`），几乎全部属于两类：
+重构前 title / status 相关 Bugfix 注释有 30 多处（`rg "Bugfix" packages/services/src/codez-agent/codezTaskIndexSyncer.ts packages/services/src/session/taskIndexRepo.ts`），几乎全部属于两类：
 
 1. Host 替 CLI 写会话事实：`updated_at = Date.now()`（rename / 状态变更）与 CLI 的 `time_updated` 分叉，导致排序跳动，UI 被迫只信 sessions-index 的 `lastActivityAt`；rename 先写本地再 best-effort 通知 CLI，失败只 warn，两边「是否手动标题」不一致；`task_status` 从 snapshot 反推，冷启动恒为 completed，残留 running 只能靠 UI 规则吸收。
 2. CLI 替 Host 决定行集合：3.4.0 曾因 sessions-index 快照缺 summary 导致历史任务在 Grouped 视图消失（`docs/superpowers/specs/2026-07-20-sidebar-task-row-authority-design.md`）；CLI 冷种子会复活 app 已删的 session，app 只能靠 tombstone 压制。
@@ -54,8 +54,8 @@ Host tasks-index    project_id、pinned、archived、unread_at(+CAS)、sort_orde
 ## 3. 关键裁决速查（详见 spec 第 3 节）
 
 - 2026-10-10 远程裁决：本地/远程项目平铺，Host 不作为分组；远程先建单目录项目再建会话，不允许无项目创建或拖拽追加目录。统一项目顺序归控制端侧栏偏好。详见 `docs/superpowers/specs/2026-10-10-session-manage-upstream-integration.md`。
-- 侧栏 = 全局置顶区（session + 置顶项目）→ 项目区 → 任务区（`project_id IS NULL`，任意 cwd）；`~/.zcode/workspace/*` 只作为全局新建任务的默认执行目录。筛选含按项目 / 按分组 / 最近更新；真实目录不是节点，不恢复旧两级切换器。
-- 项目：本地 0..n 个同 host 的 roots + 一个主要目录，远程恰好一个固定目录；同一目录可属多个项目；新建 session cwd = 主要目录；仅本地 0 root 时自动建 `~/.zcode/workspace/<ts>` 并加为主要 root。
+- 侧栏 = 全局置顶区（session + 置顶项目）→ 项目区 → 任务区（`project_id IS NULL`，任意 cwd）；`~/.codez/workspace/*` 只作为全局新建任务的默认执行目录。筛选含按项目 / 按分组 / 最近更新；真实目录不是节点，不恢复旧两级切换器。
+- 项目：本地 0..n 个同 host 的 roots + 一个主要目录，远程恰好一个固定目录；同一目录可属多个项目；新建 session cwd = 主要目录；仅本地 0 root 时自动建 `~/.codez/workspace/<ts>` 并加为主要 root。
 - 本地项目及在线远端权威项目删除 = 软删除容器，session 保留归属，时间线可见；新建 roots 集合完全相等的项目时提示恢复；不提供彻底删除。远程项目离线删除只移除本机入口与缓存，不触发远端软删除或恢复。
 - 本地项目移除 root / 换主要目录不影响已创建 session、定时任务、闲时任务、Bots（它们在创建时固化 cwd 与附加目录）；roots 变更对运行中 session 下次 resume 生效。
 - 同名 skill / subagent 来自不同 root 时并存，由 CLI 赋限定名 `<rootName>/<name>`。
@@ -67,7 +67,7 @@ Host tasks-index    project_id、pinned、archived、unread_at(+CAS)、sort_orde
 
 ## 4. 数据与迁移纪律
 
-- 版本化 migration runner 两库共用（抽自 `apps/zcode-cli/.../session-store/migration-runner.ts`）：`schema_migration(id, checksum, app_version)`，checksum 不可变，未知 id 忽略。
+- 版本化 migration runner 两库共用（抽自 `apps/codez-cli/.../session-store/migration-runner.ts`）：`schema_migration(id, checksum, app_version)`，checksum 不可变，未知 id 忽略。
 - 每条 migration 显式声明 `touchedTables`；runner 在同一读事务里只备份这些表（`ATTACH + CREATE TABLE AS SELECT`）；备份只为迁移失败恢复，正常流程只产生不消费，不做整库快照（本机整库 770MB vs 表级 16MB）。
 - 每条 migration 一个单测：fixture 前后对全部表做内容哈希，只允许 `touchedTables` 变化。`schema.baseline.sql` 由 CI 做只增 diff。
 - 兼容退场三阶段：V1 只读新列、旧列只写不读；V2 写 `schema_floor` 并停双写；V3 物理删退场列 / `time_archived` 并重建主键。分组表已恢复为运行态，不能按旧计划删除。不要在任何阶段引入「永久」兼容分支。
@@ -92,4 +92,4 @@ Host tasks-index    project_id、pinned、archived、unread_at(+CAS)、sort_orde
 - 现状事实：`docs/task/task-sqlite-index.md`、`docs/v4-refactor/14-sessions-index.md`、`docs/ui/task-title-authority.md`、`docs/ui/task-unread-state.md`、`docs/task-list-refresh-semantics.md`、`docs/wsl-task-status-inconsistency.md`（订阅被静默替换的根因）。
 - 历史决策：`docs/superpowers/specs/2026-07-13-v4-sidebar-task-state-authority-design.md`、`2026-07-20-sidebar-task-row-authority-design.md`、`docs/local-workspace-path-cold-resume-identity.md`。
 - 当前分组与视图：`docs/ui/task-grouped-view.md`、`docs/ui/sidebar-task-view-switcher.md`。
-- 已废弃（保留仅供降级理解）：`docs/grouped-task-workspace-bootstrap.md`、`apps/zcode-cli/docs/design/v2/multi-workspace.md`。
+- 已废弃（保留仅供降级理解）：`docs/grouped-task-workspace-bootstrap.md`、`apps/codez-cli/docs/design/v2/multi-workspace.md`。

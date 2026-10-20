@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { ZCodeTaskMeta } from "@zcode/shared";
+import type { CodezTaskMeta } from "@codez/shared";
 import { buildTaskEntityKey, buildTaskListCacheDescriptor } from "@/lib/taskQueryCache.js";
 import {
   resolveQuickPickConversationNavigation,
   selectQuickPickConversationTaskIds,
 } from "@/lib/quickPickConversationNavigation.js";
 
-function createTask(taskId: string, updatedAt: number, workspaceIdentity?: string): ZCodeTaskMeta {
+function createTask(taskId: string, updatedAt: number, workspaceIdentity?: string): CodezTaskMeta {
   return {
     taskId,
     traceId: `trace-${taskId}`,

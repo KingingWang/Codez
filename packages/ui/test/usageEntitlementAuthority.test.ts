@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BUILTIN_MODEL_PROVIDER_IDS, type UsageEntitlementSnapshot } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS, type UsageEntitlementSnapshot } from "@codez/shared";
 import { resolveUsageEntitlementOutcome } from "@/lib/codingPlanProvider.js";
 import { hasActiveCodingPlanSnapshot } from "@/CodingPlanUsageRemainingPanel.js";
 import { resolveSidebarCodingPlanUpgradeProviderId } from "@/lib/sidebarCodingPlanUpgrade.js";
@@ -82,6 +82,6 @@ describe("所有入口使用订阅权益", () => {
         providerId: "provider",
         providerFingerprint: "account/project",
       }),
-    ).toBe("zcode:usage-entitlement:subscription-v2:provider:account/project");
+    ).toBe("codez:usage-entitlement:subscription-v2:provider:account/project");
   });
 });

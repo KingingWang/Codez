@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { posix, win32 } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
-import { buildRemoteWorkspaceIdentity, buildServerRemoteWorkspaceIdentity } from "@zcode/shared";
+import { buildRemoteWorkspaceIdentity, buildServerRemoteWorkspaceIdentity } from "@codez/shared";
 import type { ProjectMigrationContext } from "#src/project-storage/contract.js";
 import {
   ensureHost,
@@ -146,7 +146,7 @@ export function migrateProjects(db: DatabaseSync, context: ProjectMigrationConte
     for (const row of db
       .prepare(
         `SELECT root_path FROM tasks WHERE host_id=? AND project_id IS NULL AND deleted=0
-          AND replace(root_path, char(92), '/') NOT GLOB '*/.zcode/workspace/*'
+          AND replace(root_path, char(92), '/') NOT GLOB '*/.codez/workspace/*'
           GROUP BY root_path ORDER BY max(updated_at) DESC, root_path`,
       )
       .all(context.hostId!) as { root_path: string }[]) {

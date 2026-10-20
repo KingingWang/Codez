@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/conversation-session-changes-group-unresolved-path",
+      "path": ".codez-e2e/conversation-session-changes-group-unresolved-path",
       "source": "created-by-tool",
       "description": "TGE07 Write 创建的单文件 case-owned fixture。"
     }

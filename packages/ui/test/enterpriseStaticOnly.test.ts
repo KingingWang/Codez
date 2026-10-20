@@ -3,7 +3,7 @@ import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach } from "vitest";
 afterEach(cleanup);
 import { expect, it, vi } from "vitest";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 const mocks = vi.hoisted(() => ({
   getStaticTeamProducts: vi.fn(),
   getEnterprisePricing: vi.fn(),
@@ -12,7 +12,7 @@ vi.mock("@/hooks/useServices.js", () => ({
   useOptionalServices: () => ({ codingPlanSubscriptionService: mocks }),
 }));
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStoreWithDefault: (_selector: unknown, value: unknown) => value,
+  useCodezStoreWithDefault: (_selector: unknown, value: unknown) => value,
 }));
 import { useEnterpriseCodingPlanProducts } from "@/settings/model-provider-section/useEnterpriseCodingPlanProducts.js";
 it.each([true, false])("未登录仅静态目录，配置存在=%s，不请求 pricing", async (configured) => {

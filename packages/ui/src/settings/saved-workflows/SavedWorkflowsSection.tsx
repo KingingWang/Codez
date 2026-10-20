@@ -8,12 +8,12 @@ import {
   TID_WORKFLOWS_REFRESH,
   readDynamicWorkflowOfferedMode,
   resolveWorkspaceKey,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
 import { Spinner } from "@/components/ui/spinner.js";
 import { cn } from "@/components/lib/utils.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useTabStore } from "@/store/TabStoreProvider.js";
 import { useDynamicWorkflowAvailability } from "@/hooks/useDynamicWorkflowAvailability.js";
 import { setPendingSettingsSectionIntent } from "@/lib/settingsNavigation.js";
@@ -92,7 +92,7 @@ export function SavedWorkflowsSection({
   openWorkflow,
   onOpenWorkflowConsumed,
 }: SavedWorkflowsSectionProps) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const openSettingsTab = useTabStore((store) => store.openSettingsTab);
   // launch.md「The hub page」「The user's choice」：标题行的「工作流设置」直达设置 › 常规的模式行，
   // 旁边写当前生效模式。中枢只在生效模式不是关闭时出现，所以这里不处理关闭态。

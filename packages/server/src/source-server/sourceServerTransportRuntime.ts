@@ -1,6 +1,6 @@
 import { Duplex } from "node:stream";
 import { StringDecoder } from "node:string_decoder";
-import type { StdioStream } from "@zcode/server/remote/backend.js";
+import type { StdioStream } from "@codez/server/remote/backend.js";
 
 export interface RemoteExecResult {
   exitCode: number;
@@ -60,7 +60,7 @@ export function readUniqueVersion(value: string): string | undefined {
     if (version) versions.add(version);
   }
   const labelled = new RegExp(
-    `\\b(?:zcode|source[ -]server)\\b[^\\n]*?\\bversion\\s*[:=]?\\s*v?${semver}\\b`,
+    `\\b(?:codez|source[ -]server)\\b[^\\n]*?\\bversion\\s*[:=]?\\s*v?${semver}\\b`,
     "giu",
   );
   for (const match of value.matchAll(labelled)) {

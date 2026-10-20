@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { createElement, type ReactNode } from "react";
 import { act, renderHook } from "@testing-library/react";
-import type { IServiceAccessor } from "@zcode/services";
+import type { IServiceAccessor } from "@codez/services";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { useWorkspaceTaskNavigation } from "@/app-shell/useWorkspaceTaskNavigation.js";
@@ -9,7 +9,7 @@ import { createTaskNavigationHistory } from "@/lib/taskNavigationHistory.js";
 import { buildTaskEntityKey } from "@/lib/taskQueryCache.js";
 import { useTaskQueryCacheStore } from "@/store/taskQueryCacheStore.js";
 import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 
 const tabStore = vi.hoisted(() => {
   let state: {
@@ -54,7 +54,7 @@ function taskMeta(params: { workspacePath?: string; workspaceIdentity?: string }
 }
 
 function servicesWithSetTaskUnread(setTaskUnread: ReturnType<typeof vi.fn>): IServiceAccessor {
-  return { zcodeTaskService: { setTaskUnread } } as unknown as IServiceAccessor;
+  return { codezTaskService: { setTaskUnread } } as unknown as IServiceAccessor;
 }
 
 function renderNavigation(params: {
@@ -94,7 +94,7 @@ describe("useWorkspaceTaskNavigation", () => {
       sessionIdByWorkspacePath: {},
       sessionIdByWorkspaceIdentity: {},
     });
-    useZCodeSessionStore.setState({ taskNavHistory: createTaskNavigationHistory() });
+    useCodezSessionStore.setState({ taskNavHistory: createTaskNavigationHistory() });
   });
 
   it("把 Idle-time intent 写入 Automations 导航目标和历史", () => {
@@ -114,7 +114,7 @@ describe("useWorkspaceTaskNavigation", () => {
       workspaceIdentity: "remote:ssh:dev:22:user:/home/dev",
       automationTab: "idle",
     });
-    expect(useZCodeSessionStore.getState().taskNavHistory.entries).toEqual([
+    expect(useCodezSessionStore.getState().taskNavHistory.entries).toEqual([
       {
         kind: "automations",
         workspacePath: "/home/dev",
@@ -128,7 +128,7 @@ describe("useWorkspaceTaskNavigation", () => {
   it("前进回放时恢复 Idle-time Automations intent", () => {
     const onNavigateToAutomations = vi.fn();
     const activateTabByPath = vi.fn(() => true);
-    useZCodeSessionStore.setState({
+    useCodezSessionStore.setState({
       taskNavHistory: {
         entries: [
           {

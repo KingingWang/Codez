@@ -6,7 +6,7 @@ import type {
   ClientSceneConfig,
   ClientScenesResponse,
   IClientScenesService,
-} from "@zcode/services";
+} from "@codez/services";
 import { useAutomationTemplates } from "@/settings/useAutomationTemplates.js";
 
 const loggerWarn = vi.hoisted(() => vi.fn());
@@ -21,7 +21,7 @@ function offPeakResponse(id: string, title: string): ClientScenesResponse {
     msg: "success",
     data: [
       {
-        namespace: "zcode",
+        namespace: "codez",
         scene: "off-peak-task",
         options: {
           prompts: {

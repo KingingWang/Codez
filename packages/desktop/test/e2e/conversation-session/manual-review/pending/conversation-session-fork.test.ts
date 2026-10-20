@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { TID_CHAT_MESSAGE_FORK_BUTTON } from "@zcode/shared/test-ids";
+import { TID_CHAT_MESSAGE_FORK_BUTTON } from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -320,7 +320,7 @@ async function setSessionTargetForE2E(
   objective: string,
   status: "active" | "paused" | "budget_limited" | "complete",
 ) {
-  const dbPath = join(homedir(), ".zcode", "cli", "db", "db.sqlite");
+  const dbPath = join(homedir(), ".codez", "cli", "db", "db.sqlite");
   const db = new DatabaseSync(dbPath);
   const now = Date.now();
   const targetId = `target_e2e_${randomUUID()}`;
@@ -391,8 +391,8 @@ async function upsertRendererSessionTargetForE2E(
       };
 
       const storeApi = (
-        window as Window & { __zcodeSessionStoreE2E?: RendererStore }
-      ).__zcodeSessionStoreE2E;
+        window as Window & { __codezSessionStoreE2E?: RendererStore }
+      ).__codezSessionStoreE2E;
       const state = storeApi?.getState?.();
       if (!state?.upsertOptimisticTaskListItem) {
         return { ok: false, reason: "store-api-missing" };
@@ -503,8 +503,8 @@ async function injectRendererQueuedPromptForE2E(
       };
 
       const storeApi = (
-        window as Window & { __zcodeSessionStoreE2E?: RendererStore }
-      ).__zcodeSessionStoreE2E;
+        window as Window & { __codezSessionStoreE2E?: RendererStore }
+      ).__codezSessionStoreE2E;
       const state = storeApi?.getState?.();
       if (!state?.enqueueTaskQueuedPrompt || !state.setTaskStopRequested) {
         return { ok: false, reason: "store-api-missing" };
@@ -573,7 +573,7 @@ async function injectRendererQueuedPromptForE2E(
 function readSessionTargetForE2E(
   sessionId: string,
 ): { objective: string; status: string } | null {
-  const dbPath = join(homedir(), ".zcode", "cli", "db", "db.sqlite");
+  const dbPath = join(homedir(), ".codez", "cli", "db", "db.sqlite");
   const db = new DatabaseSync(dbPath);
   try {
     return (

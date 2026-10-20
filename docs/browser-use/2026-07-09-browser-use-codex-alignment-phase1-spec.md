@@ -20,7 +20,7 @@ Phase 1 当时把 browser use 视为由官方 `browser` plugin 整体控制的�
 
 ## 非目标
 
-- 不修改 `.zcode-plugin/plugin.json` schema。
+- 不修改 `.codez-plugin/plugin.json` schema。
 - 不新增 Chrome / external browser 支持。
 - 不改 desktop browser command 协议的核心 `BrowserCommandResult` 结构。
 - 不在第一阶段完成 UI 对 `responseMeta` 的展示消费，只提供元数据链路。
@@ -35,7 +35,7 @@ Phase 1 当时把 browser use 视为由官方 `browser` plugin 整体控制的�
 - `docs/documents.json`：声明 documentation 需要拼接的 markdown 文档。
 - `docs/*.md`：工作流、安全规则、截图/图片回传说明。
 
-bootstrap 在解析官方 `browser-use@zcode-plugins-official` 插件时，把 `rootPath/docs` 作为内部 runtime feature 透传给 core。该字段属于 ZCode 内部 runtime config，不属于 plugin schema。
+bootstrap 在解析官方 `browser-use@zcode-plugins-official` 插件时，把 `rootPath/docs` 作为内部 runtime feature 透传给 core。该字段属于 Codez 内部 runtime config，不属于 plugin schema。
 
 ### REPL 元数据
 

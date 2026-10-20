@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
-import { TID_LOGIN_TRIGGER, TID_TASK_SETTINGS_BUTTON } from "@zcode/shared/test-ids";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
+import { TID_LOGIN_TRIGGER, TID_TASK_SETTINGS_BUTTON } from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom, getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
 import { reloadElectronSessionPreservingBrowserProfile } from "#e2e/helpers/e2e-electron-reload";
 import { skipOccupationOnboardingIfPresent } from "#e2e/helpers/occupation-onboarding";
@@ -29,7 +29,7 @@ async function assertLoggedIn(before: Record<string, string>) {
   );
   const after = await readCredentials();
   for (const [key, value] of Object.entries(before)) {
-    if (key.startsWith("oauth:") || key === "zcodejwttoken" || key === "bot:e2e:credential")
+    if (key.startsWith("oauth:") || key === "codezjwttoken" || key === "bot:e2e:credential")
       expect(after[key]).toBe(value);
   }
   const expired = await browser.execute(() =>
@@ -48,7 +48,7 @@ describe("项目位置缓存局部恢复", () => {
 
   it("自动重建坏位置；503 保留登录；服务恢复后通过设置刷新成功", async function () {
     this.timeout(180_000);
-    const baseUrl = process.env.ZCODE_E2E_ACCESS_TOKEN_401_URL;
+    const baseUrl = process.env.CODEZ_E2E_ACCESS_TOKEN_401_URL;
     if (!baseUrl) throw new Error("缺少项目位置恢复 fixture");
     const status = async () => (await (await fetch(`${baseUrl}/__e2e/status`)).json()) as Status;
     const before = await readCredentials();
@@ -128,7 +128,7 @@ describe("项目位置缓存局部恢复", () => {
       networkFailurePreservedLogin: true,
     });
     await browser.saveScreenshot(
-      `${process.env.ZCODE_E2E_ARTIFACT_DIR}/project-location-recovered.png`,
+      `${process.env.CODEZ_E2E_ARTIFACT_DIR}/project-location-recovered.png`,
     );
   });
 });

@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { BotGroupMemberNamesContext } from "@/v4/BotGroupMemberNamesContext.js";
 import { BotGroupSourceLabel } from "@/v4/BotGroupSourceLabel.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 describe("group input attribution", () => {
   it.each(["zh-CN", "en-US"] as const)(
@@ -11,7 +11,7 @@ describe("group input attribution", () => {
     (locale) => {
       const html = renderToStaticMarkup(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: locale },
           createElement(BotGroupSourceLabel, {
             source: {
@@ -36,7 +36,7 @@ describe("group input attribution", () => {
 it("shows a short fallback instead of the raw ID as visible label", () => {
   const html = renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(BotGroupSourceLabel, {
         source: {
@@ -67,7 +67,7 @@ const historicalSource = {
 it.each(["bot", "other"])("isolates historical name overlay for %s", (botId) => {
   const html = renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "en-US" },
       createElement(
         BotGroupMemberNamesContext.Provider,

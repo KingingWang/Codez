@@ -3,9 +3,9 @@ import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AppUsageRange, AppUsageSnapshot } from "@zcode/shared";
-import type { IServiceAccessor } from "@zcode/services";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import type { AppUsageRange, AppUsageSnapshot } from "@codez/shared";
+import type { IServiceAccessor } from "@codez/services";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import {
   AppUsageLifetimeSummaryStrip,
@@ -118,7 +118,7 @@ describe("AppUsageLifetimeSummaryStrip", () => {
   it("renders all-time app usage metrics independent of the selected range", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(AppUsageLifetimeSummaryStrip, {
           snapshot: createSnapshot(),
@@ -152,7 +152,7 @@ describe("AppUsageLifetimeSummaryStrip", () => {
       createElement(
         ServiceProvider,
         { services: createServices() },
-        createElement(ZCodeIntlProvider, { initialLocale: "zh-CN" }, createElement(AppUsagePanel)),
+        createElement(CodezIntlProvider, { initialLocale: "zh-CN" }, createElement(AppUsagePanel)),
       ),
     );
 

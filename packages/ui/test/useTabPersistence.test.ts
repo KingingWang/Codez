@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { createElement, type ReactNode, useCallback } from "react";
 import { act, renderHook } from "@testing-library/react";
-import type { ISettingService } from "@zcode/services";
+import type { ISettingService } from "@codez/services";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   hasCompletedTabPersistenceInitialRestore,
@@ -14,7 +14,7 @@ import {
   buildRemoteWorkspacePersistPatch,
   restorePersistedRemoteWorkspaceSessions,
 } from "@/root/remoteWorkspaceSessionPersistence.js";
-import type { AppSettings } from "@zcode/shared";
+import type { AppSettings } from "@codez/shared";
 
 afterEach(() => {
   vi.useRealTimers();

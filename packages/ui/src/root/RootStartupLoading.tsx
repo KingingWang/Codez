@@ -18,14 +18,14 @@ export function RootStartupLoading({ label, children, busy = true }: RootStartup
       aria-label={label}
       data-testid="root-startup-loading"
     >
-      <ZCodeStartupLogoBadge />
+      <CodezStartupLogoBadge />
       {children}
     </div>
   );
 }
 
 /** 初始化与引导共用品牌图标，保持底色、描边、圆角和标志比例一致。 */
-export function ZCodeStartupLogoBadge({
+export function CodezStartupLogoBadge({
   animated = true,
   size = "default",
 }: {
@@ -43,7 +43,7 @@ export function ZCodeStartupLogoBadge({
       )}
     >
       {/* Button 会给 SVG 默认尺寸；紧凑 Logo 显式恢复自动高度，保持标志原始比例。 */}
-      <ZCodeStartupLogo
+      <CodezStartupLogo
         className={size === "titlebar" ? "size-auto w-3.25" : "h-auto w-14"}
         animated={animated}
       />
@@ -51,7 +51,7 @@ export function ZCodeStartupLogoBadge({
   );
 }
 
-export function ZCodeStartupLogo({
+export function CodezStartupLogo({
   className,
   animated = true,
 }: {

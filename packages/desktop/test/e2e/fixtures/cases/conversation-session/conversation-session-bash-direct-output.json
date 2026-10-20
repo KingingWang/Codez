@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/bash-direct-output/中文 空格/writer.cjs",
+      "path": ".codez-e2e/bash-direct-output/中文 空格/writer.cjs",
       "source": "created-by-spec",
       "description": "从 case-local fs fixture 复制真实 Node producer，用文件 barrier 控制输出。"
     }

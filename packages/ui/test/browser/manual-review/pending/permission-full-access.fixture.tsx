@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { PermissionDialog } from "@/PermissionDialog.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
-import type { ZCodePermissionRequest } from "@zcode/shared";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
+import type { CodezPermissionRequest } from "@codez/shared";
 import "@/styles.css";
 const params = new URLSearchParams(location.search);
 document.documentElement.classList.add(
   params.get("theme") === "light" ? "theme-zai-light" : "theme-zai-dark",
 );
-const request: ZCodePermissionRequest = {
+const request: CodezPermissionRequest = {
   type: "permission_request",
   taskId: "s",
   traceId: "trace",
@@ -58,7 +58,7 @@ function Fixture() {
   );
 }
 createRoot(document.getElementById("root")!).render(
-  <ZCodeIntlProvider initialLocale={params.get("locale") === "en-US" ? "en-US" : "zh-CN"}>
+  <CodezIntlProvider initialLocale={params.get("locale") === "en-US" ? "en-US" : "zh-CN"}>
     <Fixture />
-  </ZCodeIntlProvider>,
+  </CodezIntlProvider>,
 );

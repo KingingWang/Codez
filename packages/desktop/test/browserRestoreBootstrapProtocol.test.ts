@@ -9,7 +9,7 @@ describe("browserRestoreBootstrapProtocol", () => {
     let handler: (() => Promise<Response>) | undefined;
     const protocol = {
       handle: vi.fn((scheme: string, next: () => Promise<Response>) => {
-        expect(scheme).toBe("zcode-browser-restore");
+        expect(scheme).toBe("codez-browser-restore");
         handler = next;
       }),
     };

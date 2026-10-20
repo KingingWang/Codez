@@ -9,7 +9,7 @@
   "fileFixtures": [
     {
       "kind": "app-config",
-      "path": "~/.zcode/v2/agents-state.json",
+      "path": "~/.codez/v2/agents-state.json",
       "description": "SE-04 已验证的结构化插件覆盖，测试副本中为 judge 指定 alternate/high；冷启动后不改写插件 Markdown。",
       "source": "created-by-helper"
     }

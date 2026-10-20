@@ -3,11 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it, vi } from "vitest";
 const resolver = vi.hoisted(() => vi.fn());
-vi.mock("@zcode/services/storage-startup", () => ({ resolveDefaultZCodeAgentCommand: resolver }));
+vi.mock("@codez/services/storage-startup", () => ({ resolveDefaultCodezAgentCommand: resolver }));
 import { prepareSessionStorage } from "../src/host/database-startup/storagePreparationProcesses.js";
 
 it("uses a Host-owned Worker and waits for the preparation completion frame", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "zcode-preparation-worker-"));
+  const dir = await mkdtemp(join(tmpdir(), "codez-preparation-worker-"));
   const entry = join(dir, "prepare.cjs");
   await writeFile(
     entry,
@@ -55,7 +55,7 @@ it("uses a Host-owned Worker and waits for the preparation completion frame", as
 });
 
 it("SILENTDB-06: reuses only successful paths in this attempt and keeps different databases separate", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "zcode-preparation-dedup-"));
+  const dir = await mkdtemp(join(tmpdir(), "codez-preparation-dedup-"));
   const entry = join(dir, "prepare.cjs");
   await writeFile(
     entry,

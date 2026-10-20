@@ -1,7 +1,7 @@
 import { expect, it, vi } from "vitest";
-import type { IZCodeTaskService } from "@zcode/services";
-import type { ZCodeTaskMeta } from "@zcode/shared";
-import type { WindowHostTaskAddress } from "@zcode/shared/zcode-protocol-v4";
+import type { ICodezTaskService } from "@codez/services";
+import type { CodezTaskMeta } from "@codez/shared";
+import type { WindowHostTaskAddress } from "@codez/shared/codez-protocol-v4";
 import { createWindowHostControllerRuntime } from "@desktop/host/windowHostControllerService.js";
 
 const local: WindowHostTaskAddress = { taskId: "same", workspacePath: "/repo" };
@@ -15,7 +15,7 @@ const remote: WindowHostTaskAddress = {
 function fixture() {
   let session = "attachment-1";
   let availability: "online" | "offline" = "online";
-  const meta = (unreadAt: number): ZCodeTaskMeta => ({
+  const meta = (unreadAt: number): CodezTaskMeta => ({
     taskId: "same",
     workspacePath: "/repo",
     title: "Task",
@@ -26,9 +26,9 @@ function fixture() {
     unreadAt,
   });
   const createService = (marker: number) => ({
-    getTaskMeta: vi.fn<IZCodeTaskService["getTaskMeta"]>().mockResolvedValue(meta(marker)),
+    getTaskMeta: vi.fn<ICodezTaskService["getTaskMeta"]>().mockResolvedValue(meta(marker)),
     listTasks: vi
-      .fn<IZCodeTaskService["listTasks"]>()
+      .fn<ICodezTaskService["listTasks"]>()
       .mockRejectedValue(new Error("must not hydrate list")),
   });
   const localService = createService(11);
@@ -46,12 +46,12 @@ function fixture() {
               workspaceIdentity: remote.workspaceIdentity,
             },
             sourceAvailability: availability,
-            taskService: remoteService as unknown as IZCodeTaskService,
+            taskService: remoteService as unknown as ICodezTaskService,
           }
         : {
             scope: { kind: "local", workspacePath: "/repo" },
             sourceAvailability: "online",
-            taskService: localService as unknown as IZCodeTaskService,
+            taskService: localService as unknown as ICodezTaskService,
           },
   });
   return {
@@ -116,7 +116,7 @@ it.each(["service", "session", "offline", "disposed"])(
   "rejects a changed owner during the read (%s)",
   async (kind) => {
     const f = fixture();
-    const read = Promise.withResolvers<ZCodeTaskMeta | null>();
+    const read = Promise.withResolvers<CodezTaskMeta | null>();
     f.remoteService.getTaskMeta.mockImplementationOnce(() => read.promise);
     try {
       const reading = f.runtime.service.getTaskMeta({ address: remote });
@@ -159,8 +159,8 @@ it("propagates owner IO failures and distinguishes a missing task", async () => 
 
 it("reads a legacy remote workspace only with its trusted current attachment ID", async () => {
   const workspaceIdentity = "remote:ssh:example.test:22:dev:/repo";
-  const getTaskMeta = vi.fn<IZCodeTaskService["getTaskMeta"]>().mockResolvedValue(null);
-  const taskService = { getTaskMeta } as unknown as IZCodeTaskService;
+  const getTaskMeta = vi.fn<ICodezTaskService["getTaskMeta"]>().mockResolvedValue(null);
+  const taskService = { getTaskMeta } as unknown as ICodezTaskService;
   const runtime = createWindowHostControllerRuntime({
     createId: () => crypto.randomUUID(),
     resolveSource: () => ({

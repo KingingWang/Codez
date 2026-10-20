@@ -11,7 +11,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 import { ConversationDraftSuggestedPromptsContainer } from "@/v4/ConversationDraftSuggestedPromptsContainer.js";
 import { advanceComposerDraftRevision } from "@/v4/composer/composerDraftRevision.js";
 
@@ -69,7 +69,7 @@ vi.mock("@/hooks/usePlatform.js", () => ({
   usePlatform: () => ({ reportTelemetryEvent }),
 }));
 
-vi.mock("@/lib/zcodeDraftSkillInvalidation.js", () => ({
+vi.mock("@/lib/codezDraftSkillInvalidation.js", () => ({
   invalidateDeferredDraftSessionForSkillChange: invalidateDraftSession,
 }));
 
@@ -91,7 +91,7 @@ vi.mock("@/hooks/useWorkspaceServices.js", () => {
       resolveSuggestedPluginReference,
       setPluginEnabled,
     },
-    zcodeSessionService: {},
+    codezSessionService: {},
   };
   return {
     useWorkspaceServicesResolution: (
@@ -108,7 +108,7 @@ vi.mock("@/hooks/useWorkspaceServices.js", () => {
 });
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     locale: "zh-CN",
     intl: {
       formatMessage: ({ id }: { id: string }, values?: { pluginLabel?: string; error?: string }) =>
@@ -145,14 +145,14 @@ const offPeakLabel = "闲时任务";
 
 async function applyPendingComposerTextInsert(workspacePath: string, workspaceIdentity?: string) {
   const request = await waitFor(() => {
-    const current = useZCodeSessionStore
+    const current = useCodezSessionStore
       .getState()
       .getWorkspaceState(workspacePath, workspaceIdentity).composerTextInsertRequest;
     if (!current) throw new Error("Composer insert request is not ready");
     return current;
   });
   act(() => {
-    useZCodeSessionStore
+    useCodezSessionStore
       .getState()
       .clearComposerTextInsertRequest(workspacePath, request.requestId, workspaceIdentity);
   });
@@ -164,7 +164,7 @@ const clientScenesResponse = {
   msg: "",
   data: [
     {
-      namespace: "zcode",
+      namespace: "codez",
       scene: "draft-suggestion",
       options: {
         prompts: {
@@ -404,7 +404,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
 
     expect(onOpenAutomations).toHaveBeenCalledOnce();
     expect(
-      useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
+      useCodezSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
     ).toBeNull();
     expect(getPluginReferenceCatalog).not.toHaveBeenCalled();
   });
@@ -449,7 +449,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     expect(reportTelemetryEvent).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(
-        useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest
+        useCodezSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest
           ?.text,
       ).toBe(plainPrompt),
     );
@@ -470,7 +470,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     expect(onOpenAutomations).toHaveBeenCalledOnce();
     expect(onOpenAutomations).toHaveBeenCalledWith("idle");
     expect(
-      useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
+      useCodezSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
     ).toBeNull();
     expect(getPluginReferenceCatalog).not.toHaveBeenCalled();
   });
@@ -487,7 +487,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
 
     await waitFor(() =>
       expect(
-        useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
+        useCodezSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
       ).toEqual({
         requestId: 1,
         text: plainPrompt,
@@ -505,7 +505,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
         settleResolution = resolve;
       }),
     );
-    const insertSpy = vi.spyOn(useZCodeSessionStore.getState(), "requestComposerTextInsert");
+    const insertSpy = vi.spyOn(useCodezSessionStore.getState(), "requestComposerTextInsert");
     render(
       createElement(ConversationDraftSuggestedPromptsContainer, {
         workspacePath,
@@ -518,7 +518,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
 
     await waitFor(() => expect(resolveSuggestedPluginReference).toHaveBeenCalledOnce());
     expect(
-      useZCodeSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
+      useCodezSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
         .composerTextInsertRequest,
     ).toBeNull();
     expect(insertSpy).not.toHaveBeenCalled();
@@ -540,7 +540,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
 
     await waitFor(() =>
       expect(
-        useZCodeSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
+        useCodezSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
           .composerTextInsertRequest,
       ).toEqual({
         requestId: 1,
@@ -588,7 +588,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
 
     await waitFor(() =>
       expect(
-        useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest
+        useCodezSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest
           ?.mention?.data,
       ).toEqual({ pluginId: "document-skills@zcode-plugins-official" }),
     );
@@ -608,7 +608,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
 
     await waitFor(() =>
       expect(
-        useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
+        useCodezSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
       ).toEqual({
         requestId: 1,
         text: pluginPrompt,
@@ -637,7 +637,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     await waitFor(() => expect(resolveSuggestedPluginReference).toHaveBeenCalledOnce());
     expect(getPluginReferenceCatalog).not.toHaveBeenCalled();
     expect(
-      useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
+      useCodezSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
     ).toEqual({ requestId: 1, text: pluginPrompt });
     expect(toast).not.toHaveBeenCalled();
   });
@@ -668,7 +668,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     });
 
     expect(
-      useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
+      useCodezSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
     ).toBeNull();
     expect(toast).not.toHaveBeenCalled();
     expect(dismissToast).not.toHaveBeenCalled();
@@ -705,7 +705,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: pluginLabel }));
     expect(
-      useZCodeSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
+      useCodezSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
         .composerTextInsertRequest,
     ).toBeNull();
 
@@ -742,7 +742,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     ).not.toBeNull();
     await waitFor(() =>
       expect(
-        useZCodeSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
+        useCodezSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
           .composerTextInsertRequest,
       ).toEqual(
         expect.objectContaining({
@@ -752,7 +752,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
       ),
     );
     expect(
-      useZCodeSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
+      useCodezSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
         .composerTextInsertRequest?.mention?.data,
     ).toEqual({
       pluginId: "document-skills@zcode-plugins-official",
@@ -762,7 +762,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     vi.useFakeTimers();
     try {
       await act(async () => {
-        useZCodeSessionStore
+        useCodezSessionStore
           .getState()
           .clearComposerTextInsertRequest(workspacePath, 2, workspaceIdentity);
         await Promise.resolve();
@@ -830,13 +830,13 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     });
     await waitFor(() =>
       expect(
-        useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
+        useCodezSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
       ).toEqual({ requestId: 1, text: pluginPrompt }),
     );
     expect(screen.queryByRole("button", { name: "确认" })).toBeNull();
 
     act(() => {
-      useZCodeSessionStore.getState().clearComposerTextInsertRequest(workspacePath, 1);
+      useCodezSessionStore.getState().clearComposerTextInsertRequest(workspacePath, 1);
     });
     expect(await screen.findByRole("button", { name: "确认" })).not.toBeNull();
     const confirmationPopover = document.querySelector<HTMLElement>(
@@ -875,7 +875,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     fireEvent.click(await screen.findByRole("button", { name: pluginLabel }));
     await waitFor(() =>
       expect(
-        useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
+        useCodezSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
       ).toEqual({ requestId: 1, text: pluginPrompt }),
     );
     expect(await screen.findByText("正在检查插件状态…")).not.toBeNull();
@@ -885,7 +885,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     expect(document.querySelectorAll("[data-draft-suggested-plugin-popover]")).toHaveLength(1);
     expect(screen.queryByRole("button", { name: "确认" })).toBeNull();
     act(() => {
-      useZCodeSessionStore.getState().clearComposerTextInsertRequest(workspacePath, 1);
+      useCodezSessionStore.getState().clearComposerTextInsertRequest(workspacePath, 1);
     });
     const enableAction = await screen.findByRole("button", { name: "确认" });
     const confirmationPopover = document.querySelector<HTMLElement>(
@@ -912,13 +912,13 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     ).not.toBeNull();
     await waitFor(() =>
       expect(
-        useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest
+        useCodezSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest
           ?.requestId,
       ).toBe(2),
     );
     expect(screen.queryByText("安装成功")).toBeNull();
     act(() => {
-      useZCodeSessionStore.getState().clearComposerTextInsertRequest(workspacePath, 2);
+      useCodezSessionStore.getState().clearComposerTextInsertRequest(workspacePath, 2);
     });
     expect(screen.queryByText("安装成功")).toBeNull();
     expect(await screen.findByText("开启成功")).not.toBeNull();
@@ -977,12 +977,12 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
           await Promise.resolve();
           await Promise.resolve();
         });
-        const plainRequest = useZCodeSessionStore
+        const plainRequest = useCodezSessionStore
           .getState()
           .getWorkspaceState(workspacePath).composerTextInsertRequest;
         expect(plainRequest).toEqual({ requestId: 1, text: pluginPrompt });
         act(() => {
-          useZCodeSessionStore
+          useCodezSessionStore
             .getState()
             .clearComposerTextInsertRequest(workspacePath, plainRequest!.requestId);
         });
@@ -1012,7 +1012,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
         expect(screen.queryByRole("button", { name: "确认" })).toBeNull();
         expect(toast).not.toHaveBeenCalled();
         expect(
-          useZCodeSessionStore.getState().getWorkspaceState(workspacePath)
+          useCodezSessionStore.getState().getWorkspaceState(workspacePath)
             .composerTextInsertRequest,
         ).toBeNull();
       } finally {
@@ -1044,7 +1044,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     await waitFor(() => expect(cancelPluginOperation).toHaveBeenCalledOnce());
     await waitFor(() =>
       expect(
-        useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
+        useCodezSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
       ).toEqual({ requestId: 2, text: plainPrompt }),
     );
     expect(screen.queryByRole("button", { name: "确认" })).toBeNull();
@@ -1123,7 +1123,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     expect(await screen.findByText("正在安装插件…")).not.toBeNull();
     expect(getPluginReferenceCatalog).not.toHaveBeenCalled();
     expect(
-      useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
+      useCodezSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
     ).toBeNull();
   });
 
@@ -1157,12 +1157,12 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
         await Promise.resolve();
         await Promise.resolve();
       });
-      const plainRequest = useZCodeSessionStore
+      const plainRequest = useCodezSessionStore
         .getState()
         .getWorkspaceState(workspacePath).composerTextInsertRequest;
       expect(plainRequest).toEqual({ requestId: 1, text: pluginPrompt });
       act(() => {
-        useZCodeSessionStore
+        useCodezSessionStore
           .getState()
           .clearComposerTextInsertRequest(workspacePath, plainRequest!.requestId);
       });
@@ -1208,7 +1208,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
         }),
       );
       expect(
-        useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
+        useCodezSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
       ).toBeNull();
 
       await act(async () => {
@@ -1230,7 +1230,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
       });
       expect(resolveSuggestedPluginReference).toHaveBeenCalledOnce();
       expect(
-        useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
+        useCodezSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
       ).toBeNull();
       expect(screen.queryByText("安装成功")).toBeNull();
       expect(screen.getByRole("button", { name: "确认" })).not.toBeNull();
@@ -1263,7 +1263,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
 
     await waitFor(() => expect(resolveSuggestedPluginReference).toHaveBeenCalledOnce());
     expect(
-      useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
+      useCodezSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
     ).toEqual({ requestId: 1, text: pluginPrompt });
     expect(toast).not.toHaveBeenCalled();
     expect(resolveSuggestedPluginReference).toHaveBeenCalledWith(
@@ -1318,7 +1318,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
 
     await waitFor(() =>
       expect(
-        useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest
+        useCodezSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest
           ?.text,
       ).toBe(plainPrompt),
     );
@@ -1364,7 +1364,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
       ).toBe(false),
     );
     expect(
-      useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
+      useCodezSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
     ).toEqual({
       requestId: 2,
       text: plainPrompt,
@@ -1403,7 +1403,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
       await Promise.resolve();
     });
     expect(
-      useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
+      useCodezSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
     ).toBeNull();
     expect(toast).not.toHaveBeenCalled();
   });

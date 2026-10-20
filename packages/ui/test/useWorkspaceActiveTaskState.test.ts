@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ZCodeTaskMeta } from "@zcode/shared";
+import type { CodezTaskMeta } from "@codez/shared";
 import { useWorkspaceActiveTaskState } from "@/hooks/useWorkspaceActiveTaskState.js";
 
 const fixture = vi.hoisted(() => ({
@@ -10,7 +10,7 @@ const fixture = vi.hoisted(() => ({
     throw new Error("Session is not active");
   }),
   workspace: {
-    optimisticTaskListByTaskId: {} as Record<string, ZCodeTaskMeta>,
+    optimisticTaskListByTaskId: {} as Record<string, CodezTaskMeta>,
     taskListCache: [],
     taskListVersion: 0,
   },
@@ -18,9 +18,9 @@ const fixture = vi.hoisted(() => ({
   broadcasts: new Set<(event: { channel: string }) => void>(),
   warning: vi.fn(),
 }));
-vi.mock("@/hooks/useZCodeTaskService.js", () => ({ useZCodeTaskService: () => fixture.service }));
-vi.mock("@/hooks/useZCodeSessionService.js", () => ({
-  useZCodeSessionService: () => ({ readSession: fixture.readSession }),
+vi.mock("@/hooks/useCodezTaskService.js", () => ({ useCodezTaskService: () => fixture.service }));
+vi.mock("@/hooks/useCodezSessionService.js", () => ({
+  useCodezSessionService: () => ({ readSession: fixture.readSession }),
 }));
 vi.mock("@/hooks/useWorkspaceServices.js", () => ({
   useBaseWorkspaceServices: () => ({ broadcastService }),
@@ -32,10 +32,10 @@ const broadcastService = {
   },
 };
 vi.mock("@/logger.js", () => ({ logger: { warn: fixture.warning } }));
-vi.mock("@/store/zcodeSessionStore.js", () => ({
+vi.mock("@/store/codezSessionStore.js", () => ({
   getTaskMeta: () => null,
-  selectWorkspaceZCodeState: () => fixture.workspace,
-  useZCodeSessionStore: (selector: (state: unknown) => unknown) => selector({}),
+  selectWorkspaceCodezState: () => fixture.workspace,
+  useCodezSessionStore: (selector: (state: unknown) => unknown) => selector({}),
 }));
 vi.mock("@/store/taskQueryCacheStore.js", () => ({
   useTaskQueryCacheStore: (select: (state: unknown) => unknown) =>
@@ -45,7 +45,7 @@ vi.mock("@/hooks/useTaskNativeSessionLogFile.js", () => ({
   useTaskNativeSessionLogFile: () => null,
 }));
 vi.mock("@/hooks/useTaskSessionFilePath.js", () => ({ useTaskSessionFilePath: () => null }));
-const meta = (title = "1111"): ZCodeTaskMeta => ({
+const meta = (title = "1111"): CodezTaskMeta => ({
   taskId: "s",
   title,
   workspacePath: "/repo",
@@ -112,8 +112,8 @@ describe("当前任务 Host 元数据", () => {
     expect(result.current.resolvedActiveTaskMeta).toBe(initial);
   });
   it("同 ID/路径切换远端身份时立即撤下旧标题，迟到结果不能覆盖新身份", async () => {
-    const old = deferred<ZCodeTaskMeta>();
-    const next = deferred<ZCodeTaskMeta>();
+    const old = deferred<CodezTaskMeta>();
+    const next = deferred<CodezTaskMeta>();
     fixture.service.getTaskMeta.mockReturnValueOnce(old.promise).mockReturnValueOnce(next.promise);
     const { result, rerender } = renderHook(
       ({ identity }) => useWorkspaceActiveTaskState({ ...params, workspaceIdentity: identity }),
@@ -133,7 +133,7 @@ describe("当前任务 Host 元数据", () => {
     );
   });
   it("刷新乱序只接受最新请求，读取失败记录日志且不回退 runtime", async () => {
-    const old = deferred<ZCodeTaskMeta>();
+    const old = deferred<CodezTaskMeta>();
     fixture.service.getTaskMeta.mockReturnValueOnce(old.promise);
     const { result } = renderHook(() => useWorkspaceActiveTaskState(params));
     fixture.service.getTaskMeta.mockResolvedValue(meta("新标题"));
@@ -148,7 +148,7 @@ describe("当前任务 Host 元数据", () => {
     expect(fixture.readSession).not.toHaveBeenCalled();
   });
   it("已显示的标题在切换任务的首帧即撤下，卸载后释放所有订阅", async () => {
-    const pending = deferred<ZCodeTaskMeta>();
+    const pending = deferred<CodezTaskMeta>();
     const { result, rerender, unmount } = renderHook(
       ({ taskId }) => useWorkspaceActiveTaskState({ ...params, activeTaskId: taskId }),
       { initialProps: { taskId: "s" } },
@@ -172,7 +172,7 @@ describe("当前任务 Host 元数据", () => {
     await waitFor(() => expect(result.current.activeTaskTitle).toBe("生成标题"));
   });
   it("attachment 重建即使复用 service 对象也不能沿用旧请求", async () => {
-    const pending = deferred<ZCodeTaskMeta>();
+    const pending = deferred<CodezTaskMeta>();
     const { result, rerender } = renderHook(
       ({ attachment }) =>
         useWorkspaceActiveTaskState({ ...params, workspaceRemoteSessionId: attachment }),

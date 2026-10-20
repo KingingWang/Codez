@@ -7,7 +7,7 @@
     "./test/e2e/fixtures/upstream/conversation-session/conversation-session-tool-groups-history-restore.json"
   ],
   "fileFixtures": [
-    { "path": ".zcode-e2e/conversation-session-tool-groups-history-restore", "source": "created-by-spec", "description": "TGE05 Read/Write 的 case-owned fixture。" }
+    { "path": ".codez-e2e/conversation-session-tool-groups-history-restore", "source": "created-by-spec", "description": "TGE05 Read/Write 的 case-owned fixture。" }
   ],
   "requests": [
     { "id": "tge05-read", "kind": "main", "source": "synthetic", "timingPolicy": "tool-use", "syntheticReason": "固定三类 group 的最小历史，验证 cold restore。" },

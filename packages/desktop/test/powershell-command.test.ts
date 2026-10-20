@@ -15,7 +15,7 @@ describe("powershell-command", () => {
   it("把动态值编码进脚本且不再依赖普通 -Command 的尾随参数", () => {
     const values = ["C:\\Program Files\\Z'Code;测试\\helper.exe", "value with spaces & symbols"];
     const args = createEncodedPowerShellArgs(
-      "[Console]::Out.Write($zcodeArg0 + '|' + $zcodeArg1)",
+      "[Console]::Out.Write($codezArg0 + '|' + $codezArg1)",
       values,
     );
 
@@ -23,7 +23,7 @@ describe("powershell-command", () => {
     expect(command).not.toContain("$args");
     for (const [index, value] of values.entries()) {
       expect(command).not.toContain(value);
-      expect(command).toContain(`$zcodeArg${index}=`);
+      expect(command).toContain(`$codezArg${index}=`);
       expect(command).toContain(Buffer.from(value, "utf8").toString("base64"));
     }
   });
@@ -36,7 +36,7 @@ describe("powershell-command", () => {
     expect(command).toContain(
       "[IO.Path]::Combine($PSHOME,'Modules','Microsoft.PowerShell.Security'",
     );
-    expect(command).toContain("Import-Module -Name $zcodeSecurityModule -Force -ErrorAction Stop");
+    expect(command).toContain("Import-Module -Name $codezSecurityModule -Force -ErrorAction Stop");
     expect(command).toContain("Windows PowerShell Security module load failed");
     expect(command).toContain("exit 26");
     expect(command).not.toContain("$env:PSModulePath");
@@ -49,7 +49,7 @@ describe("powershell-command", () => {
       const output = execFileSync(
         "powershell.exe",
         createEncodedPowerShellArgs(
-          "[Console]::Out.Write($zcodeArg0 + [Environment]::NewLine + $zcodeArg1)",
+          "[Console]::Out.Write($codezArg0 + [Environment]::NewLine + $codezArg1)",
           values,
         ),
         { encoding: "utf8" },
@@ -66,14 +66,14 @@ describe("powershell-command", () => {
         "powershell.exe",
         createWindowsPowerShellSecurityArgs(
           [
-            "$signature=Microsoft.PowerShell.Security\\Get-AuthenticodeSignature -LiteralPath $zcodeArg0;",
+            "$signature=Microsoft.PowerShell.Security\\Get-AuthenticodeSignature -LiteralPath $codezArg0;",
             "[Console]::Out.Write($null -ne $signature)",
           ].join(""),
           [process.execPath],
         ),
         {
           encoding: "utf8",
-          env: { ...process.env, PSModulePath: "Z:\\zcode-invalid-psmodulepath" },
+          env: { ...process.env, PSModulePath: "Z:\\codez-invalid-psmodulepath" },
         },
       );
 

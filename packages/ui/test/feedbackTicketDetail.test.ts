@@ -1,11 +1,11 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { FeedbackTicketDetail } from "@zcode/shared";
-import type { IFeedbackService } from "@zcode/services";
+import type { FeedbackTicketDetail } from "@codez/shared";
+import type { IFeedbackService } from "@codez/services";
 
 import { TicketDetailView } from "@/feedback/TicketDetail.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 function createTicket(): FeedbackTicketDetail {
   return {
@@ -43,7 +43,7 @@ describe("TicketDetailView", () => {
   it("localizes the latest process summary card in English", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(TicketDetailView, {
           ticket: createTicket(),
@@ -61,7 +61,7 @@ describe("TicketDetailView", () => {
   it("shows the localized issue id prefix with a copy action", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(TicketDetailView, {
           ticket: createTicket(),
@@ -80,7 +80,7 @@ describe("TicketDetailView", () => {
   it("uses the English issue id prefix in English", () => {
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(TicketDetailView, {
           ticket: createTicket(),

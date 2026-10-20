@@ -1,6 +1,6 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { SourceServerUpdateActivity } from "@/settings/SourceServerUpdateActivity.js";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -321,7 +321,7 @@ describe("remote UI semantic surface tokens", () => {
 it("真实设备日志时间戳在四主题背景上达到 4.5:1", () => {
   const html = renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "en-US" },
       createElement(SourceServerUpdateActivity, {
         active: true,

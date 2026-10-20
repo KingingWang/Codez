@@ -2,7 +2,7 @@ import type { Ref } from "react";
 import { Clock, Folder, Hash, ListFilter, Search } from "lucide-react";
 import type { ProjectSidebarProps, ProjectSidebarView } from "@/project-sidebar/contract.js";
 import { Button } from "@/components/ui/button.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { formatCommandShortcutLabel } from "@/lib/keyboardShortcuts.js";
 import {
   DropdownMenu,
@@ -25,7 +25,7 @@ export function ProjectSidebarListHeader({
   onViewChange(view: ProjectSidebarView): void;
   groupedActionsRef?: Ref<HTMLDivElement>;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   return (
     <div
       className="flex min-w-0 shrink-0 items-center gap-1 px-2 pb-2"

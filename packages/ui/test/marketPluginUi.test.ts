@@ -15,7 +15,7 @@ vi.mock("@/hooks/useServices.js", () => ({
   useOptionalServices: () => ({ pluginUiBridgeService: { listSurfaces: state.list } }),
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     locale: "en-US",
     intl: { formatMessage: ({ id }: { id: string }) => id },
   }),

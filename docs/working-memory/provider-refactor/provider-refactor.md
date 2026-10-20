@@ -62,11 +62,11 @@ M1 已经统一所有生产模型调用的 `Model` / `ModelRequest` 边界。M2 
 
 ```text
 ProviderConfigService
-├─ ZCode Built-in Provider Config
+├─ Codez Built-in Provider Config
 ├─ Account Provider Config
 └─ Personal Provider Config ────────────────┐
                                             ├─> Effective Provider Config
-ZCode Built-in Model Config Rules ──────────┤
+Codez Built-in Model Config Rules ──────────┤
 Personal Model Config Rules ────────────────┘
                              |
                              v

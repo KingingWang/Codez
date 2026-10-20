@@ -2,7 +2,7 @@
 import { createElement, useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render } from "@testing-library/react";
-import type { BrowserViewScreenshotSurfacePreparePayload } from "@zcode/shared";
+import type { BrowserViewScreenshotSurfacePreparePayload } from "@codez/shared";
 import { Tabs, TabsContent } from "@/components/ui/tabs.js";
 import type { BrowserUseSidePaneTab, WorkspaceSidePaneTab } from "@/lib/workspaceSidePane.js";
 

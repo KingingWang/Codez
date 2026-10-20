@@ -8,9 +8,9 @@ import type {
   ConversationRowTarget,
   ConversationSnapshot,
   V4ConversationFileChangesResult,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { SessionPane } from "@/v4/SessionPane.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 const {
   fileChangesMock,
@@ -98,10 +98,10 @@ const servicesMock = vi.hoisted(() => ({
     share: vi.fn(),
   },
   // 修复原因：readiness hook 将 service 作为 effect 依赖；每次 render 重建会导致无限重渲染直至 OOM。
-  zcodeSessionService: {
+  codezSessionService: {
     updateProviderRegistry: vi.fn(),
   },
-  zcodeTaskService: {
+  codezTaskService: {
     restartWorkspaceProcess: vi.fn(),
   },
 }));
@@ -117,7 +117,7 @@ vi.mock("@/hooks/useSettingService.js", () => ({
     error: null,
     loading: false,
     refresh: vi.fn(async () => {}),
-    settings: { zcodeInteractionBehavior: "queue" },
+    settings: { codezInteractionBehavior: "queue" },
     update: vi.fn(async () => {}),
   }),
 }));
@@ -146,7 +146,7 @@ vi.mock("@/v4/V4ConversationContext.js", () => ({
 }));
 
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStoreWithDefault: (_selector: unknown, fallback: unknown) => fallback,
+  useCodezStoreWithDefault: (_selector: unknown, fallback: unknown) => fallback,
 }));
 
 vi.mock("@/v4/composer/useDraftConfigControl.js", () => ({
@@ -425,7 +425,7 @@ describe("SessionPane user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(SessionPane, {
             paneId: "pane-2",
@@ -464,7 +464,7 @@ describe("SessionPane user query editing", () => {
     const root: Root = createRoot(installMinimalDom());
     const renderPane = () =>
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(SessionPane, {
           paneId: "workspace-main",
@@ -550,7 +550,7 @@ describe("SessionPane user query editing", () => {
     const root: Root = createRoot(installMinimalDom());
     const renderPane = () =>
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(SessionPane, {
           paneId: "workspace-main",
@@ -633,7 +633,7 @@ describe("SessionPane user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(SessionPane, {
             paneId: "workspace-main",
@@ -687,7 +687,7 @@ describe("SessionPane user query editing", () => {
     const root: Root = createRoot(installMinimalDom());
     const renderPane = () =>
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(SessionPane, {
           paneId: "workspace-main",
@@ -774,7 +774,7 @@ describe("SessionPane user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(SessionPane, {
             paneId: "workspace-main",
@@ -828,7 +828,7 @@ describe("SessionPane user query editing", () => {
       await act(async () => {
         root.render(
           createElement(
-            ZCodeIntlProvider,
+            CodezIntlProvider,
             { initialLocale: "zh-CN" },
             createElement(SessionPane, {
               paneId: "workspace-main",
@@ -875,7 +875,7 @@ describe("SessionPane user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(SessionPane, {
             paneId: "workspace-main",
@@ -925,7 +925,7 @@ describe("SessionPane user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(SessionPane, {
             paneId: "workspace-main",
@@ -970,7 +970,7 @@ describe("SessionPane user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(SessionPane, {
             paneId: "workspace-main",
@@ -1055,7 +1055,7 @@ describe("SessionPane user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(SessionPane, {
             paneId: "workspace-main",
@@ -1168,7 +1168,7 @@ describe("SessionPane user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(SessionPane, {
             paneId: "workspace-main",
@@ -1216,7 +1216,7 @@ describe("SessionPane user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(SessionPane, {
             paneId: "workspace-main",
@@ -1270,7 +1270,7 @@ describe("SessionPane user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(SessionPane, {
             paneId: "workspace-main",
@@ -1324,7 +1324,7 @@ describe("SessionPane user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(SessionPane, {
             paneId: "workspace-main",
@@ -1365,7 +1365,7 @@ describe("SessionPane user query editing", () => {
     await act(async () => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(SessionPane, {
             paneId: "workspace-main",

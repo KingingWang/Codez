@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it, vi } from "vitest";
-import type { RemoteWorkspaceSessionEntry } from "@zcode/shared";
+import type { RemoteWorkspaceSessionEntry } from "@codez/shared";
 import { createTabStore, type WindowTabState } from "@/store/tabStore.js";
 import {
   loadConnectionProfileCredentials,
@@ -84,8 +84,8 @@ function createBindRemoteWorkspaceScopeMock(
 
 describe("bindRemoteWorkspaceContextAndGetSession", () => {
   it("bind 完成后重新读取同一 session 的新 attachment services", async () => {
-    const firstServices = { zcodeSessionService: { attachment: "A" } } as never;
-    const secondServices = { zcodeSessionService: { attachment: "B" } } as never;
+    const firstServices = { codezSessionService: { attachment: "A" } } as never;
+    const secondServices = { codezSessionService: { attachment: "B" } } as never;
     registerRemoteWorkspaceSession({
       sessionId: "remote-session-1",
       services: firstServices,
@@ -2604,7 +2604,7 @@ describe("restoreSourceRemoteWorkspaceGroup", () => {
 describe("resolveSourceRemoteConversationWorkspaceProjection", () => {
   it("ensures a missing Source conversation path and self-heals an exact open entry", async () => {
     const sourceServerId = "11111111-1111-4111-8111-111111111111";
-    const conversationPath = "/home/dev/.zcode/workspace/default";
+    const conversationPath = "/home/dev/.codez/workspace/default";
     const conversation = createRemoteWorkspaceSessionEntry({
       workspacePath: conversationPath,
       workspaceIdentity: `remote:server:${sourceServerId}:${conversationPath}`,

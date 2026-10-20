@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import type { IPlatformService, WindowScreenshotResult } from "@zcode/shared";
+import type { IPlatformService, WindowScreenshotResult } from "@codez/shared";
 import { captureFeedbackScreenshotDraft } from "@/feedback/feedbackScreenshotDraft.js";
 
 const screenshot: WindowScreenshotResult = {
   dataBase64: "base64-image",
-  filename: "zcode-error-2026-06-17.png",
+  filename: "codez-error-2026-06-17.png",
   contentType: "image/png",
   size: 12,
 };

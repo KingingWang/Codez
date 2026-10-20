@@ -30,19 +30,19 @@ function collectUrls(markdown: string): string[] {
 
 describe("windowsFileLinkEscapeRemarkPlugin", () => {
   it("restores the backslash CommonMark ate before a dot-prefixed directory", () => {
-    // 现场：PowerShell 兜底截图落在 .zcode 下，`\.` 被当作标点转义吃掉，
-    // 预览请求 C:/Users/dev.zcode/... 直接 ENOENT。
+    // 现场：PowerShell 兜底截图落在 .codez 下，`\.` 被当作标点转义吃掉，
+    // 预览请求 C:/Users/dev.codez/... 直接 ENOENT。
     expect(
       collectUrls(
-        String.raw`[screenshot.png](C:\Users\dev\.zcode\workspace\default\screenshot.png)`,
+        String.raw`[screenshot.png](C:\Users\dev\.codez\workspace\default\screenshot.png)`,
       ),
-    ).toEqual([String.raw`C:\Users\dev\.zcode\workspace\default\screenshot.png`]);
+    ).toEqual([String.raw`C:\Users\dev\.codez\workspace\default\screenshot.png`]);
   });
 
   it("restores image destinations the same way as links", () => {
     expect(
-      collectUrls(String.raw`![shot](C:\Users\dev\.zcode\workspace\default\shot.png)`),
-    ).toEqual([String.raw`C:\Users\dev\.zcode\workspace\default\shot.png`]);
+      collectUrls(String.raw`![shot](C:\Users\dev\.codez\workspace\default\shot.png)`),
+    ).toEqual([String.raw`C:\Users\dev\.codez\workspace\default\shot.png`]);
   });
 
   it("restores UNC destinations whose leading pair collapsed to one backslash", () => {
@@ -58,8 +58,8 @@ describe("windowsFileLinkEscapeRemarkPlugin", () => {
   });
 
   it("restores forward-slash drive paths that still contain an escaped punctuation", () => {
-    expect(collectUrls(String.raw`[shot](C:/Users/dev/\.zcode/shot.png)`)).toEqual([
-      String.raw`C:/Users/dev/\.zcode/shot.png`,
+    expect(collectUrls(String.raw`[shot](C:/Users/dev/\.codez/shot.png)`)).toEqual([
+      String.raw`C:/Users/dev/\.codez/shot.png`,
     ]);
   });
 
@@ -75,14 +75,14 @@ describe("windowsFileLinkEscapeRemarkPlugin", () => {
 
   it("skips destinations carrying a title rather than guessing where it starts", () => {
     // fail closed：title 语法一旦参与切片就可能把引号算进路径，宁可不还原。
-    expect(collectUrls(String.raw`[shot](C:\Users\dev\.zcode\a.png "标题")`)).toEqual([
-      String.raw`C:\Users\dev.zcode\a.png`,
+    expect(collectUrls(String.raw`[shot](C:\Users\dev\.codez\a.png "标题")`)).toEqual([
+      String.raw`C:\Users\dev.codez\a.png`,
     ]);
   });
 
   it("skips angle-bracket destinations", () => {
-    expect(collectUrls(String.raw`[shot](<C:\Users\dev\.zcode\a.png>)`)).toEqual([
-      String.raw`C:\Users\dev.zcode\a.png`,
+    expect(collectUrls(String.raw`[shot](<C:\Users\dev\.codez\a.png>)`)).toEqual([
+      String.raw`C:\Users\dev.codez\a.png`,
     ]);
   });
 
@@ -91,16 +91,16 @@ describe("windowsFileLinkEscapeRemarkPlugin", () => {
     const markdown = [
       String.raw`[shot][ref]`,
       "",
-      String.raw`[ref]: C:\Users\dev\.zcode\a.png`,
+      String.raw`[ref]: C:\Users\dev\.codez\a.png`,
     ].join("\n");
 
-    expect(collectUrls(markdown)).toEqual([String.raw`C:\Users\dev\.zcode\a.png`]);
+    expect(collectUrls(markdown)).toEqual([String.raw`C:\Users\dev\.codez\a.png`]);
   });
 
   it("keeps the parsed url when the raw slice does not round-trip", () => {
     // 实体引用会在解析期被解开，反转义等式不成立 → 放弃还原。
-    expect(collectUrls(String.raw`[shot](C:\Users\a&amp;b\.zcode\a.png)`)).toEqual([
-      String.raw`C:\Users\a&b.zcode\a.png`,
+    expect(collectUrls(String.raw`[shot](C:\Users\a&amp;b\.codez\a.png)`)).toEqual([
+      String.raw`C:\Users\a&b.codez\a.png`,
     ]);
   });
 });

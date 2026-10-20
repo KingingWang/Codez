@@ -3,14 +3,14 @@ import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { act, render } from "@testing-library/react";
-import type { GitRepositorySummary, ZCodeSessionRunningSubagent } from "@zcode/shared";
+import type { GitRepositorySummary, CodezSessionRunningSubagent } from "@codez/shared";
 import type {
   BackgroundWorkSummary,
   GoalState,
   PlanState,
   ToolCallRow,
   WorkflowRunState,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { getStatusPanelTodoFocusWindow } from "@/v4/ConversationStatusPanel.js";
 
 const statusPanelCapture = vi.hoisted(() => ({
@@ -145,7 +145,7 @@ vi.mock("@/components/ui/collapsible.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: (descriptor: { id: string }, values?: Record<string, string>) => {
         const durationUnits: Record<string, string> = {
@@ -272,8 +272,8 @@ function backgroundWork(overrides: Partial<BackgroundWorkSummary> = {}): Backgro
 }
 
 function runningSubagent(
-  overrides: Partial<ZCodeSessionRunningSubagent> = {},
-): ZCodeSessionRunningSubagent {
+  overrides: Partial<CodezSessionRunningSubagent> = {},
+): CodezSessionRunningSubagent {
   return {
     childSessionId: "child-session",
     subagentType: "Explore",
@@ -513,13 +513,13 @@ describe("ConversationStatusPanel", () => {
         toolCallId: "plan-9",
         markdown: "# 最新计划",
         title: "最新计划",
-        planFilePath: "/repo/.zcode/plans/latest.md",
+        planFilePath: "/repo/.codez/plans/latest.md",
       }),
     ).toEqual({
       parentSessionId: "parent-session",
       toolCallId: "plan-9",
       markdown: "# 最新计划",
-      planFilePath: "/repo/.zcode/plans/latest.md",
+      planFilePath: "/repo/.codez/plans/latest.md",
     });
   });
 

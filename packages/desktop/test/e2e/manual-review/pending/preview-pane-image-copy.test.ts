@@ -1,7 +1,7 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { TID_WORKSPACE_FILE_TREE_ROW, testId } from "@zcode/shared/test-ids";
+import { TID_WORKSPACE_FILE_TREE_ROW, testId } from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -11,7 +11,7 @@ import { openProjectFileTree } from "#e2e/helpers/project-sidebar";
 
 // PIC-01/02/05：只验证文件预览和原生剪贴板，不调用模型或修改会话状态。
 const IMAGE_DIR = join(DEFAULT_WORKSPACE, "E2E_IMAGE_COPY");
-const SCREENSHOTS = process.env.E2E_IMAGE_COPY_SCREENSHOTS ?? join(tmpdir(), "zcode-image-copy");
+const SCREENSHOTS = process.env.E2E_IMAGE_COPY_SCREENSHOTS ?? join(tmpdir(), "codez-image-copy");
 const SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="440" viewBox="0 0 720 440">
 <rect width="720" height="440" fill="white"/>
 <g stroke="#334155" stroke-width="3" fill="none"><circle cx="135" cy="210" r="74"/>

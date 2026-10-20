@@ -25,7 +25,7 @@
 
 ## 2. GLM-5.3-Flash：所有接入默认开启 PDF
 
-修改 `config/provider/zcode-builtin.json`：
+修改 `config/provider/codez-builtin.json`：
 
 1. 在现有 GLM-5.3-Flash 通用 `modelRules` 成员的 `config.properties.inputFormat` 中增加 `supportsPdf: true`，与已有图片、视频能力并列。
 2. 删除现有 `modelApiRules` 中仅负责为 GLM-5.3-Flash 的 `anthropic-messages` 开启 PDF 的专用规则，不保留重复声明。
@@ -121,6 +121,6 @@ GLM-5.3-Flash 通用模型规则
 ### 实施证据与复审
 
 - 测试先红：非 Messages Flash PDF、套餐模板 Turbo 和三类套餐视觉标共 5 个失败；修复后 6 文件 96 项单测通过。真实 Node Built-in Source/有序规则覆盖三格式、官方/第三方、前后缀/大小写；正常个人覆盖与 manual-provider-model 都保持 PDF=false。普通 API Turbo 本来已默认 false，已纠正测试初稿的错误假设，没有把它改成 true。
-- 两个浏览器用例通过：390 中文浅色/1200 英文深色，每条均检查个人/团队账号/手动套餐 Key，设置页和真实 ModelConfigSelect 菜单同时隐藏 GLM-5.3 视觉、保留 Flash。底层 supportsImage 仍为 true；上传/编码/请求代码没有修改。截图 `/tmp/zcode-provider-settings-batch/vision-*.png`。
+- 两个浏览器用例通过：390 中文浅色/1200 英文深色，每条均检查个人/团队账号/手动套餐 Key，设置页和真实 ModelConfigSelect 菜单同时隐藏 GLM-5.3 视觉、保留 Flash。底层 supportsImage 仍为 true；上传/编码/请求代码没有修改。截图 `/tmp/codez-provider-settings-batch/vision-*.png`。
 - 根 typecheck、lint（0 errors / 41 warnings）、架构（0 violations）通过。与旧规则对照 review：GLM-4.7/GLM-5.3 能力及 Account 精确规则、名单均未改；模型选择项的 supportsVisionInput 仅供徽标消费，不参与附件执行校验。
 - 浏览器验证为隔离共享组件，不代表真实手机 Host/Electron 整链路；未请求真实 PDF 服务，未发布线上配置。中文字体限制沿用本批记录，整体终审仍需执行。

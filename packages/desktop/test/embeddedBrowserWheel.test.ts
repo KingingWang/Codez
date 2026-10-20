@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { EmbeddedBrowserWebviewChannels } from "@zcode/shared";
+import { EmbeddedBrowserWebviewChannels } from "@codez/shared";
 import { installEmbeddedBrowserWheelForwarding } from "../src/preload/embeddedBrowserWheel.js";
 
 function setScrollGeometry(

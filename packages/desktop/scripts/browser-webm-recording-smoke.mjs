@@ -5,8 +5,8 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createElectronBrowserWebmRecorder } from "../out/main/browserWebmRecorder.js";
 
-const OUTPUT_PATH = process.env.ZCODE_WEBM_SMOKE_OUTPUT_PATH;
-const CAPTURE_MS = Number(process.env.ZCODE_WEBM_SMOKE_CAPTURE_MS) || 1_500;
+const OUTPUT_PATH = process.env.CODEZ_WEBM_SMOKE_OUTPUT_PATH;
+const CAPTURE_MS = Number(process.env.CODEZ_WEBM_SMOKE_CAPTURE_MS) || 1_500;
 
 function htmlDataUrl(html) {
   return `data:text/html;base64,${Buffer.from(html).toString("base64")}`;
@@ -169,7 +169,7 @@ async function run() {
   let exitCode = 0;
   try {
     await app.whenReady();
-    root = await mkdtemp(join(tmpdir(), "zcode-browser-webm-smoke-"));
+    root = await mkdtemp(join(tmpdir(), "codez-browser-webm-smoke-"));
     const outputPath = OUTPUT_PATH || join(root, "recording.webm");
     hostWindow = new BrowserWindow({
       show: true,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ZCodeOffPeakTask, ZCodeOffPeakTaskStatus } from "@zcode/shared";
+import type { CodezOffPeakTask, CodezOffPeakTaskStatus } from "@codez/shared";
 import {
   filterAutomationsByStatus,
   filterOffPeakTasksByStatus,
@@ -8,8 +8,8 @@ import {
   resolveOffPeakStatusFilterKind,
 } from "@/settings/automationStatusFilter.js";
 
-function offPeakTask(status: ZCodeOffPeakTaskStatus): ZCodeOffPeakTask {
-  return { offPeakTaskId: `task-${status}`, status } as unknown as ZCodeOffPeakTask;
+function offPeakTask(status: CodezOffPeakTaskStatus): CodezOffPeakTask {
+  return { offPeakTaskId: `task-${status}`, status } as unknown as CodezOffPeakTask;
 }
 
 describe("automation status filter", () => {

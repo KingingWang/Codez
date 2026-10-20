@@ -2,8 +2,8 @@ import { chmod, mkdtemp, mkdir, realpath, rm, stat, writeFile } from "node:fs/pr
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import type { IFileService } from "@zcode/services";
-import { createFileService } from "@zcode/services/node";
+import type { IFileService } from "@codez/services";
+import { createFileService } from "@codez/services/node";
 import { prepareRemoteWorkspaceIdentity } from "@desktop/host/remoteWorkspacePreparation.js";
 import { createWindowRemoteConnectionRegistry } from "@desktop/host/windowRemoteConnectionRegistry.js";
 
@@ -21,7 +21,7 @@ describe.each([null, 0o000, 0o400, 0o100])(
         if (permissions !== null && (process.platform === "win32" || process.getuid?.() === 0)) {
           context.skip();
         }
-        const root = await realpath(await mkdtemp(join(tmpdir(), "zcode-workspace-admission-")));
+        const root = await realpath(await mkdtemp(join(tmpdir(), "codez-workspace-admission-")));
         const paths = [1, 2, 3].map((n) => join(root, `workspace-${n}`));
         const closedListeners = new Set<
           (event: { exitCode: number | null; signal: string | null; recoverable: boolean }) => void
@@ -129,7 +129,7 @@ describe("远程工作区目录 admission", () => {
   it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
     "可读取、可遍历但不可写的空目录仍可绑定",
     async () => {
-      const root = await mkdtemp(join(tmpdir(), "zcode-workspace-readonly-"));
+      const root = await mkdtemp(join(tmpdir(), "codez-workspace-readonly-"));
       const bindIdentity = vi.fn();
       try {
         await chmod(root, 0o500);
@@ -150,7 +150,7 @@ describe("远程工作区目录 admission", () => {
   );
 
   it("新目录绑定拒绝普通文件，且不执行身份写入", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-workspace-file-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-workspace-file-"));
     const path = join(root, "file");
     const bindIdentity = vi.fn();
     try {

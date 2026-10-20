@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { ZCodeTaskChangeSummary } from "@zcode/shared";
+import type { CodezTaskChangeSummary } from "@codez/shared";
 import { formatGroupedTaskHoverChangeParts } from "@/project-sidebar/grouped/task-row-tooltip.js";
 
-function createChangeSummary(added: number, removed: number): ZCodeTaskChangeSummary {
+function createChangeSummary(added: number, removed: number): CodezTaskChangeSummary {
   return {
     fileCount: 1,
     added,

@@ -67,11 +67,11 @@ describe("ProviderConfigMap overlay", () => {
     });
     expect(spec.validateComplete()).toContainEqual(expect.objectContaining({ path: ["max"] }));
   });
-  it("保留 ZCodeBuiltin key 的位置，并按 Personal 顺序追加新 key", () => {
-    const zcodeBuiltin = new ProviderConfigMap([
+  it("保留 CodezBuiltin key 的位置，并按 Personal 顺序追加新 key", () => {
+    const codezBuiltin = new ProviderConfigMap([
       {
         providerId: "A",
-        providerName: "ZCodeBuiltin A",
+        providerName: "CodezBuiltin A",
         config: new ProviderConfig({
           logo: { type: "builtin", key: "provider-a" },
           builtinModelIds: ["m1", "m2"],
@@ -96,7 +96,7 @@ describe("ProviderConfigMap overlay", () => {
       },
     ]);
 
-    const effective = zcodeBuiltin.overlay(personal);
+    const effective = codezBuiltin.overlay(personal);
 
     expect(effective.keys()).toEqual(["A", "B", "C", "Y", "X"]);
     expect(effective.get("A")?.builtinModelIds).toEqual(["m1", "m2"]);
@@ -110,7 +110,7 @@ describe("ProviderConfigMap overlay", () => {
     ).toBe("https://personal.example/api-keys");
     expect(effective.get("C")?.api?.baseUrl).toBe("https://c.example");
     expect(effective.getRule("C")?.providerName).toBe("Personal C");
-    expect(zcodeBuiltin.get("A")?.builtinModelIds).toEqual(["m1", "m2"]);
+    expect(codezBuiltin.get("A")?.builtinModelIds).toEqual(["m1", "m2"]);
     expect(personal.keys()).toEqual(["Y", "C", "X", "A"]);
   });
 

@@ -81,8 +81,8 @@ BTA-007 的多 tab 消歧规则不因该回退放宽。回退是「系统必须�
 
 | 概念                                     | owner                                                         | 证据                              |
 | ---------------------------------------- | ------------------------------------------------------------- | --------------------------------- |
-| list/get facade 与 Tab binding           | `apps/zcode-cli/packages/core/src/browser-client/facade.ts`   | command trace + core unit test    |
-| command schema                           | `packages/shared` 与 `apps/zcode-cli/packages/contracts` 镜像 | runtime schema parse test         |
+| list/get facade 与 Tab binding           | `apps/codez-cli/packages/core/src/browser-client/facade.ts`   | command trace + core unit test    |
+| command schema                           | `packages/shared` 与 `apps/codez-cli/packages/contracts` 镜像 | runtime schema parse test         |
 | selected logical tab、scope、visibility callback | `BrowserGuestManager`                                         | manager unit test + response meta        |
 | suspended/restoring 与 guest residency           | `BrowserTabResidencyCoordinator`（待实现）                    | residency policy/repository/Electron E2E |
 | side-pane active/reveal                  | `applyBrowserUseSidePaneEvent` / `useAppPanels`               | UI state unit test                |

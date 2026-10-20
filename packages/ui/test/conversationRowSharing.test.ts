@@ -1,6 +1,6 @@
 // Conversation row 结构共享单测（docs/performance/conversation-row-structural-sharing.md）。
 import { describe, expect, it } from "vitest";
-import type { ConversationRow, ToolCallRow } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationRow, ToolCallRow } from "@codez/shared/codez-protocol-v4";
 import { ConversationRowPool, shareStructure } from "@/v4/conversationRowSharing.js";
 
 /** 模拟一次反序列化：内容相同、引用全新（包括字符串）。 */

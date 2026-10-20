@@ -108,10 +108,10 @@ Expected: 14 tests passed；BS-030 测试证明服务端异步、客户端同步
 Run:
 
 ```powershell
-pnpm --filter @zcode/desktop prepare:browser-import-helper
+pnpm --filter @codez/desktop prepare:browser-import-helper
 ```
 
-Expected: 输出 `[browser-import-helper] built ...zcode-browser-import-helper.exe`，C# 注释和 `PipeOptions.Asynchronous` 能被当前 Roslyn/.NET Framework 编译链接受。
+Expected: 输出 `[browser-import-helper] built ...codez-browser-import-helper.exe`，C# 注释和 `PipeOptions.Asynchronous` 能被当前 Roslyn/.NET Framework 编译链接受。
 
 - [ ] **Step 4: 更新验证状态**
 
@@ -181,7 +181,7 @@ Run:
 
 ```powershell
 pnpm exec vitest run packages/desktop/test/windowsChromeAppBoundKey.test.ts
-pnpm --filter @zcode/desktop prepare:browser-import-helper
+pnpm --filter @codez/desktop prepare:browser-import-helper
 git diff --check
 git status --short
 ```

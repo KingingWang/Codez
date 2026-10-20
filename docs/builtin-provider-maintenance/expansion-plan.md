@@ -118,7 +118,7 @@ Google、Mistral、腾讯、StepFun 的聚合成员按既定范围原则及该�
 
 ### 实际解析结果，而非只看 JSON 是否有型号
 
-本轮使用仓库[Release 解码器](../../packages/provider-node/src/zcode-builtin-release.ts)、[规则解析器](../../packages/provider/src/config/model-config.ts)和[Map 编译器](../../packages/model-option-map/src/option-maps.ts)，对正式配置做只读探测。输入包含真实模板、API type、Base URL；候选模型不写入成员表。对每个解析出的思考档位编译并应用 Map，输出预算取 1024，仅检查生成请求，不发网络请求。
+本轮使用仓库[Release 解码器](../../packages/provider-node/src/codez-builtin-release.ts)、[规则解析器](../../packages/provider/src/config/model-config.ts)和[Map 编译器](../../packages/model-option-map/src/option-maps.ts)，对正式配置做只读探测。输入包含真实模板、API type、Base URL；候选模型不写入成员表。对每个解析出的思考档位编译并应用 Map，输出预算取 1024，仅检查生成请求，不发网络请求。
 
 | 探测对象                        | revision 33 的实际结果                                                  | 对实施的影响                                                                                  |
 | ------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
@@ -161,7 +161,7 @@ sequenceDiagram
     P-->>A: 完成回答
 ```
 
-当前[执行适配器](../../apps/zcode-cli/packages/adapters/src/model/model-execution.ts)装配 Responses、Messages、Chat 三条路径；[请求补丁](../../apps/zcode-cli/packages/adapters/src/model/model-option-map-fetch.ts)在 SDK 生成请求后应用。应使用这条真实链路验证，不能以独立 HTTP 示例通过代替产品兼容性。
+当前[执行适配器](../../apps/codez-cli/packages/adapters/src/model/model-execution.ts)装配 Responses、Messages、Chat 三条路径；[请求补丁](../../apps/codez-cli/packages/adapters/src/model/model-option-map-fetch.ts)在 SDK 生成请求后应用。应使用这条真实链路验证，不能以独立 HTTP 示例通过代替产品兼容性。
 
 ## 拆分实施与人工协作
 
@@ -181,8 +181,8 @@ sequenceDiagram
 
 | 范围           | 预计改动                                                                                                      | 必须保留的边界                                                                   |
 | -------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| 正式配置       | 在 `config/provider/zcode-builtin.json` 增加成员或模板、精确启停及必要的 Model/API/Site 规则，递增 revision   | 只作用于新增身份；不修改旧成员的能力、默认档位、启停、排序、URL 或 Access        |
-| 测试配置       | 用现有生成器派生 `config/provider/zcode-builtin.test.json`                                                    | 两环境同 revision、同模型事实；普通供应商仍使用原产品端点，不另造测试模型目录    |
+| 正式配置       | 在 `config/provider/codez-builtin.json` 增加成员或模板、精确启停及必要的 Model/API/Site 规则，递增 revision   | 只作用于新增身份；不修改旧成员的能力、默认档位、启停、排序、URL 或 Access        |
+| 测试配置       | 用现有生成器派生 `config/provider/codez-builtin.test.json`                                                    | 两环境同 revision、同模型事实；普通供应商仍使用原产品端点，不另造测试模型目录    |
 | 受影响测试     | `packages/provider-node/test/` 的配置完整性、型号/Map 场景；新模板按需补 `packages/provider/test/` 的继承场景 | 先写场景断言；比较新增前后全部既有成员及相邻 ID 的解析结果，覆盖用户显式覆盖保留 |
 | 维护文档       | 本目录的计划、当前状态及相关规范                                                                              | 官方证据、缺 Key、实际验证和交付状态分别记录；候选不写成已支持                   |
 | 新品牌展示资源 | 需要品牌 Logo 时新增素材并扩展 `packages/ui/src/settings/model-provider-section/ProviderLogo.tsx` 的资源映射  | 按需验证主题、显示和本地化；不顺带改设置交互或排序策略                           |

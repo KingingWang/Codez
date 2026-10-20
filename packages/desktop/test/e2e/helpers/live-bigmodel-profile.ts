@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { platform, userInfo } from "node:os";
 import { resolve } from "node:path";
-import { createCredentialService, setDataBaseDir } from "@zcode/services/node";
+import { createCredentialService, setDataBaseDir } from "@codez/services/node";
 import { createCredentialCipherProvider } from "../../../../services/src/credential/providers/credentialCipherProvider.js";
 import { getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
 
@@ -10,7 +10,7 @@ const IMPORT_KEYS = [
   "oauth:bigmodel:refresh_token",
   "oauth:bigmodel:user_info",
   "oauth:active_provider",
-  "zcodejwttoken",
+  "codezjwttoken",
 ];
 
 /**
@@ -39,11 +39,11 @@ export async function importLiveBigModelCredentials(caseMarker: string): Promise
   const username = userInfo().username;
   const sourceCipher = createCredentialCipherProvider({
     env: {
-      ZCODE_CREDENTIAL_SECRET: `zcode-credential-fallback:${platform()}:${sourceHome}:${username}`,
+      CODEZ_CREDENTIAL_SECRET: `codez-credential-fallback:${platform()}:${sourceHome}:${username}`,
     },
   });
   const original = JSON.parse(
-    await readFile(resolve(sourceHome, ".zcode", "v2", "credentials.json"), "utf8"),
+    await readFile(resolve(sourceHome, ".codez", "v2", "credentials.json"), "utf8"),
   ) as Record<string, string>;
   const values = new Map<string, string>();
   for (const [key, value] of Object.entries(original)) {
@@ -68,11 +68,11 @@ export async function importLiveBigModelCredentials(caseMarker: string): Promise
     );
   }
   const paths = getE2EAppDataPaths();
-  // services 的数据根是 HOME 级目录（其下 .zcode/v2），与 desktop-app helper 的 credentialsFile 同一文件。
+  // services 的数据根是 HOME 级目录（其下 .codez/v2），与 desktop-app helper 的 credentialsFile 同一文件。
   setDataBaseDir(paths.homeDir);
   const targetCipher = createCredentialCipherProvider({
     env: {
-      ZCODE_CREDENTIAL_SECRET: `zcode-credential-fallback:${platform()}:${paths.homeDir}:${username}`,
+      CODEZ_CREDENTIAL_SECRET: `codez-credential-fallback:${platform()}:${paths.homeDir}:${username}`,
     },
   });
   const service = createCredentialService({ cipherProvider: targetCipher });
@@ -85,7 +85,7 @@ export async function importLiveBigModelCredentials(caseMarker: string): Promise
     if (!(key in written)) throw new Error(`${caseMarker}: 凭据未写入隔离 profile: ${key}`);
   }
   const sourceSettings = JSON.parse(
-    await readFile(resolve(sourceHome, ".zcode", "v2", "setting.json"), "utf8"),
+    await readFile(resolve(sourceHome, ".codez", "v2", "setting.json"), "utf8"),
   ) as Record<string, unknown>;
   const sourceSelection = (
     sourceSettings.providerFamilyConnectionSelections as Record<string, unknown> | undefined

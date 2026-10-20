@@ -23,7 +23,7 @@ export async function discoverBackupVolumes(): Promise<string[]> {
   const directories = await Promise.all(
     [...new Set(roots)].map(async (root) => {
       const info = await stat(root).catch(() => null);
-      return info?.isDirectory() ? join(root, ".zcode-migration-backups") : null;
+      return info?.isDirectory() ? join(root, ".codez-migration-backups") : null;
     }),
   );
   return directories.filter((path): path is string => path !== null);

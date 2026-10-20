@@ -8,7 +8,7 @@ import { startConversationModelProviderReplayServer } from "../../../helpers/mod
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";
-import type { BotInboundMessage } from "@zcode/shared";
+import type { BotInboundMessage } from "@codez/shared";
 import { createFeishuConfig } from "../../helpers/bots-service-harness.js";
 import { resolveE2EStorageRoot } from "../../../helpers/e2e-runtime-paths.js";
 import { clearAppData } from "../../../helpers/desktop-app.js";

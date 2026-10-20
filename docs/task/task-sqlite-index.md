@@ -4,9 +4,9 @@
 
 ## Scope
 
-`~/.zcode/v2/tasks-index.sqlite` is the app/host-side index for task list queries. ZCode Agent owns core session content and runtime state; the sqlite index owns fast list metadata and product shell state.
+`~/.codez/v2/tasks-index.sqlite` is the app/host-side index for task list queries. Codez Agent owns core session content and runtime state; the sqlite index owns fast list metadata and product shell state.
 
-The index is not a replacement for ZCode Protocol session snapshots.
+The index is not a replacement for Codez Protocol session snapshots.
 
 ## 库级迁移（Todo109）
 
@@ -75,7 +75,7 @@ Controller / Source 待应用迁移 → 同库事务锁 → 结构升级 + 成�
                              workspace 数据迁移（仍有独立备份、进度、恢复记录）
 ```
 
-CLI `db.sqlite` 的 `zcode_database_identity` 由共享的
+CLI `db.sqlite` 的 `codez_database_identity` 由共享的
 `0024_session_database_identity` 定义纳入 `schema_migration`。Agent 初始化与
 Source 合并前接管复用同一 SQL、checksum 和应用原语；Source 只应用该独立附加表迁移，
 不代跑 Agent 的其他迁移。建表不生成或覆盖 identity；其值仍由冻结合并计划管理。
@@ -132,7 +132,7 @@ Off-Peak 缺失 Provider 的旧选择不查询当前账号补猜，不改变 Tic
 
 - Keep task list queries fast without starting every workspace agent.
 - Persist product shell state such as title, pinned, archived, deleted, unread, and title override.
-- Store a compact `ZCodeTaskMeta` snapshot in `meta_json` for list rendering.
+- Store a compact `CodezTaskMeta` snapshot in `meta_json` for list rendering.
 - Store bounded searchable text for global task search.
 - Keep remote workspace identity isolation consistent through `workspaceKey = workspaceIdentity?.trim() || workspacePath`.
 
@@ -179,7 +179,7 @@ Indexes cover active workspace list queries, pinned list queries, archived list 
 - Every task-index connection uses a bounded SQLite busy timeout. Additive schema migrations are
   idempotent under concurrent Host startup: after lock contention, a duplicate-column result is
   accepted only when the column is present.
-- `meta_json` is parsed with `zcodeTaskMetaSchema`; invalid rows fall back to scalar columns and log a warning.
+- `meta_json` is parsed with `codezTaskMetaSchema`; invalid rows fall back to scalar columns and log a warning.
 - SQLite row columns are authoritative for entity coordinates: reads must overwrite `meta_json` values with
   `task_id` and `workspace_path`. Because `(workspace_key, task_id)` is the actual query/primary-key boundary,
   a valid remote `workspace_key` is authoritative over a missing or stale `workspace_identity` projection;
@@ -204,7 +204,7 @@ Indexes cover active workspace list queries, pinned list queries, archived list 
 
 ## Relationship To Session State
 
-ZCode Agent session state remains authoritative for messages, model/runtime settings, permission requests, stream events, and active turn state.
+Codez Agent session state remains authoritative for messages, model/runtime settings, permission requests, stream events, and active turn state.
 
 The task index may cache enough metadata for list rendering, but it must not become the source of truth for session content. Missing rows are seeded from the authoritative `sessions-index` summary during initial reconciliation; opening, resuming, or completing a task later enriches that row from the full session snapshot (including model and searchable message text).
 
@@ -221,7 +221,7 @@ task-index syncer ◀── 同结构 snapshot（几十 KB~数百 KB，而非 15
    └─ buildMetaFromSnapshot / searchableText / hasUserVisibleContent：结果与 full 逐字节一致
 ```
 
-- 剥离规则（`elideSessionSnapshotForIndex`，`@zcode/shared`）：tool part 的 `state.input` → `{}`、
+- 剥离规则（`elideSessionSnapshotForIndex`，`@codez/shared`）：tool part 的 `state.input` → `{}`、
   `state.output/raw/error` → `""`、`state.metadata` → `{}`；reasoning part 的 `text` → `""`；
   file part 的 `data:` URL → `data:,`。message 数量与顺序、`info`、所有 part 的 `type/id/metadata`、
   text/compaction/timeline/subagent 等其它 part 全部原样保留。
@@ -241,12 +241,12 @@ task-index syncer ◀── 同结构 snapshot（几十 KB~数百 KB，而非 15
 - `session.status=idle` only means the agent engine has no active turn. If the latest user-visible assistant message has a completed timestamp and is not a tool-call continuation boundary, the task status is `completed`.
 - `projection.lastError` takes precedence over a previously completed assistant message, because provider failures can happen before a new assistant message is persisted.
 
-All snapshot-to-task-status callers must use the shared projection helper from `@zcode/shared`. UI projection, service adapter, and sqlite index sync must not carry separate copies of this logic, otherwise switching workspaces can restore a task from a different terminal-status interpretation than the one used while streaming.
+All snapshot-to-task-status callers must use the shared projection helper from `@codez/shared`. UI projection, service adapter, and sqlite index sync must not carry separate copies of this logic, otherwise switching workspaces can restore a task from a different terminal-status interpretation than the one used while streaming.
 
 ## Implementation
 
 - `packages/services/src/session/taskIndexRepo.ts`
-- `packages/services/src/session/zcodeTaskService.ts`
-- `packages/services/src/zcode-agent/zcodeTaskIndexSyncer.ts`
-- `packages/shared/src/zcode-task-types.ts`
+- `packages/services/src/session/codezTaskService.ts`
+- `packages/services/src/codez-agent/codezTaskIndexSyncer.ts`
+- `packages/shared/src/codez-task-types.ts`
 - `docs/ui/pinned-task-storage.md`

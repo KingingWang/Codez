@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { conversationQuotesSchema } from "../src/conversationSelection.js";
-import { conversationInputIntentSchema } from "../src/zcode-protocol-v4/input-intent.js";
+import { conversationInputIntentSchema } from "../src/codez-protocol-v4/input-intent.js";
 
 const quotes = [
   {

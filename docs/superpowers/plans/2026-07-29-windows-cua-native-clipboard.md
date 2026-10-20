@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - 先改测试再改实现；每个任务都必须观察到 RED，再完成 GREEN。
-- 仅修改 `C:\Users\dev\zcode-cua` 的本地 Windows source Helper 链路，以及 `C:\Users\dev\z-code` 的事实文档；不启动或修改 SSH、WSL、Docker、remote workspace、手机 `/remote`。
+- 仅修改 `C:\Users\dev\codez-cua` 的本地 Windows source Helper 链路，以及 `C:\Users\dev\z-code` 的事实文档；不启动或修改 SSH、WSL、Docker、remote workspace、手机 `/remote`。
 - Windows clipboard 必须使用 Win32 `CF_UNICODETEXT`；禁止 PowerShell、shell、外部命令和 Electron clipboard fallback。
 - additive ABI 固定为 `readClipboardTextAsync(): Promise<NativeClipboardReadOutcome>` 与 `writeClipboardTextAsync(text): Promise<NativeClipboardWriteOutcome>`；任一导出缺失都必须令 Windows `supportsClipboard=false`。
 - `ElectronAutomationAdapter.readClipboardText` 返回 `string | Promise<string>`；`writeClipboardText` 返回 `void | Promise<void>`；macOS/Linux 同步 system surface 保持兼容。
@@ -25,14 +25,14 @@
 - 工具名、tier、annotation、broker method 和 30-tool manifest 不变。
 - live smoke 默认关闭；没有显式 opt-in 时必须在启动 Helper、读取或修改 clipboard 前以 exit code 2 退出。
 - live smoke 只恢复原始纯文本，无法恢复被测试写入替换掉的 HTML、图片等附加格式；恢复失败必须非零退出并明确提示 clipboard 可能仍是测试值。
-- `zcode-cua` 必须执行 focused tests、native rebuild、typecheck、lint、build、全量 test；`z-code` 必须执行 Windows source Helper integration、CUA focused suite、official plugin test、typecheck、lint。
+- `codez-cua` 必须执行 focused tests、native rebuild、typecheck、lint、build、全量 test；`z-code` 必须执行 Windows source Helper integration、CUA focused suite、official plugin test、typecheck、lint。
 - `z-code` 当前 Windows 全仓 `pnpm test:unit:affected` 存在已记录的非 CUA baseline；仍须执行并逐项记录，不得把非零结果改称通过。
 
 ---
 
 ## File Structure
 
-### `C:\Users\dev\zcode-cua`
+### `C:\Users\dev\codez-cua`
 
 - Modify: `src/broker/server/nativeAxSource.ts` — broker-neutral raw addon clipboard outcome 与 additive ABI。
 - Modify: `src/native/types.ts` — Windows raw addon 的公开 clipboard outcome 与导出类型。
@@ -98,11 +98,11 @@ malformed outcome     internal          addon ABI 不可信；fail closed
 
 **Files:**
 
-- Create: `C:\Users\dev\zcode-cua\test\windows-native-clipboard-adapter.test.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\nativeAxSource.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\native\types.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\electronNativeBackendTypes.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\nodeAutomationAdapter.ts`
+- Create: `C:\Users\dev\codez-cua\test\windows-native-clipboard-adapter.test.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\nativeAxSource.ts`
+- Modify: `C:\Users\dev\codez-cua\src\native\types.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\electronNativeBackendTypes.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\nodeAutomationAdapter.ts`
 
 **Interfaces:**
 
@@ -288,7 +288,7 @@ it("fails closed on malformed native outcomes", async () => {
 Run:
 
 ```powershell
-cd C:\Users\dev\zcode-cua
+cd C:\Users\dev\codez-cua
 pnpm exec vitest run test/windows-native-clipboard-adapter.test.ts
 ```
 
@@ -467,7 +467,7 @@ Add a Chinese root-cause comment above the pair gate: the old single-export/part
 Run:
 
 ```powershell
-cd C:\Users\dev\zcode-cua
+cd C:\Users\dev\codez-cua
 pnpm exec vitest run test/windows-native-clipboard-adapter.test.ts test/broker/windowsSystemSurface.test.ts
 pnpm typecheck
 ```
@@ -487,8 +487,8 @@ git commit -m "feat(windows): add native clipboard adapter contract"
 
 **Files:**
 
-- Modify: `C:\Users\dev\zcode-cua\test\windows-capability-truthfulness.test.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\electronNativeBackend.ts`
+- Modify: `C:\Users\dev\codez-cua\test\windows-capability-truthfulness.test.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\electronNativeBackend.ts`
 
 **Interfaces:**
 
@@ -521,8 +521,8 @@ it("awaits native clipboard read/write and advertises the complete pair", async 
       writeClipboardText,
     },
     brokerInfo: {
-      bundle_id: "dev.zcode.cua.helper",
-      display_name: "ZCode Computer Use",
+      bundle_id: "dev.codez.cua.helper",
+      display_name: "Codez Computer Use",
       permission_mode: "product",
       version: "0.0.0-test",
       platform: "win32",
@@ -552,7 +552,7 @@ Retain the existing test proving `supportsClipboard=false` rejects before adapte
 - [ ] **Step 2: Run the focused test and verify RED**
 
 ```powershell
-cd C:\Users\dev\zcode-cua
+cd C:\Users\dev\codez-cua
 pnpm exec vitest run test/windows-capability-truthfulness.test.ts
 ```
 
@@ -566,7 +566,7 @@ Replace the handlers with:
 read_clipboard: async () => {
   if (!supportsClipboard) {
     throw notAuthorized(
-      "read_clipboard is unavailable in this ZCode Computer Use build.",
+      "read_clipboard is unavailable in this Codez Computer Use build.",
     );
   }
   return await adapter.readClipboardText();
@@ -574,7 +574,7 @@ read_clipboard: async () => {
 write_clipboard: async (params) => {
   if (!supportsClipboard) {
     throw notAuthorized(
-      "write_clipboard is unavailable in this ZCode Computer Use build.",
+      "write_clipboard is unavailable in this Codez Computer Use build.",
     );
   }
   const text = typeof params.text === "string" ? params.text : "";
@@ -588,7 +588,7 @@ Keep capability derivation `adapter.supportsClipboard !== false` unchanged; Task
 - [ ] **Step 4: Run broker, tool-surface and type gates**
 
 ```powershell
-cd C:\Users\dev\zcode-cua
+cd C:\Users\dev\codez-cua
 pnpm exec vitest run test/windows-capability-truthfulness.test.ts test/windows-native-clipboard-adapter.test.ts test/annotations.test.ts test/broker/types.brokerMethods.test.ts test/broker/types.readOnlyMethods.test.ts
 pnpm typecheck
 ```
@@ -608,8 +608,8 @@ git commit -m "feat(windows): await native clipboard operations"
 
 **Files:**
 
-- Create: `C:\Users\dev\zcode-cua\test\native\windows-clipboard.test.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\native\ax_win.cc`
+- Create: `C:\Users\dev\codez-cua\test\native\windows-clipboard.test.ts`
+- Modify: `C:\Users\dev\codez-cua\src\native\ax_win.cc`
 
 **Interfaces:**
 
@@ -694,7 +694,7 @@ describeIfNative("compiled Windows clipboard ABI", () => {
 - [ ] **Step 2: Run source test and verify RED**
 
 ```powershell
-cd C:\Users\dev\zcode-cua
+cd C:\Users\dev\codez-cua
 pnpm exec vitest run test/native/windows-clipboard.test.ts
 ```
 
@@ -1096,7 +1096,7 @@ Add Chinese comments explaining:
 - [ ] **Step 6: Rebuild and verify source plus compiled ABI**
 
 ```powershell
-cd C:\Users\dev\zcode-cua
+cd C:\Users\dev\codez-cua
 pnpm rebuild:native
 pnpm exec vitest run test/native/windows-clipboard.test.ts test/windows-native-clipboard-adapter.test.ts test/windows-capability-truthfulness.test.ts
 pnpm typecheck
@@ -1117,9 +1117,9 @@ git commit -m "feat(windows): implement native text clipboard"
 
 **Files:**
 
-- Create: `C:\Users\dev\zcode-cua\scripts\windows-clipboard-live-smoke.mjs`
-- Create: `C:\Users\dev\zcode-cua\test\windows-clipboard-live-smoke.test.ts`
-- Modify: `C:\Users\dev\zcode-cua\package.json`
+- Create: `C:\Users\dev\codez-cua\scripts\windows-clipboard-live-smoke.mjs`
+- Create: `C:\Users\dev\codez-cua\test\windows-clipboard-live-smoke.test.ts`
+- Modify: `C:\Users\dev\codez-cua\package.json`
 
 **Interfaces:**
 
@@ -1170,7 +1170,7 @@ describe("Windows clipboard live smoke guard", () => {
 - [ ] **Step 2: Run the focused test and verify RED**
 
 ```powershell
-cd C:\Users\dev\zcode-cua
+cd C:\Users\dev\codez-cua
 pnpm exec vitest run test/windows-clipboard-live-smoke.test.ts
 ```
 
@@ -1181,7 +1181,7 @@ Expected: FAIL because the smoke script does not exist.
 Base lifecycle, random pipe/token, ready verification and clean shutdown on `windows-pointer-live-smoke.mjs`, but use this exact summary surface:
 
 ```js
-const OPT_IN_ENV = "ZCODE_CUA_WINDOWS_CLIPBOARD_LIVE";
+const OPT_IN_ENV = "CODEZ_CUA_WINDOWS_CLIPBOARD_LIVE";
 const summary = {
   platform: process.platform,
   helperReady: false,
@@ -1215,7 +1215,7 @@ try {
   }
   summary.originalRead = true;
 
-  const marker = `zcode-cua-clipboard-smoke-${randomBytes(16).toString("hex")}`;
+  const marker = `codez-cua-clipboard-smoke-${randomBytes(16).toString("hex")}`;
   failureStage = "write-marker";
   await client.call("write_clipboard", { text: marker });
   markerWritten = true;
@@ -1266,8 +1266,8 @@ Add to `package.json`:
 - [ ] **Step 4: Verify the default path cannot touch the clipboard**
 
 ```powershell
-cd C:\Users\dev\zcode-cua
-Remove-Item Env:ZCODE_CUA_WINDOWS_CLIPBOARD_LIVE -ErrorAction SilentlyContinue
+cd C:\Users\dev\codez-cua
+Remove-Item Env:CODEZ_CUA_WINDOWS_CLIPBOARD_LIVE -ErrorAction SilentlyContinue
 pnpm exec vitest run test/windows-clipboard-live-smoke.test.ts
 pnpm smoke:windows:clipboard
 ```
@@ -1279,11 +1279,11 @@ Expected: Vitest exits 0; direct smoke exits 2 before Helper startup and prints 
 Warn the user immediately before this step that pure-text replacement drops any existing non-text clipboard formats. Then run:
 
 ```powershell
-cd C:\Users\dev\zcode-cua
+cd C:\Users\dev\codez-cua
 pnpm build
-$env:ZCODE_CUA_WINDOWS_CLIPBOARD_LIVE='1'
+$env:CODEZ_CUA_WINDOWS_CLIPBOARD_LIVE='1'
 pnpm smoke:windows:clipboard
-Remove-Item Env:ZCODE_CUA_WINDOWS_CLIPBOARD_LIVE
+Remove-Item Env:CODEZ_CUA_WINDOWS_CLIPBOARD_LIVE
 ```
 
 Expected JSON booleans: every field except `platform` is `true`; exit 0; original pure text is restored and re-read exactly. If any field is false, stop feature completion, preserve a redacted failure-stage record, and do not claim live acceptance.
@@ -1301,7 +1301,7 @@ git commit -m "test(windows): add clipboard live smoke"
 
 **Files:**
 
-- Modify: `C:\Users\dev\zcode-cua\docs\platforms.md`
+- Modify: `C:\Users\dev\codez-cua\docs\platforms.md`
 - Modify: `C:\Users\dev\z-code\docs\cua\windows-source-development.md`
 
 **Interfaces:**
@@ -1309,7 +1309,7 @@ git commit -m "test(windows): add clipboard live smoke"
 - Consumes: verified outcomes from Tasks 1–4.
 - Produces: current facts for developers and future product closure.
 
-- [ ] **Step 1: Update `zcode-cua/docs/platforms.md`**
+- [ ] **Step 1: Update `codez-cua/docs/platforms.md`**
 
 Move native clipboard out of “未实现能力”. Record:
 
@@ -1328,12 +1328,12 @@ Document outcome mapping, no shell/Electron fallback, pure-text replacement sema
 Add source build and live verification:
 
 ```powershell
-cd C:\Users\dev\zcode-cua
+cd C:\Users\dev\codez-cua
 pnpm rebuild:native
 pnpm build
-$env:ZCODE_CUA_WINDOWS_CLIPBOARD_LIVE='1'
+$env:CODEZ_CUA_WINDOWS_CLIPBOARD_LIVE='1'
 pnpm smoke:windows:clipboard
-Remove-Item Env:ZCODE_CUA_WINDOWS_CLIPBOARD_LIVE
+Remove-Item Env:CODEZ_CUA_WINDOWS_CLIPBOARD_LIVE
 ```
 
 Record these boundaries:
@@ -1353,7 +1353,7 @@ Add the actual machine/date/build/test results from Task 4 without recording tex
 Run:
 
 ```powershell
-rg -n "clipboard|CF_UNICODETEXT|PowerShell|WGC|UIA worker|remote|smoke:windows:clipboard" C:\Users\dev\zcode-cua\docs\platforms.md C:\Users\dev\z-code\docs\cua\windows-source-development.md
+rg -n "clipboard|CF_UNICODETEXT|PowerShell|WGC|UIA worker|remote|smoke:windows:clipboard" C:\Users\dev\codez-cua\docs\platforms.md C:\Users\dev\z-code\docs\cua\windows-source-development.md
 ```
 
 Expected: native clipboard is described as implemented only for Windows source Helper; WGC/UIA worker/product packaging remain pending; no remote claim is broadened.
@@ -1361,7 +1361,7 @@ Expected: native clipboard is described as implemented only for Windows source H
 - [ ] **Step 4: Commit docs in their owning repositories**
 
 ```powershell
-cd C:\Users\dev\zcode-cua
+cd C:\Users\dev\codez-cua
 git add docs/platforms.md
 git commit -m "docs(windows): record native clipboard support"
 
@@ -1376,7 +1376,7 @@ git commit -m "docs(cua): record Windows clipboard source flow"
 
 **Files:**
 
-- Modify by generator: `C:\Users\dev\zcode-cua\dist\**`
+- Modify by generator: `C:\Users\dev\codez-cua\dist\**`
 - Verify only: both worktrees and all files from Tasks 1–5.
 
 **Interfaces:**
@@ -1384,10 +1384,10 @@ git commit -m "docs(cua): record Windows clipboard source flow"
 - Consumes: all prior task commits.
 - Produces: shippable source-development artifacts plus an evidence-backed gate report.
 
-- [ ] **Step 1: Run all `zcode-cua` focused gates**
+- [ ] **Step 1: Run all `codez-cua` focused gates**
 
 ```powershell
-cd C:\Users\dev\zcode-cua
+cd C:\Users\dev\codez-cua
 pnpm rebuild:native
 pnpm exec vitest run test/windows-native-clipboard-adapter.test.ts test/windows-capability-truthfulness.test.ts test/native/windows-clipboard.test.ts test/windows-clipboard-live-smoke.test.ts test/broker/windowsSystemSurface.test.ts test/annotations.test.ts test/broker/types.brokerMethods.test.ts test/broker/types.readOnlyMethods.test.ts
 pnpm typecheck
@@ -1396,32 +1396,32 @@ pnpm lint
 
 Expected: all commands exit 0; lint may print only the already-known warning baseline, with zero errors.
 
-- [ ] **Step 2: Build and run the full `zcode-cua` suite**
+- [ ] **Step 2: Build and run the full `codez-cua` suite**
 
 ```powershell
-cd C:\Users\dev\zcode-cua
+cd C:\Users\dev\codez-cua
 pnpm build
 pnpm test
 ```
 
 Expected: exit 0. Record exact passed、skipped 和待处理数量 from this run instead of copying old counts.
 
-- [ ] **Step 3: Verify the source ZCode integration without remote paths**
+- [ ] **Step 3: Verify the source Codez integration without remote paths**
 
 ```powershell
 cd C:\Users\dev\z-code
-$env:ZCODE_CUA_DEV_ROOT='C:\Users\dev\zcode-cua'
+$env:CODEZ_CUA_DEV_ROOT='C:\Users\dev\codez-cua'
 pnpm exec vitest run packages/services/test/windowsCuaDevHelper.integration.test.ts
 pnpm exec vitest run packages/services/test/cua
-pnpm --filter @zcode/zcode-cua-plugin test
-Remove-Item Env:ZCODE_CUA_DEV_ROOT
+pnpm --filter @codez/codez-cua-plugin test
+Remove-Item Env:CODEZ_CUA_DEV_ROOT
 pnpm typecheck
 pnpm lint
 ```
 
 Expected: Helper integration, CUA focused suite, official plugin, typecheck and lint exit 0. Confirm no SSH/WSL/Docker/remote/mobile process was started.
 
-- [ ] **Step 4: Execute and classify the full ZCode affected-unit baseline**
+- [ ] **Step 4: Execute and classify the full Codez affected-unit baseline**
 
 ```powershell
 cd C:\Users\dev\z-code
@@ -1433,7 +1433,7 @@ Expected: capture exact exit code and failing file/test names. Any CUA, Helper l
 - [ ] **Step 5: Check generated changes and process hygiene**
 
 ```powershell
-cd C:\Users\dev\zcode-cua
+cd C:\Users\dev\codez-cua
 git status --short
 git diff --check
 
@@ -1443,17 +1443,17 @@ git diff --check
 
 Get-CimInstance Win32_Process |
   Where-Object {
-    $_.CommandLine -match 'windows-helper\.js|__zcode-plugin-host'
+    $_.CommandLine -match 'windows-helper\.js|__codez-plugin-host'
   } |
   Select-Object ProcessId, ParentProcessId, Name
 ```
 
-Expected: `git diff --check` exits 0; only generated `zcode-cua/dist/**` changes remain; no orphan Helper/plugin-host process remains. Do not terminate unrelated user processes.
+Expected: `git diff --check` exits 0; only generated `codez-cua/dist/**` changes remain; no orphan Helper/plugin-host process remains. Do not terminate unrelated user processes.
 
 - [ ] **Step 6: Commit generated artifacts**
 
 ```powershell
-cd C:\Users\dev\zcode-cua
+cd C:\Users\dev\codez-cua
 git add dist
 git commit -m "build(windows): regenerate clipboard artifacts"
 ```
@@ -1461,7 +1461,7 @@ git commit -m "build(windows): regenerate clipboard artifacts"
 - [ ] **Step 7: Final clean-tree and commit audit**
 
 ```powershell
-cd C:\Users\dev\zcode-cua
+cd C:\Users\dev\codez-cua
 git status --short --branch
 git log -5 --oneline
 
@@ -1474,7 +1474,7 @@ Expected: both worktrees clean. Final report must distinguish:
 
 - source unit/build gates;
 - real clipboard live round-trip and restoration;
-- ZCode source Helper integration;
+- Codez source Helper integration;
 - known non-CUA full-suite baseline;
 - still-pending WGC, UIA worker isolation, product packaging/signing;
 - still-pending pointer live acceptance if the foreground remains `LockApp`.

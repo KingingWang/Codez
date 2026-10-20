@@ -14,10 +14,10 @@ import {
 describe("Coding Plan E2E mock env", () => {
   it("网页 mock 分配新端口后不能复用父构建，源码证据也必须标记重新构建", () => {
     expect(shouldReuseDesktopE2EBuild({})).toBe(false);
-    expect(shouldReuseDesktopE2EBuild({ ZCODE_E2E_SKIP_BUILD: "1" })).toBe(true);
+    expect(shouldReuseDesktopE2EBuild({ CODEZ_E2E_SKIP_BUILD: "1" })).toBe(true);
     expect(
       shouldReuseDesktopE2EBuild({
-        ZCODE_E2E_SKIP_BUILD: "1",
+        CODEZ_E2E_SKIP_BUILD: "1",
         [CODING_PLAN_UPGRADE_MOCK_BASE_URL_ENV]: "http://127.0.0.1:43123",
       }),
     ).toBe(false);
@@ -126,9 +126,9 @@ describe("Coding Plan E2E mock env", () => {
     applyCodingPlanTeamMockEnv(environment, teamBaseUrl);
     clearCodingPlanUpgradeMockEnv(environment, upgradeBaseUrl);
 
-    expect(environment.ZCODE_BASE_URL).toBe(teamBaseUrl);
-    expect(environment.ZCODE_ENDPOINT_ORIGIN).toBe(teamBaseUrl);
-    expect(environment.ZCODE_E2E_CODING_PLAN_MOCK_URL).toBe(teamBaseUrl);
+    expect(environment.CODEZ_BASE_URL).toBe(teamBaseUrl);
+    expect(environment.CODEZ_ENDPOINT_ORIGIN).toBe(teamBaseUrl);
+    expect(environment.CODEZ_E2E_CODING_PLAN_MOCK_URL).toBe(teamBaseUrl);
   });
 
   it("does not clear an active upgrade mock when a non-team worker drops the prepared team mock", () => {
@@ -140,9 +140,9 @@ describe("Coding Plan E2E mock env", () => {
     applyCodingPlanUpgradeMockEnv(environment, upgradeBaseUrl);
     clearCodingPlanTeamMockEnv(environment, teamBaseUrl);
 
-    expect(environment.ZCODE_BASE_URL).toBe(upgradeBaseUrl);
-    expect(environment.ZCODE_ENDPOINT_ORIGIN).toBe(upgradeBaseUrl);
-    expect(environment.ZCODE_E2E_CODING_PLAN_MOCK_URL).toBe(upgradeBaseUrl);
+    expect(environment.CODEZ_BASE_URL).toBe(upgradeBaseUrl);
+    expect(environment.CODEZ_ENDPOINT_ORIGIN).toBe(upgradeBaseUrl);
+    expect(environment.CODEZ_E2E_CODING_PLAN_MOCK_URL).toBe(upgradeBaseUrl);
   });
 
   it("prepares the team mock for targeted login, provider transition, and off-peak cases", () => {

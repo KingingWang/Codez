@@ -12,7 +12,7 @@ ModelFactory。
 ```text
 Desktop Environment                     Remote Environment
 ===================                     ==================
-Desktop app-global settings             Remote ZCode Built-in Config
+Desktop app-global settings             Remote Codez Built-in Config
 Desktop OAuth / UI state                Remote Personal Provider Config
 Local Provider Runtime                  Remote Account Provider Config
 Local Registry                          Remote Credential Store
@@ -34,7 +34,7 @@ Desktop 不向 Remote Worker 注入以下内容：
 - Desktop Account Provider Config；
 - Desktop API Key、JWT、Team Runtime Key 或动态请求 Header。
 
-旧 `workspace/updateProviderRegistry`、`ZCodeProviderRegistrySnapshot` 和
+旧 `workspace/updateProviderRegistry`、`CodezProviderRegistrySnapshot` 和
 `remoteWorkspaceProviderSync` 不再属于生产协议或运行链路。
 
 ## 状态归属
@@ -62,7 +62,7 @@ Renderer 面对的 remote workspace ServiceCollection 可以混合本地 UI Serv
 
 ```text
 Environment Provider Sources
-├─ ZCode Built-in Config
+├─ Codez Built-in Config
 ├─ Personal Provider Config
 └─ Account Provider Config
           |
@@ -75,7 +75,7 @@ Environment Provider Sources
 ```
 
 Host 可以通过 `provider/updateAccountConfig` 把本 Environment 的无 Secret Account Overlay 发送给自己的
-Core Worker。该协议只承载 `revision + basedOnZCodeBuiltinRevision + ProviderConfigMap`，不承载 API Key、
+Core Worker。该协议只承载 `revision + basedOnCodezBuiltinRevision + ProviderConfigMap`，不承载 API Key、
 JWT 或动态 Header。它是进程间一致性机制，不是 Desktop-to-remote Provider 同步。
 
 Host 与 Worker 的 Registry 都由 Source 变化后自行重建；Registry View 不跨进程共享。已经创建的 Active
@@ -147,7 +147,7 @@ Local → Remote；当前 Provisioning 在本地 allowlist 凭据保存或删除
 - `docs/working-memory/provider-refactor/design/environment/environment.md`
 - `docs/working-memory/provider-refactor/design/registry/runtime.md`
 - `docs/working-memory/provider-refactor/design/registry/configuration.md`
-- `docs/remote/zcode-agent-remote-deployment.md`
+- `docs/remote/codez-agent-remote-deployment.md`
 - `docs/web-remote-control/web-remote-control-architecture.md`
 
 ## 设置页应用配置归属（2026-09-16 修复 A2）

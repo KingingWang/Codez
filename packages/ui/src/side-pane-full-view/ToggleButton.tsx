@@ -1,9 +1,9 @@
 import { Maximize2Icon, Minimize2Icon } from "lucide-react";
-import { TID_SIDE_PANE_FULL_VIEW_TOGGLE } from "@zcode/shared/test-ids";
+import { TID_SIDE_PANE_FULL_VIEW_TOGGLE } from "@codez/shared/test-ids";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 
 /** Side Pane 右上角「进入 / 退出完整视图」按钮（spec：docs/ui/side-pane-full-view.md）。 */
 export function SidePaneFullViewToggleButton({
@@ -15,7 +15,7 @@ export function SidePaneFullViewToggleButton({
   onToggle: () => void;
   shortcutLabel?: string;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const label = intl.formatMessage({
     id: active ? "sidePane.fullView.exit" : "sidePane.fullView.enter",
   });

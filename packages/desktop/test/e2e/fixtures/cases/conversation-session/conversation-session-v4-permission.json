@@ -8,17 +8,17 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/conversation-session-v4-permission/write-output.txt",
+      "path": ".codez-e2e/conversation-session-v4-permission/write-output.txt",
       "source": "created-by-provider-tool",
       "description": "spec 创建父目录，fixture 驱动 Write 工具创建目标文件以完成权限审批回合。"
     },
     {
-      "path": ".zcode-e2e/conversation-session-v4-permission/allow-feedback-output.txt",
+      "path": ".codez-e2e/conversation-session-v4-permission/allow-feedback-output.txt",
       "source": "created-by-provider-tool",
       "description": "允许路径的 Write 工具输出；用于确认 Allow once 不携带反馈。"
     },
     {
-      "path": ".zcode-e2e/conversation-session-v4-permission/deny-blank-output.txt",
+      "path": ".codez-e2e/conversation-session-v4-permission/deny-blank-output.txt",
       "source": "created-by-provider-tool",
       "description": "空白反馈拒绝路径的目标文件；应始终不存在。"
     }

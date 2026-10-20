@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { IUsageStatsService } from "@zcode/services";
-import type { CodingPlanResetScopeRequest } from "@zcode/shared";
+import type { IUsageStatsService } from "@codez/services";
+import type { CodingPlanResetScopeRequest } from "@codez/shared";
 import {
   requestCodingPlanResetOpportunityWhenDue,
   subscribeCodingPlanQuotaResetPolling,

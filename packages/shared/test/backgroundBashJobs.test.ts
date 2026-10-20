@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { parseZCodeBackgroundBashJobs } from "../src/background-bash-jobs.js";
-import { mergeZCodeBackgroundTaskControlItems } from "../src/background-task-control-merge.js";
-import { parseZCodeBackgroundTaskControlItems } from "../src/background-task-controls.js";
+import { parseCodezBackgroundBashJobs } from "../src/background-bash-jobs.js";
+import { mergeCodezBackgroundTaskControlItems } from "../src/background-task-control-merge.js";
+import { parseCodezBackgroundTaskControlItems } from "../src/background-task-controls.js";
 
 describe("background bash jobs", () => {
   it("后台 Bash 取消 ID 优先使用 protocol taskId", () => {
-    const jobs = parseZCodeBackgroundBashJobs([
+    const jobs = parseCodezBackgroundBashJobs([
       {
         taskId: "exec_background_123",
         id: "call_like_generic_id",
@@ -29,7 +29,7 @@ describe("background bash jobs", () => {
   });
 
   it("Bash-only parser does not include background Agent tasks", () => {
-    const jobs = parseZCodeBackgroundBashJobs([
+    const jobs = parseCodezBackgroundBashJobs([
       {
         taskId: "agent_background_123",
         toolCallId: "call_agent_00",
@@ -43,7 +43,7 @@ describe("background bash jobs", () => {
   });
 
   it("parses running background Agent tasks for the shared background control surface", () => {
-    const jobs = parseZCodeBackgroundTaskControlItems([
+    const jobs = parseCodezBackgroundTaskControlItems([
       {
         taskId: "agent_background_123",
         toolCallId: "call_agent_00",
@@ -66,7 +66,7 @@ describe("background bash jobs", () => {
   });
 
   it("accepts already-normalized background task control items", () => {
-    const jobs = parseZCodeBackgroundTaskControlItems([
+    const jobs = parseCodezBackgroundTaskControlItems([
       {
         jobId: "agent_normalized_123",
         taskKind: "agent",
@@ -87,7 +87,7 @@ describe("background bash jobs", () => {
   });
 
   it("does not classify generic task records as background Agent tasks", () => {
-    const jobs = parseZCodeBackgroundTaskControlItems([
+    const jobs = parseCodezBackgroundTaskControlItems([
       {
         taskId: "generic_task_123",
         type: "task",
@@ -100,7 +100,7 @@ describe("background bash jobs", () => {
   });
 
   it("does not classify generic background_task records without explicit task kind", () => {
-    const jobs = parseZCodeBackgroundTaskControlItems([
+    const jobs = parseCodezBackgroundTaskControlItems([
       {
         taskId: "background_task_123",
         type: "background_task",
@@ -113,7 +113,7 @@ describe("background bash jobs", () => {
   });
 
   it("preserves cancellable capability for explicit Bash background controls", () => {
-    const jobs = parseZCodeBackgroundTaskControlItems([
+    const jobs = parseCodezBackgroundTaskControlItems([
       {
         taskId: "background_task_unsupported",
         type: "background_task",
@@ -133,7 +133,7 @@ describe("background bash jobs", () => {
   });
 
   it("normalizes terminal protocol statuses for shared controls", () => {
-    const jobs = parseZCodeBackgroundTaskControlItems([
+    const jobs = parseCodezBackgroundTaskControlItems([
       {
         taskId: "background_task_timeout",
         toolName: "Bash",
@@ -161,7 +161,7 @@ describe("background bash jobs", () => {
   });
 
   it("merges partial background task control updates by job id", () => {
-    const merged = mergeZCodeBackgroundTaskControlItems(
+    const merged = mergeCodezBackgroundTaskControlItems(
       [
         {
           jobId: "background_task_1",

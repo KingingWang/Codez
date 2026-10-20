@@ -1,4 +1,4 @@
-// escalate / ResolveWorkflowQuestion 专用工具卡（apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md）。
+// escalate / ResolveWorkflowQuestion 专用工具卡（apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md）。
 //
 // 文件名刻意是 `.test.ts` 而不是 `.test.tsx`：根 vitest 配置只收
 // `packages/*/test/**/*.test.ts`（vitest.config.ts），`.test.tsx` 一个用例都不会被采集。
@@ -9,7 +9,7 @@
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 // CodeBlock 依赖 shiki / CodeViewer 根 provider，静态渲染跑不动；照 submit-result 的先例替换为
 // 桩（本卡不用 CodeBlock，但整链入口可能间接触达，留桩最省心）。
@@ -99,7 +99,7 @@ function renderEscalate(
 ): string {
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: locale },
       createElement(EscalateToolCallBlock, buildContext(toolCall, contextOverrides, "escalate")),
     ),
@@ -113,7 +113,7 @@ function renderResolve(
 ): string {
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: locale },
       createElement(
         ResolveWorkflowQuestionToolCallBlock,
@@ -144,7 +144,7 @@ describe("升级问答工具卡路由", () => {
   it("从 ToolCallBlock 入口整链走下来就是专用卡，不再是 fallback 的裸 JSON dump", () => {
     const escalateHtml = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBlock, {
           toolCallNode: {
@@ -169,7 +169,7 @@ describe("升级问答工具卡路由", () => {
 
     const resolveHtml = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ToolCallBlock, {
           toolCallNode: {

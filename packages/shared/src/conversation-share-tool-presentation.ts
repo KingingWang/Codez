@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { toolResultDisplaySchema } from "./zcode-protocol-v4/toolDisplay.js";
+import { toolResultDisplaySchema } from "./codez-protocol-v4/toolDisplay.js";
 
 // 从正式 display 的严格成员派生公开白名单，不另造工具结果协议。
 const OMIT = new Set(["outputPath", "input", "targetApp", "media", "ui", "permissionStatus"]);

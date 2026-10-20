@@ -145,7 +145,7 @@ A/B 恢复正常；已另记为[可选更新提示缺失](21-optional-update-not
   A/B 保留原 identity、目录且取得新 session。新增这两项 session 换代断言及 artifact，
   原 180 秒恢复断言保留。构建证据 `fresh-stable` 中向导源码摘要与修复工作区一致。
 - 本机首轮没有带服务器 harness 的外层预算，被 WDIO 默认 120 秒在夹具准备阶段截断，
-  尚未进入原项目重连。复跑按既有 `ZCODE_E2E_MANUAL_REVIEW_HOLD_MS=780000` 配置补齐
+  尚未进入原项目重连。复跑按既有 `CODEZ_E2E_MANUAL_REVIEW_HOLD_MS=780000` 配置补齐
   外层 15 分钟预算，与 spec 自身预算一致；没有放宽恢复断言或添加业务重试。
 - `desktop-e2e-20261010-version-fix-{automatic-required,optional,controller-required}-r2`
   三个独立变体均 **1/1 PASS**：后台先等待、点击后更新及恢复 A/B；可选版本保持 3.16.0、

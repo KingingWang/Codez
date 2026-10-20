@@ -2,7 +2,7 @@ import {
   BUILTIN_MODEL_PROVIDER_IDS,
   encodeCustomModelValue,
   type ModelSelection,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   createBotModelSelectionView,
   createBotsServiceHarness,
@@ -49,7 +49,7 @@ describe("BOT-E2E-SR99 绑定 Session 后的有效选择", () => {
           },
         },
       });
-      harness.zcodeTaskService.getTaskModelSelection = async () => original;
+      harness.codezTaskService.getTaskModelSelection = async () => original;
       try {
         const submission = harness.service.handleInboundMessage({
           botId: "feishu-e2e",

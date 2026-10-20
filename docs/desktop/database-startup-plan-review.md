@@ -41,7 +41,7 @@
 | must-inspect | Host InitLocal → createLocalServices → 后台同步 | `host/index.ts`、`services/src/node.ts` 装配期间有后台启动，不能只移动 UI |
 | must-inspect | TaskIndex/Automation/OffPeak Repo → ensureReady → 同一 tasks-index | 三个 Repo 均打开 SQLite；TaskIndex 有迁移后修复，账本齐全不等于初始化结束 |
 | must-inspect | Agent bootstrap → 原 SQL runner → COMMIT/错误 | `app/session-store.ts`、`migration-runner.ts`；原 cause 保留但分类粗，finally 不能覆盖原错误 |
-| must-inspect | 原始错误 → schema → UI/ARMS | `errors.ts`、shared `zcodeStorageStartupStateSchema`、`DatabaseStartupLoading` 需同步分类 |
+| must-inspect | 原始错误 → schema → UI/ARMS | `errors.ts`、shared `codezStorageStartupStateSchema`、`DatabaseStartupLoading` 需同步分类 |
 | must-inspect | Main telemetry → SDK reporter → HTTP 接收 | 安装 SDK sendCustom 返回 void，request 未在该层检查 HTTP status；发送调用不是入库证明 |
 | should-inspect | 环境预热/更新退出 → Host 生命周期 | `desktopWindowLifecycle.ts` 的 4.5 秒环境预算不得误套到长迁移；退出/安装继续释放资源 |
 | conditional | remote connection / mobile attachment → 对应 runtime | 未连接代理不应触发 DB 失败；不能创建额外 Host/Agent |

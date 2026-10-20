@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 
-import type { IPlatformService } from "@zcode/shared";
+import type { IPlatformService } from "@codez/shared";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useFeedbackStore } from "@/feedback/feedbackStore.js";
 import { PlatformProvider } from "@/hooks/usePlatform.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { SessionSubscriptionErrorPanel } from "@/v4/SessionSubscriptionErrorPanel.js";
 
 const screenshot = {
@@ -23,7 +23,7 @@ const platform = {
 function renderPanel() {
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(
         PlatformProvider,
@@ -31,7 +31,7 @@ function renderPanel() {
         createElement(SessionSubscriptionErrorPanel, {
           error: "EPERM: operation not permitted",
           sessionId: "session-1",
-          workspacePath: "F:\\ZCode_data",
+          workspacePath: "F:\\Codez_data",
           onReconnect: vi.fn(),
         }),
       ),
@@ -83,7 +83,7 @@ describe("SessionSubscriptionErrorPanel", () => {
     );
     expect(useFeedbackStore.getState().submitDraft?.description).toContain("任务 ID: session-1");
     expect(useFeedbackStore.getState().submitDraft?.description).toContain(
-      "工作区: F:\\ZCode_data",
+      "工作区: F:\\Codez_data",
     );
   });
 });

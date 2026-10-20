@@ -11,7 +11,7 @@ async function createProviderFixture(prefix: string): Promise<string> {
   const home = await mkdtemp(join(tmpdir(), prefix));
   tempHomes.push(home);
   process.env.HOME = home;
-  const filePath = join(home, "zcode-builtin.json");
+  const filePath = join(home, "codez-builtin.json");
   // 修复原因：只传 {} 会让后台 Provider 初始化读取 undefined 路径并写出错误日志。
   // 使用当前 Release 合同的空配置，让装配测试独立于真实用户配置和发布文件。
   await writeFile(
@@ -57,15 +57,15 @@ describe("conversation share service composition", () => {
   });
 
   it("registers a real API-backed service for a local desktop host", async () => {
-    const zcodeBuiltinProviderConfigFilePath = await createProviderFixture(
-      "zcode-conversation-share-",
+    const codezBuiltinProviderConfigFilePath = await createProviderFixture(
+      "codez-conversation-share-",
     );
     const [nodeModule, servicesModule] = await Promise.all([
-      import("@zcode/services/node"),
-      import("@zcode/services"),
+      import("@codez/services/node"),
+      import("@codez/services"),
     ]);
 
-    const services = nodeModule.createLocalServices({ zcodeBuiltinProviderConfigFilePath });
+    const services = nodeModule.createLocalServices({ codezBuiltinProviderConfigFilePath });
     try {
       await expect(
         services.get(servicesModule.IModelSelectionService).getView(),
@@ -82,16 +82,16 @@ describe("conversation share service composition", () => {
   });
 
   it("keeps desktop-attached remote hosts behind the publishing boundary", async () => {
-    const zcodeBuiltinProviderConfigFilePath = await createProviderFixture(
-      "zcode-conversation-share-remote-",
+    const codezBuiltinProviderConfigFilePath = await createProviderFixture(
+      "codez-conversation-share-remote-",
     );
     const [nodeModule, servicesModule] = await Promise.all([
-      import("@zcode/services/node"),
-      import("@zcode/services"),
+      import("@codez/services/node"),
+      import("@codez/services"),
     ]);
 
     const services = nodeModule.createLocalServices({
-      zcodeBuiltinProviderConfigFilePath,
+      codezBuiltinProviderConfigFilePath,
       serviceAuthorityMode: "desktop-attached-remote",
     });
     try {

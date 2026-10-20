@@ -11,9 +11,9 @@ import {
   IOnboardingRecordService,
   ICredentialService,
   IBroadcastService,
-  IZCodeTaskService,
-  IZCodeAgentService,
-  IZCodeSessionService,
+  ICodezTaskService,
+  ICodezAgentService,
+  ICodezSessionService,
   IConversationShareService,
   createUnsupportedConversationShareService,
   IBotsService,
@@ -44,7 +44,7 @@ import {
   IPromptAttachmentTransferService,
   type ServiceDescriptor,
   type IServiceAccessor,
-} from "@zcode/services";
+} from "@codez/services";
 import {
   REMOTE_WORKSPACE_RPC_CHANNELS,
   assertRemoteWorkspaceRpcContract,
@@ -53,12 +53,12 @@ import {
   createServiceLogger,
   createLegacySingleRootProjectService,
   createRemoteProjectService,
-} from "@zcode/services/node";
+} from "@codez/services/node";
 import {
   buildServerRemoteWorkspaceIdentity,
   remoteHostIdFromWorkspaceIdentity,
-} from "@zcode/shared";
-import type { RemoteTarget } from "@zcode/shared";
+} from "@codez/shared";
+import type { RemoteTarget } from "@codez/shared";
 import {
   createRemoteProviderProvisioningExecutorFromWorkspace,
   registerRemoteProviderProvisioningExecutor,
@@ -76,9 +76,9 @@ export const REMOTE_WORKSPACE_RPC_REGISTRATIONS = [
   ["onboardingRecordService", IOnboardingRecordService],
   ["credentialService", ICredentialService],
   ["broadcastService", IBroadcastService],
-  ["zcodeTaskService", IZCodeTaskService],
-  ["zcodeAgentService", IZCodeAgentService],
-  ["zcodeSessionService", IZCodeSessionService],
+  ["codezTaskService", ICodezTaskService],
+  ["codezAgentService", ICodezAgentService],
+  ["codezSessionService", ICodezSessionService],
   ["conversationShareService", IConversationShareService],
   ["botsService", IBotsService],
   ["fileWatcherService", IFileWatcherService],
@@ -160,7 +160,7 @@ export function resolveServerProjectService(params: {
         );
     },
     readTasks: ({ workspacePath, kind }) => {
-      const tasks = params.connectionServices.zcodeTaskService;
+      const tasks = params.connectionServices.codezTaskService;
       const scope = { workspacePath };
       return kind === "pinned"
         ? tasks.listPinnedTasks(scope)
@@ -183,7 +183,7 @@ export function createServerRemoteWorkspaceServiceCollection(params: {
   sourceServices?: ServiceCollection;
 }): ServiceCollection {
   assertRemoteWorkspaceRpcContract(params.connectionServices);
-  // Server remote 连接的是一个已经运行的完整 ZCode server。
+  // Server remote 连接的是一个已经运行的完整 Codez server。
   // Host 只做 RPC 转接，不替 server 决定 workspace/runtime/provider 归属；
   // Provider 配置只经 Host 私有的 Provisioning executor 从本机单向下发到远端。
   const remoteProviderProvisioningExecutor =
@@ -204,9 +204,9 @@ export function createServerRemoteWorkspaceServiceCollection(params: {
     .register(IOnboardingRecordService, params.connectionServices.onboardingRecordService)
     .register(ICredentialService, params.connectionServices.credentialService)
     .register(IBroadcastService, params.connectionServices.broadcastService)
-    .register(IZCodeTaskService, params.connectionServices.zcodeTaskService)
-    .register(IZCodeAgentService, params.connectionServices.zcodeAgentService)
-    .register(IZCodeSessionService, params.connectionServices.zcodeSessionService)
+    .register(ICodezTaskService, params.connectionServices.codezTaskService)
+    .register(ICodezAgentService, params.connectionServices.codezAgentService)
+    .register(ICodezSessionService, params.connectionServices.codezSessionService)
     // R3 的分享属于目标 Environment；不能恢复旧 SSH 的本机 JWT 混装。
     .register(
       IConversationShareService,

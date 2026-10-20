@@ -7,7 +7,7 @@ Server=`3.16.0`、minimum=`3.16.0`，Desktop=`3.15.1`。
 
 ## 运行证据
 
-补丁 07 的 Host 日志明确拒绝项目连接：`ZCode Desktop 3.15.1 must be upgraded to at least 3.16.0`。
+补丁 07 的 Host 日志明确拒绝项目连接：`Codez Desktop 3.15.1 must be upgraded to at least 3.16.0`。
 主页只显示“需要处理 / 请查看详细信息并按提示处理后重试”。测试随后补齐真实详情操作。
 
 补丁 08、批次 `r3-server-20261011143037600-31012b` 的 `version-controller-required`

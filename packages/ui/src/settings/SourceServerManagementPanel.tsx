@@ -10,7 +10,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog.js";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
-import { DesktopCommandIds } from "@zcode/shared";
+import { DesktopCommandIds } from "@codez/shared";
 /* eslint-disable max-lines -- Source/Profile/迁移三类管理操作共享同一 Host 快照和错误状态。 */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -30,7 +30,7 @@ import {
   Copy,
   Trash2,
 } from "lucide-react";
-import { resolveWorkspaceKey } from "@zcode/shared";
+import { resolveWorkspaceKey } from "@codez/shared";
 import type {
   ConnectionProfile,
   AppSettings,
@@ -38,8 +38,8 @@ import type {
   SourceServerMigrationReport,
   SourceServerRecord,
   SourceServerWorkspaceHistoryEntry,
-} from "@zcode/shared";
-import type { ISourceServerManagementService } from "@zcode/services";
+} from "@codez/shared";
+import type { ISourceServerManagementService } from "@codez/services";
 import { getPathLeaf } from "@/lib/path.js";
 import { toast } from "@/components/ui/toast.js";
 import { getSourceServerManagementErrorMessage } from "@/lib/sourceServerManagementError.js";
@@ -49,7 +49,7 @@ import { cn } from "@/components/lib/utils.js";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
 import { useSourceServerManagementSnapshot } from "@/hooks/useSourceServerManagementSnapshot.js";
 import { useSourceServerOperationLogs } from "@/hooks/useSourceServerOperationLogs.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { SourceServerMigrationReportPanel } from "@/settings/SourceServerMigrationReportPanel.js";
 import {
   SourceServerLogList,
@@ -185,7 +185,7 @@ export function SourceServerManagementPanel({
   onUpdateSettings?: (patch: Partial<AppSettings>) => Promise<unknown> | void;
 }) {
   const background = useRemoteConnectionProgress();
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const confirmDialog = useConfirmDialog();
   const platform = useOptionalPlatform();
   const deferredUpdates = useDeferredSourceServerUpdates();

@@ -8,7 +8,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -21,7 +21,7 @@ import {
 import { skipOccupationOnboardingIfPresent } from "../helpers/occupation-onboarding.js";
 import { sel } from "../helpers/selectors.js";
 
-const SETTINGS_FILE = join(homedir(), ".zcode", "v2", "setting.json");
+const SETTINGS_FILE = join(homedir(), ".codez", "v2", "setting.json");
 
 describe("设置语言 System default E2E", () => {
   after(async () => {
@@ -113,7 +113,7 @@ async function assertBodyTextIncludes(expectedTexts: string[]) {
 }
 
 async function writeSettings(patch: Record<string, unknown>) {
-  await mkdir(join(homedir(), ".zcode", "v2"), { recursive: true });
+  await mkdir(join(homedir(), ".codez", "v2"), { recursive: true });
   const current = await readSettings();
   await writeFile(SETTINGS_FILE, JSON.stringify({ ...current, ...patch }, null, 2), "utf-8");
 }

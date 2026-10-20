@@ -52,7 +52,7 @@
             "id": "toolu_bgv_EXPLICIT",
             "name": "Bash",
             "input": {
-              "command": "node \".zcode-e2e/background-bash-output/中文 空格/writer.cjs\" EXPLICIT",
+              "command": "node \".codez-e2e/background-bash-output/中文 空格/writer.cjs\" EXPLICIT",
               "description": "EXPLICIT background output",
               "timeout": 120000,
               "run_in_background": true
@@ -111,7 +111,7 @@
             "id": "toolu_bgv_AUTO",
             "name": "Bash",
             "input": {
-              "command": "node \".zcode-e2e/background-bash-output/中文 空格/writer.cjs\" AUTO",
+              "command": "node \".codez-e2e/background-bash-output/中文 空格/writer.cjs\" AUTO",
               "description": "AUTO background output",
               "timeout": 1
             }
@@ -169,7 +169,7 @@
             "id": "toolu_bgv_PAUSE",
             "name": "Bash",
             "input": {
-              "command": "node \".zcode-e2e/background-bash-output/中文 空格/writer.cjs\" PAUSE",
+              "command": "node \".codez-e2e/background-bash-output/中文 空格/writer.cjs\" PAUSE",
               "description": "PAUSE background output",
               "timeout": 120000,
               "run_in_background": true
@@ -228,7 +228,7 @@
             "id": "toolu_bgv_SCOPE_A",
             "name": "Bash",
             "input": {
-              "command": "node \".zcode-e2e/background-bash-output/中文 空格/writer.cjs\" SCOPE_A",
+              "command": "node \".codez-e2e/background-bash-output/中文 空格/writer.cjs\" SCOPE_A",
               "description": "SCOPE_A background output",
               "timeout": 120000,
               "run_in_background": true
@@ -287,7 +287,7 @@
             "id": "toolu_bgv_SCOPE_B",
             "name": "Bash",
             "input": {
-              "command": "node \".zcode-e2e/background-bash-output/中文 空格/writer.cjs\" SCOPE_B",
+              "command": "node \".codez-e2e/background-bash-output/中文 空格/writer.cjs\" SCOPE_B",
               "description": "SCOPE_B background output",
               "timeout": 120000,
               "run_in_background": true
@@ -346,7 +346,7 @@
             "id": "toolu_bgv_ERROR",
             "name": "Bash",
             "input": {
-              "command": "node \".zcode-e2e/background-bash-output/中文 空格/writer.cjs\" ERROR",
+              "command": "node \".codez-e2e/background-bash-output/中文 空格/writer.cjs\" ERROR",
               "description": "ERROR background output",
               "timeout": 120000,
               "run_in_background": true
@@ -405,7 +405,7 @@
             "id": "toolu_bgv_STOP",
             "name": "Bash",
             "input": {
-              "command": "node \".zcode-e2e/background-bash-output/中文 空格/writer.cjs\" STOP",
+              "command": "node \".codez-e2e/background-bash-output/中文 空格/writer.cjs\" STOP",
               "description": "STOP background output",
               "timeout": 120000,
               "run_in_background": true
@@ -522,7 +522,7 @@
             "id": "toolu_bgv_CHILD",
             "name": "Bash",
             "input": {
-              "command": "node \".zcode-e2e/background-bash-output/中文 空格/writer.cjs\" CHILD",
+              "command": "node \".codez-e2e/background-bash-output/中文 空格/writer.cjs\" CHILD",
               "description": "child background output",
               "timeout": 120000,
               "run_in_background": true

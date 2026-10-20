@@ -1,5 +1,5 @@
 import type { ConnectConfig } from "ssh2";
-import type { PublicZCodeErrorCode } from "@zcode/shared";
+import type { PublicCodezErrorCode } from "@codez/shared";
 
 export const SSH_READY_TIMEOUT_MS = 60_000;
 export const SSH_KEEPALIVE_INTERVAL_MS = 15_000;
@@ -113,6 +113,6 @@ export function normalizeSSHConnectError(error: unknown): Error {
 function authenticationError(message: string, cause: unknown): Error {
   // 认证发生在懒连接的 probe 内；在仍有 ssh2 结构化原因的边界定码，避免被归成预检失败。
   return Object.assign(new Error(message, { cause }), {
-    code: "remote-authentication-failed" satisfies PublicZCodeErrorCode,
+    code: "remote-authentication-failed" satisfies PublicCodezErrorCode,
   });
 }

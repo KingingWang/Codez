@@ -2,11 +2,11 @@
 
 - 日期：2026-08-25
 - 状态：已实现，待 MR review
-- 关联：producer `zcode-cua` !576、consumer `z-code` !2315
+- 关联：producer `codez-cua` !576、consumer `z-code` !2315
 
 ## 决策
 
-ZCode 不再消费或生成 `CUA_PERMISSION_REQUIRED`。CUA Helper/Broker 的失败作为普通 MCP
+Codez 不再消费或生成 `CUA_PERMISSION_REQUIRED`。CUA Helper/Broker 的失败作为普通 MCP
 tool error 进入模型和 ToolCallRow；模型读取准确错误后自行决定调用只读 `request_access`、重新激活
 应用或重新观察。普通错误本身仍无 UI 副作用；只有经过 official-CUA authority 校验的实时
 `request_access` 结构化权限快照可以触发独立的 Host 确认流程。
@@ -44,7 +44,7 @@ official live request_access typed metadata
 desktop-continuous local Host rechecks fresh status
         |
         v
-ZCode confirmation -> existing permission onboarding
+Codez confirmation -> existing permission onboarding
 ```
 
 ## 不变量
@@ -52,7 +52,7 @@ ZCode confirmation -> existing permission onboarding
 - producer 不返回 `CUA_PERMISSION_REQUIRED`，consumer 不扫描该字符串。
 - Renderer 不因 tool error 自动打开确认框、系统设置或权限 onboarding。
 - 设置页和 Composer 状态入口保留。除此之外，本地 macOS `desktop-continuous` 的官方
-  `request_access` 实时结果在明确缺权时可以先弹 ZCode 确认框；用户确认前不得打开系统设置。
+  `request_access` 实时结果在明确缺权时可以先弹 Codez 确认框；用户确认前不得打开系统设置。
 - `request_access` 保持只读，不提示系统权限、不创建新 Helper。
 - `request_access` 的文本解析只服务 Tool Card 展示，不能成为行为触发器。触发必须来自
   producer namespaced `_meta`、official authority 和严格 runtime schema。

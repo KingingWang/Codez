@@ -157,7 +157,7 @@ describe("parseMentionMarkdown", () => {
 });
 
 describe("collectSessionMentionItems", () => {
-  it("merges all known task sources and dedupes by ZCode Agent session id", () => {
+  it("merges all known task sources and dedupes by Codez Agent session id", () => {
     const workspacePath = "/local/workspace";
     const items = collectSessionMentionItems(
       [
@@ -366,15 +366,15 @@ describe("filterMentionItems CJK queries", () => {
       ],
     },
     {
-      id: "plugin:zcode-cua@zcode-plugins-official",
+      id: "plugin:codez-cua@zcode-plugins-official",
       category: "plugins",
       label: "电脑控制",
       description: "zcode-plugins-official · 1 skills · 1 MCP",
-      value: "zcode-cua@zcode-plugins-official",
-      markdown: "[@zcode-cua](plugin://zcode-cua@zcode-plugins-official)",
+      value: "codez-cua@zcode-plugins-official",
+      markdown: "[@codez-cua](plugin://codez-cua@zcode-plugins-official)",
       keywords: [
-        "zcode-cua",
-        "zcode-cua@zcode-plugins-official",
+        "codez-cua",
+        "codez-cua@zcode-plugins-official",
         "zcode-plugins-official",
         "电脑控制",
       ],
@@ -389,7 +389,7 @@ describe("filterMentionItems CJK queries", () => {
       "plugin:browser-use@zcode-plugins-official",
     ]);
     expect(filterMentionItems(pluginItems, "控制").map((item) => item.id)).toEqual([
-      "plugin:zcode-cua@zcode-plugins-official",
+      "plugin:codez-cua@zcode-plugins-official",
     ]);
   });
 

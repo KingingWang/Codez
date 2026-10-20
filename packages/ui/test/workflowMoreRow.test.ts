@@ -7,7 +7,7 @@ import { cleanup, fireEvent, render } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { StepRunStatus } from "@/components/workflow-graph/types.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import {
   rosterCounts,
   rosterMore,
@@ -43,7 +43,7 @@ function renderRow(
 ) {
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: locale },
       createElement(WorkflowMoreRow, props),
     ),

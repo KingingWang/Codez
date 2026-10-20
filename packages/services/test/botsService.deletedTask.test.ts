@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { BotsStateFile } from "@zcode/shared";
+import type { BotsStateFile } from "@codez/shared";
 import * as f from "./botsService.fixtures.js";
 
 const actor = {
@@ -70,7 +70,7 @@ function setup(locale: "zh-CN" | "en-US" = "zh-CN", remote = true) {
   const service = f.createBotsService({
     ...f.createBotProjectServices([workspace]),
     repo: repo as never,
-    zcodeTaskService: taskService,
+    codezTaskService: taskService,
     broadcastService,
     modelSelectionService,
     credentialService: f.createCredentialService({ "secret-1": "secret" }),

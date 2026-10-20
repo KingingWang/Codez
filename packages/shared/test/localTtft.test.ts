@@ -1,4 +1,4 @@
-import { commandsQueryParamsSchema } from "../src/zcode-protocol-v4/command.js";
+import { commandsQueryParamsSchema } from "../src/codez-protocol-v4/command.js";
 import { describe, expect, it } from "vitest";
 import {
   localTtftContextSchema,

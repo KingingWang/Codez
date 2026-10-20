@@ -26,9 +26,9 @@
 可选环境变量：
 
 - `PORT`（默认 `3850`）
-- `ZCODE_INTRANET_PROBE_PATH`（默认 `/api/intranet/probe`）
-- `ZCODE_INTRANET_PROBE_MARKER`（默认 `zcode-intranet`）
-- `ZCODE_INTRANET_PROBE_TOKEN`（可选，配置后客户端需带 `x-zcode-intranet-token`）
+- `CODEZ_INTRANET_PROBE_PATH`（默认 `/api/intranet/probe`）
+- `CODEZ_INTRANET_PROBE_MARKER`（默认 `codez-intranet`）
+- `CODEZ_INTRANET_PROBE_TOKEN`（可选，配置后客户端需带 `x-codez-intranet-token`）
 
 ## 客户端
 
@@ -40,7 +40,7 @@ const result = await services.systemService.probeIntranet({
     {
       kind: "service",
       url: "http://10.0.0.100:3850/api/intranet/probe",
-      expectedMarker: "zcode-intranet",
+      expectedMarker: "codez-intranet",
       // token: "可选",
     },
   ],

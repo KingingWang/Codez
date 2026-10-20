@@ -1,9 +1,9 @@
 import { act, createElement, useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ConversationSnapshot } from "@zcode/shared/zcode-protocol-v4";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import type { ConversationSnapshot } from "@codez/shared/codez-protocol-v4";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 import { pendingCommandRegistry, type PendingCommandEntry } from "@/v4/pendingCommandRegistry.js";
 import { SessionPane, type SessionPaneProps } from "@/v4/SessionPane.js";
 import { useModelSelectionServiceView } from "@/hooks/useModelSelectionView.js";
@@ -165,10 +165,10 @@ const servicesMock = vi.hoisted(() => ({
     onDidChange: vi.fn(() => ({ dispose: vi.fn() })),
     validate: vi.fn(),
   },
-  zcodeSessionService: {
+  codezSessionService: {
     updateProviderRegistry: vi.fn(),
   },
-  zcodeTaskService: {
+  codezTaskService: {
     restartWorkspaceProcess: vi.fn(),
   },
 }));
@@ -210,12 +210,12 @@ vi.mock("@/v4/V4ConversationContext.js", () => ({
 }));
 
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStoreWithDefault: (_selector: unknown, fallback: unknown) => fallback,
+  useCodezStoreWithDefault: (_selector: unknown, fallback: unknown) => fallback,
 }));
 
 vi.mock("@/hooks/useSettingService.js", () => ({
   useSettings: () => ({
-    settings: { zcodeInteractionBehavior: "queue" },
+    settings: { codezInteractionBehavior: "queue" },
     loading: false,
     error: null,
     update: vi.fn(async () => {}),
@@ -533,7 +533,7 @@ function renderPane(
   act(() => {
     root.render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(SessionPane, {
           paneId: "workspace-main",
@@ -625,7 +625,7 @@ describe("SessionPane composer continuity", () => {
   it.each(["group", "project", "session"] as const)(
     "%s 首发只在 accepted 后报告，打开和后续发送不报告",
     async (source) => {
-      const store = useZCodeSessionStore.getState();
+      const store = useCodezSessionStore.getState();
       store.startDraft("/workspace", undefined, undefined, { createSource: source });
       const root = createRoot(installMinimalDom());
       mountedRoots.push(root);
@@ -825,7 +825,7 @@ describe("SessionPane composer continuity", () => {
     act(() => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(SessionPane, {
             paneId: "workspace-main",
@@ -847,7 +847,7 @@ describe("SessionPane composer continuity", () => {
     act(() => {
       root.render(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(SessionPane, {
             paneId: "workspace-main",

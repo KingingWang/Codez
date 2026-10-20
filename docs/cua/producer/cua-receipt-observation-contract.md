@@ -11,7 +11,7 @@ Mutating tools return an action receipt by default. The default
 ```json
 {
   "action_receipt": {
-    "schema_version": "zcode-cua-action-receipt-v1",
+    "schema_version": "codez-cua-action-receipt-v1",
     "action_sent": true,
     "dispatch_status": "accepted",
     "retry_action": false

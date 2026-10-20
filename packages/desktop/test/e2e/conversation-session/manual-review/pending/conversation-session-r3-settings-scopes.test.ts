@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
-import { parseRemoteWorkspaceIdentity, encodeCustomModelValue } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity, encodeCustomModelValue } from "@codez/shared";
 import {
   TID_CHAT_MODEL_SELECT_GROUP,
   TID_CHAT_MODEL_SELECT_ITEM,
@@ -13,7 +13,7 @@ import {
   TID_SUBAGENT_ROW,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { access } from "node:fs/promises";
 import {
   clearAppData,
@@ -45,7 +45,7 @@ import { prepareV4ConversationE2E, startNewV4Draft } from "../../../helpers/v4-c
 
 const CASE_MARKER = "E2E_R3_SETTINGS_SCOPES";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-settings-scopes",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-settings-scopes",
 );
 const AGENT_NAME = "r3-remote-conversation-agent";
 const AGENT_NAME_PROJECT = "r3-remote-project-agent";
@@ -348,7 +348,7 @@ describe(`${CASE_MARKER}: 远端 Source 在线时设置 scope 与子智能体落
     provider = await createSSHLifecycleProvider(config, CASE_MARKER, { tunnelUsername: "tunnel" });
     await runSSHCommand(
       config,
-      `rm -f "$HOME/.zcode/agents/${AGENT_NAME}.md" "${workspaceA}/.zcode/agents/${AGENT_NAME_PROJECT}.md"`,
+      `rm -f "$HOME/.codez/agents/${AGENT_NAME}.md" "${workspaceA}/.codez/agents/${AGENT_NAME_PROJECT}.md"`,
     );
 
     // Source 在线，先激活远程项目 B；远程无项目入口已退役。
@@ -414,7 +414,7 @@ describe(`${CASE_MARKER}: 远端 Source 在线时设置 scope 与子智能体落
     await createSubagent(AGENT_NAME, provider.id, SSH_LIFECYCLE_MODEL_ID);
     const remoteConversationFile = await runSSHCommand(
       config,
-      `test -f "${conversation.workspacePath}/.zcode/agents/${AGENT_NAME}.md" && echo FOUND; test ! -f "$HOME/.zcode/agents/${AGENT_NAME}.md" && echo USER_UNCHANGED`,
+      `test -f "${conversation.workspacePath}/.codez/agents/${AGENT_NAME}.md" && echo FOUND; test ! -f "$HOME/.codez/agents/${AGENT_NAME}.md" && echo USER_UNCHANGED`,
     );
     facts.remoteConversationFile = remoteConversationFile.stdout.trim();
     expect(remoteConversationFile.stdout).toContain("FOUND");
@@ -428,7 +428,7 @@ describe(`${CASE_MARKER}: 远端 Source 在线时设置 scope 与子智能体落
       timeoutMsg: `${CASE_MARKER}: 设置页返回按钮没有出现`,
     });
 
-    // 打开远端 project a → Subagents 选中项目 scope 新建 → 远端项目 .zcode/agents。
+    // 打开远端 project a → Subagents 选中项目 scope 新建 → 远端项目 .codez/agents。
     await openSSHSourceDirectory(config, CASE_MARKER);
     expect(await waitForSSHDirectoryStep(CASE_MARKER)).toBe("directory");
     await selectSSHRemoteDirectory(workspaceA, CASE_MARKER);
@@ -464,11 +464,11 @@ describe(`${CASE_MARKER}: 远端 Source 在线时设置 scope 与子智能体落
     await browser.pause(3_000);
     const remoteProjectFile = await runSSHCommand(
       config,
-      `test -f "${workspaceA}/.zcode/agents/${AGENT_NAME_PROJECT}.md" && echo FOUND || echo MISSING; find "$HOME/.zcode" "${workspaceA}" -name "${AGENT_NAME_PROJECT}.md" 2>/dev/null`,
+      `test -f "${workspaceA}/.codez/agents/${AGENT_NAME_PROJECT}.md" && echo FOUND || echo MISSING; find "$HOME/.codez" "${workspaceA}" -name "${AGENT_NAME_PROJECT}.md" 2>/dev/null`,
     );
     facts.remoteProjectAgentFile = remoteProjectFile.stdout.trim().split("\n");
     facts.localProjectAgentFileExists = await localFileExists(
-      join(DEFAULT_WORKSPACE, ".zcode", "agents", `${AGENT_NAME_PROJECT}.md`),
+      join(DEFAULT_WORKSPACE, ".codez", "agents", `${AGENT_NAME_PROJECT}.md`),
     );
     facts.localStorageProjectAgentFileExists = await localFileExists(
       join(resolveE2EStorageRoot(), "agents", `${AGENT_NAME_PROJECT}.md`),

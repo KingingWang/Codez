@@ -1,11 +1,11 @@
 import { DatabaseSync } from "node:sqlite";
 import { basename, join } from "node:path";
 import { readFile, writeFile } from "node:fs/promises";
-import { TID_TASK_SETTINGS_BUTTON, TID_SETTINGS_BACK_BUTTON } from "@zcode/shared/test-ids";
+import { TID_TASK_SETTINGS_BUTTON, TID_SETTINGS_BACK_BUTTON } from "@codez/shared/test-ids";
 import { DEFAULT_WORKSPACE, waitForWorkspaceApp } from "../../../helpers/desktop-app.js";
 import { restartIntoWorkspacePreservingProfile } from "#e2e/helpers/model-provider-restart-runtime";
 
-const home = process.env.ZCODE_E2E_HOME_DIR!;
+const home = process.env.CODEZ_E2E_HOME_DIR!;
 const DAY = 86_400_000;
 // 2026-09-15 裁决：自动归档纯按最后活动时间，置顶与运行中除外；未读、error 不再保护旧任务。
 const fixtures = [
@@ -29,7 +29,7 @@ const recent = fixtures[4].id;
 const item = (id: string) => $(`[data-testid="task-item-${id}"]`);
 const header = () => $('[data-testid="workspace-header"]');
 function facts(id: string) {
-  const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"), { readOnly: true });
+  const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"), { readOnly: true });
   try {
     return db
       .prepare("SELECT archived,pinned,unread_at,cli_title FROM tasks WHERE task_id=?")
@@ -47,26 +47,26 @@ const activeTask = () =>
   browser.execute((cwd) => {
     const store = (
       window as typeof window & {
-        __zcodeSessionStoreE2E: {
+        __codezSessionStoreE2E: {
           getState(): { getWorkspaceState(path: string): { activeTaskId: string | null } };
         };
       }
-    ).__zcodeSessionStoreE2E;
+    ).__codezSessionStoreE2E;
     return store.getState().getWorkspaceState(cwd).activeTaskId;
   }, DEFAULT_WORKSPACE);
 const revealProject = async (id: string) => {
   if (!(await item(id).isDisplayed()))
-    await $('[data-project-name="ZCodeProject"] [data-testid="virtual-project-row"]').click();
+    await $('[data-project-name="CodezProject"] [data-testid="virtual-project-row"]').click();
   await item(id).waitForDisplayed();
 };
 
 describe("当前任务元数据与自动归档", () => {
   before(async () => {
-    if (!home || !basename(home).startsWith("zcode-active-task-e2e-"))
+    if (!home || !basename(home).startsWith("codez-active-task-e2e-"))
       throw new Error("isolated active-task HOME required");
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 45_000);
-    const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
-    const cli = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"));
+    const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"));
+    const cli = new DatabaseSync(join(home, ".codez/cli/db/db.sqlite"));
     try {
       const projectId = db
         .prepare("SELECT project_id FROM project_roots WHERE root_path=? LIMIT 1")
@@ -144,13 +144,13 @@ describe("当前任务元数据与自动归档", () => {
       timeout: 30_000,
     });
     expect(await activeTask()).toBe(cold);
-    await browser.saveScreenshot(join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "AMT01-cold-title.png"));
+    await browser.saveScreenshot(join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "AMT01-cold-title.png"));
   });
   it("AMT02/AMT05：升级关闭旧开关，用户重新开启后归档超期任务，重启保留选择", async () => {
     // 旧 Host 退出后再写升级输入，避免退出时的设置持久化覆盖 fixture。
     await restartIntoWorkspacePreservingProfile(DEFAULT_WORKSPACE, {
       afterElectronProcessExit: async () => {
-        const file = join(home, ".zcode/v2/setting.json");
+        const file = join(home, ".codez/v2/setting.json");
         const settings = JSON.parse(await readFile(file, "utf8"));
         delete settings.taskAutoArchiveResetVersion;
         await writeFile(
@@ -168,7 +168,7 @@ describe("当前任务元数据与自动归档", () => {
     const toggle = $('[data-testid="archive-auto-archive-switch"]');
     await toggle.waitForDisplayed();
     expect(await toggle.getAttribute("aria-checked")).toBe("false");
-    expect(JSON.parse(await readFile(join(home, ".zcode/v2/setting.json"), "utf8"))).toMatchObject({
+    expect(JSON.parse(await readFile(join(home, ".codez/v2/setting.json"), "utf8"))).toMatchObject({
       taskAutoArchiveEnabled: false,
       taskAutoArchiveOlderThanDays: 7,
       taskAutoArchiveResetVersion: 1,
@@ -176,12 +176,12 @@ describe("当前任务元数据与自动归档", () => {
     expect(facts(oldRead).archived).toBe(0);
     expect(facts(oldUnread).archived).toBe(0);
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "AMT05-upgrade-disabled.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "AMT05-upgrade-disabled.png"),
     );
     await toggle.click();
     await browser.waitUntil(
       async () =>
-        JSON.parse(await readFile(join(home, ".zcode/v2/setting.json"), "utf8"))
+        JSON.parse(await readFile(join(home, ".codez/v2/setting.json"), "utf8"))
           .taskAutoArchiveEnabled === true,
     );
     // 设置变更触发 Host 补扫：28 天前的已读与未读任务都归档，置顶与保留期内的不动。
@@ -209,10 +209,10 @@ describe("当前任务元数据与自动归档", () => {
     expect(await item(recent).isDisplayed()).toBe(true);
     expect(await header().getText()).toContain("E2E_AMT_RECENT");
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "AMT02-auto-archive.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "AMT02-auto-archive.png"),
     );
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "AMT-facts.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "AMT-facts.json"),
       JSON.stringify(
         {
           oldRead: facts(oldRead),
@@ -231,12 +231,12 @@ describe("当前任务元数据与自动归档", () => {
     expect(
       await $('[data-testid="archive-auto-archive-switch"]').getAttribute("aria-checked"),
     ).toBe("true");
-    expect(JSON.parse(await readFile(join(home, ".zcode/v2/setting.json"), "utf8"))).toMatchObject({
+    expect(JSON.parse(await readFile(join(home, ".codez/v2/setting.json"), "utf8"))).toMatchObject({
       taskAutoArchiveEnabled: true,
       taskAutoArchiveResetVersion: 1,
     });
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "AMT05-reenabled-restart.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "AMT05-reenabled-restart.png"),
     );
   });
 });

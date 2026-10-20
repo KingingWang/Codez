@@ -5,12 +5,12 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import {
   TID_V4_WORKSPACE_HOOK_PENDING_BANNER,
   TID_V4_WORKSPACE_HOOK_PENDING_DISMISS,
   TID_V4_WORKSPACE_HOOK_PENDING_REVIEW,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   WorkspaceHookPendingBanner,
   workspaceHookPendingDismissStore,
@@ -104,7 +104,7 @@ function renderBanner(props: {
 }) {
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(WorkspaceHookPendingBanner, {
         sessionId: props.sessionId ?? "sess-1",
@@ -121,7 +121,7 @@ function renderBanner(props: {
 function renderInteractiveBanner(admission = sampleAdmission) {
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(WorkspaceHookPendingBanner, {
         sessionId: "sess-1",
@@ -185,7 +185,7 @@ describe("WorkspaceHookPendingBanner（软门禁 D4）", () => {
 
     view.rerender(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(WorkspaceHookPendingBanner, {
           sessionId: "sess-1",

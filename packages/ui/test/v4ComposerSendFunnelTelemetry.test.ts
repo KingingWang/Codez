@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ArmsCustomEventPayload, IPlatformService } from "@zcode/shared";
+import type { ArmsCustomEventPayload, IPlatformService } from "@codez/shared";
 import { resetMessageTelemetryForTest } from "@/lib/messageTelemetry.js";
 import {
   clearSendFunnelArmsReporterForTest,

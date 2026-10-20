@@ -319,7 +319,7 @@ Todo 72：旧 Provider 配置与持久化选择 -> 当前身份
 | 领域       | 主要证据路径                                                                                                                                                  |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Provider   | `packages/services/src/model-provider/providerConfigRuntime.ts`；`packages/services/test/providerConfigRuntime.test.ts`                                       |
-| Session    | `apps/zcode-cli/packages/adapters/src/storage/session-store/codecs.ts`；`apps/zcode-cli/packages/contracts/src/interfaces/session-store.port.ts`              |
+| Session    | `apps/codez-cli/packages/adapters/src/storage/session-store/codecs.ts`；`apps/codez-cli/packages/contracts/src/interfaces/session-store.port.ts`              |
 | Off-Peak   | `packages/services/src/session/offPeakTaskRepo.ts` 的 Schema、create、rowToTask/list                                                                          |
 | Automation | `packages/services/src/session/automationRepo.ts` 的 Schema、create、rowToAutomation/list                                                                     |
 | Settings   | `packages/shared/src/validationAppSettings.ts`                                                                                                                |

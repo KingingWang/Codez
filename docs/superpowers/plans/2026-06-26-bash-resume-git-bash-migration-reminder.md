@@ -6,7 +6,7 @@
 
 **Architecture:** 保持现有 session-start shell snapshot 契约不变：shell 设置变更仍只对新 session 生效。只在 cold resume 发现旧会话没有可用 shell snapshot、最终由当前 auto Git Bash 接管执行时，通过现有 `shell_environment_change` provider-visible attachment 插入一次语法迁移提醒。实现集中在 runtime shell owner，不改 executor、protocol schema 或设置 UI。
 
-**Tech Stack:** TypeScript, Vitest, `@zcode/core` runtime, existing `MessageHistory.addAttachment()`, existing `shell_environment_change` system reminder source.
+**Tech Stack:** TypeScript, Vitest, `@codez/core` runtime, existing `MessageHistory.addAttachment()`, existing `shell_environment_change` system reminder source.
 
 ## Global Constraints
 
@@ -23,21 +23,21 @@
 
 ## File Structure
 
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/shell-environment.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/shell-environment.ts`
   - 负责 shell resume notice 的纯判定和文案构造。
   - 新增 `ShellEnvironmentResumeNoticeKind`，把 “display drift” 和 “Windows auto Git Bash migration” 收敛成一个决策函数。
 
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/session-shell-environment.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/session-shell-environment.ts`
   - 保持 runtime shell owner 职责。
   - 将 `announceSessionShellEnvironmentDriftAfterResume()` 重构为 `announceSessionShellEnvironmentNoticeAfterResume()`。
   - 调用 `shell-environment.ts` 的判定和文案函数，并在插入前检查已有 `shell_environment_change` attachment。
 
-- Modify: `apps/zcode-cli/packages/core/tests/runtime-persistence.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/runtime-persistence.test.ts`
   - 覆盖 legacy Windows auto Git Bash migration reminder。
   - 覆盖 reminder 幂等。
   - 更新现有 drift/stale shell snapshot 测试文案。
 
-- Modify: `apps/zcode-cli/packages/core/tests/runtime-trace.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/runtime-trace.test.ts`
   - 更新旧文案反向断言，确保新 session 初始化 Git Bash 时不会误插 migration/drift reminder。
 
 - Modify: `docs/runtime-tools/bash-effective-shell-snapshot.md`
@@ -49,7 +49,7 @@
 ### Task 1: 用测试锁定 legacy Windows auto Git Bash migration reminder
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/tests/runtime-persistence.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/runtime-persistence.test.ts`
 
 **Interfaces:**
 - Consumes:
@@ -69,7 +69,7 @@ Add this test after `announces legacy cold-resume Bash shell drift when no shell
   it("announces Windows Git Bash syntax migration for legacy cold-resume sessions", async () => {
     const sessionId = createSessionId("runtime-persistence-windows-git-bash-migration");
     const store = createRecordingSessionStore();
-    const workingDirectory = "/tmp/zcode-runtime-windows-git-bash-migration";
+    const workingDirectory = "/tmp/codez-runtime-windows-git-bash-migration";
     const firstRuntime = new AgentRuntime(
       sessionId,
       {
@@ -146,7 +146,7 @@ Add this test after `announces legacy cold-resume Bash shell drift when no shell
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/runtime-persistence.test.ts -t "Windows Git Bash syntax migration"
+pnpm --filter @codez/core exec vitest run tests/runtime-persistence.test.ts -t "Windows Git Bash syntax migration"
 ```
 
 Expected: FAIL because provider text does not contain the new Git Bash migration reminder.
@@ -159,7 +159,7 @@ Add this test after the migration test:
   it("does not duplicate the Windows Git Bash migration reminder after repeated resume", async () => {
     const sessionId = createSessionId("runtime-persistence-windows-git-bash-migration-once");
     const store = createRecordingSessionStore();
-    const workingDirectory = "/tmp/zcode-runtime-windows-git-bash-migration-once";
+    const workingDirectory = "/tmp/codez-runtime-windows-git-bash-migration-once";
     const firstRuntime = new AgentRuntime(
       sessionId,
       {
@@ -256,7 +256,7 @@ function escapeRegExp(value: string): string {
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/runtime-persistence.test.ts -t "Git Bash migration"
+pnpm --filter @codez/core exec vitest run tests/runtime-persistence.test.ts -t "Git Bash migration"
 ```
 
 Expected: FAIL because implementation does not yet insert the migration reminder and does not yet have idempotence logic.
@@ -266,8 +266,8 @@ Expected: FAIL because implementation does not yet insert the migration reminder
 ### Task 2: 重构 shell resume reminder 判定和文案
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/shell-environment.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/session-shell-environment.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/shell-environment.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/session-shell-environment.ts`
 
 **Interfaces:**
 - Consumes:
@@ -282,7 +282,7 @@ Expected: FAIL because implementation does not yet insert the migration reminder
 
 - [ ] **Step 1: Replace shell reminder helpers in `shell-environment.ts`**
 
-Change `apps/zcode-cli/packages/core/src/runtime/methods/shell-environment.ts` to this shape:
+Change `apps/codez-cli/packages/core/src/runtime/methods/shell-environment.ts` to this shape:
 
 ```ts
 import type { ExecutionShellSelection } from "../deps.js";
@@ -392,7 +392,7 @@ function hasShellEnvironmentChangeAttachment(runtime: AgentRuntimeInternal): boo
 
 - [ ] **Step 3: Update the resume caller**
 
-In `apps/zcode-cli/packages/core/src/runtime/methods/resume.ts`, replace the import and call:
+In `apps/codez-cli/packages/core/src/runtime/methods/resume.ts`, replace the import and call:
 
 ```ts
 import {
@@ -416,7 +416,7 @@ And:
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/runtime-persistence.test.ts -t "Git Bash migration"
+pnpm --filter @codez/core exec vitest run tests/runtime-persistence.test.ts -t "Git Bash migration"
 ```
 
 Expected: PASS for the two migration tests.
@@ -426,8 +426,8 @@ Expected: PASS for the two migration tests.
 ### Task 3: 更新现有 shell drift 测试，保持旧能力但改成中性文案
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/tests/runtime-persistence.test.ts`
-- Modify: `apps/zcode-cli/packages/core/tests/runtime-trace.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/runtime-persistence.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/runtime-trace.test.ts`
 
 **Interfaces:**
 - Consumes:
@@ -499,14 +499,14 @@ expect(requestText).not.toContain(
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/runtime-persistence.test.ts -t "shell"
-pnpm --filter @zcode/core exec vitest run tests/runtime-trace.test.ts -t "Shell"
+pnpm --filter @codez/core exec vitest run tests/runtime-persistence.test.ts -t "shell"
+pnpm --filter @codez/core exec vitest run tests/runtime-trace.test.ts -t "Shell"
 ```
 
 Expected: PASS. If `runtime-trace.test.ts -t "Shell"` matches no tests because test names changed, run the whole file:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/runtime-trace.test.ts
+pnpm --filter @codez/core exec vitest run tests/runtime-trace.test.ts
 ```
 
 Expected: PASS.
@@ -580,8 +580,8 @@ Expected: Diff only documents legacy/no-usable snapshot resume reminder behavior
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/runtime-persistence.test.ts -t "shell"
-pnpm --filter @zcode/core exec vitest run tests/runtime-trace.test.ts
+pnpm --filter @codez/core exec vitest run tests/runtime-persistence.test.ts -t "shell"
+pnpm --filter @codez/core exec vitest run tests/runtime-trace.test.ts
 ```
 
 Expected: PASS.
@@ -591,7 +591,7 @@ Expected: PASS.
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/system-reminder-source.test.ts
+pnpm --filter @codez/core exec vitest run tests/system-reminder-source.test.ts
 ```
 
 Expected: PASS. This verifies reusing `shell_environment_change` did not break descriptor assumptions.
@@ -601,7 +601,7 @@ Expected: PASS. This verifies reusing `shell_environment_change` did not break d
 Run:
 
 ```bash
-pnpm --filter @zcode/core typecheck
+pnpm --filter @codez/core typecheck
 ```
 
 Expected: PASS.
@@ -622,11 +622,11 @@ Expected: PASS. If these are too slow or blocked by unrelated existing workspace
 Run:
 
 ```bash
-git diff -- apps/zcode-cli/packages/core/src/runtime/methods/shell-environment.ts \
-  apps/zcode-cli/packages/core/src/runtime/methods/session-shell-environment.ts \
-  apps/zcode-cli/packages/core/src/runtime/methods/resume.ts \
-  apps/zcode-cli/packages/core/tests/runtime-persistence.test.ts \
-  apps/zcode-cli/packages/core/tests/runtime-trace.test.ts \
+git diff -- apps/codez-cli/packages/core/src/runtime/methods/shell-environment.ts \
+  apps/codez-cli/packages/core/src/runtime/methods/session-shell-environment.ts \
+  apps/codez-cli/packages/core/src/runtime/methods/resume.ts \
+  apps/codez-cli/packages/core/tests/runtime-persistence.test.ts \
+  apps/codez-cli/packages/core/tests/runtime-trace.test.ts \
   docs/runtime-tools/bash-effective-shell-snapshot.md
 ```
 
@@ -643,11 +643,11 @@ Expected:
 Run:
 
 ```bash
-git add apps/zcode-cli/packages/core/src/runtime/methods/shell-environment.ts \
-  apps/zcode-cli/packages/core/src/runtime/methods/session-shell-environment.ts \
-  apps/zcode-cli/packages/core/src/runtime/methods/resume.ts \
-  apps/zcode-cli/packages/core/tests/runtime-persistence.test.ts \
-  apps/zcode-cli/packages/core/tests/runtime-trace.test.ts \
+git add apps/codez-cli/packages/core/src/runtime/methods/shell-environment.ts \
+  apps/codez-cli/packages/core/src/runtime/methods/session-shell-environment.ts \
+  apps/codez-cli/packages/core/src/runtime/methods/resume.ts \
+  apps/codez-cli/packages/core/tests/runtime-persistence.test.ts \
+  apps/codez-cli/packages/core/tests/runtime-trace.test.ts \
   docs/runtime-tools/bash-effective-shell-snapshot.md
 git commit -m "fix(cli): remind legacy windows sessions about git bash syntax"
 ```

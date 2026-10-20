@@ -16,7 +16,7 @@ import {
   type SSHLifecycleProvider,
 } from "#e2e/helpers/ssh-remote-lifecycle";
 import { runSSHCommand, waitForRemoteTab } from "#e2e/helpers/ssh-remote-p0";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 import { selectV4TaskById, waitForV4TimelineContaining } from "#e2e/helpers/v4-conversation";
 import { reloadElectronSessionPreservingBrowserProfile } from "#e2e/helpers/e2e-electron-reload";
 
@@ -33,7 +33,7 @@ const syntheticToken = (actor: string) =>
 const LOCAL_TOKEN = syntheticToken("ssh-guide-local-account");
 const REMOTE_TOKEN = syntheticToken("ssh-guide-remote-account");
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-share-authority",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-share-authority",
 );
 
 describe(`${MARKER}: 远端分享账号权威与未登录拒绝`, () => {
@@ -142,7 +142,7 @@ describe(`${MARKER}: 远端分享账号权威与未登录拒绝`, () => {
     // stop 是 Server 根命令，server stop 会误走旧 CLI，无法正确切换本 case 的 API 环境。
     const restarted = await runSSHCommand(
       prepared.config,
-      `"$HOME/.zcode/server/bin/zcode" stop --json; kill -TERM ${core.supervisorPid}; ZCODE_BASE_URL='http://127.0.0.1:${remotePort}' "$HOME/.zcode/server/bin/zcode" serve --daemon --json`,
+      `"$HOME/.codez/server/bin/codez" stop --json; kill -TERM ${core.supervisorPid}; CODEZ_BASE_URL='http://127.0.0.1:${remotePort}' "$HOME/.codez/server/bin/codez" serve --daemon --json`,
       { timeoutMs: 60_000 },
     );
     expect(restarted.code).toBe(0);
@@ -162,7 +162,7 @@ describe(`${MARKER}: 远端分享账号权威与未登录拒绝`, () => {
             displayName: "SSH guide local",
             username: "ssh-guide-local-user",
           }),
-          zcodejwttoken: LOCAL_TOKEN,
+          codezjwttoken: LOCAL_TOKEN,
         });
         await writeFile(localPath, JSON.stringify(local), { mode: 0o600 });
       },
@@ -174,9 +174,9 @@ describe(`${MARKER}: 远端分享账号权威与未登录拒绝`, () => {
       expectedPath: task.workspacePath,
       timeoutMs: 180_000,
     });
-    const setRemote = `const fs=await import('node:fs/promises');const p=process.env.HOME+'/.zcode/v2/credentials.json';const d=JSON.parse(await fs.readFile(p,'utf8'));Object.assign(d,{'oauth:active_provider':'zai','oauth:zai:access_token':${JSON.stringify(REMOTE_TOKEN)},zcodejwttoken:${JSON.stringify(REMOTE_TOKEN)}});await fs.writeFile(p,JSON.stringify(d),{mode:384});`;
+    const setRemote = `const fs=await import('node:fs/promises');const p=process.env.HOME+'/.codez/v2/credentials.json';const d=JSON.parse(await fs.readFile(p,'utf8'));Object.assign(d,{'oauth:active_provider':'zai','oauth:zai:access_token':${JSON.stringify(REMOTE_TOKEN)},codezjwttoken:${JSON.stringify(REMOTE_TOKEN)}});await fs.writeFile(p,JSON.stringify(d),{mode:384});`;
     const runtime = JSON.parse(
-      (await runSSHCommand(prepared.config, 'cat "$HOME/.zcode/server/current.json"')).stdout,
+      (await runSSHCommand(prepared.config, 'cat "$HOME/.codez/server/current.json"')).stdout,
     );
     const set = await runSSHCommand(
       prepared.config,
@@ -202,7 +202,7 @@ describe(`${MARKER}: 远端分享账号权威与未登录拒绝`, () => {
     facts.remoteAccountSelected = true;
 
     const removeRemote =
-      "const fs=await import('node:fs/promises');const p=process.env.HOME+'/.zcode/v2/credentials.json';const d=JSON.parse(await fs.readFile(p,'utf8'));for(const k of ['oauth:active_provider','oauth:zai:access_token','zcodejwttoken'])delete d[k];await fs.writeFile(p,JSON.stringify(d),{mode:384});";
+      "const fs=await import('node:fs/promises');const p=process.env.HOME+'/.codez/v2/credentials.json';const d=JSON.parse(await fs.readFile(p,'utf8'));for(const k of ['oauth:active_provider','oauth:zai:access_token','codezjwttoken'])delete d[k];await fs.writeFile(p,JSON.stringify(d),{mode:384});";
     expect(
       (
         await runSSHCommand(

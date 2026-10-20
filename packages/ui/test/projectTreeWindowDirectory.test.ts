@@ -11,7 +11,7 @@ vi.mock("@/hooks/useWorkspaceServices.js", () => ({
   useBaseWorkspaceServices: () => mocks.services,
 }));
 vi.mock("@/store/TabStoreProvider.js", () => ({ useTabStore: () => mocks.tabs }));
-vi.mock("@/store/zcodeSessionStore.js", () => ({ useZCodeSessionStore: () => 0 }));
+vi.mock("@/store/codezSessionStore.js", () => ({ useCodezSessionStore: () => 0 }));
 vi.mock("@/v4/useWorkspaceSessionsIndexItems.js", () => ({
   useWorkspaceSessionsIndexItems: () => ({ items: [] }),
 }));

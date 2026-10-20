@@ -3,12 +3,12 @@ import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ZCODE_VERSION } from "@zcode/shared";
+import { CODEZ_VERSION } from "@codez/shared";
 import { resolveSourceServerReleaseAsset } from "../src/host/sourceServerReleaseResolver.js";
 
 const target = { kind: "ssh", host: "example.com", username: "alice" } as const;
 const probe = { platform: "linux", arch: "x64", installed: false } as const;
-const fileName = "zcode-server-linux-x64.tar.gz";
+const fileName = "codez-server-linux-x64.tar.gz";
 
 function sha256(contents: string): string {
   return createHash("sha256").update(contents).digest("hex");
@@ -17,11 +17,11 @@ function sha256(contents: string): string {
 function descriptor(contents: string) {
   return {
     schemaVersion: 1,
-    version: ZCODE_VERSION,
+    version: CODEZ_VERSION,
     archives: [
       {
         target: "linux-x64",
-        version: ZCODE_VERSION,
+        version: CODEZ_VERSION,
         fileName,
         sha256: sha256(contents),
         sizeBytes: Buffer.byteLength(contents),
@@ -47,15 +47,15 @@ describe("Source Server release resolver", () => {
       { fetch },
       { metadataOnly: true },
     );
-    expect(release).toMatchObject({ version: ZCODE_VERSION, sizeBytes: 15 });
+    expect(release).toMatchObject({ version: CODEZ_VERSION, sizeBytes: 15 });
     expect(release.localArchivePath).toBeUndefined();
     expect(
       fetch.mock.calls.every(([url]) => String(url).endsWith("source-server-release.json")),
     ).toBe(true);
   });
   it("uses and verifies a staged local archive for local-download-upload", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-source-release-local-"));
-    const releaseDir = join(root, "releases", ZCODE_VERSION);
+    const root = await mkdtemp(join(tmpdir(), "codez-source-release-local-"));
+    const releaseDir = join(root, "releases", CODEZ_VERSION);
     const contents = "local-source-server";
     await mkdir(releaseDir, { recursive: true });
     await writeFile(join(releaseDir, fileName), contents);
@@ -69,15 +69,15 @@ describe("Source Server release resolver", () => {
     expect(release).toMatchObject({
       localArchivePath: join(releaseDir, fileName),
       target: "linux-x64",
-      version: ZCODE_VERSION,
+      version: CODEZ_VERSION,
       sha256: sha256(contents),
       sizeBytes: Buffer.byteLength(contents),
     });
   });
 
   it("uses the staged local archive for development even when SSH prefers remote download", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-source-release-dev-local-"));
-    const releaseDir = join(root, "releases", ZCODE_VERSION);
+    const root = await mkdtemp(join(tmpdir(), "codez-source-release-dev-local-"));
+    const releaseDir = join(root, "releases", CODEZ_VERSION);
     const contents = "development-source-server";
     await mkdir(releaseDir, { recursive: true });
     await writeFile(join(releaseDir, fileName), contents);
@@ -121,7 +121,7 @@ describe("Source Server release resolver", () => {
   });
 
   it("resolves descriptor URLs without downloading the archive for remote-download", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-source-release-remote-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-source-release-remote-"));
     const contents = "remote-source-server";
     const fetchMock = vi.fn(async (input: string | URL | Request) => {
       const url = String(input);
@@ -136,7 +136,7 @@ describe("Source Server release resolver", () => {
     const release = await resolveSourceServerReleaseAsset(
       probe,
       {
-        remoteCdnBaseUrls: [`https://cdn.example.test/releases/${ZCODE_VERSION}`],
+        remoteCdnBaseUrls: [`https://cdn.example.test/releases/${CODEZ_VERSION}`],
         remoteCacheDir: root,
       },
       { ...target, assetInstallMode: "remote-download" },
@@ -144,16 +144,16 @@ describe("Source Server release resolver", () => {
 
     expect(release).toEqual({
       target: "linux-x64",
-      version: ZCODE_VERSION,
+      version: CODEZ_VERSION,
       sha256: sha256(contents),
       sizeBytes: Buffer.byteLength(contents),
-      urls: [`https://cdn.example.test/releases/${ZCODE_VERSION}/${fileName}`],
+      urls: [`https://cdn.example.test/releases/${CODEZ_VERSION}/${fileName}`],
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("downloads and verifies the descriptor archive into the Desktop cache", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-source-release-cache-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-source-release-cache-"));
     const contents = "cached-source-server";
     const fetchMock = vi.fn(async (input: string | URL | Request) => {
       const url = String(input);
@@ -168,19 +168,19 @@ describe("Source Server release resolver", () => {
     const release = await resolveSourceServerReleaseAsset(
       probe,
       {
-        remoteCdnBaseUrls: [`https://cdn.example.test/releases/${ZCODE_VERSION}`],
+        remoteCdnBaseUrls: [`https://cdn.example.test/releases/${CODEZ_VERSION}`],
         remoteCacheDir: root,
       },
       target,
     );
 
-    expect(release.localArchivePath).toBe(join(root, "source-server", ZCODE_VERSION, fileName));
+    expect(release.localArchivePath).toBe(join(root, "source-server", CODEZ_VERSION, fileName));
     await expect(readFile(release.localArchivePath!, "utf8")).resolves.toBe(contents);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("uses the injected remote asset network for descriptor and archive downloads", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-source-release-proxy-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-source-release-proxy-"));
     const contents = "proxy-source-server";
     const remoteAssetFetch = vi.fn<typeof fetch>(async (input) => {
       const url = String(input);
@@ -198,20 +198,20 @@ describe("Source Server release resolver", () => {
     const release = await resolveSourceServerReleaseAsset(
       probe,
       {
-        remoteCdnBaseUrls: [`https://cdn.example.test/releases/${ZCODE_VERSION}`],
+        remoteCdnBaseUrls: [`https://cdn.example.test/releases/${CODEZ_VERSION}`],
         remoteCacheDir: root,
       },
       target,
       { fetch: remoteAssetFetch },
     );
 
-    expect(release.localArchivePath).toBe(join(root, "source-server", ZCODE_VERSION, fileName));
+    expect(release.localArchivePath).toBe(join(root, "source-server", CODEZ_VERSION, fileName));
     expect(remoteAssetFetch).toHaveBeenCalledTimes(2);
     expect(directFetch).not.toHaveBeenCalled();
   });
 
   it("does not fall back to direct fetch when the injected network fails", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-source-release-proxy-failure-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-source-release-proxy-failure-"));
     const directFetch = vi.fn<typeof fetch>(
       async () => new Response(JSON.stringify(descriptor("direct-source-server"))),
     );
@@ -224,7 +224,7 @@ describe("Source Server release resolver", () => {
       resolveSourceServerReleaseAsset(
         probe,
         {
-          remoteCdnBaseUrls: [`https://cdn.example.test/releases/${ZCODE_VERSION}`],
+          remoteCdnBaseUrls: [`https://cdn.example.test/releases/${CODEZ_VERSION}`],
           remoteCacheDir: root,
         },
         target,

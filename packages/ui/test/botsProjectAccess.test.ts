@@ -3,8 +3,8 @@ import { createElement } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { WorkspaceAccessCard } from "@/BotsDialog/WorkspaceAccessCard.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
-import type { BotConfig } from "@zcode/shared";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
+import type { BotConfig } from "@codez/shared";
 vi.mock("@/components/ui/select.js", () => ({
   Select: ({
     onValueChange,
@@ -46,7 +46,7 @@ it("切换指定项目时保存真实项目 ID，不能保存当前 tab cwd", ()
   };
   render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "en-US" },
       createElement(WorkspaceAccessCard, props),
     ),

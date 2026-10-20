@@ -4,7 +4,7 @@ import {
   parseWebRemoteControlRelayV2HttpResponse,
   WebRemoteControlV2Heartbeat,
   WebRemoteControlV2RetryPolicy,
-} from "@zcode/shared/web-remote-relay";
+} from "@codez/shared/web-remote-relay";
 
 afterEach(() => vi.useRealTimers());
 describe("relay public boundary", () => {

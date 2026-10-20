@@ -13,10 +13,10 @@ import { execFile } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
-import { TID_DOCKER_CONTAINER_INPUT, TID_REMOTE_KIND_DOCKER } from "@zcode/shared/test-ids";
-import { ApiKeyAccessConfig, ProviderApiConfig, ProviderConfig } from "@zcode/provider";
-import { NodePersonalProviderConfigRepository } from "@zcode/provider-node";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
+import { TID_DOCKER_CONTAINER_INPUT, TID_REMOTE_KIND_DOCKER } from "@codez/shared/test-ids";
+import { ApiKeyAccessConfig, ProviderApiConfig, ProviderConfig } from "@codez/provider";
+import { NodePersonalProviderConfigRepository } from "@codez/provider-node";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -42,7 +42,7 @@ import {
 
 const CASE_MARKER = "E2E_R3_DOCKER_TRANSPORT";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-docker-transport",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-docker-transport",
 );
 const LIVE_PROVIDER_ID = "e2e-r3-docker-live-zapi";
 const LIVE_PROVIDER_NAME = "R3 Docker Live ZAPI";
@@ -129,7 +129,7 @@ async function connectDockerTargetUntilReady(
   await input.setValue(container);
   await clickLastEnabledSSHDialogButton(CASE_MARKER);
   await waitForSSHDirectoryStep(CASE_MARKER);
-  const workspacePath = process.env.ZCODE_E2E_SSH_WORKSPACE_PATH;
+  const workspacePath = process.env.CODEZ_E2E_SSH_WORKSPACE_PATH;
   if (!workspacePath) throw new Error(`${CASE_MARKER}: 缺少 Docker 项目目录`);
   await selectSSHRemoteDirectory(workspacePath, CASE_MARKER);
   const tab = await waitForRemoteTab({ caseMarker: CASE_MARKER, expectedPath: workspacePath });
@@ -158,7 +158,7 @@ describe(`${CASE_MARKER}: Desktop Docker transport 首装、首发与关闭重�
     facts.containerUser = (
       await dockerSh(
         container,
-        "id -un; test -e ~/.zcode/server/current.json && echo installed || echo fresh",
+        "id -un; test -e ~/.codez/server/current.json && echo installed || echo fresh",
       )
     ).trim();
     await prepareV4ConversationE2E({ skipProvider: true });
@@ -177,7 +177,7 @@ describe(`${CASE_MARKER}: Desktop Docker transport 首装、首发与关闭重�
     // 且每段 grep 兜底 || true，保证命令 exit 0 时 stdout 不被丢弃。
     const installState = await dockerSh(
       container,
-      'grep -o \'"archiveSha256": *"[0-9a-f]*"\' ~/.zcode/server/current.json || true; cat ~/.zcode/server/run/status.json | tr -d "\\n "; echo; grep -o "\\"providerName\\": *\\"[^\\"]*\\"" ~/.zcode/v2/provider_config.json || true',
+      'grep -o \'"archiveSha256": *"[0-9a-f]*"\' ~/.codez/server/current.json || true; cat ~/.codez/server/run/status.json | tr -d "\\n "; echo; grep -o "\\"providerName\\": *\\"[^\\"]*\\"" ~/.codez/v2/provider_config.json || true',
     );
     facts.remoteAfterConnect = installState.split("\n").filter(Boolean).slice(0, 8);
     expect(installState).toContain("archiveSha256");
@@ -222,7 +222,7 @@ describe(`${CASE_MARKER}: Desktop Docker transport 首装、首发与关闭重�
     expect(await getUpstreamRequestRecordCount()).toBe(replayBefore);
     const remoteRequests = await dockerSh(
       container,
-      'F=$(ls -t ~/.zcode/cli/log/*.jsonl | head -n1); grep -c "model.network.completed" "$F" || true; grep -o "\\"baseURL\\":\\"[^\\"]*\\"" "$F" | sort | uniq -c',
+      'F=$(ls -t ~/.codez/cli/log/*.jsonl | head -n1); grep -c "model.network.completed" "$F" || true; grep -o "\\"baseURL\\":\\"[^\\"]*\\"" "$F" | sort | uniq -c',
     );
     facts.remoteModelNetwork = remoteRequests.trim().split("\n");
     expect(remoteRequests).toContain(seeded.baseURL);
@@ -235,7 +235,7 @@ describe(`${CASE_MARKER}: Desktop Docker transport 首装、首发与关闭重�
 
     const daemonAfterDisconnect = await dockerSh(
       container,
-      'cat ~/.zcode/server/run/status.json | tr -d "\\n " | cut -c1-120',
+      'cat ~/.codez/server/run/status.json | tr -d "\\n " | cut -c1-120',
     );
     expect(daemonAfterDisconnect).toContain('"state":"ready"');
     await reconnectRemoteProject(ready.identity, CASE_MARKER);

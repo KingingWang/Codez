@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ISkillsService } from "@zcode/services";
+import type { ISkillsService } from "@codez/services";
 import { useSkillStore } from "../src/store/skillStore.js";
 
 function createSkillsServiceMock(overrides?: {
@@ -216,7 +216,7 @@ describe("skillStore", () => {
     await loadingSecond;
   });
 
-  it("切换 legacy provider 时会归一到 ZCode Agent 并清理上一套缓存", async () => {
+  it("切换 legacy provider 时会归一到 Codez Agent 并清理上一套缓存", async () => {
     let resolveList: ((value: Awaited<ReturnType<ISkillsService["list"]>>) => void) | null = null;
     const list = vi.fn<ISkillsService["list"]>(
       () =>

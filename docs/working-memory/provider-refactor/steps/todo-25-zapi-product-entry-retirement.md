@@ -4,18 +4,18 @@
 >
 > 日期：2026-08-27
 >
-> 前置关系：基于 Todo 21 已完成的 ZCode Built-in Config / Registry 权威链；不改变通用 Provider、Model、
+> 前置关系：基于 Todo 21 已完成的 Codez Built-in Config / Registry 权威链；不改变通用 Provider、Model、
 > Account Family 或远程工作区模型选择语义。
 
 ## 1. 产品裁决
 
-`builtin:zapi` 不再是 ZCode 产品中的 Provider。设置页、模型选择、运行时、Telemetry、当前共享类型、当前文档和测试
+`builtin:zapi` 不再是 Codez 产品中的 Provider。设置页、模型选择、运行时、Telemetry、当前共享类型、当前文档和测试
 不得继续把 ZAPI 表达为可用入口，也不得在目标 Host Registry 缺少它时由 Renderer 静态制造占位 Provider。
 
 删除后的事实链为：
 
 ```text
-ZCode Built-in Release / Personal Config / Account Overlay
+Codez Built-in Release / Personal Config / Account Overlay
                        |
                        v
               Target Host Registry
@@ -45,7 +45,7 @@ Renderer 不再维护 builtin:zapi 身份或内网可见性门禁。
 - Bundled Config 当前没有 ZAPI，不新增 tombstone Provider；
 - Remote / Active / LKG Release 如果包含 `builtin:zapi`，整份 Release 视为不兼容并回落到其他兼容候选；
 - 旧物理配置中的 ZAPI 在一次性 importer 边界被忽略；其他 Provider 原样迁移；
-- 远端 ZCode Built-in Release 应停止下发 ZAPI。客户端不再为缺失的 ZAPI 创建幽灵入口。
+- 远端 Codez Built-in Release 应停止下发 ZAPI。客户端不再为缺失的 ZAPI 创建幽灵入口。
 
 ## 4. 验收
 
@@ -60,7 +60,7 @@ Renderer 不再维护 builtin:zapi 身份或内网可见性门禁。
 
 - 当前 Built-in 身份、Settings Preset、模型选择展示、Telemetry 与 Composer 已删除 ZAPI；
 - ZAPI 专属 internal-only gate、Renderer Hook、Runtime Override 与 Vite 注入已删除；
-- ZCode Built-in Release 解码拒绝包含退役 ID 的 Remote、Active 或 LKG 候选，避免远端旧配置重新发布 ZAPI；
+- Codez Built-in Release 解码拒绝包含退役 ID 的 Remote、Active 或 LKG 候选，避免远端旧配置重新发布 ZAPI；
 - Desktop Legacy Store Reader 与 CLI importer 仅保留私有 retired ID，并在任何归一化前直接丢弃旧 ZAPI
   Provider 和默认选择；
 - 当前 Provider、内网探测、设置页和模型选择文档已同步，历史日志与 Changelog 不改写；

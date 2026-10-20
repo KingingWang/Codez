@@ -9,7 +9,7 @@
 import { createElement, useEffect, useState, type ReactNode } from "react";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { V4ConversationWorkflowRunSummary } from "@zcode/shared/zcode-protocol-v4";
+import type { V4ConversationWorkflowRunSummary } from "@codez/shared/codez-protocol-v4";
 import type { WorkflowRunDirectorySidePaneTab } from "@/lib/workspaceSidePane.js";
 
 vi.mock("@/logger.js", () => ({
@@ -72,7 +72,7 @@ vi.mock("@/hooks/useWorkflowRunJournalSummaries.js", () => ({
 }));
 
 // eslint-disable-next-line import/first -- 必须在全部 mock 之后再引入被测组件。
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 // eslint-disable-next-line import/first
 import { WorkflowRunDirectorySidePane } from "@/app-shell/WorkflowRunDirectorySidePane.js";
 // eslint-disable-next-line import/first
@@ -119,7 +119,7 @@ function projectionRun(runId: string, status: "running" | "pending" | "completed
 function renderPane(locale: "en-US" | "zh-CN" = "en-US") {
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: locale },
       createElement(WorkflowRunDirectorySidePane, { tab, onOpenWorkflowRun }),
     ),

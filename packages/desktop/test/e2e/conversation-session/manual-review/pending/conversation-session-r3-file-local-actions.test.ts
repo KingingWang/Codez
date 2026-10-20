@@ -10,7 +10,7 @@ import {
   TID_WORKSPACE_FILE_TREE_PANEL,
   TID_WORKSPACE_FILE_TREE_ROW,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -28,7 +28,7 @@ import { openProjectFileTree } from "../../../helpers/project-sidebar.js";
 
 const CASE_MARKER = "E2E_R3_FILE_LOCAL_ACTIONS";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-file-local-actions",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-file-local-actions",
 );
 const REMOTE_FILE_NAME = "r3-dev10-remote-note.md";
 const REMOTE_FILE_MARKER = `R3_DEV10_REMOTE_CONTENT_${Math.random().toString(36).slice(2, 8)}`;

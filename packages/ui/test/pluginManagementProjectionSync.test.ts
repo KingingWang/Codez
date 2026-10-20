@@ -3,9 +3,9 @@ import { act, createElement, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { ZCODE_CUA_OFFICIAL_PLUGIN_ID } from "@zcode/shared";
+import { CODEZ_CUA_OFFICIAL_PLUGIN_ID } from "@codez/shared";
 import { useCuaComposerEntry } from "@/hooks/useCuaComposerEntry.js";
-import type { IPluginManagementService } from "@zcode/services";
+import type { IPluginManagementService } from "@codez/services";
 import {
   usePluginManagementStore,
   useScopedPluginManagementStore,
@@ -195,7 +195,7 @@ it("refreshes a remote market after synchronization even when the global store t
       workspacePath: "/project/a",
       workspaceIdentity,
       reason: "review-regression",
-      zcodeAgentService: {} as never,
+      codezAgentService: {} as never,
       skillsService: { list: vi.fn() } as never,
       commandsService: {
         list: vi.fn(async () => ({
@@ -251,7 +251,7 @@ it("matches Source settings user scope with its remote project projections", asy
 it("updates the actual CUA composer entry after a scoped toggle", async () => {
   Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Macintosh" });
   vi.mocked(service.listPlugins).mockImplementation(async () => ({
-    plugins: [{ ...plugin(), id: ZCODE_CUA_OFFICIAL_PLUGIN_ID }] as never,
+    plugins: [{ ...plugin(), id: CODEZ_CUA_OFFICIAL_PLUGIN_ID }] as never,
     diagnostics: [],
   }));
   await usePluginManagementStore.getState().refresh(service);
@@ -259,7 +259,7 @@ it("updates the actual CUA composer entry after a scoped toggle", async () => {
   const market = await mount("market");
   expect(entry.result.current.view.visible).toBe(true);
   await act(() =>
-    market.getState().setEnabled(ZCODE_CUA_OFFICIAL_PLUGIN_ID, false, service, "workspace"),
+    market.getState().setEnabled(CODEZ_CUA_OFFICIAL_PLUGIN_ID, false, service, "workspace"),
   );
   expect(entry.result.current.view.visible).toBe(false);
   entry.unmount();
@@ -311,7 +311,7 @@ it("completes remote capability refresh while a projection listener is stuck", a
     workspacePath: "/project/a",
     workspaceIdentity: "remote:server:remote-host:/project/a",
     reason: "review-regression",
-    zcodeAgentService: {} as never,
+    codezAgentService: {} as never,
     skillsService: { list: vi.fn() } as never,
     commandsService: { list: commands } as never,
     mcpSyncService: { loadMcpFromUserDirectory: mcp } as never,

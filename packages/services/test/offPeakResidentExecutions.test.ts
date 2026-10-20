@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { OffPeakResidentExecutions } from "../src/session/offPeakResidentExecutions.js";
-import type { OffPeakLifecycleNotification } from "@zcode/shared";
+import type { OffPeakLifecycleNotification } from "@codez/shared";
 
 function fixture() {
   const renew = vi.fn(async (_id: string, current: () => boolean) => {

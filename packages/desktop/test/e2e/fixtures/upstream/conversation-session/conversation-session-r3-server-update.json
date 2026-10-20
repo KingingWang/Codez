@@ -139,7 +139,7 @@
           "id": "toolu_r3_task_permission",
           "name": "Write",
           "input": {
-            "file_path": "/home/dev/r3-workspace-a/.zcode-e2e/r3-server-update/permission-output.txt",
+            "file_path": "/home/dev/r3-workspace-a/.codez-e2e/r3-server-update/permission-output.txt",
             "content": "R3_UPDATE_PERMISSION_RESULT\n"
           }
         }

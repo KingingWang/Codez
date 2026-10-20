@@ -99,7 +99,7 @@ describe("WPL-008 Workspace Plugin resident freeze and cold resume E2E", () => {
 
 async function disableWorkspacePlugin(): Promise<void> {
   const { workspace } = getE2EAppDataPaths();
-  const configPath = join(workspace, ".zcode", "config.json");
+  const configPath = join(workspace, ".codez", "config.json");
   const config = JSON.parse(await readFile(configPath, "utf8")) as {
     plugins?: { enabledPlugins?: Record<string, boolean> };
   };

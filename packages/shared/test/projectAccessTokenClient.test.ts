@@ -30,7 +30,7 @@ function fixture(existing = true) {
           init.method === "POST"
             ? { apiKey: "key" }
             : existing
-              ? [{ apiKey: "key", name: "zcode-api-key" }]
+              ? [{ apiKey: "key", name: "codez-api-key" }]
               : [],
       };
     if (url.endsWith("/key/access_tokens"))
@@ -136,13 +136,13 @@ describe("ProjectAccessTokenClient", () => {
       Authorization: "Bearer login",
     });
     expect(JSON.parse(String(issue.init.body))).toMatchObject({
-      clientType: "zcode",
+      clientType: "codez",
     });
     const created = f.requests.find((r) => r.url.endsWith("/api_keys") && r.init.method === "POST");
     expect(Boolean(created)).toBe(!existing);
     if (created)
       expect(JSON.parse(String(created.init.body))).toEqual({
-        name: "zcode-api-key",
+        name: "codez-api-key",
         usageScene: 1,
       });
   });
@@ -199,7 +199,7 @@ describe("Key ID 持久化", () => {
           },
         };
       if (url.endsWith("api_keys"))
-        return { code: 200, data: [{ apiKey: "key", name: "zcode-api-key" }] };
+        return { code: 200, data: [{ apiKey: "key", name: "codez-api-key" }] };
       return {
         code: 200,
         data: {

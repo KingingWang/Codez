@@ -1,5 +1,5 @@
 import { MessageCircleIcon } from "lucide-react";
-import { TID_SIDE_PANE_FULL_VIEW_CONVERSATION_TAB } from "@zcode/shared/test-ids";
+import { TID_SIDE_PANE_FULL_VIEW_CONVERSATION_TAB } from "@codez/shared/test-ids";
 import { cn } from "@/components/lib/utils.js";
 import { TabsTrigger } from "@/components/ui/tabs.js";
 

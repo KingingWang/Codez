@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-import type { DatabaseMigrationFacts } from "@zcode/shared";
+import type { DatabaseMigrationFacts } from "@codez/shared";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -16,7 +16,7 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 async function fixture() {
-  const root = await mkdtemp(join(tmpdir(), "zcode-remote-schema-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-remote-schema-"));
   roots.push(root);
   const taskDbPath = join(root, "tasks.sqlite");
   const sessionDbPath = join(root, "session.sqlite");
@@ -283,14 +283,14 @@ it("Source 首次创建 session identity 表时登记 schema_migration，已有 
     insert.run(canonical, canonical, "task-1", 20);
     insert.run(variant, variant, "task-2", 10);
     sessionDb.exec(`CREATE TABLE session (id TEXT PRIMARY KEY, workspace_id TEXT, directory TEXT, path TEXT, time_updated INTEGER);
-      CREATE TABLE zcode_database_identity (scope TEXT PRIMARY KEY, identity TEXT NOT NULL);
-      INSERT INTO zcode_database_identity VALUES ('session', 'legacy-generation');`);
+      CREATE TABLE codez_database_identity (scope TEXT PRIMARY KEY, identity TEXT NOT NULL);
+      INSERT INTO codez_database_identity VALUES ('session', 'legacy-generation');`);
     const repo = new SourceServerWorkspaceAliasRepo(options);
     await repo.resolveCanonicalWorkspaceKey({ workspacePath: "/repo", legacyRouteHint: canonical });
     expect(sessionDb.prepare("SELECT id FROM schema_migration").all()).toEqual([
       { id: "0024_session_database_identity" },
     ]);
-    expect(sessionDb.prepare("SELECT identity FROM zcode_database_identity").get()).toEqual({
+    expect(sessionDb.prepare("SELECT identity FROM codez_database_identity").get()).toEqual({
       identity: "legacy-generation",
     });
   } finally {

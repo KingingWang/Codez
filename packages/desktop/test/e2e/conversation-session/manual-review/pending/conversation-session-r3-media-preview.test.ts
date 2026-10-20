@@ -6,8 +6,8 @@ import {
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
-import { TID_V4_SESSION_PANE, testId } from "@zcode/shared/test-ids";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
+import { TID_V4_SESSION_PANE, testId } from "@codez/shared/test-ids";
 import { clearAppData, waitForWorkspaceApp } from "../../../helpers/desktop-app.js";
 import {
   getUpstreamRequestRecordCount,
@@ -32,7 +32,7 @@ import {
 
 const CASE_MARKER = "E2E_R3_MEDIA_PREVIEW";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-media-preview",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-media-preview",
 );
 const IMAGE_FILE = "r3-dev05-preview.png";
 // 2x2 红色 PNG（有效、可解码），用于校验预览真实加载出像素尺寸。
@@ -188,14 +188,14 @@ async function activateRemoteTab(identity: string): Promise<void> {
   const activated = await browser.execute((id) => {
     const store = (
       window as Window & {
-        __zcodeTabStoreE2E?: {
+        __codezTabStoreE2E?: {
           getState?: () => {
             tabs?: Array<{ id: string; workspaceIdentity?: string }>;
             activateTab?: (tabId: string) => void;
           };
         };
       }
-    ).__zcodeTabStoreE2E;
+    ).__codezTabStoreE2E;
     const state = store?.getState?.();
     const tab = state?.tabs?.find((candidate) => candidate.workspaceIdentity === id);
     if (!tab || !state?.activateTab) return false;
@@ -300,7 +300,7 @@ describe(`${CASE_MARKER}: 远端媒体附件的预览读取、断线后访问与
     const remoteImagePath = JSON.stringify(imageRequest?.requestJson).match(
       /\[Image: source: ([^\]]+)\]/u,
     )?.[1];
-    expect(remoteImagePath).toMatch(/^\/home\/dev\/\.zcode\/cli\/image-cache\/[A-Za-z0-9_./-]+$/u);
+    expect(remoteImagePath).toMatch(/^\/home\/dev\/\.codez\/cli\/image-cache\/[A-Za-z0-9_./-]+$/u);
     const remoteHash = await runSSHCommand(prepared.config, `sha256sum -- '${remoteImagePath}'`);
     expect(remoteHash.code).toBe(0);
     const expectedImageHash = createHash("sha256")

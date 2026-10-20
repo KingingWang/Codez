@@ -16,14 +16,14 @@ vi.mock("@/project-sidebar/ProjectDirectoryProvider.js", () => ({
   useProjectDirectory: () => mocks.directory,
 }));
 vi.mock("@/hooks/useWorkspaceServices.js", () => ({
-  useBaseWorkspaceServices: () => ({ windowControllerService: mocks, zcodeTaskService: {} }),
+  useBaseWorkspaceServices: () => ({ windowControllerService: mocks, codezTaskService: {} }),
 }));
 vi.mock("@/hooks/useConfirmDialog.js", () => ({ useConfirmDialog: () => mocks.confirm }));
-vi.mock("@/store/zcodeSessionStore.js", () => ({
-  useZCodeSessionStore: (select: any) => select(mocks),
+vi.mock("@/store/codezSessionStore.js", () => ({
+  useCodezSessionStore: (select: any) => select(mocks),
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: { formatMessage: ({ id }: any, values: any) => `${id}:${JSON.stringify(values)}` },
   }),
 }));

@@ -1,4 +1,4 @@
-import { botsStateFileSchema } from "@zcode/shared";
+import { botsStateFileSchema } from "@codez/shared";
 import { describe, expect, it } from "vitest";
 import { importLegacyBotState } from "../src/bots/storageMigration.js";
 

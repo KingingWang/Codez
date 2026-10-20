@@ -1,7 +1,7 @@
 import { afterEach, expect, it } from "vitest";
 import { once } from "node:events";
 import { WebSocket } from "ws";
-import { createFakeRelayV2, type FakeRelayV2Options } from "@zcode/shared/testing/fake-relay-v2";
+import { createFakeRelayV2, type FakeRelayV2Options } from "@codez/shared/testing/fake-relay-v2";
 
 const relays: Awaited<ReturnType<typeof createFakeRelayV2>>[] = [];
 afterEach(async () => {

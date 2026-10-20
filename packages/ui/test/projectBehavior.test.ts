@@ -22,20 +22,20 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 vi.mock("@/hooks/useWorkspaceServices.js", () => ({
-  useBaseWorkspaceServices: () => ({ windowControllerService: mocks, zcodeTaskService: {} }),
+  useBaseWorkspaceServices: () => ({ windowControllerService: mocks, codezTaskService: {} }),
 }));
 vi.mock("@/hooks/useResolvedRemoteWorkspaceSessionId.js", () => ({
   useResolvedRemoteWorkspaceSessionId: () => null,
 }));
-vi.mock("@/store/zcodeSessionStore.js", () => ({
-  useZCodeSessionStore: (select: (state: any) => unknown) =>
+vi.mock("@/store/codezSessionStore.js", () => ({
+  useCodezSessionStore: (select: (state: any) => unknown) =>
     select({ ...mocks.state, removeTaskState: mocks.removeTaskState }),
 }));
 vi.mock("@/store/TabStoreProvider.js", () => ({
   useTabStore: (select: (state: any) => unknown) => select({ openSettingsTab: vi.fn() }),
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 vi.mock("@/TaskListItem.js", () => ({
   MemoTaskItem: (props: Record<string, any>) => {
@@ -303,12 +303,12 @@ it("scopes selection and mobile marker, omits task file shortcuts, and closes on
 
 it("SBV02/04: migrates the legacy group view, preserves collapse and persists the new choice", () => {
   localStorage.setItem(
-    "zcode-sidebar-task-preferences",
+    "codez-sidebar-task-preferences",
     JSON.stringify({ sortBy: "created", organizeBy: "grouped" }),
   );
-  localStorage.setItem("zcode-workspace-expansion", JSON.stringify({ "/one": false }));
+  localStorage.setItem("codez-workspace-expansion", JSON.stringify({ "/one": false }));
   localStorage.setItem(
-    "zcode-project-sidebar-preferences",
+    "codez-project-sidebar-preferences",
     JSON.stringify({ sort: "updated", view: "invalid" }),
   );
   const { result, unmount } = renderHook(() => useProjectSidebarPreferences([], false));
@@ -371,7 +371,7 @@ it("同步同一控制端的跨窗口排序，同时保留当前窗口未加载�
   act(() =>
     window.dispatchEvent(
       new StorageEvent("storage", {
-        key: "zcode-project-sidebar-preferences",
+        key: "codez-project-sidebar-preferences",
         newValue: JSON.stringify({ order, view: "projects", expanded: {} }),
       }),
     ),

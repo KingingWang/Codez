@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { ModelConfigSelect } from "@/ModelConfigSelect.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { createPluginUiPagePlane } from "@/plugin-ui/adapters/pluginUiPagePlane.js";
 import {
   SidePaneFullViewConversationHost,
   useConversationPanePresentation,
 } from "@/side-pane-full-view/index.js";
-import type { PluginSandboxHandle } from "@zcode/shared/mcp-apps";
+import type { PluginSandboxHandle } from "@codez/shared/mcp-apps";
 import "@/styles.css";
 
 const params = new URLSearchParams(location.search);
@@ -116,9 +116,9 @@ function Fixture() {
   );
 }
 createRoot(document.getElementById("root")!).render(
-  <ZCodeIntlProvider initialLocale="en-US">
+  <CodezIntlProvider initialLocale="en-US">
     <TooltipProvider>
       <Fixture />
     </TooltipProvider>
-  </ZCodeIntlProvider>,
+  </CodezIntlProvider>,
 );

@@ -5,7 +5,7 @@ import {
   ingestSchedulerSelfResourceSample,
   selfHeapProcessResourceSampleSource,
 } from "@desktop/main/processResourceSelfHeapSource";
-import type { ProcessResourceRole } from "@zcode/shared";
+import type { ProcessResourceRole } from "@codez/shared";
 
 interface Collected {
   heapSamples: Array<[ProcessResourceRole, number]>;

@@ -1,7 +1,7 @@
 import { createRoot } from "react-dom/client";
-import type { ConversationRow } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationRow } from "@codez/shared/codez-protocol-v4";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { DEFAULT_CODE_PREVIEW_SETTINGS } from "@/lib/codePreviewSettings.js";
 import { ConversationTurnGroup } from "@/v4/ConversationTurnGroup.js";
 import { buildConversationTurnRenderUnits } from "@/v4/conversationTurnRenderUnits.js";
@@ -79,7 +79,7 @@ const rows: ConversationRow[] = [
           kind: "assistantText" as const,
           state: "complete" as const,
           entityId: "assistant-1",
-          text: "你好！我是 ZCode，有什么可以帮你的吗？\n\n直接告诉我你想做什么就行。",
+          text: "你好！我是 Codez，有什么可以帮你的吗？\n\n直接告诉我你想做什么就行。",
         },
       ]
     : []),
@@ -89,7 +89,7 @@ const [unit] = buildConversationTurnRenderUnits(rows);
 // 真实组件、主题与点击行为；只读投影输入固定，不建立 runtime 或远控连接。
 createRoot(document.getElementById("root")!).render(
   <TooltipProvider>
-    <ZCodeIntlProvider initialLocale={mobile ? "en-US" : "zh-CN"}>
+    <CodezIntlProvider initialLocale={mobile ? "en-US" : "zh-CN"}>
       <main className="min-h-dvh bg-background text-foreground @container/conversation">
         <ConversationTurnGroup
           unit={{ ...unit!, showHighspeedOutputFooter: highspeed }}
@@ -102,6 +102,6 @@ createRoot(document.getElementById("root")!).render(
           onFeedbackChange={() => undefined}
         />
       </main>
-    </ZCodeIntlProvider>
+    </CodezIntlProvider>
   </TooltipProvider>,
 );

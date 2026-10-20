@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type {
   ConversationShareArtifactDescriptor,
   ConversationShareConfirmRequest,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ConversationShareHttpClient } from "../src/conversation-share/conversationShareHttpClient.js";
@@ -87,8 +87,8 @@ describe("ConversationShareMockApiClient", () => {
     vi.unstubAllEnvs();
   });
 
-  it("uses ZCODE_CONVERSATION_SHARE_WEB_URL for generated mock links", async () => {
-    vi.stubEnv("ZCODE_CONVERSATION_SHARE_WEB_URL", "http://127.0.0.1:5173/cn/share");
+  it("uses CODEZ_CONVERSATION_SHARE_WEB_URL for generated mock links", async () => {
+    vi.stubEnv("CODEZ_CONVERSATION_SHARE_WEB_URL", "http://127.0.0.1:5173/cn/share");
     const apiClient = new ConversationShareMockApiClient({ now: () => 10_000 });
     const { share } = await publish(apiClient, "public_readonly");
 
@@ -106,7 +106,7 @@ describe("ConversationShareMockApiClient", () => {
       producer_product_turn_id: "share-product-turn-1",
       artifact_version: 1,
       state: "current",
-      ref: "zcode-artifact://share/share-artifact-1",
+      ref: "codez-artifact://share/share-artifact-1",
       artifact_type: "html",
       display_name: "report.html",
       extension: "html",
@@ -365,7 +365,7 @@ describe("ConversationShareMockApiClient", () => {
           producer_product_turn_id: "product-turn-1",
           artifact_version: 1,
           state: "current",
-          ref: "zcode-artifact://share/artifact-1",
+          ref: "codez-artifact://share/artifact-1",
           artifact_type: "html",
           display_name: "report.html",
           extension: "html",

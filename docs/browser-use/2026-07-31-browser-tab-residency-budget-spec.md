@@ -8,7 +8,7 @@
 > “跨重启 shell catalog、page-state、suspended/restoring 惰性恢复”设计。
 
 当前产品边界是：**每个 BrowserWindow 最多保留 32 个逻辑 Browser / Browser Use tab；创建第 33 个时，
-最久未活动的安全候选会被完整关闭并从 UI 消失。ZCode 进程完整退出后不持久化、不恢复任何 Browser Tab。**
+最久未活动的安全候选会被完整关闭并从 UI 消失。Codez 进程完整退出后不持久化、不恢复任何 Browser Tab。**
 
 ## 1. Feature Summary
 
@@ -99,7 +99,7 @@
 
 ### 2.8 Unresolved Questions
 
-无。用户已明确裁决：完整关闭 ZCode 后重新启动，Browser Tab 应全部消失。
+无。用户已明确裁决：完整关闭 Codez 后重新启动，Browser Tab 应全部消失。
 
 ## 3. 状态模型
 
@@ -237,7 +237,7 @@ Desktop bootstrap/main production wiring 不调用、不注入持久化 store。
 | Spec update | 本文 | complete |
 | Case catalog | `docs/conversation-session-case-catalog.md` BTL | complete |
 | Coverage matrix | conversation + Browser Use matrices | complete |
-| Feature graph | `zcode-feature-graph.yaml` | complete |
+| Feature graph | `codez-feature-graph.yaml` | complete |
 | E2E handoff | `browser-tab-residency.test.ts` | complete |
 
 ## 10. 完成门槛

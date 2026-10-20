@@ -29,7 +29,7 @@ describe("cloud content host service", () => {
       const response = await fetch(first.url);
       expect(response.headers.get("content-security-policy")).toContain("sandbox allow-scripts");
       expect(response.headers.get("content-type")).toContain("text/html");
-      expect(await response.text()).toContain("zcode-cloud-hero-v1");
+      expect(await response.text()).toContain("codez-cloud-hero-v1");
       expect((await fetch(second.url)).status).toBe(200);
       await service.release({ leaseId: first.leaseId });
       expect((await fetch(first.url)).status).toBe(404);

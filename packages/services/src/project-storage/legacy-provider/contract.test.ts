@@ -16,7 +16,7 @@ describe("legacy provider visibility", () => {
       db.exec(
         "ALTER TABLE tasks ADD COLUMN migration_source TEXT; ALTER TABLE tasks ADD COLUMN meta_json TEXT",
       );
-      for (const provider of ["glm", "claude", "gemini", "zcode", null]) {
+      for (const provider of ["glm", "claude", "gemini", "codez", null]) {
         for (const state of ["active", "pinned", "archived"]) {
           const id = `${provider}-${state}`;
           add(id, "/repo");

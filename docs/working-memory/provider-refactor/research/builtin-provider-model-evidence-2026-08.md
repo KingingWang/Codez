@@ -2,7 +2,7 @@
 
 > 状态：初始 revision 4 发布证据；2026-09-01 已补充 Kimi 多模态校正
 >
-> 设计依据：[`zcode-builtin-provider-config.md`](../design/registry/zcode-builtin-provider-config.md)
+> 设计依据：[`codez-builtin-provider-config.md`](../design/registry/codez-builtin-provider-config.md)
 
 ## 1. 证据规则
 
@@ -10,7 +10,7 @@
 provenance 字段。事实按以下顺序裁定：
 
 ```text
-ZCode 产品或账号服务的已确认契约
+Codez 产品或账号服务的已确认契约
           |
           v
 Models API 实时成功响应（若厂商提供）
@@ -23,7 +23,7 @@ Models API 实时成功响应（若厂商提供）
 ```
 
 - 官网明确声明的 context、max output、输入格式和协议能力可以进入对应 Model/API/Endpoint Rule。
-- ZCode 套餐链路额外提供的能力进入 Provider-scoped Rule，不能反向改写原生模型事实。
+- Codez 套餐链路额外提供的能力进入 Provider-scoped Rule，不能反向改写原生模型事实。
 - Models API 文档示例只证明响应形状，不代替带当前访问材料的实时目录。
 - 官网未列出的候选模型可以为第三方兼容服务保留保守规则；目标官方 Endpoint 未确认前不默认启用。
 - 请求接受某字段、忽略某内容或没有报错，不等于模型消费了该输入，也不构成能力证据。
@@ -61,7 +61,7 @@ Start / Individual / Team Plan
 ```
 
 普通 Account API 接收含图片的请求但不报错，只能说明服务端容忍或忽略了内容，不能证明 `glm-5.3` 具备视觉。
-因此本轮保持它的原生视觉能力为 `false`。Plan 的视觉能力来自 ZCode 产品链路，是独立的 Provider 服务事实。
+因此本轮保持它的原生视觉能力为 `false`。Plan 的视觉能力来自 Codez 产品链路，是独立的 Provider 服务事实。
 
 ## 4. 本轮 Provider 成员与初始顺序
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { HighspeedDrawRequest, HighspeedDrawResponse } from "@zcode/shared";
+import type { HighspeedDrawRequest, HighspeedDrawResponse } from "@codez/shared";
 import {
   buildHighspeedCodingPlanAuthHeaders,
   createHighspeedHttpTransport,
@@ -358,7 +358,7 @@ describe("HighspeedCardService", () => {
     );
     const waits: Array<() => void> = [];
     const auth: HighspeedInferenceAuth = {
-      zcodeJwt: "zcode-jwt",
+      codezJwt: "codez-jwt",
       family: "zai",
       codingPlanAuthorization: "coding-plan-jwt",
       targetType: "PERSONAL",
@@ -410,7 +410,7 @@ describe("HighspeedCardService", () => {
       resolveInferenceAuth: async () => {
         resolveAuthCalls += 1;
         return {
-          zcodeJwt: "must-not-be-used",
+          codezJwt: "must-not-be-used",
           family: "zai",
           codingPlanAuthorization: "must-not-be-used",
           targetType: "PERSONAL",
@@ -491,7 +491,7 @@ describe("HighspeedCardService", () => {
       transport,
       now: () => now,
       resolveInferenceAuth: async () => ({
-        zcodeJwt: "zcode-jwt",
+        codezJwt: "codez-jwt",
         family: "bigmodel",
         codingPlanAuthorization: "maas-jwt",
         targetType: "PERSONAL",
@@ -544,7 +544,7 @@ describe("HighspeedCardService", () => {
       // BigModel Team：加速推理与 draw 走同一 highspeed 网关，必须带上 Coding Plan 业务 JWT
       // 与 Team 身份头，来自同一次 selected connection 解析。
       resolveInferenceAuth: async () => ({
-        zcodeJwt: "zcode-jwt",
+        codezJwt: "codez-jwt",
         family: "bigmodel",
         codingPlanAuthorization: "maas-jwt",
         targetType: "TEAM",
@@ -559,12 +559,12 @@ describe("HighspeedCardService", () => {
       model: "GLM-5.3",
     });
 
-    // 回归：加速推理曾只发 zcode JWT + 卡 ID，缺 Coding Plan 双 JWT + Team 身份头，
+    // 回归：加速推理曾只发 codez JWT + 卡 ID，缺 Coding Plan 双 JWT + Team 身份头，
     // 加速网关返回 401 auth_failed。必须与 draw 携带完全一致的 Coding Plan 头，再附加卡 ID。
     expect(result.kind).toBe("accelerated");
-    expect(result.execution?.requestAuth.apiKey).toBe("zcode-jwt");
+    expect(result.execution?.requestAuth.apiKey).toBe("codez-jwt");
     expect(result.execution?.requestAuth.headers).toEqual({
-      Authorization: "Bearer zcode-jwt",
+      Authorization: "Bearer codez-jwt",
       "X-Bigmodel-Authorization": "Bearer maas-jwt",
       "Bigmodel-Target-Type": "TEAM",
       "Bigmodel-Organization": "org-1",
@@ -725,12 +725,12 @@ describe("Highspeed HTTP contract", () => {
   it("builds the shared Coding Plan headers for personal and team plans", () => {
     expect(
       buildHighspeedCodingPlanAuthHeaders({
-        zcodeJwt: "zcode-jwt",
+        codezJwt: "codez-jwt",
         codingPlanAuthorization: "maas-jwt",
         targetType: "PERSONAL",
       }),
     ).toEqual({
-      Authorization: "Bearer zcode-jwt",
+      Authorization: "Bearer codez-jwt",
       // 接口契约要求 X-Bigmodel-Authorization 带 Bearer 前缀；凭据库可能存裸 token。
       "X-Bigmodel-Authorization": "Bearer maas-jwt",
       "Bigmodel-Target-Type": "PERSONAL",
@@ -738,14 +738,14 @@ describe("Highspeed HTTP contract", () => {
 
     expect(
       buildHighspeedCodingPlanAuthHeaders({
-        zcodeJwt: "Bearer zcode-jwt",
+        codezJwt: "Bearer codez-jwt",
         codingPlanAuthorization: "team-maas-jwt",
         targetType: "TEAM",
         organizationId: "org-1",
         projectId: "project-1",
       }),
     ).toEqual({
-      Authorization: "Bearer zcode-jwt",
+      Authorization: "Bearer codez-jwt",
       "X-Bigmodel-Authorization": "Bearer team-maas-jwt",
       "Bigmodel-Target-Type": "TEAM",
       "Bigmodel-Organization": "org-1",
@@ -755,7 +755,7 @@ describe("Highspeed HTTP contract", () => {
     // 已带前缀的凭据不能重复加 Bearer。
     expect(
       buildHighspeedCodingPlanAuthHeaders({
-        zcodeJwt: "zcode-jwt",
+        codezJwt: "codez-jwt",
         codingPlanAuthorization: "Bearer already-prefixed",
         targetType: "PERSONAL",
       }),
@@ -773,11 +773,11 @@ describe("Highspeed HTTP contract", () => {
       drawUrl: "https://example.test/api/v1/highspeed/draw",
       healthyBaseUrl: "https://example.test/api/v1/highspeed/",
       drawHeaders: async () => ({
-        Authorization: "Bearer zcode-jwt",
+        Authorization: "Bearer codez-jwt",
         "X-Bigmodel-Authorization": "maas-jwt",
         "Bigmodel-Target-Type": "PERSONAL",
       }),
-      healthyHeaders: async () => ({ Authorization: "Bearer zcode-jwt" }),
+      healthyHeaders: async () => ({ Authorization: "Bearer codez-jwt" }),
       logger: { warn: vi.fn() },
       fetchImpl: async (input, init) => {
         requests.push({
@@ -814,7 +814,7 @@ describe("Highspeed HTTP contract", () => {
       method: "GET",
       body: undefined,
     });
-    expect(requests[1]?.headers.get("Authorization")).toBe("Bearer zcode-jwt");
+    expect(requests[1]?.headers.get("Authorization")).toBe("Bearer codez-jwt");
     expect(healthy).toEqual({
       cardId: "hsc/1",
       promptTokens: 120,

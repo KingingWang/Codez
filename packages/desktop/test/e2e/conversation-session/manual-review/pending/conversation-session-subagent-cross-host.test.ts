@@ -94,7 +94,7 @@ describe("Subagent 跨真实 Host 失效", () => {
     const next = { ...profile, prompt: "E2E_SHP_PROFILE_NEW" };
     await saveRefreshProfile(profile);
     const initialHandle = await browser.getWindowHandle();
-    const projectRoot = join(getE2EAppDataPaths().workspace, ".zcode", "agents");
+    const projectRoot = join(getE2EAppDataPaths().workspace, ".codez", "agents");
     await rm(projectRoot, { recursive: true, force: true });
     const root = join(storage, "agents");
     // 两步更名确保实际目录项变为大写；随后启动的 Host 必须从真实目录建立监听。
@@ -224,7 +224,7 @@ describe("Subagent 跨真实 Host 失效", () => {
         }
       }
       await writeFile(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "subagent-path-evidence.json"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "subagent-path-evidence.json"),
         JSON.stringify(
           {
             sessions,
@@ -380,7 +380,7 @@ describe("Subagent 跨真实 Host 失效", () => {
       await saveRefreshProfile(disposalProfile, old.name);
       await waitForHostBoundary("file-held", "dispose");
       await writeFile(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "subagent-config-control.json"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "subagent-config-control.json"),
         JSON.stringify({ heldSessionIds: [b] }),
       );
       const beforeClosing = (await boundaryRpcReads()).filter(

@@ -1,4 +1,4 @@
-import type { ZCodeConfigOption } from "@zcode/shared";
+import type { CodezConfigOption } from "@codez/shared";
 import { describe, expect, it } from "vitest";
 import {
   mergeRecoveredTaskModelConfigOptions,
@@ -7,7 +7,7 @@ import {
   resolveRecoveredTaskModelValue,
   resolveGlmRecoveredTaskModelValue,
 } from "@/lib/taskModelRecovery.js";
-import { encodeCustomModelValue } from "@/lib/zcodeCustomModelValue.js";
+import { encodeCustomModelValue } from "@/lib/codezCustomModelValue.js";
 
 describe("task model recovery", () => {
   it("会把 task.meta.model 里的 provider/model 还原成工具栏 custom 模型值", () => {
@@ -127,7 +127,7 @@ describe("task model recovery", () => {
   });
 
   it("已有模型配置时，只补回 GLM task meta 的当前模型值", () => {
-    const currentConfigOptions: ZCodeConfigOption[] = [
+    const currentConfigOptions: CodezConfigOption[] = [
       {
         category: "model",
         currentValue: "",
@@ -173,7 +173,7 @@ describe("task model recovery", () => {
 
   it("已有模型配置已经匹配 task meta 时，不再生成新的恢复配置", () => {
     const currentModel = encodeCustomModelValue("provider-demo", "qwen-plus");
-    const currentConfigOptions: ZCodeConfigOption[] = [
+    const currentConfigOptions: CodezConfigOption[] = [
       {
         category: "model",
         currentValue: currentModel,
@@ -196,7 +196,7 @@ describe("task model recovery", () => {
   });
 
   it("历史 task 恢复期会优先保留 task 级 mode 和 thought_level 缓存", () => {
-    const currentConfigOptions: ZCodeConfigOption[] = [
+    const currentConfigOptions: CodezConfigOption[] = [
       {
         category: "model",
         currentValue: "old-model",
@@ -238,7 +238,7 @@ describe("task model recovery", () => {
   });
 
   it("历史 task meta 暂缺模型时不会清空已有 task 配置缓存", () => {
-    const currentConfigOptions: ZCodeConfigOption[] = [
+    const currentConfigOptions: CodezConfigOption[] = [
       {
         category: "mode",
         currentValue: "yolo",

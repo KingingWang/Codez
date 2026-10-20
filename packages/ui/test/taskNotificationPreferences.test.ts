@@ -25,8 +25,8 @@ describe("task notification preferences", () => {
   });
 
   it("treats notification sound as disabled when task notifications are off", async () => {
-    localStorageState.set("zcode-notification-enabled", "false");
-    localStorageState.set("zcode-notification-sound-enabled", "true");
+    localStorageState.set("codez-notification-enabled", "false");
+    localStorageState.set("codez-notification-sound-enabled", "true");
 
     const { isTaskNotificationSoundEnabled } = await import(
       "../src/lib/taskNotificationPreferences.js"
@@ -51,8 +51,8 @@ describe("task notification preferences", () => {
       value: audioConstructor,
     });
 
-    localStorageState.set("zcode-notification-enabled", "true");
-    localStorageState.set("zcode-notification-sound-enabled", "false");
+    localStorageState.set("codez-notification-enabled", "true");
+    localStorageState.set("codez-notification-sound-enabled", "false");
 
     const { playTaskNotificationSound } = await import(
       "../src/lib/taskNotificationSound.js"
@@ -82,8 +82,8 @@ describe("task notification preferences", () => {
       value: audioConstructor,
     });
 
-    localStorageState.set("zcode-notification-enabled", "true");
-    localStorageState.set("zcode-notification-sound-enabled", "true");
+    localStorageState.set("codez-notification-enabled", "true");
+    localStorageState.set("codez-notification-sound-enabled", "true");
 
     const { playTaskNotificationSound } = await import(
       "../src/lib/taskNotificationSound.js"

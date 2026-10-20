@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type {
   SkillSummary,
-  ZCodeCommand,
-  ZCodeInstalledPluginSummary,
-  ZCodePluginInfo,
-} from "@zcode/shared";
+  CodezCommand,
+  CodezInstalledPluginSummary,
+  CodezPluginInfo,
+} from "@codez/shared";
 import {
   filterPluginsByQuery,
   groupScopedSkillsBySource,
@@ -35,11 +35,11 @@ const plugins = [
     enabled: true,
     source: "official",
   },
-] as ZCodePluginInfo[];
+] as CodezPluginInfo[];
 const installations = [
   { id: "lovable@market", scope: "user" },
   { id: "docs@market", scope: "workspace" },
-] as ZCodeInstalledPluginSummary[];
+] as CodezInstalledPluginSummary[];
 const skills = [
   { id: "user", name: "user-skill", scope: "user", path: "/u" },
   { id: "workspace", name: "workspace-skill", scope: "workspace", path: "/w" },
@@ -76,12 +76,12 @@ const sameNamePlugins = [
     source: "official",
   },
   {
-    id: "zcode-cua@custom-marketplace",
-    name: "zcode-cua",
+    id: "codez-cua@custom-marketplace",
+    name: "codez-cua",
     enabled: true,
     source: "marketplace",
   },
-] as ZCodePluginInfo[];
+] as CodezPluginInfo[];
 
 describe("Plugin capability projection", () => {
   it("keeps missing package projections out of Settings groups", () => {
@@ -91,19 +91,19 @@ describe("Plugin capability projection", () => {
       enabled: true,
       source: "missing",
       packageStatus: "missing",
-    } as ZCodePluginInfo;
+    } as CodezPluginInfo;
     const installed = {
       id: "installed@market",
       name: "installed",
       enabled: true,
       source: "marketplace",
-    } as ZCodePluginInfo;
+    } as CodezPluginInfo;
     const builtIn = {
       id: "builtin@official",
       name: "builtin",
       enabled: true,
       source: "official",
-    } as ZCodePluginInfo;
+    } as CodezPluginInfo;
 
     expect(
       partitionPluginsForSettings([missing, installed, builtIn], new Set([builtIn.id])),
@@ -127,7 +127,7 @@ describe("Plugin capability projection", () => {
     const searchablePlugins = [
       { id: "lovable", name: "Lovable", marketplace: "OpenAI" },
       { id: "docs", name: "Docs Canvas", marketplace: "Cursor" },
-    ] as ZCodePluginInfo[];
+    ] as CodezPluginInfo[];
     expect(filterPluginsByQuery(searchablePlugins, "LOVA")).toEqual([searchablePlugins[0]]);
     expect(filterPluginsByQuery(searchablePlugins, "cUrSoR")).toEqual([searchablePlugins[1]]);
   });
@@ -149,11 +149,11 @@ describe("Plugin capability projection", () => {
       name: "legacy",
       enabled: true,
       enabledSource: "user",
-    } as ZCodePluginInfo;
+    } as CodezPluginInfo;
     const legacyInstallation = {
       id: legacyPlugin.id,
       scope: "workspace",
-    } as ZCodeInstalledPluginSummary;
+    } as CodezInstalledPluginSummary;
 
     expect(selectPluginsForScope([legacyPlugin], [legacyInstallation], "user")).toEqual([
       legacyPlugin,
@@ -183,7 +183,7 @@ describe("Plugin capability projection", () => {
         enabled: true,
         enabledSource: "user",
       },
-    ] as unknown as ZCodePluginInfo[];
+    ] as unknown as CodezPluginInfo[];
 
     expect(selectPluginsForScope(scopedPlugins, [], "workspace").map((item) => item.name)).toEqual([
       "workspace-root",
@@ -202,7 +202,7 @@ describe("Plugin capability projection", () => {
     const officialInstallation = {
       id: "browser@official",
       scope: "workspace",
-    } as ZCodeInstalledPluginSummary;
+    } as CodezInstalledPluginSummary;
     const installed = [...installations, officialInstallation];
 
     expect(selectBuiltInPlugins(plugins, installed)).toEqual([]);
@@ -240,7 +240,7 @@ describe("Plugin capability projection", () => {
       { id: "workspace", source: "user", location: { scope: "project" } },
       { id: "lovable", source: "plugin", pluginName: "Lovable" },
       { id: "docs", source: "plugin", pluginName: "docs" },
-    ] as ZCodeCommand[];
+    ] as CodezCommand[];
 
     expect(
       selectCommandsForScope(
@@ -273,8 +273,8 @@ describe("Plugin capability projection", () => {
         id: "custom-skill",
         name: "custom-skill",
         scope: "plugin",
-        pluginName: "zcode-cua",
-        pluginId: "zcode-cua@custom-marketplace",
+        pluginName: "codez-cua",
+        pluginId: "codez-cua@custom-marketplace",
         path: "/custom",
       },
     ] as SkillSummary[];
@@ -284,7 +284,7 @@ describe("Plugin capability projection", () => {
 
     expect(groups.map((group) => [group.id, group.label])).toEqual([
       ["plugin:computer-use@zcode-plugins-official", "computer-use"],
-      ["plugin:zcode-cua@custom-marketplace", "zcode-cua"],
+      ["plugin:codez-cua@custom-marketplace", "codez-cua"],
     ]);
     expect(groups.map((group) => group.skills[0]?.id)).toEqual(["official-skill", "custom-skill"]);
   });
@@ -300,10 +300,10 @@ describe("Plugin capability projection", () => {
       {
         id: "custom-command",
         source: "plugin",
-        pluginName: "zcode-cua",
+        pluginName: "codez-cua",
         pluginMarketplace: "custom-marketplace",
       },
-    ] as ZCodeCommand[];
+    ] as CodezCommand[];
 
     expect(
       selectCommandsForScope(commands, [sameNamePlugins[0]!], "user").map((command) => command.id),
@@ -317,7 +317,7 @@ describe("localized managed plugin search", () => {
     name: "lark-cli",
     marketplace: "official",
     description: "English description",
-  } as ZCodePluginInfo;
+  } as CodezPluginInfo;
   const item = {
     id: plugin.id,
     name: plugin.name,
@@ -359,7 +359,7 @@ it("puts official PDF, PPT, Excel and Word first in the preset group", () => {
         name,
         source: "official",
         enabled: false,
-      }) as ZCodePluginInfo,
+      }) as CodezPluginInfo,
   );
   const groups = partitionPluginsForSettings(plugins, new Set(plugins.map((plugin) => plugin.id)));
   expect(groups.builtIn.map((plugin) => plugin.name)).toEqual([

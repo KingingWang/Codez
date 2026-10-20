@@ -1,9 +1,9 @@
-import { Emitter } from "@zcode/rpc";
-import type { IZCodeAgentService, ZCodeAgentRuntimeLifecycleEvent } from "@zcode/services";
+import { Emitter } from "@codez/rpc";
+import type { ICodezAgentService, CodezAgentRuntimeLifecycleEvent } from "@codez/services";
 import type {
   SessionsIndexTopicWireCandidate,
   SessionSummary,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { describe, expect, it, vi } from "vitest";
 import { createWindowHostSessionsIndexObserver } from "../src/host/windowHostSessionsIndexObserver.js";
 
@@ -24,7 +24,7 @@ function summary(overrides: Partial<SessionSummary> = {}): SessionSummary {
 describe("WindowHostSessionsIndexObserver", () => {
   it("runtime available 在 subscribe ACK 前到达时不会递归创建第二条订阅", async () => {
     const frames = new Emitter<SessionsIndexTopicWireCandidate>();
-    const lifecycle = new Emitter<ZCodeAgentRuntimeLifecycleEvent>();
+    const lifecycle = new Emitter<CodezAgentRuntimeLifecycleEvent>();
     const subscribeSessionsIndexV4 = vi.fn(async () => {
       lifecycle.fire({
         workspaceKey: "/work/demo",
@@ -45,7 +45,7 @@ describe("WindowHostSessionsIndexObserver", () => {
       subscribeSessionsIndexV4,
       resyncSessionsIndexV4: vi.fn(),
       unsubscribeSessionsIndexV4: vi.fn(async () => undefined),
-    } as unknown as IZCodeAgentService;
+    } as unknown as ICodezAgentService;
     const observer = createWindowHostSessionsIndexObserver({
       agentService,
       target: { workspacePath: "/work/demo" },
@@ -95,7 +95,7 @@ describe("WindowHostSessionsIndexObserver", () => {
       }),
       resyncSessionsIndexV4: vi.fn(),
       unsubscribeSessionsIndexV4,
-    } as unknown as IZCodeAgentService;
+    } as unknown as ICodezAgentService;
     const observer = createWindowHostSessionsIndexObserver({
       agentService,
       target: { workspacePath: "/work/demo" },

@@ -1,14 +1,14 @@
 import {
   normalizeUnknownError,
-  ZCODE_AGENT_PROVIDER_NOT_READY_CODE,
-  type ZCodeProvider,
-  type ZCodeError,
-} from "@zcode/shared";
-import { normalizeZCodeUiError } from "@/lib/zcodeUiError.js";
+  CODEZ_AGENT_PROVIDER_NOT_READY_CODE,
+  type CodezProvider,
+  type CodezError,
+} from "@codez/shared";
+import { normalizeCodezUiError } from "@/lib/codezUiError.js";
 
 export const MODEL_CONFIG_MISSING_UI_ERROR_CODE = "model_config_missing";
 
-export type ModelConfigMissingUiError = ZCodeError & {
+export type ModelConfigMissingUiError = CodezError & {
   code: typeof MODEL_CONFIG_MISSING_UI_ERROR_CODE;
 };
 
@@ -23,13 +23,13 @@ export function buildModelConfigMissingUiError(): ModelConfigMissingUiError {
 
 export function isProviderNotReadyError(error: unknown): boolean {
   return (
-    normalizeUnknownError(error).code === ZCODE_AGENT_PROVIDER_NOT_READY_CODE
+    normalizeUnknownError(error).code === CODEZ_AGENT_PROVIDER_NOT_READY_CODE
   );
 }
 
 interface WorkspacePrepareErrorContext {
   workspacePath: string;
-  provider: ZCodeProvider;
+  provider: CodezProvider;
   reason:
     | "mount"
     | "retry"
@@ -140,8 +140,8 @@ function buildDisplayErrorInput(
 export function buildWorkspacePrepareUiError(
   err: unknown,
   context: WorkspacePrepareErrorContext,
-): ZCodeError & { detail?: string } {
-  const normalizedError = normalizeZCodeUiError(
+): CodezError & { detail?: string } {
+  const normalizedError = normalizeCodezUiError(
     buildDisplayErrorInput(err, context.displayMessage),
     {
       fallbackCode: "WORKSPACE_PREPARE_FAILED",
@@ -160,9 +160,9 @@ export function buildWorkspacePrepareUiError(
 
 export function buildCachedWorkspacePrepareUiError(
   message: string,
-  cachedError: (ZCodeError & { detail?: string }) | null | undefined,
+  cachedError: (CodezError & { detail?: string }) | null | undefined,
   context: WorkspacePrepareErrorContext,
-): ZCodeError & { detail?: string } {
+): CodezError & { detail?: string } {
   if (cachedError?.message === message) {
     // Bugfix: workspaceInit 目前只缓存纯 message；页面返回命中 failed 短路时，
     // 必须复用上一轮 prepare 的结构化 code，否则模型配置缺失会重新显示 CLI 原文。

@@ -1,9 +1,9 @@
 import { runInNewContext } from "node:vm";
 import { expect, it } from "vitest";
-import { installRewardsPageBridge, createRewardsInjectionScript } from "@zcode/shared";
+import { installRewardsPageBridge, createRewardsInjectionScript } from "@codez/shared";
 
 it("bridge 保留当前快照、通知及退订，凭据不出现在事件中", () => {
-  const window = new EventTarget() as EventTarget & { zcodeBridge: any };
+  const window = new EventTarget() as EventTarget & { codezBridge: any };
   const values = new Map<string, string>([["oauth:bigmodel:access_token", "old-account"]]);
   const context = {
     window,
@@ -15,7 +15,7 @@ it("bridge 保留当前快照、通知及退订，凭据不出现在事件中", 
   };
   runInNewContext(`(${installRewardsPageBridge.toString()})()`, context);
   expect(values.size).toBe(0);
-  const bridge = window.zcodeBridge;
+  const bridge = window.codezBridge;
   expect(bridge.getTheme()).toBeNull();
   const themes: string[] = [];
   const off = bridge.onThemeChange((value: string) => themes.push(value));
@@ -24,7 +24,7 @@ it("bridge 保留当前快照、通知及退订，凭据不出现在事件中", 
     locale: "en-US" as const,
     auth: { status: "ready" as const, provider: "zai" as const, revision: 1 },
   };
-  window.dispatchEvent(new CustomEvent("zcode-referrals-context", { detail: snapshot }));
+  window.dispatchEvent(new CustomEvent("codez-referrals-context", { detail: snapshot }));
   expect(bridge.getTheme()).toBeNull();
   expect(bridge.getAuthState()).toBeNull();
   runInNewContext(

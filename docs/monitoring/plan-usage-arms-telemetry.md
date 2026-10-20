@@ -1,6 +1,6 @@
 # Plan Usage ARMS 自定义事件
 
-ZCode 桌面端通过 ARMS custom event 补充所有 LLM request 的请求级用量看板。
+Codez 桌面端通过 ARMS custom event 补充所有 LLM request 的请求级用量看板。
 
 ## 事件口径
 
@@ -32,7 +32,7 @@ live 正文、思考或工具进展。不能用 provider/runtime TTFT 代替，�
 | `ask_mode`       | 模型请求事件中的 query source                                                                                                            |
 | `request_status` | `plan_request` 专用；`started` / `completed` / `failed` / `retry_scheduled` / `stream_stalled`                                           |
 | `request_id`     | 模型请求 id                                                                                                                              |
-| `task_id`        | ZCode task id                                                                                                                            |
+| `task_id`        | Codez task id                                                                                                                            |
 | `input_id`       | 用户输入 id                                                                                                                              |
 | `query_id`       | query id                                                                                                                                 |
 | `event_key`      | 协议事件去重键                                                                                                                           |
@@ -41,7 +41,7 @@ live 正文、思考或工具进展。不能用 provider/runtime TTFT 代替，�
 | `ttft_ms`        | `plan_ttft` 专用，首 token 延迟毫秒数                                                                                                    |
 
 `provider_id` / `model_name` 与 `chat_error_banner` 的 `provider_id` / `model_id` 共用
-`@zcode/shared` 的同一条白名单和归一实现：自定义 provider 的 id 与模型名由用户命名，原样上报会
+`@codez/shared` 的同一条白名单和归一实现：自定义 provider 的 id 与模型名由用户命名，原样上报会
 泄露私有名称并制造高基数，因此一律归一为 `custom`。白名单匹配与输出都用规范化小写 ID。
 归一只作用于上报值，不改变 `provider_id` 为空时不发事件的既有闸门，也不改变本地日志与业务的
 provider 选择。
@@ -53,7 +53,7 @@ provider 选择。
 否则内置用户会整体落入 `custom`。`model_name` 允许 `<providerId>/<modelId>` 复合值或
 `custom:<providerId>:<modelName>` 编码值，归一时先剥出裸模型 ID 再查白名单。
 
-模型白名单以 `@zcode/shared` 的官方 GLM 模型名单（`OFFICIAL_GLM_MODEL_IDS`）为来源，另附
+模型白名单以 `@codez/shared` 的官方 GLM 模型名单（`OFFICIAL_GLM_MODEL_IDS`）为来源，另附
 官方名单之外的历史内置模型；官方名单新增模型即进入白名单，不在名单内的模型写 `custom`。
 
 `provider_id=unknown` 是「协议事件没带 provider」的既有兜底桶，不并入 `custom`；该分支下

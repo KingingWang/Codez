@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 import { createElement } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { SourceServerMigrationReport } from "@zcode/shared";
+import type { SourceServerMigrationReport } from "@codez/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SourceServerMigrationReportPanel } from "../src/settings/SourceServerMigrationReportPanel.js";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     locale: "zh-CN",
     intl: {
       formatMessage: ({ id }: { id: string }) => id,

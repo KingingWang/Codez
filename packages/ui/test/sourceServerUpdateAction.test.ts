@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ISourceServerManagementService } from "@zcode/services";
+import type { ISourceServerManagementService } from "@codez/services";
 import { runSourceServerUpdate } from "@/lib/sourceServerUpdateAction.js";
 
 const profileId = "17ef20b3-622d-4a53-98c1-0cdff29f3e6d";

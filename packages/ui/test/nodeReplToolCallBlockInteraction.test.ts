@@ -1,12 +1,12 @@
 /** @vitest-environment jsdom */
 
-import type { IBroadcastService } from "@zcode/services";
+import type { IBroadcastService } from "@codez/services";
 import { createElement, type ComponentProps, type CSSProperties, type ReactNode } from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ImagePreviewDialog } from "@/components/ai-elements/image-preview-dialog.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { StoreProvider } from "@/store/StoreProvider.js";
 import { NodeReplToolCallBlock } from "@/ToolCallBlocks/renderers/node-repl.js";
 
@@ -74,7 +74,7 @@ function renderImageToolCall(source?: "browser_turn_end", imageCount = 1) {
 
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(
         StoreProvider,
@@ -123,7 +123,7 @@ describe("node repl tool interaction", () => {
 
     render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(
           StoreProvider,
@@ -241,7 +241,7 @@ describe("node repl tool interaction", () => {
 
     render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ImagePreviewDialog, {
           initialIndex: 0,
@@ -270,7 +270,7 @@ describe("node repl tool interaction", () => {
 
     render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ImagePreviewDialog, {
           initialIndex: 0,
@@ -327,7 +327,7 @@ describe("node repl tool interaction", () => {
 
     render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(ImagePreviewDialog, {
           initialIndex: 0,

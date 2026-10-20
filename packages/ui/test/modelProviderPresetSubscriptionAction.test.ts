@@ -3,11 +3,11 @@ import { createElement } from "react";
 import { render, cleanup, waitFor } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
-import { BIGMODEL_PROVIDER_ID, BUILTIN_MODEL_PROVIDER_IDS, ZAI_PROVIDER_ID } from "@zcode/shared";
+import { BIGMODEL_PROVIDER_ID, BUILTIN_MODEL_PROVIDER_IDS, ZAI_PROVIDER_ID } from "@codez/shared";
 import type {
   ProviderFamilyConnectionSelectionSettings,
   ProviderFamilyDomain,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { ProviderSettingsFormProvider } from "@/lib/providerSettingsFormTypes.js";
 
 const TEST_BIGMODEL_PROVIDER_ID = "test-bigmodel-api-provider";
@@ -59,7 +59,7 @@ let capturedDetailProps: Record<string, unknown> | null = null;
 let selectedNavItemMock: unknown = null;
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
     },
@@ -145,7 +145,7 @@ vi.mock("@/store/TabStoreProvider.js", () => ({
 }));
 
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStore: (
+  useCodezStore: (
     selector: (state: {
       user: null;
       requestLoginEntry: typeof requestLoginEntryMock;

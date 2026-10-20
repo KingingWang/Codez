@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { appSettingsSchema, type ZCodeTaskMeta } from "@zcode/shared";
+import { appSettingsSchema, type CodezTaskMeta } from "@codez/shared";
 import { createLegacySingleRootProjectService } from "#src/project/index.js";
 
 function fixture() {
@@ -18,7 +18,7 @@ function fixture() {
       workspacePath,
       title: suffix,
       updatedAt: 1,
-    }) as ZCodeTaskMeta;
+    }) as CodezTaskMeta;
   const tasks = {
     listTasks: vi.fn(async ({ workspacePath }: { workspacePath: string }) => [
       row(workspacePath, "active"),
@@ -116,7 +116,7 @@ describe("legacy single-root project adapter", () => {
         workspacePath,
         title: "active",
         updatedAt: 1,
-      } as ZCodeTaskMeta,
+      } as CodezTaskMeta,
     ]);
     const tree = await service.readTree();
     expect(tree.tasks.filter((task) => task.taskId === "/a-active")).toHaveLength(1);

@@ -9,7 +9,7 @@ import zhCN from "@/i18n/locales/zh-CN.js";
 import enUS from "@/i18n/locales/en-US.js";
 const mock = vi.hoisted(() => ({ locale: "zh-CN" }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     locale: mock.locale,
     intl: {
       formatMessage: ({ id }: { id: string }, values: Record<string, number | string> = {}) =>

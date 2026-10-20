@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { cleanup, fireEvent, render as renderUi, screen, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -10,7 +10,7 @@ afterEach(cleanup);
 const render = (ui: ReactNode) =>
   renderUi(ui, {
     wrapper: ({ children }) =>
-      createElement(ZCodeIntlProvider, { initialLocale: "en-US" }, children),
+      createElement(CodezIntlProvider, { initialLocale: "en-US" }, children),
   });
 const payload: CloudContentDialogPayload = {
   schemaVersion: 1,
@@ -46,7 +46,7 @@ describe("CloudContentDialog", () => {
             ...payload.dialog,
             hero: {
               type: "interactive_bundle",
-              runtime: "zcode-hero-sandbox-v1",
+              runtime: "codez-hero-sandbox-v1",
               resolvedUrl: "https://example.com/hero.html",
               data: {},
             },

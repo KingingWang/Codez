@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Event, ProxyChannel } from "@zcode/rpc";
+import { Event, ProxyChannel } from "@codez/rpc";
 import { useRemoteWorkspaceHistory } from "@/root/useRemoteWorkspaceHistory.js";
 import { createRoot } from "react-dom/client";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { ChatLoading } from "@/components/ai-elements/chat-loading.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import {
@@ -11,9 +11,9 @@ import {
   useOptionalProjectDirectory,
 } from "@/project-sidebar/index.js";
 import { useRootWorkspaceActions } from "@/root/useRootWorkspaceActions.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 import type { ProjectTree, ProjectSidebarProps } from "@/project-sidebar/contract.js";
-import type { IServiceAccessor } from "@zcode/services";
+import type { IServiceAccessor } from "@codez/services";
 import { attachTaskListRowActivity } from "@/v4/taskListRowActivity.js";
 import "@/styles.css";
 
@@ -78,7 +78,7 @@ const activityStore = {
       items: [
         attachTaskListRowActivity(tree.tasks[0]!, {
           phase: complete ? "completedSuccess" : "running",
-          lastActivityAt: activitySnapshot.items[0]!.__zcodeSessionActivity.lastActivityAt + 1,
+          lastActivityAt: activitySnapshot.items[0]!.__codezSessionActivity.lastActivityAt + 1,
           hasBackgroundWork: false,
         }),
       ],
@@ -112,10 +112,10 @@ const services = {
   },
   remoteProjectService: { readDirectory: async () => ({ hosts: [], entries: [] }) },
   broadcastService: { onMessage: dispose },
-  zcodeTaskService: { onDynamicWorkspaceEvent: () => dispose },
+  codezTaskService: { onDynamicWorkspaceEvent: () => dispose },
 } as unknown as IServiceAccessor;
 Object.assign(window, { __renderFixture: { services, tabStore, activityStore } });
-useZCodeSessionStore.getState().setActiveTaskId("/example", "old-session");
+useCodezSessionStore.getState().setActiveTaskId("/example", "old-session");
 const common = {
   workspacePath: "/example",
   theme,
@@ -156,7 +156,7 @@ const actions = {
     : ("desktop-continuous" as const),
   // 手机 bridge 只模拟导航完成；Renderer 仍走实际 replayable 分支。
   openMobileProjectDraft: async () => {
-    useZCodeSessionStore.getState().startDraft("/example");
+    useCodezSessionStore.getState().startDraft("/example");
   },
 };
 function Controls() {
@@ -164,7 +164,7 @@ function Controls() {
   const [refreshes, setRefreshes] = useState(0);
   const taskActivity = (
     directory.tree.tasks[0] as (typeof activitySnapshot.items)[number] | undefined
-  )?.__zcodeSessionActivity;
+  )?.__codezSessionActivity;
   return (
     <>
       {activity && (
@@ -191,7 +191,7 @@ function Controls() {
           <output data-testid="activity-version">
             {
               (directory.tree.tasks[0] as (typeof activitySnapshot.items)[number])
-                ?.__zcodeSessionActivity?.lastActivityAt
+                ?.__codezSessionActivity?.lastActivityAt
             }
           </output>
         </>
@@ -220,7 +220,7 @@ function Controls() {
 }
 function Fixture() {
   const [revision, setRevision] = useState(0);
-  const task = useZCodeSessionStore((state) => state.workspaces["/example"]?.activeTaskId);
+  const task = useCodezSessionStore((state) => state.workspaces["/example"]?.activeTaskId);
   // 模拟 Root 每轮装配导航实现；执行和侧栏均使用真实生产 hook/组件。
   const remote = useRemoteWorkspaceHistory({
     intl: actions.intl,
@@ -261,9 +261,9 @@ function Fixture() {
   );
 }
 createRoot(document.getElementById("root")!).render(
-  <ZCodeIntlProvider initialLocale={params.get("locale") === "zh-CN" ? "zh-CN" : "en-US"}>
+  <CodezIntlProvider initialLocale={params.get("locale") === "zh-CN" ? "zh-CN" : "en-US"}>
     <TooltipProvider>
       <Fixture />
     </TooltipProvider>
-  </ZCodeIntlProvider>,
+  </CodezIntlProvider>,
 );

@@ -1,8 +1,8 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { AccountProviderService, ProviderConfigMap } from "@zcode/provider";
-import { downloadZCodeBuiltinRelease } from "@zcode/provider-node";
+import { AccountProviderService, ProviderConfigMap } from "@codez/provider";
+import { downloadCodezBuiltinRelease } from "@codez/provider-node";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createProviderConfigRuntime } from "#src/model-provider/providerConfigRuntime.js";
 import { createProviderRuntimeFromConfigRuntime } from "#src/model-provider/providerRuntime.js";
@@ -21,19 +21,19 @@ async function setup(active = false) {
   const bundled = join(root, "bundled.json");
   const activePath = join(root, "active.json");
   const release = JSON.parse(
-    await readFile(new URL("../../../config/provider/zcode-builtin.json", import.meta.url), "utf8"),
+    await readFile(new URL("../../../config/provider/codez-builtin.json", import.meta.url), "utf8"),
   );
   release.revision = 1;
   await writeFile(bundled, JSON.stringify(release));
   if (active) await writeFile(activePath, JSON.stringify({ ...release, revision: 2 }));
   const download = vi.fn(async () => null);
   const configRuntime = createProviderConfigRuntime({
-    zcodeBuiltinFilePath: bundled,
-    zcodeBuiltinActiveFilePath: activePath,
+    codezBuiltinFilePath: bundled,
+    codezBuiltinActiveFilePath: activePath,
     personalFilePath: join(root, "personal.json"),
     personalPollingIntervalMs: false,
     watch: false,
-    zcodeBuiltinRemote: {
+    codezBuiltinRemote: {
       controlFilePath: join(root, "refresh.json"),
       resolveEndpointKey: () => "https://control.example.com",
       fetchRelease: download,
@@ -67,7 +67,7 @@ async function setup(active = false) {
     await rm(root, { recursive: true, force: true });
   });
   await runtime.start();
-  await configRuntime.refreshZCodeBuiltin();
+  await configRuntime.refreshCodezBuiltin();
   return {
     runtime,
     configRuntime,
@@ -99,7 +99,7 @@ describe("Builtin 远端失败不阻断有效本地配置的业务刷新", () =>
       });
     });
     fixture.download.mockImplementation(async () => {
-      await downloadZCodeBuiltinRelease({
+      await downloadCodezBuiltinRelease({
         endpointOrigin: "https://control.example.com",
         platform: "linux-x86_64",
         appVersion: "test",

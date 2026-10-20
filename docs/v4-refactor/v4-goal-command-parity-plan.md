@@ -6,7 +6,7 @@
 
 **Architecture:** Keep goal state owned by the agent/session runtime and surfaced through v4 conversation snapshots. UI parses visible slash commands at the send boundary, then routes them through `v4/command`. Running or compacting sessions keep the existing command barrier for immediate target writes, but enqueue `/goal` as a command-aware pending item and consume it only through the goal command path.
 
-**Tech Stack:** React UI in `packages/ui/src/v4`, protocol schemas in `packages/shared/src/zcode-protocol-v4`, bootstrap command handlers in `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4`, core queue/runtime contracts in `apps/zcode-cli/packages/contracts` and `apps/zcode-cli/packages/core`.
+**Tech Stack:** React UI in `packages/ui/src/v4`, protocol schemas in `packages/shared/src/codez-protocol-v4`, bootstrap command handlers in `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4`, core queue/runtime contracts in `apps/codez-cli/packages/contracts` and `apps/codez-cli/packages/core`.
 
 ## Scope
 
@@ -25,9 +25,9 @@ Current v4 source of truth:
 
 - `docs/conversation-protocol-declaration.md`: `/goal xxx` sets or updates the session goal; running and compacting `/goal xxx` append to the queue.
 - `docs/testing/conversation-session-goal-specific-coverage-matrix.md`: G0/G1/G2 define completed replacement, running queue, queue edit/delete/reorder, send-now, and compact interaction expectations.
-- `packages/shared/src/zcode-protocol-v4/command.ts`: v4 currently has `sendGoalCommand({ text, heldQueueDisposition? })` and `resumeGoal({})`.
-- `packages/shared/src/zcode-protocol-v4/snapshot.ts`: queue items already have `kind: "sendText" | "sendGoalCommand"`, with a comment saying `/goal` stores the user original.
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/goal-compact.ts`: `sendGoalCommand` already implements set/replace by reading existing target, but rejects active turns.
+- `packages/shared/src/codez-protocol-v4/command.ts`: v4 currently has `sendGoalCommand({ text, heldQueueDisposition? })` and `resumeGoal({})`.
+- `packages/shared/src/codez-protocol-v4/snapshot.ts`: queue items already have `kind: "sendText" | "sendGoalCommand"`, with a comment saying `/goal` stores the user original.
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/commands/handlers/goal-compact.ts`: `sendGoalCommand` already implements set/replace by reading existing target, but rejects active turns.
 - `packages/ui/src/v4/SessionPane.tsx`: slash parsing only runs when `sessionId` exists, so draft-first `/goal` falls through to `createSession(firstInput)` + `sendText`.
 
 z-code-2 evidence:

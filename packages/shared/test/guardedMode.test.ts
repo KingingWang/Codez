@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  getZCodeAgentAvailableModes,
-  getZCodeAgentModeSelectOptions,
-  normalizeAvailableZCodeMode,
-} from "../src/zcode-agent-model-state.js";
-import { submissionModeSchema } from "../src/zcode-protocol-v4/submission.js";
-import { zcodeSessionModeSchema } from "../src/zcode-protocol-legacy-types.js";
+  getCodezAgentAvailableModes,
+  getCodezAgentModeSelectOptions,
+  normalizeAvailableCodezMode,
+} from "../src/codez-agent-model-state.js";
+import { submissionModeSchema } from "../src/codez-protocol-v4/submission.js";
+import { codezSessionModeSchema } from "../src/codez-protocol-legacy-types.js";
 import { executionStateSchema, resolveExecutionState } from "../src/execution-state.js";
 
 describe("guarded wire and mode catalog", () => {
@@ -19,17 +19,17 @@ describe("guarded wire and mode catalog", () => {
   });
   it("round trips the opt-in value without changing the default", () => {
     expect(submissionModeSchema.parse("guarded")).toBe("guarded");
-    expect(zcodeSessionModeSchema.parse("guarded")).toBe("guarded");
-    expect(normalizeAvailableZCodeMode("guarded")).toBe("guarded");
-    const ids = getZCodeAgentAvailableModes().map((mode) => mode.id);
+    expect(codezSessionModeSchema.parse("guarded")).toBe("guarded");
+    expect(normalizeAvailableCodezMode("guarded")).toBe("guarded");
+    const ids = getCodezAgentAvailableModes().map((mode) => mode.id);
     expect(ids).toEqual(["build", "guarded", "plan", "yolo"]);
-    expect(getZCodeAgentModeSelectOptions().map((option) => option.value)).toEqual(ids);
+    expect(getCodezAgentModeSelectOptions().map((option) => option.value)).toEqual(ids);
     expect(submissionModeSchema.safeParse("unknown").success).toBe(false);
   });
   it("keeps historical edit valid without advertising it as a new choice", () => {
     expect(submissionModeSchema.parse("edit")).toBe("edit");
-    expect(zcodeSessionModeSchema.parse("edit")).toBe("edit");
-    expect(normalizeAvailableZCodeMode("edit")).toBe("edit");
-    expect(getZCodeAgentAvailableModes().some((mode) => mode.id === "edit")).toBe(false);
+    expect(codezSessionModeSchema.parse("edit")).toBe("edit");
+    expect(normalizeAvailableCodezMode("edit")).toBe("edit");
+    expect(getCodezAgentAvailableModes().some((mode) => mode.id === "edit")).toBe(false);
   });
 });

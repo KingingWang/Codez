@@ -1,7 +1,7 @@
 import { execFile, execFileSync } from "node:child_process";
 
-const E2E_RUN_ID_ARG_NAME = "--zcode-e2e-run-id";
-const E2E_HOME_ARG_NAME = "--zcode-e2e-home";
+const E2E_RUN_ID_ARG_NAME = "--codez-e2e-run-id";
+const E2E_HOME_ARG_NAME = "--codez-e2e-home";
 const E2E_PROCESS_SCAN_MAX_BUFFER_BYTES = 20 * 1024 * 1024;
 
 export interface E2EProcessInfo {
@@ -142,7 +142,7 @@ export function collectE2EProcessTreePids(
       ) {
         break;
       }
-      // Bug 根因：macOS 会把 Electron main 的命令行收敛成 `ZCode E2E`，
+      // Bug 根因：macOS 会把 Electron main 的命令行收敛成 `Codez E2E`，
       // ChromeDriver 也不携带 appArgs；只有 renderer/utility 还保留当前 run 的
       // profile/HOME。精确命中后代后必须反向补齐父链，否则只能杀 renderer，
       // markerless main/ChromeDriver 会跨 worker 存活并持续重建窗口。
@@ -171,7 +171,7 @@ function isE2EProcessAncestorCandidate(command: string, includeChromeDriverAnces
     (includeChromeDriverAncestors &&
       /(?:^|\/)chromedriver(?:\.exe)?(?:\s|$)/u.test(normalizedCommand)) ||
     /(?:^|\/)electron(?:\.exe)?(?:\s|$)/u.test(normalizedCommand) ||
-    /(?:^|\/)zcode e2e(?:\.exe)?(?:\s|$)/u.test(normalizedCommand)
+    /(?:^|\/)codez e2e(?:\.exe)?(?:\s|$)/u.test(normalizedCommand)
   );
 }
 

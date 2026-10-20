@@ -1,7 +1,7 @@
 import { EventEmitter } from "node:events";
 import { describe, expect, it, vi } from "vitest";
 import { utilityProcess as electronUtilityProcess } from "electron";
-import { hostCronRunMessageSchema, hostOffPeakRunMessageSchema } from "@zcode/shared";
+import { hostCronRunMessageSchema, hostOffPeakRunMessageSchema } from "@codez/shared";
 import { spawnCronScheduler } from "../src/main/desktopCronScheduler.js";
 
 vi.mock("electron", () => ({
@@ -12,7 +12,7 @@ vi.mock("electron", () => ({
 
 vi.mock("../src/main/desktopRuntimeEnv.js", () => ({
   buildHostProcessEnv: vi.fn(() => ({})),
-  schedulerModulePath: "/tmp/zcode-scheduler.js",
+  schedulerModulePath: "/tmp/codez-scheduler.js",
 }));
 
 class MockSchedulerProcess extends EventEmitter {

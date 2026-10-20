@@ -2,28 +2,28 @@
 
 > **状态：历史规划，未实现。** 本文拟议的 `automationSurface` / `browser_use` 模块在当前分支不存在，
 > 不可据此判断现行浏览器自动化能力。当前产品 CUA 权限边界见
-> [ZCode CUA Permission Broker](../../cua-permission-broker/zcode-cua-permission-broker.md)。
+> [Codez CUA Permission Broker](../../cua-permission-broker/codez-cua-permission-broker.md)。
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 让 zcode-cli 内模型可以在受控开关开启后，通过内置 `browser_use` session-injected MCP 操作 z-code 桌面内置浏览器，并为未来 iOS Simulator、Android Emulator 等可视化自动化实例复用同一套 session/instance 管理结构。
+**Goal:** 让 codez-cli 内模型可以在受控开关开启后，通过内置 `browser_use` session-injected MCP 操作 z-code 桌面内置浏览器，并为未来 iOS Simulator、Android Emulator 等可视化自动化实例复用同一套 session/instance 管理结构。
 
-**Architecture:** 采用内置 session-injected MCP，而不是普通 official plugin。Host/service 层按 ZCode task/session 创建 `AutomationSurfaceSession`，按需注入 per-session loopback HTTP MCP；桌面 main 只承载 Electron WebContents/platform provider，UI 负责 retained/visible view 渲染。`browser` 是第一个 `AutomationSurfaceProvider`，未来 `ios-simulator`、`android-emulator` 只新增 provider 与 tool adapter，不重做 session 管理。
+**Architecture:** 采用内置 session-injected MCP，而不是普通 official plugin。Host/service 层按 Codez task/session 创建 `AutomationSurfaceSession`，按需注入 per-session loopback HTTP MCP；桌面 main 只承载 Electron WebContents/platform provider，UI 负责 retained/visible view 渲染。`browser` 是第一个 `AutomationSurfaceProvider`，未来 `ios-simulator`、`android-emulator` 只新增 provider 与 tool adapter，不重做 session 管理。
 
-**Tech Stack:** TypeScript, Electron webview, React, Zustand, zod, ZCode Protocol, host/main postMessage bridge, zcode-cli HTTP MCP transport, Vitest, WebdriverIO/Electron e2e.
+**Tech Stack:** TypeScript, Electron webview, React, Zustand, zod, Codez Protocol, host/main postMessage bridge, codez-cli HTTP MCP transport, Vitest, WebdriverIO/Electron e2e.
 
 ---
 
 ## 已确定设计
 
 1. `browser_use` 是内置 session-injected MCP，但必须有开关：
-   - `AppSettings.automationSurface.browserUse.enabled` 控制是否给新建/恢复的 ZCode session 注入内置 MCP。
+   - `AppSettings.automationSurface.browserUse.enabled` 控制是否给新建/恢复的 Codez session 注入内置 MCP。
    - `AppSettings.automationSurface.browserUse.autoOpenOnToolCall` 控制 tool call 是否自动把对应 view 展示到 side pane。
-   - 初始 rollout 默认 `enabled=false`、`autoOpenOnToolCall=true`；开发/测试可用 `ZCODE_BROWSER_USE_MCP=1` 强制开启，用 `ZCODE_BROWSER_USE_MCP=0` 强制关闭。
+   - 初始 rollout 默认 `enabled=false`、`autoOpenOnToolCall=true`；开发/测试可用 `CODEZ_BROWSER_USE_MCP=1` 强制开启，用 `CODEZ_BROWSER_USE_MCP=0` 强制关闭。
    - 关闭时不启动 MCP HTTP server、不创建 automation instance、不暴露 `browser_use` tool。
 
 2. 跨 session 管理必须通用化：
-   - 一个 ZCode task/session 对应一个 `AutomationSurfaceSession`。
+   - 一个 Codez task/session 对应一个 `AutomationSurfaceSession`。
    - 一个 `AutomationSurfaceSession` 可以挂多个 `AutomationSurfaceInstance`，当前只挂 `kind="browser"`，未来可以挂 `kind="ios-simulator"` / `kind="android-emulator"`。
    - 隔离 key 必须包含 `workspaceKey = workspaceIdentity?.trim() || workspacePath`、`taskId/sessionId`、`surface kind` 和 `instanceId`，不能复用当前 human browser 的 workspace 级 side pane memory。
 
@@ -33,8 +33,8 @@
 
 ## 关键边界
 
-- `Main` 只做平台调度：窗口聚焦、WebContents attach、webview preload 放行、截图和 provider command dispatch。它不拥有 ZCode task/session、stream、queue、snapshot 业务状态。
-- `Host/services` 拥有 automation session registry、feature policy、MCP server 生命周期、权限摘要、workspace identity 隔离和 ZCode Protocol MCP 注入。
+- `Main` 只做平台调度：窗口聚焦、WebContents attach、webview preload 放行、截图和 provider command dispatch。它不拥有 Codez task/session、stream、queue、snapshot 业务状态。
+- `Host/services` 拥有 automation session registry、feature policy、MCP server 生命周期、权限摘要、workspace identity 隔离和 Codez Protocol MCP 注入。
 - `UI` 不直接调用 Repo，不直接接触 Electron WebContents；UI 通过 `IPlatformService`/preload bridge 渲染 retained view、attach webview、订阅 platform event。
 - Desktop 保持 `desktop-continuous` 主链路；mobile `/remote` 保持 `web-remote-replayable`，只通过 shared-host attachment 使用桌面已有 host，不启动独立 browser/simulator runtime。
 - 日志遵守现有规范：UI 用 `packages/ui/src/logger.ts`；services 用 `createServiceLogger(scope)`；高频 command/event trace 用 `debug`，生命周期/开关决策用 `info`。
@@ -46,7 +46,7 @@
 - z-code 已有 human Browser side pane：`packages/ui/src/EmbeddedBrowserPane.tsx` + `packages/ui/src/EmbeddedBrowserPaneParts.tsx`。
 - 当前 Browser side pane memory 是 workspace 级共享，不适合直接承载 task/session-scoped automation instance。
 - `packages/desktop/src/main/desktopWindowChrome.ts` 当前会删除所有 webview preload 并强制 sandbox；automation webview 必须做 partition-scoped 例外。
-- ZCode app/server create/resume schema 尚未完整贯通 UI/host 注入的 MCP servers。
+- Codez app/server create/resume schema 尚未完整贯通 UI/host 注入的 MCP servers。
 - z-ai-pc 的 browser runtime 证明了方向可行：`BrowserRuntime` 接口每个方法带 `sessionID`，desktop runtime 内部 `Map<string, BrowserSession>`，MCP server 是 per-session loopback HTTP。
 - Browser Use 不能按普通 MCP plugin 处理：需要按当前 session/turn 过滤 backend，并把 session/turn metadata 注入每个 browser backend request；UI webview 按 conversation/tab 保留。
 
@@ -62,10 +62,10 @@
   - `AppSettings` 增加 `automationSurface.browserUse.enabled` 和 `autoOpenOnToolCall`。
 - Modify: `packages/shared/src/validationAppSettings.ts`
   - 增加 settings schema/patch schema，默认关闭 injection。
-- Modify: `packages/shared/src/zcode-protocol/index.ts`
-  - `zcodeSessionCreateParamsSchema` / `zcodeSessionResumeParamsSchema` 增加可选 `mcpServers`。
+- Modify: `packages/shared/src/codez-protocol/index.ts`
+  - `codezSessionCreateParamsSchema` / `codezSessionResumeParamsSchema` 增加可选 `mcpServers`。
 - Modify: `packages/shared/src/mcp.ts`
-  - 暴露 HTTP MCP server schema，供 ZCode Protocol runtime 校验。
+  - 暴露 HTTP MCP server schema，供 Codez Protocol runtime 校验。
 - Modify: `packages/shared/src/channels.ts`
   - 增加 renderer/main platform channels 与 host/main automation request/response message types。
 - Modify: `packages/shared/src/platform.ts`
@@ -93,18 +93,18 @@
   - 暴露 `automationSurfaceService`。
 - Modify: `packages/services/src/index.ts`
   - 导出 service factory 和类型。
-- Modify: `packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts`
-  - create/resume 前按 feature policy 准备内置 MCP servers，并随 ZCode Protocol params 注入。
-- Modify: `packages/services/src/session/zcodeTaskService.ts`
-  - 保持 `mcpServers?: ZCodeAgentMcpServer[]` contract，并补中文注释说明内置 MCP 只能由 host 注入。
+- Modify: `packages/services/src/codez-agent/codezTaskServiceAdapter.ts`
+  - create/resume 前按 feature policy 准备内置 MCP servers，并随 Codez Protocol params 注入。
+- Modify: `packages/services/src/session/codezTaskService.ts`
+  - 保持 `mcpServers?: CodezAgentMcpServer[]` contract，并补中文注释说明内置 MCP 只能由 host 注入。
 
-### zcode-cli Runtime
+### codez-cli Runtime
 
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/server-operations.ts`
   - 接收 `mcpServers` 并合并进 runtimeConfig。
-- Modify: `apps/zcode-cli/packages/bootstrap/src/app/runtime-config.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/app/runtime-config.ts`
   - MCP 合并顺序固定为 `plugin/config < explicit injected`，保证内置 per-session server 优先。
-- Test: `apps/zcode-cli/packages/bootstrap/tests/zcode-protocol-session-mcp.test.ts`
+- Test: `apps/codez-cli/packages/bootstrap/tests/codez-protocol-session-mcp.test.ts`
   - 覆盖 create/resume 注入 HTTP MCP。
 
 ### Desktop Main / Platform
@@ -128,7 +128,7 @@
 - Modify: `packages/desktop/src/main/index.ts`
   - 创建 automation surface runtime 并注入 host process / IPC handlers。
 - Modify: `packages/desktop/src/preload/index.ts`
-  - 暴露 `window.zcode.automationSurface.*` 给 renderer。
+  - 暴露 `window.codez.automationSurface.*` 给 renderer。
 - Modify: `packages/desktop/src/renderer/src/main.tsx`
   - `desktopPlatform` 实现 automation surface API。
 
@@ -264,7 +264,7 @@ In `packages/shared/src/protocol.ts`, add:
 ```ts
 export interface AutomationSurfaceSettings {
   browserUse?: {
-    /** 是否给 ZCode session 注入内置 browser_use MCP。 */
+    /** 是否给 Codez session 注入内置 browser_use MCP。 */
     enabled?: boolean;
     /** tool call 触发时是否自动展开对应可视化实例。 */
     autoOpenOnToolCall?: boolean;
@@ -318,7 +318,7 @@ export type AutomationSurfaceClientMode = z.infer<typeof automationSurfaceClient
 export const automationSurfaceSessionRefSchema = z
   .object({
     surfaceSessionId: z.string().min(1),
-    zcodeSessionId: z.string().min(1),
+    codezSessionId: z.string().min(1),
     taskId: z.string().min(1),
     workspacePath: z.string().min(1),
     workspaceIdentity: z.string().optional(),
@@ -393,8 +393,8 @@ import { z } from "zod";
 
 export const BROWSER_USE_MCP_SERVER_NAME = "browser_use";
 export const BROWSER_USE_MCP_TOOL_NAME = "browser";
-export const BROWSER_USE_MCP_TOKEN_HEADER = "X-ZCode-Browser-MCP-Token";
-export const BROWSER_USE_PARTITION_HINT_PREFIX = "zcode-browser-use:";
+export const BROWSER_USE_MCP_TOKEN_HEADER = "X-Codez-Browser-MCP-Token";
+export const BROWSER_USE_PARTITION_HINT_PREFIX = "codez-browser-use:";
 
 export const browserUseActionSchema = z.enum([
   "open",
@@ -477,18 +477,18 @@ git commit -m "feat: add automation surface settings and contracts"
 
 ---
 
-## Task 2: 打通 ZCode Protocol 的 injected MCP server 链路
+## Task 2: 打通 Codez Protocol 的 injected MCP server 链路
 
 **Files:**
 - Modify: `packages/shared/src/mcp.ts`
-- Modify: `packages/shared/src/zcode-protocol/index.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/app/runtime-config.ts`
-- Test: `apps/zcode-cli/packages/bootstrap/tests/zcode-protocol-session-mcp.test.ts`
+- Modify: `packages/shared/src/codez-protocol/index.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/server-operations.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/app/runtime-config.ts`
+- Test: `apps/codez-cli/packages/bootstrap/tests/codez-protocol-session-mcp.test.ts`
 
 - [ ] **Step 1: Add failing bootstrap test**
 
-Create `apps/zcode-cli/packages/bootstrap/tests/zcode-protocol-session-mcp.test.ts` with a create/resume operation fixture that includes:
+Create `apps/codez-cli/packages/bootstrap/tests/codez-protocol-session-mcp.test.ts` with a create/resume operation fixture that includes:
 
 ```ts
 const mcpServers = [
@@ -496,7 +496,7 @@ const mcpServers = [
     name: "browser_use",
     type: "http" as const,
     url: "http://127.0.0.1:43210/mcp",
-    headers: [{ name: "X-ZCode-Browser-MCP-Token", value: "secret" }],
+    headers: [{ name: "X-Codez-Browser-MCP-Token", value: "secret" }],
   },
 ];
 ```
@@ -507,14 +507,14 @@ Assert runtime config contains:
 expect(runtimeConfig.mcp?.servers.browser_use).toMatchObject({
   type: "http",
   url: "http://127.0.0.1:43210/mcp",
-  headers: { "X-ZCode-Browser-MCP-Token": "secret" },
+  headers: { "X-Codez-Browser-MCP-Token": "secret" },
 });
 ```
 
 Run:
 
 ```bash
-pnpm vitest run apps/zcode-cli/packages/bootstrap/tests/zcode-protocol-session-mcp.test.ts --runInBand
+pnpm vitest run apps/codez-cli/packages/bootstrap/tests/codez-protocol-session-mcp.test.ts --runInBand
 ```
 
 Expected: FAIL because create/resume params do not accept `mcpServers`.
@@ -524,16 +524,16 @@ Expected: FAIL because create/resume params do not accept `mcpServers`.
 In `packages/shared/src/mcp.ts`, add/export a zod schema for stdio/http/sse MCP servers. For HTTP:
 
 ```ts
-export const zcodeAgentMcpHeaderSchema = z.object({
+export const codezAgentMcpHeaderSchema = z.object({
   name: z.string().min(1),
   value: z.string(),
 });
 
-export const zcodeAgentHttpMcpServerSchema = z.object({
+export const codezAgentHttpMcpServerSchema = z.object({
   name: z.string().min(1),
   type: z.literal("http"),
   url: z.string().url(),
-  headers: z.array(zcodeAgentMcpHeaderSchema).optional(),
+  headers: z.array(codezAgentMcpHeaderSchema).optional(),
   timeoutMs: z.number().int().positive().optional(),
   enabled: z.boolean().optional(),
 });
@@ -541,19 +541,19 @@ export const zcodeAgentHttpMcpServerSchema = z.object({
 
 Include existing stdio/sse shapes if they already exist; do not duplicate type names.
 
-- [ ] **Step 3: Extend ZCode Protocol schemas**
+- [ ] **Step 3: Extend Codez Protocol schemas**
 
-In `packages/shared/src/zcode-protocol/index.ts`, add:
+In `packages/shared/src/codez-protocol/index.ts`, add:
 
 ```ts
-mcpServers: z.array(zcodeAgentMcpServerSchema).optional(),
+mcpServers: z.array(codezAgentMcpServerSchema).optional(),
 ```
 
-to both `zcodeSessionCreateParamsSchema` and `zcodeSessionResumeParamsSchema`.
+to both `codezSessionCreateParamsSchema` and `codezSessionResumeParamsSchema`.
 
 - [ ] **Step 4: Merge injected MCP into runtime config**
 
-In `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts`, convert array headers to runtime config object:
+In `apps/codez-cli/packages/bootstrap/src/codez-protocol/server-operations.ts`, convert array headers to runtime config object:
 
 ```ts
 function headerArrayToRecord(headers: { name: string; value: string }[] | undefined) {
@@ -563,7 +563,7 @@ function headerArrayToRecord(headers: { name: string; value: string }[] | undefi
 
 Then merge into runtime config.
 
-In `apps/zcode-cli/packages/bootstrap/src/app/runtime-config.ts`, enforce:
+In `apps/codez-cli/packages/bootstrap/src/app/runtime-config.ts`, enforce:
 
 ```ts
 // 内置 session-injected MCP 必须最后合并，避免被用户全局 MCP 配置覆盖 token/url。
@@ -579,7 +579,7 @@ const mergedMcpServers = {
 Run:
 
 ```bash
-pnpm vitest run apps/zcode-cli/packages/bootstrap/tests/zcode-protocol-session-mcp.test.ts --runInBand
+pnpm vitest run apps/codez-cli/packages/bootstrap/tests/codez-protocol-session-mcp.test.ts --runInBand
 ```
 
 Expected: PASS.
@@ -587,8 +587,8 @@ Expected: PASS.
 Commit:
 
 ```bash
-git add packages/shared/src/mcp.ts packages/shared/src/zcode-protocol/index.ts apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts apps/zcode-cli/packages/bootstrap/src/app/runtime-config.ts apps/zcode-cli/packages/bootstrap/tests/zcode-protocol-session-mcp.test.ts
-git commit -m "feat: support injected mcp servers in zcode protocol"
+git add packages/shared/src/mcp.ts packages/shared/src/codez-protocol/index.ts apps/codez-cli/packages/bootstrap/src/codez-protocol/server-operations.ts apps/codez-cli/packages/bootstrap/src/app/runtime-config.ts apps/codez-cli/packages/bootstrap/tests/codez-protocol-session-mcp.test.ts
+git commit -m "feat: support injected mcp servers in codez protocol"
 ```
 
 ---
@@ -624,14 +624,14 @@ describe("automation surface feature policy", () => {
   it("lets env force-enable browser_use for dev and tests", () => {
     expect(resolveAutomationSurfaceFeaturePolicy({
       settings: {},
-      env: { ZCODE_BROWSER_USE_MCP: "1" },
+      env: { CODEZ_BROWSER_USE_MCP: "1" },
     }).browserUse.enabled).toBe(true);
   });
 
   it("lets env force-disable browser_use", () => {
     expect(resolveAutomationSurfaceFeaturePolicy({
       settings: { automationSurface: { browserUse: { enabled: true } } },
-      env: { ZCODE_BROWSER_USE_MCP: "0" },
+      env: { CODEZ_BROWSER_USE_MCP: "0" },
     }).browserUse.enabled).toBe(false);
   });
 });
@@ -642,7 +642,7 @@ describe("automation surface feature policy", () => {
 Create `packages/services/src/automation-surface/automationSurfaceFeaturePolicy.ts`:
 
 ```ts
-import type { AppSettings } from "@zcode/shared";
+import type { AppSettings } from "@codez/shared";
 
 export interface AutomationSurfaceFeaturePolicy {
   browserUse: {
@@ -657,7 +657,7 @@ export function resolveAutomationSurfaceFeaturePolicy(input: {
   env: Record<string, string | undefined>;
   platformSupported?: boolean;
 }): AutomationSurfaceFeaturePolicy {
-  const forced = input.env.ZCODE_BROWSER_USE_MCP;
+  const forced = input.env.CODEZ_BROWSER_USE_MCP;
   const browserUse = input.settings.automationSurface?.browserUse;
   const platformSupported = input.platformSupported ?? true;
 
@@ -686,7 +686,7 @@ Create `packages/services/src/automation-surface/automationSurface.ts`:
 
 ```ts
 import { createServiceDescriptor } from "../collection.js";
-import type { AutomationSurfaceInstanceRef, AutomationSurfaceSessionRef } from "@zcode/shared";
+import type { AutomationSurfaceInstanceRef, AutomationSurfaceSessionRef } from "@codez/shared";
 
 export interface PrepareAutomationSurfaceSessionResult {
   mcpServers: Array<{
@@ -745,7 +745,7 @@ Add timeout default `30_000ms` and `debug` logs only.
 Create `automationSurfaceMcpServer.ts` modeled after z-ai-pc's per-session server:
 
 - bind to `127.0.0.1` port `0`
-- require `X-ZCode-Browser-MCP-Token`
+- require `X-Codez-Browser-MCP-Token`
 - support `initialize`, `tools/list`, `tools/call`, `ping`
 - expose one tool: `{ name: "browser", title: "Browser Use" }`
 - timeout `30_000ms`
@@ -813,7 +813,7 @@ AutomationSurfacePlatformResponse: "automation-surface-platform-response",
 
 to `HostMessageTypes`.
 
-Add comments in Chinese explaining these are host/main platform dispatch messages and do not carry ZCode stream state.
+Add comments in Chinese explaining these are host/main platform dispatch messages and do not carry Codez stream state.
 
 - [ ] **Step 2: Add desktop runtime tests**
 
@@ -828,11 +828,11 @@ import {
 
 describe("automation surface desktop security", () => {
   it("only parses dedicated partition hints", () => {
-    expect(parseAutomationSurfacePartitionHint("zcode-browser-use:abc")).toEqual({
+    expect(parseAutomationSurfacePartitionHint("codez-browser-use:abc")).toEqual({
       kind: "browser",
       instanceId: "abc",
     });
-    expect(parseAutomationSurfacePartitionHint("persist:zcode-embedded-browser")).toBeNull();
+    expect(parseAutomationSurfacePartitionHint("persist:codez-embedded-browser")).toBeNull();
   });
 
   it("blocks local file and script navigation for browser provider", () => {
@@ -849,7 +849,7 @@ describe("automation surface desktop security", () => {
 Create `packages/desktop/src/main/automationSurface/security.ts`:
 
 ```ts
-import { BROWSER_USE_PARTITION_HINT_PREFIX } from "@zcode/shared";
+import { BROWSER_USE_PARTITION_HINT_PREFIX } from "@codez/shared";
 
 export function parseAutomationSurfacePartitionHint(raw: string | undefined) {
   if (!raw?.startsWith(BROWSER_USE_PARTITION_HINT_PREFIX)) {
@@ -879,7 +879,7 @@ Create `packages/desktop/src/main/automationSurface/runtime.ts`:
 - dispatch `kind="browser"` to browser provider once Task 5 lands
 - emit events to renderer via platform channel and to host via `AutomationSurfacePlatformEvent`
 
-Do not import services or ZCode session modules.
+Do not import services or Codez session modules.
 
 - [ ] **Step 5: Route host requests in main**
 
@@ -960,7 +960,7 @@ export function listInteractiveElements(root: ParentNode = document): Element[] 
 }
 ```
 
-The preload listens for `zcode:automation-surface:browser-call`, executes `snapshot/click/fill/type/press/wait/get`, and replies with `zcode:automation-surface:browser-reply`.
+The preload listens for `codez:automation-surface:browser-call`, executes `snapshot/click/fill/type/press/wait/get`, and replies with `codez:automation-surface:browser-reply`.
 
 - [ ] **Step 3: Add controlled preload exception**
 
@@ -1073,7 +1073,7 @@ Create `BrowserAutomationPane.tsx` by extracting reusable parts from `EmbeddedBr
 
 - [ ] **Step 5: Wire platform preload/web fallback**
 
-Expose `window.zcode.automationSurface` in desktop preload and map through `desktopPlatform`.
+Expose `window.codez.automationSurface` in desktop preload and map through `desktopPlatform`.
 
 In `packages/web/src/main.tsx`, return unsupported:
 
@@ -1110,24 +1110,24 @@ git commit -m "feat: render retained automation surface views"
 
 ---
 
-## Task 7: 在 ZCode session create/resume 前注入 browser_use MCP
+## Task 7: 在 Codez session create/resume 前注入 browser_use MCP
 
 **Files:**
-- Modify: `packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts`
-- Modify: `packages/services/src/session/zcodeTaskService.ts`
-- Modify: `packages/ui/src/lib/zcodeSessionPromptControl.ts`
-- Test: `packages/services/test/zcodeTaskBrowserUseInjection.test.ts`
-- Test: `packages/ui/test/zcodeSessionPromptControl.test.ts`
+- Modify: `packages/services/src/codez-agent/codezTaskServiceAdapter.ts`
+- Modify: `packages/services/src/session/codezTaskService.ts`
+- Modify: `packages/ui/src/lib/codezSessionPromptControl.ts`
+- Test: `packages/services/test/codezTaskBrowserUseInjection.test.ts`
+- Test: `packages/ui/test/codezSessionPromptControl.test.ts`
 
 - [ ] **Step 1: Add failing service test**
 
-Create `packages/services/test/zcodeTaskBrowserUseInjection.test.ts` by copying these existing helper functions from `packages/services/test/zcodeLegacyTaskCompatTaskIndex.test.ts`: `useTempDataBaseDir()`, `makeSnapshot()`, and `createAgentMock()`. The test constructs `createZCodeTaskServiceAdapter()` with a fake `automationSurfaceService`, calls `service.createTask()`, and asserts the injected MCP server reaches `zcodeAgentService.createSession()`.
+Create `packages/services/test/codezTaskBrowserUseInjection.test.ts` by copying these existing helper functions from `packages/services/test/codezLegacyTaskCompatTaskIndex.test.ts`: `useTempDataBaseDir()`, `makeSnapshot()`, and `createAgentMock()`. The test constructs `createCodezTaskServiceAdapter()` with a fake `automationSurfaceService`, calls `service.createTask()`, and asserts the injected MCP server reaches `codezAgentService.createSession()`.
 
 ```ts
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { setDataBaseDir } from "../src/paths.js";
-import { createZCodeTaskServiceAdapter } from "../src/zcode-agent/zcodeTaskServiceAdapter.js";
-import { createZCodeTaskIndexSyncer } from "../src/zcode-agent/zcodeTaskIndexSyncer.js";
+import { createCodezTaskServiceAdapter } from "../src/codez-agent/codezTaskServiceAdapter.js";
+import { createCodezTaskIndexSyncer } from "../src/codez-agent/codezTaskIndexSyncer.js";
 import { TaskIndexRepo } from "../src/session/taskIndexRepo.js";
 
 afterEach(() => {
@@ -1143,10 +1143,10 @@ describe("browser_use MCP injection", () => {
       workspaceIdentity: "ssh://host/repo",
     }));
     const taskIndexRepo = new TaskIndexRepo();
-    const { agent: zcodeAgentService } = createAgentMock();
-    vi.mocked(zcodeAgentService.createSession).mockImplementation(createSession);
-    const taskIndexSyncer = createZCodeTaskIndexSyncer({
-      agentService: zcodeAgentService,
+    const { agent: codezAgentService } = createAgentMock();
+    vi.mocked(codezAgentService.createSession).mockImplementation(createSession);
+    const taskIndexSyncer = createCodezTaskIndexSyncer({
+      agentService: codezAgentService,
       taskIndexRepo,
     });
     const automationSurfaceService = {
@@ -1155,14 +1155,14 @@ describe("browser_use MCP injection", () => {
           name: "browser_use",
           type: "http" as const,
           url: "http://127.0.0.1:4567/mcp",
-          headers: [{ name: "X-ZCode-Browser-MCP-Token", value: "secret" }],
+          headers: [{ name: "X-Codez-Browser-MCP-Token", value: "secret" }],
         }],
         instances: [],
       })),
     };
 
-    const service = createZCodeTaskServiceAdapter({
-      zcodeAgentService,
+    const service = createCodezTaskServiceAdapter({
+      codezAgentService,
       taskIndexRepo,
       taskIndexSyncer,
       automationSurfaceService,
@@ -1197,7 +1197,7 @@ describe("browser_use MCP injection", () => {
 
 - [ ] **Step 2: Inject in create/resume path**
 
-In `zcodeTaskServiceAdapter.ts`, before protocol create/resume:
+In `codezTaskServiceAdapter.ts`, before protocol create/resume:
 
 ```ts
 const surfaceSessionId = buildAutomationSurfaceSessionId({
@@ -1208,7 +1208,7 @@ const surfaceSessionId = buildAutomationSurfaceSessionId({
 const automation = await automationSurfaceService.prepareSession({
   session: {
     surfaceSessionId,
-    zcodeSessionId: params.taskId,
+    codezSessionId: params.taskId,
     taskId: params.taskId,
     workspacePath: params.workspacePath,
     workspaceIdentity: params.workspaceIdentity,
@@ -1223,14 +1223,14 @@ Do not inject for `clientMode === "web-remote-replayable"` unless the call is ex
 
 - [ ] **Step 3: Pass mcpServers through UI continuous path**
 
-If `packages/ui/src/lib/zcodeSessionPromptControl.ts` still has a direct `createSession`/`resumeSession` path, include `mcpServers` in both calls.
+If `packages/ui/src/lib/codezSessionPromptControl.ts` still has a direct `createSession`/`resumeSession` path, include `mcpServers` in both calls.
 
 - [ ] **Step 4: Run and commit**
 
 Run:
 
 ```bash
-pnpm vitest run packages/services/test/zcodeTaskBrowserUseInjection.test.ts packages/ui/test/zcodeSessionPromptControl.test.ts --runInBand
+pnpm vitest run packages/services/test/codezTaskBrowserUseInjection.test.ts packages/ui/test/codezSessionPromptControl.test.ts --runInBand
 pnpm typecheck
 ```
 
@@ -1239,8 +1239,8 @@ Expected: PASS.
 Commit:
 
 ```bash
-git add packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts packages/services/src/session/zcodeTaskService.ts packages/ui/src/lib/zcodeSessionPromptControl.ts packages/services/test/zcodeTaskBrowserUseInjection.test.ts packages/ui/test/zcodeSessionPromptControl.test.ts
-git commit -m "feat: inject browser use mcp per zcode session"
+git add packages/services/src/codez-agent/codezTaskServiceAdapter.ts packages/services/src/session/codezTaskService.ts packages/ui/src/lib/codezSessionPromptControl.ts packages/services/test/codezTaskBrowserUseInjection.test.ts packages/ui/test/codezSessionPromptControl.test.ts
+git commit -m "feat: inject browser use mcp per codez session"
 ```
 
 ---
@@ -1319,9 +1319,9 @@ git commit -m "feat: add browser use permissions and settings"
 
 Scenario:
 
-1. enable `ZCODE_BROWSER_USE_MCP=1`
+1. enable `CODEZ_BROWSER_USE_MCP=1`
 2. start desktop app
-3. create a ZCode session
+3. create a Codez session
 4. assert injected MCP server exists in protocol request
 5. call `browser` tool with `goto`
 6. assert retained webview attaches
@@ -1420,12 +1420,12 @@ git commit -m "docs: document browser use mcp architecture"
 sequenceDiagram
   participant UI as Renderer UI
   participant Host as Host Services
-  participant Agent as zcode app-server
+  participant Agent as codez app-server
   participant MCP as per-session browser_use MCP
   participant Main as Desktop Main Runtime
   participant View as Retained Webview
 
-  UI->>Host: create/resume ZCode session
+  UI->>Host: create/resume Codez session
   Host->>Host: resolve feature policy
   Host->>MCP: start loopback HTTP server when enabled
   Host->>Agent: session/new or session/load with injected mcpServers

@@ -10,7 +10,7 @@ vi.mock("@/settings/CodingPlanUpgradeDialogProvider.js", () => ({
   useOptionalCodingPlanUpgradeDialog: () => ({ inventory: { status: h.status, retry: h.retry } }),
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 import { CodingPlanEntryButton } from "@/settings/CodingPlanEntryButton.js";
 afterEach(() => {

@@ -1,17 +1,17 @@
 import { expect, it, vi } from "vitest";
-import { Emitter, ProxyChannel, type IServerChannel } from "@zcode/rpc";
-import { ServiceChannels } from "@zcode/shared";
+import { Emitter, ProxyChannel, type IServerChannel } from "@codez/rpc";
+import { ServiceChannels } from "@codez/shared";
 import {
-  ZCODE_AGENT_RUNTIME_UNAVAILABLE_CODE,
+  CODEZ_AGENT_RUNTIME_UNAVAILABLE_CODE,
   type IProjectService,
-  type IZCodeAgentService,
-  type ZCodeAgentRuntimeLifecycleEvent,
-  type ZCodeAgentWorkspaceTarget,
-} from "@zcode/services";
+  type ICodezAgentService,
+  type CodezAgentRuntimeLifecycleEvent,
+  type CodezAgentWorkspaceTarget,
+} from "@codez/services";
 import {
   sessionsIndexTopic,
   type SessionsIndexTopicWireCandidate,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { bindRemoteProjectIdentities } from "../../services/src/project/index.js";
 import {
   SourceServerWorkspaceIdentityMapper,
@@ -26,7 +26,7 @@ it.each([false, true])(
     const stable = "remote:server:source:/repo";
     const canonical = "remote:ssh:example.test:22:dev:/repo";
     const mapper = new SourceServerWorkspaceIdentityMapper();
-    const lifecycle = new Emitter<ZCodeAgentRuntimeLifecycleEvent>();
+    const lifecycle = new Emitter<CodezAgentRuntimeLifecycleEvent>();
     const emitters = new Map<string, Emitter<SessionsIndexTopicWireCandidate>>();
     const emitter = (identity: string) => {
       let value = emitters.get(identity);
@@ -37,10 +37,10 @@ it.each([false, true])(
       return value;
     };
     let running = initiallyRunning;
-    const subscribe = vi.fn(async (target: ZCodeAgentWorkspaceTarget) => {
+    const subscribe = vi.fn(async (target: CodezAgentWorkspaceTarget) => {
       if (!running || target.workspaceIdentity !== canonical)
         throw Object.assign(new Error("runtime unavailable"), {
-          code: ZCODE_AGENT_RUNTIME_UNAVAILABLE_CODE,
+          code: CODEZ_AGENT_RUNTIME_UNAVAILABLE_CODE,
         });
       const key = target.workspaceIdentity ?? target.workspacePath;
       const topic = sessionsIndexTopic(key);
@@ -86,7 +86,7 @@ it.each([false, true])(
       };
     });
     const inner = {
-      onDynamicSessionsIndexFrame: (target: ZCodeAgentWorkspaceTarget) =>
+      onDynamicSessionsIndexFrame: (target: CodezAgentWorkspaceTarget) =>
         emitter(target.workspaceIdentity ?? target.workspacePath).event,
       onAgentRuntimeLifecycle: lifecycle.event,
       subscribeSessionsIndexV4: subscribe,
@@ -101,8 +101,8 @@ it.each([false, true])(
         },
       },
       mapper,
-    ).registerChannel(ServiceChannels.ZCodeAgent, ProxyChannel.fromService(inner));
-    const agent = ProxyChannel.toService<IZCodeAgentService>({
+    ).registerChannel(ServiceChannels.CodezAgent, ProxyChannel.fromService(inner));
+    const agent = ProxyChannel.toService<ICodezAgentService>({
       call: (command, args) => channel.call("controller", command, args),
       listen: (event, args) => channel.listen("controller", event, args),
     });

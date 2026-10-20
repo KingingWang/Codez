@@ -15,12 +15,12 @@
 1. Account 首次解析失败时，fail-closed Overlay 漏掉 Off-Peak Provider；
 2. 最大输出 Token 同时存在简化输入与完整 JSON 两个编辑入口，可能静默覆盖用户输入；
 3. Configured Default 的损坏恢复在文件锁之外删除文件，存在跨进程删除竞态；
-4. Host 向 ZCode CLI 执行进程同步 Account Overlay 时使用通用 Provider Parser 和手工门禁，没有使用 Account Source 专属 Schema。
+4. Host 向 Codez CLI 执行进程同步 Account Overlay 时使用通用 Provider Parser 和手工门禁，没有使用 Account Source 专属 Schema。
 
 本任务不改变三层 Overlay、Host/CLI 进程职责或 Account Config 同步架构：
 
 ```text
-ZCode Built-in Provider Config
+Codez Built-in Provider Config
         |
         v
 Host Account Resolver
@@ -167,7 +167,7 @@ Configured Default 是 Environment 级、可重建的 Model Selection 偏好，�
 }
 ```
 
-文件损坏不能阻断 Registry、Model Selection View 或 ZCode CLI 执行进程启动；忽略或删除确定损坏的偏好、再使用 Registry fallback 是正确策略。
+文件损坏不能阻断 Registry、Model Selection View 或 Codez CLI 执行进程启动；忽略或删除确定损坏的偏好、再使用 Registry fallback 是正确策略。
 
 ### 3.2 当前竞态
 

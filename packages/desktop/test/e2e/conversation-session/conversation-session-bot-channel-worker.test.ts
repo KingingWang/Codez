@@ -4,7 +4,7 @@ import {
   createRecordingFeishuFetch,
   type RecordedRequest,
 } from "../bots/helpers/bots-service-harness.js";
-import { generateTraceId, type BotInboundMessage } from "@zcode/shared";
+import { generateTraceId, type BotInboundMessage } from "@codez/shared";
 
 describe("BOT-E2E-MN-02/FN-01 actual channel reply tool chain", () => {
   it("sends a trusted mention then resolves a new typed name from desktop input", async function () {

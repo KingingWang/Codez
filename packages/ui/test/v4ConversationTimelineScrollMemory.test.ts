@@ -1,15 +1,15 @@
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TID_V4_TIMELINE, TID_V4_TIMELINE_BOTTOM } from "@zcode/shared/test-ids";
-import type { ConversationRow, UserInputRow } from "@zcode/shared/zcode-protocol-v4";
+import { TID_V4_TIMELINE, TID_V4_TIMELINE_BOTTOM } from "@codez/shared/test-ids";
+import type { ConversationRow, UserInputRow } from "@codez/shared/codez-protocol-v4";
 import { DEFAULT_CODE_PREVIEW_SETTINGS } from "@/lib/codePreviewSettings.js";
 import {
   clearChatSessionScrollMemoryForTest,
   readChatSessionScrollMemoryState,
   saveChatSessionScrollMemoryState,
 } from "@/lib/chatSessionScrollMemory.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import type { ConversationRowRenderContext } from "@/v4/conversationRowContext.js";
 import { ConversationTimeline } from "@/v4/ConversationTimeline.js";
 
@@ -315,7 +315,7 @@ function renderTimeline(
   const timelineRows = options.rows ?? [row];
   root.render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(ConversationTimeline, {
         canLoadOlder: options.canLoadOlder,

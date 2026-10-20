@@ -44,11 +44,11 @@ export async function setup(
   page.on("pageerror", (error) => errors.push(error.message));
   await context.addInitScript(
     ({ theme, signedIn, lastSid, provider }) => {
-      if (lastSid) localStorage.setItem("zcode-web-remote-last-device-sid", lastSid);
-      localStorage.setItem("zcode-theme", theme);
+      if (lastSid) localStorage.setItem("codez-web-remote-last-device-sid", lastSid);
+      localStorage.setItem("codez-theme", theme);
       if (signedIn && !sessionStorage.getItem("e2e-seeded")) {
         sessionStorage.setItem("e2e-seeded", "1");
-        localStorage.setItem("zcodejwttoken", "e2e-jwt");
+        localStorage.setItem("codezjwttoken", "e2e-jwt");
         localStorage.setItem("oauth:active_provider", provider);
         localStorage.setItem(`oauth:${provider}:access_token`, "e2e-access");
         localStorage.setItem(
@@ -118,7 +118,7 @@ export async function setup(
           ),
         );
       }
-      if (message.payload?.zcode_type === "bootstrap-request") traffic.bootstraps++;
+      if (message.payload?.codez_type === "bootstrap-request") traffic.bootstraps++;
     });
   });
   return { page, context, errors, traffic };
@@ -144,7 +144,7 @@ export async function checkSwitchConfirmation(h, { screen, width, theme, locale,
   for (const dismissal of ["cancel", "escape", "overlay"]) {
     await trigger.click();
     await dialog.waitFor();
-    assert.equal(await page.evaluate(() => localStorage.getItem("zcodejwttoken")), "e2e-jwt");
+    assert.equal(await page.evaluate(() => localStorage.getItem("codezjwttoken")), "e2e-jwt");
     assert.equal(await cancel.evaluate((element) => element === document.activeElement), true);
     await page.keyboard.press("Shift+Tab");
     assert.equal(await confirm.evaluate((element) => element === document.activeElement), true);
@@ -163,13 +163,13 @@ export async function checkSwitchConfirmation(h, { screen, width, theme, locale,
     else await page.locator('[data-slot="dialog-overlay"]').click({ position: { x: 5, y: 5 } });
     await dialog.waitFor({ state: "hidden" });
     assert.equal(await trigger.evaluate((element) => element === document.activeElement), true);
-    assert.equal(await page.evaluate(() => localStorage.getItem("zcodejwttoken")), "e2e-jwt");
+    assert.equal(await page.evaluate(() => localStorage.getItem("codezjwttoken")), "e2e-jwt");
     assert.equal(page.url(), originalUrl);
   }
   await trigger.click();
   await confirm.click();
   await page.getByRole("button", { name: /连接 Z.ai 继续使用|Connect to Z.ai/ }).waitFor();
-  assert.equal(await page.evaluate(() => localStorage.getItem("zcodejwttoken")), null);
+  assert.equal(await page.evaluate(() => localStorage.getItem("codezjwttoken")), null);
   assert.equal(page.url(), originalUrl);
   assert.deepEqual(h.errors, []);
   return {

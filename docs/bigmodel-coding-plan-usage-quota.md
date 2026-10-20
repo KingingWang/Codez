@@ -4,7 +4,7 @@
 
 ## 背景
 
-ZCode 的「Plan usage」需要展示用户当前 GLM Coding Plan 的真实用量，而不是本地 session 的估算值。当前接入方式改为直接使用用户已配置的 Z.AI / BigModel provider API key 查询 BigModel quota 接口，不再依赖 Z.AI OAuth token，也不改动现有登录鉴权流程。
+Codez 的「Plan usage」需要展示用户当前 GLM Coding Plan 的真实用量，而不是本地 session 的估算值。当前接入方式改为直接使用用户已配置的 Z.AI / BigModel provider API key 查询 BigModel quota 接口，不再依赖 Z.AI OAuth token，也不改动现有登录鉴权流程。
 
 ## 接口
 
@@ -20,10 +20,10 @@ authorization: <完整 API key>
 - 国内与海外接口路径、请求方式、返回结构一致；同一个 key 两个 host 都能查，主要差异是 `msg` 文案语言可能不同。
 - `authorization` header 直接传完整 API key，格式为 `<id>.<secret>`。
 - 不要加 `Bearer` 前缀；该接口加 `Bearer` 会鉴权失败。
-- ZCode 默认优先读取当前模型供应商配置里的 `builtin:zai` API key，其次读取 `builtin:bigmodel`，再尝试 endpoint 指向 `bigmodel.cn` 或 `api.z.ai` 的自定义供应商。
-- `builtin:zai` 或 endpoint 指向 `api.z.ai` 的供应商默认请求 `https://api.z.ai/api/monitor/usage/quota/limit`；其他 BigModel 供应商默认请求当前环境的 BigModel API 主域名，生产为 `https://bigmodel.cn/api/monitor/usage/quota/limit`，`ZCODE_ENV=test` 为 `https://bigmodel.cn/api/monitor/usage/quota/limit`。
-- 本地调试可通过 `ZCODE_BIGMODEL_USAGE_API_KEY` 或 `BIGMODEL_USAGE_API_KEY` 覆盖。
-- 接口地址可通过 `ZCODE_BIGMODEL_USAGE_QUOTA_URL` 或 `BIGMODEL_USAGE_QUOTA_URL` 覆盖。
+- Codez 默认优先读取当前模型供应商配置里的 `builtin:zai` API key，其次读取 `builtin:bigmodel`，再尝试 endpoint 指向 `bigmodel.cn` 或 `api.z.ai` 的自定义供应商。
+- `builtin:zai` 或 endpoint 指向 `api.z.ai` 的供应商默认请求 `https://api.z.ai/api/monitor/usage/quota/limit`；其他 BigModel 供应商默认请求当前环境的 BigModel API 主域名，生产为 `https://bigmodel.cn/api/monitor/usage/quota/limit`，`CODEZ_ENV=test` 为 `https://bigmodel.cn/api/monitor/usage/quota/limit`。
+- 本地调试可通过 `CODEZ_BIGMODEL_USAGE_API_KEY` 或 `BIGMODEL_USAGE_API_KEY` 覆盖。
+- 接口地址可通过 `CODEZ_BIGMODEL_USAGE_QUOTA_URL` 或 `BIGMODEL_USAGE_QUOTA_URL` 覆盖。
 
 ## 返回解析
 
@@ -122,7 +122,7 @@ Coding Plan 的「用量统计」继续复用 `getCodingPlanUsageSnapshot` / `us
 
 | 页面区域 | 接口 | 说明 |
 |---|---|---|
-| 剩余额度卡 | `/api/monitor/usage/quota/limit` | 只用于 5 小时、周、MCP 月额度。`percentage` 表示已使用百分比；ZCode 的 `Usage remaining` 视图必须统一反转成剩余百分比。 |
+| 剩余额度卡 | `/api/monitor/usage/quota/limit` | 只用于 5 小时、周、MCP 月额度。`percentage` 表示已使用百分比；Codez 的 `Usage remaining` 视图必须统一反转成剩余百分比。 |
 | Token 活动 | `/api/monitor/credit-usage/activity` | 返回 365 天活动序列和累计统计。用于「Token 活动」热力图，以及累计 Tokens、峰值 Tokens、累计使用时长、连续天数等概览。 |
 | 用量趋势 / 使用详情 | `/api/monitor/credit-usage/usage-detail` | 按 `usageType=MODEL/MCP` 分别返回模型与工具的积分/Token/调用序列、Cache 命中率、积分总数、日均积分。 |
 | 系统健康度 | `/api/monitor/usage/model-performance-day` | 返回 Max&Pro / Lite 高峰期平均 Decode 速度，用于系统健康度折线图。 |

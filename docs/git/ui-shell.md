@@ -15,8 +15,8 @@
 - 提交面板默认包含未暂存更改，用户可以关闭 `包含未暂存的更改`，此时提交、统计和生成消息都只参考已暂存更改。
 - 生成提交消息会随请求携带当前会话最近的用户 / assistant 文本上下文，用于让模型理解本轮修改意图；上下文按消息数和字符数裁剪，且生成结果不得显式写“根据对话”“按用户要求”等元叙述。
 - 生成提交消息复用当前 workspace 的当前模型选择；Git service 只负责读取 Git status/diff、构造受限 prompt、校验 Conventional Commit 输出。
-- 模型调用链路统一为 `Git service -> IZCodeAgentService -> ZCode Protocol workspace/generateText -> AgentRuntime -> modelAdapter.generateText`。
-- UI 不再为提交消息生成预取 Start Plan / zcode-plan 的请求期鉴权材料，也不向 Git service 传 scoped runtime headers。
+- 模型调用链路统一为 `Git service -> ICodezAgentService -> Codez Protocol workspace/generateText -> AgentRuntime -> modelAdapter.generateText`。
+- UI 不再为提交消息生成预取 Start Plan / codez-plan 的请求期鉴权材料，也不向 Git service 传 scoped runtime headers。
 - Start Plan 的请求期 runtime headers 由 AgentRuntime 在 `modelAdapter.generateText` 每次真实请求前通过 `providerRuntimeHeaders.request` 自动刷新；该机制与普通对话、prompt enhance 等独立模型请求一致。
 - Git service 不再直连 OpenAI / Anthropic 兼容 HTTP endpoint，也不解析 provider response / SSE；协议层返回纯文本后由 Git service 做输出清洗和错误收敛。
 
@@ -96,7 +96,7 @@
 
 ### 半真实数据
 
-- `上一轮更改` 已优先复用当前 task 在 ZCode task store 里的 per-turn 文件快照和摘要
+- `上一轮更改` 已优先复用当前 task 在 Codez task store 里的 per-turn 文件快照和摘要
 - 这部分是当前 UI 中最接近真实 agent 输出的数据来源
 
 ## 当前交互边界

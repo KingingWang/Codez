@@ -2,7 +2,7 @@
 
 > **V4 当前事实**：滚动视口、虚拟化、底部跟随与 renderer-local 滚动记忆由
 > `packages/ui/src/v4/ConversationTimeline.tsx` 持有；消息事实仍来自
-> `packages/shared/src/zcode-protocol-v4/` 与 `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/`。
+> `packages/shared/src/codez-protocol-v4/` 与 `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/`。
 
 ## 目标
 
@@ -68,7 +68,7 @@
 
 ## 远控边界
 
-本改动只影响 UI 层渲染，不改变 ZCode task 消息流、snapshot、queue 或恢复语义：
+本改动只影响 UI 层渲染，不改变 Codez task 消息流、snapshot、queue 或恢复语义：
 
 - 桌面端 `desktop-continuous` 仍保持 direct continuous 主链路。
 - 手机远控 `web-remote-replayable` 仍通过 replayable snapshot/gap 恢复边界展示消息。

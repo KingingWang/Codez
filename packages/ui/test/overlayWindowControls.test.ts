@@ -2,7 +2,7 @@
 import { createElement } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import { DesktopCommandIds } from "@zcode/shared";
+import { DesktopCommandIds } from "@codez/shared";
 import { EmbeddedWebsiteHeader } from "@/components/EmbeddedWebsiteHeader.js";
 
 const { executeDesktopCommand } = vi.hoisted(() => ({
@@ -12,7 +12,7 @@ vi.mock("@/hooks/usePlatform.js", () => ({
   usePlatform: () => ({ executeDesktopCommand }),
 }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: { formatMessage: ({ id }: { id: string }) => id },
   }),
 }));

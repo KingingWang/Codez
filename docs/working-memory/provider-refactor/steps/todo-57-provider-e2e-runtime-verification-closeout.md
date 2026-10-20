@@ -133,9 +133,9 @@ Todo 55 还必须补齐并实跑以下最终语义代表：
 ### 5.1 每个 Case
 
 ```bash
-pnpm --filter @zcode/desktop typecheck:e2e
+pnpm --filter @codez/desktop typecheck:e2e
 
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts \
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts \
   --spec './test/e2e/<path>/<case>.test.ts'
 ```
 
@@ -151,7 +151,7 @@ Conversation replay Case 还必须：
 按风险递增：
 
 1. Provider/Account/Selection/Provisioning 定向单测；
-2. `pnpm --filter @zcode/desktop typecheck:e2e`；
+2. `pnpm --filter @codez/desktop typecheck:e2e`；
 3. 四类 Smoke WDIO；
 4. 上述六组 Provider WDIO；
 5. Remote Provisioning 正式 Case；
@@ -229,7 +229,7 @@ Conversation replay Case 还必须：
 | Output-token preflight smoke            |   2/2 | `desktop-e2e-20260901-135009-362`                                                                      |
 | Provider Template add/edit/restore/send |   1/1 | `desktop-e2e-20260901-140409-625`                                                                      |
 | selected-key migration                  |     — | `deleted-by-decision`                                                                                  |
-| SSH Remote Environment Provisioning     |     — | `blocked-environment`：MacBook Pro 未配置 `ZCODE_E2E_SSH_HOST/USERNAME/PASSWORD`，未将静态检查记作通过 |
+| SSH Remote Environment Provisioning     |     — | `blocked-environment`：MacBook Pro 未配置 `CODEZ_E2E_SSH_HOST/USERNAME/PASSWORD`，未将静态检查记作通过 |
 
 上述运行都在 MacBook Pro 的独立干净 runtime clone 中使用同一提交和标准 `mise`/WDIO 链路完成，没有复用工作区旧 Electron 产物。
 
@@ -237,12 +237,12 @@ Conversation replay Case 还必须：
 
 - Provider/Provisioning/Selection 定向单测：8 个文件、64 条通过；
 - 受影响的 9 个 Conversation Fixture 检查全部通过；
-- `pnpm --filter @zcode/desktop typecheck:e2e` 通过；
+- `pnpm --filter @codez/desktop typecheck:e2e` 通过；
 - `pnpm typecheck` 通过；
 - `pnpm lint` 通过，仅保留仓库既有 warning；
 - `pnpm test:unit`：1501 个 Test Files、12797 条 Tests 通过，1 个文件与 25 条测试按既有配置跳过；
 - 修改文件格式检查与 `git diff --check` 通过；
-- 全仓 `pnpm fmt:check` 仍被 Electron 文档示例的既有 HTML 语法和 `apps/zcode-cli/tests/gb2312.js` 读取问题阻断；
+- 全仓 `pnpm fmt:check` 仍被 Electron 文档示例的既有 HTML 语法和 `apps/codez-cli/tests/gb2312.js` 读取问题阻断；
 - Conversation coverage audit 中本轮 OTB manifest/fixture 已恢复一致，剩余失败仅为独立的 Hooks Lifecycle ledger 顺序/文案和三份既有生成文档过期；
 - 本机和 MacBook Pro 都没有可用 Docker CLI，因此 Conversation container preset 记为 `blocked-environment`，不记作通过。
 

@@ -11,7 +11,7 @@ import {
   TID_WORKSPACE_MORE_BUTTON,
   TID_WORKSPACE_PATH,
   TID_WORKSPACE_TITLE,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 
 const headerManagement = vi.hoisted(() => ({
   getSnapshot: vi.fn(async () => ({
@@ -161,7 +161,7 @@ vi.mock("@/hooks/useWorkspaceServices.js", () => ({
     skillSyncService: {},
     mcpSyncService: {},
     pluginSyncService: {},
-    zcodeTaskService: {
+    codezTaskService: {
       archiveTask: vi.fn(),
       renameTask: vi.fn(),
       setTaskPinned: vi.fn(),
@@ -183,7 +183,7 @@ vi.mock("@/useTaskListItemContextActions.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({
+  useCodezIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
     },
@@ -199,8 +199,8 @@ vi.mock("@/store/taskQueryCacheStore.js", () => ({
   applyTaskQueryCacheMutation: vi.fn(),
 }));
 
-vi.mock("@/store/zcodeSessionStore.js", () => ({
-  useZCodeSessionStore: (selector: (state: Record<string, unknown>) => unknown) =>
+vi.mock("@/store/codezSessionStore.js", () => ({
+  useCodezSessionStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       removeTaskState: vi.fn(),
       removeOptimisticTaskListItem: vi.fn(),
@@ -225,8 +225,8 @@ describe("WorkspaceHeaderTitleSection", () => {
     const html = renderToStaticMarkup(
       createElement(WorkspaceHeaderTitleSection, {
         variant: "draft",
-        workspaceAbsPath: "/workspace/zcode-cli",
-        projectName: "zcode-cli",
+        workspaceAbsPath: "/workspace/codez-cli",
+        projectName: "codez-cli",
         activeTaskTitle: "New task",
         activeTaskId: null,
         activeTraceId: null,
@@ -260,8 +260,8 @@ describe("WorkspaceHeaderTitleSection", () => {
 
     const html = renderToStaticMarkup(
       createElement(WorkspaceHeaderTitleSection, {
-        workspaceAbsPath: "/workspace/zcode-cli",
-        projectName: "zcode-cli",
+        workspaceAbsPath: "/workspace/codez-cli",
+        projectName: "codez-cli",
         activeTaskTitle: "hello",
         activeTaskId: "task-1",
         activeTraceId: "trace-1",
@@ -291,10 +291,10 @@ describe("WorkspaceHeaderTitleSection", () => {
 
     expect(capturedGitBranchSwitcherProps).toHaveLength(0);
     expect(html).toContain('data-icon="folder"');
-    expect(html).toContain('aria-label="zcode-cli · main"');
+    expect(html).toContain('aria-label="codez-cli · main"');
     // 回归保护：aria-label 只有显示名，e2e 判定“header 属于哪个工作区”依赖这个绝对路径
     // 数据属性。上一次它以 DOM title 形式存在，被 tooltip 重构顺手删掉后无人发现。
-    expect(html).toContain('data-workspace-abs-path="/workspace/zcode-cli"');
+    expect(html).toContain('data-workspace-abs-path="/workspace/codez-cli"');
     expect(html.indexOf(`data-testid="${TID_WORKSPACE_PATH}"`)).toBeLessThan(
       html.indexOf(`data-testid="${TID_WORKSPACE_TITLE}"`),
     );

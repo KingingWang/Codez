@@ -6,25 +6,25 @@
 >
 > 范围：Windows 本地桌面源码开发环境
 >
-> 关联仓库：`z-code`、`C:\Users\dev\zcode-cua`
+> 关联仓库：`z-code`、`C:\Users\dev\codez-cua`
 
 ## 1. 背景
 
-ZCode 当前的 Computer Use 产品链路以 macOS 为主：
+Codez 当前的 Computer Use 产品链路以 macOS 为主：
 
 ```text
-ZCode Host
+Codez Host
   -> 安装、校验并启动独立 Helper.app
   -> 生成 socket + bearer token
-  -> 向官方 zcode-cua plugin 注入凭据
+  -> 向官方 codez-cua plugin 注入凭据
   -> plugin 通过 MCP 向 Agent 暴露工具
   -> Helper.app 通过 AX / ScreenCaptureKit / CGEvent 执行
 ```
 
-外部 `@zcode/zcode-cua` 仓库已经包含 Windows UIA、named pipe、基础
-`SendInput` 点击/键盘以及部分元素语义动作，但当前还没有形成 ZCode 本地桌面的完整运行链路：
+外部 `@codez/codez-cua` 仓库已经包含 Windows UIA、named pipe、基础
+`SendInput` 点击/键盘以及部分元素语义动作，但当前还没有形成 Codez 本地桌面的完整运行链路：
 
-- ZCode 默认 Product Helper 只允许 `darwin`；
+- Codez 默认 Product Helper 只允许 `darwin`；
 - Windows standalone 会错误进入 macOS Helper 启动逻辑；
 - 当前安装中没有可加载的 `ax_native.node`；
 - Windows 截图、剪贴板、应用启动和完整鼠标动作没有闭环；
@@ -55,7 +55,7 @@ Windows Computer Use 遵循以下进程、截图和目标校验原则：
 第一里程碑必须达到：
 
 1. 在 Windows 登录用户的交互桌面中，从源码构建并加载 `ax_native.node`。
-2. ZCode 本地 Host 按需启动独立 Windows Computer Use Helper。
+2. Codez 本地 Host 按需启动独立 Windows Computer Use Helper。
 3. Host 生成随机 named pipe 和 bearer token，并只向官方 CUA plugin 注入。
 4. Helper 就绪后，官方 plugin 才能启动 MCP server；Helper 不可用时 fail closed。
 5. Agent 能在记事本等普通桌面应用中完成：
@@ -65,7 +65,7 @@ Windows Computer Use 遵循以下进程、截图和目标校验原则：
    - 元素或窗口坐标点击；
    - 文本输入和快捷键；
    - 已支持的 UIA 语义动作。
-6. Helper 崩溃、退出、ZCode 关闭或客户端关闭时，不留下可继续接受请求的孤儿进程。
+6. Helper 崩溃、退出、Codez 关闭或客户端关闭时，不留下可继续接受请求的孤儿进程。
 7. Windows 源码开发失败必须给出可诊断原因，不能把 native 编译或加载失败静默伪装成成功。
 
 完成第一里程碑后，继续在同一架构上补齐：
@@ -98,7 +98,7 @@ Windows Computer Use 遵循以下进程、截图和目标校验原则：
 
 Windows 使用独立 Helper 子进程，不把 UIA/native backend 运行在：
 
-- ZCode Host 业务进程；
+- Codez Host 业务进程；
 - Agent 主进程；
 - 官方 CUA MCP plugin 进程。
 
@@ -113,7 +113,7 @@ Windows 使用独立 Helper 子进程，不把 UIA/native backend 运行在：
 
 ```text
 Node.js child process
-  + @zcode/zcode-cua broker/server
+  + @codez/codez-cua broker/server
   + ax_native.node
 ```
 
@@ -127,17 +127,17 @@ SEA / signed native executable
 
 ### 5.2 Host 只管理生命周期和凭据
 
-ZCode Host 负责：
+Codez Host 负责：
 
 - 判断本地 Windows 开发态是否启用；
-- 解析受控的本地 `zcode-cua` 源码根目录；
+- 解析受控的本地 `codez-cua` 源码根目录；
 - 启动、停止和健康检查 Helper；
 - 生成 pipe、token 和 capability generation；
 - 仅向官方 CUA plugin authority 注入凭据；
 - Helper generation 失效后阻止旧凭据继续进入新 Agent；
 - 使用现有 active-turn 和 Agent recycle 边界完成安全恢复。
 
-ZCode Host 不负责：
+Codez Host 不负责：
 
 - UIA 树采集；
 - 屏幕或窗口截图；
@@ -145,7 +145,7 @@ ZCode Host 不负责：
 - HWND、element token 或 screenshot revision 管理；
 - CUA 工具参数到平台动作的解释。
 
-这些业务能力全部留在 `zcode-cua` Helper/backend。
+这些业务能力全部留在 `codez-cua` Helper/backend。
 
 ### 5.3 Windows Graphics Capture
 
@@ -156,7 +156,7 @@ Windows.Graphics.Capture
   -> Direct3D11CaptureFramePool.CreateFreeThreaded
   -> ID3D11Texture2D / SoftwareBitmap
   -> BGRA buffer or encoded image
-  -> existing zcode-cua image pipeline
+  -> existing codez-cua image pipeline
 ```
 
 不把 `BitBlt`、PowerShell `System.Drawing` 或外部截图命令作为正式主路径。
@@ -216,10 +216,10 @@ ObservationSnapshot {
 ## 6. 运行架构
 
 ```text
-ZCode renderer / Agent request
+Codez renderer / Agent request
              |
              v
-ZCode local Host Process
+Codez local Host Process
   WindowsCuaHelperHost
     - local-only admission
     - child lifecycle
@@ -238,11 +238,11 @@ Windows Computer Use Helper (Node child)
              ^
              | authenticated broker RPC
              |
-official zcode-cua MCP plugin
+official codez-cua MCP plugin
              ^
              | MCP stdio
              |
-ZCode Agent
+Codez Agent
 ```
 
 禁止形成以下路径：
@@ -258,13 +258,13 @@ ordinary MCP server -> broker credentials
 ## 7. 启动时序
 
 ```text
-ZCode local Host starts
+Codez local Host starts
   |
   |-- platform == win32?
-  |-- ZCODE_CUA_PRODUCT_HELPER enabled?
+  |-- CODEZ_CUA_PRODUCT_HELPER enabled?
   |-- local host only?
   |-- official CUA plugin enabled for workspace?
-  |-- ZCODE_CUA_DEV_ROOT resolves to allowed source root?
+  |-- CODEZ_CUA_DEV_ROOT resolves to allowed source root?
   |
   | no -> no Helper, no credentials, no CUA MCP injection
   |
@@ -317,7 +317,7 @@ STOPPED
 - READY 才能返回 resolver credentials；
 - DRAINING 后拒绝新 action；
 - action 已写入 broker 后连接断开，仍按 `possibly_sent` 处理；
-- ZCode Host 退出时先停止 admission，再结束 Helper；
+- Codez Host 退出时先停止 admission，再结束 Helper；
 - Helper 监视 parent pid，父进程消失后自行退出；
 - 停止或重启时必须释放本 Helper 按下的所有键和鼠标按钮。
 
@@ -326,7 +326,7 @@ STOPPED
 新增显式开发配置：
 
 ```text
-ZCODE_CUA_DEV_ROOT=C:\Users\dev\zcode-cua
+CODEZ_CUA_DEV_ROOT=C:\Users\dev\codez-cua
 ```
 
 语义：
@@ -343,13 +343,13 @@ ZCODE_CUA_DEV_ROOT=C:\Users\dev\zcode-cua
 建议开发命令：
 
 ```text
-cd C:\Users\dev\zcode-cua
+cd C:\Users\dev\codez-cua
 pnpm install
 pnpm build
 pnpm rebuild:native
 
-set ZCODE_CUA_PRODUCT_HELPER=1
-set ZCODE_CUA_DEV_ROOT=C:\Users\dev\zcode-cua
+set CODEZ_CUA_PRODUCT_HELPER=1
+set CODEZ_CUA_DEV_ROOT=C:\Users\dev\codez-cua
 pnpm dev:desktop
 ```
 
@@ -440,7 +440,7 @@ Bearer token 不得出现在：
 | HWND/PID/revision stale          | 返回重新观察诊断，不执行输入                         |
 | UIPI 拒绝高权限应用              | 明确 permission denied，不自动提权                   |
 | Helper 崩溃                      | generation 失效，按现有 active-turn/recycle 边界恢复 |
-| ZCode 关闭                       | 停止 admission、释放输入、关闭 pipe、退出 child      |
+| Codez 关闭                       | 停止 admission、释放输入、关闭 pipe、退出 child      |
 
 ## 13. 仓库职责
 
@@ -454,7 +454,7 @@ Bearer token 不得出现在：
 - Windows Host 单测与集成测试；
 - 开发启动说明。
 
-### `zcode-cua`
+### `codez-cua`
 
 - Windows Helper CLI/entry；
 - Windows named-pipe broker host；
@@ -467,7 +467,7 @@ Bearer token 不得出现在：
 - 跨平台测试修复；
 - native 与 live desktop 验收。
 
-### 官方 `zcode-cua-plugin`
+### 官方 `codez-cua-plugin`
 
 - 继续作为 broker-only 薄壳；
 - 缺 socket/token 时继续 fail closed；
@@ -529,7 +529,7 @@ Bearer token 不得出现在：
 
 ### 自动化
 
-`zcode-cua`：
+`codez-cua`：
 
 - `pnpm typecheck`
 - `pnpm lint`
@@ -550,7 +550,7 @@ Bearer token 不得出现在：
 按明确理由 skip，但平台中立测试不得为了获得绿色结果而整体跳过。
 
 Broker 的 live transport 测试必须使用当前平台真实支持的地址：Windows 使用每例唯一的
-`\\.\pipe\zcode-cua-test-<random>` named pipe，macOS/Linux 使用受控临时目录中的
+`\\.\pipe\codez-cua-test-<random>` named pipe，macOS/Linux 使用受控临时目录中的
 Unix socket。认证、NDJSON、dispatch、超时与 graceful-stop 等平台中立契约必须在
 Windows named pipe 上继续执行；只有依赖 socket 文件节点的 `0600/0700`、symlink、
 stale-file 与 unlink 断言允许在 Windows 跳过，并由独立 Windows named-pipe 分支测试
@@ -560,7 +560,7 @@ stale-file 与 unlink 断言允许在 Windows 跳过，并由独立 Windows name
 
 在登录用户 Session 中验证：
 
-1. 启动 ZCode，Helper 按需出现。
+1. 启动 Codez，Helper 按需出现。
 2. Agent 能看到官方 CUA 工具。
 3. 枚举记事本窗口。
 4. 获取 UIA tree。
@@ -569,7 +569,7 @@ stale-file 与 unlink 断言允许在 Windows 跳过，并由独立 Windows name
 7. 执行 `Ctrl+A`、替换文本和 Enter/Tab。
 8. 通过 UIA action 操作按钮或菜单。
 9. 重启 Helper 后重新建立 generation。
-10. 关闭 ZCode 后没有残留 Helper。
+10. 关闭 Codez 后没有残留 Helper。
 11. Phase 2 完成后验证遮挡窗口截图。
 12. Phase 2 完成后验证副屏、负坐标和不同 DPI。
 
@@ -578,8 +578,8 @@ stale-file 与 unlink 断言允许在 Windows 跳过，并由独立 Windows name
 - Windows 版本；
 - Node 版本和 ABI；
 - addon 构建架构；
-- ZCode commit；
-- zcode-cua commit；
+- Codez commit；
+- codez-cua commit；
 - 测试应用；
 - 是否本地交互 session；
 - 失败日志路径；
@@ -591,8 +591,8 @@ stale-file 与 unlink 断言允许在 Windows 跳过，并由独立 Windows name
 - Web remote replayable 链路完全不进入本设计；
 - local/remote 判断必须在 Helper admission 前完成；
 - 不新增 `workspaceIdentity` 与 `workspacePath` 混用；
-- 不修改 Agent 与 App 的 `@zcode/protocol`，除非后续确实出现新的跨进程产品协议；
-- broker method/schema 变化在 `@zcode/zcode-cua` 内严格校验并保持旧调用兼容；
+- 不修改 Agent 与 App 的 `@codez/protocol`，除非后续确实出现新的跨进程产品协议；
+- broker method/schema 变化在 `@codez/codez-cua` 内严格校验并保持旧调用兼容；
 - IO 使用异步 API；
 - services 日志使用 `createServiceLogger(scope)`；
 - UI 未包含在本阶段；若后续修改 `packages/ui`，实施前必须读取 `DESIGN.md`。
@@ -600,13 +600,13 @@ stale-file 与 unlink 断言允许在 Windows 跳过，并由独立 Windows name
 ## 17. 风险
 
 1. **工具链风险**：当前机器缺少 Visual Studio C++ workload，native 实机验证被阻塞。
-2. **ABI 风险**：系统 Node、ZCode bundled Node 和 Electron ABI 可能不同。独立 Node Helper
+2. **ABI 风险**：系统 Node、Codez bundled Node 和 Electron ABI 可能不同。独立 Node Helper
    必须明确使用哪个 Node runtime，并针对该 ABI 构建。
 3. **UIA 阻塞风险**：当前同步 BFS 可能卡住 Helper，需要 worker 化。
 4. **截图复杂度**：WGC 涉及 WinRT、D3D11、窗口关闭和设备重建，不应作为小型补丁处理。
 5. **焦点竞争风险**：只调用 `SetForegroundWindow` 不能证明输入目标正确。
 6. **测试债务**：现有大量测试将 macOS/POSIX 假设写死，Windows 绿色基线需要先分类。
-7. **版本漂移**：ZCode compile-time `@zcode/zcode-cua`、Helper runtime alias 和 plugin 版本
+7. **版本漂移**：Codez compile-time `@codez/codez-cua`、Helper runtime alias 和 plugin 版本
    当前不完全一致，开发闭环必须记录实际服务端/客户端版本。
 
 ## 18. 已确认项与开放项
@@ -616,7 +616,7 @@ stale-file 与 unlink 断言允许在 Windows 跳过，并由独立 Windows name
 
 1. **已确认：Windows dev Helper 使用当前进程的 Node runtime。** resolver 固定返回
    `command = process.execPath`，并在 child 环境中设置
-   `ELECTRON_RUN_AS_NODE = "1"`。Desktop Host 已对 zcode-agent 使用相同模式；
+   `ELECTRON_RUN_AS_NODE = "1"`。Desktop Host 已对 codez-agent 使用相同模式；
    CLI/test host 的 `process.execPath` 自然指向 Node。`ax_native.node` 为 N-API addon，
    必须在目标 Windows 机器针对该 runtime 重建。该 resolver 阶段不注入 broker token。
 2. WGC native 层返回 BGRA buffer 还是直接返回 JPEG/PNG。

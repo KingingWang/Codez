@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   hostRemoteWorkspaceConnectFailedResponseSchema,
-  publicZCodeErrorCodeSchema,
+  publicCodezErrorCodeSchema,
   normalizeRemoteConnectionError,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 describe("连接失败的 Host/App 契约", () => {
   it("携带未知 cause 的公开认证码不被预检阶段覆盖", () => {
@@ -57,7 +57,7 @@ describe("连接失败的 Host/App 契约", () => {
     const result = normalizeRemoteConnectionError(error);
     expect(result.code).toBe(code);
     expect(result.message.trim()).not.toBe("");
-    expect(publicZCodeErrorCodeSchema.parse(result.code)).toBe(code);
+    expect(publicCodezErrorCodeSchema.parse(result.code)).toBe(code);
     expect(
       hostRemoteWorkspaceConnectFailedResponseSchema.safeParse({
         type: "remote-workspace-connect-failed",

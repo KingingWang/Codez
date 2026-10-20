@@ -4,7 +4,7 @@ import {
   readOffPeakCreateTaskOutputSummary,
 } from "@/ToolCallBlocks/renderers/offpeak-create.js";
 import { resolveOffPeakDetailNavigation } from "@/settings/AutomationsSection.js";
-import type { ZCodeOffPeakTask } from "@zcode/shared";
+import type { CodezOffPeakTask } from "@codez/shared";
 
 const intl = {
   formatMessage: (
@@ -53,7 +53,7 @@ describe("OffPeakCreateTaskCard output（D49-6 静态轮尾卡）", () => {
 });
 
 describe("resolveOffPeakDetailNavigation（卡片跳转 idle tab 编辑视图）", () => {
-  const task = { offPeakTaskId: "offpeak-abc", title: "t" } as ZCodeOffPeakTask;
+  const task = { offPeakTaskId: "offpeak-abc", title: "t" } as CodezOffPeakTask;
 
   it("store 加载中保持 pending（不消费导航、不误报 targetNotFound）", () => {
     expect(resolveOffPeakDetailNavigation([task], "offpeak-abc", false)).toEqual({

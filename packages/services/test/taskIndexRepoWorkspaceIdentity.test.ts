@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { ZCodeTaskMeta } from "@zcode/shared";
+import type { CodezTaskMeta } from "@codez/shared";
 import { setDataBaseDir } from "#src/paths.js";
 import { TaskIndexRepo } from "#src/session/taskIndexRepo.js";
 
@@ -11,7 +11,7 @@ let repo: TaskIndexRepo;
 let tempDir: string;
 
 beforeEach(() => {
-  tempDir = mkdtempSync(join(tmpdir(), "zcode-task-index-workspace-identity-"));
+  tempDir = mkdtempSync(join(tmpdir(), "codez-task-index-workspace-identity-"));
   setDataBaseDir(tempDir);
   repo = new TaskIndexRepo();
 });
@@ -28,7 +28,7 @@ function task(params: {
   taskId: string;
   workspaceIdentity: string;
   title?: string;
-}): ZCodeTaskMeta {
+}): CodezTaskMeta {
   return {
     taskId: params.taskId,
     traceId: `trace-${params.taskId}`,
@@ -59,8 +59,8 @@ function getRepoDatabase(target: TaskIndexRepo): {
   ).getDatabase();
 }
 
-function metaJsonWithoutWorkspaceIdentity(meta: ZCodeTaskMeta): string {
-  const legacyMeta: Partial<ZCodeTaskMeta> = { ...meta };
+function metaJsonWithoutWorkspaceIdentity(meta: CodezTaskMeta): string {
+  const legacyMeta: Partial<CodezTaskMeta> = { ...meta };
   delete legacyMeta.workspaceIdentity;
   return JSON.stringify(legacyMeta);
 }

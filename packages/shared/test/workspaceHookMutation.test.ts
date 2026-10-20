@@ -32,7 +32,7 @@ afterEach(async () => {
 describe("workspace Hook atomic mutation", () => {
   it("只改变 snapshot 指向 declaration 的 enabled gate，并保留其他 config 与 passthrough 字段", async () => {
     const workspace = makeRoot();
-    const configPath = join(workspace, ".zcode", "config.json");
+    const configPath = join(workspace, ".codez", "config.json");
     const original = {
       model: "model-test",
       customTopLevel: { keep: true },
@@ -105,10 +105,10 @@ describe("workspace Hook atomic mutation", () => {
     });
   });
 
-  it("拒绝 snapshot 中非当前 .zcode/config.json 或非 editable declaration，且不写文件", async () => {
+  it("拒绝 snapshot 中非当前 .codez/config.json 或非 editable declaration，且不写文件", async () => {
     const workspace = makeRoot();
-    const configPath = join(workspace, ".zcode", "config.json");
-    const ancestorPath = join(workspace, "zcode.json");
+    const configPath = join(workspace, ".codez", "config.json");
+    const ancestorPath = join(workspace, "codez.json");
     const config = {
       hooks: {
         enabled: true,
@@ -147,7 +147,7 @@ describe("workspace Hook atomic mutation", () => {
 
   it("磁盘 declaration 已变化时拒绝批准 A/修改 B", async () => {
     const workspace = makeRoot();
-    const configPath = join(workspace, ".zcode", "config.json");
+    const configPath = join(workspace, ".codez", "config.json");
     const hooks = {
       enabled: true,
       events: {
@@ -190,7 +190,7 @@ describe("workspace Hook atomic mutation", () => {
 
   it("已知边界：root default 变化不触发 declaration mismatch（admission 侧仍按当前 snapshot 评估）", async () => {
     const workspace = makeRoot();
-    const configPath = join(workspace, ".zcode", "config.json");
+    const configPath = join(workspace, ".codez", "config.json");
     const hooks = {
       enabled: true,
       timeoutMs: 5000,
@@ -237,7 +237,7 @@ describe("workspace Hook atomic mutation", () => {
 
   it("rename 前失败保留原文件并清理 temp file", async () => {
     const workspace = makeRoot();
-    const configPath = join(workspace, ".zcode", "config.json");
+    const configPath = join(workspace, ".codez", "config.json");
     writeJson(configPath, { hooks: { enabled: false, events: {} } });
 
     await expect(
@@ -255,6 +255,6 @@ describe("workspace Hook atomic mutation", () => {
     expect(JSON.parse(readFileSync(configPath, "utf8"))).toEqual({
       hooks: { enabled: false, events: {} },
     });
-    await expect(readdir(join(workspace, ".zcode"))).resolves.toEqual(["config.json"]);
+    await expect(readdir(join(workspace, ".codez"))).resolves.toEqual(["config.json"]);
   });
 });

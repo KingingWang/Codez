@@ -9,14 +9,14 @@ import {
   XIcon,
 } from "lucide-react";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import type { IPlatformService } from "@zcode/shared";
+import type { IPlatformService } from "@codez/shared";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog.js";
 import { toast } from "@/components/ui/toast.js";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 
 export interface ImagePreviewDialogItem {
@@ -232,7 +232,7 @@ export function ImagePreviewDialog({
   onOpenChange: (open: boolean) => void;
   open: boolean;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const platform = useOptionalPlatform();
   const [activeIndex, setActiveIndex] = useState(initialIndex);
   const [previewScale, setPreviewScale] = useState(1);

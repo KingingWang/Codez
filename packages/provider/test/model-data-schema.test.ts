@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseModelConfig, createRegistryModelConfig } from "../src/index.js";
-import { completeModelConfigDataSchema, modelConfigDataSchema } from "@zcode/shared/model-config";
+import { completeModelConfigDataSchema, modelConfigDataSchema } from "@codez/shared/model-config";
 
 const complete = {
   enabled: true,

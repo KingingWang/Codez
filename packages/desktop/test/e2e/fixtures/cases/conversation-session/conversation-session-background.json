@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/conversation-session-background/bg08-launcher.cjs",
+      "path": ".codez-e2e/conversation-session-background/bg08-launcher.cjs",
       "source": "created-by-spec",
       "description": "BG08 由 spec 写入 launcher，真实启动跨 PGID worker 并留下 fresh PID marker。"
     }
@@ -754,7 +754,7 @@
       "kind": "main",
       "source": "synthetic",
       "timingPolicy": "fast-tool-use",
-      "syntheticReason": "稳定启动四个 background Agent：三个 zcode Agent 依次完成，cc Agent 保持 running，用真实右上角 background control 面板复现 Agent row 闪没场景。"
+      "syntheticReason": "稳定启动四个 background Agent：三个 codez Agent 依次完成，cc Agent 保持 running，用真实右上角 background control 面板复现 Agent row 闪没场景。"
     },
     {
       "id": "upstream-background-agent-control-preserve-cc-child-keepalive-tool",
@@ -764,25 +764,25 @@
       "syntheticReason": "让 cc Agent 进入不会自行完成的 child Bash，保持 running，证明另一个 Agent completion notification 不会清掉它的 control row。"
     },
     {
-      "id": "upstream-background-agent-control-preserve-zcode-one-child-result",
+      "id": "upstream-background-agent-control-preserve-codez-one-child-result",
       "kind": "subagent",
       "source": "synthetic",
       "timingPolicy": "delayed-text",
-      "syntheticReason": "短延迟完成第一个 zcode background Agent，稳定触发 parent task-notification。"
+      "syntheticReason": "短延迟完成第一个 codez background Agent，稳定触发 parent task-notification。"
     },
     {
-      "id": "upstream-background-agent-control-preserve-zcode-two-child-result",
+      "id": "upstream-background-agent-control-preserve-codez-two-child-result",
       "kind": "subagent",
       "source": "synthetic",
       "timingPolicy": "delayed-text",
-      "syntheticReason": "短延迟完成第二个 zcode background Agent，稳定触发 parent task-notification。"
+      "syntheticReason": "短延迟完成第二个 codez background Agent，稳定触发 parent task-notification。"
     },
     {
-      "id": "upstream-background-agent-control-preserve-zcode-three-child-result",
+      "id": "upstream-background-agent-control-preserve-codez-three-child-result",
       "kind": "subagent",
       "source": "synthetic",
       "timingPolicy": "delayed-text",
-      "syntheticReason": "短延迟完成第三个 zcode background Agent，复现真实场景中第三个 completion notification 触发 UI 闪没。"
+      "syntheticReason": "短延迟完成第三个 codez background Agent，复现真实场景中第三个 completion notification 触发 UI 闪没。"
     },
     {
       "id": "upstream-background-agent-control-preserve-launch-ack",
@@ -792,21 +792,21 @@
       "syntheticReason": "让 main 回到 idle，同时右上角 background control 面板仍有多个 running Agent row。"
     },
     {
-      "id": "upstream-background-agent-control-preserve-zcode-one-notification",
+      "id": "upstream-background-agent-control-preserve-codez-one-notification",
       "kind": "main",
       "source": "synthetic",
       "timingPolicy": "task-notification",
-      "syntheticReason": "先消费第一个 zcode Agent completion notification，复现真实场景中多个 zcode Agent 依次完成。 验证来源提示及非用户授权边界。"
+      "syntheticReason": "先消费第一个 codez Agent completion notification，复现真实场景中多个 codez Agent 依次完成。 验证来源提示及非用户授权边界。"
     },
     {
-      "id": "upstream-background-agent-control-preserve-zcode-two-notification",
+      "id": "upstream-background-agent-control-preserve-codez-two-notification",
       "kind": "main",
       "source": "synthetic",
       "timingPolicy": "task-notification",
-      "syntheticReason": "再消费第二个 zcode Agent completion notification，复现真实场景中多个 zcode Agent 依次完成。 验证来源提示及非用户授权边界。"
+      "syntheticReason": "再消费第二个 codez Agent completion notification，复现真实场景中多个 codez Agent 依次完成。 验证来源提示及非用户授权边界。"
     },
     {
-      "id": "upstream-background-agent-control-preserve-zcode-three-notification",
+      "id": "upstream-background-agent-control-preserve-codez-three-notification",
       "kind": "main",
       "source": "synthetic",
       "timingPolicy": "task-notification",

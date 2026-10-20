@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { expect, it, vi } from "vitest";
-import { InternalChannels, type DatabaseStartupState } from "@zcode/shared";
+import { InternalChannels, type DatabaseStartupState } from "@codez/shared";
 const ipc = vi.hoisted(() => ({ on: vi.fn(), removeListener: vi.fn() }));
 const telemetry = vi.hoisted(() => vi.fn());
 vi.mock("electron", () => ({ ipcMain: ipc }));

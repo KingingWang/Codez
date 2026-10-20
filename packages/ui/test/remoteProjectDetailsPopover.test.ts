@@ -6,7 +6,7 @@ import { RemoteProjectDetailsPopover } from "@/WorkspaceSidebar/RemoteProjectDet
 import { resolveRemoteConnectionPresentation } from "@/lib/remoteConnectionPresentation.js";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 afterEach(() => {
   cleanup();

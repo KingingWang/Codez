@@ -1,7 +1,7 @@
 // 补全之后卡与侧板取图（docs/dynamic-workflow/presentation.md「Holes on the timeline」的「The model」）：
 // run 卡取「run id 是自己的、最新的那份 display」——补全行成功且编过的图；之前是发起行的。
 import { describe, expect, it } from "vitest";
-import type { ConversationRow, WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationRow, WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import {
   buildWorkflowFillGraphByRunId,
   buildWorkflowGraphByToolCallId,

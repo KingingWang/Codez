@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/ttft/input.txt",
+      "path": ".codez-e2e/ttft/input.txt",
       "source": "created-by-helper",
       "description": "本用例通过异步 fs 创建，真实 Read 工具返回固定标记。"
     }

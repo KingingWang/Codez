@@ -68,8 +68,8 @@ describe("crashDumpAnnotations", () => {
     });
     expect(summary?.stackHead).toEqual([
       "next",
-      "WI in file:///Applications/ZCode.app/Contents/Resources/app.asar/out/renderer/assets/catalogTree-BYrDsScn.js",
-      "kq in file:///Applications/ZCode.app/Contents/Resources/app.asar/out/renderer/assets/styles-DyAcaLKy.js",
+      "WI in file:///Applications/Codez.app/Contents/Resources/app.asar/out/renderer/assets/catalogTree-BYrDsScn.js",
+      "kq in file:///Applications/Codez.app/Contents/Resources/app.asar/out/renderer/assets/styles-DyAcaLKy.js",
       "Aq in =",
     ]);
     expect(summary?.lastGcMessage).toContain("189710714 ms: Mark-Compact (reduce)");

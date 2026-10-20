@@ -7,7 +7,7 @@ import {
   TID_TASK_ITEM,
   TID_V4_COMPOSER_INPUT,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -214,7 +214,7 @@ function readTaskIndexState(taskId: string): {
   title: string;
 } | null {
   // Node 当前内置 SQLite 只提供 DatabaseSync；E2E 每次只读一行并立即关闭句柄。
-  const database = new DatabaseSync(join(homedir(), ".zcode", "v2", "tasks-index.sqlite"), {
+  const database = new DatabaseSync(join(homedir(), ".codez", "v2", "tasks-index.sqlite"), {
     readOnly: true,
   });
   try {
@@ -231,7 +231,7 @@ function readTaskIndexState(taskId: string): {
 }
 
 function readCliSessionCount(taskId: string): number {
-  const database = new DatabaseSync(join(homedir(), ".zcode", "cli", "db", "db.sqlite"), {
+  const database = new DatabaseSync(join(homedir(), ".codez", "cli", "db", "db.sqlite"), {
     readOnly: true,
   });
   try {

@@ -2,11 +2,11 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type {
-  ZCodePluginDiagnostic,
-  ZCodePluginInfo,
-  ZCodePluginUserConfigOption,
-} from "@zcode/shared";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+  CodezPluginDiagnostic,
+  CodezPluginInfo,
+  CodezPluginUserConfigOption,
+} from "@codez/shared";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { InstalledPluginDetailPanel } from "../src/settings/InstalledPluginManagement.js";
 
 describe("InstalledPluginDetailPanel", () => {
@@ -19,7 +19,7 @@ describe("InstalledPluginDetailPanel", () => {
     }));
 
     for (const enabled of [true, false]) {
-      const plugin: ZCodePluginInfo = {
+      const plugin: CodezPluginInfo = {
         id: "superpowers@zcode-plugins-official",
         name: "superpowers",
         version: "5.1.0",
@@ -39,18 +39,18 @@ describe("InstalledPluginDetailPanel", () => {
 
       const html = renderToStaticMarkup(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(InstalledPluginDetailPanel, {
             getPluginOptionValue: (
-              _plugin: ZCodePluginInfo,
+              _plugin: CodezPluginInfo,
               _key: string,
-              option: ZCodePluginUserConfigOption,
+              option: CodezPluginUserConfigOption,
             ) => option.default ?? "",
             onSavePluginOptions: () => {},
             activeOperations: [],
             plugin,
-            renderPluginSource: (target: ZCodePluginInfo) => target.marketplace,
+            renderPluginSource: (target: CodezPluginInfo) => target.marketplace,
             setPluginOptionDraft: () => {},
           }),
         ),
@@ -68,7 +68,7 @@ describe("InstalledPluginDetailPanel", () => {
 
   it("renders warning diagnostics scoped to the plugin and hides them when none match", () => {
     // Bugfix（静默失败）回归：声明的技能路径扫描为空等 warning 此前在 UI 无渲染位置。
-    const plugin: ZCodePluginInfo = {
+    const plugin: CodezPluginInfo = {
       id: "mattpocock-skills@claude-plugins-official",
       name: "mattpocock-skills",
       enabled: true,
@@ -84,22 +84,22 @@ describe("InstalledPluginDetailPanel", () => {
       components: [],
     };
 
-    const renderPanel = (diagnostics: ZCodePluginDiagnostic[]) =>
+    const renderPanel = (diagnostics: CodezPluginDiagnostic[]) =>
       renderToStaticMarkup(
         createElement(
-          ZCodeIntlProvider,
+          CodezIntlProvider,
           { initialLocale: "zh-CN" },
           createElement(InstalledPluginDetailPanel, {
             diagnostics,
             getPluginOptionValue: (
-              _plugin: ZCodePluginInfo,
+              _plugin: CodezPluginInfo,
               _key: string,
-              option: ZCodePluginUserConfigOption,
+              option: CodezPluginUserConfigOption,
             ) => option.default ?? "",
             onSavePluginOptions: () => {},
             activeOperations: [],
             plugin,
-            renderPluginSource: (target: ZCodePluginInfo) => target.marketplace,
+            renderPluginSource: (target: CodezPluginInfo) => target.marketplace,
             setPluginOptionDraft: () => {},
           }),
         ),
@@ -137,7 +137,7 @@ describe("InstalledPluginDetailPanel", () => {
 
   it("renders a details empty state for a plugin that declares no components", () => {
     // 真正无组件的插件给出诚实空态，不留白。
-    const plugin: ZCodePluginInfo = {
+    const plugin: CodezPluginInfo = {
       id: "empty-plugin@zcode-plugins-official",
       name: "empty-plugin",
       version: "0.1.0",
@@ -156,18 +156,18 @@ describe("InstalledPluginDetailPanel", () => {
 
     const html = renderToStaticMarkup(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(InstalledPluginDetailPanel, {
           getPluginOptionValue: (
-            _plugin: ZCodePluginInfo,
+            _plugin: CodezPluginInfo,
             _key: string,
-            option: ZCodePluginUserConfigOption,
+            option: CodezPluginUserConfigOption,
           ) => option.default ?? "",
           onSavePluginOptions: () => {},
           activeOperations: [],
           plugin,
-          renderPluginSource: (target: ZCodePluginInfo) => target.marketplace,
+          renderPluginSource: (target: CodezPluginInfo) => target.marketplace,
           setPluginOptionDraft: () => {},
         }),
       ),

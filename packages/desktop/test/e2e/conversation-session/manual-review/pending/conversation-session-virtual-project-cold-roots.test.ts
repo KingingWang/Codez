@@ -6,7 +6,7 @@ import {
   TID_V4_COMPOSER_INPUT,
   TID_V4_COMPOSER_SEND,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   setInputValueByTestIdDom,
@@ -20,26 +20,26 @@ describe("虚拟项目多目录冷恢复", () => {
   after(async () => {
     const capture = process.env.E2E_PROVIDER_CAPTURE_PATH;
     if (capture)
-      await copyFile(capture, join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "VP16-network.json"));
-    await browser.saveScreenshot(join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "VP16-final.png"));
+      await copyFile(capture, join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "VP16-network.json"));
+    await browser.saveScreenshot(join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "VP16-final.png"));
     await clearAppData();
   });
   it("VP16：运行实例保持旧 roots，完整进程重建才采用新 roots，cwd 与主目录配置链不变", async function () {
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 45_000);
-    const home = process.env.ZCODE_E2E_HOME_DIR!;
-    if (!home || !basename(home).startsWith("zcode-virtual-project-e2e-"))
+    const home = process.env.CODEZ_E2E_HOME_DIR!;
+    if (!home || !basename(home).startsWith("codez-virtual-project-e2e-"))
       throw new Error("隔离 HOME required");
     const roots = ["A", "B", "C"].map((name) => join(home, `E2E_VP16_${name}`));
     for (const [i, root] of roots.entries()) {
       const name = ["A", "B", "C"][i];
       await mkdir(join(root, ".agents", "skills", "probe"), { recursive: true });
-      await mkdir(join(root, ".zcode", "agents"), { recursive: true });
+      await mkdir(join(root, ".codez", "agents"), { recursive: true });
       await writeFile(
         join(root, ".agents", "skills", "probe", "SKILL.md"),
         `---\nname: probe\ndescription: E2E_VP16_SKILL_${name}\n---\nFixture skill.\n`,
       );
       await writeFile(
-        join(root, ".zcode", "agents", "review.md"),
+        join(root, ".codez", "agents", "review.md"),
         `---\nname: review\ndescription: E2E_VP16_SUBAGENT_${name}\n---\nFixture agent.\n`,
       );
       await writeFile(
@@ -62,11 +62,11 @@ describe("虚拟项目多目录冷恢复", () => {
       browser.execute((cwd) => {
         const store = (
           window as Window & {
-            __zcodeSessionStoreE2E?: {
+            __codezSessionStoreE2E?: {
               getState(): { getWorkspaceState(path: string): { activeTaskId: string | null } };
             };
           }
-        ).__zcodeSessionStoreE2E;
+        ).__codezSessionStoreE2E;
         return store?.getState().getWorkspaceState(cwd).activeTaskId ?? null;
       }, roots[0]!);
     const inspect = async (phase: string, expectedExtra: "B" | "C") => {
@@ -121,7 +121,7 @@ describe("虚拟项目多目录冷恢复", () => {
     await $(`[data-testid="${testId(TID_TASK_ITEM, taskId!)}"]`).click();
     await inspect("COLD", "C");
     expect(await readTask()).toBe(taskId);
-    await browser.saveScreenshot(join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "VP16-cold-roots.png"));
+    await browser.saveScreenshot(join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "VP16-cold-roots.png"));
   });
 });
 

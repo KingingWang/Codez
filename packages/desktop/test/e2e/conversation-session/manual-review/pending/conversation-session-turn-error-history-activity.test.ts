@@ -1,7 +1,7 @@
 import { ensureProjectExpanded } from "../../../helpers/project-sidebar.js";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { TID_TASK_ITEM, testId } from "@zcode/shared/test-ids";
+import { TID_TASK_ITEM, testId } from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -69,7 +69,7 @@ describe("turn error 后打开历史任务不刷新侧栏修改时间", () => {
     await restartIntoWorkspace({
       afterElectronProcessExit: async () => {
         agePersistedTask(sessionId);
-        await seedSettings({ zcodeInteractionBehavior: "guide" });
+        await seedSettings({ codezInteractionBehavior: "guide" });
       },
     });
     await ensureProjectExpanded(DEFAULT_WORKSPACE);
@@ -78,7 +78,7 @@ describe("turn error 后打开历史任务不刷新侧栏修改时间", () => {
     expect(await readTaskRowText(sessionId)).toMatch(/\d+(天|d)/);
     // 只观察本次点击后的配置 ACK，避免启动草稿的同步让断言提前通过。
     await browser.execute(() => {
-      (window as Window & { __zcodeV4CommandAcksE2E?: unknown[] }).__zcodeV4CommandAcksE2E = [];
+      (window as Window & { __codezV4CommandAcksE2E?: unknown[] }).__codezV4CommandAcksE2E = [];
     });
     await selectV4TaskById(sessionId);
     await waitForV4TimelineContaining(SOURCE_MARKER, 60_000);

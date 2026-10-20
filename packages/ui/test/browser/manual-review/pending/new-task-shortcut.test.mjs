@@ -13,15 +13,15 @@ test(
   { timeout: 120_000 },
   async () => {
     const connection = await chromium.connectOverCDP(
-      process.env.ZCODE_E2E_CDP_URL ?? "http://localhost:9229",
+      process.env.CODEZ_E2E_CDP_URL ?? "http://localhost:9229",
     );
     const page = connection
       .contexts()[0]
       .pages()
       .find((candidate) => /localhost:517/.test(candidate.url()));
-    assert.ok(page, "需要运行中的 ZCode Dev App");
+    assert.ok(page, "需要运行中的 Codez Dev App");
     const artifacts =
-      process.env.ZCODE_E2E_ARTIFACT_DIR ??
+      process.env.CODEZ_E2E_ARTIFACT_DIR ??
       fileURLToPath(
         new URL("../../../../../desktop/.e2e-artifacts/new-task-shortcut/", import.meta.url),
       );
@@ -73,7 +73,7 @@ test(
               longTasks: [],
             };
             let start = null;
-            const dispose = window.zcode.onNewTask(() => {
+            const dispose = window.codez.onNewTask(() => {
               sample.menuEvents++;
               start = performance.now();
             });
@@ -132,7 +132,7 @@ test(
               return sample;
             };
           });
-          if (process.env.ZCODE_E2E_TRACE === "1" && index === 0) {
+          if (process.env.CODEZ_E2E_TRACE === "1" && index === 0) {
             await cdp.send("Tracing.start", {
               categories:
                 "devtools.timeline,blink.user_timing,disabled-by-default-devtools.timeline,disabled-by-default-devtools.screenshot",

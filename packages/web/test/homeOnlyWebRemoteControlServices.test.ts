@@ -5,10 +5,10 @@ vi.mock("react-dom/client", () => ({
   createRoot: () => ({ render: renderMock }),
 }));
 
-vi.mock("@zcode/ui", () => ({
+vi.mock("@codez/ui", () => ({
   AppErrorBoundary: ({ children }: { children: unknown }) => children,
   Root: () => null,
-  ZCodeIntlProvider: ({ children }: { children: unknown }) => children,
+  CodezIntlProvider: ({ children }: { children: unknown }) => children,
   generateMobileDeviceFingerprint: vi.fn(() => "test-mobile-fingerprint"),
   installDocumentHiddenMotionPause: vi.fn(),
   playTaskNotificationSound: vi.fn(),
@@ -53,7 +53,7 @@ describe("createHomeOnlyWebRemoteControlServices", () => {
       diagnostics: [],
     });
     await expect(
-      services.zcodeTaskService.listTasks({ workspacePath: "/remote/offline" }),
+      services.codezTaskService.listTasks({ workspacePath: "/remote/offline" }),
     ).resolves.toEqual([]);
     await expect(
       services.gitService.getRepositorySummary({ workspacePath: "/remote/offline" }),
@@ -121,9 +121,9 @@ describe("createHomeOnlyWebRemoteControlServices", () => {
     const services = createHomeOnlyWebRemoteControlServices();
     const workspace = { workspacePath: "/remote/offline" };
     const subscriptions = [
-      services.zcodeTaskService.onDynamicWorkspaceEvent(workspace)(() => {}),
-      services.zcodeAgentService.onDynamicSessionsIndexFrame(workspace)(() => {}),
-      services.zcodeAgentService.onDynamicConversationFrame(workspace)(() => {}),
+      services.codezTaskService.onDynamicWorkspaceEvent(workspace)(() => {}),
+      services.codezAgentService.onDynamicSessionsIndexFrame(workspace)(() => {}),
+      services.codezAgentService.onDynamicConversationFrame(workspace)(() => {}),
     ];
 
     for (const subscription of subscriptions) {

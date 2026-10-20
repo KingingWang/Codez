@@ -8,12 +8,12 @@ BG25 的产品时序没有异常。失败发生在 child Bash tool result 之前
 
 ## 路径合同
 
-`.e2e-home` 继续作为整个测试进程的隔离 HOME；case 临时文件统一放在 Agent 实际执行 workspace `ZCodeProject` 下的 `.zcode-e2e/<case>`。运行时日志已经确认 child 的 `workingDirectory` 指向这里，而不是 conversation backing workspace：
+`.e2e-home` 继续作为整个测试进程的隔离 HOME；case 临时文件统一放在 Agent 实际执行 workspace `CodezProject` 下的 `.codez-e2e/<case>`。运行时日志已经确认 child 的 `workingDirectory` 指向这里，而不是 conversation backing workspace：
 
 ```text
 .e2e-home/
-└── ZCodeProject/                    Agent workspace cwd
-    └── .zcode-e2e/
+└── CodezProject/                    Agent workspace cwd
+    └── .codez-e2e/
         ├── shared/
         └── <case>/                  case-owned runtime files
 ```
@@ -21,14 +21,14 @@ BG25 的产品时序没有异常。失败发生在 child Bash tool result 之前
 同一文件按消费者暴露两种表示：
 
 ```text
-Node/spec/tool input: <native-or-portable absolute workspace>/.zcode-e2e/<case>/file
-Bash command:         .zcode-e2e/<case>/file
+Node/spec/tool input: <native-or-portable absolute workspace>/.codez-e2e/<case>/file
+Bash command:         .codez-e2e/<case>/file
 ```
 
 - Node 文件 API 使用原生绝对路径。
 - Read/Write/Edit/Glob/Grep 等 provider tool input 使用正斜杠归一化后的绝对路径；Windows 文件 API 接受 `C:/...`，fixture 不需要处理 JSON 反斜杠转义。
 - Bash 从 workspace cwd 启动，使用平台无关的 POSIX 相对路径，避免 Windows drive、Git Bash mount 和含空格 TEMP 目录转换。
-- 每个 case 清理自己的目录；共享只读输入放在 `.zcode-e2e/shared`。
+- 每个 case 清理自己的目录；共享只读输入放在 `.codez-e2e/shared`。
 
 ## Replay fixture 变量
 
@@ -64,7 +64,7 @@ fixture JSON
 - 路径合同单测扫描 `packages/desktop/test/e2e`，禁止重新提交裸 `/tmp`。
 - fixture checker 验证受影响 case 的 manifest/provider 合同。
 - 定向 replay 覆盖 BG25、BG21、permission、tool-cross-product 等真实文件消费者。
-- 完成前执行 `pnpm --filter @zcode/desktop typecheck:e2e`、`pnpm typecheck` 和 `pnpm lint`。
+- 完成前执行 `pnpm --filter @codez/desktop typecheck:e2e`、`pnpm typecheck` 和 `pnpm lint`。
 
 ## 非目标
 

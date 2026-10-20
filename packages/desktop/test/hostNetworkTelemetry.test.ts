@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { HostResponseTypes } from "@zcode/shared";
-import { emitNetworkTelemetryObservation } from "@zcode/rpc";
+import { HostResponseTypes } from "@codez/shared";
+import { emitNetworkTelemetryObservation } from "@codez/rpc";
 import {
   registerHostNetworkTelemetry,
   stopHostNetworkTelemetry,
@@ -27,7 +27,7 @@ describe("hostNetworkTelemetry", () => {
 
     emitNetworkTelemetryObservation({
       transport: "http",
-      interface: "zcode_agent.model.openai-compatible.sse.api.example.com/v1",
+      interface: "codez_agent.model.openai-compatible.sse.api.example.com/v1",
       durationMs: 456,
       ok: true,
       attempt: 2,
@@ -41,7 +41,7 @@ describe("hostNetworkTelemetry", () => {
         observations: [
           {
             transport: "http",
-            interface: "zcode_agent.model.openai-compatible.sse.api.example.com/v1",
+            interface: "codez_agent.model.openai-compatible.sse.api.example.com/v1",
             durationMs: 456,
             ok: true,
             attempt: 2,

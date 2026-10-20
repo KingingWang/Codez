@@ -2,26 +2,26 @@ import {
   normalizeRemoteArch,
   normalizeRemotePlatform,
   resolveRemotePlatform,
-} from "@zcode/server/remote/detectEnv.js";
-import type { IRemoteBackend } from "@zcode/server/remote/backend.js";
-import { assertSupportedRemoteEnvironment } from "@zcode/server/remote/remotePlatformSupport.js";
+} from "@codez/server/remote/detectEnv.js";
+import type { IRemoteBackend } from "@codez/server/remote/backend.js";
+import { assertSupportedRemoteEnvironment } from "@codez/server/remote/remotePlatformSupport.js";
 import {
   collectCommand,
   readLastJsonLine,
   readUniqueVersion,
   throwIfAborted,
-} from "@zcode/server/source-server/sourceServerTransportRuntime.js";
+} from "@codez/server/source-server/sourceServerTransportRuntime.js";
 import type {
   SourceServerProbeOptions,
   SourceServerProbeResult,
   TransportContext,
-} from "@zcode/server/source-server/transportAdapter.js";
+} from "@codez/server/source-server/transportAdapter.js";
 
-const SERVER_ROOT_SHELL = '"$HOME/.zcode/server"';
-const SERVER_BIN_SHELL = '"$HOME/.zcode/server/bin/zcode"';
+const SERVER_ROOT_SHELL = '"$HOME/.codez/server"';
+const SERVER_BIN_SHELL = '"$HOME/.codez/server/bin/codez"';
 const SERVER_CURRENT_SHELL = `${SERVER_ROOT_SHELL}/current.json`;
 const SERVER_STATUS_SHELL = `${SERVER_ROOT_SHELL}/run/status.json`;
-const SOURCE_SERVER_PROBE_MARKER_PREFIX = "__ZCODE_PROBE_";
+const SOURCE_SERVER_PROBE_MARKER_PREFIX = "__CODEZ_PROBE_";
 
 function buildSourceServerProbeCommand(includeReleaseIdentity: boolean): string {
   return [
@@ -56,7 +56,7 @@ function buildSourceServerProbeCommand(includeReleaseIdentity: boolean): string 
 }
 
 function readSourceServerProbeSections(output: string): Map<string, string> {
-  const parts = output.split(/__ZCODE_PROBE_([A-Z]+)__\r?\n/gu);
+  const parts = output.split(/__CODEZ_PROBE_([A-Z]+)__\r?\n/gu);
   const sections = new Map<string, string>();
   for (let index = 1; index + 1 < parts.length; index += 2) {
     sections.set(parts[index]!, parts[index + 1]!.trim());
@@ -75,7 +75,7 @@ const SOURCE_SERVER_MIN_GLIBC_VERSION = [2, 28] as const;
 function assertSupportedGlibc(platform: string, libcText: string): void {
   if (platform !== "linux") return;
   // Bug 原因（ZCT-2112008575366098944）：probe 过去只看平台/架构，CentOS 7 等 glibc 2.17
-  // 的远端要先上传约 87MB archive，解压后执行 bin/zcode 才由 ld.so 报一串 `not found`，
+  // 的远端要先上传约 87MB archive，解压后执行 bin/codez 才由 ld.so 报一串 `not found`，
   // 并被归为安装失败。glibc 下限是 release 的平台事实，归入远端环境检查，在确认安装前拒绝。
   // 读不到版本（musl、缺 getconf、输出无法识别）时无法判定，保持原安装链，不凭猜测拒绝。
   const match = /^glibc\s+(\d+)\.(\d+)/iu.exec(libcText);
@@ -86,7 +86,7 @@ function assertSupportedGlibc(platform: string, libcText: string): void {
   if (major > minMajor || (major === minMajor && minor >= minMinor)) return;
   const required = SOURCE_SERVER_MIN_GLIBC_VERSION.join(".");
   throw new SourceServerProbeEnvironmentError(
-    `Remote glibc ${major}.${minor} is older than glibc ${required} required by ZCode Source Server. ` +
+    `Remote glibc ${major}.${minor} is older than glibc ${required} required by Codez Source Server. ` +
       `Use a Linux system with glibc ${required} or later, such as RHEL 8+, Ubuntu 20.04+ or Debian 10+.`,
   );
 }

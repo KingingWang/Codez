@@ -2,13 +2,13 @@
 
 > 状态：已实现并完成契约验证
 > 日期：2026-07-31
-> 范围：ZCode CLI Browser Use agent guidance（Skill、随包文档、fallback 文档）
+> 范围：Codez CLI Browser Use agent guidance（Skill、随包文档、fallback 文档）
 
 ## 1. 背景与问题
 
 同一网页快照中，目标书名暴露为 `heading`，页面没有把它声明成 `link`：
 
-- ZCode 把书名改写成猜测的 `link` role，`count()` 得到 `0` 后判定“书名标题本身不是链接”，没有执行点击。
+- Codez 把书名改写成猜测的 `link` role，`count()` 得到 `0` 后判定“书名标题本身不是链接”，没有执行点击。
 - 正确做法是保留快照里已经证实的标题/文本定位，点击 `h3`：页面卡片的 JavaScript click handler 接收到冒泡事件，并在新标签打开详情页。
 - 但若点击后只检查源标签 URL，源 URL 未变化时就会再次点击，轨迹中已观察到最终打开两个相同详情标签。
 
@@ -23,12 +23,12 @@
 6. action 可能打开 popup/new tab 且源标签没有出现预期效果时，若把两套 tab 查询拆成两个 observation
    cell，模型可能在看到第一套结果后重新决策并跳过第二套，仍然遗漏新窗口。
 7. 新 URL 的标准轨迹应在 `tab.goto(url)` 后显式调用
-   `tab.playwright.waitForLoadState({ state: "domcontentloaded" })`，再读取标题、URL 或 DOM；ZCode 的
+   `tab.playwright.waitForLoadState({ state: "domcontentloaded" })`，再读取标题、URL 或 DOM；Codez 的
    runtime `goto()` 虽然已经等待 Electron 导航完成，但 guidance 没有保留这一步，导致模型轨迹缺少显式等待。
 
 ## 2. 目标
 
-- 让 ZCode 对 JavaScript 驱动的卡片、标题和可见文本采用快照证据，而不是依赖必须存在的 `<a>` / `link` role。
+- 让 Codez 对 JavaScript 驱动的卡片、标题和可见文本采用快照证据，而不是依赖必须存在的 `<a>` / `link` role。
 - 在源标签 URL 未变化时，先检查 agent 已控制标签和可认领用户标签，再考虑重新定位。
 - action 后以预期 URL、标题或页面状态是否出现作为成功依据；已有源标签或无关 controlled tab
   仍存在不算动作效果。
@@ -273,10 +273,10 @@ snapshot-proven locator -- count === 1 --> click once
 | BCP-223 red phase | `navigationWait` 缺少显式 `domcontentloaded` 调用时契约按预期失败，证明旧 guidance 缺少新 URL 的显式等待调用顺序 |
 | `pnpm exec vitest run tests/browser-manifest.test.ts tests/node-repl-tools.test.ts tests/node-repl-browser-injection.test.ts` | 3 files / 37 tests 通过；覆盖 Skill、API manifest、overview/workflow/playwright、effective/fallback docs、tool description 与现有 tab registry 注入兼容性 |
 | `pnpm exec vitest run packages/desktop/test/browserGuestManager.test.ts` | 1 file / 57 tests 通过；确认 stale-binding hint 明确限定为 action 前恢复，不与 action 后 popup 观察混用 |
-| `pnpm --filter @zcode/browser-use-plugin test` | 6 files / 29 tests 通过 |
-| `@zcode/core typecheck` | 通过 |
-| `@zcode/browser-use-plugin build` | 通过 |
-| ZCode CLI workspace typecheck | 23/23 tasks 通过；受影响的 core/browser-use-plugin 均实际执行 |
+| `pnpm --filter @codez/browser-use-plugin test` | 6 files / 29 tests 通过 |
+| `@codez/core typecheck` | 通过 |
+| `@codez/browser-use-plugin build` | 通过 |
+| Codez CLI workspace typecheck | 23/23 tasks 通过；受影响的 core/browser-use-plugin 均实际执行 |
 | 根仓库 `pnpm typecheck` | 通过 |
 | 根仓库 `pnpm lint` | 通过，36 warnings、0 errors；warning 均不在本次变更文件 |
 | feature graph YAML/edge/seed 校验 | 150 nodes、259 edges、217 code seeds；无重复 node/edge、悬空 edge 或缺失 code seed |

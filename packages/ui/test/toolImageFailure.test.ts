@@ -2,14 +2,14 @@
 import { createElement } from "react";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { FileMediaPreview } from "@zcode/shared";
+import type { FileMediaPreview } from "@codez/shared";
 import { ToolCallBody } from "@/ToolCallBlocks/ToolCallBody.js";
 import {
   ToolPresentationCapabilitiesProvider,
   type ToolPresentationCapabilities,
 } from "@/ToolCallBlocks/presentationCapabilities.js";
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 afterEach(cleanup);
 function body(capabilities: ToolPresentationCapabilities, path = "/workspace/a.png") {

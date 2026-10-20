@@ -4,7 +4,7 @@ import {
   ServiceCollection,
   IBotsService,
   type IBotsService as BotsService,
-} from "@zcode/services";
+} from "@codez/services";
 import { createHttpServer } from "../src/http.js";
 
 describe("bots HTTP callback", () => {
@@ -53,7 +53,7 @@ describe("bots HTTP callback", () => {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-zcode-bot-secret": "secret",
+        "x-codez-bot-secret": "secret",
       },
       body: JSON.stringify({
         botId: "webhook-1",

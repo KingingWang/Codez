@@ -7,15 +7,15 @@ import {
   MarkdownImage,
   normalizeConsecutiveMarkdownImageBlocks,
 } from "@/components/ai-elements/markdown-image.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
-import { rewriteMarkdownArtifactImageSources } from "@zcode/shared";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
+import { rewriteMarkdownArtifactImageSources } from "@codez/shared";
 import { sanitizeImageSourceForLog } from "@/components/ai-elements/image-preview-dialog.js";
 
 afterEach(() => vi.restoreAllMocks());
 
 describe("artifact-backed Markdown images", () => {
   it("reads an authorized session artifact instead of passing its custom URI to img", async () => {
-    const ref = "zcode-artifact://session-1/cua-shot";
+    const ref = "codez-artifact://session-1/cua-shot";
     const rewritten = rewriteMarkdownArtifactImageSources(`![shot](${ref})`);
     const src = rewritten.match(/!\[shot\]\(([^)]+)\)/u)?.[1] ?? "";
     const readAttachment = vi.fn().mockResolvedValue({
@@ -27,7 +27,7 @@ describe("artifact-backed Markdown images", () => {
 
     const rendered = render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(MarkdownImage, {
           alt: "shot",
@@ -42,7 +42,7 @@ describe("artifact-backed Markdown images", () => {
       expect(rendered.container.querySelector("img")?.getAttribute("src")).toBe("blob:cua-shot"),
     );
     expect(readAttachment).toHaveBeenCalledWith({ sessionId: "session-1", ref });
-    expect(rendered.container.innerHTML).not.toContain("zcode-artifact://");
+    expect(rendered.container.innerHTML).not.toContain("codez-artifact://");
     rendered.unmount();
     expect(revoke).toHaveBeenCalledWith("blob:cua-shot");
   });

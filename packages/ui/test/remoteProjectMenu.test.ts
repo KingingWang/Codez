@@ -3,10 +3,10 @@ import { createElement } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { RemoteProjectMenu } from "@/project-sidebar/RemoteProjectMenu.js";
-import type { SourceServerManagementSnapshot } from "@zcode/shared";
+import type { SourceServerManagementSnapshot } from "@codez/shared";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 afterEach(cleanup);
 

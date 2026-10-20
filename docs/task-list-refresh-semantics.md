@@ -18,7 +18,7 @@
 | `task_archived` / `task_unarchived`              | 归档归属翻转                                             | ✅               | ✅               | —                   | archiveTask/unarchiveTask                         |
 | `task_meta_changed`                              | 归属相关 meta（unread）或无更细分类的兜底                | ❌（带 meta）    | ✅               | preserve-membership | setTaskUnread、group 操作、批量归档、首发广播     |
 | `task_status_changed`                            | 状态/快照收敛（收口、回源、打开/恢复任务、compact/goal） | ❌               | ❌               | preserve-membership | applyTerminalTransition、resync、resumeSession    |
-| `task_model_changed`                             | 切模型（纯配置）                                         | ❌               | ❌               | preserve-membership | zcodeSessionService.setModel                      |
+| `task_model_changed`                             | 切模型（纯配置）                                         | ❌               | ❌               | preserve-membership | codezSessionService.setModel                      |
 | `task_title_changed`                             | 标题（首条消息/自动标题/手动重命名）                     | ❌               | ❌               | preserve-membership | applyTitleChange、renameTask                      |
 | `task_created`                                   | 新任务（tasks-index 正向行集合增加）                     | ✅（无 meta 时） | ✅               | insert-active       | adapter/create、首次 grouped 顺序提交             |
 | `user_message_saved` / `assistant_message_saved` | 消息落盘                                                 | ❌（带 meta）    | ❌               | preserve-membership | 旧协议路径                                        |

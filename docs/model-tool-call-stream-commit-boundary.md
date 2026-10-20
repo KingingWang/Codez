@@ -7,7 +7,7 @@
 不能作为工具调用完成或执行的依据。
 
 当前锁定依赖为 `ai@6.0.193`、`@ai-sdk/anthropic@3.0.81`、
-`@ai-sdk/openai@3.0.65` 和 `@ai-sdk/openai-compatible@2.0.60`。在 ZCode 当前可达的普通
+`@ai-sdk/openai@3.0.65` 和 `@ai-sdk/openai-compatible@2.0.60`。在 Codez 当前可达的普通
 agent-tool 路径中，provider adapter 会在同一个本地 transform / flush 中依次 enqueue
 `tool-input-end` 和 final `tool-call`；两者会成为 AI SDK full stream 中相邻的本地事件，
 中间不会再次读取 provider 网络流。
@@ -20,7 +20,7 @@ agent-tool 路径中，provider adapter 会在同一个本地 transform / flush 
 
 ## 行为规范
 
-ZCode 不再从 delta 合成可执行调用。普通主请求中，流式展示、重试缓冲和最终执行输入的关系如下：
+Codez 不再从 delta 合成可执行调用。普通主请求中，流式展示、重试缓冲和最终执行输入的关系如下：
 
 ```text
 Provider SSE
@@ -31,7 +31,7 @@ AI SDK
     └─ final tool-call(input)
                     │
                     ▼
-ZCode retry-safe buffer
+Codez retry-safe buffer
     ├─ start / delta / end ───────────────→ 仅展示，等待最终调用
     │
     └─ final tool-call
@@ -60,7 +60,7 @@ ZCode retry-safe buffer
 - malformed/null 的严格归一化与 `{}` 恢复规则见
   [Model Tool Call Validation](./model-tool-call-validation.md)。
 
-当前 SDK 的 end/call 是同一次本地转换产生的相邻事件；ZCode 在同一 attempt 中消费这对事件，
+当前 SDK 的 end/call 是同一次本地转换产生的相邻事件；Codez 在同一 attempt 中消费这对事件，
 并继续使用既有 Adapter retry、Core recovery 与 Compact 策略。
 
 ## 多 provider 时序
@@ -72,12 +72,12 @@ OpenAI-compatible stream flush ────┘             │
                                                  └─→ final tool-call
                                                           │
                                                           ▼
-                                              ZCode 严格归一化并发布
+                                              Codez 严格归一化并发布
 ```
 
 Anthropic 和 OpenAI Responses 保留各自逐调用完成时机。OpenAI-compatible 的 Chat Completions
 协议没有标准逐调用 done，当前适配器会在 response stream flush 时结束仍在累计的工具参数。
-ZCode 统一消费 AI SDK 事件，不再自行设计 provider capability 或检查 `finish_reason` / `[DONE]`。
+Codez 统一消费 AI SDK 事件，不再自行设计 provider capability 或检查 `finish_reason` / `[DONE]`。
 
 Compact 继续由既有 raw provider boundary 决定 SSE/fallback 重试边界，不套用普通主请求的
 prelude 分类；但同样不从 delta 合成调用，并且只用 final `tool-call.input` 执行。Core

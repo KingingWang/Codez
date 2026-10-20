@@ -806,7 +806,7 @@
           "id": "toolu_e2e_bg38_parent_abort",
           "name": "Bash",
           "input": {
-            "command": "printf 'E2E_BG38_STARTED\\n' > .zcode-e2e/conversation-session-background/bg38-bash-started; printf 'E2E_BG38_STARTED\\n'; sleep 4; printf 'E2E_BG38_DONE\\n'",
+            "command": "printf 'E2E_BG38_STARTED\\n' > .codez-e2e/conversation-session-background/bg38-bash-started; printf 'E2E_BG38_STARTED\\n'; sleep 4; printf 'E2E_BG38_DONE\\n'",
             "description": "BG38 parent abort bash",
             "run_in_background": true,
             "timeout": 10
@@ -980,7 +980,7 @@
           "id": "toolu_e2e_background_cancel_bash",
           "name": "Bash",
           "input": {
-            "command": "bash -c 'printf \"%s\\n\" \"$$\" > .zcode-e2e/conversation-session-background/bg08-root.pid; set -m; node .zcode-e2e/conversation-session-background/bg08-launcher.cjs .zcode-e2e/conversation-session-background/bg08-launcher.pid .zcode-e2e/conversation-session-background/bg08-worker.pid & wait'",
+            "command": "bash -c 'printf \"%s\\n\" \"$$\" > .codez-e2e/conversation-session-background/bg08-root.pid; set -m; node .codez-e2e/conversation-session-background/bg08-launcher.cjs .codez-e2e/conversation-session-background/bg08-launcher.pid .codez-e2e/conversation-session-background/bg08-worker.pid & wait'",
             "description": "background cancel bash process tree",
             "run_in_background": true
           }
@@ -1874,7 +1874,7 @@
           "id": "toolu_e2e_foreground_long_bash_loading",
           "name": "Bash",
           "input": {
-            "command": "sh -c 'i=1; while [ \"$i\" -le 120 ]; do printf \"progress-line-%s\\n\" \"$i\"; i=$((i+1)); done; i=0; while [ ! -f .zcode-e2e/conversation-session-background/bg14-preview-release ] && [ \"$i\" -lt 400 ]; do sleep 0.1; i=$((i+1)); done; i=0; while [ \"$i\" -lt 4000 ]; do printf \"padding-%s\\n\" \"$i\"; i=$((i+1)); done; printf \"E2E_FOREGROUND_LONG_BASH_DONE\\n\"'",
+            "command": "sh -c 'i=1; while [ \"$i\" -le 120 ]; do printf \"progress-line-%s\\n\" \"$i\"; i=$((i+1)); done; i=0; while [ ! -f .codez-e2e/conversation-session-background/bg14-preview-release ] && [ \"$i\" -lt 400 ]; do sleep 0.1; i=$((i+1)); done; i=0; while [ \"$i\" -lt 4000 ]; do printf \"padding-%s\\n\" \"$i\"; i=$((i+1)); done; printf \"E2E_FOREGROUND_LONG_BASH_DONE\\n\"'",
             "description": "foreground long bash loading sleep"
           }
         }
@@ -2143,7 +2143,7 @@
           "id": "toolu_e2e_background_idle_child_tool_bash",
           "name": "Bash",
           "input": {
-            "command": "sh -c 'while [ ! -f \".zcode-e2e/conversation-session-background/background-child-tool-idle-release\" ]; do sleep 0.1; done; printf \"E2E_BACKGROUND_AGENT_CHILD_TOOL_IDLE_BASH_DONE\\n\"'",
+            "command": "sh -c 'while [ ! -f \".codez-e2e/conversation-session-background/background-child-tool-idle-release\" ]; do sleep 0.1; done; printf \"E2E_BACKGROUND_AGENT_CHILD_TOOL_IDLE_BASH_DONE\\n\"'",
             "description": "background idle child visible bash sleep"
           }
         }
@@ -2350,7 +2350,7 @@
           "id": "toolu_e2e_background_parent_anchor_child_bash",
           "name": "Bash",
           "input": {
-            "command": "sh -c 'while [ ! -f \".zcode-e2e/conversation-session-background/background-parent-anchor-release\" ]; do sleep 0.1; done; printf \"E2E_BACKGROUND_CHILD_TOOL_PARENT_ANCHOR_BASH_DONE\\n\"'",
+            "command": "sh -c 'while [ ! -f \".codez-e2e/conversation-session-background/background-parent-anchor-release\" ]; do sleep 0.1; done; printf \"E2E_BACKGROUND_CHILD_TOOL_PARENT_ANCHOR_BASH_DONE\\n\"'",
             "description": "background parent anchor child visible bash sleep"
           }
         }
@@ -2527,7 +2527,7 @@
           "id": "toolu_e2e_background_session_switch_child_bash",
           "name": "Bash",
           "input": {
-            "command": "sh -c 'while [ ! -f .zcode-e2e/conversation-session-background/bg21-child-tool-release ]; do sleep 0.1; done; printf \"E2E_BACKGROUND_CHILD_TOOL_SESSION_SWITCH_BASH_DONE\\n\"'",
+            "command": "sh -c 'while [ ! -f .codez-e2e/conversation-session-background/bg21-child-tool-release ]; do sleep 0.1; done; printf \"E2E_BACKGROUND_CHILD_TOOL_SESSION_SWITCH_BASH_DONE\\n\"'",
             "description": "background session switch child visible bash"
           }
         }
@@ -2704,7 +2704,7 @@
           "id": "toolu_e2e_background_switch_back_running_child_bash",
           "name": "Bash",
           "input": {
-            "command": "sh -c 'while [ ! -f \".zcode-e2e/conversation-session-background/background-switch-back-release\" ]; do sleep 0.1; done; printf \"E2E_BACKGROUND_CHILD_TOOL_SWITCH_BACK_RUNNING_BASH_DONE\\n\"'",
+            "command": "sh -c 'while [ ! -f \".codez-e2e/conversation-session-background/background-switch-back-release\" ]; do sleep 0.1; done; printf \"E2E_BACKGROUND_CHILD_TOOL_SWITCH_BACK_RUNNING_BASH_DONE\\n\"'",
             "description": "background switch back running child visible bash"
           }
         }
@@ -2878,7 +2878,7 @@
           "id": "toolu_e2e_background_send_now_queue_child_bash",
           "name": "Bash",
           "input": {
-            "command": "sh -c 'while [ ! -f \".zcode-e2e/conversation-session-background/background-send-now-queue-release\" ]; do sleep 0.1; done; printf \"E2E_BACKGROUND_SEND_NOW_QUEUE_CHILD_BASH_DONE\\n\"'",
+            "command": "sh -c 'while [ ! -f \".codez-e2e/conversation-session-background/background-send-now-queue-release\" ]; do sleep 0.1; done; printf \"E2E_BACKGROUND_SEND_NOW_QUEUE_CHILD_BASH_DONE\\n\"'",
             "description": "background send now queue child bash sleep"
           }
         }
@@ -3575,12 +3575,12 @@
     },
     {
       "id": "upstream-background-agent-control-preserve-ready",
-      "description": "BG24: launch one long cc background Agent and three zcode background Agent tasks so the third zcode completion notification can run while the cc peer remains running.",
+      "description": "BG24: launch one long cc background Agent and three codez background Agent tasks so the third codez completion notification can run while the cc peer remains running.",
       "metadata": {
         "kind": "main",
         "timingPolicy": "fast-tool-use",
         "source": "synthetic",
-        "syntheticReason": "稳定启动四个 background Agent：三个 zcode Agent 依次完成，cc Agent 保持 running，用真实右上角 background control 面板复现 Agent row 闪没场景。"
+        "syntheticReason": "稳定启动四个 background Agent：三个 codez Agent 依次完成，cc Agent 保持 running，用真实右上角 background control 面板复现 Agent row 闪没场景。"
       },
       "maxMatches": 1,
       "match": {
@@ -3609,29 +3609,29 @@
             }
           },
           {
-            "id": "toolu_e2e_bg24_zcode_one_agent",
+            "id": "toolu_e2e_bg24_codez_one_agent",
             "name": "Agent",
             "input": {
-              "description": "E2E BG24 zcode one agent",
-              "prompt": "E2E_BG24_ZCODE_ONE_CHILD: Finish after a short delay and return exactly E2E_BG24_ZCODE_ONE_CHILD_DONE.",
+              "description": "E2E BG24 codez one agent",
+              "prompt": "E2E_BG24_CODEZ_ONE_CHILD: Finish after a short delay and return exactly E2E_BG24_CODEZ_ONE_CHILD_DONE.",
               "run_in_background": true
             }
           },
           {
-            "id": "toolu_e2e_bg24_zcode_two_agent",
+            "id": "toolu_e2e_bg24_codez_two_agent",
             "name": "Agent",
             "input": {
-              "description": "E2E BG24 zcode two agent",
-              "prompt": "E2E_BG24_ZCODE_TWO_CHILD: Finish after a short delay and return exactly E2E_BG24_ZCODE_TWO_CHILD_DONE.",
+              "description": "E2E BG24 codez two agent",
+              "prompt": "E2E_BG24_CODEZ_TWO_CHILD: Finish after a short delay and return exactly E2E_BG24_CODEZ_TWO_CHILD_DONE.",
               "run_in_background": true
             }
           },
           {
-            "id": "toolu_e2e_bg24_zcode_three_agent",
+            "id": "toolu_e2e_bg24_codez_three_agent",
             "name": "Agent",
             "input": {
-              "description": "E2E BG24 zcode three agent",
-              "prompt": "E2E_BG24_ZCODE_THREE_CHILD: Finish after a short delay and return exactly E2E_BG24_ZCODE_THREE_CHILD_DONE.",
+              "description": "E2E BG24 codez three agent",
+              "prompt": "E2E_BG24_CODEZ_THREE_CHILD: Finish after a short delay and return exactly E2E_BG24_CODEZ_THREE_CHILD_DONE.",
               "run_in_background": true
             }
           }
@@ -3640,7 +3640,7 @@
     },
     {
       "id": "upstream-background-agent-control-preserve-cc-child-keepalive-tool",
-      "description": "BG24: cc peer Agent stays running while zcode Agent completes.",
+      "description": "BG24: cc peer Agent stays running while codez Agent completes.",
       "metadata": {
         "kind": "subagent",
         "timingPolicy": "fast-tool-use",
@@ -3667,77 +3667,77 @@
       }
     },
     {
-      "id": "upstream-background-agent-control-preserve-zcode-one-child-result",
-      "description": "BG24: first zcode peer Agent completes first.",
+      "id": "upstream-background-agent-control-preserve-codez-one-child-result",
+      "description": "BG24: first codez peer Agent completes first.",
       "metadata": {
         "kind": "subagent",
         "timingPolicy": "delayed-text",
         "source": "synthetic",
-        "syntheticReason": "短延迟完成第一个 zcode background Agent，稳定触发 parent task-notification。"
+        "syntheticReason": "短延迟完成第一个 codez background Agent，稳定触发 parent task-notification。"
       },
       "maxMatches": 1,
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_BG24_ZCODE_ONE_CHILD"],
-        "lastUserMessageIncludes": ["E2E_BG24_ZCODE_ONE_CHILD"]
+        "bodyIncludes": ["E2E_BG24_CODEZ_ONE_CHILD"],
+        "lastUserMessageIncludes": ["E2E_BG24_CODEZ_ONE_CHILD"]
       },
       "response": {
         "statusCode": 200,
         "delayMs": 4000,
         "text": {
-          "id": "upstream-e2e-bg24-zcode-one-child-done",
-          "text": "E2E_BG24_ZCODE_ONE_CHILD_DONE"
+          "id": "upstream-e2e-bg24-codez-one-child-done",
+          "text": "E2E_BG24_CODEZ_ONE_CHILD_DONE"
         }
       }
     },
     {
-      "id": "upstream-background-agent-control-preserve-zcode-two-child-result",
-      "description": "BG24: second zcode peer Agent completes second.",
+      "id": "upstream-background-agent-control-preserve-codez-two-child-result",
+      "description": "BG24: second codez peer Agent completes second.",
       "metadata": {
         "kind": "subagent",
         "timingPolicy": "delayed-text",
         "source": "synthetic",
-        "syntheticReason": "短延迟完成第二个 zcode background Agent，稳定触发 parent task-notification。"
+        "syntheticReason": "短延迟完成第二个 codez background Agent，稳定触发 parent task-notification。"
       },
       "maxMatches": 1,
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_BG24_ZCODE_TWO_CHILD"],
-        "lastUserMessageIncludes": ["E2E_BG24_ZCODE_TWO_CHILD"]
+        "bodyIncludes": ["E2E_BG24_CODEZ_TWO_CHILD"],
+        "lastUserMessageIncludes": ["E2E_BG24_CODEZ_TWO_CHILD"]
       },
       "response": {
         "statusCode": 200,
         "delayMs": 14000,
         "text": {
-          "id": "upstream-e2e-bg24-zcode-two-child-done",
-          "text": "E2E_BG24_ZCODE_TWO_CHILD_DONE"
+          "id": "upstream-e2e-bg24-codez-two-child-done",
+          "text": "E2E_BG24_CODEZ_TWO_CHILD_DONE"
         }
       }
     },
     {
-      "id": "upstream-background-agent-control-preserve-zcode-three-child-result",
-      "description": "BG24: third zcode peer Agent completes third.",
+      "id": "upstream-background-agent-control-preserve-codez-three-child-result",
+      "description": "BG24: third codez peer Agent completes third.",
       "metadata": {
         "kind": "subagent",
         "timingPolicy": "delayed-text",
         "source": "synthetic",
-        "syntheticReason": "短延迟完成第三个 zcode background Agent，复现真实场景中第三个 completion notification 触发 UI 闪没。"
+        "syntheticReason": "短延迟完成第三个 codez background Agent，复现真实场景中第三个 completion notification 触发 UI 闪没。"
       },
       "maxMatches": 1,
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_BG24_ZCODE_THREE_CHILD"],
-        "lastUserMessageIncludes": ["E2E_BG24_ZCODE_THREE_CHILD"]
+        "bodyIncludes": ["E2E_BG24_CODEZ_THREE_CHILD"],
+        "lastUserMessageIncludes": ["E2E_BG24_CODEZ_THREE_CHILD"]
       },
       "response": {
         "statusCode": 200,
         "delayMs": 24000,
         "text": {
-          "id": "upstream-e2e-bg24-zcode-three-child-done",
-          "text": "E2E_BG24_ZCODE_THREE_CHILD_DONE"
+          "id": "upstream-e2e-bg24-codez-three-child-done",
+          "text": "E2E_BG24_CODEZ_THREE_CHILD_DONE"
         }
       }
     },
@@ -3757,9 +3757,9 @@
         "bodyIncludes": [
           "E2E_BACKGROUND_AGENT_CONTROL_PRESERVE",
           "toolu_e2e_bg24_cc_agent",
-          "toolu_e2e_bg24_zcode_one_agent",
-          "toolu_e2e_bg24_zcode_two_agent",
-          "toolu_e2e_bg24_zcode_three_agent",
+          "toolu_e2e_bg24_codez_one_agent",
+          "toolu_e2e_bg24_codez_two_agent",
+          "toolu_e2e_bg24_codez_three_agent",
           "Async agent launched successfully"
         ],
         "bodyExcludes": [
@@ -3777,13 +3777,13 @@
       }
     },
     {
-      "id": "upstream-background-agent-control-preserve-zcode-one-notification",
-      "description": "BG24: first zcode background Agent completion notification is consumed before the third completion reproducer.",
+      "id": "upstream-background-agent-control-preserve-codez-one-notification",
+      "description": "BG24: first codez background Agent completion notification is consumed before the third completion reproducer.",
       "metadata": {
         "kind": "main",
         "timingPolicy": "task-notification",
         "source": "synthetic",
-        "syntheticReason": "先消费第一个 zcode Agent completion notification，复现真实场景中多个 zcode Agent 依次完成。 验证来源提示及非用户授权边界。"
+        "syntheticReason": "先消费第一个 codez Agent completion notification，复现真实场景中多个 codez Agent 依次完成。 验证来源提示及非用户授权边界。"
       },
       "maxMatches": 1,
       "match": {
@@ -3792,9 +3792,9 @@
         "bodyIncludes": [
           "E2E_BACKGROUND_AGENT_CONTROL_PRESERVE",
           "<task-notification>",
-          "<tool-use-id>toolu_e2e_bg24_zcode_one_agent</tool-use-id>",
+          "<tool-use-id>toolu_e2e_bg24_codez_one_agent</tool-use-id>",
           "<status>completed</status>",
-          "E2E_BG24_ZCODE_ONE_CHILD_DONE"
+          "E2E_BG24_CODEZ_ONE_CHILD_DONE"
         ],
         "bodyExcludes": [
           "Generate a concise title",
@@ -3810,19 +3810,19 @@
       "response": {
         "statusCode": 200,
         "text": {
-          "id": "upstream-e2e-background-agent-control-preserve-zcode-one-notification",
-          "text": "background-agent-control-preserve-zcode-one-notification-ok"
+          "id": "upstream-e2e-background-agent-control-preserve-codez-one-notification",
+          "text": "background-agent-control-preserve-codez-one-notification-ok"
         }
       }
     },
     {
-      "id": "upstream-background-agent-control-preserve-zcode-two-notification",
-      "description": "BG24: second zcode background Agent completion notification is consumed before the third completion reproducer.",
+      "id": "upstream-background-agent-control-preserve-codez-two-notification",
+      "description": "BG24: second codez background Agent completion notification is consumed before the third completion reproducer.",
       "metadata": {
         "kind": "main",
         "timingPolicy": "task-notification",
         "source": "synthetic",
-        "syntheticReason": "再消费第二个 zcode Agent completion notification，复现真实场景中多个 zcode Agent 依次完成。 验证来源提示及非用户授权边界。"
+        "syntheticReason": "再消费第二个 codez Agent completion notification，复现真实场景中多个 codez Agent 依次完成。 验证来源提示及非用户授权边界。"
       },
       "maxMatches": 1,
       "match": {
@@ -3831,9 +3831,9 @@
         "bodyIncludes": [
           "E2E_BACKGROUND_AGENT_CONTROL_PRESERVE",
           "<task-notification>",
-          "<tool-use-id>toolu_e2e_bg24_zcode_two_agent</tool-use-id>",
+          "<tool-use-id>toolu_e2e_bg24_codez_two_agent</tool-use-id>",
           "<status>completed</status>",
-          "E2E_BG24_ZCODE_TWO_CHILD_DONE"
+          "E2E_BG24_CODEZ_TWO_CHILD_DONE"
         ],
         "bodyExcludes": [
           "Generate a concise title",
@@ -3850,14 +3850,14 @@
         "statusCode": 200,
         "delayMs": 12000,
         "text": {
-          "id": "upstream-e2e-background-agent-control-preserve-zcode-two-notification",
-          "text": "background-agent-control-preserve-zcode-two-notification-ok"
+          "id": "upstream-e2e-background-agent-control-preserve-codez-two-notification",
+          "text": "background-agent-control-preserve-codez-two-notification-ok"
         }
       }
     },
     {
-      "id": "upstream-background-agent-control-preserve-zcode-three-notification",
-      "description": "BG24: third zcode background Agent completion notification asks the main model to update todos before the final reply.",
+      "id": "upstream-background-agent-control-preserve-codez-three-notification",
+      "description": "BG24: third codez background Agent completion notification asks the main model to update todos before the final reply.",
       "metadata": {
         "kind": "main",
         "timingPolicy": "task-notification",
@@ -3871,9 +3871,9 @@
         "bodyIncludes": [
           "E2E_BACKGROUND_AGENT_CONTROL_PRESERVE",
           "<task-notification>",
-          "<tool-use-id>toolu_e2e_bg24_zcode_three_agent</tool-use-id>",
+          "<tool-use-id>toolu_e2e_bg24_codez_three_agent</tool-use-id>",
           "<status>completed</status>",
-          "E2E_BG24_ZCODE_THREE_CHILD_DONE"
+          "E2E_BG24_CODEZ_THREE_CHILD_DONE"
         ],
         "bodyExcludes": [
           "Generate a concise title",
@@ -3931,8 +3931,8 @@
         "statusCode": 200,
         "delayMs": 15000,
         "text": {
-          "id": "upstream-e2e-background-agent-control-preserve-zcode-notification",
-          "text": "background-agent-control-preserve-zcode-notification-ok"
+          "id": "upstream-e2e-background-agent-control-preserve-codez-notification",
+          "text": "background-agent-control-preserve-codez-notification-ok"
         }
       }
     },
@@ -4048,7 +4048,7 @@
           "id": "toolu_e2e_composition_mixed_foreground_bash",
           "name": "Bash",
           "input": {
-            "command": "sh -c 'while [ ! -f .zcode-e2e/conversation-session-background/agent-composition-mixed-foreground-release ]; do sleep 0.1; done; printf \"E2E_AGENT_COMPOSITION_MIXED_FOREGROUND_BARRIER_DONE\\n\"'",
+            "command": "sh -c 'while [ ! -f .codez-e2e/conversation-session-background/agent-composition-mixed-foreground-release ]; do sleep 0.1; done; printf \"E2E_AGENT_COMPOSITION_MIXED_FOREGROUND_BARRIER_DONE\\n\"'",
             "description": "E2E mixed foreground child barrier"
           }
         }

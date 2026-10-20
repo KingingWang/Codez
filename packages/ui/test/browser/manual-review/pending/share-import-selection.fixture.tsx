@@ -1,24 +1,24 @@
 import { useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import type { IServiceAccessor, IModelSelectionService, ModelSelectionView } from "@zcode/services";
-import type { IPlatformService } from "@zcode/shared";
-import { resolveEffectiveModelSelection, type ProviderRegistryView } from "@zcode/provider";
+import type { IServiceAccessor, IModelSelectionService, ModelSelectionView } from "@codez/services";
+import type { IPlatformService } from "@codez/shared";
+import { resolveEffectiveModelSelection, type ProviderRegistryView } from "@codez/provider";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { PlatformProvider } from "@/hooks/usePlatform.js";
 import { TabStoreProvider } from "@/store/TabStoreProvider.js";
-import { ZCodeIntlProvider, useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider, useCodezIntl } from "@/i18n/IntlProvider.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import { V4ComposerModeSwitch } from "@/v4/composer/V4ComposerModeControls.js";
 import { ThoughtLevelCycleControl } from "@/chat-input-toolbar/ThoughtLevelCycleControl.js";
 import { ModelConfigSelect } from "@/ModelConfigSelect.js";
 import { buildRegistryModelSelectGroups } from "@/lib/modelSelectionGroups.js";
-import { decodeCustomModelValue, encodeCustomModelValue } from "@/lib/zcodeCustomModelValue.js";
+import { decodeCustomModelValue, encodeCustomModelValue } from "@/lib/codezCustomModelValue.js";
 import { captureComposerRecentSubmission } from "@/lib/composerRecent.js";
 import { useDraftConfigControl } from "@/v4/composer/useDraftConfigControl.js";
 import { persistV4ComposerDraft, readV4ComposerDraft } from "@/v4/composer/composerDraftStore.js";
 import { resolveImportedComposerConfig } from "@/v4/composer/newTaskDraft.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
-import type { SessionConfigState } from "@zcode/shared/zcode-protocol-v4";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
+import type { SessionConfigState } from "@codez/shared/codez-protocol-v4";
 import { createComposerSubmissionConfig } from "@/v4/composer/composerSubmissionConfig.js";
 import type { V4ComposerConfigPicker } from "@/v4/composer/configPickerState.js";
 import "@/styles.css";
@@ -63,7 +63,7 @@ const modelSelectionService: IModelSelectionService = {
   onDidChange: () => ({ dispose() {} }),
 };
 const services = {
-  zcodeSessionService: {},
+  codezSessionService: {},
   settingService: { get: async () => ({}) },
 } as unknown as IServiceAccessor;
 const platform = {} as IPlatformService;
@@ -89,7 +89,7 @@ document.documentElement.className =
   params.get("theme") === "light" ? "light theme-zai-light" : "dark theme-zai-dark";
 
 function Fixture() {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [sessionId, setSessionId] = useState<string | null>(
     source.startsWith("session") ? "session" : "unrelated-history",
   );
@@ -101,7 +101,7 @@ function Fixture() {
     planTransition: { toolCallId: "historical-plan", planEnabled: true },
   });
   const navigate = (id: string | null, imported = false) => {
-    const store = useZCodeSessionStore.getState();
+    const store = useCodezSessionStore.getState();
     if (id === null) store.startDraft(workspacePath);
     else
       store.setActiveTaskId(
@@ -242,11 +242,11 @@ createRoot(document.getElementById("root")!).render(
   <ServiceProvider services={services}>
     <PlatformProvider platform={platform}>
       <TabStoreProvider>
-        <ZCodeIntlProvider locale={params.get("locale") === "zh-CN" ? "zh-CN" : "en-US"}>
+        <CodezIntlProvider locale={params.get("locale") === "zh-CN" ? "zh-CN" : "en-US"}>
           <TooltipProvider>
             <Fixture />
           </TooltipProvider>
-        </ZCodeIntlProvider>
+        </CodezIntlProvider>
       </TabStoreProvider>
     </PlatformProvider>
   </ServiceProvider>,

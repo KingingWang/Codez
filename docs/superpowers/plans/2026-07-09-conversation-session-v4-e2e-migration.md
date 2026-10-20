@@ -236,7 +236,7 @@ Split into two files: one for custom answer persistence and one for keyboard nav
 - [ ] **Step 4: Run focused replay**
 
 ```bash
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec packages/desktop/test/e2e/conversation-session/conversation-session-v4-ask-user-question*.test.ts
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec packages/desktop/test/e2e/conversation-session/conversation-session-v4-ask-user-question*.test.ts
 ```
 
 ## Task 4: Split Background, Queue, Stop, And Goal Coverage
@@ -264,7 +264,7 @@ Document for every migrated row whether it is desktop continuous only, web remot
 - [ ] **Step 3: Run focused specs**
 
 ```bash
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts \
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts \
   --spec "packages/desktop/test/e2e/conversation-session/conversation-session-v4-background*.test.ts" \
   --spec "packages/desktop/test/e2e/conversation-session/conversation-session-v4-queue*.test.ts" \
   --spec "packages/desktop/test/e2e/conversation-session/conversation-session-v4-stop*.test.ts" \
@@ -296,7 +296,7 @@ Assert actual file mode and content on disk in addition to visible v4 completion
 - [ ] **Step 3: Run focused specs**
 
 ```bash
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts \
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts \
   --spec "packages/desktop/test/e2e/conversation-session/conversation-session-v4-tool*.test.ts" \
   --spec "packages/desktop/test/e2e/conversation-session/conversation-session-v4-bash*.test.ts" \
   --spec "packages/desktop/test/e2e/conversation-session/conversation-session-v4-webfetch.test.ts" \
@@ -326,7 +326,7 @@ Use WDIO only for child AskUserQuestion and permission delegation because those 
 - [ ] **Step 3: Run focused specs**
 
 ```bash
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts \
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts \
   --spec "packages/desktop/test/e2e/conversation-session/conversation-session-v4-model*.test.ts" \
   --spec "packages/desktop/test/e2e/conversation-session/conversation-session-v4-subagent*.test.ts"
 ```
@@ -359,7 +359,7 @@ Do not mark fork merged-assistant accepted/covered until the v4 spec passes with
 - [ ] **Step 3: Run focused specs**
 
 ```bash
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts \
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts \
   --spec "packages/desktop/test/e2e/conversation-session/conversation-session-v4-composer*.test.ts" \
   --spec "packages/desktop/test/e2e/conversation-session/conversation-session-v4-attachment*.test.ts" \
   --spec "packages/desktop/test/e2e/conversation-session/conversation-session-v4-markdown*.test.ts" \
@@ -396,7 +396,7 @@ pnpm lint
 - [ ] **Step 3: Run focused E2E group**
 
 ```bash
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec "packages/desktop/test/e2e/conversation-session/conversation-session-v4-*.test.ts"
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec "packages/desktop/test/e2e/conversation-session/conversation-session-v4-*.test.ts"
 ```
 
 - [ ] **Step 4: Run Docker headless gate before broad promotion**

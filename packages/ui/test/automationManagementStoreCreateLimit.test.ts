@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { IZCodeAgentService } from "@zcode/services";
+import type { ICodezAgentService } from "@codez/services";
 import {
   AUTOMATION_CREATE_LIMIT,
   AUTOMATION_CREATE_LIMIT_ERROR_CODE,
-  type ZCodeAutomation,
-} from "@zcode/shared";
+  type CodezAutomation,
+} from "@codez/shared";
 import { useAutomationManagementStore } from "@/store/automationManagementStore.js";
 
-function makeAutomation(index: number): ZCodeAutomation {
+function makeAutomation(index: number): CodezAutomation {
   const statuses = ["active", "paused", "completed", "failed"] as const;
   return {
     automationId: `automation-${index}`,
@@ -39,7 +39,7 @@ describe("automationManagementStore create limit", () => {
   it("全状态任务合计达到 20 条后不发送创建 RPC", async () => {
     const agentService = {
       createAutomation: vi.fn(),
-    } as unknown as IZCodeAgentService;
+    } as unknown as ICodezAgentService;
     useAutomationManagementStore.setState({
       workspacePath: "/tmp/ws",
       workspaceIdentity: null,

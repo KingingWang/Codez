@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ProviderSettingsView } from "@zcode/services";
+import type { ProviderSettingsView } from "@codez/services";
 import {
   reportAutomationCreateResult,
   resolveAutomationModelTelemetry,

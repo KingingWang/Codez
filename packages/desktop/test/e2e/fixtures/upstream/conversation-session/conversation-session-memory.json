@@ -305,7 +305,7 @@
           "id": "toolu_e2e_memory_custom_write",
           "name": "Write",
           "input": {
-            "file_path": ".zcode/agent-memory/memory-window-curator/review-convention.md",
+            "file_path": ".codez/agent-memory/memory-window-curator/review-convention.md",
             "content": "---\nname: review-convention\ndescription: Review findings should be grounded in first-hand evidence.\nmetadata:\n  type: feedback\n---\n\nGround review findings in first-hand evidence. E2E_MEMORY_WDIO_CUSTOM_FILE\n\n**Why:** It prevents speculative defects.\n\n**How to apply:** Reproduce or inspect the active path before reporting a finding.\n"
           }
         }

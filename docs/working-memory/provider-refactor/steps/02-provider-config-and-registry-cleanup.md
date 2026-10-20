@@ -24,7 +24,7 @@ Model
 
 通用 `RuntimeConfigPatch` 也已经退出旧模型字段。旧 CLI 文件中的 `provider`、`model` 和
 `modelCatalog` 只由显式命名的迁移投影读取；普通文件配置、环境变量配置与 Config Merger 不再生成、
-合并或公开模型事实。旧 `ZCODE_MODEL` / `ZCODE_BASE_URL` 因而不会形成一条隐藏的运行配置路径。
+合并或公开模型事实。旧 `CODEZ_MODEL` / `CODEZ_BASE_URL` 因而不会形成一条隐藏的运行配置路径。
 
 普通 CLI 文件的运行配置 Schema 也不再声明 `provider`、`model`、`modelCatalog` 或 `small_model`。
 这些字段即使残留或格式错误，也不会让同文件中的 MCP、权限、网络等正式配置整体加载失败；只有
@@ -34,7 +34,7 @@ Model
 
 ### Repo Wiki
 
-Repo Wiki 直接消费 `ModelSelectionView` 并通过统一 `Model` 发起请求。中间的 `ZCodeProviderRegistrySnapshot` 投影、反向解析器、旧 readiness resolver 及其测试已经删除。
+Repo Wiki 直接消费 `ModelSelectionView` 并通过统一 `Model` 发起请求。中间的 `CodezProviderRegistrySnapshot` 投影、反向解析器、旧 readiness resolver 及其测试已经删除。
 
 ### 设置连通性与安全校验
 
@@ -96,7 +96,7 @@ Renderer 中遗留的 `workspaceModelMirror` 队列也已删除。它曾把模�
 `setWorkspacePreferredModel` 入口，但所有消费者已经迁移到 Session-aware 的 Selection 控制链路；
 继续保留无调用者的队列会暗示 Workspace 仍有另一份待追平的模型事实。
 
-最终收口同时删除了 `workspace/readState.modelCatalog`、`ZCodeWorkspaceModelCatalogState`、
+最终收口同时删除了 `workspace/readState.modelCatalog`、`CodezWorkspaceModelCatalogState`、
 Worker 侧 Provider 投影和已经没有生产调用者的 App Config→Protocol Provider 转换。模型列表与
 当前选择统一从 `settings.model` 返回；Workspace `state.updated` 也发送同一 Settings 形状，旧的
 `{ modelCatalog }` Patch 不再存在。闲时首次派发直接继承 `settings.model.current`，并用同一份
@@ -224,10 +224,10 @@ M2 的完成边界由跨包结构测试机械保护。生产源码中，旧 `Mod
 `workspace/updateProviderRegistry`、通用 Runtime Overlay 和旧设置投影名称在生产源码中必须保持为零。
 新增兼容点需要先更新本篇并说明明确退场条件，不能通过换文件名绕过边界。
 
-裸 `createZCodeApp()` 的测试与内部工具旧模型装配路径已经退出。正式 Prompt CLI、TUI 和
+裸 `createCodezApp()` 的测试与内部工具旧模型装配路径已经退出。正式 Prompt CLI、TUI 和
 Protocol Entry 使用相同的必填 Registry 依赖。Bootstrap Session Persistence、MCP、Hook 与 Workflow 测试
 通过 Registry-backed Harness 构造实际可执行 Model；Compact/Memory E2E 和 Prompt Trajectory
-工具也显式创建各自的测试 Registry。`ZCodeAppOptions.providerRegistry` 已改为必填，缺失时立即
+工具也显式创建各自的测试 Registry。`CodezAppOptions.providerRegistry` 已改为必填，缺失时立即
 暴露装配错误。旧 `bootstrapModelConfig`、`includeLegacyProviderModels` 与无 Registry App Factory
 分叉已经删除。
 
@@ -238,7 +238,7 @@ Protocol Entry 使用相同的必填 Registry 依赖。Bootstrap Session Persist
 `TurnExecutionModelSource` 内部转换，不再进入公共 Adapter Factory。
 
 通用 `RuntimeConfig` 与 `ConfigPort` 随后删除了 `model`、`modelCatalog` 及对应 Config Key。
-旧文件和 `ZCODE_MODEL` 的兼容解析目前仍保留为带弃用标记的迁移输入，但 Config Factory 不会再把
+旧文件和 `CODEZ_MODEL` 的兼容解析目前仍保留为带弃用标记的迁移输入，但 Config Factory 不会再把
 这些字段投影到运行配置；`hasModel` 来源元数据也已删除。正式 App 初始化只能从 Process Registry
 和显式 Session/Submission Selection 取得模型。
 
@@ -264,10 +264,10 @@ Bootstrap 全量测试还暴露了与本轮无关的既有债务：Session Persi
 0 behind。
 
 裸 App Factory 收口后，Bootstrap Registry、Runtime Config、Session、MCP、Hook、Workflow、
-Telemetry 与 Overlay 针对性回归 12 个文件、160 条通过；ZCode Protocol 专项 109 条通过。根目录
+Telemetry 与 Overlay 针对性回归 12 个文件、160 条通过；Codez Protocol 专项 109 条通过。根目录
 typecheck、Bootstrap 独立 typecheck、Prompt Trajectory typecheck 与根 lint 通过，lint 仍为
 0 error、36 条基线 warning。Compact E2E dry-run 与 Memory evidence 测试通过；当前 Node 22 无法
-直接加载最新 staging 中引用根 `@zcode/shared` 源码的 Bootstrap build，实际 Compact fake suite
+直接加载最新 staging 中引用根 `@codez/shared` 源码的 Bootstrap build，实际 Compact fake suite
 留给仓库声明的 Node 24 / CI 运行时复核。
 
 Bootstrap 全量运行中，本轮相关的 Runtime Config 与 Telemetry Harness 失败已经修复；剩余失败
@@ -290,7 +290,7 @@ Personal Config；历史物理格式只由一次性迁移器及其专门测试�
 
 最终分支验证再次通过根 `pnpm typecheck` 与 `pnpm lint`；Lint 为 0 error、33 条当前 `staging` 基线
 warning。Provider、Provider Node 与 M2 结构门禁 19 个文件、96 条测试通过；Shared Protocol 与旧物理迁移
-边界 3 个文件、53 条测试通过。旧 Store Schema 与迁移函数同时退出 ZCode Protocol 再导出，只保留在
+边界 3 个文件、53 条测试通过。旧 Store Schema 与迁移函数同时退出 Codez Protocol 再导出，只保留在
 Shared Provider 迁移类型和 Services 一次性 Reader 中。分支相对最新 `origin/staging` 为 0 behind。
 
 旧 Provider Store 最终收敛为纯读取适配器，并改名为 `legacyModelProviderStoreReader`。生产调用只剩
@@ -316,10 +316,10 @@ Snapshot revision CAS 退出后，这些字段没有生产写入或行为消费�
 Mapper、Core Invocation Context 和 Adapter Request Auth 只保留实际生效的请求鉴权材料。Core 源码也已
 加入 M2 跨包结构门禁，防止旧 revision 名称从更内层重新出现。
 
-最后的 Entry 覆盖审计把 `@zcode/provider`、`@zcode/provider-node`、Prompt CLI 与 TUI 也纳入同一结构
+最后的 Entry 覆盖审计把 `@codez/provider`、`@codez/provider-node`、Prompt CLI 与 TUI 也纳入同一结构
 门禁。扩展扫描确认这些入口没有旧 Provider Snapshot、Workspace Catalog 或 Runtime Overlay 回退。
 Workspace 交互状态的实现术语统一为 Model Preferences；一个零调用者的 legacy reasoning 迁移函数也已
-删除。M2 门禁、Runtime Model Metadata 与 ZCode Protocol 定向回归共 151 条通过，Bootstrap 独立
+删除。M2 门禁、Runtime Model Metadata 与 Codez Protocol 定向回归共 151 条通过，Bootstrap 独立
 typecheck 与根 typecheck 通过。
 
 设置页排序的最后一份 Builtin Provider ID 硬编码也已删除。Provider 的初始与最终顺序只来自有序
@@ -355,8 +355,8 @@ M2 的正式 Entry 和内部 Harness 已经具备单一事实源和强制 Regist
 上线前的最后一轮类型审计进一步固定了旧 `RuntimeModelConfig` 的允许位置：它只能服务旧 CLI 文件的
 一次性导入，以及 M4 尚未重构的 execution-scoped Turn Overlay。跨包结构测试枚举这些文件，普通
 Session、Registry、Settings、Selection 与 ModelFactory 一旦重新引用该类型会直接失败。旧
-`ZCODE_MODEL`、`ZCODE_BASE_URL` 与 `ZCODE_API_KEY` 也不会进入普通 Runtime Config；其中
-`ZCODE_API_KEY` 的剩余读取仅属于旧 CLI Provider 的一次性导入。
+`CODEZ_MODEL`、`CODEZ_BASE_URL` 与 `CODEZ_API_KEY` 也不会进入普通 Runtime Config；其中
+`CODEZ_API_KEY` 的剩余读取仅属于旧 CLI Provider 的一次性导入。
 
 Execution-scoped Turn Overlay 与进程 Registry 出现相同 `providerId/modelId` 时，本次 Turn 的 Overlay
 拥有执行优先级。ModelFactory、Session Facade 的模型元数据以及 transient 模型切换必须共同遵守这一

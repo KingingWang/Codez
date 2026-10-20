@@ -3,7 +3,7 @@ import { createElement, useState } from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ModelConfigSelect } from "@/ModelConfigSelect.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import type { ComposerPlanGroup } from "@/lib/composerPlanGroups.js";
 const items = [{ key: "m", value: "team/model", name: "GLM-5.3" }];
@@ -27,7 +27,7 @@ function Harness({ pending = false, error = null }: { pending?: boolean; error?:
   const [selected, setSelected] = useState("personal");
   const [model, setModel] = useState("personal/model");
   return createElement(
-    ZCodeIntlProvider,
+    CodezIntlProvider,
     { locale: "en-US" },
     createElement(
       TooltipProvider,
@@ -142,7 +142,7 @@ describe("Composer direct team provider menu", () => {
 it("连接 loading 期间固定原菜单展示，完成后一次采用新目录", () => {
   const content = (pending: boolean, target: boolean) =>
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { locale: "en-US" },
       createElement(
         TooltipProvider,

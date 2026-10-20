@@ -7,14 +7,14 @@
 import { createElement } from "react";
 import { cleanup, render, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import type { WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import type { WorkflowCausalityGraphData } from "@/components/workflow-graph/types.js";
 import { foldPhaseBands, foldPhaseEdges } from "@/components/workflow-timeline/timeline-bands.js";
 import { buildWorkflowTimeline } from "@/components/workflow-timeline/timeline-model.js";
 import { WorkflowTimeline } from "@/components/workflow-timeline/WorkflowTimeline.js";
 import { spineLayout } from "@/app-shell/workflowRunSpine.js";
 import { WorkflowRunPhaseList } from "@/app-shell/WorkflowRunPhaseList.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 interface Spec {
   names: readonly string[];
@@ -322,7 +322,7 @@ function renderCard(spec: Spec, state?: WorkflowRunState) {
   const model = buildWorkflowTimeline(graphOf(spec), state);
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "en-US" },
       createElement(WorkflowTimeline, { model }),
     ),
@@ -385,7 +385,7 @@ describe("脊线 · 流轨", () => {
     ]);
     const view = render(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(WorkflowRunPhaseList, { graph, model, pendingQuestions: [], run: state }),
       ),

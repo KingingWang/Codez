@@ -321,7 +321,7 @@ describe("restorePersistedRemoteWorkspaceSessions", () => {
         lastWorkspaceSession: [
           {
             kind: "local",
-            workspacePath: "/Users/demo/.zcode/workspace/default",
+            workspacePath: "/Users/demo/.codez/workspace/default",
             workspacePurpose: "conversation",
           },
         ],
@@ -335,7 +335,7 @@ describe("restorePersistedRemoteWorkspaceSessions", () => {
     expect(restoreTabs).toHaveBeenCalledWith(
       [
         {
-          workspacePath: "/Users/demo/.zcode/workspace/default",
+          workspacePath: "/Users/demo/.codez/workspace/default",
           workspacePurpose: "conversation",
         },
       ],
@@ -345,7 +345,7 @@ describe("restorePersistedRemoteWorkspaceSessions", () => {
 
   it("canonical conversation workspace 的旧 project 用途会在恢复时自愈", () => {
     const restoreTabs = vi.fn();
-    const conversationWorkspacePath = "/Users/demo/.zcode/workspace/default";
+    const conversationWorkspacePath = "/Users/demo/.codez/workspace/default";
 
     restorePersistedRemoteWorkspaceSessions({
       settings: {
@@ -379,7 +379,7 @@ describe("restorePersistedRemoteWorkspaceSessions", () => {
 
   it("canonical conversation workspace 会替换持久化遗留的其他 conversation 路径", () => {
     const restoreTabs = vi.fn();
-    const conversationWorkspacePath = "/Users/demo/.zcode/workspace/default";
+    const conversationWorkspacePath = "/Users/demo/.codez/workspace/default";
 
     restorePersistedRemoteWorkspaceSessions({
       settings: {
@@ -392,7 +392,7 @@ describe("restorePersistedRemoteWorkspaceSessions", () => {
           },
           {
             kind: "local",
-            workspacePath: "/private/tmp/test/.zcode/workspace/default",
+            workspacePath: "/private/tmp/test/.codez/workspace/default",
             workspacePurpose: "conversation",
           },
         ],
@@ -419,7 +419,7 @@ describe("restorePersistedRemoteWorkspaceSessions", () => {
   it("RPN-09 excludes an old project entry identified by its exact canonical conversation record", () => {
     const restoreTabs = vi.fn();
     const sourceServerId = "11111111-1111-4111-8111-111111111111";
-    const workspacePath = "/home/dev/.zcode/workspace/default";
+    const workspacePath = "/home/dev/.codez/workspace/default";
     restorePersistedRemoteWorkspaceSessions({
       settings: {
         lastWorkspaceSession: [
@@ -444,7 +444,7 @@ describe("restorePersistedRemoteWorkspaceSessions", () => {
 
   it("持久化列表缺少 conversation workspace 时非激活补建", () => {
     const restoreTabs = vi.fn();
-    const conversationWorkspacePath = "/Users/demo/.zcode/workspace/default";
+    const conversationWorkspacePath = "/Users/demo/.codez/workspace/default";
 
     restorePersistedRemoteWorkspaceSessions({
       settings: {
@@ -786,7 +786,7 @@ describe("restorePersistedRemoteWorkspaceSessions", () => {
 describe("projectRemoteConversationWorkspacePurpose", () => {
   it("self-heals only the exact open entry recorded as the Source conversation path", () => {
     const sourceServerId = "11111111-1111-4111-8111-111111111111";
-    const conversationPath = "/home/dev/.zcode/workspace/default";
+    const conversationPath = "/home/dev/.codez/workspace/default";
     const conversation = {
       kind: "remote" as const,
       workspacePath: conversationPath,
@@ -824,7 +824,7 @@ describe("projectRemoteConversationWorkspacePurpose", () => {
 describe("projectRemoteWorkspaceSessionIdentityAliases", () => {
   it("uses the Source conversation alias when project history has already been cleaned", () => {
     const sourceServerId = "11111111-1111-4111-8111-111111111111";
-    const workspacePath = "/home/dev/.zcode/workspace/default";
+    const workspacePath = "/home/dev/.codez/workspace/default";
     const target = {
       kind: "ssh" as const,
       host: "127.0.0.1",

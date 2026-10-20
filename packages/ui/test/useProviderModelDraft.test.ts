@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { ModelConfigResolution } from "@zcode/provider";
+import type { ModelConfigResolution } from "@codez/provider";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useProviderModelDraft } from "@/settings/model-provider-section/useProviderModelDraft.js";

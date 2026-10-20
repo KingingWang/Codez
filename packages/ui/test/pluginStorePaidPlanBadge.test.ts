@@ -41,10 +41,10 @@ const actions: PluginStoreActions = {
 
 async function renderCard(item: StorePluginItem): Promise<string> {
   const { PluginStoreCard } = await import("../src/settings/PluginStoreCard.js");
-  const { ZCodeIntlProvider } = await import("@/i18n/IntlProvider.js");
+  const { CodezIntlProvider } = await import("@/i18n/IntlProvider.js");
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "en-US" },
       createElement(PluginStoreCard, { item, actions, locale: "en-US" }),
     ),
@@ -53,10 +53,10 @@ async function renderCard(item: StorePluginItem): Promise<string> {
 
 async function renderDetail(item: StorePluginItem): Promise<string> {
   const { PluginStoreDetailView } = await import("../src/settings/PluginStoreDetailView.js");
-  const { ZCodeIntlProvider } = await import("@/i18n/IntlProvider.js");
+  const { CodezIntlProvider } = await import("@/i18n/IntlProvider.js");
   return renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "en-US" },
       createElement(PluginStoreDetailView, {
         item,

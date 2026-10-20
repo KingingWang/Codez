@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Hook } from "@zcode/shared";
-import type { IHooksService } from "@zcode/services";
+import type { Hook } from "@codez/shared";
+import type { IHooksService } from "@codez/services";
 import { useWorkspaceHookInlineTrust } from "@/settings/useWorkspaceHookInlineTrust.js";
 import { useHooksStore } from "@/store/hooksStore.js";
 import { useWorkspaceHookReviewStore } from "@/store/workspaceHookReviewStore.js";
@@ -12,7 +12,7 @@ vi.mock("@/hooks/useServices.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
+  useCodezIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 
 vi.mock("@/components/ui/toast.js", () => ({ toast: vi.fn() }));
@@ -67,7 +67,7 @@ describe("useWorkspaceHookInlineTrust Source authority", () => {
         declarationEnabled: false,
         runtimeHooksEnabled: true,
         configuredEnabled: false,
-        sourcePath: ".zcode/config.json",
+        sourcePath: ".codez/config.json",
         trustState: "pending_trust",
       },
     };

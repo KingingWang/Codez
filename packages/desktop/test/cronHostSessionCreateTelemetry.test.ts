@@ -37,7 +37,7 @@ function setup() {
     botsKey = Symbol();
   const selection = { providerId: "test", modelId: "test" };
   const dispatch = createDispatch({
-    IZCodeTaskService: taskKey,
+    ICodezTaskService: taskKey,
     IModelSelectionService: modelKey,
     IBotsService: botsKey,
     resolveAutomationTargetServices: () => ({

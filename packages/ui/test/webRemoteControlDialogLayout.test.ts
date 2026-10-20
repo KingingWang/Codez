@@ -64,7 +64,7 @@ vi.mock("@/hooks/useOAuth.js", () => ({
 }));
 
 vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStore: (
+  useCodezStore: (
     selector: (state: {
       theme: string;
       requestLoginEntry: typeof feedbackMocks.requestLoginEntry;
@@ -79,7 +79,7 @@ const intlMock = vi.hoisted(() => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  useZCodeIntl: () => intlMock,
+  useCodezIntl: () => intlMock,
 }));
 
 vi.mock("@/logger.js", () => ({

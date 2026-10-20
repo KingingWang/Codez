@@ -18,7 +18,7 @@ import {
 import type { MoveGroupNode, GroupNode } from "@/project-sidebar/contract.js";
 import { groupTaskRef } from "@/project-sidebar/grouped-view.js";
 import { groupedMoveCommand } from "@/project-sidebar/grouped/model.js";
-import type { ZCodeGroupedTaskView } from "@/project-sidebar/grouped/types.js";
+import type { CodezGroupedTaskView } from "@/project-sidebar/grouped/types.js";
 import { findTaskInGroupedView } from "@/project-sidebar/grouped/view.js";
 import {
   getGroupedTaskDragTaskKey,
@@ -47,27 +47,27 @@ export function useGroupedDrag({
   onCollapsedGroupIdsChange,
   onMove,
 }: {
-  authoritativeView: ZCodeGroupedTaskView;
+  authoritativeView: CodezGroupedTaskView;
   collapsedGroupIds: Set<string>;
   onCollapsedGroupIdsChange: Dispatch<SetStateAction<Set<string>>>;
   onMove(command: MoveGroupNode): Promise<void>;
 }) {
   const root = useRef<HTMLDivElement>(null);
-  const [preview, setPreview] = useState<ZCodeGroupedTaskView | null>(null);
+  const [preview, setPreview] = useState<CodezGroupedTaskView | null>(null);
   const [activeTaskKey, setActiveTaskKey] = useState<string | null>(null);
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [width, setWidth] = useState<number | null>(null);
-  const origin = useRef<ZCodeGroupedTaskView | null>(null);
-  const latestPreview = useRef<ZCodeGroupedTaskView | null>(null);
+  const origin = useRef<CodezGroupedTaskView | null>(null);
+  const latestPreview = useRef<CodezGroupedTaskView | null>(null);
   const direction = useRef<"before" | "after">("after");
   const deltaY = useRef(0);
   const lastOver = useRef<DragOverEvent | null>(null);
   const collapsedSnapshot = useRef<Set<string> | null>(null);
   const animationFrame = useRef<number | null>(null);
-  const pendingPreview = useRef<ZCodeGroupedTaskView | null>(null);
+  const pendingPreview = useRef<CodezGroupedTaskView | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const view = preview ?? authoritativeView;
-  const animate = useCallback((next: ZCodeGroupedTaskView) => {
+  const animate = useCallback((next: CodezGroupedTaskView) => {
     const rects = collectGroupedTaskLayoutRects(root.current);
     setPreview(next);
     if (animationFrame.current !== null) cancelAnimationFrame(animationFrame.current);

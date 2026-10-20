@@ -4,7 +4,7 @@
 
 `sessions-index/<workspaceId>` 是侧栏和任务列表的会话活性与实时详情数据源。持久 task 行集合由
 `tasks-index.sqlite` 决定；summary 缺失只表示实时详情尚不可用，不能据此删除左侧行。schema 位于
-`packages/shared/src/zcode-protocol-v4/sessions-index.ts`；CLI projection/publisher 与 UI
+`packages/shared/src/codez-protocol-v4/sessions-index.ts`；CLI projection/publisher 与 UI
 store/transport 已投入主链路。
 
 ## 定位
@@ -135,13 +135,13 @@ remote identity 解析必须 fail-closed：任何以 `remote:` 开头但不符�
 
 实现入口：
 
-- `packages/services/src/zcode-agent/zcodeAgentService.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/v4-bridge.ts`
-- `apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/sessions.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/sessions-index-projection.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/sessions-index-publisher.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/sessions-index-publisher-registry.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/v4-gateway.ts`
+- `packages/services/src/codez-agent/codezAgentService.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol/v4-bridge.ts`
+- `apps/codez-cli/packages/adapters/src/storage/session-store/repositories/sessions.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/sessions-index-projection.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/sessions-index-publisher.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/sessions-index-publisher-registry.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/v4-gateway.ts`
 
 ## UI 读侧
 

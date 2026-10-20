@@ -2,7 +2,7 @@
 import type {
   BrowserPlaywrightAction,
   BrowserPlaywrightModifier,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { logger } from "../logger.js";
 import {
   dispatchClickAt,
@@ -20,8 +20,8 @@ import { getPlaywrightInjectedScriptSource } from "./playwrightInjectedScriptSou
 
 type LocatorAction = Extract<BrowserPlaywrightAction, { name: "locator" }>;
 
-const PLAYWRIGHT_WORLD_NAME = "zcode-playwright-locator";
-const PLAYWRIGHT_GLOBAL = "__zcodePlaywrightInjected";
+const PLAYWRIGHT_WORLD_NAME = "codez-playwright-locator";
+const PLAYWRIGHT_GLOBAL = "__codezPlaywrightInjected";
 const POLL_INTERVAL_MS = 50;
 // 响应式页面可能同时保留 desktop/mobile 两份 DOM。若仅因匹配数大于 1 就在 host
 // 侧抛通用错误，会错过唯一可见元素，也会丢失 Playwright 提供的候选详情。

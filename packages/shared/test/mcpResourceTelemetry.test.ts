@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hostResponseMessageSchema, zcodeMcpResourceSamplesSchema } from "@zcode/shared";
+import { hostResponseMessageSchema, codezMcpResourceSamplesSchema } from "@codez/shared";
 
 const sample = {
   mcpId: "builtin:node_repl",
@@ -50,7 +50,7 @@ describe("MCP 资源通知边界", () => {
   });
 
   it("接受资源数组与 Host 转发，拒绝隐私字段和非法资源数值", () => {
-    expect(zcodeMcpResourceSamplesSchema.parse([sample])).toEqual([sample]);
+    expect(codezMcpResourceSamplesSchema.parse([sample])).toEqual([sample]);
     for (const extra of [
       { pid: 123 },
       { workspacePath: "/private" },
@@ -61,7 +61,7 @@ describe("MCP 资源通知边界", () => {
       { logicalCpuCount: 0 },
       { rssKbTotal: Infinity },
     ]) {
-      expect(zcodeMcpResourceSamplesSchema.safeParse([{ ...sample, ...extra }]).success).toBe(
+      expect(codezMcpResourceSamplesSchema.safeParse([{ ...sample, ...extra }]).success).toBe(
         false,
       );
     }

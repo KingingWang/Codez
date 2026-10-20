@@ -2,7 +2,7 @@ import {
   highspeedDrawResponseSchema,
   highspeedHealthyResponseSchema,
   type HighspeedDrawRequest,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { ServiceLogger } from "#src/logger/serviceLogger.js";
 import { withRequestIdHeader } from "#src/providers/api/requestIdHeaders.js";
 import type { HighspeedServiceTransport } from "./highspeedCardService.js";

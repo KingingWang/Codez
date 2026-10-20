@@ -617,8 +617,8 @@ logical `1280 × 720` viewport with `dontSetVisibleSize: true`.
 Temporarily execute the baseline branch before applying capture scale:
 
 ```powershell
-$env:ZCODE_SCREENSHOT_SMOKE_SCALE_FACTOR='1.25'
-pnpm --filter @zcode/desktop test:browser-screenshot-surface-smoke
+$env:CODEZ_SCREENSHOT_SMOKE_SCALE_FACTOR='1.25'
+pnpm --filter @codez/desktop test:browser-screenshot-surface-smoke
 ```
 
 Expected: non-zero exit with `stale tiled surface detected` or a corner sentinel mismatch.
@@ -649,9 +649,9 @@ Capture, validate, and restore the normal metrics override in `finally`.
 Run:
 
 ```powershell
-$env:ZCODE_SCREENSHOT_SMOKE_SCALE_FACTOR='1.25'
-pnpm --filter @zcode/desktop test:browser-screenshot-surface-smoke
-Remove-Item Env:ZCODE_SCREENSHOT_SMOKE_SCALE_FACTOR
+$env:CODEZ_SCREENSHOT_SMOKE_SCALE_FACTOR='1.25'
+pnpm --filter @codez/desktop test:browser-screenshot-surface-smoke
+Remove-Item Env:CODEZ_SCREENSHOT_SMOKE_SCALE_FACTOR
 ```
 
 Expected stdout:

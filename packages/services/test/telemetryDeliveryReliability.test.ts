@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const tempHomes: string[] = [];
 
 function makeTempHome(): string {
-  const home = mkdtempSync(join(tmpdir(), "zcode-telemetry-delivery-"));
+  const home = mkdtempSync(join(tmpdir(), "codez-telemetry-delivery-"));
   tempHomes.push(home);
   return home;
 }
@@ -39,13 +39,13 @@ describe("telemetry delivery reliability", () => {
       .mockRejectedValueOnce(new Error("temporary network failure"))
       .mockResolvedValueOnce(new Response(null, { status: 204 }));
     const sleep = vi.fn(async () => {});
-    const resolveZCodeEndpointOrigin = vi.fn(async () => "https://telemetry.example.com");
+    const resolveCodezEndpointOrigin = vi.fn(async () => "https://telemetry.example.com");
     const ids = ["logical-event-id", "stable-device-mid"];
     const service = createTelemetryCore({
       fetchImpl: fetchMock,
       homeDir: home,
       randomUUID: () => ids.shift() ?? "unexpected-id",
-      resolveZCodeEndpointOrigin,
+      resolveCodezEndpointOrigin,
       sleep,
     });
 
@@ -67,7 +67,7 @@ describe("telemetry delivery reliability", () => {
     expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toMatchObject({
       event_id: "logical-event-id",
     });
-    expect(resolveZCodeEndpointOrigin).toHaveBeenCalledTimes(1);
+    expect(resolveCodezEndpointOrigin).toHaveBeenCalledTimes(1);
     expect(sleep).toHaveBeenCalledWith(300);
   });
 

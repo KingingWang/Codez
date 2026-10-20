@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { MessagePortLike } from "@zcode/rpc";
+import type { MessagePortLike } from "@codez/rpc";
 
 async function importClientLogger() {
   vi.resetModules();
@@ -30,7 +30,7 @@ describe("client renderer logging", () => {
     vi.stubEnv("PROD", false);
     const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const bridgeLog = vi.fn();
-    vi.stubGlobal("window", { zcode: { log: bridgeLog } });
+    vi.stubGlobal("window", { codez: { log: bridgeLog } });
 
     const { logger } = await importClientLogger();
 
@@ -45,12 +45,12 @@ describe("client renderer logging", () => {
   });
 
   it("does not log through client renderer logger in production builds", async () => {
-    vi.stubGlobal("__ZCODE_RENDERER_DISABLE_LOGGING__", true);
+    vi.stubGlobal("__CODEZ_RENDERER_DISABLE_LOGGING__", true);
     const consoleLog = vi.spyOn(console, "log").mockImplementation(() => {});
     const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     const bridgeLog = vi.fn();
-    vi.stubGlobal("window", { zcode: { log: bridgeLog } });
+    vi.stubGlobal("window", { codez: { log: bridgeLog } });
 
     const { logger } = await importClientLogger();
 
@@ -65,7 +65,7 @@ describe("client renderer logging", () => {
   });
 
   it("does not emit MessagePort startup logs in production builds", async () => {
-    vi.stubGlobal("__ZCODE_RENDERER_DISABLE_LOGGING__", true);
+    vi.stubGlobal("__CODEZ_RENDERER_DISABLE_LOGGING__", true);
     const consoleLog = vi.spyOn(console, "log").mockImplementation(() => {});
     const { connectViaMessagePort } = await importMessagePort();
 

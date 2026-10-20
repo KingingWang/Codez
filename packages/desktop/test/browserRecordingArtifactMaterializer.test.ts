@@ -21,7 +21,7 @@ afterEach(async () => {
 
 describe("browserRecordingArtifactMaterializer", () => {
   it("原子覆盖工作区内已有 WebM，并返回实际绝对路径", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-recording-materialize-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-recording-materialize-"));
     tempRoots.push(root);
     const source = join(root, "source.webm");
     await writeFile(source, "new-video");
@@ -39,7 +39,7 @@ describe("browserRecordingArtifactMaterializer", () => {
   });
 
   it("拒绝本地和远端 outputPath 越出 workspace", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-recording-materialize-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-recording-materialize-"));
     tempRoots.push(root);
     await expect(
       materializeBrowserRecordingArtifact({
@@ -63,7 +63,7 @@ describe("browserRecordingArtifactMaterializer", () => {
   });
 
   it("本地和远端 materializer 都拒绝旧 MP4 扩展名", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-recording-materialize-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-recording-materialize-"));
     tempRoots.push(root);
     await expect(
       materializeBrowserRecordingArtifact({

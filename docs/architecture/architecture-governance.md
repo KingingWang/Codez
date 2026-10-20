@@ -39,7 +39,7 @@
 
 策略文件和模块声明必须互相校验（规则 `manifest-policy-mismatch`），禁止出现未被策略覆盖的模块或模块声明中的未知依赖。
 
-import 边按 Node 与 TypeScript 的真实解析建立：相对路径、`package.json` 的 `imports`（`#src/*`）、`tsconfig.json` 的 `paths`（`@/*`）、workspace 包名加 `exports`（条件导出与 `dist/` 目标回映到 `src/`）。2026-09 review 发现首版只解析相对路径，跨包依赖全部不建边，module-dependency / deep-import / cycle / layer-direction 对 `@zcode/*` 导入失明；已修复并有回归测试。
+import 边按 Node 与 TypeScript 的真实解析建立：相对路径、`package.json` 的 `imports`（`#src/*`）、`tsconfig.json` 的 `paths`（`@/*`）、workspace 包名加 `exports`（条件导出与 `dist/` 目标回映到 `src/`）。2026-09 review 发现首版只解析相对路径，跨包依赖全部不建边，module-dependency / deep-import / cycle / layer-direction 对 `@codez/*` 导入失明；已修复并有回归测试。
 
 配置读取使用 TypeScript 的 JSONC 解析器，支持块注释、行尾注释与尾逗号，并保留字符串中的 glob。
 不能用正则删除注释：`@/*`、`#src/*` 与后续 `src/**/*.ts` 或脚本参数 `cache-*/**`
@@ -60,7 +60,7 @@ pnpm architecture:context <module-id>
 pnpm architecture:adopt <module-id> --root <dir> [--layer domain|app|adapters|ui] [--owner <group>]
 ```
 
-`--changed` 的比较基线按顺序选择：`--base <sha>` 或 `ZCODE_PRE_PUSH_BASE` > CI 合并请求变量（`CI_MERGE_REQUEST_DIFF_BASE_SHA` 等）> pre-push stdin 的远端 sha > `@{upstream}` > 默认分支 merge-base（顺序与 `run-affected-unit-tests` 一致，`origin/staging` 优先）> `HEAD`。报告第二行打印实际使用的基线。2026-09 review 发现首版只用 `git diff HEAD`，CI 干净 checkout 与 pre-push 时差异为空，门禁实际只检查环；已修复。
+`--changed` 的比较基线按顺序选择：`--base <sha>` 或 `CODEZ_PRE_PUSH_BASE` > CI 合并请求变量（`CI_MERGE_REQUEST_DIFF_BASE_SHA` 等）> pre-push stdin 的远端 sha > `@{upstream}` > 默认分支 merge-base（顺序与 `run-affected-unit-tests` 一致，`origin/staging` 优先）> `HEAD`。报告第二行打印实际使用的基线。2026-09 review 发现首版只用 `git diff HEAD`，CI 干净 checkout 与 pre-push 时差异为空，门禁实际只检查环；已修复。
 
 `architecture:adopt` 把一个目录登记为 managed 模块：从真实 import 反推 `requires`、生成缺失的五件套骨架、在策略文件登记并保留注释。它存在的理由是让"登记模块"比"绕过规则"更便宜。
 

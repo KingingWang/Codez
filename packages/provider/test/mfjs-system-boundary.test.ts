@@ -4,7 +4,7 @@ import {
   clearManualModelConfig,
   ModelConfigRules,
   parsePersonalModelConfigRules,
-  parseZCodeBuiltinModelConfigRules,
+  parseCodezBuiltinModelConfigRules,
 } from "../src/index.js";
 import { manualModelConfigSchema } from "../src/config/rule-data-schema.js";
 
@@ -57,7 +57,7 @@ describe("Todo134 system fields never become manual editor requirements", () => 
       manualProviderModelRules: [{ providerId: "p", modelId: "m", config: editable }],
     });
     for (const requiresMfjsToolSchema of [true, false]) {
-      const builtin = parseZCodeBuiltinModelConfigRules({
+      const builtin = parseCodezBuiltinModelConfigRules({
         modelRules: [
           {
             modelMatch: ".*",

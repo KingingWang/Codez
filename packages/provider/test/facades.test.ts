@@ -61,9 +61,9 @@ function completeModelConfig(): ModelConfig {
 async function createService(): Promise<ProviderRegistryService> {
   const config: ProviderConfigSnapshot = {
     revision: "config-1",
-    zcodeBuiltinRevision: "builtin-1",
+    codezBuiltinRevision: "builtin-1",
     personalRevision: "personal-1",
-    zcodeBuiltinProviders: new ProviderConfigMap([
+    codezBuiltinProviders: new ProviderConfigMap([
       [
         "account",
         createAccountProviderConfig({
@@ -97,7 +97,7 @@ async function createService(): Promise<ProviderRegistryService> {
         }),
       },
     ]),
-    zcodeBuiltinModelRules: new ModelConfigRules([
+    codezBuiltinModelRules: new ModelConfigRules([
       { type: "model", modelMatch: ".*", config: completeModelConfig() },
     ]),
     personalModels: new ModelConfigRules([
@@ -123,7 +123,7 @@ async function createService(): Promise<ProviderRegistryService> {
   const account: AccountProviderConfigSnapshot = {
     revision: "account-1",
     states: { account: { availability: "available", entitled: true, current: true } },
-    basedOnZCodeBuiltinRevision: "builtin-1",
+    basedOnCodezBuiltinRevision: "builtin-1",
     providers: new ProviderConfigMap([
       ["account", createAccountProviderConfig({ models: ["m1"], entitled: true })],
     ]),
@@ -189,7 +189,7 @@ describe("Provider Facades", () => {
     expect(JSON.parse(JSON.stringify(view))).toEqual(view);
   });
 
-  it("Settings 模型配置解析复用 ZCodeBuiltin 与 Personal Model Config Rules", async () => {
+  it("Settings 模型配置解析复用 CodezBuiltin 与 Personal Model Config Rules", async () => {
     const service = await createService();
     const facade = new ProviderSettingsFacade(service);
     const current = facade.getView();

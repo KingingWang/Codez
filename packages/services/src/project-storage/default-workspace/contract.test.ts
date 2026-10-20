@@ -6,7 +6,7 @@ import { migrateProjects } from "#src/project-storage/migrate-projects.js";
 
 describe("系统 default 项目纠偏", () => {
   it.each(["renamed", "multi-root", "newer"])("preserves a %s user project", async (scenario) => {
-    const path = "/Users/test/.zcode/workspace/default";
+    const path = "/Users/test/.codez/workspace/default";
     const { db, add, context } = await fixture([path]);
     add("kept", path);
     migrateProjects(db, context);
@@ -23,7 +23,7 @@ describe("系统 default 项目纠偏", () => {
     expect(db.prepare("SELECT project_id FROM tasks").get()!.project_id).toBe(projectId);
     expect(db.prepare("SELECT deleted FROM projects").get()!.deleted).toBe(0);
   });
-  it.each(["/Users/test/.zcode/workspace/default", "C:\\Users\\test\\.zcode\\workspace\\default"])(
+  it.each(["/Users/test/.codez/workspace/default", "C:\\Users\\test\\.codez\\workspace\\default"])(
     "repairs an already migrated %s without changing task facts or other tables",
     async (path) => {
       const { db, add, context } = await fixture([path, "/repos/default"]);

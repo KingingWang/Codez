@@ -11,7 +11,7 @@ const require = createRequire(import.meta.url);
 const desktop = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const root = resolve(desktop, "../..");
 const fixture = join(desktop, "scripts/gen-ui-fixture");
-const output = await mkdtemp(join(tmpdir(), "zcode-gen-ui-e2e-"));
+const output = await mkdtemp(join(tmpdir(), "codez-gen-ui-e2e-"));
 await copyGenUiRuntimeAssets(output);
 const shared = JSON.parse(await readFile(join(root, "packages/shared/package.json"), "utf8"));
 const alias = {
@@ -19,7 +19,7 @@ const alias = {
   "@": join(root, "packages/ui/src"),
   ...Object.fromEntries(
     Object.entries(shared.exports).map(([key, path]) => [
-      `@zcode/shared${key === "." ? "" : key.slice(1)}`,
+      `@codez/shared${key === "." ? "" : key.slice(1)}`,
       resolve(root, "packages/shared", path),
     ]),
   ),
@@ -76,7 +76,7 @@ await Promise.all([
 ]);
 await writeFile(
   join(output, "host.html"),
-  '<!doctype html><meta charset="utf-8"><title>ZCode Gen UI test</title><body><div id="inline" style="position:absolute;left:20px;top:40px;width:700px;height:620px"></div><div id="expanded" style="position:absolute;left:20px;top:20px;width:1000px;height:740px"></div><script src="host.js"></script>',
+  '<!doctype html><meta charset="utf-8"><title>Codez Gen UI test</title><body><div id="inline" style="position:absolute;left:20px;top:40px;width:700px;height:620px"></div><div id="expanded" style="position:absolute;left:20px;top:20px;width:1000px;height:740px"></div><script src="host.js"></script>',
 );
 await writeFile(
   join(output, "plugin-sandbox.html"),
@@ -85,7 +85,7 @@ await writeFile(
 await writeFile(
   join(output, "demo.html"),
   `<h1>Original heading</h1><div class="card"><i data-lucide="chart-column"></i><p>Interactive Gen UI</p><div class="nav nav-pills" role="tablist"><button class="nav-link" role="tab" aria-controls="first" aria-selected="true">First</button><button class="nav-link" id="second-tab" role="tab" aria-controls="second">Second</button></div><div id="first" role="tabpanel">First panel</div><div id="second" role="tabpanel">Second panel</div><button class="btn btn-primary" data-tooltip="An accessible tooltip">Inspect</button><div id="preview">Adjustable card</div><div id="modern" aria-label="Second component">Object binding</div></div><script>
-window.addEventListener("zcode:error",event=>console.error("ZCODE RUNTIME ERROR",event.detail));window.starts=(window.starts||0)+1;window.initial=window.zcode.widgetState;
+window.addEventListener("codez:error",event=>console.error("CODEZ RUNTIME ERROR",event.detail));window.starts=(window.starts||0)+1;window.initial=window.codez.widgetState;
 window.calendarWasReady=typeof customElements.get('viz-calendar')==='function';
 document.body.insertAdjacentHTML('beforeend','<div class="viz-carousel"><div data-variant="First">First option</div><div data-variant="Second">Second option</div></div>');
 const settings={spacing:20,color:'#3979df',outline:true,density:'normal'};
@@ -113,10 +113,10 @@ await writeFile(
 process.stdout.write(`Gen UI E2E artifacts: ${output}\n`);
 await writeFile(
   join(output, "standalone-fragment.html"),
-  '<p>Standalone state</p><i data-lucide="search"></i><button data-tooltip="Offline tooltip">Details</button><viz-calendar date="2026-09-29" start="09:00" end="12:00"></viz-calendar><script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script><script>window.initialCount=window.zcode.widgetState?.privateContent?.count??0;window.calendarWasReady=typeof customElements.get("viz-calendar")==="function";d3.select(document.body).append("svg").append("rect").attr("data-d3-probe","").attr("width",d3.sum([3,4]));</script>',
+  '<p>Standalone state</p><i data-lucide="search"></i><button data-tooltip="Offline tooltip">Details</button><viz-calendar date="2026-09-29" start="09:00" end="12:00"></viz-calendar><script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script><script>window.initialCount=window.codez.widgetState?.privateContent?.count??0;window.calendarWasReady=typeof customElements.get("viz-calendar")==="function";d3.select(document.body).append("svg").append("rect").attr("data-d3-probe","").attr("width",d3.sum([3,4]));</script>',
 );
 await promisify(execFile)("python3", [
-  join(root, "apps/zcode-cli/packages/visualize-plugin/skills/visualize/scripts/render.py"),
+  join(root, "apps/codez-cli/packages/visualize-plugin/skills/visualize/scripts/render.py"),
   join(output, "standalone-fragment.html"),
   join(output, "standalone.html"),
 ]);

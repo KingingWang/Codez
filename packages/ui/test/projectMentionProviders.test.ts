@@ -2,8 +2,8 @@
 import { createElement, type ReactNode } from "react";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { Emitter } from "@zcode/rpc";
-import type { IServiceAccessor, ProjectTask, ProjectTree, VirtualProject } from "@zcode/services";
+import { Emitter } from "@codez/rpc";
+import type { IServiceAccessor, ProjectTask, ProjectTree, VirtualProject } from "@codez/services";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { TabStoreProvider } from "@/store/TabStoreProvider.js";
 import { useSessionsMentionProvider } from "@/mentions/providers/sessionsMentionProvider.js";

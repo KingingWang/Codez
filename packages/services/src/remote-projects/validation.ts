@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { REMOTE_ASSET_INSTALL_MODES } from "@zcode/shared";
+import { REMOTE_ASSET_INSTALL_MODES } from "@codez/shared";
 
 export const text = z.string().trim().min(1);
 export const targetSchema = z.discriminatedUnion("kind", [

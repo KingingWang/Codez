@@ -28,8 +28,8 @@
 | 字段                       | 说明                                                                                |
 | -------------------------- | ----------------------------------------------------------------------------------- |
 | `platform`                 | `macos` / `windows` / `linux`                                                       |
-| `app_version`              | `ZCODE_VERSION`                                                                     |
-| `arms_env`                 | `prod` / `local`（`mapZCodeEnvToArmsRumEnv(runtimeEnv)`；本地开发态固定为 `local`） |
+| `app_version`              | `CODEZ_VERSION`                                                                     |
+| `arms_env`                 | `prod` / `local`（`mapCodezEnvToArmsRumEnv(runtimeEnv)`；本地开发态固定为 `local`） |
 | `device_mid`               | 桌面端设备标识（`userData` 路径哈希）                                               |
 | `telemetry_schema_version` | 稳定性事件口径版本；本次修复后的事件固定为 `2`                                      |
 | `scene_lifecycle`          | 见下表                                                                              |
@@ -95,7 +95,7 @@ app_start_count`。
 | 主业务窗口 `render-process-gone`             | `main_window_renderer`      | `oom` / `process_crashed` / `abnormal_exit` / … | `electron_callback`   |
 | Resource Manager / 更新 / About 等辅助窗口   | `auxiliary_window_renderer` | 同上                                            | `electron_callback`   |
 | 内置浏览器 `<webview>` `render-process-gone` | `embedded_webview`          | 同上                                            | `electron_callback`   |
-| ZCode Host `child-process-gone`              | `host`                      | `process_crashed` / `abnormal_exit` / …         | `electron_callback`   |
+| Codez Host `child-process-gone`              | `host`                      | `process_crashed` / `abnormal_exit` / …         | `electron_callback`   |
 | ARMS crash dump，且明确标记为主进程          | `app_native_process`        | `native_crash`                                  | `crash_reporter_dump` |
 | ARMS crash dump，仅能确认来自产品二进制      | `native_dump_unattributed`  | `native_crash`                                  | `crash_reporter_dump` |
 | `reason=killed` / `clean-exit`               | —                           | 不计 crash，走 `perf_process_exit`              | —                     |
@@ -109,11 +109,11 @@ Electron 的 `reason=memory-eviction` 与 `reason=oom` 统一归类为
 事故重复上报。
 
 ARMS `crashReporter` 会扫描共享 crash dump 目录。上报前先校验
-`binary_images` 中存在当前 ZCode 产品可执行文件；`hdc`、`plugin-container`、
+`binary_images` 中存在当前 Codez 产品可执行文件；`hdc`、`plugin-container`、
 `chrome-headless-shell` 等外部程序 dump 直接丢弃。该过滤只遍历 crash 批次的已有
 元数据，不增加采样、文件或子进程开销。可信名称集合必须包含产品应用名和
 `basename(process.execPath)`，覆盖开发态 `Electron` 与 Linux Preview
-`zcode-preview`。
+`codez-preview`。
 
 仅命中产品二进制不能证明 dump 来自主进程：Linux/Windows 的 Electron 子进程可能共用
 同一 executable。事件必须通过 `native_dump_process_role`（或兼容的 process-role 元数据）
@@ -196,7 +196,7 @@ Crash-Free；Native Crash 与 Renderer Crash 必须使用各自的分源比率�
 
 全进程 CPU / 内存采样、三个资源事件、性能红线与 PRT-023 / PRT-024 验收统一见
 [全进程 CPU / 内存监控埋点](./process-resource-telemetry.md)。独立的数据目录体积事件仍见
-[ZCode 数据目录占用 ARMS 上报](./zcode-data-size-arms-telemetry.md)。
+[Codez 数据目录占用 ARMS 上报](./codez-data-size-arms-telemetry.md)。
 
 ---
 
@@ -256,13 +256,13 @@ renderer(UI)侧埋点,经 `reportArmsCustomEvent` → IPC → `armsRum.sendCusto
 
 ### 说明与边界
 
-- **启动分阶段**:7 段每进程冷启动各上报一次,`value` 为各段 ms(`Math.max(0,...)` 钳非负)。锚点 `process.getCreationTime()`,main 的 T0-T3 经主窗口 loadURL query(`zcodeLaunchMarks`)注入 renderer,在启动门禁清除(`isStartupRenderBlocked` 翻 false)时统一计算上报。未登录(WelcomeScreen)不上报;总时长 >300000ms 哨兵丢弃。`session_id` 关联同次启动各段。旧 `perf_ui_first_screen` 已废弃,语义并入 `perf_ui_launch_react_commit_ms`。
+- **启动分阶段**:7 段每进程冷启动各上报一次,`value` 为各段 ms(`Math.max(0,...)` 钳非负)。锚点 `process.getCreationTime()`,main 的 T0-T3 经主窗口 loadURL query(`codezLaunchMarks`)注入 renderer,在启动门禁清除(`isStartupRenderBlocked` 翻 false)时统一计算上报。未登录(WelcomeScreen)不上报;总时长 >300000ms 哨兵丢弃。`session_id` 关联同次启动各段。旧 `perf_ui_first_screen` 已废弃,语义并入 `perf_ui_launch_react_commit_ms`。
 - **session 首次打开**:`perf_ui_session_open_start` / `perf_ui_session_open_result` 每个逻辑打开最多两条，阶段 timing 通过 `v4/conversation/subscribe` ACK 携带，不按阶段拆分 ARMS 事件；Web/mobile reporter 为空。完整字段与边界见 [Session 首次打开 ARMS 埋点](./session-open-telemetry.md)。
 - **首 token / 消息耗时**：V4 supervisor 复用 `messageTelemetry` builder，时间锚点仍是 renderer receipt clock；initial/recovery 不补报。
 - **工具终态细分**:`perf_ui_tool_call_detail` 只在工具完成/失败/拒绝且 `raw.result.perf` 存在时上报。Bash 带 `command_run_ms` / `first_output_ms` / `no_output_ms` / `timed_out` / `command_category` 等；Edit/Write 带 `fs_read_ms` / `fs_write_ms` / `patch_match_ms` / 文件大小等。subagent mirror 子工具额外带 `parent_tool_call_id` / `child_tool_call_id` / `child_session_id` / `agent_id` / `agent_type`,用于从父 `Agent` step 下钻到子工具耗时。
 - **逐步骤耗时**：`agent_step` 保持 `/report` 旧口径；ARMS **RUM Custom Event**
   仍只做每轮和工具终态低频归因，禁止把 `/report agent_step` 逐条镜像成 RUM 事件。
-  CLI Agent Loop 的 `zcode.agent.step` OTel Span 是另一套强类型执行 Trace，目标结构见
+  CLI Agent Loop 的 `codez.agent.step` OTel Span 是另一套强类型执行 Trace，目标结构见
   [CLI Agent Telemetry 开发指南](../trace/cli-agent-telemetry.md)，不经过 Renderer IPC，
   也不复用旧 `agent_step` Schema。
 - **流式停顿**:`value` 为真实 chunk 间隔(非阈值),阈值 `STREAM_STALL_REPORT_THRESHOLD_MS=3000` 仅作上报闸门。**工具调用期间不计入**:`tool_call`/`tool_call_update` 到达时 `clearStreamStallTracking`,工具后第一个正文 chunk 视为首个,不与工具前的 chunk 比较,避免把工具正常执行误判为停顿。chunk 间隔 >3s 的根因可能在上游(模型推理/网络),不一定是客户端渲染卡顿;但用户视角"界面长时间不动"可感知,故上报。后续据线上分布收紧阈值。`waiting_tool` 本期固定 `false`。

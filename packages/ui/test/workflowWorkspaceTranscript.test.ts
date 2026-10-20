@@ -1,7 +1,7 @@
 // 脚本 transcript 的纯模型（docs/dynamic-workflow/transcript-and-notifications.md「The panel」）：
 // journal 行 → 卡片素材的派生规则钉在这里，面板测试只钉「接到了 DOM 上」。
 import { describe, expect, it } from "vitest";
-import type { WorkflowRunState, WorkflowRunWorkspaceNode } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunState, WorkflowRunWorkspaceNode } from "@codez/shared/codez-protocol-v4";
 import type { WorkflowCausalityGraphData } from "@/components/workflow-graph/types.js";
 import {
   buildWorkspaceCards,

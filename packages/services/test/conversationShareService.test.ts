@@ -5,15 +5,15 @@ import type {
   ConversationShareCapabilities,
   ConversationShareConfirmRequest,
   ConversationSharePreparationRequest,
-} from "@zcode/shared";
-import { ProxyChannel } from "@zcode/rpc";
+} from "@codez/shared";
+import { ProxyChannel } from "@codez/rpc";
 import {
-  ZCODE_ATTACHMENT_FAULT_CODES,
-  ZCodeAttachmentFaultError,
-} from "@zcode/shared/zcode-protocol-v4";
+  CODEZ_ATTACHMENT_FAULT_CODES,
+  CodezAttachmentFaultError,
+} from "@codez/shared/codez-protocol-v4";
 import { describe, expect, it, vi } from "vitest";
 
-import type { IZCodeAgentService } from "../src/zcode-agent/zcodeAgent.js";
+import type { ICodezAgentService } from "../src/codez-agent/codezAgent.js";
 import {
   ConversationShareClientError,
   type ConversationShareHttpClient,
@@ -196,7 +196,7 @@ function completedRowsWithFileChanges(): ConversationRow[] {
 function createDependencies(
   rows = completedRows(),
   pollOptions: PollOptions = {},
-  workflow: Partial<IZCodeAgentService> = {},
+  workflow: Partial<ICodezAgentService> = {},
 ) {
   const conversationRowsRangeV4 = vi.fn(async ({ beforeRowId }: { beforeRowId?: number }) =>
     beforeRowId === undefined
@@ -271,14 +271,14 @@ function createDependencies(
     })),
   };
   const service = new ConversationShareService({
-    zcodeAgentService: {
+    codezAgentService: {
       ...workflow,
       conversationRowsRangeV4,
       conversationFileChangesV4,
       conversationAttachmentReadV4,
       conversationAttachmentStatV4,
     } as unknown as Pick<
-      IZCodeAgentService,
+      ICodezAgentService,
       | "conversationRowsRangeV4"
       | "conversationFileChangesV4"
       | "conversationAttachmentReadV4"
@@ -540,7 +540,7 @@ describe("ConversationShareService", () => {
       allowed_artifacts: [{ type: "text", extensions: ["txt"], mime_types: ["text/plain"] }],
     });
     conversationAttachmentStatV4.mockRejectedValueOnce(
-      new ZCodeAttachmentFaultError(ZCODE_ATTACHMENT_FAULT_CODES.shareStatTooLarge),
+      new CodezAttachmentFaultError(CODEZ_ATTACHMENT_FAULT_CODES.shareStatTooLarge),
     );
 
     const result = await service.preflight({
@@ -591,7 +591,7 @@ describe("ConversationShareService", () => {
       ...rows[1]!,
       text: [
         "~/Code/vibe/shows/deliver/晨报.pdf",
-        '::zcode-file-citation{path="/workspace/晨报.pdf" purpose="output"}',
+        '::codez-file-citation{path="/workspace/晨报.pdf" purpose="output"}',
         "build_mn/qa/layout-review.md",
         "out/one.mp4 out/two.mp4 out/three.mp4",
       ].join("\n"),
@@ -1128,7 +1128,7 @@ describe("ConversationShareService", () => {
         origin: "realUser",
         attachments: [
           {
-            ref: "/data/.zcode/tmp/paste-attachments/pasted.txt",
+            ref: "/data/.codez/tmp/paste-attachments/pasted.txt",
             fileName: "pasted.txt",
             mime: "text/plain",
             bytes: 11,
@@ -1173,8 +1173,8 @@ describe("ConversationShareService", () => {
     expect(userInput).toMatchObject({
       attachments: [
         expect.objectContaining({
-          ref: "zcode-artifact://share/share-input-artifact-1",
-          previewRef: "zcode-artifact://share/share-input-artifact-1",
+          ref: "codez-artifact://share/share-input-artifact-1",
+          previewRef: "codez-artifact://share/share-input-artifact-1",
         }),
       ],
     });
@@ -1767,7 +1767,7 @@ describe("ConversationShareService", () => {
     );
     expect(confirmRequests.at(-1)?.projection.rows.at(-1)).toMatchObject({
       kind: "artifact",
-      ref: "zcode-artifact://share/share-artifact-1",
+      ref: "codez-artifact://share/share-artifact-1",
     });
   });
 
@@ -1973,7 +1973,7 @@ describe("ConversationShareService", () => {
   it.each([
     ["data:text/plain;base64,YQ==", "unsafe_structure"],
     ["file:///tmp/report.html", "unsafe_structure"],
-    ["zcode-artifact://share/report", "artifact_protocol_not_ready"],
+    ["codez-artifact://share/report", "artifact_protocol_not_ready"],
   ] as const)("rejects unsupported local reference %s", async (text, kind) => {
     const rows = completedRows();
     rows[1] = { ...rows[1], kind: "assistantText", text, state: "complete" };

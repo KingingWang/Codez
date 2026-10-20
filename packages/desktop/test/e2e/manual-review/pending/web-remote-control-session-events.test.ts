@@ -2,20 +2,20 @@ import { chmod, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { once } from "node:events";
 import { join } from "node:path";
 import { WebSocket } from "ws";
-import { acquireFileLock } from "@zcode/shared/node";
-import { type WebRemoteControlStatus } from "@zcode/shared";
+import { acquireFileLock } from "@codez/shared/node";
+import { type WebRemoteControlStatus } from "@codez/shared";
 import {
   TID_CONFIRM_DIALOG_CONFIRM,
   TID_LOGIN_TRIGGER,
   TID_LOGOUT_BUTTON,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { getE2EAppDataPaths } from "../../helpers/desktop-app.js";
 
 async function remoteStatus() {
   const serialized = await browser.execute(async () => {
     const bridge = (
-      window as Window & { zcode?: { getWebRemoteControlStatus(): Promise<{ status: string }> } }
-    ).zcode;
+      window as Window & { codez?: { getWebRemoteControlStatus(): Promise<{ status: string }> } }
+    ).codez;
     if (!bridge) throw new Error("缺少 preload 远控接口");
     // WebDriver 把返回对象的 error 字段当成协议错误；序列化后再在测试端还原真实状态。
     return JSON.stringify(await bridge.getWebRemoteControlStatus());
@@ -26,8 +26,8 @@ async function remoteStatus() {
 describe("桌面 OAuth 凭据完成事件", () => {
   it("AUTH-08: 新设备身份保存失败终止启动并清理设备，恢复设置后可手动重启", async function () {
     this.timeout(120_000);
-    const origin = process.env.ZCODE_E2E_REMOTE_AUTH_GATE_URL;
-    const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR;
+    const origin = process.env.CODEZ_E2E_REMOTE_AUTH_GATE_URL;
+    const artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR;
     if (!origin || !artifacts) throw new Error("缺少会话事件 fixture");
     const openDialog = async () => {
       await browser.waitUntil(
@@ -123,8 +123,8 @@ describe("桌面 OAuth 凭据完成事件", () => {
 
   it("AUTH-08: 登出后设置失败仍关闭已配对远控，且不依赖 UI 用户清空或重启", async function () {
     this.timeout(120_000);
-    const origin = process.env.ZCODE_E2E_REMOTE_AUTH_GATE_URL;
-    const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR;
+    const origin = process.env.CODEZ_E2E_REMOTE_AUTH_GATE_URL;
+    const artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR;
     if (!origin || !artifacts) throw new Error("缺少会话事件 fixture");
     await browser.waitUntil(
       async () => {
@@ -157,7 +157,7 @@ describe("桌面 OAuth 凭据完成事件", () => {
     const settingsFile = join(appDataDir, "setting.json");
     let releaseSettingsLock: (() => Promise<void>) | undefined;
     // E2E 日志按 worker 隔离；从 Main 获取实际目录，不能读取普通用户配置目录。
-    const logs = await browser.electron.execute(() => process.env.ZCODE_E2E_RUNTIME_LOG_DIR);
+    const logs = await browser.electron.execute(() => process.env.CODEZ_E2E_RUNTIME_LOG_DIR);
     if (!logs) throw new Error("缺少 worker 运行时日志目录");
     const readRuntimeLog = async () => {
       const names = (await readdir(logs)).filter((name) => name.endsWith(".log")).sort();
@@ -191,7 +191,7 @@ describe("桌面 OAuth 凭据完成事件", () => {
       await browser.waitUntil(
         async () => {
           const credentials = JSON.parse(await readFile(credentialsFile, "utf8"));
-          return !("zcodejwttoken" in credentials);
+          return !("codezjwttoken" in credentials);
         },
         { timeout: 15_000 },
       );
@@ -211,7 +211,7 @@ describe("桌面 OAuth 凭据完成事件", () => {
       await quit.update();
       expect(relaunch.mock.calls.length).toBe(0);
       expect(quit.mock.calls.length).toBe(0);
-      expect(await $(`[data-testid="${TID_LOGIN_TRIGGER}"]`).getText()).toContain("ZCode E2E");
+      expect(await $(`[data-testid="${TID_LOGIN_TRIGGER}"]`).getText()).toContain("Codez E2E");
       await writeFile(
         join(artifacts, "remote-logout-settings-failure.json"),
         JSON.stringify(

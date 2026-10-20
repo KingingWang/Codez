@@ -6,9 +6,9 @@ import {
   ProviderConfigMap,
   type ProviderConfigSnapshot,
   type ProviderSource,
-} from "@zcode/provider";
-import { NodePersonalProviderConfigRepository } from "@zcode/provider-node";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+} from "@codez/provider";
+import { NodePersonalProviderConfigRepository } from "@codez/provider-node";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { bindAccountProviderInvalidation } from "../src/model-provider/accountProviderInvalidation.js";
 import { createAccountProviderConfigSource } from "../src/model-provider/accountProviderConnectionResolver.js";
@@ -26,9 +26,9 @@ class StaticConfigSource implements ProviderSource<ProviderConfigSnapshot> {
   async read(): Promise<ProviderConfigSnapshot> {
     return {
       revision: "config-1",
-      zcodeBuiltinRevision: "builtin-1",
+      codezBuiltinRevision: "builtin-1",
       personalRevision: "personal-1",
-      zcodeBuiltinProviders: new ProviderConfigMap([
+      codezBuiltinProviders: new ProviderConfigMap([
         [
           BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan,
           createAccountProviderConfig({
@@ -47,7 +47,7 @@ class StaticConfigSource implements ProviderSource<ProviderConfigSnapshot> {
         ],
       ]),
       personalProviders: ProviderConfigMap.empty(),
-      zcodeBuiltinModelRules: ModelConfigRules.empty(),
+      codezBuiltinModelRules: ModelConfigRules.empty(),
       personalModels: ModelConfigRules.empty(),
     };
   }
@@ -109,7 +109,7 @@ async function createRemoteTarget() {
   const credentials = new Map<string, string>([
     ["oauth:active_provider", "zai"],
     ["oauth:zai:user_info", JSON.stringify({ id: "zai-user" })],
-    ["zcodejwttoken", "jwt-old"],
+    ["codezjwttoken", "jwt-old"],
   ]);
   // 评审 SG-01：竞态不再依赖真实调度（delay(40) vs delay(2) 的胜负在 Windows 与 Linux
   // 上不同）。gate 只拦"写入期间启动、已捕获旧身份"的第一轮 availability 查询——进入
@@ -240,7 +240,7 @@ function createEnvelope() {
         key: "oauth:bigmodel:user_info",
         value: JSON.stringify({ id: "user-1" }),
       },
-      { scope: "oauth-session", key: "zcodejwttoken", value: "jwt-1" },
+      { scope: "oauth-session", key: "codezjwttoken", value: "jwt-1" },
     ],
   };
 }
@@ -279,7 +279,7 @@ describe("Provider Provisioning Target 与真实账号刷新链路", () => {
     expect([...credentials.keys()].sort()).toEqual([
       "oauth:active_provider",
       "oauth:bigmodel:user_info",
-      "zcodejwttoken",
+      "codezjwttoken",
     ]);
     const snapshot = await accountSource.read();
     expect(snapshot.states[BUILTIN_MODEL_PROVIDER_IDS.bigmodelStartPlan]).toMatchObject({

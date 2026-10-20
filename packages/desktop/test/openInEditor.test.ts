@@ -34,7 +34,7 @@ vi.mock("electron", () => ({
   },
 }));
 
-vi.mock("@zcode/server/remote/wsl-detect.js", () => ({
+vi.mock("@codez/server/remote/wsl-detect.js", () => ({
   listWSLDistros: listWSLDistrosMock,
 }));
 
@@ -86,7 +86,7 @@ describe("openInEditor", () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), "zcode-open-in-editor-"));
+    tempDir = mkdtempSync(join(tmpdir(), "codez-open-in-editor-"));
     accessMock.mockReset();
     accessMock.mockResolvedValue(undefined);
     execFileMock.mockReset();
@@ -166,14 +166,14 @@ describe("openInEditor", () => {
         host: "jumpserver.example.com",
         port: 2222,
         username: "asset01@root@192.168.100.166",
-        sshConfigAlias: "zcode",
+        sshConfigAlias: "codez",
       },
     });
 
     expect(result).toEqual({ success: true });
     expect(execFileMock).toHaveBeenCalledWith(
       "code",
-      ["--folder-uri", "vscode-remote://ssh-remote+zcode/root/demo-project"],
+      ["--folder-uri", "vscode-remote://ssh-remote+codez/root/demo-project"],
       expect.any(Function),
     );
   });
@@ -192,14 +192,14 @@ describe("openInEditor", () => {
         host: "jumpserver.example.com",
         port: 2222,
         username: "root",
-        sshConfigAlias: "zcode",
+        sshConfigAlias: "codez",
       },
     });
 
     expect(result).toEqual({ success: true });
     expect(execFileMock).toHaveBeenCalledWith(
       "code",
-      ["--file-uri", "vscode-remote://ssh-remote+zcode/root/demo-project/src/index.ts"],
+      ["--file-uri", "vscode-remote://ssh-remote+codez/root/demo-project/src/index.ts"],
       expect.any(Function),
     );
   });

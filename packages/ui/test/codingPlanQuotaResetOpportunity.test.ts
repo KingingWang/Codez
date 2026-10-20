@@ -3,13 +3,13 @@
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { createElement, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CodingPlanResetType } from "@zcode/shared";
+import type { CodingPlanResetType } from "@codez/shared";
 import {
   CodingPlanQuotaResetOpportunity,
   type CodingPlanQuotaResetDialogConfig,
 } from "@/components/coding-plan-quota-reset/CodingPlanQuotaResetOpportunity.js";
 import type { CodingPlanQuotaResetDialogResetItem } from "@/components/coding-plan-quota-reset/CodingPlanQuotaResetDialog.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { mergeCodingPlanQuotaResetOpportunityBadges } from "@/lib/codingPlanQuotaResetUi.js";
 
 vi.mock("@/lib/codingPlanQuotaResetConfetti.js", () => ({
@@ -25,7 +25,7 @@ function renderOpportunity(props: {
 }) {
   return render(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(CodingPlanQuotaResetOpportunity, {
         ...props,
@@ -107,7 +107,7 @@ function renderStatefulOpportunity(
       resetItems.map((item) => ({ ...item, visible: item.count > 0 })),
     );
     return createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(CodingPlanQuotaResetOpportunity, {
         count: badge.count,
@@ -293,7 +293,7 @@ describe("CodingPlanQuotaResetOpportunity", () => {
 
     view.rerender(
       createElement(
-        ZCodeIntlProvider,
+        CodezIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(CodingPlanQuotaResetOpportunity, {
           count: 1,

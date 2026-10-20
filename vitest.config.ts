@@ -3,10 +3,10 @@ import { configDefaults, defineConfig } from "vitest/config";
 
 const processLifecycleTests = [
   "packages/services/test/processTreeTerminator.test.ts",
-  "packages/services/test/zcodeAgentService.test.ts",
-  "packages/services/test/zcodeAgentService.v4.test.ts",
-  "packages/services/test/zcodeAgentProcessManager.test.ts",
-  "packages/services/test/zcodeStdioTransport.test.ts",
+  "packages/services/test/codezAgentService.test.ts",
+  "packages/services/test/codezAgentService.v4.test.ts",
+  "packages/services/test/codezAgentProcessManager.test.ts",
+  "packages/services/test/codezStdioTransport.test.ts",
 ];
 const forkIsolatedTests = [
   ...processLifecycleTests,
@@ -49,7 +49,7 @@ const forkIsolatedTests = [
   "packages/services/test/runtimeToolResolver.test.ts",
   // 该集成测试会真实启动 tsx、Supervisor 与多代 Core；放在普通 threads 中时，
   // 并行 worker 的进程启动压力会让 15 秒 ready barrier 偶发超时。
-  "packages/zcode-server-cli/test/runtimeUpdateIntegration.test.ts",
+  "packages/codez-server-cli/test/runtimeUpdateIntegration.test.ts",
   // Bugfix: pdfjs-dist legacy build 在 threads worker 内偶发原生崩溃（0xC0000005，
   // 测试自身通过、worker 收尾时崩，会把整场全量跑拦腰截断）。隔离到 fork 池后崩溃
   // 波及面收敛到本文件，其余测试结果可完整收集；崩溃根因见
@@ -60,7 +60,7 @@ const forkIsolatedTests = [
 export default defineConfig({
   // 测试固定注入事件上报端点，使遥测上报链路在单测中可验证；真实构建由 scripts/build-time-config.mjs 决定。
   define: {
-    __ZCODE_TELEMETRY_REPORT_ENDPOINT__: JSON.stringify("https://zcode.z.ai/api/v1/event/report"),
+    __CODEZ_TELEMETRY_REPORT_ENDPOINT__: JSON.stringify("https://zcode.z.ai/api/v1/event/report"),
   },
   resolve: {
     alias: {
@@ -120,10 +120,10 @@ export default defineConfig({
             "scripts/assert-safe-cua-helper-zip.test.mjs",
             "scripts/ci/ci-telemetry-keyword-guard.test.mjs",
           ],
-          exclude: ["packages/desktop/test/e2e/**", "packages/zcode-cua/**", ...forkIsolatedTests],
+          exclude: ["packages/desktop/test/e2e/**", "packages/codez-cua/**", ...forkIsolatedTests],
           // Node 24/macOS 的 threads 全量运行可触发 V8 SIGSEGV；诊断时切换进程隔离，测试范围不变。
-          pool: process.env.ZCODE_TEST_POOL === "forks" ? "forks" : "threads",
-          maxWorkers: process.env.ZCODE_TEST_POOL === "forks" ? 2 : 4,
+          pool: process.env.CODEZ_TEST_POOL === "forks" ? "forks" : "threads",
+          maxWorkers: process.env.CODEZ_TEST_POOL === "forks" ? 2 : 4,
           sequence: { groupOrder: 0 },
         },
       },
@@ -138,7 +138,7 @@ export default defineConfig({
           sequence: { groupOrder: 1 },
         },
       },
-      "packages/zcode-cua/vitest.config.ts",
+      "packages/codez-cua/vitest.config.ts",
     ],
     coverage: {
       provider: "v8",
