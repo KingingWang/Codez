@@ -16,7 +16,7 @@ Host 项目组织态的持久化升级。调用者持有 app SQLite 连接，CLI
 项目树任务沿用原列表/Controller 的执行后端过滤：仅 `provider=CODEZ_AGENT_PROVIDER`（当前 glm）。旧后端行即使已补齐 cli\_\* 也不进入项目、置顶、未归类、时间线、归档和未读投影；新导入的当前 CLI 会话保留，不按 migration_source、模型供应商或目录存在性过滤。只读，不改旧数据或 migration，已升级数据库无需再次转换；本地与远端持库 Host 使用同一规则。
 
 Codex 原生新会话的 `threadSource` 可带 Host 校验过的初始项目 ID 或显式 NULL，
-`admitTaskIdentity` 只在 `host_id IS NULL` 的第一次插入时使用它；项目缺失/跨 Host
+Host 在拿到原生分配的 `sessionId`（新建或 fork）后立即预留空事实归属行，保证紧随其后的会话订阅在远端必选项目校验下立即可读；若摘要先到达或重建索引，`admitTaskIdentity` 只在 `host_id IS NULL` 的第一次插入时使用 `threadSource`；项目缺失/跨 Host
 拒绝，不按同 cwd 猜多目录归属。已有行或用户移动后的 `project_id` 永不被重新写入。
 本地单 root 的全目录历史只是项目树消费端的只读视图，不建第二条 task 行，
 不改变一次性 F3 判定与远端单 root 的显式归属。见
