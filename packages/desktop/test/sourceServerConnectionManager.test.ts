@@ -305,6 +305,71 @@ describe("SourceServerConnectionManager", () => {
     manager.dispose();
   });
 
+  it("reinstalls a missing Source Server during startup reconnect for a bound Profile", async () => {
+    const adapter = createAdapter(false, "ssh");
+    const markSourceUninstalled = vi.fn(async () => undefined);
+    const resolveRelease = vi.fn(async () => createRelease("3.8.0"));
+    const manager = new SourceServerConnectionManager({
+      directory: {
+        recordHandshake: vi.fn().mockResolvedValue({ identityChanged: false }),
+        markSourceUninstalled,
+      },
+      createAdapter: () => adapter,
+      connectServer: vi.fn(async () => ({
+        serverInfo,
+        services: {} as IServiceAccessor,
+        dispose: vi.fn(),
+      })),
+      compatibilityManifest: serverInfo.compatibility!,
+      resolveRelease,
+    });
+    const boundProfile: ConnectionProfile = {
+      ...sshProfile,
+      sourceServerId,
+    };
+
+    await expect(
+      manager.reconnectOnStartup([{ profile: boundProfile, target: sshTarget }]),
+    ).resolves.toEqual([{ profileId, status: "online" }]);
+
+    expect(markSourceUninstalled).toHaveBeenCalledWith(profileId);
+    expect(resolveRelease).toHaveBeenCalledOnce();
+    expect(adapter.calls).toEqual(["probe", "install", "daemon"]);
+    expect(manager.getStateByProfile(profileId)).toMatchObject({
+      state: "online",
+      sourceServerId,
+    });
+    manager.dispose();
+  });
+
+  it("keeps first startup connection installation behind explicit confirmation", async () => {
+    const adapter = createAdapter(false, "ssh");
+    const resolveRelease = vi.fn(async () => createRelease("3.8.0"));
+    const manager = new SourceServerConnectionManager({
+      directory: { recordHandshake: vi.fn() },
+      createAdapter: () => adapter,
+      compatibilityManifest: serverInfo.compatibility!,
+      resolveRelease,
+    });
+
+    await expect(
+      manager.reconnectOnStartup([{ profile: sshProfile, target: sshTarget }]),
+    ).resolves.toEqual([
+      {
+        profileId,
+        status: "failed",
+        error: "Source Server installation requires explicit user confirmation",
+      },
+    ]);
+
+    expect(resolveRelease).toHaveBeenCalledWith(expect.any(Object), sshTarget, {
+      metadataOnly: true,
+    });
+    expect(adapter.calls).toEqual(["probe"]);
+    expect(manager.getStateByProfile(profileId)).toMatchObject({ state: "needs-install" });
+    manager.dispose();
+  });
+
   it("Manager 在线但窗口没有 wrapper 时，复用真实目标且不覆盖已保存密码", async () => {
     let settings = appSettingsSchema.parse({ sourceServerDirectoryMigrationVersion: 1 });
     const credentials = new Map<string, string>();
