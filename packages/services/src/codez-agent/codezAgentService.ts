@@ -4694,6 +4694,29 @@ export function createCodezAgentService(
     return { codexProjectId: projectId, additionalDirectories: project.additionalDirectories };
   }
 
+  // 修复原因：Codex native thread/start 与 thread/fork 由原生分配 sessionId，不能在请求前用假 ID
+  // 预留 task 行；但 Renderer 收到 ACK 后会立即调用 subscribeConversationV4，远端必选项目校验
+  // （assertRemoteTaskDirectories）和多目录附加目录解析都依赖 tasks 表里的归属快照。
+  // 若等异步 sessions-index 通知入库，subscribeConversationV4 会因查不到行稳定抛
+  // project.remote-project-required，导致预热草稿被废弃、发送报错且会话延迟显示。
+  // 因此在拿到原生分配的真实 sessionId 后、向调用方返回前，立即写入空事实预留行（cli_created_at=NULL）。
+  async function reserveNativeCreatedTask(
+    target: CodezAgentWorkspaceTarget,
+    sessionId: string,
+    projectId: string | null | undefined,
+    additionalDirectories?: string[],
+  ): Promise<void> {
+    if (!options?.prepareSessionCreation) return;
+    await options.prepareSessionCreation({
+      workspacePath: target.workspacePath,
+      ...(target.workspaceIdentity ? { workspaceIdentity: target.workspaceIdentity } : {}),
+      ...(target.remoteSessionId ? { remoteSessionId: target.remoteSessionId } : {}),
+      sessionId,
+      projectId: projectId ?? null,
+      ...(additionalDirectories !== undefined ? { additionalDirectories } : {}),
+    });
+  }
+
   async function buildConversationCommandEnvelope(
     params: CodezAgentConversationCommandParams,
   ): Promise<CommandEnvelope> {
@@ -5051,6 +5074,14 @@ export function createCodezAgentService(
           codezSessionStateSnapshotSchema,
           sessionTraceId ? { trace: { traceId: sessionTraceId } } : undefined,
         );
+        if (usesDefaultCodexBridge) {
+          await reserveNativeCreatedTask(
+            params,
+            snapshot.session.sessionId,
+            codexProjectId,
+            params.additionalDirectories,
+          );
+        }
         rememberSessionTrace({ ...params, sessionId: snapshot.session.sessionId }, snapshot);
         logger.info(sessionTraceId, "Codez Protocol session/create 完成", {
           durationMs: Date.now() - startedAt,
@@ -5097,6 +5128,14 @@ export function createCodezAgentService(
           codezSessionStateSnapshotSchema,
           sessionTraceId ? { trace: { traceId: sessionTraceId } } : undefined,
         );
+        if (usesDefaultCodexBridge) {
+          await reserveNativeCreatedTask(
+            params,
+            snapshot.session.sessionId,
+            codexProjectId,
+            params.additionalDirectories,
+          );
+        }
         rememberSessionTrace({ ...params, sessionId: snapshot.session.sessionId }, snapshot);
         if (!compatFields.includes("thoughtLevel") || !params.thoughtLevel) {
           logger.info(sessionTraceId, "Codez Protocol session/create 兼容重试完成", {
@@ -7588,11 +7627,29 @@ export function createCodezAgentService(
         ack.result?.type === "forkAssistant"
       ) {
         // 正文提交不代表 Host 组织态已写入；等待归属交接再允许界面立即打开，失败可重放同一 ACK。
+        // Codex fork 也先继承父执行目录快照；后续真实 ID 预留只复用既有行，
+        // 避免以当前项目 roots 初始化空行后丢失父任务固化的 execution_directories。
         await options?.prepareForkCreation?.({
           ...params,
           sessionId: ack.result.sessionId,
           parentSessionId: envelope.sessionId,
         });
+      }
+      if (
+        usesDefaultCodexBridge &&
+        ack.status === "accepted" &&
+        (ack.result?.type === "createSession" || ack.result?.type === "forkAssistant")
+      ) {
+        const payload = envelope.payload as {
+          codexProjectId?: string | null;
+          additionalDirectories?: string[];
+        };
+        await reserveNativeCreatedTask(
+          params,
+          ack.result.sessionId,
+          payload.codexProjectId,
+          payload.additionalDirectories,
+        );
       }
       // Prompt command 在 committed TurnStarted 或 committed WorkspaceHookReviewRequested
       // 任一 authority 到达后即返回；人工审核不能占用 Host RPC，因此继续使用统一默认
