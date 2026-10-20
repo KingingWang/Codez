@@ -272,24 +272,39 @@ test(
         3,
         `expected three model round trips, got ${modelRequests.length}`,
       );
-      const tools = modelRequests.flatMap((request) => request.tools ?? []);
-      const wrapper = tools.find((tool) => tool.name === MCP_WRAPPER);
-      assert.ok(wrapper, "Codex must register the native Browser/CUA MCP server with the model");
-      assert.deepEqual(wrapper.tools.map((tool) => tool.name).sort(), [
-        "browser_command",
-        "cua_command",
-        "cua_status",
-      ]);
-      const browser = wrapper.tools.find((tool) => tool.name === "browser_command");
-      const cua = wrapper.tools.find((tool) => tool.name === "cua_command");
+      // codex-20261020 起，namespace-incapable provider（如本 smoke 的 fake provider）
+      // 下命名空间工具被扁平化为 `namespace__name`；归一化为裸工具名声明，
+      // 使断言与 Codex release 的呈现方式解耦。
+      const flatPrefix = `${MCP_WRAPPER}__`;
+      const declaredNativeTools = (request) => {
+        const tools = request.tools ?? [];
+        const wrapper = tools.find((tool) => tool.name === MCP_WRAPPER);
+        if (wrapper) return wrapper.tools ?? [];
+        return tools
+          .filter((tool) => tool.name?.startsWith(flatPrefix))
+          .map((tool) => ({ ...tool, name: tool.name.slice(flatPrefix.length) }));
+      };
+      const expectedNames = ["browser_command", "cua_command", "cua_status"];
+      const perRequest = modelRequests.map(declaredNativeTools);
+      const declared = perRequest[0] ?? [];
+      assert.ok(
+        declared.length > 0,
+        "Codex must register the native Browser/CUA MCP server with the model",
+      );
+      assert.deepEqual(declared.map((tool) => tool.name).sort(), expectedNames);
+      const browser = declared.find((tool) => tool.name === "browser_command");
+      const cua = declared.find((tool) => tool.name === "cua_command");
       assert.ok(
         browser && cua,
         "Browser and CUA must remain independent declarations inside the namespace",
       );
-      assert.equal(
-        tools.filter((tool) => tool.name?.startsWith(MCP_WRAPPER)).length,
-        modelRequests.length,
-      );
+      for (const requestTools of perRequest) {
+        assert.deepEqual(
+          requestTools.map((tool) => tool.name).sort(),
+          expectedNames,
+          "every model request must declare the same native Browser/CUA tool set",
+        );
+      }
       assert.deepEqual(cua.parameters.properties.method.enum, CUA_METHODS);
       assert.deepEqual(Object.keys(cua.parameters.properties).sort(), [...CUA_FIELDS].sort());
       assert.deepEqual(cua.parameters.required, ["method"]);
