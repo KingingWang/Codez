@@ -74,13 +74,13 @@ ordering, and request/response paths still project their own turns synchronously
 
 Native app-server `error` notifications with `willRetry: true` are transient,
 turn-scoped retry observations, not terminal errors or bridge retry commands. The
-bridge retains only a validated HTTP status code and optional validated positive
-integer `(attempt, maxRetries)` counts for the current in-progress turn and
-projects them through V4 `control.apiRetry`; it never persists native error
-text, fabricates retry counts or replays mutations. Model progress, terminal
-notifications and turn completion clear the observation. Both delivery modes
-read the same current snapshot; native thread history cannot restore the status
-after a bridge restart.
+bridge retains only a validated HTTP status code, optional validated positive
+integer `(attempt, maxRetries)` counts, and a bounded `errorDetail` for the
+current in-progress turn and projects them through V4 `control.apiRetry`; it
+never persists native error text, fabricates retry counts or replays mutations.
+Model progress, terminal notifications and turn completion clear the observation.
+Both delivery modes read the same current snapshot; native thread history cannot
+restore the status after a bridge restart.
 
 Subagent child threads stay Codex-owned: the parent thread's collab items are the
 only source of child identity, and a child is projected as a read-only session
