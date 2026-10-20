@@ -41,6 +41,7 @@ import {
 import { resolveCodexInitSlashCommandPrompt } from "./builtin-init-command.js";
 import { executeThreadGoalCommand } from "./thread-goal.js";
 import { executeInterruptedTurnContinue } from "./commands-continue.js";
+import { deleteBridgeThread } from "./thread-queries.js";
 
 export interface CommandContext {
   rpc: CodexRpcPort;
@@ -95,7 +96,13 @@ export class CommandRouter {
     }
     let ack: CommandAck;
     try {
-      const state = command.sessionId ? await store.ensure(command.sessionId) : undefined;
+      // deleteSession 走免锁只读归属校验与幂等删除，避免为删除把未加载会话重新 resume 或因已删 tombstone 报错。
+      const state =
+        command.sessionId && command.type !== "deleteSession"
+          ? await store.ensure(command.sessionId)
+          : command.sessionId
+            ? store.get(command.sessionId)
+            : undefined;
       if (
         state &&
         ((command.baseRevision !== undefined && command.baseRevision !== state.revision) ||
@@ -149,6 +156,16 @@ export class CommandRouter {
     const { rpc, store, attachments, interactions } = this.context;
     if (command.type === "createSession") return createNativeSession(command, this.context);
     const sessionId = string(command.sessionId, "sessionId");
+    if (command.type === "deleteSession") {
+      await deleteBridgeThread({
+        sessionId,
+        rpc,
+        cwd: store.cwd,
+        store,
+        cancelTitle: (id) => this.context.title?.cancel(id),
+      });
+      return undefined;
+    }
     const state = await store.ensure(sessionId);
     assertWritableThreadState(state, command.type);
     const native = { threadId: sessionId };
@@ -281,12 +298,6 @@ export class CommandRouter {
           rpc.request("thread/name/set", { ...native, name: title }));
         break;
       }
-      case "deleteSession":
-        if (running) throw new Error("Stop the active turn before deleting");
-        this.context.title?.cancel(sessionId);
-        await rpc.request("thread/delete", native);
-        store.remove(sessionId);
-        break;
       case "resolveInteraction": {
         const p = commandPayloadSchemas.resolveInteraction.parse(command.payload);
         await interactions.resolve(sessionId, p.interactionId, p.answer);

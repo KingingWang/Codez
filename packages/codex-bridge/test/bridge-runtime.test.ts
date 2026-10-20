@@ -1276,3 +1276,100 @@ test("file rewind overlay injects a one-shot model notice into the next sendText
   const queuedInput = (queuedCalls[0]!.params as { input: Array<{ text: string }> }).input;
   assert.ok(!queuedInput[0]!.text.includes("reverted"));
 });
+
+test("v4/sessionsIndex/reconcile reports tombstoned, existing and missing sessions without resuming threads", async (t) => {
+  const h = await fixture(t);
+  const deletedId = "deleted-thread";
+  const unloadedId = "unloaded-thread";
+  const foreignId = "foreign-thread";
+  h.handlers["thread/read"] = (params) => {
+    if (params.threadId === unloadedId) {
+      return {
+        thread: {
+          ...h.authority.thread,
+          id: unloadedId,
+          name: "Archived title",
+          createdAt: 100,
+          updatedAt: 200,
+          status: { type: "notLoaded" },
+          turns: [],
+        },
+      };
+    }
+    if (params.threadId === foreignId) {
+      return {
+        thread: {
+          ...h.authority.thread,
+          id: foreignId,
+          cwd: "/foreign",
+          status: { type: "notLoaded" },
+          turns: [],
+        },
+      };
+    }
+    if (params.threadId === deletedId) {
+      return {
+        thread: {
+          ...h.authority.thread,
+          id: deletedId,
+          status: { type: "notLoaded" },
+          turns: [],
+        },
+      };
+    }
+    throw new Error("thread not loaded");
+  };
+  h.handlers["thread/delete"] = () => ({});
+
+  const deleteRes = await h.runtime.request(V4_METHODS.command, {
+    type: "deleteSession",
+    commandId: "del-1",
+    clientId: "desktop-1",
+    sessionId: deletedId,
+    issuedAt: 1,
+    payload: {},
+  });
+  assert.equal(commandAckSchema.parse(deleteRes.result).status, "accepted");
+
+  const reconciled = await h.runtime.request(V4_METHODS.sessionsIndexReconcile, {
+    workspaceId,
+    sessionIds: [deletedId, unloadedId, foreignId, "missing-thread"],
+  });
+  assert.deepEqual(reconciled.result, {
+    sessions: [
+      {
+        sessionId: deletedId,
+        exists: true,
+        deleted: true,
+        title: "",
+        titleSource: "default",
+        createdAt: 0,
+        updatedAt: 0,
+      },
+      {
+        sessionId: unloadedId,
+        exists: true,
+        deleted: false,
+        title: "Archived title",
+        titleSource: "default",
+        createdAt: 100000,
+        updatedAt: 200000,
+      },
+      {
+        sessionId: foreignId,
+        exists: false,
+        deleted: false,
+      },
+      {
+        sessionId: "missing-thread",
+        exists: false,
+        deleted: false,
+      },
+    ],
+  });
+  assert.equal(
+    h.calls.filter((call) => call.method === "thread/resume").length,
+    0,
+    "reconcile and cold deleteSession must not resume unloaded threads",
+  );
+});

@@ -6,6 +6,7 @@ import { CommandRouter } from "../src/commands.js";
 import { CommandLedger } from "../src/command-ledger.js";
 import { ThreadStateStore } from "../src/thread-state.js";
 import { InteractionBroker } from "../src/interactions.js";
+import { CodexRpcError } from "../src/rpc-errors.js";
 import { verifyHistoryChange } from "./fixtures/commands-history-fixture.js";
 import { verifySandboxTransitions } from "./fixtures/commands-mode-fixture.js";
 import { verifyNativeInputIntent } from "./fixtures/commands-intent-fixture.js";
@@ -960,4 +961,63 @@ test("sendGoalCommand, pauseGoal and resumeGoal map to native thread/goal/set an
   const resumeAck = await h.execute(h.command("resumeGoal", {}, "goal-resume-1"));
   assert.equal(resumeAck.status, "accepted", resumeAck.message);
   assert.equal(h.store.get(sessionId)?.goal?.status, "active");
+});
+
+test("deleteSession uses lock-free thread/read without resume on cold threads and is idempotent on missing/deleted rollouts", async (t) => {
+  const h = await setup(t);
+  const unloadedId = "unloaded-archived";
+  const missingId = "missing-archived";
+  const foreignId = "foreign-archived";
+  h.rpc.handlers.set("thread/read", (params) => {
+    if (params.threadId === unloadedId) {
+      return {
+        thread: { ...h.authority.thread, id: unloadedId, status: { type: "notLoaded" }, turns: [] },
+      };
+    }
+    if (params.threadId === foreignId) {
+      return {
+        thread: {
+          ...h.authority.thread,
+          id: foreignId,
+          cwd: "/other-workspace",
+          status: { type: "notLoaded" },
+          turns: [],
+        },
+      };
+    }
+    if (params.threadId === missingId) {
+      throw new CodexRpcError(-32600, `thread not loaded: ${missingId}`);
+    }
+    return { thread: h.authority.thread };
+  });
+  let deletedCount = 0;
+  h.rpc.handlers.set("thread/delete", (params) => {
+    deletedCount += 1;
+    if (deletedCount > 1) {
+      throw new CodexRpcError(-32600, `no rollout found for thread id ${String(params.threadId)}`);
+    }
+    return {};
+  });
+
+  // 1. Cold unloaded thread deletes without calling thread/resume
+  const coldAck = await h.execute(h.command("deleteSession", {}, "del-cold", unloadedId));
+  assert.equal(coldAck.status, "accepted", coldAck.message);
+  assert.equal(h.rpc.params("thread/resume").length, 0);
+  assert.deepEqual(h.rpc.params("thread/delete"), [{ threadId: unloadedId }]);
+  assert.equal(h.store.isDeleted(unloadedId), true);
+
+  // 2. Deleting an already-tombstoned thread (e.g. after thread/deleted notification) succeeds idempotently
+  const repeatAck = await h.execute(h.command("deleteSession", {}, "del-repeat", unloadedId));
+  assert.equal(repeatAck.status, "accepted", repeatAck.message);
+  assert.equal(h.rpc.params("thread/delete").length, 1);
+
+  // 3. Deleting a thread whose rollout is already missing on disk succeeds idempotently and marks tombstone
+  const missingAck = await h.execute(h.command("deleteSession", {}, "del-missing", missingId));
+  assert.equal(missingAck.status, "accepted", missingAck.message);
+  assert.equal(h.store.isDeleted(missingId), true);
+
+  // 4. Deleting a thread from another workspace is rejected before thread/delete
+  const foreignAck = await h.execute(h.command("deleteSession", {}, "del-foreign", foreignId));
+  assert.equal(foreignAck.status, "failed");
+  assert.match(foreignAck.message ?? "", /different workspace/);
 });

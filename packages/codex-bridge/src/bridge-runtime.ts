@@ -24,7 +24,12 @@ import { projectCodexHistoryRuns } from "./history-runs.js";
 import { join } from "node:path";
 import { AuxiliaryText } from "./auxiliary-text.js";
 import { SessionTitleCoordinator } from "./session-title.js";
-import { queryBridgePlans, queryBridgeRowPayload, queryBridgeRowsRange } from "./thread-queries.js";
+import {
+  queryBridgePlans,
+  queryBridgeRowPayload,
+  queryBridgeRowsRange,
+  reconcileBridgeSessions,
+} from "./thread-queries.js";
 import { queryCodexAppUsageStats } from "./codex-app-usage.js";
 import { scopeWorkspaceParams, handleCodexNativeRequest } from "./request-scope.js";
 import type { BridgeFailureOrigin } from "./diagnostics.js";
@@ -232,6 +237,15 @@ export class BridgeRuntime {
       case V4_METHODS.conversationSubscribe:
         this.invalidateReadOnlyProjection(params);
         return this.subscriptions.subscribe(params);
+      case V4_METHODS.sessionsIndexReconcile:
+        return {
+          result: await reconcileBridgeSessions(params, {
+            rpc,
+            cwd,
+            workspaceId,
+            store: this.store,
+          }),
+        };
       case V4_METHODS.conversationResync:
         this.invalidateReadOnlyProjection(params);
         return this.subscriptions.resync(params);
