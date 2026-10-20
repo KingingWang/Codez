@@ -209,6 +209,19 @@ unoffered persistence never reach Codex.
 - Deleted threads cannot be resurrected by in-flight projection loads or authorize
   an old attachment. History/live merges use item identity and preserve terminal
   content against late start/delta notifications.
+  `v4/sessionsIndex/reconcile` reconciles up to 256 session IDs for the authorized
+  workspace: tombstoned IDs in the bridge return `{ exists: true, deleted: true, ... }`,
+  existing workspace-owned threads (cached or via lock-free `thread/read`) return
+  `{ exists: true, deleted: false, ... }`, and missing or foreign-workspace IDs
+  return `{ exists: false, deleted: false }`. `deleteSession` is idempotent when the
+  thread is already deleted or has no rollout on disk (when not loaded in memory,
+  it inspects lock-free `thread/read` without calling `thread/resume`, verifies
+  workspace ownership and writable status before calling `thread/delete`, and
+  treats a missing thread/rollout as already deleted and records the bridge
+  tombstone so subsequent reconcile confirms deletion). When `sessionsIndex/reconcile`
+  returns `exists: false` for a Host row with a pending deletion intent
+  (`handoff_pending & 1`), `task-facts` completes the deletion (`applyCliDeletion`)
+  instead of leaving `cli_deleted = 0`.
 - Native queue contents are owned by Codex. Unsupported auto-drain/paused intent
   semantics must be reported, never silently acknowledged.
 - Native transport frames are newline-delimited JSON with a hard cap of 32 MiB

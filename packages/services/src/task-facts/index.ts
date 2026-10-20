@@ -36,6 +36,7 @@ export function createTaskFacts(options: {
     result: SessionsIndexReconcileResult,
     current: () => boolean,
     publish = true,
+    pendingDeleteIds?: ReadonlySet<string>,
   ) => {
     for (const fact of result.sessions) {
       if (!current()) return;
@@ -45,7 +46,21 @@ export function createTaskFacts(options: {
         taskId: fact.sessionId,
       };
       if (!fact.exists) {
-        await store.markCliOrphan(task);
+        // 修复原因：已携带删除交接意图（bit 1）或刚完成物理删除的会话在 CLI 中已不存在（not found），
+        // 按 spec 7.4 应视为已删并清位；若仅标 orphan 而不写 cli_deleted=1，行会在 readTree 中持续复活。
+        if (pendingDeleteIds?.has(fact.sessionId)) {
+          await store.applyCliDeletion(task);
+          if (publish && current()) changed({ target: task, reason: "task_deleted" });
+        } else {
+          await store.markCliOrphan(task);
+        }
+        continue;
+      }
+      if (fact.deleted && fact.createdAt === 0 && fact.updatedAt === 0 && fact.title === "") {
+        // Codex 原生删除是物理移除 rollout，bridge 仅保有会话 ID tombstone（无历史时间/标题）；
+        // 直接提交删除事实，避免空占位覆盖 SQLite 已有的归档展示时间与标题。
+        await store.applyCliDeletion(task);
+        if (publish && current()) changed({ target: task, reason: "task_deleted" });
         continue;
       }
       const before = publish ? await store.getTaskMeta(task) : null;
@@ -125,7 +140,27 @@ export function createTaskFacts(options: {
     },
     async mutate(target, intent) {
       await source.execute(target, intent);
-      const meta = await port.refresh(target);
+      const meta =
+        intent.type === "delete"
+          ? await (async () => {
+              const id = key(target);
+              const generation = Symbol();
+              refreshes.set(id, generation);
+              try {
+                const result = await source.reconcile(target, [target.taskId]);
+                await mirror(
+                  target,
+                  result,
+                  () => refreshes.get(id) === generation,
+                  false,
+                  new Set([target.taskId]),
+                );
+                return await store.getTaskMeta(target);
+              } finally {
+                if (refreshes.get(id) === generation) refreshes.delete(id);
+              }
+            })()
+          : await port.refresh(target);
       changed({
         target,
         ...(meta ? { meta } : {}),
@@ -139,6 +174,9 @@ export function createTaskFacts(options: {
       );
       for (let offset = 0; offset < rows.length && stillCurrent(); offset += 256) {
         const batch = rows.slice(offset, offset + 256);
+        const pendingDeleteIds = new Set(
+          batch.filter((row) => (row.handoffPending & 1) !== 0).map((row) => row.meta.taskId),
+        );
         let result = await source.reconcile(
           target,
           batch.map((row) => row.meta.taskId),
@@ -167,7 +205,7 @@ export function createTaskFacts(options: {
             ],
           };
         }
-        await mirror(target, result, stillCurrent);
+        await mirror(target, result, stillCurrent, true, pendingDeleteIds);
       }
     },
   };
