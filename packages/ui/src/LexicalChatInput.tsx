@@ -1696,6 +1696,7 @@ interface LexicalChatInputProps {
   enableMentionPanel?: boolean;
   /** 调用方额外挂在同一个 LexicalComposer 里的插件（如设计模式元素 token 同步） */
   extraPlugins?: React.ReactNode;
+  nativeCodex?: boolean;
 }
 
 const EDITOR_THEME = {
@@ -1731,6 +1732,7 @@ export function LexicalChatInput({
   appSlashCommands,
   extraPlugins,
   enableMentionPanel = true,
+  nativeCodex = false,
 }: LexicalChatInputProps) {
   const inputMountedAtRef = useRef(Date.now());
   const lastReadyLogKeyRef = useRef<string | null>(null);
@@ -1878,6 +1880,7 @@ export function LexicalChatInput({
           <PasteCapturePlugin disabled={disabled} onPaste={onPaste} />
         </div>
         <SlashCommandPlugin
+          nativeCodex={nativeCodex}
           workspacePath={workspacePath}
           workspaceIdentity={workspaceIdentity}
           sessionId={skillCatalogSessionId ?? taskId}

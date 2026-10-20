@@ -81,25 +81,37 @@ export function PlanGuidanceToolCallBlock(context: ToolCallBlockRenderContext) {
   const guidanceMarkdown = extractGuidanceMarkdown(toolCall);
   const renderContent = useCallback(
     () =>
-      guidanceMarkdown ? (
-        <div className="ml-2 space-y-2 border-border border-l pl-3.5 border-border">
-          <MessageResponse
-            className="min-w-0 break-words [&_h1]:text-foreground-subtlest [&_h2]:text-foreground-subtlest [&_h3]:text-foreground-subtlest [&_li]:text-foreground-subtlest [&_p]:text-foreground-subtlest"
-            workspacePath={context.workspacePath}
-            theme={context.theme}
-            codePreviewSettings={context.codePreviewSettings}
-            onOpenCodeViewer={context.onOpenCodeViewer}
-            onOpenFileLink={context.onOpenFileLink}
-            onOpenExternalUrl={context.onOpenBrowserUrl}
-          >
-            {guidanceMarkdown}
-          </MessageResponse>
-        </div>
-      ) : (
-        <ToolOutput errorText={errorText} output={errorText ? undefined : toolCall.output} />
-      ),
+      <>
+        {guidanceMarkdown ? (
+          <div className="ml-2 space-y-2 border-border border-l pl-3.5 border-border">
+            <MessageResponse
+              className="min-w-0 break-words [&_h1]:text-foreground-subtlest [&_h2]:text-foreground-subtlest [&_h3]:text-foreground-subtlest [&_li]:text-foreground-subtlest [&_p]:text-foreground-subtlest"
+              workspacePath={context.workspacePath}
+              theme={context.theme}
+              codePreviewSettings={context.codePreviewSettings}
+              onOpenCodeViewer={context.onOpenCodeViewer}
+              onOpenFileLink={context.onOpenFileLink}
+              onOpenExternalUrl={context.onOpenBrowserUrl}
+            >
+              {guidanceMarkdown}
+            </MessageResponse>
+          </div>
+        ) : (
+          <ToolOutput errorText={errorText} output={errorText ? undefined : toolCall.output} />
+        )}
+        <ToolSnapshotFieldNotice
+          refs={toolCall.snapshotRefs ?? []}
+          autoLoadWhenMounted
+          onLoadFullToolCallFields={
+            context.onLoadFullToolCallFields
+              ? () => context.onLoadFullToolCallFields?.(toolCall.toolId)
+              : undefined
+          }
+        />
+      </>,
     [
       context.codePreviewSettings,
+      context.onLoadFullToolCallFields,
       context.onOpenBrowserUrl,
       context.onOpenCodeViewer,
       context.onOpenFileLink,
@@ -108,6 +120,8 @@ export function PlanGuidanceToolCallBlock(context: ToolCallBlockRenderContext) {
       errorText,
       guidanceMarkdown,
       toolCall.output,
+      toolCall.snapshotRefs,
+      toolCall.toolId,
     ],
   );
 

@@ -162,7 +162,12 @@ export function TaskActionMenuContent({
         {intl.formatMessage({ id: "appHeader.copyPath" })}
       </Item>
       <Item
-        disabled={taskTargetActionsDisabled || taskSessionFile.loading || !taskSessionFile.path}
+        disabled={
+          taskTargetActionsDisabled ||
+          taskSessionFile.loading ||
+          !taskSessionFile.path ||
+          !taskSessionFile.exists
+        }
         title={taskTargetActionsDisabled ? disabledReason : undefined}
         onSelect={onCopyTaskPath}
       >
@@ -172,7 +177,8 @@ export function TaskActionMenuContent({
         disabled={
           taskTargetActionsDisabled ||
           taskNativeSessionLogFile.loading ||
-          !taskNativeSessionLogFile.path
+          !taskNativeSessionLogFile.path ||
+          !taskNativeSessionLogFile.exists
         }
         title={taskTargetActionsDisabled ? disabledReason : undefined}
         onSelect={onCopyTaskLogPath}

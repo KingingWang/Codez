@@ -23,7 +23,7 @@ import {
   waitUntilPluginOverview,
 } from "#e2e/helpers/plugin-management-lifecycle";
 
-const BUILTIN_ID = "skill-creator@zcode-plugins-official";
+const BUILTIN_ID = "skill-creator@codez-plugins-official";
 const BUILTIN_TIMEOUT_MS = 240000;
 
 describe("PLM-LC-006/009 Builtin 抑制恢复与 inline smoke E2E", () => {

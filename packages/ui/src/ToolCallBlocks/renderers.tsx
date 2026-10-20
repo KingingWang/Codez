@@ -90,7 +90,14 @@ export function renderFileChip({
   const descriptor = resolveFileDisplayDescriptor(summary.path, {
     basePath,
   });
-  const chipTitle = title ?? summary.path;
+  const chipTitle =
+    title ??
+    (summary.previousPath
+      ? `${getFileDisplayPath(summary.previousPath, basePath)} → ${getFileDisplayPath(summary.path, basePath)}`
+      : getFileDisplayPath(summary.path, basePath));
+  const chipLabel = summary.previousPath
+    ? `${getPathLeaf(summary.previousPath)} → ${getPathLeaf(summary.path)}`
+    : getPathLeaf(summary.path);
 
   if (clickable) {
     return (
@@ -107,7 +114,7 @@ export function renderFileChip({
         }}
       >
         <FileDisplayIcon src={descriptor.fileIconSrc} size={16} className="size-4 shrink-0" />
-        {renderFileSummaryName(getPathLeaf(summary.path), chipTitle)}
+        <span className="min-w-0 truncate text-foreground-subtle">{chipLabel}</span>
       </button>
     );
   }
@@ -115,7 +122,21 @@ export function renderFileChip({
   return (
     <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-foreground">
       <FileDisplayIcon src={descriptor.fileIconSrc} size={16} className="size-4 shrink-0" />
-      {renderFileSummaryName(getPathLeaf(summary.path), chipTitle)}
+      <span className="min-w-0 truncate">{chipLabel}</span>
+    </span>
+  );
+}
+
+export function renderFilePath(path: string | null | undefined, basePath?: string) {
+  if (!path) {
+    return null;
+  }
+
+  return (
+    <span className="min-w-0 truncate text-foreground-subtlest @max-[360px]/conversation:hidden">
+      {/* 窄会话流里父目录会与文件名争抢空间，Read/Edit 最终只剩动作标签和省略号。
+          小容器隐藏次要路径，让文件名继续承担主识别信息。 */}
+      {getFileDisplayPath(path, basePath)}
     </span>
   );
 }

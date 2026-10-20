@@ -1,19 +1,27 @@
 import { RefreshCcw } from "lucide-react";
-import { Fragment, lazy, useState } from "react";
+import { Fragment, lazy, useCallback, useEffect, useRef, useState } from "react";
 import { APP_USAGE_RANGES } from "@codez/shared";
 import type { AppUsageRange, AppUsageSnapshot } from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
+import { useServices } from "@/hooks/useServices.js";
 import { useAppUsageStats } from "@/hooks/useUsageStats.js";
 import { UsageChartLoadBoundary } from "@/settings/usage-stats/UsageChartLoadBoundary.js";
 import { UsageHeatmap } from "@/settings/usage-stats/UsageHeatmap.js";
+import { logger } from "@/logger.js";
+import {
+  buildCodexUsageObservationTotals,
+  normalizeCodexUsageThreads,
+  type CodexUsageObservationsSnapshot,
+} from "./codexUsageThreads.js";
 import { UsageStatsErrorNotice } from "@/settings/usage-stats/UsageStatsErrorNotice.js";
 import {
   USAGE_STATS_TABS_LIST_CLASS,
   USAGE_STATS_TABS_TRIGGER_CLASS,
   UsageEmptyState,
   formatCompactNumber,
+  formatCompactTokenUsage,
   formatSummaryCompactTokenUsage,
 } from "@/settings/usage-stats/usageStatsUiParts.js";
 
@@ -31,9 +39,147 @@ const AppUsageModelUsagePieChart = lazy(() =>
   })),
 );
 
-export function AppUsagePanel() {
+export const CODEX_APP_USAGE_OBSERVATION_COPY_ID = "settings.usage.appUsage.observationNotice";
+
+export function useCodexUsageObservations(workspace: {
+  workspaceIdentity?: string;
+  workspacePath?: string;
+}) {
+  const { usageStatsService } = useServices();
+  const [snapshot, setSnapshot] = useState<CodexUsageObservationsSnapshot | null>(null);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const readSequence = useRef(0);
+  const refresh = useCallback(async () => {
+    const seq = ++readSequence.current;
+    setSnapshot(null);
+    setError(false);
+    setLoading(true);
+    const workspacePath = workspace.workspacePath?.trim();
+    if (!workspacePath) {
+      setLoading(false);
+      return;
+    }
+    const service = usageStatsService;
+    if (typeof service.getCodexUsageObservations !== "function") {
+      setError(true);
+      setLoading(false);
+      return;
+    }
+    try {
+      const raw = await service.getCodexUsageObservations({
+        workspacePath,
+        ...(workspace.workspaceIdentity?.trim()
+          ? { workspaceIdentity: workspace.workspaceIdentity.trim() }
+          : {}),
+      });
+      // 同一 identity 的远端 Host 换代后，旧请求的成功/失败都不能覆盖新 owner。
+      if (readSequence.current !== seq) return;
+      setSnapshot({
+        threads: normalizeCodexUsageThreads((raw as { threads?: unknown }).threads),
+        conflict: Boolean((raw as { conflict?: unknown }).conflict),
+        stale: Boolean((raw as { stale?: unknown }).stale),
+      });
+    } catch (error) {
+      if (readSequence.current !== seq) return;
+      setError(true);
+      logger.warn("[codex-usage] Reading desktop observations failed", {
+        error: error instanceof Error ? error.message : String(error),
+        workspaceIdentity: workspace.workspaceIdentity ?? null,
+        workspacePath,
+      });
+    } finally {
+      if (readSequence.current === seq) setLoading(false);
+    }
+  }, [usageStatsService, workspace.workspaceIdentity, workspace.workspacePath]);
+
+  useEffect(() => {
+    void refresh();
+    return () => {
+      readSequence.current++;
+    };
+  }, [refresh]);
+
+  return { snapshot, refresh, error, loading };
+}
+
+export function CodexUsageObservationNotice({
+  intl,
+}: {
+  intl: ReturnType<typeof useCodezIntl>["intl"];
+}) {
+  return (
+    <p className="text-ui-sm text-foreground-subtle" data-testid="codex-usage-observation-notice">
+      {intl.formatMessage({ id: CODEX_APP_USAGE_OBSERVATION_COPY_ID })}
+    </p>
+  );
+}
+
+export function CodexUsageObservationSummary({
+  observations,
+  intl,
+  locale,
+}: {
+  observations: CodexUsageObservationsSnapshot | null;
+  intl: ReturnType<typeof useCodezIntl>["intl"];
+  locale: string;
+}) {
+  const threads = observations?.threads;
+  const totals = buildCodexUsageObservationTotals(threads ?? []);
+  const items = [
+    ["observedThreads", totals.threads, false],
+    ["observedInput", totals.inputTokens, true],
+    ["observedOutput", totals.outputTokens, true],
+    ["observedCacheRead", totals.cacheReadTokens, true],
+    ["observedCacheWrite", totals.cacheWriteTokens, true],
+  ] as const;
+  return (
+    <section
+      className="grid grid-cols-2 gap-3 rounded-xl bg-surface p-4 sm:grid-cols-5"
+      data-testid="codex-usage-observations"
+    >
+      {items.map(([key, value, tokens]) => (
+        <div key={key} className="min-w-0">
+          <div className="truncate text-ui-lg font-medium text-foreground">
+            {value === null
+              ? "--"
+              : tokens
+                ? formatCompactTokenUsage(locale, value)
+                : formatCompactNumber(locale, value)}
+          </div>
+          {/* 五列桌面卡片宽度不够容纳英文指标名；换行展示完整语义，避免缓存读/写不可分辨。 */}
+          <div className="mt-1 break-words text-ui-base leading-snug text-foreground-subtle">
+            {intl.formatMessage({ id: `settings.usage.appUsage.${key}` })}
+          </div>
+        </div>
+      ))}
+      <div className="col-span-2 flex flex-col justify-center gap-1 sm:col-span-5">
+        {threads && threads.length > 0 && observations?.stale ? (
+          <div data-testid="codex-usage-observation-stale">
+            {intl.formatMessage({ id: "settings.usage.appUsage.observationStale" })}
+          </div>
+        ) : null}
+        {threads && threads.length > 0 && observations?.conflict ? (
+          <div data-testid="codex-usage-observation-conflict">
+            {intl.formatMessage({ id: "settings.usage.appUsage.observationConflict" })}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+export function AppUsagePanel({
+  workspaceIdentity,
+  workspacePath,
+}: {
+  workspaceIdentity?: string;
+  workspacePath?: string;
+}) {
   const { intl, locale } = useCodezIntl();
   const [range, setRange] = useState<AppUsageRange>("7d");
+  void workspaceIdentity;
+  void workspacePath;
   const { snapshot: lifetimeSnapshot, refresh: refreshLifetime } = useAppUsageStats("all");
   const { snapshot, loading, error, refresh } = useAppUsageStats(range);
 
@@ -135,9 +281,7 @@ export function AppUsageLifetimeSummaryStrip({ snapshot }: { snapshot: AppUsageS
   const items = [
     {
       label: intl.formatMessage({ id: "settings.usage.lifetimeTotalTokens" }),
-      value: snapshot
-        ? formatSummaryCompactTokenUsage(locale, snapshot.summary.totalTokens)
-        : "--",
+      value: snapshot ? formatSummaryCompactTokenUsage(locale, snapshot.summary.totalTokens) : "--",
     },
     {
       label: intl.formatMessage({ id: "settings.usage.lifetimePeakTokens" }),

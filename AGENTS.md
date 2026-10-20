@@ -26,6 +26,8 @@
 
 App 业务单测已退役，不新增或恢复 App 业务单测 test/spec 或 `contract.test.ts`；保留 CLI、CUA、E2E、浏览器验收和工程门禁测试。工程 Vitest 使用 `pnpm test:engineering <文件>`，push 自动运行 `pnpm test:engineering:affected --scope push`，CLI/CUA 使用各包独立入口，不默认全量。范围见 [测试规格](docs/testing/unit-test-quality.md)，推送合同见 [pre-push 说明](docs/testing/pre-push-hook.md)。
 
+Codez fork 上游集成的定制回归例外见 [集成合同](specs/upstream-main-integration.md)：仅保留本地定制提交涉及的既有回归，使用 `pnpm test:fork <文件>` 定向执行；不恢复上游无关退役测试，不加入工程白名单，不替代 E2E。Node/tsx 原生测试仍使用所属包入口。
+
 测试入口以目标包当前的 `package.json` 和实际测试文件为准，不假定存在统一的单测或 E2E 命令。
 
 - `packages/desktop`：Electron main、host、renderer。

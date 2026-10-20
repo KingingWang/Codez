@@ -293,7 +293,7 @@ Host authority 校验的官方 server 接受模型偶发生成的 `mcp__computer
 
 ## 实机验收记录（2026-07-29）
 
-本轮在 Windows 11 10.0.26200 x64、交互式 Session 1、Node 24.18.0（ABI 137）和 pnpm 10.33.2 上，从 source desktop 启动并验证了官方 `computer-use@zcode-plugins-official` 链路。验收限定为本地 desktop continuous 链路；未启动或附着 SSH、WSL、Docker、远程 workspace、手机 `/remote`，Phase 1 全程未请求截图。
+本轮在 Windows 11 10.0.26200 x64、交互式 Session 1、Node 24.18.0（ABI 137）和 pnpm 10.33.2 上，从 source desktop 启动并验证了官方 `computer-use@codez-plugins-official` 链路。验收限定为本地 desktop continuous 链路；未启动或附着 SSH、WSL、Docker、远程 workspace、手机 `/remote`，Phase 1 全程未请求截图。
 
 实机首先暴露出两个 Windows 启动身份缺陷：默认 runner 的 `windowsHide: true` 使现代 Notepad 进程成功但首个 GUI 窗口以隐藏状态启动；现代 Notepad 又会把 `spawn` 返回的 launcher PID 转交给另一个持有可见窗口的 child PID。最终修复让 runner 显式显示 GUI，并以“启动前 PID snapshot + launcher 完整 executable path + 启动后新增 PID + `applicationInfo` live 再验证 + 唯一候选”完成 Windows-only rebind。旧 active 同名窗口、不同路径同 basename、多候选和 name-only identity 都由 RED tests 锁定为 fail closed。
 

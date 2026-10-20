@@ -1,0 +1,391 @@
+import {
+  conversationRowSchema,
+  type ConversationRow,
+  type PendingInteraction,
+  type ToolCallRow,
+} from "@codez/shared/codez-protocol-v4";
+import {
+  isCodexKnownItem,
+  type CodexKnownItem,
+  type CodexThread,
+  type CodexThreadItem,
+  type CodexTurn,
+  type CodexUserInput,
+} from "./codex-types.js";
+import { assertRowBudget, projectToolInput, projectToolOutput } from "./projection-bounds.js";
+import { projectNativeFileChangeDisplay } from "./native-file-change-display.js";
+import {
+  codexEventMarker,
+  collabAgentToolCallRow,
+  contextCompactionMarker,
+  dynamicToolCallRow,
+  functionCallOutputRow,
+  imageGenerationRow,
+  imageViewRow,
+  isHiddenContinuationUserMessage,
+  projectReasoningText,
+  projectTextOrReasoningState,
+  subAgentActivityMarker,
+  webSearchRow,
+  type RowBase,
+} from "./projection-item-extras.js";
+import {
+  collectSubagentFacts,
+  subagentEntityId,
+  subagentRow,
+  subagentRowAnchors,
+} from "./subagent-projection.js";
+
+/** Explicit textual fallbacks: no fake attachment refs, byte counts or MIME facts. */
+export function projectInputText(input: readonly CodexUserInput[]): string {
+  return input
+    .map((part) => {
+      switch (part.type) {
+        case "text":
+          return part.text;
+        case "image":
+        case "localImage":
+          // 原生 image 可能包含整张图片的 data URL；仅显示标记，避免撑爆行预算或泄漏 sidecar 路径。
+          // 可访问的 attachment refs 由 bridge 恢复，纯投影不伪造也不暴露媒体定位符。
+          return "[image]";
+        case "audio":
+          return `[audio: ${part.url}]`;
+        case "localAudio":
+          return `[local audio: ${part.path}]`;
+        case "skill":
+          return `[skill: ${part.name} (${part.path})]`;
+        case "mention":
+          return `[mention: ${part.name} (${part.path})]`;
+      }
+    })
+    .join("\n");
+}
+
+/** 展示 ID 编码原生 (turnId, itemId)，避免原生按 turn 复用 itemId 时发生碰撞。 */
+export function itemEntityId(turnId: string, itemId: string): string {
+  return `codex:turn:${encodeURIComponent(turnId)}:item:${encodeURIComponent(itemId)}`;
+}
+
+/** bridge 合成的 update_plan 计划卡（specs/codex-desktop-update-plan.md）；不进入原生历史。 */
+interface CodexPlanUpdateItem {
+  type: "planUpdate";
+  id: string;
+  plan: Array<{
+    step: string;
+    status: "pending" | "in_progress" | "completed";
+  }>;
+  explanation?: string;
+}
+
+function isCodexPlanUpdateItem(
+  item: CodexThreadItem,
+): item is CodexThreadItem & CodexPlanUpdateItem {
+  return item.type === "planUpdate" && Array.isArray((item as { plan?: unknown }).plan);
+}
+
+type ToolItem = Extract<
+  CodexKnownItem,
+  { type: "commandExecution" | "fileChange" | "mcpToolCall" }
+>;
+
+function toolRow(
+  item: ToolItem,
+  base: RowBase,
+  turn: CodexTurn,
+  interactions: readonly PendingInteraction[],
+): ToolCallRow {
+  const approval = interactions.find(
+    (interaction) =>
+      interaction.payload.kind === "permission" &&
+      interaction.payload.toolCallId === item.id &&
+      (interaction.turnId === undefined || interaction.turnId === turn.id),
+  );
+  let status: ToolCallRow["status"];
+  if (item.status === "completed") status = "success";
+  else if (item.status === "failed") status = "error";
+  else if (item.status === "declined" || turn.status === "interrupted") status = "cancelled";
+  else if (turn.status === "failed") status = "error";
+  else status = approval ? "pendingApproval" : "running";
+  const common: ToolCallRow = {
+    ...base,
+    kind: "toolCall",
+    toolCallId: item.id,
+    toolName: item.type,
+    status,
+    inputText: "",
+  };
+  if (status === "pendingApproval") common.approvalInteractionId = approval?.interactionId;
+  if (status === "error")
+    common.error = {
+      code: `codex.${item.type}.failed`,
+      message:
+        item.type === "mcpToolCall" && item.error
+          ? item.error.message
+          : (turn.error?.message ?? `Codex ${item.type} failed`),
+    };
+  if (item.type === "commandExecution") {
+    common.toolName = "Bash";
+    Object.assign(common, projectToolInput({ command: item.command, cwd: item.cwd }));
+    if (item.aggregatedOutput != null) common.output = projectToolOutput(item.aggregatedOutput);
+    if (item.exitCode != null && item.exitCode !== 0 && status === "success") {
+      common.status = "error";
+      common.error = {
+        code: "codex.command.exit",
+        message: `Command exited with code ${item.exitCode}`,
+      };
+    }
+  } else if (item.type === "fileChange") {
+    common.toolName = "ApplyPatch";
+    Object.assign(common, projectToolInput({ changes: item.changes }));
+    common.output = projectToolOutput(
+      item.changes.map((change) => `${change.path}\n${change.diff}`).join("\n"),
+    );
+    // 原因：原生 changes 是数组，而旧 UI 摘要只识别按文件组织的 display；
+    // output.text 又可能被截断，必须在桥接时从原生事实生成有界的结构化预览。
+    const display = projectNativeFileChangeDisplay(item.changes);
+    if (display) common.output.display = display;
+  } else {
+    common.toolName = `mcp__${item.server}__${item.tool}`;
+    Object.assign(common, projectToolInput(item.arguments));
+    if (item.server.length <= 256 && item.tool.length <= 256)
+      common.display = {
+        kind: "mcp_tool",
+        serverName: item.server,
+        toolName: item.tool,
+      };
+    if (item.result != null) common.output = projectToolOutput(JSON.stringify(item.result));
+  }
+  // Codex does not supply tool start/end timestamps. Turn timestamps are not tool telemetry.
+  return common;
+}
+
+function itemRow(
+  item: CodexThreadItem,
+  turn: CodexTurn,
+  base: RowBase,
+  interactions: readonly PendingInteraction[],
+  isLastItemInTurn: boolean,
+): ConversationRow {
+  if (isCodexPlanUpdateItem(item)) {
+    // update_plan 是一次已完成的计划事实：复用 UI 现有 todo 识别（toolName 命中
+    // tool-plan-adapter）与 messageStreamShowTodos 展示门，不虚构工具输出。
+    return {
+      ...base,
+      kind: "toolCall",
+      toolCallId: item.id,
+      toolName: "update_plan",
+      status: "success",
+      ...projectToolInput({
+        ...(typeof item.explanation === "string" ? { explanation: item.explanation } : {}),
+        plan: item.plan,
+      }),
+    };
+  }
+  if (!isCodexKnownItem(item)) {
+    const approval = interactions.find(
+      (interaction) =>
+        interaction.payload.kind === "permission" &&
+        interaction.payload.toolCallId === item.id &&
+        (interaction.turnId === undefined || interaction.turnId === turn.id),
+    );
+    const nativeStatus = typeof item.status === "string" ? item.status : undefined;
+    const status =
+      nativeStatus === "failed" || nativeStatus === "error"
+        ? "error"
+        : nativeStatus === "declined" || nativeStatus === "cancelled"
+          ? "cancelled"
+          : nativeStatus === "completed"
+            ? "success"
+            : turn.status === "failed"
+              ? "error"
+              : turn.status === "interrupted"
+                ? "cancelled"
+                : turn.status === "completed"
+                  ? "success"
+                  : approval
+                    ? "pendingApproval"
+                    : "running";
+    return {
+      ...base,
+      kind: "toolCall",
+      toolCallId: item.id,
+      toolName: `codex.${item.type}`,
+      status,
+      ...projectToolInput(item),
+      output: projectToolOutput(
+        `Codex ${item.type} (generic presentation; status may be turn-derived)\n${JSON.stringify(item)}`,
+      ),
+      ...(status === "pendingApproval" ? { approvalInteractionId: approval?.interactionId } : {}),
+      ...(status === "error"
+        ? {
+            error: {
+              code: "codex.item.failed",
+              message: `Codex ${item.type} failed`,
+            },
+          }
+        : {}),
+    };
+  }
+  switch (item.type) {
+    case "userMessage":
+      return {
+        ...base,
+        kind: "userInput",
+        text: projectInputText(item.content),
+        origin: "realUser",
+        // Codex 将 turn/start.clientUserMessageId 持久化成 item.clientId；它不是提交端 clientId。
+        ...(item.clientId ? { sourceCommandId: item.clientId } : {}),
+      };
+    case "agentMessage":
+    case "plan":
+      return {
+        ...base,
+        kind: "assistantText",
+        text: item.text,
+        state: projectTextOrReasoningState(item.status, turn.status, isLastItemInTurn, true),
+      };
+    case "reasoning":
+      return {
+        ...base,
+        kind: "reasoning",
+        text: projectReasoningText(item.summary, item.content),
+        state: projectTextOrReasoningState(item.status, turn.status, isLastItemInTurn, false),
+      };
+    case "imageView":
+      return imageViewRow(item, base);
+    case "webSearch":
+      return webSearchRow(item, base);
+    case "imageGeneration":
+      return imageGenerationRow(item, base);
+    case "collabAgentToolCall":
+      return collabAgentToolCallRow(item, base);
+    case "dynamicToolCall":
+      return dynamicToolCallRow(item, base);
+    case "functionCallOutput":
+      return functionCallOutputRow(item, base);
+    case "contextCompaction":
+      // 原生 item 只有 id（core 的 ContextCompactedEvent 无载荷），来源 manual/auto 不可知，
+      // 因此不走 compact marker（origin 必填会伪造来源），用 codexEvent 分隔线。
+      return contextCompactionMarker(item, turn.status, base);
+    case "enteredReviewMode":
+      return codexEventMarker(base, "reviewEnter", item.review);
+    case "exitedReviewMode":
+      return codexEventMarker(base, "reviewExit", item.review);
+    case "hookPrompt":
+      // hook 注入的 prompt 片段（如 UserPromptSubmit hook 上下文），截断防大行。
+      return codexEventMarker(
+        base,
+        "hookPrompt",
+        item.fragments.map((fragment) => fragment.text.trim()).join("\n"),
+      );
+    case "subAgentActivity":
+      return subAgentActivityMarker(item, base);
+    case "sleep":
+      return codexEventMarker(base, "sleep", `${Math.round(item.durationMs / 1000)}s`);
+    default:
+      return toolRow(item, base, turn, interactions);
+  }
+}
+
+/** Whole-history ordinals, not deltas. Insert/remove/reorder requires a new caller-owned epoch.
+ * createdAtSeq=0 means hydrated before the live stream, never an invented event sequence.
+ * Missing item/turn timestamps fall back to thread.createdAt for display only.
+ */
+export function projectRows(
+  thread: CodexThread,
+  interactions: readonly PendingInteraction[] = [],
+  /** 辅助对话 child 的继承 turn：整段跳过，不进 rows（spec: codex-selection-side-chat）。 */
+  hiddenTurnIds?: ReadonlySet<string>,
+): ConversationRow[] {
+  const rows: ConversationRow[] = [];
+  const turnIds = new Set<string>();
+  const turns = hiddenTurnIds?.size
+    ? thread.turns.filter((turn) => !hiddenTurnIds.has(turn.id))
+    : thread.turns;
+  // 子代理事实先整体聚合：终态可能出现在锚点之后的 turn，逐 item 决策会先显示 running 再回跳。
+  const subagentAnchors = subagentRowAnchors(collectSubagentFacts(thread, hiddenTurnIds));
+  for (const turn of turns) {
+    if (turn.itemsView !== "full")
+      throw new Error("Codex conversation projection requires full turn items");
+    if (turnIds.has(turn.id)) throw new Error(`Duplicate Codex turn ID: ${turn.id}`);
+    turnIds.add(turn.id);
+    const createdAt = (turn.startedAt ?? thread.createdAt) * 1000;
+    const base = {
+      turnId: turn.id,
+      productTurnId: turn.id,
+      createdAt,
+      createdAtSeq: 0,
+      visibility: "visible" as const,
+    };
+    const source = turn.items.filter(isCodexKnownItem).find((item) => item.type === "userMessage");
+    const entityIds = new Set<string>();
+    rows.push(
+      assertRowBudget(
+        conversationRowSchema.parse({
+          ...base,
+          rowId: rows.length,
+          entityId: `codex:turn:${encodeURIComponent(turn.id)}`,
+          kind: "turnHeader",
+          origin: "userInput",
+          executionKind: "agent",
+          startedAt: createdAt,
+          ...(turn.completedAt != null ? { endedAt: turn.completedAt * 1000 } : {}),
+          ...(source?.type === "userMessage" && source.clientId
+            ? { sourceCommandId: source.clientId }
+            : {}),
+          state:
+            turn.status === "inProgress"
+              ? "running"
+              : turn.status === "completed"
+                ? "completedSuccess"
+                : turn.status === "interrupted"
+                  ? "completedInterrupted"
+                  : "failed",
+        }),
+      ),
+    );
+    for (const [itemIndex, item] of turn.items.entries()) {
+      if (entityIds.has(item.id)) {
+        // 原生协议按 turn 限定 itemId；同一 turn 内重复仍表示损坏历史，必须失败。
+        throw new Error(`Duplicate Codex item ID in turn ${turn.id}: ${item.id}`);
+      }
+      entityIds.add(item.id);
+      if (isCodexKnownItem(item) && isHiddenContinuationUserMessage(item)) {
+        continue;
+      }
+      rows.push(
+        assertRowBudget(
+          conversationRowSchema.parse(
+            itemRow(
+              item,
+              turn,
+              {
+                ...base,
+                rowId: rows.length,
+                entityId: itemEntityId(turn.id, item.id),
+              },
+              interactions,
+              itemIndex === turn.items.length - 1,
+            ),
+          ),
+        ),
+      );
+      // subagent 行紧跟锚点 item（spawn 优先）：UI 的配对要求同 turnId + parentToolCallId，
+      // 配对成功后该行不单独渲染，只把「打开子会话」入口挂到 agent 卡片上。
+      for (const fact of subagentAnchors.get(`${turn.id}\u0000${item.id}`) ?? []) {
+        rows.push(
+          assertRowBudget(
+            conversationRowSchema.parse(
+              subagentRow(fact, {
+                ...base,
+                rowId: rows.length,
+                entityId: subagentEntityId(fact.childThreadId),
+              }),
+            ),
+          ),
+        );
+      }
+    }
+  }
+  return rows;
+}

@@ -58,8 +58,8 @@ on the overview's `installedPlugins` will not reach the detail panel.
 | Update freshness                            | **Cached manifest**; a "Check for updates" action re-pulls on demand.                                                                                                                                                                                                                                                                       |
 | Restore an uninstalled built-in             | **Restore via catalog** — but through a dedicated restore action, not the marketplace install path (see Restore below).                                                                                                                                                                                                                     |
 | Non-semver version diff                     | Show **"version changed"**, not "update available" (only `semver.gt` shows "update available").                                                                                                                                                                                                                                             |
-| Official marketplace name                   | **Locked** — user-added marketplaces may not claim `zcode-plugins-official` / `claude-plugins-official`.                                                                                                                                                                                                                                    |
-| Installed record vs built-in classification | **`installed_plugins.json` wins.** An exact installed record is always uninstalled through the marketplace path, even when its cache lives under `zcode-plugins-official`; only ids without an installed record may enter built-in suppression. Marketplace uninstall also removes a stale suppression marker left by older buggy versions. |
+| Official marketplace name                   | **Locked** — user-added marketplaces may not claim `codez-plugins-official` / `claude-plugins-official`.                                                                                                                                                                                                                                    |
+| Installed record vs built-in classification | **`installed_plugins.json` wins.** An exact installed record is always uninstalled through the marketplace path, even when its cache lives under `codez-plugins-official`; only ids without an installed record may enter built-in suppression. Marketplace uninstall also removes a stale suppression marker left by older buggy versions. |
 | Update vs running session                   | **Next session only** — update applies to future sessions; UI shows a "takes effect in new sessions" note.                                                                                                                                                                                                                                  |
 | Concurrency safety                          | **Lightweight lock** — in-process per-storageRoot serialization (async mutex) around install/update/uninstall/restore. Cross-process file lock is a non-goal.                                                                                                                                                                               |
 
@@ -153,7 +153,7 @@ update click → store.updatePlugin(id) → agentService.updatePlugin() → RPC 
 `addMarketplace` (`marketplace.ts:254`) sets `id: loaded.manifest.name` with no
 guard, letting a user-added marketplace overwrite the official synthetic manifest.
 Add a guard: reject (or namespace) any added/updated marketplace whose resolved
-`manifest.name` is `zcode-plugins-official` or `claude-plugins-official` unless it is
+`manifest.name` is `codez-plugins-official` or `claude-plugins-official` unless it is
 the built-in seeding path. Surface a clear error in the add popover.
 
 ### Lightweight concurrency lock (finding #4)
@@ -241,7 +241,7 @@ iteration (tracked in Known limitations).
   greater; `version-changed` on non-semver; none on equal.
 - **update handler:** aggregates diagnostics; fails on error; badge persists until
   version changes.
-- **marketplace name guard:** adding a manifest named `zcode-plugins-official` is
+- **marketplace name guard:** adding a manifest named `codez-plugins-official` is
   rejected.
 - **lock:** concurrent uninstall+update on the same storageRoot serialize without
   corrupting `installed_plugins.json`.

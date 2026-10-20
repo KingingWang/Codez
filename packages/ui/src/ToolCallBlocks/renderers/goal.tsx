@@ -172,6 +172,7 @@ export function GoalToolCallBlock(context: ToolCallBlockRenderContext) {
         </div>
         <ToolSnapshotFieldNotice
           refs={toolCall.snapshotRefs ?? []}
+          autoLoadWhenMounted
           onLoadFullToolCallFields={
             handleLoadFullToolCallFields
               ? () => handleLoadFullToolCallFields(toolCall.toolId)

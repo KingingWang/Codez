@@ -22,6 +22,8 @@ import {
   sourceServerRecordSchema,
   sourceServerWorkspaceHistoryEntrySchema,
 } from "./source-server/contracts.js";
+import { modelSelectionSchema } from "./model-selection.js";
+import { codexTitleModelSchema, DEFAULT_CODEX_TITLE_MODEL } from "./codex-runtime.js";
 
 /** 引导职业枚举；单独导出供 onboarding 记录回填 settings 时做窄化校验。 */
 const appSettingsOccupationSchema = z.enum([
@@ -569,6 +571,13 @@ const appSettingsObjectSchema = z.object({
   messageStreamShowReasoning: z.boolean().default(true),
   messageStreamShowReasoningMigrationInitialized: z.boolean().default(true),
   messageStreamShowTodos: z.boolean().default(false),
+  // 内置浏览器 Agent 工具（native Browser/CUA MCP）全局开关；默认开启，桌面 Main 订阅即时生效。
+  nativeBrowserControlEnabled: z.boolean().default(true),
+  codexTitleDefaultModel: codexTitleModelSchema.default(DEFAULT_CODEX_TITLE_MODEL),
+  codexTitleWorkspaceModels: z.record(z.string().min(1), codexTitleModelSchema).default({}),
+  toolGroupingExploreEnabled: z.boolean().default(true),
+  toolGroupingTerminalEnabled: z.boolean().default(true),
+  toolGroupingChangesEnabled: z.boolean().default(false),
   codezInteractionBehavior: codezInteractionBehaviorSchema.default("queue"),
   askUserQuestionAutoResolutionEnabled: z.boolean().default(true),
   pluginAutoRecommendationEnabled: z.boolean().default(false),
@@ -591,6 +600,11 @@ const appSettingsObjectSchema = z.object({
   memoryEnabled: z.boolean().default(false),
   // 手改出的非法值（空串、超长）按未设置处理，不能让这一项把整份设置读坏。
   replyLanguage: replyLanguageSchema.optional().catch(undefined),
+  // 记忆注入与提取独立于总开关；AND 语义叠加 CLI 本地配置（任一侧关闭即关闭）。
+  memoryUseEnabled: z.boolean().default(true),
+  memoryExtractionEnabled: z.boolean().default(true),
+  // 缺省/null = 跟随会话模型；显式设置后记忆提取改用该模型。
+  memoryExtractionModel: modelSelectionSchema.nullish(),
   lastWorkspaceSession: z.array(appWorkspaceSessionEntrySchema).default([]),
   lastActiveWorkspace: appWorkspaceSessionEntrySchema.nullable().optional(),
   remoteConversationWorkspaceBySourceServerId: z
@@ -673,6 +687,12 @@ export const appSettingsPatchSchema = z.object({
   messageStreamShowReasoning: z.boolean().optional(),
   messageStreamShowReasoningMigrationInitialized: z.boolean().optional(),
   messageStreamShowTodos: z.boolean().optional(),
+  nativeBrowserControlEnabled: z.boolean().optional(),
+  codexTitleDefaultModel: codexTitleModelSchema.optional(),
+  codexTitleWorkspaceModels: z.record(z.string().min(1), codexTitleModelSchema).optional(),
+  toolGroupingExploreEnabled: z.boolean().optional(),
+  toolGroupingTerminalEnabled: z.boolean().optional(),
+  toolGroupingChangesEnabled: z.boolean().optional(),
   codezInteractionBehavior: codezInteractionBehaviorSchema.optional(),
   askUserQuestionAutoResolutionEnabled: z.boolean().optional(),
   pluginAutoRecommendationEnabled: z.boolean().optional(),
@@ -710,6 +730,9 @@ export const appSettingsPatchSchema = z.object({
   proactiveSuggestionsEnabled: z.boolean().optional(),
   memoryEnabled: z.boolean().optional(),
   replyLanguage: replyLanguageSchema.optional(),
+  memoryUseEnabled: z.boolean().optional(),
+  memoryExtractionEnabled: z.boolean().optional(),
+  memoryExtractionModel: modelSelectionSchema.nullish(),
   lastWorkspaceSession: z.array(appWorkspaceSessionEntrySchema).optional(),
   lastActiveWorkspace: appWorkspaceSessionEntrySchema.nullable().optional(),
   remoteConversationWorkspaceBySourceServerId: z

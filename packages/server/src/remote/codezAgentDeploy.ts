@@ -18,10 +18,7 @@ import {
   isRemoteAgentBundleWrapperCurrent,
   REMOTE_AGENT_BUNDLE_NAME,
 } from "@codez/server/remote/codezAgentBundleWrapper.js";
-import {
-  deployRemoteAgentWrapper,
-  isWslBackend,
-} from "@codez/server/remote/codezAgentWrapperDeploy.js";
+import { deployRemoteAgentWrapper } from "@codez/server/remote/codezAgentWrapperDeploy.js";
 import {
   buildRemoteAgentOfficialPluginDir,
   buildRemoteAgentOfficialPluginRequiredPaths,
@@ -96,18 +93,18 @@ async function shouldSkipCodezAgentDeploy(params: {
     return false;
   }
 
-  if (isWslBackend(params.backend)) {
-    try {
-      const remoteWrapper = await params.backend.readFile(params.remoteBinaryPath);
-      if (!isRemoteAgentBundleWrapperCurrent(remoteWrapper, params.runtimeResourceDir)) {
-        params.loggers.logWarn(
-          `[remote-assets] ${params.installer.mode === "remote-download" ? "download required" : "upload required"}: component=${params.componentId} reason=wsl wrapper stale path=${params.remoteBinaryPath}`,
-        );
-        return false;
-      }
-    } catch {
+  // wrapper 文本按当前 flavor 布局生成；所有 backend（SSH/Docker/WSL）内容不一致时都要触发重写，
+  // 否则 codex flavor 的远端会长期执行指向旧 ~/.codez 根的历史 wrapper（目录隔离失效）。
+  try {
+    const remoteWrapper = await params.backend.readFile(params.remoteBinaryPath);
+    if (!isRemoteAgentBundleWrapperCurrent(remoteWrapper, params.runtimeResourceDir)) {
+      params.loggers.logWarn(
+        `[remote-assets] ${params.installer.mode === "remote-download" ? "download required" : "upload required"}: component=${params.componentId} reason=wrapper stale path=${params.remoteBinaryPath}`,
+      );
       return false;
     }
+  } catch {
+    return false;
   }
 
   // wrapper 在、但 codez.cjs 缺失（被清理 / 旧原生二进制部署残留）时也要重新部署。

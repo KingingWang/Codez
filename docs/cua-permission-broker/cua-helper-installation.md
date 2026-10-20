@@ -114,6 +114,23 @@ staging。两者校验通过后使用同一套 promotion：
 
 该流程避免跨卷 `rename`，并确保不会把未校验的 Helper 放到产品路径。
 
+## quarantine 不变量
+
+安装器必须保证**落盘的 Helper 不含 `com.apple.quarantine`**。背景：随包 Helper 只有
+ad-hoc 签名（见上文校验一节的 release 现状），带隔离属性时 macOS Gatekeeper 会在
+LaunchServices/exec 拉起时拒杀（SIGKILL 或"已不能再打开"），Helper 永远走不到
+credential bootstrap；权限流把这种启动失败误读成"未授权"后会反复发起 TCC 请求，
+形成录屏弹窗死循环。复制（`copyBundle`）会保留 xattr，因此隔离属性必须显式剥离：
+
+- staging 复制完成后、`verifyBundle(staging)` 之前，对 staging 递归剥离
+  `com.apple.quarantine`（`/usr/bin/xattr -dr`），随后探针确认已净。
+- 同版本快路径（已安装且版本一致直接复用）也要探针检查已安装副本；带隔离属性时
+  原地递归剥离，作为存量坏安装的自愈路径，用户无需手动 `xattr`。
+- 剥离后探针仍发现隔离属性 → fail-closed，报 `helper_quarantine_present`，
+  不启动 Helper、不注入 socket/token。
+- 只剥离 `com.apple.quarantine` 这一个属性；不放宽 bundle id、架构、安装目录
+  或签名链的任何校验，也不新增配置开关。
+
 ## Hardened runtime entitlements（最小集）
 
 Helper 是独立的 TCC 授权主体（Accessibility / Screen Recording / 输入），不是普通 Electron

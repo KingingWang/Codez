@@ -129,6 +129,12 @@ class ConfigStore {
     }
     if (config.memory) {
       if (config.memory.use !== undefined) this.set(ConfigKey.MemoryUse, config.memory.use, scope);
+      if (config.memory.extractionEnabled !== undefined) {
+        this.set(ConfigKey.MemoryExtractionEnabled, config.memory.extractionEnabled, scope);
+      }
+      if (config.memory.extractionModel !== undefined) {
+        this.set(ConfigKey.MemoryExtractionModel, config.memory.extractionModel, scope);
+      }
     }
     if (config.mcp) {
       if (config.mcp.servers !== undefined)
@@ -290,6 +296,12 @@ export class ConfigPortImpl implements ConfigPort {
       },
       memory: {
         use: this.store.get(ConfigKey.MemoryUse) ?? DefaultConfig.memory.use,
+        ...(this.store.get(ConfigKey.MemoryExtractionEnabled) !== undefined
+          ? { extractionEnabled: this.store.get(ConfigKey.MemoryExtractionEnabled) }
+          : {}),
+        ...(this.store.get(ConfigKey.MemoryExtractionModel) !== undefined
+          ? { extractionModel: this.store.get(ConfigKey.MemoryExtractionModel) }
+          : {}),
       },
       mcp: {
         servers: this.store.get(ConfigKey.McpServers) ?? DefaultConfig.mcp.servers,
@@ -407,6 +419,11 @@ function getDefaultValue(key: ConfigKey): unknown {
       return defaults.features.mcp;
     case ConfigKey.MemoryUse:
       return defaults.memory.use;
+    case ConfigKey.MemoryExtractionEnabled:
+      // 缺省按 true 处理；不在 defaults 固化，保持「仅显式 false 关闭」语义。
+      return undefined;
+    case ConfigKey.MemoryExtractionModel:
+      return undefined;
     case ConfigKey.McpServers:
       return defaults.mcp.servers;
     case ConfigKey.PluginsEnabled:

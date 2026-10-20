@@ -2,6 +2,8 @@ import { afterEach, vi } from "vitest";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
+// 上游 Vitest 场景验证 legacy CLI；产品默认仍是 Codex，原生回归走独立 node:test 与桌面 smoke。
+process.env.CODEZ_DESKTOP_RUNTIME ??= "legacy";
 process.env.GIT_CONFIG_COUNT = "2";
 
 // Bugfix: Git Bash 会把 /usr/bin（GNU tar 1.35）注入 PATH 最前，子进程 spawn "tar"
@@ -22,7 +24,8 @@ process.env.GIT_CONFIG_KEY_1 = "core.eol";
 process.env.GIT_CONFIG_VALUE_1 = "lf";
 process.env.CODEZ_TEST_RELEASE_TARGET = process.env.CODEZ_TEST_RELEASE_TARGET ?? "darwin";
 process.env.CODEZ_TEST_RELEASE_ARCH = process.env.CODEZ_TEST_RELEASE_ARCH ?? "aarch64";
-process.env.CODEZ_TEST_CLIENT_CONFIG_PLATFORM = process.env.CODEZ_TEST_CLIENT_CONFIG_PLATFORM ?? "darwin-aarch64";
+process.env.CODEZ_TEST_CLIENT_CONFIG_PLATFORM =
+  process.env.CODEZ_TEST_CLIENT_CONFIG_PLATFORM ?? "darwin-aarch64";
 // Bugfix: 桌面端会把自定义 dataBaseDir 通过环境变量注入到 host/git 子进程。
 // 很多服务层单测只通过覆盖 HOME 来隔离临时目录；若保留该变量，路径解析会继续优先命中真实 dataBaseDir，
 // 从而导致“终端本地跑通过，但应用内 git push 触发 pre-push 时大量用例误写到同一目录”。

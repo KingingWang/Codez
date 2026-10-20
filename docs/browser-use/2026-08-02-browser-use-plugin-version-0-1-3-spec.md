@@ -41,7 +41,7 @@ locator、action expected-effect 与 popup 双 registry 原子观察 guidance �
 
 | User scenario | UI entry | Shared implementation | Display/draft owner | Default/inherit source | Validation/gating | Commit action | Authority/persistence | Mode boundary | Must remain isolated from |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 启动后使用内置 Browser Use | Plugin settings / agent skill discovery | bundled official plugin seeding | 无本地草稿；UI 读取 discovered plugin | `OFFICIAL_PLUGIN_DEFINITIONS` + packaged manifest | package/manifest/seed/SEA 版本必须相等 | 启动时 seed 到 version-scoped cache | `~/.codez/cli/plugins/cache/zcode-plugins-official/browser-use/0.1.3` | Desktop filesystem seed 与 SEA seed 使用同一版本；远端沿既有 runtime asset staging | conversation stream、workspace identity、browser tab runtime |
+| 启动后使用内置 Browser Use | Plugin settings / agent skill discovery | bundled official plugin seeding | 无本地草稿；UI 读取 discovered plugin | `OFFICIAL_PLUGIN_DEFINITIONS` + packaged manifest | package/manifest/seed/SEA 版本必须相等 | 启动时 seed 到 version-scoped cache | `~/.codez/cli/plugins/cache/codez-plugins-official/browser-use/0.1.3` | Desktop filesystem seed 与 SEA seed 使用同一版本；远端沿既有 runtime asset staging | conversation stream、workspace identity、browser tab runtime |
 
 ### 2.3 Shared And Divergent Behavior
 

@@ -96,6 +96,7 @@ export function scopeConversationShareServiceForAttachment(
         importShare: async (input, id) => forInput(input).importShare(input, id),
         onDynamicImportProgress: (id) => service.onDynamicImportProgress(id),
         getImportedConversation: (input) => service.getImportedConversation(input),
+        readSharedContextContentCopy: (input) => service.readSharedContextContentCopy(input),
         getPreview: (code) => service.getPreview(code),
         getContinuation: async (input) => forInput(input).getContinuation(input),
         ...managedShareMethods(service),
@@ -114,6 +115,7 @@ export function scopeConversationShareServiceForAttachment(
           service.importShare(withTrustedCodezAgentV4Connection(input, connection), id),
         onDynamicImportProgress: (id) => service.onDynamicImportProgress(id),
         getImportedConversation: (input) => service.getImportedConversation(input),
+        readSharedContextContentCopy: (input) => service.readSharedContextContentCopy(input),
         getPreview: (code) => service.getPreview(code),
         getContinuation: (input) =>
           service.getContinuation(withTrustedCodezAgentV4Connection(input, connection)),
@@ -134,6 +136,7 @@ export function scopeConversationShareServiceForAttachment(
       importShare: (input, operationId) => service.importShare(input, operationId),
       onDynamicImportProgress: (operationId) => service.onDynamicImportProgress(operationId),
       getImportedConversation: (input) => service.getImportedConversation(input),
+      readSharedContextContentCopy: (input) => service.readSharedContextContentCopy(input),
       getPreview: (shareCode) => service.getPreview(shareCode),
       getContinuation: (input) => service.getContinuation(input),
       ...managedShareMethods(service),
@@ -153,6 +156,7 @@ export function scopeConversationShareServiceForAttachment(
     onDynamicImportProgress: () => RpcEvent.None,
     // 手机远控没有本地 workspace 副本，直接返回 null 即可（不渲染只读块）。
     getImportedConversation: async () => null,
+    readSharedContextContentCopy: rejectMobileShare,
     getPreview: (shareCode: string) => service.getPreview(shareCode),
     getContinuation: rejectMobileShare,
     // 分享管理只在桌面设置页提供；手机远控继续使用 Web /share/manage。

@@ -22,7 +22,7 @@ HTTP/SSE MCP 没有本地 OS 子进程，不发 process start/crash 与资源样
 ## 安全标识
 
 - `mcp_source`：按运行时分发渠道分为三类：内置宿主 MCP 与 Codez Official Marketplace
-  （`zcode-plugins-official`，包含 Builtin Plugin 与 CDN Plugin）声明的 MCP 统一为
+  （`codez-plugins-official`，包含 Builtin Plugin 与 CDN Plugin）声明的 MCP 统一为
   `builtin`；Personal Source / Inline Plugin 声明的 MCP 为 `plugin`；用户、项目等普通 MCP
   配置为 `custom`。Plugin runtime namespace 只表达工具命名空间，不能单凭
   `plugin:<pluginName>:<serverName>` 推断分发渠道；Plugin loader 必须在公共配置校验之后附加

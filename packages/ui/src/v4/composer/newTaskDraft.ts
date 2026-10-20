@@ -21,12 +21,15 @@ export function initializeNewTaskDraft(
   workspaceIdentity: string | undefined,
   view: ModelSelectionView,
   scope?: ComposerScope,
+  options?: { codex?: boolean },
 ): { draft: V4ComposerDraft; recentModelSelection?: ModelSelection } {
   const recent = readComposerRecent(workspacePath, workspaceIdentity, undefined, scope);
+  const defaultMode = options?.codex ? "custom" : "build";
   return {
     draft: {
       ...draft,
-      mode: recent?.mode === "plan" ? "build" : (recent?.mode ?? "build"),
+      mode: recent?.mode === "plan" ? defaultMode : (recent?.mode ?? defaultMode),
+      ...(options?.codex ? { permissionModeGen: 2 as const } : {}),
       planEnabled: false,
       modelSelection:
         recent?.modelSelection ??

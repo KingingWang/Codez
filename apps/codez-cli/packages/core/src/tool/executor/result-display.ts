@@ -28,7 +28,12 @@ import { createWorkflowObservationDisplay } from "./workflow-observation-display
 // 拆到 create-workflow-display.ts 后保持既有导出面（handlers/create-workflow.ts 仍从这里 import）。
 export { createCreateWorkflowDisplay } from "./create-workflow-display.js";
 import { isRecord } from "./utils.js";
-import { parseOfficialMcpToolError, type OfficialMcpToolErrorCode } from "@codez/shared";
+import {
+  parseOfficialMcpToolError,
+  TOOL_DIFF_DISPLAY_MAX_HUNKS,
+  TOOL_DIFF_DISPLAY_MAX_LINES,
+  type OfficialMcpToolErrorCode,
+} from "@codez/shared";
 import {
   MCP_APPS_CONTENT_MAX_BYTES,
   MCP_APPS_STRUCTURED_CONTENT_MAX_BYTES,
@@ -41,8 +46,6 @@ import {
   cuaRequestAccessStatusSchema,
 } from "@codez/codez-cua/request-access-contract";
 
-const MAX_DISPLAY_DIFF_HUNKS = 8;
-const MAX_DISPLAY_DIFF_LINES = 160;
 const MAX_SEND_MESSAGE_DISPLAY_FIELD_BYTES = 4 * 1024;
 const MAX_TASK_STOP_DISPLAY_FIELD_BYTES = 16 * 1024;
 export const MAX_NODE_REPL_DISPLAY_IMAGE_BASE64_BYTES = 200 * 1024;
@@ -515,10 +518,10 @@ function isDiffHunk(value: unknown): value is DiffHunk {
 
 function boundDiffHunks(hunks: DiffHunk[]): { patch: DiffHunk[]; truncated: boolean } {
   const bounded: DiffHunk[] = [];
-  let remainingLines = MAX_DISPLAY_DIFF_LINES;
-  let truncated = hunks.length > MAX_DISPLAY_DIFF_HUNKS;
+  let remainingLines = TOOL_DIFF_DISPLAY_MAX_LINES;
+  let truncated = hunks.length > TOOL_DIFF_DISPLAY_MAX_HUNKS;
 
-  for (const hunk of hunks.slice(0, MAX_DISPLAY_DIFF_HUNKS)) {
+  for (const hunk of hunks.slice(0, TOOL_DIFF_DISPLAY_MAX_HUNKS)) {
     if (remainingLines <= 0) {
       truncated = true;
       break;

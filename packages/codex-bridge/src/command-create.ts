@@ -1,0 +1,114 @@
+import {
+  commandPayloadSchemas,
+  type CommandEnvelope,
+  type CommandResult,
+} from "@codez/shared/codez-protocol-v4";
+import type { CodexRpcPort } from "./contract.js";
+import type { ThreadStateStore } from "./thread-state.js";
+import {
+  decorateNativeThread,
+  nativeInput,
+  projectThreadMode,
+  selectionOverrides,
+  turnMode,
+  type ResolveAttachments,
+} from "./command-input.js";
+import { string, unsupported } from "./json.js";
+import type { SessionTitleCoordinator } from "./session-title.js";
+import type { CodexProviderKeyGate } from "./provider-key-gate.js";
+import { resolveCodexInitSlashCommandPrompt } from "./builtin-init-command.js";
+
+export async function createNativeSession(
+  command: CommandEnvelope,
+  context: {
+    rpc: CodexRpcPort;
+    store: ThreadStateStore;
+    workspaceId: string;
+    attachments?: ResolveAttachments;
+    title?: SessionTitleCoordinator;
+    providerKeyGate?: CodexProviderKeyGate;
+  },
+): Promise<CommandResult> {
+  const { rpc, store, workspaceId, attachments } = context;
+  const p = commandPayloadSchemas.createSession.parse(command.payload);
+  if (p.workspaceId !== workspaceId && p.workspaceId !== store.cwd)
+    throw new Error("Workspace identity mismatch");
+  if (p.mcpServers?.length || p.offPeakToolEnabled || p.dynamicWorkflowEnabled)
+    unsupported("legacy session extensions; configure native Codex MCP and plugins instead");
+  const selection = p.firstInput?.modelSelection ?? p.config?.modelSelection;
+  const response = await rpc.request("thread/start", {
+    cwd: store.cwd,
+    historyMode: "paginated",
+    model: selection?.modelId ?? p.config?.model,
+    modelProvider: selection?.providerId ?? p.config?.provider,
+  });
+  const state = store.markStarted(decorateNativeThread(response));
+  const sessionId = string(state.thread.id);
+  if (
+    !p.firstInput &&
+    (p.config?.mode || p.config?.planEnabled !== undefined || p.config?.thought)
+  ) {
+    const settings = {
+      threadId: sessionId,
+      effort: p.config.thought,
+      ...turnMode(
+        p.config.mode,
+        state.thread.model as string | undefined,
+        p.config.planEnabled,
+        p.config.thought ?? (state.thread.reasoningEffort as string | undefined),
+        // 新线程生效权限 = config.toml；草稿档位与投影不同才显式下发覆盖。
+        { apply: p.config.mode !== undefined && p.config.mode !== projectThreadMode(state.thread) },
+      ),
+    };
+    await rpc.request("thread/settings/update", settings);
+    store.applySettings(sessionId, settings);
+  }
+  if (p.firstInput) {
+    // 与 sendText 共用同一入口：带 firstInput 的创建就是一次首条输入提交，
+    // 缺少标题模型选择时也要留下有界原因，而不是静默不命名。
+    context.title?.armFirstInput(sessionId, p.titleGenerationModel);
+    // 首条输入即将发起模型请求；缺本机临时 Key 的供应商在此处 fail-closed。
+    await context.providerKeyGate?.assertTurnAllowed(selection?.providerId ?? p.config?.provider);
+    const expandedInitText =
+      !p.firstInput.attachments?.length
+        ? resolveCodexInitSlashCommandPrompt(p.firstInput.text, store.cwd)
+        : undefined;
+    const turnParams = {
+      threadId: sessionId,
+      clientUserMessageId: command.commandId,
+      input: await nativeInput(
+        expandedInitText ?? p.firstInput.text,
+        p.firstInput.attachments,
+        sessionId,
+        attachments,
+      ),
+      ...selectionOverrides(selection),
+      ...(p.config?.thought && !selection?.options?.reasoningLevel
+        ? { effort: p.config.thought }
+        : {}),
+      ...turnMode(
+        p.firstInput.mode ?? p.config?.mode,
+        selection?.modelId ?? (state.thread.model as string | undefined),
+        p.firstInput.planEnabled ?? p.config?.planEnabled,
+        selection?.options?.reasoningLevel ?? p.config?.thought,
+        {
+          apply:
+            (p.firstInput.mode ?? p.config?.mode) !== undefined &&
+            (p.firstInput.mode ?? p.config?.mode) !== projectThreadMode(state.thread),
+        },
+      ),
+    };
+    const response = await rpc.request("turn/start", turnParams);
+    store.applySettings(sessionId, turnParams);
+    store.acceptTurnResponse(sessionId, response);
+  }
+  // 记住显式档位（bridge 进程内事实）；快照投影与 queue 守卫共用（specs/codex-permission-modes.md）。
+  store.rememberMode(sessionId, p.firstInput?.mode ?? p.config?.mode);
+  return {
+    type: "createSession",
+    sessionId,
+    ...(p.firstInput
+      ? { input: { delivery: "startNow" as const, inputId: command.commandId } }
+      : {}),
+  };
+}

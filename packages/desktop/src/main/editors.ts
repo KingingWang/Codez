@@ -17,6 +17,7 @@ import {
 import { execFile, execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { promisify } from "node:util";
+import { homedir } from "node:os";
 import { join, win32 as pathWin32 } from "node:path";
 import { app, nativeImage } from "electron";
 import type { EditorInfo } from "@codez/shared";
@@ -86,7 +87,13 @@ const MAC_EDITOR_DEFS: EditorDef[] = [
   },
   { id: "cursor", name: "Cursor", appPath: "/Applications/Cursor.app", command: "cursor" },
   { id: "trae", name: "Trae", appPath: "/Applications/Trae.app", command: null },
-  { id: "zed", name: "Zed", appPath: "/Applications/Zed.app", command: "zed" },
+  {
+    id: "zed",
+    name: "Zed",
+    appPath: "/Applications/Zed.app",
+    appPathCandidates: [join(homedir(), "Applications", "Zed.app")],
+    command: "zed",
+  },
   {
     id: "sublime",
     name: "Sublime Text",
@@ -314,6 +321,16 @@ const WINDOWS_ADDITIONAL_EDITOR_DEFS: EditorDef[] = [
     ...windowsProgramFilesCandidates("Trae CN", "Trae.exe"),
     ...windowsProgramFilesCandidates("Trae CN", "Trae CN.exe"),
   ]),
+  createWindowsEditorDef(
+    "zed",
+    "Zed",
+    [
+      windowsLocalProgramCandidate("Zed", "Zed.exe"),
+      ...windowsProgramFilesCandidates("Zed", "Zed.exe"),
+    ],
+    "zed",
+    ["Zed.exe"],
+  ),
   createWindowsEditorDef("idea", "IntelliJ IDEA", [
     ...findWindowsJetBrainsExecutableCandidates("IntelliJ IDEA", "idea64.exe"),
   ]),

@@ -2,6 +2,22 @@
 
 ## Product boundary
 
+### 2026-10 bundled macOS Helper signature policy override
+
+Codez does not require a Developer ID signature for its bundled macOS Helper. The build
+applies ad-hoc signatures to the Helper bundle and its nested Mach-O files so arm64 macOS
+can execute them instead of killing completely unsigned code. Main permission onboarding
+and Local Host installation / pre-launch verification share the services installer-options
+normalizer, which sets `verifySignature:false` for a `bundledAppPath`. This skips Developer ID,
+TeamIdentifier and Gatekeeper verification, without enabling development mode or changing
+the TCC owner. Generic broker installers still verify signatures by default.
+
+Bundle id, executable realpath, architecture, install-root containment, version replacement,
+rollback, runtime manifest, capability/generation and exact child PID checks remain in force.
+Ad-hoc signing does not provide Developer ID authentication, a TeamIdentifier or signature-based
+tamper protection. The signed-only installation and provenance statements below are historical
+where they conflict with this override; ad-hoc identity must not be reported as a verified developer.
+
 ### 2026-08 node_repl migration override
 
 CUA 不再注册或启动独立 `codez-cua` MCP。模型只看到 shared `node_repl` 的工具（成文时是三个，
@@ -92,6 +108,23 @@ the active flag; later read-only refreshes cannot erase it. A workspace/context 
 queued request and any late result. After one active result establishes readiness, the existing
 renderer-local sticky-ready snapshot may preserve that result while subsequent polling remains read-only.
 Remote/mobile attachment never originates this probe and never creates a Helper.
+
+## Unavailable 结果的 errorKind 契约
+
+`CuaPermissionStatusResult` 的不可用分支（`available:false`）可以携带可选
+`errorKind`，把"Helper 起不来"和"CUA 未启用/平台不支持"区分开。生产者规则：
+
+- darwin 下 Helper 在 credential bootstrap 之前以 `SIGKILL` 退出 →
+  `helper_launch_blocked`（Gatekeeper/AMFI 拒杀的典型信号）。
+- installer 剥离 `com.apple.quarantine` 失败（探针仍命中）→
+  `helper_quarantine_present`。
+- 其余启动/读取失败保持无 `errorKind`，语义不变。
+
+消费者规则：UI 见到上述两种 `errorKind` 时必须渲染可操作的修复态
+（调用既有 `restartHelper` 重跑安装自愈并重启），**不得**路由到 TCC
+onboarding/请求循环；`requestPermissionViaLaunchServices` 在已安装副本
+仍带隔离属性时直接返回该 kind，不再 `/usr/bin/open`，避免无意义的系统
+弹窗。无 `errorKind` 的不可用状态维持现有展示与重试语义。
 
 ## Shared node_repl SDK contract
 

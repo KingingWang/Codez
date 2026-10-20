@@ -9,6 +9,19 @@ import type {
   GitPushResult,
   GitRepositorySummary,
   GitWorkspaceRepositoryInfo,
+  GitWorktreeListResult,
+  GitWorktreeCreatePreview,
+  GitWorktreeCreatePreviewRequest,
+  GitWorktreeCreateRequest,
+  GitWorktreeCreateResult,
+  GitWorktreeRemovePreviewRequest,
+  GitWorktreeRemovalPreview,
+  GitWorktreeRemoveRequest,
+  GitWorktreeRemoveResult,
+  GitBranchDeletePreviewRequest,
+  GitBranchDeletePreview,
+  GitDeleteBranchRequest,
+  GitBranchDeleteResult,
 } from "@codez/shared";
 
 export interface GitLineStat {
@@ -40,6 +53,8 @@ export interface GitResolvedRepository {
   workspacePath: string;
   repoRoot: string;
   workspaceInRepoPath: string;
+  /** 宿主端规范化后的 common dir；非仓库 / git 不可用时为 null。 */
+  gitCommonDir: string | null;
   autoRefreshWatchPaths: GitRepositorySummary["autoRefreshWatchPaths"];
   isGitAvailable: boolean;
   isRepository: boolean;
@@ -80,6 +95,17 @@ export interface GitCliRepo {
   ): Promise<GitCommitGraphSnapshot>;
   getIgnoredPaths(workspacePath: string, paths: string[]): Promise<string[]>;
   listLocalBranches(workspacePath: string): Promise<GitLocalBranchListResult>;
+  listWorktrees(workspacePath: string): Promise<GitWorktreeListResult>;
+  previewWorktreeCreation(
+    params: GitWorktreeCreatePreviewRequest,
+  ): Promise<GitWorktreeCreatePreview>;
+  createWorktree(params: GitWorktreeCreateRequest): Promise<GitWorktreeCreateResult>;
+  previewWorktreeRemoval(
+    params: GitWorktreeRemovePreviewRequest,
+  ): Promise<GitWorktreeRemovalPreview>;
+  removeWorktree(params: GitWorktreeRemoveRequest): Promise<GitWorktreeRemoveResult>;
+  previewBranchDeletion(params: GitBranchDeletePreviewRequest): Promise<GitBranchDeletePreview>;
+  deleteBranch(params: GitDeleteBranchRequest): Promise<GitBranchDeleteResult>;
   switchBranch(workspacePath: string, targetBranchName: string): Promise<GitBranchMutationResult>;
   createBranchAndSwitch(
     workspacePath: string,
@@ -106,6 +132,7 @@ export function createEmptySummary(resolution: GitResolvedRepository): GitReposi
     workspacePath: resolution.workspacePath,
     repoRoot: resolution.repoRoot,
     workspaceInRepoPath: resolution.workspaceInRepoPath,
+    gitCommonDir: resolution.gitCommonDir,
     autoRefreshWatchPaths: resolution.autoRefreshWatchPaths,
     branchName: null,
     trackingBranchName: null,

@@ -73,7 +73,9 @@ export function useDraftRuntimeRebuildGate(params: {
   workspaceIdentity?: string;
   /** 当前预热会话 id；出现新的非空值即视为重建完成。 */
   prewarmSessionId: string | null;
-  onRuntimeRestart?: (listener: () => void) => () => void;
+  onRuntimeRestart?: (
+    listener: (reason?: "runtimeRestart" | "transportReplaced") => void,
+  ) => () => void;
   /** 承载 transport 暴露 runtime 存活态时优先用它，替代 onRuntimeRestart。 */
   onRuntimeLifecycle?: (listener: (state: "available" | "unavailable") => void) => () => void;
   timeoutMs?: number;
@@ -107,15 +109,24 @@ export function useDraftRuntimeRebuildGate(params: {
   }, [workspaceIdentity, workspacePath]);
 
   useEffect(() => {
-    // 二选一订阅：两条通道都订会让同一次换代被处理两次，白建一个预热会话、附件多传一遍。
     if (onRuntimeLifecycle) {
-      return onRuntimeLifecycle((state) => {
+      const offLifecycle = onRuntimeLifecycle((state) => {
         // available 不必处理：重建已由 unavailable 发起，门禁解除交给 prewarmSessionChanged。
         if (state === "unavailable") handleRuntimeRestart();
       });
+      // 原因：远程 workspace 的 proxy 换代（ReplaceableConversationTransport.replace）只发
+      // onRuntimeRestart("transportReplaced")，不发 lifecycle 事件；仅在 transportReplaced 时
+      // 补充触发重建，可覆盖远端重连换代且不与底层进程换代重复。
+      const offRestart = onRuntimeRestart?.((reason) => {
+        if (reason === "transportReplaced") handleRuntimeRestart();
+      });
+      return () => {
+        offLifecycle();
+        offRestart?.();
+      };
     }
     if (!onRuntimeRestart) return;
-    return onRuntimeRestart(handleRuntimeRestart);
+    return onRuntimeRestart(() => handleRuntimeRestart());
   }, [handleRuntimeRestart, onRuntimeLifecycle, onRuntimeRestart]);
 
   useEffect(() => {

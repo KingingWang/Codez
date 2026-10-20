@@ -109,7 +109,7 @@ Start Plan 当前是最清楚的例子：`billing/balance` 返回套餐允许的
 
 ## Endpoint 与产品环境
 
-Account Provider Endpoint 目前存在生产、测试等环境分支。例如 Z.ai Coding Plan 使用 `resolveZaiBusinessBaseUrl(process.env)`，Start Plan 使用当前 Codez Endpoint 派生出的 codez-plan 网关。
+Account Provider Endpoint 目前存在生产、测试等环境分支。例如 Z.ai Coding Plan 使用 `resolveZaiBusinessBaseUrl(process.env)`，Start Plan 使用当前 Codez Endpoint 派生出的 zcode-plan 网关。
 
 Official Config 成为唯一事实源后，Registry 和 Provider Factory 不能再次用 `process.env` 改写这些字段。每个产品环境应取得一份已经完整解析的 Official Config：
 

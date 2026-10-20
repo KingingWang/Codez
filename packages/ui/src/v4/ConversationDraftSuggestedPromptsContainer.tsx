@@ -10,16 +10,8 @@ import {
   unregisterRecommendedPromptPane,
 } from "@/v4/featureSuggestedPromptRotation.js";
 /* oxlint-disable eslint(max-lines) -- 推荐 Prompt 同时收口 latest-wins、取消、可信解析、操作反馈和 Composer 收尾，拆分会打散这条状态机。 */
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
-import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID } from "@codez/shared";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID } from "@codez/shared";
 import { cn } from "@/components/lib/utils.js";
 import { toast } from "@/components/ui/toast.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
@@ -310,6 +302,7 @@ export function ConversationDraftSuggestedPromptsContainer({
       isWebRemoteControl,
       prependResolvedPlugin,
       resolution.services.pluginManagementService,
+      resolution.services.codezSessionService,
       targetParams,
       workspaceIdentity,
       workspacePath,
@@ -377,7 +370,7 @@ export function ConversationDraftSuggestedPromptsContainer({
         requestVersion !== requestVersionRef.current ||
         (kind === "install" &&
           (!flow.result?.pluginName ||
-            flow.result.marketplace !== ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID ||
+            flow.result.marketplace !== CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID ||
             flow.result.sourceTrust !== "official"))
       ) {
         return;
@@ -427,10 +420,6 @@ export function ConversationDraftSuggestedPromptsContainer({
           let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
           const installRequest = resolution.services.pluginManagementService.installPlugin({
             ...targetParams(),
-            telemetry: {
-              entry: "recommended_prompt",
-              client_kind: isWebRemoteControl ? "mobile" : "desktop",
-            },
             pluginName: flow.result!.pluginName!,
             marketplace: flow.result!.marketplace!,
             scope: "user",
@@ -474,10 +463,6 @@ export function ConversationDraftSuggestedPromptsContainer({
             operation,
             resolution.services.pluginManagementService.setPluginEnabled({
               ...targetParams(),
-              telemetry: {
-                entry: "recommended_prompt",
-                client_kind: isWebRemoteControl ? "mobile" : "desktop",
-              },
               pluginId: flow.plugin.stableId,
               enabled: true,
               operationId: flow.operationId,

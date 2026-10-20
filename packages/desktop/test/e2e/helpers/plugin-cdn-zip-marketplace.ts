@@ -13,7 +13,7 @@ export const PLUGIN_CDN_ZIP_OFFLINE_LAST_UPDATED = "2099-01-01T00:00:00.000Z";
 // 远古时间让「进入商店页即刷新官方市场」用例必然落在节流窗口之外（且 pluginCount>0，
 // 确保走的是节流路径而不是「从未加载过」路径）。
 export const PLUGIN_STORE_AUTO_REFRESH_STALE_LAST_UPDATED = "2000-01-01T00:00:00.000Z";
-export const PLUGIN_CDN_ZIP_MARKETPLACE_ID = "zcode-plugins-official";
+export const PLUGIN_CDN_ZIP_MARKETPLACE_ID = "codez-plugins-official";
 export const PLUGIN_CDN_ZIP_MARKETPLACE_NAME = "Codez Official Plugins";
 export const PLUGIN_CDN_ZIP_NAME = "e2e-cdn-zip-plugin";
 export const PLUGIN_CDN_ZIP_ID = `${PLUGIN_CDN_ZIP_NAME}@${PLUGIN_CDN_ZIP_MARKETPLACE_ID}`;

@@ -225,7 +225,7 @@ OAuth code、token 或 header value。
 
 | Round | Question                    | User answer                                                         | Boundary fixed                            | Follow-up needed |
 | ----- | --------------------------- | ------------------------------------------------------------------- | ----------------------------------------- | ---------------- |
-| 1     | Host 覆盖的修改量和影响范围 | 用户继续调用 `codez-plan`；沿用已建议的 scoped `NodeApiClient` 方案 | 先修 app-managed API，不用全局 dispatcher | no               |
+| 1     | Host 覆盖的修改量和影响范围 | 用户继续调用 `zcode-plan`；沿用已建议的 scoped `NodeApiClient` 方案 | 先修 app-managed API，不用全局 dispatcher | no               |
 
 ### Boundary Decisions
 

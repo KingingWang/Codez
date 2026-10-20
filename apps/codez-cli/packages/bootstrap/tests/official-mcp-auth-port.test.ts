@@ -51,7 +51,7 @@ function createHarness(
 
 const BASE_REQUEST = {
   mcpKey: "image-search",
-  pluginId: "codez-tools@zcode-plugins-official",
+  pluginId: "codez-tools@codez-plugins-official",
   targetOrigin: "https://mcp.codez.example",
 };
 
@@ -101,7 +101,7 @@ describe("official mcp auth headers port", () => {
       codezProtocolMethods.interactionRequestOfficialMcpAuthHeaders,
       expect.objectContaining({
         mcpKey: "image-search",
-        pluginId: "codez-tools@zcode-plugins-official",
+        pluginId: "codez-tools@codez-plugins-official",
         targetOrigin: "https://mcp.codez.example",
       }),
       expect.anything(),

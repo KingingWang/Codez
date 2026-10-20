@@ -141,6 +141,7 @@ export function readRawToolCallChanges(raw: unknown) {
 
 export interface RawToolCallFileSummary {
   path: string;
+  previousPath?: string;
   actionLabel: "Created" | "Edited" | "Deleted";
   operationKind: EditOperationKind;
   fileName: string;
@@ -148,6 +149,7 @@ export interface RawToolCallFileSummary {
   fileIconSrc: string;
   changeStat?: { added: number; removed: number };
   patch?: string | null;
+  truncated?: boolean;
 }
 
 /**

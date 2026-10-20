@@ -3,8 +3,10 @@ import { access } from "node:fs/promises";
 import type { StdioStream } from "@codez/server/remote/backend.js";
 import { quotePosixPathArg } from "@codez/server/remote/posixShell.js";
 import type { RemoteAssetNetworkPort } from "@codez/server/remote/remoteAssetNetwork.js";
+import type { RemoteAssetManifestComponent } from "@codez/server/remote/remoteAssetCache.js";
+import { REMOTE_RUNTIME } from "./remoteRuntime.js";
 
-export const REMOTE_BASE = "~/.codez/server";
+export const REMOTE_BASE = REMOTE_RUNTIME.root;
 
 export interface RemoteAssetDeployOptions {
   /** 取消当前连接初始化；共享 cache 仍可独立完成，但不得继续写入远端 staging。 */
@@ -20,6 +22,7 @@ export interface RemoteAssetDeployOptions {
   remoteCacheDir?: string;
   manifestRequestTimeoutMs?: number;
   remoteAssetNetwork?: RemoteAssetNetworkPort;
+  resolveComponentArtifactUrls?: (component: RemoteAssetManifestComponent) => Promise<string[]>;
 }
 
 export interface DeployLoggers {

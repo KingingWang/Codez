@@ -143,7 +143,11 @@ async function refreshAccountProviderAccesses(params: {
 export async function refreshLatestModelProviderFamilySelectionAfterLogin(params: {
   provider: OAuthProviderId;
   services: IServiceAccessor;
+  /** 启动恢复可传入原 Host effect 的有效性；交互登录保持现有流程。 */
+  isCurrent?: () => boolean;
 }): Promise<ModelProviderFamilyConnectionSelection | null> {
+  // 外层恢复 effect 的检查晚于本函数内部 IO；在这里阻断迟到的旧 Host 读数。
+  if (params.isCurrent?.() === false) return null;
   const availability = await params.services.oauthService.getAccountAvailability();
   const currentSettings = await correctUnusableProviderFamilyDomain(
     params.services,
@@ -192,6 +196,7 @@ export async function refreshLatestModelProviderFamilySelectionAfterLogin(params
     providerIds: codingPlanProviderIds,
     reason: "oauth-login-entitlement",
   });
+  if (params.isCurrent?.() === false) return null;
   if (!refreshed) return null;
   // 登录后的刷新也可能仍在等待旧 Team 补组织；未知不是可按排序重选的首次连接。
   if (
@@ -213,6 +218,8 @@ export async function refreshLatestModelProviderFamilySelectionAfterLogin(params
     }),
     getEnterprisePricingProductsOrEmpty(params.services, domain),
   ]);
+  // 旧 Host 的套餐查询可能晚于切换 Codex；不能让迟到结果写入旧连接选择。
+  if (params.isCurrent?.() === false) return null;
   // 旧 Start 连接只保留读取，不以权益失效为由删除或自动替换成付费连接。
   const selection = resolveAutomaticModelProviderFamilyConnectionSelection({
     providerFamilyDomain: domain,
@@ -255,9 +262,12 @@ export async function refreshRestoredOAuthProviderFamilyAfterStartup(params: {
   activeProvider: OAuthProviderId | null;
   services: IServiceAccessor;
   refreshAppSettings?: () => Promise<void>;
+  isCurrent?: () => boolean;
 }): Promise<ModelProviderFamilyConnectionSelection | null> {
   if (!params.activeProvider) return null;
   const availability = await params.services.oauthService.getAccountAvailability();
+  // 外层恢复 effect 的检查晚于本函数内部 IO；在这里阻断迟到的旧 Host 读数。
+  if (params.isCurrent?.() === false) return null;
   const storedSettings = await params.services.settingService.get();
   const settings = await correctUnusableProviderFamilyDomain(
     params.services,
@@ -284,16 +294,18 @@ export async function refreshRestoredOAuthProviderFamilyAfterStartup(params: {
     } catch (error) {
       logger.warn("[Root] 启动账号刷新失败，保留原连接", { error });
     }
-    return saved;
+    return params.isCurrent?.() === false ? null : saved;
   }
   try {
     // 仅真正没有选择才沿用首次初始化；该入口保留旧连接待迁移的 unknown 保护及条件写入。
     const selection = await refreshLatestModelProviderFamilySelectionAfterLogin({
       provider: params.activeProvider,
       services: params.services,
+      isCurrent: params.isCurrent,
     });
+    if (params.isCurrent?.() === false) return null;
     if (selection) await params.refreshAppSettings?.();
-    return selection;
+    return params.isCurrent?.() === false ? null : selection;
   } catch (error) {
     logger.warn("[Root] 启动初始化连接失败", { error });
     return null;

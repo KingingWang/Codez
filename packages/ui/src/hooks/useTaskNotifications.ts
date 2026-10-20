@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { IPlatformService, TaskNotificationPayload } from "@codez/shared";
 import type { ConversationSnapshot, SessionSummary } from "@codez/shared/codez-protocol-v4";
 import { useServices } from "@/hooks/useServices.js";
+import { dismissToast, toast } from "@/components/ui/toast.js";
 import type { IntlInstance } from "@/i18n/index.js";
 import { logger } from "@/logger.js";
 import {
+  collectBackgroundInteractionNotificationPayloads,
   collectPendingInteractionNotificationPayloads,
   collectTerminalTaskNotificationPayloads,
 } from "@/lib/taskNotificationOrchestrator.js";
@@ -18,7 +20,7 @@ import type { SessionsIndexStoreStatus } from "@/v4/sessionsIndexStore.js";
 type FormatMessage = IntlInstance["formatMessage"];
 type TaskNotificationPlatform = Pick<IPlatformService, "showTaskNotification">;
 
-interface WorkspaceTerminalTaskNotificationsParams {
+interface WorkspaceTaskNotificationsParams {
   workspacePath: string;
   workspaceIdentity?: string;
   endpointKey?: string | null;
@@ -26,6 +28,9 @@ interface WorkspaceTerminalTaskNotificationsParams {
   rpcReady: boolean;
   platform: TaskNotificationPlatform | null | undefined;
   formatMessage: FormatMessage;
+  activeTaskId: string | null;
+  viewingActiveTask: boolean;
+  onNavigateToTask: (taskId: string) => void;
 }
 
 interface PendingInteractionTaskNotificationsParams {
@@ -78,14 +83,15 @@ function showTaskNotification(
 }
 
 /**
- * v4 任务终态通知编排。
+ * v4 workspace 任务终态和后台阻塞交互通知编排。
  *
  * v4 重构删掉旧 renderer background monitor 后，platform 通知通道仍在，
  * 但 sessions-index 事实没有再被翻译成展示命令，导致任务完成/失败没有系统通知。
  * 这里只在 renderer 做“已观察边沿”的通知意图，事实仍以 sessions-index 为准；
- * 是否因窗口活跃而抑制通知继续交给 desktop/web platform 层判断。
+ * 是否因窗口活跃而抑制系统通知继续交给 desktop/web platform 层判断；
+ * 后台交互的应用内提示由当前窗口负责。
  */
-export function useWorkspaceTerminalTaskNotifications({
+export function useWorkspaceTaskNotifications({
   workspacePath,
   workspaceIdentity: rawWorkspaceIdentity,
   endpointKey: rawEndpointKey,
@@ -93,7 +99,10 @@ export function useWorkspaceTerminalTaskNotifications({
   rpcReady,
   platform,
   formatMessage,
-}: WorkspaceTerminalTaskNotificationsParams): void {
+  activeTaskId,
+  viewingActiveTask,
+  onNavigateToTask,
+}: WorkspaceTaskNotificationsParams): void {
   const { codezAgentService } = useServices();
   const workspaceIdentity = trimOptional(rawWorkspaceIdentity);
   const endpointKey = trimOptional(rawEndpointKey);
@@ -113,6 +122,17 @@ export function useWorkspaceTerminalTaskNotifications({
     status: "idle",
   });
   const previousBySessionIdRef = useRef<Map<string, SessionSummary> | null>(null);
+  const reminderToastIdsRef = useRef(new Map<string, number>());
+  const onNavigateToTaskRef = useRef(onNavigateToTask);
+  onNavigateToTaskRef.current = onNavigateToTask;
+
+  useEffect(
+    () => () => {
+      for (const id of reminderToastIdsRef.current.values()) dismissToast(id);
+      reminderToastIdsRef.current.clear();
+    },
+    [signature],
+  );
 
   useEffect(() => {
     previousBySessionIdRef.current = null;
@@ -125,6 +145,8 @@ export function useWorkspaceTerminalTaskNotifications({
       // 只看用户开关就订阅 sessions-index，从而越过 conversation 的 readiness gate
       // 访问断连代理。这里共用 workspace rpcReady；本地 workspace 始终为 true。
       previousBySessionIdRef.current = null;
+      for (const id of reminderToastIdsRef.current.values()) dismissToast(id);
+      reminderToastIdsRef.current.clear();
       setIndexState({ signature, sessions: [], status: "idle" });
       return;
     }
@@ -187,8 +209,48 @@ export function useWorkspaceTerminalTaskNotifications({
     for (const payload of payloads) {
       showTaskNotification(platform, payload);
     }
+    const currentReminderKeys = new Set<string>();
+    for (const session of indexState.sessions) {
+      const interactionId = session.pendingInteraction?.interactionId;
+      if (!interactionId) continue;
+      const key = `${session.sessionId}\0${interactionId}`;
+      if (!viewingActiveTask || session.sessionId !== activeTaskId) {
+        currentReminderKeys.add(key);
+      }
+    }
+    for (const [key, id] of reminderToastIdsRef.current) {
+      if (!currentReminderKeys.has(key)) {
+        dismissToast(id);
+        reminderToastIdsRef.current.delete(key);
+      }
+    }
+    // Bug 原因：旧通知只观察当前 conversation，后台会话没有 mounted snapshot；
+    // index 的脱敏 pending 摘要才是 workspace 内跨会话的通知边沿。
+    const backgroundPayloads = collectBackgroundInteractionNotificationPayloads({
+      previousBySessionId,
+      sessions: indexState.sessions,
+      activeTaskId,
+      viewingActiveTask,
+      formatMessage,
+    });
+    for (const payload of backgroundPayloads) {
+      const key = `${payload.taskId}\0${payload.requestId}`;
+      const toastId = toast(`${payload.title}\n${payload.body}`, {
+        position: "top-right",
+        variant: "info",
+        durationMs: 0,
+        dismissible: true,
+        dismissLabel: formatMessage({ id: "notification.dismiss" }),
+        actionLabel: formatMessage({ id: "notification.openTask" }),
+        onAction: () => onNavigateToTaskRef.current(payload.taskId),
+        dedupeKey: `pending-interaction:${signature}:${payload.taskId}`,
+      });
+      reminderToastIdsRef.current.set(key, toastId);
+      // 当前会话自己的 snapshot hook 负责详细系统通知，避免相同 ID 的双重发送。
+      if (payload.taskId !== activeTaskId) showTaskNotification(platform, payload);
+    }
     previousBySessionIdRef.current = nextBySessionId;
-  }, [enabled, formatMessage, indexState, platform, signature]);
+  }, [activeTaskId, enabled, formatMessage, indexState, platform, signature, viewingActiveTask]);
 }
 
 /**

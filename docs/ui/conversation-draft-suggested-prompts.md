@@ -33,10 +33,10 @@
   `[@Plugin](plugin://stable-id)` 引用并创建结构化 Plugin chip。
 - Plugin 首次可信解析期间记录点击时的 renderer-local Composer revision；若用户输入、外部插入或草稿恢复使 revision 变化，
   该 operation 静默放弃延迟写入和后续 Popover，禁止用迟到的推荐结果覆盖当前草稿。
-- `missing` 必须先只刷新 `zcode-plugins-official`，刷新成功后重新解析；刷新失败、候选消失、来源不可信或冲突均为
+- `missing` 必须先只刷新 `codez-plugins-official`，刷新成功后重新解析；刷新失败、候选消失、来源不可信或冲突均为
   `unavailable`/`conflict`，禁止使用旧快照一键安装，保留纯 prompt。
-- `zcode-plugins-official` 刷新最多等待 10000 ms；达到超时后主动中止刷新并按 `marketplace_refresh_failed` fail closed，禁止继续读取旧快照候选，只保留纯 prompt。
-- 一键安装只允许 `zcode-plugins-official`，固定使用 `scope: "user"`，安装到当前权威 Agent Host 的当前用户；远程 workspace 写入远程 Host。
+- `codez-plugins-official` 刷新最多等待 10000 ms；达到超时后主动中止刷新并按 `marketplace_refresh_failed` fail closed，禁止继续读取旧快照候选，只保留纯 prompt。
+- 一键安装只允许 `codez-plugins-official`，固定使用 `scope: "user"`，安装到当前权威 Agent Host 的当前用户；远程 workspace 写入远程 Host。
 - 首次本地检查发现目标 Plugin 不存在、即将刷新官方 Marketplace 时，Agent 必须先按 `operationId` 发出 `refreshing` 进度；UI 收到后立即让
   当前推荐项的 Plugin action Popover 进入 loading。首次可信解析直接返回 `disabled` 时，UI 在写入纯 prompt 前让同一个 Popover 进入 loading。
   `ready`、`conflict`、`unavailable` 和解析失败不得仅因首次检查而新建第二个 Popover。
@@ -89,7 +89,7 @@
                   -> disabled ----------------> 唯一 Popover 进入 loading -> 一次性写入纯 prompt
                                                  + Composer 消费后同一 Popover 原地切换为「开启 {Plugin label} 插件」+「确认」
                   -> 本地不存在 -> 发出 refreshing(operationId) -> 唯一 Popover 进入 loading
-                  -> missing -> 刷新 zcode-plugins-official（10000ms timeout）
+                  -> missing -> 刷新 codez-plugins-official（10000ms timeout）
                                -> 超时 --------> marketplace_refresh_failed；中止刷新并拒绝旧快照
                                -> 失败 --------> unavailable，禁止旧快照安装；一次性写入纯 prompt
                                -> 成功且候选可信 -> 一次性写入纯 prompt

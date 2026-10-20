@@ -2,7 +2,7 @@
 
 ## 背景
 
-`browser-use@zcode-plugins-official` 是 Codez 官方插件。它的 manifest 仍只声明 `skills`，不扩展 plugin schema。
+`browser-use@codez-plugins-official` 是 Codez 官方插件。它的 manifest 仍只声明 `skills`，不扩展 plugin schema。
 
 目标是让 browser-use 插件的启停状态控制模型可见的浏览器 guidance/bridge，同时说清楚无状态
 `node_repl` MCP frontend、browser client 与插件物理资产载体的关系：
@@ -10,7 +10,7 @@
 browser-use package 是这些 runtime asset 的物理发布载体；`enabled === false` 只关闭 skill/bridge，
 不把宿主 node_repl identity 转交给第三方插件。
 
-- 启用 `browser-use@zcode-plugins-official`：会话通过宿主无状态 `node_repl` 的 `js` 工具使用 Browser Use。
+- 启用 `browser-use@codez-plugins-official`：会话通过宿主无状态 `node_repl` 的 `js` 工具使用 Browser Use。
 - 关闭或卸载该插件：宿主 `node_repl` identity 仍可被运行时保留，但 browser-use skill 不进入 skill roots，
   且没有 Browser bridge/runtime feature。
 
@@ -19,7 +19,7 @@ browser-use package 是这些 runtime asset 的物理发布载体；`enabled ===
 不允许任意插件通过 manifest 自声明高权限 runtime capability。Codez core 只识别官方插件 id：
 
 ```text
-browser-use@zcode-plugins-official
+browser-use@codez-plugins-official
 ```
 
 bootstrap 在插件解析完成后读取 `PluginLoadOutcome.plugins`，只有当该官方插件 `enabled === true` 时，才向 `AgentRuntimeConfig.runtimeFeatures` 写入：
@@ -89,7 +89,7 @@ frontend bundle、browser-client/docs/skills assets。协议桥和 desktop CDP �
 
 - 默认启用官方 browser-use 插件时，桌面会话能看到 `mcp__node_repl__js` 和 `control-browser`
   skill；不出现 `mcp__browser_use__*`，也不出现已删除的 `js_reset` / `js_add_node_module_dir`。
-- 显式禁用 `browser-use@zcode-plugins-official` 后，新会话不再提供 `control-browser` skill 或
+- 显式禁用 `browser-use@codez-plugins-official` 后，新会话不再提供 `control-browser` skill 或
   `agent.browsers`；宿主可保留 `js` 这一个 node_repl tool identity 用于配置兼容，但模型文案仍限于
   Browser Use 与 Computer Use 两个官方能力，不得把它改造成通用 JavaScript 工具。
 - 即使 host 仍注入 `browserControlPort`，没有 browser-use runtime feature 时也不会注入 Browser bridge；

@@ -15,7 +15,7 @@ import {
   type OfficialMcpServerResponseInfo,
 } from "../src/mcp/official-auth.js";
 
-const PLUGIN_ID = "codez-tools@zcode-plugins-official";
+const PLUGIN_ID = "codez-tools@codez-plugins-official";
 const MCP_KEY = "image-search";
 const JWT_HEADERS = {
   Authorization: "Bearer jwt-current",

@@ -44,6 +44,7 @@ import { WebCallbackPage } from "./auth/WebCallbackPage.js";
 import { WebLoginPage } from "./auth/WebLoginPage.js";
 import { createWebAuthService } from "./auth/webAuthService.js";
 import { WEB_ZAI_OAUTH_CONFIG, resolveWebAuthDevReturnTo } from "./auth/webZaiOAuthConfig.js";
+import { resolveWebRemoteControlWebSocketCtor } from "./webRemoteControlNativeSocket.js";
 import {
   ConversationShareLandingLoader,
   ConversationShareLandingStatus,
@@ -1144,6 +1145,7 @@ async function bootstrapExternalRelayWebRemoteControl(
     deviceMid: relayParams.deviceMid,
     appVersion: relayParams.appVersion,
     getToken,
+    WebSocketCtor: resolveWebRemoteControlWebSocketCtor(),
     onRawTransportPayload: (payload) =>
       pendingRelayProtocol?.acceptPayload(payload) ||
       activeRelayProtocol?.acceptPayload(payload) ||

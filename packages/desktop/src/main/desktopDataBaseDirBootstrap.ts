@@ -1,11 +1,14 @@
 import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
 import { setDataBaseDir } from "@codez/services/node";
 import { CODEZ_CREDENTIALS_FILE_ENV } from "@codez/shared/credential-security";
+import {
+  isCodexDesktop,
+  resolveDesktopBootstrapSettingsFile,
+  resolveDesktopDataBaseDir,
+} from "./desktopProductRuntime.js";
 
-export function resolveBootstrapSettingsFile(homePath: string = homedir()): string {
-  return join(homePath, ".codez", "v2", "setting.json");
+export function resolveBootstrapSettingsFile(homePath?: string): string {
+  return resolveDesktopBootstrapSettingsFile(homePath);
 }
 
 export function extractBootstrapDataBaseDir(rawValue: unknown): string | null {
@@ -23,7 +26,7 @@ export function extractBootstrapDataBaseDir(rawValue: unknown): string | null {
 }
 
 function readBootstrapDataBaseDirFromDisk(
-  settingsFile: string = resolveBootstrapSettingsFile(),
+  settingsFile: string = resolveDesktopBootstrapSettingsFile(),
 ): string | null {
   if (!existsSync(settingsFile)) {
     return null;
@@ -43,7 +46,10 @@ export function applyEarlyDataBaseDirBootstrap(): string | null {
   // 与 Agent 会整体改用外部指定的凭据库（例如 Server 自有库）。Desktop 不是该变量的合法来源，
   // 在任何凭据读写方创建、Host fork 之前删除一次，Main、Host 与 Agent 都只用 Desktop 数据根。
   delete process.env[CODEZ_CREDENTIALS_FILE_ENV];
-  const dataBaseDir = readBootstrapDataBaseDirFromDisk();
+  const configured = readBootstrapDataBaseDirFromDisk();
+  const dataBaseDir = isCodexDesktop
+    ? resolveDesktopDataBaseDir(configured ?? process.env.CODEZ_DATA_BASE_DIR)
+    : configured;
   if (dataBaseDir) {
     // 启动早期就把 dataBaseDir 注入进来，避免 logger / crashReporter 先按默认 HOME 建目录，
     // 导致后续再切换到自定义目录时，日志和 crash dump 落在两套路径里。

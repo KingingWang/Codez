@@ -319,7 +319,7 @@ Account Access 根据登录和套餐结果生成同形 Overlay：
 
 这里的 models 是当前账号获准使用的子集。请求时使用的 Codez JWT 和一次性安全校验 Header 由请求鉴权服务取得。
 
-BigModel Start Plan 使用 providerId builtin:bigmodel-start-plan。它当前与 Z.AI Start Plan 共享 codez-plan 请求语义；最终 Endpoint 和模型全集需要同远端 Official Config 再对齐。
+BigModel Start Plan 使用 providerId builtin:bigmodel-start-plan。它当前与 Z.AI Start Plan 共享 zcode-plan 请求语义；最终 Endpoint 和模型全集需要同远端 Official Config 再对齐。
 
 ### 4.3 Personal Coding Plan
 
@@ -488,7 +488,7 @@ Model
 ]
 ~~~
 
-Z.AI、BigModel 和 codez-plan 的 Builtin 精确规则可以把 supportsNativeWebSearch 覆盖为 true。这个字段表达最终 Provider + Model 组合的可执行性质。
+Z.AI、BigModel 和 zcode-plan 的 Builtin 精确规则可以把 supportsNativeWebSearch 覆盖为 true。这个字段表达最终 Provider + Model 组合的可执行性质。
 
 ## 6. GLM 的 Anthropic Messages 配置
 

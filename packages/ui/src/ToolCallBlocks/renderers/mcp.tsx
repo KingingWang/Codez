@@ -299,6 +299,7 @@ export function McpToolCallBlock(context: ToolCallBlockRenderContext) {
         ) : null}
         <ToolSnapshotFieldNotice
           refs={toolCall.snapshotRefs ?? []}
+          autoLoadWhenMounted
           onLoadFullToolCallFields={
             handleLoadFullToolCallFields
               ? () => handleLoadFullToolCallFields(toolCall.toolId)

@@ -142,6 +142,10 @@ export function resolveSubmittedExecutionState(
     planEnabled?: boolean;
   },
 ): { modelSelection: ModelSelection; mode: SubmissionMode; planEnabled: boolean } {
+  // 上游将 admission 移至本模块；必须在真实入口拒绝 Codex-only 模式，不能静默降档。
+  if (payload.mode === "custom") {
+    throw new Error('Submission mode "custom" is Codex-only; Codez Agent sessions must not receive it');
+  }
   // 冷恢复时 Provider 暂缺会留下空运行绑定；群输入未携带模型，旧逻辑在 Provider
   // 恢复后仍报空模型。沿用 owner 保留的 Session 选择，既有准入校验继续拒绝无效模型。
   const sessionSelection =

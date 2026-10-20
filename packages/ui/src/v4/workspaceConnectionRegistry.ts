@@ -28,6 +28,7 @@ export type WorkspaceConnectionAgentService = Pick<
   | "conversationPlansV4"
   | "conversationWorkflowRunEventsV4"
   | "conversationWorkflowRunsV4"
+  | "codexHistoryRunsV4"
   | "conversationWorkflowRunArtifactsV4"
   | "conversationWorkflowRunArtifactDataV4"
   | "conversationWorkflowRunArtifactReadV4"
@@ -46,7 +47,8 @@ export type WorkspaceConnectionAgentService = Pick<
   | "onDynamicConversationFrame"
   | "onDynamicLocalTtftFacts"
   | "onAgentRuntimeRestarted"
->;
+> &
+  Partial<Pick<ICodezAgentService, "conversationRowPayloadV4">>;
 
 export interface WorkspaceConnectionScope {
   /** = pane 绑定的 primary workspace（连接路由键）。 */

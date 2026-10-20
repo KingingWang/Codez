@@ -12,7 +12,6 @@ import {
   stat,
   writeFile,
 } from "node:fs/promises";
-import { homedir } from "node:os";
 import { dirname, join, posix } from "node:path";
 import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
@@ -22,6 +21,7 @@ import { CLI_MEMORY_DIAGNOSTIC_DIRECTORY, CLI_MEMORY_FILE_PATTERN } from "@codez
 import {
   createFeedbackDiagnosticArchive,
   getAppConfigDir,
+  getCodezDataRootDir,
   getExportLogDir as getDefaultExportLogDir,
   getExportLogStageDir as getDefaultExportLogStageDir,
   getFeedbackLogArchiveDir as getDefaultFeedbackLogArchiveDir,
@@ -34,7 +34,7 @@ function getCodezDataDir() {
 }
 
 function getCodezCliDir() {
-  return join(homedir(), ".codez", "cli");
+  return join(getCodezDataRootDir(), "cli");
 }
 
 function getCodezCliLogDir() {
@@ -47,7 +47,7 @@ function getCodezCliLogDir() {
  * helperExitLogPathFor）。同目录下还有 `.tokens` broker 凭据，收集时必须按文件名白名单。
  */
 function getCuaHelperRunDir() {
-  return join(homedir(), ".codez", "computer-use", "run");
+  return join(getCodezDataRootDir(), "computer-use", "run");
 }
 
 function isCuaHelperDiagnosticFileName(fileName: string): boolean {

@@ -5,6 +5,7 @@ import {
   IMediaPreviewService,
   IGitService,
   IGitCheckpointService,
+  ICodexDesktopFileRewindService,
   ISystemService,
   ITerminalService,
   ISettingService,
@@ -34,6 +35,7 @@ import {
   IExtensionViewsService,
   IExtensionGrantsService,
   IVoiceInputService,
+  ICodexNativeProviderKeyService,
   IUsageStatsService,
   ICodingPlanSubscriptionService,
   IClientConfigService,
@@ -79,6 +81,10 @@ export class RemoteServiceAccess implements IServiceAccessor {
   readonly mediaPreviewService: IMediaPreviewService;
   readonly gitService: IGitService;
   readonly gitCheckpointService: IGitCheckpointService;
+  // IServiceAccessor 上该服务为可选：host 只在 Desktop-local 默认 Codex bridge 装配下注册此
+  // channel。getChannel 是惰性代理，未注册时构造安全（调用才会报 Unknown channel）；是否可用由
+  // UI 侧能力门禁（safeDesktopFileRewind=supported + isDesktop）裁决，与 cuaPermissionService 同例。
+  readonly codexDesktopFileRewindService: ICodexDesktopFileRewindService;
   readonly systemService: ISystemService;
   readonly terminalService: ITerminalService;
   readonly settingService: ISettingService;
@@ -115,6 +121,11 @@ export class RemoteServiceAccess implements IServiceAccessor {
   readonly extensionViewsService?: IExtensionViewsService;
   readonly extensionGrantsService?: IExtensionGrantsService;
   readonly voiceInputService?: IVoiceInputService;
+  /**
+   * Codex 原生供应商本机临时 Key；旧 Host / Server remote 未注册该 channel 时
+   * 调用才报 Unknown channel，UI 据此隐藏「本机保存」选项。
+   */
+  readonly codexNativeProviderKeyService?: ICodexNativeProviderKeyService;
   readonly usageStatsService: IUsageStatsService;
   readonly codingPlanSubscriptionService: ICodingPlanSubscriptionService;
   readonly clientConfigService: IClientConfigService;
@@ -181,6 +192,10 @@ export class RemoteServiceAccess implements IServiceAccessor {
     this.gitCheckpointService = ProxyChannel.toService<IGitCheckpointService>(
       channelClient.getChannel(IGitCheckpointService.channelName),
     );
+    this.codexDesktopFileRewindService =
+      ProxyChannel.toService<ICodexDesktopFileRewindService>(
+        channelClient.getChannel(ICodexDesktopFileRewindService.channelName),
+      );
     this.systemService = ProxyChannel.toService<ISystemService>(
       channelClient.getChannel(ISystemService.channelName),
     );
@@ -190,9 +205,10 @@ export class RemoteServiceAccess implements IServiceAccessor {
     this.settingService = ProxyChannel.toService<ISettingService>(
       channelClient.getChannel(ISettingService.channelName),
     );
-    this.onboardingRecordService = ProxyChannel.toService<IOnboardingRecordService>(
-      channelClient.getChannel(IOnboardingRecordService.channelName),
-    );
+    this.onboardingRecordService =
+      ProxyChannel.toService<IOnboardingRecordService>(
+        channelClient.getChannel(IOnboardingRecordService.channelName),
+      );
     this.credentialService = ProxyChannel.toService<ICredentialService>(
       channelClient.getChannel(ICredentialService.channelName),
     );
@@ -202,9 +218,10 @@ export class RemoteServiceAccess implements IServiceAccessor {
     this.codezTaskService = ProxyChannel.toService<ICodezTaskService>(
       channelClient.getChannel(ICodezTaskService.channelName),
     );
-    this.windowControllerService = ProxyChannel.toService<IWindowControllerService>(
-      channelClient.getChannel(IWindowControllerService.channelName),
-    );
+    this.windowControllerService =
+      ProxyChannel.toService<IWindowControllerService>(
+        channelClient.getChannel(IWindowControllerService.channelName),
+      );
     this.codezAgentService = ProxyChannel.toService<ICodezAgentService>(
       channelClient.getChannel(ICodezAgentService.channelName),
     );
@@ -229,9 +246,10 @@ export class RemoteServiceAccess implements IServiceAccessor {
     this.cuaPermissionService = ProxyChannel.toService<ICuaPermissionService>(
       channelClient.getChannel(ICuaPermissionService.channelName),
     );
-    this.conversationShareService = ProxyChannel.toService<IConversationShareService>(
-      channelClient.getChannel(IConversationShareService.channelName),
-    );
+    this.conversationShareService =
+      ProxyChannel.toService<IConversationShareService>(
+        channelClient.getChannel(IConversationShareService.channelName),
+      );
     this.botsService = ProxyChannel.toService<IBotsService>(
       channelClient.getChannel(IBotsService.channelName),
     );
@@ -241,15 +259,18 @@ export class RemoteServiceAccess implements IServiceAccessor {
     this.oauthService = ProxyChannel.toService<IOAuthService>(
       channelClient.getChannel(IOAuthService.channelName),
     );
-    this.providerSettingsService = ProxyChannel.toService<IProviderSettingsService>(
-      channelClient.getChannel(IProviderSettingsService.channelName),
-    );
+    this.providerSettingsService =
+      ProxyChannel.toService<IProviderSettingsService>(
+        channelClient.getChannel(IProviderSettingsService.channelName),
+      );
     this.modelSelectionService = ProxyChannel.toService<IModelSelectionService>(
       channelClient.getChannel(IModelSelectionService.channelName),
     );
     Object.defineProperty(this, "providerProvisioningTargetService", {
       value: ProxyChannel.toService<IProviderProvisioningTargetService>(
-        channelClient.getChannel(IProviderProvisioningTargetService.channelName),
+        channelClient.getChannel(
+          IProviderProvisioningTargetService.channelName,
+        ),
       ),
       enumerable: false,
     });
@@ -298,12 +319,17 @@ export class RemoteServiceAccess implements IServiceAccessor {
           channelClient.getChannel(IVoiceInputService.channelName),
         )
       : undefined;
+    this.codexNativeProviderKeyService =
+      ProxyChannel.toService<ICodexNativeProviderKeyService>(
+        channelClient.getChannel(ICodexNativeProviderKeyService.channelName),
+      );
     this.usageStatsService = ProxyChannel.toService<IUsageStatsService>(
       channelClient.getChannel(IUsageStatsService.channelName),
     );
-    this.codingPlanSubscriptionService = ProxyChannel.toService<ICodingPlanSubscriptionService>(
-      channelClient.getChannel(ICodingPlanSubscriptionService.channelName),
-    );
+    this.codingPlanSubscriptionService =
+      ProxyChannel.toService<ICodingPlanSubscriptionService>(
+        channelClient.getChannel(ICodingPlanSubscriptionService.channelName),
+      );
     this.clientConfigService = ProxyChannel.toService<IClientConfigService>(
       channelClient.getChannel(IClientConfigService.channelName),
     );
@@ -337,12 +363,14 @@ export class RemoteServiceAccess implements IServiceAccessor {
     this.pluginUiBridgeService = ProxyChannel.toService<IPluginUiBridgeService>(
       channelClient.getChannel(IPluginUiBridgeService.channelName),
     );
-    this.pluginUiSamplingService = ProxyChannel.toService<IPluginUiSamplingService>(
-      channelClient.getChannel(IPluginUiSamplingService.channelName),
-    );
-    this.pluginUiAppToolsService = ProxyChannel.toService<IPluginUiAppToolsService>(
-      channelClient.getChannel(IPluginUiAppToolsService.channelName),
-    );
+    this.pluginUiSamplingService =
+      ProxyChannel.toService<IPluginUiSamplingService>(
+        channelClient.getChannel(IPluginUiSamplingService.channelName),
+      );
+    this.pluginUiAppToolsService =
+      ProxyChannel.toService<IPluginUiAppToolsService>(
+        channelClient.getChannel(IPluginUiAppToolsService.channelName),
+      );
     this.pluginSyncService = ProxyChannel.toService<IPluginSyncService>(
       channelClient.getChannel(IPluginSyncService.channelName),
     );
@@ -352,9 +380,10 @@ export class RemoteServiceAccess implements IServiceAccessor {
     this.pluginsService = ProxyChannel.toService<IPluginsService>(
       channelClient.getChannel(IPluginsService.channelName),
     );
-    this.pluginManagementService = ProxyChannel.toService<IPluginManagementService>(
-      channelClient.getChannel(IPluginManagementService.channelName),
-    );
+    this.pluginManagementService =
+      ProxyChannel.toService<IPluginManagementService>(
+        channelClient.getChannel(IPluginManagementService.channelName),
+      );
     this.subagentsService = ProxyChannel.toService<ISubagentsService>(
       channelClient.getChannel(ISubagentsService.channelName),
     );
@@ -376,8 +405,9 @@ export class RemoteServiceAccess implements IServiceAccessor {
     this.feedbackService = ProxyChannel.toService<IFeedbackService>(
       channelClient.getChannel(IFeedbackService.channelName),
     );
-    this.promptAttachmentTransferService = ProxyChannel.toService<IPromptAttachmentTransferService>(
-      channelClient.getChannel(IPromptAttachmentTransferService.channelName),
-    );
+    this.promptAttachmentTransferService =
+      ProxyChannel.toService<IPromptAttachmentTransferService>(
+        channelClient.getChannel(IPromptAttachmentTransferService.channelName),
+      );
   }
 }

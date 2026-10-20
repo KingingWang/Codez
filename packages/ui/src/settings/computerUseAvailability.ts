@@ -55,7 +55,9 @@ export function resolveComputerUseAvailability({
   if (!isDesktop) return { kind: "web", supported: false };
   if (isMacDesktop) return { kind: "local-macos", supported: true };
   if (isWindowsDesktop) return { kind: "local-windows", supported: true };
-  return { kind: "local-linux", supported: false };
+  // 根因：Linux Product Helper 与原生包已经进入正式产品链，旧门控仍把“没有 macOS TCC
+  // 面板”误当成“平台不支持”。本机 desktop 的剩余平台就是 Linux，应开放同一插件入口。
+  return { kind: "local-linux", supported: true };
 }
 
 const COMPUTER_USE_SEARCH_TERMS = ["电脑控制", "computer use", "codez-cua", "cua"];
@@ -67,5 +69,9 @@ export function matchesComputerUseSearch(query: string): boolean {
 }
 
 export function isComputerUseRemoteOrLinux(availability: ComputerUseAvailability): boolean {
+  return !availability.supported && availability.kind !== "web";
+}
+
+export function isComputerUseUnavailableNonWeb(availability: ComputerUseAvailability): boolean {
   return !availability.supported && availability.kind !== "web";
 }

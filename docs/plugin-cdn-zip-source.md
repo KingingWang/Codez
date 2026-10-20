@@ -119,7 +119,7 @@
 
 ```json
 {
-  "name": "zcode-plugins-official",
+  "name": "codez-plugins-official",
   "description": "Official Codez plugins marketplace",
   "plugins": [
     {

@@ -29,7 +29,7 @@
 
 Bootstrap 官方 definition 是内置目录与默认启用的权威来源；Settings 默认名单须与其一致。
 启动 → seed 四个独立缓存 → 重建内置市场分片 → 既有插件发现读取分片 → 暴露 skills 与查看面板。
-缓存分别为 `~/.codez/cli/plugins/cache/zcode-plugins-official/<插件名>/<该插件版本>/`，版本取 package/manifest 与 Bootstrap 的一致声明。
+缓存分别为 `~/.codez/cli/plugins/cache/codez-plugins-official/<插件名>/<该插件版本>/`，版本取 package/manifest 与 Bootstrap 的一致声明。
 每个插件可以独立启停、卸载与恢复，不再发布内置 `document-skills` 条目。
 旧聚合插件缓存和用户配置不删除；重建后的内置分片不再引用旧目录。
 用户另行安装的市场插件仍按既有安装与启用配置处理，不自动改写或卸载。
@@ -40,7 +40,7 @@ Bootstrap 官方 definition 是内置目录与默认启用的权威来源；Sett
 自己看图检查一次，不调用外部 VLM。不提供插件子代理的单独开关。
 原 `judge` 名称同样不再提供。每个插件只携带自己的格式 skill；四个插件本身不再声明
 `image_search` MCP，图片搜索由默认启用的 `image-search` 插件提供，版本为 `0.1.1`，通过既有官方 JWT 认证访问 `${CODEZ_BASE_URL}/api/v1/mcp/server/image_search`；不新增本地 MCP runtime。
-`image-search` 缓存路径为 `~/.codez/cli/plugins/cache/zcode-plugins-official/image-search/0.1.1/`。
+`image-search` 缓存路径为 `~/.codez/cli/plugins/cache/codez-plugins-official/image-search/0.1.1/`。
 
 ## 打包与验收
 

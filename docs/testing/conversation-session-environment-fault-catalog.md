@@ -81,6 +81,16 @@ Review 状态：
 
 `S02-R1` 是现有 S02/S06 的有界恢复分支，不新增顶层 fault row，也不替代 S02/S06 对最终失败、queue 和操作按钮的待裁决问题。
 
+### Codex 原生终态恢复（2026-10-11）
+
+CODEX-FAIL-01（accepted，manual-review/pending）：原生请求流最终失败并报告
+latest turn `failed` 后，保留错误和历史，恢复输入框及显式发送；不需要关闭错误条、
+切换任务或重启。CODEX-FAIL-02：Renderer reload、历史冷恢复及 replayable 重订阅
+仍允许在同一线程发送下一回合，不自动重试或改写已接受队列。原生 `systemError`
+可能仅代表上一回合失败，必须与没有失败终态的系统错误、审批/问题及 active-unloaded
+门禁区分。合同见 [Codex adapter](../../specs/codex-desktop-adapter.md#failed-native-turns-remain-usable)。
+此子边界不裁决 legacy N/S 的完整队列、compact 或 retry 语义。
+
 ## C. Compact 故障
 
 这些和主路径 `F/G` 直接关联，结果定义以主 catalog 为准，此处不重复。本组已于 2026-07-05 随源 case 裁决完成。

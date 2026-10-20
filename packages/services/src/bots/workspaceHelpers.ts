@@ -58,7 +58,17 @@ function resolveCanonicalWorkspaceId(
     return undefined;
   }
   const exact = workspaces.find((workspace) => workspace.id === trimmed);
-  if (exact) return exact.id;
+  if (exact) {
+    if (!exact.workspaceIdentity) {
+      const samePathIdentityCandidates = workspaces.filter(
+        (workspace) => workspace.workspacePath === trimmed && workspace.workspaceIdentity,
+      );
+      if (samePathIdentityCandidates.length === 1) {
+        return samePathIdentityCandidates[0]!.id;
+      }
+    }
+    return exact.id;
+  }
   const candidates = workspaces.filter(
     (workspace) =>
       workspace.workspaceIdentity === trimmed ||

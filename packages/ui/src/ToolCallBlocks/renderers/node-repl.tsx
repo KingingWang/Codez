@@ -340,11 +340,21 @@ export function NodeReplToolCallBlock(context: ToolCallBlockRenderContext) {
             </CollapsibleContent>
           </Collapsible>
         ) : null}
+        <ToolSnapshotFieldNotice
+          refs={toolCall.snapshotRefs ?? []}
+          autoLoadWhenMounted
+          onLoadFullToolCallFields={
+            context.onLoadFullToolCallFields
+              ? () => context.onLoadFullToolCallFields?.(toolCall.toolId)
+              : undefined
+          }
+        />
       </div>
     ),
     [
       context.isRunning,
       context.onOpenCodeViewer,
+      context.onLoadFullToolCallFields,
       copyDetailsLabel,
       copyResultLabel,
       detailContentLabel,
@@ -357,6 +367,8 @@ export function NodeReplToolCallBlock(context: ToolCallBlockRenderContext) {
       resultImageLabel,
       resultLabel,
       technicalDetailsLabel,
+      toolCall.snapshotRefs,
+      toolCall.toolId,
       visibleError,
       wrapLinesLabel,
     ],

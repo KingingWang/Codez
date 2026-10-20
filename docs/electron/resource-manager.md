@@ -15,7 +15,7 @@ CPU / 内存 tab 的内容：
 - 右侧按四类分组列出进程，每组显示小计，可展开看到每个进程的名称、PID、CPU、内存：
   - **基础服务**：Electron main、GPU、所有 renderer（含 DevTools / WebContentsView）、window-scoped Host（utility）、Host 派生的非 Agent 子进程（终端 shell 等）、Agent CLI 进程本身、其它 Electron utility（network service 等）。
   - **任务进程**：Agent 派生的非插件进程树，例如 Bash、PowerShell、Node、Python 与构建命令。它们的占用取决于用户任务，独立显示 CPU / 内存小计；不按可执行文件名判断，也不推断具体 task/session 的归属。
-  - **内置插件**：官方市场（`zcode-plugins-official`）插件的 MCP 子进程树——当前即 `browser-use`（`node_repl` + plugin host）与 `computer-use`。
+  - **内置插件**：官方市场（`codez-plugins-official`）插件的 MCP 子进程树——当前即 `browser-use`（`node_repl` + plugin host）与 `computer-use`。
   - **社区插件**：其余全部 MCP 子进程树——第三方市场插件与用户自定义 MCP（`custom`）。
 
 **网络 tab**：只在资源管理器窗口存活期间观测本机 Main、Host、App Renderer、CLI 的 HTTP(S) 请求与 WebSocket 建连，不采集正文。窗口关闭即取消监听并释放记录；具体边界、代理兼容和验收见 [网络请求观测](resource-manager-network.md)。磁盘占用即「存储」tab。

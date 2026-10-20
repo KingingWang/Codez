@@ -4,6 +4,7 @@ import type { CollaborationMode } from "../interfaces/session.port.js";
 import type { McpServerConfig } from "../interfaces/mcp.port.js";
 import type { HooksRuntimeConfig, HooksRuntimeConfigPatch } from "../hooks/index.js";
 import type { PluginConfig, PluginOptionValues } from "../plugins/index.js";
+import type { ModelSelection } from "../model/model.js";
 
 // ============================================================
 // Config Key Types
@@ -39,6 +40,8 @@ export const ConfigKey = {
 
   // Memory
   MemoryUse: "memory.use",
+  MemoryExtractionEnabled: "memory.extractionEnabled",
+  MemoryExtractionModel: "memory.extractionModel",
 
   // MCP
   McpServers: "mcp.servers",
@@ -112,8 +115,10 @@ export type ConfigValue<K extends ConfigKey> = K extends "modelStream.idleTimeou
                   | "skills.enabled"
                   | "skills.includeInstructions"
               ? boolean
-              : K extends "memory.use"
+              : K extends "memory.use" | "memory.extractionEnabled"
                 ? boolean
+                : K extends "memory.extractionModel"
+                  ? ModelSelection
                 : K extends "skills.metadataBudget"
                   ? number
                   : K extends "skills.roots"
@@ -228,6 +233,10 @@ export interface RuntimeConfig {
   };
   memory: {
     use: boolean;
+    /** 成功 turn 后是否自动提取；缺省按 true 处理（仅显式 false 关闭）。 */
+    extractionEnabled?: boolean;
+    /** 记忆提取专用模型；缺省跟随会话模型。 */
+    extractionModel?: ModelSelection;
   };
   mcp: {
     servers: Record<string, McpServerConfig>;

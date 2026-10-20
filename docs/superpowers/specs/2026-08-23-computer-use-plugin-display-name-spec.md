@@ -32,7 +32,7 @@ CUA 插件的历史 manifest 名称是 `codez-cua`，而 Browser Use 的内部 s
 ## 不变量
 
 - 安装、启停、卸载、更新、权限 broker 注入和 MCP runtime namespace 仍按
-  `computer-use@zcode-plugins-official` 与 `plugin:computer-use:computer-use` 关联。
+  `computer-use@codez-plugins-official` 与 `plugin:computer-use:computer-use` 关联。
 - SkillPort 发现的官方 Skill 必须是 `computer-use:computer-use`；不得继续发布
   `codez-cua:codez-computer-use`，也不得同时暴露两个官方 Skill。
 - 展示名变更不得改变桌面端 continuous 或 Web remote replayable 的运行链路，也不得

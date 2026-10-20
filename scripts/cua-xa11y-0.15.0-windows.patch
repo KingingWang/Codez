@@ -1,0 +1,401 @@
+diff --git a/xa11y-windows/src/uia.rs b/xa11y-windows/src/uia.rs
+index c724571..e7eb967 100644
+--- a/xa11y-windows/src/uia.rs
++++ b/xa11y-windows/src/uia.rs
+@@ -10,7 +10,8 @@ use windows::Win32::System::Com::{CoInitializeEx, COINIT};
+ use windows::Win32::System::Variant::VARIANT;
+ use windows::Win32::UI::Accessibility::*;
+ use windows::Win32::UI::WindowsAndMessaging::{
+-    GetForegroundWindow, SetForegroundWindow, STATE_SYSTEM_SELECTED,
++    EnumWindows, GetForegroundWindow, GetWindowThreadProcessId, IsWindowVisible,
++    SetForegroundWindow, STATE_SYSTEM_SELECTED,
+ };
+ 
+ use xa11y_core::{
+@@ -566,6 +567,17 @@ impl WindowsProvider {
+         top_level_windows_of_pid_with(&self.automation, pid, &self.batch_request)
+     }
+ 
++    /// Resolve the first target-pid window, calling UIA only after Win32 has
++    /// bound the HWND to that pid.
++    fn representative_window_of_pid(&self, pid: u32) -> Result<Option<IUIAutomationElement>> {
++        for hwnd in top_level_hwnds_of_pid(pid)? {
++            if let Some(el) = window_element_for_pid(&self.automation, None, pid, hwnd)? {
++                return Ok(Some(el));
++            }
++        }
++        Ok(None)
++    }
++
+     /// Populate a UIA element's snapshot so Cached* accessors work.
+     /// Used for single-element reads (e.g., get_parent) that don't go
+     /// through FindAllBuildCache.
+@@ -882,59 +894,150 @@ fn classified_so_far(surfaces: &[(u8, ShellSurfaceKind, ElementData)]) -> Vec<St
+     out
+ }
+ 
+-/// Build the UIA `ProcessId` property-condition value for `pid`.
+-///
+-/// UIA property conditions carry an i32: a `u32` pid above 2^31 would wrap
+-/// and silently match nothing (tenet 1), so fail surfaceably instead.
+-fn pid_variant(pid: u32) -> Result<VARIANT> {
+-    i32::try_from(pid)
+-        .map(VARIANT::from)
+-        .map_err(|_| Error::Platform {
+-            code: -1,
+-            message: format!("PID {pid} exceeds the i32 range UIA property conditions accept"),
+-        })
+-}
+-
+ /// Free-function form of [`WindowsProvider::top_level_windows_of_pid`].
+ ///
+ /// The event subscription's open/close watch runs on UIA's callback thread
+ /// without a `WindowsProvider` handle, but must re-attach handlers to the
+ /// same window set — so the enumeration lives here and the provider method
+ /// delegates, keeping one implementation of the discovery primitive.
++///
++/// 用户报告的挂起根因在 desktop-root FindAll：UIA 需要先遍历并激活整桌面
++/// provider。先用 Win32 HWND/PID 绑定筛选，只让目标 PID 的 HWND 进入
++/// ElementFromHandleBuildCache，后续 PID/Window 复核仍严格失败。
+ fn top_level_windows_of_pid_with(
+     autom: &IUIAutomation,
+     pid: u32,
+     cache: &IUIAutomationCacheRequest,
+ ) -> Result<Vec<IUIAutomationElement>> {
+-    let root = uia_call(|| unsafe { autom.GetRootElement() })?;
+-    let value = pid_variant(pid)?;
+-    let pid_condition =
+-        uia_call(|| unsafe { autom.CreatePropertyCondition(UIA_ProcessIdPropertyId, &value) })?;
+-    let window_condition = uia_call(|| unsafe {
+-        autom.CreatePropertyCondition(
+-            UIA_ControlTypePropertyId,
+-            &VARIANT::from(UIA_WindowControlTypeId.0),
+-        )
+-    })?;
+-    let condition =
+-        uia_call(|| unsafe { autom.CreateAndCondition(&pid_condition, &window_condition) })?;
+-    let found =
+-        uia_call(|| unsafe { root.FindAllBuildCache(TreeScope_Children, &condition, cache) })?;
+-    let len = uia_call(|| unsafe { found.Length() })?;
+-    let mut out = Vec::with_capacity(len as usize);
+-    for i in 0..len {
+-        let el = uia_call(|| unsafe { found.GetElement(i) }).map_err(|e| match e {
+-            Error::Platform { code, message } => Error::Platform {
+-                code,
+-                message: format!("IUIAutomationElementArray.GetElement({i}) failed: {message}"),
+-            },
+-            other => other,
+-        })?;
+-        out.push(el);
++    let hwnds = top_level_hwnds_of_pid(pid)?;
++    let mut out = Vec::with_capacity(hwnds.len());
++    for hwnd in hwnds {
++        if let Some(el) = window_element_for_pid(autom, Some(cache), pid, hwnd)? {
++            out.push(el);
++        }
+     }
+     Ok(out)
+ }
+ 
++/// Bind a top-level HWND to its owning process without activating any UIA
++/// provider.
++fn window_pid(hwnd: HWND) -> u32 {
++    let mut pid = 0u32;
++    unsafe { GetWindowThreadProcessId(hwnd, Some(&mut pid)) };
++    pid
++}
++
++fn top_level_hwnds_of_pid(pid: u32) -> Result<Vec<HWND>> {
++    // EnumWindows 的 z-order 顺序对应旧 desktop-root UIA 查询；PID 在回调内
++    // 先筛，EnumWindows 自身不是 COM 调用，也不会向无关窗口发送 WM_GETOBJECT。
++    struct State {
++        out: Vec<HWND>,
++        pid: u32,
++        failed_hwnd: Option<HWND>,
++    }
++
++    unsafe extern "system" fn callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
++        let state = unsafe { &mut *(lparam.0 as *mut State) };
++        let candidate_pid = window_pid(hwnd);
++        if candidate_pid != state.pid {
++            return BOOL(1);
++        }
++        if !unsafe { IsWindowVisible(hwnd) }.as_bool() {
++            return BOOL(1);
++        }
++        // FFI 回调不能因容器扩容失败而 unwind。
++        if state.out.try_reserve(1).is_err() {
++            state.failed_hwnd = Some(hwnd);
++            return BOOL(0);
++        }
++        state.out.push(hwnd);
++        BOOL(1)
++    }
++
++    let mut state = State {
++        out: Vec::new(),
++        pid,
++        failed_hwnd: None,
++    };
++    let result = unsafe { EnumWindows(Some(callback), LPARAM(&mut state as *mut State as isize)) };
++    if let Some(hwnd) = state.failed_hwnd {
++        return Err(Error::Platform {
++            code: -1,
++            message: format!(
++                "EnumWindows ran out of memory while collecting windows for pid {pid} at HWND {:?}",
++                hwnd.0
++            ),
++        });
++    }
++    result.map_err(|e| Error::Platform {
++        code: e.code().0 as i64,
++        message: format!("EnumWindows failed for pid {pid}: {e}"),
++    })?;
++    Ok(state.out)
++}
++
++fn window_element_for_pid(
++    autom: &IUIAutomation,
++    cache: Option<&IUIAutomationCacheRequest>,
++    pid: u32,
++    hwnd: HWND,
++) -> Result<Option<IUIAutomationElement>> {
++    // HWND 在 Win32 枚举后可能消失或被其它进程复用；进入 UIA 前再次限定所有者。
++    if window_pid(hwnd) != pid {
++        return Ok(None);
++    }
++    let stage = if cache.is_some() {
++        "windows"
++    } else {
++        "app_by_pid"
++    };
++    let el = uia_call(|| unsafe {
++        match cache {
++            Some(cache) => autom.ElementFromHandleBuildCache(hwnd, cache),
++            None => autom.ElementFromHandle(hwnd),
++        }
++    })
++    .map_err(|e| match e {
++        Error::Platform { code, message } => Error::Platform {
++            code,
++            message: format!(
++                "HWND UIA bind ({stage}) failed for pid {pid} HWND {:?}: {message}",
++                hwnd.0
++            ),
++        },
++        other => other,
++    })?;
++    let current_pid = uia_call(|| unsafe { el.CurrentProcessId() }).map_err(|e| match e {
++        Error::Platform { code, message } => Error::Platform {
++            message: format!(
++                "CurrentProcessId ({stage}) failed for pid {pid} HWND {:?}: {message}",
++                hwnd.0
++            ),
++            code,
++        },
++        other => other,
++    })? as u32;
++    if current_pid != pid || window_pid(hwnd) != pid {
++        return Err(Error::ElementStale {
++            selector: format!("HWND {:?} no longer belongs to pid {pid}", hwnd.0),
++        });
++    }
++    let control_type = uia_call(|| unsafe { el.CurrentControlType() }).map_err(|e| match e {
++        Error::Platform { code, message } => Error::Platform {
++            message: format!(
++                "CurrentControlType ({stage}) failed for pid {pid} HWND {:?}: {message}",
++                hwnd.0
++            ),
++            code,
++        },
++        other => other,
++    })?;
++    if control_type != UIA_WindowControlTypeId {
++        return Ok(None);
++    }
++    Ok(Some(el))
++}
++
+ /// Enumerate a pid only while it still names the saved process generation.
+ ///
+ /// Checking on both sides closes the useful PID-reuse race: a replacement
+@@ -1962,8 +2065,8 @@ impl Provider for WindowsProvider {
+         self.get_children(None)
+     }
+ 
+-    /// Attach to an application directly by pid via a UIA `ProcessId`
+-    /// property search over the desktop root's children.
++    /// Attach directly through the target process's Win32 HWNDs, without a
++    /// UIA query over unrelated desktop-root children.
+     ///
+     /// `list_apps()` enumerates desktop-root children of control type
+     /// `Window` and skips windows whose name is still empty — which is
+@@ -1975,56 +2078,13 @@ impl Provider for WindowsProvider {
+     /// missing-entry shape: the process's windows, not its first window,
+     /// are what the pid means).
+     fn app_by_pid(&self, pid: u32) -> Result<ElementData> {
+-        let root = uia_call(|| unsafe { self.automation.GetRootElement() })?;
+-        let value = pid_variant(pid)?;
+-        let pid_condition = uia_call(|| unsafe {
+-            self.automation
+-                .CreatePropertyCondition(UIA_ProcessIdPropertyId, &value)
+-        })?;
+-        // Require the Window control type, mirroring the process-wide
+-        // enumeration: a WebView2/wry host (Tauri, egui, Electron)
+-        // owns several pid-matching desktop children, and the first of them
+-        // is the content Pane, whose UIA subtree disappears while the window
+-        // is minimized — so the app root resolved by pid alone would drop
+-        // the window exactly when `xa11y action restore "window" --pid PID`
+-        // must reach it. The Window-type desktop child (the HWND) stays in
+-        // the tree while minimized, matching what `windows --pid` lists and
+-        // what the handle-based binding suites restore. On native apps
+-        // (Qt, WinForms, WPF) the first pid child IS that window, so the
+-        // additional condition changes nothing for them.
+-        let window_condition = uia_call(|| unsafe {
+-            self.automation.CreatePropertyCondition(
+-                UIA_ControlTypePropertyId,
+-                &VARIANT::from(UIA_WindowControlTypeId.0),
+-            )
+-        })?;
+-        let condition = uia_call(|| unsafe {
+-            self.automation
+-                .CreateAndCondition(&pid_condition, &window_condition)
+-        })?;
+-        // FindFirstBuildCache returns S_OK with a null element when nothing
+-        // matches; windows-rs surfaces that null as an `Err` carrying the
+-        // S_OK HRESULT. That case is "process not in the UIA tree yet" —
+-        // SelectorNotMatched, so the core poll loop retries — while a
+-        // failing HRESULT is a genuine UIA error and short-circuits.
+-        let el = match unsafe {
+-            root.FindFirstBuildCache(TreeScope_Children, &condition, &self.batch_request)
+-        } {
+-            Ok(el) => el,
+-            Err(e) if e.code().is_ok() => {
+-                return Err(
+-                    Error::selector_not_matched(format!("application[pid={pid}]")).diagnose(
+-                        xa11y_core::Diagnosis::new()
+-                            .last_observed("no top-level UIA element owned by the process yet"),
+-                    ),
+-                );
+-            }
+-            Err(e) => {
+-                return Err(Error::Platform {
+-                    code: e.code().0 as i64,
+-                    message: format!("FindFirstBuildCache(ProcessId={pid}) failed: {e}"),
+-                });
+-            }
++        let Some(el) = self.representative_window_of_pid(pid)? else {
++            return Err(
++                Error::selector_not_matched(format!("application[pid={pid}]")).diagnose(
++                    xa11y_core::Diagnosis::new()
++                        .last_observed("no top-level UIA window owned by the process yet"),
++                ),
++            );
+         };
+         // The representative window serves only the fallback name source of
+         // the synthesized node (process path first); no snapshot is needed,
+@@ -6121,25 +6181,6 @@ mod tests {
+         }
+     }
+ 
+-    // ── pid_variant ─────────────────────────────────────────────────────────
+-
+-    #[test]
+-    fn pid_variant_accepts_pids_in_i32_range() {
+-        for pid in [0u32, 1, 42, i32::MAX as u32] {
+-            pid_variant(pid).expect("pids within i32 range must convert");
+-        }
+-    }
+-
+-    #[test]
+-    fn pid_variant_rejects_pids_above_i32_range() {
+-        // The smallest pid that no longer fits: 2^31. A silent wrap would
+-        // make the UIA ProcessId condition match nothing (tenet 1).
+-        let err = pid_variant(i32::MAX as u32 + 1)
+-            .expect_err("pid above i32 range must be a surfaceable error");
+-        assert!(matches!(err, Error::Platform { .. }));
+-        pid_variant(u32::MAX).expect_err("u32::MAX pid must fail");
+-    }
+-
+     // ── uia_call retry behaviour (issue #257) ───────────────────────────────
+ 
+     fn subscriber_failure() -> windows::core::Error {
+@@ -6298,4 +6339,78 @@ mod tests {
+         assert_eq!(calls.get(), 1);
+         assert_eq!(result.unwrap_err().code(), e_fail);
+     }
++
++    struct CodezTestWindow(HWND);
++
++    impl CodezTestWindow {
++        fn new(visible: bool, owner: Option<HWND>) -> Self {
++            use windows::Win32::UI::WindowsAndMessaging::*;
++            let style = if visible {
++                WS_POPUP | WS_VISIBLE
++            } else {
++                WS_POPUP
++            };
++            // 回归窗口位于屏幕外且不可激活，不改变测试桌面的用户焦点。
++            Self(unsafe {
++                CreateWindowExW(
++                    WS_EX_NOACTIVATE,
++                    windows::core::w!("STATIC"),
++                    windows::core::w!("Codez HWND discovery regression"),
++                    style,
++                    -32000,
++                    -32000,
++                    1,
++                    1,
++                    owner,
++                    None,
++                    None,
++                    None,
++                )
++                .expect("create process-owned test window")
++            })
++        }
++    }
++
++    impl Drop for CodezTestWindow {
++        fn drop(&mut self) {
++            let _ = unsafe { windows::Win32::UI::WindowsAndMessaging::DestroyWindow(self.0) };
++        }
++    }
++
++    #[test]
++    fn codez_win32_discovery_keeps_main_and_owned_windows_without_foreign_pids() {
++        let main = CodezTestWindow::new(true, None);
++        let owned = CodezTestWindow::new(true, Some(main.0));
++        let pid = std::process::id();
++        let found = top_level_hwnds_of_pid(pid).unwrap();
++        assert!(found.contains(&main.0));
++        assert!(found.contains(&owned.0));
++        assert!(found.iter().all(|hwnd| window_pid(*hwnd) == pid));
++        // 不存在的 PID 在 Win32 层即为空，不进入任何 UIA provider。
++        assert!(top_level_hwnds_of_pid(u32::MAX).unwrap().is_empty());
++    }
++
++    #[test]
++    fn codez_win32_discovery_drops_hidden_and_closed_windows() {
++        let hidden = CodezTestWindow::new(false, None);
++        let closed = CodezTestWindow::new(true, None);
++        let closed_hwnd = closed.0;
++        drop(closed);
++        let found = top_level_hwnds_of_pid(std::process::id()).unwrap();
++        assert!(!found.contains(&hidden.0));
++        assert!(!found.contains(&closed_hwnd));
++    }
++
++    #[test]
++    fn codez_missing_app_resolves_without_a_desktop_uia_search() {
++        let provider = WindowsProvider::new().unwrap();
++        assert!(matches!(
++            provider.app_by_pid(u32::MAX),
++            Err(Error::SelectorNotMatched { .. })
++        ));
++        assert!(provider
++            .top_level_windows_of_pid(u32::MAX)
++            .unwrap()
++            .is_empty());
++    }
+ }

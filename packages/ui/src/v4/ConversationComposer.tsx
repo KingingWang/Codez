@@ -1,4 +1,3 @@
-import { ComposerStatusRow } from "@/v4/ConversationStatusPanel.js";
 import type { SessionLifecycleSnapshot } from "@codez/shared";
 import {
   WorkspaceHookPendingIndicator,
@@ -29,6 +28,9 @@ import { formatConversationWorkDuration } from "@/v4/conversationWorkDuration.js
  * - 草稿 per-session 持久化（composerDraftStore）+ prompt history（promptHistoryStorage）；
  * - 工具条（模型/思考深度/模式/context usage）见 V4ComposerToolbar。
  */
+import type { CodexModelCatalogRead } from "@/hooks/useCodexModelCatalog.js";
+import { CodexComposerModelControls } from "@/settings/codex/CodexComposerModelControls.js";
+import { isCodexComposerBusy } from "@/settings/codex/codexSubmissionSettings.js";
 import {
   memo,
   useCallback,
@@ -103,11 +105,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog.js";
 import { Spinner } from "@/components/ui/spinner.js";
-import {
-  useComposerVoiceInput,
-  useVoiceInputShortcut,
-  VoiceInputButton,
-} from "@/voice-input/index.js";
+import { useComposerVoiceInput, VoiceInputButton } from "@/voice-input/index.js";
 import { ImagePreviewDialog } from "@/components/ai-elements/image-preview-dialog.js";
 import {
   ChatMediaAttachmentPreviewDialog,
@@ -167,11 +165,20 @@ import type {
 } from "@/v4/composer/useDraftConfigControl.js";
 import { V4_DRAFT_SCOPE_ROOT, type V4ComposerDraft } from "@/v4/composer/composerDraftStore.js";
 import {
-  resolveOppositeFollowupDelivery,
+  resolveComposerFollowupDelivery,
   resolveFollowupModifierTooltip,
   shouldEnableModifiedEnterSubmit,
   shouldReverseFollowupDeliveryForPointer,
 } from "@/v4/composer/followupModeSettings.js";
+import {
+  CodexFollowupModeMenu,
+  type CodexFollowupIntent,
+} from "@/v4/composer/CodexFollowupModeMenu.js";
+import {
+  recordAcceptedGuideNotice,
+  visibleAcceptedGuideNotices,
+  type AcceptedGuideNotice,
+} from "@/v4/composer/acceptedGuideNotices.js";
 import { isAppleKeyboardPlatform } from "@/lib/keyboardShortcuts.js";
 import { usePrimaryFollowupModifier } from "@/v4/composer/usePrimaryFollowupModifier.js";
 import {
@@ -217,8 +224,8 @@ import {
   recordSentConversationSelections,
 } from "@/lib/conversationSelectionReference.js";
 import { deleteConversationAnnotationWithUndo } from "@/selection-comment/index.js";
+import { ConversationBackgroundWorkTrigger } from "@/v4/composer/ConversationBackgroundWorkTrigger.js";
 import { V4ComposerCuaEntry } from "@/v4/composer/V4ComposerCuaEntry.js";
-import type { ModelConfigSelectGuide } from "@/ModelConfigSelect.js";
 import {
   V4ComposerModeSwitch,
   V4ComposerModelControls,
@@ -243,6 +250,7 @@ import {
   trackUnsettledComposerSubmission,
 } from "@/v4/composer/composerSubmissionSettlement.js";
 import { resolveAttachableShareContext } from "@/lib/conversationShareContext.js";
+import { CONVERSATION_SHARED_CONTEXT_COPY_WARNING_ID } from "@/v4/composer/sharedContextContentCopy.js";
 
 const MODEL_SELECTION_LOADING_STATE: ModelSelectionState = { status: "loading" };
 
@@ -270,7 +278,13 @@ export interface ConversationComposerSendOptions {
   source?: import("@codez/shared/codez-protocol-v4").ConversationInputSource;
 }
 
-export type ConversationComposerSendResult = "sent" | "blocked" | "confirmationRequired";
+export type ConversationComposerSendResult =
+  | "sent"
+  | "blocked"
+  | "confirmationRequired"
+  | { status: "openConfigPicker"; picker: V4ComposerConfigPicker }
+  | { status: "sent"; commandId: string };
+
 
 type ComposerSubmit = (
   heldQueueDisposition?: "clearQueueAndSend" | "keepQueueAndSend",
@@ -384,9 +398,6 @@ function arePromptHistoryEntriesEqual(left: readonly string[], right: readonly s
 }
 
 export interface ConversationComposerProps {
-  statusContent?: ReactNode;
-  queueContent?: ReactNode;
-
   snapshot: ConversationSnapshot | null;
   /** 真实命令已发出、权威输入投影尚未接管；直接消费 projection store，不另存展示状态。 */
   inputPending?: boolean;
@@ -456,17 +467,10 @@ export interface ConversationComposerProps {
    * 竖切多 pane 时由宿主传入 SessionPane.focused，仅焦点 pane 聚焦、后台 pane 不抢焦点。
    */
   autoFocusEnabled?: boolean;
-  /**
-   * 窗口级快捷键（语音输入）是否归本 Composer 处理，由 SessionPane 按事件目标所在的对话区域判定。
-   * 缺省时本 Composer 不响应这类快捷键。
-   */
-  ownsKeyboardShortcut?: (event: KeyboardEvent) => boolean;
   /** 当前 composer 是否运行在手机 Web 远控壳中。 */
   isWebRemoteControl?: boolean;
   workspacePath: string;
   workspaceIdentity?: string;
-  /** 受管 worktree 任务的会话 cwd；Hook 待审核入口据此让设置页按 worktree 发现（D23）。 */
-  worktreeCwd?: string;
   remoteSessionId?: string;
   /** SessionPane 从目标 Host 原子读取的选择事实；Composer 不自行解析 Host。 */
   modelSelectionView?: ModelSelectionView | null;
@@ -474,10 +478,20 @@ export interface ConversationComposerProps {
   /** Model Selection 首次读取失败后的显式重试入口。 */
   modelSelectionReload?: () => void;
   modelSelectionRefresh?: () => Promise<ModelSelectionRefreshResult>;
+  codexModelCatalog?: CodexModelCatalogRead;
+  /**
+   * 对端 Host 是 Codex bridge（手机远控等无桌面 catalog 的链路）。
+   * 只开启排队/引导选择与 native 投递意图；模型目录控件仍走旧 Selection View。
+   */
+  nativeCodexSession?: boolean;
+  /** Approve for me（autoReviewApprovals 能力）是否受原生支持；未支持时权限菜单隐藏 edit 档。 */
+  codexAutoReviewSupported?: boolean;
   /** 草稿态使用预热 session 作附件 transaction 载体。 */
   attachmentSessionId?: string | null;
   attachmentPut: AttachmentPutFn;
-  onRuntimeRestart?: (listener: () => void) => () => void;
+  onRuntimeRestart?: (
+    listener: (reason?: "runtimeRestart" | "transportReplaced") => void,
+  ) => () => void;
   /** 承载 transport 暴露 runtime 存活态时优先用它，替代 onRuntimeRestart。 */
   onRuntimeLifecycle?: (listener: (state: "available" | "unavailable") => void) => () => void;
   provider?: CodezProvider;
@@ -504,6 +518,14 @@ export interface ConversationComposerProps {
   /** 选中思考深度；同时带上用户操作时看到的模型，避免异步回流后把 thought 归到另一模型。 */
   onSelectThought: (thought: string, modelContext: { provider: string; model: string }) => void;
   onSwitchMode: (mode: string) => void;
+  /** 打开当前 session 的 Status panel，并直达 Running 明细。 */
+  onOpenRunningBackgroundWorks?: () => void;
+  /**
+   * 后台任务入口点击的落点：`"workflow-run"` = 唯一在跑的工作流直达详情页（宿主判定），
+   * 缺省 `"panel"` = 展开状态胶囊。入口据此换 tooltip；行为本身在 onOpenRunningBackgroundWorks 里。
+   */
+  backgroundWorkOpenTarget?: "panel" | "workflow-run";
+  runningSubagentCount?: number;
   /** prepare/configOptions 失败时，custom provider 选择走 workspace recovery 链。 */
   onRecoverCustomModelSelection?: (
     value: string,
@@ -511,8 +533,6 @@ export interface ConversationComposerProps {
   ) => Promise<void> | void;
   /** context usage 面板的 /compact 入口（宿主走 v4 compact 命令）。 */
   onSendCompressionCommand?: (command: string) => void;
-  /** 模型按钮上的一次性引导气泡（如服务端规则切换了草稿模型）。 */
-  modelGuide?: ModelConfigSelectGuide | null;
   /** v4 会话级错误（snapshot.control.lastError），展示在输入框上方。 */
   error?: CodezUiError | null;
   onDismissError?: () => void;
@@ -567,9 +587,6 @@ const WEB_ELEMENT_CONTEXT_IMAGE_OPTIONS: ContextImageAttachmentsOptions<WebEleme
   { toFiles: webElementScreenshotFiles, removeStrategy: "attached" };
 
 function ConversationComposerImpl({
-  statusContent,
-  queueContent,
-
   snapshot,
   inputPending = false,
   lifecycle,
@@ -603,16 +620,17 @@ function ConversationComposerImpl({
   highspeedActivationCardId = null,
   onHighspeedActivationApplied,
   autoFocusEnabled = true,
-  ownsKeyboardShortcut,
   isWebRemoteControl = false,
   workspacePath,
   workspaceIdentity,
-  worktreeCwd,
   remoteSessionId,
   modelSelectionView = null,
   modelSelectionState = MODEL_SELECTION_LOADING_STATE,
   modelSelectionReload,
   modelSelectionRefresh,
+  codexModelCatalog,
+  nativeCodexSession = false,
+  codexAutoReviewSupported = false,
   attachmentSessionId = null,
   attachmentPut,
   onRuntimeRestart,
@@ -627,9 +645,11 @@ function ConversationComposerImpl({
   onSelectModel,
   onSelectThought,
   onSwitchMode,
+  onOpenRunningBackgroundWorks,
+  backgroundWorkOpenTarget = "panel",
+  runningSubagentCount = 0,
   onRecoverCustomModelSelection,
   onSendCompressionCommand,
-  modelGuide = null,
   error,
   onDismissError,
   onOpenModelSettings,
@@ -712,6 +732,18 @@ function ConversationComposerImpl({
     const timer = window.setTimeout(() => setHighspeedSweepActive(true), 1_900);
     return () => window.clearTimeout(timer);
   }, [highspeedEntranceAnimated, highspeedPresented]);
+  const [followupChoice, setFollowupChoice] = useState<{
+    scopeKey: string;
+    intent: CodexFollowupIntent;
+  }>({ scopeKey: configPickerScopeKey, intent: "queue" });
+  const codexFollowupIntent =
+    followupChoice.scopeKey === configPickerScopeKey ? followupChoice.intent : "queue";
+  const setCodexFollowupIntent = useCallback(
+    (intent: CodexFollowupIntent) => setFollowupChoice({ scopeKey: configPickerScopeKey, intent }),
+    [configPickerScopeKey],
+  );
+  const [acceptedGuideNotices, setAcceptedGuideNotices] = useState<AcceptedGuideNotice[]>([]);
+  const guideNoticeIdRef = useRef(0);
   const [configPickerState, setConfigPickerState] = useState<{
     scopeKey: string;
     activePicker: V4ComposerConfigPicker | null;
@@ -769,23 +801,12 @@ function ConversationComposerImpl({
   const pendingShareContext = activeShareContext?.status === "pending" ? activeShareContext : null;
   const inputApiRef = useRef<LexicalChatInputHandle | null>(null);
   // 语音输入只在桌面本机可用（docs/chat/composer-voice-input.md）；手机远控不显示。
-  // 输入框不可用（禁用，或被审批/问答卡片隐藏）时语音输入一起不可用：按钮禁用、快捷键不注册、
-  // 进行中的录音取消。按钮、快捷键与 hook 共用这一个值。
-  const voiceInputBlocked = disabled || blockingRequestId !== null;
   const voiceInput = useComposerVoiceInput({
     inputApiRef,
     sessionId,
     enabled: !isWebRemoteControl,
-    blocked: voiceInputBlocked,
   });
   const settleVoiceInput = voiceInput.settle;
-  const voiceInputShortcut = useVoiceInputShortcut({
-    enabled: voiceInput.available && remoteAvailable && !voiceInputBlocked,
-    ownsEvent: ownsKeyboardShortcut,
-    inputApiRef,
-    state: voiceInput.state,
-    toggle: voiceInput.toggle,
-  });
   const composerMountedRef = useRef(true);
   useEffect(() => {
     composerMountedRef.current = true;
@@ -846,6 +867,7 @@ function ConversationComposerImpl({
 
   // ── 附件全链路（选择/粘贴/拖拽/画板/预传/门禁）──
   const attachmentsApi = useComposerAttachments({
+    nativeCodex: Boolean(codexModelCatalog),
     workspacePath,
     workspaceIdentity,
     remoteSessionId,
@@ -1143,17 +1165,12 @@ function ConversationComposerImpl({
     pendingFocusRef.current = false;
     // 程序性聚焦与用户点击输入框会触发同一个 DOM focus 事件；置位后由 handleEditorFocus
     // 消费，避免把「切会话 / 挂载回焦 / 上下文块移除后回焦」误报成 send_input_focus。
-    const focusInput = () => {
-      // 连接恢复可能晚于用户打开 Git 等浮层；旧聚焦意图不能抢焦点并触发浮层外部关闭。
-      if (document.activeElement?.closest('[data-slot="popover-content"], [role="dialog"]')) return;
-      programmaticFocusRef.current = true;
-      inputApiRef.current?.focus();
-    };
+    programmaticFocusRef.current = true;
     // Lexical root 可能晚一帧就绪，聚焦排到下一帧（与草稿回填同款时序）。
     if (typeof requestAnimationFrame === "function") {
-      requestAnimationFrame(focusInput);
+      requestAnimationFrame(() => inputApiRef.current?.focus());
     } else {
-      focusInput();
+      inputApiRef.current.focus();
     }
   }, []);
   const requestComposerFocus = useCallback(() => {
@@ -1426,6 +1443,41 @@ function ConversationComposerImpl({
     isWebRemoteControl,
   });
   const canStop = Boolean(snapshot?.control.canStop);
+  const activeTurnId = snapshot?.control.activeWorks.find(
+    (work) => work.kind === "primaryTurn",
+  )?.foregroundExecutionId;
+  const visibleGuideNotices = canStop
+    ? visibleAcceptedGuideNotices(
+        acceptedGuideNotices,
+        workspaceKey,
+        sessionId,
+        activeTurnId,
+        snapshot ?? null,
+      )
+    : [];
+  useEffect(() => {
+    // 原因：引导是一次性草稿选择，native 没有“会话默认引导”设置；
+    // 运行结束或切换会话后不得将旧 turn 的选择套到下一次发送。
+    if (!canStop && codexFollowupIntent !== "queue") setCodexFollowupIntent("queue");
+  }, [canStop, codexFollowupIntent, setCodexFollowupIntent]);
+  useEffect(() => {
+    // 本地提示只能跟随触发它的 turn；切换会话或原生结束后立即撤下，
+    // 不能跨轮延续一条 native 从未报告为 queue 的引导。
+    setAcceptedGuideNotices((current) =>
+      current.length === 0
+        ? current
+        : current.filter(
+            (notice) =>
+              notice.workspaceKey === workspaceKey &&
+              notice.sessionId === sessionId &&
+              notice.turnId === activeTurnId,
+          ),
+    );
+  }, [activeTurnId, sessionId, workspaceKey]);
+  // 桌面 catalog 链路或远控 hello 侦测任一成立即原生 Codex 会话；
+  // 排队/引导选择器与投递意图在两条链路保持一致（桌面/手机 UI 统一）。
+  const nativeCodexFollowup = Boolean(codexModelCatalog) || nativeCodexSession;
+  const nativeSettingsLocked = nativeCodexFollowup && (pending || isCodexComposerBusy(snapshot));
   const modifiedEnterReversesDelivery = modifiedEnterSubmits && canStop;
   const hasText = textPresence.trimmed;
   const hasDraftToSubmit =
@@ -1588,6 +1640,7 @@ function ConversationComposerImpl({
       const submissionDraftTransaction = captureComposerSubmissionDraftTransaction(submittedDraft);
       const submittedScopeId = draftScopeRef.current;
       const submittedScopeKey = `${workspaceKey}\0${submittedScopeId}`;
+      const guideSnapshotAtSend = snapshotRef.current;
       let cleanupRevision = contentRevisionRef.current;
       const submission = createSubmissionFromComposer?.() ?? null;
       const submittedAttachmentIds = attachmentsApi.attachments.map((item) => item.id);
@@ -1923,7 +1976,52 @@ function ConversationComposerImpl({
           sendAction.noop();
           return;
         }
+        if (
+          sendResult &&
+          typeof sendResult === "object" &&
+          sendResult.status === "openConfigPicker"
+        ) {
+          if (telemetrySeed.localTtft)
+            getLocalTtftObserver()?.exclude(telemetrySeed.localTtft, "cancelled");
+          rollbackPromptHistory();
+          if (contentRevisionRef.current === cleanupRevision) {
+            inputApiRef.current?.clear();
+            updateText("");
+          }
+          finalizeSubmittedDraft();
+          handleConfigPickerOpenChange(sendResult.picker, true);
+          sendAction.noop();
+          return;
+        }
         setHeldQueueConfirmation(null);
+        if (nativeCodexFollowup) setCodexFollowupIntent("queue");
+        if (
+          nativeCodexFollowup &&
+          requestedDelivery === "guide" &&
+          sessionId &&
+          guideSnapshotAtSend &&
+          sendResult &&
+          typeof sendResult === "object" &&
+          sendResult.status === "sent"
+        ) {
+          const turnId = guideSnapshotAtSend.control.activeWorks.find(
+            (work) => work.kind === "primaryTurn",
+          )?.foregroundExecutionId;
+          if (turnId) {
+            const id = ++guideNoticeIdRef.current;
+            setAcceptedGuideNotices((current) =>
+              recordAcceptedGuideNotice(current, {
+                id,
+                workspaceKey,
+                sessionId,
+                turnId,
+                text: trimmed,
+                sourceCommandId: sendResult.commandId,
+                snapshot: guideSnapshotAtSend,
+              }),
+            );
+          }
+        }
         // 发送成功或 ACK 丢失后由权威 projection 结算：清本次提交捕获的内容，
         // prompt history 已在真实发送前同步写盘，避免首发 promote 丢失或误清新 scope。
         await settleSubmittedContent();
@@ -1956,6 +2054,8 @@ function ConversationComposerImpl({
       uiStore,
       attachmentsApi,
       captureComposerSubmissionDraftTransaction,
+      codexModelCatalog,
+      nativeCodexFollowup,
       conversationSelectionReferences,
       conversationTelemetry,
       draftConfig,
@@ -2050,21 +2150,25 @@ function ConversationComposerImpl({
       textRef.current = value;
       const reverseDelivery = reversePointerDeliveryRef.current;
       reversePointerDeliveryRef.current = false;
-      const followupMode = snapshotRef.current?.config.followupMode;
       void submit(
         undefined,
         undefined,
         undefined,
-        reverseDelivery && followupMode ? resolveOppositeFollowupDelivery(followupMode) : undefined,
+        resolveComposerFollowupDelivery({
+          nativeCodex: nativeCodexFollowup,
+          busy: Boolean(snapshotRef.current?.control.canStop),
+          nativeIntent: codexFollowupIntent,
+          followupMode: snapshotRef.current?.config.followupMode,
+          reverse: reverseDelivery,
+        }),
       );
       return false;
     },
-    [submit],
+    [codexFollowupIntent, nativeCodexFollowup, submit],
   );
 
   const handleModifiedEditorSubmit = useCallback(
     (value: string) => {
-      const followupMode = snapshotRef.current?.config.followupMode;
       textRef.current = value;
       // inputRouting 在 turn 启动初期可能仍为 startNow，不能用它
       // 推断空闲。组合键始终表达单次反向 delivery；空闲时 CLI 自然 startNow。
@@ -2072,11 +2176,17 @@ function ConversationComposerImpl({
         undefined,
         undefined,
         undefined,
-        followupMode ? resolveOppositeFollowupDelivery(followupMode) : undefined,
+        resolveComposerFollowupDelivery({
+          nativeCodex: nativeCodexFollowup,
+          busy: Boolean(snapshotRef.current?.control.canStop),
+          nativeIntent: codexFollowupIntent,
+          followupMode: snapshotRef.current?.config.followupMode,
+          reverse: true,
+        }),
       );
       return false;
     },
-    [submit],
+    [codexFollowupIntent, nativeCodexFollowup, submit],
   );
 
   const handleClearQueueSend = useCallback(() => {
@@ -2162,21 +2272,32 @@ function ConversationComposerImpl({
       : workingDurationLabel
         ? intl.formatMessage({ id: "chat.history.workingFor" }, { duration: workingDurationLabel })
         : intl.formatMessage({
-            id: resolveChatPlaceholderKey({
-              hasHistoryMessages: (snapshot?.rows.totalCount ?? 0) > 0,
-              isTaskProcessing: pending || inputPending || canStop,
-              // 单行输入框放不下完整的新任务提示，沿用手机远控的短文案。
-              compactNewTask: compactMobilePlaceholder || layout === "inline",
-            }),
+            id:
+              nativeCodexFollowup && canStop && codexFollowupIntent === "guide"
+                ? "chat.followup.mode.guide.placeholder"
+                : resolveChatPlaceholderKey({
+                    hasHistoryMessages: (snapshot?.rows.totalCount ?? 0) > 0,
+                    isTaskProcessing: pending || inputPending || canStop,
+                    // 单行输入框放不下完整的新任务提示，沿用手机远控的短文案。
+                    compactNewTask: compactMobilePlaceholder || layout === "inline",
+                  }),
           });
   const sendTooltipTitle = intl.formatMessage({
-    id: mode === "enqueue" ? "chat.queue.enqueue" : "chat.send",
+    id:
+      nativeCodexFollowup && canStop
+        ? codexFollowupIntent === "guide"
+          ? "chat.followup.guideCurrent"
+          : "chat.followup.addToQueue"
+        : mode === "enqueue"
+          ? "chat.queue.enqueue"
+          : "chat.send",
   });
   const modifierTooltip = resolveFollowupModifierTooltip({
     enabled: modifiedEnterReversesDelivery,
     canSend,
     modifierPressed: primaryModifierPressed,
-    followupMode: snapshot?.config.followupMode,
+    followupMode:
+      nativeCodexFollowup && canStop ? codexFollowupIntent : snapshot?.config.followupMode,
     isApplePlatform: appleKeyboardPlatform,
   });
   const resolvedSendTooltipTitle = modifierTooltip
@@ -2307,10 +2428,12 @@ function ConversationComposerImpl({
                       { progress: String(attachment.uploadProgress) },
                     )
                   : attachment.uploadStatus === "failed"
-                    ? intl.formatMessage(
-                        { id: "chat.attachments.upload.failed" },
-                        { message: attachment.uploadError ?? "unknown" },
-                      )
+                    ? attachment.uploadErrorKind === "runtimeRestarted" && attachment.uploadError
+                      ? attachment.uploadError
+                      : intl.formatMessage(
+                          { id: "chat.attachments.upload.failed" },
+                          { message: attachment.uploadError ?? "unknown" },
+                        )
                     : intl.formatMessage({
                         id: `chat.attachments.upload.${attachment.uploadStatus}`,
                       });
@@ -2677,7 +2800,7 @@ function ConversationComposerImpl({
   );
   const submitControlNode = useMemo(
     () => (
-      <div className="flex min-w-0 items-center gap-1">
+      <div className="flex min-w-0 max-w-full items-center gap-1">
         {!remoteAvailable ? (
           <span
             data-testid="remote-send-unavailable"
@@ -2687,7 +2810,7 @@ function ConversationComposerImpl({
           </span>
         ) : null}
         {remoteAvailable ? (
-          <span className="flex min-w-0 shrink items-center gap-1 overflow-hidden empty:hidden">
+          <span className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden empty:hidden">
             {/* 扩展插槽 composer.status：紧挨用量圆环左边（docs/plugins/extension-host.md §6）。
                 作用域用有效会话：草稿取预热会话，与插件 UI 同一来源。 */}
             <ComposerStatusSlot
@@ -2695,39 +2818,52 @@ function ConversationComposerImpl({
               workspaceIdentity={workspaceIdentity}
               sessionId={pluginUiSessionId ?? null}
             />
-            <V4ComposerModelControls
-              workspacePath={workspacePath}
-              workspaceIdentity={workspaceIdentity}
-              modelSelectionView={modelSelectionView}
-              modelSelectionState={modelSelectionState}
-              modelSelectionReload={modelSelectionReload}
-              modelSelectionRefresh={modelSelectionRefresh}
-              sessionId={sessionId ?? null}
-              phase={composerPhase}
-              provider={provider}
-              isWebRemoteControl={isWebRemoteControl}
-              isMobileViewport={isMobileTextInputViewport}
-              draftMode={draftMode}
-              draftConfig={draftConfig}
-              usage={composerUsage}
-              disabled={disabled || runtimeBlocked}
-              modelSelectionPending={modelSelectionPending}
-              onConnectionPendingChange={handleConnectionPendingChange}
-              modelLocked={highspeedCard !== null}
-              highspeedPresented={highspeedPresented}
-              highspeedEntranceAnimated={highspeedEntranceAnimated}
-              highspeedSweepActive={highspeedSweepActive}
-              highspeedExpiresAt={highspeedCard?.expiresAt}
-              highspeedModel={highspeedCard?.model}
-              activeConfigPicker={activeConfigPicker}
-              onConfigPickerOpenChange={handleConfigPickerOpenChange}
-              onSelectModel={handleSelectModelTrace}
-              onSelectThought={onSelectThought}
-              onSwitchMode={onSwitchMode}
-              onRecoverCustomModelSelection={onRecoverCustomModelSelection}
-              onSendCompressionCommand={onSendCompressionCommand}
-              modelGuide={modelGuide}
-            />
+            {codexModelCatalog ? (
+              <CodexComposerModelControls
+                read={codexModelCatalog}
+                selection={draftConfig?.modelSelection}
+                disabled={disabled || runtimeBlocked}
+                busy={nativeSettingsLocked}
+                usage={composerUsage}
+                activeConfigPicker={activeConfigPicker}
+                onConfigPickerOpenChange={handleConfigPickerOpenChange}
+                onSelectModel={handleSelectModelTrace}
+                onSelectThought={onSelectThought}
+              />
+            ) : (
+              <V4ComposerModelControls
+                workspacePath={workspacePath}
+                workspaceIdentity={workspaceIdentity}
+                modelSelectionView={modelSelectionView}
+                modelSelectionState={modelSelectionState}
+                modelSelectionReload={modelSelectionReload}
+                modelSelectionRefresh={modelSelectionRefresh}
+                sessionId={sessionId ?? null}
+                phase={composerPhase}
+                provider={provider}
+                isWebRemoteControl={isWebRemoteControl}
+                isMobileViewport={isMobileTextInputViewport}
+                draftMode={draftMode}
+                draftConfig={draftConfig}
+                usage={composerUsage}
+                disabled={disabled || runtimeBlocked}
+                modelSelectionPending={modelSelectionPending}
+                onConnectionPendingChange={handleConnectionPendingChange}
+                modelLocked={highspeedCard !== null}
+                highspeedPresented={highspeedPresented}
+                highspeedEntranceAnimated={highspeedEntranceAnimated}
+                highspeedSweepActive={highspeedSweepActive}
+                highspeedExpiresAt={highspeedCard?.expiresAt}
+                highspeedModel={highspeedCard?.model}
+                activeConfigPicker={activeConfigPicker}
+                onConfigPickerOpenChange={handleConfigPickerOpenChange}
+                onSelectModel={handleSelectModelTrace}
+                onSelectThought={onSelectThought}
+                onSwitchMode={onSwitchMode}
+                onRecoverCustomModelSelection={onRecoverCustomModelSelection}
+                onSendCompressionCommand={onSendCompressionCommand}
+              />
+            )}
           </span>
         ) : null}
         {voiceInput.available && remoteAvailable ? (
@@ -2736,8 +2872,13 @@ function ConversationComposerImpl({
             onToggle={voiceInput.toggle}
             subscribeLevel={voiceInput.subscribeLevel}
             permissionGuide={voiceInput.permissionGuide}
-            shortcut={voiceInputShortcut}
-            disabled={voiceInputBlocked}
+          />
+        ) : null}
+        {remoteAvailable && nativeCodexFollowup && canStop && mode !== "reject" ? (
+          <CodexFollowupModeMenu
+            intent={codexFollowupIntent}
+            disabled={disabled || pending}
+            onChange={setCodexFollowupIntent}
           />
         ) : null}
         {showStopControl ? (
@@ -2748,7 +2889,7 @@ function ConversationComposerImpl({
               size="icon-md"
               onClick={handleStopClick}
               data-testid={TID_V4_STOP}
-              className="rounded-full"
+              className="shrink-0 rounded-full"
               aria-label={stopTooltipTitle}
             >
               <SquareIcon className="size-4 fill-current" />
@@ -2769,7 +2910,7 @@ function ConversationComposerImpl({
               onClick={handleSendButtonClick}
               data-testid={TID_V4_COMPOSER_SEND}
               aria-label={resolvedSendTooltipTitle}
-              className="cursor-pointer gap-1 rounded-full bg-brand text-ui-base text-foreground-inverse hover:bg-brand/80"
+              className="shrink-0 cursor-pointer gap-1 rounded-full bg-brand text-ui-base text-foreground-inverse hover:bg-brand/80"
             >
               {pending ? <Spinner className="size-4" /> : <ArrowUpIcon className="size-4" />}
               <span className="sr-only">{resolvedSendTooltipTitle}</span>
@@ -2787,8 +2928,6 @@ function ConversationComposerImpl({
       voiceInput.toggle,
       voiceInput.subscribeLevel,
       voiceInput.permissionGuide,
-      voiceInputShortcut,
-      voiceInputBlocked,
       composerUsage,
       disabled,
       modelSelectionPending,
@@ -2808,13 +2947,17 @@ function ConversationComposerImpl({
       handleSelectModelTrace,
       modelSelectionReload,
       modelSelectionRefresh,
+      codexModelCatalog,
+      codexFollowupIntent,
+      setCodexFollowupIntent,
+      nativeCodexFollowup,
+      nativeSettingsLocked,
       modelSelectionState,
       modelSelectionView,
       onSelectThought,
       onRecoverCustomModelSelection,
       onSendCompressionCommand,
       onSwitchMode,
-      modelGuide,
       pending,
       provider,
       modifierTooltip,
@@ -2833,11 +2976,44 @@ function ConversationComposerImpl({
     ],
   );
 
-  // 左下：模式选择 + Hook / MCP + CUA 入口。followupMode 由 app 设置页同步到 CLI，
+  // 左下：模式选择 + CUA 入口 + 当前 session 后台任务入口。followupMode 由 app 设置页同步到 CLI，
   // 不在 composer 暴露局部开关；后台入口只消费同一 snapshot，不维护第二份任务状态。
   // memo 捕获整个 snapshot 会让共享词法环境中的稳定发送回调也持有旧历史；只捕获展示字段。
   const workspaceHookAdmission = snapshot?.workspaceHookAdmission;
   const workspaceMcpAdmission = snapshot?.workspaceMcpAdmission;
+  const backgroundWorks = snapshot?.backgroundWorks;
+  const combinedAppSlashCommands = useMemo<readonly AppSlashCommand[] | undefined>(() => {
+    if (disabled || nativeSettingsLocked) {
+      return appSlashCommands;
+    }
+    // 仅在桌面 Codex 目录链路把 `/model`、`/mode` 挂为"选中即打开对应选择器"回调，
+    // 保持共享 Codez E2E 对 `app-slash:*` 的断言边界不变。
+    if (!codexModelCatalog) {
+      return appSlashCommands;
+    }
+    const interactiveConfigCommands: AppSlashCommand[] = [
+      {
+        value: "model",
+        description: intl.formatMessage({ id: "chat.slash.command.model.description" }),
+        keywords: ["model", "模型", "切换模型", "选择模型"],
+        run: () => handleConfigPickerOpenChange("model", true),
+      },
+      {
+        value: "mode",
+        description: intl.formatMessage({ id: "chat.slash.command.mode.description" }),
+        keywords: ["mode", "权限", "权限模式", "模式", "approval", "permission"],
+        run: () => handleConfigPickerOpenChange("mode", true),
+      },
+    ];
+    return [...(appSlashCommands ?? []), ...interactiveConfigCommands];
+  }, [
+    appSlashCommands,
+    codexModelCatalog,
+    disabled,
+    handleConfigPickerOpenChange,
+    intl,
+    nativeSettingsLocked,
+  ]);
   const leadingActionsNode = useMemo(
     () => (
       <>
@@ -2846,10 +3022,12 @@ function ConversationComposerImpl({
           workspaceIdentity={workspaceIdentity}
           provider={provider}
           draftConfig={draftConfig}
-          disabled={disabled || runtimeBlocked}
+          disabled={disabled || runtimeBlocked || nativeSettingsLocked}
           activeConfigPicker={activeConfigPicker}
           onConfigPickerOpenChange={handleConfigPickerOpenChange}
           onSwitchMode={onSwitchMode}
+          codexPermissions={nativeCodexFollowup}
+          codexAutoReviewSupported={codexAutoReviewSupported}
         />
         {sessionId && workspaceHookAdmission ? (
           <WorkspaceHookPendingIndicator
@@ -2857,7 +3035,6 @@ function ConversationComposerImpl({
             sessionId={sessionId}
             workspacePath={workspacePath}
             workspaceIdentity={workspaceIdentity}
-            worktreeCwd={worktreeCwd}
             admission={workspaceHookAdmission}
           />
         ) : null}
@@ -2877,39 +3054,52 @@ function ConversationComposerImpl({
         ) : null}
         {/* Bug 原因：附件画廊 rebase 曾整段覆盖 leadingActions，误删 staging 的 CUA 常驻入口。
             入口自身继续负责平台、远程与设置可见性，不在 composer 重复判定。 */}
-        <V4ComposerCuaEntry
-          workspacePath={workspacePath}
-          workspaceIdentity={workspaceIdentity}
-          remoteSessionId={remoteSessionId}
-          isWebRemoteControl={isWebRemoteControl}
-          currentSessionBusy={canStop}
+        {!nativeCodexFollowup && (
+          <V4ComposerCuaEntry
+            workspacePath={workspacePath}
+            workspaceIdentity={workspaceIdentity}
+            remoteSessionId={remoteSessionId}
+            isWebRemoteControl={isWebRemoteControl}
+            currentSessionBusy={canStop}
+          />
+        )}
+        <ConversationBackgroundWorkTrigger
+          backgroundWorks={backgroundWorks ?? []}
+          runningSubagentCount={runningSubagentCount}
+          onOpen={onOpenRunningBackgroundWorks}
+          openTarget={backgroundWorkOpenTarget}
         />
       </>
     ),
     [
       activeConfigPicker,
       canStop,
+      codexAutoReviewSupported,
+      nativeCodexFollowup,
+      nativeSettingsLocked,
       disabled,
       runtimeBlocked,
       draftConfig,
       handleConfigPickerOpenChange,
       isWebRemoteControl,
+      backgroundWorkOpenTarget,
+      onOpenRunningBackgroundWorks,
       onSwitchMode,
       provider,
       remoteSessionId,
+      runningSubagentCount,
       sessionId,
       workspaceHookAdmission,
       workspaceMcpAdmission,
+      backgroundWorks,
       workspaceIdentity,
       workspacePath,
-      worktreeCwd,
     ],
   );
   const isBlockedByInteraction = blockingRequestId !== null;
 
   // v4 pendingInteractions 是 bottom dock 阻塞态；composer 必须保留挂载，
   // 只在视觉和可访问树中隐藏，避免权限/问答卡片出现时丢失草稿和编辑器内部状态。
-
   return (
     // 外层 bottom dock 负责 sticky 与横向主列宽度；composer 自身组织错误提示与输入壳。
     // centered（居中草稿布局，m5）：收窄 max-w-2xl（旧
@@ -2969,22 +3159,19 @@ function ConversationComposerImpl({
       ) : null}
       {initialization?.status === "failed" ? (
         // 初始化中只限制执行，不额外显示提示；失败时才显示错误和重试。
-        // 与会话错误共用视觉规格，初始化失败仍独立保留原重试回调。
+        // 状态条悬在可滚动正文上方；必须使用不透明 card，避免历史文字透入错误提示。
         <div
           data-testid="v4-session-initialization"
           role="alert"
-          className="mb-2 flex w-full flex-wrap items-center gap-2 rounded-xl border-[0.5px] border-border bg-surface backdrop-blur-md py-2 pl-3 pr-2 text-ui-base text-foreground"
+          className="mb-2 flex w-full flex-wrap items-center gap-2 rounded-lg border border-card-border bg-card px-3 py-2 text-ui-base text-foreground-subtle"
         >
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <InfoIcon aria-hidden="true" className="size-4 shrink-0" />
-            <span className="min-w-0 truncate font-medium">
-              {intl.formatMessage({ id: "chat.initialization.failed" })}
-            </span>
-          </div>
+          <span className="min-w-0 flex-1">
+            {intl.formatMessage({ id: "chat.initialization.failed" })}
+          </span>
           {onRetryInitialization ? (
             <Button
               type="button"
-              variant="secondary"
+              variant="ghost"
               size="sm"
               data-testid="v4-session-initialization-retry"
               onClick={onRetryInitialization}
@@ -2994,15 +3181,6 @@ function ConversationComposerImpl({
           ) : null}
         </div>
       ) : null}
-      {/* 与横幅实际渲染条件一致，仅隐藏入口，不清除任务状态。 */}
-      {!visibleError && initialization?.status !== "failed" ? (
-        <ComposerStatusRow key={JSON.stringify([workspaceIdentity, workspacePath, sessionId])}>
-          {statusContent}
-        </ComposerStatusRow>
-      ) : null}
-      {/* 队列的负下边距用于衔接输入框；必须紧邻输入框，避免遮挡状态胶囊。 */}
-      {queueContent}
-
       <div
         data-composer-element-screenshots={hiddenElementScreenshotsMarker || undefined}
         data-highspeed-composer={highspeedCard ? "true" : undefined}
@@ -3039,8 +3217,36 @@ function ConversationComposerImpl({
             })}
           </div>
         ) : null}
+        {pendingShareContext && codexModelCatalog ? (
+          <div
+            role="status"
+            data-testid="v4-composer-shared-context-copy-warning"
+            className="mb-2 w-full rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 px-3 py-2 text-ui-base text-foreground"
+          >
+            {intl.formatMessage({ id: CONVERSATION_SHARED_CONTEXT_COPY_WARNING_ID })}
+          </div>
+        ) : null}
+        {visibleGuideNotices.map((notice) => (
+          <div
+            key={notice.id}
+            role="status"
+            data-testid="v4-codex-guide-notice"
+            className="mb-2 flex min-w-0 flex-col gap-0.5 rounded-xl border border-card-border bg-card px-3 py-2"
+          >
+            <span className="text-ui-sm font-medium text-foreground-subtle">
+              {intl.formatMessage({ id: "chat.followup.mode.guide.accepted" })}
+            </span>
+            <span
+              className="line-clamp-2 break-words text-ui-base text-foreground"
+              title={notice.text}
+            >
+              {notice.text}
+            </span>
+          </div>
+        ))}
         <ChatPromptEditor
           extraPlugins={elementMentionPlugin}
+          nativeCodex={nativeCodexFollowup}
           workspacePath={workspacePath}
           workspaceIdentity={workspaceIdentity}
           taskId={sessionId}
@@ -3085,13 +3291,14 @@ function ConversationComposerImpl({
           // Bugfix 原因：命令目录必须完整来自 CLI workspace slash catalog；UI 只在
           // secondary pane 按产品能力隐藏 goal，不再追加任何内建命令或别名。
           excludedSlashCommandNames={suppressGoalCommands ? ["goal"] : undefined}
-          appSlashCommands={appSlashCommands?.filter((command) =>
+          appSlashCommands={combinedAppSlashCommands.filter((command) =>
             command.recovery ? recoveryAvailable : !runtimeBlocked,
           )}
           enableMentionPanel
           leadingActions={leadingActionsNode}
           submitControl={submitControlNode}
           layout={layout}
+          shrinkTrailingActions={Boolean(codexModelCatalog)}
           className="p-0"
           shellClassName={
             highspeedCard

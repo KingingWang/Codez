@@ -711,6 +711,12 @@ Codez **不在**成功的导航/点击/输入等 side-effect cell 结束后自�
 
 2026-07-12 复盘两轮图灵社区轨迹后，新增以下冻结语义：
 
+2026-10-14 运行时边界补充：以下 provider-visible ambient 规则只适用于 legacy/custom Agent。
+Host 使用现有 Codex bridge runtime 判定，在 native Codex 的 V4 `sendText` 中不收集或自动注入
+`browserAmbientContext`；该 legacy 字段会被 native adapter 在 RPC 前拒绝。浏览器打开不能阻断后续
+输入，native Browser MCP 仍由 window broker 独立提供。desktop-continuous 与 web-remote-replayable
+复用同一分流，不改变 identity/remoteSessionId、用户正文、显式不支持字段的拒绝或失败命令不重试规则。
+
 1. 每个普通输入在进入 agent runtime 前，由 desktop shared host 以只读命令读取当前 window/workspace 的
    IAB tab 摘要。`feat/web-app` 的无附件主路径由 v4 `command/sendText` 收集并随 payload 传递；仍处于兼容期的
    附件路径继续走 legacy `session/send`。两条路径都至少合并当前 session 的 controlled tabs 与可 claim 的

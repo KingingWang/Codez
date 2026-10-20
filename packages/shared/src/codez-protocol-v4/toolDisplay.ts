@@ -18,25 +18,34 @@ import {
 } from "./workflow-observation-display.js";
 
 // toolCall 终态 output 的结构化展示模型（port 自 feat；CUA 工具靠 kind:"cua" 分支把
-// errorCode/suggestedAction/media(screenshot) 等结构化内容带到 renderer）。consume-main 之前
-// 缺这个 union + toolOutputSchema.display 字段——协议层 zod 校验会把 agent 下发的 display 整个
-// strip 掉，导致 UI 永远拿不到 display?.kind==="cua"，CUA 工具调用退化成 fallback 渲染。
+const fileDiffDisplaySchema = z.object({
+  kind: z.literal("file_diff"),
+  filePath: z.string().min(1),
+  operation: z.enum(["add", "delete", "update"]).optional(),
+  movePath: z.string().min(1).optional(),
+  additions: z.number().int().nonnegative(),
+  deletions: z.number().int().nonnegative(),
+  structuredPatch: z.array(
+    z.object({
+      oldStart: z.number().int(),
+      oldLines: z.number().int(),
+      newStart: z.number().int(),
+      newLines: z.number().int(),
+      lines: z.array(z.string()),
+    }),
+  ),
+  truncated: z.boolean().optional(),
+});
+
 export const toolResultDisplaySchema = z.discriminatedUnion("kind", [
   bashOutputDisplaySchema,
+  fileDiffDisplaySchema,
   z.object({
-    kind: z.literal("file_diff"),
-    filePath: z.string().min(1),
+    kind: z.literal("file_diffs"),
+    totalFiles: z.number().int().nonnegative(),
     additions: z.number().int().nonnegative(),
     deletions: z.number().int().nonnegative(),
-    structuredPatch: z.array(
-      z.object({
-        oldStart: z.number().int(),
-        oldLines: z.number().int(),
-        newStart: z.number().int(),
-        newLines: z.number().int(),
-        lines: z.array(z.string()),
-      }),
-    ),
+    files: z.array(fileDiffDisplaySchema),
     truncated: z.boolean().optional(),
   }),
   z.object({

@@ -1,9 +1,11 @@
 import type { WebRemoteControlWindowBootstrapResult } from "@codez/shared";
+import { isVersionedWebRemoteControlRoute } from "./webRemoteControlRoute.js";
 
 interface WebRemoteControlVersionGuardOptions {
   /** 只读取响应；依赖当前连接的副作用由 onAccepted 同步提交。 */
   requestBootstrap(): Promise<WebRemoteControlWindowBootstrapResult>;
   onAccepted?(result: WebRemoteControlWindowBootstrapResult): void;
+  routePath?: string;
   getUrl(): string;
   isPageReady(): boolean;
   navigate(url: string): void;
@@ -49,8 +51,11 @@ export function createWebRemoteControlVersionGuard(options: WebRemoteControlVers
           const version = result.desktopAppVersion?.trim();
           if (version) {
             const url = new URL(options.getUrl());
+            const isVersionedRoute = options.routePath
+              ? isVersionedWebRemoteControlRoute(url.pathname, options.routePath)
+              : url.pathname.replace(/\/+$/, "") === "/remote/v4";
             if (
-              url.pathname.replace(/\/+$/, "") === "/remote/v4" &&
+              isVersionedRoute &&
               url.searchParams.get("app_version") !== version
             ) {
               url.searchParams.set("app_version", version);

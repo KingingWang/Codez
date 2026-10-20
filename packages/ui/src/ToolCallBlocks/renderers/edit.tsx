@@ -3,6 +3,7 @@ import { PencilIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { ToolCallBody } from "@/ToolCallBlocks/ToolCallBody.js";
 import { ToolSnapshotFieldNotice } from "@/ToolCallBlocks/ToolSnapshotFieldNotice.js";
+import { readRawToolCallFileSummaryGroup } from "@/ToolCallBlocks/fileSummaries.js";
 import { getFileDisplayPath } from "@/lib/fileDisplay.js";
 import type { ToolInlinePreview } from "@/lib/toolDisplay.js";
 import { ToolLayout } from "../ToolLayout.js";
@@ -41,6 +42,7 @@ function isRawToolCallFailed(raw: unknown) {
 
 export function buildEditCodeViewerSource(
   summary: NonNullable<ToolCallBlockRenderContext["rawFileSummaries"]>[number],
+  partialLabel?: string,
 ): CodeViewerSource {
   if (!summary.patch) {
     return {
@@ -52,7 +54,10 @@ export function buildEditCodeViewerSource(
 
   return {
     type: "patch",
-    title: summary.fileName,
+    title:
+      summary.truncated && partialLabel
+        ? `${summary.fileName} (${partialLabel})`
+        : summary.fileName,
     // summary.filePath 是 fileDisplay 生成的目录展示路径，不是可打开的文件路径。
     // 传给 side pane 后会按目录解析图标，导致 .ts/.tsx diff tab 退回通用文件图标。
     path: summary.path,
@@ -86,7 +91,10 @@ export function EditToolCallBlock(context: ToolCallBlockRenderContext) {
   const { toolCallNode, rawFileSummaries, isRunning, statusLabel, errorText, onOpenCodeViewer } =
     context;
   const { toolCall } = toolCallNode;
-  const hasMultipleFiles = rawFileSummaries.length > 1;
+  const fileGroup = useMemo(() => readRawToolCallFileSummaryGroup(toolCall.raw), [toolCall.raw]);
+  const totalFiles = fileGroup?.totalFiles ?? rawFileSummaries.length;
+  const omittedFiles = Math.max(0, totalFiles - rawFileSummaries.length);
+  const hasMultipleFiles = totalFiles > 1;
   const isFailed =
     toolCall.status === "failed" || isRawToolCallFailed(toolCall.raw) || Boolean(errorText);
   const effectiveStatusLabel = isFailed
@@ -98,38 +106,58 @@ export function EditToolCallBlock(context: ToolCallBlockRenderContext) {
         return;
       }
 
-      onOpenCodeViewer(buildEditCodeViewerSource(summary));
+      onOpenCodeViewer(
+        buildEditCodeViewerSource(
+          summary,
+          intl.formatMessage({ id: "chat.toolCall.edit.partialDiff" }),
+        ),
+      );
     },
-    [onOpenCodeViewer],
+    [intl, onOpenCodeViewer],
   );
 
   const primaryText = useMemo(
     () =>
-      rawFileSummaries.length > 0
-        ? renderJoinedFileChips(rawFileSummaries, {
+      rawFileSummaries.length > 0 ? (
+        <span className="inline-flex min-w-0 items-center gap-1">
+          {renderJoinedFileChips(rawFileSummaries, {
             clickable: Boolean(onOpenCodeViewer),
             basePath: context.workspacePath,
             onClick: openFilePreview,
-          })
-        : null,
-    [context.workspacePath, onOpenCodeViewer, openFilePreview, rawFileSummaries],
+          })}
+          {omittedFiles > 0 ? <span>+{omittedFiles}</span> : null}
+        </span>
+      ) : totalFiles > 0 ? (
+        intl.formatMessage({ id: "chat.toolCall.edit.multipleFiles" }, { count: totalFiles })
+      ) : null,
+    [
+      context.workspacePath,
+      intl,
+      omittedFiles,
+      onOpenCodeViewer,
+      openFilePreview,
+      rawFileSummaries,
+      totalFiles,
+    ],
   );
   const totalChangeStat = useMemo(
     () =>
-      rawFileSummaries.reduce(
-        (acc, summary) => {
-          if (!summary.changeStat) {
-            return acc;
-          }
+      fileGroup
+        ? { added: fileGroup.additions, removed: fileGroup.deletions }
+        : rawFileSummaries.reduce(
+            (acc, summary) => {
+              if (!summary.changeStat) {
+                return acc;
+              }
 
-          return {
-            added: acc.added + summary.changeStat.added,
-            removed: acc.removed + summary.changeStat.removed,
-          };
-        },
-        { added: 0, removed: 0 },
-      ),
-    [rawFileSummaries],
+              return {
+                added: acc.added + summary.changeStat.added,
+                removed: acc.removed + summary.changeStat.removed,
+              };
+            },
+            { added: 0, removed: 0 },
+          ),
+    [fileGroup, rawFileSummaries],
   );
   const diffCount = useMemo(
     () =>
@@ -139,18 +167,23 @@ export function EditToolCallBlock(context: ToolCallBlockRenderContext) {
     [context.animateDiffCountOnMount, totalChangeStat],
   );
   const kindLabel = intl.formatMessage({
-    id: getEditKindLabelMessageId(
-      rawFileSummaries.map((summary) => summary.operationKind),
-      rawFileSummaries.map((summary) => summary.actionLabel),
-      isRunning,
-      {
-        kind: toolCall.kind,
-        title: toolCall.title,
-        input: toolCall.input,
-        output: toolCall.output,
-        raw: toolCall.raw,
-      } satisfies EditKindSource,
-    ),
+    id:
+      fileGroup && hasMultipleFiles
+        ? isRunning
+          ? "chat.toolCall.edit.editing"
+          : "chat.toolCall.kind.edit"
+        : getEditKindLabelMessageId(
+            rawFileSummaries.map((summary) => summary.operationKind),
+            rawFileSummaries.map((summary) => summary.actionLabel),
+            isRunning,
+            {
+              kind: toolCall.kind,
+              title: toolCall.title,
+              input: toolCall.input,
+              output: toolCall.output,
+              raw: toolCall.raw,
+            } satisfies EditKindSource,
+          ),
   });
   const layoutConfig = hasMultipleFiles
     ? {
@@ -161,17 +194,17 @@ export function EditToolCallBlock(context: ToolCallBlockRenderContext) {
     : EDIT_SINGLE_LAYOUT;
   const expandedPrimaryText = useMemo(
     () =>
-      rawFileSummaries.length > 1 ? (
+      hasMultipleFiles ? (
         <span>
           {intl.formatMessage(
             { id: "chat.toolCall.edit.multipleFiles" },
-            { count: String(rawFileSummaries.length) },
+            { count: String(totalFiles) },
           )}
         </span>
       ) : (
         primaryText
       ),
-    [intl, primaryText, rawFileSummaries.length],
+    [hasMultipleFiles, intl, primaryText, totalFiles],
   );
   const singleFileInlinePreview = buildEditInlinePreview(
     rawFileSummaries.length === 1 ? (rawFileSummaries[0] ?? null) : null,
@@ -179,7 +212,7 @@ export function EditToolCallBlock(context: ToolCallBlockRenderContext) {
   const handleLoadFullToolCallFields = context.onLoadFullToolCallFields;
   const renderContent = useCallback(
     () =>
-      rawFileSummaries.length === 0 ? (
+      rawFileSummaries.length === 0 && !fileGroup ? (
         // Fallback for edit tools without raw file summaries (e.g., failed edits)
         <>
           <ToolCallBody
@@ -195,6 +228,7 @@ export function EditToolCallBlock(context: ToolCallBlockRenderContext) {
           />
           <ToolSnapshotFieldNotice
             refs={toolCall.snapshotRefs ?? []}
+            autoLoadWhenMounted
             onLoadFullToolCallFields={
               handleLoadFullToolCallFields
                 ? () => handleLoadFullToolCallFields(toolCall.toolId)
@@ -231,8 +265,17 @@ export function EditToolCallBlock(context: ToolCallBlockRenderContext) {
                   sourceLabel={context.sourceLabel}
                 />
               ))}
+              {omittedFiles > 0 ? (
+                <p className="text-ui-xs text-foreground-subtle">
+                  {intl.formatMessage(
+                    { id: "chat.toolCall.edit.omittedFiles" },
+                    { count: omittedFiles },
+                  )}
+                </p>
+              ) : null}
               <ToolSnapshotFieldNotice
                 refs={toolCall.snapshotRefs ?? []}
+                autoLoadWhenMounted
                 onLoadFullToolCallFields={
                   handleLoadFullToolCallFields
                     ? () => handleLoadFullToolCallFields(toolCall.toolId)
@@ -251,6 +294,20 @@ export function EditToolCallBlock(context: ToolCallBlockRenderContext) {
                   codePreviewSettings={context.codePreviewSettings}
                 />
               ) : null}
+              {rawFileSummaries[0]?.truncated ? (
+                <p className="text-ui-xs text-foreground-subtle">
+                  {intl.formatMessage({
+                    id: "chat.toolCall.edit.previewTruncated",
+                  })}
+                </p>
+              ) : null}
+              {!singleFileInlinePreview && !context.childToolList ? (
+                <p className="text-ui-xs text-foreground-subtle">
+                  {intl.formatMessage({
+                    id: "chat.toolCall.edit.previewUnavailable",
+                  })}
+                </p>
+              ) : null}
               <ToolCallBody
                 childToolList={context.childToolList}
                 displayModel={context.displayModel}
@@ -267,6 +324,7 @@ export function EditToolCallBlock(context: ToolCallBlockRenderContext) {
               />
               <ToolSnapshotFieldNotice
                 refs={toolCall.snapshotRefs ?? []}
+                autoLoadWhenMounted
                 onLoadFullToolCallFields={
                   handleLoadFullToolCallFields
                     ? () => handleLoadFullToolCallFields(toolCall.toolId)
@@ -291,8 +349,11 @@ export function EditToolCallBlock(context: ToolCallBlockRenderContext) {
       errorText,
       handleLoadFullToolCallFields,
       hasMultipleFiles,
+      fileGroup,
+      intl,
       isFailed,
       isRunning,
+      omittedFiles,
       rawFileSummaries,
       singleFileInlinePreview,
       toolCall,
@@ -378,8 +439,13 @@ function EditFileSummaryBlock({
       return;
     }
 
-    onOpenCodeViewer(buildEditCodeViewerSource(summary));
-  }, [onOpenCodeViewer, summary]);
+    onOpenCodeViewer(
+      buildEditCodeViewerSource(
+        summary,
+        intl.formatMessage({ id: "chat.toolCall.edit.partialDiff" }),
+      ),
+    );
+  }, [intl, onOpenCodeViewer, summary]);
   const primaryText = useMemo(
     () =>
       renderFileChip({
@@ -411,6 +477,18 @@ function EditFileSummaryBlock({
             codePreviewSettings={codePreviewSettings}
           />
         ) : null}
+        {summary.truncated ? (
+          <p className="text-ui-xs text-foreground-subtle">
+            {intl.formatMessage({ id: "chat.toolCall.edit.previewTruncated" })}
+          </p>
+        ) : null}
+        {!inlinePreviewOverride && !childToolList ? (
+          <p className="text-ui-xs text-foreground-subtle">
+            {intl.formatMessage({
+              id: "chat.toolCall.edit.previewUnavailable",
+            })}
+          </p>
+        ) : null}
         <ToolCallBody
           childToolList={childToolList}
           displayModel={displayModel}
@@ -432,11 +510,13 @@ function EditFileSummaryBlock({
       codePreviewSettings,
       displayModel,
       inlinePreviewOverride,
+      intl,
       onOpenBrowserUrl,
       onOpenCodeViewer,
       onOpenFileLink,
       theme,
       toolCall,
+      summary.truncated,
       workspacePath,
     ],
   );

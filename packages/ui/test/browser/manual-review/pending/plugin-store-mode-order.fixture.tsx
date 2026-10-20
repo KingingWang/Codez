@@ -23,7 +23,7 @@ const broadcast: IBroadcastService = {
 const store = createCodezStore(broadcast);
 store.getState().setInterfaceMode("coding");
 store.getState().setTheme(params.get("theme") === "light" ? "light" : "dark");
-const official = "zcode-plugins-official";
+const official = "codez-plugins-official";
 function item(name: string, category: string, marketplace = official): StorePluginItem {
   return {
     id: `${name}@${marketplace}`,

@@ -77,6 +77,47 @@ export function collectTerminalTaskNotificationPayloads(params: {
   return payloads;
 }
 
+/**
+ * sessions-index 只含脱敏交互摘要。用上一个 live frame 检测新请求，不读取后台
+ * conversation snapshot；当前可见会话由自己的 dialog/通知 hook 负责。
+ */
+export function collectBackgroundInteractionNotificationPayloads(params: {
+  previousBySessionId: ReadonlyMap<string, SessionSummary>;
+  sessions: readonly SessionSummary[];
+  activeTaskId: string | null;
+  viewingActiveTask: boolean;
+  formatMessage: FormatMessage;
+}): TaskNotificationPayload[] {
+  const payloads: TaskNotificationPayload[] = [];
+  for (const session of params.sessions) {
+    const interaction = session.pendingInteraction;
+    if (!interaction) continue;
+    if (params.viewingActiveTask && session.sessionId === params.activeTaskId) continue;
+    if (
+      params.previousBySessionId.get(session.sessionId)?.pendingInteraction?.interactionId ===
+      interaction.interactionId
+    ) {
+      continue;
+    }
+    const isPlanApproval =
+      interaction.kind === "userInput" && interaction.toolName === "ExitPlanMode";
+    const titleId =
+      interaction.kind === "permission"
+        ? "notification.permissionRequired"
+        : isPlanApproval
+          ? "notification.planApprovalRequired"
+          : "notification.inputRequired";
+    payloads.push({
+      taskId: session.sessionId,
+      requestId: interaction.interactionId,
+      status: interaction.kind === "permission" ? "permission_request" : "elicitation_request",
+      title: params.formatMessage({ id: titleId }),
+      body: taskTitleBody(session.title, "notification.taskWaiting", params.formatMessage),
+    });
+  }
+  return payloads;
+}
+
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

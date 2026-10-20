@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "caseName": "conversation-session-ssh-runtime-key",
+  "spec": "./test/e2e/conversation-session/conversation-session-ssh-runtime-key.test.ts",
+  "fixtures": [
+    {
+      "id": "ssh-runtime-key-title",
+      "description": "远端任务标题请求固定回复。",
+      "metadata": {
+        "kind": "common",
+        "timingPolicy": "fast-text",
+        "source": "synthetic",
+        "syntheticReason": "标题不属于临时 Key 语义，只需避免辅助请求命中主响应。"
+      },
+      "match": {
+        "method": "POST",
+        "pathIncludes": "/chat/completions",
+        "bodyIncludes": ["Generate a concise title", "E2E_ENVKEY_SSH_FIRST_PROMPT"]
+      },
+      "response": {
+        "statusCode": 200,
+        "headers": { "content-type": "text/event-stream; charset=utf-8" },
+        "body": "data: {\"id\":\"chatcmpl-envkey-title\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"e2e-envkey-ssh-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"{\\\"title\\\":\\\"SSH runtime key\\\"}\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-envkey-title\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"e2e-envkey-ssh-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":32,\"completion_tokens\":8,\"total_tokens\":40}}\n\ndata: [DONE]\n\n"
+      }
+    },
+    {
+      "id": "ssh-runtime-key-first",
+      "description": "远端首发通过本机临时 Key 鉴权代理后固定回复。",
+      "metadata": {
+        "kind": "main",
+        "timingPolicy": "fast-text",
+        "source": "synthetic",
+        "syntheticReason": "用真实 HTTP 鉴权代理校验 Key，模型回复使用稳定 replay 数据。"
+      },
+      "match": {
+        "method": "POST",
+        "pathIncludes": "/chat/completions",
+        "lastUserMessageIncludes": ["E2E_ENVKEY_SSH_FIRST_PROMPT"],
+        "bodyIncludes": ["E2E_ENVKEY_SSH_FIRST_REPLY"],
+        "bodyExcludes": ["Generate a concise title"]
+      },
+      "response": {
+        "statusCode": 200,
+        "headers": { "content-type": "text/event-stream; charset=utf-8" },
+        "body": "data: {\"id\":\"chatcmpl-envkey-first\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"e2e-envkey-ssh-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"E2E_ENVKEY_SSH_FIRST_REPLY\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-envkey-first\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"e2e-envkey-ssh-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":32,\"completion_tokens\":8,\"total_tokens\":40}}\n\ndata: [DONE]\n\n"
+      }
+    }
+  ]
+}

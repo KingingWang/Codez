@@ -167,7 +167,8 @@ function getRemoteWorkspaceAuthorityKey(target: RemoteTarget | RemoteTargetSnaps
       // WSL 默认用户与 root/其他显式用户的文件权限边界不同，
       // workspace identity 必须区分显式 user，避免 session、缓存和队列串用。
       const user = getWslRemoteTargetUser(target);
-      const base = ["wsl", target.distro ?? "default"];
+      const distro = target.distro?.trim() || "default";
+      const base = ["wsl", distro];
       return user ? [...base, user].join(":") : base.join(":");
     }
     case "docker":

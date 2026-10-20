@@ -128,7 +128,7 @@ describe("Skill integration", () => {
       ...skillOutcome.skills[0]!,
       name: "pptx",
       pluginName: "document-skills",
-      pluginId: "document-skills@zcode-plugins-official",
+      pluginId: "document-skills@codez-plugins-official",
       qualifiedName: "document-skills:pptx",
       source: "plugin" as const,
     };
@@ -159,7 +159,7 @@ describe("Skill integration", () => {
       {
         name: "pptx",
         qualifiedName: "document-skills:pptx",
-        pluginId: "document-skills@zcode-plugins-official",
+        pluginId: "document-skills@codez-plugins-official",
         source: "plugin",
       },
     ]);
