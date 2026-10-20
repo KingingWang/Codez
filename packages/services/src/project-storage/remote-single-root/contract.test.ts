@@ -32,12 +32,20 @@ describe("remote project single-root authority", () => {
   it("rejects unclassified, foreign-root and extra-directory admission without inserting rows", async () => {
     const { repo, db } = await remoteFixture();
     const project = repo.saveProject({ roots: ["/a"] });
-    const task = { taskId: "new", workspacePath: "/a", workspaceIdentity: `${hostId}:/a` };
+    const task = {
+      taskId: "new",
+      workspacePath: "/a",
+      workspaceIdentity: `${hostId}:/a`,
+    };
     expect(() => repo.reserveCreatedTask({ task, projectId: null })).toThrow(
       "project.remote-project-required",
     );
     expect(() =>
-      repo.reserveCreatedTask({ task, projectId: project.id, additionalDirectories: ["/b"] }),
+      repo.reserveCreatedTask({
+        task,
+        projectId: project.id,
+        additionalDirectories: ["/b"],
+      }),
     ).toThrow("project.remote-single-root-required");
     expect(() =>
       repo.reserveCreatedTask({
@@ -59,7 +67,11 @@ describe("remote project single-root authority", () => {
     const first = repo.saveProject({ roots: ["/a"] });
     const same = repo.saveProject({ roots: ["/a"] });
     const other = repo.saveProject({ roots: ["/b"] });
-    const task = { taskId: "task", workspacePath: "/a", workspaceIdentity: `${hostId}:/a` };
+    const task = {
+      taskId: "task",
+      workspacePath: "/a",
+      workspaceIdentity: `${hostId}:/a`,
+    };
     repo.reserveCreatedTask({ task, projectId: first.id });
     expect(() => repo.moveTask({ task, projectId: other.id, addMissingRoot: true })).toThrow(
       "project.cwd-not-in-roots",
@@ -72,5 +84,61 @@ describe("remote project single-root authority", () => {
       workspacePath: "/a",
       additionalDirectories: [],
     });
+  });
+
+  it("reads existing unclassified history through an online single-root project without assigning it", async () => {
+    const { repo, db } = await remoteFixture();
+    const project = repo.saveProject({ roots: ["/a"] });
+    const task = {
+      taskId: "external-history",
+      workspacePath: "/a",
+      workspaceIdentity: `${hostId}:/a`,
+    };
+    repo.reserveCreatedTask({ task, projectId: project.id });
+    // 修复依据：外部 Codex 历史只有 CLI 事实，未携带 Codez 项目 ID；模拟首次发现后的合法 NULL 归属。
+    db.prepare("UPDATE tasks SET project_id=NULL,cli_created_at=1 WHERE task_id=?").run(
+      task.taskId,
+    );
+    repo.saveProject({ roots: ["/a"] });
+    expect(repo.resolveSessionDirectories(task)).toEqual({
+      workspacePath: "/a",
+      projectId: null,
+      additionalDirectories: [],
+    });
+    expect(
+      db.prepare("SELECT project_id FROM tasks WHERE task_id=?").get(task.taskId)?.project_id,
+    ).toBeNull();
+    expect(() =>
+      repo.resolveSessionDirectories({
+        ...task,
+        workspaceIdentity: `${hostId}:/elsewhere`,
+      }),
+    ).toThrow("project.remote-project-required");
+    repo.deleteProject(project.id);
+    // 另一同目录项目在线，旧会话仍可只读打开；最后一个也移除后才失去恢复资格。
+    expect(repo.resolveSessionDirectories(task).projectId).toBeNull();
+  });
+
+  it("rejects remote unclassified history without an indexed CLI row or an active matching project", async () => {
+    const { repo, db } = await remoteFixture();
+    const project = repo.saveProject({ roots: ["/a"] });
+    const task = {
+      taskId: "external-history",
+      workspacePath: "/a",
+      workspaceIdentity: `${hostId}:/a`,
+    };
+    expect(() => repo.resolveSessionDirectories(task)).toThrow("project.remote-project-required");
+    repo.reserveCreatedTask({ task, projectId: project.id });
+    db.prepare("UPDATE tasks SET project_id=NULL WHERE task_id=?").run(task.taskId);
+    expect(() => repo.resolveSessionDirectories(task)).toThrow("project.remote-project-required");
+    db.prepare(
+      "UPDATE tasks SET cli_created_at=1,execution_directories='[\"/b\"]' WHERE task_id=?",
+    ).run(task.taskId);
+    expect(() => repo.resolveSessionDirectories(task)).toThrow(
+      "project.remote-single-root-required",
+    );
+    db.prepare("UPDATE tasks SET execution_directories='[]' WHERE task_id=?").run(task.taskId);
+    repo.deleteProject(project.id);
+    expect(() => repo.resolveSessionDirectories(task)).toThrow("project.remote-project-required");
   });
 });

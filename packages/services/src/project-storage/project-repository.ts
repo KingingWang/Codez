@@ -92,22 +92,35 @@ function resolveDirectories(
   const workspacePath = row ? String(row.root_path) : task.workspacePath;
   const project = row?.project_id ? requireProject(db, String(row.project_id)) : null;
   if (project && row?.host_id !== project.hostId) throw new Error("project.host-mismatch");
-  assertRemoteTaskDirectories(
-    ownerHostId,
-    project,
-    workspacePath,
+  const additionalDirectories =
     typeof row?.execution_directories === "string"
       ? executionDirectoriesSchema.parse(JSON.parse(row.execution_directories))
-      : [],
-  );
+      : (project?.roots.map((root) => root.rootPath).filter((path) => path !== workspacePath) ??
+        []);
+  if (
+    ownerHostId !== "local" &&
+    !project &&
+    row?.cli_created_at != null &&
+    row.deleted === 0 &&
+    (row.cli_deleted == null || row.cli_deleted === 0) &&
+    workspacePath === task.workspacePath &&
+    readProjects(db, false).some(
+      (candidate) =>
+        candidate.hostId === ownerHostId &&
+        candidate.roots.length === 1 &&
+        candidate.roots[0]?.rootPath === workspacePath,
+    )
+  ) {
+    // 修复原因：已索引的外部 Codex 历史可以在同目录远端项目的只读视图中打开，
+    // 但 project_id=NULL 是已裁决的组织态，不能为了恢复把它改写或绕开创建门禁。
+    if (additionalDirectories.length > 0) throw new Error("project.remote-single-root-required");
+    return { workspacePath, projectId: null, additionalDirectories };
+  }
+  assertRemoteTaskDirectories(ownerHostId, project, workspacePath, additionalDirectories);
   return {
     workspacePath,
     projectId: project?.id ?? null,
-    additionalDirectories:
-      typeof row?.execution_directories === "string"
-        ? executionDirectoriesSchema.parse(JSON.parse(row.execution_directories))
-        : (project?.roots.map((root) => root.rootPath).filter((path) => path !== workspacePath) ??
-          []),
+    additionalDirectories,
   };
 }
 
@@ -165,9 +178,11 @@ export class ProjectRepository implements ProjectRepositoryContract {
       // 2026-09-15 裁决：纯按 CLI 最后活动时间归档，不再看 last_outcome 与未读；
       // 只有置顶和 syncer 观察到的运行中会话除外。旧判据把 error / 无结果的老会话永远留在列表里。
       const candidates = this.db
-        .prepare(`SELECT workspace_key,workspace_path,workspace_identity,task_id FROM tasks
+        .prepare(
+          `SELECT workspace_key,workspace_path,workspace_identity,task_id FROM tasks
         WHERE archived=0 AND pinned=0 AND deleted=0 AND coalesce(cli_deleted,0)=0
-        AND cli_updated_at < ? AND host_id=?`)
+        AND cli_updated_at < ? AND host_id=?`,
+        )
         .all(input.cutoff, this.ownerHostId ?? "local");
       const result: ProjectTaskRef[] = [];
       for (const row of candidates) {
@@ -202,9 +217,11 @@ export class ProjectRepository implements ProjectRepositoryContract {
       ...(options?.includeDeletedTasks
         ? {
             deletedTasks: this.db
-              .prepare(`
+              .prepare(
+                `
         SELECT task_id AS taskId,workspace_path AS workspacePath,workspace_identity AS workspaceIdentity,host_id AS hostId
-        FROM tasks WHERE host_id=? AND (deleted=1 OR coalesce(cli_deleted,0)=1)`)
+        FROM tasks WHERE host_id=? AND (deleted=1 OR coalesce(cli_deleted,0)=1)`,
+              )
               .all(this.ownerHostId ?? "local")
               .map((row) => ({
                 taskId: String(row.taskId),
@@ -270,10 +287,12 @@ export class ProjectRepository implements ProjectRepositoryContract {
       const now = Date.now();
       // 原先用 max(position)+1 导致新建项目落在末尾；同一 Host 写事务内取最小值减一，保留已有顺序。
       this.db
-        .prepare(`INSERT INTO projects(project_id,host_id,name,name_overridden,position,pinned,pinned_at,created_at,updated_at)
+        .prepare(
+          `INSERT INTO projects(project_id,host_id,name,name_overridden,position,pinned,pinned_at,created_at,updated_at)
         VALUES(?,?,?,?,(SELECT coalesce(min(position),1)-1 FROM projects WHERE host_id=?),?,?,?,?)
         ON CONFLICT(project_id) DO UPDATE SET name=excluded.name,name_overridden=excluded.name_overridden,
-        pinned=excluded.pinned,pinned_at=excluded.pinned_at,deleted=0,deleted_at=NULL,updated_at=excluded.updated_at`)
+        pinned=excluded.pinned,pinned_at=excluded.pinned_at,deleted=0,deleted_at=NULL,updated_at=excluded.updated_at`,
+        )
         .run(
           id,
           hostId,
@@ -398,8 +417,10 @@ export class ProjectRepository implements ProjectRepositoryContract {
         }
         // 创建归属必须先于 CLI 首发；空事实不是假会话，列表只读取已有 CLI 事实的行。
         this.db
-          .prepare(`INSERT INTO tasks(workspace_key,workspace_path,workspace_identity,task_id,created_at,updated_at,host_id,root_path,project_id,handoff_pending,execution_directories)
-          VALUES(?,?,?,?,0,0,?,?,?,?,?)`)
+          .prepare(
+            `INSERT INTO tasks(workspace_key,workspace_path,workspace_identity,task_id,created_at,updated_at,host_id,root_path,project_id,handoff_pending,execution_directories)
+          VALUES(?,?,?,?,0,0,?,?,?,?,?)`,
+          )
           .run(
             key,
             input.task.workspacePath,

@@ -82,14 +82,22 @@ export function compareProjectTaskRows(
   );
 }
 
-/** 单目录本地项目是目录视图；多目录及远端项目仍只认 Host 的明确归属。 */
+/** 单目录项目是同 Host 的目录视图；多目录项目仍只认 Host 的明确归属。 */
 export function taskVisibleInProject(
   task: ProjectTask,
   project: Pick<VirtualProject, "id" | "hostId" | "roots">,
 ): boolean {
   if (task.hostId !== project.hostId) return false;
-  if (project.hostId === "local" && project.roots.length === 1)
-    return task.workspacePath === project.roots[0]!.rootPath;
+  // 修复原因：远端 Codex 历史已按 workspace 身份写入远端 Host 索引，但首次发现的
+  // NULL 项目归属不能回填；与本地单目录一样按 Host 和 cwd 只读展示，不改 task 行。
+  if (project.roots.length === 1) {
+    const rootPath = project.roots[0]!.rootPath;
+    return (
+      task.workspacePath === rootPath &&
+      (project.hostId === "local" ||
+        task.workspaceIdentity === buildRemoteHostWorkspaceIdentity(project.hostId, rootPath))
+    );
+  }
   return task.projectId === project.id;
 }
 

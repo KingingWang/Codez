@@ -18,8 +18,8 @@ Host 项目组织态的持久化升级。调用者持有 app SQLite 连接，CLI
 Codex 原生新会话的 `threadSource` 可带 Host 校验过的初始项目 ID 或显式 NULL，
 Host 在拿到原生分配的 `sessionId`（新建或 fork）后立即预留空事实归属行，保证紧随其后的会话订阅在远端必选项目校验下立即可读；若摘要先到达或重建索引，`admitTaskIdentity` 只在 `host_id IS NULL` 的第一次插入时使用 `threadSource`；项目缺失/跨 Host
 拒绝，不按同 cwd 猜多目录归属。已有行或用户移动后的 `project_id` 永不被重新写入。
-本地单 root 的全目录历史只是项目树消费端的只读视图，不建第二条 task 行，
-不改变一次性 F3 判定与远端单 root 的显式归属。见
+本地与远端单 root 的全目录历史只是项目树消费端的只读视图，不建第二条 task 行，
+不改变一次性 F3 判定。远端创建仍要求显式归属。见
 `specs/codex-desktop-adapter.md`。
 
 新建项目在原写事务内分配同 Host 的最小 position 减一（空集合为 0），排在已有项目之前；编辑/恢复不改 position。position 保留为首次显示的初始化依据；控制端拖拽使用侧栏偏好，不向远端调用 reorderProjects。既有行不重排，不增加迁移。
@@ -37,5 +37,10 @@ Host 在拿到原生分配的 `sessionId`（新建或 fork）后立即预留空�
 ## 2026-10-10 远程单目录合同
 
 本地仍允许 0..n roots；可信 ownerHostId 非 local 的持库宿主只允许恰好一个固定 root。远程创建必须有项目，prepareSession、reserveCreatedTask 与 moveTask 不得产生无归属或附加目录；根路径更新和缺 root 拖动在写事务中拒绝。客户端 hostId 不能改变持库身份。历史迁移数据不被裁剪，失败不得部分写入。
+
+远程单 root 项目只读展示同 Host、同 canonical workspace identity 与 cwd 的既有历史，
+包括未归属行。远程无归属历史的目录解析仅对已经落 CLI 事实的现有 task 开放，
+并要求当前 Host 有未删除的同目录单 root 项目；缺行、跨 Host、非单 root、
+执行附加目录仍拒绝。解析不修改 task 的 `project_id`、cwd 或 Codex 原生 roots。
 
 启动入口复用 session 模块公开的旧 Repo 与迁移适配器：先 SQL 迁移并提交，再逐一 ensureReady/close，最后标记 prepared。Worker 必须注入旧 settings 以完成首次项目导入；进度复制迁移事实，失败不撤回已提交计数。storage-startup 子路径保持不变。
