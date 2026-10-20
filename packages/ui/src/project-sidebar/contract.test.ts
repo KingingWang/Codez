@@ -59,11 +59,17 @@ describe("project-sidebar read contract", () => {
       }),
     ).toBeUndefined();
     expect(
-      resolveEntryProject(entry, { projects: [project, { ...project, id: "two" }], tasks: [] }),
+      resolveEntryProject(entry, {
+        projects: [project, { ...project, id: "two" }],
+        tasks: [],
+      }),
     ).toBeUndefined();
   });
   it("joins only retained remote projects and does not retain offline task facts", () => {
-    const local: ProjectTree = { projects: [], tasks: [task("local", null, 1)] };
+    const local: ProjectTree = {
+      projects: [],
+      tasks: [task("local", null, 1)],
+    };
     const remoteTask = { ...task("remote", "p", 9), hostId: "remote:server:s" };
     const directory = {
       hosts: [
@@ -126,9 +132,11 @@ describe("project-sidebar read contract", () => {
       tasks: [task("local", "p", 1), { ...task("remote", "p", 2), hostId: "remote:server:s" }],
     };
     expect(
-      selectProjectRows(tree, { kind: "project", projectId: "p", hostId: "local" }).map(
-        (row) => row.taskId,
-      ),
+      selectProjectRows(tree, {
+        kind: "project",
+        projectId: "p",
+        hostId: "local",
+      }).map((row) => row.taskId),
     ).toEqual(["local"]);
   });
   it("retains missing-summary rows, NULL ownership and deleted project history", () => {
@@ -193,15 +201,45 @@ describe("project-sidebar read contract", () => {
         localProject("multi-ab", ["/a", "/b"]),
         localProject("multi-ac", ["/a", "/c"]),
         { ...localProject("remote-a", ["/a"]), hostId: "remote:server:s" },
+        { ...localProject("remote-b", ["/a"]), hostId: "remote:server:s" },
+        { ...localProject("foreign-a", ["/a"]), hostId: "remote:server:other" },
       ],
       tasks: [
         { ...task("cli-a", null, 8), workspacePath: "/a", unreadAt: 5 },
         { ...task("codez-ab", "multi-ab", 7), workspacePath: "/a" },
         { ...task("codez-ac", "multi-ac", 6), workspacePath: "/a" },
         { ...task("cli-b", null, 5), workspacePath: "/b" },
-        { ...task("pinned-a", "multi-ab", 4), workspacePath: "/a", pinned: true },
+        {
+          ...task("pinned-a", "multi-ab", 4),
+          workspacePath: "/a",
+          pinned: true,
+        },
         { ...task("archived-a", null, 3), workspacePath: "/a", archived: true },
-        { ...task("remote-a", "remote-a", 2), workspacePath: "/a", hostId: "remote:server:s" },
+        {
+          ...task("remote-a", "remote-a", 2),
+          workspacePath: "/a",
+          workspaceIdentity: "remote:server:s:/a",
+          hostId: "remote:server:s",
+        },
+        {
+          ...task("remote-cli-a", null, 3),
+          workspacePath: "/a",
+          workspaceIdentity: "remote:server:s:/a",
+          hostId: "remote:server:s",
+          unreadAt: 4,
+        },
+        {
+          ...task("stale-identity-a", null, 3),
+          workspacePath: "/a",
+          workspaceIdentity: "remote:server:other:/a",
+          hostId: "remote:server:s",
+        },
+        {
+          ...task("foreign-cli-a", null, 3),
+          workspacePath: "/a",
+          workspaceIdentity: "remote:server:other:/a",
+          hostId: "remote:server:other",
+        },
       ],
     };
     const rows = (id: string, hostId = "local") =>
@@ -210,18 +248,28 @@ describe("project-sidebar read contract", () => {
     expect(rows("single-b")).toEqual(["cli-b"]);
     expect(rows("multi-ab")).toEqual(["codez-ab"]);
     expect(rows("multi-ac")).toEqual(["codez-ac"]);
-    expect(rows("remote-a", "remote:server:s")).toEqual(["remote-a"]);
+    expect(rows("remote-a", "remote:server:s")).toEqual(["remote-cli-a", "remote-a"]);
+    expect(rows("remote-b", "remote:server:s")).toEqual(["remote-cli-a", "remote-a"]);
+    expect(rows("foreign-a", "remote:server:other")).toEqual(["foreign-cli-a"]);
     expect(
-      selectProjectRows(tree, { kind: "project", projectId: null }).map((row) => row.taskId),
+      selectProjectRows(tree, {
+        kind: "project",
+        projectId: null,
+        hostId: "local",
+      }).map((row) => row.taskId),
     ).toEqual(["cli-a", "cli-b"]);
-    expect(selectProjectRows(tree, { kind: "timeline" })).toHaveLength(6);
+    expect(selectProjectRows(tree, { kind: "timeline" })).toHaveLength(9);
     expect(selectProjectRows(tree, { kind: "pinned" }).map((row) => row.taskId)).toEqual([
       "pinned-a",
     ]);
     expect(projectHasUnread(tree, tree.projects[0]!)).toBe(true);
+    expect(projectHasUnread(tree, tree.projects[4]!)).toBe(true);
+    expect(tree.tasks.find((row) => row.taskId === "remote-cli-a")?.projectId).toBeNull();
     expect(tree.tasks.find((row) => row.taskId === "cli-a")?.projectId).toBeNull();
     expect(
-      buildArchiveGroups(tree, { project: JSON.stringify(["local", "single-a"]) })
+      buildArchiveGroups(tree, {
+        project: JSON.stringify(["local", "single-a"]),
+      })
         .flatMap((group) => group.tasks)
         .map((row) => row.taskId),
     ).toEqual(["archived-a"]);

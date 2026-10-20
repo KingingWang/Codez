@@ -63,12 +63,13 @@ before normalizing internal cwd inputs. Never normalize or equate explicit works
 identities based on filesystem equality. Missing paths and foreign identities fail
 closed, and native config/skills/plugin requests stay on the canonical execution cwd.
 
-### Local project folders and native history
+### Single-folder projects and native history
 
 Project organization remains Host-owned (`tasks-index.sqlite`); Codex owns each
-thread's immutable execution cwd, history and runtime workspace roots. A local
-single-folder project with root A is a read-only directory view: its task rows
-include every indexed, non-deleted native thread on the same Host whose physical
+thread's immutable execution cwd, history and runtime workspace roots. A
+single-folder project with root A is a read-only directory view, both locally
+and on an online remote Host: its task rows include every indexed, non-deleted
+native thread on that Host and workspace identity whose physical
 cwd is A, including pre-existing CLI/Desktop threads, unclassified threads and
 threads explicitly assigned to an A+B project. Creating the project never rewrites
 the threads' `project_id`, cwd or history. Archived threads remain archived; pin,
@@ -107,7 +108,13 @@ resolution; a native fork records the parent's **current Host assignment**
 runtime roots inherit the parent until the next cold resume.
 An unclassified/external thread leaves the native parameter absent so its
 Codex-persisted roots are preserved, including when it is opened from the A
-single-folder view. Project deletion keeps historical roots resolvable; changing
+single-folder view. An online remote Host may read an existing indexed,
+unclassified thread only when its authorized workspace identity and cwd match
+an undeleted single-root project on that Host. This read-only exception never
+permits a projectless remote creation, an unindexed session, extra execution
+directories or cross-Host access; the task's `project_id` remains NULL. Two
+remote projects with the same root may each display that one task row. Project
+deletion keeps historical roots resolvable; changing
 roots affects the next cold load, never the stored cwd. The primary cwd alone
 governs AGENTS/config discovery; the other roots are file-access roots, not
 additional configuration roots. The native API requires absolute paths, and
@@ -132,8 +139,13 @@ A/B tasks appear only in single-root A/B views; create two A+B projects sharing
 A and prove neither captures the other's tasks. Check native start/cold resume
 parameters, B access and A-only config, edited roots after process restart,
 external native A+B roots when opened from A, and desktop/mobile projection
-equivalence. Remote projects remain fixed single-root Host memberships; do not
-project arbitrary remote cwd or change remote attachment identity.
+equivalence. Remote projects remain fixed single-root execution targets, not
+fixed-membership views: scan external history on explicit activation, then
+project only the matching Host, canonical workspace identity and directory.
+Opening the external thread must succeed without rewriting its project
+assignment or native roots. A second remote project on the same Host and root
+shows the same row without duplication; another remote Host with the same path
+shows none of its threads. Multi-root projects retain explicit membership.
 
 ## Runtime contract
 
@@ -847,7 +859,12 @@ existing index subscribers refresh → native thread/list
                                                           ↓
 remote task-index syncer → insert missing shell metadata → workspace list invalidation
                                                           ↓
-Window Host task membership + native live details → project sidebar
+Window Host task membership + native live details → single-root directory view
+                                                          ↓
+user opens unclassified history → remote Host validates indexed task, workspace
+ identity, live single-root project and cwd → native resume without roots override
+                                     ├─ desktop continuous: existing Host attachment
+                                     └─ mobile replayable: same session, snapshot + replay
 ```
 
 The remote task-index syncer is the only shell-index writer. Initial discovery
