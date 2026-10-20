@@ -50,6 +50,8 @@ const { layerMock, sendCommandMock } = vi.hoisted(() => ({
   ),
 }));
 
+const composerPropsSpy = vi.hoisted(() => vi.fn());
+
 const projectionState = vi.hoisted(() => ({
   current: null as {
     status: "live";
@@ -149,7 +151,10 @@ vi.mock("@/v4/composer/useDraftSessionPrewarm.js", () => ({
 vi.mock("@/v4/ConversationComposer.js", async () => {
   const React = await import("react");
   return {
-    ConversationComposer: () => React.createElement("div", { "data-testid": "mock-composer" }),
+    ConversationComposer: (props: Record<string, unknown>) => {
+      composerPropsSpy(props);
+      return React.createElement("div", { "data-testid": "mock-composer" });
+    },
   };
 });
 
@@ -163,7 +168,8 @@ vi.mock("@/v4/ConversationHeader.js", async () => {
 vi.mock("@/v4/ConversationTimeline.js", async () => {
   const React = await import("react");
   return {
-    ConversationTimeline: () => React.createElement("div", { "data-testid": "mock-timeline" }),
+    ConversationTimeline: ({ bottomDock }: { bottomDock?: React.ReactNode }) =>
+      React.createElement("div", { "data-testid": "mock-timeline" }, bottomDock),
   };
 });
 
@@ -326,6 +332,7 @@ function makeSnapshot(): ConversationSnapshot {
 
 afterEach(() => {
   sendCommandMock.mockClear();
+  composerPropsSpy.mockClear();
   projectionState.current = null;
   vi.mocked(dispatchConversationSelectionAdd).mockClear();
   setSelectionSideChatBlocked("side-child", false);
@@ -431,6 +438,53 @@ describe("SessionPane followupMode app setting sync", () => {
       payload: { mode: "guide" },
       baseRevision: 7,
     });
+    expect(composerPropsSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        defaultFollowupIntent: "guide",
+      }),
+    );
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("passes guide app setting as defaultFollowupIntent on desktop without sending legacy setFollowupMode CAS", async () => {
+    projectionState.current = {
+      status: "live",
+      snapshot: makeSnapshot(),
+      subscriptionId: "sub-1",
+      lastError: null,
+      optimisticCommands: [],
+      loadingOlder: false,
+    };
+
+    const root: Root = createRoot(installMinimalDom());
+    await act(async () => {
+      root.render(
+        createElement(
+          CodezIntlProvider,
+          { initialLocale: "zh-CN" },
+          createElement(SessionPane, {
+            paneId: "workspace-main",
+            sessionId: "session-1",
+            workspacePath: "/workspace",
+            isDesktop: true,
+          }),
+        ),
+      );
+      await flushMicrotasks();
+    });
+
+    expect(sendCommandMock.mock.calls.some(([command]) => command.type === "setFollowupMode")).toBe(
+      false,
+    );
+    expect(composerPropsSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nativeCodexSession: true,
+        defaultFollowupIntent: "guide",
+      }),
+    );
 
     await act(async () => {
       root.unmount();
