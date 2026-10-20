@@ -8,10 +8,12 @@ function RetryStatus({
   httpStatusCode,
   attempt = null,
   maxRetries = null,
+  errorDetail = null,
 }: {
   httpStatusCode: number | null;
   attempt?: number | null;
   maxRetries?: number | null;
+  errorDetail?: string | null;
 }) {
   const { intl } = useCodezIntl();
   return (
@@ -19,6 +21,7 @@ function RetryStatus({
       httpStatusCode={httpStatusCode}
       attempt={attempt}
       maxRetries={maxRetries}
+      errorDetail={errorDetail}
       intl={intl}
     />
   );
@@ -68,4 +71,19 @@ test("Chinese retry without a native HTTP code remains localized and code-free",
   );
   assert.match(withCountsHtml, /模型请求正在重试… 2\/5/);
   assert.doesNotMatch(withCountsHtml, /HTTP|null|undefined/);
+});
+
+test("native retry details make the status a clickable latest-error trigger", () => {
+  const html = renderToStaticMarkup(
+    <CodezIntlProvider initialLocale="en-US">
+      <RetryStatus
+        httpStatusCode={429}
+        attempt={1}
+        maxRetries={5}
+        errorDetail='{"error":{"code":"rate_limit_reached"}}'
+      />
+    </CodezIntlProvider>,
+  );
+  assert.match(html, /data-testid="v4-codex-retry-status"/);
+  assert.match(html, /aria-label="Show latest retry error"/);
 });

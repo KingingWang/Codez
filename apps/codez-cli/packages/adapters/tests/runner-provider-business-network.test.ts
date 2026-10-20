@@ -72,6 +72,14 @@ describe("AiSdkModelAdapter provider business network retries", () => {
       reason: "network_error",
       statusCode: undefined,
       type: "model_retry_scheduled",
+      errorDetail: JSON.stringify({
+        error: {
+          code: PROVIDER_NETWORK_BUSINESS_CODE,
+          message: PROVIDER_NETWORK_MESSAGE,
+        },
+        request_id: PROVIDER_NETWORK_REQUEST_ID,
+        type: "error",
+      }),
     });
   });
 

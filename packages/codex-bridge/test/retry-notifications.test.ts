@@ -39,14 +39,14 @@ function retryNotification(
       willRetry: true,
       error: {
         message,
-        additionalDetails: "raw provider body must not enter UI",
+        additionalDetails: '{"error":{"code":"rate_limit_reached"}}',
         codexErrorInfo: { responseStreamDisconnected: { httpStatusCode } },
       },
     },
   };
 }
 
-test("native retry notification is turn-scoped, published and schema-valid without provider details", async () => {
+test("native retry notification is turn-scoped, published and schema-valid with bounded provider details", async () => {
   const store = runningStore();
   const before = store.get("thread-1")!.seq;
   await store.apply(retryNotification());
@@ -65,9 +65,10 @@ test("native retry notification is turn-scoped, published and schema-valid witho
     httpStatusCode: 503,
     attempt: 1,
     maxRetries: 5,
+    errorDetail: '{"error":{"code":"rate_limit_reached"}}',
   });
   assert.deepEqual(conversationSnapshotSchema.parse(snapshot), snapshot);
-  assert.equal(JSON.stringify(snapshot).includes("raw provider body"), false);
+  assert.equal(JSON.stringify(snapshot).includes("rate_limit_reached"), true);
   await store.apply(retryNotification());
   assert.equal(store.get("thread-1")!.seq, afterFirstSeq, "duplicate state is not re-published");
   await store.apply(retryNotification("thread-1", "turn-1", 503, "Reconnecting... 2/5"));
@@ -77,6 +78,7 @@ test("native retry notification is turn-scoped, published and schema-valid witho
     httpStatusCode: 503,
     attempt: 2,
     maxRetries: 5,
+    errorDetail: '{"error":{"code":"rate_limit_reached"}}',
   });
 });
 
@@ -84,7 +86,12 @@ test("unknown status stays unknown; terminal failures and first model progress c
   const store = runningStore();
   await store.apply({
     method: "error",
-    params: { threadId: "thread-1", turnId: "turn-1", willRetry: true, error: { message: "Retrying" } },
+    params: {
+      threadId: "thread-1",
+      turnId: "turn-1",
+      willRetry: true,
+      error: { message: "Retrying" },
+    },
   });
   assert.deepEqual(store.get("thread-1")!.apiRetry?.status, {
     source: "codex",
@@ -98,6 +105,7 @@ test("unknown status stays unknown; terminal failures and first model progress c
     httpStatusCode: null,
     attempt: 1,
     maxRetries: 5,
+    errorDetail: '{"error":{"code":"rate_limit_reached"}}',
   });
   await store.apply(retryNotification("thread-1", "turn-1", 403, "Retrying 5/1"));
   assert.deepEqual(store.get("thread-1")!.apiRetry?.status, {
@@ -105,6 +113,7 @@ test("unknown status stays unknown; terminal failures and first model progress c
     httpStatusCode: 403,
     attempt: null,
     maxRetries: null,
+    errorDetail: '{"error":{"code":"rate_limit_reached"}}',
   });
   await store.apply({
     method: "item/started",
