@@ -1,14 +1,7 @@
-import type {
-  BotConfig,
-  BotProviderCallbackResult,
-  BotsConfigFile,
-} from "@codez/shared";
+import type { BotConfig, BotProviderCallbackResult, BotsConfigFile } from "@codez/shared";
 import type { ICredentialService } from "../credential/credential.js";
 import type { BotProviderAdapter } from "./providers/types.js";
-import {
-  fetchBotProvider,
-  fetchBotProviderJson,
-} from "./providers/providerRequest.js";
+import { fetchBotProvider, fetchBotProviderJson } from "./providers/providerRequest.js";
 import {
   acquireTelegramPollingLock,
   assertBotCallbackSucceeded,
@@ -87,9 +80,7 @@ export function createTelegramChannelRuntime(deps: TelegramChannelRuntimeDeps) {
   }
 
   async function pollBot(bot: BotConfig, signal: AbortSignal): Promise<void> {
-    const token = bot.credentialRef
-      ? await deps.credentialService.load(bot.credentialRef)
-      : null;
+    const token = bot.credentialRef ? await deps.credentialService.load(bot.credentialRef) : null;
     if (!token?.trim()) {
       deps.statusSink.setRuntimeStatus({
         botId: bot.id,
@@ -138,15 +129,12 @@ export function createTelegramChannelRuntime(deps: TelegramChannelRuntimeDeps) {
       }
       try {
         try {
-          await fetchBotProvider(
-            `https://api.telegram.org/bot${token}/deleteWebhook`,
-            {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({ drop_pending_updates: false }),
-              signal,
-            },
-          );
+          await fetchBotProvider(`https://api.telegram.org/bot${token}/deleteWebhook`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ drop_pending_updates: false }),
+            signal,
+          });
         } catch {
           if (signal.aborted) {
             return;
@@ -164,21 +152,20 @@ export function createTelegramChannelRuntime(deps: TelegramChannelRuntimeDeps) {
 
         while (!signal.aborted) {
           const offset = await deps.readTelegramOffset(bot.id);
-          const response =
-            await fetchBotProviderJson<TelegramGetUpdatesResponse>(
-              `https://api.telegram.org/bot${token}/getUpdates`,
-              {
-                method: "POST",
-                headers: { "content-type": "application/json" },
-                body: JSON.stringify({
-                  timeout: 25,
-                  ...(offset !== undefined ? { offset } : {}),
-                  allowed_updates: ["message", "callback_query"],
-                }),
-                signal,
-              },
-              TELEGRAM_LONG_POLL_REQUEST_TIMEOUT_MS,
-            );
+          const response = await fetchBotProviderJson<TelegramGetUpdatesResponse>(
+            `https://api.telegram.org/bot${token}/getUpdates`,
+            {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                timeout: 25,
+                ...(offset !== undefined ? { offset } : {}),
+                allowed_updates: ["message", "callback_query"],
+              }),
+              signal,
+            },
+            TELEGRAM_LONG_POLL_REQUEST_TIMEOUT_MS,
+          );
           if (!response.ok) {
             deps.statusSink.setRuntimeStatus({
               botId: bot.id,
@@ -199,9 +186,7 @@ export function createTelegramChannelRuntime(deps: TelegramChannelRuntimeDeps) {
               botId: bot.id,
               provider: "telegram",
               status: "error",
-              message:
-                payload?.description ??
-                "Telegram getUpdates returned an invalid response.",
+              message: payload?.description ?? "Telegram getUpdates returned an invalid response.",
               offset,
             });
             await waitFor(5_000, signal);
@@ -215,9 +200,7 @@ export function createTelegramChannelRuntime(deps: TelegramChannelRuntimeDeps) {
               return;
             }
             const updateId =
-              isRecord(update) && typeof update.update_id === "number"
-                ? update.update_id
-                : null;
+              isRecord(update) && typeof update.update_id === "number" ? update.update_id : null;
             const callbackResult = await deps.processProviderCallback("telegram", {
               botId: bot.id,
               update,
@@ -300,28 +283,30 @@ export function createTelegramChannelRuntime(deps: TelegramChannelRuntimeDeps) {
       fingerprint,
       done: Promise.resolve(),
     };
-    runtime.done = pollBot(bot, controller.signal).catch((error: unknown) => {
-      // Bugfix: 后台 runtime 的最终 Promise 必须显式收口，避免异常升级为 host 未处理 rejection。
-      deps.logger.warn(
-        undefined,
-        `Telegram polling stopped unexpectedly bot=${bot.id}: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }).finally(() => {
-      if (runtimes.get(bot.id) === runtime) {
-        runtimes.delete(bot.id);
-        const previous = deps.statusSink.getRuntimeStatus(bot.id);
-        if (previous?.status === "polling") {
-          deps.statusSink.setRuntimeStatus({
-            botId: bot.id,
-            provider: "telegram",
-            status: "idle",
-            messageId: "bots.runtime.telegramLongPollingStopped",
-            message: "Telegram long polling is stopped.",
-            offset: previous.offset,
-          });
+    runtime.done = pollBot(bot, controller.signal)
+      .catch((error: unknown) => {
+        // Bugfix: 后台 runtime 的最终 Promise 必须显式收口，避免异常升级为 host 未处理 rejection。
+        deps.logger.warn(
+          undefined,
+          `Telegram polling stopped unexpectedly bot=${bot.id}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      })
+      .finally(() => {
+        if (runtimes.get(bot.id) === runtime) {
+          runtimes.delete(bot.id);
+          const previous = deps.statusSink.getRuntimeStatus(bot.id);
+          if (previous?.status === "polling") {
+            deps.statusSink.setRuntimeStatus({
+              botId: bot.id,
+              provider: "telegram",
+              status: "idle",
+              messageId: "bots.runtime.telegramLongPollingStopped",
+              message: "Telegram long polling is stopped.",
+              offset: previous.offset,
+            });
+          }
         }
-      }
-    });
+      });
     runtimes.set(bot.id, runtime);
   }
 
@@ -338,10 +323,7 @@ export function createTelegramChannelRuntime(deps: TelegramChannelRuntimeDeps) {
     }
     const activeTelegramIds = new Set(
       currentConfig.bots
-        .filter(
-          (bot) =>
-            bot.provider === "telegram" && bot.enabled && bot.credentialRef,
-        )
+        .filter((bot) => bot.provider === "telegram" && bot.enabled && bot.credentialRef)
         .map((bot) => bot.id),
     );
     for (const botId of runtimes.keys()) {
@@ -405,6 +387,9 @@ export function createTelegramChannelRuntime(deps: TelegramChannelRuntimeDeps) {
 
   async function dispose(): Promise<void> {
     refreshQueue.invalidate();
+    // 修复原因：invalidate 只阻止后续 reconcile；正在执行的一轮仍可能写 bot 配置/状态文件，
+    // 先等队列清空再快照并中止长轮询，避免销毁返回后仍有文件落盘。
+    await refreshQueue.whenIdle();
     const activeRuntimes = [...runtimes.values()];
     for (const runtime of activeRuntimes) {
       runtime.controller.abort();

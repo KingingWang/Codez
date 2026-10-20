@@ -150,12 +150,12 @@ custom / workspace profile 的既有加载、命名优先级和模型字段保�
 
 ## 插件 subagent 的发现范围
 
-Settings 与 runtime 必须看到同一批插件 subagent。runtime 通过 plugin resolve 同时加载 marketplace 安装插件与内置官方插件；services 的 `discoverPluginAgents` 过去只读 `installed_plugins.json`，导致内置官方插件（如 `document-skills` 的 `judge`）在 Settings 不可见。修复后 services 额外扫描 `<cli storage>/plugins/cache/zcode-plugins-official/<name>/<version>/`：
+Settings 与 runtime 必须看到同一批插件 subagent。runtime 通过 plugin resolve 同时加载 marketplace 安装插件与内置官方插件；services 的 `discoverPluginAgents` 过去只读 `installed_plugins.json`，导致内置官方插件（如 `document-skills` 的 `judge`）在 Settings 不可见。修复后 services 额外扫描 `<cli storage>/plugins/cache/codez-plugins-official/<name>/<version>/`：
 
 ```text
 installed_plugins.json 记录 ──────────────┐
                                           ├─> 按 pluginId 去重（安装记录优先）
-cache/zcode-plugins-official/<name>/<ver> ┘        │
+cache/codez-plugins-official/<name>/<ver> ┘        │
    版本目录按数字感知降序取第一个可用目录            ▼
    跳过 .backup / .seed-lock / .tmp- 目录     启用判定：
                                               enabledPlugins[pluginId]
@@ -163,7 +163,7 @@ cache/zcode-plugins-official/<name>/<ver> ┘        │
                                               且不在 suppressedBuiltins
 ```
 
-官方插件的 `pluginId` 为 `<manifest.name>@zcode-plugins-official`，与 CLI `PluginMetadata.id` 一致，因此覆盖键在两侧对得上。
+官方插件的 `pluginId` 为 `<manifest.name>@codez-plugins-official`，与 CLI `PluginMetadata.id` 一致，因此覆盖键在两侧对得上。
 
 ## Explore 工具面
 

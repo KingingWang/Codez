@@ -17,11 +17,11 @@ When enabled, Codez loads:
 
 ## Codez CLI Usage
 
-Codez bundles this package as the official `ios-simulator@zcode-plugins-official`
+Codez bundles this package as the official `ios-simulator@codez-plugins-official`
 plugin. Enable the plugin to project its skill, slash command, and MCP server
 into the session.
 At startup Codez copies the packaged plugin files into
-`~/.codez/cli/plugins/cache/zcode-plugins-official/ios-simulator/0.1.0/` and
+`~/.codez/cli/plugins/cache/codez-plugins-official/ios-simulator/0.1.0/` and
 runs the MCP server from that cache directory. SEA builds rewrite the official
 plugin's Codez manifest to launch the cached MCP server through Codez's internal
 plugin host, so the server uses the embedded Node.js runtime. Third-party
@@ -33,10 +33,10 @@ Example `~/.codez/cli/config.json` entry:
 {
   "plugins": {
     "enabledPlugins": {
-      "ios-simulator@zcode-plugins-official": true
+      "ios-simulator@codez-plugins-official": true
     },
     "options": {
-      "ios-simulator@zcode-plugins-official": {
+      "ios-simulator@codez-plugins-official": {
         "default_device": "iPhone 16",
         "ui_backend": "auto"
       }

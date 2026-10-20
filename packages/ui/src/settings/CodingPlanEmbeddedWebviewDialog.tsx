@@ -186,7 +186,7 @@ export function CodingPlanEmbeddedWebviewDialog({
             : {
                 bigmodelAccessToken: values[0],
                 // BigModel OAuth callback 同样会落盘 codez JWT；官网用它在
-                // codez-plan 域查 billing/balance 判定 Start Plan 状态。
+                // zcode-plan 域查 billing/balance 判定 Start Plan 状态。
                 codezJwtToken: values[1],
               };
         const reportContext = buildCodingPlanEmbeddedReportContext({

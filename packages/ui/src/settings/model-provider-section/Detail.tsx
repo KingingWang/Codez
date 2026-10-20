@@ -239,6 +239,7 @@ export function ModelProviderSectionDetail({
   codingPlanStatusSyncProviderId,
   codingPlanDisconnectProviderId,
   onSave,
+  onSaveApiKeySource,
   onAddPersonalModel,
   onSavePersonalModelDraft,
   onSetPersonalModelEnabled,
@@ -269,6 +270,11 @@ export function ModelProviderSectionDetail({
   codingPlanStatusSyncProviderId: BuiltinModelProviderId | null;
   codingPlanDisconnectProviderId: BuiltinModelProviderId | null;
   onSave: (config: ProviderSettingsFormProvider) => void | Promise<void>;
+  onSaveApiKeySource?: (input: {
+    providerId: string;
+    mode: "config-file" | "runtime-env";
+    apiKey?: string;
+  }) => Promise<void>;
   onAddPersonalModel?: (
     providerId: string,
     modelId: string,
@@ -421,6 +427,7 @@ export function ModelProviderSectionDetail({
         <InlineEditableProviderCard
           provider={presetProvider}
           onSave={onSave}
+          onSaveApiKeySource={onSaveApiKeySource}
           {...modelEditingProps}
           onReorderModelIds={
             onReorderProviderModels
@@ -701,6 +708,7 @@ export function ModelProviderSectionDetail({
           <InlineEditableProviderCard
             provider={dedicatedProvider}
             onSave={onSave}
+            onSaveApiKeySource={onSaveApiKeySource}
             {...modelEditingProps}
             onReorderModelIds={
               onReorderProviderModels
@@ -847,6 +855,7 @@ export function ModelProviderSectionDetail({
     <InlineEditableProviderCard
       provider={customProvider}
       onSave={onSave}
+      onSaveApiKeySource={onSaveApiKeySource}
       {...modelEditingProps}
       onDelete={() => onDelete(customProvider)}
       onReorderModelIds={

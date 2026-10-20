@@ -93,7 +93,7 @@ export async function main() {
       const authorizedEnv = {
         ...process.env,
         NODE_ENV: "untrusted",
-        CODEZ_PLUGIN_ID: "computer-use@zcode-plugins-official",
+        CODEZ_PLUGIN_ID: "computer-use@codez-plugins-official",
         CODEZ_CUA_PERMISSION_BROKER_SOCKET: brokerSocket,
         CODEZ_CUA_PERMISSION_BROKER_TOKEN: "test-scoped-token",
         CODEZ_CUA_PLUGIN_AUTHORITY: "test-official-authority",

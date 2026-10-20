@@ -25,6 +25,7 @@ import type {
 import type {
   CommandAck,
   ConversationRowTarget,
+  SessionUsageState,
   TurnHeaderRow,
   V4ConversationFileChangesResult,
   V4ConversationFileRewindPreviewResult,
@@ -36,6 +37,7 @@ export type ConversationFileChangesState = Exclude<
 >;
 
 export interface ConversationRowRenderContext {
+  nativeCodex?: boolean;
   logEpoch?: string;
   workspacePath: string;
   /** 当前 workspace Host 的用户 Home，用于解析 Assistant 输出中的 ~/ 路径。 */
@@ -44,6 +46,8 @@ export interface ConversationRowRenderContext {
   workspaceRemoteSessionId?: string;
   /** SessionPane 从目标 Host 读取的同一份模型选择 View。 */
   modelSelectionView?: ModelSelectionView | null;
+  /** 当前会话的权威 usage 快照，供每轮状态栏悬浮展示会话累计 Token 与缓存命中率。 */
+  sessionUsage?: SessionUsageState | null;
   theme: Theme;
   /** 需保持引用稳定（MessageResponse/ToolCallBlock 的 memo 依赖）。 */
   codePreviewSettings: CodePreviewSettings;
@@ -195,6 +199,9 @@ export interface ConversationRowRenderContext {
     target: ConversationRowTarget,
     options: ConversationFileChangesRequestOptions,
   ) => Promise<V4ConversationFileChangesResult>;
+  /** 按 rowId 或 toolCallId 按需拉取折叠 toolCall / reasoning 行的完整载荷。 */
+  onLoadRowPayload?: (rowId: number) => Promise<boolean>;
+  onLoadFullToolCallFields?: (toolId: string) => Promise<boolean | void> | boolean | void;
   previewFileRewind?: (
     target: ConversationRowTarget,
   ) => Promise<V4ConversationFileRewindPreviewResult>;

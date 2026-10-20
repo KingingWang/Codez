@@ -46,7 +46,7 @@
         "lastUserMessageIncludes": ["E2E_PLUGIN_REFERENCE"],
         "bodyIncludes": [
           "<plugin_reference>",
-          "skill-creator@zcode-plugins-official"
+          "skill-creator@codez-plugins-official"
         ],
         "bodyExcludes": [
           "Generate a concise title",

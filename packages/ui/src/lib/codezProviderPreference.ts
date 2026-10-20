@@ -28,7 +28,9 @@ function isAgentProvider(value: unknown): value is CodezProvider {
   return typeof value === "string" && CODEZ_AGENT_PROVIDERS.includes(value as CodezProvider);
 }
 
-export function readLastSelectedAgentProvider(storage: StorageLike | null = getBrowserStorage()): CodezProvider | null {
+export function readLastSelectedAgentProvider(
+  storage: StorageLike | null = getBrowserStorage(),
+): CodezProvider | null {
   const rawValue = storage?.getItem(LAST_SELECTED_AGENT_PROVIDER_STORAGE_KEY);
   if (!isAgentProvider(rawValue)) {
     return CODEZ_AGENT_PROVIDER;

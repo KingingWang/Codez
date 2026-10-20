@@ -66,7 +66,11 @@ export interface ConversationAssistantWorkRenderOptions {
   enableChangesGrouping?: boolean;
 }
 
-const SUBAGENT_TOOL_NAMES = new Set(["Agent", "Task", "subagent"]);
+// codex flavor 的 spawn 工具名是 spawn_agent（codex-bridge COLLAB_TOOL_NAMES.spawnAgent）。
+// 不加进来会导致 pairSubagentRows 配不上对：agent 卡片拿不到 childSessionId 入口，
+// 同时 subagent 行退化成独立行重复渲染（specs/codex-desktop-subagent-drilldown.md）。
+// send_input/resume_agent 等后续交互工具不加入：同一子代理只允许一张可点卡片。
+const SUBAGENT_TOOL_NAMES = new Set(["Agent", "Task", "subagent", "spawn_agent"]);
 
 const isToolCallRow = (row: AssistantWorkRow): row is ToolCallRow => row.kind === "toolCall";
 

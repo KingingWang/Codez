@@ -480,7 +480,7 @@ describe("resolveAppRuntimeConfig", () => {
                 command: "echo hook",
                 plugin: {
                   dataPath: "/tmp/plugin-data",
-                  id: "superpowers@zcode-plugins-official",
+                  id: "superpowers@codez-plugins-official",
                   name: "superpowers",
                   rootPath: "/tmp/superpowers",
                 },

@@ -91,7 +91,7 @@ SEA config 必须显式写入：
 - `assets`: OpenTUI runtime assets, bundled official plugin assets and the
   bundled skill pack. Official plugins are stored as raw files in the SEA blob,
   then extracted on startup into
-  `~/.codez/cli/plugins/cache/zcode-plugins-official/<plugin>/<version>/`.
+  `~/.codez/cli/plugins/cache/codez-plugins-official/<plugin>/<version>/`.
   They must not be imported into the Codez main bundle. Seeded official plugin
   manifests are rewritten to use the hidden `__codez-plugin-host` entrypoint so
   the cached MCP server runs on the SEA-embedded Node.js runtime. Third-party

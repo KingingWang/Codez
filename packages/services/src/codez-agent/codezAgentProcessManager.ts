@@ -31,6 +31,7 @@ import {
 } from "../runtime-tools/providerRuntimeResolver.js";
 import { isEffectiveDevelopmentNodeEnv } from "#src/runtime-tools/nodeEnv.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
+import { parseCodexBridgeTitleDiagnostic } from "./codexBridgeTitleDiagnostic.js";
 import { CodezProtocolClient } from "./codezProtocolClient.js";
 import { CodezStdioTransport } from "./codezStdioTransport.js";
 import { readCodezStdioTapDevState } from "./codezStdioTapDevConfig.js";
@@ -38,6 +39,7 @@ import type { CodezAgentPresentationSurface } from "./codezAgentPresentationSurf
 import { shouldSpawnInDetachedProcessGroup } from "../process/processTreeTerminator.js";
 import type { RuntimeProcessLifecycleReporter } from "../process/runtimeProcessLifecycle.js";
 import { buildAgentWorkspaceIdentityEnv } from "../runtime-tools/agentProxyEnv.js";
+import { resolveCodexBridgeCommand, usesCodexBridgeRuntime } from "./codexBridgeCommand.js";
 
 export interface CodezAgentCommand {
   /** 本地配套 CLI bundle 的存储专用 Worker 入口；远端/自定义命令不推断能力。 */
@@ -104,7 +106,9 @@ export interface CodezAgentProcessManagerOptions {
     workspacePath: string;
     workspaceIdentity?: string;
     workspaceKey: string;
-  }) => Promise<Record<string, string>> | Record<string, string>;
+    // 值为 undefined 表示显式删除继承变量（Node spawn 跳过 undefined），
+    // 供本机临时 Key 在缺凭据时屏蔽同名外部环境变量（spec: codex-provider-runtime-env-key）。
+  }) => Promise<Record<string, string | undefined>> | Record<string, string | undefined>;
   /**
    * 可选的外部 spawn admission hook。CUA 默认装配不再注入 Helper recovery gate，
    * 避免 Helper lifecycle 阻塞或间接重启 Agent；保留该通用 hook 供其他产品策略使用。
@@ -346,7 +350,11 @@ async function buildCodezAgentSpawnPreflight(
     cwd,
     usedFallback: shouldUseWorkspaceFallback,
     cwdExists,
-  } = await resolveCodezAgentSpawnCwd({ requestedCwd, workspacePath, spawnFallbackCwd });
+  } = await resolveCodezAgentSpawnCwd({
+    requestedCwd,
+    workspacePath,
+    spawnFallbackCwd,
+  });
   return {
     command: command.command,
     args: command.args ?? [],
@@ -465,6 +473,15 @@ export function resolveDefaultCodezAgentCommand(
     );
   }
 
+  if (
+    usesCodexBridgeRuntime({
+      desktopDefault: context.presentationSurface === "desktop",
+      customCommandResolver: false,
+    })
+  ) {
+    return resolveCodexBridgeCommand(context);
+  }
+
   // 顺序：env 显式覆盖 → monorepo dev 源码/dist（dev 改源码立刻生效，不会被远端历史装的 native binary
   // 抢先匹配）→ 桌面打包态 Electron Node runtime 跑 codez.cjs → 已部署 native binary（远端 SSH 兜底）。
   const bundled =
@@ -565,6 +582,12 @@ export class CodezAgentProcessManager {
     string,
     Set<AbortController>
   >();
+  /**
+   * 工作树删除隔离（specs/git-worktree-removal.md W5a）：删除编排先隔离再释放，
+   * 隔离期间任何 getClient（含 UI 恢复与新订阅触发的 start）对该 workspaceKey
+   * 一律拒绝，闭合"释放后、物理删除前重新 spawn 持有目录句柄"的竞态。
+   */
+  private readonly removalQuarantineByWorkspaceKey = new Set<string>();
   private readonly storageStartupEmitter = new Emitter<{
     workspaceKey: string;
     snapshot: CodezAgentStorageStartupSnapshot;
@@ -949,7 +972,9 @@ export class CodezAgentProcessManager {
         error: firstError,
       });
       try {
-        await this.cleanupManagedProcess(managed, retryReason, { reportError: false });
+        await this.cleanupManagedProcess(managed, retryReason, {
+          reportError: false,
+        });
       } catch (finalError) {
         errorLog("Codez agent process cleanup failed", {
           workspaceKey: managed.runtimeIdentity.workspaceKey,
@@ -971,7 +996,20 @@ export class CodezAgentProcessManager {
     if (this.disposed) {
       throw new Error("Codez agent process manager is disposed.");
     }
+    // 删除隔离按逻辑 workspace 校验，不能拿共享进程池 key 代替业务身份。
+    const logicalWorkspaceKey = resolveWorkspaceKey(params);
+    if (this.removalQuarantineByWorkspaceKey.has(logicalWorkspaceKey)) {
+      throw new Error(
+        `Codez agent runtime is unavailable because the workspace is being removed: ${logicalWorkspaceKey}`,
+      );
+    }
     const binding = await this.bind(params);
+    // bind 会等待项目事实 / 旧进程释放；这期间进入删除隔离的请求也不得复用或新建进程。
+    if (this.removalQuarantineByWorkspaceKey.has(logicalWorkspaceKey)) {
+      throw new Error(
+        `Codez agent runtime is unavailable because the workspace is being removed: ${logicalWorkspaceKey}`,
+      );
+    }
     const workspaceKey = binding.processKey;
     const closing = this.closing.get(workspaceKey);
     if (closing) {
@@ -1130,7 +1168,11 @@ export class CodezAgentProcessManager {
 
     // Helper recovery 可能在 command resolve 期间开始；先等待一次，确保 env 解析使用
     // recovery 后的 broker 凭据，而不是把旧状态带到 spawn 边界。
-    await this.waitForSpawnAdmission?.({ ...params, workspaceKey, signal: admissionSignal });
+    await this.waitForSpawnAdmission?.({
+      ...params,
+      workspaceKey,
+      signal: admissionSignal,
+    });
 
     // 设置页代理等运行时 env 在 process.env 之后合入（覆盖继承的同名 shell 变量），
     // 但仍让 command.env（部署特定）保持最高优先级。
@@ -1154,7 +1196,11 @@ export class CodezAgentProcessManager {
     admissionSignal.throwIfAborted();
     // env resolve 本身是异步的，恢复屏障可能在这段时间重新关闭；必须在 spawn 前
     // 再等待并复查代际，不能只依赖第一次 admission。
-    await this.waitForSpawnAdmission?.({ ...params, workspaceKey, signal: admissionSignal });
+    await this.waitForSpawnAdmission?.({
+      ...params,
+      workspaceKey,
+      signal: admissionSignal,
+    });
     if (this.disposed) {
       throw new Error("Codez agent process manager is disposed.");
     }
@@ -1224,6 +1270,19 @@ export class CodezAgentProcessManager {
                   : {}),
               },
             }),
+          );
+          return;
+        }
+        const titleDiagnostic = parseCodexBridgeTitleDiagnostic(line);
+        if (titleDiagnostic) {
+          // 修复依据：标题失败与跳过都不会终止进程，只放进 debug stderr/退出 tail 就等于
+          // 没有——远程 workspace 的 bridge stderr 只经这条路径进入导出日志。
+          // 跳过（skipped）是设计内的“保留预览”，但必须带原因码，否则表现为静默失效。
+          warnLog(
+            titleDiagnostic.kind === "failed"
+              ? "Codex automatic title failed; keeping preview"
+              : "Codex automatic title skipped; keeping preview",
+            titleDiagnostic,
           );
           return;
         }
@@ -1538,6 +1597,19 @@ export class CodezAgentProcessManager {
         reason: error instanceof Error ? error.message : String(error),
       };
     }
+  }
+
+  /** 进入删除隔离：后续 getClient 对该 workspace 拒绝 spawn（W5a）。 */
+  quarantineWorkspaceForRemoval(params: {
+    workspacePath: string;
+    workspaceIdentity?: string;
+  }): void {
+    this.removalQuarantineByWorkspaceKey.add(resolveWorkspaceKey(params));
+  }
+
+  /** 解除删除隔离；删除结束（成功/失败）必须成对调用。 */
+  releaseWorkspaceRemovalHold(params: { workspacePath: string; workspaceIdentity?: string }): void {
+    this.removalQuarantineByWorkspaceKey.delete(resolveWorkspaceKey(params));
   }
 
   async disposeWorkspace(params: {

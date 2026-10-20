@@ -1,9 +1,11 @@
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { LightbulbIcon, XIcon, ChevronDownIcon } from "lucide-react";
 import {
   CODEZ_AGENT_PROVIDER,
   getCodezAgentAvailableModes,
+  getCodexPermissionModes,
   type CodezConfigOption,
+  type CodezTaskModeInfo,
 } from "@codez/shared";
 import {
   TID_CHAT_MODE_SELECT_TRIGGER,
@@ -20,7 +22,6 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu.js";
-import { RollingToolbarLabel } from "@/chat-input-toolbar/RollingToolbarLabel.js";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import {
@@ -28,12 +29,21 @@ import {
   getModeOptionDescriptionMessageId,
   resolveModeOptionIcon,
 } from "@/chat-input-toolbar/display.js";
+import {
+  CODEX_MODE_OPTION_DESCRIPTION_IDS,
+  CODEX_MODE_OPTION_LABEL_IDS,
+} from "@/chat-input-toolbar/display-help.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useYoloModeConfirmation } from "@/hooks/useConfirmDialog.js";
 import { useConfirmDialogStore } from "@/store/confirmDialogStore.js";
 import { isCoarseTouchDevice } from "@/lib/pickerFocus.js";
 import { useShortcutCommandLabel } from "@/shortcuts/useShortcutBindings.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
+import { useAlertDialogStore } from "@/store/alertDialogStore.js";
+import {
+  readCodexFullAccessAcknowledged,
+  writeCodexFullAccessAcknowledged,
+} from "@/v4/composer/codexFullAccessAcknowledgement.js";
 import {
   getNextConfigSelectValue,
   useToolbarShortcutBindings,
@@ -42,7 +52,7 @@ import type { V4ComposerToolbarProps } from "@/v4/composer/V4ComposerToolbar.js"
 
 function noop(): void {}
 
-/** Plan 是独立勾选项，三种权限仍为单选；只编辑草稿，不向 Runtime 发切换命令。 */
+/** Plan 是独立勾选项，权限档位仍为单选；只编辑草稿，不向 Runtime 发切换命令。 */
 function V4ComposerModeSwitchImpl({
   provider,
   draftConfig,
@@ -50,6 +60,8 @@ function V4ComposerModeSwitchImpl({
   activeConfigPicker,
   onConfigPickerOpenChange,
   onSwitchMode,
+  codexPermissions = false,
+  codexAutoReviewSupported = false,
 }: Pick<
   V4ComposerToolbarProps,
   | "workspacePath"
@@ -60,6 +72,8 @@ function V4ComposerModeSwitchImpl({
   | "activeConfigPicker"
   | "onConfigPickerOpenChange"
   | "onSwitchMode"
+  | "codexPermissions"
+  | "codexAutoReviewSupported"
 >) {
   const { intl } = useCodezIntl();
   // 原草稿回调随 scope 换代，旧确认不能把权限写入后来选中的任务。
@@ -72,35 +86,103 @@ function V4ComposerModeSwitchImpl({
   );
   const displayProvider = provider ?? CODEZ_AGENT_PROVIDER;
   const modeShortcutLabel = useShortcutCommandLabel("cycleSessionMode");
-  const modes = getCodezAgentAvailableModes();
-  const permissions = modes.filter((mode) => mode.id !== "plan");
-  // 新菜单隐藏 Edit，但历史草稿仍可回显，不能因候选变化隐藏整个权限入口。
+  const [modeTooltipOpen, setModeTooltipOpen] = useState(false);
+  const requestAlert = useAlertDialogStore((state) => state.requestAlert);
+  // Codex 会话使用与原生权限菜单一一对应的档位目录（specs/codex-permission-modes.md）；
+  // edit（帮我审批）由 autoReviewApprovals 能力门控，能力未确认即隐藏（fail-closed）。
+  const permissions = useMemo<CodezTaskModeInfo[]>(
+    () =>
+      codexPermissions
+        ? getCodexPermissionModes().filter((mode) => mode.id !== "edit" || codexAutoReviewSupported)
+        : getCodezAgentAvailableModes().filter((mode) => mode.id !== "plan"),
+    [codexPermissions, codexAutoReviewSupported],
+  );
   const selected =
     permissions.find((mode) => mode.id === draftConfig?.mode) ??
-    (draftConfig?.mode === "edit" ? { id: "edit", name: "Edit" } : undefined);
-  const label = (mode: (typeof modes)[number]) =>
-    getModeOptionDisplayLabel(intl, displayProvider, { value: mode.id, name: mode.name });
-  const plan = modes.find((mode) => mode.id === "plan")!;
-  const planLabel = label(plan);
-  // Plan 拆成独立勾选项后仍需保留原菜单说明，复用相同的国际化映射。
-  const planDescriptionId = getModeOptionDescriptionMessageId(displayProvider, { value: plan.id });
+    // 草稿值未命中目录（如 edit 被能力门控隐藏、旧草稿残留）时 Codex 回退 custom 展示，
+    // 与 useDraftConfigControl 的提交归一化保持一致，避免菜单整个消失。
+    (codexPermissions
+      ? permissions.find((mode) => mode.id === "custom")
+      : draftConfig?.mode === "edit"
+        ? { id: "edit", name: "Edit" }
+        : permissions.find((mode) => mode.id === "build"));
+  const label = useCallback(
+    (mode: CodezTaskModeInfo) => {
+      const codexLabelId = codexPermissions ? CODEX_MODE_OPTION_LABEL_IDS[mode.id] : undefined;
+      return codexLabelId
+        ? intl.formatMessage({ id: codexLabelId })
+        : getModeOptionDisplayLabel(intl, displayProvider, { value: mode.id, name: mode.name });
+    },
+    [codexPermissions, displayProvider, intl],
+  );
+  const descriptionId = useCallback(
+    (id: string): string | null =>
+      codexPermissions
+        ? (CODEX_MODE_OPTION_DESCRIPTION_IDS[id] ?? null)
+        : getModeOptionDescriptionMessageId(displayProvider, { value: id }),
+    [codexPermissions, displayProvider],
+  );
+  // Plan 勾选框：Codex 使用独立文案（planEnabled/collaborationMode 维度，与权限档位正交）。
+  const planLabel = codexPermissions
+    ? intl.formatMessage({ id: "mode.plan" })
+    : label(getCodezAgentAvailableModes().find((mode) => mode.id === "plan")!);
+  const planDescriptionId = descriptionId("plan");
+  // 上游确认已按草稿目标换代取消；Codex 的一次性确认同样冻结原回调，
+  // 不能只检查 mounted 而把迟到的 yolo 写入复用组件的新 workspace。
+  const nativeConfirmationRef = useRef<AbortController | null>(null);
+  useLayoutEffect(
+    () => () => {
+      nativeConfirmationRef.current?.abort();
+      nativeConfirmationRef.current = null;
+    },
+    [codexPermissions, disabled, draftConfig?.mode, onSwitchMode],
+  );
+  /** 完全访问首次选择需确认；确认后持久化，不再重复弹（spec UI 约束）。 */
+  const handleSelectPermission = useCallback(
+    (value: string) => {
+      if (disabled) return;
+      if (!codexPermissions) {
+        requestSwitchMode(value);
+        return;
+      }
+      if (value !== "yolo" || readCodexFullAccessAcknowledged()) {
+        onSwitchMode(value);
+        return;
+      }
+      if (nativeConfirmationRef.current) return;
+      const controller = new AbortController();
+      nativeConfirmationRef.current = controller;
+      void requestAlert(
+        {
+          title: intl.formatMessage({ id: "mode.codex.yolo.confirm.title" }),
+          description: intl.formatMessage({ id: "mode.codex.yolo.confirm.description" }),
+          actionLabel: intl.formatMessage({ id: "mode.codex.yolo.confirm.accept" }),
+        },
+        controller.signal,
+      ).then((confirmed) => {
+        if (nativeConfirmationRef.current === controller) nativeConfirmationRef.current = null;
+        if (!confirmed || controller.signal.aborted) return;
+        writeCodexFullAccessAcknowledged();
+        onSwitchMode("yolo");
+      });
+    },
+    [codexPermissions, disabled, intl, onSwitchMode, requestAlert, requestSwitchMode],
+  );
   const modeOption = useMemo<CodezConfigOption>(
     () => ({
       id: "mode",
       name: "Mode",
       category: "mode",
       type: "select",
-      currentValue: draftConfig?.mode ?? "build",
-      options: getCodezAgentAvailableModes()
-        .filter((mode) => mode.id !== "plan")
-        .map((mode) => ({ value: mode.id, name: mode.name })),
+      currentValue: selected?.id ?? (codexPermissions ? "custom" : "build"),
+      options: permissions.map((mode) => ({ value: mode.id, name: mode.name })),
     }),
-    [draftConfig?.mode],
+    [codexPermissions, permissions, selected?.id],
   );
   const cycle = useCallback(() => {
     const next = getNextConfigSelectValue(modeOption);
-    if (next) requestSwitchMode(next);
-  }, [modeOption, requestSwitchMode]);
+    if (next) handleSelectPermission(next);
+  }, [handleSelectPermission, modeOption]);
   useToolbarShortcutBindings({
     hasAnyOption: Boolean(selected),
     toolbarDisabled: disabled,
@@ -116,12 +198,17 @@ function V4ComposerModeSwitchImpl({
     <div className="flex min-w-0 items-center gap-1">
       <DropdownMenu
         open={activeConfigPicker === "mode"}
-        onOpenChange={(open) => onConfigPickerOpenChange("mode", open)}
+        onOpenChange={(open) => {
+          if (open) setModeTooltipOpen(false);
+          onConfigPickerOpenChange("mode", open);
+        }}
       >
         <ControlHintTooltip
           title={intl.formatMessage({ id: "chat.toolbar.mode.label" })}
           shortcut={modeShortcutLabel}
-          open={activeConfigPicker === "mode" ? false : undefined}
+          // 菜单切换前后保持 Tooltip 为受控态，避免 Radix ownership 警告。
+          open={activeConfigPicker !== "mode" && modeTooltipOpen}
+          onOpenChange={setModeTooltipOpen}
         >
           <DropdownMenuTrigger asChild>
             <Button
@@ -140,8 +227,7 @@ function V4ComposerModeSwitchImpl({
             >
               <Icon className="size-4" />
               <span className="inline group-data-[composer-compact=true]/mode:hidden">
-                {/* Plan 菜单重写时普通 span 丢失了旧 ConfigSelect 的翻滚；复用同一动画组件恢复。 */}
-                <RollingToolbarLabel label={label(selected)} />
+                {label(selected)}
               </span>
               <ChevronDownIcon className="size-3.5 group-data-[composer-compact=true]/mode:hidden" />
             </Button>
@@ -153,7 +239,11 @@ function V4ComposerModeSwitchImpl({
           className="w-64"
           onCloseAutoFocus={(event) => {
             event.preventDefault();
-            if (!useConfirmDialogStore.getState().pendingRequest && !isCoarseTouchDevice())
+            if (
+              !useConfirmDialogStore.getState().pendingRequest &&
+              !useAlertDialogStore.getState().pendingRequest &&
+              !isCoarseTouchDevice()
+            )
               document
                 .querySelector<HTMLElement>(`[data-testid="${TID_V4_COMPOSER_INPUT}"]`)
                 ?.focus();
@@ -176,25 +266,26 @@ function V4ComposerModeSwitchImpl({
             </span>
           </DropdownMenuCheckboxItem>
           <DropdownMenuSeparator />
-          <DropdownMenuRadioGroup value={selected.id} onValueChange={requestSwitchMode}>
+          <DropdownMenuRadioGroup value={selected.id} onValueChange={handleSelectPermission}>
             {permissions.map((mode) => {
               const ModeIcon = resolveModeOptionIcon(mode.id);
-              const descriptionId = getModeOptionDescriptionMessageId(displayProvider, {
-                value: mode.id,
-              });
+              const modeDescriptionId = descriptionId(mode.id);
               return (
                 <DropdownMenuRadioItem
                   key={mode.id}
                   value={mode.id}
                   data-testid={testId(TID_CHAT_MODE_SELECT_ITEM, mode.id)}
-                  className="min-h-13 items-start gap-3 py-2"
+                  className={cn(
+                    "min-h-13 items-start gap-3 py-2",
+                    mode.id === "yolo" && "text-warning data-[highlighted]:text-warning",
+                  )}
                 >
                   <ModeIcon className="mt-0.5 size-4.5 shrink-0" />
                   <span className="flex min-w-0 flex-col gap-0.5">
                     <span>{label(mode)}</span>
-                    {descriptionId && (
+                    {modeDescriptionId && (
                       <span className="text-ui-sm text-foreground-subtle">
-                        {intl.formatMessage({ id: descriptionId })}
+                        {intl.formatMessage({ id: modeDescriptionId })}
                       </span>
                     )}
                   </span>

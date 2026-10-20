@@ -2,9 +2,20 @@ import http, { type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { generateText, jsonSchema, Output } from "ai";
 import { describe, expect, it, vi } from "vitest";
+import {
+  ApiKeyAccessConfig,
+  ProviderApiConfig,
+  ProviderConfig,
+  type RegistryProviderConfig,
+} from "@codez/provider";
+import {
+  resetCapturedCodezModelApiKeysForTest,
+  sanitizeCodezRuntimeEnv,
+} from "@codez/shared/runtime-env";
 import { createAnthropicCompatFetch } from "../src/model/anthropic-stream-compat.js";
 import {
   ProviderBusinessError,
+  AiSdkModelExecution,
   createProviderBusinessErrorFetch,
   observeProviderFetch,
 } from "../src/model/model-execution.js";
@@ -88,6 +99,34 @@ describe("AI SDK Provider execution", () => {
     });
     expect(JSON.stringify(info.mock.calls)).not.toContain("secret");
     expect(JSON.stringify(info.mock.calls)).not.toContain("private response");
+  });
+
+  it("resolves a captured startup Key and fails before network if it is absent", () => {
+    const name = "CODEZ_MODEL_API_KEY_ABC123";
+    const config = new ProviderConfig({
+      group: "standard-personal",
+      access: new ApiKeyAccessConfig({ apiKeyEnv: name }),
+      api: new ProviderApiConfig({
+        type: "openai-chat-completions",
+        baseUrl: "https://example.com/v1",
+      }),
+    }) as RegistryProviderConfig;
+    const execution = new AiSdkModelExecution();
+    const input = {
+      providerId: "custom",
+      modelId: "test-model",
+      providerConfig: config,
+      supportsJsonSchemaOutput: false,
+      optionSpecs: {
+        reasoningLevel: { map: "{}" },
+        maxOutputTokens: { map: "{}" },
+      },
+    };
+    resetCapturedCodezModelApiKeysForTest();
+    expect(() => execution.bindModel(input)).toThrow("临时环境变量 API Key 不可用");
+    sanitizeCodezRuntimeEnv({ [name]: "local-secret" });
+    expect(() => execution.bindModel(input)).not.toThrow();
+    resetCapturedCodezModelApiKeysForTest();
   });
   it("adds Authorization alongside x-api-key for Anthropic provider requests", async () => {
     const receivedHeaders: http.IncomingHttpHeaders[] = [];
@@ -471,7 +510,7 @@ describe("AI SDK Provider execution", () => {
     } satisfies Partial<ProviderBusinessError>);
   });
 
-  it("turns HTTP 403 codez-plan security verification failures into business errors", async () => {
+  it("turns HTTP 403 zcode-plan security verification failures into business errors", async () => {
     const body = JSON.stringify({ code: 3007, msg: "security verify failed" });
     const fetchWithJsonContentType = createProviderBusinessErrorFetch({
       fetch: async () =>

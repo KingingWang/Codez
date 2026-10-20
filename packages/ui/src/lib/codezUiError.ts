@@ -254,7 +254,7 @@ export function normalizeCodezUiError(
 
   return {
     // 部分上游错误外层 code 只是 PROVIDER_BUSINESS_ERROR，
-    // 真实 GLM / codez-plan 业务码只保存在 detail 的 provider_code=xxxx。
+    // 真实 GLM / zcode-plan 业务码只保存在 detail 的 provider_code=xxxx。
     // 业务码需要进入统一错误分类层，否则 ChatView quota 横幅无法命中。
     code:
       verificationRejectedCode ??

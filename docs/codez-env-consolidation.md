@@ -32,9 +32,9 @@
 - `ZAI_PRODUCTION_OAUTH_CLIENT_ID`
 
 构建配置根据 `CODEZ_ENV` 选择对应链接，并向 renderer 注入公开的 `VITE_*` 值。
-renderer、host/service 和 agent 里的 Codez API、远控链接、codez-plan OpenAI/Anthropic
+renderer、host/service 和 agent 里的 Codez API、远控链接、zcode-plan OpenAI/Anthropic
 入口都通过 `@codez/shared` 的 endpoint resolver 派生，业务代码不要再手写
-`zcode.z.ai` / `zcode.z.ai` 的 codez-plan URL。
+`zcode.z.ai` / `zcode.z.ai` 的 zcode-plan URL。
 
 ## Endpoint resolver
 

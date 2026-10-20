@@ -159,7 +159,11 @@ export function useSettings(options: { cacheKey?: string; services?: IServiceAcc
       await refresh();
       if (
         typeof patch.askUserQuestionAutoResolutionEnabled === "boolean" ||
-        typeof patch.modelIoFullRetentionEnabled === "boolean"
+        typeof patch.modelIoFullRetentionEnabled === "boolean" ||
+        typeof patch.memoryEnabled === "boolean" ||
+        typeof patch.memoryUseEnabled === "boolean" ||
+        typeof patch.memoryExtractionEnabled === "boolean" ||
+        patch.memoryExtractionModel !== undefined
       ) {
         const currentSettings = getSettingsSnapshot(cacheKey).settings;
         const preferences = {
@@ -169,6 +173,26 @@ export function useSettings(options: { cacheKey?: string; services?: IServiceAcc
           modelIoFullRetentionEnabled:
             patch.modelIoFullRetentionEnabled ??
             currentSettings?.modelIoFullRetentionEnabled === true,
+          // 记忆偏好随同一通道热推送到活动 agent；缺省读取设置快照保证旧调用方
+          // 只改 interaction 字段时也能下发完整 memory 快照（CLI 按 undefined 忽略）。
+          ...(patch.memoryEnabled !== undefined ||
+          patch.memoryUseEnabled !== undefined ||
+          patch.memoryExtractionEnabled !== undefined ||
+          patch.memoryExtractionModel !== undefined ||
+          currentSettings?.memoryEnabled !== undefined
+            ? {
+                memoryEnabled: patch.memoryEnabled ?? currentSettings?.memoryEnabled === true,
+                memoryUseEnabled:
+                  patch.memoryUseEnabled ?? currentSettings?.memoryUseEnabled !== false,
+                memoryExtractionEnabled:
+                  patch.memoryExtractionEnabled ??
+                  currentSettings?.memoryExtractionEnabled !== false,
+                memoryExtractionModel:
+                  patch.memoryExtractionModel !== undefined
+                    ? patch.memoryExtractionModel
+                    : (currentSettings?.memoryExtractionModel ?? null),
+              }
+            : {}),
         };
         const syncResults = await Promise.allSettled([
           codezAgentService.syncAppRuntimePreferences(preferences),

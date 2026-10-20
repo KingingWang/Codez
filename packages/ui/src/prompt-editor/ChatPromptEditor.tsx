@@ -67,6 +67,7 @@ export function ChatPromptEditor({
   attachmentAction,
   betweenCancelAndSubmitAction,
   submitControl,
+  shrinkTrailingActions = false,
   inputTestId,
   submitTestId,
   cancelTestId,
@@ -95,8 +96,10 @@ export function ChatPromptEditor({
   excludedSlashCommandNames,
   appSlashCommands,
   enableMentionPanel,
+  nativeCodex = false,
 }: {
   workspacePath: string;
+  nativeCodex?: boolean;
   workspaceIdentity?: string;
   taskId: string | null;
   /** 仅供 Composer Skill catalog；可为草稿的 prewarm Session。 */
@@ -131,6 +134,8 @@ export function ChatPromptEditor({
   /** 行内编辑专用：固定插在取消与主提交之间的第二动作。 */
   betweenCancelAndSubmitAction?: ReactNode;
   submitControl?: ReactNode;
+  /** Codex 紧凑窗口：让只读模型信息先收缩，保留右侧发送/停止控制的可达性。 */
+  shrinkTrailingActions?: boolean;
   inputTestId?: string;
   submitTestId?: string;
   cancelTestId?: string;
@@ -355,6 +360,7 @@ export function ChatPromptEditor({
     // 单行时输入区至少占一半宽度，上下留白与 h-7 控件对齐；两行布局下 contents 不改变原有排版。
     <div className={isInline ? "min-w-1/2 flex-1 py-1 [&_[contenteditable]]:min-h-5" : "contents"}>
       <LexicalChatInput
+        nativeCodex={nativeCodex}
         placeholder={placeholder}
         disabled={disabled}
         submitDisabled={submitDisabled}
@@ -462,7 +468,10 @@ export function ChatPromptEditor({
             </div>
           </div>
           <div
-            className="ml-auto flex shrink-0 items-center justify-end gap-1.5"
+            className={cn(
+              "ml-auto flex items-center justify-end gap-1.5",
+              shrinkTrailingActions ? "min-w-0 max-w-[calc(100%-5rem)] shrink" : "shrink-0",
+            )}
             data-composer-trailing-actions
           >
             {onCancel && cancelLabel ? (

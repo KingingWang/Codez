@@ -14,7 +14,7 @@ import {
   waitForPluginCard,
 } from "../../../helpers/plugin-management-lifecycle.js";
 
-const OFFICIAL_CDN_MARKETPLACE_ID = "zcode-plugins-official";
+const OFFICIAL_CDN_MARKETPLACE_ID = "codez-plugins-official";
 const OFFICIAL_CDN_PLUGIN_NAME = "example-plugin";
 const OFFICIAL_CDN_PLUGIN_ID = `${OFFICIAL_CDN_PLUGIN_NAME}@${OFFICIAL_CDN_MARKETPLACE_ID}`;
 const OFFICIAL_CDN_SMOKE_TIMEOUT_MS = 240000;

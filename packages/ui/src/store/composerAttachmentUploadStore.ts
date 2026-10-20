@@ -22,6 +22,8 @@ export interface ComposerAttachmentUploadItem extends ChatComposerAttachment {
   uploadError?: string;
   uploadErrorKind?: "transient" | "permanent" | "runtimeRestarted";
   attachmentRef?: AttachmentRef;
+  /** Native upload receipt owner. Never infer a different owner when promoting a draft. */
+  committedSessionId?: string;
   operationId: string;
   autoRetryCount: number;
   /**

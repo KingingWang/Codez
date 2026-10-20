@@ -12,6 +12,25 @@ import { copyFileSync, cpSync, existsSync, mkdirSync, rmSync, writeFileSync } fr
 import { resolve } from "node:path";
 
 export const AGENT_BUNDLE_SOURCE_RELATIVE = "apps/codez-cli/packages/cli/dist/codez.cjs";
+const CUA_PLUGIN_SOURCE_RELATIVE = "apps/codez-cli/packages/codez-cua-plugin";
+const CUA_PLUGIN_REQUIRED_PATHS = [
+  ".codez-plugin/plugin.json",
+  "docs/computer-use.md",
+  "scripts/computer-use-client.mjs",
+  "skills/computer-use/SKILL.md",
+];
+
+function stageContentPlugin({ glmDir, repoRoot, sourceRelative, stagedRelative, requiredPaths }) {
+  const sourcePluginRoot = resolve(repoRoot, sourceRelative);
+  const stagedPluginRoot = resolve(glmDir, stagedRelative);
+  for (const relativePath of requiredPaths) {
+    const sourcePath = resolve(sourcePluginRoot, ...relativePath.split("/"));
+    if (!existsSync(sourcePath)) {
+      throw new Error(`[stage:agent-bundle] missing official plugin asset: ${sourcePath}`);
+    }
+  }
+  cpSync(sourcePluginRoot, stagedPluginRoot, { recursive: true });
+}
 
 /**
  * 修复原因（2026-10-24 真机）：node_repl MCP server（含内联的 CUA agent runtime）
@@ -55,6 +74,13 @@ export function stageAgentBundle({ repoRoot, platformKey, log = console.log }) {
   rmSync(glmDir, { recursive: true, force: true });
   mkdirSync(glmDir, { recursive: true });
   copyFileSync(cliBundlePath, stagedBundlePath);
+  stageContentPlugin({
+    glmDir,
+    repoRoot,
+    sourceRelative: CUA_PLUGIN_SOURCE_RELATIVE,
+    stagedRelative: "packages/codez-cua-plugin",
+    requiredPaths: CUA_PLUGIN_REQUIRED_PATHS,
+  });
   const meta = {
     runtime: "electron-node",
     entry: "codez.cjs",

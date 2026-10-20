@@ -12,6 +12,22 @@ export function resolveAutomationEditRequiredFieldErrors(params: {
   return errors;
 }
 
+export function isAutomationEditSubmissionContextReady(params: {
+  workspaceSelected: boolean;
+  modelViewReady: boolean;
+  selectedModelValue: string;
+  selectionIssue?: string;
+}): boolean {
+  // 修复：Codex 自定义默认模型可不在发现目录中、也可没有 reasoningLevel；
+  // 只相信目标 Host 校验后的有效模型，不要求菜单条目或伪造原生档位。
+  return (
+    params.workspaceSelected &&
+    params.modelViewReady &&
+    Boolean(params.selectedModelValue) &&
+    !params.selectionIssue
+  );
+}
+
 /** 正常编辑只撤销当前字段已有的提交告警，不主动产生新的告警。 */
 export function clearAutomationEditRequiredFieldError(
   errors: ReadonlySet<AutomationEditRequiredField>,

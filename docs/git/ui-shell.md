@@ -16,7 +16,7 @@
 - 生成提交消息会随请求携带当前会话最近的用户 / assistant 文本上下文，用于让模型理解本轮修改意图；上下文按消息数和字符数裁剪，且生成结果不得显式写“根据对话”“按用户要求”等元叙述。
 - 生成提交消息复用当前 workspace 的当前模型选择；Git service 只负责读取 Git status/diff、构造受限 prompt、校验 Conventional Commit 输出。
 - 模型调用链路统一为 `Git service -> ICodezAgentService -> Codez Protocol workspace/generateText -> AgentRuntime -> modelAdapter.generateText`。
-- UI 不再为提交消息生成预取 Start Plan / codez-plan 的请求期鉴权材料，也不向 Git service 传 scoped runtime headers。
+- UI 不再为提交消息生成预取 Start Plan / zcode-plan 的请求期鉴权材料，也不向 Git service 传 scoped runtime headers。
 - Start Plan 的请求期 runtime headers 由 AgentRuntime 在 `modelAdapter.generateText` 每次真实请求前通过 `providerRuntimeHeaders.request` 自动刷新；该机制与普通对话、prompt enhance 等独立模型请求一致。
 - Git service 不再直连 OpenAI / Anthropic 兼容 HTTP endpoint，也不解析 provider response / SSE；协议层返回纯文本后由 Git service 做输出清洗和错误收敛。
 

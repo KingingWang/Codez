@@ -694,13 +694,13 @@ test("includes bundled official plugin assets", async () => {
     const codezGuidePaths = new Set(codezGuidePlugin?.files.map((file) => file.path));
 
     assert.equal(typeof assets[seaOfficialPluginManifestAssetKey], "string");
-    assert.equal(iosPlugin?.marketplace, "zcode-plugins-official");
-    assert.equal(androidPlugin?.marketplace, "zcode-plugins-official");
-    assert.equal(browserUsePlugin?.marketplace, "zcode-plugins-official");
-    assert.equal(documentPlugin?.marketplace, "zcode-plugins-official");
-    assert.equal(restorePlugin?.marketplace, "zcode-plugins-official");
-    assert.equal(skillCreatorPlugin?.marketplace, "zcode-plugins-official");
-    assert.equal(codezGuidePlugin?.marketplace, "zcode-plugins-official");
+    assert.equal(iosPlugin?.marketplace, "codez-plugins-official");
+    assert.equal(androidPlugin?.marketplace, "codez-plugins-official");
+    assert.equal(browserUsePlugin?.marketplace, "codez-plugins-official");
+    assert.equal(documentPlugin?.marketplace, "codez-plugins-official");
+    assert.equal(restorePlugin?.marketplace, "codez-plugins-official");
+    assert.equal(skillCreatorPlugin?.marketplace, "codez-plugins-official");
+    assert.equal(codezGuidePlugin?.marketplace, "codez-plugins-official");
     // superpowers 已从内置 SEA 清单移除，断言它不再出现在 manifest 里。
     assert.equal(
       manifest.plugins.some((item) => item.name === "superpowers"),

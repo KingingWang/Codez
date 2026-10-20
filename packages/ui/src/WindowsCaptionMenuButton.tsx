@@ -1,7 +1,7 @@
 import { DesktopCommandIds } from "@codez/shared";
 import type { UpdateStatePayload } from "@codez/shared";
 import { useCallback, useEffect, useState } from "react";
-import { useFeedbackStore } from "@/feedback/feedbackStore.js";
+import { useFeedbackEntryAction } from "@/feedback/useFeedbackEntryAction.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { createHelpMenuActionHandlers } from "@/lib/helpMenuActions.js";
@@ -58,12 +58,11 @@ export function WindowsCaptionMenuButton({
   const { intl, locale } = useCodezIntl();
   const newTaskShortcutLabel = useShortcutCommandLabel("newTask");
   const openWorkspaceShortcutLabel = useShortcutCommandLabel("openWorkspace");
-  const openFeedbackSubmit = useFeedbackStore((state) => state.openSubmit);
-  const openFeatureRequest = useFeedbackStore((state) => state.openFeatureRequest);
+  const { runFeedbackEntry } = useFeedbackEntryAction();
   const helpMenuActions = createHelpMenuActionHandlers({
     platform,
     intl,
-    openSubmit: openFeedbackSubmit,
+    runFeedbackEntry,
   });
   const [updateState, setUpdateState] = useState<UpdateStatePayload | null>(null);
   const [stdioTapDevState, setStdioTapDevState] = useState({
@@ -265,7 +264,7 @@ export function WindowsCaptionMenuButton({
         <DropdownMenuItem onSelect={helpMenuActions.openIssueReport}>
           {intl.formatMessage({ id: "titleBar.menu.help.feedback" })}
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={openFeatureRequest}>
+        <DropdownMenuItem onSelect={helpMenuActions.openProductRequest}>
           {intl.formatMessage({ id: "workspaceHeader.help.productRequest" })}
         </DropdownMenuItem>
         {showCommunityMenuItem ? (
