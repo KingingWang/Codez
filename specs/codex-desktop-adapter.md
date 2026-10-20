@@ -88,7 +88,7 @@ a distinct marker, so unique-root migration heuristics cannot claim it. Existing
 task rows, including rows moved by the user, never have their assignment
 overwritten by later native summaries. An unknown/missing project fails closed,
 not as an unclassified task. The legacy Codez CLI never receives or interprets
-this project identity. Native `thread/start.projectId` is *not* the Codez project
+this project identity. Native `thread/start.projectId` is _not_ the Codez project
 ID: Codex requires that ID to exist in its own project registry.
 
 On cold native resume, the Host resolves the task's explicit project from the
@@ -238,7 +238,13 @@ unoffered persistence never reach Codex.
   it sends after the current task, appears in the editable native queue, and
   never silently becomes a steer. Guide sends `requestedDelivery: "guide"` on
   this submission only: it joins the current turn at Codex's next model step,
-  not necessarily at the next tool call. Codex does not expose un-injected
+  not necessarily at the next tool call, and never interrupts or aborts the
+  in-flight model sampling request (reasoning or response streaming) to do so.
+  The bridge launches `codex app-server` with a process-scoped
+  `-c features.instant_interrupt=false` override so an accepted steer waits for
+  the active model request (and any tool calls emitted by that request) to
+  finish before being sent in the next model request of the same turn, without
+  mutating the user's shared `config.toml`. Codex does not expose un-injected
   steers in `thread/queue/list`. After a successful ACK the initiating composer
   may show an explicitly local "accepted, awaiting next model step" hint scoped
   to the current turn; it is not an authoritative queued item, cannot be

@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { chmod, copyFile, mkdtemp, readFile, rm } from "node:fs/promises";
+import { once } from "node:events";
+import { chmod, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createServer, type ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -416,17 +418,25 @@ test("update_plan 开关开启时向 app-server argv 注入 server 级配置覆�
     "--listen",
     "stdio://",
     "-c",
+    "features.instant_interrupt=false",
+    "-c",
     "tools.update_plan.enabled=true",
   ]);
 });
 
-test("update_plan 开关缺省时 argv 不含配置覆盖", options, async (t) => {
+test("update_plan 开关缺省时 argv 仅含默认 instant_interrupt=false 覆盖", options, async (t) => {
   const disabled = await fixture(t, "normal", 1000, undefined, false, true);
   await disabled.process.initialize();
   const trace = await readFile(disabled.trace, "utf8");
   const argvLine = trace.split("\n").find((line) => line.startsWith("argv "));
   assert.ok(argvLine, "fixture 必须记录启动 argv");
-  assert.deepEqual(JSON.parse(argvLine.slice(5)), ["app-server", "--listen", "stdio://"]);
+  assert.deepEqual(JSON.parse(argvLine.slice(5)), [
+    "app-server",
+    "--listen",
+    "stdio://",
+    "-c",
+    "features.instant_interrupt=false",
+  ]);
 });
 
 test("桌面专属 MCP 只通过进程级覆盖传入，字符串与数组按 TOML 转义", options, async (t) => {
@@ -447,6 +457,242 @@ test("桌面专属 MCP 只通过进程级覆盖传入，字符串与数组按 TO
     "--listen",
     "stdio://",
     "-c",
+    "features.instant_interrupt=false",
+    "-c",
     'mcp_servers.codez-desktop-browser-cua={command="/tmp/my \\"bridge\\"",args=["/tmp/bridge.cjs","native-browser-cua-mcp"],env={"CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE"="/tmp/token file","ELECTRON_RUN_AS_NODE"="1"},enabled=true}',
   ]);
 });
+
+test(
+  "native turn/steer during in-flight reasoning stream does not abort the first model request and sends guidance in the next step",
+  {
+    skip: !process.env.CODEX_AUXILIARY_TEST_BINARY,
+    timeout: 30_000,
+  },
+  async (t) => {
+    const temporary = await mkdtemp(join(tmpdir(), "codez-steer-stream-"));
+    const cwd = join(temporary, "workspace");
+    const codexHome = join(temporary, "codex-home");
+    await mkdir(cwd);
+    await mkdir(codexHome);
+    t.after(() => rm(temporary, { recursive: true, force: true }));
+
+    const modelRequests: Record<string, unknown>[] = [];
+    let firstResponseStream: ServerResponse | undefined;
+    let firstRequestAborted = false;
+    const firstReasoningSent = Promise.withResolvers<void>();
+    const secondRequestReceived = Promise.withResolvers<void>();
+
+    const sendSse = (res: ServerResponse, event: Record<string, unknown>) => {
+      res.write(`event: ${String(event.type)}\ndata: ${JSON.stringify(event)}\n\n`);
+    };
+
+    const server = createServer((request, response) => {
+      const chunks: Buffer[] = [];
+      request.on("data", (chunk: Buffer) => chunks.push(chunk));
+      request.on("end", () => {
+        const parsed = JSON.parse(Buffer.concat(chunks).toString()) as Record<string, unknown>;
+        modelRequests.push(parsed);
+        const requestIndex = modelRequests.length;
+        response.writeHead(200, {
+          "content-type": "text/event-stream",
+          "cache-control": "no-cache",
+        });
+        if (requestIndex === 1) {
+          firstResponseStream = response;
+          response.on("close", () => {
+            if (!response.writableEnded) firstRequestAborted = true;
+          });
+          sendSse(response, {
+            type: "response.created",
+            response: {
+              id: "resp-1",
+              object: "response",
+              status: "in_progress",
+              output: [],
+            },
+          });
+          sendSse(response, {
+            type: "response.output_item.added",
+            output_index: 0,
+            item: {
+              id: "reason-1",
+              type: "reasoning",
+              summary: [],
+            },
+          });
+          sendSse(response, {
+            type: "response.reasoning_summary_part.added",
+            item_id: "reason-1",
+            output_index: 0,
+            summary_index: 0,
+            part: { type: "summary_text", text: "" },
+          });
+          sendSse(response, {
+            type: "response.reasoning_summary_text.delta",
+            item_id: "reason-1",
+            output_index: 0,
+            summary_index: 0,
+            delta: "Thinking about the first step...",
+          });
+          firstReasoningSent.resolve();
+          return;
+        }
+        secondRequestReceived.resolve();
+        const item = {
+          type: "message",
+          id: `msg-${requestIndex}`,
+          role: "assistant",
+          status: "completed",
+          content: [{ type: "output_text", text: "Guided step completed", annotations: [] }],
+        };
+        const completed = {
+          id: `resp-${requestIndex}`,
+          object: "response",
+          status: "completed",
+          output: [item],
+          usage: { input_tokens: 10, output_tokens: 5, total_tokens: 15 },
+        };
+        sendSse(response, {
+          type: "response.created",
+          response: { ...completed, status: "in_progress", output: [] },
+        });
+        sendSse(response, {
+          type: "response.output_item.added",
+          output_index: 0,
+          item: { ...item, status: "in_progress", content: [] },
+        });
+        sendSse(response, { type: "response.output_item.done", output_index: 0, item });
+        sendSse(response, { type: "response.completed", response: completed });
+        response.end();
+      });
+    });
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    t.after(() => {
+      server.closeAllConnections();
+      server.close();
+    });
+    const address = server.address();
+    assert.ok(address && typeof address !== "string");
+    await writeFile(
+      join(codexHome, "config.toml"),
+      `model_provider = "fixture"\nmodel = "gpt-5.2"\n` +
+        `[model_providers.fixture]\nname = "Isolated fixture"\nbase_url = "http://127.0.0.1:${address.port}/v1"\nwire_api = "responses"\nrequires_openai_auth = false\n` +
+        `[analytics]\nenabled = false\n`,
+    );
+    const rpc = createCodexProcess({
+      executable: process.env.CODEX_AUXILIARY_TEST_BINARY!,
+      cwd,
+      env: {
+        ...globalThis.process.env,
+        CODEX_HOME: codexHome,
+      },
+    });
+    t.after(async () => {
+      await rpc.close();
+    });
+    await rpc.initialize();
+
+    const reasoningStarted = Promise.withResolvers<void>();
+    const turnCompleted = Promise.withResolvers<void>();
+    const detach = rpc.onNotification((event) => {
+      const params = event.params as { item?: { type?: string } };
+      if (
+        (event.method === "item/started" && params.item?.type === "reasoning") ||
+        event.method === "item/reasoning/summaryTextDelta"
+      ) {
+        reasoningStarted.resolve();
+      }
+      if (event.method === "turn/completed") {
+        turnCompleted.resolve();
+      }
+    });
+    t.after(detach);
+
+    const started = await rpc.request<{ thread: { id: string } }>("thread/start", {
+      cwd,
+      model: "gpt-5.2",
+      modelProvider: "fixture",
+      sandbox: "read-only",
+      approvalPolicy: "never",
+    });
+    const turnStart = await rpc.request<{ turn: { id: string } }>("turn/start", {
+      threadId: started.thread.id,
+      input: [{ type: "text", text: "First prompt", text_elements: [] }],
+    });
+
+    await firstReasoningSent.promise;
+    await reasoningStarted.promise;
+
+    // 在思考流仍处于 in-flight 时发送引导（turn/steer）
+    await rpc.request("turn/steer", {
+      threadId: started.thread.id,
+      expectedTurnId: turnStart.turn.id,
+      input: [{ type: "text", text: "Guidance while thinking", text_elements: [] }],
+    });
+
+    // 等待一小段时间，验证第一轮流式请求绝不能被中断，且不会抢发第二轮请求
+    await delay(150);
+    assert.equal(firstRequestAborted, false, "in-flight reasoning stream must not be aborted");
+    assert.equal(
+      modelRequests.length,
+      1,
+      "next model step must wait for current request to finish",
+    );
+
+    // 正常完成第一轮流式输出
+    assert.ok(firstResponseStream);
+    const firstMessageItem = {
+      type: "message",
+      id: "msg-1",
+      role: "assistant",
+      status: "completed",
+      content: [{ type: "output_text", text: "First step reply", annotations: [] }],
+    };
+    const firstCompleted = {
+      id: "resp-1",
+      object: "response",
+      status: "completed",
+      output: [
+        {
+          id: "reason-1",
+          type: "reasoning",
+          summary: [{ type: "summary_text", text: "Thinking about the first step..." }],
+        },
+        firstMessageItem,
+      ],
+      usage: { input_tokens: 8, output_tokens: 4, total_tokens: 12 },
+    };
+    sendSse(firstResponseStream, {
+      type: "response.output_item.done",
+      output_index: 0,
+      item: firstCompleted.output[0],
+    });
+    sendSse(firstResponseStream, {
+      type: "response.output_item.added",
+      output_index: 1,
+      item: { ...firstMessageItem, status: "in_progress", content: [] },
+    });
+    sendSse(firstResponseStream, {
+      type: "response.output_item.done",
+      output_index: 1,
+      item: firstMessageItem,
+    });
+    sendSse(firstResponseStream, {
+      type: "response.completed",
+      response: firstCompleted,
+    });
+    firstResponseStream.end();
+
+    // 第一轮正常结束后，引导在同一 turn 的第二次请求中发送
+    await secondRequestReceived.promise;
+    await turnCompleted.promise;
+    assert.equal(firstRequestAborted, false);
+    assert.equal(modelRequests.length, 2);
+    const secondInputJson = JSON.stringify(modelRequests[1]?.input ?? []);
+    assert.match(secondInputJson, /First prompt/);
+    assert.match(secondInputJson, /First step reply/);
+    assert.match(secondInputJson, /Guidance while thinking/);
+  },
+);
