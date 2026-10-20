@@ -164,7 +164,7 @@ interface OffPeakTurnCard {
   task: OffPeakCreateTaskSummary;
 }
 
-const MIN_VISIBLE_API_RETRY_ATTEMPT = 3;
+const MIN_VISIBLE_API_RETRY_ATTEMPT = 1;
 
 interface HighspeedOutputFooterProps {
   generatedLabel: string;
@@ -226,8 +226,9 @@ function toRetryStatus(apiRetry: Exclude<ApiRetryState, { source: "codex" }>): C
     attempt,
     maxRetries,
     retryDelayMs: 0,
-    errorStatus: null,
+    errorStatus: apiRetry.errorStatus ?? null,
     error: apiRetry.reasonCode,
+    ...(apiRetry.errorDetail ? { errorDetail: apiRetry.errorDetail } : {}),
   };
 }
 
@@ -247,9 +248,9 @@ function TurnChatLoadingSlot({
   );
   const codexRetry = apiRetry && "source" in apiRetry ? apiRetry : null;
   // 配置读取尚未发出模型请求，首次恢复就显示进度，避免用户误以为消息已发送。
-  // 其余前两次短暂恢复对用户等价于普通加载；保留 apiRetry 运行态，但只在
-  // 第三次重试开始后显示计数。必须在 retry/loading 分支前收敛，否则会留下空 slot，
-  // 而不是回退到 ChatLoading。
+  // fork 的普通 API retry 同样从第一次显示计数与最近错误，不再用通用 loading
+  // 隐藏前两次失败；保留上游 configNetwork 判定与统一 retry/loading 收敛入口。
+  // Codex 原生 retry 不应用 legacy 阈值，首次重试即展示原生计数和最近 API 错误。
   const visibleRetryStatus =
     retryStatus &&
     ((apiRetry &&
@@ -266,6 +267,7 @@ function TurnChatLoadingSlot({
           httpStatusCode={codexRetry.httpStatusCode}
           attempt={codexRetry.attempt}
           maxRetries={codexRetry.maxRetries}
+          errorDetail={codexRetry.errorDetail}
           intl={intl}
         />
       ) : visibleRetryStatus ? (
