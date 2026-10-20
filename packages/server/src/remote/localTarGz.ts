@@ -1,4 +1,5 @@
-import { gzip, gunzip } from "node:zlib";
+import { createReadStream, createWriteStream } from "node:fs";
+import { createGzip, gunzip } from "node:zlib";
 import {
   chmod,
   lstat,
@@ -11,9 +12,10 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep, posix } from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
 
-const gzipAsync = promisify(gzip);
 const gunzipAsync = promisify(gunzip);
 const TAR_BLOCK_SIZE = 512;
 const TAR_END_BLOCK_BYTES = TAR_BLOCK_SIZE * 2;
@@ -105,44 +107,36 @@ export async function createTarGzArchive(
   archivePath: string,
   entries: readonly LocalTarGzEntry[],
 ): Promise<void> {
-  const archiveParts: Buffer[] = [];
-  for (const entry of entries) {
-    await appendTarEntry(archiveParts, entry.sourcePath, entry.archivePath);
-  }
-  archiveParts.push(Buffer.alloc(TAR_END_BLOCK_BYTES));
-
   await mkdir(dirname(archivePath), { recursive: true });
-  await writeFile(archivePath, await gzipAsync(Buffer.concat(archiveParts)));
+  async function* parts() {
+    for (const entry of entries) yield* appendTarEntry(entry.sourcePath, entry.archivePath);
+    yield Buffer.alloc(TAR_END_BLOCK_BYTES);
+  }
+  // 原生 Codex 包解压后可达数百 MiB。之前 readFile + Buffer.concat + gzip
+  // 会同时驻留多份完整包；SSH 上传归档改为流式产出，维持同一 tar 校验/上传接口。
+  await pipeline(Readable.from(parts()), createGzip(), createWriteStream(archivePath));
 }
 
-async function appendTarEntry(
-  archiveParts: Buffer[],
-  sourcePath: string,
-  archivePath: string,
-): Promise<void> {
+async function* appendTarEntry(sourcePath: string, archivePath: string): AsyncGenerator<Buffer> {
   const sourceStat = await lstat(sourcePath);
   const normalizedArchivePath = normalizeCreateEntryPath(archivePath);
 
   if (sourceStat.isDirectory()) {
     const directoryEntryPath = ensureTrailingSlash(normalizedArchivePath);
-    archiveParts.push(
-      createTarHeader({
-        entryPath: directoryEntryPath,
-        // Windows lstat 的目录 mode 只有读写语义，常见为 0666；原样写进 tar 后，
-        // 远端 tar 叠加 umask 会落成不可遍历的 0644。远端资源目录统一使用 POSIX 0755。
-        mode: 0o755,
-        mtimeSeconds: Math.floor(sourceStat.mtimeMs / 1000),
-        size: 0,
-        typeFlag: "5",
-      }),
-    );
+    yield createTarHeader({
+      entryPath: directoryEntryPath,
+      // Windows lstat 的目录 mode 只有读写语义，常见为 0666；远端资源目录统一使用 0755。
+      mode: 0o755,
+      mtimeSeconds: Math.floor(sourceStat.mtimeMs / 1000),
+      size: 0,
+      typeFlag: "5",
+    });
 
     const children = (await readdir(sourcePath, { withFileTypes: true })).sort((left, right) =>
       left.name.localeCompare(right.name),
     );
     for (const child of children) {
-      await appendTarEntry(
-        archiveParts,
+      yield* appendTarEntry(
         join(sourcePath, child.name),
         posix.join(normalizedArchivePath, child.name),
       );
@@ -156,34 +150,30 @@ async function appendTarEntry(
         archivePath: normalizedArchivePath,
         rawLinkTarget: await readlink(sourcePath),
       });
-      archiveParts.push(
-        createTarHeader({
-          entryPath: normalizedArchivePath,
-          linkName: linkTarget,
-          mode: 0o777,
-          mtimeSeconds: Math.floor(sourceStat.mtimeMs / 1000),
-          size: 0,
-          typeFlag: "2",
-        }),
-      );
+      yield createTarHeader({
+        entryPath: normalizedArchivePath,
+        linkName: linkTarget,
+        mode: 0o777,
+        mtimeSeconds: Math.floor(sourceStat.mtimeMs / 1000),
+        size: 0,
+        typeFlag: "2",
+      });
       return;
     }
 
     throw new Error(`[remote-assets] unsupported local archive source: ${sourcePath}`);
   }
 
-  const content = await readFile(sourcePath);
-  archiveParts.push(
-    createTarHeader({
-      entryPath: normalizedArchivePath,
-      mode: sourceStat.mode,
-      mtimeSeconds: Math.floor(sourceStat.mtimeMs / 1000),
-      size: content.length,
-      typeFlag: "0",
-    }),
-    content,
-    Buffer.alloc(roundUpToTarBlock(content.length) - content.length),
-  );
+  yield createTarHeader({
+    entryPath: normalizedArchivePath,
+    mode: sourceStat.mode,
+    mtimeSeconds: Math.floor(sourceStat.mtimeMs / 1000),
+    size: sourceStat.size,
+    typeFlag: "0",
+  });
+  for await (const chunk of createReadStream(sourcePath)) yield chunk;
+  const padding = roundUpToTarBlock(sourceStat.size) - sourceStat.size;
+  if (padding) yield Buffer.alloc(padding);
 }
 
 function createTarHeader(options: {

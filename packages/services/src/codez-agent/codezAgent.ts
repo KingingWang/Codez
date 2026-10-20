@@ -3,6 +3,9 @@ import type {
   BackgroundBashOutputResult,
   SessionDebugSnapshot,
   CodezSessionContentProfile,
+  DesktopBrowserCommandRelayRequest,
+  DesktopBrowserCommandRelayResponse,
+  DesktopBrowserControlUpdate,
 } from "@codez/shared";
 /* eslint-disable max-lines -- Codez agent service 接口集中声明 protocol/session/workspace 方法，拆分会增加 service descriptor 迁移成本。 */
 import type { RemoteConversationTelemetryEvent } from "@codez/shared/conversation-telemetry";
@@ -12,6 +15,7 @@ import type { AppUsageRange, AppUsageSnapshot, CodezTaskTokenUsageResult } from 
 import type { DynamicWorkflowMode } from "@codez/shared";
 import type { CodezAutomation, CodezAutomationRun } from "@codez/shared";
 import type {
+  CodexRequest,
   CodezStorageStartupState,
   CodezDeliveryKind,
   CodezAgentMcpServer,
@@ -33,6 +37,19 @@ import type {
   WorkspaceMcpTrustDecision,
   CodezWorkspaceMcpTrustResult,
   CodezPluginsListResult,
+  CodezAgentRoleScope,
+  CodezAgentRoleWriteInput,
+  CodezAgentsListResult,
+  CodezCatalogModelEntry,
+  CodezCatalogReadModelsResult,
+  CodezCatalogReadResult,
+  CodezAgentsWriteResult,
+  CodezMcpProjectConfigWriteAction,
+  CodezMcpProjectConfigWriteResult,
+  CodezHooksConfigScope,
+  CodezHooksConfigWriteAction,
+  CodezHookCommandEntry,
+  CodezHooksConfigWriteResult,
   CodezPluginsOverviewResult,
   CodezPluginsMarketplaceMutationResult,
   CodezPluginsInstallResult,
@@ -121,6 +138,9 @@ import type {
   V4ConversationWorkflowRunNodeResultResult,
   V4ConversationWorkflowRunWorkspaceResult,
   V4ConversationWorkflowRunsResult,
+  CodexConversationHistoryRunsParams,
+  CodexConversationHistoryRunsResult,
+  V4ConversationRowPayloadResult,
   V4ConversationRowsRangeResult,
   V4ConversationResyncResult,
   V4ConversationSubscribeResult,
@@ -134,6 +154,7 @@ import type {
   V4SessionDataPurgeResult,
 } from "@codez/shared/codez-protocol-v4";
 import { createServiceDescriptor } from "../descriptors.js";
+import type { CodexUsageCacheSnapshot } from "../usage-stats/codexUsageObservationCache.js";
 
 export * from "./codezAgentPluginParams.js";
 export * from "./codezAgentWorkflowParams.js";
@@ -439,6 +460,11 @@ export interface CodezAgentConversationRowsRangeParams extends CodezAgentSession
   residency?: "resident-only";
 }
 
+/** 按 rowId 按需读取折叠 toolCall / reasoning 行的完整载荷。 */
+export interface CodezAgentConversationRowPayloadParams extends CodezAgentSessionTarget {
+  rowId: number;
+}
+
 /** 当前有效分支里的终态 ExitPlanMode 目录。 */
 export type CodezAgentConversationPlansParams = CodezAgentSessionTarget;
 
@@ -462,6 +488,13 @@ export interface CodezAgentConversationWorkflowRunEventsParams extends CodezAgen
 /** dwf run 的枚举（重启后的发现查询）。 */
 export interface CodezAgentConversationWorkflowRunsParams extends CodezAgentSessionTarget {
   limit?: number;
+}
+
+/** Codex 原生 turn 的独立只读历史投影查询。 */
+export interface CodezAgentCodexHistoryRunsParams extends CodezAgentSessionTarget {
+  limit?: number;
+  status?: CodexConversationHistoryRunsParams["status"];
+  beforeTurnId?: string;
 }
 
 // ── dwf 用户面产物──
@@ -518,6 +551,11 @@ export interface CodezAgentConversationFileRewindPreviewParams extends CodezAgen
   target: ConversationRowTarget;
   baseRevision: number;
   baseLogEpoch: string;
+}
+
+export interface CodezAgentConversationFileRewindProjectionOverlayParams extends CodezAgentSessionTarget {
+  target: ConversationRowTarget;
+  turnId: string;
 }
 
 export interface CodezAgentConversationCommandParams extends CodezAgentWorkspaceTarget {
@@ -632,6 +670,14 @@ export type CodezAgentServiceEvent =
 export interface CodezAgentAppRuntimePreferences {
   askUserQuestionAutoResolutionEnabled: boolean;
   modelIoFullRetentionEnabled?: boolean;
+  /** Host 记忆总开关；缺省不改动 CLI 侧现状（兼容旧调用方）。 */
+  memoryEnabled?: boolean;
+  /** 对话中注入记忆；缺省按 CLI 本地配置。 */
+  memoryUseEnabled?: boolean;
+  /** 成功 turn 后自动提取记忆；缺省按 CLI 本地配置。 */
+  memoryExtractionEnabled?: boolean;
+  /** 记忆提取专用模型；null/缺省 = 跟随会话模型。 */
+  memoryExtractionModel?: ModelSelection | null;
 }
 
 export interface CodezAgentLocalRuntimeChildProcesses {
@@ -647,7 +693,49 @@ export interface CodezAgentStorageStartupSnapshot {
   state: CodezStorageStartupState | null;
 }
 
+// Codex 子智能体（agent roles）文件管理参数。agents/* 是 bridge 控制面方法族，
+// 载体必须是真实 workspace client——project scope 解析 `<cwd>/.codex/agents`，
+// 远程 workspace 由远端 bridge 进程解析其 CODEX_HOME（spec：specs/codex-desktop-subagents.md）。
+export interface CodezAgentWriteAgentRoleParams extends CodezAgentWorkspaceTarget {
+  scope: CodezAgentRoleScope;
+  /** 提供 = 更新既有角色（不支持改名）；缺省 = 新建。 */
+  originalName?: string;
+  role: CodezAgentRoleWriteInput;
+}
+
+/**
+ * Codex 项目层 MCP 配置写入（spec: specs/codex-desktop-mcp-settings.md）。
+ * 载体铁律与 listAgentRoles 相同：项目配置文件在 workspace 所属机器上，
+ * 远程 workspace 必须由远端 bridge 进程写。
+ */
+export interface CodezAgentMcpProjectConfigWriteParams extends CodezAgentWorkspaceTarget {
+  action: CodezMcpProjectConfigWriteAction;
+  name: string;
+  config?: Record<string, unknown>;
+  enabled?: boolean;
+  dotCodexFolder?: string;
+}
+
+/**
+ * Codex 用户层/项目层 hooks.json 配置写入（spec: specs/codex-desktop-hooks-and-commands.md）。
+ * 载体铁律与 writeCodexProjectMcpConfig 相同：必须经真实 workspace carrier 发往目标机器 bridge。
+ */
+export interface CodezAgentHooksConfigWriteParams extends CodezAgentWorkspaceTarget {
+  scope: CodezHooksConfigScope;
+  action: CodezHooksConfigWriteAction;
+  dotCodexFolder?: string;
+  target?: CodezHookCommandEntry;
+  hook?: CodezHookCommandEntry;
+}
+
+export interface CodezAgentDeleteAgentRoleParams extends CodezAgentWorkspaceTarget {
+  scope: CodezAgentRoleScope;
+  name: string;
+}
+
 export interface ICodezAgentService {
+  /** Native settings RPC; startup does not require legacy provider/model readiness. */
+  codexRequest(params: CodezAgentWorkspaceTarget & { request: CodexRequest }): Promise<unknown>;
   /** 控制面不需要账号或模型，且不发送普通协议请求。 */
   prepareStorage(params: CodezAgentWorkspaceTarget): Promise<void>;
   getStorageStartupState(
@@ -686,6 +774,7 @@ export interface ICodezAgentService {
   purgeSessionData?(
     params: V4SessionDataParams & { workspace: CodezAgentWorkspaceTarget },
   ): Promise<V4SessionDataPurgeResult>;
+  getCodexUsageObservations(params: CodezAgentWorkspaceTarget): Promise<CodexUsageCacheSnapshot>;
   getTaskTokenUsage(params: CodezAgentTaskTokenUsageParams): Promise<CodezTaskTokenUsageResult>;
   readSession(params: CodezAgentReadSessionParams): Promise<CodezSessionStateSnapshot>;
   readSessionMessages(
@@ -703,6 +792,48 @@ export interface ICodezAgentService {
   setWorkspaceMcpTrust(params: WorkspaceMcpTrustDecision): Promise<CodezWorkspaceMcpTrustResult>;
   listMcpServerStatuses(params: CodezAgentListMcpServerStatusesParams): Promise<CodezMcpListResult>;
   listPlugins(params: CodezAgentPluginViewParams): Promise<CodezPluginsListResult>;
+  /**
+   * Codex 子智能体（agent roles）文件列表：user/project 两 scope 的托管目录。
+   * 走 workspace 级 agent client（bridge 按 attachment cwd 校验 project scope），
+   * 不走独立 plugin management 进程。
+   */
+  listAgentRoles(params: CodezAgentWorkspaceTarget): Promise<CodezAgentsListResult>;
+  /**
+   * Codex 模型目录（model_catalog_json）的 slug→provider 映射。
+   * 走真实 workspace carrier（远程 workspace 的目录文件在远端机器上），
+   * 承载约束与 listAgentRoles 相同。specs/codex-model-provider-grouping.md。
+   */
+  readCodexCatalog(params: CodezAgentWorkspaceTarget): Promise<CodezCatalogReadResult>;
+  /**
+   * Codex 模型目录管理（specs/codex-model-provider-management.md）：
+   * 完整原始条目读取与按 slug upsert/删除。载体铁律与 readCodexCatalog 相同；
+   * 写后返回最新 slug→provider 映射，调用方无需二次读取。
+   */
+  readCodexCatalogModels(params: CodezAgentWorkspaceTarget): Promise<CodezCatalogReadModelsResult>;
+  writeCodexCatalogModel(
+    params: CodezAgentWorkspaceTarget & {
+      model: CodezCatalogModelEntry;
+      originalSlug?: string;
+    },
+  ): Promise<CodezCatalogReadResult>;
+  deleteCodexCatalogModel(
+    params: CodezAgentWorkspaceTarget & { slug: string },
+  ): Promise<CodezCatalogReadResult>;
+  /** 新建或更新角色 TOML；更新传 originalName，不支持改名（删除+新建）。 */
+  writeAgentRole(params: CodezAgentWriteAgentRoleParams): Promise<CodezAgentsWriteResult>;
+  /**
+   * Codex 项目层 MCP 配置的 upsert/delete/set-enabled（spec: specs/codex-desktop-mcp-settings.md）。
+   * 原生 config/batchWrite 禁写项目层，由 bridge 直接改 `.codex/config.toml` 并 reload。
+   */
+  writeCodexProjectMcpConfig(
+    params: CodezAgentMcpProjectConfigWriteParams,
+  ): Promise<CodezMcpProjectConfigWriteResult>;
+  /** Codex 用户层/项目层 hooks.json 增删改（spec: specs/codex-desktop-hooks-and-commands.md）。 */
+  writeCodexHooksConfig(
+    params: CodezAgentHooksConfigWriteParams,
+  ): Promise<CodezHooksConfigWriteResult>;
+  /** 删除角色 TOML；按 effective name 定位，文件必须存在于该 scope。 */
+  deleteAgentRole(params: CodezAgentDeleteAgentRoleParams): Promise<void>;
   /**
    * Plugin 对话引用 catalog：session-scoped 只读投影。
    * 走 workspace 级 agent client（session 记录只存在于该进程），不走独立插件管理进程。
@@ -851,6 +982,7 @@ export interface ICodezAgentService {
   generateWorkspaceText(
     params: CodezAgentGenerateWorkspaceTextParams,
   ): Promise<CodezWorkspaceGenerateTextResult>;
+  canGenerateWorkspaceText(params: CodezAgentWorkspaceTarget): Promise<boolean>;
   testModelConnectivity(
     params: CodezAgentTestModelConnectivityParams,
   ): Promise<CodezProviderTestModelConnectivityResult>;
@@ -898,6 +1030,19 @@ export interface ICodezAgentService {
   ): Event<CodezProviderRuntimeHeadersCancelled>;
   onDynamicSessionRuntimePreferencesRequest(): Event<CodezAgentSessionRuntimePreferencesRequest>;
   /**
+   * desktop → remote：授予/撤销桌面内置浏览器中继能力（spec: codex-desktop-native-browser-cua
+   * 「Remote workspace relay」）。仅 desktop-attached-remote server 实现真实 relay；
+   * 其它 authority mode 下为 no-op。状态变化时远端自行释放活动 workspace runtime。
+   */
+  updateDesktopBrowserControl(params: DesktopBrowserControlUpdate): Promise<void>;
+  /**
+   * remote → desktop（dynamic event）：远端 relay socket 收到一条待中继的浏览器命令，
+   * payload 为原始 broker 请求行；Host 侧换入窗口 token 后打给 Main broker。
+   */
+  onDynamicDesktopBrowserCommandRequest(): Event<DesktopBrowserCommandRelayRequest>;
+  /** desktop → remote：回传中继命令结果（原始 broker 响应行）。 */
+  respondDesktopBrowserCommand(params: DesktopBrowserCommandRelayResponse): Promise<void>;
+  /**
    * CLI 进程级资源样本，带 services 打的 lane 标签（CLI 自己不知道 lane）。
    * 使用 dynamic event 避免 RPC 服务在无人订阅时缓冲周期事件；
    * 该事件不属于 session/conversation continuous 或 replayable 状态。
@@ -937,6 +1082,10 @@ export interface ICodezAgentService {
   conversationRowsRangeV4(
     params: CodezAgentConversationRowsRangeParams,
   ): Promise<V4ConversationRowsRangeResult>;
+  /** rowPayload 单行完整载荷按需读取。 */
+  conversationRowPayloadV4?(
+    params: CodezAgentConversationRowPayloadParams,
+  ): Promise<V4ConversationRowPayloadResult>;
   conversationPlansV4(
     params: CodezAgentConversationPlansParams,
   ): Promise<V4ConversationPlansResult>;
@@ -952,6 +1101,10 @@ export interface ICodezAgentService {
   conversationWorkflowRunsV4(
     params: CodezAgentConversationWorkflowRunsParams,
   ): Promise<V4ConversationWorkflowRunsResult>;
+  /** Codex thread-history projection；独立于 legacy DWF workflowRuns。 */
+  codexHistoryRunsV4(
+    params: CodezAgentCodexHistoryRunsParams,
+  ): Promise<CodexConversationHistoryRunsResult>;
   /** workflow run 的用户面产物清单；与 plans 同族（只读、无状态、超时重发安全）。 */
   conversationWorkflowRunArtifactsV4(
     params: CodezAgentConversationWorkflowRunArtifactsParams,
@@ -981,6 +1134,9 @@ export interface ICodezAgentService {
   conversationFileRewindPreviewV4(
     params: CodezAgentConversationFileRewindPreviewParams,
   ): Promise<V4ConversationFileRewindPreviewResult>;
+  conversationFileRewindProjectionOverlayV4(
+    params: CodezAgentConversationFileRewindProjectionOverlayParams,
+  ): Promise<void>;
   sendConversationCommandV4(params: CodezAgentConversationCommandParams): Promise<CommandAck>;
   queryConversationCommandsV4(params: CodezAgentCommandsQueryParams): Promise<CommandsQueryResult>;
   attachmentBeginV4(params: CodezAgentAttachmentBeginParams): Promise<V4AttachmentBeginResult>;
@@ -1081,6 +1237,23 @@ export interface ICodezAgentService {
   disposeWorkspace(
     params: CodezAgentWorkspaceTarget & { releasePreparation?: boolean },
   ): Promise<void>;
+  /**
+   * 工作树删除隔离（specs/git-worktree-removal.md W5a）：隔离期间该 workspace 的
+   * 新 agent spawn 一律被拒绝，闭合释放→物理删除之间的 respawn 竞态。
+   * 与 releaseWorkspaceRemovalHold 必须成对调用；Host 内存态，Host 重启自愈。
+   */
+  quarantineWorkspaceForRemoval(params: CodezAgentWorkspaceTarget): void;
+  releaseWorkspaceRemovalHold(params: CodezAgentWorkspaceTarget): void;
+  /**
+   * 设置变更要求重造本进程全部活动 workspace runtime（当前唯一消费者是 codex bridge 的
+   * update_plan 开关：工具注册发生在 app-server 配置加载期，只能随进程重启生效，
+   * 见 specs/codex-desktop-update-plan.md）。非 codex bridge runtime 时为空操作。
+   * best-effort：单个 workspace 释放失败不阻断其它 workspace，调用方不据此判失败。
+   */
+  disposeActiveWorkspaceRuntimes(params: {
+    reason: string;
+    includeLegacy?: boolean;
+  }): Promise<void>;
   disposeAll(): void;
 }
 

@@ -77,7 +77,7 @@ export function createWebRemoteControlSharedHostAttachments(dependencies: {
 
   function attachLocalHost(
     windowId: number,
-    terminalOwnerId?: string,
+    context: WebRemoteControlSharedHostAttachContext,
   ): WebRemoteControlSharedHostAttachment {
     const hostProcessWindowId = BrowserWindow.fromId(windowId)?.webContents.id ?? windowId;
     const process = dependencies.windowHostProcessMap.get(hostProcessWindowId);
@@ -96,8 +96,12 @@ export function createWebRemoteControlSharedHostAttachments(dependencies: {
         requestId: `shared-host-request-${nextAttachmentId}`,
         attachmentId,
         clientMode: "web-remote-replayable",
-        ...(terminalOwnerId ? { terminalOwnerId } : {}),
-        scope: { kind: "local" },
+        ...(context.terminalOwnerId ? { terminalOwnerId: context.terminalOwnerId } : {}),
+        scope: {
+          kind: "local",
+          workspacePath: context.workspacePath,
+          ...(context.workspaceIdentity ? { workspaceIdentity: context.workspaceIdentity } : {}),
+        },
       },
       [port2],
     );
@@ -115,7 +119,7 @@ export function createWebRemoteControlSharedHostAttachments(dependencies: {
     context: WebRemoteControlSharedHostAttachContext,
   ): Promise<WebRemoteControlSharedHostAttachment> {
     if (context.kind === "local") {
-      return attachLocalHost(windowId, context.terminalOwnerId);
+      return attachLocalHost(windowId, context);
     }
     if (!context.remoteSessionId) {
       throw createSharedHostError(

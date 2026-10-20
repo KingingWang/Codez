@@ -4,7 +4,8 @@ import { isApiKeyAccess } from "@codez/provider";
 type ProviderSettingsApiKeyService = Pick<
   IProviderSettingsService,
   "getView" | "savePersonalProviderOverlay"
->;
+> &
+  Partial<Pick<IProviderSettingsService, "saveApiKeySource">>;
 
 function findSettingsProvider(view: ProviderSettingsView, providerId: string) {
   return view.providers.find((entry) => entry.providerId === providerId);
@@ -49,6 +50,17 @@ export async function persistProviderApiKey(params: {
   const provider = findSettingsProvider(settingsView, params.providerId);
   if (!provider || !isApiKeyAccess(provider.effectiveConfig.access)) {
     throw new Error(`Provider Settings View 中不存在 API Provider ${params.providerId}`);
+  }
+  if (provider.effectiveConfig.access.apiKeyEnv) {
+    if (!params.providerSettingsService.saveApiKeySource) {
+      throw new Error("当前设置入口不支持临时 Key");
+    }
+    await params.providerSettingsService.saveApiKeySource({
+      providerId: params.providerId,
+      mode: "runtime-env",
+      apiKey: params.apiKey,
+    });
+    return;
   }
 
   const personal = provider.personalConfig ?? {};

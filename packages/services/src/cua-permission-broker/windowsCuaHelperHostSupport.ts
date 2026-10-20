@@ -1,7 +1,6 @@
 import { fork as nodeFork, type ForkOptions } from "node:child_process";
 
 import {
-  HELPER_GHOST_CURSOR_OVERLAY_ARG,
   mintBrokerSocketPath,
   probeHelperHealth,
   type HelperHealth,
@@ -13,14 +12,11 @@ import { HELPER_ADDON_ENV, WINDOWS_DEV_CONTROL_PROTOCOL } from "@codez/codez-cua
 import type { ServiceLogger } from "#src/logger/serviceLogger.js";
 import type { WindowsCuaRuntime } from "#src/cua-permission-broker/windowsCuaDevRuntime.js";
 
-export const CONTROL_PROTOCOL = WINDOWS_DEV_CONTROL_PROTOCOL;
+const CONTROL_PROTOCOL = WINDOWS_DEV_CONTROL_PROTOCOL;
 export const ADDON_ENV = HELPER_ADDON_ENV;
-/** ghost overlay 恒开 argv（spec §4.9，Windows 产品链对齐 macOS）。 */
-export const GHOST_CURSOR_OVERLAY_ARG = HELPER_GHOST_CURSOR_OVERLAY_ARG;
-
 export interface WindowsCuaChild {
   readonly pid?: number;
-  send(message: unknown): boolean;
+  send(message: unknown, callback?: (error: Error | null) => void): boolean;
   kill(): boolean;
   on(event: "message" | "error" | "exit", listener: (...args: unknown[]) => void): this;
   off(event: "message" | "error" | "exit", listener: (...args: unknown[]) => void): this;
@@ -58,19 +54,20 @@ export interface Generation {
 export const defaultChildProcess: WindowsCuaChildProcessAdapter = {
   fork(command, argv, options) {
     const [entryPath, ...args] = argv;
-    if (!entryPath) throw new Error("Windows Computer Use Helper entry path is required");
+    if (!entryPath) throw new Error("Computer Use Helper entry path is required");
     return nodeFork(entryPath, args, { ...options, execPath: command });
   },
 };
 
 export const defaultSocketPathFactory = mintBrokerSocketPath;
-export const defaultHealthProbe = (
-  socketPath: string,
-  timeoutMs: number,
-): Promise<HelperHealth> => probeHelperHealth(socketPath, { timeoutMs });
+export const defaultHealthProbe = (socketPath: string, timeoutMs: number): Promise<HelperHealth> =>
+  probeHelperHealth(socketPath, { timeoutMs });
 
 export class WindowsCuaChildLifecycle {
-  constructor(private readonly logger: ServiceLogger) {}
+  constructor(
+    private readonly logger: ServiceLogger,
+    private readonly helperName = "Windows Computer Use Helper",
+  ) {}
 
   async terminate(generation: Generation, context: string, timeoutMs: number): Promise<void> {
     if (generation.exitObserved) {
@@ -91,7 +88,7 @@ export class WindowsCuaChildLifecycle {
       return;
     }
     const blocker = new Error(
-      "Windows Computer Use Helper termination blocker: child did not exit after kill",
+      `${this.helperName} termination blocker: child did not exit after kill`,
     );
     this.logFailure(generation.id, generation.child.pid, `${context}-termination-blocker`, blocker);
     throw blocker;
@@ -149,7 +146,7 @@ export class WindowsCuaChildLifecycle {
     errorClass: string,
     error: unknown,
   ): void {
-    this.logger.warn(undefined, "Windows Computer Use Helper lifecycle failure", {
+    this.logger.warn(undefined, `${this.helperName} lifecycle failure`, {
       generation,
       pid,
       errorClass,
@@ -187,7 +184,7 @@ export class WindowsCuaChildLifecycle {
   }
 }
 
-export type WindowsDevHelperControlMessage =
+type WindowsDevHelperControlMessage =
   | { protocol: typeof CONTROL_PROTOCOL; type: "transport_ready"; socketPath: string; pid: number }
   | { protocol: typeof CONTROL_PROTOCOL; type: "ready"; socketPath: string; pid: number }
   | { protocol: typeof CONTROL_PROTOCOL; type: "error"; message: string };

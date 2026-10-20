@@ -9,7 +9,7 @@ Goal: reduce any plugin problem to a single concrete fix.
 
 Plugins are managed in **Settings → Plugin Management** — the **Installed** tab (enable/disable, view details, configure, uninstall) and the **Discover** tab (browse, install, and add marketplaces via the **`+`** button).
 
-> Key facts: enable/disable state is stored under `plugins` in `~/.codez/cli/config.json`; the official marketplace is `zcode-plugins-official`; and for cloning marketplace repositories behind a proxy, Codez reads the proxy from `CODEZ_HTTP_PROXY` (a bare `http_proxy` is not used).
+> Key facts: enable/disable state is stored under `plugins` in `~/.codez/cli/config.json`; the official marketplace is `codez-plugins-official`; and for cloning marketplace repositories behind a proxy, Codez reads the proxy from `CODEZ_HTTP_PROXY` (a bare `http_proxy` is not used).
 
 ## 1. Plugin lifecycle and persistence
 

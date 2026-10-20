@@ -27,7 +27,7 @@ Codez 需要最大努力兼容 Claude Code Marketplace 插件，但不能把 Cla
 ### V1b：低风险运行投影
 
 - 运行 `skills`、commands root、`mcpServers` 和 non-sensitive `userConfig`
-  defaults。`zcode-plugins-official` 和 `claude-plugins-official` 安装产物可注入
+  defaults。`codez-plugins-official` 和 `claude-plugins-official` 安装产物可注入
   hooks；其他第三方 marketplace 插件的 `hooks` V1 默认只解析和诊断，不注入
   runtime，后续必须有显式信任/权限门后才能启用。
 - 支持 Claude/Codez 模板变量别名。
@@ -53,7 +53,7 @@ Codez 需要最大努力兼容 Claude Code Marketplace 插件，但不能把 Cla
 
 `marketplace` 和 `source` 是两条不同的轴，不能混用：
 
-- `marketplace` 表示插件身份所属的市场，例如 `zcode-plugins-official`、
+- `marketplace` 表示插件身份所属的市场，例如 `codez-plugins-official`、
   `claude-plugins-official`、`inline` 或自定义 marketplace id。
 - `source` 表示当前本地加载位置/来源，例如 `official`、`inline`、`cache`。
 
@@ -92,7 +92,7 @@ marketplace id，例如 `claude-plugins-official`。
 `cache` 是可替换安装产物，`data` 是插件持久数据。卸载插件时默认移除安装
 产物，不删除 `data`；只有显式 purge 才删除 `data`。
 
-Codez 自己的 `zcode-plugins-official` 是唯一官方市场：随安装包 seed 的内置目录分片与
+Codez 自己的 `codez-plugins-official` 是唯一官方市场：随安装包 seed 的内置目录分片与
 官方 CDN source 下发的目录分片按插件名合并为同一个 marketplace manifest，冲突时
 CDN 市场条目优先。Claude 官方 `claude-plugins-official` 只内置 marketplace source，
 第一次展示、安装或校验时按需刷新 catalog；刷新失败必须返回诊断并保留插件管理页可用，

@@ -6,6 +6,8 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
+import android.webkit.WebStorage
+import android.webkit.WebView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -15,6 +17,8 @@ import androidx.compose.runtime.setValue
 import com.example.codez_mobile.remote.RemoteControlKeepAliveService
 import com.example.codez_mobile.remote.RemoteControlRecentLink
 import com.example.codez_mobile.remote.RemoteControlRecentLinksStore
+import com.example.codez_mobile.remote.RemoteControlSettings
+import com.example.codez_mobile.remote.RemoteControlSettingsStore
 import com.example.codez_mobile.remote.RemoteControlUrlPolicy
 import com.example.codez_mobile.ui.RemoteControlApp
 import com.example.codez_mobile.ui.theme.ZcodemobileTheme
@@ -22,17 +26,31 @@ import com.example.codez_mobile.ui.theme.ZcodemobileTheme
 class MainActivity : ComponentActivity() {
     private var remoteUrl by mutableStateOf<String?>(null)
     private var recentLinks by mutableStateOf<List<RemoteControlRecentLink>>(emptyList())
+    private var settings by mutableStateOf(RemoteControlSettings())
+    private var didAutoReconnectInSession = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         if (BuildConfig.DEBUG) {
-            android.webkit.WebView.setWebContentsDebuggingEnabled(true)
+            WebView.setWebContentsDebuggingEnabled(true)
         }
         recentLinks = RemoteControlRecentLinksStore.read(this)
+        settings = RemoteControlSettingsStore.read(this)
+        didAutoReconnectInSession =
+            savedInstanceState?.getBoolean(KEY_AUTO_RECONNECTED, false) ?: false
 
         val restoredRemoteUrl = savedInstanceState?.getString(KEY_REMOTE_URL)
-        val launchRemoteUrl = restoredRemoteUrl ?: resolveRemoteUrlFromIntent(intent)
+        val explicitLaunchUrl = restoredRemoteUrl ?: resolveRemoteUrlFromIntent(intent)
+        val launchRemoteUrl = RemoteControlSettings.resolveInitialAutoReconnectUrl(
+            explicitLaunchUrl = explicitLaunchUrl,
+            settings = settings,
+            recentLinks = recentLinks,
+            alreadyAutoConnectedInSession = didAutoReconnectInSession,
+        )
+        if (explicitLaunchUrl == null && launchRemoteUrl != null) {
+            didAutoReconnectInSession = true
+        }
         launchRemoteUrl?.let { openRemoteUrl(it) }
 
         setContent {
@@ -40,9 +58,13 @@ class MainActivity : ComponentActivity() {
                 RemoteControlApp(
                     remoteUrl = remoteUrl,
                     recentLinks = recentLinks,
+                    settings = settings,
                     onOpenUrl = ::openRemoteUrl,
                     onCloseRemote = ::closeRemote,
+                    onRemoveRecentLink = ::removeRecentLink,
                     onClearRecentLinks = ::clearRecentLinks,
+                    onUpdateSettings = ::updateSettings,
+                    onClearWebViewCache = ::clearWebViewCache,
                 )
             }
         }
@@ -57,15 +79,14 @@ class MainActivity : ComponentActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         remoteUrl?.let { outState.putString(KEY_REMOTE_URL, it) }
+        outState.putBoolean(KEY_AUTO_RECONNECTED, didAutoReconnectInSession)
     }
 
     private fun openRemoteUrl(rawUrl: String): Boolean {
         val resolvedUrl = RemoteControlUrlPolicy.resolve(rawUrl) ?: return false
         recentLinks = RemoteControlRecentLinksStore.record(this, resolvedUrl)
         remoteUrl = resolvedUrl
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        requestNotificationPermissionIfNeeded()
-        RemoteControlKeepAliveService.start(this, resolvedUrl)
+        syncActiveRemoteEffects(resolvedUrl, settings)
         return true
     }
 
@@ -75,8 +96,44 @@ class MainActivity : ComponentActivity() {
         RemoteControlKeepAliveService.stop(this)
     }
 
+    private fun updateSettings(nextSettings: RemoteControlSettings) {
+        settings = RemoteControlSettingsStore.write(this, nextSettings)
+        val activeUrl = remoteUrl
+        if (activeUrl != null) {
+            syncActiveRemoteEffects(activeUrl, settings)
+        }
+    }
+
+    private fun syncActiveRemoteEffects(activeUrl: String, currentSettings: RemoteControlSettings) {
+        if (currentSettings.keepScreenOn) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        if (currentSettings.backgroundKeepAlive) {
+            requestNotificationPermissionIfNeeded()
+            RemoteControlKeepAliveService.start(this, activeUrl)
+        } else {
+            RemoteControlKeepAliveService.stop(this)
+        }
+    }
+
+    private fun clearWebViewCache() {
+        runCatching {
+            WebView(this).apply {
+                clearCache(true)
+                destroy()
+            }
+            WebStorage.getInstance().deleteAllData()
+        }
+    }
+
     private fun clearRecentLinks() {
         recentLinks = RemoteControlRecentLinksStore.clear(this)
+    }
+
+    private fun removeRecentLink(url: String) {
+        recentLinks = RemoteControlRecentLinksStore.remove(this, url)
     }
 
     private fun resolveRemoteUrlFromIntent(intent: Intent?): String? {
@@ -109,6 +166,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val KEY_REMOTE_URL = "remoteUrl"
+        private const val KEY_AUTO_RECONNECTED = "autoReconnectedInSession"
         private const val REQUEST_NOTIFICATIONS = 4001
     }
 }

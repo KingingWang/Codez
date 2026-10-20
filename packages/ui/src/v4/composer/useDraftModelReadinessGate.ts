@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { isCodezAgentProvider, CODEZ_AGENT_PROVIDER, type CodezProvider } from "@codez/shared";
-import type { IModelSelectionService, ModelSelectionView } from "@codez/services";
+import {
+  isModelSelectionViewForWorkspace,
+  type IModelSelectionService,
+  type ModelSelectionView,
+} from "@codez/services";
 import {
   buildModelConfigMissingUiError,
   type ModelConfigMissingUiError,
@@ -45,11 +49,12 @@ export function useDraftModelReadinessGate(params: {
   provider?: CodezProvider;
   sessionId: string | null;
   modelSelectionService: Pick<IModelSelectionService, "getView" | "onDidChange">;
+  codex?: boolean;
 }): DraftModelReadinessGate {
   const { workspacePath, workspaceIdentity, provider, sessionId, modelSelectionService } = params;
   const workspaceKey = workspaceIdentity?.trim() || workspacePath;
   const displayProvider = provider ?? CODEZ_AGENT_PROVIDER;
-  const enabled = sessionId === null && isCodezAgentProvider(displayProvider);
+  const enabled = !params.codex && sessionId === null && isCodezAgentProvider(displayProvider);
   const gateKey = `${workspaceKey}\u0000${displayProvider}`;
   const scope = useMemo(() => ({ gateKey }), [enabled, gateKey, modelSelectionService]);
   const [state, setState] = useState<DraftModelReadinessState>(() => ({
@@ -101,12 +106,20 @@ export function useDraftModelReadinessGate(params: {
       commitStatus(status);
     };
     const subscription = modelSelectionService.onDidChange((view) => {
+      // Codex 原生 Host 的模型事实与 revision 都是 per-workspace 的；跨 workspace
+      // 事件不属于本门禁，必须在比较 registryEventVersion / 采用状态之前按身份过滤。
+      if (!isModelSelectionViewForWorkspace(view, workspaceKey)) return;
       registryEventVersion += 1;
       applyStatus(resolveModelSelectionReadinessStatus(view));
     });
     const initialReadVersion = registryEventVersion;
+    // Codex 原生 Host 按 workspace 解析模型事实；legacy Registry 忽略此字段。
+    const workspace = {
+      workspacePath,
+      ...(workspaceIdentity ? { workspaceIdentity } : {}),
+    };
     void modelSelectionService
-      .getView()
+      .getView({ selection: null, workspace })
       .then((view) => {
         // 读取在变更事件之前发起、之后才返回时，事件快照更新；禁止旧读取覆盖新状态。
         if (registryEventVersion !== initialReadVersion) return;
@@ -131,7 +144,14 @@ export function useDraftModelReadinessGate(params: {
       disposed = true;
       subscription?.dispose();
     };
-  }, [commitStatus, enabled, modelSelectionService, workspaceKey]);
+  }, [
+    commitStatus,
+    enabled,
+    modelSelectionService,
+    workspaceKey,
+    workspacePath,
+    workspaceIdentity,
+  ]);
 
   const markProviderNotReady = useCallback(() => {
     commitStatus("missing", { revealMissing: true });
@@ -140,7 +160,14 @@ export function useDraftModelReadinessGate(params: {
   const ensureReadyForSend = useCallback(async (): Promise<boolean> => {
     if (!enabled) return true;
     try {
-      const view = await modelSelectionService.getView();
+      const view = await modelSelectionService.getView({
+        selection: null,
+        // Codex 原生 Host 按 workspace 解析模型事实；legacy Registry 忽略此字段。
+        workspace: {
+          workspacePath,
+          ...(workspaceIdentity ? { workspaceIdentity } : {}),
+        },
+      });
       const status = resolveModelSelectionReadinessStatus(view);
       commitStatus(status, { revealMissing: status === "missing" });
       if (status === "missing") {
@@ -161,7 +188,14 @@ export function useDraftModelReadinessGate(params: {
       });
       return true;
     }
-  }, [commitStatus, enabled, modelSelectionService, workspaceKey]);
+  }, [
+    commitStatus,
+    enabled,
+    modelSelectionService,
+    workspaceKey,
+    workspacePath,
+    workspaceIdentity,
+  ]);
 
   const error = useMemo(
     () =>

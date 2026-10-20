@@ -14,6 +14,7 @@ import type { ICloudContentService } from "#src/cloud-content/cloudContent.js";
 import type { IMarketingTouchService } from "#src/marketing-touch/marketingTouch.js";
 import type { IGitService } from "./git/git.js";
 import type { IGitCheckpointService } from "./git/gitCheckpoint.js";
+import type { ICodexDesktopFileRewindService } from "./desktop-file-rewind.js";
 import type { ISystemService } from "./system/system.js";
 import type { ITerminalService } from "./terminal/terminal.js";
 import type { ISettingService } from "./setting/setting.js";
@@ -30,6 +31,7 @@ import type {
   IModelSelectionService,
   IProviderSettingsService,
 } from "./model-provider/providerFacadeServices.js";
+import type { ICodexNativeProviderKeyService } from "./model-provider/codexNativeProviderKeyService.js";
 import type { IUsageStatsService } from "./usage-stats/usageStats.js";
 import type { ICodingPlanSubscriptionService } from "./coding-plan-subscription/codingPlanSubscription.js";
 import type { IClientConfigService } from "./client-config/clientConfig.js";
@@ -68,6 +70,8 @@ export interface IServiceAccessor {
   readonly marketingTouchService?: IMarketingTouchService;
   readonly gitService: IGitService;
   readonly gitCheckpointService: IGitCheckpointService;
+  /** Desktop-owned safe Codex file rewind transaction; old hosts may omit it. */
+  readonly codexDesktopFileRewindService?: ICodexDesktopFileRewindService;
   readonly systemService: ISystemService;
   readonly terminalService: ITerminalService;
   readonly settingService: ISettingService;
@@ -98,6 +102,11 @@ export interface IServiceAccessor {
   readonly deviceSyncStateService?: IDeviceSyncStateService;
   /** 仅桌面本机 Host 注册：数据同步页模型提供商的 Provisioning lane 状态与重试。 */
   readonly providerProvisioningStatusService?: IProviderProvisioningStatusService;
+  /**
+   * Codex 原生供应商的本机临时 Key（spec: codex-provider-runtime-env-key）。
+   * Server remote 等宿主不提供；Renderer 经 RPC 访问时以调用失败判定不支持。
+   */
+  readonly codexNativeProviderKeyService?: ICodexNativeProviderKeyService;
   readonly usageStatsService: IUsageStatsService;
   readonly codingPlanSubscriptionService: ICodingPlanSubscriptionService;
   readonly clientConfigService: IClientConfigService;

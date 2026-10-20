@@ -18,6 +18,32 @@
 该空占位独立保留在 `test/e2e/conversation-session/manual-review/pending/conversation-session-model-provider-dual-window.test.ts`，
 不计入执行通过或正式覆盖；其余五条已有操作的目录缺口回归仍由 `test/e2e/conversation-session/conversation-session-model-provider-regression-gaps.test.ts` 验证。
 
+## 临时环境变量 Key（验收决定）
+
+契约见 [provider-runtime-env-api-key.md](../specs/provider-runtime-env-api-key.md)。以下只覆盖普通手工 API Key；Codex 原生供应商与开发模式 Server remote 剪枝，手机复用桌面 Host，不另建 Key。
+
+| Case ID      | 优先级 | 准备与操作                                                                      | 预期与非 UI 证据                                                                                                 |
+| ------------ | ------ | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| F-ENVKEY-001 | P0     | 本地 Provider 输入 Key，选择临时环境变量，保存、重启 App，再发送消息。          | 本机 Credential Store 保留值、Personal Config 只有引用；实际 Provider 请求使用 Key，UI 不回显，文件/日志无明文。 |
+| F-ENVKEY-002 | P0     | SSH/WSL/Docker 首连后选择该 Provider 发送，断开再重连发送。                     | 每次连接在临时安装成功后才 ready，远端正式 Store 不含 Key；两次请求正确，断网不离线续跑。                        |
+| F-ENVKEY-003 | P0     | 同一 Remote Environment 打开两个窗口/Workspace；再切换 Key 或失去其中一个连接。 | 配置 Provisioning 只执行一次，两个连接各自取得临时值；一条连接退出不清掉另一条的值，也不跨身份误用。             |
+| F-ENVKEY-004 | P0     | 远端 Target 太旧、Key 缺失、安装失败或重连遇到磁盘 `already-applied`。          | 旧版/故障明确拒绝且零明文回退；重连仍重新安装临时值，网络请求前 fail-closed。                                    |
+| F-ENVKEY-005 | P0     | 远程任务运行中切换模式或 Key，先取消一次确认，再确认一次。                      | 取消零写入；确认后旧 Agent 停止、新 Agent 使用新 Key，已接受输入按既有重启规则结算而不自动重放。                 |
+| F-ENVKEY-006 | P0     | 远端 Agent 用 Bash/MCP/插件尝试读取进程环境，检查远端文件、日志与历史。         | Key 不进入工具子进程环境、远端 Provider/Credential/Provisioning 文件、命令行或日志；模型执行仍能使用。           |
+| F-ENVKEY-007 | P1     | 将曾经直写并同步到远端的 Provider 改为临时模式。                                | 本机旧明文迁入凭据存储，当前远端配置被无明文版本替换；提示旧 Key 可能已泄漏、需要轮换，不声称清除历史备份。      |
+
+## Codex 原生自定义供应商临时 Key（验收决定）
+
+契约见 [codex-provider-runtime-env-key.md](../specs/codex-provider-runtime-env-key.md)。以下只覆盖默认 Codex 桌面版的自定义 `model_providers`；与上方 legacy 路径是独立的配置/运行时。
+
+| Case ID        | 优先级 | 准备与操作                                                                                                           | 预期与非 UI 证据                                                                                                                            |
+| -------------- | ------ | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| F-CODEXENV-001 | P0     | 默认 Codex GUI 创建/编辑自定义供应商，选择本机临时 Key，重开设置并在本地发送。                                       | 只向原生用户配置写 `env_key`、不写 `experimental_bearer_token`；本机 Codez 凭据有值，UI 不回显；实际 Codex 请求使用正确值。                 |
+| F-CODEXENV-002 | P0     | SSH 工作区的原生供应商已引用本机托管变量，首次连接、第二窗口与断开重连分别发送。                                     | 各连接独立安装临时 Key 后才 ready，远端 Codez 管理的配置/凭据/状态文件不含值；请求鉴权正确。                                                |
+| F-CODEXENV-003 | P0     | 远端已引用 App 管理 `env_key` 而本机缺凭据；先连接、打开设置页补录，再发送。另覆盖旧远端目标、配置不匹配与安装失败。 | 缺值时连接可进入设置页，安装前所有模型请求在网络前拒绝；补录安装后才可发送。旧版/版本不符/安装失败不得回退旧明文或其他 Environment 的 Key。 |
+| F-CODEXENV-004 | P0     | 运行中切换 Key 来源或轮换 Key，先取消、再确认。                                                                      | 取消零写入；确认后旧 Agent 中断并按既有重启规则结算已接受输入，新 Agent 使用新值，失败不隐式恢复旧环境。                                    |
+| F-CODEXENV-005 | P1     | 已有明文原生供应商、手工 `env_key`、`requires_openai_auth` / `[auth]`、Server remote。                               | 明文模式仍可用；切临时模式时迁走当前明文并提示轮换；外部 env/auth 与 Server remote 不被托管或静默覆盖。                                     |
+
 ## 一、功能 × 功能
 
 | Case ID          | 优先级 | 用户场景与准备                                                          | 操作步骤                                                                | 预期结果                                                                                                                       | 不应发生                                                                  |

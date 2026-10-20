@@ -1,20 +1,66 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2Icon } from "lucide-react";
 import type { CodezTaskSnapshotToolFieldRef } from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 
+export function isV4LazyRowPayloadRef(ref: CodezTaskSnapshotToolFieldRef): boolean {
+  return typeof ref.refId === "string" && ref.refId.startsWith("v4-row-payload/");
+}
+
 export function ToolSnapshotFieldNotice({
   refs,
+  autoLoadWhenMounted = false,
   onLoadFullToolCallFields,
 }: {
   refs: readonly CodezTaskSnapshotToolFieldRef[];
+  autoLoadWhenMounted?: boolean;
   onLoadFullToolCallFields?: () => Promise<boolean | void> | boolean | void;
 }) {
   const { intl, locale } = useCodezIntl();
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
+  const autoLoadKeyRef = useRef<string | null>(null);
+  const loadCallbackRef = useRef(onLoadFullToolCallFields);
+  loadCallbackRef.current = onLoadFullToolCallFields;
+  const hasNonV4Refs = refs.some((ref) => !isV4LazyRowPayloadRef(ref));
+  const autoLoadKey = autoLoadWhenMounted
+    ? refs
+        .filter(isV4LazyRowPayloadRef)
+        .map((ref) => `${ref.field}:${ref.refId}`)
+        .join("|")
+    : "";
+
+  useEffect(() => {
+    if (!autoLoadKey || !loadCallbackRef.current || autoLoadKeyRef.current === autoLoadKey) {
+      return;
+    }
+    autoLoadKeyRef.current = autoLoadKey;
+    let cancelled = false;
+    setLoading(true);
+    setFailed(false);
+    void Promise.resolve(loadCallbackRef.current())
+      .then(
+        (result) => {
+          if (!cancelled) setFailed(result === false);
+        },
+        () => {
+          if (!cancelled) setFailed(true);
+        },
+      )
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [autoLoadKey]);
+
   if (refs.length === 0 || !onLoadFullToolCallFields) {
+    return null;
+  }
+  // V4 折叠懒加载引用在未展开时不渲染提示条；只有展开后（autoLoadWhenMounted=true）才触发自动拉取并在加载/失败时显示提示。
+  if (!hasNonV4Refs && !autoLoadWhenMounted) {
     return null;
   }
 

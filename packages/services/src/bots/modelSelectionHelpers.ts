@@ -1,6 +1,4 @@
-import {
-  type CodezProvider,
-} from "@codez/shared";
+import { type CodezProvider } from "@codez/shared";
 
 const BOT_NATIVE_MODEL_PROVIDER_PREFIX = "native:";
 

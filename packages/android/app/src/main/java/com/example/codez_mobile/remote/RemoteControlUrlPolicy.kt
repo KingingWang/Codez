@@ -3,9 +3,6 @@ package com.example.codez_mobile.remote
 import android.net.Uri
 import com.example.codez_mobile.BuildConfig
 
-private const val CODEZ_REMOTE_SCHEME = "codez"
-private const val CODEZ_REMOTE_HOST = "remote"
-
 object RemoteControlUrlPolicy {
     fun resolve(raw: String?): String? {
         val trimmed = raw?.trim().orEmpty()
@@ -22,11 +19,11 @@ object RemoteControlUrlPolicy {
             return null
         }
 
-        if (uri.scheme == CODEZ_REMOTE_SCHEME && uri.host == CODEZ_REMOTE_HOST) {
+        if (RemoteControlUrlMatcher.isCodezDeepLink(uri.scheme, uri.host)) {
             return buildDefaultRemoteUrl(uri)
         }
 
-        if (isAllowedRemoteUrl(uri)) {
+        if (isAllowedRemoteUri(uri)) {
             return uri.toString()
         }
 
@@ -35,7 +32,7 @@ object RemoteControlUrlPolicy {
 
     fun isAllowedRemoteUrl(raw: String?): Boolean {
         val uri = runCatching { Uri.parse(raw?.trim().orEmpty()) }.getOrNull() ?: return false
-        return isAllowedRemoteUrl(uri)
+        return isAllowedRemoteUri(uri)
     }
 
     private fun buildDefaultRemoteUrl(uri: Uri): String {
@@ -45,40 +42,11 @@ object RemoteControlUrlPolicy {
         return base.build().toString()
     }
 
-    private fun isAllowedRemoteUrl(uri: Uri): Boolean {
-        val scheme = uri.scheme?.lowercase()
-        val host = uri.host?.lowercase().orEmpty()
-        val path = uri.path.orEmpty()
-
-        if (scheme == "https" && host == "zcode.z.ai" && path.startsWith("/remote")) {
-            return true
-        }
-
-        if (!BuildConfig.DEBUG) {
-            return false
-        }
-
-        // Bugfix: 开发机真机调试时二维码会指向局域网 Vite 地址。
-        // 生产包仍只允许 zcode.z.ai，debug 包才放开测试域、本机和局域网 http/https，避免远控壳变成任意浏览器。
-        if (!path.startsWith("/remote")) {
-            return false
-        }
-        if (host == "zcode.z.ai") {
-            return scheme == "https"
-        }
-        return (scheme == "http" || scheme == "https") && isDebugHost(host)
-    }
-
-    private fun isDebugHost(host: String): Boolean {
-        if (host == "localhost" || host == "127.0.0.1" || host == "10.0.2.2") {
-            return true
-        }
-        if (host.endsWith(".local")) {
-            return true
-        }
-        if (host.startsWith("192.168.") || host.startsWith("10.")) {
-            return true
-        }
-        return Regex("^172\\.(1[6-9]|2\\d|3[0-1])\\.").containsMatchIn(host)
-    }
+    private fun isAllowedRemoteUri(uri: Uri): Boolean =
+        RemoteControlUrlMatcher.isAllowedRemoteTarget(
+            scheme = uri.scheme,
+            host = uri.host,
+            path = uri.path,
+            debug = BuildConfig.DEBUG,
+        )
 }

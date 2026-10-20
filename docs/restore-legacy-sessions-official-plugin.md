@@ -9,7 +9,7 @@
 ## Plugin Identity
 
 - 插件名：`restore-legacy-sessions`
-- 插件 id：`restore-legacy-sessions@zcode-plugins-official`
+- 插件 id：`restore-legacy-sessions@codez-plugins-official`
 - 版本：`0.1.0`
 - 类型：官方 bundled plugin
 - 默认状态：关闭
@@ -83,7 +83,7 @@ codez plugins enable restore-legacy-sessions
 
 ## 验证
 
-- `codez plugins list` 能看到 `restore-legacy-sessions@zcode-plugins-official`，默认 disabled。
+- `codez plugins list` 能看到 `restore-legacy-sessions@codez-plugins-official`，默认 disabled。
 - disabled 状态不注入 skill roots 或 command roots。
 - enable 后 `skillCount = 1`，`commandRootCount = 1`。
 - SEA asset manifest 包含 `skills/restore-legacy-sessions/SKILL.md`、两个脚本和 `commands/restore-legacy-sessions.md`。

@@ -57,6 +57,7 @@ async function sendText(
   const record = requireRecord(host, envelope.sessionId);
   // Bug 根因：旧校验只看正文，UI 已允许的 attachment-only query 会在 CLI 被误判为空。
   if (
+    !rawPayload.interruptedContinueTarget &&
     !hasPromptInput(rawPayload.text, rawPayload.attachments) &&
     !rawPayload.conversationQuotes?.length
   ) {
@@ -252,6 +253,14 @@ async function sendText(
         ? { browserAmbientContext: payload.browserAmbientContext }
         : {}),
       inputId: envelope.commandId,
+      // 中断继续没有新的用户正文：复用恢复入口，不制造消息记录或再运行 UserPromptSubmit。
+      ...(payload.interruptedContinueTarget && !payload.text.trim()
+        ? {
+            inputVisibility: "model-only" as const,
+            skipInputRecord: true,
+            skipUserPromptSubmitHooks: true,
+          }
+        : {}),
       // 立即发送是用户的新指令：抢占后与空闲时一样按普通用户消息开新一轮，不加中途提示。
       // 修复原因：原来抢占后标成 user_steer，模型看到"在当前轮继续"的提示；MCS 关时这段提示
       // 还并入上一次请求已发出的 tool_result，改写了那次请求写入的缓存。

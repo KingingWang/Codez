@@ -8,6 +8,7 @@ import { DYNAMIC_WORKFLOW_SKILL_NAME } from "./bundled-skills.js";
  * codez-protocol/slash-commands.ts 与 builtin-prompt-command.ts；这里只放需要 bootstrap 侧路径推导的技能剔除。
  */
 
+
 const SKILL_MANIFEST_FILE_NAME = "SKILL.md";
 
 /**

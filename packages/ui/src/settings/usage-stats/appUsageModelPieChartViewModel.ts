@@ -13,6 +13,9 @@ export interface AppUsageModelPieSlice {
   label: string;
   color: string;
   totalTokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
   share: number;
 }
 
@@ -38,11 +41,20 @@ export function buildAppUsageModelPieChartViewModel({
     label: resolvePieModelLabel(intl, model.modelId),
     color: getAppUsageModelChartColor(index),
     totalTokens: model.totalTokens,
+    inputTokens: model.inputTokens,
+    outputTokens: model.outputTokens,
+    cacheReadTokens: model.cacheReadTokens ?? 0,
     share: totalModelTokens > 0 ? model.totalTokens / totalModelTokens : 0,
   }));
 
   const otherModels = shouldMergeOther ? positiveModels.slice(modelSliceLimit) : [];
   const otherTotalTokens = otherModels.reduce((sum, model) => sum + model.totalTokens, 0);
+  const otherInputTokens = otherModels.reduce((sum, model) => sum + model.inputTokens, 0);
+  const otherOutputTokens = otherModels.reduce((sum, model) => sum + model.outputTokens, 0);
+  const otherCacheReadTokens = otherModels.reduce(
+    (sum, model) => sum + (model.cacheReadTokens ?? 0),
+    0,
+  );
   const otherSlice: AppUsageModelPieSlice[] =
     otherTotalTokens > 0
       ? [
@@ -51,6 +63,9 @@ export function buildAppUsageModelPieChartViewModel({
             label: intl.formatMessage({ id: "settings.usage.modelChart.other" }),
             color: getAppUsageModelChartColor(modelSliceLimit),
             totalTokens: otherTotalTokens,
+            inputTokens: otherInputTokens,
+            outputTokens: otherOutputTokens,
+            cacheReadTokens: otherCacheReadTokens,
             share: totalModelTokens > 0 ? otherTotalTokens / totalModelTokens : 0,
           },
         ]

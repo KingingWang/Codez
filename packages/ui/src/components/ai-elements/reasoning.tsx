@@ -328,9 +328,22 @@ export const ReasoningTrigger = memo(
 
     const thinkingMessage =
       getThinkingMessage?.(isStreaming, duration) ??
-      (isStreaming && !isOpen ? (
-        <span className="animated-gradient-text font-medium">
-          {intl.formatMessage({ id: "chat.reasoning.thinking" })}
+      (isStreaming ? (
+        <span className="inline-flex items-center gap-2">
+          <span className="animated-gradient-text font-medium">
+            {intl.formatMessage({ id: "chat.reasoning.thinking" })}
+          </span>
+          {isOpen && duration !== undefined ? (
+            <>
+              <span className="font-normal text-foreground-subtlest">·</span>
+              <span className="font-normal text-foreground-subtlest">
+                {intl.formatMessage(
+                  { id: "chat.reasoning.durationSeconds" },
+                  { seconds: String(duration) },
+                )}
+              </span>
+            </>
+          ) : null}
         </span>
       ) : duration === undefined ? (
         <span className="inline-flex items-center gap-2">

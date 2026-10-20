@@ -51,6 +51,20 @@ CREATE TABLE automations (
         updated_at INTEGER NOT NULL
       , project_id TEXT, host_id TEXT, additional_directories TEXT);
 
+CREATE TABLE "codex_automation_correlations" (
+    workspace_key TEXT NOT NULL,
+    run_id TEXT NOT NULL,
+    automation_id TEXT NOT NULL,
+    command_id TEXT NOT NULL,
+    state TEXT NOT NULL CHECK (state IN ('pending', 'accepted', 'unknown', 'completed', 'failed', 'stopped')),
+    thread_id TEXT,
+    turn_id TEXT,
+    error TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY (workspace_key, run_id)
+  );
+
 CREATE TABLE hosts (
  host_id TEXT PRIMARY KEY, kind TEXT NOT NULL, target_json TEXT, membership_id TEXT,
  position INTEGER NOT NULL DEFAULT 0, last_connection_status TEXT, last_connection_error TEXT, last_opened_at INTEGER);

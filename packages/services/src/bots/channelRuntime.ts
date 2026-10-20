@@ -54,6 +54,12 @@ export function createLatestRuntimeRefreshQueue() {
     invalidate(): void {
       generation += 1;
     },
+    // 修复原因：dispose 只 invalidate generation 时，正在执行的 reconcile 仍会继续写
+    // bot-config/bot-state；调用方删除数据目录会撞 ENOTEMPTY。返回队列尾部 Promise，
+    // 让销毁路径能等这轮刷新真正落地后再返回。
+    whenIdle(): Promise<void> {
+      return queue;
+    },
   };
 }
 
@@ -84,9 +90,7 @@ export function isBotRuntimeLockConflictError(error: unknown): boolean {
 function isBotRuntimeLockCleanupRetryable(error: unknown): boolean {
   return (
     isNodeError(error) &&
-    (error.code === "EPERM" ||
-      error.code === "EBUSY" ||
-      error.code === "ENOTEMPTY")
+    (error.code === "EPERM" || error.code === "EBUSY" || error.code === "ENOTEMPTY")
   );
 }
 
@@ -188,10 +192,7 @@ async function acquireBotRuntimeLock(
         }
         const currentOwner = await readBotRuntimeLockOwner(lockPath);
         if (currentOwner) {
-          const leaseAt = await readBotRuntimeLockLeaseAt(
-            lockPath,
-            currentOwner.nonce,
-          );
+          const leaseAt = await readBotRuntimeLockLeaseAt(lockPath, currentOwner.nonce);
           const leaseAge = Date.now() - leaseAt;
           if (
             isProcessAlive(currentOwner.pid) &&

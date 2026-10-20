@@ -1,0 +1,405 @@
+// Run from repo root: node packages/ui/src/settings/codex/qa/interaction-e2e.mjs
+// Uses installed Vite + playwright-core + system Chrome. No downloads/dependencies.
+import assert from "node:assert/strict";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { createServer } from "vite";
+import { chromium } from "playwright-core";
+import { verifyProjectDiscovery } from "./project-discovery-e2e.mjs";
+import { verifyCodexMemoryLocale } from "./memory-locale-e2e.mjs";
+import { verifyMappedProviderComposer } from "./mapped-provider-e2e.mjs";
+import {
+  captureOptionalAgentBrowserSnapshot,
+  createCatalogConfigReadCounter,
+  verifyCodexHelpUpdate,
+  inspectRpcLog,
+  verifySingleCatalogModelAndRestart,
+  verifyLocalConfigValidation,
+  verifyModeTooltipOwnership,
+  verifyUsageHostReconnect,
+  verifyMessageFeedback,
+  verifyGeneralAccessibility,
+  verifyRootProviderStartup,
+  waitFixtureButtonEnabled,
+} from "./settings-regressions-e2e.mjs";
+const evidence = await mkdtemp(join(tmpdir(), "codex-ui-interaction-e2e-"));
+const checks = [];
+const server = await createServer({
+  configFile: resolve("packages/desktop/vite.config.ts"),
+  root: resolve("packages/ui/src/settings/codex/qa"),
+  cacheDir: join(evidence, "vite-cache"),
+  server: { host: "127.0.0.1", port: 5188, strictPort: true },
+});
+await server.listen();
+const browser = await chromium.launch({
+  executablePath: "/opt/google/chrome/chrome",
+  headless: true,
+  args: ["--no-sandbox", "--remote-debugging-port=9338"],
+  env: {
+    PATH: process.env.PATH,
+    HOME: evidence,
+    XDG_CONFIG_HOME: evidence,
+    XDG_CACHE_HOME: evidence,
+  },
+});
+const page = await browser.newPage({ viewport: { width: 1280, height: 1100 } });
+const errors = [];
+page.on("pageerror", (error) => errors.push(error.message));
+const tooltipWarnings = [];
+page.on("console", (message) => {
+  if (message.text().includes("Tooltip is changing from")) tooltipWarnings.push(message.text());
+});
+await page.route("**/*", (route) =>
+  new URL(route.request().url()).hostname === "127.0.0.1" ? route.continue() : route.abort(),
+);
+const result = async () => JSON.parse(await page.getByTestId("result").innerText());
+const catalogConfigReads = createCatalogConfigReadCounter(page, result);
+const waitEnabled = (name) => waitFixtureButtonEnabled(page, name);
+try {
+  await verifyMappedProviderComposer(page, evidence, checks);
+  await page.goto("http://127.0.0.1:5188/");
+  await waitEnabled("Send fixture");
+  assert.equal(await page.getByTestId("legacy-reads").innerText(), "Legacy registry reads: 0");
+  await page.getByRole("button", { name: "Send fixture", exact: true }).click();
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="result"]')?.textContent?.includes('"native-model"'),
+  );
+  assert.deepEqual((await result()).modelSelection, {
+    providerId: "native-provider",
+    modelId: "native-model",
+    options: { reasoningLevel: "medium" },
+  });
+  assert.ok(
+    (await inspectRpcLog(page, result)).catalogReads > 0,
+    "Composer must read the Host catalog boundary",
+  );
+  checks.push("NewTask native config/model readiness, legacy registry never accessed");
+  const firstSendConfigReads = await catalogConfigReads();
+  await page.getByRole("button", { name: "Send fixture", exact: true }).click();
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="result"]')?.textContent?.includes('"native-model"'),
+  );
+  assert.equal(
+    await catalogConfigReads(),
+    firstSendConfigReads,
+    "Two warm sends in one workspace must reuse the catalog owner without another config/model RPC",
+  );
+  checks.push("Warm follow-up send reuses workspace catalog discovery");
+  await page.getByRole("button", { name: "Invalidate and read", exact: true }).click();
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="result"]')?.textContent?.includes('"stale"'),
+  );
+  await waitEnabled("Send fixture");
+  await page.getByRole("button", { name: "Capture reader", exact: true }).click();
+
+  await page.getByRole("button", { name: "Switch workspace", exact: true }).click();
+  await page.getByRole("button", { name: "Read captured", exact: true }).click();
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="result"]')?.textContent?.includes('"stale"'),
+  );
+  await page.getByRole("button", { name: "Send fixture", exact: true }).click();
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="result"]')?.textContent?.includes('"workspace-model"'),
+  );
+  const otherWorkspaceConfigReads = await catalogConfigReads("/isolated/other-workspace");
+  assert.ok(
+    otherWorkspaceConfigReads > 0,
+    "Workspace switch must invalidate the catalog before a different workspace can send",
+  );
+  checks.push("Workspace switch fetches a fresh catalog and cannot reuse the old result");
+
+  await page.getByRole("button", { name: "Switch workspace", exact: true }).click();
+  await page.getByRole("button", { name: "Send fixture", exact: true }).click();
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="result"]')?.textContent?.includes('"native-model"'),
+  );
+  const returnedWorkspaceConfigReads = await catalogConfigReads();
+  assert.ok(
+    returnedWorkspaceConfigReads > firstSendConfigReads,
+    "Returning to the first workspace must also invalidate the other workspace catalog",
+  );
+  checks.push("Returning to the first workspace fetches its own catalog");
+
+  await page.getByRole("button", { name: "Active conversation", exact: true }).click();
+  await page.getByRole("button", { name: "Send fixture", exact: true }).click();
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="result"]')?.textContent?.includes('"second-model"'),
+  );
+  assert.equal((await result()).modelSelection.options.reasoningLevel, "high");
+  checks.push("Active conversation initializes native model/effort, not global defaults");
+  await page.getByRole("button", { name: "Toggle native busy" }).click();
+  const models = page.getByTestId("codex-composer-models");
+  for (const testId of ["chat-model-select-trigger", "chat-thought-level-select-trigger"]) {
+    assert.equal(await models.getByTestId(testId).isDisabled(), true);
+  }
+  assert.equal(
+    await page.getByRole("button", { name: "Switch mode", exact: true }).isDisabled(),
+    true,
+  );
+  assert.equal(
+    await page.getByRole("button", { name: "Send fixture", exact: true }).isEnabled(),
+    true,
+  );
+  await page.getByRole("button", { name: "Toggle native busy" }).click();
+  assert.equal(
+    await page.getByRole("button", { name: "Switch mode", exact: true }).isEnabled(),
+    true,
+  );
+  await verifyModeTooltipOwnership(page, tooltipWarnings, checks);
+  checks.push(
+    "Busy projection disables real native model/effort and mode/plan controls; same-settings send remains enabled and idle unlocks controls",
+  );
+  await page.getByRole("button", { name: "Toggle configured custom model" }).click();
+  await models.getByTestId("chat-model-select-trigger").click();
+  await page
+    .getByRole("menuitemradio", { name: "vendor/private · Configured in Codex", exact: true })
+    .click();
+  // 配置模型未进入发现：不伪造能力 picker，档位渲染为只读固定 Pill（与旧版共享控件同规则）。
+  const fixedThought = models.getByTestId("chat-thought-level-select-trigger");
+  assert.equal(await fixedThought.getAttribute("data-thought-level-fixed"), "true");
+  assert.match(await fixedThought.innerText(), /custom-effort/);
+  await page.getByRole("button", { name: "Send fixture", exact: true }).click();
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="result"]')?.textContent?.includes("vendor/private"),
+  );
+  assert.deepEqual((await result()).modelSelection, {
+    providerId: "native-provider",
+    modelId: "vendor/private",
+    options: { reasoningLevel: "custom-effort" },
+  });
+  checks.push(
+    "Configured custom model absent from discovery remains selectable/submittable with native effort and no fabricated capability picker",
+  );
+  const invalidatedConfigReads = await catalogConfigReads();
+  assert.ok(
+    invalidatedConfigReads > returnedWorkspaceConfigReads,
+    "Explicit catalog reload after a configuration change must fetch changed config once",
+  );
+  checks.push("Configuration invalidation fetches the changed catalog once");
+  await page.getByRole("button", { name: "Toggle configured custom model" }).click();
+  await page.getByRole("button", { name: "NewTask", exact: true }).click();
+  await page.getByRole("button", { name: "Toggle catalog failure", exact: true }).click();
+  await page.getByRole("alert").filter({ hasText: "Fixture catalog unavailable" }).waitFor();
+  assert.equal(
+    await page.getByRole("button", { name: "Send fixture", exact: true }).isDisabled(),
+    true,
+  );
+  await page.getByRole("button", { name: "Toggle catalog failure" }).click();
+  await waitEnabled("Send fixture");
+  checks.push("Catalog failure blocks send; refresh recovers without legacy fallback");
+  assert.equal(await page.getByText(/Starts after the current task finishes/).count(), 1);
+  assert.equal(await page.locator('[data-testid="v4-queue-resume"]').count(), 0);
+  assert.equal(await page.getByText(/queue is paused/i).count(), 0);
+  checks.push("Native queue label, no false pause/resume affordance");
+
+  await page.getByRole("button", { name: "Native questions", exact: true }).click();
+  assert.equal(await page.getByRole("button", { name: "Submit answers" }).isDisabled(), true);
+  await page.getByRole("button", { name: "Staging — Isolated", exact: true }).click();
+  assert.equal(await page.getByRole("button", { name: "Submit answers" }).isDisabled(), true);
+  const secret = page.getByLabel("Enter fixture secret", { exact: true });
+  assert.equal(await secret.getAttribute("type"), "password");
+  await secret.fill("qa-only-secret");
+  await page.screenshot({ path: join(evidence, "native-question.png") });
+  await page.getByRole("button", { name: "Submit answers" }).dblclick();
+  await page.getByRole("dialog").waitFor({ state: "hidden" });
+  assert.deepEqual((await result()).payload.answer, {
+    action: "accept",
+    content: { "deployment-target": ["Staging"], "private-code": ["qa-only-secret"] },
+  });
+  assert.equal(
+    await page.evaluate(() => JSON.stringify({ ...localStorage }).includes("qa-only-secret")),
+    false,
+  );
+  checks.push(
+    "Real V4 question command uses native IDs/string arrays; required fields; password; no persisted secret",
+  );
+
+  await page.getByRole("button", { name: "Reject next answer" }).click();
+  await page.getByRole("button", { name: "Native questions", exact: true }).click();
+  await page.getByLabel("Where should this run?", { exact: true }).fill("Custom target");
+  await page.getByLabel("Enter fixture secret", { exact: true }).fill("retry-only");
+  await page.getByRole("button", { name: "Submit answers" }).click();
+  await page.getByRole("alert").filter({ hasText: "Operation failed" }).waitFor();
+  assert.equal(
+    await page.getByLabel("Enter fixture secret", { exact: true }).inputValue(),
+    "retry-only",
+  );
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page.getByRole("dialog").waitFor({ state: "hidden" });
+  assert.deepEqual((await result()).payload.answer, { action: "cancel" });
+  checks.push("Rejected native answer stays actionable; cancel sends no secret content");
+
+  for (const [label, id] of [
+    ["Allow", "accept"],
+    ["Allow for this session", "acceptForSession"],
+    ["Deny", "decline"],
+    ["Cancel turn", "cancel"],
+  ]) {
+    await page.getByRole("button", { name: "Native approval", exact: true }).click();
+    if (id === "accept")
+      await page.screenshot({ path: join(evidence, "native-approval.png"), fullPage: true });
+    await page.getByRole("option", { name: label, exact: true }).focus();
+    await page.getByRole("option", { name: label, exact: true }).press("Enter");
+    await page.waitForFunction((optionId) => {
+      const text = document.querySelector('[data-testid="result"]')?.textContent;
+      return text && JSON.parse(text).payload?.answer?.optionId === optionId;
+    }, id);
+    assert.equal((await result()).payload.answer.optionId, id);
+    await page.getByRole("option", { name: label, exact: true }).waitFor({ state: "hidden" });
+  }
+  checks.push(
+    "Real PermissionDialog preserves native accept/acceptForSession/decline/cancel option IDs",
+  );
+  await page.getByRole("button", { name: "Toggle settings", exact: true }).click();
+  await page.getByRole("button", { name: "Models & permissions", exact: true }).click();
+  const settings = page.getByTestId("codex-settings");
+  await settings.getByRole("combobox", { name: "Default model" }).click();
+  await page.getByRole("option", { name: "second-model", exact: true }).click();
+  const beforeSettingsWriteConfigReads = await catalogConfigReads();
+  await settings.getByRole("button", { name: "Save", exact: true }).click();
+  await page.getByText("Write accepted. Review refreshed effective values below.").waitFor();
+  await page.getByRole("button", { name: "Toggle settings", exact: true }).click();
+  await page.getByRole("button", { name: "Inspect catalog", exact: true }).click();
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="result"]')?.textContent?.includes('"second-model"'),
+  );
+  const afterSettingsWriteConfigReads = await catalogConfigReads();
+  assert.ok(
+    afterSettingsWriteConfigReads > beforeSettingsWriteConfigReads,
+    "Native config write must invalidate the ready catalog before the next warm send",
+  );
+  await page.getByRole("button", { name: "Send fixture", exact: true }).click();
+  assert.equal(
+    await catalogConfigReads(),
+    afterSettingsWriteConfigReads,
+    "Warm send after refresh must reuse the new catalog without overriding the explicit draft model",
+  );
+  checks.push("Native configuration write invalidates composer catalog before next send");
+  const rpcLog = await inspectRpcLog(page, result);
+  const recorded = rpcLog.requests;
+  assert.equal(rpcLog.interactionCommandCount, 7, "Double-click must not duplicate native answers");
+  assert.equal(rpcLog.legacyReads, 0);
+  const write = recorded.find((request) => request.method === "config/batchWrite");
+  assert.equal(write.params.expectedVersion, "fixture-v1");
+  assert.deepEqual(write.params.edits[0], {
+    keyPath: "model",
+    value: "second-model",
+    mergeStrategy: "replace",
+  });
+  checks.push("Real settings hook writes native versioned config and refreshes effective values");
+  await page.getByRole("button", { name: "Toggle settings", exact: true }).click();
+  await verifyLocalConfigValidation(page, settings, result, checks);
+  await settings.getByRole("button", { name: "Providers", exact: true }).click();
+  await settings.getByText("Fixture provider catalog unavailable").waitFor();
+  assert.equal(await settings.getByText(/model_catalog_json is not configured/).count(), 0);
+  assert.equal(await settings.getByText(/· 0 models/).count(), 0);
+  await page.screenshot({ path: join(evidence, "provider-catalog-error.png") });
+  const providerDelete = (id) =>
+    settings
+      .getByTestId(`codex-provider-row-${id}`)
+      .getByRole("button", { name: "Delete", exact: true });
+  assert.equal(await providerDelete("unused-provider").isDisabled(), true);
+  await page.getByRole("button", { name: "Toggle provider catalog failure" }).click();
+  await settings.getByRole("button", { name: "Models & permissions", exact: true }).click();
+  await settings.getByRole("button", { name: "Providers", exact: true }).click();
+  await settings
+    .getByTestId("codex-provider-row-unused-provider")
+    .getByText(/0 models/)
+    .waitFor();
+  assert.equal(await providerDelete("referenced-provider").isDisabled(), true);
+  assert.equal(await providerDelete("unused-provider").isEnabled(), true);
+  await page.screenshot({ path: join(evidence, "provider-catalog-recovered.png") });
+  await providerDelete("unused-provider").click();
+  await settings.getByRole("button", { name: "Cancel", exact: true }).click();
+  checks.push(
+    "Provider deletion and reference counts fail closed while catalog is unreadable, then recover after a verified empty-reference read",
+  );
+  await verifySingleCatalogModelAndRestart(page, settings, result, checks);
+  await settings.getByRole("button", { name: "MCP servers", exact: true }).click();
+  await settings.getByText(/Native Desktop browser is unavailable on this Host/).waitFor();
+  assert.equal(await settings.getByText(/Native Browser is available degraded/).count(), 0);
+  await page.screenshot({ path: join(evidence, "native-browser-unavailable.png") });
+  checks.push("Settings footer never contradicts the current Host's native Browser capability");
+  await settings.getByRole("button", { name: "Subagents", exact: true }).click();
+  await settings.getByText("Fixture agent roles unavailable").waitFor();
+  assert.equal(await settings.getByText("No roles in this scope yet.").count(), 0);
+  assert.equal(await settings.getByRole("button", { name: "New role" }).first().isDisabled(), true);
+  await page.screenshot({ path: join(evidence, "agent-roles-error.png") });
+  await page.getByRole("button", { name: "Toggle roles read failure" }).click();
+  await settings.getByRole("button", { name: "Retry role list" }).click();
+  await settings.getByText("No roles in this scope yet.").first().waitFor();
+  assert.equal(await settings.getByText("No roles in this scope yet.").count(), 2);
+  assert.equal(await settings.getByRole("button", { name: "New role" }).first().isEnabled(), true);
+  await settings
+    .getByRole("button", { name: "New role: User roles (~/.codex/agents)", exact: true })
+    .waitFor();
+  await settings
+    .getByRole("button", { name: "New role: Project roles (.codex/agents)", exact: true })
+    .waitFor();
+  await page.screenshot({ path: join(evidence, "agent-roles-recovered.png") });
+  checks.push(
+    "Subagent roles list distinguishes failed read from a verified empty list and can retry",
+  );
+  checks.push("Subagent creation actions identify their user/project scope to screen readers");
+  await settings.getByRole("button", { name: "New role" }).first().click();
+  await settings.getByRole("textbox", { name: "Name", exact: true }).fill("Fixture Reviewer");
+  await settings
+    .getByRole("textbox", { name: "Developer instructions (required)" })
+    .fill("Review isolated test files");
+  await settings.getByRole("button", { name: "Save", exact: true }).click();
+  await settings.getByText("Fixture role write rejected").waitFor();
+  assert.equal(
+    await settings.getByRole("textbox", { name: "Name", exact: true }).isEnabled(),
+    true,
+  );
+  assert.equal(await settings.getByRole("button", { name: "Save", exact: true }).isEnabled(), true);
+  await page.getByRole("button", { name: "Toggle roles write failure" }).click();
+  await settings.getByRole("button", { name: "Save", exact: true }).click();
+  await settings.getByText("Fixture Reviewer", { exact: true }).waitFor();
+  checks.push("Rejected role write preserves editable draft for user-initiated retry");
+  await page.getByRole("button", { name: "Toggle settings", exact: true }).click();
+  await page.getByRole("button", { name: "Mount held catalog", exact: true }).click();
+  await page.getByTestId("lifetime-status").filter({ hasText: "loading" }).waitFor();
+  await page.getByRole("button", { name: "Read lifetime catalog", exact: true }).click();
+  await page.getByRole("button", { name: "Unmount catalog", exact: true }).click();
+  await page.getByRole("button", { name: "Release catalog", exact: true }).click();
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="result"]')?.textContent?.includes('"stale"'),
+  );
+  await page.getByRole("button", { name: "Mount ready catalog", exact: true }).click();
+  await page.getByTestId("lifetime-status").filter({ hasText: "ready" }).waitFor();
+  await page.getByRole("button", { name: "Read lifetime catalog", exact: true }).click();
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="result"]')?.textContent?.includes('"ready"'),
+  );
+  await page.getByRole("button", { name: "Unmount catalog", exact: true }).click();
+  await page.getByRole("button", { name: "Read lifetime catalog", exact: true }).click();
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="result"]')?.textContent?.includes('"stale"'),
+  );
+  checks.push(
+    "StrictMode lifecycle, captured old scope, synchronous reload, and pending/ready unmount reject stale catalog reads",
+  );
+  await verifyUsageHostReconnect(page, checks);
+  await verifyMessageFeedback(page, checks);
+  await verifyProjectDiscovery(page, checks);
+  await verifyCodexHelpUpdate(page, result, evidence, checks);
+  await verifyGeneralAccessibility(page, checks);
+  await verifyRootProviderStartup(page, checks);
+  await verifyCodexMemoryLocale(page, checks);
+  assert.deepEqual(errors, []);
+  await page.screenshot({ path: join(evidence, "desktop-width.png"), fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: join(evidence, "compact-width.png"), fullPage: true });
+  await captureOptionalAgentBrowserSnapshot(evidence);
+  await writeFile(join(evidence, "results.json"), JSON.stringify({ checks, errors }, null, 2));
+  console.log(JSON.stringify({ status: "passed", checks, evidence }, null, 2));
+} catch (error) {
+  await page.screenshot({ path: join(evidence, "failure.png"), fullPage: true }).catch(() => {});
+  console.error({ evidence, checks, errors });
+  throw error;
+} finally {
+  await browser.close();
+  await server.close();
+}

@@ -78,7 +78,14 @@ export function renderFileChip({
   const descriptor = resolveFileDisplayDescriptor(summary.path, {
     basePath,
   });
-  const chipTitle = title ?? getFileDisplayPath(summary.path, basePath);
+  const chipTitle =
+    title ??
+    (summary.previousPath
+      ? `${getFileDisplayPath(summary.previousPath, basePath)} → ${getFileDisplayPath(summary.path, basePath)}`
+      : getFileDisplayPath(summary.path, basePath));
+  const chipLabel = summary.previousPath
+    ? `${getPathLeaf(summary.previousPath)} → ${getPathLeaf(summary.path)}`
+    : getPathLeaf(summary.path);
 
   if (clickable) {
     return (
@@ -96,7 +103,7 @@ export function renderFileChip({
         }}
       >
         <FileDisplayIcon src={descriptor.fileIconSrc} size={16} className="size-4 shrink-0" />
-        <span className="min-w-0 truncate text-foreground-subtle">{getPathLeaf(summary.path)}</span>
+        <span className="min-w-0 truncate text-foreground-subtle">{chipLabel}</span>
       </button>
     );
   }
@@ -107,7 +114,7 @@ export function renderFileChip({
       title={chipTitle}
     >
       <FileDisplayIcon src={descriptor.fileIconSrc} size={16} className="size-4 shrink-0" />
-      <span className="min-w-0 truncate">{getPathLeaf(summary.path)}</span>
+      <span className="min-w-0 truncate">{chipLabel}</span>
     </span>
   );
 }

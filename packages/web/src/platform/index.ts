@@ -5,14 +5,39 @@ import {
   type RemoteTarget,
   type WebRemoteControlStatus,
 } from "@codez/shared";
-import { playTaskNotificationSound } from "@codez/ui";
-import { resolveWebCommunityUrl, resolveWebHelpConfig } from "#src/communityUrl.js";
+import {
+  buildFeedbackDiagnosticEntries,
+  buildFeedbackPrefilledUrl,
+  playTaskNotificationSound,
+} from "@codez/ui";
+import { resolveWebCommunityUrl } from "#src/communityUrl.js";
 import type { WebRemoteControlPlatformProxy } from "#src/platform/contract.js";
 import { saveBrowserFile } from "#src/platform/saveBrowserFile.js";
 export type { WebRemoteControlPlatformProxy } from "#src/platform/contract.js";
 
-async function resolveFeedbackUrl(): Promise<string | undefined> {
-  return (await resolveWebHelpConfig()).feedback_url;
+function buildWebFeedbackUrl(locale: "zh-CN" | "en-US"): string | null {
+  const entries = buildFeedbackDiagnosticEntries({});
+  const heading =
+    locale === "en-US"
+      ? "### Diagnostics (generated, safe to delete)"
+      : "### 诊断信息（自动生成，可删除）";
+  const labels =
+    locale === "en-US"
+      ? { app: "App version", runtime: "Runtime" }
+      : { app: "应用版本", runtime: "运行环境" };
+  return buildFeedbackPrefilledUrl({
+    title: locale === "en-US" ? "Feedback" : "反馈",
+    body: [
+      heading,
+      "",
+      ...entries.map((entry) => {
+        const label = entry.id === "app" ? labels.app : labels.runtime;
+        return `- ${label}: ${entry.value}`;
+      }),
+      "",
+    ].join("\n"),
+    locale,
+  });
 }
 
 export function createWebPlatform(options?: {
@@ -114,7 +139,9 @@ export function createWebPlatform(options?: {
       window.open(url, "_blank", "noopener,noreferrer");
     },
     openFeedback: async () => {
-      const feedbackUrl = await resolveFeedbackUrl();
+      // 兼容依据：上游已将平台适配抽到本模块，fork 的反馈目标在此复用，不恢复 main 中的副本。
+      const locale = document.documentElement.lang === "en-US" ? "en-US" : "zh-CN";
+      const feedbackUrl = buildWebFeedbackUrl(locale);
       if (!feedbackUrl) {
         return;
       }

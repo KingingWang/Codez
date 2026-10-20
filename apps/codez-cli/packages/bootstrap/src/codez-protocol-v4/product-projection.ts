@@ -62,6 +62,7 @@ import {
   CoreErrorType,
   ModelErrorCode,
   SessionEventType,
+  contractIntentMode,
   getModelUsageContextTokens,
 } from "@codez/contracts";
 import {
@@ -122,6 +123,7 @@ import {
   PROTOCOL_V4_LIMITS,
   applyConversationDeltas,
   applyConversationDeltasMutable,
+  compactConversationRowForWire,
   createMutableConversationSnapshotAccumulator,
   diffWorkflowRunsState,
   reduceWorkflowRunsState,
@@ -266,6 +268,7 @@ export interface SessionUsageSeed {
 interface ContextWindowProjectionState {
   maxTokens: number | null;
   touchedByEvent: boolean;
+  usedTouchedByNonHydrationEvent: boolean;
   usedTokens: number;
 }
 
@@ -421,6 +424,13 @@ function nonNegativeInteger(value: number, fallback: number): number {
   return Number.isFinite(value) && value >= 0 ? Math.floor(value) : fallback;
 }
 
+// apiRetry 是 counted/codex 两变体 union；只有 counted 变体携带 reasonCode。
+// 读取处统一经这里收窄，避免对 codex 变体做不存在的属性访问。
+function readCountedApiRetryReasonCode(apiRetry: ApiRetryState | null): string | undefined {
+  if (!apiRetry || "source" in apiRetry) return undefined;
+  return apiRetry.reasonCode;
+}
+
 interface FileToolInputPreviewState {
   lastPublishedAt: number | null;
   pendingAppend: string;
@@ -455,6 +465,8 @@ export class ProductProjection {
   // snapshot 是权威状态；该 Set 只是 TurnComplete 缺终态兜底的派生索引，避免每轮扫描全表。
   private openForegroundToolCallIds = new Set<string>();
   private fileToolInputPreviewByCallId = new Map<string, FileToolInputPreviewState>();
+  // 按需懒加载的完整行缓存（仅保存被 compactConversationRowForWire 裁剪过的终态 toolCall/reasoning 行）。
+  private fullRowPayloadByRowId = new Map<number, ToolCallRow | ReasoningRow>();
   private subagentRowIdByAgentId = new Map<string, number>();
   private hookRowIdByInvocationId = new Map<string, number>();
   // resume SessionStart 没有 turnId；先保留在 CLI projection，下一条真实 user-intent
@@ -508,6 +520,7 @@ export class ProductProjection {
   private contextWindowState: ContextWindowProjectionState = {
     maxTokens: null,
     touchedByEvent: false,
+    usedTouchedByNonHydrationEvent: false,
     usedTokens: 0,
   };
   // modelChange marker 在「下一个 turn 开始时」生成。
@@ -545,6 +558,17 @@ export class ProductProjection {
       seq: Math.max(this.snapshot.seq, minimumSeq),
       revision: Math.max(this.snapshot.revision, minimumRevision),
     };
+  }
+
+  /** 按 rowId 获取未裁剪的完整 toolCall/reasoning 行（供 v4/conversation/rowPayload 按需加载）。 */
+  getRowPayload(rowId: number): ToolCallRow | ReasoningRow | null {
+    const cached = this.fullRowPayloadByRowId.get(rowId);
+    if (cached) return cached;
+    const row = this.findRow(rowId);
+    if (row?.kind === "toolCall" || row?.kind === "reasoning") {
+      return row;
+    }
+    return null;
   }
 
   /** assistant 守恒：被拒收的正文流事件数（>0 = 投影可能缺段，需重 hydration）。 */
@@ -699,7 +723,7 @@ export class ProductProjection {
       this.contextWindowState.usedTokens = currentContextWindow.usedTokens;
     }
     // 未知容量也有内部用量事实；迟到的恢复种子不能覆盖真实 ModelComplete/Compact 水位。
-    if (this.contextWindowState.usedTokens > 0) {
+    if (this.contextWindowState.usedTouchedByNonHydrationEvent) {
       return;
     }
     const seededContextWindow = seed.contextWindow;
@@ -723,6 +747,10 @@ export class ProductProjection {
             ? {
                 ...currentContextWindow,
                 usedTokens: seededContextWindow.usedTokens,
+                ...(seededContextWindow.cache ? { cache: seededContextWindow.cache } : {}),
+                ...(seededContextWindow.breakdown
+                  ? { breakdown: seededContextWindow.breakdown }
+                  : {}),
               }
             : null,
           cumulative,
@@ -1100,7 +1128,9 @@ export class ProductProjection {
       this.shouldMaterializeCommandRowActions(streamingAppend, reducedWithSubagents)
         ? [...reducedWithSubagents, ...this.materializeCommandRowActions(reducedWithSubagents)]
         : reducedWithSubagents;
-    const finalDeltas = this.attachRevision(clearSettledOutputPreviews(deltas));
+    const finalDeltas = this.attachRevision(
+      this.compactSettledRowPayloads(clearSettledOutputPreviews(deltas)),
+    );
     if (this.hydrationAccumulator) {
       applyConversationDeltasMutable(this.hydrationAccumulator, finalDeltas);
       this.snapshot.seq = event.sequenceNumber;
@@ -1160,6 +1190,7 @@ export class ProductProjection {
         { ...state },
       ]),
     );
+    clone.fullRowPayloadByRowId = new Map(this.fullRowPayloadByRowId);
     clone.subagentRowIdByAgentId = new Map(this.subagentRowIdByAgentId);
     clone.hookRowIdByInvocationId = new Map(this.hookRowIdByInvocationId);
     clone.pendingSessionHookInvocations = new Map(
@@ -1224,6 +1255,7 @@ export class ProductProjection {
     this.latestListAppsSnapshot = candidate.latestListAppsSnapshot;
     this.openForegroundToolCallIds = candidate.openForegroundToolCallIds;
     this.fileToolInputPreviewByCallId = candidate.fileToolInputPreviewByCallId;
+    this.fullRowPayloadByRowId = candidate.fullRowPayloadByRowId;
     this.subagentRowIdByAgentId = candidate.subagentRowIdByAgentId;
     this.hookRowIdByInvocationId = candidate.hookRowIdByInvocationId;
     this.pendingSessionHookInvocations = candidate.pendingSessionHookInvocations;
@@ -2572,7 +2604,10 @@ export class ProductProjection {
               payload.streamRecovery.retryNumber,
               payload.streamRecovery.maxRetries,
               this.ms(event),
-              this.snapshot.control.apiRetry?.reasonCode ?? "fault.network.sseDisconnected",
+              // 修复原因：apiRetry 是 union，codex 变体没有 reasonCode；只有 counted 变体
+              // 才允许读出旧 reasonCode 延续重试标签，否则回退到断流默认码。
+              readCountedApiRetryReasonCode(this.snapshot.control.apiRetry) ??
+                "fault.network.sseDisconnected",
             ),
           );
         }
@@ -2632,7 +2667,9 @@ export class ProductProjection {
         payload.retryNumber,
         payload.maxRetries,
         this.ms(event),
-        this.snapshot.control.apiRetry?.reasonCode ?? "fault.network.sseDisconnected",
+        // 同上：union 变体收窄后才允许读取 reasonCode。
+        readCountedApiRetryReasonCode(this.snapshot.control.apiRetry) ??
+          "fault.network.sseDisconnected",
       ),
     );
   }
@@ -2659,10 +2696,16 @@ export class ProductProjection {
       current === apiRetry ||
       (current !== null &&
         apiRetry !== null &&
-        current.attempt === apiRetry.attempt &&
-        current.maxAttempts === apiRetry.maxAttempts &&
-        current.nextRetryAt === apiRetry.nextRetryAt &&
-        current.reasonCode === apiRetry.reasonCode)
+        ("source" in current && "source" in apiRetry
+          ? current.httpStatusCode === apiRetry.httpStatusCode &&
+            (current.attempt ?? null) === (apiRetry.attempt ?? null) &&
+            (current.maxRetries ?? null) === (apiRetry.maxRetries ?? null)
+          : !("source" in current) &&
+            !("source" in apiRetry) &&
+            current.attempt === apiRetry.attempt &&
+            current.maxAttempts === apiRetry.maxAttempts &&
+            current.nextRetryAt === apiRetry.nextRetryAt &&
+            current.reasonCode === apiRetry.reasonCode))
     ) {
       return [];
     }
@@ -3014,6 +3057,11 @@ export class ProductProjection {
         continue;
       }
       if (delta.op !== "row.removed") continue;
+      for (const rowId of this.fullRowPayloadByRowId.keys()) {
+        if (rowId >= delta.fromRowId) {
+          this.fullRowPayloadByRowId.delete(rowId);
+        }
+      }
       for (const [toolCallId, rowId] of this.toolRowIdByCallId) {
         if (rowId < delta.fromRowId) continue;
         // Bug 原因：rewind 过去只删 rows/message 索引，旧 toolCallId 仍会阻止新分支
@@ -3031,9 +3079,31 @@ export class ProductProjection {
       if (this.findRow(rowId)?.kind === "subagent") continue;
       // Bug 原因：rewind 只重建 rowIndex，旧 agent alias 仍会被后续每次 subagent
       // materialization 枚举。仅在 row.removed 已应用后按权威 snapshot 清理一次，
-      // 避免长会话随已删除历史持续增长；普通事件不会扫描该索引。
+      // 不改变同分支 resume 复用同一 agentId 的语义。
       this.subagentRowIdByAgentId.delete(agentId);
     }
+  }
+
+  /**
+   * 对进入终态的 toolCall / reasoning 行执行确定性紧凑化，并将裁剪前的完整行存入
+   * fullRowPayloadByRowId，供客户端展开卡片时通过 v4/conversation/rowPayload 按需拉取。
+   */
+  private compactSettledRowPayloads(deltas: ConversationDelta[]): ConversationDelta[] {
+    return deltas.map((delta) => {
+      if (delta.op !== "row.appended" && delta.op !== "row.upserted") {
+        return delta;
+      }
+      const row = delta.row;
+      if (row.kind !== "toolCall" && row.kind !== "reasoning") {
+        return delta;
+      }
+      const compacted = compactConversationRowForWire(row);
+      if (compacted !== row) {
+        this.fullRowPayloadByRowId.set(row.rowId, row);
+        return { ...delta, row: compacted };
+      }
+      return delta;
+    });
   }
 
   // ── tool call 状态机 ──
@@ -3908,6 +3978,7 @@ export class ProductProjection {
           (candidate) => candidate.queueItemId === pendingInputId,
         );
         if (!queueItem) return [];
+        const intentMode = contractIntentMode(queueItem.mode);
         const intent: TurnInputIntentMetadata = {
           sourceCommandId: queueItem.sourceCommandId,
           queueItemId: queueItem.queueItemId,
@@ -3915,7 +3986,7 @@ export class ProductProjection {
           kind: queueItem.kind,
           text: queueItem.text,
           ...(queueItem.modelSelection ? { modelSelection: queueItem.modelSelection } : {}),
-          ...(queueItem.mode ? { mode: queueItem.mode } : {}),
+          ...(intentMode ? { mode: intentMode } : {}),
           ...(queueItem.planEnabled !== undefined ? { planEnabled: queueItem.planEnabled } : {}),
           admissionSeq: queueItem.order.admissionSeq,
           admittedAt: queueItem.admittedAt,
@@ -4964,6 +5035,21 @@ export class ProductProjection {
             }
           : {};
       if (isMainTurn || "fileChanges" in fileChanges) {
+        const prevTurnUsage = headerRow.turnUsage;
+        const nextInputTokens = (prevTurnUsage?.inputTokens ?? 0) + (usage.inputTokens ?? 0);
+        const nextOutputTokens = (headerRow.outputTokens ?? 0) + (usage.outputTokens ?? 0);
+        const nextCacheReadTokens =
+          (prevTurnUsage?.cacheReadTokens ?? 0) + (usage.cacheReadTokens ?? 0);
+        const nextCacheWriteTokens =
+          (prevTurnUsage?.cacheWriteTokens ?? 0) + (usage.cacheWriteTokens ?? 0);
+        const nextReasoningTokens =
+          (prevTurnUsage?.reasoningTokens ?? 0) + (usage.reasoningTokens ?? 0);
+        const stepTotalTokens =
+          usage.totalTokens ??
+          (usage.inputTokens ?? nextCacheReadTokens + nextCacheWriteTokens) +
+            (usage.outputTokens ?? 0) +
+            (usage.reasoningTokens ?? 0);
+        const nextTotalTokens = (prevTurnUsage?.totalTokens ?? 0) + stepTotalTokens;
         deltas.push({
           op: "row.upserted",
           row: {
@@ -4972,15 +5058,31 @@ export class ProductProjection {
             // Bug 根因：Renderer 观察 running 快照的时机不可靠，continuous 可合并更新，
             // replayable 也可能首次恢复即终态。单 Turn token 必须在权威事件投影中累计。
             ...(isMainTurn
-              ? { outputTokens: (headerRow.outputTokens ?? 0) + (usage.outputTokens ?? 0) }
+              ? {
+                  outputTokens: nextOutputTokens,
+                  turnUsage: {
+                    inputTokens: nextInputTokens,
+                    outputTokens: nextOutputTokens,
+                    totalTokens: nextTotalTokens,
+                    cacheReadTokens: nextCacheReadTokens,
+                    cacheWriteTokens: nextCacheWriteTokens,
+                    ...(nextReasoningTokens > 0 ? { reasoningTokens: nextReasoningTokens } : {}),
+                  },
+                }
               : {}),
           },
         });
       }
     }
     if (!isMainTurn) return [...deltas, ...retryClearDeltas];
-    const usedTokens = getModelUsageContextTokens(usage) ?? 0;
-    this.contextWindowState.usedTokens = usedTokens;
+    const usedTokens = getModelUsageContextTokens(usage);
+    if (usedTokens !== undefined) {
+      this.contextWindowState.usedTokens = usedTokens;
+      if (event.traceId !== HYDRATION_TRACE_ID) {
+        this.contextWindowState.usedTouchedByNonHydrationEvent = true;
+      }
+    }
+    const resolvedUsedTokens = this.contextWindowState.usedTokens;
     const maxTokens = payload.contextWindow ?? this.contextWindowState.maxTokens;
     const cumulative = this.snapshot.usage.cumulative;
     deltas.push({
@@ -4993,7 +5095,7 @@ export class ProductProjection {
             maxTokens === null
               ? null
               : {
-                  usedTokens,
+                  usedTokens: resolvedUsedTokens,
                   maxTokens,
                   autoCompactThresholdTokens:
                     this.snapshot.usage.contextWindow?.autoCompactThresholdTokens ?? null,
@@ -5129,6 +5231,9 @@ export class ProductProjection {
     // compact 成功 → context 水位立即回落（usage.contextWindow 更新）。
     if (status === "success" && tokensAfter !== undefined) {
       this.contextWindowState.usedTokens = tokensAfter;
+      if (event.traceId !== HYDRATION_TRACE_ID) {
+        this.contextWindowState.usedTouchedByNonHydrationEvent = true;
+      }
       const maxTokens =
         this.snapshot.usage.contextWindow?.maxTokens ?? this.contextWindowState.maxTokens;
       deltas.push({

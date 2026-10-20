@@ -2,6 +2,12 @@ version: 1
 
 # 存量模块先标记为 legacy；新模块或完成迁移的模块设置 managed: true。
 modules:
+  - id: codex-bridge
+    roots: [packages/codex-bridge/src]
+    managed: true
+    requires: [shared]
+    publicEntrypoints: [packages/codex-bridge/src/contract.ts]
+    owner: codex-runtime-adaptation
   - id: rpc
     roots: [packages/rpc/src]
     managed: false

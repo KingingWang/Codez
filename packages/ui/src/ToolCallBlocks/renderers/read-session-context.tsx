@@ -235,10 +235,20 @@ export function ReadSessionContextToolCallBlock(context: ToolCallBlockRenderCont
             </p>
           )}
         </section>
+        <ToolSnapshotFieldNotice
+          refs={toolCall.snapshotRefs ?? []}
+          autoLoadWhenMounted
+          onLoadFullToolCallFields={
+            context.onLoadFullToolCallFields
+              ? () => context.onLoadFullToolCallFields?.(toolCall.toolId)
+              : undefined
+          }
+        />
       </div>
     ),
     [
       context.codePreviewSettings,
+      context.onLoadFullToolCallFields,
       context.onOpenBrowserUrl,
       context.onOpenCodeViewer,
       context.onOpenFileLink,
@@ -246,6 +256,8 @@ export function ReadSessionContextToolCallBlock(context: ToolCallBlockRenderCont
       context.workspacePath,
       intl,
       query,
+      toolCall.snapshotRefs,
+      toolCall.toolId,
       visibleResult,
     ],
   );

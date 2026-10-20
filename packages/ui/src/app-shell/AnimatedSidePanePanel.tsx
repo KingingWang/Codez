@@ -98,6 +98,7 @@ import { formatTaskRelativeTime } from "@/lib/taskListItemPresentation.js";
 import {
   shouldMountSidePaneContent,
   shouldMountBrowserTabGuest,
+  resolveBrowserSidePaneGuestScope,
   type BrowserSidePaneTab,
   type BrowserUseSidePaneTab,
   type BrowserSidePaneMetadata,
@@ -1478,10 +1479,13 @@ export function AnimatedSidePanePanel({
                             faviconUrl={tab.faviconUrl}
                             workspacePath={workspaceAbsPath}
                             workspaceIdentity={workspaceIdentity}
-                            // 切换 workspace 的那次 commit 里 props 已是新 workspace，tabs 仍是旧的；
-                            // 读当前 workspace 会以错误 scope attach，触发 workspace-mismatch。
-                            workspaceKey={tab.workspaceKey ?? workspaceKey}
-                            remoteSessionId={tab.remoteSessionId ?? workspaceRemoteSessionId}
+                            // 切换时普通 tab 保留冻结 workspace；原生 popup 同时保留 synthetic owner，
+                            // 不能把新 workspace 或远端 session 套到尚未切换的旧 guest。
+                            {...resolveBrowserSidePaneGuestScope(
+                              tab,
+                              workspaceRemoteSessionId,
+                              workspaceKey,
+                            )}
                             residencyGeneration={tab.residencyGeneration}
                             sessionId={tab.ownerTaskId ?? "unscoped"}
                             onUrlChange={(url) => onBrowserUrlChange(tab.id, url)}

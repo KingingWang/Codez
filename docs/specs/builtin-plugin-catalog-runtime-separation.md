@@ -22,7 +22,7 @@
 3. seed 当前对 suppressed 插件删除 `cache/<official>/<name>/<version>` 并跳过物化。
 4. `plugins/describe` 对未安装插件依赖 Marketplace entry 和 source root；`filesystem/sea` entry 当前只从 `cachePath` 或计算出的 cache 目录读取。
 5. UI 将 suppressed 内置插件重新投影为 `restorable=true`，但详情页仍因 `info` 缺失调用 `plugins/describe`，于是得到 `plugin_not_found` 或 cache missing。
-6. 官方内置分片和 CDN 分片已经按同一 `zcode-plugins-official` 身份合并；ADR-0001 要求 listing 属于 Catalog，而不是安装态。
+6. 官方内置分片和 CDN 分片已经按同一 `codez-plugins-official` 身份合并；ADR-0001 要求 listing 属于 Catalog，而不是安装态。
 
 ### 1.2 推断（Inference）
 

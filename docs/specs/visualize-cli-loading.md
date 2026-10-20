@@ -2,7 +2,7 @@
 
 ## 行为
 
-内置 `visualize@zcode-plugins-official` 提供对话内交互视图，普通终端没有对应宿主。
+内置 `visualize@codez-plugins-official` 提供对话内交互视图，普通终端没有对应宿主。
 非 `--stdio` 入口（TUI、`-p` / `--prompt` / `--target`、`skills list/inspect`）默认不注入
 该插件的技能根，模型可用技能目录和 Skill 正文加载使用同一份发现结果。
 即使 `-p` 使用 `--surface desktop` 模拟呈现面，也不自动启用该技能。

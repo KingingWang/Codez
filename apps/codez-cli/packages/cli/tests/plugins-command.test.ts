@@ -36,13 +36,13 @@ const JSON_OUT: GlobalOptions = { ...TEXT, json: true };
 const loadedPlugin = (overrides: Record<string, unknown> = {}) =>
   ({
     commandRootCount: 1,
-    dataPath: "/tmp/codez/plugins/data/ios-dev@zcode-plugins-official",
+    dataPath: "/tmp/codez/plugins/data/ios-dev@codez-plugins-official",
     declaredMcpServerNames: [],
     enabled: true,
     hookDetails: [],
-    id: "ios-dev@zcode-plugins-official",
+    id: "ios-dev@codez-plugins-official",
     manifestPath: "/plugins/ios/.codez-plugin/plugin.json",
-    marketplace: "zcode-plugins-official",
+    marketplace: "codez-plugins-official",
     mcpServerNames: ["ios-simulator"],
     name: "ios-dev",
     rootPath: "/plugins/ios",
@@ -78,7 +78,7 @@ test("plugins list --json prints a plain array with per-plugin diagnostics", asy
           {
             code: "plugin_unsupported_component",
             message: "hooks ignored",
-            pluginId: "ios-dev@zcode-plugins-official",
+            pluginId: "ios-dev@codez-plugins-official",
             severity: "warning",
           },
           { code: "plugin_manifest_invalid", message: "unrelated", severity: "warning" },
@@ -90,13 +90,13 @@ test("plugins list --json prints a plain array with per-plugin diagnostics", asy
   assert.equal(code, 0);
   const payload = JSON.parse(ctx.stdout.output()) as Array<Record<string, unknown>>;
   assert.equal(Array.isArray(payload), true);
-  assert.equal(payload[0]?.id, "ios-dev@zcode-plugins-official");
+  assert.equal(payload[0]?.id, "ios-dev@codez-plugins-official");
   assert.deepEqual(payload[0]?.diagnostics, [
     {
       code: "plugin_unsupported_component",
       message: "hooks ignored",
       severity: "warning",
-      pluginId: "ios-dev@zcode-plugins-official",
+      pluginId: "ios-dev@codez-plugins-official",
     },
   ]);
 });
@@ -113,7 +113,7 @@ test("plugins list --json surfaces unattributable error diagnostics on stderr wi
           {
             code: "plugin_marketplace_refresh_failed",
             message: "git fetch failed",
-            pluginId: "zcode-plugins-official",
+            pluginId: "codez-plugins-official",
             severity: "error",
           },
           { code: "plugin_manifest_invalid", message: "orphan", severity: "error" },
@@ -126,7 +126,7 @@ test("plugins list --json surfaces unattributable error diagnostics on stderr wi
   const payload = JSON.parse(failing.stdout.output()) as Array<Record<string, unknown>>;
   assert.equal(Array.isArray(payload), true);
   assert.deepEqual(payload[0]?.diagnostics, []);
-  assert.match(failing.stderr.output(), /zcode-plugins-official plugin_marketplace_refresh_failed: git fetch failed/);
+  assert.match(failing.stderr.output(), /codez-plugins-official plugin_marketplace_refresh_failed: git fetch failed/);
   assert.match(failing.stderr.output(), /plugin_manifest_invalid: orphan/);
 
   const warning = context([]);
@@ -303,7 +303,7 @@ test("plugins enable forwards the mapped scope", async () => {
   );
   assert.equal(code, 0);
   assert.equal(received?.scope, "workspace");
-  assert.match(ctx.stdout.output(), /Enabled plugin ios-dev@zcode-plugins-official/);
+  assert.match(ctx.stdout.output(), /Enabled plugin ios-dev@codez-plugins-official/);
 });
 
 test("plugins disable --all disables every enabled plugin and rejects mixed usage", async () => {
@@ -332,7 +332,7 @@ test("plugins disable --all disables every enabled plugin and rejects mixed usag
     { all: true },
   );
   assert.equal(code, 0);
-  assert.deepEqual(disabled, ["ios-dev@zcode-plugins-official", "on@market"]);
+  assert.deepEqual(disabled, ["ios-dev@codez-plugins-official", "on@market"]);
   assert.equal(ctx.stderr.output(), "");
 
   const mixed = context([]);
@@ -367,7 +367,7 @@ test("plugins disable --all reports plugins still enabled by a higher-priority c
 
   const human = context([]);
   assert.equal(await runPluginsCommand(human, TEXT, deps, ["disable"], { all: true }), 1);
-  assert.match(human.stdout.output(), /Disabled plugin ios-dev@zcode-plugins-official/);
+  assert.match(human.stdout.output(), /Disabled plugin ios-dev@codez-plugins-official/);
   assert.doesNotMatch(human.stdout.output(), /Disabled plugin pinned@market/);
   assert.match(human.stderr.output(), /pinned@market is still enabled by a higher-priority config layer/);
   assert.match(human.stderr.output(), /Failed to disable plugin broken@market: config write failed/);
@@ -383,7 +383,7 @@ test("plugins disable --all reports plugins still enabled by a higher-priority c
   assert.deepEqual(
     payload.map((entry) => [entry.plugin.id, entry.effectiveEnabled, entry.error ?? null]),
     [
-      ["ios-dev@zcode-plugins-official", false, null],
+      ["ios-dev@codez-plugins-official", false, null],
       ["pinned@market", true, null],
       ["broken@market", true, "config write failed"],
     ],
@@ -400,14 +400,14 @@ test("plugins uninstall --keep-data forwards keepData and resolves bare names", 
       listPlugins: listOutcome([loadedPlugin()]),
       uninstallPlugin: (async (options: Record<string, unknown>) => {
         received = options;
-        return installed({ id: "ios-dev@zcode-plugins-official", name: "ios-dev", marketplace: "zcode-plugins-official" });
+        return installed({ id: "ios-dev@codez-plugins-official", name: "ios-dev", marketplace: "codez-plugins-official" });
       }) as never,
     },
     ["uninstall", "ios-dev"],
     { keepData: true },
   );
   assert.equal(code, 0);
-  assert.equal(received?.pluginId, "ios-dev@zcode-plugins-official");
+  assert.equal(received?.pluginId, "ios-dev@codez-plugins-official");
   assert.equal(received?.keepData, true);
   const payload = JSON.parse(ctx.stdout.output()) as { removed: boolean; keptData?: boolean };
   assert.equal(payload.removed, true);

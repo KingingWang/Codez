@@ -248,16 +248,16 @@ describe("NodePluginAdapter", () => {
       });
       await writeKnownMarketplaces(storageRoot, [
         {
-          id: "zcode-plugins-official",
+          id: "codez-plugins-official",
           source: {
             source: "settings",
             marketplace: {
-              name: "zcode-plugins-official",
+              name: "codez-plugins-official",
               plugins: [],
-              raw: { name: "zcode-plugins-official", plugins: [] },
+              raw: { name: "codez-plugins-official", plugins: [] },
             },
           },
-          name: "zcode-plugins-official",
+          name: "codez-plugins-official",
           addedAt: "2026-01-01T00:00:00.000Z",
           pluginCount: 0,
         },
@@ -464,7 +464,7 @@ describe("NodePluginAdapter", () => {
   it("suppresses official plugins from discovery even when stale cache version dirs exist", async () => {
     const dir = await mkdtemp(join(tmpdir(), "codez-plugin-suppress-official-cache-"));
     const storageRoot = join(dir, "storage");
-    const officialCacheRoot = join(storageRoot, "cache", "zcode-plugins-official");
+    const officialCacheRoot = join(storageRoot, "cache", "codez-plugins-official");
 
     try {
       // Suppressed built-in seeded at TWO versions (mirrors an upgrade that left an old dir).
@@ -486,7 +486,7 @@ describe("NodePluginAdapter", () => {
           enabled: true,
           enabledPlugins: {},
           options: {},
-          suppressedBuiltins: ["skill-creator@zcode-plugins-official"],
+          suppressedBuiltins: ["skill-creator@codez-plugins-official"],
         },
         env: {},
         storageRoot,
@@ -494,10 +494,10 @@ describe("NodePluginAdapter", () => {
       });
 
       expect(
-        outcome.plugins.find((plugin) => plugin.id === "skill-creator@zcode-plugins-official"),
+        outcome.plugins.find((plugin) => plugin.id === "skill-creator@codez-plugins-official"),
       ).toBeUndefined();
       expect(
-        outcome.plugins.find((plugin) => plugin.id === "document-skills@zcode-plugins-official"),
+        outcome.plugins.find((plugin) => plugin.id === "document-skills@codez-plugins-official"),
       ).toMatchObject({ source: "official" });
     } finally {
       await rm(dir, { force: true, recursive: true });
@@ -507,7 +507,7 @@ describe("NodePluginAdapter", () => {
   it("prefers the official marketplace cache path when stale plugin versions coexist", async () => {
     const dir = await mkdtemp(join(tmpdir(), "codez-plugin-current-official-cache-"));
     const storageRoot = join(dir, "storage");
-    const pluginRoot = join(storageRoot, "cache", "zcode-plugins-official", "browser-use");
+    const pluginRoot = join(storageRoot, "cache", "codez-plugins-official", "browser-use");
     const staleRoot = join(pluginRoot, "0.2.1");
     const currentRoot = join(pluginRoot, "0.4.1");
 
@@ -523,7 +523,7 @@ describe("NodePluginAdapter", () => {
       });
       writeBundledOfficialMarketplacePartitionSync({
         manifest: {
-          name: "zcode-plugins-official",
+          name: "codez-plugins-official",
           plugins: [
             {
               cachePath: currentRoot,
@@ -550,7 +550,7 @@ describe("NodePluginAdapter", () => {
       });
 
       expect(
-        outcome.plugins.find((plugin) => plugin.id === "browser-use@zcode-plugins-official"),
+        outcome.plugins.find((plugin) => plugin.id === "browser-use@codez-plugins-official"),
       ).toMatchObject({
         rootPath: currentRoot,
         version: "0.4.1",
@@ -559,7 +559,7 @@ describe("NodePluginAdapter", () => {
         outcome.diagnostics.filter(
           (diagnostic) =>
             diagnostic.code === "plugin_duplicate_id" &&
-            diagnostic.pluginId === "browser-use@zcode-plugins-official",
+            diagnostic.pluginId === "browser-use@codez-plugins-official",
         ),
       ).toHaveLength(0);
     } finally {
@@ -584,7 +584,7 @@ describe("NodePluginAdapter", () => {
           options: {},
           // Same bare name, but the inline id is skill-creator@inline — different from the
           // official id, so the inline plugin must survive.
-          suppressedBuiltins: ["skill-creator@zcode-plugins-official", "skill-creator@inline"],
+          suppressedBuiltins: ["skill-creator@codez-plugins-official", "skill-creator@inline"],
         },
         env: {},
         storageRoot: join(dir, "storage"),
@@ -608,7 +608,7 @@ describe("NodePluginAdapter", () => {
       // claude-plugins-official is a DEFAULT marketplace (always seeded as "known"),
       // so a known-state heuristic would never fire for it — the explicit trusted
       // flag is what closes that hole.
-      for (const reservedId of ["zcode-plugins-official", "claude-plugins-official"]) {
+      for (const reservedId of ["codez-plugins-official", "claude-plugins-official"]) {
         const sourceDir = join(dir, `evil-${reservedId}`);
         await writeMarketplaceManifest(sourceDir, { name: reservedId, plugins: [] });
         await expect(
@@ -707,7 +707,7 @@ describe("NodePluginAdapter", () => {
       const known = ensureDefaultPluginMarketplaces(storageRoot);
 
       // 默认市场现在有两个：claude-plugins-official（已有记录不被覆盖）+ 唯一 Codez
-      // 官方市场 zcode-plugins-official（缺失时补种）。
+      // 官方市场 codez-plugins-official（缺失时补种）。
       expect(known).toHaveLength(2);
       const claude = known.find((record) => record.id === "claude-plugins-official");
       expect(claude).toMatchObject({
@@ -725,7 +725,7 @@ describe("NodePluginAdapter", () => {
             pluginCount: 123,
           },
           {
-            id: "zcode-plugins-official",
+            id: "codez-plugins-official",
           },
         ],
       });
@@ -1100,8 +1100,8 @@ describe("NodePluginAdapter", () => {
     // 当路径解析后抛错，市场详情页对内置插件枚举不出组件。现在按 cachePath 直接定位缓存目录。
     const dir = await mkdtemp(join(tmpdir(), "codez-plugin-filesystem-describe-"));
     const storageRoot = join(dir, "storage");
-    const cacheRoot = join(storageRoot, "cache", "zcode-plugins-official", "superpowers", "5.1.0");
-    const marketplaceRoot = join(storageRoot, "marketplaces", "zcode-plugins-official");
+    const cacheRoot = join(storageRoot, "cache", "codez-plugins-official", "superpowers", "5.1.0");
+    const marketplaceRoot = join(storageRoot, "marketplaces", "codez-plugins-official");
 
     try {
       // 在缓存目录里铺一个含 manifest + 2 个技能的内置插件。
@@ -1125,7 +1125,7 @@ describe("NodePluginAdapter", () => {
       await writeFile(
         join(marketplaceRoot, "marketplace.json"),
         JSON.stringify({
-          name: "zcode-plugins-official",
+          name: "codez-plugins-official",
           version: 1,
           plugins: [
             { name: "superpowers", version: "5.1.0", source: "filesystem", cachePath: cacheRoot },
@@ -1134,7 +1134,7 @@ describe("NodePluginAdapter", () => {
       );
 
       const result = await describeMarketplacePlugin({
-        marketplace: "zcode-plugins-official",
+        marketplace: "codez-plugins-official",
         name: "superpowers",
         storageRoot,
       });
@@ -2981,16 +2981,16 @@ describe("NodePluginAdapter", () => {
           pluginCount: 1,
         },
         {
-          id: "zcode-plugins-official",
+          id: "codez-plugins-official",
           source: {
             source: "settings",
             marketplace: {
-              name: "zcode-plugins-official",
+              name: "codez-plugins-official",
               plugins: [],
-              raw: { name: "zcode-plugins-official", plugins: [] },
+              raw: { name: "codez-plugins-official", plugins: [] },
             },
           },
-          name: "zcode-plugins-official",
+          name: "codez-plugins-official",
           addedAt: "2026-01-01T00:00:00.000Z",
           pluginCount: 0,
         },
