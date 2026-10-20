@@ -599,7 +599,7 @@ describe("Codez plugins", () => {
     const root = await mkdtemp(join(tmpdir(), "codez-bootstrap-restorable-ui-"));
     const pluginStorageRoot = join(root, "plugins");
     const userConfigPath = join(root, "config.json");
-    const documentsId = "documents@zcode-plugins-official";
+    const documentsId = "documents@codez-plugins-official";
 
     try {
       await writeFile(
@@ -644,7 +644,7 @@ describe("Codez plugins", () => {
             pluginCount: 14,
             source: {
               source: "url",
-              url: "https://cdn-zcode.z.ai/codez/official-plugin/marketplace.json",
+              url: "https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json",
             },
           }),
           expect.objectContaining({
@@ -2425,7 +2425,7 @@ describe("Codez plugins", () => {
         pluginCount: 14,
         source: {
           source: "url",
-          url: "https://cdn-zcode.z.ai/codez/official-plugin/marketplace.json",
+          url: "https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json",
         },
       });
       expect(overview.diagnostics).toEqual(
