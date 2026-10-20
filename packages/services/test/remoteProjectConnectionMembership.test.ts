@@ -1,7 +1,13 @@
-import { describe, expect, it, vi } from "vitest";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ConnectionProfile } from "@codez/shared";
+import { projectStorage } from "#src/project-storage/index.js";
 import type { IRemoteProjectService, RemoteProjectHost } from "#src/remote-projects/contract.js";
 import {
+  createRemoteProjectService,
   createRemoteProjectConnectionAdmission,
   remoteProjectHostIdForProfile,
 } from "#src/remote-projects/index.js";
@@ -12,6 +18,10 @@ const profile: ConnectionProfile = {
   target: { kind: "docker", container: "test" },
   createdAt: 1,
 };
+const cleanups: Array<() => Promise<void> | void> = [];
+afterEach(async () => {
+  for (const cleanup of cleanups.splice(0)) await cleanup();
+});
 function fixture() {
   const host: RemoteProjectHost = {
     id: "address",
@@ -60,5 +70,57 @@ describe("remote connection membership admission", () => {
     ).rejects.toThrow("remote-project.host-removed");
     expect(service.saveHost).not.toHaveBeenCalled();
     expect(service.bindHost).not.toHaveBeenCalled();
+  });
+  it("admits SSH profiles with explicit authMode and rejects unknown authMode in strict SQLite target schema", async () => {
+    const db = new DatabaseSync(":memory:");
+    const directory = await mkdtemp(join(tmpdir(), "remote-project-auth-mode-test-"));
+    cleanups.push(
+      () => db.close(),
+      () => rm(directory, { recursive: true, force: true }),
+    );
+    db.exec("PRAGMA foreign_keys=ON");
+    await projectStorage.migrate(db, { backupDirectories: [directory] });
+    const service = createRemoteProjectService({ database: async () => db });
+    const admit = createRemoteProjectConnectionAdmission(service);
+
+    for (const authMode of ["auto", "password", "privateKey"] as const) {
+      const sshProfile: ConnectionProfile = {
+        profileId: `00000000-0000-4000-8000-${authMode.padEnd(12, "0")}`,
+        transport: "ssh",
+        target: {
+          kind: "ssh",
+          host: "30.72.114.100",
+          port: 22223,
+          username: "root",
+          authMode,
+          sshConfigAlias: "moga22",
+          assetInstallMode: "remote-download",
+        },
+        createdAt: 1,
+      };
+      const commit = await admit({
+        profile: sshProfile,
+        intent: "add",
+        confirmIdentityChange: false,
+      });
+      await commit(`server-${authMode}`);
+      const saved = (await service.readDirectory()).hosts.find(
+        (item) =>
+          item.id === remoteProjectHostIdForProfile({ ...sshProfile, sourceServerId: `server-${authMode}` }),
+      );
+      expect(saved?.target).toEqual(sshProfile.target);
+    }
+
+    await expect(
+      service.saveHost({
+        id: "remote:ssh:invalid",
+        target: {
+          kind: "ssh",
+          host: "30.72.114.100",
+          username: "root",
+          authMode: "agent" as unknown as "auto",
+        },
+      }),
+    ).rejects.toThrow(/authMode/);
   });
 });
