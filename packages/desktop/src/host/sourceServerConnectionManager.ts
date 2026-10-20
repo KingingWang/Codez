@@ -458,6 +458,9 @@ export class SourceServerConnectionManager {
             profile: candidate.profile,
             target: candidate.target,
             membershipIntent: "retain",
+            // 已绑定 Source 的 Profile 表示用户已经确认过这条远程环境。
+            // 启动时若只是运行资产缺失，复用同一身份自动补装；新 Profile 仍在显式连接流程中确认。
+            allowInstall: Boolean(candidate.profile.sourceServerId?.trim()),
             context: { signal: abortController.signal },
             onDiagnosticPhase: (phase) => {
               diagnosticPhase = phase;
@@ -888,11 +891,9 @@ export class SourceServerConnectionManager {
       // 兼容判定会让远端永远停在首次安装的构建（旧 Server 缺 Codex 运行时，连接成功但项目内
       // codex/request 全部 Method not found）。release 身份读取与 probe 共用同一只读 channel，
       // 不增加 round-trip；生产与开发都做同版本内容漂移判定。
-      const probe = await adapter.probe(
-        target,
-        options.context ?? {},
-        { includeReleaseIdentity: true },
-      );
+      const probe = await adapter.probe(target, options.context ?? {}, {
+        includeReleaseIdentity: true,
+      });
       throwIfAborted();
       if (probe.installed) {
         const installedVersion = probe.installedVersion?.trim() || "unknown";

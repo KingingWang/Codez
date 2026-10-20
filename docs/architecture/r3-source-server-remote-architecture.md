@@ -537,14 +537,14 @@ A 在线 → B 更新 → 旧物理连接失效 → 删除 B
                           └────────► bootstrapping（无交互路径：不弹凭据、不装新版本）
 ```
 
-- **静默前提**：自动路径（启动重连/断连重试/离线探测）只允许无交互步骤——凭据必须能从 credential store 静默取得（私钥无口令、或密码/口令已保存）；需要输入密码、需要安装确认、版本不兼容的一律停在对应状态等待用户。
+- **静默前提**：自动路径（启动重连/断连重试/离线探测）只允许无交互步骤——凭据必须能从 credential store 静默取得（私钥无口令、或密码/口令已保存）。首次连接或没有已绑定 Source 身份的 Profile 仍需安装确认；已绑定 Source 的启动重连若仅缺少远端运行资产，可复用原 Profile/Source 身份和当前 release 自动补装。版本不兼容、身份变化、安装资产不可解析或需要输入凭据时，仍停在对应状态等待用户。
 - **终态后的新恢复周期**：同一 Source 重新发布物理连接时，Registry 先为旧 terminal owner 建立新的恢复屏障并清除旧失败，再开始异步挂回。其他线路此时 join 同一 Source 必须等待新周期，不得读到旧安装/升级等待错误；恢复预算和 Manager 的连接单飞语义保持不变。
 - **断连期间**：沿用 R1 语义——保留最后可信 task 投影并标记 `sourceAvailability=offline`，所有写与 IO fail-closed，不回落本地；重连成功后由新 source snapshot 原子替换（`replaceDisconnectedSource` 既有路径）。
 - **恢复完成**：补齐 Task/Session/待确认请求（复用现有断连数据恢复：权威状态查询 + 增量收敛）；存在待确认请求时，由底部阻塞卡片消费 `pendingInteractions` 投影，不再显示顶部 warning 提示及“去处理”入口，不新增第二事实源。该展示规则适用于本地桌面、远端桌面和手机 Web。远端在断连期间继续运行是 daemon 的自然行为，恢复只是重新读取权威状态，不重放输入。
 - **启动重连的范围**：主窗口 Host 启动时对「近 7 天有 `lastOnlineAt` 的 Server（`SourceServerRecord.lastOnlineAt`，取其默认线路）」发起（一期按单窗口设计；Profile 的 `lastConnectedAt` 只用于线路排序，不参与门禁）。设备 online 后 Renderer 挂回当前窗口该设备下全部 open 的 `remote:server:*` 断连 tab，不再按工作区年龄或上次 connected 历史过滤（见 [remote-device-sidebar-device-level-connect-spec.md](./remote-device-sidebar-device-level-connect-spec.md) C3）；这是对现状「冷启动只恢复断连条目、等待手动重连」（SSH-P0-LIFE-01）的显式行为变更，case catalog 需同步更新。
 - **探测**：轻量路径（传输拨号 + 匿名 server-info），成功才进入完整 bootstrap；探测不产生用户可见 UI 变化，除状态徽标外。
 - **最近在线**：握手成功初始化 `lastOnlineAt`；Manager 从 online 离开时，用 Host 时钟向 Directory 的串行写队列提交最后在线时刻，落盘后通过原目录事件刷新投影。后续离线重试不推进时间；迟到写入不得覆盖更晚握手，也不得重建已移除的 Source。此元数据更新不改变 desktop continuous / mobile replayable 的恢复链。
-- daemon 不在（如服务器重启且未注册自启动的 WSL/Docker）时，自动重连允许执行 `ensureDaemon`（不含安装/升级）。
+- daemon 不在（如服务器重启且未注册自启动的 WSL/Docker）时，自动重连允许执行 `ensureDaemon`。已绑定 Source 的启动重连若 probe 确认仅缺少 `server/bin/codez`，可在同一连接 flight 内执行一次当前 release 的补装；这不是版本升级，也不适用于新 Profile。补装后握手仍按原 `sourceServerId` 做身份校验，身份变化必须回到确认态。
 - **发布前断连**：物理连接只有在 Manager 把它登记为该 Source 的 online owner 之后才进入「通道/WS 断开 → retrying」路径。握手落盘（`recordHandshake`）期间连接关闭时，Manager 不得把已关闭连接发布为 online，而是按普通连接失败收口（`failed` 且 `retryable:true`，自动路径继续下一档重试）；同一 Source 上其他 Profile 的握手期断连不得影响已在线的 owner。close 事件只作用于它所属的那条连接，不按 `sourceServerId` 泛化。
 
 恢复 owner 与换代 seam：
@@ -863,7 +863,29 @@ Core 启动（server-core/core.ts runServerCore）
 
 - AppSettings 顶层布尔，默认 `true`，缺字段视为 `true`；full schema 与 patch schema 都声明该字段，显式 `false` 不得在写盘前被剥离。
 - 只门禁 Host 启动静默重连入口（`listStartupReconnectCandidates → reconnectOnStartup`），不影响手动连接与断线后的 retrying / offline 恢复；修改立即持久化、下次启动生效。仅桌面设置页提供入口，不新增跨端 RPC。
+- 已保存且已绑定 `sourceServerId` 的 Profile 在启动重连中可静默补装缺失的 Source Server 运行资产；补装使用当前 Desktop 已解析的 release，最多执行一次，不自动执行版本升级。无 `sourceServerId` 的新 Profile、release 解析失败、身份变化和兼容性升级仍保持 `needs-install` / `needs-upgrade` / `identity-change-pending`，交由现有连接向导处理。
 - 不提供全局下载方式默认偏好（2026-08-28 决策撤销 `remoteDefaultAssetInstallMode`）；SSH 新建线路表单每次从 `local-download-upload` 开始，Profile 自身 `assetInstallMode` 优先。
+
+启动补装的 owner 与时序固定如下，不能由 Renderer 自己重试或持有第二条安装队列：
+
+```mermaid
+sequenceDiagram
+    participant D as SourceServerDirectory
+    participant M as SourceServerConnectionManager
+    participant A as TransportAdapter
+    participant R as ReleaseResolver
+    participant S as Remote Source Server
+    D->>M: 已绑定 Profile + 静默凭据
+    M->>A: probe（只读）
+    A-->>M: installed=false
+    M->>R: 解析当前 release（一次）
+    R-->>M: 已校验 archive
+    M->>A: installOrUpdate（一次）
+    A->>S: 原子安装并保留用户数据
+    M->>A: ensureDaemon + handshake
+    A-->>M: serverInfo.sourceServerId
+    M-->>D: 同一 Source online；身份变化则 pending
+```
 
 ## 9. 数据迁移（D7 / D8）
 
