@@ -308,6 +308,8 @@ function renderComposerElement(
   ) => void,
   submissionReady = true,
   nativeCodexSession = false,
+  snapshot: ConversationSnapshot | null = null,
+  defaultFollowupIntent: "queue" | "guide" | null = null,
 ) {
   const scopeId = sessionId ?? V4_DRAFT_SCOPE_ROOT;
   let ownedDraft = composerDraft ??
@@ -342,10 +344,11 @@ function renderComposerElement(
       provider: undefined,
       sessionId,
       skillCatalogSessionId,
-      snapshot: null,
+      snapshot,
       telemetryDraftConfig,
       workspacePath: "/workspace",
       nativeCodexSession,
+      defaultFollowupIntent,
     }),
   );
 }
@@ -854,6 +857,79 @@ describe("ConversationComposer prompt history", () => {
     });
 
     expect(readV4ComposerDraft("/workspace", undefined, V4_DRAFT_SCOPE_ROOT)).toBeNull();
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("uses defaultFollowupIntent='guide' for busy native Codex sends and keeps guide as default after send", async () => {
+    const busySnapshot = {
+      sessionId: "session-guide-default",
+      control: {
+        phase: "running",
+        canStop: true,
+        stopState: "stoppable",
+        activeWorks: [{ kind: "primaryTurn", foregroundExecutionId: "turn-1" }],
+      },
+      inputRouting: { mode: "enqueue" },
+      config: { followupMode: "queue" },
+      queue: { items: [], autoDrain: true },
+      rows: { window: [], totalCount: 1, firstRowId: null },
+    } as unknown as ConversationSnapshot;
+    const onSendText = vi.fn(async () => ({ status: "sent" as const, commandId: "cmd-guide-1" }));
+    const container = installMinimalDom();
+    const root: Root = createRoot(container);
+    act(() => {
+      root.render(
+        renderComposerElement(
+          onSendText,
+          "session-guide-default",
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          true,
+          true,
+          busySnapshot,
+          "guide",
+        ),
+      );
+    });
+
+    await act(async () => {
+      (chatPromptEditorProps.at(-1)?.onSubmit as (value: string) => boolean)("第一条引导");
+      await flushAsyncWork();
+    });
+    expect(onSendText).toHaveBeenNthCalledWith(
+      1,
+      "第一条引导",
+      expect.objectContaining({ requestedDelivery: "guide" }),
+    );
+
+    // 连续第二次发送：默认仍然遵循设置页的 guide，不会退回写死的 queue；修饰键反向发送则为 queue。
+    await act(async () => {
+      (chatPromptEditorProps.at(-1)?.onSubmit as (value: string) => boolean)("第二条引导");
+      await flushAsyncWork();
+    });
+    expect(onSendText).toHaveBeenNthCalledWith(
+      2,
+      "第二条引导",
+      expect.objectContaining({ requestedDelivery: "guide" }),
+    );
+
+    await act(async () => {
+      (chatPromptEditorProps.at(-1)?.onModifiedSubmit as (value: string) => boolean)(
+        "修饰键反向排队",
+      );
+      await flushAsyncWork();
+    });
+    expect(onSendText).toHaveBeenNthCalledWith(
+      3,
+      "修饰键反向排队",
+      expect.objectContaining({ requestedDelivery: "queue" }),
+    );
 
     await act(async () => {
       root.unmount();

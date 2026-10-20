@@ -8,6 +8,25 @@ export function resolveAppFollowupMode(
   return settings.codezInteractionBehavior === "guide" ? "guide" : "queue";
 }
 
+export function resolveCodexFollowupIntent({
+  scopeKey,
+  followupChoice,
+  defaultFollowupIntent,
+}: {
+  scopeKey: string;
+  followupChoice: {
+    scopeKey: string;
+    intent: SessionConfigState["followupMode"];
+  } | null;
+  defaultFollowupIntent?: SessionConfigState["followupMode"] | null;
+}): SessionConfigState["followupMode"] {
+  // 修复原因：Codex 原生链路曾把忙时跟进意图硬编码初始化与重置为 "queue"，
+  // 导致用户在通用设置中将「交互行为（codezInteractionBehavior）」设为「引导」后在会话里完全不生效。
+  // 当用户未在当前会话/轮次手动覆盖下拉项时，直接回退到设置页的默认意图（缺省为 "queue"）。
+  const fallback = defaultFollowupIntent === "guide" ? "guide" : "queue";
+  return followupChoice?.scopeKey === scopeKey ? followupChoice.intent : fallback;
+}
+
 export function resolveOppositeFollowupDelivery(
   mode: SessionConfigState["followupMode"],
 ): "startNow" | "queue" {
