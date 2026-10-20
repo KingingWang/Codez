@@ -157,6 +157,35 @@ async function ensureAgentBundle(repoRoot: string, skipBuild: boolean): Promise<
   return bundlePath;
 }
 
+/**
+ * 准备随发行包嵌入的 fork Codex 运行时（内容寻址目录，含 bridge.cjs 与原生 bin/）。
+ * CI 的 remote-assets 步骤已按同一 pinned 清单 stage 过全部四个目标，这里命中缓存只做
+ * 完整性校验；本地开发缺失时才构建 bridge 并按清单下载 Codex 包。清单来源遵循
+ * CODEZ_CODEX_MANIFEST（见 scripts/codex-runtime.mjs），与桌面打包固定为同一份。
+ */
+async function ensureCodexRuntime(repoRoot: string, target: ServerTarget): Promise<string> {
+  const codexRuntime = (await import(
+    pathToFileURL(join(repoRoot, "scripts/codex-runtime.mjs")).href
+  )) as {
+    defaultCodexBridgePath: string;
+    stageCodexRuntime: (options: {
+      target: { os: string; arch: string; key: string };
+    }) => Promise<string>;
+  };
+  if (!(await pathExists(codexRuntime.defaultCodexBridgePath))) {
+    log("building codex bridge via scripts/build-codex-bridge.mjs");
+    await runCommand(
+      process.execPath,
+      [join(repoRoot, "scripts/build-codex-bridge.mjs")],
+      repoRoot,
+    );
+  }
+  const [os, arch] = target.split("-") as [string, string];
+  const directory = await codexRuntime.stageCodexRuntime({ target: { os, arch, key: target } });
+  log(`codex runtime: ${directory}`);
+  return directory;
+}
+
 async function resolveNativeToolsDir(repoRoot: string, target: ServerTarget): Promise<string> {
   // 修复：此前按“文件存在”复用 mock-cdn/releases/*/tools 或 bundled-tools。远端 macOS 资源固定为 rg13，
   // 会被当成独立 Server 发行包的 rg14 复用；这些目录也可能缺少工具许可声明。现在统一交给
@@ -236,13 +265,15 @@ async function main(): Promise<void> {
       `Missing tsup output in ${distDir}; run pnpm --filter @codez/server-cli build first`,
     );
   }
+  const skipCodexRuntime = argv.includes("--skip-codex-runtime");
 
   const appVersion = (
     JSON.parse(await readFile(join(repoRoot, "package.json"), "utf8")) as { version: string }
   ).version;
-  const [agentBundlePath, nodeBinaryPath] = await Promise.all([
+  const [agentBundlePath, nodeBinaryPath, codexRuntimeDir] = await Promise.all([
     ensureAgentBundle(repoRoot, argv.includes("--skip-agent-build")),
     ensureNodeBinary(repoRoot, target),
+    skipCodexRuntime ? Promise.resolve(undefined) : ensureCodexRuntime(repoRoot, target),
   ]);
   const [nativeToolsDir, officialPluginsDir, workspacePackageDirs] = await Promise.all([
     resolveNativeToolsDir(repoRoot, target),
@@ -257,6 +288,7 @@ async function main(): Promise<void> {
     agentBundlePath,
     bundledSkillsDir: join(repoRoot, "apps/codez-cli/packages/bundled-skills"),
     nodeBinaryPath,
+    codexRuntimeDir,
     notices: {
       thirdParty: thirdParty.toString("utf8"),
       node: nodeNotice.bytes.toString("utf8"),
