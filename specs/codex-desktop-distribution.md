@@ -396,6 +396,18 @@ naming the attempted bases in the error; it never falls back to the upstream CDN
 roots. The tag is validated against the codex release-tag pattern before it
 enters a URL path.
 
+Every push publishes a new Source Server archive under the same app version, so
+version compatibility alone can never converge the remote: a packaged Desktop
+probes the installed release's archive identity on every connect and resolves
+the current build's descriptor; when both report the same app version but the
+archive SHA-256 differs, connecting stops at `needs-upgrade` (required) and the
+existing update flow applies the current archive. A resolver that is missing or
+failing (offline, release not yet published) degrades to the previous
+connect-with-compatible-version behavior rather than blocking the server. This
+is the same contract the development content-addressed policy already used;
+only the failure handling differs (development fails loudly, production logs and
+connects).
+
 Fork Source Server archives are self-contained Codex runtimes: staging embeds
 the pinned, hash-verified Codex runtime (the same `stageCodexRuntime` output the
 desktop installer consumes — `bridge.cjs`, `bin/codex`, `bin/codex-code-mode-host`,
