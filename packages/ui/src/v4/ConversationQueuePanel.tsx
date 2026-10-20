@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 权威队列共用 bot 来源展示、附件编辑与 Codex 立即发送动作。 */
 import { BotChannelMessageContent } from "@/v4/ChannelMentionContent.js";
 import { parsePromptConversationSelections } from "@/lib/conversationSelectionReference.js";
 import { ConversationSelectionReferenceChip } from "@/v4/composer/ConversationSelectionReferenceChip.js";
@@ -33,9 +34,11 @@ import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { runUserAction, runUserActionAsync } from "@/lib/userActionTelemetry.js";
+import { useCodexMessages } from "@/settings/codex/messages.js";
 
 export interface ConversationQueuePanelProps {
   queue: QueueState;
+  nativeCodex?: boolean;
   /** 删除队列项（deleteQueueItem command）。 */
   onDeleteItem?: (queueItemId: string) => void;
   /** 在底部 composer 编辑该项：先冻结（lockQueueItemEdit），accepted 后进入编辑态。 */
@@ -147,6 +150,7 @@ interface QueueRowProps {
   item: QueueItem;
   index: number;
   intl: ReturnType<typeof useCodezIntl>["intl"];
+  nativeCodex: boolean;
   sortable: boolean;
   onDeleteItem?: (queueItemId: string) => void;
   onEditItem?: (queueItemId: string) => Promise<void> | void;
@@ -161,6 +165,7 @@ const QueueRow = memo(function QueueRow({
   item,
   index,
   intl,
+  nativeCodex,
   sortable,
   onDeleteItem,
   onEditItem,
@@ -229,7 +234,7 @@ const QueueRow = memo(function QueueRow({
       data-edit-pending={editPending ? "true" : "false"}
       data-edit-locked={editLocked ? "true" : "false"}
       className={cn(
-        "relative flex items-center gap-2 rounded-xl px-1.5 py-1 pr-1 transition-colors hover:bg-hover/30",
+        "relative flex items-center gap-2 rounded-lg px-1 py-1 transition-colors hover:bg-hover/30",
         isDragging ? "bg-hover/40 shadow-sm" : null,
         editPending ? "opacity-60" : null,
       )}
@@ -254,7 +259,7 @@ const QueueRow = memo(function QueueRow({
       </ControlHintTooltip>
       <span
         className={cn(
-          "flex min-w-0 flex-1 items-center gap-2 truncate text-ui-base text-foreground",
+          "min-w-0 flex-1 text-ui-base text-foreground",
           isCompact ? "font-mono" : null,
         )}
         title={parsedInput.visibleContent}
@@ -325,6 +330,16 @@ const QueueRow = memo(function QueueRow({
           data-icon="inline-start"
           data-testid={testId(TID_V4_QUEUE_ITEM_SEND_NOW, item.queueItemId)}
           data-queue-item-id={item.queueItemId}
+          aria-label={
+            nativeCodex
+              ? intl.formatMessage({ id: "chat.queue.interruptAndSend.description" })
+              : undefined
+          }
+          title={
+            nativeCodex
+              ? intl.formatMessage({ id: "chat.queue.interruptAndSend.description" })
+              : undefined
+          }
           disabled={rowLocked}
           onClick={() =>
             runUserAction({
@@ -340,7 +355,15 @@ const QueueRow = memo(function QueueRow({
           }
         >
           <ArrowUpFromLine className="size-3.5" />
-          {intl.formatMessage({ id: isCompact ? "chat.queue.runNow" : "chat.queue.sendNow" })}
+          <span className={nativeCodex ? "@max-[520px]/conversation:hidden" : undefined}>
+            {intl.formatMessage({
+              id: nativeCodex
+                ? "chat.queue.interruptAndSend"
+                : isCompact
+                  ? "chat.queue.runNow"
+                  : "chat.queue.sendNow",
+            })}
+          </span>
         </Button>
       ) : null}
       {onEditItem && !isCompact && !editLocked ? (
@@ -385,6 +408,7 @@ const QueueRow = memo(function QueueRow({
  */
 function ConversationQueuePanelImpl({
   queue,
+  nativeCodex = false,
   onDeleteItem,
   onEditItem,
   pendingEditQueueItemId = null,
@@ -398,6 +422,7 @@ function ConversationQueuePanelImpl({
   onResume,
 }: ConversationQueuePanelProps) {
   const { intl } = useCodezIntl();
+  const codexText = useCodexMessages();
   const [resumePending, setResumePending] = useState(false);
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -435,18 +460,26 @@ function ConversationQueuePanelImpl({
   }, [onResume, resumePending]);
 
   if (queue.items.length === 0) return null;
-  // 补回 v4 视觉迁移时漏掉的旧队列面板 blur 层，让列表保持贴合 composer 的磨砂背景。
+  // native queue 是真实已接纳输入；卡片只投影权威项，避免把它误画成已发出的对话消息。
   return (
     <div
       data-testid={TID_V4_QUEUE}
       data-queue-count={queue.items.length}
-      data-queue-auto-drain={queue.autoDrain ? "true" : "false"}
+      data-queue-auto-drain={nativeCodex ? "native" : queue.autoDrain ? "true" : "false"}
       className={cn(
-        "relative z-0 w-full overflow-hidden rounded-t-2xl border border-border bg-surface p-1 backdrop-blur-md",
-        "-mb-7 pb-7",
+        "relative z-0 w-full overflow-hidden border border-card-border bg-card p-2 backdrop-blur-md",
+        nativeCodex ? "mb-2 rounded-xl" : "-mb-7 rounded-t-xl pb-7",
       )}
     >
-      {!queue.autoDrain ? (
+      {nativeCodex ? (
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 px-2 py-1.5">
+          <span className="text-ui-base font-medium text-foreground">
+            {intl.formatMessage({ id: "chat.queue.pendingCount" }, { count: queue.items.length })}
+          </span>
+          <span className="text-ui-sm text-foreground-subtle">{codexText.nativeQueue}</span>
+        </div>
+      ) : null}
+      {!nativeCodex && !queue.autoDrain ? (
         <div
           data-testid={TID_V4_QUEUE_PAUSED_BANNER}
           className="mb-1 flex min-h-10 items-center gap-3 rounded-xl border border-border/70 bg-surface-raised px-3 py-2 text-ui-base text-foreground"
@@ -491,6 +524,7 @@ function ConversationQueuePanelImpl({
                 item={item}
                 index={index}
                 intl={intl}
+                nativeCodex={nativeCodex}
                 sortable={Boolean(onMoveItem)}
                 onDeleteItem={onDeleteItem}
                 onEditItem={onEditItem}

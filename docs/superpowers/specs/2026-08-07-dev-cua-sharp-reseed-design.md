@@ -10,7 +10,7 @@ The development cache synchronizer currently stages the complete Sharp runtime
 directly into:
 
 ```text
-~/.codez/cli/plugins/cache/zcode-plugins-official/codez-cua/0.5.2/node_modules
+~/.codez/cli/plugins/cache/codez-plugins-official/codez-cua/0.5.2/node_modules
 ```
 
 That cache is not the durable source of truth. On desktop startup, bootstrap

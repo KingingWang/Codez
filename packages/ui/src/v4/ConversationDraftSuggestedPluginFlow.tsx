@@ -1,5 +1,5 @@
 import {
-  ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
+  CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
   type CodezPluginsResolveSuggestedReferenceResult,
 } from "@codez/shared";
 
@@ -45,7 +45,7 @@ export function resolveDraftSuggestedPluginFlowStage(
   const { status } = result;
   if (
     (status === "ready" || status === "disabled" || status === "missing") &&
-    (result.marketplace !== ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID ||
+    (result.marketplace !== CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID ||
       result.sourceTrust !== "official" ||
       !result.pluginName)
   ) {

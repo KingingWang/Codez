@@ -67,11 +67,15 @@ import type {
   EditPendingInputResult,
   LockPendingInputEditResult,
 } from "./types.js";
+import type { MemoryRuntimeConfigPatch } from "./methods/config.js";
+import type { MemoryRuntimeConfig } from "./types.js";
 
 export interface AgentRuntimeCoreMethods {
   updateConfig(
     patch: Pick<AgentRuntimeConfig, "mode" | "planEnabled" | "language" | "outputStyle">,
   ): void;
+  applyMemoryRuntimeConfig(patch: MemoryRuntimeConfigPatch): Promise<void>;
+  getMemoryRuntimeConfig(): MemoryRuntimeConfig | undefined;
   initializeSessionShellEnvironmentIfNeeded(
     selection: ExecutionShellSelection | (() => ExecutionShellSelection),
   ): boolean;

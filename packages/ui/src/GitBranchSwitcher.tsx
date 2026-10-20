@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 分支菜单合并安全删除与上游键盘/滚动交互，复用现有 mutation owner。 */
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import type { GitRepositorySummary } from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
@@ -6,7 +7,6 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandInput,
-  CommandItem,
   CommandList,
 } from "@/components/ui/command.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.js";
@@ -15,8 +15,10 @@ import {
   GitBranchCreateDialog,
   GitBranchSwitchAssistDialog,
 } from "@/git-branch-switcher/GitBranchDialogs.js";
+import { GitBranchListItem } from "@/git-branch-switcher/GitBranchListItem.js";
 import { GitGraphDialog } from "@/git-graph/GitGraphDialog.js";
 import { useGitBranchSwitcher } from "@/hooks/useGitBranchSwitcher.js";
+import { GitWorktreeMenuActions, useGitWorktreeMenu } from "@/GitWorktreeMenu.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import {
   matchesGitBranchSearch,
@@ -30,6 +32,7 @@ import { ChevronDownIcon, GitBranchIcon, GitGraph, LoaderCircle, PlusIcon } from
 
 interface GitBranchSwitcherProps {
   workspacePath: string;
+  workspaceIdentity?: string | null;
   gitSummary: GitRepositorySummary;
   dirtyFileCount: number;
   onRefreshGit: () => void;
@@ -46,6 +49,7 @@ interface GitBranchSwitcherProps {
 
 export function GitBranchSwitcher({
   workspacePath,
+  workspaceIdentity,
   gitSummary,
   dirtyFileCount,
   onRefreshGit,
@@ -63,6 +67,7 @@ export function GitBranchSwitcher({
   const numberFormatter = new Intl.NumberFormat(locale);
   const commandListRef = useRef<HTMLDivElement | null>(null);
   const [gitGraphDialogOpen, setGitGraphDialogOpen] = useState(false);
+  const worktreeMenu = useGitWorktreeMenu(workspacePath, workspaceIdentity);
   const {
     open,
     setOpen,
@@ -89,6 +94,11 @@ export function GitBranchSwitcher({
     headRefType: gitSummary.headRefType,
     onRefreshGit,
   });
+  useEffect(() => {
+    if (open && showFooterActions) {
+      worktreeMenu?.onRefresh();
+    }
+  }, [open, showFooterActions, worktreeMenu?.onRefresh]);
 
   const isVisible = gitSummary.isGitAvailable && gitSummary.isRepository;
   const displayedCurrentBranchName = branchesResult?.currentBranchName ?? gitSummary.branchName;
@@ -271,34 +281,26 @@ export function GitBranchSwitcher({
                   })}
                   className="space-y-0.5 p-1 **:[[cmdk-group-heading]]:px-3 **:[[cmdk-group-heading]]:py-2 **:[[cmdk-group-heading]]:text-ui-base **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:text-foreground-subtle"
                 >
-                  {(branchesResult?.branches ?? []).map((branch) => {
-                    const isCurrent = branch.name === displayedCurrentBranchName;
-                    return (
-                      <CommandItem
-                        key={branch.name}
-                        value={branch.name}
-                        data-checked={isCurrent ? "true" : undefined}
-                        data-branch-current={isCurrent ? "true" : undefined}
-                        disabled={mutationPending}
-                        className={cn("items-start gap-3 rounded-lg px-3 py-2 text-ui-base")}
-                        onSelect={() => {
-                          void switchBranch(branch.name);
-                        }}
-                      >
-                        <GitBranchIcon className="mt-0.5 size-4 text-foreground-subtle" />
-                        <div className="min-w-0 flex-1 flex flex-col gap-1 text-left">
-                          <div className="truncate text-ui-base font-medium text-foreground">
-                            {branch.name}
-                          </div>
-                          {isCurrent && currentBranchDirtyLabel ? (
-                            <p className="pt-0.5 text-ui-base text-foreground-subtle">
-                              {currentBranchDirtyLabel}
-                            </p>
-                          ) : null}
-                        </div>
-                      </CommandItem>
-                    );
-                  })}
+                  {(branchesResult?.branches ?? []).map((branch) => (
+                    <GitBranchListItem
+                      key={branch.name}
+                      branch={branch}
+                      isCurrent={branch.name === displayedCurrentBranchName}
+                      currentBranchDirtyLabel={currentBranchDirtyLabel}
+                      disabled={mutationPending}
+                      onSelect={(branchName) => {
+                        void switchBranch(branchName);
+                      }}
+                      onDeleteBranch={
+                        worktreeMenu?.onDeleteBranch
+                          ? (branchName) => {
+                              setOpen(false);
+                              worktreeMenu.onDeleteBranch?.(branchName);
+                            }
+                          : null
+                      }
+                    />
+                  ))}
                 </CommandGroup>
               </CommandList>
             </Command>
@@ -320,6 +322,12 @@ export function GitBranchSwitcher({
                     id: "git.branchSwitcher.createAction",
                   })}
                 </Button>
+                <GitWorktreeMenuActions
+                  workspacePath={workspacePath}
+                  workspaceIdentity={workspaceIdentity}
+                  disabled={mutationPending}
+                  onBeforeAction={() => setOpen(false)}
+                />
                 <Button
                   type="button"
                   variant="ghost"

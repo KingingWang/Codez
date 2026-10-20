@@ -78,7 +78,7 @@ after(async () => {
   await server?.close();
 });
 
-const official = "zcode-plugins-official";
+const official = "codez-plugins-official";
 const plugin = (name, category, extra = {}) => ({
   pluginId: `${name}@${official}`,
   name,
@@ -172,7 +172,7 @@ for (const [width, locale, theme] of [
       assert.equal(requests, 1);
       assert.equal(
         await page
-          .locator('[data-option-id="plugin:conflict@zcode-plugins-official"]')
+          .locator('[data-option-id="plugin:conflict@codez-plugins-official"]')
           .getAttribute("data-disabled"),
         "true",
       );
@@ -202,7 +202,7 @@ for (const [width, locale, theme] of [
       await editor.fill("@");
       await options().first().waitFor();
       await page.waitForFunction(
-        () => !!document.querySelector('[data-option-id="plugin:new@zcode-plugins-official"]'),
+        () => !!document.querySelector('[data-option-id="plugin:new@codez-plugins-official"]'),
       );
       assert.ok(calls.some((x) => x.sessionId === "frozen-session"));
       assert.ok(calls.some((x) => !x.sessionId));
@@ -241,7 +241,7 @@ for (const width of [1200, 390]) {
           const editor = page.getByTestId("editor");
           await editor.fill("@");
           const option = page.locator(
-            '[role="option"][data-option-id="plugin:plugin-creator@zcode-plugins-official"]',
+            '[role="option"][data-option-id="plugin:plugin-creator@codez-plugins-official"]',
           );
           await option.waitFor();
           const image = option.locator("img");
@@ -252,7 +252,7 @@ for (const width of [1200, 390]) {
           });
           await option.click();
           const token = editor.locator(
-            '[data-mention-id="plugin:plugin-creator@zcode-plugins-official"]',
+            '[data-mention-id="plugin:plugin-creator@codez-plugins-official"]',
           );
           await token.waitFor();
           assert.match(

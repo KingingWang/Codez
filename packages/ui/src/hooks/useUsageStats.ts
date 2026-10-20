@@ -196,13 +196,18 @@ export function useAppUsageStats(range: AppUsageRange) {
     error: null,
   });
   const requestVersionRef = useRef(0);
+  const lastRangeRef = useRef(range);
 
   const refresh = useCallback(async () => {
     const requestVersion = requestVersionRef.current + 1;
     requestVersionRef.current = requestVersion;
+    const keepPreviousSnapshot = lastRangeRef.current === range;
+    lastRangeRef.current = range;
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     setState((current) => ({
-      snapshot: current.snapshot,
+      // 修复原因：切换时间范围（如 7d -> 30d）时若保留上一范围的 snapshot，
+      // 在新请求返回或失败期间图表仍展示旧区间数据。仅同一 range 手动刷新时保留当前快照。
+      snapshot: keepPreviousSnapshot ? current.snapshot : null,
       loading: true,
       error: null,
     }));
@@ -226,7 +231,7 @@ export function useAppUsageStats(range: AppUsageRange) {
         error: message,
       });
       setState((current) => ({
-        snapshot: current.snapshot,
+        snapshot: lastRangeRef.current === range ? current.snapshot : null,
         loading: false,
         error: message,
       }));

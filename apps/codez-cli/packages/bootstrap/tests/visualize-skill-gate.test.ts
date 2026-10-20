@@ -17,7 +17,7 @@ import type { CodezProtocolAgentServerContext } from "../src/codez-protocol/serv
 import { createWorkspaceCodezApp } from "../src/codez-protocol/workspace-model-runtime.js";
 import { createRegistryBackedTestApp } from "./helpers/registry-backed-test-app.js";
 
-const VISUALIZE_PLUGIN_ID = "visualize@zcode-plugins-official";
+const VISUALIZE_PLUGIN_ID = "visualize@codez-plugins-official";
 const VISUALIZE_SKILL = "visualize:visualize";
 const logger = {
   debug() {},

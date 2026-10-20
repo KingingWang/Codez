@@ -82,7 +82,7 @@ vi.mock("@modelcontextprotocol/client/stdio", () => ({
 import { createMcpAdapter } from "../src/mcp/index.js";
 
 const CODEZ_ORIGIN = "https://codez.example";
-const PLUGIN_ID = "video-agent-kit@zcode-plugins-official";
+const PLUGIN_ID = "video-agent-kit@codez-plugins-official";
 const MCP_KEY = "video-edit";
 
 const IDENTITY_HEADERS = {

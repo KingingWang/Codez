@@ -13,6 +13,8 @@ export interface GitCommandExecutionOptions {
   env?: NodeJS.ProcessEnv;
   /** 逐块回调原始输出（例如受管 worktree 创建进度）；不影响 stdout/stderr 的收集与截断。 */
   onOutput?: (chunk: { stream: "stdout" | "stderr"; text: string }) => void;
+  /** 内容指纹需要原始字节，不能先 UTF-8 解码二进制 blob。 */
+  binaryOutput?: boolean;
 }
 
 export interface GitCommandExecutionResult {
@@ -20,6 +22,7 @@ export interface GitCommandExecutionResult {
   cwd: string;
   args: string[];
   stdout: string;
+  stdoutBuffer?: Buffer;
   stderr: string;
   exitCode: number | null;
   signal: NodeJS.Signals | null;
@@ -102,6 +105,7 @@ export function createGitCommandProvider(options?: {
 
       return await new Promise<GitCommandExecutionResult>((resolve) => {
         let stdout = "";
+        const stdoutChunks: Buffer[] = [];
         let stderr = "";
         let stdoutBytes = 0;
         let stderrBytes = 0;
@@ -129,6 +133,7 @@ export function createGitCommandProvider(options?: {
             cwd: command.cwd,
             args: command.args,
             stdout,
+            stdoutBuffer: command.binaryOutput ? Buffer.concat(stdoutChunks) : undefined,
             stderr,
             exitCode,
             signal,
@@ -211,7 +216,8 @@ export function createGitCommandProvider(options?: {
           const text = chunk.toString("utf-8");
           command.onOutput?.({ stream: target, text });
           if (target === "stdout") {
-            stdout += text;
+            if (command.binaryOutput) stdoutChunks.push(chunk);
+            else stdout += text;
             stdoutBytes += byteLength;
           } else {
             stderr += text;

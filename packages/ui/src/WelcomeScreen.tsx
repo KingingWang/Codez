@@ -130,9 +130,11 @@ export function CredentialStoreRecovery({
 
 const LOGIN_TERMS_URL = "https://zcode.z.ai/terms";
 const LOGIN_PRIVACY_URL = "https://zcode.z.ai/privacy";
+import { CodexWelcomePanel } from "@/settings/codex/CodexWelcomePanel.js";
 
 interface WelcomeScreenProps {
   onComplete: (reason: LoginCompleteReason) => void | Promise<void>;
+  codex?: boolean;
 }
 
 export type LoginCompleteReason = "oauth" | "apiKey" | "skip";
@@ -145,7 +147,7 @@ export function resolveLoginRegionForLocale(locale: string): SingleLoginRegion {
   return locale === "en-US" ? "global" : "domestic";
 }
 
-export function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
+export function WelcomeScreen({ onComplete, codex = false }: WelcomeScreenProps) {
   const { intl } = useCodezIntl();
   const platform = usePlatform();
   return (
@@ -157,8 +159,16 @@ export function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
       {/* 矮窗口展开表单时，绝对定位的协议会盖住操作区；同一滚动布局保证两者可达，窗控仍在外层。 */}
       <div className="relative z-10 flex h-dvh flex-col items-center overflow-y-auto px-4 pb-6 pt-14 sm:px-6">
         <div className="flex w-full flex-1 shrink-0 items-center justify-center py-6">
-          <section className="flex w-full max-w-sm shrink-0 flex-col gap-7 rounded-2xl bg-background p-8 text-ui-base/relaxed shadow-md sm:p-10">
-            <LoginPanel active onComplete={onComplete} />
+          <section
+            className={`flex w-full shrink-0 flex-col gap-7 rounded-2xl bg-background p-8 text-ui-base/relaxed shadow-md ${
+              codex ? "max-w-2xl" : "max-w-sm sm:p-10"
+            }`}
+          >
+            {codex ? (
+              <CodexWelcomePanel onContinue={() => void onComplete("skip")} />
+            ) : (
+              <LoginPanel active onComplete={onComplete} />
+            )}
           </section>
         </div>
         <footer className="pointer-events-none flex shrink-0 flex-col items-center gap-2 text-center text-ui-xs text-foreground-subtle">

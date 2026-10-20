@@ -419,16 +419,16 @@ describe("config adapters", () => {
         JSON.stringify({
           plugins: {
             enabledPlugins: {
-              "codez-cua@zcode-plugins-official": true,
-              "computer-use@zcode-plugins-official": false,
+              "codez-cua@codez-plugins-official": true,
+              "computer-use@codez-plugins-official": false,
             },
             suppressedBuiltins: [
-              "codez-cua@zcode-plugins-official",
-              "computer-use@zcode-plugins-official",
+              "codez-cua@codez-plugins-official",
+              "computer-use@codez-plugins-official",
             ],
             options: {
-              "codez-cua@zcode-plugins-official": { apiKey: "legacy-key" },
-              "computer-use@zcode-plugins-official": { apiKey: "canonical-key" },
+              "codez-cua@codez-plugins-official": { apiKey: "legacy-key" },
+              "computer-use@codez-plugins-official": { apiKey: "canonical-key" },
             },
           },
         }),
@@ -437,13 +437,13 @@ describe("config adapters", () => {
       const loaded = loadFileConfig(configPath);
 
       expect(loaded.config.plugins?.enabledPlugins).toEqual({
-        "computer-use@zcode-plugins-official": false,
+        "computer-use@codez-plugins-official": false,
       });
       expect(loaded.config.plugins?.suppressedBuiltins).toEqual([
-        "computer-use@zcode-plugins-official",
+        "computer-use@codez-plugins-official",
       ]);
       expect(loaded.config.plugins?.options).toEqual({
-        "computer-use@zcode-plugins-official": { apiKey: "canonical-key" },
+        "computer-use@codez-plugins-official": { apiKey: "canonical-key" },
       });
     } finally {
       await rm(dir, { force: true, recursive: true });
@@ -457,10 +457,10 @@ describe("config adapters", () => {
       path,
       JSON.stringify({
         plugins: {
-          enabledPlugins: { "codez-cua@zcode-plugins-official": true },
-          suppressedBuiltins: ["codez-cua@zcode-plugins-official"],
+          enabledPlugins: { "codez-cua@codez-plugins-official": true },
+          suppressedBuiltins: ["codez-cua@codez-plugins-official"],
           options: {
-            "codez-cua@zcode-plugins-official": { apiKey: "legacy-key" },
+            "codez-cua@codez-plugins-official": { apiKey: "legacy-key" },
           },
         },
       }),
@@ -470,10 +470,10 @@ describe("config adapters", () => {
 
     expect(JSON.parse(await readFile(path, "utf8"))).toEqual({
       plugins: {
-        enabledPlugins: { "computer-use@zcode-plugins-official": true },
-        suppressedBuiltins: ["computer-use@zcode-plugins-official"],
+        enabledPlugins: { "computer-use@codez-plugins-official": true },
+        suppressedBuiltins: ["computer-use@codez-plugins-official"],
         options: {
-          "computer-use@zcode-plugins-official": { apiKey: "legacy-key" },
+          "computer-use@codez-plugins-official": { apiKey: "legacy-key" },
         },
       },
     });
@@ -489,8 +489,8 @@ describe("config adapters", () => {
         configPath,
         JSON.stringify({
           plugins: {
-            enabledPlugins: { "codez-cua@zcode-plugins-official": true },
-            suppressedBuiltins: ["codez-cua@zcode-plugins-official"],
+            enabledPlugins: { "codez-cua@codez-plugins-official": true },
+            suppressedBuiltins: ["codez-cua@codez-plugins-official"],
           },
         }),
       );
@@ -499,13 +499,14 @@ describe("config adapters", () => {
         (
           await removeSuppressedBuiltinInFileConfig(
             configPath,
-            "computer-use@zcode-plugins-official",
+            "computer-use@codez-plugins-official",
           )
         ).suppressed,
       ).toBe(false);
       expect(
-        (await removePluginFromFileConfig(configPath, "computer-use@zcode-plugins-official"))
-          .removedEnabled,
+        (
+          await removePluginFromFileConfig(configPath, "computer-use@codez-plugins-official")
+        ).removedEnabled,
       ).toBe(true);
       expect(JSON.parse(await readFile(configPath, "utf8"))).toEqual({
         plugins: { enabledPlugins: {}, suppressedBuiltins: [], options: {} },
@@ -890,11 +891,11 @@ describe("config adapters", () => {
     const path = join(dir, "config.json");
     await writeFile(
       path,
-      JSON.stringify({ plugins: { suppressedBuiltins: ["skill-creator@zcode-plugins-official"] } }),
+      JSON.stringify({ plugins: { suppressedBuiltins: ["skill-creator@codez-plugins-official"] } }),
     );
     const loaded = loadFileConfig(path);
     expect(loaded.config.plugins.suppressedBuiltins).toEqual([
-      "skill-creator@zcode-plugins-official",
+      "skill-creator@codez-plugins-official",
     ]);
   });
 
@@ -1500,8 +1501,8 @@ describe("config adapters", () => {
           },
           plugins: {
             enabledPlugins: {
-              "superpowers@zcode-plugins-official": true,
-              "skill-creator@zcode-plugins-official": false,
+              "superpowers@codez-plugins-official": true,
+              "skill-creator@codez-plugins-official": false,
             },
           },
         }),
@@ -1528,8 +1529,8 @@ describe("config adapters", () => {
         url: "https://open.bigmodel.cn/api/mcp/web_reader/mcp",
       });
       expect(merged.config.plugins.enabledPlugins).toMatchObject({
-        "skill-creator@zcode-plugins-official": false,
-        "superpowers@zcode-plugins-official": true,
+        "skill-creator@codez-plugins-official": false,
+        "superpowers@codez-plugins-official": true,
       });
     } finally {
       await rm(dir, { force: true, recursive: true });
@@ -1559,7 +1560,7 @@ describe("config adapters", () => {
           },
           plugins: {
             enabledPlugins: {
-              "android-emulator@zcode-plugins-official": true,
+              "android-emulator@codez-plugins-official": true,
             },
           },
         }),
@@ -1578,7 +1579,7 @@ describe("config adapters", () => {
       });
       expect(result.config.mcp?.servers).not.toHaveProperty("broken");
       expect(
-        result.config.plugins?.enabledPlugins?.["android-emulator@zcode-plugins-official"],
+        result.config.plugins?.enabledPlugins?.["android-emulator@codez-plugins-official"],
       ).toBe(true);
       expect(result.diagnostics).toEqual([
         expect.objectContaining({
@@ -1588,7 +1589,7 @@ describe("config adapters", () => {
         }),
       ]);
       expect(merged.sources.user.diagnostics).toEqual(result.diagnostics);
-      expect(merged.config.plugins.enabledPlugins["android-emulator@zcode-plugins-official"]).toBe(
+      expect(merged.config.plugins.enabledPlugins["android-emulator@codez-plugins-official"]).toBe(
         true,
       );
       await expect(readLogEntries(logDir)).resolves.toEqual([
@@ -2296,7 +2297,7 @@ describe("config adapters", () => {
   it("adds and removes a suppressed builtin id atomically", async () => {
     const dir = await mkdtemp(join(tmpdir(), "codez-config-suppress-patch-"));
     const path = join(dir, "config.json");
-    const id = "skill-creator@zcode-plugins-official";
+    const id = "skill-creator@codez-plugins-official";
 
     const added = await addSuppressedBuiltinInFileConfig(path, id);
     expect(added.suppressed).toBe(true);

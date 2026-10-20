@@ -75,7 +75,8 @@ export type ProviderProvisioningCredentialEntry = z.infer<
 
 export const providerProvisioningEnvelopeSchema = z
   .object({
-    // v3 整组携带国内/关联会话；旧 Target 必须在任何写入前拒绝未知版本。
+    // v3 整组携带国内/关联会话，并允许 Personal Config 中引用临时 Key；
+    // 旧 Target 必须在任何写入前拒绝未知版本。
     schemaVersion: z.union([z.literal(1), z.literal(2), z.literal(3)]),
     syncId: nonEmptyString,
     personalConfig: providerProvisioningPersonalConfigSchema,
@@ -91,6 +92,22 @@ export const providerProvisioningEnvelopeSchema = z
   );
 
 export type ProviderProvisioningEnvelope = z.infer<typeof providerProvisioningEnvelopeSchema>;
+
+/** 临时值只经可信连接安装到目标 Host 内存，绝不属于 Provisioning 磁盘信封。 */
+export const providerRuntimeApiKeySchema = z
+  .object({
+    name: z.string().regex(/^CODEZ_MODEL_API_KEY_[A-F0-9]{6,64}$/),
+    value: nonEmptyString,
+  })
+  .strict();
+export const providerRuntimeApiKeyInstallSchema = z
+  .object({
+    configFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+    keys: z.array(providerRuntimeApiKeySchema).max(256),
+  })
+  .strict();
+export type ProviderRuntimeApiKey = z.infer<typeof providerRuntimeApiKeySchema>;
+export type ProviderRuntimeApiKeyInstall = z.infer<typeof providerRuntimeApiKeyInstallSchema>;
 
 /** 跨进程只透传固定阶段码，不能把远端自由文本作为可公开诊断信息。 */
 export const providerProvisioningErrorCodeSchema = z.enum([

@@ -18,7 +18,8 @@ import { performHandshake } from "./handshake.js";
 import { deployServer } from "./deploy.js";
 import type { DeployOptions } from "./deploy.js";
 import { assertSupportedRemoteEnvironment } from "@codez/server/remote/remotePlatformSupport.js";
-import { quotePosixShellArg } from "./posixShell.js";
+import { quotePosixShellArg, quotePosixPathArg } from "./posixShell.js";
+import { REMOTE_RUNTIME } from "./remoteRuntime.js";
 import { formatWslProxyForLog } from "./wslProxy.js";
 
 const BACKEND_DISCONNECT_EXIT_CODE = -1;
@@ -373,14 +374,24 @@ async function resolveRemoteRuntimeNetwork(
   }
 }
 
-function buildRemoteServerCommand(
+export function buildRemoteServerCommand(
   options: ConnectOptions | undefined,
   remoteRuntimeNetwork: RemoteRuntimeNetworkOptions | undefined,
 ): string {
   const envParts = [
     `${SERVICE_AUTHORITY_MODE_ENV}="desktop-attached-remote"`,
-    'CODEZ_SERVER_RUNTIME_ROOT="$HOME/.codez/server"',
+    `CODEZ_SERVER_RUNTIME_ROOT=${quotePosixPathArg(REMOTE_RUNTIME.root)}`,
   ];
+  if (REMOTE_RUNTIME.kind === "codex") {
+    envParts.push(
+      "CODEZ_DESKTOP_RUNTIME='codex'",
+      `CODEZ_DATA_BASE_DIR=${quotePosixPathArg("~/.codez-codex")}`,
+      `CODEZ_HOME=${quotePosixPathArg("~/.codez-codex/.codez")}`,
+      `CODEZ_CODEX_COMMAND=${quotePosixPathArg(`${REMOTE_RUNTIME.root}/codex/bin/codex`)}`,
+      `CODEZ_CODEX_BRIDGE_PATH=${quotePosixPathArg(`${REMOTE_RUNTIME.root}/codex/bridge.cjs`)}`,
+      `CODEZ_CODEX_BRIDGE_HOME=${quotePosixPathArg("~/.codez-codex/bridge")}`,
+    );
+  }
   for (const [key, value] of Object.entries(
     pickRemoteRuntimeEnv(options?.remoteRuntimeEnv ?? {}),
   )) {
@@ -405,5 +416,6 @@ function buildRemoteServerCommand(
       );
     }
   }
-  return `${envParts.join(" ")} ~/.codez/server/node ~/.codez/server/codez-server.cjs --prepare-credentials`;
+  // 路径必须引用（远端 HOME 可能含空格），同时保留上游 3.18 的 --prepare-credentials 预置阶段。
+  return `${envParts.join(" ")} ${quotePosixPathArg(`${REMOTE_RUNTIME.root}/node`)} ${quotePosixPathArg(`${REMOTE_RUNTIME.root}/codez-server.cjs`)} --prepare-credentials`;
 }

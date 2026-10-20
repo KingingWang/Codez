@@ -25,7 +25,7 @@ const FILE_MENTION_PATH = "src/option-right-repro.ts";
 const FILE_MENTION_MARKDOWN = `[${FILE_MENTION_LABEL}](${FILE_MENTION_PATH})`;
 const TYPED_AFTER_MENTION = "继续输入";
 const PLUGIN_NAME = "skill-creator";
-const PLUGIN_STABLE_ID = "skill-creator@zcode-plugins-official";
+const PLUGIN_STABLE_ID = "skill-creator@codez-plugins-official";
 const PLUGIN_OPTION_ID = `plugin:${PLUGIN_STABLE_ID}`;
 
 describe("chat input mention navigation", () => {

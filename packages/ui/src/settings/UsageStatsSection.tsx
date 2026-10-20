@@ -1,8 +1,5 @@
 import { AppUsagePanel } from "@/settings/usage-stats/AppUsagePanel.js";
-import {
-  CodingPlanUsagePanel,
-  type CodingPlanUsageSource,
-} from "@/settings/usage-stats/CodingPlanUsagePanel.js";
+import type { CodingPlanUsageSource } from "@/settings/usage-stats/CodingPlanUsagePanel.js";
 
 export type UsageStatsSectionTab = "app" | "codingPlan" | `codingPlan:${string}`;
 
@@ -12,23 +9,24 @@ export function UsageStatsSection({
   workspaceIdentity,
   workspacePath,
   selectedCodingPlanSource,
+  desktopCodex = false,
 }: {
-  activeTab: UsageStatsSectionTab;
-  providerSourcesLoading: boolean;
+  activeTab?: UsageStatsSectionTab;
+  providerSourcesLoading?: boolean;
   workspaceIdentity?: string;
   workspacePath?: string;
   selectedCodingPlanSource?: CodingPlanUsageSource | null;
+  desktopCodex?: boolean;
 }) {
-  if (activeTab === "app") {
-    return <AppUsagePanel />;
-  }
-
+  void activeTab;
+  void providerSourcesLoading;
+  void selectedCodingPlanSource;
+  void desktopCodex;
   return (
-    <CodingPlanUsagePanel
-      loadingSources={providerSourcesLoading}
+    <AppUsagePanel
+      key={workspaceIdentity?.trim() || workspacePath || "no-workspace"}
       workspaceIdentity={workspaceIdentity}
       workspacePath={workspacePath}
-      selectedSource={selectedCodingPlanSource}
     />
   );
 }

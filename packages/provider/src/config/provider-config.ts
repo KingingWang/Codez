@@ -36,12 +36,14 @@ export type ApiKeyAccessConfigObject = Readonly<z.infer<typeof apiKeyAccessDataS
 export class ApiKeyAccessConfig extends ConfigOverlay<ApiKeyAccessConfig> {
   readonly type: ApiKeyAccessConfigObject["type"];
   readonly apiKey?: ApiKeyAccessConfigInput["apiKey"];
+  readonly apiKeyEnv?: ApiKeyAccessConfigInput["apiKeyEnv"];
   readonly apiKeyManagementUrl?: ApiKeyAccessConfigInput["apiKeyManagementUrl"];
 
   constructor(input: ApiKeyAccessConfigInput = {}) {
     super();
     this.type = input.type ?? "api-key";
     this.apiKey = input.apiKey;
+    this.apiKeyEnv = input.apiKeyEnv;
     this.apiKeyManagementUrl = input.apiKeyManagementUrl;
     Object.freeze(this);
   }
@@ -50,6 +52,7 @@ export class ApiKeyAccessConfig extends ConfigOverlay<ApiKeyAccessConfig> {
     return new ApiKeyAccessConfig({
       type: next.type,
       apiKey: this.overlayValue(this.apiKey, next.apiKey),
+      apiKeyEnv: this.overlayValue(this.apiKeyEnv, next.apiKeyEnv),
       apiKeyManagementUrl: this.overlayValue(this.apiKeyManagementUrl, next.apiKeyManagementUrl),
     });
   }
@@ -63,6 +66,7 @@ export class ApiKeyAccessConfig extends ConfigOverlay<ApiKeyAccessConfig> {
       type: this.type,
       ...objectWithoutUndefined({
         apiKey: this.apiKey,
+        apiKeyEnv: this.apiKeyEnv,
         apiKeyManagementUrl: this.apiKeyManagementUrl,
       }),
     };

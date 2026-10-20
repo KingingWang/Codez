@@ -988,9 +988,16 @@ export async function runSSHCommand(
 export async function createSSHReplayTunnel(
   config: SSHConnectionConfig,
   caseMarker: string,
-  options: SSHReplayTunnelOptions = {},
+  optionsOrLocalBaseURL: SSHReplayTunnelOptions | string = {},
 ): Promise<ReplayTunnel> {
-  const replayBaseURL = options.targetBaseURL ?? (await resolveSeededReplayBaseUrl());
+  const options =
+    typeof optionsOrLocalBaseURL === "string" ? {} : optionsOrLocalBaseURL;
+  const localBaseURL =
+    typeof optionsOrLocalBaseURL === "string"
+      ? optionsOrLocalBaseURL
+      : undefined;
+  const replayBaseURL =
+    options.targetBaseURL ?? localBaseURL ?? (await resolveSeededReplayBaseUrl());
   if (!replayBaseURL) {
     throw new Error(`${caseMarker}: 没有找到本轮 replay provider URL`);
   }

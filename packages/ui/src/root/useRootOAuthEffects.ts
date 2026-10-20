@@ -23,6 +23,7 @@ import {
 } from "@/root/oauthCachedSessionRestore.js";
 import { shouldApplyOAuthPollingFailure } from "@/root/oauthLoginAttemptGuard.js";
 import { useAccountConnectionLossNotification } from "@/root/useAccountConnectionLossNotification.js";
+import type { RootProviderStartupMode } from "@/root/rootProviderStartupMode.js";
 
 export { refreshRestoredOAuthProviderFamilyAfterStartup } from "@/root/oauthProviderFamilySelectionRefresh.js";
 
@@ -73,6 +74,7 @@ export async function handleOAuthCallbackSuccess(params: {
 }
 
 export function useRootOAuthEffects({
+  startupMode = "legacy",
   accountIntentKey,
   platform,
   services,
@@ -86,6 +88,7 @@ export function useRootOAuthEffects({
   markOAuthSuccess,
   onReauthenticationRequired,
 }: {
+  startupMode?: RootProviderStartupMode | "pending";
   accountIntentKey: string;
   platform: IPlatformService;
   services: IServiceAccessor;
@@ -99,7 +102,13 @@ export function useRootOAuthEffects({
   markOAuthSuccess: (provider?: OAuthProviderId) => void;
   onReauthenticationRequired: () => void;
 }) {
-  useAccountConnectionLossNotification(services, accountIntentKey, refreshAppSettings);
+  const legacyOAuthEnabled = startupMode === "legacy";
+  useAccountConnectionLossNotification(
+    services,
+    accountIntentKey,
+    refreshAppSettings,
+    legacyOAuthEnabled,
+  );
   const requestAlert = useAlertDialog();
   const { intl } = useCodezIntl();
   const oauthLoginSucceededRef = useRef(false);
@@ -107,6 +116,11 @@ export function useRootOAuthEffects({
   const oauthLoginSuccessOwnerRef = useRef<"polling" | "deep-link" | null>(null);
 
   useEffect(() => {
+    if (!legacyOAuthEnabled) {
+      // 原生 Codex 不恢复旧 OAuth；旧 Store 的“恢复中”标记也不能永久悬挂。
+      if (startupMode === "codex") setIsRestoringOAuthSession(false);
+      return;
+    }
     let disposed = false;
     async function restoreOAuthSessionInBackground() {
       logger.info("[Root] 后台启动 OAuth 本地会话恢复");
@@ -180,6 +194,7 @@ export function useRootOAuthEffects({
     };
   }, [
     intl,
+    legacyOAuthEnabled,
     onReauthenticationRequired,
     refreshAppSettings,
     refreshProviderState,
@@ -187,9 +202,11 @@ export function useRootOAuthEffects({
     services,
     setIsRestoringOAuthSession,
     setUser,
+    startupMode,
   ]);
 
   useEffect(() => {
+    if (!legacyOAuthEnabled) return;
     let disposed = false;
     let promptPending = false;
     const disposable = services.broadcastService.onMessage((message) => {
@@ -221,7 +238,14 @@ export function useRootOAuthEffects({
       disposed = true;
       disposable.dispose();
     };
-  }, [intl, onReauthenticationRequired, requestAlert, services.broadcastService, setUser]);
+  }, [
+    intl,
+    legacyOAuthEnabled,
+    onReauthenticationRequired,
+    requestAlert,
+    services.broadcastService,
+    setUser,
+  ]);
 
   useEffect(() => {
     if (!oauthPollingActive) {

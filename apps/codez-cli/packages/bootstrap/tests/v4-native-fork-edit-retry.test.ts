@@ -473,6 +473,62 @@ describe("v4 原生 editUserQuery", () => {
     expect(app.sendInput).not.toHaveBeenCalled();
   });
 
+  it("编辑重发显式携带普通 modelSelection / mode / planEnabled 时覆盖原轮固定配置", async () => {
+    const app = makeApp();
+    const record = makeRecord({ app });
+    const host = makeHost(record, {
+      resolveRowActionTarget: () => ({
+        ok: true,
+        action: "editUserQuery",
+        row: {} as never,
+        editTarget: {
+          entityId: "entity-7",
+          productTurnId: "turn-7",
+          transcriptMessageId: "msg-user",
+          coveredByStableCompact: false,
+          intent: {
+            kind: "sendText",
+            text: "原轮问题",
+            modelSelection: {
+              providerId: "provider-old",
+              modelId: "model-old",
+              options: { reasoningLevel: "low" },
+            },
+            mode: "plan",
+            planEnabled: true,
+          },
+        },
+      }),
+    });
+
+    await new V4CommandExecutor(host).execute(
+      envelope("editUserQuery", {
+        target: { rowId: 7, entityId: "entity-7" },
+        newText: "修改配置后的问题",
+        modelSelection: {
+          providerId: "provider-new",
+          modelId: "model-new",
+          options: { reasoningLevel: "high" },
+        },
+        mode: "build",
+        planEnabled: false,
+      }),
+    );
+    await settle();
+
+    const options = app.sendInput.mock.calls[0]?.[1];
+    expect(options.intent).toMatchObject({
+      modelSelection: {
+        providerId: "provider-new",
+        modelId: "model-new",
+        options: { reasoningLevel: "high" },
+      },
+      mode: "build",
+      planEnabled: false,
+    });
+    expect(options).not.toHaveProperty("modelExecution");
+  });
+
   it("卡已过期的编辑重发退回会话常驻 Selection，不保留无鉴权的加速 Selection", async () => {
     // CR-01 回归：被编辑的那轮是 Highspeed 轮，canonical intent 里留着 account:*-highspeed-card；
     // 本次没有有效新卡（已过期），旧实现只是不传 modelExecution 却沿用该 Selection，Core 会以

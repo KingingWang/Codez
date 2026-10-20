@@ -30,6 +30,8 @@ import type {
   V4ConversationWorkflowRunsParams,
   V4ConversationWorkflowRunEventsResult,
   V4ConversationWorkflowRunsResult,
+  CodexConversationHistoryRunsParams,
+  CodexConversationHistoryRunsResult,
 } from "@codez/shared/codez-protocol-v4";
 import type { IServiceAccessor } from "@codez/services";
 import { ServiceProvider } from "@/hooks/useServices.js";
@@ -57,12 +59,25 @@ export interface V4ConversationContextValue {
   fileRewindPreview(
     params: V4ConversationFileRewindPreviewParams,
   ): Promise<V4ConversationFileRewindPreviewResult>;
+  applyDesktopFileRewind(
+    params: V4ConversationFileRewindPreviewParams & { confirmationId: string },
+  ): Promise<{
+    backupDir?: string;
+    confirmationId: string;
+    ledgerFile?: string;
+    message?: string;
+    state: string;
+  }>;
   /** workflow run 事件日志分页（详情页审计面）；只读、无状态、超时重发安全。 */
   workflowRunEvents(
     params: V4ConversationWorkflowRunEventsParams,
   ): Promise<V4ConversationWorkflowRunEventsResult>;
   /** workflow run 枚举（journal-backed 的重启后发现面）。 */
   workflowRuns(params: V4ConversationWorkflowRunsParams): Promise<V4ConversationWorkflowRunsResult>;
+  /** Codex thread-history projection；显式独立于 legacy DWF workflowRuns。 */
+  codexHistoryRuns(
+    params: CodexConversationHistoryRunsParams,
+  ): Promise<CodexConversationHistoryRunsResult>;
   /**
    * workflow run 的**用户面产物**清单（冷恢复的 durable 读法）。⚠ 术语：artifact = 脚本经
    * `artifact.*` 发布给用户看的产出，不是 run 的顶层返回值。
@@ -97,7 +112,7 @@ export interface V4ConversationContextValue {
   attachmentReadRange(
     params: Parameters<ConversationTransport["attachmentReadRange"]>[0],
   ): ReturnType<ConversationTransport["attachmentReadRange"]>;
-  onRuntimeRestart(listener: () => void): () => void;
+  onRuntimeRestart(listener: (reason?: "runtimeRestart" | "transportReplaced") => void): () => void;
   /**
    * 承载 transport 暴露 runtime 存活态时才存在（见 ConversationTransport.onRuntimeLifecycle）。
    * unavailable 在 workspace-dispose 当场到达，是草稿预热重建唯一可依赖的换代信号。
@@ -179,6 +194,20 @@ function ReadyV4ConversationProvider({
       fileChanges: (params: V4ConversationFileChangesParams) => transport.fileChanges(params),
       fileRewindPreview: (params: V4ConversationFileRewindPreviewParams) =>
         transport.fileRewindPreview(params),
+      applyDesktopFileRewind: (
+        params: V4ConversationFileRewindPreviewParams & { confirmationId: string },
+      ) =>
+        services.codexDesktopFileRewindService
+          ? services.codexDesktopFileRewindService.apply({
+              workspacePath,
+              ...(workspaceIdentity ? { workspaceIdentity } : {}),
+              sessionId: params.sessionId,
+              target: params.target,
+              baseRevision: params.baseRevision,
+              baseLogEpoch: params.baseLogEpoch,
+              confirmationId: params.confirmationId,
+            })
+          : Promise.reject(new Error("Desktop file rewind transaction service is unavailable")),
       workflowRunEvents: (params: V4ConversationWorkflowRunEventsParams) =>
         transport.workflowRunEvents(params),
       workflowRunArtifacts: (params: V4ConversationWorkflowRunArtifactsParams) =>
@@ -192,11 +221,14 @@ function ReadyV4ConversationProvider({
       workflowRunNodeResult: (params: V4ConversationWorkflowRunNodeResultParams) =>
         transport.workflowRunNodeResult(params),
       workflowRuns: (params: V4ConversationWorkflowRunsParams) => transport.workflowRuns(params),
+      codexHistoryRuns: (params: CodexConversationHistoryRunsParams) =>
+        transport.codexHistoryRuns(params),
       attachmentPut: (params: V4AttachmentPutParams, options?: AttachmentUploadOptions) =>
         transport.attachmentPut(params, options),
       attachmentRead: (params) => transport.attachmentRead(params),
       attachmentReadRange: (params) => transport.attachmentReadRange(params),
-      onRuntimeRestart: (listener: () => void) => transport.onRuntimeRestart(listener),
+      onRuntimeRestart: (listener: (reason?: "runtimeRestart" | "transportReplaced") => void) =>
+        transport.onRuntimeRestart(listener),
       ...(transport.onRuntimeLifecycle
         ? {
             onRuntimeLifecycle: (listener: (state: "available" | "unavailable") => void) =>
@@ -372,6 +404,20 @@ function ReadyV4PaneConversationProvider({
           lease.transport.fileChanges(params),
         fileRewindPreview: (params: V4ConversationFileRewindPreviewParams) =>
           lease.transport.fileRewindPreview(params),
+        applyDesktopFileRewind: (
+          params: V4ConversationFileRewindPreviewParams & { confirmationId: string },
+        ) =>
+          services.codexDesktopFileRewindService
+            ? services.codexDesktopFileRewindService.apply({
+                workspacePath: scope.workspacePath,
+                ...(scope.workspaceIdentity ? { workspaceIdentity: scope.workspaceIdentity } : {}),
+                sessionId: params.sessionId,
+                target: params.target,
+                baseRevision: params.baseRevision,
+                baseLogEpoch: params.baseLogEpoch,
+                confirmationId: params.confirmationId,
+              })
+            : Promise.reject(new Error("Desktop file rewind transaction service is unavailable")),
         workflowRunEvents: (params: V4ConversationWorkflowRunEventsParams) =>
           lease.transport.workflowRunEvents(params),
         workflowRunArtifacts: (params: V4ConversationWorkflowRunArtifactsParams) =>
@@ -386,11 +432,14 @@ function ReadyV4PaneConversationProvider({
           lease.transport.workflowRunNodeResult(params),
         workflowRuns: (params: V4ConversationWorkflowRunsParams) =>
           lease.transport.workflowRuns(params),
+        codexHistoryRuns: (params: CodexConversationHistoryRunsParams) =>
+          lease.transport.codexHistoryRuns(params),
         attachmentPut: (params: V4AttachmentPutParams, options?: AttachmentUploadOptions) =>
           lease.transport.attachmentPut(params, options),
         attachmentRead: (params) => lease.transport.attachmentRead(params),
         attachmentReadRange: (params) => lease.transport.attachmentReadRange(params),
-        onRuntimeRestart: (listener: () => void) => lease.transport.onRuntimeRestart(listener),
+        onRuntimeRestart: (listener: (reason?: "runtimeRestart" | "transportReplaced") => void) =>
+          lease.transport.onRuntimeRestart(listener),
         ...(lease.transport.onRuntimeLifecycle
           ? {
               onRuntimeLifecycle: (listener: (state: "available" | "unavailable") => void) =>

@@ -14,7 +14,7 @@
 ## 为什么做成内置默认启用插件
 
 - 与 `skill-creator` / `document-skills` 同属**纯内容型**插件（只有 `skills/`，无 MCP、无系统依赖），可安全 `defaultEnabled: true`，开箱即用。
-- 复用现有官方插件 seed 链路：首启把 bundle 里的插件物化到 `<storageRoot>/cache/zcode-plugins-official/<name>/<version>/`，并写入官方 marketplace.json。
+- 复用现有官方插件 seed 链路：首启把 bundle 里的插件物化到 `<storageRoot>/cache/codez-plugins-official/<name>/<version>/`，并写入官方 marketplace.json。
 - 用户可在插件管理页停用（内置插件只能停用、不能卸载）。
 
 ## 注册改动点（仅两处手工清单）
