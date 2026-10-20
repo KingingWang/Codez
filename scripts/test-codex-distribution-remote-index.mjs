@@ -48,17 +48,17 @@ async function fixture(t) {
     }
     const manifest = {
       schemaVersion: 1,
-      appVersion: "3.16.1",
+      appVersion: "3.16.2",
       platformArch: target,
       components,
     };
-    await mkdir(join(root, "releases", "3.16.1"), { recursive: true });
+    await mkdir(join(root, "releases", "3.16.2"), { recursive: true });
     await writeFile(
-      join(root, "releases", "3.16.1", `manifest-${target}.json`),
+      join(root, "releases", "3.16.2", `manifest-${target}.json`),
       JSON.stringify(manifest),
     );
     await writeFile(
-      join(root, "releases", "3.16.1", `runtime-${target}.json`),
+      join(root, "releases", "3.16.2", `runtime-${target}.json`),
       JSON.stringify({
         deploymentContract: "codex-components-v1",
         codexPackageSha256: native.assets[target].sha256,
@@ -84,8 +84,8 @@ async function fixture(t) {
 
 test("build-pinned index has four manifests and deterministic flat GitHub asset names", async (t) => {
   const root = await fixture(t);
-  await createCodexRemoteIndex({ root, version: "3.16.1", env });
-  const verified = await verifyCodexRemoteIndex({ root, version: "3.16.1", env });
+  await createCodexRemoteIndex({ root, version: "3.16.2", env });
+  const verified = await verifyCodexRemoteIndex({ root, version: "3.16.2", env });
   assert.equal(verified.index.releaseTag, `codez-build-123-${"a".repeat(12)}`);
   assert.equal(Object.keys(verified.index.manifests).length, 4);
   assert.equal(verified.packagedFiles.length, 5);
@@ -100,40 +100,40 @@ test("build-pinned index has four manifests and deterministic flat GitHub asset 
 test("local sidecar tag changes when a manifest changes at the same app version", async (t) => {
   const root = await fixture(t);
   const localEnv = {};
-  const first = await createCodexRemoteIndex({ root, version: "3.16.1", env: localEnv });
-  assert.match(first.releaseTag, /^codez-local-3\.16\.1-[a-f0-9]{12}$/);
-  const path = join(root, "releases", "3.16.1", "manifest-linux-x64.json");
+  const first = await createCodexRemoteIndex({ root, version: "3.16.2", env: localEnv });
+  assert.match(first.releaseTag, /^codez-local-3\.16\.2-[a-f0-9]{12}$/);
+  const path = join(root, "releases", "3.16.2", "manifest-linux-x64.json");
   const manifest = JSON.parse(await readFile(path, "utf8"));
   manifest.components[0].version = "test-2";
   await writeFile(path, JSON.stringify(manifest));
-  const second = await createCodexRemoteIndex({ root, version: "3.16.1", env: localEnv });
+  const second = await createCodexRemoteIndex({ root, version: "3.16.2", env: localEnv });
   assert.notEqual(second.releaseTag, first.releaseTag);
-  await verifyCodexRemoteIndex({ root, version: "3.16.1", env: localEnv });
+  await verifyCodexRemoteIndex({ root, version: "3.16.2", env: localEnv });
 });
 
 test("tampered sidecar, manifest or build identity is rejected before use", async (t) => {
   const root = await fixture(t);
-  await createCodexRemoteIndex({ root, version: "3.16.1", env });
+  await createCodexRemoteIndex({ root, version: "3.16.2", env });
   await assert.rejects(
-    verifyCodexRemoteIndex({ root, version: "3.16.1", env: { ...env, GITHUB_RUN_ID: "124" } }),
+    verifyCodexRemoteIndex({ root, version: "3.16.2", env: { ...env, GITHUB_RUN_ID: "124" } }),
     /release tag/i,
   );
-  const path = join(root, "releases", "3.16.1", "manifest-linux-x64.json");
+  const path = join(root, "releases", "3.16.2", "manifest-linux-x64.json");
   const original = await readFile(path);
   await writeFile(path, "{}");
-  await assert.rejects(verifyCodexRemoteIndex({ root, version: "3.16.1", env }), /manifest.*sha/i);
+  await assert.rejects(verifyCodexRemoteIndex({ root, version: "3.16.2", env }), /manifest.*sha/i);
   await writeFile(path, original);
   const manifest = JSON.parse(original.toString());
   await writeFile(join(root, manifest.components[0].artifactPath), "corrupt");
-  await assert.rejects(verifyCodexRemoteIndex({ root, version: "3.16.1", env }), /component.*sha/i);
+  await assert.rejects(verifyCodexRemoteIndex({ root, version: "3.16.2", env }), /component.*sha/i);
 });
 
 test("read-only desktop consumers preserve producer bytes without rebuilding the remote server", async (t) => {
   const root = await fixture(t);
-  await createCodexRemoteIndex({ root, version: "3.16.1", env });
+  await createCodexRemoteIndex({ root, version: "3.16.2", env });
   const { packagedFiles, releaseAssets } = await verifyCodexRemoteIndex({
     root,
-    version: "3.16.1",
+    version: "3.16.2",
     env,
   });
   const paths = [
@@ -152,12 +152,12 @@ test("read-only desktop consumers preserve producer bytes without rebuilding the
 test("read-only consumers reject missing, corrupt or stale inputs instead of refreshing them", async (t) => {
   for (const fault of ["missing-index", "corrupt-archive", "stale-bridge"]) {
     const root = await fixture(t);
-    const index = await createCodexRemoteIndex({ root, version: "3.16.1", env });
+    const index = await createCodexRemoteIndex({ root, version: "3.16.2", env });
     if (fault === "missing-index") await rm(join(root, "index.json"));
     if (fault === "corrupt-archive")
       await writeFile(join(root, Object.keys(index.assets)[0]), "corrupt");
     if (fault === "stale-bridge") await writeFile(join(root, "bridge.cjs"), "// different bridge");
-    const manifestPath = join(root, "releases", "3.16.1", "manifest-linux-x64.json");
+    const manifestPath = join(root, "releases", "3.16.2", "manifest-linux-x64.json");
     const before = await readFile(manifestPath);
     await assert.rejects(
       ensureCodexRemoteAssets({
