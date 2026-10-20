@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { REMOTE_ASSET_INSTALL_MODES } from "@codez/shared";
+import { REMOTE_ASSET_INSTALL_MODES, SSH_AUTH_MODES } from "@codez/shared";
 
 export const text = z.string().trim().min(1);
 export const targetSchema = z.discriminatedUnion("kind", [
@@ -9,6 +9,10 @@ export const targetSchema = z.discriminatedUnion("kind", [
       host: text,
       username: text,
       port: z.number().int().min(1).max(65535).optional(),
+      // Bug 修复：issue #14 为 SSH Profile target 新增了显式 authMode，但本机远端项目入口的
+      // .strict() targetSchema 漏同步该字段，导致带 authMode 的 SSH 连接在 admitConnection -> saveHost
+      // 阶段抛出 Unrecognized key: "authMode" 并在 probe 前直接失败。
+      authMode: z.enum(SSH_AUTH_MODES).optional(),
       sshConfigAlias: z.string().optional(),
       privateKeyPath: z.string().optional(),
       passwordCredentialKey: text.optional(),
