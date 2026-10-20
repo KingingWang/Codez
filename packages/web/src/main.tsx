@@ -14,6 +14,8 @@ import type { ComponentProps } from "react";
 import { createRoot } from "react-dom/client";
 import {
   AppErrorBoundary,
+  buildFeedbackDiagnosticEntries,
+  buildFeedbackPrefilledUrl,
   ensurePendingTaskDraft,
   Root,
   CodezIntlProvider,
@@ -37,7 +39,8 @@ import { WebLoginPage } from "./auth/WebLoginPage.js";
 import { createWebAuthService } from "./auth/webAuthService.js";
 import { WEB_ZAI_OAUTH_CONFIG, resolveWebAuthDevReturnTo } from "./auth/webZaiOAuthConfig.js";
 import { parseOAuthState, resolveSafeAppReturnTo } from "./auth/oauthStateCodec.js";
-import { resolveWebCommunityUrl, resolveWebHelpConfig } from "./communityUrl.js";
+import { resolveWebCommunityUrl } from "./communityUrl.js";
+import { resolveWebRemoteControlWebSocketCtor } from "./webRemoteControlNativeSocket.js";
 import {
   ConversationShareLandingLoader,
   ConversationShareLandingStatus,
@@ -221,8 +224,30 @@ function resolveWebThemePreference(defaultTheme: Theme = WEB_REMOTE_CONTROL_DEFA
   document.documentElement.classList.toggle("theme-zai-dark", appliedTheme === "zai-dark");
 }
 
-async function resolveFeedbackUrl(): Promise<string | undefined> {
-  return (await resolveWebHelpConfig()).feedback_url;
+function buildWebFeedbackUrl(locale: "zh-CN" | "en-US"): string | null {
+  const entries = buildFeedbackDiagnosticEntries({});
+  const heading =
+    locale === "en-US"
+      ? "### Diagnostics (generated, safe to delete)"
+      : "### 诊断信息（自动生成，可删除）";
+  const labels =
+    locale === "en-US"
+      ? { app: "App version", runtime: "Runtime" }
+      : { app: "应用版本", runtime: "运行环境" };
+  const body = [
+    heading,
+    "",
+    ...entries.map((entry) => {
+      const label = entry.id === "app" ? labels.app : labels.runtime;
+      return `- ${label}: ${entry.value}`;
+    }),
+    "",
+  ].join("\n");
+  return buildFeedbackPrefilledUrl({
+    title: locale === "en-US" ? "Feedback" : "反馈",
+    body,
+    locale,
+  });
 }
 
 // 浏览器标签页 / 手机切后台时禁用 CSS 动画，避免 DocumentTimeline 持有已卸载的 DOM 子树。
@@ -550,7 +575,8 @@ function createWebPlatform(options?: {
       window.open(url, "_blank", "noopener,noreferrer");
     },
     openFeedback: async () => {
-      const feedbackUrl = await resolveFeedbackUrl();
+      const locale = document.documentElement.lang === "en-US" ? "en-US" : "zh-CN";
+      const feedbackUrl = buildWebFeedbackUrl(locale);
       if (!feedbackUrl) {
         return;
       }
@@ -1366,6 +1392,7 @@ async function bootstrapExternalRelayWebRemoteControl(
     deviceMid: relayParams.deviceMid,
     appVersion: relayParams.appVersion,
     getToken,
+    WebSocketCtor: resolveWebRemoteControlWebSocketCtor(),
     onRawTransportPayload: (payload) =>
       pendingRelayProtocol?.acceptPayload(payload) ||
       activeRelayProtocol?.acceptPayload(payload) ||

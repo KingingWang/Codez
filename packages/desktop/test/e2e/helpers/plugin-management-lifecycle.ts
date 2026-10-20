@@ -170,7 +170,7 @@ export async function createInvalidOfficialCollisionFixture(): Promise<string> {
   const { homeDir } = getE2EAppDataPaths();
   const root = join(homeDir, "fixtures", "plugin-official-name-collision");
   await writeJson(join(root, ".claude-plugin", "marketplace.json"), {
-    name: "zcode-plugins-official",
+    name: "codez-plugins-official",
     plugins: [],
   });
   return root;

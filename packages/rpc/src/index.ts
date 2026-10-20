@@ -47,6 +47,7 @@ export { VSBuffer } from "./buffer.js";
 export {
   type IReader,
   type IWriter,
+  type RpcJsonBinaryDialect,
   BufferReader,
   BufferWriter,
   serialize,

@@ -1,4 +1,5 @@
 import { withoutRequestVerificationHeaders } from "@codez/shared";
+import { getCapturedCodezModelApiKey } from "@codez/shared/runtime-env";
 /* eslint-disable max-lines -- AI SDK 模型执行装配集中维护 provider factory、鉴权和网络错误适配，拆分会让状态同步更脆弱。 */
 // ============================================================
 // Vercel AI SDK model execution
@@ -353,6 +354,12 @@ export class AiSdkModelExecution {
   }
 
   private resolveApiKey(providerConfig: AiSdkProviderConfig): string | undefined {
+    if (providerConfig.access.type !== "zhipu-account" && providerConfig.access.apiKeyEnv) {
+      const key = getCapturedCodezModelApiKey(providerConfig.access.apiKeyEnv);
+      // 临时 Key 只在 Agent 启动时捕获到进程私有存储；缺失时必须先于 SDK 网络 I/O 失败。
+      if (!key) throw new Error("临时环境变量 API Key 不可用，请重新连接工作区");
+      return key;
+    }
     return providerConfig.apiKey;
   }
 
@@ -490,7 +497,7 @@ export function createProviderBusinessErrorFetch(
       throw normalizeModelTlsFailure(error);
     }
 
-    // codez-plan 安全校验拒绝（3007）等场景返回 HTTP 403 + JSON，但未必带
+    // zcode-plan 安全校验拒绝（3007）等场景返回 HTTP 403 + JSON，但未必带
     // Content-Type: application/json。若只在启发式命中时才读 body，fetch 会把 403 原样交给
     // AI SDK，流式请求可能以空 completion 结束，core 最终误报 suspicious empty。
     if (!response.ok) {
@@ -590,7 +597,7 @@ async function detectProviderBusinessError(
   });
 }
 
-/** 从 HTTP JSON body 解析 codez-plan 等业务错误（供 failure-classifier 在 APICallError 路径复用）。 */
+/** 从 HTTP JSON body 解析 zcode-plan 等业务错误（供 failure-classifier 在 APICallError 路径复用）。 */
 export function readProviderBusinessFailureFromBody(body: unknown):
   | {
       providerCode?: ProviderCode;

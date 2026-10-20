@@ -13,7 +13,7 @@ import {
 } from "../../../helpers/plugin-management-lifecycle.js";
 
 const CASE_MARKER = "E2E_WPL_013_BUILTIN_WORKSPACE_DISABLE";
-const BUILTIN_ID = "skill-creator@zcode-plugins-official";
+const BUILTIN_ID = "skill-creator@codez-plugins-official";
 
 describe("WPL-013 builtin Workspace disable E2E", () => {
   after(async () => {

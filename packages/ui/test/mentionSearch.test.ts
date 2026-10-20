@@ -352,30 +352,30 @@ describe("filterMentionItems", () => {
 describe("filterMentionItems CJK queries", () => {
   const pluginItems: MentionItem[] = [
     {
-      id: "plugin:browser-use@zcode-plugins-official",
+      id: "plugin:browser-use@codez-plugins-official",
       category: "plugins",
       label: "浏览器操作",
-      description: "zcode-plugins-official · 2 skills · 1 MCP",
-      value: "browser-use@zcode-plugins-official",
-      markdown: "[@browser-use](plugin://browser-use@zcode-plugins-official)",
+      description: "codez-plugins-official · 2 skills · 1 MCP",
+      value: "browser-use@codez-plugins-official",
+      markdown: "[@browser-use](plugin://browser-use@codez-plugins-official)",
       keywords: [
         "browser-use",
-        "browser-use@zcode-plugins-official",
-        "zcode-plugins-official",
+        "browser-use@codez-plugins-official",
+        "codez-plugins-official",
         "浏览器操作",
       ],
     },
     {
-      id: "plugin:codez-cua@zcode-plugins-official",
+      id: "plugin:codez-cua@codez-plugins-official",
       category: "plugins",
       label: "电脑控制",
-      description: "zcode-plugins-official · 1 skills · 1 MCP",
-      value: "codez-cua@zcode-plugins-official",
-      markdown: "[@codez-cua](plugin://codez-cua@zcode-plugins-official)",
+      description: "codez-plugins-official · 1 skills · 1 MCP",
+      value: "codez-cua@codez-plugins-official",
+      markdown: "[@codez-cua](plugin://codez-cua@codez-plugins-official)",
       keywords: [
         "codez-cua",
-        "codez-cua@zcode-plugins-official",
-        "zcode-plugins-official",
+        "codez-cua@codez-plugins-official",
+        "codez-plugins-official",
         "电脑控制",
       ],
     },
@@ -383,13 +383,13 @@ describe("filterMentionItems CJK queries", () => {
 
   it("matches Chinese display names by prefix and substring", () => {
     expect(filterMentionItems(pluginItems, "浏览").map((item) => item.id)).toEqual([
-      "plugin:browser-use@zcode-plugins-official",
+      "plugin:browser-use@codez-plugins-official",
     ]);
     expect(filterMentionItems(pluginItems, "览器").map((item) => item.id)).toEqual([
-      "plugin:browser-use@zcode-plugins-official",
+      "plugin:browser-use@codez-plugins-official",
     ]);
     expect(filterMentionItems(pluginItems, "控制").map((item) => item.id)).toEqual([
-      "plugin:codez-cua@zcode-plugins-official",
+      "plugin:codez-cua@codez-plugins-official",
     ]);
   });
 
@@ -400,7 +400,7 @@ describe("filterMentionItems CJK queries", () => {
 
   it("keeps subsequence matching for ASCII queries", () => {
     expect(filterMentionItems(pluginItems, "bru").map((item) => item.id)).toEqual([
-      "plugin:browser-use@zcode-plugins-official",
+      "plugin:browser-use@codez-plugins-official",
     ]);
   });
 });

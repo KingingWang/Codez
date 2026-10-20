@@ -152,6 +152,11 @@ import type {
   CodezTaskIndexTerminalEvent,
 } from "./codezTaskIndexSyncer.js";
 import { readModelTrajectory } from "./modelTrajectory.js";
+import { getAppConfigDir } from "#src/paths.js";
+import {
+  buildCodexAutomationSendTextPayload,
+  resolveCodexAutomationTerminalOutcome,
+} from "./codexAutomationAdapter.js";
 import { errorAttributionSchema, type CommandPayloadMap } from "@codez/shared/codez-protocol-v4";
 import {
   assertV4CommandAckOk,
@@ -241,6 +246,15 @@ function resolveCodezAgentCurrentLogFilePath(now = new Date()): string {
   const configuredLogDir = process.env.CODEZ_LOG_DIR?.trim();
   const logDir = configuredLogDir || join(homedir(), ".codez", "cli", "log");
   return join(logDir, `codez-${formatCodezAgentLogDate(now)}.jsonl`);
+}
+
+/**
+ * Codex 适配器的结构化日志事实源是 Desktop Host 的按日 .log（main logger 落盘于
+ * getAppConfigDir()/logs）。legacy CLI 的 jsonl 目录在本运行时不存在；两个候选都
+ * 缺失时调用方返回 null，让菜单禁用而不是复制幻影路径。
+ */
+function resolveDesktopHostCurrentLogFilePath(now = new Date()): string {
+  return join(getAppConfigDir(), "logs", `${formatCodezAgentLogDate(now)}.log`);
 }
 
 export function createCodezTaskServiceAdapter(
@@ -403,6 +417,9 @@ export function createCodezTaskServiceAdapter(
     } & CodezBackgroundTurnAttribution,
   ): Promise<void> {
     const startedAt = Date.now();
+    if (params.automationId && params.attachments?.length) {
+      throw new Error("Codex scheduled prompt automations do not support attachments");
+    }
     notifySyncerSession(target);
     // live tool projection 只用于当前运行的终态收口。
     // 新输入开始时必须清掉上一轮 live-only 子工具，避免后续 snapshot 把旧工具补到新回复尾部。
@@ -422,7 +439,10 @@ export function createCodezTaskServiceAdapter(
       workspacePath: target.workspacePath,
     });
     try {
-      const promptToolDenylist = resolvePromptToolDenylist(params);
+      // Codex automation 是原生 prompt turn；执行身份和旧工具限制不能进入 native command。
+      const promptToolDenylist = params.automationId
+        ? undefined
+        : resolvePromptToolDenylist(params);
       if (params.attachments?.length) {
         // 遗留（附件命令面）：v4 sendText 的 attachments 是 attachmentRef 引用模型，
         // 上传/寄存命令面尚未建模（CLI 侧 fork-edit-retry.ts 同款裁决“附件命令面后续”）。
@@ -454,14 +474,12 @@ export function createCodezTaskServiceAdapter(
         // queue 的 traceId 对账（completeRuntimeCommandByInputId 语义不变）。
         // heldQueueDisposition=keepQueueAndSend：旧 session/send 没有 held choice 闸门，
         // replayable 无人机交互路径按“立即发送、不动队列”等价老语义。
-        const ack = await options.codezAgentService.sendConversationCommandV4({
-          workspacePath: target.workspacePath,
-          workspaceIdentity: target.workspaceIdentity,
-          ...(target.remoteSessionId ? { remoteSessionId: target.remoteSessionId } : {}),
-          ...(params.clientMode ? { clientMode: params.clientMode } : {}),
-          envelope: createHostCommandEnvelope({
-            type: "sendText",
-            payload: {
+        const payload: CommandPayloadMap["sendText"] = params.automationId
+          ? buildCodexAutomationSendTextPayload({
+              text: params.content,
+              modelSelection: params.modelSelection,
+            })
+          : {
               text: params.content,
               heldQueueDisposition: "keepQueueAndSend",
               ...(params.modelSelection ? { modelSelection: params.modelSelection } : {}),
@@ -469,7 +487,15 @@ export function createCodezTaskServiceAdapter(
               ...turnAttributionOf(params),
               ...(params.botDeliveryTarget ? { botDeliveryTarget: params.botDeliveryTarget } : {}),
               ...(promptToolDenylist ? { toolDisallowlist: promptToolDenylist } : {}),
-            },
+            };
+        const ack = await options.codezAgentService.sendConversationCommandV4({
+          workspacePath: target.workspacePath,
+          workspaceIdentity: target.workspaceIdentity,
+          ...(target.remoteSessionId ? { remoteSessionId: target.remoteSessionId } : {}),
+          ...(params.clientMode ? { clientMode: params.clientMode } : {}),
+          envelope: createHostCommandEnvelope({
+            type: "sendText",
+            payload,
             sessionId: target.taskId,
             commandId: params.traceId,
             clientId: params.clientId,
@@ -1745,6 +1771,12 @@ export function createCodezTaskServiceAdapter(
     async checkCodexConnectivity(): Promise<CodezCodexConnectivityCheckResult> {
       return { target: "codez-agent", reachable: true };
     },
+    async quarantineWorkspaceForRemoval(params): Promise<void> {
+      options.codezAgentService.quarantineWorkspaceForRemoval(normalizeWorkspaceParams(params));
+    },
+    async releaseWorkspaceRemovalHold(params): Promise<void> {
+      options.codezAgentService.releaseWorkspaceRemovalHold(normalizeWorkspaceParams(params));
+    },
 
     async createTask(params): Promise<CodezTaskCreateResult> {
       const target = normalizeWorkspaceParams(params);
@@ -2920,9 +2952,13 @@ export function createCodezTaskServiceAdapter(
     },
 
     async getTaskNativeSessionLogFile() {
-      const path = resolveCodezAgentCurrentLogFilePath();
-      // 返回 Codez Agent 的结构化日志 JSONL；日志行中的 sessionId 用于按当前任务排查。
-      return { provider: GLM_PROVIDER, path, exists: existsSync(path) };
+      // Codex 运行时没有 legacy CLI jsonl；优先返回真实存在的 Host 按日日志，
+      // 两者都缺失时 path=null，菜单按「不可复制」禁用（specs/codex-desktop-adapter.md）。
+      const path =
+        [resolveDesktopHostCurrentLogFilePath(), resolveCodezAgentCurrentLogFilePath()].find(
+          (candidate) => existsSync(candidate),
+        ) ?? null;
+      return { provider: GLM_PROVIDER, path, exists: path !== null };
     },
 
     async getModelTrajectory(params) {
@@ -2945,11 +2981,10 @@ export function createCodezTaskServiceAdapter(
       });
     },
 
-    async getTaskSessionFilePath(params) {
-      return {
-        path: `${params.workspacePath}/${params.taskId}.codez-session`,
-        exists: false,
-      };
+    async getTaskSessionFilePath() {
+      // Codex 线程的事实源是原生 rollout 与 tasks-index.sqlite，不存在 .codez-session
+      // 快照文件；返回 null 让「复制任务路径」禁用，避免复制永不存在的幻影路径。
+      return { path: null, exists: false };
     },
 
     async restartWorkspaceProcess(params): Promise<void> {
@@ -3085,8 +3120,7 @@ export function createCodezTaskServiceAdapter(
     },
 
     onDynamicTaskTerminalOutcome(taskId: string): Event<CodezTaskTerminalOutcome> {
-      // 合并迁移：V4 syncer 只暴露归一化后的终态 kind，不再携带旧协议 event payload。
-      // automation 只需要稳定收口运行结果，因此 completed/failed 在此映射为公开 outcome。
+      // 修复原因：kind 把 native 中断并入 turn.completed；automation 必须读原始 phase。
       return (listener) =>
         taskIndexSyncer.onSessionTerminalEvent((terminal) => {
           if (terminal.target.sessionId !== taskId) {
@@ -3101,7 +3135,7 @@ export function createCodezTaskServiceAdapter(
           listener({
             taskId,
             ...(inputId ? { inputId } : {}),
-            outcome: terminal.kind === "turn.failed" ? "failed" : "succeeded",
+            outcome: resolveCodexAutomationTerminalOutcome(terminal.phase),
           });
         });
     },
@@ -3328,7 +3362,9 @@ function toCodezMode(mode: CodezTaskMode | undefined): CodezSessionMode | undefi
 }
 
 function fromCodezMode(mode: CodezSessionMode): CodezTaskMode {
-  return mode === "build" ? "build" : mode;
+  // custom 只属于 Codex 链路（跟随 config.toml 权限）；旧任务索引/持久化投影
+  // 不会出现该值，防御性按默认 build 归一，避免类型收窄失败。
+  return mode === "build" || mode === "custom" ? "build" : mode;
 }
 
 function addSessionForkSnapshotFallback(

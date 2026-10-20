@@ -19,6 +19,8 @@ export interface SlashCommandPluginProps {
   /** 已有 Session 的 id；null/undefined 表示新建草稿，决定 Skill catalog authority。 */
   sessionId?: string | null;
   disabled?: boolean;
+  /** Composer 提供的运行时事实；供应商名称不能区分 Codex 与旧 Agent。 */
+  nativeCodex?: boolean;
   excludedCommandNames?: readonly string[];
   /**
    * App 层本地命令（如 `/side`）。命令目录仍以 CLI catalog 为权威；这里只允许渲染层
@@ -42,6 +44,18 @@ export interface AppSlashCommand {
 }
 
 const APP_SLASH_SUGGESTION_ID_PREFIX = "app-slash:";
+
+const BUILTIN_SLASH_SEARCH_KEYWORDS: Readonly<Record<string, readonly string[]>> = {
+  model: ["model", "模型", "切换模型", "选择模型"],
+  mode: ["mode", "权限", "权限模式", "模式", "approval", "permission"],
+  plan: ["plan", "计划", "计划模式", "开启计划模式"],
+  init: ["init", "初始化", "agents.md", "指令"],
+  compact: ["compact", "compress", "压缩", "压缩上下文"],
+  goal: ["goal", "target", "目标", "持续追求"],
+  workflow: ["workflow", "工作流"],
+  side: ["side", "侧边", "辅助对话", "辅助"],
+  btw: ["btw", "side", "侧边", "辅助对话", "辅助"],
+};
 
 export function buildAppSlashCommandSuggestions(
   commands: readonly AppSlashCommand[],
@@ -104,7 +118,15 @@ export function buildSlashSuggestions(commands: CodezSlashCommand[]): PromptInpu
         value,
         label: command.inputHint?.trim() || `/${value}`,
         description: command.description,
-        keywords: [...new Set([value, command.name, command.description, command.inputHint ?? ""])],
+        keywords: [
+          ...new Set([
+            value,
+            command.name,
+            command.description,
+            command.inputHint ?? "",
+            ...(BUILTIN_SLASH_SEARCH_KEYWORDS[value.toLowerCase()] ?? []),
+          ]),
+        ],
       },
     ];
   });

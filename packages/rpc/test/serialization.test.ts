@@ -10,6 +10,27 @@ function roundtrip(data: any): any {
 }
 
 describe("serialization", () => {
+  it("keeps fork RPC defaults and explicitly selects upstream mobile nested binary encoding", () => {
+    const ordinary = new BufferWriter();
+    serialize(ordinary, { bytes: new Uint8Array([1, 2, 3]) });
+    expect(ordinary.buffer.toString()).toContain("__codez_rpc_nested_uint8array_v1");
+    expect(ordinary.buffer.toString()).not.toContain("__zcode_rpc_nested_uint8array_v1");
+    const writer = new BufferWriter();
+    serialize(writer, [{ bytes: new Uint8Array([1, 2, 3]) }], "upstream");
+    expect(writer.buffer.toString()).toContain("__zcode_rpc_nested_uint8array_v1");
+    expect(writer.buffer.toString()).not.toContain("__codez_rpc_nested_uint8array_v1");
+    expect(deserialize(new BufferReader(writer.buffer))).toEqual([
+      { bytes: new Uint8Array([1, 2, 3]) },
+    ]);
+    for (const marker of ["__zcode_rpc_nested_uint8array_v1", "__codez_rpc_nested_uint8array_v1"]) {
+      expect(roundtrip({ bytes: { [marker]: true, base64: "AQID" } })).toEqual({
+        bytes: new Uint8Array([1, 2, 3]),
+      });
+      const ordinaryObject = { [marker]: true, base64: "AQID", extra: true };
+      expect(roundtrip(ordinaryObject)).toEqual(ordinaryObject);
+    }
+  });
+
   it("should roundtrip undefined", () => {
     expect(roundtrip(undefined)).toBeUndefined();
   });

@@ -4,8 +4,12 @@ import { render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MessageResponse } from "@/components/ai-elements/message.js";
 import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
+import { clearArtifactImageCache } from "@/components/ai-elements/artifactImageCache.js";
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  clearArtifactImageCache();
+  vi.restoreAllMocks();
+});
 
 describe("MessageResponse artifact session changes", () => {
   it("releases the old image and reads through the new session context", async () => {
@@ -50,6 +54,10 @@ describe("MessageResponse artifact session changes", () => {
     await waitFor(() =>
       expect(rendered.container.querySelector("img")?.getAttribute("src")).toBe("blob:session-b"),
     );
+    // objectURL 所有权移交模块级缓存（bridge 重挂复用，避免重复下载）：切换 session
+    // 不再立即回收旧 URL，由缓存 LRU 逐出/清空时统一回收。
+    expect(revoke).not.toHaveBeenCalledWith("blob:session-a");
+    clearArtifactImageCache();
     expect(revoke).toHaveBeenCalledWith("blob:session-a");
     expect(readSessionA).toHaveBeenCalledTimes(1);
     expect(readSessionB).toHaveBeenCalledWith({ sessionId: "session-b", ref });

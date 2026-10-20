@@ -76,7 +76,7 @@ function setupBase(options: { withLifecycle?: boolean } = {}) {
   /** 每次 subscribe 依次消费一个错误；用尽后正常 ACK。 */
   const pendingFailures: Error[] = [];
   const mocks = {
-    helloConversationV4: vi.fn(),
+    helloConversationV4: vi.fn(async () => ({ capabilities: {} })),
     initializeConversationV4: vi.fn(),
     subscribeConversationV4: vi.fn(async (params: unknown) => {
       const failure = pendingFailures.shift();

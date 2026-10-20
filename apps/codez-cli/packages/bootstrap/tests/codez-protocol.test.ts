@@ -3478,7 +3478,7 @@ describe("CodezProtocolAgentServer", () => {
     );
   });
 
-  it("preserves unapplied codez-plan runtime headers original failure", async () => {
+  it("preserves unapplied zcode-plan runtime headers original failure", async () => {
     const createdAppOptions: CodezAppOptions[] = [];
     const requestClient = vi.fn(async () => ({
       headersApplied: false,

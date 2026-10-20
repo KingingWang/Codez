@@ -225,6 +225,11 @@ export interface SubmitPromptOptionsBase {
   traceContext?: TraceContext;
   abortSignal?: AbortSignal;
   inputId?: string;
+  inputSource?: ExecuteTurnOptions["inputSource"];
+  inputVisibility?: ExecuteTurnOptions["inputVisibility"];
+  recordedInputMessageId?: ExecuteTurnOptions["recordedInputMessageId"];
+  skipInputRecord?: ExecuteTurnOptions["skipInputRecord"];
+  skipUserPromptSubmitHooks?: ExecuteTurnOptions["skipUserPromptSubmitHooks"];
   queryId?: QueryId;
   intent?: TurnInputIntentMetadata;
   sharedContextRefs?: TurnInputIntentMetadata["sharedContextRefs"];
@@ -366,6 +371,8 @@ export interface CodezApp {
   readTarget(): Promise<SessionGoal | null>;
   setCustomSessionTitle(input: { title: string; traceContext?: TraceContext }): Promise<void>;
   readToolResultArtifact(uri: string): Promise<ToolArtifactReadResult>;
+  /** Resolve a V4 upload into complete bytes in this session's private Agent filesystem. */
+  materializePromptAttachment(uri: string): Promise<string>;
   /** chunk transaction commit 后把完整二进制原子寄存到 session artifact store。 */
   writePromptAttachment(input: {
     fileName: string;

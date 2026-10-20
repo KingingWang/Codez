@@ -48,10 +48,11 @@ describe("dev desktop remote production-like script", () => {
     ).toBe("C:\\Users\\Alice\\AppData\\Roaming\\Codez\\remote-assets-cache");
   });
 
-  it("启动 env 应强制走 CDN，并允许显式 cache 覆盖", () => {
+  it("显式 legacy 启动 env 强制走 CDN，并允许显式 cache 覆盖", () => {
     const env = buildDesktopRemoteProdEnv(
       {
         CODEZ_ENV: "test",
+        CODEZ_DESKTOP_RUNTIME: "legacy",
         CODEZ_DEV_REMOTE_ASSET_USE_CDN: "0",
         CODEZ_REMOTE_ASSET_CACHE_DIR: "/tmp/custom-cache",
       },
@@ -62,6 +63,12 @@ describe("dev desktop remote production-like script", () => {
     expect(env.CODEZ_ENV).toBe("production");
     expect(env.CODEZ_DEV_REMOTE_ASSET_USE_CDN).toBe("1");
     expect(env.CODEZ_REMOTE_ASSET_CACHE_DIR).toBe("/tmp/custom-cache");
+  });
+
+  it("默认 Codex 只使用打包资源，不启用旧 CLI CDN 链路", () => {
+    const env = buildDesktopRemoteProdEnv({}, "linux", "/home/alice");
+    expect(env.CODEZ_DESKTOP_RUNTIME).toBe("codex");
+    expect(env.CODEZ_DEV_REMOTE_ASSET_USE_CDN).toBe("0");
   });
 
   it("Windows 下应使用 pnpm.cmd 启动", () => {

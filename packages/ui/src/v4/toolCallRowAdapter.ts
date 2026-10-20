@@ -1,7 +1,10 @@
 // v4 ToolCallRow → 旧 ToolCallBlocks 输入形态（TaskChatToolCallTreeNode）适配。
 // 纯函数：ToolCallBlock 及其 renderers（execute/read/edit/...）吃的是旧 Codez Agent 的
 // TaskChatToolCall 形态；v4 row 自包含，字段一一映射即可，不需要看别的行。
-import { buildCodezStreamingToolInputPreview } from "@codez/shared";
+import {
+  buildCodezStreamingToolInputPreview,
+  type CodezTaskSnapshotToolFieldRef,
+} from "@codez/shared";
 import type { ToolCallRow } from "@codez/shared/codez-protocol-v4";
 import type { TaskChatToolCallTreeNode } from "@/lib/toolCallTree.js";
 import { normalizeWrappedErrorText } from "@/lib/toolError.js";
@@ -89,6 +92,25 @@ export function toolCallRowToLegacyNode(row: ToolCallRow): TaskChatToolCallTreeN
   // CUA v1 历史 display 会重复保存 input；工具调用行已经持有唯一输入，桥接时丢弃旧副本。
   const legacyDisplay =
     display?.kind === "cua" ? (({ input: _legacyInput, ...rest }) => rest)(display) : display;
+  const snapshotRefs: CodezTaskSnapshotToolFieldRef[] = [];
+  if (row.inputTruncated && row.inputTruncated.ref.startsWith("v4-row-payload/")) {
+    snapshotRefs.push({
+      field: "input",
+      refId: row.inputTruncated.ref,
+      hash: row.inputTruncated.ref,
+      fullBytes: row.inputTruncated.totalBytes,
+      previewBytes: row.inputText.length,
+    });
+  }
+  if (row.output?.truncated && row.output.truncated.ref.startsWith("v4-row-payload/")) {
+    snapshotRefs.push({
+      field: "output",
+      refId: row.output.truncated.ref,
+      hash: row.output.truncated.ref,
+      fullBytes: row.output.truncated.totalBytes,
+      previewBytes: row.output.text.length,
+    });
+  }
   return {
     toolCall: {
       toolId: row.toolCallId,
@@ -107,6 +129,7 @@ export function toolCallRowToLegacyNode(row: ToolCallRow): TaskChatToolCallTreeN
       // v4 row 是自包含投影，部分 provider 只把工具失败正文塞进 output，
       // 不补回 legacy error 会让 ToolOutput 看不到失败原因，只剩一张空的 failed 摘要。
       error: errorText,
+      ...(snapshotRefs.length > 0 ? { snapshotRefs } : {}),
       raw: {
         error: row.error,
         rawOutput: row.output?.text,

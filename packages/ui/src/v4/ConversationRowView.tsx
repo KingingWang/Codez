@@ -13,6 +13,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useCodexMessages } from "@/settings/codex/messages.js";
 import {
   ArchiveIcon,
   ArrowRightLeftIcon,
@@ -23,7 +24,9 @@ import {
   FileIcon,
   GitBranchIcon,
   GoalIcon,
+  InfoIcon,
   PencilIcon,
+  PlayIcon,
   ThumbsDownIcon,
   ThumbsUpIcon,
   TrendingUpDownIcon,
@@ -40,6 +43,7 @@ import {
   TID_V4_FEEDBACK_DISLIKE,
   TID_V4_FEEDBACK_LIKE,
   TID_V4_FORK,
+  TID_V4_RETRY,
   TID_V4_ROW,
   TID_V4_ROW_ATTACHMENTS,
   testId,
@@ -939,6 +943,7 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
   status?: string;
 }) {
   const { intl } = useCodezIntl();
+  const codexText = useCodexMessages();
   // 引擎尾注折叠：正文只到 epilogueStart，
   // 之后的引擎文本折进气泡底部的披露。提示词上下文解析也只看正文——尾注里没有用户引用。
   const { body: bodyText, epilogue } = splitUserInputEpilogue(row.text, row.epilogueStart);
@@ -977,7 +982,9 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
   const inputApiRef = useRef<LexicalChatInputHandle | null>(null);
   const editContextCount = countComposerPromptContexts(editPromptContexts);
   const canSubmit = draft.trim().length > 0 || editAttachments.length > 0 || editContextCount > 0;
-  const submitLabel = intl.formatMessage({ id: "chat.send" });
+  const submitLabel = context.nativeCodex
+    ? codexText.historyEdit
+    : intl.formatMessage({ id: "chat.send" });
   const cancelLabel = intl.formatMessage({ id: "common.cancel" });
   const rewindWorkspaceLabel = intl.formatMessage({
     id: "chat.edit.resetConversationAndFiles",
@@ -1150,6 +1157,7 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
     return (
       <RowShell rowId={row.rowId} className="flex flex-col items-end">
         <ChatPromptEditor
+          nativeCodex={Boolean(context.nativeCodex)}
           workspacePath={context.workspacePath}
           taskId={context.sessionId ?? null}
           initialValue={parsedPrompt.visibleContent}
@@ -1254,20 +1262,24 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
           submitTestId={testId(TID_V4_EDIT_SUBMIT, String(row.rowId))}
           cancelTestId={testId(TID_V4_EDIT_CANCEL, String(row.rowId))}
           betweenCancelAndSubmitAction={
-            <ControlHintTooltip
-              title={rewindWorkspaceTooltipTitle}
-              description={rewindWorkspaceTooltipDescription}
-            >
-              {rewindWorkspaceDisabled ? (
-                // Button disabled 会应用 pointer-events-none，TooltipTrigger 直接落在
-                // 按钮上时收不到 hover。禁用态用外层 span 承接 hover，实际按钮仍保持 disabled。
-                <span className="inline-flex" data-disabled-tooltip-trigger="true">
-                  {rewindWorkspaceButton}
-                </span>
-              ) : (
-                rewindWorkspaceButton
-              )}
-            </ControlHintTooltip>
+            context.nativeCodex ? (
+              <span className="text-ui-xs text-foreground-muted">{codexText.preserveFiles}</span>
+            ) : (
+              <ControlHintTooltip
+                title={rewindWorkspaceTooltipTitle}
+                description={rewindWorkspaceTooltipDescription}
+              >
+                {rewindWorkspaceDisabled ? (
+                  // Button disabled 会应用 pointer-events-none，TooltipTrigger 直接落在
+                  // 按钮上时收不到 hover。禁用态用外层 span 承接 hover，实际按钮仍保持 disabled。
+                  <span className="inline-flex" data-disabled-tooltip-trigger="true">
+                    {rewindWorkspaceButton}
+                  </span>
+                ) : (
+                  rewindWorkspaceButton
+                )}
+              </ControlHintTooltip>
+            )
           }
           className="w-full max-w-xl"
           shellClassName="min-h-32"
@@ -1650,6 +1662,52 @@ export const ConversationAssistantTextActions = memo(function ConversationAssist
   );
 });
 
+/**
+ * 中断轮末尾的「继续」入口。
+ *
+ * 原因：旧入口借用 retryTurn，截断已完成工具历史并重发原始任务。
+ * 现在交给 SessionPane 在同一会话追加续做请求，保留停止前的工具结果，
+ * 并冻结点击时选中的模型与思考强度。
+ * 常显而非并进 hover-only 动作栏：它是中断后唯一的恢复入口，且手机远控没有 hover。
+ */
+export const ConversationTurnContinueAction = memo(function ConversationTurnContinueAction({
+  target,
+  onContinue,
+  className,
+}: {
+  /** 中断轮稳定行标识；发送前仍需检查目标是否属于最后一轮。 */
+  target: ConversationRowTarget;
+  onContinue: (target: ConversationRowTarget) => void;
+  className?: string;
+}) {
+  const { intl } = useCodezIntl();
+  const label = intl.formatMessage({ id: "chat.turn.continue" });
+  const description = intl.formatMessage({ id: "chat.turn.continue.description" });
+  const handleContinue = useCallback(() => {
+    logger.info("[ConversationRowView] 中断轮继续：保留历史并提交续做请求", {
+      targetEntityId: target.entityId,
+      targetRowId: target.rowId,
+    });
+    onContinue(target);
+  }, [onContinue, target]);
+  return (
+    <div className={cn("flex w-full", className)}>
+      <ControlHintTooltip title={label} description={description}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          data-testid={testId(TID_V4_RETRY, String(target.rowId))}
+          onClick={handleContinue}
+        >
+          <PlayIcon className="size-3.5" data-icon="inline-start" />
+          {label}
+        </Button>
+      </ControlHintTooltip>
+    </div>
+  );
+});
+
 const AssistantTextRowView = memo(function AssistantTextRowView({
   row,
   context,
@@ -1773,9 +1831,11 @@ const AssistantTextRowView = memo(function AssistantTextRowView({
 
 const ReasoningRowView = memo(function ReasoningRowView({
   row,
+  context,
   contentVariant,
 }: {
   row: ReasoningRow;
+  context?: ConversationRowRenderContext;
   contentVariant?: "default" | "nested";
 }) {
   const streaming = row.state === "streaming";
@@ -1785,6 +1845,14 @@ const ReasoningRowView = memo(function ReasoningRowView({
   // autoCollapseKey 仍保证状态边界不会覆盖已经发生过的用户交互。
   const durationSeconds =
     row.durationMs !== undefined ? Math.max(1, Math.ceil(row.durationMs / 1000)) : undefined;
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (open && row.truncated && context?.onLoadRowPayload) {
+        void context.onLoadRowPayload(row.rowId);
+      }
+    },
+    [context, row.rowId, row.truncated],
+  );
   if (streaming && row.text.length === 0) {
     return null;
   }
@@ -1794,6 +1862,7 @@ const ReasoningRowView = memo(function ReasoningRowView({
         className="w-full"
         isStreaming={streaming}
         autoCollapseKey={streaming ? null : row.state}
+        onOpenChange={handleOpenChange}
         {...(durationSeconds !== undefined ? { duration: durationSeconds } : {})}
       >
         {/* Bug 原因：附件重构合并时误丢了 streamingText 接线，导致摘要组件仍在但永远收到空文本。 */}
@@ -1838,6 +1907,12 @@ const MARKER_GOAL_ICON = (
 );
 const MARKER_MODEL_ICON = (
   <ArrowRightLeftIcon
+    aria-hidden="true"
+    className="size-3.5 shrink-0 text-[var(--color-foreground-subtle)]"
+  />
+);
+const MARKER_EVENT_ICON = (
+  <InfoIcon
     aria-hidden="true"
     className="size-3.5 shrink-0 text-[var(--color-foreground-subtle)]"
   />
@@ -2032,6 +2107,31 @@ const TimelineMarkerRowView = memo(function TimelineMarkerRowView({
           ),
         };
       }
+      case "codexEvent": {
+        // codex 原生事件分隔线（specs/codex-desktop-thread-items.md）：
+        // label 走本地化，detail（review 描述 / hook 文本 / agentPath / 时长）追加在后。
+        // contextCompaction 在 item/started ~ item/completed 之间携带 status: "running"，
+        // 需显示“正在压缩上下文”及流光动画，完成后才显示“上下文已压缩”。
+        const running = marker.event === "contextCompaction" && marker.status === "running";
+        const labelId = running
+          ? "chat.contextCompaction.started"
+          : `chat.codexEvent.${marker.event}`;
+        return {
+          icon: marker.event === "contextCompaction" ? MARKER_ARCHIVE_ICON : MARKER_EVENT_ICON,
+          running,
+          label: (
+            <>
+              <span>{intl.formatMessage({ id: labelId })}</span>
+              {marker.detail ? (
+                <>
+                  <span aria-hidden="true"> · </span>
+                  <span>{marker.detail}</span>
+                </>
+              ) : null}
+            </>
+          ),
+        };
+      }
       default:
         return null;
     }
@@ -2059,9 +2159,11 @@ const TimelineMarkerRowView = memo(function TimelineMarkerRowView({
           ? marker.status
           : marker.type === "goalVerify"
             ? marker.outcome
-            : marker.type === "forkNotice"
-              ? "created"
-              : "applied"
+            : marker.type === "codexEvent" && marker.status
+              ? marker.status
+              : marker.type === "forkNotice"
+                ? "created"
+                : "applied"
       }
       markerOrigin={marker.type === "compact" ? marker.origin : undefined}
       markerSourceCommandId={row.sourceCommandId}
@@ -2225,6 +2327,11 @@ const ToolCallRowView = memo(function ToolCallRowView({
           onOpenFileLink={context.onOpenFileLink}
           onOpenBrowserUrl={context.onOpenBrowserUrl}
           onOpenAutomationsMain={context.onOpenAutomationsMain}
+          onLoadFullToolCallFields={
+            context.onLoadRowPayload
+              ? () => context.onLoadRowPayload?.(row.rowId)
+              : context.onLoadFullToolCallFields
+          }
           onOpenPlanDetail={
             context.onOpenPlanDetail && context.sessionId
               ? (request) =>
@@ -2370,7 +2477,7 @@ function ConversationRowViewImpl({
       // 关闭“显示思考过程”只隐藏每轮后续 reasoning；首条 reasoning
       // 是该轮最小必要思考提示，必须由 turn 全序派生的 rowId 保留下来。
       return isConversationReasoningRowVisible(row.rowId, context) ? (
-        <ReasoningRowView row={row} contentVariant={reasoningContentVariant} />
+        <ReasoningRowView row={row} context={context} contentVariant={reasoningContentVariant} />
       ) : null;
     case "turnHeader":
       return <TurnHeaderRowView row={row} />;

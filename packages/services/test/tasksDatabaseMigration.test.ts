@@ -35,6 +35,7 @@ describe("DB109 App 库统一迁移", () => {
     expect(tables.map((row) => row.name)).toEqual([
       "automation_runs",
       "automations",
+      "codex_automation_correlations",
       "off_peak_tasks",
       "task_group_admissions",
       "task_group_members",
@@ -45,7 +46,7 @@ describe("DB109 App 库统一迁移", () => {
       "tasks_schema_migration",
     ]);
     const ledger = db.prepare("SELECT * FROM tasks_schema_migration").all();
-    expect(ledger).toHaveLength(5);
+    expect(ledger).toHaveLength(7);
     await migrate(db);
     expect(db.prepare("SELECT * FROM tasks_schema_migration").all()).toEqual(ledger);
   });

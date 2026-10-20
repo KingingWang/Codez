@@ -188,6 +188,7 @@ vi.mock("@/store/TabStoreProvider.js", () => ({
     select({ tabs: [], activeWorkspaceIdentity: undefined }),
   useTabStoreApi: () => ({
     getState: () => ({
+      tabs: [],
       activateTabByPath: vi.fn(() => true),
       addTab: vi.fn(),
     }),
@@ -987,6 +988,27 @@ describe("WorkspaceShellLayout Web remote control mobile layout", () => {
 
     vi.unstubAllGlobals();
   });
+
+  it("removes the legacy Linux floating chrome", async () => {
+    const html = await renderWorkspaceShell({
+      isDesktop: true,
+      isMacDesktop: false,
+      isWindowsDesktop: false,
+    });
+    expect(html).not.toContain('data-testid="linux-window-controls"');
+    expect(html).not.toContain("w-[120px]");
+    expect(html).toContain("rounded-xl");
+  });
+});
+
+it.each([
+  { isDesktop: true, isMacDesktop: true },
+  { isDesktop: true, isWindowsDesktop: true },
+  { isDesktop: true, isMacDesktop: false, isWindowsDesktop: false },
+])("keeps desktop panel outer padding consistent: %j", async (platform) => {
+  const html = await renderWorkspaceShell(platform);
+  expect(html).toMatch(/id="content"[^>]*p-1 pl-0 pt-0/);
+  expect(html).toContain('class="h-1 w-full [app-region:drag]"');
 });
 
 it("places the workspace header inside the independent conversation frame", async () => {

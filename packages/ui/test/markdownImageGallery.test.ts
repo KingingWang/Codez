@@ -10,8 +10,16 @@ import {
 import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { rewriteMarkdownArtifactImageSources } from "@codez/shared";
 import { sanitizeImageSourceForLog } from "@/components/ai-elements/image-preview-dialog.js";
+import {
+  imageThumbnailClassName,
+  imageThumbnailTriggerClassName,
+} from "@/components/ai-elements/image-thumbnail-gallery.js";
+import { clearArtifactImageCache } from "@/components/ai-elements/artifactImageCache.js";
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  clearArtifactImageCache();
+  vi.restoreAllMocks();
+});
 
 describe("artifact-backed Markdown images", () => {
   it("reads an authorized session artifact instead of passing its custom URI to img", async () => {
@@ -44,7 +52,60 @@ describe("artifact-backed Markdown images", () => {
     expect(readAttachment).toHaveBeenCalledWith({ sessionId: "session-1", ref });
     expect(rendered.container.innerHTML).not.toContain("codez-artifact://");
     rendered.unmount();
+    // objectURL 所有权已移交模块级缓存（bridge 重建重挂复用，避免重复下载）：
+    // 卸载不回收，清缓存（逐出）时才回收。
+    expect(revoke).not.toHaveBeenCalledWith("blob:cua-shot");
+    clearArtifactImageCache();
     expect(revoke).toHaveBeenCalledWith("blob:cua-shot");
+  });
+
+  it("缓存命中时不再调用 readAttachment", async () => {
+    const ref = "codez-artifact://session-1/cua-shot";
+    const rewritten = rewriteMarkdownArtifactImageSources(`![shot](${ref})`);
+    const src = rewritten.match(/!\[shot\]\(([^)]+)\)/u)?.[1] ?? "";
+    const readAttachment = vi.fn().mockResolvedValue({
+      bytes: new Uint8Array([1, 2, 3]),
+      mediaType: "image/png",
+    });
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:cua-shot");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+
+    const first = render(
+      createElement(
+        CodezIntlProvider,
+        { initialLocale: "zh-CN" },
+        createElement(MarkdownImage, {
+          alt: "shot",
+          src,
+          sessionId: "session-1",
+          readAttachment,
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(first.container.querySelector("img")?.getAttribute("src")).toBe("blob:cua-shot"),
+    );
+    first.unmount();
+
+    // 模拟 bridge 重建后的整树重挂：同一图片必须命中缓存，不再发起 RPC 下载。
+    const readAttachmentAfterRemount = vi.fn();
+    const second = render(
+      createElement(
+        CodezIntlProvider,
+        { initialLocale: "zh-CN" },
+        createElement(MarkdownImage, {
+          alt: "shot",
+          src,
+          sessionId: "session-1",
+          readAttachment: readAttachmentAfterRemount,
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(second.container.querySelector("img")?.getAttribute("src")).toBe("blob:cua-shot"),
+    );
+    expect(readAttachmentAfterRemount).not.toHaveBeenCalled();
+    second.unmount();
   });
 });
 

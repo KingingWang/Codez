@@ -14,6 +14,7 @@ export function useAccountConnectionLossNotification(
   services: IServiceAccessor,
   intentKey: string,
   refreshAppSettings?: () => Promise<void>,
+  enabled = true,
 ) {
   const { intl } = useCodezIntl();
   const latest = useRef({ intl, refreshAppSettings });
@@ -29,6 +30,8 @@ export function useAccountConnectionLossNotification(
     noticeRef.current = null;
   }, [intentKey]);
   useEffect(() => {
+    // 原生 Codex 的账户事实属于 app-server；旧套餐观察者会触发 Provider getView。
+    if (!enabled) return;
     const observer = createAccountConnectionRefreshObserver(async (event) => {
       let suggestion: Awaited<ReturnType<typeof prepareAccountConnectionSwitch>> = null;
       try {
@@ -130,5 +133,5 @@ export function useAccountConnectionLossNotification(
       if (noticeRef.current) dismissToast(noticeRef.current.id);
       noticeRef.current = null;
     };
-  }, [services]);
+  }, [enabled, services]);
 }

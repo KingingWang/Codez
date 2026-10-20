@@ -8,8 +8,10 @@ import {
   OversizedInlineVideoAttachmentError,
 } from "@/lib/chatAttachments.js";
 import { useComposerAttachmentUploadStore } from "@/store/composerAttachmentUploadStore.js";
+import type { AttachmentPutFn } from "@/v4/composer/attachmentUpload.js";
 import {
   COMPOSER_ATTACHMENT_COMPLETE_VISIBLE_MS,
+  COMPOSER_ATTACHMENT_REBUILD_RETRY_LIMIT,
   isTransientAttachmentUploadError,
   useComposerAttachments,
   type ComposerAttachmentsApi,
@@ -148,9 +150,13 @@ function installMinimalDom() {
 }
 
 interface ProbeOptions {
+  attachmentPut?: AttachmentPutFn;
   attachmentSessionId: string | null;
   localDesktop?: boolean;
-  onRuntimeRestart?: (listener: () => void) => () => void;
+  nativeCodex?: boolean;
+  onRuntimeRestart?: (
+    listener: (reason?: "runtimeRestart" | "transportReplaced") => void,
+  ) => () => void;
   onRuntimeLifecycle?: (listener: (state: "available" | "unavailable") => void) => () => void;
   remoteSessionId?: string | null;
   scopeId: string;
@@ -166,8 +172,9 @@ function Probe(options: ProbeOptions) {
       ? undefined
       : (options.remoteSessionId ?? "remote-session-1");
   latestApi = useComposerAttachments({
-    attachmentPut: vi.fn(),
+    attachmentPut: options.attachmentPut ?? vi.fn(),
     attachmentSessionId: options.attachmentSessionId,
+    nativeCodex: options.nativeCodex,
     onRuntimeRestart: options.onRuntimeRestart,
     onRuntimeLifecycle: options.onRuntimeLifecycle,
     remoteSessionId,
@@ -1119,7 +1126,186 @@ describe("useComposerAttachments eager upload", () => {
     act(() => restart?.());
 
     expect(latestApi?.attachments[0]?.runtimeRebuildRetryCount).toBe(1);
-    expect(restart).toBeNull();
     act(() => root.unmount());
+    expect(restart).toBeNull();
+  });
+
+  it("nativeCodex 下已上传成功的粘贴附件在预热 session 重建后自动重传，不误报永久失败", async () => {
+    const attachmentPut = vi
+      .fn<AttachmentPutFn>()
+      .mockResolvedValueOnce({ ref: "codez-attachment://draft-1-ref" })
+      .mockResolvedValueOnce({ ref: "codez-attachment://draft-2-ref" });
+    const probe = renderProbe({
+      attachmentPut,
+      attachmentSessionId: "draft-1",
+      localDesktop: true,
+      nativeCodex: true,
+      scopeId: "native-paste-rebuild",
+    });
+
+    act(() => {
+      latestApi?.addAttachmentFiles([new File(["hello"], "note.txt", { type: "text/plain" })]);
+    });
+    await vi.waitFor(() => expect(latestApi?.attachments[0]?.uploadStatus).toBe("ready"));
+    expect(attachmentPut).toHaveBeenCalledTimes(1);
+    expect(attachmentPut.mock.calls[0]?.[0]?.sessionId).toBe("draft-1");
+    expect(latestApi?.attachments[0]?.committedSessionId).toBe("draft-1");
+
+    // 模拟预热 session 重建切换（即使未先收到 lifecycle unavailable，例如远端重连或配置失效重建）
+    probe.rerender({
+      attachmentPut,
+      attachmentSessionId: "draft-2",
+      localDesktop: true,
+      nativeCodex: true,
+      scopeId: "native-paste-rebuild",
+    });
+
+    await vi.waitFor(() => expect(attachmentPut).toHaveBeenCalledTimes(2));
+    expect(attachmentPut.mock.calls[1]?.[0]?.sessionId).toBe("draft-2");
+    await vi.waitFor(() => expect(latestApi?.attachments[0]?.uploadStatus).toBe("ready"));
+    expect(latestApi?.attachments[0]).toMatchObject({
+      attachmentRef: expect.objectContaining({
+        ref: "codez-attachment://draft-2-ref",
+      }),
+      committedSessionId: "draft-2",
+      runtimeRebuildRetryCount: 1,
+      uploadStatus: "ready",
+    });
+    expect(latestApi?.attachments[0]?.uploadError).toBeUndefined();
+    await expect(latestApi?.prepareForSend()).resolves.toEqual([
+      expect.objectContaining({ ref: "codez-attachment://draft-2-ref" }),
+    ]);
+    act(() => probe.root.unmount());
+  });
+
+  it("预热 session 重建超过重传配额后标记 runtimeRestarted，但保留 File 支持手动原地重试", async () => {
+    const attachmentPut = vi.fn<AttachmentPutFn>(async (params) => ({
+      ref: `codez-attachment://${params.sessionId}`,
+    }));
+    const probe = renderProbe({
+      attachmentPut,
+      attachmentSessionId: "draft-0",
+      localDesktop: true,
+      nativeCodex: true,
+      scopeId: "native-paste-quota-retry",
+    });
+
+    act(() => {
+      latestApi?.addAttachmentFiles([new File(["hello"], "note.txt", { type: "text/plain" })]);
+    });
+    await vi.waitFor(() => expect(latestApi?.attachments[0]?.uploadStatus).toBe("ready"));
+
+    for (let round = 1; round <= COMPOSER_ATTACHMENT_REBUILD_RETRY_LIMIT; round += 1) {
+      probe.rerender({
+        attachmentPut,
+        attachmentSessionId: `draft-${round}`,
+        localDesktop: true,
+        nativeCodex: true,
+        scopeId: "native-paste-quota-retry",
+      });
+      await vi.waitFor(() =>
+        expect(latestApi?.attachments[0]).toMatchObject({
+          committedSessionId: `draft-${round}`,
+          runtimeRebuildRetryCount: round,
+          uploadStatus: "ready",
+        }),
+      );
+    }
+
+    const exhaustedSessionId = `draft-${COMPOSER_ATTACHMENT_REBUILD_RETRY_LIMIT + 1}`;
+    probe.rerender({
+      attachmentPut,
+      attachmentSessionId: exhaustedSessionId,
+      localDesktop: true,
+      nativeCodex: true,
+      scopeId: "native-paste-quota-retry",
+    });
+    await vi.waitFor(() => expect(latestApi?.attachments[0]?.uploadStatus).toBe("failed"));
+    expect(latestApi?.attachments[0]).toMatchObject({
+      uploadError: "chat.attachments.upload.runtimeRestarted",
+      uploadErrorKind: "runtimeRestarted",
+      uploadStatus: "failed",
+    });
+    expect(latestApi?.attachments[0]?.file).toBeInstanceOf(File);
+
+    const failedId = latestApi?.attachments[0]?.id ?? "";
+    act(() => latestApi?.retryAttachment(failedId));
+    await vi.waitFor(() =>
+      expect(latestApi?.attachments[0]).toMatchObject({
+        committedSessionId: exhaustedSessionId,
+        runtimeRebuildRetryCount: 0,
+        uploadStatus: "ready",
+      }),
+    );
+    act(() => probe.root.unmount());
+  });
+
+  it("lifecycle 模式下收到 transportReplaced（远端连接替换）也会静默作废并在新会话重传", async () => {
+    const attachmentPut = vi
+      .fn<AttachmentPutFn>()
+      .mockResolvedValueOnce({ ref: "codez-attachment://remote-draft-1" })
+      .mockResolvedValueOnce({ ref: "codez-attachment://remote-draft-2" });
+    let lifecycle: ((state: "available" | "unavailable") => void) | null = null;
+    let restart: ((reason?: "runtimeRestart" | "transportReplaced") => void) | null = null;
+    const onRuntimeLifecycle = (listener: (state: "available" | "unavailable") => void) => {
+      lifecycle = listener;
+      return () => {
+        lifecycle = null;
+      };
+    };
+    const onRuntimeRestart = (
+      listener: (reason?: "runtimeRestart" | "transportReplaced") => void,
+    ) => {
+      restart = listener;
+      return () => {
+        restart = null;
+      };
+    };
+    const probe = renderProbe({
+      attachmentPut,
+      attachmentSessionId: "draft-1",
+      nativeCodex: true,
+      onRuntimeLifecycle,
+      onRuntimeRestart,
+      scopeId: "remote-transport-replaced",
+    });
+
+    act(() => {
+      latestApi?.addAttachmentFiles([new File(["remote"], "remote.txt", { type: "text/plain" })]);
+    });
+    await vi.waitFor(() => expect(latestApi?.attachments[0]?.uploadStatus).toBe("ready"));
+    expect(lifecycle).toBeTypeOf("function");
+
+    // 远端 ReplaceableConversationTransport.replace() 只广播 transportReplaced
+    probe.rerender({
+      attachmentPut,
+      attachmentSessionId: null,
+      nativeCodex: true,
+      onRuntimeLifecycle,
+      onRuntimeRestart,
+      scopeId: "remote-transport-replaced",
+    });
+    act(() => restart?.("transportReplaced"));
+    expect(latestApi?.attachments[0]).toMatchObject({
+      runtimeRebuildRetryCount: 1,
+      uploadStatus: "waitingSession",
+    });
+    expect(latestApi?.attachments[0]?.uploadError).toBeUndefined();
+
+    probe.rerender({
+      attachmentPut,
+      attachmentSessionId: "draft-2",
+      nativeCodex: true,
+      onRuntimeLifecycle,
+      onRuntimeRestart,
+      scopeId: "remote-transport-replaced",
+    });
+    await vi.waitFor(() =>
+      expect(latestApi?.attachments[0]).toMatchObject({
+        committedSessionId: "draft-2",
+        uploadStatus: "ready",
+      }),
+    );
+    act(() => probe.root.unmount());
   });
 });

@@ -1027,6 +1027,8 @@ export interface AppUsageModelRow {
   totalTokens: number;
   inputTokens: number;
   outputTokens: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
   requestCount: number;
 }
 
@@ -1048,6 +1050,10 @@ export interface AppUsageDayModelRow {
   dayIndex: number;
   modelId: string | null;
   totalTokens: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
 }
 
 export interface AppUsageQueryResult {

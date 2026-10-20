@@ -154,7 +154,7 @@ describe("plugins/referenceCatalog protocol", () => {
         expect(entry.pluginId).toBe(`${entry.name}@${entry.marketplace}`);
       }
       const codezGuide = result.plugins.find(
-        (entry) => entry.pluginId === "codez-guide@zcode-plugins-official",
+        (entry) => entry.pluginId === "codez-guide@codez-plugins-official",
       );
       expect(codezGuide?.icon).toBe(
         "https://cdn-zcode.z.ai/codez/official-plugin/assets/codez-guide/icon.png",

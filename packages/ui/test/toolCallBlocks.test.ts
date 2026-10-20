@@ -146,6 +146,10 @@ describe("ToolCallBlock agent routing", () => {
     expect(html).toContain(">MCP<");
     expect(html).toContain("Get environment");
     expect(html).toContain('class="text-foreground-subtle">Firebase</span>');
+    expect(html).not.toContain(
+      'class="text-foreground-subtlest">·</span><span class="text-foreground-subtle">Firebase</span>',
+    );
+    expect(html).not.toMatch(/class="[^"]*(?:border|bg-background-alt)[^"]*">Firebase<\/span>/u);
     expect(html).not.toContain("Plugin:firebase:firebase");
     expect(html).not.toContain("Firebase get environment");
     expect(html).not.toContain(">mcp__plugin_firebase_firebase__firebase_get_environment<");
@@ -305,7 +309,10 @@ describe("ToolCallBlock agent routing", () => {
       status: "error",
       inputText: "{}",
       input: {},
-      error: { code: "tool_failed", message: "Firebase authentication failed." },
+      error: {
+        code: "tool_failed",
+        message: "Firebase authentication failed.",
+      },
       display: {
         kind: "mcp_tool",
         serverName: "firebase",
@@ -549,6 +556,206 @@ describe("ToolCallBlock agent routing", () => {
 });
 
 describe("readRawToolCallFileSummaries", () => {
+  it("原生 ApplyPatch 工具卡展开后显示 diff，文件入口打开同一补丁", () => {
+    const onOpenCodeViewer = vi.fn();
+    const row: ToolCallRow = {
+      rowId: 5,
+      entityId: "native-patch",
+      turnId: "turn-1",
+      createdAt: 1,
+      createdAtSeq: 0,
+      kind: "toolCall",
+      toolCallId: "native-patch",
+      toolName: "ApplyPatch",
+      status: "success",
+      inputText: "",
+      input: {
+        changes: [{ path: "src/demo.ts", diff: "@@ -1 +1 @@\n-old\n+new" }],
+      },
+      output: {
+        text: "src/demo.ts\n@@ -1 +1 @@\n-old\n+new",
+        display: {
+          kind: "file_diff",
+          filePath: "src/demo.ts",
+          operation: "update",
+          additions: 1,
+          deletions: 1,
+          structuredPatch: [
+            {
+              oldStart: 1,
+              oldLines: 1,
+              newStart: 1,
+              newLines: 1,
+              lines: ["-old", "+new"],
+            },
+          ],
+        },
+      },
+    };
+    render(
+      createElement(
+        CodezIntlProvider,
+        { initialLocale: "zh-CN" },
+        createElement(ToolCallBlock, {
+          toolCallNode: toolCallRowToLegacyNode(row),
+          workspacePath: "/workspace",
+          theme: "dark",
+          onOpenCodeViewer,
+        }),
+      ),
+    );
+
+    expect(screen.getByText("demo.ts")).toBeTruthy();
+    expect(screen.getByLabelText("+1")).toBeTruthy();
+    expect(screen.getByLabelText("-1")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "展开工具详情" }));
+    const preview = document.querySelector("[data-inline-diff-preview]");
+    expect(preview?.textContent).toContain("old");
+    expect(preview?.textContent).toContain("new");
+    fireEvent.click(screen.getByRole("button", { name: "demo.ts" }));
+    expect(onOpenCodeViewer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "patch",
+        path: "src/demo.ts",
+        patch: expect.stringContaining("+new"),
+      }),
+    );
+  });
+
+  it("多文件原生 display 的创建/删除/重命名按文件展示且不把截断预览当作总数", () => {
+    const summaries = readRawToolCallFileSummaries(
+      {
+        display: {
+          kind: "file_diffs",
+          totalFiles: 4,
+          additions: 12,
+          deletions: 3,
+          truncated: true,
+          files: [
+            {
+              kind: "file_diff",
+              filePath: "src/new.ts",
+              operation: "add",
+              additions: 1,
+              deletions: 0,
+              structuredPatch: [
+                {
+                  oldStart: 0,
+                  oldLines: 0,
+                  newStart: 1,
+                  newLines: 1,
+                  lines: ["+new"],
+                },
+              ],
+            },
+            {
+              kind: "file_diff",
+              filePath: "src/old.ts",
+              operation: "delete",
+              additions: 0,
+              deletions: 1,
+              structuredPatch: [
+                {
+                  oldStart: 1,
+                  oldLines: 1,
+                  newStart: 0,
+                  newLines: 0,
+                  lines: ["-old"],
+                },
+              ],
+            },
+            {
+              kind: "file_diff",
+              filePath: "src/before.ts",
+              movePath: "src/after.ts",
+              operation: "update",
+              additions: 1,
+              deletions: 1,
+              structuredPatch: [
+                {
+                  oldStart: 1,
+                  oldLines: 1,
+                  newStart: 1,
+                  newLines: 1,
+                  lines: ["-a", "+b"],
+                },
+              ],
+            },
+          ],
+        },
+      },
+      { kind: "ApplyPatch", toolName: "ApplyPatch" },
+    );
+    expect(summaries.map((summary) => summary.operationKind)).toEqual([
+      "write",
+      "delete",
+      "update",
+    ]);
+    expect(summaries[0]?.patch).toContain("--- /dev/null");
+    expect(summaries[1]?.patch).toContain("+++ /dev/null");
+    expect(summaries[2]).toMatchObject({
+      path: "src/after.ts",
+      previousPath: "src/before.ts",
+    });
+    expect(summaries[2]?.patch).toContain("--- a/before.ts\n+++ b/after.ts");
+  });
+
+  it("多文件工具卡按原生总数和完整统计展示省略的文件", () => {
+    const row: ToolCallRow = {
+      rowId: 6,
+      entityId: "native-multi-patch",
+      turnId: "turn-1",
+      createdAt: 1,
+      createdAtSeq: 0,
+      kind: "toolCall",
+      toolCallId: "native-multi-patch",
+      toolName: "ApplyPatch",
+      status: "success",
+      inputText: "",
+      output: {
+        text: "preview",
+        display: {
+          kind: "file_diffs",
+          totalFiles: 3,
+          additions: 12,
+          deletions: 3,
+          truncated: true,
+          files: [
+            {
+              kind: "file_diff",
+              filePath: "src/one.ts",
+              operation: "update",
+              additions: 1,
+              deletions: 1,
+              structuredPatch: [
+                { oldStart: 1, oldLines: 1, newStart: 1, newLines: 1, lines: ["-old", "+new"] },
+              ],
+            },
+          ],
+        },
+      },
+    };
+    render(
+      createElement(
+        CodezIntlProvider,
+        { initialLocale: "zh-CN" },
+        createElement(ToolCallBlock, {
+          toolCallNode: toolCallRowToLegacyNode(row),
+          workspacePath: "/workspace",
+          theme: "dark",
+        }),
+      ),
+    );
+    expect(screen.getByText("one.ts")).toBeTruthy();
+    expect(screen.getByLabelText("+12")).toBeTruthy();
+    expect(screen.getByLabelText("-3")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "展开工具详情" }));
+    expect(screen.getByText("3 个文件")).toBeTruthy();
+    expect(screen.getByText("此预览还有 2 个文件未展示。")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "展开工具详情" }));
+    expect(document.querySelector("[data-inline-diff-preview]")?.textContent).toContain("new");
+  });
+
   it("does not infer edit summaries from read tool content keywords", () => {
     const summaries = readRawToolCallFileSummaries(
       {

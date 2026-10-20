@@ -5369,7 +5369,13 @@ describe("botsService messageFlow", () => {
           text: "/status",
           actor: weixinActor,
         });
-        expect(getView).toHaveBeenCalledWith({ selection: original });
+        expect(getView).toHaveBeenCalledWith({
+          selection: original,
+          workspace: {
+            workspacePath: "/tmp/workspace",
+            workspaceIdentity: "ssh://host/tmp/workspace",
+          },
+        });
         expect((await repo.readState()).bots["weixin-1"]?.draftOptions?.modelSelection).toEqual(
           original,
         );

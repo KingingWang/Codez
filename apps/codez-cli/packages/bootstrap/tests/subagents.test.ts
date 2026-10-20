@@ -428,19 +428,19 @@ thoughtLevel: low
         join(storageRoot, "v2", "agents-state.json"),
         JSON.stringify({
           pluginAgentModelOverrides: {
-            "plugin:document-skills@zcode-plugins-official:code-architect":
+            "plugin:document-skills@codez-plugins-official:code-architect":
               "custom:custom-openai:glm-5.2",
-            "plugin:other@zcode-plugins-official:code-architect": "custom:custom-openai:ignored",
+            "plugin:other@codez-plugins-official:code-architect": "custom:custom-openai:ignored",
           },
           pluginAgentThoughtLevelOverrides: {
-            "plugin:document-skills@zcode-plugins-official:code-architect": "high",
+            "plugin:document-skills@codez-plugins-official:code-architect": "high",
           },
         }),
         "utf8",
       );
       const plugins = [
         pluginMetadata({
-          id: "document-skills@zcode-plugins-official",
+          id: "document-skills@codez-plugins-official",
           name: "document-skills",
           rootPath: pluginRoot,
         }),
@@ -477,7 +477,7 @@ thoughtLevel: low
         join(storageRoot, "v2", "agents-state.json"),
         JSON.stringify({
           pluginAgentModelOverrides: {
-            "plugin:document-skills@zcode-plugins-official:code-architect":
+            "plugin:document-skills@codez-plugins-official:code-architect":
               "custom:custom-openai:glm-5.2",
           },
         }),

@@ -26,12 +26,12 @@ describe("marketplace store listing", () => {
 
   it("parses listing fields and top-level featured from a CDN-shaped manifest", async () => {
     const storageRoot = await makeStorageRoot("codez-marketplace-listing-");
-    const marketplaceDir = join(storageRoot, "marketplaces", "zcode-plugins-official");
+    const marketplaceDir = join(storageRoot, "marketplaces", "codez-plugins-official");
     await mkdir(marketplaceDir, { recursive: true });
     await writeFile(
       join(marketplaceDir, "marketplace.json"),
       JSON.stringify({
-        name: "zcode-plugins-official",
+        name: "codez-plugins-official",
         description: "Official Codez plugins marketplace",
         featured: ["example-plugin", " ", 42, "another"],
         plugins: [
@@ -74,7 +74,7 @@ describe("marketplace store listing", () => {
       }),
     );
 
-    const manifest = loadMarketplaceManifestSync(storageRoot, "zcode-plugins-official");
+    const manifest = loadMarketplaceManifestSync(storageRoot, "codez-plugins-official");
     expect(manifest).not.toBeNull();
     // featured 只保留非空字符串，保持顺序。
     expect(manifest?.featured).toEqual(["example-plugin", "another"]);

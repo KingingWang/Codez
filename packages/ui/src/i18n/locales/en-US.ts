@@ -966,6 +966,9 @@ const enUS: Record<string, string> = {
   "quickPick.command.switchThemeToDark": "Switch theme to dark",
   "quickPick.command.switchThemeToLight": "Switch theme to light",
   "quickPick.command.mcpServers": "MCP Servers",
+  "quickPick.command.codexSettings": "Codex settings",
+  "quickPick.command.codexProviders": "Codex providers",
+  "quickPick.command.usageStats": "Usage stats",
   "quickPick.command.personalization": "Personalization",
   "quickPick.command.skills": "Skills",
   "quickPick.command.toggleSidebar": "Toggle sidebar",
@@ -1823,6 +1826,8 @@ const enUS: Record<string, string> = {
     "Enter or generate a commit message before committing.",
   "git.actionMenu.commitDialog.error.generateFailed":
     "Commit message generation failed. Try again or enter one manually.",
+  "git.actionMenu.commitDialog.error.auxiliaryUnavailable":
+    "AI commit-message generation is unavailable with the current Codex runtime. Enter the commit message manually.",
   "git.actionMenu.commitDialog.error.requestFailed": "Commit failed: {error}",
   "git.actionMenu.commitDialog.error.pushAfterCommitFailed": "Committed, but push failed: {error}",
   "git.actionMenu.commitDialog.toast.success": "Committed the current changes",
@@ -1908,6 +1913,132 @@ const enUS: Record<string, string> = {
     "Another Git operation is still in progress. Finish it before switching branches.",
   "git.branchSwitcher.error.branchInOtherWorktree":
     "That branch is already checked out in another worktree.",
+  "git.branchSwitcher.checkedOutAt": "Checked out: {path}",
+  "worktree.switcher.trigger.ariaLabel": "Linked workspaces (Git worktrees), {count} total",
+  "worktree.switcher.section": "Linked workspaces in this project",
+  "worktree.switcher.current": "Current",
+  "worktree.switcher.open": "Open",
+  "worktree.switcher.mainTree": "Main",
+  "worktree.switcher.locked": "Protected",
+  "worktree.switcher.unreachable": "Unreachable",
+  "worktree.switcher.openRootAction": "Open repository root",
+  "worktree.switcher.refreshFailed": "Couldn't refresh the workspace list. Tap to retry",
+  "worktree.open.unsupported": "This connection doesn't support that action",
+  "worktree.menu.label": "New session options",
+  "worktree.menu.current": "Current workspace",
+  "git.branchSwitcher.createWorktreeAction": "New independent workspace (worktree)…",
+  "worktree.menu.new": "New independent workspace",
+  "worktree.menu.existing": "Existing workspaces…",
+  "worktree.menu.unavailable": "Not loaded or no available workspaces",
+  "worktree.concurrent.warning":
+    "Multiple sessions share this workspace; file changes may affect each other.",
+  "worktree.create.title": "Create an independent workspace",
+  "worktree.create.description": "Create a new code directory from {workspacePath}.",
+  "worktree.create.mode.label": "Starting branch",
+  "worktree.create.mode.new": "New branch",
+  "worktree.create.mode.newDescription": "Create a branch from a selected start point",
+  "worktree.create.mode.existing": "Existing branch",
+  "worktree.create.mode.existingDescription": "Use a local branch that isn't checked out",
+  "worktree.create.branchName.label": "New branch name",
+  "worktree.create.branchName.placeholder": "feature/new-task",
+  "worktree.create.existingBranch.label": "Existing branch",
+  "worktree.create.existingBranch.placeholder": "Choose a free branch",
+  "worktree.create.startPoint.label": "Start-point branch",
+  "worktree.create.currentHead": "Current HEAD ({branch})",
+  "worktree.create.targetPath.label": "Save location",
+  "worktree.create.targetPath.placeholder": "Waiting for the host default path",
+  "worktree.create.targetPath.helper":
+    "Enter a host-side absolute path; remote paths aren't inferred locally.",
+  "worktree.create.preview.title": "Creation preview",
+  "worktree.create.preview.pending": "Loading preview…",
+  "worktree.create.preview.waitingInput": "Enter a branch name to preview automatically.",
+  "worktree.create.preview.startPoint": "Start point",
+  "worktree.create.preview.baseline": "Baseline commit",
+  "worktree.create.preview.path": "Location",
+  "worktree.create.disclosure.dirty":
+    "Uncommitted and untracked files won't be carried into the new directory.",
+  "worktree.create.disclosure.env":
+    ".env and other local configuration aren't copied, and initialization scripts aren't run.",
+  "worktree.create.occupied": "Branch {branch} is already occupied: {path}",
+  "worktree.create.openOccupied": "Go to that workspace",
+  "worktree.create.submit": "Create workspace",
+  "worktree.create.creating": "Creating…",
+  "worktree.create.createdOpenFailed": "Workspace created, but opening failed",
+  "worktree.create.unknown.title": "Creation result is unknown",
+  "worktree.create.unknown.retry": "Retry same operation",
+  "worktree.create.opened": "Independent workspace opened",
+  "worktree.create.retryOpen": "Retry opening",
+  "worktree.create.openFailed": "Open failed: {error}",
+  "worktree.create.error.unsupported": "This connection doesn't support that action yet.",
+  "worktree.create.error.previewMissing": "Wait for a valid preview before creating.",
+  "worktree.create.error.requestFailed": "Creation failed: {error}",
+  "worktree.create.disabled.waiting": "Checking workspace capability…",
+  "worktree.create.disabled.disconnected":
+    "The remote workspace isn't connected, so independent workspaces can't be created yet.",
+  "worktree.create.disabled.unsupported":
+    "This connection doesn't support creating independent workspaces yet.",
+  "worktree.create.disabled.notGit": "This workspace isn't a Git repository.",
+  "worktree.create.disabled.gitUnavailable":
+    "Git is unavailable, so independent workspaces can't be created.",
+  "worktree.create.disabled.failed": "Couldn't confirm creation capability yet. Try again later.",
+  "worktree.remove.action": "Delete linked workspace…",
+  "worktree.remove.title": "Delete linked workspace",
+  "worktree.remove.description":
+    "The directory will be permanently deleted. The branch and session history are kept.",
+  "worktree.remove.path": "Location",
+  "worktree.remove.branch": "Branch",
+  "worktree.remove.detachedHead": "Detached HEAD ({hash})",
+  "worktree.remove.previewPending": "Checking what deletion would discard…",
+  "worktree.remove.section.changes": "Changes that will be discarded ({count})",
+  "worktree.remove.section.attention": "Local config to review ({count})",
+  "worktree.remove.confirmDiscardChanges":
+    "I understand the {count} item(s) above will be permanently discarded",
+  "worktree.remove.confirmDiscardDetached":
+    "This HEAD commit isn't referenced by any branch; I understand deleting will drop the reference",
+  "worktree.remove.confirm": "Permanently delete this directory",
+  "worktree.remove.removing": "Deleting…",
+  "worktree.remove.retry": "Retry",
+  "worktree.remove.retryUnknown": "Retry the same operation",
+  "worktree.remove.blocked.current":
+    "This is the workspace you're using. Switch to another workspace in this project first.",
+  "worktree.remove.blocked.running": "This workspace has running tasks. Stop them before deleting.",
+  "worktree.remove.blocked.running.jump": "Go to that workspace",
+  "worktree.remove.blocked.locked":
+    "This workspace is protected{reason}. Run git worktree unlock in a terminal first.",
+  "worktree.remove.unreachable":
+    "The directory is unreachable. Check the mount or connection and retry. Nothing will be deleted.",
+  "worktree.remove.riskUnknown":
+    "Couldn't determine what deletion would affect. Retry—unknown risk doesn't mean no risk.",
+  "worktree.remove.statusChanged":
+    "The target changed while you were confirming. The list has been refreshed—please review and confirm again.",
+  "worktree.remove.resultUnknown": "Deletion result unknown",
+  "worktree.remove.resultUnknownHint":
+    "The connection dropped mid-deletion, so it may have completed. Retrying safely checks the same operation.",
+  "worktree.remove.failed": "Deletion failed: {error}",
+  "worktree.remove.releaseUnavailable":
+    "The workspace runtime connection is unavailable. Reconnect before deleting.",
+  "worktree.remove.done": "Linked workspace deleted",
+  "worktree.remove.inFlight": "This workspace is being deleted and can't be opened right now.",
+  "git.branchDelete.action": "Delete branch {branch}…",
+  "git.branchDelete.title": "Delete branch",
+  "git.branchDelete.description":
+    "Only the local branch {branch} is deleted. Remote-tracking branches are not affected.",
+  "git.branchDelete.branch": "Branch",
+  "git.branchDelete.lastCommit": "Last commit",
+  "git.branchDelete.mergeState": "Merge state",
+  "git.branchDelete.merged": "Merged",
+  "git.branchDelete.unmerged": "Has unmerged commits",
+  "git.branchDelete.mergeUnknown": "Merge state unknown",
+  "git.branchDelete.confirmForce": "I understand unmerged commits will lose their branch reference",
+  "git.branchDelete.occupied": "Checked out at {path}. Switch away or delete that workspace first.",
+  "git.branchDelete.blocked.current": "You can't delete the current branch.",
+  "git.branchDelete.moved":
+    "The branch moved while you were confirming. Review the updated info and confirm again.",
+  "git.branchDelete.confirm": "Delete branch",
+  "git.branchDelete.deleting": "Deleting…",
+  "git.branchDelete.previewPending": "Loading branch info…",
+  "git.branchDelete.failed": "Deletion failed: {error}",
+  "git.branchDelete.done": "Branch deleted",
   "git.branchSwitcher.error.unknown": "Switching branches failed. Please try again.",
   "git.branchSwitcher.error.requestFailed": "Branch operation failed: {error}",
   "gitGraph.title": "Git Graph",
@@ -2222,6 +2353,9 @@ const enUS: Record<string, string> = {
   "workspaceSidebar.newConversation": "New task",
   "workspaceSidebar.reorderSection": "Move {section} section",
   "workspaceSidebar.sortBy": "Sort by",
+  "workspaceSidebar.filterByWorkspace": "Filter by workspace",
+  "workspaceSidebar.allWorkspaces": "All workspaces",
+  "workspaceSidebar.clearWorkspaceFilter": "Clear workspace filter",
   "workspaceSidebar.sortByCreated": "Created",
   "workspaceSidebar.sortByUpdated": "Updated",
   "workspaceSidebar.reconnect": "Reconnect",
@@ -2327,6 +2461,8 @@ const enUS: Record<string, string> = {
   "ssh.assetInstallMode.remote-download": "Download on remote server",
   "ssh.assetInstallModeDescription":
     "Remote server download reduces upload waiting, but the server must reach the Codez CDN and have download, extract, and checksum tools.",
+  "ssh.assetInstallModeDescription.codex":
+    "Remote download tries the release first. If the remote cannot reach it, the desktop downloads and uploads over SSH. Both methods require tar on the remote.",
   "ssh.password": "Password",
   "ssh.passwordPlaceholder": "Enter your SSH password",
   "ssh.privateKey": "Private key",
@@ -2532,6 +2668,8 @@ const enUS: Record<string, string> = {
     "The desktop side disconnected, so this Web remote control session can no longer continue.",
   "webRemoteControl.failure.invalidMobileConnection":
     "The current mobile connection is no longer valid. Reload the page and reconnect.",
+  "webRemoteControl.failure.e2eeConfiguration":
+    "Mobile remote control requires a separate trusted HTTPS page and cannot start securely yet.",
   "webRemoteControl.failure.desktopBootstrapTimeout":
     "The desktop window did not respond in time. Make sure it is still running, then reload.",
   "webRemoteControl.failure.connectionRecoveryTimeout":
@@ -2918,6 +3056,9 @@ const enUS: Record<string, string> = {
   "taskList.userInputTag": "Awaiting approval",
   "taskList.stopCountdown": "Stop timer",
   "taskList.attentionCount": "{label} · {count}",
+  "taskList.runningStripLabel": "Running and awaiting-approval tasks",
+  "taskList.runningStripSummary": "{count} running",
+  "taskList.runningStripSummaryWithAttention": "{running} running · {attention} awaiting approval",
   "taskList.mobileActive": "Phone is using this task",
   "taskList.changeStats": "+{added} -{removed}",
   "taskSearch.button": "Search",
@@ -3148,7 +3289,17 @@ const enUS: Record<string, string> = {
   "settings.memory": "Memory",
   "settings.memory.workspaceMemory": "Workspace Memory",
   "settings.memoryDescription":
-    "Save and reuse long-term context in workspaces. Applies to new sessions and may increase model requests and token costs.",
+    "Save and reuse long-term context in workspaces. Changes apply immediately and may increase model requests and token costs.",
+  "settings.memory.use": "Use memories in conversations",
+  "settings.memory.useDescription":
+    "Inject saved workspace memories into each turn. Turning this off also stops automatic extraction.",
+  "settings.memory.extraction": "Auto-extract memories",
+  "settings.memory.extractionDescription":
+    "Summarize and save memorable long-term information after each turn.",
+  "settings.memory.extractionModel": "Memory extraction model",
+  "settings.memory.extractionModelDescription":
+    "Model used to extract memories. Follows the session model by default.",
+  "settings.memory.extractionModel.followSession": "Follow session model",
   "settings.memory.viewer.disabled": "Enable Workspace Memory to view saved memories.",
   "settings.memory.viewer.localOnly":
     "Memory details are available only in the local desktop app. Open Memory settings there to view them.",
@@ -3216,7 +3367,7 @@ const enUS: Record<string, string> = {
     "When enabled, updates start downloading as soon as they are found. Restart still requires confirmation when tasks are running.",
   "settings.notification": "Task notifications",
   "settings.notificationDescription":
-    "Send desktop notifications when a task completes, fails, or needs approval.",
+    "Notify when a task completes, fails, or needs approval, including reminders from other conversations.",
   "settings.notificationSound": "Notification sound",
   "settings.notificationSoundDescription":
     "When notifications are enabled, you can mute the task notification sound separately.",
@@ -3229,6 +3380,8 @@ const enUS: Record<string, string> = {
   "notification.inputRequired": "Your response is needed",
   "notification.planApprovalRequired": "Plan awaiting approval",
   "notification.planApprovalBody": "Review the plan to continue.",
+  "notification.openTask": "Open task",
+  "notification.dismiss": "Dismiss",
   "notification.command": "Command: {command}",
   "notification.file": "File: {paths}",
   "settings.closeToTrayOnWindows": "Hide to tray when closing window",
@@ -3245,7 +3398,8 @@ const enUS: Record<string, string> = {
   "settings.messageStreamShowReasoningDescription":
     "Show full reasoning inside the message stream. When off, the first reasoning item in each turn remains visible.",
   "settings.messageStreamShowTodos": "Show todos",
-  "settings.messageStreamShowTodosDescription": "Show Todo tool cards inside the message stream. ",
+  "settings.messageStreamShowTodosDescription":
+    "Show Todo tool cards inside the message stream and enable the update_plan tool for Codex sessions. Toggling restarts workspace agent processes and interrupts in-flight tasks.",
   "settings.toolGroupingExplore": "Group exploration tools",
   "settings.toolGroupingExploreDescription":
     "Group consecutive reads and searches into an Explore section.",
@@ -3434,11 +3588,6 @@ const enUS: Record<string, string> = {
   "resourceManager.storage.confirmDescription.backups":
     "These copies allow recovery if an upgrade or migration goes wrong; deleting them cannot be undone.",
   "settings.browser.title": "Browser Use",
-  "settings.browser.control.title": "Enable built-in browser control",
-  "settings.browser.control.description":
-    "Enable the official Browser Use plugin so new sessions can access and control web pages in the built-in browser.",
-  "settings.browser.control.enabledToast": "Built-in browser control enabled",
-  "settings.browser.control.disabledToast": "Built-in browser control disabled",
   "settings.browser.security.section": "Security",
   "settings.embeddedBrowserAllowInsecureCertificates": "Ignore certificate errors",
   "settings.embeddedBrowserAllowInsecureCertificatesDescription":
@@ -3807,6 +3956,18 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.endpointNoMatch": "No matching endpoint",
   "settings.modelProvider.apiKey": "API key",
   "settings.modelProvider.apiKeyPlaceholder": "Enter API key",
+  "settings.modelProvider.keyMode": "Key storage",
+  "settings.modelProvider.keyMode.config": "Write to config file",
+  "settings.modelProvider.keyMode.runtime": "Temporary environment variable (no remote file)",
+  "settings.modelProvider.keyMode.runtimeHint":
+    "The key is saved only in local Codez data. People sharing the remote OS account may still use it while the process runs. Rotate keys previously synced to the remote.",
+  "settings.modelProvider.keyMode.runtimeSaved":
+    "Key saved locally; enter a new value and click Save to replace it.",
+  "settings.modelProvider.keyMode.save": "Save temporary key",
+  "settings.modelProvider.keyMode.confirmTitle": "Change provider key?",
+  "settings.modelProvider.keyMode.confirmDescription":
+    "Running tasks may be interrupted. Accepted input will not be resent automatically. Confirm to apply the new key.",
+  "settings.modelProvider.keyMode.confirmAction": "Confirm change",
   "settings.modelProvider.apiKeyDisabledHint": "Set an API key to enable this provider.",
   "settings.modelProvider.getApiKey": "Get API key",
   "settings.modelProvider.viewUsage": "View usage",
@@ -4637,6 +4798,21 @@ const enUS: Record<string, string> = {
   "settings.usage.healthLiteDecode": "Lite peak average decode speed",
   "settings.usage.refresh": "Refresh",
   "settings.usage.loadingTitle": "Computing usage",
+  "settings.usage.appUsage.observationNotice":
+    "Codex usage shown here is desktop-observed telemetry, not an official billing statement.",
+  "settings.usage.appUsage.observationEmpty": "No observed Codex threads yet.",
+  "settings.usage.appUsage.observationLoading": "Reading observed Codex usage…",
+  "settings.usage.appUsage.observationReadError":
+    "Could not read desktop-observed Codex usage. Refresh to try again.",
+  "settings.usage.appUsage.observedThreads": "Observed Codex threads",
+  "settings.usage.appUsage.observedInput": "Observed input tokens",
+  "settings.usage.appUsage.observedOutput": "Observed output tokens",
+  "settings.usage.appUsage.observedCacheRead": "Observed cache-read tokens",
+  "settings.usage.appUsage.observedCacheWrite": "Observed cache-write tokens",
+  "settings.usage.appUsage.observationStale":
+    "Last observed while the Codex runtime was disconnected; refresh after reconnecting.",
+  "settings.usage.appUsage.observationConflict":
+    "Observed counters regressed for at least one thread, so totals may not be authoritative.",
   "settings.usage.appUsageLoadingDescription":
     "Reading local app session history, so it can take a moment.",
   "settings.usage.codingPlanLoadingDescription":
@@ -5079,6 +5255,10 @@ const enUS: Record<string, string> = {
   "settings.plugins.store.viewMoreFew": "See {names}",
   "settings.plugins.store.showLess": "Show less",
   "settings.plugins.store.install": "Install",
+  "settings.plugins.store.installUnavailable":
+    "This official plugin is not yet available in Codex.",
+  "settings.plugins.store.capabilityWarning": "Some features are unavailable in Codex",
+  "settings.plugins.store.authRequired": "Requires a signed-in z.ai account",
   "settings.plugins.store.paidPlanBadge": "Coding Plan",
   "settings.plugins.store.requiresPaidPlan": "This plugin works better with a Coding Plan",
   "settings.plugins.store.tryNow": "Try now",
@@ -5705,8 +5885,24 @@ const enUS: Record<string, string> = {
   "chat.history.duration.hour": "h",
   "chat.history.duration.minute": "m",
   "chat.history.duration.second": "s",
+  "chat.history.turnTokenBadge": "{tokens} tokens",
+  "chat.history.turnTokenBadgeWithCache": "{tokens} tokens · Cache {hitRate}",
+  "chat.history.turnTokenTooltip.turnSection": "This turn",
+  "chat.history.turnTokenTooltip.sessionSection": "Session total",
+  "chat.history.turnTokenTooltip.total": "Total",
+  "chat.history.turnTokenTooltip.input": "Input",
+  "chat.history.turnTokenTooltip.output": "Output",
+  "chat.history.turnTokenTooltip.reasoning": "Reasoning",
+  "chat.history.turnTokenTooltip.cacheRead": "Cache read",
+  "chat.history.turnTokenTooltip.cacheWrite": "Cache write",
+  "chat.history.turnTokenTooltip.cacheHitRate": "Cache hit rate",
   "chat.stop": "Stop",
   "chat.stop.short": "Stop",
+  "chat.turn.continue": "Continue",
+  "chat.turn.continue.description":
+    "Keep completed tool results and continue the interrupted task with the current model and reasoning level",
+  "chat.turn.continue.prompt":
+    "Continue the interrupted task using the completed tool calls and results in this conversation. Do not repeat finished work; pick up from what remains.",
   "chat.promptEnhance.title": "Enhance prompt",
   "chat.promptEnhance.description":
     "Refine the current draft with the selected model configuration.",
@@ -5718,10 +5914,12 @@ const enUS: Record<string, string> = {
     "The selected model does not currently expose a direct enhancement configuration.",
   "chat.promptEnhance.error": "Prompt enhancement failed. Please try again.",
   "chat.promptEnhance.errorWithDetail": "Prompt enhancement failed: {error}",
+  "chat.sharedContext.contentCopyWarning":
+    "Codex will receive this shared context as a text copy. Reference semantics are lost, and later changes to the source won't update this message.",
   "chat.queue.enqueue": "Queue message",
   "chat.queue.title": "Queued messages ({count})",
   "chat.queue.drag": "Drag to reorder",
-  "chat.queue.sendNow": "Steer",
+  "chat.queue.sendNow": "Send now",
   "chat.queue.runNow": "Run now",
   "chat.queue.edit": "Edit",
   "chat.queue.editDraftConflict":
@@ -5744,6 +5942,16 @@ const enUS: Record<string, string> = {
   "chat.followup.guideCurrent": "Steer current run",
   "chat.followup.sendNow": "Send now",
   "chat.followup.addToQueue": "Add to queue",
+  "chat.followup.mode.trigger": "Send as: {mode}",
+  "chat.followup.mode.queue": "Queue",
+  "chat.followup.mode.queue.description": "Send after this task; edit or remove while waiting",
+  "chat.followup.mode.guide": "Guide",
+  "chat.followup.mode.guide.description": "Join the current task at its next model step",
+  "chat.followup.mode.guide.placeholder": "Add guidance for the current task's next model step",
+  "chat.followup.mode.guide.accepted": "Steer accepted · waiting for the next model step",
+  "chat.queue.pendingCount": "Queued ({count})",
+  "chat.queue.interruptAndSend": "Interrupt & send",
+  "chat.queue.interruptAndSend.description": "Interrupt the current task and send this message now",
   "chat.modelChangeNotice.changed": "Switched from {fromModel} to {toModel}",
   "chat.preparing": "Preparing...",
   "chat.remoteGenerating": "Another device is sending a message...",
@@ -5755,6 +5963,7 @@ const enUS: Record<string, string> = {
   "chat.contextUsage.title": "Context windows",
   "chat.contextUsageDescription":
     "Prompt text, tool calls, and responses all share this context window.",
+  "chat.contextUsage.sessionTotalTokens": "Session total tokens",
   "chat.contextUsage.cacheHitRate": "Average cache hit rate",
   "chat.contextUsage.breakdown": "Context sources",
   "chat.contextUsage.breakdown.messages": "Messages",
@@ -5813,6 +6022,15 @@ const enUS: Record<string, string> = {
   "chat.contextCompaction.failed": "Context compression failed",
   "chat.contextCompaction.interrupted": "Context compression interrupted",
   "chat.contextCompaction.retry": "Retry",
+  "chat.codexEvent.contextCompaction": "Context compacted",
+  "chat.codexEvent.reviewEnter": "Code review started",
+  "chat.codexEvent.reviewExit": "Code review finished",
+  "chat.codexEvent.hookPrompt": "Hook prompt",
+  "chat.codexEvent.subagentStarted": "Subagent started",
+  "chat.codexEvent.subagentInteracted": "Subagent interacted",
+  "chat.codexEvent.subagentInterrupted": "Subagent interrupted",
+  "chat.codexEvent.subagentCompleted": "Subagent completed",
+  "chat.codexEvent.sleep": "Sleeping",
   "chat.goalVerification.checking": "Verifying goal",
   "chat.goalVerification.incomplete": "Goal incomplete, continuing",
   "chat.goalVerification.complete": "Goal complete, ending task",
@@ -5820,6 +6038,7 @@ const enUS: Record<string, string> = {
   "chat.goalVerification.openSummary": "Expand summary",
   "chat.goalBanner.label": "Goal",
   "chat.apiRetryStatus": "Reconnecting... {attempt}/{maxRetries}",
+  "chat.codexApiRetryStatus": "Model request retrying...",
   "chat.target.title": "Goal",
   "chat.target.status.active": "Active",
   "chat.target.status.paused": "Paused",
@@ -5999,6 +6218,10 @@ const enUS: Record<string, string> = {
   "chat.toolCall.edit.editing": "Editing",
   "chat.toolCall.edit.edited": "Edited",
   "chat.toolCall.edit.multipleFiles": "{count} files",
+  "chat.toolCall.edit.omittedFiles": "{count} more files are not shown in this preview.",
+  "chat.toolCall.edit.partialDiff": "partial diff",
+  "chat.toolCall.edit.previewTruncated": "Only part of this diff is shown.",
+  "chat.toolCall.edit.previewUnavailable": "No diff preview is available for this file.",
   "chat.toolCall.snapshot.notice":
     "{fields} tool field(s) were truncated. Showing preview {previewBytes} / {fullBytes}.",
   "chat.toolCall.snapshot.loadFull": "Load full tool data",
@@ -6841,6 +7064,8 @@ const enUS: Record<string, string> = {
     "Video attachment {filename} is too large ({size}). Please compress it to {maxSize} or smaller and try again.",
   "chat.attachments.oversizedInlinePdf":
     "PDF attachment {filename} is too large ({size}). Please compress it to {maxSize} or smaller and try again.",
+  "chat.attachments.oversizedInlineFile":
+    "File attachment {filename} is too large ({size}); the upload limit is {maxSize}.",
   "chat.attachments.restoreDropped":
     "Some draft attachments could not be restored after restart. Please add them again: {filenames}",
   "chat.attachments.clipboardText": "Pasted text",
@@ -6874,7 +7099,7 @@ const enUS: Record<string, string> = {
   "chat.attachments.upload.ready": "Upload complete",
   "chat.attachments.upload.failed": "Upload failed: {message}",
   "chat.attachments.upload.runtimeRestarted":
-    "The runtime restarted and invalidated this attachment",
+    "Session changed; click retry to re-upload this attachment",
   "chat.composer.draftRuntimeRebuilding": "Rebuilding session, please wait",
   "chat.attachments.upload.remoteMaterializationRequired":
     "This remote attachment could not be staged, so its local path was not sent.",
@@ -6920,6 +7145,26 @@ const enUS: Record<string, string> = {
   "chat.slash.title": "Commands and capabilities",
   "chat.slash.searchHint": "Type to search commands, skills, or agents",
   "chat.slash.app.side.description": "Open a new side conversation",
+  "chat.slash.command.model.label": "Model",
+  "chat.slash.command.model.description": "Switch the model and reasoning effort",
+  "chat.slash.command.mode.label": "Mode",
+  "chat.slash.command.mode.description": "Switch the permission and approval mode",
+  "chat.slash.command.plan.label": "Plan mode",
+  "chat.slash.command.plan.description": "Turn on plan mode",
+  "chat.slash.command.init.label": "Init",
+  "chat.slash.command.init.description": "Create an AGENTS.md file with instructions for Codex",
+  "chat.slash.command.compact.label": "Compact",
+  "chat.slash.command.compact.description": "Compact this chat's context",
+  "chat.slash.command.goal.label": "Goal",
+  "chat.slash.command.goal.description": "Set a goal to keep pursuing",
+  "chat.slash.command.workflow.label": "Workflow",
+  "chat.slash.command.workflow.description": "Plan and run a multi-step workflow",
+  "chat.slash.command.side.label": "Side",
+  "chat.slash.command.side.description": "Start a temporary side chat",
+  "chat.slash.command.btw.label": "Side (/btw)",
+  "chat.slash.command.btw.description": "Start a temporary side chat",
+  "chat.slash.mode.unknown": "Unsupported mode: {mode} (expected: plan, build, edit, yolo, custom)",
+  "chat.slash.model.unknown": "No matching model found: {model}",
   "chat.slash.commands.title": "Commands",
   "chat.slash.skills.title": "Skills",
   "chat.slash.skills.empty": "No matching skills",
@@ -6950,6 +7195,9 @@ const enUS: Record<string, string> = {
   "chat.error.remoteNoAvailableModel":
     "This remote device has no available model yet. Configure models on this computer first; they will sync to the remote device automatically after you save.",
   "chat.error.sendFailed": "Failed to send. Try again later.",
+  "chat.writerConflict.banner":
+    "This session is held by another window or process and is read-only. Fork it to continue.",
+  "chat.writerConflict.retry": "Retry connection",
   "chat.error.modelSettings": "Model settings",
   "chat.error.setModels": "Set",
 
@@ -6988,6 +7236,8 @@ const enUS: Record<string, string> = {
   "chat.permission.approve": "Allow",
   "chat.permission.approveAlways": "Always allow",
   "chat.permission.allowForSession": "Allow for session",
+  "chat.permission.allowForSession.description":
+    "Don't ask again for this tool during this session",
   "chat.permission.responseFailed": "Approval did not complete. Please retry.",
   "chat.permission.fullAccess": "Full access",
   "chat.permission.fullAccess.description":
@@ -7132,6 +7382,21 @@ const enUS: Record<string, string> = {
   "mode.description.glm.edit": "Edit files automatically.",
   "mode.description.glm.plan": "Plan before editing.",
   "mode.description.glm.yolo": "Run with fewer confirmations.",
+  "mode.codex.build": "Ask for approval",
+  "mode.codex.build.description":
+    "Read, edit, and run commands in this workspace. Approval is required to access the internet or edit other files.",
+  "mode.codex.edit": "Approve for me",
+  "mode.codex.edit.description": "Only ask for actions detected as potentially unsafe.",
+  "mode.codex.yolo": "Full access",
+  "mode.codex.yolo.description":
+    "Edit files outside this workspace and access the internet without asking for approval.",
+  "mode.codex.custom": "Custom",
+  "mode.codex.custom.description": "Use the permissions defined in config.toml.",
+  "mode.codex.plan.description": "Inspect the code and present a plan before making changes.",
+  "mode.codex.yolo.confirm.title": "Switch to full access?",
+  "mode.codex.yolo.confirm.description":
+    "The agent can edit files outside this workspace and access the internet without asking for approval.",
+  "mode.codex.yolo.confirm.accept": "Enable full access",
   "todo.panel.title": "Todo",
   "todo.panel.currentTask": "Current task",
   "todo.panel.completed": "Todo completed",
@@ -7243,6 +7508,14 @@ const enUS: Record<string, string> = {
   "feedback.center.backToSubmit": "Back to submit feedback",
   "feedback.center.submitTab": "Submit",
   "feedback.center.ticketsTab": "My feedback",
+  "settings.feedback.diagnostics.field.app": "App version",
+  "settings.feedback.diagnostics.field.runtime": "Runtime",
+  "settings.feedback.diagnostics.field.error": "Error summary",
+  "settings.feedback.diagnostics.field.notes": "Description",
+  "feedback.github.attachmentHint":
+    "Attach screenshots or diagnostic logs manually on the GitHub Issue page if needed.",
+  "feedback.github.truncatedNotice":
+    "(Pre-filled text was truncated due to URL length limits. Please add the full details on GitHub.)",
   "feedback.background.title": "Submitting feedback",
   "feedback.background.open": "Open feedback submission details",
   "feedback.background.openDetail": "Open details",
@@ -8012,6 +8285,11 @@ const enUS: Record<string, string> = {
   "cuaPermission.modal.restarting": "Restarting Helper…",
   "cuaPermission.modal.restartFailed": "Couldn't restart Helper: {error}",
   "cuaPermission.modal.relaunchAppButton": "Restart Codez",
+  "cuaPermission.blocked.title": "Computer Use Helper is blocked by macOS",
+  "cuaPermission.blocked.description":
+    "The Helper carries a quarantine attribute or lacks notarization, so Gatekeeper refuses to launch it and permission status cannot be read. Repair lets the installer strip the quarantine flag and restart the Helper — no terminal commands needed.",
+  "cuaPermission.blocked.repairButton": "Repair and restart Helper",
+  "cuaPermission.blocked.repairToast": "Repairing Computer Use Helper…",
   "cuaPermission.modal.relaunchAppHint":
     "Still not working after restarting Helper? Restart Codez to fully reload the Helper process.",
   "cuaPermission.status.granted": "Granted",
@@ -8052,15 +8330,25 @@ const enUS: Record<string, string> = {
     "The Computer Use plugin is not enabled. Enable it in Plugins to use Computer Use.",
   "settings.computerUse.unsupported.title": "Computer Use is unavailable here",
   "settings.computerUse.unsupported.remoteDescription":
-    "Computer Use is not yet supported for SSH, WSL, Docker, or other remote environments. Switch to a local macOS or Windows workspace.",
-  "settings.computerUse.unsupported.linuxDescription":
-    "Computer Use is not yet supported on Linux desktops. Switch to a local macOS or Windows workspace.",
+    "Computer Use is not yet supported for SSH, WSL, Docker, or other remote environments. Switch to a local macOS, Windows, or Linux workspace.",
   "settings.computerUse.unsupported.badge": "Unavailable here",
   "settings.computerUse.unsupported.group": "Unavailable built-in capabilities",
   "scheduledPreview.keepAwakeEnabled": "Keep awake enabled",
   "scheduledPreview.keepAwakeDisabled": "Keep awake disabled",
   "scheduledPreview.toast.running": "Running “{title}”…",
   "scheduledPreview.toast.view": "View",
+  "codexHistoryStatus.running": "Running",
+  "codexHistoryStatus.completed": "Completed",
+  "codexHistoryStatus.failed": "Failed",
+  "codexHistoryStatus.interrupted": "Interrupted",
+  "codexHistoryStatus.unknown": "Outcome unknown",
+  codexHistoryDuration: "{count}s",
+  codexHistoryFileChanges: "{files} files · +{additions} / -{deletions}",
+  codexHistoryNoSession: "Open a native Codex thread to read its history.",
+  codexHistoryTransportUnavailable: "Codex history transport is unavailable on this Host.",
+  codexHistoryUsageAvailable: "Per-turn usage available",
+  codexHistoryUsageUnavailable: "Per-turn usage unavailable",
+  codexHistoryArtifacts: "Artifacts",
   "scheduledPreview.addSchedule": "Add schedule",
   "chat.highspeed.label": "Highspeed",
   "chat.highspeed.expiresAt": "Highspeed card expires at {time}",

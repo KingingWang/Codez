@@ -156,6 +156,10 @@ async function switchCollaborationMode(
 ): Promise<CommandResult | undefined> {
   const payload = envelope.payload as CommandPayloadMap["switchCollaborationMode"];
   const record = requireRecord(host, envelope.sessionId);
+  // custom 只属于 Codex 链路（codex-bridge）；Codez Agent 运行时没有该档位。
+  // 显式拒绝（failed ACK），不落到 `as` 断言后被 resolveExecutionState 静默降档。
+  if (!SWITCHABLE_MODES.has(payload.mode))
+    throw new Error(`Unsupported collaboration mode for Codez Agent runtime: ${payload.mode}`);
   const mode = payload.mode as CollaborationMode;
   const previousMode = record.app.getMode();
   if (previousMode === mode && !record.app.runtime.getPlanEnabled()) {

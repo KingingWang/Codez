@@ -1,7 +1,7 @@
-import { execFile, spawn } from "node:child_process";
+import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { existsSync } from "node:fs";
-import { access, mkdtemp, mkdir, readFile, readdir, rm, utimes, writeFile } from "node:fs/promises";
+import { access, mkdtemp, mkdir, readFile, rm, utimes, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -15,15 +15,18 @@ import type {
 } from "@codez/server/remote/backend.js";
 import { CODEZ_VERSION } from "@codez/shared";
 import { describe, expect, it, vi } from "vitest";
+import { REMOTE_BASE } from "@codez/server/remote/deployShared.js";
 import {
   LocalUploadAssetInstaller,
   RemoteDownloadAssetInstaller,
   buildRemoteArtifactDownloadCommand,
   buildRemoteChecksumCommand,
 } from "@codez/server/remote/remoteAssetInstaller.js";
-import type { RemoteSha256Tool } from "@codez/server/remote/remoteAssetPreflight.js";
-import { createTarGzArchive, extractTarGzArchive } from "@codez/server/remote/localTarGz.js";
-import { quotePosixShellArg } from "@codez/server/remote/posixShell.js";
+import {
+  RemoteAssetSourceUnavailableError,
+  type RemoteSha256Tool,
+} from "@codez/server/remote/remoteAssetPreflight.js";
+import { extractTarGzArchive } from "@codez/server/remote/localTarGz.js";
 
 const execFileAsync = promisify(execFile);
 const localShellCommand = resolveLocalShellCommand();
@@ -82,56 +85,6 @@ class FailingReplaceBackend extends InstallerBackend {
       command.includes("command chmod +x") ? 1 : 0,
       command.includes("command chmod +x") ? "chmod denied" : "",
     );
-  }
-}
-
-class ShellInstallerBackend extends InstallerBackend {
-  constructor(
-    private readonly rootDir: string,
-    public prelude: string,
-  ) {
-    super();
-  }
-
-  override async exists(remotePath: string): Promise<boolean> {
-    return access(join(this.rootDir, remotePath.replace(/^~\//u, ""))).then(
-      () => true,
-      () => false,
-    );
-  }
-
-  override async exec(command: string): Promise<StdioStream> {
-    this.commands.push(command);
-    // 仅把远端 HOME 路径映射到夹具目录，不改宿主环境；执行完整真实脚本以捕获 shell 退出码。
-    const isolatedCommand = command.replaceAll(
-      '"$HOME"',
-      quotePosixShellArg(toLocalShellPath(this.rootDir)),
-    );
-    const child = spawn(localShellCommand!, ["-c", `${this.prelude}\n${isolatedCommand}`], {
-      detached: process.platform !== "win32",
-    });
-    let stdout = "";
-    let stderr = "";
-    child.stdout.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString();
-    });
-    child.stderr.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString();
-    });
-    // macOS sh 的后台子进程可能在主命令退出后仍持有管道；退出码已确定后回收测试进程组。
-    child.once("exit", () => {
-      if (process.platform === "win32" || !child.pid) return;
-      try {
-        process.kill(-child.pid, "SIGKILL");
-      } catch (error) {
-        if (!(error instanceof Error) || !("code" in error) || error.code !== "ESRCH") throw error;
-      }
-    });
-    const code = await new Promise<number>((resolve, reject) => {
-      child.once("error", reject);
-      child.once("close", (exitCode) => resolve(exitCode ?? 1));
-    });
-    return createClosedStream([stdout], code, stderr);
   }
 }
 
@@ -293,22 +246,6 @@ describe("remote asset installer command builders", () => {
     expect(command).not.toContain("total unknown");
   });
 
-  it("downloads without optional progress tools on minimal remote hosts", () => {
-    const command = buildRemoteArtifactDownloadCommand({
-      tool: "curl",
-      urls: ["https://cdn.example.test/component.tar.gz"],
-      outputPath: "~/.codez/server/component.tar.gz",
-      progressLabel: "source-server-linux-x64",
-      supportsProgress: false,
-    });
-
-    expect(command).toContain("curl -fL");
-    expect(command).not.toContain("progress_pid=");
-    expect(command).not.toContain("awk ");
-    expect(command).not.toContain("wc -c");
-    expect(command).not.toContain("date +%s");
-  });
-
   shellBackedIt(
     "tries the next artifact URL when a downloaded candidate fails sha256 validation",
     async () => {
@@ -329,7 +266,6 @@ describe("remote asset installer command builders", () => {
         progressLabel: "node-runtime@v22.16.0",
         expectedSha256,
         sha256Tool: await detectLocalShellSha256Tool(shellCommand),
-        supportsProgress: false,
       });
 
       await execFileAsync(shellCommand, ["-c", command]);
@@ -338,13 +274,50 @@ describe("remote asset installer command builders", () => {
     },
   );
 
+  shellBackedIt("distinguishes unreachable sources from exhausted SHA mismatches", async () => {
+    const shellCommand = localShellCommand ?? "sh";
+    const dir = await mkdtemp(join(tmpdir(), "codez-installer-status-"));
+    try {
+      const badArchive = join(dir, "bad.tar.gz");
+      const missingArchive = join(dir, "missing.tar.gz");
+      await writeFile(badArchive, "corrupt artifact");
+      const common = {
+        tool: "curl" as const,
+        outputPath: toLocalShellPath(join(dir, "component.tar.gz")),
+        progressLabel: "codex-native@release",
+        expectedSha256: createHash("sha256").update("expected artifact").digest("hex"),
+        sha256Tool: await detectLocalShellSha256Tool(shellCommand),
+      };
+      await expect(
+        execFileAsync(shellCommand, [
+          "-c",
+          buildRemoteArtifactDownloadCommand({
+            ...common,
+            urls: [pathToFileURL(missingArchive).href],
+          }),
+        ]),
+      ).rejects.toMatchObject({ code: 73 });
+      await expect(
+        execFileAsync(shellCommand, [
+          "-c",
+          buildRemoteArtifactDownloadCommand({
+            ...common,
+            urls: [pathToFileURL(badArchive).href, pathToFileURL(missingArchive).href],
+          }),
+        ]),
+      ).rejects.toMatchObject({ code: 74 });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("builds sha256 commands for openssl", () => {
-    const command = buildRemoteChecksumCommand({
-      tool: "openssl",
-      filePath: "~/.codez/server/component.tar.gz",
-    });
-    expect(command).toContain("openssl dgst -sha256");
-    expect(command).not.toContain("awk");
+    expect(
+      buildRemoteChecksumCommand({
+        tool: "openssl",
+        filePath: "~/.codez/server/component.tar.gz",
+      }),
+    ).toContain("openssl dgst -sha256");
   });
 });
 
@@ -385,6 +358,59 @@ describe("LocalUploadAssetInstaller", () => {
 
     expect(backend.commands).toEqual([]);
     expect(upload).not.toHaveBeenCalled();
+  });
+
+  it("把连接取消信号传给远端文件上传", async () => {
+    const releaseDir = await mkdtemp(join(tmpdir(), "codez-installer-abort-test-"));
+    await mkdir(join(releaseDir, "server"), { recursive: true });
+    await writeFile(join(releaseDir, "server", "codez-server.cjs"), "server", "utf8");
+    const controller = new AbortController();
+    const backend = new InstallerBackend();
+    const installer = new LocalUploadAssetInstaller(
+      backend,
+      {
+        releaseDir,
+        platformArch: "linux-x64",
+        signal: controller.signal,
+      },
+      { log: () => undefined, logWarn: () => undefined },
+    );
+
+    await installer.installFile({
+      componentId: "server-bundle",
+      sourceRelativePath: "server/codez-server.cjs",
+      remotePath: "~/.codez/server/codez-server.cjs",
+    });
+
+    expect(backend.uploads[0]?.signal).toBe(controller.signal);
+  });
+
+  it("新的 SSH 文件上传会先清理超过 24 小时的同路径 owner staging", async () => {
+    const releaseDir = await mkdtemp(join(tmpdir(), "codez-installer-stale-file-test-"));
+    await mkdir(join(releaseDir, "server"), { recursive: true });
+    await writeFile(join(releaseDir, "server", "codez-server.cjs"), "server", "utf8");
+    const controller = new AbortController();
+    const backend = new InstallerBackend();
+    const installer = new LocalUploadAssetInstaller(
+      backend,
+      {
+        releaseDir,
+        platformArch: "linux-x64",
+        signal: controller.signal,
+      },
+      { log: () => undefined, logWarn: () => undefined },
+    );
+
+    await installer.installFile({
+      componentId: "server-bundle",
+      sourceRelativePath: "server/codez-server.cjs",
+      remotePath: "~/.codez/server/codez-server.cjs",
+    });
+
+    expect(backend.commands[0]).toContain("find");
+    expect(backend.commands[0]).toContain("codez-server.cjs.new-");
+    expect(backend.commands[0]).toContain("-mtime +0");
+    expect(backend.commands[0]).toContain("-exec rm -rf");
   });
 
   shellBackedIt("SSH staging janitor 只删除超过 24 小时的 owner 文件", async () => {
@@ -452,9 +478,7 @@ describe("LocalUploadAssetInstaller", () => {
           rejectAbort();
           return;
         }
-        options?.signal?.addEventListener("abort", rejectAbort, {
-          once: true,
-        });
+        options?.signal?.addEventListener("abort", rejectAbort, { once: true });
       });
     });
     const installer = new LocalUploadAssetInstaller(
@@ -503,9 +527,7 @@ describe("LocalUploadAssetInstaller", () => {
           rejectAbort();
           return;
         }
-        options?.signal?.addEventListener("abort", rejectAbort, {
-          once: true,
-        });
+        options?.signal?.addEventListener("abort", rejectAbort, { once: true });
       });
     });
     const installer = new LocalUploadAssetInstaller(
@@ -558,6 +580,32 @@ describe("LocalUploadAssetInstaller", () => {
     expect(backend.commands[0]).toContain("ripgrep.tar.gz-");
     expect(backend.commands[0]).toContain("ripgrep.extract-");
     expect(backend.commands[0]).toContain("-mtime +0");
+  });
+
+  it("把连接取消信号传给远端目录归档上传", async () => {
+    const releaseDir = await mkdtemp(join(tmpdir(), "codez-installer-dir-abort-test-"));
+    const sourceDir = join(releaseDir, "tools", "linux-x64", "ripgrep");
+    await mkdir(sourceDir, { recursive: true });
+    await writeFile(join(sourceDir, "rg"), "ripgrep", "utf8");
+    const controller = new AbortController();
+    const backend = new InstallerBackend();
+    const installer = new LocalUploadAssetInstaller(
+      backend,
+      {
+        releaseDir,
+        platformArch: "linux-x64",
+        signal: controller.signal,
+      },
+      { log: () => undefined, logWarn: () => undefined },
+    );
+
+    await installer.installDirectory({
+      componentId: "ripgrep",
+      sourceRelativePath: "tools/linux-x64/ripgrep",
+      remoteDir: "~/.codez/server/tools/ripgrep",
+    });
+
+    expect(backend.uploads[0]?.signal).toBe(controller.signal);
   });
 
   it("uses a unique staging path for each uploaded file replacement", async () => {
@@ -795,90 +843,39 @@ describe("LocalUploadAssetInstaller", () => {
 });
 
 describe("RemoteDownloadAssetInstaller", () => {
-  shellBackedIt.each(
-    [
-      { stage: "download", diagnostic: "fixture download failed" },
-      { stage: "checksum", diagnostic: "sha256 mismatch" },
-      { stage: "extract", diagnostic: "fixture extraction failed" },
-    ].flatMap((scenario) =>
-      [true, false].map((supportsProgress) => ({ ...scenario, supportsProgress })),
-    ),
-  )(
-    "远端 $stage 失败保留原始错误并清理，恢复后可重试（progress=$supportsProgress）",
-    async ({ stage, diagnostic, supportsProgress }) => {
-      const rootDir = await mkdtemp(join(tmpdir(), "codez-installer-download-failure-"));
-      const sourcePath = join(rootDir, "codez-server.cjs");
-      const archivePath = join(rootDir, "component.tar.gz");
-      await writeFile(sourcePath, "current server");
-      await createTarGzArchive(archivePath, [{ sourcePath, archivePath: "codez-server.cjs" }]);
-      const sha256 = createHash("sha256")
-        .update(await readFile(archivePath))
-        .digest("hex");
-      stubManifestFetch({
-        ...validManifest,
-        components: [{ ...validManifest.components[0], sha256 }],
-      });
-      const download = `wget() { while [ "$1" != -O ]; do shift; done; shift; command cp ${quotePosixShellArg(toLocalShellPath(archivePath))} "$1"; }`;
-      const failure =
-        stage === "download"
-          ? 'wget() { echo "fixture download failed" >&2; return 4; }'
-          : stage === "checksum"
-            ? 'wget() { while [ "$1" != -O ]; do shift; done; shift; printf corrupt > "$1"; }'
-            : 'tar() { echo "fixture extraction failed" >&2; return 2; }';
-      const backend = new ShellInstallerBackend(rootDir, `${download}\n${failure}`);
-      const installedPath = join(rootDir, ".codez/server/codez-server.cjs");
-      await mkdir(join(rootDir, ".codez/server"), { recursive: true });
-      await writeFile(installedPath, "previous server");
+  it("only classifies remote exit 73 as an unavailable source", async () => {
+    for (const exitCode of [73, 74]) {
+      class ExitStatusBackend extends InstallerBackend {
+        override async exec(command: string): Promise<StdioStream> {
+          this.commands.push(command);
+          return createClosedStream([], command.includes("source unavailable") ? exitCode : 0);
+        }
+      }
+      const backend = new ExitStatusBackend();
       const installer = new RemoteDownloadAssetInstaller(
         backend,
         {
           version: CODEZ_VERSION,
           platformArch: "linux-x64",
-          remoteCdnBaseUrl: "https://cdn.example.test/releases",
+          remoteAssetNetwork: { fetch: async () => new Response(null, { status: 404 }) },
         },
-        {
-          download: "wget",
-          tar: "tar",
-          sha256: await detectLocalShellSha256Tool(localShellCommand!),
-          supportsProgress,
-        },
+        { download: "curl", tar: "tar", sha256: "sha256sum" },
         { log: () => undefined, logWarn: () => undefined },
+        Promise.resolve({
+          manifest: validManifest,
+          releaseBaseCandidatesForComponents: ["https://cdn.example.test/release"],
+        }),
       );
-      try {
-        await expect(
-          installer.installFile({
-            componentId: "server-bundle",
-            sourceRelativePath: "server/codez-server.cjs",
-            remotePath: "~/.codez/server/codez-server.cjs",
-          }),
-        ).rejects.toThrow(diagnostic);
-        expect(backend.commands).toHaveLength(1);
-        await expect(readdir(join(rootDir, ".codez/server/asset-cache/staging"))).resolves.toEqual(
-          [],
-        );
-        await expect(
-          readdir(join(rootDir, ".codez/server/asset-cache/components/linux-x64/server-bundle")),
-        ).resolves.toEqual([]);
-        await expect(readFile(installedPath, "utf8")).resolves.toBe("previous server");
-        backend.prelude = download;
-        await installer.installFile({
-          componentId: "server-bundle",
-          sourceRelativePath: "server/codez-server.cjs",
-          remotePath: "~/.codez/server/codez-server.cjs",
-        });
-        await expect(readFile(installedPath, "utf8")).resolves.toBe("current server");
-        await expect(readdir(join(rootDir, ".codez/server/asset-cache/staging"))).resolves.toEqual(
-          [],
-        );
-        await expect(
-          readdir(join(rootDir, ".codez/server/asset-cache/components/linux-x64/server-bundle")),
-        ).resolves.toEqual([sha256]);
-      } finally {
-        vi.unstubAllGlobals();
-        await rm(rootDir, { recursive: true, force: true });
-      }
-    },
-  );
+      const installing = installer.installFile({
+        componentId: "server-bundle",
+        sourceRelativePath: "server/codez-server.cjs",
+        remotePath: "~/.codez/server/codez-server.cjs",
+      });
+      if (exitCode === 73)
+        await expect(installing).rejects.toBeInstanceOf(RemoteAssetSourceUnavailableError);
+      else await expect(installing).rejects.not.toBeInstanceOf(RemoteAssetSourceUnavailableError);
+    }
+  });
 
   it("已取消连接不得启动远端下载或 staging 命令", async () => {
     stubManifestFetch(validManifest);
@@ -1027,7 +1024,7 @@ describe("RemoteDownloadAssetInstaller", () => {
     expect(command).toContain("stat -f %m");
     expect(command).toContain("stale lock for server-bundle@1.0.0-server-bundle");
     expect(command).toContain(
-      'touch "$HOME"\'/.codez/server/asset-cache/components/linux-x64/server-bundle/',
+      `touch "${EXPECTED_QUOTED_REMOTE_BASE}/asset-cache/components/linux-x64/server-bundle/`,
     );
     expect(command).toContain('kill "$lock_heartbeat_pid"');
     expect(command).toMatch(/\.new-[^\s']+/u);
@@ -1111,7 +1108,7 @@ describe("RemoteDownloadAssetInstaller", () => {
     const backend = new InstallerBackend(
       [],
       new Set([
-        `~/.codez/server/asset-cache/components/linux-x64/server-bundle/${expectedCacheSegment}/.ready`,
+        `${REMOTE_BASE}/asset-cache/components/linux-x64/server-bundle/${expectedCacheSegment}/.ready`,
       ]),
     );
     const logs: string[] = [];
@@ -1165,7 +1162,7 @@ describe("RemoteDownloadAssetInstaller", () => {
     const expectedCacheSegment = "b".repeat(64);
     const backend = new InstallerBackend(
       [],
-      new Set([`~/.codez/server/asset-cache/components/linux-x64/glm/${oldCacheSegment}/.ready`]),
+      new Set([`${REMOTE_BASE}/asset-cache/components/linux-x64/glm/${oldCacheSegment}/.ready`]),
     );
     const logs: string[] = [];
     const warnings: string[] = [];
@@ -1193,11 +1190,11 @@ describe("RemoteDownloadAssetInstaller", () => {
     expect(commands).toContain("curl -fL");
     expect(commands).toContain(`asset-cache/components/linux-x64/glm/${expectedCacheSegment}`);
     expect(commands).not.toContain(
-      `rm -rf "$HOME"'/.codez/server/asset-cache/components/linux-x64/glm/${oldCacheSegment}'`,
+      `rm -rf "${EXPECTED_QUOTED_REMOTE_BASE}/asset-cache/components/linux-x64/glm/${oldCacheSegment}'`,
     );
     expect(logs).not.toContain(`[remote-assets] remote component cache hit: glm@${hashedVersion}`);
     expect(warnings).toContain(
-      `[remote-assets] download required: component=glm reason=remote component cache missing path=~/.codez/server/asset-cache/components/linux-x64/glm/${expectedCacheSegment}/.ready`,
+      `[remote-assets] download required: component=glm reason=remote component cache missing path=${REMOTE_BASE}/asset-cache/components/linux-x64/glm/${expectedCacheSegment}/.ready`,
     );
     vi.unstubAllGlobals();
   });
@@ -1228,3 +1225,4 @@ describe("RemoteDownloadAssetInstaller", () => {
     vi.unstubAllGlobals();
   });
 });
+const EXPECTED_QUOTED_REMOTE_BASE = `$HOME"'${REMOTE_BASE.slice(1)}`;

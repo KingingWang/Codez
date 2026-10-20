@@ -128,7 +128,7 @@ describe("ConversationTelemetryFact schema", () => {
       kind: "model.request.status",
       requestId: "request-1",
       status: "model_request_started",
-      providerId: "codez-plan",
+      providerId: "zcode-plan",
       modelId: "model-1",
       providerHostname: "example.com",
       transport: "sse",

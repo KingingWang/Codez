@@ -261,6 +261,7 @@ export function ModelProviderSection({
     refreshing: modelProvidersRefreshing,
     refresh,
     saveProvider,
+    saveApiKeySource,
     createPersonalProvider,
     addPersonalModel,
     savePersonalModelDraft,
@@ -1175,6 +1176,9 @@ export function ModelProviderSection({
           codingPlanStatusSyncProviderId={codingPlanStatusSyncProviderId}
           codingPlanDisconnectProviderId={codingPlanDisconnectProviderId}
           onSave={handleSave}
+          onSaveApiKeySource={async (input) => {
+            await saveApiKeySource(input);
+          }}
           onAddPersonalModel={addPersonalModel}
           onSavePersonalModelDraft={savePersonalModelDraft}
           onSetPersonalModelEnabled={setPersonalModelEnabled}

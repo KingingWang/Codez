@@ -38,7 +38,7 @@ import {
 import { createQuickPickCommands } from "@/quickpick/quickPickCommands.js";
 import { CommandCenterDialog } from "@/command-center/CommandCenterDialog.js";
 import { FeedbackHost } from "@/feedback/FeedbackHost.js";
-import { useFeedbackStore } from "@/feedback/feedbackStore.js";
+import { useFeedbackEntryAction } from "@/feedback/useFeedbackEntryAction.js";
 import {
   resolveQuickPickConversationNavigation,
   selectQuickPickConversationTaskIds,
@@ -65,8 +65,8 @@ import {
 import { useTaskSidePaneMemoryBridge } from "@/app-shell/useTaskSidePaneMemoryBridge.js";
 import { resolveAppWorkspaceRpcTarget } from "@/app-shell/workspaceRpcTarget.js";
 import { useWorkspaceServicesResolution } from "@/hooks/useWorkspaceServices.js";
-import { useWorkspaceTerminalTaskNotifications } from "@/hooks/useTaskNotifications.js";
 import { useMarketingTaskCompletionRefresh } from "@/components/marketing-touch/useMarketingTaskCompletionRefresh.js";
+import { useWorkspaceTaskNotifications } from "@/hooks/useTaskNotifications.js";
 import { useOffPeakTaskNotifications } from "@/hooks/useOffPeakTaskNotifications.js";
 import type { AppProps, WorkspaceMainView } from "@/app-shell/types.js";
 import type {
@@ -98,6 +98,7 @@ export function App({
   baseFeedbackService,
   onConnectRemote,
   onSelectRemoteProject,
+  onOpenWorktreeEntry,
   onCancelRemoteProject,
   onReconnectRemoteWorkspace,
   onLogout,
@@ -286,15 +287,6 @@ export function App({
     ...(workspaceIdentity ? { workspaceIdentity } : {}),
     ...(workspaceRemoteSessionId ? { endpointKey: workspaceRemoteSessionId } : {}),
     rpcReady: workspaceRpcReady,
-  });
-  useWorkspaceTerminalTaskNotifications({
-    workspacePath: workspaceAbsPath,
-    ...(workspaceIdentity ? { workspaceIdentity } : {}),
-    ...(workspaceRemoteSessionId ? { endpointKey: workspaceRemoteSessionId } : {}),
-    enabled: notificationEnabled,
-    rpcReady: workspaceRpcReady,
-    platform,
-    formatMessage: intl.formatMessage,
   });
   // 闲时任务终态/等确认通知：仅桌面本地链路，main 进程按 status:taskId 去重多窗口重复。
   useOffPeakTaskNotifications({
@@ -691,27 +683,21 @@ export function App({
   const handleOpenQuickPick = useCallback(() => {
     setIsQuickPickOpen((open) => !open);
   }, []);
-  const openFeedbackSubmit = useFeedbackStore((state) => state.openSubmit);
-  const openFeedbackTickets = useFeedbackStore((state) => state.openTickets);
+  const { runFeedbackEntry } = useFeedbackEntryAction();
   const isLoggedIn = Boolean(user);
   const handleOpenFeedback = useCallback(() => {
-    void platform.openFeedback();
-  }, [platform]);
+    runFeedbackEntry({ kind: "bug" });
+  }, [runFeedbackEntry]);
 
   useEffect(() => {
-    // 内置反馈中心合并了"提交反馈 / 我的反馈"两个 Tab，
-    // 老的 OpenTicketsPanel IPC 仍然兼容（直接打开列表），未来如果还需要单独入口可以复用。
+    // 桌面原生菜单的 OpenFeedback 命令发送 OpenFeedbackDialog IPC，统一路由到 GitHub Issues 预填入口。
     const disposeFeedbackDialog = platform.onOpenFeedbackDialog?.(() => {
-      openFeedbackSubmit();
-    });
-    const disposeTicketsPanel = platform.onOpenTicketsPanel?.(() => {
-      openFeedbackTickets();
+      runFeedbackEntry({ kind: "bug" });
     });
     return () => {
       disposeFeedbackDialog?.();
-      disposeTicketsPanel?.();
     };
-  }, [openFeedbackSubmit, openFeedbackTickets, platform]);
+  }, [platform, runFeedbackEntry]);
   const handleOpenCommunity = useCallback(() => platform.openCommunity(), [platform]);
   const handleOpenProductDocs = useCallback(() => {
     platform.openExternal(CODEZ_PRODUCT_DOCS_URL);
@@ -930,6 +916,18 @@ export function App({
     },
     [handleOpenAutomations],
   );
+  useWorkspaceTaskNotifications({
+    workspacePath: workspaceAbsPath,
+    ...(workspaceIdentity ? { workspaceIdentity } : {}),
+    ...(workspaceRemoteSessionId ? { endpointKey: workspaceRemoteSessionId } : {}),
+    activeTaskId,
+    viewingActiveTask: isWorkspaceVisible && workspaceMainView === "chat",
+    onNavigateToTask: (taskId) => handleSelectTask(workspaceAbsPath, taskId, workspaceIdentity),
+    enabled: notificationEnabled,
+    rpcReady: workspaceRpcReady,
+    platform,
+    formatMessage: intl.formatMessage,
+  });
   const handleOpenPluginStoreForScope = useCallback(
     (_target: PluginStoreOpenTarget = {}) => {
       // 管理范围由市场内视图持有，重复打开只重置市场导航。
@@ -1070,6 +1068,24 @@ export function App({
             setPendingSettingsPluginIntent("mcps");
             openSettingsTab();
           },
+          // Codex 适配器深链（specs/codex-desktop-adapter.md「设置深链」）：
+          // 仅桌面 Host 注册，命令面板搜 codex/provider/usage 可直达对应分区。
+          ...(isDesktop
+            ? {
+                openCodexSettings: () => {
+                  setPendingSettingsSection("codex");
+                  openSettingsTab();
+                },
+                openCodexProviders: () => {
+                  setPendingSettingsSection("modelProvider");
+                  openSettingsTab();
+                },
+                openUsageStats: () => {
+                  setPendingSettingsSection("usage");
+                  openSettingsTab();
+                },
+              }
+            : {}),
           switchTheme: handleSwitchTheme,
           openFeedback: handleOpenFeedback,
           openCommunity: handleOpenCommunity,
@@ -1187,6 +1203,7 @@ export function App({
           handleOpenPluginStore={handleOpenPluginStoreForScope}
           onConnectRemote={onConnectRemote}
           onSelectRemoteProject={onSelectRemoteProject}
+          onOpenWorktreeEntry={onOpenWorktreeEntry}
           onCancelRemoteProject={onCancelRemoteProject}
           onReconnectRemoteWorkspace={onReconnectRemoteWorkspace}
           onLogout={onLogout}

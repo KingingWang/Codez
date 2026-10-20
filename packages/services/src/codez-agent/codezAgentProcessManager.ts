@@ -8,7 +8,10 @@ import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { Emitter } from "@codez/rpc";
-import { GEN_UI_OUTPUT_DIRECTORY, GEN_UI_OUTPUT_ROOT_ENV } from "@codez/shared/node";
+import {
+  GEN_UI_OUTPUT_DIRECTORY,
+  GEN_UI_OUTPUT_ROOT_ENV,
+} from "@codez/shared/node";
 import { getAppConfigDir } from "../paths.js";
 import {
   parseCodezProcessDiagnostic,
@@ -31,6 +34,7 @@ import {
 } from "../runtime-tools/providerRuntimeResolver.js";
 import { isEffectiveDevelopmentNodeEnv } from "#src/runtime-tools/nodeEnv.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
+import { parseCodexBridgeTitleDiagnostic } from "./codexBridgeTitleDiagnostic.js";
 import { CodezProtocolClient } from "./codezProtocolClient.js";
 import { CodezStdioTransport } from "./codezStdioTransport.js";
 import { readCodezStdioTapDevState } from "./codezStdioTapDevConfig.js";
@@ -38,6 +42,10 @@ import type { CodezAgentPresentationSurface } from "./codezAgentPresentationSurf
 import { shouldSpawnInDetachedProcessGroup } from "../process/processTreeTerminator.js";
 import type { RuntimeProcessLifecycleReporter } from "../process/runtimeProcessLifecycle.js";
 import { buildAgentWorkspaceIdentityEnv } from "../runtime-tools/agentProxyEnv.js";
+import {
+  resolveCodexBridgeCommand,
+  usesCodexBridgeRuntime,
+} from "./codexBridgeCommand.js";
 
 export interface CodezAgentCommand {
   /** 本地配套 CLI bundle 的存储专用 Worker 入口；远端/自定义命令不推断能力。 */
@@ -94,7 +102,11 @@ export interface CodezAgentProcessManagerOptions {
     workspacePath: string;
     workspaceIdentity?: string;
     workspaceKey: string;
-  }) => Promise<Record<string, string>> | Record<string, string>;
+    // 值为 undefined 表示显式删除继承变量（Node spawn 跳过 undefined），
+    // 供本机临时 Key 在缺凭据时屏蔽同名外部环境变量（spec: codex-provider-runtime-env-key）。
+  }) =>
+    | Promise<Record<string, string | undefined>>
+    | Record<string, string | undefined>;
   /**
    * 可选的外部 spawn admission hook。CUA 默认装配不再注入 Helper recovery gate，
    * 避免 Helper lifecycle 阻塞或间接重启 Agent；保留该通用 hook 供其他产品策略使用。
@@ -199,7 +211,9 @@ export function buildE2EAgentCoverageEnv(
   writeFileSync(preloadPath, E2E_COVERAGE_PRELOAD_SOURCE, "utf8");
   const requireOption = `--require=${JSON.stringify(preloadPath)}`;
   return {
-    NODE_OPTIONS: [env.NODE_OPTIONS?.trim(), requireOption].filter(Boolean).join(" "),
+    NODE_OPTIONS: [env.NODE_OPTIONS?.trim(), requireOption]
+      .filter(Boolean)
+      .join(" "),
     NODE_V8_COVERAGE: directory,
   };
 }
@@ -252,7 +266,8 @@ const AGENT_STDERR_TAIL_MAX_LINES = 20;
 const AGENT_STDERR_LINE_MAX_CHARS = 1_000;
 const AGENT_STDERR_SENSITIVE_ASSIGNMENT_PATTERN =
   /(["']?(?:api[-_]?key|authorization|cookie|credential|password|secret|token)["']?\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,;}]+)/gi;
-const AGENT_STDERR_AUTH_SCHEME_PATTERN = /\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi;
+const AGENT_STDERR_AUTH_SCHEME_PATTERN =
+  /\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi;
 const AGENT_STDERR_API_KEY_PATTERN = /\b(sk-)[A-Za-z0-9_-]{16,}\b/gi;
 
 function redactAgentDiagnostic(value: string): string {
@@ -304,7 +319,10 @@ function parseArgsJson(raw: string | undefined): string[] | undefined {
     return undefined;
   }
   const parsed = JSON.parse(trimmed) as unknown;
-  if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== "string")) {
+  if (
+    !Array.isArray(parsed) ||
+    parsed.some((item) => typeof item !== "string")
+  ) {
     throw new Error("CODEZ_AGENT_SERVER_ARGS_JSON must be a JSON string array");
   }
   return parsed;
@@ -330,13 +348,19 @@ async function buildCodezAgentSpawnPreflight(
   workspacePath: string,
   spawnFallbackCwd?: string,
 ): Promise<CodezAgentSpawnPreflight> {
-  const commandPathKind = isAbsolute(command.command) ? "absolute" : "path-search";
+  const commandPathKind = isAbsolute(command.command)
+    ? "absolute"
+    : "path-search";
   const requestedCwd = command.cwd ?? workspacePath;
   const {
     cwd,
     usedFallback: shouldUseWorkspaceFallback,
     cwdExists,
-  } = await resolveCodezAgentSpawnCwd({ requestedCwd, workspacePath, spawnFallbackCwd });
+  } = await resolveCodezAgentSpawnCwd({
+    requestedCwd,
+    workspacePath,
+    spawnFallbackCwd,
+  });
   return {
     command: command.command,
     args: command.args ?? [],
@@ -350,7 +374,8 @@ async function buildCodezAgentSpawnPreflight(
     commandPathKind,
     // Node spawn 的 ENOENT 既可能来自 command 缺失，也可能来自 cwd 缺失。
     // 生产日志在 spawn 前同时记录两者可见性，避免把工作区路径丢失误判成自动更新丢 binary。
-    commandExists: commandPathKind === "absolute" ? existsSync(command.command) : null,
+    commandExists:
+      commandPathKind === "absolute" ? existsSync(command.command) : null,
     cwdExists,
   };
 }
@@ -358,16 +383,21 @@ async function buildCodezAgentSpawnPreflight(
 function resolveBundledWorkspaceCodezAgentCommand(
   context: CodezAgentCommandResolverContext,
 ): CodezAgentCommand | null {
-  const distEntrypoint = findUpward("apps/codez-cli/packages/cli/dist/codez.cjs");
+  const distEntrypoint = findUpward(
+    "apps/codez-cli/packages/cli/dist/codez.cjs",
+  );
   if (distEntrypoint) {
     const useBytecode =
-      process.versions.electron && process.env.CODEZ_DESKTOP_AGENT_BYTECODE === "1";
+      process.versions.electron &&
+      process.env.CODEZ_DESKTOP_AGENT_BYTECODE === "1";
     const entrypoint = useBytecode
       ? join(dirname(distEntrypoint), "codez.bytecode.cjs")
       : distEntrypoint;
     // 此同步 command resolver 沿用既有 existsSync 契约；显式试验不能静默回退成 JS。
     if (useBytecode && !existsSync(entrypoint)) {
-      throw new Error("桌面 Agent 字节码入口缺失，请运行 pnpm build:desktop-agent:bytecode");
+      throw new Error(
+        "桌面 Agent 字节码入口缺失，请运行 pnpm build:desktop-agent:bytecode",
+      );
     }
     return {
       command: process.execPath,
@@ -381,7 +411,9 @@ function resolveBundledWorkspaceCodezAgentCommand(
     };
   }
 
-  const sourceEntrypoint = findUpward("apps/codez-cli/packages/cli/src/main.ts");
+  const sourceEntrypoint = findUpward(
+    "apps/codez-cli/packages/cli/src/main.ts",
+  );
   const tsxEntrypoint = findUpward("node_modules/.bin/tsx");
   if (!sourceEntrypoint || !tsxEntrypoint) {
     return null;
@@ -448,11 +480,24 @@ export function resolveDefaultCodezAgentCommand(
     return applyPresentationSurfaceToCommand(
       {
         command,
-        args: parseArgsJson(process.env.CODEZ_AGENT_SERVER_ARGS_JSON) ?? ["app-server", "--stdio"],
-        cwd: process.env.CODEZ_AGENT_SERVER_CWD?.trim() || context.workspacePath,
+        args: parseArgsJson(process.env.CODEZ_AGENT_SERVER_ARGS_JSON) ?? [
+          "app-server",
+          "--stdio",
+        ],
+        cwd:
+          process.env.CODEZ_AGENT_SERVER_CWD?.trim() || context.workspacePath,
       },
       context.presentationSurface,
     );
+  }
+
+  if (
+    usesCodexBridgeRuntime({
+      desktopDefault: context.presentationSurface === "desktop",
+      customCommandResolver: false,
+    })
+  ) {
+    return resolveCodexBridgeCommand(context);
   }
 
   // 顺序：env 显式覆盖 → monorepo dev 源码/dist（dev 改源码立刻生效，不会被远端历史装的 native binary
@@ -541,16 +586,31 @@ export function wrapCodezAgentCommandWithStdioTapDevProxy(
 }
 
 export class CodezAgentProcessManager {
-  private readonly processesByWorkspaceKey = new Map<string, ManagedCodezAgentProcess>();
+  private readonly processesByWorkspaceKey = new Map<
+    string,
+    ManagedCodezAgentProcess
+  >();
   private readonly ownedProcesses = new Set<ManagedCodezAgentProcess>();
-  private readonly startingByWorkspaceKey = new Map<string, Promise<CodezProtocolClient>>();
+  private readonly startingByWorkspaceKey = new Map<
+    string,
+    Promise<CodezProtocolClient>
+  >();
   private readonly restartGenerationByWorkspaceKey = new Map<string, number>();
   private readonly runtimeGenerationByWorkspaceKey = new Map<string, number>();
-  private readonly availableRuntimeIdentityByWorkspaceKey = new Map<string, string>();
+  private readonly availableRuntimeIdentityByWorkspaceKey = new Map<
+    string,
+    string
+  >();
   private readonly startAdmissionAbortControllersByWorkspaceKey = new Map<
     string,
     Set<AbortController>
   >();
+  /**
+   * 工作树删除隔离（specs/git-worktree-removal.md W5a）：删除编排先隔离再释放，
+   * 隔离期间任何 getClient（含 UI 恢复与新订阅触发的 start）对该 workspaceKey
+   * 一律拒绝，闭合"释放后、物理删除前重新 spawn 持有目录句柄"的竞态。
+   */
+  private readonly removalQuarantineByWorkspaceKey = new Set<string>();
   private readonly storageStartupEmitter = new Emitter<{
     workspaceKey: string;
     snapshot: CodezAgentStorageStartupSnapshot;
@@ -561,7 +621,9 @@ export class CodezAgentProcessManager {
     workspacePath: string;
     workspaceIdentity?: string;
   }): CodezAgentStorageStartupSnapshot | null {
-    const managed = this.processesByWorkspaceKey.get(resolveWorkspaceKey(params));
+    const managed = this.processesByWorkspaceKey.get(
+      resolveWorkspaceKey(params),
+    );
     return managed
       ? {
           generation: managed.runtimeIdentity.generation,
@@ -573,14 +635,18 @@ export class CodezAgentProcessManager {
   private readonly commandResolver: CodezAgentCommandResolver;
   private readonly presentationSurface: CodezAgentProcessManagerOptions["presentationSurface"];
   private readonly requestTimeoutMs: number | undefined;
-  private readonly processLifecycleReporter: RuntimeProcessLifecycleReporter | undefined;
+  private readonly processLifecycleReporter:
+    | RuntimeProcessLifecycleReporter
+    | undefined;
   private readonly resolveSpawnEnv: CodezAgentProcessManagerOptions["resolveSpawnEnv"];
   private readonly waitForSpawnAdmission: CodezAgentProcessManagerOptions["waitForSpawnAdmission"];
   private readonly spawnFallbackCwd: string | undefined;
   private readonly lane: string | undefined;
   private readonly idleTimeoutMs: number | undefined;
-  private readonly runtimeRestartedEmitter = new Emitter<CodezAgentRuntimeRestartedEvent>();
-  private readonly runtimeLifecycleEmitter = new Emitter<CodezAgentRuntimeLifecycleEvent>();
+  private readonly runtimeRestartedEmitter =
+    new Emitter<CodezAgentRuntimeRestartedEvent>();
+  private readonly runtimeLifecycleEmitter =
+    new Emitter<CodezAgentRuntimeLifecycleEvent>();
   private disposeAllInFlight: Promise<void> | undefined;
   private disposed = false;
 
@@ -590,7 +656,8 @@ export class CodezAgentProcessManager {
   readonly onRuntimeLifecycle = this.runtimeLifecycleEmitter.event;
 
   constructor(options?: CodezAgentProcessManagerOptions) {
-    this.commandResolver = options?.commandResolver ?? resolveDefaultCodezAgentCommand;
+    this.commandResolver =
+      options?.commandResolver ?? resolveDefaultCodezAgentCommand;
     this.presentationSurface = options?.presentationSurface;
     this.requestTimeoutMs = options?.requestTimeoutMs;
     this.processLifecycleReporter = options?.processLifecycleReporter;
@@ -599,7 +666,9 @@ export class CodezAgentProcessManager {
     this.spawnFallbackCwd = options?.spawnFallbackCwd;
     this.lane = options?.lane?.trim() || undefined;
     this.idleTimeoutMs =
-      options?.idleTimeoutMs && options.idleTimeoutMs > 0 ? options.idleTimeoutMs : undefined;
+      options?.idleTimeoutMs && options.idleTimeoutMs > 0
+        ? options.idleTimeoutMs
+        : undefined;
   }
 
   private reportProcessLifecycle(
@@ -630,7 +699,10 @@ export class CodezAgentProcessManager {
    * 主动回收整棵进程树（含挂在其下的 MCP 子进程）。归因为 expected/idle-timeout，
    * 不会被监控当作崩溃。到点时有新请求在飞则什么都不做，等下一次归零重新计时。
    */
-  private scheduleIdleReclaim(workspaceKey: string, managed: ManagedCodezAgentProcess): void {
+  private scheduleIdleReclaim(
+    workspaceKey: string,
+    managed: ManagedCodezAgentProcess,
+  ): void {
     if (!this.idleTimeoutMs || this.disposed || managed.exited) {
       return;
     }
@@ -793,7 +865,9 @@ export class CodezAgentProcessManager {
     return cleanupPromise;
   }
 
-  private async cleanupManagedProcessForShutdown(managed: ManagedCodezAgentProcess): Promise<void> {
+  private async cleanupManagedProcessForShutdown(
+    managed: ManagedCodezAgentProcess,
+  ): Promise<void> {
     await this.cleanupManagedProcessWithRetry(
       managed,
       "manager-dispose",
@@ -822,12 +896,19 @@ export class CodezAgentProcessManager {
         pid: managed.child.pid,
         runtimeIdentity: managed.runtimeIdentity.identity,
         cleanupStage: reason,
-        errorName: firstError instanceof Error ? firstError.name || "Error" : "UnknownError",
-        ...(typeof cleanupError.code === "string" ? { errorCode: cleanupError.code } : {}),
+        errorName:
+          firstError instanceof Error
+            ? firstError.name || "Error"
+            : "UnknownError",
+        ...(typeof cleanupError.code === "string"
+          ? { errorCode: cleanupError.code }
+          : {}),
         error: firstError,
       });
       try {
-        await this.cleanupManagedProcess(managed, retryReason, { reportError: false });
+        await this.cleanupManagedProcess(managed, retryReason, {
+          reportError: false,
+        });
       } catch (finalError) {
         errorLog("Codez agent process cleanup failed", {
           workspaceKey: managed.runtimeIdentity.workspaceKey,
@@ -850,6 +931,11 @@ export class CodezAgentProcessManager {
       throw new Error("Codez agent process manager is disposed.");
     }
     const workspaceKey = resolveWorkspaceKey(params);
+    if (this.removalQuarantineByWorkspaceKey.has(workspaceKey)) {
+      throw new Error(
+        `Codez agent runtime is unavailable because the workspace is being removed: ${workspaceKey}`,
+      );
+    }
     const existing = this.processesByWorkspaceKey.get(workspaceKey);
     if (existing && !existing.child.killed) {
       return existing.client;
@@ -871,12 +957,17 @@ export class CodezAgentProcessManager {
 
     // agent 启动前置后，host warmup 和 UI 首次 readWorkspacePresentation/sendPrompt
     // 可能同时进入 getClient。这里按 workspaceKey 收敛启动中的 promise，避免同一工作区重复 spawn。
-    const startGeneration = this.restartGenerationByWorkspaceKey.get(workspaceKey) ?? 0;
+    const startGeneration =
+      this.restartGenerationByWorkspaceKey.get(workspaceKey) ?? 0;
     const admissionAbortController = new AbortController();
-    let controllers = this.startAdmissionAbortControllersByWorkspaceKey.get(workspaceKey);
+    let controllers =
+      this.startAdmissionAbortControllersByWorkspaceKey.get(workspaceKey);
     if (!controllers) {
       controllers = new Set<AbortController>();
-      this.startAdmissionAbortControllersByWorkspaceKey.set(workspaceKey, controllers);
+      this.startAdmissionAbortControllersByWorkspaceKey.set(
+        workspaceKey,
+        controllers,
+      );
     }
     controllers.add(admissionAbortController);
     const startPromise = this.startClient(
@@ -906,7 +997,9 @@ export class CodezAgentProcessManager {
     workspacePath: string;
     workspaceIdentity?: string;
   }): CodezProtocolClient | undefined {
-    const managed = this.processesByWorkspaceKey.get(resolveWorkspaceKey(params));
+    const managed = this.processesByWorkspaceKey.get(
+      resolveWorkspaceKey(params),
+    );
     return managed && !managed.child.killed ? managed.client : undefined;
   }
 
@@ -926,7 +1019,12 @@ export class CodezAgentProcessManager {
       client: CodezProtocolClient;
     }> = [];
     for (const managed of this.processesByWorkspaceKey.values()) {
-      if (managed.exited || managed.child.killed || typeof managed.child.pid !== "number") continue;
+      if (
+        managed.exited ||
+        managed.child.killed ||
+        typeof managed.child.pid !== "number"
+      )
+        continue;
       result.push({
         pid: managed.child.pid,
         workspacePath: managed.workspace.workspacePath,
@@ -945,8 +1043,15 @@ export class CodezAgentProcessManager {
     params: { workspacePath: string; workspaceIdentity?: string },
     client: CodezProtocolClient,
   ): void {
-    const managed = this.processesByWorkspaceKey.get(resolveWorkspaceKey(params));
-    if (!managed || managed.client !== client || managed.readyAt != null || managed.exited) {
+    const managed = this.processesByWorkspaceKey.get(
+      resolveWorkspaceKey(params),
+    );
+    if (
+      !managed ||
+      managed.client !== client ||
+      managed.readyAt != null ||
+      managed.exited
+    ) {
       return;
     }
     managed.readyAt = Date.now();
@@ -968,7 +1073,9 @@ export class CodezAgentProcessManager {
     const resolveCommandStartedAt = Date.now();
     const command = await this.commandResolver({
       ...params,
-      ...(this.presentationSurface ? { presentationSurface: this.presentationSurface } : {}),
+      ...(this.presentationSurface
+        ? { presentationSurface: this.presentationSurface }
+        : {}),
       workspaceKey,
     });
     const resolveCommandDurationMs = Date.now() - resolveCommandStartedAt;
@@ -978,9 +1085,15 @@ export class CodezAgentProcessManager {
       );
     }
     if (admissionSignal.aborted) {
-      throw admissionSignal.reason ?? new Error("Codez agent process start was cancelled.");
+      throw (
+        admissionSignal.reason ??
+        new Error("Codez agent process start was cancelled.")
+      );
     }
-    const effectiveCommand = wrapCodezAgentCommandWithStdioTapDevProxy(command, workspaceKey);
+    const effectiveCommand = wrapCodezAgentCommandWithStdioTapDevProxy(
+      command,
+      workspaceKey,
+    );
     log("Codez agent command resolved", {
       workspaceKey,
       command: command.command,
@@ -990,17 +1103,25 @@ export class CodezAgentProcessManager {
 
     // Helper recovery 可能在 command resolve 期间开始；先等待一次，确保 env 解析使用
     // recovery 后的 broker 凭据，而不是把旧状态带到 spawn 边界。
-    await this.waitForSpawnAdmission?.({ ...params, workspaceKey, signal: admissionSignal });
+    await this.waitForSpawnAdmission?.({
+      ...params,
+      workspaceKey,
+      signal: admissionSignal,
+    });
 
     // 设置页代理等运行时 env 在 process.env 之后合入（覆盖继承的同名 shell 变量），
     // 但仍让 command.env（部署特定）保持最高优先级。
-    const spawnEnv = (await this.resolveSpawnEnv?.({ ...params, workspaceKey })) ?? {};
+    const spawnEnv =
+      (await this.resolveSpawnEnv?.({ ...params, workspaceKey })) ?? {};
     if (this.disposed) {
       // app 正在关闭时，启动中的 warmup 可能刚完成 command/env resolve。
       // 这时继续 spawn 会绕过 disposeAllAndWait 的快照，重新制造一个无人托管的 agent 进程。
       throw new Error("Codez agent process manager is disposed.");
     }
-    if ((this.restartGenerationByWorkspaceKey.get(workspaceKey) ?? 0) !== startGeneration) {
+    if (
+      (this.restartGenerationByWorkspaceKey.get(workspaceKey) ?? 0) !==
+      startGeneration
+    ) {
       // 切模型会重启单个 workspace。旧启动请求如果在重启后才恢复，
       // 不能继续 spawn 并写回进程池，否则新配置会被旧 agent 覆盖。
       throw new Error("Codez agent process start was cancelled.");
@@ -1014,11 +1135,18 @@ export class CodezAgentProcessManager {
     admissionSignal.throwIfAborted();
     // env resolve 本身是异步的，恢复屏障可能在这段时间重新关闭；必须在 spawn 前
     // 再等待并复查代际，不能只依赖第一次 admission。
-    await this.waitForSpawnAdmission?.({ ...params, workspaceKey, signal: admissionSignal });
+    await this.waitForSpawnAdmission?.({
+      ...params,
+      workspaceKey,
+      signal: admissionSignal,
+    });
     if (this.disposed) {
       throw new Error("Codez agent process manager is disposed.");
     }
-    if ((this.restartGenerationByWorkspaceKey.get(workspaceKey) ?? 0) !== startGeneration) {
+    if (
+      (this.restartGenerationByWorkspaceKey.get(workspaceKey) ?? 0) !==
+      startGeneration
+    ) {
       throw new Error("Codez agent process start was cancelled.");
     }
     // app 以本地开发方式启动时，让 agent 子进程也带上 CODEZ_RUNTIME_ENV=development；
@@ -1040,7 +1168,10 @@ export class CodezAgentProcessManager {
         ...spawnEnv,
         ...effectiveCommand.env,
         // 生成文件根目录由执行端 Host 唯一决定，保证 Agent 写入与 Host 读取授权一致。
-        [GEN_UI_OUTPUT_ROOT_ENV]: join(getAppConfigDir(), GEN_UI_OUTPUT_DIRECTORY),
+        [GEN_UI_OUTPUT_ROOT_ENV]: join(
+          getAppConfigDir(),
+          GEN_UI_OUTPUT_DIRECTORY,
+        ),
         // 身份/隔离语义使用 workspaceIdentity；cwd 继续使用 workspacePath。
         ...buildAgentWorkspaceIdentityEnv(params.workspaceIdentity),
         ...buildE2EAgentCoverageEnv(),
@@ -1087,25 +1218,44 @@ export class CodezAgentProcessManager {
           );
           return;
         }
+        const titleDiagnostic = parseCodexBridgeTitleDiagnostic(line);
+        if (titleDiagnostic) {
+          // 修复依据：标题失败与跳过都不会终止进程，只放进 debug stderr/退出 tail 就等于
+          // 没有——远程 workspace 的 bridge stderr 只经这条路径进入导出日志。
+          // 跳过（skipped）是设计内的“保留预览”，但必须带原因码，否则表现为静默失效。
+          warnLog(
+            titleDiagnostic.kind === "failed"
+              ? "Codex automatic title failed; keeping preview"
+              : "Codex automatic title skipped; keeping preview",
+            titleDiagnostic,
+          );
+          return;
+        }
         stderrTail.append(line);
         debugLog(line);
       },
       ownedProcessStartedAtMs: spawnRequestedAt,
       // POSIX 下 child 由本 manager 以 detached=true 启动，pid 同时就是 Host
       // 拥有的独立 PGID；异常 root exit 后 cleanup 仍可按组回收同组后代。
-      ...(process.platform !== "win32" && child.pid ? { ownedProcessGroupId: child.pid } : {}),
+      ...(process.platform !== "win32" && child.pid
+        ? { ownedProcessGroupId: child.pid }
+        : {}),
     });
     const client = new CodezProtocolClient(transport, {
       requireStorageStartup: effectiveCommand.supportsStorageStartup,
       requestTimeoutMs: this.requestTimeoutMs,
     });
     if (child.pid) {
-      const unregisterNetworkCapture = localRuntimeNetworkCapture.register(client, child.pid);
+      const unregisterNetworkCapture = localRuntimeNetworkCapture.register(
+        client,
+        child.pid,
+      );
       child.once("close", unregisterNetworkCapture);
     }
     // Agent 进程重启后，Host 仍需要 runtime identity 区分新旧订阅和运行命令。
     // Provider Registry 由新 Worker 从所属 Environment 的 Config 重建，不再由 UI 重新下发。
-    const runtimeGeneration = (this.runtimeGenerationByWorkspaceKey.get(workspaceKey) ?? 0) + 1;
+    const runtimeGeneration =
+      (this.runtimeGenerationByWorkspaceKey.get(workspaceKey) ?? 0) + 1;
     this.runtimeGenerationByWorkspaceKey.set(workspaceKey, runtimeGeneration);
     // 生命周期事件关联只需要本次 runtime 的不透明身份，不能复用包含 workspaceKey 的协议 identity。
     const runtimeInstanceId = `agent-${randomUUID()}`;
@@ -1131,7 +1281,9 @@ export class CodezAgentProcessManager {
       startedAt,
       workspace: {
         workspacePath: params.workspacePath,
-        ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
+        ...(params.workspaceIdentity
+          ? { workspaceIdentity: params.workspaceIdentity }
+          : {}),
       },
     };
     this.processesByWorkspaceKey.set(workspaceKey, managed);
@@ -1147,13 +1299,18 @@ export class CodezAgentProcessManager {
       }
       this.storageStartupEmitter.fire({
         workspaceKey,
-        snapshot: { generation: runtimeGeneration, state: client.storageStartup.snapshot ?? null },
+        snapshot: {
+          generation: runtimeGeneration,
+          state: client.storageStartup.snapshot ?? null,
+        },
       });
     };
     client.storageStartup.onDidChange(publishStorage);
     publishStorage();
     if (this.idleTimeoutMs) {
-      client.onPendingRequestsDrained(() => this.scheduleIdleReclaim(workspaceKey, managed));
+      client.onPendingRequestsDrained(() =>
+        this.scheduleIdleReclaim(workspaceKey, managed),
+      );
     }
     child.once("spawn", () => {
       managed.spawned = true;
@@ -1161,14 +1318,22 @@ export class CodezAgentProcessManager {
       // 旧代码在确认 spawn 成功前就发布 runtimeRestarted，订阅方随即重连并再次触发
       // 启动，最终形成失败启动 -> 假重启 -> 重连的自激风暴。只有 spawn 事件才表示
       // 新 CLI 运行时真实存在，可以安全通知 v4 订阅方重订。
-      if (runtimeGeneration > 1 && this.processesByWorkspaceKey.get(workspaceKey) === managed) {
+      if (
+        runtimeGeneration > 1 &&
+        this.processesByWorkspaceKey.get(workspaceKey) === managed
+      ) {
         this.runtimeRestartedEmitter.fire({ workspaceKey, runtimeIdentity });
       }
       if (this.processesByWorkspaceKey.get(workspaceKey) === managed) {
-        this.availableRuntimeIdentityByWorkspaceKey.set(workspaceKey, runtimeIdentity.identity);
+        this.availableRuntimeIdentityByWorkspaceKey.set(
+          workspaceKey,
+          runtimeIdentity.identity,
+        );
         this.runtimeLifecycleEmitter.fire({
           workspacePath: params.workspacePath,
-          ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
+          ...(params.workspaceIdentity
+            ? { workspaceIdentity: params.workspaceIdentity }
+            : {}),
           workspaceKey,
           runtimeIdentity,
           state: "available",
@@ -1316,13 +1481,16 @@ export class CodezAgentProcessManager {
         );
         return;
       }
-      warnLog("Codez agent request timed out; disposing stale protocol client", {
-        workspaceKey,
-        method: event.method,
-        requestId: event.requestId,
-        timeoutMs: event.timeoutMs,
-        pid: child.pid,
-      });
+      warnLog(
+        "Codez agent request timed out; disposing stale protocol client",
+        {
+          workspaceKey,
+          method: event.method,
+          requestId: event.requestId,
+          timeoutMs: event.timeoutMs,
+          pid: child.pid,
+        },
+      );
       this.processesByWorkspaceKey.delete(workspaceKey);
       this.reportRuntimeUnavailable(managed);
       // timeout 说明协议请求/响应链路已经不可信。旧实现只 reject 当前请求，
@@ -1336,7 +1504,8 @@ export class CodezAgentProcessManager {
       ).catch(() => undefined);
     });
     client.onClose(() => {
-      const wasActiveClient = this.processesByWorkspaceKey.get(workspaceKey) === managed;
+      const wasActiveClient =
+        this.processesByWorkspaceKey.get(workspaceKey) === managed;
       log("Codez agent protocol client closed", {
         workspaceKey,
         pid: child.pid,
@@ -1383,7 +1552,9 @@ export class CodezAgentProcessManager {
     try {
       const command = await this.commandResolver({
         ...params,
-        ...(this.presentationSurface ? { presentationSurface: this.presentationSurface } : {}),
+        ...(this.presentationSurface
+          ? { presentationSurface: this.presentationSurface }
+          : {}),
         workspaceKey,
       });
       return command
@@ -1400,6 +1571,22 @@ export class CodezAgentProcessManager {
         reason: error instanceof Error ? error.message : String(error),
       };
     }
+  }
+
+  /** 进入删除隔离：后续 getClient 对该 workspace 拒绝 spawn（W5a）。 */
+  quarantineWorkspaceForRemoval(params: {
+    workspacePath: string;
+    workspaceIdentity?: string;
+  }): void {
+    this.removalQuarantineByWorkspaceKey.add(resolveWorkspaceKey(params));
+  }
+
+  /** 解除删除隔离；删除结束（成功/失败）必须成对调用。 */
+  releaseWorkspaceRemovalHold(params: {
+    workspacePath: string;
+    workspaceIdentity?: string;
+  }): void {
+    this.removalQuarantineByWorkspaceKey.delete(resolveWorkspaceKey(params));
   }
 
   async disposeWorkspace(params: {
@@ -1435,7 +1622,8 @@ export class CodezAgentProcessManager {
     workspaceKey: string,
     reason = new Error("Codez agent process start was cancelled."),
   ): void {
-    const controllers = this.startAdmissionAbortControllersByWorkspaceKey.get(workspaceKey);
+    const controllers =
+      this.startAdmissionAbortControllersByWorkspaceKey.get(workspaceKey);
     if (!controllers) {
       return;
     }
@@ -1484,7 +1672,9 @@ export class CodezAgentProcessManager {
     // 依赖 unref timer，host 自己退出后 timer 不会再执行，codez-cli 会残留为孤儿进程。
     // 这里让 host 可以等待每个 workspace 的 agent 进程树完成 graceful + force 清理。
     this.disposeAllInFlight = Promise.all(
-      managedProcesses.map((managed) => this.cleanupManagedProcessForShutdown(managed)),
+      managedProcesses.map((managed) =>
+        this.cleanupManagedProcessForShutdown(managed),
+      ),
     ).then(() => undefined);
     try {
       await this.disposeAllInFlight;

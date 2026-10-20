@@ -1,5 +1,7 @@
 /* eslint-disable max-lines -- Side pane tab 状态集中维护 Browser/Git/CodeViewer/Treemapping/Whiteboard 的打开、复用、关闭和排序规则；拆分需要同步迁移现有内存恢复逻辑。 */
 import {
+  NATIVE_BROWSER_CUA_SESSION_ID,
+  NATIVE_BROWSER_CUA_WORKSPACE_KEY_PREFIX,
   createUuid,
   type BrowserTabResidencyState,
   type BrowserViewRestoredTabShell,
@@ -1125,7 +1127,83 @@ function sidePaneTabMatchesWorkspace(
   tab: WorkspaceSidePaneTab,
   activeWorkspaceKey: string | null,
 ): boolean {
+  // 原生浏览器 tab 的 workspaceKey 是 synthetic（native-browser-cua:*），guest 实际
+  // 挂在收到事件的窗口里，按窗口级可见处理。
+  if (isNativeBrowserCuaWindowTab(tab)) return true;
   return tab.workspaceKey == null || tab.workspaceKey === activeWorkspaceKey;
+}
+
+/**
+ * Codex 原生浏览器 MCP（codez-desktop-browser-cua）创建的 tab：MCP server 全局配置，
+ * 不绑定任何会话，owner 是 synthetic scope（spec: codex-desktop-native-browser-cua
+ * 「Side pane surfacing」）。synthetic 值必须原样保留在 tab 上（main 的 attach 校验
+ * 逐字比对 owner），仅可见性/聚焦规则按窗口级处理。
+ */
+export function isNativeBrowserCuaSidePaneTab(tab: WorkspaceSidePaneTab): boolean {
+  return tab.type === "browser-use" && tab.sessionId === NATIVE_BROWSER_CUA_SESSION_ID;
+}
+
+/** 原生工具打开的 popup 保留 synthetic guest owner，与来源 tab 同属窗口级可见范围。 */
+export function isNativeBrowserCuaWindowTab(tab: WorkspaceSidePaneTab): boolean {
+  return (
+    isNativeBrowserCuaSidePaneTab(tab) ||
+    (tab.type === "browser" &&
+      tab.agentOpened === true &&
+      tab.ownerTaskId === NATIVE_BROWSER_CUA_SESSION_ID &&
+      Boolean(tab.workspaceKey?.startsWith(NATIVE_BROWSER_CUA_WORKSPACE_KEY_PREFIX)))
+  );
+}
+
+/** Human popup 的 guest attach 保持 native owner；只有普通 browser 才继承当前远端会话。 */
+export function resolveBrowserSidePaneGuestScope(
+  tab: BrowserSidePaneTab,
+  activeRemoteSessionId?: string | null,
+): { workspaceKey: string | undefined; remoteSessionId: string | undefined } {
+  if (isNativeBrowserCuaWindowTab(tab)) {
+    return {
+      workspaceKey: tab.workspaceKey ?? undefined,
+      remoteSessionId: tab.remoteSessionId ?? undefined,
+    };
+  }
+  return {
+    workspaceKey: undefined,
+    remoteSessionId: tab.remoteSessionId ?? activeRemoteSessionId ?? undefined,
+  };
+}
+
+/** 只认当前侧栏中仍存活且 owner 精确匹配的来源；不能靠 synthetic 字符串猜归属。 */
+export function getNativeBrowserCuaPopupSource(
+  state: WorkspaceSidePaneState | null,
+  request: {
+    sourceTabId?: string;
+    sessionId?: string;
+    workspaceKey?: string | null;
+    remoteSessionId?: string;
+  },
+): WorkspaceSidePaneTab | undefined {
+  if (
+    !request.sourceTabId ||
+    request.sessionId !== NATIVE_BROWSER_CUA_SESSION_ID ||
+    !request.workspaceKey?.startsWith(NATIVE_BROWSER_CUA_WORKSPACE_KEY_PREFIX)
+  ) {
+    return undefined;
+  }
+  return state?.tabs.find(
+    (tab) =>
+      (tab.type === "browser" || tab.type === "browser-use") &&
+      isNativeBrowserCuaWindowTab(tab) &&
+      tab.workspaceKey === request.workspaceKey &&
+      (tab.remoteSessionId ?? "") === (request.remoteSessionId ?? "") &&
+      (tab.type === "browser-use" ? tab.tabId : tab.id) === request.sourceTabId,
+  );
+}
+
+export function shouldRevealNativeBrowserCuaPopup(
+  state: WorkspaceSidePaneState | null,
+  sourceTab: WorkspaceSidePaneTab | undefined,
+  isPaneVisible: boolean,
+): boolean {
+  return Boolean(sourceTab && isPaneVisible && state?.activeTabId === sourceTab.id);
 }
 
 /**
@@ -1173,7 +1251,7 @@ export function isSidePaneTabVisibleInScope(
     case "treemapping":
       return true;
     case "browser-use":
-      return tab.sessionId === scope.ownerTaskId;
+      return isNativeBrowserCuaSidePaneTab(tab) || tab.sessionId === scope.ownerTaskId;
     case "subagent-session":
     case "subagent-directory":
     case "bash-output":
@@ -1188,6 +1266,10 @@ export function isSidePaneTabVisibleInScope(
     case "workflow-artifact":
       return tab.parentSessionId === scope.ownerTaskId;
     case "browser":
+      return (
+        isNativeBrowserCuaWindowTab(tab) ||
+        sidePaneOwnerKey(tab.ownerTaskId) === sidePaneOwnerKey(scope.ownerTaskId)
+      );
     case "browser-permissions":
     case "file-manager":
     case "code-viewer":
@@ -1468,10 +1550,16 @@ export function applyBrowserUseSidePaneEvent(
   },
   activeScope: BrowserUseSidePaneScope,
 ): { state: WorkspaceSidePaneState; shouldReveal: boolean } {
-  const shouldReveal =
+  const shouldRevealScope =
     options.workspaceKey === activeScope.workspaceKey &&
     (options.remoteSessionId ?? "") === (activeScope.remoteSessionId ?? "") &&
     options.sessionId === activeScope.ownerTaskId;
+  // 原生浏览器 tab 的 synthetic scope 永远不会匹配会话 scope；改为「新建即揭示」，
+  // 已存在 tab 的重放/恢复 ready 事件仍只后台挂载，不抢焦点。
+  const isNativeNewTab =
+    options.sessionId === NATIVE_BROWSER_CUA_SESSION_ID &&
+    !current?.tabs.some((tab) => tab.id === `browser-use:${options.tabId}`);
+  const shouldReveal = shouldRevealScope || isNativeNewTab;
   return {
     state: openBrowserUseSidePane(current, {
       ...options,
@@ -2145,6 +2233,36 @@ export function openWorkflowArtifactSidePane(
   const merged: WorkflowArtifactSidePaneTab = { ...existing, ...nextTab };
   if (nextTab.version === undefined) delete merged.version;
   return activateSidePaneTab(current, merged);
+}
+
+export function isSidePaneTabVisibleForParent(
+  tab: WorkspaceSidePaneTab,
+  parentSessionId: string | null,
+): boolean {
+  if (tab.type === "browser-use") {
+    return isNativeBrowserCuaSidePaneTab(tab) || tab.sessionId === parentSessionId;
+  }
+  // 归属于某条对话（而非 workspace 全局）的 tab 按 parentSessionId 收窄。
+  if (
+    tab.type === "selection-side-chat" ||
+    tab.type === "plan-detail" ||
+    tab.type === "plugin-ui" ||
+    tab.type === "workflow-run" ||
+    tab.type === "workflow-directory" ||
+    tab.type === "workflow-actor-session" ||
+    tab.type === "workflow-workspace" ||
+    tab.type === "workflow-artifact"
+  ) {
+    return tab.parentSessionId === parentSessionId;
+  }
+  if (
+    tab.type === "subagent-session" ||
+    tab.type === "subagent-directory" ||
+    tab.type === "bash-output"
+  ) {
+    return tab.rootSessionId === parentSessionId;
+  }
+  return true;
 }
 
 export function selectSidePaneTabsForScope(

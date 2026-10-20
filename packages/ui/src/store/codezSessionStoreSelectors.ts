@@ -4,10 +4,7 @@
  * 从 codezSessionStore.ts 拆分出来，包含 workspace 状态读取/更新辅助函数，
  * 以及所有按 task 粒度的只读访问器和独立选择器。
  */
-import type {
-  CodezTaskRuntimeStatus,
-  CodezTaskMeta,
-} from "@codez/shared";
+import type { CodezTaskRuntimeStatus, CodezTaskMeta } from "@codez/shared";
 import { mergeTaskWithOptimisticMeta } from "@/lib/codezTaskMetaMerge.js";
 import {
   DEFAULT_TASK_UI_STATE,
@@ -108,10 +105,7 @@ function createIdentityWorkspaceStateSeed(
             migratedTaskIds,
           ),
           taskUiByTaskId: copyTaskRecordEntries(baseState.taskUiByTaskId, migratedTaskIds),
-          taskUnreadByTaskId: copyTaskRecordEntries(
-            baseState.taskUnreadByTaskId,
-            migratedTaskIds,
-          ),
+          taskUnreadByTaskId: copyTaskRecordEntries(baseState.taskUnreadByTaskId, migratedTaskIds),
         }
       : {}),
   };
@@ -222,8 +216,10 @@ export function hasTaskPendingPermissionRequest(
   taskId: string,
 ): boolean {
   const taskUiState = getTaskUiState(workspaceState, taskId);
-  return taskUiState.permissionRequest != null ||
-    (taskUiState.pendingPermissionRequests?.length ?? 0) > 0;
+  return (
+    taskUiState.permissionRequest != null ||
+    (taskUiState.pendingPermissionRequests?.length ?? 0) > 0
+  );
 }
 
 export function hasTaskPendingHumanInterventionRequest(
@@ -231,12 +227,12 @@ export function hasTaskPendingHumanInterventionRequest(
   taskId: string,
 ): boolean {
   const taskUiState = getTaskUiState(workspaceState, taskId);
-  return hasTaskPendingPermissionRequest(workspaceState, taskId) ||
+  return (
+    hasTaskPendingPermissionRequest(workspaceState, taskId) ||
     taskUiState.elicitationRequest != null ||
-    (taskUiState.pendingElicitationRequests?.length ?? 0) > 0;
+    (taskUiState.pendingElicitationRequests?.length ?? 0) > 0
+  );
 }
-
-
 
 export function getTaskMeta(
   workspaceState:
@@ -274,6 +270,26 @@ export function getVisibleTaskMetas(
   }
 
   return Array.from(taskById.values());
+}
+
+const RUNNING_WORKSPACE_TASK_STATUSES = new Set(["creating", "restoring", "streaming"]);
+
+/**
+ * 插件 runtime 换代会影响同一 workspace 的全部会话；两处设置入口必须消费同一 busy 真值。
+ * runtime 投影和 task index 在事件边界可能短暂错位，所以任一路径仍为 running 都要阻止切换。
+ */
+export function hasRunningWorkspaceTask(
+  workspaceState: Pick<
+    WorkspaceCodezUIState,
+    "taskRuntimeByTaskId" | "optimisticTaskListByTaskId" | "taskListCache"
+  >,
+): boolean {
+  const runtimeBusy = Object.values(workspaceState.taskRuntimeByTaskId).some(
+    (runtime) =>
+      RUNNING_WORKSPACE_TASK_STATUSES.has(runtime.status) || Boolean(runtime.activeInputId?.trim()),
+  );
+  if (runtimeBusy) return true;
+  return getVisibleTaskMetas(workspaceState).some((task) => task.status === "running");
 }
 
 export function getTaskUnreadIndicator(

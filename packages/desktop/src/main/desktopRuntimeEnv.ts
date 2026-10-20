@@ -38,6 +38,11 @@ import {
   type ResolveRemoteCdnOptions,
 } from "./remoteCdn.js";
 import { getElectronAppPath, isElectronAppPackaged } from "./desktopElectronApp.js";
+import {
+  isCodexDesktop,
+  resolveCodexRemoteAssetDirs,
+  resolveDesktopApplicationName,
+} from "./desktopProductRuntime.js";
 
 declare const __CODEZ_PACKAGED_AGENT_TELEMETRY_ENV__: Readonly<Record<string, string>> | undefined;
 
@@ -64,7 +69,7 @@ function isTruthyRuntimeEnvOverride(name: string): boolean {
 // 这里允许测试显式隔离运行时身份，正常桌面/远控路径保持原来的默认值。
 export const runtimeApplicationName =
   readRuntimeEnvOverride("CODEZ_DESKTOP_APPLICATION_NAME") ??
-  (isLocalDevelopmentRuntime ? "Codez Dev" : isPreviewPackagedRuntime ? "Codez Preview" : "Codez");
+  resolveDesktopApplicationName(CODEZ_PRODUCT_FLAVOR, !isLocalDevelopmentRuntime);
 // Electron 的 app.getPath("home") 不一定跟随测试进程里的 HOME 覆盖。
 // e2e 默认工作区依赖 home 路径，因此提供显式覆盖，避免测试写到开发者真实 ~/CodezProject。
 export const runtimeHomePath = readRuntimeEnvOverride("CODEZ_DESKTOP_HOME_DIR");
@@ -91,7 +96,12 @@ export function getCredentialsDir() {
 
 export type RemoteAssetDirs = Pick<
   ConnectOptions,
-  "mockCdnDir" | "remoteCdnBaseUrl" | "remoteCdnBaseUrls" | "remoteCacheDir"
+  | "bundledRemoteAssetsDir"
+  | "packagedRemoteAssetsDir"
+  | "mockCdnDir"
+  | "remoteCdnBaseUrl"
+  | "remoteCdnBaseUrls"
+  | "remoteCacheDir"
 > & {
   sourceServerArtifactPolicy?: SourceServerArtifactPolicy;
 };
@@ -329,6 +339,13 @@ export function resolveRemoteAssetDirs(
   options: ResolveRemoteCdnOptions = {},
   localEnv: LocalRuntimeEnv = {},
 ): RemoteAssetDirs {
+  if (isCodexDesktop)
+    return resolveCodexRemoteAssetDirs({
+      isPackaged: isElectronAppPackaged(),
+      resourcesPath: process.resourcesPath,
+      desktopRoot: resolve(import.meta.dirname, "../.."),
+      cacheDir: resolveRemoteAssetCacheDir(localEnv),
+    });
   const remoteCdnBaseUrls = resolveRemoteCdnBaseUrls(options, localEnv);
   const remoteCdnBaseUrl = remoteCdnBaseUrls[0];
 
@@ -492,7 +509,7 @@ export function resolveDynamicWorkflowModeHostEnv(options: {
 }
 
 export function buildHostProcessEnv(hostProcessLocalEnv: Record<string, string>) {
-  const glmBinaryPath = resolveBundledGlmBinaryPath();
+  const glmBinaryPath = isCodexDesktop ? undefined : resolveBundledGlmBinaryPath();
   const larkCliBinaryPath = resolveBundledLarkCliBinaryPath();
   const resolvedGlmBinaryPath = resolveHostProcessBinaryEnv(
     "GLM_BINARY_PATH",
@@ -561,6 +578,7 @@ export function buildHostProcessEnv(hostProcessLocalEnv: Record<string, string>)
   // 三层里有两层不写这个键，空对象无法覆盖 inheritedEnv，所以先无条件删掉继承值再按决策 spread 回去。
   // 少了这一行，production 包和 dev 的非法取值都会原样穿透到 Host。
   delete inheritedEnv[CODEZ_DYNAMIC_WORKFLOW_MODE_ENV];
+  if (isCodexDesktop) delete inheritedEnv.GLM_BINARY_PATH;
 
   return {
     ...inheritedEnv,
@@ -573,6 +591,14 @@ export function buildHostProcessEnv(hostProcessLocalEnv: Record<string, string>)
     // 显式注入编译期产品身份，保证主进程与 host 的身份语义一致；地址独立解析。
     // inheritedEnv 从 .env 通用变量补齐 Codez/ZAI 链接，未覆盖时统一使用线上默认值。
     CODEZ_ENV,
+    ...(isCodexDesktop
+      ? {
+          CODEZ_DESKTOP_RUNTIME: "codex",
+          CODEZ_CODEX_BRIDGE_HOME: join(dataBaseDir, "bridge"),
+          CODEZ_HOME: join(dataBaseDir, ".codez"),
+          CODEZ_CUA_HELPER_INSTALL_VARIANT: "codex",
+        }
+      : {}),
     // Preview 与生产版共享任务、配置和凭据，但不同版本的 Helper 不能互相覆盖或触发降级保护。
     // 只隔离 computer-use 下的运行组件，不改写 CODEZ_HOME / CODEZ_DATA_BASE_DIR 业务数据根。
     ...(isPreviewPackagedRuntime ? { CODEZ_CUA_HELPER_INSTALL_VARIANT: "preview" } : {}),
@@ -589,7 +615,7 @@ export function buildHostProcessEnv(hostProcessLocalEnv: Record<string, string>)
     ...(bundledCuaHelperAppPath
       ? { [CODEZ_CUA_BUNDLED_HELPER_APP_PATH_ENV]: bundledCuaHelperAppPath }
       : {}),
-    ...(resolvedGlmBinaryPath ? { GLM_BINARY_PATH: resolvedGlmBinaryPath } : {}),
+    ...(!isCodexDesktop && resolvedGlmBinaryPath ? { GLM_BINARY_PATH: resolvedGlmBinaryPath } : {}),
     ...(resolvedLarkCliBinaryPath ? { CODEZ_LARK_CLI_BINARY: resolvedLarkCliBinaryPath } : {}),
   };
 }

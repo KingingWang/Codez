@@ -447,6 +447,8 @@ export async function queryAppUsage(
          coalesce(sum(computed_total_tokens), 0) as totalTokens,
          coalesce(sum(input_tokens), 0) as inputTokens,
          coalesce(sum(output_tokens), 0) as outputTokens,
+         coalesce(sum(cache_read_input_tokens), 0) as cacheReadTokens,
+         coalesce(sum(cache_creation_input_tokens), 0) as cacheCreationTokens,
          count(*) as requestCount
        from model_usage
        where started_at >= ? and started_at <= ?
@@ -534,7 +536,11 @@ export async function queryAppUsage(
       `select
          cast((started_at + ?) / ? as integer) as dayIndex,
          model_id as modelId,
-         coalesce(sum(computed_total_tokens), 0) as totalTokens
+         coalesce(sum(computed_total_tokens), 0) as totalTokens,
+         coalesce(sum(input_tokens), 0) as inputTokens,
+         coalesce(sum(output_tokens), 0) as outputTokens,
+         coalesce(sum(cache_read_input_tokens), 0) as cacheReadTokens,
+         coalesce(sum(cache_creation_input_tokens), 0) as cacheCreationTokens
        from model_usage
        where started_at >= ? and started_at <= ?
        group by dayIndex, model_id`,

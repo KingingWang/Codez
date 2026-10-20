@@ -144,6 +144,22 @@ export const AUTOMATION_SCHEMA = `
       ON automation_runs (automation_id, created_at DESC);
     `;
 
+export const CODEX_AUTOMATION_CORRELATIONS_SCHEMA = `
+      CREATE TABLE IF NOT EXISTS codex_automation_correlations (
+        workspace_key TEXT NOT NULL,
+        run_id TEXT NOT NULL,
+        automation_id TEXT NOT NULL,
+        command_id TEXT NOT NULL,
+        state TEXT NOT NULL CHECK (state IN ('pending', 'accepted', 'unknown', 'completed', 'failed')),
+        thread_id TEXT,
+        turn_id TEXT,
+        error TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (workspace_key, run_id)
+      );
+    `;
+
 export const OFF_PEAK_SCHEMA = `
       CREATE TABLE IF NOT EXISTS off_peak_tasks (
         off_peak_task_id   TEXT PRIMARY KEY,

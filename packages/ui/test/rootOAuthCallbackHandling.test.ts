@@ -43,6 +43,7 @@ describe("handleOAuthCallbackSuccess", () => {
     };
 
     await handleOAuthCallbackSuccess({
+      isCurrent: () => true,
       result: {
         kind: "session",
         provider: BIGMODEL_PROVIDER_ID,
@@ -117,6 +118,7 @@ describe("handleOAuthCallbackSuccess", () => {
 
     await expect(
       handleOAuthCallbackSuccess({
+        isCurrent: () => true,
         result: {
           kind: "session",
           provider: BIGMODEL_PROVIDER_ID,
@@ -173,6 +175,7 @@ describe("handleOAuthCallbackSuccess", () => {
     };
 
     await handleOAuthCallbackSuccess({
+      isCurrent: () => true,
       result: {
         kind: "session",
         provider: BIGMODEL_PROVIDER_ID,
@@ -215,6 +218,50 @@ describe("handleOAuthCallbackSuccess", () => {
     };
 
     await handleOAuthCallbackSuccess({
+      isCurrent: () => true,
+      result: {
+        kind: "session",
+        provider: ZAI_PROVIDER_ID,
+        userInfo: {
+          id: "user-1",
+          username: "zai-user",
+          displayName: "Z.ai User",
+        },
+      },
+      platform,
+      refreshLatestModelProviderFamilySelection,
+      refreshAppSettings,
+      refreshProviderState,
+      setProviderFamilyDomain,
+      setUser,
+      setOAuthError,
+    });
+
+    expect(events).toEqual(["selection", "settings", "provider-state"]);
+  });
+
+  it("Start Plan 选择收敛后统一刷新 Provider Runtime", async () => {
+    const { handleOAuthCallbackSuccess } = await import("@/root/useRootOAuthEffects.js");
+    const events: string[] = [];
+    const setUser = vi.fn();
+    const setOAuthError = vi.fn();
+    const refreshProviderState = vi.fn(async () => {
+      events.push("provider-state");
+    });
+    const refreshAppSettings = vi.fn(async () => {
+      events.push("settings");
+    });
+    const refreshLatestModelProviderFamilySelection = vi.fn(async () => {
+      events.push("selection");
+      return { kind: "start-plan" as const };
+    });
+    const setProviderFamilyDomain = vi.fn(async () => {});
+    const platform = {
+      reportTelemetryEvent: vi.fn(async () => {}),
+    };
+
+    await handleOAuthCallbackSuccess({
+      isCurrent: () => true,
       result: {
         kind: "session",
         provider: ZAI_PROVIDER_ID,

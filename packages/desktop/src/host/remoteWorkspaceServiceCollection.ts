@@ -42,6 +42,7 @@ import {
   ITaskGroupService,
   IRemoteProjectService,
   IPromptAttachmentTransferService,
+  ICodexNativeProviderKeyService,
   type ServiceDescriptor,
   type IServiceAccessor,
 } from "@codez/services";
@@ -53,6 +54,7 @@ import {
   createServiceLogger,
   createLegacySingleRootProjectService,
   createRemoteProjectService,
+  createCodexNativeProviderKeyService,
 } from "@codez/services/node";
 import {
   buildServerRemoteWorkspaceIdentity,
@@ -181,13 +183,29 @@ export function createServerRemoteWorkspaceServiceCollection(params: {
   targetKind: RemoteTarget["kind"];
   /** 本机 Local Host 服务；提供 Provider Provisioning Source，缺失时 Provisioning 按 unsupported 处理。 */
   sourceServices?: ServiceCollection;
+  environmentKey?: string;
+  codexKeyRotationBridge?: {
+    request(phase: "begin" | "commit" | "rollback"): Promise<void>;
+  };
 }): ServiceCollection {
   assertRemoteWorkspaceRpcContract(params.connectionServices);
   // Server remote 连接的是一个已经运行的完整 Codez server。
   // Host 只做 RPC 转接，不替 server 决定 workspace/runtime/provider 归属；
   // Provider 配置只经 Host 私有的 Provisioning executor 从本机单向下发到远端。
+  const localCredentialService = params.sourceServices?.getOptional(ICredentialService);
+  const codexKeys =
+    params.environmentKey && localCredentialService
+      ? {
+          environmentKey: params.environmentKey,
+          credentialService: localCredentialService,
+        }
+      : undefined;
   const remoteProviderProvisioningExecutor =
-    createRemoteProviderProvisioningExecutorFromWorkspace(params);
+    createRemoteProviderProvisioningExecutorFromWorkspace({
+      ...params,
+      allowRuntimeApiKeys: params.targetKind !== "server",
+      codexKeys,
+    });
   const services = new ServiceCollection()
     .register(IFileService, params.connectionServices.fileService)
     // 根因：客户端已有 gen-ui 代理，但 Host 漏转发使远端读取成为 Unknown channel。
@@ -245,6 +263,18 @@ export function createServerRemoteWorkspaceServiceCollection(params: {
       IPromptAttachmentTransferService,
       params.connectionServices.promptAttachmentTransferService,
     );
+  if (params.environmentKey && localCredentialService && params.codexKeyRotationBridge) {
+    services.register(
+      ICodexNativeProviderKeyService,
+      createCodexNativeProviderKeyService({
+        environmentKey: params.environmentKey,
+        credentialService: localCredentialService,
+        beginRotation: () => params.codexKeyRotationBridge!.request("begin"),
+        installKeys: (commit) =>
+          params.codexKeyRotationBridge!.request(commit ? "commit" : "rollback"),
+      }),
+    );
+  }
   // 新频道必须以握手能力为准；客户端总能生成 proxy，不能用对象存在性判断旧 Server 支持。
   if (params.virtualProjects) {
     if (

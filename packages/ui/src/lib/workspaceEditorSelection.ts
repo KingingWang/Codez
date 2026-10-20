@@ -1,8 +1,8 @@
 import type { EditorInfo, OpenInEditorRemoteTarget, RemoteTarget } from "@codez/shared";
 import { sortInstalledEditorsForOpenWith } from "@/lib/openWithEditors.js";
 
-const REMOTE_SSH_EDITOR_IDS = ["vscode", "vscode-insiders"];
-const REMOTE_WSL_EDITOR_IDS = ["vscode", "vscode-insiders", "explorer"];
+const REMOTE_SSH_EDITOR_IDS = ["vscode", "vscode-insiders", "zed"];
+const REMOTE_WSL_EDITOR_IDS = ["vscode", "vscode-insiders", "zed", "explorer"];
 
 export type WorkspaceEditorSelectionKind = "preferred" | "fallback" | "empty" | "explicit";
 
@@ -49,7 +49,7 @@ export function resolveWorkspaceEditorSelection({
     // 不能直接打开 `/root/...`，否则会落到本机不存在或错误的目录。
     availableEditors = filterEditorsByIdOrder(installedEditors, REMOTE_SSH_EDITOR_IDS);
   } else if (remoteTarget?.kind === "wsl") {
-    // WSL workspacePath 是 Linux 路径，只有 VS Code Remote-WSL 和 Windows 资源管理器 UNC
+    // WSL workspacePath 是 Linux 路径，只有 VS Code Remote-WSL、Zed UNC 和 Windows 资源管理器 UNC
     // 边界能正确消费；其它本机编辑器不能继续裸接 `/home/...`。
     availableEditors = filterEditorsByIdOrder(installedEditors, REMOTE_WSL_EDITOR_IDS);
   } else if (remoteTarget) {

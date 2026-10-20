@@ -259,10 +259,12 @@ const officialPluginPackages = [
     stagedPath: "packages/node-repl-host",
   },
   {
-    // CUA 插件只携带 SDK/skill/docs；node_repl MCP runtime 归 @codez/node-repl-host。
+    // Computer Use 本身是内容包，node_repl-host 才是 executable host。生产 staging
+    // 仍必须显式复制 SDK/docs/skill；否则开发机 cache 会掩盖干净安装缺包。
     packageName: "@codez/codez-cua-plugin",
     relativePath: "apps/codez-cli/packages/codez-cua-plugin",
     requiresRuntime: false,
+    requiredSeedPaths: ["docs/computer-use.md", "scripts/computer-use-client.mjs", "skills/computer-use/SKILL.md"],
     stagedPath: "packages/codez-cua-plugin",
   },
   // superpowers 已从内置插件下线，改走 UI 推荐区按需安装；这里不再 stage 它的资源。

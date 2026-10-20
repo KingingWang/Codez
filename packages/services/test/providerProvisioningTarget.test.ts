@@ -1,7 +1,12 @@
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ModelConfigRules, ProviderConfigMap } from "@codez/provider";
+import {
+  ModelConfigRules,
+  ProviderConfigMap,
+  parsePersonalProviderConfigMap,
+} from "@codez/provider";
+import { providerRuntimeConfigFingerprint } from "../src/model-provider/providerProvisioningSource.js";
 import { NodePersonalProviderConfigRepository } from "@codez/provider-node";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createProviderProvisioningTarget as createLegacyTarget } from "./fixtures/provisioning-v1/target.js";
@@ -49,6 +54,7 @@ async function createTarget(
     legacy?: boolean;
     refresh?: () => Promise<unknown>;
     initialCredentials?: Readonly<Record<string, string>>;
+    installRuntimeApiKeys?: (keys: readonly { name: string; value: string }[]) => void;
   } = {},
 ) {
   const directory = await mkdtemp(join(tmpdir(), "provider-provisioning-target-"));
@@ -108,6 +114,7 @@ async function createTarget(
     settingService: { get: vi.fn(async () => currentSettings), update: settingUpdate } as never,
     personalConfigFilePath,
     stateFilePath: join(directory, "provisioning.json"),
+    installRuntimeApiKeys: overrides.installRuntimeApiKeys,
   });
   return {
     target,
@@ -125,6 +132,108 @@ async function createTarget(
 }
 
 describe("Provider Provisioning Target", () => {
+  it("Local Source → Remote Target → 连接期安装：磁盘只有引用，版本不一致拒绝旧安装", async () => {
+    const localDirectory = await mkdtemp(join(tmpdir(), "provider-runtime-key-source-"));
+    const localPath = join(localDirectory, "provider_config.json");
+    const local = new NodePersonalProviderConfigRepository({
+      filePath: localPath,
+      pollingIntervalMs: false,
+    });
+    cleanups.push(async () => {
+      local.dispose();
+      await rm(localDirectory, { recursive: true, force: true });
+    });
+    await local.update(() => ({
+      providers: parsePersonalProviderConfigMap({
+        providerRules: [
+          {
+            providerId: "custom",
+            config: {
+              group: "standard-personal",
+              access: { type: "api-key", apiKeyEnv: "CODEZ_MODEL_API_KEY_ABC123" },
+              api: { type: "openai-chat-completions", baseUrl: "https://example.com/v1" },
+              personalModelIds: ["model-a"],
+            },
+          },
+        ],
+      }),
+      models: ModelConfigRules.empty(),
+    }));
+    const source = createProviderProvisioningSource({
+      personalRepository: local,
+      personalConfigFilePath: localPath,
+      credentialFilePath: join(localDirectory, "credentials.json"),
+      settingService: { get: vi.fn(async () => ({})) } as never,
+      credentialService: { load: vi.fn(async () => "local-ephemeral-secret") },
+    });
+    const installed = vi.fn();
+    const remote = await createTarget({ installRuntimeApiKeys: installed });
+
+    expect(await remote.target.apply(await source.read("remote-first"))).toMatchObject({
+      status: "applied",
+    });
+    const installation = await source.readRuntimeApiKeys();
+    await remote.target.installRuntimeApiKeys!(installation);
+    expect(installed).toHaveBeenCalledWith(installation.keys);
+    expect(await readFile(remote.personalConfigFilePath, "utf8")).not.toContain(
+      "local-ephemeral-secret",
+    );
+    expect(await readFile(join(remote.directory, "provisioning.json"), "utf8")).not.toContain(
+      "local-ephemeral-secret",
+    );
+    expect(remote.credentialValues.has("provider-runtime-key:custom")).toBe(false);
+
+    await remote.personal.update((current) => ({
+      ...current,
+      providerOrder: ["custom"],
+    }));
+    await expect(remote.target.installRuntimeApiKeys!(installation)).rejects.toThrow(/配置版本/u);
+    expect(installed).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps v3 runtime Key only in memory and checks it against the persisted reference", async () => {
+    const installRuntimeApiKeys = vi.fn();
+    const f = await createTarget({ installRuntimeApiKeys });
+    const original = createEnvelope().personalConfig;
+    const config = {
+      ...original,
+      providerConfigRules: {
+        providerRules: [
+          {
+            ...original.providerConfigRules.providerRules[0]!,
+            config: {
+              ...original.providerConfigRules.providerRules[0]!.config,
+              access: { type: "api-key", apiKeyEnv: "CODEZ_MODEL_API_KEY_ABC123" },
+            },
+          },
+        ],
+      },
+    };
+    const envelope = createEnvelope({ schemaVersion: 3, personalConfig: config });
+    expect(await f.target.apply(envelope as never)).toMatchObject({ status: "applied" });
+    const configFingerprint = providerRuntimeConfigFingerprint(await f.personal.read());
+    await f.target.installRuntimeApiKeys!({
+      configFingerprint,
+      keys: [{ name: "CODEZ_MODEL_API_KEY_ABC123", value: "ephemeral-only-secret" }],
+    });
+    expect(installRuntimeApiKeys).toHaveBeenCalledWith([
+      { name: "CODEZ_MODEL_API_KEY_ABC123", value: "ephemeral-only-secret" },
+    ]);
+    expect(await readFile(f.personalConfigFilePath, "utf8")).not.toContain("ephemeral-only-secret");
+    expect(await readFile(join(f.directory, "provisioning.json"), "utf8")).not.toContain(
+      "ephemeral-only-secret",
+    );
+    await expect(
+      f.target.installRuntimeApiKeys!({ configFingerprint, keys: [] }),
+    ).rejects.toThrow();
+    await expect(
+      f.target.installRuntimeApiKeys!({
+        configFingerprint: "0".repeat(64),
+        keys: [{ name: "CODEZ_MODEL_API_KEY_ABC123", value: "ephemeral-only-secret" }],
+      }),
+    ).rejects.toThrow(/配置版本/u);
+    expect(installRuntimeApiKeys).toHaveBeenCalledTimes(1);
+  });
   it.each(["write", "commit"])("%s 阶段失败保留安全错误码且回滚原数据", async (phase) => {
     const f = await createTarget();
     const before = await f.personal.read();
@@ -172,7 +281,7 @@ describe("Provider Provisioning Target", () => {
     expect(f.credentialDelete).toHaveBeenCalledWith(key);
   });
 
-  it.each([0, 3, 99])("未知 schemaVersion=%s 在任何写入前失败", async (schemaVersion) => {
+  it.each([0, 4, 99])("未知 schemaVersion=%s 在任何写入前失败", async (schemaVersion) => {
     const f = await createTarget();
     await expect(f.target.apply(createEnvelope({ schemaVersion }))).rejects.toThrow();
     expect(f.settingUpdate).not.toHaveBeenCalled();

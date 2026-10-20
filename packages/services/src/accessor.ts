@@ -14,6 +14,7 @@ import type { ICloudContentService } from "#src/cloud-content/cloudContent.js";
 import type { IMarketingTouchService } from "#src/marketing-touch/marketingTouch.js";
 import type { IGitService } from "./git/git.js";
 import type { IGitCheckpointService } from "./git/gitCheckpoint.js";
+import type { ICodexDesktopFileRewindService } from "./desktop-file-rewind.js";
 import type { ISystemService } from "./system/system.js";
 import type { ITerminalService } from "./terminal/terminal.js";
 import type { ISettingService } from "./setting/setting.js";
@@ -30,6 +31,7 @@ import type {
   IModelSelectionService,
   IProviderSettingsService,
 } from "./model-provider/providerFacadeServices.js";
+import type { ICodexNativeProviderKeyService } from "./model-provider/codexNativeProviderKeyService.js";
 import type { IUsageStatsService } from "./usage-stats/usageStats.js";
 import type { ICodingPlanSubscriptionService } from "./coding-plan-subscription/codingPlanSubscription.js";
 import type { IClientConfigService } from "./client-config/clientConfig.js";
@@ -66,6 +68,8 @@ export interface IServiceAccessor {
   readonly marketingTouchService?: IMarketingTouchService;
   readonly gitService: IGitService;
   readonly gitCheckpointService: IGitCheckpointService;
+  /** Desktop-owned safe Codex file rewind transaction; old hosts may omit it. */
+  readonly codexDesktopFileRewindService?: ICodexDesktopFileRewindService;
   readonly systemService: ISystemService;
   readonly terminalService: ITerminalService;
   readonly settingService: ISettingService;
@@ -92,6 +96,11 @@ export interface IServiceAccessor {
   readonly sourceServerWorkspaceService: ISourceServerWorkspaceService;
   /** 仅桌面窗口 Host 的 base attachment 注册；远端 / Web 不提供。 */
   readonly sourceServerManagementService?: ISourceServerManagementService;
+  /**
+   * Codex 原生供应商的本机临时 Key（spec: codex-provider-runtime-env-key）。
+   * Server remote 等宿主不提供；Renderer 经 RPC 访问时以调用失败判定不支持。
+   */
+  readonly codexNativeProviderKeyService?: ICodexNativeProviderKeyService;
   readonly usageStatsService: IUsageStatsService;
   readonly codingPlanSubscriptionService: ICodingPlanSubscriptionService;
   readonly clientConfigService: IClientConfigService;

@@ -52,6 +52,7 @@ async function sendText(
   const record = requireRecord(host, envelope.sessionId);
   // Bug 根因：旧校验只看正文，UI 已允许的 attachment-only query 会在 CLI 被误判为空。
   if (
+    !rawPayload.interruptedContinueTarget &&
     !hasPromptInput(rawPayload.text, rawPayload.attachments) &&
     !rawPayload.conversationQuotes?.length
   ) {
@@ -245,6 +246,13 @@ async function sendText(
         ? { browserAmbientContext: payload.browserAmbientContext }
         : {}),
       inputId: envelope.commandId,
+      ...(payload.interruptedContinueTarget && !payload.text.trim()
+        ? {
+            inputVisibility: "model-only" as const,
+            skipInputRecord: true,
+            skipUserPromptSubmitHooks: true,
+          }
+        : {}),
       // 立即发送切换了 runtime turn，导致运行中用户输入遗漏 human 提示。
       // 只按 Core 的实际抢占回执标记纯文本；空闲及附件输入保留原路径。
       ...(preempted && !attachments?.length ? { inputPresentation: "user_steer" as const } : {}),

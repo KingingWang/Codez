@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { IHooksService, type IServiceAccessor } from "@codez/services";
+import {
+  ICodexNativeProviderKeyService,
+  IHooksService,
+  type IServiceAccessor,
+} from "@codez/services";
 import { ChannelClient, ChannelServer, ProxyChannel, createQueuePair } from "@codez/rpc";
 import {
   buildRemoteWorkspaceSessionServices,
@@ -34,6 +38,7 @@ function makeServices(id: string): IServiceAccessor {
     broadcastService: { id, service: "broadcast" },
     modelSelectionService: { id, service: "model-selection" },
     providerSettingsService: { id, service: "provider-settings" },
+    codexNativeProviderKeyService: { id, service: "codex-provider-key" },
   } as unknown as IServiceAccessor;
 }
 
@@ -60,6 +65,7 @@ describe("buildRemoteWorkspaceSessionServices", () => {
     // Provider/Model View 属于目标 Remote Environment；不能随 ...baseServices 回落到本地。
     expect(merged.modelSelectionService).toBe(remoteServices.modelSelectionService);
     expect(merged.providerSettingsService).toBe(remoteServices.providerSettingsService);
+    expect(merged.codexNativeProviderKeyService).toBe(remoteServices.codexNativeProviderKeyService);
     expect(merged.skillsService).toBe(remoteServices.skillsService);
     expect(merged.skillSyncService).toBe(remoteServices.skillSyncService);
     expect(merged.mcpSyncService).toBe(remoteServices.mcpSyncService);
@@ -94,6 +100,72 @@ describe("buildRemoteWorkspaceSessionServices", () => {
     expect(merged.oauthService).toBe(remoteServices.oauthService);
     expect(merged.clientScenesService).toBe(remoteServices.clientScenesService);
     expect(merged.broadcastService).toBe(remoteServices.broadcastService);
+    expect(merged.codexNativeProviderKeyService).toBe(remoteServices.codexNativeProviderKeyService);
+  });
+
+  it("routes SSH Codex Key save through the environment-scoped Window Host RPC, not local base", async () => {
+    const remotePrepare = vi.fn(async () => ({ envName: "CODEZ_CODEX_API_KEY_TEST" }));
+    const remoteFinish = vi.fn(async () => undefined);
+    const remoteGetState = vi.fn(async () => ({
+      configured: true,
+      envName: "CODEZ_CODEX_API_KEY_TEST",
+    }));
+    const basePrepare = vi.fn(async () => ({ envName: "LOCAL_KEY" }));
+    const baseFinish = vi.fn(async () => undefined);
+    const baseGetState = vi.fn(async () => ({ configured: false, envName: "LOCAL_KEY" }));
+
+    const [serverProtocol, clientProtocol] = createQueuePair();
+    const server = new ChannelServer(serverProtocol, "ssh-window-host-test");
+    server.registerChannel(
+      ICodexNativeProviderKeyService.channelName,
+      ProxyChannel.fromService({
+        getKeyState: remoteGetState,
+        prepareKeySource: remotePrepare,
+        finishKeySource: remoteFinish,
+      } satisfies ICodexNativeProviderKeyService),
+    );
+    const client = new ChannelClient(clientProtocol);
+    const remoteKeyProxy = ProxyChannel.toService<ICodexNativeProviderKeyService>(
+      client.getChannel(ICodexNativeProviderKeyService.channelName),
+    );
+    const merged = buildRemoteWorkspaceSessionServices(
+      {
+        ...makeServices("base"),
+        codexNativeProviderKeyService: {
+          getKeyState: baseGetState,
+          prepareKeySource: basePrepare,
+          finishKeySource: baseFinish,
+        },
+      },
+      { ...makeServices("remote"), codexNativeProviderKeyService: remoteKeyProxy },
+    );
+
+    try {
+      const providerId = "aone";
+      await expect(
+        merged.codexNativeProviderKeyService.getKeyState({ providerId }),
+      ).resolves.toEqual({
+        configured: true,
+        envName: "CODEZ_CODEX_API_KEY_TEST",
+      });
+      const preparation = { providerId, mode: "runtime-env" as const, apiKey: "test-key" };
+      await expect(
+        merged.codexNativeProviderKeyService.prepareKeySource(preparation),
+      ).resolves.toEqual({
+        envName: "CODEZ_CODEX_API_KEY_TEST",
+      });
+      await merged.codexNativeProviderKeyService.finishKeySource({ providerId, commit: true });
+
+      expect(remoteGetState).toHaveBeenCalledWith({ providerId });
+      expect(remotePrepare).toHaveBeenCalledWith(preparation);
+      expect(remoteFinish).toHaveBeenCalledWith({ providerId, commit: true });
+      expect(baseGetState).not.toHaveBeenCalled();
+      expect(basePrepare).not.toHaveBeenCalled();
+      expect(baseFinish).not.toHaveBeenCalled();
+    } finally {
+      client.dispose();
+      server.dispose();
+    }
   });
 
   it("uses server authority for an identified Source connected through SSH", () => {

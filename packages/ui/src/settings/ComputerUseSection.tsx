@@ -14,7 +14,11 @@ import {
   isRemoteWorkspaceIdentity,
   CODEZ_CUA_OFFICIAL_PLUGIN_ID,
 } from "@codez/shared";
-import { isCuaPermissionStatusAvailable, type CuaPermissionRestartOptions } from "@codez/services";
+import {
+  isCuaPermissionStatusAvailable,
+  type CuaPermissionRestartOptions,
+  type CuaPermissionStatusResult,
+} from "@codez/services";
 import { Button } from "@/components/ui/button.js";
 import { toast } from "@/components/ui/toast.js";
 import { Switch } from "@/components/ui/switch.js";
@@ -33,6 +37,8 @@ import {
   type CuaPermissionReturnRecoveryClaim,
 } from "@/lib/cuaPermissionAction.js";
 import { usePluginManagementStore } from "@/store/pluginManagementStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
+import { getWorkspaceState, hasRunningWorkspaceTask } from "@/store/codezSessionStoreSelectors.js";
 import { SettingsBadge, SettingsGroupCard, SettingsRow } from "@/settings/SettingsPageParts.js";
 import { StatusDot, type StatusDotTone } from "@/settings/StatusDot.js";
 import { supportsLocalMacCuaPermissionOnboarding } from "@/lib/cuaPlatform.js";
@@ -41,10 +47,21 @@ import { createCuaPermissionOnboardingOperationId } from "@/lib/cuaPermissionOnb
 import { waitForAccessibilityNotStale } from "@/settings/cuaPermissionRestartVerify.js";
 import { requiredCuaPermissionsForFreshStatus } from "@/settings/cuaPermissionPreparation.js";
 import { ExternalLink } from "lucide-react";
-import {
-  isComputerUseRemoteOrLinux,
-  resolveComputerUseAvailability,
-} from "@/settings/computerUseAvailability.js";
+import { resolveComputerUseAvailability } from "@/settings/computerUseAvailability.js";
+
+// Helper 被 macOS 拦截的两种结构化 kind（Gatekeeper 拒杀 / quarantine 剥离失败）。
+// 命中时权限行只会显示"未知"，走 TCC onboarding 只会空转系统弹窗；契约见
+// docs/cua-permission-broker/codez-cua-permission-broker.md。UI 的唯一动作是
+// 修复（restartHelper 重跑安装器 quarantine 自愈并重启），不再进入授权循环。
+function cuaPermissionBlockedKind(
+  status: CuaPermissionStatusResult | null | undefined,
+): "helper_launch_blocked" | "helper_quarantine_present" | undefined {
+  if (!status || isCuaPermissionStatusAvailable(status)) return undefined;
+  return status.errorKind === "helper_launch_blocked" ||
+    status.errorKind === "helper_quarantine_present"
+    ? status.errorKind
+    : undefined;
+}
 
 interface ComputerUseSectionProps {
   isDesktop?: boolean;
@@ -83,8 +100,6 @@ export function ComputerUseSection({
     !isWindowsDesktop &&
     (isMacDesktop ?? supportsLocalMacCuaPermissionOnboarding(platform)) &&
     isLocalWorkspace;
-  const supportsLocalWindowsWorkspace = isWindowsDesktop && isLocalWorkspace;
-  const supportsComputerUseSettings = supportsLocalMacWorkspace || supportsLocalWindowsWorkspace;
   const availability = resolveComputerUseAvailability({
     isDesktop: isDesktop || isWindowsDesktop || supportsLocalMacWorkspace,
     isMacDesktop: isMacDesktop || supportsLocalMacWorkspace,
@@ -93,12 +108,17 @@ export function ComputerUseSection({
     remoteTarget,
     workspaceIdentity,
   });
+  // 根因：旧实现把可用性等同于“macOS 权限面板或 Windows”，导致已有 Product Helper 的
+  // Linux 被挡在 UI 外。插件入口统一消费 availability；TCC 控件仍只由 macOS 分支拥有。
+  const supportsComputerUseSettings = availability.supported;
   // CUA 权限是 macOS 本机属性：仅完整 macOS 设置需要 Helper workspace 路径。
   const path = supportsLocalMacWorkspace ? (localWorkspacePath ?? workspacePath) : null;
   // 展示只跟 settled：fresh 每次查询开始都会落回 false，跟着它渲染会让授权按钮的文案
   // 在「验证中…」与终态之间切换、宽度随之跳变。
   const { status, settled, refresh } = useCuaPermissionStatus(path ?? null, workspaceIdentity);
   const availableStatus = status && isCuaPermissionStatusAvailable(status) ? status : null;
+  // Helper 被 Gatekeeper/quarantine 拦截时的修复态标志；见 cuaPermissionBlockedKind 注释。
+  const blockedKind = cuaPermissionBlockedKind(status);
 
   // macOS 版本门槛：低版本系统上 Helper 被 LaunchServices -10825 拒启，表象是授权反复无响应。
   // 查询一次主进程判定（GetCuaOsSupport），低于地板时渲染提示卡并隐藏授权操作区。
@@ -130,6 +150,11 @@ export function ComputerUseSection({
   const cuaPlugin = plugins.find((plugin) => plugin.id === CODEZ_CUA_OFFICIAL_PLUGIN_ID);
   const cuaEnabled = cuaPlugin?.enabled ?? false;
   const cuaToggling = togglingPluginId === CODEZ_CUA_OFFICIAL_PLUGIN_ID;
+  const workspaceSessionBusy = useCodezSessionStore((state) =>
+    workspacePath
+      ? hasRunningWorkspaceTask(getWorkspaceState(state, workspacePath, workspaceIdentity))
+      : false,
+  );
 
   const initRef = useRef(false);
   useEffect(() => {
@@ -327,6 +352,12 @@ export function ComputerUseSection({
   const onTogglePlugin = useCallback(
     async (next: boolean) => {
       if (!pluginManagementService) return;
+      if (workspaceSessionBusy) {
+        toast(intl.formatMessage({ id: "chat.toolbar.computerUse.tooltip.sessionBusy" }), {
+          variant: "warning",
+        });
+        return;
+      }
       const operationGeneration = ++pluginToggleGenerationRef.current;
       const operationContextKey = pluginToggleContextKey;
       // 切换 codez-cua 插件 = 同步其 MCP server + skill 一起启用/禁用。
@@ -361,6 +392,7 @@ export function ComputerUseSection({
       refresh,
       setPluginEnabled,
       supportsLocalMacWorkspace,
+      workspaceSessionBusy,
       intl,
     ],
   );
@@ -428,6 +460,13 @@ export function ComputerUseSection({
           helperContextKeyRef.current !== operationContextKey ||
           returnRecoveryRef.current !== recoveryState
         ) {
+          return;
+        }
+        // Helper 被 Gatekeeper/quarantine 拦截时 TCC onboarding 必空转（系统弹窗死循环
+        // 的用户侧入口）：改走修复链——restartHelper 重跑安装器 quarantine 自愈并重启。
+        if (cuaPermissionBlockedKind(currentStatus)) {
+          toast(intl.formatMessage({ id: "cuaPermission.blocked.repairToast" }));
+          await onRestart(path, workspaceIdentity);
           return;
         }
         if (
@@ -509,7 +548,7 @@ export function ComputerUseSection({
         }
       }
     },
-    [platform, path, services, workspaceIdentity, intl, applyPendingGrant, refresh],
+    [platform, path, services, workspaceIdentity, intl, applyPendingGrant, refresh, onRestart],
   );
 
   const onManualRestart = useCallback((): void => {
@@ -681,7 +720,7 @@ export function ComputerUseSection({
   };
 
   if (!supportsComputerUseSettings) {
-    // 远端 / Linux 环境若直接 return null，设置页只剩标题，会让用户误以为页面加载失败。
+    // 远端环境若直接 return null，设置页只剩标题，会让用户误以为页面加载失败。
     // 保留入口并明确能力边界，且不渲染任何会触发本地 CUA 写操作的控件。
     return (
       <div className="rounded-lg border border-warning/40 bg-warning/10 p-4 text-ui-base text-warning">
@@ -689,13 +728,7 @@ export function ComputerUseSection({
           {intl.formatMessage({ id: "settings.computerUse.unsupported.title" })}
         </p>
         <p className="mt-1 text-ui-sm text-foreground-subtle">
-          {intl.formatMessage({
-            id: isComputerUseRemoteOrLinux(availability)
-              ? availability.kind === "local-linux"
-                ? "settings.computerUse.unsupported.linuxDescription"
-                : "settings.computerUse.unsupported.remoteDescription"
-              : "settings.computerUse.unsupported.remoteDescription",
-          })}
+          {intl.formatMessage({ id: "settings.computerUse.unsupported.remoteDescription" })}
         </p>
       </div>
     );
@@ -708,7 +741,9 @@ export function ComputerUseSection({
         <SettingsRow
           label={intl.formatMessage({ id: "settings.computerUse.toggleLabel" })}
           description={intl.formatMessage({
-            id: "settings.computerUse.toggleDescription",
+            id: workspaceSessionBusy
+              ? "chat.toolbar.computerUse.tooltip.sessionBusy"
+              : "settings.computerUse.toggleDescription",
           })}
           control={
             <Switch
@@ -716,7 +751,7 @@ export function ComputerUseSection({
                 id: "settings.computerUse.toggleLabel",
               })}
               checked={cuaEnabled}
-              disabled={cuaToggling || !workspacePath}
+              disabled={cuaToggling || workspaceSessionBusy || !workspacePath}
               onCheckedChange={(checked) => void onTogglePlugin(checked)}
             />
           }
@@ -748,6 +783,29 @@ export function ComputerUseSection({
       {/* CUA 未启用时隐藏下方权限配置，只留总开关，避免一堆禁用项。 */}
       {cuaEnabled && supportsLocalMacWorkspace ? (
         <>
+          {/* Helper 被 Gatekeeper/quarantine 拦截：权限行只能显示"未知"，这里给修复横幅，
+              避免用户在 TCC 弹窗/不可用 toast 之间死循环。修复动作复用 onRestart：
+              restartHelper 会重跑安装器 quarantine 自愈并重启 Helper。 */}
+          {blockedKind && !macOsBelowCuaFloor ? (
+            <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
+              <p className="font-medium">
+                {intl.formatMessage({ id: "cuaPermission.blocked.title" })}
+              </p>
+              <p>{intl.formatMessage({ id: "cuaPermission.blocked.description" })}</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                disabled={restarting || !path}
+                onClick={onManualRestart}
+              >
+                {restarting
+                  ? intl.formatMessage({ id: "cuaPermission.modal.restarting" })
+                  : intl.formatMessage({ id: "cuaPermission.blocked.repairButton" })}
+              </Button>
+            </div>
+          ) : null}
           {/* macOS 版本低于 CUA Helper 承诺地板时，授权在低版本系统上无法完成
               （Helper 被 LaunchServices -10825 拒启），整卡替换为升级提示。 */}
           {macOsBelowCuaFloor ? (

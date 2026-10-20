@@ -196,7 +196,7 @@ describe("desktop deep link url helpers", () => {
     const { buildWindowsOpenFolderRegistryOperations, getWindowsOpenFolderMenuName } =
       await import("../src/main/desktopWindowsOpenFolderContextMenu.js");
 
-    expect(getWindowsOpenFolderMenuName("zh-CN")).toBe("在Codez中打开");
+    expect(getWindowsOpenFolderMenuName("zh-CN")).toBe("在 Codez 中打开");
     expect(getWindowsOpenFolderMenuName("en-US")).toBe("Open in Codez");
 
     const operations = buildWindowsOpenFolderRegistryOperations({
@@ -210,7 +210,7 @@ describe("desktop deep link url helpers", () => {
         "HKCU\\Software\\Classes\\Directory\\shell\\Codez.OpenInCodez",
         "/ve",
         "/d",
-        "在Codez中打开",
+        "在 Codez 中打开",
         "/f",
       ],
     });
@@ -223,7 +223,7 @@ describe("desktop deep link url helpers", () => {
         "/t",
         "REG_SZ",
         "/d",
-        "在Codez中打开",
+        "在 Codez 中打开",
         "/f",
       ],
     });

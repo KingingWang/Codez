@@ -73,7 +73,10 @@ export function createWebRemoteControlSharedHostAttachments(dependencies: {
     return dependencies.createMessageChannel?.() ?? new MessageChannelMain();
   }
 
-  function attachLocalHost(windowId: number): WebRemoteControlSharedHostAttachment {
+  function attachLocalHost(
+    windowId: number,
+    context: WebRemoteControlSharedHostAttachContext,
+  ): WebRemoteControlSharedHostAttachment {
     const hostProcessWindowId = BrowserWindow.fromId(windowId)?.webContents.id ?? windowId;
     const process = dependencies.windowHostProcessMap.get(hostProcessWindowId);
     if (!process) {
@@ -91,7 +94,11 @@ export function createWebRemoteControlSharedHostAttachments(dependencies: {
         requestId: `shared-host-request-${nextAttachmentId}`,
         attachmentId,
         clientMode: "web-remote-replayable",
-        scope: { kind: "local" },
+        scope: {
+          kind: "local",
+          workspacePath: context.workspacePath,
+          ...(context.workspaceIdentity ? { workspaceIdentity: context.workspaceIdentity } : {}),
+        },
       },
       [port2],
     );
@@ -109,7 +116,7 @@ export function createWebRemoteControlSharedHostAttachments(dependencies: {
     context: WebRemoteControlSharedHostAttachContext,
   ): Promise<WebRemoteControlSharedHostAttachment> {
     if (context.kind === "local") {
-      return attachLocalHost(windowId);
+      return attachLocalHost(windowId, context);
     }
     if (!context.remoteSessionId) {
       throw createSharedHostError(

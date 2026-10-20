@@ -1,0 +1,409 @@
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
+
+import { enMcp, zhMcp } from "./messagesMcp.js";
+import { enHooks, zhHooks } from "./messagesHooks.js";
+import { enProviders, zhProviders } from "./messagesProviders.js";
+
+const en = {
+  legacyPreferences:
+    "Codex questions require your explicit answer. Legacy follow-up preferences, automatic answers and full model-I/O retention do not apply to Codex.",
+  configured: "Configured in Codex",
+  nativeDefault: "Native default",
+  configuredHelp:
+    "Explicit native configuration; model capabilities were not returned by discovery.",
+  busySettings:
+    "Model, reasoning and permissions are locked while Codex is busy. Wait for idle to change settings.",
+  settingsMismatch:
+    "Codex queue/guide cannot override thread settings. Wait for idle and send normally, or restore the thread's current settings. Your draft is preserved.",
+  attachmentSessionLost:
+    "The attachment session changed. Reattach the files before sending; the draft is preserved.",
+  attachmentStagingRequired:
+    "This Host cannot stage path-only files for Codex yet. Use the attachment picker to select and upload the file instead.",
+  nativeQueue: "Starts after the current task finishes.",
+  historyEdit: "Edit history & resend",
+  preserveFiles: "Files are preserved. Only conversation history is changed.",
+  questions: "Codex needs your input",
+  questionsHelp:
+    "Answer every question to continue. Answers are sent only to this pending native request.",
+  submitAnswers: "Submit answers",
+  title: "Codex",
+  subtitle:
+    "Native account and effective settings for the selected workspace. Legacy Codez provider settings do not change Codex.",
+  workspace:
+    "Open a connected workspace to configure Codex. Files, Git and terminal remain available without signing in.",
+  account: "Account",
+  models: "Models & permissions",
+  config: "Configuration",
+  skills: "Skills",
+  agents: "Subagents",
+  mcp: "MCP servers",
+  plugins: "Plugins & marketplaces",
+  history: "Thread history",
+  refresh: "Refresh",
+  loading: "Reading Codex state…",
+  failed:
+    "Operation failed. Refresh to verify current state before retrying; changes are not automatically retried.",
+  notLoaded: "Not loaded",
+  empty: "No entries returned by Codex.",
+  save: "Save",
+  cancel: "Cancel login",
+  remove: "Remove",
+  add: "Add",
+  enable: "Enable",
+  disable: "Disable",
+  noAccount: "Not signed in",
+  noAuth: "This provider does not require OpenAI sign-in.",
+  login: "Sign in with ChatGPT",
+  deviceLogin: "Use device code",
+  apiKey: "API key",
+  apiLogin: "Use API key",
+  logout: "Sign out",
+  pending: "Authorization is pending. Complete it in your browser, then refresh to verify sign-in.",
+  openBrowser: "Open authorization page",
+  checkLogin: "Check sign-in",
+  userCode: "One-time code",
+  signedIn: "Signed in",
+  continue: "Continue to workspace",
+  model: "Default model",
+  titleModelTitle: "Automatic session titles",
+  titleModelHelp:
+    "A new session uses one background Codex request. Changes save immediately; the workspace inherits the global model unless overridden. Unavailable models leave the original preview unchanged.",
+  titleModelGlobal: "Global title model",
+  titleModelWorkspace: "This workspace",
+  titleModelInherit: "Inherit global default",
+  titleModelUnavailable:
+    "Selected title model is unavailable in this workspace. Automatic titles will be skipped.",
+  titleModelSettingsUnavailable:
+    "Title model settings could not be read. Refresh before changing them.",
+  titleModelSaved: "Title model saved. New sessions use this choice.",
+  effort: "Reasoning effort",
+  approval: "Approval policy",
+  sandbox: "Sandbox mode",
+  saved: "Write accepted. Review refreshed effective values below.",
+  overridden:
+    "Saved, but a higher-priority configuration overrides these values. Review effective settings below.",
+  defaults:
+    "Model and reasoning defaults apply to new threads; existing threads keep their own settings.",
+  noVersion:
+    "No writable user configuration layer/version is available. Refresh after runtime setup; writes are disabled to avoid overwriting unknown configuration.",
+  requirements: "Managed requirements",
+  effective: "Effective configuration (credentials redacted)",
+  edits: "Native configuration edits (JSON array)",
+  advanced: "Advanced configuration",
+  keyPath: "Configuration key path",
+  jsonValue: "JSON value",
+  saveValue: "Write value",
+  saveBatch: "Write batch",
+  invalidJsonSyntax: "Invalid JSON: {message}",
+  configHelp:
+    "Writes target the native user configuration file using its version. Paths are dot-separated; values must be valid JSON. Managed and workspace layers may override defaults.",
+  reload: "Reload MCP configuration",
+  oauth: "Authorize",
+  tools: "Tools",
+  notConnected: "Connection status unavailable",
+  installed: "Installed",
+  install: "Install",
+  uninstall: "Uninstall",
+  consent:
+    "Native consent is required or policy prevents installation. Use the native Codex interface for this plugin.",
+  source: "Marketplace source (URL or path)",
+  upgrade: "Update marketplace",
+  confirmRemove: "Confirm removal",
+  confirmLogout: "Confirm sign out",
+  cancelAction: "Cancel",
+  enabled: "Enabled",
+  disabled: "Disabled",
+  unsupported: "Not available in the Codex adapter",
+  parity:
+    "Legacy workflows, cloud sharing and migration have no verified Codex parity. Scheduled automations run as native turns; off-peak tasks follow server gray availability. Native Browser availability depends on this Host; Computer Use is not available. Git, files and terminal remain available.",
+  openSettings: "Open Codex settings",
+  scope: "Workspace",
+  mutations:
+    "Changes affect this Host’s native Codex configuration and may affect other workspaces using the same Codex home.",
+  agentsHelp:
+    "File-based roles in ~/.codex/agents (user) and this workspace’s .codex/agents (project). Changes apply to new sessions; running threads are unaffected. Roles declared inline in config.toml layers are not shown.",
+  agentsLoading: "Reading Codex roles…",
+  agentsRetry: "Retry role list",
+  agentsUserScope: "User roles",
+  agentsProjectScope: "Project roles",
+  agentsEmpty: "No roles in this scope yet.",
+  agentsCreate: "New role",
+  agentsEdit: "Edit",
+  agentsDelete: "Delete",
+  agentsName: "Name",
+  agentsNameHelp:
+    "ASCII letters, digits, spaces, hyphens and underscores; must start with a letter or digit.",
+  agentsNameLocked: "Names cannot be changed; delete and recreate to rename.",
+  agentsDescription: "Description (optional)",
+  agentsModel: "Model (optional)",
+  agentsEffort: "Reasoning effort (optional)",
+  agentsInstructions: "Developer instructions (required)",
+  agentsNicknames: "Nickname candidates (optional, comma-separated)",
+  nativeBrowserCuaTitle: "Native Desktop browser · Browser-only",
+  nativeBrowserCuaTitleSupported: "Native Desktop browser · Browser & Computer Use",
+  nativeBrowserControlToggle: "Allow agents to control the built-in browser",
+  nativeBrowserControlDisabled:
+    "Browser control is off. Agents do not see the tool; the browser panel stays available.",
+  nativeBrowserCuaActive:
+    "Active for this Desktop window. Registration is temporary and process-scoped; it is not written to Codex config.",
+  nativeBrowserCuaUnsupported:
+    "Native Desktop browser is unavailable on this Host. Native configuration changes are disabled.",
+  nativeBrowserCuaRuntimeMissing: "Desktop bridge runtime is missing.",
+  nativeBrowserCuaServiceNotRunning: "Desktop browser service is not running.",
+  nativeBrowserCuaDescriptorUnavailable: "Desktop browser descriptor is unavailable.",
+  nativeBrowserCuaDegraded:
+    "Browser commands are available; Computer Use is unavailable (codez-cua.runtime_unavailable).",
+  nativeBrowserCuaLegacyCleanup: "Remove legacy global registration",
+  nativeBrowserCuaLegacyCustomized:
+    "A same-name global registration is still shared because it does not match the exact Codez-generated value. It was left unchanged; remove it manually only if you accept deleting your custom entry.",
+  nativeBrowserCuaLegacyUnknown:
+    "A same-name global registration exists, but the Desktop descriptor is unavailable so Codez cannot verify whether it is safe to remove. It may still be shared and was left unchanged.",
+  codexHistoryTitle: "Codex thread history",
+  codexHistoryDescription:
+    "A read-only projection of native Codex turns. It is not a complete legacy workflow equivalent; start, resume and cancel are unavailable.",
+  codexHistoryLoading: "Reading Codex thread history…",
+  codexHistoryEmpty: "No native Codex turns are available for this workspace.",
+  codexHistoryNoSession: "Open a native Codex thread to read its history.",
+  codexHistoryTransportUnavailable: "Codex history transport is unavailable on this Host.",
+  codexHistoryUsageAvailable: "Per-turn usage available",
+  codexHistoryUsageUnavailable: "Per-turn usage unavailable",
+  codexHistoryArtifacts: "Artifacts",
+  nativeBrowserCuaStatuses:
+    "Runtime, configuration, connection, authorization and tool errors are shown separately below.",
+  memory: "Memory",
+  memoryHelp:
+    "Native Codex memory pipeline. Changes write the user config.toml and hot-reload every loaded thread immediately; no restart is required.",
+  memoryEnable: "Enable memory",
+  memoryEnableHelp:
+    "Master switch for the native memory pipeline (features.memories). Off disables usage, generation and memory tools.",
+  memoryUse: "Use memories in conversations",
+  memoryUseHelp:
+    "Inject memory usage instructions into developer prompts (memories.use_memories, default on).",
+  memoryGenerate: "Generate memories",
+  memoryGenerateHelp:
+    "Summarize new threads into memories (memories.generate_memories, default on).",
+  memoryDedicatedTools: "Dedicated memory tools",
+  memoryDedicatedToolsHelp:
+    "Expose dedicated memory tools through the extension tool surface (memories.dedicated_tools, default off).",
+  memoryDisableOnExternalContext: "Disable on external context",
+  memoryDisableOnExternalContextHelp:
+    "Mark threads that use MCP or web search as polluted so they are not memorized (memories.disable_on_external_context, default off).",
+  memoryExtractModel: "Extraction model",
+  memoryExtractModelHelp:
+    "Model used for thread summarisation (memories.extract_model). Default uses the provider-preferred model.",
+  memoryConsolidationModel: "Consolidation model",
+  memoryConsolidationModelHelp:
+    "Model used for memory consolidation (memories.consolidation_model). Default uses the provider-preferred model.",
+  memoryModelDefault: "Default (provider preferred)",
+  memoryAdvanced: "Advanced",
+  memoryMaxRolloutsPerStartup: "Max threads processed per startup",
+  memoryMaxRolloutAgeDays: "Max thread age (days)",
+  memoryMinRolloutIdleHours: "Min thread idle (hours)",
+  memoryMaxRawMemories: "Max raw memories for consolidation",
+  memoryMaxUnusedDays: "Max unused days",
+  memoryMinRateLimitPercent: "Min rate-limit remaining (%)",
+  memoryNumberHelp: "Leave empty to restore the native default. (Default: {value})",
+  memoryNumberInvalid: "Value out of range; not saved.",
+  ...enProviders,
+  ...enMcp,
+  ...enHooks,
+};
+const zh: Record<keyof typeof en, string> = {
+  legacyPreferences:
+    "Codex 提问需要您明确回答。旧追加输入偏好、自动回答及完整模型输入输出日志不适用于 Codex。",
+  configured: "Codex 显式配置",
+  nativeDefault: "原生默认值",
+  configuredHelp: "使用原生显式配置；模型发现未返回其能力信息。",
+  busySettings: "Codex 忙碌时锁定模型、推理和权限设置。请等待空闲后再修改。",
+  settingsMismatch:
+    "Codex 队列/引导输入不能覆盖线程设置。请等待空闲后正常发送，或恢复线程当前设置。草稿已保留。",
+  attachmentSessionLost: "附件所属会话已改变。请重新附加文件后发送；草稿已保留。",
+  attachmentStagingRequired:
+    "当前 Host 尚不能为 Codex 暂存路径型文件。请使用附件选择器选择并上传文件。",
+  nativeQueue: "当前任务结束后自动发送。",
+  historyEdit: "编辑历史并重新发送",
+  preserveFiles: "保留文件，仅更改会话历史。",
+  questions: "Codex 需要您的输入",
+  questionsHelp: "请回答所有问题以继续。答案仅发送至当前原生请求。",
+  submitAnswers: "提交答案",
+  title: "Codex",
+  subtitle: "所选工作区的原生账户与有效配置。旧 Codez 模型服务设置不会更改 Codex。",
+  workspace: "请打开已连接的工作区以配置 Codex。未登录时仍可使用文件、Git 和终端。",
+  account: "账户",
+  models: "模型与权限",
+  config: "配置",
+  skills: "技能",
+  agents: "子智能体",
+  mcp: "MCP 服务",
+  plugins: "插件与市场",
+  history: "线程历史",
+  refresh: "刷新",
+  loading: "正在读取 Codex 状态…",
+  failed: "操作失败。重试前请刷新确认当前状态；不会自动重试更改。",
+  notLoaded: "尚未加载",
+  empty: "Codex 未返回任何条目。",
+  save: "保存",
+  cancel: "取消登录",
+  remove: "移除",
+  add: "添加",
+  enable: "启用",
+  disable: "禁用",
+  noAccount: "尚未登录",
+  noAuth: "当前模型服务无需 OpenAI 登录。",
+  login: "使用 ChatGPT 登录",
+  deviceLogin: "使用设备码",
+  apiKey: "API 密钥",
+  apiLogin: "使用 API 密钥",
+  logout: "退出登录",
+  pending: "等待授权。请在浏览器完成授权后刷新，以确认登录状态。",
+  openBrowser: "打开授权页面",
+  checkLogin: "检查登录状态",
+  userCode: "一次性验证码",
+  signedIn: "已登录",
+  continue: "进入工作区",
+  model: "默认模型",
+  titleModelTitle: "会话自动标题",
+  titleModelHelp:
+    "新会话会额外发起一次后台 Codex 请求。选择后立即保存；工作区默认继承全局模型，模型不可用时保留原始预览。",
+  titleModelGlobal: "全局标题模型",
+  titleModelWorkspace: "当前工作区",
+  titleModelInherit: "继承全局默认",
+  titleModelUnavailable: "所选标题模型在当前工作区不可用，将跳过自动命名。",
+  titleModelSettingsUnavailable: "无法读取标题模型设置，请刷新后再修改。",
+  titleModelSaved: "标题模型已保存，后续新会话将使用该选择。",
+  effort: "推理强度",
+  approval: "审批策略",
+  sandbox: "沙箱模式",
+  saved: "写入已接受。请检查下方刷新后的有效配置。",
+  overridden: "已保存，但更高优先级的配置覆盖了这些值。请检查下方的有效配置。",
+  defaults: "模型与推理默认值适用于新会话；现有会话保留自身设置。",
+  noVersion: "暂无可写的用户配置层或版本。请在运行时初始化后刷新；为避免覆盖未知配置，写入已禁用。",
+  requirements: "托管策略约束",
+  effective: "有效配置（凭据已隐藏）",
+  edits: "原生配置更改（JSON 数组）",
+  advanced: "高级配置",
+  keyPath: "配置键路径",
+  jsonValue: "JSON 值",
+  saveValue: "写入单值",
+  saveBatch: "批量写入",
+  invalidJsonSyntax: "JSON 无效：{message}",
+  configHelp:
+    "按版本写入原生用户配置文件。键路径用点分隔，值必须是合法 JSON。托管配置与工作区配置可能覆盖默认值。",
+  reload: "重载 MCP 配置",
+  oauth: "授权",
+  tools: "工具",
+  notConnected: "连接状态不可用",
+  installed: "已安装",
+  install: "安装",
+  uninstall: "卸载",
+  consent: "该插件需要原生授权确认，或被策略禁止安装。请使用原生 Codex 界面处理。",
+  source: "市场来源（URL 或路径）",
+  upgrade: "更新市场",
+  confirmRemove: "确认移除",
+  confirmLogout: "确认退出登录",
+  cancelAction: "取消",
+  enabled: "已启用",
+  disabled: "已禁用",
+  unsupported: "Codex 适配器尚不支持",
+  parity:
+    "旧工作流、云分享和迁移尚无 Codex 等价能力验证。定时任务以原生轮次执行；闲时任务跟随服务端灰度开放。原生 Browser 能力取决于当前 Host；Computer Use 暂不可用。Git、文件与终端仍可使用。",
+  openSettings: "打开 Codex 设置",
+  scope: "工作区",
+  mutations: "更改会影响此 Host 的原生 Codex 配置，也可能影响使用同一 Codex home 的其他工作区。",
+  agentsHelp:
+    "管理 ~/.codex/agents（用户）与当前工作区 .codex/agents（项目）下的文件型角色。变更对新会话生效，运行中的线程不受影响。config.toml 各层内联声明的角色不在此展示。",
+  agentsLoading: "正在读取 Codex 角色…",
+  agentsRetry: "重试读取角色",
+  agentsUserScope: "用户角色",
+  agentsProjectScope: "项目角色",
+  agentsEmpty: "此范围暂无角色。",
+  agentsCreate: "新建角色",
+  agentsEdit: "编辑",
+  agentsDelete: "删除",
+  agentsName: "名称",
+  agentsNameHelp: "仅限 ASCII 字母、数字、空格、连字符和下划线，且必须以字母或数字开头。",
+  agentsNameLocked: "名称不可修改；如需改名请删除后重新创建。",
+  agentsDescription: "描述（可选）",
+  agentsModel: "模型（可选）",
+  agentsEffort: "推理强度（可选）",
+  agentsInstructions: "开发者指令（必填）",
+  agentsNicknames: "昵称候选（可选，逗号分隔）",
+  nativeBrowserCuaTitle: "原生桌面浏览器 · 仅 Browser",
+  nativeBrowserCuaTitleSupported: "原生桌面浏览器 · Browser 与电脑控制",
+  nativeBrowserControlToggle: "允许 Agent 控制内置浏览器",
+  nativeBrowserControlDisabled: "浏览器控制已关闭。Agent 看不到该工具；浏览器面板仍可手动使用。",
+
+  nativeBrowserCuaActive: "在当前桌面窗口中生效。注册是临时的进程级配置，不会写入 Codex 配置。",
+  nativeBrowserCuaUnsupported: "当前 Host 的原生桌面浏览器不可用。原生配置变更已禁用。",
+  nativeBrowserCuaRuntimeMissing: "缺少桌面 bridge 运行时。",
+  nativeBrowserCuaServiceNotRunning: "桌面浏览器服务未运行。",
+  nativeBrowserCuaDescriptorUnavailable: "桌面浏览器描述符不可用。",
+  nativeBrowserCuaDegraded:
+    "Browser 命令可用；Computer Use 不可用（codez-cua.runtime_unavailable）。",
+  nativeBrowserCuaLegacyCleanup: "移除旧全局注册",
+  nativeBrowserCuaLegacyCustomized:
+    "同名全局注册与 Codez 生成的精确值不匹配，因此仍在全局共享。系统未修改该条目；只有在接受删除自定义内容时才手动移除。",
+  nativeBrowserCuaLegacyUnknown:
+    "存在同名全局注册，但桌面描述符不可用，Codez 无法确认删除是否安全。它可能仍在全局共享，系统未修改该条目。",
+  codexHistoryTitle: "Codex 线程历史",
+  codexHistoryDescription:
+    "Codex 原生 turn 的只读投影。它不是完整的旧工作流等价物；启动、恢复和取消均不可用。",
+  codexHistoryLoading: "正在读取 Codex 线程历史…",
+  codexHistoryEmpty: "此工作区暂无可用的 Codex 原生 turn。",
+  codexHistoryNoSession: "请先打开原生 Codex 线程以读取历史。",
+  codexHistoryTransportUnavailable: "当前 Host 的 Codex 历史传输不可用。",
+  codexHistoryUsageAvailable: "单轮用量可用",
+  codexHistoryUsageUnavailable: "单轮用量不可用",
+  codexHistoryArtifacts: "产物",
+  nativeBrowserCuaStatuses: "下方独立展示运行时、配置、连接、授权与工具错误。",
+  memory: "记忆",
+  memoryHelp:
+    "原生 Codex 记忆流水线。修改会写入用户 config.toml 并立即热刷新所有已加载线程，无需重启。",
+  memoryEnable: "启用记忆",
+  memoryEnableHelp:
+    "原生记忆流水线总开关（features.memories）。关闭后停止使用、生成记忆与记忆工具。",
+  memoryUse: "在对话中使用记忆",
+  memoryUseHelp: "把记忆使用说明注入开发者提示词（memories.use_memories，默认开）。",
+  memoryGenerate: "自动生成记忆",
+  memoryGenerateHelp: "把新线程总结为记忆（memories.generate_memories，默认开）。",
+  memoryDedicatedTools: "专用记忆工具",
+  memoryDedicatedToolsHelp: "在扩展工具面暴露专用记忆工具（memories.dedicated_tools，默认关）。",
+  memoryDisableOnExternalContext: "外部上下文时禁用",
+  memoryDisableOnExternalContextHelp:
+    "使用 MCP 或联网搜索的线程标记为污染，不生成记忆（memories.disable_on_external_context，默认关）。",
+  memoryExtractModel: "提取模型",
+  memoryExtractModelHelp: "线程总结使用的模型（memories.extract_model）。默认使用供应商偏好模型。",
+  memoryConsolidationModel: "整合模型",
+  memoryConsolidationModelHelp:
+    "记忆整合使用的模型（memories.consolidation_model）。默认使用供应商偏好模型。",
+  memoryModelDefault: "默认（供应商偏好）",
+  memoryAdvanced: "高级",
+  memoryMaxRolloutsPerStartup: "单次启动最大处理会话数",
+  memoryMaxRolloutAgeDays: "会话最大年龄（天）",
+  memoryMinRolloutIdleHours: "会话最小空闲（小时）",
+  memoryMaxRawMemories: "整合最大原始记忆数",
+  memoryMaxUnusedDays: "记忆最长未使用（天）",
+  memoryMinRateLimitPercent: "启动所需最低额度（%）",
+  memoryNumberHelp: "留空恢复原生默认值。（默认：{value}）",
+  memoryNumberInvalid: "数值超出范围，未保存。",
+  ...zhProviders,
+  ...zhMcp,
+  ...zhHooks,
+};
+
+/**
+ * Codex i18n 目录的 `{key}` 占位符格式化入口（唯一实现）。
+ * 目录独立于 packages/ui/src/i18n 的全局 locale 文件，因此不复用 intl.formatMessage。
+ */
+export function formatCodexTemplate(template: string, values: Record<string, string>): string {
+  // 单次扫描替换：已插入的值不会被再次当作占位符（例如错误文本里出现 {message}）；
+  // 用函数形式返回替换值，避免 $& 等特殊序列被解释；未知占位符原样保留。
+  return template.replace(/\{(\w+)\}/g, (match, key: string) => {
+    const value = values[key];
+    return value === undefined ? match : value;
+  });
+}
+
+export function useCodexMessages() {
+  return useCodezIntl().locale === "zh-CN" ? zh : en;
+}

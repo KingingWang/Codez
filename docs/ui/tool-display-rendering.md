@@ -102,6 +102,10 @@ SPT05 验收以真实 DOM 几何调用和动画事件为证据：批量收起工
 ## 编辑行数计数
 
 - `Edit` / 写文件类工具的摘要行继续复用 `changeStat.added` / `changeStat.removed` 作为唯一统计来源，UI 不在渲染层重新推导 diff 行数。
+- 原生 Codex `fileChange` 由 bridge 把完整 `changes[]` 归一为 V4 `output.display`：单文件 `file_diff`、多文件 `file_diffs`。UI 经现有 row adapter 和 `readRawToolCallFileSummaries` 读取，不从截断的 `inputText` 或拼接的 `output.text` 猜路径和 diff。新增 display 字段保持可选，旧 Codez 历史行仍按原路径渲染。
+- 收起态展示文件 chip 与准确 `+/-`；展开态单文件展示内联 diff，多文件每个文件有独立可展开预览，点击文件 chip 打开该文件的侧栏 diff。`add/delete` 使用 `/dev/null` 文件头，rename 展示旧路径至新路径且打开新路径。无法形成可用 patch 时仍保留路径和失败信息，不显示可点击的空详情。
+- 会话工具卡打开侧栏时沿用当前 `workspacePath`、`workspaceIdentity` 和 `remoteSessionId`，尤其不能把原生相对路径解析到本地或另一个同路径的远程 workspace。
+- 预览沿用 Core 的 8 hunk / 160 行限制，超出 row 字节预算继续裁剪并标记截断；若部分文件未进入预览，摘要保留真实总数，展开区明确提示省略。统计来自未裁剪的原生事实，不从预览重新计数。完整轮次变更沿用底部文件摘要的 Review；不新增逐工具全文查询。审批中或运行中的 patch 是待应用预览，失败/拒绝状态不写成已应用。
 - 行数变化时，`+N` / `-N` 中的数字可使用一次短字符槽翻页动画；`+` / `-` 符号保持静态，颜色继续使用 `text-diff-added` / `text-diff-removed`。
 - 翻页动画必须使用固定字符宽度和 `tabular-nums`，避免桌面端连续流式更新或手机端 replayable 恢复补帧时造成摘要行抖动。
 - 用户开启 `prefers-reduced-motion: reduce` 时，数字降级为静态字符槽，只保留完整读数的辅助技术标签。

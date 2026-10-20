@@ -15,7 +15,7 @@ import {
   isPublicStoreMarketplaceId,
   resolveLocalizedText,
   resolvePluginDisplayName,
-  ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
+  CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
 } from "@codez/shared";
 import { DEFAULT_MARKETPLACE_ID } from "@/settings/recommendedPlugins.js";
 import { pluginSearchMatches } from "@/settings/pluginSearch.js";
@@ -62,6 +62,8 @@ export interface StorePluginItem {
   restorable: boolean;
   /** 已安装但原 marketplace 已移除；仍可运行和管理，但不能更新。 */
   orphaned: boolean;
+  /** 目录明确声明当前运行环境不可安装；存在时必须禁用所有安装入口。 */
+  installationUnavailableReason?: string;
   listing?: CodezPluginStoreListing;
   summary?: CodezAvailablePluginSummary;
   /** 运行时信息（仅已发现的已安装插件有）：启用态、组件、manifest 回退字段。 */
@@ -197,7 +199,7 @@ export interface PersonalMarketplaceGroup {
 }
 
 const OFFICIAL_MARKETPLACE_ORDER = [
-  ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
+  CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
   DEFAULT_MARKETPLACE_ID,
 ] as const;
 
@@ -278,6 +280,9 @@ export function buildStoreItems(input: {
         info?.packageStatus === "missing" ? false : summary.installed || info !== undefined,
       restorable: false,
       orphaned: false,
+      ...(summary.installationUnavailableReason
+        ? { installationUnavailableReason: summary.installationUnavailableReason }
+        : {}),
       ...(summary.listing ? { listing: summary.listing } : {}),
       summary,
       ...(info ? { info } : {}),

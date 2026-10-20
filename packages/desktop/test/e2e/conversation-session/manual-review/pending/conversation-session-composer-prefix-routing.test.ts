@@ -102,7 +102,7 @@ describe("会话区 Composer 前缀提示路由 E2E", () => {
     assertPanelExcludesSections(atPluginPanel, ["commands", "subagents", "skills"]);
     await browser.keys("Enter");
     await waitForComposerMarkdownContaining(
-      "plugin://skill-creator@zcode-plugins-official",
+      "plugin://skill-creator@codez-plugins-official",
       "@ plugin 候选 Enter 后没有写入 canonical plugin mention markdown",
     );
 

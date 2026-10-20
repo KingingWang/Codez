@@ -16,6 +16,7 @@ import type { ProviderApiType } from "@codez/provider";
 import {
   TID_MODEL_PROVIDER_ADD_MODEL_BUTTON,
   TID_MODEL_PROVIDER_BASE_URL_INPUT,
+  TID_MODEL_PROVIDER_KEY_MODE_SELECT,
   TID_MODEL_PROVIDER_MODEL_DELETE_BUTTON,
   TID_MODEL_PROVIDER_MODEL_INPUT,
   TID_MODEL_PROVIDER_NAME_EDIT_BUTTON,
@@ -25,6 +26,13 @@ import {
 import { InfoIcon, LockKeyholeIcon, Plus, Pencil, Trash2, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select.js";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -294,6 +302,9 @@ export function ProviderApiKeySection({
   onApiKeyCompositionStart,
   onApiKeyCompositionEnd,
   onToggleApiKeyVisibility,
+  keyMode = "config-file",
+  onKeyModeChange,
+  onSaveRuntimeKey,
 }: {
   apiKeyValue: string;
   apiKeyVisible: boolean;
@@ -306,11 +317,41 @@ export function ProviderApiKeySection({
   onApiKeyCompositionStart?: () => void;
   onApiKeyCompositionEnd?: () => void;
   onToggleApiKeyVisibility: () => void;
+  keyMode?: "config-file" | "runtime-env";
+  onKeyModeChange?: (mode: "config-file" | "runtime-env") => void;
+  onSaveRuntimeKey?: () => void;
 }) {
   const { intl } = useCodezIntl();
 
   return (
     <div>
+      {onKeyModeChange ? (
+        <div className="mb-3">
+          <label className="mb-1 block text-ui-base text-foreground-subtle">
+            {intl.formatMessage({ id: "settings.modelProvider.keyMode" })}
+          </label>
+          <Select
+            value={keyMode}
+            onValueChange={(value) => onKeyModeChange(value as "config-file" | "runtime-env")}
+          >
+            <SelectTrigger
+              className="w-full justify-between"
+              size="lg"
+              data-testid={TID_MODEL_PROVIDER_KEY_MODE_SELECT}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="config-file">
+                {intl.formatMessage({ id: "settings.modelProvider.keyMode.config" })}
+              </SelectItem>
+              <SelectItem value="runtime-env">
+                {intl.formatMessage({ id: "settings.modelProvider.keyMode.runtime" })}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
       <div className="mb-1 flex items-center justify-between gap-2">
         <label className="block text-ui-base text-foreground-subtle">
           {intl.formatMessage({ id: "settings.modelProvider.apiKey" })}
@@ -330,6 +371,19 @@ export function ProviderApiKeySection({
         onCompositionEnd={onApiKeyCompositionEnd}
         onToggleVisibility={onToggleApiKeyVisibility}
       />
+      {keyMode === "runtime-env" ? (
+        <div className="mt-2 space-y-2">
+          <p className="text-ui-caption text-foreground-subtle">
+            {intl.formatMessage({ id: "settings.modelProvider.keyMode.runtimeHint" })}
+          </p>
+          <p className="text-ui-caption text-foreground-subtle">
+            {intl.formatMessage({ id: "settings.modelProvider.keyMode.runtimeSaved" })}
+          </p>
+          <Button type="button" size="sm" disabled={!apiKeyValue.trim()} onClick={onSaveRuntimeKey}>
+            {intl.formatMessage({ id: "settings.modelProvider.keyMode.save" })}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

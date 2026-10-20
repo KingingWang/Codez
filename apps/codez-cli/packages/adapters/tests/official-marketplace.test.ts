@@ -28,7 +28,7 @@ describe("Codez official marketplace partitions", () => {
 
     writeBundledOfficialMarketplacePartitionSync({
       manifest: {
-        name: "zcode-plugins-official",
+        name: "codez-plugins-official",
         plugins: [
           { name: "shared", source: "filesystem", version: "1.0.0" },
           { name: "bundled-only", source: "filesystem", version: "1.0.0" },
@@ -39,7 +39,7 @@ describe("Codez official marketplace partitions", () => {
     });
     writeCdnOfficialMarketplacePartitionSync({
       manifest: {
-        name: "zcode-plugins-official",
+        name: "codez-plugins-official",
         featured: ["remote"],
         plugins: [
           { name: "shared", source: { source: "url", type: "zip" }, version: "9.0.0" },
@@ -51,11 +51,11 @@ describe("Codez official marketplace partitions", () => {
 
     const merged = JSON.parse(
       await readFile(
-        join(storageRoot, "marketplaces", "zcode-plugins-official", "marketplace.json"),
+        join(storageRoot, "marketplaces", "codez-plugins-official", "marketplace.json"),
         "utf8",
       ),
     ) as { featured?: string[]; name: string; plugins: Array<Record<string, unknown>> };
-    expect(merged.name).toBe("zcode-plugins-official");
+    expect(merged.name).toBe("codez-plugins-official");
     expect(merged.featured).toEqual(["remote"]);
     expect(merged.plugins.map((plugin) => plugin.name)).toEqual([
       "shared",
@@ -73,14 +73,14 @@ describe("Codez official marketplace partitions", () => {
 
     writeCdnOfficialMarketplacePartitionSync({
       manifest: {
-        name: "zcode-plugins-official",
+        name: "codez-plugins-official",
         plugins: [{ name: "remote", source: { source: "url", type: "zip" } }],
       },
       storageRoot,
     });
     writeBundledOfficialMarketplacePartitionSync({
       manifest: {
-        name: "zcode-plugins-official",
+        name: "codez-plugins-official",
         plugins: [{ name: "bundled-v2", source: "sea", version: "2.0.0" }],
         version: 1,
       },
@@ -89,7 +89,7 @@ describe("Codez official marketplace partitions", () => {
 
     const merged = JSON.parse(
       await readFile(
-        join(storageRoot, "marketplaces", "zcode-plugins-official", "marketplace.json"),
+        join(storageRoot, "marketplaces", "codez-plugins-official", "marketplace.json"),
         "utf8",
       ),
     ) as { plugins: Array<{ name: string }> };
@@ -99,14 +99,14 @@ describe("Codez official marketplace partitions", () => {
   it("does not rewrite unchanged official marketplace files", async () => {
     const storageRoot = await makeStorageRoot();
     const bundledManifest = {
-      name: "zcode-plugins-official",
+      name: "codez-plugins-official",
       plugins: [{ name: "bundled", source: "filesystem", version: "1.0.0" }],
     };
     const cdnManifest = {
-      name: "zcode-plugins-official",
+      name: "codez-plugins-official",
       plugins: [{ name: "remote", source: { source: "url", type: "zip" } }],
     };
-    const marketplaceRoot = join(storageRoot, "marketplaces", "zcode-plugins-official");
+    const marketplaceRoot = join(storageRoot, "marketplaces", "codez-plugins-official");
 
     writeBundledOfficialMarketplacePartitionSync({
       manifest: bundledManifest,
@@ -146,14 +146,14 @@ describe("Codez official marketplace partitions", () => {
         manifest: { name: "codez-plugins", plugins: [] },
         storageRoot,
       }),
-    ).toThrow("Official marketplace manifest must be named zcode-plugins-official");
+    ).toThrow("Official marketplace manifest must be named codez-plugins-official");
   });
 
   it("refreshes the registered official source and returns the merged plugin count", async () => {
     const storageRoot = await makeStorageRoot();
     writeBundledOfficialMarketplacePartitionSync({
       manifest: {
-        name: "zcode-plugins-official",
+        name: "codez-plugins-official",
         plugins: [{ name: "bundled", source: "filesystem" }],
       },
       storageRoot,
@@ -163,7 +163,7 @@ describe("Codez official marketplace partitions", () => {
       response.writeHead(200, { "content-type": "application/json" });
       response.end(
         JSON.stringify({
-          name: "zcode-plugins-official",
+          name: "codez-plugins-official",
           plugins: [{ name: "remote", source: { source: "url", type: "zip" } }],
         }),
       );
@@ -179,9 +179,9 @@ describe("Codez official marketplace partitions", () => {
           version: 1,
           marketplaces: [
             {
-              id: "zcode-plugins-official",
+              id: "codez-plugins-official",
               source: { source: "url", url: `http://127.0.0.1:${address.port}/marketplace.json` },
-              name: "zcode-plugins-official",
+              name: "codez-plugins-official",
               addedAt: "2026-01-01T00:00:00.000Z",
               pluginCount: 1,
             },
@@ -190,17 +190,17 @@ describe("Codez official marketplace partitions", () => {
       );
 
       const [updated] = await updateMarketplace({
-        marketplace: "zcode-plugins-official",
+        marketplace: "codez-plugins-official",
         storageRoot,
       });
       expect(updated).toMatchObject({
-        id: "zcode-plugins-official",
+        id: "codez-plugins-official",
         pluginCount: 2,
       });
 
       const merged = JSON.parse(
         await readFile(
-          join(storageRoot, "marketplaces", "zcode-plugins-official", "marketplace.json"),
+          join(storageRoot, "marketplaces", "codez-plugins-official", "marketplace.json"),
           "utf8",
         ),
       ) as { plugins: Array<{ name: string }> };

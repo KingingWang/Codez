@@ -28,6 +28,9 @@ export function AppUsageModelUsagePieChart({ snapshot }: { snapshot: AppUsageSna
     [intl, snapshot],
   );
   const tokenUnit = intl.formatMessage({ id: "settings.usage.tokenUnit" });
+  const inputLabel = intl.formatMessage({ id: "settings.usage.modelChart.input" });
+  const cachedLabel = intl.formatMessage({ id: "settings.usage.modelChart.cachedInput" });
+  const outputLabel = intl.formatMessage({ id: "settings.usage.modelChart.output" });
   const formatTooltipItem = useCallback(
     (value: unknown, _name: unknown, item: { color?: string; payload?: unknown }) => {
       const slice = item.payload as AppUsageModelPieSlice | undefined;
@@ -125,6 +128,15 @@ export function AppUsageModelUsagePieChart({ snapshot }: { snapshot: AppUsageSna
                 </span>
                 <span className="col-start-2 min-w-0 truncate text-ui-sm text-foreground-subtle">
                   {formatCompactTokenUsage(locale, slice.totalTokens)} {tokenUnit}
+                  {slice.inputTokens > 0 || slice.outputTokens > 0 ? (
+                    <span className="ml-2 font-mono text-ui-xs text-foreground-subtle tabular-nums">
+                      {inputLabel} {formatCompactTokenUsage(locale, slice.inputTokens)}
+                      {slice.cacheReadTokens > 0
+                        ? ` · ${cachedLabel} ${formatCompactTokenUsage(locale, slice.cacheReadTokens)}`
+                        : ""}
+                      {` · ${outputLabel} ${formatCompactTokenUsage(locale, slice.outputTokens)}`}
+                    </span>
+                  ) : null}
                 </span>
               </div>
             ))}

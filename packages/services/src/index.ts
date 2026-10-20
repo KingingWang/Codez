@@ -4,6 +4,8 @@ export { ServiceCollection, type ServiceExposurePolicy } from "./collection.js";
 export {
   IModelSelectionService,
   IProviderSettingsService,
+  isModelSelectionViewForWorkspace,
+  modelSelectionViewWorkspaceKey,
   type ModelSelectionView,
   type ModelSelectionViewInput,
   type ProviderSettingsProviderView,
@@ -17,6 +19,7 @@ export {
   type AccountRequestAuthResolver,
 } from "./model-provider/accountRequestAuthService.js";
 export { IProviderProvisioningTargetService } from "./model-provider/providerProvisioning.js";
+export { ICodexNativeProviderKeyService } from "./model-provider/codexNativeProviderKeyService.js";
 export {
   collectServiceMemoryDiagnostics,
   memoryDiagnosticsRegistry,
@@ -64,6 +67,14 @@ export type { MediaPreviewPreparation } from "./media-preview/mediaPreview.js";
 // Git service — IGitService is both a type (interface) and value (descriptor)
 export { IGitService } from "./git/git.js";
 export { IGitCheckpointService } from "./git/gitCheckpoint.js";
+export {
+  ICodexDesktopFileRewindService,
+  type CodexDesktopFileRewindApplyParams,
+  type CodexDesktopFileRewindFailureReason,
+  type CodexDesktopFileRewindPreviewResult,
+  type CodexDesktopFileRewindStatus,
+  type CodexDesktopFileRewindTarget,
+} from "./desktop-file-rewind.js";
 
 // System service — ISystemService is both a type (interface) and value (descriptor)
 export { ISystemService } from "./system/system.js";
@@ -222,7 +233,10 @@ export {
   PROJECT_MEMORY_FILE_CHANGED_ERROR_CODE,
   PROJECT_MEMORY_PREVIEW_LIMIT_EXCEEDED_ERROR_CODE,
 } from "./memory/memory.js";
-export type { ProjectMemoryFileSummary, ProjectMemoryWorkspaceSummary } from "./memory/memory.js";
+export type {
+  ProjectMemoryFileSummary,
+  ProjectMemoryWorkspaceSummary,
+} from "./memory/memory.js";
 
 // OutputStyle service — IOutputStyleService is both a type (interface) and value (descriptor).
 export { IOutputStyleService } from "./output-style/outputStyle.js";
@@ -236,6 +250,13 @@ export { IOAuthService } from "./oauth/oauth.js";
 
 // UsageStats service — IUsageStatsService is both a type (interface) and value (descriptor)
 export { IUsageStatsService } from "./usage-stats/usageStats.js";
+// 修复：渲染端也加载服务公开入口；运行时转发 Host 专用缓存会连带加载 node:crypto，导致窗口启动黑屏。
+export type {
+  CodexUsageCacheSnapshot,
+  CodexObservedUsage,
+  CodexUsageObservation,
+  CodexUsageThreadState,
+} from "./usage-stats/codexUsageObservationCache.js";
 
 // Storage（资源管理器「存储」tab）：数据类型在 @codez/shared；这里只导出服务接口与卷分组纯函数
 // StorageRootSpec 随契约再导出：desktop 的 Worker 协议按 contract.ts 的口径只从 services 入口取类型。

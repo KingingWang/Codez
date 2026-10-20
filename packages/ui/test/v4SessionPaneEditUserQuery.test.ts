@@ -13,6 +13,7 @@ import { SessionPane } from "@/v4/SessionPane.js";
 import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 
 const {
+  draftConfigMock,
   fileChangesMock,
   fileRewindPreviewMock,
   headerProps,
@@ -21,6 +22,10 @@ const {
   sendCommandMock,
   timelineProps,
 } = vi.hoisted(() => ({
+  draftConfigMock: {
+    modelSelectionState: { status: "loading" } as Record<string, unknown>,
+    draftConfig: {} as Record<string, unknown>,
+  },
   fileChangesMock: vi.fn(),
   fileRewindPreviewMock: vi.fn(),
   headerProps: [] as Array<{
@@ -122,6 +127,9 @@ vi.mock("@/hooks/useSettingService.js", () => ({
   }),
 }));
 
+vi.mock("@/hooks/useCodexModelCatalog.js", () => ({
+  useCodexModelCatalog: () => ({ status: "unavailable", reload: vi.fn(), readCurrent: vi.fn() }),
+}));
 vi.mock("@/hooks/useServices.js", () => ({
   useComposerClientNamespace: () => "desktop",
   useOptionalServices: () => null,
@@ -152,9 +160,10 @@ vi.mock("@/store/StoreProvider.js", () => ({
 vi.mock("@/v4/composer/useDraftConfigControl.js", () => ({
   buildDraftCreateConfigPayload: () => ({}),
   useDraftConfigControl: () => ({
-    modelSelectionRead: { state: { status: "loading" }, reload: vi.fn() },
+    modelSelectionRead: { state: draftConfigMock.modelSelectionState, reload: vi.fn() },
     captureAcceptedModelSelection: () => vi.fn(),
-    draftConfigRef: { current: {} },
+    draftConfig: draftConfigMock.draftConfig,
+    draftConfigRef: { current: draftConfigMock.draftConfig },
     draftConfigSeedSignal: 0,
     handleDraftSelectModel: vi.fn(),
     handleDraftSelectThought: vi.fn(),
@@ -1004,6 +1013,99 @@ describe("SessionPane user query editing", () => {
     await act(async () => {
       root.unmount();
     });
+  });
+
+  it("编辑重发时携带当前 Composer 的模型、思考等级与计划模式配置", async () => {
+    draftConfigMock.modelSelectionState = {
+      status: "ready",
+      view: {
+        revision: 1,
+        providers: [
+          {
+            providerId: "custom-provider",
+            models: [
+              {
+                modelId: "model-secondary",
+                config: {
+                  optionSpecs: {
+                    reasoningLevel: {
+                      values: ["low", "high"],
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    };
+    draftConfigMock.draftConfig = {
+      mode: "build",
+      planEnabled: false,
+      modelSelection: {
+        providerId: "custom-provider",
+        modelId: "model-secondary",
+        options: { reasoningLevel: "high" },
+      },
+    };
+    projectionState.current = {
+      status: "live",
+      snapshot: makeSnapshot(),
+      subscriptionId: "sub-1",
+      lastError: null,
+      optimisticCommands: [],
+      loadingOlder: false,
+    };
+    const root: Root = createRoot(installMinimalDom());
+
+    try {
+      await act(async () => {
+        root.render(
+          createElement(
+            CodezIntlProvider,
+            { initialLocale: "zh-CN" },
+            createElement(SessionPane, {
+              paneId: "workspace-main",
+              sessionId: "session-1",
+              workspacePath: "/workspace",
+            }),
+          ),
+        );
+        await flushMicrotasks();
+      });
+
+      await act(async () => {
+        await timelineProps
+          .at(-1)
+          ?.onEdit?.({ rowId: 42, entityId: "message-user-42" }, "切换模型后的问题", []);
+      });
+
+      expect(sendCommandMock).toHaveBeenCalledTimes(1);
+      expect(sendCommandMock.mock.calls[0]?.[0]).toMatchObject({
+        baseRevision: 7,
+        baseLogEpoch: "epoch-1",
+        payload: {
+          attachments: [],
+          newText: "切换模型后的问题",
+          target: { rowId: 42, entityId: "message-user-42" },
+          mode: "build",
+          planEnabled: false,
+          modelSelection: {
+            providerId: "custom-provider",
+            modelId: "model-secondary",
+            options: { reasoningLevel: "high" },
+          },
+        },
+        sessionId: "session-1",
+        type: "editUserQuery",
+      });
+    } finally {
+      draftConfigMock.modelSelectionState = { status: "loading" };
+      draftConfigMock.draftConfig = {};
+      await act(async () => {
+        root.unmount();
+      });
+    }
   });
 
   it("重新编辑时重新准备 Highspeed，并随 editUserQuery 提交本次卡和 runtime", async () => {

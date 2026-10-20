@@ -1,0 +1,28 @@
+{
+  "name": "@codez/codex-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/contract.ts"
+  },
+  "scripts": {
+    "test": "tsx --test test/*.test.ts",
+    "build": "node ../../scripts/build-codex-bridge.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@codez/shared": "workspace:*",
+    "@modelcontextprotocol/server": "2.0.0",
+    "smol-toml": "^1.6.1",
+    "yauzl": "^3.3.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@types/yauzl": "^2.10.3",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.19.4",
+    "typescript": "^6.0.2"
+  }
+}

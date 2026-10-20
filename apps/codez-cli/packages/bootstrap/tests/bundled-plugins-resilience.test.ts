@@ -111,7 +111,7 @@ import { resolveOfficialPluginRoots } from "../src/app/bundled-plugins.js";
 import { OFFICIAL_PLUGIN_DEFINITIONS } from "../src/app/official-plugin-definitions.js";
 import { resolveCodezPlugins } from "../src/plugins.js";
 
-const OFFICIAL_CACHE_ROOT = join("cache", "zcode-plugins-official");
+const OFFICIAL_CACHE_ROOT = join("cache", "codez-plugins-official");
 const BROWSER_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, "browser-use", "0.5.1");
 const ANDROID_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, "android-emulator", "0.1.0");
 const SKILL_CREATOR_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, "skill-creator", "0.1.0");
@@ -154,7 +154,7 @@ describe("bundled official plugin cache resilience", () => {
         degraded: true,
         errorCode: "EPERM",
         operation: "seed_plugin",
-        pluginId: "browser-use@zcode-plugins-official",
+        pluginId: "browser-use@codez-plugins-official",
       }),
     );
   });
@@ -178,7 +178,7 @@ describe("bundled official plugin cache resilience", () => {
       expect.objectContaining({
         degraded: true,
         errorCode: "EPERM",
-        pluginId: "browser-use@zcode-plugins-official",
+        pluginId: "browser-use@codez-plugins-official",
       }),
     );
   });
@@ -202,7 +202,7 @@ describe("bundled official plugin cache resilience", () => {
       expect.objectContaining({
         errorCode: "EPERM",
         operation: "seed_plugin",
-        pluginId: "browser-use@zcode-plugins-official",
+        pluginId: "browser-use@codez-plugins-official",
       }),
     );
   });
@@ -250,7 +250,7 @@ describe("bundled official plugin cache resilience", () => {
     expect(existsSync(join(storageRoot, SKILL_CREATOR_CACHE_SUFFIX))).toBe(true);
     const marketplace = JSON.parse(
       await readFile(
-        join(storageRoot, "marketplaces", "zcode-plugins-official", "marketplace.json"),
+        join(storageRoot, "marketplaces", "codez-plugins-official", "marketplace.json"),
         "utf8",
       ),
     ) as { plugins: Array<{ name: string }> };
@@ -264,7 +264,7 @@ describe("bundled official plugin cache resilience", () => {
         // 它自己必需的运行时资产是 browser-client。
         missingSeedPaths: expect.arrayContaining(["scripts/browser-client.mjs"]),
         operation: "seed_plugin",
-        pluginId: "browser-use@zcode-plugins-official",
+        pluginId: "browser-use@codez-plugins-official",
       }),
     );
   });
@@ -296,7 +296,7 @@ describe("bundled official plugin cache resilience", () => {
     // 其余 defaultEnabled 插件与会话引导不受影响。
     expect(existsSync(join(storageRoot, BROWSER_CACHE_SUFFIX))).toBe(false);
     expect(
-      outcome.plugins.find((plugin) => plugin.id === "browser-use@zcode-plugins-official"),
+      outcome.plugins.find((plugin) => plugin.id === "browser-use@codez-plugins-official"),
     ).toBeUndefined();
     const rootNotFound = outcome.diagnostics.filter(
       (diagnostic) => diagnostic.code === "plugin_root_not_found",
@@ -308,7 +308,7 @@ describe("bundled official plugin cache resilience", () => {
       }),
     ]);
     const documentSkills = outcome.plugins.find(
-      (plugin) => plugin.id === "documents@zcode-plugins-official",
+      (plugin) => plugin.id === "documents@codez-plugins-official",
     );
     expect(documentSkills?.enabled).toBe(true);
     expect(logger.warn).toHaveBeenCalledWith(
@@ -316,7 +316,7 @@ describe("bundled official plugin cache resilience", () => {
       expect.objectContaining({
         errorCode: "CODEZ_PLUGIN_SEED_INCOMPLETE",
         operation: "seed_plugin",
-        pluginId: "browser-use@zcode-plugins-official",
+        pluginId: "browser-use@codez-plugins-official",
       }),
     );
   });
@@ -350,7 +350,7 @@ describe("bundled official plugin cache resilience", () => {
         degraded: true,
         errorCode: "CODEZ_PLUGIN_SEED_LOCK_TIMEOUT",
         operation: "seed_plugin",
-        pluginId: "browser-use@zcode-plugins-official",
+        pluginId: "browser-use@codez-plugins-official",
       }),
     );
   });
@@ -405,14 +405,14 @@ describe("bundled official plugin cache resilience", () => {
       expect.objectContaining({
         errorCode: "CODEZ_PLUGIN_SEED_LOCK_TIMEOUT",
         operation: "seed_plugin",
-        pluginId: "browser-use@zcode-plugins-official",
+        pluginId: "browser-use@codez-plugins-official",
       }),
     );
     // 锁只保护 seed 写入，不保护读取：等锁超时不能让一份完整的当前缓存从 discovery 消失。
     // 该不变量依赖 bundled marketplace 分片在 seeding 循环之前写入且不按 seed 成败过滤；
     // 若未来把分片写入挪到循环之后，这条断言会失败。
     const browserPlugin = outcome.plugins.find(
-      (plugin) => plugin.id === "browser-use@zcode-plugins-official",
+      (plugin) => plugin.id === "browser-use@codez-plugins-official",
     );
     expect(browserPlugin?.rootPath).toBe(currentRoot);
     expect(browserPlugin?.enabled).toBe(true);
@@ -495,7 +495,7 @@ describe("bundled official plugin cache resilience", () => {
       expect.objectContaining({
         degraded: true,
         operation: "seed_plugin",
-        pluginId: "android-emulator@zcode-plugins-official",
+        pluginId: "android-emulator@codez-plugins-official",
       }),
     );
   });
@@ -516,7 +516,7 @@ describe("bundled official plugin cache resilience", () => {
         degraded: true,
         errorCode: "ENOENT",
         operation: "seed_plugin",
-        pluginId: "android-emulator@zcode-plugins-official",
+        pluginId: "android-emulator@codez-plugins-official",
       }),
     );
   });
@@ -531,14 +531,14 @@ describe("bundled official plugin cache resilience", () => {
       resolveOfficialPluginRoots({
         logger,
         storageRoot,
-        suppressedBuiltins: new Set(["skill-creator@zcode-plugins-official"]),
+        suppressedBuiltins: new Set(["skill-creator@codez-plugins-official"]),
       }),
     ).not.toThrow();
 
     expect(existsSync(join(storageRoot, SKILL_CREATOR_CACHE_SUFFIX))).toBe(true);
     const marketplace = JSON.parse(
       await readFile(
-        join(storageRoot, "marketplaces", "zcode-plugins-official", "marketplace.json"),
+        join(storageRoot, "marketplaces", "codez-plugins-official", "marketplace.json"),
         "utf8",
       ),
     ) as { plugins: Array<{ name: string }> };

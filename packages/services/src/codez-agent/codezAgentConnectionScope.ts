@@ -675,7 +675,22 @@ export function createCodezAgentConnectionScope(
     async helloConversationV4() {
       assertOpen();
       helloIssued = true;
-      return createHello(context);
+      const hello = createHello(context);
+      // The base service owns bridge/service capability discovery. This connection-scoped
+      // hello keeps its routing identity and copies only the validated Codex projection.
+      const upstream = await base.helloConversationV4();
+      const codex = upstream.capabilities.codex;
+      const codexUnavailable = upstream.capabilities.codexUnavailable;
+      return {
+        ...hello,
+        capabilities: {
+          ...hello.capabilities,
+          // 能力事实由 base runtime 持有；attachment 只转发显式支持，不自行赋予 Codex。
+          ...(upstream.capabilities.workflowRunDeltas === true ? { workflowRunDeltas: true } : {}),
+          ...(codex ? { codex } : {}),
+          ...(codexUnavailable ? { codexUnavailable } : {}),
+        },
+      };
     },
     async initializeConversationV4(clientHello) {
       assertOpen();
@@ -751,6 +766,19 @@ export function createCodezAgentConnectionScope(
       return base.conversationRowsRangeV4(
         withTrustedConnection(params, forwardedConnection(params)),
       );
+    },
+    async conversationRowPayloadV4(params) {
+      assertReady();
+      if (!base.conversationRowPayloadV4) {
+        throw new Error("fault.conversation.rowPayloadUnsupported");
+      }
+      return base.conversationRowPayloadV4(
+        withTrustedConnection(params, forwardedConnection(params)),
+      );
+    },
+    async codexHistoryRunsV4(params) {
+      assertReady();
+      return base.codexHistoryRunsV4(withTrustedConnection(params, forwardedConnection(params)));
     },
     async attachmentBeginV4(params) {
       assertReady();

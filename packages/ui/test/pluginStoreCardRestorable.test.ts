@@ -21,9 +21,9 @@ vi.mock("@/components/ui/button.js", () => ({
 
 function restorableItem(overrides: Partial<StorePluginItem> = {}): StorePluginItem {
   const summary: CodezAvailablePluginSummary = {
-    id: "skill-creator@zcode-plugins-official",
+    id: "skill-creator@codez-plugins-official",
     name: "skill-creator",
-    marketplace: "zcode-plugins-official",
+    marketplace: "codez-plugins-official",
     version: "1.0.0",
     installed: false,
   };
@@ -263,7 +263,7 @@ describe("PluginStoreCard restorable built-ins", () => {
 
     expect(onInstall).toHaveBeenCalledTimes(1);
     expect(onInstall.mock.calls[0]?.[0]).toMatchObject({
-      id: "skill-creator@zcode-plugins-official",
+      id: "skill-creator@codez-plugins-official",
       restorable: true,
     });
   });
@@ -308,9 +308,9 @@ describe("PluginStoreCard restorable built-ins", () => {
     const html = await renderDetail(
       restorableItem({
         info: {
-          id: "skill-creator@zcode-plugins-official",
+          id: "skill-creator@codez-plugins-official",
           name: "skill-creator",
-          marketplace: "zcode-plugins-official",
+          marketplace: "codez-plugins-official",
           enabled: true,
           source: "missing",
           packageStatus: "missing",

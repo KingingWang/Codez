@@ -297,45 +297,64 @@ export function ExecuteToolCallBlock(context: ToolCallBlockRenderContext) {
   );
   const renderContent = useCallback(
     () => (
-      <div
-        data-testid="execute-detail"
-        className="space-y-3 mb-2 rounded-xl border border-border bg-panel px-4 py-3"
-      >
-        <div className="space-y-1">
-          <div className="flex items-start gap-2 font-sans text-ui-base text-foreground">
-            <ExecuteCommand
-              key={contentParts.executionCommand}
-              command={contentParts.executionCommand}
-            />
-          </div>
-        </div>
-
-        {context.isPermissionPreview ? null : outputPreview || failureVisibleText || resultText ? (
-          <ExecuteOutput
-            text={outputPreview?.fullText ?? failureVisibleText ?? resultText ?? ""}
-            running={isRunning}
-          />
-        ) : (
-          !isRunning && (
-            <div className="space-y-1">
-              <p className="font-mono text-ui-base text-foreground-subtle">
-                {intl.formatMessage({
-                  id: "chat.toolCall.execute.noOutput",
-                })}
-              </p>
+      <>
+        <div
+          data-testid="execute-detail"
+          className="space-y-3 mb-2 rounded-xl border border-border bg-panel px-4 py-3"
+        >
+          <div className="space-y-1">
+            <div className="flex items-start gap-2 font-sans text-ui-base text-foreground">
+              <ExecuteCommand
+                key={contentParts.executionCommand}
+                command={contentParts.executionCommand}
+              />
             </div>
-          )
-        )}
-      </div>
+          </div>
+
+          {context.isPermissionPreview ? null : outputPreview ||
+            failureVisibleText ||
+            resultText ? (
+            <ExecuteOutput
+              text={outputPreview?.fullText ?? failureVisibleText ?? resultText ?? ""}
+              running={isRunning}
+            />
+          ) : (
+            !isRunning && (
+              <div className="space-y-1">
+                <p className="font-mono text-ui-base text-foreground-subtle">
+                  {intl.formatMessage({
+                    id: "chat.toolCall.execute.noOutput",
+                  })}
+                </p>
+              </div>
+            )
+          )}
+        </div>
+        {!isOfficeMode ? (
+          <ToolSnapshotFieldNotice
+            refs={toolCall.snapshotRefs ?? []}
+            autoLoadWhenMounted
+            onLoadFullToolCallFields={
+              context.onLoadFullToolCallFields
+                ? () => context.onLoadFullToolCallFields?.(toolCall.toolId)
+                : undefined
+            }
+          />
+        ) : null}
+      </>
     ),
     [
       contentParts.executionCommand,
       context.isPermissionPreview,
+      context.onLoadFullToolCallFields,
       failureVisibleText,
       intl,
+      isOfficeMode,
       isRunning,
       resultText,
       outputPreview,
+      toolCall.snapshotRefs,
+      toolCall.toolId,
     ],
   );
 

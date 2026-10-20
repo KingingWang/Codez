@@ -14,13 +14,21 @@ import {
   sanitizeCodezRuntimeEnv,
   getCapturedCodezAgentTelemetryEnv,
   resetCapturedCodezAgentTelemetryEnvForTest,
+  getCapturedCodezModelApiKey,
+  resetCapturedCodezModelApiKeysForTest,
 } from "../src/runtimeEnv.js";
 
 describe("runtimeEnv", () => {
-  it("enables internal CUA by default while honoring explicit false values", () => {
-    expect(isCodezCuaInternalFeatureEnabled({})).toBe(true);
+  it("keeps internal CUA disabled unless explicitly enabled", () => {
+    // internal gate 已改为默认关闭，不能沿用旧预期绕过官方插件的持久化启用状态。
+    expect(isCodezCuaInternalFeatureEnabled({})).toBe(false);
+    expect(isCodezCuaInternalFeatureEnabled({ CODEZ_CUA_PRODUCT_HELPER: "" })).toBe(false);
     expect(isCodezCuaInternalFeatureEnabled({ CODEZ_CUA_PRODUCT_HELPER: "0" })).toBe(false);
     expect(isCodezCuaInternalFeatureEnabled({ CODEZ_CUA_PRODUCT_HELPER: "false" })).toBe(false);
+    expect(isCodezCuaInternalFeatureEnabled({ CODEZ_CUA_PRODUCT_HELPER: " off " })).toBe(false);
+    expect(isCodezCuaInternalFeatureEnabled({ CODEZ_CUA_PRODUCT_HELPER: "unexpected" })).toBe(
+      false,
+    );
     expect(isCodezCuaInternalFeatureEnabled({ CODEZ_CUA_PRODUCT_HELPER: "1" })).toBe(true);
     expect(isCodezCuaInternalFeatureEnabled({ CODEZ_CUA_PRODUCT_HELPER: " TRUE " })).toBe(true);
     expect(isCodezCuaInternalFeatureEnabled({ CODEZ_CUA_PRODUCT_HELPER: "on" })).toBe(true);
@@ -34,6 +42,18 @@ describe("runtimeEnv", () => {
     expect(isCuaDevModeRequested({ CODEZ_CUA_DEV_MODE: "1" })).toBe(true);
     expect(isCuaDevModeRequested({ CODEZ_CUA_DEV_MODE: " ON " })).toBe(true);
     expect(isCuaDevModeRequested({ CODEZ_CUA_DEV_MODE: "true" })).toBe(true);
+
+    // DEV_MODE implies the internal feature flag without needing CODEZ_CUA_PRODUCT_HELPER,
+    // collapsing the historical multi-var dev incantation to one knob.
+    expect(isCodezCuaInternalFeatureEnabled({ CODEZ_CUA_DEV_MODE: "1" })).toBe(true);
+    expect(
+      isCodezCuaInternalFeatureEnabled({
+        CODEZ_CUA_DEV_MODE: "1",
+        CODEZ_CUA_PRODUCT_HELPER: "false",
+      }),
+    ).toBe(true);
+    expect(isCodezCuaInternalFeatureEnabled({ CODEZ_CUA_PRODUCT_HELPER: "1" })).toBe(true);
+    expect(isCodezCuaInternalFeatureEnabled({})).toBe(false);
   });
 
   it("sanitizes runtime env while sealing user network env for tools", () => {
@@ -55,6 +75,16 @@ describe("runtimeEnv", () => {
       NODE_EXTRA_CA_CERTS: "/tmp/root-ca.pem",
       npm_config_proxy: "http://npm-proxy.example:8080",
     });
+  });
+
+  it("captures a model-only key before sanitizing tool and MCP environments", () => {
+    const name = "CODEZ_MODEL_API_KEY_ABC123";
+    const source = { [name]: "test-model-secret", PATH: "/bin" };
+    expect(sanitizeCodezRuntimeEnv(source)).toEqual({ PATH: "/bin" });
+    expect(getCapturedCodezModelApiKey(name)).toBe("test-model-secret");
+    expect(buildCodezToolEnvPassthroughEnv(source)).toEqual({});
+    resetCapturedCodezModelApiKeysForTest();
+    expect(getCapturedCodezModelApiKey(name)).toBeUndefined();
   });
 
   it("ignores invalid passthrough JSON and non-network keys", () => {

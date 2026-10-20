@@ -179,6 +179,16 @@ export interface AppProps {
   }>;
   onOpenWorkspace: () => void;
   onOpenFolderFromWorkspaceMenu: () => void;
+  /**
+   * 显式打开发现的独立工作区条目（specs/git-worktree-projects.md R5）。
+   * 由 root 层统一编排：已打开→激活保现场；未打开→能力门控后复用既有打开流程。
+   */
+  onOpenWorktreeEntry?: (request: {
+    entry: import("@/lib/projectGrouping.js").WorktreeDiscoveryEntry;
+    projectMemberKeys: readonly string[];
+    isRemoteScope: boolean;
+    intent?: "open" | "new-session";
+  }) => Promise<void>;
   onOpenRemoteWorkspace?: (preference?: RemoteConnectionOpenPreference) => void | boolean;
   remoteConnectionInProgress?: boolean;
   onReturnToWorkspace?: () => void;

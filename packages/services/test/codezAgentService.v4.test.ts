@@ -427,6 +427,9 @@ describe("codezAgentService v4 conversation channel", () => {
       topicResourceExecutor?: NonNullable<
         Parameters<typeof createCodezAgentService>[0]
       >["topicResourceExecutor"];
+      browserControlExecutor?: NonNullable<
+        Parameters<typeof createCodezAgentService>[0]
+      >["browserControlExecutor"];
     } = {},
   ) {
     const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-v4-"));
@@ -448,6 +451,7 @@ describe("codezAgentService v4 conversation channel", () => {
       repoSnapshotCaptureIntentScheduler: options.repoSnapshotCaptureIntentScheduler,
       repoSnapshotSidecar: options.repoSnapshotSidecar,
       topicResourceExecutor: options.topicResourceExecutor,
+      browserControlExecutor: options.browserControlExecutor,
       channelReplyExecutor: options.channelReplyExecutor,
       authorizeLocalMediaPreviewPath: options.authorizeLocalMediaPreviewPath,
       modelSelectionReadinessSource: {
@@ -1618,6 +1622,67 @@ describe("codezAgentService v4 conversation channel", () => {
         disposable.dispose();
       } finally {
         await scope.dispose();
+        await service.disposeAllAndWait();
+      }
+    },
+  );
+
+  it.each(["desktop-continuous", "web-remote-replayable"] as const)(
+    "retains legacy browser ambient context and routing for %s",
+    async (clientMode) => {
+      const list = vi.fn(async () => [
+        { id: "iab-test", generation: 1, type: "iab" as const, name: "Test", capabilities: {} },
+      ]);
+      const execute = vi.fn(async (input: { command: { method: string } }) =>
+        input.command.method === "list"
+          ? { ok: true, tabs: [], elapsedMs: 0 }
+          : {
+              ok: true,
+              userTabs: [{ id: "user-tab", url: "https://example.com/", title: "Test" }],
+              elapsedMs: 0,
+            },
+      );
+      const { service, workspacePath, logPath } = setupService({
+        browserControlExecutor: { list, execute },
+      });
+      try {
+        const ack = await service.sendConversationCommandV4({
+          workspacePath,
+          workspaceIdentity: "legacy-workspace",
+          remoteSessionId: "remote-legacy",
+          clientMode,
+          envelope: {
+            commandId: "legacy-ambient",
+            clientId: "ui",
+            sessionId: "s1",
+            issuedAt: 1,
+            type: "sendText",
+            payload: { text: "unchanged user input" },
+          },
+        });
+        expect(ack.status).toBe("accepted");
+        expect(list).toHaveBeenCalledTimes(1);
+        expect(execute).toHaveBeenCalledTimes(2);
+        expect(list).toHaveBeenCalledWith(
+          expect.objectContaining({
+            sessionId: "s1",
+            workspacePath,
+            workspaceKey: "legacy-workspace",
+            workspaceIdentity: "legacy-workspace",
+            remoteSessionId: "remote-legacy",
+            clientMode,
+          }),
+        );
+        expect(
+          readRequests(logPath).find((request) => request.method === "v4/command")?.params,
+        ).toMatchObject({
+          payload: {
+            text: "unchanged user input",
+            inputOrigin: clientMode === "web-remote-replayable" ? "mobile" : "desktop",
+            browserAmbientContext: { tabCount: 1, currentUrl: "https://example.com/" },
+          },
+        });
+      } finally {
         await service.disposeAllAndWait();
       }
     },

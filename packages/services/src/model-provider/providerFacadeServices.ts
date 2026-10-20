@@ -26,6 +26,7 @@ export type {
   ModelSelectionViewInput,
   ProviderSettingsView,
 } from "@codez/provider";
+export { isModelSelectionViewForWorkspace, modelSelectionViewWorkspaceKey } from "@codez/provider";
 
 export interface IProviderSettingsService {
   readonly onDidChange: Event<ProviderSettingsView>;
@@ -40,6 +41,12 @@ export interface IProviderSettingsService {
     config: ProviderConfigObject,
     metadata?: Parameters<ProviderSettingsFacade["savePersonalProviderOverlay"]>[2],
   ): Promise<ProviderSettingsView>;
+  /** 仅 Desktop Local Host 可保存；临时模式的 Key 值不进入 Provider Config DTO。 */
+  saveApiKeySource(input: {
+    providerId: ProviderId;
+    mode: "config-file" | "runtime-env";
+    apiKey?: string;
+  }): Promise<ProviderSettingsView>;
   deletePersonalProvider(providerId: ProviderId): Promise<ProviderSettingsView>;
   reorderPersonalProviders(providerIds: readonly ProviderId[]): Promise<ProviderSettingsView>;
   reorderPersonalModels(
@@ -132,6 +139,9 @@ export function createProviderSettingsService(
     savePersonalProviderOverlay: async (providerId, config, metadata) => {
       await ensureReady();
       return facade.savePersonalProviderOverlay(providerId, config, metadata);
+    },
+    saveApiKeySource: async () => {
+      throw new Error("当前 Provider Settings Service 不支持修改 Key 来源");
     },
     deletePersonalProvider: async (providerId) => {
       await ensureReady();

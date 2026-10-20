@@ -273,6 +273,14 @@ export function ChatContextUsage({
     size: number;
     cache?: { hitRate: number | null };
     breakdown?: CodezContextUsageBreakdownItem[];
+    cumulative?: {
+      inputTokens?: number;
+      outputTokens?: number;
+      totalTokens?: number;
+      cacheReadTokens?: number;
+      cacheWriteTokens?: number;
+      hitRate?: number | null;
+    };
   } | null;
   selectedProvider: CodezProvider;
   intl: ReturnType<typeof useCodezIntl>["intl"];
@@ -870,13 +878,40 @@ export function ChatContextUsage({
   }, [intl, numberFormatter, renderableTaskUsage]);
   const cacheHitRateLabel = useMemo(() => {
     return formatContextCacheHitRateLabel(
-      renderableTaskUsage?.cache?.hitRate,
+      renderableTaskUsage?.cache?.hitRate ?? renderableTaskUsage?.cumulative?.hitRate,
       locale,
       {
-        showBelowThreshold: import.meta.env.DEV,
+        showBelowThreshold: true,
       },
     );
   }, [locale, renderableTaskUsage]);
+  const cumulativeUsage = renderableTaskUsage?.cumulative;
+  const cumulativeTotalLabel = useMemo(() => {
+    if (!cumulativeUsage) return null;
+    const total =
+      cumulativeUsage.totalTokens ??
+      (cumulativeUsage.inputTokens !== undefined &&
+      cumulativeUsage.outputTokens !== undefined
+        ? cumulativeUsage.inputTokens + cumulativeUsage.outputTokens
+        : undefined);
+    return total !== undefined && total > 0
+      ? formatContextUsageTokenCount(total, locale)
+      : null;
+  }, [cumulativeUsage, locale]);
+  const cumulativeInputLabel = useMemo(
+    () =>
+      cumulativeUsage?.inputTokens !== undefined && cumulativeUsage.inputTokens > 0
+        ? formatContextUsageTokenCount(cumulativeUsage.inputTokens, locale)
+        : null,
+    [cumulativeUsage?.inputTokens, locale],
+  );
+  const cumulativeOutputLabel = useMemo(
+    () =>
+      cumulativeUsage?.outputTokens !== undefined && cumulativeUsage.outputTokens > 0
+        ? formatContextUsageTokenCount(cumulativeUsage.outputTokens, locale)
+        : null,
+    [cumulativeUsage?.outputTokens, locale],
+  );
   const breakdownSegments = useMemo(
     () => buildContextUsageBreakdownSegments(renderableTaskUsage?.breakdown),
     [renderableTaskUsage?.breakdown],
@@ -1019,7 +1054,7 @@ export function ChatContextUsage({
             </div>
           ) : null}
           {renderableTaskUsage &&
-          (breakdownSegments.length > 0 || cacheHitRateLabel) ? (
+          (breakdownSegments.length > 0 || cacheHitRateLabel || cumulativeTotalLabel) ? (
             <>
               {breakdownSegments.length > 0 ? (
                 <div
@@ -1053,22 +1088,40 @@ export function ChatContextUsage({
                   </div>
                 </div>
               ) : null}
-              {cacheHitRateLabel ? (
+              {cacheHitRateLabel || cumulativeTotalLabel ? (
                 <div
                   className={cn(
-                    "flex items-center justify-between gap-3 text-ui-sm",
+                    "space-y-1.5 text-ui-sm",
                     breakdownSegments.length > 0 &&
                       "border-t border-border pt-3",
                   )}
                 >
-                  <span className="text-foreground-subtle">
-                    {intl.formatMessage({
-                      id: "chat.contextUsage.cacheHitRate",
-                    })}
-                  </span>
-                  <span className="font-mono text-ui-sm text-foreground">
-                    {cacheHitRateLabel}
-                  </span>
+                  {cumulativeTotalLabel ? (
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-foreground-subtle">
+                        {intl.formatMessage({
+                          id: "chat.contextUsage.sessionTotalTokens",
+                        })}
+                      </span>
+                      <span className="font-mono text-ui-sm tabular-nums text-foreground">
+                        {cumulativeInputLabel && cumulativeOutputLabel
+                          ? `${cumulativeTotalLabel} (${cumulativeInputLabel} / ${cumulativeOutputLabel})`
+                          : cumulativeTotalLabel}
+                      </span>
+                    </div>
+                  ) : null}
+                  {cacheHitRateLabel ? (
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-foreground-subtle">
+                        {intl.formatMessage({
+                          id: "chat.contextUsage.cacheHitRate",
+                        })}
+                      </span>
+                      <span className="font-mono text-ui-sm tabular-nums text-foreground">
+                        {cacheHitRateLabel}
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </>

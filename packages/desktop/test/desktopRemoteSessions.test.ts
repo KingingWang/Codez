@@ -61,6 +61,8 @@ class MockUtilityProcess extends EventEmitter {
     error?: string;
     errorCode?: string;
   } = { status: "applied" };
+  installationResult?: typeof this.provisioningResult;
+  suspendInstallation = false;
 
   constructor(pid: number) {
     super();
@@ -70,14 +72,18 @@ class MockUtilityProcess extends EventEmitter {
         type?: string;
         requestId?: string;
         environmentKey?: string;
+        operation?: string;
       };
       if (candidate.type !== HostMessageTypes.ProviderProvisioningExecute) return;
+      if (candidate.operation === "install-runtime-keys" && this.suspendInstallation) return;
       queueMicrotask(() => {
         this.emit("message", {
           type: HostResponseTypes.ProviderProvisioningExecutionResult,
           requestId: candidate.requestId,
           environmentKey: candidate.environmentKey,
-          ...this.provisioningResult,
+          ...(candidate.operation === "install-runtime-keys"
+            ? (this.installationResult ?? this.provisioningResult)
+            : this.provisioningResult),
         });
       });
     });
@@ -193,7 +199,7 @@ async function emitConnected(params: {
   });
   // 连接发布前会等待 Environment 首次 Provisioning attempt；测试 Host 在微任务里回包，
   // 这里让完整 Promise 链排空后再检查 renderer attachment。
-  for (let index = 0; index < 6; index += 1) await Promise.resolve();
+  for (let index = 0; index < 16; index += 1) await Promise.resolve();
 }
 
 function getLatestScopedAttachment(win: ReturnType<typeof createWindow>): {
@@ -424,6 +430,70 @@ describe("desktopRemoteSessions R1 window Host forwarding", () => {
       activeSessionCount: 1,
       activeTargetCount: 1,
     });
+  });
+
+  it("已连接后临时 Key 安装失败时关闭该连接而不让旧 Agent 接受新输入", async () => {
+    const child = new MockUtilityProcess(1001);
+    const win = createWindow(1, 101);
+    const manager = createManager(new Map([[101, child]]));
+    const connecting = manager.createRemoteWorkspaceSession(win as never, sshTarget, "connect-1");
+    await emitConnected({ child, requestId: "connect-1", remoteSessionId: "remote-session-1" });
+    confirmLatestScopedAttachment(manager, win);
+    await connecting;
+
+    child.installationResult = { status: "failed", errorCode: "target-call-failed" };
+    child.emit("message", {
+      type: HostResponseTypes.ProviderProvisioningSourceChanged,
+      trigger: "credential",
+    });
+    for (let index = 0; index < 20; index += 1) await Promise.resolve();
+
+    expect(child.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: HostMessageTypes.DisposeRemoteWorkspaceSession,
+        remoteSessionId: "remote-session-1",
+      }),
+    );
+  });
+
+  it("首次临时安装期间断线，迟到回包不能发布旧连接的 renderer attachment", async () => {
+    const child = new MockUtilityProcess(1001);
+    child.suspendInstallation = true;
+    const win = createWindow(1, 101);
+    const manager = createManager(new Map([[101, child]]));
+    const connecting = manager.createRemoteWorkspaceSession(win as never, sshTarget, "connect-1");
+    const outcome = connecting.catch((error: Error) => error.message);
+    await emitConnected({ child, requestId: "connect-1", remoteSessionId: "remote-session-1" });
+    const install = child.postMessage.mock.calls
+      .map(
+        ([message]) =>
+          message as {
+            type: string;
+            requestId: string;
+            operation?: string;
+            environmentKey?: string;
+          },
+      )
+      .find((message) => message.operation === "install-runtime-keys");
+    expect(install).toBeDefined();
+    child.emit("message", {
+      type: HostResponseTypes.RemoteWorkspaceClosed,
+      remoteSessionId: "remote-session-1",
+      reason: "connection-closed",
+    });
+    expect(await outcome).toMatch(/已关闭|已断开/u);
+    child.emit("message", {
+      type: HostResponseTypes.ProviderProvisioningExecutionResult,
+      requestId: install!.requestId,
+      environmentKey: install!.environmentKey,
+      status: "applied",
+    });
+    await Promise.resolve();
+    expect(win.webContents.postMessage).not.toHaveBeenCalledWith(
+      InternalChannels.ScopedServicePort,
+      expect.anything(),
+      expect.anything(),
+    );
   });
 
   it.each([undefined, "source-read-failed"])(
@@ -783,7 +853,16 @@ describe("desktopRemoteSessions R1 window Host forwarding", () => {
       ([message]) =>
         (message as { type?: string }).type === HostMessageTypes.ProviderProvisioningExecute,
     );
-    expect(provisioningExecutions).toHaveLength(1);
+    expect(
+      provisioningExecutions.filter(
+        ([message]) => (message as { operation?: string }).operation === "sync",
+      ),
+    ).toHaveLength(1);
+    expect(
+      provisioningExecutions.filter(
+        ([message]) => (message as { operation?: string }).operation === "install-runtime-keys",
+      ),
+    ).toHaveLength(2);
   });
 
   it("取消 pending connection 只发控制消息，不退出窗口 Host", () => {

@@ -907,7 +907,8 @@ function E2ELexicalInputBridgePlugin({ inputTestId }: { inputTestId?: string }) 
       getEditorState: () => editor.getEditorState(),
       getText: () => getEditorMarkdown(editor.getEditorState()),
       setText: (text: string) => replaceEditorText(editor, text),
-      setTextWithPluginMentions: (text: string) => replaceEditorTextWithPluginMentions(editor, text),
+      setTextWithPluginMentions: (text: string) =>
+        replaceEditorTextWithPluginMentions(editor, text),
       setEditorStateJson: (editorStateJson: string) =>
         replaceEditorStateJson(editor, editorStateJson),
     };
@@ -1287,7 +1288,8 @@ function EditorApiPlugin({
       setMention: (mention, trailingText) =>
         replaceEditorWithMention(editor, mention, trailingText),
       setText: (text: string) => replaceEditorText(editor, text),
-      setTextWithPluginMentions: (text: string) => replaceEditorTextWithPluginMentions(editor, text),
+      setTextWithPluginMentions: (text: string) =>
+        replaceEditorTextWithPluginMentions(editor, text),
       setEditorStateJson: (editorStateJson: string) =>
         replaceEditorStateJson(editor, editorStateJson),
       setSkillMention: (skillName: string, markdown = `$${skillName}`, trailingText = " ") =>
@@ -1335,6 +1337,7 @@ interface LexicalChatInputProps {
   appSlashCommands?: readonly AppSlashCommand[];
   /** mention（@/#）面板开关。v4 数据面未就绪时显式关闭，入口保留。 */
   enableMentionPanel?: boolean;
+  nativeCodex?: boolean;
 }
 
 const EDITOR_THEME = {
@@ -1366,6 +1369,7 @@ export function LexicalChatInput({
   excludedSlashCommandNames,
   appSlashCommands,
   enableMentionPanel = true,
+  nativeCodex = false,
 }: LexicalChatInputProps) {
   const inputMountedAtRef = useRef(Date.now());
   const lastReadyLogKeyRef = useRef<string | null>(null);
@@ -1507,6 +1511,7 @@ export function LexicalChatInput({
           <PasteCapturePlugin disabled={disabled} onPaste={onPaste} />
         </div>
         <SlashCommandPlugin
+          nativeCodex={nativeCodex}
           workspacePath={workspacePath}
           workspaceIdentity={workspaceIdentity}
           sessionId={skillCatalogSessionId ?? taskId}

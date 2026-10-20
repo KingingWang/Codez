@@ -55,7 +55,11 @@ describe("serializeChatComposerAttachment", () => {
         sourceKind: "topic-history",
         messageCount: 2,
       }),
-    ).toMatchObject({ sourceKind: "topic-history", messageCount: 2, textContent: "original text" });
+    ).toMatchObject({
+      sourceKind: "topic-history",
+      messageCount: 2,
+      dataBase64: Buffer.from("original text").toString("base64"),
+    });
   });
   it("文本文件会作为普通 file 附件序列化，并保留可读内容", async () => {
     const file = new File(["hello codez"], "notes.txt", {
@@ -69,9 +73,9 @@ describe("serializeChatComposerAttachment", () => {
       filename: "notes.txt",
       mimeType: "text/plain",
       sizeBytes: file.size,
-      textContent: "hello codez",
+      dataBase64: Buffer.from("hello codez").toString("base64"),
     });
-    expect(attachment.dataBase64).toBeUndefined();
+    expect(attachment.textContent).toBeUndefined();
   });
 
   it("本地 PDF 路径只序列化路径，并保留 PDF attachment kind", async () => {

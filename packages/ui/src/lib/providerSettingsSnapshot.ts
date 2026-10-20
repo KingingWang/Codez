@@ -74,7 +74,12 @@ export function connectProviderSettingsSnapshot(
     reload: read,
     dispose() {
       subscription.dispose();
-      if (generation === connectionGeneration) activeReload = null;
+      if (generation !== connectionGeneration) return;
+      // 旧 Host 的读取可能晚于卸载返回；换代并清空投影，禁止迟到 View 重新进入新 Host。
+      connectionGeneration += 1;
+      activeReload = null;
+      snapshot = { status: "loading" };
+      publish();
     },
   };
 }

@@ -256,47 +256,91 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - @lexical/clipboard@0.42.0 — MIT
 
+- @lexical/clipboard@0.46.0 — MIT
+
 - @lexical/code-core@0.42.0 — MIT
+
+- @lexical/code-core@0.46.0 — MIT
 
 - @lexical/devtools-core@0.42.0 — MIT
 
+- @lexical/devtools-core@0.46.0 — MIT
+
 - @lexical/dragon@0.42.0 — MIT
+
+- @lexical/dragon@0.46.0 — MIT
 
 - @lexical/extension@0.42.0 — MIT
 
+- @lexical/extension@0.46.0 — MIT
+
 - @lexical/hashtag@0.42.0 — MIT
+
+- @lexical/hashtag@0.46.0 — MIT
 
 - @lexical/history@0.42.0 — MIT
 
+- @lexical/history@0.46.0 — MIT
+
 - @lexical/html@0.42.0 — MIT
+
+- @lexical/html@0.46.0 — MIT
+
+- @lexical/internal@0.46.0 — MIT
 
 - @lexical/link@0.42.0 — MIT
 
+- @lexical/link@0.46.0 — MIT
+
 - @lexical/list@0.42.0 — MIT
+
+- @lexical/list@0.46.0 — MIT
 
 - @lexical/mark@0.42.0 — MIT
 
+- @lexical/mark@0.46.0 — MIT
+
 - @lexical/markdown@0.42.0 — MIT
+
+- @lexical/markdown@0.46.0 — MIT
 
 - @lexical/offset@0.42.0 — MIT
 
 - @lexical/overflow@0.42.0 — MIT
 
+- @lexical/overflow@0.46.0 — MIT
+
 - @lexical/plain-text@0.42.0 — MIT
+
+- @lexical/plain-text@0.46.0 — MIT
 
 - @lexical/react@0.42.0 — MIT
 
+- @lexical/react@0.46.0 — MIT
+
 - @lexical/rich-text@0.42.0 — MIT
+
+- @lexical/rich-text@0.46.0 — MIT
 
 - @lexical/selection@0.42.0 — MIT
 
+- @lexical/selection@0.46.0 — MIT
+
 - @lexical/table@0.42.0 — MIT
+
+- @lexical/table@0.46.0 — MIT
 
 - @lexical/text@0.42.0 — MIT
 
+- @lexical/text@0.46.0 — MIT
+
 - @lexical/utils@0.42.0 — MIT
 
+- @lexical/utils@0.46.0 — MIT
+
 - @lexical/yjs@0.42.0 — MIT
+
+- @lexical/yjs@0.46.0 — MIT
 
 - @lydell/node-pty-darwin-arm64@1.2.0-beta.10 — MIT
 
@@ -342,11 +386,7 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - @napi-rs/canvas-linux-arm64-gnu@0.1.100 — MIT
 
-- @napi-rs/canvas-linux-arm64-musl@0.1.100 — MIT
-
 - @napi-rs/canvas-linux-x64-gnu@0.1.100 — MIT
-
-- @napi-rs/canvas-linux-x64-musl@0.1.100 — MIT
 
 - @napi-rs/canvas-win32-arm64-msvc@0.1.100 — MIT
 
@@ -1547,6 +1587,8 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 - lazy-val@1.0.5 — MIT
 
 - lexical@0.42.0 — MIT
+
+- lexical@0.46.0 — MIT
 
 - lib0@0.2.117 — MIT
 
@@ -4743,49 +4785,95 @@ MIT
 
 - @lexical/clipboard@0.42.0: LICENSE
 
+- @lexical/clipboard@0.46.0: LICENSE
+
 - @lexical/code-core@0.42.0: LICENSE
+
+- @lexical/code-core@0.46.0: LICENSE
 
 - @lexical/devtools-core@0.42.0: LICENSE
 
+- @lexical/devtools-core@0.46.0: LICENSE
+
 - @lexical/dragon@0.42.0: LICENSE
+
+- @lexical/dragon@0.46.0: LICENSE
 
 - @lexical/extension@0.42.0: LICENSE
 
+- @lexical/extension@0.46.0: LICENSE
+
 - @lexical/hashtag@0.42.0: LICENSE
+
+- @lexical/hashtag@0.46.0: LICENSE
 
 - @lexical/history@0.42.0: LICENSE
 
+- @lexical/history@0.46.0: LICENSE
+
 - @lexical/html@0.42.0: LICENSE
+
+- @lexical/html@0.46.0: LICENSE
+
+- @lexical/internal@0.46.0: LICENSE
 
 - @lexical/link@0.42.0: LICENSE
 
+- @lexical/link@0.46.0: LICENSE
+
 - @lexical/list@0.42.0: LICENSE
+
+- @lexical/list@0.46.0: LICENSE
 
 - @lexical/mark@0.42.0: LICENSE
 
+- @lexical/mark@0.46.0: LICENSE
+
 - @lexical/markdown@0.42.0: LICENSE
+
+- @lexical/markdown@0.46.0: LICENSE
 
 - @lexical/offset@0.42.0: LICENSE
 
 - @lexical/overflow@0.42.0: LICENSE
 
+- @lexical/overflow@0.46.0: LICENSE
+
 - @lexical/plain-text@0.42.0: LICENSE
+
+- @lexical/plain-text@0.46.0: LICENSE
 
 - @lexical/react@0.42.0: LICENSE
 
+- @lexical/react@0.46.0: LICENSE
+
 - @lexical/rich-text@0.42.0: LICENSE
+
+- @lexical/rich-text@0.46.0: LICENSE
 
 - @lexical/selection@0.42.0: LICENSE
 
+- @lexical/selection@0.46.0: LICENSE
+
 - @lexical/table@0.42.0: LICENSE
+
+- @lexical/table@0.46.0: LICENSE
 
 - @lexical/text@0.42.0: LICENSE
 
+- @lexical/text@0.46.0: LICENSE
+
 - @lexical/utils@0.42.0: LICENSE
+
+- @lexical/utils@0.46.0: LICENSE
 
 - @lexical/yjs@0.42.0: LICENSE
 
+- @lexical/yjs@0.46.0: LICENSE
+
 - lexical@0.42.0: LICENSE
+
+- lexical@0.46.0: LICENSE
 
 - react-devtools-core@7.0.1: https://raw.githubusercontent.com/facebook/react/3cde211b0cb1c707114c27d7fd23683d02086e31/LICENSE
 
@@ -5291,11 +5379,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 - @napi-rs/canvas-linux-arm64-gnu@0.1.100: https://raw.githubusercontent.com/Brooooooklyn/canvas/db337893b9b53483050ca7b24c6d306e4da06741/LICENSE
 
-- @napi-rs/canvas-linux-arm64-musl@0.1.100: https://raw.githubusercontent.com/Brooooooklyn/canvas/db337893b9b53483050ca7b24c6d306e4da06741/LICENSE
-
 - @napi-rs/canvas-linux-x64-gnu@0.1.100: https://raw.githubusercontent.com/Brooooooklyn/canvas/db337893b9b53483050ca7b24c6d306e4da06741/LICENSE
-
-- @napi-rs/canvas-linux-x64-musl@0.1.100: https://raw.githubusercontent.com/Brooooooklyn/canvas/db337893b9b53483050ca7b24c6d306e4da06741/LICENSE
 
 - @napi-rs/canvas-win32-arm64-msvc@0.1.100: https://raw.githubusercontent.com/Brooooooklyn/canvas/db337893b9b53483050ca7b24c6d306e4da06741/LICENSE
 
@@ -15092,6 +15176,8 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH RE
 ````
 
 ### Notice 5154e165bd6c2cc0cfbcd8916498c7abab0497923bafcd5cb07673fe8480087d
+
+- electron@41.0.3: dist/LICENSE
 
 - electron@41.0.3: LICENSE
 

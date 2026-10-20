@@ -22,7 +22,7 @@
 ## 2. 产品与安全决策
 
 1. 第三方插件只能调用官方 `node_repl` Browser Use SDK 的 `Tab.recording.*`；权限边界仍由
-   `browser-use@zcode-plugins-official` 控制，plugin manifest 不能声明高权限 browser runtime。
+   `browser-use@codez-plugins-official` 控制，plugin manifest 不能声明高权限 browser runtime。
 2. v1 录制的是一个已受控 IAB tab 的 WebView 合成内容。页面交互和画面来自同一个 guest、同一条
    CDP 时间线，不创建 Playwright browser/context。
 3. 使用异步 `start/status/cancel`，每条 BrowserControl 命令都在既有 30 秒 transport budget 内完成；

@@ -1,10 +1,11 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "name": "@codez/codez-cua-plugin",
-  "version": "0.6.5",
+  "version": "0.1.0",
   "private": true,
-  "description": "Codez CUA SDK and skill package; execution is provided by the shared node_repl host.",
-  "license": "Apache-2.0",
+  "description": "Repository-owned Computer Use SDK, documentation, and skill for the shared node_repl host.",
+  "author": "Lemon",
+  "license": "MIT",
   "type": "module",
   "main": "./scripts/computer-use-client.mjs",
   "scripts": {

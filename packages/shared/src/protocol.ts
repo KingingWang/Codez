@@ -2,11 +2,13 @@ import type { RemoteAssetInstallMode } from "./remoteAssetInstallMode.js";
 import type { RemoteResourcePackageSelection } from "./remoteResourcePackages.js";
 import type { ProviderFamilyDomain } from "./model-provider-family.js";
 import type { ProviderFamilyConnectionSelectionSettings } from "./provider-family-connection-selection.js";
-import type { CodezProvider } from "./codez-task-types-core.js";
 import type { WorkspacePurpose } from "./workspacePurpose.js";
 import type { DynamicWorkflowMode } from "./dynamic-workflow-feature.js";
 import type { EmbeddedBrowserViewportPreference } from "./browser-use/command-metadata.js";
 import type { AppToolSearchMode } from "./app-runtime-preferences.js";
+import type { ModelSelection } from "./model-selection.js";
+import type { CodexTitleModel } from "./codex-runtime.js";
+import type { CodezProvider } from "./codez-task-types-core.js";
 
 // ── Domain types ──
 
@@ -71,6 +73,8 @@ export interface WorkspaceFileEntry {
 export interface SystemInfo {
   homedir: string;
   platform: string;
+  /** Host 已选定的默认 Agent 运行时；旧 Host 缺少该字段时客户端保留 legacy 行为。 */
+  agentRuntimeMode?: "codex" | "legacy";
 }
 
 /** 支持的语言 */
@@ -325,6 +329,12 @@ export interface AppSettings {
   messageStreamShowReasoningMigrationInitialized?: boolean;
   /** 是否在消息流中展示 todo 工具渲染；不影响摘要面板的 todo */
   messageStreamShowTodos?: boolean;
+  /** 是否允许 Agent 通过内置浏览器 MCP 工具控制桌面内置浏览器；不影响用户手动使用的浏览器面板。 */
+  nativeBrowserControlEnabled?: boolean;
+  /** Codex 辅助标题生成的默认模型；独立于原生聊天模型。 */
+  codexTitleDefaultModel?: CodexTitleModel;
+  /** 工作区身份 → 显式标题模型覆盖；缺席即继承默认。 */
+  codexTitleWorkspaceModels?: Record<string, CodexTitleModel>;
   /** 是否把连续的只读工具调用聚合成 Explore。 */
   toolGroupingExploreEnabled?: boolean;
   /** 是否把连续的非只读 Shell 工具调用聚合成 Terminal。 */
@@ -358,6 +368,12 @@ export interface AppSettings {
   toolSearchMode?: AppToolSearchMode;
   /** 新建或冷恢复 Session 是否启用 Memory；默认关闭。 */
   memoryEnabled?: boolean;
+  /** 是否在对话中注入记忆；默认启用。关闭时自动提取一并停止。 */
+  memoryUseEnabled?: boolean;
+  /** 成功 turn 结束后是否自动提取记忆；默认启用。 */
+  memoryExtractionEnabled?: boolean;
+  /** 记忆提取专用模型；缺省跟随会话模型。 */
+  memoryExtractionModel?: ModelSelection | null;
   onboardingOccupation?:
     | "office"
     | "developer"

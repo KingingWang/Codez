@@ -120,7 +120,7 @@ describe("plugin reference strict URI parser", () => {
 
   it("validates stable id charset and single separator strictly", () => {
     expect(isValidPluginStableId("demo@mkt-a")).toBe(true);
-    expect(isValidPluginStableId("demo.plugin_1@zcode-plugins-official")).toBe(true);
+    expect(isValidPluginStableId("demo.plugin_1@codez-plugins-official")).toBe(true);
     expect(isValidPluginStableId("demo@mkt@extra")).toBe(false);
     expect(isValidPluginStableId("demo mkt@a")).toBe(false);
     expect(isValidPluginStableId(`a@${"b".repeat(300)}`)).toBe(false);

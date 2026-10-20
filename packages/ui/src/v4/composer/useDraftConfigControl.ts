@@ -1,3 +1,7 @@
+import {
+  resolveCodexSelection,
+  type CodexModelCatalog,
+} from "@/settings/codex/codexModelCatalog.js";
 /* eslint-disable max-lines -- Composer 草稿 owner 同时收口选择、正文与提交生命周期，保持单一状态边界。 */
 // 当前编辑由 Composer 持有；进入已有 Session 从当前快照恢复权限/Plan，在线只响应新变化。
 // 菜单点击立即保存 Renderer 意图，Prewarm 与 Submission 只消费它，不反向覆盖。
@@ -5,6 +9,7 @@
 // Workspace presentation 水合只提供 mode 与 slash commands；模型候选、能力和首选值
 // 统一来自目标 Host ModelSelectionView。
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { resolveCodexPrewarmConfig } from "@/settings/codex/codexSubmissionSettings.js";
 import { CODEZ_AGENT_PROVIDER, resolveExecutionState } from "@codez/shared";
 import type {
   CodezConfigOption,
@@ -28,6 +33,7 @@ import { resolveDraftInitialModelSelection } from "@/lib/composerRecent.js";
 import { initializeNewTaskDraft } from "@/v4/composer/newTaskDraft.js";
 import { useComposerClientNamespace } from "@/hooks/useServices.js";
 import { resolveComposerScope, composerScopeKey } from "@/v4/composer/composerDraftStore.js";
+import { normalizeComposerDraftMode } from "@/v4/composer/composerDraftModeNormalization.js";
 import {
   clearV4ComposerDraft,
   persistV4ComposerDraft,
@@ -75,6 +81,87 @@ export function shouldHydrateWorkspaceCatalog(params: {
   return params.slashCommands.length === 0 || !hasModePresentation;
 }
 
+function resolveSessionConfigModelSelection(params: {
+  sessionConfig: Partial<SessionConfigState> | null | undefined;
+  codex: boolean;
+  codexUsesCatalog: boolean;
+  codexCatalog?: CodexModelCatalog;
+}): ModelSelection | undefined {
+  const { sessionConfig, codex, codexUsesCatalog, codexCatalog } = params;
+  if (!sessionConfig) return undefined;
+  const raw =
+    sessionConfig.modelSelection ??
+    (codex &&
+    sessionConfig.model &&
+    (sessionConfig.provider || (codexUsesCatalog ? codexCatalog?.providerId : undefined))
+      ? {
+          providerId: (sessionConfig.provider || codexCatalog?.providerId)!,
+          modelId: sessionConfig.model,
+          ...(sessionConfig.thought ? { options: { reasoningLevel: sessionConfig.thought } } : {}),
+        }
+      : undefined);
+  if (codexUsesCatalog && codexCatalog) {
+    return resolveCodexSelection(codexCatalog, raw) ?? undefined;
+  }
+  return raw;
+}
+
+function buildCodexSessionConfigSyncKey(
+  sessionConfig: Partial<SessionConfigState> | null | undefined,
+  fallbackProviderId?: string,
+): string | undefined {
+  if (!sessionConfig) return undefined;
+  const mode = submissionModeSchema.safeParse(sessionConfig.mode);
+  const planEnabled = resolveExecutionState(sessionConfig).planEnabled;
+  const provider =
+    sessionConfig.modelSelection?.providerId ?? sessionConfig.provider ?? fallbackProviderId ?? "";
+  const model = sessionConfig.modelSelection?.modelId ?? sessionConfig.model ?? "";
+  const thought =
+    sessionConfig.modelSelection?.options?.reasoningLevel ?? sessionConfig.thought ?? "";
+  if (!mode.success && !model) return undefined;
+  return JSON.stringify([mode.success ? mode.data : "", planEnabled, provider, model, thought]);
+}
+
+function applyCodexSessionConfigSync(params: {
+  draft: V4ComposerDraft;
+  initialization: "new-task" | "session" | "promotion";
+  sessionId: string | null;
+  sessionConfig: Partial<SessionConfigState> | null | undefined;
+  codex: boolean;
+  codexUsesCatalog: boolean;
+  codexCatalog?: CodexModelCatalog;
+}): V4ComposerDraft {
+  const { draft, initialization, sessionId, sessionConfig, codex, codexUsesCatalog, codexCatalog } =
+    params;
+  if (!codex || !sessionId || initialization === "new-task" || !draft.mode || !sessionConfig) {
+    return draft;
+  }
+  if (codexUsesCatalog && !codexCatalog) return draft;
+  const syncKey = buildCodexSessionConfigSyncKey(sessionConfig, codexCatalog?.providerId);
+  if (!syncKey) return draft;
+  // 存量草稿首次观测到权威快照时先对齐一次基线；后续仅在权威配置发生实质推进时同步，
+  // 重复快照不会覆盖用户在本端尚未发送的菜单选择。
+  if (draft.lastSyncedSessionConfigKey === syncKey) return draft;
+  const mode = submissionModeSchema.safeParse(sessionConfig.mode);
+  const nextMode = mode.success && mode.data !== "plan" ? mode.data : draft.mode;
+  const nextPlanEnabled = resolveExecutionState(sessionConfig).planEnabled;
+  const nextSelection =
+    resolveSessionConfigModelSelection({
+      sessionConfig,
+      codex,
+      codexUsesCatalog,
+      codexCatalog,
+    }) ?? draft.modelSelection;
+  return {
+    ...draft,
+    mode: nextMode,
+    permissionModeGen: 2 as const,
+    planEnabled: nextPlanEnabled,
+    ...(nextSelection ? { modelSelection: nextSelection } : {}),
+    lastSyncedSessionConfigKey: syncKey,
+  };
+}
+
 export interface DraftConfigControl {
   modelSelectionRead: ModelSelectionRead;
   /** Renderer 下一次提交的配置；恢复采用当前权限，在线授权只同步对应字段。 */
@@ -120,6 +207,15 @@ export function useDraftConfigControl(params: {
   /** provider registry 已通过 renderer readiness 门禁后才允许拉起 Agent。 */
   agentStartupAllowed?: boolean;
   modelSelectionService: IModelSelectionService | null;
+  codex?: boolean;
+  codexCatalog?: CodexModelCatalog;
+  /**
+   * 桌面端通过 codexCatalog 直接解析模型；手机远控无本地 catalog，
+   * 仍需订阅 Host 的 IModelSelectionService（createCodexModelSelectionService）。
+   */
+  codexUsesCatalog?: boolean;
+  /** Approve for me 能力（autoReviewApprovals）；未确认时 codex 草稿的 edit 归一化为 custom。 */
+  codexAutoReviewSupported?: boolean;
 }): DraftConfigControl {
   const {
     workspacePath,
@@ -129,6 +225,10 @@ export function useDraftConfigControl(params: {
     sessionConfig,
     agentStartupAllowed = true,
     modelSelectionService,
+    codex = false,
+    codexCatalog,
+    codexUsesCatalog = codex,
+    codexAutoReviewSupported = false,
   } = params;
   const workspaceKey = workspaceIdentity?.trim() || workspacePath;
   const displayProvider = provider ?? CODEZ_AGENT_PROVIDER;
@@ -188,29 +288,101 @@ export function useDraftConfigControl(params: {
   let draft = currentState.draft;
   const modelSelectionRead = useModelSelectionServiceView(
     modelSelectionService,
-    true,
+    !codexUsesCatalog,
     "remote-waiting",
     {
       selection: draft.modelSelection ?? null,
+      // Codex 原生 Host 按 workspace 解析模型事实；legacy Registry 忽略此字段。
+      workspace: {
+        workspacePath,
+        ...(workspaceIdentity ? { workspaceIdentity } : {}),
+      },
     },
+    // 事件按 workspace 身份过滤，跨 workspace 的变更不会压住本草稿的读取。
+    workspaceKey,
   );
   const modelSelectionView =
     modelSelectionRead.state.status === "ready" ? modelSelectionRead.state.view : null;
-  if (currentState.initialization === "new-task" && !draft.mode && modelSelectionView) {
-    draft = initializeNewTaskDraft(
-      draft,
-      workspacePath,
-      workspaceIdentity,
-      modelSelectionView,
-      rootScope,
-    );
+  const initializeAsNewTask = currentState.initialization === "new-task";
+  if (
+    !draft.mode &&
+    (codexUsesCatalog
+      ? codexCatalog !== undefined && (initializeAsNewTask || sessionConfig != null)
+      : initializeAsNewTask
+        ? modelSelectionView !== null
+        : sessionConfig != null)
+  ) {
+    const mode = submissionModeSchema.safeParse(sessionConfig?.mode);
+    const initialSyncKey =
+      codex && !initializeAsNewTask
+        ? buildCodexSessionConfigSyncKey(sessionConfig, codexCatalog?.providerId)
+        : undefined;
+    // Recent 是初始化原意图，不先按旧 Provider 是否仍在候选中删掉；下一次输入读取
+    // 由同一解析入口对应当前账号，或暂时留空。否则冷启动会绕过统一账号对应规则。
+    // mode 是已初始化标记：历史恢复给出的空选择也是确定结果，后续 Snapshot 不得填满。
+    draft =
+      codexUsesCatalog && codexCatalog
+        ? {
+            ...draft,
+            // 恢复原生会话必须保留权限/plan；强制默认会让 busy guide 与线程设置不一致。
+            // Codex 新任务默认 custom（跟随 config.toml，不静默覆盖用户权限配置）。
+            mode:
+              !initializeAsNewTask && mode.success && mode.data !== "plan" ? mode.data : "custom",
+            permissionModeGen: 2 as const,
+            planEnabled:
+              !initializeAsNewTask && resolveExecutionState(sessionConfig ?? {}).planEnabled,
+            modelSelection:
+              resolveCodexSelection(
+                codexCatalog,
+                draft.modelSelection ??
+                  resolveSessionConfigModelSelection({
+                    sessionConfig,
+                    codex,
+                    codexUsesCatalog,
+                    codexCatalog,
+                  }),
+              ) ?? undefined,
+            ...(initialSyncKey ? { lastSyncedSessionConfigKey: initialSyncKey } : {}),
+          }
+        : initializeAsNewTask && modelSelectionView
+          ? initializeNewTaskDraft(
+              draft,
+              workspacePath,
+              workspaceIdentity,
+              modelSelectionView,
+              rootScope,
+              {
+              codex,
+              },
+            )
+          : {
+              ...draft,
+              mode: mode.success && mode.data !== "plan" ? mode.data : codex ? "custom" : "build",
+              ...(codex ? { permissionModeGen: 2 as const } : {}),
+              planEnabled: resolveExecutionState(sessionConfig ?? {}).planEnabled,
+              modelSelection: resolveSessionConfigModelSelection({
+                sessionConfig,
+                codex,
+                codexUsesCatalog,
+                codexCatalog,
+              }),
+              ...(initialSyncKey ? { lastSyncedSessionConfigKey: initialSyncKey } : {}),
+            };
   }
-  // 空配置先初始化了权限，旧逻辑便因已有 mode 永久跳过模型初始化。
-  // 仅为无模型原意图的 Root 草稿补齐首次可用选择；不重置正文、权限或 Plan，
-  // 也不替换失效的旧选择、已有 Session 或分享导入的配置。
-  if (sessionId === null && !draft.modelSelection && modelSelectionView) {
+  if (sessionId === null && !codexUsesCatalog && !draft.modelSelection && modelSelectionView) {
     const selection = resolveDraftInitialModelSelection(modelSelectionView, null).selection;
     if (selection) draft = { ...draft, modelSelection: selection };
+  }
+  if (sessionConfig) {
+    draft = applyCodexSessionConfigSync({
+      draft,
+      initialization: currentState.initialization,
+      sessionId,
+      sessionConfig,
+      codex,
+      codexUsesCatalog,
+      codexCatalog,
+    });
   }
   if (sessionId && sessionConfig) {
     const previous = currentState.observedConfig;
@@ -220,18 +392,26 @@ export function useDraftConfigControl(params: {
     };
     const firstSnapshot = !previous;
     const mode = submissionModeSchema.safeParse(sessionConfig.mode);
-    const currentMode = mode.success && mode.data !== "plan" ? mode.data : "build";
+    const defaultMode = codex ? "custom" : "build";
+    const currentMode = mode.success && mode.data !== "plan" ? mode.data : defaultMode;
     const currentPlan = resolveExecutionState(sessionConfig).planEnabled;
     if (firstSnapshot && currentState.initialization === "session") {
-      // 历史授权曾被当成新指令重放，覆盖最新确认模式。恢复直接采用当前事实，文字只恢复模型。
       draft = {
         ...draft,
         mode: currentMode,
+        ...(codex ? { permissionModeGen: 2 as const } : {}),
         planEnabled: currentPlan,
-        modelSelection: draft.mode ? draft.modelSelection : sessionConfig.modelSelection,
+        modelSelection:
+          draft.mode
+            ? draft.modelSelection
+            : resolveSessionConfigModelSelection({
+                sessionConfig,
+                codex,
+                codexUsesCatalog,
+                codexCatalog,
+              }),
       };
     } else if (previous) {
-      // 只处理本次打开后出现的新关联；使用最新快照值，不能从历史事件推导固定 yolo/Plan。
       const permissionChanged =
         observedConfig.permissionGrantId &&
         observedConfig.permissionGrantId !== previous.permissionGrantId;
@@ -259,28 +439,31 @@ export function useDraftConfigControl(params: {
   stateRef.current = currentState;
   // 原因：按 revision 清草稿会把短暂不可用永久写成空选择。这里只派生当前结果，
   // 正文/模式自动保存继续保存 draft 中的原意图；读取未就绪时保留展示，提交由 View 门禁阻断。
-  const effectiveSelection = modelSelectionView
-    ? (modelSelectionView.effectiveSelection ?? undefined)
-    : draft.modelSelection;
+  const effectiveSelection = codexUsesCatalog
+    ? codexCatalog
+      ? (resolveCodexSelection(codexCatalog, draft.modelSelection) ?? undefined)
+      : undefined
+    : modelSelectionView
+      ? (modelSelectionView.effectiveSelection ?? undefined)
+      : draft.modelSelection;
+  // 展示与提交共用同一归一化（composerDraftModeNormalization.ts）：edit 在能力未
+  // 确认时归 custom；无代际标记的存量 build 归 custom（旧语义=保留原生权限）；
+  // 非 codex 链路的 custom 回退 build。
+  const normalizeDraftMode = useCallback(
+    (next: V4ComposerDraft): V4ComposerDraft["mode"] =>
+      normalizeComposerDraftMode(next, { codex, codexAutoReviewSupported }),
+    [codex, codexAutoReviewSupported],
+  );
   const draftConfig = useMemo<Partial<SessionConfigState>>(
     () => ({
-      mode:
-        currentState.initialization === "session" && !currentState.observedConfig
-          ? undefined
-          : draft.mode,
+      mode: normalizeDraftMode(draft),
       planEnabled: draft.planEnabled ?? false,
       modelSelection: effectiveSelection,
       provider: effectiveSelection?.providerId ?? "",
       model: effectiveSelection?.modelId ?? "",
       thought: effectiveSelection?.options?.reasoningLevel ?? "",
     }),
-    [
-      draft.mode,
-      draft.planEnabled,
-      effectiveSelection,
-      currentState.initialization,
-      currentState.observedConfig,
-    ],
+    [draft, effectiveSelection, normalizeDraftMode],
   );
   const draftConfigRef = useRef(draftConfig);
   draftConfigRef.current = draftConfig;
@@ -357,7 +540,7 @@ export function useDraftConfigControl(params: {
           ? draftConfigRef.current.modelSelection
           : next.modelSelection;
       draftConfigRef.current = {
-        mode: next.mode,
+        mode: normalizeDraftMode(next),
         planEnabled: next.planEnabled ?? false,
         modelSelection: selection,
         provider: selection?.providerId ?? "",
@@ -368,7 +551,7 @@ export function useDraftConfigControl(params: {
       persistDraft(next);
       lastPersistedDraftRef.current = next;
     },
-    [isCurrentScope, persistDraft],
+    [isCurrentScope, normalizeDraftMode, persistDraft],
   );
   const updateDraftConfig = useCallback(
     (update: (current: Partial<SessionConfigState>) => Partial<SessionConfigState>) => {
@@ -377,12 +560,19 @@ export function useDraftConfigControl(params: {
       updateComposerDraft((current) => ({
         ...current,
         mode: mode.success ? mode.data : current.mode,
+        // mode 经新版本路径改写即携带代际标记；存量 build 归一化不再作用于它。
+        ...(mode.success && mode.data !== current.mode ? { permissionModeGen: 2 as const } : {}),
         modelSelection: next.modelSelection,
         // 导入等待目录期间的显式选择也是有效选择，不能再被默认初始化覆盖。
-        ...(current.mode ? {} : { mode: mode.success ? mode.data : "build" }),
+        ...(current.mode
+          ? {}
+          : {
+              mode: mode.success ? mode.data : codex ? "custom" : "build",
+              permissionModeGen: 2 as const,
+            }),
       }));
     },
-    [updateComposerDraft],
+    [codex, updateComposerDraft],
   );
   const captureAcceptedModelSelection = useCallback(
     (selection: ModelSelection, expectedSelection: ModelSelection = selection): (() => void) => {
@@ -408,13 +598,14 @@ export function useDraftConfigControl(params: {
     [scopeKey, updateComposerDraft],
   );
   const resolveInitialDraftConfig = useCallback((): Partial<SessionConfigState> | undefined => {
+    if (codex) return resolveCodexPrewarmConfig(draftConfigRef.current);
     if (!draftConfigRef.current.mode) return undefined;
     const config = { ...draftConfigRef.current };
     if (appFollowupMode) {
       config.followupMode = appFollowupMode;
     }
     return config;
-  }, [appFollowupMode]);
+  }, [appFollowupMode, codex]);
 
   const updateComposerContent = useCallback(
     (content: Pick<V4ComposerDraft, "text" | "editorStateJson" | "mention">) => {
@@ -429,7 +620,14 @@ export function useDraftConfigControl(params: {
   );
   const replaceComposerDraft = useCallback(
     (replacement: Omit<V4ComposerDraft, "updatedAt">) => {
-      updateComposerDraft(() => ({ ...replacement, updatedAt: Date.now() }));
+      // 撤回编辑替换正文/配置，但不能忘记已经消费的授权，否则旧快照会再次覆盖新选择。
+      updateComposerDraft((current) => ({
+        ...replacement,
+        lastPermissionGrantId: current.lastPermissionGrantId,
+        lastPlanTransitionId: current.lastPlanTransitionId,
+        lastSyncedSessionConfigKey: current.lastSyncedSessionConfigKey,
+        updatedAt: Date.now(),
+      }));
     },
     [updateComposerDraft],
   );
@@ -551,11 +749,13 @@ export function useDraftConfigControl(params: {
       const catalog =
         modelSelectionView ??
         (modelSelectionRead.state.status === "loading" ? modelSelectionRead.state.catalog : null);
-      const modelSelection = reasoningLevel
-        ? { ...parsedSelection, options: { reasoningLevel } }
-        : catalog
-          ? (completeNewModelSelection(catalog, parsedSelection) ?? parsedSelection)
-          : parsedSelection;
+      const modelSelection = codexCatalog
+        ? (resolveCodexSelection(codexCatalog, parsedSelection) ?? parsedSelection)
+        : reasoningLevel
+          ? { ...parsedSelection, options: { reasoningLevel } }
+          : catalog
+            ? (completeNewModelSelection(catalog, parsedSelection) ?? parsedSelection)
+            : parsedSelection;
       logger.debug("[v4-draft-config] select model", {
         modelProvider,
         model,
@@ -568,6 +768,7 @@ export function useDraftConfigControl(params: {
       updateDraftConfig((current) => applyDraftModelSelection(current, modelSelection));
     },
     [
+      codexCatalog,
       modelSelectionView,
       modelSelectionRead.state,
       updateDraftConfig,
@@ -607,11 +808,18 @@ export function useDraftConfigControl(params: {
   const handleDraftSwitchMode = useCallback(
     (mode: string) => {
       if (mode === "plan" || mode === "plan-off") {
-        updateComposerDraft((current) => ({
-          ...current,
-          mode: current.mode === "plan" ? "build" : (current.mode ?? "build"),
-          planEnabled: mode === "plan",
-        }));
+        // plan 勾选与权限档位正交；取消勾选时回到的权限档默认值按运行时区分。
+        const fallbackMode = codex ? "custom" : "build";
+        updateComposerDraft((current) => {
+          const nextMode = current.mode === "plan" ? fallbackMode : (current.mode ?? fallbackMode);
+          return {
+            ...current,
+            mode: nextMode,
+            // plan 勾选不改写权限档；只有实际发生回退写入才携带新代标记。
+            ...(nextMode !== current.mode ? { permissionModeGen: 2 as const } : {}),
+            planEnabled: mode === "plan",
+          };
+        });
         return;
       }
       // 模式与模型同属当前 scope；不再写全局偏好，避免别的任务反向覆盖。
@@ -620,9 +828,11 @@ export function useDraftConfigControl(params: {
         updateComposerDraft((current) => ({
           ...current,
           mode: parsed.data,
+          // 用户显式选择的权限档按新语义写入，携带代际标记（区别于存量 build）。
+          permissionModeGen: 2 as const,
         }));
     },
-    [updateComposerDraft],
+    [codex, updateComposerDraft],
   );
 
   return {

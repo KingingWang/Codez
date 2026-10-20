@@ -1,0 +1,232 @@
+import assert from "node:assert/strict";
+import type { TestContext } from "node:test";
+import { setup, workspaceId } from "./commands-fixture.js";
+
+/** 原生 thread/start 回传（继承）的权限形态：显式 build/edit 场景刻意继承 dangerFullAccess，
+ * 用以验证预设能收紧回 workspaceWrite；其余继承 readOnly。取代原先语义含糊的布尔形参
+ * fullAccess（调用点按目标档位反推继承值，读者难以对应）。 */
+type InheritedSandbox = "readOnly" | "workspaceWrite" | "dangerFullAccess";
+const inheritedPermissions: Record<InheritedSandbox, { sandbox: unknown; approvalPolicy: string }> =
+  {
+    readOnly: { sandbox: { type: "readOnly", networkAccess: false }, approvalPolicy: "untrusted" },
+    workspaceWrite: {
+      sandbox: {
+        type: "workspaceWrite",
+        writableRoots: [],
+        networkAccess: false,
+        excludeTmpdirEnvVar: false,
+        excludeSlashTmp: false,
+      },
+      approvalPolicy: "on-request",
+    },
+    dangerFullAccess: { sandbox: { type: "dangerFullAccess" }, approvalPolicy: "never" },
+  };
+
+/** Executable create contract: thread/start → accepted native settings/update → ACK.
+ * No synthetic first turn. Unsupported creation intent rejects before thread allocation.
+ * Native response owns the effective model; only accepted settings enter the store.
+ */
+async function creation(t: TestContext, inheritedSandbox: InheritedSandbox = "readOnly") {
+  const h = await setup(t);
+  const inherited = inheritedPermissions[inheritedSandbox];
+  h.rpc.handlers.set("thread/start", () => ({
+    thread: { ...h.authority.thread, id: "created", model: null, turns: [] },
+    model: "effective-model",
+    reasoningEffort: "medium",
+    sandbox: inherited.sandbox,
+    approvalPolicy: inherited.approvalPolicy,
+  }));
+  h.rpc.handlers.set("thread/settings/update", () => ({}));
+  return h;
+}
+
+export async function verifyCreateIntent(t: TestContext) {
+  const cases = [
+    { name: "thought only", config: { thought: "high" }, effort: "high" },
+    { name: "plan enabled", config: { planEnabled: true }, plan: "plan" },
+    { name: "explicit plan disabled", config: { planEnabled: false }, plan: "default" },
+    { name: "legacy plan mode", config: { mode: "plan" }, plan: "plan" },
+    {
+      name: "yolo mode",
+      config: { mode: "yolo" },
+      plan: "default",
+      sandbox: "dangerFullAccess",
+      reviewer: "user",
+    },
+    {
+      name: "build exits inherited full access",
+      config: { mode: "build" },
+      plan: "default",
+      sandbox: "workspaceWrite",
+      reviewer: "user",
+    },
+    {
+      name: "edit routes approvals to the auto reviewer",
+      config: { mode: "edit" },
+      plan: "default",
+      sandbox: "workspaceWrite",
+      reviewer: "auto_review",
+    },
+    {
+      // custom = 跟随 config.toml：新线程本来就处于原生默认，不得下发任何权限覆盖。
+      name: "custom keeps the inherited native policy",
+      config: { mode: "custom" },
+      plan: "default",
+      noOverrides: true,
+    },
+    {
+      name: "combined mode, plan and thought",
+      config: { mode: "build", planEnabled: true, thought: "high" },
+      plan: "plan",
+      effort: "high",
+    },
+  ] as const;
+  for (const example of cases) {
+    await t.test(`empty create preserves ${example.name}`, async (t) => {
+      const h = await creation(
+        t,
+        // 显式 workspaceWrite（build/edit）场景让原生回传继承 dangerFullAccess 沙箱，
+        // 以验证预设能从完全访问收紧回 workspace-write。
+        "sandbox" in example && example.sandbox === "workspaceWrite"
+          ? "dangerFullAccess"
+          : "readOnly",
+      );
+      const command = h.command(
+        "createSession",
+        { workspaceId, config: example.config },
+        "create",
+        null,
+      );
+      const ack = await h.execute(command);
+      assert.equal(ack.status, "accepted", ack.message);
+      assert.equal(ack.result?.type, "createSession");
+      if (ack.result?.type !== "createSession") assert.fail("create result required");
+      assert.equal(ack.result.sessionId, "created");
+      assert.equal(ack.result.input, undefined);
+      assert.deepEqual(h.rpc.methods(), ["thread/start", "thread/settings/update"]);
+      const params = h.rpc.params("thread/settings/update")[0]!;
+      assert.equal(params.threadId, "created");
+      const state = h.store.get("created")!;
+      assert.equal(
+        state.thread.model,
+        "effective-model",
+        "do not replace the accepted native model",
+      );
+      assert.deepEqual(state.thread.turns, [], "settings must not fabricate a first turn");
+      if ("effort" in example) {
+        assert.equal(params.effort, example.effort);
+        assert.equal(state.thread.reasoningEffort, example.effort);
+      }
+      if ("plan" in example) {
+        const collaboration = params.collaborationMode as {
+          mode: string;
+          settings: { model: string; reasoning_effort: string };
+        };
+        assert.equal(collaboration?.mode, example.plan);
+        assert.equal(collaboration.settings.model, "effective-model");
+        assert.equal(
+          collaboration.settings.reasoning_effort,
+          "effort" in example ? example.effort : "medium",
+        );
+        assert.deepEqual(state.thread.collaborationMode, collaboration);
+      }
+      if ("sandbox" in example) {
+        assert.equal((params.sandboxPolicy as { type: string })?.type, example.sandbox);
+        assert.deepEqual(state.thread.sandboxPolicy, params.sandboxPolicy);
+        assert.equal(
+          params.approvalPolicy,
+          example.sandbox === "dangerFullAccess" ? "never" : "on-request",
+        );
+      }
+      if ("reviewer" in example) {
+        assert.equal(params.approvalsReviewer, example.reviewer);
+        assert.equal(state.thread.approvalsReviewer, example.reviewer);
+      }
+      if ("noOverrides" in example) {
+        assert.equal(Object.hasOwn(params, "sandboxPolicy"), false);
+        assert.equal(Object.hasOwn(params, "approvalPolicy"), false);
+        assert.equal(Object.hasOwn(params, "approvalsReviewer"), false);
+      }
+      assert.deepEqual(await h.execute(command), ack);
+      assert.deepEqual(h.rpc.methods(), ["thread/start", "thread/settings/update"]);
+    });
+  }
+  // edit 不再是拒绝面：Approve for me 由原生 approvalsReviewer 承接
+  // （specs/codex-permission-modes.md），能力门控在 UI/bridge 能力探测层。
+  const unsupported = [
+    { mcpServers: [{ name: "fixture", command: "fixture-no-exec", args: [], env: [] }] },
+    { offPeakToolEnabled: true },
+    { dynamicWorkflowEnabled: true },
+  ];
+  for (const payload of unsupported) {
+    for (const firstInput of [undefined, { text: "First" }]) {
+      await t.test(
+        `unsupported create ${Object.keys(payload)[0]} firstInput=${!!firstInput}`,
+        async (t) => {
+          const h = await creation(t);
+          const command = h.command(
+            "createSession",
+            { workspaceId, ...payload, firstInput },
+            "create",
+            null,
+          );
+          const ack = await h.execute(command);
+          assert.equal(
+            ack.status,
+            "failed",
+            "unsupported intent must not create an orphan native thread",
+          );
+          assert.ok(ack.message);
+          assert.deepEqual(
+            h.rpc.calls,
+            [],
+            "reject before thread/start or any other native mutation",
+          );
+          assert.equal(h.store.get("created"), undefined);
+          assert.deepEqual(await h.execute(command), ack);
+          assert.deepEqual(h.rpc.calls, []);
+        },
+      );
+    }
+  }
+  await t.test("empty/false unsupported flags do not block ordinary empty create", async (t) => {
+    const h = await creation(t);
+    const ack = await h.execute(
+      h.command(
+        "createSession",
+        {
+          workspaceId,
+          mcpServers: [],
+          offPeakToolEnabled: false,
+          dynamicWorkflowEnabled: false,
+        },
+        "create",
+        null,
+      ),
+    );
+    assert.equal(ack.status, "accepted", ack.message);
+    assert.deepEqual(h.rpc.methods(), ["thread/start"]);
+  });
+  await t.test(
+    "async create settings failure is surfaced without cache update or duplicate allocation",
+    async (t) => {
+      const h = await creation(t);
+      h.rpc.handlers.set("thread/settings/update", async () => {
+        await Promise.resolve();
+        throw new Error("native creation settings rejected");
+      });
+      const command = h.command(
+        "createSession",
+        { workspaceId, config: { thought: "high" } },
+        "create",
+        null,
+      );
+      const ack = await h.execute(command);
+      assert.equal(ack.status, "failed");
+      assert.match(ack.message ?? "", /native creation settings rejected/);
+      assert.equal(h.store.get("created")?.thread.reasoningEffort, "medium");
+      assert.deepEqual(await h.execute(command), ack);
+      assert.deepEqual(h.rpc.methods(), ["thread/start", "thread/settings/update"]);
+    },
+  );
+}

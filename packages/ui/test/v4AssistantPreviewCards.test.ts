@@ -154,6 +154,9 @@ vi.mock("@/hooks/useSettingService.js", () => ({
   }),
 }));
 
+vi.mock("@/hooks/useCodexModelCatalog.js", () => ({
+  useCodexModelCatalog: () => ({ status: "unavailable", reload: vi.fn(), readCurrent: vi.fn() }),
+}));
 vi.mock("@/hooks/useServices.js", () => ({
   useComposerClientNamespace: () => "desktop",
   // Bug 根因：Highspeed 历史消息改用可选服务以支持无 Provider 的只读渲染；
@@ -721,10 +724,20 @@ describe("SessionPane assistant preview card handler wiring", () => {
     );
 
     expect(timelineCapture.props).toHaveLength(1);
-    expect(timelineCapture.props[0]?.rowContext).toMatchObject({
+    const rowContext = timelineCapture.props[0]?.rowContext;
+    expect(rowContext).toMatchObject({
       onOpenBrowserUrl,
-      onOpenCodeViewer,
       onOpenFileLink,
+    });
+    // 原因：SessionPane 现在用 scopeCodeViewerSource 给 code viewer source 注入 workspace
+    // 作用域后再转发（见 src/lib/codeViewerWorkspaceScope.ts），rowContext 上的
+    // onOpenCodeViewer 已是包装函数而非原始 mock；这里调用它验证转发链路和作用域注入。
+    rowContext?.onOpenCodeViewer?.({ type: "file", title: "App.tsx", path: "src/App.tsx" });
+    expect(onOpenCodeViewer).toHaveBeenCalledWith({
+      type: "file",
+      title: "App.tsx",
+      path: "src/App.tsx",
+      workspacePath: "/workspace",
     });
   });
 });

@@ -757,11 +757,11 @@ process.stdin.on("data", (chunk) => {
         id: msg.id,
         result: {
           plugins: [{
-            id: "skill-creator@zcode-plugins-official",
+            id: "skill-creator@codez-plugins-official",
             name: "skill-creator",
             enabled: true,
             source: "official",
-            marketplace: "zcode-plugins-official",
+            marketplace: "codez-plugins-official",
             skillCount: 1,
             skillRootCount: 1,
             commandRootCount: 0,
@@ -1045,11 +1045,11 @@ process.stdin.on("data", (chunk) => {
         id: msg.id,
         result: {
           plugins: [{
-            id: "cwd-check@zcode-plugins-official",
+            id: "cwd-check@codez-plugins-official",
             name: "cwd-check",
             enabled: true,
             source: "official",
-            marketplace: "zcode-plugins-official",
+            marketplace: "codez-plugins-official",
             skillCount: 0,
             skillRootCount: 0,
             commandRootCount: 0,
@@ -2615,12 +2615,12 @@ describe("createCodezAgentService", () => {
     try {
       const result = await service.updatePlugin({
         workspacePath,
-        pluginId: "skill-creator@zcode-plugins-official",
+        pluginId: "skill-creator@codez-plugins-official",
       });
 
       expect(result.installedPlugins).toEqual([]);
       expect(result.diagnostics[0]?.code).toBe("echo-plugin-id");
-      expect(result.diagnostics[0]?.message).toBe("skill-creator@zcode-plugins-official");
+      expect(result.diagnostics[0]?.message).toBe("skill-creator@codez-plugins-official");
     } finally {
       await service.disposeAllAndWait();
     }
@@ -2638,10 +2638,10 @@ describe("createCodezAgentService", () => {
     try {
       const result = await service.restoreBuiltinPlugin({
         workspacePath,
-        pluginId: "skill-creator@zcode-plugins-official",
+        pluginId: "skill-creator@codez-plugins-official",
       });
 
-      expect(result.pluginId).toBe("skill-creator@zcode-plugins-official");
+      expect(result.pluginId).toBe("skill-creator@codez-plugins-official");
       expect(result.diagnostics).toEqual([]);
     } finally {
       await service.disposeAllAndWait();

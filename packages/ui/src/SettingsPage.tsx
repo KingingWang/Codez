@@ -24,6 +24,7 @@ import type {
   IntegratedTerminalShellOption,
   IntegratedTerminalShellSelection,
   Locale,
+  ModelSelection,
   UsageEntitlementSnapshot,
   UserInfo,
   CodezInteractionBehavior,
@@ -44,6 +45,19 @@ import { usePlatform } from "@/hooks/usePlatform.js";
 import { logger } from "@/logger.js";
 import { getPathLeaf } from "@/lib/path.js";
 import { useProviderSettingsView } from "@/hooks/useProviderSettingsView.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
+import {
+  CodexSettingsSection,
+  CodexCapabilityNotice,
+  type CodexSettingsPanel,
+} from "@/settings/codex/CodexSettingsSection.js";
+import { selectedCodexHistorySessionId } from "@/settings/codex/codexHistorySelection.js";
+import {
+  isCodexSettingsSection,
+  isCodexUnsupportedSection,
+} from "@/settings/codex/codexSettingsData.js";
+import { codexPanelToSection, codexSectionToPanel } from "@/settings/codex/codexSettingsNav.js";
+
 import { useUsageEntitlement } from "@/hooks/useUsageEntitlement.js";
 import {
   addPendingSettingsSectionListener,
@@ -353,6 +367,8 @@ export function SettingsPage({
   const [targetSourceServerDetails, setTargetSourceServerDetails] = useState(
     consumePendingSettingsSourceServerDetails,
   );
+  // 只有没有独立侧栏入口的 Codex 面板需要本地选中态；侧栏仍只认 activeSection。
+  const [codexInnerPanel, setCodexInnerPanel] = useState<CodexSettingsPanel | null>(null);
   const [pluginTab, setPluginTab] = useState(() => consumePendingSettingsPluginTab());
   // Linux 关闭驻留托盘能力查询（spec：docs/desktop/linux-close-to-tray.md）：打开设置页时
   // 经 platform IPC 触发 main 侧探测（带 stale 缓存），用户装完 AppIndicator 扩展重开
@@ -611,7 +627,8 @@ export function SettingsPage({
       : resolveSettingsUsageCodingPlanSourceId(usageActiveTab);
   const selectedUsageCodingPlanSource =
     usageCodingPlanSources.find((source) => source.id === selectedUsageCodingPlanSourceId) ?? null;
-  const showUsageCodingPlanTab = usageCodingPlanSources.length > 0;
+  // 使用统计页面已收敛为纯本地应用用量面板，不再展示特定商业套餐 Tab。
+  const showUsageCodingPlanTab = usageCodingPlanSources.length < 0;
   const checkingUsageZaiCodingPlanTab = Boolean(
     usageZaiProviderFingerprint &&
     (usageZaiEntitlement.loading || (!usageZaiEntitlement.snapshot && !usageZaiEntitlement.error)),
@@ -668,10 +685,14 @@ export function SettingsPage({
     );
   }, [selectedUsageCodingPlanSource, usageActiveTab, usageCodingPlanSources]);
   const setNewUserOnboardingOpen = useCodezStore((state) => state.setNewUserOnboardingOpen);
-  const requestOnboardingDialog = () => setNewUserOnboardingOpen(true);
+  const requestOnboardingDialog = () => {
+    if (isDesktop) setActiveSettingsSection("codex");
+    else setNewUserOnboardingOpen(true);
+  };
   const setActiveSettingsSection = useCallback(
     (section: SettingsSectionId, fallbackSection: SettingsSectionId = activeSection) => {
       const resolvedSection = resolveSettingsSection(section, fallbackSection);
+      setCodexInnerPanel(null);
       setActiveSection(resolvedSection);
       writeLastSettingsSectionPreference(resolvedSection);
     },
@@ -682,6 +703,16 @@ export function SettingsPage({
       setActiveSettingsSection("general");
     }
   }, [activeSection, isDesktop, setActiveSettingsSection]);
+  // 根因：内部专属面板原先没有更新 activeSection，从 MCP 切到配置/历史后
+  // 沿用 MCP 标题。先归属 Codex，再保留用户点选的面板供 keyed 内容重挂载。
+  const handleCodexSettingsPanelChange = useCallback(
+    (panel: CodexSettingsPanel) => {
+      const section = codexPanelToSection(panel);
+      setActiveSettingsSection(section);
+      if (section === "codex" && panel !== "account") setCodexInnerPanel(panel);
+    },
+    [setActiveSettingsSection],
+  );
   const handleOpenCodingPlanUpgradeSettings = useCallback(
     (
       providerId: string,
@@ -711,6 +742,9 @@ export function SettingsPage({
   // 这里改为读取 tabStore 维护的“最近激活 workspace identity”，让插件管理继续命中正确远端。
   const activeWorkspaceIdentity = useTabStore(
     (state) => state.activeWorkspaceIdentity ?? undefined,
+  );
+  const selectedCodexSessionId = useCodezSessionStore((state) =>
+    selectedCodexHistorySessionId(state, activeWorkspacePath, activeWorkspaceIdentity),
   );
   const activeWorkspaceTab = useTabStore((state) => {
     const workspacePath = state.activeWorkspacePath;
@@ -1077,6 +1111,51 @@ export function SettingsPage({
         completed: {
           resultSource: "shared_settings",
           stateAfter: enabled ? "enabled" : "disabled",
+        },
+      });
+    },
+    [updateSharedSettings],
+  );
+  const handleMemoryUseEnabledChange = useCallback(
+    async (enabled: boolean) => {
+      await runSettingsActionAsync({
+        featureId: "settings.memory",
+        action: "toggle_memory_use",
+        trigger: "switch",
+        operation: () => updateSharedSettings({ memoryUseEnabled: enabled }),
+        completed: {
+          resultSource: "shared_settings",
+          stateAfter: enabled ? "enabled" : "disabled",
+        },
+      });
+    },
+    [updateSharedSettings],
+  );
+  const handleMemoryExtractionEnabledChange = useCallback(
+    async (enabled: boolean) => {
+      await runSettingsActionAsync({
+        featureId: "settings.memory",
+        action: "toggle_memory_extraction",
+        trigger: "switch",
+        operation: () => updateSharedSettings({ memoryExtractionEnabled: enabled }),
+        completed: {
+          resultSource: "shared_settings",
+          stateAfter: enabled ? "enabled" : "disabled",
+        },
+      });
+    },
+    [updateSharedSettings],
+  );
+  const handleMemoryExtractionModelChange = useCallback(
+    async (model: ModelSelection | null) => {
+      await runSettingsActionAsync({
+        featureId: "settings.memory",
+        action: "change_memory_extraction_model",
+        trigger: "select",
+        operation: () => updateSharedSettings({ memoryExtractionModel: model }),
+        completed: {
+          resultSource: "shared_settings",
+          valueAfter: model ? `${model.providerId}/${model.modelId}` : "follow-session",
         },
       });
     },
@@ -1797,7 +1876,7 @@ export function SettingsPage({
                                   })}
                                 </span>
                               ) : null}
-                              {activeSection === "usage" ? (
+                              {activeSection === "usage" && showUsageCodingPlanTab ? (
                                 <SettingsUsageProviderTabs
                                   activeTab={usageActiveTab}
                                   codingPlanSources={usageCodingPlanSources}
@@ -1811,7 +1890,25 @@ export function SettingsPage({
                           ) : null}
                         </div>
                         <div className="space-y-8">
-                          {activeSection === "general" ? (
+                          {isDesktop && isCodexSettingsSection(activeSection) ? (
+                            <CodexSettingsSection
+                              embeddedInSettingsPage
+                              workspacePath={activeWorkspacePath}
+                              workspaceIdentity={activeWorkspaceIdentity}
+                              sessionId={selectedCodexSessionId}
+                              remoteSessionId={activeWorkspaceTab?.remoteSessionId ?? undefined}
+                              onPanelChange={handleCodexSettingsPanelChange}
+                              initialPanel={
+                                activeSection === "codex" && codexInnerPanel
+                                  ? codexInnerPanel
+                                  : codexSectionToPanel(activeSection)
+                              }
+                            />
+                          ) : isDesktop && isCodexUnsupportedSection(activeSection) ? (
+                            <CodexCapabilityNotice
+                              onOpenSettings={() => setActiveSettingsSection("codex")}
+                            />
+                          ) : activeSection === "general" ? (
                             <GeneralSectionContent
                               localePreference={localePreference}
                               interfaceMode={interfaceMode}
@@ -2175,6 +2272,7 @@ export function SettingsPage({
                           ) : activeSection === "usage" ? (
                             <UsageStatsSection
                               activeTab={usageActiveTab}
+                              desktopCodex={isDesktop}
                               providerSourcesLoading={usageProviderSettingsLoading}
                               selectedCodingPlanSource={selectedUsageCodingPlanSource}
                               workspaceIdentity={activeWorkspaceIdentity}

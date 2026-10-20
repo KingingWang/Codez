@@ -191,7 +191,7 @@ flowchart LR
 
 | 仓库地址                                                          | 分支             | 修改范围                                       | 运行位置                                                |
 | ----------------------------------------------------------------- | ---------------- | ---------------------------------------------- | ------------------------------------------------------- |
-| [zai-org/Codez](https://github.com/zai-org/Codez)                 | `feat/ui-plugin` | 宿主协议、侧栏和内联展示、沙箱、审批与生命周期 | `pnpm dev:desktop`                                      |
+| [zai-org/ZCode](https://github.com/zai-org/ZCode)                 | `feat/ui-plugin` | 宿主协议、侧栏和内联展示、沙箱、审批与生命周期 | `pnpm dev:desktop`                                      |
 | [zai-org/codez-plugins](https://github.com/zai-org/codez-plugins) | `feat/ui-plugin` | 插件清单、MCP 服务、页面、业务数据与资源打包   | `ui-plugins/<name>` 为源码；`plugins/<name>` 为安装产物 |
 
 本文的开发与调试步骤对应两个仓库各自的 `feat/ui-plugin` 分支。**Codez 公开仓库的该分支目前尚未建好**，待分支准备就绪后再从上述仓库检出并联调。

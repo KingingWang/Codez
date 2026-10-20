@@ -18,7 +18,7 @@ type ExperimentalIncludeWithResponseBody = {
   responseBody?: boolean;
 };
 
-/** codez-plan 业务码常只出现在 finish chunk 的 response.body，流式路径需显式开启。 */
+/** zcode-plan 业务码常只出现在 finish chunk 的 response.body，流式路径需显式开启。 */
 export function shouldIncludeStreamResponseBody(resolved: ResolvedAiSdkModel): boolean {
   return (
     resolved.providerKind === "openai-compatible" && resolved.accountAccess?.mode === "start-plan"
@@ -158,7 +158,7 @@ export function createStreamTextOptions(input: {
     // AI SDK 会吞掉 Anthropic message_start 等 metadata 事件；compact 需要
     // 在 adapter 内观察 raw event 才能精确结束 SSE retry，raw chunk 不会上送 Core/UI。
     includeRawChunks: input.request.preserveProviderStreamBoundaries ? true : undefined,
-    // codez-plan 的业务码可能只在流式响应尾部 body 里，需保留 responseBody 供错误分类读取。
+    // zcode-plan 的业务码可能只在流式响应尾部 body 里，需保留 responseBody 供错误分类读取。
     experimental_include: createStreamExperimentalInclude(input),
   }) as AiSdkStreamTextOptions;
 }

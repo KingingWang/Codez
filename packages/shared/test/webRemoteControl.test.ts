@@ -5,6 +5,7 @@ import {
   buildWebRemoteControlExternalQrUrl,
   matchesWebRemoteControlRoutePath,
   parseWebRemoteControlExternalQrParams,
+  parseWebRemoteControlE2eeQrFragment,
   resolveWebRemoteControlFailureReasonFromCloseCode,
   resolveWebRemoteControlInitialWorkspaceSelection,
   resolveWebRemoteControlRoutePathFromBaseUrl,
@@ -56,6 +57,24 @@ describe("resolveWebRemoteControlWorkspaceKey", () => {
 });
 
 describe("external relay QR helpers", () => {
+  it("keeps the independent encryption key only in the URL fragment", () => {
+    const e2eeKey = "A".repeat(42) + "A";
+    const url = new URL(
+      buildWebRemoteControlExternalQrUrl({
+        baseUrl: "https://trusted.example/remote/v4",
+        deviceSid: "sid-1",
+        passHash: "relay-known",
+        timestamp: 1,
+        e2eeKey,
+      }),
+    );
+    expect(url.searchParams.has("k")).toBe(false);
+    expect(url.searchParams.get("hash")).toBe("relay-known");
+    expect(parseWebRemoteControlE2eeQrFragment(url.hash)).toBe(e2eeKey);
+    expect(parseWebRemoteControlE2eeQrFragment("#e2ee=v1&k=short")).toBeNull();
+    expect(parseWebRemoteControlE2eeQrFragment(`#e2ee=v1&k=${"A".repeat(42)}B`)).toBeNull();
+    expect(parseWebRemoteControlE2eeQrFragment("")).toBeNull();
+  });
   it("validates the optional authoritative desktop version in bootstrap responses", () => {
     const response = {
       codez_type: "bootstrap-response",

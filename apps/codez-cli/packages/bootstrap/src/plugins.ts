@@ -50,7 +50,6 @@ import type {
   PluginStoreListing,
 } from "@codez/contracts";
 import { CODEZ_OFFICIAL_PLUGIN_MARKETPLACE, isOfficialMarketplaceId } from "@codez/contracts";
-import { CODEZ_CUA_OFFICIAL_PLUGIN_ID, isCodezCuaInternalFeatureEnabled } from "@codez/shared";
 import { resolveOfficialPluginRoots } from "./app/bundled-plugins.js";
 import {
   DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS,
@@ -293,7 +292,7 @@ export function getCodezPluginsOverview(
   const installedIds = new Set(installed.map((record) => record.id));
 
   // 每个市场的 manifest 只读一次：同时取 entries（目录条目）与 featured（策展名单）。
-  // zcode-plugins-official 的内置与 CDN 分片已在 adapter 层合并为唯一 canonical manifest。
+  // codez-plugins-official 的内置与 CDN 分片已在 adapter 层合并为唯一 canonical manifest。
   const catalogs: Array<{
     summary: CodezMarketplaceSummaryData;
     entries: PluginMarketplaceEntry[];
@@ -341,11 +340,9 @@ export function getCodezPluginsOverview(
   // 里挑出 id 落在 suppressedBuiltins 集合内的，映射成 available 形态供 UI 的「恢复」入口使用。
   // 完整 Catalog/cache 仍然保留，restorable 只是 Runtime 抑制态的投影，商店信息直接取定义里的 listing seed。
   const suppressed = new Set(configResult.config.plugins.suppressedBuiltins);
-  const restorableBuiltins: CodezAvailablePluginData[] = OFFICIAL_PLUGIN_DEFINITIONS.filter(
-    (def) =>
-      suppressed.has(`${def.name}@${CODEZ_OFFICIAL_PLUGIN_MARKETPLACE}`) &&
-      // computer-use 的恢复入口需要 internal 特性开启（与 restoreBuiltinPluginCore 同口径）。
-      (def.name !== "computer-use" || isCodezCuaInternalFeatureEnabled(options.env ?? process.env)),
+  // 恢复入口只反映 suppression；internal gate 是开发 bypass，不能让正式插件从恢复面消失。
+  const restorableBuiltins: CodezAvailablePluginData[] = OFFICIAL_PLUGIN_DEFINITIONS.filter((def) =>
+    suppressed.has(`${def.name}@${CODEZ_OFFICIAL_PLUGIN_MARKETPLACE}`),
   ).map((def) => {
     const listing = def.listing
       ? parseEntryStoreListing({ name: def.name, ...def.listing })
@@ -771,7 +768,7 @@ export async function uninstallCodezMarketplacePlugin(
   return withPluginStorageLock(pluginStorageRoot, async () => {
     const pluginId = resolvePluginIdForMutation(options);
 
-    // 官方 CDN marketplace 与内置插件共享 zcode-plugins-official id 空间，且其缓存
+    // 官方 CDN marketplace 与内置插件共享 codez-plugins-official id 空间，且其缓存
     // 也位于 official cache 下。若先看 runtime source="official"，会把已有
     // installed_plugins.json 记录的 CDN 插件误判成内置插件，只写 suppression 却不删安装记录，
     // 导致 UI 永远保持 installed、无法重装。持久化安装记录是 marketplace 所有权的权威证据，
@@ -903,15 +900,7 @@ function applySparsePaths(
  * 因此核心不能再次获取 promise-chain lock；公开入口再负责提供锁保护。
  */
 async function restoreBuiltinPluginCore(options: RestoreBuiltinPluginOptions): Promise<void> {
-  const codezCuaPluginId = CODEZ_CUA_OFFICIAL_PLUGIN_ID;
-  if (
-    options.pluginId === codezCuaPluginId &&
-    !isCodezCuaInternalFeatureEnabled(options.env ?? process.env)
-  ) {
-    // overview 虽然隐藏了恢复入口，但协议调用仍可绕过 UI 写用户配置。
-    // 功能开关关闭时在写盘前失败，确保用户配置与插件缓存都保持零痕迹。
-    throw new Error("computer-use built-in plugin requires CODEZ_CUA_PRODUCT_HELPER to be enabled");
-  }
+  // restore 只撤销用户的 suppression，不等于启用插件；因此不能再叠加 internal gate。
   const { configResult } = resolvePluginContext(options);
   await removeSuppressedBuiltinInFileConfig(configResult.sources.user.path, options.pluginId);
   // 重读磁盘上的最新 config（patch 后），确保抑制集合不再包含刚恢复的 id；

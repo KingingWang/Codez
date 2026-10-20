@@ -133,7 +133,8 @@ function assertTerminalAndSafe(rows: ConversationRow[]): void {
     if (
       row.kind === "timelineMarker" &&
       ((row.marker.type === "compact" && row.marker.status === "running") ||
-        (row.marker.type === "goalVerify" && row.marker.outcome === "running"))
+        (row.marker.type === "goalVerify" && row.marker.outcome === "running") ||
+        (row.marker.type === "codexEvent" && row.marker.status === "running"))
     ) {
       throwProjectionError("invalid_conversation", "Active timeline operations cannot be shared");
     }
@@ -167,10 +168,20 @@ function assertTerminalAndSafe(rows: ConversationRow[]): void {
     if (row.kind === "artifact") {
       const { ref: _localRef, ...safeFields } = row;
       visitStrings(safeFields, assertSafeString);
-    } else if (row.kind === "toolCall" && row.output) {
+    } else if (row.kind === "toolCall" && (row.output || row.inputTruncated)) {
       // truncated.ref 只用于本地按需读取大工具输出，公开投影本来就只保留 output.text；
       // 对不会出现在请求里的内部 ref 做安全校验会误阻断同一轮正式结果物上传。
-      visitStrings({ ...row, output: { text: row.output.text } }, assertSafeString);
+      const { inputTruncated: _inputTruncated, ...restTool } = row;
+      visitStrings(
+        {
+          ...restTool,
+          ...(row.output ? { output: { text: row.output.text } } : {}),
+        },
+        assertSafeString,
+      );
+    } else if (row.kind === "reasoning" && row.truncated) {
+      const { truncated: _truncated, ...restReasoning } = row;
+      visitStrings(restReasoning, assertSafeString);
     } else if (row.kind === "userInput") {
       const { attachments: _attachments, ...safeFields } = row;
       visitStrings(safeFields, assertSafeString);
@@ -268,6 +279,11 @@ function projectTimelineMarker(
     case "goalVerify":
       return { ...row.marker };
     case "retryNotice":
+      return { ...row.marker };
+    case "codexEvent":
+      // codex 原生事件分隔线：载荷即展示文本（review/hook/agentPath/时长），无外部引用、
+      // 无运行态，发布闸门（running 拦截 + fork/checkpoint 拦截）天然不命中，直接放行。
+      // 只读分享时间线暂不认识该类型会整行跳过（可接受的降级，见 specs/codex-desktop-thread-items.md）。
       return { ...row.marker };
     case "forkNotice":
     case "forkCreated":

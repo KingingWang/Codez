@@ -39,8 +39,8 @@ export function GroupedTaskContextMenuContent({
     formatMessage: (desc: { id: string }) => string;
   };
   fileManagerLabel: string;
-  taskSessionFile: { loading: boolean; path: string | null };
-  taskNativeSessionLogFile: { loading: boolean; path: string | null };
+  taskSessionFile: { loading: boolean; path: string | null; exists: boolean };
+  taskNativeSessionLogFile: { loading: boolean; path: string | null; exists: boolean };
   providerConfigFile: { loading: boolean; path: string | null };
   onMoveTaskToGroup: (task: CodezTaskMeta, groupId: string | null) => void;
   onMoveTaskToTop: (task: CodezTaskMeta) => void;
@@ -175,7 +175,7 @@ export function GroupedTaskContextMenuContent({
         {intl.formatMessage({ id: "appHeader.copyPath" })}
       </ContextMenuItem>
       <ContextMenuItem
-        disabled={taskSessionFile.loading || !taskSessionFile.path}
+        disabled={taskSessionFile.loading || !taskSessionFile.path || !taskSessionFile.exists}
         onSelect={() =>
           onCopyText(intl.formatMessage({ id: "appHeader.copyTaskPath" }), taskSessionFile.path)
         }
@@ -183,7 +183,11 @@ export function GroupedTaskContextMenuContent({
         {intl.formatMessage({ id: "appHeader.copyTaskPath" })}
       </ContextMenuItem>
       <ContextMenuItem
-        disabled={taskNativeSessionLogFile.loading || !taskNativeSessionLogFile.path}
+        disabled={
+          taskNativeSessionLogFile.loading ||
+          !taskNativeSessionLogFile.path ||
+          !taskNativeSessionLogFile.exists
+        }
         onSelect={() =>
           onCopyText(
             intl.formatMessage({ id: "appHeader.copyLogPath" }),

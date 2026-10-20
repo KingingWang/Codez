@@ -37,15 +37,15 @@ Zustand、本地偏好及窗口广播机制。分类归属仍来自 marketplace 
   "code": {
     "categoryOrder": ["developer-tools", "productivity"],
     "pluginOrder": {
-      "productivity": ["lark-cli@zcode-plugins-official"]
+      "productivity": ["lark-cli@codez-plugins-official"]
     }
   },
   "work": {
     "categoryOrder": ["productivity", "finance", "other"],
     "pluginOrder": {
       "productivity": [
-        "tencent-meeting-cli@zcode-plugins-official",
-        "lark-cli@zcode-plugins-official"
+        "tencent-meeting-cli@codez-plugins-official",
+        "lark-cli@codez-plugins-official"
       ]
     }
   }
@@ -139,7 +139,7 @@ CodeGraph：两个工作区均无 `.codegraph/`，按约定跳过索引，以 rg
 
 ## 恢复旧版会话插件退出市场展示
 
-- `restore-legacy-sessions@zcode-plugins-official` 不再出现在商店精选、分类（含展开）、搜索及已安装快捷条中；Code / Work、桌面与手机 Web 使用同一规则。
+- `restore-legacy-sessions@codez-plugins-official` 不再出现在商店精选、分类（含展开）、搜索及已安装快捷条中；Code / Work、桌面与手机 Web 使用同一规则。
 - 由共享 `PluginStoreListView` 在分类、精选、搜索等派生前统一过滤完整插件 ID，旧目录缓存或服务端精选名单不能使其重新出现；个人来源的同名插件不受影响。
 - 本次仅移除市场展示入口，保留插件包、已安装状态与插件管理页，避免隐藏入口导致已有安装无法管理。排序配置不承担上下架职责，当前下发配置未引用该插件，无需改动 Nacos。
 - 浏览器回归覆盖官方插件已安装且被列入精选、两种模式、搜索和个人来源同名插件。

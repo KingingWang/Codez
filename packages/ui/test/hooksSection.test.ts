@@ -35,7 +35,7 @@ describe("Hooks settings page", () => {
       [],
       [
         {
-          pluginId: "computer-use@zcode-plugins-official",
+          pluginId: "computer-use@codez-plugins-official",
           pluginName: "computer-use",
           detail: { event: "PreToolUse", type: "command", command: "official" },
           pluginEnabled: true,
@@ -54,7 +54,7 @@ describe("Hooks settings page", () => {
       sections
         .filter((section) => section.kind === "plugin")
         .flatMap((section) => section.hooks.map((hook) => hook.pluginId)),
-    ).toEqual(["computer-use@zcode-plugins-official", "codez-cua@custom-marketplace"]);
+    ).toEqual(["codez-cua@custom-marketplace", "computer-use@codez-plugins-official"]);
   });
 
   it("keeps a selected local workspace scope on the base host while a remote workspace is active", () => {
@@ -331,6 +331,8 @@ describe("Hooks settings page", () => {
     expect(html).toContain("Stop");
     expect(html).toContain("Installed");
     expect(html).toContain("New");
+    expect(html).toContain("flex flex-wrap items-center justify-between gap-3");
+    expect(html).not.toContain("flex h-7 items-center justify-between");
     expect(html).toContain("Legacy");
     expect(html).toContain("PostToolUse");
     expect(html).toContain("quality");

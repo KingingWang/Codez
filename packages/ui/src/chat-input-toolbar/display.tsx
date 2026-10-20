@@ -40,6 +40,7 @@ import {
   NotepadText,
   ShieldAlertIcon,
   ShieldCheckIcon,
+  SlidersHorizontalIcon,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -260,11 +261,12 @@ export function resolveModeOptionIcon(value: unknown): LucideIcon {
     return ShieldAlertIcon;
   }
 
-  // Bugfix: build 会被本地化成“默认模式”，和 default 一样应使用常规确认图标。
-  if (typeof value === "string" && /^(default|build)$/i.test(value))
-    return HandIcon;
-  if (typeof value === "string" && value.toLocaleLowerCase() === "plan")
-    return NotepadText;
+  // build 对应常规确认模式，使用确认图标。
+  if (typeof value === "string" && /^(default|build)$/i.test(value)) return HandIcon;
+  if (typeof value === "string" && value.toLocaleLowerCase() === "plan") return NotepadText;
+  // custom 跟随 config.toml，权限形态不固定，使用调节图标。
+  if (typeof value === "string" && value.toLocaleLowerCase() === "custom")
+    return SlidersHorizontalIcon;
 
   if (
     typeof value === "string" &&

@@ -1,9 +1,16 @@
+/* eslint-disable max-lines -- 窗口生命周期集中维护上游 Host attachment 与 fork 原生浏览器能力的同一装配边界。 */
 import { getDatabaseStartupPortPayload } from "./databaseStartupRelay.js";
 import { randomUUID } from "node:crypto";
 import { release as readPlatformRelease } from "node:os";
 import { app, BrowserWindow, Menu, MessageChannelMain, nativeImage } from "electron";
 import type { UtilityProcess as ElectronUtilityProcess } from "electron";
-import { HostMessageTypes, InternalChannels, PlatformChannels, type Locale } from "@codez/shared";
+import {
+  HostMessageTypes,
+  InternalChannels,
+  PlatformChannels,
+  type DesktopCodexMcpServer,
+  type Locale,
+} from "@codez/shared";
 import { scheduleArmsBrowserPerfLoadNudge } from "./armsBrowserPerfLoadNudge.js";
 import { createBrowserWindow } from "./desktopWindowChrome.js";
 import type { HostInitMessage, WindowBootstrapOptions } from "./desktopHostProcess.js";
@@ -20,6 +27,7 @@ import {
   syncUnreadBadgeForPlatform,
 } from "./unreadBadge.js";
 import { attachDesktopWindowSizePersistence, type DesktopWindowSize } from "./desktopWindowSize.js";
+import { localBrowserMcpAvailability } from "./desktopCodexMcpAvailability.js";
 import {
   registerMainApplicationWindow,
   unregisterMainApplicationWindow,
@@ -65,6 +73,19 @@ export function createWindow(options: {
   runtimeProcessEnvPatchPromise?: Promise<Record<string, string>>;
   /** 不执行 shell 即可计算的完整降级 patch；预热失败/超时时仍要注入 Local Host。 */
   runtimeProcessEnvFallbackPatch: Record<string, string>;
+  /** Desktop Main 提供的稳定 Browser/CUA native MCP availability facts。 */
+  nativeBrowserCua: () => {
+    browserAvailable: boolean;
+    cuaAvailable: boolean;
+  };
+  /** Main 完成 broker 窗口注册后返回本窗口能力；失败则仅禁用可选工具。 */
+  prepareDesktopCodexMcpServers?: (win: BrowserWindow) => Promise<DesktopCodexMcpServer[]>;
+  /**
+   * Broker socket/token 就绪结果只用于避免首 Host 烤入冷启动 false。
+   * settled 失败必须 fail-closed；不能阻塞或拒绝 Local Host 启动。
+   */
+  nativeBrowserCuaReadiness?: () => Promise<void>;
+  codezBuiltinProviderConfigFilePath: string;
   /** 仅供启动门禁和测试注入；超过该时间必须 fail-open 创建 Local Host。 */
   runtimeProcessEnvWaitTimeoutMs?: number;
   /**
@@ -76,7 +97,7 @@ export function createWindow(options: {
    */
   awaitFirstHostSpawnDecision?: () => Promise<void>;
   /** Local Host map insertion completed; presentation facts can now be replayed safely. */
-  onHostProcessReady?: (windowKey: number) => void;
+  onHostProcessReady?: (windowKey: number, win: BrowserWindow) => void;
   resolveBrowserViewOwner?: Parameters<typeof createBrowserWindow>[0]["resolveBrowserViewOwner"];
 }) {
   const win = createBrowserWindow({
@@ -194,12 +215,34 @@ export function createWindow(options: {
     if (options.awaitFirstHostSpawnDecision) {
       await options.awaitFirstHostSpawnDecision();
     }
+    if (options.nativeBrowserCuaReadiness) {
+      try {
+        await options.nativeBrowserCuaReadiness();
+      } catch (error) {
+        options.logger.warn(
+          `[createWindow] native Browser/CUA readiness failed (${label}); projecting unavailable`,
+          error,
+        );
+      }
+    }
+    let desktopCodexMcpServers: DesktopCodexMcpServer[] = [];
+    if (options.prepareDesktopCodexMcpServers) {
+      try {
+        desktopCodexMcpServers = await options.prepareDesktopCodexMcpServers(win);
+      } catch (error) {
+        options.logger.warn(
+          `[createWindow] Desktop Codex MCP unavailable (${label}); continuing without tool`,
+          error,
+        );
+      }
+    }
 
     const spawnLocalHost = (runtimeProcessEnvPatch: Record<string, string>) => {
       if (currentDomReadyGeneration !== domReadyGeneration || win.isDestroyed()) {
         return;
       }
       const primaryWarmupTarget = options.agentWarmupTargets?.[0];
+      const nativeBrowserCua = options.nativeBrowserCua();
       const child = options.spawnHostProcess(win, label, {
         type: HostMessageTypes.InitLocal,
         deviceMid: options.deviceMid,
@@ -209,6 +252,10 @@ export function createWindow(options: {
           ? { agentWarmupTargets: [...options.agentWarmupTargets] }
           : {}),
         runtimeProcessEnvPatch,
+        nativeBrowserCua: options.prepareDesktopCodexMcpServers
+          ? localBrowserMcpAvailability(nativeBrowserCua, desktopCodexMcpServers)
+          : nativeBrowserCua,
+        desktopCodexMcpServers,
         // 同一窗口会后台索引所有已恢复 workspace，不只索引启动时的 active workspace。
         // fallback 必须跟随 local Host 生命周期常驻，否则非 active 历史目录被删除后会用失效 cwd 反复 spawn。
         agentSpawnFallbackCwd: options.agentSpawnFallbackCwd,
@@ -217,7 +264,7 @@ export function createWindow(options: {
         ...(options.currentApplicationLocale ? { locale: options.currentApplicationLocale() } : {}),
       });
       options.windowHostProcessMap.set(wcId, child);
-      options.onHostProcessReady?.(wcId);
+      options.onHostProcessReady?.(wcId, win);
       options.syncAutoUpdaterStateToWindow(win);
       options.syncReadyUpdateToWindow(win);
       options.syncPostUpdateReleaseNotesToWindow(win);

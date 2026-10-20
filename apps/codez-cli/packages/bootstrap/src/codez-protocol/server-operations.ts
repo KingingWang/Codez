@@ -116,6 +116,7 @@ import {
   type CodezProtocolToolInputTransmissionState,
 } from "./server-types.js";
 import { createWorkspaceCodezApp, ensureSessionModelAvailable } from "./workspace-model-runtime.js";
+import { applyHostMemoryPreferencesToRecord } from "./memory-preferences.js";
 import { buildAppUsageSnapshot, resolveTzOffsetMs } from "./usage-stats-builder.js";
 import { createProtocolInteractionBroker } from "./interaction-broker.js";
 import { createProtocolAutomationPort } from "./automation-port.js";
@@ -165,6 +166,10 @@ interface SessionStartupPreferences {
   additionalDirectories?: readonly string[];
   subagentRuntimeConfigEnabled?: boolean;
   memoryEnabled: boolean;
+  /** 旧 Host 可缺席；undefined = 不覆盖 CLI 本地 memory.use / 提取配置。 */
+  memoryUseEnabled?: boolean;
+  memoryExtractionEnabled?: boolean;
+  memoryExtractionModel?: ModelSelection | null;
   modelContextBudgetStrategy: CodezModelContextBudgetStrategy;
   nativeSearchEnhancementsEnabled: boolean;
   toolSearchMode: AppToolSearchMode;
@@ -2819,6 +2824,10 @@ export async function setMode(context: CodezProtocolAgentServerContext, rawParam
   const params = parseParams(codezSessionSetModeParamsSchema, rawParams);
   const record = requireSession(context, params.sessionId);
   assertExpectedRevision(record, params.expectedRevision);
+  // custom 只属于 Codex 链路（codex-bridge）；Codez Agent 运行时显式拒绝，
+  // 不允许 as 断言后由 resolveExecutionState 静默降档（specs/codex-permission-modes.md）。
+  if (params.mode === "custom")
+    throw new Error('Session mode "custom" is Codex-only; Codez Agent sessions must not receive it');
   await record.app.setMode(params.mode);
   return await afterStateMutation(context, record, "mode_changed");
 }
@@ -3367,9 +3376,13 @@ async function resolveSessionStartupPreferences(
 ): Promise<SessionStartupPreferences> {
   if (source.kind === "inherit") {
     const inheritedShellSelection = source.parent.app.runtime.getSessionShellSelection();
+    const parentMemory = source.parent.app.runtime.getMemoryRuntimeConfig();
     return {
       memoryEnabled: source.parent.memoryEnabled,
       subagentRuntimeConfigEnabled: source.parent.subagentRuntimeConfigEnabled,
+      memoryUseEnabled: parentMemory?.use !== false,
+      memoryExtractionEnabled: parentMemory?.extractionEnabled !== false,
+      memoryExtractionModel: parentMemory?.extractionModel ?? null,
       modelContextBudgetStrategy: DEFAULT_CODEZ_MODEL_CONTEXT_BUDGET_STRATEGY,
       nativeSearchEnhancementsEnabled: source.parent.nativeSearchEnhancementsEnabled,
       toolSearchMode: source.parent.toolSearchMode,
@@ -3391,6 +3404,9 @@ async function resolveSessionStartupPreferences(
     additionalDirectories: runtimePreferences.additionalDirectories,
     subagentRuntimeConfigEnabled: runtimePreferences.subagentRuntimeConfigEnabled,
     memoryEnabled: runtimePreferences.memoryEnabled,
+    memoryUseEnabled: runtimePreferences.memoryUseEnabled,
+    memoryExtractionEnabled: runtimePreferences.memoryExtractionEnabled,
+    memoryExtractionModel: runtimePreferences.memoryExtractionModel ?? null,
     modelContextBudgetStrategy: DEFAULT_CODEZ_MODEL_CONTEXT_BUDGET_STRATEGY,
     nativeSearchEnhancementsEnabled: runtimePreferences.nativeSearchEnhancementsEnabled,
     toolSearchMode: runtimePreferences.toolSearchMode,
@@ -3461,13 +3477,17 @@ async function createRecord(
   // automation-port 需要读取「本会话」的实时 model/mode/thought；record 在 app 之后才建。
   // 用可变持有者做惰性绑定：CronCreate 在 turn 中调用 create() 时 record 早已就绪。
   let ownSessionRecord: CodezProtocolSessionRecord | undefined;
+  // 同 setMode：custom 是 Codex 专属档位，legacy 创建路径显式拒绝，不静默降档。
+  const runtimeMode = "mode" in params ? params.mode : undefined;
+  if (runtimeMode === "custom")
+    throw new Error('Session mode "custom" is Codex-only; Codez Agent sessions must not receive it');
   const app = await createWorkspaceCodezApp(context, workspace, {
     env: context.deps.env,
     eventStore,
     resume,
     additionalDirectories: params.additionalDirectories ?? startupPreferences.additionalDirectories,
     runtimeConfig: {
-      mode: "mode" in params ? params.mode : undefined,
+      mode: runtimeMode,
       modelSelection: "model" in params ? toRuntimeModelSelection(initialModel) : undefined,
       parentSessionId,
       taskType,
@@ -3490,9 +3510,6 @@ async function createRecord(
       nativeSearchEnhancementsEnabled: startupPreferences.nativeSearchEnhancementsEnabled,
       toolSearch: { mode: startupPreferences.toolSearchMode },
       modelContextBudgetStrategy: startupPreferences.modelContextBudgetStrategy,
-      // Memory Settings 是现有 CLI features.memory/use 之外的总开关。只在关闭时
-      // 写入 override，避免开启值反向覆盖用户已有的 CLI 禁用配置。
-      ...(startupPreferences.memoryEnabled ? {} : { memory: { enabled: false } }),
       // desktop-continuous session/create 由 UI 先解析 ~/.codez/.agents 的 enabled MCP，
       // 但 protocol app-server 自己不会读取 UI/main 侧的 MCP store；之前 createRecord 没把
       // params.mcpServers 注入 runtimeConfig，导致日志里 runtimeHasMcpConfig=false，工具永远不启动。
@@ -3565,10 +3582,24 @@ async function createRecord(
     modelIoFullRetentionEnabled: context.appRuntimePreferences.modelIoFullRetentionEnabled,
   });
   const now = Date.now();
+  // CLI 本地记忆配置必须在 Host override 应用前快照；后续热更新按
+  // host && local（布尔）/ host ?? local（模型）重算，避免 Host 开启值反向覆盖
+  // 用户在 config.json 显式禁用的记忆配置（与既有「只在关闭时 override」语义一致）。
+  const localMemory = app.runtime.getMemoryRuntimeConfig();
   const record: CodezProtocolSessionRecord = {
     app,
     createdAt: now,
     eventStore,
+    localMemoryConfig: {
+      ...(localMemory?.enabled === undefined ? {} : { enabled: localMemory.enabled }),
+      ...(localMemory?.use === undefined ? {} : { use: localMemory.use }),
+      ...(localMemory?.extractionEnabled === undefined
+        ? {}
+        : { extractionEnabled: localMemory.extractionEnabled }),
+      ...(localMemory?.extractionModel === undefined
+        ? {}
+        : { extractionModel: localMemory.extractionModel }),
+    },
     memoryEnabled: startupPreferences.memoryEnabled,
     subagentRuntimeConfigEnabled: startupPreferences.subagentRuntimeConfigEnabled,
     modelContextBudgetStrategy: startupPreferences.modelContextBudgetStrategy,
@@ -3584,6 +3615,13 @@ async function createRecord(
     updatedAt: now,
     workspace,
   };
+  // Host 记忆偏好在 record 登记前应用；此时没有并发 turn，语等价于创建参数注入。
+  await applyHostMemoryPreferencesToRecord(record, {
+    memoryEnabled: startupPreferences.memoryEnabled,
+    useEnabled: startupPreferences.memoryUseEnabled,
+    extractionEnabled: startupPreferences.memoryExtractionEnabled,
+    extractionModel: startupPreferences.memoryExtractionModel ?? null,
+  });
   const unsubscribeSessionEvents = app.runtime.subscribeEvents({
     onSessionEvent: (event) => onSessionEvent(context, record, event),
   });

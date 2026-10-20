@@ -14,6 +14,7 @@ import {
 } from "@codez/provider";
 import { logger } from "@/logger.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
 import { Switch } from "@/components/ui/switch.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { isImeComposingKeyEvent } from "@/lib/imeComposition.js";
@@ -140,6 +141,7 @@ function projectModelsToOrder(
 export function InlineEditableProviderCard({
   provider,
   onSave,
+  onSaveApiKeySource,
   onAddPersonalModel,
   onSavePersonalModelDraft,
   onSetPersonalModelEnabled,
@@ -158,6 +160,11 @@ export function InlineEditableProviderCard({
 }: {
   provider: ProviderSettingsFormProvider;
   onSave: (config: ProviderSettingsFormProvider) => void | Promise<void>;
+  onSaveApiKeySource?: (input: {
+    providerId: string;
+    mode: "config-file" | "runtime-env";
+    apiKey?: string;
+  }) => Promise<void>;
   onAddPersonalModel?: (
     providerId: string,
     modelId: string,
@@ -184,6 +191,7 @@ export function InlineEditableProviderCard({
   settingsRevision?: number;
 }) {
   const { intl } = useCodezIntl();
+  const confirmDialog = useConfirmDialog();
   const { dismissFeedback, showFeedback } = useProviderDetailFeedback();
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(getProviderFormLabel(provider));
@@ -193,6 +201,10 @@ export function InlineEditableProviderCard({
   const [baseUrlValue, setBaseUrlValue] = useState(provider.config.api?.baseUrl ?? "");
   const [apiKeyValue, setApiKeyValue] = useState(getProviderFormApiKey(provider));
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
+  const keyMode =
+    isApiKeyAccess(provider.config.access) && provider.config.access.apiKeyEnv
+      ? ("runtime-env" as const)
+      : ("config-file" as const);
   const [savingEnabled, setSavingEnabled] = useState(false);
   const authoritativeModels = useMemo(
     () => resolveVisibleProviderModelsForEdit(provider),
@@ -519,9 +531,9 @@ export function InlineEditableProviderCard({
       markDraftDirty("apiKeyValue");
       draftRef.current.apiKeyValue = value;
       setApiKeyValue(value);
-      scheduleIdleDraftSave();
+      if (keyMode === "config-file") scheduleIdleDraftSave();
     },
-    [markDraftDirty, scheduleIdleDraftSave],
+    [keyMode, markDraftDirty, scheduleIdleDraftSave],
   );
 
   const handleNameBlur = useCallback(() => {
@@ -587,8 +599,37 @@ export function InlineEditableProviderCard({
   );
 
   const handleApiKeyBlur = useCallback(() => {
+    if (keyMode === "runtime-env") return;
     void commitPendingDraft("api-key-blur").catch(() => undefined);
-  }, [commitPendingDraft]);
+  }, [commitPendingDraft, keyMode]);
+
+  const saveKeySource = useCallback(
+    async (mode: "config-file" | "runtime-env") => {
+      if (!onSaveApiKeySource) return;
+      const confirmed = await confirmDialog({
+        title: intl.formatMessage({ id: "settings.modelProvider.keyMode.confirmTitle" }),
+        description: intl.formatMessage({
+          id: "settings.modelProvider.keyMode.confirmDescription",
+        }),
+        confirmLabel: intl.formatMessage({ id: "settings.modelProvider.keyMode.confirmAction" }),
+        cancelLabel: intl.formatMessage({ id: "common.cancel" }),
+      });
+      if (!confirmed) return;
+      cancelIdleDraftSaveRef.current();
+      const value = draftRef.current.apiKeyValue.trim();
+      await runSaveOperation(async () => {
+        await onSaveApiKeySource({
+          providerId: provider.providerId,
+          mode,
+          ...(value ? { apiKey: value } : {}),
+        });
+        dirtyProviderFieldsRef.current.delete("apiKeyValue");
+        draftRef.current.apiKeyValue = "";
+        setApiKeyValue("");
+      }).catch(() => undefined);
+    },
+    [confirmDialog, intl, onSaveApiKeySource, provider.providerId, runSaveOperation],
+  );
 
   const handleTextCommitKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key !== "Enter") {
@@ -838,6 +879,9 @@ export function InlineEditableProviderCard({
             onApiKeyCompositionStart={handleTechnicalInputCompositionStart}
             onApiKeyCompositionEnd={handleTechnicalInputCompositionEnd}
             onToggleApiKeyVisibility={() => setApiKeyVisible((value) => !value)}
+            keyMode={keyMode}
+            onKeyModeChange={onSaveApiKeySource ? (mode) => void saveKeySource(mode) : undefined}
+            onSaveRuntimeKey={() => void saveKeySource("runtime-env")}
           />
         ) : null}
 

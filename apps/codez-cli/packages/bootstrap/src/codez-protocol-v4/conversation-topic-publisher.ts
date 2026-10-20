@@ -24,6 +24,7 @@ import type {
   ToolCallRow,
   TopicFrameDeliveryKind,
   V4ConversationPlansResult,
+  V4ConversationRowPayloadResult,
   V4ConversationRowsRangeResult,
 } from "@codez/shared/codez-protocol-v4";
 import {
@@ -496,6 +497,20 @@ export class ConversationTopicPublisher {
       atRevision: snapshot.revision,
       atLogEpoch: this.logEpoch,
       hasMore: eligible.length > rows.length,
+    };
+  }
+
+  /**
+   * rowPayload：按 rowId 读取折叠 toolCall / reasoning 行的完整未裁剪载荷。
+   * 只读、无状态、超时重发安全；atLogEpoch 供客户端陈旧读丢弃。
+   */
+  getRowPayload(rowId: number): V4ConversationRowPayloadResult {
+    const snapshot = this.projection.getSnapshot();
+    return {
+      row: this.projection.getRowPayload(rowId),
+      atSeq: snapshot.seq,
+      atRevision: snapshot.revision,
+      atLogEpoch: this.logEpoch,
     };
   }
 

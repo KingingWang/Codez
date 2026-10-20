@@ -9,11 +9,11 @@ import { buildStoreItems } from "../src/settings/pluginStoreListing.js";
 
 function makePlugin(overrides: Partial<CodezPluginInfo> = {}): CodezPluginInfo {
   return {
-    id: "skill-creator@zcode-plugins-official",
+    id: "skill-creator@codez-plugins-official",
     name: "skill-creator",
     enabled: true,
     source: "official",
-    marketplace: "zcode-plugins-official",
+    marketplace: "codez-plugins-official",
     skillCount: 1,
     skillRootCount: 1,
     commandRootCount: 0,
@@ -49,7 +49,7 @@ function createPluginServiceMock(overrides?: {
       vi.fn(async () => ({ installedPlugins: [], dependencyClosure: [], diagnostics: [] })),
     configurePlugin:
       overrides?.configurePlugin ??
-      vi.fn(async () => ({ pluginId: "skill-creator@zcode-plugins-official", diagnostics: [] })),
+      vi.fn(async () => ({ pluginId: "skill-creator@codez-plugins-official", diagnostics: [] })),
     setPluginEnabled:
       overrides?.setPluginEnabled ??
       vi.fn(async () => ({ plugin: makePlugin({ enabled: false }), enabled: false })),
@@ -289,11 +289,11 @@ describe("pluginManagementStore", () => {
     });
     await usePluginManagementStore
       .getState()
-      .setEnabled("skill-creator@zcode-plugins-official", false, pluginService);
+      .setEnabled("skill-creator@codez-plugins-official", false, pluginService);
 
     expect(setPluginEnabled).toHaveBeenCalledWith({
       workspacePath: "/workspace/app",
-      pluginId: "skill-creator@zcode-plugins-official",
+      pluginId: "skill-creator@codez-plugins-official",
       enabled: false,
       scope: "user",
     });
@@ -322,14 +322,14 @@ describe("pluginManagementStore", () => {
 
     const change = usePluginManagementStore
       .getState()
-      .setEnabled("skill-creator@zcode-plugins-official", false, pluginService, "workspace");
+      .setEnabled("skill-creator@codez-plugins-official", false, pluginService, "workspace");
 
     expect(usePluginManagementStore.getState().plugins[0]).toMatchObject({
       enabled: false,
       enabledSource: "workspace",
     });
     expect(usePluginManagementStore.getState().togglingPluginId).toBe(
-      "skill-creator@zcode-plugins-official",
+      "skill-creator@codez-plugins-official",
     );
 
     rejectWrite?.(new Error("write failed"));
@@ -362,7 +362,7 @@ describe("pluginManagementStore", () => {
     });
     const change = usePluginManagementStore
       .getState()
-      .setEnabled("skill-creator@zcode-plugins-official", false, pluginService, "workspace");
+      .setEnabled("skill-creator@codez-plugins-official", false, pluginService, "workspace");
 
     usePluginManagementStore.setState({
       workspacePath: "/workspace/b",
@@ -675,7 +675,7 @@ describe("pluginManagementStore", () => {
 
   it("forwards sensitive option clears without resetting other plugin state", async () => {
     const configurePlugin = vi.fn(async () => ({
-      pluginId: "skill-creator@zcode-plugins-official",
+      pluginId: "skill-creator@codez-plugins-official",
       diagnostics: [],
     }));
     const pluginService = createPluginServiceMock({
@@ -689,7 +689,7 @@ describe("pluginManagementStore", () => {
     const configured = await usePluginManagementStore
       .getState()
       .configurePlugin(
-        "skill-creator@zcode-plugins-official",
+        "skill-creator@codez-plugins-official",
         { region: "us-east-1" },
         pluginService,
         "workspace",
@@ -699,7 +699,7 @@ describe("pluginManagementStore", () => {
     expect(configured).toBe(true);
     expect(configurePlugin).toHaveBeenCalledWith({
       workspacePath: "/workspace/app",
-      pluginId: "skill-creator@zcode-plugins-official",
+      pluginId: "skill-creator@codez-plugins-official",
       options: { region: "us-east-1" },
       scope: "workspace",
       clearOptionKeys: ["token"],
@@ -720,7 +720,7 @@ describe("pluginManagementStore", () => {
 
     const configured = await usePluginManagementStore
       .getState()
-      .configurePlugin("skill-creator@zcode-plugins-official", {}, pluginService, "workspace", [
+      .configurePlugin("skill-creator@codez-plugins-official", {}, pluginService, "workspace", [
         "token",
       ]);
 
@@ -736,7 +736,7 @@ describe("pluginManagementStore", () => {
         new Promise<{ pluginId: string; diagnostics: [] }>((resolve) => {
           resolveConfiguration = () =>
             resolve({
-              pluginId: "skill-creator@zcode-plugins-official",
+              pluginId: "skill-creator@codez-plugins-official",
               diagnostics: [],
             });
         }),
@@ -752,10 +752,10 @@ describe("pluginManagementStore", () => {
 
     const configuration = usePluginManagementStore
       .getState()
-      .configurePlugin("skill-creator@zcode-plugins-official", { label: "user" }, pluginService);
+      .configurePlugin("skill-creator@codez-plugins-official", { label: "user" }, pluginService);
     await vi.waitFor(() => expect(configurePlugin).toHaveBeenCalledTimes(1));
     expect(usePluginManagementStore.getState().activeOperations).toEqual([
-      { id: "plugin:configure:skill-creator@zcode-plugins-official" },
+      { id: "plugin:configure:skill-creator@codez-plugins-official" },
     ]);
 
     usePluginManagementStore.setState({ configScope: "workspace" });
@@ -772,7 +772,7 @@ describe("pluginManagementStore", () => {
         new Promise<{ pluginId: string; diagnostics: [] }>((resolve) => {
           resolveConfiguration = () =>
             resolve({
-              pluginId: "skill-creator@zcode-plugins-official",
+              pluginId: "skill-creator@codez-plugins-official",
               diagnostics: [],
             });
         }),
@@ -788,7 +788,7 @@ describe("pluginManagementStore", () => {
 
     const userConfiguration = usePluginManagementStore
       .getState()
-      .configurePlugin("skill-creator@zcode-plugins-official", { label: "user" }, pluginService);
+      .configurePlugin("skill-creator@codez-plugins-official", { label: "user" }, pluginService);
     await vi.waitFor(() => expect(configurePlugin).toHaveBeenCalledTimes(1));
 
     await usePluginManagementStore.getState().initialize({

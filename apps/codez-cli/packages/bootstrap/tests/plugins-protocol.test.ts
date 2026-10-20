@@ -220,11 +220,11 @@ describe("plugins protocol contracts", () => {
     const parsed = codezPluginsListResultSchema.parse({
       plugins: [
         {
-          id: "skill-creator@zcode-plugins-official",
+          id: "skill-creator@codez-plugins-official",
           name: "skill-creator",
           enabled: true,
           source: "official",
-          marketplace: "zcode-plugins-official",
+          marketplace: "codez-plugins-official",
           skillCount: 1,
           skillRootCount: 1,
           commandRootCount: 0,
@@ -301,7 +301,7 @@ describe("plugins protocol contracts", () => {
 
   it("keeps the User projection independent from Workspace enable overrides", async () => {
     const root = await mkdtemp(join(tmpdir(), "codez-plugin-config-view-"));
-    const pluginId = "skill-creator@zcode-plugins-official";
+    const pluginId = "skill-creator@codez-plugins-official";
     const userConfigPath = join(FAKE_HOME, ".codez", "cli", "config.json");
     try {
       await writeTestFile(
@@ -433,7 +433,7 @@ describe("plugins protocol contracts", () => {
         workspace: { workspacePath: root, workspaceKey: root },
       });
       expect(
-        result.plugins.find((plugin) => plugin.id === "browser-use@zcode-plugins-official")
+        result.plugins.find((plugin) => plugin.id === "browser-use@codez-plugins-official")
           ?.hostMcpServerNames,
       ).toEqual(["node_repl"]);
     } finally {
@@ -456,7 +456,7 @@ describe("plugins protocol contracts", () => {
     expect(
       codezPluginsSetEnabledParamsSchema.parse({
         workspace: { workspacePath: "/w", workspaceKey: "/w" },
-        pluginId: "document-skills@zcode-plugins-official",
+        pluginId: "document-skills@codez-plugins-official",
         enabled: true,
         operationId: "suggested-enable-1",
       }).operationId,
@@ -644,7 +644,7 @@ describe("updatePlugin handler diagnostics", () => {
 // ~/.codez/cli/config.json（文件头部已把 homedir 重定向到 FAKE_HOME，故落在隔离目录）。
 describe("restoreBuiltinPlugin handler", () => {
   const noopContext = {} as unknown as CodezProtocolAgentServerContext;
-  const builtinId = "skill-creator@zcode-plugins-official";
+  const builtinId = "skill-creator@codez-plugins-official";
   const userConfigPath = join(FAKE_HOME, ".codez", "cli", "config.json");
   let previousStorageDir: string | undefined;
 
@@ -716,7 +716,7 @@ describe("restoreBuiltinPlugin handler", () => {
       const result = await Promise.race([
         installPlugin(noopContext, {
           workspace: { workspacePath: root, workspaceKey: root },
-          marketplace: "zcode-plugins-official",
+          marketplace: "codez-plugins-official",
           pluginName: "skill-creator",
         }),
         new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), 1000)),

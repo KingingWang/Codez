@@ -134,6 +134,15 @@ export class ReplaceableConversationTransport implements ConversationTransport {
     return this.current.rowsRange(params);
   }
 
+  rowPayload(
+    params: Parameters<NonNullable<ConversationTransport["rowPayload"]>>[0],
+  ): ReturnType<NonNullable<ConversationTransport["rowPayload"]>> {
+    if (!this.current.rowPayload) {
+      return Promise.reject(new Error("fault.conversation.rowPayloadUnsupported"));
+    }
+    return this.current.rowPayload(params);
+  }
+
   plans(
     params: Parameters<ConversationTransport["plans"]>[0],
   ): ReturnType<ConversationTransport["plans"]> {
@@ -155,6 +164,12 @@ export class ReplaceableConversationTransport implements ConversationTransport {
     params: Parameters<ConversationTransport["workflowRuns"]>[0],
   ): ReturnType<ConversationTransport["workflowRuns"]> {
     return this.current.workflowRuns(params);
+  }
+
+  codexHistoryRuns(
+    params: Parameters<ConversationTransport["codexHistoryRuns"]>[0],
+  ): ReturnType<ConversationTransport["codexHistoryRuns"]> {
+    return this.current.codexHistoryRuns(params);
   }
 
   // workflow 用户面产物的三条读接口必须在此转发；遗漏时 service proxy 上的方法为

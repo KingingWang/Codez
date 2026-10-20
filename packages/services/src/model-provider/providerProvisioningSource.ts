@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   providerProvisioningEnvelopeSchema,
+  type ProviderRuntimeApiKeyInstall,
   type ProviderProvisioningCredentialEntry,
   type ProviderProvisioningEnvelope,
 } from "@codez/shared";
@@ -10,12 +11,14 @@ import type {
   PersonalProviderConfigRepository,
   ProviderConfigLayerSnapshot,
 } from "@codez/provider";
+import { isApiKeyAccess } from "@codez/provider";
 import { decodeProviderConfigFile, encodeProviderConfigFile } from "@codez/provider-node";
 import {
   createCredentialCipherProvider,
   type CredentialCipherProvider,
 } from "../credential/providers/credentialCipherProvider.js";
 import type { ISettingService } from "../setting/setting.js";
+import type { ICredentialService } from "../credential/credential.js";
 
 const CREDENTIAL_FILE_NAME = "credentials.json";
 export const PROVIDER_PROVISIONING_OAUTH_CREDENTIAL_KEYS = [
@@ -31,6 +34,7 @@ export const PROVIDER_PROVISIONING_OAUTH_CREDENTIAL_KEYS = [
 
 export interface ProviderProvisioningSource {
   read(syncId: string): Promise<ProviderProvisioningEnvelope>;
+  readRuntimeApiKeys(): Promise<ProviderRuntimeApiKeyInstall>;
 }
 
 export interface ProviderProvisioningSourceOptions {
@@ -39,6 +43,40 @@ export interface ProviderProvisioningSourceOptions {
   readonly credentialFilePath: string;
   readonly personalConfigFilePath: string;
   readonly cipherProvider?: CredentialCipherProvider;
+  readonly credentialService?: Pick<ICredentialService, "load">;
+}
+
+export function providerRuntimeApiKeyCredentialKey(providerId: string): string {
+  return `provider-runtime-key:${providerId}`;
+}
+
+export function providerRuntimeApiKeyEnvName(providerId: string): string {
+  return `CODEZ_MODEL_API_KEY_${createHash("sha256")
+    .update(providerId)
+    .digest("hex")
+    .slice(0, 16)
+    .toUpperCase()}`;
+}
+
+/** 两端由同一份规范化 Personal Config 计算，不依赖目标本地文件名或修订号。 */
+export function providerRuntimeConfigFingerprint(personal: ProviderConfigLayerSnapshot): string {
+  return createHash("sha256")
+    .update(JSON.stringify(encodeProviderConfigFile(personal).config))
+    .digest("hex");
+}
+
+function runtimeKeyRefs(personal: ProviderConfigLayerSnapshot): Array<{
+  providerId: string;
+  name: string;
+}> {
+  return personal.providers.keys().flatMap((providerId) => {
+    const access = personal.providers.get(providerId)?.access;
+    if (!isApiKeyAccess(access) || !access.apiKeyEnv) return [];
+    if (access.apiKey?.trim()) {
+      throw new Error(`Provider ${providerId} 同时声明明文 Key 和临时引用`);
+    }
+    return [{ providerId, name: access.apiKeyEnv }];
+  });
 }
 
 /** 从 Local Environment 读取可 Provision 的事实；不会读取或导出完整 Registry Snapshot。 */
@@ -54,17 +92,50 @@ export function createProviderProvisioningSource(
       ]);
       // 默认与规则来自同一份持锁读取，不能把两次读取的值拼成不存在的配置版本。
       const personalConfig = encodeProviderConfigFile(personal).config;
+      const hasRuntimeKeys = runtimeKeyRefs(personal).length > 0;
       const accountSettings = {
         providerFamilyDomain: settings.providerFamilyDomain ?? null,
         providerFamilyConnectionSelections: settings.providerFamilyConnectionSelections ?? {},
       };
       return providerProvisioningEnvelopeSchema.parse({
-        schemaVersion: 2,
+        schemaVersion: hasRuntimeKeys ? 3 : 2,
         syncId,
         personalConfig,
         accountSettings,
         credentials,
       });
+    },
+    async readRuntimeApiKeys(): Promise<ProviderRuntimeApiKeyInstall> {
+      const personal = await readProvisionablePersonalConfig(
+        options.personalRepository,
+        options.personalConfigFilePath,
+      );
+      const refs = runtimeKeyRefs(personal);
+      if (refs.length === 0) {
+        return { configFingerprint: providerRuntimeConfigFingerprint(personal), keys: [] };
+      }
+      if (!options.credentialService) throw new Error("本机临时 Key 凭据服务不可用");
+      const keys = await Promise.all(
+        refs.map(async ({ providerId, name }) => {
+          const value = await options.credentialService!.load(
+            providerRuntimeApiKeyCredentialKey(providerId),
+          );
+          if (!value?.trim()) throw new Error(`Provider ${providerId} 缺少本机临时 Key`);
+          return { name, value };
+        }),
+      );
+      // Credential 读取可异步让出；源配置若变更，不能把旧值装到新引用上。
+      const latest = await readProvisionablePersonalConfig(
+        options.personalRepository,
+        options.personalConfigFilePath,
+      );
+      if (latest.revision !== personal.revision) {
+        throw new Error("Personal Provider Config 在临时 Key 读取期间发生变化");
+      }
+      if (new Set(keys.map((entry) => entry.name)).size !== keys.length) {
+        throw new Error("临时 Key 环境变量名重复");
+      }
+      return { configFingerprint: providerRuntimeConfigFingerprint(personal), keys };
     },
   };
 }

@@ -8,10 +8,29 @@
 // bundled-agents/，没有 cli/dist/。于是 dev 一直跑着上一次打包时留下的那份 ——
 // 实测陈旧 3 天，任何 agent CLI 侧改动在 dev 里静默不生效，排查时会把「改动没生效」
 // 误判成「代码没起作用」。两边共用这一份，dev 与打包不可能再各自漂移。
-import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 export const AGENT_BUNDLE_SOURCE_RELATIVE = "apps/codez-cli/packages/cli/dist/codez.cjs";
+const CUA_PLUGIN_SOURCE_RELATIVE = "apps/codez-cli/packages/codez-cua-plugin";
+const CUA_PLUGIN_REQUIRED_PATHS = [
+  ".codez-plugin/plugin.json",
+  "docs/computer-use.md",
+  "scripts/computer-use-client.mjs",
+  "skills/computer-use/SKILL.md",
+];
+
+function stageContentPlugin({ glmDir, repoRoot, sourceRelative, stagedRelative, requiredPaths }) {
+  const sourcePluginRoot = resolve(repoRoot, sourceRelative);
+  const stagedPluginRoot = resolve(glmDir, stagedRelative);
+  for (const relativePath of requiredPaths) {
+    const sourcePath = resolve(sourcePluginRoot, ...relativePath.split("/"));
+    if (!existsSync(sourcePath)) {
+      throw new Error(`[stage:agent-bundle] missing official plugin asset: ${sourcePath}`);
+    }
+  }
+  cpSync(sourcePluginRoot, stagedPluginRoot, { recursive: true });
+}
 
 export function resolveAgentBundlePaths({ repoRoot, platformKey }) {
   const glmDir = resolve(repoRoot, "packages", "desktop", "bundled-agents", platformKey, "glm");
@@ -39,6 +58,13 @@ export function stageAgentBundle({ repoRoot, platformKey, log = console.log }) {
   rmSync(glmDir, { recursive: true, force: true });
   mkdirSync(glmDir, { recursive: true });
   copyFileSync(cliBundlePath, stagedBundlePath);
+  stageContentPlugin({
+    glmDir,
+    repoRoot,
+    sourceRelative: CUA_PLUGIN_SOURCE_RELATIVE,
+    stagedRelative: "packages/codez-cua-plugin",
+    requiredPaths: CUA_PLUGIN_REQUIRED_PATHS,
+  });
   const meta = {
     runtime: "electron-node",
     entry: "codez.cjs",

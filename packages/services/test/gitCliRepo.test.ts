@@ -217,6 +217,7 @@ describe("gitCliRepo", () => {
     await expect(repo.getWorkspaceRepositoryInfo(workspacePath)).resolves.toEqual({
       workspacePath,
       kind: "main-tree",
+      gitCommonDir: resolve(workspacePath, ".git"),
       isGitAvailable: true,
     });
   });
@@ -253,6 +254,7 @@ describe("gitCliRepo", () => {
     await expect(repo.getWorkspaceRepositoryInfo(worktreeRoot)).resolves.toEqual({
       workspacePath: worktreeRoot,
       kind: "linked-worktree",
+      gitCommonDir: resolve(mainTreeRoot, ".git"),
       isGitAvailable: true,
     });
   });
@@ -366,6 +368,7 @@ describe("gitCliRepo", () => {
     await expect(repo.getWorkspaceRepositoryInfo(workspacePath)).resolves.toEqual({
       workspacePath,
       kind: "not-repository",
+      gitCommonDir: null,
       isGitAvailable: true,
     });
   });

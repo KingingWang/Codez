@@ -15,6 +15,8 @@ import type {
   ToolCallRow,
   V4ConversationPlansParams,
   V4ConversationPlansResult,
+  V4ConversationRowPayloadParams,
+  V4ConversationRowPayloadResult,
   V4ConversationRowsRangeParams,
   V4ConversationRowsRangeResult,
   V4ConversationResyncResult,
@@ -35,6 +37,7 @@ import {
   mergeOlderRows,
   shouldAutoLoadIncompleteLeadingTurn,
 } from "@/v4/conversationProjectionStore.js";
+import { clearConversationSnapshotHandoffs } from "@/v4/conversationSnapshotHandoff.js";
 import type { ConversationTransport } from "@/v4/transport.js";
 import {
   SUBSCRIPTION_CONTENT_REJECTED,
@@ -287,6 +290,23 @@ class FakeTransport implements ConversationTransport {
     return this.rowsRangeImpl(params);
   }
 
+  rowPayloadCalls: V4ConversationRowPayloadParams[] = [];
+  rowPayloadImpl: (
+    params: V4ConversationRowPayloadParams,
+  ) => V4ConversationRowPayloadResult | Promise<V4ConversationRowPayloadResult> = () => ({
+    row: null,
+    atSeq: 0,
+    atRevision: 0,
+    atLogEpoch: "epoch-1",
+  });
+
+  async rowPayload(
+    params: V4ConversationRowPayloadParams,
+  ): Promise<V4ConversationRowPayloadResult> {
+    this.rowPayloadCalls.push(params);
+    return this.rowPayloadImpl(params);
+  }
+
   plansCalls: V4ConversationPlansParams[] = [];
   plansImpl: (
     params: V4ConversationPlansParams,
@@ -367,6 +387,9 @@ describe("ConversationProjectionStore", () => {
   let store: ConversationProjectionStore;
 
   beforeEach(() => {
+    // 模块级快照交接缓存是生产行为（bridge 重建恢复用）；每个用例从干净状态开始，
+    // 避免上个用例 close 写入的交接污染「首连无 base」这类断言。
+    clearConversationSnapshotHandoffs();
     transport = new FakeTransport();
     store = new ConversationProjectionStore("conversation/s1", transport);
     // 帧路由在 SessionDataLayer；store 独测时手工接线。
@@ -568,6 +591,23 @@ describe("ConversationProjectionStore", () => {
     await store.connect();
     await store.refreshPlans();
     const afterSnapshot = store.getState().planDirectoryRevision;
+
+    // 同 logEpoch 的流式 snapshot 若未改变终态 ExitPlanMode 集合，不应无条件递增 revision（防 Codex 全量 snapshot 触发 plans RPC 风暴）
+    transport.emit(
+      makeFrame("sub-1", 0, 5, {
+        kind: "snapshot",
+        snapshot: makeSnapshot({
+          seq: 5,
+          logEpoch: "epoch-1",
+          rows: {
+            window: [assistantRow(2, "streaming update")],
+            totalCount: 2,
+            firstRowId: 1,
+          },
+        }),
+      }),
+    );
+    expect(store.getState().planDirectoryRevision).toBe(afterSnapshot);
 
     transport.emit(
       makeFrame("sub-1", 5, 6, {
@@ -1492,6 +1532,7 @@ describe("SessionDataLayer", () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
+    clearConversationSnapshotHandoffs();
     transport = new FakeTransport();
     layer = new SessionDataLayer({ transport, keepWarmMs: 30_000 });
   });
@@ -2172,5 +2213,287 @@ describe("ConversationProjectionStore.loadOlder", () => {
     // 无可并入行 → null（引用不换）。
     expect(mergeOlderRows(window, olderRows(41, 45))).toBeNull();
     expect(mergeOlderRows(window, [])).toBeNull();
+  });
+
+  it("流式期间收到同 logEpoch 的尾窗 snapshot 时保留已通过 loadOlder 拉取的早期历史行，logEpoch 旋转时完全替换", async () => {
+    transport.rowsRangeImpl = () => ({
+      rows: olderRows(1, 40),
+      atSeq: 5,
+      atRevision: 5,
+      atLogEpoch: "epoch-1",
+      hasMore: false,
+    });
+    await store.loadOlder();
+    expect(store.getState().snapshot!.rows.window).toHaveLength(100);
+    expect(store.getState().snapshot!.rows.window[0]!.rowId).toBe(1);
+
+    // Codex bridge 流式输出工具调用/思考时下发同 logEpoch 的新尾窗 snapshot（仅含 61..120）。
+    store.handleFrame(
+      makeFrame(store.getState().subscriptionId!, 0, 6, {
+        kind: "snapshot",
+        snapshot: makeSnapshot({
+          seq: 6,
+          logEpoch: "epoch-1",
+          rows: {
+            window: olderRows(61, 120),
+            totalCount: 120,
+            firstRowId: 1,
+          },
+        }),
+      }),
+    );
+    const retainedWindow = store.getState().snapshot!.rows.window;
+    expect(retainedWindow).toHaveLength(120);
+    expect(retainedWindow[0]!.rowId).toBe(1);
+    expect(retainedWindow.at(-1)!.rowId).toBe(120);
+
+    // edit/retry 分支裁剪旋转 logEpoch 后，不再保留旧分支的历史行。
+    store.handleFrame(
+      makeFrame(store.getState().subscriptionId!, 0, 1, {
+        kind: "snapshot",
+        snapshot: makeSnapshot({
+          seq: 1,
+          logEpoch: "epoch-2",
+          rows: {
+            window: olderRows(61, 70),
+            totalCount: 10,
+            firstRowId: 61,
+          },
+        }),
+      }),
+    );
+    expect(store.getState().snapshot!.rows.window.map((row) => row.rowId)).toEqual(
+      olderRows(61, 70).map((row) => row.rowId),
+    );
+
+    // 即使新会话从第 1 行开始尚未触发过 loadOlder，当后续轮次流式增长导致尾窗滑出第 1 轮时，
+    // 已经锚定到 firstRowId 的早期轮次也必须保留，防止用户上滚看第 1 轮时画面往下跳。
+    const freshTransport = new FakeTransport();
+    const freshStore = new ConversationProjectionStore("conversation/s-fresh", freshTransport);
+    freshTransport.onFrame((frame) => freshStore.handleFrame(frame));
+    freshTransport.subscribeImpl = (params, subscriptionId) => ({
+      ack: { subscriptionId, mode: "snapshot", logEpoch: "epoch-fresh" },
+      initialFrame: makeFrame(
+        subscriptionId,
+        0,
+        1,
+        {
+          kind: "snapshot",
+          snapshot: makeSnapshot({
+            seq: 1,
+            logEpoch: "epoch-fresh",
+            rows: {
+              window: olderRows(1, 50),
+              totalCount: 50,
+              firstRowId: 1,
+            },
+          }),
+        },
+        params.topic,
+      ),
+    });
+    await freshStore.connect();
+    freshStore.handleFrame(
+      makeFrame(
+        freshStore.getState().subscriptionId!,
+        0,
+        2,
+        {
+          kind: "snapshot",
+          snapshot: makeSnapshot({
+            seq: 2,
+            logEpoch: "epoch-fresh",
+            rows: {
+              window: olderRows(21, 80),
+              totalCount: 80,
+              firstRowId: 1,
+            },
+          }),
+        },
+        "conversation/s-fresh",
+      ),
+    );
+    expect(freshStore.getState().snapshot!.rows.window).toHaveLength(80);
+    expect(freshStore.getState().snapshot!.rows.window[0]!.rowId).toBe(1);
+    expect(freshStore.getState().snapshot!.rows.window.at(-1)!.rowId).toBe(80);
+
+    // 手机端分段向上翻页（只拉取了 101..200，尚未到达 firstRowId=1）后，
+    // 即使收到下一帧只含 201..260 的尾窗 snapshot，也必须保留已拉取的 101..200，
+    // 且不因工具/思考流式 snapshot 递增 turnNavigatorDirectoryRevision 或 planDirectoryRevision。
+    const partialTransport = new FakeTransport();
+    const partialStore = new ConversationProjectionStore(
+      "conversation/s-partial",
+      partialTransport,
+    );
+    partialTransport.onFrame((frame) => partialStore.handleFrame(frame));
+    partialTransport.subscribeImpl = (params, subscriptionId) => ({
+      ack: { subscriptionId, mode: "snapshot", logEpoch: "epoch-partial" },
+      initialFrame: makeFrame(
+        subscriptionId,
+        0,
+        10,
+        {
+          kind: "snapshot",
+          snapshot: makeSnapshot({
+            seq: 10,
+            logEpoch: "epoch-partial",
+            rows: {
+              window: olderRows(201, 260),
+              totalCount: 260,
+              firstRowId: 1,
+            },
+          }),
+        },
+        params.topic,
+      ),
+    });
+    await partialStore.connect();
+    partialTransport.rowsRangeImpl = (params) => {
+      expect(params.beforeRowId).toBe(201);
+      return {
+        rows: olderRows(141, 200),
+        atSeq: 10,
+        atRevision: 10,
+        atLogEpoch: "epoch-partial",
+        hasMore: true,
+      };
+    };
+    await partialStore.loadOlder();
+    expect(partialStore.getState().snapshot!.rows.window[0]!.rowId).toBe(141);
+    const planRevBefore = partialStore.getState().planDirectoryRevision;
+    const navRevBefore = partialStore.getState().turnNavigatorDirectoryRevision;
+
+    partialStore.handleFrame(
+      makeFrame(
+        partialStore.getState().subscriptionId!,
+        0,
+        11,
+        {
+          kind: "snapshot",
+          snapshot: makeSnapshot({
+            seq: 11,
+            logEpoch: "epoch-partial",
+            rows: {
+              window: olderRows(205, 264),
+              totalCount: 264,
+              firstRowId: 1,
+            },
+          }),
+        },
+        "conversation/s-partial",
+      ),
+    );
+    const partialWindow = partialStore.getState().snapshot!.rows.window;
+    expect(partialWindow[0]!.rowId).toBe(141);
+    expect(partialWindow.at(-1)!.rowId).toBe(264);
+    expect(partialStore.getState().planDirectoryRevision).toBe(planRevBefore);
+    expect(partialStore.getState().turnNavigatorDirectoryRevision).toBe(navRevBefore);
+  });
+
+  it("loadRowPayload 单飞去重、回填完整行，并在同 logEpoch 下抵御后续紧凑快照冲刷", async () => {
+    const transport = new FakeTransport();
+    const store = new ConversationProjectionStore("conversation/s-payload", transport);
+    transport.onFrame((frame) => store.handleFrame(frame));
+    const compactToolRow: ToolCallRow = {
+      rowId: 3,
+      turnId: "t1",
+      createdAt: 1,
+      createdAtSeq: 3,
+      kind: "toolCall",
+      toolCallId: "bash-1",
+      toolName: "Bash",
+      status: "success",
+      inputText: '{"command":"pnpm test"}',
+      input: { command: "pnpm test" },
+      output: {
+        text: "preview\n…",
+        truncated: { totalBytes: 4096, ref: "v4-row-payload/3" },
+      },
+    };
+    const fullToolRow: ToolCallRow = {
+      ...compactToolRow,
+      output: {
+        text: "full line 1\nfull line 2\n".repeat(100),
+      },
+    };
+    transport.subscribeImpl = (params, subscriptionId) => ({
+      ack: { subscriptionId, mode: "snapshot", logEpoch: "epoch-1" },
+      initialFrame: makeFrame(
+        subscriptionId,
+        0,
+        3,
+        {
+          kind: "snapshot",
+          snapshot: makeSnapshot({
+            sessionId: "s-payload",
+            seq: 3,
+            logEpoch: "epoch-1",
+            rows: {
+              window: [turnHeaderRow(1), realUserRow(2, "t1"), compactToolRow],
+              totalCount: 3,
+              firstRowId: 1,
+            },
+          }),
+        },
+        params.topic,
+      ),
+    });
+    await store.connect();
+
+    let resolvePayload!: (value: V4ConversationRowPayloadResult) => void;
+    transport.rowPayloadImpl = () =>
+      new Promise<V4ConversationRowPayloadResult>((resolve) => {
+        resolvePayload = resolve;
+      });
+
+    const flight1 = store.loadRowPayload(3);
+    const flight2 = store.loadRowPayload(3);
+    expect(transport.rowPayloadCalls).toEqual([{ sessionId: "s-payload", rowId: 3 }]);
+
+    resolvePayload({
+      row: fullToolRow,
+      atSeq: 3,
+      atRevision: 3,
+      atLogEpoch: "epoch-1",
+    });
+    await expect(Promise.all([flight1, flight2])).resolves.toEqual([true, true]);
+
+    const hydratedRow = store
+      .getState()
+      .snapshot?.rows.window.find((r) => r.rowId === 3) as ToolCallRow | undefined;
+    expect(hydratedRow?.output?.text).toBe(fullToolRow.output?.text);
+    expect(hydratedRow?.output?.truncated).toBeUndefined();
+
+    // 后续同 logEpoch 的紧凑快照到达时，不把已水合的 rowId=3 冲回裁剪态
+    store.handleFrame(
+      makeFrame(
+        store.getState().subscriptionId!,
+        0,
+        4,
+        {
+          kind: "snapshot",
+          snapshot: makeSnapshot({
+            sessionId: "s-payload",
+            seq: 4,
+            logEpoch: "epoch-1",
+            rows: {
+              window: [
+                turnHeaderRow(1),
+                realUserRow(2, "t1"),
+                compactToolRow,
+                assistantRow(4, "done"),
+              ],
+              totalCount: 4,
+              firstRowId: 1,
+            },
+          }),
+        },
+        "conversation/s-payload",
+      ),
+    );
+    const afterSnapshotRow = store
+      .getState()
+      .snapshot?.rows.window.find((r) => r.rowId === 3) as ToolCallRow | undefined;
+    expect(afterSnapshotRow?.output?.text).toBe(fullToolRow.output?.text);
   });
 });

@@ -1,8 +1,14 @@
 import { installRequestSecurityDiagnostics } from "./request-security-edition/index.js";
 import { createLocalTtftExporter } from "./localTtftExporter.js";
+import { createRendererCrashRecovery } from "./rendererCrashRecovery.js";
 /* eslint-disable max-lines */
 import "./desktopEarlyDataBaseDirBootstrap.js";
 import "./desktopEarlyChromiumHardwareAccelerationBootstrap.js";
+import {
+  resolveDesktopBootstrapSettingsFile,
+  resolveDesktopDataBaseDir,
+  resolveDesktopUpdatePolicy,
+} from "./desktopProductRuntime.js";
 import { powerMonitor, powerSaveBlocker } from "electron";
 import { crashCapturePaths } from "./appCrashCaptureBootstrap.js";
 import { armsInitPromise } from "./appARMSBootstrap.js";
@@ -19,6 +25,7 @@ import {
 } from "./desktopContextPromptRollout.js";
 import { buildBrowserViewCloseTabNotification } from "./browserView/browserCloseTabNotification.js";
 import { BrowserGuestManager } from "./browserView/browserGuestManager.js";
+import { createNativeBrowserCuaMcpBroker } from "./browserView/nativeBrowserCuaMcpBroker.js";
 import { createElectronBrowserWebmRecorder } from "./browserView/electronBrowserWebmRecorder.js";
 import { installBrowserRestoreBootstrapProtocol } from "./browserView/browserRestoreBootstrapProtocol.js";
 import {
@@ -90,6 +97,10 @@ import {
   type TelemetryEventPayload,
   HostMessageTypes,
   InternalChannels,
+  CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV,
+  CODEZ_NATIVE_BROWSER_CUA_MCP_ENTRY_MODE,
+  CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME,
+  type DesktopCodexMcpServer,
 } from "@codez/shared";
 import { logger, webRemoteControlRelayLogger } from "./logger.js";
 import { markMainLaunchAppReady } from "./desktopLaunchMarks.js";
@@ -135,7 +146,8 @@ import { createWebRemoteControlDeviceStorage } from "#src/main/web-remote-relay/
 import { createWebRemoteControlFeatureGate } from "./webRemoteControlFeatureGate.js";
 import { reconnectWebRemoteControlWorkspaceInRenderer } from "./webRemoteControlRendererReconnect.js";
 import { sendWebRemoteControlStatusChangedToWindow } from "./webRemoteControlStatusEvents.js";
-import { executeDesktopCommand } from "./desktopCommandHandlers.js";
+import { executeDesktopCommand, resolveDesktopCodexBridgePath } from "./desktopCommandHandlers.js";
+import { localBrowserMcpAvailability } from "./desktopCodexMcpAvailability.js";
 import { clampDesktopZoomLevel, resolveDesktopZoomLevelFromFactor } from "./desktopZoom.js";
 import {
   getDesktopMenuLabel as getDesktopMenuLabelByLocale,
@@ -215,6 +227,7 @@ import {
 } from "./desktopRemoteUsageArmsTelemetry.js";
 import { resolveCanonicalWslTarget } from "./desktopWslTargetResolver.js";
 import {
+  isMainApplicationWindowWebContents,
   listRegisteredHostAgentProcessIds,
   setBrowserUseGuestWebContentsIdsProvider,
 } from "./resourceManagerWindow.js";
@@ -487,6 +500,97 @@ const browserGuestManager = new BrowserGuestManager(
   (windowId) => BrowserWindow.fromId(windowId),
 );
 setBrowserUseGuestWebContentsIdsProvider(() => browserGuestManager.listGuestWebContentsIds());
+const nativeBrowserCuaMcpBroker = createNativeBrowserCuaMcpBroker({
+  manager: browserGuestManager,
+  flavor: CODEZ_PRODUCT_FLAVOR,
+  userDataPath: runtimeUserDataPath ?? app.getPath("userData"),
+  eligibleWindowResolver: (windowId) =>
+    getMainApplicationWindows().find(
+      (win) => win.id === windowId && nativeBrowserCuaEligibleWindowIds.has(win.id),
+    ) ?? null,
+  logger,
+});
+
+// 构建窗口级 MCP 清单的唯一实现：窗口 Host 初始化（prepareDesktopCodexMcpServers）与
+// 开关切换后的 Main→Host 推送共用，保证两条路径的注册内容逐字段一致
+// （spec: codex-desktop-native-browser-cua「Global enable toggle」）。
+async function buildNativeBrowserCuaMcpServersForWindow(
+  win: BrowserWindow,
+): Promise<DesktopCodexMcpServer[]> {
+  const bridgePath = resolveDesktopCodexBridgePath();
+  if (!bridgePath || win.isDestroyed()) return [];
+  // 浏览器 broker 绑定/窗口注册失败不能拖垮独立 CUA 载体：记录并继续，
+  // runtime 输入按本窗口事实降级 browser=0，CUA 仍由本地 Host grant 授权。
+  await nativeBrowserCuaMcpBroker.registerWindow(win.id).catch((error: unknown) => {
+    logger.warn("[native-browser-cua] browser registration failed; retaining CUA MCP carrier", {
+      windowId: win.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
+  if (win.isDestroyed()) {
+    await nativeBrowserCuaMcpBroker.revokeWindow(win.id);
+    return [];
+  }
+  const descriptor = nativeBrowserCuaMcpBroker.descriptor({
+    executable: process.execPath,
+    bridgePath,
+    windowId: win.id,
+  });
+  return [
+    {
+      name: CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME,
+      command: descriptor.executable,
+      args: [descriptor.bridgePath, CODEZ_NATIVE_BROWSER_CUA_MCP_ENTRY_MODE],
+      env: {
+        ELECTRON_RUN_AS_NODE: "1",
+        CODEZ_NATIVE_BROWSER_CUA_ENDPOINT: descriptor.endpoint,
+        CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: descriptor.tokenFile,
+        [CODEZ_NATIVE_BROWSER_CUA_BROWSER_ENV]: descriptor.browserAvailable ? "1" : "0",
+      },
+    },
+  ];
+}
+
+/** 把当前窗口的最新 MCP 清单与可用性事实推给它的 Local Host（含远程 relay 联动）。 */
+async function pushNativeBrowserCuaMcpServersToWindow(win: BrowserWindow): Promise<void> {
+  const hostProcess = windowHostProcessMap.get(win.id);
+  if (!hostProcess || win.isDestroyed()) return;
+  let servers: DesktopCodexMcpServer[] = [];
+  try {
+    servers = await buildNativeBrowserCuaMcpServersForWindow(win);
+  } catch (error) {
+    logger.warn("[native-browser-cua] rebuild window MCP servers failed; pushing empty list", {
+      windowId: win.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+  if (win.isDestroyed() || windowHostProcessMap.get(win.id) !== hostProcess) return;
+  hostProcess.postMessage({
+    type: HostMessageTypes.NativeBrowserCuaMcpServersChanged,
+    desktopCodexMcpServers: servers,
+    nativeBrowserCua: localBrowserMcpAvailability(nativeBrowserCuaMcpBroker.availability, servers),
+  });
+}
+
+/**
+ * 全局开关落点（spec: codex-desktop-native-browser-cua「Global enable toggle」）：
+ * broker 立即拒止/恢复（进行中的调用 fail closed），随后逐窗口推送最新清单，
+ * Host 侧据此更新 spawn-env 持有器并释放活动 runtime，远程 relay 同步启停。
+ */
+function applyNativeBrowserControlEnabled(enabled: boolean, reason: string): void {
+  nativeBrowserCuaMcpBroker.setEnabled(enabled);
+  for (const win of getMainApplicationWindows()) {
+    if (win.isDestroyed() || !nativeBrowserCuaEligibleWindowIds.has(win.id)) continue;
+    if (!windowHostProcessMap.has(win.id)) continue;
+    void pushNativeBrowserCuaMcpServersToWindow(win).catch((error) => {
+      logger.warn("[native-browser-cua] push MCP servers after toggle failed", {
+        windowId: win.id,
+        reason,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }
+}
 
 // browser-use：带诊断日志地执行 browser 命令（两处 spawnHostProcess wiring 共用）。
 // 打入口/出口便于定位卡点（如 navigate loadURL 挂起、CDP 报错等）。
@@ -570,7 +674,7 @@ async function runBrowserCommandOnView(params: {
 let currentDesktopZoomLevel = 0;
 let currentDesktopWindowSize: DesktopWindowSize | undefined;
 const preloadPath = join(import.meta.dirname, "../preload/index.cjs");
-const settingsFile = join(homedir(), ".codez", "v2", "setting.json");
+const settingsFile = resolveDesktopBootstrapSettingsFile();
 let activeAppShutdownPolicy = resolveAppShutdownPolicy("normal", process.platform);
 let activeAppShutdownKind: AppShutdownKind | null = null;
 const WINDOWS_AGENT_FORCE_KILL_TIMEOUT_MS = 2_000;
@@ -673,6 +777,7 @@ const windowsCuaOperationIndicator = createWindowsCuaOperationIndicator({
   getLocale: () => currentApplicationLocale,
   logger,
 });
+const nativeBrowserCuaEligibleWindowIds = new Set<number>();
 
 // 常驻 cron scheduler 进程句柄；app ready 后拉起，退出前销毁。
 let cronScheduler: CronSchedulerHandle | null = null;
@@ -822,7 +927,16 @@ app.on("browser-window-blur", (_event, win) => {
 });
 app.on("browser-window-created", (_event, win) => {
   const windowKey = resolveCuaPipWindowKey(win);
-  win.once("closed", () => cuaPipFocusRouter.removeWindow(windowKey));
+  if (windowHostProcessMap.has(win.id) || nativeBrowserCuaEligibleWindowIds.has(win.id)) {
+    nativeBrowserCuaEligibleWindowIds.add(win.id);
+  }
+  win.once("closed", () => {
+    nativeBrowserCuaEligibleWindowIds.delete(win.id);
+    void nativeBrowserCuaMcpBroker.revokeWindow(win.id).catch((error) => {
+      logger.warn("Native Browser/CUA window capability revoke failed", error);
+    });
+    cuaPipFocusRouter.removeWindow(windowKey);
+  });
 });
 
 const remoteSessionManager = createRemoteWorkspaceSessionManager({
@@ -891,9 +1005,6 @@ const armsUserIdentitySync = createArmsUserIdentitySync({
   setUser: (user) => armsRum.setConfig("user", user),
 });
 const webRemoteControlAppVersion = CODEZ_VERSION || app.getVersion();
-const defaultCodezEndpointUrls = buildCodezEndpointUrls(DEFAULT_CODEZ_ENDPOINT_ORIGIN, {
-  appVersion: webRemoteControlAppVersion,
-});
 const webRemoteControlRelayWsEnvOverride =
   process.env["CODEZ_WEB_REMOTE_CONTROL_RELAY_WS_URL"]?.trim();
 const webRemoteControlUrlEnvOverride = process.env["CODEZ_WEB_REMOTE_CONTROL_URL"]?.trim();
@@ -938,7 +1049,9 @@ const webRemoteControlManager = createWebRemoteControlManager({
     endpointOrigin: DEFAULT_CODEZ_ENDPOINT_ORIGIN,
     overrideUrl: webRemoteControlRelayWsEnvOverride,
   }),
-  mobileRemoteControlUrl: webRemoteControlUrlEnvOverride || defaultCodezEndpointUrls.remoteUrl,
+  mobileRemoteControlUrl:
+    webRemoteControlUrlEnvOverride ||
+    buildCodezEndpointUrls(DEFAULT_CODEZ_ENDPOINT_ORIGIN).remoteUrl,
   deviceMid,
   deviceName: hostname(),
   appVersion: webRemoteControlAppVersion,
@@ -1119,6 +1232,14 @@ function syncCloseToTrayOnWindows(value: unknown) {
 function syncImmediateAppSettings(patch: ReturnType<typeof appSettingsPatchSchema.parse>) {
   syncCloseToTrayOnWindows(patch.closeToTrayOnWindows);
 
+  if (typeof patch.nativeBrowserControlEnabled === "boolean") {
+    // 渲染进程已先落盘（useSettings.update await 后再走本通道），这里只应用运行时状态。
+    applyNativeBrowserControlEnabled(
+      patch.nativeBrowserControlEnabled,
+      "settings nativeBrowserControlEnabled changed",
+    );
+  }
+
   if (typeof patch.keepAwakeWhileRunning === "boolean") {
     keepAwakeWhileRunning = patch.keepAwakeWhileRunning;
     reconcileKeepAwakeBlocker();
@@ -1190,6 +1311,7 @@ async function prepareAppQuit(reason: string, kind: AppShutdownKind = "normal"):
   markForceQuit(reason);
   windowsCuaOperationIndicator.dispose();
   browserScreenshotSurfaceCoordinator.dispose();
+  await nativeBrowserCuaMcpBroker.close();
   // Bug 根因：资源样本改为 5 分钟窗口后，退出仍直接 stop 会清空未满窗口的数据。
   // 退出时只排空已存在的角色 / Agent 内存窗口，不启动新采样、目录扫描或外部探针。
   stopDesktopResourceTelemetry({ flushPendingWindows: true });
@@ -1542,6 +1664,7 @@ async function executeDesktopCommandForApp(
     },
     credentialsDir: getCredentialsDir(),
     currentApplicationLocale,
+    nativeBrowserCuaMcpBroker,
   });
 }
 
@@ -1879,7 +2002,10 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
         hideWindow: () => win.hide(),
       }),
     windowHostProcessMap,
-    onHostProcessReady: (windowKey) => cuaPipFocusRouter.refreshWindow(windowKey),
+    onHostProcessReady: (windowKey, win) => {
+      nativeBrowserCuaEligibleWindowIds.add(win.id);
+      cuaPipFocusRouter.refreshWindow(windowKey);
+    },
     awaitFirstHostSpawnDecision,
     spawnHostProcess: (win, label, initMessage) =>
       spawnHostProcess(
@@ -1970,6 +2096,14 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
     remoteAssets: resolveRemoteAssetDirs({ locale: currentApplicationLocale }, hostProcessLocalEnv),
     runtimeProcessEnvPatchPromise: runtimeProcessEnvPreparation.patchPromise,
     runtimeProcessEnvFallbackPatch: runtimeProcessEnvPreparation.fallbackPatch,
+    nativeBrowserCua: () => nativeBrowserCuaMcpBroker.availability,
+    nativeBrowserCuaReadiness: () => nativeBrowserCuaMcpBroker.readiness,
+    // 修复依据：旧用户级注册让所有客户端共享工具；仅向当前窗口的 Local Host
+    // 颁发独立凭据，并在其 Codex app-server 启动时注入临时 MCP。
+    prepareDesktopCodexMcpServers: (win) => buildNativeBrowserCuaMcpServersForWindow(win),
+    codezBuiltinProviderConfigFilePath: resolveCodezBuiltinProviderConfigFilePath({
+      env: { ...hostProcessLocalEnv, ...process.env },
+    }),
     initialDesktopZoomLevel: currentDesktopZoomLevel,
     initialWindowSize: currentDesktopWindowSize,
     currentApplicationLocale: () => currentApplicationLocale,
@@ -2079,7 +2213,7 @@ app.whenReady().then(async () => {
   try {
     bootstrapSettings = await mainSettingService.get();
     if (bootstrapSettings.dataBaseDir) {
-      setDataBaseDir(bootstrapSettings.dataBaseDir);
+      setDataBaseDir(resolveDesktopDataBaseDir(bootstrapSettings.dataBaseDir));
     }
     if (bootstrapSettings.locale) {
       loadedBootstrapLocale = true;
@@ -2116,6 +2250,9 @@ app.whenReady().then(async () => {
       migrationPersisted: closeToTrayMigrationPersisted,
     });
     keepAwakeWhileRunning = bootstrapSettings.keepAwakeWhileRunning ?? false;
+    // 内置浏览器开关的启动初值：broker 默认开启（与 schema default 一致），这里按
+    // 持久化值校正；此时还没有窗口/能力，纯运行时标志，无需推送。
+    nativeBrowserCuaMcpBroker.setEnabled(bootstrapSettings.nativeBrowserControlEnabled !== false);
     currentDesktopZoomLevel = clampDesktopZoomLevel(bootstrapSettings.desktopZoomLevel ?? 0);
     currentDesktopWindowSize = bootstrapSettings.desktopWindowSize;
     // 全局 keep-awake：启动时若设置已开，立刻持有 powerSaveBlocker，不必等设置变更事件。
@@ -2206,7 +2343,7 @@ app.whenReady().then(async () => {
   // 不向 Preview 渠道提供更新。构建期未启用自动更新时同样不更新
   // （见 docs/desktop/build-time-optional-capabilities.md）。
   void initAutoUpdater({
-    enabled: CODEZ_PRODUCT_FLAVOR === "production" && CODEZ_AUTO_UPDATE_ENABLED,
+    enabled: resolveDesktopUpdatePolicy().automatic,
     onBeforeQuitAndInstall: async () => {
       notifyStabilityLifecycle("update_install");
       await prepareAppQuit("auto-update quitAndInstall", "update-install");
@@ -2587,8 +2724,22 @@ app.on("browser-window-created", (_, win) => {
   });
   // 渲染进程崩溃但窗口存活时 closed 不会触发，崩溃路径同样按 owner 复位
   // （owner 不匹配时天然幂等）。
-  win.webContents.on("render-process-gone", () => {
+  // renderer 原生崩溃后窗口仍存活但页面已消失；主窗口做有界原地 reload，
+  // 否则 Linux/Windows 上用户只会得到永久无响应的空窗口。原地 reload 是第一道
+  // 恢复（全平台）；primaryWindowCoordinator 的丢弃重建只是最后兜底。
+  // 延迟与存活性策略由 rendererCrashRecovery 模块持有；这里只提供窗口事实。
+  const rendererCrashRecovery = createRendererCrashRecovery({
+    reload: () => win.webContents.reload(),
+    canReload: () => !win.isDestroyed() && !win.webContents.isDestroyed(),
+    isQuitting: () => hasPreparedAppQuit || forceQuitRef.current,
+    logger: { warn: (message, payload) => logger.warn(message, payload) },
+  });
+  win.webContents.on("render-process-gone", (_event, details) => {
     resetShortcutRecordingForWebContents(windowWebContentsId);
+    // getMainApplicationWindows 也包含 About/资源管理器等辅助窗口；复用既有
+    // workspace WebContents 注册表，避免对非主界面应用 reload/恢复预算。
+    if (!isMainApplicationWindowWebContents(windowWebContentsId)) return;
+    rendererCrashRecovery.handle(details);
   });
 });
 app.on("window-all-closed", () => {

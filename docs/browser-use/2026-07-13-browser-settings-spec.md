@@ -4,7 +4,7 @@
 
 设置页在“索引库”之后新增“浏览器”分区，集中承载 Browser Use 的可用性和本机浏览器数据管理：
 
-1. “内置浏览器控制”直接读写官方插件 `browser-use@zcode-plugins-official` 的启用状态，不新增第二份开关。
+1. “内置浏览器控制”直接读写官方插件 `browser-use@codez-plugins-official` 的启用状态，不新增第二份开关。
 2. “导入 Chrome 登录状态”与“开启内置浏览器控制”同属“浏览器控制”分组的同一张卡片，作为开启控制后的第一步配套动作；“浏览器数据”分组只保留清除类的破坏性操作。文案以用户收益为主语（AI 直接打开已登录网站），不以内部数据结构（Cookie / LocalStorage / Profile）作为面向用户的说明主体。
 3. macOS/Linux 的“导入 Chrome 登录状态”先确认本机存在可执行的 Chrome/Chromium，再发现 Profile；未安装时立即返回 `chrome_executable_not_found` 并显示“Chrome 未找到”，不得访问 Profile 或修改内置浏览器数据。可执行文件发现依次覆盖显式环境变量、运行中进程、系统注册位置（macOS Spotlight 应用注册、Linux XDG desktop entry/PATH）和标准目录，从而兼容非默认安装目录；不做全盘扫描。确认安装后，按 `Local State.profile.last_used` → `Default` → 唯一可用 Profile 的顺序选择源，一次点击完成 Cookie 与 LocalStorage 的一次性导入，不提供 Profile 选择器和持续同步，也不读取密码库。Windows 桌面端暂时不渲染导入行，但继续保留清缓存和清全部数据；既有 App-Bound `v20` 原生导入实现、手动构建脚本及测试保留，待入口恢复后仍遵循显式 UAC、一次性 `LocalSystem` 服务和 fail-closed 边界。默认 Windows 开发、CI 和发布构建不得编译、签名或打包该 helper；只有显式设置 `CODEZ_ENABLE_WINDOWS_BROWSER_IMPORT=1` 时才恢复 helper 资产链路，该构建开关本身不恢复 UI 入口。macOS 请求 Chrome Safe Storage 钥匙串访问时，用户明确拒绝或取消授权必须终止整次导入，不写入 Cookie，也不再启动 LocalStorage 导入，并显示未授权提示。Linux `v11` Cookie 由同品牌 Chrome/Chromium helper 通过当前桌面会话的 Libsecret/KWallet 解密；Codez 不直接读取密钥环。导入不主动刷新已打开的页面，用户手动刷新或新开 tab 后读取新数据；Chrome 中可恢复的 session Cookie 在内置持久化分区中保持可恢复，避免 Codez 重启后立即丢失登录态。
 4. “清除浏览器缓存”清理内置浏览器分区的 HTTP cache、Cache Storage、Service Worker 和 shader cache，保留 Cookie、LocalStorage 与 IndexedDB。

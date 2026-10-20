@@ -307,6 +307,7 @@ function renderComposerElement(
     content: Pick<V4ComposerDraft, "text" | "editorStateJson" | "mention">,
   ) => void,
   submissionReady = true,
+  nativeCodexSession = false,
 ) {
   const scopeId = sessionId ?? V4_DRAFT_SCOPE_ROOT;
   let ownedDraft = composerDraft ??
@@ -344,6 +345,7 @@ function renderComposerElement(
       snapshot: null,
       telemetryDraftConfig,
       workspacePath: "/workspace",
+      nativeCodexSession,
     }),
   );
 }
@@ -384,6 +386,29 @@ afterEach(() => {
 });
 
 describe("ConversationComposer prompt history", () => {
+  it("原生 Codex 会话把运行时事实传给输入区，使用 Codex 角色列表", async () => {
+    const container = installMinimalDom();
+    const root: Root = createRoot(container);
+    act(() => {
+      root.render(
+        renderComposerElement(
+          vi.fn(async () => {}),
+          null,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          true,
+          true,
+        ),
+      );
+    });
+
+    expect(chatPromptEditorProps.at(-1)).toMatchObject({ nativeCodex: true });
+    await act(async () => root.unmount());
+  });
+
   it("真实编辑器文本变更会推进草稿 revision，保护迟到的推荐 Prompt", async () => {
     const { root } = renderComposer(vi.fn(async () => {}));
     const revisionBefore = getComposerDraftRevision("/workspace");

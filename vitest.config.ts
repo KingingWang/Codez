@@ -1,5 +1,8 @@
 import { resolve } from "node:path";
 import { configDefaults, defineConfig } from "vitest/config";
+import { discoverNodeUnitTests } from "./scripts/unit-test-frameworks.mjs";
+
+const nativeUnitTests = discoverNodeUnitTests(__dirname);
 
 const processLifecycleTests = [
   "packages/services/test/processTreeTerminator.test.ts",
@@ -120,7 +123,14 @@ export default defineConfig({
             "scripts/assert-safe-cua-helper-zip.test.mjs",
             "scripts/ci/ci-telemetry-keyword-guard.test.mjs",
           ],
-          exclude: ["packages/desktop/test/e2e/**", "packages/codez-cua/**", ...forkIsolatedTests],
+          exclude: [
+            "packages/desktop/test/e2e/**",
+            "packages/codez-cua/**",
+            // 这是被原生测试导入的纯数据夹具，没有 test/断言。
+            "packages/codex-bridge/test/projection-fixtures.test.ts",
+            ...forkIsolatedTests,
+            ...nativeUnitTests,
+          ],
           // Node 24/macOS 的 threads 全量运行可触发 V8 SIGSEGV；诊断时切换进程隔离，测试范围不变。
           pool: process.env.CODEZ_TEST_POOL === "forks" ? "forks" : "threads",
           maxWorkers: process.env.CODEZ_TEST_POOL === "forks" ? 2 : 4,
@@ -138,7 +148,6 @@ export default defineConfig({
           sequence: { groupOrder: 1 },
         },
       },
-      "packages/codez-cua/vitest.config.ts",
     ],
     coverage: {
       provider: "v8",

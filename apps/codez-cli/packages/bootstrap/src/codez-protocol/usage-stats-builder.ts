@@ -166,10 +166,36 @@ export function buildAppUsageSnapshot(
   };
 
   // trend：按日聚合 dayModels
-  const dailyMap = new Map<number, Map<string | null, number>>();
+  const dailyMap = new Map<
+    number,
+    Map<
+      string | null,
+      {
+        totalTokens: number;
+        inputTokens?: number;
+        outputTokens?: number;
+        cacheReadTokens?: number;
+        cacheCreationTokens?: number;
+      }
+    >
+  >();
   for (const dm of result.dayModels) {
-    const inner = dailyMap.get(dm.dayIndex) ?? new Map<string | null, number>();
-    inner.set(dm.modelId, (inner.get(dm.modelId) ?? 0) + dm.totalTokens);
+    const inner = dailyMap.get(dm.dayIndex) ?? new Map();
+    const existing = inner.get(dm.modelId) ?? { totalTokens: 0 };
+    existing.totalTokens += dm.totalTokens;
+    if (typeof dm.inputTokens === "number") {
+      existing.inputTokens = (existing.inputTokens ?? 0) + dm.inputTokens;
+    }
+    if (typeof dm.outputTokens === "number") {
+      existing.outputTokens = (existing.outputTokens ?? 0) + dm.outputTokens;
+    }
+    if (typeof dm.cacheReadTokens === "number") {
+      existing.cacheReadTokens = (existing.cacheReadTokens ?? 0) + dm.cacheReadTokens;
+    }
+    if (typeof dm.cacheCreationTokens === "number") {
+      existing.cacheCreationTokens = (existing.cacheCreationTokens ?? 0) + dm.cacheCreationTokens;
+    }
+    inner.set(dm.modelId, existing);
     dailyMap.set(dm.dayIndex, inner);
   }
   const dailyModelUsage: AppUsageSnapshot["dailyModelUsage"] = [];
@@ -178,7 +204,18 @@ export function buildAppUsageSnapshot(
     dailyModelUsage.push({
       date: dayIndexToDate(di),
       models: inner
-        ? [...inner.entries()].map(([modelId, totalTokens]) => ({ modelId, totalTokens }))
+        ? [...inner.entries()].map(([modelId, item]) => ({
+            modelId,
+            totalTokens: item.totalTokens,
+            ...(item.inputTokens !== undefined ? { inputTokens: item.inputTokens } : {}),
+            ...(item.outputTokens !== undefined ? { outputTokens: item.outputTokens } : {}),
+            ...(item.cacheReadTokens !== undefined
+              ? { cacheReadTokens: item.cacheReadTokens }
+              : {}),
+            ...(item.cacheCreationTokens !== undefined
+              ? { cacheCreationTokens: item.cacheCreationTokens }
+              : {}),
+          }))
         : [],
     });
   }
@@ -190,6 +227,8 @@ export function buildAppUsageSnapshot(
     totalTokens: m.totalTokens,
     inputTokens: m.inputTokens,
     outputTokens: m.outputTokens,
+    ...(m.cacheReadTokens !== undefined ? { cacheReadTokens: m.cacheReadTokens } : {}),
+    ...(m.cacheCreationTokens !== undefined ? { cacheCreationTokens: m.cacheCreationTokens } : {}),
     requestCount: m.requestCount,
     share: totalModelTokens > 0 ? m.totalTokens / totalModelTokens : 0,
   }));

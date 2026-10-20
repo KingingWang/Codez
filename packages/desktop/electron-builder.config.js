@@ -1,10 +1,9 @@
 /* eslint-disable max-lines -- Electron Builder config keeps related packaging hooks together so build order stays explicit. */
 import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
-import { readdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { createRequire } from "node:module";
-import { HELPER_APP_NAME } from "@codez/codez-cua/broker/helperConstants";
 import { runCommand, runCommandAndReadStdout } from "../../scripts/spawn-command.mjs";
 import { loadBuiltinProviderConfig } from "../../scripts/builtin-provider-config.mjs";
 import { noticesFileName, stageElectronNotices } from "../../scripts/third-party-notices.mjs";
@@ -20,15 +19,24 @@ import { getTargetPlatform } from "./scripts/target-platform.mjs";
 import {
   resolveDesktopArtifactSuffix,
   resolveDesktopProductIdentity,
+  resolveDesktopRuntime,
 } from "./scripts/desktop-product-identity.mjs";
 import { createWindowsPowerShellSecurityArgs } from "./scripts/powershell-command.mjs";
-import { isSharpRequiredByComputerUse, verifyStagedSharp } from "./scripts/sharp-package-assets.mjs";
-import { isRealComputerUseProducerInstalled } from "./scripts/computer-use-producer.mjs";
+import {
+  isSharpRequiredByComputerUse,
+  verifyStagedSharp,
+} from "./scripts/sharp-package-assets.mjs";
 import { verifyStagedKoffi } from "./scripts/koffi-package-assets.mjs";
 import {
-  finalizePackagedWindowsCuaHelper,
-  resolveElectronBuilderWindowsTarget,
-} from "./scripts/windows-cua-helper-assets.mjs";
+  resolveMacCuaNodeBuildInput,
+  stageMacCuaHelperApp,
+} from "./scripts/macos-cua-helper-app.mjs";
+import { resolveLinuxCuaNativePackageRoots } from "./scripts/linux-cua-native-package.mjs";
+import { resolveWindowsCuaNativePackageRoots } from "./scripts/windows-cua-native-package.mjs";
+import { stageCuaNodeRuntimeAssets } from "./scripts/windows-cua-runtime-assets.mjs";
+import { resolveCodexBuildSelection, verifyCodexResources } from "../../scripts/codex-runtime.mjs";
+import { verifyCodexRemoteAssets } from "../../scripts/codex-runtime-remote-verify.mjs";
+import { verifyCodexRemoteIndex } from "../../scripts/codex-runtime-remote-index.mjs";
 import {
   findDesktopNativePackageViolations,
   createDesktopNativePackagePrunePatterns,
@@ -42,10 +50,51 @@ import {
 
 const buildMetadata = getBuildMetadata();
 const targetPlatform = getTargetPlatform();
+// electron-builder 的 Arch 枚举是数字；beforePack 必须先归一化再校验
+// Codex staging，不能依赖未声明的全局变量或平台字符串。
+const ELECTRON_BUILDER_ARCH = {
+  1: "x64",
+  3: "arm64",
+};
+function resolveElectronBuilderCuaTarget({ electronPlatformName, arch, configuredTargetPlatform }) {
+  if (!["darwin", "linux", "win32"].includes(electronPlatformName)) {
+    throw new Error(
+      `[electron-builder.config] unsupported CUA target platform: ${String(electronPlatformName)}`,
+    );
+  }
+  const actualArch = ELECTRON_BUILDER_ARCH[arch];
+  if (!actualArch) {
+    throw new Error(
+      `[electron-builder.config] unsupported electron-builder CUA architecture: ${String(arch)}`,
+    );
+  }
+  const actualTarget = {
+    os: electronPlatformName,
+    arch: actualArch,
+    key: `${electronPlatformName}-${actualArch}`,
+  };
+  if (
+    configuredTargetPlatform?.os !== actualTarget.os ||
+    configuredTargetPlatform?.arch !== actualTarget.arch ||
+    configuredTargetPlatform?.key !== actualTarget.key
+  ) {
+    throw new Error(
+      `[electron-builder.config] configured target ${String(configuredTargetPlatform?.key)} does not match electron-builder target ${actualTarget.key}`,
+    );
+  }
+  return actualTarget;
+}
 // 修复原因：Windows Chrome 导入入口已暂时隐藏，默认安装包不应继续携带、签名或校验原生 helper。
 // 代码和完整供应链保留在显式 opt-in 后，便于未来恢复而不影响当前发布流程。
 const shouldPackageWindowsBrowserImportHelper =
   targetPlatform.os === "win32" && process.env.CODEZ_ENABLE_WINDOWS_BROWSER_IMPORT === "1";
+const isCodexBuild = resolveDesktopRuntime() === "codex";
+const codexStaging = isCodexBuild
+  ? await resolveCodexBuildSelection({ target: targetPlatform })
+  : null;
+const codexRemote = isCodexBuild
+  ? await verifyCodexRemoteAssets({ bridgePath: resolve(codexStaging.directory, "bridge.cjs") })
+  : null;
 const builtinProviderConfig = await loadBuiltinProviderConfig();
 const desktopProductIdentity = resolveDesktopProductIdentity({
   ...process.env,
@@ -60,10 +109,27 @@ const macSigningIdentity =
   rawMacSigningIdentity?.replace(/^Developer ID Application:\s*/, "") ?? null;
 const shouldEnableMacSigning =
   process.env.CODEZ_ENABLE_MAC_SIGN === "1" && Boolean(macSigningIdentity);
+const codexSigned = isCodexBuild && process.env.CODEZ_CODEX_SIGNED === "1";
+if (codexSigned) {
+  if (
+    !["darwin", "win32"].includes(targetPlatform.os) ||
+    !process.env.CSC_LINK ||
+    !process.env.CSC_KEY_PASSWORD
+  )
+    throw new Error("Signed Codex builds require platform signing credentials");
+  if (
+    targetPlatform.os === "darwin" &&
+    (!shouldEnableMacSigning ||
+      !process.env.APPLE_ID ||
+      !process.env.APPLE_APP_SPECIFIC_PASSWORD ||
+      !process.env.APPLE_TEAM_ID)
+  )
+    throw new Error(
+      "Signed Codex macOS builds require signing identity and notarization credentials",
+    );
+}
 const workspaceRoot = resolve(import.meta.dirname, "../..");
 const desktopPackageRoot = import.meta.dirname;
-// Computer Use Helper（macOS .app、Windows runtime）只随真实 producer 打包；开源占位包下跳过随包资源与校验。
-const shouldPackageComputerUseHelper = isRealComputerUseProducerInstalled({ desktopPackageRoot });
 const HELPER_FILENAME = "codez-browser-import-helper.exe";
 const runtimeModuleLookupRoots = [
   desktopPackageRoot,
@@ -72,12 +138,6 @@ const runtimeModuleLookupRoots = [
   resolve(workspaceRoot, "node_modules", ".pnpm", "node_modules"),
 ];
 const desktopDistDir = process.env.CODEZ_DESKTOP_DIST_DIR || "dist";
-const bundledCuaHelperSource = resolve(
-  desktopPackageRoot,
-  "bundled-cua-helper",
-  targetPlatform.arch,
-  HELPER_APP_NAME,
-);
 const DEFAULT_ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/";
 // `pnpm exec asar` 依赖 `.bin/asar`，但 @electron/asar 仅是 electron-builder 传递依赖时，
 // Linux CI（pnpm hoisted）往往解析不到该二进制，`asar list` 未运行即 exit 1。
@@ -197,25 +257,11 @@ function resolveElectronDownloadMirror(env = process.env) {
   return DEFAULT_ELECTRON_MIRROR;
 }
 
-function assertPackagedCuaHelper(context) {
-  if (targetPlatform.os !== "darwin" || !shouldPackageComputerUseHelper) return;
-  const appPath = join(
-    context.appOutDir,
-    `${desktopProductIdentity.productName}.app`,
-    "Contents",
-    "Resources",
-    "cua-helper",
-    HELPER_APP_NAME,
-  );
-  if (!existsSync(appPath)) {
-    throw new Error(`Packaged Codez is missing bundled Computer Use Helper: ${appPath}`);
-  }
-}
 const shouldEnableWindowsVsign =
   process.platform === "win32" && process.env.CODEZ_ENABLE_WINDOWS_SIGN === "1";
 const commandStdoutMaxBuffer = 64 * 1024 * 1024;
 // 产物后缀只标记后端环境（_TEST）；身份靠 productName 区分，生产后端的 Preview 包没有后缀。
-const desktopArtifactEnvSuffix = resolveDesktopArtifactSuffix(process.env);
+const desktopArtifactEnvSuffix = `${resolveDesktopArtifactSuffix(process.env)}${isCodexBuild && process.env.CODEZ_CODEX_SIGNED !== "1" ? "-unsigned" : ""}`;
 
 // Preview 是内部签名测试包。CI 明确打开 macOS 签名时若没有身份，必须在生成未签名包前失败，
 // 避免“产物存在”被误认为已经走完和生产版相同的签名链路。
@@ -246,7 +292,7 @@ const PACKAGING_PRUNE_PATTERNS = [
 
 function buildDesktopArtifactName(platformName, extension = "${ext}") {
   // 测试环境产物必须和正式安装包文件名区分，避免上传、下载或人工验收时混用。
-  return `\${productName}-\${version}-${platformName}-\${arch}${desktopArtifactEnvSuffix}.${extension}`;
+  return `\${productName}-\${version}-${platformName}-${targetPlatform.arch}${desktopArtifactEnvSuffix}.${extension}`;
 }
 
 function runAsarCommand(args) {
@@ -460,7 +506,9 @@ function assertPackagedNodePtyPrebuild(context) {
 }
 
 function assertPackagedCuaSharp(context) {
-  if (!isSharpRequiredByComputerUse({ desktopPackageRoot })) return;
+  // Codex 桌面包使用独立的原生 Codex runtime，不携带 legacy 的 resources/glm
+  // agent 目录；CUA 的 Sharp 资产断言只适用于仍打包 GLM agent 的 legacy 产品。
+  if (isCodexBuild || !isSharpRequiredByComputerUse({ desktopPackageRoot })) return;
   const problems = [
     [
       "packages/browser-use-plugin",
@@ -489,6 +537,9 @@ function assertPackagedCuaSharp(context) {
 }
 
 function assertPackagedCuaKoffi(context) {
+  // 与 Sharp 保持同一产品边界：Codex 包不打包 resources/glm，也不应要求 legacy
+  // CUA 插件的 koffi staging。legacy 包仍必须提供目标平台的原生 addon。
+  if (isCodexBuild) return;
   const problems = verifyStagedKoffi({
     resourcesDir: resolvePackagedResourcesDir(context),
     targetPlatform,
@@ -562,11 +613,18 @@ export default {
   // CI 环境下若这些字段缺失会在产物阶段直接失败。这里统一在构建配置补齐，避免依赖外部注入。
   extraMetadata: {
     version: buildMetadata.appVersion,
+    ...(isCodexBuild
+      ? {
+          name: "codez-codex",
+          productName: "Codez",
+          description: "Codez — independent community desktop, not an official OpenAI product",
+        }
+      : {}),
     codezProductFlavor: desktopProductIdentity.flavor,
-    homepage: "https://zcode.z.ai",
+    homepage: isCodexBuild ? "https://github.com/KingingWang/Codez" : "https://zcode.z.ai",
     author: {
-      name: "Codez",
-      email: "dev@zcode.z.ai",
+      name: isCodexBuild ? "Codez community" : "Codez",
+      email: isCodexBuild ? "KingingWang@users.noreply.github.com" : "dev@zcode.z.ai",
     },
   },
   // macOS 签名阶段会对 Electron Framework 下每个语言包逐个 codesign。
@@ -589,6 +647,7 @@ export default {
     mirror: resolveElectronDownloadMirror(),
   },
   productName: desktopProductIdentity.productName,
+  forceCodeSigning: codexSigned,
   directories: {
     // macOS arm64/x64 CI 可能共享同一个 checkout 并行打包。
     // 输出根目录允许按架构隔离，避免一个 job 清理 dist 时删除另一个 job 正在签名的 .app。
@@ -612,6 +671,15 @@ export default {
     `node_modules/node-pty/prebuilds/${targetPlatform.key}/**`,
   ],
   beforePack: async (context) => {
+    if (isCodexBuild) {
+      if (
+        context.electronPlatformName !== targetPlatform.os ||
+        ELECTRON_BUILDER_ARCH[context.arch] !== targetPlatform.arch
+      )
+        throw new Error("Codex packaging target does not match verified runtime target");
+      await verifyCodexResources(codexStaging);
+      await verifyCodexRemoteAssets({ bridgePath: resolve(codexStaging.directory, "bridge.cjs") });
+    }
     runTimedSync("beforePack:restoreTargetNodePtyPrebuild", () =>
       restoreTargetNodePtyPrebuild({ desktopPackageRoot, targetPlatform }),
     );
@@ -651,19 +719,76 @@ export default {
     await stageElectronNotices(context.appOutDir, resources, framework.version);
   },
   afterPack: async (context) => {
-    const actualWindowsTarget =
-      context.electronPlatformName === "win32"
-        ? resolveElectronBuilderWindowsTarget({
-            electronPlatformName: context.electronPlatformName,
-            arch: context.arch,
-            configuredTargetPlatform: targetPlatform,
-          })
-        : null;
+    if (isCodexBuild) {
+      const packagedCodexRoot = resolve(resolvePackagedResourcesDir(context), "codex");
+      // 修复原因：上游 macOS Codex 包不再捆绑 zsh 后，codex-resources 为空目录；
+      // electron-builder 复制 extraResources 时会跳过空目录，导致 verifyCodexResources
+      // 与运行时包布局校验因缺少 codex-resources 目录报错 ENOENT。
+      await mkdir(join(packagedCodexRoot, "codex-resources"), { recursive: true });
+      await verifyCodexResources({
+        ...codexStaging,
+        directory: packagedCodexRoot,
+      });
+      const packagedRemoteRoot = resolve(resolvePackagedResourcesDir(context), "codex-remote");
+      await verifyCodexRemoteIndex({
+        root: packagedRemoteRoot,
+        version: buildMetadata.appVersion,
+        env: process.env,
+        includeArchives: false,
+      });
+      // 发布前核对实际入包 index，而非构建源目录：防止某个平台重生成清单，
+      // 安装包引用未上传到 Release 的组件 SHA，直到用户 SSH 连接才暴露 404。
+      await copyFile(
+        join(packagedRemoteRoot, "index.json"),
+        resolve(
+          desktopPackageRoot,
+          desktopDistDir,
+          `codex-remote-index-${targetPlatform.key}.json`,
+        ),
+      );
+    }
+    const actualCuaTarget = resolveElectronBuilderCuaTarget({
+      electronPlatformName: context.electronPlatformName,
+      arch: context.arch,
+      configuredTargetPlatform: targetPlatform,
+    });
+    const cuaDependencyPackageRoots =
+      resolveWindowsCuaNativePackageRoots({
+        targetPlatform: actualCuaTarget,
+        env: process.env,
+      }) ??
+      resolveLinuxCuaNativePackageRoots({
+        targetPlatform: actualCuaTarget,
+        env: process.env,
+      });
     await runTimedAsync("afterPack:injectHoistedRuntimeModulesIntoAsar", () =>
       injectHoistedRuntimeModulesIntoAsar(context),
     );
     await runTimedAsync("afterPack:stripPackagedSourcemapReferences", () =>
       stripPackagedSourcemapReferences(context),
+    );
+    await runTimedAsync("afterPack:stageCuaNodeRuntimeAssets", () =>
+      stageCuaNodeRuntimeAssets({
+        electronPlatformName: context.electronPlatformName,
+        appOutDir: context.appOutDir,
+        targetPlatform: actualCuaTarget,
+        electronVersion: desktopElectronVersion,
+        codezCuaRoot: resolve(workspaceRoot, "packages/codez-cua"),
+        dependencyPackageRoots: cuaDependencyPackageRoots,
+      }),
+    );
+    await runTimedAsync("afterPack:stageMacCuaHelperApp", () =>
+      stageMacCuaHelperApp({
+        electronPlatformName: context.electronPlatformName,
+        resourcesDir: resolvePackagedResourcesDir(context),
+        targetPlatform: actualCuaTarget,
+        codezCuaRoot: resolve(workspaceRoot, "packages/codez-cua"),
+        appVersion: buildMetadata.appVersion,
+        buildIdentity:
+          process.env.CODEZ_CUA_HELPER_BUILD_ID?.trim() ||
+          `${buildMetadata.buildCommitId}:${buildMetadata.buildTime}`,
+        ...resolveMacCuaNodeBuildInput(process.env),
+      }),
     );
     runTimedSync("afterPack:assertPackagedNativeResourcePolicy", () =>
       assertPackagedNativeResourcePolicy(context),
@@ -673,15 +798,7 @@ export default {
     );
     runTimedSync("afterPack:assertPackagedCuaSharp", () => assertPackagedCuaSharp(context));
     runTimedSync("afterPack:assertPackagedCuaKoffi", () => assertPackagedCuaKoffi(context));
-    runTimedSync("afterPack:assertPackagedCuaHelper", () => assertPackagedCuaHelper(context));
-    if (actualWindowsTarget && shouldPackageComputerUseHelper) {
-      await runTimedAsync("afterPack:finalizePackagedWindowsCuaHelper", () =>
-        finalizePackagedWindowsCuaHelper({
-          resourcesDir: resolvePackagedResourcesDir(context),
-          targetPlatform: actualWindowsTarget,
-          electronVersion: desktopElectronVersion,
-        }),
-      );
+    if (actualCuaTarget.os === "win32") {
       await runTimedAsync("afterPack:writeWindowsInstallManifest", () =>
         writeWindowsInstallManifest(context),
       );
@@ -702,17 +819,12 @@ export default {
       }
     : {}),
   extraResources: [
+    ...(isCodexBuild
+      ? [{ from: codexRemote.root, to: "codex-remote", filter: codexRemote.packagedFiles }]
+      : []),
     { from: resolve(workspaceRoot, noticesFileName), to: noticesFileName },
     ...(targetPlatform.os === "darwin"
       ? [
-          ...(shouldPackageComputerUseHelper
-            ? [
-                {
-                  from: bundledCuaHelperSource,
-                  to: `cua-helper/${HELPER_APP_NAME}`,
-                },
-              ]
-            : []),
           {
             // CUA 权限浮窗的吸附数据源（CGWindowListCopyWindowInfo，不需要任何 TCC 权限）。
             // 主进程按 process.resourcesPath 解析；缺失时 watcher fail-open，浮窗仍可用
@@ -763,31 +875,27 @@ export default {
           },
         ]
       : []),
-    ...(targetPlatform.os === "win32" && shouldPackageComputerUseHelper
+    ...(isCodexBuild
       ? [
           {
-            // 根因：electron-builder 会跳过 from 根目录下的 node_modules；主树与依赖树必须分开映射，
-            // 否则安装包有 manifest/entry，却会在 Helper 启动时缺 express/Sharp。
-            from: `bundled-tools/${targetPlatform.key}/cua-helper`,
-            to: "tools/cua-helper",
-            filter: ["**/*", "!node_modules{,/**/*}"],
-          },
-          {
-            from: `bundled-tools/${targetPlatform.key}/cua-helper/node_modules`,
-            to: "tools/cua-helper/node_modules",
-            filter: ["**/*", "!**/*.map"],
+            from: codexStaging.directory,
+            to: "codex",
+            // 修复原因：单独复制 codex 主程序会漏掉同包工具宿主与 zsh/rg 等原生资源。
+            // 暂存目录已逐文件校验并拒绝多余文件；打包保留完整上游相对布局。
+            filter: ["**/*"],
           },
         ]
-      : []),
-    {
-      // agent 运行时资产，打包到 resources/glm。
-      // 桌面端内置的是 agent 的 JS bundle（glm/codez.cjs，由 prepare:agent-bundle 生成），
-      // Host 进程用 app 自带的 Electron Node runtime（ELECTRON_RUN_AS_NODE）执行 `codez.cjs app-server --stdio`，
-      // 不再随包内置独立 Node 二进制。远端 SSH/WSL 仍走原生二进制（无 Electron）。
-      from: `bundled-agents/${targetPlatform.key}/glm`,
-      to: "glm",
-      filter: ["**/*", "!**/*.map"],
-    },
+      : [
+          {
+            // agent 运行时资产，打包到 resources/glm。
+            // 桌面端内置的是 agent 的 JS bundle（glm/codez.cjs，由 prepare:agent-bundle 生成），
+            // Host 进程用 app 自带的 Electron Node runtime（ELECTRON_RUN_AS_NODE）执行 `codez.cjs app-server --stdio`，
+            // 不再随包内置独立 Node 二进制。远端 SSH/WSL 仍走原生二进制（无 Electron）。
+            from: `bundled-agents/${targetPlatform.key}/glm`,
+            to: "glm",
+            filter: ["**/*", "!**/*.map"],
+          },
+        ]),
     {
       // agent shell 之前完全依赖宿主系统 PATH，GUI 启动时经常拿不到用户自己装的 rg。
       // 这里把 ripgrep 作为桌面端内置 runtime tool 打进 resources/tools，
@@ -811,11 +919,25 @@ export default {
       // 协议处理器的展示名之前使用小写 scheme，打包产物里的协议描述无法体现产品名。
       // 展示名跟随安装包身份；scheme 仍保持 codez，因此两个应用中最后注册者会成为默认 handler。
       name: desktopProductIdentity.productName,
-      schemes: ["codez"],
+      schemes: [isCodexBuild ? "codez-codex" : "codez"],
     },
   ],
   mac: {
-    target: ["dmg", "zip"],
+    // codex 已启用 electron-updater 自动更新，macOS 的 Squirrel.Mac 只能用 zip 产物更新，
+    // dmg 无法驱动更新链路；zip 仅服务更新源，dmg 保留为手动安装入口。非 codex 仍只出 dmg。
+    target: isCodexBuild ? ["dmg", "zip"] : ["dmg"],
+    ...(isCodexBuild
+      ? {
+          binaries: [
+            "Resources/codex/bin/codex",
+            "Resources/codex/bin/codex-code-mode-host",
+            "Resources/codex/codex-path/rg",
+            ...(existsSync(resolve(codexStaging.directory, "codex-resources/zsh/bin/zsh"))
+              ? ["Resources/codex/codex-resources/zsh/bin/zsh"]
+              : []),
+          ],
+        }
+      : {}),
     category: "public.app-category.developer-tools",
     artifactName: buildDesktopArtifactName("mac"),
     extendInfo: {
@@ -834,7 +956,7 @@ export default {
     // macOS 产物采用“build 阶段签名 + 独立公证阶段”的两段式流水线。
     // 如果这里不显式关闭 electron-builder 内置 notarize，它会在 build 阶段读取 Apple 凭据后直接尝试公证，
     // 并强制要求 APPLE_APP_SPECIFIC_PASSWORD，导致 build 还没产出 DMG 就提前失败。
-    notarize: false,
+    notarize: isCodexBuild && shouldEnableMacSigning,
     hardenedRuntime: shouldEnableMacSigning,
     gatekeeperAssess: false,
     entitlements: "build/entitlements.mac.plist",
@@ -845,11 +967,12 @@ export default {
     // 命中后可跳过已预签名目录的重复签名/遍历，同时保留主 app 与框架签名。
     // CUA Helper 在独立 job 中已完成 Developer ID 签名和 notarization staple；
     // electron-builder 若再次签名嵌套 Helper 会改变 CDHash，使最终用户包中的 staple 失效。
-    signIgnore: [
-      "[/\\\\]Contents[/\\\\]Resources[/\\\\]cua-helper([/\\\\]|$)",
-      "[/\\\\]Contents[/\\\\]Resources[/\\\\]glm([/\\\\]|$)",
-      "[/\\\\]Contents[/\\\\]Resources[/\\\\]tools([/\\\\]|$)",
-    ],
+    signIgnore: isCodexBuild
+      ? []
+      : [
+          "[/\\\\]Contents[/\\\\]Resources[/\\\\]glm([/\\\\]|$)",
+          "[/\\\\]Contents[/\\\\]Resources[/\\\\]tools([/\\\\]|$)",
+        ],
   },
   win: {
     target: ["nsis"],
@@ -868,7 +991,7 @@ export default {
       : {}),
   },
   linux: {
-    target: ["AppImage", "deb", "rpm", "pacman"],
+    target: isCodexBuild ? ["AppImage", "deb"] : ["AppImage", "deb", "rpm", "pacman"],
     artifactName: buildDesktopArtifactName("linux"),
     // desktop 包名是 scoped package（@codez/desktop），electron-builder 默认会把
     // Linux executable/Icon 推成 @codezdesktop。部分桌面环境无法按这个 icon name 命中
@@ -876,7 +999,9 @@ export default {
     // 与 /usr/share/icons/hicolor/*/apps/codez.png 保持一致。
     executableName: desktopProductIdentity.linuxExecutableName,
     category: "Development",
-    maintainer: "Codez <dev@zcode.z.ai>",
+    maintainer: isCodexBuild
+      ? "Codez community <KingingWang@users.noreply.github.com>"
+      : "Codez <dev@zcode.z.ai>",
   },
   deb: {
     // 生产版与 Preview 必须是两个 dpkg package；只改可执行名仍会让安装器把另一版本当成升级替换。
@@ -929,14 +1054,28 @@ export default {
     installerHeaderIcon: "build/icon_installer.ico",
   },
   detectUpdateChannel: false,
-  publish: {
-    provider: "generic",
-    // 当前 OSS/CDN 对多 Range 请求返回 206，但 Content-Type 仍是 application/x-msdownload，
-    // electron-updater 会因缺少 multipart/byteranges 直接回退整包下载。关闭 multiple range 后仍走差分，
-    // 只是按单 Range 顺序拉取差异块，避免 Windows 用户更新时从约 15MB 退化成 300MB+ 全量包。
-    useMultipleRangeRequest: false,
-    // 新客户端运行时使用服务端 manifest provider；这里仅保留 electron-builder 必需的
-    // generic publish 占位，避免打包产物继续携带可配置的旧 stable feed。
-    url: "http://localhost:8081",
-  },
+  publish: isCodexBuild
+    ? {
+        provider: "github",
+        owner: "KingingWang",
+        repo: "Codez",
+        releaseType: "draft",
+        // 同一 release 同时承载 6 个构建目标的 updater 元数据；按本次构建 arch 区分
+        // channel（x64-latest / arm64-latest），避免两架构的 latest*.yml 互相覆盖。
+        // 该 channel 决定 app-builder-lib 生成的 per-arch yml 文件名（并烘焙进
+        // app-update.yml）；运行时的 channel 由 autoUpdater.ts 经 setFeedURL 显式传入
+        // （setFeedURL 后 electron-updater 不回读烘焙值），再按平台追加
+        // -mac / -linux[-arm64] 后缀，恰好命中这里生成的文件名。
+        channel: `${targetPlatform.arch}-latest`,
+      }
+    : {
+        provider: "generic",
+        // 当前 OSS/CDN 对多 Range 请求返回 206，但 Content-Type 仍是 application/x-msdownload，
+        // electron-updater 会因缺少 multipart/byteranges 直接回退整包下载。关闭 multiple range 后仍走差分，
+        // 只是按单 Range 顺序拉取差异块，避免 Windows 用户更新时从约 15MB 退化成 300MB+ 全量包。
+        useMultipleRangeRequest: false,
+        // 新客户端运行时使用服务端 manifest provider；这里仅保留 electron-builder 必需的
+        // generic publish 占位，避免打包产物继续携带可配置的旧 stable feed。
+        url: "http://localhost:8081",
+      },
 };

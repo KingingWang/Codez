@@ -122,12 +122,19 @@ export const sessionErrorInfoSchema = z.object({
 });
 export type SessionErrorInfo = z.infer<typeof sessionErrorInfoSchema>;
 
-export const apiRetryStateSchema = z.object({
+const countedApiRetryStateSchema = z.object({
   attempt: z.number(),
   maxAttempts: z.number(),
   nextRetryAt: timestampSchema,
   reasonCode: z.string(),
 });
+const codexApiRetryStateSchema = z.object({
+  source: z.literal("codex"),
+  httpStatusCode: z.number().int().min(100).max(599).nullable(),
+  attempt: z.number().int().positive().nullable().optional(),
+  maxRetries: z.number().int().positive().nullable().optional(),
+});
+export const apiRetryStateSchema = z.union([countedApiRetryStateSchema, codexApiRetryStateSchema]);
 export type ApiRetryState = z.infer<typeof apiRetryStateSchema>;
 
 export const sessionControlSchema = z.object({
@@ -207,6 +214,26 @@ export const sessionUsageStateSchema = z.object({
     cacheReadTokens: z.number(),
     cacheWriteTokens: z.number(),
   }),
+  /**
+   * Codex sparse observation (additive). Each field is present only when Codex emitted it;
+   * absence means unavailable and must never be interpreted as zero. Legacy dense fields stay
+   * for old consumers only and are not merged with this object.
+   */
+  codexObserved: z
+    .object({
+      inputTokens: z.number().int().nonnegative().optional(),
+      outputTokens: z.number().int().nonnegative().optional(),
+      cacheReadTokens: z.number().int().nonnegative().optional(),
+      cacheWriteTokens: z.number().int().nonnegative().optional(),
+      contextWindow: z
+        .object({
+          usedTokens: z.number().int().nonnegative().optional(),
+          maxTokens: z.number().int().nonnegative().optional(),
+        })
+        .optional(),
+    })
+    .strict()
+    .optional(),
 });
 export type SessionUsageState = z.infer<typeof sessionUsageStateSchema>;
 
@@ -319,6 +346,9 @@ export const pendingInteractionSchema = z
     // null = 会话级（如 provider 交互和 workspace Hook review）。
     anchorRowId: z.number().nullable(),
     createdAt: timestampSchema,
+    // additive：Codex item IDs 按 turn 作用域；新审批回传 turnId。旧 snapshot/旧发送端
+    // 可省略，消费者不得因此拒绝；投影仅在字段存在时用它防跨 turn 误挂审批。
+    turnId: z.string().optional(),
     autoResolution: interactionAutoResolutionSchema.optional(),
     payload: z.discriminatedUnion("kind", [
       permissionRequestPayloadSchema,
@@ -524,6 +554,10 @@ export const conversationSnapshotSchema = z.object({
   workspaceHookAdmission: workspaceHookAdmissionStateSchema.nullable().default(null),
   // （2026-09-12）：原 additive 字段 pluginUiSurfaces 已删除，插件面板 widgetState 只留在
   // 宿主 renderer 内存。
+  // writer-conflict 降级只读：additive optional，遵守冻结规则——旧快照/旧发送端缺字段视为可写。
+  // Codex 线程被另一进程持有写锁时，bridge 用 lock-free 的 thread/read + turns/list
+  // 构建只读投影并置此标记；写命令由 guard.codex.writerConflict 拒绝，fork 豁免。
+  writerConflict: z.object({ readOnly: z.literal(true) }).optional(),
   // B 区
   rows: rowsWindowSchema,
 });

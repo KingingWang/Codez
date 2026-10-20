@@ -253,4 +253,58 @@ describe("ConversationRowView timeline marker contract", () => {
     );
     view.unmount();
   });
+
+  // codexEvent：codex 原生事件分隔线（specs/codex-desktop-thread-items.md），
+  // label 本地化、detail 追加在后；防止投影层与 UI 接缝断裂回退成不可渲染。
+  it("renders codexEvent markers with localized label and detail", () => {
+    const html = renderMarker({
+      rowId: 21,
+      turnId: "turn-1",
+      createdAt: 1_700_000_000_000,
+      createdAtSeq: 1,
+      kind: "timelineMarker",
+      lane: "assistantWork",
+      marker: { type: "codexEvent", event: "subagentStarted", detail: "worker[1]" },
+    });
+
+    expect(html).toContain('data-row-kind="timelineMarker"');
+    expect(html).toContain('data-marker-type="codexEvent"');
+    expect(html).toContain("子代理已开始");
+    expect(html).toContain("worker[1]");
+  });
+
+  it("renders codexEvent markers without detail", () => {
+    const html = renderMarker(
+      {
+        rowId: 22,
+        turnId: "turn-1",
+        createdAt: 1_700_000_000_000,
+        createdAtSeq: 1,
+        kind: "timelineMarker",
+        lane: "assistantWork",
+        marker: { type: "codexEvent", event: "contextCompaction" },
+      },
+      "en-US",
+    );
+
+    expect(html).toContain("Context compacted");
+    expect(html).not.toContain("animated-gradient-text");
+  });
+
+  it("renders running codexEvent contextCompaction with compressing label and animated text", () => {
+    const html = renderMarker({
+      rowId: 23,
+      turnId: "turn-1",
+      createdAt: 1_700_000_000_000,
+      createdAtSeq: 1,
+      kind: "timelineMarker",
+      lane: "assistantWork",
+      marker: { type: "codexEvent", event: "contextCompaction", status: "running" },
+    });
+
+    expect(html).toContain('data-status="running"');
+    expect(html).toContain("正在压缩上下文");
+    expect(html).toContain("animated-gradient-text");
+    expect(html).not.toContain("上下文已压缩");
+  });
 });

@@ -1,9 +1,13 @@
 import { access, cp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { dirname, posix } from "node:path";
+import { dirname, join, posix } from "node:path";
+import { resolveDesktopRuntime } from "./desktop-product-identity.mjs";
 
-export const DEV_ELECTRON_PROTOCOL_SCHEME = "codez";
+const isCodex = resolveDesktopRuntime() === "codex";
+export const DEV_ELECTRON_PROTOCOL_SCHEME = isCodex ? "codez-codex" : "codez";
 export const DEV_ELECTRON_APP_NAME = "Codez Dev";
-export const DEV_ELECTRON_APP_BUNDLE_ID = "dev.codez.app.development";
+export const DEV_ELECTRON_APP_BUNDLE_ID = isCodex
+  ? "io.github.kingingwang.codez.codex.development"
+  : "dev.codez.app.development";
 // 副本布局版本，见 prepareDevElectronAppBundle 中的指纹说明。
 export const DEV_ELECTRON_BUNDLE_FORMAT = 2;
 
@@ -63,7 +67,10 @@ export async function prepareDevElectronAppBundle({
   const sourceExecutablePath = posix.join(electronAppPath, "Contents", "MacOS", "Electron");
   const existingExecutablePath = posix.join(appPath, "Contents", "MacOS", "Electron");
   // 源二进制的身份指纹，写在 .app 外面：放进 Contents 会污染 bundle 结构。
-  const sourceStampPath = posix.join(dirname(appPath), ".codez-dev-electron-source.json");
+  const sourceStampPath = posix.join(
+    dirname(appPath),
+    isCodex ? ".codez-codex-dev-electron-source.json" : ".codez-dev-electron-source.json",
+  );
   // 修复原因：这里原本把两个 Electron 可执行文件（各 ~100MB+）整份读进内存做 equals，
   // 每次 dev 启动都要付一次全量读盘。源二进制由 npm 包解压产出，记录它的 size+mtime
   // 即可判定是否需要重拷，语义等价而开销是常数级。

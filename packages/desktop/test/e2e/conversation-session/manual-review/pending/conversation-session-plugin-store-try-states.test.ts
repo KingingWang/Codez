@@ -220,9 +220,9 @@ async function seedLifecycleMarketplaceCache(
           {
             addedAt: "2026-07-31T00:00:00.000Z",
             description: "Deterministic offline Codez marketplace marker",
-            id: "zcode-plugins-official",
+            id: "codez-plugins-official",
             lastUpdated: "2099-01-01T00:00:00.000Z",
-            name: "zcode-plugins-official",
+            name: "codez-plugins-official",
             pluginCount: 1,
             source: {
               source: "url",

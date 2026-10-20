@@ -251,8 +251,28 @@ describe("node.ts wires the authoritative origin into resolveSpawnEnv", () => {
     // 承重项：必须用 resolveCurrentCodezEndpointOrigin（含 settings 覆盖）。
     // 接成 resolveRuntimeCodezEndpointOrigin(process.env) 会让这次修复完全失效，
     // 而两侧仍然"看起来"都在解析 origin。
-    expect(spawnEnvBlock).toContain(
-      "buildAgentEndpointOriginEnv(await resolveCurrentCodezEndpointOrigin())",
+    // 源码可能被 prettier 折成多行，用正则容忍空白差异。
+    expect(spawnEnvBlock).toMatch(
+      /buildAgentEndpointOriginEnv\(\s*await\s+resolveCurrentCodezEndpointOrigin\(\)\s*,?\s*\)/,
     );
+  });
+});
+
+describe("node.ts managed CUA spawn helper selection", () => {
+  const source = readFileSync(resolve(__dirname, "../src/node.ts"), "utf8");
+  const spawnEnvStart = source.indexOf("resolveSpawnEnv: async (");
+
+  it("locates the resolveSpawnEnv closure at all", () => {
+    expect(spawnEnvStart).toBeGreaterThanOrEqual(0);
+  });
+
+  it("acquires the managed Local Host Helper across platforms and builds credential env", () => {
+    expect(spawnEnvStart).toBeGreaterThanOrEqual(0);
+    const cuaBlock = source.slice(
+      source.indexOf("const cuaPluginEnabled", spawnEnvStart),
+      source.indexOf("const telemetryEnv", spawnEnvStart),
+    );
+    expect(cuaBlock).toContain("getOrCreateDefaultCuaProductHelper(context)");
+    expect(cuaBlock).toContain("buildCuaProductHelperAgentEnv(");
   });
 });

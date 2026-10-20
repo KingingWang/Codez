@@ -26,6 +26,7 @@ import {
 import { requestPluginReferenceCatalog } from "#src/codez-agent/pluginReferenceCatalogRequest.js";
 import {
   localTtftFactsSchema,
+  codexRequestSchema,
   sessionDebugSnapshotSchema,
   type LocalTtftFacts,
 } from "@codez/shared";
@@ -44,6 +45,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { Emitter } from "@codez/rpc";
 import type { IDisposable } from "@codez/rpc";
+import type { DesktopBrowserRelay } from "./desktopBrowserRelay.js";
 import type {
   AccountProviderConfigSnapshot,
   ModelSelectionView,
@@ -73,6 +75,13 @@ import {
   codezPluginsConfigureResultSchema,
   codezPluginsInstallResultSchema,
   codezPluginsListResultSchema,
+  codezAgentsListResultSchema,
+  codezCatalogReadModelsResultSchema,
+  codezCatalogReadResultSchema,
+  codezAgentsWriteResultSchema,
+  codezMcpProjectConfigWriteResultSchema,
+  codezHooksConfigWriteResultSchema,
+  codezAgentsDeleteResultSchema,
   codezPluginsMarketplaceMutationResultSchema,
   codezPluginsOverviewResultSchema,
   codezProcessChildProcessesResultSchema,
@@ -122,6 +131,7 @@ import {
   summarizeOfficialMcpIdentityHeaders,
   codezProtocolEmptyResultSchema,
   codezProtocolMethods,
+  codezRuntimeCapabilitiesSchema,
   codezProtocolNotifications,
   codezMcpTelemetryEventSchema,
   codezMcpResourceSamplesSchema,
@@ -147,6 +157,7 @@ import {
   codezWorkspaceGenerateTextResultSchema,
   codezWorkspaceHookTrustGrantResultSchema,
   codezWorkspaceUpdateInteractionPreferencesResultSchema,
+  codezWorkspaceUpdateMemoryPreferencesResultSchema,
   codezWorkspaceUpdateModelIoPreferencesResultSchema,
   codezProviderUpdateAccountConfigResultSchema,
   type CodezSessionStateSnapshot,
@@ -168,8 +179,16 @@ import {
   type CodezToolExecResource,
   type CodezPluginOperationProgressNotification,
   type CodezTaskMode,
+  type CodexFeatureCapabilities,
 } from "@codez/shared";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
+import {
+  expandSharedContextContentCopy,
+  SharedContextContentCopyError,
+  type SharedContextContentCopyReadInput,
+  type SharedContextContentCopyRecord,
+} from "#src/conversation-share/codexSharedContextContentCopy.js";
+import { CodexUsageObservationCache } from "../usage-stats/codexUsageObservationCache.js";
 import { createOfficialMcpIssuanceAudit } from "#src/official-mcp/officialMcpIssuanceAudit.js";
 import type {
   AccountRequestAuthMaterial,
@@ -262,6 +281,9 @@ import type {
   CodezAgentDescribePluginParams,
   CodezAgentListMcpServerStatusesParams,
   CodezAgentWorkspaceTarget,
+  CodezAgentDeleteAgentRoleParams,
+  CodezAgentWriteAgentRoleParams,
+  CodezAgentMcpProjectConfigWriteParams,
   CodezAgentCuaPermissionObservation,
   CodezAgentCreateAutomationParams,
   CodezAgentUpdateAutomationParams,
@@ -279,6 +301,7 @@ import type {
   CodezAgentCommandsQueryParams,
   CodezAgentConversationFileChangesParams,
   CodezAgentConversationFileRewindPreviewParams,
+  CodezAgentConversationFileRewindProjectionOverlayParams,
   CodezAgentConversationRowsRangeParams,
   CodezAgentConversationPlansParams,
   CodezAgentConversationWorkflowRunEventsParams,
@@ -288,6 +311,7 @@ import type {
   CodezAgentConversationWorkflowRunNodeResultParams,
   CodezAgentConversationWorkflowRunWorkspaceParams,
   CodezAgentConversationWorkflowRunsParams,
+  CodezAgentCodexHistoryRunsParams,
   CodezAgentConversationResyncParams,
   CodezAgentConversationSubscribeParams,
   CodezAgentConversationUnsubscribeParams,
@@ -306,7 +330,10 @@ import {
   commandsQueryParamsSchema,
   commandsQueryResultSchema,
   conversationTopic,
+  conversationTopicFrameSchema,
   conversationTopicWireCandidateSchema,
+  TopicWireFrameAssembler,
+  type TopicWireAssemblyEvent,
   conversationTelemetryFactSchema,
   cuaPermissionObservationSchema,
   sessionsIndexTopic,
@@ -330,6 +357,7 @@ import {
   v4ConnectionFlowResultSchema,
   v4ConversationFileChangesResultSchema,
   v4ConversationFileRewindPreviewResultSchema,
+  v4ConversationRowPayloadResultSchema,
   v4ConversationRowsRangeResultSchema,
   v4ConversationPlansResultSchema,
   v4ConversationWorkflowRunEventsResultSchema,
@@ -339,6 +367,8 @@ import {
   v4ConversationWorkflowRunNodeResultResultSchema,
   v4ConversationWorkflowRunWorkspaceResultSchema,
   v4ConversationWorkflowRunsResultSchema,
+  codexConversationHistoryRunsParamsSchema,
+  codexConversationHistoryRunsResultSchema,
   v4ConversationResyncResultSchema,
   v4ConversationSubscribeResultSchema,
   v4ConversationUsageResultSchema,
@@ -351,6 +381,7 @@ import {
   CODEZ_ATTACHMENT_FAULT_CODES,
   CodezAttachmentFaultError,
   type CommandAck,
+  type ConversationTopicFrame,
   type ConversationTopicWireCandidate,
   type ConversationTelemetryFact,
   type SessionsIndexTopicWireCandidate,
@@ -367,7 +398,12 @@ import { AutomationService } from "#src/session/automationService.js";
 import { AutomationRepo } from "#src/session/automationRepo.js";
 import { TaskIndexRepo } from "#src/session/taskIndexRepo.js";
 import { CodezAgentMcpStatusModeUnsupportedError } from "#src/codez-agent/codezAgentErrors.js";
-import { CodezAgentProcessManager } from "./codezAgentProcessManager.js";
+import { usesCodexBridgeRuntime } from "./codexBridgeCommand.js";
+import { createCodexSessionEventProjection } from "./codexSessionEventProjection.js";
+import {
+  CodezAgentProcessManager,
+  resolveDefaultCodezAgentCommand,
+} from "./codezAgentProcessManager.js";
 import type { CodezAgentProcessManagerOptions } from "./codezAgentProcessManager.js";
 import type { IOffPeakTaskService } from "#src/session/offPeakTask.js";
 import {
@@ -939,6 +975,30 @@ interface WaitingWorkspaceStartup {
   workspace: CodezAgentWorkspaceTarget;
 }
 
+function overlayHostCodexCapabilities(
+  capabilities: CodexFeatureCapabilities,
+  serviceOwnerFacts: {
+    sharedContextContentCopy: boolean;
+    observedAppUsage: boolean;
+    safeDesktopFileRewindOwner: boolean;
+  },
+): CodexFeatureCapabilities {
+  return {
+    ...capabilities,
+    // Only a trusted Host/service resolver can provide the actual end-to-end copy path.
+    sharedContextContentCopy: serviceOwnerFacts.sharedContextContentCopy
+      ? "degraded"
+      : "unsupported",
+    // The Desktop-owned cache is only a real capability when a query exposes it.
+    observedAppUsage: serviceOwnerFacts.observedAppUsage ? "supported" : "unsupported",
+    // Bridge projection is necessary but not sufficient: workspace mutation must have
+    // its registered Desktop-local transaction owner.
+    safeDesktopFileRewind: serviceOwnerFacts.safeDesktopFileRewindOwner
+      ? capabilities.safeDesktopFileRewind
+      : "unsupported",
+  };
+}
+
 interface ActiveWorkspaceClient {
   client: CodezProtocolClient;
   interactionPreferencesReady?: Promise<void>;
@@ -1003,6 +1063,12 @@ interface CreateCodezAgentServiceOptions extends Omit<
     workspacePath: string;
     workspaceIdentity?: string;
   }) => Promise<SubagentRuntimeConfig>;
+  /** Codex shared-context degradation reader；Host 注入，renderer 无法提供路径或内容。 */
+  readSharedContextContentCopy?: ((
+    input: SharedContextContentCopyReadInput,
+  ) => Promise<SharedContextContentCopyRecord>) & {
+    supportsSharedContextContentCopy?: boolean;
+  };
   sessionRuntimePreferencesAuthority?: "local" | "external";
   prepareProjectExecution?: (
     projectId: string,
@@ -1014,6 +1080,8 @@ interface CreateCodezAgentServiceOptions extends Omit<
     },
   ) => Promise<string[]>;
   resolveSessionDirectories?: (target: CodezAgentSessionTarget) => Promise<string[]>;
+  /** Safe rewind requires Desktop-local authority; attached-remote/mobile hosts must fail closed. */
+  safeDesktopFileRewindOwner?: boolean;
   resolveSessionRuntimePreferences?: (
     scope: CodezSessionRuntimePreferencesScope,
   ) => Promise<CodezSessionRuntimePreferencesResult>;
@@ -1045,6 +1113,12 @@ interface CreateCodezAgentServiceOptions extends Omit<
   resolveOffPeakTaskService?: () =>
     | Pick<IOffPeakTaskService, "createTask" | "list" | "getCodingPlanSupport">
     | undefined;
+  /**
+   * 桌面内置浏览器中继（spec: codex-desktop-native-browser-cua「Remote workspace relay」）。
+   * 仅 desktop-attached-remote 装配注入；本地/纯 CLI/独立 HTTP 缺省时
+   * update/respond 为 no-op，事件永不触发。
+   */
+  desktopBrowserRelay?: DesktopBrowserRelay;
   /**
    * browser-use 执行桥：把 agent 的 interaction/browserExecute 反向请求转发到 main
    * （WebContentsView+CDP）。desktop host 装配时注入；缺省（纯 CLI/远控无 main）则
@@ -1220,6 +1294,12 @@ export function createCodezAgentService(
   options?: CreateCodezAgentServiceOptions,
 ): ICodezAgentService & { disposeAllAndWait(): Promise<void> } {
   const processManager = new CodezAgentProcessManager(options);
+  const usesDefaultCodexBridge = usesCodexBridgeRuntime({
+    desktopDefault: options?.presentationSurface === "desktop",
+    customCommandResolver: Boolean(
+      options?.commandResolver && options.commandResolver !== resolveDefaultCodezAgentCommand,
+    ),
+  });
   // Windows indicator 与 macOS producer lifecycle client 共用已校验、去重的 sideband facts。
   const cuaOperationTurnTracker =
     options?.cuaOperationStateReporter || options?.onCuaPipSessionLifecycle
@@ -1306,6 +1386,9 @@ export function createCodezAgentService(
   >();
   // v4 conversation 帧 fan-out：workspace 级 emitter，renderer 侧按 topic 自行路由。
   const conversationFrameEmitters = new Map<string, Emitter<ConversationTopicWireCandidate>>();
+  // Desktop-owned Codex usage observations. The bridge frame stream remains the only input;
+  // Coding Plan data is never read or merged into this cache.
+  const codexUsageObservationCaches = new Map<string, CodexUsageObservationCache>();
   const localTtftFactsEmitter = new Emitter<{ workspaceKey: string; facts: LocalTtftFacts }>();
   const conversationTelemetryFactEmitters = new Map<string, Emitter<ConversationTelemetryFact>>();
   const offPeakLifecycleEmitters = new Map<string, Emitter<OffPeakLifecycleNotification>>();
@@ -1426,6 +1509,9 @@ export function createCodezAgentService(
 
   const runtimeLifecycleDisposable = processManager.onRuntimeLifecycle((event) => {
     if (event.state !== "unavailable") return;
+    // 观察缓存可以继续展示最后事实，但断线后的旧值不再是“当前事实”；
+    // 标记 stale 后，只有新的合法帧/snapshot 才能恢复 current。
+    getCodexUsageObservationCache(event).markRuntimeUnavailable();
     // 协议关闭、进程崩溃或请求超时时，runtime 可能不会再发送 turn-failed/
     // session-closed，也不一定能成功启动下一代 runtime。必须在 unavailable 这个权威
     // 生命周期边界清掉 CUA tracker，否则 Windows 顶部提示和 Helper 恢复门控会永久残留。
@@ -1567,7 +1653,8 @@ export function createCodezAgentService(
     reason: string;
     refreshRegistry?: boolean;
   }): Promise<void> {
-    if (!accountProviderConfigSource) return;
+    // Codex 自己管理账号和配置；旧 Provider 快照不能覆盖原生配置或阻塞原生登录。
+    if (usesDefaultCodexBridge || !accountProviderConfigSource) return;
     const previous = accountConfigSyncByClient.get(params.client) ?? Promise.resolve();
     const current = previous
       .catch(() => {
@@ -1664,8 +1751,16 @@ export function createCodezAgentService(
           {
             workspace: buildWorkspaceRef(params.workspace),
             preferences: {
-              askUserQuestionAutoResolutionEnabled:
-                params.preferences.askUserQuestionAutoResolutionEnabled,
+              // Codex bridge 对该标志 fail-closed（"Codex questions require explicit
+              // user answers"），而远端 Bot/手机链路把 preferences 同步失败当成整个
+              // runtime 初始化失败（botRemoteWorkspaceBridge 会 await 它）。codex
+              // 模式下该偏好本就无效：免交互由 yolo 的 approvalPolicy=never 表达，
+              // 不存在可自动应答的 AskUserQuestion 面。在发送边界归一为 false，
+              // 保持 bridge 的严格语义，同时不再打挂远端 attachment 初始化
+              // （2026-09-24 实测：远程 workspace 的 Bot 消息全部因此失败）。
+              askUserQuestionAutoResolutionEnabled: usesDefaultCodexBridge
+                ? false
+                : params.preferences.askUserQuestionAutoResolutionEnabled,
             },
           },
           codezWorkspaceUpdateInteractionPreferencesResultSchema,
@@ -1684,6 +1779,28 @@ export function createCodezAgentService(
         } catch (error) {
           // 新 Host 兼容尚未升级的 CLI：只有 method-not-found 可降级，其他同步失败仍需上抛。
           if (!isProtocolMethodNotFoundError(error)) throw error;
+        }
+        // Memory 偏好与 interaction 偏好同一串行队列：同一 workspace 内按提交顺序应用，
+        // 缺字段的旧调用方（undefined）不会把 CLI 侧记忆配置回退成默认值。
+        if (params.preferences.memoryEnabled !== undefined) {
+          try {
+            await params.client.request(
+              codezProtocolMethods.workspaceUpdateMemoryPreferences,
+              {
+                workspace: buildWorkspaceRef(params.workspace),
+                preferences: {
+                  memoryEnabled: params.preferences.memoryEnabled,
+                  useEnabled: params.preferences.memoryUseEnabled !== false,
+                  extractionEnabled: params.preferences.memoryExtractionEnabled !== false,
+                  extractionModel: params.preferences.memoryExtractionModel ?? null,
+                },
+              },
+              codezWorkspaceUpdateMemoryPreferencesResultSchema,
+            );
+          } catch (error) {
+            // 与 ModelIO 同一兼容模式：旧 CLI 未实现该方法时降级忽略。
+            if (!isProtocolMethodNotFoundError(error)) throw error;
+          }
         }
       });
     interactionPreferenceSyncByWorkspaceKey.set(workspaceKey, current);
@@ -1753,6 +1870,224 @@ export function createCodezAgentService(
     return created;
   }
 
+  // ── codex legacy 流式事件投影（spec: specs/codex-bot-stream-projection.md）──
+  // Codex bridge 刻意不实现 legacy session/subscribe + session/event（"Codex adapter
+  // does not support session/subscribe"），只发 v4 conversationFrame（全量 snapshot）。
+  // Bot 回复链路 / Host mirror 消费的 legacy 事件在 codex 模式下因此没有事件源
+  // （2026-09-24 飞书实测：会话里有回复，机器人侧完全看不到）。这里为每个
+  // (workspace, sessionId) 建一条引用计数的共享 v4 conversation 订阅，帧经
+  // TopicWireFrameAssembler 重组后由 codexSessionEventProjection 快照差分成 legacy
+  // session 事件，喂给既有 adapter mapServiceEvent 下游（零改动复用）。
+  interface CodexLegacySessionUpstream {
+    readonly emitter: Emitter<CodezAgentServiceEvent>;
+    refCount: number;
+    disposed: boolean;
+    dispose(): void;
+  }
+  const codexLegacySessionUpstreams = new Map<string, CodexLegacySessionUpstream>();
+
+  function createCodexLegacySessionUpstream(
+    params: CodezAgentSessionSubscribeParams,
+  ): CodexLegacySessionUpstream {
+    const workspace: CodezAgentWorkspaceTarget = {
+      workspacePath: params.workspacePath,
+      ...(params.workspaceIdentity?.trim() ? { workspaceIdentity: params.workspaceIdentity } : {}),
+    };
+    const topic = conversationTopic(params.sessionId);
+    const emitter = new Emitter<CodezAgentServiceEvent>();
+    const projection = createCodexSessionEventProjection({ sessionId: params.sessionId });
+    const assembler = new TopicWireFrameAssembler(conversationTopicFrameSchema);
+    // 订阅在途期间到达的同 topic 帧先暂存：stdio 同一 read 会先 resolve response、
+    // 再同步 fire initial notification，await continuation 尚未运行就按
+    // subscriptionId 过滤会把首帧丢掉（与 taskIndexSyncer 的 staging 同一理由）。
+    const stagedWires: ConversationTopicWireCandidate[] = [];
+    let subscriptionId: string | null = null;
+    let connectionId: string | null = null;
+    let assemblyTimer: ReturnType<typeof setTimeout> | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const upstream: CodexLegacySessionUpstream = {
+      emitter,
+      refCount: 0,
+      disposed: false,
+      dispose,
+    };
+
+    const deliverFrame = (frame: ConversationTopicFrame): void => {
+      if (upstream.disposed) return;
+      try {
+        for (const event of projection.acceptFrame(frame)) {
+          emitter.fire({ type: "session.event", event });
+        }
+      } catch (error) {
+        // 投影 fail-closed（合成事件不过协议 schema 直接抛）：丢帧好过污染 Bot 回复链。
+        logger.warn(undefined, "codex session 事件投影失败，丢弃该帧", {
+          error: error instanceof Error ? error.message : String(error),
+          sessionId: params.sessionId,
+        });
+      }
+    };
+
+    const scheduleAssemblyExpiry = (): void => {
+      if (assemblyTimer) {
+        clearTimeout(assemblyTimer);
+        assemblyTimer = null;
+      }
+      const nextExpiryAt = assembler.nextExpiryAt;
+      if (nextExpiryAt === null || upstream.disposed) return;
+      assemblyTimer = setTimeout(
+        () => {
+          assemblyTimer = null;
+          handleAssemblyEvents(assembler.expire(Date.now()));
+          scheduleAssemblyExpiry();
+        },
+        Math.max(0, nextExpiryAt - Date.now()),
+      );
+    };
+
+    const handleAssemblyEvents = (
+      events: readonly TopicWireAssemblyEvent<ConversationTopicFrame>[],
+    ): void => {
+      for (const event of events) {
+        if (event.kind === "fault") {
+          logger.warn(undefined, "codex session 帧重组失败，丢弃该逻辑帧", {
+            logicalFrameId: event.fault.logicalFrameId,
+            reasonCode: event.fault.reasonCode,
+            sessionId: params.sessionId,
+            subscriptionId: event.fault.subscriptionId,
+          });
+          assembler.abort(event.fault.topic, event.fault.subscriptionId);
+          continue;
+        }
+        deliverFrame(event.frame);
+      }
+    };
+
+    const acceptWire = (wire: ConversationTopicWireCandidate): void => {
+      if (upstream.disposed || wire.topic !== topic) return;
+      if (subscriptionId === null) {
+        stagedWires.push(wire);
+        return;
+      }
+      if (wire.subscriptionId !== subscriptionId) return;
+      handleAssemblyEvents(assembler.accept(wire));
+      scheduleAssemblyExpiry();
+    };
+
+    // 先挂帧监听再发起订阅（理由见 stagedWires 注释）。
+    const frameDisposable = getConversationFrameEmitter(workspace).event(acceptWire);
+
+    const subscribe = async (attempt: number): Promise<void> => {
+      if (upstream.disposed) return;
+      try {
+        const client = await getReadOnlyClient(params);
+        if (upstream.disposed) return;
+        const connection = resolveV4Connection(params);
+        const result = await client.request(
+          V4_METHODS.conversationSubscribe,
+          {
+            topic,
+            connectionId: connection.connectionId,
+            clientMode: connection.clientMode,
+            workspace: buildWorkspaceRef(params),
+          },
+          v4ConversationSubscribeResultSchema,
+        );
+        if (upstream.disposed) return;
+        subscriptionId = result.ack.subscriptionId;
+        connectionId = connection.connectionId;
+        rememberV4SubscriptionRoute(params, topic, subscriptionId, connection.connectionId);
+        // 回放暂存帧：只留下属于本订阅的（同 topic 可能有桌面 UI 自己的订阅在发帧）。
+        const staged = stagedWires.splice(0);
+        for (const wire of staged) {
+          acceptWire(wire);
+        }
+      } catch (error) {
+        if (upstream.disposed) return;
+        // 有界重试（与 legacy「重试耗尽即放弃」语义对齐）：会话刚创建时 bridge 侧
+        // 投影可能尚未就绪，短暂退避后放弃，Bot 侧表现与 legacy 订阅失败一致。
+        if (attempt < 3) {
+          retryTimer = setTimeout(() => {
+            retryTimer = null;
+            void subscribe(attempt + 1);
+          }, 300 * attempt);
+          return;
+        }
+        logger.warn(undefined, "codex session 事件订阅建立失败，已达最大重试次数，放弃", {
+          error: error instanceof Error ? error.message : String(error),
+          sessionId: params.sessionId,
+          workspaceKey: resolveWorkspaceKey(params),
+        });
+      }
+    };
+    void subscribe(1);
+
+    function dispose(): void {
+      if (upstream.disposed) return;
+      upstream.disposed = true;
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+        retryTimer = null;
+      }
+      if (assemblyTimer) {
+        clearTimeout(assemblyTimer);
+        assemblyTimer = null;
+      }
+      frameDisposable.dispose();
+      assembler.clear();
+      projection.dispose();
+      stagedWires.length = 0;
+      const activeSubscriptionId = subscriptionId;
+      const activeConnectionId = connectionId;
+      subscriptionId = null;
+      connectionId = null;
+      if (activeSubscriptionId && activeConnectionId) {
+        void unsubscribeV4Route(
+          { ...workspace, subscriptionId: activeSubscriptionId },
+          "conversation/",
+        ).catch((error: unknown) => {
+          logger.debug(undefined, "codex session 事件订阅退订失败（忽略）", {
+            error: error instanceof Error ? error.message : String(error),
+            sessionId: params.sessionId,
+          });
+        });
+      }
+      emitter.dispose();
+    }
+
+    return upstream;
+  }
+
+  function onCodexDynamicSessionEvent(
+    params: CodezAgentSessionSubscribeParams,
+  ): (listener: (event: CodezAgentServiceEvent) => void) => { dispose(): void } {
+    return (listener) => {
+      const key = sessionEventKey(params);
+      let upstream = codexLegacySessionUpstreams.get(key);
+      if (!upstream || upstream.disposed) {
+        upstream = createCodexLegacySessionUpstream(params);
+        codexLegacySessionUpstreams.set(key, upstream);
+      }
+      upstream.refCount += 1;
+      const subscription = upstream.emitter.event(listener);
+      let disposed = false;
+      return {
+        dispose() {
+          if (disposed) return;
+          disposed = true;
+          subscription.dispose();
+          upstream.refCount -= 1;
+          if (upstream.refCount <= 0) {
+            if (codexLegacySessionUpstreams.get(key) === upstream) {
+              codexLegacySessionUpstreams.delete(key);
+            }
+            upstream.dispose();
+          }
+        },
+      };
+    };
+  }
+
   function getPluginOperationProgressEmitter(operationId: string) {
     const existing = pluginOperationProgressEmitters.get(operationId);
     if (existing) return existing;
@@ -1788,6 +2123,40 @@ export function createCodezAgentService(
     const created = new Emitter<CodezProviderRuntimeHeadersRequestParams>();
     providerRuntimeHeadersWorkspaceEmitters.set(key, created);
     return created;
+  }
+
+  function getCodexUsageObservationCache(workspace: CodezAgentWorkspaceTarget) {
+    const key = resolveWorkspaceKey(workspace);
+    const existing = codexUsageObservationCaches.get(key);
+    if (existing) return existing;
+    const created = new CodexUsageObservationCache(workspace);
+    codexUsageObservationCaches.set(key, created);
+    return created;
+  }
+
+  function observeCodexUsageWire(
+    workspace: CodezAgentWorkspaceTarget,
+    wire: ConversationTopicWireCandidate,
+  ): void {
+    const sessionId = wire.topic.slice("conversation/".length);
+    if (!sessionId) return;
+    // The candidate schema intentionally leaves the logical frame opaque for routing.
+    // Re-validate with the concrete topic schema before retaining any usage fact.
+    const typed = conversationTopicFrameSchema.safeParse(
+      wire.kind === "complete" ? wire.frame : undefined,
+    );
+    if (!typed.success) return;
+    const cache = getCodexUsageObservationCache(workspace);
+    if (typed.data.payload.kind === "snapshot") {
+      const observed = typed.data.payload.snapshot.usage.codexObserved;
+      if (observed) cache.reconcile(sessionId, observed);
+      return;
+    }
+    for (const delta of typed.data.payload.deltas) {
+      if (delta.op !== "state.updated") continue;
+      const observed = delta.patch.usage?.codexObserved;
+      if (observed) cache.observe(sessionId, observed);
+    }
   }
 
   function getConversationTelemetryFactEmitter(workspace: CodezAgentWorkspaceTarget) {
@@ -2379,6 +2748,7 @@ export function createCodezAgentService(
           }
           const parsed = conversationTopicWireCandidateSchema.safeParse(message.params);
           if (parsed.success) {
+            observeCodexUsageWire(workspace, parsed.data);
             getConversationFrameEmitter(workspace).fire(parsed.data);
           } else {
             logger.warn(undefined, "丢弃无效 v4 conversation frame", {
@@ -3407,6 +3777,12 @@ export function createCodezAgentService(
   }
 
   async function getClient(params: CodezAgentWorkspaceTarget) {
+    if (usesDefaultCodexBridge) {
+      const entry = await getOrStartReadOnlyClient(params);
+      entry.modelExecutionEnabled = true;
+      processManager.markReady(params, entry.client);
+      return entry.client;
+    }
     const workspaceKey = resolveWorkspaceKey(params);
     const active = activeClientsByWorkspaceKey.get(workspaceKey);
     if (active?.modelExecutionEnabled && isReusableActiveClientEntry(params, active)) {
@@ -3515,7 +3891,13 @@ export function createCodezAgentService(
     return (await getOrStartReadOnlyClient(params)).client;
   }
 
-  async function getPluginManagementClient(): Promise<CodezProtocolClient> {
+  async function getPluginManagementClient(
+    target?: CodezAgentWorkspaceTarget,
+  ): Promise<CodezProtocolClient> {
+    // Codex 插件写入用户级配置，但执行主机由目标 workspace 决定。
+    // 合成管理 workspace 只属于 legacy CLI；Codex 必须复用真实 attachment，
+    // 否则 scope 校验拒绝请求，远端项目还可能错误落地到本机。
+    if (usesDefaultCodexBridge && target) return (await getOrStartReadOnlyClient(target)).client;
     const workspace = { workspacePath: ensurePluginManagementWorkspacePath() };
     const client = await pluginProcessManager.getClient(workspace);
     wireClient(client, workspace, "plugin");
@@ -3594,6 +3976,10 @@ export function createCodezAgentService(
     providerRuntimeHeadersWorkspaceEmitters.clear();
     for (const emitter of providerRuntimeHeadersCancelledEmitters.values()) emitter.dispose();
     providerRuntimeHeadersCancelledEmitters.clear();
+    for (const upstream of codexLegacySessionUpstreams.values()) {
+      upstream.dispose();
+    }
+    codexLegacySessionUpstreams.clear();
     sessionRuntimePreferencesRequestEmitter.dispose();
     processResourceSampleEmitter.dispose();
     mcpTelemetryEmitter.dispose();
@@ -3759,6 +4145,40 @@ export function createCodezAgentService(
     params: CodezAgentConversationCommandParams,
   ): Promise<CommandEnvelope> {
     const envelope = params.envelope;
+    // Codex 不接收 shared-context 引用；Host 必须先完成全量内容展开，失败则不派发命令。
+    if (usesDefaultCodexBridge && envelope.type === "sendText") {
+      const payload = commandPayloadSchemas.sendText.parse(envelope.payload);
+      if (payload.context_refs?.length) {
+        if (!options?.readSharedContextContentCopy) {
+          throw new SharedContextContentCopyError(
+            "capability_missing",
+            "Codex shared-context content copy is unavailable",
+          );
+        }
+        if (!envelope.sessionId) {
+          throw new SharedContextContentCopyError(
+            "invalid_session",
+            "Shared context requires an existing session",
+          );
+        }
+        const text = await expandSharedContextContentCopy({
+          text: payload.text,
+          refs: payload.context_refs,
+          workspacePath: params.workspacePath,
+          ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
+          sessionId: envelope.sessionId,
+          read: options.readSharedContextContentCopy,
+        });
+        const { context_refs: _context_refs, ...payloadWithoutRefs } = payload;
+        return {
+          ...envelope,
+          payload: { ...payloadWithoutRefs, text },
+        };
+      }
+      return envelope;
+    }
+    // 旧 CLI 路径保留 legacy session 工具面策略；Codex 直接消费原生 selection/plan 意图。
+    if (usesDefaultCodexBridge) return envelope;
     if (envelope.type === "createSession") {
       const { dynamicWorkflowEnabled, dynamicWorkflowMode } =
         await resolveDynamicWorkflowSessionFlags();
@@ -3829,7 +4249,60 @@ export function createCodezAgentService(
     return envelope;
   }
 
+  // disposeWorkspace 与 disposeActiveWorkspaceRuntimes 共用的单个 workspace runtime 释放。
+  const disposeWorkspaceRuntime = async (params: CodezAgentWorkspaceTarget): Promise<void> => {
+    const workspaceKey = resolveWorkspaceKey(params);
+    // 释放不仅要终止当前进程，还要让已排队的 provider-ready continuation 失效；
+    // 否则它会在 dispose 完成后把同一个 workspace 的 Agent 再次启动。
+    cancelWaitingWorkspaceStartup(workspaceKey);
+    clearV4SubscriptionRoutes(workspaceKey);
+    cuaOperationTurnTracker?.clearWorkspaceKey(workspaceKey);
+    const active = activeClientsByWorkspaceKey.get(workspaceKey);
+    if (active) {
+      invalidateWorkspaceClient(workspaceKey, active.client);
+    } else {
+      interactionPreferenceSyncByWorkspaceKey.delete(workspaceKey);
+    }
+    // 该入口被 restartWorkspaceProcess 用作 runtime invalidation，并非
+    // workspace/service 真 teardown。销毁 workspace emitter 会让既有 UI/task-index
+    // listener 永久绑在死对象上；emitters 只由 disposeLocalState/disposeAll 释放。
+    await processManager.disposeWorkspace(params);
+  };
+
+  // disposeActiveWorkspaceRuntimes 与桌面浏览器开关共用的释放实现：
+  // 只有 codex bridge runtime 消费这类进程级 env 配置；legacy CLI workspace 不注入，
+  // 重启它们只会平白打断进行中的任务。
+  const disposeActiveRuntimesForConfigChange = async (
+    reason: string,
+    includeLegacy = false,
+  ): Promise<void> => {
+    if (!usesDefaultCodexBridge && !includeLegacy) return;
+    const actives = [...activeClientsByWorkspaceKey.values()];
+    const results = await Promise.allSettled(
+      actives.map((active) => disposeWorkspaceRuntime(active.workspace)),
+    );
+    const failures = results.filter(
+      (result): result is PromiseRejectedResult => result.status === "rejected",
+    );
+    if (includeLegacy && failures.length) {
+      throw new Error(`Provider Key 变更时 ${failures.length} 个 Agent 未能停止`);
+    }
+    for (const failure of failures) {
+      // 旧 Codex 设置刷新保持既有 best-effort；临时 Key 模式已在上面 fail-closed。
+      logger.warn(undefined, "dispose workspace runtime for config change failed", {
+        reason,
+        message: String(failure.reason),
+      });
+    }
+  };
+
   return {
+    async codexRequest(params) {
+      // 先校验再启动，拒绝未授权 native RPC；只读启动不限制已获 UI 授权的设置写入。
+      const request = codexRequestSchema.parse(params.request);
+      const client = await getReadOnlyClient(params);
+      return client.request(codezProtocolMethods.codexRequest, request);
+    },
     async prepareStorage(params) {
       const client = await processManager.getClient(params);
       wireClient(client, params, "chat");
@@ -4181,17 +4654,32 @@ export function createCodezAgentService(
 
     async getAppUsageStats(params: CodezAgentAppUsageParams) {
       // usage 表位于全局 session 库；复用任意已连接的 workspace client 即可拿到全应用范围数据。
-      const active = activeClientsByWorkspaceKey.values().next().value;
-      if (!active) {
-        throw new Error("no_active_workspace");
+      // 当尚未打开任何会话或已回收时，回落到本机管理面载体，避免打开设置页统计时抛 no_active_workspace。
+      let client: CodezProtocolClient | undefined;
+      for (const active of activeClientsByWorkspaceKey.values()) {
+        if (
+          isLocalActiveWorkspaceClient(active.workspace) &&
+          isReusableActiveClientEntry(active.workspace, active)
+        ) {
+          client = active.client;
+          break;
+        }
+      }
+      if (!client) {
+        const fallbackActive = activeClientsByWorkspaceKey.values().next().value;
+        client = fallbackActive ? fallbackActive.client : await getPluginManagementClient();
       }
       // usage/stats → v4/usage/stats（additive query，事实源在 CLI usage store，
       // 载荷同形；旧词消费清零，CLI 旧 case 留到旧词删除之时）。
-      return active.client.request(
+      return client.request(
         V4_METHODS.usageStats,
         { range: params.range, timeZone: params.timeZone },
         v4UsageStatsResultSchema,
       );
+    },
+
+    async getCodexUsageObservations(params: CodezAgentWorkspaceTarget) {
+      return getCodexUsageObservationCache(params).snapshot();
     },
 
     async getTaskTokenUsage(params: CodezAgentTaskTokenUsageParams) {
@@ -4409,7 +4897,7 @@ export function createCodezAgentService(
 
     async listPlugins(params: CodezAgentPluginViewParams) {
       const requestPluginsList = async () => {
-        const client = await getPluginManagementClient();
+        const client = await getPluginManagementClient(params);
         // plugins/list 只读取本地 plugin metadata，与 mcp/list 一样走默认协议超时，
         // 这样 stale client 能在合理时间内触发回收并重试，而不是被 5 分钟市场 I/O 超时拖住。
         return client.request(
@@ -4437,6 +4925,126 @@ export function createCodezAgentService(
         // 这里对幂等的列表请求重试一次，让设置页可从重新拉起的 app-server 自动恢复。
         return await requestPluginsList();
       }
+    },
+
+    // Codex 子智能体（agent roles）文件管理。载体铁律：agents/* 一律走真实
+    // workspace carrier（getReadOnlyClient/getOrStartReadOnlyClient），绝不走
+    // getPluginManagementClient——其合成 cwd 会被 bridge 的 workspace 校验拒绝
+    // （project scope 解析 <attachment cwd>/.codex/agents），且管理进程永远是本机
+    // 进程，远程 workspace 会静默改到错误的机器。user scope 的 CODEX_HOME 也由
+    // 该 workspace 对应的 bridge 进程环境解析（远程即远端 CODEX_HOME）。
+    async listAgentRoles(params: CodezAgentWorkspaceTarget) {
+      const client = await getReadOnlyClient(params);
+      return client.request(
+        codezProtocolMethods.agentsList,
+        { workspace: buildWorkspaceRef(params) },
+        codezAgentsListResultSchema,
+      );
+    },
+
+    async readCodexCatalog(params: CodezAgentWorkspaceTarget) {
+      // 与 listAgentRoles 同一载体铁律：catalog 文件是宿主本地 fs 事实，
+      // 远程 workspace 必须由远端 bridge 进程读取。
+      const client = await getReadOnlyClient(params);
+      return client.request(
+        codezProtocolMethods.catalogRead,
+        { workspace: buildWorkspaceRef(params) },
+        codezCatalogReadResultSchema,
+      );
+    },
+
+    async readCodexCatalogModels(params: CodezAgentWorkspaceTarget) {
+      // 管理面完整条目读取：与 readCodexCatalog 同一载体铁律（specs/codex-model-provider-management.md）。
+      const client = await getReadOnlyClient(params);
+      return client.request(
+        codezProtocolMethods.catalogReadModels,
+        { workspace: buildWorkspaceRef(params) },
+        codezCatalogReadModelsResultSchema,
+      );
+    },
+
+    async writeCodexCatalogModel(params) {
+      const client = await getReadOnlyClient(params);
+      return client.request(
+        codezProtocolMethods.catalogWriteModel,
+        {
+          workspace: buildWorkspaceRef(params),
+          model: params.model,
+          originalSlug: params.originalSlug,
+        },
+        codezCatalogReadResultSchema,
+      );
+    },
+
+    async deleteCodexCatalogModel(params) {
+      const client = await getReadOnlyClient(params);
+      return client.request(
+        codezProtocolMethods.catalogDeleteModel,
+        { workspace: buildWorkspaceRef(params), slug: params.slug },
+        codezCatalogReadResultSchema,
+      );
+    },
+
+    // 与 writeAgentRole 同一载体铁律（spec: specs/codex-desktop-mcp-settings.md）：
+    // 项目层 .codex/config.toml 在 workspace 所属机器上，远程 workspace 必须由
+    // 远端 bridge 写入；原生 config/batchWrite 禁写项目层（configLayerReadonly）。
+    async writeCodexProjectMcpConfig(params: CodezAgentMcpProjectConfigWriteParams) {
+      const client = await getReadOnlyClient(params);
+      return client.request(
+        codezProtocolMethods.mcpProjectConfigWrite,
+        {
+          workspace: buildWorkspaceRef(params),
+          action: params.action,
+          name: params.name,
+          ...(params.config !== undefined ? { config: params.config } : {}),
+          ...(params.enabled !== undefined ? { enabled: params.enabled } : {}),
+          ...(params.dotCodexFolder ? { dotCodexFolder: params.dotCodexFolder } : {}),
+        },
+        codezMcpProjectConfigWriteResultSchema,
+      );
+    },
+
+    async writeCodexHooksConfig(params: CodezAgentHooksConfigWriteParams) {
+      const client = await getReadOnlyClient(params);
+      return client.request(
+        codezProtocolMethods.hooksConfigWrite,
+        {
+          workspace: buildWorkspaceRef(params),
+          scope: params.scope,
+          action: params.action,
+          ...(params.dotCodexFolder ? { dotCodexFolder: params.dotCodexFolder } : {}),
+          ...(params.target ? { target: params.target } : {}),
+          ...(params.hook ? { hook: params.hook } : {}),
+        },
+        codezHooksConfigWriteResultSchema,
+      );
+    },
+
+    async writeAgentRole(params: CodezAgentWriteAgentRoleParams) {
+      const client = await getReadOnlyClient(params);
+      return client.request(
+        codezProtocolMethods.agentsWrite,
+        {
+          workspace: buildWorkspaceRef(params),
+          scope: params.scope,
+          ...(params.originalName ? { originalName: params.originalName } : {}),
+          role: params.role,
+        },
+        codezAgentsWriteResultSchema,
+      );
+    },
+
+    async deleteAgentRole(params: CodezAgentDeleteAgentRoleParams) {
+      const client = await getReadOnlyClient(params);
+      await client.request(
+        codezProtocolMethods.agentsDelete,
+        {
+          workspace: buildWorkspaceRef(params),
+          scope: params.scope,
+          name: params.name,
+        },
+        codezAgentsDeleteResultSchema,
+      );
     },
 
     async getPluginReferenceCatalog(params: CodezAgentPluginReferenceCatalogParams) {
@@ -4878,7 +5486,7 @@ export function createCodezAgentService(
     },
 
     async resolveSuggestedPluginReference(params: CodezAgentResolveSuggestedPluginReferenceParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsResolveSuggestedReference,
         {
@@ -4929,7 +5537,7 @@ export function createCodezAgentService(
     },
 
     async getPluginsOverview(params: CodezAgentPluginViewParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsOverview,
         {
@@ -4942,7 +5550,7 @@ export function createCodezAgentService(
     },
 
     async addPluginMarketplace(params: CodezAgentAddPluginMarketplaceParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsMarketplaceAdd,
         {
@@ -4957,7 +5565,7 @@ export function createCodezAgentService(
     },
 
     async removePluginMarketplace(params: CodezAgentRemovePluginMarketplaceParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsMarketplaceRemove,
         {
@@ -4970,7 +5578,7 @@ export function createCodezAgentService(
     },
 
     async updatePluginMarketplace(params: CodezAgentUpdatePluginMarketplaceParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsMarketplaceUpdate,
         {
@@ -4984,7 +5592,7 @@ export function createCodezAgentService(
     },
 
     async installPlugin(params: CodezAgentInstallPluginParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsInstall,
         {
@@ -5011,7 +5619,7 @@ export function createCodezAgentService(
     },
 
     async uninstallPlugin(params: CodezAgentUninstallPluginParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsUninstall,
         {
@@ -5027,7 +5635,7 @@ export function createCodezAgentService(
     },
 
     async updatePlugin(params: CodezAgentUpdatePluginParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsUpdate,
         {
@@ -5041,7 +5649,7 @@ export function createCodezAgentService(
     },
 
     async restoreBuiltinPlugin(params: CodezAgentRestoreBuiltinPluginParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsRestoreBuiltin,
         {
@@ -5054,7 +5662,7 @@ export function createCodezAgentService(
     },
 
     async configurePlugin(params: CodezAgentConfigurePluginParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsConfigure,
         {
@@ -5071,7 +5679,7 @@ export function createCodezAgentService(
     },
 
     async resetPluginConfig(params: CodezAgentResetPluginConfigParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsResetConfig,
         {
@@ -5085,7 +5693,7 @@ export function createCodezAgentService(
     },
 
     async validatePlugin(params: CodezAgentValidatePluginParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsValidate,
         {
@@ -5100,7 +5708,7 @@ export function createCodezAgentService(
     },
 
     async describePlugin(params: CodezAgentDescribePluginParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsDescribe,
         {
@@ -5114,7 +5722,7 @@ export function createCodezAgentService(
     },
 
     async setPluginEnabled(params: CodezAgentSetPluginEnabledParams) {
-      const client = await getPluginManagementClient();
+      const client = await getPluginManagementClient(params);
       return client.request(
         codezProtocolMethods.pluginsSetEnabled,
         {
@@ -5234,6 +5842,18 @@ export function createCodezAgentService(
     },
 
     async generateWorkspaceText(params: CodezAgentGenerateWorkspaceTextParams) {
+      // Git 辅助是当前唯一调用方；在启动/账号准备前读取同一 runtime 能力，
+      // 老 bridge 或断连路径必须 fail-closed，而不是发出注定失败的生成请求。
+      if (usesDefaultCodexBridge && params.querySource === "git_commit_message") {
+        const client = await getReadOnlyClient(params);
+        const capabilities = await client.request(
+          codezProtocolMethods.runtimeCapabilities,
+          {},
+          codezRuntimeCapabilitiesSchema,
+        );
+        if (capabilities.codex?.auxiliaryTextGeneration !== "supported")
+          throw new Error("生成提交消息所需的 Codex 辅助能力不可用。");
+      }
       const client = await getClient(params);
       // Worker 自己读取 Codez Built-in / Personal Config；Host 只在执行前确保账号状态形成的
       // Account Config Overlay 已同步，避免新进程先按旧套餐状态创建 Model。
@@ -5288,6 +5908,22 @@ export function createCodezAgentService(
         );
       } finally {
         params.signal?.removeEventListener("abort", cancel);
+      }
+    },
+
+    async canGenerateWorkspaceText(params: CodezAgentWorkspaceTarget) {
+      if (!usesDefaultCodexBridge) return false;
+      try {
+        const client = await getReadOnlyClient(params);
+        const capabilities = await client.request(
+          codezProtocolMethods.runtimeCapabilities,
+          {},
+          codezRuntimeCapabilitiesSchema,
+        );
+        return capabilities.codex?.auxiliaryTextGeneration === "supported";
+      } catch {
+        // capability 读取失败与缺字段同语义：Host 不能自行补救为可用。
+        return false;
       }
     },
 
@@ -5785,6 +6421,12 @@ export function createCodezAgentService(
     },
 
     onDynamicSessionEvent(params: CodezAgentSessionSubscribeParams) {
+      // Codex bridge 没有 legacy session/subscribe + session/event；改走 v4
+      // conversation 订阅 + 快照差分投影（spec: specs/codex-bot-stream-projection.md）。
+      // legacy 模式保持原实现不变。
+      if (usesDefaultCodexBridge) {
+        return onCodexDynamicSessionEvent(params);
+      }
       const emitter = getSessionEmitter(params);
       return (listener) => {
         // cancelled / retryTimer 的作用域是单个订阅者：调用方 dispose 时取消自己的重试，
@@ -5937,6 +6579,28 @@ export function createCodezAgentService(
     // ── v4 conversation 通道（竖切）：host 只做透传，不落任何业务状态 ──
 
     async helloConversationV4() {
+      // Bridge facts are authoritative. Service owners may only downgrade native facts or
+      // replace a native unsupported fact when their trusted end-to-end path is installed.
+      let codexCapabilities: CodexFeatureCapabilities | undefined;
+      let codexCapabilityUnavailable = false;
+      if (usesDefaultCodexBridge) {
+        try {
+          const entry = await getOrStartReadOnlyClient({ workspacePath: process.cwd() });
+          const capabilities = await entry.client.request(
+            codezProtocolMethods.runtimeCapabilities,
+            {},
+            codezRuntimeCapabilitiesSchema,
+          );
+          codexCapabilities = capabilities.codex;
+          await entry.interactionPreferencesReady;
+        } catch (error) {
+          codexCapabilityUnavailable = true;
+          codexCapabilities = undefined;
+          logger.warn(undefined, "读取 Codex bridge 能力失败，按缺省能力投影", {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
       return {
         kind: "hello" as const,
         protocolVersion: V4_WIRE_PROTOCOL_VERSION,
@@ -5949,12 +6613,29 @@ export function createCodezAgentService(
           localTerminal: true,
           binaryFrames: false,
           compression: "none" as const,
-          workspaceHookReview: true,
+          // Codex bridge 不支持旧 Hooks 审批写入，不能向 UI 广告该能力。
+          workspaceHookReview: !usesDefaultCodexBridge,
           independentPlanState: true,
-          // 与 connection scope 的 hello 同一份能力集：直连 base service 的宿主内部消费者
-          // 也能收到 `workflowRun.*` 增量（是否真收由它自己的 clientHello 决定）。
-          workflowRunDeltas: true,
-          historyFirst: true,
+          // 合并后只关闭 Codex 的旧工作流；显式 legacy CLI 仍有已实现的增量通道。
+          ...(!usesDefaultCodexBridge ? { workflowRunDeltas: true, historyFirst: true } : {}),
+          // Codex bridge 尚无 DWF 增量投影；Host 不能自制 legacy workflow capability。
+          ...(codexCapabilities
+            ? {
+                codex:
+                  usesDefaultCodexBridge && codexCapabilities
+                    ? overlayHostCodexCapabilities(codexCapabilities, {
+                        sharedContextContentCopy:
+                          options?.readSharedContextContentCopy
+                            ?.supportsSharedContextContentCopy === true,
+                        observedAppUsage: true,
+                        safeDesktopFileRewindOwner: options?.safeDesktopFileRewindOwner === true,
+                      })
+                    : codexCapabilities,
+              }
+            : {}),
+          ...(codexCapabilityUnavailable
+            ? { codexUnavailable: { reason: "bridge-unavailable" as const } }
+            : {}),
         },
         auth: {},
       };
@@ -6132,10 +6813,12 @@ export function createCodezAgentService(
         firstInput?: { planEnabled?: boolean };
       };
       if (
-        planPayload.planEnabled ||
-        planPayload.config?.planEnabled ||
-        planPayload.firstInput?.planEnabled
+        !usesDefaultCodexBridge &&
+        (planPayload.planEnabled ||
+          planPayload.config?.planEnabled ||
+          planPayload.firstInput?.planEnabled)
       ) {
+        // 已知内置 bridge 把独立 Plan 映射为 native collaborationMode；旧/自定义 CLI 仍须探测能力。
         await ensureIndependentPlanSupport(client);
       }
       // RPC facade 会清掉调用方可伪造的顶层 clientMode，再用 trusted carrier 注入 host
@@ -6172,21 +6855,25 @@ export function createCodezAgentService(
               : ("desktop" as const),
         };
         envelope = { ...envelope, payload };
-        const browserAmbientContext = await collectBrowserAmbientContext(
-          options?.browserControlExecutor,
-          {
-            sessionId,
-            workspacePath: params.workspacePath,
-            ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
-            ...(params.remoteSessionId ? { remoteSessionId: params.remoteSessionId } : {}),
-            clientMode: commandClientMode,
-          },
-        );
-        if (browserAmbientContext) {
-          envelope = {
-            ...envelope,
-            payload: { ...payload, browserAmbientContext },
-          };
+        // 原因：native bridge 在 RPC 前拒绝 legacy ambient 字段，打开浏览器后续发必失败。
+        // 只让旧/自定义 Agent 收集摘要；原生 Browser MCP 独立运行，不依赖此注入。
+        if (!usesDefaultCodexBridge) {
+          const browserAmbientContext = await collectBrowserAmbientContext(
+            options?.browserControlExecutor,
+            {
+              sessionId,
+              workspacePath: params.workspacePath,
+              ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
+              ...(params.remoteSessionId ? { remoteSessionId: params.remoteSessionId } : {}),
+              clientMode: commandClientMode,
+            },
+          );
+          if (browserAmbientContext) {
+            envelope = {
+              ...envelope,
+              payload: { ...payload, browserAmbientContext },
+            };
+          }
         }
       }
       const ack: CommandAck = await client.request(V4_METHODS.command, envelope, commandAckSchema);
@@ -6366,8 +7053,7 @@ export function createCodezAgentService(
 
     // 行分页：只读 query 透传（超时重发安全，无订阅状态）。
     async conversationRowsRangeV4(params: CodezAgentConversationRowsRangeParams) {
-      const trusted = readTrustedCodezAgentV4Connection(params);
-      if (!trusted) throw new Error("fault.conversation.rowsRangeConnectionUntrusted");
+      const trusted = resolveV4Connection(params);
       const client = await getReadOnlyClient(params);
       return client.request(
         V4_METHODS.conversationRowsRange,
@@ -6378,6 +7064,18 @@ export function createCodezAgentService(
           limit: params.limit,
         },
         v4ConversationRowsRangeResultSchema,
+      );
+    },
+
+    async conversationRowPayloadV4(params: CodezAgentConversationRowPayloadParams) {
+      const client = await getReadOnlyClient(params);
+      return client.request(
+        V4_METHODS.conversationRowPayload,
+        {
+          sessionId: params.sessionId,
+          rowId: params.rowId,
+        },
+        v4ConversationRowPayloadResultSchema,
       );
     },
 
@@ -6418,6 +7116,22 @@ export function createCodezAgentService(
           ...(params.limit !== undefined ? { limit: params.limit } : {}),
         },
         v4ConversationWorkflowRunsResultSchema,
+      );
+    },
+
+    // Codex 原生 turn 历史是独立只读查询；Host 不创建第二份状态，也不映射到 DWF。
+    async codexHistoryRunsV4(params: CodezAgentCodexHistoryRunsParams) {
+      const client = await getReadOnlyClient(params);
+      const wireParams = codexConversationHistoryRunsParamsSchema.parse({
+        sessionId: params.sessionId,
+        ...(params.limit !== undefined ? { limit: params.limit } : {}),
+        ...(params.status !== undefined ? { status: params.status } : {}),
+        ...(params.beforeTurnId !== undefined ? { beforeTurnId: params.beforeTurnId } : {}),
+      });
+      return client.request(
+        V4_METHODS.codexConversationHistoryRuns,
+        wireParams,
+        codexConversationHistoryRunsResultSchema,
       );
     },
 
@@ -6558,6 +7272,16 @@ export function createCodezAgentService(
         },
         v4ConversationFileRewindPreviewResultSchema,
       );
+    },
+    async conversationFileRewindProjectionOverlayV4(
+      params: CodezAgentConversationFileRewindProjectionOverlayParams,
+    ): Promise<void> {
+      const client = await getReadOnlyClient(params);
+      await client.request(V4_METHODS.conversationFileRewindProjectionOverlay, {
+        sessionId: params.sessionId,
+        target: params.target,
+        turnId: params.turnId,
+      });
     },
 
     onDynamicConversationFrame(params: CodezAgentWorkspaceTarget) {
@@ -6733,22 +7457,51 @@ export function createCodezAgentService(
     },
 
     async disposeWorkspace(params): Promise<void> {
-      const workspaceKey = resolveWorkspaceKey(params);
-      // 释放不仅要终止当前进程，还要让已排队的 provider-ready continuation 失效；
-      // 否则它会在 dispose 完成后把同一个 workspace 的 Agent 再次启动。
-      cancelWaitingWorkspaceStartup(workspaceKey);
-      clearV4SubscriptionRoutes(workspaceKey);
-      cuaOperationTurnTracker?.clearWorkspaceKey(workspaceKey);
-      const active = activeClientsByWorkspaceKey.get(workspaceKey);
-      if (active) {
-        invalidateWorkspaceClient(workspaceKey, active.client);
-      } else {
-        interactionPreferenceSyncByWorkspaceKey.delete(workspaceKey);
+      await disposeWorkspaceRuntime(params);
+    },
+
+    quarantineWorkspaceForRemoval(params) {
+      processManager.quarantineWorkspaceForRemoval(params);
+    },
+
+    releaseWorkspaceRemovalHold(params) {
+      processManager.releaseWorkspaceRemovalHold(params);
+    },
+
+    async disposeActiveWorkspaceRuntimes(params): Promise<void> {
+      await disposeActiveRuntimesForConfigChange(params.reason, params.includeLegacy);
+    },
+
+    async updateDesktopBrowserControl(params): Promise<void> {
+      const relay = options?.desktopBrowserRelay;
+      if (!relay) return;
+      // 先切换 relay（fail closed：关闭即刻拒止新调用），再按变化重造 runtime；
+      // 顺序反过来会让已释放的 workspace 在新状态生效前被重拉起来。
+      const changed = await relay.setEnabled(params.enabled);
+      if (!changed) return;
+      logger.info(undefined, "desktop browser control capability changed", {
+        enabled: params.enabled,
+      });
+      await disposeActiveRuntimesForConfigChange("nativeBrowserControlEnabled");
+    },
+
+    onDynamicDesktopBrowserCommandRequest() {
+      const relay = options?.desktopBrowserRelay;
+      if (!relay) {
+        return () => ({ dispose: () => undefined });
       }
-      // 该入口被 restartWorkspaceProcess 用作 runtime invalidation，并非
-      // workspace/service 真 teardown。销毁 workspace emitter 会让既有 UI/task-index
-      // listener 永久绑在死对象上；emitters 只由 disposeLocalState/disposeAll 释放。
-      await processManager.disposeWorkspace(params);
+      return (listener) => relay.onCommandRequest(listener);
+    },
+
+    async respondDesktopBrowserCommand(params): Promise<void> {
+      const relay = options?.desktopBrowserRelay;
+      if (!relay) {
+        logger.warn(undefined, "desktop browser relay response without a relay", {
+          requestId: params.requestId,
+        });
+        return;
+      }
+      relay.resolveCommand(params.requestId, params.payload);
     },
 
     disposeAll(): void {
@@ -6767,6 +7520,8 @@ export function createCodezAgentService(
         processManager.disposeAllAndWait(),
         pluginProcessManager.disposeAllAndWait(),
         mcpStatusProcessManager.disposeAllAndWait(),
+        // relay 关闭只停 socket/token，不依赖进程管理器，可并行收口。
+        options?.desktopBrowserRelay?.dispose() ?? Promise.resolve(),
       ]);
       automationRepo.close();
       automationTaskIndexRepo.close();
@@ -6774,3 +7529,5 @@ export function createCodezAgentService(
     },
   };
 }
+import type { CodezAgentHooksConfigWriteParams } from "./codezAgent.js";
+import type { CodezAgentConversationRowPayloadParams } from "./codezAgent.js";

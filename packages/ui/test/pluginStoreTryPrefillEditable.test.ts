@@ -32,12 +32,12 @@ const TRY_NOW_MENTION = {
 };
 
 const SECOND_PLUGIN_MENTION = {
-  id: "plugin:pdf@zcode-plugins-official",
+  id: "plugin:pdf@codez-plugins-official",
   category: "plugins" as const,
   label: "pdf",
-  value: "pdf@zcode-plugins-official",
-  markdown: "[@pdf](plugin://pdf@zcode-plugins-official)",
-  data: { pluginId: "pdf@zcode-plugins-official" },
+  value: "pdf@codez-plugins-official",
+  markdown: "[@pdf](plugin://pdf@codez-plugins-official)",
+  data: { pluginId: "pdf@codez-plugins-official" },
 };
 
 async function prefill(trailingText?: string) {

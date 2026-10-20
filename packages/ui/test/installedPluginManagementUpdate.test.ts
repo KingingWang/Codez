@@ -20,12 +20,12 @@ vi.mock("@/components/ui/button.js", () => ({
 
 function basePlugin(overrides: Partial<CodezPluginInfo> = {}): CodezPluginInfo {
   return {
-    id: "skill-creator@zcode-plugins-official",
+    id: "skill-creator@codez-plugins-official",
     name: "skill-creator",
     version: "1.0.0",
     enabled: true,
     source: "official",
-    marketplace: "zcode-plugins-official",
+    marketplace: "codez-plugins-official",
     skillCount: 0,
     skillRootCount: 0,
     commandRootCount: 0,
@@ -212,7 +212,7 @@ describe("InstalledPluginDetailPanel update badge", () => {
       onClick();
     }
 
-    expect(onRequestUpdate).toHaveBeenCalledWith("skill-creator@zcode-plugins-official");
+    expect(onRequestUpdate).toHaveBeenCalledWith("skill-creator@codez-plugins-official");
     expect(onRequestUpdate).toHaveBeenCalledTimes(1);
 
     act(() => {

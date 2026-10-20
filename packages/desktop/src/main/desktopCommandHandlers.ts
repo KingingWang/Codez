@@ -11,18 +11,20 @@ import {
   getFeedbackUrlFromConfig,
   normalizeCodezEndpointOrigin,
   PlatformChannels,
-  resolveHelpAppConfig,
   resolveCodezEndpointOrigin,
   CODEZ_ENV,
   CODEZ_PRODUCT_FLAVOR,
   type AppSettings,
   type DesktopCommandId,
   type Locale,
+  nativeBrowserCuaMcpDescriptorResultSchema,
+  resolveRuntimeCodezEndpointOrigin,
 } from "@codez/shared";
 import type { MessageBoxOptions } from "electron";
 import { app, BrowserWindow, dialog, session, shell } from "electron";
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
+import { existsSync } from "node:fs";
 import { showAboutDialog } from "./about.js";
 import { checkForUpdateMenuClick } from "./autoUpdater.js";
 import { resolveCuaOsSupport } from "./cuaOsSupport.js";
@@ -44,6 +46,25 @@ export const HELP_TOGGLE_CODEZ_STDIO_TAP_MENU_ID = "help.toggle-codez-stdio-tap"
 const CODEZ_ENDPOINT_PROMPT_WIDTH = 460;
 const CODEZ_ENDPOINT_PROMPT_HEIGHT = 210;
 const CODING_PLAN_WEBVIEW_PARTITION = "persist:codez-coding-plan";
+
+/** Settings descriptor and Host bootstrap must resolve the same bridge artifact. */
+export function resolveDesktopCodexBridgePath(): string | undefined {
+  const deployedBridge = process.env.CODEZ_CODEX_BRIDGE_PATH?.trim();
+  if (deployedBridge)
+    return isAbsolute(deployedBridge) && existsSync(deployedBridge) ? deployedBridge : undefined;
+  if (app.isPackaged && process.resourcesPath) {
+    const packagedBridge = join(process.resourcesPath, "codex", "bridge.cjs");
+    if (existsSync(packagedBridge)) return packagedBridge;
+  }
+  let directory = app.getAppPath();
+  while (true) {
+    const candidate = join(directory, "packages", "codex-bridge", "dist", "bridge.cjs");
+    if (existsSync(candidate)) return candidate;
+    const parent = dirname(directory);
+    if (parent === directory) return undefined;
+    directory = parent;
+  }
+}
 
 function resolveTargetWindow(senderWindow?: BrowserWindow | null) {
   if (senderWindow && !senderWindow.isDestroyed()) {
@@ -247,29 +268,10 @@ export async function resolveCommunityUrl(options: {
   return getCommunityUrlFromConfigs(remoteConfig, localConfig, options.locale);
 }
 
-async function openFeedback(
-  logger: { warn: (...args: unknown[]) => void; error: (...args: unknown[]) => void },
-  targetWindow?: BrowserWindow | null,
-  fetchRemoteConfig?: () => Promise<unknown>,
-) {
-  let remoteConfig: unknown;
-  let localConfig: unknown;
-  try {
-    remoteConfig = await fetchRemoteAppConfig(fetchRemoteConfig);
-  } catch (error) {
-    logger.warn("[feedback] failed to fetch remote config:", error);
-  }
-  try {
-    localConfig = await readLocalAppConfig();
-  } catch (error) {
-    logger.warn("[feedback] failed to read local config:", error);
-  }
-  const config = resolveHelpAppConfig(remoteConfig, localConfig);
-  if (!config.feedback_use_external_form) {
-    resolveTargetWindow(targetWindow)?.webContents.send(PlatformChannels.OpenFeedbackDialog);
-    return;
-  }
-  if (config.feedback_url) await shell.openExternal(config.feedback_url);
+function openFeedback(targetWindow?: BrowserWindow | null) {
+  // 桌面原生菜单的“问题上报”不再读取远端 feedback_url / feedback_use_external_form，
+  // 统一通知目标窗口由 Renderer 的共享 GitHub Issues 预填入口打开。
+  resolveTargetWindow(targetWindow)?.webContents.send(PlatformChannels.OpenFeedbackDialog);
 }
 
 async function openCommunity(
@@ -500,6 +502,9 @@ export async function executeDesktopCommand(options: {
   codezEndpointEnvBaseOrigin?: string | null;
   credentialsDir: string;
   currentApplicationLocale: Locale;
+  nativeBrowserCuaMcpBroker?: {
+    descriptor(input: { executable: string; bridgePath: string; windowId: number }): unknown;
+  };
 }) {
   const targetWindow = resolveTargetWindow(options.senderWindow);
   options.logger.info(
@@ -594,7 +599,7 @@ export async function executeDesktopCommand(options: {
       return;
     case DesktopCommandIds.CheckForUpdates:
       // 按产品身份而不是后端环境放行：生产后端的 Preview 同样没有更新器。
-      if (CODEZ_PRODUCT_FLAVOR === "production") {
+      if (CODEZ_PRODUCT_FLAVOR !== "preview") {
         checkForUpdateMenuClick(targetWindow);
       } else {
         options.logger.info("[auto-update] Preview 已禁用手动更新检查");
@@ -604,7 +609,7 @@ export async function executeDesktopCommand(options: {
       await options.onRelaunchApp();
       return;
     case DesktopCommandIds.OpenFeedback:
-      await openFeedback(options.logger, targetWindow, options.fetchHelpConfig);
+      openFeedback(targetWindow);
       return;
     case DesktopCommandIds.OpenCommunity:
       await openCommunity(
@@ -688,5 +693,33 @@ export async function executeDesktopCommand(options: {
       return;
     case DesktopCommandIds.GetCuaOsSupport:
       return resolveCuaOsSupport();
+    case DesktopCommandIds.GetCodexNativeBrowserCuaMcpDescriptor: {
+      // 修复依据：描述符包含窗口专属 token 文件路径，不能从焦点窗口兜底推测调用方。
+      if (
+        !options.nativeBrowserCuaMcpBroker ||
+        !options.senderWindow ||
+        options.senderWindow.isDestroyed()
+      )
+        return undefined;
+      const deployedBridge = process.env.CODEZ_CODEX_BRIDGE_PATH?.trim();
+      if (deployedBridge && !isAbsolute(deployedBridge))
+        return nativeBrowserCuaMcpDescriptorResultSchema.parse({
+          runtimeInstalled: false,
+          serviceRunning: false,
+          executable: process.execPath,
+          browserAvailable: false,
+          cuaAvailable: false,
+          cuaReason: "codez-cua.runtime_unavailable",
+        });
+      const bridgePath = resolveDesktopCodexBridgePath();
+      if (!bridgePath) return undefined;
+      return nativeBrowserCuaMcpDescriptorResultSchema.parse(
+        options.nativeBrowserCuaMcpBroker.descriptor({
+          executable: process.execPath,
+          bridgePath,
+          windowId: options.senderWindow.id,
+        }),
+      );
+    }
   }
 }

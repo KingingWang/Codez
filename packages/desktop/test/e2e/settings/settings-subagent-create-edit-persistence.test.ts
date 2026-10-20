@@ -83,7 +83,7 @@ const USER_REMOVED_MODEL = {
 };
 const USER_AGENT_ROOT = join(resolveE2EStorageRoot(), "agents");
 const PLUGIN_JUDGE_AGENT_NAME = "documents:visual-judge";
-const PLUGIN_JUDGE_AGENT_ID = "plugin:documents@zcode-plugins-official:visual-judge";
+const PLUGIN_JUDGE_AGENT_ID = "plugin:documents@codez-plugins-official:visual-judge";
 const WORKSPACE_AGENT_ROOT = join(DEFAULT_WORKSPACE, ".codez", "agents");
 const SUBAGENT_FORM_SELECTOR = `form:has(input[type="text"]):has(${sel(
   TID_CHAT_MODEL_SELECT_TRIGGER,
@@ -157,7 +157,7 @@ describe("Settings subagent 创建/编辑文件持久化 E2E", () => {
       "cli",
       "plugins",
       "cache",
-      "zcode-plugins-official",
+      "codez-plugins-official",
       "documents",
     );
     const artifacts = await Promise.all(

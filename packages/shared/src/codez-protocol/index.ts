@@ -129,10 +129,44 @@ export const CODEZ_PROTOCOL_NAME = "Codez Protocol" as const;
 export const CODEZ_PROTOCOL_VERSION = 1 as const;
 // V4 wire 与 legacy 主协议并存；禁止为了 V4 physical framing 改写 legacy 版本。
 export const CODEZ_PROTOCOL_V4_WIRE_VERSION = 3 as const;
+/** 仅 Desktop Local Host 在启动受控 Codex bridge 时传递；不写入 Codex 用户配置。 */
+export const CODEZ_DESKTOP_MCP_SERVERS_ENV_KEY = "CODEZ_DESKTOP_MCP_SERVERS";
+export const desktopCodexMcpServerSchema = z.strictObject({
+  name: z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/),
+  command: z.string().min(1).max(4096),
+  args: z.array(z.string().max(4096)).max(16),
+  env: z.record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/), z.string().max(4096)),
+});
+export type DesktopCodexMcpServer = z.infer<typeof desktopCodexMcpServerSchema>;
+export const desktopCodexMcpServersSchema = z.array(desktopCodexMcpServerSchema).max(8);
+export const codexFeatureCapabilityStateSchema = z.enum(["supported", "degraded", "unsupported"]);
+export const codexFeatureCapabilitiesSchema = z.strictObject({
+  auxiliaryTextGeneration: codexFeatureCapabilityStateSchema,
+  observedSessionUsage: codexFeatureCapabilityStateSchema,
+  observedAppUsage: codexFeatureCapabilityStateSchema,
+  sharedContextContentCopy: codexFeatureCapabilityStateSchema,
+  scheduledPromptAutomations: codexFeatureCapabilityStateSchema,
+  nativeBrowserCuaMcp: codexFeatureCapabilityStateSchema,
+  readOnlyWorkflowHistory: codexFeatureCapabilityStateSchema,
+  safeDesktopFileRewind: codexFeatureCapabilityStateSchema,
+  legacyWorkflowRuns: codexFeatureCapabilityStateSchema,
+  // 旧 peer 缺省该字段；消费方把缺省解析为 unsupported（composer 隐藏 Approve for me 档）。
+  autoReviewApprovals: codexFeatureCapabilityStateSchema.optional(),
+  // 旧 peer 缺省该字段；消费方把缺省解析为 unsupported（会话行隐藏点赞/点踩）。
+  messageFeedback: codexFeatureCapabilityStateSchema.optional(),
+});
+/** Source discovery failed. Feature omission remains the old-peer unsupported case. */
+export const codexCapabilityUnavailableSchema = z.strictObject({
+  reason: z.enum(["bridge-unavailable"]),
+});
 export const codezRuntimeCapabilitiesSchema = z.object({
   historyFirst: z.boolean().optional(),
   independentPlanState: z.boolean().optional(),
+  // Old peers omit this object; every consumer resolves omission as unsupported.
+  codex: codexFeatureCapabilitiesSchema.optional(),
 });
+export type CodexFeatureCapabilities = z.infer<typeof codexFeatureCapabilitiesSchema>;
+export type CodexCapabilityUnavailable = z.infer<typeof codexCapabilityUnavailableSchema>;
 export const codezProtocolErrorCodes = {
   sessionUnavailable: -32004,
 } as const;
@@ -2087,6 +2121,10 @@ export const codezSessionRuntimePreferencesResultSchema = z
     toolSearchMode: appToolSearchModeSchema.default("off"),
     subagentRuntimeConfigEnabled: z.boolean().optional(),
     memoryEnabled: z.boolean().default(false),
+    // 旧 Host 可缺席；undefined = 不覆盖 CLI 本地 memory.use / 提取配置。
+    memoryUseEnabled: z.boolean().optional(),
+    memoryExtractionEnabled: z.boolean().optional(),
+    memoryExtractionModel: modelSelectionSchema.nullish(),
     askUserQuestionAutoResolutionEnabled: z.boolean().default(true),
     integratedTerminalShell: integratedTerminalShellSelectionSchema.optional(),
     // 兼容旧 Host：缺少字段时在协议解析边界使用当前默认策略。
@@ -2632,6 +2670,40 @@ export const codezWorkspaceUpdateModelIoPreferencesResultSchema = z
   .strict();
 export type CodezWorkspaceUpdateModelIoPreferencesResult = z.infer<
   typeof codezWorkspaceUpdateModelIoPreferencesResultSchema
+>;
+
+export const codezMemoryPreferencesSchema = z
+  .object({
+    // Host 总开关；false 时全设备会话不加载、不生成记忆。
+    memoryEnabled: z.boolean(),
+    // 对话中注入记忆；关闭时自动提取一并停止（与 CLI memory.use 同语义）。
+    useEnabled: z.boolean(),
+    // 成功 turn 结束后的自动提取。
+    extractionEnabled: z.boolean(),
+    // 记忆提取专用模型；null/缺省 = 跟随会话模型。
+    extractionModel: modelSelectionSchema.nullish(),
+  })
+  .strict();
+export type CodezMemoryPreferences = z.infer<typeof codezMemoryPreferencesSchema>;
+
+export const codezWorkspaceUpdateMemoryPreferencesParamsSchema = z
+  .object({
+    workspace: codezWorkspaceRefSchema,
+    preferences: codezMemoryPreferencesSchema,
+  })
+  .strict();
+export type CodezWorkspaceUpdateMemoryPreferencesParams = z.infer<
+  typeof codezWorkspaceUpdateMemoryPreferencesParamsSchema
+>;
+
+export const codezWorkspaceUpdateMemoryPreferencesResultSchema = z
+  .object({
+    workspace: codezWorkspaceRefSchema,
+    updatedSessionCount: z.number().int().nonnegative(),
+  })
+  .strict();
+export type CodezWorkspaceUpdateMemoryPreferencesResult = z.infer<
+  typeof codezWorkspaceUpdateMemoryPreferencesResultSchema
 >;
 
 export const codezWorkspaceUpdateOffPeakToolPolicyParamsSchema = z
@@ -3625,6 +3697,11 @@ export const codezAvailablePluginSummarySchema = z
     description: z.string().optional(),
     version: z.string().optional(),
     installed: z.boolean(),
+    // Codex official NOT_AVAILABLE entries stay visible but are not installable.
+    installationUnavailableReason: z.string().optional(),
+    // Codex 官方插件转译产物的可见能力警告与账号要求（仅官方市场条目）。
+    officialWarnings: z.array(z.string()).optional(),
+    officialAuthRequired: z.boolean().optional(),
     componentTypes: z.array(z.string()).optional(),
     listing: codezPluginStoreListingSchema.optional(),
   })
@@ -4106,7 +4183,232 @@ export const codezOffPeakListResultSchema = z
   .strict();
 export type CodezOffPeakListProtocolResult = z.infer<typeof codezOffPeakListResultSchema>;
 
+// ── Agent roles（Codex 子智能体文件管理）──
+// agents/* 是 bridge 控制面方法族，绝不进入 codex/request 原生白名单：codex app-server
+// 没有 agents RPC；bridge 直接读写 `${CODEX_HOME}/agents` 与 `<cwd>/.codex/agents` 下的
+// 角色 TOML。spec：specs/codex-desktop-subagents.md。
+export const codezAgentRoleScopeSchema = z.enum(["user", "project"]);
+export type CodezAgentRoleScope = z.infer<typeof codezAgentRoleScopeSchema>;
+
+export const codezAgentRoleSummarySchema = z
+  .object({
+    scope: codezAgentRoleScopeSchema,
+    // effective name：文件内声明的 name，缺省回退文件名主干（与 Codex 加载语义一致）。
+    name: nonEmptyString,
+    description: z.string().optional(),
+    model: z.string().optional(),
+    modelReasoningEffort: z.string().optional(),
+    // 独立角色文件按 Codex 规则必须非空；缺失文件仍可列出，用 diagnostics 标注。
+    developerInstructions: z.string().optional(),
+    nicknameCandidates: z.array(nonEmptyString).optional(),
+    // 相对托管目录的 posix 路径（可能含子目录；Codex 递归发现 agents/ 下的 *.toml）。
+    fileName: nonEmptyString,
+  })
+  .strict();
+export type CodezAgentRoleSummary = z.infer<typeof codezAgentRoleSummarySchema>;
+
+export const codezAgentRoleDiagnosticSchema = z
+  .object({
+    code: z.string(),
+    message: z.string(),
+    severity: z.enum(["warning", "error"]).optional(),
+    scope: codezAgentRoleScopeSchema.optional(),
+    fileName: z.string().optional(),
+  })
+  .strict();
+export type CodezAgentRoleDiagnostic = z.infer<typeof codezAgentRoleDiagnosticSchema>;
+
+export const codezAgentsListParamsSchema = z
+  .object({ workspace: codezWorkspaceRefSchema })
+  .strict();
+export const codezAgentsListResultSchema = z
+  .object({
+    roles: z.array(codezAgentRoleSummarySchema),
+    diagnostics: z.array(codezAgentRoleDiagnosticSchema),
+  })
+  .strict();
+export type CodezAgentsListResult = z.infer<typeof codezAgentsListResultSchema>;
+
+// Codex 模型目录（model_catalog_json）读取结果：slug→provider 映射。
+// 只收录显式声明 provider 的条目；path 为 null 表示未配置目录文件。
+export const codezCatalogReadParamsSchema = z
+  .object({ workspace: codezWorkspaceRefSchema })
+  .strict();
+export const codezCatalogReadResultSchema = z
+  .object({
+    path: z.string().nullable(),
+    models: z.array(
+      z
+        .object({
+          slug: z.string(),
+          provider: z.string().optional(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+export type CodezCatalogReadResult = z.infer<typeof codezCatalogReadResultSchema>;
+
+// Codex 模型目录管理（specs/codex-model-provider-management.md）：与 catalog/read
+// 同族的 bridge 本地 fs 控制面方法，绝不进入 codex/request 原生白名单。
+// 条目校验最小化（slug 必填非空 string），其余能力字段 passthrough 由原样保留。
+export const codezCatalogModelEntrySchema = z.object({ slug: nonEmptyString }).passthrough();
+export type CodezCatalogModelEntry = z.infer<typeof codezCatalogModelEntrySchema>;
+
+export const codezCatalogReadModelsParamsSchema = z
+  .object({ workspace: codezWorkspaceRefSchema })
+  .strict();
+export const codezCatalogReadModelsResultSchema = z
+  .object({
+    path: z.string().nullable(),
+    models: z.array(codezCatalogModelEntrySchema),
+  })
+  .strict();
+export type CodezCatalogReadModelsResult = z.infer<typeof codezCatalogReadModelsResultSchema>;
+
+export const codezCatalogWriteModelParamsSchema = z
+  .object({
+    workspace: codezWorkspaceRefSchema,
+    model: codezCatalogModelEntrySchema,
+    originalSlug: nonEmptyString.optional(),
+  })
+  .strict();
+export const codezCatalogDeleteModelParamsSchema = z
+  .object({ workspace: codezWorkspaceRefSchema, slug: nonEmptyString })
+  .strict();
+// writeModel/deleteModel 结果与 catalog/read 同形：写后顺带返回最新 slug→provider 映射，
+// 调用方无需二次读取。
+
+// 写入承载完整托管字段集：缺省的可选字段 = 从文件中移除该 key；
+// 未知 TOML key 由 bridge 解析→合并→回序列化保留。
+export const codezAgentRoleWriteInputSchema = z
+  .object({
+    name: nonEmptyString,
+    description: z.string().optional(),
+    model: z.string().optional(),
+    modelReasoningEffort: z.string().optional(),
+    developerInstructions: nonEmptyString,
+    nicknameCandidates: z.array(z.string()).optional(),
+  })
+  .strict();
+export type CodezAgentRoleWriteInput = z.infer<typeof codezAgentRoleWriteInputSchema>;
+
+export const codezAgentsWriteParamsSchema = z
+  .object({
+    workspace: codezWorkspaceRefSchema,
+    scope: codezAgentRoleScopeSchema,
+    // 提供 = 更新既有角色（按 effective name 定位，文件必须存在；不支持改名——删除+新建）。
+    // 缺省 = 新建（同 effective name 的文件必须不存在）。
+    originalName: nonEmptyString.optional(),
+    role: codezAgentRoleWriteInputSchema,
+  })
+  .strict();
+export const codezAgentsWriteResultSchema = z
+  .object({ role: codezAgentRoleSummarySchema })
+  .strict();
+export type CodezAgentsWriteResult = z.infer<typeof codezAgentsWriteResultSchema>;
+
+export const codezAgentsDeleteParamsSchema = z
+  .object({
+    workspace: codezWorkspaceRefSchema,
+    scope: codezAgentRoleScopeSchema,
+    name: nonEmptyString,
+  })
+  .strict();
+export const codezAgentsDeleteResultSchema = z.object({}).strict();
+
+// Codex 项目层 MCP 配置写入（spec: specs/codex-desktop-mcp-settings.md）。
+// 原生 config/batchWrite 只允许 user 层；项目层由 bridge 在 workspace 所属机器上
+// read-modify-write `.codex/config.toml` 并触发 config/mcpServer/reload。
+export const codezMcpProjectConfigWriteActionSchema = z.enum(["upsert", "delete", "set-enabled"]);
+export type CodezMcpProjectConfigWriteAction = z.infer<
+  typeof codezMcpProjectConfigWriteActionSchema
+>;
+
+export const codezMcpProjectConfigWriteParamsSchema = z
+  .object({
+    workspace: codezWorkspaceRefSchema,
+    action: codezMcpProjectConfigWriteActionSchema,
+    name: nonEmptyString,
+    // upsert 专用：Codex 原生 server 条目（stdio: command/args/env…；http: url/http_headers…）。
+    config: z.record(z.string(), z.unknown()).optional(),
+    // 编辑/删除/启停多层叠放项目配置里的既有条目时，指定 origins 报告的所属
+    // .codex 目录；缺省写最近一层。bridge 校验该值必须是 Codex 当前报告的项目层。
+    dotCodexFolder: z.string().optional(),
+    // set-enabled 专用：true 删除 enabled 键恢复默认启用；false 写 enabled=false。
+    enabled: z.boolean().optional(),
+  })
+  .strict();
+export type CodezMcpProjectConfigWriteParams = z.infer<
+  typeof codezMcpProjectConfigWriteParamsSchema
+>;
+
+export const codezMcpProjectConfigWriteResultSchema = z
+  .object({
+    configFilePath: nonEmptyString,
+    projectRoot: nonEmptyString,
+  })
+  .strict();
+export type CodezMcpProjectConfigWriteResult = z.infer<
+  typeof codezMcpProjectConfigWriteResultSchema
+>;
+
+// Codex 用户层/项目层 hooks.json 配置写入（spec: specs/codex-desktop-hooks-and-commands.md）。
+// 与 mcp/projectConfigWrite、agents/write 同一载体铁律：在 workspace 所在机器上由 bridge 读写。
+export const codezHooksConfigScopeSchema = z.enum(["user", "project"]);
+export type CodezHooksConfigScope = z.infer<typeof codezHooksConfigScopeSchema>;
+
+export const codezHooksConfigWriteActionSchema = z.enum(["add", "update", "delete"]);
+export type CodezHooksConfigWriteAction = z.infer<typeof codezHooksConfigWriteActionSchema>;
+
+export const codezHookCommandEntrySchema = z
+  .object({
+    event: z.enum([
+      "PreToolUse",
+      "PermissionRequest",
+      "PostToolUse",
+      "PreCompact",
+      "PostCompact",
+      "SessionStart",
+      "SessionEnd",
+      "UserPromptSubmit",
+      "SubagentStart",
+      "SubagentStop",
+      "Stop",
+      "Interrupt",
+    ]),
+    command: nonEmptyString,
+    matcher: z.string().optional(),
+    timeoutSec: z.number().int().positive().max(3600).optional(),
+    async: z.boolean().optional(),
+    statusMessage: z.string().optional(),
+  })
+  .strict();
+export type CodezHookCommandEntry = z.infer<typeof codezHookCommandEntrySchema>;
+
+export const codezHooksConfigWriteParamsSchema = z
+  .object({
+    workspace: codezWorkspaceRefSchema,
+    scope: codezHooksConfigScopeSchema,
+    action: codezHooksConfigWriteActionSchema,
+    dotCodexFolder: z.string().optional(),
+    // update / delete 定位既有条目：优先匹配原条目字段（event + command + matcher）。
+    target: codezHookCommandEntrySchema.optional(),
+    // add / update 写入的新条目。
+    hook: codezHookCommandEntrySchema.optional(),
+  })
+  .strict();
+export type CodezHooksConfigWriteParams = z.infer<typeof codezHooksConfigWriteParamsSchema>;
+
+export const codezHooksConfigWriteResultSchema = z
+  .object({
+    hooksFilePath: nonEmptyString,
+  })
+  .strict();
+export type CodezHooksConfigWriteResult = z.infer<typeof codezHooksConfigWriteResultSchema>;
+
 export const codezProtocolMethods = {
+  codexRequest: "codex/request",
   runtimeCapabilities: "runtime/capabilities",
   computerUseOperationEvent: "computer-use/operation-event",
   sessionCreate: "session/create",
@@ -4151,6 +4453,7 @@ export const codezProtocolMethods = {
   providerRefreshRegistry: "provider/refreshRegistry",
   workspaceUpdateInteractionPreferences: "workspace/updateInteractionPreferences",
   workspaceUpdateModelIoPreferences: "workspace/updateModelIoPreferences",
+  workspaceUpdateMemoryPreferences: "workspace/updateMemoryPreferences",
   // Off-Peak 工具面门禁是 workspace 级事实（灰度 + 本地/远程），由 host 在 agent 就绪时同步；
   // CLI 对 legacy create/resume 与 v4 冷恢复统一读取。旧 CLI method-not-found → host 降级忽略。
   workspaceUpdateOffPeakToolPolicy: "workspace/updateOffPeakToolPolicy",
@@ -4212,6 +4515,19 @@ export const codezProtocolMethods = {
   pluginsResetConfig: "plugins/resetConfig",
   pluginsValidate: "plugins/validate",
   pluginsDescribe: "plugins/describe",
+  // Codex 子智能体（agent roles）文件管理：bridge 控制面方法族，非原生 RPC。
+  agentsList: "agents/list",
+  agentsWrite: "agents/write",
+  mcpProjectConfigWrite: "mcp/projectConfigWrite",
+  hooksConfigWrite: "hooks/configWrite",
+  agentsDelete: "agents/delete",
+  // Codex 模型目录（model_catalog_json）读取：bridge 本地 fs 控制面方法，
+  // 非原生 RPC；多 provider 分组事实的唯一来源（specs/codex-model-provider-grouping.md）。
+  catalogRead: "catalog/read",
+  // Codex 模型目录管理写路径（specs/codex-model-provider-management.md）。
+  catalogReadModels: "catalog/readModels",
+  catalogWriteModel: "catalog/writeModel",
+  catalogDeleteModel: "catalog/deleteModel",
   automationCreate: "automation/create",
   topicResourceRead: "topic/resource/read",
   channelReply: "bot/channel/reply",

@@ -15,7 +15,11 @@ const makeEditor = (id: string, name = id): EditorInfo => ({
 describe("workspaceEditorSelection", () => {
   it("SSH 工作区 fallback 到 VS Code 时不应持久化覆盖用户本地编辑器偏好", () => {
     const selection = resolveWorkspaceEditorSelection({
-      installedEditors: [makeEditor("cursor"), makeEditor("vscode", "VS Code")],
+      installedEditors: [
+        makeEditor("cursor"),
+        makeEditor("zed", "Zed"),
+        makeEditor("vscode", "VS Code"),
+      ],
       selectedEditorId: "cursor",
       remoteTarget: {
         kind: "ssh",
@@ -24,10 +28,28 @@ describe("workspaceEditorSelection", () => {
       },
     });
 
-    expect(selection.availableEditors.map((editor) => editor.id)).toEqual(["vscode"]);
+    expect(selection.availableEditors.map((editor) => editor.id)).toEqual([
+      "vscode",
+      "zed",
+    ]);
     expect(selection.selectedEditor?.id).toBe("vscode");
     expect(selection.selectionKind).toBe("fallback");
     expect(shouldPersistWorkspaceEditorSelection(selection.selectionKind)).toBe(false);
+    const preferredZedSelection = resolveWorkspaceEditorSelection({
+      installedEditors: [
+        makeEditor("cursor"),
+        makeEditor("zed", "Zed"),
+        makeEditor("vscode", "VS Code"),
+      ],
+      selectedEditorId: "zed",
+      remoteTarget: {
+        kind: "ssh",
+        host: "dev.internal",
+        username: "root",
+      },
+    });
+    expect(preferredZedSelection.selectedEditor?.id).toBe("zed");
+    expect(preferredZedSelection.selectionKind).toBe("preferred");
     const localSelection = resolveWorkspaceEditorSelection({
       installedEditors: [makeEditor("cursor"), makeEditor("vscode", "VS Code")],
       selectedEditorId: "cursor",
@@ -40,6 +62,7 @@ describe("workspaceEditorSelection", () => {
       installedEditors: [
         makeEditor("explorer", "资源管理器"),
         makeEditor("cursor", "Cursor"),
+        makeEditor("zed", "Zed"),
         makeEditor("vscode", "VS Code"),
       ],
       selectedEditorId: "cursor",
@@ -51,6 +74,7 @@ describe("workspaceEditorSelection", () => {
 
     expect(selection.availableEditors.map((editor) => editor.id)).toEqual([
       "vscode",
+      "zed",
       "explorer",
     ]);
     expect(selection.selectedEditor?.id).toBe("vscode");

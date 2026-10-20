@@ -11,6 +11,10 @@ const demoSkills = [
     path: "/tmp/workspace/.agents/skills/agents-only/SKILL.md",
   },
   {
+    id: "skill-codex-native",
+    path: "/tmp/home/.codex/skills/.system/openai-docs/SKILL.md",
+  },
+  {
     id: "skill-glm-deprecated",
     path: "/tmp/workspace/.codez/cli/skills/glm-only/SKILL.md",
   },
@@ -32,12 +36,12 @@ const demoSkills = [
   },
   {
     id: "skill-plugin-by-scope",
-    path: "/tmp/home/.codez/cli/plugins/cache/zcode-plugins-official/document-skills/0.1.0/skills/pdf/SKILL.md",
+    path: "/tmp/home/.codez/cli/plugins/cache/codez-plugins-official/document-skills/0.1.0/skills/pdf/SKILL.md",
     scope: "plugin",
   },
   {
     id: "skill-plugin-by-path",
-    path: "/tmp/home/.codez/cli/plugins/cache/zcode-plugins-official/document-skills/0.1.0/skills/docx/SKILL.md",
+    path: "/tmp/home/.codez/cli/plugins/cache/codez-plugins-official/document-skills/0.1.0/skills/docx/SKILL.md",
   },
 ];
 
@@ -46,7 +50,7 @@ describe("skillSourceFilter", () => {
     expect(resolveSkillSourceType("/tmp/workspace/.codez/skills/my-skill/SKILL.md")).toBe("glm");
     expect(
       resolveSkillSourceType(
-        "/tmp/home/.codez/cli/plugins/cache/zcode-plugins-official/document-skills/0.1.0/skills/pdf/SKILL.md",
+        "/tmp/home/.codez/cli/plugins/cache/codez-plugins-official/document-skills/0.1.0/skills/pdf/SKILL.md",
       ),
     ).toBe("glm");
     expect(resolveSkillSourceType("/tmp/workspace/.codez/cli/skills/my-skill/SKILL.md")).toBe(
@@ -59,6 +63,8 @@ describe("skillSourceFilter", () => {
 
   it("过滤混合来源时保留 Codez Agent 技能", () => {
     const expectedIds = [
+      "skill-agents",
+      "skill-codex-native",
       "skill-glm-by-path",
       "glm:workspace:codez-common:abc123",
       "claude:workspace:codez-common:abc123",

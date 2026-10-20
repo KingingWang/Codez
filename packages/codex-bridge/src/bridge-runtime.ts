@@ -1,0 +1,390 @@
+import {
+  V4_METHODS,
+  commandsQueryParamsSchema,
+  codexConversationHistoryRunsParamsSchema,
+  v4ConversationFileChangesParamsSchema,
+  v4ConversationFileRewindProjectionOverlayParamsSchema,
+} from "@codez/shared/codez-protocol-v4";
+import type { BridgeControlContext, CodexProcess } from "./contract.js";
+import { DeletedThreadError, ThreadStateStore } from "./thread-state.js";
+import { InteractionBroker } from "./interactions.js";
+import { CommandLedger } from "./command-ledger.js";
+import { CommandRouter } from "./commands.js";
+import { RewindNoticeStore, relativizeRewindNoticePath } from "./rewind-notice.js";
+import { BridgeSnapshots } from "./bridge-snapshots.js";
+import { BridgeSubscriptions } from "./subscriptions.js";
+import { AttachmentStore } from "./attachments.js";
+import { supportsControlMethod, handleControlRequest } from "./control-plane.js";
+import { ensureOfficialRegistered } from "./control-official-plugins.js";
+import { OfficialPluginMarketplace } from "./official-plugin-marketplace.js";
+import { handleLegacySession } from "./legacy-sessions.js";
+import { array, object, string, unsupported } from "./json.js";
+import { projectTurnFileChanges } from "./file-changes.js";
+import { projectCodexHistoryRuns } from "./history-runs.js";
+import { join } from "node:path";
+import { AuxiliaryText } from "./auxiliary-text.js";
+import { SessionTitleCoordinator } from "./session-title.js";
+import { queryBridgePlans, queryBridgeRowPayload, queryBridgeRowsRange } from "./thread-queries.js";
+import { queryCodexAppUsageStats } from "./codex-app-usage.js";
+import { scopeWorkspaceParams, handleCodexNativeRequest } from "./request-scope.js";
+import type { BridgeFailureOrigin } from "./diagnostics.js";
+
+export interface BridgeResponse {
+  result: unknown;
+  afterResponse?: () => Promise<void>;
+}
+export interface BridgeRuntimeOptions {
+  rpc: CodexProcess;
+  cwd: string;
+  workspaceId: string;
+  stateRoot: string;
+  officialMarketplaceRoot?: string;
+  notify(method: string, params: unknown): Promise<void>;
+  fatal(error: Error, origin?: BridgeFailureOrigin): void;
+  nativeBrowserCua?: BridgeControlContext["nativeBrowserCua"];
+  providerKeyGate?: import("./provider-key-gate.js").CodexProviderKeyGate;
+}
+
+export class BridgeRuntime {
+  private readonly store: ThreadStateStore;
+  private readonly interactions: InteractionBroker;
+  private readonly ledger: CommandLedger;
+  private readonly commands: CommandRouter;
+  private readonly rewindNotices = new RewindNoticeStore();
+  private readonly snapshots: BridgeSnapshots;
+  private readonly subscriptions: BridgeSubscriptions;
+  private readonly attachments: AttachmentStore;
+  private readonly auxiliary: AuxiliaryText;
+  private readonly title: SessionTitleCoordinator;
+  private readonly officialPlugins: OfficialPluginMarketplace | undefined;
+  private readonly unsubscribe: (() => void)[] = [];
+  private eventTail: Promise<void> = Promise.resolve();
+  private closed = false;
+
+  constructor(private readonly options: BridgeRuntimeOptions) {
+    const { rpc, cwd, workspaceId, stateRoot, notify } = options;
+    this.store = new ThreadStateStore(rpc, cwd);
+    this.auxiliary = new AuxiliaryText({ rpc, cwd, providerKeyGate: options.providerKeyGate });
+    const titleDeps = { rpc, store: this.store, auxiliary: this.auxiliary, cwd, workspaceId };
+    this.title = new SessionTitleCoordinator(titleDeps);
+    this.officialPlugins = options.officialMarketplaceRoot
+      ? new OfficialPluginMarketplace(options.officialMarketplaceRoot)
+      : undefined;
+    this.interactions = new InteractionBroker(rpc, (id) => this.store.touch(id));
+    this.ledger = new CommandLedger(join(stateRoot, "commands"));
+    this.attachments = new AttachmentStore({
+      cwd,
+      root: join(stateRoot, "attachments"),
+      authorizeRead: (query) => this.snapshots.authorizeAttachment(query),
+    });
+    this.commands = new CommandRouter({
+      rpc,
+      store: this.store,
+      interactions: this.interactions,
+      ledger: this.ledger,
+      workspaceId,
+      attachments: (refs, sessionId) => this.attachments.toNativeInput(refs, sessionId),
+      rewindNotices: this.rewindNotices,
+      title: this.title,
+      providerKeyGate: options.providerKeyGate,
+    });
+    this.snapshots = new BridgeSnapshots(
+      { rpc, cwd, auxiliary: this.auxiliary },
+      this.store,
+      this.interactions,
+      workspaceId,
+      this.attachments,
+    );
+    this.subscriptions = new BridgeSubscriptions({
+      workspaceId,
+      snapshot: (topic) => this.snapshots.topic(topic),
+      notify,
+    });
+    this.unsubscribe.push(
+      this.store.onChange((id) => {
+        void this.subscriptions.changed(`conversation/${id}`).catch((error: Error) => {
+          if (!this.closed && !(error instanceof DeletedThreadError))
+            options.fatal(error, "conversation-projection");
+        });
+      }),
+    );
+    this.unsubscribe.push(
+      rpc.onNotification((event) => {
+        this.eventTail = this.eventTail
+          .then(async () => {
+            if (this.closed) return;
+            const params = object(event.params ?? {});
+            // 事件已在 eventTail 上串行；await 保证归属解析不会让后到的事件插队。
+            await this.store.apply(event);
+            void this.title.onNotification(event).catch(() => {});
+            if (event.method === "serverRequest/resolved") {
+              await this.interactions.resolved(string(params.threadId), params.requestId);
+            }
+            if (event.method === "thread/queue/changed" && typeof params.threadId === "string") {
+              await this.store.refreshQueue(params.threadId);
+            }
+            if (event.method === "turn/completed") {
+              await this.interactions.expireTurn(
+                string(params.threadId),
+                string(object(params.turn).id),
+              );
+            }
+            if (
+              [
+                "thread/started",
+                "thread/archived",
+                "thread/deleted",
+                "thread/name/updated",
+                "turn/completed",
+              ].includes(event.method)
+            ) {
+              this.refreshSidebar("sessions-index");
+            }
+            if (
+              ["account/updated", "account/login/completed", "skills/changed"].includes(
+                event.method,
+              )
+            ) {
+              this.refreshSidebar("workspace-config");
+            }
+          })
+          .catch((error: Error) => {
+            if (!this.closed) options.fatal(error, "native-event");
+          });
+      }),
+    );
+    this.unsubscribe.push(
+      rpc.onRequest((request) => {
+        void this.interactions
+          .accept(request)
+          .catch(async () => {
+            await rpc.respondError(request.id, {
+              code: -32602,
+              message: "Invalid native interaction",
+            });
+          })
+          .catch((error: Error) => {
+            if (!this.closed) options.fatal(error, "native-interaction");
+          });
+      }),
+    );
+    // 设置 → Codex「插件与市场」走原生 plugin/list，不经商店控制面；启动即用
+    // 已物化的快照预热官方市场注册（cachedOnly，不触网），首次打开面板即可见。
+    void ensureOfficialRegistered(this.control(), { cachedOnly: true });
+  }
+
+  private control(): BridgeControlContext {
+    return {
+      rpc: this.options.rpc,
+      cwd: this.options.cwd,
+      officialPlugins: this.officialPlugins,
+      auxiliary: this.auxiliary,
+      nativeBrowserCua: this.options.nativeBrowserCua,
+    };
+  }
+
+  /** writer-conflict 只读投影在 subscribe/resync 时失效，下一次快照读取重新 load 并重试 resume。 */
+  private invalidateReadOnlyProjection(params: unknown): void {
+    // params 的形状校验归 subscriptions；这里仅 best-effort 提取 topic，健康线程不受影响。
+    const topic = (params as { topic?: unknown } | null)?.topic;
+    if (typeof topic === "string" && topic.startsWith("conversation/"))
+      this.store.invalidate(topic.slice("conversation/".length));
+  }
+
+  private refreshSidebar(topic: "sessions-index" | "workspace-config"): void {
+    // 列表/配置读取不能卡住下一轮原生事件；复用 publisher 的 dirty 合并与代际校验。
+    // 关闭时在途读取的拒绝属于旧连接，不应再触发运行时崩溃。
+    void this.subscriptions
+      .changed(`${topic}/${this.options.workspaceId}`)
+      .catch((error: Error) => {
+        if (!this.closed) this.options.fatal(error, topic);
+      });
+  }
+
+  async request(method: string, params: unknown): Promise<BridgeResponse> {
+    const { rpc, cwd, workspaceId } = this.options;
+    params = await scopeWorkspaceParams(params, cwd, workspaceId);
+    if (this.auxiliary.supports(method))
+      return { result: await this.auxiliary.handle(method, params) };
+    if (method === "codex/request")
+      return handleCodexNativeRequest(params, this.control(), () =>
+        this.subscriptions.changed(`workspace-config/${workspaceId}`),
+      );
+    if (supportsControlMethod(method))
+      return { result: await handleControlRequest(method, params, this.control()) };
+    if (method.startsWith("session/")) {
+      const result = await handleLegacySession(method, params, rpc, this.store, workspaceId);
+      return {
+        result,
+        // 外部 CLI 不会向此连接发 thread 事件；显式打开项目后的列表扫描必须让
+        // 既有 task-index/侧栏订阅重新读取事实。定向修复读取不能触发刷新回环。
+        ...(method === "session/list" && object(params ?? {}).sessionIds === undefined
+          ? { afterResponse: async () => this.refreshSidebar("sessions-index") }
+          : {}),
+      };
+    }
+    switch (method) {
+      case V4_METHODS.conversationSubscribe:
+        this.invalidateReadOnlyProjection(params);
+        return this.subscriptions.subscribe(params);
+      case V4_METHODS.conversationResync:
+        this.invalidateReadOnlyProjection(params);
+        return this.subscriptions.resync(params);
+      case V4_METHODS.conversationUnsubscribe:
+        return { result: await this.subscriptions.unsubscribe(params) };
+      case V4_METHODS.connectionFlow:
+        return { result: await this.subscriptions.flow(params) };
+      case V4_METHODS.command:
+        return {
+          result: await this.commands.execute(params),
+          afterResponse: async () => {
+            await this.subscriptions.changed(`sessions-index/${workspaceId}`);
+          },
+        };
+      case V4_METHODS.commandsQuery: {
+        const parsed = commandsQueryParamsSchema.parse(params);
+        const results = await Promise.all(
+          parsed.commands.map(async (key) => ({
+            key,
+            result: (await this.ledger.lookup(key.sessionId, key.commandId)) ?? "unknown",
+          })),
+        );
+        return { result: { results } };
+      }
+      case V4_METHODS.conversationRowsRange: {
+        return {
+          result: await queryBridgeRowsRange(params, (id) => this.snapshots.conversation(id)),
+        };
+      }
+      case V4_METHODS.conversationRowPayload: {
+        return {
+          result: await queryBridgeRowPayload(params, (id) => this.snapshots.conversation(id)),
+        };
+      }
+      case V4_METHODS.conversationPlans: {
+        return {
+          result: await queryBridgePlans(params, (id) => this.snapshots.conversation(id)),
+        };
+      }
+      case V4_METHODS.usageStats: {
+        return {
+          result: await queryCodexAppUsageStats(params),
+        };
+      }
+      case V4_METHODS.codexConversationHistoryRuns: {
+        const parsed = codexConversationHistoryRunsParamsSchema.parse(params);
+        const state = await this.store.ensure(parsed.sessionId);
+        return {
+          result: projectCodexHistoryRuns({
+            thread: state.thread,
+            params: parsed,
+            seq: state.seq,
+            revision: state.revision,
+            logEpoch: state.epoch,
+          }),
+        };
+      }
+      case V4_METHODS.attachmentBegin:
+        return { result: await this.attachments.handle(method, params) };
+      case V4_METHODS.attachmentRead:
+      case V4_METHODS.conversationAttachmentRead:
+      case V4_METHODS.conversationAttachmentStat: {
+        await this.snapshots.conversation(string(object(params).sessionId));
+        return { result: await this.attachments.handle(method, params) };
+      }
+      case V4_METHODS.conversationFileChanges: {
+        const parsed = v4ConversationFileChangesParamsSchema.parse(params);
+        const snapshot = await this.snapshots.conversation(parsed.sessionId);
+        if (snapshot.revision !== parsed.baseRevision || snapshot.logEpoch !== parsed.baseLogEpoch)
+          throw new Error("Conversation changed; refresh file changes");
+        const row = snapshot.rows.window.find(
+          (candidate) =>
+            candidate.rowId === parsed.target.rowId &&
+            candidate.entityId === parsed.target.entityId,
+        );
+        if (!row) throw new Error("File change target no longer exists");
+        const state = await this.store.ensure(parsed.sessionId);
+        const turn = array(state.thread.turns)
+          .map(object)
+          .find((candidate) => candidate.id === row.turnId);
+        if (!turn) throw new Error("File change turn no longer exists");
+        return {
+          result: projectTurnFileChanges(
+            turn,
+            this.snapshots.isFileChangesReverted(parsed.sessionId, row.turnId)
+              ? "reverted"
+              : "active",
+          ),
+        };
+      }
+      case V4_METHODS.attachmentChunk:
+      case V4_METHODS.attachmentCommit:
+      case V4_METHODS.attachmentAbort:
+        return { result: await this.attachments.handle(method, params) };
+      case V4_METHODS.conversationFileRewindProjectionOverlay: {
+        const parsed = v4ConversationFileRewindProjectionOverlayParamsSchema.parse(params);
+        const snapshot = await this.snapshots.conversation(parsed.sessionId);
+        const row = snapshot.rows.window.find(
+          (candidate) =>
+            candidate.rowId === parsed.target.rowId &&
+            candidate.entityId === parsed.target.entityId,
+        );
+        if (!row || row.kind !== "turnHeader" || row.turnId !== parsed.turnId)
+          throw new Error("File rewind overlay target does not exist");
+        const publishReverted = this.snapshots.markFileChangesReverted(
+          parsed.sessionId,
+          parsed.turnId,
+        );
+        if (publishReverted) {
+          // 全新撤销（非重放）：登记一次性模型通知。投影层只改 UI 语义，
+          // 模型不知道文件已被恢复；下一次 sendText 会把撤销事实 prepend 进用户文本。
+          const state = await this.store.ensure(parsed.sessionId);
+          const turn = array(state.thread.turns)
+            .map(object)
+            .find((candidate) => candidate.id === parsed.turnId);
+          if (turn) {
+            const changes = projectTurnFileChanges(turn);
+            this.rewindNotices.record(parsed.sessionId, {
+              turnId: parsed.turnId,
+              files: changes.items.map((item) => ({
+                path: relativizeRewindNoticePath(this.store.cwd, item.path),
+                additions: item.additions,
+                deletions: item.deletions,
+              })),
+            });
+          }
+        }
+        return {
+          result: {},
+          // 先让成功事务收到 overlay ACK，再发布新的 revision，避免旧终端在
+          // 得知恢复完成前收到一个无法解释的中间投影。
+          afterResponse: async () => {
+            if (publishReverted) {
+              publishReverted();
+              await this.subscriptions.changed(`conversation/${parsed.sessionId}`);
+            }
+          },
+        };
+      }
+      default:
+        unsupported(method);
+    }
+  }
+
+  async close(): Promise<void> {
+    this.closed = true;
+    this.title.close();
+    for (const dispose of this.unsubscribe) dispose();
+    this.subscriptions.close();
+    // 派生资源清理失败不能跳过原生进程关闭，避免 Host 重启后残留上一代运行时。
+    try {
+      await this.auxiliary.close();
+    } finally {
+      try {
+        await this.attachments.close();
+      } finally {
+        await this.options.rpc.close();
+      }
+    }
+  }
+}

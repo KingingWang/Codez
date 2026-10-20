@@ -87,6 +87,41 @@ function createFragmentedSocketPair(fragmentSize = 7): [ISocket, ISocket] {
 }
 
 describe("ChannelServer + ChannelClient", () => {
+  it.each([
+    [undefined, "__codez_rpc_nested_uint8array_v1", "__zcode_rpc_nested_uint8array_v1"],
+    ["upstream", "__zcode_rpc_nested_uint8array_v1", "__codez_rpc_nested_uint8array_v1"],
+  ] as const)(
+    "selects nested-byte encoding per server connection (%s)",
+    async (dialect, marker, other) => {
+      const [serverProtocol, clientProtocol] = createQueuePair();
+      const messages: string[] = [];
+      const server = new ChannelServer(
+        {
+          ...serverProtocol,
+          send(buffer) {
+            messages.push(buffer.toString());
+            serverProtocol.send(buffer);
+          },
+        },
+        "host",
+        1000,
+        false,
+        dialect,
+      );
+      const client = new ChannelClient(clientProtocol);
+      try {
+        const value = { bytes: new Uint8Array([1, 2, 3]) };
+        server.registerChannel("binary", { call: async () => value, listen: () => Event.None });
+        expect(await client.getChannel("binary").call("read")).toEqual(value);
+        expect(messages.some((message) => message.includes(marker))).toBe(true);
+        expect(messages.some((message) => message.includes(other))).toBe(false);
+      } finally {
+        server.dispose();
+        client.dispose();
+      }
+    },
+  );
+
   it("should call a method on a registered channel", async () => {
     const { server, client, dispose } = createPair();
 
