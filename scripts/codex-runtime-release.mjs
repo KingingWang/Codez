@@ -235,7 +235,10 @@ async function uploadReleaseAsset(run, repository, tag, file, retryDelay) {
 export async function publishCodexRelease({
   directory,
   env = process.env,
-  run = async (args) => (await exec("gh", args, { maxBuffer: 8 * 1024 * 1024 })).stdout,
+  // 修复原因：仓库历史 Release 累积后，`gh api .../releases?per_page=100 --paginate --slurp`
+  // 返回的全量 JSON 已超过 8 MiB，导致 release job 在 findRelease 阶段因
+  // ERR_CHILD_PROCESS_STDIO_MAXBUFFER 失败。放宽子进程 stdout 上限以容纳分页输出。
+  run = async (args) => (await exec("gh", args, { maxBuffer: 64 * 1024 * 1024 })).stdout,
   retryDelay = defaultRetryDelay,
 }) {
   const identity = releaseIdentity(env);
