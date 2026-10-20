@@ -25,6 +25,13 @@ export interface StageOptions {
   bundledSkillsDir: string;
   /** 已准备好的目标平台 Node 二进制 */
   nodeBinaryPath: string;
+  /**
+   * 已验证的 fork Codex 运行时目录（stageCodexRuntime 产物：bridge.cjs、bin/、
+   * codex-package.json、codex-path/、codex-resources/、distribution.json）。提供时
+   * 嵌入 `runtime/codex/` 并登记 `codex-agent-runtime` 组件；远端 Host 据此改走
+   * codex bridge 启动 agent（codex/request、catalog/read 仅在 bridge 实现）。
+   */
+  codexRuntimeDir?: string;
   /** 构建入口从统一合规 owner（scripts/third-party-notices.mjs）读取后传入；组件组装不能自行拼凑许可。 */
   notices: { thirdParty: string; node: string; nodeSource: string };
   /** 依赖闭包解析与复制的来源 node_modules */
@@ -189,6 +196,44 @@ async function copyNativeTools(
   return copied;
 }
 
+/**
+ * 复制前 fail-closed 校验最小契约：缺任一文件的 Codex 目录打进发行包后，远端 wiring
+ * 会看到 bridge.cjs 存在而注入 CODEZ_CODEX_BRIDGE_PATH，随后才在 agent 启动时报错。
+ * staging 期拒绝残缺目录，让构建直接失败而不是产出必然失败的发行包。
+ */
+async function copyCodexRuntime(
+  sourceDir: string | undefined,
+  targetDir: string,
+  target: ServerTarget,
+): Promise<boolean> {
+  if (!sourceDir) return false;
+  const executable = target.startsWith("win32-") ? ".exe" : "";
+  const required = [
+    "bridge.cjs",
+    "distribution.json",
+    "codex-package.json",
+    `bin/codex${executable}`,
+    `bin/codex-code-mode-host${executable}`,
+    `codex-path/rg${executable}`,
+    "codex-resources",
+  ];
+  const missing: string[] = [];
+  for (const relativePath of required) {
+    try {
+      await access(join(sourceDir, ...relativePath.split("/")));
+    } catch {
+      missing.push(relativePath);
+    }
+  }
+  if (missing.length > 0) {
+    throw new Error(
+      `Codex runtime directory is incomplete (${sourceDir}); missing: ${missing.join(", ")}`,
+    );
+  }
+  await cp(sourceDir, targetDir, { recursive: true, dereference: true });
+  return true;
+}
+
 /** 组装 `codez-server-<os>-<arch>/` 发行目录（spec §7.1）；只做本地组装，不上传、不发布。 */
 export async function stageRelease(options: StageOptions): Promise<StagedRelease> {
   for (const [name, value] of Object.entries(options.notices)) {
@@ -254,6 +299,11 @@ export async function stageRelease(options: StageOptions): Promise<StagedRelease
   );
   // Agent bundle 是第三个实际运行入口；只扫描 Server bundle 会漏掉外置的 TUI/Playwright。
   bundleSources.push(await readFile(options.agentBundlePath, "utf8"));
+  const codexRuntimeStaged = await copyCodexRuntime(
+    options.codexRuntimeDir,
+    join(runtimeDir, "codex"),
+    options.target,
+  );
 
   const nodeTargetPath = join(
     runtimeDir,
@@ -346,6 +396,7 @@ export async function stageRelease(options: StageOptions): Promise<StagedRelease
       id: "agent-runtime",
       paths: ["runtime/codez.cjs", "runtime/packages/bundled-skills", "runtime/licenses/agent"],
     },
+    ...(codexRuntimeStaged ? [{ id: "codex-agent-runtime", paths: ["runtime/codex"] }] : []),
     ...(plugins.length > 0
       ? [
           {
