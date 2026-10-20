@@ -73,7 +73,7 @@ async function fixture(t) {
       await writeFile(join(dir, `SHA256SUMS-${os}-${arch}.txt`), `${lines.join("\n")}\n`);
     }
   const remoteRoot = join(root, "codex-remote-assets");
-  await mkdir(join(remoteRoot, "releases", "3.16.1"), { recursive: true });
+  await mkdir(join(remoteRoot, "releases", "3.16.2"), { recursive: true });
   for (const target of remoteTargets) {
     const components = [];
     for (const [id, mount] of Object.entries(remoteMounts(target))) {
@@ -85,16 +85,16 @@ async function fixture(t) {
       components.push({ id, version: "fixture", sha256: checksum, artifactPath, mount });
     }
     await writeFile(
-      join(remoteRoot, "releases", "3.16.1", `manifest-${target}.json`),
+      join(remoteRoot, "releases", "3.16.2", `manifest-${target}.json`),
       JSON.stringify({
         schemaVersion: 1,
-        appVersion: "3.16.1",
+        appVersion: "3.16.2",
         platformArch: target,
         components,
       }),
     );
     await writeFile(
-      join(remoteRoot, "releases", "3.16.1", `runtime-${target}.json`),
+      join(remoteRoot, "releases", "3.16.2", `runtime-${target}.json`),
       JSON.stringify({
         files: Object.fromEntries(
           [
@@ -109,7 +109,7 @@ async function fixture(t) {
       }),
     );
   }
-  await createCodexRemoteIndex({ root: remoteRoot, version: "3.16.1", env });
+  await createCodexRemoteIndex({ root: remoteRoot, version: "3.16.2", env });
   const sourceServerReleaseDir = join(root, "source-server-release");
   await mkdir(sourceServerReleaseDir, { recursive: true });
   const sourceServerArchives = sourceServerTargets.map((target) => {
@@ -117,7 +117,7 @@ async function fixture(t) {
     const fileName = `codez-server-${target}.tar.gz`;
     return {
       target,
-      version: "3.16.1",
+      version: "3.16.2",
       fileName,
       sha256: digest(bytes),
       sizeBytes: bytes.length,
@@ -131,7 +131,7 @@ async function fixture(t) {
   await writeFile(
     join(sourceServerReleaseDir, "source-server-release.json"),
     `${JSON.stringify(
-      { schemaVersion: 1, version: "3.16.1", archives: sourceServerArchives },
+      { schemaVersion: 1, version: "3.16.2", archives: sourceServerArchives },
       null,
       2,
     )}\n`,
@@ -409,7 +409,7 @@ test("a valid regenerated Windows index with the same release tag blocks publica
   const root = await fixture(t);
   const rebuiltRoot = join(root, "windows-regenerated");
   await cp(join(root, "codex-remote-assets"), rebuiltRoot, { recursive: true });
-  const manifestPath = join(rebuiltRoot, "releases", "3.16.1", "manifest-linux-x64.json");
+  const manifestPath = join(rebuiltRoot, "releases", "3.16.2", "manifest-linux-x64.json");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   const component = manifest.components.find(({ id }) => id === "server-bundle");
   const bytes = "different Windows-built remote server";
@@ -417,8 +417,8 @@ test("a valid regenerated Windows index with the same release tag blocks publica
   component.artifactPath = `components/linux-x64/server-bundle/${component.sha256}.tar.gz`;
   await writeFile(join(rebuiltRoot, component.artifactPath), bytes);
   await writeFile(manifestPath, JSON.stringify(manifest));
-  await createCodexRemoteIndex({ root: rebuiltRoot, version: "3.16.1", env });
-  await verifyCodexRemoteIndex({ root: rebuiltRoot, version: "3.16.1", env });
+  await createCodexRemoteIndex({ root: rebuiltRoot, version: "3.16.2", env });
+  await verifyCodexRemoteIndex({ root: rebuiltRoot, version: "3.16.2", env });
   await copyFile(
     join(rebuiltRoot, "index.json"),
     join(root, "codez-win32-x64-unsigned", "codex-remote-index-win32-x64.json"),
