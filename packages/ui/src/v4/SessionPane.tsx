@@ -5976,6 +5976,7 @@ export function SessionPane({
       modelSelectionRefresh={modelSelectionRead.refresh}
       codexModelCatalog={isDesktop ? codexModels : undefined}
       nativeCodexSession={nativeCodexSession}
+      defaultFollowupIntent={appFollowupMode}
       codexAutoReviewSupported={codexAutoReviewSupported}
       attachmentSessionId={effectiveSessionId}
       attachmentPut={attachmentPut}

@@ -150,6 +150,7 @@ import {
 } from "@/v4/composer/composerAutoFocus.js";
 import { V4_DRAFT_SCOPE_ROOT, type V4ComposerDraft } from "@/v4/composer/composerDraftStore.js";
 import {
+  resolveCodexFollowupIntent,
   resolveComposerFollowupDelivery,
   resolveFollowupModifierTooltip,
   shouldEnableModifiedEnterSubmit,
@@ -484,6 +485,11 @@ export interface ConversationComposerProps {
    * 只开启排队/引导选择与 native 投递意图；模型目录控件仍走旧 Selection View。
    */
   nativeCodexSession?: boolean;
+  /**
+   * 通用设置页「交互行为（codezInteractionBehavior）」映射出的默认跟进意图。
+   * 原生 Codex 会话未手动在下拉菜单覆盖时以该设置为准，发送完成或回到空闲时清空单次覆盖并恢复为该默认值。
+   */
+  defaultFollowupIntent?: CodexFollowupIntent | null;
   /** Approve for me（autoReviewApprovals 能力）是否受原生支持；未支持时权限菜单隐藏 edit 档。 */
   codexAutoReviewSupported?: boolean;
   /** 草稿态使用预热 session 作附件 transaction 载体。 */
@@ -605,6 +611,7 @@ function ConversationComposerImpl({
   modelSelectionRefresh,
   codexModelCatalog,
   nativeCodexSession = false,
+  defaultFollowupIntent = null,
   codexAutoReviewSupported = false,
   attachmentSessionId = null,
   attachmentPut,
@@ -701,9 +708,12 @@ function ConversationComposerImpl({
   const [followupChoice, setFollowupChoice] = useState<{
     scopeKey: string;
     intent: CodexFollowupIntent;
-  }>({ scopeKey: configPickerScopeKey, intent: "queue" });
-  const codexFollowupIntent =
-    followupChoice.scopeKey === configPickerScopeKey ? followupChoice.intent : "queue";
+  } | null>(null);
+  const codexFollowupIntent = resolveCodexFollowupIntent({
+    scopeKey: configPickerScopeKey,
+    followupChoice,
+    defaultFollowupIntent,
+  });
   const setCodexFollowupIntent = useCallback(
     (intent: CodexFollowupIntent) => setFollowupChoice({ scopeKey: configPickerScopeKey, intent }),
     [configPickerScopeKey],
@@ -1351,10 +1361,10 @@ function ConversationComposerImpl({
       )
     : [];
   useEffect(() => {
-    // 原因：引导是一次性草稿选择，native 没有“会话默认引导”设置；
-    // 运行结束或切换会话后不得将旧 turn 的选择套到下一次发送。
-    if (!canStop && codexFollowupIntent !== "queue") setCodexFollowupIntent("queue");
-  }, [canStop, codexFollowupIntent, setCodexFollowupIntent]);
+    // 修复原因：运行结束或切换会话后清理本轮的临时下拉覆盖，
+    // 使下一次进入 busy 时回退到设置页配置的默认跟进意图（codezInteractionBehavior），而不是写死重置成 "queue"。
+    if (!canStop && followupChoice !== null) setFollowupChoice(null);
+  }, [canStop, followupChoice]);
   useEffect(() => {
     // 本地提示只能跟随触发它的 turn；切换会话或原生结束后立即撤下，
     // 不能跨轮延续一条 native 从未报告为 queue 的引导。
@@ -1777,7 +1787,7 @@ function ConversationComposerImpl({
           return;
         }
         setHeldQueueConfirmation(null);
-        if (nativeCodexFollowup) setCodexFollowupIntent("queue");
+        if (nativeCodexFollowup) setFollowupChoice(null);
         if (
           nativeCodexFollowup &&
           requestedDelivery === "guide" &&

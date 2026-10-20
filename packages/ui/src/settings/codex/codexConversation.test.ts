@@ -20,7 +20,11 @@ import {
   isCodexSelectionReady,
   resolveCodexComposerThoughtOption,
 } from "./codexModelCatalog.js";
-import { resolveComposerFollowupDelivery } from "@/v4/composer/followupModeSettings.js";
+import {
+  resolveAppFollowupMode,
+  resolveCodexFollowupIntent,
+  resolveComposerFollowupDelivery,
+} from "@/v4/composer/followupModeSettings.js";
 
 const nativeModel = codexModelSchema.parse({
   id: "catalog-id",
@@ -80,6 +84,41 @@ test("native follow-up choice is per-send; idle and legacy submissions retain th
       reverse: true,
     }),
     "queue",
+  );
+});
+
+test("native follow-up intent defaults to codezInteractionBehavior setting and preserves per-scope override until reset", () => {
+  assert.equal(
+    resolveCodexFollowupIntent({
+      scopeKey: "/ws\0s1",
+      followupChoice: null,
+      defaultFollowupIntent: resolveAppFollowupMode({ codezInteractionBehavior: "guide" } as never),
+    }),
+    "guide",
+  );
+  assert.equal(
+    resolveCodexFollowupIntent({
+      scopeKey: "/ws\0s1",
+      followupChoice: null,
+      defaultFollowupIntent: resolveAppFollowupMode({ codezInteractionBehavior: "queue" } as never),
+    }),
+    "queue",
+  );
+  assert.equal(
+    resolveCodexFollowupIntent({
+      scopeKey: "/ws\0s1",
+      followupChoice: { scopeKey: "/ws\0s1", intent: "queue" },
+      defaultFollowupIntent: "guide",
+    }),
+    "queue",
+  );
+  assert.equal(
+    resolveCodexFollowupIntent({
+      scopeKey: "/ws\0s2",
+      followupChoice: { scopeKey: "/ws\0s1", intent: "queue" },
+      defaultFollowupIntent: "guide",
+    }),
+    "guide",
   );
 });
 
