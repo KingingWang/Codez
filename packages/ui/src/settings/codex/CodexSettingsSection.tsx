@@ -17,6 +17,7 @@ import { useCodexMessages } from "./messages.js";
 import { useCodexNativeBrowserCuaCapability } from "./useCodexNativeBrowserCua.js";
 import { useSettings } from "@/hooks/useSettingService.js";
 import { useCodexModelCatalog } from "@/hooks/useCodexModelCatalog.js";
+import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { CodexTitleModelSettings } from "./CodexTitleModelSettings.js";
 
 export type CodexSettingsPanel =
@@ -87,11 +88,15 @@ function CodexSettingsContent(props: CodexSettingsSectionProps) {
   const isEmbeddedCodexCore =
     props.embeddedInSettingsPage === true && CODEX_CORE_PANELS.includes(panel);
   const isEmbeddedStandaloneSection = props.embeddedInSettingsPage === true && !isEmbeddedCodexCore;
+  const baseWorkspaceServices = useBaseWorkspaceServices();
+  // 修复原因：WorkspaceSettingsLayer 会注入当前远端 workspace 的 ServiceProvider；
+  // 自动标题的全局默认与 workspaceIdentity 覆盖以及本机浏览器控制开关都属于控制端偏好，
+  // 读写必须固定走控制端 baseServices，避免写入远端 Source Server 的 setting.json 或读回远端旧默认值。
   const {
     settings: appSettings,
     error: appSettingsError,
     update: updateAppSettings,
-  } = useSettings();
+  } = useSettings({ services: baseWorkspaceServices });
   const titleModelCatalog = useCodexModelCatalog({
     workspacePath: props.workspacePath ?? "",
     workspaceIdentity: props.workspaceIdentity,

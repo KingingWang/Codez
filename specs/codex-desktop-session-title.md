@@ -11,6 +11,10 @@
   editable global default and an optional override per workspace identity. No override means
   inherit, without requiring a choice in every project. The override key is
   `workspaceIdentity?.trim() || workspacePath`; `workspacePath` remains the execution cwd.
+  The controller Host (`baseServices.settingService` when registered, otherwise the root
+  `SettingService`) is the single preference authority across local and remote workspaces:
+  reading or saving the global default or a `workspaceIdentity` override in a remote workspace
+  never reads from or writes to the remote Source Server's `setting.json`.
 - The Codex Models settings panel obtains candidates from the target workspace's native catalog,
   including its explicitly configured native model. Store the provider/model pair, not a model
   label or a second copy of the catalog. Selecting a title model never changes the conversation
@@ -26,15 +30,15 @@
 ## Ownership and ordering
 
 ```text
-SettingService (global default + workspace override)
-  → workspace service read → first-input command carries effective model
+Controller SettingService (global default + workspaceIdentity override)
+  → base-host setting read → first-input command carries effective model
   → bridge observes first native user item → restricted ephemeral Codex turn
   → validate result + current native name/input → thread/name/set
   → native notification → V4 conversation / sessions-index → task index + UI
                                   desktop continuous / mobile replayable
 ```
 
-- `SettingService` is the sole durable preference writer. The bridge has only an in-flight
+- The controller's `SettingService` is the sole durable preference writer. The bridge has only an in-flight
   attempt keyed by workspace attachment, thread and first user item. Native Codex owns the
   durable thread name; the existing task-index manual-title override remains a shell projection.
   No generated assistant message is inserted into the user's transcript.
