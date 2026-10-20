@@ -312,6 +312,73 @@ describe("stageRelease", () => {
     expect(staged.archivePath).toBeNull();
   });
 
+  async function writeFakeCodexRuntime(root: string): Promise<string> {
+    const codexDir = join(root, "codex-staging");
+    await mkdir(join(codexDir, "bin"), { recursive: true });
+    await mkdir(join(codexDir, "codex-path"), { recursive: true });
+    await mkdir(join(codexDir, "codex-resources"), { recursive: true });
+    await writeFile(join(codexDir, "bridge.cjs"), "// fake bridge\n", "utf8");
+    await writeFile(join(codexDir, "distribution.json"), "{}\n", "utf8");
+    await writeFile(join(codexDir, "codex-package.json"), "{}\n", "utf8");
+    await writeFile(join(codexDir, "bin", "codex"), "fake-codex\n", "utf8");
+    await writeFile(join(codexDir, "bin", "codex-code-mode-host"), "fake-host\n", "utf8");
+    await writeFile(join(codexDir, "codex-path", "rg"), "fake-rg\n", "utf8");
+    await writeFile(join(codexDir, "codex-resources", "marker.txt"), "resources\n", "utf8");
+    return codexDir;
+  }
+
+  it("embeds the verified codex runtime as a codex-agent-runtime component", async () => {
+    // 回归：远端 Host 只认发行包内 runtime/codex/bridge.cjs 走 codex bridge，
+    // 缺失时 agent 是 codez.cjs app-server，codex/request 直接 Method not found。
+    const fixture = await makeStageFixture();
+    const codexRuntimeDir = await writeFakeCodexRuntime(await makeTempDir());
+    const staged = await stageRelease({
+      target: "linux-x64",
+      appVersion: "9.9.9-test",
+      archive: false,
+      codexRuntimeDir,
+      ...fixture,
+    });
+
+    for (const relativePath of [
+      "runtime/codex/bridge.cjs",
+      "runtime/codex/distribution.json",
+      "runtime/codex/codex-package.json",
+      "runtime/codex/bin/codex",
+      "runtime/codex/bin/codex-code-mode-host",
+      "runtime/codex/codex-path/rg",
+      "runtime/codex/codex-resources/marker.txt",
+    ]) {
+      await expect(
+        stat(join(staged.releaseDir, ...relativePath.split("/"))),
+      ).resolves.toBeTruthy();
+    }
+
+    const manifest = JSON.parse(
+      await readFile(join(staged.releaseDir, "manifest.json"), "utf8"),
+    ) as { components: Array<{ id: string; paths: string[] }> };
+    const codexComponent = manifest.components.find(
+      (component) => component.id === "codex-agent-runtime",
+    );
+    expect(codexComponent?.paths).toEqual(["runtime/codex"]);
+  });
+
+  it("rejects an incomplete codex runtime directory", async () => {
+    const fixture = await makeStageFixture();
+    const codexRuntimeDir = await writeFakeCodexRuntime(await makeTempDir());
+    await rm(join(codexRuntimeDir, "bin", "codex"));
+
+    await expect(
+      stageRelease({
+        target: "linux-x64",
+        appVersion: "9.9.9-test",
+        archive: false,
+        codexRuntimeDir,
+        ...fixture,
+      }),
+    ).rejects.toThrow(/Codex runtime directory is incomplete.*bin\/codex/u);
+  });
+
   it("keeps official darwin prebuilds including spawn-helper for darwin targets", async () => {
     const fixture = await makeStageFixture();
     const staged = await stageRelease({
