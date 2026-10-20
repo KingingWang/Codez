@@ -83,9 +83,12 @@ function createCuaBroker() {
 function modelVisibleTools(request) {
   const wrapper = (request.tools ?? []).find((tool) => tool.name === MCP_WRAPPER);
   if (wrapper) return wrapper.tools.map((tool) => tool.name);
+  // codex-20261020 起，namespace-incapable provider 下命名空间工具被扁平化为
+  // `namespace__name`；归一化为裸工具名，使声明断言与 Codex release 的呈现方式解耦。
+  const flatPrefix = `${MCP_WRAPPER}__`;
   return (request.tools ?? [])
-    .filter((tool) => tool.name?.startsWith(MCP_WRAPPER))
-    .map((tool) => tool.name);
+    .filter((tool) => tool.name?.startsWith(flatPrefix))
+    .map((tool) => tool.name.slice(flatPrefix.length));
 }
 
 function rejectOnAbort(signal, label) {

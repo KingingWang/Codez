@@ -1,37 +1,37 @@
 {
   "schemaVersion": 2,
   "repository": "KingingWang/codex",
-  "tag": "codex-20261011-011326",
+  "tag": "codex-20261020-001405",
   "assets": {
     "darwin-x64": {
       "name": "codex-package-x86_64-apple-darwin.tar.gz",
-      "size": 145923236,
-      "sha256": "a65c1833cc7dd5e092905679c13c60fca7232a598bd4f4d554d19d9fa257624b"
+      "size": 151324672,
+      "sha256": "619bcc66a0e8e22378b4c4631eb56bf0658d6c2b16e720cfbf543b493d30130a"
     },
     "darwin-arm64": {
       "name": "codex-package-aarch64-apple-darwin.tar.gz",
-      "size": 137362824,
-      "sha256": "e98fcccea4c87f950f6fcfa21dbf6697dc1560883685817c5ac798b62169d8b9"
+      "size": 142252060,
+      "sha256": "9356ea463102846e61a040fce5bb73c519e6d63e460d2ac9bc84b13f0ff8dd87"
     },
     "linux-x64": {
       "name": "codex-package-x86_64-unknown-linux-musl.tar.gz",
-      "size": 157740348,
-      "sha256": "b9e387ae9e5fc5b7ef73cd4021e96bdf4438c29bbc1c96fdd9c16ebb683f87cb"
+      "size": 163036619,
+      "sha256": "bc44310a4a5a059677345ff194e1d4fb7cb675a8818a0ce9312e2d2c8865bc83"
     },
     "linux-arm64": {
       "name": "codex-package-aarch64-unknown-linux-musl.tar.gz",
-      "size": 147406854,
-      "sha256": "7eea59a18a93498c2c9421df8b09799aab5eba33ae8e55977d106d6f644127bc"
+      "size": 152335163,
+      "sha256": "c1406b992de0157be2145f702ceecfab3347ea622cccd07125f81f34b0273f4c"
     },
     "win32-x64": {
       "name": "codex-package-x86_64-pc-windows-msvc.tar.gz",
-      "size": 165996894,
-      "sha256": "b2c8352dc8f93481b83ab1c4240e4ef626932e2e54532737b92e1472ded44b86"
+      "size": 172066229,
+      "sha256": "805504fc2637704bcdbf788cd7a5912f730284206cb383a5f3faa7ff5f1e152c"
     },
     "win32-arm64": {
       "name": "codex-package-aarch64-pc-windows-msvc.tar.gz",
-      "size": 152877186,
-      "sha256": "dac7724b62fa51c695de83c03e06238d5ebb98719959e48ec6d9736f60509856"
+      "size": 158422569,
+      "sha256": "5aa7fbcf7daf8526bc494cb1d3423895a1d8547ed8dd0ae11d46b81b15517eae"
     }
   }
 }

@@ -10,8 +10,16 @@ export function createNativeCuaModelServer(onRequest, namespace, calls = []) {
     });
     request.once("end", () => {
       requestCount += 1;
-      onRequest(JSON.parse(body));
+      const parsed = JSON.parse(body);
+      onRequest(parsed);
       const call = callQueue.shift();
+      // codex-20261020 起，namespace-incapable provider（如本 smoke 的 fake provider）
+      // 会把命名空间工具扁平化为 `namespace__name` 并归入默认 namespace，调用路由
+      // 只认扁平名；旧版仍保留 namespace 包装。真实模型只会回拨声明过的名字，
+      // 因此按本请求实际声明的形式回拨，使 fixture 与两种 release 都兼容。
+      const declared = Array.isArray(parsed?.tools) ? parsed.tools : [];
+      const flatName = call ? `${namespace}__${call.name}` : "";
+      const useFlat = call !== undefined && declared.some((tool) => tool?.name === flatName);
       const output =
         call === undefined
           ? {
@@ -28,8 +36,8 @@ export function createNativeCuaModelServer(onRequest, namespace, calls = []) {
               type: "function_call",
               status: "completed",
               call_id: `call_${requestCount}`,
-              name: call.name,
-              namespace,
+              name: useFlat ? flatName : call.name,
+              ...(useFlat ? {} : { namespace }),
               // 只对整个 arguments 对象编码，避免调用方或客户端改写字段 JSON 类型。
               arguments: JSON.stringify(call.arguments),
             };
