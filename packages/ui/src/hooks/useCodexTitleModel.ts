@@ -1,14 +1,18 @@
 import { useCallback } from "react";
 import { resolveCodexTitleModel, type CodexTitleModel } from "@codez/shared";
 import { logger } from "@/logger.js";
-import { useServices } from "./useServices.js";
+import { useBaseWorkspaceServices } from "./useWorkspaceServices.js";
 
 /** SettingService is the preference authority; the renderer carries only this submission's choice. */
 export function useCodexTitleModel(
   workspacePath: string,
   workspaceIdentity?: string,
 ): () => Promise<CodexTitleModel | undefined> {
-  const { settingService } = useServices();
+  // 修复原因：SessionPane 挂载在当前 workspace 的 ServiceProvider 下；远端工作区时
+  // useServices() 指向远端 Source Server，会误读远端未配置的默认模型（如 gpt-5.6-luna），
+  // 导致控制端已保存的全局/远端 workspaceIdentity 标题模型失效。标题模型偏好由控制端
+  // baseServices.settingService 唯一持有。
+  const { settingService } = useBaseWorkspaceServices();
   return useCallback(async () => {
     try {
       return resolveCodexTitleModel(await settingService.get(), workspacePath, workspaceIdentity);
