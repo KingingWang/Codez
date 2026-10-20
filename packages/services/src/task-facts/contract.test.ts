@@ -92,6 +92,37 @@ describe("task-facts contract", () => {
     await port.reconcile(target, new Set(), () => current);
     expect(store.markCliOrphan).not.toHaveBeenCalled();
   });
+  it("completes deletion when CLI reports a pending-delete or just-deleted session as not found or tombstoned", async () => {
+    const { port, source, store, changed } = fixture();
+    vi.mocked(source.reconcile).mockResolvedValueOnce({
+      sessions: [
+        {
+          sessionId: target.taskId,
+          exists: true,
+          deleted: true,
+          title: "",
+          titleSource: "default",
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      ],
+    });
+    await port.mutate(target, { type: "delete" });
+    expect(store.applyCliDeletion).toHaveBeenCalledWith(target);
+    expect(store.applyCliFacts).not.toHaveBeenCalled();
+    expect(changed).toHaveBeenCalledWith(
+      expect.objectContaining({ target, reason: "task_deleted" }),
+    );
+
+    vi.mocked(store.applyCliDeletion).mockClear();
+    vi.mocked(store.listReconciliationRows).mockResolvedValueOnce([{ meta, handoffPending: 9 }]);
+    vi.mocked(source.reconcile).mockResolvedValueOnce({
+      sessions: [{ sessionId: target.taskId, exists: false, deleted: false }],
+    });
+    await port.reconcile(target, new Set(), () => true);
+    expect(store.applyCliDeletion).toHaveBeenCalledWith(target);
+    expect(store.markCliOrphan).not.toHaveBeenCalled();
+  });
   it("mirrors CLI timestamps and outcomes without changing organization", async () => {
     const { port, store } = fixture();
     await port.ingest(target, {

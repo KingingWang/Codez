@@ -42,7 +42,12 @@ invalidating index subscriptions. Legacy
 session responses retain the Host-authorized workspace identity as well as its
 key, because shell task-index persistence consumes the identity field. Discovery
 does not resume threads; explicit conversation opening retains the native resume
-path. Native history is never copied, moved or deleted to repair shell visibility.
+path. `v4/sessionsIndex/reconcile` inspects bridge tombstones, loaded state and
+lock-free `thread/read` metadata without scanning or resuming threads; `deleteSession`
+on an unloaded thread verifies workspace ownership via lock-free `thread/read`
+without resuming, and treats an already-deleted or rollout-missing thread as
+idempotently deleted so `reconcile` can confirm deletion.
+Native history is never copied, moved or deleted to repair shell visibility.
 
 For local multi-folder Codez projects, Host-validated creation supplies the
 primary cwd and additional directories to native `thread/start.runtimeWorkspaceRoots`.

@@ -15,12 +15,12 @@ const fileService = createFileService();
 describe.each([null, 0o000, 0o400, 0o100])(
   "远程工作区目录 admission，权限 %s（null 为删除）",
   (permissions) => {
-    it.each(["manual", "automatic"] as const)(
+    // Vitest it.each 回调只传入行参数，不传入 TestContext；用 skipIf 处理 root/Windows 跳过。
+    it
+      .skipIf(permissions !== null && (process.platform === "win32" || process.getuid?.() === 0))
+      .each(["manual", "automatic"] as const)(
       "%s：单个目录失效只拒绝该项目，修复后可以重连",
-      async (mode, context) => {
-        if (permissions !== null && (process.platform === "win32" || process.getuid?.() === 0)) {
-          context.skip();
-        }
+      async (mode) => {
         const root = await realpath(await mkdtemp(join(tmpdir(), "codez-workspace-admission-")));
         const paths = [1, 2, 3].map((n) => join(root, `workspace-${n}`));
         const closedListeners = new Set<

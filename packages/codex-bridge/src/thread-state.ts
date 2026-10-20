@@ -53,6 +53,10 @@ export class ThreadStateStore {
     return this.states.get(id);
   }
 
+  isDeleted(id: string): boolean {
+    return this.deleted.has(id);
+  }
+
   remove(id: string): void {
     this.deleted.add(id);
     this.states.delete(id);

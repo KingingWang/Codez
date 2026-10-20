@@ -462,6 +462,30 @@ test(
         "desktop injection never writes the user configuration",
       );
       assert.equal(deleted.status, "accepted", deleted.message);
+      const reconciledAfterDelete = await rpc("v4/sessionsIndex/reconcile", {
+        workspaceId: workspace,
+        sessionIds: [sessionId],
+      });
+      assert.deepEqual(reconciledAfterDelete.sessions, [
+        {
+          sessionId,
+          exists: true,
+          deleted: true,
+          title: "",
+          titleSource: "default",
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      ]);
+      const deletedAgain = await rpc("v4/command", {
+        commandId: "delete-2",
+        clientId: "mobile",
+        sessionId,
+        type: "deleteSession",
+        payload: {},
+        issuedAt: Date.now(),
+      });
+      assert.equal(deletedAgain.status, "accepted", deletedAgain.message);
       await assert.rejects(
         rpc("v4/attachment/read", {
           sessionId,
