@@ -9,7 +9,7 @@ import {
   waitUntilPluginOverview,
 } from "../../../helpers/plugin-management-lifecycle.js";
 
-const DOCUMENTS_ID = "documents@zcode-plugins-official";
+const DOCUMENTS_ID = "documents@codez-plugins-official";
 
 describe("PLM-BUILTIN-UI-UNINSTALL 内置 UI 插件卸载后的分组", () => {
   after(async () => {
