@@ -287,7 +287,20 @@ function RootInner({
   const theme = useCodezStore((state) => state.theme);
   const user = useCodezStore((state) => state.user);
   const isRestoringOAuthSession = useCodezStore((state) => state.isRestoringOAuthSession);
-  useWebRemoteControlAuthSync(platform, services.oauthService, user?.id, isRestoringOAuthSession);
+  // 原生 Codex 启动模式不恢复旧 OAuth 为应用账号（root user 恒为 null），但 Web 远控以
+  // OAuth 服务凭据为唯一事实源；初始投影改为静默读取缓存会话，否则每次重启远控都会
+  // 被误投影成 signed-out，Main 将窗口置为 auth-required，表现为“重启后又要扫码登录”。
+  const resolveCodexRemoteControlAuthUserId = useCallback(async () => {
+    const result = await services.oauthService.restoreCachedSessionState();
+    return result.status === "authenticated" ? result.userInfo.id : undefined;
+  }, [services.oauthService]);
+  useWebRemoteControlAuthSync(
+    platform,
+    services.oauthService,
+    user?.id,
+    isRestoringOAuthSession,
+    providerStartupMode === "codex" ? resolveCodexRemoteControlAuthUserId : undefined,
+  );
   const setUser = useCodezStore((state) => state.setUser);
   const setIsRestoringOAuthSession = useCodezStore((state) => state.setIsRestoringOAuthSession);
   const setOAuthError = useCodezStore((state) => state.setOAuthError);
