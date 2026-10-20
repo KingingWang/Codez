@@ -6,4 +6,6 @@
 
 dialog 只保留 UI 投影；Main 重读凭据，OAuth 服务是认证唯一事实源。身份比较必须同时检查 workspaceKey 与 remoteSessionId。弹窗经 index 暴露，设备 header 与 auth hook 是独立入口，避免引入无关 UI。
 
+auth hook 的初始投影必须反映 OAuth 服务的缓存会话而非 root UI user：原生 Codex 启动模式不恢复旧 OAuth 为应用账号（root user 恒为 null），该模式下初始投影通过静默读取缓存会话得出；运行中的认证变更仍只消费 OAuth owner 的凭据完成事件。
+
 完整语义见 [Relay V2 spec](../../../../docs/web-remote-control/relay-v2-pairing.md)。
