@@ -13,6 +13,7 @@ import type { WebElementRect } from "@/lib/webElementContext.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import { BrowserSiteSettingsEntry } from "@/browser-use/BrowserSiteSettingsEntry.js";
+import { resolveWebElementContextWorkspaceIdentity } from "@/lib/webElementContext.js";
 import { BrowserToolbar } from "@/EmbeddedBrowserPaneParts.js";
 import { useBrowserPageExport } from "@/browser-use/useBrowserPageExport.js";
 import { captureBrowserElementScreenshot } from "@/browser-use/browserElementScreenshot.js";
@@ -468,7 +469,11 @@ export function UnifiedBrowserView({
     executeJs: (script) =>
       webview ? webview.executeJavaScript(script, true) : Promise.resolve({ status: "cancelled" }),
     workspacePath: workspacePath ?? "",
-    workspaceIdentity: workspaceKey ?? workspaceIdentity,
+    workspaceIdentity: resolveWebElementContextWorkspaceIdentity({
+      browserWorkspaceKey: workspaceKey,
+      browserSessionId: sessionId,
+      workspaceIdentity,
+    }),
   });
   // 人类 tab 的「选择元素」就是设计模式的点选；Agent tab 仍用元素 chip 选择器，两者不同时拦截页面点击。
   const cancelPickingForDesign = useCallback(() => {

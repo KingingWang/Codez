@@ -207,6 +207,15 @@ export function isNotRepositoryResult(result: GitCommandExecutionResult): boolea
   return stderr.includes("not a git repository") || stderr.includes("outside repository");
 }
 
+/**
+ * bare 仓库没有工作树，`rev-parse --show-toplevel` 以
+ * "this operation must be run in a work tree" 失败。bare 仓库不能作为 workspace
+ * （status/diff/提交均无意义），按"非可用仓库"降级而不是抛错（R16：任何路径不报错）。
+ */
+export function isBareRepositoryResult(result: GitCommandExecutionResult): boolean {
+  return result.stderr.toLowerCase().includes("must be run in a work tree");
+}
+
 export function isMissingWorkingDirectoryResult(result: GitCommandExecutionResult): boolean {
   const stderr = result.stderr.toLowerCase();
   return (
@@ -241,7 +250,10 @@ function parseBranchAheadBehind(value: string): { ahead: number; behind: number 
   };
 }
 
-export function parseStatusPorcelain(stdout: string): {
+export function parseStatusPorcelain(
+  stdout: string,
+  options?: { literalPaths: boolean },
+): {
   branchName: string | null;
   trackingBranchName: string | null;
   headRefType: GitHeadRefType;
@@ -256,6 +268,7 @@ export function parseStatusPorcelain(stdout: string): {
   let headRefType: GitHeadRefType = "branch";
   let ahead = 0;
   let behind = 0;
+  const statusPath = (value: string) => (options?.literalPaths ? value : normalizeGitPath(value));
 
   // `git status --porcelain=v2 -z` 的价值在于格式稳定，不受本地语言影响。
   // 这里集中做一次解析，把 branch/header/rename/unmerged 等低层细节都挡在 repo 层里。
@@ -283,7 +296,7 @@ export function parseStatusPorcelain(stdout: string): {
 
     if (record.startsWith("? ")) {
       entries.push({
-        path: normalizeGitPath(record.slice(2)),
+        path: statusPath(record.slice(2)),
         originalPath: null,
         kind: "added",
         x: null,
@@ -295,14 +308,14 @@ export function parseStatusPorcelain(stdout: string): {
     }
 
     if (record.startsWith("1 ")) {
-      const match = record.match(/^1 ([^ ]{2}) [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ (.+)$/);
+      const match = record.match(/^1 ([^ ]{2}) [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ ([\s\S]+)$/);
       if (!match) {
         continue;
       }
 
       const xy = match[1]!;
       entries.push({
-        path: normalizeGitPath(match[2]!),
+        path: statusPath(match[2]!),
         originalPath: null,
         kind: inferKindFromStatusCode(xy[0] !== "." ? xy[0]! : xy[1]!),
         x: xy[0]!,
@@ -314,7 +327,9 @@ export function parseStatusPorcelain(stdout: string): {
     }
 
     if (record.startsWith("2 ")) {
-      const match = record.match(/^2 ([^ ]{2}) [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ (.+)$/);
+      const match = record.match(
+        /^2 ([^ ]{2}) [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ ([\s\S]+)$/,
+      );
       if (!match) {
         continue;
       }
@@ -322,8 +337,8 @@ export function parseStatusPorcelain(stdout: string): {
       const originalPath = records[index + 1] ?? null;
       index += 1;
       entries.push({
-        path: normalizeGitPath(match[2]!),
-        originalPath: originalPath ? normalizeGitPath(originalPath) : null,
+        path: statusPath(match[2]!),
+        originalPath: originalPath ? statusPath(originalPath) : null,
         kind: "renamed",
         x: match[1]![0]!,
         y: match[1]![1]!,
@@ -338,14 +353,14 @@ export function parseStatusPorcelain(stdout: string): {
     }
 
     const match = record.match(
-      /^u ([^ ]{2}) [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ (.+)$/,
+      /^u ([^ ]{2}) [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ ([\s\S]+)$/,
     );
     if (!match) {
       continue;
     }
 
     entries.push({
-      path: normalizeGitPath(match[2]!),
+      path: statusPath(match[2]!),
       originalPath: null,
       kind: "modified",
       x: match[1]![0]!,
@@ -383,9 +398,13 @@ export function inferKindFromNumstat(stat: GitLineStat): GitChangeKind {
   return "modified";
 }
 
-export function parseNumstat(stdout: string): Map<string, GitLineStat> {
+export function parseNumstat(
+  stdout: string,
+  options?: { literalPaths: boolean },
+): Map<string, GitLineStat> {
   const records = stdout.split("\0");
   const stats = new Map<string, GitLineStat>();
+  const statPath = (value: string) => (options?.literalPaths ? value : normalizeGitPath(value));
 
   for (let index = 0; index < records.length; index += 1) {
     const record = records[index];
@@ -402,7 +421,7 @@ export function parseNumstat(stdout: string): Map<string, GitLineStat> {
     const removed = parseNumstatValue(fields[1]!);
     const pathField = fields.slice(2).join("\t");
     if (pathField.length > 0) {
-      stats.set(normalizeGitPath(pathField), { added, removed });
+      stats.set(statPath(pathField), { added, removed });
       continue;
     }
 
@@ -413,11 +432,11 @@ export function parseNumstat(stdout: string): Map<string, GitLineStat> {
       continue;
     }
 
-    stats.set(normalizeGitPath(renamedPath), {
+    stats.set(statPath(renamedPath), {
       added,
       removed,
       kind: "renamed",
-      originalPath: normalizeGitPath(originalPath),
+      originalPath: statPath(originalPath),
     });
   }
 

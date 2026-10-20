@@ -41,7 +41,7 @@
         "method": "POST",
         "pathIncludes": "/messages",
         "lastUserMessageIncludes": ["E2E_PLUGIN_REFERENCE"],
-        "bodyIncludes": ["<plugin_reference>", "skill-creator@zcode-plugins-official"],
+        "bodyIncludes": ["<plugin_reference>", "skill-creator@codez-plugins-official"],
         "bodyExcludes": ["Generate a concise title", "toolu_e2e_plugin_reference_read"]
       },
       "response": {

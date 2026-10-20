@@ -3,8 +3,13 @@ import type { IServiceAccessor } from "@codez/services";
 import { connectProviderSettingsSnapshot } from "@/lib/providerSettingsSnapshot.js";
 import { logger } from "@/logger.js";
 
-export function useRootProviderSettingsSnapshot(services: IServiceAccessor): void {
+export function useRootProviderSettingsSnapshot(
+  services: IServiceAccessor,
+  enabled: boolean,
+): void {
   useEffect(() => {
+    // Root 未收到 Host 选型或已选原生 Codex 时，旧 View 不能抢先启动 Provider Runtime。
+    if (!enabled) return;
     const service = services.providerSettingsService;
     if (!service) return;
 
@@ -15,5 +20,5 @@ export function useRootProviderSettingsSnapshot(services: IServiceAccessor): voi
       });
     });
     return () => connection.dispose();
-  }, [services.providerSettingsService]);
+  }, [enabled, services.providerSettingsService]);
 }

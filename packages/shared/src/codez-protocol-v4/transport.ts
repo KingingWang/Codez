@@ -6,6 +6,10 @@ import { z } from "zod";
 import { APP_USAGE_RANGES, appUsageSnapshotSchema } from "../usage-stats.js";
 import { codezWorkspaceRefSchema } from "../codez-protocol-legacy-types.js";
 import {
+  codexCapabilityUnavailableSchema,
+  codexFeatureCapabilitiesSchema,
+} from "../codez-protocol/index.js";
+import {
   PROTOCOL_V4_LIMITS,
   V4_WIRE_PROTOCOL_VERSION,
   conversationRowTargetSchema,
@@ -13,7 +17,7 @@ import {
   v4ColdResumeWorkspaceSchema,
 } from "./core.js";
 import { conversationDeltaSchema } from "./delta.js";
-import { displayConversationRowSchema, toolCallRowSchema } from "./rows.js";
+import { displayConversationRowSchema, reasoningRowSchema, toolCallRowSchema } from "./rows.js";
 import { sessionsIndexDeltaSchema, sessionsIndexSnapshotSchema } from "./sessions-index.js";
 import { WORKFLOW_RUN_STOP_REASONS } from "./workflow-observation-display.js";
 import { conversationSnapshotSchema } from "./snapshot.js";
@@ -46,6 +50,10 @@ export const hostCapabilitiesSchema = z.object({
   inputPrediction: z.boolean().optional(),
   /** 本 Host 支持 rowsRange 的 `residency: "resident-only"`；缺失等价于 false，手机不得预加载。 */
   residentRowsRange: z.boolean().optional(),
+  // Additive Codex projection. `codex` is bridge-owned and service-overlaid; `codexUnavailable`
+  // means discovery failed. Omission of both means an old peer and resolves unsupported.
+  codex: z.lazy(() => codexFeatureCapabilitiesSchema).optional(),
+  codexUnavailable: z.lazy(() => codexCapabilityUnavailableSchema).optional(),
 });
 export type HostCapabilities = z.infer<typeof hostCapabilitiesSchema>;
 
@@ -358,12 +366,15 @@ export const V4_METHODS = {
   conversationRowsRange: "v4/conversation/rowsRange",
   // 手机输入预测（input-prediction.ts）：只读查询；旧 CLI 不认识时手机静默无 hint。
   conversationInputPrediction: "v4/conversation/inputPrediction",
+  // 单行完整载荷按需读取（折叠工具/思考展开时触发）：只读、无状态、超时重发安全。
+  conversationRowPayload: "v4/conversation/rowPayload",
   // 当前有效分支的终态 ExitPlanMode 目录；只读、无状态、超时重发安全。
   conversationPlans: "v4/conversation/plans",
   conversationFileChanges: "v4/conversation/fileChanges",
   backgroundBashOutput: "v4/conversation/backgroundBashOutput",
   offPeakControl: "v4/conversation/offPeakControl",
   conversationFileRewindPreview: "v4/conversation/fileRewindPreview",
+  conversationFileRewindProjectionOverlay: "v4/conversation/fileRewindProjectionOverlay",
   // workflow run 的事件日志分页（详情页审计面）：只读、无状态、超时重发安全。
   // 新方法天然偏斜安全——旧桌面根本不会调用它。
   conversationWorkflowRunEvents: "v4/conversation/workflowRunEvents",
@@ -380,6 +391,9 @@ export const V4_METHODS = {
   // 照产物的 ①/③ 拆法：Workspace 是轻行清单（不带正文），NodeResult 是一个节点的有界正文。
   conversationWorkflowRunWorkspace: "v4/conversation/workflowRunWorkspace",
   conversationWorkflowRunNodeResult: "v4/conversation/workflowRunNodeResult",
+  // Codex 原生 turn 的独立只读历史投影。它不是 DWF workflowRuns 的第二实现，
+  // 也不携带任何 start/resume/cancel mutation。
+  codexConversationHistoryRuns: "v4/codex/conversation/historyRuns",
   // usage query（模式同 rows/range：只读、无状态、超时重发安全）。
   // usage 事实源在 CLI 的 session 库（model_usage/turn_usage 聚合），host 侧无副本，
   // 故收敛为 v4 query 而非 host 直连；旧词 usage/stats、session/usage 就此消费清零。
@@ -581,6 +595,25 @@ export const v4ConversationRowsRangeResultSchema = z.object({
 });
 export type V4ConversationRowsRangeResult = z.infer<typeof v4ConversationRowsRangeResultSchema>;
 
+// ── rowPayload（按 rowId 按需读取折叠行的完整载荷）──
+export const v4ConversationRowPayloadParamsSchema = z
+  .object({
+    sessionId: z.string().min(1),
+    rowId: z.number().int().nonnegative(),
+  })
+  .strict();
+export type V4ConversationRowPayloadParams = z.infer<typeof v4ConversationRowPayloadParamsSchema>;
+
+export const v4ConversationRowPayloadResultSchema = z
+  .object({
+    row: z.union([toolCallRowSchema, reasoningRowSchema]).nullable(),
+    atSeq: z.number().int().nonnegative(),
+    atRevision: z.number().int().nonnegative(),
+    atLogEpoch: z.string().min(1),
+  })
+  .strict();
+export type V4ConversationRowPayloadResult = z.infer<typeof v4ConversationRowPayloadResultSchema>;
+
 // ── conversation plans directory ──
 // 目录来自 CLI 完整有效 projection，不能用 renderer 的有界 tail window 推导。
 export const v4ConversationPlansParamsSchema = z
@@ -643,6 +676,17 @@ export const v4ConversationFileChangesResultSchema = z
   })
   .strict();
 export type V4ConversationFileChangesResult = z.infer<typeof v4ConversationFileChangesResultSchema>;
+
+export const v4ConversationFileRewindProjectionOverlayParamsSchema = z
+  .object({
+    sessionId: z.string().min(1),
+    target: conversationRowTargetSchema,
+    turnId: z.string().min(1),
+  })
+  .strict();
+export type V4ConversationFileRewindProjectionOverlayParams = z.infer<
+  typeof v4ConversationFileRewindProjectionOverlayParamsSchema
+>;
 
 // ── workflow run 事件日志──
 // 形态与 rows/range、plans 同族：只读、无状态、超时重发安全。cursor = journal sequence
@@ -773,6 +817,99 @@ export type V4ConversationWorkflowRunsResult = z.infer<
   typeof v4ConversationWorkflowRunsResultSchema
 >;
 
+// ── Codex thread-history turn projection ──
+// DWF run facts and Codex native turns have different owners. This query is therefore
+// additive and must never feed or populate the legacy workflowRuns projection.
+export const codexHistoryRunStatusSchema = z.enum([
+  "running",
+  "completed",
+  "failed",
+  "interrupted",
+  "unknown",
+]);
+export type CodexHistoryRunStatus = z.infer<typeof codexHistoryRunStatusSchema>;
+
+const codexHistoryToolChainStepSchema = z
+  .object({
+    kind: z.enum(["command", "mcpToolCall", "fileChange", "unknown"]),
+    itemId: z.string().min(1),
+    label: z.string().min(1).max(240),
+    status: z.enum(["inProgress", "completed", "failed", "declined", "unknown"]),
+    /** Technical target (command, server/tool, file path, or native item type). */
+    detail: z.string().max(1024).optional(),
+  })
+  .strict();
+export type CodexHistoryToolChainStep = z.infer<typeof codexHistoryToolChainStepSchema>;
+
+export const codexHistoryRunSchema = z
+  .object({
+    runId: z.string().min(1),
+    threadId: z.string().min(1),
+    turnId: z.string().min(1),
+    status: codexHistoryRunStatusSchema,
+    startedAtMs: z.number().int().nonnegative().optional(),
+    completedAtMs: z.number().int().nonnegative().optional(),
+    durationMs: z.number().int().nonnegative().optional(),
+    toolChain: z.array(codexHistoryToolChainStepSchema),
+    fileChangeSummary: z
+      .object({
+        files: z.number().int().nonnegative(),
+        additions: z.number().int().nonnegative(),
+        deletions: z.number().int().nonnegative(),
+        paths: z.array(z.string().min(1)).max(512),
+      })
+      .strict()
+      .optional(),
+    result: z.string().max(16_384).optional(),
+    failure: z
+      .object({
+        code: z.string().min(1).max(128),
+        message: z.string().max(2048),
+        detail: z.string().max(4096).optional(),
+      })
+      .strict()
+      .optional(),
+    usage: z.never().optional(),
+    artifacts: z
+      .array(
+        z
+          .object({
+            kind: z.literal("fileChange"),
+            path: z.string().min(1),
+          })
+          .strict(),
+      )
+      .optional(),
+  })
+  .strict();
+export type CodexHistoryRun = z.infer<typeof codexHistoryRunSchema>;
+
+export const codexConversationHistoryRunsParamsSchema = z
+  .object({
+    sessionId: z.string().min(1),
+    limit: z.number().int().min(1).max(100).optional(),
+    status: codexHistoryRunStatusSchema.optional(),
+    beforeTurnId: z.string().min(1).optional(),
+  })
+  .strict();
+export type CodexConversationHistoryRunsParams = z.infer<
+  typeof codexConversationHistoryRunsParamsSchema
+>;
+
+export const codexConversationHistoryRunsResultSchema = z
+  .object({
+    runs: z.array(codexHistoryRunSchema),
+    nextBeforeTurnId: z.string().min(1).optional(),
+    atSeq: z.number().int().nonnegative(),
+    atRevision: z.number().int().nonnegative(),
+    atLogEpoch: z.string().min(1),
+    source: z.literal("native-thread"),
+  })
+  .strict();
+export type CodexConversationHistoryRunsResult = z.infer<
+  typeof codexConversationHistoryRunsResultSchema
+>;
+
 export const v4ConversationFileRewindPreviewParamsSchema = z
   .object({
     workspace: v4ColdResumeWorkspaceSchema,
@@ -880,7 +1017,7 @@ export const v4AttachmentPutParamsSchema = z
     fileName: z.string().min(1),
     mime: z.string().min(1),
     // base64（不带 data: 前缀）；解码后字节数 ≤ PROTOCOL_V4_LIMITS.attachmentMaxBytes。
-    dataBase64: z.string().min(1),
+    dataBase64: z.string(),
   })
   .strict();
 export type V4AttachmentPutParams = z.infer<typeof v4AttachmentPutParamsSchema>;

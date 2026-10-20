@@ -77,6 +77,10 @@ export function getBotProviderRegionTagLabelId(provider: BotProviderEntryId): st
   }
 }
 
+export function buildCurrentWorkspaceId(workspacePath: string, workspaceIdentity?: string): string {
+  return workspaceIdentity?.trim() || workspacePath;
+}
+
 type BotProviderEntryResolution =
   | { mode: "select"; botId: string }
   | { mode: "create"; provider: BotProvider };

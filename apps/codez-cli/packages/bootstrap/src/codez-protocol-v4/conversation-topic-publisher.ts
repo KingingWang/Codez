@@ -26,6 +26,7 @@ import type {
   SubscribeAck,
   TopicFrameDeliveryKind,
   V4ConversationPlansResult,
+  V4ConversationRowPayloadResult,
   V4ConversationRowsRangeResult,
 } from "@codez/shared/codez-protocol-v4";
 import {
@@ -396,6 +397,25 @@ export class ConversationTopicPublisher {
     return conversationRowsRange(this.getSnapshot(), params, deliveryProfile);
   }
 
+  /**
+   * rowPayload：按 rowId 读取折叠 toolCall / reasoning 行的完整未裁剪载荷。
+   * 只读、无状态、超时重发安全；atLogEpoch 供客户端陈旧读丢弃。
+   */
+  getRowPayload(rowId: number): V4ConversationRowPayloadResult {
+    const snapshot = this.projection.getSnapshot();
+    return {
+      row: this.projection.getRowPayload(rowId),
+      atSeq: snapshot.seq,
+      atRevision: snapshot.revision,
+      atLogEpoch: this.logEpoch,
+    };
+  }
+
+  /**
+   * 返回当前有效分支里的完整终态计划目录。
+   * wire snapshot 只保留 tail window；renderer 扫描可见 rows 会漏掉早期计划，
+   * edit/retry 后还可能保留已经被权威 projection 裁掉的旧目录项。
+   */
   getPlans(): V4ConversationPlansResult {
     return conversationPlans(this.getSnapshot());
   }

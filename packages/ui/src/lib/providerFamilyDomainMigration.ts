@@ -25,20 +25,24 @@ function inferProviderFamilyDomainFromSelection(
 
 export async function ensureProviderFamilyDomainMigration(
   services: Pick<IServiceAccessor, "settingService" | "oauthService" | "modelSelectionService">,
+  isCurrent: () => boolean,
 ): Promise<void> {
   const settings = await services.settingService.get();
+  // 原生 Codex 接管期间旧设置读取可能才返回；后续 OAuth/Registry 与设置写入均不再属于本 Host。
+  if (!isCurrent()) return;
   if (settings.providerFamilyDomain || settings.providerFamilyDomainMigrated) {
     return;
   }
 
-  let inferredDomain = resolveProviderFamilyDomainFromOAuthProvider(
-    await services.oauthService.getActiveProvider(),
-  );
+  const activeProvider = await services.oauthService.getActiveProvider();
+  if (!isCurrent()) return;
+  let inferredDomain = resolveProviderFamilyDomainFromOAuthProvider(activeProvider);
   let selectableProviders: readonly { readonly providerId: string }[] | null = null;
 
   if (!inferredDomain) {
     try {
       selectableProviders = (await services.modelSelectionService.getView()).providers;
+      if (!isCurrent()) return;
       inferredDomain = inferProviderFamilyDomainFromSelection(selectableProviders);
     } catch (error) {
       logger.warn("[providerFamilyDomainMigration] 读取模型选择视图失败", {
@@ -54,12 +58,15 @@ export async function ensureProviderFamilyDomainMigration(
     return;
   }
 
+  if (!isCurrent()) return;
   await services.settingService.update({
     ...(inferredDomain ? { providerFamilyDomain: inferredDomain } : {}),
     providerFamilyDomainUpdatedAt: Date.now(),
     providerFamilyDomainMigrated: true,
   });
 
+  // 写入发出后也可能切换 Host；迟到完成不能把新 Codex Host 记为旧设置迁移完成。
+  if (!isCurrent()) return;
   logger.info("[providerFamilyDomainMigration] provider family domain 迁移完成", {
     inferredDomain,
   });

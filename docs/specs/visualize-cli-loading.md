@@ -2,7 +2,7 @@
 
 ## 行为
 
-内置 `visualize@zcode-plugins-official` 提供对话内交互视图，普通终端没有对应宿主。
+内置 `visualize@codez-plugins-official` 提供对话内交互视图，普通终端没有对应宿主。
 该插件保留内置，默认关闭。升级后首次读取旧配置时，将已保存的 visualize 启用值统一改为
 `false`，并在同一配置文件写入 `plugins.visualizeDefaultOffMigrated: true`。旧值的来源不可区分，
 因此此次迁移同时覆盖过去的默认开启和手动开启。迁移完成后，用户可以重新开启，后续启动保留新值。

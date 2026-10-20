@@ -44,6 +44,7 @@ function readDisplayStructuredPatch(display: Record<string, unknown>, fileLabel:
   }
 
   const hunks: string[] = [];
+  let hasPatchLines = false;
   for (const hunk of structuredPatch) {
     if (!isPlainRecord(hunk) || !Array.isArray(hunk.lines)) {
       continue;
@@ -54,13 +55,44 @@ function readDisplayStructuredPatch(display: Record<string, unknown>, fileLabel:
     const newStart = typeof hunk.newStart === "number" ? hunk.newStart : 1;
     const newLines = typeof hunk.newLines === "number" ? hunk.newLines : 1;
     const lines = hunk.lines.filter((line): line is string => typeof line === "string");
+    hasPatchLines ||= lines.length > 0;
     hunks.push(`@@ -${oldStart},${oldLines} +${newStart},${newLines} @@`);
     hunks.push(...lines);
   }
 
-  return hunks.length > 0
-    ? [`--- a/${fileLabel}`, `+++ b/${fileLabel}`, ...hunks].join("\n")
-    : null;
+  if (!hasPatchLines) return null;
+  const operation = display.operation;
+  const destination = readStringField(display, ["movePath"]) ?? fileLabel;
+  return [
+    operation === "add" ? "--- /dev/null" : `--- a/${getPathLeaf(fileLabel)}`,
+    operation === "delete" ? "+++ /dev/null" : `+++ b/${getPathLeaf(destination)}`,
+    ...hunks,
+  ].join("\n");
+}
+
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
+export function readRawToolCallFileSummaryGroup(raw: unknown) {
+  if (!isPlainRecord(raw) || !isPlainRecord(raw.display)) return null;
+  const display = raw.display;
+  if (
+    display.kind !== "file_diffs" ||
+    !Array.isArray(display.files) ||
+    !isNonNegativeInteger(display.totalFiles) ||
+    !isNonNegativeInteger(display.additions) ||
+    !isNonNegativeInteger(display.deletions) ||
+    display.totalFiles < display.files.length
+  ) {
+    return null;
+  }
+  return {
+    totalFiles: display.totalFiles,
+    additions: display.additions,
+    deletions: display.deletions,
+    truncated: display.truncated === true,
+  };
 }
 
 function readDisplayFileDiffSummaries(...values: unknown[]): RawToolCallFileSummary[] {
@@ -69,7 +101,8 @@ function readDisplayFileDiffSummaries(...values: unknown[]): RawToolCallFileSumm
 
   for (const value of values) {
     for (const display of readFileDiffDisplays(value)) {
-      const path = readStringField(display, ["filePath", "file_path", "path"]);
+      const previousPath = readStringField(display, ["filePath", "file_path", "path"]);
+      const path = readStringField(display, ["movePath"]) ?? previousPath;
       if (!path || seenPaths.has(path)) {
         continue;
       }
@@ -81,8 +114,21 @@ function readDisplayFileDiffSummaries(...values: unknown[]): RawToolCallFileSumm
       // 否则会出现工具行能展开 diff、底部摘要却只能显示“无法预览”的分叉。
       summaries.push({
         path,
-        actionLabel: "Edited",
-        operationKind: "edit",
+        ...(path !== previousPath && previousPath ? { previousPath } : {}),
+        actionLabel:
+          display.operation === "add"
+            ? "Created"
+            : display.operation === "delete"
+              ? "Deleted"
+              : "Edited",
+        operationKind:
+          display.operation === "add"
+            ? "write"
+            : display.operation === "delete"
+              ? "delete"
+              : display.operation === "update"
+                ? "update"
+                : "edit",
         fileName: descriptor.fileName,
         filePath: descriptor.filePath,
         fileIconSrc: descriptor.fileIconSrc,
@@ -92,7 +138,8 @@ function readDisplayFileDiffSummaries(...values: unknown[]): RawToolCallFileSumm
           removed:
             typeof display.deletions === "number" ? Math.max(0, Math.round(display.deletions)) : 0,
         },
-        patch: readDisplayStructuredPatch(display, getPathLeaf(path)),
+        patch: readDisplayStructuredPatch(display, previousPath ?? path),
+        ...(display.truncated === true ? { truncated: true } : {}),
       });
     }
   }

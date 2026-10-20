@@ -4,11 +4,12 @@ import {
   type UpdateStatePayload,
 } from "@codez/shared";
 
-// 更新入口跟随产品身份而不是后端环境：Preview 身份（含生产后端的 Preview）禁用更新器。
+// Codex 主进程已有独立的 GitHub 更新器；原条件仅放行 production，误隐藏了
+// Codex 桌面的手动检查入口。Preview（含连接生产后端的 Preview）仍禁用更新器。
 export function shouldShowDesktopUpdateEntry(
   flavor: CodezProductFlavor = CODEZ_PRODUCT_FLAVOR,
 ): boolean {
-  return flavor === "production";
+  return flavor === "production" || flavor === "codex";
 }
 
 export function getUpdateMenuLabelId(state: UpdateStatePayload | null) {

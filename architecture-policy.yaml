@@ -112,6 +112,12 @@ modules:
       - packages/desktop/src/app-control-navigation/renderer.ts
     layers: {adapters: .}
     owner: conversation
+  - id: codex-bridge
+    roots: [packages/codex-bridge/src]
+    managed: true
+    requires: [shared]
+    publicEntrypoints: [packages/codex-bridge/src/contract.ts]
+    owner: codex-runtime-adaptation
   - id: rpc
     roots: [packages/rpc/src]
     managed: false

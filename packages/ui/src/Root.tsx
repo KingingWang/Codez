@@ -17,7 +17,16 @@ import {
   RequestSecurityWorkspaceBridge,
   setRequestSecurityReporter,
 } from "@/request-security-edition/index.js";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentProps,
+} from "react";
 import { LucideProvider, RefreshCw } from "lucide-react";
 import {
   APP_RUNTIME_PREFERENCES_CHANGED_BROADCAST_CHANNEL,
@@ -86,14 +95,18 @@ import { useRemoteWorkspaceHistory } from "@/root/useRemoteWorkspaceHistory.js";
 import { useRemoteWorkspaceTabLifecycle } from "@/root/useRemoteWorkspaceTabLifecycle.js";
 import { RemoteWorkspaceControllerProvider } from "@/remote/useRemoteWorkspaceController.js";
 import { useRootProviderStateRefresh } from "@/root/useRootProviderStateRefresh.js";
+import { resolveDesktopRuntimePreferences } from "@/settings/codex/codexRuntimePreferences.js";
 import { useModelSelectionServiceView } from "@/hooks/useModelSelectionView.js";
 import { useRootProviderSettingsSnapshot } from "@/root/useRootProviderSettingsSnapshot.js";
+import { useRootProviderStartupMode } from "@/hooks/useRootProviderStartupMode.js";
 import { useWebRemoteControlAuthSync } from "@/web-remote-control/app/useWebRemoteControlAuthSync.js";
 import { useRootOAuthEffects } from "@/root/useRootOAuthEffects.js";
 import { consumeZcodeJwtInvalidRestartMarker } from "@/root/codezJwtInvalidRestartMarker.js";
 import { useDesktopNativeThemeSync } from "@/root/useDesktopNativeThemeSync.js";
 import { useRootPlatformEffects } from "@/root/useRootPlatformEffects.js";
 import { useRootWorkspaceActions } from "@/root/useRootWorkspaceActions.js";
+import { useWorktreeOpenActions } from "@/root/useWorktreeOpenActions.js";
+import { useCodexProjectDiscovery } from "@/hooks/useCodexProjectDiscovery.js";
 import { useBotBroadcastEffects } from "@/root/useBotBroadcastEffects.js";
 import { registerBaseWorkspaceServices } from "@/store/remoteWorkspaceSessionStore.js";
 import type { RootProps } from "@/root/types.js";
@@ -121,6 +134,7 @@ import { RootStartupLoading } from "@/root/RootStartupLoading.js";
 import { resolveProviderAvailabilityState } from "@/lib/modelProviderAvailability.js";
 import { useProviderAvailabilityLoginEntryGuard } from "@/root/useProviderAvailabilityLoginEntryGuard.js";
 import { ensureProviderFamilyDomainMigration } from "@/lib/providerFamilyDomainMigration.js";
+import { startRootLegacyProviderStartup } from "@/root/legacyProviderStartup.js";
 import { useSettings } from "@/hooks/useSettingService.js";
 import { CLOSE_ACTIVE_CONTEXT_REQUEST_EVENT } from "@/lib/closeActiveContext.js";
 import { AssistantCodeCommentFeatureProvider } from "@/AssistantCodeCommentFeatureProvider.js";
@@ -136,6 +150,14 @@ import type {
   RemoteConnectionOpenPreference,
 } from "@/app-shell/types.js";
 import { DEFAULT_LUCIDE_STROKE_WIDTH } from "@/components/icons/windowIcons.js";
+
+function RuntimeOnboarding({
+  codex,
+  ...props
+}: ComponentProps<typeof OccupationOnboarding> & { codex: boolean }) {
+  // 旧职业引导会等待 Z.ai 账户并写入旧 Agent 偏好；Codex 桌面保留外壳而不挂载该门禁。
+  return codex ? <>{props.children}</> : <OccupationOnboarding {...props} />;
+}
 
 type WelcomeScreenOpenReason =
   | "startup-provider-required"
@@ -267,7 +289,11 @@ function RootInner({
   // 动态工作流灰度快照的唯一取数点：
   // 放在 app 级 ServiceProvider 这一层取一次，自动化页与 run 面板只读。消费方可能位于
   // 工作区级 ServiceProvider 内（远程 Host 的 accessor），由它们取数会拿到另一台 Host 的答案。
-  useDynamicWorkflowAvailabilityLoader(services.codingPlanSubscriptionService);
+  const providerStartupMode = useRootProviderStartupMode(Boolean(isDesktop));
+  useDynamicWorkflowAvailabilityLoader(
+    services.codingPlanSubscriptionService,
+    providerStartupMode === "legacy",
+  );
 
   const { intl, locale, localeResolved } = useCodezIntl();
   const handleRemoteConnectionTargetChange = useSourceServerUpdateNotifications({
@@ -299,16 +325,19 @@ function RootInner({
   });
   const [welcomeScreenOpenReason, setWelcomeScreenOpenReason] =
     useState<WelcomeScreenOpenReason | null>(() =>
-      consumeZcodeJwtInvalidRestartMarker() ? "session-expired" : null,
+      consumeZcodeJwtInvalidRestartMarker() && !isDesktop ? "session-expired" : null,
     );
   const [providerFamilyDomainMigrationComplete, setProviderFamilyDomainMigrationComplete] =
     useState(false);
   const loginEntryRequest = useCodezStore((state) => state.loginEntryRequest);
-  const rootModelSelectionRead = useModelSelectionServiceView(services.modelSelectionService);
+  const rootModelSelectionRead = useModelSelectionServiceView(
+    services.modelSelectionService,
+    !isDesktop,
+  );
   const rootModelSelectionView =
     rootModelSelectionRead.state.status === "ready" ? rootModelSelectionRead.state.view : null;
   const rootModelSelectionErrorNode =
-    rootModelSelectionRead.state.status === "error" ? (
+    !isDesktop && rootModelSelectionRead.state.status === "error" ? (
       <div className="fixed right-4 bottom-4 z-50 flex max-w-sm items-center gap-3 rounded-lg border border-destructive/30 bg-surface-raised px-3 py-2 text-ui-base text-foreground shadow-lg">
         <span className="min-w-0 flex-1">
           {intl.formatMessage({ id: "root.modelSelection.loadFailed" })}
@@ -361,9 +390,13 @@ function RootInner({
           return;
         }
         void refreshAppSettings();
-        void services.codezAgentService.syncAppRuntimePreferences(parsed.data).catch((error) => {
-          logger.warn("[settings] 同步跨窗口运行时偏好失败", error);
-        });
+        void services.codezAgentService
+          .syncAppRuntimePreferences(
+            resolveDesktopRuntimePreferences(parsed.data, Boolean(isDesktop)),
+          )
+          .catch((error) => {
+            logger.warn("[settings] 同步跨窗口运行时偏好失败", error);
+          });
         void services.botsService.syncAppRuntimePreferences(parsed.data).catch((error) => {
           logger.warn("[settings] 同步跨窗口 Bot 运行时偏好失败", error);
         });
@@ -403,6 +436,7 @@ function RootInner({
     services.botsService,
     services.broadcastService,
     services.codezAgentService,
+    isDesktop,
   ]);
 
   useEffect(() => {
@@ -410,12 +444,17 @@ function RootInner({
       return;
     }
     void services.codezAgentService
-      .syncAppRuntimePreferences({
-        askUserQuestionAutoResolutionEnabled:
-          appSettings.askUserQuestionAutoResolutionEnabled !== false,
-        modelIoFullRetentionEnabled: appSettings.modelIoFullRetentionEnabled === true,
-        pluginAutoRecommendationEnabled: appSettings.pluginAutoRecommendationEnabled === true,
-      })
+      .syncAppRuntimePreferences(
+        resolveDesktopRuntimePreferences(
+          {
+            askUserQuestionAutoResolutionEnabled:
+              appSettings.askUserQuestionAutoResolutionEnabled !== false,
+            modelIoFullRetentionEnabled: appSettings.modelIoFullRetentionEnabled === true,
+            pluginAutoRecommendationEnabled: appSettings.pluginAutoRecommendationEnabled === true,
+          },
+          Boolean(isDesktop),
+        ),
+      )
       .catch((error) => {
         logger.warn("[settings] 初始化运行时偏好失败", error);
       });
@@ -434,6 +473,7 @@ function RootInner({
     appSettings?.modelIoFullRetentionEnabled,
     appSettings?.pluginAutoRecommendationEnabled,
     services.botsService,
+    isDesktop,
     services.codezAgentService,
   ]);
 
@@ -461,6 +501,14 @@ function RootInner({
     workspaceShellRemoteSessionId,
     workspaceShellIdentity,
   );
+
+  useCodexProjectDiscovery({
+    workspacePath: workspaceShellPath,
+    workspaceIdentity: workspaceShellIdentity,
+    remoteSessionId: workspaceShellRemoteSessionId,
+    activeWorkspaceTab,
+    isDesktop,
+  });
 
   const localWorkspacePathForRemoteConnection = useTabStore((state) => {
     const activeTab = state.activeTabId
@@ -554,50 +602,39 @@ function RootInner({
   const webRemoteControlSessionActive =
     webRemoteControlStatus.status === "running" || webRemoteControlStatus.status === "active";
   const refreshProviderState = useRootProviderStateRefresh(services);
-  useRootProviderSettingsSnapshot(services);
+  useRootProviderSettingsSnapshot(services, providerStartupMode === "legacy");
   useEffect(() => {
+    if (providerStartupMode !== "legacy") return;
     let disposed = false;
-
-    void (async () => {
-      try {
-        await ensureProviderFamilyDomainMigration(services);
-      } catch (error) {
-        logger.warn("[Root] provider family domain 迁移失败，继续启动", {
-          error,
-        });
-      } finally {
-        if (!disposed) {
-          setProviderFamilyDomainMigrationComplete(true);
-          try {
-            await refreshAppSettings();
-            await refreshProviderState();
-          } catch (refreshError) {
-            logger.warn("[Root] provider family domain 迁移后刷新状态失败", {
-              error: refreshError,
-            });
-          }
-        }
-      }
-    })();
+    void startRootLegacyProviderStartup({
+      migrate: () => ensureProviderFamilyDomainMigration(services, () => !disposed),
+      isCurrent: () => !disposed,
+      markMigrationComplete: () => setProviderFamilyDomainMigrationComplete(true),
+      refreshAppSettings,
+      refreshProviderState,
+    });
 
     return () => {
       disposed = true;
     };
-  }, [refreshAppSettings, refreshProviderState, services]);
+  }, [providerStartupMode, refreshAppSettings, refreshProviderState, services]);
 
   const shouldPreferDirectoryBrowser = Boolean(preferDirectoryBrowser);
   const supportsEmbeddedBrowser = explicitSupportsEmbeddedBrowser ?? Boolean(isDesktop);
-  const isResolvingStartupAuthState = isRestoringOAuthSession;
+  const isResolvingStartupAuthState = !isDesktop && isRestoringOAuthSession;
   const rootProviderAvailability = resolveProviderAvailabilityState({
     modelSelectionView: rootModelSelectionView,
   });
-  const providerStartupSyncPending = isProviderStartupSyncPending({
-    providerFamilyDomainMigrationComplete,
-    modelSelectionViewHydrated:
-      rootProviderAvailability.hydrated || rootModelSelectionRead.state.status === "error",
-  });
   const isWebRemoteControlRoot = Boolean(webRemoteControlWorkspaceSwitcher);
+  const providerStartupSyncPending =
+    !isDesktop &&
+    isProviderStartupSyncPending({
+      providerFamilyDomainMigrationComplete,
+      modelSelectionViewHydrated:
+        rootProviderAvailability.hydrated || rootModelSelectionRead.state.status === "error",
+    });
   const providerAvailabilityLoginEntryGuardEnabled =
+    !isDesktop &&
     shouldEnableProviderAvailabilityLoginEntryGuard({
       isWebRemoteControlRoot,
     });
@@ -626,11 +663,13 @@ function RootInner({
         });
       },
     });
-  const isResolvingProviderStartupState = shouldResolveProviderStartupState({
-    isWebRemoteControlRoot,
-    providerStartupSyncPending,
-    providerAvailabilityStartupCheckCompleted,
-  });
+  const isResolvingProviderStartupState =
+    !isDesktop &&
+    shouldResolveProviderStartupState({
+      isWebRemoteControlRoot,
+      providerStartupSyncPending,
+      providerAvailabilityStartupCheckCompleted,
+    });
   const isStartupProviderLoginEntryOpen = welcomeScreenOpenReason === "startup-provider-required";
   // 首次安装时 provider 登录入口判定晚于 workspace 注入，ChatView 会先 mount 并触发草稿预热。
   // 这里把 provider 启动检查纳入 workspace 恢复门禁，避免未连接账号前启动 Codez session。
@@ -730,7 +769,7 @@ function RootInner({
     setOAuthError,
     setUser,
     onProviderFamilyDomainClearedAfterLogout: () => {
-      setWelcomeScreenOpenReason("logout-provider-required");
+      if (!isDesktop) setWelcomeScreenOpenReason("logout-provider-required");
     },
     userId: user?.id,
     onOpenRemoteConnection: allowRemoteWorkspace ? handleOpenRemoteConnection : undefined,
@@ -776,6 +815,7 @@ function RootInner({
     handleCancelRemoteProject,
     handleSelectRemoteProject,
     handleConnectRemote,
+    handleOpenDiscoveredRemoteWorktree,
     handleReconnectRemoteWorkspace,
     remoteWorkspaceController,
   } = useRemoteWorkspaceHistory({
@@ -854,6 +894,15 @@ function RootInner({
       }),
     [activeWorkspacePath, activeWorkspaceIdentity, handleResolveConversationWorkspace, tabStoreApi],
   );
+
+  const { handleOpenWorktreeEntry } = useWorktreeOpenActions({
+    intl,
+    tabStoreApi,
+    allowOpenWorkspace,
+    handleSelectProject,
+    startDraftInWorkspace,
+    handleOpenDiscoveredRemoteWorktree,
+  });
 
   useEffect(() => {
     if (!platform.onWebRemoteControlReconnectWorkspace) {
@@ -1080,6 +1129,7 @@ function RootInner({
   }, [platform]);
 
   useRootOAuthEffects({
+    startupMode: providerStartupMode,
     accountIntentKey: JSON.stringify([
       user?.id,
       appSettings?.providerFamilyDomain,
@@ -1272,6 +1322,10 @@ function RootInner({
   }, []);
   const handleWelcomeScreenComplete = useCallback(
     async (reason: LoginCompleteReason) => {
+      if (isDesktop) {
+        setWelcomeScreenOpenReason(null);
+        return;
+      }
       await refreshAppSettings();
       if (
         welcomeScreenOpenReason !== "startup-provider-required" ||
@@ -1294,6 +1348,7 @@ function RootInner({
       }
     },
     [
+      isDesktop,
       allowOpenWorkspace,
       handleEnsureConversationWorkspace,
       refreshAppSettings,
@@ -1610,7 +1665,8 @@ function RootInner({
       {requestSecurityBridgeNode}
       {remoteConnectionDialog}
       {directoryBrowserDialog}
-      <OccupationOnboarding
+      <RuntimeOnboarding
+        codex={Boolean(isDesktop)}
         showWindowControls={Boolean(isWindowsDesktop || (isDesktop && !isMacDesktop))}
         showChildrenWhileLoading={!workspaceShellPath && isSettingsTabActive}
         isMacDesktop={isMacDesktop}
@@ -1649,6 +1705,7 @@ function RootInner({
                 isSettingsTabActive={isSettingsTabActive}
                 handleConnectRemote={handleConnectRemote}
                 handleSelectRemoteProject={handleSelectRemoteProject}
+                handleOpenWorktreeEntry={handleOpenWorktreeEntry}
                 handleCancelRemoteProject={handleCancelRemoteProject}
                 handleReconnectRemoteWorkspace={handleReconnectRemoteWorkspace}
                 handleCreateTask={handleCreateTask}
@@ -1687,7 +1744,7 @@ function RootInner({
           </RemoteWorkspaceControllerProvider>
         )}
         {onboardingDialog}
-      </OccupationOnboarding>
+      </RuntimeOnboarding>
     </RootShell>
   );
 }

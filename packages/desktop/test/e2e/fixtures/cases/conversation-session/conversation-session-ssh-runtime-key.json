@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "caseName": "conversation-session-ssh-runtime-key",
+  "spec": "./test/e2e/conversation-session/conversation-session-ssh-runtime-key.test.ts",
+  "providerFixtures": [
+    "./test/e2e/fixtures/upstream/common.json",
+    "./test/e2e/fixtures/upstream/conversation-session/conversation-session-ssh-runtime-key.json"
+  ],
+  "fileFixtures": [],
+  "requests": [
+    {
+      "id": "ssh-runtime-key-title",
+      "description": "远端任务标题请求固定回复。",
+      "kind": "common",
+      "timingPolicy": "fast-text",
+      "source": "synthetic",
+      "syntheticReason": "标题不属于临时 Key 语义，只需避免辅助请求命中主响应。"
+    },
+    {
+      "id": "ssh-runtime-key-first",
+      "description": "远端首发通过本机临时 Key 鉴权代理后固定回复。",
+      "kind": "main",
+      "timingPolicy": "fast-text",
+      "source": "synthetic",
+      "syntheticReason": "用真实 HTTP 鉴权代理校验 Key，模型回复使用稳定 replay 数据。"
+    }
+  ]
+}

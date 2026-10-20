@@ -191,7 +191,7 @@ Implementation and page examples: [Gen UI contract](packages/ui/src/gen-ui/CONTR
 
 | Repository                                                        | Branch           | What to change                                                                 | Where to run or find it                                                   |
 | ----------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
-| [zai-org/Codez](https://github.com/zai-org/Codez)                 | `feat/ui-plugin` | Host protocol, side panels and inline views, sandbox, approvals, and lifecycle | `pnpm dev:desktop`                                                        |
+| [zai-org/ZCode](https://github.com/zai-org/ZCode)                 | `feat/ui-plugin` | Host protocol, side panels and inline views, sandbox, approvals, and lifecycle | `pnpm dev:desktop`                                                        |
 | [zai-org/codez-plugins](https://github.com/zai-org/codez-plugins) | `feat/ui-plugin` | Plugin manifests, MCP servers, pages, application data, and resource packaging | Sources in `ui-plugins/<name>`; installable artifacts in `plugins/<name>` |
 
 The development and debugging steps in this guide target the `feat/ui-plugin` branch in each repository. **This branch is not yet available in the public Codez repository.** Once it is ready, check it out from the repository above to test plugins with the host.

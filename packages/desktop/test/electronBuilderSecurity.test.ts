@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
@@ -110,6 +110,12 @@ it("签名读取错误或缺少更新配置时构建失败", async () => {
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+beforeEach(() => {
+  // 本文件验证两种产品共用的 Electron fuse；明确 legacy，避免配置单测
+  // 默认进入 Codex 制品校验并依赖本机不存在的跨平台 bridge/远程归档。
+  vi.stubEnv("CODEZ_DESKTOP_RUNTIME", "legacy");
 });
 
 afterEach(() => {

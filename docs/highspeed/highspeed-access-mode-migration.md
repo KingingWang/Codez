@@ -94,12 +94,12 @@ Coding Plan 权益的抽取，因此**必须按账号 Family 拆分**，不跨 F
 
 **站点能力规则必须同步新增。** `modelConfigRules.providerSiteRules` 按 `baseUrl` 匹配，
 新端点没有规则就会静默落回 `modelRules` 的保守默认值。加速端点必须与 Coding Plan
-站点（`api.z.ai` / `open.bigmodel.cn` / `codez-plan`）逐项对齐，因此新增两条规则：
+站点（`api.z.ai` / `open.bigmodel.cn` / `zcode-plan`）逐项对齐，因此新增两条规则：
 
 | 匹配                                                | 属性                                                                     | 与哪个站点对齐                                                   |
 | --------------------------------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------- |
-| `https://zcode\.z\.ai/api/v1/highspeed/anthropic/?` | `inputFormat.supportsImage/supportsVideo = true`                         | 同 `codez-plan`                                                  |
-| 同上 + `apiTypeMatch: anthropic-messages`           | `supportsMidConversationSystem = true`、`supportsNativeWebSearch = true` | 同 `codez-plan`，**不同于 `off-peak`**（Todo140 只关闭闲时搜索） |
+| `https://zcode\.z\.ai/api/v1/highspeed/anthropic/?` | `inputFormat.supportsImage/supportsVideo = true`                         | 同 `zcode-plan`                                                  |
+| 同上 + `apiTypeMatch: anthropic-messages`           | `supportsMidConversationSystem = true`、`supportsNativeWebSearch = true` | 同 `zcode-plan`，**不同于 `off-peak`**（Todo140 只关闭闲时搜索） |
 
 理由是能力事实必须在同一会话内稳定，而不是随本轮是否加速抖动：
 

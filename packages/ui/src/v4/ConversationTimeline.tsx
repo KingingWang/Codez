@@ -90,12 +90,13 @@ import type {
 } from "@/v4/legacyChatViewTypes.js";
 import {
   anchorActionAfterContentChange,
+  classifyTimelineScrollSource,
   historyPrefetchTriggerPx,
   initialFollowing,
   prependScrollAdjustment,
-  prependVirtualAnchorAdjustment,
   reconcileFollowingForContentAnchor,
   resolveFollowingAfterScroll,
+  resolvePrependVirtualAnchorAdjustment,
   shouldAdjustVirtualizerForItemSizeChange,
   shouldShowBackToBottom,
   shouldTriggerLoadOlder,
@@ -121,7 +122,6 @@ const EMPTY_PENDING_GUIDES: readonly QueueItem[] = [];
 const ROW_OVERSCAN = 2;
 const RUNNING_WORK_DURATION_TICK_MS = 1000;
 const USER_SCROLL_INTENT_TTL_MS = 1200;
-const LAYOUT_SCROLL_GUARD_MS = 250;
 const CONTENT_WIDTH_RESIZE_SETTLE_MS = 120;
 const SCROLL_MEMORY_RESTORE_TOLERANCE_PX = 1;
 
@@ -289,6 +289,7 @@ export interface ConversationTimelineProps {
   rowContext: ConversationRowRenderContext;
   onFork?: (target: ConversationRowTarget) => void;
   onRetry?: (target: ConversationRowTarget) => void;
+  onContinue?: (target: ConversationRowTarget) => void;
   onFeedbackChange?: AssistantFeedbackHandler;
   onEdit?: UserInputEditHandler;
   /** 还有更早历史可拉（窗口首行 > 全序首行）。 */
@@ -391,6 +392,7 @@ function ConversationTimelineImpl({
   rowContext,
   onFork,
   onRetry,
+  onContinue,
   onFeedbackChange,
   onEdit,
   canLoadOlder = false,
@@ -592,7 +594,6 @@ function ConversationTimelineImpl({
   }>({ intent: "none", observedAt: 0 });
   const touchClientYRef = useRef<number | null>(null);
   const scrollbarPointerIdRef = useRef<number | null>(null);
-  const layoutScrollGuardUntilRef = useRef(0);
   const userAdjustedScrollSinceRestoreRef = useRef(false);
   const suppressVirtualizerAdjustmentDuringRestoreRef = useRef(false);
   const latestScrollMemoryStateRef = useRef<{
@@ -604,12 +605,20 @@ function ConversationTimelineImpl({
   // 程序化写入（贴底/prepend 平移）后的回读值。贴底 effect 拿它对账未观察滚动
   // （滚动已发生、scroll 事件未派发），防止过期 following=true 把用户/测试的上滚拽回底部。
   const lastObservedScrollTopRef = useRef(0);
+  // 与 lastObservedScrollTopRef 同一时刻入账的内容高度：对账时用它把
+  // 「内容收缩钳回 scrollTop」从「用户未观察上滚」里区分出来。
+  const lastObservedContentHeightRef = useRef(0);
   // prepend 锚定基线（上一 commit 的首行/总高度），见下方对账效应。
   const prependAnchorRef = useRef<{
     firstRowId: number | null;
     totalSize: number;
   }>({ firstRowId: null, totalSize: 0 });
   const pendingPrependVirtualAnchorRef = useRef<PrependVirtualAnchor | null>(null);
+  // 最近一次判定为用户来源的 scroll 事件时间戳；prepend 触发瞬间记录快照，
+  // commit 时若时间戳变新，说明用户在 RPC 往返窗口内继续滚动（手机惯性滑），
+  // 锚定修正必须改用位移公式而非绝对恢复（见 resolvePrependVirtualAnchorAdjustment）。
+  const lastUserScrollAtRef = useRef(0);
+  const prependAnchorTriggerUserScrollAtRef = useRef(0);
   const heightCacheRef = useRef<TimelineRowHeightCache | null>(null);
   if (heightCacheRef.current === null) {
     heightCacheRef.current = new TimelineRowHeightCache();
@@ -969,10 +978,6 @@ function ConversationTimelineImpl({
     return Date.now() - current.observedAt <= USER_SCROLL_INTENT_TTL_MS ? current.intent : "none";
   }, []);
 
-  const markLayoutScrollGuard = useCallback(() => {
-    layoutScrollGuardUntilRef.current = Date.now() + LAYOUT_SCROLL_GUARD_MS;
-  }, []);
-
   const markUserScrollIntent = useCallback(
     (intent: TimelineUserScrollIntent) => {
       if (intent === "none") return;
@@ -1183,6 +1188,7 @@ function ConversationTimelineImpl({
     element.scrollTop = responsiveCenteredEmptyLayout ? 0 : element.scrollHeight;
     // 回读取钳制后的落点入账（浏览器会把赋值钳到最大可滚动距离）。
     lastObservedScrollTopRef.current = element.scrollTop;
+    lastObservedContentHeightRef.current = element.scrollHeight;
     syncTurnNavigatorViewport(element);
     userAdjustedScrollSinceRestoreRef.current = false;
     cacheCurrentScrollMemoryState(element);
@@ -1210,7 +1216,6 @@ function ConversationTimelineImpl({
       const viewportHeightChanged = observedViewportHeight !== element.clientHeight;
       observedViewportHeight = element.clientHeight;
       if (nextWidth === stableContentWidthRef.current && !viewportHeightChanged) return;
-      markLayoutScrollGuard();
       commitFollowing(
         reconcileFollowingForContentAnchor({
           following: followingRef.current,
@@ -1220,6 +1225,7 @@ function ConversationTimelineImpl({
             contentHeight: element.scrollHeight,
           },
           lastObservedScrollTop: lastObservedScrollTopRef.current,
+          lastObservedContentHeight: lastObservedContentHeightRef.current,
           userScrollIntent: getActiveUserScrollIntent(),
         }),
       );
@@ -1317,7 +1323,6 @@ function ConversationTimelineImpl({
   }, [
     commitFollowing,
     getActiveUserScrollIntent,
-    markLayoutScrollGuard,
     measureElement,
     renderUnitCount === 0,
     scrollToBottom,
@@ -1348,7 +1353,6 @@ function ConversationTimelineImpl({
 
       const scrollElement = scrollRef.current;
       if (!scrollElement) return;
-      markLayoutScrollGuard();
       const following = reconcileFollowingForContentAnchor({
         following: followingRef.current,
         metrics: {
@@ -1357,6 +1361,7 @@ function ConversationTimelineImpl({
           contentHeight: scrollElement.scrollHeight,
         },
         lastObservedScrollTop: lastObservedScrollTopRef.current,
+        lastObservedContentHeight: lastObservedContentHeightRef.current,
         userScrollIntent: getActiveUserScrollIntent(),
       });
       commitFollowing(following);
@@ -1371,7 +1376,6 @@ function ConversationTimelineImpl({
     getActiveUserScrollIntent,
     isContentWidthChanging,
     liveUnit?.key,
-    markLayoutScrollGuard,
     scrollToBottom,
   ]);
 
@@ -1399,6 +1403,7 @@ function ConversationTimelineImpl({
       markProgrammaticScroll();
       element.scrollTop = resolveChatSessionScrollRestoreTop(state, element);
       lastObservedScrollTopRef.current = element.scrollTop;
+      lastObservedContentHeightRef.current = element.scrollHeight;
       followingRef.current = false;
       setBackToBottomVisible(shouldShowBackToBottom(false, renderUnitCountRef.current));
       syncTurnNavigatorViewport(element);
@@ -1420,22 +1425,17 @@ function ConversationTimelineImpl({
       programmaticScrollFrameRef.current !== null &&
       Math.abs(element.scrollTop - lastObservedScrollTopRef.current) < 1;
     const userScrollIntent = getActiveUserScrollIntent();
-    // 用户输入优先；其余 scroll 若落在内容/测高 guard 内视为布局补偿，guard 外的
-    // 未分类事件继续按真实用户滚动处理，兼容原生滚动条和辅助技术。
-    const scrollSource =
-      userScrollIntent !== "none"
-        ? "user"
-        : programmaticScroll
-          ? "programmatic"
-          : Date.now() <= layoutScrollGuardUntilRef.current
-            ? "layout"
-            : "user";
+    // Bug 原因：模型增量、live tail 转虚拟行和异步测高可以晚于 250ms guard
+    // 才触发浏览器 scroll；把这种未分类事件当成用户回底会重新开启 following。
+    // 只有捕获到 wheel/touch/键盘/滚动条意图才允许 scroll 落点恢复跟随。
+    const scrollSource = classifyTimelineScrollSource({ userScrollIntent, programmaticScroll });
     // virtualizer 的原生 offset observer 会先于 React onScroll 入账；到这里即可确认它
     // 已看见恢复后的真实 scrollTop。用户滚动也应立即结束保护窗，把滚动权交还用户。
     if (scrollSource !== "layout") {
       suppressVirtualizerAdjustmentDuringRestoreRef.current = false;
     }
     lastObservedScrollTopRef.current = element.scrollTop;
+    lastObservedContentHeightRef.current = element.scrollHeight;
     syncTurnNavigatorViewport(element);
     const following = resolveFollowingAfterScroll({
       following: followingRef.current,
@@ -1448,6 +1448,7 @@ function ConversationTimelineImpl({
     });
     commitFollowing(following);
     if (scrollSource === "user") {
+      lastUserScrollAtRef.current = Date.now();
       pendingDetachedScrollRestoreRef.current = null;
       userAdjustedScrollSinceRestoreRef.current = true;
       saveCurrentScrollMemory();
@@ -1478,6 +1479,8 @@ function ConversationTimelineImpl({
               start: anchorMeasurement.start,
             }
           : null;
+      // 记录触发瞬间的用户滚动时间基线；commit 时据此判断窗口期内用户是否继续滚动。
+      prependAnchorTriggerUserScrollAtRef.current = lastUserScrollAtRef.current;
       logger.debug("[v4-timeline] 接近历史窗口顶部，自动预取更早行", {
         scrollTop: element.scrollTop,
         triggerPx,
@@ -1535,6 +1538,7 @@ function ConversationTimelineImpl({
           element.scrollTo({ top: targetTop, behavior });
         }
         lastObservedScrollTopRef.current = element.scrollTop;
+        lastObservedContentHeightRef.current = element.scrollHeight;
         syncTurnNavigatorViewport(element);
         logger.debug("[v4-turn-navigator] 定位用户 query", {
           behavior,
@@ -1625,6 +1629,7 @@ function ConversationTimelineImpl({
           element.scrollTo({ top: targetTop, behavior });
         }
         lastObservedScrollTopRef.current = element.scrollTop;
+        lastObservedContentHeightRef.current = element.scrollHeight;
         syncTurnNavigatorViewport(element);
         return;
       }
@@ -1842,15 +1847,19 @@ function ConversationTimelineImpl({
           )
         : undefined;
       if (previousVirtualAnchor && nextAnchorMeasurement) {
-        viewportAdjustment = prependVirtualAnchorAdjustment(
-          previousVirtualAnchor,
-          {
+        viewportAdjustment = resolvePrependVirtualAnchorAdjustment({
+          previous: previousVirtualAnchor,
+          next: {
             key: previousVirtualAnchor.key,
             offsetTop: previousVirtualAnchor.offsetTop,
             start: nextAnchorMeasurement.start,
           },
-          scrollRef.current.scrollTop,
-        );
+          currentScrollTop: scrollRef.current.scrollTop,
+          // 手机经 relay 的 loadOlder 往返可达数百 ms，惯性滑动在此期间持续；
+          // 窗口期内有用户滚动时改用锚点位移公式，避免把视图拽回触发位置。
+          userScrolledSinceTrigger:
+            lastUserScrollAtRef.current > prependAnchorTriggerUserScrollAtRef.current,
+        });
       }
     }
     if (didPrepend) pendingPrependVirtualAnchorRef.current = null;
@@ -1865,10 +1874,10 @@ function ConversationTimelineImpl({
         }));
     if (adjustment !== null && scrollRef.current) {
       const element = scrollRef.current;
-      markLayoutScrollGuard();
       element.scrollTop += adjustment;
       // 程序化平移同样入账，避免被下方贴底对账误读为「未观察滚动」。
       lastObservedScrollTopRef.current = element.scrollTop;
+      lastObservedContentHeightRef.current = element.scrollHeight;
       syncTurnNavigatorViewport(element);
       cacheCurrentScrollMemoryState(element);
       // 一次前插数千行时，measurement cache 与 scrollTop 会在同一 commit
@@ -1892,7 +1901,6 @@ function ConversationTimelineImpl({
   useLayoutEffect(() => {
     if (contentMeasurementPendingRef.current) return;
     const element = scrollRef.current;
-    markLayoutScrollGuard();
     if (element) {
       const following = reconcileFollowingForContentAnchor({
         following: followingRef.current,
@@ -1902,6 +1910,7 @@ function ConversationTimelineImpl({
           contentHeight: element.scrollHeight,
         },
         lastObservedScrollTop: lastObservedScrollTopRef.current,
+        lastObservedContentHeight: lastObservedContentHeightRef.current,
         userScrollIntent: getActiveUserScrollIntent(),
       });
       commitFollowing(following);
@@ -1915,7 +1924,6 @@ function ConversationTimelineImpl({
   }, [
     getActiveUserScrollIntent,
     isContentWidthChanging,
-    markLayoutScrollGuard,
     commitFollowing,
     headerSlotHeight,
     measuredLayoutRevision,
@@ -2140,6 +2148,7 @@ function ConversationTimelineImpl({
                         context={rowContext}
                         onFork={onFork}
                         onRetry={onRetry}
+                        onContinue={onContinue}
                         onFeedbackChange={onFeedbackChange}
                         onEdit={onEdit}
                         topClearedByTimeline={clearsStatusPanel}
@@ -2174,6 +2183,7 @@ function ConversationTimelineImpl({
                     context={rowContext}
                     onFork={onFork}
                     onRetry={onRetry}
+                    onContinue={onContinue}
                     onFeedbackChange={onFeedbackChange}
                     onEdit={onEdit}
                     topClearedByTimeline={sessionStartAtTop && liveUnitIndex === 0}

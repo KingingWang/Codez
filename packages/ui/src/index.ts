@@ -122,3 +122,8 @@ export {
   readPendingTaskDraft,
   readComposerWorkspaceScope,
 } from "@/v4/composer/composerDraftStore.js";
+export {
+  DEFAULT_FEEDBACK_REPOSITORY_URL,
+  buildFeedbackDiagnosticEntries,
+  buildFeedbackPrefilledUrl,
+} from "@/feedback/feedbackDiagnostics.js";

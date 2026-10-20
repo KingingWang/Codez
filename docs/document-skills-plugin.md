@@ -22,7 +22,7 @@
 
 Bootstrap 官方 definition 是内置目录与默认启用的权威来源；Settings 默认名单须与其一致。
 启动 → seed 四个独立缓存 → 重建内置市场分片 → 既有插件发现读取分片 → 暴露 skills/agents。
-缓存分别为 `~/.codez/cli/plugins/cache/zcode-plugins-official/<插件名>/0.1.8/`。
+缓存分别为 `~/.codez/cli/plugins/cache/codez-plugins-official/<插件名>/0.1.8/`。
 每个插件可以独立启停、卸载与恢复，不再发布内置 `document-skills` 条目。
 旧聚合插件缓存和用户配置不删除；重建后的内置分片不再引用旧目录。
 用户另行安装的市场插件仍按既有安装与启用配置处理，不自动改写或卸载。
@@ -31,7 +31,7 @@ Bootstrap 官方 definition 是内置目录与默认启用的权威来源；Sett
 当前内置子代理按插件区分身份色：documents 使用 blue，pdf 使用 red，presentations 使用 purple，spreadsheets 使用 green；颜色只修改各自 agent frontmatter，不改变代理名称、模型或权限。对应版本为 documents/presentations/spreadsheets 0.2.2、pdf 0.2.3，以新的版本缓存发布；Bootstrap definition、package 与插件 manifest 同步升版。上述 0.1.8 是初次拆分的导入记录，后续版本以 definition 与各插件 manifest 为准。
 原 `judge` 名称不再由内置插件提供。每个插件只携带自己的格式 skill；四个插件本身不再声明
 `image_search` MCP，图片搜索由默认启用的 `image-search` 插件提供，版本为 `0.1.1`，通过既有官方 JWT 认证访问 `${CODEZ_BASE_URL}/api/v1/mcp/server/image_search`；不新增本地 MCP runtime。
-`image-search` 缓存路径为 `~/.codez/cli/plugins/cache/zcode-plugins-official/image-search/0.1.1/`。
+`image-search` 缓存路径为 `~/.codez/cli/plugins/cache/codez-plugins-official/image-search/0.1.1/`。
 
 ## 打包与验收
 

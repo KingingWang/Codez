@@ -20,7 +20,7 @@ Anthropic path, so the denominator must not add cache fields again.
 - `hitRateRequestCount`, `totalInputTokens`, `totalCacheReadTokens`, and `totalCacheWriteTokens` describe the aggregate window used to compute `hitRate`.
 - Codez Protocol snapshot returns the value at `runtime.contextUsage.cache`.
 - Task stream emits the same value on `usage_update.cache`, so desktop `continuous` and mobile `/remote` `replayable` clients consume one shared payload.
-- UI displays `cache.hitRate` in the chat input context panel when the field is present. Production builds keep the aggregate `0.78` (78%) threshold so lower rates do not distract from context capacity; development builds always display every valid rate to make provider cache diagnostics observable. It does not invent a fallback when the provider omits cache usage, and it does not infer cache hit rate from task cumulative token usage.
+- UI displays `cache.hitRate` in the chat input context panel whenever a valid rate is present (or when observed session cumulative input and cache-read tokens provide a valid ratio), alongside the session cumulative token summary. Per-turn assistant status bars also display each turn's token usage and cache hit rate with a hover breakdown of turn and session cumulative tokens.
 
 ## Context Source Breakdown
 

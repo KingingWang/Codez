@@ -341,6 +341,14 @@ export interface HighspeedMessageMetadata {
     | "highspeed_selection_unavailable";
 }
 
+/** Codez Agent intent 只接受自身模式；custom 由 Codex bridge 处理。 */
+export function contractIntentMode(
+  mode: string | undefined,
+): "build" | "edit" | "plan" | "yolo" | "guarded" | undefined {
+  return mode === "build" || mode === "edit" || mode === "plan" ||
+    mode === "yolo" || mode === "guarded" ? mode : undefined;
+}
+
 /**
  * 协议无关的输入 intent metadata；bootstrap v4 在事件边界组装为 ConversationInputIntent。
  * 与 @codez/shared 的 conversationInputSourceSchema 一一对应（docs/design/v2/conversation-input-source.md）。

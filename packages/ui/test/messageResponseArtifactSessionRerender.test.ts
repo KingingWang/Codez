@@ -1,0 +1,65 @@
+// @vitest-environment jsdom
+import { createElement } from "react";
+import { render, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { MessageResponse } from "@/components/ai-elements/message.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
+import { clearArtifactImageCache } from "@/components/ai-elements/artifactImageCache.js";
+
+afterEach(() => {
+  clearArtifactImageCache();
+  vi.restoreAllMocks();
+});
+
+describe("MessageResponse artifact session changes", () => {
+  it("releases the old image and reads through the new session context", async () => {
+    const ref = "codez-artifact://session-a/cua-shot";
+    const markdown = `![shot](${ref})`;
+    const readSessionA = vi.fn().mockResolvedValue({
+      bytes: new Uint8Array([1]),
+      mediaType: "image/png",
+    });
+    const readSessionB = vi.fn().mockResolvedValue({
+      bytes: new Uint8Array([2]),
+      mediaType: "image/png",
+    });
+    vi.spyOn(URL, "createObjectURL")
+      .mockReturnValueOnce("blob:session-a")
+      .mockReturnValueOnce("blob:session-b");
+    const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+
+    const renderMessage = (sessionId: string, readAttachment: typeof readSessionA) =>
+      createElement(
+        CodezIntlProvider,
+        { initialLocale: "zh-CN" },
+        createElement(
+          MessageResponse,
+          {
+            sessionId,
+            readAttachment,
+            theme: "light",
+            workspacePath: "/workspace",
+          },
+          markdown,
+        ),
+      );
+
+    const rendered = render(renderMessage("session-a", readSessionA));
+    await waitFor(() =>
+      expect(rendered.container.querySelector("img")?.getAttribute("src")).toBe("blob:session-a"),
+    );
+
+    rendered.rerender(renderMessage("session-b", readSessionB));
+
+    await waitFor(() =>
+      expect(rendered.container.querySelector("img")?.getAttribute("src")).toBe("blob:session-b"),
+    );
+    // objectURL 所有权移交模块级缓存（bridge 重挂复用，避免重复下载）：切换 session
+    // 不再立即回收旧 URL，由缓存 LRU 逐出/清空时统一回收。
+    expect(revoke).not.toHaveBeenCalledWith("blob:session-a");
+    clearArtifactImageCache();
+    expect(revoke).toHaveBeenCalledWith("blob:session-a");
+    expect(readSessionA).toHaveBeenCalledTimes(1);
+    expect(readSessionB).toHaveBeenCalledWith({ sessionId: "session-b", ref });
+  });
+});

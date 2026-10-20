@@ -9,7 +9,10 @@ import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createConfig } from "@codez/adapters/config";
-import { DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS } from "@codez/shared";
+import {
+  CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
+  DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS,
+} from "@codez/shared";
 import { CODEZ_PLUGIN_HOST_COMMAND } from "@codez/contracts";
 import type { Logger, PluginDiscoverRequest } from "@codez/contracts";
 import { describe, expect, it, vi } from "vitest";
@@ -44,12 +47,13 @@ import {
 } from "../src/plugins.js";
 import { StartupTimer } from "../src/startup-logging.js";
 
-const IOS_SIMULATOR_PLUGIN_ID = "ios-simulator@zcode-plugins-official";
+// 本地 seed/API 使用 Codez canonical 身份；上游 ZCode 发布身份只在官方源验证后映射。
+const IOS_SIMULATOR_PLUGIN_ID = `ios-simulator@${CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID}`;
 
 it("Settings 默认启用集合与 CLI 的官方插件声明一致", () => {
   expect([...DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS].sort()).toEqual(
     OFFICIAL_PLUGIN_DEFINITIONS.filter((definition) => definition.defaultEnabled)
-      .map((definition) => `${definition.name}@zcode-plugins-official`)
+      .map((definition) => `${definition.name}@${CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID}`)
       .sort(),
   );
 });
@@ -61,24 +65,36 @@ it("computer-use 默认不启用（电脑控制需用户在设置页显式开启
   const cua = OFFICIAL_PLUGIN_DEFINITIONS.find((definition) => definition.name === "computer-use");
   expect(cua).toBeDefined();
   expect(cua?.defaultEnabled ?? false).toBe(false);
-  expect(DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS.has("computer-use@zcode-plugins-official")).toBe(
-    false,
-  );
+  expect(
+    DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS.has(`computer-use@${CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID}`),
+  ).toBe(false);
 });
+
 it("design 默认关闭，等待用户安装或启用", () => {
   const design = OFFICIAL_PLUGIN_DEFINITIONS.find((definition) => definition.name === "design");
   expect(design).toBeDefined();
   expect(design?.defaultEnabled ?? false).toBe(false);
-  expect(DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS.has("design@zcode-plugins-official")).toBe(false);
+  expect(
+    DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS.has(`design@${CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID}`),
+  ).toBe(false);
 });
 
-const ANDROID_EMULATOR_PLUGIN_ID = "android-emulator@zcode-plugins-official";
+const ANDROID_EMULATOR_PLUGIN_ID = `android-emulator@${CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID}`;
 const IOS_SIMULATOR_MCP_ID = "plugin:ios-simulator:ios-simulator";
 const ANDROID_EMULATOR_MCP_ID = "plugin:android-emulator:android-emulator";
-const BROWSER_USE_PLUGIN_ID = "browser-use@zcode-plugins-official";
-const DOCUMENTS_PLUGIN_ID = "documents@zcode-plugins-official";
-const RESTORE_LEGACY_SESSIONS_PLUGIN_ID = "restore-legacy-sessions@zcode-plugins-official";
-const SKILL_CREATOR_PLUGIN_ID = "skill-creator@zcode-plugins-official";
+const BROWSER_USE_PLUGIN_ID = `browser-use@${CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID}`;
+const DOCUMENTS_PLUGIN_ID = `documents@${CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID}`;
+const RESTORE_LEGACY_SESSIONS_PLUGIN_ID = `restore-legacy-sessions@${CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID}`;
+const SKILL_CREATOR_PLUGIN_ID = `skill-creator@${CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID}`;
+const CODEZ_GUIDE_PLUGIN_ID = `codez-guide@${CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID}`;
+const OFFICIAL_COMPUTER_USE_PLUGIN_CACHE_PATH = join(
+  "cache",
+  CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
+  "computer-use",
+  // 从官方定义推导，不硬编码：producer bump 会改定义版本，硬编码过一次就漂过一次——
+  // 2026-09-11 bump 到 0.5.14 时这里还写着 0.5.13，packaged glm seed 用例一直找不存在的目录。
+  OFFICIAL_PLUGIN_DEFINITIONS.find((definition) => definition.name === "computer-use")!.version,
+);
 
 function createNoopStartupTimer(): StartupTimer {
   const noop = () => {};
@@ -93,27 +109,45 @@ function createNoopStartupTimer(): StartupTimer {
 }
 const OFFICIAL_PLUGIN_CACHE_PATH = join(
   "cache",
-  "zcode-plugins-official",
+  CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
   "ios-simulator",
   "0.1.0",
 );
 const OFFICIAL_ANDROID_PLUGIN_CACHE_PATH = join(
   "cache",
-  "zcode-plugins-official",
+  CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
   "android-emulator",
   "0.1.1",
 );
+const OFFICIAL_BROWSER_USE_PLUGIN_CACHE_PATH = join(
+  "cache",
+  CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
+  "browser-use",
+  "0.5.1",
+);
+const OFFICIAL_DOCUMENTS_PLUGIN_CACHE_PATH = join(
+  "cache",
+  CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
+  "documents",
+  "0.1.6",
+);
 const OFFICIAL_RESTORE_LEGACY_SESSIONS_PLUGIN_CACHE_PATH = join(
   "cache",
-  "zcode-plugins-official",
+  CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
   "restore-legacy-sessions",
   "0.1.0",
 );
 const OFFICIAL_SKILL_CREATOR_PLUGIN_CACHE_PATH = join(
   "cache",
-  "zcode-plugins-official",
+  CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
   "skill-creator",
   "0.1.0",
+);
+const OFFICIAL_CODEZ_GUIDE_PLUGIN_CACHE_PATH = join(
+  "cache",
+  CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
+  "codez-guide",
+  "0.3.0",
 );
 const BUNDLED_PLUGIN_DIST_PATH = fileURLToPath(
   new URL("../../ios-simulator-plugin/dist/mcp/server.js", import.meta.url),
@@ -308,7 +342,7 @@ describe("Codez plugins", () => {
       await writeFile(
         userConfigPath,
         JSON.stringify({
-          plugins: { enabledPlugins: { "documents@zcode-plugins-official": false } },
+          plugins: { enabledPlugins: { [DOCUMENTS_PLUGIN_ID]: false } },
         }),
       );
       const outcome = await resolveCodezPlugins({
@@ -360,7 +394,9 @@ describe("Codez plugins", () => {
         workingDirectory: root,
       });
 
-      expect(outcome.pluginListingsById?.["computer-use@zcode-plugins-official"]).toMatchObject({
+      expect(
+        outcome.pluginListingsById?.[`computer-use@${CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID}`],
+      ).toMatchObject({
         displayName: "Computer Use",
       });
       expect(outcome.pluginListingsById?.["computer-use@custom-marketplace"]).toMatchObject({
@@ -394,7 +430,12 @@ describe("Codez plugins", () => {
       // Synthetic marketplace.json 保留被抑制插件，避免详情请求变成 plugin_not_found。
       const manifest = JSON.parse(
         await readFile(
-          join(pluginStorageRoot, "marketplaces", "zcode-plugins-official", "marketplace.json"),
+          join(
+            pluginStorageRoot,
+            "marketplaces",
+            CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
+            "marketplace.json",
+          ),
           "utf8",
         ),
       );
@@ -650,7 +691,7 @@ describe("Codez plugins", () => {
     const root = await mkdtemp(join(tmpdir(), "codez-bootstrap-restorable-ui-"));
     const pluginStorageRoot = join(root, "plugins");
     const userConfigPath = join(root, "config.json");
-    const documentsId = "documents@zcode-plugins-official";
+    const documentsId = DOCUMENTS_PLUGIN_ID;
 
     try {
       await writeFile(
@@ -689,13 +730,13 @@ describe("Codez plugins", () => {
       expect(overview.marketplaces).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            id: "zcode-plugins-official",
+            id: CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
             isOfficial: true,
-            name: "zcode-plugins-official",
+            name: CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
             pluginCount: 16,
             source: {
               source: "url",
-              url: "https://cdn-zcode.z.ai/codez/official-plugin/marketplace.json",
+              url: "https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json",
             },
           }),
           expect.objectContaining({
@@ -715,7 +756,7 @@ describe("Codez plugins", () => {
       ).toMatchObject({
         marketplaces: [
           expect.objectContaining({
-            id: "zcode-plugins-official",
+            id: CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
           }),
           expect.objectContaining({
             id: "claude-plugins-official",
@@ -1183,11 +1224,11 @@ describe("Codez plugins", () => {
     const root = await mkdtemp(join(tmpdir(), "codez-bootstrap-uninstall-official-cdn-"));
     const pluginStorageRoot = join(root, "plugins");
     const userConfigPath = join(root, "config.json");
-    const pluginId = "example-plugin@zcode-plugins-official";
+    const pluginId = `example-plugin@${CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID}`;
     const installPath = join(
       pluginStorageRoot,
       "cache",
-      "zcode-plugins-official",
+      CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
       "example-plugin",
       "0.2.0",
     );
@@ -1210,7 +1251,7 @@ describe("Codez plugins", () => {
             {
               id: pluginId,
               name: "example-plugin",
-              marketplace: "zcode-plugins-official",
+              marketplace: CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
               version: "0.2.0",
               installPath,
               installedAt: "2026-07-15T00:00:00.000Z",
@@ -1256,11 +1297,11 @@ describe("Codez plugins", () => {
     const root = await mkdtemp(join(tmpdir(), "codez-bootstrap-uninstall-stale-suppression-"));
     const pluginStorageRoot = join(root, "plugins");
     const userConfigPath = join(root, "config.json");
-    const pluginId = "example-plugin@zcode-plugins-official";
+    const pluginId = `example-plugin@${CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID}`;
     const installPath = join(
       pluginStorageRoot,
       "cache",
-      "zcode-plugins-official",
+      CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
       "example-plugin",
       "0.2.0",
     );
@@ -1278,7 +1319,7 @@ describe("Codez plugins", () => {
             {
               id: pluginId,
               name: "example-plugin",
-              marketplace: "zcode-plugins-official",
+              marketplace: CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
               version: "0.2.0",
               installPath,
               installedAt: "2026-07-15T00:00:00.000Z",
@@ -1361,7 +1402,7 @@ describe("Codez plugins", () => {
 
       const detail = await describeCodezPlugin({
         pluginName: "skill-creator",
-        marketplace: "zcode-plugins-official",
+        marketplace: CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
         pluginStorageRoot,
         userConfigPath,
         workingDirectory: root,
@@ -1543,7 +1584,7 @@ describe("Codez plugins", () => {
       });
 
       const result = await installCodezMarketplacePlugin({
-        marketplace: "zcode-plugins-official",
+        marketplace: CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
         pluginName: "skill-creator",
         pluginStorageRoot,
         userConfigPath,
@@ -1602,7 +1643,7 @@ describe("Codez plugins", () => {
       const manifestPath = join(
         pluginStorageRoot,
         "marketplaces",
-        "zcode-plugins-official",
+        CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
         "marketplace.json",
       );
       const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as {
@@ -1615,7 +1656,7 @@ describe("Codez plugins", () => {
       await writeFile(manifestPath, JSON.stringify(manifest));
 
       const result = await installCodezMarketplacePlugin({
-        marketplace: "zcode-plugins-official",
+        marketplace: CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
         pluginName: "documents",
         pluginStorageRoot,
         userConfigPath,
@@ -1845,7 +1886,8 @@ describe("Codez plugins", () => {
       await writeTestFile(
         join(targetRoot, ".codez-plugin-seed.json"),
         JSON.stringify({
-          marketplace: "zcode-plugins-official",
+          hash: hashText(JSON.stringify(seedFiles.map(({ path, sha256 }) => [path, sha256]))),
+          marketplace: CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
           plugin: "skill-creator",
           pluginVersion: "0.0.0",
           source: "filesystem",
@@ -1977,7 +2019,7 @@ describe("Codez plugins", () => {
       expect(server?.args?.at(-1)).toContain(
         join(
           "cache",
-          "zcode-plugins-official",
+          CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
           "ios-simulator",
           "0.1.0",
           "dist",
@@ -1987,7 +2029,12 @@ describe("Codez plugins", () => {
       );
       await expect(
         readFile(
-          join(pluginStorageRoot, "marketplaces", "zcode-plugins-official", "marketplace.json"),
+          join(
+            pluginStorageRoot,
+            "marketplaces",
+            CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
+            "marketplace.json",
+          ),
           "utf8",
         ),
       ).resolves.toContain(IOS_SIMULATOR_PLUGIN_ID.split("@")[0] ?? "ios-simulator");
@@ -2074,7 +2121,7 @@ describe("Codez plugins", () => {
       expect(server?.args?.at(-1)).toContain(
         join(
           "cache",
-          "zcode-plugins-official",
+          CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
           "android-emulator",
           "0.1.1",
           "dist",
@@ -2621,7 +2668,7 @@ describe("Codez plugins", () => {
         JSON.stringify({
           plugins: {
             extraKnownMarketplaces: {
-              "zcode-plugins-official": {
+              [CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID]: {
                 source: { source: "directory", path: "./untrusted-official" },
               },
             },
@@ -2637,19 +2684,21 @@ describe("Codez plugins", () => {
       });
 
       expect(
-        overview.marketplaces.find((marketplace) => marketplace.id === "zcode-plugins-official"),
+        overview.marketplaces.find(
+          (marketplace) => marketplace.id === CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
+        ),
       ).toMatchObject({
         pluginCount: 16,
         source: {
           source: "url",
-          url: "https://cdn-zcode.z.ai/codez/official-plugin/marketplace.json",
+          url: "https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json",
         },
       });
       expect(overview.diagnostics).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             code: "plugin_marketplace_declaration_reserved",
-            pluginId: "zcode-plugins-official",
+            pluginId: CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID,
             severity: "warning",
           }),
         ]),

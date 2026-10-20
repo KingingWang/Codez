@@ -31,6 +31,9 @@ function hasChatLoadingBlockingMaintenanceRow(rows: readonly ConversationRow[]):
     (row) =>
       row.kind === "timelineMarker" &&
       ((row.marker.type === "compact" && row.marker.status === "running") ||
+        (row.marker.type === "codexEvent" &&
+          row.marker.event === "contextCompaction" &&
+          row.marker.status === "running") ||
         (row.marker.type === "goalVerify" && row.marker.outcome === "running")),
   );
 }

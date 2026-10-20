@@ -17,7 +17,7 @@ describe("shouldIncludeStreamResponseBody", () => {
     vi.resetModules();
   });
 
-  it("enables responseBody capture for codez-plan openai-compatible providers", () => {
+  it("enables responseBody capture for zcode-plan openai-compatible providers", () => {
     expect(
       shouldIncludeStreamResponseBody(
         resolved({
@@ -302,7 +302,368 @@ describe("createStreamTextOptions", () => {
     },
   );
 
-  it("passes experimental_include.responseBody for codez-plan streams", () => {
+  it.each(["openai", "openai-compatible", "gateway", "custom"] as const)(
+    "keeps normal model capability budget for %s providers",
+    (providerKind) => {
+      const options = createGenerateTextOptions({
+        includeModelIO: false,
+        request: {
+          maxOutputTokens: 131_072,
+          maxOutputTokensSource: "model-capability",
+          messages: [{ role: "user", content: "hi" }],
+        },
+        resolved: resolved({
+          model: {} as ResolvedAiSdkModel["model"],
+          ref: { providerId: "provider", modelId: "model" },
+          providerKind,
+        }),
+        statusContext: {
+          model: { providerId: "provider", modelId: "model" },
+          providerKind,
+          requestId: `req_${providerKind}`,
+          sessionId: `sess_${providerKind}`,
+          traceId: `trace_${providerKind}`,
+        } as never,
+      });
+
+      expect(options.maxOutputTokens).toBe(131_072);
+    },
+  );
+
+  it("keeps the Compact summary budget for OpenAI-compatible runtime-default requests", () => {
+    const generateOptions = createGenerateTextOptions({
+      includeModelIO: false,
+      request: {
+        maxOutputTokens: 20_000,
+        maxOutputTokensSource: "runtime-default",
+        messages: [{ role: "user", content: "hi" }],
+      },
+      resolved: resolved({
+        model: {} as ResolvedAiSdkModel["model"],
+        ref: { providerId: "custom-openai-compatible", modelId: "generic-reasoning-model" },
+        providerKind: "openai-compatible",
+        baseURL: "https://api.example.test/v1",
+      }),
+      statusContext: {
+        model: { providerId: "custom-openai-compatible", modelId: "generic-reasoning-model" },
+        providerKind: "openai-compatible",
+        requestId: "req_openai_compatible_default_generate",
+        sessionId: "sess_openai_compatible_default_generate",
+        traceId: "trace_openai_compatible_default_generate",
+      } as never,
+    });
+    const streamOptions = createStreamTextOptions({
+      includeModelIO: false,
+      request: {
+        maxOutputTokens: 20_000,
+        maxOutputTokensSource: "runtime-default",
+        messages: [{ role: "user", content: "hi" }],
+      },
+      resolved: resolved({
+        model: {} as ResolvedAiSdkModel["model"],
+        ref: { providerId: "custom-openai-compatible", modelId: "generic-reasoning-model" },
+        providerKind: "openai-compatible",
+        baseURL: "https://api.example.test/v1",
+      }),
+      statusContext: {
+        model: { providerId: "custom-openai-compatible", modelId: "generic-reasoning-model" },
+        providerKind: "openai-compatible",
+        requestId: "req_openai_compatible_default_stream",
+        sessionId: "sess_openai_compatible_default_stream",
+        traceId: "trace_openai_compatible_default_stream",
+      } as never,
+    });
+
+    expect(generateOptions.maxOutputTokens).toBe(20_000);
+    expect(streamOptions.maxOutputTokens).toBe(20_000);
+  });
+
+  it("lets the canonical budget override native OpenAI-compatible output params", () => {
+    for (const createOptions of [createGenerateTextOptions, createStreamTextOptions]) {
+      const options = createOptions({
+        includeModelIO: false,
+        request: {
+          maxOutputTokens: 64_000,
+          maxOutputTokensSource: "runtime-default",
+          messages: [{ role: "user", content: "hi" }],
+          providerOptions: {
+            openaiCompatible: {
+              extra_body: {
+                max_tokens: 32_768,
+                vendor_flag: true,
+              },
+            },
+          },
+        },
+        resolved: resolved({
+          model: {} as ResolvedAiSdkModel["model"],
+          ref: { providerId: "custom-openai-compatible", modelId: "large-output-model" },
+          providerKind: "openai-compatible",
+          baseURL: "https://api.example.test/v1",
+          providerOptionsName: "Custom Compatible",
+        } as Partial<ResolvedAiSdkModel> & { providerOptionsName: string }),
+        statusContext: {
+          model: { providerId: "custom-openai-compatible", modelId: "large-output-model" },
+          providerKind: "openai-compatible",
+          requestId: "req_openai_compatible_native_max_tokens",
+          sessionId: "sess_openai_compatible_native_max_tokens",
+          traceId: "trace_openai_compatible_native_max_tokens",
+        } as never,
+      });
+
+      expect(options.maxOutputTokens).toBe(64_000);
+      expect(options.providerOptions).toEqual({
+        openaiCompatible: {
+          extra_body: { vendor_flag: true },
+        },
+        "Custom Compatible": { vendor_flag: true },
+      });
+    }
+  });
+
+  it("keeps native output params for legacy requests without a canonical budget", () => {
+    const options = createGenerateTextOptions({
+      includeModelIO: false,
+      request: {
+        messages: [{ role: "user", content: "hi" }],
+        providerOptions: {
+          openaiCompatible: { extra_body: { max_tokens: 32_768 } },
+        },
+      },
+      resolved: resolved({
+        model: {} as ResolvedAiSdkModel["model"],
+        ref: { providerId: "custom-openai-compatible", modelId: "legacy-model" },
+        providerKind: "openai-compatible",
+        providerOptionsName: "Custom Compatible",
+      } as Partial<ResolvedAiSdkModel> & { providerOptionsName: string }),
+      statusContext: {
+        model: { providerId: "custom-openai-compatible", modelId: "legacy-model" },
+        providerKind: "openai-compatible",
+        requestId: "req_legacy_native_max_tokens",
+        sessionId: "sess_legacy_native_max_tokens",
+        traceId: "trace_legacy_native_max_tokens",
+      } as never,
+    });
+
+    expect(options.maxOutputTokens).toBeUndefined();
+    expect(options.providerOptions).toMatchObject({
+      "Custom Compatible": { max_tokens: 32_768 },
+    });
+  });
+
+  it("keeps explicit Anthropic runtime-default output tokens", () => {
+    const options = createGenerateTextOptions({
+      includeModelIO: false,
+      request: {
+        maxOutputTokens: 131_072,
+        maxOutputTokensSource: "runtime-default",
+        messages: [{ role: "user", content: "hi" }],
+      },
+      resolved: resolved({
+        model: {} as ResolvedAiSdkModel["model"],
+        ref: { providerId: "custom-anthropic-compatible", modelId: "generic-reasoning-model" },
+        providerKind: "anthropic",
+        baseURL: "https://api.example.test/anthropic",
+      }),
+      statusContext: {
+        model: { providerId: "custom-anthropic-compatible", modelId: "generic-reasoning-model" },
+        providerKind: "anthropic",
+        requestId: "req_anthropic_runtime_default",
+        sessionId: "sess_anthropic_runtime_default",
+        traceId: "trace_anthropic_runtime_default",
+      } as never,
+    });
+
+    expect(options.maxOutputTokens).toBe(131_072);
+  });
+
+  it("keeps the Compact summary budget on Anthropic requests", () => {
+    for (const createOptions of [createGenerateTextOptions, createStreamTextOptions]) {
+      const options = createOptions({
+        includeModelIO: false,
+        request: {
+          maxOutputTokens: 20_000,
+          maxOutputTokensSource: "runtime-default",
+          messages: [{ role: "user", content: "hi" }],
+        },
+        resolved: resolved({
+          model: {} as ResolvedAiSdkModel["model"],
+          ref: { providerId: "custom-anthropic-compatible", modelId: "generic-reasoning-model" },
+          providerKind: "anthropic",
+          baseURL: "https://api.example.test/anthropic",
+        }),
+        statusContext: {
+          model: { providerId: "custom-anthropic-compatible", modelId: "generic-reasoning-model" },
+          providerKind: "anthropic",
+          requestId: "req_anthropic_compact_independent_cap",
+          sessionId: "sess_anthropic_compact_independent_cap",
+          traceId: "trace_anthropic_compact_independent_cap",
+        } as never,
+      });
+
+      expect(options.maxOutputTokens).toBe(20_000);
+    }
+  });
+
+  it("unwraps OpenAI-compatible extra_body into the SDK provider namespace", () => {
+    const options = createStreamTextOptions({
+      includeModelIO: false,
+      request: {
+        messages: [{ role: "user", content: "hi" }],
+        providerOptions: {
+          openaiCompatible: {
+            extra_body: {
+              chat_template_kwargs: {
+                reasoning_effort: "max",
+              },
+            },
+          },
+        },
+      },
+      resolved: resolved({
+        model: {} as ResolvedAiSdkModel["model"],
+        ref: { providerId: "custom-glm", modelId: "GLM-5.2" },
+        providerKind: "openai-compatible",
+        baseURL: "https://api.example.test/v1",
+        providerOptionsName: "GLM52 E2E",
+      } as Partial<ResolvedAiSdkModel> & { providerOptionsName: string }),
+      statusContext: {
+        model: { providerId: "custom-glm", modelId: "GLM-5.2" },
+        providerKind: "openai-compatible",
+        requestId: "req_glm52",
+        sessionId: "sess_glm52",
+        traceId: "trace_glm52",
+      } as never,
+    });
+
+    expect(options.providerOptions).toEqual({
+      openaiCompatible: {
+        extra_body: {
+          chat_template_kwargs: {
+            reasoning_effort: "max",
+          },
+        },
+      },
+      "GLM52 E2E": {
+        chat_template_kwargs: {
+          reasoning_effort: "max",
+        },
+      },
+    });
+  });
+
+  it("preserves raw and sibling namespaces while projecting canonical options", () => {
+    const options = createStreamTextOptions({
+      includeModelIO: false,
+      request: {
+        messages: [{ role: "user", content: "hi" }],
+        providerOptions: {
+          openaiCompatible: {
+            extra_body: {
+              mode: "legacy",
+              thinking: { type: "enabled" },
+            },
+            mode: "direct",
+            reasoningEffort: "max",
+          },
+          "foo-bar": {
+            rawOnly: true,
+          },
+          fooBar: {
+            camelOnly: true,
+          },
+          "openai-compatible": {
+            legacyOnly: true,
+          },
+          anthropic: {
+            siblingOnly: true,
+          },
+        },
+      },
+      resolved: resolved({
+        model: {} as ResolvedAiSdkModel["model"],
+        ref: { providerId: "foo-bar", modelId: "reasoning-model" },
+        providerKind: "openai-compatible",
+        baseURL: "https://api.example.test/v1",
+        providerOptionsName: "foo-bar",
+      } as Partial<ResolvedAiSdkModel> & { providerOptionsName: string }),
+      statusContext: {
+        model: { providerId: "foo-bar", modelId: "reasoning-model" },
+        providerKind: "openai-compatible",
+        requestId: "req_namespace_pass_through",
+        sessionId: "sess_namespace_pass_through",
+        traceId: "trace_namespace_pass_through",
+      } as never,
+    });
+
+    expect(options.providerOptions).toEqual({
+      openaiCompatible: {
+        extra_body: {
+          mode: "legacy",
+          thinking: { type: "enabled" },
+        },
+        mode: "direct",
+        reasoningEffort: "max",
+      },
+      "foo-bar": {
+        mode: "direct",
+        rawOnly: true,
+        reasoningEffort: "max",
+        thinking: { type: "enabled" },
+      },
+      fooBar: {
+        camelOnly: true,
+      },
+      "openai-compatible": {
+        legacyOnly: true,
+      },
+      anthropic: {
+        siblingOnly: true,
+      },
+    });
+  });
+
+  it("rejects a non-object canonical extra_body", () => {
+    let error: unknown;
+
+    try {
+      createGenerateTextOptions({
+        includeModelIO: false,
+        request: {
+          messages: [{ role: "user", content: "hi" }],
+          providerOptions: {
+            openaiCompatible: {
+              extra_body: [],
+            },
+          },
+        },
+        resolved: resolved({
+          model: {} as ResolvedAiSdkModel["model"],
+          ref: { providerId: "custom-compatible", modelId: "reasoning-model" },
+          providerKind: "openai-compatible",
+          baseURL: "https://api.example.test/v1",
+          providerOptionsName: "Custom Compatible",
+        } as Partial<ResolvedAiSdkModel> & { providerOptionsName: string }),
+        statusContext: {
+          model: { providerId: "custom-compatible", modelId: "reasoning-model" },
+          providerKind: "openai-compatible",
+          requestId: "req_invalid_extra_body",
+          sessionId: "sess_invalid_extra_body",
+          traceId: "trace_invalid_extra_body",
+        } as never,
+      });
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error).toBeInstanceOf(AiSdkModelAdapterError);
+    expect(error).toMatchObject({
+      code: ModelErrorCode.InvalidModelRequest,
+      message: "openaiCompatible.extra_body 必须是对象",
+    } satisfies Partial<AiSdkModelAdapterError>);
+  });
+
+  it("passes experimental_include.responseBody for zcode-plan streams", () => {
     const options = createStreamTextOptions({
       includeModelIO: false,
       request: {

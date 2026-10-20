@@ -3940,7 +3940,7 @@ async function seedE2EBuiltinWorkspacePluginDisable(specs: string[] = []) {
     return;
   }
 
-  const pluginId = "skill-creator@zcode-plugins-official";
+  const pluginId = "skill-creator@codez-plugins-official";
   const workspaceA = resolve(E2E_HOME_DIR, "CodezProject");
   const workspaceB = resolve(E2E_HOME_DIR, "WorkspaceB");
   const userConfig = await readOptionalE2ECliConfig(E2E_CLI_CONFIG_FILE);
