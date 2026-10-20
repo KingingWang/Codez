@@ -123,11 +123,12 @@ describe("terminal 与 V2 假 relay 的线级契约", () => {
     expect(
       h.terminal.sendPayload({ codez_type: "bootstrap-request", requestId: "compat-bootstrap" }),
     ).toBe(true);
+    // relay wire 沿用上游 zcode_type，应用内 codez_type 只在收发边界归一。
     await vi.waitFor(() =>
       expect(h.received).toContainEqual(
         expect.objectContaining({
           type: "data",
-          payload: { codez_type: "bootstrap-request", requestId: "compat-bootstrap" },
+          payload: { zcode_type: "bootstrap-request", requestId: "compat-bootstrap" },
         }),
       ),
     );

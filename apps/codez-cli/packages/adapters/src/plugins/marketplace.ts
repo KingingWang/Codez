@@ -628,7 +628,7 @@ async function loadClaudePluginIconSources(
       controller.signal,
       10_000,
     );
-    const value = response;
+    const value = response.value;
     const parsed = parsePluginIconSources(value);
     if (parsed.size === 0) return cached();
     // 缓存只保留产品需要的字段，不落盘素材源机器路径等 provenance 信息。
