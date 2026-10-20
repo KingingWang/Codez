@@ -1072,7 +1072,9 @@ describe("SourceServerConnectionManager", () => {
     expect(adapter.ensureDaemon).toHaveBeenCalledOnce();
   });
 
-  it("does not compare or refresh a same-version SSH archive in production policy", async () => {
+  it("requires an update when the production release archive SHA drifts at the same version", async () => {
+    // 回归：fork 每次推送发布同一 app 版本的新 archive，仅按版本兼容判定曾让远端
+    // 停在旧构建（缺 Codex 运行时），连接成功但 codex/request 全部 Method not found。
     const adapter = createAdapter(true, "ssh");
     vi.mocked(adapter.probe).mockResolvedValue({
       platform: "linux",
@@ -1080,6 +1082,43 @@ describe("SourceServerConnectionManager", () => {
       installed: true,
       installedVersion: "3.8.0",
       installedArchiveSha256: "b".repeat(64),
+    });
+    const resolveRelease = vi.fn(async () => createRelease("3.8.0"));
+    const manager = new SourceServerConnectionManager({
+      directory: { recordHandshake: vi.fn().mockResolvedValue({ identityChanged: false }) },
+      createAdapter: () => adapter,
+      connectServer: vi.fn(),
+      compatibilityManifest: serverInfo.compatibility!,
+      sourceServerArtifactPolicy: "release-versioned",
+      resolveRelease,
+    });
+
+    const failure = await manager
+      .connect({ profile: sshProfile, target: sshTarget })
+      .catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(SourceServerUpgradeRequiredError);
+    expect((failure as SourceServerUpgradeRequiredError).reason).toBe("release-archive-drift");
+    expect(resolveRelease).toHaveBeenCalledOnce();
+    expect(adapter.installOrUpdate).not.toHaveBeenCalled();
+    expect(adapter.ensureDaemon).not.toHaveBeenCalled();
+    expect(manager.getStateByProfile(profileId)).toMatchObject({
+      state: "needs-upgrade",
+      updateAvailability: "required",
+      currentVersion: "3.8.0",
+      availableVersion: "3.8.0",
+      upgradeTarget: "server",
+      errorCode: "source-server-upgrade-required",
+    });
+  });
+
+  it("connects without an update when the production release archive SHA matches", async () => {
+    const adapter = createAdapter(true, "ssh");
+    vi.mocked(adapter.probe).mockResolvedValue({
+      platform: "linux",
+      arch: "x64",
+      installed: true,
+      installedVersion: "3.8.0",
+      installedArchiveSha256: "a".repeat(64),
     });
     const resolveRelease = vi.fn(async () => createRelease("3.8.0"));
     const manager = new SourceServerConnectionManager({
@@ -1097,8 +1136,39 @@ describe("SourceServerConnectionManager", () => {
 
     await manager.connect({ profile: sshProfile, target: sshTarget });
 
-    expect(resolveRelease).not.toHaveBeenCalled();
     expect(adapter.installOrUpdate).not.toHaveBeenCalled();
+    expect(adapter.ensureDaemon).toHaveBeenCalledOnce();
+  });
+
+  it("keeps connecting when the production drift check cannot resolve the release", async () => {
+    // 离线或 Release 尚未发布时漂移判定降级跳过：元数据故障不能阻断仍兼容的 Server。
+    const adapter = createAdapter(true, "ssh");
+    vi.mocked(adapter.probe).mockResolvedValue({
+      platform: "linux",
+      arch: "x64",
+      installed: true,
+      installedVersion: "3.8.0",
+      installedArchiveSha256: "b".repeat(64),
+    });
+    const manager = new SourceServerConnectionManager({
+      directory: { recordHandshake: vi.fn().mockResolvedValue({ identityChanged: false }) },
+      createAdapter: () => adapter,
+      connectServer: vi.fn(async () => ({
+        serverInfo,
+        services: {} as IServiceAccessor,
+        dispose: vi.fn(),
+      })),
+      compatibilityManifest: serverInfo.compatibility!,
+      sourceServerArtifactPolicy: "release-versioned",
+      resolveRelease: vi.fn(async () => {
+        throw new Error("release metadata unavailable");
+      }),
+    });
+
+    await manager.connect({ profile: sshProfile, target: sshTarget });
+
+    expect(adapter.installOrUpdate).not.toHaveBeenCalled();
+    expect(adapter.ensureDaemon).toHaveBeenCalledOnce();
   });
 
   it("applies a development refresh through updateServer with the shared running-task guard and force", async () => {

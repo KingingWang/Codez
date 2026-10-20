@@ -80,14 +80,19 @@ export class SourceServerUpgradeRequiredError extends Error {
     public readonly upgradeTarget: "controller" | "server",
     public readonly currentVersion: string,
     public readonly minimumVersion: string,
-    public readonly reason: "compatibility" | "development-archive" = "compatibility",
+    public readonly reason:
+      | "compatibility"
+      | "development-archive"
+      | "release-archive-drift" = "compatibility",
   ) {
     super(
       reason === "development-archive"
         ? `Source Server ${currentVersion} release archive differs from the current development build and must be updated`
-        : upgradeTarget === "server"
-          ? `Source Server ${currentVersion} must be upgraded to at least ${minimumVersion}`
-          : `Codez Desktop ${currentVersion} must be upgraded to at least ${minimumVersion}`,
+        : reason === "release-archive-drift"
+          ? `Source Server ${currentVersion} release archive differs from this desktop build and must be updated`
+          : upgradeTarget === "server"
+            ? `Source Server ${currentVersion} must be upgraded to at least ${minimumVersion}`
+            : `Codez Desktop ${currentVersion} must be upgraded to at least ${minimumVersion}`,
     );
     this.name = "SourceServerUpgradeRequiredError";
   }
@@ -879,10 +884,14 @@ export class SourceServerConnectionManager {
       const shouldRefreshDevelopmentArtifact =
         this.options.sourceServerArtifactPolicy === "development-content-addressed" &&
         target.kind === "ssh";
+      // fork 每次推送都发布同一 app 版本的新 archive（codez-build-<run>-<sha>），只按版本
+      // 兼容判定会让远端永远停在首次安装的构建（旧 Server 缺 Codex 运行时，连接成功但项目内
+      // codex/request 全部 Method not found）。release 身份读取与 probe 共用同一只读 channel，
+      // 不增加 round-trip；生产与开发都做同版本内容漂移判定。
       const probe = await adapter.probe(
         target,
         options.context ?? {},
-        shouldRefreshDevelopmentArtifact ? { includeReleaseIdentity: true } : undefined,
+        { includeReleaseIdentity: true },
       );
       throwIfAborted();
       if (probe.installed) {
@@ -917,25 +926,35 @@ export class SourceServerConnectionManager {
             this.compatibilityManifest.minCompatibleVersion,
           );
         }
-        if (
-          shouldRefreshDevelopmentArtifact &&
-          installedVersion === this.compatibilityManifest.productVersion
-        ) {
+        if (installedVersion === this.compatibilityManifest.productVersion) {
           const releaseResolver = options.resolveRelease ?? this.options.resolveRelease;
-          if (!releaseResolver) {
+          if (!releaseResolver && shouldRefreshDevelopmentArtifact) {
             throw new Error("Development Source Server release is unavailable");
           }
-          const release = await releaseResolver(probe, target);
+          // 生产态解析失败（离线、Release 尚未发布）降级为跳过漂移判定并保持连接，
+          // 不让元数据故障阻断仍兼容的 Server；开发态维持显式失败，暴露坏掉的制品链。
+          const release = releaseResolver
+            ? shouldRefreshDevelopmentArtifact
+              ? await releaseResolver(probe, target)
+              : await releaseResolver(probe, target).catch((error: unknown) => {
+                  options.context?.onLog?.({
+                    phase: "probe",
+                    message: `Source Server release drift check skipped: ${error instanceof Error ? error.message : String(error)}`,
+                  });
+                  return undefined;
+                })
+            : undefined;
           throwIfAborted();
           if (
+            release &&
             release.version === installedVersion &&
             release.sha256.toLowerCase() !== probe.installedArchiveSha256?.toLowerCase()
           ) {
             // Bug 原因（R3A-B-06）：开发态同版本刷新过去在这里直接 installOrUpdate，绕开了
             // updateServer 的 updating 状态、操作日志和 force 守卫确认；远端有运行中任务时 guard
             // 只能表现为普通连接失败，UI 既没有“强制更新”入口也不会在任务结束后重试。
-            // 开发态与生产态只在“是否需要更新”的判定上不同（SHA vs 版本兼容），判定之后必须
-            // 走同一条 needs-upgrade → updateSource/updateServer 链路，连接流程本身不执行更新。
+            // 开发与生产都按 archive SHA 判定同版本漂移，判定之后必须走同一条
+            // needs-upgrade → updateSource/updateServer 链路，连接流程本身不执行更新。
             this.setState(profile.profileId, {
               state: "needs-upgrade",
               updateAvailability: "required",
@@ -951,7 +970,7 @@ export class SourceServerConnectionManager {
               "server",
               installedVersion,
               this.compatibilityManifest.minCompatibleVersion,
-              "development-archive",
+              shouldRefreshDevelopmentArtifact ? "development-archive" : "release-archive-drift",
             );
           }
         }
