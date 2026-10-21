@@ -2292,7 +2292,11 @@ export function SessionPane({
       workspacePath,
     ],
   );
-  const { settings: sharedSettings } = useSettings();
+  // 修复原因：SessionPane 挂载在当前 workspace 的 ServiceProvider 下；远端工作区时
+  // 默认 useSettings() 会读取远端 Source Server 的 setting.json，导致用户在控制端设置页
+  // 保存的「交互行为（codezInteractionBehavior）」等本机共享偏好在远程连接会话中不生效。
+  // 共享设置统一以控制端 baseWorkspaceServices 为唯一事实源。
+  const { settings: sharedSettings } = useSettings({ services: baseWorkspaceServices });
   const readPlanIdentitySnapshot = usePlanIdentitySnapshot(
     sharedSettings?.providerFamilyDomain,
     sharedSettings?.providerFamilyDomain
