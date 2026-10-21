@@ -165,6 +165,20 @@ shows none of its threads. Multi-root projects retain explicit membership.
   truncated artifact can never be published.
 - A failed or ambiguous mutation is not automatically retried. Reconnect reads
   authority and reconstructs projections. Do not promise crash-time exactly-once.
+- Concurrent workspace thread-list scans (`ThreadStateStore.list()`) coalesce
+  only while an identical scan is in flight on that bridge instance, preventing
+  duplicate `thread/list` paging bursts across `session/list` discovery and
+  multiple `sessions-index` subscribers without caching a stale list after the
+  scan settles.
+- When an ordinary native RPC times out (`Codex RPC request timed out; outcome is unknown`),
+  the bridge emits a bounded, redacted stderr warning with only the allowlisted
+  native `method`, `durationMs`, and `pending` count; Host process management
+  parses that allowlisted line into a production `warn` log without logging
+  parameters, paths, or user content. Read-only topic subscriptions
+  (`conversation/*` and `sessions-index/*` `subscribe`/`resync`) treat that
+  timeout as a transient read failure and perform bounded backoff retries
+  (`250ms / 1_000ms / 3_000ms`) before surfacing the manual reconnect error
+  panel, whereas commands and mutations never auto-retry.
 - Composer creation and send failures (including prewarmed and fallback sessions)
   expose a nonempty trimmed `CommandAck.message` before `reasonCode`, then the existing
   fallback text. The localized failure summary, draft retention, command ID and machine
