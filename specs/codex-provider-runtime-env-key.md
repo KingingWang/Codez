@@ -6,7 +6,7 @@ Status: 已实现（真实 SSH/WSL/Docker 整链路验收待跑）。承接 `spe
 
 - 只覆盖桌面版 Codex 的自定义 `model_providers`。ChatGPT/内置 OpenAI 登录、账号型 Provider、手工配置的外部 `env_key` / `[auth]`、开发模式 Server remote 不自动迁移或代管。
 - GUI 提供「写入配置文件」和「本机保存、临时环境变量」两种 Key 来源。旧条目保持 `experimental_bearer_token` 直写语义；选临时模式时，App 为目标 Environment + Provider 生成专用变量名，将用户输入或明确迁入的原有明文 Key 保存到桌面 Local Host 的 Codez Credential Store。原生用户层 `config.toml` 只留 `env_key`，移除 `experimental_bearer_token`，不得同时设置 `requires_openai_auth=true` 或 `[auth]`。
-- 本地 workspace 的 Local Host 在 Codex bridge/app-server 启动前现读本机凭据并仅注入该原生 Provider 需要的变量。SSH/WSL/Docker 的 Window Host 以目标 Environment 为身份读取同一台桌面上的凭据，经现有可信远程 RPC 向**每条在线连接**的 Remote Host 内存安装；远端 Codex bridge/app-server 重新启动后继承变量。远端配置文件、Codez Credential Store、Provisioning 信封/状态、shell 命令行、Renderer/Main 日志与会话快照不保存值。
+- 本地 workspace 的 Local Host 在 Codex bridge/app-server 启动前现读本机凭据并仅注入该原生 Provider 需要的变量。SSH/WSL/Docker 的 Window Host 以目标 Environment 为身份读取同一台桌面上的凭据，经现有可信远程 RPC 向**每条在线连接**的 Remote Host（含 `desktop-attached-remote` 与 R3 Source Server Core 的受控主机装配）内存安装；远端 Codex bridge/app-server 重新启动后继承变量。远端配置文件、Codez Credential Store、Provisioning 信封/状态、shell 命令行、Renderer/Main 日志与会话快照不保存值。
 - Desktop Renderer 合并 SSH/WSL/Docker workspace 服务时，`codexNativeProviderKeyService` 必须来自该连接的 Window Host remote workspace collection，而不是本机 base services；`codezAgentService` 同样指向该远端连接。Key 服务虽然在桌面端保存凭据，其环境分区仍是目标 `buildRemoteEnvironmentKey(target)`。本机 workspace 继续使用 local 分区，Server remote 继续由服务端负责，不从本机透传托管 Key。远端断开/换代时不得回退本机 Key 服务。
 - 原生 `env_key` 的值进入 Codex app-server 的进程环境。无法承诺共享 OS 账户的其他进程、Codex 自己的工具/MCP 子进程或系统转储绝对无法读到；这不是按人隔离，只降低 Codez 主动远端落盘。UI 必须明确说明，不能沿用 legacy Agent 的工具环境隔离验收结论。
 - Codex 自身的 `config/read` 会读取用户层原有明文 Key；UI 只投影是否已配置，绝不回显。已在旧配置/备份中出现的 Key 应由用户轮换。手工外部 `env_key` 不得被当作 App 凭据已配置或默默改写。
@@ -40,6 +40,12 @@ Status: 已实现（真实 SSH/WSL/Docker 整链路验收待跑）。承接 `spe
 ## 连接准入与轮换边界
 
 用户已确认：远端 `config.toml` 引用 App 托管 `env_key` 但本机缺凭据时，连接仍进入可编辑设置页；模型请求在发到供应商前拒绝，不能回退旧明文或继承同名变量。Settings 所需 `config/read` 与目录读取应可使用，不能用阻止整个 Agent 启动代替模型请求门禁。补录并安装成功后重启 Agent，解除该连接的模型阻断。
+
+旧远端兼容边界：
+
+- 远端 `IProviderProvisioningTargetService` 经 `ProxyChannel` 代理时，属性读取恒返回函数，不能依赖 `typeof target.installCodexProviderKeys` 判断远端是否实现该方法。
+- 本地该远端环境无托管引用且本连接未曾安装过 Codex 临时 Key 时，首连不调用 `installCodexProviderKeys` RPC。
+- 本地存在该环境的托管引用，但连接的旧版/上游远端 Server 未实现 `installCodexProviderKeys`（RPC 报 `Method not found` / `Unknown channel` / `远端不支持 Codex 临时 Key`）时，首连/重连降级为跳过远端内存安装并放行连接（使工作区与设置页可正常打开和编辑），不在内存中保留任何明文；主动保存/轮换临时 Key（`beginCodexKeyRotation`）遇到不支持的远端时仍明确提示「远端 Codez 版本过旧，不支持 Codex 临时 Key，请升级远端」。
 
 多窗口轮换的事务不等同于现有 `ProviderProvisioningSourceChanged` 单向通知。目标 Environment 需要串行的跨连接屏障：
 

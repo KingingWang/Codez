@@ -31,9 +31,7 @@ function setup(environmentKey = "ssh:acct@host:22") {
   return { environmentKey, credentialService };
 }
 
-function fakeTarget(
-  overrides: Partial<IProviderProvisioningTargetService> = {},
-) {
+function fakeTarget(overrides: Partial<IProviderProvisioningTargetService> = {}) {
   const calls: { begin: number; install: CodexNativeProviderKeyInstall[] } = {
     begin: 0,
     install: [],
@@ -75,9 +73,7 @@ describe("RemoteProviderProvisioningExecutor Codex 临时 Key", () => {
       apiKey: "sk-ghost",
     });
     await keyService.finishKeySource({ providerId: "ghost", commit: true });
-    await credentialService.delete(
-      codexNativeProviderKeyCredentialKey(environmentKey, "ghost"),
-    );
+    await credentialService.delete(codexNativeProviderKeyCredentialKey(environmentKey, "ghost"));
 
     const { target, calls } = fakeTarget();
     const executor = createRemoteProviderProvisioningExecutor({
@@ -102,7 +98,7 @@ describe("RemoteProviderProvisioningExecutor Codex 临时 Key", () => {
     ]);
   });
 
-  it("fails closed when an old remote lacks the capability but managed keys exist", async () => {
+  it("rejects key rotation on an old remote but degrades initial install so connection stays open", async () => {
     const { environmentKey, credentialService } = setup();
     const keyService = createCodexNativeProviderKeyService({
       environmentKey,
@@ -125,16 +121,38 @@ describe("RemoteProviderProvisioningExecutor Codex 临时 Key", () => {
       codexKeys: { environmentKey, credentialService },
     });
     await expect(executor.beginCodexKeyRotation()).rejects.toThrow(/升级远端/);
-    await expect(executor.installCodexRuntimeKeys()).rejects.toThrow(
-      /升级远端/,
-    );
+    await expect(executor.installCodexRuntimeKeys()).resolves.toBeUndefined();
+
+    // ProxyChannel.toService 始终暴露函数属性，通过 RPC Method not found 表达旧远端不支持。
+    const proxyLegacyTarget: IProviderProvisioningTargetService = {
+      apply: async () => {
+        throw new Error("unused");
+      },
+      beginCodexProviderKeyRotation: async () => {
+        throw new Error("Method not found: beginCodexProviderKeyRotation");
+      },
+      installCodexProviderKeys: async () => {
+        throw new Error("Method not found: installCodexProviderKeys");
+      },
+    };
+    const proxyExecutor = createRemoteProviderProvisioningExecutor({
+      target: proxyLegacyTarget,
+      codexKeys: { environmentKey, credentialService },
+    });
+    await expect(proxyExecutor.beginCodexKeyRotation()).rejects.toThrow(/升级远端/);
+    await expect(proxyExecutor.installCodexRuntimeKeys()).resolves.toBeUndefined();
   });
 
   it("allows first connect with an empty registry on an old remote", async () => {
     const { environmentKey, credentialService } = setup();
+    const calls: CodexNativeProviderKeyInstall[] = [];
     const legacyTarget: IProviderProvisioningTargetService = {
       apply: async () => {
         throw new Error("unused");
+      },
+      installCodexProviderKeys: async (input) => {
+        calls.push(input);
+        throw new Error("Method not found: installCodexProviderKeys");
       },
     };
     const executor = createRemoteProviderProvisioningExecutor({
@@ -142,10 +160,21 @@ describe("RemoteProviderProvisioningExecutor Codex 临时 Key", () => {
       codexKeys: { environmentKey, credentialService },
     });
     await expect(executor.installCodexRuntimeKeys()).resolves.toBeUndefined();
+    expect(calls).toHaveLength(0);
   });
 
   it("serializes concurrent installs in call order", async () => {
     const { environmentKey, credentialService } = setup();
+    const keyService = createCodexNativeProviderKeyService({
+      environmentKey,
+      credentialService,
+    });
+    await keyService.prepareKeySource({
+      providerId: "acme",
+      mode: "runtime-env",
+      apiKey: "sk-live",
+    });
+    await keyService.finishKeySource({ providerId: "acme", commit: true });
     const order: number[] = [];
     const { target } = fakeTarget({
       installCodexProviderKeys: async () => {
@@ -156,10 +185,7 @@ describe("RemoteProviderProvisioningExecutor Codex 临时 Key", () => {
       target,
       codexKeys: { environmentKey, credentialService },
     });
-    await Promise.all([
-      executor.installCodexRuntimeKeys(),
-      executor.installCodexRuntimeKeys(),
-    ]);
+    await Promise.all([executor.installCodexRuntimeKeys(), executor.installCodexRuntimeKeys()]);
     expect(order).toEqual([1, 1]);
   });
 
