@@ -17,6 +17,8 @@ import type {
   RemoteConnectionOpenPreference,
 } from "@/app-shell/types.js";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
+import { toast } from "@/components/ui/toast.js";
+import { formatProjectError } from "@/project-sidebar/view.js";
 import { reportAppTelemetryEvent } from "@/lib/appTelemetry.js";
 import { resolveLogoutProviderFamilyDomain } from "@/lib/providerFamilyDomainSettings.js";
 import { isRendererReloadNavigation } from "@/lib/rendererNavigation.js";
@@ -400,10 +402,17 @@ export function useRootWorkspaceActions({
         if (!isCurrent()) return;
         logger.error("[Root] 准备新任务失败", error);
         if (typeof request === "object") request.onError?.(error);
-        setWorkspaceActionError(error instanceof Error ? error.message : String(error));
+        const message = error instanceof Error ? error.message : String(error);
+        setWorkspaceActionError(message);
+        // 侧栏远程项目「新建会话」等入口不传 onError，且 workspaceActionError 无全局渲染槽位；
+        // 若不弹出提示，远端连接或 Provisioning 失败时用户点击会表现为完全无反应。
+        if (typeof request !== "object" || !request.onError) {
+          toast(formatProjectError(error, intl.formatMessage));
+        }
       }
     },
     [
+      intl,
       services.projectService,
       composerClientNamespace,
       activeWorkspacePath,

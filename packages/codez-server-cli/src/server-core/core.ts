@@ -52,7 +52,8 @@ export async function runServerCore(generation: number): Promise<void> {
       sourceServerId,
       codezBuiltinProviderConfigFilePath,
       providerProvisioningTargetEnabled: true,
-    topicResourceRelayChannel: (request) => topicResourcePeers.getChannel(request),
+      ephemeralRuntimeKeysEnabled: true,
+      topicResourceRelayChannel: (request) => topicResourcePeers.getChannel(request),
     });
   const taskActivityTracker = createTaskActivityTracker(services.getOptional(ICodezAgentService));
   const ingressToken = await createIngressToken(layout);

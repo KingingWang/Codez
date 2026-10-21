@@ -1535,6 +1535,8 @@ export function createLocalServices(options: {
   codezBuiltinProviderConfigFilePath: string;
   /** HTTP Server 只有在调用方明确配置认证时才暴露跨 Environment Provisioning target。 */
   providerProvisioningTargetEnabled?: boolean;
+  /** R3 Source Server Core 等受桌面控制的远端守护进程，允许接收连接期内存临时 Key。 */
+  ephemeralRuntimeKeysEnabled?: boolean;
   /** Desktop Host 私有通知；只在 Source 成功持久化后请求 Main 调度远端镜像。 */
   onProviderProvisioningSourceChanged?: (
     trigger: Exclude<ProviderProvisioningTrigger, "environment-online">,
@@ -1590,6 +1592,8 @@ export function createLocalServices(options: {
   cuaOperationStateReporter?: CuaOperationStateReporter;
 }): ServiceCollection {
   const isDesktopAttachedRemote = options?.serviceAuthorityMode === "desktop-attached-remote";
+  const acceptsRemoteEphemeralKeys =
+    isDesktopAttachedRemote || options?.ephemeralRuntimeKeysEnabled === true;
   // 远端 relay：仅 desktop-attached-remote 装配；窗口 Host 经 RPC 授予/撤销能力，
   // 本地与独立 server 永远不创建（spec: codex-desktop-native-browser-cua「Remote workspace relay」）。
   const desktopBrowserRelay = isDesktopAttachedRemote
@@ -2666,7 +2670,7 @@ export function createLocalServices(options: {
         // 本机临时 Key 在 spawn 边界现读（本地读 Credential Store；远端读本进程内
         // 逐连接安装的内存事实）。缺值注入 undefined 显式屏蔽继承变量，并把供应商
         // 列入 bridge 的 fail-closed 名单；名单只含 provider id，不含任何 Key 材料。
-        const codexNativeKeyMaterial = isDesktopAttachedRemote
+        const codexNativeKeyMaterial = acceptsRemoteEphemeralKeys
           ? codexNativeProviderSpawnEnvFromInstalled(
               installedCodexNativeKeys,
               codexNativeKeyRotationActive,
@@ -2806,7 +2810,7 @@ export function createLocalServices(options: {
       // Host 是旧配置迁移的唯一写入者。Agent spawn 前等待初始化完成，避免 Worker
       // 先拿到尚不存在的 provider_config.json 并发布短暂空 Registry。
       await providerConfigRuntime.start();
-      const runtimeApiKeys = isDesktopAttachedRemote
+      const runtimeApiKeys = acceptsRemoteEphemeralKeys
         ? [...installedRuntimeApiKeys].map(([name, value]) => ({ name, value }))
         : (await providerProvisioningSource.readRuntimeApiKeys()).keys;
       return {
@@ -3556,7 +3560,7 @@ export function createLocalServices(options: {
         stateFilePath: join(resolveAppConfigDir(), "runtime", "provider", "provisioning.json"),
         listProvisioningCredentialKeys: () =>
           listProviderProvisioningCredentialKeys(resolveCredentialFilePath(resolveAppConfigDir())),
-        installRuntimeApiKeys: isDesktopAttachedRemote
+        installRuntimeApiKeys: acceptsRemoteEphemeralKeys
           ? async (keys) => {
               const changed =
                 keys.length !== installedRuntimeApiKeys.size ||
@@ -3571,7 +3575,7 @@ export function createLocalServices(options: {
               for (const { name, value } of keys) installedRuntimeApiKeys.set(name, value);
             }
           : undefined,
-        codexNativeKeys: isDesktopAttachedRemote
+        codexNativeKeys: acceptsRemoteEphemeralKeys
           ? {
               beginRotation: async () => {
                 codexNativeKeyRotationActive = true;
@@ -3849,6 +3853,7 @@ export async function createServerHostServices(options: {
   sourceServerId: string;
   codezBuiltinProviderConfigFilePath: string;
   providerProvisioningTargetEnabled?: boolean;
+  ephemeralRuntimeKeysEnabled?: boolean;
 }) {
   const projectStorageHostId = remoteHostIdFromWorkspaceIdentity(
     buildServerRemoteWorkspaceIdentity({ serverId: options.sourceServerId, workspacePath: "/" }),
@@ -3874,6 +3879,7 @@ export async function createServerHostServices(options: {
   const services = createLocalServices({
     codezBuiltinProviderConfigFilePath: options.codezBuiltinProviderConfigFilePath,
     providerProvisioningTargetEnabled: options.providerProvisioningTargetEnabled,
+    ephemeralRuntimeKeysEnabled: options.ephemeralRuntimeKeysEnabled,
     serviceAuthorityMode: "standalone-server",
     topicResourceRelayChannel: options.topicResourceRelayChannel,
     projectStorageHostId,

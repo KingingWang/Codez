@@ -8,6 +8,7 @@ import {
   resolveComposerScope,
 } from "@/v4/composer/composerDraftStore.js";
 import { selectRemoteWorkspaceProjectFromDialog } from "@/root/useRemoteWorkspaceHistory.js";
+import * as toastModule from "@/components/ui/toast.js";
 import type { CreateTaskOptions } from "@/app-shell/types.js";
 import { useRootWorkspaceActions } from "@/root/useRootWorkspaceActions.js";
 import { useCodezSessionStore } from "@/store/codezSessionStore.js";
@@ -287,6 +288,7 @@ describe("project-aware new task creation", () => {
   });
   it("leaves the current session intact when directory preparation fails", async () => {
     useCodezSessionStore.getState().setActiveTaskId("/old", "old-session");
+    const toastSpy = vi.spyOn(toastModule, "toast");
     const { result, prepareSession, addTab } = fixture();
     prepareSession.mockRejectedValueOnce(new Error("directory unavailable"));
     await act(async () => {
@@ -297,6 +299,8 @@ describe("project-aware new task creation", () => {
       "old-session",
     );
     expect(result.current.workspaceActionError).toContain("directory unavailable");
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining("directory unavailable"));
+    toastSpy.mockRestore();
   });
 });
 

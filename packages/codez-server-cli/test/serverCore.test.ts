@@ -119,6 +119,7 @@ describe("runServerCore startup wiring", () => {
       codezBuiltinProviderConfigFilePath: materializedPath,
       sourceServerId: "server-installation-id",
       providerProvisioningTargetEnabled: true,
+      ephemeralRuntimeKeysEnabled: true,
       topicResourceRelayChannel: expect.any(Function),
     });
     expect(createIngressToken).toHaveBeenCalledWith(layout);

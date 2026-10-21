@@ -299,6 +299,9 @@ Host execution admission
   `desktop-continuous` 连接（capability ticket + ingress token）拿到真实 `IProviderProvisioningTargetService`；
   `/ws` 的 `web-remote-replayable` 连接在 `exposeWebSocket` 中被 override 为抛错 stub
   （“Provider Provisioning 仅支持受信 Desktop Host”），Window Host 的手机 allowlist 也不含该 channel。
+  R3 Source Server Core（`packages/codez-server-cli/src/server-core/core.ts`）同时开启目标进程内临时 Key 接收面
+  （`ephemeralRuntimeKeysEnabled: true`），使 SSH/WSL/Docker 通过 Source Server 连接时也能接收 `installRuntimeApiKeys`
+  与 `installCodexProviderKeys` 并在 spawn Codex bridge 时注入进程内存中的环境变量。
   旧版 daemon（无 target）不会在 R3 主链上收到 Envelope：`CODEZ_MIN_COMPATIBLE_VERSION` 默认等于
   产品版本，R3 兼容门在握手阶段就判定“需升级”并先执行远端更新，更新后的 Core 才进入首连 Provisioning。
   Core 使用的 Codez Built-in Provider Config 由构建期 define 按内容 hash 物化到
