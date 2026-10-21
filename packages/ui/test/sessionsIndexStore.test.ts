@@ -811,6 +811,40 @@ describe("SessionsIndexStore", () => {
     }
   });
 
+  it("Codex RPC request timed out 导致 subscribe 瞬时超时时保持 connecting 并按有界退避恢复", async () => {
+    vi.useFakeTimers();
+    try {
+      const store = new SessionsIndexStore();
+      let attempts = 0;
+      const { transport } = mockTransport({
+        subscribe: vi.fn(async () => {
+          attempts += 1;
+          if (attempts <= 2) {
+            throw new Error("Codex RPC request timed out; outcome is unknown");
+          }
+          return {
+            ack: { subscriptionId: "sub-1", mode: "snapshot", logEpoch: "epoch-1" },
+          };
+        }),
+      });
+
+      await store.connect(transport, { forceSnapshot: true });
+      expect(store.getStatus()).toBe("connecting");
+      expect(transport.subscribe).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(250);
+      expect(transport.subscribe).toHaveBeenCalledTimes(2);
+      expect(store.getStatus()).toBe("connecting");
+
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(transport.subscribe).toHaveBeenCalledTimes(3);
+      expect(store.getStatus()).toBe("live");
+      store.close();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("瞬时失败退避期间 close 会取消重订阅", async () => {
     vi.useFakeTimers();
     try {

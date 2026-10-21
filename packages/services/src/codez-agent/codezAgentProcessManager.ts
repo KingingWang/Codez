@@ -34,7 +34,10 @@ import {
 } from "../runtime-tools/providerRuntimeResolver.js";
 import { isEffectiveDevelopmentNodeEnv } from "#src/runtime-tools/nodeEnv.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
-import { parseCodexBridgeTitleDiagnostic } from "./codexBridgeTitleDiagnostic.js";
+import {
+  parseCodexBridgeRpcTimeoutDiagnostic,
+  parseCodexBridgeTitleDiagnostic,
+} from "./codexBridgeTitleDiagnostic.js";
 import { CodezProtocolClient } from "./codezProtocolClient.js";
 import { CodezStdioTransport } from "./codezStdioTransport.js";
 import { readCodezStdioTapDevState } from "./codezStdioTapDevConfig.js";
@@ -1229,6 +1232,14 @@ export class CodezAgentProcessManager {
               : "Codex automatic title skipped; keeping preview",
             titleDiagnostic,
           );
+          return;
+        }
+        const rpcTimeoutDiagnostic = parseCodexBridgeRpcTimeoutDiagnostic(line);
+        if (rpcTimeoutDiagnostic) {
+          // 修复依据：原生 RPC 30s 超时不会杀死 bridge 进程，过去 stderr 仅落 debug，
+          // 生产导出日志只能看到外层 "Codex RPC request timed out; outcome is unknown"，
+          // 无法分辨是 thread/list、thread/read、thread/resume 还是 thread/turns/list 超时。
+          warnLog("Codex native RPC request timed out", rpcTimeoutDiagnostic);
           return;
         }
         stderrTail.append(line);

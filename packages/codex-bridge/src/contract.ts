@@ -41,6 +41,11 @@ export interface CodexProcessOptions {
    * 消费方只能输出 method/observedBytes 等结构化字段，禁止原文记录。
    */
   onFrameDropped?: (frame: { observedBytes: number; prefix: string }) => void;
+  /**
+   * 普通原生 RPC 请求超时时的有界诊断回调（同步、禁止抛错）。
+   * 仅传递方法名、等待时长与当前其余在途请求数，绝不包含请求参数或用户内容。
+   */
+  onRequestTimeout?: (info: { method: string; durationMs: number; pendingCount: number }) => void;
 }
 
 export interface CodexProcess extends CodexRpcPort {

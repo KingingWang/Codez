@@ -86,6 +86,23 @@ function isRuntimeRecycleError(error: unknown): boolean {
   );
 }
 
+/**
+ * 是否为只读会话订阅在等待原生 Codex RPC 时发生的瞬态超时。
+ *
+ * 修复依据：写命令/变更请求的 "Codex RPC request timed out; outcome is unknown"
+ * 因副作用未知绝不能自动重发；但 conversation subscribe/resync 仅读取快照并建立订阅，
+ * 无写副作用。项目激活或长历史加载偶发使原生 thread/list / thread/read / thread/resume
+ * 超过 30s 时，先走有界退避（250ms/1s/3s）自愈，退避耗尽后再展示错误面板。
+ */
+function isReadOnlySubscribeTimeoutError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("Codex RPC request timed out; outcome is unknown") ||
+    message.includes("Codez Protocol request timed out: v4/conversation/subscribe") ||
+    message.includes("Codez Protocol request timed out: v4/conversation/resync")
+  );
+}
+
 function hasAcceptedInputProjection(
   snapshot: ConversationSnapshot | null,
   commandId: string,
@@ -623,11 +640,11 @@ export class ConversationProjectionStore {
   }
 
   /**
-   * runtime 换代导致的 subscribe 失败：保持 connecting 并有界退避重连。
+   * runtime 换代或只读订阅 RPC 超时导致的 subscribe 失败：保持 connecting 并有界退避重连。
    * 返回 true 表示已接管本次失败，调用方不应再落 error。
    */
   private scheduleRuntimeRecycleRetry(error: unknown, generation: number): boolean {
-    if (!isRuntimeRecycleError(error)) return false;
+    if (!isRuntimeRecycleError(error) && !isReadOnlySubscribeTimeoutError(error)) return false;
     return this.scheduleRuntimeRecycleReconnect(generation);
   }
 
@@ -1114,6 +1131,10 @@ export class ConversationProjectionStore {
           void this.connect();
           return;
         }
+        if (this.scheduleRuntimeRecycleRetry(error, this.generation)) {
+          logger.warn(`[v4-store] resync ${this.topic} 超时或换代打断，退避重连: ${message}`);
+          return;
+        }
         this.setState({ status: "error", lastError: message });
       });
   }
@@ -1267,7 +1288,11 @@ export class ConversationProjectionStore {
         const result = await this.transport.rowPayload!({ sessionId, rowId });
         if (this.closed || !result.row) return false;
         const current = this.state.snapshot;
-        if (!current || current.logEpoch !== requestedEpoch || result.atLogEpoch !== current.logEpoch) {
+        if (
+          !current ||
+          current.logEpoch !== requestedEpoch ||
+          result.atLogEpoch !== current.logEpoch
+        ) {
           return false;
         }
         const sharedRow = this.rowPool.shareRow(this.topic, result.row) as

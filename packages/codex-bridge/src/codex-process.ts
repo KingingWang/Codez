@@ -194,6 +194,15 @@ export function createCodexProcess(options: CodexProcessOptions): CodexProcess {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         pending.delete(id);
+        try {
+          options.onRequestTimeout?.({
+            method,
+            durationMs: timeout,
+            pendingCount: pending.size,
+          });
+        } catch {
+          // 诊断回调绝不能破坏超时拒绝路径。
+        }
         reject(
           new CodexTransportError("TIMEOUT", "Codex RPC request timed out; outcome is unknown"),
         );
