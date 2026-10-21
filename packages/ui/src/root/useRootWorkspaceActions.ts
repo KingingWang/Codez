@@ -17,6 +17,8 @@ import type {
   RemoteConnectionOpenPreference,
 } from "@/app-shell/types.js";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
+import { toast } from "@/components/ui/toast.js";
+import { formatProjectError } from "@/project-sidebar/view.js";
 import { reportAppTelemetryEvent } from "@/lib/appTelemetry.js";
 import { resolveLogoutProviderFamilyDomain } from "@/lib/providerFamilyDomainSettings.js";
 import { isRendererReloadNavigation } from "@/lib/rendererNavigation.js";
@@ -423,29 +425,30 @@ export function useRootWorkspaceActions({
       } catch (error) {
         if (!isCurrent()) return;
         logger.error("[Root] 准备新任务失败", error);
+        // 手机 bridge 返回普通错误对象，不能用 instanceof Error 丢掉 message。
+        const message =
+          error &&
+          typeof error === "object" &&
+          "message" in error &&
+          typeof error.message === "string"
+            ? error.message
+            : String(error);
+        setWorkspaceActionError(message);
         if (typeof request === "object" && request.onError) request.onError(error);
         else {
-          // 原因：原错误状态无人展示，目录移走后顶部新建和快捷键只会静默失败。
+          // 原因：原错误状态无人展示，目录移走或远端 Provisioning 失败时新建入口只会静默失败。
           // 在仍有效的动作出口反馈；有 onError 的调用方继续负责展示，避免重复提示。
-          // 手机 bridge 返回普通错误对象，不能用 instanceof Error 丢掉 message。
-          const message =
-            error &&
-            typeof error === "object" &&
-            "message" in error &&
-            typeof error.message === "string"
-              ? error.message
-              : String(error);
           toast(
             message === "project.primaryRootMissing" || message === "project.primaryRootUnavailable"
               ? intl.formatMessage({ id: message })
-              : message,
+              : formatProjectError(message, intl.formatMessage),
           );
         }
       }
     },
     [
-      services.projectService,
       intl,
+      services.projectService,
       composerClientNamespace,
       activeWorkspacePath,
       activeWorkspaceIdentity,
