@@ -293,6 +293,121 @@ test("only default local Codex startup skips legacy provider/account/tool prereq
   }
 });
 
+test("R3 standalone-server with ephemeralRuntimeKeysEnabled installs Codex native keys into memory and injects them into spawn env", async (t) => {
+  const savedEnv = { ...process.env };
+  delete process.env.CODEZ_AGENT_SERVER_COMMAND;
+  delete process.env.CODEZ_DESKTOP_RUNTIME;
+  process.env.CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED = "1";
+  let spawnEnv: Record<string, string | undefined> | undefined;
+  const messages = new Emitter<CodezProtocolMessage>();
+  const closes = new Emitter<{ reason?: string }>();
+  const client = new CodezProtocolClient({
+    kind: "memory",
+    onMessage: messages.event,
+    onClose: closes.event,
+    async send(message) {
+      if (!("method" in message && "id" in message)) return;
+      messages.fire({ id: message.id, result: { native: true } });
+    },
+    dispose() {
+      messages.dispose();
+      closes.dispose();
+    },
+  });
+  t.mock.method(
+    CodezAgentProcessManager.prototype,
+    "getClient",
+    async function (
+      this: CodezAgentProcessManager,
+      workspace: { workspacePath: string; workspaceIdentity?: string },
+    ) {
+      const manager = this as unknown as Pick<CodezAgentProcessManagerOptions, "resolveSpawnEnv">;
+      spawnEnv = await manager.resolveSpawnEnv?.({
+        ...workspace,
+        workspaceKey: resolveWorkspaceKey(workspace),
+      });
+      return client;
+    },
+  );
+  const root = await mkdtemp(join(tmpdir(), "codez-r3-codex-key-"));
+  setDataBaseDir(root);
+  process.env.CODEZ_DESKTOP_HOME_DIR = root;
+  const codexHome = join(root, ".codex");
+  process.env.CODEX_HOME = codexHome;
+  await mkdir(codexHome, { recursive: true });
+  const bridgeRoot = join(root, "remote", "codex");
+  await mkdir(bridgeRoot, { recursive: true });
+  await writeFile(join(bridgeRoot, "bridge.cjs"), "");
+  await writeFile(join(bridgeRoot, "codex"), "");
+  process.env.CODEZ_CODEX_BRIDGE_PATH = join(bridgeRoot, "bridge.cjs");
+  const [{ codexNativeProviderKeyEnvName }, { IProviderProvisioningTargetService }] =
+    await Promise.all([import("../src/node.js"), import("../src/index.js")]);
+  const acmeEnv = codexNativeProviderKeyEnvName("acme");
+  const missingEnv = codexNativeProviderKeyEnvName("missing");
+  await writeFile(
+    join(codexHome, "config.toml"),
+    `[model_providers.acme]\nname = "acme"\nenv_key = "${acmeEnv}"\n\n[model_providers.missing]\nname = "missing"\nenv_key = "${missingEnv}"\n`,
+  );
+  const settings: ISettingService = {
+    async get() {
+      return appSettingsSchema.parse({});
+    },
+    async update() {
+      assert.fail("fixture settings are read-only");
+    },
+    async updateDataBaseDir() {
+      assert.fail("fixture settings are read-only");
+    },
+    async ensureDefaultProject() {
+      assert.fail("fixture must not create projects");
+    },
+  };
+  const services = createLocalServices({
+    settingService: settings,
+    runtimeProcessEnvPatch: { PATH: savedEnv.PATH ?? "" },
+    codezBuiltinProviderConfigFilePath: fileURLToPath(
+      new URL("../../../config/provider/codez-builtin.json", import.meta.url),
+    ),
+    serviceAuthorityMode: "standalone-server",
+    providerProvisioningTargetEnabled: true,
+    ephemeralRuntimeKeysEnabled: true,
+    hostApiNetworkTransport: {
+      fetch: async () => {
+        throw new Error("unexpected host API access");
+      },
+      dispose() {},
+      async disposeAndWait() {},
+    },
+  });
+  try {
+    const target = services.get(IProviderProvisioningTargetService);
+    assert.equal(typeof target.beginCodexProviderKeyRotation, "function");
+    assert.equal(typeof target.installCodexProviderKeys, "function");
+    await target.beginCodexProviderKeyRotation!();
+    await target.installCodexProviderKeys!({
+      keys: [
+        { providerId: "acme", envName: acmeEnv, value: "sk-remote-secret" },
+        { providerId: "missing", envName: missingEnv, value: null },
+      ],
+    });
+    const agent = services.get(ICodezAgentService);
+    await agent.codexRequest({
+      workspacePath: root,
+      request: { method: "account/read" },
+    });
+    assert.equal(spawnEnv?.[acmeEnv], "sk-remote-secret");
+    assert.equal(spawnEnv?.[missingEnv], undefined);
+    assert.equal(missingEnv in (spawnEnv ?? {}), true);
+    assert.equal(spawnEnv?.CODEZ_CODEX_BLOCKED_PROVIDER_IDS, "missing");
+  } finally {
+    await disposeServiceResourcesAndWait(services);
+    setDataBaseDir(null);
+    client.dispose();
+    process.env = savedEnv;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("local Codex injects CUA broker credentials only when Computer Use is enabled and never for remote workspaces", async (t) => {
   const savedEnv = { ...process.env };
   delete process.env.CODEZ_AGENT_SERVER_COMMAND;
