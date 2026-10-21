@@ -28,6 +28,14 @@ const workflowRunsQueryMock = vi.hoisted(() =>
   vi.fn(() => new Promise<{ runs: unknown[] }>(() => {})),
 );
 const nativeHostStatusMock = vi.hoisted(() => vi.fn(() => "legacy" as const));
+const useSettingsOptionsSpy = vi.hoisted(() => vi.fn());
+const baseWorkspaceServicesMock = vi.hoisted(() => ({
+  settingService: {
+    get: vi.fn(),
+    update: vi.fn(),
+  },
+  usageStatsService: {},
+}));
 const { layerMock, sendCommandMock } = vi.hoisted(() => ({
   layerMock: {
     acquire: vi.fn(() => ({
@@ -92,13 +100,23 @@ vi.mock("@/v4/BotGroupDeliveryAction.js", () => ({
 }));
 
 vi.mock("@/hooks/useSettingService.js", () => ({
-  useSettings: () => ({
-    settings: { codezInteractionBehavior: "guide" },
-    loading: false,
-    error: null,
-    update: vi.fn(async () => {}),
-    refresh: vi.fn(async () => {}),
-  }),
+  useSettings: (options?: { services?: unknown }) => {
+    useSettingsOptionsSpy(options);
+    const isBaseHost = options?.services === baseWorkspaceServicesMock;
+    return {
+      // 模拟远端 workspace 的 contextual services 返回默认 queue，而本机 baseWorkspaceServices 保存了 guide。
+      settings: { codezInteractionBehavior: isBaseHost ? "guide" : "queue" },
+      loading: false,
+      error: null,
+      update: vi.fn(async () => {}),
+      refresh: vi.fn(async () => {}),
+    };
+  },
+}));
+
+vi.mock("@/hooks/useWorkspaceServices.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/hooks/useWorkspaceServices.js")>()),
+  useBaseWorkspaceServices: () => baseWorkspaceServicesMock,
 }));
 
 vi.mock("@/hooks/useCodexModelCatalog.js", () => ({
@@ -337,6 +355,7 @@ function makeSnapshot(): ConversationSnapshot {
 afterEach(() => {
   sendCommandMock.mockClear();
   composerPropsSpy.mockClear();
+  useSettingsOptionsSpy.mockClear();
   nativeHostStatusMock.mockReset();
   nativeHostStatusMock.mockReturnValue("legacy");
   projectionState.current = null;
@@ -490,6 +509,9 @@ describe("SessionPane followupMode app setting sync", () => {
         nativeCodexSession: true,
         defaultFollowupIntent: "guide",
       }),
+    );
+    expect(useSettingsOptionsSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ services: baseWorkspaceServicesMock }),
     );
 
     await act(async () => {
