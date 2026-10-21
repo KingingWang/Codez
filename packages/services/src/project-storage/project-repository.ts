@@ -217,9 +217,12 @@ export class ProjectRepository implements ProjectRepositoryContract, ProjectData
     includeDeletedTasks?: boolean;
     includeTasks?: boolean;
   }): ProjectTree {
+    const ownerHostId = this.ownerHostId ?? "local";
+    const matchesOwner = (hostId: string) =>
+      hostId === ownerHostId || (ownerHostId === "local" && hostId.startsWith("remote:server:"));
     const read = () => ({
       projects: readProjects(this.db, options?.includeDeleted ?? false).filter(
-        (project) => project.hostId === (this.ownerHostId ?? "local"),
+        (project) => project.hostId === ownerHostId,
       ),
       ...(options?.includeDeletedTasks
         ? {
@@ -227,9 +230,9 @@ export class ProjectRepository implements ProjectRepositoryContract, ProjectData
               .prepare(
                 `
         SELECT task_id AS taskId,workspace_path AS workspacePath,workspace_identity AS workspaceIdentity,host_id AS hostId
-        FROM tasks WHERE host_id=? AND (deleted=1 OR coalesce(cli_deleted,0)=1)`,
+        FROM tasks WHERE (host_id=? OR (?='local' AND host_id LIKE 'remote:server:%')) AND (deleted=1 OR coalesce(cli_deleted,0)=1)`,
               )
-              .all(this.ownerHostId ?? "local")
+              .all(ownerHostId, ownerHostId)
               .map((row) => ({
                 taskId: String(row.taskId),
                 workspacePath: String(row.workspacePath),
@@ -243,7 +246,7 @@ export class ProjectRepository implements ProjectRepositoryContract, ProjectData
       tasks:
         options?.includeTasks === false
           ? []
-          : readTasks(this.db).filter((task) => task.hostId === (this.ownerHostId ?? "local")),
+          : readTasks(this.db).filter((task) => matchesOwner(task.hostId)),
     });
     return this.db.isTransaction ? read() : transaction(this.db, read, false);
   }
