@@ -7,6 +7,7 @@ import {
   codezSessionCloseResultSchema,
   codezSessionStateSnapshotSchema,
   codezSessionListResultSchema,
+  elideSessionSnapshotForIndex,
 } from "@codez/shared";
 import { handleLegacySession } from "../src/legacy-sessions.js";
 import { SELECTION_SIDE_CHAT_THREAD_SOURCE } from "../src/selection-side-chat.js";
@@ -80,6 +81,55 @@ test("remote read/resume/list retain identity consumed by the task-index writer"
     await handleLegacySession("session/read", { sessionId: thread.id }, rpc, store, cwd),
   );
   assert.deepEqual(local.session.workspace, { workspacePath: cwd, workspaceKey: cwd });
+});
+
+test("native session/read index profile omits heavy parts without changing indexed facts", async () => {
+  const thread = threadFixture();
+  const huge = "tool-output-sensitive".repeat(100_000);
+  thread.turns[0]!.items.push({
+    id: "tool-1",
+    type: "commandExecution",
+    command: "synthetic",
+    cwd: thread.cwd,
+    status: "completed",
+    aggregatedOutput: huge,
+  });
+  const rpc = {
+    async request(method: string) {
+      if (method === "config/read") return { config: {} };
+      if (method === "model/list") return { data: [], nextCursor: null };
+      throw new Error(`unexpected ${method}`);
+    },
+  } as unknown as CodexRpcPort;
+  const store = new ThreadStateStore(rpc, thread.cwd);
+  store.markStarted(thread);
+  const full = codezSessionStateSnapshotSchema.parse(
+    await handleLegacySession("session/read", { sessionId: thread.id }, rpc, store, thread.cwd),
+  );
+  const index = codezSessionStateSnapshotSchema.parse(
+    await handleLegacySession(
+      "session/read",
+      { sessionId: thread.id, contentProfile: "index" },
+      rpc,
+      store,
+      thread.cwd,
+    ),
+  );
+  assert.deepEqual(index, elideSessionSnapshotForIndex(full));
+  assert.equal(full.messages.length, index.messages.length);
+  assert.equal(index.session.title, full.session.title);
+  assert.ok(JSON.stringify(index).length < JSON.stringify(full).length / 10);
+  assert.ok(JSON.stringify(full).includes("tool-output-sensitive"));
+  assert.equal(JSON.stringify(index).includes("tool-output-sensitive"), false);
+  await assert.rejects(
+    handleLegacySession(
+      "session/read",
+      { sessionId: thread.id, contentProfile: "unknown" },
+      rpc,
+      store,
+      thread.cwd,
+    ),
+  );
 });
 
 test("legacy setModel 回包与后续 read 的 current 以线程级设置为准（不回落全局 config）", async () => {
