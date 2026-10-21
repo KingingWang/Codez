@@ -7,7 +7,12 @@ import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { test, type TestContext } from "node:test";
 import { createCodexProcess } from "../src/codex-process.js";
-import type { CodexProcess, CodexNotification, CodexServerRequest } from "../src/contract.js";
+import type {
+  CodexProcess,
+  CodexNotification,
+  CodexServerRequest,
+  CodexProcessOptions,
+} from "../src/contract.js";
 import type { DesktopCodexMcpServer } from "@codez/shared";
 
 const options = { timeout: 10_000, skip: process.platform === "win32" };
@@ -20,6 +25,7 @@ async function fixture(
   traceArgv = false,
   desktopMcpServers?: DesktopCodexMcpServer[],
   onRequestTimeout?: (info: { method: string; durationMs: number; pendingCount: number }) => void,
+  onFrameDropped?: CodexProcessOptions["onFrameDropped"],
 ) {
   const directory = await mkdtemp(join(tmpdir(), "codez transport 中文 "));
   const executable = join(directory, "fake codex");
@@ -34,6 +40,7 @@ async function fixture(
     updatePlanToolEnabled,
     desktopMcpServers,
     onRequestTimeout,
+    onFrameDropped,
     env: {
       PATH: globalThis.process.env.PATH,
       HOME: directory,
@@ -281,9 +288,27 @@ test(
   async (t) => {
     // macOS Intel CI 生成并输送 33 MiB 帧可能超过默认的 1s 测试期限；
     // 此测试只验证丢帧归因与连接恢复，不能让超时抢先于 LIMIT。
-    const { process } = await fixture(t, "normal", 20_000);
+    const dropped: Parameters<NonNullable<CodexProcessOptions["onFrameDropped"]>>[0][] = [];
+    const { process } = await fixture(
+      t,
+      "normal",
+      20_000,
+      undefined,
+      false,
+      false,
+      undefined,
+      undefined,
+      (frame) => dropped.push(frame),
+    );
     await process.initialize();
     await assert.rejects(process.request("oversized"), { code: "LIMIT" });
+    assert.equal(dropped.length, 1);
+    assert.deepEqual(
+      { kind: dropped[0]?.kind, method: dropped[0]?.method },
+      { kind: "response", method: "oversized" },
+    );
+    assert.ok((dropped[0]?.observedBytes ?? 0) > 32 * 1024 * 1024);
+    assert.equal("prefix" in dropped[0]!, false);
     assert.equal(await process.request("echo", "alive"), "alive");
     assert.equal((await process.request<string>("large-valid")).length, 9 * 1024 * 1024);
   },

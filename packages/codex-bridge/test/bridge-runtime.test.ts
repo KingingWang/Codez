@@ -214,6 +214,7 @@ test("cold subscribe overrides assigned roots but preserves external persisted n
   });
   assert.deepEqual(h.calls.find((call) => call.method === "thread/resume")?.params, {
     threadId: "thread-1",
+    excludeTurns: true,
     runtimeWorkspaceRoots: [cwd, "/other"],
   });
   await h.runtime.request(V4_METHODS.conversationSubscribe, {
@@ -228,6 +229,7 @@ test("cold subscribe overrides assigned roots but preserves external persisted n
   );
   assert.deepEqual(external.calls.find((call) => call.method === "thread/resume")?.params, {
     threadId: "thread-1",
+    excludeTurns: true,
   });
   const explicit = await fixture(t);
   await explicit.runtime.request("session/resume", {
@@ -236,8 +238,57 @@ test("cold subscribe overrides assigned roots but preserves external persisted n
   });
   assert.deepEqual(explicit.calls.find((call) => call.method === "thread/resume")?.params, {
     threadId: "thread-1",
+    excludeTurns: true,
     runtimeWorkspaceRoots: [cwd, "/other"],
   });
+});
+
+test("synthetic long native history resumes without duplicate turns and retains exact old-page row IDs", async (t) => {
+  const h = await fixture(t);
+  const base = threadFixture();
+  const turns = Array.from({ length: 2600 }, (_, index) => ({
+    ...base.turns[0]!,
+    id: `turn-${index}`,
+    items: base.turns[0]!.items.map((item) => ({
+      ...item,
+      id: `${item.id}-${index}`,
+    })),
+  }));
+  h.authority.thread = { ...base, turns: [] };
+  h.handlers["thread/resume"] = (params) => {
+    assert.equal(params.excludeTurns, true);
+    return { thread: { ...base, turns: [] } };
+  };
+  h.handlers["thread/turns/list"] = (params) => {
+    const start = params.cursor === undefined ? 0 : Number(params.cursor);
+    const data = turns.slice(start, start + Number(params.limit));
+    return {
+      data,
+      nextCursor: start + data.length < turns.length ? String(start + data.length) : null,
+    };
+  };
+  const response = await h.runtime.request(
+    V4_METHODS.conversationSubscribe,
+    subscribe("conversation/thread-1"),
+  );
+  await response.afterResponse!();
+  const initial = h.frames.find((frame) => frame.topic === "conversation/thread-1");
+  const payload = initial?.kind === "complete" ? initial.frame.payload : undefined;
+  assert.ok(payload?.kind === "snapshot");
+  const initialSnapshot = conversationSnapshotSchema.parse(payload.snapshot);
+  assert.ok(initialSnapshot.rows.totalCount >= 10_000);
+  assert.equal(initialSnapshot.rows.firstRowId, 0);
+  const tailStart = initialSnapshot.rows.window[0]?.rowId;
+  assert.ok(tailStart && tailStart > 0);
+  assert.equal(h.calls.filter((call) => call.method === "thread/resume").length, 1);
+  const older = (await h.runtime.request(V4_METHODS.conversationRowsRange, {
+    sessionId: "thread-1",
+    beforeRowId: tailStart,
+    limit: 50,
+  })) as { result: { rows: Array<{ rowId: number }> } };
+  assert.equal(older.result.rows.at(-1)?.rowId, tailStart - 1);
+  assert.equal(h.calls.filter((call) => call.method === "thread/turns/list").length, 26);
+  assert.equal(h.calls.filter((call) => call.method === "thread/resume").length, 1);
 });
 
 test("first-input command generates a native title through the isolated auxiliary path", async (t) => {

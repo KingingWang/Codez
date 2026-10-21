@@ -37,10 +37,14 @@ export interface CodexProcessOptions {
    */
   interactionTimeoutMs?: number;
   /**
-   * 超大入站帧被丢弃时的有界回调（同步、禁止抛错）。prefix 仅供离线诊断归属，
-   * 消费方只能输出 method/observedBytes 等结构化字段，禁止原文记录。
+   * 超大入站帧被丢弃时的有界回调（同步、禁止抛错）。
+   * 只传入关联后的结构化诊断；原生 JSON 前缀和用户内容不越过 transport。
    */
-  onFrameDropped?: (frame: { observedBytes: number; prefix: string }) => void;
+  onFrameDropped?: (frame: {
+    observedBytes: number;
+    kind: "response" | "request" | "notification" | "unknown";
+    method: string;
+  }) => void;
   /**
    * 普通原生 RPC 请求超时时的有界诊断回调（同步、禁止抛错）。
    * 仅传递方法名、等待时长与当前其余在途请求数，绝不包含请求参数或用户内容。

@@ -21,6 +21,7 @@ import { codexServerArgv } from "./codex-server-argv.js";
 import { prepareCodexDesktopContext } from "./desktop-context.js";
 
 type Pending = {
+  method: string;
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
   timer: ReturnType<typeof setTimeout>;
@@ -116,6 +117,16 @@ export function createCodexProcess(options: CodexProcessOptions): CodexProcess {
    */
   function handleDroppedFrame(frame: CodexDroppedFrame): void {
     const hint = frameEnvelopeHint(frame.prefix);
+    const kind =
+      hint.method !== undefined
+        ? hint.id === undefined
+          ? "notification"
+          : "request"
+        : hint.id === undefined
+          ? "unknown"
+          : "response";
+    // 只有顶层 id 与在途请求匹配时才知道 response 的原生方法；不从用户正文猜测。
+    const method = hint.method ?? (hint.id === undefined ? undefined : pending.get(hint.id)?.method);
     const error = new CodexTransportError("LIMIT", "Codex response frame exceeds size limit");
     if (hint.method === undefined && hint.id === undefined) {
       // 前缀可能来自原生 server request；不知道 id 就无法安全应答，必须失败关闭。
@@ -139,7 +150,14 @@ export function createCodexProcess(options: CodexProcessOptions): CodexProcess {
       pending.clear();
     }
     try {
-      options.onFrameDropped?.(frame);
+      options.onFrameDropped?.({
+        observedBytes: frame.observedBytes,
+        kind,
+        method:
+          method && /^[A-Za-z0-9_/-]{1,64}$/.test(method)
+            ? method
+            : "unknown",
+      });
     } catch {
       // 诊断回调绝不能破坏传输状态机。
     }
@@ -207,7 +225,7 @@ export function createCodexProcess(options: CodexProcessOptions): CodexProcess {
           new CodexTransportError("TIMEOUT", "Codex RPC request timed out; outcome is unknown"),
         );
       }, timeout);
-      pending.set(id, { resolve, reject, timer });
+      pending.set(id, { method, resolve, reject, timer });
       void write({ id, method, params }).catch((error: Error) => {
         const entry = pending.get(id);
         if (!entry) return;

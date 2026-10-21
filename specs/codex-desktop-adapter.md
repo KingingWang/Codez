@@ -272,6 +272,43 @@ unoffered persistence never reach Codex.
   Correlation hints must identify top-level envelope fields, never text inside
   a user-provided payload. Unknown envelope identity must fail closed rather
   than treating a possible server request as a response or notification.
+- A cold Codex conversation must not return the full durable turn history in
+  `thread/resume`: use the pinned native `excludeTurns` option, preserve the
+  existing writer-conflict and unloaded-child branches, and read history from
+  the read-only paginated `thread/turns/list` authority. An oversized full-turn
+  page may be retried at the same cursor with a smaller limit, stopping after
+  the single-turn boundary. When even one full turn exceeds the frame cap, read
+  that turn's metadata with `itemsView: "notLoaded"` and use the pinned native
+  `thread/items/list` with a bounded page size to reconstruct its complete
+  items, identity and order. Empty pages that offer another cursor, repeated
+  cursors, or repeated turn/item identities fail explicitly instead of looping.
+  A single oversized item still fails explicitly;
+  neither read-only recovery nor `thread/resume` may silently truncate history
+  or retry a mutation with an unknown outcome. An oversized-frame production
+  diagnostic contains only the validated native method, frame-byte lower
+  bound and frame kind, never the JSON prefix, content, parameters or path.
+- Cold-open performance has two distinct observable boundaries: first genuine
+  historical content painted and genuine runtime command authority ready.
+  Returning an ACK or an empty shell is neither boundary. Existing desktop
+  continuous and mobile replayable subscribers share one native history owner,
+  while their delivery/gap rules remain distinct. The current whole-history
+  row ordinals (including hidden continuation rows and synthetic subagent rows)
+  mean a tail-only initial snapshot cannot claim a global `firstRowId` or
+  `totalCount` without a complete, exact row outline. Until native history
+  exposes such a bounded outline, cold loads must keep the existing accurate
+  whole-history contract. Optimize within that boundary by avoiding a duplicate
+  full-history resume response and by reusing the derived projection for
+  same-epoch/same-sequence history queries; never claim on-demand old-history
+  hydration from a tail-only UI window. A future outline-based tail-first
+  release requires its own additive protocol contract and separate read-only
+  versus executable-ready gates.
+- For a synthetic large historical fixture, measure subscribe→first painted
+  content, subscribe→interactive readiness, native frame bytes and request
+  count, history-page query latency and bridge peak memory on matched old/new
+  binaries, hardware and cache state. Compare ordinary and near-limit cases
+  at least ten times each; do not compare a formerly failing >32 MiB case
+  against a nonexistent successful baseline. Record results and correctness
+  hashes rather than inserting arbitrary sleeps or relaxing the 32 MiB cap.
 - Native queues automatically dispatch when idle (including cold resume),
   except that idle caused by an interrupt never dispatches. An
   explicit queue request is not a request to hold an idle turn. External queue
