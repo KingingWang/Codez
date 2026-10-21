@@ -873,7 +873,7 @@ it("身份等待只在用户确认后继续原目录，确认完成不遗留 bus
   expect(result.current.connectingStep.loading).toBe(false);
 });
 
-it("首屏直接列出 config Host，搜索后点击并在连接屏补密码", async () => {
+it("首屏直接列出 config Host，搜索后点击并按 auto 认证连接", async () => {
   ports.platform.listSSHConfigAliases.mockResolvedValue([
     { alias: "build-box", host: "build.example.com", username: "builder", port: 2222 },
     { alias: "other-box", host: "other.example.com", username: "dev" },
@@ -885,11 +885,6 @@ it("首屏直接列出 config Host，搜索后点击并在连接屏补密码", a
   fireEvent.change(search, { target: { value: "build" } });
   fireEvent.click(await screen.findByRole("button", { name: /build-box/ }));
   expect(screen.queryByRole("button", { name: /other-box/ })).toBeNull();
-  expect(props.onConnect).not.toHaveBeenCalled();
-  const password = await screen.findByLabelText("密码");
-  expect(document.activeElement).toBe(password);
-  fireEvent.change(password, { target: { value: "config-secret" } });
-  fireEvent.submit(password.closest("form")!);
   await waitFor(() =>
     expect(props.onConnect).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -898,12 +893,13 @@ it("首屏直接列出 config Host，搜索后点击并在连接屏补密码", a
         username: "builder",
         port: 2222,
         sshConfigAlias: "build-box",
-        password: "config-secret",
+        authMode: "auto",
       }),
       expect.any(String),
       undefined,
     ),
   );
+  expect(screen.queryByLabelText("密码")).toBeNull();
 });
 
 it("新建 SSH 使用表单校验端口，回车提交时修剪地址和用户名", async () => {
@@ -1124,13 +1120,21 @@ it("WSL 外部入口保留指定发行版，收起恢复不覆盖用户草稿", 
   expect((screen.getByLabelText("发行版") as HTMLInputElement).value).toBe("Custom-Distro");
 });
 
-it("收起恢复时 config 发现失败不会丢失当前 Host 的别名", async () => {
+it("auto 认证失败后收起恢复时 config 发现失败不会丢失当前 Host 的别名", async () => {
   ports.platform.listSSHConfigAliases.mockResolvedValueOnce([
     { alias: "jump-box", host: "private", username: "dev" },
   ]);
-  const view = mountDialog();
+  const view = mountDialog({
+    onConnect: vi
+      .fn()
+      .mockRejectedValueOnce(
+        Object.assign(new Error("credentials required"), { code: "credentials-required" }),
+      )
+      .mockResolvedValueOnce("session-a"),
+  });
   fireEvent.click(await screen.findByRole("button", { name: /jump-box/ }));
-  fireEvent.change(await screen.findByLabelText("密码"), { target: { value: "secret" } });
+  const password = await screen.findByLabelText("密码");
+  fireEvent.change(password, { target: { value: "secret" } });
   fireEvent.click(screen.getByRole("button", { name: /收起/ }));
   ports.platform.listSSHConfigAliases.mockRejectedValue(new Error("temporary config read failure"));
   view.rerender(createElement(RemoteConnectionDialog, { ...view.props, open: false }));
@@ -1139,7 +1143,12 @@ it("收起恢复时 config 发现失败不会丢失当前 Host 的别名", async
   fireEvent.submit(screen.getByLabelText("密码").closest("form")!);
   await waitFor(() =>
     expect(view.props.onConnect).toHaveBeenCalledWith(
-      expect.objectContaining({ sshConfigAlias: "jump-box", host: "private", password: "secret" }),
+      expect.objectContaining({
+        sshConfigAlias: "jump-box",
+        host: "private",
+        authMode: "auto",
+        password: "secret",
+      }),
       expect.any(String),
       undefined,
     ),

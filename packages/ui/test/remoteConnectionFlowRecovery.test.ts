@@ -146,6 +146,31 @@ async function drain() {
   });
 }
 
+it("SSH config alias 直选无 IdentityFile 时直接走 auto，不进入凭据门禁", async () => {
+  const onConnect = vi.fn<RemoteConnectionFlowOptions["onConnect"]>(async () => "session-a");
+  const { result } = renderHook(() => useRemoteConnectionFlow(defaults({ onConnect })));
+
+  act(() =>
+    result.current.selectionStep.onSelectAlias({
+      alias: "staging",
+      host: "staging.example.com",
+      username: "deploy",
+      port: 2222,
+    }),
+  );
+
+  await waitFor(() => expect(onConnect).toHaveBeenCalledOnce());
+  expect(onConnect.mock.lastCall?.[0]).toMatchObject({
+    kind: "ssh",
+    host: "staging.example.com",
+    port: 2222,
+    username: "deploy",
+    sshConfigAlias: "staging",
+    authMode: "auto",
+  });
+  expect(result.current.connectingStep.credentials).toBeUndefined();
+});
+
 const upgradeFailure = {
   code: "source-server-upgrade-required",
   message: "Source Server 3.14.0 must be upgraded to at least 3.15.0",

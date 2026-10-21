@@ -34,6 +34,7 @@ import { getErrorMessage } from "@/lib/errorMessage.js";
 import { formatTaskRelativeTime } from "@/lib/taskListItemPresentation.js";
 import {
   buildRemoteTarget,
+  buildRemoteTargetFromSSHConfigAlias,
   buildRemoteTargetFromProfile,
   findPreferredSourceConnectionProfile,
   findSourceServerUpgradeProfileId,
@@ -1870,22 +1871,12 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
         onProjectIntentCleared?.();
         resetFeedback();
         const target: RemoteTarget = {
-          kind: "ssh",
-          host: alias.host?.trim() || alias.alias,
-          username: alias.username?.trim() ?? "",
-          port: alias.port,
-          sshConfigAlias: alias.alias,
-          privateKeyPath: alias.privateKeyPath,
+          ...buildRemoteTargetFromSSHConfigAlias(alias),
           assetInstallMode: DEFAULT_REMOTE_ASSET_INSTALL_MODE,
         };
         updatePendingRemoteTarget(target);
         if (!target.username) {
           setCurrentStep("settings");
-          return;
-        }
-        if (!target.privateKeyPath) {
-          setAliasCredentialsPending(true);
-          setCurrentStep("connecting");
           return;
         }
         void startRemoteConnection(target);
