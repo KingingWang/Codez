@@ -9,6 +9,7 @@ import { V4PaneConversationProvider } from "@/v4/V4ConversationContext.js";
 export const SelectionSideChatPane = memo(function SelectionSideChatPane({
   tab,
   focused,
+  isDesktop,
   onOpenBrowserUrl,
   onOpenCodeViewer,
   onOpenFileLink,
@@ -16,6 +17,7 @@ export const SelectionSideChatPane = memo(function SelectionSideChatPane({
 }: {
   tab: SelectionSideChatPaneTab;
   focused: boolean;
+  isDesktop?: boolean;
   onOpenBrowserUrl?: (url: string) => void;
   onOpenCodeViewer?: (source: CodeViewerSource) => void;
   onOpenFileLink?: (target: MessageFileLinkTarget) => void;
@@ -40,6 +42,7 @@ export const SelectionSideChatPane = memo(function SelectionSideChatPane({
         rootSessionId={tab.parentSessionId}
         openTrigger="selection"
         selectionSideChat
+        isDesktop={isDesktop}
         focused={focused}
         telemetryVisible={focused}
         workspacePath={tab.workspacePath}

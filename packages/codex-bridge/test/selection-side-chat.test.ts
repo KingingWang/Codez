@@ -59,6 +59,11 @@ test("createSelectionSideSession forks with persistent marker and hides inherite
   const state = h.store.get(child.id);
   assert.equal(state?.sideChat?.parentThreadId, sessionId);
   assert.deepEqual([...(state?.sideChat?.inheritedTurnIds ?? [])], ["turn-1"]);
+  assert.deepEqual(
+    h.rpc.calls.map((call) => call.method),
+    ["thread/fork"],
+    "hot createSelectionSideSession must reuse in-memory parent turns without redundant reload RPCs",
+  );
 
   // 投影跳过继承历史：child 自有内容为空时 snapshot 无行。
   const snapshot = projectThread(h.store.get(child.id)!.thread as unknown as CodexThread, {
@@ -187,8 +192,48 @@ test("parent turns/list failure fails open without trimming", async (t) => {
   });
   const ack = await h.execute(h.command("createSelectionSideSession", {}, "cmd-side-8"));
   assert.equal(ack.status, "accepted");
-  const state = h.store.get(child.id);
+  // 模拟重启或父线程已删除后的冷恢复：当父不在 store 中且 thread/turns/list 失败时，fail-open 不裁剪。
+  h.store.remove(sessionId);
+  const state = await h.store.reloadAfterHistoryChange(child.id);
   assert.equal(state?.sideChat, undefined);
+});
+
+test("createSelectionSideSession inherits parent active model, provider, effort and mode when fork response omits runtime overrides", async (t) => {
+  const h = await setup(t);
+  const parent = h.store.get(sessionId)!;
+  parent.thread.model = "glm-5.3";
+  parent.thread.modelProvider = "ollama1";
+  parent.thread.reasoningEffort = "high";
+  parent.thread.collaborationMode = {
+    mode: "plan",
+    settings: { model: "glm-5.3", reasoning_effort: "high", developer_instructions: null },
+  };
+  h.store.rememberMode(sessionId, "yolo");
+
+  const child = {
+    ...childFixture(),
+    model: null,
+    modelProvider: "openai",
+    reasoningEffort: null,
+  };
+  scopeHandlers(h, child);
+  h.rpc.handlers.set("thread/fork", () => ({ thread: child }));
+
+  const ack = await h.execute(h.command("createSelectionSideSession", {}, "cmd-side-inherit"));
+  assert.equal(ack.status, "accepted");
+  const childState = h.store.get(child.id)!;
+  assert.equal(childState.thread.model, "glm-5.3");
+  assert.equal(childState.thread.modelProvider, "ollama1");
+  assert.equal(childState.thread.reasoningEffort, "high");
+  assert.deepEqual(childState.thread.collaborationMode, parent.thread.collaborationMode);
+
+  const snapshot = projectThread(childState.thread as unknown as CodexThread, {
+    workspacePath: cwd,
+    hiddenTurnIds: childState.sideChat?.inheritedTurnIds,
+  });
+  assert.equal(snapshot.config.provider, "ollama1");
+  assert.equal(snapshot.config.model, "glm-5.3");
+  assert.equal(snapshot.config.thought, "high");
 });
 
 test("legacy fixture text input shape stays intact", () => {

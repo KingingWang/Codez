@@ -11,7 +11,11 @@ Codex 运行时（codex-bridge）支持 `createSelectionSideSession`：右侧面
   - `threadSource` 是原生 rollout 持久化字段（`SessionMeta.thread_source`），`Feature(String)` 变体接受任意字符串并原样回读；bridge 用它作为「这是辅助对话 child」的标记，重启后仍可识别。显式 fork（`forkAssistant`）不携带该标记，不受影响。
 - 任务列表隐藏：bridge `projectSessionsIndex` 过滤 `threadSource === 标记` 的线程。不用原生 `thread/archive`——归档是用户可见语义，且归档会级联归档后代线程。
   - 该过滤依赖原生 `thread/list` 返回 `threadSource`；旧版本原生 list 链路丢失该字段期间，child 会被 sessions-index discovery 播种进 `tasks-index.sqlite` 主列表。修复路径：syncer 首帧对「不在可见 index」的存量行逐条 `session/read`（`existing-only` + `index` 载荷）确认 `sessionKind === "selection_side_chat"`（`projectLegacySnapshot` 以 threadSource 推导）后软删，只清理派生索引行，不动 Agent 转录。
-- 继承历史裁剪：`ThreadStateStore.load()` 发现线程带标记且有 `forkedFromId` 时，lock-free 读父线程 turns（`thread/turns/list`），把「turn id 同时存在于父」的 turn 记入 `state.sideChat.inheritedTurnIds`；`projectThread` 投影时跳过这些 turn。父读取失败（删除/跨 workspace）fail-open 不裁剪。父之后新增/revert turn 不影响 child 裁剪集合（fork 后 child 不再获得父 turn；id 不在集合里的 turn 一律展示）。
+- 继承历史裁剪与创建快路径：
+  - 热路径：`createSelectionSideSession` 刚由父线程 `thread/fork` 创建 child 时，父线程已由命令路由加载在内存（`store.get(parentId)`），且 child 已被原生运行时加载（无需重复 `thread/read`、`thread/resume`、`thread/turns/list` 或 `thread/queue/list`）。bridge 直接从已加载父线程与 `fork` 响应合并继承 `model`、`modelProvider`、`reasoningEffort`、`collaborationMode` 与 remembered 权限档位，同步用父线程内存中 turns 求交建立 `state.sideChat.inheritedTurnIds`（父 turns 未缓存时回退一次 `thread/turns/list`），避免创建与首次订阅之间的多余串行原生 RPC。
+  - 冷路径：`ThreadStateStore.load()` 发现线程带标记且有 `forkedFromId` 时，优先用已加载父线程 turns、未加载时 lock-free 读父线程 turns（`thread/turns/list`），把「turn id 同时存在于父」的 turn 记入 `state.sideChat.inheritedTurnIds`；`projectThread` 投影时跳过这些 turn。父读取失败（删除/跨 workspace）fail-open 不裁剪。父之后新增/revert turn 不影响 child 裁剪集合（fork 后 child 不再获得父 turn；id 不在集合里的 turn 一律展示）。
+- UI 侧能力与模型继承：
+  - 右侧面板 `SelectionSideChatPane` 必须透传宿主 `isDesktop`，使桌面端辅助对话 `SessionPane` 启用 `useCodexModelCatalog` 与 `nativeCodexSession`，从 child 初始快照恢复继承的模型、思考等级、权限模式与 Plan 状态；若父会话未选择模型，则辅助对话保持未选模型状态，允许创建无模型辅助对话。
 - 边界指令：child 的第一条自有输入（创建命令的 `firstInput`，或之后对该 child 的首条 `sendText`）由 bridge 在文本前拼接边界指令（与 legacy `SELECTION_SIDE_CHAT_BOUNDARY` 同文案：继承历史仅供参考、不自动继续父工作）。判定「尚无自有输入」= 当前 turns 全部属于 inheritedTurnIds。指令只进模型上下文；UI 裁剪按 turn 归属判定，不解析文本。
 - `firstInput.modelSelection` 存在时经 `selectionOverrides` 随首个 `turn/start` 下发；缺省继承父线程原生设置。
 - writer-conflict 只读父会话允许创建（fork 不取源写锁，与 `forkAssistant` 同一逃生通道）。
@@ -21,7 +25,7 @@ Codex 运行时（codex-bridge）支持 `createSelectionSideSession`：右侧面
 ```text
 UI dispatch createSelectionSideSession(parent)
   → bridge: thread/fork(parent, threadSource=marker)
-  → store.markStarted(child) + reloadAfterHistoryChange(child)   // 完整 load，含裁剪集合
+  → bridge: inherit parent model/provider/effort/mode + store.markStarted(child) + sideChat boundary
   → firstInput?  → child turn/start(指令 + text)（只落 child，不进父 queue）
   → ACK accepted { sessionId: childId }
   → UI 打开右侧 selection-side-chat tab → v4 订阅 child → snapshot 只含 child 自有 turns
