@@ -1450,6 +1450,16 @@ provider SSE -> codez-cli runtime -> @codez/protocol stdio
 
 PERF04（accepted）：长历史下连续 thinking / assistantText 更新。经导入服务建立隔离历史，真实 Provider SSE → CLI → Host → renderer；逐步显示并与最终正文一致，分享关闭不预计算目录，导航预览保持原语义。桌面完整链路记录已加载行数、Scan 更新原因与关闭 Scan 的 profile；手机共享 UI 路径做响应式交互回归，不据此声称手机传输链路已覆盖。性能预算仅用于同环境诊断，不作为跨机器产品合同。
 
+Codex adapter 的历史读取与 CLI PERF03 的 SQLite materialization 是不同 owner。
+下面用例不复用 PERF03 的耗时结论，也不把首屏尾窗等同于已按需读取原生历史：
+
+| ID | Setup → action | UI 断言 | 非 UI 证据 | Review |
+| --- | --- | --- | --- | --- |
+| CXL-P01 | 原生 Codex 有一条 10k+ 行、多个完整 turn 的长会话；同源码、原生版本和缓存条件各跑至少 10 次，冷启动后打开该会话 | 出现真实历史正文才计首次可读；命令权威就绪后才计可交互；早期行能翻页且不重排 | 原生 resume 使用 `excludeTurns`，按页读取的 turn/item id 与旧版一致；比较首屏 p50/p95、interactive p95、RPC 数和 peak RSS，不把 ACK 或失败请求耗时当成成功基线 | accepted |
+| CXL-P02 | 同一会话的一页完整 turns 超 32 MiB，但单条 item 均小于上限 | 点击任务最终可打开，另一任务正常；浏览早期/尾部、继续输入不丢内容 | `thread/turns/list` 只读同 cursor 有界缩页，单 turn 大页经 `thread/items/list` 完整恢复；cursor 重复、单 item 超限或 writer 冲突显式失败，不自动重发 resume / 写命令 | accepted |
+| CXL-P03 | 桥接内该长会话已加载，同 epoch/seq 连续多次向前翻页，同时 Host task-index 进行 `session/read(index)` | 顺序、锚点和工具卡内容稳定，侧栏标题/可检索正文/可见性不变 | rows/range 复用同版本派生投影，不因每页查询重复全史投影；index 帧剥离工具/推理大载荷，`full` 快照与原生事实不被改写 | accepted |
+| CXL-P04 | 上游原生提供可分页、可精确计算 bridge 合成行 ordinal 的有界 item outline；长历史中仅尾部正文已取回 | 首帧可读且 `rows.firstRowId/totalCount` 精确；旧页按需读取；未恢复写入权时仅草稿可编辑，ready 后可发送 | 同一 bridge 原生会话和 subscription，outline→tail→first frame→attach ready 的顺序；分支更改换 epoch；desktop continuous 与 mobile replayable 各有代表验证 | accepted，需先实现原生 outline 与双阶段契约，不能由 CXL-P01 冒充 |
+
 ## RES. CLI Session 常驻池
 
 本组是 CLI/runtime 生命周期的 focused 语义，不做 GUI 状态笛卡尔积。`N` 是 resident 软目标；
