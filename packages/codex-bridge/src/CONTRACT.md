@@ -39,8 +39,10 @@ cwd. A generic legacy session-list read invalidates existing index subscriptions
 after replying; targeted `sessionIds` reads inspect loaded state or lock-free
 `thread/read` metadata without scanning all workspace threads or recursively
 invalidating index subscriptions. Legacy
-session responses retain the Host-authorized workspace identity as well as its
-key, because shell task-index persistence consumes the identity field. Discovery
+session responses retain the Host-authorized workspace identity, key, and verified
+`workspacePath` spelling (falling back to a local path-alias `workspaceId` when
+omitted), because Host lineage verification and shell task-index persistence match
+project roots by the caller's path spelling while native execution uses `store.cwd`. Discovery
 does not resume threads; explicit conversation opening retains the native resume
 path. `v4/sessionsIndex/reconcile` inspects bridge tombstones, loaded state and
 lock-free `thread/read` metadata without scanning or resuming threads; `deleteSession`

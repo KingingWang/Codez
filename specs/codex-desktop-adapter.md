@@ -61,7 +61,10 @@ local path fallback. Filesystem aliases (for example macOS `/var` and `/private/
 may resolve to the same execution directory; verify this asynchronously by realpath
 before normalizing internal cwd inputs. Never normalize or equate explicit workspace
 identities based on filesystem equality. Missing paths and foreign identities fail
-closed, and native config/skills/plugin requests stay on the canonical execution cwd.
+closed, native config/skills/plugin requests stay on the canonical execution cwd,
+and `session/*` responses retain the caller's verified `workspacePath` spelling
+(falling back to `workspaceId` when it is a local path alias of `cwd`) so Host
+project roots and lineage checks never diverge across symlinks.
 
 ### Single-folder projects and native history
 

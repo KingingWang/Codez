@@ -1,3 +1,6 @@
+import { mkdtemp, mkdir, realpath, rm, symlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
@@ -277,4 +280,69 @@ test("targeted session/list reads cached or lock-free thread/read metadata witho
   assert.equal(childResult.sessions[0]?.sessionKind, "subagent_child");
   assert.equal(childResult.sessions[0]?.parentSessionId, parent.id);
   assert.deepEqual(childResult.sessions[0]?.workspace, workspace);
+});
+
+test("session/list and session/read preserve symlinked workspacePath when store.cwd is physical realpath", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "codex-legacy-symlink-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const physicalDir = join(root, "disk", "home", "user", "workspace");
+  const symlinkHome = join(root, "home-user");
+  await mkdir(physicalDir, { recursive: true });
+  await symlink(
+    join(root, "disk", "home", "user"),
+    symlinkHome,
+    process.platform === "win32" ? "junction" : "dir",
+  );
+  const logicalWorkspacePath = join(symlinkHome, "workspace");
+  const physicalCwd = await realpath(physicalDir);
+  const thread = { ...threadFixture(), cwd: physicalCwd };
+  const rpc = {
+    async request(method: string) {
+      if (method === "config/read") return { config: {} };
+      if (method === "model/list") return { data: [], nextCursor: null };
+      if (method === "thread/list") return { data: [thread], nextCursor: null };
+      if (method === "thread/read") return { thread };
+      throw new Error(`unexpected ${method}`);
+    },
+  } as unknown as CodexRpcPort;
+  const store = new ThreadStateStore(rpc, physicalCwd);
+  store.markStarted(thread);
+
+  const remoteIdentity = `remote:server:host-1:${logicalWorkspacePath}`;
+  const remoteWorkspace = {
+    workspacePath: logicalWorkspacePath,
+    workspaceIdentity: remoteIdentity,
+    workspaceKey: remoteIdentity,
+  };
+  // Simulate BridgeRuntime.request where scopeWorkspaceParams normalizes params.workspace.workspacePath to physicalCwd
+  const scopedParams = {
+    workspace: { ...remoteWorkspace, workspacePath: physicalCwd },
+    sessionIds: [thread.id],
+  };
+  const listed = codezSessionListResultSchema.parse(
+    await handleLegacySession(
+      "session/list",
+      scopedParams,
+      rpc,
+      store,
+      remoteIdentity,
+      logicalWorkspacePath,
+    ),
+  );
+  assert.equal(listed.sessions.length, 1);
+  assert.deepEqual(listed.sessions[0]?.workspace, remoteWorkspace);
+
+  const localRead = codezSessionStateSnapshotSchema.parse(
+    await handleLegacySession(
+      "session/read",
+      { sessionId: thread.id },
+      rpc,
+      store,
+      logicalWorkspacePath,
+    ),
+  );
+  assert.deepEqual(localRead.session.workspace, {
+    workspacePath: logicalWorkspacePath,
+    workspaceKey: logicalWorkspacePath,
+  });
 });

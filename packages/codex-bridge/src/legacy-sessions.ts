@@ -13,6 +13,7 @@ import {
   type ControlModelThreadOverride,
 } from "./control-presentation.js";
 import { nativeProjectSource } from "./project-origin.js";
+import { sameExecutionPath } from "./execution-path.js";
 import { isAbsolute } from "node:path";
 import { z } from "zod";
 
@@ -39,16 +40,29 @@ export async function handleLegacySession(
   rpc: CodexRpcPort,
   store: ThreadStateStore,
   workspaceId: string,
+  requestedWorkspacePath?: string,
 ): Promise<unknown> {
   const p = object(params ?? {});
-  if (p.workspace && object(p.workspace).workspacePath !== store.cwd)
+  const inputWorkspacePath =
+    requestedWorkspacePath ??
+    (p.workspace && typeof object(p.workspace).workspacePath === "string"
+      ? String(object(p.workspace).workspacePath)
+      : undefined);
+  if (inputWorkspacePath !== undefined && !(await sameExecutionPath(inputWorkspacePath, store.cwd)))
     throw new Error("Workspace mismatch");
+  // 修复原因：main.ts 启动时将 store.cwd 规范化为物理 realpath，但 Host 项目与会话订阅
+  // 保存的是软链接路径（如 /home/user/workspace vs /home/back/disk/home/user/workspace）。
+  // 若回包把 workspacePath 改写成物理路径，subscribeConversationV4 的父链归属校验会因
+  // 字符串不等抛 project.session-lineage-invalid，session/read 也会在 task-index 中找不到行。
+  const responseWorkspacePath =
+    inputWorkspacePath ??
+    ((await sameExecutionPath(workspaceId, store.cwd)) ? workspaceId : store.cwd);
   // task-index 按 workspaceIdentity 持久化；只改 workspaceKey 会把远端新会话
   // 写进本地路径分区。身份只取 Host 已授权的 workspaceId，不能从路径猜测远端。
   const workspace = {
-    workspacePath: store.cwd,
+    workspacePath: responseWorkspacePath,
     workspaceKey: workspaceId,
-    ...(workspaceId !== store.cwd || object(p.workspace ?? {}).workspaceIdentity
+    ...(workspaceId !== responseWorkspacePath || object(p.workspace ?? {}).workspaceIdentity
       ? { workspaceIdentity: workspaceId }
       : {}),
   };
