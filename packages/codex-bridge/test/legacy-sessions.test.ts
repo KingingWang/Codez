@@ -9,6 +9,7 @@ import {
   codezSessionListResultSchema,
 } from "@codez/shared";
 import { handleLegacySession } from "../src/legacy-sessions.js";
+import { SELECTION_SIDE_CHAT_THREAD_SOURCE } from "../src/selection-side-chat.js";
 import { ThreadStateStore } from "../src/thread-state.js";
 import type { CodexRpcPort } from "../src/contract.js";
 import { threadFixture } from "./projection-fixtures.test.js";
@@ -280,6 +281,53 @@ test("targeted session/list reads cached or lock-free thread/read metadata witho
   assert.equal(childResult.sessions[0]?.sessionKind, "subagent_child");
   assert.equal(childResult.sessions[0]?.parentSessionId, parent.id);
   assert.deepEqual(childResult.sessions[0]?.workspace, workspace);
+});
+
+test("session/list hides selection_side_chat in full listing but returns it for targeted sessionIds lineage lookup", async () => {
+  const parent = threadFixture();
+  const cwd = parent.cwd;
+  const sideChat = {
+    ...parent,
+    id: "side-chat-child",
+    forkedFromId: parent.id,
+    threadSource: SELECTION_SIDE_CHAT_THREAD_SOURCE,
+    turns: [],
+  };
+  const rpc = {
+    async request(method: string) {
+      if (method === "thread/list") return { data: [parent, sideChat], nextCursor: null };
+      throw new Error(`unexpected ${method}`);
+    },
+  } as unknown as CodexRpcPort;
+  const store = new ThreadStateStore(rpc, cwd);
+  store.markStarted(parent);
+  store.markStarted(sideChat);
+
+  const workspaceIdentity = "remote:server:host-1:/workspace";
+  const workspace = { workspacePath: cwd, workspaceIdentity, workspaceKey: workspaceIdentity };
+
+  const fullList = codezSessionListResultSchema.parse(
+    await handleLegacySession("session/list", { workspace }, rpc, store, workspaceIdentity),
+  );
+  assert.deepEqual(
+    fullList.sessions.map((session) => session.sessionId),
+    [parent.id],
+  );
+
+  const targetedList = codezSessionListResultSchema.parse(
+    await handleLegacySession(
+      "session/list",
+      { workspace, sessionIds: [sideChat.id] },
+      rpc,
+      store,
+      workspaceIdentity,
+    ),
+  );
+  assert.equal(targetedList.sessions.length, 1);
+  assert.equal(targetedList.sessions[0]?.sessionId, sideChat.id);
+  assert.equal(targetedList.sessions[0]?.sessionKind, "selection_side_chat");
+  assert.equal(targetedList.sessions[0]?.parentSessionId, parent.id);
+  assert.deepEqual(targetedList.sessions[0]?.workspace, workspace);
 });
 
 test("session/list and session/read preserve symlinked workspacePath when store.cwd is physical realpath", async (t) => {

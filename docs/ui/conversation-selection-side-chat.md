@@ -180,8 +180,10 @@ Side Pane 启动页 / 顶部 + 菜单 / 主 composer `/side`、`/btw`
   不在落盘正文预包标签，不每轮追加重复提醒，不迁移旧的缺少 part metadata 的 side chat。
 - `sendGoalCommand`、`resumeGoal`、`editUserQuery`、`retryTurn`、`forkAssistant` 对该 kind
   返回 `guard.selectionSideChatRestrictedCommand`。
-- live sessions-index、task-index、项目/对话/分组/置顶/归档列表过滤该 kind；直接订阅 child
-  conversation topic 仍正常工作。
+- live sessions-index、task-index、项目/对话/分组/置顶/归档列表过滤该 kind；`session/list`
+  仅在未指定 `sessionIds` 的工作区列表枚举时过滤该 kind，按精确 `sessionIds` 查询时保留
+  `selection_side_chat` 与 `parentSessionId`，供 `subscribeConversationV4` 沿父链校验远程项目
+  归属以及索引清理，直接订阅 child conversation topic 仍正常工作。
 
 ## 首轮 reminder E2E 回归（SSC33）
 
