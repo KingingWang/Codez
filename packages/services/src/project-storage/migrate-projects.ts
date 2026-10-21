@@ -94,12 +94,14 @@ export function migrateProjects(db: DatabaseSync, context: ProjectMigrationConte
   const now = (context.now ?? Date.now)();
   addProjectSchema(db);
   ensureHost(db, "local", context.hostId);
-  initializeLegacyTaskIdentity(db, false, context.hostId);
   const settings = context.settings;
   const remoteOwner = (context.hostId ?? "local") !== "local";
   const hostAliases = remoteOwner
     ? new Map<string, string>()
     : migrateConnectionHosts(db, settings);
+  // 修复原因（issue #19）：必须先建立 Connection Profile 的 Source Server hostAliases，
+  // 再初始化存量任务身份，使旧 SSH/WSL/Docker 路由任务行与远端项目入口收敛到同一稳定 host_id。
+  initializeLegacyTaskIdentity(db, false, context.hostId, hostAliases);
   const workspaces = new Map<string, { path: string; hostId: string }>();
   // Bug 原因：历史任务目录不代表用户仍保留该工作区，扫描 tasks 会复活已移除的项目入口。
   // 首次项目集合与顺序只取旧 settings；其他历史任务保留原目录，按现有规则保持未归类。
@@ -204,7 +206,9 @@ export function migrateProjects(db: DatabaseSync, context: ProjectMigrationConte
       workspace_key: string;
       workspace_path: string;
     }[]) {
-      const hostId = context.hostId ?? hostForWorkspace(row.workspace_key).hostId;
+      const rawHostId = hostForWorkspace(row.workspace_key).hostId;
+      const hostId =
+        context.hostId ?? ensureHost(db, row.workspace_key, hostAliases.get(rawHostId));
       // 远端身份 key 与 settings 的真实目录不同；调度定义也按同 Host 的 root 归入已保存项目。
       db.prepare(
         `UPDATE ${table} SET host_id=?,project_id=?,additional_directories='[]' WHERE workspace_key=?`,

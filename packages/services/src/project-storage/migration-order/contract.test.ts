@@ -205,8 +205,91 @@ describe("project-storage migration order", () => {
       .repository(db, hostId)
       .saveProject({ roots: ["/home/kingingwang/workspace/ai/ZCode"] });
     expect(project.hostId).toBe(hostId);
+    expect(db.prepare("SELECT kind FROM hosts WHERE host_id=?").get(hostId)).toEqual({
+      kind: "server",
+    });
+  });
+
+  it("maps legacy SSH task identity to the Source Server host during initial migration and reconciles existing mismatched rows", async () => {
+    const { db, add, context } = await fixture();
+    const target = { kind: "ssh" as const, host: "example.test", username: "dev", port: 22 };
+    const sshIdentity = "remote:ssh:example.test:22:dev:/home/dev/ZCode";
+    const stableIdentity = "remote:server:stable-srv:/home/dev/ZCode";
+    const stableHostId = "remote:server:stable-srv";
+    add("ssh-task", "/home/dev/ZCode", sshIdentity);
+    db.prepare("INSERT INTO automations VALUES('auto-1',?,?)").run(sshIdentity, "/home/dev/ZCode");
+    const settings = {
+      recentProjects: [],
+      sourceServers: [
+        {
+          sourceServerId: "stable-srv",
+          displayName: "Remote",
+          preferredProfileId: "prof-1",
+          installState: "installed" as const,
+          declaredWorkspaces: [],
+        },
+      ],
+      connectionProfiles: [
+        {
+          profileId: "prof-1",
+          lifecycleState: "active" as const,
+          transport: "ssh" as const,
+          sourceServerId: "stable-srv",
+          target,
+          createdAt: 1,
+        },
+      ],
+      lastWorkspaceSession: [
+        {
+          kind: "remote" as const,
+          workspacePurpose: "project" as const,
+          workspacePath: "/home/dev/ZCode",
+          target,
+          lastOpenedAt: 1,
+          lastConnectionStatus: "connected" as const,
+        },
+      ],
+    };
+    await port.migrate(db, { ...context, settings });
     expect(
-      db.prepare("SELECT kind FROM hosts WHERE host_id=?").get(hostId),
-    ).toEqual({ kind: "server" });
+      db.prepare("SELECT host_id,project_id FROM tasks WHERE task_id='ssh-task'").get(),
+    ).toEqual({
+      host_id: stableHostId,
+      project_id: null,
+    });
+    expect(
+      db.prepare("SELECT host_id FROM automations WHERE automation_id='auto-1'").get(),
+    ).toEqual({
+      host_id: stableHostId,
+    });
+
+    // 模拟已升级存量库中 workspace_key/workspace_identity 已是 remote:server:<id>:/path，
+    // 但 host_id 仍残留旧 SSH 线路身份的场景（issue #19）。
+    db.prepare(
+      "UPDATE tasks SET workspace_key=?,workspace_identity=?,host_id='remote:ssh:example.test:22:dev' WHERE task_id='ssh-task'",
+    ).run(stableIdentity, stableIdentity);
+    await port.migrate(db, { ...context, settings });
+    expect(
+      db
+        .prepare(
+          "SELECT workspace_key,workspace_identity,host_id,project_id,created_at,updated_at FROM tasks WHERE task_id='ssh-task'",
+        )
+        .get(),
+    ).toEqual({
+      workspace_key: stableIdentity,
+      workspace_identity: stableIdentity,
+      host_id: stableHostId,
+      project_id: null,
+      created_at: 1,
+      updated_at: 2,
+    });
+    const localTree = port.repository(db).readTree();
+    expect(localTree.tasks.find((task) => task.taskId === "ssh-task")).toMatchObject({
+      taskId: "ssh-task",
+      hostId: stableHostId,
+      workspacePath: "/home/dev/ZCode",
+      workspaceIdentity: stableIdentity,
+      projectId: null,
+    });
   });
 });
