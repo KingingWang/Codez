@@ -209,7 +209,7 @@ import { WorkspaceHookPendingBanner } from "@/v4/WorkspaceHookPendingBanner.js";
 import { ConversationStatusPanel } from "@/v4/ConversationStatusPanel.js";
 import { useGitAuxiliaryCapability } from "@/capabilities/useGitAuxiliaryCapability.js";
 import { useCodexAutoReviewApprovals } from "@/capabilities/useCodexAutoReviewApprovals.js";
-import { useCodexNativeHost } from "@/capabilities/useCodexNativeHost.js";
+import { useCodexNativeHostStatus } from "@/capabilities/useCodexNativeHost.js";
 import {
   isCodexDesktopFileRewindAvailable,
   useCodexDesktopFileRewindCapability,
@@ -738,11 +738,14 @@ export function SessionPane({
   });
   // 手机远控没有桌面 catalog；hello 能力投影是唯一权威的对端 Codex 事实，
   // 命中后为 composer 开启与桌面一致的排队/引导选择（仅 UI 意图，命令仍走同一条链路）。
-  const codexNativeRemoteHost = useCodexNativeHost(
+  const codexNativeRemoteHostStatus = useCodexNativeHostStatus(
     services.codezAgentService,
     { workspacePath, ...(workspaceIdentity ? { workspaceIdentity } : {}) },
     !isDesktop && compactForRemoteControl,
   );
+  const codexNativeRemoteHost = codexNativeRemoteHostStatus === "native";
+  const codexNativeRemoteHostPending =
+    !isDesktop && compactForRemoteControl && codexNativeRemoteHostStatus === "pending";
   const nativeCodexSession = isDesktop || codexNativeRemoteHost;
   // Approve for me 档（approvalsReviewer:"auto_review"）由原生 guardian approval 能力门控；
   // fail-closed，未确认前 composer 隐藏 edit 档（specs/codex-permission-modes.md）。
@@ -4849,7 +4852,9 @@ export function SessionPane({
   const ensureDraftPrewarmConfigBeforeSend = useCallback(
     async (targetSessionId: string) => {
       // 实测首次附图在这里被旧 setFollowupMode 屏障拒绝；native delivery 由线程/输入命令所有。
-      if (isDesktop) return;
+      // 远程 Codex 的 hello 是异步探测；探测未完成时也不能把它当 legacy Host
+      // 发出不兼容的 CAS，否则首发会在 bridge 返回 codex.commandFailed。
+      if (nativeCodexSession || codexNativeRemoteHostPending) return;
       // followupMode 仍是 Session 行为设置；模型与模式属于本次 Submission，随 sendText
       // 原子提交，不能在发送前通过 CAS 改写共享 Session。
       const desiredConfig = buildDraftCreateConfigPayload(
@@ -4884,13 +4889,21 @@ export function SessionPane({
         requireAcceptedConfigAck("setFollowupMode", ack);
       }
     },
-    [appFollowupMode, dispatchConfigCas, draftConfigRef, isDesktop],
+    [
+      appFollowupMode,
+      codexNativeRemoteHostPending,
+      dispatchConfigCas,
+      draftConfigRef,
+      nativeCodexSession,
+    ],
   );
   ensureDraftPrewarmConfigBeforeSendRef.current = ensureDraftPrewarmConfigBeforeSend;
 
   const followupModeSyncKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (isDesktop) return;
+    // 原生 Codex（本地或远程）不支持旧 setFollowupMode；远程能力尚未完成
+    // hello 前先停住同步，避免探测竞态把首发打到不兼容的 bridge 命令。
+    if (nativeCodexSession || codexNativeRemoteHostPending) return;
     const targetSessionId = sessionId ?? prewarmSessionId;
     if (!targetSessionId || !appFollowupMode || snapshotRevision === null) return;
     if (snapshotSessionId !== targetSessionId) return;
@@ -4909,9 +4922,10 @@ export function SessionPane({
     );
   }, [
     appFollowupMode,
-    isDesktop,
+    codexNativeRemoteHostPending,
     configCommandBarrier,
     dispatchConfigCas,
+    nativeCodexSession,
     prewarmSessionId,
     sessionId,
     snapshotFollowupMode,
