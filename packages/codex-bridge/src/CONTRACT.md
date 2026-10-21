@@ -33,10 +33,15 @@ items so a newly persisted first turn becomes visible without waiting for title
 generation or turn completion, while never blocking ordered conversation events.
 Production fatal diagnostics include fixed
 failure categories and origin labels, not arbitrary exception text or user paths.
+Ordinary native RPC timeouts emit a bounded stderr warning containing only the
+allowlisted native method name, elapsed milliseconds, and pending request count.
 
 Project discovery lists native user-facing history across providers in the scoped
 cwd. A generic legacy session-list read invalidates existing index subscriptions
-after replying; targeted `sessionIds` reads inspect loaded state or lock-free
+after replying; concurrent workspace-wide `store.list()` scans coalesce only
+while in flight so discovery and index subscribers share one `thread/list`
+paging pass without retaining a stale cache after completion. Targeted
+`sessionIds` reads inspect loaded state or lock-free
 `thread/read` metadata without scanning all workspace threads or recursively
 invalidating index subscriptions. Legacy
 session responses retain the Host-authorized workspace identity, key, and verified
