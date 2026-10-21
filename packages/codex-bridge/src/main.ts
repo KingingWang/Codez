@@ -19,6 +19,18 @@ import { describeBridgeFailure, type BridgeFailureOrigin } from "./diagnostics.j
 import { createCodexProviderKeyGate, parseBlockedCodexProviderIds } from "./provider-key-gate.js";
 import { ensureDefaultCodexConfigFiles } from "./default-codex-config.js";
 
+// 此闭合方法表与 Host 侧 codexBridgeTitleDiagnostic.ts 同步；未知方法不输出原文。
+const observedFrameMethods = new Set([
+  "initialize",
+  "thread/read",
+  "thread/resume",
+  "thread/turns/list",
+  "thread/items/list",
+  "thread/list",
+  "thread/queue/list",
+  "unknown",
+]);
+
 async function main(): Promise<void> {
   if (process.argv[2] === CODEZ_NATIVE_BROWSER_CUA_MCP_ENTRY_MODE) {
     await runNativeBrowserCuaMcp();
@@ -46,9 +58,11 @@ async function main(): Promise<void> {
         )
       : [],
     onFrameDropped: (frame) => {
-      // 只输出结构化下界与字节数；前缀内容可能含用户数据，永不记录。
+      // 原因：过去此 stderr 落在远端 debug 日志，导出只能看到 LIMIT，无法确认
+      // 是 resume 还是 history 页。只输出闭合分类与下界，不记录原生正文或路径。
+      const method = observedFrameMethods.has(frame.method) ? frame.method : "unknown";
       process.stderr.write(
-        `Codex desktop bridge dropped an oversized native frame (observedBytes>=${frame.observedBytes}); affected requests fail explicitly without retry.\n`,
+        `Codex desktop bridge warn: oversized native frame; kind=${frame.kind}; method=${method}; observedBytes=${frame.observedBytes}\n`,
       );
     },
     onRequestTimeout: ({ method, durationMs, pendingCount }) => {

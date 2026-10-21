@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  parseCodexBridgeOversizedFrameDiagnostic,
   parseCodexBridgeRpcTimeoutDiagnostic,
   parseCodexBridgeTitleDiagnostic,
 } from "../src/codez-agent/codexBridgeTitleDiagnostic.js";
@@ -78,4 +79,20 @@ test("only bounded native rpc timeout diagnostics can become production warnings
     "Codex desktop bridge warn: native rpc timed out; method=thread list; durationMs=30000; pending=0",
   ])
     assert.equal(parseCodexBridgeRpcTimeoutDiagnostic(line), undefined);
+});
+
+test("oversized native frame warnings contain only bounded category, method and size", () => {
+  assert.deepEqual(
+    parseCodexBridgeOversizedFrameDiagnostic(
+      "Codex desktop bridge warn: oversized native frame; kind=response; method=thread/resume; observedBytes=33554433",
+    ),
+    { kind: "response", method: "thread/resume", observedBytes: 33554433 },
+  );
+  for (const line of [
+    "Codex desktop bridge warn: oversized native frame; kind=response; method=thread/resume; observedBytes=0",
+    "Codex desktop bridge warn: oversized native frame; kind=response; method=thread/resume; observedBytes=33554433; path=/secret",
+    "Codex desktop bridge warn: oversized native frame; kind=response; method=/secret; observedBytes=33554433",
+    "Codex desktop bridge warn: oversized native frame; kind=secret; method=thread/read; observedBytes=33554433",
+  ])
+    assert.equal(parseCodexBridgeOversizedFrameDiagnostic(line), undefined);
 });
