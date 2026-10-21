@@ -174,7 +174,11 @@ reject changed intent visibly and preserve the draft, never silently substitute
 thread defaults. Idle start/interrupt settings continue through the native command.
 Existing thread mode/plan initialize from native snapshot, not new-task defaults.
 Native submission must not wait for the legacy `setFollowupMode` CAS: that method
-is unsupported. Native snapshots and requested delivery own queue/guide behavior.
+is unsupported. This applies to both the local desktop bridge and a remote Host
+after its hello capability identifies Codex. While that remote capability probe is
+still pending, draft/prewarm admission must not issue the legacy CAS; once the
+probe resolves, only a confirmed legacy Host may use that synchronization path.
+Native snapshots and requested delivery own queue/guide behavior.
 Native draft prewarm waits for catalog/config selection readiness. Creation uses
 the selected native provider/model and omits unconfigured reasoning, never display
 placeholders such as empty provider or empty effort. This also applies after draft
@@ -189,6 +193,10 @@ snapshot control → disabled configuration controls (no duplicate busy store)
 frozen draft → catalog refresh → latest snapshot comparison → command admission
 native createSession ACK/id → attachment upload+commit with same id
                            → sendText on same prewarm id → accepted promotion
+
+remote hello pending ──→ no legacy setFollowupMode CAS
+       ├─ native Codex ─→ requested delivery in create/send command
+       └─ legacy Host ──→ followupMode CAS → sendText
 ```
 
 Native attachments require owned opaque refs, never raw local paths. Picker,
