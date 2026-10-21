@@ -213,6 +213,16 @@ export class BridgeRuntime {
 
   async request(method: string, params: unknown): Promise<BridgeResponse> {
     const { rpc, cwd, workspaceId } = this.options;
+    // 保留调用方原始 workspacePath 拼写（如软链接路径 /home/user/...），供 session/* 回包对齐 Host
+    // 项目 root；scopeWorkspaceParams 校验物理路径一致后会把内部执行路径规范化为物理 cwd。
+    const rawWorkspacePath =
+      params && typeof params === "object" && "workspace" in params && params.workspace
+        ? object(params.workspace).workspacePath
+        : undefined;
+    const requestedWorkspacePath =
+      typeof rawWorkspacePath === "string" && rawWorkspacePath.trim().length > 0
+        ? rawWorkspacePath
+        : undefined;
     params = await scopeWorkspaceParams(params, cwd, workspaceId);
     if (this.auxiliary.supports(method))
       return { result: await this.auxiliary.handle(method, params) };
@@ -223,7 +233,14 @@ export class BridgeRuntime {
     if (supportsControlMethod(method))
       return { result: await handleControlRequest(method, params, this.control()) };
     if (method.startsWith("session/")) {
-      const result = await handleLegacySession(method, params, rpc, this.store, workspaceId);
+      const result = await handleLegacySession(
+        method,
+        params,
+        rpc,
+        this.store,
+        workspaceId,
+        requestedWorkspacePath,
+      );
       return {
         result,
         // 外部 CLI 不会向此连接发 thread 事件；显式打开项目后的列表扫描必须让
