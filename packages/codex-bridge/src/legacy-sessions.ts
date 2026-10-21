@@ -75,14 +75,20 @@ export async function handleLegacySession(
       ? await listTargetedThreads(rpc, store.cwd, sessionIds, (id) => store.get(id)?.thread)
       : await store.list();
     return {
-      // 辅助对话 child 与任务列表同一隐藏规则（spec: codex-selection-side-chat）。
-      sessions: threads
-        .filter((thread) => !isSelectionSideChatThread(thread))
-        .map((thread) => {
-          const session = projectLegacySnapshot(thread, store.cwd).session;
-          session.workspace = workspace;
-          return session;
-        }),
+      // 修复原因：辅助对话 child 不写入主任务表（tasks-index.sqlite），远程项目下
+      // subscribeConversationV4 必须通过带 sessionIds 的 session/list 沿 parentSessionId
+      // 回溯到主会话，再由主会话通过 assertRemoteTaskDirectories 校验项目归属。
+      // 若对精确 sessionIds 查询也过滤 selection_side_chat，回溯会拿到空结果并用 child ID
+      // 查主任务表，在远程项目下稳定触发 project.remote-project-required。
+      // 因此仅在未传 sessionIds 的工作区列表枚举时隐藏辅助对话（spec: codex-selection-side-chat）。
+      sessions: (sessionIds
+        ? threads
+        : threads.filter((thread) => !isSelectionSideChatThread(thread))
+      ).map((thread) => {
+        const session = projectLegacySnapshot(thread, store.cwd).session;
+        session.workspace = workspace;
+        return session;
+      }),
     };
   }
   // 子代理目录：子线程被 sourceKinds 挡在任务列表外，这是唯一按父查询子线程的入口。
