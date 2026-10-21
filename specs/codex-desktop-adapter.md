@@ -900,7 +900,10 @@ smoke, pnpm typecheck/lint/architecture checks, and per-platform CI artifacts.
 ### Project conversation discovery
 
 Opening/adding a connected Codex project explicitly refreshes its native session
-index, including conversations created by Codex CLI outside this desktop. A warm
+index, including conversations created by Codex CLI outside this desktop and
+newly added projects whose workspace tab has not been activated yet (local roots
+through base session discovery; online remote roots through the existing
+Source settings attachment after workspace identity resolution). A warm
 connection is not proof that the persisted thread list is current. Discovery is
 read-only, paginated, scoped to the execution cwd and the remote attachment's
 existing workspace identity; it never copies history into a second execution store.
