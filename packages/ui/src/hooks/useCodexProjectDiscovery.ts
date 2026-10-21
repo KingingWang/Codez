@@ -1,5 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  buildRemoteHostWorkspaceIdentity,
+  buildRemoteWorkspaceIdentity,
+  parseRemoteWorkspaceIdentity,
+} from "@codez/shared";
+import { useOptionalPlatform } from "./usePlatform.js";
+import { useOptionalServices } from "./useServices.js";
 import { useWorkspaceServicesResolution } from "./useWorkspaceServices.js";
+import { useOptionalProjectDirectory } from "@/project-sidebar/index.js";
+import {
+  ensureSourceSettingsServices,
+  getSourceSettingsServices,
+} from "@/store/sourceSettingsServiceStore.js";
+import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
 import { logger } from "@/logger.js";
 
 interface WorkspaceTabActivation {
@@ -74,6 +87,11 @@ export function useCodexProjectDiscovery({
   scopeRef.current = scope;
   const mountedRef = useRef(false);
   const inflightRef = useRef<{ scope: object; request: Promise<void> } | null>(null);
+  const contextServices = useOptionalServices();
+  const platform = useOptionalPlatform();
+  const projectDirectory = useOptionalProjectDirectory();
+  const knownProjectRootsRef = useRef<Set<string> | null>(null);
+  const projectRootInflightRef = useRef(new Map<string, Promise<void>>());
 
   useEffect(() => {
     mountedRef.current = true;
@@ -81,6 +99,114 @@ export function useCodexProjectDiscovery({
       mountedRef.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isDesktop || !projectDirectory || projectDirectory.loading) return;
+    const hostsById = new Map(projectDirectory.directory.hosts.map((host) => [host.id, host]));
+    const nextRoots = new Map<
+      string,
+      { workspacePath: string; workspaceIdentity?: string; hostId: string }
+    >();
+    for (const project of projectDirectory.projects) {
+      if (project.deleted) continue;
+      for (const root of project.roots) {
+        const workspaceIdentity =
+          project.hostId === "local"
+            ? undefined
+            : buildRemoteHostWorkspaceIdentity(project.hostId, root.rootPath);
+        const key = workspaceIdentity ?? root.rootPath;
+        if (!nextRoots.has(key)) {
+          nextRoots.set(key, {
+            workspacePath: root.rootPath,
+            ...(workspaceIdentity ? { workspaceIdentity } : {}),
+            hostId: project.hostId,
+          });
+        }
+      }
+    }
+    const previous = knownProjectRootsRef.current;
+    knownProjectRootsRef.current = new Set(nextRoots.keys());
+    if (!previous) return;
+
+    const activeKey = scope.enabled ? (scope.workspaceIdentity ?? scope.workspacePath) : null;
+    for (const [key, target] of nextRoots) {
+      if (previous.has(key) || key === activeKey) continue;
+      if (projectRootInflightRef.current.has(key)) continue;
+      const request = (async () => {
+        if (target.hostId === "local") {
+          const localServices =
+            useRemoteWorkspaceSessionStore.getState().baseServices ??
+            contextServices ??
+            (scope.workspaceIdentity ? undefined : scope.services);
+          await localServices?.codezSessionService?.listSessions({
+            workspacePath: target.workspacePath,
+          });
+          return;
+        }
+        const workspaceIdentity = target.workspaceIdentity!;
+        const existingSession = Object.values(
+          useRemoteWorkspaceSessionStore.getState().sessionsById,
+        ).find((session) => session.workspaceIdentity?.trim() === workspaceIdentity);
+        if (existingSession?.services.codezSessionService) {
+          await existingSession.services.codezSessionService.listSessions({
+            workspacePath: target.workspacePath,
+            workspaceIdentity,
+          });
+          return;
+        }
+        const parsed = parseRemoteWorkspaceIdentity(workspaceIdentity);
+        const sourceServerId = parsed?.kind === "server" ? parsed.sourceServerId : undefined;
+        if (!sourceServerId) return;
+        if (
+          !getSourceSettingsServices(sourceServerId) &&
+          platform?.requestSourceSettingsAttachment
+        ) {
+          await ensureSourceSettingsServices(
+            sourceServerId,
+            platform.requestSourceSettingsAttachment,
+          );
+        }
+        if (!mountedRef.current) return;
+        const sourceServices = getSourceSettingsServices(sourceServerId);
+        if (!sourceServices?.codezSessionService) return;
+        const host = hostsById.get(target.hostId);
+        const legacyRouteHint = host?.target
+          ? buildRemoteWorkspaceIdentity(target.workspacePath, host.target)
+          : undefined;
+        await sourceServices.sourceServerWorkspaceService?.resolveWorkspace({
+          workspacePath: target.workspacePath,
+          ...(legacyRouteHint ? { legacyRouteHint } : {}),
+        });
+        if (!mountedRef.current) return;
+        await sourceServices.codezSessionService.listSessions({
+          workspacePath: target.workspacePath,
+          workspaceIdentity,
+        });
+      })()
+        .catch((error: unknown) => {
+          if (!mountedRef.current) return;
+          logger.warn("[CodexProjectDiscovery] 项目会话发现失败", {
+            error,
+            workspacePath: target.workspacePath,
+          });
+        })
+        .finally(() => {
+          if (projectRootInflightRef.current.get(key) === request) {
+            projectRootInflightRef.current.delete(key);
+          }
+        });
+      projectRootInflightRef.current.set(key, request);
+    }
+  }, [
+    contextServices,
+    isDesktop,
+    platform,
+    projectDirectory,
+    scope.enabled,
+    scope.services,
+    scope.workspaceIdentity,
+    scope.workspacePath,
+  ]);
 
   const discover = useCallback(async (): Promise<void> => {
     const current = scopeRef.current;

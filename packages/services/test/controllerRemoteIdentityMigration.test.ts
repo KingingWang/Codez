@@ -55,21 +55,21 @@ describe("controller remote identity migration inventory", () => {
     const dbPath = join(root, "tasks-index.sqlite");
     const oldKey = "remote:ssh:old.example:22:alice:/srv/project";
     const newKey = "remote:server:3cd4f9da-cd79-426c-9d70-75f36e9f6a87:/srv/project";
+    const newHostId = "remote:server:3cd4f9da-cd79-426c-9d70-75f36e9f6a87";
     const db = new DatabaseSync(dbPath);
     db.exec(`
-      CREATE TABLE tasks (workspace_key TEXT, workspace_identity TEXT, workspace_path TEXT, task_id TEXT, updated_at INTEGER, meta_json TEXT, PRIMARY KEY(workspace_key, task_id));
+      CREATE TABLE hosts (host_id TEXT PRIMARY KEY, kind TEXT, target_json TEXT, membership_id TEXT, last_connection_status TEXT, last_connection_error TEXT, last_opened_at INTEGER, position INTEGER NOT NULL DEFAULT 0);
+      CREATE TABLE tasks (workspace_key TEXT, workspace_identity TEXT, workspace_path TEXT, task_id TEXT, host_id TEXT, updated_at INTEGER, meta_json TEXT, PRIMARY KEY(workspace_key, task_id));
       CREATE TABLE task_group_members (workspace_key TEXT, workspace_identity TEXT, task_id TEXT, PRIMARY KEY(workspace_key, task_id));
       CREATE TABLE task_group_workspace_bootstraps (workspace_key TEXT PRIMARY KEY, group_id TEXT);
       CREATE TABLE task_group_view_node_orders (node_type TEXT, node_key TEXT, sort_order INTEGER, PRIMARY KEY(node_type, node_key));
-      CREATE TABLE automations (automation_id TEXT PRIMARY KEY, workspace_key TEXT, workspace_identity TEXT);
+      CREATE TABLE automations (automation_id TEXT PRIMARY KEY, workspace_key TEXT, workspace_identity TEXT, host_id TEXT);
       CREATE TABLE automation_runs (run_id TEXT PRIMARY KEY, workspace_key TEXT);
-      CREATE TABLE off_peak_tasks (off_peak_task_id TEXT PRIMARY KEY, workspace_key TEXT, workspace_identity TEXT);
+      CREATE TABLE off_peak_tasks (off_peak_task_id TEXT PRIMARY KEY, workspace_key TEXT, workspace_identity TEXT, host_id TEXT);
     `);
-    db.prepare("INSERT INTO tasks VALUES (?, ?, '/srv/project', 'task-1', 10, ?)").run(
-      oldKey,
-      oldKey,
-      JSON.stringify({ taskId: "task-1", workspaceIdentity: oldKey }),
-    );
+    db.prepare(
+      "INSERT INTO tasks VALUES (?, ?, '/srv/project', 'task-1', 'remote:ssh:old.example:22:alice', 10, ?)",
+    ).run(oldKey, oldKey, JSON.stringify({ taskId: "task-1", workspaceIdentity: oldKey }));
     db.exec(TASK_GROUP_ADMISSIONS_SQL);
     db.prepare(
       "INSERT INTO task_group_admissions(workspace_key,task_id,user_organized,creation_id) VALUES (?, 'task-1', 1, 'created')",
@@ -79,9 +79,13 @@ describe("controller remote identity migration inventory", () => {
     db.prepare("INSERT INTO task_group_view_node_orders VALUES ('task', ?, 1)").run(
       JSON.stringify([oldKey, "task-1"]),
     );
-    db.prepare("INSERT INTO automations VALUES ('automation-1', ?, ?)").run(oldKey, oldKey);
+    db.prepare(
+      "INSERT INTO automations VALUES ('automation-1', ?, ?, 'remote:ssh:old.example:22:alice')",
+    ).run(oldKey, oldKey);
     db.prepare("INSERT INTO automation_runs VALUES ('run-1', ?)").run(oldKey);
-    db.prepare("INSERT INTO off_peak_tasks VALUES ('off-peak-1', ?, ?)").run(oldKey, oldKey);
+    db.prepare(
+      "INSERT INTO off_peak_tasks VALUES ('off-peak-1', ?, ?, 'remote:ssh:old.example:22:alice')",
+    ).run(oldKey, oldKey);
     db.close();
 
     const report = await migrateControllerRemoteWorkspaceIdentity({
@@ -120,12 +124,20 @@ describe("controller remote identity migration inventory", () => {
         .prepare("SELECT node_key FROM task_group_view_node_orders WHERE node_type = 'task'")
         .get(),
     ).toEqual({ node_key: JSON.stringify([newKey, "task-1"]) });
-    const task = verify.prepare("SELECT workspace_identity, meta_json FROM tasks").get() as {
+    const task = verify
+      .prepare("SELECT workspace_identity, host_id, meta_json FROM tasks")
+      .get() as {
       workspace_identity: string;
+      host_id: string;
       meta_json: string;
     };
     expect(task.workspace_identity).toBe(newKey);
+    expect(task.host_id).toBe(newHostId);
     expect(JSON.parse(task.meta_json)).toMatchObject({ workspaceIdentity: newKey });
+    expect(verify.prepare("SELECT host_id FROM automations").get()).toEqual({ host_id: newHostId });
+    expect(verify.prepare("SELECT host_id FROM off_peak_tasks").get()).toEqual({
+      host_id: newHostId,
+    });
     expect(
       verify.prepare("SELECT status FROM controller_remote_identity_migrations").get(),
     ).toEqual({ status: "completed" });

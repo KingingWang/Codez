@@ -155,12 +155,8 @@ export function countProjectTreeUnreadTasks(tree: ProjectTree): number {
       .filter((project) => !project.deleted)
       .map((project) => `${project.hostId}::${project.id}`),
   );
-  const localSingleRoots = new Set(
-    tree.projects
-      .filter(
-        (project) => !project.deleted && project.hostId === "local" && project.roots.length === 1,
-      )
-      .map((project) => project.roots[0]!.rootPath),
+  const singleRootProjects = tree.projects.filter(
+    (project) => !project.deleted && project.roots.length === 1,
   );
   const seen = new Set<string>();
   for (const task of tree.tasks) {
@@ -174,7 +170,7 @@ export function countProjectTreeUnreadTasks(tree: ProjectTree): number {
       task.pinned ||
       (task.projectId == null && task.hostId === "local") ||
       renderedProjectKeys.has(`${task.hostId}::${task.projectId}`) ||
-      (task.hostId === "local" && localSingleRoots.has(task.workspacePath));
+      singleRootProjects.some((project) => taskVisibleInProject(task, project));
     if (!visible) {
       continue;
     }
@@ -229,12 +225,22 @@ export function mergeProjectTrees(
   availability: Map<string, ProjectAvailability>;
 } {
   const projects = [...local.projects];
-  const tasks = [...local.tasks];
-  const deletedTasks = [...(local.deletedTasks ?? [])];
+  const retainedHosts = new Set(directory.hosts.map((host) => host.id));
+  const tasks = local.tasks.filter((task) => task.hostId === "local");
+  const deletedTasks = (local.deletedTasks ?? []).filter((task) => task.hostId === "local");
+  const taskRowKey = (
+    task: Pick<ProjectTask, "hostId" | "workspacePath" | "workspaceIdentity" | "taskId">,
+  ) =>
+    JSON.stringify([
+      task.hostId,
+      task.workspaceIdentity?.trim() || task.workspacePath,
+      task.taskId,
+    ]);
+  const seenTaskKeys = new Set(tasks.map(taskRowKey));
+  const seenDeletedTaskKeys = new Set(deletedTasks.map(taskRowKey));
   const availability = new Map(
     local.projects.map((project) => [projectKey(project), { online: true } as ProjectAvailability]),
   );
-  const retainedHosts = new Set(directory.hosts.map((host) => host.id));
   for (const entry of directory.entries) {
     if (!retainedHosts.has(entry.hostId)) continue;
     const tree = remote.get(entry.hostId);
@@ -264,14 +270,49 @@ export function mergeProjectTrees(
   }
   for (const [hostId, tree] of remote) {
     if (!retainedHosts.has(hostId)) continue;
-    deletedTasks.push(...(tree.deletedTasks ?? []).filter((task) => task.hostId === hostId));
+    for (const deletedTask of tree.deletedTasks ?? []) {
+      if (deletedTask.hostId !== hostId) continue;
+      const key = taskRowKey(deletedTask);
+      if (seenDeletedTaskKeys.has(key)) continue;
+      seenDeletedTaskKeys.add(key);
+      deletedTasks.push(deletedTask);
+    }
     for (const task of tree.tasks) {
       if (task.hostId !== hostId) continue;
       if (
         task.projectId == null ||
         availability.get(projectKey({ hostId, id: task.projectId }))?.online
-      )
+      ) {
+        const key = taskRowKey(task);
+        if (seenTaskKeys.has(key)) continue;
+        seenTaskKeys.add(key);
         tasks.push(task);
+      }
+    }
+  }
+  for (const deletedTask of local.deletedTasks ?? []) {
+    if (
+      deletedTask.hostId === "local" ||
+      !retainedHosts.has(deletedTask.hostId) ||
+      !remote.has(deletedTask.hostId)
+    )
+      continue;
+    const key = taskRowKey(deletedTask);
+    if (seenDeletedTaskKeys.has(key)) continue;
+    seenDeletedTaskKeys.add(key);
+    deletedTasks.push(deletedTask);
+  }
+  for (const task of local.tasks) {
+    if (task.hostId === "local" || !retainedHosts.has(task.hostId) || !remote.has(task.hostId))
+      continue;
+    if (
+      task.projectId == null ||
+      availability.get(projectKey({ hostId: task.hostId, id: task.projectId }))?.online
+    ) {
+      const key = taskRowKey(task);
+      if (seenTaskKeys.has(key) || seenDeletedTaskKeys.has(key)) continue;
+      seenTaskKeys.add(key);
+      tasks.push(task);
     }
   }
   return {

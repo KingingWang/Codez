@@ -45,6 +45,7 @@ export function initializeLegacyTaskIdentity(
   db: DatabaseSync,
   assignProject: boolean,
   ownerHostId?: string,
+  hostAliases?: ReadonlyMap<string, string>,
 ): void {
   if (!tableExists(db, "tasks")) return;
   const rows = db
@@ -64,7 +65,8 @@ export function initializeLegacyTaskIdentity(
     cli_deleted=0,handoff_pending=handoff_pending | ? | CASE WHEN deleted=1 THEN 1 ELSE 0 END | CASE WHEN title_overridden=1 THEN 2 ELSE 0 END
     WHERE workspace_key=? AND task_id=? AND host_id IS NULL`);
   for (const row of rows) {
-    const hostId = ensureHost(db, row.workspace_key, ownerHostId);
+    const rawHostId = hostForWorkspace(row.workspace_key).hostId;
+    const hostId = ensureHost(db, row.workspace_key, ownerHostId ?? hostAliases?.get(rawHostId));
     const projectId =
       row.project_id ?? (assignProject ? uniqueRootProject(db, hostId, row.workspace_path) : null);
     update.run(
@@ -74,6 +76,48 @@ export function initializeLegacyTaskIdentity(
       row.workspace_key,
       row.task_id,
     );
+  }
+}
+
+/**
+ * 修复原因（issue #19）：控制端曾先于 Source Server 别名映射回填 `tasks.host_id`，或仅重键
+ * `workspace_key`/`workspace_identity` 为 `remote:server:<serverId>:/path` 而遗漏 `host_id`，
+ * 导致存量远程会话行的 `host_id` 停留在旧 SSH 线路身份并在侧栏中被整批过滤。
+ * 仅在控制端对已收敛为稳定 `remote:server:` 身份且 `host_id` 不一致的行幂等修正 `host_id`，
+ * 不改变 `project_id`、`workspace_identity`、CLI 事实或时间戳。
+ */
+function reconcileMismatchedServerTaskHosts(db: DatabaseSync, ownerHostId?: string): void {
+  if (ownerHostId && ownerHostId !== "local") return;
+  for (const table of ["tasks", "automations", "off_peak_tasks"] as const) {
+    if (!tableExists(db, table)) continue;
+    const hasIdentityColumn = (
+      db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
+    ).some((column) => column.name === "workspace_identity");
+    const rows = db
+      .prepare(
+        hasIdentityColumn
+          ? `SELECT DISTINCT workspace_key,workspace_identity,host_id FROM ${table}
+             WHERE workspace_key LIKE 'remote:server:%' OR workspace_identity LIKE 'remote:server:%'`
+          : `SELECT DISTINCT workspace_key,NULL AS workspace_identity,host_id FROM ${table}
+             WHERE workspace_key LIKE 'remote:server:%'`,
+      )
+      .all() as Array<{
+      workspace_key: string;
+      workspace_identity: string | null;
+      host_id: string | null;
+    }>;
+    const updateByKey = db.prepare(`UPDATE ${table} SET host_id=? WHERE workspace_key=?`);
+    for (const row of rows) {
+      const identity = row.workspace_key.startsWith("remote:server:")
+        ? row.workspace_key
+        : (row.workspace_identity ?? "");
+      const parsed = parseRemoteWorkspaceIdentity(identity);
+      const stableHostId =
+        parsed?.kind === "server" ? remoteHostIdFromWorkspaceIdentity(identity) : null;
+      if (!stableHostId || row.host_id === stableHostId) continue;
+      ensureHost(db, identity, stableHostId);
+      updateByKey.run(stableHostId, row.workspace_key);
+    }
   }
 }
 
@@ -115,6 +159,7 @@ export function reconcileLegacy(db: DatabaseSync, ownerHostId?: string): void {
     ensureHost(db, "local", ownerHostId);
     initializeLegacyTaskIdentity(db, true, ownerHostId);
     initializeLegacyDefinitions(db, ownerHostId);
+    reconcileMismatchedServerTaskHosts(db, ownerHostId);
     if (tableExists(db, "tasks")) {
       db.exec(`UPDATE tasks SET handoff_pending=handoff_pending | ${HANDOFF_DELETE} WHERE deleted=1 AND coalesce(cli_deleted,0)=0;
         UPDATE tasks SET handoff_pending=handoff_pending | ${HANDOFF_TITLE}

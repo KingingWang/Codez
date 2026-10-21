@@ -68,7 +68,19 @@ describe("project-sidebar read contract", () => {
   it("joins only retained remote projects and does not retain offline task facts", () => {
     const local: ProjectTree = {
       projects: [],
-      tasks: [task("local", null, 1)],
+      tasks: [
+        task("local", null, 1),
+        {
+          ...task("controller-remote", null, 5),
+          hostId: "remote:server:s",
+          workspacePath: "/repo",
+          workspaceIdentity: "remote:server:s:/repo",
+        },
+        {
+          ...task("remote", "p", 9),
+          hostId: "remote:server:s",
+        },
+      ],
     };
     const remoteTask = { ...task("remote", "p", 9), hostId: "remote:server:s" };
     const directory = {
@@ -115,7 +127,12 @@ describe("project-sidebar read contract", () => {
       ],
     };
     const online = mergeProjectTrees(local, directory, new Map([[remoteTask.hostId, remote]]));
-    expect(online.tree.tasks.map((row) => row.taskId)).toEqual(["local", "remote", "unclassified"]);
+    expect(online.tree.tasks.map((row) => row.taskId)).toEqual([
+      "local",
+      "remote",
+      "unclassified",
+      "controller-remote",
+    ]);
     expect(online.tree.projects[0]?.name).toBe("online");
     expect(online.availability.get(projectKey(remote.projects[0]!))).toEqual({
       entryId: "entry",
@@ -123,7 +140,7 @@ describe("project-sidebar read contract", () => {
     });
     const offline = mergeProjectTrees(local, directory, new Map());
     expect(offline.tree.projects[0]?.name).toBe("cached");
-    expect(offline.tree.tasks).toEqual(local.tasks);
+    expect(offline.tree.tasks.map((row) => row.taskId)).toEqual(["local"]);
     expect(offline.availability.get(projectKey(remote.projects[0]!))?.online).toBe(false);
   });
   it("does not conflate project IDs from different physical Hosts", () => {

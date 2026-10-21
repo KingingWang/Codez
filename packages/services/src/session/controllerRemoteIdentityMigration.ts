@@ -1,3 +1,5 @@
+import { remoteHostIdFromWorkspaceIdentity } from "@codez/shared";
+import { ensureHost } from "#src/project-storage/legacy-tasks.js";
 import { runTasksDatabaseMigrations } from "#src/session/tasksDatabase/migrations.js";
 import { cancelConflictingOffPeakBindings } from "#src/session/offPeakWorkspaceIdentityMigration.js";
 import { randomUUID } from "node:crypto";
@@ -100,10 +102,22 @@ function updateIdentityColumn(
   newWorkspaceKey: string,
 ): void {
   if (!hasTable(db, table) || !hasColumn(db, table, "workspace_key")) return;
+  const nextHostId = hasColumn(db, table, "host_id")
+    ? remoteHostIdFromWorkspaceIdentity(newWorkspaceKey)
+    : null;
+  if (nextHostId && hasTable(db, "hosts")) {
+    ensureHost(db, newWorkspaceKey, nextHostId);
+  }
   if (hasColumn(db, table, "workspace_identity")) {
-    db.prepare(
-      `UPDATE ${table} SET workspace_key = ?, workspace_identity = ? WHERE workspace_key = ?`,
-    ).run(newWorkspaceKey, newWorkspaceKey, oldWorkspaceKey);
+    if (nextHostId) {
+      db.prepare(
+        `UPDATE ${table} SET workspace_key = ?, workspace_identity = ?, host_id = CASE WHEN host_id IS NULL THEN NULL ELSE ? END WHERE workspace_key = ?`,
+      ).run(newWorkspaceKey, newWorkspaceKey, nextHostId, oldWorkspaceKey);
+    } else {
+      db.prepare(
+        `UPDATE ${table} SET workspace_key = ?, workspace_identity = ? WHERE workspace_key = ?`,
+      ).run(newWorkspaceKey, newWorkspaceKey, oldWorkspaceKey);
+    }
   } else {
     db.prepare(`UPDATE ${table} SET workspace_key = ? WHERE workspace_key = ?`).run(
       newWorkspaceKey,
@@ -114,6 +128,12 @@ function updateIdentityColumn(
 
 function migrateTaskRows(db: Database, oldKey: string, newKey: string): void {
   if (!hasTable(db, "tasks")) return;
+  const nextHostId = hasColumn(db, "tasks", "host_id")
+    ? remoteHostIdFromWorkspaceIdentity(newKey)
+    : null;
+  if (nextHostId && hasTable(db, "hosts")) {
+    ensureHost(db, newKey, nextHostId);
+  }
   const rows = db
     .prepare("SELECT task_id, updated_at FROM tasks WHERE workspace_key = ?")
     .all(oldKey) as unknown as Array<{ task_id: string; updated_at: number }>;
@@ -135,21 +155,38 @@ function migrateTaskRows(db: Database, oldKey: string, newKey: string): void {
         continue;
       }
     }
-    db.prepare(
-      "UPDATE tasks SET workspace_key = ?, workspace_identity = ? WHERE workspace_key = ? AND task_id = ?",
-    ).run(newKey, newKey, oldKey, row.task_id);
+    if (nextHostId) {
+      db.prepare(
+        "UPDATE tasks SET workspace_key = ?, workspace_identity = ?, host_id = CASE WHEN host_id IS NULL THEN NULL ELSE ? END WHERE workspace_key = ? AND task_id = ?",
+      ).run(newKey, newKey, nextHostId, oldKey, row.task_id);
+    } else {
+      db.prepare(
+        "UPDATE tasks SET workspace_key = ?, workspace_identity = ? WHERE workspace_key = ? AND task_id = ?",
+      ).run(newKey, newKey, oldKey, row.task_id);
+    }
   }
   if (hasColumn(db, "tasks", "meta_json")) {
     const migrated = db
       .prepare("SELECT task_id, meta_json FROM tasks WHERE workspace_key = ?")
       .all(newKey) as unknown as Array<{ task_id: string; meta_json: string }>;
     const update = db.prepare(
-      "UPDATE tasks SET meta_json = ? WHERE workspace_key = ? AND task_id = ?",
+      nextHostId
+        ? "UPDATE tasks SET meta_json = ?, host_id = CASE WHEN host_id IS NULL THEN NULL ELSE ? END WHERE workspace_key = ? AND task_id = ?"
+        : "UPDATE tasks SET meta_json = ? WHERE workspace_key = ? AND task_id = ?",
     );
     for (const row of migrated) {
       try {
         const meta = JSON.parse(row.meta_json) as Record<string, unknown>;
-        update.run(JSON.stringify({ ...meta, workspaceIdentity: newKey }), newKey, row.task_id);
+        if (nextHostId) {
+          update.run(
+            JSON.stringify({ ...meta, workspaceIdentity: newKey }),
+            nextHostId,
+            newKey,
+            row.task_id,
+          );
+        } else {
+          update.run(JSON.stringify({ ...meta, workspaceIdentity: newKey }), newKey, row.task_id);
+        }
       } catch {
         // 非法 meta_json 由 TaskIndexRepo 既有读取降级处理；身份列与主键仍已完成迁移。
       }

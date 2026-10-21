@@ -6,7 +6,7 @@ Host 项目组织态的持久化升级。调用者持有 app SQLite 连接，CLI
 - 首次项目集合与 position 仅来自 lastWorkspaceSession 中本 Host 保留的项目条目，按原顺序去重，保留无任务的已保存项目。conversation、历史 tasks、recentProjects 和 Group 不创建项目；settings 缺失或列表为空时不推断项目。历史任务保留 cwd 与组织态，无匹配项目时保持 NULL；已有 ledger 不重跑转换、不重排或自动清理项目。
 - ID 沿用 CLI 的四位递增序号 + snake_case 名称，两个库独立编号；开发期旧 ID 的本机更名不修改 SQL/checksum 或重新执行转换。
 - 初始 cli\_\* 从旧列复制一次，之后只由 syncer 写。handoff_pending 为意图与首次判定 bit；NULL project_id 是合法最终组织态。
-- 老版本新写行以 host_id IS NULL 识别，同一事务补身份、首次归位与 bit 8；用户在新版移出/新建的空归属不能再次自动分配。
+- 老版本新写行以 host_id IS NULL 识别，同一事务补身份、首次归位与 bit 8；用户在新版移出/新建的空归属不能再次自动分配。控制端首次迁移先完成连接 Profile 的 Source Server 别名映射再回填历史任务身份，且当存量远程行已重键为稳定 `remote:server:<serverId>:/path` 而 `host_id` 仍停留在旧传输身份时，启动对账幂等将 `host_id` 收敛为该稳定 Host，不改写 `project_id`、CLI 事实或时间戳。
 - 同 host 唯一 root 匹配才归位，主要目录没有优先级。Group 保留独立组织态，不转换为项目。
 - settings 的 remote 条目只首次导入本机入口缓存，不能变成本机权威 project；普通启动不再导入。
 - 迁移依赖 sqlite-migrations 公共端口；内部文件不被 UI/其他服务直接导入。目录/备份位置与 logger 均由启动入口注入。

@@ -68,9 +68,7 @@ describe("countProjectTreeUnreadTasks", () => {
 
   it("孤儿任务（项目不存在）不计入：没有蓝点落点的未读不产生幽灵提醒", () => {
     expect(
-      countProjectTreeUnreadTasks(
-        tree([task("orphan", { unreadAt: 100, projectId: "ghost" })]),
-      ),
+      countProjectTreeUnreadTasks(tree([task("orphan", { unreadAt: 100, projectId: "ghost" })])),
     ).toBe(0);
   });
 
@@ -78,10 +76,7 @@ describe("countProjectTreeUnreadTasks", () => {
     expect(
       countProjectTreeUnreadTasks(
         tree(
-          [
-            task("a", { unreadAt: 100 }),
-            task("ghost", { unreadAt: 200, projectId: "p-deleted" }),
-          ],
+          [task("a", { unreadAt: 100 }), task("ghost", { unreadAt: 200, projectId: "p-deleted" })],
           [project("p1", "local"), project("p-deleted", "local", true)],
         ),
       ),
@@ -101,8 +96,30 @@ describe("countProjectTreeUnreadTasks", () => {
 
   it("本地无项目任务（projectId null + host local）计入", () => {
     expect(
+      countProjectTreeUnreadTasks(tree([task("local-task", { unreadAt: 100, projectId: null })])),
+    ).toBe(1);
+  });
+
+  it("远端单 root 项目可见的未归属任务（projectId null + matching workspaceIdentity）计入", () => {
+    expect(
       countProjectTreeUnreadTasks(
-        tree([task("local-task", { unreadAt: 100, projectId: null })]),
+        tree(
+          [
+            task("remote-history", {
+              unreadAt: 100,
+              projectId: null,
+              hostId: "remote:server:s",
+              workspacePath: "/repo",
+              workspaceIdentity: "remote:server:s:/repo",
+            }),
+          ],
+          [
+            {
+              ...project("p-remote", "remote:server:s"),
+              roots: [{ rootPath: "/repo", position: 0, isPrimary: true }],
+            },
+          ],
+        ),
       ),
     ).toBe(1);
   });
