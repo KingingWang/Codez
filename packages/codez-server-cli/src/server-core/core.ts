@@ -73,6 +73,7 @@ export async function runServerCore(generation: number): Promise<void> {
       codezBuiltinProviderConfigFilePath,
       providerProvisioningTargetEnabled: true,
       credentialCipherProvider,
+      ephemeralRuntimeKeysEnabled: true,
       topicResourceRelayChannel: (request) => topicResourcePeers.getChannel(request),
     });
   const taskActivityTracker = createTaskActivityTracker(services.getOptional(ICodezAgentService));
