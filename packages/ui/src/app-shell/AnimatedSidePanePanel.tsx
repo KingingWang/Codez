@@ -1225,6 +1225,10 @@ export function AnimatedSidePanePanel({
                           <SelectionSideChatPane
                             tab={tab}
                             focused={isVisible && tab.id === contentActiveTabId}
+                            // 修复原因：SelectionSideChatPane 漏传 isDesktop，导致桌面端辅助对话
+                            // 的 SessionPane 回退为 isDesktop=false（不启用 Codex 模型目录与原生会话模式），
+                            // 无法识别并继承主会话的模型、思考等级和模式。
+                            isDesktop={isDesktop}
                             onOpenBrowserUrl={onOpenBrowserUrl}
                             onOpenCodeViewer={onOpenCodeViewer}
                             onOpenFileLink={onOpenFileLink}

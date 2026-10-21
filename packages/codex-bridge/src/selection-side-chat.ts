@@ -67,10 +67,13 @@ export interface SelectionSideChatBoundary {
 /**
  * load 时按父线程当前 turn id 求交重建继承边界。父读取失败（已删除/不可读）
  * fail-open 返回 undefined：child 保持可用、不裁剪。
+ * 若父线程已在 store 内存加载（如 createSelectionSideSession 热路径），直接用内存
+ * turns 求交，省去额外的 thread/turns/list 往返。
  */
 export async function resolveSelectionSideChatBoundary(
   rpc: CodexRpcPort,
   thread: Record<string, unknown>,
+  cachedParentTurns?: readonly unknown[],
 ): Promise<SelectionSideChatBoundary | undefined> {
   if (
     thread.threadSource !== SELECTION_SIDE_CHAT_THREAD_SOURCE ||
@@ -80,11 +83,10 @@ export async function resolveSelectionSideChatBoundary(
   try {
     const parentThreadId = thread.forkedFromId;
     // 分页终止判定共用 native-paging；抛错仍落在本函数的 fail-open catch 内。
-    const parentTurnIds = new Set(
-      (
-        await paginateNativeRows(rpc, "thread/turns/list", { threadId: parentThreadId }, "history")
-      ).map((turn) => string(object(turn).id)),
-    );
+    const parentTurns =
+      cachedParentTurns ??
+      (await paginateNativeRows(rpc, "thread/turns/list", { threadId: parentThreadId }, "history"));
+    const parentTurnIds = new Set(parentTurns.map((turn) => string(object(turn).id)));
     return {
       parentThreadId,
       inheritedTurnIds: new Set(

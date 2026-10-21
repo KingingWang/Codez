@@ -28,6 +28,7 @@ import { submissionModeSchema } from "@codez/shared/codez-protocol-v4";
 import { prepareWorkspaceWithCodezSessionService } from "@/hooks/useWorkspacePrepare.js";
 import { useCodezSessionService } from "@/hooks/useCodezSessionService.js";
 import { useSettings } from "@/hooks/useSettingService.js";
+import { useOptionalBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { parseModelPickerValue } from "@/lib/codezSessionProjection.js";
 import { resolveDraftInitialModelSelection } from "@/lib/composerRecent.js";
 import { initializeNewTaskDraft } from "@/v4/composer/newTaskDraft.js";
@@ -233,7 +234,12 @@ export function useDraftConfigControl(params: {
   const workspaceKey = workspaceIdentity?.trim() || workspacePath;
   const displayProvider = provider ?? CODEZ_AGENT_PROVIDER;
   const codezSessionService = useCodezSessionService(workspacePath, null, workspaceIdentity);
-  const { settings: sharedSettings } = useSettings();
+  const baseWorkspaceServices = useOptionalBaseWorkspaceServices();
+  // 修复原因：草稿初始化与预热在远端工作区下同样需要读取控制端保存的交互行为偏好，
+  // 不能回退读取远端 Source Server 的默认 queue 设置。
+  const { settings: sharedSettings } = useSettings(
+    baseWorkspaceServices ? { services: baseWorkspaceServices } : {},
+  );
   const appFollowupMode = resolveAppFollowupMode(sharedSettings);
   const scopeId = sessionId ?? V4_DRAFT_SCOPE_ROOT;
   const clientNamespace = useComposerClientNamespace();

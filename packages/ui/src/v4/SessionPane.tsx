@@ -2138,7 +2138,11 @@ export function SessionPane({
       workspacePath,
     ],
   );
-  const { settings: sharedSettings } = useSettings();
+  // 修复原因：SessionPane 挂载在当前 workspace 的 ServiceProvider 下；远端工作区时
+  // 默认 useSettings() 会读取远端 Source Server 的 setting.json，导致用户在控制端设置页
+  // 保存的「交互行为（codezInteractionBehavior）」等本机共享偏好在远程连接会话中不生效。
+  // 共享设置统一以控制端 baseWorkspaceServices 为唯一事实源。
+  const { settings: sharedSettings } = useSettings({ services: baseWorkspaceServices });
   const readPlanIdentitySnapshot = usePlanIdentitySnapshot(
     sharedSettings?.providerFamilyDomain,
     sharedSettings?.providerFamilyDomain
@@ -5236,13 +5240,21 @@ export function SessionPane({
   // retry 的产品裁决属于行级权威投影。这里仅提供命令能力，入口是否展示
   // 完全读取 row.actions.canRetry，禁止再用 pane phase 形成第二套 guard。
   const retryActionsEnabled =
-    runtimeReady && !readOnly && !writerConflictReadOnly && !selectionSideChat && Boolean(sessionId);
+    runtimeReady &&
+    !readOnly &&
+    !writerConflictReadOnly &&
+    !selectionSideChat &&
+    Boolean(sessionId);
   // fork 可用性完全由 row.actions.canFork（CLI stable resolver 投影）裁决；pane 只提供命令回调。
   const forkActionsEnabled = runtimeReady && !readOnly && !selectionSideChat && Boolean(sessionId);
   // editUserQuery 已由 command 层防御 latest real user query，并在 running
   // 提交时先 stop barrier 再 rewind/rerun；UI 不应再用 completed gate 把入口整轮隐藏。
   const editActionsEnabled =
-    runtimeReady && !readOnly && !writerConflictReadOnly && !selectionSideChat && Boolean(sessionId);
+    runtimeReady &&
+    !readOnly &&
+    !writerConflictReadOnly &&
+    !selectionSideChat &&
+    Boolean(sessionId);
   const isDraft = sessionId === null;
   // 滚动恢复必须使用与 sessionId 匹配的 lease projection。切换 session 的 render 与
   // passive effect 不在同一时刻，旧 lease 的 rows 若提前交给 timeline，会让新记忆按旧
