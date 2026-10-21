@@ -41,6 +41,10 @@ credentials or install a real external plugin for these tests.
 10. Test 360px/desktop widths, keyboard-only focus, English/Chinese, light/dark,
     long paths/labels, empty lists, malformed response, repeated clicks and refresh
     during operations. No duplicated writes or uncaught rejection.
+11. Delay the remote Host hello response, create a new session and submit its first
+    message (including an attachment). Assert that no legacy `setFollowupMode`
+    command is sent while the capability is pending, and that the first native
+    admission is accepted after the hello resolves.
 
 Record runner command, native build/schema revision, screenshots, RPC assertions,
 and cleanup evidence when these cases are actually executed. This plan is not an

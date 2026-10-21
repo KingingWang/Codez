@@ -27,6 +27,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const workflowRunsQueryMock = vi.hoisted(() =>
   vi.fn(() => new Promise<{ runs: unknown[] }>(() => {})),
 );
+const nativeHostStatusMock = vi.hoisted(() => vi.fn(() => "legacy" as const));
 const { layerMock, sendCommandMock } = vi.hoisted(() => ({
   layerMock: {
     acquire: vi.fn(() => ({
@@ -102,6 +103,9 @@ vi.mock("@/hooks/useSettingService.js", () => ({
 
 vi.mock("@/hooks/useCodexModelCatalog.js", () => ({
   useCodexModelCatalog: () => ({ status: "unavailable", reload: vi.fn(), readCurrent: vi.fn() }),
+}));
+vi.mock("@/capabilities/useCodexNativeHost.js", () => ({
+  useCodexNativeHostStatus: nativeHostStatusMock,
 }));
 vi.mock("@/hooks/useServices.js", () => ({
   useComposerClientNamespace: () => "desktop",
@@ -333,6 +337,8 @@ function makeSnapshot(): ConversationSnapshot {
 afterEach(() => {
   sendCommandMock.mockClear();
   composerPropsSpy.mockClear();
+  nativeHostStatusMock.mockReset();
+  nativeHostStatusMock.mockReturnValue("legacy");
   projectionState.current = null;
   vi.mocked(dispatchConversationSelectionAdd).mockClear();
   setSelectionSideChatBlocked("side-child", false);
@@ -490,4 +496,44 @@ describe("SessionPane followupMode app setting sync", () => {
       root.unmount();
     });
   });
+
+  it.each(["native", "pending"] as const)(
+    "does not send legacy setFollowupMode while remote Codex status is %s",
+    async (status) => {
+      nativeHostStatusMock.mockReturnValue(status);
+      projectionState.current = {
+        status: "live",
+        snapshot: makeSnapshot(),
+        subscriptionId: "sub-1",
+        lastError: null,
+        optimisticCommands: [],
+        loadingOlder: false,
+      };
+
+      const root: Root = createRoot(installMinimalDom());
+      await act(async () => {
+        root.render(
+          createElement(
+            CodezIntlProvider,
+            { initialLocale: "zh-CN" },
+            createElement(SessionPane, {
+              paneId: "workspace-main",
+              sessionId: "session-1",
+              workspacePath: "/workspace",
+              compactForRemoteControl: true,
+            }),
+          ),
+        );
+        await flushMicrotasks();
+      });
+
+      expect(
+        sendCommandMock.mock.calls.some(([command]) => command.type === "setFollowupMode"),
+      ).toBe(false);
+
+      await act(async () => {
+        root.unmount();
+      });
+    },
+  );
 });
