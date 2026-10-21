@@ -27,10 +27,7 @@ export interface RemoteProviderProvisioningExecutor {
   installCodexRuntimeKeys(): Promise<void>;
 }
 
-const executors = new WeakMap<
-  ServiceCollection,
-  RemoteProviderProvisioningExecutor
->();
+const executors = new WeakMap<ServiceCollection, RemoteProviderProvisioningExecutor>();
 
 /** Window Host 私有执行能力；不会随 ServiceCollection 暴露到 Renderer RPC。 */
 export function getRemoteProviderProvisioningExecutor(
@@ -61,37 +58,26 @@ export function createRemoteProviderProvisioningExecutor(options: {
   };
 }): RemoteProviderProvisioningExecutor {
   let runtimeKeysInstalled = false;
+  let codexKeysInstalled = false;
   let runtimeKeyInstallTail = Promise.resolve();
   let codexKeyTail = Promise.resolve();
   const syncLocalToRemote = async (): Promise<ProviderProvisioningResult> => {
     const syncId = randomUUID();
     if (!options.source || !options.target) {
-      return unsupportedResult(
-        syncId,
-        "Local/Remote Provider Provisioning capability 不可用",
-      );
+      return unsupportedResult(syncId, "Local/Remote Provider Provisioning capability 不可用");
     }
     let errorCode: ProviderProvisioningErrorCode = "source-read-failed";
     try {
       const envelope = await options.source.read(syncId);
-      if (
-        options.allowRuntimeApiKeys === false &&
-        envelope.schemaVersion === 3
-      ) {
-        return unsupportedResult(
-          syncId,
-          "Server remote 不支持临时环境变量 Key",
-        );
+      if (options.allowRuntimeApiKeys === false && envelope.schemaVersion === 3) {
+        return unsupportedResult(syncId, "Server remote 不支持临时环境变量 Key");
       }
       errorCode = "target-call-failed";
-      const { errorCode: remoteErrorCode, ...result } =
-        await options.target.apply(envelope);
+      const { errorCode: remoteErrorCode, ...result } = await options.target.apply(envelope);
       // 成功结果不携带诊断字段，避免未知错误码使 Main 丢弃本已成功的回包。
-      if (result.status === "applied" || result.status === "already-applied")
-        return result;
+      if (result.status === "applied" || result.status === "already-applied") return result;
       // 旧目标没有阶段码，任意远端也可能返回自由文本；只能透传本地 allowlist。
-      const parsedCode =
-        providerProvisioningErrorCodeSchema.safeParse(remoteErrorCode);
+      const parsedCode = providerProvisioningErrorCodeSchema.safeParse(remoteErrorCode);
       return {
         ...result,
         errorCode: parsedCode.success ? parsedCode.data : "target-apply-failed",
@@ -135,24 +121,17 @@ export function createRemoteProviderProvisioningExecutor(options: {
     return operation;
   };
 
-  const readCodexKeyPayload = async (): Promise<
-    CodexNativeProviderKeyEntry[]
-  > => {
+  const readCodexKeyPayload = async (): Promise<CodexNativeProviderKeyEntry[]> => {
     const codexKeys = options.codexKeys;
     if (!codexKeys) throw new Error("当前 Environment 不支持 Codex 临时 Key");
-    const entries = await readCodexNativeProviderKeyEntries(
-      codexKeys.environmentKey,
-    );
+    const entries = await readCodexNativeProviderKeyEntries(codexKeys.environmentKey);
     const keys: CodexNativeProviderKeyEntry[] = [];
     for (const [providerId, entry] of Object.entries(entries)) {
       // 缺凭据不是错误：发送 null，让远端显式屏蔽继承变量并 fail-closed 该供应商。
       const value =
         (
           await codexKeys.credentialService.load(
-            codexNativeProviderKeyCredentialKey(
-              codexKeys.environmentKey,
-              providerId,
-            ),
+            codexNativeProviderKeyCredentialKey(codexKeys.environmentKey, providerId),
           )
         )?.trim() || null;
       keys.push({ providerId, envName: entry.envName, value });
@@ -162,19 +141,22 @@ export function createRemoteProviderProvisioningExecutor(options: {
 
   const beginCodexKeyRotation = (): Promise<void> => {
     const operation = codexKeyTail.then(async () => {
-      if (!options.codexKeys)
-        throw new Error("当前 Environment 不支持 Codex 临时 Key");
+      if (!options.codexKeys) throw new Error("当前 Environment 不支持 Codex 临时 Key");
       const target = options.target;
-      if (
-        !target ||
-        typeof target.beginCodexProviderKeyRotation !== "function"
-      ) {
+      if (!target || typeof target.beginCodexProviderKeyRotation !== "function") {
         // 首次保存时注册表尚无条目，不能用「当前无托管引用」放行；屏障建立必须显式可用。
-        throw new Error(
-          "远端 Codez 版本过旧，不支持 Codex 临时 Key，请升级远端",
-        );
+        throw new Error("远端 Codez 版本过旧，不支持 Codex 临时 Key，请升级远端");
       }
-      await target.beginCodexProviderKeyRotation();
+      try {
+        await target.beginCodexProviderKeyRotation();
+      } catch (error) {
+        if (isLegacyCodexKeyCapabilityMissingError(error)) {
+          throw new Error("远端 Codez 版本过旧，不支持 Codex 临时 Key，请升级远端", {
+            cause: error,
+          });
+        }
+        throw error;
+      }
     });
     codexKeyTail = operation.catch(() => undefined);
     return operation;
@@ -186,15 +168,27 @@ export function createRemoteProviderProvisioningExecutor(options: {
       // Server remote 等无本机读取面的连接：无托管事实可安装，静默 no-op。
       if (!options.codexKeys) return;
       const keys = await readCodexKeyPayload();
+      // 首连/重连且本连接从未安装过 Codex 临时 Key 时，空集合不触发远端 RPC，兼容旧 Target。
+      if (keys.length === 0 && !codexKeysInstalled) return;
       const target = options.target;
       if (!target || typeof target.installCodexProviderKeys !== "function") {
-        // 首连兼容：本地注册表为空时允许旧远端 no-op；存在托管引用必须 fail-closed。
-        if (keys.length === 0) return;
-        throw new Error(
-          "远端 Codez 版本过旧，不支持 Codex 临时 Key，请升级远端",
-        );
+        codexKeysInstalled = false;
+        return;
       }
-      await target.installCodexProviderKeys({ keys });
+      try {
+        await target.installCodexProviderKeys({ keys });
+        codexKeysInstalled = keys.length > 0;
+      } catch (error) {
+        // Bugfix: ProxyChannel.toService 对任意方法名都会构造代理函数，旧版或上游构建的远端
+        // codez-server 缺少 installCodexProviderKeys 时会在首连第 3 步抛 Method not found，
+        // 导致整个远程工作区连接与新建会话被拒绝。远端缺该能力时内存中本就不会持有任何临时 Key，
+        // 首连/同步阶段降级跳过安装以保证工作区和设置页可打开；主动保存仍由 beginCodexKeyRotation 拦截。
+        if (isLegacyCodexKeyCapabilityMissingError(error)) {
+          codexKeysInstalled = false;
+          return;
+        }
+        throw error;
+      }
     });
     codexKeyTail = operation.catch(() => undefined);
     return operation;
@@ -233,10 +227,7 @@ export function createRemoteProviderProvisioningExecutorFromWorkspace(options: {
   });
 }
 
-function unsupportedResult(
-  syncId: string,
-  errorMessage: string,
-): ProviderProvisioningResult {
+function unsupportedResult(syncId: string, errorMessage: string): ProviderProvisioningResult {
   return {
     syncId,
     status: "unsupported",
@@ -246,4 +237,14 @@ function unsupportedResult(
     errorCode: "capability-unavailable",
     rolledBack: false,
   };
+}
+
+function isLegacyCodexKeyCapabilityMissingError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("Method not found: beginCodexProviderKeyRotation") ||
+    message.includes("Method not found: installCodexProviderKeys") ||
+    message.includes("Unknown channel: provider-provisioning-target") ||
+    message.includes("远端不支持 Codex 临时 Key")
+  );
 }
