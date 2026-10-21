@@ -210,7 +210,17 @@ export class ThreadStateStore {
 
     const state = this.put(thread);
     // 辅助对话 child 重建继承裁剪边界；父读取失败 fail-open 不裁剪（spec: codex-selection-side-chat）。
-    state.sideChat = await resolveSelectionSideChatBoundary(this.rpc, thread);
+    const cachedParentId =
+      typeof thread.forkedFromId === "string" ? thread.forkedFromId : undefined;
+    const cachedParent =
+      cachedParentId && this.loaded.has(cachedParentId)
+        ? this.states.get(cachedParentId)?.thread
+        : undefined;
+    state.sideChat = await resolveSelectionSideChatBoundary(
+      this.rpc,
+      thread,
+      cachedParent && Array.isArray(cachedParent.turns) ? cachedParent.turns : undefined,
+    );
     if (readOnly) state.readOnly = readOnly;
     if (parentThreadId) state.attached = attached;
     this.loaded.add(id);
