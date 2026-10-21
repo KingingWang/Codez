@@ -19,6 +19,7 @@ async function fixture(
   updatePlanToolEnabled = false,
   traceArgv = false,
   desktopMcpServers?: DesktopCodexMcpServer[],
+  onRequestTimeout?: (info: { method: string; durationMs: number; pendingCount: number }) => void,
 ) {
   const directory = await mkdtemp(join(tmpdir(), "codez transport 中文 "));
   const executable = join(directory, "fake codex");
@@ -32,6 +33,7 @@ async function fixture(
     interactionTimeoutMs,
     updatePlanToolEnabled,
     desktopMcpServers,
+    onRequestTimeout,
     env: {
       PATH: globalThis.process.env.PATH,
       HOME: directory,
@@ -208,9 +210,20 @@ test(
   options,
   async (t) => {
     // macOS CI 冷启动可能超过 100ms；握手用常规预算，迟到响应由显式 barrier 控制。
-    const { process } = await fixture(t);
+    const timeouts: Array<{ method: string; durationMs: number; pendingCount: number }> = [];
+    const { process } = await fixture(
+      t,
+      "normal",
+      1000,
+      undefined,
+      false,
+      false,
+      undefined,
+      (info) => timeouts.push(info),
+    );
     await process.initialize();
     await assert.rejects(process.request("mutate"), /timed out/i);
+    assert.deepEqual(timeouts, [{ method: "mutate", durationMs: 1000, pendingCount: 0 }]);
     await process.request("release-mutation");
     const status = await process.request<{ mutationCount: number }>("status");
     assert.equal(status.mutationCount, 1);

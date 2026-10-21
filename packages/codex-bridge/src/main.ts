@@ -51,6 +51,14 @@ async function main(): Promise<void> {
         `Codex desktop bridge dropped an oversized native frame (observedBytes>=${frame.observedBytes}); affected requests fail explicitly without retry.\n`,
       );
     },
+    onRequestTimeout: ({ method, durationMs, pendingCount }) => {
+      // 原因：原生 RPC 30s 超时过去只返回统一报错文案，导出日志无法定位是哪条原生方法卡死。
+      // 这里只输出闭合格式的方法名、超时阈值与在途请求数，不记录任何参数或路径。
+      const safeMethod = /^[A-Za-z0-9_/-]{1,64}$/.test(method) ? method : "unknown";
+      process.stderr.write(
+        `Codex desktop bridge warn: native rpc timed out; method=${safeMethod}; durationMs=${durationMs}; pending=${pendingCount}\n`,
+      );
+    },
   });
   let runtime: BridgeRuntime | undefined;
   let stopping = false;

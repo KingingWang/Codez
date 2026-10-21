@@ -331,6 +331,40 @@ test("project discovery requests all providers and user-facing native sources on
   assert.equal(calls.length, 4, "opening a project scans native history again, not a cached list");
 });
 
+test("concurrent store.list() calls coalesce in flight and clear after settling", async () => {
+  let listCalls = 0;
+  const gate = Promise.withResolvers<{ data: unknown[]; nextCursor: null }>();
+  const store = new ThreadStateStore(
+    port((method) => {
+      assert.equal(method, "thread/list");
+      listCalls += 1;
+      if (listCalls === 1) return gate.promise;
+      if (listCalls === 2) throw new Error("transient list failure");
+      return { data: [{ ...thread(), id: "after-recovery" }], nextCursor: null };
+    }),
+    "/work",
+  );
+
+  const [first, second, third] = [store.list(), store.list(), store.list()];
+  assert.equal(listCalls, 1, "concurrent callers must share one in-flight thread/list scan");
+  gate.resolve({ data: [thread()], nextCursor: null });
+  const results = await Promise.all([first, second, third]);
+  for (const rows of results) {
+    assert.deepEqual(
+      rows.map((entry) => (entry as { id: string }).id),
+      ["t1"],
+    );
+  }
+
+  await assert.rejects(store.list(), /transient list failure/);
+  assert.equal(listCalls, 2);
+  assert.deepEqual(
+    (await store.list()).map((entry) => (entry as { id: string }).id),
+    ["after-recovery"],
+  );
+  assert.equal(listCalls, 3);
+});
+
 test("aliased workspace path discovers, resumes and attributes native threads", async (t) => {
   const root = await mkdtemp(join(tmpdir(), "codez-thread-state-alias-"));
   const physical = join(root, "physical");

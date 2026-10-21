@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseCodexBridgeTitleDiagnostic } from "../src/codez-agent/codexBridgeTitleDiagnostic.js";
+import {
+  parseCodexBridgeRpcTimeoutDiagnostic,
+  parseCodexBridgeTitleDiagnostic,
+} from "../src/codez-agent/codexBridgeTitleDiagnostic.js";
 
 test("only bounded automatic-title diagnostics can become production warnings", () => {
   assert.deepEqual(
@@ -38,12 +41,7 @@ test("bounded skip reasons become production warnings, everything else stays dro
     ),
     { kind: "skipped", stage: "availability", reason: "unavailable" },
   );
-  for (const reason of [
-    "short-input",
-    "invalid-title",
-    "renamed",
-    "first-item-mismatch",
-  ] as const)
+  for (const reason of ["short-input", "invalid-title", "renamed", "first-item-mismatch"] as const)
     assert.equal(
       parseCodexBridgeTitleDiagnostic(
         `Codex desktop bridge warn: automatic title skipped; stage=generation; reason=${reason}`,
@@ -58,4 +56,26 @@ test("bounded skip reasons become production warnings, everything else stays dro
     "Codex desktop bridge warn: automatic title skipped; stage=arm; code=-32600",
   ])
     assert.equal(parseCodexBridgeTitleDiagnostic(line), undefined);
+});
+
+test("only bounded native rpc timeout diagnostics can become production warnings", () => {
+  assert.deepEqual(
+    parseCodexBridgeRpcTimeoutDiagnostic(
+      "Codex desktop bridge warn: native rpc timed out; method=thread/list; durationMs=30000; pending=2",
+    ),
+    { method: "thread/list", durationMs: 30000, pending: 2 },
+  );
+  assert.deepEqual(
+    parseCodexBridgeRpcTimeoutDiagnostic(
+      "Codex desktop bridge warn: native rpc timed out; method=thread/turns/list; durationMs=30000; pending=0",
+    ),
+    { method: "thread/turns/list", durationMs: 30000, pending: 0 },
+  );
+  for (const line of [
+    "Codex desktop bridge warn: native rpc timed out; method=thread/list; durationMs=0; pending=0",
+    "Codex desktop bridge warn: native rpc timed out; method=thread/list; durationMs=30000; pending=10000",
+    "Codex desktop bridge warn: native rpc timed out; method=thread/list; durationMs=30000; pending=0; cwd=/secret",
+    "Codex desktop bridge warn: native rpc timed out; method=thread list; durationMs=30000; pending=0",
+  ])
+    assert.equal(parseCodexBridgeRpcTimeoutDiagnostic(line), undefined);
 });

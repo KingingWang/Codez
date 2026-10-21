@@ -55,6 +55,16 @@ function isTransientSubscribeError(error: unknown): boolean {
   if (code === "EEXIST" && message.includes("config.json.lock")) {
     return true;
   }
+  // 修复依据：sessions-index 订阅是纯只读列表快照。当远端或本地原生 Codex RPC
+  // 在并发 thread/list 下偶发超过 30s 超时时，先按 250ms/1s/3s 有界退避保持 connecting，
+  // 避免单次抖动立刻清空侧栏并落入 error。
+  if (
+    message.includes("Codex RPC request timed out; outcome is unknown") ||
+    message.includes("Codez Protocol request timed out: v4/conversation/subscribe") ||
+    message.includes("Codez Protocol request timed out: v4/conversation/resync")
+  ) {
+    return true;
+  }
   return /\b(?:EBUSY|EMFILE|ENFILE)\b/.test(message) || message.includes("config.json.lock");
 }
 
