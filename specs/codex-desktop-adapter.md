@@ -337,7 +337,11 @@ unoffered persistence never reach Codex.
   to the current turn; it is not an authoritative queued item, cannot be
   edited, and disappears when a native user-input row carries the exact
   `sourceCommandId` returned by the accepted steer, or on turn change.
-  Both the local next-send choice and hint are scoped by
+  The controller Host (`baseServices.settingService` when registered, otherwise
+  the root `SettingService`) is the single preference authority for
+  `codezInteractionBehavior` across local and remote workspaces: reading or
+  saving this setting in a remote workspace never reads from or writes to the
+  remote Source Server's `setting.json`. Both the local next-send choice and hint are scoped by
   `workspaceIdentity?.trim() || workspacePath` plus session and turn; switching
   between same-path remote identities cannot carry a choice or hint across.
   Codex's projected user-input row does not necessarily carry `guided: true`;
