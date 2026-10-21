@@ -120,6 +120,10 @@ export async function handleLegacySession(
       ? z.array(z.string().min(1)).max(256).optional().parse(p.additionalDirectories)
       : undefined;
   const state = await store.ensure(sessionId, additionalDirectories);
+  const contentProfile =
+    method === "session/read"
+      ? z.enum(["full", "index"]).optional().parse(p.contentProfile)
+      : undefined;
   const native = { threadId: sessionId };
   const controlContext = { rpc, cwd: store.cwd, auxiliary: { supports: () => false } };
   switch (method) {
@@ -181,5 +185,8 @@ export async function handleLegacySession(
     controlContext,
     threadModelOverride(state.thread),
   );
-  return shared.codezSessionStateSnapshotSchema.parse(snapshot);
+  const validated = shared.codezSessionStateSnapshotSchema.parse(snapshot);
+  // 原因：task-index 传来的 index 过去被桥接忽略，完整工具/推理历史曾使单条
+  // bridge→Host 响应超 32 MiB。只剥离索引不读取的字段，不改消息身份和事实。
+  return contentProfile === "index" ? shared.elideSessionSnapshotForIndex(validated) : validated;
 }

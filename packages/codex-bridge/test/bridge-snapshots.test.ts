@@ -58,6 +58,33 @@ test("native token usage remains sparse and unavailable fields never become zero
   });
 });
 
+test("unchanged history queries share one derived projection and a touch invalidates it", async () => {
+  const thread = threadFixture();
+  thread.turns = Array.from({ length: 65 }, (_, index) => ({
+    ...thread.turns[0]!,
+    id: `turn-${index}`,
+  }));
+  const rpc = port();
+  const store = new ThreadStateStore(rpc, cwd);
+  store.markStarted(thread);
+  const snapshots = new BridgeSnapshots(
+    { rpc, cwd },
+    store,
+    new InteractionBroker(rpc, () => {}),
+    cwd,
+  );
+  const first = await snapshots.conversation(thread.id);
+  const second = await snapshots.conversation(thread.id);
+  assert.strictEqual(second, first);
+  const topic = await snapshots.topic(`conversation/${thread.id}`);
+  assert.ok((topic.snapshot as typeof first).rows.window.length < first.rows.window.length);
+  assert.strictEqual(await snapshots.conversation(thread.id), first);
+  store.touch(thread.id);
+  const next = await snapshots.conversation(thread.id);
+  assert.notStrictEqual(next, first);
+  assert.deepEqual(next.rows.window.map((row) => row.rowId), first.rows.window.map((row) => row.rowId));
+});
+
 test("multi-step turn accumulates tokenUsage across requests and ignores duplicate notifications", async () => {
   const thread = threadFixture();
   const turnId = thread.turns[0]!.id;

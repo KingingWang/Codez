@@ -215,7 +215,7 @@ Host task-index 回源（`resyncTaskIndexRowFromAgent`：`phase.completed/error`
 
 ```text
 task-index syncer ──session/read {runtimePolicy: existing-only, contentProfile: "index"}──▶ CLI
-                                                          │ 先按 full 构建完整 snapshot（语义不变）
+                                                          │ 按 full 语义生成 snapshot（不改变派生事实）
                                                           │ 再只剥离大载荷字段（不增删 message/part）
 task-index syncer ◀── 同结构 snapshot（几十 KB~数百 KB，而非 15 MB）──┘
    └─ buildMetaFromSnapshot / searchableText / hasUserVisibleContent：结果与 full 逐字节一致
@@ -231,6 +231,10 @@ task-index syncer ◀── 同结构 snapshot（几十 KB~数百 KB，而非 15
   级 tool output），Host 每轮做一次 15 MB JSON/zod 解析；task index 实际只用文本、info 和 part 结构。
 - 这是只给 task index 用的读取视图：其它 `session/read` 调用方不得传 `index`，拿到的 snapshot
   也不得回写到 UI/conversation 状态。缺省或 `full` 行为不变。
+- 原生 Codex bridge 的 `session/read` 也必须兑现该 profile：共享
+  `elideSessionSnapshotForIndex` 的输出规则，保留按原生 thread id 的唯一内容权威。修复旧版本
+  忽略 `contentProfile` 导致长会话的桥接→Host 整帧超限时，不得改为裁掉历史开头、
+  让 task sqlite 存完整正文或在 Host 新建一条会话内容写入路径。
 
 ## Task Status Projection
 

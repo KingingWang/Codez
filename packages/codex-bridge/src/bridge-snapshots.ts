@@ -29,6 +29,17 @@ export class BridgeSnapshots {
   private readonly configEpoch = randomUUID();
   private indexSeq = 0;
   private configSeq = 0;
+  /** Only derived, replaceable projections; Codex and ThreadStateStore retain the facts. */
+  private readonly conversationCache = new Map<
+    string,
+    {
+      state: NonNullable<ReturnType<ThreadStateStore["get"]>>;
+      seq: number;
+      revision: number;
+      epoch: string;
+      snapshot: ConversationSnapshot;
+    }
+  >();
   /** 子线程活性一次性种子调度（实现见 subagent-activity.ts；tracker 归 store 所有）。 */
   private readonly subagentActivitySeeds: SubagentActivitySeedScheduler;
   private readonly attachmentViews = new Map<
@@ -81,6 +92,23 @@ export class BridgeSnapshots {
 
   async conversation(id: string, additionalDirectories?: string[]): Promise<ConversationSnapshot> {
     const state = await this.store.ensure(id, additionalDirectories);
+    const cached = this.conversationCache.get(id);
+    if (
+      cached?.state === state &&
+      cached.seq === state.seq &&
+      cached.revision === state.revision &&
+      cached.epoch === state.epoch
+    ) {
+      // 原因：rows/range、rowPayload 和 plans 以前每次都重投影完整历史，
+      // 长会话向上翻页会反复做 O(全史) 工作；同一版本只重用派生结果。
+      this.conversationCache.delete(id);
+      this.conversationCache.set(id, cached);
+      return cached.snapshot;
+    }
+    this.conversationCache.delete(id);
+    const startSeq = state.seq;
+    const startRevision = state.revision;
+    const startEpoch = state.epoch;
     const attachmentStore = this.attachments;
     const userProjections = new Map<string, Awaited<ReturnType<typeof projectOwnedInput>>>();
     const queueProjections = new Map<string, Awaited<ReturnType<typeof projectOwnedInput>>>();
@@ -283,6 +311,22 @@ export class BridgeSnapshots {
     }
     if (this.store.get(id) !== state) throw new DeletedThreadError();
     this.attachmentViews.set(id, { epoch: snapshot.logEpoch, rows: snapshot.rows.window });
+    if (
+      state.seq === startSeq &&
+      state.revision === startRevision &&
+      state.epoch === startEpoch
+    ) {
+      this.conversationCache.set(id, {
+        state,
+        seq: startSeq,
+        revision: startRevision,
+        epoch: startEpoch,
+        snapshot,
+      });
+      // 派生缓存不随已加载 session 总数增长：冷开多个大型历史时最多保留两份。
+      if (this.conversationCache.size > 2)
+        this.conversationCache.delete(this.conversationCache.keys().next().value!);
+    }
     return snapshot;
   }
 
@@ -308,7 +352,7 @@ export class BridgeSnapshots {
     additionalDirectories?: string[],
   ): Promise<{ snapshot: unknown; seq: number; logEpoch: string }> {
     if (topic.startsWith("conversation/")) {
-      const snapshot = await this.conversation(
+      const full = await this.conversation(
         topic.slice("conversation/".length),
         additionalDirectories,
       );
@@ -316,9 +360,13 @@ export class BridgeSnapshots {
       // firstRowId/totalCount 必须保持全序口径：客户端以 window[0].rowId === firstRowId
       // 判定是否已到顶，跟随截尾改写会让 hasOlderRows 恒为 false，rows/range 分页、
       // 问题目录补齐与「加载更早」入口全部静默失效（specs/codex-desktop-adapter.md）。
-      snapshot.rows.window = projectConversationTailWindow(snapshot.rows.window).map(
-        compactConversationRowForWire,
-      );
+      const snapshot = {
+        ...full,
+        rows: {
+          ...full.rows,
+          window: projectConversationTailWindow(full.rows.window).map(compactConversationRowForWire),
+        },
+      };
       return { snapshot, seq: snapshot.seq, logEpoch: snapshot.logEpoch };
     }
     if (topic === `sessions-index/${this.workspaceId}`) {

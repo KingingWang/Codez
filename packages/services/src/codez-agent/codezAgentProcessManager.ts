@@ -36,6 +36,7 @@ import { isEffectiveDevelopmentNodeEnv } from "#src/runtime-tools/nodeEnv.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import {
   parseCodexBridgeRpcTimeoutDiagnostic,
+  parseCodexBridgeOversizedFrameDiagnostic,
   parseCodexBridgeTitleDiagnostic,
 } from "./codexBridgeTitleDiagnostic.js";
 import { CodezProtocolClient } from "./codezProtocolClient.js";
@@ -1240,6 +1241,13 @@ export class CodezAgentProcessManager {
           // 生产导出日志只能看到外层 "Codex RPC request timed out; outcome is unknown"，
           // 无法分辨是 thread/list、thread/read、thread/resume 还是 thread/turns/list 超时。
           warnLog("Codex native RPC request timed out", rpcTimeoutDiagnostic);
+          return;
+        }
+        const oversizedFrameDiagnostic = parseCodexBridgeOversizedFrameDiagnostic(line);
+        if (oversizedFrameDiagnostic) {
+          // 原因：原生单帧 LIMIT 不杀 bridge，旧 stderr 只落 debug；远端导出
+          // 只能看到 UI 报错而无法区分 resume/turns/list。只提升严格校验的字段。
+          warnLog("Codex native response frame exceeds size limit", oversizedFrameDiagnostic);
           return;
         }
         stderrTail.append(line);

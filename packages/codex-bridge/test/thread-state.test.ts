@@ -33,10 +33,15 @@ function port(handler: (method: string, params?: unknown) => unknown): CodexRpcP
 }
 test("history is paged and native queue is the only queue source", async () => {
   const calls: string[] = [];
+  const resumes: unknown[] = [];
   const store = new ThreadStateStore(
     port((method, params) => {
       calls.push(method);
-      if (method === "thread/read" || method === "thread/resume") return { thread: thread() };
+      if (method === "thread/resume") {
+        resumes.push(params);
+        return { thread: thread() };
+      }
+      if (method === "thread/read") return { thread: thread() };
       if (method === "thread/queue/list") return { data: [{ id: "q" }], nextCursor: null };
       const cursor = (params as { cursor?: string }).cursor;
       return { data: [{ id: cursor ? "b" : "a" }], nextCursor: cursor ? null : "page2" };
@@ -48,6 +53,9 @@ test("history is paged and native queue is the only queue source", async () => {
   assert.deepEqual(state.queue, [{ id: "q" }]);
   await store.ensure("t1");
   assert.equal(calls.filter((method) => method === "thread/resume").length, 1);
+  // 原生 paginated resume 默认仍返回完整历史；桥接随后又调用 turns/list。
+  // 冷恢复须只 attach 一次，历史由单一只读分页入口提供，避免单条 resume 帧超限。
+  assert.deepEqual(resumes, [{ threadId: "t1", excludeTurns: true }]);
 });
 test("cross workspace thread is rejected before resume", async () => {
   const calls: string[] = [];

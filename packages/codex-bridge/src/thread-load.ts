@@ -86,6 +86,9 @@ export async function attachThreadForLoad(input: {
     const resumed = object(
       await rpc.request("thread/resume", {
         threadId: id,
+        // 原因：原生缺省 resume 会把完整历史塞进一个响应帧；下面始终用 turns/list
+        // 分页恢复历史。长会话可能让缺省帧超过 32 MiB，且重复读取会拖慢冷打开。
+        excludeTurns: true,
         ...(runtimeWorkspaceRoots ? { runtimeWorkspaceRoots } : {}),
       }),
     );
