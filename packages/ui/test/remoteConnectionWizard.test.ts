@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { normalizeRemoteResourcePackageSelection } from "@codez/shared";
 import {
   buildRemoteTarget,
+  buildRemoteTargetFromSSHConfigAlias,
   buildRemoteTargetFromProfile,
   collectRemoteFormFieldErrors,
   formatRemoteDraftPreview,
@@ -14,6 +15,38 @@ const intl = {
 };
 
 describe("buildRemoteTarget", () => {
+  it("设备列表直选没有 IdentityFile 的 alias 时使用 auto 认证", () => {
+    expect(
+      buildRemoteTargetFromSSHConfigAlias({
+        alias: "staging",
+        host: "staging.example.com",
+        username: "deploy",
+        port: 2222,
+      }),
+    ).toEqual({
+      kind: "ssh",
+      host: "staging.example.com",
+      port: 2222,
+      username: "deploy",
+      authMode: "auto",
+      sshConfigAlias: "staging",
+    });
+  });
+
+  it("设备列表直选带 IdentityFile 的 alias 保留私钥认证", () => {
+    expect(
+      buildRemoteTargetFromSSHConfigAlias({
+        alias: "gpu",
+        host: "gpu.example.com",
+        username: "ubuntu",
+        privateKeyPath: " ~/.ssh/gpu.pem ",
+      }),
+    ).toMatchObject({
+      authMode: "privateKey",
+      privateKeyPath: "~/.ssh/gpu.pem",
+    });
+  });
+
   it("按精确线路和必须升级状态定位连接向导的更新目标", () => {
     expect(
       findSourceServerUpgradeProfileId(

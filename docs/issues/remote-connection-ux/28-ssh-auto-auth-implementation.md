@@ -1,6 +1,6 @@
 # 28 — SSH 自动认证（auto）实施票
 
-Status: done（首期范围已交付）
+Status: done（补齐 alias 直连入口回归）
 
 **父规格：** [远程连接交互与视觉体验优化](./01-remote-connection-ux-optimization.md)
 
@@ -13,6 +13,8 @@ Status: done（首期范围已交付）
 - 认证方式新增 `auto`（自动）选项，与 `password` / `privateKey` 并列。
   auto 模式不要求预先填写任何凭据。
 - 选择不含 `IdentityFile` 的 SSH config alias 时默认切到 `auto`，已免密的主机可直接连接。
+  该规则必须覆盖设置页导入、设备列表直选和已有连接恢复三类入口；各入口传递给连接流程的
+  `RemoteTarget.authMode` 必须保持一致，不能只更新表单局部状态。
 - auto 候选按确定顺序解析：
   1. SSH config `IdentityFile`（向导透传的 `privateKeyPath`）；加密且无口令的文件跳过。
   2. ssh-agent：`SSH_AUTH_SOCK`（POSIX 下端点必须真实存在）；Windows 无环境变量时探测
@@ -42,7 +44,8 @@ Status: done（首期范围已交付）
 
 ## 验收
 
-- [x] 无 `IdentityFile` 的 alias 默认 auto，不再报「私钥路径不能为空」。
+- [x] 设置页导入无 `IdentityFile` 的 alias 默认 auto，不再报「私钥路径不能为空」。
+- [x] 设备列表直选无 `IdentityFile` 的 alias 也携带 `authMode: "auto"`，不提前要求密码或私钥。
 - [x] auto 候选解析单测覆盖：未加密/加密/损坏私钥、死 socket、Windows 管道、白名单顺序（`packages/server/test/sshAutoAuth.test.ts`）。
 - [x] auto Profile 静默重连与凭据清理（`packages/desktop/test/sourceServerDirectory.test.ts`）。
 - [x] 向导校验与目标构造（`packages/ui/test/remoteConnectionWizard.test.ts`、

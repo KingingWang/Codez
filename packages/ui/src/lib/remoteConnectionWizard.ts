@@ -3,6 +3,7 @@ import type {
   RemoteAssetInstallMode,
   RemoteTarget,
   SourceServerManagementSnapshot,
+  SSHConfigAliasOption,
 } from "@codez/shared";
 import { isValidWslUser, normalizeRemoteResourcePackageSelection } from "@codez/shared";
 import type { SSHAuthMethod } from "@/hooks/useRemoteConnectionForm.js";
@@ -292,6 +293,25 @@ export function buildRemoteTarget(
       };
     }
   }
+}
+
+/**
+ * 设备列表直选此前绕过设置页的目标构造，导致无 IdentityFile 的 alias 丢失 auto 认证模式；
+ * 这里统一复用同一策略，避免连接流程误进入凭据门禁。
+ */
+export function buildRemoteTargetFromSSHConfigAlias(
+  alias: SSHConfigAliasOption,
+): Extract<RemoteTarget, { kind: "ssh" }> {
+  const privateKeyPath = alias.privateKeyPath?.trim();
+  return {
+    kind: "ssh",
+    host: alias.host?.trim() || alias.alias,
+    username: alias.username?.trim() ?? "",
+    port: alias.port,
+    authMode: privateKeyPath ? "privateKey" : "auto",
+    sshConfigAlias: alias.alias,
+    ...(privateKeyPath ? { privateKeyPath } : {}),
+  };
 }
 
 export function withDefaultRemoteResourcePackages(target: RemoteTarget): RemoteTarget {
