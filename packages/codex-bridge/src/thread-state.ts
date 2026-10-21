@@ -33,6 +33,7 @@ export class ThreadStateStore {
   private readonly states = new Map<string, ThreadProjectionState>();
   private readonly listeners = new Set<(threadId: string) => void>();
   private readonly loads = new Map<string, Promise<ThreadProjectionState>>();
+  private listInFlight: Promise<unknown[]> | undefined;
   private readonly loaded = new Set<string>();
   private readonly deleted = new Set<string>();
   private readonly completedItems = new Set<string>();
@@ -388,6 +389,15 @@ export class ThreadStateStore {
   }
 
   async list(): Promise<unknown[]> {
-    return listWorkspaceThreads(this.rpc, this.cwd);
+    // 修复原因：项目激活/回焦时 session/list 发现与多个 sessions-index 订阅者（taskIndexSyncer、
+    // windowHostObserver、renderer store）会同时触发 list()，导致同一原生 app-server 上并发跑
+    // 3~4 套全量 thread/list 分页扫描，阻塞后续打开会话的 thread/read / resume / turns/list 并触发
+    // 30s RPC 超时。这里仅合并同一时刻在途的扫描；完成后立即清空，不保留过期列表缓存。
+    if (this.listInFlight) return this.listInFlight;
+    const pending = listWorkspaceThreads(this.rpc, this.cwd).finally(() => {
+      if (this.listInFlight === pending) this.listInFlight = undefined;
+    });
+    this.listInFlight = pending;
+    return pending;
   }
 }

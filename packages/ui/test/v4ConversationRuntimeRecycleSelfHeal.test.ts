@@ -369,6 +369,53 @@ describe("conversation projection 在 CUA Helper 回收 agent runtime 后自愈"
       vi.useRealTimers();
     }
   });
+
+  it("只读 subscribe 遇到 Codex RPC request timed out 时按 250ms/1s/3s 有界退避重连，耗尽后才落 error 且 retry() 可恢复", async () => {
+    vi.useFakeTimers();
+    try {
+      const { base, mocks, pendingFailures } = setupBase();
+      const rpcTimeoutError = new Error("Codex RPC request timed out; outcome is unknown");
+      pendingFailures.push(rpcTimeoutError, rpcTimeoutError);
+      const { store } = createStore(base, "conn-rpc-timeout-recover");
+
+      await store.connect();
+      expect(store.getState().status).toBe("connecting");
+      expect(store.getState().lastError).toBeNull();
+      expect(mocks.subscribeConversationV4).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(250);
+      expect(mocks.subscribeConversationV4).toHaveBeenCalledTimes(2);
+      expect(store.getState().status).toBe("connecting");
+
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(mocks.subscribeConversationV4).toHaveBeenCalledTimes(3);
+      expect(store.getState().status).toBe("live");
+      expect(store.getState().lastError).toBeNull();
+
+      // 再次连续超时 4 次（1 次初始 + 3 次退避）应落入 error，随后用户点击重新连接 retry() 可恢复。
+      const {
+        base: exhaustedBase,
+        mocks: exhaustedMocks,
+        pendingFailures: exhaustedFailures,
+      } = setupBase();
+      exhaustedFailures.push(rpcTimeoutError, rpcTimeoutError, rpcTimeoutError, rpcTimeoutError);
+      const { store: exhaustedStore } = createStore(exhaustedBase, "conn-rpc-timeout-exhausted");
+      await exhaustedStore.connect();
+      await vi.advanceTimersByTimeAsync(250 + 1_000 + 3_000);
+      expect(exhaustedMocks.subscribeConversationV4).toHaveBeenCalledTimes(4);
+      expect(exhaustedStore.getState().status).toBe("error");
+      expect(exhaustedStore.getState().lastError).toBe(
+        "Codex RPC request timed out; outcome is unknown",
+      );
+
+      await exhaustedStore.retry();
+      expect(exhaustedMocks.subscribeConversationV4).toHaveBeenCalledTimes(5);
+      expect(exhaustedStore.getState().status).toBe("live");
+      expect(exhaustedStore.getState().lastError).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 it("forwards project creation context before and after a remote proxy replacement", async () => {
