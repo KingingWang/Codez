@@ -1,6 +1,7 @@
 import { Fragment, memo, useCallback, useContext, useMemo, useState } from "react";
 import type { ProjectTask, ProjectSidebarProps } from "@/project-sidebar/contract.js";
 import { TaskGroupTaskMenu } from "@/project-sidebar/TaskGroupTaskMenu.js";
+import { TaskHoverCard } from "@/project-sidebar/TaskHoverCard.js";
 import { TaskList } from "@/TaskList.js";
 import { Button } from "@/components/ui/button.js";
 import { useProjectTaskActions } from "@/project-sidebar/useProjectTaskActions.js";
@@ -44,40 +45,46 @@ export const ProjectTaskRow = memo(function Row({
   const organizationActions = useMemo(() => <TaskGroupTaskMenu task={task} />, [task]);
   // 原因：会话行复用项目详情会在浏览任务时重复弹层；远程身份详情只由项目入口承载。
   return (
-    <div>
-      <TaskList
-        organizationActions={organizationActions}
-        workspacePath={task.workspacePath}
-        workspaceIdentity={task.workspaceIdentity}
-        remoteSessionId={remoteSessionId ?? undefined}
-        // pinnedTasks 只负责标识样式；TaskList 的真实渲染集合始终是 tasks。
-        tasks={rows}
-        pinnedTasks={task.pinned ? rows : EMPTY}
-        activeTaskId={activeId}
-        isWorkspaceActive={presentation.activeWorkspaceKey === workspaceKey}
-        mobileActiveTaskKey={presentation.mobileActiveTaskKey}
-        onOpenFileTree={
-          presentation.onOpenTaskFiles &&
-          showFiles &&
-          (!task.workspaceIdentity?.trim() || remoteSessionId)
-            ? openFiles
-            : undefined
-        }
-        showCreateButton={false}
-        showFooter={false}
-        showEmptyState={false}
-        // 原因：旧接线只传排序，遗漏 timeline 样式，导致目录信息和空闲灰点消失。
-        taskRowVariant={variant}
-        hoverEnabled={!presentation.isWebRemoteControl}
-        sortBy="updated"
-        onSelectTask={select}
-        onRenameTask={rename}
-        onSetTaskPinned={pin}
-        onArchiveTask={archive}
-        isArchived={task.archived}
-        onSetTaskUnread={unread}
-      />
-    </div>
+    <TaskHoverCard
+      task={task}
+      remoteSessionId={remoteSessionId ?? undefined}
+      disabled={Boolean(presentation.isWebRemoteControl)}
+    >
+      <div>
+        <TaskList
+          organizationActions={organizationActions}
+          workspacePath={task.workspacePath}
+          workspaceIdentity={task.workspaceIdentity}
+          remoteSessionId={remoteSessionId ?? undefined}
+          // pinnedTasks 只负责标识样式；TaskList 的真实渲染集合始终是 tasks。
+          tasks={rows}
+          pinnedTasks={task.pinned ? rows : EMPTY}
+          activeTaskId={activeId}
+          isWorkspaceActive={presentation.activeWorkspaceKey === workspaceKey}
+          mobileActiveTaskKey={presentation.mobileActiveTaskKey}
+          onOpenFileTree={
+            presentation.onOpenTaskFiles &&
+            showFiles &&
+            (!task.workspaceIdentity?.trim() || remoteSessionId)
+              ? openFiles
+              : undefined
+          }
+          showCreateButton={false}
+          showFooter={false}
+          showEmptyState={false}
+          // 原因：旧接线只传排序，遗漏 timeline 样式，导致目录信息和空闲灰点消失。
+          taskRowVariant={variant}
+          hoverEnabled={!presentation.isWebRemoteControl}
+          sortBy="updated"
+          onSelectTask={select}
+          onRenameTask={rename}
+          onSetTaskPinned={pin}
+          onArchiveTask={archive}
+          isArchived={task.archived}
+          onSetTaskUnread={unread}
+        />
+      </div>
+    </TaskHoverCard>
   );
 });
 
