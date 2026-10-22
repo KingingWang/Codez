@@ -132,15 +132,18 @@ export function useCodexProjectDiscovery({
     for (const [key, target] of nextRoots) {
       if (previous.has(key) || key === activeKey) continue;
       if (projectRootInflightRef.current.has(key)) continue;
+      let completed = false;
       const request = (async () => {
         if (target.hostId === "local") {
           const localServices =
             useRemoteWorkspaceSessionStore.getState().baseServices ??
             contextServices ??
             (scope.workspaceIdentity ? undefined : scope.services);
+          if (!localServices?.codezSessionService) return;
           await localServices?.codezSessionService?.listSessions({
             workspacePath: target.workspacePath,
           });
+          completed = true;
           return;
         }
         const workspaceIdentity = target.workspaceIdentity!;
@@ -152,6 +155,7 @@ export function useCodexProjectDiscovery({
             workspacePath: target.workspacePath,
             workspaceIdentity,
           });
+          completed = true;
           return;
         }
         const parsed = parseRemoteWorkspaceIdentity(workspaceIdentity);
@@ -182,6 +186,7 @@ export function useCodexProjectDiscovery({
           workspacePath: target.workspacePath,
           workspaceIdentity,
         });
+        completed = true;
       })()
         .catch((error: unknown) => {
           if (!mountedRef.current) return;
@@ -191,6 +196,9 @@ export function useCodexProjectDiscovery({
           });
         })
         .finally(() => {
+          if (!completed) {
+            knownProjectRootsRef.current?.delete(key);
+          }
           if (projectRootInflightRef.current.get(key) === request) {
             projectRootInflightRef.current.delete(key);
           }
