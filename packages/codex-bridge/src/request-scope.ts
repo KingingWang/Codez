@@ -1,6 +1,7 @@
 import { codexRequestSchema, type CodexRequest } from "@codez/shared";
 import { resolve } from "node:path";
 import type { BridgeControlContext, CodexRpcPort } from "./contract.js";
+import { requestCoalescedRead } from "./control-common.js";
 import { sameExecutionPath } from "./execution-path.js";
 import { array, object } from "./json.js";
 import {
@@ -92,6 +93,15 @@ export async function scopedNativeRequest(
   return request;
 }
 
+const COALESCED_NATIVE_READ_METHODS = new Set([
+  "account/read",
+  "config/read",
+  "configRequirements/read",
+  "model/list",
+  "experimentalFeature/list",
+  "mcpServerStatus/list",
+]);
+
 export interface NativeRequestOutcome {
   result: unknown;
   afterResponse?: () => Promise<void>;
@@ -133,7 +143,9 @@ export async function handleCodexNativeRequest(
     // 本地物化市场没有原生可升级的远端；刷新已原子换入新目录，plugin/list 重新读盘即生效。
     return { result: { selectedMarketplaces: [OFFICIAL], upgradedRoots: [], errors: [] } };
   }
-  const result = await context.rpc.request(request.method, request.params);
+  const result = COALESCED_NATIVE_READ_METHODS.has(request.method)
+    ? await requestCoalescedRead(context.rpc, request.method, request.params)
+    : await context.rpc.request(request.method, request.params);
   if (
     request.method === "plugin/install" &&
     context.officialPlugins &&

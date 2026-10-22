@@ -21,6 +21,68 @@ interface CodexModelCatalogScopeState {
 }
 
 const CODEX_CATALOG_INVALIDATED_EVENT = "codez:codex-catalog-invalidated";
+export const CODEX_CATALOG_TRANSIENT_RETRY_DELAYS_MS = [250, 1_000, 3_000] as const;
+
+/**
+ * 是否为 runtime 换代/回收或只读原生 RPC 超时导致的瞬态目录读取失败。
+ *
+ * 修复根因：远程/本地工作区在并发扫描或超时回收时，in-flight 的 config/read 或 model/list
+ * 会因 `Codez agent transport closed: stdout_closed`、`Codez Protocol client disposed`、
+ * `Codez Agent runtime is not running` 或 `Codex RPC request timed out; outcome is unknown`
+ * 被打断。新建会话（sessionId === null）下没有活跃的 conversation 订阅去主动拉起被回收的
+ * runtime，若 useCodexModelCatalog 单次失败即永久落入 error，草稿预热与发送门禁
+ * （composerSubmissionReady）会永久锁死，导致新建会话无法发消息。
+ * 目录读取是纯只读操作，无写副作用，按与 conversationProjectionStore / sessionsIndexStore
+ * 一致的 250ms/1s/3s 有界退避自愈并保持 loading，由重试请求自身经 start-if-needed 重新拉起 runtime。
+ */
+export function isTransientCodexCatalogReadError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("Codez agent transport closed") ||
+    message.includes("Codez Protocol client disposed") ||
+    message.includes("Codez Protocol client is disposed") ||
+    message.includes("Codez Agent runtime is not running") ||
+    message.includes("Codex RPC request timed out; outcome is unknown") ||
+    message.includes("Codez Protocol request timed out")
+  );
+}
+
+export async function readCodexModelCatalogWithTransientRetry({
+  readOnce,
+  isCurrent,
+  retryDelaysMs = CODEX_CATALOG_TRANSIENT_RETRY_DELAYS_MS,
+  wait = (delayMs) =>
+    new Promise<void>((resolve) => {
+      setTimeout(resolve, delayMs);
+    }),
+}: {
+  readOnce: () => Promise<CodexModelCatalog>;
+  isCurrent: () => boolean;
+  retryDelaysMs?: readonly number[];
+  wait?: (delayMs: number) => Promise<void>;
+}): Promise<CodexModelCatalog> {
+  for (let attempt = 0; ; attempt += 1) {
+    if (!isCurrent()) {
+      throw new Error("Codex workspace changed during catalog read");
+    }
+    try {
+      const catalog = await readOnce();
+      if (!isCurrent()) {
+        throw new Error("Codex workspace changed during catalog read");
+      }
+      return catalog;
+    } catch (error) {
+      if (!isCurrent()) {
+        throw new Error("Codex workspace changed during catalog read");
+      }
+      const delayMs = retryDelaysMs[attempt];
+      if (delayMs === undefined || !isTransientCodexCatalogReadError(error)) {
+        throw error;
+      }
+      await wait(delayMs);
+    }
+  }
+}
 
 export function invalidateCodexModelCatalog(): void {
   window.dispatchEvent(new CustomEvent(CODEX_CATALOG_INVALIDATED_EVENT));
@@ -74,12 +136,16 @@ export function useCodexModelCatalog({
     if (!enabled || !rpcReady || !workspacePath)
       throw new Error("Codex workspace is not connected");
     if (current.inflight) return current.inflight;
-    const request = readCodexModelCatalog(
-      workspacePath,
-      (request) =>
-        services.codezAgentService.codexRequest({ workspacePath, workspaceIdentity, request }),
-      () => services.codezAgentService.readCodexCatalog({ workspacePath, workspaceIdentity }),
-    ).then(
+    const request = readCodexModelCatalogWithTransientRetry({
+      isCurrent: () => scopeStateRef.current === current && current.valid,
+      readOnce: () =>
+        readCodexModelCatalog(
+          workspacePath,
+          (request) =>
+            services.codezAgentService.codexRequest({ workspacePath, workspaceIdentity, request }),
+          () => services.codezAgentService.readCodexCatalog({ workspacePath, workspaceIdentity }),
+        ),
+    }).then(
       (catalog) => {
         if (scopeStateRef.current !== current || !current.valid)
           throw new Error("Codex workspace changed during catalog read");

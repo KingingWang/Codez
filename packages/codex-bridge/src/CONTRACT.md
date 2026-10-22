@@ -40,7 +40,10 @@ Project discovery lists native user-facing history across providers in the scope
 cwd. A generic legacy session-list read invalidates existing index subscriptions
 after replying; concurrent workspace-wide `store.list()` scans coalesce only
 while in flight so discovery and index subscribers share one `thread/list`
-paging pass without retaining a stale cache after completion. Targeted
+paging pass without retaining a stale cache after completion. Concurrent
+read-only control-plane and native settings reads (`config/read`, `model/list`
+and paginated list reads) similarly coalesce per `CodexRpcPort` and canonical
+request key only while in flight and clear immediately on settlement. Targeted
 `sessionIds` reads inspect loaded state or lock-free
 `thread/read` metadata without scanning all workspace threads or recursively
 invalidating index subscriptions. Legacy
