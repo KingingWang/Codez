@@ -17,6 +17,7 @@ import { projectOriginFromSource } from "./project-origin.js";
 import { projectRows } from "./projection-rows.js";
 import { isSelectionSideChatThread } from "./selection-side-chat.js";
 import { projectQueue, type QueueAdmissionFacts } from "./projection-queue.js";
+import { nativeThreadTitle } from "./native-thread-title.js";
 
 export { projectRows, projectInputText } from "./projection-rows.js";
 export { projectCodexQueue, projectQueue, type QueueAdmissionFacts } from "./projection-queue.js";
@@ -182,7 +183,7 @@ export function projectThread(
             : { mode: "reject", reasonCode: "guard.codex.turnNotLoaded" }
           : { mode: "startNow" },
     // Codex name has no provenance. V4 requires a source, so default means not certified custom/generated.
-    meta: { title: source.name ?? source.preview, titleSource: "default" },
+    meta: { title: nativeThreadTitle(source), titleSource: "default" },
     config: {
       provider: options.provider ?? source.modelProvider,
       model: options.model ?? source.model ?? "",
@@ -226,7 +227,7 @@ export function projectSessionSummary(thread: unknown, workspacePath: string): S
     workspaceId: nonempty.parse(workspacePath),
     ...(parentSessionId ? { parentSessionId } : {}),
     ...(originProjectId !== undefined ? { originProjectId } : {}),
-    title: source.name ?? source.preview,
+    title: nativeThreadTitle(source),
     phase: state.phase,
     sessionEnded: state.sessionEnded,
     // Thread does not include a background-work inventory; do not infer it from active flags.

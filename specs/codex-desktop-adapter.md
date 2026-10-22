@@ -929,6 +929,19 @@ publish `state:projects`. A warm
 connection is not proof that the persisted thread list is current. Discovery is
 read-only, paginated, scoped to the execution cwd and the remote attachment's
 existing workspace identity; it never copies history into a second execution store.
+Rollout head scanning must not promote Codex's earlier user-role
+`<environment_context>` response item to the session title. It waits for the first
+real user-message event (`user_message` or `item_completed/UserMessage`, including
+the pinned native item's spelling), then derives the first-query title. Legacy
+rollouts with only a clearly non-injected user-role response item may use that
+item as a fallback, after user-message events and before a goal objective. A context-only
+rollout creates no provisional title row through this scanner. A later file change
+or initial scan after upgrade repairs a previously indexed injected-context title
+using the same task ID and workspace identity, without changing organization,
+archive/deletion, manual-title override or timestamps to Host wall time. Native
+`thread/list` may arrive independently: injected-context previews remain
+provisional rather than replacing a valid title, while accepted first input still
+reaches the sidebar without waiting for an automatic model-generated name.
 List all model providers explicitly (the pinned native server defaults to its
 configured provider), and include user-facing CLI, editor, exec and app-server
 sources, not subagent/internal auxiliary threads. Preserve archive/delete and

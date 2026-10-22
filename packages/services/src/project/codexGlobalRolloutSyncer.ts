@@ -2,7 +2,12 @@ import { watch, type FSWatcher } from "node:fs";
 import { mkdir, readdir, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { CODEZ_AGENT_PROVIDER, generateTraceId, type CodezTaskMeta } from "@codez/shared";
+import {
+  CODEZ_AGENT_PROVIDER,
+  generateTraceId,
+  isInjectedCodexContextTitle,
+  type CodezTaskMeta,
+} from "@codez/shared";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 
 export interface CodexGlobalRolloutTaskStore {
@@ -29,6 +34,7 @@ const PROJECT_SOURCE_PREFIX = "codez_project:";
 const UNCLASSIFIED_SOURCE = "codez_unclassified";
 const SELECTION_SIDE_CHAT_THREAD_SOURCE = "codez_selection_side_chat";
 const ALLOWED_SOURCES = new Set(["cli", "vscode", "exec", "appServer", "app_server"]);
+const USER_MESSAGE_BEGIN = "## My request for Codex:";
 
 interface ParsedRolloutCandidate {
   sessionId: string;
@@ -83,26 +89,38 @@ function extractTextFromContent(content: unknown): string {
   return parts.join("\n").trim();
 }
 
-function parseEventPreview(event: Record<string, unknown>): string {
+function visibleUserText(text: string): string {
+  const heading = text.indexOf(USER_MESSAGE_BEGIN);
+  const visible = (heading < 0 ? text : text.slice(heading + USER_MESSAGE_BEGIN.length)).trim();
+  return isInjectedCodexContextTitle(visible) ? "" : visible;
+}
+
+function parseEventPreview(
+  event: Record<string, unknown>,
+): { kind: "user" | "goal"; text: string } | null {
   const type = typeof event.type === "string" ? event.type : "";
   if (type === "user_message" || type === "userMessage") {
-    if (typeof event.message === "string" && event.message.trim()) {
-      return event.message.trim();
-    }
-    return extractTextFromContent(event.content);
+    const text = visibleUserText(
+      typeof event.message === "string" && event.message.trim()
+        ? event.message
+        : extractTextFromContent(event.content),
+    );
+    return text ? { kind: "user", text } : null;
   }
   if (type === "item_completed" || type === "itemCompleted") {
     const item =
       event.item && typeof event.item === "object" && !Array.isArray(event.item)
         ? (event.item as Record<string, unknown>)
         : null;
-    if (!item) return "";
+    if (!item) return null;
     const itemType = typeof item.type === "string" ? item.type : "";
-    if (itemType === "userMessage" || itemType === "user_message") {
-      if (typeof item.message === "string" && item.message.trim()) {
-        return item.message.trim();
-      }
-      return extractTextFromContent(item.content);
+    if (itemType === "UserMessage" || itemType === "userMessage" || itemType === "user_message") {
+      const text = visibleUserText(
+        typeof item.message === "string" && item.message.trim()
+          ? item.message
+          : extractTextFromContent(item.content),
+      );
+      return text ? { kind: "user", text } : null;
     }
   }
   if (type === "thread_goal_updated" || type === "threadGoalUpdated") {
@@ -111,10 +129,11 @@ function parseEventPreview(event: Record<string, unknown>): string {
         ? (event.goal as Record<string, unknown>)
         : null;
     if (goal && typeof goal.objective === "string") {
-      return goal.objective.trim();
+      const text = goal.objective.trim();
+      return text ? { kind: "goal", text } : null;
     }
   }
-  return "";
+  return null;
 }
 
 function parseRolloutFileId(fileName: string): { createdAtMs: number; sessionId: string } | null {
@@ -153,7 +172,9 @@ async function parseRolloutCandidate(
   let cwd = "";
   let createdAt = fileInfo.createdAtMs || Math.max(1, Math.trunc(mtimeMs));
   let sawMeta = false;
-  let preview = "";
+  let userPreview = "";
+  let responsePreview = "";
+  let goalPreview = "";
   let forkedFromTaskId: string | undefined;
   let originProjectId: string | null | undefined;
   let lastOutcome: "completed" | "interrupted" | "error" | undefined;
@@ -223,17 +244,20 @@ async function parseRolloutCandidate(
       continue;
     }
 
-    if (!preview) {
-      if (type === "event_msg" || type === "eventMsg") {
-        preview = parseEventPreview(payload);
-      } else if (type === "response_item" || type === "responseItem") {
-        const item =
-          payload.item && typeof payload.item === "object" && !Array.isArray(payload.item)
-            ? (payload.item as Record<string, unknown>)
-            : payload;
-        if (item.role === "user") {
-          preview = extractTextFromContent(item.content);
-        }
+    if (type === "event_msg" || type === "eventMsg") {
+      // 修复原因：Codex 先落盘 user-role <environment_context> response_item，
+      // 再落盘 item_completed/UserMessage；前者不是用户输入，不能抢占首个标题。
+      const candidate = parseEventPreview(payload);
+      if (candidate?.kind === "user" && !userPreview) userPreview = candidate.text;
+      if (candidate?.kind === "goal" && !goalPreview) goalPreview = candidate.text;
+    } else if ((type === "response_item" || type === "responseItem") && !responsePreview) {
+      const item =
+        payload.item && typeof payload.item === "object" && !Array.isArray(payload.item)
+          ? (payload.item as Record<string, unknown>)
+          : payload;
+      if (item.role === "user") {
+        // 仅在旧 rollout 缺少 UserMessage 事件时使用真实 response item 兜底。
+        responsePreview = visibleUserText(extractTextFromContent(item.content));
       }
     }
 
@@ -249,6 +273,7 @@ async function parseRolloutCandidate(
     }
   }
 
+  const preview = userPreview || responsePreview || goalPreview;
   if (!sawMeta || !cwd || !preview) {
     return null;
   }
