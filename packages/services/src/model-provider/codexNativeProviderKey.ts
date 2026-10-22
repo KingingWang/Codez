@@ -390,6 +390,17 @@ export function createCodexNativeProviderKeyService(
         throw new Error(`供应商 ${providerId} 没有进行中的 Key 保存流程`);
       }
       pendingByProvider.delete(providerId);
+      // Bugfix 诊断盲点：commit 与 rollback 共用同一条成功路径，RPC 层只打印
+      // finishKeySource OK，无法区分「配置写成功」与「写失败后已恢复旧凭据」。
+      // 曾出现三次保存全绿、但远端 config.toml 一步未改的现场无从判读。
+      // scope 是 Environment 哈希，不含主机地址；mode/commit 不含 Key 材料。
+      logger.info(undefined, "codex provider key finish", {
+        providerId,
+        scope,
+        mode: pending.mode,
+        commit,
+        barrierBegan: pending.began,
+      });
       try {
         if (!commit) {
           await restoreCredential(providerId, pending.oldCredential);
