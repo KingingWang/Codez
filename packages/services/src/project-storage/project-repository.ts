@@ -8,6 +8,7 @@ import {
   resolveWorkspaceKey,
   CODEZ_AGENT_PROVIDER,
 } from "@codez/shared";
+import { resolvePhysicalPathSync, samePhysicalOrExactPath } from "@codez/shared/node";
 import type {
   AutoArchiveInput,
   ProjectDirectories,
@@ -42,7 +43,7 @@ function transaction<T>(db: DatabaseSync, body: () => T, write = true): T {
 function readProjects(db: DatabaseSync, includeDeleted = true): VirtualProject[] {
   const roots = db
     .prepare(
-      "SELECT project_id,root_path,position,is_primary FROM project_roots ORDER BY position,root_path",
+      "SELECT project_id,root_path,physical_path,position,is_primary FROM project_roots ORDER BY position,root_path",
     )
     .all();
   return db
@@ -64,6 +65,9 @@ function readProjects(db: DatabaseSync, includeDeleted = true): VirtualProject[]
         .filter((root) => root.project_id === row.project_id)
         .map((root) => ({
           rootPath: String(root.root_path),
+          ...(typeof root.physical_path === "string" && root.physical_path.length > 0
+            ? { physicalPath: root.physical_path }
+            : {}),
           position: Number(root.position),
           isPrimary: root.is_primary === 1,
         })),
@@ -97,20 +101,33 @@ function resolveDirectories(
   // 旧远端影子行仍可能保留；行与项目一致不代表当前 Host 有权加载其目录。
   if (row && row.host_id !== ownerHostId) throw new Error("project.host-mismatch");
   const workspacePath = row ? String(row.root_path) : task.workspacePath;
+  const workspacePhysicalPath =
+    row && typeof row.physical_root_path === "string" && row.physical_root_path.length > 0
+      ? row.physical_root_path
+      : resolvePhysicalPathSync(workspacePath);
   const project = row?.project_id ? requireProject(db, String(row.project_id)) : null;
   if (project && row?.host_id !== project.hostId) throw new Error("project.host-mismatch");
   const additionalDirectories =
     typeof row?.execution_directories === "string"
       ? executionDirectoriesSchema.parse(JSON.parse(row.execution_directories))
-      : (project?.roots.map((root) => root.rootPath).filter((path) => path !== workspacePath) ??
-        []);
+      : (project?.roots
+          .filter(
+            (root) =>
+              !samePhysicalOrExactPath(
+                root.rootPath,
+                workspacePath,
+                root.physicalPath,
+                workspacePhysicalPath,
+              ),
+          )
+          .map((root) => root.rootPath) ?? []);
   if (
     ownerHostId !== "local" &&
     !project &&
     row?.cli_created_at != null &&
     row.deleted === 0 &&
     (row.cli_deleted == null || row.cli_deleted === 0) &&
-    workspacePath === task.workspacePath
+    samePhysicalOrExactPath(workspacePath, task.workspacePath, workspacePhysicalPath)
   ) {
     // 修复原因（issue #19）：已索引的外部 Codex 历史（含未添加为项目的任意远端目录）
     // 可以在侧栏任务区或同目录远端项目的只读视图中打开；project_id=NULL 是已裁决的组织态，
@@ -118,7 +135,13 @@ function resolveDirectories(
     if (additionalDirectories.length > 0) throw new Error("project.remote-single-root-required");
     return { workspacePath, projectId: null, additionalDirectories };
   }
-  assertRemoteTaskDirectories(ownerHostId, project, workspacePath, additionalDirectories);
+  assertRemoteTaskDirectories(
+    ownerHostId,
+    project,
+    workspacePath,
+    additionalDirectories,
+    workspacePhysicalPath,
+  );
   return {
     workspacePath,
     projectId: project?.id ?? null,
@@ -140,6 +163,9 @@ function readTasks(db: DatabaseSync): ProjectTask[] {
         taskId: String(row.task_id),
         traceId: meta.traceId ?? generateTraceId(String(row.task_id)),
         workspacePath: String(row.root_path),
+        ...(typeof row.physical_root_path === "string" && row.physical_root_path.length > 0
+          ? { workspacePhysicalPath: row.physical_root_path }
+          : {}),
         workspaceIdentity:
           row.workspace_identity === row.workspace_key
             ? String(row.workspace_identity)
@@ -256,35 +282,103 @@ export class ProjectRepository implements ProjectRepositoryContract, ProjectData
       const hostId = this.ownerHostId ?? "local";
       if (old && old.hostId !== hostId) throw new Error("project.cross-host-move");
       if (input.hostId && input.hostId !== hostId) throw new Error("project.host-immutable");
-      const roots = [...new Set(input.roots ?? old?.roots.map((root) => root.rootPath) ?? [])];
+      const rawRoots = input.roots ?? old?.roots.map((root) => root.rootPath) ?? [];
+      const roots: string[] = [];
+      const rootPhysicalByPath = new Map<string, string | undefined>();
+      for (const candidate of rawRoots) {
+        const physical = resolvePhysicalPathSync(candidate);
+        if (
+          roots.some((existing) =>
+            samePhysicalOrExactPath(
+              existing,
+              candidate,
+              rootPhysicalByPath.get(existing),
+              physical,
+            ),
+          )
+        ) {
+          continue;
+        }
+        roots.push(candidate);
+        rootPhysicalByPath.set(candidate, physical);
+      }
       assertRemoteProjectRoots(this.ownerHostId, roots, old);
       if (input.reuseExistingRoot) {
         if (hostId !== "local" || old || roots.length !== 1)
           throw new Error("project.invalid-directory-open");
         // 系统打开目录曾只建立 workspace，导致草稿没有项目；查找和创建必须在同一
         // 写事务内完成，避免多窗口并发右键创建重复项目。复用不改已有名称、roots 或排序。
-        const existing = this.db
-          .prepare(`
-          SELECT p.project_id FROM projects p JOIN project_roots r ON r.project_id=p.project_id
-          WHERE p.host_id=? AND p.deleted=0 AND r.root_path=?
-          ORDER BY r.is_primary DESC,p.position,p.project_id LIMIT 1
-        `)
-          .get(hostId, roots[0]!);
-        if (existing) return requireProject(this.db, String(existing.project_id));
+        // 修复依据：上游目录复用入口也必须把软链接与真实目录视为同一 root，
+        // 保留原 primary/position/ID 选择顺序，不改匹配项目的原始路径与组织态。
+        const existing = readProjects(this.db, false)
+          .filter((project) => project.hostId === hostId)
+          .flatMap((project) =>
+            project.roots
+              .filter((root) =>
+                samePhysicalOrExactPath(
+                  root.rootPath,
+                  roots[0]!,
+                  root.physicalPath,
+                  rootPhysicalByPath.get(roots[0]!),
+                ),
+              )
+              .map((root) => ({ project, isPrimary: root.isPrimary })),
+          )
+          .sort(
+            (left, right) =>
+              Number(right.isPrimary) - Number(left.isPrimary) ||
+              left.project.position - right.project.position ||
+              (left.project.id < right.project.id
+                ? -1
+                : left.project.id > right.project.id
+                  ? 1
+                  : 0),
+          )[0];
+        if (existing) return existing.project;
       }
       if (
         input.restoreProjectId &&
         (!old?.deleted ||
           roots.length !== old.roots.length ||
-          roots.some((root) => !old.roots.some((entry) => entry.rootPath === root)))
+          roots.some(
+            (root) =>
+              !old.roots.some((entry) =>
+                samePhysicalOrExactPath(
+                  entry.rootPath,
+                  root,
+                  entry.physicalPath,
+                  rootPhysicalByPath.get(root),
+                ),
+              ),
+          ))
       )
         throw new Error("project.restore-roots-mismatch");
-      const primary =
-        input.primaryRoot ??
-        old?.roots.find((root) => root.isPrimary && roots.includes(root.rootPath))?.rootPath ??
-        roots[0];
-      if (primary !== undefined && !roots.includes(primary))
+      const requestedPrimary = input.primaryRoot;
+      const matchedRequestedPrimary =
+        requestedPrimary !== undefined
+          ? roots.find((root) =>
+              samePhysicalOrExactPath(root, requestedPrimary, rootPhysicalByPath.get(root)),
+            )
+          : undefined;
+      if (requestedPrimary !== undefined && !matchedRequestedPrimary)
         throw new Error("project.invalid-primary-root");
+      const primary =
+        matchedRequestedPrimary ??
+        old?.roots
+          .map((oldRoot) =>
+            oldRoot.isPrimary
+              ? roots.find((root) =>
+                  samePhysicalOrExactPath(
+                    root,
+                    oldRoot.rootPath,
+                    rootPhysicalByPath.get(root),
+                    oldRoot.physicalPath,
+                  ),
+                )
+              : undefined,
+          )
+          .find((root): root is string => root !== undefined) ??
+        roots[0];
       const id = old?.id ?? randomUUID();
       const overridden =
         input.name !== undefined ? input.name.trim().length > 0 : (old?.nameOverridden ?? false);
@@ -327,9 +421,9 @@ export class ProjectRepository implements ProjectRepositoryContract, ProjectData
       roots.forEach((root, position) =>
         this.db
           .prepare(
-            "INSERT INTO project_roots(project_id,root_path,position,is_primary) VALUES(?,?,?,?)",
+            "INSERT INTO project_roots(project_id,root_path,physical_path,position,is_primary) VALUES(?,?,?,?,?)",
           )
-          .run(id, root, position, root === primary ? 1 : 0),
+          .run(id, root, rootPhysicalByPath.get(root) ?? null, position, root === primary ? 1 : 0),
       );
       return requireProject(this.db, id);
     });
@@ -345,9 +439,9 @@ export class ProjectRepository implements ProjectRepositoryContract, ProjectData
       if (!project.roots.length) {
         this.db
           .prepare(
-            "INSERT INTO project_roots(project_id,root_path,position,is_primary) VALUES(?,?,0,1)",
+            "INSERT INTO project_roots(project_id,root_path,physical_path,position,is_primary) VALUES(?,?,?,0,1)",
           )
-          .run(id, path);
+          .run(id, path, resolvePhysicalPathSync(path) ?? null);
         this.db.prepare("UPDATE projects SET updated_at=? WHERE project_id=?").run(Date.now(), id);
       }
       return requireProject(this.db, id);
@@ -444,12 +538,29 @@ export class ProjectRepository implements ProjectRepositoryContract, ProjectData
     const host = this.ownerHostId ?? "local";
     // 默认任务迁移会清空任务归属，但保留已软删项目的 roots；只有活跃 root 能单独证明归属。
     // 用户删除项目后保留的任务仍由下方 project_id 判定，不能被重新划进共享池。
-    return Boolean(
-      this.db
-        .prepare(`SELECT 1 FROM project_roots r JOIN projects p ON p.project_id=r.project_id
-      WHERE p.host_id=? AND p.deleted=0 AND r.root_path=?
-      UNION ALL SELECT 1 FROM tasks WHERE host_id=? AND workspace_key=? AND project_id IS NOT NULL LIMIT 1`)
-        .get(host, workspace.workspacePath, host, resolveWorkspaceKey(workspace)),
+    // 修复依据：首次 CLI 运行归属也使用同一物理匹配，软链接拼写不能落入另一共享池；
+    // 已有 task 关联仍严格按 workspace identity/key 读取，不借物理目录扩张身份权限。
+    const workspacePhysicalPath = resolvePhysicalPathSync(workspace.workspacePath);
+    return (
+      readProjects(this.db, false).some(
+        (project) =>
+          project.hostId === host &&
+          project.roots.some((root) =>
+            samePhysicalOrExactPath(
+              root.rootPath,
+              workspace.workspacePath,
+              root.physicalPath,
+              workspacePhysicalPath,
+            ),
+          ),
+      ) ||
+      Boolean(
+        this.db
+          .prepare(
+            "SELECT 1 FROM tasks WHERE host_id=? AND workspace_key=? AND project_id IS NOT NULL LIMIT 1",
+          )
+          .get(host, resolveWorkspaceKey(workspace)),
+      )
     );
   }
 
@@ -461,16 +572,26 @@ export class ProjectRepository implements ProjectRepositoryContract, ProjectData
       if (!task) throw new Error("project.task-not-found");
       if (project.hostId !== (this.ownerHostId ?? "local") || task.host_id !== project.hostId)
         throw new Error("project.cross-host-move");
-      assertRemoteTaskDirectories(this.ownerHostId, project, String(task.root_path));
-      if (!project.roots.some((root) => root.rootPath === task.root_path)) {
+      const taskRootPath = String(task.root_path);
+      const taskPhysicalPath =
+        typeof task.physical_root_path === "string" && task.physical_root_path.length > 0
+          ? task.physical_root_path
+          : resolvePhysicalPathSync(taskRootPath);
+      assertRemoteTaskDirectories(this.ownerHostId, project, taskRootPath, [], taskPhysicalPath);
+      if (
+        !project.roots.some((root) =>
+          samePhysicalOrExactPath(root.rootPath, taskRootPath, root.physicalPath, taskPhysicalPath),
+        )
+      ) {
         if (!input.addMissingRoot) throw new Error("project.root-confirmation-required");
         this.db
           .prepare(
-            "INSERT INTO project_roots(project_id,root_path,position,is_primary) VALUES(?,?,?,?)",
+            "INSERT INTO project_roots(project_id,root_path,physical_path,position,is_primary) VALUES(?,?,?,?,?)",
           )
           .run(
             project.id,
-            String(task.root_path),
+            taskRootPath,
+            taskPhysicalPath ?? null,
             project.roots.length,
             project.roots.length === 0 ? 1 : 0,
           );
@@ -530,11 +651,15 @@ export class ProjectRepository implements ProjectRepositoryContract, ProjectData
       }
       const task = { ...input.task, taskId: taskId ?? `sess_${randomUUID()}` };
       if (!readTask(this.db, task)) {
+        // 修复依据：Host 的幂等 task ID 分配先完成，物理校验只读取最终 task 的 cwd，
+        // 不恢复旧输入对象分配路径，也不把 canonical 路径写回既有 workspacePath。
+        const workspacePhysicalPath = resolvePhysicalPathSync(task.workspacePath) ?? null;
         assertRemoteTaskDirectories(
           this.ownerHostId,
           input.projectId ? requireProject(this.db, input.projectId) : null,
           task.workspacePath,
           input.additionalDirectories,
+          workspacePhysicalPath,
         );
         if (input.projectId) {
           const project = requireProject(this.db, input.projectId);
@@ -543,15 +668,22 @@ export class ProjectRepository implements ProjectRepositoryContract, ProjectData
           if (project.hostId !== host) throw new Error("project.cross-host-move");
           if (
             input.additionalDirectories === undefined &&
-            !project.roots.some((root) => root.rootPath === task.workspacePath)
+            !project.roots.some((root) =>
+              samePhysicalOrExactPath(
+                root.rootPath,
+                task.workspacePath,
+                root.physicalPath,
+                workspacePhysicalPath,
+              ),
+            )
           )
             throw new Error("project.cwd-not-in-roots");
         }
         // 创建归属必须先于 CLI 首发；空事实不是假会话，列表只读取已有 CLI 事实的行。
         this.db
           .prepare(
-            `INSERT INTO tasks(workspace_key,workspace_path,workspace_identity,task_id,created_at,updated_at,host_id,root_path,project_id,handoff_pending,execution_directories)
-          VALUES(?,?,?,?,0,0,?,?,?,?,?)`,
+            `INSERT INTO tasks(workspace_key,workspace_path,workspace_identity,task_id,created_at,updated_at,host_id,root_path,physical_root_path,project_id,handoff_pending,execution_directories)
+          VALUES(?,?,?,?,0,0,?,?,?,?,?,?)`,
           )
           .run(
             key,
@@ -560,6 +692,7 @@ export class ProjectRepository implements ProjectRepositoryContract, ProjectData
             task.taskId,
             host,
             task.workspacePath,
+            workspacePhysicalPath,
             input.projectId,
             OWNERSHIP_DECIDED,
             input.additionalDirectories === undefined
