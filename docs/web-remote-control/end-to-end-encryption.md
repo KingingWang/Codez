@@ -61,7 +61,9 @@ E2EE 先加密后上 relay WebSocket，密文近乎随机，WebSocket permessage
 - 小于 1 KiB 的 JSON 不值得压缩（gzip 头尾开销），保持原样发送。压缩只用于桌面→手机下行大 payload；手机上行都是小 payload，不压缩。
 - 密文与最终 relay JSON 仍在首次计量时固定：gzip 信封在 seal 前生成并随明文一起缓存，ACK 重发复用同一字节，不重新压缩或重新加密。
 - 接收方在解密、鉴权、重放检查完成后才识别信封；gzip 还原后的内容重新走原有的 wire 归一与 strict schema 校验，压缩不改变任何业务消息的 schema 与路由。
-- 桌面主进程按 60 秒窗口聚合上下行字节与帧数（`[web-remote-control] relay traffic` info 日志），用于观测压缩收益与异常流量回归；日志只含字节数、帧数与压缩比例，不含 payload 内容。
+- 桌面主进程按 60 秒窗口聚合设备到终端下行字节与帧数（`[web-remote-control] relay traffic` info 日志），用于观测压缩收益与异常流量回归；日志只含字节数、帧数与压缩比例，不含 payload 内容。
+- 流量计量必须区分 logical app JSON bytes、外层 relay JSON bytes、frame count、gzip frame
+  count 与 capability 状态；按 socket generation 清零，不能把重连前后的数据合并。
 
 ## 验收用例
 

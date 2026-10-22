@@ -61,6 +61,11 @@ host 为每个 attachment 分配独立 `connectionId`，并把可信连接上下
 | 本地/SSH/WSL/Docker 桌面窗口 | `desktop-continuous`    | `continuous` |
 | 手机 `/remote` / Web remote  | `web-remote-replayable` | `replayable` |
 
+replayable 连接不接收 reasoning 行的流式 `row.delta(path="text")`；它仍接收行的创建和终态
+预览，且 snapshot、gap replay、resync、rows/range 使用相同过滤规则。assistantText 的
+`path="text"` 流式 delta 不受影响。被过滤的日志区间仍推进 seq，relay/main 不因此保存第二份
+projection 或队列。
+
 `hello/clientHello` 用于协商 wire v3、确认连接身份和记录稳定 `clientId`；客户端上报值不能覆盖 host
 注入的 connection/profile。registry 至少维护：
 

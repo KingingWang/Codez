@@ -1,12 +1,19 @@
 import { setTimeout as delay } from "node:timers/promises";
 import { EventEmitter, once } from "node:events";
+import { gunzipSync } from "node:zlib";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFakeRelayV2 } from "@codez/shared/testing/fake-relay-v2";
 import {
   createWebRemoteControlE2eeSession,
+  decodeWebRemoteControlGzipEnvelope,
   generateWebRemoteControlPairingKey,
   WebRemoteControlRelayPayloadSerializer,
 } from "@codez/client";
+import {
+  WEB_REMOTE_CONTROL_CAP_RELAY_GZIP_V1,
+  normalizeWebRemoteControlWirePayload,
+  parseWebRemoteControlGzipEnvelope,
+} from "@codez/shared";
 import {
   createWebRemoteControlV2Http,
   WebRemoteControlDeviceTransport,
@@ -37,13 +44,14 @@ async function fixture(
   const states: string[] = [];
   const stateEvents = new EventEmitter();
   const errors: Error[] = [];
+  const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
   const transport = new WebRemoteControlDeviceTransport({
     relayWsUrl: relay.wsUrl,
     deviceMid: "mid-1",
     getToken: (signal) => createWebRemoteControlV2Http(relay.httpUrl).token("jwt", signal),
     resolveDeviceSid: async () => device.device_sid,
     meta: { name: "My desktop", platform: "darwin", version: "3.13.0" },
-    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+    logger,
     onStateChange: (state) => {
       states.push(state);
       stateEvents.emit(`state:${state}`);
@@ -57,7 +65,7 @@ async function fixture(
     if (states.at(-1) !== state)
       await once(stateEvents, `state:${state}`, { signal: AbortSignal.timeout(5000) });
   };
-  return { relay, transport, states, errors, device, request, waitForState };
+  return { relay, transport, states, errors, logger, device, request, waitForState };
 }
 
 async function settle() {
@@ -238,6 +246,17 @@ describe("desktop relay V2 transport", () => {
     expect(f.transport.sendPayload({ codez_type: "bootstrap-request", requestId: "after" })).toBe(
       false,
     );
+    f.transport.dispose();
+    expect(f.logger.info).toHaveBeenCalledWith(
+      "[web-remote-control] relay traffic",
+      expect.objectContaining({
+        direction: "device-to-terminal",
+        frameCount: 1,
+        gzipFrameCount: 0,
+        logicalAppBytes: expect.any(Number),
+        outerRelayBytes: expect.any(Number),
+      }),
+    );
   });
 
   it("逐轮重采样心跳jitter，4秒下界与6秒上界均可观察", async () => {
@@ -293,6 +312,7 @@ describe("desktop relay V2 transport", () => {
     const states: string[] = [];
     const payloads: unknown[] = [];
     const rawPayloads: unknown[] = [];
+    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
     const transport = new WebRemoteControlDeviceTransport({
       relayWsUrl: relay.wsUrl,
       deviceMid: "mid-e2ee",
@@ -300,7 +320,7 @@ describe("desktop relay V2 transport", () => {
       getToken: (signal) => createWebRemoteControlV2Http(relay.httpUrl).token("jwt", signal),
       resolveDeviceSid: async () => device.device_sid,
       meta: { name: "Encrypted desktop", platform: "darwin", version: "3.16.1" },
-      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+      logger,
       onStateChange: (state) => states.push(state),
       onError: vi.fn(),
       onPayload: (payload) => payloads.push(payload),
@@ -331,7 +351,11 @@ describe("desktop relay V2 transport", () => {
       },
     });
     terminal.on("message", (raw) => {
-      const message = JSON.parse(raw.toString()) as { type: string; payload?: unknown; pair_status?: string };
+      const message = JSON.parse(raw.toString()) as {
+        type: string;
+        payload?: unknown;
+        pair_status?: string;
+      };
       if (message.type === "auth_ack" && message.pair_status === "matched") {
         phoneSession.start();
       } else if (message.type === "data" && message.payload) {
@@ -350,6 +374,13 @@ describe("desktop relay V2 transport", () => {
     const phoneSerializer = new WebRemoteControlRelayPayloadSerializer({
       seal: (wire) => phoneSession.prepare(wire),
     });
+    terminal.send(
+      phoneSerializer.prepare({
+        codez_type: "client-capabilities",
+        v: 1,
+        caps: [WEB_REMOTE_CONTROL_CAP_RELAY_GZIP_V1],
+      }).json,
+    );
     terminal.send(
       phoneSerializer.prepare({ codez_type: "bootstrap-request", requestId: "e2ee-req" }).json,
     );
@@ -375,21 +406,37 @@ describe("desktop relay V2 transport", () => {
       }),
     );
 
-    expect(
-      transport.sendPayload({
-        codez_type: "bootstrap-response",
-        requestId: "e2ee-req",
-        success: true,
-        result: { windowControlSessionId: device.device_sid, workspaces: [] },
-      }),
-    ).toBe(true);
+    const largePayload = {
+      codez_type: "bootstrap-response" as const,
+      requestId: "e2ee-gzip",
+      success: true as const,
+      result: { windowControlSessionId: device.device_sid, text: "x".repeat(8_000) },
+    };
+    expect(transport.sendPayload(largePayload)).toBe(true);
     await vi.waitFor(() =>
-      expect(decryptedByPhone).toContainEqual(
-        expect.objectContaining({
-          zcode_type: "bootstrap-response",
-          requestId: "e2ee-req",
-        }),
-      ),
+      expect(
+        decryptedByPhone
+          .map(normalizeWebRemoteControlWirePayload)
+          .map(parseWebRemoteControlGzipEnvelope)
+          .some((envelope) => envelope !== null),
+      ).toBe(true),
+    );
+    const gzipEnvelope = decryptedByPhone
+      .map(normalizeWebRemoteControlWirePayload)
+      .map(parseWebRemoteControlGzipEnvelope)
+      .find((envelope) => envelope !== null);
+    expect(gzipEnvelope).not.toBeNull();
+    expect(decodeWebRemoteControlGzipEnvelope(gzipEnvelope!, (bytes) => gunzipSync(bytes))).toEqual(
+      largePayload,
+    );
+
+    transport.dispose();
+    expect(logger.info).toHaveBeenCalledWith(
+      "[web-remote-control] relay traffic",
+      expect.objectContaining({
+        frameCount: 1,
+        gzipFrameCount: 1,
+      }),
     );
   });
 });

@@ -27,6 +27,8 @@ export type StreamablePath = z.infer<typeof streamablePathSchema>;
 export interface DeliveryProfile {
   desktopOnlyRows: boolean;
   flushWindowMs: number;
+  /** Whether reasoning row.delta events are delivered while the row is streaming. */
+  reasoningDeltas: boolean;
   streamPaths: Record<StreamablePath, boolean>;
   streamOutputCapBytes: number;
   toolProgress: boolean;
@@ -36,6 +38,7 @@ export const DELIVERY_PROFILES = {
   continuous: {
     desktopOnlyRows: true,
     flushWindowMs: 30,
+    reasoningDeltas: true,
     streamPaths: {
       text: true,
       inputText: true,
@@ -48,6 +51,7 @@ export const DELIVERY_PROFILES = {
   replayable: {
     desktopOnlyRows: false,
     flushWindowMs: 150,
+    reasoningDeltas: false,
     streamPaths: {
       text: true,
       inputText: false,
