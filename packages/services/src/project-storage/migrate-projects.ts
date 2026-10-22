@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { posix, win32 } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import { buildRemoteWorkspaceIdentity, buildServerRemoteWorkspaceIdentity } from "@codez/shared";
+import { resolvePhysicalPathSync } from "@codez/shared/node";
 import type { ProjectMigrationContext } from "#src/project-storage/contract.js";
 import {
   ensureHost,
@@ -47,9 +48,9 @@ function createProject(
   roots.forEach((root, index) =>
     db
       .prepare(
-        "INSERT INTO project_roots(project_id,root_path,position,is_primary) VALUES(?,?,?,?)",
+        "INSERT INTO project_roots(project_id,root_path,physical_path,position,is_primary) VALUES(?,?,?,?,?)",
       )
-      .run(id, root, index, index === 0 ? 1 : 0),
+      .run(id, root, resolvePhysicalPathSync(root) ?? null, index, index === 0 ? 1 : 0),
   );
   return id;
 }

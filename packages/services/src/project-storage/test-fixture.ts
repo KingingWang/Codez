@@ -16,7 +16,7 @@ afterEach(async () => {
   }
 });
 
-export async function fixture() {
+export async function fixture(savedWorkspaces: readonly string[] = []) {
   const directory = await mkdtemp(join(tmpdir(), "codez-project-migration-"));
   const db = new DatabaseSync(":memory:");
   resources.push({ db, directory });
@@ -31,7 +31,9 @@ export async function fixture() {
     CREATE TABLE task_group_workspace_bootstraps(workspace_key TEXT PRIMARY KEY,group_id TEXT);
     CREATE TABLE task_group_view_node_orders(node_type TEXT,node_key TEXT,sort_order INTEGER);
     CREATE TABLE automations(automation_id TEXT PRIMARY KEY,workspace_key TEXT,workspace_path TEXT);
-    CREATE TABLE off_peak_tasks(off_peak_task_id TEXT PRIMARY KEY,workspace_key TEXT,workspace_path TEXT);`);
+    CREATE TABLE off_peak_tasks(off_peak_task_id TEXT PRIMARY KEY,workspace_key TEXT,workspace_path TEXT);
+    CREATE TABLE untouched(id TEXT PRIMARY KEY,value TEXT);
+    INSERT INTO untouched VALUES ('keep','unchanged');`);
   const add = (id: string, path: string, identity?: string) =>
     db
       .prepare(
@@ -46,7 +48,10 @@ export async function fixture() {
       now: () => 10,
       settings: {
         recentProjects: [],
-        lastWorkspaceSession: [],
+        lastWorkspaceSession: savedWorkspaces.map((workspacePath) => ({
+          kind: "local" as const,
+          workspacePath,
+        })),
       },
     },
   };
