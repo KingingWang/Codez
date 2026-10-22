@@ -9,6 +9,7 @@ import type { ConversationRow, ToolCallRow } from "@codez/shared/codez-protocol-
 import { codexThreadSchema, type CodexThread } from "./codex-types.js";
 import { projectRows } from "./projection-rows.js";
 import { isSelectionSideChatThread } from "./selection-side-chat.js";
+import { nativeThreadTitle } from "./native-thread-title.js";
 
 function toolState(row: ToolCallRow, completedAt: number): CodezToolState {
   const input =
@@ -160,20 +161,20 @@ export function projectLegacySnapshot(
   const parentSessionId = source.forkedFromId ?? source.parentThreadId;
   return codezSessionStateSnapshotSchema.parse({
     protocol: { name: "Codez Protocol", version: 1 },
-      session: {
-        sessionId: source.id,
-        workspace: { workspacePath, workspaceKey: workspacePath },
-        ...(parentSessionId ? { parentSessionId } : {}),
-        // 辅助对话 child 的身份以持久化 threadSource 为准（spec: codex-selection-side-chat）；
-        // session/list 已把它过滤掉，这里命中只发生在按 id 直读（含 task-index 修复）。
-        sessionKind: isSelectionSideChatThread(source)
-          ? "selection_side_chat"
-          : source.parentThreadId
-            ? "subagent_child"
-            : source.forkedFromId
-              ? "fork"
-              : "interactive",
-      title: source.name ?? source.preview,
+    session: {
+      sessionId: source.id,
+      workspace: { workspacePath, workspaceKey: workspacePath },
+      ...(parentSessionId ? { parentSessionId } : {}),
+      // 辅助对话 child 的身份以持久化 threadSource 为准（spec: codex-selection-side-chat）；
+      // session/list 已把它过滤掉，这里命中只发生在按 id 直读（含 task-index 修复）。
+      sessionKind: isSelectionSideChatThread(source)
+        ? "selection_side_chat"
+        : source.parentThreadId
+          ? "subagent_child"
+          : source.forkedFromId
+            ? "fork"
+            : "interactive",
+      title: nativeThreadTitle(source),
       mode: "build",
       status,
       ...(selection ? { model: selection } : {}),
