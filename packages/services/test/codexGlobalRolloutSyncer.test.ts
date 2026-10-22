@@ -1,11 +1,108 @@
-import { mkdtemp, mkdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { appendFile, mkdtemp, mkdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
 import { createCodexGlobalRolloutSyncer } from "../src/project/index.js";
 import { TaskIndexRepo } from "../src/session/taskIndexRepo.js";
 
 describe("createCodexGlobalRolloutSyncer", () => {
+  it("waits for a real user item after injected context and repairs an old title", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "codez-global-rollout-context-"));
+    const codexHome = join(dir, ".codex");
+    const dayDir = join(codexHome, "sessions", "2026", "10", "22");
+    await mkdir(dayDir, { recursive: true });
+    const sessionId = "019a0000-0000-7000-8000-000000000456";
+    const workspacePath = "/remote/codex-project";
+    const workspaceIdentity = `remote:ssh:host:22:dev:${workspacePath}`;
+    const rolloutPath = join(dayDir, `rollout-2026-10-22T08-00-00-${sessionId}.jsonl`);
+    const environment =
+      "<environment_context><cwd>/remote/codex-project</cwd></environment_context>";
+    await writeFile(
+      rolloutPath,
+      [
+        {
+          type: "session_meta",
+          payload: { meta: { id: sessionId, cwd: workspacePath, source: "cli" } },
+        },
+        {
+          type: "response_item",
+          payload: {
+            type: "message",
+            role: "user",
+            content: [{ type: "input_text", text: environment }],
+          },
+        },
+      ]
+        .map((line) => JSON.stringify(line))
+        .join("\n") + "\n",
+    );
+    const databasePath = join(dir, "tasks-index.sqlite");
+    const repo = new TaskIndexRepo(undefined, "remote:server:srv-1", databasePath);
+    const target = { workspacePath, workspaceIdentity, taskId: sessionId };
+    const createSyncer = () =>
+      createCodexGlobalRolloutSyncer({
+        taskIndexRepo: repo,
+        resolveWorkspaceIdentity: async () => workspaceIdentity,
+        env: { CODEX_HOME: codexHome },
+      });
+    const syncer = createSyncer();
+    try {
+      expect(await syncer.syncNow()).toBe(false);
+      expect(await repo.getTaskMeta(target)).toBeNull();
+
+      await appendFile(
+        rolloutPath,
+        `${JSON.stringify({
+          type: "response_item",
+          payload: {
+            type: "message",
+            role: "user",
+            content: [{ type: "input_text", text: "旧版用户输入" }],
+          },
+        })}\n`,
+      );
+      expect(await syncer.syncNow()).toBe(true);
+      expect((await repo.getTaskMeta(target))?.title).toBe("旧版用户输入");
+
+      await appendFile(
+        rolloutPath,
+        `${JSON.stringify({
+          type: "event_msg",
+          payload: {
+            type: "item_completed",
+            item: { type: "UserMessage", content: [{ type: "text", text: "排查远端标题切换" }] },
+          },
+        })}\n`,
+      );
+      expect(await syncer.syncNow()).toBe(true);
+      expect((await repo.getTaskMeta(target))?.title).toBe("排查远端标题切换");
+
+      const legacyDatabase = new DatabaseSync(databasePath);
+      try {
+        legacyDatabase
+          .prepare(
+            "UPDATE tasks SET title = ?, cli_title = ?, cli_title_source = 'default' WHERE task_id = ?",
+          )
+          .run(environment, environment, sessionId);
+      } finally {
+        legacyDatabase.close();
+      }
+      syncer.dispose();
+      const restarted = createSyncer();
+      try {
+        expect(await restarted.syncNow()).toBe(true);
+        expect((await repo.getTaskMeta(target))?.title).toBe("排查远端标题切换");
+      } finally {
+        restarted.dispose();
+      }
+    } finally {
+      syncer.dispose();
+      repo.close();
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("indexes external CLI rollouts from any directory (including unadded projects) and notifies afterChange", async () => {
     const dir = await mkdtemp(join(tmpdir(), "codez-global-rollout-"));
     const codexHome = join(dir, ".codex");

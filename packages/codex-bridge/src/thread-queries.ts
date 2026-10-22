@@ -20,6 +20,7 @@ import { sameExecutionPath } from "./execution-path.js";
 import { array, object, type JsonObject } from "./json.js";
 import { paginateNativeRows } from "./native-paging.js";
 import { canonicalNativeThreads } from "./projection.js";
+import { nativeThreadTitle } from "./native-thread-title.js";
 import { CodexRpcError } from "./rpc-errors.js";
 import { parentThreadIdOf, parentThreadOwnedByWorkspace } from "./thread-load.js";
 import { DeletedThreadError, type ThreadProjectionState } from "./thread-state-types.js";
@@ -179,7 +180,7 @@ export async function reconcileBridgeSessions(
         sessionId,
         exists: true as const,
         deleted: false,
-        title: thread.name ?? thread.preview,
+        title: nativeThreadTitle(thread),
         titleSource: "default" as const,
         createdAt: thread.createdAt * 1000,
         updatedAt: thread.updatedAt * 1000,

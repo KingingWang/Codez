@@ -9,6 +9,7 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import {
   isRemoteWorkspaceIdentity,
+  isProvisionalTaskTitle,
   normalizeAgentProviderToCodezAgent,
   codezTaskMetaSchema,
   remoteHostIdFromWorkspaceIdentity,
@@ -1076,7 +1077,21 @@ export class TaskIndexRepo {
             },
             params.originProjectId,
           );
-        const source = params.titleSource ?? "default";
+        const incomingSource = params.titleSource ?? "default";
+        const incomingTitle = params.meta.title;
+        const previousTitle =
+          existing?.cli_title && !isProvisionalTaskTitle(existing.cli_title)
+            ? existing.cli_title
+            : (existing?.title ?? "");
+        // 修复原因：sessions-index 可先于首条真实用户消息下发空 preview，
+        // rollout 扫描也可能读到旧版注入标题；这些暂态值不能冲掉已落库的真实标题。
+        const preserveTitle =
+          incomingSource !== "custom" &&
+          isProvisionalTaskTitle(incomingTitle) &&
+          previousTitle.length > 0 &&
+          !isProvisionalTaskTitle(previousTitle);
+        const title = preserveTitle ? previousTitle : incomingTitle;
+        const source = preserveTitle ? (existing?.cli_title_source ?? "default") : incomingSource;
         const targetKey = existing ? existing.workspace_key : workspaceKey(targetMeta);
         const targetHostId =
           existing?.host_id ??
@@ -1102,7 +1117,7 @@ export class TaskIndexRepo {
           WHERE workspace_key=? AND task_id=?`).run(
           physicalRootPath,
           source,
-          params.meta.title,
+          title,
           source,
           source,
           params.meta.createdAt,
@@ -1110,14 +1125,14 @@ export class TaskIndexRepo {
           params.lastOutcome ?? null,
           params.deleted ? 1 : 0,
           source,
-          params.meta.title,
+          title,
           source,
           params.meta.updatedAt,
           params.meta.createdAt,
           params.lastOutcome ?? null,
           params.deleted ? 1 : 0,
           params.deleted ? 1 : 0,
-          params.meta.title,
+          title,
           source,
           targetKey,
           targetMeta.taskId,

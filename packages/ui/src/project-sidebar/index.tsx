@@ -33,6 +33,7 @@ import {
   projectKey,
   projectHasUnread,
   projectSourceServerId,
+  visibleSidebarTaskTree,
 } from "@/project-sidebar/view.js";
 import { TaskGroupedView } from "@/project-sidebar/TaskGroupedView.js";
 import { taskGroupKey } from "@/project-sidebar/grouped-view.js";
@@ -77,7 +78,10 @@ export const ProjectSidebar = memo(function ProjectSidebar(props: ProjectSidebar
     groups,
     deviceNames,
   } = useProjectDirectory();
-  const { tree, pin } = useProjectPinIntent(authoritativeTree);
+  const { tree: pinnedTree, pin } = useProjectPinIntent(authoritativeTree);
+  // 修复原因：Host 可能先提交真实 task 行再收到首条可用标题。仅在展示层隐藏空/注入标题，
+  // 不从目录 owner 删除该行，首发导航与后续同 ID 标题更新仍按原事实收敛。
+  const tree = useMemo(() => visibleSidebarTaskTree(pinnedTree), [pinnedTree]);
   const remoteSync = useProjectRemoteSync(props, directory);
   const diagnostics = useProjectConnectionDiagnostics(directory, props);
   const onSelectTask = useProjectTaskNavigation(props, tree, remoteService);
@@ -177,7 +181,7 @@ export const ProjectSidebar = memo(function ProjectSidebar(props: ProjectSidebar
       diagnostics={diagnostics.get(project.hostId)}
       expanded={preferences.isExpanded(project)}
       onExpandedChange={preferences.setExpanded}
-      hasUnread={projectHasUnread(authoritativeTree, project)}
+      hasUnread={projectHasUnread(tree, project)}
       availability={availability.get(projectKey(project))}
       tasks={selectProjectRows(tree, {
         kind: "project",

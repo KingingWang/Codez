@@ -164,6 +164,36 @@ describe("WindowHostControllerProjection", () => {
     expect(frames).toHaveLength(1);
   });
 
+  it("keeps a real membership title when live title is provisional", () => {
+    const projection = createWindowHostControllerProjection({ createId: () => "id-1" });
+    projection.registerSource({ scope: localScope, mutate: vi.fn() });
+    projection.replaceSourceSnapshot({
+      scope: localScope,
+      taskIndex: [
+        {
+          meta: taskMeta({ taskId: "live-task", title: "真实标题", updatedAt: 2 }),
+          membership: { pinned: false, archived: false, active: true },
+        },
+      ],
+      sessionsIndex: [],
+    });
+    for (const title of ["", "New session"]) {
+      projection.replaceSourceSessionOverlays(localScope, [
+        {
+          taskId: "live-task",
+          title,
+          updatedAt: 8,
+          liveStatus: "running",
+          activity: { phase: "running", lastActivityAt: 8, hasBackgroundWork: false },
+        },
+      ]);
+      expect(projection.getTasks()[0]).toMatchObject({
+        meta: { title: "真实标题", updatedAt: 8 },
+        liveStatus: "running",
+      });
+    }
+  });
+
   it("同路径 local 与 remote identity 的 task 不串行", () => {
     const projection = createWindowHostControllerProjection({ createId: () => "id-1" });
     projection.registerSource({ scope: localScope, mutate: vi.fn() });

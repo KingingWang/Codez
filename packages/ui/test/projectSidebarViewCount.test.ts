@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { ProjectTask, ProjectTree } from "@/project-sidebar/contract.js";
-import { countProjectTreeUnreadTasks } from "@/project-sidebar/view.js";
+import {
+  countProjectTreeUnreadTasks,
+  selectProjectRows,
+  visibleSidebarTaskTree,
+} from "@/project-sidebar/view.js";
 
 const task = (id: string, overrides: Partial<ProjectTask> = {}): ProjectTask => ({
   taskId: id,
@@ -122,5 +126,41 @@ describe("countProjectTreeUnreadTasks", () => {
         ),
       ),
     ).toBe(1);
+  });
+});
+
+describe("visibleSidebarTaskTree", () => {
+  it("hides only untitled or injected-context rows across sidebar views without removing facts", () => {
+    const facts = tree([
+      task("blank", { title: "", unreadAt: 1 }),
+      task("whitespace", { title: " \n " }),
+      task("native-placeholder", { title: "New session" }),
+      task("environment", { title: "<environment_context> <cwd>/repo</cwd>" }),
+      task("manual-context", {
+        title: "<environment_context> <cwd>/repo</cwd>",
+        titleOverridden: true,
+      }),
+      task("manual-new-task", { title: "新任务", titleOverridden: true, pinned: true }),
+      task("real", { title: "真实问题" }),
+    ]);
+    const visible = visibleSidebarTaskTree(facts);
+    expect(visible.tasks.map((item) => item.taskId)).toEqual([
+      "manual-context",
+      "manual-new-task",
+      "real",
+    ]);
+    expect(facts.tasks).toHaveLength(7);
+    expect(countProjectTreeUnreadTasks(visible)).toBe(0);
+    expect(selectProjectRows(visible, { kind: "pinned" }).map((item) => item.taskId)).toEqual([
+      "manual-new-task",
+    ]);
+    expect(selectProjectRows(visible, { kind: "timeline" }).map((item) => item.taskId)).toEqual([
+      "real",
+      "manual-new-task",
+      "manual-context",
+    ]);
+    expect(
+      selectProjectRows(visible, { kind: "project", projectId: "p1" }).map((item) => item.taskId),
+    ).toEqual(["real", "manual-context"]);
   });
 });

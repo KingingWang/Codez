@@ -1,5 +1,6 @@
 /* eslint-disable max-lines -- 投影状态、V4 帧与离线替换属于同一个一致性边界。 */
 import { isDeepStrictEqual } from "node:util";
+import { isProvisionalTaskTitle } from "@codez/shared";
 import type { CodezTaskMeta } from "@codez/shared";
 import type { CodezArchivedTaskDeletionResult } from "@codez/services";
 import {
@@ -152,9 +153,14 @@ function buildSourceRows(source: ControllerSource): Map<string, WindowHostContro
   const rows = new Map<string, WindowHostControllerTaskRow>();
   for (const membership of source.memberships.values()) {
     const overlay = source.overlays.get(membership.meta.taskId);
+    const membershipTitleProvisional = isProvisionalTaskTitle(membership.meta.title);
+    const overlayTitleProvisional = overlay?.title != null && isProvisionalTaskTitle(overlay.title);
+    // 修复原因：live 索引先到的空 preview 仅是暂态，不能覆盖已持久化的真实标题；
+    // phase/attention/活动时间仍由同一 overlay 更新。
     const shouldUseOverlayTitle =
       overlay?.title != null &&
-      (membership.meta.titleOverridden !== true || overlay.titleSource === "custom");
+      (membership.meta.titleOverridden !== true || overlay.titleSource === "custom") &&
+      (overlay.titleSource === "custom" || !overlayTitleProvisional || membershipTitleProvisional);
     const meta = overlay
       ? {
           ...membership.meta,

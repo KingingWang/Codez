@@ -20,6 +20,15 @@ import {
   areStabilizedValuesEquivalent,
   stabilizeTaskListItems,
 } from "@/v4/taskListItemStabilization.js";
+import { isProvisionalTaskTitle } from "@codez/shared";
+
+/** 侧栏只投影可命名任务；Host 原树仍负责首发提交、归属和恢复。 */
+export function visibleSidebarTaskTree(tree: ProjectTree): ProjectTree {
+  const tasks = tree.tasks.filter(
+    (task) => task.titleOverridden === true || !isProvisionalTaskTitle(task.title),
+  );
+  return tasks.length === tree.tasks.length ? tree : { ...tree, tasks };
+}
 
 /** 活动态只覆盖已有行的 UI sidecar；Controller 快照不能替代项目树的行集合和事实。 */
 export function applyProjectTaskActivities(

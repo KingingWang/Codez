@@ -1,12 +1,7 @@
-import type { CodezTaskMeta } from "@codez/shared";
+import { isProvisionalTaskTitle, type CodezTaskMeta } from "@codez/shared";
 
 function hasOwnTaskMetaField<T extends keyof CodezTaskMeta>(task: CodezTaskMeta, key: T) {
   return Object.prototype.hasOwnProperty.call(task, key);
-}
-
-function isPlaceholderTaskTitle(title: string): boolean {
-  const normalizedTitle = title.trim().toLocaleLowerCase();
-  return normalizedTitle.length === 0 || normalizedTitle === "new session";
 }
 
 function resolveMergedTaskTitle(preferredTask: CodezTaskMeta, fallbackTask: CodezTaskMeta): string {
@@ -16,7 +11,7 @@ function resolveMergedTaskTitle(preferredTask: CodezTaskMeta, fallbackTask: Code
   // session/send 是立即 ACK，首发 ACK 后的 readSession 可能早于后台 first_input title 投影。
   // 此时 snapshot 会带回 agent 默认占位 "New session"；如果它的 updatedAt 更新，旧合并逻辑会把
   // 用户 query 乐观标题短暂盖掉。这里仅把空标题/默认占位视为不可覆盖真实标题，generated title 仍照常覆盖。
-  if (isPlaceholderTaskTitle(preferredTask.title) && !isPlaceholderTaskTitle(fallbackTask.title)) {
+  if (isProvisionalTaskTitle(preferredTask.title) && !isProvisionalTaskTitle(fallbackTask.title)) {
     return fallbackTask.title;
   }
   return preferredTask.title;

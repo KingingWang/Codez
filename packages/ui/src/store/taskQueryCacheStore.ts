@@ -1,7 +1,7 @@
 /* eslint-disable max-lines -- task query cache 的 descriptor、membership 与 mutation 必须在同一 Zustand 事务里维护，拆散会增加缓存一致性风险。 */
 import { create } from "zustand";
 import type { CodezTaskListItem } from "@codez/services";
-import type { CodezTaskMeta } from "@codez/shared";
+import { isProvisionalTaskTitle, type CodezTaskMeta } from "@codez/shared";
 import { matchesTaskListMembershipKind } from "@codez/shared/codez-protocol-v4";
 import { mergeTaskMetaCandidates } from "@/lib/codezTaskMetaMerge.js";
 import { compareCodezTaskListItems } from "@/lib/taskListOrdering.js";
@@ -221,10 +221,8 @@ function mergeIncomingTaskListItem(params: {
   const keepExistingNonPlaceholderTitle =
     params.existingItem &&
     incomingActivity &&
-    (params.item.title.trim().length === 0 ||
-      params.item.title.trim().toLocaleLowerCase() === "new session") &&
-    params.existingItem.title.trim().length > 0 &&
-    params.existingItem.title.trim().toLocaleLowerCase() !== "new session";
+    isProvisionalTaskTitle(params.item.title) &&
+    !isProvisionalTaskTitle(params.existingItem.title);
   // 非搜索列表的 incoming item 是 sessions-index activity + 最新 membership join，
   // 不能再按 tasks-index updatedAt 做 whole-meta winner；否则 rename/unread 响应会覆盖实时
   // phase/lastActivityAt。只保留 sessions-index 尚未补齐时的首发标题和非 activity 展示字段。
