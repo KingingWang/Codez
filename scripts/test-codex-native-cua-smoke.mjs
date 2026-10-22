@@ -376,7 +376,7 @@ test(
       await new Promise((resolve) => model.close(() => resolve()));
       await new Promise((resolve) => browserBrokerServer?.close(() => resolve()) ?? resolve());
       await new Promise((resolve) => cuaBroker?.server.close(() => resolve()) ?? resolve());
-      await rm(temporary, { recursive: true, force: true });
+      await rm(temporary, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   },
 );
