@@ -119,7 +119,7 @@ describe("remote project single-root authority", () => {
     expect(repo.resolveSessionDirectories(task).projectId).toBeNull();
   });
 
-  it("rejects remote unclassified history without an indexed CLI row or an active matching project", async () => {
+  it("rejects remote unclassified history without an indexed CLI row or with extra directories, while allowing indexed external CLI history without an active project", async () => {
     const { repo, db } = await remoteFixture();
     const project = repo.saveProject({ roots: ["/a"] });
     const task = {
@@ -139,6 +139,10 @@ describe("remote project single-root authority", () => {
     );
     db.prepare("UPDATE tasks SET execution_directories='[]' WHERE task_id=?").run(task.taskId);
     repo.deleteProject(project.id);
-    expect(() => repo.resolveSessionDirectories(task)).toThrow("project.remote-project-required");
+    expect(repo.resolveSessionDirectories(task)).toEqual({
+      workspacePath: "/a",
+      projectId: null,
+      additionalDirectories: [],
+    });
   });
 });
