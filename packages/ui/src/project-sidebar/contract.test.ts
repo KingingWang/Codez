@@ -21,20 +21,29 @@ const task = (id: string, projectId: string | null, updatedAt: number): ProjectT
   createdAt: 1,
   updatedAt,
 });
+const makeProject = (
+  id: string,
+  roots: Array<string | { rootPath: string; physicalPath?: string }>,
+  hostId = "local",
+) => ({
+  id,
+  hostId,
+  name: id,
+  roots: roots.map((entry, position) => ({
+    ...(typeof entry === "string" ? { rootPath: entry } : entry),
+    position,
+    isPrimary: position === 0,
+  })),
+  nameOverridden: false,
+  pinned: false,
+  position: 0,
+  deleted: false,
+  createdAt: 1,
+  updatedAt: 1,
+});
 describe("project-sidebar read contract", () => {
   it("leaves an old cwd entry unresolved when two projects share that root", () => {
-    const project = {
-      id: "one",
-      hostId: "remote:server:s",
-      name: "One",
-      roots: [{ rootPath: "/same", position: 0, isPrimary: true }],
-      nameOverridden: false,
-      pinned: false,
-      position: 1,
-      deleted: false,
-      createdAt: 1,
-      updatedAt: 1,
-    };
+    const project = makeProject("one", ["/same"], "remote:server:s");
     const entry = {
       id: "legacy",
       hostId: project.hostId,
@@ -59,34 +68,29 @@ describe("project-sidebar read contract", () => {
       }),
     ).toBeUndefined();
     expect(
-      resolveEntryProject(entry, {
-        projects: [project, { ...project, id: "two" }],
-        tasks: [],
-      }),
+      resolveEntryProject(entry, { projects: [project, { ...project, id: "two" }], tasks: [] }),
     ).toBeUndefined();
   });
   it("joins only retained remote projects and does not retain offline task facts", () => {
+    const hostId = "remote:server:s";
     const local: ProjectTree = {
       projects: [],
       tasks: [
         task("local", null, 1),
         {
           ...task("controller-remote", null, 5),
-          hostId: "remote:server:s",
+          hostId,
           workspacePath: "/repo",
-          workspaceIdentity: "remote:server:s:/repo",
+          workspaceIdentity: `${hostId}:/repo`,
         },
-        {
-          ...task("remote", "p", 9),
-          hostId: "remote:server:s",
-        },
+        { ...task("remote", "p", 9), hostId },
       ],
     };
-    const remoteTask = { ...task("remote", "p", 9), hostId: "remote:server:s" };
+    const remoteTask = { ...task("remote", "p", 9), hostId };
     const directory = {
       hosts: [
         {
-          id: remoteTask.hostId,
+          id: hostId,
           membershipId: "m",
           kind: "docker" as const,
           target: { kind: "docker" as const, container: "s" },
@@ -96,7 +100,7 @@ describe("project-sidebar read contract", () => {
       entries: [
         {
           id: "entry",
-          hostId: remoteTask.hostId,
+          hostId,
           projectId: "p",
           name: "cached",
           roots: [],
@@ -107,18 +111,7 @@ describe("project-sidebar read contract", () => {
     };
     const remote: ProjectTree = {
       projects: [
-        {
-          id: "p",
-          hostId: remoteTask.hostId,
-          name: "online",
-          roots: [],
-          nameOverridden: true,
-          pinned: true,
-          position: 1,
-          deleted: false,
-          createdAt: 1,
-          updatedAt: 2,
-        },
+        { ...makeProject("p", [], hostId), name: "online", nameOverridden: true, pinned: true },
       ],
       tasks: [
         remoteTask,
@@ -195,21 +188,18 @@ describe("project-sidebar read contract", () => {
     ]);
   });
   it("new local single-root project reads all indexed A history without changing ownership", () => {
-    const localProject = (id: string, roots: string[]) => ({
-      id,
-      hostId: "local",
-      name: id,
-      roots: roots.map((rootPath, position) => ({
-        rootPath,
-        position,
-        isPrimary: position === 0,
-      })),
-      nameOverridden: false,
-      pinned: false,
-      position: 0,
-      deleted: false,
-      createdAt: 1,
-      updatedAt: 1,
+    const localProject = (id: string, roots: string[]) => makeProject(id, roots);
+    const remoteRow = (
+      id: string,
+      projectId: string | null,
+      hostId: string,
+      extra: Partial<ProjectTask> = {},
+    ) => ({
+      ...task(id, projectId, 3),
+      workspacePath: "/a",
+      workspaceIdentity: `${hostId}:/a`,
+      hostId,
+      ...extra,
     });
     const tree: ProjectTree = {
       projects: [
@@ -226,37 +216,14 @@ describe("project-sidebar read contract", () => {
         { ...task("codez-ab", "multi-ab", 7), workspacePath: "/a" },
         { ...task("codez-ac", "multi-ac", 6), workspacePath: "/a" },
         { ...task("cli-b", null, 5), workspacePath: "/b" },
-        {
-          ...task("pinned-a", "multi-ab", 4),
-          workspacePath: "/a",
-          pinned: true,
-        },
+        { ...task("pinned-a", "multi-ab", 4), workspacePath: "/a", pinned: true },
         { ...task("archived-a", null, 3), workspacePath: "/a", archived: true },
-        {
-          ...task("remote-a", "remote-a", 2),
-          workspacePath: "/a",
-          workspaceIdentity: "remote:server:s:/a",
-          hostId: "remote:server:s",
-        },
-        {
-          ...task("remote-cli-a", null, 3),
-          workspacePath: "/a",
-          workspaceIdentity: "remote:server:s:/a",
-          hostId: "remote:server:s",
-          unreadAt: 4,
-        },
-        {
-          ...task("stale-identity-a", null, 3),
-          workspacePath: "/a",
+        remoteRow("remote-a", "remote-a", "remote:server:s", { updatedAt: 2 }),
+        remoteRow("remote-cli-a", null, "remote:server:s", { unreadAt: 4 }),
+        remoteRow("stale-identity-a", null, "remote:server:s", {
           workspaceIdentity: "remote:server:other:/a",
-          hostId: "remote:server:s",
-        },
-        {
-          ...task("foreign-cli-a", null, 3),
-          workspacePath: "/a",
-          workspaceIdentity: "remote:server:other:/a",
-          hostId: "remote:server:other",
-        },
+        }),
+        remoteRow("foreign-cli-a", null, "remote:server:other"),
       ],
     };
     const rows = (id: string, hostId = "local") =>
@@ -269,11 +236,9 @@ describe("project-sidebar read contract", () => {
     expect(rows("remote-b", "remote:server:s")).toEqual(["remote-cli-a", "remote-a"]);
     expect(rows("foreign-a", "remote:server:other")).toEqual(["foreign-cli-a"]);
     expect(
-      selectProjectRows(tree, {
-        kind: "project",
-        projectId: null,
-        hostId: "local",
-      }).map((row) => row.taskId),
+      selectProjectRows(tree, { kind: "project", projectId: null, hostId: "local" }).map(
+        (row) => row.taskId,
+      ),
     ).toEqual(["cli-a", "cli-b"]);
     expect(selectProjectRows(tree, { kind: "timeline" })).toHaveLength(9);
     expect(selectProjectRows(tree, { kind: "pinned" }).map((row) => row.taskId)).toEqual([
@@ -284,11 +249,50 @@ describe("project-sidebar read contract", () => {
     expect(tree.tasks.find((row) => row.taskId === "remote-cli-a")?.projectId).toBeNull();
     expect(tree.tasks.find((row) => row.taskId === "cli-a")?.projectId).toBeNull();
     expect(
-      buildArchiveGroups(tree, {
-        project: JSON.stringify(["local", "single-a"]),
-      })
+      buildArchiveGroups(tree, { project: JSON.stringify(["local", "single-a"]) })
         .flatMap((group) => group.tasks)
         .map((row) => row.taskId),
     ).toEqual(["archived-a"]);
+  });
+
+  it("matches symlinked single-root project and physical-cwd tasks by physicalPath while keeping fallback when physicalPath is absent", () => {
+    const hostId = "remote:server:moga";
+    const symlinkRoot = "/home/jingjin/workspace/hypervisor/osx-ca";
+    const physicalRoot = "/home/back/disk/home/jingjin/workspace/hypervisor/osx-ca";
+    const remoteTask = (
+      id: string,
+      path: string,
+      host = hostId,
+      extra: Partial<ProjectTask> = {},
+    ) => ({
+      ...task(id, null, 10),
+      hostId: host,
+      workspacePath: path,
+      workspacePhysicalPath: path,
+      workspaceIdentity: `${host}:${path}`,
+      ...extra,
+    });
+    const tree: ProjectTree = {
+      projects: [
+        makeProject("osx-ca", [{ rootPath: symlinkRoot, physicalPath: physicalRoot }], hostId),
+      ],
+      tasks: [
+        remoteTask("rollout-physical", physicalRoot, hostId, { unreadAt: 9 }),
+        remoteTask("archived-physical", physicalRoot, hostId, { archived: true }),
+        remoteTask("other-physical", "/home/back/disk/home/jingjin/workspace/other"),
+        remoteTask("foreign-host-same-physical", physicalRoot, "remote:server:other"),
+      ],
+    };
+    expect(
+      selectProjectRows(tree, { kind: "project", projectId: "osx-ca", hostId }).map(
+        (row) => row.taskId,
+      ),
+    ).toEqual(["rollout-physical"]);
+    expect(projectHasUnread(tree, tree.projects[0]!)).toBe(true);
+    expect(
+      buildArchiveGroups(tree, { project: JSON.stringify([hostId, "osx-ca"]) })
+        .flatMap((group) => group.tasks)
+        .map((row) => row.taskId),
+    ).toEqual(["archived-physical"]);
   });
 });
