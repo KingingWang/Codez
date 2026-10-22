@@ -170,6 +170,12 @@ shows none of its threads. Multi-root projects retain explicit membership.
   duplicate `thread/list` paging bursts across `session/list` discovery and
   multiple `sessions-index` subscribers without caching a stale list after the
   scan settles.
+- Concurrent read-only control-plane and native settings reads (`config/read`,
+  `model/list` and paginated list reads) coalesce per `CodexRpcPort` and
+  canonical request key only while an identical read is in flight, preventing
+  duplicate `config/read` and `model/list` bursts across `useCodexModelCatalog`,
+  `catalog/read`, `workspace/readPresentation` and `workspace-config` topic
+  snapshots without retaining a stale response after the read settles.
 - When an ordinary native RPC times out (`Codex RPC request timed out; outcome is unknown`),
   the bridge emits a bounded, redacted stderr warning with only the allowlisted
   native `method`, `durationMs`, and `pending` count; Host process management
@@ -178,7 +184,12 @@ shows none of its threads. Multi-root projects retain explicit membership.
   (`conversation/*` and `sessions-index/*` `subscribe`/`resync`) treat that
   timeout as a transient read failure and perform bounded backoff retries
   (`250ms / 1_000ms / 3_000ms`) before surfacing the manual reconnect error
-  panel, whereas commands and mutations never auto-retry.
+  panel, and `useCodexModelCatalog` applies the same bounded backoff retries
+  (`250ms / 1_000ms / 3_000ms`) on transient runtime-recycle (`Codez agent transport closed`,
+  `Codez Protocol client disposed`, `Codez Agent runtime is not running`) and
+  read-only RPC timeout errors while keeping catalog readiness in `"loading"`
+  so new draft sessions self-heal without permanently disabling message submission,
+  whereas commands and mutations never auto-retry.
 - Composer creation and send failures (including prewarmed and fallback sessions)
   expose a nonempty trimmed `CommandAck.message` before `reasonCode`, then the existing
   fallback text. The localized failure summary, draft retention, command ID and machine

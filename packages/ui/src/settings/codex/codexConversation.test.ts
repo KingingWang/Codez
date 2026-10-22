@@ -21,6 +21,11 @@ import {
   resolveCodexComposerThoughtOption,
 } from "./codexModelCatalog.js";
 import {
+  CODEX_CATALOG_TRANSIENT_RETRY_DELAYS_MS,
+  isTransientCodexCatalogReadError,
+  readCodexModelCatalogWithTransientRetry,
+} from "@/hooks/useCodexModelCatalog.js";
+import {
   resolveAppFollowupMode,
   resolveCodexFollowupIntent,
   resolveComposerFollowupDelivery,
@@ -639,4 +644,90 @@ test("custom draft stays queue/guide compatible with derived relaxed mode projec
     ),
     false,
   );
+});
+
+test("useCodexModelCatalog transient retry self-heals stdout_closed / RPC timeout and stops on non-transient or stale scope", async () => {
+  for (const transientMessage of [
+    "Codez agent transport closed: stdout_closed",
+    "Codez Protocol client disposed",
+    "Codez Protocol client is disposed",
+    "Codez Agent runtime is not running",
+    "Codex RPC request timed out; outcome is unknown",
+    "Codez Protocol request timed out: codex/request",
+  ]) {
+    assert.equal(isTransientCodexCatalogReadError(new Error(transientMessage)), true);
+  }
+  assert.equal(isTransientCodexCatalogReadError(new Error("Invalid native settings request")), false);
+
+  const waitedDelays: number[] = [];
+  let attempts = 0;
+  const recovered = await readCodexModelCatalogWithTransientRetry({
+    isCurrent: () => true,
+    wait: async (delayMs) => {
+      waitedDelays.push(delayMs);
+    },
+    readOnce: async () => {
+      attempts += 1;
+      if (attempts === 1) throw new Error("Codex RPC request timed out; outcome is unknown");
+      if (attempts === 2) throw new Error("Codez agent transport closed: stdout_closed");
+      return catalog;
+    },
+  });
+  assert.equal(recovered, catalog);
+  assert.equal(attempts, 3);
+  assert.deepEqual(waitedDelays, [
+    CODEX_CATALOG_TRANSIENT_RETRY_DELAYS_MS[0],
+    CODEX_CATALOG_TRANSIENT_RETRY_DELAYS_MS[1],
+  ]);
+
+  // 非瞬态错误不盲目重试，立即上抛。
+  let permanentAttempts = 0;
+  await assert.rejects(
+    readCodexModelCatalogWithTransientRetry({
+      isCurrent: () => true,
+      wait: async () => {
+        throw new Error("must not wait on non-transient error");
+      },
+      readOnce: async () => {
+        permanentAttempts += 1;
+        throw new Error("Permission denied reading model catalog");
+      },
+    }),
+    /Permission denied reading model catalog/,
+  );
+  assert.equal(permanentAttempts, 1);
+
+  // 退避耗尽后如实上抛最后一次错误。
+  const exhaustedDelays: number[] = [];
+  await assert.rejects(
+    readCodexModelCatalogWithTransientRetry({
+      isCurrent: () => true,
+      wait: async (delayMs) => {
+        exhaustedDelays.push(delayMs);
+      },
+      readOnce: async () => {
+        throw new Error("Codez agent transport closed: stdout_closed");
+      },
+    }),
+    /Codez agent transport closed: stdout_closed/,
+  );
+  assert.deepEqual(exhaustedDelays, [...CODEX_CATALOG_TRANSIENT_RETRY_DELAYS_MS]);
+
+  // 退避等待期间切换工作区或 invalidate 时，立即中止且不再发起下一次请求。
+  let current = true;
+  let staleAttempts = 0;
+  await assert.rejects(
+    readCodexModelCatalogWithTransientRetry({
+      isCurrent: () => current,
+      wait: async () => {
+        current = false;
+      },
+      readOnce: async () => {
+        staleAttempts += 1;
+        throw new Error("Codez agent transport closed: stdout_closed");
+      },
+    }),
+    /Codex workspace changed during catalog read/,
+  );
+  assert.equal(staleAttempts, 1);
 });
