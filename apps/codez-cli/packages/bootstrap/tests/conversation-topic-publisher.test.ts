@@ -656,6 +656,119 @@ describe("帧区间记账与替换语义", () => {
     expect(next!.toSeq).toBe(scheduled.sequenceNumber);
   });
 
+  it("replayable 不发送 reasoning 流式正文，终态发送压缩预览且 seq 连续", () => {
+    const log = new EventLog();
+    const turnId = "turn-reasoning-traffic";
+    const longReasoning = "思考内容".repeat(300);
+    log.push(SessionEventType.SessionCreated, { mode: "default", contextWindow: 100_000 });
+    log.push(SessionEventType.TurnStarted, { turnNumber: 1, input: "think" }, { turnId });
+
+    const publisher = new ConversationTopicPublisher("session-1", "epoch-1", { now: () => 0 });
+    for (const event of log.events) publisher.ingest(event);
+    const desktop = publisher.subscribe({
+      connectionId: "desktop",
+      deliveryProfile: "continuous",
+    });
+    const mobile = publisher.subscribe({
+      connectionId: "mobile",
+      deliveryProfile: "replayable",
+    });
+
+    const reasoningStart = log.push(
+      SessionEventType.ModelStreaming,
+      { kind: "reasoning_start", delta: "", done: false },
+      { turnId },
+    );
+    publisher.ingest(reasoningStart);
+    const desktopStart = publisher.flush(desktop.ack.subscriptionId)!;
+    const mobileStart = publisher.flush(mobile.ack.subscriptionId)!;
+    expect(desktopStart.toSeq).toBe(reasoningStart.sequenceNumber);
+    expect(mobileStart.toSeq).toBe(reasoningStart.sequenceNumber);
+
+    const reasoningDelta = log.push(
+      SessionEventType.ModelStreaming,
+      { kind: "reasoning_delta", delta: longReasoning, done: false },
+      { turnId },
+    );
+    publisher.ingest(reasoningDelta);
+    const desktopDelta = publisher.flush(desktop.ack.subscriptionId)!;
+    const mobileDelta = publisher.flush(mobile.ack.subscriptionId)!;
+    expect(desktopDelta.payload).toMatchObject({
+      kind: "deltas",
+      deltas: [{ op: "row.delta", path: "text", append: longReasoning }],
+    });
+    expect(mobileDelta).toMatchObject({
+      fromSeq: reasoningStart.sequenceNumber,
+      toSeq: reasoningDelta.sequenceNumber,
+      payload: { kind: "deltas", deltas: [] },
+    });
+
+    const midStreamSnapshot = publisher.subscribe({
+      connectionId: "mobile-mid-stream",
+      deliveryProfile: "replayable",
+    }).frame!;
+    expect(midStreamSnapshot.payload.kind).toBe("snapshot");
+    if (midStreamSnapshot.payload.kind === "snapshot") {
+      const row = midStreamSnapshot.payload.snapshot.rows.window.find(
+        (candidate) => candidate.kind === "reasoning",
+      );
+      expect(row).toMatchObject({ state: "streaming", text: "" });
+    }
+
+    const reasoningComplete = log.push(
+      SessionEventType.ModelStreaming,
+      { kind: "reasoning_end", delta: "", done: true },
+      { turnId },
+    );
+    publisher.ingest(reasoningComplete);
+    const desktopTerminal = publisher.flush(desktop.ack.subscriptionId)!;
+    const mobileTerminal = publisher.flush(mobile.ack.subscriptionId)!;
+    expect(desktopTerminal.payload.kind).toBe("deltas");
+    if (desktopTerminal.payload.kind === "deltas") {
+      expect(
+        desktopTerminal.payload.deltas.find(
+          (delta) => delta.op === "row.upserted" && delta.row.kind === "reasoning",
+        ),
+      ).toMatchObject({
+        op: "row.upserted",
+        row: {
+          kind: "reasoning",
+          state: "complete",
+          truncated: { totalBytes: expect.any(Number) },
+        },
+      });
+    }
+    expect(mobileTerminal.toSeq).toBe(reasoningComplete.sequenceNumber);
+    expect(mobileTerminal.payload.kind).toBe("deltas");
+    if (mobileTerminal.payload.kind === "deltas") {
+      const terminal = mobileTerminal.payload.deltas.find(
+        (delta) => delta.op === "row.upserted" && delta.row.kind === "reasoning",
+      );
+      expect(terminal).toMatchObject({
+        op: "row.upserted",
+        row: {
+          kind: "reasoning",
+          state: "complete",
+          truncated: { totalBytes: expect.any(Number) },
+        },
+      });
+      if (terminal?.op === "row.upserted" && terminal.row.kind === "reasoning") {
+        expect(terminal.row.text.length).toBeLessThanOrEqual(
+          PROTOCOL_V4_LIMITS.reasoningInlinePreviewBytes + 2,
+        );
+      }
+    }
+    expect(publisher.getRowsRange({ limit: 100 }, "replayable").rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "reasoning",
+          state: "complete",
+          truncated: expect.objectContaining({ totalBytes: expect.any(Number) }),
+        }),
+      ]),
+    );
+  });
+
   it("replayable 订阅者：scheduled 定稿必须在 upsert 中携带完整 inputText", () => {
     const log = new EventLog();
     log.push(SessionEventType.SessionCreated, { mode: "default", contextWindow: 1000 });
