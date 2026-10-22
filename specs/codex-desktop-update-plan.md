@@ -53,7 +53,7 @@ live turn:  codex update_plan call → EventMsg.PlanUpdate
 
 - `turn/plan/updated` carries the full replacement plan (not a delta). The store
   upserts a single synthetic item `{ id: "plan-update", type: "planUpdate",
-  plan: [...], explanation? }` into the addressed turn, replacing the previous
+plan: [...], explanation? }` into the addressed turn, replacing the previous
   content in place so the card keeps its first-seen position.
 - Step status is normalized at the boundary: `pending`/`inProgress`/`completed`
   become `pending`/`in_progress`/`completed`. Steps without a usable title or
@@ -64,6 +64,9 @@ live turn:  codex update_plan call → EventMsg.PlanUpdate
   `status: "success"`, structured `input: { explanation?, plan }`, and no
   fabricated output. Todo extraction, icons, and the display gate are the
   existing shared/UI code paths (`tool-plan-adapter`, `TodoToolCallBlock`).
+- The latest `planUpdate` item in the thread also populates `snapshot.plan`
+  (`items: [{ id, content, status }]`, `updatedAt`), keeping the status panel
+  todo checklist in sync with the message-stream todo card.
 - Unknown turns, threads not loaded in this Host, and events arriving after a
   turn completed are still accepted: Codex emits plan updates only inside live
   turns, but the store treats late arrivals as ordinary upserts.

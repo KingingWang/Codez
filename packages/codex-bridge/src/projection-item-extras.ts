@@ -133,7 +133,7 @@ export function webSearchRow(item: CodexItemOf<"webSearch">, base: RowBase): Con
 }
 
 /** 生图工具卡。result 是 base64 图片本体，绝不进 row（行预算）；
- * 展示只保留 revisedPrompt/savedPath 与状态。 */
+ * 展示保留 revisedPrompt/savedPath 与状态，UI Read 卡片支持读取 savedPath。 */
 export function imageGenerationRow(
   item: CodexItemOf<"imageGeneration">,
   base: RowBase,
@@ -154,6 +154,9 @@ export function imageGenerationRow(
       ...(item.revisedPrompt ? { revisedPrompt: item.revisedPrompt } : {}),
       ...(item.savedPath ? { savedPath: item.savedPath } : {}),
     }),
+    ...(!item.savedPath && item.revisedPrompt
+      ? { output: projectToolOutput(item.revisedPrompt) }
+      : {}),
     ...(status === "error"
       ? {
           error: {
@@ -170,17 +173,34 @@ export function collabAgentToolCallRow(
   item: CodexItemOf<"collabAgentToolCall">,
   base: RowBase,
 ): ConversationRow {
+  const targetSummary =
+    item.receiverThreadIds.length > 0 ? item.receiverThreadIds.join(", ") : undefined;
+  const stateLines = Object.entries(item.agentsStates).map(
+    ([threadId, state]) =>
+      `${threadId}: ${state.status}${state.message ? ` — ${state.message}` : ""}`,
+  );
+  const stateText = stateLines.length > 0 ? stateLines.join("\n") : undefined;
+  const isMessagingTool =
+    item.tool === "sendInput" || item.tool === "sendMessage" || item.tool === "followupTask";
+  const isTaskControlTool =
+    item.tool === "wait" || item.tool === "closeAgent" || item.tool === "interruptAgent";
+  const isAgentOverviewTool = item.tool === "resumeAgent" || item.tool === "listAgents";
   const input: Record<string, unknown> = {
     ...(item.prompt ? { prompt: item.prompt } : {}),
     senderThreadId: item.senderThreadId,
     ...(item.receiverThreadIds.length > 0 ? { receiverThreadIds: item.receiverThreadIds } : {}),
     ...(item.model ? { model: item.model } : {}),
     ...(item.reasoningEffort ? { reasoningEffort: item.reasoningEffort } : {}),
+    // 为 SendMessage / TaskOutput / TaskStop / Agent 渲染器补齐标准展示字段，避免掉入 JSON 兜底卡。
+    ...(isMessagingTool && targetSummary ? { to: targetSummary } : {}),
+    ...(isMessagingTool && item.prompt ? { message: item.prompt } : {}),
+    ...(isTaskControlTool && targetSummary ? { task_id: targetSummary } : {}),
+    ...(isAgentOverviewTool
+      ? {
+          description: item.prompt ?? targetSummary ?? stateText ?? COLLAB_TOOL_NAMES[item.tool],
+        }
+      : {}),
   };
-  const stateLines = Object.entries(item.agentsStates).map(
-    ([threadId, state]) =>
-      `${threadId}: ${state.status}${state.message ? ` — ${state.message}` : ""}`,
-  );
   return {
     ...base,
     kind: "toolCall",
@@ -188,7 +208,34 @@ export function collabAgentToolCallRow(
     toolName: COLLAB_TOOL_NAMES[item.tool],
     status: projectItemStatus(item.status),
     ...projectToolInput(input),
-    ...(stateLines.length > 0 ? { output: projectToolOutput(stateLines.join("\n")) } : {}),
+    ...(stateText
+      ? {
+          output: {
+            ...projectToolOutput(stateText),
+            ...(item.tool === "wait"
+              ? {
+                  display: {
+                    kind: "task_output" as const,
+                    retrievalStatus:
+                      item.status === "completed" ? ("success" as const) : ("not_ready" as const),
+                    taskStatus: item.status === "completed" ? "completed" : "running",
+                    output: stateText.length <= 2_000 ? stateText : stateText.slice(0, 2_000),
+                    ...(stateText.length > 2_000 ? { truncated: true as const } : {}),
+                  },
+                }
+              : item.tool === "closeAgent" || item.tool === "interruptAgent"
+                ? {
+                    display: {
+                      kind: "task_stop" as const,
+                      taskId: targetSummary ?? item.id,
+                      taskType: "local_agent",
+                      message: stateText,
+                    },
+                  }
+                : {}),
+          },
+        }
+      : {}),
   };
 }
 

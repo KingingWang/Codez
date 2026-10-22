@@ -94,11 +94,18 @@ function toolRow(
   turn: CodexTurn,
   interactions: readonly PendingInteraction[],
 ): ToolCallRow {
+  const mcpToolName = item.type === "mcpToolCall" ? `mcp__${item.server}__${item.tool}` : undefined;
+  const mcpServerPrefix = item.type === "mcpToolCall" ? `mcp__${item.server}__` : undefined;
   const approval = interactions.find(
     (interaction) =>
       interaction.payload.kind === "permission" &&
-      interaction.payload.toolCallId === item.id &&
-      (interaction.turnId === undefined || interaction.turnId === turn.id),
+      (interaction.turnId === undefined || interaction.turnId === turn.id) &&
+      (interaction.payload.toolCallId === item.id ||
+        (item.type === "mcpToolCall" &&
+          item.status === "inProgress" &&
+          (interaction.payload.toolName === mcpToolName ||
+            (mcpServerPrefix !== undefined &&
+              interaction.payload.toolName === `${mcpServerPrefix}approval`)))),
   );
   let status: ToolCallRow["status"];
   if (item.status === "completed") status = "success";
@@ -145,7 +152,7 @@ function toolRow(
     const display = projectNativeFileChangeDisplay(item.changes);
     if (display) common.output.display = display;
   } else {
-    common.toolName = `mcp__${item.server}__${item.tool}`;
+    common.toolName = mcpToolName!;
     Object.assign(common, projectToolInput(item.arguments));
     if (item.server.length <= 256 && item.tool.length <= 256)
       common.display = {

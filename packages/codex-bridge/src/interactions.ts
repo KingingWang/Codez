@@ -108,17 +108,36 @@ export class InteractionBroker {
     }
     const serverName = string(params.serverName, "MCP server");
     const summary = string(params.message, "MCP approval message");
-    const toolName = `mcp__${serverName}__approval`;
+    const metaRecord = meta as JsonObject;
+    const rawToolName =
+      typeof metaRecord.tool_name === "string" && metaRecord.tool_name.trim().length > 0
+        ? metaRecord.tool_name.trim()
+        : /^Allow\b[\s\S]*?\bto run tool "([^"\r\n]+)"\?$/u.exec(summary)?.[1]?.trim();
+    const toolName = rawToolName
+      ? `mcp__${serverName}__${rawToolName}`
+      : `mcp__${serverName}__approval`;
+    const itemId =
+      typeof params.itemId === "string" && params.itemId.trim().length > 0
+        ? params.itemId.trim()
+        : typeof metaRecord.item_id === "string" && metaRecord.item_id.trim().length > 0
+          ? metaRecord.item_id.trim()
+          : interactionId;
     const persist = (meta as JsonObject).persist;
     const supports = (mode: string) =>
       persist === mode || (Array.isArray(persist) && persist.includes(mode));
     return {
       kind: "permission",
-      // Codex 尚未在 elicitation request 中关联 tool item；使用交互 ID 防误挂另一工具行。
-      toolCallId: interactionId,
+      // 优先使用显式 itemId；缺失时退回 interactionId，并由 projection-rows 按同 turn in-progress mcpToolCall 匹配。
+      toolCallId: itemId,
       toolName,
       summary,
-      detail: { toolName },
+      detail: {
+        toolName,
+        reason: summary,
+        ...(metaRecord.tool_params && typeof metaRecord.tool_params === "object"
+          ? { rawInput: metaRecord.tool_params }
+          : {}),
+      },
       options: [
         { optionId: "accept", label: "Allow", kind: "allowOnce", response: { decision: "allow" } },
         ...(supports("session")

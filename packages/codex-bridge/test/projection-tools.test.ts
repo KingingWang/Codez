@@ -184,6 +184,18 @@ test("collabAgentToolCall projects real tool names, mapped status and per-agent 
   assert.match(wait?.output?.text ?? "", /thread-2: completed — done/);
   // v1 analytics-only 工具必须避开原生 SendMessage 渲染器。
   assert.equal(msg?.toolName, "codex_collab_send_message");
+  assert.equal(
+    wait?.kind === "toolCall" && wait.output?.display?.kind === "task_output"
+      ? wait.output.display.output
+      : null,
+    "thread-2: completed — done",
+  );
+  assert.equal(
+    msg?.kind === "toolCall" && typeof msg.input === "object" && msg.input !== null
+      ? (msg.input as { message?: unknown }).message
+      : null,
+    "ping",
+  );
 });
 
 test("dynamicToolCall and functionCallOutput project text without media bytes", () => {
@@ -727,4 +739,50 @@ test("planUpdate items project as todo toolCall rows with structured plan input"
   assert.deepEqual(JSON.parse(row.inputText), row.input);
   // 合成 item 的展示身份必须与 thread-state 的固定 id 对齐，保证更新原位生效。
   assert.equal(row.entityId, "codex:turn:turn-1:item:plan-update");
+  assert.deepEqual(snapshot.plan, {
+    items: [
+      { id: "turn-1:plan:1", content: "探查代码", status: "completed" },
+      { id: "turn-1:plan:2", content: "实现", status: "inProgress" },
+      { id: "turn-1:plan:3", content: "验证", status: "pending" },
+    ],
+    updatedAt: 119_000,
+  });
+});
+
+test("MCP tool approval binds to the matching in-progress mcpToolCall row in the same turn", () => {
+  const thread = threadFixture();
+  thread.turns[0]!.status = "inProgress";
+  thread.status = { type: "active", activeFlags: ["waitingOnApproval"] };
+  thread.turns[0]!.items.push({
+    type: "mcpToolCall",
+    id: "mcp-pending-1",
+    server: "codez-desktop-browser-cua",
+    tool: "cua_status",
+    arguments: { action: "status" },
+    status: "inProgress",
+    result: null,
+    error: null,
+  });
+  const interaction: PendingInteraction = {
+    interactionId: "mcp-approval-1",
+    kind: "permission",
+    turnId: "turn-1",
+    anchorRowId: null,
+    createdAt: 102000,
+    payload: {
+      kind: "permission",
+      toolCallId: "mcp-approval-1",
+      toolName: "mcp__codez-desktop-browser-cua__cua_status",
+      summary: 'Allow the codez-desktop-browser-cua MCP server to run tool "cua_status"?',
+      detail: { toolName: "mcp__codez-desktop-browser-cua__cua_status" },
+      options: [{ optionId: "accept", label: "Allow", kind: "allowOnce" }],
+    },
+  };
+  const snapshot = projectThread(thread, {
+    workspacePath: "/workspace",
+    interactions: [interaction],
+  });
+  const row = snapshot.rows.window.at(-1);
+  assert.equal(row?.kind === "toolCall" && row.status, "pendingApproval");
+  assert.equal(row?.kind === "toolCall" && row.approvalInteractionId, "mcp-approval-1");
 });
