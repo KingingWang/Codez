@@ -48,6 +48,21 @@ export const CRON_DEFAULT_GROUP_ID = "codez-default-group-cron";
 /** 闲时任务已派发会话默认归入的系统分组固定 id（与 cron 分组同构）。 */
 export const OFF_PEAK_DEFAULT_GROUP_ID = "codez-default-group-off-peak";
 
+/** 空值和 Agent 默认文案只表示标题尚未就绪，不能覆盖已经确认的用户标题。 */
+export function isPlaceholderTaskTitle(title: string): boolean {
+  const normalized = title.trim().toLocaleLowerCase();
+  return normalized.length === 0 || normalized === "new session";
+}
+
+/** Codex 的注入环境块在原生 rollout 中可带 user 角色，但不是用户发送的内容。 */
+export function isInjectedCodexContextTitle(title: string): boolean {
+  return /^<environment_context>\s*<cwd(?:\s|>)/u.test(title.trimStart());
+}
+
+export function isProvisionalTaskTitle(title: string): boolean {
+  return isPlaceholderTaskTitle(title) || isInjectedCodexContextTitle(title);
+}
+
 type CronTaskIdentity = Pick<CodezTaskMeta, "cronAutomationId"> & {
   automationId?: string;
 };
