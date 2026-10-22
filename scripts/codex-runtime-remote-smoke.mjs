@@ -81,7 +81,7 @@ export async function smokeCodexRemoteBundle(root = codexRemoteRoot) {
       `[codex-remote-smoke] ${target.key}: real bundled consumer materialized verified archives; Node ${node.stdout.trim()}, standalone server ${version}, packaged native dependencies resolved`,
     );
   } finally {
-    await rm(directory, { recursive: true, force: true });
+    await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 }
 
