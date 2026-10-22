@@ -103,6 +103,16 @@ test("summary/index use milliseconds, bounded previews and independent workspace
   assert.equal(index.logEpoch, "host-index-epoch");
 });
 
+test("injected environment preview is not projected as a session title", () => {
+  const thread = threadFixture();
+  thread.name = null;
+  thread.preview = "<environment_context> <cwd>/workspace</cwd> <shell>bash</shell>";
+  assert.equal(projectSessionSummary(thread, "/workspace").title, "");
+  assert.equal(projectThread(thread, options).meta.title, "");
+  thread.name = "用户明确设置的标题";
+  assert.equal(projectSessionSummary(thread, "/workspace").title, "用户明确设置的标题");
+});
+
 test("native origin is only an initial Host membership hint, not a thread project rewrite", () => {
   const thread = { ...threadFixture(), threadSource: "codez_project:project-ab" };
   assert.equal(projectSessionSummary(thread, "/workspace").originProjectId, "project-ab");
