@@ -38,9 +38,12 @@ export function ProjectSections({
   onReorder(active: string, over: string): void;
   loading: boolean;
 }) {
-  const foreignHosts = new Set(directory.hosts.map((host) => host.id));
-  const localTasks = selectProjectRows(tree, { kind: "project", projectId: null }).filter(
-    (task) => task.hostId === "local" && !foreignHosts.has(task.hostId),
+  const retainedHosts = new Set(directory.hosts.map((host) => host.id));
+  // 修复原因（issue #19）：侧栏「任务」分区需展示本机及所有已连接远程机器上的全部非置顶、
+  // 非归档 Codex 会话（包含各项目会话及未建项目目录下的外部 CLI 会话），而非仅展示默认目录的
+  // project_id=NULL 本地会话。离线或已移除的远程 Host 已在 mergeProjectTrees 中剔除。
+  const allTasks = selectProjectRows(tree, { kind: "timeline" }).filter(
+    (task) => !task.pinned && (task.hostId === "local" || retainedHosts.has(task.hostId)),
   );
   return (
     <PurposeSections
@@ -60,7 +63,7 @@ export function ProjectSections({
         // 原因：任务分区遗漏项目内列表的左侧留白，导致整行背景和文字贴左；统一内缩 8px。
         <div className="pl-2">
           <ProjectTaskRows
-            tasks={localTasks}
+            tasks={allTasks}
             onSelect={onSelect}
             refresh={refresh}
             showEmptyState={!loading}
