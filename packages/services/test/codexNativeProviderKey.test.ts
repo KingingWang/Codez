@@ -190,6 +190,64 @@ describe("createCodexNativeProviderKeyService", () => {
     expect(spawn.blockedProviderIds).toEqual(["acme"]);
   });
 
+  it("finishKeySource 日志区分 commit 与 rollback，且不含 Key 材料", async () => {
+    // Bugfix 诊断盲点：commit 与 rollback 共用同一条成功路径，RPC 层只打印
+    // finishKeySource OK，曾出现三次保存全绿但远端 config.toml 一步未改。
+    const credentials = createIsolatedCredentialService();
+    const logged: unknown[] = [];
+    const service = createCodexNativeProviderKeyService({
+      environmentKey: 'ssh:["ssh:v1","host",22,"user","key","~/.ssh/id_rsa"]',
+      credentialService: credentials,
+      beginRotation: async () => {},
+      installKeys: async () => {},
+    });
+
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => {
+      logged.push(...args);
+    };
+    try {
+      await service.prepareKeySource({
+        providerId: "acme",
+        mode: "runtime-env",
+        apiKey: "sk-secret-must-not-appear",
+      });
+      await service.finishKeySource({ providerId: "acme", commit: true });
+      await service.prepareKeySource({
+        providerId: "acme",
+        mode: "runtime-env",
+        apiKey: "sk-secret-must-not-appear",
+      });
+      await service.finishKeySource({ providerId: "acme", commit: false });
+    } finally {
+      console.log = originalLog;
+    }
+
+    const finish = logged.filter(
+      (entry) => entry === "codex provider key finish",
+    );
+    expect(finish).toHaveLength(2);
+    const payloads = logged.filter(
+      (entry): entry is Record<string, unknown> =>
+        typeof entry === "object" &&
+        entry !== null &&
+        "commit" in (entry as Record<string, unknown>),
+    );
+    expect(payloads.map((entry) => entry.commit)).toEqual([true, false]);
+    for (const entry of payloads) {
+      expect(entry.providerId).toBe("acme");
+      expect(entry.mode).toBe("runtime-env");
+      // Environment 身份只落哈希，不落 SSH 主机地址。
+      expect(String(entry.scope)).toMatch(/^[A-F0-9]{16}$/);
+      expect(String(entry.scope)).not.toContain("host");
+      expect(entry.barrierBegan).toBe(true);
+    }
+    // 日志不得包含 Key 材料。
+    expect(logged.map((entry) => String(entry)).join("|")).not.toContain(
+      "sk-secret-must-not-appear",
+    );
+  });
+
   it("keeps begin→install ordering through rotation callbacks", async () => {
     const credentials = createIsolatedCredentialService();
     const calls: string[] = [];
