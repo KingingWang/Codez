@@ -9,6 +9,11 @@
 3. 所有已提交输入共享一个 CLI `CommandInbox` FIFO；UI 只保留 draft 与 optimistic overlay。
 4. transport/profile 只能改变中间帧，不能改变 command、queue、row 或最终状态语义。
 
+对于 `web-remote-replayable`，reasoning 行的流式 `row.delta(path="text")` 属于可过滤的中间
+帧；`row.appended`、终态 `row.upserted`、snapshot/gap 的 seq 水位仍然保留。由于 reasoning
+与 assistantText 共用 `text` path，过滤依据是 CLI projection 的权威 row kind，而不是新增 wire
+path 或修改 wire version。
+
 ## 1. Wire v3 握手与可信连接
 
 ```ts

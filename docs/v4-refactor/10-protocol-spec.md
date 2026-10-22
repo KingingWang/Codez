@@ -401,6 +401,7 @@ interface TopicDeclaration<S, D> {
 ```ts
 interface DeliveryProfile {
   flushWindowMs: number; // 通道层唯一合并点的窗口
+  reasoningDeltas: boolean; // 是否下发 reasoning 行的流式 row.delta
   streamPaths: Record<StreamablePath, boolean>; // 哪些路径流式下发
   streamOutputCapBytes: number; // 流式期 output.text 上限（0 = 不流式）
   toolProgress: boolean; // 运行中是否下发 ToolProgress
@@ -409,12 +410,14 @@ interface DeliveryProfile {
 const DELIVERY_PROFILES = {
   continuous: {
     flushWindowMs: 30,
+    reasoningDeltas: true,
     streamPaths: { text: true, inputText: true, "output.text": true, summaryText: true },
     streamOutputCapBytes: 262144,
     toolProgress: false,
   },
   replayable: {
     flushWindowMs: 150,
+    reasoningDeltas: false,
     streamPaths: { text: true, inputText: false, "output.text": false, summaryText: false },
     streamOutputCapBytes: 0,
     toolProgress: true,
@@ -423,6 +426,12 @@ const DELIVERY_PROFILES = {
 ```
 
 - profile 只由 trusted `clientMode` 注入：desktop/SSH/WSL/Docker=`continuous`；mobile remote/WebSocket=`replayable`。`SubscribeParams` 和 UI-facing API 不暴露选择项。
+- `replayable` 过滤 `reasoning` 行的 `row.delta(path="text")`，但保留空的
+  `row.appended`、终态 `row.upserted` 以及连续的 seq 区间；assistantText 的同 path delta
+  不受影响。快照/resume 中的 streaming reasoning 只保留生命周期状态，settled reasoning
+  使用有限预览。
+- 该过滤由 CLI 投影的权威 row kind 执行；不新增 wire path、不改变 v4 wire version，旧客户端
+  仍按既有 `row.appended/upserted` schema 解析。
 - **完成态与 profile 无关**（R-10）：任何 profile 下，工具完成时 `row.upserted` 的 `output` 采用同一份终态截断参数（§8），收敛性黄金测试因此可断言「终态逐字节一致」。
 - 客户端代码禁止出现 profile 变量（05 试金石）。
 - 被 profile 过滤的事件必须最终被某个不可过滤事件收口（05 不变量）。
@@ -1548,6 +1557,8 @@ queue 或 relay/main 业务状态；桌面 `desktop-continuous` 与手机 `web-r
 `v4/conversation/rowPayload` 用于按需拉取已完成折叠行（`toolCall` / `reasoning`）的完整载荷：
 
 - 首屏 `ConversationSnapshot`、终态 `row.upserted` 与 `rows/range` 对已完成的非外提 `toolCall` 和 `reasoning` 行进行确定性紧凑化（`output.text` 512B 内联预览、`file_diff` 折叠态省略 `structuredPatch` Hunk 行、大体积 `input` 保留路径/命令摘要键并标记 `inputTruncated`、长 `reasoning.text` 512B 预览并标记 `truncated`），保证 `desktop-continuous` 与 `web-remote-replayable` 终态逐字节一致。
+- replayable 的 streaming reasoning 行在首屏快照和 rows/range 中以空正文表示；完整思考正文不通过
+  live/replayable 流自动传输。
 - 用户在客户端展开具体工具卡片或思考块时，Store 自动发起单飞 `v4/conversation/rowPayload` 查询，校验 `atLogEpoch === snapshot.logEpoch` 后原地替换为完整行（`output.text` 仍受 `toolOutputFinalHeadBytes + toolOutputFinalTailBytes` 64KiB 保护上界约束），并在同 `logEpoch` 内防后续快照冲刷。
 
 ### 7.3 commands/query（重连对账）

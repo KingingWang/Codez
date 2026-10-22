@@ -575,6 +575,11 @@ export class ProductProjection {
     return null;
   }
 
+  /** 供 delivery profile 过滤区分同一 text path 下的 assistant 与 reasoning。 */
+  getRowKind(rowId: number): ConversationRow["kind"] | undefined {
+    return this.findRow(rowId)?.kind;
+  }
+
   /** assistant 守恒：被拒收的正文流事件数（>0 = 投影可能缺段，需重 hydration）。 */
   getDroppedContentStreamEventCount(): number {
     return this.droppedContentStreamEventCount;

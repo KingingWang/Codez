@@ -74,8 +74,12 @@ live 日志只覆盖部分 transcript，gateway 会按 footprint 检查选择完
 ## 订阅与投递边界
 
 - desktop 使用 `desktop-continuous`：保留在线流式 `row.delta`；
-- mobile remote 使用 `web-remote-replayable`：依赖 snapshot/gap 恢复，可过滤不可重放的中间 delta；
+- mobile remote 使用 `web-remote-replayable`：依赖 snapshot/gap 恢复，过滤 reasoning 的中间
+  `row.delta`，只保留空的 streaming 行和终态预览；
 - profile 可以改变中间帧，不能改变 command、row 终态或最终 projection；
+- reasoning 的 `row.delta` 与 assistant 的 `row.delta` 共用 `path="text"`，由 CLI
+  ProductProjection 的权威 row kind 在 publisher 过滤，不能在 wire schema 中新增路径；
+- 被过滤的 delta 仍推进订阅 seq 区间，保证 gap/resume 的水位连续；
 - 每个 connection/subscription 独立维护 ownership、seq、logEpoch 与恢复代际；
 - Host、desktop main 与 relay 不保存 projection，也不建立第二个 reducer。
 

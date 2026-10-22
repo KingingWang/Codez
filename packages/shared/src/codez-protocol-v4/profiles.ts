@@ -95,7 +95,10 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 function isExemptToolRow(row: ToolCallRow): boolean {
-  const normalized = row.toolName.trim().toLowerCase().replace(/[^a-z0-9_]/gu, "");
+  const normalized = row.toolName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/gu, "");
   if (EXEMPT_INLINE_TOOL_NAMES.has(normalized)) return true;
   if (row.display?.kind === "node_repl_images" && row.display.source === "browser_turn_end") {
     return true;
@@ -307,11 +310,16 @@ export function compactConversationRowForWire(row: ConversationRow): Conversatio
 
 export function filterConversationRowsForProfile(
   rows: readonly ConversationRow[],
-  _profile: DeliveryProfile,
+  profile: DeliveryProfile,
 ): ConversationRow[] {
-  // HookInvocationRow 已收敛为 desktop/mobile 共用的 client-safe summary；当前没有
-  // profile-specific 完整行，仍保留纯函数边界供未来受控 row 使用。
-  return [...rows];
+  return rows.map((row) => {
+    if (row.kind !== "reasoning" || profile.reasoningDeltas) return row;
+    if (row.state === "streaming") {
+      // replayable 只展示思考生命周期；正文等终态 upsert 的有限预览。
+      return row.text === "" ? row : { ...row, text: "" };
+    }
+    return compactReasoningRowForWire(row);
+  });
 }
 
 /**
@@ -322,9 +330,21 @@ export function filterConversationRowsForProfile(
 export function filterConversationDeltasForProfile(
   deltas: readonly ConversationDelta[],
   profile: DeliveryProfile,
+  getRowKind: (rowId: number) => ConversationRow["kind"] | undefined = () => undefined,
 ): ConversationDelta[] {
   return deltas.filter((delta) => {
-    if (delta.op === "row.delta") return profile.streamPaths[delta.path];
+    if (delta.op === "row.delta") {
+      // 修复原因：reasoning 与 assistantText 共用 path="text"，仅按 streamPaths 无法区分；
+      // replayable 必须依赖权威 row kind 丢弃思考中间正文，同时保留回答正文。
+      if (
+        delta.path === "text" &&
+        !profile.reasoningDeltas &&
+        getRowKind(delta.rowId) === "reasoning"
+      ) {
+        return false;
+      }
+      return profile.streamPaths[delta.path];
+    }
     return true;
   });
 }

@@ -4,6 +4,7 @@ import {
   filterConversationDeltasForProfile,
   filterConversationRowsForProfile,
   hookInvocationRowSchema,
+  type ReasoningRow,
   type HookInvocationRow,
 } from "../src/codez-protocol-v4/index.js";
 
@@ -52,6 +53,41 @@ describe("V4 Hook turn summary schema", () => {
       displayName: "validate-write",
       sourceKind: "project",
     });
+  });
+
+  it("replayable 只过滤 reasoning text delta，不过滤 assistant text delta", () => {
+    const deltas = [
+      { op: "row.delta" as const, rowId: 1, path: "text" as const, append: "thought" },
+      { op: "row.delta" as const, rowId: 2, path: "text" as const, append: "answer" },
+    ];
+    const getRowKind = (rowId: number) => (rowId === 1 ? "reasoning" : "assistantText");
+
+    expect(
+      filterConversationDeltasForProfile(deltas, DELIVERY_PROFILES.replayable, getRowKind),
+    ).toEqual([deltas[1]]);
+    expect(
+      filterConversationDeltasForProfile(deltas, DELIVERY_PROFILES.continuous, getRowKind),
+    ).toEqual(deltas);
+  });
+
+  it("replayable 快照中的 streaming reasoning 只保留生命周期状态", () => {
+    const row: ReasoningRow = {
+      rowId: 4,
+      turnId: "turn-1",
+      entityId: "reasoning-1",
+      productTurnId: "turn-1",
+      visibility: "visible",
+      createdAt: 1_700_000_000_000,
+      createdAtSeq: 4,
+      kind: "reasoning",
+      text: "secret thought",
+      state: "streaming",
+    };
+
+    expect(filterConversationRowsForProfile([row], DELIVERY_PROFILES.replayable)).toEqual([
+      { ...row, text: "" },
+    ]);
+    expect(filterConversationRowsForProfile([row], DELIVERY_PROFILES.continuous)).toEqual([row]);
   });
 
   it("rejects Desktop-only command and path details at the strict wire boundary", () => {

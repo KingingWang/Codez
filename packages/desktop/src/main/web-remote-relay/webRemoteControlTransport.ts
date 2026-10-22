@@ -53,6 +53,14 @@ function isRawTransportCandidate(payload: unknown): boolean {
   return type === "rpc-frame" || type === "rpc-frame-ack";
 }
 
+interface RelayTrafficWindow {
+  startedAt: number;
+  logicalAppBytes: number;
+  outerRelayBytes: number;
+  frameCount: number;
+  gzipFrameCount: number;
+}
+
 export class WebRemoteControlDeviceTransport {
   private socket?: WebSocket;
   private state: WebRemoteControlDeviceTransportState = "idle";
@@ -71,6 +79,7 @@ export class WebRemoteControlDeviceTransport {
   private e2eeHandshakeTimer?: ReturnType<typeof setTimeout>;
   private peerRelayCaps = new Set<string>();
   private readonly gzipEnvelopeCache = new WeakMap<object, WebRemoteControlGzipEnvelope | null>();
+  private relayTrafficWindow?: RelayTrafficWindow;
   private readonly retry = new WebRemoteControlV2RetryPolicy();
   private readonly heartbeat = new WebRemoteControlV2Heartbeat(
     () => this.send({ type: "pair_status_query", client_ts: Math.floor(Date.now() / 1000) }),
@@ -113,10 +122,8 @@ export class WebRemoteControlDeviceTransport {
     if (this.options.e2eeKey && !this.e2ee?.isReady()) {
       return { kind: "unavailable" };
     }
-    const prepared = this.serializer.prepare(
-      this.wrapOutboundWithGzip(payload),
-      Math.floor(Date.now() / 1000),
-    );
+    const wrapped = this.wrapOutboundWithGzip(payload);
+    const prepared = this.serializer.prepare(wrapped, Math.floor(Date.now() / 1000));
     if (this.serializer.isOversize(prepared)) {
       return {
         kind: "oversize",
@@ -127,6 +134,7 @@ export class WebRemoteControlDeviceTransport {
     if (this.state !== "paired" || this.socket?.readyState !== WebSocket.OPEN)
       return { kind: "unavailable" };
     this.socket.send(prepared.json);
+    this.noteOutboundRelayTraffic(payload, prepared.bytes, wrapped !== payload, Date.now());
     return { kind: "sent", bytes: prepared.bytes };
   }
 
@@ -144,6 +152,53 @@ export class WebRemoteControlDeviceTransport {
     }
     this.gzipEnvelopeCache.set(payload, envelope);
     return envelope ?? payload;
+  }
+
+  private noteOutboundRelayTraffic(
+    payload: WebRemoteControlAppPayload,
+    outerRelayBytes: number,
+    gzipApplied: boolean,
+    now: number,
+  ): void {
+    const current = this.relayTrafficWindow;
+    if (current && now - current.startedAt >= 60_000) {
+      this.flushRelayTrafficWindow(now);
+    }
+    const window = this.relayTrafficWindow ?? {
+      startedAt: now,
+      logicalAppBytes: 0,
+      outerRelayBytes: 0,
+      frameCount: 0,
+      gzipFrameCount: 0,
+    };
+    const logicalJson = JSON.stringify(payload) ?? "";
+    window.logicalAppBytes += Buffer.byteLength(logicalJson, "utf8");
+    window.outerRelayBytes += outerRelayBytes;
+    window.frameCount += 1;
+    if (gzipApplied) window.gzipFrameCount += 1;
+    this.relayTrafficWindow = window;
+  }
+
+  private flushRelayTrafficWindow(now = Date.now()): void {
+    const window = this.relayTrafficWindow;
+    if (!window || window.frameCount === 0) {
+      this.relayTrafficWindow = undefined;
+      return;
+    }
+    this.options.logger.info("[web-remote-control] relay traffic", {
+      direction: "device-to-terminal",
+      windowMs: Math.max(0, now - window.startedAt),
+      logicalAppBytes: window.logicalAppBytes,
+      outerRelayBytes: window.outerRelayBytes,
+      frameCount: window.frameCount,
+      gzipFrameCount: window.gzipFrameCount,
+      gzipRatio:
+        window.logicalAppBytes === 0
+          ? 1
+          : Number((window.outerRelayBytes / window.logicalAppBytes).toFixed(3)),
+      relayGzipNegotiated: this.peerRelayCaps.has(WEB_REMOTE_CONTROL_CAP_RELAY_GZIP_V1),
+    });
+    this.relayTrafficWindow = undefined;
   }
 
   private sendClientCapabilities(): void {
@@ -359,10 +414,7 @@ export class WebRemoteControlDeviceTransport {
             kind: previousGeneration === this.generation ? "same-socket" : "reconnected-socket",
           });
       }
-    } else if (
-      message.type === "data" &&
-      (this.state === "paired" || this.state === "securing")
-    ) {
+    } else if (message.type === "data" && (this.state === "paired" || this.state === "securing")) {
       let value: unknown = message.payload;
       if (this.options.e2eeKey) {
         try {
@@ -435,6 +487,7 @@ export class WebRemoteControlDeviceTransport {
 
   private closeSocket(): void {
     // 先撤销当前代，再关闭；旧 close/ACK 及异步 token 结果均不能推进下一代。
+    this.flushRelayTrafficWindow();
     this.generation += 1;
     this.authenticated = false;
     this.resetE2ee();
