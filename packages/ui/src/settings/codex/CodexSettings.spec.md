@@ -141,7 +141,12 @@ Desktop NewTask and active-session composers read `config/read` and paginated
 queried for Codex model readiness or submission. Catalog/config own defaults;
 the renderer owns only the next submission's selection. Unknown capabilities
 must not be synthesized into a legacy provider registry. Runtime restart,
-workspace/attachment change and explicit refresh invalidate the projection.
+workspace/attachment change and explicit refresh invalidate the projection. Transient
+runtime-recycle (`Codez agent transport closed`, `Codez Protocol client disposed`,
+`Codez Agent runtime is not running`) and read-only RPC timeout errors during
+catalog reads retry with bounded backoff (`250ms / 1_000ms / 3_000ms`) while
+keeping status in `loading`, so draft sessions self-heal and wake up a recycled
+runtime without leaving composer submission permanently blocked.
 
 An effective `config.model` absent from `model/list` remains selectable as an
 explicitly configured native model. It is labeled configured, not synthesized
