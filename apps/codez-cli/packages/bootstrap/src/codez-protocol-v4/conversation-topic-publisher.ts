@@ -356,7 +356,11 @@ export class ConversationTopicPublisher {
     subscription: Subscription,
   ): readonly ConversationDelta[] {
     const filtered = pluginInstallDeltasForConnection(
-      filterConversationDeltasForProfile(deltas, subscription.profile),
+      filterConversationDeltasForProfile(
+        deltas,
+        subscription.profile,
+        (rowId) => this.projection.getRowKind(rowId),
+      ),
       subscription.pluginDiscoveryUi,
     );
     if (subscription.workflowRunDeltas) return filtered;
