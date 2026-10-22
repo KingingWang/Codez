@@ -41,5 +41,11 @@ codex view_image call → core TurnItem::ImageView (only after the image file
 - Projection: an `imageView` item yields one toolCall row with
   `toolName: "view_image"`, `status: "success"` and `input: { path }`; the item
   no longer appears in the unknown-item fallback test.
+- Session-owned bridge attachment resolution: when `imageView.path` points to a
+  session-owned staged attachment blob (`.../attachments/objects/<uuid>.data`),
+  `BridgeSnapshots` enriches `row.input.fileName` from the verified attachment
+  manifest, and `fileService.readMediaPreview` sniffs PNG/JPEG/GIF/WebP magic
+  bytes when the path has no known image extension so `PreviewPane` renders the
+  image instead of raw `.data` text.
 - UI: the card renders the file chip (icon + name + path); clicking it opens
   the preview pane with the rendered image (local desktop workspace).

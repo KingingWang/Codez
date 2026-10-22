@@ -58,9 +58,55 @@ function isCompactResult(value: string): boolean {
   );
 }
 
+function extractMcpEnvelopeResultText(parsed: unknown): string | undefined {
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return undefined;
+  const record = parsed as Record<string, unknown>;
+  if (!Array.isArray(record.content)) return undefined;
+  if (record.structuredContent !== null && record.structuredContent !== undefined) {
+    return typeof record.structuredContent === "string"
+      ? record.structuredContent
+      : JSON.stringify(record.structuredContent, null, 2);
+  }
+  const lines: string[] = [];
+  for (const item of record.content) {
+    if (typeof item !== "object" || item === null || Array.isArray(item)) continue;
+    const entry = item as Record<string, unknown>;
+    if (entry.type === "text" && typeof entry.text === "string") {
+      lines.push(entry.text);
+    } else if (entry.type === "image") {
+      lines.push("[image]");
+    } else if (entry.type === "audio") {
+      lines.push("[audio]");
+    } else if (
+      entry.type === "resource" &&
+      typeof entry.resource === "object" &&
+      entry.resource !== null
+    ) {
+      const resource = entry.resource as Record<string, unknown>;
+      if (typeof resource.text === "string") lines.push(resource.text);
+      else if (typeof resource.uri === "string") lines.push(`[resource: ${resource.uri}]`);
+    }
+  }
+  return lines.length > 0 ? lines.join("\n") : undefined;
+}
+
 function stringifyMcpResult(value: unknown): string | undefined {
-  if (typeof value === "string") return value;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.startsWith("{")) {
+      try {
+        const parsed: unknown = JSON.parse(trimmed);
+        const extracted = extractMcpEnvelopeResultText(parsed);
+        if (extracted !== undefined) return extracted;
+      } catch {
+        // Keep raw string when it is not valid JSON.
+      }
+    }
+    return value;
+  }
   if (value === undefined || value === null) return undefined;
+  const extracted = extractMcpEnvelopeResultText(value);
+  if (extracted !== undefined) return extracted;
   try {
     return JSON.stringify(value, null, 2);
   } catch {
