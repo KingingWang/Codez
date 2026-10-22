@@ -82,7 +82,10 @@ test("unchanged history queries share one derived projection and a touch invalid
   store.touch(thread.id);
   const next = await snapshots.conversation(thread.id);
   assert.notStrictEqual(next, first);
-  assert.deepEqual(next.rows.window.map((row) => row.rowId), first.rows.window.map((row) => row.rowId));
+  assert.deepEqual(
+    next.rows.window.map((row) => row.rowId),
+    first.rows.window.map((row) => row.rowId),
+  );
 });
 
 test("multi-step turn accumulates tokenUsage across requests and ignores duplicate notifications", async () => {
@@ -416,4 +419,46 @@ test("topic snapshot compacts settled heavy tool rows while queryBridgeRowPayloa
   if (fullPayload.row?.kind === "toolCall") {
     assert.equal(fullPayload.row.output?.text, heavyOutput);
   }
+});
+
+test("imageView rows resolve session-owned bridge attachment fileName without rewriting path", async () => {
+  const thread = threadFixture();
+  const blobPath = "/private/objects/00000000-0000-4000-8000-000000000099.data";
+  thread.turns[0]!.items.push({
+    type: "imageView",
+    id: "img-att-1",
+    path: blobPath,
+  } as never);
+  const rpc = port();
+  const store = new ThreadStateStore(rpc, cwd);
+  store.markStarted(thread);
+  const attachments = {
+    async findNativeAttachment(candidate: string, sessionId: string) {
+      assert.equal(candidate, blobPath);
+      assert.equal(sessionId, thread.id);
+      return {
+        ref: "codez-attachment://00000000-0000-4000-8000-000000000099",
+        fileName: "pasted-screenshot.png",
+        mime: "image/png",
+        bytes: 128,
+      };
+    },
+  } as unknown as AttachmentStore;
+  const snapshots = new BridgeSnapshots(
+    { rpc, cwd },
+    store,
+    new InteractionBroker(rpc, () => {}),
+    cwd,
+    attachments,
+  );
+  const snapshot = await snapshots.conversation(thread.id);
+  const row = snapshot.rows.window.find(
+    (entry) => entry.kind === "toolCall" && entry.toolCallId === "img-att-1",
+  );
+  assert.equal(row?.kind, "toolCall");
+  if (row?.kind !== "toolCall") return;
+  assert.deepEqual(row.input, {
+    path: blobPath,
+    fileName: "pasted-screenshot.png",
+  });
 });
