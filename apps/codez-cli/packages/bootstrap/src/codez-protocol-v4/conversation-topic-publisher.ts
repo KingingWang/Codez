@@ -393,7 +393,11 @@ export class ConversationTopicPublisher {
     deltas: readonly ConversationDelta[],
     subscription: Subscription,
   ): readonly ConversationDelta[] {
-    const filtered = filterConversationDeltasForProfile(deltas, subscription.profile);
+    const filtered = filterConversationDeltasForProfile(
+      deltas,
+      subscription.profile,
+      (rowId) => this.projection.getRowKind(rowId),
+    );
     if (subscription.workflowRunDeltas) return filtered;
     return encodeConversationDeltasForLegacy(filtered, this.projection.getSnapshot().workflowRuns);
   }
