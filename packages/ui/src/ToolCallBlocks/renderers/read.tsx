@@ -118,6 +118,7 @@ function readReadMetadataFromRaw(raw: unknown): {
 
 function readReadMetadataFromValue(value: unknown): {
   path?: string;
+  fileName?: string;
   entryType: "file" | "directory";
 } {
   if (!isPlainRecord(value)) {
@@ -125,7 +126,8 @@ function readReadMetadataFromValue(value: unknown): {
   }
 
   return {
-    path: readStringField(value, ["filePath", "file_path", "path", "filename"]),
+    path: readStringField(value, ["filePath", "file_path", "path", "savedPath", "filename"]),
+    fileName: readStringField(value, ["fileName"]),
     entryType: normalizeReadEntryType(readStringField(value, ["type", "fileType", "entryType"])),
   };
 }
@@ -139,12 +141,18 @@ function createReadSummary(
 ): ReadSummary {
   const entryType = options.entryType ?? "file";
   const descriptor = resolveFileDisplayDescriptor(path);
+  const overrideDescriptor = options.fileName
+    ? resolveFileDisplayDescriptor(options.fileName)
+    : null;
 
   return {
     path,
     fileName: options.fileName ?? descriptor.fileName,
     filePath: descriptor.filePath,
-    fileIconSrc: entryType === "directory" ? FOLDER_FILE_ICON_SRC : descriptor.fileIconSrc,
+    fileIconSrc:
+      entryType === "directory"
+        ? FOLDER_FILE_ICON_SRC
+        : (overrideDescriptor?.fileIconSrc ?? descriptor.fileIconSrc),
     entryType,
   };
 }
@@ -198,6 +206,7 @@ export function buildReadSummary(
     // 不会补 parsed_cmd，也不一定把相同字段镜像到 raw.rawInput.filePath。
     // 之前 summary 构建会直接漏掉这类 read 卡片，导致 primary/secondary 都退回标题。
     return createReadSummary(directInputMetadata.path, {
+      fileName: directInputMetadata.fileName,
       entryType: directInputMetadata.entryType,
     });
   }
@@ -256,6 +265,10 @@ export function ReadToolCallBlock(context: ToolCallBlockRenderContext) {
   const { toolCallNode, isRunning, statusLabel, errorText, onOpenCodeViewer } = context;
   const { toolCall } = toolCallNode;
   const summary = buildReadSummary(toolCall);
+  const revisedPrompt =
+    !summary && isPlainRecord(toolCall.input)
+      ? readStringField(toolCall.input, ["revisedPrompt"])
+      : undefined;
   const canOpenPreview = summary?.entryType === "file" && Boolean(onOpenCodeViewer);
   const openFilePreview = useCallback(() => {
     if (!summary || summary.entryType !== "file" || !onOpenCodeViewer) {
@@ -273,9 +286,12 @@ export function ReadToolCallBlock(context: ToolCallBlockRenderContext) {
       summary ? (
         <ReadFileChip summary={summary} clickable={canOpenPreview} onClick={openFilePreview} />
       ) : (
-        (toolCall.title ?? toolCall.kind ?? intl.formatMessage({ id: "chat.toolCall.read.read" }))
+        (revisedPrompt ??
+        toolCall.title ??
+        toolCall.kind ??
+        intl.formatMessage({ id: "chat.toolCall.read.read" }))
       ),
-    [canOpenPreview, intl, openFilePreview, summary, toolCall.kind, toolCall.title],
+    [canOpenPreview, intl, openFilePreview, revisedPrompt, summary, toolCall.kind, toolCall.title],
   );
 
   return (
