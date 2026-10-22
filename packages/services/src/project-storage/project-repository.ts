@@ -103,16 +103,11 @@ function resolveDirectories(
     row?.cli_created_at != null &&
     row.deleted === 0 &&
     (row.cli_deleted == null || row.cli_deleted === 0) &&
-    workspacePath === task.workspacePath &&
-    readProjects(db, false).some(
-      (candidate) =>
-        candidate.hostId === ownerHostId &&
-        candidate.roots.length === 1 &&
-        candidate.roots[0]?.rootPath === workspacePath,
-    )
+    workspacePath === task.workspacePath
   ) {
-    // 修复原因：已索引的外部 Codex 历史可以在同目录远端项目的只读视图中打开，
-    // 但 project_id=NULL 是已裁决的组织态，不能为了恢复把它改写或绕开创建门禁。
+    // 修复原因（issue #19）：已索引的外部 Codex 历史（含未添加为项目的任意远端目录）
+    // 可以在侧栏任务区或同目录远端项目的只读视图中打开；project_id=NULL 是已裁决的组织态，
+    // 不能为了恢复把它改写或绕开远程创建必选项目的门禁。
     if (additionalDirectories.length > 0) throw new Error("project.remote-single-root-required");
     return { workspacePath, projectId: null, additionalDirectories };
   }

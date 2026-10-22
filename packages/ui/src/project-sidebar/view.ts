@@ -168,7 +168,7 @@ export function countProjectTreeUnreadTasks(tree: ProjectTree): number {
     // host=local 的 null-project 任务；其余任务必须归属渲染项目。
     const visible =
       task.pinned ||
-      (task.projectId == null && task.hostId === "local") ||
+      task.projectId == null ||
       renderedProjectKeys.has(`${task.hostId}::${task.projectId}`) ||
       singleRootProjects.some((project) => taskVisibleInProject(task, project));
     if (!visible) {

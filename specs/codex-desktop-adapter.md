@@ -903,7 +903,18 @@ Opening/adding a connected Codex project explicitly refreshes its native session
 index, including conversations created by Codex CLI outside this desktop and
 newly added projects whose workspace tab has not been activated yet (local roots
 through base session discovery; online remote roots through the existing
-Source settings attachment after workspace identity resolution). A warm
+Source settings attachment after workspace identity resolution). Explicit
+`session/list` discovery on an unloaded workspace ensures the workspace's
+`taskIndexSyncer` subscription is registered before starting the read-only
+runtime so `runtimeLifecycle(available)` and the post-response
+`sessions-index` refresh seed missing shell rows into `tasks-index.sqlite` and
+notify `state:projects` even before a conversation tab is opened. In addition,
+each Codex Host (local and standalone remote Source Server) watches its native
+`$CODEX_HOME/sessions` rollout tree (initial scan on startup + debounced
+recursive fs watch + `readTree` catch-up) to index user-facing CLI/exec/vscode/
+appServer rollouts across all directories—including directories that have not
+been added as projects—into `tasks-index.sqlite` via `applyCliFacts` and
+publish `state:projects`. A warm
 connection is not proof that the persisted thread list is current. Discovery is
 read-only, paginated, scoped to the execution cwd and the remote attachment's
 existing workspace identity; it never copies history into a second execution store.
@@ -940,7 +951,7 @@ remote task-index syncer → insert missing shell metadata → workspace list in
 Window Host task membership + native live details → single-root directory view
                                                           ↓
 user opens unclassified history → remote Host validates indexed task, workspace
- identity, live single-root project and cwd → native resume without roots override
+ identity and cwd → native resume without roots override
                                      ├─ desktop continuous: existing Host attachment
                                      └─ mobile replayable: same session, snapshot + replay
 ```

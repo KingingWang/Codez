@@ -178,6 +178,13 @@ export interface CodezTaskIndexSyncer {
 interface CreateCodezTaskIndexSyncerOptions {
   agentService: ICodezAgentService;
   taskIndexRepo: TaskIndexRepo;
+  /**
+   * 当 sessions-index 后台发现或补齐新任务行（reason === "task_created"）时通知外部目录观察者。
+   * 修复原因（issue #18/#19）：未打开 tab 的项目或未建项目的新目录没有对应的
+   * onDynamicWorkspaceEvent 订阅者，仅发 workspace 级事件无法让侧栏感知新增行，
+   * 需要同步触发 Host 级 state:projects 失效（远端 Source Server 经连接管理器转发到桌面）。
+   */
+  onTaskRowsCreated?: () => void;
 }
 
 /** phase 终态集合（sessions-index 的 conflated 最新态里判定迁移用）。 */
@@ -274,6 +281,7 @@ export function createCodezTaskIndexSyncer(
   options: CreateCodezTaskIndexSyncerOptions,
 ): CodezTaskIndexSyncer {
   const { agentService, taskIndexRepo } = options;
+  const onTaskRowsCreated = options.onTaskRowsCreated;
   // task index 的事件摄入从旧协议 shadow 订阅（session/subscribe +
   // session/event + state.updated）整体迁到 v4 帧——sessions-index topic 提供
   // status(phase)/title/lastActivity 的 workspace 级 conflated 最新态，
@@ -450,7 +458,7 @@ export function createCodezTaskIndexSyncer(
     target: WorkspaceBroadcastTarget,
     taskMeta: CodezTaskMeta | undefined,
     reason: CodezWorkspaceTaskListChanged["reason"],
-    options?: Pick<CodezWorkspaceTaskListChanged, "unreadSignal">,
+    emitOptions?: Pick<CodezWorkspaceTaskListChanged, "unreadSignal">,
   ): void {
     // 排查日志（左侧列表随输入框操作刷新）：确认哪些操作在发 task list 广播、reason 是什么。
     logger.debug(
@@ -467,8 +475,11 @@ export function createCodezTaskIndexSyncer(
       taskId: target.taskId,
       reason,
       ...(taskMeta ? { taskMeta } : {}),
-      ...(options?.unreadSignal ? { unreadSignal: options.unreadSignal } : {}),
+      ...(emitOptions?.unreadSignal ? { unreadSignal: emitOptions.unreadSignal } : {}),
     });
+    if (reason === "task_created") {
+      onTaskRowsCreated?.();
+    }
   }
 
   async function resyncTaskIndexRowFromAgent(

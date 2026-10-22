@@ -6,6 +6,7 @@ import type { ProjectTask } from "@/project-sidebar/contract.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import { ProjectTaskRows } from "@/project-sidebar/ProjectTaskRows.js";
 import { ProjectNode } from "@/project-sidebar/ProjectNode.js";
+import { ProjectSections } from "@/project-sidebar/ProjectSections.js";
 import { ProjectTaskListContext } from "@/project-sidebar/ProjectTaskListContext.js";
 import { useProjectSidebarPreferences } from "@/project-sidebar/useProjectSidebarPreferences.js";
 import { selectProjectRows, projectHasUnread } from "@/project-sidebar/view.js";
@@ -362,6 +363,81 @@ it("shows empty project rows but keeps an empty pinned section absent", () => {
   );
   expect(screen.queryByText("taskList.noTasks")).toBeNull();
   expect(screen.queryByText("taskList.pinnedSection")).toBeNull();
+});
+
+it("renders all local and retained remote sessions across projects and unadded directories in the Tasks section", () => {
+  const localProjectTask = task("local-project-task", {
+    hostId: "local",
+    projectId: "p-local",
+    workspacePath: "/local/project",
+    updatedAt: 30,
+  });
+  const localUnclassifiedTask = task("local-cli-task", {
+    hostId: "local",
+    projectId: null,
+    workspacePath: "/local/unadded",
+    updatedAt: 20,
+  });
+  const remoteUnclassifiedTask = task("remote-cli-task", {
+    hostId: "remote:server:srv-1",
+    projectId: null,
+    workspacePath: "/remote/unadded",
+    workspaceIdentity: "remote:server:srv-1:/remote/unadded",
+    updatedAt: 40,
+  });
+  const remoteProjectTask = task("remote-project-task", {
+    hostId: "remote:server:srv-1",
+    projectId: "p-remote",
+    workspacePath: "/remote/project",
+    workspaceIdentity: "remote:server:srv-1:/remote/project",
+    updatedAt: 10,
+  });
+  render(
+    createElement(
+      TooltipProvider,
+      {},
+      createElement(ProjectSections, {
+        tree: {
+          projects: [project],
+          tasks: [
+            localProjectTask,
+            localUnclassifiedTask,
+            remoteUnclassifiedTask,
+            remoteProjectTask,
+          ],
+        },
+        projects: [project],
+        directory: {
+          hosts: [
+            {
+              id: "remote:server:srv-1",
+              membershipId: "m-1",
+              kind: "ssh",
+              target: { kind: "ssh", host: "host", port: 22, username: "dev" },
+              position: 0,
+            },
+          ],
+          entries: [],
+        },
+        renderProject: () => null,
+        onSelect: vi.fn(),
+        refresh,
+        onCreate: vi.fn(),
+        onAddProject: vi.fn(),
+        hasExpandedProjects: false,
+        canToggleProjects: true,
+        onToggleProjects: vi.fn(),
+        onReorder: vi.fn(),
+        loading: false,
+      }),
+    ),
+  );
+  expect(screen.getAllByTestId("row").map((row) => row.textContent)).toEqual([
+    "remote-cli-taskArchive",
+    "local-project-taskArchive",
+    "local-cli-taskArchive",
+    "remote-project-taskArchive",
+  ]);
 });
 
 it("同步同一控制端的跨窗口排序，同时保留当前窗口未加载的离线入口", () => {

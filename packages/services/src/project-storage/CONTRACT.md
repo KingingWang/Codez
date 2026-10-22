@@ -40,7 +40,7 @@ Host 在拿到原生分配的 `sessionId`（新建或 fork）后立即预留空�
 
 远程单 root 项目只读展示同 Host、同 canonical workspace identity 与 cwd 的既有历史，
 包括未归属行。远程无归属历史的目录解析仅对已经落 CLI 事实的现有 task 开放，
-并要求当前 Host 有未删除的同目录单 root 项目；缺行、跨 Host、非单 root、
+并允许无匹配项目的远端外部 CLI 会话在任务区只读打开；缺行、跨 Host、
 执行附加目录仍拒绝。解析不修改 task 的 `project_id`、cwd 或 Codex 原生 roots。
 
 启动入口复用 session 模块公开的旧 Repo 与迁移适配器：先 SQL 迁移并提交，再逐一 ensureReady/close，最后标记 prepared。Worker 必须注入旧 settings 以完成首次项目导入；进度复制迁移事实，失败不撤回已提交计数。storage-startup 子路径保持不变。
