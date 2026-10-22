@@ -11,6 +11,7 @@ import { cn } from "@/components/lib/utils.js";
 import { Badge } from "@/components/ui/badge.js";
 import { toast } from "@/components/ui/toast.js";
 import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu.js";
+import { TaskHoverCard } from "@/project-sidebar/TaskHoverCard.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import {
   deriveTaskLeadingIndicator,
@@ -30,7 +31,6 @@ import { GroupedTaskContextMenuContent } from "@/project-sidebar/grouped/task-co
 import { ProjectTaskListContext } from "@/project-sidebar/ProjectTaskListContext.js";
 import { TaskRowActionButton } from "@/workspace-grouped-tasks/task-row-action-button.js";
 import { TaskInteractionBadge } from "@/TaskInteractionBadge.js";
-import { TaskRowIdentityHoverCard } from "@/task-row-hover/index.js";
 import {
   TASK_GROUP_ROW_CLASS,
   TASK_GROUP_ROW_LINE_CLASS,
@@ -451,7 +451,7 @@ function GroupedTaskRowComponent({
             </span>
           ) : null}
           {shouldMountHoverActions ? (
-            <span className="flex shrink-0 items-center gap-0.5">
+            <span data-task-row-actions="true" className="flex shrink-0 items-center gap-0.5">
               {canOpenFileTree ? (
                 <TaskRowActionButton
                   label={intl.formatMessage({ id: "git.action.showTree" })}
@@ -489,19 +489,14 @@ function GroupedTaskRowComponent({
   // grouped row 不能用原生 button 承载整行；行内还有菜单、关闭、文件树等 button，外层继续用 role=button，避免嵌套 button 破坏键盘和右键菜单语义。
   return (
     <ContextMenu onOpenChange={setContextMenuOpen}>
-      {tooltipsDisabled ? (
-        // overlay 拖拽时指针下方的真实 row 仍可能被 Radix 识别为 hover，跳过触发器避免底层 row 或 action 弹出悬浮卡片。
+      <TaskHoverCard
+        task={task}
+        workspaceLabel={workspaceLabel}
+        remoteSessionId={remoteSessionId}
+        disabled={Boolean(tooltipsDisabled || contextMenuOpen)}
+      >
         <ContextMenuTrigger asChild>{interactiveTaskRow}</ContextMenuTrigger>
-      ) : (
-        <TaskRowIdentityHoverCard
-          task={task}
-          workspaceLabel={workspaceLabel}
-          remoteSessionId={remoteSessionId}
-          disabled={presentation.isWebRemoteControl}
-        >
-          <ContextMenuTrigger asChild>{interactiveTaskRow}</ContextMenuTrigger>
-        </TaskRowIdentityHoverCard>
-      )}
+      </TaskHoverCard>
       {contextMenuOpen ? (
         // 右键菜单内容带 Radix Presence/Portal，拖拽重排时常驻挂载会触发嵌套更新循环；仅在菜单打开时挂载内容，配合路径懒加载避免拖拽过程刷 task path RPC。
         <GroupedTaskContextMenuContent
