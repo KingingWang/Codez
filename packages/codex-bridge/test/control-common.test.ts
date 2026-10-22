@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { z } from "zod";
 import type { BridgeControlContext, CodexRpcPort } from "../src/contract.js";
-import { readNativePermissionDefaults } from "../src/control-common.js";
+import { readCatalogProviderMap } from "../src/control-catalog.js";
+import {
+  readConfig,
+  readNativePermissionDefaults,
+  readPages,
+} from "../src/control-common.js";
+import { handleCodexNativeRequest } from "../src/request-scope.js";
 
 /** 构造 config/read 返回给定 config 的控制上下文；readNativePermissionDefaults 只依赖 rpc+cwd。 */
 function contextFor(config: unknown): BridgeControlContext {
@@ -93,4 +100,71 @@ test("readNativePermissionDefaults drops approval policies outside the bridge wh
 
 test("readNativePermissionDefaults returns undefined when config/read rejects", async () => {
   assert.equal(await readNativePermissionDefaults(throwingContext()), undefined);
+});
+
+test("concurrent readConfig, catalog/read and native model/list reads coalesce in flight and clear after settling", async () => {
+  let configReadCalls = 0;
+  let modelListCalls = 0;
+  const configGate = Promise.withResolvers<{ config: Record<string, unknown> }>();
+  const modelGate = Promise.withResolvers<{
+    data: Array<{ id: string }>;
+    nextCursor: null;
+  }>();
+  const rpc: CodexRpcPort = {
+    async request<T>(method: string, params?: unknown): Promise<T> {
+      if (method === "config/read") {
+        configReadCalls += 1;
+        assert.deepEqual(params, { cwd: "/work", includeLayers: false });
+        return configGate.promise as Promise<T>;
+      }
+      if (method === "model/list") {
+        modelListCalls += 1;
+        assert.deepEqual(params, { includeHidden: false, limit: 100 });
+        return modelGate.promise as Promise<T>;
+      }
+      throw new Error(`unexpected method: ${method}`);
+    },
+    async respond() {},
+    async respondError() {},
+  };
+  const context: BridgeControlContext = { rpc, cwd: "/work" };
+  const rowSchema = z.object({ id: z.string() });
+
+  const [cfg1, cfg2, catalogMap] = [
+    readConfig(context),
+    readConfig(context),
+    readCatalogProviderMap(context, "catalog/read"),
+  ];
+  const [models1, models2, nativeModels] = [
+    readPages(context, "model/list", rowSchema, { includeHidden: false }),
+    readPages(context, "model/list", rowSchema, { includeHidden: false }),
+    handleCodexNativeRequest(
+      { method: "model/list", params: { includeHidden: false, limit: 100 } },
+      context,
+      async () => {},
+    ),
+  ];
+
+  assert.equal(configReadCalls, 1, "in-flight config/read requests with identical params coalesce");
+  assert.equal(modelListCalls, 1, "in-flight model/list requests with identical params coalesce");
+
+  configGate.resolve({ config: { model: "gpt-5-codex", model_provider: "openai" } });
+  modelGate.resolve({ data: [{ id: "m1" }], nextCursor: null });
+
+  assert.deepEqual(await Promise.all([cfg1, cfg2, catalogMap]), [
+    { model: "gpt-5-codex", model_provider: "openai" },
+    { model: "gpt-5-codex", model_provider: "openai" },
+    { path: null, models: [] },
+  ]);
+  assert.deepEqual(await Promise.all([models1, models2, nativeModels.then((r) => r.result)]), [
+    [{ id: "m1" }],
+    [{ id: "m1" }],
+    { data: [{ id: "m1" }], nextCursor: null },
+  ]);
+
+  // settled 后必须立即释放，下一次读取重新请求权威事实，不缓存旧结果。
+  await readConfig(context);
+  await readPages(context, "model/list", rowSchema, { includeHidden: false });
+  assert.equal(configReadCalls, 2);
+  assert.equal(modelListCalls, 2);
 });

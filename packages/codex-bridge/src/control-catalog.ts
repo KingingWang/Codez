@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { z } from "zod";
 import * as s from "@codez/shared";
 import type { BridgeControlContext } from "./contract.js";
-import { ControlError, checkWorkspace, input } from "./control-common.js";
+import { ControlError, checkWorkspace, input, requestCoalescedRead } from "./control-common.js";
 
 // Codex 模型目录（model_catalog_json）读取。catalog/* 是 bridge 本地 fs 控制面
 // 方法族——codex app-server 的 model/list 不携带 per-model provider（v2 Model 无
@@ -39,7 +39,12 @@ async function resolveCatalogPath(context: BridgeControlContext): Promise<string
       config: z.object({ model_catalog_json: z.string().nullish() }).passthrough(),
     })
     .passthrough()
-    .parse(await context.rpc.request("config/read", { cwd: context.cwd, includeLayers: false }));
+    .parse(
+      await requestCoalescedRead(context.rpc, "config/read", {
+        cwd: context.cwd,
+        includeLayers: false,
+      }),
+    );
   return typeof config.config.model_catalog_json === "string" &&
     config.config.model_catalog_json.trim()
     ? config.config.model_catalog_json.trim()
