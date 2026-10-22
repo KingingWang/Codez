@@ -149,7 +149,9 @@ export function resolveToolCallRenderer(context: ToolCallBlockRenderContext) {
         ? RespondToCoordinatorToolCallBlock
         : SendMessageToolCallBlock;
     case "task-control":
-      return identity.toolName === "TaskOutput" ? TaskOutputToolCallBlock : TaskStopToolCallBlock;
+      return identity.toolName === "TaskOutput" || identity.toolName === "wait_agent"
+        ? TaskOutputToolCallBlock
+        : TaskStopToolCallBlock;
     case "skill":
       return SkillToolCallBlock;
     case "workflow":

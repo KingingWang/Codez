@@ -77,6 +77,9 @@ test("native MCP tool approval offers choices instead of free text and replies w
   const pending = broker.list("thread")[0]!;
   assert.equal(pending.turnId, "turn");
   assert.equal(pending.payload.kind, "permission");
+  if (pending.payload.kind === "permission") {
+    assert.equal(pending.payload.toolName, "mcp__codez-desktop-browser-cua__cua_status");
+  }
   assert.deepEqual(
     pending.payload.kind === "permission"
       ? pending.payload.options.map(({ optionId }) => optionId)

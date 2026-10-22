@@ -112,6 +112,7 @@ export class BridgeSnapshots {
     const attachmentStore = this.attachments;
     const userProjections = new Map<string, Awaited<ReturnType<typeof projectOwnedInput>>>();
     const queueProjections = new Map<string, Awaited<ReturnType<typeof projectOwnedInput>>>();
+    const imageViewFileNames = new Map<string, string>();
     const nativeThread = attachmentStore ? codexThreadSchema.parse(state.thread) : undefined;
     // 原因：原生模型输入可包含多份完整内联文件，原始正文在剥离附件前可能超过 UI 单行预算。
     // 先按会话所有权逐项校验并派生展示文本，避免历史规模超过 store 的并发操作上限；
@@ -122,6 +123,17 @@ export class BridgeSnapshots {
       for (const turn of nativeThread.turns) {
         const items: typeof turn.items = [];
         for (const item of turn.items) {
+          if (
+            item.type === "imageView" &&
+            typeof item.path === "string" &&
+            !state.sideChat?.inheritedTurnIds.has(turn.id)
+          ) {
+            const owned = await attachmentStore.findNativeAttachment(item.path, id);
+            if (owned?.fileName)
+              imageViewFileNames.set(itemEntityId(turn.id, item.id), owned.fileName);
+            items.push(item);
+            continue;
+          }
           if (item.type !== "userMessage" || state.sideChat?.inheritedTurnIds.has(turn.id)) {
             items.push(item);
             continue;
@@ -308,14 +320,18 @@ export class BridgeSnapshots {
           row.attachments = projected.refs;
         }
       }
+      if (row.kind === "toolCall" && row.toolName === "view_image" && this.attachments) {
+        const fileName = imageViewFileNames.get(row.entityId ?? "");
+        if (fileName && row.input && typeof row.input === "object" && !Array.isArray(row.input)) {
+          const nextInput = { ...(row.input as Record<string, unknown>), fileName };
+          row.input = nextInput;
+          row.inputText = JSON.stringify(nextInput);
+        }
+      }
     }
     if (this.store.get(id) !== state) throw new DeletedThreadError();
     this.attachmentViews.set(id, { epoch: snapshot.logEpoch, rows: snapshot.rows.window });
-    if (
-      state.seq === startSeq &&
-      state.revision === startRevision &&
-      state.epoch === startEpoch
-    ) {
+    if (state.seq === startSeq && state.revision === startRevision && state.epoch === startEpoch) {
       this.conversationCache.set(id, {
         state,
         seq: startSeq,
@@ -364,7 +380,9 @@ export class BridgeSnapshots {
         ...full,
         rows: {
           ...full.rows,
-          window: projectConversationTailWindow(full.rows.window).map(compactConversationRowForWire),
+          window: projectConversationTailWindow(full.rows.window).map(
+            compactConversationRowForWire,
+          ),
         },
       };
       return { snapshot, seq: snapshot.seq, logEpoch: snapshot.logEpoch };

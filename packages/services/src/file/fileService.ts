@@ -76,10 +76,49 @@ function clampBinaryPreviewBytes(length?: number) {
     : DEFAULT_BINARY_PREVIEW_BYTES;
   return Math.min(Math.max(safeLength, 1), MAX_BINARY_PREVIEW_BYTES);
 }
-function inferMediaTypeFromPath(path: string): string {
+function inferImageMediaTypeFromBytes(buffer: Buffer): string | null {
+  if (
+    buffer.length >= 8 &&
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47 &&
+    buffer[4] === 0x0d &&
+    buffer[5] === 0x0a &&
+    buffer[6] === 0x1a &&
+    buffer[7] === 0x0a
+  ) {
+    return "image/png";
+  }
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return "image/jpeg";
+  }
+  if (
+    buffer.length >= 6 &&
+    buffer[0] === 0x47 &&
+    buffer[1] === 0x49 &&
+    buffer[2] === 0x46 &&
+    buffer[3] === 0x38 &&
+    (buffer[4] === 0x37 || buffer[4] === 0x39) &&
+    buffer[5] === 0x61
+  ) {
+    return "image/gif";
+  }
+  if (
+    buffer.length >= 12 &&
+    buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+    buffer.subarray(8, 12).toString("ascii") === "WEBP"
+  ) {
+    return "image/webp";
+  }
+  return null;
+}
+
+function inferMediaTypeFromPath(path: string, content?: Buffer): string {
   return (
     IMAGE_EXTENSION_TO_MEDIA_TYPE[extname(path).toLowerCase()] ??
     getMediaPreviewFormat(path)?.mediaType ??
+    (content ? inferImageMediaTypeFromBytes(content) : null) ??
     "application/octet-stream"
   );
 }
@@ -559,7 +598,7 @@ export function createFileService(options: CreateFileServiceOptions = {}): IFile
       const content = await readFile(params.path);
       return {
         path: params.path,
-        mediaType: inferMediaTypeFromPath(params.path),
+        mediaType: inferMediaTypeFromPath(params.path, content),
         dataBase64: content.toString("base64"),
         totalBytes: fileStat.size,
       };

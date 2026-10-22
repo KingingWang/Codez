@@ -6,6 +6,7 @@ import {
   sessionsIndexSnapshotSchema,
   type ApiRetryState,
   type ConversationSnapshot,
+  type PlanState,
   type SessionControl,
   type SessionSummary,
   type SessionsIndexSnapshot,
@@ -115,6 +116,43 @@ function control(thread: CodexThread, apiRetry: ApiRetryState | null = null): Se
   };
 }
 
+function projectLatestPlanState(thread: CodexThread): PlanState | null {
+  for (let turnIndex = thread.turns.length - 1; turnIndex >= 0; turnIndex -= 1) {
+    const turn = thread.turns[turnIndex]!;
+    for (let itemIndex = turn.items.length - 1; itemIndex >= 0; itemIndex -= 1) {
+      const item = turn.items[itemIndex]!;
+      const rawPlan = (item as unknown as { plan?: unknown }).plan;
+      if (item.type !== "planUpdate" || !Array.isArray(rawPlan)) continue;
+      const items: PlanState["items"] = [];
+      for (const [index, rawEntry] of rawPlan.entries()) {
+        if (typeof rawEntry !== "object" || rawEntry === null) continue;
+        const entry = rawEntry as { step?: unknown; status?: unknown };
+        const content = typeof entry.step === "string" ? entry.step.trim() : "";
+        const rawStatus = entry.status;
+        const status: PlanState["items"][number]["status"] | null =
+          rawStatus === "pending" || rawStatus === "completed"
+            ? rawStatus
+            : rawStatus === "in_progress" || rawStatus === "inProgress"
+              ? "inProgress"
+              : null;
+        if (!content || !status) continue;
+        items.push({
+          id: `${turn.id}:plan:${index + 1}`,
+          content,
+          status,
+        });
+      }
+      if (items.length === 0) continue;
+      const updatedAtSec = turn.completedAt ?? turn.startedAt ?? thread.updatedAt;
+      return {
+        items,
+        updatedAt: Math.max(0, Math.floor(updatedAtSec * 1000)),
+      };
+    }
+  }
+  return null;
+}
+
 /** Pure whole-snapshot projection, never a reducer or accepted-input queue.
  *
  * Codex history → validated facts → deterministic rows → schema-validated snapshot.
@@ -208,7 +246,7 @@ export function projectThread(
     pendingCommands: [],
     backgroundWorks: [],
     goal: null,
-    plan: null,
+    plan: projectLatestPlanState(source),
     rows: { window: rows, totalCount: rows.length, firstRowId: rows[0]?.rowId ?? null },
   });
 }

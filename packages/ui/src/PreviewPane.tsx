@@ -242,6 +242,14 @@ function getFileImageMediaType(path?: string): string | null {
   return mediaType && mediaType !== "image/svg+xml" ? mediaType : null;
 }
 
+function isBridgeAttachmentBlobPath(path?: string): boolean {
+  if (!path) return false;
+  const normalized = path.replace(/\\/g, "/");
+  return /\/attachments\/objects\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.data$/i.test(
+    normalized,
+  );
+}
+
 // 与 service 层 readFileRange 的默认分段大小对齐，一次 range 请求对应一次 RPC 调用。
 const PDF_RANGE_CHUNK_BYTES = 256 * 1024;
 // 小 PDF 直接循环拉全量（少量往返、渲染路径最简单）；超过阈值交给 pdf.js range 按需分段加载。
@@ -292,7 +300,10 @@ export function resolvePreviewPaneImageSource(
     return null;
   }
 
-  const mediaType = getFileImageMediaType(source.path);
+  const mediaType =
+    getFileImageMediaType(source.path) ??
+    getFileImageMediaType(source.title) ??
+    (isBridgeAttachmentBlobPath(source.path) ? "image/png" : null);
   if (!mediaType) {
     return null;
   }
