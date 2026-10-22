@@ -47,6 +47,43 @@ export function checkWorkspace(
   }
 }
 
+/**
+ * 合并同一 CodexRpcPort 上完全相同参数的在途只读请求（specs/codex-desktop-adapter.md）。
+ * 修复原因：打开/切换远程工作区时，useCodexModelCatalog（config/read + model/list + catalog/read）、
+ * workspace/readPresentation 与 workspace-config 订阅快照会并发向同一 codex-bridge 发起多组
+ * config/read 与 model/list，在远端原生 app-server 忙于历史扫描时造成只读控制面风暴并触发 30s
+ * RPC 超时进而回收进程（stdout_closed）。仅合并在途 Promise，settled 后立即清除，不保留过期缓存。
+ */
+const inFlightReadsByRpc = new WeakMap<CodexRpcPort, Map<string, Promise<unknown>>>();
+
+function canonicalizeReadKeyValue(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([, entry]) => entry !== undefined)
+    .sort(([a], [b]) => a.localeCompare(b));
+  return Object.fromEntries(entries.map(([key, entry]) => [key, canonicalizeReadKeyValue(entry)]));
+}
+
+export function requestCoalescedRead<T = unknown>(
+  rpc: CodexRpcPort,
+  method: string,
+  params?: unknown,
+): Promise<T> {
+  let inFlight = inFlightReadsByRpc.get(rpc);
+  if (!inFlight) {
+    inFlight = new Map();
+    inFlightReadsByRpc.set(rpc, inFlight);
+  }
+  const key = `${method}:${JSON.stringify(canonicalizeReadKeyValue(params ?? null))}`;
+  const existing = inFlight.get(key);
+  if (existing) return existing as Promise<T>;
+  const pending = rpc.request<T>(method, params).finally(() => {
+    if (inFlight.get(key) === pending) inFlight.delete(key);
+  });
+  inFlight.set(key, pending);
+  return pending;
+}
+
 export async function readPages<T>(
   context: BridgeControlContext,
   method: string,
@@ -59,7 +96,11 @@ export async function readPages<T>(
   let cursor: string | undefined;
   for (let page = 0; page < 100; page++) {
     const result = pageSchema.parse(
-      await context.rpc.request(method, { ...params, limit: 100, ...(cursor ? { cursor } : {}) }),
+      await requestCoalescedRead(context.rpc, method, {
+        ...params,
+        limit: 100,
+        ...(cursor ? { cursor } : {}),
+      }),
     );
     rows.push(...result.data);
     if (!result.nextCursor) return rows;
@@ -109,7 +150,10 @@ export const configResponseSchema = z.object({
 
 export async function readConfig(context: BridgeControlContext) {
   return configResponseSchema.parse(
-    await context.rpc.request("config/read", { cwd: context.cwd, includeLayers: false }),
+    await requestCoalescedRead(context.rpc, "config/read", {
+      cwd: context.cwd,
+      includeLayers: false,
+    }),
   ).config;
 }
 
