@@ -29,6 +29,8 @@ export interface ProjectStorageContract {
 
 export interface ProjectRoot {
   rootPath: string;
+  /** 所属 Host 解析的物理目录路径；目录不存在或未解析时可省略。 */
+  physicalPath?: string;
   position: number;
   isPrimary: boolean;
 }
@@ -58,6 +60,8 @@ export interface ProjectTaskRef {
 export type ProjectTask = import("@codez/shared").CodezTaskMeta & {
   projectId: string | null;
   hostId: string;
+  /** 所属 Host 解析的任务绑定物理目录路径；目录不存在或未解析时可省略。 */
+  workspacePhysicalPath?: string;
   pinned: boolean;
   archived: boolean;
 };

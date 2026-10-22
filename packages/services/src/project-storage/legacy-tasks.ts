@@ -4,7 +4,8 @@ import {
   parseRemoteWorkspaceIdentity,
   remoteHostIdFromWorkspaceIdentity,
 } from "@codez/shared";
-import { tableExists } from "#src/project-storage/schema.js";
+import { resolvePhysicalPathSync } from "@codez/shared/node";
+import { addProjectSchema, tableExists } from "#src/project-storage/schema.js";
 
 export const HANDOFF_DELETE = 1;
 export const HANDOFF_TITLE = 2;
@@ -33,11 +34,16 @@ export function uniqueRootProject(
   db: DatabaseSync,
   hostId: string,
   rootPath: string,
+  physicalRootPath?: string | null,
 ): string | null {
+  const resolvedPhysical =
+    physicalRootPath !== undefined ? physicalRootPath : (resolvePhysicalPathSync(rootPath) ?? null);
   const projects = db
-    .prepare(`SELECT p.project_id FROM projects p JOIN project_roots r USING(project_id)
-    WHERE p.host_id=? AND p.deleted=0 AND r.root_path=? LIMIT 2`)
-    .all(hostId, rootPath) as { project_id: string }[];
+    .prepare(`SELECT DISTINCT p.project_id FROM projects p JOIN project_roots r USING(project_id)
+    WHERE p.host_id=? AND p.deleted=0 AND (
+      r.root_path=? OR (? IS NOT NULL AND coalesce(r.physical_path, r.root_path)=?)
+    ) LIMIT 2`)
+    .all(hostId, rootPath, resolvedPhysical, resolvedPhysical) as { project_id: string }[];
   return projects.length === 1 ? projects[0]!.project_id : null;
 }
 
@@ -59,6 +65,7 @@ export function initializeLegacyTaskIdentity(
     project_id: string | null;
   }[];
   const update = db.prepare(`UPDATE tasks SET host_id=?,root_path=workspace_path,project_id=?,
+    physical_root_path=coalesce(physical_root_path,?),
     cli_title=title,cli_title_source=CASE WHEN title_overridden=1 THEN 'custom' ELSE 'default' END,
     cli_created_at=created_at,cli_updated_at=updated_at,
     cli_last_outcome=CASE WHEN task_status='error' THEN 'error' WHEN task_status='interrupted' THEN 'interrupted' WHEN task_status='completed' THEN 'completed' ELSE NULL END,
@@ -67,11 +74,17 @@ export function initializeLegacyTaskIdentity(
   for (const row of rows) {
     const rawHostId = hostForWorkspace(row.workspace_key).hostId;
     const hostId = ensureHost(db, row.workspace_key, ownerHostId ?? hostAliases?.get(rawHostId));
+    const physicalRootPath =
+      hostId === (ownerHostId ?? "local")
+        ? (resolvePhysicalPathSync(row.workspace_path) ?? null)
+        : null;
     const projectId =
-      row.project_id ?? (assignProject ? uniqueRootProject(db, hostId, row.workspace_path) : null);
+      row.project_id ??
+      (assignProject ? uniqueRootProject(db, hostId, row.workspace_path, physicalRootPath) : null);
     update.run(
       hostId,
       projectId,
+      physicalRootPath,
       assignProject ? OWNERSHIP_DECIDED : 0,
       row.workspace_key,
       row.task_id,
@@ -150,9 +163,53 @@ function initializeLegacyDefinitions(db: DatabaseSync, ownerHostId?: string): vo
   }
 }
 
+function backfillPhysicalRootPaths(db: DatabaseSync, ownerHostId?: string): void {
+  const hostId = ownerHostId ?? "local";
+  if (tableExists(db, "project_roots") && tableExists(db, "projects")) {
+    const roots = db
+      .prepare(
+        `SELECT DISTINCT r.root_path FROM project_roots r
+         JOIN projects p USING(project_id)
+         WHERE p.host_id=? AND r.physical_path IS NULL`,
+      )
+      .all(hostId) as { root_path: string }[];
+    if (roots.length > 0) {
+      const updateRoot = db.prepare(
+        `UPDATE project_roots SET physical_path=?
+         WHERE root_path=? AND physical_path IS NULL
+           AND project_id IN (SELECT project_id FROM projects WHERE host_id=?)`,
+      );
+      for (const { root_path } of roots) {
+        const physical = resolvePhysicalPathSync(root_path);
+        if (physical) updateRoot.run(physical, root_path, hostId);
+      }
+    }
+  }
+  if (tableExists(db, "tasks")) {
+    const taskRoots = db
+      .prepare(
+        `SELECT DISTINCT root_path FROM tasks
+         WHERE host_id=? AND root_path IS NOT NULL AND physical_root_path IS NULL`,
+      )
+      .all(hostId) as { root_path: string }[];
+    if (taskRoots.length > 0) {
+      const updateTask = db.prepare(
+        `UPDATE tasks SET physical_root_path=?
+         WHERE host_id=? AND root_path=? AND physical_root_path IS NULL`,
+      );
+      for (const { root_path } of taskRoots) {
+        const physical = resolvePhysicalPathSync(root_path);
+        if (physical) updateTask.run(physical, hostId, root_path);
+      }
+    }
+  }
+}
+
 export function reconcileLegacy(db: DatabaseSync, ownerHostId?: string): void {
   db.exec("BEGIN IMMEDIATE");
   try {
+    // 幂等补齐新增物理路径列与索引（已应用 0005_projects 的存量库不会重跑 0005，在此统一自愈）。
+    addProjectSchema(db);
     // Bug 原因：同一台机器上本机桌面与 Source Server 共用 tasks-index；0005 按库只执行一次，
     // 只写入首个打开者的 host 行，后打开的 owner 新建项目触发 projects.host_id 外键失败。
     // 每次启动幂等补齐当前 owner 的 host 行；不改任务 host_id 与项目归属。
@@ -160,6 +217,7 @@ export function reconcileLegacy(db: DatabaseSync, ownerHostId?: string): void {
     initializeLegacyTaskIdentity(db, true, ownerHostId);
     initializeLegacyDefinitions(db, ownerHostId);
     reconcileMismatchedServerTaskHosts(db, ownerHostId);
+    backfillPhysicalRootPaths(db, ownerHostId);
     if (tableExists(db, "tasks")) {
       db.exec(`UPDATE tasks SET handoff_pending=handoff_pending | ${HANDOFF_DELETE} WHERE deleted=1 AND coalesce(cli_deleted,0)=0;
         UPDATE tasks SET handoff_pending=handoff_pending | ${HANDOFF_TITLE}
@@ -181,13 +239,23 @@ export function admitTaskIdentity(
 ): void {
   const key = resolveWorkspaceKey(task);
   const hostId = ensureHost(db, key, ownerHostId);
+  const physicalRootPath =
+    hostId === (ownerHostId ?? "local")
+      ? (resolvePhysicalPathSync(task.workspacePath) ?? null)
+      : null;
   if (
     originProjectId !== undefined &&
     db
       .prepare("SELECT host_id FROM tasks WHERE workspace_key=? AND task_id=?")
       .get(key, task.taskId)?.host_id != null
-  )
+  ) {
+    if (physicalRootPath) {
+      db.prepare(
+        "UPDATE tasks SET physical_root_path=coalesce(physical_root_path,?) WHERE workspace_key=? AND task_id=?",
+      ).run(physicalRootPath, key, task.taskId);
+    }
     return;
+  }
   // 原因：多目录项目共享 cwd，唯一目录匹配不能表达创建时的项目选择；原生
   // threadSource 只在首次插入决定组织归属，已决定的行（含用户移动）由 WHERE 保护。
   if (originProjectId) {
@@ -198,14 +266,20 @@ export function admitTaskIdentity(
     if (owner.host_id !== hostId) throw new Error("project.host-mismatch");
   }
   db.prepare(
-    "UPDATE tasks SET host_id=?,root_path=workspace_path,project_id=?,handoff_pending=handoff_pending | ? WHERE workspace_key=? AND task_id=? AND host_id IS NULL",
+    "UPDATE tasks SET host_id=?,root_path=workspace_path,physical_root_path=coalesce(physical_root_path,?),project_id=?,handoff_pending=handoff_pending | ? WHERE workspace_key=? AND task_id=? AND host_id IS NULL",
   ).run(
     hostId,
+    physicalRootPath,
     originProjectId === undefined
-      ? uniqueRootProject(db, hostId, task.workspacePath)
+      ? uniqueRootProject(db, hostId, task.workspacePath, physicalRootPath)
       : originProjectId,
     OWNERSHIP_DECIDED,
     key,
     task.taskId,
   );
+  if (physicalRootPath) {
+    db.prepare(
+      "UPDATE tasks SET physical_root_path=coalesce(physical_root_path,?) WHERE workspace_key=? AND task_id=?",
+    ).run(physicalRootPath, key, task.taskId);
+  }
 }

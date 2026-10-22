@@ -11,10 +11,12 @@ import {
   isRemoteWorkspaceIdentity,
   normalizeAgentProviderToCodezAgent,
   codezTaskMetaSchema,
+  remoteHostIdFromWorkspaceIdentity,
   resolveWorkspaceKey,
   type CodezProvider,
   type CodezTaskMeta,
 } from "@codez/shared";
+import { resolvePhysicalPathSync } from "@codez/shared/node";
 import type {
   CodezTaskListQuery,
   CodezTaskListResult,
@@ -43,6 +45,9 @@ type DatabaseSyncInstance = InstanceType<typeof DatabaseSync>;
 type SQLInputValue = import("node:sqlite").SQLInputValue;
 
 interface TaskIndexRow {
+  host_id?: string | null;
+  root_path?: string | null;
+  physical_root_path?: string | null;
   cli_title?: string | null;
   cli_title_source?: string | null;
   cli_created_at?: number | null;
@@ -749,11 +754,57 @@ export class TaskIndexRepo {
           deleted,
           title_overridden,
           searchable_text,
-          meta_json, cli_title, cli_title_source, cli_created_at, cli_updated_at, cli_last_outcome, cli_deleted, handoff_pending
+          meta_json, host_id, root_path, physical_root_path, cli_title, cli_title_source, cli_created_at, cli_updated_at, cli_last_outcome, cli_deleted, handoff_pending
         FROM tasks
         WHERE workspace_key = ? AND task_id = ?`,
       )
       .get(workspaceKey(params), params.taskId) as TaskIndexRow | undefined;
+    return row ?? null;
+  }
+
+  /**
+   * 查找同 Host 下同一 taskId 的既有行（含软链接与物理路径拼写差异导致的跨 workspace_key 行）。
+   * 保持 tasks(host_id, task_id) 唯一约束：命中不同 workspace_key 时复用既有行身份与组织态，不新建重复行。
+   */
+  private getExistingHostTaskRow(params: {
+    workspacePath: string;
+    workspaceIdentity?: string;
+    taskId: string;
+  }): TaskIndexRow | null {
+    const exact = this.getTaskRow(params);
+    if (exact) return exact;
+    const key = workspaceKey(params);
+    const targetHostId = this.storageHostId ?? remoteHostIdFromWorkspaceIdentity(key) ?? "local";
+    const row = this.getDatabase()
+      .prepare(
+        `SELECT
+          workspace_key,
+          workspace_path,
+          workspace_identity,
+          task_id,
+          title,
+          task_status,
+          provider,
+          mode,
+          model,
+          migration_source,
+          forked_from_task_id,
+          cron_automation_id,
+          off_peak_task_id,
+          created_at,
+          updated_at,
+          unread_at,
+          last_unread_at,
+          pinned,
+          archived,
+          deleted,
+          title_overridden,
+          searchable_text,
+          meta_json, host_id, root_path, physical_root_path, cli_title, cli_title_source, cli_created_at, cli_updated_at, cli_last_outcome, cli_deleted, handoff_pending
+        FROM tasks
+        WHERE host_id = ? AND task_id = ?`,
+      )
+      .get(targetHostId, params.taskId) as TaskIndexRow | undefined;
     return row ?? null;
   }
 
@@ -767,11 +818,25 @@ export class TaskIndexRepo {
     try {
       // 本方法只在预留行首次落 CLI 事实时调用，正文索引与未读 CAS marker 都不归它写：
       // 读一次现有行，ON CONFLICT 时原样保留 searchable_text / unread_at。
-      const existing = this.getTaskRow({
+      // 若同 host_id + task_id 已由另一路径拼写（如软链接 vs 物理路径）写入，复用其 workspace_key/path/identity，
+      // 避免触发 idx_tasks_host_task 唯一索引冲突。
+      const existing = this.getExistingHostTaskRow({
         workspacePath: record.meta.workspacePath,
         workspaceIdentity: record.meta.workspaceIdentity,
         taskId: record.meta.taskId,
       });
+      const effectiveWorkspaceIdentity = existing
+        ? resolveTaskIndexRowWorkspaceIdentity(existing)
+        : record.meta.workspaceIdentity;
+      const effectiveMeta: CodezTaskMeta = existing
+        ? {
+            ...record.meta,
+            workspacePath: existing.workspace_path,
+            ...(effectiveWorkspaceIdentity
+              ? { workspaceIdentity: effectiveWorkspaceIdentity }
+              : { workspaceIdentity: undefined }),
+          }
+        : record.meta;
       const searchableText = existing?.searchable_text ?? "";
       this.getDatabase()
         .prepare(
@@ -848,43 +913,51 @@ export class TaskIndexRepo {
           meta_json = excluded.meta_json`,
         )
         .run({
-          workspace_key: workspaceKey(record.meta),
-          workspace_path: record.meta.workspacePath,
-          workspace_identity: record.meta.workspaceIdentity ?? null,
-          task_id: record.meta.taskId,
-          title: record.meta.title,
-          task_status: record.meta.status ?? null,
-          provider: record.meta.provider ?? null,
-          mode: record.meta.mode,
-          model: record.meta.model ?? null,
-          migration_source: record.meta.migrationSource ?? null,
-          forked_from_task_id: record.meta.forkedFromTaskId ?? null,
+          workspace_key: existing ? existing.workspace_key : workspaceKey(effectiveMeta),
+          workspace_path: effectiveMeta.workspacePath,
+          workspace_identity: effectiveMeta.workspaceIdentity ?? null,
+          task_id: effectiveMeta.taskId,
+          title: effectiveMeta.title,
+          task_status: effectiveMeta.status ?? null,
+          provider: effectiveMeta.provider ?? null,
+          mode: effectiveMeta.mode,
+          model: effectiveMeta.model ?? null,
+          migration_source: effectiveMeta.migrationSource ?? null,
+          forked_from_task_id: effectiveMeta.forkedFromTaskId ?? null,
           // cron automation 身份从 meta 投影到索引列（meta_json 里也保留一份，见 serializeMetaJson）。
-          cron_automation_id: record.meta.cronAutomationId ?? null,
+          cron_automation_id: effectiveMeta.cronAutomationId ?? null,
           // off-peak 身份（D48）同款投影。
-          off_peak_task_id: record.meta.offPeakTaskId ?? null,
-          created_at: record.meta.createdAt,
-          updated_at: record.meta.updatedAt,
-          unread_at: record.meta.unreadAt ?? null,
-          last_unread_at: record.meta.unreadAt ?? 0,
+          off_peak_task_id: effectiveMeta.offPeakTaskId ?? null,
+          created_at: effectiveMeta.createdAt,
+          updated_at: effectiveMeta.updatedAt,
+          unread_at: effectiveMeta.unreadAt ?? null,
+          last_unread_at: effectiveMeta.unreadAt ?? 0,
           pinned: record.pinned ? 1 : 0,
           archived: record.archived ? 1 : 0,
           deleted: record.deleted ? 1 : 0,
           title_overridden: record.titleOverridden ? 1 : 0,
           searchable_text: searchableText,
-          meta_json: serializeMetaJson(record.meta),
+          meta_json: serializeMetaJson(effectiveMeta),
         });
-      projectStorage.admitTaskIdentity(database, record.meta, this.storageHostId, originProjectId);
+      projectStorage.admitTaskIdentity(
+        database,
+        effectiveMeta,
+        this.storageHostId,
+        originProjectId,
+      );
       if (record.titleOverridden)
         database
           .prepare(
             "UPDATE tasks SET handoff_pending=handoff_pending | 2 WHERE workspace_key=? AND task_id=? AND cli_title_source IS NULL",
           )
-          .run(workspaceKey(record.meta), record.meta.taskId);
+          .run(
+            existing ? existing.workspace_key : workspaceKey(effectiveMeta),
+            effectiveMeta.taskId,
+          );
 
-      const persisted = this.getTaskRow(record.meta);
+      const persisted = this.getTaskRow(effectiveMeta);
       if (!persisted) {
-        throw new Error(`task index 写入后缺少 task: ${record.meta.taskId}`);
+        throw new Error(`task index 写入后缺少 task: ${effectiveMeta.taskId}`);
       }
       this.admitTaskGroup(rowToMeta(persisted), persisted.archived === 1, persisted.deleted === 1);
       if (ownTransaction) database.exec("COMMIT");
@@ -972,13 +1045,28 @@ export class TaskIndexRepo {
       const db = this.getDatabase();
       db.exec("BEGIN IMMEDIATE");
       try {
-        const existing = this.getTaskRow(params.meta);
+        // Bugfix: 软链接项目根目录与 Codex rollout 物理路径拼写不一致时，codexGlobalRolloutSyncer
+        // 与项目会话发现可能用不同 workspace_key 上报同一 (host_id, task_id)。
+        // 若同 Host 已有该 task_id，复用既有行的 workspace_key 与组织态更新 CLI 事实，避免触发唯一约束异常。
+        const existing = this.getExistingHostTaskRow(params.meta);
+        const targetWorkspaceIdentity = existing
+          ? resolveTaskIndexRowWorkspaceIdentity(existing)
+          : params.meta.workspaceIdentity;
+        const targetMeta: CodezTaskMeta = existing
+          ? {
+              ...params.meta,
+              workspacePath: existing.workspace_path,
+              ...(targetWorkspaceIdentity
+                ? { workspaceIdentity: targetWorkspaceIdentity }
+                : { workspaceIdentity: undefined }),
+            }
+          : params.meta;
         // 预留行尚无 CLI 事实。首条事实补齐 provider/展示基线，保留预留后发生的组织操作。
         if (!existing || (existing.cli_created_at == null && existing.created_at === 0))
           this.writeRecord(
             {
               meta: {
-                ...params.meta,
+                ...targetMeta,
                 ...(existing?.title_overridden === 1 ? { title: existing.title } : {}),
               },
               pinned: existing?.pinned === 1,
@@ -989,7 +1077,20 @@ export class TaskIndexRepo {
             params.originProjectId,
           );
         const source = params.titleSource ?? "default";
+        const targetKey = existing ? existing.workspace_key : workspaceKey(targetMeta);
+        const targetHostId =
+          existing?.host_id ??
+          this.storageHostId ??
+          remoteHostIdFromWorkspaceIdentity(targetKey) ??
+          "local";
+        const physicalRootPath =
+          targetHostId === (this.storageHostId ?? "local")
+            ? (resolvePhysicalPathSync(existing?.root_path ?? params.meta.workspacePath) ??
+              resolvePhysicalPathSync(params.meta.workspacePath) ??
+              null)
+            : null;
         db.prepare(`UPDATE tasks SET
+          physical_root_path=coalesce(physical_root_path,?),
           cli_title=CASE WHEN cli_title_source='custom' AND ?<>'custom' THEN cli_title ELSE ? END,
           cli_title_source=CASE WHEN cli_title_source='custom' AND ?<>'custom' THEN cli_title_source ELSE ? END,
           cli_created_at=?,cli_updated_at=max(coalesce(cli_updated_at,0),?),
@@ -999,6 +1100,7 @@ export class TaskIndexRepo {
           updated_at=?,created_at=?,task_status=coalesce(?,task_status),deleted=max(deleted,?),
           handoff_pending=(handoff_pending & ~4) & CASE WHEN ?=1 THEN ~1 ELSE -1 END & CASE WHEN ?=title AND ?='custom' THEN ~2 ELSE -1 END
           WHERE workspace_key=? AND task_id=?`).run(
+          physicalRootPath,
           source,
           params.meta.title,
           source,
@@ -1017,10 +1119,10 @@ export class TaskIndexRepo {
           params.deleted ? 1 : 0,
           params.meta.title,
           source,
-          workspaceKey(params.meta),
-          params.meta.taskId,
+          targetKey,
+          targetMeta.taskId,
         );
-        const persisted = this.getTaskRow(params.meta)!;
+        const persisted = this.getTaskRow(targetMeta)!;
         this.admitTaskGroup(
           rowToMeta(persisted),
           persisted.archived === 1,

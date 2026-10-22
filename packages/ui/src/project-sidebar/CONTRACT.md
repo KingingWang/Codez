@@ -6,8 +6,8 @@ Host projectService 的 readTree 决定行集合、项目归属和 CLI 事实镜
 
 恢复时通过公开的 `resolveEntryProject` 从所属 Host 项目树解析有效项目，复用旧入口的唯一匹配规则。原项目 ID 显式传给 Root 草稿 owner，同时更新内存与持久化草稿范围，不从同目录缓存反推归属。
 
-单目录项目是只读目录视图：本地和远端均展示同 Host、同 workspace 身份、
-同目录的已索引历史，不修改 task 的明确项目归属。远端两个项目同 root
+单目录项目是只读目录视图：本地和远端均展示同 Host、同物理目录（双方均有物理路径时按物理路径匹配；缺省回退同 workspace 身份与字面目录）
+的已索引历史，不修改 task 的明确项目归属、原始 `workspacePath` 或 `workspaceIdentity`。远端两个项目同 root
 可以显示同一行，跨远端 Host 同路径不可混入；多 root 项目仍只显示明确归属。
 控制端本机持久行中已收敛为稳定 `remote:server:<serverId>:/path` 身份的远程会话，
 当其所属 Host 在线保留时，若远端项目树尚未返回同一（Host, workspaceKey, taskId）行，

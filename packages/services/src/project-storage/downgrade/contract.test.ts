@@ -91,7 +91,9 @@ it("降级版本新增的定时/闲时定义在再升级时只绑定一次，保
       db.prepare(`SELECT host_id,project_id,additional_directories FROM ${table}`).get(),
     ).toEqual({ host_id: "local", project_id: project, additional_directories: "[]" });
   }
-  db.prepare("INSERT INTO project_roots VALUES(?,?,?,?)").run(project, "/later", 1, 0);
+  db.prepare(
+    "INSERT INTO project_roots(project_id,root_path,position,is_primary) VALUES(?,?,?,?)",
+  ).run(project, "/later", 1, 0);
   db.prepare("UPDATE automations SET additional_directories='[\"/frozen\"]'").run();
   await port.migrate(db, context);
   expect(
@@ -114,7 +116,7 @@ it("再升级的未归类定义保留 NULL，不随之后新增的同目录项�
     project_id: null,
   });
   db.exec(
-    "INSERT INTO projects(project_id,host_id,name,position,created_at,updated_at) VALUES('later','local','Later',0,1,1); INSERT INTO project_roots VALUES('later','/repo',0,1)",
+    "INSERT INTO projects(project_id,host_id,name,position,created_at,updated_at) VALUES('later','local','Later',0,1,1); INSERT INTO project_roots(project_id,root_path,position,is_primary) VALUES('later','/repo',0,1)",
   );
   await port.migrate(db, context);
   expect(db.prepare("SELECT project_id FROM automations").get()!.project_id).toBeNull();

@@ -946,6 +946,16 @@ different directories stay rejected. Attribution needs filesystem resolution, so
 native event projection is asynchronous; the runtime keeps one serialized event
 tail so native ordering is unchanged, and request/response paths still project
 their own turns synchronously.
+Host project storage also persists nullable resolved physical paths
+(`project_roots.physical_path` and `tasks.physical_root_path`, backfilled
+idempotently at startup without resetting `OWNERSHIP_DECIDED` or re-keying
+`workspace_key`/`workspaceIdentity`) so symlinked project roots and physical
+rollout cwds converge in both directions: cross-spelling writes for the same
+`(host_id, task_id)` update the existing row in place instead of failing on the
+unique index, first-discovery `uniqueRootProject` and remote directory checks
+compare physical paths with a literal fallback when `realpath` is unavailable,
+and single-root project views match same-host tasks by physical path while
+preserving their original `workspacePath` and `workspaceIdentity` for resume.
 Legacy `session/read`, `session/resume` and `session/list` projections must carry
 both the authorized `workspaceKey` and explicit `workspaceIdentity`. Downstream
 task-index persistence consumes `workspaceIdentity`, not `workspaceKey`; dropping

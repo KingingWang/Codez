@@ -1,3 +1,4 @@
+import { samePhysicalOrExactPath } from "@codez/shared/node";
 import type { VirtualProject } from "#src/project-storage/contract.js";
 
 /** 远端限制必须依据持库宿主，不能让请求中的 hostId 或 addMissingRoot 绕过。 */
@@ -8,7 +9,16 @@ export function assertRemoteProjectRoots(
 ): void {
   if (!ownerHostId || ownerHostId === "local") return;
   if (roots.length !== 1) throw new Error("project.remote-single-root-required");
-  if (previous && (previous.roots.length !== 1 || previous.roots[0]?.rootPath !== roots[0]))
+  if (
+    previous &&
+    (previous.roots.length !== 1 ||
+      !previous.roots[0] ||
+      !samePhysicalOrExactPath(
+        previous.roots[0].rootPath,
+        roots[0]!,
+        previous.roots[0].physicalPath,
+      ))
+  )
     throw new Error("project.remote-root-immutable");
 }
 
@@ -18,6 +28,7 @@ export function assertRemoteTaskDirectories(
   project: VirtualProject | null | undefined,
   workspacePath: string,
   additionalDirectories: readonly string[] = [],
+  workspacePhysicalPath?: string | null,
 ): void {
   if (!ownerHostId || ownerHostId === "local") return;
   if (!project) throw new Error("project.remote-project-required");
@@ -26,5 +37,15 @@ export function assertRemoteTaskDirectories(
     project.roots.map((root) => root.rootPath),
   );
   if (additionalDirectories.length) throw new Error("project.remote-single-root-required");
-  if (project.roots[0]?.rootPath !== workspacePath) throw new Error("project.cwd-not-in-roots");
+  const primaryRoot = project.roots[0];
+  if (
+    !primaryRoot ||
+    !samePhysicalOrExactPath(
+      primaryRoot.rootPath,
+      workspacePath,
+      primaryRoot.physicalPath,
+      workspacePhysicalPath,
+    )
+  )
+    throw new Error("project.cwd-not-in-roots");
 }

@@ -239,7 +239,9 @@ describe("project-storage migration contract", () => {
     add("a", "/a");
     add("b", "/b");
     await port.migrate(db, context);
-    db.exec("INSERT INTO project_roots SELECT project_id,'/shared',1,0 FROM projects");
+    db.exec(
+      "INSERT INTO project_roots(project_id,root_path,position,is_primary) SELECT project_id,'/shared',1,0 FROM projects",
+    );
     add("new", "/shared");
     await port.migrate(db, context);
     expect(

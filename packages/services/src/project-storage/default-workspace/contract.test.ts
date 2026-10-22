@@ -17,7 +17,9 @@ describe("系统 default 项目纠偏", () => {
     if (scenario === "renamed")
       db.exec("UPDATE projects SET name='My project',name_overridden=1,updated_at=11");
     if (scenario === "multi-root")
-      db.prepare("INSERT INTO project_roots VALUES(?,'/extra',1,0)").run(projectId);
+      db.prepare(
+        "INSERT INTO project_roots(project_id,root_path,position,is_primary) VALUES(?,'/extra',1,0)",
+      ).run(projectId);
     if (scenario === "newer") db.exec("UPDATE projects SET created_at=11,updated_at=11");
     await port.migrate(db, context);
     expect(db.prepare("SELECT project_id FROM tasks").get()!.project_id).toBe(projectId);
@@ -43,7 +45,9 @@ describe("系统 default 项目纠偏", () => {
       db.prepare(
         "INSERT INTO projects VALUES('manual','local','Manual default',1,5,0,NULL,0,NULL,11,11)",
       ).run();
-      db.prepare("INSERT INTO project_roots VALUES('manual',?,0,1)").run(path);
+      db.prepare(
+        "INSERT INTO project_roots(project_id,root_path,position,is_primary) VALUES('manual',?,0,1)",
+      ).run(path);
       const tables = db
         .prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name<>'schema_migration'")
         .all();

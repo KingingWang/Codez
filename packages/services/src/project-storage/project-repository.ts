@@ -8,6 +8,7 @@ import {
   resolveWorkspaceKey,
   CODEZ_AGENT_PROVIDER,
 } from "@codez/shared";
+import { resolvePhysicalPathSync, samePhysicalOrExactPath } from "@codez/shared/node";
 import type {
   AutoArchiveInput,
   ProjectDirectories,
@@ -41,7 +42,7 @@ function transaction<T>(db: DatabaseSync, body: () => T, write = true): T {
 function readProjects(db: DatabaseSync, includeDeleted = true): VirtualProject[] {
   const roots = db
     .prepare(
-      "SELECT project_id,root_path,position,is_primary FROM project_roots ORDER BY position,root_path",
+      "SELECT project_id,root_path,physical_path,position,is_primary FROM project_roots ORDER BY position,root_path",
     )
     .all();
   return db
@@ -63,6 +64,9 @@ function readProjects(db: DatabaseSync, includeDeleted = true): VirtualProject[]
         .filter((root) => root.project_id === row.project_id)
         .map((root) => ({
           rootPath: String(root.root_path),
+          ...(typeof root.physical_path === "string" && root.physical_path.length > 0
+            ? { physicalPath: root.physical_path }
+            : {}),
           position: Number(root.position),
           isPrimary: root.is_primary === 1,
         })),
@@ -90,20 +94,33 @@ function resolveDirectories(
   // 旧远端影子行仍可能保留；行与项目一致不代表当前 Host 有权加载其目录。
   if (row && row.host_id !== ownerHostId) throw new Error("project.host-mismatch");
   const workspacePath = row ? String(row.root_path) : task.workspacePath;
+  const workspacePhysicalPath =
+    row && typeof row.physical_root_path === "string" && row.physical_root_path.length > 0
+      ? row.physical_root_path
+      : resolvePhysicalPathSync(workspacePath);
   const project = row?.project_id ? requireProject(db, String(row.project_id)) : null;
   if (project && row?.host_id !== project.hostId) throw new Error("project.host-mismatch");
   const additionalDirectories =
     typeof row?.execution_directories === "string"
       ? executionDirectoriesSchema.parse(JSON.parse(row.execution_directories))
-      : (project?.roots.map((root) => root.rootPath).filter((path) => path !== workspacePath) ??
-        []);
+      : (project?.roots
+          .filter(
+            (root) =>
+              !samePhysicalOrExactPath(
+                root.rootPath,
+                workspacePath,
+                root.physicalPath,
+                workspacePhysicalPath,
+              ),
+          )
+          .map((root) => root.rootPath) ?? []);
   if (
     ownerHostId !== "local" &&
     !project &&
     row?.cli_created_at != null &&
     row.deleted === 0 &&
     (row.cli_deleted == null || row.cli_deleted === 0) &&
-    workspacePath === task.workspacePath
+    samePhysicalOrExactPath(workspacePath, task.workspacePath, workspacePhysicalPath)
   ) {
     // 修复原因（issue #19）：已索引的外部 Codex 历史（含未添加为项目的任意远端目录）
     // 可以在侧栏任务区或同目录远端项目的只读视图中打开；project_id=NULL 是已裁决的组织态，
@@ -111,7 +128,13 @@ function resolveDirectories(
     if (additionalDirectories.length > 0) throw new Error("project.remote-single-root-required");
     return { workspacePath, projectId: null, additionalDirectories };
   }
-  assertRemoteTaskDirectories(ownerHostId, project, workspacePath, additionalDirectories);
+  assertRemoteTaskDirectories(
+    ownerHostId,
+    project,
+    workspacePath,
+    additionalDirectories,
+    workspacePhysicalPath,
+  );
   return {
     workspacePath,
     projectId: project?.id ?? null,
@@ -133,6 +156,9 @@ function readTasks(db: DatabaseSync): ProjectTask[] {
         taskId: String(row.task_id),
         traceId: meta.traceId ?? generateTraceId(String(row.task_id)),
         workspacePath: String(row.root_path),
+        ...(typeof row.physical_root_path === "string" && row.physical_root_path.length > 0
+          ? { workspacePhysicalPath: row.physical_root_path }
+          : {}),
         workspaceIdentity:
           row.workspace_identity === row.workspace_key
             ? String(row.workspace_identity)
@@ -249,21 +275,70 @@ export class ProjectRepository implements ProjectRepositoryContract {
       const hostId = this.ownerHostId ?? "local";
       if (old && old.hostId !== hostId) throw new Error("project.cross-host-move");
       if (input.hostId && input.hostId !== hostId) throw new Error("project.host-immutable");
-      const roots = [...new Set(input.roots ?? old?.roots.map((root) => root.rootPath) ?? [])];
+      const rawRoots = input.roots ?? old?.roots.map((root) => root.rootPath) ?? [];
+      const roots: string[] = [];
+      const rootPhysicalByPath = new Map<string, string | undefined>();
+      for (const candidate of rawRoots) {
+        const physical = resolvePhysicalPathSync(candidate);
+        if (
+          roots.some((existing) =>
+            samePhysicalOrExactPath(
+              existing,
+              candidate,
+              rootPhysicalByPath.get(existing),
+              physical,
+            ),
+          )
+        ) {
+          continue;
+        }
+        roots.push(candidate);
+        rootPhysicalByPath.set(candidate, physical);
+      }
       assertRemoteProjectRoots(this.ownerHostId, roots, old);
       if (
         input.restoreProjectId &&
         (!old?.deleted ||
           roots.length !== old.roots.length ||
-          roots.some((root) => !old.roots.some((entry) => entry.rootPath === root)))
+          roots.some(
+            (root) =>
+              !old.roots.some((entry) =>
+                samePhysicalOrExactPath(
+                  entry.rootPath,
+                  root,
+                  entry.physicalPath,
+                  rootPhysicalByPath.get(root),
+                ),
+              ),
+          ))
       )
         throw new Error("project.restore-roots-mismatch");
-      const primary =
-        input.primaryRoot ??
-        old?.roots.find((root) => root.isPrimary && roots.includes(root.rootPath))?.rootPath ??
-        roots[0];
-      if (primary !== undefined && !roots.includes(primary))
+      const requestedPrimary = input.primaryRoot;
+      const matchedRequestedPrimary =
+        requestedPrimary !== undefined
+          ? roots.find((root) =>
+              samePhysicalOrExactPath(root, requestedPrimary, rootPhysicalByPath.get(root)),
+            )
+          : undefined;
+      if (requestedPrimary !== undefined && !matchedRequestedPrimary)
         throw new Error("project.invalid-primary-root");
+      const primary =
+        matchedRequestedPrimary ??
+        old?.roots
+          .map((oldRoot) =>
+            oldRoot.isPrimary
+              ? roots.find((root) =>
+                  samePhysicalOrExactPath(
+                    root,
+                    oldRoot.rootPath,
+                    rootPhysicalByPath.get(root),
+                    oldRoot.physicalPath,
+                  ),
+                )
+              : undefined,
+          )
+          .find((root): root is string => root !== undefined) ??
+        roots[0];
       const id = old?.id ?? randomUUID();
       const overridden =
         input.name !== undefined ? input.name.trim().length > 0 : (old?.nameOverridden ?? false);
@@ -306,9 +381,9 @@ export class ProjectRepository implements ProjectRepositoryContract {
       roots.forEach((root, position) =>
         this.db
           .prepare(
-            "INSERT INTO project_roots(project_id,root_path,position,is_primary) VALUES(?,?,?,?)",
+            "INSERT INTO project_roots(project_id,root_path,physical_path,position,is_primary) VALUES(?,?,?,?,?)",
           )
-          .run(id, root, position, root === primary ? 1 : 0),
+          .run(id, root, rootPhysicalByPath.get(root) ?? null, position, root === primary ? 1 : 0),
       );
       return requireProject(this.db, id);
     });
@@ -324,9 +399,9 @@ export class ProjectRepository implements ProjectRepositoryContract {
       if (!project.roots.length) {
         this.db
           .prepare(
-            "INSERT INTO project_roots(project_id,root_path,position,is_primary) VALUES(?,?,0,1)",
+            "INSERT INTO project_roots(project_id,root_path,physical_path,position,is_primary) VALUES(?,?,?,0,1)",
           )
-          .run(id, path);
+          .run(id, path, resolvePhysicalPathSync(path) ?? null);
         this.db.prepare("UPDATE projects SET updated_at=? WHERE project_id=?").run(Date.now(), id);
       }
       return requireProject(this.db, id);
@@ -349,16 +424,26 @@ export class ProjectRepository implements ProjectRepositoryContract {
       if (!task) throw new Error("project.task-not-found");
       if (project.hostId !== (this.ownerHostId ?? "local") || task.host_id !== project.hostId)
         throw new Error("project.cross-host-move");
-      assertRemoteTaskDirectories(this.ownerHostId, project, String(task.root_path));
-      if (!project.roots.some((root) => root.rootPath === task.root_path)) {
+      const taskRootPath = String(task.root_path);
+      const taskPhysicalPath =
+        typeof task.physical_root_path === "string" && task.physical_root_path.length > 0
+          ? task.physical_root_path
+          : resolvePhysicalPathSync(taskRootPath);
+      assertRemoteTaskDirectories(this.ownerHostId, project, taskRootPath, [], taskPhysicalPath);
+      if (
+        !project.roots.some((root) =>
+          samePhysicalOrExactPath(root.rootPath, taskRootPath, root.physicalPath, taskPhysicalPath),
+        )
+      ) {
         if (!input.addMissingRoot) throw new Error("project.root-confirmation-required");
         this.db
           .prepare(
-            "INSERT INTO project_roots(project_id,root_path,position,is_primary) VALUES(?,?,?,?)",
+            "INSERT INTO project_roots(project_id,root_path,physical_path,position,is_primary) VALUES(?,?,?,?,?)",
           )
           .run(
             project.id,
-            String(task.root_path),
+            taskRootPath,
+            taskPhysicalPath ?? null,
             project.roots.length,
             project.roots.length === 0 ? 1 : 0,
           );
@@ -396,11 +481,13 @@ export class ProjectRepository implements ProjectRepositoryContract {
       const host = ensureHost(this.db, key, this.ownerHostId);
       if (host !== (this.ownerHostId ?? "local")) throw new Error("project.cross-host-move");
       if (!readTask(this.db, input.task)) {
+        const workspacePhysicalPath = resolvePhysicalPathSync(input.task.workspacePath) ?? null;
         assertRemoteTaskDirectories(
           this.ownerHostId,
           input.projectId ? requireProject(this.db, input.projectId) : null,
           input.task.workspacePath,
           input.additionalDirectories,
+          workspacePhysicalPath,
         );
         if (input.projectId) {
           const project = requireProject(this.db, input.projectId);
@@ -409,15 +496,22 @@ export class ProjectRepository implements ProjectRepositoryContract {
           if (project.hostId !== host) throw new Error("project.cross-host-move");
           if (
             input.additionalDirectories === undefined &&
-            !project.roots.some((root) => root.rootPath === input.task.workspacePath)
+            !project.roots.some((root) =>
+              samePhysicalOrExactPath(
+                root.rootPath,
+                input.task.workspacePath,
+                root.physicalPath,
+                workspacePhysicalPath,
+              ),
+            )
           )
             throw new Error("project.cwd-not-in-roots");
         }
         // 创建归属必须先于 CLI 首发；空事实不是假会话，列表只读取已有 CLI 事实的行。
         this.db
           .prepare(
-            `INSERT INTO tasks(workspace_key,workspace_path,workspace_identity,task_id,created_at,updated_at,host_id,root_path,project_id,handoff_pending,execution_directories)
-          VALUES(?,?,?,?,0,0,?,?,?,?,?)`,
+            `INSERT INTO tasks(workspace_key,workspace_path,workspace_identity,task_id,created_at,updated_at,host_id,root_path,physical_root_path,project_id,handoff_pending,execution_directories)
+          VALUES(?,?,?,?,0,0,?,?,?,?,?,?)`,
           )
           .run(
             key,
@@ -426,6 +520,7 @@ export class ProjectRepository implements ProjectRepositoryContract {
             input.task.taskId,
             host,
             input.task.workspacePath,
+            workspacePhysicalPath,
             input.projectId,
             OWNERSHIP_DECIDED,
             input.additionalDirectories === undefined

@@ -72,7 +72,8 @@ function ensureColumns(
 export function addProjectSchema(db: DatabaseSync): void {
   db.exec(PROJECT_SCHEMA_SQL);
   ensureColumns(db, "hosts", { membership_id: "TEXT" });
-  ensureColumns(db, "tasks", TASK_PROJECT_COLUMNS);
+  ensureColumns(db, "tasks", { ...TASK_PROJECT_COLUMNS, physical_root_path: "TEXT" });
+  ensureColumns(db, "project_roots", { physical_path: "TEXT" });
   for (const table of ["automations", "off_peak_tasks"]) {
     ensureColumns(db, table, {
       project_id: "TEXT",
@@ -80,8 +81,17 @@ export function addProjectSchema(db: DatabaseSync): void {
       additional_directories: "TEXT",
     });
   }
-  if (tableExists(db, "tasks"))
+  if (tableExists(db, "tasks")) {
     db.exec(
       "CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id,archived,cli_updated_at DESC) WHERE deleted=0",
     );
+    db.exec(
+      "CREATE INDEX IF NOT EXISTS idx_tasks_host_physical_root ON tasks(host_id,physical_root_path)",
+    );
+  }
+  if (tableExists(db, "project_roots")) {
+    db.exec(
+      "CREATE INDEX IF NOT EXISTS idx_project_roots_physical_path ON project_roots(physical_path)",
+    );
+  }
 }

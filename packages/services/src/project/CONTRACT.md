@@ -2,7 +2,7 @@
 
 唯一写者是当前 Host 的 tasks-index 存储。服务负责真实目录校验、默认目录创建与旧设置双写；自动归档由本模块的定时扫描器执行（启动首轮、每小时、设置变更补扫），不挂在任何读取或 UI 动作上；Repository 在事务内维护项目、roots 与任务归属。UI 只经 hooks 调用此契约。远程调用使用拥有组织态的现有 Host attachment，不让 main/relay 创建业务副本。
 
-目录解析的 task 归属与 roots 来自同一读快照。已知 task 无项目时返回空附加目录；引用悬空项目或读取失败直接拒绝。prepareSession 的 cwd 创建后固定；编辑 roots 只影响下一次 runtime materialization。删除项目不删除会话；移动不写 CLI 事实、时间或 cwd。CLI continuous/replayable 流不由本模块修改。
+目录解析的 task 归属与 roots 来自同一读快照；保存项目时按物理路径（回退字面路径）去重并落库 `physical_path`，`readTree`/`readProjects` 随树投影 `physicalPath` 与 `workspacePhysicalPath`。已知 task 无项目时返回空附加目录；引用悬空项目或读取失败直接拒绝。prepareSession 的 cwd 创建后固定；编辑 roots 只影响下一次 runtime materialization。删除项目不删除会话；移动不写 CLI 事实、时间或 cwd。CLI continuous/replayable 流不由本模块修改。
 
 全局创建显式空归属，不按目录猜项目。跨 host 移动失败；同 host 缺目录时先返回错误，用户明确确认后原子追加 root 与移动。可删除容器永久保留，恢复仅由新建时明确选择同 roots 的已删项目。
 

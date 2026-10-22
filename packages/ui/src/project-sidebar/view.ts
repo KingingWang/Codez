@@ -88,17 +88,27 @@ export function taskVisibleInProject(
   project: Pick<VirtualProject, "id" | "hostId" | "roots">,
 ): boolean {
   if (task.hostId !== project.hostId) return false;
+  if (task.projectId === project.id) return true;
   // 修复原因：远端 Codex 历史已按 workspace 身份写入远端 Host 索引，但首次发现的
   // NULL 项目归属不能回填；与本地单目录一样按 Host 和 cwd 只读展示，不改 task 行。
+  // 当项目 root 或任务 cwd 经过符号链接时，双方若均携带所属 Host 解析的物理路径，
+  // 则按同 Host + 同物理目录判定（不再因软链接与物理路径派生出不同 workspaceIdentity 字符串而漏展示）；
+  // 缺省物理路径时回退为原有的字面路径 + canonical workspaceIdentity 精确比较。
   if (project.roots.length === 1) {
-    const rootPath = project.roots[0]!.rootPath;
+    const root = project.roots[0]!;
+    const rootPath = root.rootPath;
+    const taskPhysical = task.workspacePhysicalPath?.trim();
+    const rootPhysical = root.physicalPath?.trim();
+    if (taskPhysical && rootPhysical) {
+      return taskPhysical === rootPhysical;
+    }
     return (
       task.workspacePath === rootPath &&
       (project.hostId === "local" ||
         task.workspaceIdentity === buildRemoteHostWorkspaceIdentity(project.hostId, rootPath))
     );
   }
-  return task.projectId === project.id;
+  return false;
 }
 
 /** 只从 Host 已提交的行和项目 roots 派生显示，不写回单值 project_id。 */

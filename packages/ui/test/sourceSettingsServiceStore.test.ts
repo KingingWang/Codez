@@ -63,3 +63,27 @@ it("configuration panels share one in-flight attachment and can retry a failed r
   await ensureSourceSettingsServices("config-same", retry);
   expect(retry).toHaveBeenCalledOnce();
 });
+
+it("waits for asynchronous MessagePort registration after requestSourceSettingsAttachment resolves", async () => {
+  const sourceServerId = "async-port-source";
+  const services = createServices("async-ready");
+  let release: (() => void) | undefined;
+  const request = vi.fn(async () => {
+    setTimeout(() => {
+      release = registerSourceSettingsServices({
+        sourceServerId,
+        attachmentId: "attachment-async",
+        services,
+        dispose: () => {},
+      });
+    }, 20);
+    return { attachmentId: "attachment-async" };
+  });
+
+  try {
+    await ensureSourceSettingsServices(sourceServerId, request);
+    expect(getSourceSettingsServices(sourceServerId)).toBe(services);
+  } finally {
+    release?.();
+  }
+});

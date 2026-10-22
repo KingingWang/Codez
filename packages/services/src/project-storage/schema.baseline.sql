@@ -105,7 +105,7 @@ CREATE TABLE off_peak_tasks (
 
 CREATE TABLE project_roots (
  project_id TEXT NOT NULL REFERENCES projects(project_id) ON DELETE CASCADE,
- root_path TEXT NOT NULL, position INTEGER NOT NULL, is_primary INTEGER NOT NULL DEFAULT 0,
+ root_path TEXT NOT NULL, position INTEGER NOT NULL, is_primary INTEGER NOT NULL DEFAULT 0, physical_path TEXT,
  PRIMARY KEY(project_id,root_path));
 
 CREATE TABLE projects (
@@ -188,7 +188,7 @@ CREATE TABLE tasks (
         archived INTEGER NOT NULL DEFAULT 0,
         deleted INTEGER NOT NULL DEFAULT 0,
         title_overridden INTEGER NOT NULL DEFAULT 0,
-        meta_json TEXT NOT NULL DEFAULT '{}', searchable_text TEXT NOT NULL DEFAULT '', cron_automation_id TEXT, off_peak_task_id TEXT, host_id TEXT, root_path TEXT, project_id TEXT, execution_directories TEXT, sort_order INTEGER, cli_title TEXT, handoff_pending INTEGER NOT NULL DEFAULT 0, cli_title_source TEXT, cli_created_at INTEGER, cli_updated_at INTEGER, cli_last_outcome TEXT, cli_deleted INTEGER,
+        meta_json TEXT NOT NULL DEFAULT '{}', searchable_text TEXT NOT NULL DEFAULT '', cron_automation_id TEXT, off_peak_task_id TEXT, host_id TEXT, root_path TEXT, project_id TEXT, execution_directories TEXT, sort_order INTEGER, cli_title TEXT, handoff_pending INTEGER NOT NULL DEFAULT 0, cli_title_source TEXT, cli_created_at INTEGER, cli_updated_at INTEGER, cli_last_outcome TEXT, cli_deleted INTEGER, physical_root_path TEXT,
         PRIMARY KEY (workspace_key, task_id)
       );
 
@@ -216,6 +216,8 @@ CREATE INDEX idx_off_peak_pick
 CREATE INDEX idx_off_peak_ws
       ON off_peak_tasks (workspace_key, status);
 
+CREATE INDEX idx_project_roots_physical_path ON project_roots(physical_path);
+
 CREATE UNIQUE INDEX idx_projects_host_name ON projects(host_id,name) WHERE deleted=0;
 
 CREATE INDEX idx_task_group_members_group_order
@@ -226,6 +228,8 @@ CREATE INDEX idx_task_group_view_node_orders_order
 
 CREATE INDEX idx_tasks_cron_automation ON tasks(cron_automation_id, updated_at DESC)
     WHERE cron_automation_id IS NOT NULL AND deleted=0;
+
+CREATE INDEX idx_tasks_host_physical_root ON tasks(host_id,physical_root_path);
 
 CREATE UNIQUE INDEX idx_tasks_host_task ON tasks(host_id,task_id);
 
