@@ -23,6 +23,10 @@ export {
   createTaskAutoArchiveScheduler,
   shouldRescanTaskAutoArchive,
 } from "#src/project/autoArchiveScheduler.js";
+export {
+  createCodexGlobalRolloutSyncer,
+  type CodexGlobalRolloutSyncer,
+} from "#src/project/codexGlobalRolloutSyncer.js";
 export type {
   ProjectTree,
   ProjectTask,

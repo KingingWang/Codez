@@ -939,4 +939,28 @@ describe("createCodezSessionService", () => {
       broadcastReason: "task_model_changed",
     });
   });
+
+  it("ensures workspace subscription on full listSessions discovery so cold project scans seed task index", async () => {
+    const agentService = {
+      listSessions: vi.fn(async () => []),
+    } as unknown as ICodezAgentService;
+    const taskIndexSyncer = {
+      ensureWorkspaceSubscription: vi.fn(),
+    } as unknown as CodezTaskIndexSyncer;
+    const service = createCodezSessionService({ agentService, taskIndexSyncer });
+
+    await service.listSessions({
+      workspacePath: "/remote/project",
+      workspaceIdentity: "remote:server:srv-1:/remote/project",
+    });
+
+    expect(taskIndexSyncer.ensureWorkspaceSubscription).toHaveBeenCalledWith({
+      workspacePath: "/remote/project",
+      workspaceIdentity: "remote:server:srv-1:/remote/project",
+    });
+    expect(agentService.listSessions).toHaveBeenCalledWith({
+      workspacePath: "/remote/project",
+      workspaceIdentity: "remote:server:srv-1:/remote/project",
+    });
+  });
 });

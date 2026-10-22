@@ -11,6 +11,7 @@ export {
   prepareRemoteServerConnection,
 } from "#src/remote-projects/index.js";
 import {
+  createCodexGlobalRolloutSyncer,
   createProjectDataPort,
   createProjectService,
   createTaskAutoArchiveScheduler,
@@ -2410,6 +2411,19 @@ export function createLocalServices(options: {
     database: () => taskIndexRepo.getOrganizationDatabase(),
     afterChange: publishProjectChange,
   });
+  const codexGlobalRolloutSyncer =
+    usesDefaultCodexDesktopBridge && !isDesktopAttachedRemote
+      ? createCodexGlobalRolloutSyncer({
+          taskIndexRepo,
+          resolveWorkspaceIdentity:
+            options?.projectStorageHostId && options.projectStorageHostId !== "local"
+              ? async (workspacePath) =>
+                  (await sourceServerWorkspaceService.resolveWorkspace({ workspacePath }))
+                    .canonicalWorkspaceKey
+              : undefined,
+          afterChange: publishProjectChange,
+        })
+      : null;
   const projectService = createProjectService({
     directories: {
       home: async () => (await systemService.info()).homedir,
@@ -2417,7 +2431,10 @@ export function createLocalServices(options: {
     },
     ownerHostId: options?.projectStorageHostId,
     resolveHost: options?.resolveProjectHostService,
-    repository: () => taskIndexRepo.getProjectRepository(),
+    repository: async () => {
+      await codexGlobalRolloutSyncer?.syncNow();
+      return taskIndexRepo.getProjectRepository();
+    },
     workspaceDirectory: join(projectDataRoot(), "workspace"),
     afterChange: publishProjectChange,
     // codezAgentService 在下方创建；端口只在命令执行时取用它。
@@ -2927,6 +2944,9 @@ export function createLocalServices(options: {
   const codezTaskIndexSyncer = createCodezTaskIndexSyncer({
     agentService: codezAgentService,
     taskIndexRepo,
+    onTaskRowsCreated: () => {
+      void publishProjectChange().catch(() => {});
+    },
   });
   // 自动归档只由这里的定时扫描触发（启动首轮 + 每小时 + 设置变更补扫）；readTree 与任务点击
   // 都不再执行 archiveInactive。判据仍排除 syncer 观察到的非终态会话，不为扫描启动 CLI。
@@ -3555,9 +3575,11 @@ export function createLocalServices(options: {
       }
     });
     taskAutoArchiveScheduler.start();
+    codexGlobalRolloutSyncer?.start();
     taskAutoArchiveDisposers.set(services, () => {
       stopSettingsRescan();
       taskAutoArchiveScheduler.dispose();
+      codexGlobalRolloutSyncer?.dispose();
     });
   }
   settingsRuntimeRestartDisposers.set(services, [
