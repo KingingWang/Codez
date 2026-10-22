@@ -59,6 +59,18 @@ Window Host 保存命令 → Main 获取 Environment 代际/锁
 
 来源 Host 异常退出、配置 CAS 失败或安装失败时，不以旧 Key 自动恢复运行；确认后已接受的任务沿既有中断结算，不自动重放。新连接在该 Environment 屏障完成前不得发布可发送状态。desktop continuous 和 mobile replayable 只沿用各自的既有会话投递，不新建手机 Agent。
 
+### 设置页保存事务与 Agent 重启的时序
+
+Key 轮换屏障按本 spec 必须在 `prepareKeySource` 与 `config/batchWrite` 之间停止旧 Agent，随后发布 `runtimeRestarted`。这是事务的正常组成，不是异常。设置页因此必须：
+
+- **事务期间不换读投影代际**：`runtimeRestarted` 落在保存事务进行中时只记账，mutation 锁释放后再统一应用。中途换代会让在途写入被身份守卫在发出 RPC 前作废，并重挂载面板丢掉草稿与结果提示。
+- **写入身份不含 Agent 代际**：判定在途写入是否落到错误的机器/workspace，只看 `workspacePath`、`workspaceIdentity`、已解析 services 与 `rpcReady`。
+- **失败必须可见**：写入抛错时不得因代际已换代而丢弃错误。确实无法落 UI（面板已随换代重挂载）时改为 renderer `warn` 日志，不静默。
+
+违反时的故障形态：`prepareKeySource` 与 `finishKeySource` 均返回 OK、本机凭据与注册表已写入、远端 Agent 被反复重启，但 `config.toml` 一步未改，供应商在重读后消失，UI 无任何提示。
+
+`finishKeySource` 的成功日志必须区分 commit 与 rollback：按 `providerId`、Environment scope（哈希，不含主机地址）、`mode`、`commit` 落 `info`，消除「日志全绿但实际回滚」的诊断盲区。日志不含 Key 材料。
+
 ## 验收
 
 1. 原生供应商在默认 Codex GUI 的「模型供应商」面板可选择 Key 来源；配置文件模式兼容旧数据。临时模式保存后 `config.toml` 只有 `env_key`，本机 Credential Store 有值，重开显示已配置但不回显。
@@ -67,6 +79,8 @@ Window Host 保存命令 → Main 获取 Environment 代际/锁
    - 回归场景：在已连接 SSH workspace 的设置页首次选择「本机保存」并输入 Key，保存后检查桌面注册表只有目标 SSH 环境分区新增该供应商、local 分区不新增；远端配置只有 `env_key`。重连并实际发送模型请求，确认 Key 由目标连接安装并注入运行时；断连期间设置页不得将保存请求转给 local 服务。
 4. 运行中更换/清除或切换模式先确认，再中断旧 Agent，随后以新配置重新启动；取消不写。失败不继续使用旧环境作为隐式兜底。
 5. Server remote、ChatGPT 登录、手工 `env_key`、legacy Provider 维持原行为；旧明文历史不可保证清除，提示轮换。共享远端 OS 账户在运行时仍可能使用 Key。
+6. 远端 SSH workspace 选「本机保存」新增供应商：保存后远端 `config.toml` 出现该供应商且只有 `env_key`，面板显示已保存并列出该供应商；日志中 `finishKeySource` 为 `commit:true`。同一事务内的 Agent 重启不导致写入被跳过。
+7. 让 `config/batchWrite` 失败（如版本冲突）：面板显示失败与原因，不显示已保存，凭据与注册表恢复旧值，日志中 `finishKeySource` 为 `commit:false`。
 
 ## 依据
 
