@@ -372,6 +372,17 @@ export function createCodezSessionService({
     },
 
     listSessions(params: CodezSessionListParams) {
+      // 修复原因（issue #18）：添加未激活 tab 的项目后，useCodexProjectDiscovery 会调用
+      // listSessions 触发只读扫描（启动只读 bridge 并在响应后刷新 sessions-index）。
+      // 若此处未向 taskIndexSyncer 登记该 workspace，syncer 在 bridge spawn 发布
+      // runtimeLifecycle(available) 时将忽略该 workspace，导致扫描出的历史会话无法写回
+      // tasks-index.sqlite 与触发侧栏刷新，必须等到后续点击「新建对话」才建立订阅。
+      if (params.workspacePath) {
+        taskIndexSyncer?.ensureWorkspaceSubscription({
+          workspacePath: params.workspacePath,
+          workspaceIdentity: params.workspaceIdentity,
+        });
+      }
       return agentService.listSessions(params);
     },
 
