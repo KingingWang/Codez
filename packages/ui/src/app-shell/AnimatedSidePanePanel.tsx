@@ -1277,6 +1277,8 @@ export function AnimatedSidePanePanel({
                             <WorkflowRunDirectorySidePane
                               tab={tab}
                               onOpenWorkflowRun={onOpenWorkflowRun}
+                              compactForRemoteControl={mobileOverlay}
+                              isDesktop={isDesktop}
                             />
                           ) : null
                         ) : tab.type === "workflow-actor-session" ? (
