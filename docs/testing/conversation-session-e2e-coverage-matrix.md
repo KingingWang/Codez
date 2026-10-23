@@ -1673,6 +1673,16 @@ Codex bridge 长会话另计（不借用 CLI PERF03 的通过证据）：
 | session-find-highlight（新）                    | **W01-W06**（Cmd/Ctrl+F 对话正文搜索、虚拟滚动跳转高亮、自动补拉至 1200 row、分屏 focused pane、Command Center 结果临时高亮、running 稳定后更新）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | planned                                                                                                                                                                                                   |
 | turn-navigator（新）                            | **TN01-TN09**（左侧完整 query 目录、全量 rows/range 补拉、rail 虚拟滚动、scroll-spy 颜色高亮、hover-only 山峰、query + assistant 摘要、按 row 精确跳转、每条真实用户 query 独立入目录、composer 透明 gutter 命中、real-user query 增删后终态 revision 失效）                                                                                                                                                                                                                                                                                                                                                                                                                 | partial：TN01-TN04 covered；TN05-TN06 focused UI/runtime 已覆盖；TN07-TN08 已确认语义并进入 focused store/UI + 大会话 runtime 验证                                                                        |
 
+Codex 外部 writer 冲突显式刷新（见 catalog CWR01–CWR03；不代表自动追踪 TUI 流）：
+
+下表 TUI＋Desktop artifact 是 2026-10-23 的原定制历史批次，不代表本轮 3.17.1 集成基线重新实跑；focused partial、人工 review、默认路径与手机订阅验证的缺口保持不变。
+
+| Case | 状态 | 证据入口 | 未覆盖门槛 |
+| --- | --- | --- | --- |
+| CWR01 | focused partial | Bridge 双交付模式 mock 与 GUI 重选、按钮、单飞 focused tests 已通过；rebase 后真实 TUI＋Desktop pending 用例在隔离 HOME 中验证已落盘新历史出现一次且继续只读（`packages/desktop/.e2e-artifacts/desktop-e2e-20261023-175321-788/summary.md`，1/1 通过） | 本次为宿主机 HTTP 静态 renderer＋容器式 Chromium 参数，不是 Docker 容器或默认 `file://`；正式转正仍需人工 review 与默认路径验证 |
+| CWR02 | focused partial | keep-warm 保活、失败保留旧历史、无冲突后恢复可写的 GUI focused tests 已通过；同一真实 TUI＋Desktop pending 用例验证 TUI 退出后重选恢复 composer（同 CWR01 artifact） | 默认 `file://` renderer 在本机发生模块加载失败，未取得该路径的运行证据；任务列表归属/活动时间未由此 pending case 断言，点击清未读属于已有独立路径 |
+| CWR03 | focused partial | 多 pane 共用 store、ACK 到首帧单飞、可写会话 no-op、精确 endpoint/remote identity 与失败保留旧历史的 focused tests 已通过 | 手机任务重选不在 Desktop 入口内；desktop continuous/mobile replayable 的订阅隔离仍需 E2E 代表验证 |
+
 ### SWG 右键分屏与草稿 focused pane 覆盖
 
 本轮只扩展 renderer-local `paneLayout/workbenchGroup` owner，不新增 protocol、Host、CLI、
