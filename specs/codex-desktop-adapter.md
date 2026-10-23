@@ -930,7 +930,11 @@ connection is not proof that the persisted thread list is current. Discovery is
 read-only, paginated, scoped to the execution cwd and the remote attachment's
 existing workspace identity; it never copies history into a second execution store.
 Rollout head scanning must not promote Codex's earlier user-role
-`<environment_context>` response item to the session title. It waits for the first
+`<environment_context>` response item to the session title. The same holds for the
+user-role `# AGENTS.md instructions for <dir>\n\n<INSTRUCTIONS>…</INSTRUCTIONS>`
+fragment Codex persists before the first real user message in native sessions;
+neither injected fragment is a user query or a title, even when the rollout carries
+no `## My request for Codex:` separator. The scanner waits for the first
 real user-message event (`user_message` or `item_completed/UserMessage`, including
 the pinned native item's spelling), then derives the first-query title. Legacy
 rollouts with only a clearly non-injected user-role response item may use that
