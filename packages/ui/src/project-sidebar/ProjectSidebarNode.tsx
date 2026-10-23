@@ -84,6 +84,19 @@ export const ProjectSidebarNode = memo(
       false,
     );
     const { refresh, availability } = display;
+    const reconnectProject = () =>
+      runProjectAction(async () => {
+        // Bug 根因：待升级项目详情过去只跳设置页，后台恢复终止后没有就地处理入口。
+        // 显式重连交给原项目向导，复用失败目标校验、force:false 和运行任务确认。
+        if (isDesktop && project.roots[0]) {
+          await onReconnectRemoteWorkspace(
+            buildRemoteHostWorkspaceIdentity(project.hostId, project.roots[0].rootPath),
+          );
+        } else {
+          await remoteService!.connectHost(project.hostId);
+        }
+        await refresh();
+      });
     return (
       <ProjectNode
         {...display}
@@ -106,6 +119,15 @@ export const ProjectSidebarNode = memo(
               }
             : undefined
         }
+        onUpdateServer={
+          isDesktop &&
+          sourceServerId &&
+          remoteHost?.lastConnectionStatus === "needs-upgrade" &&
+          remoteHost.upgradeTarget === "server" &&
+          project.roots[0]
+            ? reconnectProject
+            : undefined
+        }
         additionalActions={[
           ...remoteActions(project),
           // worktree 只由本机 Host 管理；远程项目与手机远控不显示入口。
@@ -125,21 +147,7 @@ export const ProjectSidebarNode = memo(
                   id: "connect",
                   label: msg("connect"),
                   icon: Plug,
-                  run: () =>
-                    runProjectAction(async () => {
-                      // 远端连接仍经现有意图分派，保留缺凭据、安装和升级流程。
-                      if (isDesktop && project.roots[0]) {
-                        await onReconnectRemoteWorkspace(
-                          buildRemoteHostWorkspaceIdentity(
-                            project.hostId,
-                            project.roots[0].rootPath,
-                          ),
-                        );
-                      } else {
-                        await remoteService!.connectHost(project.hostId);
-                      }
-                      await refresh();
-                    }),
+                  run: reconnectProject,
                 },
               ]
             : []),
