@@ -66,6 +66,18 @@ BridgeRuntime dispatch → runtime/capabilities.codex
   bridge-projected status; an unsupported or remote Host must never see a
   contradictory global availability claim.
 - Capability status is stable while a connection remains active. UI refreshes after lifecycle `available` and after restart/`transportReplaced`; the subscriptions coexist because stable Local Host transport replacement is emitted only on the restart channel.
+- Codex must gate the legacy `workflowRuns` discovery query on an explicit
+  `legacyWorkflowRuns: "supported"` hello projection. `unsupported`,
+  `unavailable`, a missing Codex projection, or a capability refresh in progress
+  issues no legacy workflow-runs RPC. Non-Codex runtimes keep the existing
+  retrying discovery query; Codex capability facts must not be synthesized from
+  a legacy Dynamic Workflow implementation, mapped from another method, or
+  inferred from a command error. Closing the gate invalidates the cached
+  discovery answer; a later supported refresh must query the new runtime rather
+  than reusing the previous runtime's journal result.
+  The same gate covers restored workflow-run directory tabs and the remote
+  native-Host detection pending window; those entry points must not fall back to
+  a legacy query before the current target is known.
 
 ## Acceptance scenarios
 

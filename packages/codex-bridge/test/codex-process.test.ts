@@ -26,6 +26,7 @@ async function fixture(
   desktopMcpServers?: DesktopCodexMcpServer[],
   onRequestTimeout?: (info: { method: string; durationMs: number; pendingCount: number }) => void,
   onFrameDropped?: CodexProcessOptions["onFrameDropped"],
+  onStderrSummary?: CodexProcessOptions["onStderrSummary"],
 ) {
   const directory = await mkdtemp(join(tmpdir(), "codez transport 中文 "));
   const executable = join(directory, "fake codex");
@@ -41,6 +42,7 @@ async function fixture(
     desktopMcpServers,
     onRequestTimeout,
     onFrameDropped,
+    onStderrSummary,
     env: {
       PATH: globalThis.process.env.PATH,
       HOME: directory,
@@ -339,6 +341,152 @@ test("process death rejects every pending request and emits close once", options
   await process.close();
   assert.equal(closes, 1);
   await assert.rejects(process.respond(42, {}), /closed/i);
+});
+
+test("native stderr produces one bounded summary without raw text", options, async (t) => {
+  const summaries: CodexProcessOptions["onStderrSummary"] extends undefined
+    ? never
+    : Parameters<NonNullable<CodexProcessOptions["onStderrSummary"]>>[0][] = [];
+  const { process } = await fixture(
+    t,
+    "normal",
+    4000,
+    undefined,
+    false,
+    false,
+    undefined,
+    undefined,
+    undefined,
+    (summary) => summaries.push(summary),
+  );
+  await process.initialize();
+  await process.request("stderr-summary");
+  await process.close();
+  assert.equal(summaries.length, 1);
+  assert.deepEqual(summaries[0], {
+    exitCode: 0,
+    signal: null,
+    lineCount: 3,
+    byteCount: 158,
+    truncated: false,
+    level: "error",
+    target: "codex_core::config::provider",
+    categories: ["connection", "error", "tls"],
+  });
+  assert.doesNotMatch(JSON.stringify(summaries), /secret|\/private|token|prompt/i);
+});
+
+test("native stderr recognizes bounded Rust tracing prefixes", options, async (t) => {
+  const summaries: Parameters<NonNullable<CodexProcessOptions["onStderrSummary"]>>[0][] = [];
+  const { process } = await fixture(
+    t,
+    "normal",
+    4000,
+    undefined,
+    false,
+    false,
+    undefined,
+    undefined,
+    undefined,
+    (summary) => summaries.push(summary),
+  );
+  await process.initialize();
+  await process.request("stderr-rust-tracing");
+  await process.close();
+  assert.equal(summaries.length, 1);
+  assert.deepEqual(
+    {
+      level: summaries[0]!.level,
+      target: summaries[0]!.target,
+      categories: summaries[0]!.categories,
+    },
+    { level: "info", target: "codex_native::session", categories: ["timeout"] },
+  );
+  assert.doesNotMatch(JSON.stringify(summaries), /\/secret/);
+});
+
+test("unbounded native stderr lines keep classification and memory bounded", options, async (t) => {
+  const summaries: Parameters<NonNullable<CodexProcessOptions["onStderrSummary"]>>[0][] = [];
+  const { process } = await fixture(
+    t,
+    "normal",
+    4000,
+    undefined,
+    false,
+    false,
+    undefined,
+    undefined,
+    undefined,
+    (summary) => summaries.push(summary),
+  );
+  await process.initialize();
+  await process.request("stderr-long");
+  await process.close();
+  assert.equal(summaries.length, 1);
+  assert.equal(summaries[0]!.lineCount, 1);
+  assert.equal(summaries[0]!.byteCount, 2 * 1024 * 1024 + 50);
+  assert.equal(summaries[0]!.truncated, true);
+  assert.deepEqual(
+    {
+      level: summaries[0]!.level,
+      target: summaries[0]!.target,
+      categories: summaries[0]!.categories,
+    },
+    { level: "error", target: "codex_core::transport", categories: ["timeout", "error"] },
+  );
+  assert.doesNotMatch(JSON.stringify(summaries), /secret-token|a{100}|b{100}/);
+});
+
+test("empty native stderr emits a zero summary only once", options, async (t) => {
+  const summaries: Parameters<NonNullable<CodexProcessOptions["onStderrSummary"]>>[0][] = [];
+  const { process } = await fixture(
+    t,
+    "normal",
+    4000,
+    undefined,
+    false,
+    false,
+    undefined,
+    undefined,
+    undefined,
+    (summary) => summaries.push(summary),
+  );
+  await process.initialize();
+  await process.close();
+  await process.close();
+  assert.equal(summaries.length, 1);
+  assert.deepEqual(summaries[0], {
+    exitCode: 0,
+    signal: null,
+    lineCount: 0,
+    byteCount: 0,
+    truncated: false,
+    level: "unknown",
+    target: undefined,
+    categories: [],
+  });
+});
+
+test("native stderr callback failure cannot break transport state", options, async (t) => {
+  const { process } = await fixture(
+    t,
+    "normal",
+    4000,
+    undefined,
+    false,
+    false,
+    undefined,
+    undefined,
+    undefined,
+    () => {
+      throw new Error("diagnostic callback failure");
+    },
+  );
+  await process.initialize();
+  await process.request("stderr-summary");
+  assert.equal(await process.request("echo", "alive"), "alive");
+  await process.close();
+  await assert.rejects(process.initialize(), /closed/i);
 });
 
 test("missing executable is an actionable startup failure", options, async () => {

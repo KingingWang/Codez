@@ -33,6 +33,7 @@ import {
 import { queryCodexAppUsageStats } from "./codex-app-usage.js";
 import { scopeWorkspaceParams, handleCodexNativeRequest } from "./request-scope.js";
 import type { BridgeFailureOrigin } from "./diagnostics.js";
+import { isRuntimeNoticeMethod, RuntimeNoticeStore } from "./runtime-notices.js";
 
 export interface BridgeResponse {
   result: unknown;
@@ -56,6 +57,7 @@ export class BridgeRuntime {
   private readonly ledger: CommandLedger;
   private readonly commands: CommandRouter;
   private readonly rewindNotices = new RewindNoticeStore();
+  private readonly runtimeNotices = new RuntimeNoticeStore();
   private readonly snapshots: BridgeSnapshots;
   private readonly subscriptions: BridgeSubscriptions;
   private readonly attachments: AttachmentStore;
@@ -68,7 +70,7 @@ export class BridgeRuntime {
 
   constructor(private readonly options: BridgeRuntimeOptions) {
     const { rpc, cwd, workspaceId, stateRoot, notify } = options;
-    this.store = new ThreadStateStore(rpc, cwd);
+    this.store = new ThreadStateStore(rpc, cwd, (id) => this.runtimeNotices.remove(id));
     this.auxiliary = new AuxiliaryText({ rpc, cwd, providerKeyGate: options.providerKeyGate });
     const titleDeps = { rpc, store: this.store, auxiliary: this.auxiliary, cwd, workspaceId };
     this.title = new SessionTitleCoordinator(titleDeps);
@@ -99,6 +101,7 @@ export class BridgeRuntime {
       this.interactions,
       workspaceId,
       this.attachments,
+      this.runtimeNotices,
     );
     this.subscriptions = new BridgeSubscriptions({
       workspaceId,
@@ -119,9 +122,15 @@ export class BridgeRuntime {
         this.eventTail = this.eventTail
           .then(async () => {
             if (this.closed) return;
-            const params = object(event.params ?? {});
+            const noticeMethod = isRuntimeNoticeMethod(event.method);
+            const noticeChange = this.runtimeNotices.apply(event);
+            const params: Record<string, unknown> = noticeMethod ? {} : object(event.params ?? {});
             // 事件已在 eventTail 上串行；await 保证归属解析不会让后到的事件插队。
-            await this.store.apply(event);
+            // 纯通知不经过 thread 状态门禁；否则全局 warning 会被未加载线程分支吞掉，
+            // malformed 通知也会被通用 params 强校验误升级为 native-event fatal。
+            if (!noticeMethod) await this.store.apply(event);
+            if (noticeChange?.scope === "workspace") this.store.touchAll();
+            else if (noticeChange?.scope === "thread") this.store.touch(noticeChange.threadId);
             void this.title.onNotification(event).catch(() => {});
             if (event.method === "serverRequest/resolved") {
               await this.interactions.resolved(string(params.threadId), params.requestId);

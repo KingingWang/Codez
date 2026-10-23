@@ -22,6 +22,7 @@ import { subagentsStateFromRows } from "./subagent-projection.js";
 import { SubagentActivitySeedScheduler } from "./subagent-activity.js";
 import { sparseNativeTurnUsage, sparseNativeUsage } from "./bridge-snapshot-usage.js";
 import type { AttachmentStore, AttachmentReadAuthorization } from "./attachments.js";
+import type { RuntimeNoticeStore } from "./runtime-notices.js";
 import { projectGoalActionAvailability, projectNativeThreadGoal } from "./thread-goal.js";
 
 export class BridgeSnapshots {
@@ -54,6 +55,7 @@ export class BridgeSnapshots {
     private readonly interactions: InteractionBroker,
     readonly workspaceId: string,
     private readonly attachments?: AttachmentStore,
+    private readonly runtimeNotices?: RuntimeNoticeStore,
   ) {
     this.subagentActivitySeeds = new SubagentActivitySeedScheduler({
       rpc: context.rpc,
@@ -182,6 +184,7 @@ export class BridgeSnapshots {
         state.apiRetry && state.apiRetry.turnId === object(array(state.thread.turns).at(-1)).id
           ? state.apiRetry.status
           : null,
+      runtimeNotices: this.runtimeNotices?.list(id) ?? [],
       // 辅助对话 child：fork 继承的父历史只进模型上下文，不进 UI 投影。
       ...(state.sideChat ? { hiddenTurnIds: state.sideChat.inheritedTurnIds } : {}),
     });

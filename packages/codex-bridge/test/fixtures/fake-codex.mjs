@@ -124,6 +124,36 @@ input.on("line", (line) => {
       process.stderr.write("SECRET_STDERR\n");
       process.stdout.write(params.text);
       break;
+    case "stderr-summary":
+      process.stderr.write(
+        [
+          " INFO unrelated message prompt=secret /private/path",
+          " WARN codex_core::provider: connection failed",
+          "[ERROR codex_core::config::provider] tls error token=secret",
+          "",
+        ].join("\n"),
+      );
+      send({ id, result: null });
+      break;
+    case "stderr-rust-tracing":
+      process.stderr.write(
+        "2026-10-24T12:34:56.789Z INFO codex_native::session timeout while reading /secret\n",
+      );
+      send({ id, result: null });
+      break;
+    case "stderr-long":
+      process.stderr.write(
+        Buffer.concat([
+          Buffer.from("ERROR codex_core::transport timeout "),
+          Buffer.alloc(1024 * 1024, 0x61),
+        ]),
+      );
+      process.stderr.write(
+        Buffer.concat([Buffer.from(" secret-token"), Buffer.alloc(1024 * 1024, 0x62)]),
+      );
+      process.stderr.write("\n");
+      send({ id, result: null });
+      break;
     case "oversized":
       send({ id, result: "x".repeat(33 * 1024 * 1024) });
       break;

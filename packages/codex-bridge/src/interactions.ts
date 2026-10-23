@@ -8,6 +8,7 @@ interface Pending {
   threadId: string;
   turnId?: string;
   interaction: PendingInteraction;
+  nativeDecisions?: Map<string, unknown>;
   responding: boolean;
 }
 export interface InteractionAnswer {
@@ -51,6 +52,11 @@ export class InteractionBroker {
     const params = object(request.params);
     const threadId = string(params.threadId);
     const interactionId = randomUUID();
+    const permission =
+      request.method !== "item/tool/requestUserInput" &&
+      request.method !== "mcpServer/elicitation/request"
+        ? this.permissionProjection(request.method, params)
+        : undefined;
     const payload =
       request.method === "item/tool/requestUserInput"
         ? this.questionPayload(params)
@@ -63,7 +69,7 @@ export class InteractionBroker {
               schema: params.requestedSchema,
               input: params,
             })
-          : this.permissionPayload(request.method, params);
+          : permission!.payload;
     const interaction = pendingInteractionSchema.parse({
       interactionId,
       kind: payload.kind,
@@ -77,6 +83,7 @@ export class InteractionBroker {
       request,
       threadId,
       interaction,
+      nativeDecisions: permission?.nativeDecisions,
       responding: false,
       turnId: typeof params.turnId === "string" ? params.turnId : undefined,
     });
@@ -165,15 +172,42 @@ export class InteractionBroker {
     };
   }
 
-  private permissionPayload(method: string, params: JsonObject): JsonObject {
-    const permitted = array(params.availableDecisions).filter(
-      (decision): decision is string => typeof decision === "string",
-    );
-    const defaults = ["accept", "acceptForSession", "decline", "cancel"];
-    const decisions = Array.isArray(params.availableDecisions)
-      ? defaults.filter((value) => permitted.includes(value))
-      : defaults;
-    return {
+  private permissionProjection(
+    method: string,
+    params: JsonObject,
+  ): { payload: JsonObject; nativeDecisions?: Map<string, unknown> } {
+    const available = Array.isArray(params.availableDecisions)
+      ? array(params.availableDecisions).filter((decision) =>
+          method === "item/commandExecution/requestApproval"
+            ? isSupportedApprovalDecision(decision)
+            : typeof decision === "string" && DEFAULT_APPROVAL_DECISIONS.includes(decision),
+        )
+      : DEFAULT_APPROVAL_DECISIONS;
+    const counts = new Map<string, number>();
+    const nativeDecisions = new Map<string, unknown>();
+    const options = available.map((decision) => {
+      const name = typeof decision === "string" ? decision : objectApprovalDecisionName(decision)!;
+      const index = counts.get(name) ?? 0;
+      counts.set(name, index + 1);
+      const optionId = typeof decision === "string" ? name : `${name}:${index}`;
+      nativeDecisions.set(optionId, decision);
+      return {
+        optionId,
+        label:
+          typeof decision === "string"
+            ? DEFAULT_APPROVAL_LABELS[decision as keyof typeof DEFAULT_APPROVAL_LABELS]
+            : objectApprovalDecisionLabel(decision)!,
+        kind:
+          decision === "accept"
+            ? "allowOnce"
+            : decision === "decline" || objectApprovalDecisionKind(decision) === "deny"
+              ? "deny"
+              : objectApprovalDecisionKind(decision) === "allowAlways"
+                ? "allowAlways"
+                : "custom",
+      };
+    });
+    const payload = {
       kind: "permission",
       toolCallId: string(params.itemId),
       toolName: method.includes("fileChange")
@@ -183,16 +217,15 @@ export class InteractionBroker {
           : "Bash",
       summary: String(params.reason ?? params.command ?? "Codex requests approval"),
       detail: params,
-      options: decisions.map((decision) => ({
-        optionId: decision,
-        label: {
-          accept: "Allow once",
-          acceptForSession: "Allow for this session",
-          decline: "Deny",
-          cancel: "Cancel turn",
-        }[decision],
-        kind: decision === "accept" ? "allowOnce" : decision === "decline" ? "deny" : "custom",
-      })),
+      options,
+    };
+    return {
+      payload,
+      nativeDecisions:
+        method === "item/commandExecution/requestApproval" &&
+        Array.isArray(params.availableDecisions)
+          ? nativeDecisions
+          : undefined,
     };
   }
 
@@ -273,14 +306,35 @@ export class InteractionBroker {
       ) {
         throw new Error("Approval decision was not offered by Codex");
       }
-      response =
-        entry.request.method === "item/permissions/requestApproval"
-          ? {
-              permissions:
-                decision === "accept" || decision === "acceptForSession" ? params.permissions : {},
-              scope: decision === "acceptForSession" ? "session" : "turn",
-            }
-          : { decision };
+      const nativeDecision = entry.nativeDecisions?.get(decision);
+      if (entry.nativeDecisions && nativeDecision === undefined)
+        throw new Error("Approval decision was not offered by Codex");
+      if (nativeDecision !== undefined) {
+        // 原因：对象 decision 中的 amendment 是 Codex 提供的授权事实；renderer
+        // 只能提交 optionId，携带或伪造的 amendment 内容不得参与原生回传。
+        response =
+          entry.request.method === "item/permissions/requestApproval" &&
+          typeof nativeDecision === "string"
+            ? {
+                permissions:
+                  nativeDecision === "accept" || nativeDecision === "acceptForSession"
+                    ? params.permissions
+                    : {},
+                scope: nativeDecision === "acceptForSession" ? "session" : "turn",
+              }
+            : { decision: nativeDecision };
+      } else {
+        response =
+          entry.request.method === "item/permissions/requestApproval"
+            ? {
+                permissions:
+                  decision === "accept" || decision === "acceptForSession"
+                    ? params.permissions
+                    : {},
+                scope: decision === "acceptForSession" ? "session" : "turn",
+              }
+            : { decision };
+      }
     }
     // 不重发写回：失败可能意味着 Codex 已消费响应但连接随后丢失。
     entry.responding = true;
@@ -302,4 +356,71 @@ export class InteractionBroker {
     }
     await this.changed(threadId);
   }
+}
+
+const DEFAULT_APPROVAL_DECISIONS = ["accept", "acceptForSession", "decline", "cancel"];
+const DEFAULT_APPROVAL_LABELS = {
+  accept: "Allow once",
+  acceptForSession: "Allow for this session",
+  decline: "Deny",
+  cancel: "Cancel turn",
+} as const;
+
+function objectApprovalDecisionName(decision: unknown): string | null {
+  if (typeof decision !== "object" || decision === null || Array.isArray(decision)) return null;
+  const keys = Object.keys(decision);
+  if (keys.length !== 1) return null;
+  const name = keys[0]!;
+  if (name !== "acceptWithExecpolicyAmendment" && name !== "applyNetworkPolicyAmendment")
+    return null;
+  const value = (decision as Record<string, unknown>)[name];
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  if (name === "acceptWithExecpolicyAmendment") {
+    const amendment = (value as Record<string, unknown>).execpolicy_amendment;
+    return Array.isArray(amendment) && amendment.every((part) => typeof part === "string")
+      ? name
+      : null;
+  }
+  const amendment = (value as Record<string, unknown>).network_policy_amendment;
+  if (
+    typeof amendment !== "object" ||
+    amendment === null ||
+    Array.isArray(amendment) ||
+    typeof (amendment as Record<string, unknown>).host !== "string" ||
+    !["allow", "deny"].includes(String((amendment as Record<string, unknown>).action))
+  )
+    return null;
+  return name;
+}
+
+function isSupportedApprovalDecision(decision: unknown): boolean {
+  return (
+    (typeof decision === "string" && DEFAULT_APPROVAL_DECISIONS.includes(decision)) ||
+    objectApprovalDecisionName(decision) !== null
+  );
+}
+
+function objectApprovalDecisionLabel(decision: unknown): string | null {
+  const name = objectApprovalDecisionName(decision);
+  if (name === "acceptWithExecpolicyAmendment")
+    return "Yes, and don't ask again for commands that start with …";
+  if (name === "applyNetworkPolicyAmendment")
+    return objectApprovalDecisionKind(decision) === "deny"
+      ? "No, and block this host in the future"
+      : "Yes, and allow this host in the future";
+  return null;
+}
+
+function objectApprovalDecisionKind(decision: unknown): "allowAlways" | "deny" | "custom" | null {
+  const name = objectApprovalDecisionName(decision);
+  if (name === "acceptWithExecpolicyAmendment") return "allowAlways";
+  if (name === "applyNetworkPolicyAmendment") {
+    const amendment = (
+      (decision as Record<string, { network_policy_amendment: { action: unknown } }>)[
+        "applyNetworkPolicyAmendment"
+      ] ?? {}
+    ).network_policy_amendment;
+    return amendment?.action === "deny" ? "deny" : "allowAlways";
+  }
+  return null;
 }

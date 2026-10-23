@@ -200,6 +200,17 @@ shows none of its threads. Multi-root projects retain explicit membership.
   late replies cannot approve another run. Unknown request kinds fail closed.
   Human approvals/questions have no default RPC deadline; an explicit interaction
   deadline is independent of the bounded ordinary RPC/write deadline.
+- Command-execution approvals preserve Codex's `availableDecisions` order and
+  recognize both string decisions and object decisions. The bridge assigns each
+  offered item a stable unique V4 `optionId` (using an index for repeated
+  network amendments), stores `optionId → native decision` only in the pending
+  reverse-RPC owner, and resolves by returning that exact original object.
+  Renderer-supplied amendment content cannot rewrite or synthesize a decision,
+  and a camelCase decision name alone is never sent back as a string. An empty
+  native list projects no implicit approval option; a missing list retains the
+  compatible `accept`, `acceptForSession`, `decline`, and `cancel` choices. The
+  public command schema and the `item/permissions/requestApproval` response
+  shape remain unchanged.
 - Native MCP tool-call approval arrives as `mcpServer/elicitation/request` with
   `mode: "form"`, `_meta.codex_approval_kind: "mcp_tool_call"` and an empty
   object `requestedSchema`. It is a choice, not a form answer. The bridge owns

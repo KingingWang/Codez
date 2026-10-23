@@ -19,6 +19,7 @@ import {
 import { shutdownCodex } from "./rpc-shutdown.js";
 import { codexServerArgv } from "./codex-server-argv.js";
 import { prepareCodexDesktopContext } from "./desktop-context.js";
+import { NativeStderrSummarizer } from "./native-stderr-summary.js";
 
 type Pending = {
   method: string;
@@ -62,6 +63,10 @@ export function createCodexProcess(options: CodexProcessOptions): CodexProcess {
   let terminal: Error | undefined;
   let initialization: Promise<void> | undefined;
   let shutdown: Promise<void> | undefined;
+  const stderrSummarizer = new NativeStderrSummarizer();
+  let emitStderrSummary = false;
+  let lastExitCode: number | null = null;
+  let lastExitSignal: NodeJS.Signals | null = null;
   let resolveClosed: () => void;
   const childClosed = new Promise<void>((resolve) => {
     resolveClosed = resolve;
@@ -323,7 +328,29 @@ export function createCodexProcess(options: CodexProcessOptions): CodexProcess {
   child.stderr.on("error", () => {
     void stop(new CodexTransportError("CLOSED", "Codex stderr connection closed"));
   });
-  child.stderr.resume(); // Drain without retaining or logging credentials/diagnostics.
+  child.stderr.on("data", (chunk: Buffer) => {
+    // 原因：原生退出只剩 closed 时无法定位；原文可能含 prompt/凭据，只流式保留闭合统计。
+    try {
+      stderrSummarizer.append(chunk);
+    } catch {
+      // 摘要器只影响诊断，不能因个别损坏 chunk 中断业务协议。
+    }
+  });
+  child.stderr.once("end", () => {
+    if (emitStderrSummary) {
+      emitStderrSummary = false;
+      // exit 可能先于 close；stderr EOF 已保证最终诊断排空，先发一次避免主进程提前退出。
+      try {
+        options.onStderrSummary?.({
+          exitCode: lastExitCode,
+          signal: lastExitSignal,
+          ...stderrSummarizer.finish(),
+        });
+      } catch {
+        // 诊断回调只做旁路观察，禁止因调用方异常破坏传输生命周期。
+      }
+    }
+  });
   child.stdout.on("data", (chunk: Buffer) => {
     if (terminal) return;
     try {
@@ -343,6 +370,9 @@ export function createCodexProcess(options: CodexProcessOptions): CodexProcess {
     void stop(new CodexTransportError("CLOSED", "Codex stdout connection closed"));
   });
   child.on("exit", (code, signal) => {
+    emitStderrSummary = true;
+    lastExitCode = code;
+    lastExitSignal = signal;
     finish(
       new CodexTransportError(
         "CLOSED",
@@ -351,8 +381,21 @@ export function createCodexProcess(options: CodexProcessOptions): CodexProcess {
     );
     shutdown ??= shutdownCodex(child, childClosed);
   });
-  child.on("close", () => {
+  child.on("close", (code, signal) => {
     resolveClosed();
+    if (emitStderrSummary) {
+      emitStderrSummary = false;
+      // exit 先于 close，此时 stderr 已 drain；回调异常不能影响 close 状态机。
+      try {
+        options.onStderrSummary?.({
+          exitCode: code,
+          signal,
+          ...stderrSummarizer.finish(),
+        });
+      } catch {
+        // 诊断回调只做旁路观察，禁止因调用方异常破坏传输生命周期。
+      }
+    }
     finish(new CodexTransportError("CLOSED", "Codex process closed"));
   });
 
