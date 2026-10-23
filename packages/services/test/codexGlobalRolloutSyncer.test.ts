@@ -103,6 +103,107 @@ describe("createCodexGlobalRolloutSyncer", () => {
     }
   });
 
+  it("ignores the injected AGENTS.md instructions fragment and repairs a polluted title", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "codez-global-rollout-agents-md-"));
+    const codexHome = join(dir, ".codex");
+    const dayDir = join(codexHome, "sessions", "2026", "10", "23");
+    await mkdir(dayDir, { recursive: true });
+    const sessionId = "019a0000-0000-7000-8000-000000000789";
+    const workspacePath = "/remote/new-api";
+    const workspaceIdentity = `remote:ssh:debian:22:dev:${workspacePath}`;
+    const rolloutPath = join(dayDir, `rollout-2026-10-23T01-00-00-${sessionId}.jsonl`);
+    // 生产 rollout 的真实落盘顺序：AGENTS.md 注入块与环境块都带 user 角色，
+    // 且没有 `## My request for Codex:` 分隔符，真实用户消息随后才落盘。
+    const agentsInstructions =
+      "# AGENTS.md instructions for /remote/new-api\n\n<INSTRUCTIONS>\n规则\n</INSTRUCTIONS>";
+    await writeFile(
+      rolloutPath,
+      [
+        {
+          type: "session_meta",
+          payload: { meta: { id: sessionId, cwd: workspacePath, source: "appServer" } },
+        },
+        {
+          type: "response_item",
+          payload: {
+            type: "message",
+            role: "user",
+            content: [{ type: "input_text", text: agentsInstructions }],
+          },
+        },
+        {
+          type: "response_item",
+          payload: {
+            type: "message",
+            role: "user",
+            content: [
+              {
+                type: "input_text",
+                text: "<environment_context><cwd>/remote/new-api</cwd></environment_context>",
+              },
+            ],
+          },
+        },
+      ]
+        .map((line) => JSON.stringify(line))
+        .join("\n") + "\n",
+    );
+    const databasePath = join(dir, "tasks-index.sqlite");
+    const repo = new TaskIndexRepo(undefined, "remote:server:srv-1", databasePath);
+    const target = { workspacePath, workspaceIdentity, taskId: sessionId };
+    const createSyncer = () =>
+      createCodexGlobalRolloutSyncer({
+        taskIndexRepo: repo,
+        resolveWorkspaceIdentity: async () => workspaceIdentity,
+        env: { CODEX_HOME: codexHome },
+      });
+    const syncer = createSyncer();
+    try {
+      expect(await syncer.syncNow()).toBe(false);
+      expect(await repo.getTaskMeta(target)).toBeNull();
+
+      await appendFile(
+        rolloutPath,
+        `${JSON.stringify({
+          type: "event_msg",
+          payload: {
+            type: "item_completed",
+            item: {
+              type: "UserMessage",
+              content: [{ type: "text", text: "看看为啥远程workflow构建失败了" }],
+            },
+          },
+        })}\n`,
+      );
+      expect(await syncer.syncNow()).toBe(true);
+      expect((await repo.getTaskMeta(target))?.title).toBe("看看为啥远程workflow构建失败了");
+
+      // 已污染的旧索引（"# AGENTS.md instructions…" 标题）在重扫时必须被同一任务 id 修复。
+      const legacyDatabase = new DatabaseSync(databasePath);
+      try {
+        legacyDatabase
+          .prepare(
+            "UPDATE tasks SET title = ?, cli_title = ?, cli_title_source = 'default' WHERE task_id = ?",
+          )
+          .run(agentsInstructions, agentsInstructions, sessionId);
+      } finally {
+        legacyDatabase.close();
+      }
+      syncer.dispose();
+      const restarted = createSyncer();
+      try {
+        expect(await restarted.syncNow()).toBe(true);
+        expect((await repo.getTaskMeta(target))?.title).toBe("看看为啥远程workflow构建失败了");
+      } finally {
+        restarted.dispose();
+      }
+    } finally {
+      syncer.dispose();
+      repo.close();
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("indexes external CLI rollouts from any directory (including unadded projects) and notifies afterChange", async () => {
     const dir = await mkdtemp(join(tmpdir(), "codez-global-rollout-"));
     const codexHome = join(dir, ".codex");
