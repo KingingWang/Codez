@@ -56,7 +56,14 @@ export function isPlaceholderTaskTitle(title: string): boolean {
 
 /** Codex 的注入环境块在原生 rollout 中可带 user 角色，但不是用户发送的内容。 */
 export function isInjectedCodexContextTitle(title: string): boolean {
-  return /^<environment_context>\s*<cwd(?:\s|>)/u.test(title.trimStart());
+  const normalized = title.trimStart();
+  // 修复原因：Codex 还会把 `# AGENTS.md instructions for <dir>\n\n<INSTRUCTIONS>…`
+  // 以 user 角色 response_item 落盘（content kind agents_md.instructions），原生会话没有
+  // `## My request for Codex:` 分隔符；它会抢在真实用户消息前被投成任务标题，必须一并识别。
+  return (
+    /^<environment_context>\s*<cwd(?:\s|>)/u.test(normalized) ||
+    /^# AGENTS\.md instructions(?:\s|$)/u.test(normalized)
+  );
 }
 
 export function isProvisionalTaskTitle(title: string): boolean {

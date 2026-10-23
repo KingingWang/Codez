@@ -136,6 +136,9 @@ describe("visibleSidebarTaskTree", () => {
       task("whitespace", { title: " \n " }),
       task("native-placeholder", { title: "New session" }),
       task("environment", { title: "<environment_context> <cwd>/repo</cwd>" }),
+      task("agents-instructions", {
+        title: "# AGENTS.md instructions for /repo\n\n<INSTRUCTIONS>\n规则\n</INSTRUCTIONS>",
+      }),
       task("manual-context", {
         title: "<environment_context> <cwd>/repo</cwd>",
         titleOverridden: true,
@@ -149,7 +152,7 @@ describe("visibleSidebarTaskTree", () => {
       "manual-new-task",
       "real",
     ]);
-    expect(facts.tasks).toHaveLength(7);
+    expect(facts.tasks).toHaveLength(8);
     expect(countProjectTreeUnreadTasks(visible)).toBe(0);
     expect(selectProjectRows(visible, { kind: "pinned" }).map((item) => item.taskId)).toEqual([
       "manual-new-task",
