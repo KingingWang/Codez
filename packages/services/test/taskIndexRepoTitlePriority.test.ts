@@ -24,6 +24,7 @@ describe("TaskIndexRepo title priority", () => {
         ["", 3],
         ["New session", 4],
         ["<environment_context><cwd>/project</cwd></environment_context>", 5],
+        ["# AGENTS.md instructions for /project\n\n<INSTRUCTIONS>\n规则\n</INSTRUCTIONS>", 6],
       ] as const) {
         await repo.applyCliFacts({
           meta: { ...meta, title, updatedAt },
@@ -35,17 +36,17 @@ describe("TaskIndexRepo title priority", () => {
         });
       }
       await repo.applyCliFacts({
-        meta: { ...meta, title: "生成标题", updatedAt: 6 },
+        meta: { ...meta, title: "生成标题", updatedAt: 7 },
         titleSource: "generated",
       });
       expect((await repo.getTaskMeta(meta))?.title).toBe("生成标题");
 
       await repo.applyCliFacts({
-        meta: { ...meta, title: "手动标题", updatedAt: 7 },
+        meta: { ...meta, title: "手动标题", updatedAt: 8 },
         titleSource: "custom",
       });
       await repo.applyCliFacts({
-        meta: { ...meta, title: "真实问题", updatedAt: 8 },
+        meta: { ...meta, title: "真实问题", updatedAt: 9 },
         titleSource: "default",
       });
       expect((await repo.getTaskMeta(meta))?.title).toBe("手动标题");

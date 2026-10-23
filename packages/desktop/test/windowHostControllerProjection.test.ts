@@ -177,7 +177,12 @@ describe("WindowHostControllerProjection", () => {
       ],
       sessionsIndex: [],
     });
-    for (const title of ["", "New session"]) {
+    for (const title of [
+      "",
+      "New session",
+      "<environment_context> <cwd>/repo</cwd>",
+      "# AGENTS.md instructions for /repo\n\n<INSTRUCTIONS>\n规则\n</INSTRUCTIONS>",
+    ]) {
       projection.replaceSourceSessionOverlays(localScope, [
         {
           taskId: "live-task",

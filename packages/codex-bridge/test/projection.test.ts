@@ -109,6 +109,11 @@ test("injected environment preview is not projected as a session title", () => {
   thread.preview = "<environment_context> <cwd>/workspace</cwd> <shell>bash</shell>";
   assert.equal(projectSessionSummary(thread, "/workspace").title, "");
   assert.equal(projectThread(thread, options).meta.title, "");
+  // 原生会话的 AGENTS.md 注入块同样不是用户标题（无 `## My request for Codex:` 分隔符）。
+  thread.preview =
+    "# AGENTS.md instructions for /workspace\n\n<INSTRUCTIONS>\n规则\n</INSTRUCTIONS>";
+  assert.equal(projectSessionSummary(thread, "/workspace").title, "");
+  assert.equal(projectThread(thread, options).meta.title, "");
   thread.name = "用户明确设置的标题";
   assert.equal(projectSessionSummary(thread, "/workspace").title, "用户明确设置的标题");
 });
