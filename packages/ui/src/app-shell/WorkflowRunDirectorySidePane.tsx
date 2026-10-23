@@ -7,7 +7,12 @@ import {
   readWorkflowRunStopReason,
   workflowRunStopReasonMessageId,
 } from "@/components/workflow-graph/run-status-presentation.js";
-import { useWorkflowRunJournalSummaries } from "@/hooks/useWorkflowRunJournalSummaries.js";
+import {
+  useCodexLegacyWorkflowRunsCapability,
+  useWorkflowRunJournalSummaries,
+} from "@/hooks/useWorkflowRunJournalSummaries.js";
+import { useServices } from "@/hooks/useServices.js";
+import { useCodexNativeHostStatus } from "@/capabilities/useCodexNativeHost.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import type {
   OpenScopedWorkflowRunSideTabRequest,
@@ -148,16 +153,38 @@ function DirectorySection({
 }
 
 const WorkflowRunDirectoryContents = memo(function WorkflowRunDirectoryContents({
+  compactForRemoteControl,
+  isDesktop,
   onOpenWorkflowRun,
   tab,
 }: {
+  compactForRemoteControl: boolean;
+  isDesktop: boolean;
   onOpenWorkflowRun: (request: OpenScopedWorkflowRunSideTabRequest) => void;
   tab: WorkflowRunDirectorySidePaneTab;
 }) {
   const { intl } = useCodezIntl();
-  const { layer } = useV4Conversation();
+  const { layer, onRuntimeLifecycle, onRuntimeRestart } = useV4Conversation();
+  const services = useServices();
   const [lease, setLease] = useState<SessionLease | null>(null);
   const projection = useConversationProjection(lease);
+  const workspace = {
+    workspacePath: tab.workspacePath,
+    ...(tab.workspaceIdentity ? { workspaceIdentity: tab.workspaceIdentity } : {}),
+  };
+  const nativeHostStatus = useCodexNativeHostStatus(
+    services.codezAgentService,
+    workspace,
+    !isDesktop && compactForRemoteControl,
+  );
+  const legacyWorkflowRunsCapability = useCodexLegacyWorkflowRunsCapability(
+    services.codezAgentService,
+    workspace,
+    { onRuntimeRestart, onRuntimeLifecycle },
+    isDesktop ||
+      nativeHostStatus === "native" ||
+      (!isDesktop && compactForRemoteControl && nativeHostStatus === "pending"),
+  );
   useEffect(() => {
     const nextLease = layer.acquire(tab.parentSessionId);
     setLease(nextLease);
@@ -173,6 +200,7 @@ const WorkflowRunDirectoryContents = memo(function WorkflowRunDirectoryContents(
   const summaries = useWorkflowRunJournalSummaries({
     sessionId: tab.parentSessionId,
     live: true,
+    enabled: legacyWorkflowRunsCapability.current,
     limit: WORKFLOW_RUN_DIRECTORY_LIMIT,
     refreshKey: workflowRunDirectoryRefreshKey(projection.snapshot?.workflowRuns?.runs),
   });
@@ -247,9 +275,13 @@ const WorkflowRunDirectoryContents = memo(function WorkflowRunDirectoryContents(
 });
 
 export const WorkflowRunDirectorySidePane = memo(function WorkflowRunDirectorySidePane({
+  compactForRemoteControl = false,
+  isDesktop = false,
   onOpenWorkflowRun,
   tab,
 }: {
+  compactForRemoteControl?: boolean;
+  isDesktop?: boolean;
   onOpenWorkflowRun: (request: OpenScopedWorkflowRunSideTabRequest) => void;
   tab: WorkflowRunDirectorySidePaneTab;
 }) {
@@ -263,7 +295,12 @@ export const WorkflowRunDirectorySidePane = memo(function WorkflowRunDirectorySi
   );
   return (
     <V4PaneConversationProvider scope={scope}>
-      <WorkflowRunDirectoryContents tab={tab} onOpenWorkflowRun={onOpenWorkflowRun} />
+      <WorkflowRunDirectoryContents
+        tab={tab}
+        onOpenWorkflowRun={onOpenWorkflowRun}
+        compactForRemoteControl={compactForRemoteControl}
+        isDesktop={isDesktop}
+      />
     </V4PaneConversationProvider>
   );
 });

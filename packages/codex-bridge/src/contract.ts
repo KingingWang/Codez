@@ -50,6 +50,20 @@ export interface CodexProcessOptions {
    * 仅传递方法名、等待时长与当前其余在途请求数，绝不包含请求参数或用户内容。
    */
   onRequestTimeout?: (info: { method: string; durationMs: number; pendingCount: number }) => void;
+  /**
+   * 原生 stderr 退出后的有界摘要（同步、禁止抛错）。transport 只保留闭合统计与
+   * 分类，不传递原文；回调异常不影响协议状态机。
+   */
+  onStderrSummary?: (summary: {
+    exitCode: number | null;
+    signal: NodeJS.Signals | null;
+    lineCount: number;
+    byteCount: number;
+    truncated: boolean;
+    level: "trace" | "debug" | "info" | "warn" | "error" | "unknown";
+    target: string | undefined;
+    categories: string[];
+  }) => void;
 }
 
 export interface CodexProcess extends CodexRpcPort {

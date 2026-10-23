@@ -73,6 +73,13 @@ async function main(): Promise<void> {
         `Codex desktop bridge warn: native rpc timed out; method=${safeMethod}; durationMs=${durationMs}; pending=${pendingCount}\n`,
       );
     },
+    onStderrSummary: (summary) => {
+      if (summary.lineCount === 0) return;
+      // 原因：原生 stderr 可能含用户正文/凭据；这里只输出闭合计数、级别、target 与类别。
+      process.stderr.write(
+        `Codex desktop bridge warn: native stderr summary; exitCode=${summary.exitCode}; signal=${summary.signal}; lineCount=${summary.lineCount}; byteCount=${summary.byteCount}; truncated=${summary.truncated}; level=${summary.level}; target=${summary.target ?? "none"}; categories=${summary.categories.join(",") || "none"}\n`,
+      );
+    },
   });
   let runtime: BridgeRuntime | undefined;
   let stopping = false;
