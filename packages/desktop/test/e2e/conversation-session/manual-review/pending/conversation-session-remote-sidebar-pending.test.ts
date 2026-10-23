@@ -2,7 +2,11 @@ import { execFile } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
-import { ServiceChannels, parseRemoteWorkspaceIdentity } from "@codez/shared";
+import {
+  ServiceChannels,
+  parseRemoteWorkspaceIdentity,
+  type SourceServerManagementSnapshot,
+} from "@codez/shared";
 import { clearAppData, readSettings } from "#e2e/helpers/desktop-app";
 import {
   callHandoffHost,
@@ -67,7 +71,7 @@ async function readRemoteCurrentSha(): Promise<string> {
   return stdout.trim();
 }
 
-describe(`${CASE_MARKER}: 待处理设备在项目行与详情显示具体原因`, () => {
+describe(`${CASE_MARKER}: 待处理设备在项目入口直接处理远端更新`, () => {
   afterEach(async () => {
     await browser.saveScreenshot(resolve(artifactDir, "last-state.png"));
   });
@@ -77,7 +81,7 @@ describe(`${CASE_MARKER}: 待处理设备在项目行与详情显示具体原因
     await clearAppData();
   });
 
-  it("RDUX-SIDEBAR-PENDING needs-upgrade 显示“需要更新”，详情入口定位设置页设备卡且不自动更新", async function () {
+  it("RDUX-SIDEBAR-PENDING needs-upgrade 显示“需要更新”，详情入口受保护更新并恢复原项目", async function () {
     this.timeout(15 * 60_000);
     await mkdir(artifactDir, { recursive: true });
     const config = readSSHRuntimeConfig(CASE_MARKER);
@@ -107,6 +111,18 @@ describe(`${CASE_MARKER}: 待处理设备在项目行与详情显示具体原因
     await callHandoffHost(ServiceChannels.SourceServerManagement, "connectProfile", [
       profileId,
     ]).catch(() => undefined);
+    const management = await callHandoffHost<SourceServerManagementSnapshot>(
+      ServiceChannels.SourceServerManagement,
+      "getSnapshot",
+    );
+    expect(management.states.find((state) => state.profileId === profileId)).toMatchObject({
+      state: "needs-upgrade",
+      sourceServerId: sourceId,
+      updateAvailability: "required",
+      upgradeTarget: "server",
+    });
+    // 后台只发布待处理事实，不替用户执行更新。
+    expect(await readRemoteCurrentSha()).toBe(shaBefore);
 
     await selectTaskOrganizeMode(["项目", "Project"]);
     const row = $(`[data-project-workspace-identity=${JSON.stringify(identity)}]`);
@@ -157,26 +173,21 @@ describe(`${CASE_MARKER}: 待处理设备在项目行与详情显示具体原因
     expect(detailsText).not.toMatch(/需要处理|Needs attention/u);
     const buttons = await details.$$("button");
     expect(buttons).toHaveLength(1);
-    const entry = details.$('[data-testid="remote-identity-device-settings"]');
+    const entry = details.$('[data-testid="remote-identity-update-server"]');
     expect(await entry.getText()).toMatch(/更新远端|Update remote device/u);
     await browser.saveScreenshot(resolve(artifactDir, "pending-details.png"));
 
     await entry.click();
     await details.waitForDisplayed({ reverse: true });
-    const card = $(`[data-source-server-card="${sourceId}"]`);
-    await card.waitForDisplayed({ timeout: 15_000 });
+    await browser.waitUntil(async () => (await readRemoteCurrentSha()) === repack.newSha, {
+      timeout: 240_000,
+      interval: 2_000,
+      timeoutMsg: `${CASE_MARKER}: 远端没有更新到本轮 archive`,
+    });
     await browser.waitUntil(
-      () =>
-        browser.execute(
-          (id) =>
-            document.activeElement === document.querySelector(`[data-source-server-card="${id}"]`),
-          sourceId,
-        ),
-      { timeout: 10_000, timeoutMsg: `${CASE_MARKER}: 设置页没有定位到目标设备卡` },
+      async () => (await row.getAttribute("data-connection-state")) === "online",
+      { timeout: 60_000, timeoutMsg: `${CASE_MARKER}: 更新后原项目没有恢复连接` },
     );
-    expect(await card.getText()).toMatch(/更新远端|Update remote device/u);
-    await browser.saveScreenshot(resolve(artifactDir, "device-settings.png"));
-    // 入口只负责定位，不能替用户执行更新。
-    expect(await readRemoteCurrentSha()).toBe(shaBefore);
+    await browser.saveScreenshot(resolve(artifactDir, "project-reconnected.png"));
   });
 });

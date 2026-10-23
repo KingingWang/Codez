@@ -188,6 +188,7 @@ it.each([
 });
 
 it("桌面端版本过旧时入口显示“更新桌面端”，与设置页设备卡一致", async () => {
+  const onUpdateServer = vi.fn();
   render(
     createElement(RemoteIdentityHoverCard, {
       // 修复前投影没有 upgradeTarget，入口固定回退成 update-server。
@@ -195,6 +196,7 @@ it("桌面端版本过旧时入口显示“更新桌面端”，与设置页设�
       title: "Task",
       paths: ["/home/dev/test2"],
       onOpenDeviceSettings: vi.fn(),
+      onUpdateServer,
       children: createElement("button", { type: "button" }, "remote row"),
     }),
   );
@@ -203,6 +205,32 @@ it("桌面端版本过旧时入口显示“更新桌面端”，与设置页设�
   expect(screen.getByTestId("remote-identity-device-settings").textContent).toContain(
     "remote.action.update-desktop",
   );
+  fireEvent.click(screen.getByTestId("remote-identity-device-settings"));
+  expect(onUpdateServer).not.toHaveBeenCalled();
+});
+
+it("远端需要更新时项目详情直接发起原项目更新意图，不跳设置", async () => {
+  const onUpdateServer = vi.fn();
+  const onOpenDeviceSettings = vi.fn();
+  render(
+    createElement(RemoteIdentityHoverCard, {
+      host: { ...host, lastConnectionStatus: "needs-upgrade", upgradeTarget: "server" },
+      title: "Task",
+      paths: ["/home/dev/test2"],
+      onOpenDeviceSettings,
+      onUpdateServer,
+      children: createElement("button", { type: "button" }, "remote row"),
+    }),
+  );
+  fireEvent.pointerEnter(screen.getByText("remote row"), { pointerType: "mouse" });
+  await screen.findByTestId("remote-identity-details");
+  expect(screen.queryByTestId("remote-identity-device-settings")).toBeNull();
+  const action = screen.getByTestId("remote-identity-update-server");
+  expect(action.textContent).toContain("remote.action.update-server");
+  fireEvent.click(action);
+  expect(onUpdateServer).toHaveBeenCalledOnce();
+  expect(onOpenDeviceSettings).not.toHaveBeenCalled();
+  await waitFor(() => expect(screen.queryByTestId("remote-identity-details")).toBeNull());
 });
 
 const PROFILE = "00000000-0000-4000-8000-000000000001";

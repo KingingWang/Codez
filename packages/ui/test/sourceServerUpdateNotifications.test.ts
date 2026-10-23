@@ -176,6 +176,36 @@ describe("Source Server update notifications", () => {
     );
     controller.dispose();
   });
+
+  it("已绑定 Host 的待升级快照必须带设备 ID 才能产生启动提示", async () => {
+    const emitter = new Emitter<SourceServerManagementStateDelta>();
+    let snapshot = createSnapshot("3.9.0", {
+      state: "needs-upgrade",
+      updateAvailability: "required",
+      sourceServerId: undefined,
+    });
+    const showToast = vi.fn();
+    const controller = createSourceServerUpdateNotificationController({
+      preferences: createSourceServerUpdatePreferences(null),
+      management: {
+        onDidChangeState: emitter.event,
+        getSnapshot: vi.fn(async () => snapshot),
+      } as unknown as ISourceServerManagementService,
+      formatMessage: (id) => id,
+      showToast,
+    });
+    await vi.waitFor(() => expect(showToast).not.toHaveBeenCalled());
+    snapshot = createSnapshot("3.9.0", {
+      state: "needs-upgrade",
+      updateAvailability: "required",
+    });
+    emitter.fire({ generation: 2, state: snapshot.states[0]! });
+    await vi.waitFor(() => expect(showToast).toHaveBeenCalledOnce());
+    expect(showToast.mock.calls[0]?.[1]).toMatchObject({
+      actionLabel: "settings.source.updateNow",
+    });
+    controller.dispose();
+  });
 });
 
 function createNotificationHarness() {

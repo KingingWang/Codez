@@ -818,6 +818,11 @@ export class SourceServerConnectionManager {
     explicitDisconnectSignal?: AbortSignal,
   ): Promise<ManagedSourceServerConnection> {
     const { profile, target } = options;
+    // Bug 根因：bootstrapping 会重建状态快照，四个升级分支若不显式带回已绑定身份，
+    // Renderer 无法为该设备生成「立即更新」提示。此身份只用于定位，不代表在线。
+    const boundSourceIdentity = profile.sourceServerId
+      ? { sourceServerId: profile.sourceServerId }
+      : {};
     if (target.kind === "server" || profile.transport !== target.kind) {
       throw new Error(
         `Connection Profile ${profile.profileId} transport does not match target ${target.kind}`,
@@ -912,6 +917,7 @@ export class SourceServerConnectionManager {
         if (!compatibleInstalledVersion) {
           this.setState(profile.profileId, {
             state: "needs-upgrade",
+            ...boundSourceIdentity,
             updateAvailability: "required",
             currentVersion: installedVersion,
             availableVersion: this.compatibilityManifest.productVersion,
@@ -958,6 +964,7 @@ export class SourceServerConnectionManager {
             // needs-upgrade → updateSource/updateServer 链路，连接流程本身不执行更新。
             this.setState(profile.profileId, {
               state: "needs-upgrade",
+              ...boundSourceIdentity,
               updateAvailability: "required",
               currentVersion: installedVersion,
               availableVersion: release.version,
@@ -1046,6 +1053,7 @@ export class SourceServerConnectionManager {
       if (!compatibility) {
         this.setState(profile.profileId, {
           state: "needs-upgrade",
+          ...boundSourceIdentity,
           updateAvailability: "required",
           currentVersion: connection.serverInfo.version,
           availableVersion: this.compatibilityManifest.productVersion,
@@ -1069,6 +1077,7 @@ export class SourceServerConnectionManager {
       if (!compatibilityResult.compatible && compatibilityResult.upgradeTarget) {
         this.setState(profile.profileId, {
           state: "needs-upgrade",
+          ...boundSourceIdentity,
           ...compatibilityState,
           errorCode: SOURCE_SERVER_UPGRADE_REQUIRED_ERROR_CODE,
           retryable: false,

@@ -449,6 +449,7 @@ Server 构造自身出参时使用 strict schema 自校验；Desktop/控制端�
 - Host 状态快照是版本判断唯一权威，固定携带
   `updateAvailability: none | available | required`、`currentVersion`、`availableVersion`、
   `minimumVersion`、`upgradeTarget`、`errorCode`、`retryable`；Renderer 不自行比较版本。
+- 已绑定 Profile 的 `needs-upgrade` 快照还必须保留原 `sourceServerId`：连接前 probe 与握手后的不兼容分支均如此。它只标识已确认的设备，不表示连接在线；Toast 用它建立设备级去重键，项目入口用它定位同一 Source。未绑定的 pre-R3 Profile 仍可无此字段，并由连接向导持有升级意图。状态从 `bootstrapping` 跳入 `needs-upgrade` 时不得依赖前一快照继承 ID。
 - `source-server-upgrade-required` 的连接失败保留 Host 实际使用的 `profileId`，由严格 Host 响应 schema 校验并经 Main 透传。它只标识本次失败的线路，升级资格仍须读取最新 Host 快照；不传凭据、不新增持久化状态。WSL 参数规范化后，向导以该线路的实际目标继续更新和重连，避免默认用户与 UI 原始参数不一致导致升级入口空操作。
 - 自动升级以失败时的不可变目标身份为约束，`profileId` 只标识可编辑记录。WSL 升级失败与安装等待均返回本次解析的 `resolvedWslTarget`。向导先核验最新 Profile 的目标，再提交 `updateSource({ profileId, expectedTarget, force })`；`expectedTarget` 只包含 SSH 地址/端口/用户/配置别名、WSL 实际发行版/用户或 Docker 容器，不含凭据。
 - Host 对 `expectedTarget` 做严格运行时校验，并比较当前 Profile 与解析目标。更新使用同一 Profile 快照解析出的固定 target，不能在校验后再按 ID 取目标；不匹配返回 `remote-target-changed`，不 probe/install/reconnect，UI 终止旧升级并显示显式重试。force 确认期间仍携带原身份。旧的无 expectedTarget 管理入口保持兼容；不改变桌面 continuous / 手机 replayable 及远端任务 owner。
@@ -472,6 +473,7 @@ Host 已固定 A → 后续 Profile 编辑 B → 在途操作仍只使用 A
 - R2 存量 server（无 compatibility 字段）判为过旧，走同一升级链；R3 Desktop 的 `minCompatibleVersion` 设为首个携带 R3 握手合同的 Server 版本。
 - 当前发布默认不在根 `package.json` 中声明 `codezCompatibility` 覆盖；Desktop 与 Server CLI 构建都将缺失的 `minCompatibleVersion` 回退为当前 `productVersion`，因此默认只承诺同版本兼容。只有在完成跨版本合同与发布验证后，才可重新显式声明更低的 `codezCompatibility.minCompatibleVersion`。
 - Server 较旧且必须升级时，启动重连提示、连接向导失败面板和连接管理页都必须提供就地「立即更新」，并统一提交到 `SourceServerManagementService.updateSource`；不得要求用户记住或寻找 Settings 中的唯一入口。Desktop 较旧时仍只导向 Desktop 升级，不显示 Server 更新动作。
+- 已保留项目的待升级详情点击「更新远端」走原项目显式连接意图，由向导按上条规则执行受保护更新并继续原目录；详情不新增第二个更新 owner。启动后台恢复仍只发布待升级状态与操作入口，不在后台静默更新。
 - 启动/任务列表重连的 Source Server 更新 Toast 使用独立展示变体：顶部居中、完整换行展示设备与版本文案、完整「立即更新」和关闭入口。该变体只服务 Source Server，不改变 Desktop 应用更新等既有 compact update Toast 的位置与截断规则。
 - 连接向导接管某个目标后，该目标的 Server 必须升级提示由向导呈现，全局 Toast 不重复提示；收起向导仍保留接管，退出/改选目标才释放，其他设备和 Desktop 升级提示不受影响。向导在发起连接前同步发布目标，不能等 `needs-upgrade` 后才抑制提示。Host 进入 `updating`、升级需求解除或 Profile 被移除时立即撤销旧升级 Toast；点击动作须重新核对当前快照，同一提示只提交一次更新。失败回到需升级状态后保留重试入口，不因旧提示去重永久丢失通知。
 - 更新动作默认先以 `force:false` 执行；只有收到 `source-server-update-running-tasks` guard 后，才向用户二次确认并以 `force:true` 重试。「版本不兼容」本身不等于授权强制中断运行中 Task。
@@ -487,9 +489,10 @@ Host 已固定 A → 后续 Profile 编辑 B → 在途操作仍只使用 A
 版本不兼容
   ├─ 用户显式连接 ─────────► 连接向导自动 updateSource(force=false)
   ├─ 启动/重连 Toast ──────►「立即更新」─┐
+  ├─ 项目详情 ─► Root 原项目重连意图 ─► 向导接管目标 ─► updateSource(force=false)
   └─ 远程设备 Server card ─►「立即更新」─┴─► updateSource(force=false)
                                                            │
-                                                           ├─► Host operation log Event
+                                                           ├─► Host Manager 状态/operation log Event
                                                            │      └─ phase / message / real progress
                                                            ├─ running-task guard
                                                            │      └─ 用户确认 ─► force=true

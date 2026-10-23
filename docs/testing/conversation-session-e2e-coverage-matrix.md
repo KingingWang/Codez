@@ -206,7 +206,7 @@ RDUX-BASELINE（accepted / pending）：侧栏项目行与聊天框项目列表�
 | Case                 | Setup / Action                                                                                            | Assertions                                                                                                                                                 | 自动化                                                                                                                                        |
 | -------------------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | RDUX-SIDEBAR         | 真实 SSH 连接后稍后选目录；项目 + 菜单选该设备；打开目录后详情管理、编辑、断开和重连                      | 无项目在线设备仍在子菜单；复用后选目录；头部/菜单显示设备名；详情在行右侧，管理定位对应卡；断开后原目录重连；中英/深浅/900px 截图                          | `conversation-session/manual-review/pending/conversation-session-remote-sidebar-menus.test.ts`，本机真实 SSH 通过，待人工复核                 |
-| RDUX-SIDEBAR-PENDING | 真实 SSH 项目连接后重打包 release；设置页断开再连接，设备停在 `needs-upgrade`；悬停项目行详情并点底部入口 | 行内“需要更新”替换“离线”；详情状态为短状态而非“需要处理”；投影带 `upgradeTarget`；底部单一「更新远端」入口；点击关闭详情并定位设置页对应设备卡；不自动更新 | `conversation-session/manual-review/pending/conversation-session-remote-sidebar-pending.test.ts`，2026-10-14 本机 Docker SSH 通过，待人工复核 |
+| RDUX-SIDEBAR-PENDING | 真实 SSH 项目连接后重打包 release；设置页断开再连接，设备停在 `needs-upgrade`；悬停项目行详情并点底部入口 | 行内“需要更新”替换“离线”；详情状态为短状态而非“需要处理”；投影带 `upgradeTarget` 和绑定 Source ID；底部单一「更新远端」入口；点击关闭详情，向导执行 `force:false` 更新并恢复原项目，不先跳设置页；后台不自动更新 | `conversation-session/manual-review/pending/conversation-session-remote-sidebar-pending.test.ts`，2026-10-14 旧入口 Docker SSH 通过；新路径待复跑 |
 
 2026-09-29 实跑：`desktop-e2e-20260928191550395-p40953-3f34da887a24cf8d`，应用截图 16 张（中英 × 深浅 × 1400/900px × 在线/离线），逐张断言详情左边界位于项目整行右侧；设置卡聚焦和原目录重连均通过。另有五态真实组件与起始 HEAD 的行组件并排截图 8 张：`packages/desktop/.e2e-artifacts/rdux12-visual`。已登记服务器执行队列，本轮没有运行 Linux 全量队列。
 
@@ -3766,7 +3766,7 @@ R3A-UI-04 / RDUX-11-04 回归（2026-10-12 macOS 真实 SSH 1/1 PASS，仍 pendi
 | RDUX-13-01 | [见目录](../conversation-session-case-catalog.md#rdux-13-设置设备卡与更新accepted)；在线/离线最近项目在草稿缓存缺失或过期时保持项目身份、入口数且无创建弹窗 | `manual-review/pending/conversation-session-remote-device-cards.test.ts`                                        |
 | RDUX-13-02 | [见目录](../conversation-session-case-catalog.md#rdux-13-设置设备卡与更新accepted)                                                    | 同上                                                                                                            |
 | RDUX-13-03 | [见目录](../conversation-session-case-catalog.md#rdux-13-设置设备卡与更新accepted)                                                    | 同上；480px 是桌面窄屏，手机不开放设备管理                                                                      |
-| RDUX-13-04 | [见目录](../conversation-session-case-catalog.md#rdux-13-设置设备卡与更新accepted)                                                    | `sourceServerUpdateNotifications`、`sourceServerUpdatePreferences`、`sourceServerManagementPanel` 组件/单元回归 |
+| RDUX-13-04 | [见目录](../conversation-session-case-catalog.md#rdux-13-设置设备卡与更新accepted)；已绑定设备的 `needs-upgrade` 快照与 Toast 入口 | `sourceServerConnectionManager`、`sourceServerUpdateNotifications`、`sourceServerUpdatePreferences`、`sourceServerManagementPanel` 组件/单元回归 |
 
 ### 2026-09-30 评审修复回归证据
 

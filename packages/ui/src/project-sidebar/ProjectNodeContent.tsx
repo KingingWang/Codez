@@ -71,6 +71,8 @@ export type ProjectNodeProps = {
   onRemoveEntry?(): void;
   /** 仅桌面端远程项目提供：从菜单或待处理详情跳到“设置 › 远程设备”。 */
   onOpenDeviceSettings?(): void;
+  /** 已保留的远端项目从详情提交原项目连接意图，由向导受保护更新。 */
+  onUpdateServer?(): void;
 };
 
 // 原因：useSortable 的激活/测量/落点更新曾让 41 个项目的菜单和 Tooltip 连续重渲染。
@@ -92,6 +94,7 @@ export const ProjectNodeContent = memo(function ProjectNodeContent({
   availability = DEFAULT_AVAILABILITY,
   onRemoveEntry,
   onOpenDeviceSettings,
+  onUpdateServer,
   additionalActions = EMPTY_ADDITIONAL_ACTIONS,
   editable,
   isOpen,
@@ -191,6 +194,7 @@ export const ProjectNodeContent = memo(function ProjectNodeContent({
           paths={project.roots.map((root) => root.rootPath)}
           connectionError={diagnostics?.error}
           onOpenDeviceSettings={onOpenDeviceSettings}
+          onUpdateServer={onUpdateServer}
         >
           <ContextMenuTrigger asChild>
             <div

@@ -97,3 +97,64 @@ it("回调与项目身份变化不能被 memo 忽略，新建始终使用当前�
     taskGroupId: null,
   });
 });
+
+it("已保留项目的远端升级入口复用原项目显式重连意图", async () => {
+  const props = fixture();
+  const hostId = "remote:server:3cd4f9da-cd79-426c-9d70-75f36e9f6a87";
+  const project = {
+    ...props.project,
+    hostId,
+    roots: [{ rootPath: "/repo", position: 0, isPrimary: true }],
+  };
+  const remoteHost = {
+    id: hostId,
+    membershipId: "member",
+    kind: "ssh" as const,
+    target: { kind: "ssh" as const, host: "example.test", username: "alice" },
+    position: 0,
+    connectionStatus: "offline" as const,
+    lastConnectionStatus: "needs-upgrade",
+    upgradeTarget: "server" as const,
+  };
+  const { rerender } = render(
+    createElement(ProjectSidebarNode, {
+      ...props,
+      project,
+      remoteHost,
+      isDesktop: true,
+    }),
+  );
+  const node = probes.node.mock.lastCall![0] as {
+    onUpdateServer?: () => void;
+    onOpenDeviceSettings?: () => void;
+  };
+  expect(node.onUpdateServer).toBeTypeOf("function");
+  node.onUpdateServer?.();
+  await vi.waitFor(() =>
+    expect(props.onReconnectRemoteWorkspace).toHaveBeenCalledWith(
+      "remote:server:3cd4f9da-cd79-426c-9d70-75f36e9f6a87:/repo",
+    ),
+  );
+  expect(node.onOpenDeviceSettings).toBeTypeOf("function");
+
+  rerender(
+    createElement(ProjectSidebarNode, {
+      ...props,
+      project: { ...project, roots: [] },
+      remoteHost,
+      isDesktop: true,
+    }),
+  );
+  expect(probes.node.mock.lastCall![0].onUpdateServer).toBeUndefined();
+  expect(probes.node.mock.lastCall![0].onOpenDeviceSettings).toBeTypeOf("function");
+  rerender(
+    createElement(ProjectSidebarNode, {
+      ...props,
+      project,
+      remoteHost,
+      isDesktop: false,
+    }),
+  );
+  expect(probes.node.mock.lastCall![0].onUpdateServer).toBeUndefined();
+  expect(probes.node.mock.lastCall![0].onOpenDeviceSettings).toBeUndefined();
+});
