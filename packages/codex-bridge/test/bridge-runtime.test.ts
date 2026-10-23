@@ -1267,6 +1267,98 @@ test("writer-conflict subscribe degrades to read-only; resync invalidates it and
   assert.match(recovered, /Hello back/);
 });
 
+for (const clientMode of ["desktop-continuous", "web-remote-replayable"]) {
+  test(`${clientMode} reselect refreshes persisted external history while writer conflict remains`, async (t) => {
+    const h = await fixture(t);
+    h.handlers["thread/resume"] = () => {
+      throw new CodexRpcError(-32600, "thread thread-1 already has an active writer");
+    };
+    const topic = "conversation/thread-1";
+    const first = await h.runtime.request(
+      V4_METHODS.conversationSubscribe,
+      subscribe(topic, clientMode),
+    );
+    await first.afterResponse!();
+    const firstFrame = h.frames.at(-1);
+    const firstPayload = firstFrame?.kind === "complete" ? firstFrame.frame.payload : undefined;
+    assert.ok(firstPayload?.kind === "snapshot");
+    const firstSnapshot = conversationSnapshotSchema.parse(firstPayload.snapshot);
+    assert.deepEqual(firstSnapshot.writerConflict, { readOnly: true });
+
+    // 外部 TUI 不向当前 Bridge 连接推送事件；只有再次订阅才读取新落盘历史。
+    h.authority.thread = {
+      ...h.authority.thread,
+      updatedAt: 140,
+      turns: [
+        ...h.authority.thread.turns,
+        {
+          id: "turn-from-tui",
+          itemsView: "full",
+          status: "completed",
+          error: null,
+          startedAt: 130,
+          completedAt: 140,
+          durationMs: 10000,
+          items: [
+            {
+              type: "userMessage",
+              id: "tui-user",
+              content: [{ type: "text", text: "TUI follow-up", text_elements: [] }],
+            },
+            {
+              type: "agentMessage",
+              id: "tui-answer",
+              text: "TUI persisted answer",
+            },
+          ],
+        },
+      ],
+    };
+    const frameCount = h.frames.length;
+    const reads = h.calls.filter((call) => call.method === "thread/turns/list").length;
+    const queues = h.calls.filter((call) => call.method === "thread/queue/list").length;
+    const cached = await h.runtime.request(V4_METHODS.conversationRowsRange, {
+      sessionId: "thread-1",
+      limit: 100,
+    });
+    assert.doesNotMatch(JSON.stringify(cached.result), /TUI persisted answer/);
+    assert.equal(h.frames.length, frameCount);
+
+    const refreshed = await h.runtime.request(
+      V4_METHODS.conversationSubscribe,
+      subscribe(topic, clientMode),
+    );
+    assert.equal(h.frames.length, frameCount, "replacement snapshot waits for its ACK");
+    await refreshed.afterResponse!();
+    const refreshFrame = h.frames.at(-1);
+    const refreshPayload =
+      refreshFrame?.kind === "complete" ? refreshFrame.frame.payload : undefined;
+    assert.ok(refreshPayload?.kind === "snapshot");
+    const snapshot = conversationSnapshotSchema.parse(refreshPayload.snapshot);
+    assert.deepEqual(snapshot.writerConflict, { readOnly: true });
+    assert.deepEqual(snapshot.availability.compact, {
+      allowed: false,
+      reasonCode: "guard.codex.writerConflict",
+    });
+    assert.deepEqual(
+      snapshot.rows.window.slice(0, firstSnapshot.rows.window.length),
+      firstSnapshot.rows.window,
+    );
+    assert.equal(
+      snapshot.rows.window.filter(
+        (row) => row.entityId === "codex:turn:turn-from-tui:item:tui-answer",
+      ).length,
+      1,
+    );
+    assert.equal(h.calls.filter((call) => call.method === "thread/turns/list").length, reads + 1);
+    assert.equal(
+      h.calls.filter((call) => call.method === "thread/queue/list").length,
+      queues,
+      "conflicted refresh must not inspect the unverified native queue",
+    );
+  });
+}
+
 test("file rewind overlay injects a one-shot model notice into the next sendText", async (t) => {
   const h = await fixture(t);
   // 一轮已完成的 fileChange（add 全量正文），投影应给出 canRewindFiles 的 turnHeader。

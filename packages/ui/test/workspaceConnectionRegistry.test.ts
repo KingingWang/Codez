@@ -12,6 +12,7 @@ import {
   WORKSPACE_CONNECTION_KEEP_WARM_MS,
   acquireWorkspaceConnection,
   buildWorkspaceConnectionKey,
+  refreshExistingWriterConflict,
   workspaceConnectionRegistrySize,
   type WorkspaceConnectionAgentService,
 } from "@/v4/workspaceConnectionRegistry.js";
@@ -280,6 +281,44 @@ describe("workspaceConnectionRegistry", () => {
     vi.advanceTimersByTime(WORKSPACE_CONNECTION_KEEP_WARM_MS * 2);
     expect(workspaceConnectionRegistrySize()).toBe(1);
     b.release();
+    vi.advanceTimersByTime(WORKSPACE_CONNECTION_KEEP_WARM_MS);
+    expect(workspaceConnectionRegistrySize()).toBe(0);
+  });
+
+  it("显式刷新只命中精确 endpoint 与 identity，且保活 keep-warm 连接直到完成", async () => {
+    const target = {
+      workspacePath: "/shared",
+      workspaceIdentity: "remote:ssh:host-b:22:user:/shared",
+      remoteSessionId: "remote-b",
+    };
+    const connection = acquireWorkspaceConnection(target, mockAgentService());
+    let finishRefresh: () => void = () => {};
+    const refresh = new Promise<void>((resolve) => {
+      finishRefresh = resolve;
+    });
+    const refreshLayer = vi
+      .spyOn(connection.layer, "refreshWriterConflict")
+      .mockReturnValue(refresh);
+    connection.release();
+
+    expect(refreshExistingWriterConflict({ workspacePath: "/shared" }, "thread-1")).toBeNull();
+    expect(
+      refreshExistingWriterConflict(
+        { ...target, workspaceIdentity: "remote:ssh:host-a:22:user:/shared" },
+        "thread-1",
+      ),
+    ).toBeNull();
+    expect(
+      refreshExistingWriterConflict({ ...target, remoteSessionId: "remote-a" }, "thread-1"),
+    ).toBeNull();
+    expect(refreshLayer).not.toHaveBeenCalled();
+
+    const result = refreshExistingWriterConflict(target, "thread-1");
+    expect(refreshLayer).toHaveBeenCalledExactlyOnceWith("thread-1");
+    vi.advanceTimersByTime(WORKSPACE_CONNECTION_KEEP_WARM_MS);
+    expect(workspaceConnectionRegistrySize()).toBe(1);
+    finishRefresh();
+    await result;
     vi.advanceTimersByTime(WORKSPACE_CONNECTION_KEEP_WARM_MS);
     expect(workspaceConnectionRegistrySize()).toBe(0);
   });

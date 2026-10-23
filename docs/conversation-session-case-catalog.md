@@ -1293,6 +1293,16 @@ Codex adapter 的历史读取与 CLI PERF03 的 SQLite materialization 是不同
 | CXL-P03 | 桥接内该长会话已加载，同 epoch/seq 连续多次向前翻页，同时 Host task-index 进行 `session/read(index)` | 顺序、锚点和工具卡内容稳定，侧栏标题/可检索正文/可见性不变 | rows/range 复用同版本派生投影，不因每页查询重复全史投影；index 帧剥离工具/推理大载荷，`full` 快照与原生事实不被改写 | accepted |
 | CXL-P04 | 上游原生提供可分页、可精确计算 bridge 合成行 ordinal 的有界 item outline；长历史中仅尾部正文已取回 | 首帧可读且 `rows.firstRowId/totalCount` 精确；旧页按需读取；未恢复写入权时仅草稿可编辑，ready 后可发送 | 同一 bridge 原生会话和 subscription，outline→tail→first frame→attach ready 的顺序；分支更改换 epoch；desktop continuous 与 mobile replayable 各有代表验证 | accepted，需先实现原生 outline 与双阶段契约，不能由 CXL-P01 冒充 |
 
+Codex 外部 writer 冲突的显式刷新（Desktop 任务重选与只读提示；`specs/codex-desktop-adapter.md`「Writer-conflict read-only sessions」）：
+
+| ID | Setup → action | UI 断言 | 非 UI 证据 | Review |
+| --- | --- | --- | --- | --- |
+| CWR01 | 外部 TUI 持有线程写锁，GUI 已显示该线程的只读历史；TUI 追加并落盘一个新 turn → 再点当前任务行或只读提示的刷新按钮 | 新历史恰好出现一次，旧行不重复；提示仍为只读，composer 与写入动作仍不可用 | 新一轮 `thread/read`、被拒绝的 `thread/resume` 和 `thread/turns/list` 读取同一线程；Bridge 写命令守卫不放宽 | accepted |
+| CWR02 | CWR01 的 GUI 投影仍在 30 秒 keep-warm 窗口内，外部 TUI 已退出并释放写锁 → 切回或再次点同一任务行 | 完成刷新后历史更新、只读提示消失、composer 可用；不等待缓存过期，也不清空旧历史作为过渡 | 同一 workspace/线程上的新 `thread/resume` 成功并发布无 `writerConflict` 的 snapshot；刷新本身不改任务归属、未读或活动时间，已有点击清未读路径独立 | accepted |
+| CWR03 | 一个可写线程与一个冲突线程、两个 pane 和同路径不同远端 workspace identity 并存 → 重复点可写线程，再快速连续点冲突线程，并从另一 pane 观察 | 可写线程不重载；冲突线程同一次刷新只执行一趟且所有同线程视图收敛；另一 identity 的线程及列表状态不变，刷新失败仍保留上次历史和只读门禁 | 按 endpoint + workspace key + thread ID 计订阅和原生读次数；旧连接/旧请求的迟到结果不能覆盖当前投影 | accepted |
+
+剪枝：本组只覆盖用户主动重选或按钮刷新，不以 `setInterval`、窗口 focus 或 sessions-index 变化发起 `thread/resume`。只承诺 Codex 已落盘的历史，不承诺外部 TUI 的 token 级实时流；自动只读跟随若另立需求，不得复用会取得写锁的恢复动作。桌面 continuous 与手机 replayable 保持独立交付边界，不按模型、主题和操作系统做全排列。
+
 ## RES. CLI Session 常驻池
 
 本组是 CLI/runtime 生命周期的 focused 语义，不做 GUI 状态笛卡尔积。`N` 是 resident 软目标；

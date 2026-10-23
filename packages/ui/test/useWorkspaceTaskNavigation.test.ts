@@ -11,6 +11,13 @@ import { useTaskQueryCacheStore } from "@/store/taskQueryCacheStore.js";
 import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
 import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 
+const refreshExistingWriterConflictMock = vi.hoisted(() => vi.fn(() => null));
+
+vi.mock("@/v4/workspaceConnectionRegistry.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/v4/workspaceConnectionRegistry.js")>()),
+  refreshExistingWriterConflict: refreshExistingWriterConflictMock,
+}));
+
 const tabStore = vi.hoisted(() => {
   let state: {
     activeTabId: string | null;
@@ -95,6 +102,45 @@ describe("useWorkspaceTaskNavigation", () => {
       sessionIdByWorkspaceIdentity: {},
     });
     useCodezSessionStore.setState({ taskNavHistory: createTaskNavigationHistory() });
+  });
+
+  it("重复选择当前本地任务也转发显式历史刷新意图", () => {
+    const activateTabByPath = vi.fn(() => {
+      tabStore.setState({
+        activeTabId: "local",
+        tabs: [
+          {
+            id: "local",
+            kind: "workspace",
+            label: "local",
+            workspacePath: localWorkspacePath,
+          },
+        ],
+      });
+      return true;
+    });
+    const hook = renderNavigation({
+      ambientServices: servicesWithSetTaskUnread(vi.fn()),
+      activateTabByPath,
+    });
+
+    act(() => {
+      hook.result.current.handleSelectTask(localWorkspacePath, taskId);
+      hook.result.current.handleSelectTask(localWorkspacePath, taskId);
+    });
+
+    expect(refreshExistingWriterConflictMock).toHaveBeenCalledTimes(2);
+    expect(refreshExistingWriterConflictMock).toHaveBeenNthCalledWith(
+      1,
+      { workspacePath: localWorkspacePath },
+      taskId,
+    );
+    expect(refreshExistingWriterConflictMock).toHaveBeenNthCalledWith(
+      2,
+      { workspacePath: localWorkspacePath },
+      taskId,
+    );
+    hook.unmount();
   });
 
   it("把 Idle-time intent 写入 Automations 导航目标和历史", () => {
@@ -345,6 +391,14 @@ describe("useWorkspaceTaskNavigation", () => {
     });
     expect(baseSetTaskUnread).not.toHaveBeenCalled();
     expect(staleRemoteSetTaskUnread).not.toHaveBeenCalled();
+    expect(refreshExistingWriterConflictMock).toHaveBeenCalledExactlyOnceWith(
+      {
+        workspacePath: targetWorkspacePath,
+        workspaceIdentity: targetWorkspaceIdentity,
+        remoteSessionId: "remote-b",
+      },
+      taskId,
+    );
     hook.unmount();
   });
 
@@ -395,6 +449,7 @@ describe("useWorkspaceTaskNavigation", () => {
 
     expect(baseSetTaskUnread).not.toHaveBeenCalled();
     expect(staleRemoteSetTaskUnread).not.toHaveBeenCalled();
+    expect(refreshExistingWriterConflictMock).not.toHaveBeenCalled();
     expect(
       useTaskQueryCacheStore.getState().taskMetaByEntityKey[buildTaskEntityKey(remoteTask)]?.unreadAt,
     ).toBe(2);

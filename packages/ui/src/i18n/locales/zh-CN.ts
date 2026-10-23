@@ -6845,8 +6845,10 @@ const zhCN: Record<string, string> = {
   "chat.error.remoteNoAvailableModel":
     "此远程设备尚无可用模型，请先在本机配置模型，保存后会自动同步到远程设备",
   "chat.error.sendFailed": "发送失败，请稍后重试。",
-  "chat.writerConflict.banner": "此会话正被另一个窗口或进程占用，当前为只读。可 Fork 后继续。",
-  "chat.writerConflict.retry": "重试连接",
+  "chat.writerConflict.banner":
+    "上次检查时，此会话被其他窗口或进程占用，当前只读；已保存的历史可能有更新。可刷新后重试，或 Fork 后继续。",
+  "chat.writerConflict.retry": "刷新历史并重试",
+  "chat.writerConflict.refreshFailed": "刷新失败，仍显示上次读取的历史。",
   "chat.error.modelSettings": "模型设置",
   "chat.error.setModels": "配置",
 

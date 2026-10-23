@@ -363,6 +363,13 @@ export class ConversationProjectionStore {
   // 首次订阅尚未拿到 ACK 时，runtime available 只是当前启动流程的正常完成信号；
   // 记录在途数量，避免生命周期通知再次启动 connect，制造同 topic 的订阅替换竞态。
   private connectInFlight = 0;
+  /** 显式重试直到新 initial/recovery 帧建立权威投影才完成；ACK 不等于历史已刷新。 */
+  private retryInFlight: {
+    promise: Promise<void>;
+    resolve: () => void;
+    generation: number;
+    subscriptionId: string | null;
+  } | null = null;
   /**
    * subscribe ACK mode 持久到该代首个 logical frame；不能只依赖同步 activate 栈，
    * 因为 notification 可在 ACK Promise resolve 后异步到达。
@@ -499,6 +506,14 @@ export class ConversationProjectionStore {
   private setState(patch: Partial<ConversationStoreState>): void {
     this.state = { ...this.state, ...patch };
     for (const listener of this.listeners) listener();
+    if (patch.status === "error" || patch.status === "closed") this.finishRetry();
+  }
+
+  private finishRetry(): void {
+    const flight = this.retryInFlight;
+    if (!flight) return;
+    this.retryInFlight = null;
+    flight.resolve();
   }
 
   /**
@@ -515,6 +530,11 @@ export class ConversationProjectionStore {
   ): Promise<void> {
     if (this.closed) return;
     const generation = ++this.generation;
+    if (this.retryInFlight) {
+      // 显式刷新碰到原有换代/强制快照恢复时，仍等待最新一代的首个权威帧。
+      this.retryInFlight.generation = generation;
+      this.retryInFlight.subscriptionId = null;
+    }
     this.discardRecovery();
     const snapshot = options.forceSnapshot ? null : this.state.snapshot;
     const connectStartedAt = options.rendererPrepareStartedAt ?? monotonicNow();
@@ -578,6 +598,9 @@ export class ConversationProjectionStore {
         subscriptionId: result.ack.subscriptionId,
         mode: result.ack.mode,
       };
+      if (this.retryInFlight?.generation === generation) {
+        this.retryInFlight.subscriptionId = result.ack.subscriptionId;
+      }
       this.transport.activate(result.ack.subscriptionId);
       logger.lifecycle.info("v4 conversation store connect completed", {
         durationMs: roundedDuration(subscribeStartedAt, monotonicNow()),
@@ -702,14 +725,38 @@ export class ConversationProjectionStore {
     this.handleRuntimeRestart("runtimeRestart");
   }
 
-  /** 订阅失败后的手动重试入口（pane 层「重新连接」按钮落点）。 */
+  /** 普通重试等 ACK；writer-conflict 刷新等新帧完成，不能把 ACK 当成新历史。 */
   retry(): Promise<void> {
+    if (this.closed) return Promise.resolve();
+    // 修复：冲突只读会话的任务重选与提示按钮可能同时触发；并发 connect 会互相
+    // 替换同一 topic 的订阅，旧 ACK 失效后既浪费原生历史读取，也可能延迟恢复。
+    if (this.retryInFlight) return this.retryInFlight.promise;
     this.clearRuntimeRecycleRetry();
     this.runtimeRecycleRetryAttempt = 0;
     const initialization = this.state.snapshot?.runtimeInitialization;
-    return this.connect(
-      initialization?.status === "failed" ? { retryInitialization: initialization.attemptId } : {},
-    );
+    const options =
+      initialization?.status === "failed" ? { retryInitialization: initialization.attemptId } : {};
+    if (this.state.snapshot?.writerConflict?.readOnly !== true) {
+      // 修复：CLI 在 base.seq 等于当前水位时只回 resume ACK，不发 initial 帧；
+      // 只有 Codex writer-conflict 刷新才保证重读并下发快照，通用重试不能一直等帧。
+      return this.connect(options);
+    }
+    let resolve!: () => void;
+    const promise = new Promise<void>((done) => {
+      resolve = done;
+    });
+    this.retryInFlight = {
+      promise,
+      resolve,
+      generation: this.generation + 1,
+      subscriptionId: null,
+    };
+    void this.connect(options).catch((error: unknown) => {
+      // connect 正常会把传输失败写进 state；意外抛错仍需释放显式重试 lease。
+      logger.warn(`[v4-store] 显式重试 ${this.topic} 意外失败`, error);
+      this.finishRetry();
+    });
+    return promise;
   }
 
   /** row command/query 的 epoch/entity authority 失效，复用 same-sub recovery 收敛。 */
@@ -762,6 +809,16 @@ export class ConversationProjectionStore {
       online: deliveryKind === "online",
       frameReceivedAt,
     });
+    // 修复：subscribe ACK 与 initial notification 分离；ACK 后连点若提前放开
+    // single-flight，会让相同 topic 的第二次订阅替换第一次，旧历史仍可能未刷新。
+    if (
+      this.retryInFlight?.subscriptionId === frame.subscriptionId &&
+      this.retryInFlight.generation === this.generation &&
+      this.awaitingInitial === null &&
+      this.subscriptionHasAppliedBase
+    ) {
+      this.finishRetry();
+    }
   }
 
   private applyFrame(
@@ -1015,6 +1072,9 @@ export class ConversationProjectionStore {
     reasonCode?: string,
   ): void {
     if (this.closed || subscriptionId !== this.state.subscriptionId) return;
+    // 修复：显式重选已发起新订阅、但 ACK 尚未回来时，旧 subId 仍暂存在 state。
+    // 此时旧订阅的组帧故障已被新投影取代，不能再发起 resync 并把新刷新误判为失败。
+    if (this.retryInFlight?.subscriptionId === null && this.connectInFlight > 0) return;
     if (
       this.awaitingInitial?.subscriptionId === subscriptionId &&
       (deliveryKind === "initial" || deliveryKind === "recovery" || deliveryKind === undefined)

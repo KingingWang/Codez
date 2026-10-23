@@ -265,6 +265,28 @@ export function acquireWorkspaceConnection(
   };
 }
 
+/**
+ * 任务重选只检查现有 endpoint + workspaceKey 投影，不为健康会话或断开的远端建连接。
+ * 刷新期间保活连接；SessionDataLayer 负责保活具体会话 store。
+ */
+export function refreshExistingWriterConflict(
+  scope: WorkspaceConnectionScope,
+  sessionId: string,
+): Promise<void> | null {
+  const entry = registry.get(buildWorkspaceConnectionKey(scope));
+  if (!entry || entry.stale) return null;
+  const flight = entry.layer.refreshWriterConflict(sessionId);
+  if (!flight) return null;
+  // 修复：切回 keep-warm 会话后，原 pane 可能尚未重新 acquire；仅保活 store
+  // 不足以阻止 workspace 连接的定时释放，需要同时保活这一层。
+  entry.refCount += 1;
+  if (entry.keepWarmTimer !== null) {
+    clearTimeout(entry.keepWarmTimer);
+    entry.keepWarmTimer = null;
+  }
+  return flight.finally(() => releaseEntry(entry));
+}
+
 /** 仅测试/诊断用：当前注册的连接条目数（不含已换代失效、待存量租约释放的旧条目）。 */
 export function workspaceConnectionRegistrySize(): number {
   return registry.size;

@@ -7205,8 +7205,10 @@ const enUS: Record<string, string> = {
     "This remote device has no available model yet. Configure models on this computer first; they will sync to the remote device automatically after you save.",
   "chat.error.sendFailed": "Failed to send. Try again later.",
   "chat.writerConflict.banner":
-    "This session is held by another window or process and is read-only. Fork it to continue.",
-  "chat.writerConflict.retry": "Retry connection",
+    "At the last check, another window or process held this session, so it is read-only. Saved history may have changed. Refresh and retry, or fork to continue.",
+  "chat.writerConflict.retry": "Refresh history and retry",
+  "chat.writerConflict.refreshFailed":
+    "Refresh failed. Showing history from the last successful check.",
   "chat.error.modelSettings": "Model settings",
   "chat.error.setModels": "Set",
 

@@ -5185,6 +5185,16 @@ export function SessionPane({
     void lease?.store.retry();
   }, [lease]);
 
+  const handleRefreshWriterConflict = useCallback(() => {
+    if (!sessionId) return;
+    void layer.refreshWriterConflict(sessionId)?.catch((error: unknown) => {
+      logger.warn(
+        `[v4-pane] 刷新只读历史失败 sessionId=${sessionId}:`,
+        error instanceof Error ? error.message : String(error),
+      );
+    });
+  }, [layer, sessionId]);
+
   // loadOlder 触发（接近顶部自动预取）。store 内部单飞防重入。
   const handleLoadOlder = useCallback(() => {
     return lease?.store.loadOlder();
@@ -6141,11 +6151,17 @@ export function SessionPane({
       </span>
       <button
         type="button"
-        className="shrink-0 rounded-md bg-primary px-2.5 py-1 text-primary-foreground hover:bg-primary/80"
-        onClick={handleRetrySubscribe}
+        className="shrink-0 rounded-md bg-primary px-2.5 py-1 text-primary-foreground hover:bg-primary/80 disabled:opacity-50"
+        disabled={state.status === "connecting"}
+        onClick={handleRefreshWriterConflict}
       >
         {intl.formatMessage({ id: "chat.writerConflict.retry" })}
       </button>
+      {errored ? (
+        <span role="alert" className="w-full text-ui-sm text-destructive">
+          {intl.formatMessage({ id: "chat.writerConflict.refreshFailed" })}
+        </span>
+      ) : null}
     </div>
   ) : null;
   const conversationBottomDockContent = readOnly ? null : writerConflictReadOnly ? (
@@ -6440,7 +6456,7 @@ export function SessionPane({
             </div>
           ) : null}
 
-          {errored && remoteAvailable ? (
+          {errored && remoteAvailable && !writerConflictReadOnly ? (
             <SessionSubscriptionErrorPanel
               error={state.lastError ?? intl.formatMessage({ id: "chat.error.connectionLost" })}
               sessionId={sessionId}

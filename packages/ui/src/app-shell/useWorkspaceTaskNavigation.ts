@@ -25,6 +25,7 @@ import { getRemoteWorkspaceSession } from "@/store/remoteWorkspaceSessionStore.j
 import { useTabStoreApi } from "@/store/TabStoreProvider.js";
 import { isWorkspaceTab } from "@/store/tabStore.js";
 import { bumpTaskListMembershipVersion } from "@/v4/taskListMembershipVersion.js";
+import { refreshExistingWriterConflict } from "@/v4/workspaceConnectionRegistry.js";
 
 export interface AutomationsNavigationTarget {
   workspacePath: string;
@@ -192,6 +193,28 @@ export function useWorkspaceTaskNavigation({
       // composer 读取的 workspace 目录永远得不到回填。这里保留同一 identity 桶；
       // 冷恢复确实为空时由 workspace catalog 水合独立补齐。
       setActiveTaskId(targetWorkspacePath, taskId, targetWorkspaceIdentity);
+      // 修复：外部 TUI 不会向本连接推送新历史；已打开的冲突只读会话被再次选中时，
+      // 仅对精确 endpoint + workspace identity + thread 的现有投影显式刷新。
+      // 远端断连不能按同路径误落到本地 __base__，冷打开仍由 pane 正常订阅。
+      if (
+        !isRemoteWorkspace ||
+        (resolvedRemoteSessionId && getRemoteWorkspaceSession(resolvedRemoteSessionId)?.services)
+      ) {
+        const refresh = refreshExistingWriterConflict(
+          {
+            workspacePath: targetWorkspacePath,
+            ...(targetWorkspaceIdentity ? { workspaceIdentity: targetWorkspaceIdentity } : {}),
+            ...(resolvedRemoteSessionId ? { remoteSessionId: resolvedRemoteSessionId } : {}),
+          },
+          taskId,
+        );
+        void refresh?.catch((error: unknown) => {
+          logger.warn(
+            `[App] 选择 task 时刷新只读历史失败 workspace=${targetWorkspacePath} taskId=${taskId}:`,
+            error instanceof Error ? error.message : String(error),
+          );
+        });
+      }
       onNavigateToTask?.();
     },
     [activateTabByPath, intl, onNavigateToTask, baseServices, tabStoreApi, setActiveTaskId],

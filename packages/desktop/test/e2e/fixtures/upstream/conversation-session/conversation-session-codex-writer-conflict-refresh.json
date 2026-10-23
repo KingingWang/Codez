@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "caseName": "conversation-session-codex-writer-conflict-refresh",
+  "spec": "./test/e2e/conversation-session/conversation-session-codex-writer-conflict-refresh.test.ts",
+  "fixtures": []
+}
