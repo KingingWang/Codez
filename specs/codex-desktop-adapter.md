@@ -1139,3 +1139,53 @@ load and keeps the existing error surface.
   retries `thread/resume`; a healthy thread is never invalidated. A full bridge
   reconnect naturally reloads everything. Once resume succeeds the projection is
   writable again with no marker.
+- In the Desktop workbench, explicitly selecting a writer-conflicted task again
+  is also a refresh intent, including a click on the already selected row and a
+  return while its `SessionDataLayer` entry is keep-warm. The selected workspace endpoint,
+  `workspaceIdentity?.trim() || workspacePath`, remote session and thread ID must
+  address the same existing projection. That projection makes one in-flight
+  subscribe/retry attempt shared by its panes; a missing entry follows the normal
+  cold subscribe path. Selecting a healthy writable task, rendering a pane,
+  focusing the window or receiving a sessions-index update does not force a
+  conversation reload. The banner retry action uses the same attempt.
+- A refresh keeps the last successfully read timeline visible and read-only until
+  the replacement snapshot is complete. If the external writer still holds the
+  lock, `thread/turns/list` refreshes the native-persisted history without
+  duplicate rows and the writer-conflict guard remains. If the writer released
+  the lock, successful `thread/resume` clears the marker and restores writable
+  actions. A failed read or resume never clears the guard or discards the last
+  good timeline; stale responses from a prior workspace, thread, or connection
+  cannot replace the current view. The refresh itself must not change task-list
+  membership, unread state, project assignment or activity time; the existing
+  explicit task-selection unread clear remains a separate action.
+- Waiting for the replacement frame applies only to writer-conflict refresh.
+  Ordinary failed-subscription retry completes on its subscribe ACK: a valid
+  equal-watermark CLI resume may emit no initial frame at all.
+- External CLI/TUI writers do not deliver thread notifications to this bridge
+  connection. The read-only view therefore promises only history persisted by
+  Codex at the last successful refresh, not streaming-token parity or automatic
+  following. The banner must describe the writer conflict as the result of the
+  last check and offer "refresh history and retry" in both locales. No timer or
+  background focus retry may call `thread/resume`: native cold resume can dispatch
+  queued work, so claiming write authority remains an explicit user action.
+  Desktop continuous and mobile replayable subscribers retain their existing
+  independent delivery and recovery semantics.
+
+```text
+external TUI ── owns native writer lock; persists turns ──> Codex history
+user selects task / presses retry
+  └─> Renderer shared conversation store (one refresh attempt per thread)
+       └─> trusted Host attachment ──> Bridge invalidates only the conflicted projection
+            └─> native thread/read → thread/resume → thread/turns/list
+                 ├─ writer still active: new persisted history + read-only snapshot
+                 └─ lock released: attached history + writable snapshot
+       desktop: desktop-continuous     mobile: web-remote-replayable
+```
+
+Acceptance: while an external writer remains live, append native-persisted turns
+and explicitly reselect the thread; the new history appears once and all write
+commands remain guarded. After the writer exits, reselect the same thread within
+the keep-warm period; the first completed refresh removes the read-only marker
+and restores the composer. A healthy thread, a different workspace identity,
+an unrelated pane and repeated clicks during an in-flight refresh must not
+cause an additional native history load or a cross-session state change.
