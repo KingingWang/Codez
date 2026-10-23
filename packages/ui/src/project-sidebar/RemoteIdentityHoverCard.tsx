@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactElement } from "react";
 import { HoverCard as HoverCardPrimitive } from "radix-ui";
-import { ChevronRight, Settings } from "lucide-react";
+import { ChevronRight, RefreshCw, Settings } from "lucide-react";
 import { Anchor, createPopperScope } from "@radix-ui/react-popper";
 import { sourceServerConnectionStateSchema } from "@codez/shared";
 import type { RemoteProjectHost } from "@/project-sidebar/contract.js";
@@ -20,7 +20,7 @@ const usePopperScope = createPopperScope();
 
 /**
  * 项目模型迁移曾漏接详情；项目入口只读同一 Host，悬停结束即关闭，不保存点击锁定状态。
- * 待处理设备只提供定位设置的入口，实际处理仍由设置页设备卡完成。
+ * 待处理设备沿用 Host 事实；远端升级从原项目连接意图进入受保护向导，其余动作定位设置。
  */
 export function RemoteIdentityHoverCard({
   host,
@@ -32,6 +32,7 @@ export function RemoteIdentityHoverCard({
   anchorToMenu = false,
   contentClassName,
   onOpenDeviceSettings,
+  onUpdateServer,
   children,
 }: {
   host?: RemoteProjectHost;
@@ -44,6 +45,7 @@ export function RemoteIdentityHoverCard({
   anchorToMenu?: boolean;
   contentClassName?: string;
   onOpenDeviceSettings?: () => void;
+  onUpdateServer?: () => void;
   children: ReactElement;
 }) {
   const { intl } = useCodezIntl();
@@ -89,6 +91,12 @@ export function RemoteIdentityHoverCard({
     upgradeTarget: host.upgradeTarget,
     projectError: error,
   });
+  const updateFromProject =
+    presentation.status === "pending" &&
+    presentation.primaryAction === "update-server" &&
+    host.upgradeTarget === "server" &&
+    onUpdateServer;
+  const pendingAction = updateFromProject || onOpenDeviceSettings;
   return (
     <HoverCard
       {...scope}
@@ -167,20 +175,28 @@ export function RemoteIdentityHoverCard({
             ))}
           </dd>
         </dl>
-        {presentation.status === "pending" && onOpenDeviceSettings ? (
+        {presentation.status === "pending" && pendingAction ? (
           <button
             type="button"
-            data-testid="remote-identity-device-settings"
+            data-testid={
+              updateFromProject
+                ? "remote-identity-update-server"
+                : "remote-identity-device-settings"
+            }
             className={cn(
               "mt-3 flex w-full items-center gap-1.5 border-t border-border pt-3 text-left hover:underline",
               presentation.foreground,
             )}
             onClick={() => {
               setOpen(false);
-              onOpenDeviceSettings();
+              pendingAction();
             }}
           >
-            <Settings aria-hidden="true" className="size-3.5" />
+            {updateFromProject ? (
+              <RefreshCw aria-hidden="true" className="size-3.5" />
+            ) : (
+              <Settings aria-hidden="true" className="size-3.5" />
+            )}
             <span className="min-w-0 flex-1 break-words">{msg(presentation.actionMessageId)}</span>
             <ChevronRight aria-hidden="true" className="size-3.5" />
           </button>
