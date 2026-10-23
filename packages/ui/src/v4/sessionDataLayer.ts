@@ -121,6 +121,24 @@ export class SessionDataLayer {
     };
   }
 
+  /** 仅显式刷新已经打开过的 writer-conflict 会话；缺席条目仍走普通冷订阅。 */
+  refreshWriterConflict(sessionId: string): Promise<void> | null {
+    const entry = this.entries.get(conversationTopic(sessionId));
+    const state = entry?.store.getState();
+    if (
+      !state ||
+      state.snapshot?.sessionId !== sessionId ||
+      state.snapshot.writerConflict?.readOnly !== true ||
+      state.status === "connecting"
+    ) {
+      return null;
+    }
+    // 修复：任务切回时旧 pane 可能只在 keep-warm 中；刷新期间持有同一条目的
+    // 临时租约，避免 30 秒到期把在途订阅及新历史一起销毁。
+    const lease = this.acquire(sessionId);
+    return lease.store.retry().finally(() => lease.release());
+  }
+
   /** 当前活跃（含 keep-warm 中）的 session 数，测试与调试观测点。 */
   get size(): number {
     return this.entries.size;

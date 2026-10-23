@@ -466,6 +466,238 @@ describe("ConversationProjectionStore", () => {
     expect(transport.subscribeCalls[1]?.base).toEqual({ logEpoch: "epoch-1", seq: 5 });
   });
 
+  it("冲突只读显式重试单飞，旧历史保留到新快照到达且不重复追加", async () => {
+    const oldRow = assistantRow(1, "旧历史");
+    transport.subscribeImpl = (params, subscriptionId) => ({
+      ack: { subscriptionId, mode: "snapshot", logEpoch: "epoch-1" },
+      initialFrame: makeFrame(
+        subscriptionId,
+        0,
+        5,
+        {
+          kind: "snapshot",
+          snapshot: makeSnapshot({
+            seq: 5,
+            writerConflict: { readOnly: true },
+            rows: { window: [oldRow], totalCount: 1, firstRowId: 1 },
+          }),
+        },
+        params.topic,
+      ),
+    });
+    await store.connect();
+    const previous = store.getState().snapshot;
+
+    const complete: Array<() => void> = [];
+    transport.subscribeImpl = (params, subscriptionId) =>
+      new Promise((resolve) => {
+        complete.push(() =>
+          resolve({
+            ack: { subscriptionId, mode: "snapshot", logEpoch: "epoch-1" },
+            initialFrame: makeFrame(
+              subscriptionId,
+              0,
+              6,
+              {
+                kind: "snapshot",
+                snapshot: makeSnapshot({
+                  seq: 6,
+                  writerConflict: { readOnly: true },
+                  rows: {
+                    window: [oldRow, assistantRow(2, "TUI 已落盘的新历史")],
+                    totalCount: 2,
+                    firstRowId: 1,
+                  },
+                }),
+              },
+              params.topic,
+            ),
+          }),
+        );
+      });
+    const first = store.retry();
+    const second = store.retry();
+    expect(store.getState().snapshot).toBe(previous);
+    expect(store.getState().snapshot?.writerConflict?.readOnly).toBe(true);
+    complete.forEach((finish) => finish());
+    await Promise.all([first, second]);
+
+    expect(transport.subscribeCalls).toHaveLength(2);
+    expect(store.getState().snapshot?.rows.window.map((row) => row.rowId)).toEqual([1, 2]);
+    expect(store.getState().snapshot?.writerConflict?.readOnly).toBe(true);
+  });
+
+  it("重试 ACK 先于新快照到达时，重复点击仍只发起一次历史刷新", async () => {
+    transport.subscribeImpl = (params, subscriptionId) => ({
+      ack: { subscriptionId, mode: "snapshot", logEpoch: "epoch-1" },
+      initialFrame: makeFrame(
+        subscriptionId,
+        0,
+        5,
+        {
+          kind: "snapshot",
+          snapshot: makeSnapshot({ seq: 5, writerConflict: { readOnly: true } }),
+        },
+        params.topic,
+      ),
+    });
+    await store.connect();
+    const previous = store.getState().snapshot;
+
+    // ACK 与 initial notification 分别到达。不能把 ACK 当成历史已刷新完成。
+    transport.subscribeImpl = (_params, subscriptionId) => ({
+      ack: { subscriptionId, mode: "snapshot", logEpoch: "epoch-1" },
+    });
+    const first = store.retry();
+    await flushMicrotasks();
+    expect(store.getState().snapshot).toBe(previous);
+    const second = store.retry();
+    await flushMicrotasks();
+    const callsBeforeSnapshot = transport.subscribeCalls.length;
+    transport.emitKind(
+      makeFrame(store.getState().subscriptionId!, 0, 6, {
+        kind: "snapshot",
+        snapshot: makeSnapshot({ seq: 6, writerConflict: { readOnly: true } }),
+      }),
+      "initial",
+    );
+    await Promise.all([first, second]);
+
+    expect(callsBeforeSnapshot).toBe(2);
+    expect(store.getState().snapshot?.seq).toBe(6);
+  });
+
+  it("非冲突会话的手动重试在无首帧的 resume ACK 后完成", async () => {
+    await store.connect();
+    const previous = store.getState().snapshot;
+    transport.subscribeImpl = (_params, subscriptionId) => ({
+      ack: { subscriptionId, mode: "resume", logEpoch: "epoch-1" },
+    });
+
+    let settled = false;
+    const retry = store.retry().then(() => {
+      settled = true;
+    });
+    try {
+      await vi.waitFor(() => expect(store.getState().subscriptionId).toBe("sub-2"));
+      expect(transport.subscribeCalls[1]?.base).toEqual({ logEpoch: "epoch-1", seq: 5 });
+      expect(settled).toBe(true);
+      await retry;
+      expect(store.getState().snapshot).toBe(previous);
+      await store.retry();
+      expect(transport.subscribeCalls).toHaveLength(3);
+    } finally {
+      await store.close();
+    }
+  });
+
+  it("新订阅等待 ACK 时忽略旧订阅故障，不解除单飞保护", async () => {
+    transport.subscribeImpl = (params, subscriptionId) => ({
+      ack: { subscriptionId, mode: "snapshot", logEpoch: "epoch-1" },
+      initialFrame: makeFrame(
+        subscriptionId,
+        0,
+        5,
+        {
+          kind: "snapshot",
+          snapshot: makeSnapshot({ seq: 5, writerConflict: { readOnly: true } }),
+        },
+        params.topic,
+      ),
+    });
+    await store.connect();
+
+    const complete: Array<() => void> = [];
+    transport.subscribeImpl = (params, subscriptionId) =>
+      new Promise((resolve) => {
+        complete.push(() =>
+          resolve({
+            ack: { subscriptionId, mode: "snapshot", logEpoch: "epoch-1" },
+            initialFrame: makeFrame(
+              subscriptionId,
+              0,
+              6,
+              {
+                kind: "snapshot",
+                snapshot: makeSnapshot({
+                  seq: 6,
+                  writerConflict: { readOnly: true },
+                }),
+              },
+              params.topic,
+            ),
+          }),
+        );
+      });
+    const first = store.retry();
+    transport.emitFault();
+    for (let i = 0; i < 5; i += 1) await flushMicrotasks();
+    expect(store.getState().status).toBe("connecting");
+    expect(transport.resyncCalls).toHaveLength(0);
+    const second = store.retry();
+    expect(transport.subscribeCalls).toHaveLength(2);
+    complete.forEach((finish) => finish());
+    await Promise.all([first, second]);
+    expect(store.getState().snapshot?.seq).toBe(6);
+  });
+
+  it("冲突刷新失败不丢旧历史或写入门禁，下一次成功恢复可写", async () => {
+    const oldRow = assistantRow(1, "旧历史");
+    transport.subscribeImpl = (params, subscriptionId) => ({
+      ack: { subscriptionId, mode: "snapshot", logEpoch: "epoch-1" },
+      initialFrame: makeFrame(
+        subscriptionId,
+        0,
+        5,
+        {
+          kind: "snapshot",
+          snapshot: makeSnapshot({
+            seq: 5,
+            writerConflict: { readOnly: true },
+            rows: { window: [oldRow], totalCount: 1, firstRowId: 1 },
+          }),
+        },
+        params.topic,
+      ),
+    });
+    await store.connect();
+    const previous = store.getState().snapshot;
+
+    transport.subscribeImpl = async () => {
+      throw new Error("history read failed");
+    };
+    await store.retry();
+    expect(store.getState().status).toBe("error");
+    expect(store.getState().snapshot).toBe(previous);
+    expect(store.getState().snapshot?.writerConflict?.readOnly).toBe(true);
+
+    transport.subscribeImpl = (params, subscriptionId) => ({
+      ack: { subscriptionId, mode: "snapshot", logEpoch: "epoch-1" },
+      initialFrame: makeFrame(
+        subscriptionId,
+        0,
+        6,
+        {
+          kind: "snapshot",
+          snapshot: makeSnapshot({
+            seq: 6,
+            rows: {
+              window: [oldRow, assistantRow(2, "恢复后的历史")],
+              totalCount: 2,
+              firstRowId: 1,
+            },
+          }),
+        },
+        params.topic,
+      ),
+    });
+    await store.retry();
+
+    expect(store.getState().status).toBe("live");
+    expect(store.getState().snapshot?.rows.window.map((row) => row.rowId)).toEqual([1, 2]);
+    expect(store.getState().snapshot?.writerConflict).toBeUndefined();
+  });
+
   it("I56：只通知首次应用的 online fallback，initial/recovery/duplicate 只更新基线", async () => {
     transport.subscribeImpl = (params, subscriptionId) => ({
       ack: { subscriptionId, mode: "snapshot", logEpoch: "epoch-1" },
@@ -1560,6 +1792,92 @@ describe("SessionDataLayer", () => {
       }),
     );
     expect(lease.store.getState().snapshot?.rows.window).toHaveLength(1);
+  });
+
+  it("缺席或可写的会话不会因显式重选而重读历史", async () => {
+    expect(layer.refreshWriterConflict("s1")).toBeNull();
+    const lease = layer.acquire("s1");
+    await flushMicrotasks();
+    expect(lease.store.getState().snapshot?.writerConflict).toBeUndefined();
+
+    expect(layer.refreshWriterConflict("s1")).toBeNull();
+    expect(transport.subscribeCalls).toHaveLength(1);
+  });
+
+  it("keep-warm 中的冲突会话刷新一次、保留旧投影，释放写锁后恢复可写", async () => {
+    transport.subscribeImpl = (params, subscriptionId) => ({
+      ack: { subscriptionId, mode: "snapshot", logEpoch: "epoch-1" },
+      initialFrame: makeFrame(
+        subscriptionId,
+        0,
+        5,
+        {
+          kind: "snapshot",
+          snapshot: makeSnapshot({
+            seq: 5,
+            writerConflict: { readOnly: true },
+            rows: {
+              window: [assistantRow(1, "旧历史")],
+              totalCount: 1,
+              firstRowId: 1,
+            },
+          }),
+        },
+        params.topic,
+      ),
+    });
+    const first = layer.acquire("s1");
+    const second = layer.acquire("s1");
+    await flushMicrotasks();
+    expect(first.store).toBe(second.store);
+    const previous = first.store.getState().snapshot;
+    first.release();
+    second.release();
+    vi.advanceTimersByTime(10_000);
+
+    const complete: Array<() => void> = [];
+    transport.subscribeImpl = (params, subscriptionId) =>
+      new Promise((resolve) => {
+        complete.push(() =>
+          resolve({
+            ack: { subscriptionId, mode: "snapshot", logEpoch: "epoch-1" },
+            initialFrame: makeFrame(
+              subscriptionId,
+              0,
+              6,
+              {
+                kind: "snapshot",
+                snapshot: makeSnapshot({
+                  seq: 6,
+                  rows: {
+                    window: [assistantRow(1, "旧历史"), assistantRow(2, "恢复后的历史")],
+                    totalCount: 2,
+                    firstRowId: 1,
+                  },
+                }),
+              },
+              params.topic,
+            ),
+          }),
+        );
+      });
+    const refresh = layer.refreshWriterConflict("s1");
+    expect(refresh).not.toBeNull();
+    expect(layer.refreshWriterConflict("s1")).toBeNull();
+    expect(first.store.getState().snapshot).toBe(previous);
+    vi.advanceTimersByTime(30_000);
+    expect(layer.size).toBe(1);
+    expect(transport.unsubscribeCalls).toEqual([]);
+    complete[0]!();
+    await refresh;
+
+    expect(transport.subscribeCalls).toHaveLength(2);
+    expect(first.store.getState().snapshot?.rows.window.map((row) => row.rowId)).toEqual([1, 2]);
+    expect(first.store.getState().snapshot?.writerConflict).toBeUndefined();
+    expect(layer.refreshWriterConflict("s1")).toBeNull();
+    vi.advanceTimersByTime(30_000);
+    await flushMicrotasks();
+    expect(layer.size).toBe(0);
   });
 
   describe("行结构共享（docs/performance/conversation-row-structural-sharing.md）", () => {

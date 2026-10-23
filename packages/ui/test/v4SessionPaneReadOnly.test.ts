@@ -14,7 +14,7 @@ const sessionPaneSource = readFileSync("packages/ui/src/v4/SessionPane.tsx", "ut
 
 const projectionState = vi.hoisted(() => ({
   current: null as {
-    status: "live";
+    status: "live" | "error";
     snapshot: ConversationSnapshot;
     subscriptionId: string;
     lastError: string | null;
@@ -56,6 +56,7 @@ const leaseStoreMocks = vi.hoisted(() => ({
   },
   layer: {
     acquire: vi.fn(() => leaseStoreMocks.lease),
+    refreshWriterConflict: vi.fn(async () => {}),
   },
 }));
 
@@ -305,7 +306,9 @@ function renderReadOnlyPane({
   allowWorkspaceFileRewind = false,
   apiRetry = null,
   lastError = null,
+  locale = "zh-CN",
   readOnly = true,
+  subscriptionStatus = "live",
   writerConflict,
   workflowRuns,
   sharedContextImport,
@@ -313,7 +316,9 @@ function renderReadOnlyPane({
   allowWorkspaceFileRewind?: boolean;
   apiRetry?: ConversationSnapshot["control"]["apiRetry"];
   lastError?: ConversationSnapshot["control"]["lastError"];
+  locale?: "zh-CN" | "en-US";
   readOnly?: boolean;
+  subscriptionStatus?: "live" | "error";
   writerConflict?: ConversationSnapshot["writerConflict"];
   workflowRuns?: ConversationSnapshot["workflowRuns"];
   sharedContextImport?: ConversationSnapshot["sharedContextImport"];
@@ -324,18 +329,18 @@ function renderReadOnlyPane({
   if (workflowRuns) snapshot.workflowRuns = workflowRuns;
   snapshot.sharedContextImport = sharedContextImport;
   projectionState.current = {
-    lastError: null,
+    lastError: subscriptionStatus === "error" ? "history refresh failed" : null,
     loadingOlder: false,
     optimisticCommands: [],
     snapshot,
-    status: "live",
+    status: subscriptionStatus,
     subscriptionId: "sub-1",
   };
 
   return renderToStaticMarkup(
     createElement(
       CodezIntlProvider,
-      { initialLocale: "zh-CN" },
+      { initialLocale: locale },
       createElement(SessionPane, {
         allowWorkspaceFileRewind,
         paneId: "pane-1",
@@ -357,6 +362,7 @@ describe("SessionPane read-only mode", () => {
     timelineState.onRetry = undefined;
     timelineState.onEdit = undefined;
     leaseStoreMocks.retry.mockClear();
+    leaseStoreMocks.layer.refreshWriterConflict.mockClear();
   });
 
   it("renders subagent child panes without composer or queue input affordances", () => {
@@ -469,8 +475,9 @@ describe("SessionPane read-only mode", () => {
     expect(timelineIndex).toBeGreaterThan(statusIndex);
     expect(dockIndex).toBeGreaterThan(timelineIndex);
     expect(bannerIndex).toBeGreaterThan(dockIndex);
-    expect(html).toContain("此会话正被另一个窗口或进程占用，当前为只读。可 Fork 后继续。");
-    expect(html).toContain("重试连接");
+    expect(html).toContain("上次检查");
+    expect(html).toContain("只读");
+    expect(html).toContain("刷新历史");
     expect(html).not.toContain('data-testid="mock-composer"');
     expect(html).not.toContain('data-testid="mock-queue"');
     expect(html).not.toContain('data-testid="mock-interactions"');
@@ -479,7 +486,32 @@ describe("SessionPane read-only mode", () => {
     expect(timelineState.onEdit).toBeUndefined();
   });
 
-  it("retries the session subscription when clicking retry on the writer-conflict bottom-dock banner", () => {
+  it("English writer-conflict copy describes the last check and persisted-history refresh", () => {
+    const html = renderReadOnlyPane({
+      locale: "en-US",
+      readOnly: false,
+      writerConflict: { readOnly: true },
+    });
+
+    expect(html).toMatch(/last check/i);
+    expect(html).toMatch(/read.only/i);
+    expect(html).toMatch(/refresh history/i);
+  });
+
+  it("冲突刷新失败后仍显示旧时间线与只读门禁，而不是用全屏错误替换历史", () => {
+    const html = renderReadOnlyPane({
+      readOnly: false,
+      subscriptionStatus: "error",
+      writerConflict: { readOnly: true },
+    });
+
+    expect(html).toContain('data-testid="mock-timeline"');
+    expect(html).toContain('data-testid="v4-writer-conflict-banner"');
+    expect(html).toContain("刷新失败，仍显示上次读取的历史。");
+    expect(html).not.toContain('data-testid="mock-composer"');
+  });
+
+  it("refreshes the current conflicted session when clicking the bottom-dock action", () => {
     const snapshot = makeSnapshot(null);
     snapshot.writerConflict = { readOnly: true };
     projectionState.current = {
@@ -506,8 +538,11 @@ describe("SessionPane read-only mode", () => {
 
     const banner = screen.getByTestId("v4-writer-conflict-banner");
     expect(banner.closest('[data-testid="mock-timeline"]')).not.toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "重试连接" }));
-    expect(leaseStoreMocks.retry).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: /刷新历史.*重试/ }));
+    expect(leaseStoreMocks.layer.refreshWriterConflict).toHaveBeenCalledExactlyOnceWith(
+      "child-session",
+    );
+    expect(leaseStoreMocks.retry).not.toHaveBeenCalled();
   });
 });
 
