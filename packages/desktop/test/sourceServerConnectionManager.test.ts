@@ -1517,6 +1517,115 @@ describe("SourceServerConnectionManager", () => {
     });
   });
 
+  it.each([
+    {
+      name: "probe finds an older installed Server",
+      installedVersion: "3.7.0",
+      remoteInfo: serverInfo,
+      policy: "release-versioned" as const,
+      installedArchiveSha256: undefined,
+      upgradeTarget: "server",
+    },
+    {
+      name: "development archive differs at the same version",
+      installedVersion: "3.8.0",
+      remoteInfo: serverInfo,
+      policy: "development-content-addressed" as const,
+      installedArchiveSha256: "b".repeat(64),
+      upgradeTarget: "server",
+    },
+    {
+      name: "handshake lacks compatibility",
+      installedVersion: "3.8.0",
+      remoteInfo: { ...serverInfo, compatibility: undefined },
+      policy: "release-versioned" as const,
+      installedArchiveSha256: "a".repeat(64),
+      upgradeTarget: "server",
+    },
+    {
+      name: "handshake requires a newer Desktop",
+      installedVersion: "3.8.0",
+      remoteInfo: {
+        ...serverInfo,
+        version: "3.9.0",
+        compatibility: {
+          schemaVersion: 1 as const,
+          productVersion: "3.9.0",
+          minCompatibleVersion: "3.9.0",
+        },
+      },
+      policy: "release-versioned" as const,
+      installedArchiveSha256: "a".repeat(64),
+      upgradeTarget: "controller",
+    },
+  ])("keeps a bound Source identity when $name", async (scenario) => {
+    const adapter = createAdapter(true, "ssh");
+    vi.mocked(adapter.probe).mockResolvedValue({
+      platform: "linux",
+      arch: "x64",
+      installed: true,
+      installedVersion: scenario.installedVersion,
+      ...(scenario.installedArchiveSha256
+        ? { installedArchiveSha256: scenario.installedArchiveSha256 }
+        : {}),
+    });
+    const manager = new SourceServerConnectionManager({
+      directory: { recordHandshake: vi.fn() },
+      createAdapter: () => adapter,
+      connectServer: vi.fn(async () => ({
+        serverInfo: scenario.remoteInfo,
+        services: {} as IServiceAccessor,
+        dispose: vi.fn(),
+      })),
+      compatibilityManifest: serverInfo.compatibility!,
+      sourceServerArtifactPolicy: scenario.policy,
+      resolveRelease: vi.fn(async () => createRelease("3.8.0")),
+    });
+
+    await expect(
+      manager.connect({
+        profile: { ...sshProfile, sourceServerId },
+        target: sshTarget,
+      }),
+    ).rejects.toBeInstanceOf(SourceServerUpgradeRequiredError);
+    expect(manager.getStateByProfile(profileId)).toMatchObject({
+      state: "needs-upgrade",
+      sourceServerId,
+      updateAvailability: "required",
+      upgradeTarget: scenario.upgradeTarget,
+    });
+    manager.dispose();
+  });
+
+  it("publishes the bound Source identity on a blocked startup reconnect without updating", async () => {
+    const adapter = createAdapter(true, "ssh");
+    vi.mocked(adapter.probe).mockResolvedValue({
+      platform: "linux",
+      arch: "x64",
+      installed: true,
+      installedVersion: "3.7.0",
+    });
+    const manager = new SourceServerConnectionManager({
+      directory: { recordHandshake: vi.fn() },
+      createAdapter: () => adapter,
+      connectServer: vi.fn(),
+      compatibilityManifest: serverInfo.compatibility!,
+    });
+
+    const results = await manager.reconnectOnStartup([
+      { profile: { ...sshProfile, sourceServerId }, target: sshTarget },
+    ]);
+
+    expect(results).toMatchObject([{ profileId, status: "failed" }]);
+    expect(manager.getStateByProfile(profileId)).toMatchObject({
+      state: "needs-upgrade",
+      sourceServerId,
+      updateAvailability: "required",
+    });
+    expect(adapter.installOrUpdate).not.toHaveBeenCalled();
+    manager.dispose();
+  });
+
   it("updates a pre-R3 Profile from the release archive before sourceServerId exists", async () => {
     const adapter = createAdapter();
     let probeCount = 0;

@@ -2,9 +2,15 @@ import { execFile } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
-import { ServiceChannels, parseRemoteWorkspaceIdentity } from "@codez/shared";
+import { BufferReader, deserialize, VSBuffer } from "@codez/rpc";
+import {
+  ServiceChannels,
+  getSourceServerUpdateTarget,
+  parseRemoteWorkspaceIdentity,
+  type SourceServerManagementSnapshot,
+} from "@codez/shared";
+import { TID_SETTINGS_PAGE } from "@codez/shared/test-ids";
 import { clearAppData, readSettings } from "#e2e/helpers/desktop-app";
-import { waitForRemoteDeviceLocated } from "#e2e/helpers/remote-project-actions";
 import {
   callHandoffHost,
   installHandoffRpcProbe,
@@ -17,6 +23,7 @@ import {
   connectSSHWorkspace,
   prepareSSHConnectionPage,
   readSSHRuntimeConfig,
+  waitForRemoteTab,
 } from "#e2e/helpers/ssh-remote-p0";
 
 const CASE_MARKER = "E2E_REMOTE_SIDEBAR_PENDING";
@@ -24,6 +31,69 @@ const artifactDir = resolve(
   process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-sidebar-pending",
 );
 const run = promisify(execFile);
+
+interface SourceUpdateRequestProbe {
+  requests: number[][];
+  restore(): void;
+}
+
+declare global {
+  interface Window {
+    __remoteSidebarUpdateProbe?: SourceUpdateRequestProbe;
+  }
+}
+
+/** 只观察现有 Host RPC，不替换更新响应或绕过真实 running-task guard。 */
+async function observeSourceUpdateRequests(): Promise<void> {
+  await browser.execute((channel) => {
+    const original = MessagePort.prototype.postMessage;
+    const probe: SourceUpdateRequestProbe = {
+      requests: [],
+      restore() {
+        MessagePort.prototype.postMessage = original;
+        delete window.__remoteSidebarUpdateProbe;
+      },
+    };
+    MessagePort.prototype.postMessage = function (message: unknown, options?: unknown) {
+      if (message instanceof Uint8Array) {
+        const text = new TextDecoder().decode(message);
+        if (text.includes(channel) && text.includes("updateSource")) {
+          probe.requests.push(Array.from(message));
+        }
+      }
+      Reflect.apply(original, this, options === undefined ? [message] : [message, options]);
+    };
+    window.__remoteSidebarUpdateProbe = probe;
+  }, ServiceChannels.SourceServerManagement);
+}
+
+async function readSourceUpdateRequests(): Promise<unknown[]> {
+  const messages = await browser.execute(() => {
+    const probe = window.__remoteSidebarUpdateProbe;
+    if (!probe) throw new Error("Missing Source update request probe");
+    return probe.requests;
+  });
+  const requests: unknown[] = [];
+  for (const message of messages) {
+    const reader = new BufferReader(VSBuffer.wrap(Uint8Array.from(message)));
+    const header: unknown = deserialize(reader);
+    if (
+      !Array.isArray(header) ||
+      header[0] !== 100 ||
+      header[2] !== ServiceChannels.SourceServerManagement ||
+      header[3] !== "updateSource"
+    ) {
+      continue;
+    }
+    const args: unknown = deserialize(reader);
+    if (!Array.isArray(args) || args.length !== 1) {
+      throw new Error(`${CASE_MARKER}: 更新 RPC 参数不符合单请求合同`);
+    }
+    // 保留原始 wire 参数；不能用 schema 默认值把缺失的 force 误判为显式 false。
+    requests.push(args[0]);
+  }
+  return requests;
+}
 
 /** 只读远端当前 release；走 docker exec，不占用被测 SSH 连接。 */
 async function setAppearance(locale: "zh-CN" | "en-US", theme: "light" | "dark") {
@@ -68,17 +138,19 @@ async function readRemoteCurrentSha(): Promise<string> {
   return stdout.trim();
 }
 
-describe(`${CASE_MARKER}: 待处理设备在项目行与详情显示具体原因`, () => {
+describe(`${CASE_MARKER}: 待处理设备在项目入口直接处理远端更新`, () => {
   afterEach(async () => {
     await browser.saveScreenshot(resolve(artifactDir, "last-state.png"));
   });
   after(async () => {
+    // observer 包在现有 handoff wrapper 外层，先撤销它，避免恢复时复活旧 wrapper。
+    await browser.execute(() => window.__remoteSidebarUpdateProbe?.restore());
     await restoreHandoffProbes();
     await browser.electron.restoreAllMocks();
     await clearAppData();
   });
 
-  it("RDUX-SIDEBAR-PENDING needs-upgrade 显示“需要更新”，详情入口定位设置页设备卡且不自动更新", async function () {
+  it("RDUX-SIDEBAR-PENDING needs-upgrade 显示“需要更新”，详情入口受保护更新并恢复原项目", async function () {
     this.timeout(15 * 60_000);
     await mkdir(artifactDir, { recursive: true });
     const config = readSSHRuntimeConfig(CASE_MARKER);
@@ -92,6 +164,8 @@ describe(`${CASE_MARKER}: 待处理设备在项目行与详情显示具体原因
     const identity = tab.workspaceIdentity!;
     const sourceId = parseRemoteWorkspaceIdentity(identity)?.sourceServerId;
     if (!sourceId) throw new Error(`${CASE_MARKER}: 远程项目缺少 Source 身份`);
+    const workspacePath = tab.workspacePath;
+    if (!workspacePath) throw new Error(`${CASE_MARKER}: 原项目缺少绑定目录`);
     const profileId = (await readSettings()).connectionProfiles?.find(
       (profile) => profile.sourceServerId === sourceId,
     )?.profileId;
@@ -103,11 +177,28 @@ describe(`${CASE_MARKER}: 待处理设备在项目行与详情显示具体原因
     expect(repack.newSha).not.toBe(shaBefore);
 
     await installHandoffRpcProbe();
+    await observeSourceUpdateRequests();
     await callHandoffHost(ServiceChannels.SourceServerManagement, "disconnectSource", [sourceId]);
     // 直接走 Host 连接，不经过向导；向导会自动发起更新，无法观察停留在待处理的设备。
     await callHandoffHost(ServiceChannels.SourceServerManagement, "connectProfile", [
       profileId,
     ]).catch(() => undefined);
+    const management = await callHandoffHost<SourceServerManagementSnapshot>(
+      ServiceChannels.SourceServerManagement,
+      "getSnapshot",
+    );
+    expect(management.states.find((state) => state.profileId === profileId)).toMatchObject({
+      state: "needs-upgrade",
+      sourceServerId: sourceId,
+      updateAvailability: "required",
+      upgradeTarget: "server",
+    });
+    const profile = management.profiles.find((item) => item.profileId === profileId);
+    if (!profile) throw new Error(`${CASE_MARKER}: 待升级快照缺少原设备线路`);
+    const expectedTarget = getSourceServerUpdateTarget(profile.target);
+    // 后台只发布待处理事实，不替用户执行更新。
+    expect(await readRemoteCurrentSha()).toBe(shaBefore);
+    expect(await readSourceUpdateRequests()).toEqual([]);
 
     await selectTaskOrganizeMode(["项目", "Project"]);
     const row = $(`[data-project-workspace-identity=${JSON.stringify(identity)}]`);
@@ -158,19 +249,30 @@ describe(`${CASE_MARKER}: 待处理设备在项目行与详情显示具体原因
     expect(detailsText).not.toMatch(/需要处理|Needs attention/u);
     const buttons = await details.$$("button");
     expect(buttons).toHaveLength(1);
-    const entry = details.$('[data-testid="remote-identity-device-settings"]');
+    const entry = details.$('[data-testid="remote-identity-update-server"]');
     expect(await entry.getText()).toMatch(/更新远端|Update remote device/u);
     await browser.saveScreenshot(resolve(artifactDir, "pending-details.png"));
 
+    expect(await readSourceUpdateRequests()).toEqual([]);
     await entry.click();
     await details.waitForDisplayed({ reverse: true });
-    const card = $(`[data-source-server-card="${sourceId}"]`);
-    await card.waitForDisplayed({ timeout: 15_000 });
-    // RDUX-13：定位后只展开目标设备行，焦点在设备名按钮上并持续高亮。
-    await waitForRemoteDeviceLocated(sourceId, CASE_MARKER);
-    expect(await card.getText()).toMatch(/更新远端|Update remote device/u);
-    await browser.saveScreenshot(resolve(artifactDir, "device-settings.png"));
-    // 入口只负责定位，不能替用户执行更新。
-    expect(await readRemoteCurrentSha()).toBe(shaBefore);
+    // 原因：只定位设备设置会让 required 更新停在原地；原项目向导必须实际提交受保护更新。
+    expect(await $(`[data-testid="${TID_SETTINGS_PAGE}"]`).isDisplayed()).toBe(false);
+    await browser.waitUntil(async () => (await readRemoteCurrentSha()) === repack.newSha, {
+      timeout: 240_000,
+      interval: 2_000,
+      timeoutMsg: `${CASE_MARKER}: 远端没有更新到本轮 archive`,
+    });
+    await browser.waitUntil(
+      async () => (await row.getAttribute("data-connection-state")) === "online",
+      { timeout: 60_000, timeoutMsg: `${CASE_MARKER}: 更新后原项目没有恢复连接` },
+    );
+    await waitForRemoteTab({
+      caseMarker: CASE_MARKER,
+      expectedIdentity: identity,
+      expectedPath: workspacePath,
+    });
+    expect(await readSourceUpdateRequests()).toEqual([{ profileId, expectedTarget, force: false }]);
+    await browser.saveScreenshot(resolve(artifactDir, "project-reconnected.png"));
   });
 });
