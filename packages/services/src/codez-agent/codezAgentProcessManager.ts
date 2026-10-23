@@ -38,6 +38,7 @@ import {
   parseCodexBridgeRpcTimeoutDiagnostic,
   parseCodexBridgeOversizedFrameDiagnostic,
   parseCodexBridgeTitleDiagnostic,
+  parseCodexBridgeNativeStderrSummary,
 } from "./codexBridgeTitleDiagnostic.js";
 import { CodezProtocolClient } from "./codezProtocolClient.js";
 import { CodezStdioTransport } from "./codezStdioTransport.js";
@@ -1248,6 +1249,12 @@ export class CodezAgentProcessManager {
           // 原因：原生单帧 LIMIT 不杀 bridge，旧 stderr 只落 debug；远端导出
           // 只能看到 UI 报错而无法区分 resume/turns/list。只提升严格校验的字段。
           warnLog("Codex native response frame exceeds size limit", oversizedFrameDiagnostic);
+          return;
+        }
+        const nativeStderrSummary = parseCodexBridgeNativeStderrSummary(line);
+        if (nativeStderrSummary) {
+          // 原因：原生 stderr 原文不可信；只允许 bridge 的闭合摘要进入生产 warn。
+          warnLog("Codex native stderr summary", nativeStderrSummary);
           return;
         }
         stderrTail.append(line);

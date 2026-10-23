@@ -140,7 +140,10 @@ import {
   workflowSessionModelOf,
   type WorkflowRunSettingsChange,
 } from "@/components/workflow-timeline/workflowRunSettings.js";
-import { useWorkflowRunJournalSummaries } from "@/hooks/useWorkflowRunJournalSummaries.js";
+import {
+  useCodexLegacyWorkflowRunsCapability,
+  useWorkflowRunJournalSummaries,
+} from "@/hooks/useWorkflowRunJournalSummaries.js";
 import { usePlanIdentitySnapshot } from "@/hooks/usePlanIdentitySnapshot.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { buildGenUiModelContext } from "@codez/shared/gen-ui";
@@ -747,6 +750,16 @@ export function SessionPane({
   const codexNativeRemoteHostPending =
     !isDesktop && compactForRemoteControl && codexNativeRemoteHostStatus === "pending";
   const nativeCodexSession = isDesktop || codexNativeRemoteHost;
+  const legacyWorkflowRunsCapability = useCodexLegacyWorkflowRunsCapability(
+    services.codezAgentService,
+    {
+      workspacePath,
+      ...(workspaceIdentity ? { workspaceIdentity } : {}),
+    },
+    { onRuntimeRestart, onRuntimeLifecycle },
+    // 手机识别 native Host 的 pending 窗口同样 fail closed，不能先按 legacy 发一次注定失败的 RPC。
+    nativeCodexSession || codexNativeRemoteHostPending,
+  );
   // Approve for me 档（approvalsReviewer:"auto_review"）由原生 guardian approval 能力门控；
   // fail-closed，未确认前 composer 隐藏 edit 档（specs/codex-permission-modes.md）。
   const codexAutoReviewSupported = useCodexAutoReviewApprovals(services, nativeCodexSession, {
@@ -2769,7 +2782,7 @@ export function SessionPane({
     // 无差别发这条查询等于拿子会话 id 去问一条按**父会话**建键的 journal；CLI 的冷会话前置
     // 随即为正在运行的 detached actor 会话物化第二个 runtime（幽灵），双写事件日志，
     // 直播冻结在「已工作 xx 秒」。只读 pane 也不消费 join 回退与任务列表页脚，直接关掉。
-    enabled: !readOnly && runtimeReady,
+    enabled: !readOnly && runtimeReady && legacyWorkflowRunsCapability.current,
     live: state.status === "live" && runtimeReady,
     limit: WORKFLOW_RUN_DIRECTORY_LIMIT,
     refreshKey: workflowRunDirectoryRefreshKey(snapshot?.workflowRuns?.runs),

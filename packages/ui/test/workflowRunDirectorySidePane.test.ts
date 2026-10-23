@@ -54,14 +54,26 @@ vi.mock("@/v4/useConversationProjection.js", () => ({
 // 这里要钉的是**页面向它要了什么**（limit 必须与任务岛计数同深度，否则两处口径会分叉；
 // refreshKey 必须真的接上，否则跑完的 run 永远留在「运行中」）以及三种返回长什么样。
 let summaries: readonly V4ConversationWorkflowRunSummary[] | null = null;
+let legacyWorkflowRunsAllowed = true;
 let optionsSeen:
-  | { sessionId: string | null; live: boolean; limit?: number; refreshKey?: number | string }
+  | {
+      sessionId: string | null;
+      live: boolean;
+      enabled?: boolean;
+      limit?: number;
+      refreshKey?: number | string;
+    }
   | undefined;
 const refreshKeysSeen: (number | string | undefined)[] = [];
 vi.mock("@/hooks/useWorkflowRunJournalSummaries.js", () => ({
+  useCodexLegacyWorkflowRunsCapability: () => ({
+    current: legacyWorkflowRunsAllowed,
+    refresh: () => {},
+  }),
   useWorkflowRunJournalSummaries: (options: {
     sessionId: string | null;
     live: boolean;
+    enabled?: boolean;
     limit?: number;
     refreshKey?: number | string;
   }) => {
@@ -69,6 +81,12 @@ vi.mock("@/hooks/useWorkflowRunJournalSummaries.js", () => ({
     if (refreshKeysSeen.at(-1) !== options.refreshKey) refreshKeysSeen.push(options.refreshKey);
     return summaries;
   },
+}));
+vi.mock("@/hooks/useServices.js", () => ({
+  useServices: () => ({ codezAgentService: undefined }),
+}));
+vi.mock("@/capabilities/useCodexNativeHost.js", () => ({
+  useCodexNativeHostStatus: () => "legacy",
 }));
 
 // eslint-disable-next-line import/first -- 必须在全部 mock 之后再引入被测组件。
@@ -136,6 +154,7 @@ function rows(pane: ReturnType<typeof renderPane>, section: "running" | "ended")
 
 beforeEach(() => {
   summaries = null;
+  legacyWorkflowRunsAllowed = true;
   optionsSeen = undefined;
   refreshKeysSeen.length = 0;
   snapshot = null;
@@ -155,7 +174,15 @@ describe("WorkflowRunDirectorySidePane", () => {
 
     expect(optionsSeen?.sessionId).toBe("parent-a");
     expect(optionsSeen?.live).toBe(true);
+    expect(optionsSeen?.enabled).toBe(true);
     expect(optionsSeen?.limit).toBe(WORKFLOW_RUN_DIRECTORY_LIMIT);
+  });
+
+  it("恢复出来的目录页也消费 capability 门禁，不能绕过 SessionPane 发 legacy 查询", () => {
+    legacyWorkflowRunsAllowed = false;
+    renderPane();
+
+    expect(optionsSeen?.enabled).toBe(false);
   });
 
   // ── 自动刷新（实测 bug：跑完的 run 不会自己挪到「已结束」）──

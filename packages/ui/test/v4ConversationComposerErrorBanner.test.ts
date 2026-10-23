@@ -215,6 +215,30 @@ function renderComposerWithSnapshot(
   );
 }
 
+describe("Codex runtime notices", () => {
+  it("renders snapshot notices without replacing the composer error or input surface", () => {
+    const html = renderComposerWithSnapshot({
+      ...makeSnapshot(),
+      runtimeNotices: [
+        { id: "n1", kind: "warning", message: "native <warning>", at: 1 },
+        {
+          id: "n2",
+          kind: "authRecovery",
+          message: "authentication recovered",
+          turnId: "turn-1",
+          provider: "openai",
+          phase: "completed",
+          at: 2,
+        },
+      ],
+    });
+    expect(html).toContain("native &lt;warning&gt;");
+    expect(html).toContain("authentication recovered");
+    expect(html).toContain('data-testid="mock-chat-prompt-editor"');
+    expect(html).not.toContain("<warning>");
+  });
+});
+
 function renderHighspeedComposer(overrides: Record<string, unknown> = {}): string {
   return renderToStaticMarkup(
     createElement(

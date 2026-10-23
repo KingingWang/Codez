@@ -1,5 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { ICodezAgentService } from "@codez/services";
 import type { V4ConversationWorkflowRunSummary } from "@codez/shared/codez-protocol-v4";
+import {
+  bindRuntimeCapabilityRefresh,
+  type RuntimeRefreshSource,
+} from "@/capabilities/useCodexDesktopFileRewindCapability.js";
+import {
+  codexCapabilitySource,
+  projectCodexCapabilities,
+} from "@/capabilities/codexCapabilities.js";
 import { logger } from "@/logger.js";
 import { useV4Conversation } from "@/v4/V4ConversationContext.js";
 
@@ -30,6 +39,90 @@ import { useV4Conversation } from "@/v4/V4ConversationContext.js";
 export function isWorkflowRunsCapabilityMissing(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return message.includes("capabilityUnsupported") || message.includes("listDynamicWorkflowRuns");
+}
+
+export interface CodexLegacyWorkflowRunsCapabilityController {
+  readonly current: boolean;
+  readonly refresh: () => void;
+}
+
+/**
+ * Codex 的 legacy workflowRuns 发现查询必须先消费 hello 的显式能力投影。
+ *
+ * 根因：bridge 只会返回 No Codex control-plane mapping，而旧分类只识别
+ * capabilityUnsupported/listDynamicWorkflowRuns，导致每个 pane 都重试注定失败的 RPC。
+ * unsupported/unavailable/刷新中一律 fail closed；非 Codex runtime 不读 Codex hello，
+ * 保留旧查询重试语义。
+ */
+export function useCodexLegacyWorkflowRunsCapability(
+  agentService: Pick<ICodezAgentService, "helloConversationV4"> | undefined,
+  workspace: { workspacePath: string; workspaceIdentity?: string },
+  runtime: RuntimeRefreshSource | undefined,
+  nativeCodexSession: boolean,
+): CodexLegacyWorkflowRunsCapabilityController {
+  const identity = workspace.workspaceIdentity?.trim() || workspace.workspacePath;
+  const [revision, setRevision] = useState(0);
+  const [resolution, setResolution] = useState({
+    agentService,
+    identity,
+    nativeCodexSession,
+    revision,
+    supported: false,
+  });
+  const refresh = useCallback(() => setRevision((value) => value + 1), []);
+  const resolutionMatchesTarget =
+    resolution.agentService === agentService &&
+    resolution.identity === identity &&
+    resolution.nativeCodexSession === nativeCodexSession &&
+    resolution.revision === revision;
+  const current = !nativeCodexSession || (resolutionMatchesTarget && resolution.supported);
+
+  useEffect(() => {
+    // 非 Codex runtime 没有这条 Codex capability；沿用 legacy 查询，不引入权威投影。
+    if (!nativeCodexSession) {
+      setResolution({ agentService, identity, nativeCodexSession, revision, supported: true });
+      return undefined;
+    }
+    let cancelled = false;
+    // target/revision 改变后的首个 render 已由 resolutionMatchesTarget 关闭门禁；这里记录新代际，
+    // 避免旧 hello 的迟到结果被误认成当前 runtime 的事实。
+    setResolution({ agentService, identity, nativeCodexSession, revision, supported: false });
+    if (!agentService?.helloConversationV4) return undefined;
+    void agentService
+      .helloConversationV4()
+      .then((hello) => {
+        if (!cancelled) {
+          setResolution({
+            agentService,
+            identity,
+            nativeCodexSession,
+            revision,
+            supported:
+              projectCodexCapabilities(codexCapabilitySource(hello)).legacyWorkflowRuns.status ===
+              "supported",
+          });
+        }
+      })
+      .catch(() => {
+        if (!cancelled)
+          setResolution({ agentService, identity, nativeCodexSession, revision, supported: false });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [agentService, identity, nativeCodexSession, revision]);
+
+  const onRuntimeRestart = runtime?.onRuntimeRestart;
+  const onRuntimeLifecycle = runtime?.onRuntimeLifecycle;
+  useEffect(
+    () =>
+      nativeCodexSession
+        ? bindRuntimeCapabilityRefresh({ onRuntimeRestart, onRuntimeLifecycle }, refresh)
+        : undefined,
+    [nativeCodexSession, onRuntimeRestart, onRuntimeLifecycle, refresh],
+  );
+
+  return { current, refresh };
 }
 
 /**
@@ -90,6 +183,9 @@ export function useWorkflowRunJournalSummaries(options: {
 
   useEffect(() => {
     if (!enabled || !sessionId) {
+      // 门禁关闭可能意味着 runtime 已换代；旧答案不能跨代复用，恢复后必须重新发现。
+      settledRef.current = null;
+      capabilityMissingSessionRef.current = null;
       setSummaries(null);
       return;
     }

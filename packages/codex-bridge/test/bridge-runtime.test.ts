@@ -615,6 +615,73 @@ test("all V4 subscription topics and both profiles defer initial frames until AC
       });
 });
 
+test("runtime warnings and auth recovery share one snapshot across desktop and mobile profiles", async (t) => {
+  for (const mode of ["desktop-continuous", "web-remote-replayable"])
+    await t.test(mode, async (t) => {
+      const h = await fixture(t);
+      // 全局与定向通知都可能早于会话加载；bridge 先缓存有界投影，不能走未加载 thread 的丢弃分支。
+      h.emit("warning", { threadId: null, message: "workspace warning" });
+      h.emit("modelProvider/authRecoveryStarted", {
+        threadId: "thread-1",
+        turnId: "turn-1",
+        provider: "openai",
+        message: "recovering auth",
+      });
+      await tick();
+      await tick();
+      const response = await h.runtime.request(
+        V4_METHODS.conversationSubscribe,
+        subscribe("conversation/thread-1", mode),
+      );
+      await response.afterResponse!();
+      const initial = h.frames.at(-1);
+      const initialPayload = initial?.kind === "complete" ? initial.frame.payload : undefined;
+      assert.ok(initialPayload?.kind === "snapshot");
+      const snapshot = conversationSnapshotSchema.parse(initialPayload.snapshot);
+      assert.deepEqual(
+        snapshot.runtimeNotices?.map((notice) => [notice.kind, notice.message]),
+        [
+          ["warning", "workspace warning"],
+          ["authRecovery", "recovering auth"],
+        ],
+      );
+      assert.equal(snapshot.runtimeNotices?.[1]?.phase, "started");
+      assert.equal(snapshot.runtimeNotices?.[1]?.provider, "openai");
+      assert.equal(snapshot.control.lastError, null);
+      assert.equal(snapshot.control.apiRetry, null);
+
+      h.frames.length = 0;
+      h.emit("warning", { threadId: null, message: "workspace warning" });
+      h.emit("modelProvider/authRecoveryCompleted", {
+        threadId: "thread-1",
+        turnId: "turn-1",
+        provider: "openai",
+        message: "auth recovered",
+      });
+      await tick();
+      await tick();
+      assert.equal(h.frames.length, 1, "duplicate global notice must not publish another snapshot");
+      const updated = h.frames[0];
+      const updatedPayload = updated?.kind === "complete" ? updated.frame.payload : undefined;
+      assert.ok(updatedPayload?.kind === "snapshot");
+      const next = conversationSnapshotSchema.parse(updatedPayload.snapshot);
+      assert.equal(
+        next.runtimeNotices?.filter((notice) => notice.kind === "authRecovery").length,
+        1,
+      );
+      assert.equal(next.runtimeNotices?.at(-1)?.phase, "completed");
+      assert.equal(next.runtimeNotices?.at(-1)?.message, "auth recovered");
+
+      h.emit("guardianWarning", { threadId: "another-thread", message: "not this conversation" });
+      h.emit("warning", undefined);
+      h.emit("modelProvider/authRecoveryStarted", { threadId: "thread-1" });
+      await tick();
+      await tick();
+      assert.equal(h.frames.length, 1);
+      assert.deepEqual(h.fatal, []);
+    });
+});
+
 test("V4 mutation ACK waits for native admission; index refresh is post-response; duplicates never replay", async (t) => {
   const h = await fixture(t);
   const subscription = await h.runtime.request(

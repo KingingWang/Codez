@@ -7,6 +7,7 @@ import {
   type ApiRetryState,
   type ConversationSnapshot,
   type PlanState,
+  runtimeNoticesSchema,
   type SessionControl,
   type SessionSummary,
   type SessionsIndexSnapshot,
@@ -42,6 +43,7 @@ export interface ProjectThreadOptions {
   usage?: SessionUsageState;
   availability?: Partial<SessionActionAvailability>;
   apiRetry?: ApiRetryState | null;
+  runtimeNotices?: unknown;
   /** 辅助对话 child 的继承 turn id 集合：投影跳过（spec: codex-selection-side-chat）。 */
   hiddenTurnIds?: ReadonlySet<string>;
 }
@@ -245,6 +247,7 @@ export function projectThread(
     pendingInteractions: interactions,
     pendingCommands: [],
     backgroundWorks: [],
+    runtimeNotices: runtimeNoticesSchema.parse(options.runtimeNotices ?? []),
     goal: null,
     plan: projectLatestPlanState(source),
     rows: { window: rows, totalCount: rows.length, firstRowId: rows[0]?.rowId ?? null },

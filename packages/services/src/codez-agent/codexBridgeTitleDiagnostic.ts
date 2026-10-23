@@ -15,6 +15,27 @@ export interface CodexBridgeOversizedFrameDiagnostic {
   observedBytes: number;
 }
 
+export type CodexBridgeNativeStderrCategory =
+  | "panic"
+  | "permission-denied"
+  | "not-found"
+  | "connection"
+  | "timeout"
+  | "tls"
+  | "out-of-memory"
+  | "error";
+
+export interface CodexBridgeNativeStderrSummary {
+  exitCode: number | null;
+  signal: string | null;
+  lineCount: number;
+  byteCount: number;
+  truncated: boolean;
+  level: "trace" | "debug" | "info" | "warn" | "error" | "unknown";
+  target: string;
+  categories: CodexBridgeNativeStderrCategory[];
+}
+
 // 两份白名单必须与 packages/codex-bridge/src/session-title.ts 的 SkipStage / SkipReason
 // 及 generate() 的失败阶段同步；不在闭合词汇内的行按不可信 stderr 丢弃，不进生产日志。
 const FAILED =
@@ -25,6 +46,8 @@ const RPC_TIMEOUT =
   /^Codex desktop bridge warn: native rpc timed out; method=([A-Za-z0-9_/-]{1,64}); durationMs=(\d{1,10}); pending=(\d{1,4})$/;
 const OVERSIZED_FRAME =
   /^Codex desktop bridge warn: oversized native frame; kind=(response|request|notification|unknown); method=([A-Za-z0-9_/-]{1,64}); observedBytes=(\d{1,15})$/;
+const NATIVE_STDERR_SUMMARY =
+  /^Codex desktop bridge warn: native stderr summary; exitCode=(null|\d{1,10}); signal=(null|[A-Z]{1,15}); lineCount=(\d{1,10}); byteCount=(\d{1,16}); truncated=(true|false); level=(trace|debug|info|warn|error|unknown); target=(none|(?:[a-z0-9_]+::){1,5}[a-z0-9_]+); categories=(none|[a-z-]+(?:,[a-z-]+)*)$/;
 // 与 bridge main.ts 的生产输出闭合词汇一致，禁止把未验证 stderr 当日志透传。
 const FRAME_METHODS = new Set([
   "initialize",
@@ -35,6 +58,16 @@ const FRAME_METHODS = new Set([
   "thread/list",
   "thread/queue/list",
   "unknown",
+]);
+const NATIVE_STDERR_CATEGORY_VOCABULARY = new Set<CodexBridgeNativeStderrCategory>([
+  "panic",
+  "permission-denied",
+  "not-found",
+  "connection",
+  "timeout",
+  "tls",
+  "out-of-memory",
+  "error",
 ]);
 
 export function parseCodexBridgeTitleDiagnostic(
@@ -70,5 +103,41 @@ export function parseCodexBridgeOversizedFrameDiagnostic(
     kind: match[1] as CodexBridgeOversizedFrameDiagnostic["kind"],
     method: match[2]!,
     observedBytes,
+  };
+}
+
+export function parseCodexBridgeNativeStderrSummary(
+  line: string,
+): CodexBridgeNativeStderrSummary | undefined {
+  const match = NATIVE_STDERR_SUMMARY.exec(line);
+  if (!match) return undefined;
+  const exitCode = match[1] === "null" ? null : Number(match[1]);
+  const lineCount = Number(match[3]);
+  const byteCount = Number(match[4]);
+  if (exitCode !== null && (!Number.isSafeInteger(exitCode) || exitCode > 4_294_967_295))
+    return undefined;
+  if (!Number.isSafeInteger(lineCount) || lineCount === 0) return undefined;
+  if (!Number.isSafeInteger(byteCount) || byteCount === 0) return undefined;
+  // 逐项二次校验闭合类别，避免正则分组自身导致的意外跨类别匹配。
+  const categoryNames = match[8] === "none" ? [] : (match[8]!.split(",") as string[]);
+  if (
+    categoryNames.some(
+      (name) => !NATIVE_STDERR_CATEGORY_VOCABULARY.has(name as CodexBridgeNativeStderrCategory),
+    )
+  )
+    return undefined;
+  const categories = (
+    match[8] === "none" ? [] : match[8]!.split(",")
+  ) as CodexBridgeNativeStderrCategory[];
+  if (new Set(categories).size !== categories.length) return undefined;
+  return {
+    exitCode,
+    signal: match[2] === "null" ? null : match[2]!,
+    lineCount,
+    byteCount,
+    truncated: match[5] === "true",
+    level: match[6] as CodexBridgeNativeStderrSummary["level"],
+    target: match[7]!,
+    categories,
   };
 }

@@ -781,6 +781,20 @@ modules:
     layers:
       adapters: .
     owner: conversation
+  # codex-runtime-notices：由 architecture:adopt 登记
+  - id: codex-runtime-notices
+    roots:
+      - packages/ui/src/v4/composer/codex-runtime-notices
+    managed: true
+    requires:
+      - shared
+      - ui
+    publicEntrypoints:
+      - packages/ui/src/v4/composer/codex-runtime-notices/index.ts
+      - packages/ui/src/v4/composer/codex-runtime-notices/contract.ts
+    layers:
+      ui: .
+    owner: codex-runtime-adaptation
 
 global:
   # 临时时间戳（2026-09-10）：unmanaged-new-file 只约束此日期之后首次入库的文件。

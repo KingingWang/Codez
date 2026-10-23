@@ -6,12 +6,14 @@
 // 这个 hook 存在的理由就是一个实测失效：查询原本一次性发出、失败即静默 null，而它恰好
 // 在会话还冷的时候发出（effect 声明顺序 + CLI 串行派发），于是重启后工具卡永远退回编译态。
 // 冷会话前置已在 CLI 侧修好；这里钉住第二半——可重试的那一跳真的重试了。
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type {
   V4ConversationWorkflowRunsParams,
   V4ConversationWorkflowRunsResult,
 } from "@codez/shared/codez-protocol-v4";
+import type { ICodezAgentService } from "@codez/services";
+import type { RuntimeRefreshSource } from "@/capabilities/useCodexDesktopFileRewindCapability.js";
 
 vi.mock("@/logger.js", () => ({
   logger: { debug: vi.fn(), warn: vi.fn() },
@@ -26,6 +28,7 @@ vi.mock("@/v4/V4ConversationContext.js", () => ({
 
 // eslint-disable-next-line import/first -- 必须在 context mock 之后再引入被测 hook。
 import {
+  useCodexLegacyWorkflowRunsCapability,
   isWorkflowRunsCapabilityMissing,
   useWorkflowRunJournalSummaries,
 } from "@/hooks/useWorkflowRunJournalSummaries.js";
@@ -34,6 +37,78 @@ function result(runId: string): V4ConversationWorkflowRunsResult {
   return {
     runs: [{ runId, toolCallId: `call-${runId}`, status: "failed", resumable: true }],
   };
+}
+
+type RuntimeEvents = Required<
+  Pick<RuntimeRefreshSource, "onRuntimeRestart" | "onRuntimeLifecycle">
+>;
+
+function runtimeEvents() {
+  let restartListener: ((reason?: "runtimeRestart" | "transportReplaced") => void) | undefined;
+  let lifecycleListener: ((state: "available" | "unavailable") => void) | undefined;
+  const events: RuntimeEvents = {
+    onRuntimeRestart(listener) {
+      restartListener = listener;
+      return () => {
+        restartListener = undefined;
+      };
+    },
+    onRuntimeLifecycle(listener) {
+      lifecycleListener = listener;
+      return () => {
+        lifecycleListener = undefined;
+      };
+    },
+  };
+  return {
+    events,
+    restart: (reason?: "runtimeRestart" | "transportReplaced") => restartListener?.(reason),
+    lifecycle: (state: "available" | "unavailable") => lifecycleListener?.(state),
+  };
+}
+
+function codexHello(legacyWorkflowRuns: "supported" | "unsupported") {
+  return {
+    capabilities: {
+      codex: {
+        auxiliaryTextGeneration: "unsupported",
+        observedSessionUsage: "unsupported",
+        observedAppUsage: "unsupported",
+        sharedContextContentCopy: "unsupported",
+        scheduledPromptAutomations: "unsupported",
+        nativeBrowserCuaMcp: "unsupported",
+        readOnlyWorkflowHistory: "supported",
+        safeDesktopFileRewind: "unsupported",
+        legacyWorkflowRuns,
+        autoReviewApprovals: "unsupported",
+        messageFeedback: "unsupported",
+      },
+    },
+  };
+}
+
+function renderGatedJournal(options: {
+  agentService: ICodezAgentService;
+  runtime: RuntimeEvents;
+  nativeCodexSession: boolean;
+}) {
+  return renderHook(
+    (props: { queryEnabled: boolean }) => {
+      const capability = useCodexLegacyWorkflowRunsCapability(
+        options.agentService,
+        { workspacePath: "/workspace", workspaceIdentity: "identity-1" },
+        options.runtime,
+        options.nativeCodexSession,
+      );
+      const summaries = useWorkflowRunJournalSummaries({
+        sessionId: "sess-1",
+        live: true,
+        enabled: props.queryEnabled && capability.current,
+      });
+      return { allowed: capability.current, summaries };
+    },
+    { initialProps: { queryEnabled: false } },
+  );
 }
 
 describe("isWorkflowRunsCapabilityMissing", () => {
@@ -243,5 +318,140 @@ describe("useWorkflowRunJournalSummaries", () => {
     );
     await waitFor(() => expect(withoutLimit.result.current).toHaveLength(1));
     expect(workflowRuns).toHaveBeenLastCalledWith({ sessionId: "sess-2" });
+  });
+});
+
+describe("useCodexLegacyWorkflowRunsCapability", () => {
+  it("Codex unsupported 与 unavailable 都在查询前 fail closed，不发 workflowRuns RPC", async () => {
+    workflowRuns.mockReset();
+    workflowRuns.mockResolvedValue(result("must-not-query"));
+    const hello = vi.fn<() => Promise<{ capabilities: unknown }>>();
+    hello.mockResolvedValue(codexHello("unsupported"));
+    const agentService = { helloConversationV4: hello } as unknown as ICodezAgentService;
+    const runtime = runtimeEvents();
+    const hook = renderGatedJournal({
+      agentService,
+      runtime: runtime.events,
+      nativeCodexSession: true,
+    });
+
+    await waitFor(() => expect(hello).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(hook.result.current.allowed).toBe(false));
+    hook.rerender({ queryEnabled: true });
+    await waitFor(() => expect(hook.result.current.summaries).toBeNull());
+    expect(workflowRuns).not.toHaveBeenCalled();
+
+    hello.mockResolvedValue({
+      capabilities: { codexUnavailable: { reason: "bridge-unavailable" } },
+    });
+    act(() => {
+      runtime.lifecycle("available");
+    });
+    await waitFor(() => expect(hello).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(hook.result.current.allowed).toBe(false));
+    await waitFor(() => expect(hook.result.current.summaries).toBeNull());
+    expect(workflowRuns).not.toHaveBeenCalled();
+  });
+
+  it("legacy runtime 不消费 Codex capability，仍保持原查询重试", async () => {
+    workflowRuns.mockReset();
+    workflowRuns.mockResolvedValue(result("dwfrun-legacy"));
+    const hello = vi.fn<() => Promise<{ capabilities: unknown }>>();
+    hello.mockResolvedValue({ capabilities: {} });
+    const agentService = { helloConversationV4: hello } as unknown as ICodezAgentService;
+    const runtime = runtimeEvents();
+    const capability = renderHook(() =>
+      useCodexLegacyWorkflowRunsCapability(
+        agentService,
+        { workspacePath: "/workspace" },
+        runtime.events,
+        false,
+      ),
+    );
+    const enabled = capability.result.current.current;
+    const hook = renderHook(
+      (live: boolean) => useWorkflowRunJournalSummaries({ sessionId: "sess-1", live, enabled }),
+      { initialProps: false },
+    );
+
+    expect(capability.result.current.current).toBe(true);
+    await waitFor(() => expect(workflowRuns).toHaveBeenCalledTimes(1));
+    hook.rerender(true);
+    await waitFor(() => expect(workflowRuns).toHaveBeenCalledTimes(1));
+    expect(hello).not.toHaveBeenCalled();
+  });
+
+  it("legacy → native 的目标切换同步关闭旧结论，不能沿用上一个 surface 的放行状态", async () => {
+    let finishHello!: () => void;
+    const hello = vi.fn<() => Promise<{ capabilities: unknown }>>();
+    hello.mockImplementation(
+      () =>
+        new Promise<{ capabilities: unknown }>((resolve) => {
+          finishHello = () => resolve(codexHello("supported"));
+        }),
+    );
+    const agentService = { helloConversationV4: hello } as unknown as ICodezAgentService;
+    const runtime = runtimeEvents();
+    const hook = renderHook(
+      (nativeCodexSession: boolean) =>
+        useCodexLegacyWorkflowRunsCapability(
+          agentService,
+          { workspacePath: "/workspace" },
+          runtime.events,
+          nativeCodexSession,
+        ),
+      { initialProps: false },
+    );
+    expect(hook.result.current.current).toBe(true);
+    expect(hello).not.toHaveBeenCalled();
+
+    hook.rerender(true);
+    expect(hook.result.current.current).toBe(false);
+    expect(hello).toHaveBeenCalledTimes(1);
+    await act(async () => finishHello());
+    await waitFor(() => expect(hook.result.current.current).toBe(true));
+  });
+
+  it("runtime 换代后重读 hello：刷新中 fail closed，supported 后恢复查询", async () => {
+    workflowRuns.mockReset();
+    workflowRuns.mockResolvedValue(result("dwfrun-restarted"));
+    const hello = vi.fn<() => Promise<{ capabilities: unknown }>>();
+    hello.mockResolvedValueOnce(codexHello("supported"));
+    const agentService = { helloConversationV4: hello } as unknown as ICodezAgentService;
+    const runtime = runtimeEvents();
+    const hook = renderGatedJournal({
+      agentService,
+      runtime: runtime.events,
+      nativeCodexSession: true,
+    });
+
+    await waitFor(() => expect(hook.result.current.allowed).toBe(true));
+    hook.rerender({ queryEnabled: true });
+    await waitFor(() => expect(hook.result.current.summaries).toHaveLength(1));
+    expect(workflowRuns).toHaveBeenCalledTimes(1);
+
+    let finishRefresh!: () => void;
+    hello.mockImplementationOnce(
+      () =>
+        new Promise<{ capabilities: unknown }>((resolve) => {
+          finishRefresh = () => resolve(codexHello("unsupported"));
+        }),
+    );
+    act(() => {
+      runtime.restart("transportReplaced");
+    });
+    await waitFor(() => expect(hello).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(hook.result.current.allowed).toBe(false));
+    expect(workflowRuns).toHaveBeenCalledTimes(1);
+    await act(async () => finishRefresh());
+    expect(hook.result.current.allowed).toBe(false);
+
+    hello.mockResolvedValueOnce(codexHello("supported"));
+    act(() => {
+      runtime.lifecycle("available");
+    });
+    await waitFor(() => expect(hook.result.current.allowed).toBe(true));
+    await waitFor(() => expect(hook.result.current.summaries).toHaveLength(1));
+    expect(workflowRuns).toHaveBeenCalledTimes(2);
   });
 });

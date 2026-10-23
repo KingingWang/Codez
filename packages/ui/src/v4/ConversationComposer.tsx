@@ -217,6 +217,7 @@ import {
 } from "@/v4/composer/composerSubmissionSettlement.js";
 import { resolveAttachableShareContext } from "@/lib/conversationShareContext.js";
 import { CONVERSATION_SHARED_CONTEXT_COPY_WARNING_ID } from "@/v4/composer/sharedContextContentCopy.js";
+import { CodexRuntimeNotices } from "@/v4/composer/codex-runtime-notices/index.js";
 
 const MODEL_SELECTION_LOADING_STATE: ModelSelectionState = { status: "loading" };
 
@@ -2888,6 +2889,8 @@ function ConversationComposerImpl({
             </span>
           </div>
         ))}
+        {/* 只消费同一份 V4 snapshot，桌面与手机恢复链路无需各自订阅原生通知。 */}
+        <CodexRuntimeNotices notices={snapshot?.runtimeNotices ?? []} />
         <ChatPromptEditor
           nativeCodex={nativeCodexFollowup}
           workspacePath={workspacePath}

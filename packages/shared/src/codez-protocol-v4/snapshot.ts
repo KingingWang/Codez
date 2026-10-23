@@ -24,6 +24,54 @@ export {
   type SessionConfigState,
   type SessionModelTransition,
 } from "./session-config.js";
+
+export const CODEX_RUNTIME_NOTICE_LIMITS = {
+  maxGlobal: 8,
+  maxPerThread: 8,
+  maxSnapshot: 16,
+  maxMessageChars: 4_096,
+  maxDetailChars: 16_384,
+} as const;
+
+/** Additive runtime-only notices; these are not durable native history or terminal errors. */
+export const runtimeNoticeSchema = z
+  .object({
+    id: z.string().min(1).max(128),
+    kind: z.enum([
+      "warning",
+      "configWarning",
+      "deprecationNotice",
+      "guardianWarning",
+      "authRecovery",
+    ]),
+    message: z.string().min(1).max(CODEX_RUNTIME_NOTICE_LIMITS.maxMessageChars),
+    detail: z.string().min(1).max(CODEX_RUNTIME_NOTICE_LIMITS.maxDetailChars).optional(),
+    at: timestampSchema,
+    turnId: z.string().min(1).max(1024).optional(),
+    provider: z.string().min(1).max(160).optional(),
+    phase: z.enum(["started", "completed"]).optional(),
+  })
+  .superRefine((notice, context) => {
+    const recoveryFields = [notice.turnId, notice.provider, notice.phase];
+    if (notice.kind === "authRecovery" && recoveryFields.some((value) => value === undefined)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "authRecovery requires turnId, provider and phase",
+      });
+    }
+    if (notice.kind !== "authRecovery" && recoveryFields.some((value) => value !== undefined)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "recovery metadata is exclusive to authRecovery",
+      });
+    }
+  });
+export type RuntimeNotice = z.infer<typeof runtimeNoticeSchema>;
+
+export const runtimeNoticesSchema = z
+  .array(runtimeNoticeSchema)
+  .max(CODEX_RUNTIME_NOTICE_LIMITS.maxSnapshot);
+
 // ── SessionControl ──
 export const sessionPhaseSchema = z.enum([
   // draft 裁决保留——纯内存态、sessions-index 可见、无 row、
@@ -546,6 +594,8 @@ export const conversationSnapshotSchema = z.object({
   pendingInteractions: z.array(pendingInteractionSchema),
   pendingCommands: z.array(commandStateSummarySchema),
   backgroundWorks: z.array(backgroundWorkSummarySchema),
+  // Codex 原生运行期 warning/auth recovery；optional 兼容旧快照，不能据此推断持久历史。
+  runtimeNotices: runtimeNoticesSchema.optional(),
   // optional 只服务旧快照 wire 兼容；新 CLI 的初始态和每次投影都始终携带该字段。
   subagents: subagentProjectionStateSchema.optional(),
   // 冷快照必须携带 workflowRuns：漏这一处，刷新/重连后正在跑的 run 会静默消失
