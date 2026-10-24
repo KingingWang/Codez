@@ -21,10 +21,28 @@ import {
 } from "./codex-app-usage-store.js";
 
 const DAY_MS = 86_400_000;
+const ROLLOUT_USAGE_CONCURRENCY = 8;
 const RANGE_DAYS: Record<Exclude<AppUsageRange, "all">, number> = {
   "7d": 7,
   "30d": 30,
 };
+
+async function mapBounded<T, R>(
+  items: readonly T[],
+  limit: number,
+  operation: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = Array.from({ length: items.length });
+  let next = 0;
+  async function worker(): Promise<void> {
+    while (next < items.length) {
+      const index = next++;
+      results[index] = await operation(items[index]!);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
 
 export function resolveTzOffsetMs(timeZone: string, atMs: number): number {
   try {
@@ -140,12 +158,33 @@ export async function queryCodexAppUsageStats(
     turnTimestampsByThread.set(turn.threadId, list);
   }
 
-  for (const thread of threads) {
-    const rollout = await parseRolloutUsage(
-      thread.rolloutPath,
-      thread.model,
-      thread.updatedAtMs || thread.createdAtMs || until,
-    );
+  // 修复原因：7d/30d 查询过去也无条件串行读取全部历史线程的 rollout 文件，
+  // 且 AppUsagePanel 首次挂载会同时请求 all 与 7d/30d。这里先过滤完全早于 since 的旧线程，
+  // 并使用有界并发读取 rollout（与 parseRolloutUsage 的 in-flight 合并配合消除重复读盘）。
+  const candidateThreads =
+    since <= 0
+      ? threads
+      : threads.filter((thread) => {
+          const latestThreadTs = Math.max(thread.updatedAtMs, thread.createdAtMs);
+          if (latestThreadTs <= 0 || latestThreadTs >= since) return true;
+          const turnTsList = turnTimestampsByThread.get(thread.id);
+          return turnTsList ? turnTsList.some((ts) => ts >= since) : false;
+        });
+
+  const threadRollouts = await mapBounded(
+    candidateThreads,
+    ROLLOUT_USAGE_CONCURRENCY,
+    async (thread) => ({
+      thread,
+      rollout: await parseRolloutUsage(
+        thread.rolloutPath,
+        thread.model,
+        thread.updatedAtMs || thread.createdAtMs || until,
+      ),
+    }),
+  );
+
+  for (const { thread, rollout } of threadRollouts) {
     if (rollout && rollout.samples.length > 0) {
       for (const sample of rollout.samples) {
         allSamples.push(sample);

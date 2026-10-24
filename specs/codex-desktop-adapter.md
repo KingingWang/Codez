@@ -933,7 +933,7 @@ runtime so `runtimeLifecycle(available)` and the post-response
 notify `state:projects` even before a conversation tab is opened. In addition,
 each Codex Host (local and standalone remote Source Server) watches its native
 `$CODEX_HOME/sessions` rollout tree (initial scan on startup + debounced
-recursive fs watch + `readTree` catch-up) to index user-facing CLI/exec/vscode/
+recursive fs watch with polling fallback only while recursive watch is unavailable + `readTree` catch-up, caching parsed `session_index.jsonl` thread names across unchanged `mtime`/`size` checks) to index user-facing CLI/exec/vscode/
 appServer rollouts across all directories—including directories that have not
 been added as projects—into `tasks-index.sqlite` via `applyCliFacts` and
 publish `state:projects`. A warm
