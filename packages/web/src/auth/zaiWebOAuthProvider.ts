@@ -24,10 +24,28 @@ interface WebZaiTokenExchangeResult {
   rawUserInfo: unknown;
 }
 
+export interface WebZaiCliFlowInitResult {
+  flowId: string;
+  pollToken: string;
+  authorizeUrl: string;
+  expiresAt: number;
+  pollIntervalMs: number;
+}
+
+export type WebZaiCliFlowPollResult =
+  | { status: "pending" }
+  | ({ status: "ready" } & WebZaiTokenExchangeResult);
+
 interface WebZaiBackendTokenPayload {
   code?: number;
   msg?: string;
   data?: {
+    status?: string;
+    flow_id?: string;
+    poll_token?: string;
+    authorize_url?: string;
+    expires_at?: number;
+    poll_interval_sec?: number;
     token?: string;
     zai?: {
       access_token?: string;
@@ -237,5 +255,80 @@ export class ZaiWebOAuthProvider {
       this.now,
       provider,
     );
+  }
+
+  async initCliFlow(params: {
+    provider?: WebOAuthProviderId;
+    pollToken: string;
+  }): Promise<WebZaiCliFlowInitResult> {
+    const provider = params.provider ?? ZAI_PROVIDER_ID;
+    const initUrl = new URL("/api/v1/oauth/cli/init", this.config.tokenUrl).toString();
+    const response = await this.fetcher(initUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${params.pollToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ provider }),
+    });
+    if (!response.ok) {
+      throw new Error(`OAuth CLI flow init failed with HTTP ${response.status}`);
+    }
+    const payload = (await response.json()) as WebZaiBackendTokenPayload;
+    const data = payload.data;
+    const flowId = data?.flow_id?.trim();
+    const authorizeUrl = data?.authorize_url?.trim();
+    if (
+      payload.code !== 0 ||
+      !flowId ||
+      !authorizeUrl ||
+      !Number.isFinite(data?.expires_at) ||
+      !Number.isFinite(data?.poll_interval_sec)
+    ) {
+      throw new Error(payload.msg?.trim() || "OAuth CLI flow init response invalid");
+    }
+    return {
+      flowId,
+      pollToken: params.pollToken,
+      authorizeUrl,
+      expiresAt: (data!.expires_at as number) * 1000,
+      pollIntervalMs: Math.max(1000, (data!.poll_interval_sec as number) * 1000),
+    };
+  }
+
+  async pollCliFlow(params: {
+    flowId: string;
+    pollToken: string;
+    provider?: WebOAuthProviderId;
+  }): Promise<WebZaiCliFlowPollResult> {
+    const provider = params.provider ?? ZAI_PROVIDER_ID;
+    const pollUrl = new URL(
+      `/api/v1/oauth/cli/poll/${encodeURIComponent(params.flowId)}`,
+      this.config.tokenUrl,
+    ).toString();
+    const response = await this.fetcher(pollUrl, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${params.pollToken}`,
+      },
+    });
+    if (!response.ok) {
+      throw new Error(`OAuth CLI flow poll failed with HTTP ${response.status}`);
+    }
+    const payload = (await response.json()) as WebZaiBackendTokenPayload;
+    if (payload.code !== 0 || !payload.data) {
+      throw new Error(payload.msg?.trim() || "OAuth CLI flow poll failed");
+    }
+    const status = payload.data.status?.trim();
+    if (status === "pending") {
+      return { status: "pending" };
+    }
+    if (status !== "ready") {
+      throw new Error(payload.msg?.trim() || `OAuth CLI flow ${status || "failed"}`);
+    }
+    return {
+      status: "ready",
+      ...normalizeTokenResponse(payload, this.now, provider),
+    };
   }
 }

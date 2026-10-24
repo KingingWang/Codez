@@ -229,6 +229,322 @@ class CodezAndroidWebSocket {
 
 const socketRegistry = new Map<number, CodezAndroidWebSocket>();
 let socketIdSeed = 0;
+let preferExtensionBridgeWebSocket = false;
+const extensionSocketRegistry = new Map<number, CodezExtensionWebSocket>();
+let extensionRuntimeListenerInstalled = false;
+
+type ExtensionRuntimeApi = {
+  runtime?: {
+    sendMessage?: (
+      message: unknown,
+      callback?: (response: unknown) => void,
+    ) => Promise<unknown> | void;
+    onMessage?: {
+      addListener?: (
+        listener: (message: unknown, sender?: unknown, sendResponse?: unknown) => void,
+      ) => void;
+    };
+  };
+};
+
+function getExtensionRuntimeApi(): ExtensionRuntimeApi["runtime"] | undefined {
+  const g = globalThis as unknown as {
+    chrome?: ExtensionRuntimeApi;
+    browser?: ExtensionRuntimeApi;
+  };
+  return g.chrome?.runtime ?? g.browser?.runtime;
+}
+
+function sendExtensionRuntimeMessage(message: unknown): void {
+  const runtime = getExtensionRuntimeApi();
+  if (typeof runtime?.sendMessage === "function") {
+    try {
+      const maybePromise = runtime.sendMessage(message);
+      if (maybePromise && typeof maybePromise.then === "function") {
+        maybePromise.catch(() => {});
+      }
+      return;
+    } catch {
+      // fallback to window.postMessage
+    }
+  }
+  if (typeof window !== "undefined" && typeof window.postMessage === "function") {
+    window.postMessage(
+      {
+        type: "codez-extension-ws-cmd-bridge",
+        payload: message,
+      },
+      "*",
+    );
+  }
+}
+
+function ensureExtensionSocketEventSinkInstalled(): void {
+  if (extensionRuntimeListenerInstalled) {
+    return;
+  }
+  extensionRuntimeListenerInstalled = true;
+  const runtime = getExtensionRuntimeApi();
+  if (typeof runtime?.onMessage?.addListener === "function") {
+    runtime.onMessage.addListener((message: unknown) => {
+      if (!message || typeof message !== "object") return;
+      const msg = message as {
+        type?: string;
+        id?: number;
+        event?: NativeSocketEvent;
+      };
+      if (msg.type !== "codez-extension-ws-event" || typeof msg.id !== "number" || !msg.event) {
+        return;
+      }
+      extensionSocketRegistry.get(msg.id)?.dispatchExtensionEvent(msg.event);
+    });
+  }
+  if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+    window.addEventListener("message", (event: MessageEvent) => {
+      if (event.source !== window || event.data?.type !== "codez-extension-ws-event") {
+        return;
+      }
+      const id = event.data.id;
+      const ev = event.data.event as NativeSocketEvent | undefined;
+      if (typeof id === "number" && ev) {
+        extensionSocketRegistry.get(id)?.dispatchExtensionEvent(ev);
+      }
+    });
+  }
+}
+
+/**
+ * 浏览器扩展自适应 WebSocket：
+ * 1. 默认先尝试直接建立原生 WebSocket（桌面 Chrome/Edge 下由 declarativeNetRequest 自动注入 Origin: https://zcode.z.ai）；
+ * 2. 若浏览器（如 iPad Orion）的 declarativeNetRequest 未对 WebSocket 握手改写 Origin 导致握手阶段（OPEN 之前）直接失败，
+ *    自动无缝切换至扩展后台同源桥接通道（在 https://zcode.z.ai/favicon.ico 的隔离 Content Script 内代发 WebSocket），
+ *    后续重连也直接走扩展桥接通道，确保移动端与桌面端浏览器扩展都能稳定连接。
+ */
+class CodezExtensionWebSocket {
+  static readonly CONNECTING = 0;
+  static readonly OPEN = 1;
+  static readonly CLOSING = 2;
+  static readonly CLOSED = 3;
+  readonly CONNECTING = 0;
+  readonly OPEN = 1;
+  readonly CLOSING = 2;
+  readonly CLOSED = 3;
+
+  readonly url: string;
+  extensions = "";
+  readonly protocol = "";
+  readonly bufferedAmount = 0;
+  binaryType: BinaryType = "arraybuffer";
+  readyState: number = CodezExtensionWebSocket.CONNECTING;
+
+  onopen: ((event: Event) => void) | null = null;
+  onmessage: ((event: MessageEvent) => void) | null = null;
+  onerror: ((event: Event) => void) | null = null;
+  onclose: ((event: CloseEvent) => void) | null = null;
+
+  private readonly id: number;
+  private readonly listeners = new Map<string, Set<SocketListener>>();
+  private nativeSocket: WebSocket | null = null;
+  private usingExtensionBridge = false;
+
+  constructor(url: string) {
+    this.url = url;
+    this.id = nextSocketId();
+    if (preferExtensionBridgeWebSocket || typeof globalThis.WebSocket !== "function") {
+      this.startExtensionBridge();
+      return;
+    }
+    try {
+      const ws = new globalThis.WebSocket(url);
+      ws.binaryType = "arraybuffer";
+      this.nativeSocket = ws;
+      let opened = false;
+      ws.addEventListener("open", () => {
+        if (this.usingExtensionBridge || this.readyState !== CodezExtensionWebSocket.CONNECTING) {
+          return;
+        }
+        opened = true;
+        this.extensions = typeof ws.extensions === "string" ? ws.extensions : "";
+        this.readyState = CodezExtensionWebSocket.OPEN;
+        this.emit("open", new Event("open"));
+      });
+      ws.addEventListener("message", (event) => {
+        if (this.usingExtensionBridge || this.readyState !== CodezExtensionWebSocket.OPEN) {
+          return;
+        }
+        this.emit("message", Object.assign(new Event("message"), { data: event.data }));
+      });
+      ws.addEventListener("error", () => {
+        if (this.usingExtensionBridge) return;
+        if (!opened && this.readyState === CodezExtensionWebSocket.CONNECTING) {
+          // 原生 WebSocket 在握手完成前报错（如 iPad Orion 未对 WS 注入 Origin 触发 403），立即无缝切换到扩展同源桥接通道。
+          preferExtensionBridgeWebSocket = true;
+          this.nativeSocket = null;
+          try {
+            ws.close();
+          } catch {
+            // ignore
+          }
+          this.startExtensionBridge();
+          return;
+        }
+        if (this.readyState < CodezExtensionWebSocket.CLOSING) {
+          this.emit("error", new Event("error"));
+        }
+      });
+      ws.addEventListener("close", (event) => {
+        if (this.usingExtensionBridge) return;
+        if (!opened && this.readyState === CodezExtensionWebSocket.CONNECTING) {
+          preferExtensionBridgeWebSocket = true;
+          this.nativeSocket = null;
+          this.startExtensionBridge();
+          return;
+        }
+        if (this.readyState === CodezExtensionWebSocket.CLOSED) return;
+        this.readyState = CodezExtensionWebSocket.CLOSED;
+        this.emit(
+          "close",
+          Object.assign(new Event("close"), {
+            code: event.code,
+            reason: event.reason,
+            wasClean: event.wasClean,
+          }),
+        );
+      });
+    } catch {
+      preferExtensionBridgeWebSocket = true;
+      this.startExtensionBridge();
+    }
+  }
+
+  private startExtensionBridge(): void {
+    this.usingExtensionBridge = true;
+    extensionSocketRegistry.set(this.id, this);
+    ensureExtensionSocketEventSinkInstalled();
+    sendExtensionRuntimeMessage({
+      type: "codez-extension-ws-open",
+      id: this.id,
+      url: this.url,
+    });
+  }
+
+  addEventListener(type: string, listener: SocketListener): void {
+    let bucket = this.listeners.get(type);
+    if (!bucket) {
+      bucket = new Set();
+      this.listeners.set(type, bucket);
+    }
+    bucket.add(listener);
+  }
+
+  removeEventListener(type: string, listener: SocketListener): void {
+    this.listeners.get(type)?.delete(listener);
+  }
+
+  send(data: string | ArrayBuffer | ArrayBufferView): void {
+    if (this.readyState !== CodezExtensionWebSocket.OPEN) {
+      throw new Error("WebSocket is not open");
+    }
+    if (!this.usingExtensionBridge && this.nativeSocket) {
+      this.nativeSocket.send(data);
+      return;
+    }
+    if (typeof data === "string") {
+      sendExtensionRuntimeMessage({
+        type: "codez-extension-ws-send",
+        id: this.id,
+        text: data,
+      });
+      return;
+    }
+    const buffer =
+      data instanceof ArrayBuffer
+        ? data
+        : data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+    sendExtensionRuntimeMessage({
+      type: "codez-extension-ws-send",
+      id: this.id,
+      base64: arrayBufferToBase64(buffer as ArrayBuffer),
+    });
+  }
+
+  close(code = 1000, reason = ""): void {
+    if (
+      this.readyState === CodezExtensionWebSocket.CLOSING ||
+      this.readyState === CodezExtensionWebSocket.CLOSED
+    ) {
+      return;
+    }
+    this.readyState = CodezExtensionWebSocket.CLOSING;
+    if (!this.usingExtensionBridge && this.nativeSocket) {
+      this.nativeSocket.close(code, reason);
+      return;
+    }
+    sendExtensionRuntimeMessage({
+      type: "codez-extension-ws-close",
+      id: this.id,
+      code,
+      reason,
+    });
+  }
+
+  dispatchExtensionEvent(event: NativeSocketEvent): void {
+    switch (event.type) {
+      case "open":
+        if (this.readyState !== CodezExtensionWebSocket.CONNECTING) return;
+        this.extensions = event.extensions ?? "";
+        this.readyState = CodezExtensionWebSocket.OPEN;
+        this.emit("open", new Event("open"));
+        break;
+      case "message": {
+        if (this.readyState !== CodezExtensionWebSocket.OPEN) return;
+        const data =
+          typeof event.text === "string"
+            ? event.text
+            : base64ToArrayBuffer(event.base64 ?? "");
+        this.emit("message", Object.assign(new Event("message"), { data }));
+        break;
+      }
+      case "error":
+        if (this.readyState >= CodezExtensionWebSocket.CLOSING) return;
+        this.emit("error", new Event("error"));
+        break;
+      case "close": {
+        if (this.readyState === CodezExtensionWebSocket.CLOSED) return;
+        this.readyState = CodezExtensionWebSocket.CLOSED;
+        extensionSocketRegistry.delete(this.id);
+        this.emit(
+          "close",
+          Object.assign(new Event("close"), {
+            code: event.code,
+            reason: event.reason,
+            wasClean: event.wasClean,
+          }),
+        );
+        break;
+      }
+    }
+  }
+
+  private emit(type: string, event: Event): void {
+    const handler =
+      type === "open"
+        ? this.onopen
+        : type === "message"
+          ? (this.onmessage as ((event: Event) => void) | null)
+          : type === "error"
+            ? this.onerror
+            : (this.onclose as ((event: Event) => void) | null);
+    handler?.call(this, event);
+    this.listeners.get(type)?.forEach((listener) => {
+      try {
+        listener.call(this, event);
+      } catch {
+        // ignore
+      }
+    });
+  }
+}
 
 function nextSocketId(): number {
   socketIdSeed += 1;
@@ -270,6 +586,9 @@ function ensureEventSinkInstalled(): void {
 export function resolveWebRemoteControlWebSocketCtor(): typeof globalThis.WebSocket {
   if (typeof window !== "undefined" && window.CodezAndroidSocket) {
     return CodezAndroidWebSocket as unknown as typeof globalThis.WebSocket;
+  }
+  if (isCodezBrowserExtension() && Boolean(getExtensionRuntimeApi()?.sendMessage)) {
+    return CodezExtensionWebSocket as unknown as typeof globalThis.WebSocket;
   }
   return globalThis.WebSocket;
 }
