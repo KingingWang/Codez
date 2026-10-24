@@ -45,7 +45,6 @@ export class ThreadStateStore {
   constructor(
     private readonly rpc: CodexRpcPort,
     readonly cwd: string,
-    private readonly onRemove: (id: string) => void = () => {},
   ) {}
 
   onChange(listener: (threadId: string) => void): () => void {
@@ -66,8 +65,6 @@ export class ThreadStateStore {
     this.states.delete(id);
     this.loaded.delete(id);
     this.clearStagedDiscoveredList();
-    // 修复原因：显式 deleteSession 不一定伴随原生通知，派生通知缓存也必须随 tombstone 失效。
-    this.onRemove(id);
   }
 
   /** 只读降级条目是可恢复的：subscribe/resync 前失效它，下一次 ensure 重新 load 并重试 resume。
@@ -154,10 +151,6 @@ export class ThreadStateStore {
     state.revision += 1;
     state.seq += 1;
     for (const listener of this.listeners) listener(id);
-  }
-
-  touchAll(): void {
-    for (const id of this.states.keys()) this.touch(id);
   }
 
   async ensure(id: string, additionalDirectories?: string[]): Promise<ThreadProjectionState> {

@@ -50,7 +50,8 @@ async function fixture(t: TestContext, officialMarketplaceRoot?: string) {
   const calls: { method: string; params: unknown }[] = [];
   const frames: RoutedTopicWireFrame[] = [],
     order: string[] = [],
-    fatal: Error[] = [];
+    fatal: Error[] = [],
+    runtimeNoticeLogs: unknown[] = [];
   const fatalOrigins: (string | undefined)[] = [];
   const started = Promise.withResolvers<void>();
   let closeCount = 0,
@@ -124,6 +125,9 @@ async function fixture(t: TestContext, officialMarketplaceRoot?: string) {
       frames.push(frame);
       order.push(`frame:${frame.topic}`);
     },
+    logRuntimeNotice(notice) {
+      runtimeNoticeLogs.push(notice);
+    },
     fatal(error, origin) {
       fatal.push(error);
       fatalOrigins.push(origin);
@@ -148,6 +152,7 @@ async function fixture(t: TestContext, officialMarketplaceRoot?: string) {
     frames,
     fatal,
     fatalOrigins,
+    runtimeNoticeLogs,
     order,
     started,
     authority,
@@ -615,20 +620,42 @@ test("all V4 subscription topics and both profiles defer initial frames until AC
       });
 });
 
-test("runtime warnings and auth recovery share one snapshot across desktop and mobile profiles", async (t) => {
+test("runtime notices only log and never enter desktop or mobile conversation frames", async (t) => {
   for (const mode of ["desktop-continuous", "web-remote-replayable"])
     await t.test(mode, async (t) => {
       const h = await fixture(t);
-      // 全局与定向通知都可能早于会话加载；bridge 先缓存有界投影，不能走未加载 thread 的丢弃分支。
-      h.emit("warning", { threadId: null, message: "workspace warning" });
+      h.emit("configWarning", {
+        summary: "unrecognized configuration",
+        details: "session-flags: token_budget is ignored",
+        path: "/must-not-enter-logs/config.toml",
+      });
       h.emit("modelProvider/authRecoveryStarted", {
         threadId: "thread-1",
         turnId: "turn-1",
         provider: "openai",
         message: "recovering auth",
       });
+      h.emit("guardianWarning", { threadId: "another-thread", message: "other thread" });
+      h.emit("warning", undefined);
       await tick();
       await tick();
+      assert.deepEqual(h.runtimeNoticeLogs, [
+        {
+          kind: "configWarning",
+          message: "unrecognized configuration",
+          detail: "session-flags: token_budget is ignored",
+        },
+        {
+          kind: "authRecovery",
+          message: "recovering auth",
+          threadId: "thread-1",
+          turnId: "turn-1",
+          provider: "openai",
+          phase: "started",
+        },
+        { kind: "guardianWarning", message: "other thread", threadId: "another-thread" },
+      ]);
+      assert.equal(h.frames.length, 0);
       const response = await h.runtime.request(
         V4_METHODS.conversationSubscribe,
         subscribe("conversation/thread-1", mode),
@@ -637,20 +664,12 @@ test("runtime warnings and auth recovery share one snapshot across desktop and m
       const initial = h.frames.at(-1);
       const initialPayload = initial?.kind === "complete" ? initial.frame.payload : undefined;
       assert.ok(initialPayload?.kind === "snapshot");
+      const initialFrameCount = h.frames.length;
+      assert.equal("runtimeNotices" in initialPayload.snapshot, false);
       const snapshot = conversationSnapshotSchema.parse(initialPayload.snapshot);
-      assert.deepEqual(
-        snapshot.runtimeNotices?.map((notice) => [notice.kind, notice.message]),
-        [
-          ["warning", "workspace warning"],
-          ["authRecovery", "recovering auth"],
-        ],
-      );
-      assert.equal(snapshot.runtimeNotices?.[1]?.phase, "started");
-      assert.equal(snapshot.runtimeNotices?.[1]?.provider, "openai");
       assert.equal(snapshot.control.lastError, null);
       assert.equal(snapshot.control.apiRetry, null);
 
-      h.frames.length = 0;
       h.emit("warning", { threadId: null, message: "workspace warning" });
       h.emit("modelProvider/authRecoveryCompleted", {
         threadId: "thread-1",
@@ -660,24 +679,24 @@ test("runtime warnings and auth recovery share one snapshot across desktop and m
       });
       await tick();
       await tick();
-      assert.equal(h.frames.length, 1, "duplicate global notice must not publish another snapshot");
-      const updated = h.frames[0];
-      const updatedPayload = updated?.kind === "complete" ? updated.frame.payload : undefined;
-      assert.ok(updatedPayload?.kind === "snapshot");
-      const next = conversationSnapshotSchema.parse(updatedPayload.snapshot);
+      assert.equal(h.runtimeNoticeLogs.length, 5);
+      assert.deepEqual(h.runtimeNoticeLogs.at(-2), {
+        kind: "warning",
+        message: "workspace warning",
+      });
+      assert.deepEqual(h.runtimeNoticeLogs.at(-1), {
+        kind: "authRecovery",
+        message: "auth recovered",
+        threadId: "thread-1",
+        turnId: "turn-1",
+        provider: "openai",
+        phase: "completed",
+      });
       assert.equal(
-        next.runtimeNotices?.filter((notice) => notice.kind === "authRecovery").length,
-        1,
+        h.frames.length,
+        initialFrameCount,
+        "runtime notices must not publish conversation frames",
       );
-      assert.equal(next.runtimeNotices?.at(-1)?.phase, "completed");
-      assert.equal(next.runtimeNotices?.at(-1)?.message, "auth recovered");
-
-      h.emit("guardianWarning", { threadId: "another-thread", message: "not this conversation" });
-      h.emit("warning", undefined);
-      h.emit("modelProvider/authRecoveryStarted", { threadId: "thread-1" });
-      await tick();
-      await tick();
-      assert.equal(h.frames.length, 1);
       assert.deepEqual(h.fatal, []);
     });
 });

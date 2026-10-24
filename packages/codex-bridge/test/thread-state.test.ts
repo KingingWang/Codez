@@ -70,18 +70,6 @@ test("cross workspace thread is rejected before resume", async () => {
   assert.deepEqual(calls, ["thread/read"]);
 });
 
-test("explicit removal also evicts derived runtime notice state", () => {
-  const removed: string[] = [];
-  const store = new ThreadStateStore(
-    port(() => ({})),
-    "/work",
-    (id) => removed.push(id),
-  );
-  store.markStarted(thread());
-  store.remove("t1");
-  assert.deepEqual(removed, ["t1"]);
-});
-
 test("stream deltas preserve native item id and final items replace provisional text", () => {
   const store = new ThreadStateStore(
     port(() => ({})),

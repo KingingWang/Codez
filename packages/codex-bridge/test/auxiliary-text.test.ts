@@ -128,6 +128,8 @@ test("restricted ephemeral request waits for actual completion and disposes list
     "js_repl",
   ])
     assert.equal(start.config[`features.${feature}`], false);
+  assert.equal(start.config["features.token_budget"], false);
+  assert.equal("token_budget.use_history_notes_extension" in start.config, false);
   let settled = false;
   void pending.then(() => {
     settled = true;
@@ -487,6 +489,11 @@ test(
         },
       ],
     });
+    const configWarnings: CodexNotification[] = [];
+    const detachConfigWarnings = rpc.onNotification((event) => {
+      if (event.method === "configWarning") configWarnings.push(event);
+    });
+    t.after(detachConfigWarnings);
     const auxiliary = new AuxiliaryText({ rpc, cwd });
     t.after(async () => {
       await auxiliary.close();
@@ -507,6 +514,10 @@ test(
     await assert.rejects(access(marker));
     await assert.rejects(access(desktopMarker));
     assert.equal(mcpRequests, 0);
+    assert.deepEqual(
+      configWarnings.filter((event) => JSON.stringify(event.params).includes("token_budget")),
+      [],
+    );
     const listed = await rpc.request<{ data: unknown[] }>("thread/list", { limit: 100 });
     assert.deepEqual(listed.data, []);
 
