@@ -21,6 +21,7 @@ const WEB_REMOTE_EXTENSION_PROTOCOLS = new Set([
   "chrome-extension:",
   "moz-extension:",
   "safari-web-extension:",
+  "orion-extension:",
 ]);
 
 function isWebRemoteControlCallbackPathname(url: URL): boolean {

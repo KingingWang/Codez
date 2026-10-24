@@ -18,6 +18,7 @@ import {
 } from "./oauthStateCodec.js";
 import { WEB_ZAI_OAUTH_CONFIG, type WebZaiOAuthConfig } from "./webZaiOAuthConfig.js";
 import { ZaiWebOAuthProvider } from "./zaiWebOAuthProvider.js";
+import { isCodezBrowserExtension } from "../webRemoteControlNativeSocket.js";
 
 interface WebAuthServiceRuntime {
   assign(url: string): void;
@@ -76,6 +77,18 @@ function createDefaultRuntime(): WebAuthServiceRuntime {
   };
 }
 
+function isExtensionRuntimeOrigin(origin: string): boolean {
+  if (
+    origin.startsWith("chrome-extension://") ||
+    origin.startsWith("moz-extension://") ||
+    origin.startsWith("safari-web-extension://") ||
+    origin.startsWith("orion-extension://")
+  ) {
+    return true;
+  }
+  return isCodezBrowserExtension();
+}
+
 export class WebAuthService {
   private readonly config: WebZaiOAuthConfig;
   private readonly provider: ZaiWebOAuthProvider;
@@ -119,6 +132,12 @@ export class WebAuthService {
 
     const state = buildOAuthState({
       nonce,
+      ...(isExtensionRuntimeOrigin(this.runtime.getCurrentOrigin())
+        ? {
+            provider,
+            redirect_uri: redirectUri,
+          }
+        : {}),
       app_return_to: appReturnTo,
       ...(options.devReturnTo
         ? {
@@ -172,7 +191,24 @@ export class WebAuthService {
 
     // provider 与回调地址必须取跳转前记下的那条：authorize 参数名和 token 响应里 access_token
     // 的位置都是 provider 特定的，token 请求也要用授权时的完整回调地址。
-    const pendingLogin = this.repo.takePendingLogin(statePayload.nonce);
+    const currentOrigin = this.runtime.getCurrentOrigin();
+    const stateReturnToUrl = parseOptionalUrl(statePayload.app_return_to);
+    const stateHash =
+      stateReturnToUrl?.hash && parseWebRemoteControlE2eeQrFragment(stateReturnToUrl.hash)
+        ? stateReturnToUrl.hash.trim()
+        : undefined;
+    const pendingLogin =
+      this.repo.takePendingLogin(statePayload.nonce) ??
+      (isExtensionRuntimeOrigin(currentOrigin) &&
+      statePayload.provider &&
+      statePayload.redirect_uri
+        ? {
+            nonce: statePayload.nonce,
+            provider: statePayload.provider,
+            redirectUri: statePayload.redirect_uri,
+            ...(stateHash ? { hash: stateHash } : {}),
+          }
+        : null);
     if (!pendingLogin) {
       throw new Error("OAuth CSRF 检测失败");
     }

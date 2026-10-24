@@ -28,6 +28,7 @@ const EXTENSION_ORIGIN_PROTOCOLS = new Set([
   "chrome-extension:",
   "moz-extension:",
   "safari-web-extension:",
+  "orion-extension:",
 ]);
 const EXTENSION_COMPATIBLE_REMOTE_ORIGINS = new Set([
   PRODUCTION_WEB_REMOTE_ORIGIN,
@@ -52,6 +53,8 @@ function isAllowedWebRemoteAppUrl(url: URL): boolean {
 
 interface OAuthStatePayload {
   nonce: string;
+  provider?: "zai" | "bigmodel";
+  redirect_uri?: string;
   app_return_to?: string;
   return_to?: string;
 }
@@ -113,6 +116,10 @@ export function parseOAuthState(state: string): OAuthStatePayload | null {
 
     return {
       nonce: parsed.nonce,
+      ...(parsed.provider === "zai" || parsed.provider === "bigmodel"
+        ? { provider: parsed.provider }
+        : {}),
+      ...(isNonEmptyString(parsed.redirect_uri) ? { redirect_uri: parsed.redirect_uri } : {}),
       ...(isNonEmptyString(parsed.app_return_to) ? { app_return_to: parsed.app_return_to } : {}),
       ...(isNonEmptyString(parsed.return_to) ? { return_to: parsed.return_to } : {}),
     };
@@ -176,13 +183,24 @@ export function resolveSafeAppReturnTo(
     currentIsExtension &&
     EXTENSION_COMPATIBLE_REMOTE_ORIGINS.has(urlOrigin) &&
     WEB_REMOTE_CALLBACK_PATHS.has(url.pathname);
-  if (urlOrigin !== allowedOrigin && !isCrossOriginTrustedRemoteForExtension) {
+  const isExtensionUrlOnTrustedRemoteCallback =
+    isExtensionUrl(url) &&
+    WEB_REMOTE_EXTENSION_PATHS.has(url.pathname) &&
+    EXTENSION_COMPATIBLE_REMOTE_ORIGINS.has(currentOrigin);
+  if (
+    urlOrigin !== allowedOrigin &&
+    !isCrossOriginTrustedRemoteForExtension &&
+    !isExtensionUrlOnTrustedRemoteCallback
+  ) {
     return null;
   }
 
   if (SHARE_PATH_PATTERN.test(url.pathname)) return url.pathname;
 
   const query = pickAppReturnQuery(url.searchParams).toString();
+  if (isExtensionUrlOnTrustedRemoteCallback) {
+    return `${urlOrigin}/index.html${query ? `?${query}` : ""}`;
+  }
   const returnPathname = currentIsExtension ? "/index.html" : url.pathname;
   return `${returnPathname}${query ? `?${query}` : ""}`;
 }
