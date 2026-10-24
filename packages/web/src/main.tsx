@@ -262,11 +262,16 @@ installDocumentHiddenMotionPause();
 const root = createRoot(document.getElementById("root")!);
 const webRemoteControlFetcher = resolveWebRemoteControlFetcher();
 function resolveRemoteRelayApiOrigin(): string {
-  return (
+  const configured =
     import.meta.env.VITE_CODEZ_BASE_URL?.trim() ||
-    import.meta.env.VITE_CODEZ_ENDPOINT_ORIGIN?.trim() ||
-    window.location.origin
-  );
+    import.meta.env.VITE_CODEZ_ENDPOINT_ORIGIN?.trim();
+  if (configured) {
+    return configured;
+  }
+  if (isCodezBrowserExtension() || window.location.hostname === "kingingwang.github.io") {
+    return "https://zcode.z.ai";
+  }
+  return window.location.origin;
 }
 const webAuthService = createWebAuthService({
   config: {
@@ -1211,7 +1216,9 @@ function resolveExternalRelayWsUrl(): string {
   const endpointOrigin =
     import.meta.env.VITE_CODEZ_BASE_URL?.trim() ||
     import.meta.env.VITE_CODEZ_ENDPOINT_ORIGIN?.trim() ||
-    window.location.origin;
+    (isCodezBrowserExtension() || window.location.hostname === "kingingwang.github.io"
+      ? "https://zcode.z.ai"
+      : window.location.origin);
   return resolveWebRemoteControlRelayWsUrl({
     endpointOrigin,
     overrideUrl: import.meta.env.VITE_CODEZ_WEB_REMOTE_CONTROL_RELAY_WS_URL,
