@@ -441,7 +441,7 @@ class CodezExtensionWebSocket {
     this.listeners.get(type)?.delete(listener);
   }
 
-  send(data: string | ArrayBuffer | ArrayBufferView): void {
+  send(data: string | ArrayBuffer | ArrayBufferView<ArrayBuffer>): void {
     if (this.readyState !== CodezExtensionWebSocket.OPEN) {
       throw new Error("WebSocket is not open");
     }
