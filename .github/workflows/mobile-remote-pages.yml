@@ -54,11 +54,28 @@ jobs:
         run: pnpm --filter @codez/web exec vite build --base=/Codez/remote/v4/
       - name: Verify project-path assets before publication
         run: node --test scripts/test-web-remote-control-pages.mjs
-      - name: Stage GitHub Pages project route
+      - name: Verify and build Web remote browser extension
+        env:
+          CODEZ_ENV: production
         run: |
+          node --test scripts/test-web-remote-extension.mjs
+          pnpm run build:web-remote-extension
+      - name: Stage GitHub Pages project route
+        env:
+          CODEZ_ENV: production
+        run: |
+          pnpm --filter @codez/web exec vite build --base=/Codez/remote/v4/
           mkdir -p .pages/remote/v4
           rsync -a --exclude '*.map' packages/web/dist/ .pages/remote/v4/
+          cp packages/web/dist-extension.zip .pages/remote/v4/codez-web-remote-extension.zip
           touch .pages/.nojekyll
+      - name: Upload Web remote browser extension artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: codez-web-remote-extension
+          if-no-files-found: error
+          retention-days: 14
+          path: packages/web/dist-extension.zip
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

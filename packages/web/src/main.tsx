@@ -47,7 +47,8 @@ import { createWebAuthService } from "./auth/webAuthService.js";
 import { WEB_ZAI_OAUTH_CONFIG, resolveWebAuthDevReturnTo } from "./auth/webZaiOAuthConfig.js";
 import { parseOAuthState, resolveSafeAppReturnTo } from "./auth/oauthStateCodec.js";
 import {
-  isCodezAndroidApp,
+  isCodezBrowserExtension,
+  isTrustedWebRemoteControlHost,
   resolveWebRemoteControlFetcher,
   resolveWebRemoteControlWebSocketCtor,
 } from "./webRemoteControlNativeSocket.js";
@@ -462,6 +463,11 @@ const remoteEntry = new WebRemoteControlEntry({
           onSwitchAccount={() => {
             void remoteEntry.switchAccount();
           }}
+          onConnectQrLink={
+            isCodezBrowserExtension()
+              ? (rawLink) => remoteEntry.connectFromQrLink(rawLink)
+              : undefined
+          }
           locale={resolveWebRemoteControlScreenLocale(navigator.language)}
         />,
       );
@@ -513,6 +519,9 @@ async function resolveWebBootstrap(): Promise<WebBootstrapResult> {
 }
 
 function isWebRemoteControlRoute(): boolean {
+  if (isCodezBrowserExtension()) {
+    return true;
+  }
   return (
     matchesWebRemoteControlRoutePath(window.location.pathname, "/remote/v4") ||
     matchesWebRemoteControlRoutePath(
@@ -1911,13 +1920,13 @@ async function bootstrapWebApp() {
   }
 
   if (isWebRemoteControlRoute()) {
-    if (window.location.hostname === "kingingwang.github.io" && !isCodezAndroidApp()) {
+    if (window.location.hostname === "kingingwang.github.io" && !isTrustedWebRemoteControlHost()) {
       renderWebRemoteControlFailure(
         toWebRemoteControlFailure(
           "unsupported-action",
           isZhLocale()
-            ? "为保障端到端加密与连接安全，请使用 Codez 手机 App 扫描桌面二维码连接。"
-            : "For end-to-end encrypted remote control, please scan the desktop QR code using the Codez Android App.",
+            ? "为保障端到端加密与连接安全，请使用 Codez 手机 App 或安装 Codez 浏览器扩展后扫描桌面二维码连接。"
+            : "For end-to-end encrypted remote control, please scan the desktop QR code using the Codez Android App or install the Codez Browser Extension.",
         ),
       );
       return;
