@@ -47,6 +47,16 @@ declare global {
 }
 
 const BASE64_CHUNK_SIZE = 0x8000;
+const EXTENSION_ORIGIN_PROTOCOLS = new Set([
+  "chrome-extension:",
+  "moz-extension:",
+  "safari-web-extension:",
+  "orion-extension:",
+]);
+
+export function isBrowserExtensionProtocol(protocol: string | undefined): boolean {
+  return typeof protocol === "string" && EXTENSION_ORIGIN_PROTOCOLS.has(protocol);
+}
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
@@ -274,12 +284,7 @@ export function isCodezBrowserExtension(): boolean {
   if (typeof window === "undefined") {
     return false;
   }
-  const protocol = window.location?.protocol;
-  if (
-    protocol === "chrome-extension:" ||
-    protocol === "moz-extension:" ||
-    protocol === "safari-web-extension:"
-  ) {
+  if (isBrowserExtensionProtocol(window.location?.protocol)) {
     return true;
   }
   return (
@@ -371,8 +376,28 @@ export function resolveWebRemoteControlFetcher(): typeof fetch {
             ) => Promise<unknown> | void;
           };
         };
+        browser?: {
+          runtime?: {
+            sendMessage?: (
+              message: unknown,
+              callback?: (response: unknown) => void,
+            ) => Promise<unknown> | void;
+          };
+        };
       }
-    ).chrome?.runtime?.sendMessage;
+    ).chrome?.runtime?.sendMessage ??
+    (
+      globalThis as unknown as {
+        browser?: {
+          runtime?: {
+            sendMessage?: (
+              message: unknown,
+              callback?: (response: unknown) => void,
+            ) => Promise<unknown> | void;
+          };
+        };
+      }
+    ).browser?.runtime?.sendMessage;
     const isExtensionMarkedPage =
       typeof window !== "undefined" &&
       typeof window.postMessage === "function" &&

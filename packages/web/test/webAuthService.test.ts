@@ -317,6 +317,35 @@ describe("WebAuthService", () => {
     expect(h.localStorage.getItem(PENDING_LOGINS_KEY)).toBe(pendingLogins);
   });
 
+  it("allows browser extension OAuth callback to recover provider, redirectUri and e2ee hash from state when extension localStorage was isolated across origins", async () => {
+    const extOrigin = "orion-extension://12345678-1234-1234-1234-1234567890ab";
+    const h = createService({
+      currentOrigin: extOrigin,
+      currentHref: `${extOrigin}/index.html?sid=device-1&mid=mid-1&name=MyMac#e2ee=v1&k=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA`,
+    });
+    h.service.startLogin({ provider: "bigmodel" });
+    const authorize = new URL(h.assigned[0]!);
+    const stateParam = authorize.searchParams.get("state")!;
+    const parsedState = parseOAuthState(stateParam);
+    expect(parsedState).toMatchObject({
+      provider: "bigmodel",
+      redirect_uri: "https://zcode.z.ai/remote/v4?sid=device-1&mid=mid-1&name=MyMac",
+    });
+
+    // Simulate isolated storage (e.g. Orion on iPad or cross-origin fallback) by clearing localStorage
+    h.localStorage.clear();
+    const fetchMock = mockTokenExchange("bigmodel");
+    const callbackResult = await h
+      .openPage()
+      .handleCallback(
+        `${extOrigin}/index.html?sid=device-1&mid=mid-1&name=MyMac&authCode=code-1&state=${stateParam}`,
+      );
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(callbackResult?.appReturnTo).toBe(
+      "/index.html?sid=device-1&mid=mid-1&name=MyMac#e2ee=v1&k=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    );
+  });
+
   it("keeps parallel logins from two tabs independent", async () => {
     const h = createService();
     const tabA = h.service;
