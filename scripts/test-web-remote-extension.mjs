@@ -20,7 +20,9 @@ test("Manifest V3 规则仅改写 Origin，页面级重定向交给 content scri
   assert.equal(originRule.action.type, "modifyHeaders");
   assert.deepEqual(originRule.action.requestHeaders, [
     { header: "Origin", operation: "set", value: "https://zcode.z.ai" },
+    { header: "Referer", operation: "set", value: "https://zcode.z.ai/remote/v4" },
   ]);
+  assert.ok(Array.isArray(originRule.action.responseHeaders));
   assert.ok(originRule.condition.resourceTypes.includes("websocket"));
   assert.ok(originRule.condition.resourceTypes.includes("xmlhttprequest"));
 
