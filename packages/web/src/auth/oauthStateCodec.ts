@@ -7,6 +7,8 @@ const WEB_REMOTE_CALLBACK_PATHS = new Set([
   "/Codez/remote/v4",
   "/Codez/remote/v4/",
 ]);
+// 浏览器扩展打包产物以本地 index.html 作为远控与 OAuth 回调入口。
+const WEB_REMOTE_EXTENSION_PATHS = new Set(["/index.html", "/"]);
 // 测试入口也经过登录门禁，必须保留原路径与扫码参数；OAuth 回调仍只使用已登记的 v4。
 const WEB_REMOTE_APP_PATHS = new Set([
   ...WEB_REMOTE_CALLBACK_PATHS,
@@ -22,6 +24,22 @@ const SHARE_PATH_PATTERN = /^\/(?:cn\/share|share)\/[A-Za-z0-9._~-]{1,512}$/u;
 const APP_RETURN_QUERY_ALLOWLIST = new Set(["app_version", "sid", "mid", "name"]);
 const PRIVATE_DEV_RETURN_TO_PATTERN =
   /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|192\.168\.\d+\.\d+)(:\d+)?(\/|$)/;
+const EXTENSION_ORIGIN_PROTOCOLS = new Set([
+  "chrome-extension:",
+  "moz-extension:",
+  "safari-web-extension:",
+]);
+
+function isExtensionUrl(url: URL): boolean {
+  return EXTENSION_ORIGIN_PROTOCOLS.has(url.protocol);
+}
+
+function isAllowedWebRemoteAppUrl(url: URL): boolean {
+  if (WEB_REMOTE_APP_PATHS.has(url.pathname)) {
+    return true;
+  }
+  return isExtensionUrl(url) && WEB_REMOTE_EXTENSION_PATHS.has(url.pathname);
+}
 
 interface OAuthStatePayload {
   nonce: string;
@@ -35,7 +53,16 @@ interface ResolveSafeAppReturnToOptions {
 
 function getCurrentOrigin(): string {
   const location = globalThis.window?.location ?? globalThis.location;
-  return location?.origin ?? PRODUCTION_WEB_REMOTE_ORIGIN;
+  if (!location) {
+    return PRODUCTION_WEB_REMOTE_ORIGIN;
+  }
+  if (location.origin && location.origin !== "null") {
+    return location.origin;
+  }
+  if (location.protocol && location.host) {
+    return `${location.protocol}//${location.host}`;
+  }
+  return PRODUCTION_WEB_REMOTE_ORIGIN;
 }
 
 function isNonEmptyString(value: unknown): value is string {
@@ -107,6 +134,13 @@ function resolveAllowedAppReturnOrigin(currentOrigin: string): string {
     : currentOrigin;
 }
 
+function getUrlOrigin(url: URL): string {
+  if (url.origin && url.origin !== "null") {
+    return url.origin;
+  }
+  return `${url.protocol}//${url.host}`;
+}
+
 function pickAppReturnQuery(params: URLSearchParams): URLSearchParams {
   const safeSearch = new URLSearchParams();
   for (const key of APP_RETURN_QUERY_ALLOWLIST) {
@@ -121,13 +155,13 @@ export function resolveSafeAppReturnTo(
   options: ResolveSafeAppReturnToOptions = {},
 ): string | null {
   const url = parseOptionalUrl(value);
-  if (!url || (!WEB_REMOTE_APP_PATHS.has(url.pathname) && !SHARE_PATH_PATTERN.test(url.pathname))) {
+  if (!url || (!isAllowedWebRemoteAppUrl(url) && !SHARE_PATH_PATTERN.test(url.pathname))) {
     return null;
   }
 
   const currentOrigin = options.currentOrigin ?? getCurrentOrigin();
   const allowedOrigin = resolveAllowedAppReturnOrigin(currentOrigin);
-  if (url.origin !== allowedOrigin) {
+  if (getUrlOrigin(url) !== allowedOrigin) {
     return null;
   }
 
@@ -149,7 +183,7 @@ export function buildWebRemoteOAuthRedirectUri(
     !callbackUrl ||
     !WEB_REMOTE_CALLBACK_PATHS.has(callbackUrl.pathname) ||
     !sourceUrl ||
-    !WEB_REMOTE_APP_PATHS.has(sourceUrl.pathname) ||
+    !isAllowedWebRemoteAppUrl(sourceUrl) ||
     !resolveSafeAppReturnTo(appReturnTo, options)
   ) {
     return redirectUri;

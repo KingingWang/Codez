@@ -34,6 +34,7 @@ type NativeHttpEvent =
 declare global {
   interface Window {
     CodezAndroidSocket?: CodezAndroidSocketBridge;
+    __CODEZ_BROWSER_EXTENSION__?: boolean;
     __codezAndroidSocketEvent?: (id: number, eventJson: string) => void;
     __codezAndroidHttpEvent?: (id: number, eventJson: string) => void;
   }
@@ -260,6 +261,31 @@ export function resolveWebRemoteControlWebSocketCtor(): typeof globalThis.WebSoc
 /** 判断当前页面是否运行在 Codez Android App 原生壳内。 */
 export function isCodezAndroidApp(): boolean {
   return typeof window !== "undefined" && Boolean(window.CodezAndroidSocket);
+}
+
+/** 判断当前页面是否运行在 Codez 浏览器扩展内（或已注入扩展标记）。 */
+export function isCodezBrowserExtension(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  const protocol = window.location?.protocol;
+  if (
+    protocol === "chrome-extension:" ||
+    protocol === "moz-extension:" ||
+    protocol === "safari-web-extension:"
+  ) {
+    return true;
+  }
+  return (
+    window.__CODEZ_BROWSER_EXTENSION__ === true ||
+    (typeof document !== "undefined" &&
+      document.documentElement?.hasAttribute("data-codez-browser-extension") === true)
+  );
+}
+
+/** 判断当前页面是否运行在受信任的远控壳层（Android App 或浏览器扩展）。 */
+export function isTrustedWebRemoteControlHost(): boolean {
+  return isCodezAndroidApp() || isCodezBrowserExtension();
 }
 
 const httpRegistry = new Map<

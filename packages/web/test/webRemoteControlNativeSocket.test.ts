@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   isCodezAndroidApp,
+  isCodezBrowserExtension,
+  isTrustedWebRemoteControlHost,
   resolveWebRemoteControlFetcher,
   resolveWebRemoteControlWebSocketCtor,
 } from "../src/webRemoteControlNativeSocket.js";
@@ -33,8 +35,23 @@ describe("resolveWebRemoteControlWebSocketCtor", () => {
   it("无原生桥时回退到全局 WebSocket", () => {
     vi.stubGlobal("window", {});
     expect(isCodezAndroidApp()).toBe(false);
+    expect(isCodezBrowserExtension()).toBe(false);
+    expect(isTrustedWebRemoteControlHost()).toBe(false);
     const Ctor = resolveWebRemoteControlWebSocketCtor();
     expect(Ctor).toBe(globalThis.WebSocket);
+  });
+
+  it("检测到浏览器扩展协议或扩展标识时放行受信任宿主检查", () => {
+    vi.stubGlobal("window", { location: { protocol: "chrome-extension:" } });
+    expect(isCodezBrowserExtension()).toBe(true);
+    expect(isTrustedWebRemoteControlHost()).toBe(true);
+
+    vi.stubGlobal("window", {
+      location: { protocol: "https:" },
+      __CODEZ_BROWSER_EXTENSION__: true,
+    });
+    expect(isCodezBrowserExtension()).toBe(true);
+    expect(isTrustedWebRemoteControlHost()).toBe(true);
   });
 
   it("检测到 Android 桥时返回适配构造器并实现浏览器 WebSocket 子集", () => {
