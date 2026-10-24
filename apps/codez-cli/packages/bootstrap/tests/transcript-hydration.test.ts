@@ -337,9 +337,9 @@ describe("transcript→event 合成", () => {
     ]);
     const userRows = rows.filter((row) => row.kind === "userInput");
     const assistantRows = rows.filter((row) => row.kind === "assistantText");
-    // Bugfix 回归：cold 合成必须保留各 assistant message 的真实创建时间，不能全部
-    // 退化成首条 transcript 时间附近的合成序号。
-    expect(assistantRows.map((row) => row.createdAt)).toEqual([1001, 2001]);
+    // Bugfix 回归：cold 合成必须保留各 assistant message 的真实完成时间（time.completed），
+    // 不能退化成首条 transcript 时间附近的合成序号或流开始时间。
+    expect(assistantRows.map((row) => row.createdAt)).toEqual([1002, 2002]);
     expect(userRows[0]?.actions?.canEdit).not.toBe(true);
     expect(userRows[1]?.actions?.canEdit).toBe(true);
     expect(projection.getMessageIdForRow(userRows[1]!.rowId)).toBe("u2");
