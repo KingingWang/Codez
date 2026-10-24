@@ -435,4 +435,80 @@ describe("createCodexGlobalRolloutSyncer", () => {
       await rm(dir, { recursive: true, force: true });
     }
   });
+
+  it("reuses cached session_index.jsonl thread names across unchanged syncs and updates when index changes", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "codez-global-rollout-index-cache-"));
+    const codexHome = join(dir, ".codex");
+    const dayDir = join(codexHome, "sessions", "2026", "10", "24");
+    await mkdir(dayDir, { recursive: true });
+
+    const sessionId = "019a0000-0000-7000-8000-000000000999";
+    const rolloutPath = join(dayDir, `rollout-2026-10-24T10-00-00-${sessionId}.jsonl`);
+    const sessionIndexPath = join(codexHome, "session_index.jsonl");
+    await writeFile(
+      rolloutPath,
+      [
+        JSON.stringify({
+          timestamp: "2026-10-24T10:00:00Z",
+          type: "session_meta",
+          payload: {
+            meta: {
+              id: sessionId,
+              timestamp: "2026-10-24T10:00:00Z",
+              cwd: "/remote/index-cache-project",
+              source: "cli",
+            },
+          },
+        }),
+        JSON.stringify({
+          timestamp: "2026-10-24T10:00:01Z",
+          type: "event_msg",
+          payload: { type: "user_message", message: "初始提问" },
+        }),
+      ].join("\n") + "\n",
+      "utf8",
+    );
+    await writeFile(
+      sessionIndexPath,
+      `${JSON.stringify({ id: sessionId, thread_name: "命名一" })}\n`,
+      "utf8",
+    );
+
+    const repo = new TaskIndexRepo(
+      undefined,
+      "remote:server:srv-1",
+      join(dir, "tasks-index.sqlite"),
+    );
+    const target = {
+      workspacePath: "/remote/index-cache-project",
+      workspaceIdentity: "remote:ssh:host:22:dev:/remote/index-cache-project",
+      taskId: sessionId,
+    };
+    const syncer = createCodexGlobalRolloutSyncer({
+      taskIndexRepo: repo,
+      resolveWorkspaceIdentity: async (workspacePath) => `remote:ssh:host:22:dev:${workspacePath}`,
+      env: { CODEX_HOME: codexHome },
+    });
+
+    try {
+      expect(await syncer.syncNow()).toBe(true);
+      expect((await repo.getTaskMeta(target))?.title).toBe("命名一");
+
+      // 无文件变化时再次 syncNow 为 no-op
+      expect(await syncer.syncNow()).toBe(false);
+
+      // 修改 session_index.jsonl（长度与 mtime 改变），即使 rollout 本身未变也应更新标题
+      await writeFile(
+        sessionIndexPath,
+        `${JSON.stringify({ id: sessionId, thread_name: "更新后的命名二" })}\n`,
+        "utf8",
+      );
+      expect(await syncer.syncNow()).toBe(true);
+      expect((await repo.getTaskMeta(target))?.title).toBe("更新后的命名二");
+    } finally {
+      syncer.dispose();
+      repo.close();
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });
