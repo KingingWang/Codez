@@ -26,5 +26,6 @@ describe("resolveWebRemoteControlRoutePath", () => {
       }),
     ).toBe("/remote/v3");
     expect(resolveWebRemoteControlRoutePath({ BASE_URL: "/" })).toBe("/remote");
+    expect(resolveWebRemoteControlRoutePath({ BASE_URL: "./" })).toBe("/index.html");
   });
 });

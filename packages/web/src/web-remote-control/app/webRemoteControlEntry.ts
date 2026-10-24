@@ -17,11 +17,29 @@ import {
   rememberKnownDevices,
 } from "#src/web-remote-control/app/webRemoteControlKnownDevices.js";
 
-export function isWebRemoteControlOAuthCallback(url: URL): boolean {
-  return (
+const WEB_REMOTE_EXTENSION_PROTOCOLS = new Set([
+  "chrome-extension:",
+  "moz-extension:",
+  "safari-web-extension:",
+]);
+
+function isWebRemoteControlCallbackPathname(url: URL): boolean {
+  if (
     ["/remote/v4", "/remote/v4/", "/Codez/remote/v4", "/Codez/remote/v4/"].includes(
       url.pathname,
-    ) &&
+    )
+  ) {
+    return true;
+  }
+  return (
+    WEB_REMOTE_EXTENSION_PROTOCOLS.has(url.protocol) &&
+    (url.pathname === "/index.html" || url.pathname === "/")
+  );
+}
+
+export function isWebRemoteControlOAuthCallback(url: URL): boolean {
+  return (
+    isWebRemoteControlCallbackPathname(url) &&
     url.searchParams.has("state") &&
     // BigModel 使用 authCode；必须先进入既有回调校验，不能落回未登录门禁。
     (url.searchParams.has("code") ||
@@ -265,6 +283,45 @@ export class WebRemoteControlEntry {
       appVersion: url.searchParams.get("app_version") || undefined,
       ...(e2eeKey ? { e2eeKey } : {}),
     });
+  }
+
+  /**
+   * 从粘贴的桌面远控链接或二维码文本直接连接（提取 sid/mid/name/app_version 与 #e2ee 密钥）。
+   * 非法链接或缺少 sid 时返回 false，不改变当前列表视图。
+   */
+  connectFromQrLink(rawLink: string): boolean {
+    const trimmed = rawLink.trim();
+    if (!trimmed) return false;
+    let parsed: URL;
+    try {
+      parsed = new URL(trimmed);
+    } catch {
+      return false;
+    }
+    const params = parseWebRemoteControlExternalQrParams(parsed.searchParams);
+    if (!params?.deviceSid) return false;
+    const fragmentE2eeKey = parseWebRemoteControlE2eeQrFragment(parsed.hash) ?? undefined;
+    const resolvedE2eeKey =
+      fragmentE2eeKey ??
+      lookupDeviceE2eeKey(this.options.storage, params.deviceSid, params.deviceMid);
+    const currentUrl = new URL(this.options.getHref());
+    currentUrl.searchParams.set("sid", params.deviceSid);
+    if (params.deviceMid) currentUrl.searchParams.set("mid", params.deviceMid);
+    else currentUrl.searchParams.delete("mid");
+    if (params.deviceName) currentUrl.searchParams.set("name", params.deviceName);
+    else currentUrl.searchParams.delete("name");
+    if (params.appVersion) currentUrl.searchParams.set("app_version", params.appVersion);
+    if (resolvedE2eeKey) {
+      currentUrl.hash = new URLSearchParams({ e2ee: "v1", k: resolvedE2eeKey }).toString();
+    }
+    this.options.replaceHref(currentUrl.href);
+    this.rememberDevice(params.deviceSid, params.deviceMid, resolvedE2eeKey);
+    this.connect({
+      ...params,
+      deviceSid: params.deviceSid,
+      ...(resolvedE2eeKey ? { e2eeKey: resolvedE2eeKey } : {}),
+    });
+    return true;
   }
 
   async chooseOtherDevice(): Promise<void> {

@@ -1,5 +1,7 @@
 node_modules/
 dist/
+packages/web/dist-extension/
+packages/web/dist-extension.zip
 # codez-server-cli 发行包 staging 输出（spec §7.1），本地组装产物不入库。
 dist-release/
 # Bugfix: macOS CI 按架构隔离 electron-builder 输出目录，这些仍是构建产物。

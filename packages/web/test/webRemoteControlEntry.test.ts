@@ -164,6 +164,37 @@ describe("V2 手机入口", () => {
     });
     expect(h.connect).not.toHaveBeenCalled();
   });
+
+  it("支持在浏览器扩展中粘贴带 #e2ee 密钥的桌面二维码链接直接连接并记住密钥", async () => {
+    const h = setup("jwt", "chrome-extension://abcdefghijklmnop/index.html");
+    await h.entry.start();
+    expect(h.onView).toHaveBeenLastCalledWith({
+      kind: "devices",
+      devices: [],
+      loading: false,
+      error: false,
+    });
+
+    const validKey = "A".repeat(43);
+    expect(h.entry.connectFromQrLink("not-a-url")).toBe(false);
+    expect(h.entry.connectFromQrLink("https://kingingwang.github.io/Codez/remote/v4/")).toBe(false);
+
+    const ok = h.entry.connectFromQrLink(
+      `https://kingingwang.github.io/Codez/remote/v4/?sid=desk-sid&mid=desk-mid&name=Studio&app_version=3.16.2#e2ee=v1&k=${validKey}`,
+    );
+    expect(ok).toBe(true);
+    expect(h.connect).toHaveBeenCalledOnce();
+    expect(h.connect.mock.lastCall[0].params).toEqual({
+      deviceSid: "desk-sid",
+      deviceMid: "desk-mid",
+      deviceName: "Studio",
+      appVersion: "3.16.2",
+      e2eeKey: validKey,
+    });
+    expect(h.href).toBe(
+      `chrome-extension://abcdefghijklmnop/index.html?sid=desk-sid&mid=desk-mid&name=Studio&app_version=3.16.2#e2ee=v1&k=${validKey}`,
+    );
+  });
 });
 
 const onlineDevice: WebRemoteControlRelayV2Device = {

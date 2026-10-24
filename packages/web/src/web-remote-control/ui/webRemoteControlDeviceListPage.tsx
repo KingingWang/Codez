@@ -31,6 +31,9 @@ const copyByLocale = {
     emptyTitle: "暂无设备",
     emptyDescription: "在电脑端登录同一账号并开启 Web 远程控制，然后刷新列表。",
     error: "无法加载设备，请检查网络后刷新。",
+    linkPlaceholder: "粘贴桌面端二维码远控链接…",
+    linkConnect: "连接",
+    linkInvalid: "远控链接无效，请粘贴完整的桌面端二维码链接。",
   },
   "en-US": {
     title: "Choose a computer",
@@ -48,6 +51,9 @@ const copyByLocale = {
     emptyDescription:
       "Sign in with the same account on your computer, enable Web remote control, then refresh this list.",
     error: "Could not load devices. Check your connection and refresh.",
+    linkPlaceholder: "Paste desktop QR remote link…",
+    linkConnect: "Connect",
+    linkInvalid: "Invalid remote link. Please paste the full desktop QR link.",
   },
 };
 
@@ -64,6 +70,8 @@ interface WebRemoteControlDeviceListPageProps {
   onSelect(sid: string): void;
   onRefresh(): void;
   onSwitchAccount(): void;
+  /** 可选：在浏览器扩展中直接粘贴桌面二维码链接（含 #e2ee 密钥）进行连接。 */
+  onConnectQrLink?(rawLink: string): boolean;
   /** 多连接弹层的“启动于”相对时间基准，测试注入。 */
   now?: () => number;
 }
@@ -233,10 +241,13 @@ export function WebRemoteControlDeviceListPage({
   onSelect,
   onRefresh,
   onSwitchAccount,
+  onConnectQrLink,
   now = () => Date.now(),
 }: WebRemoteControlDeviceListPageProps) {
   const copy = copyByLocale[locale];
   const [sheetDeviceMid, setSheetDeviceMid] = useState<string | null>(null);
+  const [qrLinkInput, setQrLinkInput] = useState("");
+  const [qrLinkError, setQrLinkError] = useState(false);
   const selectable = !view.loading && !view.error;
   const onlineDevices = view.devices.filter((device) => device.onlineConnections.length > 0);
   const offlineDevices = view.devices.filter((device) => device.onlineConnections.length === 0);
@@ -277,6 +288,43 @@ export function WebRemoteControlDeviceListPage({
           locale={locale}
           onSwitchAccount={onSwitchAccount}
         />
+
+        {onConnectQrLink ? (
+          <form
+            className="mt-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const ok = onConnectQrLink(qrLinkInput);
+              setQrLinkError(!ok);
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <input
+                type="url"
+                value={qrLinkInput}
+                onChange={(event) => {
+                  setQrLinkInput(event.target.value);
+                  if (qrLinkError) setQrLinkError(false);
+                }}
+                placeholder={copy.linkPlaceholder}
+                className="h-9 min-w-0 flex-1 rounded-lg border border-border bg-card px-3 text-ui-sm text-foreground placeholder:text-foreground-subtlest focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+              <Button
+                type="submit"
+                size="sm"
+                className="h-9 shrink-0 px-3"
+                disabled={!qrLinkInput.trim()}
+              >
+                {copy.linkConnect}
+              </Button>
+            </div>
+            {qrLinkError ? (
+              <p role="alert" className="mt-1.5 px-1 text-ui-xs text-destructive">
+                {copy.linkInvalid}
+              </p>
+            ) : null}
+          </form>
+        ) : null}
 
         {view.error ? (
           <p role="alert" className="mt-5 px-1 text-ui-sm text-destructive">

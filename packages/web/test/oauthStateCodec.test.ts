@@ -120,6 +120,19 @@ describe("oauthStateCodec", () => {
     ).toBeNull();
   });
 
+  it("accepts browser extension index.html as a safe OAuth return target and preserves QR query params", () => {
+    const extOrigin = "chrome-extension://abcdefghijklmnopabcdefghijklmnop";
+    const href = `${extOrigin}/index.html?app_version=3.16.2&sid=device-1&mid=mid-1&name=MacBook&token=secret#e2ee=v1&k=abc`;
+    expect(resolveSafeAppReturnTo(href, { currentOrigin: extOrigin })).toBe(
+      "/index.html?app_version=3.16.2&sid=device-1&mid=mid-1&name=MacBook",
+    );
+    expect(
+      buildWebRemoteOAuthRedirectUri("https://zcode.z.ai/remote/v4", href, {
+        currentOrigin: extOrigin,
+      }),
+    ).toBe("https://zcode.z.ai/remote/v4?app_version=3.16.2&sid=device-1&mid=mid-1&name=MacBook");
+  });
+
   it("builds a sanitized return_to callback URL for dev redirects", () => {
     expect(
       buildReturnToCallbackUrl(

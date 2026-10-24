@@ -44,6 +44,7 @@
     "build:desktop-agent:bytecode": "node scripts/build-desktop-agent-bytecode.mjs",
     "build:docs": "pnpm --filter @codez/dev-docs build",
     "build:web-remote-control:test": "pnpm --filter @codez/web exec vite build --base=/remote/__test__/",
+    "build:web-remote-extension": "node scripts/build-web-remote-extension.mjs",
     "build:web-share": "pnpm --filter @codez/web-share build",
     "build:codez": "node scripts/build-codez.mjs",
     "build:bootstrap": "pnpm -r --filter \"./packages/*\" --filter \"!@codez/desktop\" build && pnpm --filter @codez/desktop build:no-runtime-assets",
