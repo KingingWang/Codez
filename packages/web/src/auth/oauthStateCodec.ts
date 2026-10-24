@@ -29,9 +29,18 @@ const EXTENSION_ORIGIN_PROTOCOLS = new Set([
   "moz-extension:",
   "safari-web-extension:",
 ]);
+const EXTENSION_COMPATIBLE_REMOTE_ORIGINS = new Set([
+  PRODUCTION_WEB_REMOTE_ORIGIN,
+  "https://kingingwang.github.io",
+]);
 
 function isExtensionUrl(url: URL): boolean {
   return EXTENSION_ORIGIN_PROTOCOLS.has(url.protocol);
+}
+
+function isExtensionOrigin(origin: string): boolean {
+  const parsed = parseOptionalUrl(origin);
+  return parsed !== null && isExtensionUrl(parsed);
 }
 
 function isAllowedWebRemoteAppUrl(url: URL): boolean {
@@ -161,14 +170,21 @@ export function resolveSafeAppReturnTo(
 
   const currentOrigin = options.currentOrigin ?? getCurrentOrigin();
   const allowedOrigin = resolveAllowedAppReturnOrigin(currentOrigin);
-  if (getUrlOrigin(url) !== allowedOrigin) {
+  const urlOrigin = getUrlOrigin(url);
+  const currentIsExtension = isExtensionOrigin(currentOrigin);
+  const isCrossOriginTrustedRemoteForExtension =
+    currentIsExtension &&
+    EXTENSION_COMPATIBLE_REMOTE_ORIGINS.has(urlOrigin) &&
+    WEB_REMOTE_CALLBACK_PATHS.has(url.pathname);
+  if (urlOrigin !== allowedOrigin && !isCrossOriginTrustedRemoteForExtension) {
     return null;
   }
 
   if (SHARE_PATH_PATTERN.test(url.pathname)) return url.pathname;
 
   const query = pickAppReturnQuery(url.searchParams).toString();
-  return `${url.pathname}${query ? `?${query}` : ""}`;
+  const returnPathname = currentIsExtension ? "/index.html" : url.pathname;
+  return `${returnPathname}${query ? `?${query}` : ""}`;
 }
 
 /** 网关在 JS 执行前选版本；扫码参数必须进入授权回调，不能只留在 state 中。 */

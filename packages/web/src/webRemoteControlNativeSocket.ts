@@ -279,6 +279,7 @@ export function isCodezBrowserExtension(): boolean {
   return (
     window.__CODEZ_BROWSER_EXTENSION__ === true ||
     (typeof document !== "undefined" &&
+      typeof document.documentElement?.hasAttribute === "function" &&
       document.documentElement?.hasAttribute("data-codez-browser-extension") === true)
   );
 }

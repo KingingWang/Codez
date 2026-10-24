@@ -4,15 +4,17 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import {
+  createWebRemoteExtensionBackgroundScript,
+  createWebRemoteExtensionContentScript,
   createWebRemoteExtensionManifest,
   createWebRemoteExtensionRules,
   extractInlineBootstrapScriptForExtension,
   stageWebRemoteExtensionFromDist,
 } from "./build-web-remote-extension.mjs";
 
-test("Manifest V3 规则覆盖 Origin 重写、GitHub Pages 扫码入口接管与 OAuth 回调重定向", () => {
+test("Manifest V3 规则仅改写 Origin，页面级重定向交给 content script 与 background 保留 query/hash", () => {
   const rules = createWebRemoteExtensionRules();
-  assert.equal(rules.length, 3);
+  assert.equal(rules.length, 1);
 
   const originRule = rules.find((r) => r.id === 1);
   assert.equal(originRule.action.type, "modifyHeaders");
@@ -22,21 +24,14 @@ test("Manifest V3 规则覆盖 Origin 重写、GitHub Pages 扫码入口接管�
   assert.ok(originRule.condition.resourceTypes.includes("websocket"));
   assert.ok(originRule.condition.resourceTypes.includes("xmlhttprequest"));
 
-  const pagesRedirectRule = rules.find((r) => r.id === 2);
-  assert.equal(pagesRedirectRule.action.redirect.extensionPath, "/index.html");
-  const pagesRegex = new RegExp(pagesRedirectRule.condition.regexFilter, "u");
-  assert.ok(
-    pagesRegex.test("https://kingingwang.github.io/Codez/remote/v4/?sid=abc#e2ee=v1&k=xyz"),
-  );
-  assert.ok(pagesRegex.test("https://kingingwang.github.io/Codez/remote/v4"));
-  assert.ok(!pagesRegex.test("https://kingingwang.github.io/Codez/other"));
+  const contentScript = createWebRemoteExtensionContentScript();
+  assert.ok(contentScript.includes("codez-redirect-to-extension"));
+  assert.ok(contentScript.includes("loc.search"));
+  assert.ok(contentScript.includes("loc.hash"));
 
-  const oauthRedirectRule = rules.find((r) => r.id === 3);
-  assert.equal(oauthRedirectRule.action.redirect.extensionPath, "/index.html");
-  const oauthRegex = new RegExp(oauthRedirectRule.condition.regexFilter, "u");
-  assert.ok(oauthRegex.test("https://zcode.z.ai/remote/v4?code=abc&state=123"));
-  assert.ok(oauthRegex.test("https://zcode.z.ai/remote/v4/?sid=d1&authCode=abc&state=123"));
-  assert.ok(!oauthRegex.test("https://zcode.z.ai/remote/v4?sid=d1"));
+  const backgroundScript = createWebRemoteExtensionBackgroundScript();
+  assert.ok(backgroundScript.includes("codez-redirect-to-extension"));
+  assert.ok(backgroundScript.includes("resolveExtensionRedirectTarget"));
 });
 
 test("stageWebRemoteExtensionFromDist 提取内联脚本并生成完整扩展目录与 zip 包", async () => {
@@ -76,6 +71,7 @@ test("stageWebRemoteExtensionFromDist 提取内联脚本并生成完整扩展目
 
     assert.ok((await stat(join(outDir, "bootstrap-theme.js"))).isFile());
     assert.ok((await stat(join(outDir, "background.js"))).isFile());
+    assert.ok((await stat(join(outDir, "redirect-content.js"))).isFile());
     assert.ok((await stat(join(outDir, "rules.json"))).isFile());
     assert.ok((await stat(join(outDir, "icons/128x128.png"))).isFile());
     await assert.rejects(stat(join(outDir, "assets/index.js.map")));
