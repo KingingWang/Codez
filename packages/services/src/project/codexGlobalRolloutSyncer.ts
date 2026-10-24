@@ -29,6 +29,7 @@ const logger = createServiceLogger("codex-global-rollout-syncer");
 
 const DEBOUNCE_MS = 180;
 const POLL_INTERVAL_MS = 3_000;
+const ROLLOUT_STAT_CONCURRENCY = 16;
 const MAX_ROLLOUT_HEAD_BYTES = 128 * 1024;
 const PROJECT_SOURCE_PREFIX = "codez_project:";
 const UNCLASSIFIED_SOURCE = "codez_unclassified";
@@ -350,6 +351,23 @@ async function listRolloutFiles(
   return files;
 }
 
+async function mapBounded<T, R>(
+  items: readonly T[],
+  limit: number,
+  operation: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = Array.from({ length: items.length });
+  let next = 0;
+  async function worker(): Promise<void> {
+    while (next < items.length) {
+      const index = next++;
+      results[index] = await operation(items[index]!);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
 export interface CodexGlobalRolloutSyncer {
   start(): void;
   syncNow(): Promise<boolean>;
@@ -373,11 +391,13 @@ export function createCodexGlobalRolloutSyncer(options: {
   const cacheByPath = new Map<string, CachedRolloutFile>();
   let disposed = false;
   let watcher: FSWatcher | null = null;
+  let cachedThreadNames = new Map<string, string>();
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let pollTimer: ReturnType<typeof setInterval> | null = null;
   let running: Promise<boolean> | null = null;
   let queued = false;
   let lastIndexMtimeMs = -1;
+  let lastIndexSize = -1;
 
   const runOnce = async (): Promise<boolean> => {
     if (disposed) return false;
@@ -387,17 +407,26 @@ export function createCodexGlobalRolloutSyncer(options: {
     if (disposed) return false;
 
     let indexMtimeMs = -1;
+    let indexSize = -1;
     try {
-      indexMtimeMs = (await stat(join(codexHome, "session_index.jsonl"))).mtimeMs;
+      const indexStat = await stat(join(codexHome, "session_index.jsonl"));
+      indexMtimeMs = indexStat.mtimeMs;
+      indexSize = indexStat.size;
     } catch {
       indexMtimeMs = -1;
+      indexSize = -1;
     }
-    const indexChanged = indexMtimeMs !== lastIndexMtimeMs;
+    // 修复原因：原先写成 `indexChanged || files.length > 0` 导致只要本地存在任一 rollout 文件，
+    // 每次扫描都会无条件重读并逐行 JSON.parse 整个 session_index.jsonl。
+    // 现在仅当 session_index.jsonl 的 mtimeMs 或 size 变化时才重新读取并缓存映射。
+    const indexChanged = indexMtimeMs !== lastIndexMtimeMs || indexSize !== lastIndexSize;
     lastIndexMtimeMs = indexMtimeMs;
-    const threadNames =
-      indexChanged || files.length > 0
-        ? await readThreadNamesIndex(codexHome)
-        : new Map<string, string>();
+    lastIndexSize = indexSize;
+    if (indexChanged) {
+      cachedThreadNames =
+        indexMtimeMs >= 0 ? await readThreadNamesIndex(codexHome) : new Map<string, string>();
+    }
+    const threadNames = cachedThreadNames;
 
     const seenPaths = new Set<string>();
     const latestBySessionId = new Map<
@@ -405,32 +434,38 @@ export function createCodexGlobalRolloutSyncer(options: {
       { candidate: ParsedRolloutCandidate; changed: boolean; cacheEntries: CachedRolloutFile[] }
     >();
 
-    for (const file of files) {
-      if (disposed) return false;
-      seenPaths.add(file.path);
+    const inspectedFiles = await mapBounded(files, ROLLOUT_STAT_CONCURRENCY, async (file) => {
+      if (disposed) return null;
       let fileStat;
       try {
         fileStat = await stat(file.path);
       } catch {
-        continue;
+        return null;
       }
       const existing = cacheByPath.get(file.path);
-      let entry: CachedRolloutFile;
-      let fileChanged = false;
       if (existing && existing.mtimeMs === fileStat.mtimeMs && existing.size === fileStat.size) {
-        entry = existing;
-        fileChanged = !existing.synced || indexChanged;
-      } else {
-        const candidate = await parseRolloutCandidate(file.path, file.name, fileStat.mtimeMs);
-        entry = {
-          mtimeMs: fileStat.mtimeMs,
-          size: fileStat.size,
-          synced: false,
-          candidate,
+        return {
+          file,
+          entry: existing,
+          fileChanged: !existing.synced || indexChanged,
         };
-        cacheByPath.set(file.path, entry);
-        fileChanged = true;
       }
+      const candidate = await parseRolloutCandidate(file.path, file.name, fileStat.mtimeMs);
+      const entry: CachedRolloutFile = {
+        mtimeMs: fileStat.mtimeMs,
+        size: fileStat.size,
+        synced: false,
+        candidate,
+      };
+      return { file, entry, fileChanged: true };
+    });
+    if (disposed) return false;
+
+    for (const inspected of inspectedFiles) {
+      if (!inspected) continue;
+      const { file, entry, fileChanged } = inspected;
+      seenPaths.add(file.path);
+      cacheByPath.set(file.path, entry);
       if (!entry.candidate) {
         entry.synced = true;
         continue;
@@ -558,6 +593,21 @@ export function createCodexGlobalRolloutSyncer(options: {
     debounceTimer.unref?.();
   };
 
+  const startFallbackPoll = () => {
+    if (disposed || pollTimer) return;
+    pollTimer = setInterval(() => {
+      void ensureWatcher();
+      void sync(true).catch(() => {});
+    }, POLL_INTERVAL_MS);
+    pollTimer.unref?.();
+  };
+
+  const stopFallbackPoll = () => {
+    if (!pollTimer) return;
+    clearInterval(pollTimer);
+    pollTimer = null;
+  };
+
   const ensureWatcher = async () => {
     if (disposed || watcher) return;
     const codexHome = resolveCodexHome(options.env);
@@ -575,10 +625,14 @@ export function createCodexGlobalRolloutSyncer(options: {
           // ignore
         }
         watcher = null;
+        // recursive watch 异常退化时才启动轮询兜底，避免正常监听期间每 3 秒全量遍历。
+        startFallbackPoll();
       });
       watcher.unref?.();
+      stopFallbackPoll();
     } catch {
       // 平台不支持 recursive watch（如部分 Linux 内核）时由轻量轮询兜底
+      startFallbackPoll();
     }
   };
 
@@ -587,13 +641,6 @@ export function createCodexGlobalRolloutSyncer(options: {
       if (disposed) return;
       void ensureWatcher();
       void sync(true).catch(() => {});
-      if (!pollTimer) {
-        pollTimer = setInterval(() => {
-          void ensureWatcher();
-          void sync(true).catch(() => {});
-        }, POLL_INTERVAL_MS);
-        pollTimer.unref?.();
-      }
     },
     syncNow() {
       return sync(false);
@@ -602,8 +649,7 @@ export function createCodexGlobalRolloutSyncer(options: {
       disposed = true;
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = null;
-      if (pollTimer) clearInterval(pollTimer);
-      pollTimer = null;
+      stopFallbackPoll();
       try {
         watcher?.close();
       } catch {
@@ -611,6 +657,7 @@ export function createCodexGlobalRolloutSyncer(options: {
       }
       watcher = null;
       cacheByPath.clear();
+      cachedThreadNames.clear();
     },
   };
 }

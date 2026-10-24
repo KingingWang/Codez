@@ -11,11 +11,11 @@ import { DeletedThreadError, type ThreadStateStore } from "./thread-state.js";
 import type { InteractionBroker } from "./interactions.js";
 import { readControlModelSettings, readControlPresentation } from "./control-presentation.js";
 import { projectThreadMode } from "./command-input.js";
-import { projectThread, projectSessionsIndex } from "./projection.js";
+import { parseCodexThreadIncremental, projectThread, projectSessionsIndex } from "./projection.js";
 import { array, object } from "./json.js";
 import { projectTurnFileChanges } from "./file-changes.js";
 import { itemEntityId } from "./projection-rows.js";
-import { codexThreadSchema, codexUserInputSchema } from "./codex-types.js";
+import { codexUserInputSchema, type CodexTurn } from "./codex-types.js";
 import { projectOwnedInput } from "./native-file-projection.js";
 import { projectConversationTailWindow } from "./projection-window.js";
 import { subagentsStateFromRows } from "./subagent-projection.js";
@@ -48,6 +48,21 @@ export class BridgeSnapshots {
     { epoch: string; rows: ConversationSnapshot["rows"]["window"] }
   >();
   private readonly revertedTurns = new Map<string, Set<string>>();
+  /**
+   * 已完成 turn 的附件与图片文件名投影缓存：避免流式期间每个快照都重跑整段历史的
+   * projectOwnedInput / findNativeAttachment / findNativeImageAttachment。
+   */
+  private readonly settledTurnAttachmentCache = new WeakMap<
+    CodexTurn,
+    {
+      sessionId: string;
+      itemsRef: CodexTurn["items"];
+      itemsLength: number;
+      turn: CodexTurn;
+      userProjections: Array<[string, Awaited<ReturnType<typeof projectOwnedInput>>]>;
+      imageViewFileNames: Array<[string, string]>;
+    }
+  >();
 
   constructor(
     private readonly context: BridgeControlContext,
@@ -115,7 +130,7 @@ export class BridgeSnapshots {
     const userProjections = new Map<string, Awaited<ReturnType<typeof projectOwnedInput>>>();
     const queueProjections = new Map<string, Awaited<ReturnType<typeof projectOwnedInput>>>();
     const imageViewFileNames = new Map<string, string>();
-    const nativeThread = attachmentStore ? codexThreadSchema.parse(state.thread) : undefined;
+    const nativeThread = attachmentStore ? parseCodexThreadIncremental(state.thread) : undefined;
     // 原因：原生模型输入可包含多份完整内联文件，原始正文在剥离附件前可能超过 UI 单行预算。
     // 先按会话所有权逐项校验并派生展示文本，避免历史规模超过 store 的并发操作上限；
     // 再让纯投影执行行预算。只复制本次快照输入，不修改原生事实或另存队列。
@@ -123,20 +138,43 @@ export class BridgeSnapshots {
     if (attachmentStore && nativeThread) {
       const turns: typeof nativeThread.turns = [];
       for (const turn of nativeThread.turns) {
-        const items: typeof turn.items = [];
-        for (const item of turn.items) {
+        if (state.sideChat?.inheritedTurnIds.has(turn.id)) {
+          turns.push(turn);
+          continue;
+        }
+        const canCacheTurn = turn.status !== "inProgress";
+        if (canCacheTurn) {
+          const cachedTurn = this.settledTurnAttachmentCache.get(turn);
           if (
-            item.type === "imageView" &&
-            typeof item.path === "string" &&
-            !state.sideChat?.inheritedTurnIds.has(turn.id)
+            cachedTurn &&
+            cachedTurn.sessionId === id &&
+            cachedTurn.itemsRef === turn.items &&
+            cachedTurn.itemsLength === turn.items.length
           ) {
+            for (const [key, value] of cachedTurn.userProjections) userProjections.set(key, value);
+            for (const [key, value] of cachedTurn.imageViewFileNames)
+              imageViewFileNames.set(key, value);
+            turns.push(cachedTurn.turn);
+            continue;
+          }
+        }
+        const items: typeof turn.items = [];
+        const turnUserProjections: Array<[string, Awaited<ReturnType<typeof projectOwnedInput>>]> =
+          [];
+        const turnImageViewFileNames: Array<[string, string]> = [];
+        let changedItems = false;
+        for (const item of turn.items) {
+          if (item.type === "imageView" && typeof item.path === "string") {
             const owned = await attachmentStore.findNativeAttachment(item.path, id);
-            if (owned?.fileName)
-              imageViewFileNames.set(itemEntityId(turn.id, item.id), owned.fileName);
+            if (owned?.fileName) {
+              const entityKey = itemEntityId(turn.id, item.id);
+              imageViewFileNames.set(entityKey, owned.fileName);
+              turnImageViewFileNames.push([entityKey, owned.fileName]);
+            }
             items.push(item);
             continue;
           }
-          if (item.type !== "userMessage" || state.sideChat?.inheritedTurnIds.has(turn.id)) {
+          if (item.type !== "userMessage") {
             items.push(item);
             continue;
           }
@@ -145,13 +183,28 @@ export class BridgeSnapshots {
             id,
             attachmentStore,
           );
-          userProjections.set(itemEntityId(turn.id, item.id), projected);
+          const entityKey = itemEntityId(turn.id, item.id);
+          userProjections.set(entityKey, projected);
+          turnUserProjections.push([entityKey, projected]);
+          changedItems = true;
           items.push({
             ...item,
             content: [{ type: "text", text: projected.text, text_elements: [] }],
           });
         }
-        turns.push({ ...turn, items });
+        // 若该轮次没有任何 userMessage 改写，直接保留原 turn 引用，使下游 settledTurnRowsCache 命中 WeakMap。
+        const projectedTurn = changedItems ? { ...turn, items } : turn;
+        if (canCacheTurn) {
+          this.settledTurnAttachmentCache.set(turn, {
+            sessionId: id,
+            itemsRef: turn.items,
+            itemsLength: turn.items.length,
+            turn: projectedTurn,
+            userProjections: turnUserProjections,
+            imageViewFileNames: turnImageViewFileNames,
+          });
+        }
+        turns.push(projectedTurn);
       }
       presentationThread = { ...nativeThread, turns };
     }
@@ -265,26 +318,42 @@ export class BridgeSnapshots {
         queueItem.attachments = projected.refs;
       }
     }
+    // 预构建 turnId → turn 索引，将 turnHeader 遍历中的线性查找 O(Turns²) 降为 O(1)。
+    const rawTurns = array(state.thread.turns);
+    const turnsById = new Map<
+      string,
+      { id: string; status?: unknown; items?: unknown; changes?: unknown; tokenUsage?: unknown }
+    >();
+    for (const candidate of rawTurns) {
+      if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) {
+        const turnObj = candidate as {
+          id?: unknown;
+          status?: unknown;
+          items?: unknown;
+          changes?: unknown;
+          tokenUsage?: unknown;
+        };
+        if (typeof turnObj.id === "string") {
+          turnsById.set(turnObj.id, turnObj as { id: string });
+        }
+      }
+    }
+    const lastTurnEntry = rawTurns.at(-1);
+    const lastTurnId =
+      lastTurnEntry && typeof lastTurnEntry === "object" && !Array.isArray(lastTurnEntry)
+        ? (lastTurnEntry as { id?: unknown }).id
+        : undefined;
     for (const row of snapshot.rows.window) {
       if (idle && row.kind === "assistantText") row.actions = { canFork: true };
       if (idle && !writerConflict && row.kind === "userInput")
         row.actions = { canEdit: true, canRetry: true, editDisposition: "rewind" };
       if (row.kind === "turnHeader") {
-        const turn = array(state.thread.turns)
-          .map(object)
-          .find((candidate) => candidate.id === row.turnId) as
-          | { id: string; changes?: unknown; tokenUsage?: unknown }
-          | undefined;
+        const turn = turnsById.get(row.turnId);
         // 修复原因：快照编码的 attachments 投影会让出 await，期间 editUserQuery/compact
         // 触发的 reloadAfterHistoryChange 会把 state.thread.turns 清空；行投影来自编码前
         // 拷贝的 presentationThread，turnHeader 仍在而 turns 已空。此处用 object() 强断言
         // 会抛 "Expected a JSON object" 并使整个 bridge 连接崩溃（原生冒烟因此失败）。
         // lastTurnId 只作 tokenUsage 兜底匹配，取不到时安全降级为不可匹配。
-        const lastTurnEntry = array(state.thread.turns).at(-1);
-        const lastTurnId =
-          lastTurnEntry && typeof lastTurnEntry === "object" && !Array.isArray(lastTurnEntry)
-            ? (lastTurnEntry as { id?: unknown }).id
-            : undefined;
         const rawTurnUsage =
           state.turnTokenUsage?.[row.turnId] ??
           turn?.tokenUsage ??
@@ -391,7 +460,7 @@ export class BridgeSnapshots {
       return { snapshot, seq: snapshot.seq, logEpoch: snapshot.logEpoch };
     }
     if (topic === `sessions-index/${this.workspaceId}`) {
-      const threads = await this.store.list();
+      const threads = await this.store.consumeDiscoveredListOrScan();
       return {
         snapshot: projectSessionsIndex(threads, {
           workspacePath: this.store.cwd,

@@ -35,6 +35,69 @@ import {
   subagentRow,
   subagentRowAnchors,
 } from "./subagent-projection.js";
+import { codexTurnSchema } from "./codex-types.js";
+
+/**
+ * 单个已完成且无挂载交互的 CodexTurn 的纯投影行缓存（rowId 从 0 起算）。
+ * 原生事件流对 inProgress turn 原地修改 items（applyNativeItemLifecycle / applyNativeItemDelta），
+ * 所以只缓存终态（completed / interrupted / failed）且当前无挂载 pendingInteraction 的 turn；
+ * 并且校验 cached.items === turn.items 和 cached.itemsLength === turn.items.length。
+ */
+const settledTurnRowsCache = new WeakMap<
+  CodexTurn,
+  {
+    threadCreatedAt: number;
+    items: CodexTurn["items"];
+    itemsLength: number;
+    rows: ConversationRow[];
+  }
+>();
+const parsedTurnByRaw = new WeakMap<
+  object,
+  { itemsRef: unknown; itemsLength: number; parsed: CodexTurn }
+>();
+const validatedTurns = new WeakMap<
+  CodexTurn,
+  { itemsRef: CodexTurn["items"]; itemsLength: number }
+>();
+
+/** 对单个 turn 做幂等 schema 校验：同一引用已校验且为终态时直接复用。 */
+export function parseCodexTurnCached(turn: unknown): CodexTurn {
+  if (turn && typeof turn === "object") {
+    const rawObj = turn as { status?: unknown; items?: unknown };
+    const rawItems = Array.isArray(rawObj.items) ? rawObj.items : undefined;
+    if (rawObj.status !== "inProgress" && rawItems) {
+      const validated = validatedTurns.get(turn as CodexTurn);
+      if (
+        validated &&
+        validated.itemsRef === rawItems &&
+        validated.itemsLength === rawItems.length
+      ) {
+        return turn as CodexTurn;
+      }
+      const cached = parsedTurnByRaw.get(turn);
+      if (cached && cached.itemsRef === rawItems && cached.itemsLength === rawItems.length) {
+        return cached.parsed;
+      }
+    }
+  }
+  const parsed = codexTurnSchema.parse(turn);
+  if (parsed.status !== "inProgress" && turn && typeof turn === "object") {
+    const rawItems = Array.isArray((turn as { items?: unknown }).items)
+      ? (turn as { items: unknown[] }).items
+      : parsed.items;
+    parsedTurnByRaw.set(turn, {
+      itemsRef: rawItems,
+      itemsLength: rawItems.length,
+      parsed,
+    });
+    validatedTurns.set(parsed, {
+      itemsRef: parsed.items,
+      itemsLength: parsed.items.length,
+    });
+  }
+  return parsed;
+}
 
 /** Explicit textual fallbacks: no fake attachment refs, byte counts or MIME facts. */
 export function projectInputText(input: readonly CodexUserInput[]): string {
@@ -294,6 +357,115 @@ function itemRow(
   }
 }
 
+function projectSingleTurnRows(
+  turn: CodexTurn,
+  threadCreatedAt: number,
+  turnInteractions: readonly PendingInteraction[],
+  subagentAnchors: ReadonlyMap<string, ReturnType<typeof collectSubagentFacts>>,
+): ConversationRow[] {
+  const canCache =
+    turn.status !== "inProgress" && turnInteractions.length === 0 && subagentAnchors.size === 0;
+  if (canCache) {
+    const cached = settledTurnRowsCache.get(turn);
+    if (
+      cached &&
+      cached.threadCreatedAt === threadCreatedAt &&
+      cached.items === turn.items &&
+      cached.itemsLength === turn.items.length
+    ) {
+      return cached.rows;
+    }
+  }
+
+  const turnRows: ConversationRow[] = [];
+  const createdAt = (turn.startedAt ?? threadCreatedAt) * 1000;
+  const base = {
+    turnId: turn.id,
+    productTurnId: turn.id,
+    createdAt,
+    createdAtSeq: 0,
+    visibility: "visible" as const,
+  };
+  const source = turn.items.filter(isCodexKnownItem).find((item) => item.type === "userMessage");
+  const entityIds = new Set<string>();
+  turnRows.push(
+    assertRowBudget(
+      conversationRowSchema.parse({
+        ...base,
+        rowId: 0,
+        entityId: `codex:turn:${encodeURIComponent(turn.id)}`,
+        kind: "turnHeader",
+        origin: "userInput",
+        executionKind: "agent",
+        startedAt: createdAt,
+        ...(turn.completedAt != null ? { endedAt: turn.completedAt * 1000 } : {}),
+        ...(source?.type === "userMessage" && source.clientId
+          ? { sourceCommandId: source.clientId }
+          : {}),
+        state:
+          turn.status === "inProgress"
+            ? "running"
+            : turn.status === "completed"
+              ? "completedSuccess"
+              : turn.status === "interrupted"
+                ? "completedInterrupted"
+                : "failed",
+      }),
+    ),
+  );
+  for (const [itemIndex, item] of turn.items.entries()) {
+    if (entityIds.has(item.id)) {
+      // 原生协议按 turn 限定 itemId；同一 turn 内重复仍表示损坏历史，必须失败。
+      throw new Error(`Duplicate Codex item ID in turn ${turn.id}: ${item.id}`);
+    }
+    entityIds.add(item.id);
+    if (isCodexKnownItem(item) && isHiddenContinuationUserMessage(item)) {
+      continue;
+    }
+    turnRows.push(
+      assertRowBudget(
+        conversationRowSchema.parse(
+          itemRow(
+            item,
+            turn,
+            {
+              ...base,
+              rowId: turnRows.length,
+              entityId: itemEntityId(turn.id, item.id),
+            },
+            turnInteractions,
+            itemIndex === turn.items.length - 1,
+          ),
+        ),
+      ),
+    );
+    // subagent 行紧跟锚点 item（spawn 优先）：UI 的配对要求同 turnId + parentToolCallId，
+    // 配对成功后该行不单独渲染，只把「打开子会话」入口挂到 agent 卡片上。
+    for (const fact of subagentAnchors.get(`${turn.id}\u0000${item.id}`) ?? []) {
+      turnRows.push(
+        assertRowBudget(
+          conversationRowSchema.parse(
+            subagentRow(fact, {
+              ...base,
+              rowId: turnRows.length,
+              entityId: subagentEntityId(fact.childThreadId),
+            }),
+          ),
+        ),
+      );
+    }
+  }
+  if (canCache) {
+    settledTurnRowsCache.set(turn, {
+      threadCreatedAt,
+      items: turn.items,
+      itemsLength: turn.items.length,
+      rows: turnRows,
+    });
+  }
+  return turnRows;
+}
+
 /** Whole-history ordinals, not deltas. Insert/remove/reorder requires a new caller-owned epoch.
  * createdAtSeq=0 means hydrated before the live stream, never an invented event sequence.
  * Missing item/turn timestamps fall back to thread.createdAt for display only.
@@ -316,82 +488,20 @@ export function projectRows(
       throw new Error("Codex conversation projection requires full turn items");
     if (turnIds.has(turn.id)) throw new Error(`Duplicate Codex turn ID: ${turn.id}`);
     turnIds.add(turn.id);
-    const createdAt = (turn.startedAt ?? thread.createdAt) * 1000;
-    const base = {
-      turnId: turn.id,
-      productTurnId: turn.id,
-      createdAt,
-      createdAtSeq: 0,
-      visibility: "visible" as const,
-    };
-    const source = turn.items.filter(isCodexKnownItem).find((item) => item.type === "userMessage");
-    const entityIds = new Set<string>();
-    rows.push(
-      assertRowBudget(
-        conversationRowSchema.parse({
-          ...base,
-          rowId: rows.length,
-          entityId: `codex:turn:${encodeURIComponent(turn.id)}`,
-          kind: "turnHeader",
-          origin: "userInput",
-          executionKind: "agent",
-          startedAt: createdAt,
-          ...(turn.completedAt != null ? { endedAt: turn.completedAt * 1000 } : {}),
-          ...(source?.type === "userMessage" && source.clientId
-            ? { sourceCommandId: source.clientId }
-            : {}),
-          state:
-            turn.status === "inProgress"
-              ? "running"
-              : turn.status === "completed"
-                ? "completedSuccess"
-                : turn.status === "interrupted"
-                  ? "completedInterrupted"
-                  : "failed",
-        }),
-      ),
+    const turnInteractions =
+      interactions.length === 0
+        ? interactions
+        : interactions.filter(
+            (interaction) => interaction.turnId === undefined || interaction.turnId === turn.id,
+          );
+    const turnRows = projectSingleTurnRows(
+      turn,
+      thread.createdAt,
+      turnInteractions,
+      subagentAnchors,
     );
-    for (const [itemIndex, item] of turn.items.entries()) {
-      if (entityIds.has(item.id)) {
-        // 原生协议按 turn 限定 itemId；同一 turn 内重复仍表示损坏历史，必须失败。
-        throw new Error(`Duplicate Codex item ID in turn ${turn.id}: ${item.id}`);
-      }
-      entityIds.add(item.id);
-      if (isCodexKnownItem(item) && isHiddenContinuationUserMessage(item)) {
-        continue;
-      }
-      rows.push(
-        assertRowBudget(
-          conversationRowSchema.parse(
-            itemRow(
-              item,
-              turn,
-              {
-                ...base,
-                rowId: rows.length,
-                entityId: itemEntityId(turn.id, item.id),
-              },
-              interactions,
-              itemIndex === turn.items.length - 1,
-            ),
-          ),
-        ),
-      );
-      // subagent 行紧跟锚点 item（spawn 优先）：UI 的配对要求同 turnId + parentToolCallId，
-      // 配对成功后该行不单独渲染，只把「打开子会话」入口挂到 agent 卡片上。
-      for (const fact of subagentAnchors.get(`${turn.id}\u0000${item.id}`) ?? []) {
-        rows.push(
-          assertRowBudget(
-            conversationRowSchema.parse(
-              subagentRow(fact, {
-                ...base,
-                rowId: rows.length,
-                entityId: subagentEntityId(fact.childThreadId),
-              }),
-            ),
-          ),
-        );
-      }
+    for (const row of turnRows) {
+      rows.push(row.rowId === rows.length ? row : { ...row, rowId: rows.length });
     }
   }
   return rows;

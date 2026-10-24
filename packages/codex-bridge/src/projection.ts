@@ -16,7 +16,7 @@ import {
 } from "@codez/shared/codez-protocol-v4";
 import { codexThreadSchema, isCodexKnownItem, type CodexThread } from "./codex-types.js";
 import { projectOriginFromSource } from "./project-origin.js";
-import { projectRows } from "./projection-rows.js";
+import { parseCodexTurnCached, projectRows } from "./projection-rows.js";
 import { isSelectionSideChatThread } from "./selection-side-chat.js";
 import { projectQueue, type QueueAdmissionFacts } from "./projection-queue.js";
 import { nativeThreadTitle } from "./native-thread-title.js";
@@ -58,6 +58,16 @@ export interface SessionsIndexOptions {
 
 const nonempty = z.string().trim().min(1);
 const watermark = z.number().int().nonnegative();
+const codexThreadHeaderSchema = codexThreadSchema.omit({ turns: true });
+
+/** 增量校验 CodexThread：已完成且未变的 turn 复用 parseCodexTurnCached，避免流式期间每帧全历史重跑 Zod。 */
+export function parseCodexThreadIncremental(thread: unknown): CodexThread {
+  const raw = thread && typeof thread === "object" ? (thread as { turns?: unknown }) : undefined;
+  if (!raw || !Array.isArray(raw.turns)) return codexThreadSchema.parse(thread);
+  const header = codexThreadHeaderSchema.parse(thread);
+  const turns = raw.turns.map((turn) => parseCodexTurnCached(turn));
+  return { ...header, turns };
+}
 
 function workspaceKey(
   options: Pick<SessionsIndexOptions, "workspacePath" | "workspaceId" | "workspaceIdentity">,
@@ -171,7 +181,7 @@ export function projectThread(
   thread: unknown,
   options: ProjectThreadOptions,
 ): ConversationSnapshot {
-  const source = codexThreadSchema.parse(thread);
+  const source = parseCodexThreadIncremental(thread);
   workspaceKey(options);
   const seq = watermark.parse(options.seq ?? 0);
   const revision = watermark.parse(options.revision ?? 0);
@@ -255,7 +265,7 @@ export function projectThread(
 }
 
 export function projectSessionSummary(thread: unknown, workspacePath: string): SessionSummary {
-  const source = codexThreadSchema.parse(thread);
+  const source = parseCodexThreadIncremental(thread);
   const state = control(source);
   const lastAssistant = source.turns
     .flatMap((turn) => turn.items)
@@ -284,7 +294,7 @@ export function projectSessionSummary(thread: unknown, workspacePath: string): S
 /** Canonical native thread-list input: validate every record, then retain one newest record
  * per native thread ID. Equal timestamps keep the first encountered record and first position. */
 export function canonicalNativeThreads(threads: readonly unknown[]): unknown[] {
-  const parsed = threads.map((thread) => codexThreadSchema.parse(thread));
+  const parsed = threads.map((thread) => parseCodexThreadIncremental(thread));
   const winner = new Map<string, { thread: CodexThread; updatedAt: number }>();
   const order: string[] = [];
   for (const thread of parsed) {

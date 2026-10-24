@@ -224,6 +224,14 @@ test("queryCodexAppUsageStats aggregates rollout per-turn model usage and SQLite
     assert.equal(snapshot30d.models.length, 3);
     assert.equal(snapshot30d.models[0]?.modelId, "claude-opus-5");
     assert.equal(snapshot30d.models[0]?.totalTokens, 5000);
+
+    // Concurrent all + 7d queries coalesce in-flight rollout reads and produce consistent totals
+    const [concurrentAll, concurrent7d] = await Promise.all([
+      queryCodexAppUsageStats({ range: "all", timeZone: "UTC" }, { env, now }),
+      queryCodexAppUsageStats({ range: "7d", timeZone: "UTC" }, { env, now }),
+    ]);
+    assert.equal(concurrentAll.summary.totalTokens, 8500);
+    assert.equal(concurrent7d.summary.totalTokens, 3500);
   } finally {
     await rm(codexHome, { recursive: true, force: true });
   }

@@ -12,7 +12,18 @@ import {
 import { attachmentFault, type ResolvedAttachment } from "./attachments-types.js";
 
 const PREFIX = "codez-attachment://";
+const DIGEST_CACHE_LIMIT = 64;
+const IMAGE_LOOKUP_CACHE_LIMIT = 256;
 const idPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+type ImageDigestResult = {
+  checksum: string;
+  bytes: number;
+  data: Buffer;
+  mime: string;
+  fileName: string;
+};
+const imageDigestCache = new Map<string, ImageDigestResult>();
 const metadataSchema = z
   .object({
     version: z.literal(1),
@@ -65,11 +76,15 @@ async function readBounded(file: FileHandle, maxBytes: number): Promise<Buffer> 
   throw attachmentFault("previewTooLarge");
 }
 
-function imageDigest(
-  url: string,
-): { checksum: string; bytes: number; data: Buffer; mime: string; fileName: string } | undefined {
+function imageDigest(url: string): ImageDigestResult | undefined {
   const maxEncoded = 4 * Math.ceil(LIMITS.attachmentMaxBytes / 3);
   if (typeof url !== "string" || url.length > maxEncoded + 256) return undefined;
+  const cached = imageDigestCache.get(url);
+  if (cached) {
+    imageDigestCache.delete(url);
+    imageDigestCache.set(url, cached);
+    return cached;
+  }
   const comma = url.indexOf(",");
   if (comma < 0 || comma > 255) return undefined;
   const header = /^data:image\/(png|jpeg|webp|gif);base64$/i.exec(url.slice(0, comma));
@@ -85,13 +100,18 @@ function imageDigest(
     bytes.toString("base64") !== encoded
   )
     return undefined;
-  return {
+  const result: ImageDigestResult = {
     checksum: `sha256:${createHash("sha256").update(bytes).digest("hex")}`,
     bytes: bytes.length,
     data: bytes,
     mime: `image/${kind}`,
     fileName: `native-image.${kind}`,
   };
+  imageDigestCache.set(url, result);
+  if (imageDigestCache.size > DIGEST_CACHE_LIMIT) {
+    imageDigestCache.delete(imageDigestCache.keys().next().value!);
+  }
+  return result;
 }
 
 function isMissingOrUnowned(error: unknown): boolean {
@@ -103,6 +123,8 @@ export class AttachmentFiles {
   readonly root: string;
   private readonly workspace: string;
   private readonly boundary: string;
+  /** (sessionId, checksum, bytes) → 已校验的候选 id（读取时仍通过 resolve 校验磁盘与完整性）。 */
+  private readonly imageLookupCache = new Map<string, string>();
   constructor(cwd: string, root?: string) {
     this.root = resolve(cwd, root ?? ".codez/codex-bridge/attachments");
     if (this.root === parse(this.root).root || this.root === resolve(cwd))
@@ -160,12 +182,27 @@ export class AttachmentFiles {
       }
       await rename(path, blob);
       await rename(temporary, manifest);
+      // 新上传可能提供字典序更小的 id 或影响对象目录；使当前 session 的查找缓存失效，
+      // 让首次 findNativeImageAttachment 通过一次受预算限制的扫描确立权威候选，后续快照直接复用。
+      if (upload.mime.toLowerCase().startsWith("image/")) {
+        this.imageLookupCache.delete(
+          `${upload.sessionId}\u0000${upload.checksum}\u0000${upload.totalBytes}`,
+        );
+      }
     } catch (error) {
       await unlink(temporary).catch(() => {});
       await unlink(blob).catch(() => {});
       throw error;
     }
     return `${PREFIX}${id}`;
+  }
+
+  private rememberImageCandidate(cacheKey: string, id: string): void {
+    this.imageLookupCache.delete(cacheKey);
+    this.imageLookupCache.set(cacheKey, id);
+    if (this.imageLookupCache.size > IMAGE_LOOKUP_CACHE_LIMIT) {
+      this.imageLookupCache.delete(this.imageLookupCache.keys().next().value!);
+    }
   }
 
   async findNativeAttachment(
@@ -202,6 +239,24 @@ export class AttachmentFiles {
     const digest = imageDigest(url);
     if (!digest) return undefined;
     await this.prepare();
+    const cacheKey = `${sessionId}\u0000${digest.checksum}\u0000${digest.bytes}`;
+    const cachedId = this.imageLookupCache.get(cacheKey);
+    if (cachedId) {
+      try {
+        const found = await this.resolve(`${PREFIX}${cachedId}`, sessionId);
+        if (
+          found.checksum === digest.checksum &&
+          found.bytes === digest.bytes &&
+          found.mime.startsWith("image/")
+        ) {
+          this.rememberImageCandidate(cacheKey, cachedId);
+          return { ref: found.ref, fileName: found.fileName, mime: found.mime, bytes: found.bytes };
+        }
+      } catch (error) {
+        this.imageLookupCache.delete(cacheKey);
+        if (!isMissingOrUnowned(error)) throw error;
+      }
+    }
     const candidates: string[] = [];
     let entries = 0;
     // 原生历史会把 localImage 改写为 data URL，不能依赖路径或内存缓存恢复预览。
@@ -231,8 +286,10 @@ export class AttachmentFiles {
           found.checksum === digest.checksum &&
           found.bytes === digest.bytes &&
           found.mime.startsWith("image/")
-        )
+        ) {
+          this.rememberImageCandidate(cacheKey, id);
           return { ref: found.ref, fileName: found.fileName, mime: found.mime, bytes: found.bytes };
+        }
       } catch (error) {
         if (!isMissingOrUnowned(error)) throw error;
       }
@@ -262,6 +319,8 @@ export class AttachmentFiles {
         await staged.file.close();
       }
       const ref = await this.publish(staged.path, upload, true);
+      const derivedId = ref.slice(PREFIX.length);
+      this.rememberImageCandidate(cacheKey, derivedId);
       return { ref, fileName: digest.fileName, mime: digest.mime, bytes: digest.bytes };
     } catch (error) {
       await this.discard(staged.path);
