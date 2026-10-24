@@ -2820,7 +2820,12 @@ function ConversationComposerImpl({
           </span>
         ) : null}
         {remoteAvailable ? (
-          <span className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden empty:hidden">
+          <span
+            className={cn(
+              "flex min-w-0 items-center gap-1 overflow-hidden empty:hidden",
+              codexModelCatalog && layout !== "inline" ? "flex-1" : "shrink",
+            )}
+          >
             {/* 扩展插槽 composer.status：紧挨用量圆环左边（docs/plugins/extension-host.md §6）。
                 作用域用有效会话：草稿取预热会话，与插件 UI 同一来源。 */}
             <ComposerStatusSlot
@@ -2953,6 +2958,7 @@ function ConversationComposerImpl({
       highspeedPresented,
       highspeedSweepActive,
       isWebRemoteControl,
+      layout,
       mode,
       handleSelectModelTrace,
       modelSelectionReload,
