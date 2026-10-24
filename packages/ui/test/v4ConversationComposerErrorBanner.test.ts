@@ -216,9 +216,8 @@ function renderComposerWithSnapshot(
 }
 
 describe("Codex runtime notices", () => {
-  it("renders snapshot notices without replacing the composer error or input surface", () => {
-    const html = renderComposerWithSnapshot({
-      ...makeSnapshot(),
+  it("ignores retired notice fields from an older Host without replacing the input surface", () => {
+    const snapshot = Object.assign(makeSnapshot(), {
       runtimeNotices: [
         { id: "n1", kind: "warning", message: "native <warning>", at: 1 },
         {
@@ -232,8 +231,10 @@ describe("Codex runtime notices", () => {
         },
       ],
     });
-    expect(html).toContain("native &lt;warning&gt;");
-    expect(html).toContain("authentication recovered");
+    const html = renderComposerWithSnapshot(snapshot);
+    expect(html).not.toContain("native &lt;warning&gt;");
+    expect(html).not.toContain("authentication recovered");
+    expect(html).not.toContain("v4-codex-runtime-notice");
     expect(html).toContain('data-testid="mock-chat-prompt-editor"');
     expect(html).not.toContain("<warning>");
   });
