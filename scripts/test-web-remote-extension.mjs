@@ -25,6 +25,7 @@ test("Manifest V3 规则仅改写 Origin，页面级重定向交给 content scri
   assert.ok(originRule.condition.resourceTypes.includes("xmlhttprequest"));
 
   const contentScript = createWebRemoteExtensionContentScript();
+  assert.ok(contentScript.includes("setAttribute('data-codez-browser-extension', 'true')"));
   assert.ok(contentScript.includes("codez-redirect-to-extension"));
   assert.ok(contentScript.includes("loc.search"));
   assert.ok(contentScript.includes("loc.hash"));
@@ -32,6 +33,7 @@ test("Manifest V3 规则仅改写 Origin，页面级重定向交给 content scri
   const backgroundScript = createWebRemoteExtensionBackgroundScript();
   assert.ok(backgroundScript.includes("codez-redirect-to-extension"));
   assert.ok(backgroundScript.includes("resolveExtensionRedirectTarget"));
+  assert.ok(backgroundScript.includes("injectExtensionMarkerAndRedirectExistingTabs"));
 });
 
 test("stageWebRemoteExtensionFromDist 提取内联脚本并生成完整扩展目录与 zip 包", async () => {
