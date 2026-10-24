@@ -36,6 +36,16 @@ export interface CodexBridgeNativeStderrSummary {
   categories: CodexBridgeNativeStderrCategory[];
 }
 
+export interface CodexBridgeRuntimeNoticeDiagnostic {
+  kind: "warning" | "configWarning" | "deprecationNotice" | "guardianWarning" | "authRecovery";
+  message: string;
+  detail?: string;
+  threadId?: string;
+  turnId?: string;
+  provider?: string;
+  phase?: "started" | "completed";
+}
+
 // 两份白名单必须与 packages/codex-bridge/src/session-title.ts 的 SkipStage / SkipReason
 // 及 generate() 的失败阶段同步；不在闭合词汇内的行按不可信 stderr 丢弃，不进生产日志。
 const FAILED =
@@ -48,6 +58,24 @@ const OVERSIZED_FRAME =
   /^Codex desktop bridge warn: oversized native frame; kind=(response|request|notification|unknown); method=([A-Za-z0-9_/-]{1,64}); observedBytes=(\d{1,15})$/;
 const NATIVE_STDERR_SUMMARY =
   /^Codex desktop bridge warn: native stderr summary; exitCode=(null|\d{1,10}); signal=(null|[A-Z]{1,15}); lineCount=(\d{1,10}); byteCount=(\d{1,16}); truncated=(true|false); level=(trace|debug|info|warn|error|unknown); target=(none|(?:[a-z0-9_]+::){1,5}[a-z0-9_]+); categories=(none|[a-z-]+(?:,[a-z-]+)*)$/;
+const RUNTIME_NOTICE_PREFIX = "Codex desktop bridge warn: runtime notice; payload=";
+const RUNTIME_NOTICE_MAX_PAYLOAD_CHARS = 160_000;
+const RUNTIME_NOTICE_KINDS = new Set<CodexBridgeRuntimeNoticeDiagnostic["kind"]>([
+  "warning",
+  "configWarning",
+  "deprecationNotice",
+  "guardianWarning",
+  "authRecovery",
+]);
+const RUNTIME_NOTICE_FIELDS = new Set([
+  "kind",
+  "message",
+  "detail",
+  "threadId",
+  "turnId",
+  "provider",
+  "phase",
+]);
 // 与 bridge main.ts 的生产输出闭合词汇一致，禁止把未验证 stderr 当日志透传。
 const FRAME_METHODS = new Set([
   "initialize",
@@ -140,4 +168,69 @@ export function parseCodexBridgeNativeStderrSummary(
     target: match[7]!,
     categories,
   };
+}
+
+function runtimeNoticeText(value: unknown, maxChars: number): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const text = value.trim();
+  return text && text.length <= maxChars ? text : undefined;
+}
+
+export function parseCodexBridgeRuntimeNoticeDiagnostic(
+  line: string,
+): CodexBridgeRuntimeNoticeDiagnostic | undefined {
+  if (!line.startsWith(RUNTIME_NOTICE_PREFIX)) return undefined;
+  const payload = line.slice(RUNTIME_NOTICE_PREFIX.length);
+  if (!payload || payload.length > RUNTIME_NOTICE_MAX_PAYLOAD_CHARS) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(payload);
+  } catch {
+    return undefined;
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return undefined;
+  const record = parsed as Record<string, unknown>;
+  if (Object.keys(record).some((key) => !RUNTIME_NOTICE_FIELDS.has(key))) return undefined;
+  const kind = record.kind;
+  if (
+    typeof kind !== "string" ||
+    !RUNTIME_NOTICE_KINDS.has(kind as CodexBridgeRuntimeNoticeDiagnostic["kind"])
+  )
+    return undefined;
+  const message = runtimeNoticeText(record.message, 4_096);
+  if (!message) return undefined;
+  const has = (key: string) => Object.hasOwn(record, key);
+  const detail = has("detail") ? runtimeNoticeText(record.detail, 16_384) : undefined;
+  const threadId = has("threadId") ? runtimeNoticeText(record.threadId, 1_024) : undefined;
+  const turnId = has("turnId") ? runtimeNoticeText(record.turnId, 1_024) : undefined;
+  const provider = has("provider") ? runtimeNoticeText(record.provider, 160) : undefined;
+  if (
+    (has("detail") && !detail) ||
+    (has("threadId") && !threadId) ||
+    (has("turnId") && !turnId) ||
+    (has("provider") && !provider)
+  )
+    return undefined;
+  const phase = record.phase;
+  if (has("phase") && phase !== "started" && phase !== "completed") return undefined;
+
+  if (kind === "configWarning" || kind === "deprecationNotice") {
+    if (threadId || turnId || provider || phase) return undefined;
+    return { kind, message, ...(detail ? { detail } : {}) };
+  }
+  if (kind === "warning" || kind === "guardianWarning") {
+    if (detail || turnId || provider || phase || (kind === "guardianWarning" && !threadId))
+      return undefined;
+    return { kind, message, ...(threadId ? { threadId } : {}) };
+  }
+  if (
+    kind !== "authRecovery" ||
+    !threadId ||
+    !turnId ||
+    !provider ||
+    detail ||
+    (phase !== "started" && phase !== "completed")
+  )
+    return undefined;
+  return { kind, message, threadId, turnId, provider, phase };
 }

@@ -141,6 +141,12 @@ async function main(): Promise<void> {
     stateRoot,
     officialMarketplaceRoot: join(bridgeHome, "official-codex-marketplace"),
     notify: (method, params) => write({ method, params }),
+    logRuntimeNotice: (notice) => {
+      // 只输出 Host 白名单可解析的 JSON 诊断；配置路径不会进入该记录。
+      process.stderr.write(
+        `Codex desktop bridge warn: runtime notice; payload=${JSON.stringify(notice)}\n`,
+      );
+    },
     fatal,
     nativeBrowserCua: parseNativeBrowserCuaFacts(),
     providerKeyGate,
