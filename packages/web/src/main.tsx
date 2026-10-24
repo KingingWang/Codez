@@ -442,7 +442,111 @@ async function renderConversationSharePage(): Promise<void> {
 
 function renderWebLoginPage(): void {
   document.title = "Codez - Web Remote Control Sign In";
-  root.render(<WebLoginPage onLogin={(provider) => remoteEntry.startLogin(provider)} />);
+  root.render(
+    <WebLoginPage
+      onLogin={(provider) => {
+        if (isCodezBrowserExtension() && typeof webAuthService.startPollingLogin === "function") {
+          const authPopup = window.open("about:blank", "_blank");
+          let openedTabId: number | undefined;
+          const closeAuthWindow = () => {
+            try {
+              if (authPopup && !authPopup.closed) {
+                authPopup.close();
+              }
+            } catch {
+              // ignore
+            }
+            const extApi = (
+              globalThis as unknown as {
+                chrome?: { tabs?: { remove?: (tabId: number) => Promise<void> | void } };
+                browser?: { tabs?: { remove?: (tabId: number) => Promise<void> | void } };
+              }
+            ).chrome ?? (
+              globalThis as unknown as {
+                browser?: { tabs?: { remove?: (tabId: number) => Promise<void> | void } };
+              }
+            ).browser;
+            if (openedTabId !== undefined && typeof extApi?.tabs?.remove === "function") {
+              try {
+                void extApi.tabs.remove(openedTabId);
+              } catch {
+                // ignore
+              }
+            }
+          };
+          void webAuthService
+            .startPollingLogin(
+              {
+                provider,
+                appReturnTo: window.location.href,
+                devReturnTo: resolveWebAuthDevReturnTo(WEB_ZAI_OAUTH_CONFIG),
+              },
+              (authorizeUrl) => {
+                if (authPopup && !authPopup.closed) {
+                  authPopup.location.replace(authorizeUrl);
+                  return;
+                }
+                const extApi = (
+                  globalThis as unknown as {
+                    chrome?: {
+                      tabs?: {
+                        create?: (
+                          props: { url: string; active?: boolean },
+                          cb?: (tab?: { id?: number }) => void,
+                        ) => Promise<{ id?: number }> | void;
+                      };
+                    };
+                    browser?: {
+                      tabs?: {
+                        create?: (props: { url: string; active?: boolean }) => Promise<{ id?: number }>;
+                      };
+                    };
+                  }
+                ).chrome ?? (
+                  globalThis as unknown as {
+                    browser?: {
+                      tabs?: {
+                        create?: (props: { url: string; active?: boolean }) => Promise<{ id?: number }>;
+                      };
+                    };
+                  }
+                ).browser;
+                if (typeof extApi?.tabs?.create === "function") {
+                  try {
+                    const maybePromise = extApi.tabs.create({ url: authorizeUrl, active: true }, (tab) => {
+                      if (tab?.id !== undefined) openedTabId = tab.id;
+                    });
+                    if (maybePromise && typeof maybePromise.then === "function") {
+                      maybePromise
+                        .then((tab) => {
+                          if (tab?.id !== undefined) openedTabId = tab.id;
+                        })
+                        .catch(() => {});
+                    }
+                    return;
+                  } catch {
+                    // fallback
+                  }
+                }
+                window.open(authorizeUrl, "_blank");
+              },
+            )
+            .then((result) => {
+              closeAuthWindow();
+              if (result) {
+                void remoteEntry.start();
+              }
+            })
+            .catch(() => {
+              closeAuthWindow();
+              remoteEntry.startLogin(provider);
+            });
+          return;
+        }
+        remoteEntry.startLogin(provider);
+      }}
+    />,
+  );
 }
 
 // 访问 window.localStorage 本身在部分浏览器会抛错，统一包在方法里交给调用方兜底。

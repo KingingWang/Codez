@@ -12,7 +12,7 @@ interface WebLoginPageProps {
 
 export function WebLoginPage({ onLogin }: WebLoginPageProps) {
   const copy = getWebAuthCopy();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submittingProvider, setSubmittingProvider] = useState<WebOAuthProviderId | null>(null);
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-8 text-foreground">
@@ -32,14 +32,17 @@ export function WebLoginPage({ onLogin }: WebLoginPageProps) {
               type="button"
               size="lg"
               className="w-full"
-              disabled={isSubmitting}
               onClick={() => {
-                setIsSubmitting(true);
+                setSubmittingProvider(provider);
                 onLogin(provider);
               }}
             >
               {renderOAuthProviderIcon(provider, "size-4")}
-              <span>{copy.loginAction[provider]}</span>
+              <span>
+                {submittingProvider === provider
+                  ? `${copy.callbackTitle}…`
+                  : copy.loginAction[provider]}
+              </span>
               <span className="ml-1 inline-flex h-5 shrink-0 items-center rounded-full border border-primary-foreground/30 px-2 text-ui-xs font-medium leading-none text-primary-foreground/60">
                 {copy.loginRegion[provider]}
               </span>
