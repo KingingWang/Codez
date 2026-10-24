@@ -34,6 +34,8 @@ export class ThreadStateStore {
   private readonly listeners = new Set<(threadId: string) => void>();
   private readonly loads = new Map<string, Promise<ThreadProjectionState>>();
   private listInFlight: Promise<unknown[]> | undefined;
+  private stagedDiscoveredList: Promise<unknown[]> | undefined;
+  private clearStagedTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly loaded = new Set<string>();
   private readonly deleted = new Set<string>();
   private readonly completedItems = new Set<string>();
@@ -63,6 +65,7 @@ export class ThreadStateStore {
     this.deleted.add(id);
     this.states.delete(id);
     this.loaded.delete(id);
+    this.clearStagedDiscoveredList();
     // 修复原因：显式 deleteSession 不一定伴随原生通知，派生通知缓存也必须随 tombstone 失效。
     this.onRemove(id);
   }
@@ -129,6 +132,7 @@ export class ThreadStateStore {
     const thread = object(value);
     const id = string(thread.id);
     this.assertAvailable(id);
+    this.clearStagedDiscoveredList();
     const previous = this.states.get(id);
     const state = previous ?? {
       thread,
@@ -297,6 +301,19 @@ export class ThreadStateStore {
   /** 归属判定需要解析物理路径，所以事件投影是异步的；调用方必须保持事件串行。 */
   async apply(event: CodexNotification): Promise<string | undefined> {
     const params = object(event.params ?? {});
+    if (
+      [
+        "thread/started",
+        "thread/archived",
+        "thread/deleted",
+        "thread/name/updated",
+        "turn/started",
+        "turn/completed",
+        "item/completed",
+      ].includes(event.method)
+    ) {
+      this.clearStagedDiscoveredList();
+    }
     if (event.method === "thread/deleted") {
       const deletedId = string(params.threadId);
       // 先取父会话再失效登记（顺序不可换）：子线程删除同样终结子代理运行态，
@@ -405,7 +422,44 @@ export class ThreadStateStore {
     return id;
   }
 
+  private clearStagedDiscoveredList(): void {
+    this.stagedDiscoveredList = undefined;
+    if (this.clearStagedTimer) {
+      clearTimeout(this.clearStagedTimer);
+      this.clearStagedTimer = undefined;
+    }
+  }
+
+  /**
+   * 供 session/list 发现请求与紧随其后的 afterResponse(`sessions-index` 刷新) 共享同一次扫描结果。
+   * 同一轮微任务/宏任务内的多个 sessions-index 订阅者可共享该快照，宏任务结束后或任何线程变更事件到达时立即清空，
+   * 保证普通的显式 `store.list()` 调用绝不读到过期缓存。
+   */
+  async listAndStageForIndexRefresh(): Promise<unknown[]> {
+    const rows = await this.list();
+    this.clearStagedDiscoveredList();
+    const staged = Promise.resolve(rows);
+    this.stagedDiscoveredList = staged;
+    this.clearStagedTimer = setTimeout(() => {
+      if (this.stagedDiscoveredList === staged) {
+        this.stagedDiscoveredList = undefined;
+      }
+      this.clearStagedTimer = undefined;
+    }, 0);
+    this.clearStagedTimer.unref?.();
+    return rows;
+  }
+
+  async consumeDiscoveredListOrScan(): Promise<unknown[]> {
+    const staged = this.stagedDiscoveredList;
+    if (staged !== undefined) {
+      return staged;
+    }
+    return this.list();
+  }
+
   async list(): Promise<unknown[]> {
+    this.clearStagedDiscoveredList();
     // 修复原因：项目激活/回焦时 session/list 发现与多个 sessions-index 订阅者（taskIndexSyncer、
     // windowHostObserver、renderer store）会同时触发 list()，导致同一原生 app-server 上并发跑
     // 3~4 套全量 thread/list 分页扫描，阻塞后续打开会话的 thread/read / resume / turns/list 并触发

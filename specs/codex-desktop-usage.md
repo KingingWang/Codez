@@ -70,6 +70,8 @@ In the Codex desktop bridge runtime, `v4/usage/stats` aggregates local Codex per
 - 52-week token activity heatmap (`heatmap`)
 - Time-range filtered (`7d`, `30d`, `all`) daily per-model token trend (`dailyModelUsage`) and per-model usage breakdown (`models`, including `inputTokens`, `outputTokens`, and optional `cacheReadTokens`)
 
+Rollout usage parsing coalesces concurrent in-flight file reads (such as simultaneous `all` and `7d`/`30d` queries on initial panel mount), skips rollout file reads for threads whose activity falls outside a bounded `7d`/`30d` window, bounds its in-memory parsed-sample cache with LRU eviction, and processes rollout files with bounded concurrency.
+
 `AppUsagePanel` renders the pre-fork four-section layout (lifetime summary strip, 52-week token activity heatmap, time range switcher `7d` / `30d` / `all`, daily model token trend chart with per-model breakdown tooltip, and model usage donut chart + breakdown list).
 
 The Host-owned `CodexUsageObservationCache` and `CodexOnlyUsagePanel` remain available for explicit observation-race QA harnesses and isolated thread telemetry checks, where read responses stay scoped to the current workspace identity and Host service generation:

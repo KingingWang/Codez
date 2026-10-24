@@ -44,7 +44,20 @@ interface RolloutCacheEntry {
   turnTimestampsMs: number[];
 }
 
+const ROLLOUT_PARSE_CACHE_LIMIT = 512;
 const rolloutParseCache = new Map<string, RolloutCacheEntry>();
+const rolloutParseInFlight = new Map<
+  string,
+  Promise<{ samples: UsageEventSample[]; turnTimestampsMs: number[] } | null>
+>();
+
+function rememberRolloutParseCache(rolloutPath: string, entry: RolloutCacheEntry): void {
+  rolloutParseCache.delete(rolloutPath);
+  rolloutParseCache.set(rolloutPath, entry);
+  if (rolloutParseCache.size > ROLLOUT_PARSE_CACHE_LIMIT) {
+    rolloutParseCache.delete(rolloutParseCache.keys().next().value!);
+  }
+}
 
 function nonNegInt(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.trunc(value) : 0;
@@ -141,6 +154,26 @@ export async function parseRolloutUsage(
   fallbackTimestampMs: number,
 ): Promise<{ samples: UsageEventSample[]; turnTimestampsMs: number[] } | null> {
   if (!rolloutPath) return null;
+  const inFlight = rolloutParseInFlight.get(rolloutPath);
+  if (inFlight) return inFlight;
+  const pending = parseRolloutUsageUncoalesced(
+    rolloutPath,
+    fallbackModel,
+    fallbackTimestampMs,
+  ).finally(() => {
+    if (rolloutParseInFlight.get(rolloutPath) === pending) {
+      rolloutParseInFlight.delete(rolloutPath);
+    }
+  });
+  rolloutParseInFlight.set(rolloutPath, pending);
+  return pending;
+}
+
+async function parseRolloutUsageUncoalesced(
+  rolloutPath: string,
+  fallbackModel: string | null,
+  fallbackTimestampMs: number,
+): Promise<{ samples: UsageEventSample[]; turnTimestampsMs: number[] } | null> {
   let fileStat: Awaited<ReturnType<typeof stat>>;
   try {
     fileStat = await stat(rolloutPath);
@@ -150,6 +183,7 @@ export async function parseRolloutUsage(
   }
   const cached = rolloutParseCache.get(rolloutPath);
   if (cached && cached.mtimeMs === fileStat.mtimeMs && cached.size === fileStat.size) {
+    rememberRolloutParseCache(rolloutPath, cached);
     return { samples: cached.samples, turnTimestampsMs: cached.turnTimestampsMs };
   }
 
@@ -292,7 +326,7 @@ export async function parseRolloutUsage(
     }
   }
 
-  rolloutParseCache.set(rolloutPath, {
+  rememberRolloutParseCache(rolloutPath, {
     mtimeMs: fileStat.mtimeMs,
     size: fileStat.size,
     samples,

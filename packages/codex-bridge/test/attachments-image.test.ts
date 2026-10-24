@@ -293,6 +293,22 @@ test("directory scanning has a hard entry budget and fails explicitly", async (t
   await assert.rejects(store.findNativeImageAttachment(url, sessionId), /lookupLimit/);
 });
 
+test("repeated image lookups hit the session candidate cache without rescanning objects directory", async (t) => {
+  const { store, root } = await fixture(t);
+  const { attachment } = await upload(store);
+  assert.deepEqual(await store.findNativeImageAttachment(url, sessionId), attachment);
+  // Populate >4096 non-matching entries after the first lookup established the cached candidate:
+  // a cache hit resolves the candidate directly instead of re-enumerating the directory.
+  for (let offset = 0; offset < 4096; offset += 64) {
+    await Promise.all(
+      Array.from({ length: 64 }, (_, index) =>
+        writeFile(join(root, "objects", `post-cache-${offset + index}`), ""),
+      ),
+    );
+  }
+  assert.deepEqual(await store.findNativeImageAttachment(url, sessionId), attachment);
+});
+
 test("decoded size is checked even when encoded length fits the base64 ceiling", async (t) => {
   const { store, root } = await fixture(t);
   const oversized = Buffer.alloc(LIMITS.attachmentMaxBytes + 1).toString("base64");

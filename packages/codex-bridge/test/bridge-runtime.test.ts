@@ -958,6 +958,7 @@ test("explicit project listing discovers external history for all existing index
     await response.afterResponse!();
   }
   h.frames.length = 0;
+  const listCallsBefore = h.calls.filter((call) => call.method === "thread/list").length;
   h.authority.thread = { ...h.authority.thread, id: "external-cli-thread", name: "External CLI" };
   const response = await h.runtime.request("session/list", { workspace: generate.workspace });
   assert.match(JSON.stringify(response.result), /external-cli-thread/);
@@ -966,6 +967,12 @@ test("explicit project listing discovers external history for all existing index
   await tick();
   assert.equal(h.frames.length, 3);
   assert.ok(h.frames.every((frame) => JSON.stringify(frame).includes("external-cli-thread")));
+  const listCallsAfter = h.calls.filter((call) => call.method === "thread/list").length;
+  assert.equal(
+    listCallsAfter - listCallsBefore,
+    1,
+    "session/list and its post-response sessions-index refresh must share one native thread/list scan",
+  );
   assert.equal(
     h.calls.some((call) => call.method === "thread/resume"),
     false,
