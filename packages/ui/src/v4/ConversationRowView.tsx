@@ -1036,7 +1036,7 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
   editWorkspaceRewindAvailability?: EditWorkspaceRewindAvailability;
   status?: string;
 }) {
-  const { intl } = useCodezIntl();
+  const { intl, locale } = useCodezIntl();
   const codexText = useCodexMessages();
   // 引擎尾注折叠：正文只到 epilogueStart，
   // 之后的引擎文本折进气泡底部的披露。提示词上下文解析也只看正文——尾注里没有用户引用。
@@ -1083,6 +1083,16 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
   const rewindWorkspaceLabel = intl.formatMessage({
     id: "chat.edit.resetConversationAndFiles",
   });
+  const rewindWorkspaceTooltipTitle = intl.formatMessage({
+    id: "chat.edit.resetConversationAndFiles.tooltip",
+  });
+  const timeLabel = formatMessageTimeLabel(row.createdAt, locale, intl);
+  const rewindWorkspaceTooltipDescription =
+    editWorkspaceRewindAvailability?.reason === "available"
+      ? undefined
+      : intl.formatMessage({
+          id: `chat.edit.resetConversationAndFiles.${editWorkspaceRewindAvailability?.reason ?? "noFiles"}`,
+        });
   const visibleText = parsedShareContext.visibleContent;
   const codeCommentContexts = parsedPrompt.codeComments;
   // 设计稿元素在正文里已经画成 token，卡片只给普通网页「选择元素」的引用
@@ -1528,6 +1538,11 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
           >
             <PencilIcon className="size-3.5" />
           </MessageAction>
+        ) : null}
+        {/* Bugfix：用户消息动作栏此前未展示 row.createdAt，导致用户无法查看提问发送时间；
+            与 assistant 动作栏一致，只读派生展示 row.createdAt，不新增 renderer 本地状态。 */}
+        {timeLabel ? (
+          <span className="select-none text-ui-sm text-foreground-subtlest">{timeLabel}</span>
         ) : null}
       </MessageActions>
     </RowShell>
