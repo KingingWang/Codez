@@ -63,6 +63,15 @@ function createBrowserNonce(): string {
   return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+function createBrowserPollToken(): string {
+  if (!globalThis.crypto?.getRandomValues) {
+    return `${createBrowserNonce().replaceAll("-", "")}${createBrowserNonce().replaceAll("-", "")}`;
+  }
+  const bytes = new Uint8Array(32);
+  globalThis.crypto.getRandomValues(bytes);
+  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 function createDefaultRuntime(): WebAuthServiceRuntime {
   return {
     assign: (url) => {
@@ -157,6 +166,74 @@ export class WebAuthService {
         redirectUri,
       }),
     );
+  }
+
+  async startPollingLogin(
+    options: WebAuthLoginOptions = {},
+    onAuthorizeUrl?: (authorizeUrl: string) => void,
+    signal?: AbortSignal,
+  ): Promise<WebAuthCallbackResult | null> {
+    const provider = options.provider ?? ZAI_PROVIDER_ID;
+    const appReturnTo = options.appReturnTo ?? this.runtime.getCurrentHref();
+    const sourceUrl = parseOptionalUrl(appReturnTo);
+    const e2eeHash =
+      sourceUrl?.hash && parseWebRemoteControlE2eeQrFragment(sourceUrl.hash)
+        ? sourceUrl.hash.trim()
+        : "";
+    const pollToken = createBrowserPollToken();
+    const init = await this.provider.initCliFlow({ provider, pollToken });
+    onAuthorizeUrl?.(init.authorizeUrl);
+
+    while (!signal?.aborted && Date.now() < init.expiresAt) {
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, init.pollIntervalMs);
+        signal?.addEventListener(
+          "abort",
+          () => {
+            clearTimeout(timer);
+            resolve();
+          },
+          { once: true },
+        );
+      });
+      if (signal?.aborted) {
+        return null;
+      }
+      try {
+        const pollResult = await this.provider.pollCliFlow({
+          flowId: init.flowId,
+          pollToken,
+          provider,
+        });
+        if (pollResult.status === "pending") {
+          continue;
+        }
+        this.repo.saveTokenSet(pollResult.tokenSet, provider);
+        this.repo.saveUserInfo(pollResult.rawUserInfo, provider);
+        this.repo.setActiveProvider(provider);
+        const resolvedAppReturnTo = resolveSafeAppReturnTo(appReturnTo, {
+          currentOrigin: this.runtime.getCurrentOrigin(),
+        });
+        const normalizedHash = e2eeHash
+          ? e2eeHash.startsWith("#")
+            ? e2eeHash
+            : `#${e2eeHash}`
+          : "";
+        return {
+          userInfo: pollResult.userInfo,
+          appReturnTo:
+            resolvedAppReturnTo && normalizedHash
+              ? `${resolvedAppReturnTo}${normalizedHash}`
+              : resolvedAppReturnTo,
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (message.includes("invalid_flow") || message.includes("failed")) {
+          throw error;
+        }
+      }
+    }
+    return null;
   }
 
   async handleCallback(url: string): Promise<WebAuthCallbackResult | null> {

@@ -6,7 +6,9 @@
 - Relay V2 下桌面与手机分别用同一智谱账号 JWT 申请一次性 token 并连接 `/api/v1/remote/ws2`。Relay 仅做配对与透传，不能用作内容加密密钥。桌面另用 CSPRNG 产生 32 字节 `K_pair`，只存 credential service，并置于二维码 URL 的 `#e2ee=v1&k=<base64url>`。URL query 携带 V2 所需的 `sid/mid/name/app_version`。
 - 远控前端代码必须由与 relay 分开管理的可信来源提供，且**仅允许在受信任客户端环境（Codez Android App 或本地安装的 Codez 浏览器扩展）内运行**：
   - Android App 环境：通过 `window.CodezAndroidSocket` 原生桥代发无 `Origin` 的 HTTP/WebSocket 请求；
-  - 浏览器扩展环境（Chrome / Edge / Firefox 等 Manifest V3 扩展）：前端 HTML/JS/CSS 全部随扩展安装包保存在本地，不从 `zcode.z.ai` 下载可执行脚本；扩展通过 `declarativeNetRequest` 自动将发往 `https://zcode.z.ai/api/v1/*` 的 HTTP 与 WebSocket 请求 `Origin` 改写为 `https://zcode.z.ai`，并在本地拦截 `https://kingingwang.github.io/Codez/remote/v4/*` 扫码链接及 `https://zcode.z.ai/remote/v4?code|authCode|error=...&state=...` OAuth 回调，重定向回扩展内部页面 `index.html` 完成认证与 E2EE 握手；
+  - 浏览器扩展环境（Chrome / Edge / Firefox / Orion 等扩展）：前端 HTML/JS/CSS 全部随扩展安装包保存在本地，不从 `zcode.z.ai` 下载可执行脚本；扩展通过 `declarativeNetRequest` 自动将发往 `https://zcode.z.ai/api/v1/*` 的 HTTP 与 WebSocket 请求 `Origin` 改写为 `https://zcode.z.ai`：
+    - OAuth 登录优先采用 `/api/v1/oauth/cli/init` 与 `/api/v1/oauth/cli/poll/:flowId` 轮询授权模式（授权页回调直接进入 `/api/v1/oauth/cli/callback/:provider`，不经过 `https://zcode.z.ai/remote/v4` 页面），彻底规避移动端/iPad 浏览器（如 Orion）在跨源跳转时阻断 `*-extension://` 重定向或让 `zcode.z.ai` 页面脚本抢先消费一次性 `authCode` 导致 `HTTP 500 (code 2007)` 及跨源 `localStorage` 隔离导致 `OAuth CSRF 检测失败` 的问题；
+    - 当移动端扩展（如 iPad Orion）不支持 `declarativeNetRequest` 修改 WebSocket 握手 `Origin` 头导致直连 `wss://zcode.z.ai/api/v1/remote/ws2` 失败时，自动切换至扩展在后台创建的隐藏同源桥接通道（`https://zcode.z.ai/favicon.ico` 下的隔离 Content Script 仅转发密文 WebSocket 帧，不加载或执行任何远端页面脚本），确保 iPad / 手机 / 桌面浏览器均可零配置连接；
   - 未安装扩展的普通手机/桌面浏览器直接访问 `https://kingingwang.github.io/Codez/remote/v4/` 时，立即拦截并提示用户使用 Codez 手机 App 或安装 Codez 浏览器扩展。
   默认二维码入口继续固定为 `https://kingingwang.github.io/Codez/remote/v4/`；仓库维护者控制页面源码、Pages 发布及扩展构建产物，智普 relay 不控制前端脚本。桌面允许本地显式 `CODEZ_WEB_REMOTE_CONTROL_E2EE_URL` 覆盖默认入口，但不接受 relay 响应或 endpoint 配置指向的页面；桌面发行代码及仓库发布权限均属于可信边界。
 - relay 可观察配对凭据、IP、设备元信息、连接时间、帧大小与握手公钥，但不可取得 `K_pair`、会话密钥或业务明文；主动改写、注入、重排、重放和降级业务帧均须在桌面/手机端拒绝。
