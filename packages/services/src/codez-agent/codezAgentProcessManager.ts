@@ -39,6 +39,7 @@ import {
   parseCodexBridgeOversizedFrameDiagnostic,
   parseCodexBridgeTitleDiagnostic,
   parseCodexBridgeNativeStderrSummary,
+  parseCodexBridgeRuntimeNoticeDiagnostic,
 } from "./codexBridgeTitleDiagnostic.js";
 import { CodezProtocolClient } from "./codezProtocolClient.js";
 import { CodezStdioTransport } from "./codezStdioTransport.js";
@@ -1255,6 +1256,22 @@ export class CodezAgentProcessManager {
         if (nativeStderrSummary) {
           // 原因：原生 stderr 原文不可信；只允许 bridge 的闭合摘要进入生产 warn。
           warnLog("Codex native stderr summary", nativeStderrSummary);
+          return;
+        }
+        const runtimeNotice = parseCodexBridgeRuntimeNoticeDiagnostic(line);
+        if (runtimeNotice) {
+          // 原生通知只进日志，不再进入会话 snapshot 或 Composer。允许字段已按闭合
+          // JSON 契约校验；文本落盘前仍需遮盖凭据并保持原有长度上限。
+          const sanitized = {
+            ...runtimeNotice,
+            message: redactAgentDiagnostic(runtimeNotice.message).slice(0, 4_096),
+            ...(runtimeNotice.detail
+              ? { detail: redactAgentDiagnostic(runtimeNotice.detail).slice(0, 16_384) }
+              : {}),
+          };
+          if (runtimeNotice.kind === "authRecovery" && runtimeNotice.phase === "completed")
+            log("Codex native authentication recovery completed", sanitized);
+          else warnLog("Codex native runtime notice", sanitized);
           return;
         }
         stderrTail.append(line);

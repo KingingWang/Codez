@@ -240,7 +240,6 @@ export class AuxiliaryText {
         ...Object.fromEntries(disabledFeatures.map((feature) => [`features.${feature}`, false])),
         "orchestrator.skills.enabled": false,
         "skills.include_instructions": false,
-        "token_budget.use_history_notes_extension": false,
         "tools.experimental_request_user_input.enabled": false,
         "tools.update_plan.enabled": false,
         web_search: "disabled",
