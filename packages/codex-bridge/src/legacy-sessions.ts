@@ -73,7 +73,7 @@ export async function handleLegacySession(
         : z.array(z.string().trim().min(1)).min(1).max(64).parse(p.sessionIds);
     const threads = sessionIds
       ? await listTargetedThreads(rpc, store.cwd, sessionIds, (id) => store.get(id)?.thread)
-      : await store.list();
+      : await store.listAndStageForIndexRefresh();
     return {
       // 修复原因：辅助对话 child 不写入主任务表（tasks-index.sqlite），远程项目下
       // subscribeConversationV4 必须通过带 sessionIds 的 session/list 沿 parentSessionId
