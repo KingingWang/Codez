@@ -462,3 +462,83 @@ test("imageView rows resolve session-owned bridge attachment fileName without re
     fileName: "pasted-screenshot.png",
   });
 });
+
+test("streaming deltas on an active turn reuse settled historical turn projections and attachment lookups", async () => {
+  const thread = threadFixture();
+  const settledTurn = {
+    ...thread.turns[0]!,
+    id: "turn-settled-1",
+    status: "completed" as const,
+    completedAt: 119,
+    items: [
+      { type: "userMessage" as const, id: "user-1", content: [image("settled")] },
+      { type: "agentMessage" as const, id: "ans-1", text: "Settled answer" },
+    ],
+  };
+  const activeTurn = {
+    ...thread.turns[0]!,
+    id: "turn-active-2",
+    status: "inProgress" as const,
+    startedAt: 120,
+    completedAt: null,
+    items: [
+      {
+        type: "userMessage" as const,
+        id: "user-2",
+        content: [{ type: "text" as const, text: "Stream this", text_elements: [] }],
+      },
+      { type: "agentMessage" as const, id: "ans-2", status: "inProgress" as const, text: "Part 1" },
+    ],
+  };
+  thread.status = { type: "active", activeFlags: [] };
+  thread.turns = [settledTurn, activeTurn];
+  const rpc = port();
+  const store = new ThreadStateStore(rpc, cwd);
+  store.markStarted(thread);
+
+  let attachmentLookups = 0;
+  const attachments = {
+    async findNativeAttachment(path: string, sessionId: string) {
+      assert.equal(sessionId, thread.id);
+      attachmentLookups += 1;
+      return {
+        ref: "codez-attachment://00000000-0000-4000-8000-000000000010",
+        fileName: `${path}.png`,
+        mime: "image/png",
+        bytes: 16,
+      };
+    },
+  } as unknown as AttachmentStore;
+  const snapshots = new BridgeSnapshots(
+    { rpc, cwd },
+    store,
+    new InteractionBroker(rpc, () => {}),
+    cwd,
+    attachments,
+  );
+
+  const first = await snapshots.conversation(thread.id);
+  assert.equal(attachmentLookups, 1);
+  assert.equal(first.rows.window.at(-1)?.kind, "assistantText");
+
+  await store.apply({
+    method: "item/agentMessage/delta",
+    params: {
+      threadId: thread.id,
+      turnId: "turn-active-2",
+      itemId: "ans-2",
+      delta: " + Part 2",
+    },
+  });
+  const second = await snapshots.conversation(thread.id);
+  assert.equal(
+    attachmentLookups,
+    1,
+    "completed historical turn must not re-run attachment lookup during active-turn streaming",
+  );
+  const lastRow = second.rows.window.at(-1);
+  assert.equal(lastRow?.kind, "assistantText");
+  if (lastRow?.kind === "assistantText") {
+    assert.equal(lastRow.text, "Part 1 + Part 2");
+  }
+});
