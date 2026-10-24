@@ -1137,14 +1137,15 @@ async function bootstrapExternalRelayWebRemoteControl(
 ): Promise<void> {
   if (connection.signal.aborted) return;
   const { params: relayParams, getToken } = connection;
-  const requireE2ee = window.location.hostname === "kingingwang.github.io";
+  const requireE2ee =
+    window.location.hostname === "kingingwang.github.io" || isTrustedWebRemoteControlHost();
   if (requireE2ee && !relayParams.e2eeKey) {
     connection.onFailure(
       toWebRemoteControlFailure(
         "invalid-mobile-connection",
         isZhLocale()
-          ? "加密远控链接缺少有效密钥，请重新扫描桌面上的二维码。"
-          : "Missing or invalid encrypted remote-control pairing link. Scan the new desktop QR code.",
+          ? "加密远控缺少此设备的端到端密钥，请重新扫描桌面上的二维码或粘贴完整远控链接。"
+          : "Missing end-to-end encryption key for this device. Please scan the desktop QR code or paste the full remote-control link.",
       ),
     );
     return;
