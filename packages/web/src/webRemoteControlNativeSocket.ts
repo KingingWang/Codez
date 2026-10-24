@@ -301,7 +301,7 @@ function ensureExtensionSocketEventSinkInstalled(): void {
   }
   if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
     window.addEventListener("message", (event: MessageEvent) => {
-      if (event.source !== window || event.data?.type !== "codez-extension-ws-event") {
+      if (event.data?.type !== "codez-extension-ws-event") {
         return;
       }
       const id = event.data.id;
@@ -346,6 +346,8 @@ class CodezExtensionWebSocket {
   private readonly listeners = new Map<string, Set<SocketListener>>();
   private nativeSocket: WebSocket | null = null;
   private usingExtensionBridge = false;
+  private bridgeIframeEl: HTMLIFrameElement | null = null;
+  private bridgeConnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(url: string) {
     this.url = url;
@@ -360,18 +362,14 @@ class CodezExtensionWebSocket {
       this.nativeSocket = ws;
       let opened = false;
       ws.addEventListener("open", () => {
-        if (this.usingExtensionBridge || this.readyState !== CodezExtensionWebSocket.CONNECTING) {
-          return;
-        }
+        if (this.usingExtensionBridge || this.readyState !== CodezExtensionWebSocket.CONNECTING) return;
         opened = true;
         this.extensions = typeof ws.extensions === "string" ? ws.extensions : "";
         this.readyState = CodezExtensionWebSocket.OPEN;
         this.emit("open", new Event("open"));
       });
       ws.addEventListener("message", (event) => {
-        if (this.usingExtensionBridge || this.readyState !== CodezExtensionWebSocket.OPEN) {
-          return;
-        }
+        if (this.usingExtensionBridge || this.readyState !== CodezExtensionWebSocket.OPEN) return;
         this.emit("message", Object.assign(new Event("message"), { data: event.data }));
       });
       ws.addEventListener("error", () => {
@@ -380,17 +378,11 @@ class CodezExtensionWebSocket {
           // 原生 WebSocket 在握手完成前报错（如 iPad Orion 未对 WS 注入 Origin 触发 403），立即无缝切换到扩展同源桥接通道。
           preferExtensionBridgeWebSocket = true;
           this.nativeSocket = null;
-          try {
-            ws.close();
-          } catch {
-            // ignore
-          }
+          try { ws.close(); } catch { /* ignore */ }
           this.startExtensionBridge();
           return;
         }
-        if (this.readyState < CodezExtensionWebSocket.CLOSING) {
-          this.emit("error", new Event("error"));
-        }
+        if (this.readyState < CodezExtensionWebSocket.CLOSING) this.emit("error", new Event("error"));
       });
       ws.addEventListener("close", (event) => {
         if (this.usingExtensionBridge) return;
@@ -402,14 +394,7 @@ class CodezExtensionWebSocket {
         }
         if (this.readyState === CodezExtensionWebSocket.CLOSED) return;
         this.readyState = CodezExtensionWebSocket.CLOSED;
-        this.emit(
-          "close",
-          Object.assign(new Event("close"), {
-            code: event.code,
-            reason: event.reason,
-            wasClean: event.wasClean,
-          }),
-        );
+        this.emit("close", Object.assign(new Event("close"), { code: event.code, reason: event.reason, wasClean: event.wasClean }));
       });
     } catch {
       preferExtensionBridgeWebSocket = true;
@@ -419,13 +404,49 @@ class CodezExtensionWebSocket {
 
   private startExtensionBridge(): void {
     this.usingExtensionBridge = true;
+    if (typeof document !== "undefined" && typeof document.createElement === "function") {
+      try {
+        extensionSocketRegistry.set(this.id, this);
+        ensureExtensionSocketEventSinkInstalled();
+        const iframe = document.createElement("iframe");
+        iframe.style.display = "none";
+        iframe.src = `https://zcode.z.ai/robots.txt?codez_ws_iframe_id=${this.id}#${encodeURIComponent(this.url)}`;
+        this.bridgeIframeEl = iframe;
+        (document.body ?? document.documentElement)?.appendChild(iframe);
+        this.clearBridgeConnectTimer();
+        this.bridgeConnectTimer = setTimeout(() => {
+          if (this.readyState === CodezExtensionWebSocket.CONNECTING) {
+            try { iframe.remove(); } catch { /* ignore */ }
+            this.bridgeIframeEl = null;
+            this.startRuntimeExtensionBridge();
+          }
+        }, 2_500);
+        return;
+      } catch {
+        // fallback to runtime extension bridge
+      }
+    }
+    this.startRuntimeExtensionBridge();
+  }
+
+  private startRuntimeExtensionBridge(): void {
     extensionSocketRegistry.set(this.id, this);
     ensureExtensionSocketEventSinkInstalled();
-    sendExtensionRuntimeMessage({
-      type: "codez-extension-ws-open",
-      id: this.id,
-      url: this.url,
-    });
+    this.clearBridgeConnectTimer();
+    this.bridgeConnectTimer = setTimeout(() => {
+      if (this.readyState === CodezExtensionWebSocket.CONNECTING) {
+        this.dispatchExtensionEvent({ type: "error" });
+        this.dispatchExtensionEvent({ type: "close", code: 1006, reason: "Extension bridge connect timeout", wasClean: false });
+      }
+    }, 6_000);
+    sendExtensionRuntimeMessage({ type: "codez-extension-ws-open", id: this.id, url: this.url });
+  }
+
+  private clearBridgeConnectTimer(): void {
+    if (this.bridgeConnectTimer !== null) {
+      clearTimeout(this.bridgeConnectTimer);
+      this.bridgeConnectTimer = null;
+    }
   }
 
   addEventListener(type: string, listener: SocketListener): void {
@@ -442,85 +463,76 @@ class CodezExtensionWebSocket {
   }
 
   send(data: string | ArrayBuffer | ArrayBufferView<ArrayBuffer>): void {
-    if (this.readyState !== CodezExtensionWebSocket.OPEN) {
-      throw new Error("WebSocket is not open");
-    }
+    if (this.readyState !== CodezExtensionWebSocket.OPEN) throw new Error("WebSocket is not open");
     if (!this.usingExtensionBridge && this.nativeSocket) {
       this.nativeSocket.send(data);
       return;
     }
     if (typeof data === "string") {
-      sendExtensionRuntimeMessage({
-        type: "codez-extension-ws-send",
-        id: this.id,
-        text: data,
-      });
+      if (this.bridgeIframeEl?.contentWindow) {
+        try { this.bridgeIframeEl.contentWindow.postMessage({ type: "codez-bridge-ws-send", id: this.id, text: data }, "https://zcode.z.ai"); } catch { /* ignore */ }
+      }
+      sendExtensionRuntimeMessage({ type: "codez-extension-ws-send", id: this.id, text: data });
       return;
     }
-    const buffer =
-      data instanceof ArrayBuffer
-        ? data
-        : data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
-    sendExtensionRuntimeMessage({
-      type: "codez-extension-ws-send",
-      id: this.id,
-      base64: arrayBufferToBase64(buffer as ArrayBuffer),
-    });
+    const buffer = data instanceof ArrayBuffer ? data : data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+    const base64 = arrayBufferToBase64(buffer as ArrayBuffer);
+    if (this.bridgeIframeEl?.contentWindow) {
+      try { this.bridgeIframeEl.contentWindow.postMessage({ type: "codez-bridge-ws-send", id: this.id, base64 }, "https://zcode.z.ai"); } catch { /* ignore */ }
+    }
+    sendExtensionRuntimeMessage({ type: "codez-extension-ws-send", id: this.id, base64 });
   }
 
   close(code = 1000, reason = ""): void {
-    if (
-      this.readyState === CodezExtensionWebSocket.CLOSING ||
-      this.readyState === CodezExtensionWebSocket.CLOSED
-    ) {
-      return;
-    }
+    if (this.readyState === CodezExtensionWebSocket.CLOSING || this.readyState === CodezExtensionWebSocket.CLOSED) return;
+    this.clearBridgeConnectTimer();
     this.readyState = CodezExtensionWebSocket.CLOSING;
     if (!this.usingExtensionBridge && this.nativeSocket) {
       this.nativeSocket.close(code, reason);
       return;
     }
-    sendExtensionRuntimeMessage({
-      type: "codez-extension-ws-close",
-      id: this.id,
-      code,
-      reason,
-    });
+    sendExtensionRuntimeMessage({ type: "codez-extension-ws-close", id: this.id, code, reason });
+    if (this.bridgeIframeEl) {
+      const el = this.bridgeIframeEl;
+      this.bridgeIframeEl = null;
+      try { el.contentWindow?.postMessage({ type: "codez-bridge-ws-close", id: this.id, code, reason }, "https://zcode.z.ai"); } catch { /* ignore */ }
+      setTimeout(() => { try { el.remove(); } catch { /* ignore */ } }, 200);
+    }
   }
 
   dispatchExtensionEvent(event: NativeSocketEvent): void {
     switch (event.type) {
       case "open":
         if (this.readyState !== CodezExtensionWebSocket.CONNECTING) return;
+        this.clearBridgeConnectTimer();
         this.extensions = event.extensions ?? "";
         this.readyState = CodezExtensionWebSocket.OPEN;
         this.emit("open", new Event("open"));
         break;
       case "message": {
         if (this.readyState !== CodezExtensionWebSocket.OPEN) return;
-        const data =
-          typeof event.text === "string"
-            ? event.text
-            : base64ToArrayBuffer(event.base64 ?? "");
+        const data = typeof event.text === "string" ? event.text : base64ToArrayBuffer(event.base64 ?? "");
         this.emit("message", Object.assign(new Event("message"), { data }));
         break;
       }
       case "error":
+        if (this.bridgeIframeEl && this.readyState === CodezExtensionWebSocket.CONNECTING) return;
         if (this.readyState >= CodezExtensionWebSocket.CLOSING) return;
         this.emit("error", new Event("error"));
         break;
       case "close": {
+        if (this.bridgeIframeEl && this.readyState === CodezExtensionWebSocket.CONNECTING) {
+          const el = this.bridgeIframeEl;
+          this.bridgeIframeEl = null;
+          try { el.remove(); } catch { /* ignore */ }
+          this.startRuntimeExtensionBridge();
+          return;
+        }
         if (this.readyState === CodezExtensionWebSocket.CLOSED) return;
+        this.clearBridgeConnectTimer();
         this.readyState = CodezExtensionWebSocket.CLOSED;
         extensionSocketRegistry.delete(this.id);
-        this.emit(
-          "close",
-          Object.assign(new Event("close"), {
-            code: event.code,
-            reason: event.reason,
-            wasClean: event.wasClean,
-          }),
-        );
+        this.emit("close", Object.assign(new Event("close"), { code: event.code, reason: event.reason, wasClean: event.wasClean }));
         break;
       }
     }
@@ -537,11 +549,7 @@ class CodezExtensionWebSocket {
             : (this.onclose as ((event: Event) => void) | null);
     handler?.call(this, event);
     this.listeners.get(type)?.forEach((listener) => {
-      try {
-        listener.call(this, event);
-      } catch {
-        // ignore
-      }
+      try { listener.call(this, event); } catch { /* ignore */ }
     });
   }
 }
@@ -749,6 +757,16 @@ export function resolveWebRemoteControlFetcher(): typeof fetch {
             : typeof runtimeSendMessage === "function"
               ? await new Promise<{ status: number; body: string; error?: string } | null>(
                   (resolve) => {
+                  let settled = false;
+                  const finish = (
+                    val: { status: number; body: string; error?: string } | null,
+                  ) => {
+                    if (settled) return;
+                    settled = true;
+                    clearTimeout(timer);
+                    resolve(val);
+                  };
+                  const timer = setTimeout(() => finish(null), 12_000);
                     try {
                       const maybePromise = runtimeSendMessage(
                         {
@@ -759,24 +777,26 @@ export function resolveWebRemoteControlFetcher(): typeof fetch {
                           body,
                         },
                         (resp) => {
-                          resolve(
-                            resp && typeof resp === "object" && "status" in resp
-                              ? (resp as { status: number; body: string; error?: string })
-                              : null,
-                          );
+                        if (resp && typeof resp === "object" && "status" in resp) {
+                          finish(resp as { status: number; body: string; error?: string });
+                        } else if (!maybePromise || typeof maybePromise.then !== "function") {
+                          finish(null);
+                        }
                         },
                       );
                       if (maybePromise && typeof maybePromise.then === "function") {
                         maybePromise
                           .then((resp) => {
                             if (resp && typeof resp === "object" && "status" in resp) {
-                              resolve(resp as { status: number; body: string; error?: string });
+                            finish(resp as { status: number; body: string; error?: string });
+                          } else {
+                            finish(null);
                             }
                           })
-                          .catch(() => resolve(null));
+                        .catch(() => finish(null));
                       }
                     } catch {
-                      resolve(null);
+                    finish(null);
                     }
                   },
                 )
