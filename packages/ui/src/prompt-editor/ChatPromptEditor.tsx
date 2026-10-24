@@ -457,10 +457,15 @@ export function ChatPromptEditor({
               ) : null}
             </div>
           </div>
+          {/* 修复原因：inline 浮窗（Side Pane 完整视图）外层是 flex-wrap，editor 占 min-w-1/2 flex-1；
+              若在 inline 下开启 shrinkTrailingActions（max-w-[calc(100%-5rem)]）会让工具栏首选宽度
+              与 editor 叠加超出浮窗单行宽度，导致工具栏被强制折到第二行并把浮窗撑高。 */}
           <div
             className={cn(
               "ml-auto flex items-center justify-end gap-1.5",
-              shrinkTrailingActions ? "min-w-0 max-w-[calc(100%-5rem)] shrink" : "shrink-0",
+              shrinkTrailingActions && !isInline
+                ? "min-w-0 max-w-[calc(100%-5rem)] shrink"
+                : "shrink-0",
             )}
             data-composer-trailing-actions
           >

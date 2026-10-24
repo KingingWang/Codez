@@ -1,9 +1,5 @@
 import { useCallback, useMemo, useRef } from "react";
-import {
-  CODEZ_AGENT_PROVIDER,
-  type CodezConfigOption,
-  type ModelSelection,
-} from "@codez/shared";
+import { CODEZ_AGENT_PROVIDER, type CodezConfigOption, type ModelSelection } from "@codez/shared";
 import { TID_V4_COMPOSER_INPUT } from "@codez/shared/test-ids";
 import type { SessionUsageState } from "@codez/shared/codez-protocol-v4";
 import type { CodexModelCatalogRead } from "@/hooks/useCodexModelCatalog.js";
@@ -183,7 +179,9 @@ export function CodexComposerModelControls({
         labelVisibilityClassName="hidden @sm/composer:inline-flex"
         indicatorClassName="block group-data-[composer-model-icon=true]/toolbar:hidden"
         triggerLabelClassName="block min-w-0 text-left group-data-[composer-model-icon=true]/toolbar:hidden [&>span]:max-w-full [&>span>span]:block [&>span>span]:truncate"
-        triggerClassName="composer-model-trigger group-data-[composer-model-icon=true]/toolbar:size-7 group-data-[composer-model-icon=true]/toolbar:p-0 group-data-[composer-model-icon=true]/toolbar:gap-0 group-data-[composer-model-icon=true]/toolbar:justify-center"
+        // 修复原因：ModelConfigSelect 内置 Button 带 h-7 w-fit；tailwind-merge 合并同修饰符的
+        // group-data-[composer-model-icon=true]/toolbar:size-7 时若与宽度类冲突会丢掉宽度或内边距，与 V4ComposerToolbar 对齐用 px-1.5。
+        triggerClassName="composer-model-trigger group-data-[composer-model-icon=true]/toolbar:px-1.5 group-data-[composer-model-icon=true]/toolbar:justify-center"
         triggerIconClassName="hidden group-data-[composer-model-icon=true]/toolbar:inline-flex"
         focusSelectorOnClose={COMPOSER_INPUT_SELECTOR}
         leadingItems={leadingItems}

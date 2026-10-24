@@ -2511,7 +2511,12 @@ function ConversationComposerImpl({
           </span>
         ) : null}
         {remoteAvailable ? (
-          <span className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden empty:hidden">
+          <span
+            className={cn(
+              "flex min-w-0 items-center gap-1 overflow-hidden empty:hidden",
+              codexModelCatalog && layout !== "inline" ? "flex-1" : "shrink",
+            )}
+          >
             {codexModelCatalog ? (
               <CodexComposerModelControls
                 read={codexModelCatalog}
@@ -2620,6 +2625,7 @@ function ConversationComposerImpl({
       highspeedPresented,
       highspeedSweepActive,
       isWebRemoteControl,
+      layout,
       mode,
       handleSelectModelTrace,
       modelSelectionReload,
