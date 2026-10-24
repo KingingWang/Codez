@@ -34,6 +34,12 @@ type NativeHttpEvent =
 declare global {
   interface Window {
     CodezAndroidSocket?: CodezAndroidSocketBridge;
+    __codezExtensionFetch?: (request: {
+      url: string;
+      method: string;
+      headers: Record<string, string>;
+      body: string;
+    }) => Promise<{ status: number; body: string; error?: string }>;
     __CODEZ_BROWSER_EXTENSION__?: boolean;
     __codezAndroidSocketEvent?: (id: number, eventJson: string) => void;
     __codezAndroidHttpEvent?: (id: number, eventJson: string) => void;
@@ -345,12 +351,141 @@ function serializeHeaders(headers?: HeadersInit): Record<string, string> {
 
 /**
  * Android 壳内通过原生 OkHttp（不带浏览器 Origin 头）代发 Relay V2 与 OAuth 请求，
- * 避免可信静态站点（kingingwang.github.io）跨域请求 zcode.z.ai 时被 WAF 403 拦截。
+ * 或在安装了浏览器扩展的受信任页面内通过扩展后台 Service Worker 代发，
+ * 避免可信静态站点（kingingwang.github.io）或本地扩展页面跨域请求 zcode.z.ai 时被 CORS / WAF 403 拦截。
  */
 export function resolveWebRemoteControlFetcher(): typeof fetch {
   return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const bridge = typeof window !== "undefined" ? window.CodezAndroidSocket : undefined;
+    const extensionFetch =
+      typeof window !== "undefined" && typeof window.__codezExtensionFetch === "function"
+        ? window.__codezExtensionFetch
+        : undefined;
+    const runtimeSendMessage = (
+      globalThis as unknown as {
+        chrome?: {
+          runtime?: {
+            sendMessage?: (
+              message: unknown,
+              callback?: (response: unknown) => void,
+            ) => Promise<unknown> | void;
+          };
+        };
+      }
+    ).chrome?.runtime?.sendMessage;
+    const isExtensionMarkedPage =
+      typeof window !== "undefined" &&
+      typeof window.postMessage === "function" &&
+      isCodezBrowserExtension();
+
     if (!bridge || typeof bridge.fetch !== "function") {
+      if (extensionFetch || typeof runtimeSendMessage === "function" || isExtensionMarkedPage) {
+        const signal = init?.signal;
+        if (signal?.aborted) {
+          throw new DOMException("The operation was aborted.", "AbortError");
+        }
+        const rawUrl =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : input.url;
+        const resolvedUrl = new URL(
+          rawUrl,
+          typeof window !== "undefined" && window.location?.href
+            ? window.location.href
+            : "https://zcode.z.ai",
+        ).toString();
+        if (resolvedUrl.startsWith("https://zcode.z.ai/api/")) {
+          const method = (init?.method ?? "GET").toUpperCase();
+          const headers = serializeHeaders(init?.headers);
+          const body = typeof init?.body === "string" ? init.body : "";
+          const result = extensionFetch
+            ? await extensionFetch({ url: resolvedUrl, method, headers, body })
+            : typeof runtimeSendMessage === "function"
+              ? await new Promise<{ status: number; body: string; error?: string } | null>(
+                  (resolve) => {
+                    try {
+                      const maybePromise = runtimeSendMessage(
+                        {
+                          type: "codez-extension-http-fetch",
+                          url: resolvedUrl,
+                          method,
+                          headers,
+                          body,
+                        },
+                        (resp) => {
+                          resolve(
+                            resp && typeof resp === "object" && "status" in resp
+                              ? (resp as { status: number; body: string; error?: string })
+                              : null,
+                          );
+                        },
+                      );
+                      if (maybePromise && typeof maybePromise.then === "function") {
+                        maybePromise
+                          .then((resp) => {
+                            if (resp && typeof resp === "object" && "status" in resp) {
+                              resolve(resp as { status: number; body: string; error?: string });
+                            }
+                          })
+                          .catch(() => resolve(null));
+                      }
+                    } catch {
+                      resolve(null);
+                    }
+                  },
+                )
+              : await new Promise<{ status: number; body: string; error?: string } | null>(
+                  (resolve) => {
+                    if (typeof window.addEventListener !== "function") {
+                      resolve(null);
+                      return;
+                    }
+                    const reqId = ++httpIdSeed;
+                    const timer = setTimeout(() => {
+                      window.removeEventListener("message", onMessage);
+                      resolve(null);
+                    }, 3_000);
+                    const onMessage = (event: MessageEvent) => {
+                      if (
+                        event.source !== window ||
+                        event.data?.type !== "codez-extension-http-fetch-res" ||
+                        event.data?.id !== reqId
+                      ) {
+                        return;
+                      }
+                      clearTimeout(timer);
+                      window.removeEventListener("message", onMessage);
+                      resolve(
+                        event.data.response as { status: number; body: string; error?: string },
+                      );
+                    };
+                    window.addEventListener("message", onMessage);
+                    window.postMessage(
+                      {
+                        type: "codez-extension-http-fetch-req",
+                        id: reqId,
+                        url: resolvedUrl,
+                        method,
+                        headers,
+                        body,
+                      },
+                      "*",
+                    );
+                  },
+                );
+          if (result) {
+            if (result.error) {
+              throw new Error(result.error);
+            }
+            return new Response(result.body, {
+              status: result.status,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+        }
+      }
       return globalThis.fetch(input, init);
     }
     const signal = init?.signal;
