@@ -1924,11 +1924,13 @@ function ConversationTurnGroupImpl({
           {canRenderAssistantActions && latestAssistantTextRow ? (
             // 文件 summary 是整轮完成后的聚合结果；轮尾工具栏如果跟着
             // assistant text 内联渲染，会插到 summary 前面，读起来像 summary 不是本轮收尾。
+            // Bugfix：轮尾动作栏代表整轮回复完成收尾，优先使用 turnHeader.endedAt（最终完成时间），
+            // 避免因 row.createdAt 记录流开始或轮次启动时刻而把回复结束时间显示为用户提问时间。
             <ConversationAssistantTextActions
               rowId={latestAssistantTextRow.rowId}
               entityId={latestAssistantTextRow.entityId}
               text={assistantCopyText}
-              createdAt={latestAssistantTextRow.createdAt}
+              createdAt={unit.header?.endedAt ?? latestAssistantTextRow.createdAt}
               compactForRemoteControl={context.compactForRemoteControl}
               feedback={readAssistantFeedback(latestAssistantTextRow)}
               sessionId={context.sessionId}

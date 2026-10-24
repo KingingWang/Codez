@@ -647,6 +647,7 @@ function synthesizeTextPart(
   part: Extract<MessagePart, { type: "text" }>,
   assistantMessageId: string,
   assistantMessageCreatedAtMs: number | undefined,
+  assistantMessageEndedAtMs: number | undefined,
   push: PushEvent,
   turnId: string,
 ): void {
@@ -681,6 +682,9 @@ function synthesizeTextPart(
     SessionEventType.ModelStreaming,
     { kind: "text_end", delta: "", done: false, partId: part.id },
     turnId,
+    // Bugfix：text_end 携带 assistant 消息完成时间（优先 time.completed），
+    // 与 live 路径在 text_end 收口更新 AssistantTextRow.createdAt 保持一致。
+    assistantMessageEndedAtMs ?? assistantMessageCreatedAtMs,
   );
 }
 
@@ -1238,13 +1242,16 @@ function synthesizeAssistantParts(
           "cancelled"
         : "success";
   let toolCallCount = 0;
+  const createdAtMs = messageCreatedAtMs(message);
+  const endedAtMs = messageEndAtMs(message);
   for (const part of message.parts) {
     switch (part.type) {
       case "text":
         synthesizeTextPart(
           part,
           String(message.info.id),
-          messageCreatedAtMs(message),
+          createdAtMs,
+          endedAtMs,
           push,
           turnId,
         );

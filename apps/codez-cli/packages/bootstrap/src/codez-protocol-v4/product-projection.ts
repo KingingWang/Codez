@@ -2375,7 +2375,10 @@ export class ProductProjection {
         : undefined;
 
     const deltas: ConversationDelta[] = [
-      ...this.closeStreamingRows(streamClose),
+      ...this.closeStreamingRows(
+        streamClose,
+        streamClose === "complete" ? this.ms(event) : undefined,
+      ),
       // turn 终态一并收口在飞的 foreground tool row（收口不变量：被 profile
       // 过滤的 inputText 流必须被不可过滤的 row.upserted 蕴含，见 profiles.ts）。
       ...this.closeOpenToolRows(event, payload.resultType === "cancelled" ? "cancelled" : "error"),
@@ -2728,7 +2731,7 @@ export class ProductProjection {
         ];
       }
       case "text_end":
-        return this.closeTextRow("complete");
+        return this.closeTextRow("complete", this.ms(event));
       case "reasoning_start":
         return this.openReasoningRow(event, fact);
       case "reasoning_delta": {
@@ -2764,7 +2767,7 @@ export class ProductProjection {
     event: SessionEvent,
     fact: CanonicalAssistantSegmentFact,
   ): ConversationDelta[] {
-    const close = this.closeTextRow("complete");
+    const close = this.closeTextRow("complete", this.ms(event));
     const continuationRowId = this.outputContinuationTextRowId;
     this.outputContinuationTextRowId = null;
     const continuationRow =
@@ -2825,12 +2828,26 @@ export class ProductProjection {
     return [...close, { op: "row.appended", row }];
   }
 
-  private closeTextRow(state: "complete" | "interrupted"): ConversationDelta[] {
+  private closeTextRow(
+    state: "complete" | "interrupted",
+    completedAt?: number,
+  ): ConversationDelta[] {
     if (this.streamingTextRowId === null) return [];
     const row = this.findRow(this.streamingTextRowId);
     this.streamingTextRowId = null;
     if (row?.kind !== "assistantText") return [];
-    return [{ op: "row.upserted", row: { ...row, state } }];
+    // Bugfix：完成态 assistantText 的时间戳应反映本段回复完成时刻而非首字流开始时刻，
+    // 使连续流、output-token Continue 续写与冷恢复展示一致的回复完成时间。
+    return [
+      {
+        op: "row.upserted",
+        row: {
+          ...row,
+          state,
+          ...(state === "complete" && completedAt !== undefined ? { createdAt: completedAt } : {}),
+        },
+      },
+    ];
   }
 
   private onAssistantFeedbackUpdated(event: SessionEvent): ConversationDelta[] {
@@ -2937,8 +2954,11 @@ export class ProductProjection {
     return [{ op: "row.upserted", row: { ...row, state } }];
   }
 
-  private closeStreamingRows(state: "complete" | "interrupted"): ConversationDelta[] {
-    return [...this.closeTextRow(state), ...this.closeReasoningRow(state)];
+  private closeStreamingRows(
+    state: "complete" | "interrupted",
+    completedAt?: number,
+  ): ConversationDelta[] {
+    return [...this.closeTextRow(state, completedAt), ...this.closeReasoningRow(state)];
   }
 
   // turn 终态收口所有 foreground 未终态 tool row（迟到终态不复活由 isRunning 闸保证）；

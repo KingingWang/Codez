@@ -10428,4 +10428,37 @@ describe("V4 终态折叠内容紧凑化与 getRowPayload", () => {
     );
     expect(planRow?.inputTruncated).toBeUndefined();
   });
+
+  it("assistantText row 在 text_end 收口时更新 createdAt 为回复完成时间", () => {
+    const log = new EventLog();
+    const turnId = "turn-time";
+    log.push(SessionEventType.SessionCreated, { mode: "default", contextWindow: 200_000 });
+    log.push(
+      SessionEventType.TurnStarted,
+      { turnNumber: 1, input: "问题" },
+      { turnId, timestampMs: 1_700_000_010_000 },
+    );
+    log.push(
+      SessionEventType.ModelStreaming,
+      { kind: "text_start", delta: "", done: false, assistantMessageId: "a-1" },
+      { turnId, timestampMs: 1_700_000_011_000 },
+    );
+    log.push(
+      SessionEventType.ModelStreaming,
+      { kind: "text_delta", delta: "完成回复", done: false, assistantMessageId: "a-1" },
+      { turnId, timestampMs: 1_700_000_015_000 },
+    );
+    log.push(
+      SessionEventType.ModelStreaming,
+      { kind: "text_end", delta: "", done: false },
+      { turnId, timestampMs: 1_700_000_020_000 },
+    );
+    const { projection } = runAll(log.events);
+
+    const rows = projection.getSnapshot().rows.window;
+    const userRow = rows.find((row) => row.kind === "userInput");
+    const assistantRow = rows.find((row) => row.kind === "assistantText");
+    expect(userRow?.createdAt).toBe(1_700_000_010_000);
+    expect(assistantRow?.createdAt).toBe(1_700_000_020_000);
+  });
 });
