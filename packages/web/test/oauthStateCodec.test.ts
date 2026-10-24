@@ -127,6 +127,12 @@ describe("oauthStateCodec", () => {
       "/index.html?app_version=3.16.2&sid=device-1&mid=mid-1&name=MacBook",
     );
     expect(
+      resolveSafeAppReturnTo(
+        "https://kingingwang.github.io/Codez/remote/v4/?app_version=3.16.2&sid=device-1&mid=mid-1&name=MacBook#e2ee=v1&k=abc",
+        { currentOrigin: extOrigin },
+      ),
+    ).toBe("/index.html?app_version=3.16.2&sid=device-1&mid=mid-1&name=MacBook");
+    expect(
       buildWebRemoteOAuthRedirectUri("https://zcode.z.ai/remote/v4", href, {
         currentOrigin: extOrigin,
       }),

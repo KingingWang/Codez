@@ -14,12 +14,12 @@ const require = createRequire(join(repoRoot, "packages/desktop/package.json"));
 
 /**
  * 生成 Manifest V3 的 declarativeNetRequest 规则集：
- * 1. 将发往 https://zcode.z.ai/api/v1/*（含 HTTP 与 wss:// WebSocket）的请求头 Origin 设为 https://zcode.z.ai，
- *    解决本地扩展或 fork 页面连接云端 relay 时的 403 拦截；
- * 2. 将扫码/打开的 https://kingingwang.github.io/Codez/remote/v4/* 链接重定向到本地扩展页面 /index.html，
- *    完整保留 query（sid/mid/name/app_version）与 hash（#e2ee=v1&k=...），不从远端下载可执行脚本；
- * 3. 将智谱 OAuth 登录完成回跳的 https://zcode.z.ai/remote/v4?code|authCode|error=...&state=...
- *    重定向到本地扩展页面 /index.html 完成 Token 兑换与 E2EE 密钥恢复。
+ * 仅保留将发往 https://zcode.z.ai/api/v1/*（含 HTTP 与 wss:// WebSocket）的请求头 Origin 设为 https://zcode.z.ai，
+ * 解决本地扩展连接云端 relay 时的 403 拦截。
+ *
+ * 注意：页面级重定向（扫码打开 kingingwang.github.io/Codez/remote/v4/* 与 OAuth 回调 zcode.z.ai/remote/v4）
+ * 不能使用 declarativeNetRequest 的 extensionPath/transform，否则 Chrome/Edge MV3 会丢弃 ?sid=... 查询串与 #e2ee=... 密钥片段，
+ * 或在同域名变换路径时触发 GitHub Pages /index.html 404。页面接管统一由 redirect-content.js（document_start）与 background.js 完成。
  */
 export function createWebRemoteExtensionRules() {
   return [
@@ -39,35 +39,6 @@ export function createWebRemoteExtensionRules() {
       condition: {
         urlFilter: "||zcode.z.ai/api/v1/*",
         resourceTypes: ["xmlhttprequest", "websocket", "other"],
-      },
-    },
-    {
-      id: 2,
-      priority: 90,
-      action: {
-        type: "redirect",
-        redirect: {
-          extensionPath: "/index.html",
-        },
-      },
-      condition: {
-        regexFilter: "^https://kingingwang\\.github\\.io/Codez/remote/v4/?(?:[?#].*)?$",
-        resourceTypes: ["main_frame"],
-      },
-    },
-    {
-      id: 3,
-      priority: 90,
-      action: {
-        type: "redirect",
-        redirect: {
-          extensionPath: "/index.html",
-        },
-      },
-      condition: {
-        regexFilter:
-          "^https://zcode\\.z\\.ai/remote/v4/?\\?(?:[^#]*&)?(?:code|authCode|error)=[^#]*$",
-        resourceTypes: ["main_frame"],
       },
     },
   ];
@@ -106,6 +77,16 @@ export function createWebRemoteExtensionManifest(version) {
       "wss://zcode.z.ai/*",
       "https://kingingwang.github.io/*",
     ],
+    content_scripts: [
+      {
+        matches: [
+          "https://kingingwang.github.io/Codez/remote/*",
+          "https://zcode.z.ai/remote/*",
+        ],
+        js: ["redirect-content.js"],
+        run_at: "document_start",
+      },
+    ],
     declarative_net_request: {
       rule_resources: [
         {
@@ -132,6 +113,47 @@ export function createWebRemoteExtensionManifest(version) {
       },
     },
   };
+}
+
+export function createWebRemoteExtensionContentScript() {
+  return [
+    "// 在 document_start 阶段拦截扫码链接与 OAuth 回调，完整保留 search 与 #e2ee 密钥 hash 跳转到本地扩展页。",
+    "(() => {",
+    "  const api = globalThis.chrome ?? globalThis.browser;",
+    "  if (!api?.runtime?.getURL) return;",
+    "  const loc = window.location;",
+    "  const normalizedPath = loc.pathname.replace(/\\/+$/u, '');",
+    "  const isForkRemotePage =",
+    "    loc.protocol === 'https:' &&",
+    "    loc.hostname === 'kingingwang.github.io' &&",
+    "    normalizedPath === '/Codez/remote/v4';",
+    "  const params = new URLSearchParams(loc.search);",
+    "  const isOfficialOAuthCallback =",
+    "    loc.protocol === 'https:' &&",
+    "    loc.hostname === 'zcode.z.ai' &&",
+    "    normalizedPath === '/remote/v4' &&",
+    "    params.has('state') &&",
+    "    (params.has('code') || params.has('authCode') || params.has('error'));",
+    "  if (!isForkRemotePage && !isOfficialOAuthCallback) return;",
+    "  const targetUrl = `${api.runtime.getURL('index.html')}${loc.search || ''}${loc.hash || ''}`;",
+    "  try {",
+    "    window.stop();",
+    "  } catch {",
+    "    // ignore",
+    "  }",
+    "  try {",
+    "    api.runtime.sendMessage({",
+    "      type: 'codez-redirect-to-extension',",
+    "      search: loc.search || '',",
+    "      hash: loc.hash || '',",
+    "    });",
+    "  } catch {",
+    "    // ignore",
+    "  }",
+    "  loc.replace(targetUrl);",
+    "})();",
+    "",
+  ].join("\n");
 }
 
 export function createWebRemoteExtensionBackgroundScript() {
@@ -165,6 +187,18 @@ export function createWebRemoteExtensionBackgroundScript() {
     "  base.search = parsed.search;",
     "  base.hash = parsed.hash;",
     "  return base.toString();",
+    "}",
+    "",
+    "if (api?.runtime?.onMessage) {",
+    "  api.runtime.onMessage.addListener((message, sender) => {",
+    "    if (message?.type !== 'codez-redirect-to-extension') return;",
+    "    const tabId = sender?.tab?.id;",
+    "    if (tabId === undefined || !api?.tabs?.update) return;",
+    "    const search = typeof message.search === 'string' ? message.search : '';",
+    "    const hash = typeof message.hash === 'string' ? message.hash : '';",
+    "    const targetUrl = `${api.runtime.getURL('index.html')}${search}${hash}`;",
+    "    void api.tabs.update(tabId, { url: targetUrl });",
+    "  });",
     "}",
     "",
     "if (api?.tabs?.onUpdated) {",
@@ -290,6 +324,11 @@ export async function stageWebRemoteExtensionFromDist({
   await writeFile(
     join(outDir, "background.js"),
     createWebRemoteExtensionBackgroundScript(),
+    "utf8",
+  );
+  await writeFile(
+    join(outDir, "redirect-content.js"),
+    createWebRemoteExtensionContentScript(),
     "utf8",
   );
 
