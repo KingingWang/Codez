@@ -5,7 +5,56 @@ import {
   parseCodexBridgeRpcTimeoutDiagnostic,
   parseCodexBridgeTitleDiagnostic,
   parseCodexBridgeNativeStderrSummary,
+  parseCodexBridgeRuntimeNoticeDiagnostic,
 } from "../src/codez-agent/codexBridgeTitleDiagnostic.js";
+
+test("runtime notice diagnostics accept only bounded allowlisted fields", () => {
+  const warning = {
+    kind: "configWarning",
+    message: "Codex is ignoring 1 unrecognized configuration setting",
+    detail: "session-flags: `token_budget` is ignored.",
+  };
+  const line = `Codex desktop bridge warn: runtime notice; payload=${JSON.stringify(warning)}`;
+  assert.deepEqual(parseCodexBridgeRuntimeNoticeDiagnostic(line), warning);
+
+  const recovery = {
+    kind: "authRecovery",
+    message: "authentication recovered",
+    threadId: "thread-1",
+    turnId: "turn-1",
+    provider: "openai",
+    phase: "completed",
+  };
+  assert.deepEqual(
+    parseCodexBridgeRuntimeNoticeDiagnostic(
+      `Codex desktop bridge warn: runtime notice; payload=${JSON.stringify(recovery)}`,
+    ),
+    recovery,
+  );
+
+  for (const payload of [
+    { ...warning, path: "/private/config.toml" },
+    { ...warning, message: "" },
+    { ...warning, message: "x".repeat(4_097) },
+    { ...warning, kind: "futureWarning" },
+    { kind: "authRecovery", message: "missing metadata" },
+    { ...recovery, phase: "unknown" },
+  ]) {
+    assert.equal(
+      parseCodexBridgeRuntimeNoticeDiagnostic(
+        `Codex desktop bridge warn: runtime notice; payload=${JSON.stringify(payload)}`,
+      ),
+      undefined,
+    );
+  }
+  for (const line of [
+    "Codex desktop bridge warn: runtime notice; payload={broken",
+    "Codex desktop bridge warn: runtime notice; payload=[]",
+    "unrelated stderr line",
+  ]) {
+    assert.equal(parseCodexBridgeRuntimeNoticeDiagnostic(line), undefined);
+  }
+});
 
 test("only bounded automatic-title diagnostics can become production warnings", () => {
   assert.deepEqual(
