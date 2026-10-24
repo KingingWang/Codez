@@ -2995,4 +2995,46 @@ describe("topic preparation flow membership", () => {
     expect(html).toContain('data-turn-token-usage="true"');
     expect(html).toContain("tokens · 缓存 80%");
   });
+
+  it("用户消息动作栏展示发送时间，轮尾助手动作栏优先展示 turnHeader.endedAt 完成时间", () => {
+    const now = new Date();
+    const sendTime = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      15,
+      54,
+      0,
+    ).getTime();
+    const endTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 15, 57, 0).getTime();
+    const expectedSendLabel = new Intl.DateTimeFormat("zh-CN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(sendTime));
+    const expectedEndLabel = new Intl.DateTimeFormat("zh-CN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(endTime));
+    const [unit] = buildConversationTurnRenderUnits([
+      turnHeader({
+        startedAt: sendTime,
+        endedAt: endTime,
+      }),
+      userInputRow(2, {
+        createdAt: sendTime,
+        text: "请帮我分析这个问题",
+      }),
+      assistantTextRow(4, {
+        // 即便 row.createdAt 仍为轮次开始时间（如 Codex 原生桥接行），轮尾也应取 endedAt。
+        createdAt: sendTime,
+        text: "已经完成全部定位与修复。",
+      }),
+    ]);
+    const html = renderUnit(unit!);
+    expect(html).toContain(`>${expectedSendLabel}</span>`);
+    expect(html).toContain(`>${expectedEndLabel}</span>`);
+    expect(html.indexOf(`>${expectedSendLabel}</span>`)).toBeLessThan(
+      html.indexOf(`>${expectedEndLabel}</span>`),
+    );
+  });
 });

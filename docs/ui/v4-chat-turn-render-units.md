@@ -50,6 +50,27 @@ runtime / projection 必须提供 `inputVisibility="model-only"` 或等价维护
 turn actions 逐行消费 `row.actions`。任何带 action 的 assistant row 都必须渲染 action 入口；
 不得用 `lastFlowRow`、turn 内数组位置或“最后一条 assistant”规则再次隐藏 CLI 已授权动作。
 
+## 消息时间戳与收尾时间语义
+
+用户消息动作栏与助手消息动作栏共用 `formatMessageTimeLabel` 只读派生时间标签，不引入额外的 renderer 本地状态：
+
+- **用户消息发送时间**：`SingleUserInputRowView` 底部 `<MessageActions>` 在复制、编辑按钮之后展示 `row.createdAt` 派生的时间标签，使桌面端（hover/focus）与手机远控（常显）都能直接看到用户发送消息的时间。
+- **助手消息与轮尾完成时间**：
+  - CLI 实时流（`ProductProjection`）在 `text_end` / `TurnComplete` / 新段开启而收口 `AssistantTextRow` 为 `complete` 时，将 `row.createdAt` 更新为收口事件的时间戳（即该段回复完成时刻，而非 `text_start` 首字时刻）；冷恢复（`transcript-hydration`）同样优先使用持久化消息的完成时间（`messageEndAtMs(message)`，即 `time.completed`）合成 `AssistantTextRow` 的时间戳。
+  - Codex 桥接投影（`projectSingleTurnRows`）将轮次的完成时间写入 `TurnHeaderRow.endedAt`（`turn.completedAt * 1000`），保持已投影 item 行的不可变性以维护增量追加不变量。
+  - `ConversationTurnGroup` 轮尾汇总操作栏代表整轮回复完成收尾，其展示时间优先取 `unit.header?.endedAt ?? latestAssistantTextRow.createdAt`，确保经过多步工具调用后轮尾显示的是最终完成时间而非提问发起时间。
+
+```text
+user sends prompt (t_start)
+  -> UserInputRow.createdAt = t_start
+  -> SingleUserInputRowView MessageActions displays formatMessageTimeLabel(t_start)
+
+model finishes turn (t_end)
+  -> TurnHeaderRow.endedAt = t_end
+  -> final AssistantTextRow.createdAt = t_end (live text_end / cold time.completed / Codex turn.completedAt)
+  -> ConversationTurnGroup footer ConversationAssistantTextActions displays formatMessageTimeLabel(endedAt ?? createdAt)
+```
+
 ## Assistant Work History
 
 每个 product turn 先按 guided `userInput` 拆成 visual work segment，再在各 segment 内按以下规则拆分。该拆分只影响 UI 工作区，不创建新 `turnId` / `productTurnId`：
