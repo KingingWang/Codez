@@ -23,6 +23,7 @@ test("Manifest V3 规则覆盖 Origin 重写、GitHub Pages 扫码入口接管�
   assert.ok(originRule.condition.resourceTypes.includes("xmlhttprequest"));
 
   const pagesRedirectRule = rules.find((r) => r.id === 2);
+  assert.equal(pagesRedirectRule.action.redirect.extensionPath, "/index.html");
   const pagesRegex = new RegExp(pagesRedirectRule.condition.regexFilter, "u");
   assert.ok(
     pagesRegex.test("https://kingingwang.github.io/Codez/remote/v4/?sid=abc#e2ee=v1&k=xyz"),
@@ -31,6 +32,7 @@ test("Manifest V3 规则覆盖 Origin 重写、GitHub Pages 扫码入口接管�
   assert.ok(!pagesRegex.test("https://kingingwang.github.io/Codez/other"));
 
   const oauthRedirectRule = rules.find((r) => r.id === 3);
+  assert.equal(oauthRedirectRule.action.redirect.extensionPath, "/index.html");
   const oauthRegex = new RegExp(oauthRedirectRule.condition.regexFilter, "u");
   assert.ok(oauthRegex.test("https://zcode.z.ai/remote/v4?code=abc&state=123"));
   assert.ok(oauthRegex.test("https://zcode.z.ai/remote/v4/?sid=d1&authCode=abc&state=123"));
