@@ -162,7 +162,13 @@ read-only pill when discovery returned no capability list). When the catalog is
 ready, no standalone refresh button is rendered next to the reasoning control
 (catalog refresh remains available in the loading/error fallback state); busy
 locking disables the same controls without inline banner text, matching the
-legacy composer surfaces.
+legacy composer surfaces. In the Side Pane full-view floating composer (`inline`
+layout / `iconOnly` toolbar), the Codex composer toolbar stays on a single row:
+trailing action shrinking applies only to the `stacked` composer layout, the
+model trigger uses `px-1.5` instead of `size-7` so `tailwind-merge` preserves
+`w-fit` rather than keeping the `Button` default `h-7` while stripping `w-7`,
+and the busy follow-up mode picker (`CodexFollowupModeMenu`) collapses its text
+and chevron to an icon-only trigger alongside the other toolbar controls.
 
 A discovered model whose `supportedReasoningEfforts` is empty has no reasoning
 dimension. Selection readiness must not require an effort value for it, the

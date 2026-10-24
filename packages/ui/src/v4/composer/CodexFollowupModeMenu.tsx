@@ -34,12 +34,15 @@ function CodexFollowupModeMenuImpl({ intent, disabled, onChange }: CodexFollowup
           size="sm"
           disabled={disabled}
           data-testid="v4-codex-followup-mode"
+          data-composer-collapse-priority="2"
           aria-label={title}
-          className="h-7 min-w-0 shrink-0 gap-1 rounded-lg px-2 text-ui-sm text-foreground-subtle hover:text-foreground"
+          className="group/followup h-7 min-w-0 shrink-0 gap-1 rounded-lg px-2 text-ui-sm text-foreground-subtle hover:text-foreground data-[composer-compact=true]:w-7 data-[composer-compact=true]:justify-center data-[composer-compact=true]:gap-0 data-[composer-compact=true]:px-0"
         >
           <Icon className="size-4 shrink-0" />
-          <span className="truncate">{label(intent)}</span>
-          <ChevronDownIcon className="size-3 shrink-0" />
+          <span className="truncate group-data-[composer-compact=true]/followup:hidden">
+            {label(intent)}
+          </span>
+          <ChevronDownIcon className="size-3 shrink-0 group-data-[composer-compact=true]/followup:hidden" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
