@@ -51,6 +51,18 @@ Plan 保持独立勾选维度（`planEnabled` → `collaborationMode`），与�
 - 能力探测失败：按 `unsupported` fail-closed（隐藏），不猜测可用。
 - `custom` 恢复时 `config/read` 失败：使用回退基线并在 bridge 日志记录 warn，不阻断提交。
 
+## 自动审批过程与结论投影（Approve for me）
+
+- **状态所有权**：原生 Codex `item/autoApprovalReview/started`、`item/autoApprovalReview/completed` 与 `autoApprovalReview/strictReviewRequired` 通知由 bridge `ThreadStateStore` 按 `(turnId, reviewId)` 增量维护在 `ThreadProjectionState.autoApprovalReviews` 中；不进入人工 `InteractionBroker` / `pendingInteractions`，不触发人工 `PermissionDialog` 或侧边栏待确认红点。
+- **事件顺序与收敛**：
+  1. `item/autoApprovalReview/started` 建立或更新 `inProgress` 状态（携带 `targetItemId`、`action`、`review`）；若同 turn 收到 `autoApprovalReview/strictReviewRequired`，为当前 `inProgress` 的自动审批标记 `strictReviewRequired: true`。
+  2. `item/autoApprovalReview/completed` 将对应 `reviewId` 收敛为终态（`approved` / `denied` / `timedOut` / `aborted`），保留 `riskLevel`、`userAuthorization`、`rationale` 与起止时间戳；迟到的 `started` 不覆盖已终态条目。
+  3. 当 `turn/completed`（状态为 `interrupted` 或 `failed`）到达时，该 turn 内仍处于 `inProgress` 的自动审批条目自动收敛为 `aborted`。
+- **行级挂载与时间线兜底**：
+  - 若审查携带 `targetItemId`、同 turn 内存在匹配 `item.id` 的工具行且 `action.type !== "writeStdin"`，优先投影到该 `ToolCallRow.autoApprovalReview`（保留 `approved` 痕迹及 `denied`/`timedOut`/`aborted` 的风险等级与 `rationale`；当工具因自动审批被拒或超时失败且无更具体错误消息时，同步补齐 `row.error.message`）。
+  - 若审查无 `targetItemId`（如 `networkAccess`）、属于子级 `writeStdin` 审查、或目标 item 尚未出现在 `turn.items`，在对应 turn 内投影独立的 `timelineMarker`（`codexEvent/autoApprovalReview`）；一旦后续同 turn 目标工具行出现，自动收拢到该工具行，避免重复展示。
+- **跨端一致性**：`desktop-continuous` 与 `web-remote-replayable` 共用同一份 `ConversationSnapshot` 行投影与 wire 保留策略，确保桌面实时流、手机扫码远控与 resync 恢复观察到一致的自动审批状态。
+
 ## UI 约束
 
 - Codex 会话档位菜单顺序对齐原生：请求批准 → 帮我审批 → 完全访问 → 自定义；Plan 勾选框保持在菜单顶部独立区域。
