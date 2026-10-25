@@ -14,7 +14,7 @@ Host projectService 的 readTree 决定行集合、项目归属和 CLI 事实镜
 也纳入聚合任务集合，使其在「最近更新」「按分组」及同目录单 root 远程项目中可见且不重复；
 离线 Host 不保留远端任务行，未读角标同样计入任务区与单 root 远程项目可见的未读行。
 
-创建经 Host prepareSession 固化 cwd，草稿持有 projectId，首发前由 Host 原子预留归属。选择其他项目会重建尚未提升的预热实例，已提交任务不受影响。拖动只发 moveTask，缺 root 经确认重试，失败保持原树。软删项目保留任务归属；时间线可见；恢复需用户显式选择同 roots 的已删项目。
+创建经 Host prepareSession 固化 cwd，草稿持有 projectId，首发前由 Host 原子预留归属。选择其他项目会重建尚未提升的预热实例，已提交任务不受影响。拖动只发 moveTask，缺 root 经确认重试，失败保持原树。软删项目保留任务归属；时间线可见；以非空同 roots 重新创建项目时直接复用恢复原已删项目。
 
 桌面和手机共用组件；沿用现有 task 行操作、shared-host attachment、continuous/replayable 传输。CLI 不接收项目 ID。
 
