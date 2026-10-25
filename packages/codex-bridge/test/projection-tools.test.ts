@@ -786,3 +786,161 @@ test("MCP tool approval binds to the matching in-progress mcpToolCall row in the
   assert.equal(row?.kind === "toolCall" && row.status, "pendingApproval");
   assert.equal(row?.kind === "toolCall" && row.approvalInteractionId, "mcp-approval-1");
 });
+
+test("autoApprovalReviews anchor to matching tool rows across inProgress, approved, denied, timedOut, and fallback to timelineMarker when unanchored", () => {
+  const thread = threadFixture();
+  thread.turns[0]!.status = "inProgress";
+  thread.status = { type: "active", activeFlags: [] };
+  thread.turns[0]!.items.push(
+    {
+      type: "commandExecution",
+      id: "cmd-approved",
+      command: "git pull",
+      cwd: "/workspace",
+      status: "completed",
+      exitCode: 0,
+      aggregatedOutput: "Already up to date.\n",
+    },
+    {
+      type: "commandExecution",
+      id: "cmd-denied",
+      command: "rm -rf /tmp/prod.db",
+      cwd: "/workspace",
+      status: "declined",
+      exitCode: null,
+      aggregatedOutput: null,
+    },
+    {
+      type: "commandExecution",
+      id: "cmd-timeout",
+      command: "curl https://internal.example",
+      cwd: "/workspace",
+      status: "failed",
+      exitCode: null,
+      aggregatedOutput: null,
+    },
+  );
+
+  const snapshot = projectThread(thread, {
+    workspacePath: "/workspace",
+    autoApprovalReviews: {
+      "turn-1": {
+        "rev-approved": {
+          reviewId: "rev-approved",
+          turnId: "turn-1",
+          targetItemId: "cmd-approved",
+          actionType: "command",
+          actionSummary: "git pull",
+          status: "approved",
+          riskLevel: "low",
+          userAuthorization: "high",
+          rationale: "Safe git synchronization command",
+          startedAtMs: 1_000,
+          completedAtMs: 2_200,
+          ordinal: 0,
+        },
+        "rev-denied": {
+          reviewId: "rev-denied",
+          turnId: "turn-1",
+          targetItemId: "cmd-denied",
+          actionType: "command",
+          actionSummary: "rm -rf /tmp/prod.db",
+          status: "denied",
+          riskLevel: "high",
+          userAuthorization: "low",
+          rationale: "Destructive deletion of database file",
+          startedAtMs: 3_000,
+          completedAtMs: 3_800,
+          ordinal: 1,
+        },
+        "rev-timeout": {
+          reviewId: "rev-timeout",
+          turnId: "turn-1",
+          targetItemId: "cmd-timeout",
+          actionType: "command",
+          actionSummary: "curl https://internal.example",
+          status: "timedOut",
+          rationale: "Guardian review timed out",
+          startedAtMs: 4_000,
+          completedAtMs: 34_000,
+          ordinal: 2,
+        },
+        "rev-stdin": {
+          reviewId: "rev-stdin",
+          turnId: "turn-1",
+          targetItemId: "cmd-approved",
+          actionType: "writeStdin",
+          actionSummary: "write_stdin (tty-1): y",
+          status: "denied",
+          riskLevel: "medium",
+          rationale: "Interactive confirmation requires explicit user intent",
+          ordinal: 3,
+        },
+        "rev-network": {
+          reviewId: "rev-network",
+          turnId: "turn-1",
+          actionType: "networkAccess",
+          actionSummary: "network access to api.example.com:443",
+          status: "inProgress",
+          strictReviewRequired: true,
+          ordinal: 4,
+        },
+      },
+    },
+  });
+
+  assert.deepEqual(conversationSnapshotSchema.parse(snapshot), snapshot);
+  assert.equal(snapshot.pendingInteractions.length, 0);
+
+  const approvedRow = snapshot.rows.window.find(
+    (row): row is Extract<typeof row, { kind: "toolCall" }> =>
+      row.kind === "toolCall" && row.toolCallId === "cmd-approved",
+  );
+  assert.equal(approvedRow?.status, "success");
+  assert.equal(approvedRow?.autoApprovalReview?.status, "approved");
+  assert.equal(approvedRow?.autoApprovalReview?.riskLevel, "low");
+  assert.equal(approvedRow?.autoApprovalReview?.rationale, "Safe git synchronization command");
+
+  const deniedRow = snapshot.rows.window.find(
+    (row): row is Extract<typeof row, { kind: "toolCall" }> =>
+      row.kind === "toolCall" && row.toolCallId === "cmd-denied",
+  );
+  assert.equal(deniedRow?.status, "cancelled");
+  assert.equal(deniedRow?.autoApprovalReview?.status, "denied");
+  assert.equal(deniedRow?.autoApprovalReview?.riskLevel, "high");
+  assert.equal(deniedRow?.error?.message, "Destructive deletion of database file");
+
+  const timeoutRow = snapshot.rows.window.find(
+    (row): row is Extract<typeof row, { kind: "toolCall" }> =>
+      row.kind === "toolCall" && row.toolCallId === "cmd-timeout",
+  );
+  assert.equal(timeoutRow?.status, "error");
+  assert.equal(timeoutRow?.autoApprovalReview?.status, "timedOut");
+  assert.equal(timeoutRow?.error?.message, "Guardian review timed out");
+
+  const markerRows = snapshot.rows.window.filter(
+    (row): row is Extract<typeof row, { kind: "timelineMarker" }> =>
+      row.kind === "timelineMarker" &&
+      row.marker.type === "codexEvent" &&
+      row.marker.event === "autoApprovalReview",
+  );
+  assert.equal(markerRows.length, 2);
+  assert.equal(
+    markerRows[0]?.marker.type === "codexEvent" &&
+      markerRows[0].marker.autoApprovalReview?.reviewId,
+    "rev-stdin",
+  );
+  assert.equal(
+    markerRows[0]?.marker.type === "codexEvent" && markerRows[0].marker.status,
+    "completed",
+  );
+  assert.equal(
+    markerRows[1]?.marker.type === "codexEvent" &&
+      markerRows[1].marker.autoApprovalReview?.reviewId,
+    "rev-network",
+  );
+  assert.equal(
+    markerRows[1]?.marker.type === "codexEvent" && markerRows[1].marker.status,
+    "running",
+  );
+});

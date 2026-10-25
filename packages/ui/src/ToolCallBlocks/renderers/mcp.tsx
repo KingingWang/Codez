@@ -236,7 +236,12 @@ export function McpToolCallBlock(context: ToolCallBlockRenderContext) {
       <ToolCallProgressIndicator progress={progress} />
     ) : undefined;
   const failedSummaryStatus =
-    toolCall.status === "failed" ? <span>{context.statusLabel}</span> : undefined;
+    toolCall.status === "failed" || context.autoApprovalReview !== undefined ? (
+      <span className="inline-flex items-center gap-2">
+        <span className="text-foreground-subtlest">·</span>
+        <span>{context.statusLabel}</span>
+      </span>
+    ) : undefined;
   const handleLoadFullToolCallFields = context.onLoadFullToolCallFields;
   const renderContent = useCallback(
     () => (
@@ -392,7 +397,11 @@ export function McpToolCallBlock(context: ToolCallBlockRenderContext) {
       // 状态作为独立节点交给公共 gap 分隔；Failed 使用专用错误状态槽位。
       secondaryText={stoppedSummaryStatus}
       statusLabel={failedSummaryStatus}
-      statusTooltip={toolCall.status === "failed" ? context.errorText : undefined}
+      statusTooltip={
+        (toolCall.status === "failed" ? context.errorText : undefined) ??
+        context.autoApprovalTooltipText
+      }
+      showStatusLabel={context.autoApprovalReview !== undefined}
       showFailureStatus={toolCall.status === "failed"}
       isRunning={context.isRunning}
       title={presentation.description ?? presentation.toolName}
