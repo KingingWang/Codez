@@ -69,6 +69,8 @@ export class BridgeRuntime {
   private readonly title: SessionTitleCoordinator;
   private readonly officialPlugins: OfficialPluginMarketplace | undefined;
   private readonly unsubscribe: (() => void)[] = [];
+  private readonly pendingChangedIds = new Set<string>();
+  private changeFlushScheduled = false;
   private eventTail: Promise<void> = Promise.resolve();
   private closed = false;
 
@@ -114,9 +116,23 @@ export class BridgeRuntime {
     });
     this.unsubscribe.push(
       this.store.onChange((id) => {
-        void this.subscriptions.changed(`conversation/${id}`).catch((error: Error) => {
-          if (!this.closed && !(error instanceof DeletedThreadError))
-            options.fatal(error, "conversation-projection");
+        this.pendingChangedIds.add(id);
+        if (this.changeFlushScheduled) return;
+        this.changeFlushScheduled = true;
+        queueMicrotask(() => {
+          this.changeFlushScheduled = false;
+          if (this.closed) {
+            this.pendingChangedIds.clear();
+            return;
+          }
+          const ids = [...this.pendingChangedIds];
+          this.pendingChangedIds.clear();
+          for (const changedId of ids) {
+            void this.subscriptions.changed(`conversation/${changedId}`).catch((error: Error) => {
+              if (!this.closed && !(error instanceof DeletedThreadError))
+                options.fatal(error, "conversation-projection");
+            });
+          }
         });
       }),
     );

@@ -219,3 +219,55 @@ it("scans a newly added single-folder project even when initial loading started 
     }),
   );
 });
+
+it("ignores redundant state:projects broadcasts when projectDirectory roots have not changed, but scans when the active tab root is newly added", async () => {
+  const activeWorkspaceTab = { workspacePath: "/local/existing" };
+  fixture.projectDirectory = {
+    loading: false,
+    projects: [
+      {
+        id: "local-existing",
+        hostId: "local",
+        deleted: false,
+        roots: [{ rootPath: "/local/existing", position: 0, isPrimary: true }],
+      },
+    ],
+    directory: { hosts: [], entries: [] },
+  };
+  const { rerender } = renderHook(() =>
+    useCodexProjectDiscovery({
+      workspacePath: "/local/existing",
+      activeWorkspaceTab,
+      isDesktop: true,
+    }),
+  );
+  await waitFor(() => expect(fixture.listSessions).toHaveBeenCalledTimes(1));
+
+  // RolloutSyncer / TaskIndexSyncer firing state:projects without root changes must not trigger discover()
+  await act(async () => {
+    fixture.listeners.forEach((listener) => listener({ channel: "state:projects" }));
+  });
+  expect(fixture.listSessions).toHaveBeenCalledTimes(1);
+
+  // When a newly created project adds the active tab's root (e.g. tab was opened at /local/new before project existed)
+  fixture.projectDirectory = {
+    loading: false,
+    projects: [],
+    directory: { hosts: [], entries: [] },
+  };
+  rerender();
+  fixture.projectDirectory = {
+    loading: false,
+    projects: [
+      {
+        id: "local-existing-restored",
+        hostId: "local",
+        deleted: false,
+        roots: [{ rootPath: "/local/existing", position: 0, isPrimary: true }],
+      },
+    ],
+    directory: { hosts: [], entries: [] },
+  };
+  rerender();
+  await waitFor(() => expect(fixture.listSessions).toHaveBeenCalledTimes(2));
+});
