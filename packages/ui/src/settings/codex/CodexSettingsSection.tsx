@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button.js";
 import { SettingsResourceHeaderActions } from "@/settings/SettingsResourceHeaderActions.js";
 import { SettingsSegmentedTabs } from "@/settings/SettingsSegmentedTabs.js";
 import { useCodexSettings } from "@/hooks/useCodexSettings.js";
+import type { CodexResource } from "./codexSettingsData.js";
 import { CodexAgentsPanel } from "./CodexAgentsPanel.js";
 import { CodexAccountPanel } from "./CodexAccountPanel.js";
 import { CodexConfigPanel } from "./CodexConfigPanel.js";
@@ -46,6 +47,19 @@ const PANELS: CodexSettingsPanel[] = [
   "memory",
 ];
 const CODEX_CORE_PANELS: CodexSettingsPanel[] = ["account", "models", "config", "history"];
+const EMBEDDED_PANEL_RESOURCES: Partial<Record<CodexSettingsPanel, readonly CodexResource[]>> = {
+  account: ["account", "models", "config", "requirements"],
+  models: ["account", "models", "config", "requirements"],
+  config: ["account", "models", "config", "requirements"],
+  history: ["account"],
+  providers: ["config"],
+  skills: ["skills"],
+  agents: [],
+  hooks: ["hooks", "config"],
+  mcp: ["mcp", "config"],
+  plugins: ["plugins"],
+  memory: ["config", "models"],
+};
 interface CodexSettingsSectionProps {
   workspacePath?: string | null;
   workspaceIdentity?: string;
@@ -83,8 +97,11 @@ export function CodexSettingsSection(props: CodexSettingsSectionProps) {
 
 function CodexSettingsContent(props: CodexSettingsSectionProps) {
   const text = useCodexMessages();
-  const controller = useCodexSettings(props);
   const [panel, setPanel] = useState<CodexSettingsPanel>(props.initialPanel ?? "account");
+  const controller = useCodexSettings({
+    ...props,
+    ...(props.embeddedInSettingsPage ? { resources: EMBEDDED_PANEL_RESOURCES[panel] } : {}),
+  });
   const isEmbeddedCodexCore =
     props.embeddedInSettingsPage === true && CODEX_CORE_PANELS.includes(panel);
   const isEmbeddedStandaloneSection = props.embeddedInSettingsPage === true && !isEmbeddedCodexCore;

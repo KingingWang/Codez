@@ -57,6 +57,52 @@ export interface SessionsIndexOptions {
 const nonempty = z.string().trim().min(1);
 const watermark = z.number().int().nonnegative();
 const codexThreadHeaderSchema = codexThreadSchema.omit({ turns: true });
+const conversationSnapshotEnvelopeSchema = conversationSnapshotSchema.omit({ rows: true });
+const summaryPreviewCache = new WeakMap<
+  CodexThread,
+  {
+    updatedAt: number;
+    turnsLength: number;
+    lastTurn: CodexThread["turns"][number] | undefined;
+    lastTurnItemsLength: number;
+    preview: string | undefined;
+  }
+>();
+
+function resolveLastAssistantPreview(source: CodexThread): string | undefined {
+  const lastTurn = source.turns.at(-1);
+  const lastTurnItemsLength = lastTurn?.items.length ?? 0;
+  const cached = summaryPreviewCache.get(source);
+  if (
+    cached &&
+    cached.updatedAt === source.updatedAt &&
+    cached.turnsLength === source.turns.length &&
+    cached.lastTurn === lastTurn &&
+    cached.lastTurnItemsLength === lastTurnItemsLength
+  ) {
+    return cached.preview;
+  }
+  let preview: string | undefined;
+  outer: for (let turnIndex = source.turns.length - 1; turnIndex >= 0; turnIndex -= 1) {
+    const items = source.turns[turnIndex]!.items;
+    for (let itemIndex = items.length - 1; itemIndex >= 0; itemIndex -= 1) {
+      const item = items[itemIndex]!;
+      if (isCodexKnownItem(item) && item.type === "agentMessage") {
+        // 120 个 Unicode code points 最多占 240 个 UTF-16 code units；先 slice(0, 480) 避免把长文拆成数万元素数组。
+        preview = Array.from(item.text.slice(0, 480)).slice(0, 120).join("");
+        break outer;
+      }
+    }
+  }
+  summaryPreviewCache.set(source, {
+    updatedAt: source.updatedAt,
+    turnsLength: source.turns.length,
+    lastTurn,
+    lastTurnItemsLength,
+    preview,
+  });
+  return preview;
+}
 
 /** 增量校验 CodexThread：已完成且未变的 turn 复用 parseCodexTurnCached，避免流式期间每帧全历史重跑 Zod。 */
 export function parseCodexThreadIncremental(thread: unknown): CodexThread {
@@ -204,7 +250,8 @@ export function projectThread(
   // 错误/历史仍保留，审批、未加载的 active turn 和未知系统错误继续走原门禁。
   const unresolvedError = state.phase === "error" && source.turns.at(-1)?.status !== "failed";
   const unavailable = { allowed: false as const, reasonCode: "guard.codex.capabilityUnknown" };
-  return conversationSnapshotSchema.parse({
+  // projectRows 已对每条新行做过 conversationRowSchema.parse，避免每帧在全历史 rows 上再跑一遍深度 Zod 校验。
+  const envelope = conversationSnapshotEnvelopeSchema.parse({
     protocolVersion: 1,
     sessionId: source.id,
     logEpoch,
@@ -257,17 +304,17 @@ export function projectThread(
     backgroundWorks: [],
     goal: null,
     plan: projectLatestPlanState(source),
-    rows: { window: rows, totalCount: rows.length, firstRowId: rows[0]?.rowId ?? null },
   });
+  return {
+    ...envelope,
+    rows: { window: rows, totalCount: rows.length, firstRowId: rows[0]?.rowId ?? null },
+  };
 }
 
 export function projectSessionSummary(thread: unknown, workspacePath: string): SessionSummary {
   const source = parseCodexThreadIncremental(thread);
   const state = control(source);
-  const lastAssistant = source.turns
-    .flatMap((turn) => turn.items)
-    .filter(isCodexKnownItem)
-    .findLast((item) => item.type === "agentMessage");
+  const lastAssistantPreview = resolveLastAssistantPreview(source);
   const parentSessionId = source.forkedFromId ?? source.parentThreadId;
   const originProjectId = projectOriginFromSource(source.threadSource);
   return sessionSummarySchema.parse({
@@ -282,9 +329,7 @@ export function projectSessionSummary(thread: unknown, workspacePath: string): S
     hasBackgroundWork: false,
     createdAt: source.createdAt * 1000,
     lastActivityAt: source.updatedAt * 1000,
-    ...(lastAssistant?.type === "agentMessage"
-      ? { lastAssistantPreview: Array.from(lastAssistant.text).slice(0, 120).join("") }
-      : {}),
+    ...(lastAssistantPreview !== undefined ? { lastAssistantPreview } : {}),
   });
 }
 

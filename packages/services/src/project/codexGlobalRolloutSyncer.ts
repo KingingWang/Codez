@@ -1,7 +1,7 @@
 import { watch, type FSWatcher } from "node:fs";
-import { mkdir, readdir, readFile, stat } from "node:fs/promises";
+import { mkdir, open, readdir, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import {
   CODEZ_AGENT_PROVIDER,
   generateTraceId,
@@ -31,6 +31,7 @@ const DEBOUNCE_MS = 180;
 const POLL_INTERVAL_MS = 3_000;
 const ROLLOUT_STAT_CONCURRENCY = 16;
 const MAX_ROLLOUT_HEAD_BYTES = 128 * 1024;
+const MAX_ROLLOUT_TAIL_BYTES = 64 * 1024;
 const PROJECT_SOURCE_PREFIX = "codez_project:";
 const UNCLASSIFIED_SOURCE = "codez_unclassified";
 const SELECTION_SIDE_CHAT_THREAD_SOURCE = "codez_selection_side_chat";
@@ -153,21 +154,60 @@ function parseRolloutFileId(fileName: string): { createdAtMs: number; sessionId:
   };
 }
 
+async function readBoundedRolloutSlice(
+  filePath: string,
+  fileSize: number,
+): Promise<{ headText: string; tailText: string } | null> {
+  let handle: Awaited<ReturnType<typeof open>>;
+  try {
+    handle = await open(filePath, "r");
+  } catch {
+    return null;
+  }
+  try {
+    const headLength = Math.min(MAX_ROLLOUT_HEAD_BYTES, Math.max(0, fileSize));
+    if (headLength <= 0) {
+      const content = await handle.readFile({ encoding: "utf8" });
+      return {
+        headText: content.slice(0, MAX_ROLLOUT_HEAD_BYTES),
+        tailText: "",
+      };
+    }
+    const headBuffer = Buffer.allocUnsafe(headLength);
+    const { bytesRead: headRead } = await handle.read(headBuffer, 0, headLength, 0);
+    const headText = headBuffer.subarray(0, headRead).toString("utf8");
+    if (fileSize <= MAX_ROLLOUT_HEAD_BYTES) {
+      return { headText, tailText: "" };
+    }
+    const tailOffset = Math.max(MAX_ROLLOUT_HEAD_BYTES, fileSize - MAX_ROLLOUT_TAIL_BYTES);
+    const tailLength = Math.max(0, fileSize - tailOffset);
+    if (tailLength <= 0) {
+      return { headText, tailText: "" };
+    }
+    const tailBuffer = Buffer.allocUnsafe(tailLength);
+    const { bytesRead: tailRead } = await handle.read(tailBuffer, 0, tailLength, tailOffset);
+    const rawTail = tailBuffer.subarray(0, tailRead).toString("utf8");
+    const firstNewline = tailOffset > 0 ? rawTail.indexOf("\n") : -1;
+    const tailText = firstNewline >= 0 ? rawTail.slice(firstNewline + 1) : rawTail;
+    return { headText, tailText };
+  } catch {
+    return null;
+  } finally {
+    await handle.close();
+  }
+}
+
 async function parseRolloutCandidate(
   filePath: string,
   fileName: string,
   mtimeMs: number,
+  fileSize = 0,
 ): Promise<ParsedRolloutCandidate | null> {
   const fileInfo = parseRolloutFileId(fileName);
   if (!fileInfo) return null;
-  let raw: string;
-  try {
-    const content = await readFile(filePath, "utf8");
-    raw =
-      content.length > MAX_ROLLOUT_HEAD_BYTES ? content.slice(0, MAX_ROLLOUT_HEAD_BYTES) : content;
-  } catch {
-    return null;
-  }
+  const slice = await readBoundedRolloutSlice(filePath, fileSize);
+  if (!slice) return null;
+  const raw = slice.tailText ? `${slice.headText}\n${slice.tailText}` : slice.headText;
 
   let sessionId = fileInfo.sessionId;
   let cwd = "";
@@ -396,15 +436,15 @@ export function createCodexGlobalRolloutSyncer(options: {
   let pollTimer: ReturnType<typeof setInterval> | null = null;
   let running: Promise<boolean> | null = null;
   let queued = false;
+  let needsFullScan = true;
+  const pendingWatchPaths = new Set<string>();
   let lastIndexMtimeMs = -1;
   let lastIndexSize = -1;
 
-  const runOnce = async (): Promise<boolean> => {
+  const runOnce = async (forceFullScan: boolean): Promise<boolean> => {
     if (disposed) return false;
     const codexHome = resolveCodexHome(options.env);
     const sessionsRoot = join(codexHome, "sessions");
-    const files = await listRolloutFiles(sessionsRoot);
-    if (disposed) return false;
 
     let indexMtimeMs = -1;
     let indexSize = -1;
@@ -428,6 +468,19 @@ export function createCodexGlobalRolloutSyncer(options: {
     }
     const threadNames = cachedThreadNames;
 
+    const doFullScan = forceFullScan || needsFullScan || indexChanged || cacheByPath.size === 0;
+    let files: Array<{ path: string; name: string }>;
+    if (doFullScan) {
+      needsFullScan = false;
+      pendingWatchPaths.clear();
+      files = await listRolloutFiles(sessionsRoot);
+    } else {
+      const dirtyPaths = [...pendingWatchPaths];
+      pendingWatchPaths.clear();
+      files = dirtyPaths.map((fullPath) => ({ path: fullPath, name: basename(fullPath) }));
+    }
+    if (disposed) return false;
+
     const seenPaths = new Set<string>();
     const latestBySessionId = new Map<
       string,
@@ -440,6 +493,9 @@ export function createCodexGlobalRolloutSyncer(options: {
       try {
         fileStat = await stat(file.path);
       } catch {
+        if (!doFullScan) {
+          cacheByPath.delete(file.path);
+        }
         return null;
       }
       const existing = cacheByPath.get(file.path);
@@ -450,7 +506,12 @@ export function createCodexGlobalRolloutSyncer(options: {
           fileChanged: !existing.synced || indexChanged,
         };
       }
-      const candidate = await parseRolloutCandidate(file.path, file.name, fileStat.mtimeMs);
+      const candidate = await parseRolloutCandidate(
+        file.path,
+        file.name,
+        fileStat.mtimeMs,
+        fileStat.size,
+      );
       const entry: CachedRolloutFile = {
         mtimeMs: fileStat.mtimeMs,
         size: fileStat.size,
@@ -463,12 +524,23 @@ export function createCodexGlobalRolloutSyncer(options: {
 
     for (const inspected of inspectedFiles) {
       if (!inspected) continue;
-      const { file, entry, fileChanged } = inspected;
+      const { file, entry } = inspected;
       seenPaths.add(file.path);
       cacheByPath.set(file.path, entry);
+    }
+
+    if (doFullScan) {
+      for (const cachedPath of cacheByPath.keys()) {
+        if (!seenPaths.has(cachedPath)) {
+          cacheByPath.delete(cachedPath);
+        }
+      }
+    }
+
+    const recordCandidate = (entry: CachedRolloutFile, fileChanged: boolean): void => {
       if (!entry.candidate) {
         entry.synced = true;
-        continue;
+        return;
       }
       const namedTitle = threadNames.get(entry.candidate.sessionId);
       const effectiveCandidate: ParsedRolloutCandidate = namedTitle
@@ -488,11 +560,27 @@ export function createCodexGlobalRolloutSyncer(options: {
           current.candidate = effectiveCandidate;
         }
       }
-    }
+    };
 
-    for (const cachedPath of cacheByPath.keys()) {
-      if (!seenPaths.has(cachedPath)) {
-        cacheByPath.delete(cachedPath);
+    if (doFullScan) {
+      for (const inspected of inspectedFiles) {
+        if (!inspected) continue;
+        recordCandidate(inspected.entry, inspected.fileChanged);
+      }
+    } else {
+      const dirtySessionIds = new Set<string>();
+      for (const inspected of inspectedFiles) {
+        if (!inspected?.entry.candidate) {
+          if (inspected) inspected.entry.synced = true;
+          continue;
+        }
+        dirtySessionIds.add(inspected.entry.candidate.sessionId);
+      }
+      if (dirtySessionIds.size > 0) {
+        for (const [cachedPath, entry] of cacheByPath.entries()) {
+          if (!entry.candidate || !dirtySessionIds.has(entry.candidate.sessionId)) continue;
+          recordCandidate(entry, seenPaths.has(cachedPath) || !entry.synced);
+        }
       }
     }
 
@@ -557,8 +645,9 @@ export function createCodexGlobalRolloutSyncer(options: {
     return changedAny;
   };
 
-  const sync = async (notifyIfChanged: boolean): Promise<boolean> => {
+  const sync = async (notifyIfChanged: boolean, forceFullScan = false): Promise<boolean> => {
     if (disposed) return false;
+    if (forceFullScan) needsFullScan = true;
     if (running) {
       queued = true;
       return running;
@@ -567,7 +656,7 @@ export function createCodexGlobalRolloutSyncer(options: {
       let anyChanged = false;
       do {
         queued = false;
-        const changed = await runOnce();
+        const changed = await runOnce(false);
         anyChanged ||= changed;
       } while (queued && !disposed);
       if (anyChanged && notifyIfChanged && !disposed) {
@@ -615,7 +704,17 @@ export function createCodexGlobalRolloutSyncer(options: {
     try {
       await mkdir(sessionsRoot, { recursive: true });
       if (disposed || watcher) return;
-      watcher = watch(sessionsRoot, { recursive: true }, () => {
+      watcher = watch(sessionsRoot, { recursive: true }, (_eventType, filename) => {
+        if (typeof filename === "string" && filename.trim()) {
+          const base = basename(filename);
+          if (base.startsWith("rollout-") && base.endsWith(".jsonl")) {
+            pendingWatchPaths.add(join(sessionsRoot, filename));
+          } else {
+            needsFullScan = true;
+          }
+        } else {
+          needsFullScan = true;
+        }
         scheduleSync();
       });
       watcher.on("error", () => {
@@ -643,7 +742,7 @@ export function createCodexGlobalRolloutSyncer(options: {
       void sync(true).catch(() => {});
     },
     syncNow() {
-      return sync(false);
+      return sync(false, true);
     },
     dispose() {
       disposed = true;

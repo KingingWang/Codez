@@ -105,6 +105,10 @@ Codex list item → target-labeled UI control → existing native resource comma
   URL is not evidence of successful login. Shell access does not require login.
 - Independent resources load concurrently with independent error states. Validate
   consumed response fields, paginate models and MCP, retain discovery errors.
+  Callers may scope `useCodexSettings` to the active panel's required resource
+  subset (for example `["mcp", "config"]` in `BrowserSettingsSection`), lazily
+  hydrating newly visited panels while keeping mutations followed by
+  authoritative reads of the loaded resources.
 - Configuration writes carry the native user-layer file/version when available;
   a missing user layer disables writes until a refresh provides a version. Display
   effective configuration and policy restrictions. Mutations are serialized,
