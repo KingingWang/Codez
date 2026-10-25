@@ -4,7 +4,7 @@
 
 目录解析的 task 归属与 roots 来自同一读快照；保存项目时按物理路径（回退字面路径）去重并落库 `physical_path`，`readTree`/`readProjects` 随树投影 `physicalPath` 与 `workspacePhysicalPath`。已知 task 无项目时返回空附加目录；引用悬空项目或读取失败直接拒绝。prepareSession 的 cwd 创建后固定；编辑 roots 只影响下一次 runtime materialization。删除项目不删除会话；移动不写 CLI 事实、时间或 cwd。CLI continuous/replayable 流不由本模块修改。
 
-全局创建显式空归属，不按目录猜项目。跨 host 移动失败；同 host 缺目录时先返回错误，用户明确确认后原子追加 root 与移动。可删除容器永久保留，恢复仅由新建时明确选择同 roots 的已删项目。
+全局创建显式空归属，不按目录猜项目。跨 host 移动失败；同 host 缺目录时先返回错误，用户明确确认后原子追加 root 与移动。可删除容器永久保留；新建非空 roots 项目命中同 host 同 roots（含物理路径等价）的已删项目时自动复用原项目恢复，并归并同 roots 其余已删重复容器下的任务归属。
 
 远端装配器在 prepareSession 和 resolveSessionDirectories 后，通过既有 workspace identity resolver 为返回的真实 cwd 登记并返回 workspaceIdentity；不复制请求中的身份，resolver 失败直接拒绝。readTree 返回前对全部项目 roots（包括无任务的空项目）与历史任务 cwd 去重并完成同一身份准备，失败不发布树，防止侧栏动态订阅落到未映射的事件源。它只提供导航/隔离身份，不改 cwd 和附加目录；UI 不得从远端真实路径推断本机 workspace。导航继续严格比较任务与目录解析结果的 cwd 和身份，不以路径相同绕过设备隔离。
 

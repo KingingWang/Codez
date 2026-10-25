@@ -156,32 +156,20 @@ it("登记失败仅重试同一个已保存 ID，不再次询问信任或保存"
   expect(screen.queryByTestId("project-folder-trust-dialog")).toBeNull();
 });
 
-it.each([true, false])("软删匹配沿用恢复选择，接受恢复=%s", async (restore) => {
+it("软删匹配直接作为恢复目标，无需二次恢复确认弹窗", async () => {
   const f = setup({ deleted: true });
   await choose();
   fireEvent.click(screen.getByTestId("virtual-project-save"));
-  await screen.findByText("project.restore");
-  fireEvent.click(
-    screen.getByRole("button", { name: restore ? /common.confirm/ : /common.cancel/ }),
-  );
   const trust = await screen.findByTestId("project-folder-trust-confirm");
-  expect(trust.textContent).toBe(
-    restore ? "project.trustFoldersAndRestore" : "project.trustFoldersAndCreate",
-  );
+  expect(trust.textContent).toBe("project.trustFoldersAndRestore");
   expect(
-    within(screen.getByTestId("project-folder-trust-dialog")).getByText(
-      restore ? "Restored project" : "folder",
-    ),
+    within(screen.getByTestId("project-folder-trust-dialog")).getByText("Restored project"),
   ).toBeTruthy();
   fireEvent.click(trust);
   await waitFor(() => expect(f.service.saveProject).toHaveBeenCalledOnce());
   expect(f.service.saveProject.mock.calls[0]?.[0]).toEqual(
-    expect.objectContaining(
-      restore ? { restoreProjectId: project.id } : { roots: ["/remote/folder"] },
-    ),
+    expect.objectContaining({ restoreProjectId: project.id, roots: ["/remote/folder"] }),
   );
-  if (!restore)
-    expect(f.service.saveProject.mock.calls[0]?.[0]).not.toHaveProperty("restoreProjectId");
 });
 
 it("嵌套信任取消保留选择，目录在确认后失效不会保存或登记", async () => {

@@ -1045,7 +1045,6 @@ describe("虚拟项目", () => {
     await openLocalProjectEditor();
     await $('[data-testid="virtual-project-name"]').setValue("E2E_VP04_Restored");
     await $('[data-testid="virtual-project-save"]').click();
-    await $('[data-testid="confirm-dialog-confirm"]').click();
     const restored = $('[data-project-name="E2E_VP04_Restored"]');
     await restored.waitForDisplayed();
     expect(await restored.getAttribute("data-project-id")).toBe(projectId);

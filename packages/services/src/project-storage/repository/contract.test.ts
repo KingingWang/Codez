@@ -73,23 +73,19 @@ describe("project repository contract", () => {
     expect(repo.readTree().tasks.map((task) => task.hostId)).toEqual([hostId, hostId]);
     const project = repo.saveProject({ roots: ["/repo"] });
     expect(project.hostId).toBe(hostId);
-    repo.moveTask({
-      task: {
-        taskId: "a",
-        workspacePath: "/repo",
-        workspaceIdentity: "remote:ssh:old-address:22:user:/repo",
-      },
-      projectId: project.id,
-    });
+    const oldTask = {
+      taskId: "a",
+      workspacePath: "/repo",
+      workspaceIdentity: "remote:ssh:old-address:22:user:/repo",
+    };
+    const newTask = {
+      taskId: "new",
+      workspacePath: "/repo",
+      workspaceIdentity: "remote:ssh:new-address:22:user:/repo",
+    };
+    repo.moveTask({ task: oldTask, projectId: project.id });
     expect(
-      repo.reserveCreatedTask({
-        task: {
-          taskId: "new",
-          workspacePath: "/repo",
-          workspaceIdentity: "remote:ssh:new-address:22:user:/repo",
-        },
-        projectId: project.id,
-      }).additionalDirectories,
+      repo.reserveCreatedTask({ task: newTask, projectId: project.id }).additionalDirectories,
     ).toEqual([]);
   });
 
@@ -107,17 +103,8 @@ describe("project repository contract", () => {
 
   it("archives every inactive task purely by CLI activity time, sparing only pinned and running ones", async () => {
     const { db, add, context } = await fixture();
-    for (const id of [
-      "stale",
-      "pinned",
-      "unread",
-      "running",
-      "recent",
-      "failed",
-      "unknown",
-      "nofacts",
-    ])
-      add(id, `/outside/${id}`);
+    const ids = ["stale", "pinned", "unread", "running", "recent", "failed", "unknown", "nofacts"];
+    for (const id of ids) add(id, `/outside/${id}`);
     await port.migrate(db, context);
     // 2026-09-15 裁决：未读、error、无结果的旧任务同样归档；只有置顶、运行中、最近活动与无 CLI 事实的行例外。
     db.exec(`UPDATE tasks SET project_id=NULL,cli_updated_at=10,cli_last_outcome='completed';
@@ -128,20 +115,18 @@ describe("project repository contract", () => {
       UPDATE tasks SET cli_last_outcome=NULL WHERE task_id='unknown';
       UPDATE tasks SET cli_updated_at=NULL,cli_last_outcome=NULL WHERE task_id='nofacts'`);
     const repo = port.repository(db);
+    const activeTasks = [{ workspacePath: "/outside/running", taskId: "running" }];
     expect(
       repo
-        .archiveInactive({
-          cutoff: 100,
-          activeTasks: [{ workspacePath: "/outside/running", taskId: "running" }],
-        })
-        .map((task) => task.taskId)
+        .archiveInactive({ cutoff: 100, activeTasks })
+        .map((t) => t.taskId)
         .sort(),
     ).toEqual(["failed", "stale", "unknown", "unread"]);
     expect(
       db
         .prepare("SELECT task_id FROM tasks WHERE archived=1 ORDER BY task_id")
         .all()
-        .map((row) => row.task_id),
+        .map((r) => r.task_id),
     ).toEqual(["failed", "stale", "unknown", "unread"]);
     expect(db.prepare("SELECT unread_at FROM tasks WHERE task_id='unread'").get()).toEqual({
       unread_at: 20,
@@ -151,12 +136,7 @@ describe("project repository contract", () => {
         .prepare("SELECT project_id,cli_updated_at,updated_at FROM tasks WHERE task_id='stale'")
         .get(),
     ).toEqual({ project_id: null, cli_updated_at: 10, updated_at: 2 });
-    expect(
-      repo.archiveInactive({
-        cutoff: 100,
-        activeTasks: [{ workspacePath: "/outside/running", taskId: "running" }],
-      }),
-    ).toEqual([]);
+    expect(repo.archiveInactive({ cutoff: 100, activeTasks })).toEqual([]);
   });
 
   it("reserves creation before facts, keeps explicit NULL and never overwrites a later move on retry", async () => {
@@ -262,13 +242,28 @@ describe("project repository contract", () => {
     expect(() => repo.saveProject({ restoreProjectId: project.id, roots: ["/a"] })).toThrow(
       "project.restore-roots-mismatch",
     );
+    db.exec(
+      "INSERT INTO projects(project_id,host_id,name,name_overridden,position,pinned,deleted,deleted_at,created_at,updated_at) VALUES('dup','local','Dup',0,-1,0,1,10,1,1); INSERT INTO project_roots(project_id,root_path,position,is_primary) VALUES('dup','/a',0,1),('dup','/b',1,0);",
+    );
+    repo.reserveCreatedTask({
+      task: { workspacePath: "/b", taskId: "s2" },
+      projectId: "dup",
+      additionalDirectories: ["/a"],
+    });
+    db.exec("UPDATE tasks SET cli_created_at=3,cli_updated_at=4 WHERE task_id='s2'");
     const restored = repo.saveProject({
-      restoreProjectId: project.id,
       roots: ["/b", "/a"],
       name: "Restored",
       primaryRoot: "/a",
     });
     expect(restored).toMatchObject({ id: project.id, name: "Restored", deleted: false });
+    expect(
+      repo
+        .readTree()
+        .tasks.filter((t) => t.projectId === project.id)
+        .map((t) => t.taskId)
+        .sort(),
+    ).toEqual(["s", "s2"]);
   });
   it("resolves exact task ownership for overlapping projects, preserves NULL and reports broken references", async () => {
     const { db, add, context } = await fixture(["/a"]);

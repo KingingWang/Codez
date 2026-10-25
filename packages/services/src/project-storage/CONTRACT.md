@@ -11,7 +11,7 @@ Host 项目组织态的持久化升级。调用者持有 app SQLite 连接，CLI
 - settings 的 remote 条目只首次导入本机入口缓存，不能变成本机权威 project；普通启动不再导入。
 - 迁移依赖 sqlite-migrations 公共端口；内部文件不被 UI/其他服务直接导入。目录/备份位置与 logger 均由启动入口注入。
 
-项目仓库的事务面：save/delete/move/reorder/reserveCreatedTask 不写 cli\_\* 列。列表与目录解析在同步 SQLite 读事务中完成，不跨 await。缺 root 移动需要 addMissingRoot=true；恢复必须同 host 且 roots 集合完全相同。项目唯一名称在写事务中分配。新建 task 归属只在未决定时提交，后续由 moveTask 显式变更。
+项目仓库的事务面：save/delete/move/reorder/reserveCreatedTask 不写 cli\_\* 列。列表与目录解析在同步 SQLite 读事务中完成，不跨 await。缺 root 移动需要 addMissingRoot=true；恢复必须同 host 且 roots 集合完全相同，未指定 id 且 roots 非空的新建若未显式传入 restoreProjectId，也在写事务内按物理路径（回退字面路径）自动匹配同 host 同 roots 的已软删项目恢复，并将同 roots 其余已软删容器的任务归并至恢复项目。项目唯一名称在写事务中分配。新建 task 归属只在未决定时提交，后续由 moveTask 显式变更。
 
 项目树任务沿用原列表/Controller 的执行后端过滤：仅 `provider=CODEZ_AGENT_PROVIDER`（当前 glm）。旧后端行即使已补齐 cli\_\* 也不进入项目、置顶、未归类、时间线、归档和未读投影；新导入的当前 CLI 会话保留，不按 migration_source、模型供应商或目录存在性过滤。只读，不改旧数据或 migration，已升级数据库无需再次转换；本地与远端持库 Host 使用同一规则。
 

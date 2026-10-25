@@ -368,7 +368,7 @@ it("admits a recognized device without an open project only on explicit creation
   );
 });
 
-it("preserves the remote restore prompt using the selected device's authoritative projects", async () => {
+it("automatically restores a deleted remote project using the selected device's authoritative projects without an extra restore prompt", async () => {
   const { service } = await setup("remote:server:source");
   service.readTree.mockResolvedValue({
     projects: [
@@ -396,7 +396,9 @@ it("preserves the remote restore prompt using the selected device's authoritativ
       expect.objectContaining({ restoreProjectId: "deleted" }),
     ),
   );
-  expect(state.confirm).toHaveBeenCalledWith(expect.objectContaining({ title: "project.restore" }));
+  expect(state.confirm).not.toHaveBeenCalledWith(
+    expect.objectContaining({ title: "project.restore" }),
+  );
 });
 
 it("lists recognized devices only, without discovering candidates or promoting unrecognized profiles", async () => {
