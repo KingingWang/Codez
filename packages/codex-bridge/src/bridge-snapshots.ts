@@ -4,10 +4,15 @@ import {
   compactConversationRowForWire,
   subagentProjectionStateSchema,
   workspaceConfigSnapshotSchema,
+  type ConversationRow,
   type ConversationSnapshot,
 } from "@codez/shared/codez-protocol-v4";
 import type { BridgeControlContext } from "./contract.js";
-import { DeletedThreadError, type ThreadStateStore } from "./thread-state.js";
+import {
+  DeletedThreadError,
+  type ThreadProjectionState,
+  type ThreadStateStore,
+} from "./thread-state.js";
 import type { InteractionBroker } from "./interactions.js";
 import { readControlModelSettings, readControlPresentation } from "./control-presentation.js";
 import { projectThreadMode } from "./command-input.js";
@@ -20,9 +25,73 @@ import { projectOwnedInput } from "./native-file-projection.js";
 import { projectConversationTailWindow } from "./projection-window.js";
 import { subagentsStateFromRows } from "./subagent-projection.js";
 import { SubagentActivitySeedScheduler } from "./subagent-activity.js";
-import { sparseNativeTurnUsage, sparseNativeUsage } from "./bridge-snapshot-usage.js";
+import {
+  sparseNativeTurnUsage,
+  sparseNativeUsage,
+  type NativeTurnUsageAccumulator,
+} from "./bridge-snapshot-usage.js";
 import type { AttachmentStore, AttachmentReadAuthorization } from "./attachments.js";
 import { projectGoalActionAvailability, projectNativeThreadGoal } from "./thread-goal.js";
+
+/** in-flight 合并表容量：与 MAX_BRIDGE_SUBSCRIPTIONS 同阶，避免多窗口订阅时无界增长。 */
+const MAX_CONVERSATION_IN_FLIGHT = 32;
+/** 未命中轮次的原生 turn 先按尾部探测：流式期间未命中的几乎总是最后一轮。 */
+const RAW_TURN_TAIL_PROBE = 16;
+const NO_ROWS: readonly ConversationRow[] = [];
+
+type RawTurn = {
+  id: string;
+  status?: unknown;
+  items?: unknown;
+  changes?: unknown;
+  tokenUsage?: unknown;
+};
+type OwnedInputProjection = Awaited<ReturnType<typeof projectOwnedInput>>;
+
+/**
+ * additionalDirectories 只影响 store.ensure 的加载入参，不影响同一 state 版本的投影结果；
+ * 规范化（去重 + 排序）后作为 in-flight key 的一部分，避免同一会话因入参顺序不同而重复构建。
+ */
+function additionalDirectoriesKey(directories?: readonly string[]): string {
+  if (!directories || directories.length === 0) return "";
+  return [...new Set(directories)].sort().join("\u0000");
+}
+
+function rawTurnId(candidate: unknown): string | undefined {
+  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return undefined;
+  const id = (candidate as { id?: unknown }).id;
+  return typeof id === "string" ? id : undefined;
+}
+
+/** 单个已 settled 轮次的行富化结果；键是 projectRows 复用的 turnHeader 行对象身份。 */
+interface SettledRunEnrichment {
+  sessionId: string;
+  rowCount: number;
+  idle: boolean;
+  writerConflict: boolean;
+  turnRef: RawTurn | undefined;
+  isLastTurn: boolean;
+  /** 该轮 turnHeader 实际解析到的原生 usage 来源，用于精确失效。 */
+  usageRef: unknown;
+  reverted: boolean;
+  /** 富化时读到的附件投影身份；重投影后身份变化即失效。 */
+  attachmentRefs: ReadonlyArray<readonly [string, unknown]>;
+  /** [轮内偏移, 替换行]；空数组表示该轮无需改写，命中时零写回。 */
+  patches: ReadonlyArray<readonly [number, ConversationRow]>;
+  subagentRows: ReadonlyArray<ConversationRow>;
+}
+
+interface RowEnrichmentContext {
+  sessionId: string;
+  idle: boolean;
+  writerConflict: boolean;
+  lastTurnId: string | undefined;
+  turnTokenUsage: Record<string, NativeTurnUsageAccumulator> | undefined;
+  threadUsage: unknown;
+  userProjections: Map<string, OwnedInputProjection>;
+  imageViewFileNames: Map<string, string>;
+  rawTurnOf(turnId: string): RawTurn | undefined;
+}
 
 export class BridgeSnapshots {
   private readonly indexEpoch = randomUUID();
@@ -40,6 +109,16 @@ export class BridgeSnapshots {
       snapshot: ConversationSnapshot;
     }
   >();
+  /**
+   * 同一 (session, epoch, revision, seq, additionalDirectories) 的在途构建合并表。
+   * N 个并发订阅者刷新同一版本只做一次逻辑快照构建；键含版本水位，状态替换或 touch 后不会污染新版本。
+   */
+  private readonly conversationInFlight = new Map<string, Promise<ConversationSnapshot>>();
+  /**
+   * 已 settled 轮次的富化行缓存：流式 delta 期间按轮复用补丁行，只写回被改写的少数克隆行，
+   * 不原地修改 settledTurnRowsCache 的原行，使后处理保持 O(active)。
+   */
+  private readonly settledRunEnrichments = new WeakMap<ConversationRow, SettledRunEnrichment>();
   /** 子线程活性一次性种子调度（实现见 subagent-activity.ts；tracker 归 store 所有）。 */
   private readonly subagentActivitySeeds: SubagentActivitySeedScheduler;
   private readonly attachmentViews = new Map<
@@ -47,10 +126,7 @@ export class BridgeSnapshots {
     { epoch: string; rows: ConversationSnapshot["rows"]["window"] }
   >();
   private readonly revertedTurns = new Map<string, Set<string>>();
-  /**
-   * 已完成 turn 的附件与图片文件名投影缓存：避免流式期间每个快照都重跑整段历史的
-   * projectOwnedInput / findNativeAttachment / findNativeImageAttachment。
-   */
+  /** 已完成 turn 的附件与图片文件名投影缓存，避免流式期间每帧重跑历史附件解析。 */
   private readonly settledTurnAttachmentCache = new WeakMap<
     CodexTurn,
     {
@@ -120,13 +196,43 @@ export class BridgeSnapshots {
       this.conversationCache.set(id, cached);
       return cached.snapshot;
     }
+    const flightKey = [
+      id,
+      state.epoch,
+      state.revision,
+      state.seq,
+      additionalDirectoriesKey(additionalDirectories),
+    ].join("\u0001");
+    const inFlight = this.conversationInFlight.get(flightKey);
+    // 并发订阅者共享同一次构建；构建内部的 await 期间 state 版本变化不会改写这个 key。
+    if (inFlight && process.env.BENCH_NO_MERGE !== "1") return inFlight;
+    const pending = this.buildConversation(id, state);
+    this.conversationInFlight.set(flightKey, pending);
+    if (this.conversationInFlight.size > MAX_CONVERSATION_IN_FLIGHT) {
+      const oldest = this.conversationInFlight.keys().next();
+      if (!oldest.done && oldest.value !== flightKey)
+        this.conversationInFlight.delete(oldest.value);
+    }
+    try {
+      return await pending;
+    } finally {
+      // 只清理自己登记的那一条：容量淘汰或后续版本覆盖后不能误删别人的在途构建。
+      if (this.conversationInFlight.get(flightKey) === pending)
+        this.conversationInFlight.delete(flightKey);
+    }
+  }
+
+  private async buildConversation(
+    id: string,
+    state: NonNullable<ReturnType<ThreadStateStore["get"]>>,
+  ): Promise<ConversationSnapshot> {
     this.conversationCache.delete(id);
     const startSeq = state.seq;
     const startRevision = state.revision;
     const startEpoch = state.epoch;
     const attachmentStore = this.attachments;
-    const userProjections = new Map<string, Awaited<ReturnType<typeof projectOwnedInput>>>();
-    const queueProjections = new Map<string, Awaited<ReturnType<typeof projectOwnedInput>>>();
+    const userProjections = new Map<string, OwnedInputProjection>();
+    const queueProjections = new Map<string, OwnedInputProjection>();
     const imageViewFileNames = new Map<string, string>();
     const nativeThread = attachmentStore ? parseCodexThreadIncremental(state.thread) : undefined;
     // 原因：原生模型输入可包含多份完整内联文件，原始正文在剥离附件前可能超过 UI 单行预算。
@@ -285,10 +391,27 @@ export class BridgeSnapshots {
       sendQueuedNow: readOnlyBlocked ?? allowed,
       ...projectGoalActionAvailability(projectedGoal, readOnlyBlocked),
     };
+    if (this.attachments) {
+      for (const queueItem of snapshot.queue.items) {
+        const projected = queueProjections.get(queueItem.queueItemId);
+        if (!projected) continue;
+        queueItem.text = projected.text;
+        queueItem.attachments = projected.refs;
+      }
+    }
+    // 行富化按轮进行：已 settled 的轮次命中缓存时只写回被改写的少数行，
+    // 同时顺带收集 subagent 行，避免每帧再对整段历史跑一次 subagentsStateFromRows。
+    const subagentRows = this.enrichRows(id, snapshot.rows.window, state, {
+      idle,
+      writerConflict,
+      userProjections,
+      imageViewFileNames,
+    });
     // 子代理下钻（specs/codex-desktop-subagent-drilldown.md）：running/ended 从已投影的
     // subagent 行派生，不额外请求原生；revision 交给 store 记账，语义不变则不递增。
-    // 必须在 tail window 截断前用完整 rows 计算，否则旧会话的子代理会从目录里消失。
-    const subagents = subagentsStateFromRows(snapshot.rows.window, {
+    // 必须在 tail window 截断前用完整 rows 计算，否则旧会话的子代理会从目录里消失；
+    // 富化阶段收集的就是完整窗口里的全部 subagent 行（非 subagent 行原本也被跳过）。
+    const subagents = subagentsStateFromRows(subagentRows, {
       isChildActive: (childThreadId) => {
         const status = this.store.nativeThreadStatus(childThreadId);
         if (status) return status.type === "active";
@@ -308,121 +431,6 @@ export class BridgeSnapshots {
       ),
       ...subagents,
     });
-    if (this.attachments) {
-      for (const queueItem of snapshot.queue.items) {
-        const projected = queueProjections.get(queueItem.queueItemId);
-        if (!projected) continue;
-        queueItem.text = projected.text;
-        queueItem.attachments = projected.refs;
-      }
-    }
-    // 预构建 turnId → turn 索引，将 turnHeader 遍历中的线性查找 O(Turns²) 降为 O(1)。
-    const rawTurns = array(state.thread.turns);
-    const turnsById = new Map<
-      string,
-      { id: string; status?: unknown; items?: unknown; changes?: unknown; tokenUsage?: unknown }
-    >();
-    for (const candidate of rawTurns) {
-      if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) {
-        const turnObj = candidate as {
-          id?: unknown;
-          status?: unknown;
-          items?: unknown;
-          changes?: unknown;
-          tokenUsage?: unknown;
-        };
-        if (typeof turnObj.id === "string") {
-          turnsById.set(turnObj.id, turnObj as { id: string });
-        }
-      }
-    }
-    const lastTurnEntry = rawTurns.at(-1);
-    const lastTurnId =
-      lastTurnEntry && typeof lastTurnEntry === "object" && !Array.isArray(lastTurnEntry)
-        ? (lastTurnEntry as { id?: unknown }).id
-        : undefined;
-    const rowsWindow = snapshot.rows.window;
-    for (let rowIndex = 0; rowIndex < rowsWindow.length; rowIndex += 1) {
-      let row = rowsWindow[rowIndex]!;
-      let cloned = false;
-      const ensureMutable = (): typeof row => {
-        if (!cloned) {
-          row = { ...row };
-          rowsWindow[rowIndex] = row;
-          cloned = true;
-        }
-        return row;
-      };
-      if (idle && row.kind === "assistantText") {
-        ensureMutable().actions = { canFork: true };
-      }
-      if (idle && !writerConflict && row.kind === "userInput") {
-        ensureMutable().actions = { canEdit: true, canRetry: true, editDisposition: "rewind" };
-      }
-      if (row.kind === "turnHeader") {
-        const turn = turnsById.get(row.turnId);
-        // 修复原因：快照编码的 attachments 投影会让出 await，期间 editUserQuery/compact
-        // 触发的 reloadAfterHistoryChange 会把 state.thread.turns 清空；行投影来自编码前
-        // 拷贝的 presentationThread，turnHeader 仍在而 turns 已空。此处用 object() 强断言
-        // 会抛 "Expected a JSON object" 并使整个 bridge 连接崩溃（原生冒烟因此失败）。
-        // lastTurnId 只作 tokenUsage 兜底匹配，取不到时安全降级为不可匹配。
-        const rawTurnUsage =
-          state.turnTokenUsage?.[row.turnId] ??
-          turn?.tokenUsage ??
-          (row.turnId === lastTurnId ? state.thread.tokenUsage : undefined);
-        const turnUsage = sparseNativeTurnUsage(rawTurnUsage);
-        if (turnUsage) {
-          const mutable = ensureMutable() as Extract<typeof row, { kind: "turnHeader" }>;
-          mutable.turnUsage = turnUsage;
-          if (turnUsage.outputTokens !== undefined) {
-            mutable.outputTokens = turnUsage.outputTokens;
-          }
-        }
-        if (turn) {
-          const filesResult = projectTurnFileChanges(
-            turn,
-            this.isFileChangesReverted(id, turn.id) ? "reverted" : "active",
-          );
-          if (filesResult.files) {
-            (ensureMutable() as Extract<typeof row, { kind: "turnHeader" }>).fileChanges = {
-              files: filesResult.files,
-              additions: filesResult.additions,
-              deletions: filesResult.deletions,
-              state: filesResult.state,
-            };
-          }
-          // 行级撤销入口只描述「该轮存在可投影的文件变更」这一事实；
-          // 能力门禁与 Desktop 事务所有者仍在 UI/服务层判定。
-          // 运行中的轮次变更不完整，不开放撤销；已撤销的轮次不重复开放。
-          if (
-            filesResult.files > 0 &&
-            filesResult.state !== "reverted" &&
-            row.state !== "running"
-          ) {
-            const mutable = ensureMutable();
-            mutable.actions = { ...mutable.actions, canRewindFiles: true };
-          }
-        }
-      }
-      if (row.kind === "userInput" && this.attachments) {
-        // entityId 仍是 turn 作用域展示键；与预投影后的唯一派生结果对应。
-        const projected = userProjections.get(row.entityId ?? "");
-        if (projected) {
-          const mutable = ensureMutable() as Extract<typeof row, { kind: "userInput" }>;
-          mutable.text = projected.text;
-          mutable.attachments = projected.refs;
-        }
-      }
-      if (row.kind === "toolCall" && row.toolName === "view_image" && this.attachments) {
-        const fileName = imageViewFileNames.get(row.entityId ?? "");
-        if (fileName && row.input && typeof row.input === "object" && !Array.isArray(row.input)) {
-          const nextInput = { ...(row.input as Record<string, unknown>), fileName };
-          const mutable = ensureMutable() as Extract<typeof row, { kind: "toolCall" }>;
-          mutable.input = nextInput;
-          mutable.inputText = JSON.stringify(nextInput);
-        }
-      }
-    }
     if (this.store.get(id) !== state) throw new DeletedThreadError();
     this.attachmentViews.set(id, { epoch: snapshot.logEpoch, rows: snapshot.rows.window });
     if (state.seq === startSeq && state.revision === startRevision && state.epoch === startEpoch) {
@@ -438,6 +446,231 @@ export class BridgeSnapshots {
         this.conversationCache.delete(this.conversationCache.keys().next().value!);
     }
     return snapshot;
+  }
+
+  /** 按轮切分窗口并富化：未命中轮次（流式期间即活跃轮）才做克隆与派生计算。 */
+  private enrichRows(
+    id: string,
+    rowsWindow: ConversationRow[],
+    state: ThreadProjectionState,
+    facts: {
+      idle: boolean;
+      writerConflict: boolean;
+      userProjections: Map<string, OwnedInputProjection>;
+      imageViewFileNames: Map<string, string>;
+    },
+  ): readonly ConversationRow[] {
+    const rawTurns = array(state.thread.turns);
+    const context: RowEnrichmentContext = {
+      sessionId: id,
+      idle: facts.idle,
+      writerConflict: facts.writerConflict,
+      lastTurnId: rawTurnId(rawTurns.at(-1)),
+      turnTokenUsage: state.turnTokenUsage,
+      threadUsage: state.thread.tokenUsage,
+      userProjections: facts.userProjections,
+      imageViewFileNames: facts.imageViewFileNames,
+      rawTurnOf: this.rawTurnResolver(rawTurns),
+    };
+    const subagentRows: ConversationRow[] = [];
+    let runStart = 0;
+    while (runStart < rowsWindow.length) {
+      const turnId = rowsWindow[runStart]!.turnId;
+      let runEnd = runStart + 1;
+      while (runEnd < rowsWindow.length && rowsWindow[runEnd]!.turnId === turnId) runEnd += 1;
+      this.enrichRun(rowsWindow, runStart, runEnd, turnId, context, subagentRows);
+      runStart = runEnd;
+    }
+    return subagentRows;
+  }
+
+  /** turnId → 原生 turn 的惰性索引：未命中轮次几乎总在尾部，探测失败才建全量索引。 */
+  private rawTurnResolver(rawTurns: readonly unknown[]): (turnId: string) => RawTurn | undefined {
+    let index: Map<string, RawTurn> | undefined;
+    return (turnId) => {
+      if (index) return index.get(turnId);
+      for (
+        let cursor = rawTurns.length - 1, step = 0;
+        cursor >= 0 && step < RAW_TURN_TAIL_PROBE;
+        cursor -= 1, step += 1
+      ) {
+        if (rawTurnId(rawTurns[cursor]) === turnId) return rawTurns[cursor] as RawTurn;
+      }
+      index = new Map();
+      for (const candidate of rawTurns) {
+        const candidateId = rawTurnId(candidate);
+        if (candidateId !== undefined) index.set(candidateId, candidate as RawTurn);
+      }
+      return index.get(turnId);
+    };
+  }
+
+  private resolveTurnUsage(
+    turnRef: RawTurn | undefined,
+    isLastTurn: boolean,
+    turnId: string,
+    context: RowEnrichmentContext,
+  ): unknown {
+    // 快照 await 期间若 reload 清空了 turns，lastTurnId 安全降级为不可匹配，避免抛异常使连接崩溃。
+    return (
+      context.turnTokenUsage?.[turnId] ??
+      turnRef?.tokenUsage ??
+      (isLastTurn ? context.threadUsage : undefined)
+    );
+  }
+
+  private resolveAttachmentRef(entityId: string, context: RowEnrichmentContext): unknown {
+    return context.userProjections.get(entityId) ?? context.imageViewFileNames.get(entityId);
+  }
+
+  private enrichRun(
+    rowsWindow: ConversationRow[],
+    start: number,
+    end: number,
+    turnId: string,
+    context: RowEnrichmentContext,
+    subagentSink: ConversationRow[],
+  ): void {
+    const rowCount = end - start;
+    const baseRow = rowsWindow[start]!;
+    // 只有终态轮次的行对象才会被 projectRows 的 settledTurnRowsCache 复用；
+    // running 轮次每帧都是新对象，缓存它只会白占 WeakMap 条目。
+    const cacheable = baseRow.kind === "turnHeader" && baseRow.state !== "running";
+    const isLastTurn = turnId === context.lastTurnId;
+    const reverted = this.isFileChangesReverted(context.sessionId, turnId);
+    const cached = cacheable ? this.settledRunEnrichments.get(baseRow) : undefined;
+    if (
+      cached &&
+      cached.sessionId === context.sessionId &&
+      cached.rowCount === rowCount &&
+      cached.idle === context.idle &&
+      cached.writerConflict === context.writerConflict &&
+      cached.isLastTurn === isLastTurn &&
+      cached.reverted === reverted &&
+      // turnTokenUsage 记录与 thread.tokenUsage 每次原生事件都整体替换，身份比较即可精确失效；
+      // baseRow 身份不变意味着 parsed/raw turn 未变（settledTurnRowsCache 的既有不变量），
+      // 因此 turn.tokenUsage 与 fileChanges 的输入也不可能变。
+      cached.usageRef ===
+        this.resolveTurnUsage(cached.turnRef, cached.isLastTurn, turnId, context) &&
+      cached.attachmentRefs.every(
+        ([entityId, value]) => this.resolveAttachmentRef(entityId, context) === value,
+      )
+    ) {
+      for (const [offset, row] of cached.patches) rowsWindow[start + offset] = row;
+      for (const row of cached.subagentRows) subagentSink.push(row);
+      return;
+    }
+    const rawTurn = context.rawTurnOf(turnId);
+    const usageRef = this.resolveTurnUsage(rawTurn, isLastTurn, turnId, context);
+    const patches: Array<readonly [number, ConversationRow]> = [];
+    const attachmentRefs: Array<readonly [string, unknown]> = [];
+    let runSubagents: ConversationRow[] | undefined;
+    for (let index = start; index < end; index += 1) {
+      const row = rowsWindow[index]!;
+      if (row.kind === "subagent") (runSubagents ??= []).push(row);
+      const patched = this.enrichRow(row, {
+        context,
+        rawTurn,
+        usageRef,
+        reverted,
+        attachmentRefs,
+      });
+      if (patched) patches.push([index - start, patched]);
+    }
+    if (cacheable) {
+      this.settledRunEnrichments.set(baseRow, {
+        sessionId: context.sessionId,
+        rowCount,
+        idle: context.idle,
+        writerConflict: context.writerConflict,
+        turnRef: rawTurn,
+        isLastTurn,
+        usageRef,
+        reverted,
+        attachmentRefs,
+        patches,
+        subagentRows: runSubagents ?? NO_ROWS,
+      });
+    }
+    for (const [offset, row] of patches) rowsWindow[start + offset] = row;
+    if (runSubagents) for (const row of runSubagents) subagentSink.push(row);
+  }
+
+  /**
+   * 单行富化：返回替换行（克隆体）或 undefined 表示无需改写。
+   * 绝不原地修改传入的行——它们可能是 projectRows 的 settledTurnRowsCache 共享对象，
+   * 原地写会让 idle 期间挂上的 actions 在切回 busy 后残留。
+   */
+  private enrichRow(
+    row: ConversationRow,
+    facts: {
+      context: RowEnrichmentContext;
+      rawTurn: RawTurn | undefined;
+      usageRef: unknown;
+      reverted: boolean;
+      attachmentRefs: Array<readonly [string, unknown]>;
+    },
+  ): ConversationRow | undefined {
+    const { context, rawTurn, usageRef, reverted, attachmentRefs } = facts;
+    let next: ConversationRow | undefined;
+    const ensureMutable = (): ConversationRow => (next ??= { ...row });
+    if (context.idle && row.kind === "assistantText") {
+      ensureMutable().actions = { canFork: true };
+    }
+    if (context.idle && !context.writerConflict && row.kind === "userInput") {
+      ensureMutable().actions = { canEdit: true, canRetry: true, editDisposition: "rewind" };
+    }
+    if (row.kind === "turnHeader") {
+      const turnUsage = sparseNativeTurnUsage(usageRef);
+      if (turnUsage) {
+        const mutable = ensureMutable() as Extract<ConversationRow, { kind: "turnHeader" }>;
+        mutable.turnUsage = turnUsage;
+        if (turnUsage.outputTokens !== undefined) {
+          mutable.outputTokens = turnUsage.outputTokens;
+        }
+      }
+      if (rawTurn) {
+        const filesResult = projectTurnFileChanges(rawTurn, reverted ? "reverted" : "active");
+        if (filesResult.files) {
+          (ensureMutable() as Extract<ConversationRow, { kind: "turnHeader" }>).fileChanges = {
+            files: filesResult.files,
+            additions: filesResult.additions,
+            deletions: filesResult.deletions,
+            state: filesResult.state,
+          };
+        }
+        // 行级撤销入口只描述「该轮存在可投影的文件变更」这一事实；
+        // 能力门禁与 Desktop 事务所有者仍在 UI/服务层判定。
+        // 运行中的轮次变更不完整，不开放撤销；已撤销的轮次不重复开放。
+        if (filesResult.files > 0 && filesResult.state !== "reverted" && row.state !== "running") {
+          const mutable = ensureMutable();
+          mutable.actions = { ...mutable.actions, canRewindFiles: true };
+        }
+      }
+    }
+    if (row.kind === "userInput" && this.attachments) {
+      // entityId 仍是 turn 作用域展示键；与预投影后的唯一派生结果对应。
+      const entityId = row.entityId ?? "";
+      const projected = context.userProjections.get(entityId);
+      attachmentRefs.push([entityId, projected]);
+      if (projected) {
+        const mutable = ensureMutable() as Extract<ConversationRow, { kind: "userInput" }>;
+        mutable.text = projected.text;
+        mutable.attachments = projected.refs;
+      }
+    }
+    if (row.kind === "toolCall" && row.toolName === "view_image" && this.attachments) {
+      const entityId = row.entityId ?? "";
+      const fileName = context.imageViewFileNames.get(entityId);
+      attachmentRefs.push([entityId, fileName]);
+      if (fileName && row.input && typeof row.input === "object" && !Array.isArray(row.input)) {
+        const nextInput = { ...(row.input as Record<string, unknown>), fileName };
+        const mutable = ensureMutable() as Extract<ConversationRow, { kind: "toolCall" }>;
+        mutable.input = nextInput;
+        mutable.inputText = JSON.stringify(nextInput);
+      }
+    }
+    return next;
   }
 
   authorizeAttachment(query: AttachmentReadAuthorization): boolean {

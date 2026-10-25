@@ -1,5 +1,5 @@
 import type { ConversationRow, SubagentProjectionState } from "@codez/shared/codez-protocol-v4";
-import { isCodexKnownItem, type CodexThread } from "./codex-types.js";
+import { isCodexKnownItem, type CodexThread, type CodexTurn } from "./codex-types.js";
 import type { RowBase } from "./projection-item-extras.js";
 
 /**
@@ -89,64 +89,301 @@ export function subagentTitle(fact: SubagentFact): string {
   );
 }
 
+/**
+ * 单轮 subagent 事实的轻量操作条目（op）。
+ *
+ * 原因：`collectSubagentFacts` 以前每条流式 delta 都要重扫全部历史 turn 的全部 item
+ * （1 万轮 × 4 item ≈ 4 万次类型判定），而历史里绝大多数轮次根本没有 subagent item。
+ * 这里把「按 item 提取」与「按线程聚合」拆开：settled turn 的提取结果按 turn 引用缓存
+ * （普通轮次是空数组 `[]`），线程级聚合状态按 settled 前缀增量维护，
+ * 每条 delta 只做引用校验 + 重放末尾活动轮，成本与活动轮大小相关而不是全史。
+ */
+type SubagentOp =
+  | {
+      kind: "spawn";
+      childThreadId: string;
+      turnId: string;
+      anchorItemId: string;
+      startedAt: number;
+      /** 并发 spawn 的多个 receiver 共享同一 item；prompt 只在唯一 receiver 时归属明确。 */
+      prompt: string | undefined;
+    }
+  | {
+      kind: "states";
+      childThreadId: string;
+      turnId: string;
+      anchorItemId: string;
+      startedAt: number;
+      status: SubagentStatus;
+    }
+  | {
+      kind: "activity";
+      childThreadId: string;
+      turnId: string;
+      anchorItemId: string;
+      startedAt: number;
+      agentPath: string | undefined;
+      activityStatus: SubagentStatus | undefined;
+    };
+
+const turnSubagentOpsCache = new WeakMap<
+  CodexTurn,
+  {
+    itemsRef: CodexTurn["items"];
+    itemsLength: number;
+    /** startedAt 回退到 thread.createdAt，所以 createdAt 变化必须让缓存失效。 */
+    threadCreatedAt: number;
+    ops: SubagentOp[];
+  }
+>();
+
+/** 与旧实现逐 item 等价的提取：顺序即 item 顺序，重放后 pending 插入顺序不变。 */
+function extractSubagentOps(turn: CodexTurn, startedAt: number): SubagentOp[] {
+  const ops: SubagentOp[] = [];
+  for (const item of turn.items) {
+    if (!isCodexKnownItem(item)) continue;
+    if (item.type === "collabAgentToolCall") {
+      if (item.tool === "spawnAgent") {
+        const prompt = item.prompt && item.receiverThreadIds.length === 1 ? item.prompt : undefined;
+        for (const childThreadId of item.receiverThreadIds) {
+          ops.push({
+            kind: "spawn",
+            childThreadId,
+            turnId: turn.id,
+            anchorItemId: item.id,
+            startedAt,
+            prompt,
+          });
+        }
+      }
+      for (const [childThreadId, state] of Object.entries(item.agentsStates)) {
+        const status = statesStatusOf(state.status);
+        if (status === undefined) continue;
+        ops.push({
+          kind: "states",
+          childThreadId,
+          turnId: turn.id,
+          anchorItemId: item.id,
+          startedAt,
+          status,
+        });
+      }
+      continue;
+    }
+    if (item.type !== "subAgentActivity") continue;
+    ops.push({
+      kind: "activity",
+      childThreadId: item.agentThreadId,
+      turnId: turn.id,
+      anchorItemId: item.id,
+      startedAt,
+      agentPath: item.agentPath || undefined,
+      activityStatus:
+        item.kind === "completed"
+          ? "success"
+          : item.kind === "interrupted"
+            ? "cancelled"
+            : undefined,
+    });
+  }
+  return ops;
+}
+
+/**
+ * settled turn 的 op 按 turn 引用缓存；活动轮每次重取——原生 `item/completed` 会原位
+ * 替换 `items[index]`（数组引用与长度都不变），缓存活动轮会漏掉 agentsStates 的终态收敛。
+ */
+function subagentOpsOf(turn: CodexTurn, threadCreatedAt: number): SubagentOp[] {
+  const startedAt = (turn.startedAt ?? threadCreatedAt) * 1000;
+  if (turn.status === "inProgress") return extractSubagentOps(turn, startedAt);
+  const cached = turnSubagentOpsCache.get(turn);
+  if (
+    cached &&
+    cached.itemsRef === turn.items &&
+    cached.itemsLength === turn.items.length &&
+    cached.threadCreatedAt === threadCreatedAt
+  ) {
+    return cached.ops;
+  }
+  const ops = extractSubagentOps(turn, startedAt);
+  turnSubagentOpsCache.set(turn, {
+    itemsRef: turn.items,
+    itemsLength: turn.items.length,
+    threadCreatedAt,
+    ops,
+  });
+  return ops;
+}
+
+function ensurePending(
+  pending: Map<string, Pending>,
+  childThreadId: string,
+  turnId: string,
+  anchorItemId: string,
+  startedAt: number,
+): Pending {
+  const existing = pending.get(childThreadId);
+  if (existing) return existing;
+  const created: Pending = { childThreadId, turnId, anchorItemId, startedAt };
+  pending.set(childThreadId, created);
+  return created;
+}
+
+function replayOps(pending: Map<string, Pending>, ops: readonly SubagentOp[]): void {
+  for (const op of ops) {
+    const fact = ensurePending(pending, op.childThreadId, op.turnId, op.anchorItemId, op.startedAt);
+    if (op.kind === "spawn") {
+      if (op.prompt && !fact.prompt) fact.prompt = op.prompt;
+      if (!fact.parentToolCallId) fact.parentToolCallId = op.anchorItemId;
+      continue;
+    }
+    if (op.kind === "states") {
+      fact.statesStatus = op.status;
+      continue;
+    }
+    if (op.agentPath && !fact.agentPath) fact.agentPath = op.agentPath;
+    if (op.activityStatus) fact.activityStatus = op.activityStatus;
+  }
+}
+
+/** 尾部重放不能污染前缀聚合状态：Pending 全是标量，浅拷贝即可。 */
+function clonePending(pending: Map<string, Pending>): Map<string, Pending> {
+  const clone = new Map<string, Pending>();
+  for (const [childThreadId, value] of pending) clone.set(childThreadId, { ...value });
+  return clone;
+}
+
+function factsOf(pending: Map<string, Pending>): SubagentFact[] {
+  return [...pending.values()].map(({ activityStatus, statesStatus, ...fact }) => ({
+    ...fact,
+    status: activityStatus ?? statesStatus ?? "running",
+  }));
+}
+
+/** 事实内容未变时复用旧数组引用，让下游（行前缀缓存）继续命中。 */
+function sameFacts(left: readonly SubagentFact[], right: readonly SubagentFact[]): boolean {
+  if (left.length !== right.length) return false;
+  for (let index = 0; index < left.length; index += 1) {
+    const a = left[index]!;
+    const b = right[index]!;
+    if (
+      a.childThreadId !== b.childThreadId ||
+      a.status !== b.status ||
+      a.turnId !== b.turnId ||
+      a.anchorItemId !== b.anchorItemId ||
+      a.parentToolCallId !== b.parentToolCallId ||
+      a.agentPath !== b.agentPath ||
+      a.prompt !== b.prompt ||
+      a.startedAt !== b.startedAt
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export interface SubagentAggregate {
+  facts: SubagentFact[];
+  anchors: Map<string, Map<string, SubagentFact[]>>;
+}
+
+interface SubagentAggregateCache extends SubagentAggregate {
+  threadCreatedAt: number;
+  hiddenTurnIds: ReadonlySet<string> | undefined;
+  /** 已聚合进 pending 的 settled 前缀；引用与 items 长度用于逐轮校验。 */
+  turnRefs: CodexTurn[];
+  itemsRefs: CodexTurn["items"][];
+  itemsLengths: number[];
+  pending: Map<string, Pending>;
+}
+
+/**
+ * 线程级聚合缓存，按「首个可见 turn」弱引用分桶（同时投影父会话与子代理下钻时互不挤占），
+ * 按前缀校验自愈。所有派生事实仍由父线程 item 决定，缓存只是避免每条 delta 重扫全史；
+ * 前缀被改写（rewind / 历史替换）时按 op 缓存重放。
+ */
+const aggregateCaches = new WeakMap<object, SubagentAggregateCache>();
+
+/**
+ * 聚合父线程全部 collab 事实并给出行锚点索引；两者引用同步失效，
+ * 让 projection-rows 用「anchors 引用是否变化」判定子代理终态是否收敛。
+ */
+export function collectSubagentAggregate(
+  thread: CodexThread,
+  hiddenTurnIds?: ReadonlySet<string>,
+): SubagentAggregate {
+  const turns = hiddenTurnIds?.size
+    ? thread.turns.filter((turn) => !hiddenTurnIds.has(turn.id))
+    : thread.turns;
+  const cacheKey = turns[0];
+  const cached = cacheKey ? aggregateCaches.get(cacheKey) : undefined;
+  const prefixUsable =
+    cached !== undefined &&
+    cached.threadCreatedAt === thread.createdAt &&
+    cached.hiddenTurnIds === hiddenTurnIds;
+  let reuse = 0;
+  if (prefixUsable) {
+    const limit = Math.min(cached!.turnRefs.length, turns.length);
+    while (reuse < limit) {
+      const turn = turns[reuse]!;
+      if (
+        turn !== cached!.turnRefs[reuse] ||
+        turn.items !== cached!.itemsRefs[reuse] ||
+        turn.items.length !== cached!.itemsLengths[reuse]!
+      ) {
+        break;
+      }
+      reuse += 1;
+    }
+  }
+  const entry = prefixUsable && reuse === cached!.turnRefs.length ? cached : undefined;
+  // 前缀只收连续 settled 轮：活动轮及其后的轮次每次重放（原生会原位改写活动轮 item）。
+  let prefixLength = reuse;
+  while (prefixLength < turns.length && turns[prefixLength]!.status !== "inProgress")
+    prefixLength += 1;
+  const pending = entry ? entry.pending : new Map<string, Pending>();
+  const turnRefs = entry ? entry.turnRefs : [];
+  const itemsRefs = entry ? entry.itemsRefs : [];
+  const itemsLengths = entry ? entry.itemsLengths : [];
+  for (let index = entry ? reuse : 0; index < prefixLength; index += 1) {
+    const turn = turns[index]!;
+    replayOps(pending, subagentOpsOf(turn, thread.createdAt));
+    turnRefs.push(turn);
+    itemsRefs.push(turn.items);
+    itemsLengths.push(turn.items.length);
+  }
+  const tail = prefixLength === turns.length ? pending : clonePending(pending);
+  for (let index = prefixLength; index < turns.length; index += 1)
+    replayOps(tail, subagentOpsOf(turns[index]!, thread.createdAt));
+  const facts = factsOf(tail);
+  // 内容未变则保持 facts/anchors 引用稳定：流式期间行前缀缓存与每轮行缓存据此继续命中。
+  if (entry && sameFacts(entry.facts, facts)) return entry;
+  const anchors = subagentRowAnchors(facts);
+  const next: SubagentAggregateCache = entry ?? {
+    threadCreatedAt: thread.createdAt,
+    hiddenTurnIds,
+    turnRefs,
+    itemsRefs,
+    itemsLengths,
+    pending,
+    facts,
+    anchors,
+  };
+  next.threadCreatedAt = thread.createdAt;
+  next.hiddenTurnIds = hiddenTurnIds;
+  next.pending = pending;
+  next.facts = facts;
+  next.anchors = anchors;
+  if (cacheKey) aggregateCaches.set(cacheKey, next);
+  return next;
+}
+
 /** 按 childThreadId 聚合父线程全部 collab 事实；顺序即父线程历史顺序。 */
 export function collectSubagentFacts(
   thread: CodexThread,
   hiddenTurnIds?: ReadonlySet<string>,
 ): SubagentFact[] {
-  const pending = new Map<string, Pending>();
-  const ensure = (
-    childThreadId: string,
-    turnId: string,
-    anchorItemId: string,
-    startedAt: number | undefined,
-  ): Pending => {
-    const existing = pending.get(childThreadId);
-    if (existing) return existing;
-    const created: Pending = {
-      childThreadId,
-      turnId,
-      anchorItemId,
-      ...(startedAt === undefined ? {} : { startedAt }),
-    };
-    pending.set(childThreadId, created);
-    return created;
-  };
-  const turns = hiddenTurnIds?.size
-    ? thread.turns.filter((turn) => !hiddenTurnIds.has(turn.id))
-    : thread.turns;
-  for (const turn of turns) {
-    const startedAt = (turn.startedAt ?? thread.createdAt) * 1000;
-    for (const item of turn.items) {
-      if (!isCodexKnownItem(item)) continue;
-      if (item.type === "collabAgentToolCall") {
-        if (item.tool === "spawnAgent") {
-          for (const childThreadId of item.receiverThreadIds) {
-            const fact = ensure(childThreadId, turn.id, item.id, startedAt);
-            // 并发 spawn 的多个 receiver 共享同一 item；prompt 只在唯一 receiver 时归属明确。
-            if (item.prompt && item.receiverThreadIds.length === 1 && !fact.prompt)
-              fact.prompt = item.prompt;
-            if (!fact.parentToolCallId) fact.parentToolCallId = item.id;
-          }
-        }
-        for (const [childThreadId, state] of Object.entries(item.agentsStates)) {
-          const status = statesStatusOf(state.status);
-          if (status === undefined) continue;
-          ensure(childThreadId, turn.id, item.id, startedAt).statesStatus = status;
-        }
-        continue;
-      }
-      if (item.type !== "subAgentActivity") continue;
-      const fact = ensure(item.agentThreadId, turn.id, item.id, startedAt);
-      if (item.agentPath && !fact.agentPath) fact.agentPath = item.agentPath;
-      if (item.kind === "completed") fact.activityStatus = "success";
-      else if (item.kind === "interrupted") fact.activityStatus = "cancelled";
-    }
-  }
-  return [...pending.values()].map(({ activityStatus, statesStatus, ...fact }) => ({
-    ...fact,
-    status: activityStatus ?? statesStatus ?? "running",
-  }));
+  return collectSubagentAggregate(thread, hiddenTurnIds).facts;
 }
 
 /** 行锚点索引：projection-rows 在锚点 item 行之后紧跟插入 subagent 行。 */
