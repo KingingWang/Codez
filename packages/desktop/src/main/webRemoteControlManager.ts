@@ -163,6 +163,7 @@ interface WindowControlRuntime {
     intentKey: string;
     hostRequestId: string;
     preparingProject: boolean;
+    invalidated?: boolean;
     promise: Promise<WebRemoteControlExternalWorkspaceBridge>;
   };
   pendingBridgeInvalidation?: Extract<
@@ -1146,6 +1147,16 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       dependencies.cancelProjectPreparation?.(runtime.windowId, pending.hostRequestId);
   }
 
+  function invalidateBridgeOpenAfterE2eeReset(runtime: WindowControlRuntime): void {
+    const pending = runtime.bridgeOpen;
+    // Bug 原因：E2EE reset 释放的是 bridge 资源，但 completed admission 的 promise 仍指向
+    // 已释放 attachment；旧 identity 重试必须被拒绝，而不是通过原 promise 重新 ready。
+    if (!pending || pending.invalidated) return;
+    if (pending.preparingProject)
+      dependencies.cancelProjectPreparation?.(runtime.windowId, pending.hostRequestId);
+    pending.invalidated = true;
+  }
+
   function createWorkspaceBridge(
     runtime: WindowControlRuntime,
     request: WebRemoteControlWorkspaceBridgeOpenPayload,
@@ -1172,6 +1183,10 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       previous?.bridgeSessionId === request.bridgeSessionId &&
       previous.bridgeGeneration === request.bridgeGeneration
     ) {
+      if (previous.invalidated)
+        return Promise.reject(
+          new Error("Workspace bridge admission was invalidated by an E2EE reset."),
+        );
       if (previous.intentKey !== intentKey)
         return Promise.reject(new Error("Workspace bridge identity cannot change intent."));
       if (
@@ -1239,8 +1254,12 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
         (workspace) => resolveWebRemoteControlWorkspaceKey(workspace) === request.workspaceKey,
       );
     }
+    // Bug 原因：E2EE reset 可能与 project preparation 并发；迟到 resolve 会继续创建
+    // 新 attachment。同步查找路径没有 await，这里主要封住 prepare 完成后的第一道入口。
     if (runtimes.get(runtime.windowId) !== runtime || runtime.bridgeOpen !== pending)
       throw new Error("Workspace bridge request was superseded.");
+    if (pending.invalidated)
+      throw new Error("Workspace bridge admission was invalidated by an E2EE reset.");
     if (!target) {
       throw new Error("目标工作区不在当前桌面窗口中，无法创建 Web 远程控制 bridge。");
     }
@@ -1304,6 +1323,11 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
         dependencies.releaseWorkspaceHostAttachment(acquired.attachmentId);
         acquired = undefined;
         throw new Error("Workspace bridge request was superseded.");
+      }
+      if (pending.invalidated) {
+        dependencies.releaseWorkspaceHostAttachment(acquired.attachmentId);
+        acquired = undefined;
+        throw new Error("Workspace bridge admission was invalidated by an E2EE reset.");
       }
       const hostProtocol = new MessagePortProtocol(wrapElectronPort(acquired.port));
       const relayProtocol = createAcknowledgedWebRemoteControlRelayProtocol({
@@ -1402,6 +1426,15 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
   ): Promise<void> {
     try {
       const bridge = await createWorkspaceBridge(runtime, request);
+      const admission = runtime.bridgeOpen;
+      if (
+        !admission ||
+        admission.bridgeSessionId !== request.bridgeSessionId ||
+        admission.bridgeGeneration !== request.bridgeGeneration ||
+        admission.invalidated
+      ) {
+        throw new Error("Workspace bridge admission was invalidated before ready.");
+      }
       sendAppPayload(runtime, {
         zcode_type: "workspace-bridge-ready",
         requestId: request.requestId,
@@ -2013,6 +2046,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
                 relayProtocol.replayUnacknowledged();
             },
             onE2eeReset: () => {
+              invalidateBridgeOpenAfterE2eeReset(runtime);
               disposeRuntimeBridgeResources(runtime);
               runtime.pendingOutboundPayloads.length = 0;
               clearPendingOutboundPayloadTimer(runtime);
@@ -2317,7 +2351,11 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
               workspace.remoteSessionId === event.previousSessionId &&
               workspace.workspacePath === event.workspacePath &&
               workspace.workspaceIdentity === event.workspaceIdentity
-                ? { ...workspace, remoteSessionId: event.sessionId, connectionState: "connected" }
+                ? {
+                    ...workspace,
+                    remoteSessionId: event.sessionId,
+                    connectionState: "connected",
+                  }
                 : workspace,
             ),
           );
