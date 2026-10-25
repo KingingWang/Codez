@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { mock } from "node:test";
 import type { AttachmentRef } from "@codez/shared/codez-protocol-v4";
 import { BridgeSnapshots } from "../src/bridge-snapshots.js";
 import { InteractionBroker } from "../src/interactions.js";
@@ -667,4 +667,272 @@ test("settledTurnRowsCache is not mutated by idle row actions and stays active a
     busySnap1Turn2Answer,
     "settled turn-2 rows should be reused by reference even when turn-1 has subagent anchors",
   );
+});
+
+// ── 快照 in-flight 合并 / O(active) 富化（specs/codex-desktop-adapter.md）──────────────
+// 观测口径：BridgeSnapshots.conversation 是唯一构建入口，每次构建恰好调用一次
+// store.noteSubagentChildren，所以它是「逻辑快照构建 + projectThread」次数的计数器。
+
+function imageViewItem(id: string, name: string) {
+  return { type: "imageView", id, path: `/native/${name}.png` } as never;
+}
+
+function gatedAttachmentStore(gate: () => Promise<void>, onLookup?: () => void) {
+  return {
+    async findNativeAttachment(path: string) {
+      onLookup?.();
+      await gate();
+      return {
+        ref: `codez-attachment://${path}`,
+        fileName: `${path.split("/").at(-1)}.png`,
+        mime: "image/png",
+        bytes: 8,
+      };
+    },
+  } as unknown as AttachmentStore;
+}
+
+test("concurrent reads of one state version share a single projection build", async (t) => {
+  const thread = threadFixture();
+  thread.turns[0]!.items.push(imageViewItem("img-inflight", "inflight"));
+  const rpc = port();
+  const store = new ThreadStateStore(rpc, cwd);
+  store.markStarted(thread);
+  const builds = mock.method(store, "noteSubagentChildren");
+  t.after(() => mock.restoreAll());
+  let lookups = 0;
+  let gate = Promise.withResolvers<void>();
+  const snapshots = new BridgeSnapshots(
+    { rpc, cwd },
+    store,
+    new InteractionBroker(rpc, () => {}),
+    cwd,
+    gatedAttachmentStore(
+      () => gate.promise,
+      () => {
+        lookups += 1;
+      },
+    ),
+  );
+
+  const pending = Array.from({ length: 8 }, () => snapshots.conversation(thread.id));
+  // 8 个调用的 store.ensure continuation 已按顺序排队；第一个构建会在附件解析处让出，
+  // 后到的 7 个必须挂到同一个 in-flight promise 上，而不是各自再起一次构建。
+  gate.resolve();
+  const results = await Promise.all(pending);
+  assert.equal(new Set(results).size, 1, "同一 state 版本的并发读取必须复用同一份快照");
+  assert.equal(builds.mock.callCount(), 1, "逻辑快照构建 + projectThread 只能跑一次");
+  assert.equal(lookups, 1, "并发读取不得放大底层附件解析次数");
+
+  // in-flight 条目在 finally 里清理：版本推进后必须重新构建，而不是挂到已完成的旧 promise。
+  store.touch(thread.id);
+  const next = await snapshots.conversation(thread.id);
+  assert.notStrictEqual(next, results[0]);
+  assert.equal(builds.mock.callCount(), 2);
+});
+
+test("additionalDirectories order and duplicates normalize into one in-flight key", async (t) => {
+  const thread = threadFixture();
+  thread.id = "thread-dirs";
+  thread.turns[0]!.items.push(imageViewItem("img-dirs", "dirs"));
+  const rpc = port();
+  const store = new ThreadStateStore(rpc, cwd);
+  store.markStarted(thread);
+  const builds = mock.method(store, "noteSubagentChildren");
+  t.after(() => mock.restoreAll());
+  const gate = Promise.withResolvers<void>();
+  const snapshots = new BridgeSnapshots(
+    { rpc, cwd },
+    store,
+    new InteractionBroker(rpc, () => {}),
+    cwd,
+    gatedAttachmentStore(() => gate.promise),
+  );
+
+  const pending = [
+    snapshots.conversation(thread.id, ["/extra-a", "/extra-b"]),
+    snapshots.conversation(thread.id, ["/extra-b", "/extra-a", "/extra-a"]),
+  ];
+  await Promise.resolve();
+  gate.resolve();
+  const [first, second] = await Promise.all(pending);
+  assert.strictEqual(second, first);
+  assert.equal(builds.mock.callCount(), 1);
+});
+
+test("a superseded in-flight build never republishes its snapshot into the derived cache", async (t) => {
+  const thread = threadFixture();
+  thread.id = "thread-superseded";
+  thread.turns[0]!.items.push(imageViewItem("img-superseded", "superseded"));
+  const rpc = port();
+  const store = new ThreadStateStore(rpc, cwd);
+  store.markStarted(thread);
+  const builds = mock.method(store, "noteSubagentChildren");
+  t.after(() => mock.restoreAll());
+  const gate = Promise.withResolvers<void>();
+  const snapshots = new BridgeSnapshots(
+    { rpc, cwd },
+    store,
+    new InteractionBroker(rpc, () => {}),
+    cwd,
+    gatedAttachmentStore(() => gate.promise),
+  );
+
+  const stale = snapshots.conversation(thread.id);
+  await Promise.resolve();
+  // await 期间版本被顶掉：旧构建的结果只能作废，不能写回 conversationCache。
+  store.touch(thread.id);
+  const fresh = snapshots.conversation(thread.id);
+  gate.resolve();
+  const [staleSnapshot, freshSnapshot] = await Promise.all([stale, fresh]);
+  assert.notStrictEqual(staleSnapshot, freshSnapshot);
+  assert.equal(builds.mock.callCount(), 2);
+  assert.strictEqual(
+    await snapshots.conversation(thread.id),
+    freshSnapshot,
+    "被顶掉的在途构建不得污染新 revision 的派生缓存",
+  );
+  assert.equal(builds.mock.callCount(), 2, "命中新 revision 的派生缓存，不再重复构建");
+});
+
+test("33 concurrent sessions keep one build each while the in-flight table evicts", async (t) => {
+  const rpc = port();
+  const store = new ThreadStateStore(rpc, cwd);
+  const ids: string[] = [];
+  for (let index = 0; index < 33; index += 1) {
+    const thread = threadFixture();
+    thread.id = `thread-bounded-${index}`;
+    thread.turns[0]!.items.push(imageViewItem(`img-bounded-${index}`, `bounded-${index}`));
+    store.markStarted(thread);
+    ids.push(thread.id);
+  }
+  const builds = mock.method(store, "noteSubagentChildren");
+  t.after(() => mock.restoreAll());
+  const gate = Promise.withResolvers<void>();
+  const snapshots = new BridgeSnapshots(
+    { rpc, cwd },
+    store,
+    new InteractionBroker(rpc, () => {}),
+    cwd,
+    gatedAttachmentStore(() => gate.promise),
+  );
+
+  // 33 个不同会话同时在途：合并表容量上限是 32，最旧条目会被淘汰。
+  // 淘汰只影响后续合并，绝不能让已在途的构建丢结果或串会话。
+  const pending = ids.map((id) => snapshots.conversation(id));
+  await Promise.resolve();
+  gate.resolve();
+  const results = await Promise.all(pending);
+  assert.equal(results.length, 33);
+  assert.deepEqual(
+    results.map((snapshot) => snapshot.sessionId),
+    ids,
+  );
+  assert.equal(builds.mock.callCount(), 33);
+});
+
+test("streaming deltas reuse cached enrichment for settled turns instead of re-cloning history", async () => {
+  const thread = threadFixture();
+  const settledTurn = {
+    ...thread.turns[0]!,
+    id: "turn-settled",
+    status: "completed" as const,
+    completedAt: 119,
+    items: [
+      {
+        type: "userMessage" as const,
+        id: "user-settled",
+        clientId: "command-settled",
+        content: [{ type: "text" as const, text: "Settled question", text_elements: [] }],
+      },
+      {
+        type: "fileChange" as const,
+        id: "file-settled",
+        status: "completed" as const,
+        changes: [{ path: "/workspace/a.txt", kind: { type: "add" }, diff: "one\ntwo\n" }],
+      },
+      { type: "agentMessage" as const, id: "ans-settled", text: "Settled answer" },
+    ],
+  };
+  const activeTurn = {
+    ...thread.turns[0]!,
+    id: "turn-active",
+    status: "inProgress" as const,
+    startedAt: 120,
+    completedAt: null,
+    items: [
+      {
+        type: "userMessage" as const,
+        id: "user-active",
+        content: [{ type: "text" as const, text: "Stream this", text_elements: [] }],
+      },
+      {
+        type: "agentMessage" as const,
+        id: "ans-active",
+        status: "inProgress" as const,
+        text: "Part 1",
+      },
+    ],
+  };
+  thread.status = { type: "active", activeFlags: [] };
+  thread.turns = [settledTurn, activeTurn] as never;
+  const rpc = port();
+  const store = new ThreadStateStore(rpc, cwd);
+  store.markStarted(thread);
+  const snapshots = new BridgeSnapshots(
+    { rpc, cwd },
+    store,
+    new InteractionBroker(rpc, () => {}),
+    cwd,
+  );
+
+  const first = await snapshots.conversation(thread.id);
+  const settledHeader = first.rows.window.find(
+    (row): row is Extract<typeof row, { kind: "turnHeader" }> =>
+      row.turnId === "turn-settled" && row.kind === "turnHeader",
+  );
+  assert.equal(settledHeader?.fileChanges?.additions, 2);
+  assert.equal(settledHeader?.actions?.canRewindFiles, true, "该轮 header 确实被富化（会被缓存）");
+
+  await store.apply({
+    method: "item/agentMessage/delta",
+    params: {
+      threadId: thread.id,
+      turnId: "turn-active",
+      itemId: "ans-active",
+      delta: " + Part 2",
+    },
+  });
+  const second = await snapshots.conversation(thread.id);
+  const rowsOf = (snapshot: typeof first, turnId: string) =>
+    snapshot.rows.window.filter((row) => row.turnId === turnId);
+  const settledBefore = rowsOf(first, "turn-settled");
+  const settledAfter = rowsOf(second, "turn-settled");
+  assert.equal(settledAfter.length, settledBefore.length);
+  settledBefore.forEach((row, index) =>
+    assert.strictEqual(
+      settledAfter[index],
+      row,
+      "已 settled 轮次的富化行必须按引用复用，delta 期间不再逐帧克隆整段历史",
+    ),
+  );
+  assert.notStrictEqual(
+    rowsOf(second, "turn-active").at(-1),
+    rowsOf(first, "turn-active").at(-1),
+    "活跃轮次仍然每帧重投影",
+  );
+  const streamingRow = second.rows.window.at(-1);
+  assert.equal(streamingRow?.kind === "assistantText" && streamingRow.text, "Part 1 + Part 2");
+
+  // 撤销标记变化必须让缓存失效：canRewindFiles 不能再挂在已撤销的轮次上。
+  snapshots.markFileChangesReverted(thread.id, "turn-settled");
+  store.touch(thread.id);
+  const third = await snapshots.conversation(thread.id);
+  const revertedHeader = third.rows.window.find(
+    (row): row is Extract<typeof row, { kind: "turnHeader" }> =>
+      row.turnId === "turn-settled" && row.kind === "turnHeader",
+  );
+  assert.equal(revertedHeader?.fileChanges?.state, "reverted");
+  assert.equal(revertedHeader?.actions?.canRewindFiles, undefined);
+  assert.notStrictEqual(revertedHeader, settledHeader);
 });

@@ -1,17 +1,18 @@
 import { array, object, type JsonObject } from "./json.js";
+import { findItemEntry, findItemInTurn, findTurnEntry, noteItemWritten } from "./thread-index.js";
 import type { ThreadProjectionState } from "./thread-state-types.js";
 
-/** turn 查找：item/delta 事件只携带 turnId，在已投影历史里定位。 */
+/**
+ * turn 查找：item/delta 事件只携带 turnId，在已投影历史里定位。
+ * 原因：旧实现每条事件都 `array(thread.turns).map(object).find(...)` 线性扫描完整历史，
+ * 还会为每一轮分配一次 map 结果数组；改用 thread-index 的增量索引后是 O(1)
+ * （索引自愈规则见 thread-index.ts 头部说明）。
+ */
 export function findNativeTurn(thread: JsonObject, id: unknown): JsonObject | undefined {
-  return array(thread.turns)
-    .map(object)
-    .find((turn) => turn.id === id);
+  return findTurnEntry(thread, id)?.turn;
 }
 
-const LIFECYCLE_STATUS_ITEM_TYPES = new Set([
-  "contextCompaction",
-  "reasoning",
-]);
+const LIFECYCLE_STATUS_ITEM_TYPES = new Set(["contextCompaction", "reasoning"]);
 
 /**
  * item/started 与 item/completed 合入 turn.items。
@@ -25,8 +26,9 @@ export function applyNativeItemLifecycle(
   params: JsonObject,
   completedItems: Set<string>,
 ): boolean {
-  const turn = findNativeTurn(state.thread, params.turnId);
-  if (!turn) return false;
+  const turnEntry = findTurnEntry(state.thread, params.turnId);
+  if (!turnEntry) return false;
+  const turn = turnEntry.turn;
   if (state.apiRetry?.turnId === params.turnId) state.apiRetry = null;
   const items = array(turn.items);
   const rawItem = object(params.item);
@@ -37,10 +39,13 @@ export function applyNativeItemLifecycle(
   const itemKey = JSON.stringify([threadId, params.turnId, item.id]);
   if (method === "item/started" && completedItems.has(itemKey)) return false;
   if (method === "item/completed") completedItems.add(itemKey);
-  const index = items.findIndex((value) => object(value).id === item.id);
+  // 索引定位替代 items.findIndex 的线性扫描；未命中即 -1，与旧语义一致。
+  const index = findItemInTurn(turnEntry, item.id)?.index ?? -1;
   if (index < 0) items.push(item);
   else items[index] = item;
   turn.items = items;
+  // 写入后同步索引，下一条同 item 的 delta 仍是 O(1)（而不是触发一次重建）。
+  noteItemWritten(turnEntry, index < 0 ? items.length - 1 : index, item);
   return true;
 }
 
@@ -56,10 +61,8 @@ export function applyNativeItemDelta(
 ): boolean {
   if (completedItems.has(JSON.stringify([params.threadId, params.turnId, params.itemId])))
     return false;
-  const turn = findNativeTurn(state.thread, params.turnId);
-  const item = array(turn?.items)
-    .map(object)
-    .find((value) => value.id === params.itemId);
+  // 同上：turnId/itemId 定位走增量索引，delta 直接原地合入数组里的同一 item 对象。
+  const item = findItemEntry(state.thread, params.turnId, params.itemId)?.item;
   if (!item || typeof params.delta !== "string") return false;
   if (state.apiRetry?.turnId === params.turnId) state.apiRetry = null;
   if (method === "item/agentMessage/delta" || method === "item/plan/delta") {

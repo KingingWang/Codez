@@ -638,3 +638,234 @@ test("item/autoApprovalReview started, strictReviewRequired, completed, and turn
   assert.equal(store.get("t1")!.autoApprovalReviews?.["turn-1"]?.["review-2"]?.status, "aborted");
   assert.ok(changed.includes("t1"));
 });
+
+interface RawItem {
+  id: string;
+  type: string;
+  text?: string;
+  plan?: unknown;
+  [key: string]: unknown;
+}
+
+interface RawTurn {
+  id: string;
+  status: string;
+  itemsView: string;
+  items: RawItem[];
+  [key: string]: unknown;
+}
+
+/** N 轮已 settled 的历史 + 1 个活动轮：用于验证事件成本不随历史长度增长。 */
+function longThread(settledTurns: number) {
+  const turns: RawTurn[] = [];
+  for (let index = 0; index < settledTurns; index += 1) {
+    turns.push({
+      id: `turn-${index}`,
+      status: "completed",
+      itemsView: "full",
+      startedAt: 100 + index,
+      completedAt: 101 + index,
+      items: [
+        { id: `item-${index}`, type: "agentMessage", text: `answer ${index}`, status: "completed" },
+      ],
+    });
+  }
+  turns.push({
+    id: "turn-active",
+    status: "inProgress",
+    itemsView: "full",
+    startedAt: 200 + settledTurns,
+    items: [{ id: "stream", type: "agentMessage", text: "", status: "inProgress" }],
+  });
+  return { ...thread(), turns };
+}
+
+function turnsOf(store: ThreadStateStore): RawTurn[] {
+  return store.get("t1")!.thread.turns as unknown as RawTurn[];
+}
+
+function turnById(store: ThreadStateStore, id: string): RawTurn {
+  const found = turnsOf(store).find((turn) => turn.id === id);
+  assert.ok(found, `missing turn ${id}`);
+  return found;
+}
+
+test("流式 delta 走 turn/item 增量索引，turns 元素读取次数与历史长度无关", async () => {
+  const store = new ThreadStateStore(
+    port(() => ({})),
+    "/work",
+  );
+  store.markStarted(longThread(1200));
+  const state = store.get("t1")!;
+  let reads = 0;
+  // 计数代理只统计对 thread.turns 数值下标的读取：索引命中路径每条 delta 只读 1 个元素，
+  // 旧的 `turns.map(object).find(...)` 会读满 1201 个。用可数的结构断言 O(1)，
+  // 而不是依赖容易受机器负载影响的计时阈值。
+  state.thread.turns = new Proxy(state.thread.turns as unknown[], {
+    get(target, property, receiver) {
+      if (typeof property === "string" && /^\d+$/.test(property)) reads += 1;
+      return Reflect.get(target, property, receiver);
+    },
+  });
+  const stream = () =>
+    store.apply({
+      method: "item/agentMessage/delta",
+      params: { threadId: "t1", turnId: "turn-active", itemId: "stream", delta: "字" },
+    });
+  // 预热：首条 delta 会按当前数组建索引（O(N)），之后每条都必须走快路径。
+  await stream();
+  reads = 0;
+  for (let index = 0; index < 40; index += 1) await stream();
+  assert.ok(reads <= 120, `40 条 delta 读取 turns 元素 ${reads} 次，索引退化成线性扫描`);
+  assert.equal(turnById(store, "turn-active").items[0]!.text, "字".repeat(41));
+});
+
+test("外部替换 turns/items 引用或原位改写元素时索引自愈，不会误判 turn 缺失", async () => {
+  const store = new ThreadStateStore(
+    port(() => ({})),
+    "/work",
+  );
+  store.markStarted(longThread(3));
+  const state = store.get("t1")!;
+  const delta = (turnId: string, itemId: string, text: string) =>
+    store.apply({
+      method: "item/agentMessage/delta",
+      params: { threadId: "t1", turnId, itemId, delta: text },
+    });
+
+  // 1) 整体替换 turns 引用并追加一轮（引用与长度同时变化）
+  const extra: RawTurn = {
+    id: "turn-extra",
+    status: "inProgress",
+    itemsView: "full",
+    items: [{ id: "extra-item", type: "agentMessage", text: "" }],
+  };
+  state.thread.turns = [...turnsOf(store), extra];
+  await delta("turn-extra", "extra-item", "A");
+  assert.equal(extra.items[0]!.text, "A");
+
+  // 2) 替换某轮 items 引用（长度变化）：新 item 立即可定位
+  const settledTurn = turnById(store, "turn-0");
+  await delta("turn-0", "item-0", "!");
+  const late: RawItem = { id: "late", type: "agentMessage", text: "" };
+  settledTurn.items = [...settledTurn.items, late];
+  await delta("turn-0", "late", "B");
+  assert.equal(late.text, "B");
+
+  // 3) 原位替换 turn 元素（引用与长度都不变）：新 id 靠自愈扫描定位，旧 id 不再命中过期条目
+  const displaced = turnById(store, "turn-1");
+  const replacement: RawTurn = {
+    id: "turn-1-moved",
+    status: "completed",
+    itemsView: "full",
+    items: [{ id: "moved", type: "agentMessage", text: "" }],
+  };
+  (state.thread.turns as unknown[])[1] = replacement;
+  await delta("turn-1-moved", "moved", "C");
+  assert.equal(replacement.items[0]!.text, "C");
+  await delta("turn-1", "item-1", "X");
+  assert.equal(displaced.items[0]!.text, "answer 1");
+  // 3 轮 settled + 活动轮 + 第 1 步追加的 turn-extra：被丢弃的 delta 不能追加出新 turn
+  assert.equal(turnsOf(store).length, 5);
+
+  // 4) 原位替换 item 元素（数组引用与长度都不变）：身份校验发现错位后重建该轮 item 索引
+  const active = turnById(store, "turn-active");
+  await delta("turn-active", "stream", "D");
+  assert.equal(active.items[0]!.text, "D");
+  active.items[0] = { id: "stream", type: "agentMessage", text: "reset", status: "inProgress" };
+  await delta("turn-active", "stream", "E");
+  assert.equal(active.items[0]!.text, "resetE");
+});
+
+test("turn/plan/updated 原位替换 plan item 后，同轮 item 索引仍原位更新而不追加", async () => {
+  const store = new ThreadStateStore(
+    port(() => ({})),
+    "/work",
+  );
+  store.markStarted(longThread(2));
+  const planUpdate = (plan: unknown) =>
+    store.apply({
+      method: "turn/plan/updated",
+      params: { threadId: "t1", turnId: "turn-active", plan },
+    });
+  await planUpdate([{ step: "第一步", status: "in_progress" }]);
+  const active = turnById(store, "turn-active");
+  const firstPlanItem = active.items.at(-1)!;
+  assert.deepEqual(firstPlanItem.plan, [{ step: "第一步", status: "in_progress" }]);
+  // 第二次更新是原位替换（items 引用与长度都不变）：索引必须失效重建，不能滞留旧 item
+  await planUpdate([{ step: "第一步", status: "completed" }]);
+  assert.notEqual(active.items.at(-1), firstPlanItem);
+  assert.deepEqual(active.items.at(-1)!.plan, [{ step: "第一步", status: "completed" }]);
+  await store.apply({
+    method: "item/completed",
+    params: {
+      threadId: "t1",
+      turnId: "turn-active",
+      item: {
+        id: "plan-update",
+        type: "planUpdate",
+        plan: [{ step: "第一步", status: "completed" }],
+        status: "completed",
+      },
+    },
+  });
+  assert.equal(
+    active.items.filter((item) => item.id === "plan-update").length,
+    1,
+    "plan item 必须原位替换而不是追加第二张计划卡",
+  );
+  await store.apply({
+    method: "item/agentMessage/delta",
+    params: { threadId: "t1", turnId: "turn-active", itemId: "stream", delta: "D" },
+  });
+  assert.equal(active.items[0]!.text, "D");
+});
+
+test("thread/tokenUsage/updated 缺 turnId 时倒序定位活动轮，全 settled 时回退最后一轮", async () => {
+  const usage = {
+    total: { inputTokens: 11_000, outputTokens: 300, totalTokens: 11_300 },
+    last: { inputTokens: 10_000, outputTokens: 200, totalTokens: 10_200 },
+  };
+  const pushUsage = (store: ThreadStateStore) =>
+    store.apply({
+      method: "thread/tokenUsage/updated",
+      params: { threadId: "t1", tokenUsage: usage },
+    });
+  // 长历史里活动轮在末尾：归属活动轮，且不需要复制整份历史（旧实现 map(object) 每帧分配）
+  const long = new ThreadStateStore(
+    port(() => ({})),
+    "/work",
+  );
+  long.markStarted(longThread(1200));
+  await pushUsage(long);
+  assert.deepEqual(Object.keys(long.get("t1")!.turnTokenUsage ?? {}), ["turn-active"]);
+  // 活动轮在中间：倒序找最后一个 inProgress，与旧 findLast 语义一致
+  const middle = new ThreadStateStore(
+    port(() => ({})),
+    "/work",
+  );
+  middle.markStarted({
+    ...thread(),
+    turns: [
+      { id: "a", status: "completed", itemsView: "full", items: [] },
+      { id: "b", status: "inProgress", itemsView: "full", items: [] },
+      { id: "c", status: "completed", itemsView: "full", items: [] },
+    ],
+  });
+  await pushUsage(middle);
+  assert.deepEqual(Object.keys(middle.get("t1")!.turnTokenUsage ?? {}), ["b"]);
+  // 全部 settled：回退到最后一轮
+  const settled = new ThreadStateStore(
+    port(() => ({})),
+    "/work",
+  );
+  settled.markStarted({
+    ...thread(),
+    turns: [
+      { id: "a", status: "completed", itemsView: "full", items: [] },
+      { id: "b", status: "completed", itemsView: "full", items: [] },
+    ],
+  });
+  await pushUsage(settled);
+  assert.deepEqual(Object.keys(settled.get("t1")!.turnTokenUsage ?? {}), ["b"]);
+});

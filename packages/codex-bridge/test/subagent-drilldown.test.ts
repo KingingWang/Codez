@@ -13,16 +13,21 @@ import {
   type SubagentRow,
 } from "@codez/shared/codez-protocol-v4";
 import { BridgeSnapshots } from "../src/bridge-snapshots.js";
+import { childThreadListBackoff, listChildThreads } from "../src/child-thread-list.js";
 import { CommandRouter, type CommandContext } from "../src/commands.js";
 import { CommandLedger } from "../src/command-ledger.js";
 import { InteractionBroker } from "../src/interactions.js";
 import { handleLegacySession } from "../src/legacy-sessions.js";
 import { projectThread } from "../src/projection.js";
 import { CodexRpcError } from "../src/rpc-errors.js";
+import {
+  SubagentActivitySeedScheduler,
+  SubagentActivityTracker,
+} from "../src/subagent-activity.js";
 import { ThreadStateStore } from "../src/thread-state.js";
 import type { CodexThread, CodexThreadItem } from "../src/codex-types.js";
 import { threadFixture } from "./projection-fixtures.test.js";
-import { MockRpc, cwd, workspaceId } from "./fixtures/commands-fixture.js";
+import { MockRpc, cwd, deferred, workspaceId } from "./fixtures/commands-fixture.js";
 
 // specs/codex-desktop-subagent-drilldown.md：子代理下钻的事实源只有父线程 collab item
 // 与子线程自己的原生元数据；这些测试锁住「不猜状态、不伪造身份、不放权写入」三条边界。
@@ -611,4 +616,195 @@ test("session/subagents 拒绝跨工作区的父会话", async (t) => {
     handleLegacySession("session/subagents", { sessionId: PARENT }, h.rpc, h.store, workspaceId),
     /Workspace mismatch/,
   );
+});
+
+/** 目录结果的最小可读视图：缓存测试只关心分类与分页事实。 */
+interface CatalogView {
+  revision: number;
+  childSessionIds: string[];
+  running: { childSessionId: string; title: string }[];
+  ended: {
+    total: number;
+    nextCursor?: string;
+    items: { childSessionId: string; status: string; title: string }[];
+  };
+}
+
+test("session/subagents 在同一父水位下复用已聚合目录，revision 变化后重新分类", async (t) => {
+  const h = await setup(t, {
+    children: [childThread({ id: CHILD_B, status: { type: "idle" }, updatedAt: 200 })],
+    parentItems: [collabSpawn("c-1", CHILD_B, "task B")],
+  });
+  // 缓存只在父线程已加载（有 epoch/revision 水位）时生效；这也是生产里的常态路径。
+  await h.store.ensure(PARENT);
+  const catalog = () =>
+    handleLegacySession(
+      "session/subagents",
+      { sessionId: PARENT },
+      h.rpc,
+      h.store,
+      workspaceId,
+    ) as Promise<CatalogView>;
+  const first = await catalog();
+  assert.equal(first.ended.total, 1);
+  assert.equal(first.ended.items[0]?.status, "lost", "父线程没有终态事实时不猜成败");
+  // 命中证据：原地给父线程补终态事实但不 touch（revision 不变）→ 目录仍复用缓存。
+  // 生产里任何原生事件都经 ThreadStateStore.touch → revision+1，所以水位就是失效权威。
+  const state = h.store.get(PARENT)!;
+  // ThreadProjectionState.thread 是未校验的原生载荷（JsonObject），测试按形状取用。
+  const parentTurns = state.thread.turns as { items: unknown[] }[];
+  parentTurns[0]!.items.push(activity("a-2", "completed", CHILD_B));
+  const cached = await catalog();
+  assert.equal(cached.ended.items[0]?.status, "lost", "同一 (epoch, revision) 必须命中缓存");
+  h.store.touch(PARENT);
+  const fresh = await catalog();
+  assert.ok(fresh.revision > cached.revision, "touch 必须推进父水位");
+  assert.equal(fresh.ended.items[0]?.status, "success", "水位变化后必须重解析父历史");
+});
+
+test("session/subagents 分页复用已排序目录，子线程状态变化立即重分类", async (t) => {
+  const children = [CHILD_B, "thread-4"].map((id, index) =>
+    childThread({ id, status: { type: "idle" }, updatedAt: 200 + index }),
+  );
+  const h = await setup(t, { children, parentItems: [collabSpawn("c-1", CHILD_B, "task B")] });
+  await h.store.ensure(PARENT);
+  const catalog = (params: Record<string, unknown> = {}) =>
+    handleLegacySession(
+      "session/subagents",
+      { sessionId: PARENT, ...params },
+      h.rpc,
+      h.store,
+      workspaceId,
+    ) as Promise<CatalogView>;
+  const first = await catalog({ endedLimit: 1 });
+  assert.equal(first.ended.total, 2);
+  assert.deepEqual(
+    first.ended.items.map((item) => item.childSessionId),
+    ["thread-4"],
+    "endedAt 最新的排在前面",
+  );
+  assert.ok(first.ended.nextCursor);
+  // 分页切片复用同一份已排序列表：第二页不重跑父历史解析与排序。
+  const second = await catalog({ endedLimit: 1, endedCursor: first.ended.nextCursor });
+  assert.deepEqual(
+    second.ended.items.map((item) => item.childSessionId),
+    [CHILD_B],
+  );
+  assert.equal(second.ended.nextCursor, undefined);
+  // 子线程原生状态变了（父水位没变）：签名不同 → 立刻重分类，缓存不得掩盖子线程事实。
+  children[1]!.status = { type: "active", activeFlags: [] };
+  const third = await catalog({ endedLimit: 1 });
+  assert.deepEqual(third.childSessionIds.slice().sort(), [CHILD_B, "thread-4"].sort());
+  assert.deepEqual(
+    third.running.map((item) => item.childSessionId),
+    ["thread-4"],
+  );
+  assert.equal(third.ended.total, 1);
+});
+
+test("同一父线程的并发 listChildThreads 合并在途请求，settled 后不保留过期列表", async () => {
+  const rpc = new MockRpc();
+  const gate = deferred<{ data: unknown[]; nextCursor: null }>();
+  rpc.handlers.set("thread/list", () => gate.promise);
+  const first = listChildThreads(rpc, PARENT);
+  const second = listChildThreads(rpc, PARENT);
+  assert.equal(rpc.params("thread/list").length, 1, "在途请求必须合并成一轮分页扫描");
+  gate.resolve({ data: [childThread()], nextCursor: null });
+  assert.deepEqual(
+    (await first).map((child) => child.id),
+    [CHILD],
+  );
+  assert.deepEqual(
+    (await second).map((child) => child.id),
+    [CHILD],
+  );
+  rpc.handlers.set("thread/list", () => ({ data: [], nextCursor: null }));
+  assert.deepEqual(await listChildThreads(rpc, PARENT), []);
+  assert.equal(rpc.params("thread/list").length, 2, "settled 后必须清除在途记账");
+});
+
+test("thread/list 失败后有界退避：冷却中不重发，冷却过期恢复，成功即清零", async () => {
+  const rpc = new MockRpc();
+  let healthy = false;
+  rpc.handlers.set("thread/list", () => {
+    if (!healthy) throw new CodexRpcError(-32603, "native list unavailable");
+    return { data: [], nextCursor: null };
+  });
+  const list = (now: number) => listChildThreads(rpc, PARENT, { now });
+  const listCalls = () => rpc.params("thread/list").length;
+  await assert.rejects(list(1_000), /native list unavailable/);
+  assert.equal(listCalls(), 1);
+  // 冷却窗口（首次 500ms）内不再敲原生，直接复述上次失败：调用方仍看到错误。
+  await assert.rejects(list(1_499), /native list unavailable/);
+  assert.equal(listCalls(), 1, "冷却中不得重发 thread/list");
+  // 冷却过期恢复重试；连续失败按 500ms 指数退避。
+  await assert.rejects(list(1_500), /native list unavailable/);
+  assert.equal(listCalls(), 2);
+  assert.equal(childThreadListBackoff(rpc, PARENT, 1_500)?.retryAfterMs, 1_000);
+  await assert.rejects(list(2_499), /native list unavailable/);
+  assert.equal(listCalls(), 2, "第二次失败退避到 1000ms");
+  await assert.rejects(list(2_500), /native list unavailable/);
+  assert.equal(listCalls(), 3);
+  // 一次成功立即清零失败计数：退避不会掩盖恢复。
+  healthy = true;
+  assert.deepEqual(await list(60_000), []);
+  assert.equal(childThreadListBackoff(rpc, PARENT, 60_000), undefined);
+  healthy = false;
+  await assert.rejects(list(60_001), /native list unavailable/);
+  assert.equal(childThreadListBackoff(rpc, PARENT, 60_001)?.retryAfterMs, 500, "成功后退回基线");
+});
+
+test("thread/list 退避有上限（30s），连续失败不会无限增长", async () => {
+  const rpc = new MockRpc();
+  rpc.handlers.set("thread/list", () => {
+    throw new CodexRpcError(-32603, "native list unavailable");
+  });
+  let now = 0;
+  let retryAt = 0;
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    await assert.rejects(listChildThreads(rpc, PARENT, { now }), /native list unavailable/);
+    const backoff = childThreadListBackoff(rpc, PARENT, now);
+    assert.ok(backoff, "每次失败都必须记账退避");
+    retryAt = backoff.retryAt;
+    now = retryAt;
+  }
+  assert.equal(childThreadListBackoff(rpc, PARENT, retryAt - 1)?.retryAfterMs, 30_000);
+  assert.equal(childThreadListBackoff(rpc, PARENT, retryAt - 1)?.failures, 8);
+});
+
+test("冷却窗口内种子调度跳过重试，冷却过期后恢复（失败种子不写活性观测）", async () => {
+  const rpc = new MockRpc();
+  rpc.handlers.set("thread/list", () => {
+    throw new CodexRpcError(-32603, "native list unavailable");
+  });
+  const tracker = new SubagentActivityTracker();
+  const touched: string[] = [];
+  const scheduler = new SubagentActivitySeedScheduler({
+    rpc,
+    nativeThreadStatus: () => undefined,
+    tracker,
+    touchParent: (parentId) => touched.push(parentId),
+  });
+  const listCalls = () => rpc.params("thread/list").length;
+  // 用真实时间记一次失败：500ms 冷却窗口覆盖紧随其后的 schedule（父快照每次构建都会调度）。
+  await assert.rejects(
+    listChildThreads(rpc, PARENT, { now: Date.now() }),
+    /native list unavailable/,
+  );
+  const primed = listCalls();
+  scheduler.schedule(PARENT, [{ childSessionId: CHILD }]);
+  await scheduler.whenSettled();
+  assert.equal(listCalls(), primed, "冷却窗口内不得重发种子查询");
+  assert.equal(tracker.observedActive(CHILD), undefined, "失败种子不得写活性观测");
+  assert.deepEqual(touched, [], "失败种子不得触发父会话重投影");
+  // 换一个父线程把失败时间戳记在过去（等价于冷却已过期）：schedule 必须恢复重试。
+  const expiredParent = "thread-parent-expired";
+  await assert.rejects(
+    listChildThreads(rpc, expiredParent, { now: Date.now() - 60_000 }),
+    /native list unavailable/,
+  );
+  const beforeRetry = listCalls();
+  scheduler.schedule(expiredParent, [{ childSessionId: CHILD_B }]);
+  await scheduler.whenSettled();
+  assert.equal(listCalls(), beforeRetry + 1, "冷却过期后必须恢复重试");
 });

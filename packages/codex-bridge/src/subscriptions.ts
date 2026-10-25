@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import {
-  encodeTopicWireFrames,
+  encodeTopicWireFramesWithBytes,
   measureTopicNotificationEnvelopeBytes,
   PROTOCOL_V4_LIMITS,
   routedTopicFrameSchema,
@@ -35,6 +35,9 @@ export interface BridgeSubscriptionResponse {
 export const MAX_BRIDGE_SUBSCRIPTIONS = 32;
 type Mode = V4ConversationSubscribeParams["clientMode"];
 type Batch = { frames: RoutedTopicWireFrame[]; bytes: number; seq: number; logEpoch: string };
+type SnapshotRead = { snapshot: unknown; seq: number; logEpoch: string };
+/** 单轮 changed(topic) 扇出内的 resolver 读取合并表；不跨调用复用。 */
+type SharedReads = Map<string, Promise<SnapshotRead>>;
 interface Route {
   id: string;
   key: string;
@@ -73,6 +76,16 @@ function parse<T>(schema: z.ZodType<T>, value: unknown): T {
   const result = schema.safeParse(value);
   if (!result.success) fail(-32602, "Invalid subscription parameters");
   return result.data;
+}
+
+/**
+ * 共享读取的合并键：同一 topic 但 additionalDirectories 不同的 route 必须各自读取，
+ * 因为 resolver 会用它们加载不同的 workspace roots。规范化（去重 + 排序）后比较，
+ * 与 BridgeSnapshots 的 in-flight key 口径一致。
+ */
+function snapshotReadKey(topic: string, additionalDirectories?: readonly string[]): string {
+  if (!additionalDirectories || additionalDirectories.length === 0) return topic;
+  return `${topic}\u0000${[...new Set(additionalDirectories)].sort().join("\u0001")}`;
 }
 
 /** Connection-local transport only; snapshots and authorization remain resolver-owned.
@@ -180,7 +193,12 @@ export class BridgeSubscriptions {
     this.validateTopic(topic);
     const routes = [...this.routes.values()].filter((route) => route.topic === topic);
     for (const route of routes) route.dirty = true;
-    await Promise.all(routes.map((route) => this.flush(route)));
+    // 一次 changed 扇出里，相同 (topic, additionalDirectories) 的多条 route 共享一次
+    // resolver 读取：32 个订阅者同时刷新同一会话时逻辑投影仍然只跑一次。
+    // 合并表是本轮局部的——新的 changed 或 state 变化后的重刷一定重新读取，
+    // 独立的 subscribe()/resync() 也绝不挂到这里（见 prepare/encode 不传 sharedReads）。
+    const sharedReads: SharedReads = new Map();
+    await Promise.all(routes.map((route) => this.flush(route, sharedReads)));
   }
 
   close(): void {
@@ -274,8 +292,9 @@ export class BridgeSubscriptions {
     route: Route,
     deliveryKind: "initial" | "recovery",
     version: number,
+    sharedReads?: SharedReads,
   ): Promise<Batch | undefined> {
-    const raw = await this.options.snapshot(route.topic, route.additionalDirectories);
+    const raw = await this.readSnapshot(route, sharedReads);
     if (!this.active(route, version)) return;
     const value = snapshotSchema.safeParse(raw);
     if (!value.success) fail(-32000, "Invalid snapshot resolver result");
@@ -300,32 +319,49 @@ export class BridgeSubscriptions {
     if (route.last?.logEpoch === logEpoch && seq < route.last.seq)
       fail(-32000, "Snapshot sequence regressed");
     if (route.ordinal >= Number.MAX_SAFE_INTEGER) fail(-32000, "Subscription ordinal exhausted");
-    const frames = encodeTopicWireFrames(parsed.data, {
+    // 编码时已经按真实 envelope 测过每个物理帧，直接复用计量结果；
+    // 以前这里对同一批帧再跑一遍 JSON.stringify + TextEncoder（最大的那段 snapshot 序列化两次）。
+    const encoded = encodeTopicWireFramesWithBytes(parsed.data, {
       deliveryKind,
       topic: route.topic,
       subscriptionId: route.id,
       logicalFrameId: randomUUID(),
       logicalFrameOrdinal: ++route.ordinal,
       measurePhysicalFrameBytes: (frame) => measureTopicNotificationEnvelopeBytes(frame).maxBytes,
-    }).map((frame) => routedTopicWireFrameSchema.parse(frame));
-    const bytes = frames.reduce(
-      (sum, frame) => sum + measureTopicNotificationEnvelopeBytes(frame).maxBytes,
-      0,
-    );
+    });
+    const frames = encoded.frames.map((frame) => routedTopicWireFrameSchema.parse(frame));
+    const bytes = encoded.totalBytes;
     if (this.stagedBytes + bytes > PROTOCOL_V4_LIMITS.logicalFrameAssemblyMaxStagedBytes)
       fail(-32000, "Subscription staged byte limit exceeded");
     this.stagedBytes += bytes;
     return { frames, bytes, seq, logEpoch };
   }
 
-  private flush(route: Route): Promise<void> {
+  /**
+   * resolver 读取：changed 扇出内按 (topic, additionalDirectories) 合并，其余入口直连。
+   * route 在 await 期间被 replace/close 只影响它自己（encode 随后按 version 复核），
+   * 共享同一次读取的其他活跃 route 不受影响。
+   */
+  private readSnapshot(route: Route, sharedReads?: SharedReads): Promise<SnapshotRead> {
+    if (!sharedReads) return this.options.snapshot(route.topic, route.additionalDirectories);
+    const key = snapshotReadKey(route.topic, route.additionalDirectories);
+    const existing = sharedReads.get(key);
+    if (existing) return existing;
+    // async IIFE：resolver 同步抛错也转成 rejection，保证登记进合并表的 promise 一定有人处理。
+    const pending = (async () => this.options.snapshot(route.topic, route.additionalDirectories))();
+    sharedReads.set(key, pending);
+    return pending;
+  }
+
+  private flush(route: Route, sharedReads?: SharedReads): Promise<void> {
     if (route.running) return route.running;
     if (!this.writable(route)) return Promise.resolve();
     // 合并并发 changed，不为每个事件挂一个待发送任务；只允许一个有界在途帧。
-    const running = Promise.resolve().then(() => this.drain(route));
+    const running = Promise.resolve().then(() => this.drain(route, sharedReads));
     const completed = running.then(
       () => {
         route.running = undefined;
+        // 续跑属于新的一轮：不再复用上一次扇出的共享读取。
         if (this.writable(route) && (route.pending || route.dirty)) return this.flush(route);
       },
       (error: unknown) => {
@@ -338,15 +374,18 @@ export class BridgeSubscriptions {
     return completed;
   }
 
-  private async drain(route: Route): Promise<void> {
+  private async drain(route: Route, sharedReads?: SharedReads): Promise<void> {
+    let reads = sharedReads;
     while (this.writable(route) && (route.pending || route.dirty)) {
       const version = route.version;
       let batch = route.pending;
       route.pending = undefined;
       if (!batch) {
         route.dirty = false;
-        batch = await this.encode(route, "recovery", version);
+        batch = await this.encode(route, "recovery", version, reads);
       }
+      // 共享读取只代表本轮扇出时刻的 state；同一 drain 的后续迭代必须读最新值。
+      reads = undefined;
       if (!batch) return;
       try {
         for (const frame of batch.frames) {
