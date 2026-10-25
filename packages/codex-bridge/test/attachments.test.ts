@@ -43,7 +43,7 @@ async function fixture(t: TestContext, overrides: Partial<AttachmentStoreOptions
   });
   return { store, root, cwd };
 }
-function begin(bytes = Buffer.from("hello"), extra = {}) {
+function begin(bytes: Buffer = Buffer.from("hello"), extra = {}) {
   return {
     ...common,
     fileName: "note.txt",
@@ -78,6 +78,30 @@ async function put(
   );
   return { ref, fileName: params.fileName, mime: params.mime, bytes: bytes.length };
 }
+
+/** 按 512 KiB 分块上传大附件，用于分页预览测试。 */
+async function putLarge(store: AttachmentStore, bytes: Buffer, extra = {}): Promise<AttachmentRef> {
+  const chunk = LIMITS.attachmentChunkMaxBytes;
+  const params = begin(bytes, { totalChunks: Math.ceil(bytes.length / chunk), ...extra });
+  await store.handle(V4_METHODS.attachmentBegin, params);
+  for (let offset = 0, index = 0; offset < bytes.length; offset += chunk, index++)
+    await store.handle(V4_METHODS.attachmentChunk, {
+      connectionId: params.connectionId,
+      sessionId: params.sessionId,
+      uploadId: params.uploadId,
+      chunkIndex: index,
+      dataBase64: bytes.subarray(offset, offset + chunk).toString("base64"),
+    });
+  const { ref } = v4AttachmentCommitResultSchema.parse(
+    await store.handle(V4_METHODS.attachmentCommit, {
+      connectionId: params.connectionId,
+      sessionId: params.sessionId,
+      uploadId: params.uploadId,
+    }),
+  );
+  return { ref, fileName: params.fileName, mime: params.mime, bytes: bytes.length };
+}
+const tick = () => new Promise((resolve) => setTimeout(resolve, 1));
 
 test("draft-session upload produces opaque owned refs and UTF-8 native text", async (t) => {
   const { store } = await fixture(t);
@@ -561,4 +585,94 @@ test("a ZIP with a false text MIME and .txt suffix is never inlined", async (t) 
   if (input?.type !== "text") throw new Error("Expected path reference");
   assert.equal(parseNativeFileReference(input.text)?.attachment.ref, ref.ref);
   assert.equal(extractNativeFileReferences(input.text)[0]?.inlineText, undefined);
+});
+
+test("大附件连续分页预览只完整校验一次，20 页拼回原文", async (t) => {
+  const { store } = await fixture(t, { authorizeRead: () => true });
+  const pageSize = 64 * 1024;
+  const pages = 20;
+  const bytes = Buffer.alloc(pageSize * pages);
+  // 确定性但每页不同的内容：任何一页错位或复用都会被拼回比对发现。
+  for (let index = 0; index < bytes.length; index++) bytes[index] = (index * 31 + 7) & 0xff;
+  const media = { mime: "video/mp4", fileName: "big.mp4" };
+  const ref = await putLarge(store, bytes, { ...media, uploadId: "paged" });
+  const query = { sessionId: common.sessionId, ref: ref.ref, target, attachmentIndex: 0 };
+  const page = (offset: number) =>
+    store.handle(V4_METHODS.attachmentRead, { ...query, offset, limit: pageSize });
+  const before = store.integrityVerificationCount;
+  const received: Buffer[] = [];
+  for (let index = 0; index < pages; index++) {
+    const result = v4AttachmentReadResultSchema.parse(await page(index * pageSize));
+    assert.equal(result.totalBytes, bytes.length);
+    assert.equal(result.nextOffset, index + 1 < pages ? (index + 1) * pageSize : null);
+    received.push(Buffer.from(result.dataBase64, "base64"));
+  }
+  assert.deepEqual(Buffer.concat(received), bytes);
+  // 原因：blob 不可变，20 页只应触发一次完整 SHA-256；后续分页靠身份缓存 + 有界采样复验。
+  assert.equal(store.integrityVerificationCount - before, 1);
+
+  // 冷缓存下的并发分页必须按文件身份合并 in-flight 校验，而不是每页各算一次。
+  const cold = await putLarge(store, bytes, { ...media, fileName: "cold.mp4", uploadId: "cold" });
+  const coldBefore = store.integrityVerificationCount;
+  const coldPages = await Promise.all(
+    Array.from({ length: pages }, async (_, index) =>
+      v4AttachmentReadResultSchema.parse(
+        await store.handle(V4_METHODS.attachmentRead, {
+          ...query,
+          ref: cold.ref,
+          offset: index * pageSize,
+          limit: pageSize,
+        }),
+      ),
+    ),
+  );
+  assert.equal(store.integrityVerificationCount - coldBefore, 1);
+  assert.deepEqual(
+    Buffer.concat(coldPages.map((result) => Buffer.from(result.dataBase64, "base64"))),
+    bytes,
+  );
+});
+
+test("只读预览并发执行并共享总在途上限", { timeout: 30_000 }, async (t) => {
+  let arrivals = 0;
+  let open!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  const { store } = await fixture(t, {
+    authorizeRead: async () => {
+      arrivals += 1;
+      await gate;
+      return true;
+    },
+  });
+  const bytes = Buffer.from("preview");
+  const ref = await put(store, bytes, { mime: "image/png", fileName: "p.png" });
+  const read = (offset: number) =>
+    store.handle(V4_METHODS.attachmentRead, {
+      sessionId: common.sessionId,
+      ref: ref.ref,
+      target,
+      attachmentIndex: 0,
+      offset,
+      limit: 1,
+    });
+  const reads = Array.from({ length: 64 }, (_, index) => read(index % bytes.length));
+  try {
+    // 串行实现下第 2 个预览永远进不到 authorizeRead，这里会超时失败。
+    for (let waited = 0; waited < 5_000 && arrivals < 64; waited++) await tick();
+    assert.equal(arrivals, 64);
+    await assert.rejects(read(0), /operationLimit/);
+    await assert.rejects(
+      store.handle(V4_METHODS.attachmentBegin, begin(Buffer.alloc(0), { uploadId: "blocked" })),
+      /operationLimit/,
+    );
+  } finally {
+    open();
+  }
+  const results = await Promise.all(reads);
+  for (const result of results)
+    assert.equal(v4AttachmentReadResultSchema.parse(result).totalBytes, bytes.length);
+  // 释放后写队列恢复可用：admission 上限只约束在途操作，不是永久熔断。
+  await store.handle(V4_METHODS.attachmentBegin, begin(Buffer.alloc(0), { uploadId: "after" }));
 });

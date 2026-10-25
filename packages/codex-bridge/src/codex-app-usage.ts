@@ -10,10 +10,14 @@ import {
 } from "@codez/shared/codez-protocol-v4";
 import { resolveCodexHomeDir } from "./default-codex-config.js";
 import {
+  EVENT_LOOP_YIELD_SLICE_MS,
   parseRolloutUsage,
+  readDbFingerprint,
   readThreadsFromStateDb,
   readTurnsFromHistoryDb,
   resolveLatestSqliteFile,
+  yieldToEventLoop,
+  type DbFingerprint,
   type ThreadRow,
   type TokenBreakdown,
   type TurnRecord,
@@ -22,10 +26,15 @@ import {
 
 const DAY_MS = 86_400_000;
 const ROLLOUT_USAGE_CONCURRENCY = 8;
+// 结果缓存上限：key 内含 DB 指纹，过期条目只是占位，LRU 淘汰即可，无需 TTL
+const USAGE_RESULT_CACHE_LIMIT = 24;
 const RANGE_DAYS: Record<Exclude<AppUsageRange, "all">, number> = {
   "7d": 7,
   "30d": 30,
 };
+
+const usageResultCache = new Map<string, AppUsageSnapshot>();
+const usageResultInFlight = new Map<string, Promise<AppUsageSnapshot>>();
 
 async function mapBounded<T, R>(
   items: readonly T[],
@@ -36,8 +45,14 @@ async function mapBounded<T, R>(
   let next = 0;
   async function worker(): Promise<void> {
     while (next < items.length) {
+      const sliceStartedAt = Date.now();
       const index = next++;
       results[index] = await operation(items[index]!);
+      // rollout 命中解析缓存时 operation 内部几乎没有真正的宏任务让出点（await 只走微任务队列），
+      // 几千个线程连续扫描会把 bridge 的 stdio 消息处理饿死，因此按时间片主动让出事件循环。
+      if (Date.now() - sliceStartedAt > EVENT_LOOP_YIELD_SLICE_MS) {
+        await yieldToEventLoop();
+      }
     }
   }
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
@@ -129,8 +144,43 @@ function fallbackSample(
   };
 }
 
+function fingerprintKeyPart(fingerprint: DbFingerprint | null): string {
+  return fingerprint ? `${fingerprint.mtimeMs}:${fingerprint.size}` : "none";
+}
+
+function rememberUsageResult(cacheKey: string, snapshot: AppUsageSnapshot): void {
+  usageResultCache.delete(cacheKey);
+  usageResultCache.set(cacheKey, snapshot);
+  while (usageResultCache.size > USAGE_RESULT_CACHE_LIMIT) {
+    const oldest = usageResultCache.keys().next();
+    if (oldest.done) break;
+    usageResultCache.delete(oldest.value);
+  }
+}
+
+interface UsageComputeContext {
+  range: AppUsageRange;
+  timeZone: string;
+  until: number;
+  tzOffsetMs: number;
+  stateDbPath: string | null;
+  historyDbPath: string | null;
+  stateFingerprint: DbFingerprint | null;
+  historyFingerprint: DbFingerprint | null;
+}
+
 /**
  * 聚合 `CODEX_HOME`（默认 `~/.codex`）下的本地持久化记录，生成 `AppUsageSnapshot`。
+ *
+ * 结果缓存与 in-flight 合并的唯一所有者是本模块的两个 Map（store 只拥有 DB 行缓存与 rollout 解析缓存）：
+ *
+ * - key = (codexHome, stateDb 指纹, historyDb 指纹, range, timeZone, dayBucket)；指纹覆盖主库与 `-wal`，
+ *   DB 一有写入就立刻变化，缓存随之立即失效，因此不需要 TTL；
+ * - 同 key 的并发与重复请求合并成一个 in-flight 计算（面板挂载会同时请求 all/7d/30d，切 range 会重复请求）；
+ * - dayBucket 承担热力图与滚动窗口的按天推进。取舍：同一 day bucket 内重复请求复用首个结果，
+ *   所以 `7d`/`30d` 的滚动边界样本最多滞后到当天结束或下一次 DB 写入；换来的是重复请求
+ *   0 次 SQLite IO、0 次 rollout 读盘，对统计面板是合适的取舍；
+ * - 命中缓存返回同一个快照实例，调用方按只读契约使用，不得原地修改。
  */
 export async function queryCodexAppUsageStats(
   rawParams: unknown,
@@ -139,15 +189,84 @@ export async function queryCodexAppUsageStats(
   const params = v4UsageStatsParamsSchema.parse(rawParams ?? {});
   const timeZone = params.timeZone?.trim() || "UTC";
   const until = options?.now ?? Date.now();
-  const tzOffsetMs = resolveTzOffsetMs(timeZone, until);
-  const since = params.range === "all" ? 0 : until - RANGE_DAYS[params.range] * DAY_MS;
   const codexHome = resolveCodexHomeDir(options?.env ?? process.env);
   const [stateDbPath, historyDbPath] = await Promise.all([
     resolveLatestSqliteFile(codexHome, "state_"),
     resolveLatestSqliteFile(codexHome, "thread_history_"),
   ]);
-  const threads: ThreadRow[] = stateDbPath ? readThreadsFromStateDb(stateDbPath) : [];
-  const turns: TurnRecord[] = historyDbPath ? readTurnsFromHistoryDb(historyDbPath) : [];
+  // 指纹必须在读之前取：它是「能不能直接用结果缓存」的唯一依据，
+  // 同时透传给 store，保证同一次查询的缓存判定与结果 key 用的是同一份指纹。
+  const [stateFingerprint, historyFingerprint] = await Promise.all([
+    stateDbPath ? readDbFingerprint(stateDbPath) : Promise.resolve(null),
+    historyDbPath ? readDbFingerprint(historyDbPath) : Promise.resolve(null),
+  ]);
+  const tzOffsetMs = resolveTzOffsetMs(timeZone, until);
+  const cacheKey = [
+    codexHome,
+    fingerprintKeyPart(stateFingerprint),
+    fingerprintKeyPart(historyFingerprint),
+    params.range,
+    timeZone,
+    dayIndexFor(until, tzOffsetMs),
+  ].join("\u0000");
+
+  const cachedSnapshot = usageResultCache.get(cacheKey);
+  if (cachedSnapshot) {
+    usageResultCache.delete(cacheKey);
+    usageResultCache.set(cacheKey, cachedSnapshot);
+    return cachedSnapshot;
+  }
+  const inFlight = usageResultInFlight.get(cacheKey);
+  if (inFlight) return inFlight;
+
+  const pending = computeCodexAppUsageStats({
+    range: params.range,
+    timeZone,
+    until,
+    tzOffsetMs,
+    stateDbPath,
+    historyDbPath,
+    stateFingerprint,
+    historyFingerprint,
+  })
+    .then((snapshot) => {
+      rememberUsageResult(cacheKey, snapshot);
+      return snapshot;
+    })
+    .finally(() => {
+      if (usageResultInFlight.get(cacheKey) === pending) usageResultInFlight.delete(cacheKey);
+    });
+  usageResultInFlight.set(cacheKey, pending);
+  return pending;
+}
+
+async function computeCodexAppUsageStats(context: UsageComputeContext): Promise<AppUsageSnapshot> {
+  const { range, timeZone, until, tzOffsetMs, stateDbPath, historyDbPath } = context;
+  const since = range === "all" ? 0 : until - RANGE_DAYS[range] * DAY_MS;
+
+  // 先读 thread_turns（时间窗已下推到 SQL WHERE），得到窗口内活跃线程 id；再读 threads 时把
+  // since 与活跃 id 一起下推。这样既不会把成千上万条明显早于窗口的历史线程行读进内存，
+  // 也不会为它们读 rollout 文件——大历史库下 rollout 读盘才是主要开销。
+  const turnRows = historyDbPath
+    ? await readTurnsFromHistoryDb(historyDbPath, {
+        sinceMs: since,
+        untilMs: until,
+        fingerprint: context.historyFingerprint,
+      })
+    : null;
+  const turns: TurnRecord[] = turnRows?.rows ?? [];
+  const activeThreadIds = new Set<string>();
+  for (const turn of turns) {
+    if (turn.threadId.length > 0) activeThreadIds.add(turn.threadId);
+  }
+  const threadRows = stateDbPath
+    ? await readThreadsFromStateDb(stateDbPath, {
+        sinceMs: since,
+        activeThreadIds,
+        fingerprint: context.stateFingerprint,
+      })
+    : null;
+  const threads: ThreadRow[] = threadRows?.rows ?? [];
 
   const allSamples: UsageEventSample[] = [];
   const turnTimestampsByThread = new Map<string, number[]>();
@@ -158,32 +277,28 @@ export async function queryCodexAppUsageStats(
     turnTimestampsByThread.set(turn.threadId, list);
   }
 
-  // 修复原因：7d/30d 查询过去也无条件串行读取全部历史线程的 rollout 文件，
-  // 且 AppUsagePanel 首次挂载会同时请求 all 与 7d/30d。这里先过滤完全早于 since 的旧线程，
-  // 并使用有界并发读取 rollout（与 parseRolloutUsage 的 in-flight 合并配合消除重复读盘）。
-  const candidateThreads =
-    since <= 0
-      ? threads
-      : threads.filter((thread) => {
-          const latestThreadTs = Math.max(thread.updatedAtMs, thread.createdAtMs);
-          if (latestThreadTs <= 0 || latestThreadTs >= since) return true;
-          const turnTsList = turnTimestampsByThread.get(thread.id);
-          return turnTsList ? turnTsList.some((ts) => ts >= since) : false;
-        });
+  // 时间窗过滤已由 store 在 SQL（或全表内存缓存）层完成，这里不再保留第二条过滤路径，
+  // 否则「哪些线程该读 rollout」会有两个可能分歧的判定。rollout 仍用有界并发读取，
+  // 并依赖 parseRolloutUsage 的 in-flight 合并，使 all/7d/30d 并发时每个文件只读一次。
+  const threadRollouts = await mapBounded(threads, ROLLOUT_USAGE_CONCURRENCY, async (thread) => ({
+    thread,
+    rollout: await parseRolloutUsage(
+      thread.rolloutPath,
+      thread.model,
+      thread.updatedAtMs || thread.createdAtMs || until,
+    ),
+  }));
 
-  const threadRollouts = await mapBounded(
-    candidateThreads,
-    ROLLOUT_USAGE_CONCURRENCY,
-    async (thread) => ({
-      thread,
-      rollout: await parseRolloutUsage(
-        thread.rolloutPath,
-        thread.model,
-        thread.updatedAtMs || thread.createdAtMs || until,
-      ),
-    }),
-  );
+  let sliceStartedAt = Date.now();
+  // 每 256 项才查一次时钟，且只有真的超片才 await，避免逐项分配 Promise 的开销盖过聚合本身
+  const shouldYieldSlice = (itemCount: number): boolean =>
+    itemCount % 256 === 0 && Date.now() - sliceStartedAt > EVENT_LOOP_YIELD_SLICE_MS;
+  const yieldSlice = async (): Promise<void> => {
+    await yieldToEventLoop();
+    sliceStartedAt = Date.now();
+  };
 
+  let processedThreads = 0;
   for (const { thread, rollout } of threadRollouts) {
     if (rollout && rollout.samples.length > 0) {
       for (const sample of rollout.samples) {
@@ -212,18 +327,25 @@ export async function queryCodexAppUsageStats(
         turnTimestampsByThread.set(thread.id, [ts]);
       }
     }
+    processedThreads += 1;
+    if (shouldYieldSlice(processedThreads)) await yieldSlice();
   }
-
-  const filteredSamples = allSamples.filter(
-    (s) => s.timestampMs >= since && s.timestampMs <= until && s.totalTokens > 0,
-  );
 
   const totals = emptyBreakdown();
   const dayTotals = new Map<number, { totalTokens: number; turnCount: number }>();
   const dayModels = new Map<number, Map<string | null, TokenBreakdown>>();
   const modelTotals = new Map<string | null, TokenBreakdown>();
 
-  for (const sample of filteredSamples) {
+  // 单趟完成「时间窗过滤 + 聚合」：旧实现先 filter 出中间数组再遍历一次，
+  // 大历史库下等于两趟全量扫描外加一个常驻中间数组。
+  let processedSamples = 0;
+  for (const sample of allSamples) {
+    // 计数放在过滤之前：被跳过的样本同样要参与时间片判定，否则大历史库下不会让出事件循环
+    processedSamples += 1;
+    if (shouldYieldSlice(processedSamples)) await yieldSlice();
+    if (sample.timestampMs < since || sample.timestampMs > until || sample.totalTokens <= 0) {
+      continue;
+    }
     addBreakdown(totals, sample);
 
     const di = dayIndexFor(sample.timestampMs, tzOffsetMs);
@@ -246,6 +368,7 @@ export async function queryCodexAppUsageStats(
 
   // 统计区间内的会话数、轮次数与最长会话时长
   let totalTurns = 0;
+  let processedTurns = 0;
   for (const [, tsList] of turnTimestampsByThread) {
     for (const ts of tsList) {
       if (ts >= since && ts <= until) {
@@ -256,11 +379,17 @@ export async function queryCodexAppUsageStats(
           dayEntry.turnCount += 1;
         }
       }
+      processedTurns += 1;
+      if (shouldYieldSlice(processedTurns)) await yieldSlice();
     }
   }
 
   const sessionDurationByThread = new Map<string, number>();
+  let processedDurationTurns = 0;
   for (const turn of turns) {
+    // 计数放在过滤之前：被跳过的行同样消耗 CPU，否则时间片永远不会触发
+    processedDurationTurns += 1;
+    if (shouldYieldSlice(processedDurationTurns)) await yieldSlice();
     if (turn.startedAtMs < since || turn.startedAtMs > until) continue;
     if (turn.durationMs <= 0) continue;
     sessionDurationByThread.set(
@@ -292,7 +421,7 @@ export async function queryCodexAppUsageStats(
   const endDayIndex = dayIndexFor(until, tzOffsetMs);
   const allDayIndexes = [...dayTotals.keys()];
   const startDayIndex =
-    params.range !== "all"
+    range !== "all"
       ? dayIndexFor(since, tzOffsetMs)
       : allDayIndexes.length > 0
         ? Math.min(...allDayIndexes)
@@ -399,7 +528,7 @@ export async function queryCodexAppUsageStats(
   const cacheHitRate = cacheDenom > 0 ? totals.cacheReadTokens / cacheDenom : 0;
 
   return v4UsageStatsResultSchema.parse({
-    range: params.range,
+    range,
     generatedAt: until,
     timeZone,
     source: "agent-db",
