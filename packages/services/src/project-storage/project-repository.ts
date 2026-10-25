@@ -274,7 +274,7 @@ export class ProjectRepository implements ProjectRepositoryContract, ProjectData
 
   saveProject(input: SaveProjectInput): VirtualProject {
     return transaction(this.db, () => {
-      const old =
+      let old =
         input.id || input.restoreProjectId
           ? requireProject(this.db, input.id ?? input.restoreProjectId!)
           : undefined;
@@ -302,9 +302,66 @@ export class ProjectRepository implements ProjectRepositoryContract, ProjectData
         roots.push(candidate);
         rootPhysicalByPath.set(candidate, physical);
       }
+      const matchesDeletedProjectRoots = (candidate: VirtualProject) =>
+        candidate.deleted &&
+        candidate.hostId === hostId &&
+        candidate.roots.length === roots.length &&
+        roots.every((root) =>
+          candidate.roots.some((entry) =>
+            samePhysicalOrExactPath(
+              entry.rootPath,
+              root,
+              entry.physicalPath,
+              rootPhysicalByPath.get(root),
+            ),
+          ),
+        );
+      let matchingDeletedProjects: VirtualProject[] = [];
+      if (!input.id && roots.length > 0) {
+        const systemDefaultAutoProjectIds = new Set(
+          this.db
+            .prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='schema_migration'")
+            .get()
+            ? (
+                this.db
+                  .prepare(
+                    `SELECT p.project_id FROM projects p JOIN project_roots r USING(project_id)
+                     WHERE p.host_id=? AND p.deleted=1 AND p.name_overridden=0
+                       AND p.created_at<=(SELECT applied_at FROM schema_migration WHERE id='0005_projects')
+                       AND (SELECT count(*) FROM project_roots other WHERE other.project_id=p.project_id)=1
+                       AND replace(r.root_path, char(92), '/') GLOB '*/.codez/workspace/default'`,
+                  )
+                  .all(hostId) as { project_id: string }[]
+              ).map((row) => String(row.project_id))
+            : [],
+        );
+        matchingDeletedProjects = readProjects(this.db, true)
+          .filter(
+            (candidate) =>
+              matchesDeletedProjectRoots(candidate) &&
+              (!systemDefaultAutoProjectIds.has(candidate.id) ||
+                candidate.id === input.restoreProjectId),
+          )
+          .sort(
+            (left, right) => right.updatedAt - left.updatedAt || left.id.localeCompare(right.id),
+          );
+        // 修复原因（issue #24）：删除多目录或单目录项目后重新添加相同目录时，若因前端未传 restoreProjectId
+        // 或软链接路径拼写差异未命中恢复候选，原本会生成新 project_id 导致多目录项目的历史会话留在旧软删项目下不可见。
+        // 在 Host 写事务内统一按物理路径（回退字面路径）自动复用同 roots 已删项目恢复。
+        if (!old && matchingDeletedProjects.length > 0) {
+          old = matchingDeletedProjects[0];
+        }
+      }
       assertRemoteProjectRoots(this.ownerHostId, roots, old);
       if (input.reuseExistingRoot) {
-        if (hostId !== "local" || old || roots.length !== 1)
+        // #24 的同 roots 自动匹配会先派生 old，它不是调用方的编辑或显式恢复意图。
+        // 只按显式请求字段拒绝混用，让活跃项目仍优先复用，无匹配时沿原恢复写路径处理。
+        if (
+          hostId !== "local" ||
+          input.id !== undefined ||
+          input.restoreProjectId !== undefined ||
+          roots.length !== 1
+        )
           throw new Error("project.invalid-directory-open");
         // 系统打开目录曾只建立 workspace，导致草稿没有项目；查找和创建必须在同一
         // 写事务内完成，避免多窗口并发右键创建重复项目。复用不改已有名称、roots 或排序。
@@ -425,6 +482,15 @@ export class ProjectRepository implements ProjectRepositoryContract, ProjectData
           )
           .run(id, root, rootPhysicalByPath.get(root) ?? null, position, root === primary ? 1 : 0),
       );
+      if (old?.deleted && matchingDeletedProjects.length > 0) {
+        const consolidateTaskOwnership = this.db.prepare(
+          "UPDATE tasks SET project_id=? WHERE host_id=? AND project_id=?",
+        );
+        for (const duplicate of matchingDeletedProjects) {
+          if (duplicate.id === id) continue;
+          consolidateTaskOwnership.run(id, hostId, duplicate.id);
+        }
+      }
       return requireProject(this.db, id);
     });
   }

@@ -1112,9 +1112,9 @@ describe("虚拟项目", () => {
     await $('[data-testid="virtual-project-name"]').setValue("E2E_VP04_Restored");
     for (const root of restoreRoots) await chooseProjectRoot(root);
     await $('[data-testid="virtual-project-save"]').click();
-    await $('[data-testid="confirm-dialog-confirm"]').waitForClickable();
-    await $('[data-testid="confirm-dialog-confirm"]').click();
+    // 同 roots 恢复直接沿用原项目，不再经过旧恢复确认；新建入口仍保留文件夹授权门禁。
     await $('[data-testid="project-folder-trust-confirm"]').waitForClickable();
+    expect(await $('[data-testid="confirm-dialog-confirm"]').isExisting()).toBe(false);
     await $('[data-testid="project-folder-trust-confirm"]').click();
     const restored = $('[data-project-name="E2E_VP04_Restored"]');
     await restored.waitForDisplayed();

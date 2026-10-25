@@ -183,3 +183,39 @@ it("scans newly added remote and local project roots even without an active work
     }),
   );
 });
+
+it("scans a newly added single-folder project even when initial loading started with an empty project list", async () => {
+  fixture.projectDirectory = {
+    loading: true,
+    projects: [],
+    directory: { hosts: [], entries: [] },
+  };
+  const { rerender } = renderHook(() =>
+    useCodexProjectDiscovery({
+      workspacePath: "/other",
+      activeWorkspaceTab: null,
+      isDesktop: true,
+    }),
+  );
+  expect(fixture.listSessions).not.toHaveBeenCalled();
+
+  fixture.projectDirectory = {
+    loading: false,
+    projects: [
+      {
+        id: "single-folder",
+        hostId: "local",
+        deleted: false,
+        roots: [{ rootPath: "/local/single-folder", position: 0, isPrimary: true }],
+      },
+    ],
+    directory: { hosts: [], entries: [] },
+  };
+  rerender();
+
+  await waitFor(() =>
+    expect(fixture.listSessions).toHaveBeenCalledWith({
+      workspacePath: "/local/single-folder",
+    }),
+  );
+});
