@@ -311,5 +311,31 @@ export function resolveWebRemoteControlScreenCopy(
 ): WebRemoteControlScreenCopy {
   // auth-required 由入口回登录页；此处仅作为非入口调用者的防御性兜底。
   const reason = failure.reason === "auth-required" ? "relay-unavailable" : failure.reason;
-  return WEB_REMOTE_CONTROL_SCREEN_COPY[locale][reason];
+  const copy = WEB_REMOTE_CONTROL_SCREEN_COPY[locale][reason];
+  if (
+    reason === "relay-unavailable" &&
+    (failure.message === "extension-http-bridge-unavailable" ||
+      failure.message === "relay.initialConnectionTimedOut")
+  ) {
+    // Bug 原因：Orion 缺少所需扩展桥能力时，普通“等待网络恢复”文案会让用户误以为只是短暂断网。
+    // 诊断码是客户端固定值，不能把服务器响应或含 token 的 WS URL 放入错误页。
+    return {
+      ...copy,
+      description:
+        locale === "zh-CN"
+          ? "浏览器插件尚未建立到中转服务的连接。"
+          : "The browser extension could not establish a relay connection.",
+      nextSteps:
+        locale === "zh-CN"
+          ? [
+              "确认 Orion 已启用 Codez 插件，并允许插件访问 zcode.z.ai。",
+              "保持插件页面在前台，检查网络后点“重试”。",
+            ]
+          : [
+              "Make sure Codez is enabled in Orion and allowed to access zcode.z.ai.",
+              "Keep the extension page in the foreground, check the network, then retry.",
+            ],
+    };
+  }
+  return copy;
 }
