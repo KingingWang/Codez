@@ -1,6 +1,8 @@
-import { readdir, readFile, stat } from "node:fs/promises";
+import { statSync } from "node:fs";
+import { open, readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { StringDecoder } from "node:string_decoder";
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -45,11 +47,34 @@ interface RolloutCacheEntry {
 }
 
 const ROLLOUT_PARSE_CACHE_LIMIT = 512;
+const ROLLOUT_STREAM_THRESHOLD_BYTES = 4 * 1024 * 1024;
+const ROLLOUT_STREAM_CHUNK_BYTES = 256 * 1024;
 const rolloutParseCache = new Map<string, RolloutCacheEntry>();
 const rolloutParseInFlight = new Map<
   string,
   Promise<{ samples: UsageEventSample[]; turnTimestampsMs: number[] } | null>
 >();
+let stateDbCache: { path: string; mtimeMs: number; size: number; rows: ThreadRow[] } | null = null;
+let historyDbCache: { path: string; mtimeMs: number; size: number; rows: TurnRecord[] } | null =
+  null;
+
+function dbFileFingerprint(dbPath: string): { mtimeMs: number; size: number } | null {
+  try {
+    const main = statSync(dbPath);
+    let mtimeMs = main.mtimeMs;
+    let size = main.size;
+    try {
+      const wal = statSync(`${dbPath}-wal`);
+      mtimeMs = Math.max(mtimeMs, wal.mtimeMs);
+      size += wal.size;
+    } catch {
+      // WAL 文件可不存在
+    }
+    return { mtimeMs, size };
+  } catch {
+    return null;
+  }
+}
 
 function rememberRolloutParseCache(rolloutPath: string, entry: RolloutCacheEntry): void {
   rolloutParseCache.delete(rolloutPath);
@@ -91,6 +116,16 @@ export async function resolveLatestSqliteFile(dir: string, prefix: string): Prom
 
 export function readThreadsFromStateDb(stateDbPath: string): ThreadRow[] {
   try {
+    const fingerprint = dbFileFingerprint(stateDbPath);
+    if (
+      fingerprint &&
+      stateDbCache &&
+      stateDbCache.path === stateDbPath &&
+      stateDbCache.mtimeMs === fingerprint.mtimeMs &&
+      stateDbCache.size === fingerprint.size
+    ) {
+      return stateDbCache.rows;
+    }
     const db = new DatabaseSync(stateDbPath, { open: true, readOnly: true });
     try {
       const rawRows = db
@@ -99,7 +134,7 @@ export function readThreadsFromStateDb(stateDbPath: string): ThreadRow[] {
            FROM threads`,
         )
         .all() as Array<Record<string, unknown>>;
-      return rawRows.map((row) => {
+      const rows = rawRows.map((row) => {
         const createdAtSec = nonNegInt(row.created_at);
         const updatedAtSec = nonNegInt(row.updated_at);
         const createdAtMs = nonNegInt(row.created_at_ms) || createdAtSec * 1000;
@@ -113,6 +148,15 @@ export function readThreadsFromStateDb(stateDbPath: string): ThreadRow[] {
           rolloutPath: typeof row.rollout_path === "string" ? row.rollout_path.trim() : "",
         };
       });
+      if (fingerprint) {
+        stateDbCache = {
+          path: stateDbPath,
+          mtimeMs: fingerprint.mtimeMs,
+          size: fingerprint.size,
+          rows,
+        };
+      }
+      return rows;
     } finally {
       db.close();
     }
@@ -123,6 +167,16 @@ export function readThreadsFromStateDb(stateDbPath: string): ThreadRow[] {
 
 export function readTurnsFromHistoryDb(historyDbPath: string): TurnRecord[] {
   try {
+    const fingerprint = dbFileFingerprint(historyDbPath);
+    if (
+      fingerprint &&
+      historyDbCache &&
+      historyDbCache.path === historyDbPath &&
+      historyDbCache.mtimeMs === fingerprint.mtimeMs &&
+      historyDbCache.size === fingerprint.size
+    ) {
+      return historyDbCache.rows;
+    }
     const db = new DatabaseSync(historyDbPath, { open: true, readOnly: true });
     try {
       const rawRows = db
@@ -131,7 +185,7 @@ export function readTurnsFromHistoryDb(historyDbPath: string): TurnRecord[] {
            FROM thread_turns`,
         )
         .all() as Array<Record<string, unknown>>;
-      return rawRows.map((row) => {
+      const rows = rawRows.map((row) => {
         const startedAtRaw = nonNegInt(row.started_at);
         const startedAtMs = startedAtRaw > 10_000_000_000 ? startedAtRaw : startedAtRaw * 1000;
         return {
@@ -140,6 +194,15 @@ export function readTurnsFromHistoryDb(historyDbPath: string): TurnRecord[] {
           durationMs: nonNegInt(row.duration_ms),
         };
       });
+      if (fingerprint) {
+        historyDbCache = {
+          path: historyDbPath,
+          mtimeMs: fingerprint.mtimeMs,
+          size: fingerprint.size,
+          rows,
+        };
+      }
+      return rows;
     } finally {
       db.close();
     }
@@ -187,13 +250,6 @@ async function parseRolloutUsageUncoalesced(
     return { samples: cached.samples, turnTimestampsMs: cached.turnTimestampsMs };
   }
 
-  let content: string;
-  try {
-    content = await readFile(rolloutPath, "utf8");
-  } catch {
-    return null;
-  }
-
   const samples: UsageEventSample[] = [];
   const turnTimestampsMs: number[] = [];
   let currentModel = fallbackModel;
@@ -206,14 +262,9 @@ async function parseRolloutUsageUncoalesced(
     cacheRead: number;
   } | null = null;
 
-  let pos = 0;
-  while (pos < content.length) {
-    let next = content.indexOf("\n", pos);
-    if (next === -1) next = content.length;
-    const line = content.slice(pos, next);
-    pos = next + 1;
+  const consumeLine = (line: string): void => {
     if (!line.includes('"token_count"') && !line.includes('"turn_context"')) {
-      continue;
+      return;
     }
     try {
       const parsed = JSON.parse(line) as Record<string, unknown>;
@@ -227,11 +278,11 @@ async function parseRolloutUsageUncoalesced(
         const turnModel = normalizeModelId(payload.model) ?? normalizeModelId(collabSettings.model);
         if (turnModel) currentModel = turnModel;
         turnTimestampsMs.push(timestampMs);
-        continue;
+        return;
       }
       if (parsed.type === "event_msg") {
         const payload = asRecord(parsed.payload);
-        if (payload.type !== "token_count") continue;
+        if (payload.type !== "token_count") return;
         const info = asRecord(payload.info);
         const totalObj = asRecord(info.total_token_usage);
         const lastObj = asRecord(info.last_token_usage);
@@ -323,6 +374,58 @@ async function parseRolloutUsageUncoalesced(
       }
     } catch {
       // 忽略截断或非 JSON 行
+    }
+  };
+
+  const consumeChunkText = (chunk: string): void => {
+    let pos = 0;
+    while (pos < chunk.length) {
+      let next = chunk.indexOf("\n", pos);
+      if (next === -1) next = chunk.length;
+      consumeLine(chunk.slice(pos, next));
+      pos = next + 1;
+    }
+  };
+
+  if (fileStat.size <= ROLLOUT_STREAM_THRESHOLD_BYTES) {
+    let content: string;
+    try {
+      content = await readFile(rolloutPath, "utf8");
+    } catch {
+      return null;
+    }
+    consumeChunkText(content);
+  } else {
+    let handle: Awaited<ReturnType<typeof open>>;
+    try {
+      handle = await open(rolloutPath, "r");
+    } catch {
+      return null;
+    }
+    try {
+      const buffer = Buffer.allocUnsafe(ROLLOUT_STREAM_CHUNK_BYTES);
+      const decoder = new StringDecoder("utf8");
+      let remainder = "";
+      let offset = 0;
+      while (offset < fileStat.size) {
+        const { bytesRead } = await handle.read(buffer, 0, buffer.length, offset);
+        if (bytesRead <= 0) break;
+        offset += bytesRead;
+        const text = remainder + decoder.write(buffer.subarray(0, bytesRead));
+        const lastNewline = text.lastIndexOf("\n");
+        if (lastNewline === -1) {
+          remainder = text;
+          continue;
+        }
+        consumeChunkText(text.slice(0, lastNewline));
+        remainder = text.slice(lastNewline + 1);
+      }
+      const tail = remainder + decoder.end();
+      if (tail) consumeChunkText(tail);
+    } catch {
+      return null;
+    } finally {
+      await handle.close();
     }
   }
 
