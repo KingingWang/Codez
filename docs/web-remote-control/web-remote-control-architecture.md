@@ -33,6 +33,45 @@
 - 手机服务和工具能力受 attachment/capability 约束，不因复用桌面 UI 而自动获得全部桌面能力。
   终端暴露边界见下文“启动调用边界与 Office XSS 关系”。
 
+### 项目切换与连接恢复
+
+手机首次连接、工作区桥接和页面初始化是三个不同的生命周期。首次连接可以显示 relay、
+鉴权、配对和 E2EE 阶段；已进入首页后切项目、新建草稿或恢复 bridge 时，仅显示项目加载，
+不得再次呈现首次配对流程。Root 仍按 `bridgeSessionId` 重建，保留服务、store、tab 和一次性
+导航意图的隔离；不通过删除 key 或缓存多个 bridge 来隐藏加载。
+
+手机 transport 是连接就绪与重连的唯一 owner。`ensureConnectionReady` 在 socket open、
+authenticated、E2EE ready、paired 且非 suspect 时复用连接；连接/握手在途时共用等待，
+后台恢复先探测原 socket。请求恢复携带 `relay-unavailable` 或显式允许幂等重试的
+`desktop-bootstrap-timeout`，只有实际发送失败或请求超时才升级既有强制重连路径。
+同一恢复 flight 的并发请求不得重复建连，业务拒绝、身份或权限错误不触发强制恢复。
+
+bridge admission 只在同一加密会话内按 `bridgeSessionId + bridgeGeneration` 去重。
+E2EE reset 必须取消在途准备、失效旧 admission 和完成结果，再释放 attachment；
+旧 identity 不能取得已释放 bridge 的 ready。Web 在真正换代后由既有导航/恢复 owner
+使用新 identity/generation 重开，可沿用同一恢复 flight 的 `recoveryId`。迟到响应、
+旧定时器和旧工作区恢复不得覆盖新的用户导航。桌面 continuous、手机 replayable、
+workspace identity、Host/CLI owner 和输入幂等规则不变。
+
+```text
+首次连接 → relay/配对/E2EE（transport owner）→ workspace bridge → 首次页面
+切项目   → 复用 E2EE → 新 bridge（导航 owner）→ 项目加载 / 目标页面
+桥接故障 → 优先复用连接；真实连接换代 → 失效旧 admission → 新 E2EE + 新 bridge
+```
+
+| ID    | Setup / Action                           | 验收                                                                        |
+| ----- | ---------------------------------------- | --------------------------------------------------------------------------- |
+| MWS01 | 已连接，项目 A → B → A                   | token、socket、auth 和 E2EE hello 次数不增加；bridge 可换代，无配对阶段页。 |
+| MWS02 | 健康连接收到 bridge-degraded             | 仅重建 bridge；握手在途的请求等待原 flight，并发恢复不增加 socket。         |
+| MWS03 | socket 假在线，幂等请求超时              | 有界升级一次强制恢复；实际加密换代后使用新 bridge identity，不重放写命令。  |
+| MWS04 | E2EE reset 与 admission 完成/重试交错    | 旧 pending/完成结果不返回 ready，旧 identity 被拒绝，新 identity 可接管。   |
+| MWS05 | A → B → C，穿插恢复或 B 失败             | 迟到结果不覆盖 C；失败保留页面/草稿并显示错误，失效 bridge 不接受操作。     |
+| MWS06 | 首次/home-only、后台恢复、返回与文件面板 | 首次连接提示保留；后续仅项目加载，导航语义和身份隔离不回归。                |
+
+浏览器受控 E2E 保持 manual-review/pending；验收目标包含手机/宽屏及主题、语言代表组合，
+场景定义不代表这些组合已通过运行验证。
+真实 E2EE 握手计数另由密码学集成测试证明，不能以明文 mock 或截图替代真机和真实 relay 验收。
+
 ```text
 手机浏览器（独立选中态、replayable）
   -> 外部 relay（透传）

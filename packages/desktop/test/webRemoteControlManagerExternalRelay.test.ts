@@ -50,6 +50,9 @@ function createManagerHarness(options?: {
     project: HostProjectWorkspaceNavigationInput,
     requestId: string,
   ) => Promise<HostPreparedProjectWorkspace>;
+  cancelProjectPreparation?: Parameters<
+    typeof createWebRemoteControlManager
+  >[0]["cancelProjectPreparation"];
   onStatusChanged?: Parameters<typeof createWebRemoteControlManager>[0]["onStatusChanged"];
   getEndpointUrls?: Parameters<typeof createWebRemoteControlManager>[0]["getEndpointUrls"];
   reportRemoteUsageEvent?: Parameters<
@@ -67,6 +70,7 @@ function createManagerHarness(options?: {
     (await options?.getEndpointUrls?.())?.origin ?? "https://zcode.z.ai";
   let startupRestoreContext = options?.startupRestoreContext;
   let transportStartCount = 0;
+  let transportE2eeResetCount = 0;
   let deliverPayload: ((payload: WebRemoteControlAppPayload) => void) | undefined;
   let latestTransportOptions:
     | Parameters<
@@ -141,6 +145,7 @@ function createManagerHarness(options?: {
     },
     reconnectWorkspace: options?.reconnectWorkspace ?? vi.fn(async () => undefined),
     prepareProjectWorkspace: options?.prepareProjectWorkspace,
+    cancelProjectPreparation: options?.cancelProjectPreparation,
     reportRemoteUsageEvent,
     reportRendererTelemetryEvent,
     attachWorkspaceHost: options?.attachWorkspaceHost ?? defaultAttachWorkspaceHost,
@@ -150,7 +155,13 @@ function createManagerHarness(options?: {
     onStatusChanged: options?.onStatusChanged,
     createDeviceTransport: (transportOptions) => ({
       start: () => {
-        latestTransportOptions = transportOptions;
+        latestTransportOptions = {
+          ...transportOptions,
+          onE2eeReset: () => {
+            transportE2eeResetCount += 1;
+            transportOptions.onE2eeReset();
+          },
+        };
         transportStartCount += 1;
         emitTransportState = transportOptions.onStateChange;
         const markReady = async () => {
@@ -196,6 +207,11 @@ function createManagerHarness(options?: {
     sentPayloads,
     getStartupRestoreContext: () => startupRestoreContext,
     getLatestTransportOptions: () => latestTransportOptions,
+    getTransportStartCount: () => transportStartCount,
+    getTransportE2eeResetCount: () => transportE2eeResetCount,
+    emitTransportE2eeReset: () => {
+      latestTransportOptions?.onE2eeReset();
+    },
     deliverPayload: (payload: WebRemoteControlAppPayload) => {
       if (!deliverPayload) {
         throw new Error("transport not started");
@@ -236,7 +252,9 @@ async function createPrimedWorkspaceSyncHarness(
   workspaceOverrides: Partial<WebRemoteControlWorkspaceTarget> = {},
 ) {
   const harness = createManagerHarness();
-  await harness.manager.start(1, { workspacePath: localWorkspace.workspacePath });
+  await harness.manager.start(1, {
+    workspacePath: localWorkspace.workspacePath,
+  });
   const workspace = { ...remoteWorkspace, ...workspaceOverrides };
   harness.manager.syncAvailableWorkspaces(1, [workspace]);
   harness.sentPayloads.length = 0;
@@ -247,7 +265,10 @@ describe("createWebRemoteControlManager external relay", () => {
   it("returns the desktop's own version before a workspace bridge is attached", async () => {
     const h = createManagerHarness();
     await h.manager.start(1, { workspacePath: localWorkspace.workspacePath });
-    h.deliverPayload({ codez_type: "bootstrap-request", requestId: "version-check" });
+    h.deliverPayload({
+      codez_type: "bootstrap-request",
+      requestId: "version-check",
+    });
     expect(h.sentPayloads).toContainEqual(
       expect.objectContaining({
         codez_type: "bootstrap-response",
@@ -661,7 +682,10 @@ describe("createWebRemoteControlManager external relay", () => {
     ]);
 
     sentPayloads.length = 0;
-    deliverPayload({ codez_type: "workspace-list-request", requestId: "list-1" });
+    deliverPayload({
+      codez_type: "workspace-list-request",
+      requestId: "list-1",
+    });
 
     await vi.waitFor(() =>
       expect(sentPayloads).toContainEqual(
@@ -1393,7 +1417,11 @@ describe("createWebRemoteControlManager external relay", () => {
     await manager.start(1, { workspacePath: "/workspace/z-code" });
     manager.syncAvailableWorkspaces(1, [
       { workspacePath: "/workspace/z-code", label: "z-code", kind: "local" },
-      { workspacePath: "/workspace/cgx-dev-web", label: "cgx-dev-web", kind: "local" },
+      {
+        workspacePath: "/workspace/cgx-dev-web",
+        label: "cgx-dev-web",
+        kind: "local",
+      },
     ]);
 
     deliverPayload({
@@ -1734,10 +1762,16 @@ describe("mobile project bridge admission", () => {
     finish(prepared);
     await vi.waitFor(() =>
       expect(harness.sentPayloads).toContainEqual(
-        expect.objectContaining({ codez_type: "workspace-bridge-ready", requestId: "retry" }),
+        expect.objectContaining({
+          codez_type: "workspace-bridge-ready",
+          requestId: "retry",
+        }),
       ),
     );
-    harness.deliverPayload({ ...projectRequest, requestId: "retry-after-ready" });
+    harness.deliverPayload({
+      ...projectRequest,
+      requestId: "retry-after-ready",
+    });
     await vi.waitFor(() =>
       expect(harness.sentPayloads).toContainEqual(
         expect.objectContaining({
@@ -1748,6 +1782,191 @@ describe("mobile project bridge admission", () => {
     );
     expect(prepareProjectWorkspace).toHaveBeenCalledOnce();
     expect(harness.defaultAttachWorkspaceHost).toHaveBeenCalledOnce();
+    await harness.manager.disposeWindow(1);
+  });
+  it("rejects the completed admission identity after an E2EE reset without a new attachment", async () => {
+    const prepareProjectWorkspace = vi.fn(async () => prepared);
+    const harness = createManagerHarness({ prepareProjectWorkspace });
+    await harness.manager.start(1, localWorkspace);
+    harness.deliverPayload(projectRequest);
+    await vi.waitFor(() =>
+      expect(harness.sentPayloads).toContainEqual(
+        expect.objectContaining({
+          codez_type: "workspace-bridge-ready",
+          requestId: "project-request",
+        }),
+      ),
+    );
+
+    harness.emitTransportE2eeReset();
+    harness.sentPayloads.length = 0;
+    harness.deliverPayload({ ...projectRequest, requestId: "same-identity" });
+    await vi.waitFor(() =>
+      expect(harness.sentPayloads).toContainEqual(
+        expect.objectContaining({
+          codez_type: "workspace-bridge-error",
+          requestId: "same-identity",
+          error: expect.stringContaining("invalidated"),
+        }),
+      ),
+    );
+
+    expect(prepareProjectWorkspace).toHaveBeenCalledOnce();
+    expect(harness.defaultAttachWorkspaceHost).toHaveBeenCalledOnce();
+    expect(harness.releaseWorkspaceHostAttachment).toHaveBeenCalledWith("attachment-1");
+    expect(harness.sentPayloads).not.toContainEqual(
+      expect.objectContaining({ codez_type: "workspace-bridge-ready" }),
+    );
+    await harness.manager.disposeWindow(1);
+  });
+  it("cancels pending preparation on E2EE reset and suppresses its late ready result", async () => {
+    let finish!: (result: HostPreparedProjectWorkspace) => void;
+    const prepareProjectWorkspace = vi.fn(
+      () =>
+        new Promise<HostPreparedProjectWorkspace>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const cancelProjectPreparation = vi.fn();
+    const harness = createManagerHarness({
+      prepareProjectWorkspace,
+      cancelProjectPreparation,
+    });
+    await harness.manager.start(1, localWorkspace);
+    harness.deliverPayload(projectRequest);
+    await vi.waitFor(() => expect(prepareProjectWorkspace).toHaveBeenCalledOnce());
+
+    harness.emitTransportE2eeReset();
+    expect(cancelProjectPreparation).toHaveBeenCalledWith(1, expect.any(String));
+    finish(prepared);
+    await vi.waitFor(() =>
+      expect(harness.logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining("workspace bridge failed"),
+      ),
+    );
+
+    expect(harness.sentPayloads).not.toContainEqual(
+      expect.objectContaining({ codez_type: "workspace-bridge-ready" }),
+    );
+    expect(harness.defaultAttachWorkspaceHost).not.toHaveBeenCalled();
+    expect(harness.releaseWorkspaceHostAttachment).not.toHaveBeenCalled();
+    await harness.manager.disposeWindow(1);
+  });
+  it("releases a late attachment and suppresses ready when E2EE resets before ready", async () => {
+    let finishAttach!: (value: Awaited<ReturnType<AttachWorkspaceHost>>) => void;
+    const attachWorkspaceHost = vi.fn<AttachWorkspaceHost>(
+      () =>
+        new Promise((resolve) => {
+          finishAttach = resolve as typeof finishAttach;
+        }),
+    );
+    const harness = createManagerHarness({ attachWorkspaceHost });
+    await harness.manager.start(1, localWorkspace);
+    harness.manager.syncAvailableWorkspaces(1, [localWorkspace]);
+    harness.deliverPayload({
+      codez_type: "workspace-bridge-open",
+      requestId: "late-ready",
+      bridgeSessionId: "bridge-late",
+      workspaceKey: localWorkspace.workspacePath,
+    });
+    await vi.waitFor(() => expect(attachWorkspaceHost).toHaveBeenCalledOnce());
+
+    harness.emitTransportE2eeReset();
+    harness.sentPayloads.length = 0;
+    finishAttach({
+      entryId: "entry-1",
+      attachmentId: "attachment-1",
+      process: {} as never,
+      port: createFakePort() as never,
+    });
+    await vi.waitFor(() =>
+      expect(harness.releaseWorkspaceHostAttachment).toHaveBeenCalledWith("attachment-1"),
+    );
+
+    expect(harness.sentPayloads).not.toContainEqual(
+      expect.objectContaining({ codez_type: "workspace-bridge-ready" }),
+    );
+    await harness.manager.disposeWindow(1);
+  });
+  it("admits a new bridge identity after an E2EE reset", async () => {
+    let attachment = 0;
+    const attachWorkspaceHost = vi.fn(async () => ({
+      entryId: `entry-${++attachment}`,
+      attachmentId: `attachment-${attachment}`,
+      process: {} as never,
+      port: createFakePort() as never,
+    }));
+    const harness = createManagerHarness({ attachWorkspaceHost });
+    await harness.manager.start(1, localWorkspace);
+    harness.manager.syncAvailableWorkspaces(1, [localWorkspace]);
+    const open = (requestId: string, bridgeSessionId: string) =>
+      harness.deliverPayload({
+        codez_type: "workspace-bridge-open",
+        requestId,
+        bridgeSessionId,
+        workspaceKey: localWorkspace.workspacePath,
+      });
+
+    open("first", "bridge-1");
+    await vi.waitFor(() =>
+      expect(harness.sentPayloads).toContainEqual(
+        expect.objectContaining({
+          codez_type: "workspace-bridge-ready",
+          requestId: "first",
+        }),
+      ),
+    );
+    harness.emitTransportE2eeReset();
+    harness.sentPayloads.length = 0;
+    open("new-identity", "bridge-2");
+    await vi.waitFor(() =>
+      expect(harness.sentPayloads).toContainEqual(
+        expect.objectContaining({
+          codez_type: "workspace-bridge-ready",
+          requestId: "new-identity",
+          bridgeSessionId: "bridge-2",
+        }),
+      ),
+    );
+    expect(attachWorkspaceHost).toHaveBeenCalledTimes(2);
+    expect(harness.releaseWorkspaceHostAttachment).toHaveBeenCalledWith("attachment-1");
+    await harness.manager.disposeWindow(1);
+  });
+  it("keeps transport and E2EE state across an ordinary workspace switch", async () => {
+    const harness = createManagerHarness();
+    await harness.manager.start(1, localWorkspace);
+    harness.manager.syncAvailableWorkspaces(1, [localWorkspace, remoteWorkspace]);
+    const open = (requestId: string, workspaceKey: string) =>
+      harness.deliverPayload({
+        codez_type: "workspace-bridge-open",
+        requestId,
+        bridgeSessionId: `bridge-${requestId}`,
+        workspaceKey,
+      });
+
+    open("a", localWorkspace.workspacePath);
+    await vi.waitFor(() =>
+      expect(harness.sentPayloads).toContainEqual(
+        expect.objectContaining({
+          codez_type: "workspace-bridge-ready",
+          requestId: "a",
+        }),
+      ),
+    );
+    const transportStartCount = harness.getTransportStartCount();
+    const e2eeResetCount = harness.getTransportE2eeResetCount();
+    open("b", remoteWorkspace.workspaceIdentity!);
+    await vi.waitFor(() =>
+      expect(harness.sentPayloads).toContainEqual(
+        expect.objectContaining({
+          codez_type: "workspace-bridge-ready",
+          requestId: "b",
+        }),
+      ),
+    );
+
+    expect(harness.getTransportStartCount()).toBe(transportStartCount);
+    expect(harness.getTransportE2eeResetCount()).toBe(e2eeResetCount);
     await harness.manager.disposeWindow(1);
   });
   it("does not let a late project result supersede a later ordinary navigation", async () => {
@@ -1790,7 +2009,9 @@ describe("mobile project bridge admission", () => {
     await harness.manager.disposeWindow(1);
   });
   it("rejects a retry for the invalidated bridge after Source replacement", async () => {
-    const harness = createManagerHarness({ prepareProjectWorkspace: async () => prepared });
+    const harness = createManagerHarness({
+      prepareProjectWorkspace: async () => prepared,
+    });
     await harness.manager.start(1, localWorkspace);
     harness.deliverPayload(projectRequest);
     await vi.waitFor(() =>
@@ -1807,7 +2028,10 @@ describe("mobile project bridge admission", () => {
       workspacePath: prepared.workspacePath,
       workspaceIdentity: prepared.workspaceIdentity!,
     });
-    harness.deliverPayload({ ...projectRequest, requestId: "invalidated-retry" });
+    harness.deliverPayload({
+      ...projectRequest,
+      requestId: "invalidated-retry",
+    });
     await vi.waitFor(() =>
       expect(harness.sentPayloads).toContainEqual(
         expect.objectContaining({
@@ -1835,7 +2059,9 @@ describe("mobile project bridge admission", () => {
       expect(harness.sentPayloads).toContainEqual(
         expect.objectContaining({
           codez_type: "workspace-bridge-ready",
-          bridge: expect.objectContaining({ workspacePath: prepared.workspacePath }),
+          bridge: expect.objectContaining({
+            workspacePath: prepared.workspacePath,
+          }),
         }),
       ),
     );
@@ -1849,7 +2075,10 @@ describe("mobile project bridge admission", () => {
       1,
       {
         hostId: prepared.hostId,
-        task: { taskId: "existing-task", workspaceKey: prepared.workspaceIdentity },
+        task: {
+          taskId: "existing-task",
+          workspaceKey: prepared.workspaceIdentity,
+        },
       },
       expect.any(String),
     );
@@ -1883,7 +2112,10 @@ describe("mobile project bridge admission", () => {
       1,
       {
         hostId: prepared.hostId,
-        task: { taskId: "existing-task", workspaceKey: prepared.workspaceIdentity },
+        task: {
+          taskId: "existing-task",
+          workspaceKey: prepared.workspaceIdentity,
+        },
       },
       expect.any(String),
     );
@@ -1894,7 +2126,9 @@ describe("mobile project bridge admission", () => {
 async function createTaskViewHarness() {
   const onStatusChanged = vi.fn();
   const harness = createManagerHarness({ onStatusChanged });
-  await harness.manager.start(1, { workspacePath: localWorkspace.workspacePath });
+  await harness.manager.start(1, {
+    workspacePath: localWorkspace.workspacePath,
+  });
   harness.manager.syncAvailableWorkspaces(1, [remoteWorkspace]);
   harness.emitTransportState("paired");
   const epoch = () => {
@@ -1979,7 +2213,10 @@ it("MRO03：断线立即清查看但保留连接宽限，重连只接收新 epoc
     f.send(1);
     const previous = f.epoch();
     f.emitTransportState("connecting");
-    expect(f.manager.getStatus(1)).toMatchObject({ mobileConnected: true, mobileTaskView: null });
+    expect(f.manager.getStatus(1)).toMatchObject({
+      mobileConnected: true,
+      mobileTaskView: null,
+    });
     f.emitTransportState("paired");
     expect(f.epoch()).not.toBe(previous);
     f.send(99, f.view, { epoch: previous });
@@ -2001,7 +2238,10 @@ it("MRO03：旧序号、bridge 代际、同路径异设备及错 cwd 不能替�
     f.send(4, null);
     f.send(6, null, { bridgeSessionId: "old" });
     f.send(6, null, { bridgeGeneration: 0 });
-    f.send(6, { ...f.view, workspaceIdentity: "remote:server:other:/workspace/remote" });
+    f.send(6, {
+      ...f.view,
+      workspaceIdentity: "remote:server:other:/workspace/remote",
+    });
     f.send(6, { ...f.view, workspacePath: "/other" });
     expect(f.manager.getStatus(1).mobileTaskView).toEqual({
       ...f.view,
@@ -2023,7 +2263,10 @@ it("MRO03：bootstrap 补发 epoch，send-ready 不以心跳频率重申查看",
   const f = await createTaskViewHarness();
   try {
     const epoch = f.epoch();
-    f.deliverPayload({ codez_type: "bootstrap-request", requestId: "view-bootstrap" });
+    f.deliverPayload({
+      codez_type: "bootstrap-request",
+      requestId: "view-bootstrap",
+    });
     expect(f.sentPayloads).toContainEqual(
       expect.objectContaining({
         codez_type: "bootstrap-response",
@@ -2067,7 +2310,10 @@ it.each(["raw-fault", "replaced", "closed"] as const)(
           workspacePath: remoteWorkspace.workspacePath,
           workspaceIdentity: remoteWorkspace.workspaceIdentity!,
         });
-      expect(f.manager.getStatus(1)).toMatchObject({ mobileConnected: true, mobileTaskView: null });
+      expect(f.manager.getStatus(1)).toMatchObject({
+        mobileConnected: true,
+        mobileTaskView: null,
+      });
       f.send(2);
       expect(f.manager.getStatus(1).mobileTaskView).toBeNull();
     } finally {
@@ -2094,7 +2340,10 @@ it("MRO03：legacy 身份的查看事实由 Main 注入当前 session，换代�
     await f.open("replacement-view-bridge", 2);
     f.send(2);
     expect(f.manager.getStatus(1).mobileTaskView).toBeNull();
-    f.send(3, f.view, { bridgeSessionId: "replacement-view-bridge", bridgeGeneration: 2 });
+    f.send(3, f.view, {
+      bridgeSessionId: "replacement-view-bridge",
+      bridgeGeneration: 2,
+    });
     expect(f.manager.getStatus(1).mobileTaskView).toEqual({
       ...f.view,
       remoteSessionId: "replacement-session",

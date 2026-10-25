@@ -10,7 +10,7 @@
     - OAuth 登录优先采用 `/api/v1/oauth/cli/init` 与 `/api/v1/oauth/cli/poll/:flowId` 轮询授权模式（授权页回调直接进入 `/api/v1/oauth/cli/callback/:provider`，不经过 `https://zcode.z.ai/remote/v4` 页面），彻底规避移动端/iPad 浏览器（如 Orion）在跨源跳转时阻断 `*-extension://` 重定向或让 `zcode.z.ai` 页面脚本抢先消费一次性 `authCode` 导致 `HTTP 500 (code 2007)` 及跨源 `localStorage` 隔离导致 `OAuth CSRF 检测失败` 的问题；
     - 当移动端扩展（如 iPad Orion）不支持 `declarativeNetRequest` 修改 WebSocket 握手 `Origin` 头导致直连 `wss://zcode.z.ai/api/v1/remote/ws2` 失败时，尝试由 `https://zcode.z.ai/robots.txt` 静态纯文本资源中的隔离 Content Script 建立同源桥；桥接必须确认就绪并在首次连接失败时给出明确错误。Orion 对 WebExtension API 的支持仍是实验性的，构建通过不等于真机已可用，验收见[浏览器扩展登录与中转连接](./browser-extension-connectivity.md)；
   - 未安装扩展的普通手机/桌面浏览器直接访问 `https://kingingwang.github.io/Codez/remote/v4/` 时，立即拦截并提示用户使用 Codez 手机 App 或安装 Codez 浏览器扩展。
-  默认二维码入口继续固定为 `https://kingingwang.github.io/Codez/remote/v4/`；仓库维护者控制页面源码、Pages 发布及扩展构建产物，智普 relay 不控制前端脚本。桌面允许本地显式 `CODEZ_WEB_REMOTE_CONTROL_E2EE_URL` 覆盖默认入口，但不接受 relay 响应或 endpoint 配置指向的页面；桌面发行代码及仓库发布权限均属于可信边界。
+    默认二维码入口继续固定为 `https://kingingwang.github.io/Codez/remote/v4/`；仓库维护者控制页面源码、Pages 发布及扩展构建产物，智普 relay 不控制前端脚本。桌面允许本地显式 `CODEZ_WEB_REMOTE_CONTROL_E2EE_URL` 覆盖默认入口，但不接受 relay 响应或 endpoint 配置指向的页面；桌面发行代码及仓库发布权限均属于可信边界。
 - relay 可观察配对凭据、IP、设备元信息、连接时间、帧大小与握手公钥，但不可取得 `K_pair`、会话密钥或业务明文；主动改写、注入、重排、重放和降级业务帧均须在桌面/手机端拒绝。
 - 旧手机页面及缺少合法 `K_pair` 的旧链接不能控制新版桌面；升级时旧 relay 配对一并轮换。缺少可信站点发布配置、站点证书无效、relay 拒绝该站点 WebSocket Origin 或服务端不透传新的 opaque payload 时，不得回退到明文。
 - 手机网页只从可信站点加载可执行代码；不引入 relay 所在 origin 的脚本。远控入口不将完整 URL、fragment、密钥、明文 payload 写入日志、遥测、OAuth state、网络请求或第三方资源 URL。浏览器重新加载仍可从原 fragment 恢复密钥。
@@ -24,6 +24,7 @@
 - `data.payload` 除握手和加密记录外不接受任何业务消息。加密记录的明文是现有上游 `zcode_type` 业务 payload；解密、鉴权和重放检查完成后，才允许旧的 wire 归一、strict schema、raw frame/ACK 快捷路径及 workspace 路由。握手前不得 attach Host。
 - 同一轮次每方向使用单调 nonce/record 序号；相同序号仅允许字节完全一致的已认证 RPC frame 重发，并交给既有 acknowledged adapter 去重与补 ACK；其他重复业务记录不再投递。跨轮次的旧记录一律丢弃。密文与最终 relay JSON 在首次计量时固定，重发原样使用缓存，不重新加密或刷新排队年龄。
 - 配对从 `matched` 离开、peer 换代、socket 重建或显式停止时废弃会话密钥、短期 buffer 和旧 bridge；重新握手后通过同一个 `web-remote-replayable` attachment 的 snapshot/gap 及 `commands/query` 恢复，不自动重发 ACK 不明的变更。桌面 `desktop-continuous` 仍走原直接连接。
+- 正常切项目不重置加密连接；bridge 故障先复用已就绪 transport。真正 E2EE reset 时同时失效旧 bridge admission（包含已完成 promise），取消在途项目准备；同一旧 identity 不得复活已释放 attachment。手机重开时使用新 `bridgeSessionId + bridgeGeneration`，只在同加密会话内复用 admission 去重身份，不跨加密轮次直接重放旧 bridge-open。
 - Desktop socket 换代而手机仍保持同一 socket 时，Desktop 发送不带业务授权的 `e2ee-rekey` 提醒手机重建临时密钥；同一 Desktop socket 收到新手机的 hello 时也先废弃旧 bridge/密钥，且 hello 在任意握手阶段（含上一轮换未完成时）到达都同样废弃旧会话重新开始。relay 可伪造提醒造成拒绝服务，但不能完成证明或得到业务访问权。
 
 ```mermaid
@@ -73,16 +74,16 @@ E2EE 先加密后上 relay WebSocket，密文近乎随机，WebSocket permessage
 
 ## 验收用例
 
-| ID      | Setup → Action                                         | 断言与证据                                                                                                                                                       |
-| ------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| E2EE-00 | 双端支持 relay-gzip 的新配对会话                        | ready 后互收 `client-capabilities`；下行大 payload 以信封传输且字节显著下降（实测同 88 条消息 rpc-frame 505KB→129KB）；还原后路由与明文路径一致。transport 端到端测试 + 真实 relay 流量日志。 |
-| E2EE-01 | 新配对 → 扫码进入可信站点                              | HTTP、relay 和日志不含 `K_pair`；鉴权后双向证明成功；加密 bootstrap、首页、任务发送与回复来自现有 Host。浏览器网络和 Host/CLI 证据。                             |
-| E2EE-02 | 中间 relay 修改握手、密文、AEAD 头，或注入明文         | 两端 fail closed，零 workspace attach/CLI command；错误不含敏感数据。传输与 Host spy 测试。                                                                      |
-| E2EE-03 | 重发同一帧/ACK、重排或回放旧轮次密文                   | RPC 只由现有 adapter 去重/补 ACK；命令最多 admission 一次，旧轮次无副作用。确定性 transport/CLI 测试。                                                           |
-| E2EE-04 | 大 RPC/附件、饱和和 relay 断线                         | 最终外层 JSON 不超过 1 MiB；计量与实际 bytes 一致，重发使用同一密文；背压与 45 秒边界不回归。                                                                    |
-| E2EE-05 | 手机刷新、后台返回、桌面重启                           | 重新握手、replayable snapshot/gap 和 query 恢复同一 task；不重复提交，desktop continuous 始终独立。手机 E2E + runtime 证据。                                     |
-| E2EE-06 | 升级旧配对、旧 QR、重置二维码、credential 部分写入失败 | 新旧配对不能混用，旧链接不得控制桌面；失败时不展示可用 QR。凭据与 UI 测试。                                                                                      |
-| E2EE-07 | 真实独立静态站点连真实 relay                           | 证明确认 WebSocket Origin 可用且新 `data.payload` 透明透传；不通过则阻止发布，不修改 relay 或降级明文。实机发布门禁。                                            |
-| E2EE-08 | Pages 项目路径构建并发布 → 扫码/刷新/版本校验          | `/Codez/remote/v4/` 返回正确 HTML，资源 URL 均带项目前缀；默认 QR 指向该入口，`sid/hash/t` 与 fragment 完整保留；页面不加载 relay 脚本。Pages 发布与浏览器证据。 |
+| ID      | Setup → Action                                         | 断言与证据                                                                                                                                                                                    |
+| ------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| E2EE-00 | 双端支持 relay-gzip 的新配对会话                       | ready 后互收 `client-capabilities`；下行大 payload 以信封传输且字节显著下降（实测同 88 条消息 rpc-frame 505KB→129KB）；还原后路由与明文路径一致。transport 端到端测试 + 真实 relay 流量日志。 |
+| E2EE-01 | 新配对 → 扫码进入可信站点                              | HTTP、relay 和日志不含 `K_pair`；鉴权后双向证明成功；加密 bootstrap、首页、任务发送与回复来自现有 Host。浏览器网络和 Host/CLI 证据。                                                          |
+| E2EE-02 | 中间 relay 修改握手、密文、AEAD 头，或注入明文         | 两端 fail closed，零 workspace attach/CLI command；错误不含敏感数据。传输与 Host spy 测试。                                                                                                   |
+| E2EE-03 | 重发同一帧/ACK、重排或回放旧轮次密文                   | RPC 只由现有 adapter 去重/补 ACK；命令最多 admission 一次，旧轮次无副作用。确定性 transport/CLI 测试。                                                                                        |
+| E2EE-04 | 大 RPC/附件、饱和和 relay 断线                         | 最终外层 JSON 不超过 1 MiB；计量与实际 bytes 一致，重发使用同一密文；背压与 45 秒边界不回归。                                                                                                 |
+| E2EE-05 | 手机刷新、后台返回、桌面重启                           | 重新握手、replayable snapshot/gap 和 query 恢复同一 task；不重复提交，desktop continuous 始终独立。手机 E2E + runtime 证据。                                                                  |
+| E2EE-06 | 升级旧配对、旧 QR、重置二维码、credential 部分写入失败 | 新旧配对不能混用，旧链接不得控制桌面；失败时不展示可用 QR。凭据与 UI 测试。                                                                                                                   |
+| E2EE-07 | 真实独立静态站点连真实 relay                           | 证明确认 WebSocket Origin 可用且新 `data.payload` 透明透传；不通过则阻止发布，不修改 relay 或降级明文。实机发布门禁。                                                                         |
+| E2EE-08 | Pages 项目路径构建并发布 → 扫码/刷新/版本校验          | `/Codez/remote/v4/` 返回正确 HTML，资源 URL 均带项目前缀；默认 QR 指向该入口，`sid/hash/t` 与 fragment 完整保留；页面不加载 relay 脚本。Pages 发布与浏览器证据。                              |
 
 主题、locale、模型和 workspace 类型不与全部密码学故障做笛卡尔积；这些由同一加密 transport 与已有 Host attachment 不变量剪枝。手机扫码/刷新和一个远程 workspace 分别保留代表性 UI 与隔离场景。
