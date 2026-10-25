@@ -287,6 +287,24 @@ export class ZaiWebOAuthProvider {
     ) {
       throw new Error(payload.msg?.trim() || "OAuth CLI flow init response invalid");
     }
+    let authorizationTarget: URL;
+    try {
+      authorizationTarget = new URL(authorizeUrl);
+    } catch {
+      throw new Error("OAuth CLI authorize URL invalid");
+    }
+    const configuredOrigin = new URL(
+      provider === BIGMODEL_PROVIDER_ID
+        ? this.config.bigmodelAuthorizeUrl
+        : this.config.authorizeUrl,
+    ).origin;
+    // Bug 原因：CLI 返回的授权链接也会在扩展本地生成二维码；不能让异常响应把用户引向任意站点。
+    if (
+      authorizationTarget.protocol !== "https:" ||
+      authorizationTarget.origin !== configuredOrigin
+    ) {
+      throw new Error("OAuth CLI authorize URL invalid");
+    }
     return {
       flowId,
       pollToken: params.pollToken,
