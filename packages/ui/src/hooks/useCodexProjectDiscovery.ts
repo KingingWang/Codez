@@ -101,7 +101,7 @@ export function useCodexProjectDiscovery({
   }, []);
 
   useEffect(() => {
-    if (!isDesktop || !projectDirectory || projectDirectory.loading) return;
+    if (!isDesktop || !projectDirectory) return;
     const hostsById = new Map(projectDirectory.directory.hosts.map((host) => [host.id, host]));
     const nextRoots = new Map<
       string,
@@ -124,6 +124,16 @@ export function useCodexProjectDiscovery({
         }
       }
     }
+    // 修复原因（issue #24）：若应用启动时尚无任何已保存项目（首次基线为空），用户在 projectDirectory
+    // 首轮读取完成的同时或之前添加单目录项目，不能将新增 root 误当作冷启动存量跳过；
+    // 当 loading 仍为 true 且尚未建立基线时，先把空基线落位，待后续加载/创建出的新 root 进入扫描。
+    if (projectDirectory.loading && !knownProjectRootsRef.current) {
+      if (nextRoots.size === 0) {
+        knownProjectRootsRef.current = new Set();
+      }
+      return;
+    }
+    if (projectDirectory.loading) return;
     const previous = knownProjectRootsRef.current;
     knownProjectRootsRef.current = new Set(nextRoots.keys());
     if (!previous) return;
