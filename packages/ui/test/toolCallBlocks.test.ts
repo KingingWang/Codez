@@ -1568,4 +1568,88 @@ describe("readRawToolCallFileSummaries", () => {
     expect(html).toContain("mock-agent-panel");
     expect(html).toContain("agent:tool-agent:Explore project structure:think");
   });
+
+  it.each([
+    [
+      "inProgress",
+      "running",
+      {
+        reviewId: "rev-1",
+        status: "inProgress" as const,
+        actionSummary: "git pull",
+      },
+      "正在自动审批",
+    ],
+    [
+      "approved",
+      "success",
+      {
+        reviewId: "rev-2",
+        status: "approved" as const,
+        riskLevel: "low" as const,
+        rationale: "Safe synchronization command",
+      },
+      "已自动批准 (低风险)",
+    ],
+    [
+      "denied",
+      "cancelled",
+      {
+        reviewId: "rev-3",
+        status: "denied" as const,
+        riskLevel: "high" as const,
+        rationale: "Destructive command rejected by Guardian",
+      },
+      "自动审批已拒绝 (高风险)",
+    ],
+    [
+      "timedOut",
+      "error",
+      {
+        reviewId: "rev-4",
+        status: "timedOut" as const,
+        rationale: "Guardian review timed out",
+      },
+      "自动审批超时",
+    ],
+    [
+      "aborted",
+      "cancelled",
+      {
+        reviewId: "rev-5",
+        status: "aborted" as const,
+      },
+      "自动审批已中止",
+    ],
+  ] as const)(
+    "renders Codex autoApprovalReview (%s) status on Execute tool card",
+    (_caseName, rowStatus, autoApprovalReview, expectedStatusText) => {
+      const row: ToolCallRow = {
+        rowId: 30,
+        turnId: "turn-1",
+        createdAt: 1_700_000_000_000,
+        createdAtSeq: 1,
+        kind: "toolCall",
+        toolCallId: `cmd-${autoApprovalReview.reviewId}`,
+        toolName: "Bash",
+        status: rowStatus,
+        inputText: '{"command":"git pull"}',
+        input: { command: "git pull" },
+        autoApprovalReview,
+      };
+
+      const html = renderToStaticMarkup(
+        createElement(
+          CodezIntlProvider,
+          { initialLocale: "zh-CN" },
+          createElement(ToolCallBlock, {
+            toolCallNode: toolCallRowToLegacyNode(row),
+            workspacePath: "/workspace",
+          }),
+        ),
+      );
+
+      expect(html).toContain(expectedStatusText);
+    },
+  );
 });

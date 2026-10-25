@@ -38,6 +38,41 @@ describe("toolCallRowToLegacyNode", () => {
     expect(node.toolCall.raw).toMatchObject({ cuaApp });
   });
 
+  it("透传 autoApprovalReview 并在拒绝/超时终态合入 rationale 错误原因", () => {
+    const approved = toolCallRowToLegacyNode(
+      makeRow({
+        status: "success",
+        autoApprovalReview: {
+          reviewId: "rev-1",
+          status: "approved",
+          riskLevel: "low",
+          rationale: "Read-only git fetch",
+        },
+      }),
+    );
+    expect(approved.toolCall.raw).toMatchObject({
+      autoApprovalReview: {
+        reviewId: "rev-1",
+        status: "approved",
+        riskLevel: "low",
+        rationale: "Read-only git fetch",
+      },
+    });
+
+    const denied = toolCallRowToLegacyNode(
+      makeRow({
+        status: "cancelled",
+        autoApprovalReview: {
+          reviewId: "rev-2",
+          status: "denied",
+          riskLevel: "high",
+          rationale: "Destructive command blocked by Guardian",
+        },
+      }),
+    );
+    expect(denied.toolCall.error).toBe("Destructive command blocked by Guardian");
+  });
+
   it("status 全量映射到 mapToolStatus 词表", () => {
     const cases: Array<[ToolCallRow["status"], string]> = [
       ["inputStreaming", "pending"],

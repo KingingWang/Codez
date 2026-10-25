@@ -98,9 +98,12 @@ export function EditToolCallBlock(context: ToolCallBlockRenderContext) {
   const hasMultipleFiles = totalFiles > 1;
   const isFailed =
     toolCall.status === "failed" || isRawToolCallFailed(toolCall.raw) || Boolean(errorText);
-  const effectiveStatusLabel = isFailed
-    ? intl.formatMessage({ id: "chat.toolCall.status.failed" })
-    : statusLabel;
+  const hasAutoApprovalStatus = context.autoApprovalReview !== undefined;
+  const effectiveStatusLabel = hasAutoApprovalStatus
+    ? statusLabel
+    : isFailed
+      ? intl.formatMessage({ id: "chat.toolCall.status.failed" })
+      : statusLabel;
   const openFilePreview = useCallback(
     (summary: NonNullable<ToolCallBlockRenderContext["rawFileSummaries"]>[number]) => {
       if (!onOpenCodeViewer) {
@@ -388,7 +391,8 @@ export function EditToolCallBlock(context: ToolCallBlockRenderContext) {
         diffCount={context.isOfficeMode ? undefined : diffCount}
         hideDiffCountWhenOpen={hasMultipleFiles}
         statusLabel={effectiveStatusLabel}
-        statusTooltip={isFailed ? errorText : undefined}
+        statusTooltip={(isFailed ? errorText : undefined) ?? context.autoApprovalTooltipText}
+        showStatusLabel={!context.isOfficeMode && hasAutoApprovalStatus}
         showFailureStatus={isFailed}
         isRunning={isRunning}
         title={toolCall.title}

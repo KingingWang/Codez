@@ -2,7 +2,11 @@ import { SquareTerminalIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { ToolLayout } from "@/ToolCallBlocks/ToolLayout.js";
-import type { ToolCallBlockRenderContext } from "@/ToolCallBlocks/shared.js";
+import {
+  formatAutoApprovalStatusLabel,
+  readToolAutoApprovalReview,
+  type ToolCallBlockRenderContext,
+} from "@/ToolCallBlocks/shared.js";
 import { getExecuteSecondaryText } from "@/ToolCallBlocks/renderers/execute.js";
 
 const EXECUTE_GROUP_ICON = (
@@ -53,8 +57,14 @@ export function ExecuteGroupToolCallBlock(context: ToolCallBlockRenderContext) {
   const latestChild = latestActiveChild ?? childToolCalls.at(-1);
   const latestCommand =
     !isOfficeMode && latestChild ? getExecuteSecondaryText(latestChild.toolCall.input) : undefined;
+  const latestChildAutoApproval = useMemo(
+    () => (latestChild ? readToolAutoApprovalReview(latestChild.toolCall.raw) : undefined),
+    [latestChild],
+  );
   const runningActionLabel = latestCommand
-    ? intl.formatMessage({ id: "chat.toolCall.execute.running" })
+    ? latestChildAutoApproval?.status === "inProgress"
+      ? formatAutoApprovalStatusLabel(latestChildAutoApproval, intl)
+      : intl.formatMessage({ id: "chat.toolCall.execute.running" })
     : undefined;
   const runningPrimaryText = useMemo(
     () =>
