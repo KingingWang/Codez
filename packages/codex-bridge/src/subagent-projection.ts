@@ -150,15 +150,37 @@ export function collectSubagentFacts(
 }
 
 /** 行锚点索引：projection-rows 在锚点 item 行之后紧跟插入 subagent 行。 */
-export function subagentRowAnchors(facts: readonly SubagentFact[]): Map<string, SubagentFact[]> {
-  const anchors = new Map<string, SubagentFact[]>();
+export function subagentRowAnchors(
+  facts: readonly SubagentFact[],
+): Map<string, Map<string, SubagentFact[]>> {
+  const anchors = new Map<string, Map<string, SubagentFact[]>>();
   for (const fact of facts) {
-    const key = `${fact.turnId}\u0000${fact.anchorItemId}`;
-    const bucket = anchors.get(key);
+    let byItem = anchors.get(fact.turnId);
+    if (!byItem) {
+      byItem = new Map<string, SubagentFact[]>();
+      anchors.set(fact.turnId, byItem);
+    }
+    const bucket = byItem.get(fact.anchorItemId);
     if (bucket) bucket.push(fact);
-    else anchors.set(key, [fact]);
+    else byItem.set(fact.anchorItemId, [fact]);
   }
   return anchors;
+}
+
+/** 供单轮投影缓存比对：当子代理终态在后续轮次收敛时，锚定轮的签名变化并刷新缓存。 */
+export function turnSubagentSignature(
+  turnAnchors: ReadonlyMap<string, readonly SubagentFact[]> | undefined,
+): string {
+  if (!turnAnchors || turnAnchors.size === 0) return "";
+  const parts: string[] = [];
+  for (const [itemId, facts] of turnAnchors) {
+    for (const fact of facts) {
+      parts.push(
+        `${itemId}:${fact.childThreadId}:${fact.status}:${fact.parentToolCallId ?? ""}:${fact.agentPath ?? ""}:${fact.prompt ?? ""}`,
+      );
+    }
+  }
+  return parts.join("\u0001");
 }
 
 /** 子代理行：与原生 subagentRowSchema 同形，childSessionId 即子线程 id。 */

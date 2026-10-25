@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog.js";
 import { Switch } from "@/components/ui/switch.js";
 import { toast } from "@/components/ui/toast.js";
+import type { CodexResource } from "@/settings/codex/codexSettingsData.js";
 import { useCodexSettings } from "@/hooks/useCodexSettings.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useSettings } from "@/hooks/useSettingService.js";
@@ -68,6 +69,8 @@ function BrowserOperationButton({
   );
 }
 
+const BROWSER_CODEX_RESOURCES: readonly CodexResource[] = ["mcp", "config"];
+
 export function BrowserSettingsSection({
   isDesktop,
   isWindowsDesktop = false,
@@ -82,7 +85,11 @@ export function BrowserSettingsSection({
   // browser-use 插件是 .codez-plugin 格式，Codex 插件目录不会收录，旧的插件开关对 Codex
   // 永远是禁用态，因此这里直接复用 Codex 设置 MCP 面板的原生卡片（spec:
   // codex-desktop-native-browser-cua「Settings Browser section surfacing」）。
-  const codexController = useCodexSettings({ workspacePath, workspaceIdentity });
+  const codexController = useCodexSettings({
+    workspacePath,
+    workspaceIdentity,
+    resources: BROWSER_CODEX_RESOURCES,
+  });
   const nativeBrowserCuaCapability = useCodexNativeBrowserCuaCapability(
     codexController.services,
     codexController.remote,

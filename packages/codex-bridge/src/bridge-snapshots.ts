@@ -340,10 +340,24 @@ export class BridgeSnapshots {
       lastTurnEntry && typeof lastTurnEntry === "object" && !Array.isArray(lastTurnEntry)
         ? (lastTurnEntry as { id?: unknown }).id
         : undefined;
-    for (const row of snapshot.rows.window) {
-      if (idle && row.kind === "assistantText") row.actions = { canFork: true };
-      if (idle && !writerConflict && row.kind === "userInput")
-        row.actions = { canEdit: true, canRetry: true, editDisposition: "rewind" };
+    const rowsWindow = snapshot.rows.window;
+    for (let rowIndex = 0; rowIndex < rowsWindow.length; rowIndex += 1) {
+      let row = rowsWindow[rowIndex]!;
+      let cloned = false;
+      const ensureMutable = (): typeof row => {
+        if (!cloned) {
+          row = { ...row };
+          rowsWindow[rowIndex] = row;
+          cloned = true;
+        }
+        return row;
+      };
+      if (idle && row.kind === "assistantText") {
+        ensureMutable().actions = { canFork: true };
+      }
+      if (idle && !writerConflict && row.kind === "userInput") {
+        ensureMutable().actions = { canEdit: true, canRetry: true, editDisposition: "rewind" };
+      }
       if (row.kind === "turnHeader") {
         const turn = turnsById.get(row.turnId);
         // 修复原因：快照编码的 attachments 投影会让出 await，期间 editUserQuery/compact
@@ -357,9 +371,10 @@ export class BridgeSnapshots {
           (row.turnId === lastTurnId ? state.thread.tokenUsage : undefined);
         const turnUsage = sparseNativeTurnUsage(rawTurnUsage);
         if (turnUsage) {
-          row.turnUsage = turnUsage;
+          const mutable = ensureMutable() as Extract<typeof row, { kind: "turnHeader" }>;
+          mutable.turnUsage = turnUsage;
           if (turnUsage.outputTokens !== undefined) {
-            row.outputTokens = turnUsage.outputTokens;
+            mutable.outputTokens = turnUsage.outputTokens;
           }
         }
         if (turn) {
@@ -367,34 +382,43 @@ export class BridgeSnapshots {
             turn,
             this.isFileChangesReverted(id, turn.id) ? "reverted" : "active",
           );
-          if (filesResult.files)
-            row.fileChanges = {
+          if (filesResult.files) {
+            (ensureMutable() as Extract<typeof row, { kind: "turnHeader" }>).fileChanges = {
               files: filesResult.files,
               additions: filesResult.additions,
               deletions: filesResult.deletions,
               state: filesResult.state,
             };
+          }
           // 行级撤销入口只描述「该轮存在可投影的文件变更」这一事实；
           // 能力门禁与 Desktop 事务所有者仍在 UI/服务层判定。
           // 运行中的轮次变更不完整，不开放撤销；已撤销的轮次不重复开放。
-          if (filesResult.files > 0 && filesResult.state !== "reverted" && row.state !== "running")
-            row.actions = { ...row.actions, canRewindFiles: true };
+          if (
+            filesResult.files > 0 &&
+            filesResult.state !== "reverted" &&
+            row.state !== "running"
+          ) {
+            const mutable = ensureMutable();
+            mutable.actions = { ...mutable.actions, canRewindFiles: true };
+          }
         }
       }
       if (row.kind === "userInput" && this.attachments) {
         // entityId 仍是 turn 作用域展示键；与预投影后的唯一派生结果对应。
         const projected = userProjections.get(row.entityId ?? "");
         if (projected) {
-          row.text = projected.text;
-          row.attachments = projected.refs;
+          const mutable = ensureMutable() as Extract<typeof row, { kind: "userInput" }>;
+          mutable.text = projected.text;
+          mutable.attachments = projected.refs;
         }
       }
       if (row.kind === "toolCall" && row.toolName === "view_image" && this.attachments) {
         const fileName = imageViewFileNames.get(row.entityId ?? "");
         if (fileName && row.input && typeof row.input === "object" && !Array.isArray(row.input)) {
           const nextInput = { ...(row.input as Record<string, unknown>), fileName };
-          row.input = nextInput;
-          row.inputText = JSON.stringify(nextInput);
+          const mutable = ensureMutable() as Extract<typeof row, { kind: "toolCall" }>;
+          mutable.input = nextInput;
+          mutable.inputText = JSON.stringify(nextInput);
         }
       }
     }

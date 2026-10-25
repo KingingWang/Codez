@@ -170,6 +170,28 @@ shows none of its threads. Multi-root projects retain explicit membership.
   duplicate `thread/list` paging bursts across `session/list` discovery and
   multiple `sessions-index` subscribers without caching a stale list after the
   scan settles.
+- Settled turn row projections (`settledTurnRowsCache`) are cached per turn
+  when that turn is no longer `inProgress` and has no pending interactions.
+  Subagent anchor facts are scoped by `(turnId, anchorItemId)` so turns without
+  subagent anchors remain 100% cache-eligible even when another turn in the
+  thread spawned subagents, and turns with subagent anchors validate their
+  cached subagent status signature before reuse. Bridge snapshot enrichment
+  (`BridgeSnapshots.conversation`) never mutates cached `ConversationRow`
+  objects in place when overlaying idle `actions`, `turnUsage`, `fileChanges`,
+  or attachment references.
+- `projectThread` supports an internal trusted-rows fast path after incremental
+  `conversationRowSchema` validation of newly projected rows, avoiding repeated
+  full-tree `conversationSnapshotSchema` and `routedTopicFrameSchema` re-parsing
+  of unchanged settled history on every streaming delta notification.
+- `useCodexProjectDiscovery` re-triggers active-tab native discovery on
+  `state:projects` only when the set of undeleted project roots changes (or on
+  initial baseline establishment), preventing `codexGlobalRolloutSyncer` and
+  `codezTaskIndexSyncer` task-row broadcasts from creating a feedback loop of
+  redundant `session/list` scans during live conversation streaming.
+- `codexGlobalRolloutSyncer` reads bounded head/tail slices via file handles
+  rather than loading multi-megabyte rollout `.jsonl` files into memory in full,
+  and uses `fs.watch` relative filenames for targeted single-file stat/parse on
+  incremental rollout appends.
 - Concurrent read-only control-plane and native settings reads (`config/read`,
   `model/list` and paginated list reads) coalesce per `CodexRpcPort` and
   canonical request key only while an identical read is in flight, preventing

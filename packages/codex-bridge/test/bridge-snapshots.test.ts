@@ -542,3 +542,129 @@ test("streaming deltas on an active turn reuse settled historical turn projectio
     assert.equal(lastRow.text, "Part 1 + Part 2");
   }
 });
+
+test("settledTurnRowsCache is not mutated by idle row actions and stays active across subagent turns", async () => {
+  const thread = threadFixture();
+  const turn1 = {
+    ...thread.turns[0]!,
+    id: "turn-1",
+    status: "completed" as const,
+    completedAt: 110,
+    items: [
+      {
+        type: "userMessage" as const,
+        id: "user-1",
+        content: [{ type: "text" as const, text: "First question", text_elements: [] }],
+      },
+      {
+        type: "collabAgentToolCall" as const,
+        id: "spawn-1",
+        tool: "spawnAgent" as const,
+        status: "completed" as const,
+        senderThreadId: thread.id,
+        receiverThreadIds: ["child-thread-1"],
+        prompt: "Inspect codebase",
+        model: null,
+        reasoningEffort: null,
+        agentsStates: { "child-thread-1": { status: "completed" } },
+      },
+      { type: "agentMessage" as const, id: "ans-1", text: "First answer" },
+    ],
+  };
+  const turn2 = {
+    ...thread.turns[0]!,
+    id: "turn-2",
+    status: "completed" as const,
+    startedAt: 115,
+    completedAt: 119,
+    items: [
+      {
+        type: "userMessage" as const,
+        id: "user-2",
+        content: [{ type: "text" as const, text: "Second question", text_elements: [] }],
+      },
+      { type: "agentMessage" as const, id: "ans-2", text: "Second answer" },
+    ],
+  };
+  thread.status = { type: "idle" };
+  thread.turns = [turn1, turn2] as never;
+
+  const rpc = port();
+  const store = new ThreadStateStore(rpc, cwd);
+  store.markStarted(thread);
+  const snapshots = new BridgeSnapshots(
+    { rpc, cwd },
+    store,
+    new InteractionBroker(rpc, () => {}),
+    cwd,
+  );
+
+  // Idle snapshot: assistantText and userInput have actions populated
+  const idleSnap = await snapshots.conversation(thread.id);
+  const idleTurn1Answer = idleSnap.rows.window.find(
+    (row) => row.turnId === "turn-1" && row.kind === "assistantText",
+  );
+  assert.deepEqual(idleTurn1Answer?.actions, { canFork: true });
+
+  // Start a new turn -> session becomes running (not idle)
+  await store.apply({
+    method: "turn/started",
+    params: {
+      threadId: thread.id,
+      turn: {
+        id: "turn-3",
+        status: "inProgress",
+        itemsView: "full",
+        items: [
+          {
+            type: "userMessage",
+            id: "user-3",
+            content: [{ type: "text", text: "Third question", text_elements: [] }],
+          },
+          {
+            type: "agentMessage",
+            id: "ans-3",
+            status: "inProgress",
+            text: "Streaming",
+          },
+        ],
+      },
+    },
+  });
+  store.get(thread.id)!.thread.status = { type: "active", activeFlags: [] };
+  store.touch(thread.id);
+
+  const busySnap1 = await snapshots.conversation(thread.id);
+  const busyTurn1Answer = busySnap1.rows.window.find(
+    (row) => row.turnId === "turn-1" && row.kind === "assistantText",
+  );
+  const busyTurn1User = busySnap1.rows.window.find(
+    (row) => row.turnId === "turn-1" && row.kind === "userInput",
+  );
+  // Cached rows from turn-1 must not retain stale idle actions when session is running!
+  assert.equal(busyTurn1Answer?.actions, undefined);
+  assert.equal(busyTurn1User?.actions, undefined);
+
+  // Streaming delta on turn-3 must reuse exact row object references for settled turn-1 and turn-2
+  await store.apply({
+    method: "item/agentMessage/delta",
+    params: {
+      threadId: thread.id,
+      turnId: "turn-3",
+      itemId: "ans-3",
+      delta: " more",
+    },
+  });
+  const busySnap2 = await snapshots.conversation(thread.id);
+  const busySnap2Turn2Answer = busySnap2.rows.window.find(
+    (row) => row.turnId === "turn-2" && row.kind === "assistantText",
+  );
+  const busySnap1Turn2Answer = busySnap1.rows.window.find(
+    (row) => row.turnId === "turn-2" && row.kind === "assistantText",
+  );
+  assert.strictEqual(
+    busySnap2Turn2Answer,
+    busySnap1Turn2Answer,
+    "settled turn-2 rows should be reused by reference even when turn-1 has subagent anchors",
+  );
+});

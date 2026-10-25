@@ -23,8 +23,14 @@ export interface TailWindowBudget {
   narrativeMaxBytes?: number;
 }
 
+const rowBytesCache = new WeakMap<ConversationRow, number>();
+
 function rowBytes(row: ConversationRow): number {
-  return Buffer.byteLength(JSON.stringify(row), "utf8");
+  const cached = rowBytesCache.get(row);
+  if (cached !== undefined) return cached;
+  const measured = Buffer.byteLength(JSON.stringify(row), "utf8");
+  rowBytesCache.set(row, measured);
+  return measured;
 }
 
 function isNarrativeRow(row: ConversationRow): boolean {

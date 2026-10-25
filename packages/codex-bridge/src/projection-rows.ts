@@ -34,6 +34,8 @@ import {
   subagentEntityId,
   subagentRow,
   subagentRowAnchors,
+  turnSubagentSignature,
+  type SubagentFact,
 } from "./subagent-projection.js";
 import { codexTurnSchema } from "./codex-types.js";
 
@@ -49,6 +51,8 @@ const settledTurnRowsCache = new WeakMap<
     threadCreatedAt: number;
     items: CodexTurn["items"];
     itemsLength: number;
+    subagentSignature: string;
+    baseRowId: number;
     rows: ConversationRow[];
   }
 >();
@@ -361,19 +365,31 @@ function projectSingleTurnRows(
   turn: CodexTurn,
   threadCreatedAt: number,
   turnInteractions: readonly PendingInteraction[],
-  subagentAnchors: ReadonlyMap<string, ReturnType<typeof collectSubagentFacts>>,
+  turnAnchors: ReadonlyMap<string, readonly SubagentFact[]> | undefined,
+  baseRowId: number,
 ): ConversationRow[] {
-  const canCache =
-    turn.status !== "inProgress" && turnInteractions.length === 0 && subagentAnchors.size === 0;
+  const subagentSignature = turnSubagentSignature(turnAnchors);
+  const canCache = turn.status !== "inProgress" && turnInteractions.length === 0;
   if (canCache) {
     const cached = settledTurnRowsCache.get(turn);
     if (
       cached &&
       cached.threadCreatedAt === threadCreatedAt &&
       cached.items === turn.items &&
-      cached.itemsLength === turn.items.length
+      cached.itemsLength === turn.items.length &&
+      cached.subagentSignature === subagentSignature
     ) {
-      return cached.rows;
+      if (cached.baseRowId === baseRowId) return cached.rows;
+      const rebased = cached.rows.map((row, index) => ({
+        ...row,
+        rowId: baseRowId + index,
+      }));
+      settledTurnRowsCache.set(turn, {
+        ...cached,
+        baseRowId,
+        rows: rebased,
+      });
+      return rebased;
     }
   }
 
@@ -392,7 +408,7 @@ function projectSingleTurnRows(
     assertRowBudget(
       conversationRowSchema.parse({
         ...base,
-        rowId: 0,
+        rowId: baseRowId,
         entityId: `codex:turn:${encodeURIComponent(turn.id)}`,
         kind: "turnHeader",
         origin: "userInput",
@@ -430,7 +446,7 @@ function projectSingleTurnRows(
             turn,
             {
               ...base,
-              rowId: turnRows.length,
+              rowId: baseRowId + turnRows.length,
               entityId: itemEntityId(turn.id, item.id),
             },
             turnInteractions,
@@ -441,13 +457,13 @@ function projectSingleTurnRows(
     );
     // subagent 行紧跟锚点 item（spawn 优先）：UI 的配对要求同 turnId + parentToolCallId，
     // 配对成功后该行不单独渲染，只把「打开子会话」入口挂到 agent 卡片上。
-    for (const fact of subagentAnchors.get(`${turn.id}\u0000${item.id}`) ?? []) {
+    for (const fact of turnAnchors?.get(item.id) ?? []) {
       turnRows.push(
         assertRowBudget(
           conversationRowSchema.parse(
             subagentRow(fact, {
               ...base,
-              rowId: turnRows.length,
+              rowId: baseRowId + turnRows.length,
               entityId: subagentEntityId(fact.childThreadId),
             }),
           ),
@@ -460,6 +476,8 @@ function projectSingleTurnRows(
       threadCreatedAt,
       items: turn.items,
       itemsLength: turn.items.length,
+      subagentSignature,
+      baseRowId,
       rows: turnRows,
     });
   }
@@ -498,10 +516,11 @@ export function projectRows(
       turn,
       thread.createdAt,
       turnInteractions,
-      subagentAnchors,
+      subagentAnchors.get(turn.id),
+      rows.length,
     );
     for (const row of turnRows) {
-      rows.push(row.rowId === rows.length ? row : { ...row, rowId: rows.length });
+      rows.push(row);
     }
   }
   return rows;

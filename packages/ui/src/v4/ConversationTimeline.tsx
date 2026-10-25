@@ -2087,7 +2087,7 @@ function ConversationTimelineImpl({
                     >
                       <ConversationTurnGroup
                         unit={unit}
-                        nowMs={liveNowMs}
+                        nowMs={unit.isRunning ? liveNowMs : undefined}
                         apiRetry={null}
                         context={rowContext}
                         onFork={onFork}

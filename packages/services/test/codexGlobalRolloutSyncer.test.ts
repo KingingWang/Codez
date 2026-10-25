@@ -511,4 +511,77 @@ describe("createCodexGlobalRolloutSyncer", () => {
       await rm(dir, { recursive: true, force: true });
     }
   });
+
+  it("reads head metadata and tail outcome from a rollout larger than 128 KiB without losing terminal status", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "codez-global-rollout-large-"));
+    const codexHome = join(dir, ".codex");
+    const dayDir = join(codexHome, "sessions", "2026", "10", "25");
+    await mkdir(dayDir, { recursive: true });
+
+    const sessionId = "019a0000-0000-7000-8000-000000001111";
+    const rolloutPath = join(dayDir, `rollout-2026-10-25T10-00-00-${sessionId}.jsonl`);
+    const fillerLine = JSON.stringify({
+      timestamp: "2026-10-25T10:00:02Z",
+      type: "response_item",
+      payload: {
+        type: "message",
+        role: "assistant",
+        content: [{ type: "output_text", text: "x".repeat(4096) }],
+      },
+    });
+    const lines = [
+      JSON.stringify({
+        timestamp: "2026-10-25T10:00:00Z",
+        type: "session_meta",
+        payload: {
+          meta: {
+            id: sessionId,
+            timestamp: "2026-10-25T10:00:00Z",
+            cwd: "/remote/large-rollout-project",
+            source: "cli",
+          },
+        },
+      }),
+      JSON.stringify({
+        timestamp: "2026-10-25T10:00:01Z",
+        type: "event_msg",
+        payload: { type: "user_message", message: "超长会话标题验证" },
+      }),
+      // 填充 > 200 KiB 的中间正文，确保尾部事件落在 128 KiB head 窗口之外
+      ...Array.from({ length: 55 }, () => fillerLine),
+      JSON.stringify({
+        timestamp: "2026-10-25T10:05:00Z",
+        type: "event_msg",
+        payload: { type: "error" },
+      }),
+    ];
+    await writeFile(rolloutPath, `${lines.join("\n")}\n`, "utf8");
+
+    const repo = new TaskIndexRepo(
+      undefined,
+      "remote:server:srv-1",
+      join(dir, "tasks-index.sqlite"),
+    );
+    const target = {
+      workspacePath: "/remote/large-rollout-project",
+      workspaceIdentity: "remote:ssh:host:22:dev:/remote/large-rollout-project",
+      taskId: sessionId,
+    };
+    const syncer = createCodexGlobalRolloutSyncer({
+      taskIndexRepo: repo,
+      resolveWorkspaceIdentity: async (workspacePath) => `remote:ssh:host:22:dev:${workspacePath}`,
+      env: { CODEX_HOME: codexHome },
+    });
+
+    try {
+      expect(await syncer.syncNow()).toBe(true);
+      const meta = await repo.getTaskMeta(target);
+      expect(meta?.title).toBe("超长会话标题验证");
+      expect(meta?.status).toBe("error");
+    } finally {
+      syncer.dispose();
+      repo.close();
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });

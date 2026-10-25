@@ -2,6 +2,7 @@ import type {
   ConversationTurnRenderUnit,
   BuildConversationTurnRenderUnitsOptions,
 } from "@/v4/conversationTurnRenderUnitTypes.js";
+import type { PluginUiRowPinResolver } from "@/plugin-ui/domain/pluginUiRowPolicy.js";
 export type {
   ConversationTurnRenderUnit,
   BuildConversationTurnRenderUnitsOptions,
@@ -42,6 +43,28 @@ interface DraftTurnRenderUnit {
   assistantWorkRows: AssistantWorkRow[];
   hookInvocations: HookInvocationRow[];
   orderedRows: ConversationRow[];
+}
+
+interface SettledTurnUnitCacheEntry {
+  header: TurnHeaderRow;
+  orderedRows: readonly ConversationRow[];
+  isLastTurn: boolean;
+  sessionPhase: SessionPhase | undefined;
+  pluginUiPinResolver: PluginUiRowPinResolver | undefined;
+  unit: ConversationTurnRenderUnit;
+}
+
+const settledTurnUnitCache = new WeakMap<TurnHeaderRow, SettledTurnUnitCacheEntry>();
+
+function sameRowsByRef(
+  left: readonly ConversationRow[],
+  right: readonly ConversationRow[],
+): boolean {
+  if (left.length !== right.length) return false;
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) return false;
+  }
+  return true;
 }
 
 function isAssistantTextRow(row: ConversationRow): row is AssistantTextRow {
@@ -195,6 +218,22 @@ function materializeDraftUnit(
   total: number,
   options: BuildConversationTurnRenderUnitsOptions,
 ): ConversationTurnRenderUnit {
+  const isLastTurn = index === total - 1;
+  const isRunning = resolveTurnRunning(draft, options);
+  const canCacheSettled =
+    !isRunning && draft.header !== undefined && draft.header.state !== "running";
+  if (canCacheSettled && draft.header) {
+    const cached = settledTurnUnitCache.get(draft.header);
+    if (
+      cached &&
+      cached.isLastTurn === isLastTurn &&
+      cached.sessionPhase === options.sessionPhase &&
+      cached.pluginUiPinResolver === options.pluginUiPinResolver &&
+      sameRowsByRef(cached.orderedRows, draft.orderedRows)
+    ) {
+      return cached.unit;
+    }
+  }
   const workflowLaunch = resolveWorkflowLaunchMeta(draft.header, draft.userInputs);
   // 启动轮的用户行由 run 卡代言，不进可见输入也不进流。
   const renderedRows =
@@ -236,8 +275,6 @@ function materializeDraftUnit(
     ? { flowRows: [], tailRows: [] }
     : splitTurnTailRows(nonBrowserRows);
 
-  const isLastTurn = index === total - 1;
-  const isRunning = resolveTurnRunning(draft, options);
   const isInterrupted = draft.header
     ? draft.header.state === "completedInterrupted"
     : options.sessionPhase === "completedInterrupted";
@@ -289,7 +326,7 @@ function materializeDraftUnit(
   const assistantFollowingRows = workSegments.flatMap((segment) => segment.assistantFollowingRows);
   const flowItems = workSegments.flatMap((segment) => segment.flowItems);
   const mustOpenHistory = workSegments.at(-1)?.assistantHistoryDefaultOpen ?? false;
-  return {
+  const result: ConversationTurnRenderUnit = {
     key: draft.key,
     turnId: draft.turnId,
     ...(draft.header ? { header: draft.header } : {}),
@@ -316,6 +353,17 @@ function materializeDraftUnit(
     ...(draft.header ? { startedAt: draft.header.startedAt } : {}),
     ...(workflowLaunch ? { workflowLaunch } : {}),
   };
+  if (canCacheSettled && draft.header) {
+    settledTurnUnitCache.set(draft.header, {
+      header: draft.header,
+      orderedRows: draft.orderedRows,
+      isLastTurn,
+      sessionPhase: options.sessionPhase,
+      pluginUiPinResolver: options.pluginUiPinResolver,
+      unit: result,
+    });
+  }
+  return result;
 }
 
 function createDraftUnit(turnId: string): DraftTurnRenderUnit {

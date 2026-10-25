@@ -26,10 +26,12 @@ export function useCodexSettings({
   workspacePath,
   workspaceIdentity,
   remoteSessionId,
+  resources = RESOURCES,
 }: {
   workspacePath?: string | null;
   workspaceIdentity?: string;
   remoteSessionId?: string;
+  resources?: readonly CodexResource[];
 }) {
   const resolution = useWorkspaceServicesResolution(
     workspacePath,
@@ -152,7 +154,7 @@ export function useCodexSettings({
       busy: mutationLock.current,
     }));
     await Promise.all(
-      RESOURCES.map(async (resource) => {
+      resources.map(async (resource) => {
         let value;
         try {
           value = { data: await readCodexResource(resource, workspacePath, request) };
@@ -169,7 +171,7 @@ export function useCodexSettings({
     );
     if (!mounted.current || currentScope.current !== scope || readSequence.current !== seq) return;
     setState((previous) => ({ ...previous, scope, loading: false }));
-  }, [enabled, workspacePath, request, scope, writeTarget]);
+  }, [enabled, workspacePath, request, resources, scope, writeTarget]);
 
   useEffect(() => {
     void refresh();

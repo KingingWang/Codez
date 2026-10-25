@@ -107,7 +107,37 @@ const TASK_SEARCH_SNIPPET_PREFIX_RADIUS = 20;
 const TASK_SEARCH_SNIPPET_SUFFIX_RADIUS = 72;
 const TASK_SEARCH_SNIPPET_MAX_CHARS = 140;
 const TASK_SEARCH_SNIPPET_LIMIT = 4;
+const PARSED_META_JSON_CACHE_LIMIT = 2_048;
+const parsedMetaJsonCache = new Map<string, CodezTaskMeta>();
 const logger = createServiceLogger("task-index-repo");
+
+function parseCachedMetaJson(metaJson: string, taskId: string): CodezTaskMeta | null {
+  const cached = parsedMetaJsonCache.get(metaJson);
+  if (cached) {
+    parsedMetaJsonCache.delete(metaJson);
+    parsedMetaJsonCache.set(metaJson, cached);
+    return cached;
+  }
+  try {
+    const parsed = codezTaskMetaSchema.safeParse(JSON.parse(metaJson));
+    if (parsed.success) {
+      const data = parsed.data as CodezTaskMeta;
+      if (parsedMetaJsonCache.size >= PARSED_META_JSON_CACHE_LIMIT) {
+        parsedMetaJsonCache.delete(parsedMetaJsonCache.keys().next().value!);
+      }
+      parsedMetaJsonCache.set(metaJson, data);
+      return data;
+    }
+    logger.warn(
+      undefined,
+      `读取 task index meta_json 非法 taskId=${taskId}`,
+      parsed.error.flatten(),
+    );
+  } catch (error) {
+    logger.warn(undefined, `读取 task index meta_json 失败 taskId=${taskId}`, error);
+  }
+  return null;
+}
 
 function workspaceKey(params: { workspacePath: string; workspaceIdentity?: string }): string {
   return resolveWorkspaceKey(params);
@@ -146,34 +176,25 @@ function readPresentation(row: TaskIndexRow): CodezTaskMeta {
   // reserveSessionProject 预留的新建归属行在收到首条 CLI 事实前 meta_json 为默认 '{}'；
   // 这是合法预留状态而非损坏记录，直接走标量列回退即可，避免每次对账刷出非法告警。
   if (row.meta_json !== "{}" || row.cli_created_at != null || row.created_at !== 0) {
-    try {
-      const parsed = codezTaskMetaSchema.safeParse(JSON.parse(row.meta_json));
-      if (parsed.success) {
-        return {
-          ...(parsed.data as CodezTaskMeta),
-          // SQLite 使用这些字段查询并隔离实体，旧 meta_json 里的 identity
-          // 可能缺失或属于旧远端。读取时必须与行主键投影一致，sessions-index 才能
-          // 按 workspaceKey + taskId 附加 running activity。
-          taskId: row.task_id,
-          workspacePath: row.workspace_path,
-          workspaceIdentity,
-          // unread 是 tasks-index 产品壳状态；标量列必须覆盖可能来自其他 Host 的旧 meta_json。
-          unreadAt: row.unread_at ?? undefined,
-          // cron 身份以 meta_json 为准；cron_automation_id 列是索引投影，仅作兜底：
-          // 历史行 meta_json 里可能还没有该字段，回退读列，下次写入会自动回填进 meta_json。
-          cronAutomationId: parsed.data.cronAutomationId ?? row.cron_automation_id ?? undefined,
-          // off-peak 身份同款策略：meta_json 为准、列兜底——存量迁移只写列即可生效。
-          offPeakTaskId: parsed.data.offPeakTaskId ?? row.off_peak_task_id ?? undefined,
-          titleOverridden: row.title_overridden === 1,
-        };
-      }
-      logger.warn(
-        undefined,
-        `读取 task index meta_json 非法 taskId=${row.task_id}`,
-        parsed.error.flatten(),
-      );
-    } catch (error) {
-      logger.warn(undefined, `读取 task index meta_json 失败 taskId=${row.task_id}`, error);
+    const parsedData = parseCachedMetaJson(row.meta_json, row.task_id);
+    if (parsedData) {
+      return {
+        ...parsedData,
+        // SQLite 使用这些字段查询并隔离实体，旧 meta_json 里的 identity
+        // 可能缺失或属于旧远端。读取时必须与行主键投影一致，sessions-index 才能
+        // 按 workspaceKey + taskId 附加 running activity。
+        taskId: row.task_id,
+        workspacePath: row.workspace_path,
+        workspaceIdentity,
+        // unread 是 tasks-index 产品壳状态；标量列必须覆盖可能来自其他 Host 的旧 meta_json。
+        unreadAt: row.unread_at ?? undefined,
+        // cron 身份以 meta_json 为准；cron_automation_id 列是索引投影，仅作兜底：
+        // 历史行 meta_json 里可能还没有该字段，回退读列，下次写入会自动回填进 meta_json。
+        cronAutomationId: parsedData.cronAutomationId ?? row.cron_automation_id ?? undefined,
+        // off-peak 身份同款策略：meta_json 为准、列兜底——存量迁移只写列即可生效。
+        offPeakTaskId: parsedData.offPeakTaskId ?? row.off_peak_task_id ?? undefined,
+        titleOverridden: row.title_overridden === 1,
+      };
     }
   }
 
