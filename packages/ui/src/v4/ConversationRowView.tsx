@@ -101,6 +101,10 @@ import {
   workflowFillCounts,
 } from "@/ToolCallBlocks/renderers/createWorkflowHoleInput.js";
 import { ToolCallBlock } from "@/ToolCallBlocks.js";
+import {
+  formatAutoApprovalMarkerDetail,
+  formatAutoApprovalStatusLabel,
+} from "@/ToolCallBlocks/shared.js";
 import { resolveWorkflowRunOpenToolCallId } from "@/v4/workflowRunCardJoin.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
@@ -2118,7 +2122,33 @@ const TimelineMarkerRowView = memo(function TimelineMarkerRowView({
         // label 走本地化，detail（review 描述 / hook 文本 / agentPath / 时长）追加在后。
         // contextCompaction 在 item/started ~ item/completed 之间携带 status: "running"，
         // 需显示“正在压缩上下文”及流光动画，完成后才显示“上下文已压缩”。
-        const running = marker.event === "contextCompaction" && marker.status === "running";
+        const running =
+          (marker.event === "contextCompaction" || marker.event === "autoApprovalReview") &&
+          marker.status === "running";
+        if (marker.event === "autoApprovalReview") {
+          const review = marker.autoApprovalReview;
+          const statusText = review
+            ? formatAutoApprovalStatusLabel(review, intl)
+            : intl.formatMessage({
+                id: running ? "chat.autoApproval.inProgress" : "chat.codexEvent.autoApprovalReview",
+              });
+          const detailText = formatAutoApprovalMarkerDetail(review, marker.detail, intl);
+          return {
+            icon: MARKER_EVENT_ICON,
+            running,
+            label: (
+              <>
+                <span>{statusText}</span>
+                {detailText ? (
+                  <>
+                    <span aria-hidden="true"> · </span>
+                    <span>{detailText}</span>
+                  </>
+                ) : null}
+              </>
+            ),
+          };
+        }
         const labelId = running
           ? "chat.contextCompaction.started"
           : `chat.codexEvent.${marker.event}`;

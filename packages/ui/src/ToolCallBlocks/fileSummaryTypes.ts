@@ -1,5 +1,6 @@
 import type { PluginUiToolBinding } from "@/plugin-ui/contract.js";
 import type { ComponentType, ReactNode } from "react";
+import type { ToolAutoApprovalReview } from "@codez/shared/codez-protocol-v4";
 import type { WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import type { MessageFileLinkTarget } from "@/components/ai-elements/message.js";
 import type { CodePreviewSettings } from "@/lib/codePreviewSettings.js";
@@ -237,6 +238,9 @@ export interface ToolCallBlockRenderContext {
   statusLabel: string;
   sourceLabel?: string;
   errorText?: string;
+  autoApprovalReview?: ToolAutoApprovalReview;
+  autoApprovalStatusLabel?: string;
+  autoApprovalTooltipText?: string;
   childToolList: ReactNode;
   showIcon?: boolean;
   /** CUA Group 子项显式放大 App Icon；独立 CUA 保持默认尺寸。 */

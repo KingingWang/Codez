@@ -18,6 +18,9 @@ import { resolveToolCallRenderer } from "@/ToolCallBlocks/resolveRenderer.js";
 import * as PluginUi from "@/plugin-ui/index.js";
 import { resolveToolCallIdentity } from "@/lib/toolIdentity.js";
 import {
+  formatAutoApprovalStatusLabel,
+  formatAutoApprovalTooltipText,
+  readToolAutoApprovalReview,
   readRawToolCallFileSummaries,
   type ToolCallBlockRenderContext,
 } from "@/ToolCallBlocks/shared.js";
@@ -228,9 +231,25 @@ function ToolCallBlockComponent({
     ],
   );
   const isRunning = isCompactToolCallRunningState(toolState);
-  const statusLabel = intl.formatMessage({
-    id: getCompactToolCallStatusMessageId(toolState, toolCall.status),
-  });
+  const autoApprovalReview = useMemo(
+    () => readToolAutoApprovalReview(toolCall.raw),
+    [toolCall.raw],
+  );
+  const autoApprovalStatusLabel = useMemo(
+    () =>
+      autoApprovalReview ? formatAutoApprovalStatusLabel(autoApprovalReview, intl) : undefined,
+    [autoApprovalReview, intl],
+  );
+  const autoApprovalTooltipText = useMemo(
+    () =>
+      autoApprovalReview ? formatAutoApprovalTooltipText(autoApprovalReview, intl) : undefined,
+    [autoApprovalReview, intl],
+  );
+  const statusLabel =
+    autoApprovalStatusLabel ??
+    intl.formatMessage({
+      id: getCompactToolCallStatusMessageId(toolState, toolCall.status),
+    });
   const errorText = getToolCallErrorText(toolCall);
   const isCurrentAgentToolCall = isAgentToolCall(toolCall);
   const isSubAgentToolCall = !isCurrentAgentToolCall && (depth > 0 || toolCall.parentToolUseId);
@@ -308,6 +327,9 @@ function ToolCallBlockComponent({
       statusLabel,
       sourceLabel,
       errorText,
+      autoApprovalReview,
+      autoApprovalStatusLabel,
+      autoApprovalTooltipText,
       childToolList,
       showIcon,
       cuaAppIconClassName,
@@ -345,6 +367,9 @@ function ToolCallBlockComponent({
       disableSummaryContentAnimation,
       animateDiffCountOnMount,
       errorText,
+      autoApprovalReview,
+      autoApprovalStatusLabel,
+      autoApprovalTooltipText,
       isRunning,
       onLoadFullToolCallFields,
       onOpenAutomationsMain,

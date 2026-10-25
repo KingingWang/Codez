@@ -208,7 +208,12 @@ export const reasoningRowSchema = z.object({
 export type ReasoningRow = z.infer<typeof reasoningRowSchema>;
 
 // toolCall 展示层 schema 已拆至 ./toolDisplay.ts（rows.ts 受 max-lines 约束）。
-import { toolCallDisplaySchema, toolOutputSchema, toolProgressSchema } from "./toolDisplay.js";
+import {
+  toolAutoApprovalReviewSchema,
+  toolCallDisplaySchema,
+  toolOutputSchema,
+  toolProgressSchema,
+} from "./toolDisplay.js";
 
 export const cuaAppIdentitySchema = z
   .object({
@@ -244,6 +249,8 @@ export const toolCallRowSchema = z.object({
   outputPreview: executionOutputPreviewSchema.optional(),
   // status=pendingApproval 时指向 pendingInteractions 项。
   approvalInteractionId: z.string().optional(),
+  // Codex Guardian 自动审批（approvalsReviewer="auto_review"）状态：只读可观测，不触发人工弹窗。
+  autoApprovalReview: toolAutoApprovalReviewSchema.optional().catch(undefined),
   backgrounded: z.literal(true).optional(),
   workId: z.string().optional(),
   startedAt: timestampSchema.optional(),
@@ -438,9 +445,11 @@ export const timelineMarkerPayloadSchema = z.union([
       "subagentInterrupted",
       "subagentCompleted",
       "sleep",
+      "autoApprovalReview",
     ]),
     status: z.enum(["running", "completed"]).optional(),
     detail: z.string().optional(),
+    autoApprovalReview: toolAutoApprovalReviewSchema.optional().catch(undefined),
   }),
 ]);
 export type TimelineMarkerPayload = z.infer<typeof timelineMarkerPayloadSchema>;

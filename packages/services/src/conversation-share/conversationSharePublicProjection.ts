@@ -284,7 +284,12 @@ function projectTimelineMarker(
       // codex 原生事件分隔线：载荷即展示文本（review/hook/agentPath/时长），无外部引用、
       // 无运行态，发布闸门（running 拦截 + fork/checkpoint 拦截）天然不命中，直接放行。
       // 只读分享时间线暂不认识该类型会整行跳过（可接受的降级，见 specs/codex-desktop-thread-items.md）。
-      return { ...row.marker };
+      return {
+        type: "codexEvent",
+        event: row.marker.event,
+        ...(row.marker.status ? { status: row.marker.status } : {}),
+        ...(row.marker.detail ? { detail: row.marker.detail } : {}),
+      };
     case "forkNotice":
     case "forkCreated":
     case "checkpointRestored":

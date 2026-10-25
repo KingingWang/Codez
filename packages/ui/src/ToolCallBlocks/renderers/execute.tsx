@@ -288,7 +288,16 @@ export function ExecuteToolCallBlock(context: ToolCallBlockRenderContext) {
     return parsed.success ? parsed.data : undefined;
   }, [isRunning, toolCall.raw]);
   const failureVisibleText =
-    toolCall.status === "failed" ? (errorText ?? resultText ?? undefined) : undefined;
+    toolCall.status === "failed" ||
+    context.autoApprovalReview?.status === "denied" ||
+    context.autoApprovalReview?.status === "timedOut" ||
+    context.autoApprovalReview?.status === "aborted"
+      ? (errorText ?? context.autoApprovalReview?.rationale ?? resultText ?? undefined)
+      : undefined;
+  const hasAutoApprovalStatus = context.autoApprovalReview !== undefined;
+  const resolvedStatusTooltip = isOfficeMode
+    ? undefined
+    : (failureVisibleText ?? context.autoApprovalTooltipText);
   const secondaryTextNode = useMemo(
     // 收起态 command 属于摘要正文，使用 UI sans 与同一行文案保持一致；
     // 展开后的完整命令仍保留 font-mono，便于阅读和复制技术内容。
@@ -389,7 +398,8 @@ export function ExecuteToolCallBlock(context: ToolCallBlockRenderContext) {
         }
         secondaryText={isOfficeMode ? undefined : secondaryTextNode}
         statusLabel={statusLabel}
-        statusTooltip={isOfficeMode ? undefined : failureVisibleText}
+        statusTooltip={resolvedStatusTooltip}
+        showStatusLabel={!isOfficeMode && hasAutoApprovalStatus}
         showFailureStatus={toolCall.status === "failed"}
         isRunning={isRunning}
         title={isOfficeMode ? undefined : toolCall.title}

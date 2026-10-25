@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
 import type { CodexNotification, CodexRpcPort } from "./contract.js";
+import {
+  applyNativeAutoApprovalReview,
+  settleTurnAutoApprovalReviews,
+} from "./auto-approval-review.js";
 import { accumulateNativeTurnUsage } from "./bridge-snapshot-usage.js";
 import { array, object, string, type JsonObject } from "./json.js";
 import { rememberThreadMode } from "./command-input.js";
@@ -279,6 +283,7 @@ export class ThreadStateStore {
     if (state) {
       state.epoch = randomUUID();
       state.thread.turns = [];
+      state.autoApprovalReviews = undefined;
     }
     this.loaded.delete(id);
     return this.ensure(id);
@@ -397,8 +402,17 @@ export class ThreadStateStore {
         });
       else turns[index] = mergeNativeTurn(object(turns[index]), turn);
       state.thread.turns = turns;
+      if (event.method === "turn/completed") {
+        settleTurnAutoApprovalReviews(state, turn.id, turn.status);
+      }
     } else if (event.method === "item/started" || event.method === "item/completed") {
       if (!applyNativeItemLifecycle(state, id, event.method, params, this.completedItems)) return;
+    } else if (
+      event.method === "item/autoApprovalReview/started" ||
+      event.method === "item/autoApprovalReview/completed" ||
+      event.method === "autoApprovalReview/strictReviewRequired"
+    ) {
+      if (!applyNativeAutoApprovalReview(state, event.method, params)) return;
     } else if (event.method === "turn/plan/updated") {
       const turn = findNativeTurn(state.thread, params.turnId);
       if (!turn) return;

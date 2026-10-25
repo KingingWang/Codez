@@ -32,6 +32,7 @@ export function FallbackToolCallBlock(context: FallbackToolCallBlockProps) {
     onOpenBrowserUrl,
   } = context;
   const { toolCall } = toolCallNode;
+  const hasAutoApprovalStatus = context.autoApprovalReview !== undefined;
   const kindLabel =
     toolCall.kind.length > 0
       ? toolCall.kind[0]!.toUpperCase() + toolCall.kind.slice(1)
@@ -98,8 +99,11 @@ export function FallbackToolCallBlock(context: FallbackToolCallBlockProps) {
           : (toolCall.title ?? intl.formatMessage({ id: "chat.toolCall.toolCall" }))
       }
       secondaryText={context.summaryOnly || toolCall.status === "failed" ? undefined : statusLabel}
-      statusLabel={toolCall.status === "failed" ? statusLabel : undefined}
-      statusTooltip={toolCall.status === "failed" ? errorText : undefined}
+      statusLabel={toolCall.status === "failed" || hasAutoApprovalStatus ? statusLabel : undefined}
+      statusTooltip={
+        (toolCall.status === "failed" ? errorText : undefined) ?? context.autoApprovalTooltipText
+      }
+      showStatusLabel={hasAutoApprovalStatus}
       showFailureStatus={toolCall.status === "failed"}
       isRunning={isRunning}
       title={

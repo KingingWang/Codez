@@ -207,6 +207,38 @@ export const toolProgressSchema = z.object({
 });
 export type ToolProgress = z.infer<typeof toolProgressSchema>;
 
+export const toolAutoApprovalReviewStatusSchema = z.enum([
+  "inProgress",
+  "approved",
+  "denied",
+  "timedOut",
+  "aborted",
+]);
+export type ToolAutoApprovalReviewStatus = z.infer<typeof toolAutoApprovalReviewStatusSchema>;
+
+export const toolAutoApprovalRiskLevelSchema = z.enum(["low", "medium", "high", "critical"]);
+export type ToolAutoApprovalRiskLevel = z.infer<typeof toolAutoApprovalRiskLevelSchema>;
+
+export const toolAutoApprovalUserAuthorizationSchema = z.enum(["unknown", "low", "medium", "high"]);
+export type ToolAutoApprovalUserAuthorization = z.infer<
+  typeof toolAutoApprovalUserAuthorizationSchema
+>;
+
+export const toolAutoApprovalReviewSchema = z
+  .object({
+    reviewId: z.string().min(1).max(256),
+    status: toolAutoApprovalReviewStatusSchema,
+    riskLevel: toolAutoApprovalRiskLevelSchema.optional(),
+    userAuthorization: toolAutoApprovalUserAuthorizationSchema.optional(),
+    rationale: z.string().max(4_096).optional(),
+    actionSummary: z.string().max(500).optional(),
+    strictReviewRequired: z.literal(true).optional(),
+    startedAt: timestampSchema.optional(),
+    completedAt: timestampSchema.optional(),
+  })
+  .strict();
+export type ToolAutoApprovalReview = z.infer<typeof toolAutoApprovalReviewSchema>;
+
 /**
  * node_repl cell 的目标应用身份（Computer Use 的工具卡图标）。与 CLI contracts 的
  * `nodeReplCuaAppDisplaySchema` 必须同集——两侧都是 strict，少一个字段会让整块 display 被剥掉。

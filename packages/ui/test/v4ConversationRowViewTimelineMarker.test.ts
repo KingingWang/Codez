@@ -307,4 +307,59 @@ describe("ConversationRowView timeline marker contract", () => {
     expect(html).toContain("animated-gradient-text");
     expect(html).not.toContain("上下文已压缩");
   });
+
+  it("renders running and completed codexEvent autoApprovalReview markers with status, risk, and rationale", () => {
+    const runningHtml = renderMarker({
+      rowId: 24,
+      turnId: "turn-1",
+      createdAt: 1_700_000_000_000,
+      createdAtSeq: 1,
+      kind: "timelineMarker",
+      lane: "assistantWork",
+      marker: {
+        type: "codexEvent",
+        event: "autoApprovalReview",
+        status: "running",
+        autoApprovalReview: {
+          reviewId: "rev-net-1",
+          status: "inProgress",
+          strictReviewRequired: true,
+          actionSummary: "network access to api.example.com:443",
+        },
+      },
+    });
+
+    expect(runningHtml).toContain('data-status="running"');
+    expect(runningHtml).toContain("正在严格自动审批");
+    expect(runningHtml).toContain("network access to api.example.com:443");
+    expect(runningHtml).toContain("animated-gradient-text");
+
+    const deniedHtml = renderMarker({
+      rowId: 25,
+      turnId: "turn-1",
+      createdAt: 1_700_000_000_000,
+      createdAtSeq: 1,
+      kind: "timelineMarker",
+      lane: "assistantWork",
+      marker: {
+        type: "codexEvent",
+        event: "autoApprovalReview",
+        status: "completed",
+        autoApprovalReview: {
+          reviewId: "rev-stdin-1",
+          status: "denied",
+          riskLevel: "high",
+          actionSummary: "write_stdin (tty-1): rm -rf /",
+          rationale: "High risk terminal input",
+        },
+      },
+    });
+
+    expect(deniedHtml).toContain('data-status="completed"');
+    expect(deniedHtml).toContain("自动审批已拒绝 (高风险)");
+    expect(deniedHtml).toContain(
+      "write_stdin (tty-1): rm -rf / · 高风险 · High risk terminal input",
+    );
+    expect(deniedHtml).not.toContain("animated-gradient-text");
+  });
 });

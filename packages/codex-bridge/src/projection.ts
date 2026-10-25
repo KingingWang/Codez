@@ -14,6 +14,7 @@ import {
   type SessionActionAvailability,
 } from "@codez/shared/codez-protocol-v4";
 import { codexThreadSchema, isCodexKnownItem, type CodexThread } from "./codex-types.js";
+import type { TurnAutoApprovalReviewsMap } from "./auto-approval-review.js";
 import { projectOriginFromSource } from "./project-origin.js";
 import { parseCodexTurnCached, projectRows } from "./projection-rows.js";
 import { isSelectionSideChatThread } from "./selection-side-chat.js";
@@ -44,6 +45,8 @@ export interface ProjectThreadOptions {
   apiRetry?: ApiRetryState | null;
   /** 辅助对话 child 的继承 turn id 集合：投影跳过（spec: codex-selection-side-chat）。 */
   hiddenTurnIds?: ReadonlySet<string>;
+  /** 按 turnId -> reviewId 记录的 Codex Guardian 自动审批状态。 */
+  autoApprovalReviews?: TurnAutoApprovalReviewsMap;
 }
 
 export interface SessionsIndexOptions {
@@ -242,7 +245,12 @@ export function projectThread(
   const interactions = pendingInteractionSchema
     .array()
     .parse(options.interactions ?? options.pendingInteractions ?? []);
-  const rows = projectRows(source, interactions, options.hiddenTurnIds);
+  const rows = projectRows(
+    source,
+    interactions,
+    options.hiddenTurnIds,
+    options.autoApprovalReviews,
+  );
   const state = control(source, options.apiRetry);
   const waiting = source.status.type === "active" && source.status.activeFlags.length > 0;
   // Bug 原因：把上一回合 failed 当作永久 admission 错误，GUI 会一直禁用输入框。
