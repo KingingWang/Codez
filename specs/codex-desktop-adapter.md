@@ -183,6 +183,32 @@ shows none of its threads. Multi-root projects retain explicit membership.
   `conversationRowSchema` validation of newly projected rows, avoiding repeated
   full-tree `conversationSnapshotSchema` and `routedTopicFrameSchema` re-parsing
   of unchanged settled history on every streaming delta notification.
+- `ThreadProjectionState` maintains an incremental `turnId → turn` and
+  `(turnId, itemId) → item` index owned by `ThreadStateStore`, so `item/started`,
+  `item/completed`, `turn/plan/updated`, and streaming `*Delta` notifications
+  resolve the active turn and item in $O(1)$ without scanning historical turns.
+  Settled turns cache their parsed `CodexTurn`, subagent facts, row slices,
+  attachment projections, and file-change summaries; active-turn streaming deltas
+  keep projection work proportional to the active turn and tail window rather
+  than total historical turns, while preserving `rowId`, `seq`, `revision`,
+  `logEpoch`, and protocol schemas.
+- `BridgeSnapshots.conversation` coalesces concurrent in-flight snapshot builds
+  keyed by `(sessionId, epoch, revision, canonicalAdditionalDirectories)` and
+  invalidates any stale in-flight entry on revision advance, reload, or deletion.
+  `BridgeSubscriptions` shares a single logical `RoutedTopicFrame` JSON/UTF-8
+  encoding and physical frame sizing pass when fanning out the same topic
+  revision to multiple routes, and the Host legacy session-event mirror bounds
+  pre-ACK `stagedWires` by frame count and byte budget (`PROTOCOL_V4_LIMITS.logicalFrameAssemblyMaxStagedBytes`),
+  resubscribing for a fresh snapshot on overflow rather than growing without bound.
+- `AttachmentFiles` separates manifest/ownership validation from full-blob SHA-256
+  verification and paginated slice reads: once a committed blob's `(workspace, id,
+dev, ino, ctimeMs, mtimeMs, size, checksum)` tuple is verified, subsequent
+  paginated preview reads verify `lstat`/`fstat` identity (`nlink === 1`, no
+  symlink, matching `dev`/`ino`/`mtimeMs`/`size`) and read only the requested
+  `[offset, offset + limit)` slice without re-hashing the whole file; blob
+  replacement, size/mtime change, or verification failure invalidates the cache.
+  Read-only attachment resolves/reads run with bounded concurrency while upload
+  staging mutations remain safely serialized per upload scope.
 - `useCodexProjectDiscovery` re-triggers active-tab native discovery on
   `state:projects` only when the set of undeleted project roots changes (or on
   initial baseline establishment), preventing `codexGlobalRolloutSyncer` and
@@ -190,8 +216,12 @@ shows none of its threads. Multi-root projects retain explicit membership.
   redundant `session/list` scans during live conversation streaming.
 - `codexGlobalRolloutSyncer` reads bounded head/tail slices via file handles
   rather than loading multi-megabyte rollout `.jsonl` files into memory in full,
-  and uses `fs.watch` relative filenames for targeted single-file stat/parse on
-  incremental rollout appends.
+  uses `fs.watch` relative filenames for targeted single-file stat/parse on
+  incremental rollout appends, avoids unconditional full-directory walks on
+  ordinary `readTree`/`readProjects` calls once the initial baseline scan has
+  completed and the watcher/poll loop is healthy, and diff-checks
+  `session_index.jsonl` entries so a single thread rename only invokes
+  `applyCliFacts` for the affected session(s).
 - Concurrent read-only control-plane and native settings reads (`config/read`,
   `model/list` and paginated list reads) coalesce per `CodexRpcPort` and
   canonical request key only while an identical read is in flight, preventing
