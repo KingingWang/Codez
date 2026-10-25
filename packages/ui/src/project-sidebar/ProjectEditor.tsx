@@ -296,17 +296,12 @@ export function ProjectEditor({
             candidate.roots.length === roots.length &&
             candidate.roots.every((root) => roots.includes(root.rootPath)),
         );
-        if (
-          deleted &&
-          (await confirm({
-            title: msg("restore"),
-            description: intl.formatMessage(
-              { id: "project.restoreDescription" },
-              { name: deleted.name },
-            ),
-          }))
-        )
+        // 修复原因（issue #24）：删除项目后用相同目录重新添加时直接恢复原项目，
+        // 避免二次确认点取消后创建新 project_id 导致多目录项目的历史会话无法显示；
+        // 仅当选择非空文件夹（或候选集合只有一项）时自动标记恢复目标，空目录新建保持独立。
+        if (deleted && (roots.length > 0 || candidates.length === 1)) {
           restoreProject = deleted;
+        }
       }
       if (!canCommit()) return;
       if (!project && roots.length) {
