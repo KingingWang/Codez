@@ -164,6 +164,43 @@ afterEach(async () => {
 });
 
 describe("WebRemoteControlTerminalTransport", () => {
+  it("扩展首次连接始终无法打开 socket 时在期限内失败，不无限停在第一步重连", async () => {
+    vi.useFakeTimers();
+    const failures: Array<{ reason: string; message?: string }> = [];
+    class NeverOpenWebSocket {
+      static readonly OPEN = 1;
+      readyState = 0;
+      constructor(_url: string) {}
+      addEventListener() {}
+      close() {
+        this.readyState = 3;
+      }
+    }
+    const transport = new WebRemoteControlTerminalTransport({
+      relayWsUrl: "wss://zcode.z.ai/api/v1/remote/ws2",
+      deviceSid: "sid-1",
+      WebSocketCtor: NeverOpenWebSocket as unknown as typeof globalThis.WebSocket,
+      initialConnectionTimeoutMs: 100,
+      getToken: async () => "token-1",
+      onPayload: () => {},
+      onStateChange: () => {},
+      onFailure: (failure) => failures.push(failure),
+      onError: () => {},
+      reloadPage: () => {},
+    });
+    try {
+      transport.start();
+      await vi.advanceTimersByTimeAsync(100);
+      expect(failures).toEqual([
+        { reason: "relay-unavailable", message: "relay.initialConnectionTimedOut" },
+      ]);
+      await vi.advanceTimersByTimeAsync(20_000);
+      expect(failures).toHaveLength(1);
+    } finally {
+      transport.dispose();
+    }
+  });
+
   it("uses the measured final JSON verbatim for initial send and replay", async () => {
     const states: WebRemoteControlTerminalTransportState[] = [];
     const relay = await createRelayServer(({ message, socket }) => {

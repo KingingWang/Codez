@@ -4,6 +4,7 @@ import type {
   WebRemoteControlTerminalTransportDiagnosticInput,
   WebRemoteControlTerminalTransportOptions,
 } from "#src/web-remote-control/contracts/transport.js";
+import { createInitialPairingDeadline } from "#src/web-remote-control/adapters/initialPairingDeadline.js";
 import {
   webSocketDataByteLength,
   parseRelayMessage,
@@ -63,6 +64,7 @@ export class WebRemoteControlTerminalTransport {
   }>();
   private waitingTimer?: ReturnType<typeof setTimeout>;
   private reconnectTimer?: ReturnType<typeof setTimeout>;
+  private readonly initialPairingDeadline: ReturnType<typeof createInitialPairingDeadline>;
   private desktopOfflineFailureTimer?: ReturnType<typeof setTimeout>;
   private readonly traceRelayMessages = import.meta.env.DEV;
   private readonly e2ee: TerminalE2eeController;
@@ -70,6 +72,14 @@ export class WebRemoteControlTerminalTransport {
 
   constructor(private readonly options: WebRemoteControlTerminalTransportOptions) {
     this.WebSocketCtor = options.WebSocketCtor ?? globalThis.WebSocket;
+    this.initialPairingDeadline = createInitialPairingDeadline(
+      options.initialConnectionTimeoutMs,
+      () => {
+        if (this.intentionallyClosed || this.state === "suspended") return;
+        // Bug 原因：扩展静态桥不可用时会永久循环第 1 步；超时只结束尚未配对的首次连接。
+        this.enterTerminalFailure(createFailure("relay-unavailable", "relay.initialConnectionTimedOut"));
+      },
+    );
     this.e2ee = new TerminalE2eeController({
       deviceSid: options.deviceSid,
       e2eeKey: options.e2eeKey,
@@ -93,10 +103,13 @@ export class WebRemoteControlTerminalTransport {
     this.intentionallyClosed = false;
     this.wasPaired = false;
     this.hadPairedSession = false;
-    this.retry.reset();
+    this.initialPairingDeadline.reset();
+    this.staleWaitingCount = 0;
+    this.retry.acknowledged();
     this.lastPairedSocketGeneration = 0;
     this.lastPairStatusAckAt = Date.now();
     this.setState("connecting");
+    this.initialPairingDeadline.arm();
     this.connect();
   }
 
@@ -129,7 +142,7 @@ export class WebRemoteControlTerminalTransport {
       clearTimeout(this.handshakeTimer);
       this.handshakeTimer = setTimeout(
         () => this.scheduleReconnect(),
-        WEB_REMOTE_CONTROL_V2_HEARTBEAT_ACK_TIMEOUT_MS,
+        this.options.socketHandshakeTimeoutMs ?? WEB_REMOTE_CONTROL_V2_HEARTBEAT_ACK_TIMEOUT_MS,
       );
 
       socket.addEventListener("open", () => {
@@ -193,7 +206,14 @@ export class WebRemoteControlTerminalTransport {
     } catch (error) {
       if (controller.signal.aborted || generation !== this.socketGeneration) return;
       if (error instanceof WebRemoteControlV2ConnectionError && !error.retryable) {
-        this.enterTerminalFailure(createFailure(error.reason));
+        this.enterTerminalFailure(
+          createFailure(
+            error.reason,
+            // Bug 原因：扩展 HTTP 桥失联原先被压成普通 relay-unavailable，用户只看到首屏重连。
+            // 仅放行本地固定诊断码，不把服务器正文、JWT 或一次性 token 带到错误页。
+            error.message === "extension-http-bridge-unavailable" ? error.message : undefined,
+          ),
+        );
       } else this.scheduleReconnect();
     }
   }
@@ -247,6 +267,7 @@ export class WebRemoteControlTerminalTransport {
     this.hiddenStartedAt = Date.now();
     this.tokenController?.abort();
     clearTimeout(this.handshakeTimer);
+    this.initialPairingDeadline.pause();
     this.clearReconnectTimer();
     this.stopHeartbeat();
     this.clearWaitingTimer();
@@ -255,6 +276,7 @@ export class WebRemoteControlTerminalTransport {
 
   async recoverConnection(timeoutMs = 15_000): Promise<void> {
     if (this.intentionallyClosed) throw new Error("Web remote control transport stopped.");
+    this.initialPairingDeadline.arm();
     this.emitDiagnostic({ type: "recover-start", state: this.state });
     this.clearReconnectTimer();
     this.stopHeartbeat();
@@ -291,6 +313,8 @@ export class WebRemoteControlTerminalTransport {
     this.clearWaitingTimer();
     this.clearDesktopOfflineFailureTimer();
     this.stopHeartbeat();
+    this.staleWaitingCount = 0;
+    this.initialPairingDeadline.arm();
     this.reconnectNow();
   }
 
@@ -301,6 +325,7 @@ export class WebRemoteControlTerminalTransport {
     this.clearWaitingTimer();
     this.clearDesktopOfflineFailureTimer();
     this.clearReconnectTimer();
+    this.initialPairingDeadline.complete();
     this.rejectPairedWaiters(new Error("Web remote control transport disposed."));
     this.closeSocket();
     this.setState("idle");
@@ -675,6 +700,7 @@ export class WebRemoteControlTerminalTransport {
 
   private enterTerminalFailure(failure: WebRemoteControlFailure): void {
     this.intentionallyClosed = true;
+    this.initialPairingDeadline.complete();
     this.stopHeartbeat();
     this.clearWaitingTimer();
     this.clearDesktopOfflineFailureTimer();
@@ -714,6 +740,7 @@ export class WebRemoteControlTerminalTransport {
     });
     this.options.onStateChange(state);
     if (state === "paired") {
+      this.initialPairingDeadline.complete();
       this.resolvePairedWaiters();
     }
     if (state === "error" || state === "kicked") {
