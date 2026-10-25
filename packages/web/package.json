@@ -15,11 +15,13 @@
     "@codez/client": "workspace:*",
     "@codez/shared": "workspace:*",
     "@codez/ui": "workspace:*",
+    "qrcode": "^1.5.4",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.2",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",

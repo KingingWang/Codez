@@ -54,6 +54,7 @@ function createService(options?: {
   currentHref?: string;
   currentOrigin?: string;
   allowDevReturnToRedirect?: boolean;
+  tokenUrl?: string;
 }) {
   const localStorage = new MemoryStorage();
   const assigned: string[] = [];
@@ -62,6 +63,7 @@ function createService(options?: {
   const config = {
     ...createProductionWebZaiOAuthConfig(),
     allowDevReturnToRedirect: options?.allowDevReturnToRedirect ?? false,
+    ...(options?.tokenUrl ? { tokenUrl: options.tokenUrl } : {}),
   };
   // 每次调用模拟一个新的页面实例：同一标签页刷新，或同一浏览器的另一个标签页。
   // 每个实例都有独立的 sessionStorage，只共享同源 localStorage；登录不能依赖标签页内的存储。
@@ -129,6 +131,94 @@ describe("WebAuthService", () => {
     });
   });
 
+  it("扩展 CLI 轮询登录的官方 authorize_url 可交给本地二维码，成功后保留原 sid 与 #e2ee", async () => {
+    vi.useFakeTimers();
+    try {
+      const e2eeFragment = `#e2ee=v1&k=${"A".repeat(43)}`;
+      const origin = "orion-extension://codez";
+      const appReturnTo = `${origin}/index.html?sid=device-1${e2eeFragment}`;
+      const h = createService({
+        currentHref: appReturnTo,
+        currentOrigin: origin,
+        tokenUrl: "https://zcode.z.ai/api/v1/oauth/token",
+      });
+      const authorizeUrl = "https://bigmodel.cn/login?appId=zcode&state=flow-1";
+      const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).endsWith("/api/v1/oauth/cli/init")) {
+          return new Response(
+            JSON.stringify({
+              code: 0,
+              data: {
+                flow_id: "flow-1",
+                authorize_url: authorizeUrl,
+                expires_at: Math.floor(Date.now() / 1000) + 60,
+                poll_interval_sec: 1,
+              },
+            }),
+            { status: 200 },
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            code: 0,
+            data: {
+              status: "ready",
+              token: "jwt-1",
+              bigmodel: { access_token: "access-1" },
+              user: { user_id: "u_1", name: "Ada" },
+            },
+          }),
+          { status: 200 },
+        );
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      const onAuthorizeUrl = vi.fn();
+
+      const login = h.service.startPollingLogin(
+        { provider: "bigmodel", appReturnTo },
+        onAuthorizeUrl,
+      );
+      await vi.advanceTimersByTimeAsync(1_000);
+      const result = await login;
+
+      expect(onAuthorizeUrl).toHaveBeenCalledExactlyOnceWith(authorizeUrl);
+      expect(authorizeUrl).not.toContain("e2ee");
+      expect(result?.appReturnTo).toBe(`/index.html?sid=device-1${e2eeFragment}`);
+      expect(h.localStorage.getItem("codezjwttoken")).toBe("jwt-1");
+      expect(h.localStorage.getItem("oauth:active_provider")).toBe("bigmodel");
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("CLI flow 返回非官方授权来源时不得生成登录二维码或打开该链接", async () => {
+    const config = {
+      ...createProductionWebZaiOAuthConfig(),
+      tokenUrl: "https://zcode.z.ai/api/v1/oauth/token",
+    };
+    const provider = new ZaiWebOAuthProvider(
+      config,
+      Date.now,
+      async () =>
+        new Response(
+          JSON.stringify({
+            code: 0,
+            data: {
+              flow_id: "flow-1",
+              authorize_url: "https://attacker.example/collect",
+              expires_at: Math.floor(Date.now() / 1000) + 60,
+              poll_interval_sec: 2,
+            },
+          }),
+          { status: 200 },
+        ),
+    );
+    await expect(
+      provider.initCliFlow({ provider: "bigmodel", pollToken: "diagnostic-only" }),
+    ).rejects.toThrow(/OAuth CLI authorize URL invalid/);
+  });
+
   it("uses VITE_ZAI_OAUTH_ORIGIN and VITE_ZAI_OAUTH_CLIENT_ID to build test environment authorize URL", async () => {
     const testConfig = createWebZaiOAuthConfig({
       VITE_CODEZ_BASE_URL: "https://zcode.z.ai",
@@ -156,9 +246,7 @@ describe("WebAuthService", () => {
     expect(authorizeUrl.origin + authorizeUrl.pathname).toBe(
       "https://chat.z.ai/api/oauth/authorize",
     );
-    expect(authorizeUrl.searchParams.get("redirect_uri")).toBe(
-      "https://zcode.z.ai/remote/v4",
-    );
+    expect(authorizeUrl.searchParams.get("redirect_uri")).toBe("https://zcode.z.ai/remote/v4");
     expect(authorizeUrl.searchParams.get("client_id")).toBe("client_P8X5CMWmlaRO9gyO-KSqtg");
   });
 

@@ -2,6 +2,8 @@
 
 `/remote/v4`（含尾斜杠）是手机远控唯一正式 OAuth/二维码入口。手机只使用 Relay V2；`/web-remote`、其回调与等待页、remoteControlToken/relayOrigin bootstrap 已移除。普通 Web + Server 的 `/ws`、`/ws/remote/:id` 保持不变。
 
+本地安装的浏览器扩展在 `/remote/v4` 扫码链接接管后使用 CLI OAuth polling，授权回调由后端处理，扩展页面保持原 `sid/#e2ee` 链接；下文所述 `code/authCode + state` 网页回调仅适用于非扩展入口及兼容旧回调。扩展选择平台后先留在本地二维码页，二维码使用 CLI 返回的官方 `authorize_url` 供另一设备扫码；显式选择同机手机号登录才打开官方授权标签页。第三方授权页的二维码显示由第三方负责，不能把它是否加载作为扩展登录的唯一入口。具体边界和验收见[浏览器扩展登录与中转连接](./browser-extension-connectivity.md)。
+
 ## 入口与认证
 
 - `code` / `authCode` + `state`（或 OAuth `error` + `state`）优先渲染现有 `WebCallbackPage`，由 `WebAuthService` 校验 nonce、交换 token、写入同源 localStorage，再 replace 安全 app_return_to。

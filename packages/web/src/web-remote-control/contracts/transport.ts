@@ -87,11 +87,14 @@ export interface WebRemoteControlTerminalTransportOptions {
   heartbeatIntervalMs?: number;
   heartbeatJitterMs?: number;
   heartbeatAckTimeoutMs?: number;
+  socketHandshakeTimeoutMs?: number;
   reconnectJitterMs?: number;
   healthCheckTimeoutMs?: number;
   desktopOfflineGraceMs?: number;
   staleWaitingRecoveryMs?: number;
   waitingTimeoutMs?: number;
+  /** 仅约束尚未成功配对的首次连接；成功后保持既有无限恢复语义。 */
+  initialConnectionTimeoutMs?: number;
   onPayload(payload: WebRemoteControlAppPayload): void;
   onRawTransportPayload?(payload: unknown): boolean;
   onRawTransportFault?(reasonCode: string): void;

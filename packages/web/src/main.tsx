@@ -447,39 +447,107 @@ async function renderConversationSharePage(): Promise<void> {
 
 function renderWebLoginPage(): void {
   document.title = "Codez - Web Remote Control Sign In";
+  type AuthTab = { id?: number };
+  type AuthTabsApi = {
+    create?: (
+      props: { url: string; active?: boolean },
+      callback?: (tab?: AuthTab) => void,
+    ) => Promise<AuthTab | undefined> | void;
+    remove?: (tabId: number) => Promise<void> | void;
+  };
+  type AuthWindowFlow = {
+    popup: Window | null;
+    tabId?: number;
+    finished: boolean;
+    opening: boolean;
+  };
+  const extensionApis = globalThis as unknown as {
+    chrome?: { tabs?: AuthTabsApi };
+    browser?: { tabs?: AuthTabsApi };
+  };
+  const tabsApi =
+    typeof extensionApis.chrome?.tabs?.create === "function"
+      ? extensionApis.chrome.tabs
+      : extensionApis.browser?.tabs;
+  let activeAuthFlow: AuthWindowFlow | undefined;
+  const closeAuthTab = (tabId: number) => {
+    if (typeof tabsApi?.remove !== "function") return;
+    try {
+      const pending = tabsApi.remove(tabId);
+      if (pending && typeof pending.then === "function") {
+        void pending.catch(() => {});
+      }
+    } catch {
+      // 标签页可能已由用户自行关闭。
+    }
+  };
+  const closeAuthWindow = (flow: AuthWindowFlow) => {
+    flow.finished = true;
+    try {
+      if (flow.popup && !flow.popup.closed) flow.popup.close();
+    } catch {
+      // 标签页可能已由用户自行关闭。
+    }
+    if (flow.tabId !== undefined) closeAuthTab(flow.tabId);
+  };
+  const openAuthWindow = (authorizeUrl: string) => {
+    const flow = activeAuthFlow;
+    if (!flow || flow.finished || flow.opening) return;
+    flow.opening = true;
+    // Bug 原因：自动切到官方授权标签页会把扩展本地二维码藏在背后；
+    // 只有用户显式选择同机登录时才打开该链接。
+    try {
+      flow.popup = window.open(authorizeUrl, "_blank");
+    } catch {
+      flow.popup = null;
+    }
+    if (flow.popup) return;
+    if (typeof tabsApi?.create !== "function") {
+      flow.opening = false;
+      return;
+    }
+    const rememberAuthTab = (tab?: AuthTab) => {
+      if (tab?.id === undefined || flow.tabId === tab.id) return;
+      flow.tabId = tab.id;
+      if (flow.finished) closeAuthTab(tab.id);
+    };
+    try {
+      const pending = tabsApi.create(
+        { url: authorizeUrl, active: true },
+        rememberAuthTab,
+      );
+      if (pending && typeof pending.then === "function") {
+        void pending.then(rememberAuthTab).catch(() => {
+          if (flow.tabId === undefined) flow.opening = false;
+        });
+      }
+    } catch {
+      // Promise-only 浏览器可能拒绝 callback 参数。
+      try {
+        const pending = tabsApi.create({ url: authorizeUrl, active: true });
+        if (pending && typeof pending.then === "function") {
+          void pending.then(rememberAuthTab).catch(() => {
+            if (flow.tabId === undefined) flow.opening = false;
+          });
+        }
+      } catch {
+        // 链接仍留在二维码页，可由用户重试。
+        flow.opening = false;
+      }
+    }
+  };
   root.render(
     <WebLoginPage
-      onLogin={(provider) => {
+      onOpenAuthorize={openAuthWindow}
+      onLogin={(provider, showAuthorizeQr) => {
         if (isCodezBrowserExtension() && typeof webAuthService.startPollingLogin === "function") {
-          const authPopup = window.open("about:blank", "_blank");
-          let openedTabId: number | undefined;
-          const closeAuthWindow = () => {
-            try {
-              if (authPopup && !authPopup.closed) {
-                authPopup.close();
-              }
-            } catch {
-              // ignore
-            }
-            const extApi = (
-              globalThis as unknown as {
-                chrome?: { tabs?: { remove?: (tabId: number) => Promise<void> | void } };
-                browser?: { tabs?: { remove?: (tabId: number) => Promise<void> | void } };
-              }
-            ).chrome ?? (
-              globalThis as unknown as {
-                browser?: { tabs?: { remove?: (tabId: number) => Promise<void> | void } };
-              }
-            ).browser;
-            if (openedTabId !== undefined && typeof extApi?.tabs?.remove === "function") {
-              try {
-                void extApi.tabs.remove(openedTabId);
-              } catch {
-                // ignore
-              }
-            }
+          const flow: AuthWindowFlow = {
+            popup: null,
+            finished: false,
+            opening: false,
           };
-          void webAuthService
+          activeAuthFlow = flow;
+          return webAuthService
             .startPollingLogin(
               {
                 provider,
@@ -487,66 +555,23 @@ function renderWebLoginPage(): void {
                 devReturnTo: resolveWebAuthDevReturnTo(WEB_ZAI_OAUTH_CONFIG),
               },
               (authorizeUrl) => {
-                if (authPopup && !authPopup.closed) {
-                  authPopup.location.replace(authorizeUrl);
-                  return;
-                }
-                const extApi = (
-                  globalThis as unknown as {
-                    chrome?: {
-                      tabs?: {
-                        create?: (
-                          props: { url: string; active?: boolean },
-                          cb?: (tab?: { id?: number }) => void,
-                        ) => Promise<{ id?: number }> | void;
-                      };
-                    };
-                    browser?: {
-                      tabs?: {
-                        create?: (props: { url: string; active?: boolean }) => Promise<{ id?: number }>;
-                      };
-                    };
-                  }
-                ).chrome ?? (
-                  globalThis as unknown as {
-                    browser?: {
-                      tabs?: {
-                        create?: (props: { url: string; active?: boolean }) => Promise<{ id?: number }>;
-                      };
-                    };
-                  }
-                ).browser;
-                if (typeof extApi?.tabs?.create === "function") {
-                  try {
-                    const maybePromise = extApi.tabs.create({ url: authorizeUrl, active: true }, (tab) => {
-                      if (tab?.id !== undefined) openedTabId = tab.id;
-                    });
-                    if (maybePromise && typeof maybePromise.then === "function") {
-                      maybePromise
-                        .then((tab) => {
-                          if (tab?.id !== undefined) openedTabId = tab.id;
-                        })
-                        .catch(() => {});
-                    }
-                    return;
-                  } catch {
-                    // fallback
-                  }
-                }
-                window.open(authorizeUrl, "_blank");
+                showAuthorizeQr(authorizeUrl);
               },
             )
             .then((result) => {
-              closeAuthWindow();
+              closeAuthWindow(flow);
               if (result) {
                 void remoteEntry.start();
+                return;
               }
+              throw new Error("oauth.cli.flowExpired");
             })
-            .catch(() => {
-              closeAuthWindow();
-              remoteEntry.startLogin(provider);
+            .catch((error: unknown) => {
+              closeAuthWindow(flow);
+              // Bug 原因：CLI flow 失败后退回网页回调，会在 Orion 重现 CSRF/HTTP 500；
+              // 由登录页保留原扫码链接并显示可重试错误，不再静默换一套认证 owner。
+              throw error;
             });
-          return;
         }
         remoteEntry.startLogin(provider);
       }}
@@ -1567,6 +1592,8 @@ async function bootstrapExternalRelayWebRemoteControl(
     appVersion: relayParams.appVersion,
     getToken,
     WebSocketCtor: resolveWebRemoteControlWebSocketCtor(),
+    socketHandshakeTimeoutMs: isCodezBrowserExtension() ? 30_000 : undefined,
+    initialConnectionTimeoutMs: isCodezBrowserExtension() ? 45_000 : undefined,
     onRawTransportPayload: (payload) =>
       pendingRelayProtocol?.acceptPayload(payload) ||
       activeRelayProtocol?.acceptPayload(payload) ||

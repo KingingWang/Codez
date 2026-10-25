@@ -36,4 +36,20 @@ describe("WebRemoteControlFailureScreen", () => {
     expect(html).toContain("选择其他设备");
     expect(html).not.toContain(">重新连接</button>");
   });
+
+  it("扩展桥失败时显示站点权限与诊断码，而不只提示等待网络恢复", () => {
+    const html = renderToStaticMarkup(
+      createElement(WebRemoteControlFailureScreen, {
+        failure: {
+          reason: "relay-unavailable",
+          message: "extension-http-bridge-unavailable",
+        },
+        locale: "zh-CN",
+        onReload: () => {},
+      }),
+    );
+    expect(html).toContain("zcode.z.ai");
+    expect(html).toContain("插件");
+    expect(html).toContain("extension-http-bridge-unavailable");
+  });
 });

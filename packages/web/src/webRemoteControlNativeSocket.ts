@@ -11,6 +11,7 @@
  * （constructor/addEventListener/send/close/readyState/extensions/binaryType）。
  * E2EE、配对与 RPC 协议仍全部在 JS 侧完成，桥只搬运字节。
  */
+import { WebRemoteControlV2ConnectionError } from "@codez/shared/web-remote-relay";
 
 /** 原生桥 JavascriptInterface 的方法签名（与 NativeSocketBridge.kt 保持一致）。 */
 interface CodezAndroidSocketBridge {
@@ -34,12 +35,6 @@ type NativeHttpEvent =
 declare global {
   interface Window {
     CodezAndroidSocket?: CodezAndroidSocketBridge;
-    __codezExtensionFetch?: (request: {
-      url: string;
-      method: string;
-      headers: Record<string, string>;
-      body: string;
-    }) => Promise<{ status: number; body: string; error?: string }>;
     __CODEZ_BROWSER_EXTENSION__?: boolean;
     __codezAndroidSocketEvent?: (id: number, eventJson: string) => void;
     __codezAndroidHttpEvent?: (id: number, eventJson: string) => void;
@@ -230,8 +225,9 @@ class CodezAndroidWebSocket {
 const socketRegistry = new Map<number, CodezAndroidWebSocket>();
 let socketIdSeed = 0;
 let preferExtensionBridgeWebSocket = false;
-const extensionSocketRegistry = new Map<number, CodezExtensionWebSocket>();
-let extensionRuntimeListenerInstalled = false;
+const extensionSocketRegistry = new Map<string, CodezExtensionWebSocket>();
+let extensionRuntimeListenerTarget: ExtensionRuntimeApi["runtime"] | undefined;
+let extensionWindowListenerTarget: Window | undefined;
 
 type ExtensionRuntimeApi = {
   runtime?: {
@@ -244,6 +240,7 @@ type ExtensionRuntimeApi = {
         listener: (message: unknown, sender?: unknown, sendResponse?: unknown) => void,
       ) => void;
     };
+    lastError?: { message?: string };
   };
 };
 
@@ -252,7 +249,17 @@ function getExtensionRuntimeApi(): ExtensionRuntimeApi["runtime"] | undefined {
     chrome?: ExtensionRuntimeApi;
     browser?: ExtensionRuntimeApi;
   };
-  return g.chrome?.runtime ?? g.browser?.runtime;
+  // Bug 原因：Orion 可能同时暴露只能发送的 chrome.runtime 和双向的 browser.runtime；
+  // WebSocket 必须用同一套 API 发命令和收事件，不能只检查 sendMessage。
+  const chromeRuntime = g.chrome?.runtime;
+  const browserRuntime = g.browser?.runtime;
+  const canSendAndReceive = (runtime: ExtensionRuntimeApi["runtime"]): boolean =>
+    typeof runtime?.sendMessage === "function" &&
+    typeof runtime.onMessage?.addListener === "function";
+  if (canSendAndReceive(chromeRuntime)) return chromeRuntime;
+  if (canSendAndReceive(browserRuntime)) return browserRuntime;
+  if (typeof chromeRuntime?.sendMessage === "function") return chromeRuntime;
+  return browserRuntime ?? chromeRuntime;
 }
 
 function sendExtensionRuntimeMessage(message: unknown): void {
@@ -263,53 +270,57 @@ function sendExtensionRuntimeMessage(message: unknown): void {
       if (maybePromise && typeof maybePromise.then === "function") {
         maybePromise.catch(() => {});
       }
-      return;
     } catch {
-      // fallback to window.postMessage
+      // runtime 发送失败由外层 WebSocket 首连期限处理。
     }
   }
-  if (typeof window !== "undefined" && typeof window.postMessage === "function") {
-    window.postMessage(
-      {
-        type: "codez-extension-ws-cmd-bridge",
-        payload: message,
-      },
-      "*",
-    );
-  }
+  // 普通网页的 content script 不再为页面消息代理扩展特权操作；
+  // runtime 丢失时由 WebSocket 首连期限显式失败，不能向不受信任页面广播命令。
 }
 
 function ensureExtensionSocketEventSinkInstalled(): void {
-  if (extensionRuntimeListenerInstalled) {
-    return;
-  }
-  extensionRuntimeListenerInstalled = true;
   const runtime = getExtensionRuntimeApi();
-  if (typeof runtime?.onMessage?.addListener === "function") {
+  if (
+    runtime !== extensionRuntimeListenerTarget &&
+    typeof runtime?.onMessage?.addListener === "function"
+  ) {
     runtime.onMessage.addListener((message: unknown) => {
       if (!message || typeof message !== "object") return;
       const msg = message as {
         type?: string;
-        id?: number;
+        id?: string;
         event?: NativeSocketEvent;
       };
-      if (msg.type !== "codez-extension-ws-event" || typeof msg.id !== "number" || !msg.event) {
+      if (msg.type !== "codez-extension-ws-event" || typeof msg.id !== "string" || !msg.event) {
         return;
       }
       extensionSocketRegistry.get(msg.id)?.dispatchExtensionEvent(msg.event);
     });
+    extensionRuntimeListenerTarget = runtime;
   }
-  if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+  if (
+    typeof window !== "undefined" &&
+    window !== extensionWindowListenerTarget &&
+    typeof window.addEventListener === "function"
+  ) {
     window.addEventListener("message", (event: MessageEvent) => {
-      if (event.data?.type !== "codez-extension-ws-event") {
+      if (
+        event.data?.type !== "codez-extension-ws-event" &&
+        event.data?.type !== "codez-bridge-ready"
+      ) {
         return;
       }
       const id = event.data.id;
-      const ev = event.data.event as NativeSocketEvent | undefined;
-      if (typeof id === "number" && ev) {
-        extensionSocketRegistry.get(id)?.dispatchExtensionEvent(ev);
+      const socket = typeof id === "string" ? extensionSocketRegistry.get(id) : undefined;
+      if (!socket || event.origin !== "https://zcode.z.ai" || !socket.acceptsBridgeWindow(event.source)) return;
+      if (event.data.type === "codez-bridge-ready") {
+        socket.openIframeBridge();
+        return;
       }
+      const ev = event.data.event as NativeSocketEvent | undefined;
+      if (ev) socket.dispatchExtensionEvent(ev);
     });
+    extensionWindowListenerTarget = window;
   }
 }
 
@@ -317,8 +328,8 @@ function ensureExtensionSocketEventSinkInstalled(): void {
  * 浏览器扩展自适应 WebSocket：
  * 1. 默认先尝试直接建立原生 WebSocket（桌面 Chrome/Edge 下由 declarativeNetRequest 自动注入 Origin: https://zcode.z.ai）；
  * 2. 若浏览器（如 iPad Orion）的 declarativeNetRequest 未对 WebSocket 握手改写 Origin 导致握手阶段（OPEN 之前）直接失败，
- *    自动无缝切换至扩展后台同源桥接通道（在 https://zcode.z.ai/favicon.ico 的隔离 Content Script 内代发 WebSocket），
- *    后续重连也直接走扩展桥接通道，确保移动端与桌面端浏览器扩展都能稳定连接。
+ *    自动切换至 https://zcode.z.ai/robots.txt 的隔离 Content Script 同源桥；
+ *    后续重连先试桥，并在首次连接期限内未配对时由 transport 明确报错。
  */
 class CodezExtensionWebSocket {
   static readonly CONNECTING = 0;
@@ -342,7 +353,7 @@ class CodezExtensionWebSocket {
   onerror: ((event: Event) => void) | null = null;
   onclose: ((event: CloseEvent) => void) | null = null;
 
-  private readonly id: number;
+  private readonly id: string;
   private readonly listeners = new Map<string, Set<SocketListener>>();
   private nativeSocket: WebSocket | null = null;
   private usingExtensionBridge = false;
@@ -351,7 +362,7 @@ class CodezExtensionWebSocket {
 
   constructor(url: string) {
     this.url = url;
-    this.id = nextSocketId();
+    this.id = nextExtensionSocketId();
     if (preferExtensionBridgeWebSocket || typeof globalThis.WebSocket !== "function") {
       this.startExtensionBridge();
       return;
@@ -410,7 +421,7 @@ class CodezExtensionWebSocket {
         ensureExtensionSocketEventSinkInstalled();
         const iframe = document.createElement("iframe");
         iframe.style.display = "none";
-        iframe.src = `https://zcode.z.ai/robots.txt?codez_ws_iframe_id=${this.id}#${encodeURIComponent(this.url)}`;
+        iframe.src = `https://zcode.z.ai/robots.txt?codez_ws_iframe_id=${this.id}`;
         this.bridgeIframeEl = iframe;
         (document.body ?? document.documentElement)?.appendChild(iframe);
         this.clearBridgeConnectTimer();
@@ -420,7 +431,7 @@ class CodezExtensionWebSocket {
             this.bridgeIframeEl = null;
             this.startRuntimeExtensionBridge();
           }
-        }, 2_500);
+        }, 5_000);
         return;
       } catch {
         // fallback to runtime extension bridge
@@ -438,7 +449,7 @@ class CodezExtensionWebSocket {
         this.dispatchExtensionEvent({ type: "error" });
         this.dispatchExtensionEvent({ type: "close", code: 1006, reason: "Extension bridge connect timeout", wasClean: false });
       }
-    }, 6_000);
+    }, 15_000);
     sendExtensionRuntimeMessage({ type: "codez-extension-ws-open", id: this.id, url: this.url });
   }
 
@@ -446,6 +457,24 @@ class CodezExtensionWebSocket {
     if (this.bridgeConnectTimer !== null) {
       clearTimeout(this.bridgeConnectTimer);
       this.bridgeConnectTimer = null;
+    }
+  }
+
+  acceptsBridgeWindow(source: MessageEventSource | null): boolean {
+    return Boolean(this.bridgeIframeEl?.contentWindow && source === this.bridgeIframeEl.contentWindow);
+  }
+
+  openIframeBridge(): void {
+    if (this.readyState !== CodezExtensionWebSocket.CONNECTING) return;
+    // Bug 原因：旧版在 iframe URL 中携带一次性 token 并自动开连，任意父网页
+    // 可以嵌入该静态资源触发同源 WS。先验来源与窗口，再通过消息交付连接意图。
+    try {
+      this.bridgeIframeEl?.contentWindow?.postMessage(
+        { type: "codez-bridge-ws-open", id: this.id, url: this.url },
+        "https://zcode.z.ai",
+      );
+    } catch {
+      // 首连桥期限会继续尝试 runtime bridge。
     }
   }
 
@@ -470,7 +499,10 @@ class CodezExtensionWebSocket {
     }
     if (typeof data === "string") {
       if (this.bridgeIframeEl?.contentWindow) {
-        try { this.bridgeIframeEl.contentWindow.postMessage({ type: "codez-bridge-ws-send", id: this.id, text: data }, "https://zcode.z.ai"); } catch { /* ignore */ }
+        try {
+          this.bridgeIframeEl.contentWindow.postMessage({ type: "codez-bridge-ws-send", id: this.id, text: data }, "https://zcode.z.ai");
+          return;
+        } catch { /* use runtime if the iframe vanished */ }
       }
       sendExtensionRuntimeMessage({ type: "codez-extension-ws-send", id: this.id, text: data });
       return;
@@ -478,7 +510,10 @@ class CodezExtensionWebSocket {
     const buffer = data instanceof ArrayBuffer ? data : data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
     const base64 = arrayBufferToBase64(buffer as ArrayBuffer);
     if (this.bridgeIframeEl?.contentWindow) {
-      try { this.bridgeIframeEl.contentWindow.postMessage({ type: "codez-bridge-ws-send", id: this.id, base64 }, "https://zcode.z.ai"); } catch { /* ignore */ }
+      try {
+        this.bridgeIframeEl.contentWindow.postMessage({ type: "codez-bridge-ws-send", id: this.id, base64 }, "https://zcode.z.ai");
+        return;
+      } catch { /* use runtime if the iframe vanished */ }
     }
     sendExtensionRuntimeMessage({ type: "codez-extension-ws-send", id: this.id, base64 });
   }
@@ -491,13 +526,14 @@ class CodezExtensionWebSocket {
       this.nativeSocket.close(code, reason);
       return;
     }
-    sendExtensionRuntimeMessage({ type: "codez-extension-ws-close", id: this.id, code, reason });
     if (this.bridgeIframeEl) {
       const el = this.bridgeIframeEl;
       this.bridgeIframeEl = null;
       try { el.contentWindow?.postMessage({ type: "codez-bridge-ws-close", id: this.id, code, reason }, "https://zcode.z.ai"); } catch { /* ignore */ }
       setTimeout(() => { try { el.remove(); } catch { /* ignore */ } }, 200);
+      return;
     }
+    sendExtensionRuntimeMessage({ type: "codez-extension-ws-close", id: this.id, code, reason });
   }
 
   dispatchExtensionEvent(event: NativeSocketEvent): void {
@@ -557,6 +593,14 @@ class CodezExtensionWebSocket {
 function nextSocketId(): number {
   socketIdSeed += 1;
   return socketIdSeed;
+}
+
+function nextExtensionSocketId(): string {
+  // Bug 原因：扩展页面刷新后自增 ID 从 1 重来，而后台桥的旧 socket 可能仍存活；
+  // 新旧页面同 ID 会串帧。用页面级不可预测 ID 隔离跨代事件。
+  const bytes = new Uint8Array(16);
+  globalThis.crypto.getRandomValues(bytes);
+  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function registerSocket(id: number, socket: CodezAndroidWebSocket): void {
@@ -681,6 +725,106 @@ function serializeHeaders(headers?: HeadersInit): Record<string, string> {
   return { ...headers };
 }
 
+interface ExtensionHttpResult {
+  status: number;
+  body: string;
+  error?: string;
+}
+
+interface ExtensionHttpRequest {
+  type: "codez-extension-http-fetch";
+  url: string;
+  method: string;
+  headers: Record<string, string>;
+  body: string;
+}
+
+const EXTENSION_HTTP_RESPONSE_TIMEOUT_MS = 14_000;
+
+export class WebRemoteControlExtensionHttpBridgeError extends WebRemoteControlV2ConnectionError {
+  constructor() {
+    super("relay-unavailable");
+    this.name = "WebRemoteControlExtensionHttpBridgeError";
+    this.message = "extension-http-bridge-unavailable";
+  }
+}
+
+function parseExtensionHttpResult(value: unknown): ExtensionHttpResult | null {
+  if (!value || typeof value !== "object") return null;
+  const result = value as Partial<ExtensionHttpResult>;
+  if (!Number.isInteger(result.status) || typeof result.body !== "string") return null;
+  if (result.status! < 0 || result.status! > 599) return null;
+  return {
+    status: result.status!,
+    body: result.body,
+    ...(typeof result.error === "string" ? { error: result.error } : {}),
+  };
+}
+
+function requestExtensionHttp(
+  runtime: NonNullable<ExtensionRuntimeApi["runtime"]>,
+  request: ExtensionHttpRequest,
+  signal?: AbortSignal,
+): Promise<ExtensionHttpResult> {
+  if (signal?.aborted) {
+    return Promise.reject(new DOMException("The operation was aborted.", "AbortError"));
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const cleanup = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+    };
+    const succeed = (value: unknown) => {
+      const result = parseExtensionHttpResult(value);
+      // Bug 原因：Orion 可能先 resolve Promise<void>，稍后才调用 callback 交付 HTTP 响应。
+      // undefined 仅表示发送操作结束，不能抢先结算为失败或回退跨源页面 fetch。
+      if (!result || settled) return;
+      settled = true;
+      cleanup();
+      resolve(result);
+    };
+    const fail = (error: Error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(error);
+    };
+    const onAbort = () =>
+      fail(new DOMException("The operation was aborted.", "AbortError"));
+    const timer = setTimeout(
+      () => fail(new WebRemoteControlExtensionHttpBridgeError()),
+      EXTENSION_HTTP_RESPONSE_TIMEOUT_MS,
+    );
+    signal?.addEventListener("abort", onAbort, { once: true });
+
+    let sent: Promise<unknown> | void;
+    try {
+      sent = runtime.sendMessage!(request, (response) => {
+        if (runtime.lastError) {
+          fail(new WebRemoteControlExtensionHttpBridgeError());
+          return;
+        }
+        succeed(response);
+      });
+    } catch {
+      // Promise-only runtime 可以拒绝 callback 参数；此时只重试一次不带 callback 的调用。
+      try {
+        sent = runtime.sendMessage!(request);
+      } catch {
+        fail(new WebRemoteControlExtensionHttpBridgeError());
+        return;
+      }
+    }
+    if (sent && typeof sent.then === "function") {
+      Promise.resolve(sent).then(
+        succeed,
+        () => fail(new WebRemoteControlExtensionHttpBridgeError()),
+      );
+    }
+  });
+}
+
 /**
  * Android 壳内通过原生 OkHttp（不带浏览器 Origin 头）代发 Relay V2 与 OAuth 请求，
  * 或在安装了浏览器扩展的受信任页面内通过扩展后台 Service Worker 代发，
@@ -689,53 +833,8 @@ function serializeHeaders(headers?: HeadersInit): Record<string, string> {
 export function resolveWebRemoteControlFetcher(): typeof fetch {
   return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const bridge = typeof window !== "undefined" ? window.CodezAndroidSocket : undefined;
-    const extensionFetch =
-      typeof window !== "undefined" && typeof window.__codezExtensionFetch === "function"
-        ? window.__codezExtensionFetch
-        : undefined;
-    const runtimeSendMessage = (
-      globalThis as unknown as {
-        chrome?: {
-          runtime?: {
-            sendMessage?: (
-              message: unknown,
-              callback?: (response: unknown) => void,
-            ) => Promise<unknown> | void;
-          };
-        };
-        browser?: {
-          runtime?: {
-            sendMessage?: (
-              message: unknown,
-              callback?: (response: unknown) => void,
-            ) => Promise<unknown> | void;
-          };
-        };
-      }
-    ).chrome?.runtime?.sendMessage ??
-    (
-      globalThis as unknown as {
-        browser?: {
-          runtime?: {
-            sendMessage?: (
-              message: unknown,
-              callback?: (response: unknown) => void,
-            ) => Promise<unknown> | void;
-          };
-        };
-      }
-    ).browser?.runtime?.sendMessage;
-    const isExtensionMarkedPage =
-      typeof window !== "undefined" &&
-      typeof window.postMessage === "function" &&
-      isCodezBrowserExtension();
-
-    if (!bridge || typeof bridge.fetch !== "function") {
-      if (extensionFetch || typeof runtimeSendMessage === "function" || isExtensionMarkedPage) {
-        const signal = init?.signal;
-        if (signal?.aborted) {
-          throw new DOMException("The operation was aborted.", "AbortError");
-        }
+    if (!bridge?.fetch) {
+      if (isCodezBrowserExtension()) {
         const rawUrl =
           typeof input === "string"
             ? input
@@ -749,105 +848,28 @@ export function resolveWebRemoteControlFetcher(): typeof fetch {
             : "https://zcode.z.ai",
         ).toString();
         if (resolvedUrl.startsWith("https://zcode.z.ai/api/")) {
-          const method = (init?.method ?? "GET").toUpperCase();
-          const headers = serializeHeaders(init?.headers);
-          const body = typeof init?.body === "string" ? init.body : "";
-          const result = extensionFetch
-            ? await extensionFetch({ url: resolvedUrl, method, headers, body })
-            : typeof runtimeSendMessage === "function"
-              ? await new Promise<{ status: number; body: string; error?: string } | null>(
-                  (resolve) => {
-                  let settled = false;
-                  const finish = (
-                    val: { status: number; body: string; error?: string } | null,
-                  ) => {
-                    if (settled) return;
-                    settled = true;
-                    clearTimeout(timer);
-                    resolve(val);
-                  };
-                  const timer = setTimeout(() => finish(null), 12_000);
-                    try {
-                      const maybePromise = runtimeSendMessage(
-                        {
-                          type: "codez-extension-http-fetch",
-                          url: resolvedUrl,
-                          method,
-                          headers,
-                          body,
-                        },
-                        (resp) => {
-                        if (resp && typeof resp === "object" && "status" in resp) {
-                          finish(resp as { status: number; body: string; error?: string });
-                        } else if (!maybePromise || typeof maybePromise.then !== "function") {
-                          finish(null);
-                        }
-                        },
-                      );
-                      if (maybePromise && typeof maybePromise.then === "function") {
-                        maybePromise
-                          .then((resp) => {
-                            if (resp && typeof resp === "object" && "status" in resp) {
-                            finish(resp as { status: number; body: string; error?: string });
-                          } else {
-                            finish(null);
-                            }
-                          })
-                        .catch(() => finish(null));
-                      }
-                    } catch {
-                    finish(null);
-                    }
-                  },
-                )
-              : await new Promise<{ status: number; body: string; error?: string } | null>(
-                  (resolve) => {
-                    if (typeof window.addEventListener !== "function") {
-                      resolve(null);
-                      return;
-                    }
-                    const reqId = ++httpIdSeed;
-                    const timer = setTimeout(() => {
-                      window.removeEventListener("message", onMessage);
-                      resolve(null);
-                    }, 3_000);
-                    const onMessage = (event: MessageEvent) => {
-                      if (
-                        event.source !== window ||
-                        event.data?.type !== "codez-extension-http-fetch-res" ||
-                        event.data?.id !== reqId
-                      ) {
-                        return;
-                      }
-                      clearTimeout(timer);
-                      window.removeEventListener("message", onMessage);
-                      resolve(
-                        event.data.response as { status: number; body: string; error?: string },
-                      );
-                    };
-                    window.addEventListener("message", onMessage);
-                    window.postMessage(
-                      {
-                        type: "codez-extension-http-fetch-req",
-                        id: reqId,
-                        url: resolvedUrl,
-                        method,
-                        headers,
-                        body,
-                      },
-                      "*",
-                    );
-                  },
-                );
-          if (result) {
-            if (result.error) {
-              throw new Error(result.error);
-            }
-            return new Response(result.body, {
-              status: result.status,
-              headers: { "Content-Type": "application/json" },
-            });
+          const runtime = getExtensionRuntimeApi();
+          if (typeof runtime?.sendMessage !== "function") {
+            throw new WebRemoteControlExtensionHttpBridgeError();
           }
+          const result = await requestExtensionHttp(
+            runtime,
+            {
+              type: "codez-extension-http-fetch",
+              url: resolvedUrl,
+              method: (init?.method ?? "GET").toUpperCase(),
+              headers: serializeHeaders(init?.headers),
+              body: typeof init?.body === "string" ? init.body : "",
+            },
+            init?.signal ?? undefined,
+          );
+          if (result.error || result.status === 0) {
+            throw new WebRemoteControlExtensionHttpBridgeError();
+          }
+          return new Response(result.body, {
+            status: result.status,
+            headers: { "Content-Type": "application/json" },
+          });
         }
       }
       return globalThis.fetch(input, init);
