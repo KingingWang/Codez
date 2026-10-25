@@ -65,6 +65,15 @@ function readNonEmptyString(value: unknown): string | undefined {
 }
 
 function resolveV4ToolErrorText(row: ToolCallRow): string | undefined {
+  if (
+    row.autoApprovalReview &&
+    (row.autoApprovalReview.status === "denied" ||
+      row.autoApprovalReview.status === "timedOut" ||
+      row.autoApprovalReview.status === "aborted")
+  ) {
+    const rationale = readNonEmptyString(row.autoApprovalReview.rationale);
+    if (rationale) return rationale;
+  }
   if (row.status !== "error") {
     return undefined;
   }
@@ -139,6 +148,7 @@ export function toolCallRowToLegacyNode(row: ToolCallRow): TaskChatToolCallTreeN
         toolCallId: row.toolCallId,
         toolName: row.toolName,
         v4Status: row.status,
+        ...(row.autoApprovalReview ? { autoApprovalReview: row.autoApprovalReview } : {}),
         ...(row.cuaApp ? { cuaApp: row.cuaApp } : {}),
         ...(legacyDisplay ? { display: legacyDisplay } : {}),
         // R7：运行中进度（MCP notifications/progress）供 McpToolCallBlock 头部进度条消费。

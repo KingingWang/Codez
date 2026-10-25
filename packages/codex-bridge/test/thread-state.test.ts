@@ -524,3 +524,117 @@ test("thread/settings/updated syncs approvalsReviewer so an external auto_review
   assert.equal(projected.approvalsReviewer, "auto_review");
   assert.equal(projectThreadMode(projected), "edit");
 });
+
+test("item/autoApprovalReview started, strictReviewRequired, completed, and turn completion settle state", async () => {
+  const changed: string[] = [];
+  const store = new ThreadStateStore(
+    port(() => ({})),
+    "/work",
+  );
+  store.onChange((id) => changed.push(id));
+  store.markStarted(thread());
+  await store.apply({
+    method: "turn/started",
+    params: { threadId: "t1", turn: { id: "turn-1", status: "inProgress", items: [] } },
+  });
+  const beforeRevision = store.get("t1")!.revision;
+
+  await store.apply({
+    method: "item/autoApprovalReview/started",
+    params: {
+      threadId: "t1",
+      turnId: "turn-1",
+      reviewId: "review-1",
+      targetItemId: "cmd-1",
+      startedAtMs: 1_000,
+      review: { status: "inProgress" },
+      action: { type: "command", source: "shell", command: "git pull", cwd: "/work" },
+    },
+  });
+  assert.equal(store.get("t1")!.revision, beforeRevision + 1);
+  assert.equal(
+    store.get("t1")!.autoApprovalReviews?.["turn-1"]?.["review-1"]?.status,
+    "inProgress",
+  );
+  assert.equal(
+    store.get("t1")!.autoApprovalReviews?.["turn-1"]?.["review-1"]?.actionSummary,
+    "git pull",
+  );
+
+  await store.apply({
+    method: "autoApprovalReview/strictReviewRequired",
+    params: { threadId: "t1", turnId: "turn-1", startedAtMs: 1_010 },
+  });
+  assert.equal(
+    store.get("t1")!.autoApprovalReviews?.["turn-1"]?.["review-1"]?.strictReviewRequired,
+    true,
+  );
+
+  await store.apply({
+    method: "item/autoApprovalReview/completed",
+    params: {
+      threadId: "t1",
+      turnId: "turn-1",
+      reviewId: "review-1",
+      targetItemId: "cmd-1",
+      startedAtMs: 1_000,
+      completedAtMs: 1_500,
+      decisionSource: "agent",
+      review: {
+        status: "approved",
+        riskLevel: "low",
+        userAuthorization: "high",
+        rationale: "Read-only fetch from remote",
+      },
+      action: { type: "command", source: "shell", command: "git pull", cwd: "/work" },
+    },
+  });
+  const completedEntry = store.get("t1")!.autoApprovalReviews?.["turn-1"]?.["review-1"];
+  assert.equal(completedEntry?.status, "approved");
+  assert.equal(completedEntry?.riskLevel, "low");
+  assert.equal(completedEntry?.rationale, "Read-only fetch from remote");
+  assert.equal(completedEntry?.completedAtMs, 1_500);
+
+  // 迟到的 started 通知不得将已完成的 review 回退为 inProgress。
+  const afterCompletedRevision = store.get("t1")!.revision;
+  await store.apply({
+    method: "item/autoApprovalReview/started",
+    params: {
+      threadId: "t1",
+      turnId: "turn-1",
+      reviewId: "review-1",
+      targetItemId: "cmd-1",
+      startedAtMs: 1_000,
+      review: { status: "inProgress" },
+      action: { type: "command", source: "shell", command: "git pull", cwd: "/work" },
+    },
+  });
+  assert.equal(store.get("t1")!.revision, afterCompletedRevision);
+  assert.equal(store.get("t1")!.autoApprovalReviews?.["turn-1"]?.["review-1"]?.status, "approved");
+
+  // 第二个 inProgress review 在 turn 中断时自动收敛为 aborted。
+  await store.apply({
+    method: "item/autoApprovalReview/started",
+    params: {
+      threadId: "t1",
+      turnId: "turn-1",
+      reviewId: "review-2",
+      targetItemId: null,
+      startedAtMs: 2_000,
+      review: { status: "inProgress" },
+      action: {
+        type: "networkAccess",
+        target: "https://example.com:443",
+        host: "example.com",
+        protocol: "https",
+        port: 443,
+      },
+    },
+  });
+  await store.apply({
+    method: "turn/completed",
+    params: { threadId: "t1", turn: { id: "turn-1", status: "interrupted", items: [] } },
+  });
+  assert.equal(store.get("t1")!.autoApprovalReviews?.["turn-1"]?.["review-2"]?.status, "aborted");
+  assert.ok(changed.includes("t1"));
+});
