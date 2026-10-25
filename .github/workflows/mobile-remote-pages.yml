@@ -43,7 +43,10 @@ jobs:
           packages/desktop/test/webRemoteControlManagerExternalRelay.test.ts
           packages/desktop/test/webRemoteControlPageUrl.test.ts
           packages/desktop/test/webRemoteControlTransport.test.ts
+          packages/web/test/webAuthService.test.ts
+          packages/web/test/webLoginPage.test.ts
           packages/web/test/webRemoteControlRoute.test.ts
+          packages/web/test/webRemoteControlFailureScreen.test.ts
           packages/web/test/webRemoteControlVersion.test.ts
           packages/web/test/webRemoteControlTransport.test.ts
           packages/web/test/webRemoteControlNativeSocket.test.ts
