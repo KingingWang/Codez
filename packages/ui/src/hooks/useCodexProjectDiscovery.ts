@@ -140,7 +140,11 @@ export function useCodexProjectDiscovery({
 
     const activeKey = scope.enabled ? (scope.workspaceIdentity ?? scope.workspacePath) : null;
     for (const [key, target] of nextRoots) {
-      if (previous.has(key) || key === activeKey) continue;
+      if (previous.has(key)) continue;
+      if (key === activeKey) {
+        void discover();
+        continue;
+      }
       if (projectRootInflightRef.current.has(key)) continue;
       let completed = false;
       const request = (async () => {
@@ -259,16 +263,19 @@ export function useCodexProjectDiscovery({
       void discover();
     };
     // 原因：新建项目可能复用当前已激活的 A tab；仅监听 workspacePath 变化
-    // 不会再扫描 A 的外部 CLI 历史。项目变更是显式发现边界，不缓存结果。
+    // 不会再扫描 A 的外部 CLI 历史。当挂载在 ProjectDirectoryProvider 内时，
+    // 新增 root 已由上方 nextRoots 对比精确触发（避免 RolloutSyncer/TaskIndexSyncer
+    // 广播 state:projects 时造成全量 session/list 发现风暴）；仅在无 projectDirectory
+    // 上下文时回退监听 state:projects。
     const changes = scope.services.broadcastService.onMessage((message) => {
-      if (message.channel === "state:projects") void discover();
+      if (message.channel === "state:projects" && !projectDirectory) void discover();
     });
     window.addEventListener("focus", onFocus);
     return () => {
       window.removeEventListener("focus", onFocus);
       changes.dispose();
     };
-  }, [discover, scope]);
+  }, [discover, projectDirectory, scope]);
 
   return { discover };
 }
