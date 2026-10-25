@@ -37,4 +37,27 @@ describe("连接过程页", () => {
     expect(html).toContain("Paired. Loading workspace…");
     expect(html.match(/data-step-state="done"/g)).toHaveLength(3);
   });
+
+  it.each(["zh-CN", "en-US"] as const)("%s 工作区加载仅显示轻量项目状态", (locale) => {
+    const html = render({
+      state: "waiting",
+      locale,
+      purpose: "workspace",
+      device: { name: "Alice’s MacBook", platform: "darwin" },
+    });
+
+    expect(html).toContain(locale === "zh-CN" ? "正在加载项目…" : "Loading project…");
+    expect(html).toContain('role="status"');
+    expect(html).toContain('aria-busy="true"');
+    expect(html).toContain("bg-background");
+    expect(html).toContain("text-foreground");
+    expect(html).not.toContain(
+      locale === "zh-CN" ? "正在连接 Alice’s MacBook" : "Connecting to Alice’s MacBook",
+    );
+    expect(html).not.toContain(locale === "zh-CN" ? "配对" : "pairing");
+    expect(html).not.toContain(locale === "zh-CN" ? "加密" : "encryption");
+    expect(html).not.toContain(locale === "zh-CN" ? "正在连接电脑" : "Connecting to your computer");
+    expect(html).not.toContain("data-step-state");
+    expect(html).not.toContain('aria-current="step"');
+  });
 });

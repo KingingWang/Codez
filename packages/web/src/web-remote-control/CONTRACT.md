@@ -8,4 +8,10 @@
 
 bootstrap 请求只读取响应。version guard 校验当前请求代际与版本后，同步通过 `onAccepted` 提交查看 epoch 等接受副作用；失效、释放或版本不匹配的回包不得产生该副作用。
 
+transport 的 `ensureConnectionReady({ timeoutMs, failureReason })` 统一健康复用、在途握手等待、
+后台探测与故障升级；requester 只关联响应、透传恢复原因并合并并发重试，不另建连接 owner。
+正常工作区切换不重配对；Root 继续按 bridge identity 隔离，后续加载不显示首次连接阶段。
+bridge admission 的同 identity 重试仅限同一加密会话；E2EE reset 后取消旧请求，由已有导航/
+恢复流程使用新 identity/generation 重开，迟到结果不能覆盖新导航。
+
 完整语义见 [Relay V2 spec](../../../../docs/web-remote-control/relay-v2-pairing.md)。

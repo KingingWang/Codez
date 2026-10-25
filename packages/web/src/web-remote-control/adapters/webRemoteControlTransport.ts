@@ -3,6 +3,7 @@ import type {
   WebRemoteControlTerminalTransportDiagnostic,
   WebRemoteControlTerminalTransportDiagnosticInput,
   WebRemoteControlTerminalTransportOptions,
+  WebRemoteControlConnectionEnsureOptions,
 } from "#src/web-remote-control/contracts/transport.js";
 import { createInitialPairingDeadline } from "#src/web-remote-control/adapters/initialPairingDeadline.js";
 import {
@@ -31,6 +32,8 @@ import {
   webRemoteControlV2PairState,
   type WebRemoteControlRelayV2OutgoingMessage,
 } from "@codez/shared/web-remote-relay";
+import { WebRemoteControlConnectionReadiness } from "#src/web-remote-control/adapters/connectionReadiness.js";
+import { WebRemoteControlPairedWaiters } from "#src/web-remote-control/adapters/pairedWaiters.js";
 
 export class WebRemoteControlTerminalTransport {
   private readonly WebSocketCtor: typeof globalThis.WebSocket;
@@ -54,11 +57,7 @@ export class WebRemoteControlTerminalTransport {
   private lastPairStatusAckAt = 0;
   private hiddenStartedAt?: number;
   private lastPairStatusDiagnostic?: string;
-  private pairedWaiters = new Set<{
-    resolve: () => void;
-    reject: (error: Error) => void;
-    timer: ReturnType<typeof setTimeout>;
-  }>();
+  private readonly pairedWaiters = new WebRemoteControlPairedWaiters();
   private waitingTimer?: ReturnType<typeof setTimeout>;
   private reconnectTimer?: ReturnType<typeof setTimeout>;
   private readonly initialPairingDeadline: ReturnType<typeof createInitialPairingDeadline>;
@@ -66,6 +65,7 @@ export class WebRemoteControlTerminalTransport {
   private readonly traceRelayMessages = import.meta.env.DEV;
   private readonly e2ee: TerminalE2eeController;
   private ingressChain: Promise<void> = Promise.resolve();
+  private readonly readiness: WebRemoteControlConnectionReadiness;
 
   constructor(private readonly options: WebRemoteControlTerminalTransportOptions) {
     this.WebSocketCtor = options.WebSocketCtor ?? globalThis.WebSocket;
@@ -74,7 +74,9 @@ export class WebRemoteControlTerminalTransport {
       () => {
         if (this.intentionallyClosed || this.state === "suspended") return;
         // Bug 原因：扩展静态桥不可用时会永久循环第 1 步；超时只结束尚未配对的首次连接。
-        this.enterTerminalFailure(createFailure("relay-unavailable", "relay.initialConnectionTimedOut"));
+        this.enterTerminalFailure(
+          createFailure("relay-unavailable", "relay.initialConnectionTimedOut"),
+        );
       },
     );
     this.e2ee = new TerminalE2eeController({
@@ -83,7 +85,30 @@ export class WebRemoteControlTerminalTransport {
       handshakeTimeoutMs: options.e2eeHandshakeTimeoutMs,
       sendControl: (payload) => this.sendE2eeControl(payload),
       onFailure: (error) => this.recoverFromE2eeFailure(error),
-      onReset: () => options.onE2eeReset?.(),
+      onReset: () => {
+        this.readiness.markE2eeReset();
+        options.onE2eeReset?.();
+      },
+    });
+    this.readiness = new WebRemoteControlConnectionReadiness({
+      getState: () => this.state,
+      isReady: () =>
+        !this.intentionallyClosed &&
+        this.state === "paired" &&
+        this.socket?.readyState === this.WebSocketCtor.OPEN &&
+        this.authenticated &&
+        this.e2ee.isReady() &&
+        this.staleWaitingCount === 0,
+      assertCanRecover: () => {
+        if (
+          this.intentionallyClosed ||
+          this.state === "idle" ||
+          this.state === "error" ||
+          this.state === "kicked"
+        )
+          throw new Error("Web remote control transport stopped.");
+      },
+      recoverConnection: (timeoutMs) => this.recoverConnection(timeoutMs),
     });
     this.heartbeat = new WebRemoteControlV2Heartbeat(
       () => this.sendPairStatusQuery(),
@@ -95,7 +120,6 @@ export class WebRemoteControlTerminalTransport {
       },
     );
   }
-
   start(): void {
     this.intentionallyClosed = false;
     this.wasPaired = false;
@@ -109,7 +133,6 @@ export class WebRemoteControlTerminalTransport {
     this.initialPairingDeadline.arm();
     this.connect();
   }
-
   private async handleIngressMessage(data: unknown, socket: WebSocket): Promise<void> {
     if (this.intentionallyClosed) return;
     try {
@@ -118,7 +141,6 @@ export class WebRemoteControlTerminalTransport {
       this.options.onError(error instanceof Error ? error : new Error(String(error)));
     }
   }
-
   private async connect(): Promise<void> {
     if (this.intentionallyClosed || this.state === "suspended") return;
     const generation = ++this.socketGeneration;
@@ -214,18 +236,15 @@ export class WebRemoteControlTerminalTransport {
       } else this.scheduleReconnect();
     }
   }
-
   sendPayload(payload: WebRemoteControlAppPayload): boolean {
     return this.sendPayloadResult(payload).kind === "sent";
   }
-
   measurePayloadBytes(payload: WebRemoteControlAppPayload): number {
     if (!this.e2ee.isReady()) {
       throw new Error("e2ee.notReady");
     }
     return this.e2ee.serializer.prepare(payload, Math.floor(Date.now() / 1000)).bytes;
   }
-
   sendPayloadResult(payload: WebRemoteControlAppPayload): WebRemoteControlPayloadSendResult {
     if (!this.e2ee.isReady()) {
       return { kind: "unavailable" };
@@ -245,7 +264,6 @@ export class WebRemoteControlTerminalTransport {
       ? { kind: "sent", bytes: prepared.bytes }
       : { kind: "unavailable" };
   }
-
   suspend(): void {
     if (
       this.state !== "paired" &&
@@ -268,7 +286,6 @@ export class WebRemoteControlTerminalTransport {
     this.clearWaitingTimer();
     this.setState("suspended");
   }
-
   async recoverConnection(timeoutMs = 15_000): Promise<void> {
     if (this.intentionallyClosed) throw new Error("Web remote control transport stopped.");
     this.initialPairingDeadline.arm();
@@ -298,7 +315,9 @@ export class WebRemoteControlTerminalTransport {
     this.reconnectNow();
     await this.waitForPaired(timeoutMs);
   }
-
+  ensureConnectionReady(options: WebRemoteControlConnectionEnsureOptions = {}): Promise<void> {
+    return this.readiness.ensure(options);
+  }
   recoverInBackground(): void {
     if (this.intentionallyClosed || this.state === "paired" || this.state === "kicked") {
       return;
@@ -313,7 +332,6 @@ export class WebRemoteControlTerminalTransport {
     this.initialPairingDeadline.arm();
     this.reconnectNow();
   }
-
   dispose(): void {
     this.intentionallyClosed = true;
     this.e2ee.reset();
@@ -323,6 +341,7 @@ export class WebRemoteControlTerminalTransport {
     this.clearReconnectTimer();
     this.initialPairingDeadline.complete();
     this.rejectPairedWaiters(new Error("Web remote control transport disposed."));
+    this.readiness.dispose();
     this.closeSocket();
     this.setState("idle");
   }
@@ -652,37 +671,15 @@ export class WebRemoteControlTerminalTransport {
   }
 
   private waitForPaired(timeoutMs = 15_000): Promise<void> {
-    if (this.state === "paired") {
-      return Promise.resolve();
-    }
-
-    return new Promise((resolve, reject) => {
-      const waiter = {
-        resolve,
-        reject,
-        timer: setTimeout(() => {
-          this.pairedWaiters.delete(waiter);
-          reject(new Error("Web remote control relay did not recover before timeout."));
-        }, timeoutMs),
-      };
-      this.pairedWaiters.add(waiter);
-    });
+    return this.pairedWaiters.wait(() => this.state === "paired", timeoutMs);
   }
 
   private resolvePairedWaiters(): void {
-    for (const waiter of this.pairedWaiters) {
-      clearTimeout(waiter.timer);
-      waiter.resolve();
-    }
-    this.pairedWaiters.clear();
+    this.pairedWaiters.resolveAll();
   }
 
   private rejectPairedWaiters(error: Error): void {
-    for (const waiter of this.pairedWaiters) {
-      clearTimeout(waiter.timer);
-      waiter.reject(error);
-    }
-    this.pairedWaiters.clear();
+    this.pairedWaiters.rejectAll(error);
   }
 
   private enterTerminalFailure(failure: WebRemoteControlFailure): void {
@@ -694,6 +691,7 @@ export class WebRemoteControlTerminalTransport {
     this.clearReconnectTimer();
     this.setState(failure.reason === "session-conflict" ? "kicked" : "error");
     this.rejectPairedWaiters(new Error(failure.message ?? failure.reason));
+    this.readiness.dispose(new Error(failure.message ?? failure.reason));
     this.options.onFailure(failure);
     this.closeSocket();
   }
@@ -732,6 +730,7 @@ export class WebRemoteControlTerminalTransport {
     if (state === "error" || state === "kicked") {
       this.rejectPairedWaiters(new Error(`Web remote control transport entered ${state}.`));
     }
+    this.readiness.onStateChange(state);
   }
 
   private send(message: WebRemoteControlRelayV2OutgoingMessage): boolean {

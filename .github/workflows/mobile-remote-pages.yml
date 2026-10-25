@@ -49,6 +49,10 @@ jobs:
           packages/web/test/webRemoteControlFailureScreen.test.ts
           packages/web/test/webRemoteControlVersion.test.ts
           packages/web/test/webRemoteControlTransport.test.ts
+          packages/web/test/webRemoteControlTransportReadiness.test.ts
+          packages/web/test/webRemoteControlConnectingScreen.test.ts
+          packages/web/test/webRemoteControlBridgeRecovery.test.ts
+          packages/web/test/externalRelayFrameGapRecovery.test.ts
           packages/web/test/webRemoteControlNativeSocket.test.ts
       - run: pnpm typecheck
       - name: Build encrypted mobile remote page

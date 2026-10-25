@@ -25,10 +25,12 @@ const testState = vi.hoisted(() => ({
     onRawTransportPayload?(payload: unknown): boolean;
     onSendReady?(event: { kind: "same-socket" | "reconnected-socket" }): void;
     onStateChange(state: string): void;
+    onE2eeReset?(): void;
   }>,
   failBridgeOpen: false,
   useRemoteWorkspace: false,
   recoverConnectionCalls: 0,
+  ensureConnectionReadyCalls: 0,
   transportDisposeCalls: 0,
   desktopAppVersion: undefined as string | undefined,
   deferBootstrap: false,
@@ -114,6 +116,7 @@ vi.mock("#src/web-remote-control/adapters/webRemoteControlTransport.js", async (
           onRawTransportPayload?(payload: unknown): boolean;
           onSendReady?(event: { kind: "same-socket" | "reconnected-socket" }): void;
           onStateChange(state: string): void;
+          onE2eeReset?(): void;
         },
       ) {
         testState.transportOptions.push(options);
@@ -231,6 +234,11 @@ vi.mock("#src/web-remote-control/adapters/webRemoteControlTransport.js", async (
 
       async recoverConnection(): Promise<void> {
         testState.recoverConnectionCalls += 1;
+      }
+
+      async ensureConnectionReady(): Promise<void> {
+        // 健康 transport 只等待就绪，不能把 bridge 恢复再次解释为强制配对。
+        testState.ensureConnectionReadyCalls += 1;
       }
 
       recoverInBackground() {}
@@ -355,6 +363,7 @@ describe("external relay frame gap recovery", () => {
     testState.failBridgeOpen = false;
     testState.useRemoteWorkspace = false;
     testState.recoverConnectionCalls = 0;
+    testState.ensureConnectionReadyCalls = 0;
     testState.transportDisposeCalls = 0;
     reloadMock.mockClear();
     testState.desktopAppVersion = undefined;
@@ -495,7 +504,60 @@ describe("external relay frame gap recovery", () => {
     });
   });
 
-  it("starts hard recovery when the mobile relay protocol detects an inbound rpc frame gap", async () => {
+  it("keeps the latest user navigation when an older bridge responds late", async () => {
+    setupExternalRelayGlobals();
+    await import("../src/main.js");
+    await vi.waitFor(() => expect(testState.relayProtocolOptions).toHaveLength(1));
+    const rootProps = () => renderMock.mock.calls.at(-1)![0].props.children.props.children.props;
+    expect(rootProps().initialWorkspaceLoadingFallback.props.purpose).toBe("connection");
+    const switcher = rootProps().webRemoteControlWorkspaceSwitcher;
+    testState.deferBridge = true;
+    const older = switcher.switchWorkspace("/workspace/demo", { taskId: "task-B" }).then(
+      () => "resolved",
+      () => "superseded",
+    );
+    await vi.waitFor(() => expect(testState.bridgeReplies).toHaveLength(1));
+    const latest = switcher.switchWorkspace("/workspace/demo", { taskId: "task-C" });
+    await vi.waitFor(() => expect(testState.bridgeReplies).toHaveLength(2));
+    testState.bridgeReplies[1]!();
+    await latest;
+    testState.bridgeReplies[0]!();
+    expect(await older).toBe("superseded");
+    expect(rootProps().initialTaskId).toBe("task-C");
+    expect(rootProps().initialWorkspaceLoadingFallback.props.purpose).toBe("workspace");
+    expect(testState.recoverConnectionCalls).toBe(0);
+  });
+
+  it("lets user navigation own the new bridge identity after an E2EE reset", async () => {
+    setupExternalRelayGlobals();
+    await import("../src/main.js");
+    await vi.waitFor(() => expect(testState.relayProtocolOptions).toHaveLength(1));
+    const rootProps = () => renderMock.mock.calls.at(-1)![0].props.children.props.children.props;
+    testState.deferBridge = true;
+    const navigation = rootProps()
+      .webRemoteControlWorkspaceSwitcher.switchWorkspace("/workspace/demo", { taskId: "task-B" })
+      .then(
+        () => "resolved",
+        () => "superseded",
+      );
+    await vi.waitFor(() => expect(testState.bridgeReplies).toHaveLength(1));
+    const transport = testState.transportOptions[0]!;
+    transport.onE2eeReset?.();
+    transport.onStateChange("securing");
+    transport.onStateChange("paired");
+    await vi.waitFor(() => expect(testState.bridgeReplies).toHaveLength(2));
+    testState.bridgeReplies[1]!();
+    expect(await navigation).toBe("resolved");
+    testState.bridgeReplies[0]!();
+    expect(rootProps().initialTaskId).toBe("task-B");
+    const opens = testState.sentPayloads.filter(
+      (payload) => payload.codez_type === "workspace-bridge-open",
+    );
+    expect(opens.at(-1)!.bridgeSessionId).not.toBe(opens.at(-2)!.bridgeSessionId);
+    expect(opens.at(-1)!.taskId).toBe("task-B");
+  });
+
+  it("rebuilds only the bridge when a healthy mobile transport detects an inbound rpc frame gap", async () => {
     setupExternalRelayGlobals();
 
     await import("../src/main.js");
@@ -509,8 +571,9 @@ describe("external relay frame gap recovery", () => {
     testState.relayProtocolAdapters[0]!.markDegraded("remote.rpcFrame.physicalGap");
 
     await vi.waitFor(() => {
-      expect(testState.recoverConnectionCalls).toBe(1);
+      expect(testState.ensureConnectionReadyCalls).toBeGreaterThan(1);
     });
+    expect(testState.recoverConnectionCalls).toBe(0);
     await vi.waitFor(() => {
       expect(
         testState.sentPayloads.filter((payload) => payload.codez_type === "workspace-bridge-open")
@@ -629,6 +692,7 @@ describe("external relay frame gap recovery", () => {
       (payload) => payload.codez_type === "bootstrap-request",
     ).length;
     const initialRenderCount = renderMock.mock.calls.length;
+    const initialEnsureCount = testState.ensureConnectionReadyCalls;
 
     lifecycle.setVisibilityState("hidden");
     lifecycle.dispatchDocumentEvent("visibilitychange");
@@ -636,8 +700,9 @@ describe("external relay frame gap recovery", () => {
     lifecycle.dispatchDocumentEvent("visibilitychange");
 
     await vi.waitFor(() => {
-      expect(testState.recoverConnectionCalls).toBe(1);
+      expect(testState.ensureConnectionReadyCalls).toBe(initialEnsureCount + 1);
     });
+    expect(testState.recoverConnectionCalls).toBe(0);
     await new Promise((resolve) => setTimeout(resolve, 20));
 
     expect(
@@ -665,6 +730,7 @@ describe("external relay frame gap recovery", () => {
     const initialBootstrapRequestCount = testState.sentPayloads.filter(
       (payload) => payload.codez_type === "bootstrap-request",
     ).length;
+    const initialEnsureCount = testState.ensureConnectionReadyCalls;
 
     lifecycle.setVisibilityState("hidden");
     lifecycle.dispatchDocumentEvent("visibilitychange");
@@ -673,8 +739,9 @@ describe("external relay frame gap recovery", () => {
     lifecycle.dispatchDocumentEvent("visibilitychange");
 
     await vi.waitFor(() => {
-      expect(testState.recoverConnectionCalls).toBe(1);
+      expect(testState.ensureConnectionReadyCalls).toBe(initialEnsureCount + 1);
     });
+    expect(testState.recoverConnectionCalls).toBe(0);
     expect(
       testState.sentPayloads.filter((payload) => payload.codez_type === "bootstrap-request"),
     ).toHaveLength(initialBootstrapRequestCount);
