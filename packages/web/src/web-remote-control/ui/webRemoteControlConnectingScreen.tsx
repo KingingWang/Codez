@@ -12,6 +12,7 @@ export interface WebRemoteControlConnectingDevice {
 
 const copyByLocale = {
   "zh-CN": {
+    loadingWorkspace: "正在加载项目…",
     connectingTo: (name: string) => `正在连接 ${name}`,
     connectingFallback: "正在连接电脑",
     steps: ["连接中转服务", "设备鉴权", "等待桌面端配对", "同步工作区"],
@@ -29,6 +30,7 @@ const copyByLocale = {
     suspendedDescription: "回到前台后会自动恢复连接。",
   },
   "en-US": {
+    loadingWorkspace: "Loading project…",
     connectingTo: (name: string) => `Connecting to ${name}`,
     connectingFallback: "Connecting to your computer",
     steps: [
@@ -87,12 +89,37 @@ export function WebRemoteControlLoadingScreen({
   state,
   locale,
   device,
+  purpose = "connection",
 }: {
   state: WebRemoteControlTerminalTransportState;
   locale: WebRemoteControlScreenLocale;
   device?: WebRemoteControlConnectingDevice;
+  purpose?: "connection" | "workspace";
 }) {
   const copy = copyByLocale[locale];
+  // 项目切换复用已配对的加密 transport，只是在 Root 重建后等待目标 workspace bridge；
+  // 不能把首次连接的 relay/配对/E2EE 流程重新呈现给用户。
+  if (purpose === "workspace") {
+    return (
+      <div className="flex h-dvh min-h-dvh w-screen flex-col bg-background px-4 pt-[calc(env(safe-area-inset-top)+12px)] text-foreground">
+        <div className="flex h-10 items-center">
+          <WebRemoteControlBrand />
+        </div>
+        <div
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          className="flex flex-1 flex-col items-center justify-center pb-24 text-center"
+        >
+          <p className="flex items-center gap-2 text-ui-sm text-foreground-subtle">
+            <LoaderCircleIcon aria-hidden="true" className="size-3.5 shrink-0 animate-spin" />
+            {copy.loadingWorkspace}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const stage = resolveStage(state, copy);
   const stepIndex = STEP_INDEX[state];
   const name = device?.name?.trim();

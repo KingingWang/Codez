@@ -106,3 +106,12 @@ export interface WebRemoteControlTerminalTransportOptions {
   onE2eeReset?(): void;
   reloadPage(): void;
 }
+
+export type WebRemoteControlConnectionEnsureFailureReason =
+  | "relay-unavailable"
+  | "desktop-bootstrap-timeout";
+
+export interface WebRemoteControlConnectionEnsureOptions {
+  timeoutMs?: number;
+  failureReason?: WebRemoteControlConnectionEnsureFailureReason;
+}

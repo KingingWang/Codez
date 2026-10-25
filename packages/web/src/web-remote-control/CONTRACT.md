@@ -17,5 +17,10 @@ bootstrap 请求只读取响应。version guard 校验当前请求代际与版�
 每个 bridge 的 RPC client 受 acknowledged adapter 的生命周期信号约束。degraded/dispose
 终结在途及尚未初始化的调用，迟到回包无效；同 bridge 的挂起、短断线和 replay 不撤销信号。
 未提交草稿由既有 Composer 失败处理恢复，已登记命令继续由 query/snapshot 对账。
+transport 的 `ensureConnectionReady({ timeoutMs, failureReason })` 统一健康复用、在途握手等待、
+后台探测与故障升级；requester 只关联响应、透传恢复原因并合并并发重试，不另建连接 owner。
+正常工作区切换不重配对；Root 继续按 bridge identity 隔离，后续加载不显示首次连接阶段。
+bridge admission 的同 identity 重试仅限同一加密会话；E2EE reset 后取消旧请求，由已有导航/
+恢复流程使用新 identity/generation 重开，迟到结果不能覆盖新导航。
 
 完整语义见 [Relay V2 spec](../../../../docs/web-remote-control/relay-v2-pairing.md)。
