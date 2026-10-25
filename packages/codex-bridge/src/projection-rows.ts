@@ -37,6 +37,15 @@ import {
   turnSubagentSignature,
   type SubagentFact,
 } from "./subagent-projection.js";
+import {
+  buildUnanchoredAutoApprovalMarkerRow,
+  canAnchorAutoApprovalToToolItem,
+  decorateToolRowWithAutoApproval,
+  selectAnchoredAutoApprovalForItem,
+  turnAutoApprovalSignature,
+  type NativeAutoApprovalReviewEntry,
+  type TurnAutoApprovalReviewsMap,
+} from "./auto-approval-review.js";
 import { codexTurnSchema } from "./codex-types.js";
 
 /**
@@ -52,6 +61,7 @@ const settledTurnRowsCache = new WeakMap<
     items: CodexTurn["items"];
     itemsLength: number;
     subagentSignature: string;
+    autoApprovalSignature: string;
     baseRowId: number;
     rows: ConversationRow[];
   }
@@ -366,9 +376,11 @@ function projectSingleTurnRows(
   threadCreatedAt: number,
   turnInteractions: readonly PendingInteraction[],
   turnAnchors: ReadonlyMap<string, readonly SubagentFact[]> | undefined,
+  turnAutoApprovalReviews: Readonly<Record<string, NativeAutoApprovalReviewEntry>> | undefined,
   baseRowId: number,
 ): ConversationRow[] {
   const subagentSignature = turnSubagentSignature(turnAnchors);
+  const autoApprovalSignature = turnAutoApprovalSignature(turnAutoApprovalReviews);
   const canCache = turn.status !== "inProgress" && turnInteractions.length === 0;
   if (canCache) {
     const cached = settledTurnRowsCache.get(turn);
@@ -377,7 +389,8 @@ function projectSingleTurnRows(
       cached.threadCreatedAt === threadCreatedAt &&
       cached.items === turn.items &&
       cached.itemsLength === turn.items.length &&
-      cached.subagentSignature === subagentSignature
+      cached.subagentSignature === subagentSignature &&
+      cached.autoApprovalSignature === autoApprovalSignature
     ) {
       if (cached.baseRowId === baseRowId) return cached.rows;
       const rebased = cached.rows.map((row, index) => ({
@@ -404,6 +417,11 @@ function projectSingleTurnRows(
   };
   const source = turn.items.filter(isCodexKnownItem).find((item) => item.type === "userMessage");
   const entityIds = new Set<string>();
+  const visibleItemIds = new Set<string>();
+  for (const item of turn.items) {
+    if (isCodexKnownItem(item) && isHiddenContinuationUserMessage(item)) continue;
+    visibleItemIds.add(item.id);
+  }
   turnRows.push(
     assertRowBudget(
       conversationRowSchema.parse({
@@ -438,23 +456,26 @@ function projectSingleTurnRows(
     if (isCodexKnownItem(item) && isHiddenContinuationUserMessage(item)) {
       continue;
     }
-    turnRows.push(
-      assertRowBudget(
-        conversationRowSchema.parse(
-          itemRow(
-            item,
-            turn,
-            {
-              ...base,
-              rowId: baseRowId + turnRows.length,
-              entityId: itemEntityId(turn.id, item.id),
-            },
-            turnInteractions,
-            itemIndex === turn.items.length - 1,
-          ),
-        ),
-      ),
+    const rawProjectedRow = itemRow(
+      item,
+      turn,
+      {
+        ...base,
+        rowId: baseRowId + turnRows.length,
+        entityId: itemEntityId(turn.id, item.id),
+      },
+      turnInteractions,
+      itemIndex === turn.items.length - 1,
     );
+    const anchoredReview =
+      rawProjectedRow.kind === "toolCall"
+        ? selectAnchoredAutoApprovalForItem(item.id, turnAutoApprovalReviews, visibleItemIds)
+        : undefined;
+    const decoratedRow =
+      rawProjectedRow.kind === "toolCall"
+        ? decorateToolRowWithAutoApproval(rawProjectedRow, anchoredReview)
+        : rawProjectedRow;
+    turnRows.push(assertRowBudget(conversationRowSchema.parse(decoratedRow)));
     // subagent 行紧跟锚点 item（spawn 优先）：UI 的配对要求同 turnId + parentToolCallId，
     // 配对成功后该行不单独渲染，只把「打开子会话」入口挂到 agent 卡片上。
     for (const fact of turnAnchors?.get(item.id) ?? []) {
@@ -470,6 +491,48 @@ function projectSingleTurnRows(
         ),
       );
     }
+    if (turnAutoApprovalReviews) {
+      for (const reviewEntry of Object.values(turnAutoApprovalReviews)
+        .filter(
+          (entry) =>
+            entry.targetItemId === item.id &&
+            !canAnchorAutoApprovalToToolItem(entry, visibleItemIds),
+        )
+        .toSorted((a, b) => a.ordinal - b.ordinal)) {
+        turnRows.push(
+          assertRowBudget(
+            conversationRowSchema.parse(
+              buildUnanchoredAutoApprovalMarkerRow(reviewEntry, {
+                ...base,
+                rowId: baseRowId + turnRows.length,
+                entityId: `codex:turn:${encodeURIComponent(turn.id)}:auto-review:${encodeURIComponent(reviewEntry.reviewId)}`,
+              }),
+            ),
+          ),
+        );
+      }
+    }
+  }
+  if (turnAutoApprovalReviews) {
+    for (const reviewEntry of Object.values(turnAutoApprovalReviews)
+      .filter(
+        (entry) =>
+          (!entry.targetItemId || !visibleItemIds.has(entry.targetItemId)) &&
+          !canAnchorAutoApprovalToToolItem(entry, visibleItemIds),
+      )
+      .toSorted((a, b) => a.ordinal - b.ordinal)) {
+      turnRows.push(
+        assertRowBudget(
+          conversationRowSchema.parse(
+            buildUnanchoredAutoApprovalMarkerRow(reviewEntry, {
+              ...base,
+              rowId: baseRowId + turnRows.length,
+              entityId: `codex:turn:${encodeURIComponent(turn.id)}:auto-review:${encodeURIComponent(reviewEntry.reviewId)}`,
+            }),
+          ),
+        ),
+      );
+    }
   }
   if (canCache) {
     settledTurnRowsCache.set(turn, {
@@ -477,6 +540,7 @@ function projectSingleTurnRows(
       items: turn.items,
       itemsLength: turn.items.length,
       subagentSignature,
+      autoApprovalSignature,
       baseRowId,
       rows: turnRows,
     });
@@ -493,6 +557,7 @@ export function projectRows(
   interactions: readonly PendingInteraction[] = [],
   /** 辅助对话 child 的继承 turn：整段跳过，不进 rows（spec: codex-selection-side-chat）。 */
   hiddenTurnIds?: ReadonlySet<string>,
+  autoApprovalReviews?: TurnAutoApprovalReviewsMap,
 ): ConversationRow[] {
   const rows: ConversationRow[] = [];
   const turnIds = new Set<string>();
@@ -517,6 +582,7 @@ export function projectRows(
       thread.createdAt,
       turnInteractions,
       subagentAnchors.get(turn.id),
+      autoApprovalReviews?.[turn.id],
       rows.length,
     );
     for (const row of turnRows) {

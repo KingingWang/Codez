@@ -1,4 +1,5 @@
 import type { NativeTurnUsageAccumulator } from "./bridge-snapshot-usage.js";
+import type { TurnAutoApprovalReviewsMap } from "./auto-approval-review.js";
 import type { JsonObject } from "./json.js";
 import type { NativeRetryState } from "./native-retry-status.js";
 import { CodexRpcError } from "./rpc-errors.js";
@@ -37,6 +38,8 @@ export interface ThreadProjectionState {
   sideChat?: SelectionSideChatBoundary;
   /** 按 turnId 记录的单轮原生 tokenUsage 累计快照，用于投影每轮 turnUsage。 */
   turnTokenUsage?: Record<string, NativeTurnUsageAccumulator>;
+  /** 按 turnId -> reviewId 记录的 Codex Guardian 自动审批运行态投影事实。 */
+  autoApprovalReviews?: TurnAutoApprovalReviewsMap;
   /** 原生 Codex 线程目标（thread/goal/get | thread/goal/set | thread/goal/updated）。 */
   goal?: JsonObject | null;
 }
