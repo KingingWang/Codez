@@ -116,3 +116,13 @@ observed non-active stops the status-panel timer without waiting for parent-side
 facts; a re-driven child (`turn/started`) becomes running again, matching native
 resume semantics. Child lifecycle events touch the parent session so
 re-projection is immediate. Unobserved children keep the parent-side fact.
+
+Streaming item deltas and snapshot projections use bounded, epoch/revision-scoped
+incremental indexes (`ThreadProjectionState` turn/item index, settled-turn subagent
+facts, in-flight snapshot coalescing, and pre-measured logical wire encoding) so
+live delta cost scales with the active turn rather than total historical turns and
+concurrent subscribers share one logical projection/encoding pass. Attachment blob
+integrity verification caches validated `(workspace, id, dev, ino, mtimeMs, size, checksum)`
+identities across paginated reads while keeping metadata/ownership checks on every
+call. `v4/codex/conversation/historyRuns` and `session/subagents` cache validated
+per-turn and per-revision projections with bounded child-list failure backoff.

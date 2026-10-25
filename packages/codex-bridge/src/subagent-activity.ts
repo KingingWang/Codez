@@ -1,7 +1,7 @@
 import type { CodexRpcPort } from "./contract.js";
 import { object, type JsonObject } from "./json.js";
 import type { CodexThread } from "./codex-types.js";
-import { listChildThreads } from "./child-thread-list.js";
+import { childThreadListBackoff, listChildThreads } from "./child-thread-list.js";
 
 /**
  * 子线程活性跟踪（specs/codex-desktop-subagent-drilldown.md「running 收敛」）。
@@ -149,6 +149,10 @@ export class SubagentActivitySeedScheduler {
           !this.seeded.has(childId),
       );
     if (pending.length === 0 || this.attempts.has(parentId)) return;
+    // 失败退避：thread/list 连续失败时冷却窗口内不再重发种子查询（账本见 child-thread-list.ts）。
+    // 原因：父快照每次构建都会调度一次种子，原生持续报错时会变成每帧一轮分页扫描的失败风暴。
+    // 冷却期内 pending 的 child 保持「未种子」，冷却过期后的下一次父快照构建自然恢复重试。
+    if (childThreadListBackoff(this.deps.rpc, parentId)) return;
     const attempt = (async () => {
       try {
         const children = await listChildThreads(this.deps.rpc, parentId);

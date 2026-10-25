@@ -74,8 +74,10 @@ function hasBinaryBytes(buffer: Buffer): boolean {
 export class AttachmentStore {
   private readonly files: AttachmentFiles;
   private readonly uploads: AttachmentUploads;
+  /** 写操作串行队列尾；只读操作不进队列，只受总在途上限约束。 */
   private tail: Promise<unknown> = Promise.resolve();
-  private queued = 0;
+  /** 全部在途操作（含排队中的写）；close() 必须等它们结算后再释放句柄与缓存。 */
+  private readonly pending = new Set<Promise<unknown>>();
   private closed = false;
   private closing?: Promise<void>;
   private readonly timer: ReturnType<typeof setInterval>;
@@ -84,23 +86,52 @@ export class AttachmentStore {
     this.files = new AttachmentFiles(options.cwd, options.root);
     this.uploads = new AttachmentUploads(this.files, options.now ?? Date.now);
     this.timer = setInterval(() => {
-      if (!this.closed && !this.queued)
+      if (!this.closed && !this.pending.size)
         void this.serial(() => this.uploads.prune()).catch(() => {});
     }, 30_000);
     this.timer.unref();
   }
 
+  /** 完整 SHA-256 校验次数；分页预览命中缓存时不再增长，供诊断与测试精确断言。 */
+  get integrityVerificationCount(): number {
+    return this.files.integrityVerificationCount;
+  }
+
+  /** 统一 admission：closed 与总在途上限对读写一致生效，并同步拒绝以保持可预测的失败。 */
+  private admit(): void {
+    if (this.closed) throw attachmentFault("closed");
+    if (this.pending.size >= MAX_OPERATIONS) throw attachmentFault("operationLimit");
+  }
+
+  /** 写操作（begin/chunk/commit/abort/prune 与派生落盘）保持串行互斥。 */
   private serial<T>(operation: () => Promise<T>): Promise<T> {
-    if (this.closed) return Promise.reject(attachmentFault("closed"));
-    if (this.queued >= MAX_OPERATIONS) return Promise.reject(attachmentFault("operationLimit"));
-    this.queued++;
+    try {
+      this.admit();
+    } catch (error) {
+      return Promise.reject(error as Error);
+    }
     const result = this.tail.then(operation);
+    this.pending.add(result);
     this.tail = result
       .catch(() => {})
       .finally(() => {
-        this.queued--;
+        this.pending.delete(result);
       });
     return result;
+  }
+
+  /** 只读操作（预览/share 读取、stat、resolve、native 反查）通过 admission 后并发执行。 */
+  private concurrent<T>(operation: () => Promise<T>): Promise<T> {
+    try {
+      this.admit();
+    } catch (error) {
+      return Promise.reject(error as Error);
+    }
+    const result = operation();
+    this.pending.add(result);
+    return result.finally(() => {
+      this.pending.delete(result);
+    });
   }
 
   async handle(method: string, params: unknown): Promise<unknown> {
@@ -150,31 +181,20 @@ export class AttachmentStore {
           method === V4_METHODS.attachmentRead
             ? v4AttachmentReadParamsSchema.parse(params)
             : v4ConversationAttachmentReadParamsSchema.parse(params);
-        return this.serial(async () => {
-          const resolved = await this.authorized({ method, ...value });
+        // 分页预览是只读热路径：通过并发 admission 后并行执行，不再排在写队列后面。
+        return this.concurrent(async () => {
+          const { resolved, bytes } = await this.readAuthorized(
+            { method, ...value },
+            value.offset,
+            value.limit,
+          );
+          // media gate 只决定「已授权且已校验完整」的字节能否作为预览返回；
+          // 归属、文件身份与完整性都在 readSlice 内部先于切片完成。
           if (
             method === V4_METHODS.attachmentRead &&
             !/^(image\/|video\/|application\/pdf$)/.test(resolved.mime)
           )
             throw attachmentFault("previewNotMedia");
-          if (value.offset > resolved.bytes) throw attachmentFault("previewRangeInvalid");
-          const file = await openAttachmentFile(resolved.path, LIMITS.attachmentPreviewMaxBytes);
-          const bytes = Buffer.alloc(Math.min(value.limit, resolved.bytes - value.offset));
-          try {
-            let received = 0;
-            while (received < bytes.length) {
-              const { bytesRead } = await file.read(
-                bytes,
-                received,
-                bytes.length - received,
-                value.offset + received,
-              );
-              if (!bytesRead) throw attachmentFault("lengthMismatch");
-              received += bytesRead;
-            }
-          } finally {
-            await file.close();
-          }
           const end = value.offset + bytes.length;
           const result = {
             dataBase64: bytes.toString("base64"),
@@ -189,8 +209,8 @@ export class AttachmentStore {
       }
       case V4_METHODS.conversationAttachmentStat: {
         const value = v4ConversationAttachmentStatParamsSchema.parse(params);
-        return this.serial(async () => {
-          const resolved = await this.authorized({ method, ...value });
+        return this.concurrent(async () => {
+          const resolved = await this.statAuthorized({ method, ...value });
           return v4ConversationAttachmentStatResultSchema.parse({
             mediaType: resolved.mime,
             totalBytes: resolved.bytes,
@@ -204,7 +224,7 @@ export class AttachmentStore {
 
   /** Ownership only, NOT row authorization. Main must gate previews against authoritative rows. */
   resolve(ref: string, sessionId: string): Promise<ResolvedAttachment> {
-    return this.serial(() => this.files.resolve(ref, sessionId));
+    return this.concurrent(() => this.files.resolve(ref, sessionId));
   }
 
   /** Restore persisted metadata from a native path; main still owns projection/row authorization.
@@ -215,13 +235,15 @@ export class AttachmentStore {
     sessionId: string,
     inlineChecksum?: string,
   ): Promise<AttachmentRef | undefined> {
-    return this.serial(() => this.files.findNativeAttachment(path, sessionId, inlineChecksum));
+    return this.concurrent(() => this.files.findNativeAttachment(path, sessionId, inlineChecksum));
   }
 
   /** Host-only: recover/import a bounded authoritative native userMessage image, never client URLs.
    * Unmatched images persist as session-owned derived previews; main must still authorize the row.
    */
   findNativeImageAttachment(url: string, sessionId: string): Promise<AttachmentRef | undefined> {
+    // 反查失败可回落到派生落盘（写操作），必须与 begin/chunk/commit 保持串行互斥，
+    // 否则同一原生图片的并发导入会重复发布 blob。
     return this.serial(() => this.files.findNativeImageAttachment(url, sessionId));
   }
 
@@ -325,10 +347,20 @@ export class AttachmentStore {
   close(): Promise<void> {
     this.closed = true;
     clearInterval(this.timer);
-    return (this.closing ??= this.tail.then(() => this.uploads.close()));
+    return (this.closing ??= this.drain().then(() => {
+      // 缓存生命周期与 store 绑定；close 之后不得留下可被复用的「已验证」结论。
+      this.files.clearCaches();
+      return this.uploads.close();
+    }));
   }
 
-  private async authorized(query: AttachmentReadAuthorization): Promise<ResolvedAttachment> {
+  /** 等待全部在途操作结算；closed 之后 admit 直接拒绝，因此不会有新操作加入。 */
+  private async drain(): Promise<void> {
+    while (this.pending.size) await Promise.allSettled(this.pending);
+  }
+
+  /** 每个请求都独立通过 main 的当前行授权；授权结果不缓存、不跨 session 复用。 */
+  private async authorize(query: AttachmentReadAuthorization): Promise<void> {
     const denied =
       query.method === V4_METHODS.conversationAttachmentStat
         ? "shareStatNotAuthorized"
@@ -337,12 +369,27 @@ export class AttachmentStore {
           : "previewRefNotAuthorized";
     if (!this.options.authorizeRead || (await this.options.authorizeRead(query)) !== true)
       throw attachmentFault(denied);
+  }
+
+  private async statAuthorized(query: AttachmentReadAuthorization): Promise<ResolvedAttachment> {
+    await this.authorize(query);
     try {
-      return await this.files.resolve(
-        query.ref,
-        query.sessionId,
-        query.method === V4_METHODS.conversationAttachmentStat,
-      );
+      return await this.files.resolve(query.ref, query.sessionId, true);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT")
+        throw attachmentFault("shareStatNotFound");
+      throw error;
+    }
+  }
+
+  private async readAuthorized(
+    query: AttachmentReadAuthorization,
+    offset: number,
+    limit: number,
+  ): Promise<{ resolved: ResolvedAttachment; bytes: Buffer }> {
+    await this.authorize(query);
+    try {
+      return await this.files.readSlice(query.ref, query.sessionId, offset, limit);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT")
         throw attachmentFault("shareStatNotFound");

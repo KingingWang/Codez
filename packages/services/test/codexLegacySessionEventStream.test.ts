@@ -115,6 +115,173 @@ async function waitFor(condition: () => boolean, attempts = 100): Promise<void> 
   assert.fail("condition not met within attempts");
 }
 
+/** 与 codezAgentService.ts 的 CODEX_LEGACY_MAX_STAGED_WIRES 同值：ACK 前暂存帧数上限。 */
+const STAGED_WIRE_LIMIT = 1_024;
+
+function stubServiceOptions() {
+  return {
+    presentationSurface: "desktop" as const,
+    modelSelectionReadinessSource: {
+      async getView() {
+        throw new Error("legacy provider unavailable");
+      },
+    },
+    accountProviderConfigSource: {
+      async read() {
+        throw new Error("legacy account unavailable");
+      },
+      onDidChange() {
+        return () => {};
+      },
+    },
+  };
+}
+
+test("codex legacy mirror bounds pre-ACK staged wires and resubscribes after overflow", async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "codez-codex-staged-"));
+  setDataBaseDir(dir);
+  const previousRuntime = process.env.CODEZ_DESKTOP_RUNTIME;
+  const previousCommand = process.env.CODEZ_AGENT_SERVER_COMMAND;
+  process.env.CODEZ_DESKTOP_RUNTIME = "codex";
+  delete process.env.CODEZ_AGENT_SERVER_COMMAND;
+  t.after(() => {
+    if (previousRuntime === undefined) delete process.env.CODEZ_DESKTOP_RUNTIME;
+    else process.env.CODEZ_DESKTOP_RUNTIME = previousRuntime;
+    if (previousCommand !== undefined) process.env.CODEZ_AGENT_SERVER_COMMAND = previousCommand;
+  });
+
+  const sent: Array<{ method: string; params: unknown }> = [];
+  // subscribe 的 ACK 被测试握住：模拟 bridge 在订阅在途期间连发大量帧的真实时序。
+  const heldSubscribeIds: Array<number | string> = [];
+  const messages = new Emitter<CodezProtocolMessage>();
+  const closes = new Emitter<{ reason?: string }>();
+  const notify = (message: CodezProtocolMessage) => messages.fire(message);
+  const client = new CodezProtocolClient({
+    kind: "memory",
+    onMessage: messages.event,
+    onClose: closes.event,
+    async send(message) {
+      if (!("id" in message && "method" in message)) return;
+      sent.push({ method: message.method, params: message.params });
+      if (message.method === "v4/conversation/subscribe") {
+        heldSubscribeIds.push(message.id);
+        return;
+      }
+      messages.fire({ id: message.id, result: {} });
+    },
+    dispose() {},
+  });
+  t.mock.method(CodezAgentProcessManager.prototype, "getClient", async () => client);
+
+  const ackSubscribe = (subscriptionId: string): void => {
+    const id = heldSubscribeIds.shift();
+    assert.notEqual(id, undefined, "expected a held v4/conversation/subscribe request");
+    notify({
+      id,
+      result: { ack: { subscriptionId, mode: "snapshot", logEpoch: "e1" } },
+    } as CodezProtocolMessage);
+  };
+
+  const service = createCodezAgentService(stubServiceOptions());
+  const events: CodezAgentServiceEvent[] = [];
+  const workspace = { workspacePath: dir, workspaceIdentity: "remote-staged" };
+  try {
+    const subscription = service.onDynamicSessionEvent({
+      ...workspace,
+      sessionId: SESSION_ID,
+      deliveryKind: "desktop-continuous",
+    })((event) => events.push(event));
+    await waitFor(() => sent.some((message) => message.method === "v4/conversation/subscribe"));
+
+    // ACK 前灌入超过上限的帧：必须有界丢弃，不能让暂存区无界增长。
+    const overflowSnapshot = makeSnapshot(
+      [
+        {
+          rowId: 1,
+          turnId: "t-overflow",
+          createdAt: 1700000000,
+          createdAtSeq: 1,
+          kind: "turnHeader",
+          origin: "userInput",
+          state: "running",
+          startedAt: 1700000000,
+        },
+      ],
+      "running",
+    );
+    for (let ordinal = 1; ordinal <= STAGED_WIRE_LIMIT + 1; ordinal += 1) {
+      notify({
+        method: "v4/conversation/frame",
+        params: wireFrame("sub-stale", ordinal, overflowSnapshot),
+      } as CodezProtocolMessage);
+    }
+    assert.equal(events.length, 0, "ACK 前暂存的帧不得直接投递给 legacy 事件流");
+
+    ackSubscribe("sub-1");
+    // 越界后本地已缺帧：ACK 到达即退订当前订阅并重新 subscribe，用最新全量快照恢复。
+    await waitFor(() => sent.some((message) => message.method === "v4/conversation/unsubscribe"));
+    await waitFor(
+      () => sent.filter((message) => message.method === "v4/conversation/subscribe").length >= 2,
+    );
+    assert.equal(events.length, 0, "越界暂存帧必须整批作废，不能被回放成 legacy 事件");
+
+    ackSubscribe("sub-2");
+    const recoveryRows = [
+      {
+        rowId: 1,
+        turnId: "t-recovered",
+        createdAt: 1700000000,
+        createdAtSeq: 1,
+        kind: "userInput",
+        text: "恢复后的输入",
+        origin: "realUser",
+      },
+      {
+        rowId: 2,
+        turnId: "t-recovered",
+        createdAt: 1700000000,
+        createdAtSeq: 2,
+        kind: "turnHeader",
+        origin: "userInput",
+        state: "running",
+        startedAt: 1700000000,
+      },
+      {
+        rowId: 3,
+        turnId: "t-recovered",
+        entityId: "m-recovered",
+        createdAt: 1700000000,
+        createdAtSeq: 3,
+        kind: "assistantText",
+        text: "恢复后的回复",
+        state: "streaming",
+      },
+    ];
+    notify({
+      method: "v4/conversation/frame",
+      params: wireFrame("sub-2", 1, makeSnapshot(recoveryRows, "running"), "initial"),
+    } as CodezProtocolMessage);
+    await waitFor(() => events.length >= 2);
+    assert.ok(
+      events.every(
+        (event) => event.type === "session.event" && event.event.turnId !== "t-overflow",
+      ),
+      "被丢弃的越界帧永远不能出现在恢复后的事件流里",
+    );
+    const first = events[0];
+    assert.ok(first && first.type === "session.event");
+    assert.equal(first.event.turnId, "t-recovered");
+
+    subscription.dispose();
+    await waitFor(() => sent.some((message) => message.method === "v4/conversation/unsubscribe"));
+  } finally {
+    await service.disposeAllAndWait();
+    messages.dispose();
+    closes.dispose();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("codex mode streams legacy session events from v4 frames (bot reply source)", async (t) => {
   const dir = await mkdtemp(join(tmpdir(), "codez-codex-stream-"));
   setDataBaseDir(dir);

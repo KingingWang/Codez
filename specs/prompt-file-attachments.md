@@ -31,7 +31,11 @@ workspace.
   source kind. The internal put input accepts the empty Base64 string for an
   empty file; no new wire command is introduced.
 - On desktop, the Codex bridge owns the session-scoped committed blob and
-  validates its manifest, checksum, and session on each use. For a deferred
+  validates its manifest, session ownership, and file identity (`dev`, `ino`,
+  `mtimeMs`, `size`, `nlink === 1`, non-symlink) on each use, caching verified
+  immutable blob SHA-256 digests keyed by that file identity so paginated
+  preview reads only read the requested byte range while any blob replacement
+  or mutation forces re-verification. For a deferred
   file it gives native Codex a trusted path to that blob as a text file
   reference, not raw Base64 or a client-supplied path. For a complete small
   text file it provides the full UTF-8 text in a bounded, self-delimiting

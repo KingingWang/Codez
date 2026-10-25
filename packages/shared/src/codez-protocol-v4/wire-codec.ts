@@ -18,6 +18,38 @@ function vqlByteLength(value: number): number {
   return bytes;
 }
 
+// 三层承载的固定信封开销只依赖协议常量（EventFire 类型码、最坏 event id 位数、
+// relay 外层字段名与 transportEnvelopeIdMaxChars），与具体帧内容无关。
+// 原因：measureTopicNotificationEnvelopeBytes 在分片预算二分与逐帧计量里被高频调用，
+// 每次都 JSON.stringify + TextEncoder 一遍 256 字符 id 的 relay 模板属于纯重复开销。
+const MAX_EVENT_ID_JSON_BYTES = String(Number.MAX_SAFE_INTEGER).length;
+// @codez/rpc serialization：Array tag+length+[EventFire,id]，再加 Object tag+length+JSON。
+// ChannelClient 的 id 无 31-bit wrap；超过 signed int 后 serialize 会走 Object JSON
+// fallback。因此按 Number.MAX_SAFE_INTEGER 的 16-byte JSON 形态计算最坏 header。
+const MAX_EVENT_ID_SERIALIZED_BYTES =
+  1 + vqlByteLength(MAX_EVENT_ID_JSON_BYTES) + MAX_EVENT_ID_JSON_BYTES;
+/** Channel 事件头（Array tag/length + EventFire + id）的固定字节数。 */
+export const CHANNEL_HEADER_BYTES =
+  1 +
+  vqlByteLength(2) +
+  1 +
+  vqlByteLength(CHANNEL_EVENT_RESPONSE_TYPE) +
+  MAX_EVENT_ID_SERIALIZED_BYTES;
+/** mobile relay data 信封在 dataBase64 之外的固定 JSON 字节数（含最坏 id/时间戳宽度）。 */
+export const MOBILE_RELAY_FIXED_BYTES = utf8JsonByteLength({
+  type: "data",
+  payload: {
+    codez_type: "rpc-frame",
+    bridgeSessionId: "x".repeat(PROTOCOL_V4_LIMITS.transportEnvelopeIdMaxChars),
+    bridgeGeneration: Number.MAX_SAFE_INTEGER,
+    recoveryId: "x".repeat(PROTOCOL_V4_LIMITS.transportEnvelopeIdMaxChars),
+    seq: Number.MAX_SAFE_INTEGER,
+    dataBase64: "",
+  },
+  client_ts: Number.MAX_SAFE_INTEGER,
+  server_ts: Number.MAX_SAFE_INTEGER,
+});
+
 /**
  * 按当前生产三层真实承载计量 topic notification。mobile relay
  * 会把 Channel binary 再 base64，不能只测 CLI 的 logical JSON。
@@ -35,39 +67,15 @@ export function measureTopicNotificationEnvelopeBytes(wire: TopicWireFrameCandid
     }) + 1;
 
   const wireJsonBytes = utf8JsonByteLength(wire);
-  // @codez/rpc serialization：Array tag+length+[EventFire,id]，再加 Object tag+length+JSON。
-  // ChannelClient 的 id 无 31-bit wrap；超过 signed int 后 serialize 会走 Object JSON
-  // fallback。因此按 Number.MAX_SAFE_INTEGER 的 16-byte JSON 形态计算最坏 header。
-  const maxEventIdJsonBytes = String(Number.MAX_SAFE_INTEGER).length;
-  const maxEventIdSerializedBytes = 1 + vqlByteLength(maxEventIdJsonBytes) + maxEventIdJsonBytes;
-  const channelHeaderBytes =
-    1 +
-    vqlByteLength(2) +
-    1 +
-    vqlByteLength(CHANNEL_EVENT_RESPONSE_TYPE) +
-    maxEventIdSerializedBytes;
-  const channelPayloadBytes = channelHeaderBytes + 1 + vqlByteLength(wireJsonBytes) + wireJsonBytes;
+  const channelPayloadBytes =
+    CHANNEL_HEADER_BYTES + 1 + vqlByteLength(wireJsonBytes) + wireJsonBytes;
   // SocketProtocol/PersistentProtocol 在 Channel payload 外再加固定 13-byte frame header。
   const channelSocketBytes = channelPayloadBytes + SOCKET_PROTOCOL_HEADER_BYTES;
   // topic encoder 继续用 legacy 单片 outer 作为保守 logical budget；production 已不发送该形态，
   // Channel payload 会再经 acknowledged raw adapter 独立分片并按最终 JSON 精确计量。
   // 两层预算分别约束 topic logical frame 与 relay physical frame，不能互相替代。
   const dataBase64Bytes = 4 * Math.ceil(channelPayloadBytes / 3);
-  const transportId = "x".repeat(PROTOCOL_V4_LIMITS.transportEnvelopeIdMaxChars);
-  const mobileRelayFixedBytes = utf8JsonByteLength({
-    type: "data",
-    payload: {
-      codez_type: "rpc-frame",
-      bridgeSessionId: transportId,
-      bridgeGeneration: Number.MAX_SAFE_INTEGER,
-      recoveryId: transportId,
-      seq: Number.MAX_SAFE_INTEGER,
-      dataBase64: "",
-    },
-    client_ts: Number.MAX_SAFE_INTEGER,
-    server_ts: Number.MAX_SAFE_INTEGER,
-  });
-  const mobileRelayBytes = mobileRelayFixedBytes + dataBase64Bytes;
+  const mobileRelayBytes = MOBILE_RELAY_FIXED_BYTES + dataBase64Bytes;
   return {
     cliNdjsonBytes,
     channelSocketBytes,
@@ -108,6 +116,13 @@ export interface EncodeTopicWireFramesOptions<F> {
   maxPhysicalFrameBytes?: number;
   maxAssemblyBytes?: number;
   measurePhysicalFrameBytes(wire: TopicWireFrame<F>): number;
+}
+
+export interface EncodedTopicWireFrames<F> {
+  frames: TopicWireFrame<F>[];
+  /** 与 frames 一一对应的 measurePhysicalFrameBytes 结果（编码时已测，调用方不必再测一遍）。 */
+  frameBytes: number[];
+  totalBytes: number;
 }
 
 function makeFragment<F>(params: {
@@ -166,10 +181,15 @@ function findFragmentByteBudget<F>(params: {
   return best;
 }
 
-export function encodeTopicWireFrames<F>(
+/**
+ * 编码并顺带返回每个物理帧的计量结果。
+ * 原因：调用方（subscriptions 的 staged byte 记账）以前在 encodeTopicWireFrames 之外
+ * 对同一批帧再跑一次 JSON.stringify + TextEncoder，等于把最大的那段 snapshot 序列化两遍。
+ */
+export function encodeTopicWireFramesWithBytes<F>(
   frame: F,
   options: EncodeTopicWireFramesOptions<F>,
-): TopicWireFrame<F>[] {
+): EncodedTopicWireFrames<F> {
   const maxPhysicalFrameBytes = hardBound(
     options.maxPhysicalFrameBytes,
     PROTOCOL_V4_LIMITS.maxFrameBytes,
@@ -195,8 +215,9 @@ export function encodeTopicWireFrames<F>(
     subscriptionId: options.subscriptionId,
     frame,
   };
-  if (options.measurePhysicalFrameBytes(complete) <= maxPhysicalFrameBytes) {
-    return [complete];
+  const completeBytes = options.measurePhysicalFrameBytes(complete);
+  if (completeBytes <= maxPhysicalFrameBytes) {
+    return { frames: [complete], frameBytes: [completeBytes], totalBytes: completeBytes };
   }
 
   const checksum: TopicWireChecksum = {
@@ -218,6 +239,8 @@ export function encodeTopicWireFrames<F>(
   }
 
   const frames: TopicWireFrame<F>[] = [];
+  const frameBytes: number[] = [];
+  let totalBytes = 0;
   for (let fragmentIndex = 0; fragmentIndex < fragmentCount; fragmentIndex += 1) {
     const start = fragmentIndex * chunkBytes;
     const end = Math.min(start + chunkBytes, logical.byteLength);
@@ -229,12 +252,22 @@ export function encodeTopicWireFrames<F>(
       checksum,
       dataBase64: encodeWireBytesBase64(logical.subarray(start, end)),
     });
-    if (options.measurePhysicalFrameBytes(wire) > maxPhysicalFrameBytes) {
+    const measured = options.measurePhysicalFrameBytes(wire);
+    if (measured > maxPhysicalFrameBytes) {
       // physical 上限包含调用方真实 envelope；任何估算漂移都必须
       // fail closed，不能把超限 frame 交给下游再静默截断。
       throw new TopicWireFrameEncodingError("proto.frameEnvelopeTooLarge");
     }
     frames.push(wire);
+    frameBytes.push(measured);
+    totalBytes += measured;
   }
-  return frames;
+  return { frames, frameBytes, totalBytes };
+}
+
+export function encodeTopicWireFrames<F>(
+  frame: F,
+  options: EncodeTopicWireFramesOptions<F>,
+): TopicWireFrame<F>[] {
+  return encodeTopicWireFramesWithBytes(frame, options).frames;
 }

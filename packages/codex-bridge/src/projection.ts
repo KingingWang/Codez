@@ -13,7 +13,12 @@ import {
   type SessionUsageState,
   type SessionActionAvailability,
 } from "@codez/shared/codez-protocol-v4";
-import { codexThreadSchema, isCodexKnownItem, type CodexThread } from "./codex-types.js";
+import {
+  codexThreadSchema,
+  isCodexKnownItem,
+  type CodexThread,
+  type CodexTurn,
+} from "./codex-types.js";
 import type { TurnAutoApprovalReviewsMap } from "./auto-approval-review.js";
 import { projectOriginFromSource } from "./project-origin.js";
 import { parseCodexTurnCached, projectRows } from "./projection-rows.js";
@@ -107,12 +112,86 @@ function resolveLastAssistantPreview(source: CodexThread): string | undefined {
   return preview;
 }
 
+/**
+ * settled 前缀的已解析 turn 数组缓存，按「首个原始 turn」弱引用分桶（多线程互不挤占）。
+ *
+ * 原因：`parseCodexThreadIncremental` 每帧都要对全部历史 turn 各跑一次 parseCodexTurnCached
+ * （1 万轮 ≈ 1.2ms/帧），而流式期间只有末尾活动轮的 items 在变。这里对未变化的 settled 前缀
+ * 只比较 turn 引用与 items 引用/长度，然后整段复用已解析数组，逐帧成本降到 O(前缀引用比较)。
+ * 校验条件与 parseCodexTurnCached 的 turn 级缓存完全一致（活动轮永远重解析），语义不变。
+ */
+interface ParsedTurnsPrefix {
+  rawRefs: object[];
+  itemsRefs: unknown[];
+  itemsLengths: number[];
+  parsed: CodexTurn[];
+}
+
+const parsedTurnsPrefixCache = new WeakMap<object, ParsedTurnsPrefix>();
+
+type RawTurnShape = { status?: unknown; items?: unknown };
+
+function settledRawItems(turn: unknown): unknown[] | undefined {
+  if (!turn || typeof turn !== "object") return undefined;
+  const shape = turn as RawTurnShape;
+  // 活动轮的 items 会被原地增长/原位替换，只有 settled 轮能进前缀缓存。
+  if (shape.status === "inProgress" || !Array.isArray(shape.items)) return undefined;
+  return shape.items;
+}
+
+function parseTurnsIncremental(rawTurns: unknown[]): CodexTurn[] {
+  const first = rawTurns[0];
+  const cacheKey = first && typeof first === "object" ? first : undefined;
+  const cached = cacheKey ? parsedTurnsPrefixCache.get(cacheKey) : undefined;
+  let reuse = 0;
+  if (cached) {
+    const limit = Math.min(cached.rawRefs.length, rawTurns.length);
+    while (reuse < limit) {
+      const items = settledRawItems(rawTurns[reuse]);
+      if (
+        rawTurns[reuse] !== cached.rawRefs[reuse] ||
+        !items ||
+        items !== cached.itemsRefs[reuse] ||
+        items.length !== cached.itemsLengths[reuse]!
+      ) {
+        break;
+      }
+      reuse += 1;
+    }
+  }
+  const parsed: CodexTurn[] = [];
+  for (let index = 0; index < reuse; index += 1) parsed.push(cached!.parsed[index]!);
+  for (let index = reuse; index < rawTurns.length; index += 1)
+    parsed.push(parseCodexTurnCached(rawTurns[index]));
+  if (!cacheKey) return parsed;
+  let prefixLength = reuse;
+  while (prefixLength < rawTurns.length && settledRawItems(rawTurns[prefixLength]))
+    prefixLength += 1;
+  const entry = cached ?? { rawRefs: [], itemsRefs: [], itemsLengths: [], parsed: [] };
+  if (reuse !== entry.rawRefs.length) {
+    // 前缀被改写或缩短（rewind / 历史替换 / settled 轮 items 变化）：整份重建缓存数组。
+    entry.rawRefs.length = 0;
+    entry.itemsRefs.length = 0;
+    entry.itemsLengths.length = 0;
+    entry.parsed.length = 0;
+  }
+  for (let index = entry.rawRefs.length; index < prefixLength; index += 1) {
+    const items = settledRawItems(rawTurns[index])!;
+    entry.rawRefs.push(rawTurns[index] as object);
+    entry.itemsRefs.push(items);
+    entry.itemsLengths.push(items.length);
+    entry.parsed.push(parsed[index]!);
+  }
+  parsedTurnsPrefixCache.set(cacheKey, entry);
+  return parsed;
+}
+
 /** 增量校验 CodexThread：已完成且未变的 turn 复用 parseCodexTurnCached，避免流式期间每帧全历史重跑 Zod。 */
 export function parseCodexThreadIncremental(thread: unknown): CodexThread {
   const raw = thread && typeof thread === "object" ? (thread as { turns?: unknown }) : undefined;
   if (!raw || !Array.isArray(raw.turns)) return codexThreadSchema.parse(thread);
   const header = codexThreadHeaderSchema.parse(thread);
-  const turns = raw.turns.map((turn) => parseCodexTurnCached(turn));
+  const turns = parseTurnsIncremental(raw.turns);
   return { ...header, turns };
 }
 
@@ -175,41 +254,115 @@ function control(thread: CodexThread, apiRetry: ApiRetryState | null = null): Se
   };
 }
 
+/** 单轮内最新的有效计划：倒序找第一个能产出条目的 planUpdate item（与旧内层循环一致）。 */
+function turnPlanState(
+  turn: CodexTurn,
+  thread: CodexThread,
+): { plan: PlanState; usesThreadUpdatedAt: boolean } | undefined {
+  for (let itemIndex = turn.items.length - 1; itemIndex >= 0; itemIndex -= 1) {
+    const item = turn.items[itemIndex]!;
+    const rawPlan = (item as unknown as { plan?: unknown }).plan;
+    if (item.type !== "planUpdate" || !Array.isArray(rawPlan)) continue;
+    const items: PlanState["items"] = [];
+    for (const [index, rawEntry] of rawPlan.entries()) {
+      if (typeof rawEntry !== "object" || rawEntry === null) continue;
+      const entry = rawEntry as { step?: unknown; status?: unknown };
+      const content = typeof entry.step === "string" ? entry.step.trim() : "";
+      const rawStatus = entry.status;
+      const status: PlanState["items"][number]["status"] | null =
+        rawStatus === "pending" || rawStatus === "completed"
+          ? rawStatus
+          : rawStatus === "in_progress" || rawStatus === "inProgress"
+            ? "inProgress"
+            : null;
+      if (!content || !status) continue;
+      items.push({
+        id: `${turn.id}:plan:${index + 1}`,
+        content,
+        status,
+      });
+    }
+    if (items.length === 0) continue;
+    const turnUpdatedAtSec = turn.completedAt ?? turn.startedAt;
+    const usesThreadUpdatedAt = turnUpdatedAtSec === undefined || turnUpdatedAtSec === null;
+    const updatedAtSec = usesThreadUpdatedAt ? thread.updatedAt : turnUpdatedAtSec;
+    return {
+      plan: { items, updatedAt: Math.max(0, Math.floor(updatedAtSec * 1000)) },
+      usesThreadUpdatedAt,
+    };
+  }
+  return undefined;
+}
+
+/**
+ * 已扫描 settled 前缀的计划备忘录，按「首个 turn」弱引用分桶。
+ *
+ * 原因：旧实现每帧都从最后一轮倒序扫到第一轮的全部 item；历史里没有 planUpdate（或最新
+ * 计划在很早的轮次）时，每条流式 delta 都要白扫全史（1 万轮 × 4 item ≈ 0.8ms/帧）。
+ * 备忘录记住前缀内的最新计划，每帧只校验前缀引用 + 扫描末尾活动轮，O(1) 跳过无计划的历史。
+ * `updatedAt` 回退到 thread.updatedAt 的轮次不进备忘录（该值每条事件都在变），
+ * 此时前缀停在该轮之前，其余轮次仍按旧路径扫描，结果完全一致。
+ */
+interface LatestPlanMemo {
+  turnRefs: CodexTurn[];
+  itemsRefs: CodexTurn["items"][];
+  itemsLengths: number[];
+  plan: PlanState | null;
+}
+
+const latestPlanMemos = new WeakMap<object, LatestPlanMemo>();
+
 function projectLatestPlanState(thread: CodexThread): PlanState | null {
-  for (let turnIndex = thread.turns.length - 1; turnIndex >= 0; turnIndex -= 1) {
-    const turn = thread.turns[turnIndex]!;
-    for (let itemIndex = turn.items.length - 1; itemIndex >= 0; itemIndex -= 1) {
-      const item = turn.items[itemIndex]!;
-      const rawPlan = (item as unknown as { plan?: unknown }).plan;
-      if (item.type !== "planUpdate" || !Array.isArray(rawPlan)) continue;
-      const items: PlanState["items"] = [];
-      for (const [index, rawEntry] of rawPlan.entries()) {
-        if (typeof rawEntry !== "object" || rawEntry === null) continue;
-        const entry = rawEntry as { step?: unknown; status?: unknown };
-        const content = typeof entry.step === "string" ? entry.step.trim() : "";
-        const rawStatus = entry.status;
-        const status: PlanState["items"][number]["status"] | null =
-          rawStatus === "pending" || rawStatus === "completed"
-            ? rawStatus
-            : rawStatus === "in_progress" || rawStatus === "inProgress"
-              ? "inProgress"
-              : null;
-        if (!content || !status) continue;
-        items.push({
-          id: `${turn.id}:plan:${index + 1}`,
-          content,
-          status,
-        });
+  const turns = thread.turns;
+  const cacheKey = turns[0];
+  const cached = cacheKey ? latestPlanMemos.get(cacheKey) : undefined;
+  let memo: LatestPlanMemo | undefined;
+  let start = 0;
+  if (cached) {
+    const limit = Math.min(cached.turnRefs.length, turns.length);
+    let matched = 0;
+    while (matched < limit) {
+      const turn = turns[matched]!;
+      if (
+        turn !== cached.turnRefs[matched] ||
+        turn.items !== cached.itemsRefs[matched] ||
+        turn.items.length !== cached.itemsLengths[matched]! ||
+        turn.status === "inProgress"
+      ) {
+        break;
       }
-      if (items.length === 0) continue;
-      const updatedAtSec = turn.completedAt ?? turn.startedAt ?? thread.updatedAt;
-      return {
-        items,
-        updatedAt: Math.max(0, Math.floor(updatedAtSec * 1000)),
-      };
+      matched += 1;
+    }
+    // 前缀必须完整命中：被截断说明历史改写（rewind / 分页重放），备忘录里的最新计划
+    // 可能已不属于当前历史，必须整份重建，不能只丢弃尾部。
+    if (matched === cached.turnRefs.length) {
+      memo = cached;
+      start = matched;
     }
   }
-  return null;
+  if (!memo) memo = { turnRefs: [], itemsRefs: [], itemsLengths: [], plan: null };
+  let plan = memo.plan;
+  let memoizable = true;
+  for (let turnIndex = start; turnIndex < turns.length; turnIndex += 1) {
+    const turn = turns[turnIndex]!;
+    const found = turnPlanState(turn, thread);
+    // 后出现的轮次覆盖更早的计划：与旧的「倒序第一个命中即返回」等价。
+    if (found) plan = found.plan;
+    if (!memoizable) continue;
+    if (turn.status === "inProgress" || found?.usesThreadUpdatedAt) {
+      memoizable = false;
+      continue;
+    }
+    memo.turnRefs.push(turn);
+    memo.itemsRefs.push(turn.items);
+    memo.itemsLengths.push(turn.items.length);
+    if (found) memo.plan = found.plan;
+  }
+  if (cacheKey) {
+    if (memo.turnRefs.length > 0) latestPlanMemos.set(cacheKey, memo);
+    else latestPlanMemos.delete(cacheKey);
+  }
+  return plan;
 }
 
 /** Pure whole-snapshot projection, never a reducer or accepted-input queue.

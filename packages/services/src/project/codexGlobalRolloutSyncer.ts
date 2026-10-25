@@ -1,14 +1,15 @@
-import { watch, type FSWatcher } from "node:fs";
-import { mkdir, open, readdir, readFile, stat } from "node:fs/promises";
+import { watch, type Dirent, type FSWatcher } from "node:fs";
+import { mkdir, readdir, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
-import {
-  CODEZ_AGENT_PROVIDER,
-  generateTraceId,
-  isInjectedCodexContextTitle,
-  type CodezTaskMeta,
-} from "@codez/shared";
+import { CODEZ_AGENT_PROVIDER, generateTraceId, type CodezTaskMeta } from "@codez/shared";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
+import {
+  isRolloutFileName,
+  parseRolloutCandidate,
+  rolloutStampFromName,
+  type ParsedRolloutCandidate,
+} from "#src/project/codexRolloutFacts.js";
 
 export interface CodexGlobalRolloutTaskStore {
   getTaskMeta(params: {
@@ -30,309 +31,53 @@ const logger = createServiceLogger("codex-global-rollout-syncer");
 const DEBOUNCE_MS = 180;
 const POLL_INTERVAL_MS = 3_000;
 const ROLLOUT_STAT_CONCURRENCY = 16;
-const MAX_ROLLOUT_HEAD_BYTES = 128 * 1024;
-const MAX_ROLLOUT_TAIL_BYTES = 64 * 1024;
-const PROJECT_SOURCE_PREFIX = "codez_project:";
-const UNCLASSIFIED_SOURCE = "codez_unclassified";
-const SELECTION_SIDE_CHAT_THREAD_SOURCE = "codez_selection_side_chat";
-const ALLOWED_SOURCES = new Set(["cli", "vscode", "exec", "appServer", "app_server"]);
-const USER_MESSAGE_BEGIN = "## My request for Codex:";
-
-interface ParsedRolloutCandidate {
-  sessionId: string;
-  cwd: string;
-  title: string;
-  createdAt: number;
-  updatedAt: number;
-  forkedFromTaskId?: string;
-  originProjectId?: string | null;
-  lastOutcome?: "completed" | "interrupted" | "error";
-}
+/** `$CODEX_HOME/sessions/YYYY/MM/DD` 的最大递归深度，与历史遍历保持一致。 */
+const MAX_SESSIONS_TREE_DEPTH = 4;
+/**
+ * 无 watcher（单测直接 `syncNow()` 或轮询兜底）时，额外 stat 的“最新活跃 rollout”数量。
+ *
+ * 目录 mtime 剪枝会跳过历史文件的 stat，而追加写入不会改变所在目录的 mtime；
+ * 正在被 CLI 追加的会话一定是最新创建的那几个，因此保留极小的活跃尾部窗口兜底，
+ * 避免退化模式下的追加更新完全丢失。
+ */
+const ACTIVE_TAIL_STAT_LIMIT = 8;
 
 interface CachedRolloutFile {
   mtimeMs: number;
   size: number;
   synced: boolean;
   candidate: ParsedRolloutCandidate | null;
+  /**
+   * `session_meta` 已被过滤器明确拒绝（subagent / selection side chat / 非白名单 source /
+   * 缺 cwd）：文件继续增长也不会产出 candidate，后续扫描可永久跳过它的 stat 与解析。
+   */
+  settled: boolean;
+}
+
+/** 目录 mtime 只在直接子项增删改名时推进，追加写入文件不会改变它。 */
+interface CachedSessionDir {
+  mtimeMs: number;
+  rolloutNames: string[];
+  childDirs: string[];
+}
+
+/**
+ * 对比新旧 `session_index.jsonl` 命名映射，只返回真正新增/改名/移除命名的 sessionId。
+ *
+ * 修复原因：index 变化过去会直接把全量扫描打开，并把所有历史文件的 `fileChanged` 置真，
+ * 一次改名被放大成全部任务的 `applyCliFacts` 写事务。
+ */
+function diffThreadNames(previous: Map<string, string>, next: Map<string, string>): Set<string> {
+  const changed = new Set<string>();
+  for (const [sessionId, name] of next)
+    if (previous.get(sessionId) !== name) changed.add(sessionId);
+  for (const sessionId of previous.keys()) if (!next.has(sessionId)) changed.add(sessionId);
+  return changed;
 }
 
 function resolveCodexHome(env: NodeJS.ProcessEnv = process.env): string {
   const override = env.CODEX_HOME?.trim();
   return override || join(homedir(), ".codex");
-}
-
-function parseOriginProjectId(source: unknown): string | null | undefined {
-  if (source === UNCLASSIFIED_SOURCE) return null;
-  if (typeof source !== "string" || !source.startsWith(PROJECT_SOURCE_PREFIX)) return undefined;
-  const projectId = source.slice(PROJECT_SOURCE_PREFIX.length);
-  return /^[a-zA-Z0-9_-]{1,128}$/.test(projectId) ? projectId : undefined;
-}
-
-function normalizeSourceKind(raw: unknown): string | null {
-  if (typeof raw === "string") return raw.trim();
-  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-    const keys = Object.keys(raw as Record<string, unknown>);
-    if (keys.length === 1) return keys[0]!;
-  }
-  return null;
-}
-
-function extractTextFromContent(content: unknown): string {
-  if (typeof content === "string") return content.trim();
-  if (!Array.isArray(content)) return "";
-  const parts: string[] = [];
-  for (const entry of content) {
-    if (!entry || typeof entry !== "object") continue;
-    const item = entry as Record<string, unknown>;
-    if (typeof item.text === "string" && item.text.trim()) {
-      parts.push(item.text.trim());
-    }
-  }
-  return parts.join("\n").trim();
-}
-
-function visibleUserText(text: string): string {
-  const heading = text.indexOf(USER_MESSAGE_BEGIN);
-  const visible = (heading < 0 ? text : text.slice(heading + USER_MESSAGE_BEGIN.length)).trim();
-  return isInjectedCodexContextTitle(visible) ? "" : visible;
-}
-
-function parseEventPreview(
-  event: Record<string, unknown>,
-): { kind: "user" | "goal"; text: string } | null {
-  const type = typeof event.type === "string" ? event.type : "";
-  if (type === "user_message" || type === "userMessage") {
-    const text = visibleUserText(
-      typeof event.message === "string" && event.message.trim()
-        ? event.message
-        : extractTextFromContent(event.content),
-    );
-    return text ? { kind: "user", text } : null;
-  }
-  if (type === "item_completed" || type === "itemCompleted") {
-    const item =
-      event.item && typeof event.item === "object" && !Array.isArray(event.item)
-        ? (event.item as Record<string, unknown>)
-        : null;
-    if (!item) return null;
-    const itemType = typeof item.type === "string" ? item.type : "";
-    if (itemType === "UserMessage" || itemType === "userMessage" || itemType === "user_message") {
-      const text = visibleUserText(
-        typeof item.message === "string" && item.message.trim()
-          ? item.message
-          : extractTextFromContent(item.content),
-      );
-      return text ? { kind: "user", text } : null;
-    }
-  }
-  if (type === "thread_goal_updated" || type === "threadGoalUpdated") {
-    const goal =
-      event.goal && typeof event.goal === "object" && !Array.isArray(event.goal)
-        ? (event.goal as Record<string, unknown>)
-        : null;
-    if (goal && typeof goal.objective === "string") {
-      const text = goal.objective.trim();
-      return text ? { kind: "goal", text } : null;
-    }
-  }
-  return null;
-}
-
-function parseRolloutFileId(fileName: string): { createdAtMs: number; sessionId: string } | null {
-  if (!fileName.startsWith("rollout-") || !fileName.endsWith(".jsonl")) return null;
-  const core = fileName.slice("rollout-".length, -".jsonl".length);
-  if (core.length < 21 || core[19] !== "-") return null;
-  const tsPart = core.slice(0, 19);
-  const idsPart = core.slice(20);
-  const [threadId] = idsPart.split("_");
-  if (!threadId) return null;
-  const iso = `${tsPart.slice(0, 10)}T${tsPart.slice(11, 13)}:${tsPart.slice(14, 16)}:${tsPart.slice(17, 19)}Z`;
-  const parsedTs = Date.parse(iso);
-  return {
-    createdAtMs: Number.isFinite(parsedTs) && parsedTs > 0 ? parsedTs : 0,
-    sessionId: threadId,
-  };
-}
-
-async function readBoundedRolloutSlice(
-  filePath: string,
-  fileSize: number,
-): Promise<{ headText: string; tailText: string } | null> {
-  let handle: Awaited<ReturnType<typeof open>>;
-  try {
-    handle = await open(filePath, "r");
-  } catch {
-    return null;
-  }
-  try {
-    const headLength = Math.min(MAX_ROLLOUT_HEAD_BYTES, Math.max(0, fileSize));
-    if (headLength <= 0) {
-      const content = await handle.readFile({ encoding: "utf8" });
-      return {
-        headText: content.slice(0, MAX_ROLLOUT_HEAD_BYTES),
-        tailText: "",
-      };
-    }
-    const headBuffer = Buffer.allocUnsafe(headLength);
-    const { bytesRead: headRead } = await handle.read(headBuffer, 0, headLength, 0);
-    const headText = headBuffer.subarray(0, headRead).toString("utf8");
-    if (fileSize <= MAX_ROLLOUT_HEAD_BYTES) {
-      return { headText, tailText: "" };
-    }
-    const tailOffset = Math.max(MAX_ROLLOUT_HEAD_BYTES, fileSize - MAX_ROLLOUT_TAIL_BYTES);
-    const tailLength = Math.max(0, fileSize - tailOffset);
-    if (tailLength <= 0) {
-      return { headText, tailText: "" };
-    }
-    const tailBuffer = Buffer.allocUnsafe(tailLength);
-    const { bytesRead: tailRead } = await handle.read(tailBuffer, 0, tailLength, tailOffset);
-    const rawTail = tailBuffer.subarray(0, tailRead).toString("utf8");
-    const firstNewline = tailOffset > 0 ? rawTail.indexOf("\n") : -1;
-    const tailText = firstNewline >= 0 ? rawTail.slice(firstNewline + 1) : rawTail;
-    return { headText, tailText };
-  } catch {
-    return null;
-  } finally {
-    await handle.close();
-  }
-}
-
-async function parseRolloutCandidate(
-  filePath: string,
-  fileName: string,
-  mtimeMs: number,
-  fileSize = 0,
-): Promise<ParsedRolloutCandidate | null> {
-  const fileInfo = parseRolloutFileId(fileName);
-  if (!fileInfo) return null;
-  const slice = await readBoundedRolloutSlice(filePath, fileSize);
-  if (!slice) return null;
-  const raw = slice.tailText ? `${slice.headText}\n${slice.tailText}` : slice.headText;
-
-  let sessionId = fileInfo.sessionId;
-  let cwd = "";
-  let createdAt = fileInfo.createdAtMs || Math.max(1, Math.trunc(mtimeMs));
-  let sawMeta = false;
-  let userPreview = "";
-  let responsePreview = "";
-  let goalPreview = "";
-  let forkedFromTaskId: string | undefined;
-  let originProjectId: string | null | undefined;
-  let lastOutcome: "completed" | "interrupted" | "error" | undefined;
-
-  const lines = raw.split("\n");
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    let record: Record<string, unknown>;
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) continue;
-      record = parsed as Record<string, unknown>;
-    } catch {
-      continue;
-    }
-
-    const type = typeof record.type === "string" ? record.type : "";
-    const payload =
-      record.payload && typeof record.payload === "object" && !Array.isArray(record.payload)
-        ? (record.payload as Record<string, unknown>)
-        : record;
-
-    if (
-      !sawMeta &&
-      (type === "session_meta" || ("meta" in record && typeof record.meta === "object"))
-    ) {
-      const meta =
-        payload.meta && typeof payload.meta === "object" && !Array.isArray(payload.meta)
-          ? (payload.meta as Record<string, unknown>)
-          : payload;
-      const parentThreadId =
-        typeof meta.parent_thread_id === "string" && meta.parent_thread_id.trim()
-          ? meta.parent_thread_id.trim()
-          : typeof meta.parentThreadId === "string" && meta.parentThreadId.trim()
-            ? meta.parentThreadId.trim()
-            : undefined;
-      if (parentThreadId) return null;
-      const sourceKind = normalizeSourceKind(meta.source);
-      if (sourceKind && !ALLOWED_SOURCES.has(sourceKind)) return null;
-      const threadSource =
-        typeof meta.thread_source === "string"
-          ? meta.thread_source.trim()
-          : typeof meta.threadSource === "string"
-            ? meta.threadSource.trim()
-            : undefined;
-      if (threadSource === SELECTION_SIDE_CHAT_THREAD_SOURCE) return null;
-      originProjectId = parseOriginProjectId(threadSource);
-      if (typeof meta.id === "string" && meta.id.trim()) {
-        sessionId = meta.id.trim();
-      }
-      if (typeof meta.cwd === "string" && meta.cwd.trim()) {
-        cwd = meta.cwd.trim();
-      }
-      if (typeof meta.timestamp === "string") {
-        const ts = Date.parse(meta.timestamp);
-        if (Number.isFinite(ts) && ts > 0) createdAt = ts;
-      }
-      const forkedFrom =
-        typeof meta.forked_from_id === "string" && meta.forked_from_id.trim()
-          ? meta.forked_from_id.trim()
-          : typeof meta.forkedFromId === "string" && meta.forkedFromId.trim()
-            ? meta.forkedFromId.trim()
-            : undefined;
-      if (forkedFrom) forkedFromTaskId = forkedFrom;
-      sawMeta = true;
-      continue;
-    }
-
-    if (type === "event_msg" || type === "eventMsg") {
-      // 修复原因：Codex 先落盘 user-role <environment_context> response_item，
-      // 再落盘 item_completed/UserMessage；前者不是用户输入，不能抢占首个标题。
-      const candidate = parseEventPreview(payload);
-      if (candidate?.kind === "user" && !userPreview) userPreview = candidate.text;
-      if (candidate?.kind === "goal" && !goalPreview) goalPreview = candidate.text;
-    } else if ((type === "response_item" || type === "responseItem") && !responsePreview) {
-      const item =
-        payload.item && typeof payload.item === "object" && !Array.isArray(payload.item)
-          ? (payload.item as Record<string, unknown>)
-          : payload;
-      if (item.role === "user") {
-        // 仅在旧 rollout 缺少 UserMessage 事件时使用真实 response item 兜底。
-        responsePreview = visibleUserText(extractTextFromContent(item.content));
-      }
-    }
-
-    if (type === "event_msg" || type === "eventMsg") {
-      const evType = typeof payload.type === "string" ? payload.type : "";
-      if (evType === "task_complete" || evType === "turn_completed" || evType === "agent_message") {
-        lastOutcome = "completed";
-      } else if (evType === "turn_aborted" || evType === "interrupted") {
-        lastOutcome = "interrupted";
-      } else if (evType === "error") {
-        lastOutcome = "error";
-      }
-    }
-  }
-
-  const preview = userPreview || responsePreview || goalPreview;
-  if (!sawMeta || !cwd || !preview) {
-    return null;
-  }
-
-  const updatedAt = Math.max(createdAt, Math.trunc(mtimeMs));
-  const title = Array.from(preview.replace(/\s+/g, " ").trim()).slice(0, 120).join("");
-  if (!title) return null;
-
-  return {
-    sessionId,
-    cwd,
-    title,
-    createdAt,
-    updatedAt,
-    ...(forkedFromTaskId ? { forkedFromTaskId } : {}),
-    ...(originProjectId !== undefined ? { originProjectId } : {}),
-    ...(lastOutcome ? { lastOutcome } : {}),
-  };
 }
 
 async function readThreadNamesIndex(codexHome: string): Promise<Map<string, string>> {
@@ -360,35 +105,6 @@ async function readThreadNamesIndex(codexHome: string): Promise<Map<string, stri
     // session_index.jsonl may not exist yet
   }
   return result;
-}
-
-async function listRolloutFiles(
-  sessionsRoot: string,
-): Promise<Array<{ path: string; name: string }>> {
-  const files: Array<{ path: string; name: string }> = [];
-  const walk = async (dir: string, depth: number): Promise<void> => {
-    if (depth > 4) return;
-    let entries;
-    try {
-      entries = await readdir(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const entry of entries) {
-      const fullPath = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        await walk(fullPath, depth + 1);
-      } else if (
-        entry.isFile() &&
-        entry.name.startsWith("rollout-") &&
-        entry.name.endsWith(".jsonl")
-      ) {
-        files.push({ path: fullPath, name: entry.name });
-      }
-    }
-  };
-  await walk(sessionsRoot, 0);
-  return files;
 }
 
 async function mapBounded<T, R>(
@@ -429,6 +145,12 @@ export function createCodexGlobalRolloutSyncer(options: {
   env?: NodeJS.ProcessEnv;
 }): CodexGlobalRolloutSyncer {
   const cacheByPath = new Map<string, CachedRolloutFile>();
+  /** sessionId → 该 session 的全部 rollout 路径；按会话取事实时无需遍历整个缓存。 */
+  const pathsBySessionId = new Map<string, Set<string>>();
+  /** 已解析出 candidate 但尚未成功入库的 session，下一轮扫描必须重试。 */
+  const unsyncedSessionIds = new Set<string>();
+  /** 目录级缓存：mtime 未变的目录直接复用上次 readdir 的子项名字。 */
+  const dirCache = new Map<string, CachedSessionDir>();
   let disposed = false;
   let watcher: FSWatcher | null = null;
   let cachedThreadNames = new Map<string, string>();
@@ -436,12 +158,140 @@ export function createCodexGlobalRolloutSyncer(options: {
   let pollTimer: ReturnType<typeof setInterval> | null = null;
   let running: Promise<boolean> | null = null;
   let queued = false;
-  let needsFullScan = true;
+  /** 首次基线扫描是否完成；未完成前必须整树遍历，之后才允许增量。 */
+  let baselineDone = false;
+  let needsFullScan = false;
   const pendingWatchPaths = new Set<string>();
   let lastIndexMtimeMs = -1;
   let lastIndexSize = -1;
 
-  const runOnce = async (forceFullScan: boolean): Promise<boolean> => {
+  const dropSessionPath = (sessionId: string, path: string): void => {
+    const paths = pathsBySessionId.get(sessionId);
+    if (!paths?.delete(path)) return;
+    for (const remaining of paths) {
+      const entry = cacheByPath.get(remaining);
+      if (entry?.candidate && !entry.synced) return;
+    }
+    if (paths.size === 0) pathsBySessionId.delete(sessionId);
+    unsyncedSessionIds.delete(sessionId);
+  };
+
+  const forgetEntry = (path: string): void => {
+    const sessionId = cacheByPath.get(path)?.candidate?.sessionId;
+    if (!cacheByPath.delete(path)) return;
+    if (sessionId) dropSessionPath(sessionId, path);
+  };
+
+  const rememberEntry = (path: string, entry: CachedRolloutFile): void => {
+    const previousSessionId = cacheByPath.get(path)?.candidate?.sessionId;
+    const nextSessionId = entry.candidate?.sessionId;
+    cacheByPath.set(path, entry);
+    if (previousSessionId && previousSessionId !== nextSessionId)
+      dropSessionPath(previousSessionId, path);
+    if (!nextSessionId) return;
+    const paths = pathsBySessionId.get(nextSessionId) ?? new Set<string>();
+    pathsBySessionId.set(nextSessionId, paths);
+    paths.add(path);
+    if (!entry.synced) unsyncedSessionIds.add(nextSessionId);
+  };
+
+  /**
+   * 遍历 `$CODEX_HOME/sessions`，只把本轮真正需要 stat 的 rollout 交给 `addTarget`。
+   *
+   * 修复原因：过去每次扫描都无条件递归 readdir 整棵树并逐个 stat 历史 rollout，
+   * `readTree`/`readProjects` 因此被放大成 O(历史会话数) 的磁盘扫描。现在按目录缓存
+   * `mtimeMs` 与子项名字：
+   * - 目录 mtime 未变 → 直接子项集合不可能变化，复用缓存名字，跳过 readdir；
+   * - 仅对新发现路径、上一轮未成功入库、尚未定型（candidate 仍可能补齐）的文件，
+   *   以及文件名时间戳最新的极少数活跃 rollout 做 stat；
+   * - `fullScan` 保留首次基线与 watcher 异常后的整树恢复能力。
+   */
+  const scanSessionsTree = async (
+    sessionsRoot: string,
+    fullScan: boolean,
+    addTarget: (path: string, name: string) => void,
+  ): Promise<void> => {
+    const visitedDirs = new Set<string>();
+    const activeTail: Array<{ path: string; name: string; stamp: string }> = [];
+
+    const consider = (dir: string, name: string): void => {
+      const path = join(dir, name);
+      if (fullScan) {
+        addTarget(path, name);
+        return;
+      }
+      const entry = cacheByPath.get(path);
+      if (!entry || !entry.synced || (entry.candidate === null && !entry.settled)) {
+        addTarget(path, name);
+      }
+      // 追加写入不会推进目录 mtime；没有 watcher 事件时，最新创建的少量 rollout
+      // 仍可能被 CLI 追加，因此保留极小的活跃尾部窗口兜底。
+      activeTail.push({ path, name, stamp: rolloutStampFromName(name) });
+      if (activeTail.length > ACTIVE_TAIL_STAT_LIMIT) {
+        activeTail.sort((left, right) => left.stamp.localeCompare(right.stamp));
+        activeTail.splice(0, activeTail.length - ACTIVE_TAIL_STAT_LIMIT);
+      }
+    };
+
+    const walk = async (dir: string, depth: number): Promise<void> => {
+      if (depth > MAX_SESSIONS_TREE_DEPTH) return;
+      visitedDirs.add(dir);
+      // 先取 mtime 再 readdir：期间若有新文件落盘，缓存 mtime 会偏旧，
+      // 下一轮会重新 readdir，不会把“新名字 + 新 mtime”错误地当成已同步基线。
+      let dirMtimeMs = -1;
+      try {
+        dirMtimeMs = (await stat(dir)).mtimeMs;
+      } catch {
+        // 目录不可 stat 时保持 -1：永不命中 mtime 复用，下一轮仍会重新 readdir。
+      }
+      const cached = dirCache.get(dir);
+      if (!fullScan && cached && dirMtimeMs >= 0 && cached.mtimeMs === dirMtimeMs) {
+        for (const name of cached.rolloutNames) consider(dir, name);
+        for (const child of cached.childDirs) await walk(join(dir, child), depth + 1);
+        return;
+      }
+      let entries: Dirent[];
+      try {
+        entries = await readdir(dir, { withFileTypes: true });
+      } catch {
+        // 目录被删除或不可读：丢弃目录缓存与其中的文件缓存，避免陈旧事实继续入库。
+        dirCache.delete(dir);
+        for (const name of cached?.rolloutNames ?? []) forgetEntry(join(dir, name));
+        return;
+      }
+      const rolloutNames: string[] = [];
+      const childDirs: string[] = [];
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          childDirs.push(entry.name);
+        } else if (entry.isFile() && isRolloutFileName(entry.name)) {
+          rolloutNames.push(entry.name);
+          consider(dir, entry.name);
+        }
+      }
+      if (cached) {
+        const alive = new Set(rolloutNames);
+        for (const name of cached.rolloutNames) if (!alive.has(name)) forgetEntry(join(dir, name));
+      }
+      dirCache.set(dir, { mtimeMs: dirMtimeMs, rolloutNames, childDirs });
+      for (const child of childDirs) await walk(join(dir, child), depth + 1);
+    };
+
+    await walk(sessionsRoot, 0);
+
+    // 整棵日期子目录被删除时不会再被访问到，这里统一清理其目录与文件缓存。
+    // Map 迭代器允许删除当前项，因此无需先复制一份 key 数组。
+    for (const dir of dirCache.keys()) {
+      if (visitedDirs.has(dir)) continue;
+      const removed = dirCache.get(dir);
+      dirCache.delete(dir);
+      for (const name of removed?.rolloutNames ?? []) forgetEntry(join(dir, name));
+    }
+
+    for (const item of activeTail) addTarget(item.path, item.name);
+  };
+
+  const runOnce = async (): Promise<boolean> => {
     if (disposed) return false;
     const codexHome = resolveCodexHome(options.env);
     const sessionsRoot = join(codexHome, "sessions");
@@ -453,8 +303,7 @@ export function createCodexGlobalRolloutSyncer(options: {
       indexMtimeMs = indexStat.mtimeMs;
       indexSize = indexStat.size;
     } catch {
-      indexMtimeMs = -1;
-      indexSize = -1;
+      // session_index.jsonl 还不存在时保持 -1，与“上次也不存在”比较即为未变化。
     }
     // 修复原因：原先写成 `indexChanged || files.length > 0` 导致只要本地存在任一 rollout 文件，
     // 每次扫描都会无条件重读并逐行 JSON.parse 整个 session_index.jsonl。
@@ -462,51 +311,59 @@ export function createCodexGlobalRolloutSyncer(options: {
     const indexChanged = indexMtimeMs !== lastIndexMtimeMs || indexSize !== lastIndexSize;
     lastIndexMtimeMs = indexMtimeMs;
     lastIndexSize = indexSize;
+    // 修复原因：index 变化过去会把全量扫描打开，并把所有未变化文件的 `fileChanged` 置为
+    // `!existing.synced || indexChanged`（即全部为真），一次改名被放大成全部历史会话的
+    // `applyCliFacts` 写事务。现在只 diff 出真正新增/改名/移除命名的 sessionId。
+    let renamedSessionIds: Set<string> | null = null;
     if (indexChanged) {
-      cachedThreadNames =
+      const nextThreadNames =
         indexMtimeMs >= 0 ? await readThreadNamesIndex(codexHome) : new Map<string, string>();
+      renamedSessionIds = diffThreadNames(cachedThreadNames, nextThreadNames);
+      cachedThreadNames = nextThreadNames;
     }
     const threadNames = cachedThreadNames;
 
-    const doFullScan = forceFullScan || needsFullScan || indexChanged || cacheByPath.size === 0;
-    let files: Array<{ path: string; name: string }>;
-    if (doFullScan) {
-      needsFullScan = false;
-      pendingWatchPaths.clear();
-      files = await listRolloutFiles(sessionsRoot);
-    } else {
-      const dirtyPaths = [...pendingWatchPaths];
-      pendingWatchPaths.clear();
-      files = dirtyPaths.map((fullPath) => ({ path: fullPath, name: basename(fullPath) }));
+    // watcher 事件先取快照再清空：扫描期间新到的事件保留在集合里，由 `queued` 复扫消费。
+    const dirtyPaths = [...pendingWatchPaths];
+    pendingWatchPaths.clear();
+
+    const fullScan = !baselineDone || needsFullScan;
+    // 修复原因：`syncNow()` 过去无条件 forceFullScan，于是每次 `readTree`/`readProjects`
+    // 都会递归遍历整个 sessions 目录并逐个 stat 历史 rollout。基线完成后：
+    // - watcher 健康 → 变更已由事件精确投递到 `pendingWatchPaths`，普通读取无需遍历目录；
+    // - 无 watcher（单测直接调用或轮询兜底）→ 走目录 mtime 剪枝的增量遍历。
+    const watchOnly = !fullScan && watcher !== null;
+    if (fullScan) needsFullScan = false;
+
+    const targets: Array<{ path: string; name: string }> = [];
+    const targetPaths = new Set<string>();
+    const addTarget = (path: string, name: string): void => {
+      if (targetPaths.has(path)) return;
+      targetPaths.add(path);
+      targets.push({ path, name });
+    };
+    if (!watchOnly) {
+      await scanSessionsTree(sessionsRoot, fullScan, addTarget);
+      if (fullScan) baselineDone = true;
     }
+    for (const path of dirtyPaths) addTarget(path, basename(path));
     if (disposed) return false;
 
-    const seenPaths = new Set<string>();
-    const latestBySessionId = new Map<
-      string,
-      { candidate: ParsedRolloutCandidate; changed: boolean; cacheEntries: CachedRolloutFile[] }
-    >();
-
-    const inspectedFiles = await mapBounded(files, ROLLOUT_STAT_CONCURRENCY, async (file) => {
+    const inspectedFiles = await mapBounded(targets, ROLLOUT_STAT_CONCURRENCY, async (file) => {
       if (disposed) return null;
       let fileStat;
       try {
         fileStat = await stat(file.path);
       } catch {
-        if (!doFullScan) {
-          cacheByPath.delete(file.path);
-        }
+        // 文件已删除：连同 session 反向索引一起摘除，避免陈旧事实反复入库。
+        forgetEntry(file.path);
         return null;
       }
       const existing = cacheByPath.get(file.path);
       if (existing && existing.mtimeMs === fileStat.mtimeMs && existing.size === fileStat.size) {
-        return {
-          file,
-          entry: existing,
-          fileChanged: !existing.synced || indexChanged,
-        };
+        return { file, entry: existing, fileChanged: false };
       }
-      const candidate = await parseRolloutCandidate(
+      const parsed = await parseRolloutCandidate(
         file.path,
         file.name,
         fileStat.mtimeMs,
@@ -515,8 +372,10 @@ export function createCodexGlobalRolloutSyncer(options: {
       const entry: CachedRolloutFile = {
         mtimeMs: fileStat.mtimeMs,
         size: fileStat.size,
-        synced: false,
-        candidate,
+        // 没有 candidate 就没有可入库的事实；是否继续 stat 由 `settled` 决定。
+        synced: parsed.candidate === null,
+        candidate: parsed.candidate,
+        settled: parsed.settled,
       };
       return { file, entry, fileChanged: true };
     });
@@ -524,69 +383,47 @@ export function createCodexGlobalRolloutSyncer(options: {
 
     for (const inspected of inspectedFiles) {
       if (!inspected) continue;
-      const { file, entry } = inspected;
-      seenPaths.add(file.path);
-      cacheByPath.set(file.path, entry);
+      rememberEntry(inspected.file.path, inspected.entry);
     }
 
-    if (doFullScan) {
-      for (const cachedPath of cacheByPath.keys()) {
-        if (!seenPaths.has(cachedPath)) {
-          cacheByPath.delete(cachedPath);
-        }
-      }
+    // 待更新集合只包含：本轮真正变化的文件所属 session、历史遗留未入库的 session，
+    // 以及 session_index.jsonl 中命名发生变化的 session。
+    const dirtySessionIds = new Set<string>(unsyncedSessionIds);
+    for (const inspected of inspectedFiles) {
+      const sessionId = inspected?.fileChanged ? inspected.entry.candidate?.sessionId : undefined;
+      if (sessionId) dirtySessionIds.add(sessionId);
     }
-
-    const recordCandidate = (entry: CachedRolloutFile, fileChanged: boolean): void => {
-      if (!entry.candidate) {
-        entry.synced = true;
-        return;
-      }
-      const namedTitle = threadNames.get(entry.candidate.sessionId);
-      const effectiveCandidate: ParsedRolloutCandidate = namedTitle
-        ? { ...entry.candidate, title: namedTitle }
-        : entry.candidate;
-      const current = latestBySessionId.get(effectiveCandidate.sessionId);
-      if (!current) {
-        latestBySessionId.set(effectiveCandidate.sessionId, {
-          candidate: effectiveCandidate,
-          changed: fileChanged,
-          cacheEntries: [entry],
-        });
-      } else {
-        current.cacheEntries.push(entry);
-        current.changed ||= fileChanged;
-        if (effectiveCandidate.updatedAt >= current.candidate.updatedAt) {
-          current.candidate = effectiveCandidate;
-        }
-      }
-    };
-
-    if (doFullScan) {
-      for (const inspected of inspectedFiles) {
-        if (!inspected) continue;
-        recordCandidate(inspected.entry, inspected.fileChanged);
-      }
-    } else {
-      const dirtySessionIds = new Set<string>();
-      for (const inspected of inspectedFiles) {
-        if (!inspected?.entry.candidate) {
-          if (inspected) inspected.entry.synced = true;
-          continue;
-        }
-        dirtySessionIds.add(inspected.entry.candidate.sessionId);
-      }
-      if (dirtySessionIds.size > 0) {
-        for (const [cachedPath, entry] of cacheByPath.entries()) {
-          if (!entry.candidate || !dirtySessionIds.has(entry.candidate.sessionId)) continue;
-          recordCandidate(entry, seenPaths.has(cachedPath) || !entry.synced);
-        }
-      }
-    }
+    // 没有对应 rollout 缓存的命名变化没有事实可写，跳过以免产生无意义的读事务。
+    for (const sessionId of renamedSessionIds ?? [])
+      if (pathsBySessionId.has(sessionId)) dirtySessionIds.add(sessionId);
 
     let changedAny = false;
-    for (const { candidate, changed, cacheEntries } of latestBySessionId.values()) {
-      if (!changed || disposed) continue;
+    for (const sessionId of dirtySessionIds) {
+      if (disposed) break;
+      const paths = pathsBySessionId.get(sessionId);
+      if (!paths?.size) {
+        unsyncedSessionIds.delete(sessionId);
+        continue;
+      }
+      const sessionEntries: CachedRolloutFile[] = [];
+      let candidate: ParsedRolloutCandidate | null = null;
+      for (const path of paths) {
+        const entry = cacheByPath.get(path);
+        if (!entry) continue;
+        sessionEntries.push(entry);
+        if (!entry.candidate) continue;
+        const namedTitle = threadNames.get(entry.candidate.sessionId);
+        const effective: ParsedRolloutCandidate = namedTitle
+          ? { ...entry.candidate, title: namedTitle }
+          : entry.candidate;
+        // 同一 session 可能有多份 rollout，事实以 updatedAt 最新的一份为准。
+        if (!candidate || effective.updatedAt >= candidate.updatedAt) candidate = effective;
+      }
+      if (!candidate) {
+        unsyncedSessionIds.delete(sessionId);
+        for (const entry of sessionEntries) entry.synced = true;
+        continue;
+      }
       let workspaceIdentity: string | undefined;
       if (options.resolveWorkspaceIdentity) {
         try {
@@ -595,12 +432,35 @@ export function createCodexGlobalRolloutSyncer(options: {
           workspaceIdentity = undefined;
         }
       }
+      // 读侧 rowToMeta 把 interrupted 也投影成 completed，这里保持同一口径。
+      const nextStatus = candidate.lastOutcome
+        ? candidate.lastOutcome === "error"
+          ? "error"
+          : "completed"
+        : undefined;
       try {
         const before = await options.taskIndexRepo.getTaskMeta({
           workspacePath: candidate.cwd,
           ...(workspaceIdentity ? { workspaceIdentity } : {}),
           taskId: candidate.sessionId,
         });
+        // 修复原因：事实完全一致时重复 `applyCliFacts` 只是一次无意义的 SQLite 写事务。
+        // 手动改名行（`titleOverridden`）无法从 `before.title` 反推 `cli_title`，保守起见
+        // 仍然写入；预留行的 title/createdAt 必然与事实不同，因此首次发现（含
+        // `originProjectId` 入库）与污染标题修复都不受影响。
+        if (
+          before &&
+          !before.titleOverridden &&
+          before.title === candidate.title &&
+          before.createdAt === candidate.createdAt &&
+          before.updatedAt >= candidate.updatedAt &&
+          (nextStatus === undefined || before.status === nextStatus) &&
+          (before.forkedFromTaskId ?? undefined) === (candidate.forkedFromTaskId ?? undefined)
+        ) {
+          for (const entry of sessionEntries) entry.synced = true;
+          unsyncedSessionIds.delete(sessionId);
+          continue;
+        }
         const after = await options.taskIndexRepo.applyCliFacts({
           meta: {
             taskId: candidate.sessionId,
@@ -613,9 +473,7 @@ export function createCodexGlobalRolloutSyncer(options: {
             mode: "default",
             provider: CODEZ_AGENT_PROVIDER,
             ...(candidate.forkedFromTaskId ? { forkedFromTaskId: candidate.forkedFromTaskId } : {}),
-            ...(candidate.lastOutcome
-              ? { status: candidate.lastOutcome === "error" ? "error" : "completed" }
-              : {}),
+            ...(nextStatus ? { status: nextStatus } : {}),
           },
           ...(candidate.originProjectId !== undefined
             ? { originProjectId: candidate.originProjectId }
@@ -623,9 +481,8 @@ export function createCodexGlobalRolloutSyncer(options: {
           titleSource: "default",
           ...(candidate.lastOutcome ? { lastOutcome: candidate.lastOutcome } : {}),
         });
-        for (const cacheEntry of cacheEntries) {
-          cacheEntry.synced = true;
-        }
+        for (const entry of sessionEntries) entry.synced = true;
+        unsyncedSessionIds.delete(sessionId);
         if (
           !before ||
           before.title !== after.title ||
@@ -645,9 +502,8 @@ export function createCodexGlobalRolloutSyncer(options: {
     return changedAny;
   };
 
-  const sync = async (notifyIfChanged: boolean, forceFullScan = false): Promise<boolean> => {
+  const sync = async (notifyIfChanged: boolean): Promise<boolean> => {
     if (disposed) return false;
-    if (forceFullScan) needsFullScan = true;
     if (running) {
       queued = true;
       return running;
@@ -656,7 +512,7 @@ export function createCodexGlobalRolloutSyncer(options: {
       let anyChanged = false;
       do {
         queued = false;
-        const changed = await runOnce(false);
+        const changed = await runOnce();
         anyChanged ||= changed;
       } while (queued && !disposed);
       if (anyChanged && notifyIfChanged && !disposed) {
@@ -705,13 +561,11 @@ export function createCodexGlobalRolloutSyncer(options: {
       await mkdir(sessionsRoot, { recursive: true });
       if (disposed || watcher) return;
       watcher = watch(sessionsRoot, { recursive: true }, (_eventType, filename) => {
-        if (typeof filename === "string" && filename.trim()) {
-          const base = basename(filename);
-          if (base.startsWith("rollout-") && base.endsWith(".jsonl")) {
-            pendingWatchPaths.add(join(sessionsRoot, filename));
-          } else {
-            needsFullScan = true;
-          }
+        // 只报目录或不报文件名的事件无法定位单个 rollout，交给整树恢复扫描。
+        if (typeof filename !== "string" || !filename.trim()) {
+          needsFullScan = true;
+        } else if (isRolloutFileName(basename(filename))) {
+          pendingWatchPaths.add(join(sessionsRoot, filename));
         } else {
           needsFullScan = true;
         }
@@ -724,6 +578,8 @@ export function createCodexGlobalRolloutSyncer(options: {
           // ignore
         }
         watcher = null;
+        // watcher 断开期间的事件已丢失：标记整树恢复，避免增量扫描长期漏掉这段时间的变更。
+        needsFullScan = true;
         // recursive watch 异常退化时才启动轮询兜底，避免正常监听期间每 3 秒全量遍历。
         startFallbackPoll();
       });
@@ -738,11 +594,16 @@ export function createCodexGlobalRolloutSyncer(options: {
   return {
     start() {
       if (disposed) return;
-      void ensureWatcher();
-      void sync(true).catch(() => {});
+      // 先建立 watcher 再做基线扫描：否则两者之间落盘的新文件既不在基线里，也没有事件。
+      void (async () => {
+        await ensureWatcher();
+        if (disposed) return;
+        await sync(true);
+      })().catch(() => {});
     },
     syncNow() {
-      return sync(false, true);
+      // 普通 `readTree`/`readProjects` 只做增量对账，不再强制整树 full scan。
+      return sync(false);
     },
     dispose() {
       disposed = true;
@@ -756,6 +617,9 @@ export function createCodexGlobalRolloutSyncer(options: {
       }
       watcher = null;
       cacheByPath.clear();
+      pathsBySessionId.clear();
+      unsyncedSessionIds.clear();
+      dirCache.clear();
       cachedThreadNames.clear();
     },
   };

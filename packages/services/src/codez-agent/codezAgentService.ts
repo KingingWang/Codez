@@ -440,6 +440,15 @@ const PLUGIN_MANAGEMENT_REQUEST_TIMEOUT_MS = 5 * 60_000;
 const CHILD_PROCESSES_REQUEST_TIMEOUT_MS = 800;
 const PLUGIN_OPERATION_CANCEL_REQUEST_TIMEOUT_MS = 5_000;
 const SESSION_COMPACT_REQUEST_TIMEOUT_MS = 5 * 60_000;
+/**
+ * codex legacy mirror 在 subscribe ACK 前的暂存上限。
+ * 与 windowHostSessionsIndexObserver 的 staging 同一口径：帧数上限防止 ACK 迟到时
+ * 无界堆积，字节上限对齐 V4 逻辑帧组装预算，越界即整批作废而不是截断半帧。
+ */
+const CODEX_LEGACY_MAX_STAGED_WIRES = 1_024;
+const CODEX_LEGACY_MAX_STAGED_BYTES = PROTOCOL_V4_LIMITS.logicalFrameAssemblyMaxStagedBytes;
+/** 暂存越界后「退订 + 重订阅」的恢复次数上限；耗尽即放弃，不做无界重试。 */
+const CODEX_LEGACY_STAGED_OVERFLOW_RESUBSCRIBES = 3;
 
 interface PendingPermissionRequest {
   client: CodezProtocolClient;
@@ -1905,6 +1914,9 @@ export function createCodezAgentService(
     // 再同步 fire initial notification，await continuation 尚未运行就按
     // subscriptionId 过滤会把首帧丢掉（与 taskIndexSyncer 的 staging 同一理由）。
     const stagedWires: ConversationTopicWireCandidate[] = [];
+    let stagedBytes = 0;
+    let stagedOverflow = false;
+    let overflowResubscribes = 0;
     let subscriptionId: string | null = null;
     let connectionId: string | null = null;
     let assemblyTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1967,10 +1979,41 @@ export function createCodezAgentService(
       }
     };
 
+    // ACK 前的暂存必须有界：大历史会话的全量快照会被切成很多物理帧，bridge 在订阅
+    // 在途期间连发时，无界 push 会把整段历史常驻在这条 mirror 上。越界即整批作废并
+    // 标记 stagedOverflow —— 截断头部会留下能通过类型校验但缺片的逻辑帧，宁可整批丢掉，
+    // 等 ACK 到达后退订重订阅，用最新全量快照恢复。
+    const stageWire = (wire: ConversationTopicWireCandidate): void => {
+      if (stagedOverflow) return;
+      const bytes = utf8JsonByteLength(wire);
+      if (
+        bytes > CODEX_LEGACY_MAX_STAGED_BYTES ||
+        stagedWires.length + 1 > CODEX_LEGACY_MAX_STAGED_WIRES ||
+        stagedBytes + bytes > CODEX_LEGACY_MAX_STAGED_BYTES
+      ) {
+        stagedWires.length = 0;
+        stagedBytes = 0;
+        stagedOverflow = true;
+        logger.warn(
+          undefined,
+          "codex session 订阅 ACK 前暂存帧越界，已整批丢弃并将在 ACK 后重订阅",
+          {
+            sessionId: params.sessionId,
+            workspaceKey: resolveWorkspaceKey(params),
+            maxStagedWires: CODEX_LEGACY_MAX_STAGED_WIRES,
+            maxStagedBytes: CODEX_LEGACY_MAX_STAGED_BYTES,
+          },
+        );
+        return;
+      }
+      stagedWires.push(wire);
+      stagedBytes += bytes;
+    };
+
     const acceptWire = (wire: ConversationTopicWireCandidate): void => {
       if (upstream.disposed || wire.topic !== topic) return;
       if (subscriptionId === null) {
-        stagedWires.push(wire);
+        stageWire(wire);
         return;
       }
       if (wire.subscriptionId !== subscriptionId) return;
@@ -1980,6 +2023,49 @@ export function createCodezAgentService(
 
     // 先挂帧监听再发起订阅（理由见 stagedWires 注释）。
     const frameDisposable = getConversationFrameEmitter(workspace).event(acceptWire);
+
+    /**
+     * 暂存越界后的恢复：本地已经缺帧，继续用当前订阅只会让投影停在旧快照。
+     * 摘掉本地订阅身份（恢复期间到达的帧重新走有界暂存），退订旧路由，再重新
+     * subscribe 让 bridge 重发最新全量快照。恢复次数有上限，耗尽后放弃而不是无界重试。
+     */
+    const recoverFromStagedOverflow = async (): Promise<void> => {
+      stagedOverflow = false;
+      const staleSubscriptionId = subscriptionId;
+      subscriptionId = null;
+      connectionId = null;
+      stagedWires.length = 0;
+      stagedBytes = 0;
+      if (overflowResubscribes >= CODEX_LEGACY_STAGED_OVERFLOW_RESUBSCRIBES) {
+        logger.warn(undefined, "codex session 暂存越界恢复次数已达上限，放弃重订阅", {
+          sessionId: params.sessionId,
+          workspaceKey: resolveWorkspaceKey(params),
+          limit: CODEX_LEGACY_STAGED_OVERFLOW_RESUBSCRIBES,
+        });
+        return;
+      }
+      overflowResubscribes += 1;
+      logger.info(undefined, "codex session 暂存越界，退订并重新订阅以恢复最新快照", {
+        sessionId: params.sessionId,
+        workspaceKey: resolveWorkspaceKey(params),
+        attempt: overflowResubscribes,
+      });
+      if (staleSubscriptionId) {
+        // 必须先退订再重订阅：rememberV4SubscriptionRoute 按 (workspace, topic, connection)
+        // 覆盖旧路由，顺序反过来会让旧 subscriptionId 失去路由而无法退订。
+        await unsubscribeV4Route(
+          { ...workspace, subscriptionId: staleSubscriptionId },
+          "conversation/",
+        ).catch((error: unknown) => {
+          logger.debug(undefined, "codex session 暂存越界后退订失败（忽略）", {
+            error: error instanceof Error ? error.message : String(error),
+            sessionId: params.sessionId,
+          });
+        });
+      }
+      if (upstream.disposed) return;
+      await subscribe(1);
+    };
 
     const subscribe = async (attempt: number): Promise<void> => {
       if (upstream.disposed) return;
@@ -2003,9 +2089,11 @@ export function createCodezAgentService(
         rememberV4SubscriptionRoute(params, topic, subscriptionId, connection.connectionId);
         // 回放暂存帧：只留下属于本订阅的（同 topic 可能有桌面 UI 自己的订阅在发帧）。
         const staged = stagedWires.splice(0);
+        stagedBytes = 0;
         for (const wire of staged) {
           acceptWire(wire);
         }
+        if (stagedOverflow) await recoverFromStagedOverflow();
       } catch (error) {
         if (upstream.disposed) return;
         // 有界重试（与 legacy「重试耗尽即放弃」语义对齐）：会话刚创建时 bridge 侧
@@ -2041,6 +2129,7 @@ export function createCodezAgentService(
       assembler.clear();
       projection.dispose();
       stagedWires.length = 0;
+      stagedBytes = 0;
       const activeSubscriptionId = subscriptionId;
       const activeConnectionId = connectionId;
       subscriptionId = null;

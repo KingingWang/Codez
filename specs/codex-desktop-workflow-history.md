@@ -44,6 +44,7 @@ native thread/read + thread/turns/list
 - The query uses the existing read-only conversation client path and does not establish another runtime, queue, or accepted state.
 - The bridge serializes native events through `ThreadStateStore`; the query takes an atomic snapshot of that owner's state.
 - The query is stateless and timeout-retry safe. Repeating identical parameters returns the current authoritative projection for that window.
+- Completed turns cache their validated `CodexTurn`, projected `CodexHistoryRun`, and `fileChangeSummary` keyed by turn identity and `(logEpoch, revision)` watermarks so paginated `beforeTurnId` queries do not re-parse, reverse, or re-summarize the entire thread history on every page.
 - `beforeTurnId` refers to a native turn identity, not a row id or DWF run id. After reconnect it remains valid when that turn still exists. If history has changed and the cursor source no longer exists, the query fails with an explicit missing-history-cursor error; clients restart from the first page. It never silently merges pages across changed history.
 - Filters and pagination apply after native turn validation but before projection size truncation. They never cause additional native writes.
 

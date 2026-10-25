@@ -30,10 +30,9 @@ import {
   type RowBase,
 } from "./projection-item-extras.js";
 import {
-  collectSubagentFacts,
+  collectSubagentAggregate,
   subagentEntityId,
   subagentRow,
-  subagentRowAnchors,
   turnSubagentSignature,
   type SubagentFact,
 } from "./subagent-projection.js";
@@ -74,6 +73,47 @@ const validatedTurns = new WeakMap<
   CodexTurn,
   { itemsRef: CodexTurn["items"]; itemsLength: number }
 >();
+
+/**
+ * 已拼好的 settled 前缀行缓存（模块级单条，按前缀校验自愈）。
+ *
+ * 原因：流式 delta 只改末尾活动轮，但 `projectRows` 以前每帧都要逐轮取缓存再逐行 push
+ * （1 万轮 ≈ 5 万行 push ≈ 5ms/帧），会话越长每帧越慢，UI 每秒十几帧就把主线程吃满。
+ * 命中后只做 `settledPrefixRows.concat(activeTurnRows)`，历史部分不再逐轮逐行重跑。
+ *
+ * 校验项（任一不满足就从该轮起重新投影，结果与逐轮投影完全一致）：turns 前缀引用、
+ * 每个 settled turn 的 items 引用与长度、`itemsView === "full"`、`status !== "inProgress"`、
+ * `thread.createdAt`、`hiddenTurnIds` 引用、subagentAnchors 引用（等价于旧的每轮
+ * `turnSubagentSignature`：子代理终态在后续轮收敛时锚点轮必须重投影）、以及该轮无挂载交互。
+ * `rowId` 仍是全历史连续序号（前缀从 0 起算，尾部接着排），事件顺序与行内容不变。
+ */
+interface SettledPrefixRowsCache {
+  threadCreatedAt: number;
+  hiddenTurnIds: ReadonlySet<string> | undefined;
+  anchorsRef: ReadonlyMap<string, ReadonlyMap<string, SubagentFact[]>> | undefined;
+  turnRefs: CodexTurn[];
+  itemsRefs: CodexTurn["items"][];
+  itemsLengths: number[];
+  autoApprovalSignatures: string[];
+  /** rowStarts[i]：前 i 轮的累计行数（rowStarts[0] === 0），用于按轮边界切片前缀行。 */
+  rowStarts: number[];
+  /** 前缀轮 id：尾部据此做全历史唯一性校验，避免每帧重建整份 id 集合。 */
+  turnIds: Set<string>;
+  rows: ConversationRow[];
+}
+
+/**
+ * 按「首个可见 turn」弱引用分桶：桌面端可能同时投影多个会话（父会话、子代理下钻、
+ * 附件预投影线程），单条模块级缓存会在会话之间反复失效；WeakMap 让每个线程各自持有前缀，
+ * 且随 turn 对象回收，不需要显式清理。
+ */
+const settledPrefixRowsCache = new WeakMap<object, SettledPrefixRowsCache>();
+
+/** 无挂载交互的轮次共用同一个空数组：语义与旧的 `interactions.filter(...)` 空结果一致。 */
+const NO_TURN_INTERACTIONS: readonly PendingInteraction[] = [];
+
+/** 前缀为空时的共用空行数组，避免每次投影都分配一个临时数组。 */
+const NO_TURN_ROWS: readonly ConversationRow[] = [];
 
 /** 对单个 turn 做幂等 schema 校验：同一引用已校验且为终态时直接复用。 */
 export function parseCodexTurnCached(turn: unknown): CodexTurn {
@@ -559,35 +599,181 @@ export function projectRows(
   hiddenTurnIds?: ReadonlySet<string>,
   autoApprovalReviews?: TurnAutoApprovalReviewsMap,
 ): ConversationRow[] {
-  const rows: ConversationRow[] = [];
-  const turnIds = new Set<string>();
   const turns = hiddenTurnIds?.size
     ? thread.turns.filter((turn) => !hiddenTurnIds.has(turn.id))
     : thread.turns;
   // 子代理事实先整体聚合：终态可能出现在锚点之后的 turn，逐 item 决策会先显示 running 再回跳。
-  const subagentAnchors = subagentRowAnchors(collectSubagentFacts(thread, hiddenTurnIds));
-  for (const turn of turns) {
+  const subagentAnchors = collectSubagentAggregate(thread, hiddenTurnIds).anchors;
+  // 交互按 turnId 建索引：旧实现每轮都 filter 一遍（O(轮数 × 交互数)），长历史下每帧白扫。
+  let wildcardInteraction = false;
+  const interactionTurnIds = new Set<string>();
+  for (const interaction of interactions) {
+    if (interaction.turnId === undefined) wildcardInteraction = true;
+    else interactionTurnIds.add(interaction.turnId);
+  }
+  const anyInteraction = interactions.length > 0;
+  const hasInteraction = (turnId: string): boolean =>
+    anyInteraction && (wildcardInteraction || interactionTurnIds.has(turnId));
+  const cacheKey = turns[0];
+  const cachedPrefix = cacheKey ? settledPrefixRowsCache.get(cacheKey) : undefined;
+  const cache =
+    cachedPrefix &&
+    cachedPrefix.threadCreatedAt === thread.createdAt &&
+    cachedPrefix.hiddenTurnIds === hiddenTurnIds &&
+    cachedPrefix.anchorsRef === subagentAnchors
+      ? cachedPrefix
+      : undefined;
+  // 可复用的 settled 前缀长度：逐轮只比较引用与 items 引用/长度，不重跑任何行投影。
+  let reusable = 0;
+  if (cache) {
+    const limit = Math.min(cache.turnRefs.length, turns.length);
+    while (reusable < limit) {
+      const turn = turns[reusable]!;
+      if (
+        turn !== cache.turnRefs[reusable] ||
+        turn.items !== cache.itemsRefs[reusable] ||
+        turn.items.length !== cache.itemsLengths[reusable]! ||
+        turn.itemsView !== "full" ||
+        turn.status === "inProgress" ||
+        hasInteraction(turn.id) ||
+        turnAutoApprovalSignature(autoApprovalReviews?.[turn.id]) !==
+          cache.autoApprovalSignatures[reusable]
+      ) {
+        break;
+      }
+      reusable += 1;
+    }
+  }
+  const shrunk = cache !== undefined && reusable < cache.turnRefs.length;
+  const prefixRows =
+    reusable === 0
+      ? undefined
+      : shrunk
+        ? cache!.rows.slice(0, cache!.rowStarts[reusable]!)
+        : cache!.rows;
+  // 前缀轮 id 用于全历史唯一性校验；前缀缩短时必须重建，否则被挤到尾部的轮会被误判成重复。
+  const prefixTurnIds =
+    reusable === 0
+      ? undefined
+      : shrunk
+        ? new Set(cache!.turnRefs.slice(0, reusable).map((turn) => turn.id))
+        : cache!.turnIds;
+  const tailRows: ConversationRow[] = [];
+  const tailTurnIds = new Set<string>();
+  const added: { turn: CodexTurn; rowCount: number; autoApprovalSignature: string }[] = [];
+  let prefixLength = reusable;
+  // 已复用前缀的行数是本轮 rowId 的固定基准；prefixRowCount 会把新 settled 轮算进去，
+  // 两者混用会让 rowId 基准重复计数（历史越长偏移越大），必须分开记账。
+  const reusedRowCount = prefixRows?.length ?? 0;
+  let prefixRowCount = reusedRowCount;
+  for (let index = reusable; index < turns.length; index += 1) {
+    const turn = turns[index]!;
     if (turn.itemsView !== "full")
       throw new Error("Codex conversation projection requires full turn items");
-    if (turnIds.has(turn.id)) throw new Error(`Duplicate Codex turn ID: ${turn.id}`);
-    turnIds.add(turn.id);
-    const turnInteractions =
-      interactions.length === 0
-        ? interactions
-        : interactions.filter(
-            (interaction) => interaction.turnId === undefined || interaction.turnId === turn.id,
-          );
+    if (prefixTurnIds?.has(turn.id) || tailTurnIds.has(turn.id))
+      throw new Error(`Duplicate Codex turn ID: ${turn.id}`);
+    tailTurnIds.add(turn.id);
+    const turnInteractions = hasInteraction(turn.id)
+      ? interactions.filter(
+          (interaction) => interaction.turnId === undefined || interaction.turnId === turn.id,
+        )
+      : NO_TURN_INTERACTIONS;
     const turnRows = projectSingleTurnRows(
       turn,
       thread.createdAt,
       turnInteractions,
       subagentAnchors.get(turn.id),
       autoApprovalReviews?.[turn.id],
-      rows.length,
+      reusedRowCount + tailRows.length,
     );
-    for (const row of turnRows) {
-      rows.push(row);
+    // 只有紧接已复用前缀、且同样满足 settledTurnRowsCache 条件的轮次才能并入前缀。
+    if (index === prefixLength && turn.status !== "inProgress" && turnInteractions.length === 0) {
+      prefixLength += 1;
+      prefixRowCount += turnRows.length;
+      added.push({
+        turn,
+        rowCount: turnRows.length,
+        autoApprovalSignature: turnAutoApprovalSignature(autoApprovalReviews?.[turn.id]),
+      });
     }
+    for (const row of turnRows) tailRows.push(row);
   }
+  const rows = prefixRows ? prefixRows.concat(tailRows) : tailRows;
+  rememberSettledPrefixRows({
+    threadCreatedAt: thread.createdAt,
+    hiddenTurnIds,
+    anchorsRef: subagentAnchors,
+    cache,
+    cacheKey,
+    reusable,
+    added,
+    prefixRows,
+    prefixRowCount,
+    rows,
+  });
   return rows;
+}
+
+/** 把本轮新 settled 的前缀写回缓存；前缀未变化（纯流式 delta）时不产生任何分配。 */
+function rememberSettledPrefixRows(options: {
+  threadCreatedAt: number;
+  hiddenTurnIds: ReadonlySet<string> | undefined;
+  anchorsRef: ReadonlyMap<string, ReadonlyMap<string, SubagentFact[]>> | undefined;
+  cache: SettledPrefixRowsCache | undefined;
+  cacheKey: CodexTurn | undefined;
+  reusable: number;
+  added: readonly { turn: CodexTurn; rowCount: number; autoApprovalSignature: string }[];
+  prefixRows: readonly ConversationRow[] | undefined;
+  prefixRowCount: number;
+  rows: readonly ConversationRow[];
+}): void {
+  const { cache, reusable, added, prefixRowCount, threadCreatedAt, hiddenTurnIds, anchorsRef } =
+    options;
+  if (cache && reusable === cache.turnRefs.length && added.length === 0) return;
+  const cacheKey = options.cacheKey;
+  if (prefixRowCount === 0) {
+    if (cacheKey) settledPrefixRowsCache.delete(cacheKey);
+    return;
+  }
+  const reusedRows = options.prefixRows ?? NO_TURN_ROWS;
+  // 新增前缀轮一定排在尾部行最前面，按行数切出来即可（不与返回数组共享引用）。
+  const addedRows = options.rows.slice(reusedRows.length, prefixRowCount);
+  let entry = reusable > 0 ? cache : undefined;
+  if (entry) {
+    entry.threadCreatedAt = threadCreatedAt;
+    entry.hiddenTurnIds = hiddenTurnIds;
+    entry.anchorsRef = anchorsRef;
+    if (reusable < entry.turnRefs.length) {
+      // 前缀缩短（历史被改写 / 交互挂到了更早的轮）：截断后再追加，id 集合同步重建。
+      entry.turnRefs.length = reusable;
+      entry.itemsRefs.length = reusable;
+      entry.itemsLengths.length = reusable;
+      entry.autoApprovalSignatures.length = reusable;
+      entry.rowStarts.length = reusable + 1;
+      entry.turnIds = new Set(entry.turnRefs.map((turn) => turn.id));
+    }
+  } else {
+    entry = {
+      threadCreatedAt,
+      hiddenTurnIds,
+      anchorsRef,
+      turnRefs: [],
+      itemsRefs: [],
+      itemsLengths: [],
+      autoApprovalSignatures: [],
+      rowStarts: [0],
+      turnIds: new Set(),
+      rows: [],
+    };
+  }
+  for (const { turn, rowCount, autoApprovalSignature } of added) {
+    entry.turnRefs.push(turn);
+    entry.itemsRefs.push(turn.items);
+    entry.itemsLengths.push(turn.items.length);
+    entry.autoApprovalSignatures.push(autoApprovalSignature);
+    entry.rowStarts.push(entry.rowStarts[entry.rowStarts.length - 1]! + rowCount);
+    entry.turnIds.add(turn.id);
+  }
+  entry.rows = reusedRows.length === 0 ? addedRows : reusedRows.concat(addedRows);
+  if (cacheKey) settledPrefixRowsCache.set(cacheKey, entry);
 }

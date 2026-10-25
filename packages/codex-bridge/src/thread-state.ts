@@ -18,6 +18,14 @@ import { paginateNativeRows } from "./native-paging.js";
 import { applyNativeRetry } from "./native-retry-status.js";
 import { resolveSelectionSideChatBoundary } from "./selection-side-chat.js";
 import {
+  findLastTurnWithStatus,
+  findTurnEntry,
+  invalidateTurnItems,
+  lastTurn,
+  noteTurnAppended,
+  noteTurnReplaced,
+} from "./thread-index.js";
+import {
   attachThreadForLoad,
   parentThreadIdOf,
   parentThreadOwnedByWorkspace,
@@ -366,12 +374,12 @@ export class ThreadStateStore {
       state.thread.collaborationMode = settings.collaborationMode;
     } else if (event.method === "thread/tokenUsage/updated") {
       state.thread.tokenUsage = params.tokenUsage;
-      const turns = array(state.thread.turns).map(object);
-      const targetTurnId =
-        typeof params.turnId === "string"
-          ? params.turnId
-          : (turns.findLast((candidate) => candidate.status === "inProgress")?.id ??
-            turns.at(-1)?.id);
+      // 原因：旧实现每条 tokenUsage 事件都要 `array(turns).map(object)` 复制整份历史再 findLast，
+      // 长会话下这条事件的开销随历史线性增长；倒序查找命中末尾活动轮即返回，语义与
+      // `findLast(inProgress)?.id ?? at(-1)?.id` 完全一致（找不到活动轮时才回退到最后一轮）。
+      const fallbackTurn =
+        findLastTurnWithStatus(state.thread, "inProgress") ?? lastTurn(state.thread);
+      const targetTurnId = typeof params.turnId === "string" ? params.turnId : fallbackTurn?.id;
       if (typeof targetTurnId === "string" && targetTurnId.length > 0) {
         const accumulated = accumulateNativeTurnUsage(
           state.turnTokenUsage?.[targetTurnId],
@@ -392,16 +400,24 @@ export class ThreadStateStore {
         state.apiRetry = null;
       }
       const turns = array(state.thread.turns);
-      const index = turns.findIndex((value) => object(value).id === turn.id);
+      // 增量索引定位替代 findIndex 的全历史线性扫描（thread-index.ts）。
+      const existingEntry = findTurnEntry(state.thread, turn.id);
       // 原生生命周期通知仅携 turn 摘要；当前连接已按 item 事件收齐的内容不能被 summary 清空。
-      if (index < 0)
-        turns.push({
+      if (!existingEntry) {
+        const created = {
           ...turn,
           items: array(turn.items),
           itemsView: event.method === "turn/started" ? "full" : turn.itemsView,
-        });
-      else turns[index] = mergeNativeTurn(object(turns[index]), turn);
-      state.thread.turns = turns;
+        };
+        turns.push(created);
+        state.thread.turns = turns;
+        noteTurnAppended(state.thread, created);
+      } else {
+        const merged = mergeNativeTurn(object(existingEntry.turn), turn);
+        turns[existingEntry.index] = merged;
+        state.thread.turns = turns;
+        noteTurnReplaced(state.thread, existingEntry.index, merged);
+      }
       if (event.method === "turn/completed") {
         settleTurnAutoApprovalReviews(state, turn.id, turn.status);
       }
@@ -414,9 +430,12 @@ export class ThreadStateStore {
     ) {
       if (!applyNativeAutoApprovalReview(state, event.method, params)) return;
     } else if (event.method === "turn/plan/updated") {
-      const turn = findNativeTurn(state.thread, params.turnId);
-      if (!turn) return;
-      upsertTurnPlanUpdate(turn, params);
+      const turnEntry = findTurnEntry(state.thread, params.turnId);
+      if (!turnEntry) return;
+      upsertTurnPlanUpdate(turnEntry.turn, params);
+      // upsertTurnPlanUpdate 可能原位替换已存在的 plan item（数组长度与引用都不变），
+      // 索引无法自行发现，必须显式失效该轮的 item 索引，避免后续 delta 命中过期条目。
+      invalidateTurnItems(turnEntry);
     } else if (event.method.endsWith("/delta") || event.method.endsWith("Delta")) {
       if (!applyNativeItemDelta(state, event.method, params, this.completedItems)) return;
     } else return;
