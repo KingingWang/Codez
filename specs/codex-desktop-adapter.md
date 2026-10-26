@@ -356,6 +356,14 @@ unoffered persistence never reach Codex.
   `thread/items/list` with a bounded page size to reconstruct its complete
   items, identity and order. Empty pages that offer another cursor, repeated
   cursors, or repeated turn/item identities fail explicitly instead of looping.
+  Only turns with `itemsView === "full"` may enter a published conversation
+  projection. If a full-history `thread/turns/list` page returns any turn with
+  `itemsView !== "full"`, or if a `turn/completed` notification arrives for a
+  turn that is not already locally present with `itemsView === "full"`, the
+  bridge reconstructs that turn's complete items through read-only
+  `thread/items/list` pagination (preserving any already-observed live items if
+  the native read races before persistence) before advancing revision or
+  publishing a snapshot; it never stamps `itemsView: "full"` without hydration.
   A single oversized item still fails explicitly;
   neither read-only recovery nor `thread/resume` may silently truncate history
   or retry a mutation with an unknown outcome. An oversized-frame production
