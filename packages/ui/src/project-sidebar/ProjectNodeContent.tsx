@@ -122,6 +122,17 @@ export const ProjectNodeContent = memo(function ProjectNodeContent({
         projectError: diagnostics?.error ?? remoteHost.lastConnectionError,
       })
     : undefined;
+  // Bug 原因（Issue #23）：离线且处于 pending（如“需要更新”）的项目行左键点击过去是空操作，
+  // 用户必须悬停 300ms 找浮层底部按钮或打开右键菜单才能触发更新/设置。离线 pending 行点击直接
+  // 复用与详情底部完全一致的待处理动作（远端升级走原项目向导，其余待处理定位远程设备设置）。
+  const offlinePendingAction =
+    !availability.online && remotePresentation?.status === "pending"
+      ? remotePresentation.primaryAction === "update-server" &&
+        remoteHost?.upgradeTarget === "server" &&
+        onUpdateServer
+        ? onUpdateServer
+        : onOpenDeviceSettings
+      : undefined;
   const primaryRootDisabledReason =
     project.primaryRootStatus === "missing"
       ? msg("primaryRootMissing")
@@ -223,6 +234,7 @@ export const ProjectNodeContent = memo(function ProjectNodeContent({
                     {...(dragEnabled ? attributes : {})}
                     {...(dragEnabled ? listeners : {})}
                     variant="ghost"
+                    onClick={offlinePendingAction ? () => offlinePendingAction() : undefined}
                     className={cn(
                       dragEnabled ? "touch-none" : "touch-pan-y",
                       "flex h-8 min-w-0 flex-1 justify-start gap-2 rounded-lg pl-2.5 pr-1 text-left text-foreground hover:bg-transparent hover:text-foreground aria-expanded:bg-transparent aria-expanded:text-foreground",

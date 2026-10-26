@@ -473,9 +473,9 @@ Host 已固定 A → 后续 Profile 编辑 B → 在途操作仍只使用 A
 - R2 存量 server（无 compatibility 字段）判为过旧，走同一升级链；R3 Desktop 的 `minCompatibleVersion` 设为首个携带 R3 握手合同的 Server 版本。
 - 当前发布默认不在根 `package.json` 中声明 `codezCompatibility` 覆盖；Desktop 与 Server CLI 构建都将缺失的 `minCompatibleVersion` 回退为当前 `productVersion`，因此默认只承诺同版本兼容。只有在完成跨版本合同与发布验证后，才可重新显式声明更低的 `codezCompatibility.minCompatibleVersion`。
 - Server 较旧且必须升级时，启动重连提示、连接向导失败面板和连接管理页都必须提供就地「立即更新」，并统一提交到 `SourceServerManagementService.updateSource`；不得要求用户记住或寻找 Settings 中的唯一入口。Desktop 较旧时仍只导向 Desktop 升级，不显示 Server 更新动作。
-- 已保留项目的待升级详情点击「更新远端」走原项目显式连接意图，由向导按上条规则执行受保护更新并继续原目录；详情不新增第二个更新 owner。启动后台恢复仍只发布待升级状态与操作入口，不在后台静默更新。
+- 已保留项目的待升级详情点击「更新远端」或直接点击待处理的离线项目行，均走原项目显式连接意图（其他待处理状态则定位到远程设备设置），由向导按上条规则执行受保护更新并继续原目录；项目行与详情不新增第二个更新 owner。已绑定 `sourceServerId` 的设备在启动重连（`reconnectOnStartup`）中遇到 `upgradeTarget: "server"` 的 `needs-upgrade` 时，与缺失运行资产的自动补装同级，自动执行一次 `updateServer({ force: false })`；若远端有运行中任务触发 `source-server-update-running-tasks` guard，保持 `needs-upgrade` 状态（携带 `runningTasks`）停止后台恢复，并弹出 Toast 交由用户显式确认。
 - 启动/任务列表重连的 Source Server 更新 Toast 使用独立展示变体：顶部居中、完整换行展示设备与版本文案、完整「立即更新」和关闭入口。该变体只服务 Source Server，不改变 Desktop 应用更新等既有 compact update Toast 的位置与截断规则。
-- 连接向导接管某个目标后，该目标的 Server 必须升级提示由向导呈现，全局 Toast 不重复提示；收起向导仍保留接管，退出/改选目标才释放，其他设备和 Desktop 升级提示不受影响。向导在发起连接前同步发布目标，不能等 `needs-upgrade` 后才抑制提示。Host 进入 `updating`、升级需求解除或 Profile 被移除时立即撤销旧升级 Toast；点击动作须重新核对当前快照，同一提示只提交一次更新。失败回到需升级状态后保留重试入口，不因旧提示去重永久丢失通知。
+- 连接向导接管某个目标后，该目标的 Server 必须升级提示由向导呈现，全局 Toast 不重复提示；收起向导仍保留接管，退出/改选目标才释放，其他设备和 Desktop 升级提示不受影响。向导在发起连接前同步发布目标，不能等 `needs-upgrade` 后才抑制提示。同版本 archive 漂移（`currentVersion === availableVersion`）仅按本次会话去重而不受跨重启持久已读键抑制，且设备恢复 `online` 时清理该设备的历史已读键，保证同版本号重复出包时每次新构建都能产生可操作提示而不会被旧键永久压住。Host 进入 `updating`、升级需求解除或 Profile 被移除时立即撤销旧升级 Toast；点击动作须重新核对当前快照，同一提示只提交一次更新。失败回到需升级状态后保留重试入口，不因旧提示去重永久丢失通知。
 - 更新动作默认先以 `force:false` 执行；只有收到 `source-server-update-running-tasks` guard 后，才向用户二次确认并以 `force:true` 重试。「版本不兼容」本身不等于授权强制中断运行中 Task。
 - 「更新中」必须在所有入口中覆盖旧的 required/error 文案，展示明确的 loading、当前结构化阶段和可展开日志；只在上传/下载产生可验证数字时展示百分比，其他阶段使用不定进度。成功后自动重新握手并继续原连接意图；失败保留阶段、日志、重试和手动指引。
 - `applied:true` 是完整远端运行时收敛合同：`current.json`、Supervisor、Server Core、Agent/Plugin Host
@@ -487,9 +487,10 @@ Host 已固定 A → 后续 Profile 编辑 B → 在途操作仍只使用 A
 
 ```text
 版本不兼容
+  ├─ 已绑定设备启动重连 ───► 自动 updateServer(force=false)（guard 则保持 needs-upgrade 并弹 Toast）
   ├─ 用户显式连接 ─────────► 连接向导自动 updateSource(force=false)
   ├─ 启动/重连 Toast ──────►「立即更新」─┐
-  ├─ 项目详情 ─► Root 原项目重连意图 ─► 向导接管目标 ─► updateSource(force=false)
+  ├─ 待升级项目行/详情 ────► Root 原项目重连意图 ─► 向导接管目标 ─► updateSource(force=false)
   └─ 远程设备 Server card ─►「立即更新」─┴─► updateSource(force=false)
                                                            │
                                                            ├─► Host Manager 状态/operation log Event
@@ -544,7 +545,7 @@ A 在线 → B 更新 → 旧物理连接失效 → 删除 B
                           └────────► bootstrapping（无交互路径：不弹凭据、不装新版本）
 ```
 
-- **静默前提**：自动路径（启动重连/断连重试/离线探测）只允许无交互步骤——凭据必须能从 credential store 静默取得（私钥无口令、或密码/口令已保存）。首次连接或没有已绑定 Source 身份的 Profile 仍需安装确认；已绑定 Source 的启动重连若仅缺少远端运行资产，可复用原 Profile/Source 身份和当前 release 自动补装。版本不兼容、身份变化、安装资产不可解析或需要输入凭据时，仍停在对应状态等待用户。
+- **静默前提**：自动路径（启动重连/断连重试/离线探测）只允许无交互步骤——凭据必须能从 credential store 静默取得（私钥无口令、或密码/口令已保存）。首次连接或没有已绑定 Source 身份的 Profile 仍需安装确认；已绑定 Source 的启动重连若缺少远端运行资产或命中远端 Server 必选更新（含同版本 archive 漂移），可复用原 Profile/Source 身份和当前 release 自动补装或执行一次 `force:false` 受保护更新。命中 running-task guard、Desktop 过旧、身份变化、安装资产不可解析或需要输入凭据时，仍停在对应状态等待用户。
 - **终态后的新恢复周期**：同一 Source 重新发布物理连接时，Registry 先为旧 terminal owner 建立新的恢复屏障并清除旧失败，再开始异步挂回。其他线路此时 join 同一 Source 必须等待新周期，不得读到旧安装/升级等待错误；恢复预算和 Manager 的连接单飞语义保持不变。
 - **断连期间**：沿用 R1 语义——保留最后可信 task 投影并标记 `sourceAvailability=offline`，所有写与 IO fail-closed，不回落本地；重连成功后由新 source snapshot 原子替换（`replaceDisconnectedSource` 既有路径）。
 - **恢复完成**：补齐 Task/Session/待确认请求（复用现有断连数据恢复：权威状态查询 + 增量收敛）；存在待确认请求时，由底部阻塞卡片消费 `pendingInteractions` 投影，不再显示顶部 warning 提示及“去处理”入口，不新增第二事实源。该展示规则适用于本地桌面、远端桌面和手机 Web。远端在断连期间继续运行是 daemon 的自然行为，恢复只是重新读取权威状态，不重放输入。
@@ -870,7 +871,7 @@ Core 启动（server-core/core.ts runServerCore）
 
 - AppSettings 顶层布尔，默认 `true`，缺字段视为 `true`；full schema 与 patch schema 都声明该字段，显式 `false` 不得在写盘前被剥离。
 - 只门禁 Host 启动静默重连入口（`listStartupReconnectCandidates → reconnectOnStartup`），不影响手动连接与断线后的 retrying / offline 恢复；修改立即持久化、下次启动生效。仅桌面设置页提供入口，不新增跨端 RPC。
-- 已保存且已绑定 `sourceServerId` 的 Profile 在启动重连中可静默补装缺失的 Source Server 运行资产；补装使用当前 Desktop 已解析的 release，最多执行一次，不自动执行版本升级。无 `sourceServerId` 的新 Profile、release 解析失败、身份变化和兼容性升级仍保持 `needs-install` / `needs-upgrade` / `identity-change-pending`，交由现有连接向导处理。
+- 已保存且已绑定 `sourceServerId` 的 Profile 在启动重连中可静默补装缺失的 Source Server 运行资产，并在命中 `upgradeTarget: "server"` 的必选升级时自动执行一次受保护更新（`force: false`）。无 `sourceServerId` 的新 Profile、远端存在运行中任务（`source-server-update-running-tasks`）、Desktop 过旧（`upgradeTarget: "controller"`）、release 解析失败和身份变化仍保持 `needs-install` / `needs-upgrade` / `identity-change-pending`，交由现有 Toast、项目入口或连接向导处理。
 - 不提供全局下载方式默认偏好（2026-08-28 决策撤销 `remoteDefaultAssetInstallMode`）；SSH 新建线路表单每次从 `local-download-upload` 开始，Profile 自身 `assetInstallMode` 优先。
 
 启动补装的 owner 与时序固定如下，不能由 Renderer 自己重试或持有第二条安装队列：

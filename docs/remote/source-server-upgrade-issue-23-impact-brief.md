@@ -13,12 +13,12 @@
 
 ## UI Surface Matrix
 
-| User scenario              | UI entry                         | Shared implementation                                      | Display/draft owner | Default/inherit source          | Validation/gating                                                     | Commit action                                               | Authority/persistence                | Mode boundary                | Must remain isolated from       |
-| -------------------------- | -------------------------------- | ---------------------------------------------------------- | ------------------- | ------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------ | ---------------------------- | ------------------------------- |
-| 冷启动发现已绑定设备需更新 | 全局 Source 更新 Toast           | `sourceServerUpdateNotifications`、`runSourceServerUpdate` | Renderer Toast      | Host 管理快照                   | `needs-upgrade + required`、绑定 ID、向导未接管；点击重读快照         | `updateSource(force:false)`；guard 后显式确认               | Host Manager；去重偏好仅控制提示次数 | Desktop                      | 未绑定 Profile、可选更新、手机  |
-| 从离线项目处理更新         | 项目行 `RemoteIdentityHoverCard` | `requestRemoteProjectConnection`、远程连接向导             | 项目 Host 投影      | Host 连接状态与 `upgradeTarget` | 仅 Desktop、`needs-upgrade`、`upgradeTarget:server`、保留的项目根目录 | 原项目显式重连意图 → 向导接管 → `updateSource(force:false)` | Host Manager；向导仅持有本次意图     | Desktop；菜单/Web 无管理动作 | 更换后的目标、其他项目和 Source |
-| 管理设备                   | 设置 › 远程设备                  | `runSourceServerUpdate`                                    | 管理快照            | Host 状态/目录                  | 设备卡当前状态                                                        | `updateSource(force:false)`；guard 后确认                   | Host Manager                         | Desktop                      | 项目与 Task 正文                |
-| 用户主动连接               | 连接向导                         | `resumeRequiredServerUpdate`                               | 向导当前目标/意图   | Host 最新快照                   | `expectedTarget` 与本次失败目标一致                                   | `updateSource(force:false)`；guard 后确认并继续连接         | Host Manager                         | Desktop                      | 后台重连的静默授权              |
+| User scenario          | UI entry                       | Shared implementation                                   | Display/draft owner | Default/inherit source          | Validation/gating                                                      | Commit action                                               | Authority/persistence              | Mode boundary                | Must remain isolated from       |
+| ---------------------- | ------------------------------ | ------------------------------------------------------- | ------------------- | ------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------- | ---------------------------------- | ---------------------------- | ------------------------------- |
+| 冷启动已绑定设备需更新 | Host 启动重连 + 全局更新 Toast | `reconnectOnStartup`、`sourceServerUpdateNotifications` | Host / Toast        | Host 管理快照与 release SHA     | 已绑定 ID、`upgradeTarget:server` 先自动 `force:false`；guard 后弹提示 | 自动 `updateServer(force:false)`；guard 后 Toast 确认       | Host Manager；同版本漂移仅会话去重 | Desktop                      | 未绑定 Profile、可选更新、手机  |
+| 从离线项目处理更新     | 项目行点击与悬停详情           | `requestRemoteProjectConnection`、远程连接向导          | 项目 Host 投影      | Host 连接状态与 `upgradeTarget` | 仅 Desktop、`needs-upgrade`、`upgradeTarget:server`、保留的项目根目录  | 原项目显式重连意图 → 向导接管 → `updateSource(force:false)` | Host Manager；向导仅持有本次意图   | Desktop；菜单/Web 无管理动作 | 更换后的目标、其他项目和 Source |
+| 管理设备               | 设置 › 远程设备                | `runSourceServerUpdate`                                 | 管理快照            | Host 状态/目录                  | 设备卡当前状态                                                         | `updateSource(force:false)`；guard 后确认                   | Host Manager                       | Desktop                      | 项目与 Task 正文                |
+| 用户主动连接           | 连接向导                       | `resumeRequiredServerUpdate`                            | 向导当前目标/意图   | Host 最新快照                   | `expectedTarget` 与本次失败目标一致                                    | `updateSource(force:false)`；guard 后确认并继续连接         | Host Manager                       | Desktop                      | 后台重连的静默授权              |
 
 ## Shared And Divergent Behavior
 
@@ -83,10 +83,10 @@
 
 ## Unresolved Questions
 
-| Question                                      | Candidate answers                        | Scope difference                                                                                               | Owner                  |
-| --------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| 同版本重新出包是否将 SHA 漂移降为非阻断       | required / available / build identity    | 会改变兼容门与发布身份合同；本次保留已有 required 判定                                                         | 后续产品与发布设计     |
-| 同设备同版本新升级事件是否重置持久 Toast 去重 | 保持旧键 / 成功在线后重置 / 构建身份入键 | 当前首次提示和项目入口可用，但旧键会压住后续同版本 Toast；重置需要修改未纳管的 UI 偏好模块并先完成模块边界迁移 | 后续 UI 架构与产品设计 |
+| Question                                      | Candidate answers                         | Scope difference                                                                                                 | Owner              |
+| --------------------------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------ |
+| 同版本重新出包是否将 SHA 漂移降为非阻断       | required / available / build identity     | 会改变兼容门与发布身份合同；本次保留已有 required 判定                                                           | 后续产品与发布设计 |
+| 同设备同版本新升级事件是否重置持久 Toast 去重 | 同版本漂移会话内去重 + 上线清理（已采纳） | 在 `sourceServerUpdateNotifications` 中对 `currentVersion === availableVersion` 仅会话内去重并在上线时清理持久键 | 已实现             |
 
 ## Planning Handoff
 
@@ -100,11 +100,11 @@
 
 ## Boundary Decisions
 
-| Boundary | Decision                               | Includes                      | Excludes / prunes               | Source                                  |
-| -------- | -------------------------------------- | ----------------------------- | ------------------------------- | --------------------------------------- |
-| 后台恢复 | 不静默更新，只发布完整待升级快照       | Toast 可操作；项目状态可见    | 无后台 `updateSource`           | R3 §6.3                                 |
-| 项目详情 | 点击「更新远端」交给现有原项目连接向导 | `force:false`、成功继续原目录 | 只跳设置页                      | R3 §6.3、项目导航                       |
-| 版本判定 | 本次保留同版本 SHA 漂移阻断            | 保持当前回归保护              | 无依据地放行可能缺 API 的旧构建 | `sourceServerConnectionManager.test.ts` |
+| Boundary | Decision                             | Includes                                  | Excludes / prunes                   | Source                                  |
+| -------- | ------------------------------------ | ----------------------------------------- | ----------------------------------- | --------------------------------------- |
+| 后台恢复 | 已绑定设备启动重连自动受保护更新一次 | `force:false`；guard 停在待升级并弹 Toast | 不静默 `force:true`、未绑定不自动更 | R3 §6.3                                 |
+| 项目入口 | 点击待升级项目行或详情交给原项目向导 | `force:false`、成功继续原目录             | 空操作或只跳设置页                  | R3 §6.3、项目导航                       |
+| 版本判定 | 本次保留同版本 SHA 漂移阻断          | 保持当前回归保护                          | 无依据地放行可能缺 API 的旧构建     | `sourceServerConnectionManager.test.ts` |
 
 ## Candidate Combinations And Accepted Cases
 

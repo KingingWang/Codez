@@ -206,6 +206,47 @@ describe("Source Server update notifications", () => {
     });
     controller.dispose();
   });
+
+  it("同版本号重新出包（archive SHA 变化）时，不被旧同版本去重压住，仍弹出立即更新提示", async () => {
+    const data = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => data.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        data.set(key, value);
+      },
+    };
+    const emitter = new Emitter<SourceServerManagementStateDelta>();
+    let snapshot = createSnapshot("3.16.2", {
+      state: "needs-upgrade",
+      updateAvailability: "required",
+      currentVersion: "3.16.2",
+    });
+    const showToast = vi.fn();
+    const controller = createSourceServerUpdateNotificationController({
+      preferences: createSourceServerUpdatePreferences(storage),
+      management: {
+        onDidChangeState: emitter.event,
+        getSnapshot: vi.fn(async () => snapshot),
+      } as unknown as ISourceServerManagementService,
+      formatMessage: (id) => id,
+      showToast,
+    });
+    await vi.waitFor(() => expect(showToast).toHaveBeenCalledTimes(1));
+    controller.dispose();
+
+    // 同一版本号（currentVersion === availableVersion）重新出包重启后，不应被历史去重键压住
+    const restarted = createSourceServerUpdateNotificationController({
+      preferences: createSourceServerUpdatePreferences(storage),
+      management: {
+        onDidChangeState: emitter.event,
+        getSnapshot: vi.fn(async () => snapshot),
+      } as unknown as ISourceServerManagementService,
+      formatMessage: (id) => id,
+      showToast,
+    });
+    await vi.waitFor(() => expect(showToast).toHaveBeenCalledTimes(2));
+    restarted.dispose();
+  });
 });
 
 function createNotificationHarness() {

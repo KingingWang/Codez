@@ -172,6 +172,46 @@ it.each([
   expect(status.className).toContain("text-warning-surface-foreground");
 });
 
+it("离线项目处于需要更新等 pending 状态时，直接左键点击项目行触发待处理恢复动作", () => {
+  const props = fixture();
+  const onUpdateServer = vi.fn();
+  const onOpenDeviceSettings = vi.fn();
+  const view = render(
+    createElement(ProjectNode, {
+      ...props,
+      remoteHost: {
+        ...props.remoteHost!,
+        connectionStatus: "offline",
+        lastConnectionStatus: "needs-upgrade",
+        upgradeTarget: "server",
+      },
+      availability: { online: false },
+      onUpdateServer,
+      onOpenDeviceSettings,
+    }),
+    { wrapper: TooltipProvider },
+  );
+  screen.getByTestId("virtual-project-toggle").click();
+  expect(onUpdateServer).toHaveBeenCalledOnce();
+  expect(onOpenDeviceSettings).not.toHaveBeenCalled();
+
+  view.rerender(
+    createElement(ProjectNode, {
+      ...props,
+      remoteHost: {
+        ...props.remoteHost!,
+        connectionStatus: "offline",
+        lastConnectionStatus: "needs-install",
+      },
+      availability: { online: false },
+      onUpdateServer,
+      onOpenDeviceSettings,
+    }),
+  );
+  screen.getByTestId("virtual-project-toggle").click();
+  expect(onOpenDeviceSettings).toHaveBeenCalledOnce();
+});
+
 it("普通离线仍显示离线", () => {
   const props = fixture();
   render(

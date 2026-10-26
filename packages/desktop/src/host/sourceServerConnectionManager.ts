@@ -454,18 +454,49 @@ export class SourceServerConnectionManager {
       let timer: ReturnType<typeof setTimeout> | undefined;
       try {
         await Promise.race([
-          this.connect({
-            profile: candidate.profile,
-            target: candidate.target,
-            membershipIntent: "retain",
-            // 已绑定 Source 的 Profile 表示用户已经确认过这条远程环境。
-            // 启动时若只是运行资产缺失，复用同一身份自动补装；新 Profile 仍在显式连接流程中确认。
-            allowInstall: Boolean(candidate.profile.sourceServerId?.trim()),
-            context: { signal: abortController.signal },
-            onDiagnosticPhase: (phase) => {
-              diagnosticPhase = phase;
-            },
-          }),
+          (async () => {
+            const isBoundSource = Boolean(candidate.profile.sourceServerId?.trim());
+            try {
+              await this.connect({
+                profile: candidate.profile,
+                target: candidate.target,
+                membershipIntent: "retain",
+                // 已绑定 Source 的 Profile 表示用户已经确认过这条远程环境。
+                // 启动时若只是运行资产缺失，复用同一身份自动补装；新 Profile 仍在显式连接流程中确认。
+                allowInstall: isBoundSource,
+                context: { signal: abortController.signal },
+                onDiagnosticPhase: (phase) => {
+                  diagnosticPhase = phase;
+                },
+              });
+            } catch (error) {
+              // Bug 原因（Issue #23）：已绑定设备冷启动遇到远端需更新（含同版本号重复出包的 archive
+              // SHA 漂移）时，过去只自动补装缺失资产，却对更新直接停在 needs-upgrade；结合同版本
+              // Toast 去重，导致冷启动后只见项目离线。对已绑定且升级目标为 server 的线路，按与自动
+              // 补装同级的方式执行一次受保护更新（force:false）；若远端有运行中任务命中 guard，
+              // updateServer 会保持 needs-upgrade 并带回 runningTasks，交由 UI 提示用户确认。
+              if (
+                isBoundSource &&
+                error instanceof SourceServerUpgradeRequiredError &&
+                error.upgradeTarget === "server" &&
+                !abortController.signal.aborted
+              ) {
+                diagnosticPhase = "update";
+                if (timer) {
+                  clearTimeout(timer);
+                  timer = undefined;
+                }
+                await this.updateServer({
+                  profile: candidate.profile,
+                  target: candidate.target,
+                  force: false,
+                  context: { signal: abortController.signal },
+                });
+                return;
+              }
+              throw error;
+            }
+          })(),
           new Promise<never>((_resolve, reject) => {
             timer = setTimeout(() => {
               reject(new Error(`Source Server startup reconnect timed out after ${timeoutMs}ms`));
@@ -646,8 +677,11 @@ export class SourceServerConnectionManager {
             this.scheduleOnlineRetry(sourceServerId, 0);
           }
         } else {
+          // Bug 原因（Issue #23）：尚未建立连接时（如冷启动或连接前待升级）执行受保护更新若命中
+          // running-task guard，之前无条件写为 state: "offline"，覆盖了原有的 needs-upgrade 状态，
+          // 导致全局更新 Toast 和项目待升级入口全部失效。操作前若为 needs-upgrade，保留该待升级状态。
           this.setState(options.profile.profileId, {
-            state: "offline",
+            state: previousState.state === "needs-upgrade" ? "needs-upgrade" : "offline",
             sourceServerId,
             ...previousCompatibility,
             ...(runningTasks ? { runningTasks } : {}),
