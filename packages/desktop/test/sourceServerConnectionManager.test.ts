@@ -1597,19 +1597,79 @@ describe("SourceServerConnectionManager", () => {
     manager.dispose();
   });
 
-  it("publishes the bound Source identity on a blocked startup reconnect without updating", async () => {
+  it("automatically updates a bound Source Server with force:false on startup reconnect", async () => {
+    const adapter = createAdapter(true, "ssh");
+    let installedVersion = "3.7.0";
+    let installedArchiveSha256 = "b".repeat(64);
+    vi.mocked(adapter.probe).mockImplementation(async () => ({
+      platform: "linux",
+      arch: "x64",
+      installed: true,
+      installedVersion,
+      installedArchiveSha256,
+    }));
+    vi.mocked(adapter.installOrUpdate).mockImplementation(async (_target, release) => {
+      installedVersion = release.version;
+      installedArchiveSha256 = release.sha256;
+    });
+    const release = createRelease("3.8.0");
+    const manager = new SourceServerConnectionManager({
+      directory: { recordHandshake: vi.fn().mockResolvedValue({ identityChanged: false }) },
+      createAdapter: () => adapter,
+      connectServer: vi.fn(async () => ({
+        serverInfo,
+        services: {} as IServiceAccessor,
+        dispose: vi.fn(),
+      })),
+      compatibilityManifest: serverInfo.compatibility!,
+      resolveRelease: vi.fn(async () => release),
+    });
+
+    const results = await manager.reconnectOnStartup([
+      { profile: { ...sshProfile, sourceServerId }, target: sshTarget },
+    ]);
+
+    expect(results).toEqual([{ profileId, status: "online" }]);
+    expect(adapter.installOrUpdate).toHaveBeenCalledOnce();
+    expect(adapter.installOrUpdate).toHaveBeenCalledWith(
+      sshTarget,
+      release,
+      expect.objectContaining({ onLog: expect.any(Function) }),
+      { force: false },
+    );
+    expect(manager.getStateByProfile(profileId)).toMatchObject({
+      state: "online",
+      sourceServerId,
+    });
+    manager.dispose();
+  });
+
+  it("keeps needs-upgrade with bound Source identity when startup auto-update hits running-task guard", async () => {
     const adapter = createAdapter(true, "ssh");
     vi.mocked(adapter.probe).mockResolvedValue({
       platform: "linux",
       arch: "x64",
       installed: true,
-      installedVersion: "3.7.0",
+      installedVersion: "3.8.0",
+      installedArchiveSha256: "b".repeat(64),
+    });
+    const guard = Object.assign(new Error("Running tasks require --force for update"), {
+      code: "source-server-update-running-tasks" as const,
+      retryable: false,
+    });
+    vi.mocked(adapter.installOrUpdate).mockRejectedValueOnce(guard);
+    const runningTasks = [{ sessionId: "s-1", workspacePath: "/repo" }];
+    vi.mocked(adapter.exec).mockResolvedValue({
+      exitCode: 0,
+      stdout: JSON.stringify(runningTasks),
+      stderr: "",
     });
     const manager = new SourceServerConnectionManager({
       directory: { recordHandshake: vi.fn() },
       createAdapter: () => adapter,
       connectServer: vi.fn(),
       compatibilityManifest: serverInfo.compatibility!,
+      resolveRelease: vi.fn(async () => createRelease("3.8.0")),
     });
 
     const results = await manager.reconnectOnStartup([
@@ -1617,12 +1677,14 @@ describe("SourceServerConnectionManager", () => {
     ]);
 
     expect(results).toMatchObject([{ profileId, status: "failed" }]);
+    expect(adapter.installOrUpdate).toHaveBeenCalledOnce();
     expect(manager.getStateByProfile(profileId)).toMatchObject({
       state: "needs-upgrade",
       sourceServerId,
       updateAvailability: "required",
+      errorCode: "source-server-update-running-tasks",
+      runningTasks,
     });
-    expect(adapter.installOrUpdate).not.toHaveBeenCalled();
     manager.dispose();
   });
 
