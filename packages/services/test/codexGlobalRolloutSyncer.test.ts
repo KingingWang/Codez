@@ -1,4 +1,14 @@
-import { appendFile, mkdtemp, mkdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import {
+  appendFile,
+  mkdtemp,
+  mkdir,
+  readFile,
+  readdir,
+  realpath,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -6,6 +16,7 @@ import type { CodezTaskMeta } from "@codez/shared";
 import { describe, expect, it, vi, type Mock } from "vitest";
 import { createCodexGlobalRolloutSyncer } from "../src/project/index.js";
 import type { CodexGlobalRolloutTaskStore } from "../src/project/codexGlobalRolloutSyncer.js";
+import { getCodexRolloutScanCachePath } from "../src/paths.js";
 import { TaskIndexRepo } from "../src/session/taskIndexRepo.js";
 
 // 本次优化的核心是「无变化时不再遍历目录、不再 stat/解析历史 rollout」，只断言入库结果
@@ -958,6 +969,305 @@ describe("createCodexGlobalRolloutSyncer", () => {
       expect(store.applyCliFacts).toHaveBeenCalledTimes(1);
       expect(store.applyCliFacts.mock.calls[0]?.[0].meta.taskId).toBe(newSessionId);
       expect(io.open).toHaveBeenCalledTimes(1);
+    } finally {
+      syncer.dispose();
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+/**
+ * 持久化解析事实缓存（`codexRolloutScanCache`）的回归边界。
+ *
+ * 核心不变量有两条，缺一不可：
+ * 1. 未变化的历史 rollout 跨进程不再被 open/解析（否则启动成本仍随历史线性增长）；
+ * 2. 缓存绝不携带「是否已入库」，入库状态每次启动都重新与 tasks-index 对账
+ *    （否则缓存与库不一致时会话会永久从侧栏消失，即 issue #19/#24 的故障类）。
+ */
+describe("createCodexGlobalRolloutSyncer durable scan cache", () => {
+  const HISTORY_COUNT = 6;
+
+  async function seedRollouts(codexHome: string, count: number, offset = 0): Promise<string[]> {
+    const dayDirs = [
+      join(codexHome, "sessions", "2026", "10", "21"),
+      join(codexHome, "sessions", "2026", "10", "22"),
+    ];
+    await Promise.all(dayDirs.map((path) => mkdir(path, { recursive: true })));
+    const paths: string[] = [];
+    await writeRollouts(
+      Array.from({ length: count }, (_, index) => {
+        const sequence = offset + index;
+        const path = join(
+          dayDirs[index % dayDirs.length]!,
+          `rollout-${rolloutStamp((index % 2) + 21, sequence)}-${rolloutSessionId(sequence)}.jsonl`,
+        );
+        paths.push(path);
+        return {
+          dir: dayDirs[index % dayDirs.length]!,
+          stamp: rolloutStamp((index % 2) + 21, sequence),
+          sessionId: rolloutSessionId(sequence),
+          title: `缓存会话 ${sequence}`,
+        };
+      }),
+    );
+    return paths;
+  }
+
+  function createSyncer(store: CodexGlobalRolloutTaskStore, codexHome: string, cachePath?: string) {
+    return createCodexGlobalRolloutSyncer({
+      taskIndexRepo: store,
+      env: { CODEX_HOME: codexHome },
+      ...(cachePath ? { scanCacheFilePath: cachePath } : {}),
+    });
+  }
+
+  it("makes a fresh process stat-only while still reconciling every session against the index", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "codez-rollout-cache-warm-"));
+    const codexHome = join(dir, ".codex");
+    const cachePath = join(dir, "codex-rollout-scan-cache.json");
+    await seedRollouts(codexHome, HISTORY_COUNT);
+    const store = createFakeTaskStore();
+    const cold = createSyncer(store, codexHome, cachePath);
+    try {
+      expect(await cold.syncNow()).toBe(true);
+      expect(store.applyCliFacts).toHaveBeenCalledTimes(HISTORY_COUNT);
+      // 冷启动逐个解析历史 rollout；落盘缓存还会额外打开一次文件锁，故用下界断言。
+      expect(io.open.mock.calls.length).toBeGreaterThanOrEqual(HISTORY_COUNT);
+    } finally {
+      cold.dispose();
+    }
+
+    // 等价于进程重启：新实例、内存缓存为空，只有磁盘上的解析事实可复用。
+    store.applyCliFacts.mockClear();
+    store.getTaskMeta.mockClear();
+    clearIoCounters();
+    const warm = createSyncer(store, codexHome, cachePath);
+    try {
+      expect(await warm.syncNow()).toBe(false);
+      // 未变化的历史 rollout 一次都不 open，即零次 head/tail 解析。
+      expect(io.open).not.toHaveBeenCalled();
+      // 整树遍历与逐文件 stat 仍然发生：基线扫描没有被跳过，只是不再解析。
+      expect(io.stat.mock.calls.length).toBeGreaterThanOrEqual(HISTORY_COUNT);
+      // 自愈兜底完整保留：每个会话仍逐个与 tasks-index 对账，只是事实一致因而不写。
+      expect(store.getTaskMeta).toHaveBeenCalledTimes(HISTORY_COUNT);
+      expect(store.applyCliFacts).not.toHaveBeenCalled();
+      expect(store.rows.size).toBe(HISTORY_COUNT);
+    } finally {
+      warm.dispose();
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("never trusts a persisted synced flag, so a rebuilt index still gets every session", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "codez-rollout-cache-synced-"));
+    const codexHome = join(dir, ".codex");
+    const cachePath = join(dir, "codex-rollout-scan-cache.json");
+    await seedRollouts(codexHome, 4);
+    const seedingStore = createFakeTaskStore();
+    const seeding = createSyncer(seedingStore, codexHome, cachePath);
+    try {
+      expect(await seeding.syncNow()).toBe(true);
+    } finally {
+      seeding.dispose();
+    }
+
+    // 人为把缓存里每条都标成已入库：模拟未来误加该字段、旧版本文件或缓存被篡改。
+    const raw = JSON.parse(await readFile(cachePath, "utf8")) as {
+      entries: Array<Record<string, unknown>>;
+    };
+    expect(raw.entries.length).toBe(4);
+    for (const entry of raw.entries) entry.synced = true;
+    await writeFile(cachePath, JSON.stringify(raw), "utf8");
+
+    // 全新的空库：若缓存里的 synced 被采信，consider() 会永久跳过这些文件，
+    // 会话再也不会出现在侧栏（issue #19/#24）。
+    const store = createFakeTaskStore();
+    clearIoCounters();
+    const warm = createSyncer(store, codexHome, cachePath);
+    try {
+      expect(await warm.syncNow()).toBe(true);
+      expect(io.open).not.toHaveBeenCalled();
+      expect(store.applyCliFacts).toHaveBeenCalledTimes(4);
+      expect([...store.rows.keys()].sort()).toEqual([0, 1, 2, 3].map(rolloutSessionId).sort());
+    } finally {
+      warm.dispose();
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("fails open to a full parse when the cache file is corrupt", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "codez-rollout-cache-corrupt-"));
+    const codexHome = join(dir, ".codex");
+    const cachePath = join(dir, "codex-rollout-scan-cache.json");
+    await seedRollouts(codexHome, 4);
+    await writeFile(cachePath, '{"version":1,"codexHome":"截断的半份内容', "utf8");
+    const store = createFakeTaskStore();
+    const syncer = createSyncer(store, codexHome, cachePath);
+    try {
+      expect(await syncer.syncNow()).toBe(true);
+      const parsedRollouts = io.open.mock.calls
+        .map((call) => call[0])
+        .filter(
+          (target): target is string => typeof target === "string" && target.endsWith(".jsonl"),
+        );
+      expect(parsedRollouts.length).toBe(4);
+      expect(store.applyCliFacts).toHaveBeenCalledTimes(4);
+    } finally {
+      syncer.dispose();
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("ignores a cache written for a different CODEX_HOME", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "codez-rollout-cache-scope-"));
+    const homeA = join(dir, ".codex-a");
+    const homeB = join(dir, ".codex-b");
+    const cachePath = join(dir, "codex-rollout-scan-cache.json");
+    await seedRollouts(homeA, 3, 0);
+    await seedRollouts(homeB, 2, 100);
+    const storeA = createFakeTaskStore();
+    const syncerA = createSyncer(storeA, homeA, cachePath);
+    try {
+      expect(await syncerA.syncNow()).toBe(true);
+    } finally {
+      syncerA.dispose();
+    }
+
+    // 换 $CODEX_HOME（含 CI / native smoke 每次覆盖）后必须整份忽略：
+    // 缓存里的绝对路径属于另一个 profile，采信就会把别的会话写进当前 Host 的库。
+    const storeB = createFakeTaskStore();
+    clearIoCounters();
+    const syncerB = createSyncer(storeB, homeB, cachePath);
+    try {
+      expect(await syncerB.syncNow()).toBe(true);
+      const parsedRollouts = io.open.mock.calls
+        .map((call) => call[0])
+        .filter(
+          (target): target is string => typeof target === "string" && target.endsWith(".jsonl"),
+        );
+      expect(parsedRollouts.length).toBe(2);
+      expect(parsedRollouts.every((path) => path.startsWith(homeB))).toBe(true);
+      expect(storeB.applyCliFacts).toHaveBeenCalledTimes(2);
+      for (const index of [0, 1, 2]) expect(storeB.rows.has(rolloutSessionId(index))).toBe(false);
+      for (const index of [100, 101]) expect(storeB.rows.has(rolloutSessionId(index))).toBe(true);
+    } finally {
+      syncerB.dispose();
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("re-parses only the rollout that changed while the app was closed", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "codez-rollout-cache-append-"));
+    const codexHome = join(dir, ".codex");
+    const cachePath = join(dir, "codex-rollout-scan-cache.json");
+    const paths = await seedRollouts(codexHome, 4);
+    const store = createFakeTaskStore();
+    const cold = createSyncer(store, codexHome, cachePath);
+    try {
+      expect(await cold.syncNow()).toBe(true);
+    } finally {
+      cold.dispose();
+    }
+
+    // CLI 在应用关闭期间继续追加：size/mtime 变化必须让这一个文件重新解析，
+    // 其余历史文件仍然零解析（这正是不能只按「库里有行」跳过的原因）。
+    const appended = paths[1]!;
+    await appendFile(
+      appended,
+      `${JSON.stringify({ type: "event_msg", payload: { type: "error" } })}\n`,
+      "utf8",
+    );
+    store.applyCliFacts.mockClear();
+    clearIoCounters();
+    const warm = createSyncer(store, codexHome, cachePath);
+    try {
+      expect(await warm.syncNow()).toBe(true);
+      // 只统计 rollout 解析：缓存落盘还会打开一次文件锁，不能混进解析次数。
+      const parsedRollouts = io.open.mock.calls
+        .map((call) => call[0])
+        .filter(
+          (target): target is string => typeof target === "string" && target.endsWith(".jsonl"),
+        );
+      expect(parsedRollouts).toEqual([appended]);
+      expect(store.applyCliFacts).toHaveBeenCalledTimes(1);
+      const call = store.applyCliFacts.mock.calls[0]?.[0];
+      expect(call?.meta.taskId).toBe(rolloutSessionId(1));
+      expect(call?.lastOutcome).toBe("error");
+    } finally {
+      warm.dispose();
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("prunes a rollout deleted while the app was closed out of the durable cache", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "codez-rollout-cache-delete-"));
+    const codexHome = join(dir, ".codex");
+    const cachePath = join(dir, "codex-rollout-scan-cache.json");
+    const paths = await seedRollouts(codexHome, 3);
+    const store = createFakeTaskStore();
+    const cold = createSyncer(store, codexHome, cachePath);
+    try {
+      expect(await cold.syncNow()).toBe(true);
+    } finally {
+      cold.dispose();
+    }
+
+    await rm(paths[0]!, { force: true });
+    clearIoCounters();
+    const warm = createSyncer(store, codexHome, cachePath);
+    try {
+      await warm.syncNow();
+      const raw = JSON.parse(await readFile(cachePath, "utf8")) as {
+        entries: Array<{ path: string }>;
+      };
+      // 基线遍历覆盖整棵树，已消失的路径必须被摘除，否则缓存会随时间无界增长。
+      expect(raw.entries.map((entry) => entry.path)).not.toContain(paths[0]);
+      expect(raw.entries.length).toBe(2);
+      expect(store.rows.size).toBe(3);
+    } finally {
+      warm.dispose();
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("does not rewrite the cache file when nothing changed", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "codez-rollout-cache-idle-"));
+    const codexHome = join(dir, ".codex");
+    const cachePath = join(dir, "codex-rollout-scan-cache.json");
+    await seedRollouts(codexHome, 3);
+    const store = createFakeTaskStore();
+    const syncer = createSyncer(store, codexHome, cachePath);
+    try {
+      expect(await syncer.syncNow()).toBe(true);
+      expect(await readFile(cachePath, "utf8")).toContain("缓存会话 0");
+      await rm(cachePath, { force: true });
+      // 无变化的重复同步（readTree/readProjects 的 catch-up）不得重新落盘整份缓存，
+      // 否则活跃追加期间会把「启动少解析」换成「每轮重写数百 KB」。
+      expect(await syncer.syncNow()).toBe(false);
+      await expect(readFile(cachePath, "utf8")).rejects.toThrow();
+    } finally {
+      syncer.dispose();
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps the cache inside the Codez data root and never inside CODEX_HOME", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "codez-rollout-cache-location-"));
+    const codexHome = join(dir, ".codex");
+    const cachePath = join(dir, "codex-rollout-scan-cache.json");
+    await seedRollouts(codexHome, 2);
+    // 生产路径由 paths.ts 统一给出，必须落在 Codez 数据目录下。
+    expect(getCodexRolloutScanCachePath()).toContain(".codez");
+    expect(getCodexRolloutScanCachePath().endsWith("codex-rollout-scan-cache.json")).toBe(true);
+    const store = createFakeTaskStore();
+    const syncer = createSyncer(store, codexHome, cachePath);
+    try {
+      expect(await syncer.syncNow()).toBe(true);
+      // 原生历史与配置只读：$CODEX_HOME 下除 sessions 与 session_index.jsonl 外不得多出任何文件。
+      const entries = (await readdir(codexHome)).sort();
+      expect(
+        entries.filter((name) => name !== "sessions" && name !== "session_index.jsonl"),
+      ).toEqual([]);
     } finally {
       syncer.dispose();
       await rm(dir, { recursive: true, force: true });
