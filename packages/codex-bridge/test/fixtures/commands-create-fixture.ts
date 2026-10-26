@@ -5,7 +5,11 @@ import { setup, workspaceId } from "./commands-fixture.js";
 /** 原生 thread/start 回传（继承）的权限形态：显式 build/edit 场景刻意继承 dangerFullAccess，
  * 用以验证预设能收紧回 workspaceWrite；其余继承 readOnly。取代原先语义含糊的布尔形参
  * fullAccess（调用点按目标档位反推继承值，读者难以对应）。 */
-type InheritedSandbox = "readOnly" | "workspaceWrite" | "dangerFullAccess";
+type InheritedSandbox =
+  | "readOnly"
+  | "workspaceWrite"
+  | "dangerFullAccess"
+  | "dangerFullAccessOnRequest";
 const inheritedPermissions: Record<InheritedSandbox, { sandbox: unknown; approvalPolicy: string }> =
   {
     readOnly: { sandbox: { type: "readOnly", networkAccess: false }, approvalPolicy: "untrusted" },
@@ -20,6 +24,10 @@ const inheritedPermissions: Record<InheritedSandbox, { sandbox: unknown; approva
       approvalPolicy: "on-request",
     },
     dangerFullAccess: { sandbox: { type: "dangerFullAccess" }, approvalPolicy: "never" },
+    dangerFullAccessOnRequest: {
+      sandbox: { type: "dangerFullAccess" },
+      approvalPolicy: "on-request",
+    },
   };
 
 /** Executable create contract: thread/start → accepted native settings/update → ACK.
@@ -49,6 +57,14 @@ export async function verifyCreateIntent(t: TestContext) {
     {
       name: "yolo mode",
       config: { mode: "yolo" },
+      plan: "default",
+      sandbox: "dangerFullAccess",
+      reviewer: "user",
+    },
+    {
+      name: "yolo mode over inherited danger-full-access with on-request approval",
+      config: { mode: "yolo" },
+      inherited: "dangerFullAccessOnRequest",
       plan: "default",
       sandbox: "dangerFullAccess",
       reviewer: "user",
@@ -87,9 +103,11 @@ export async function verifyCreateIntent(t: TestContext) {
         t,
         // 显式 workspaceWrite（build/edit）场景让原生回传继承 dangerFullAccess 沙箱，
         // 以验证预设能从完全访问收紧回 workspace-write。
-        "sandbox" in example && example.sandbox === "workspaceWrite"
-          ? "dangerFullAccess"
-          : "readOnly",
+        "inherited" in example
+          ? example.inherited
+          : "sandbox" in example && example.sandbox === "workspaceWrite"
+            ? "dangerFullAccess"
+            : "readOnly",
       );
       const command = h.command(
         "createSession",
