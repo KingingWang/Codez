@@ -103,7 +103,10 @@ export async function createSelectionSideSession(
   if (parentThread) {
     store.rememberMode(childId, projectThreadMode(parentThread));
   }
-  if (Array.isArray(inheritedThread.turns)) {
+  const hasFullTurns =
+    Array.isArray(inheritedThread.turns) &&
+    inheritedThread.turns.every((turn) => object(turn).itemsView === "full");
+  if (hasFullTurns) {
     childState.sideChat = await resolveSelectionSideChatBoundary(
       rpc,
       childState.thread,

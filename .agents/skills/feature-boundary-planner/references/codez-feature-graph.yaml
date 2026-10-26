@@ -2121,6 +2121,8 @@ nodes:
         file: "packages/codex-bridge/src/thread-load.ts"
       - symbol: "paginateNativeRows"
         file: "packages/codex-bridge/src/native-paging.ts"
+      - symbol: "hydrateNativeTurnItems"
+        file: "packages/codex-bridge/src/native-paging.ts"
 
   - id: "evidence.codex-writer-conflict-refresh"
     kind: "evidence"

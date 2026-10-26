@@ -971,6 +971,7 @@ Codex bridge 长会话另计（不借用 CLI PERF03 的通过证据）：
 | CXL-P02 | focused partial           | 33 MiB 合成双 item 单 turn 原页超限、各 item 独立低于 32 MiB：同 cursor 缩页，notLoaded + items/list 完整重组；单 item 超限、空页/重复游标拒绝；独立 33 MiB 真实 framer 丢帧单测 | 本地原生真实超大 rollout + 远端 Desktop 重开尚未运行；不可用 fake 页代替 pinned native end-to-end |
 | CXL-P03 | planned                   | V4 rows/range 缓存和 epoch 失效 focused tests、task-index index/full 派生等价与大帧测试                                                                                          | Desktop 长会话滚动锚点及远端索引需 E2E 复核                                                       |
 | CXL-P04 | blocked by native outline | 准确 rowId/totalCount 的原生有界 outline + tail-first、readable/ready 双阶段、desktop/mobile 分别验证                                                                            | 上游接口不存在；不能将现有 60 行 wire tail 误报为原生按需加载                                     |
+| CXL-P05 | focused partial           | `packages/codex-bridge/test/native-paging.test.ts` 与 `packages/codex-bridge/test/thread-state.test.ts` 覆盖分页返回 `summary/notLoaded` turn、缺失 `turn/started` 的 `turn/completed(summary)`、加载交错及 `thread/items/list` 只读补全 | 真实远端 Codex 异常返回非 full turn 的线上复现仍待通过有界诊断观测确认具体触发分支 |
 
 Codex 外部 writer 冲突显式刷新（见 catalog CWR01–CWR03；不代表自动追踪 TUI 流）：
 

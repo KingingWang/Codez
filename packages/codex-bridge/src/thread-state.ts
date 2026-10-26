@@ -14,7 +14,7 @@ import {
   applyNativeItemLifecycle,
   findNativeTurn,
 } from "./native-item-delta.js";
-import { paginateNativeRows } from "./native-paging.js";
+import { hydrateNativeTurnItems, paginateNativeRows } from "./native-paging.js";
 import { applyNativeRetry } from "./native-retry-status.js";
 import { resolveSelectionSideChatBoundary } from "./selection-side-chat.js";
 import {
@@ -220,7 +220,19 @@ export class ThreadStateStore {
     for (const turn of live) {
       const key = string(object(turn).id);
       const old = merged.get(key);
-      merged.set(key, old ? mergeNativeTurn(object(old), object(turn)) : turn);
+      let resolved = old ? mergeNativeTurn(object(old), object(turn)) : object(turn);
+      // 修复原因：加载期间若收到无本地 `turn/started` 的 `turn/completed(summary)` 且该新轮尚未进入
+      // 本次 `thread/turns/list` 快照，直接合入会把 `itemsView: "summary"` 留进 `thread.turns`，
+      // 导致紧随其后的会话订阅与文件变更查询稳定抛 `Codex conversation projection requires full turn items`。
+      // 修复依据：合入后仍非 `full` 的轮次通过只读 `thread/items/list` 补齐完整 items 后再落入状态。
+      if (resolved.itemsView === "summary" || resolved.itemsView === "notLoaded") {
+        const hydratedItems = await hydrateNativeTurnItems(this.rpc, id, key);
+        resolved = mergeNativeTurn(
+          { ...resolved, itemsView: "full", items: hydratedItems },
+          resolved,
+        );
+      }
+      merged.set(key, resolved);
     }
     thread.turns = [...merged.values()];
 
@@ -404,16 +416,48 @@ export class ThreadStateStore {
       const existingEntry = findTurnEntry(state.thread, turn.id);
       // 原生生命周期通知仅携 turn 摘要；当前连接已按 item 事件收齐的内容不能被 summary 清空。
       if (!existingEntry) {
+        const turnId = string(turn.id);
+        let hydratedItems = array(turn.items);
+        let itemsView =
+          event.method === "turn/started" || turn.itemsView === undefined ? "full" : turn.itemsView;
+        // 修复原因：当 `turn/completed(summary)` 在缺少本地 `turn/started` 时到达（如刚 attach/重连边界
+        // 或外部触发轮次收尾），直接 push `itemsView: "summary"` 会让下次快照投影因
+        // `turn.itemsView !== "full"` 崩溃并断开会话订阅。
+        // 修复依据：在更新 revision / 发布快照前通过只读 `thread/items/list` 补全该轮 items；
+        // 若补全等待期间 `load()` 已把同一轮写入 `state.thread.turns`，则走原位合并避免重复 turnId。
+        if (itemsView !== "full") {
+          const fetched = await hydrateNativeTurnItems(this.rpc, id, turnId);
+          const mergedItems = new Map(hydratedItems.map((item) => [string(object(item).id), item]));
+          for (const item of fetched) mergedItems.set(string(object(item).id), item);
+          hydratedItems = [...mergedItems.values()];
+          itemsView = "full";
+        }
+        if (this.deleted.has(id) || this.states.get(id) !== state) return;
+        const currentEntry = findTurnEntry(state.thread, turnId);
+        const currentTurns = array(state.thread.turns);
         const created = {
           ...turn,
-          items: array(turn.items),
-          itemsView: event.method === "turn/started" ? "full" : turn.itemsView,
+          items: hydratedItems,
+          itemsView,
         };
-        turns.push(created);
-        state.thread.turns = turns;
-        noteTurnAppended(state.thread, created);
+        if (currentEntry) {
+          const merged = mergeNativeTurn(object(currentEntry.turn), created);
+          currentTurns[currentEntry.index] = merged;
+          state.thread.turns = currentTurns;
+          noteTurnReplaced(state.thread, currentEntry.index, merged);
+        } else {
+          currentTurns.push(created);
+          state.thread.turns = currentTurns;
+          noteTurnAppended(state.thread, created);
+        }
       } else {
-        const merged = mergeNativeTurn(object(existingEntry.turn), turn);
+        let merged = mergeNativeTurn(object(existingEntry.turn), turn);
+        if (merged.itemsView === "summary" || merged.itemsView === "notLoaded") {
+          const turnId = string(turn.id);
+          const fetched = await hydrateNativeTurnItems(this.rpc, id, turnId);
+          if (this.deleted.has(id) || this.states.get(id) !== state) return;
+          merged = mergeNativeTurn({ ...merged, itemsView: "full", items: fetched }, merged);
+        }
         turns[existingEntry.index] = merged;
         state.thread.turns = turns;
         noteTurnReplaced(state.thread, existingEntry.index, merged);

@@ -234,6 +234,112 @@ test("late turn/item start and deltas never regress completed content", () => {
   ]);
 });
 
+test("turn/completed without a prior local turn/started hydrates full items before touching projection", async () => {
+  const store = new ThreadStateStore(
+    port((method, params) => {
+      const p = params as Record<string, unknown>;
+      if (method === "thread/items/list") {
+        assert.equal(p.threadId, "t1");
+        assert.equal(p.turnId, "turn-orphan");
+        return {
+          data: [
+            {
+              turnId: "turn-orphan",
+              item: { id: "user-1", type: "userMessage", content: [] },
+            },
+            {
+              turnId: "turn-orphan",
+              item: { id: "msg-1", type: "agentMessage", text: "recovered answer" },
+            },
+          ],
+          nextCursor: null,
+        };
+      }
+      return {};
+    }),
+    "/work",
+  );
+  store.markStarted(thread());
+  await store.apply({
+    method: "turn/completed",
+    params: {
+      threadId: "t1",
+      turn: { id: "turn-orphan", status: "completed", itemsView: "summary", items: [] },
+    },
+  });
+  assert.deepEqual(store.get("t1")?.thread.turns, [
+    {
+      id: "turn-orphan",
+      status: "completed",
+      itemsView: "full",
+      items: [
+        { id: "user-1", type: "userMessage", content: [] },
+        { id: "msg-1", type: "agentMessage", text: "recovered answer" },
+      ],
+    },
+  ]);
+});
+
+test("turn/completed arriving before thread/turns/list omits the new turn still resolves to full items", async () => {
+  const page = Promise.withResolvers<unknown>();
+  const store = new ThreadStateStore(
+    port((method, params) => {
+      const p = params as Record<string, unknown>;
+      if (method === "thread/turns/list") return page.promise;
+      if (method === "thread/queue/list") return { data: [], nextCursor: null };
+      if (method === "thread/items/list") {
+        return {
+          data: [
+            {
+              turnId: p.turnId,
+              item: { id: "live-item", type: "agentMessage", text: "from-items-list" },
+            },
+          ],
+          nextCursor: null,
+        };
+      }
+      return { thread: thread() };
+    }),
+    "/work",
+  );
+  const loading = store.ensure("t1");
+  await new Promise((resolve) => setImmediate(resolve));
+  await store.apply({ method: "thread/started", params: { thread: thread() } });
+  await store.apply({
+    method: "turn/completed",
+    params: {
+      threadId: "t1",
+      turn: { id: "turn-new", status: "completed", itemsView: "summary", items: [] },
+    },
+  });
+  page.resolve({
+    data: [
+      {
+        id: "turn-old",
+        status: "completed",
+        itemsView: "full",
+        items: [{ id: "old-item", type: "agentMessage", text: "old" }],
+      },
+    ],
+    nextCursor: null,
+  });
+  const state = await loading;
+  assert.deepEqual(state.thread.turns, [
+    {
+      id: "turn-old",
+      status: "completed",
+      itemsView: "full",
+      items: [{ id: "old-item", type: "agentMessage", text: "old" }],
+    },
+    {
+      id: "turn-new",
+      status: "completed",
+      itemsView: "full",
+      items: [{ id: "live-item", type: "agentMessage", text: "from-items-list" }],
+    },
+  ]);
+});
+
 test("history paging plus live notification retains earlier items in the same turn", async () => {
   const page = Promise.withResolvers<unknown>();
   const store = new ThreadStateStore(
