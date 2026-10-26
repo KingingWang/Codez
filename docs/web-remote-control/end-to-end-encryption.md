@@ -5,7 +5,7 @@
 - 手机继续扫码进入远控；现有 relay 仅负责注册、配对、心跳及 `data.payload` 透传，不修改其服务端协议或业务代码。
 - Relay V2 下桌面与手机分别用同一智谱账号 JWT 申请一次性 token 并连接 `/api/v1/remote/ws2`。Relay 仅做配对与透传，不能用作内容加密密钥。桌面另用 CSPRNG 产生 32 字节 `K_pair`，只存 credential service，并置于二维码 URL 的 `#e2ee=v1&k=<base64url>`。URL query 携带 V2 所需的 `sid/mid/name/app_version`。
 - 远控前端代码必须由与 relay 分开管理的可信来源提供，且**仅允许在受信任客户端环境（Codez Android App 或本地安装的 Codez 浏览器扩展）内运行**：
-  - Android App 环境：通过 `window.CodezAndroidSocket` 原生桥代发无 `Origin` 的 HTTP/WebSocket 请求；
+  - Android App 环境：前端 HTML/JS/CSS 随 APK 内置在本地 `assets/remote/v4/`，由 WebView 通过虚拟 HTTPS 域名 `https://appassets.androidplatform.net/Codez/remote/v4/` 从本地读取，不从 `kingingwang.github.io` 或 `zcode.z.ai` 下载可执行脚本；网络请求通过 `window.CodezAndroidSocket` 原生桥代发无 `Origin` 的 HTTP/WebSocket 请求；
   - 浏览器扩展环境（Chrome / Edge / Firefox / Orion 等扩展）：前端 HTML/JS/CSS 全部随扩展安装包保存在本地，不从 `zcode.z.ai` 下载可执行脚本；扩展通过 `declarativeNetRequest` 自动将发往 `https://zcode.z.ai/api/v1/*` 的 HTTP 与 WebSocket 请求 `Origin` 改写为 `https://zcode.z.ai`：
     - OAuth 登录优先采用 `/api/v1/oauth/cli/init` 与 `/api/v1/oauth/cli/poll/:flowId` 轮询授权模式（授权页回调直接进入 `/api/v1/oauth/cli/callback/:provider`，不经过 `https://zcode.z.ai/remote/v4` 页面），彻底规避移动端/iPad 浏览器（如 Orion）在跨源跳转时阻断 `*-extension://` 重定向或让 `zcode.z.ai` 页面脚本抢先消费一次性 `authCode` 导致 `HTTP 500 (code 2007)` 及跨源 `localStorage` 隔离导致 `OAuth CSRF 检测失败` 的问题；
     - 当移动端扩展（如 iPad Orion）不支持 `declarativeNetRequest` 修改 WebSocket 握手 `Origin` 头导致直连 `wss://zcode.z.ai/api/v1/remote/ws2` 失败时，尝试由 `https://zcode.z.ai/robots.txt` 静态纯文本资源中的隔离 Content Script 建立同源桥；桥接必须确认就绪并在首次连接失败时给出明确错误。Orion 对 WebExtension API 的支持仍是实验性的，构建通过不等于真机已可用，验收见[浏览器扩展登录与中转连接](./browser-extension-connectivity.md)；

@@ -13,6 +13,7 @@ import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -56,6 +57,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import com.example.codez_mobile.BuildConfig
 import com.example.codez_mobile.R
 import com.example.codez_mobile.remote.NativeSocketBridge
+import com.example.codez_mobile.remote.RemoteControlUrlMatcher
 import com.example.codez_mobile.remote.RemoteControlUrlPolicy
 
 /**
@@ -313,6 +315,47 @@ private fun createRemoteControlWebView(
             ): Boolean = onShowFileChooser(filePathCallback, fileChooserParams)
         }
         webViewClient = object : WebViewClient() {
+            override fun shouldInterceptRequest(
+                view: WebView?,
+                request: WebResourceRequest?,
+            ): WebResourceResponse? {
+                val requestUri = request?.url ?: return null
+                val assetPath = RemoteControlUrlMatcher.resolveBundledAssetRelativePath(
+                    scheme = requestUri.scheme,
+                    host = requestUri.host,
+                    path = requestUri.path,
+                ) ?: return null
+                val inputStream = runCatching {
+                    context.assets.open(assetPath)
+                }.getOrNull() ?: return WebResourceResponse(
+                    "text/plain",
+                    "utf-8",
+                    404,
+                    "Not Found",
+                    mapOf("Access-Control-Allow-Origin" to "*"),
+                    null,
+                )
+                val mimeType = RemoteControlUrlMatcher.guessBundledAssetMimeType(assetPath)
+                val encoding = if (
+                    mimeType.startsWith("text/") || mimeType == "application/json"
+                ) {
+                    "utf-8"
+                } else {
+                    null
+                }
+                return WebResourceResponse(
+                    mimeType,
+                    encoding,
+                    200,
+                    "OK",
+                    mapOf(
+                        "Access-Control-Allow-Origin" to "*",
+                        "Cache-Control" to "no-cache",
+                    ),
+                    inputStream,
+                )
+            }
+
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 onLoadingChanged(true)
             }
@@ -338,7 +381,7 @@ private fun createRemoteControlWebView(
 
                 val resolved = RemoteControlUrlPolicy.resolve(request.url)
                 if (resolved != null) {
-                    if (request.url.scheme == "codez") {
+                    if (resolved != request.url.toString()) {
                         view.loadUrl(resolved)
                         return true
                     }

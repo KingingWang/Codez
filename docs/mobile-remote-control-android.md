@@ -1,23 +1,23 @@
 # Android 远程控制壳
 
 `packages/android` 当前是 Codez 手机远控的 Android 壳。不重写 Codez Agent、relay 或
-RPC 协议，而是用原生入口承载现有 `/remote` 手机 Web 远控页面。
+RPC 协议，而是将 `@codez/web` 远控前端静态资源打包进 APK 本地 `assets/remote/v4/`，通过原生入口与本地安全上下文承载手机远控页面，无需在运行时从 GitHub Pages 下载前端执行代码。
 
-## 原生 WebSocket 桥（Origin 放行）
+## 本地内置 Web 资源与原生网络桥（Origin 放行）
 
 远控 relay（`wss://zcode.z.ai/api/v1/remote/ws2`）及 `/api/v1/remote/*`、`/api/v1/oauth/token` 接口按请求里的 `Origin` 头做来源白名单。
-浏览器与 WebView 的 `Origin` 由渲染进程按页面 origin 自动附加，页面脚本无法改写：
-fork 发布页 `https://kingingwang.github.io/Codez/remote/v4/` 不在白名单内，直连会被
-403 拒绝；官方页（`https://zcode.z.ai`）和桌面端（Node `ws`，不带 `Origin`）放行。
+浏览器与 WebView 的 `Origin` 由渲染进程按页面 origin 自动附加，页面脚本无法改写。
 
 因此远控页面强制要求在受信任客户端壳层（Codez Android App 或本地安装的 Codez 浏览器扩展）内运行，由壳层解决 `Origin` 放行与 OAuth 回调接管：
 
+- Android 壳通过 `node scripts/stage-android-web-assets.mjs` 将 `@codez/web` 构建产物（`--base=/Codez/remote/v4/`，剔除 `.map`）内置到 `packages/android/app/src/main/assets/remote/v4/`。
+- WebView 在 `shouldInterceptRequest` 中拦截虚拟安全来源 `https://appassets.androidplatform.net/Codez/remote/v4/*`，直接从 APK `assets/remote/v4/*` 流式返回 HTML/JS/CSS/WASM/字体等资源；扫码或粘贴 `https://kingingwang.github.io/Codez/remote/v4/?sid=...#e2ee=...`、`https://zcode.z.ai/remote...`、`codez://remote?...` 时，统一将入口重写到 `https://appassets.androidplatform.net/Codez/remote/v4/` 并完整保留 query 与 `#e2ee` 密钥 fragment（Debug 包连接的 localhost / 局域网开发地址仍直接请求开发机）。
 - 原生侧 `NativeSocketBridge`（OkHttp，不附加 `Origin` 头）通过
   `window.CodezAndroidSocket` JavascriptInterface 暴露 `open/sendText/sendBinary/close` 以及受控的 `fetch(id, url, method, headersJson, body)`（仅限 `https://zcode.z.ai/api/v1/`）。
 - 浏览器扩展侧（`pnpm build:web-remote-extension` 产出的 Manifest V3 扩展包）完全从本地扩展包加载前端脚本，通过 `declarativeNetRequest` 将发往 `https://zcode.z.ai/api/v1/*` 的 HTTP 与 WebSocket 请求头 `Origin` 设为 `https://zcode.z.ai`，并在导航层将 `https://kingingwang.github.io/Codez/remote/v4/*` 与官方 OAuth 回调 `https://zcode.z.ai/remote/v4?code|authCode|error=...&state=...` 接管至本地扩展页，同时在设备列表页提供粘贴桌面二维码链接或上传/扫描二维码图片连接能力。
 - Web bundle 内 `resolveWebRemoteControlWebSocketCtor()` 与 `resolveWebRemoteControlFetcher()`
   （`packages/web/src/webRemoteControlNativeSocket.ts`）检测到 Android 原生桥时走原生通道，检测到浏览器扩展环境时走扩展规则放行后的浏览器通道；未安装 App 或浏览器扩展的普通浏览器环境访问远控入口时直接显示门禁提示页。
-- WebView 内部放行智谱 OAuth 授权页（`bigmodel.cn`、`chat.z.ai`），不再跳出到系统默认浏览器；当授权完成回调至 `https://zcode.z.ai/remote/v4?code|authCode=...&state=...` 时，WebView 自动重写回可信加密页面 `https://kingingwang.github.io/Codez/remote/v4/` 完成 Token 兑换并恢复 `#e2ee=v1&k=<K_pair>` 密钥。
+- WebView 内部放行智谱 OAuth 授权页（`bigmodel.cn`、`chat.z.ai`），不再跳出到系统默认浏览器；当授权完成回调至 `https://zcode.z.ai/remote/v4?code|authCode=...&state=...` 时，WebView 自动重写回 APK 内置的 `https://appassets.androidplatform.net/Codez/remote/v4/` 完成 Token 兑换并恢复 `#e2ee=v1&k=<K_pair>` 密钥。
 - 原生事件经 `window.__codezAndroidSocketEvent(id, json)` 回派：文本帧原样传递，二进制帧
   （relay-gzip 信封）以 base64 传递、JS 侧还原为 `ArrayBuffer`。
 

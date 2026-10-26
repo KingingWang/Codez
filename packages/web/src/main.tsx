@@ -268,7 +268,11 @@ function resolveRemoteRelayApiOrigin(): string {
   if (configured) {
     return configured;
   }
-  if (isCodezBrowserExtension() || window.location.hostname === "kingingwang.github.io") {
+  if (
+    isTrustedWebRemoteControlHost() ||
+    window.location.hostname === "kingingwang.github.io" ||
+    window.location.hostname === "appassets.androidplatform.net"
+  ) {
     return "https://zcode.z.ai";
   }
   return window.location.origin;
@@ -1238,7 +1242,9 @@ function resolveExternalRelayWsUrl(): string {
   const endpointOrigin =
     import.meta.env.VITE_CODEZ_BASE_URL?.trim() ||
     import.meta.env.VITE_CODEZ_ENDPOINT_ORIGIN?.trim() ||
-    (isCodezBrowserExtension() || window.location.hostname === "kingingwang.github.io"
+    (isTrustedWebRemoteControlHost() ||
+    window.location.hostname === "kingingwang.github.io" ||
+    window.location.hostname === "appassets.androidplatform.net"
       ? "https://zcode.z.ai"
       : window.location.origin);
   return resolveWebRemoteControlRelayWsUrl({

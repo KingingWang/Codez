@@ -33,6 +33,7 @@ const EXTENSION_ORIGIN_PROTOCOLS = new Set([
 const EXTENSION_COMPATIBLE_REMOTE_ORIGINS = new Set([
   PRODUCTION_WEB_REMOTE_ORIGIN,
   "https://kingingwang.github.io",
+  "https://appassets.androidplatform.net",
 ]);
 
 function isExtensionUrl(url: URL): boolean {
@@ -180,7 +181,7 @@ export function resolveSafeAppReturnTo(
   const urlOrigin = getUrlOrigin(url);
   const currentIsExtension = isExtensionOrigin(currentOrigin);
   const isCrossOriginTrustedRemoteForExtension =
-    currentIsExtension &&
+    (currentIsExtension || currentOrigin === "https://appassets.androidplatform.net") &&
     EXTENSION_COMPATIBLE_REMOTE_ORIGINS.has(urlOrigin) &&
     WEB_REMOTE_CALLBACK_PATHS.has(url.pathname);
   const isExtensionUrlOnTrustedRemoteCallback =
@@ -201,7 +202,12 @@ export function resolveSafeAppReturnTo(
   if (isExtensionUrlOnTrustedRemoteCallback) {
     return `${urlOrigin}/index.html${query ? `?${query}` : ""}`;
   }
-  const returnPathname = currentIsExtension ? "/index.html" : url.pathname;
+  const returnPathname = currentIsExtension
+    ? "/index.html"
+    : currentOrigin === "https://appassets.androidplatform.net" &&
+        urlOrigin !== "https://appassets.androidplatform.net"
+      ? "/Codez/remote/v4/"
+      : url.pathname;
   return `${returnPathname}${query ? `?${query}` : ""}`;
 }
 

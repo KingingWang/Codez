@@ -139,6 +139,25 @@ describe("oauthStateCodec", () => {
     ).toBe("https://zcode.z.ai/remote/v4?app_version=3.16.2&sid=device-1&mid=mid-1&name=MacBook");
   });
 
+  it("accepts Android bundled appassets origin as a safe OAuth return target and normalizes cross-origin QR links", () => {
+    const androidOrigin = "https://appassets.androidplatform.net";
+    const localHref = `${androidOrigin}/Codez/remote/v4/?app_version=3.16.2&sid=device-1&mid=mid-1&name=MacBook&token=secret#e2ee=v1&k=abc`;
+    expect(resolveSafeAppReturnTo(localHref, { currentOrigin: androidOrigin })).toBe(
+      "/Codez/remote/v4/?app_version=3.16.2&sid=device-1&mid=mid-1&name=MacBook",
+    );
+    expect(
+      resolveSafeAppReturnTo(
+        "https://kingingwang.github.io/Codez/remote/v4/?app_version=3.16.2&sid=device-1&mid=mid-1&name=MacBook#e2ee=v1&k=abc",
+        { currentOrigin: androidOrigin },
+      ),
+    ).toBe("/Codez/remote/v4/?app_version=3.16.2&sid=device-1&mid=mid-1&name=MacBook");
+    expect(
+      buildWebRemoteOAuthRedirectUri("https://zcode.z.ai/remote/v4", localHref, {
+        currentOrigin: androidOrigin,
+      }),
+    ).toBe("https://zcode.z.ai/remote/v4?app_version=3.16.2&sid=device-1&mid=mid-1&name=MacBook");
+  });
+
   it("builds a sanitized return_to callback URL for dev redirects", () => {
     expect(
       buildReturnToCallbackUrl(
