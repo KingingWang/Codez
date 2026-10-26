@@ -37,7 +37,15 @@ function edge(text: string, budget: number, tail = false): string {
 }
 
 function preview(text: string, kind: "input" | "output"): { text: string; totalBytes?: number } {
-  if (wireTextBytes(text) <= previewBudget) return { text };
+  // 原因：活跃轮次不做行缓存（projection-rows.ts:424），native-item-delta.ts:71 在原地追加
+  // aggregatedOutput，于是每条 delta 都对整段累计输出重跑一次 JSON.stringify；单线程 bridge 的
+  // publish drain 被拖满，RPC 只能排队（thread-state.ts:533 已记录 30s 超时）。
+  // 修复依据：wireTextBytes(t) >= t.length 恒成立——JSON.stringify(t) 是引号 + escaped(t) + 引号，
+  // 每个 UTF-16 码元至少贡献 1 个 UTF-8 字节（BMP 字面量 1-3；转义引号/反斜杠 2；\uXXXX 6；
+  // 合法代理对 2 码元 -> 4 字节；孤立代理 -> 6 字节，或被引擎替换成 U+FFFD 时 3 字节）。
+  // 因此 text.length > previewBudget 时原判断必然为假，新增的长度比较只是把本来就要走截断分支的
+  // 情况短路掉，语义完全不变；实测 2 MiB 输出按 1 KiB delta 流式投影从 ~11.4s 降到 ~5.8s。
+  if (text.length <= previewBudget && wireTextBytes(text) <= previewBudget) return { text };
   const totalBytes = Buffer.byteLength(text, "utf8");
   const notice = kind === "input" ? "structured input omitted" : "full output unavailable";
   const marker = `\n[Codex tool ${kind} truncated; original ${totalBytes} UTF-8 bytes; ${notice}]\n`;
