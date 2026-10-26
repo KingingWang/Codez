@@ -4,8 +4,10 @@ import {
   PROTOCOL_V4_LIMITS as limits,
   conversationSnapshotSchema,
   type ToolCallRow,
+  type ToolOutput,
 } from "@codez/shared/codez-protocol-v4";
 import type { CodexThreadItem } from "../src/codex-types.js";
+import { projectToolOutput } from "../src/projection-bounds.js";
 import { projectInputText, projectLegacySnapshot, projectThread } from "../src/projection.js";
 import { threadFixture } from "./projection-fixtures.test.js";
 
@@ -197,4 +199,105 @@ test("legacy tool display retains truncation provenance without inventing a retr
     totalBytes: Buffer.byteLength(huge),
     ref: "",
   });
+});
+
+// 下面三个函数是 preview() 加 UTF-16 长度短路之前那一行判断（只比 wire bytes）的本地参考实现，
+// 用来钉住“短路不改变任何投影结果”。测试自持副本，不为此扩大 src 的导出面。
+function referenceWireBytes(text: string): number {
+  return Buffer.byteLength(JSON.stringify(text), "utf8") - 2;
+}
+
+function referenceEdge(text: string, budget: number, tail = false): string {
+  const slice = (length: number) => {
+    let start = tail ? text.length - length : 0;
+    let end = tail ? text.length : length;
+    const high = (at: number) => text.charCodeAt(at) >= 0xd800 && text.charCodeAt(at) <= 0xdbff;
+    const low = (at: number) => text.charCodeAt(at) >= 0xdc00 && text.charCodeAt(at) <= 0xdfff;
+    if (tail && low(start) && high(start - 1)) start++;
+    if (!tail && high(end - 1) && low(end)) end--;
+    return text.slice(start, end);
+  };
+  let lower = 0;
+  let upper = Math.min(text.length, budget);
+  while (lower < upper) {
+    const middle = Math.ceil((lower + upper) / 2);
+    if (referenceWireBytes(slice(middle)) <= budget) lower = middle;
+    else upper = middle - 1;
+  }
+  return slice(lower);
+}
+
+function referenceProjectToolOutput(text: string): ToolOutput {
+  if (referenceWireBytes(text) <= previewBytes) return { text };
+  const totalBytes = Buffer.byteLength(text, "utf8");
+  const marker = `\n[Codex tool output truncated; original ${totalBytes} UTF-8 bytes; full output unavailable]\n`;
+  return {
+    text:
+      referenceEdge(text, limits.toolOutputFinalHeadBytes - referenceWireBytes(marker)) +
+      marker +
+      referenceEdge(text, limits.toolOutputFinalTailBytes, true),
+    truncated: { totalBytes, ref: "" },
+  };
+}
+
+test("every single UTF-16 code unit costs at least one wire byte (short-circuit invariant)", () => {
+  // 短路正确性的全部前提：wireTextBytes(t) >= t.length 对每个码元成立，
+  // 于是 length > budget 蕴含 wire > budget，新增比较只会跳过原本就要截断的输入。
+  for (let code = 0; code < 0x1_0000; code++) {
+    const unit = String.fromCharCode(code);
+    assert.ok(referenceWireBytes(unit) >= unit.length, `U+${code.toString(16).padStart(4, "0")}`);
+  }
+});
+
+test("NUL-heavy output below the UTF-16 budget still truncates on wire bytes", () => {
+  // previewBytes = 32KiB head + 32KiB tail = 65536；NUL 被 JSON 转义成 6 字符的 \u0000，
+  // 即 1 个 UTF-16 码元占 6 个 wire byte，65536 / 6 = 10922.67，所以边界落在 10922/10923。
+  assert.equal(previewBytes, 65_536);
+  const fits = "\u0000".repeat(10_922);
+  const overflows = "\u0000".repeat(10_923);
+  assert.ok(overflows.length < previewBytes, "长度守卫在这里必然放行，必须由 wire bytes 截断");
+  assert.deepEqual(projectToolOutput(fits), { text: fits });
+  const truncated = projectToolOutput(overflows);
+  assert.deepEqual(truncated.truncated, { totalBytes: 10_923, ref: "" });
+  assert.ok(referenceWireBytes(truncated.text) <= previewBytes);
+  assert.ok(truncated.text.startsWith("\u0000") && truncated.text.endsWith("\u0000"));
+  assert.deepEqual(truncated, referenceProjectToolOutput(overflows));
+});
+
+test("plain ASCII keeps the exact previewBytes boundary with no off-by-one from the guard", () => {
+  // ASCII 是 wire bytes == UTF-16 length 的退化情形：短路前后必须落在同一个截断点。
+  const atBudget = "x".repeat(previewBytes);
+  const overBudget = "x".repeat(previewBytes + 1);
+  assert.deepEqual(projectToolOutput(atBudget), { text: atBudget });
+  const truncated = projectToolOutput(overBudget);
+  assert.deepEqual(truncated.truncated, { totalBytes: previewBytes + 1, ref: "" });
+  assert.ok(referenceWireBytes(truncated.text) <= previewBytes);
+  assert.deepEqual(truncated, referenceProjectToolOutput(overBudget));
+});
+
+test("escapes, lone/paired surrogates and CJK project identically with and without the guard", () => {
+  const units: [string, string][] = [
+    ["lone high surrogate", "\ud800"],
+    ["lone low surrogate", "\udfff"],
+    ["surrogate pair", "😀"],
+    ["CJK", "界"],
+    ["quote", '"'],
+    ["backslash", "\\"],
+    ["NUL", "\u0000"],
+    ["newline+tab", "\n\t"],
+    ["ascii", "x"],
+  ];
+  const lengths = [previewBytes - 1, previewBytes, previewBytes + 1, previewBytes * 2 + 1];
+  for (const [label, unit] of units) {
+    for (const length of lengths) {
+      // 截断到精确长度可能劈开代理对，这正是需要覆盖的畸形输入。
+      const text = unit.repeat(Math.ceil(length / unit.length)).slice(0, length);
+      assert.equal(text.length, length, label);
+      assert.deepEqual(
+        projectToolOutput(text),
+        referenceProjectToolOutput(text),
+        `${label} @ ${length} UTF-16 units`,
+      );
+    }
+  }
 });
