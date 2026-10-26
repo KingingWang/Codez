@@ -94,6 +94,7 @@ export function rememberThreadMode(thread: JsonObject, mode: string | undefined)
 export function isRelaxedThread(thread: JsonObject): boolean {
   return (
     object(thread.sandboxPolicy ?? {}).type === "dangerFullAccess" ||
+    thread.approvalPolicy === "never" ||
     thread.approvalsReviewer === "auto_review"
   );
 }
@@ -102,11 +103,24 @@ export function isRelaxedThread(thread: JsonObject): boolean {
  * 投影线程当前权限档位：优先本进程记住的显式选择；无记录时按原生生效值推导。
  * 无显式记录说明线程一直跟随 config.toml（或经 thread/resume 水合），按语义即
  * custom——与旧 build "保留原生权限"行为等价，不猜测用户没做过的选择。
+ *
+ * Bugfix：config.toml 可能仅配置 `sandbox_mode = "danger-full-access"` 而未配
+ * `approval_policy = "never"`（原生默认 `approvalPolicy = "on-request"`）。若仅凭
+ * `sandboxPolicy.type === "dangerFullAccess"` 就投影为 `yolo`，一方面会让 UI 假显示为
+ * 「完全访问」而底层仍在命令提权/复杂脚本时弹出确认框；另一方面用户显式选择 `yolo`
+ * 时会因 `mode !== projectThreadMode(thread)` 为 false 而跳过下发 `approvalPolicy: "never"`。
+ * 因此仅当沙箱为 `dangerFullAccess` 且 `approvalPolicy === "never"`（且非 AI 代批）时才推导为 `yolo`。
  */
 export function projectThreadMode(thread: JsonObject): string {
   const remembered = thread[REMEMBERED_MODE_KEY];
   if (typeof remembered === "string" && remembered) return remembered;
-  if (object(thread.sandboxPolicy ?? {}).type === "dangerFullAccess") return "yolo";
+  if (
+    object(thread.sandboxPolicy ?? {}).type === "dangerFullAccess" &&
+    thread.approvalPolicy === "never" &&
+    thread.approvalsReviewer !== "auto_review"
+  ) {
+    return "yolo";
+  }
   if (thread.approvalsReviewer === "auto_review") return "edit";
   return "custom";
 }
