@@ -15,29 +15,15 @@ function oversizedNativeResponse(error: unknown): boolean {
   );
 }
 
-/** Only a full history page may be retried after the native framer drops its response. */
-async function readFullHistoryPage(
+/**
+ * 通过只读 `thread/items/list` 分页补全单个 turn 的完整 items。
+ * 校验 item 归属 turnId、重复 itemId、空页带 cursor 与重复 cursor，避免异常游标死循环。
+ */
+export async function hydrateNativeTurnItems(
   rpc: CodexRpcPort,
-  params: Record<string, unknown>,
-  cursor: string | undefined,
-  limit: number,
-): Promise<Record<string, unknown>> {
-  try {
-    return object(await rpc.request("thread/turns/list", { ...params, cursor, limit }));
-  } catch (error) {
-    if (!oversizedNativeResponse(error) || limit !== 1) throw error;
-  }
-  // 原因：单 turn 超限时继续缩 limit 没有意义。固定原生版本提供 notLoaded 的
-  // turn envelope 和 thread/items/list；只组合已完整读到的 item，不丢事实。
-  const page = object(
-    await rpc.request("thread/turns/list", { ...params, cursor, limit: 1, itemsView: "notLoaded" }),
-  );
-  const turns = array(page.data);
-  if (turns.length !== 1) throw new Error("Oversized native turn metadata is incomplete");
-  const turn = object(turns[0]);
-  const turnId = string(turn.id);
-  if (turn.itemsView !== "notLoaded" || array(turn.items).length !== 0)
-    throw new Error("Native turn metadata did not exclude full items");
+  threadId: unknown,
+  turnId: string,
+): Promise<unknown[]> {
   const items: unknown[] = [];
   const ids = new Set<string>();
   const seenCursors = new Set<string>();
@@ -49,7 +35,7 @@ async function readFullHistoryPage(
       try {
         itemPage = object(
           await rpc.request("thread/items/list", {
-            threadId: params.threadId,
+            threadId,
             turnId,
             cursor: itemCursor,
             sortDirection: "asc",
@@ -81,6 +67,33 @@ async function readFullHistoryPage(
       throw new Error("Repeated native history cursor");
     if (itemCursor) seenCursors.add(itemCursor);
   } while (itemCursor);
+  return items;
+}
+
+/** Only a full history page may be retried after the native framer drops its response. */
+async function readFullHistoryPage(
+  rpc: CodexRpcPort,
+  params: Record<string, unknown>,
+  cursor: string | undefined,
+  limit: number,
+): Promise<Record<string, unknown>> {
+  try {
+    return object(await rpc.request("thread/turns/list", { ...params, cursor, limit }));
+  } catch (error) {
+    if (!oversizedNativeResponse(error) || limit !== 1) throw error;
+  }
+  // 原因：单 turn 超限时继续缩 limit 没有意义。固定原生版本提供 notLoaded 的
+  // turn envelope 和 thread/items/list；只组合已完整读到的 item，不丢事实。
+  const page = object(
+    await rpc.request("thread/turns/list", { ...params, cursor, limit: 1, itemsView: "notLoaded" }),
+  );
+  const turns = array(page.data);
+  if (turns.length !== 1) throw new Error("Oversized native turn metadata is incomplete");
+  const turn = object(turns[0]);
+  const turnId = string(turn.id);
+  if (turn.itemsView !== "notLoaded" || array(turn.items).length !== 0)
+    throw new Error("Native turn metadata did not exclude full items");
+  const items = await hydrateNativeTurnItems(rpc, params.threadId, turnId);
   return { ...page, data: [{ ...turn, itemsView: "full", items }] };
 }
 
@@ -119,13 +132,32 @@ export async function paginateNativeRows(
     }
     const data = array(page.data);
     if (fullHistory) {
+      const normalized: unknown[] = [];
       for (const value of data) {
-        const id = string(object(value).id);
+        const turn = object(value);
+        const id = string(turn.id);
         if (seenHistoryIds.has(id)) throw new Error("Repeated native history turn");
         seenHistoryIds.add(id);
+        // 修复原因：部分原生会话在 `thread/turns/list(itemsView="full")` 中仍返回
+        // `summary` / `notLoaded` 的 turn，直接进入投影会稳定抛
+        // `Codex conversation projection requires full turn items`。
+        // 修复依据：在分页只读入口逐轮核验 `itemsView`，非 full 轮一律通过
+        // `thread/items/list` 补齐完整 items（保留已携带的 item 并用完整项覆盖）后再标记为 full。
+        if (turn.itemsView === "summary" || turn.itemsView === "notLoaded") {
+          const hydratedItems = await hydrateNativeTurnItems(rpc, params.threadId, id);
+          const mergedItems = new Map(
+            array(turn.items).map((item) => [string(object(item).id), item]),
+          );
+          for (const item of hydratedItems) mergedItems.set(string(object(item).id), item);
+          normalized.push({ ...turn, itemsView: "full", items: [...mergedItems.values()] });
+        } else {
+          normalized.push(value);
+        }
       }
+      rows.push(...normalized);
+    } else {
+      rows.push(...data);
     }
-    rows.push(...data);
     cursor = typeof page.nextCursor === "string" ? page.nextCursor : undefined;
     if (fullHistory && cursor && data.length === 0)
       throw new Error("Empty native history page with another cursor");

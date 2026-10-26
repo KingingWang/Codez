@@ -179,3 +179,83 @@ test("history and item pages with a next cursor must make progress", async () =>
     /Empty native item page/,
   );
 });
+
+test("full history hydrates any summary or notLoaded turn returned by thread/turns/list", async () => {
+  const calls: Array<{ method: string; params: Record<string, unknown> }> = [];
+  const rpc = port((method, params) => {
+    calls.push({ method, params });
+    if (method === "thread/turns/list") {
+      return {
+        data: [
+          {
+            id: "turn-full",
+            status: "completed",
+            itemsView: "full",
+            items: [{ id: "full-item", type: "agentMessage", text: "ok" }],
+          },
+          {
+            id: "turn-summary",
+            status: "completed",
+            itemsView: "summary",
+            items: [],
+          },
+          {
+            id: "turn-not-loaded",
+            status: "completed",
+            itemsView: "notLoaded",
+            items: [],
+          },
+        ],
+        nextCursor: null,
+      };
+    }
+    assert.equal(method, "thread/items/list");
+    assert.equal(params.threadId, "t");
+    return {
+      data: [
+        {
+          turnId: params.turnId,
+          item: {
+            id: `hydrated-${String(params.turnId)}`,
+            type: "agentMessage",
+            text: `text-${String(params.turnId)}`,
+          },
+        },
+      ],
+      nextCursor: null,
+    };
+  });
+
+  const actual = await paginateNativeRows(
+    rpc,
+    "thread/turns/list",
+    { threadId: "t", itemsView: "full", sortDirection: "asc" },
+    "history",
+  );
+  assert.deepEqual(actual, [
+    {
+      id: "turn-full",
+      status: "completed",
+      itemsView: "full",
+      items: [{ id: "full-item", type: "agentMessage", text: "ok" }],
+    },
+    {
+      id: "turn-summary",
+      status: "completed",
+      itemsView: "full",
+      items: [{ id: "hydrated-turn-summary", type: "agentMessage", text: "text-turn-summary" }],
+    },
+    {
+      id: "turn-not-loaded",
+      status: "completed",
+      itemsView: "full",
+      items: [
+        { id: "hydrated-turn-not-loaded", type: "agentMessage", text: "text-turn-not-loaded" },
+      ],
+    },
+  ]);
+  assert.deepEqual(
+    calls.filter((call) => call.method === "thread/items/list").map((call) => call.params.turnId),
+    ["turn-summary", "turn-not-loaded"],
+  );
+});
