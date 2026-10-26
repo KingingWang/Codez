@@ -222,6 +222,31 @@ dev, ino, ctimeMs, mtimeMs, size, checksum)` tuple is verified, subsequent
   completed and the watcher/poll loop is healthy, and diff-checks
   `session_index.jsonl` entries so a single thread rename only invokes
   `applyCliFacts` for the affected session(s).
+- The startup baseline scan still walks the whole `$CODEX_HOME/sessions` tree and
+  still verifies every candidate session against `tasks-index.sqlite`, but it does
+  not re-parse rollout files whose `(mtimeMs, size)` are unchanged since the last
+  process. `codexGlobalRolloutSyncer` owns one durable parse-facts cache per
+  resolved `$CODEX_HOME`, stored under the Codez data root
+  (`codex-rollout-cache/<scope>.json`) and never inside `$CODEX_HOME`, written
+  atomically (temp + rename, cross-process file lock) only when its serialized
+  content actually changed, and bounded by an entry cap above which nothing is
+  persisted. The cache stores only facts derived from the rollout file itself —
+  `(mtimeMs, size, settled, candidate)` — and never the `synced` flag, because
+  `synced` means "already reflected in this Host's `tasks-index.sqlite`
+  partition": persisting it would create a second durable store with no
+  transaction binding it to the index, and a cache that claims `synced` for a row
+  the index no longer has (task deleted in Codez, database rebuilt or migrated,
+  identity resolution changed, cache copied between machines or Hosts) would make
+  that session permanently invisible with no self-healing path. Entries are
+  therefore always loaded as not-synced, so every startup re-reads the index row
+  and re-applies divergent facts, keeping the existing self-healing backstop
+  intact while removing the O(all history) head/tail parse. Keeping only
+  file-derived facts is also what makes the cache safe to share between Hosts and
+  windows over one `$CODEX_HOME`. Any version mismatch, scope mismatch, corrupt
+  or unreadable cache fails open to today's full-parse behaviour with a `warn`
+  log, never to a skipped session. Acceptance: a warm start performs the tree
+  walk and one `stat` per rollout, opens only genuinely new or changed rollouts,
+  and produces exactly the same `applyCliFacts` calls a cold start would.
 - Concurrent read-only control-plane and native settings reads (`config/read`,
   `model/list` and paginated list reads) coalesce per `CodexRpcPort` and
   canonical request key only while an identical read is in flight, preventing
@@ -992,7 +1017,10 @@ runtime so `runtimeLifecycle(available)` and the post-response
 `sessions-index` refresh seed missing shell rows into `tasks-index.sqlite` and
 notify `state:projects` even before a conversation tab is opened. In addition,
 each Codex Host (local and standalone remote Source Server) watches its native
-`$CODEX_HOME/sessions` rollout tree (initial scan on startup + debounced
+`$CODEX_HOME/sessions` rollout tree (initial scan on startup, which still walks
+and stats the whole tree and still reconciles every candidate session against
+`tasks-index.sqlite`, but reuses the durable per-file parse facts described above
+so unchanged rollouts are not re-parsed on each process start + debounced
 recursive fs watch with polling fallback only while recursive watch is unavailable + `readTree` catch-up, caching parsed `session_index.jsonl` thread names across unchanged `mtime`/`size` checks) to index user-facing CLI/exec/vscode/
 appServer rollouts across all directories—including directories that have not
 been added as projects—into `tasks-index.sqlite` via `applyCliFacts` and
