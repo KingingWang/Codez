@@ -8,12 +8,12 @@ Codex 会话的 composer 权限档位与 Codex 原生权限预设一一对应；
 
 Plan 保持独立勾选维度（`planEnabled` → `collaborationMode`），与权限档位正交，可组合。
 
-| 档位 id  | 标签                        | 下发到原生（turn/start / thread/settings/update）                                                                                         |
-| -------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `build`  | 请求批准 / Ask for approval | `approvalPolicy:"on-request"` + `approvalsReviewer:"user"` + `sandboxPolicy: workspaceWrite`                                              |
-| `edit`   | 帮我审批 / Approve for me   | `approvalPolicy:"on-request"` + `approvalsReviewer:"auto_review"` + `sandboxPolicy: workspaceWrite`                                       |
-| `yolo`   | 完全访问 / Full access      | `approvalPolicy:"never"` + `approvalsReviewer:"user"` + `sandboxPolicy: dangerFullAccess`                                                 |
-| `custom` | 自定义 / Custom             | 不下发权限覆盖，跟随 config.toml；仅当线程当前处于放宽态（`dangerFullAccess` 沙箱或 `auto_review` 审批人）时，显式恢复 config.toml 生效值 |
+| 档位 id  | 标签                        | 下发到原生（turn/start / thread/settings/update）                                                                                                                  |
+| -------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `build`  | 请求批准 / Ask for approval | `approvalPolicy:"on-request"` + `approvalsReviewer:"user"` + `sandboxPolicy: workspaceWrite`                                                                       |
+| `edit`   | 帮我审批 / Approve for me   | `approvalPolicy:"on-request"` + `approvalsReviewer:"auto_review"` + `sandboxPolicy: workspaceWrite`                                                                |
+| `yolo`   | 完全访问 / Full access      | `approvalPolicy:"never"` + `approvalsReviewer:"user"` + `sandboxPolicy: dangerFullAccess`                                                                          |
+| `custom` | 自定义 / Custom             | 不下发权限覆盖，跟随 config.toml；仅当线程当前处于放宽态（`dangerFullAccess` 沙箱、`approvalPolicy=never` 或 `auto_review` 审批人）时，显式恢复 config.toml 生效值 |
 
 非 Codex 的 Codez Agent 运行时保留旧四档（build/edit/plan/yolo）语义，不受本 spec 影响；`custom` 只属于 Codex 链路。
 
@@ -23,7 +23,7 @@ Plan 保持独立勾选维度（`planEnabled` → `collaborationMode`），与�
 - 投影输入必须完整：`thread/start` / `thread/resume` / `thread/fork` 响应在顶层携带 `approvalPolicy` / `approvalsReviewer` / `sandbox`（`Thread` 结构体本身不含权限字段），水合装饰必须合并 `approvalsReviewer`（丢失会把 edit 线程误投影为 custom，切 custom 时漏发恢复覆盖）；`thread/settings/updated` 事件同步更新 `approvalsReviewer`（外部 CLI/另一窗口的变更不能被投影吞掉）。
 - 投影规则（snapshot `config.mode` 与 queue 守卫共用同一推导）：
   1. 本进程记住的显式档位优先；
-  2. 否则按线程生效值推导：`dangerFullAccess → yolo`；`approvalsReviewer=auto_review → edit`；其余 → `custom`（无显式选择即跟随原生，与旧 build "保留原生权限"行为等价）。
+  2. 否则按线程生效值推导：仅当 `sandboxPolicy.type === "dangerFullAccess" && approvalPolicy === "never" && approvalsReviewer !== "auto_review"` 时推导为 `yolo`（若 `config.toml` 只配了 `danger-full-access` 而 `approvalPolicy` 仍为 `on-request` 等非 `never` 值，不属于完整 `yolo`，不得误投影为 `yolo`，否则既让 UI 标签与实际弹窗行为错位，又会导致用户显式选 `yolo` 时被 `mode !== projectThreadMode(thread)` 判定为无迁移而漏发 `approvalPolicy:"never"`）；`approvalsReviewer=auto_review → edit`；其余 → `custom`（无显式选择即跟随原生，与旧 build "保留原生权限"行为等价）。
 - queue/steer 守卫的档位维度按"是否携带覆盖意图"判定：`custom` 不请求权限覆盖（queue/steer 从不应用设置），与 `custom` 及推导出的放宽档（`yolo`/`edit`）投影兼容——bridge 重启后 remembered 档丢失会把"跟随 config.toml"的持久化草稿误判为覆盖意图，导致 busy 引导/排队被永久拒绝。`build` 投影只来自本进程记住的显式收紧，`custom` 草稿与之是真实分歧，仍拒绝。UI 的 `codexSubmissionMatchesThread` 与 bridge 的 `assertUnchangedInputSettings` 必须保持同一条规则。
 - 档位切换只编辑草稿，随下一次 startNow 提交经 `turn/start` 生效；busy/queue 场景维持既有守卫（per-input 设置变更拒绝 + UI toast）。
 - `custom → 放宽态恢复`：bridge 读取 `config/read` 的 `sandbox_mode` / `approval_policy` / `approvals_reviewer` 显式下发；读取失败或值为 granular 等不可映射形态时，回退 `workspaceWrite + on-request + user` 基线。恢复动作必须复位 `approvalsReviewer`，不允许只改沙箱留下 AI 代批。

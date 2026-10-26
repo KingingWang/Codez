@@ -123,6 +123,29 @@ export async function verifySandboxTransitions(t: TestContext) {
     assert.equal(projectThreadMode(h.state.thread), "build");
   });
 
+  await t.test(
+    "explicit yolo upgrades inherited danger-full-access + on-request to approvalPolicy never",
+    async (t) => {
+      const h = await setup(t);
+      // 模拟 config.toml 仅配置 sandbox_mode = "danger-full-access" 而未配置 approval_policy = "never"
+      Object.assign(h.authority.thread, {
+        sandboxPolicy: { type: "dangerFullAccess" },
+        approvalPolicy: "on-request",
+        approvalsReviewer: "user",
+      });
+      h.store.markStarted(structuredClone(h.authority.thread));
+      assert.equal(projectThreadMode(h.state.thread), "custom");
+      const ack = await h.execute(h.command("sendText", { text: "Full access", mode: "yolo" }));
+      assert.equal(ack.status, "accepted", ack.message);
+      const params = h.rpc.params("turn/start")[0]!;
+      assert.equal(params.approvalPolicy, "never");
+      assert.equal(params.approvalsReviewer, "user");
+      assert.deepEqual(params.sandboxPolicy, { type: "dangerFullAccess" });
+      assert.equal(h.state.thread.approvalPolicy, "never");
+      assert.equal(projectThreadMode(h.state.thread), "yolo");
+    },
+  );
+
   await t.test("edit routes approvals to the auto reviewer", async (t) => {
     const h = await setup(t);
     const ack = await h.execute(h.command("sendText", { text: "Auto approve", mode: "edit" }));
