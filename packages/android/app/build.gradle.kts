@@ -16,13 +16,13 @@ android {
         applicationId = "com.example.codez_mobile"
         minSdk = 24
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.3.0"
+        versionCode = 6
+        versionName = "1.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["usesCleartextTraffic"] = "false"
-        // 桌面端二维码固定指向 fork 发布页；codez://remote 深链也解析到该入口。
-        buildConfigField("String", "REMOTE_CONTROL_DEFAULT_URL", "\"https://kingingwang.github.io/Codez/remote/v4/\"")
+        // 远控前端已内置到 APK assets/remote/v4/，通过虚拟 HTTPS 域名在本地加载，不从 GitHub Pages 下载执行代码。
+        buildConfigField("String", "REMOTE_CONTROL_DEFAULT_URL", "\"https://appassets.androidplatform.net/Codez/remote/v4/\"")
     }
 
     buildTypes {
