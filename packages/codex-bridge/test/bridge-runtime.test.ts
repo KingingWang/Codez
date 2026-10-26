@@ -1609,3 +1609,133 @@ test("v4/sessionsIndex/reconcile reports tombstoned, existing and missing sessio
     "reconcile and cold deleteSession must not resume unloaded threads",
   );
 });
+
+for (const clientMode of ["desktop-continuous", "web-remote-replayable"] as const) {
+  test(`${clientMode} hydrates non-full turns during subscribe, fileChanges, plans and live turn/completed`, async (t) => {
+    const h = await fixture(t);
+    const hydratedTurnItems = [
+      {
+        type: "userMessage",
+        id: "summary-user-1",
+        content: [{ type: "text", text: "Fix remote projection", text_elements: [] }],
+      },
+      {
+        type: "fileChange",
+        id: "summary-fc-1",
+        status: "completed",
+        changes: [
+          {
+            path: "/workspace/src/fix.ts",
+            diff: "export const fixed = true;\n",
+            kind: { type: "add" },
+          },
+        ],
+      },
+      {
+        type: "agentMessage",
+        id: "summary-agent-1",
+        text: "Hydrated from thread/items/list",
+      },
+    ];
+    const liveOrphanItems = [
+      {
+        type: "userMessage",
+        id: "orphan-user-1",
+        content: [{ type: "text", text: "Follow-up without turn/started", text_elements: [] }],
+      },
+      {
+        type: "agentMessage",
+        id: "orphan-agent-1",
+        text: "Orphan completed turn hydrated",
+      },
+    ];
+    h.authority.thread = {
+      ...h.authority.thread,
+      turns: [
+        {
+          id: "turn-summary-1",
+          itemsView: "summary",
+          status: "completed",
+          error: null,
+          startedAt: 121,
+          completedAt: 130,
+          durationMs: 9000,
+          items: [],
+        },
+      ],
+    };
+    h.handlers["thread/items/list"] = (params) => {
+      const turnId = (params as { turnId?: string }).turnId;
+      const items = turnId === "turn-orphan-2" ? liveOrphanItems : hydratedTurnItems;
+      return {
+        data: items.map((item) => ({ turnId, item })),
+        nextCursor: null,
+      };
+    };
+
+    const topic = "conversation/thread-1";
+    const sub = await h.runtime.request(
+      V4_METHODS.conversationSubscribe,
+      subscribe(topic, clientMode),
+    );
+    await sub.afterResponse!();
+    const initialFrame = h.frames.at(-1);
+    const initialPayload =
+      initialFrame?.kind === "complete" ? initialFrame.frame.payload : undefined;
+    assert.ok(initialPayload?.kind === "snapshot");
+    const initialSnapshot = conversationSnapshotSchema.parse(initialPayload.snapshot);
+    assert.ok(
+      initialSnapshot.rows.window.some(
+        (row) =>
+          row.kind === "assistantText" && row.text.includes("Hydrated from thread/items/list"),
+      ),
+    );
+    const headerRow = initialSnapshot.rows.window.find(
+      (row) => row.kind === "turnHeader" && row.turnId === "turn-summary-1",
+    );
+    assert.ok(headerRow);
+
+    const fileChanges = await h.runtime.request(V4_METHODS.conversationFileChanges, {
+      sessionId: "thread-1",
+      baseRevision: initialSnapshot.revision,
+      baseLogEpoch: initialSnapshot.logEpoch,
+      target: { rowId: headerRow.rowId, entityId: headerRow.entityId },
+    });
+    assert.equal(
+      (fileChanges.result as { items: Array<{ path: string }> }).items[0]?.path,
+      "/workspace/src/fix.ts",
+    );
+
+    const plans = await h.runtime.request(V4_METHODS.conversationPlans, {
+      sessionId: "thread-1",
+    });
+    assert.equal((plans.result as { atLogEpoch: string }).atLogEpoch, initialSnapshot.logEpoch);
+
+    h.emit("turn/completed", {
+      threadId: "thread-1",
+      turn: {
+        id: "turn-orphan-2",
+        itemsView: "summary",
+        status: "completed",
+        error: null,
+        startedAt: 131,
+        completedAt: 135,
+        durationMs: 4000,
+        items: [],
+      },
+    });
+    await tick();
+    await tick();
+    assert.equal(h.fatal.length, 0);
+    const nextFrame = h.frames.at(-1);
+    const nextPayload = nextFrame?.kind === "complete" ? nextFrame.frame.payload : undefined;
+    assert.ok(nextPayload?.kind === "snapshot");
+    const nextSnapshot = conversationSnapshotSchema.parse(nextPayload.snapshot);
+    assert.ok(
+      nextSnapshot.rows.window.some(
+        (row) =>
+          row.kind === "assistantText" && row.text.includes("Orphan completed turn hydrated"),
+      ),
+    );
+  });
+}
