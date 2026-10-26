@@ -206,6 +206,29 @@ export function createSourceServerUpdateNotificationController(
   // 活跃 toast 随状态撤销；持久去重独立保留，不被断线、向导接管或重启清除。
   const shown = new Map<string, { id: unknown }>();
   const preferences = options.preferences ?? sourceServerUpdatePreferences;
+  const clearPersistedSourceSeen = (sourceServerId: string) => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem("codez-source-update-notifications-v1");
+      if (!raw) return;
+      const parsed: unknown = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+      const next = parsed.filter((item) => {
+        if (typeof item !== "string") return false;
+        try {
+          const key: unknown = JSON.parse(item);
+          return !(Array.isArray(key) && key[0] === sourceServerId);
+        } catch {
+          return true;
+        }
+      });
+      if (next.length !== parsed.length) {
+        window.localStorage.setItem("codez-source-update-notifications-v1", JSON.stringify(next));
+      }
+    } catch {
+      /* 存储不可用时不阻断通知流程。 */
+    }
+  };
   let disposed = false;
   let refreshInFlight: Promise<void> | null = null;
   let refreshQueued = false;
@@ -222,6 +245,18 @@ export function createSourceServerUpdateNotificationController(
         if (disposed || refreshQueued) return;
         const eligible = new Map<string, SourceServerUpdateState>();
         for (const state of snapshot.states) {
+          // Bug 原因（Issue #23）：设备更新成功回到 online 后，旧的 [sourceServerId, version]
+          // 去重键仍留在 localStorage 中；当桌面端以同一版本号（如 3.16.2）重新出包时，availableVersion
+          // 等于 currentVersion，导致下一次冷启动或重连命中同版本 SHA 漂移时被旧已读键压住。
+          // 设备恢复在线且无必选更新时清理其持久化已读键，且对同版本（currentVersion === availableVersion）
+          // 的必选升级仅按当次运行（shown）去重，不跨重启抑制。
+          if (
+            state.state === "online" &&
+            state.updateAvailability !== "required" &&
+            state.sourceServerId
+          ) {
+            clearPersistedSourceSeen(state.sourceServerId);
+          }
           const key = getEligibleNotificationKey(options, snapshot, state);
           if (key) eligible.set(key, state);
         }
@@ -232,7 +267,8 @@ export function createSourceServerUpdateNotificationController(
           shown.delete(key);
         }
         for (const [key, state] of eligible) {
-          if (shown.has(key) || preferences.hasSeen(key)) continue;
+          const isSameVersionDrift = state.currentVersion === state.availableVersion;
+          if (shown.has(key) || (!isSameVersionDrift && preferences.hasSeen(key))) continue;
           const notification = showSourceServerUpdateNotification({
             ...options,
             snapshot,
