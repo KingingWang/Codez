@@ -1,12 +1,14 @@
 package com.example.codez_mobile.remote
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RemoteControlUrlMatcherTest {
     @Test
-    fun `release 放行 fork 发布页与官方远控页`() {
+    fun `release 放行 fork 发布页、官方远控页与 APK 内置资源域`() {
         // fork 发布页是桌面端二维码的固定目标
         assertTrue(
             RemoteControlUrlMatcher.isAllowedRemoteTarget(
@@ -23,6 +25,65 @@ class RemoteControlUrlMatcherTest {
                 "https", "zcode.z.ai", "/remote", debug = false,
             ),
         )
+        assertTrue(
+            RemoteControlUrlMatcher.isAllowedRemoteTarget(
+                "https", "appassets.androidplatform.net", "/Codez/remote/v4/", debug = false,
+            ),
+        )
+    }
+
+    @Test
+    fun `内置前端资源路径映射与重判逻辑`() {
+        assertTrue(
+            RemoteControlUrlMatcher.shouldRewriteToBundledRemotePage(
+                "https", "kingingwang.github.io", "/Codez/remote/v4/",
+            ),
+        )
+        assertTrue(
+            RemoteControlUrlMatcher.shouldRewriteToBundledRemotePage(
+                "https", "zcode.z.ai", "/remote/v4",
+            ),
+        )
+        assertFalse(
+            RemoteControlUrlMatcher.shouldRewriteToBundledRemotePage(
+                "http", "192.168.1.10", "/remote",
+            ),
+        )
+
+        assertEquals(
+            "remote/v4/index.html",
+            RemoteControlUrlMatcher.resolveBundledAssetRelativePath(
+                "https", "appassets.androidplatform.net", "/Codez/remote/v4/",
+            ),
+        )
+        assertEquals(
+            "remote/v4/index.html",
+            RemoteControlUrlMatcher.resolveBundledAssetRelativePath(
+                "https", "appassets.androidplatform.net", "/Codez/remote/v4",
+            ),
+        )
+        assertEquals(
+            "remote/v4/assets/index-abc.js",
+            RemoteControlUrlMatcher.resolveBundledAssetRelativePath(
+                "https", "appassets.androidplatform.net", "/Codez/remote/v4/assets/index-abc.js",
+            ),
+        )
+        assertNull(
+            RemoteControlUrlMatcher.resolveBundledAssetRelativePath(
+                "https", "appassets.androidplatform.net", "/Codez/remote/v4/../secret.txt",
+            ),
+        )
+        assertNull(
+            RemoteControlUrlMatcher.resolveBundledAssetRelativePath(
+                "https", "kingingwang.github.io", "/Codez/remote/v4/index.html",
+            ),
+        )
+
+        assertEquals("text/html", RemoteControlUrlMatcher.guessBundledAssetMimeType("remote/v4/index.html"))
+        assertEquals("text/javascript", RemoteControlUrlMatcher.guessBundledAssetMimeType("remote/v4/assets/app.js"))
+        assertEquals("text/javascript", RemoteControlUrlMatcher.guessBundledAssetMimeType("remote/v4/assets/pdf.worker.mjs"))
+        assertEquals("text/css", RemoteControlUrlMatcher.guessBundledAssetMimeType("remote/v4/assets/style.css"))
+        assertEquals("application/wasm", RemoteControlUrlMatcher.guessBundledAssetMimeType("remote/v4/assets/mod.wasm"))
     }
 
     @Test

@@ -21,6 +21,26 @@ class RemoteDeviceDisplayTest {
     }
 
     @Test
+    fun `内置前端域名展示为友好本地标识`() {
+        val zhDisplay = parseRemoteDeviceDisplay(
+            url = "https://appassets.androidplatform.net/Codez/remote/v4/?sid=abc&name=Studio&t=1",
+            openedAt = now,
+            nowMs = now,
+            zh = true,
+        )
+        assertEquals("Studio", zhDisplay.title)
+        assertEquals("内置客户端", zhDisplay.host)
+
+        val enDisplay = parseRemoteDeviceDisplay(
+            url = "https://appassets.androidplatform.net/Codez/remote/v4/?sid=abc&name=Studio&t=1",
+            openedAt = now,
+            nowMs = now,
+            zh = false,
+        )
+        assertEquals("Bundled App", enDisplay.host)
+    }
+
+    @Test
     fun `缺少 name 参数时回退 host`() {
         val display = parseRemoteDeviceDisplay(
             url = "https://zcode.z.ai/remote?sid=abc&t=1",

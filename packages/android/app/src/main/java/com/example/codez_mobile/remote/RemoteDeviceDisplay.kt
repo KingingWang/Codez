@@ -44,7 +44,12 @@ fun formatRemoteRelativeTime(nowMs: Long, timeMs: Long, zh: Boolean): String {
 /** 从远控链接提取 QR 里桌面端写入的 name 参数与页面 host。 */
 fun parseRemoteDeviceDisplay(url: String, openedAt: Long, nowMs: Long, zh: Boolean): RemoteDeviceDisplay {
     val uri = runCatching { URI(url) }.getOrNull()
-    val host = uri?.host?.lowercase().orEmpty()
+    val rawHost = uri?.host?.lowercase().orEmpty()
+    val host = if (rawHost == RemoteControlUrlMatcher.BUNDLED_ASSETS_HOST) {
+        if (zh) "内置客户端" else "Bundled App"
+    } else {
+        rawHost
+    }
     val name = uri?.rawQuery
         ?.split("&")
         ?.firstNotNullOfOrNull { part ->
