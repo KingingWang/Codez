@@ -10,6 +10,11 @@ import {
   rolloutStampFromName,
   type ParsedRolloutCandidate,
 } from "#src/project/codexRolloutFacts.js";
+import {
+  loadRolloutScanFacts,
+  saveRolloutScanFacts,
+  serializeRolloutScanFacts,
+} from "#src/project/codexRolloutScanCache.js";
 
 export interface CodexGlobalRolloutTaskStore {
   getTaskMeta(params: {
@@ -143,6 +148,11 @@ export function createCodexGlobalRolloutSyncer(options: {
   resolveWorkspaceIdentity?: (workspacePath: string) => Promise<string | undefined>;
   afterChange?: () => Promise<void> | void;
   env?: NodeJS.ProcessEnv;
+  /**
+   * 解析事实缓存文件路径（必须位于 Codez 自有数据目录，不写 `$CODEX_HOME`）。
+   * 省略即保持纯内存缓存行为，现有单测与降级路径不受影响。
+   */
+  scanCacheFilePath?: string;
 }): CodexGlobalRolloutSyncer {
   const cacheByPath = new Map<string, CachedRolloutFile>();
   /** sessionId → 该 session 的全部 rollout 路径；按会话取事实时无需遍历整个缓存。 */
@@ -164,6 +174,11 @@ export function createCodexGlobalRolloutSyncer(options: {
   const pendingWatchPaths = new Set<string>();
   let lastIndexMtimeMs = -1;
   let lastIndexSize = -1;
+  /** 解析事实缓存是否已从磁盘载入（每个进程只做一次）。 */
+  let scanCacheLoaded = false;
+  /** 本轮是否产生了新的解析事实或被摘除的条目；只有内容真变了才落盘。 */
+  let scanCacheDirty = false;
+  let lastWrittenScanCache: string | undefined;
 
   const dropSessionPath = (sessionId: string, path: string): void => {
     const paths = pathsBySessionId.get(sessionId);
@@ -179,6 +194,7 @@ export function createCodexGlobalRolloutSyncer(options: {
   const forgetEntry = (path: string): void => {
     const sessionId = cacheByPath.get(path)?.candidate?.sessionId;
     if (!cacheByPath.delete(path)) return;
+    scanCacheDirty = true;
     if (sessionId) dropSessionPath(sessionId, path);
   };
 
@@ -193,6 +209,53 @@ export function createCodexGlobalRolloutSyncer(options: {
     pathsBySessionId.set(nextSessionId, paths);
     paths.add(path);
     if (!entry.synced) unsyncedSessionIds.add(nextSessionId);
+  };
+
+  /**
+   * 落盘解析事实，让下一次进程启动不必重新解析未变化的历史 rollout。
+   *
+   * 修复原因：`baselineDone` 只在内存里，每个进程启动都是一次 full scan，而 full scan 下
+   * `cacheByPath` 是空的，于是 1592 个历史 rollout 全部重跑一次 head/tail 解析
+   * （实测 1577ms / 读 229MiB，纯 stat 遍历只要 17ms），并且 `readTree` 会 await 这次基线
+   * （node.ts 的 `repository()` → syncer `syncNow()` 返回在途基线），成本随历史会话数线性增长。
+   * 修复依据：解析结果只取决于文件内容，按 `(mtimeMs, size)` 持久化后即可跨进程复用；
+   * 只持久化文件事实、不持久化 `synced`，入库判定仍完全由 tasks-index 现场决定，
+   * 因此自愈兜底（删任务/重建库/换 Host 后重新 applyCliFacts）一字未减。
+   * 写入在 `sync()` 的串行体内完成，内容未变化时不写，失败只告警不影响同步结果。
+   */
+  const persistScanCache = async (codexHome: string): Promise<void> => {
+    const filePath = options.scanCacheFilePath;
+    if (!filePath || !scanCacheDirty || disposed) return;
+    const content = serializeRolloutScanFacts(
+      codexHome,
+      [...cacheByPath].map(([path, entry]) => [
+        path,
+        {
+          mtimeMs: entry.mtimeMs,
+          size: entry.size,
+          candidate: entry.candidate,
+          settled: entry.settled,
+        },
+      ]),
+    );
+    if (content === undefined) {
+      logger.debug("Codex rollout 解析事实缓存超过条目上限，本轮不落盘", { codexHome });
+      return;
+    }
+    if (content === lastWrittenScanCache) {
+      scanCacheDirty = false;
+      return;
+    }
+    try {
+      await saveRolloutScanFacts(filePath, content);
+      lastWrittenScanCache = content;
+      scanCacheDirty = false;
+    } catch (error) {
+      // 缓存只是加速手段：写失败保持 dirty 等下一轮，绝不让同步本身失败。
+      logger.warn("写入 Codex rollout 解析事实缓存失败", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   };
 
   /**
@@ -296,6 +359,21 @@ export function createCodexGlobalRolloutSyncer(options: {
     const codexHome = resolveCodexHome(options.env);
     const sessionsRoot = join(codexHome, "sessions");
 
+    if (!scanCacheLoaded) {
+      scanCacheLoaded = true;
+      if (options.scanCacheFilePath) {
+        for (const [path, facts] of await loadRolloutScanFacts(
+          options.scanCacheFilePath,
+          codexHome,
+        )) {
+          // `synced` 不从磁盘恢复，按「刚解析完、尚未与库对账」的口径重算：
+          // 没有 candidate 就没有可入库的事实（与 parseRolloutCandidate 后的赋值完全一致），
+          // 有 candidate 则一律视为未入库，交给下面的 before 比较重新确认。
+          rememberEntry(path, { ...facts, synced: facts.candidate === null });
+        }
+      }
+    }
+
     let indexMtimeMs = -1;
     let indexSize = -1;
     try {
@@ -349,6 +427,13 @@ export function createCodexGlobalRolloutSyncer(options: {
     for (const path of dirtyPaths) addTarget(path, basename(path));
     if (disposed) return false;
 
+    if (fullScan) {
+      // 基线遍历覆盖了整棵树：本轮没被访问到的缓存条目对应已删除或已轮转的 rollout，
+      // 不清理会让持久化缓存随时间无界增长，也会让已消失的路径一直被写回磁盘。
+      // Map 迭代器允许删除当前项（与下方未访问目录清理同一口径），无需先复制 key 数组。
+      for (const path of cacheByPath.keys()) if (!targetPaths.has(path)) forgetEntry(path);
+    }
+
     const inspectedFiles = await mapBounded(targets, ROLLOUT_STAT_CONCURRENCY, async (file) => {
       if (disposed) return null;
       let fileStat;
@@ -384,6 +469,8 @@ export function createCodexGlobalRolloutSyncer(options: {
     for (const inspected of inspectedFiles) {
       if (!inspected) continue;
       rememberEntry(inspected.file.path, inspected.entry);
+      // 只有真正解析过（或被摘除）的条目才需要落盘；命中 (mtimeMs, size) 的复用不产生写入。
+      if (inspected.fileChanged) scanCacheDirty = true;
     }
 
     // 待更新集合只包含：本轮真正变化的文件所属 session、历史遗留未入库的 session，
@@ -499,6 +586,8 @@ export function createCodexGlobalRolloutSyncer(options: {
       }
     }
 
+    // 落在 sync() 的串行体内：并发调用者只会排队，不会出现两个写者交错写同一份缓存。
+    await persistScanCache(codexHome);
     return changedAny;
   };
 
@@ -621,6 +710,8 @@ export function createCodexGlobalRolloutSyncer(options: {
       unsyncedSessionIds.clear();
       dirCache.clear();
       cachedThreadNames.clear();
+      scanCacheDirty = false;
+      lastWrittenScanCache = undefined;
     },
   };
 }

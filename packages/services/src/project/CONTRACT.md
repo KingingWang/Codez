@@ -2,6 +2,8 @@
 
 唯一写者是当前 Host 的 tasks-index 存储。服务负责真实目录校验、默认目录创建与旧设置双写；自动归档由本模块的定时扫描器执行（启动首轮、每小时、设置变更补扫），不挂在任何读取或 UI 动作上；Repository 在事务内维护项目、roots 与任务归属。UI 只经 hooks 调用此契约。远程调用使用拥有组织态的现有 Host attachment，不让 main/relay 创建业务副本。
 
+全局 Codex rollout 扫描器（`codexGlobalRolloutSyncer`）是把 `$CODEX_HOME/sessions` 原生会话事实写入 tasks-index 的唯一入口：只读原生历史，不复制、不搬移、不删除。它的解析事实缓存（`codexRolloutScanCache`）落在 Codez 数据目录（`getCodexRolloutScanCachePath()`），按文件 `(mtimeMs, size)` 跨进程复用 head/tail 解析结果，使启动基线不再随历史会话数线性重解析。缓存只存文件派生事实（`mtimeMs`、`size`、`candidate`、`settled`），**不存 `synced`**：入库状态每次启动都重新与 tasks-index 对账，因此删任务、重建库、身份解析变化或缓存被复制到另一台机器都能自愈，不会出现「缓存说已入库、库里没有该行」导致会话永久不可见。缓存缺失、损坏、版本或 `$CODEX_HOME` 作用域不符一律 fail-open 回全量解析并记 warn；写入走既有 `atomicWriteText`（跨进程文件锁），内容未变化不写，超过条目上限整份不写。
+
 目录解析的 task 归属与 roots 来自同一读快照；保存项目时按物理路径（回退字面路径）去重并落库 `physical_path`，`readTree`/`readProjects` 随树投影 `physicalPath` 与 `workspacePhysicalPath`。已知 task 无项目时返回空附加目录；引用悬空项目或读取失败直接拒绝。prepareSession 的 cwd 创建后固定；编辑 roots 只影响下一次 runtime materialization。删除项目不删除会话；移动不写 CLI 事实、时间或 cwd。CLI continuous/replayable 流不由本模块修改。
 
 全局创建显式空归属，不按目录猜项目。跨 host 移动失败；同 host 缺目录时先返回错误，用户明确确认后原子追加 root 与移动。可删除容器永久保留；新建非空 roots 项目命中同 host 同 roots（含物理路径等价）的已删项目时自动复用原项目恢复，并归并同 roots 其余已删重复容器下的任务归属。

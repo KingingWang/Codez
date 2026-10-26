@@ -19,7 +19,10 @@ import {
 } from "#src/project/index.js";
 export { createLegacySingleRootProjectService } from "#src/project/index.js";
 export { createRemoteProjectService } from "#src/remote-projects/index.js";
-import { getCodezDataRootDir as projectDataRoot } from "#src/paths.js";
+import {
+  getCodezDataRootDir as projectDataRoot,
+  getCodexRolloutScanCachePath,
+} from "#src/paths.js";
 import { createTaskGroupService, ITaskGroupService, groupTaskKey } from "#src/task-groups/index.js";
 import { IGenUiService } from "./gen-ui/contract.js";
 import { createGenUiService } from "./gen-ui/node.js";
@@ -2409,6 +2412,8 @@ export function createLocalServices(options: {
                     .canonicalWorkspaceKey
               : undefined,
           afterChange: publishProjectChange,
+          // 解析事实缓存放在 Codez 数据目录：重启后未变化的历史 rollout 不再重复 head/tail 解析。
+          scanCacheFilePath: getCodexRolloutScanCachePath(),
         })
       : null;
   const projectService = createProjectService({

@@ -185,6 +185,14 @@ export function getGitCheckpointIndexRootDir(): string {
   return join(getCodezDataRootDir(), "git-checkpoint-index");
 }
 
+/**
+ * ~/.codez/codex-rollout-scan-cache.json：全局 Codex rollout 的解析事实缓存。
+ * 必须落在 Codez 自有数据目录，绝不写进 `$CODEX_HOME`（原生历史与配置只读）。
+ */
+export function getCodexRolloutScanCachePath(): string {
+  return join(getCodezDataRootDir(), "codex-rollout-scan-cache.json");
+}
+
 /** ~/.codez/v2/tasks-index.sqlite */
 export function getTasksIndexDatabasePath(): string {
   return join(getAppConfigDir(), "tasks-index.sqlite");
