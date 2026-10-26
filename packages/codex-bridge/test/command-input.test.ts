@@ -119,6 +119,7 @@ test("queue/steer accepts custom input on derived relaxed projections", () => {
     modelProvider: "p",
     reasoningEffort: "high",
     sandboxPolicy: { type: "dangerFullAccess" },
+    approvalPolicy: "never",
     collaborationMode: { mode: "default" },
   };
   assert.equal(projectThreadMode(relaxed), "yolo");
@@ -163,13 +164,25 @@ test("thread mode projection prefers the remembered explicit choice", () => {
   assert.equal(projectThreadMode({}), "custom");
   assert.equal(projectThreadMode({ sandboxPolicy: { type: "workspaceWrite" } }), "custom");
   assert.equal(
-    projectThreadMode({ sandboxPolicy: { type: "dangerFullAccess" } }),
+    projectThreadMode({
+      sandboxPolicy: { type: "dangerFullAccess" },
+      approvalPolicy: "on-request",
+    }),
+    "custom",
+    "danger-full-access with on-request approval policy stays custom until approvalPolicy is never",
+  );
+  assert.equal(
+    projectThreadMode({ sandboxPolicy: { type: "dangerFullAccess" }, approvalPolicy: "never" }),
     "yolo",
     "full access without a remembered choice projects yolo",
   );
   assert.equal(projectThreadMode({ approvalsReviewer: "auto_review" }), "edit");
   // 有记录：显式选择优先于生效值推导（bridge 重启前）。
-  const relaxed = { sandboxPolicy: { type: "dangerFullAccess" }, approvalsReviewer: "user" };
+  const relaxed = {
+    sandboxPolicy: { type: "dangerFullAccess" },
+    approvalPolicy: "never",
+    approvalsReviewer: "user",
+  };
   rememberThreadMode(relaxed, "build");
   assert.equal(projectThreadMode(relaxed), "build");
   // plan/auto 不是权限档位，不进记忆。
