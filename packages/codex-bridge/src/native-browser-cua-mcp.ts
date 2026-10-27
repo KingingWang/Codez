@@ -298,7 +298,18 @@ export function createNativeBrowserCuaMcpRuntime(input: {
     const socket = input.connect?.(input.endpoint) ?? createConnection(input.endpoint);
     active.add(socket);
     return await new Promise((resolve, reject) => {
-      let buffer = "";
+      // 修复原因：与 native-cua-mcp.ts 同一处缺陷——旧实现每个 chunk 都 `buffer += chunk.toString("utf8")`，
+      // 跨 chunk 边界的多字节字符被解码成 U+FFFD；U+FFFD 在 JSON 字符串里合法，JSON.parse 不报错，
+      // 于是乱码静默进入页面标题、无障碍树文本与错误信息并作为工具结果交给模型
+      // （中文产品下实测 4000 个中文字符 + 8 MiB 截图响应，真实 Unix socket 上 40/40 次全部损坏）。
+      // 同时 `Buffer.byteLength(buffer)` 与 `buffer.indexOf("\n")` 每 chunk 全量重扫，累计 O(n²)：
+      // 32 MiB 响应阻塞 MCP 子进程事件循环约 8.5s，拖垮同一 server 上的其他请求并可能触发 MCP 超时。
+      // 修复依据：按字节累积 chunk，只在新到的 chunk 内查找 0x0A —— ASCII 换行不可能出现在 UTF-8
+      // 多字节序列内部（续字节 0x80-0xBF，首字节 0xC0 以上），字节扫描与旧的字符串扫描完全等价；
+      // 取到完整帧后一次性解码，字符不可能跨边界。上限改用精确的已接收字节数，仍是 32 MiB fail-closed。
+      const chunks: Buffer[] = [];
+      let receivedBytes = 0;
+      let frameComplete = false;
       let settled = false;
       const finish = (error?: unknown, value?: NativeBrowserCuaMcpResponse) => {
         if (settled) return;
@@ -316,17 +327,21 @@ export function createNativeBrowserCuaMcpRuntime(input: {
       signal.addEventListener("abort", onAbort, { once: true });
       socket.once("connect", () => socket.write(`${JSON.stringify(payload)}\n`));
       socket.on("data", (chunk: Buffer) => {
-        buffer += chunk.toString("utf8");
-        if (Buffer.byteLength(buffer) > MAX_RESPONSE_BYTES) {
+        if (frameComplete) return;
+        chunks.push(chunk);
+        receivedBytes += chunk.length;
+        if (receivedBytes > MAX_RESPONSE_BYTES) {
           finish(new Error("Native Browser/CUA response exceeded the 32 MiB limit"));
           return;
         }
-        const newline = buffer.indexOf("\n");
+        const newline = chunk.indexOf(0x0a);
         if (newline < 0) return;
+        frameComplete = true;
+        const frame = Buffer.concat(chunks, receivedBytes)
+          .subarray(0, receivedBytes - chunk.length + newline)
+          .toString("utf8");
         try {
-          const parsed = nativeBrowserCuaMcpResponseSchema.parse(
-            JSON.parse(buffer.slice(0, newline)),
-          );
+          const parsed = nativeBrowserCuaMcpResponseSchema.parse(JSON.parse(frame));
           if (parsed.id !== payload.id) throw new Error("Native broker response id mismatch");
           finish(undefined, parsed);
         } catch (error) {
