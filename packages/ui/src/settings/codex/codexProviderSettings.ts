@@ -14,13 +14,15 @@ export const CODEX_PROVIDER_WIRE_APIS = [
   "chat",
   "responses",
   "anthropic",
+  "gemini",
 ] as const;
 export type CodexProviderWireApi = (typeof CODEX_PROVIDER_WIRE_APIS)[number];
 
 export function normalizeCodexProviderWireApi(
   value: unknown,
 ): CodexProviderWireApi {
-  if (value === "responses" || value === "anthropic") return value;
+  if (value === "responses" || value === "anthropic" || value === "gemini")
+    return value;
   return "chat";
 }
 

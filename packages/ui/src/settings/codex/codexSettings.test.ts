@@ -1047,11 +1047,34 @@ test("providers view reads model_providers with token presence only and default-
     },
   ]);
   assert.equal(JSON.stringify(view).includes("sk-secret-value"), false);
-  assert.deepEqual(CODEX_PROVIDER_WIRE_APIS, ["chat", "responses", "anthropic"]);
+  assert.deepEqual(CODEX_PROVIDER_WIRE_APIS, [
+    "chat",
+    "responses",
+    "anthropic",
+    "gemini",
+  ]);
   assert.equal(normalizeCodexProviderWireApi("chat"), "chat");
   assert.equal(normalizeCodexProviderWireApi("responses"), "responses");
   assert.equal(normalizeCodexProviderWireApi("anthropic"), "anthropic");
+  assert.equal(normalizeCodexProviderWireApi("gemini"), "gemini");
   assert.equal(normalizeCodexProviderWireApi("unknown"), "chat");
+});
+
+test("gemini wire api survives provider view projection", () => {
+  const config = codexConfigResponseSchema.parse({
+    config: {
+      model_providers: {
+        gemini: {
+          base_url: "https://generativelanguage.googleapis.com/v1beta",
+          wire_api: "gemini",
+        },
+      },
+    },
+    origins: {},
+    layers: null,
+  });
+
+  assert.equal(codexProvidersView(config, [])[0]?.wireApi, "gemini");
 });
 
 test("providers view projects env_key references and auth command without values", () => {
@@ -1267,6 +1290,30 @@ test("provider create writes the whole table; update edits per field and keeps t
       mergeStrategy: "replace",
     },
   ]);
+  const geminiForm = { ...form, wireApi: "gemini" as const };
+  assert.deepEqual(codexProviderCreateEdits(geminiForm), [
+    {
+      keyPath: "model_providers.my-provider",
+      value: {
+        name: "Mine",
+        base_url: "http://127.0.0.1:9000/v1",
+        wire_api: "gemini",
+        requires_openai_auth: true,
+        experimental_bearer_token: "sk-new",
+      },
+      mergeStrategy: "replace",
+    },
+  ]);
+  assert.deepEqual(
+    codexProviderUpdateEdits({ ...geminiForm, bearerToken: "" }).find((edit) =>
+      edit.keyPath.endsWith(".wire_api"),
+    ),
+    {
+      keyPath: "model_providers.my-provider.wire_api",
+      value: "gemini",
+      mergeStrategy: "replace",
+    },
+  );
   // 清除 token → 写 null 删键。
   const clearing = codexProviderUpdateEdits({
     ...form,
