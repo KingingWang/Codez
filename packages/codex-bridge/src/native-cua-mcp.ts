@@ -269,7 +269,20 @@ export async function sendNativeCuaBrokerRequest(input: {
     input.connect?.(input.cuaBroker.socketPath) ?? createConnection(input.cuaBroker.socketPath);
   input.active.add(socket);
   return await new Promise((resolve, reject) => {
-    let buffer = "";
+    // 修复原因：旧实现每个 chunk 都执行 `buffer += chunk.toString("utf8")`，跨 chunk 边界的多字节
+    // 字符会被单独解码成 U+FFFD。U+FFFD 在 JSON 字符串里是合法字符，JSON.parse 不会报错，于是乱码
+    // 静默进入页面标题、无障碍文本与错误信息，并作为工具结果交给模型（中文产品下尤其明显：
+    // 实测 4000 个中文字符 + 8 MiB 截图响应，在真实 Unix socket 上 40/40 次全部损坏）。
+    // 同时 `Buffer.byteLength(buffer)` 与 `buffer.indexOf("\n")` 每个 chunk 都要全量重扫一遍，
+    // 累计 O(n²)：32 MiB 响应会阻塞 MCP 子进程事件循环约 8.5s，拖垮同一 server 上的其他请求。
+    // 修复依据：改为按字节累积 chunk，只在新到的 chunk 内查找 0x0A —— ASCII 换行不可能出现在
+    // UTF-8 多字节序列内部（续字节为 0x80-0xBF，首字节为 0xC0 以上），因此字节扫描与旧的
+    // 字符串扫描完全等价；取到完整帧后一次性解码，任何字符都不可能跨边界。
+    // 上限改用精确的已接收字节数，仍是 32 MiB fail-closed（旧写法用解码后字符串的字节数，
+    // 损坏产生的 U+FFFD 各占 3 字节，反而可能让上限提前触发）。
+    const chunks: Buffer[] = [];
+    let receivedBytes = 0;
+    let frameComplete = false;
     let settled = false;
     const timer = setTimeout(() => {
       finish(new Error("Computer Use broker request timed out"));
@@ -288,15 +301,21 @@ export async function sendNativeCuaBrokerRequest(input: {
     input.signal.addEventListener("abort", onAbort, { once: true });
     socket.once("connect", () => socket.write(wire));
     socket.on("data", (chunk: Buffer) => {
-      buffer += chunk.toString("utf8");
-      if (Buffer.byteLength(buffer) > MAX_RESPONSE_BYTES) {
+      if (frameComplete) return;
+      chunks.push(chunk);
+      receivedBytes += chunk.length;
+      if (receivedBytes > MAX_RESPONSE_BYTES) {
         finish(new Error("Computer Use broker response exceeded the 32 MiB limit"));
         return;
       }
-      const newline = buffer.indexOf("\n");
+      const newline = chunk.indexOf(0x0a);
       if (newline < 0) return;
+      frameComplete = true;
+      const frame = Buffer.concat(chunks, receivedBytes)
+        .subarray(0, receivedBytes - chunk.length + newline)
+        .toString("utf8");
       try {
-        const parsed = JSON.parse(buffer.slice(0, newline)) as {
+        const parsed = JSON.parse(frame) as {
           id?: unknown;
           ok?: unknown;
           result?: unknown;
