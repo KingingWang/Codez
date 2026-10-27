@@ -1,5 +1,6 @@
 import type { ApiRetryState } from "@codez/shared/codez-protocol-v4";
-import { array, object, type JsonObject } from "./json.js";
+import type { JsonObject } from "./json.js";
+import { lastTurn } from "./thread-index.js";
 
 /** 桥侧持有的原生重试态：只归属某个 native turn，随投影存活，不是持久事实。 */
 export type NativeRetryState = {
@@ -77,8 +78,18 @@ export function applyNativeRetry(
   if (typeof turnId !== "string") return unchanged;
   if (params.willRetry !== true)
     return current?.turnId === turnId ? { retry: null, changed: true } : unchanged;
-  const activeTurn = object(array(thread.turns).at(-1));
-  if (activeTurn.id !== turnId || activeTurn.status !== "inProgress") return unchanged;
+  // 修复原因：旧写法 `object(array(thread.turns).at(-1))` 假定「最后一轮一定存在」。
+  // 但 `thread.turns` 可以合法为空或整个字段缺失：`thread/started` 走的是未经 schema 校验的
+  // 原始 put（thread-state.ts:344-352），`reloadAfterHistoryChange` 也会先把 turns 清空再 await ensure
+  // （thread-state.ts:305）。此时 `array()` 防御性地返回 []，紧接着 `.at(-1)` 得到 undefined，
+  // `object(undefined)` 抛 "Expected a JSON object"；该异常发生在串行 event tail 上，
+  // 会被 bridge-runtime.ts:188-190 升级成 fatal 并让 bridge 进程退出（整个窗口的会话一起断）。
+  // 修复依据：本函数头部注释已明确「只有最后一个 inProgress turn 的重试才可见，过期/已结束 turn
+  // 的通知既不能创建也不能复活状态」。没有轮次即没有活动轮，与既有分支同一口径返回 unchanged；
+  // `lastTurn()` 是仓库已有的安全取值工具（thread-index.ts:311-315），对缺失字段与空数组都返回 undefined。
+  const activeTurn = lastTurn(thread);
+  if (!activeTurn || activeTurn.id !== turnId || activeTurn.status !== "inProgress")
+    return unchanged;
   const httpStatusCode = retryHttpStatus(params.error);
   const counts = retryAttemptCounts(params.error);
   const errorDetail = retryErrorDetail(params.error);
