@@ -936,3 +936,66 @@ test("streaming deltas reuse cached enrichment for settled turns instead of re-c
   assert.equal(revertedHeader?.actions?.canRewindFiles, undefined);
   assert.notStrictEqual(revertedHeader, settledHeader);
 });
+
+/**
+ * 回归：空轮次历史 + 仍然活着的 apiRetry 观测，快照必须投影出 apiRetry: null 而不是抛错。
+ *
+ * 原因：旧实现用 `object(array(state.thread.turns).at(-1)).id` 取最后一轮，空历史上
+ * `object(undefined)` 抛 "Expected a JSON object"。buildConversation 只有 finally 没有 catch，
+ * 异常沿订阅 drain 冒泡后被 bridge-runtime.ts:129-133 判定为非 DeletedThreadError 而调用 fatal，
+ * bridge 进程退出（整个窗口的会话一起断）。`reloadAfterHistoryChange` 会同步清空 turns
+ * 再 await ensure，这段窗口正好命中。
+ * 依据：apiRetry 是轮次作用域的瞬时观测，没有最后一轮即没有活动轮，投影为 null 与
+ * CONTRACT.md「模型进度、终态通知与轮次完成清除观测」同一口径。
+ */
+test("an empty turn history with a live retry observation projects apiRetry null instead of throwing", async () => {
+  const thread = threadFixture();
+  thread.status = { type: "active", activeFlags: [] };
+  thread.turns[0]!.status = "inProgress";
+  thread.turns[0]!.completedAt = null;
+  const rpc = port();
+  const store = new ThreadStateStore(rpc, cwd);
+  store.markStarted(thread);
+
+  // 先建立一个真实的重试观测（最后一轮 inProgress + willRetry），作为阳性对照。
+  await store.apply({
+    method: "error",
+    params: {
+      threadId: thread.id,
+      turnId: thread.turns[0]!.id,
+      willRetry: true,
+      error: {
+        message: "Reconnecting... 1/5",
+        additionalDetails: '{"error":{"code":"rate_limit_reached"}}',
+        codexErrorInfo: { responseStreamDisconnected: { httpStatusCode: 503 } },
+      },
+    },
+  });
+  const state = store.get(thread.id)!;
+  assert.ok(state.apiRetry, "前置条件：重试观测必须已经建立");
+
+  const snapshots = new BridgeSnapshots(
+    { rpc, cwd },
+    store,
+    new InteractionBroker(rpc, () => {}),
+    cwd,
+  );
+  const withTurns = await snapshots.conversation(thread.id);
+  const projectedRetry = withTurns.control.apiRetry;
+  assert.ok(projectedRetry, "阳性对照：有活动轮时重试状态必须可见");
+  // 快照里的 apiRetry 是联合类型（counted | codex），用 `in` 收窄到 codex 分支再断言，
+  // 避免直接读 httpStatusCode 触发 TS2339。
+  if ("httpStatusCode" in projectedRetry) {
+    assert.equal(projectedRetry.httpStatusCode, 503, "阳性对照：投影必须携带原生 httpStatusCode");
+  } else {
+    assert.fail("阳性对照：投影必须落在 codex 分支");
+  }
+
+  // 模拟 reloadAfterHistoryChange 的空历史窗口（turns 被同步清空）。
+  state.thread.turns = [];
+  store.touch(thread.id);
+  const emptied = await snapshots.conversation(thread.id);
+  assert.equal(emptied.control.apiRetry, null, "没有最后一轮即没有活动轮");
+  assert.equal(emptied.control.phase, "running");
+  assert.equal(emptied.control.canStop, false);
+});
