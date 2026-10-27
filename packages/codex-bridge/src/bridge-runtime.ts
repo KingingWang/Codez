@@ -12,8 +12,9 @@ import { CommandLedger } from "./command-ledger.js";
 import { CommandRouter } from "./commands.js";
 import { RewindNoticeStore, relativizeRewindNoticePath } from "./rewind-notice.js";
 import { BridgeSnapshots } from "./bridge-snapshots.js";
-import { BridgeSubscriptions } from "./subscriptions.js";
+import { BridgeSubscriptions, type ConversationStateVersion } from "./subscriptions.js";
 import { AttachmentStore } from "./attachments.js";
+import { isRowBudgetExceeded, type RowBudgetExceededError } from "./projection-bounds.js";
 import { supportsControlMethod, handleControlRequest } from "./control-plane.js";
 import { ensureOfficialRegistered } from "./control-official-plugins.js";
 import { OfficialPluginMarketplace } from "./official-plugin-marketplace.js";
@@ -113,6 +114,9 @@ export class BridgeRuntime {
       snapshot: (topic, additionalDirectories) =>
         this.snapshots.topic(topic, additionalDirectories),
       notify,
+      // 只有确定性、只读、可安全 resync 的行预算故障允许按 state 版本粘住重试；
+      // 其余错误保持原有 dirty 重投与 fatal 判定（依据见 subscriptions.ts changed()）。
+      recoverableProjectionFault: isRowBudgetExceeded,
     });
     this.unsubscribe.push(
       this.store.onChange((id) => {
@@ -128,10 +132,33 @@ export class BridgeRuntime {
           const ids = [...this.pendingChangedIds];
           this.pendingChangedIds.clear();
           for (const changedId of ids) {
-            void this.subscriptions.changed(`conversation/${changedId}`).catch((error: Error) => {
-              if (!this.closed && !(error instanceof DeletedThreadError))
+            const state = this.store.get(changedId);
+            const stateVersion: ConversationStateVersion | undefined = state
+              ? { epoch: state.epoch, revision: state.revision, seq: state.seq }
+              : undefined;
+            void this.subscriptions
+              .changed(`conversation/${changedId}`, stateVersion)
+              .catch((error: Error) => {
+                if (this.closed || error instanceof DeletedThreadError) return;
+                // 修复原因：单条投影行超出组装预算过去走同一条 fatal 分支，于是 bridge 进程退出
+                // （main.ts stop(true) → process.exitCode = 1）。超限 item 已持久化在原生 rollout，
+                // 该会话因此永久打不开，且每次尝试都连带杀死同一窗口内其他会话。
+                // 修复依据：specs/codex-desktop-adapter.md:364-367 —— fatal 只保留给 invalid JSON、
+                // invalid UTF-8、畸形信封等「resync 不可证明安全」的协议违规；行预算超限是只读投影
+                // 的确定性结果，没有 mutation，resync 显然安全。:392-393 同时要求它仍然显式失败、
+                // 不得静默截断，所以这里只把故障限定在本订阅路由内：不 fatal、不截断，输出一条
+                // 闭合诊断，显式拒绝留给请求路径（subscribe/resync/rows/range 仍会带同一 typed
+                // error 失败）。只教这一个 fatal 站点：assertRowBudget 仅经 projectRows 可达，其
+                // 调用方是 bridge-snapshots.ts:333（本推送/请求路径）与三个 command 路径；
+                // native-event(:189)、native-interaction(:204)、refreshSidebar(:237) 都不构建
+                // ConversationRow，放宽它们会让原生事件协议损坏与侧栏索引失败变成非 fatal，
+                // 与 spec:824-826 冲突。
+                if (isRowBudgetExceeded(error)) {
+                  this.reportRowBudgetFault(error);
+                  return;
+                }
                 options.fatal(error, "conversation-projection");
-            });
+              });
           }
         });
       }),
@@ -236,6 +263,21 @@ export class BridgeRuntime {
       .catch((error: Error) => {
         if (!this.closed) this.options.fatal(error, topic);
       });
+  }
+
+  /**
+   * 只输出闭合字段：origin、故障码、行类别、字节数与预算，绝不输出行正文、entityId 或路径。
+   * 依据：specs/codex-desktop-adapter.md:394-396（超限诊断不得含 JSON 前缀、正文、参数或路径）
+   * 与 :824-826（生产诊断只暴露白名单分类与安全代码位置）。粘性故障保证同一 state 版本只写一行。
+   * 行类别同样按闭合形状复核，避免未来新增 kind 时把非白名单文本带进 stderr。
+   */
+  private reportRowBudgetFault(error: RowBudgetExceededError): void {
+    const kind = /^[A-Za-z]{1,32}$/.test(error.kind) ? error.kind : "unknown";
+    const bytes = Number.isSafeInteger(error.bytes) && error.bytes >= 0 ? error.bytes : -1;
+    const budget = Number.isSafeInteger(error.budget) && error.budget >= 0 ? error.budget : -1;
+    process.stderr.write(
+      `Codex desktop bridge warn: conversation row over budget; origin=conversation-projection; code=${error.code}; kind=${kind}; bytes=${bytes}; budget=${budget}\n`,
+    );
   }
 
   async request(method: string, params: unknown): Promise<BridgeResponse> {
