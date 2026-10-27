@@ -681,7 +681,20 @@ test("all/7d/30d 并发只做必要读盘，DB 与 WAL 变化后缓存立即失�
       // 新线程没有 rollout 文件，走 threads.tokens_used 兜底，因此不产生新的 rollout 读盘
       assert.equal(allAfterWal.summary.totalTokens, all.summary.totalTokens + 4242);
       assert.equal(sevenAfterWal.summary.totalTokens, seven.summary.totalTokens + 4242);
-      assert.equal(afterWal.stateDbFullCacheHits - beforeWal.stateDbFullCacheHits, 0);
+      // 修复原因：这里原本断言 `stateDbFullCacheHits` 增量为 0，但该增量取决于本轮两个并发查询的
+      // 交错顺序，不是 WAL 失效语义本身：`all`（sinceMs=0）未命中后会用「写入后」的数据重建全表缓存，
+      // 若 `7d` 在重建完成之后才计算指纹，就会命中这份新鲜缓存并计数 1。Promise.all 在快机器上通常
+      // 两者同时算指纹（都为未命中，计数 0），而在较慢或负载高的 runner（CI 的 macOS Intel）上容易
+      // 串行化，于是稳定出现 1 !== 0 —— 同一 commit 在同一次 run 的重跑里一次通过一次失败即为佐证。
+      // 修复依据：本轮要钉住的是「WAL 写入让上一轮缓存失效」，而不是「本轮内部不得共享缓存」。
+      // 陈旧缓存被排除已由前后两条断言保证：上面的 totalTokens 含新线程的 4242（命中旧全表缓存必然少这笔），
+      // 下面的 sqliteQueryDelta > 0 证明本轮确实重新查了库。因此把命中次数上界设为 1
+      // （至多一个并发查询命中另一个刚重建的新鲜缓存），既与交错顺序无关，又不放过真正的陈旧命中。
+      const stateDbHitsAfterWal = afterWal.stateDbFullCacheHits - beforeWal.stateDbFullCacheHits;
+      assert.ok(
+        stateDbHitsAfterWal <= 1,
+        `WAL 写入后全表缓存命中次数异常（至多允许并发查询间共享一次新鲜缓存）：${stateDbHitsAfterWal}`,
+      );
       assert.ok(sqliteQueryDelta(beforeWal, afterWal) > 0);
       assert.equal(afterWal.rolloutParses - beforeWal.rolloutParses, 0);
     } finally {
