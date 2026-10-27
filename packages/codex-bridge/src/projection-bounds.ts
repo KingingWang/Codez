@@ -78,12 +78,64 @@ export function projectToolInput(input: unknown): Pick<ToolCallRow, "input" | "i
   return { inputText: result.text, ...(result.totalBytes === undefined ? { input } : {}) };
 }
 
+/** 行预算故障码：闭合字符串，供上层做「可恢复投影故障」判定（与 attachments 的 fault code 同惯例）。 */
+export const ROW_BUDGET_FAULT_CODE = "fault.projection.rowBudget";
+
+/**
+ * 单条投影行超出组装预算。
+ *
+ * 修复原因：这里过去抛裸 `Error`，冒泡到 `bridge-runtime.ts` 的 `conversation-projection` catch 后
+ * 直接 `options.fatal` → `main.ts` `stop(true)` → `process.exitCode = 1`。超限 item 已经持久化在
+ * 原生 rollout 里，于是该会话永久打不开，而且每次尝试都杀死整个 bridge 进程，连带同一窗口内
+ * 其他会话一起掉线。
+ * 修复依据：specs/codex-desktop-adapter.md:364-367 —— 只有 invalid JSON、invalid UTF-8、畸形信封
+ * 等「resync 不可证明安全」的协议违规才允许 fatal；行预算超限是只读投影的确定性结果，没有发生
+ * 任何 mutation，resync 显然安全。同 spec:392-393 又要求「A single oversized item still fails
+ * explicitly」，禁止静默截断或占位改写，所以错误必须继续抛出、继续可判定，只是不再升级为进程
+ * 终止；由调用方把它限定在该请求/该订阅路由内。
+ * 错误正文只含原生 entityId、行类别与字节数：spec:394-396 禁止在超限诊断里出现 JSON 前缀、
+ * 正文、参数或路径。
+ */
+export class RowBudgetExceededError extends Error {
+  readonly code = ROW_BUDGET_FAULT_CODE;
+  /** v4 行 schema 里 entityId 是 optional（rows.ts:21）；缺失时文案仍按原样渲染成 `undefined`。 */
+  readonly entityId: string | undefined;
+  readonly kind: string;
+  readonly bytes: number;
+  readonly budget: number;
+  constructor(detail: {
+    entityId: string | undefined;
+    kind: string;
+    bytes: number;
+    budget: number;
+  }) {
+    // 文案必须与改动前逐字节一致：test/projection-bounds.test.ts:177-178 钉住
+    // /Codex projection row .* exceeds .* bytes/，Host 侧诊断也依赖同一形状。
+    super(
+      `Codex projection row ${detail.entityId} (${detail.kind}) exceeds ${detail.budget} bytes: ${detail.bytes}; native content was not truncated`,
+    );
+    this.name = "RowBudgetExceededError";
+    this.entityId = detail.entityId;
+    this.kind = detail.kind;
+    this.bytes = detail.bytes;
+    this.budget = detail.budget;
+  }
+}
+
+/** 只判定类型，不解析文案：调用方据此把行预算故障与真正的协议违规区分开。 */
+export function isRowBudgetExceeded(error: unknown): error is RowBudgetExceededError {
+  return error instanceof RowBudgetExceededError;
+}
+
 /** Bound individual rows, not whole native history (the caller owns paging/tail windows). */
 export function assertRowBudget<T extends ConversationRow>(row: T): T {
   const bytes = Buffer.byteLength(JSON.stringify(row), "utf8");
   if (bytes > rowBudget)
-    throw new Error(
-      `Codex projection row ${row.entityId} (${row.kind}) exceeds ${rowBudget} bytes: ${bytes}; native content was not truncated`,
-    );
+    throw new RowBudgetExceededError({
+      entityId: row.entityId,
+      kind: row.kind,
+      bytes,
+      budget: rowBudget,
+    });
   return row;
 }
