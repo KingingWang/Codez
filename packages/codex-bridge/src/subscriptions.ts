@@ -27,6 +27,11 @@ export interface BridgeSubscriptionsOptions {
   ): Promise<{ snapshot: unknown; seq: number; logEpoch: string }>;
   /** Resolves after the notification is written; rejects on transport failure. */
   notify(method: string, params: unknown): Promise<void>;
+  /**
+   * 判定「确定性且可恢复的投影故障」（当前只有行预算超限）。由 BridgeRuntime 注入，
+   * publisher 保持纯传输层，不依赖投影实现里的具体错误类型。
+   */
+  recoverableProjectionFault?(error: unknown): boolean;
 }
 export interface BridgeSubscriptionResponse {
   result: unknown;
@@ -38,6 +43,15 @@ type Batch = { frames: RoutedTopicWireFrame[]; bytes: number; seq: number; logEp
 type SnapshotRead = { snapshot: unknown; seq: number; logEpoch: string };
 /** 单轮 changed(topic) 扇出内的 resolver 读取合并表；不跨调用复用。 */
 type SharedReads = Map<string, Promise<SnapshotRead>>;
+/**
+ * 会话状态版本，与 BridgeSnapshots 的 in-flight key（epoch/revision/seq）同口径。
+ * 由 BridgeRuntime 从 ThreadStateStore 读出后随 changed() 传入，作为粘性故障的重新武装条件。
+ */
+export interface ConversationStateVersion {
+  epoch: string;
+  revision: number;
+  seq: number;
+}
 interface Route {
   id: string;
   key: string;
@@ -52,6 +66,11 @@ interface Route {
   pending?: Batch;
   running?: Promise<void>;
   last?: { seq: number; logEpoch: string };
+  /**
+   * 粘性投影故障：同一 state 版本内只投影并投递一次，之后 flush 直接短路，
+   * 直到 changed() 观察到版本前进（或路由被 prepare/remove 重建）。
+   */
+  fault?: { error: unknown; version: ConversationStateVersion };
 }
 const id = z.string().trim().min(1).max(1024);
 const subscribeSchema = v4ConversationSubscribeParamsSchema
@@ -76,6 +95,19 @@ function parse<T>(schema: z.ZodType<T>, value: unknown): T {
   const result = schema.safeParse(value);
   if (!result.success) fail(-32602, "Invalid subscription parameters");
   return result.data;
+}
+
+/** 缺版本（无法证明状态未变）时一律视为不同版本，宁可重投影也不能把会话永久粘死。 */
+function sameStateVersion(
+  recorded: ConversationStateVersion,
+  next: ConversationStateVersion | undefined,
+): boolean {
+  return (
+    next !== undefined &&
+    recorded.epoch === next.epoch &&
+    recorded.revision === next.revision &&
+    recorded.seq === next.seq
+  );
 }
 
 /**
@@ -188,17 +220,28 @@ export class BridgeSubscriptions {
     return v4ConnectionFlowResultSchema.parse({});
   }
 
-  async changed(topic: string): Promise<void> {
+  async changed(topic: string, stateVersion?: ConversationStateVersion): Promise<void> {
     if (this.closed) return;
     this.validateTopic(topic);
     const routes = [...this.routes.values()].filter((route) => route.topic === topic);
-    for (const route of routes) route.dirty = true;
+    for (const route of routes) {
+      // 修复原因：确定性投影故障（行预算超限）在同一 state 版本内重跑必然再次失败，而超限
+      // item 已经持久化在原生 rollout 里；过去每条事件都无条件置 dirty，于是每条后续事件都会
+      // 重放一次全史投影并重复投递同一个故障。
+      // 修复依据：specs/codex-desktop-adapter.md:364-367 要求可恢复故障不终止 bridge，
+      // :392-393 又要求它仍然显式失败、不得静默截断。因此按 state 版本粘住：版本未前进就既不
+      // 置 dirty 也不重投影（故障已在首次投递时交给调用方），版本前进或无法证明版本相同则立即
+      // 重新武装，保证历史真的变化后（例如超限 item 被原生裁剪）会话能自愈。
+      if (route.fault && sameStateVersion(route.fault.version, stateVersion)) continue;
+      route.fault = undefined;
+      route.dirty = true;
+    }
     // 一次 changed 扇出里，相同 (topic, additionalDirectories) 的多条 route 共享一次
     // resolver 读取：32 个订阅者同时刷新同一会话时逻辑投影仍然只跑一次。
     // 合并表是本轮局部的——新的 changed 或 state 变化后的重刷一定重新读取，
     // 独立的 subscribe()/resync() 也绝不挂到这里（见 prepare/encode 不传 sharedReads）。
     const sharedReads: SharedReads = new Map();
-    await Promise.all(routes.map((route) => this.flush(route, sharedReads)));
+    await Promise.all(routes.map((route) => this.flush(route, sharedReads, stateVersion)));
   }
 
   close(): void {
@@ -241,6 +284,8 @@ export class BridgeSubscriptions {
 
   private remove(route: Route): void {
     this.releasePending(route);
+    // 路由被替换/关闭时粘性故障随路由一起消失：新路由必须重新尝试投影并显式失败。
+    route.fault = undefined;
     if (this.routes.get(route.key) !== route) return;
     this.routes.delete(route.key);
     if (![...this.routes.values()].some((entry) => entry.connectionId === route.connectionId))
@@ -254,6 +299,9 @@ export class BridgeSubscriptions {
     const version = ++route.version;
     route.blocked = true;
     route.dirty = false;
+    // subscribe/resync 是显式读取入口，必须真实尝试一次投影：粘性故障只约束 changed() 推送
+    // 路径，否则客户端永远拿不到「该会话当前不可投影」的显式拒绝。
+    route.fault = undefined;
     this.releasePending(route);
     try {
       const batch = await this.encode(route, kind, version);
@@ -353,7 +401,13 @@ export class BridgeSubscriptions {
     return pending;
   }
 
-  private flush(route: Route, sharedReads?: SharedReads): Promise<void> {
+  private flush(
+    route: Route,
+    sharedReads?: SharedReads,
+    stateVersion?: ConversationStateVersion,
+  ): Promise<void> {
+    // 粘性故障短路：不重投影，也不重复投递；changed() 在 state 版本前进时清除它。
+    if (route.fault) return Promise.resolve();
     if (route.running) return route.running;
     if (!this.writable(route)) return Promise.resolve();
     // 合并并发 changed，不为每个事件挂一个待发送任务；只允许一个有界在途帧。
@@ -366,7 +420,14 @@ export class BridgeSubscriptions {
       },
       (error: unknown) => {
         route.running = undefined;
-        if (this.active(route)) route.dirty = true;
+        if (this.active(route)) {
+          // 可恢复投影故障按 state 版本粘住（见 changed() 的原因/依据）；其余错误保持原有
+          // 语义：置 dirty 让下一轮重投，并把拒绝原样冒泡给调用方（native-event /
+          // sessions-index / workspace-config 的 fatal 判定不受影响）。
+          if (stateVersion && this.options.recoverableProjectionFault?.(error))
+            route.fault = { error, version: stateVersion };
+          else route.dirty = true;
+        }
         throw error;
       },
     );
