@@ -276,7 +276,35 @@ jobs:
           APPLE_ID: ${{ inputs.signed && secrets.APPLE_ID || '' }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ inputs.signed && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
           APPLE_TEAM_ID: ${{ inputs.signed && secrets.APPLE_TEAM_ID || '' }}
-        run: pnpm --filter @codez/desktop exec electron-builder --config electron-builder.config.js --${{ matrix.builder }} --${{ matrix.arch }} --publish never
+        shell: bash
+        # 修复原因：macOS runner 上 dmgbuild 收尾偶发
+        # `dmgbuild.core.DMGError: Unable to detach device cleanly: hdiutil: couldn't eject "diskN" - Resource busy`
+        # （残留 diskimages-helper 占用挂载卷）。同一 commit 重跑即可通过，属 runner 侧瞬时故障，
+        # 但它会让已经成功编译的 darwin 打包整体失败并阻塞 release。
+        # 修复依据：沿用本文件既有口径（见下方 Upload installers 的「只允许同 run/target 再试一次，
+        # 第二次失败仍须阻断」）——仅当目标为 darwin 且失败输出命中已知的 hdiutil/DMG 卸载签名时重试一次；
+        # 其他任何打包错误立即以原状态失败，不用重试掩盖真实问题。
+        run: |
+          set -uo pipefail
+          LOG="$(mktemp)"
+          package_installer() {
+            pnpm --filter @codez/desktop exec electron-builder \
+              --config electron-builder.config.js \
+              --${{ matrix.builder }} --${{ matrix.arch }} --publish never 2>&1 | tee -a "$LOG"
+            return "${PIPESTATUS[0]}"
+          }
+          if package_installer; then
+            exit 0
+          fi
+          if [ "${{ matrix.os }}" != "darwin" ]; then
+            exit 1
+          fi
+          if ! grep -qE "Unable to detach device cleanly|couldn't eject|Resource busy" "$LOG"; then
+            exit 1
+          fi
+          echo "::warning::macOS DMG 卸载瞬时失败（hdiutil Resource busy），按既有口径重试一次打包"
+          hdiutil info || true
+          package_installer
       - name: Installer SHA256 manifests
         run: node scripts/codex-runtime-artifacts.mjs
       # 根因：GitHub CreateArtifact 连续超时会让已成功打包的目标阻塞发布。
