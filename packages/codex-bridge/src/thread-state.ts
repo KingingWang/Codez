@@ -304,6 +304,13 @@ export class ThreadStateStore {
       state.epoch = randomUUID();
       state.thread.turns = [];
       state.autoApprovalReviews = undefined;
+      // 修复原因：这里清了 turns 与 autoApprovalReviews，却漏了同为「轮次作用域瞬时观测」的 apiRetry。
+      // 于是从清空到 ensure() 重新载入之间有一段（一次 thread/read + resume 的往返，几十到几百毫秒）
+      // 「turns 为空 + apiRetry 仍在」的状态；并发快照构建会在 bridge-snapshots.ts:341 抛错并 fatal。
+      // 更糟的是它可能闩住：ensure() 失败时该状态不会被覆盖，之后每次快照构建都抛错。
+      // 修复依据：apiRetry 只归属某个 native turn（见 native-retry-status.ts 头部注释），历史被整体
+      // 替换后旧观测必然失效；与 autoApprovalReviews 同样在此清除，语义一致。
+      state.apiRetry = null;
     }
     this.loaded.delete(id);
     return this.ensure(id);
