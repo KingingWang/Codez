@@ -9,9 +9,13 @@ specs/codex-model-provider-grouping.md，本 spec 只定义管理（写）路径
 
 - 面板分两个区块：**供应商**（`model_providers` 表）与**模型**（catalog 文件
   条目）。模型按 catalog provider 分组列出，与 composer 下拉同一归属口径。
-- 供应商字段（MVP）：id、name、base_url、wire_api（chat/responses/anthropic）、
+- 供应商字段（MVP）：id、name、base_url、wire_api（chat/responses/anthropic/gemini）、
   API Key（`experimental_bearer_token`）、requires_openai_auth。id 创建后不可改
   （TOML 表键即身份；改名 = 新建 + 删除）。
+- `gemini` 只扩展 GUI 对上游 `wire_api="gemini"` 配置的读取、选择与写回；
+  不新增内置供应商或模型模板，也不修改 pinned Codex runtime。能否实际执行
+  Gemini 请求由当前 runtime 的协议支持决定；上游支持尚未进入当前 pinned
+  版本时，允许提前管理配置不代表该协议已经可运行。
 - 配置文件来源的 API Key 明文写入 config.toml（codex 原生
   `experimental_bearer_token` 字段，RedactedString 日志打码）。本机临时来源由
   Codez Credential Store 持值，Codex `env_key` 仅存引用；App 在 Agent spawn
@@ -210,6 +214,10 @@ deleteCodexCatalogModel`，载体铁律与 `readCodexCatalog` 相同（workspace
 13. 首次启动时 `$CODEX_HOME` 下无 `config.toml` 与模型目录文件：bridge 启动时自动创建
     默认 `config.toml` 与 `models.json`，Codex 原生进程正常解析启动，GUI「模型供应商」
     面板可正常读取默认供应商与模型并继续添加新供应商与模型；已有文件绝不被覆盖。
+14. 添加或编辑 `gemini` 供应商：协议下拉提供 `gemini`，保存后 `wire_api` 原样写入
+    `model_providers.<id>.wire_api`；重新读取时仍显示 `gemini`，不被归一化为 `chat`。
+    其他协议及未知值回退行为保持不变。本场景只验证配置管理，不替代 runtime 的
+    Gemini 请求、流式响应与工具调用验证。
 
 ```text
 GUI 已观察目录 → 展示禁用或确认 → bridge 接收 deleteModel
