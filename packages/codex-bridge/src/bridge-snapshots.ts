@@ -20,6 +20,7 @@ import { parseCodexThreadIncremental, projectThread, projectSessionsIndex } from
 import { array, object } from "./json.js";
 import { projectTurnFileChanges } from "./file-changes.js";
 import { itemEntityId } from "./projection-rows.js";
+import { lastTurn } from "./thread-index.js";
 import { codexUserInputSchema, type CodexTurn } from "./codex-types.js";
 import { projectOwnedInput } from "./native-file-projection.js";
 import { projectConversationTailWindow } from "./projection-window.js";
@@ -338,7 +339,12 @@ export class BridgeSnapshots {
       queue: presentationQueue,
       interactions: this.interactions.list(id),
       apiRetry:
-        state.apiRetry && state.apiRetry.turnId === object(array(state.thread.turns).at(-1)).id
+        // 修复原因：旧写法 `object(array(turns).at(-1))` 假定最后一轮必然存在；但
+        // reloadAfterHistoryChange 会先同步清空 turns 再 await ensure（thread-state.ts:305），
+        // 该窗口内空历史会让 object(undefined) 抛错，冒泡到订阅 drain 后被 fatal 掉整个 bridge。
+        // 修复依据：apiRetry 是轮次作用域瞬时观测，无最后一轮即无活动轮，投影 null 与 CONTRACT.md
+        // 「turn completion 清除观测」同口径；lastTurn() 对缺失字段与空数组都安全返回 undefined。
+        state.apiRetry && state.apiRetry.turnId === lastTurn(state.thread)?.id
           ? state.apiRetry.status
           : null,
       // 辅助对话 child：fork 继承的父历史只进模型上下文，不进 UI 投影。
