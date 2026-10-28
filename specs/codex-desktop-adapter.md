@@ -421,6 +421,37 @@ unoffered persistence never reach Codex.
   or retry a mutation with an unknown outcome. An oversized-frame production
   diagnostic contains only the validated native method, frame-byte lower
   bound and frame kind, never the JSON prefix, content, parameters or path.
+- Cold-load handoff is owned by the per-thread `ThreadStateStore` load, not by
+  the transport or renderer. Before native `thread/resume` can start a goal turn,
+  authorize `thread/read` against the workspace and install a provisional
+  projection for that thread. A notification already received while the read
+  was in flight must wait for this authorization boundary and then apply in
+  native event order; foreign and deleted threads must never acquire state.
+  The paged history is merged with the **latest** in-memory live turns in one
+  synchronous commit after all asynchronous item hydration, so a turn or item
+  received during paging/hydration is not replaced by the older page. Turn ID
+  and item ID are the merge identities; completion cannot regress to a started
+  status. A failed read/attach/page does not mark the thread loaded; subsequent
+  explicit subscribe may retry, without reissuing an ambiguous write command.
+  Both desktop-continuous and web-remote-replayable subscribe/resync use this
+  one owner and receive the same complete snapshot; their distinct transport
+  gap semantics remain unchanged. No periodic polling or second accepted queue.
+
+  ```text
+  native thread/read → workspace authorization → provisional Bridge state
+                       └→ event waiting for authorization → ordered apply ─┐
+  native resume(excludeTurns) → paged history + item hydration ────────────┤
+                       Bridge atomic history/live merge → loaded snapshot ─┤
+                       desktop continuous / mobile replayable delivery  ←──┘
+  ```
+
+  Regression: native `turn/started` immediately after resume (before the
+  history page) must survive even if that page contains only old turns; a
+  notification arriving before `thread/read` resolves must be applied after
+  authorization; a live item arriving while history hydration is pending
+  must survive the final commit. Reopening an already loaded thread must not
+  resume it again. A foreign or deleted thread still rejects cold load.
+
 - Cold-open performance has two distinct observable boundaries: first genuine
   historical content painted and genuine runtime command authority ready.
   Returning an ACK or an empty shell is neither boundary. Existing desktop
