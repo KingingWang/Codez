@@ -429,6 +429,31 @@ function snapshotWith(
 }
 
 describe("createCodezTaskIndexSyncer", () => {
+  it("does not reconcile confirmed CLI tombstones, but retains unfinished Host deletion intents", async () => {
+    const env = setupEnv();
+    const existing = await seedRunningTask(env.repo);
+    for (let index = 0; index < 128; index += 1) {
+      const tombstone = { ...existing, taskId: `confirmed-${index}` };
+      await env.repo.applyCliFacts({ meta: tombstone, titleSource: "default" });
+      await env.repo.applyCliDeletion(tombstone);
+    }
+    const pending = { ...existing, taskId: "pending-deletion" };
+    await seedTaskIndex(env.repo, { meta: pending, archived: true });
+    await env.repo.deleteArchivedTask(pending);
+    expect(
+      (await env.repo.listReconciliationRows({ workspacePath: "/repo" })).map(
+        (row) => row.meta.taskId,
+      ),
+    ).toEqual([pending.taskId, existing.taskId]);
+    const syncer = createCodezTaskIndexSyncer({ agentService: env.agent, taskIndexRepo: env.repo });
+    syncer.ensureWorkspaceSubscription({ workspacePath: "/repo" });
+    await subscribed(env);
+    await vi.waitFor(() => expect(env.agent.reconcileSessionsIndexV4).toHaveBeenCalledTimes(1));
+    const reconciled = vi.mocked(env.agent.reconcileSessionsIndexV4).mock.calls[0]![0].sessionIds;
+    expect(reconciled).toHaveLength(2);
+    expect(reconciled).toEqual(expect.arrayContaining([existing.taskId, pending.taskId]));
+    syncer.disposeAll();
+  });
   it("reconciles snapshot omissions: only explicit deleted hides a row, absent preserves it", async () => {
     const env = setupEnv();
     const existing = await seedRunningTask(env.repo);
