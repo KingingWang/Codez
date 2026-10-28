@@ -1,6 +1,6 @@
 // 手机远控 bridge 重建导致整树重挂时，投影 store 经模块级交接缓存携带
 // subscribe base 恢复：CLI 裁决 resume 后只补增量帧，不再全量重发。
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   ConversationSnapshot,
   ConversationTopicFrame,
@@ -15,6 +15,7 @@ import {
 } from "@/v4/conversationSnapshotHandoff.js";
 import { ConversationProjectionStore } from "@/v4/conversationProjectionStore.js";
 import type { ConversationTransport } from "@/v4/transport.js";
+import { logger } from "@/logger.js";
 
 function makeSnapshot(seq: number, sessionId = "s1"): ConversationSnapshot {
   return {
@@ -158,6 +159,88 @@ describe("conversationSnapshotHandoff", () => {
 describe("ConversationProjectionStore 快照交接", () => {
   beforeEach(() => {
     clearConversationSnapshotHandoffs();
+  });
+
+  it("ACK 不冒充首帧；只在 initial/recovery 真正应用后记录摘要", async () => {
+    const info = vi.spyOn(logger.lifecycle, "info").mockImplementation(() => {});
+    try {
+      const store = new ConversationProjectionStore("conversation/s1", makeTransport());
+      await store.connect();
+      expect(
+        info.mock.calls.filter(([message]) => message === "v4 conversation snapshot applied"),
+      ).toHaveLength(0);
+      const frame: ConversationTopicFrame = {
+        topic: "conversation/s1",
+        subscriptionId: store.getState().subscriptionId!,
+        fromSeq: 0,
+        toSeq: 5,
+        sentAt: 1,
+        payload: { kind: "snapshot", snapshot: makeSnapshot(5) },
+      };
+      store.handleFrame(frame, { deliveryKind: "initial" });
+      expect(
+        info.mock.calls.filter(([message]) => message === "v4 conversation snapshot applied"),
+      ).toEqual([
+        [
+          "v4 conversation snapshot applied",
+          {
+            event: "v4.conversation.snapshot.applied",
+            deliveryKind: "initial",
+            sessionId: "s1",
+            subscriptionId: frame.subscriptionId,
+            logEpoch: "epoch-1",
+            seq: 5,
+            phase: "idle",
+            lastTurnId: null,
+            module: "ui.v4.conversation_projection_store",
+          },
+        ],
+      ]);
+      store.handleFrame(
+        { ...frame, toSeq: 6, payload: { kind: "snapshot", snapshot: makeSnapshot(6) } },
+        { deliveryKind: "recovery" },
+      );
+      expect(
+        info.mock.calls.filter(([message]) => message === "v4 conversation snapshot applied"),
+      ).toHaveLength(2);
+      store.handleFrame(
+        { ...frame, toSeq: 7, payload: { kind: "snapshot", snapshot: makeSnapshot(7) } },
+        { deliveryKind: "online" },
+      );
+      expect(
+        info.mock.calls.filter(([message]) => message === "v4 conversation snapshot applied"),
+      ).toHaveLength(2);
+      await store.close();
+    } finally {
+      info.mockRestore();
+    }
+  });
+
+  it("桌面日志写入失败不妨碍权威快照落地", async () => {
+    const info = vi.spyOn(logger.lifecycle, "info").mockImplementation((message) => {
+      if (message === "v4 conversation snapshot applied") throw new Error("log unavailable");
+    });
+    try {
+      const store = new ConversationProjectionStore("conversation/s1", makeTransport());
+      await store.connect();
+      expect(() =>
+        store.handleFrame(
+          {
+            topic: "conversation/s1",
+            subscriptionId: store.getState().subscriptionId!,
+            fromSeq: 0,
+            toSeq: 5,
+            sentAt: 1,
+            payload: { kind: "snapshot", snapshot: makeSnapshot(5) },
+          },
+          { deliveryKind: "initial" },
+        ),
+      ).not.toThrow();
+      expect(store.getState().snapshot?.seq).toBe(5);
+      await store.close();
+    } finally {
+      info.mockRestore();
+    }
   });
 
   it("close 后新 store 继承快照，connect 携带 base 请求增量续传", async () => {

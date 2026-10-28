@@ -64,7 +64,28 @@ export class SessionDataLayer {
     this.keepWarmMs = options.keepWarmMs ?? resolveSessionDataLayerKeepWarmMs();
     // 连接级单监听：按 topic 扇入到各 store（pane 间共享的正是这一条连接）。
     this.offFrame = this.transport.onFrame((frame, context) => {
-      this.entries.get(frame.topic)?.store.handleFrame(frame, context);
+      const entry = this.entries.get(frame.topic);
+      if (entry) {
+        entry.store.handleFrame(frame, context);
+        return;
+      }
+      if (context?.deliveryKind === "initial" || context?.deliveryKind === "recovery") {
+        // 原因：已组好的首帧可能在 pane 释放后落到无 store 的连接上；记录归属丢弃。
+        try {
+          const safeId = (value: string) =>
+            /^[A-Za-z0-9_-]{1,64}$/.test(value) ? value : "none";
+          logger.lifecycle.warn("v4 conversation frame discarded", {
+            event: "v4.conversation.frame.discarded",
+            reason: "missingStore",
+            sessionId: safeId(frame.topic.slice("conversation/".length)),
+            subscriptionId: safeId(frame.subscriptionId),
+            deliveryKind: context.deliveryKind,
+            module: "ui.v4.session_data_layer",
+          });
+        } catch {
+          // 诊断失败不能影响其他 session 的帧。
+        }
+      }
     });
   }
 

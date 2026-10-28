@@ -9,6 +9,30 @@ export interface CodexBridgeRpcTimeoutDiagnostic {
   pending: number;
 }
 
+export type CodexBridgeStateDiagnostic =
+  | {
+      kind: "snapshotPrepared";
+      deliveryKind: "initial" | "recovery";
+      sessionId: string;
+      subscriptionId: string;
+      logEpoch: string;
+      seq: number;
+      phase: string;
+      lastTurnId: string;
+    }
+  | {
+      kind: "continueRejected";
+      sessionId: string;
+      commandId: string;
+      nativeStatus: string;
+      latestTurnStatus: string;
+      selectedRunningTurnId: string;
+      runningTurnCount: number;
+      logEpoch: string;
+      seq: number;
+      revision: number;
+    };
+
 export interface CodexBridgeOversizedFrameDiagnostic {
   kind: "response" | "request" | "notification" | "unknown";
   method: string;
@@ -58,6 +82,59 @@ const OVERSIZED_FRAME =
   /^Codex desktop bridge warn: oversized native frame; kind=(response|request|notification|unknown); method=([A-Za-z0-9_/-]{1,64}); observedBytes=(\d{1,15})$/;
 const NATIVE_STDERR_SUMMARY =
   /^Codex desktop bridge warn: native stderr summary; exitCode=(null|\d{1,10}); signal=(null|[A-Z]{1,15}); lineCount=(\d{1,10}); byteCount=(\d{1,16}); truncated=(true|false); level=(trace|debug|info|warn|error|unknown); target=(none|(?:[a-z0-9_]+::){1,5}[a-z0-9_]+); categories=(none|[a-z-]+(?:,[a-z-]+)*)$/;
+const STATE_ID = "([A-Za-z0-9_-]{1,64})";
+const STATE_NUMBER = "(\\d{1,16})";
+const STATE_PREFIX = "^Codex desktop bridge state: ";
+const SNAPSHOT_PREPARED = new RegExp(
+  `${STATE_PREFIX}snapshotPrepared; deliveryKind=(initial|recovery); sessionId=${STATE_ID}; subscriptionId=${STATE_ID}; logEpoch=${STATE_ID}; seq=${STATE_NUMBER}; phase=(draft|prewarming|running|completedSuccess|completedInterrupted|error); lastTurnId=${STATE_ID}(?![\\s\\S])`,
+);
+const CONTINUE_REJECTED = new RegExp(
+  `${STATE_PREFIX}continueRejected; sessionId=${STATE_ID}; commandId=${STATE_ID}; nativeStatus=(notLoaded|idle|systemError|active|unknown); latestTurnStatus=(inProgress|completed|interrupted|failed|unknown); selectedRunningTurnId=${STATE_ID}; runningTurnCount=(\\d{1,4}); logEpoch=${STATE_ID}; seq=${STATE_NUMBER}; revision=${STATE_NUMBER}(?![\\s\\S])`,
+);
+
+export function parseCodexBridgeStateDiagnostic(
+  line: string,
+): CodexBridgeStateDiagnostic | undefined {
+  const snapshot = SNAPSHOT_PREPARED.exec(line);
+  if (snapshot) {
+    const seq = Number(snapshot[5]);
+    if (!Number.isSafeInteger(seq)) return undefined;
+    return {
+      kind: "snapshotPrepared",
+      deliveryKind: snapshot[1] as "initial" | "recovery",
+      sessionId: snapshot[2]!,
+      subscriptionId: snapshot[3]!,
+      logEpoch: snapshot[4]!,
+      seq,
+      phase: snapshot[6]!,
+      lastTurnId: snapshot[7]!,
+    };
+  }
+  const rejected = CONTINUE_REJECTED.exec(line);
+  if (!rejected) return undefined;
+  const runningTurnCount = Number(rejected[6]);
+  const seq = Number(rejected[8]);
+  const revision = Number(rejected[9]);
+  if (
+    !Number.isSafeInteger(runningTurnCount) ||
+    runningTurnCount > 9999 ||
+    !Number.isSafeInteger(seq) ||
+    !Number.isSafeInteger(revision)
+  )
+    return undefined;
+  return {
+    kind: "continueRejected",
+    sessionId: rejected[1]!,
+    commandId: rejected[2]!,
+    nativeStatus: rejected[3]!,
+    latestTurnStatus: rejected[4]!,
+    selectedRunningTurnId: rejected[5]!,
+    runningTurnCount,
+    logEpoch: rejected[7]!,
+    seq,
+    revision,
+  };
+}
 const RUNTIME_NOTICE_PREFIX = "Codex desktop bridge warn: runtime notice; payload=";
 const RUNTIME_NOTICE_MAX_PAYLOAD_CHARS = 160_000;
 const RUNTIME_NOTICE_KINDS = new Set<CodexBridgeRuntimeNoticeDiagnostic["kind"]>([

@@ -42,6 +42,7 @@ import { resolveCodexInitSlashCommandPrompt } from "./builtin-init-command.js";
 import { executeThreadGoalCommand } from "./thread-goal.js";
 import { executeInterruptedTurnContinue } from "./commands-continue.js";
 import { deleteBridgeThread } from "./thread-queries.js";
+import type { BridgeStateDiagnostic } from "./diagnostics.js";
 
 export interface CommandContext {
   rpc: CodexRpcPort;
@@ -57,6 +58,7 @@ export interface CommandContext {
   rewindNotices?: RewindNoticeStore;
   title?: SessionTitleCoordinator;
   providerKeyGate?: CodexProviderKeyGate;
+  onContinueRejected?: (diagnostic: BridgeStateDiagnostic) => void;
 }
 
 /** Per-thread serialization covers admission decisions, not native execution. */
@@ -202,6 +204,7 @@ export class CommandRouter {
             state,
             sessionId,
             running,
+            onContinueRejected: this.context.onContinueRejected,
           });
         }
         const rewindNotice = this.context.rewindNotices?.peek(sessionId);

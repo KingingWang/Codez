@@ -15,7 +15,11 @@ import {
   CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV,
 } from "@codez/shared";
 import { parseNativeBrowserCuaFacts, runNativeBrowserCuaMcp } from "./native-browser-cua-mcp.js";
-import { describeBridgeFailure, type BridgeFailureOrigin } from "./diagnostics.js";
+import {
+  describeBridgeFailure,
+  formatBridgeStateDiagnostic,
+  type BridgeFailureOrigin,
+} from "./diagnostics.js";
 import { createCodexProviderKeyGate, parseBlockedCodexProviderIds } from "./provider-key-gate.js";
 import { ensureDefaultCodexConfigFiles } from "./default-codex-config.js";
 
@@ -147,6 +151,8 @@ async function main(): Promise<void> {
         `Codex desktop bridge warn: runtime notice; payload=${JSON.stringify(notice)}\n`,
       );
     },
+    logStateDiagnostic: (diagnostic) =>
+      process.stderr.write(formatBridgeStateDiagnostic(diagnostic)),
     fatal,
     nativeBrowserCua: parseNativeBrowserCuaFacts(),
     providerKeyGate,

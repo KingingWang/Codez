@@ -82,7 +82,7 @@ process.stdin.on("data", (chunk) => {
         logicalFrameOrdinal: 1,
         topic: msg.params.topic,
         subscriptionId: "sub-1",
-        deliveryKind: "online",
+        deliveryKind: msg.params.topic.endsWith("/trace-initial") ? "initial" : "online",
       };
       let params;
       if (msg.params.topic.endsWith("/missing-delivery-kind")) {
@@ -1168,6 +1168,27 @@ describe("codezAgentService v4 conversation channel", () => {
 
       disposable.dispose();
     } finally {
+      await service.disposeAllAndWait();
+    }
+  });
+
+  it("records a bounded service receipt for initial wire, not online payload", async () => {
+    const { service, workspacePath } = setupService();
+    const info = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      const seen: ConversationTopicWireCandidate[] = [];
+      const off = service.onDynamicConversationFrame({ workspacePath })((wire) => seen.push(wire));
+      await service.subscribeConversationV4({ workspacePath, sessionId: "trace-initial" });
+      await vi.waitFor(() => expect(seen).toHaveLength(1));
+      expect(info.mock.calls.some((call) => (call[2] as { event?: string })?.event === "v4.conversation.wire.service_received")).toBe(true);
+      await service.subscribeConversationV4({ workspacePath, sessionId: "ordinary-online" });
+      await vi.waitFor(() => expect(seen).toHaveLength(2));
+      const checkpoints = info.mock.calls.filter((call) => (call[2] as { event?: string })?.event === "v4.conversation.wire.service_received");
+      expect(checkpoints).toHaveLength(1);
+      expect(JSON.stringify(checkpoints)).not.toContain(workspacePath);
+      off.dispose();
+    } finally {
+      info.mockRestore();
       await service.disposeAllAndWait();
     }
   });

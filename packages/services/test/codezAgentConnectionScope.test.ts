@@ -57,6 +57,46 @@ function completeWire<F extends { topic: string; subscriptionId: string }>(
   };
 }
 
+it.each(["desktop-continuous", "web-remote-replayable"] as const)(
+  "records bounded %s attachment routing checkpoints, not online frames",
+  async (clientMode) => {
+    const info = vi.spyOn(console, "log").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { base, conversationFrames } = setupBase();
+    const scope = createCodezAgentConnectionScope(base, { connectionId: "diagnostic", clientMode });
+    try {
+      await scope.service.helloConversationV4();
+      await scope.service.initializeConversationV4({
+        kind: "clientHello", protocolVersion: 3, clientId: "diagnostic", appVersion: "4.0.0",
+      });
+      const received: ConversationTopicWireFrame[] = [];
+      scope.service.onDynamicConversationFrame({ workspacePath: "/repo" })((wire) => received.push(wire as ConversationTopicWireFrame));
+      let resolve!: (value: { ack: { subscriptionId: string; mode: "snapshot"; logEpoch: string } }) => void;
+      vi.mocked(base.subscribeConversationV4).mockImplementationOnce(() => new Promise((done) => { resolve = done; }));
+      const pending = scope.service.subscribeConversationV4({ workspacePath: "/repo", sessionId: "session-1" });
+      const initial = { ...completeWire(makeFrame("conversation/session-1", "sub-1")), deliveryKind: "initial" as const };
+      conversationFrames.fire(initial);
+      conversationFrames.fire({ ...initial, subscriptionId: "old-sub" });
+      expect(received).toHaveLength(0);
+      resolve({ ack: { subscriptionId: "sub-1", mode: "snapshot", logEpoch: "epoch-1" } });
+      await pending;
+      expect(received).toHaveLength(1);
+      conversationFrames.fire({ ...initial, subscriptionId: "old-sub" });
+      conversationFrames.fire({ ...initial, logicalFrameOrdinal: 3 });
+      conversationFrames.fire({ ...initial, deliveryKind: "online", logicalFrameOrdinal: 2 });
+      const events = info.mock.calls.map((call) => call[2] as { event?: string; outcome?: string }).filter((entry) => entry?.event === "v4.conversation.wire.scope_routed");
+      expect(events.map((entry) => entry.outcome)).toEqual(["staged", "staged", "released", "forwarded"]);
+      expect(warn.mock.calls.some((call) => (call[2] as { outcome?: string })?.outcome === "unowned")).toBe(true);
+      expect(warn.mock.calls.some((call) => (call[2] as { outcome?: string; reason?: string })?.outcome === "discarded" && (call[2] as { reason?: string }).reason === "ackSubscriptionMismatch")).toBe(true);
+      expect(JSON.stringify([...info.mock.calls, ...warn.mock.calls])).not.toContain("/repo");
+    } finally {
+      info.mockRestore();
+      warn.mockRestore();
+      await scope.dispose();
+    }
+  },
+);
+
 function setupBase() {
   const conversationFrames = new Emitter<ConversationTopicWireFrame>();
   const telemetryFacts = new Emitter<ConversationTelemetryFact>();
@@ -753,6 +793,7 @@ describe("CodezAgent connection-scoped service facade", () => {
 
   it("physical ACK staging 超 1024 片时清空整批、拒绝 subscribe 并反向退订", async () => {
     const { base, conversationFrames } = setupBase();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     let resolveSubscribe!: (value: {
       ack: { subscriptionId: string; mode: "snapshot"; logEpoch: string };
     }) => void;
@@ -780,6 +821,7 @@ describe("CodezAgent connection-scoped service facade", () => {
       conversationFrames.fire({
         wireVersion: 3,
         kind: "fragment",
+        ...(fragmentIndex === 1_024 ? { deliveryKind: "initial" as const } : {}),
         logicalFrameId: "logical-overflow",
         logicalFrameOrdinal: 1,
         topic: "conversation/physical-overflow-session",
@@ -799,6 +841,11 @@ describe("CodezAgent connection-scoped service facade", () => {
       },
     });
     await expect(subscribing).rejects.toThrow("fault.subscription.initialFrameStagingOverflow");
+    const overflow = warn.mock.calls.filter((call) => (call[2] as { event?: string })?.event === "v4.conversation.wire.staging_overflow");
+    expect(overflow).toHaveLength(1);
+    expect(overflow[0]?.[2]).toMatchObject({ sessionId: "physical-overflow-session", subscriptionId: "sub-physical-overflow", stagedFrames: 1024 });
+    expect(JSON.stringify(overflow)).not.toContain("/repo");
+    warn.mockRestore();
     expect(seen).toEqual([]);
     expect(base.unsubscribeConversationV4).toHaveBeenCalled();
     await scope.dispose();
@@ -2163,4 +2210,17 @@ it("本地 TTFT 检查点只向本地 desktop continuous attachment 暴露", () 
   expect(base.onDynamicLocalTtftFacts).toHaveBeenCalledOnce();
   desktop.dispose();
   mobile.dispose();
+});
+
+it("renderer 导入 connection scope 时不依赖 Node process", async () => {
+  // 回归依据：Host 诊断 logger 曾在模块顶层读取 process.pid，导致生产 renderer
+  // 导入服务公开入口时立即抛错，React 无法发出 codez-react-startup-ready。
+  vi.resetModules();
+  vi.stubGlobal("process", undefined);
+  try {
+    const module = await import("../src/codez-agent/codezAgentConnectionScope.js");
+    expect(module.createCodezAgentConnectionScope).toBeTypeOf("function");
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });

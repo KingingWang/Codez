@@ -137,3 +137,115 @@ test("verified local Node archive extracts only pinned member; tar failure prese
     false,
   );
 });
+
+test("remote Node retries transient downloads but fails closed on HTTP 404 and checksum mismatch", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "codex Node retry-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const target = { os: "linux", arch: "x64", key: "linux-x64" };
+  const memberRoot = "node-v24.14.0-linux-x64";
+  const directory = join(root, "installed");
+  await mkdir(join(root, memberRoot, "bin"), { recursive: true });
+  await writeFile(join(root, memberRoot, "bin/node"), "verified Node fixture");
+  const archivePath = join(root, "node.tar.gz");
+  await runCodexTar({ mode: "create", archivePath, directory: root, entries: [memberRoot] });
+  const bytes = await readFile(archivePath);
+  const manifest = await loadCodexNodeManifest();
+  manifest.assets[target.key] = createHash("sha256").update(bytes).digest("hex");
+  const retryDelay = async () => {};
+  let attempts = 0;
+  await stageCodexRemoteNode({
+    directory,
+    target,
+    manifest,
+    retryDelay,
+    fetchImpl: async () => {
+      attempts += 1;
+      if (attempts === 1) throw new DOMException("request timed out", "TimeoutError");
+      if (attempts === 2) return new Response(null, { status: 503 });
+      if (attempts === 3)
+        return new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(bytes.subarray(0, 8));
+              queueMicrotask(() =>
+                controller.error(Object.assign(new Error("socket reset"), { code: "ECONNRESET" })),
+              );
+            },
+          }),
+        );
+      return new Response(bytes);
+    },
+  });
+  assert.equal(attempts, 4);
+  assert.equal(await readFile(join(directory, "node"), "utf8"), "verified Node fixture");
+  assert.equal(
+    (await readdir(directory)).some((name) => name.startsWith(".node-")),
+    false,
+  );
+
+  let rateLimitAttempts = 0;
+  await stageCodexRemoteNode({
+    directory,
+    target,
+    manifest,
+    retryDelay,
+    fetchImpl: async () => {
+      rateLimitAttempts += 1;
+      return rateLimitAttempts === 1 ? new Response(null, { status: 429 }) : new Response(bytes);
+    },
+  });
+  assert.equal(rateLimitAttempts, 2);
+
+  for (const [label, response] of [
+    ["HTTP 404", () => new Response(null, { status: 404 })],
+    ["checksum mismatch", () => new Response(Buffer.from("tampered archive"))],
+    [
+      "cancelled",
+      () => {
+        throw new DOMException("cancelled", "AbortError");
+      },
+    ],
+  ]) {
+    let failedAttempts = 0;
+    await assert.rejects(
+      stageCodexRemoteNode({
+        directory,
+        target,
+        manifest,
+        retryDelay,
+        fetchImpl: async () => {
+          failedAttempts += 1;
+          return response();
+        },
+      }),
+      label === "HTTP 404" ? /HTTP 404/ : label === "cancelled" ? /cancelled/ : /checksum mismatch/,
+    );
+    assert.equal(failedAttempts, 1, label);
+    assert.equal(await readFile(join(directory, "node"), "utf8"), "verified Node fixture");
+    assert.equal(
+      (await readdir(directory)).some((name) => name.startsWith(".node-")),
+      false,
+    );
+  }
+
+  let exhaustedAttempts = 0;
+  await assert.rejects(
+    stageCodexRemoteNode({
+      directory,
+      target,
+      manifest,
+      retryDelay,
+      fetchImpl: async () => {
+        exhaustedAttempts += 1;
+        throw new DOMException("request timed out", "TimeoutError");
+      },
+    }),
+    /request timed out/,
+  );
+  assert.equal(exhaustedAttempts, 4);
+  assert.equal(await readFile(join(directory, "node"), "utf8"), "verified Node fixture");
+  assert.equal(
+    (await readdir(directory)).some((name) => name.startsWith(".node-")),
+    false,
+  );
+});

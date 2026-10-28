@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { describeBridgeFailure } from "../src/diagnostics.js";
+import { describeBridgeFailure, formatBridgeStateDiagnostic } from "../src/diagnostics.js";
 import { CodexRpcError, CodexTransportError } from "../src/rpc-errors.js";
 import { z } from "zod";
 
@@ -38,4 +38,35 @@ test("diagnostics expose only safe typed codes, including initialization failure
     category: "adapter-failure",
     origin: "host-protocol",
   });
+});
+
+test("state diagnostics whitelist IDs and statuses before writing stderr", () => {
+  const line = formatBridgeStateDiagnostic({
+    kind: "snapshotPrepared",
+    deliveryKind: "initial",
+    sessionId: "/private/session",
+    subscriptionId: "sub-1",
+    logEpoch: "epoch-1",
+    seq: 5,
+    phase: "running",
+    lastTurnId: "token\nsecret",
+  });
+  assert.equal(
+    line,
+    "Codex desktop bridge state: snapshotPrepared; deliveryKind=initial; sessionId=none; subscriptionId=sub-1; logEpoch=epoch-1; seq=5; phase=running; lastTurnId=none\n",
+  );
+  const rejected = formatBridgeStateDiagnostic({
+    kind: "continueRejected",
+    sessionId: "thread-1",
+    commandId: "command-1",
+    nativeStatus: "/private",
+    latestTurnStatus: "secret",
+    selectedRunningTurnId: "turn-1",
+    runningTurnCount: 3,
+    logEpoch: "epoch-1",
+    seq: 2,
+    revision: 4,
+  });
+  assert.match(rejected, /nativeStatus=unknown; latestTurnStatus=unknown/);
+  assert.doesNotMatch(line + rejected, /private|token|secret/);
 });

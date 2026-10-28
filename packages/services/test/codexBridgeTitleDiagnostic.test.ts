@@ -6,7 +6,51 @@ import {
   parseCodexBridgeTitleDiagnostic,
   parseCodexBridgeNativeStderrSummary,
   parseCodexBridgeRuntimeNoticeDiagnostic,
+  parseCodexBridgeStateDiagnostic,
 } from "../src/codez-agent/codexBridgeTitleDiagnostic.js";
+
+test("snapshot and continuation diagnostics are strictly bounded and content-free", () => {
+  const prefix = "Codex desktop bridge state: ";
+  const snapshot =
+    "snapshotPrepared; deliveryKind=initial; sessionId=thread-1; subscriptionId=sub-1; logEpoch=epoch-1; seq=2; phase=running; lastTurnId=turn-1";
+  const rejected =
+    "continueRejected; sessionId=thread-1; commandId=command-1; nativeStatus=idle; latestTurnStatus=interrupted; selectedRunningTurnId=turn-1; runningTurnCount=3; logEpoch=epoch-1; seq=2; revision=4";
+  assert.deepEqual(parseCodexBridgeStateDiagnostic(prefix + snapshot), {
+    kind: "snapshotPrepared",
+    deliveryKind: "initial",
+    sessionId: "thread-1",
+    subscriptionId: "sub-1",
+    logEpoch: "epoch-1",
+    seq: 2,
+    phase: "running",
+    lastTurnId: "turn-1",
+  });
+  assert.deepEqual(parseCodexBridgeStateDiagnostic(prefix + rejected), {
+    kind: "continueRejected",
+    sessionId: "thread-1",
+    commandId: "command-1",
+    nativeStatus: "idle",
+    latestTurnStatus: "interrupted",
+    selectedRunningTurnId: "turn-1",
+    runningTurnCount: 3,
+    logEpoch: "epoch-1",
+    seq: 2,
+    revision: 4,
+  });
+  for (const malformed of [
+    snapshot + "; path=/private",
+    snapshot.replace("thread-1", "/private"),
+    snapshot.replace("initial", "online"),
+    snapshot.replace("running", "secret"),
+    snapshot.replace("sub-1", "x".repeat(65)),
+    snapshot + "\n",
+    rejected + "; prompt=secret",
+    rejected.replace("runningTurnCount=3", "runningTurnCount=999999"),
+    rejected.replace("selectedRunningTurnId=turn-1", "selectedRunningTurnId=/private"),
+    rejected.replace("revision=4", "revision=99999999999999999999"),
+  ])
+    assert.equal(parseCodexBridgeStateDiagnostic(prefix + malformed), undefined);
+});
 
 test("runtime notice diagnostics accept only bounded allowlisted fields", () => {
   const warning = {
