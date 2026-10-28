@@ -57,6 +57,138 @@ test("history is paged and native queue is the only queue source", async () => {
   // 冷恢复须只 attach 一次，历史由单一只读分页入口提供，避免单条 resume 帧超限。
   assert.deepEqual(resumes, [{ threadId: "t1", excludeTurns: true }]);
 });
+
+test("cold resume goal turn survives a history page that has only older turns", async () => {
+  const calls: string[] = [];
+  let store: ThreadStateStore;
+  store = new ThreadStateStore(
+    port((method) => {
+      calls.push(method);
+      if (method === "thread/resume") {
+        void store.apply({
+          method: "turn/started",
+          params: {
+            threadId: "t1",
+            turn: { id: "goal-turn", status: "inProgress", items: [] },
+          },
+        });
+        return { thread: thread() };
+      }
+      if (method === "thread/turns/list") {
+        return {
+          data: [{ id: "old-turn", status: "completed", itemsView: "full", items: [] }],
+          nextCursor: null,
+        };
+      }
+      if (method === "thread/queue/list") return { data: [], nextCursor: null };
+      return { thread: thread() };
+    }),
+    "/work",
+  );
+  const state = await store.ensure("t1");
+  assert.deepEqual(
+    (state.thread.turns as Array<{ id: string }>).map((turn) => turn.id),
+    ["old-turn", "goal-turn"],
+  );
+  await store.ensure("t1");
+  assert.equal(calls.filter((method) => method === "thread/resume").length, 1);
+});
+
+test("notification received before read completes waits for workspace authorization", async () => {
+  const read = Promise.withResolvers<unknown>();
+  const store = new ThreadStateStore(
+    port((method) => {
+      if (method === "thread/read") return read.promise;
+      if (method === "thread/turns/list" || method === "thread/queue/list")
+        return { data: [], nextCursor: null };
+      return { thread: thread() };
+    }),
+    "/work",
+  );
+  const loading = store.ensure("t1");
+  const event = store.apply({
+    method: "turn/started",
+    params: { threadId: "t1", turn: { id: "early-turn", status: "inProgress", items: [] } },
+  });
+  assert.equal(store.get("t1"), undefined);
+  read.resolve({ thread: thread() });
+  await event;
+  const state = await loading;
+  assert.deepEqual(
+    (state.thread.turns as Array<{ id: string }>).map((turn) => turn.id),
+    ["early-turn"],
+  );
+});
+
+test("notification waiting for cold read cannot create a foreign projection", async () => {
+  const read = Promise.withResolvers<unknown>();
+  const store = new ThreadStateStore(
+    port((method) => {
+      assert.equal(method, "thread/read");
+      return read.promise;
+    }),
+    "/work",
+  );
+  const loading = store.ensure("t1");
+  const event = store.apply({
+    method: "turn/started",
+    params: { threadId: "t1", turn: { id: "foreign", status: "inProgress", items: [] } },
+  });
+  read.resolve({ thread: { ...thread(), cwd: "/foreign" } });
+  await assert.rejects(loading, /different workspace/);
+  assert.equal(await event, undefined);
+  assert.equal(store.get("t1"), undefined);
+});
+
+test("live item received during history hydration survives the final load commit", async () => {
+  const hydration = Promise.withResolvers<unknown>();
+  const hydrationStarted = Promise.withResolvers<void>();
+  let store: ThreadStateStore;
+  store = new ThreadStateStore(
+    port((method) => {
+      if (method === "thread/resume") {
+        void store.apply({
+          method: "turn/started",
+          params: { threadId: "t1", turn: { id: "active", status: "inProgress", items: [] } },
+        });
+        return { thread: thread() };
+      }
+      if (method === "thread/turns/list")
+        return {
+          data: [{ id: "active", status: "inProgress", itemsView: "summary", items: [] }],
+          nextCursor: null,
+        };
+      if (method === "thread/items/list") {
+        hydrationStarted.resolve();
+        return hydration.promise;
+      }
+      if (method === "thread/queue/list") return { data: [], nextCursor: null };
+      return { thread: thread() };
+    }),
+    "/work",
+  );
+  const loading = store.ensure("t1");
+  await hydrationStarted.promise;
+  await store.apply({
+    method: "item/completed",
+    params: {
+      threadId: "t1",
+      turnId: "active",
+      item: { id: "live", type: "agentMessage", text: "from-live-stream" },
+    },
+  });
+  hydration.resolve({
+    data: [{ turnId: "active", item: { id: "user", type: "userMessage", content: [] } }],
+    nextCursor: null,
+  });
+  const state = await loading;
+  assert.deepEqual(
+    (state.thread.turns as Array<{ items: Array<{ id: string }> }>)[0]!.items.map(
+      (item) => item.id,
+    ),
+    ["user", "live"],
+  );
+});
 test("cross workspace thread is rejected before resume", async () => {
   const calls: string[] = [];
   const store = new ThreadStateStore(

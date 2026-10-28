@@ -45,6 +45,7 @@ export class ThreadStateStore {
   private readonly states = new Map<string, ThreadProjectionState>();
   private readonly listeners = new Set<(threadId: string) => void>();
   private readonly loads = new Map<string, Promise<ThreadProjectionState>>();
+  private readonly authorizations = new Map<string, Promise<void>>();
   private listInFlight: Promise<unknown[]> | undefined;
   private stagedDiscoveredList: Promise<unknown[]> | undefined;
   private clearStagedTimer: ReturnType<typeof setTimeout> | undefined;
@@ -171,12 +172,36 @@ export class ThreadStateStore {
     if (existing && this.loaded.has(id)) return existing;
     const loading = this.loads.get(id);
     if (loading) return loading;
-    const pending = this.load(id, additionalDirectories).finally(() => this.loads.delete(id));
+    const authorization = Promise.withResolvers<void>();
+    let provisional: ThreadProjectionState | undefined;
+    this.authorizations.set(id, authorization.promise);
+    const pending = this.load(id, additionalDirectories, authorization.resolve, (state) => {
+      provisional = state;
+    })
+      .catch((error: unknown) => {
+        // 修复依据：冷恢复失败不能留下可被命令路径误认作已授权运行态的半成品。
+        // 只撤销本次新建且仍由本次 load 持有的临时状态，不覆盖已有热状态或删除 tombstone。
+        if (provisional && this.states.get(id) === provisional) {
+          this.states.delete(id);
+          this.loaded.delete(id);
+        }
+        throw error;
+      })
+      .finally(() => {
+        authorization.resolve();
+        this.authorizations.delete(id);
+        this.loads.delete(id);
+      });
     this.loads.set(id, pending);
     return pending;
   }
 
-  private async load(id: string, additionalDirectories?: string[]): Promise<ThreadProjectionState> {
+  private async load(
+    id: string,
+    additionalDirectories: string[] | undefined,
+    authorize: () => void,
+    onProvisional: (state: ThreadProjectionState) => void,
+  ): Promise<ThreadProjectionState> {
     const read = object(await this.rpc.request("thread/read", { threadId: id }));
     this.assertAvailable(id);
     const metadata = object(read.thread);
@@ -199,6 +224,12 @@ export class ThreadStateStore {
       ));
     if (!ownedByWorkspace && !ownedByParent)
       throw new Error("Thread belongs to a different workspace");
+    // 修复原因：原生冷 resume 可在回包后、历史分页前发出新 goal 轮；以前此时 states 尚不存在，
+    // apply 会丢弃轮次通知，而分页又可能只返回旧历史，之后 ensure 永远命中缺轮次的缓存。
+    // 修复依据：先验证工作区归属，再为历史加载建立同一个临时投影；授权前的通知仅等待这道门禁，
+    // 不等待漫长的整段分页，也不对未授权的原生线程创建状态。
+    if (!this.states.has(id)) onProvisional(this.put({ ...object(read.thread), turns: [] }));
+    authorize();
     // attach 与只读降级的分流规则集中在 thread-load.ts（含子代理冷启拒绝路径）。
     const { thread, readOnly, attached } = await attachThreadForLoad({
       rpc: this.rpc,
@@ -214,28 +245,42 @@ export class ThreadStateStore {
       { threadId: id, sortDirection: "asc", itemsView: "full" },
       "history",
     );
-    // resume 到分页读取期间的通知不能被旧历史覆盖；同 id 的 live turn 优先。
-    const live = array(this.states.get(id)?.thread.turns);
     const merged = new Map(turns.map((turn) => [string(object(turn).id), turn]));
-    for (const turn of live) {
-      const key = string(object(turn).id);
-      const old = merged.get(key);
-      let resolved = old ? mergeNativeTurn(object(old), object(turn)) : object(turn);
-      // 修复原因：加载期间若收到无本地 `turn/started` 的 `turn/completed(summary)` 且该新轮尚未进入
-      // 本次 `thread/turns/list` 快照，直接合入会把 `itemsView: "summary"` 留进 `thread.turns`，
-      // 导致紧随其后的会话订阅与文件变更查询稳定抛 `Codex conversation projection requires full turn items`。
-      // 修复依据：合入后仍非 `full` 的轮次通过只读 `thread/items/list` 补齐完整 items 后再落入状态。
-      if (resolved.itemsView === "summary" || resolved.itemsView === "notLoaded") {
-        const hydratedItems = await hydrateNativeTurnItems(this.rpc, id, key);
-        resolved = mergeNativeTurn(
-          { ...resolved, itemsView: "full", items: hydratedItems },
-          resolved,
-        );
+    const hydratedLive = new Map<string, unknown[]>();
+    while (true) {
+      const incomplete = array(this.states.get(id)?.thread.turns)
+        .map(object)
+        .find((turn) => {
+          const key = string(turn.id);
+          return (
+            (turn.itemsView === "summary" || turn.itemsView === "notLoaded") &&
+            object(merged.get(key)).itemsView !== "full" &&
+            !hydratedLive.has(key)
+          );
+        });
+      if (incomplete) {
+        const key = string(incomplete.id);
+        hydratedLive.set(key, await hydrateNativeTurnItems(this.rpc, id, key));
+        this.assertAvailable(id);
+        continue;
       }
-      merged.set(key, resolved);
+      // 修复依据：任何网络 await 之后都重新读取最新 live turns；最后一次读取、按 turn/item
+      // 身份合并及 put 之间没有 await，分页/补全期新到的事件不会被旧页覆盖。
+      for (const value of array(this.states.get(id)?.thread.turns)) {
+        const live = object(value);
+        const key = string(live.id);
+        const old = merged.get(key);
+        const items = hydratedLive.get(key);
+        const resolved = items
+          ? mergeNativeTurn({ ...live, itemsView: "full", items }, live)
+          : live;
+        merged.set(key, old ? mergeNativeTurn(object(old), resolved) : resolved);
+      }
+      break;
     }
     thread.turns = [...merged.values()];
 
+    this.assertAvailable(id);
     const state = this.put(thread);
     // 辅助对话 child 重建继承裁剪边界；父读取失败 fail-open 不裁剪（spec: codex-selection-side-chat）。
     const cachedParentId =
@@ -358,6 +403,10 @@ export class ThreadStateStore {
       return string(thread.id);
     }
     const id = typeof params.threadId === "string" ? params.threadId : undefined;
+    // read/归属校验先于临时状态建立；同一个加载中的线程的通知必须等待授权后落账。
+    // await 只覆盖首次只读校验，不堵住整个历史分页或其他线程的常规流式事件。
+    const authorization = id && !this.states.has(id) ? this.authorizations.get(id) : undefined;
+    if (authorization) await authorization;
     const state = id ? this.states.get(id) : undefined;
     if (!state || !id) {
       // 未加载的子线程没有投影条目，但它的 turn/status 事件仍是子代理运行态的权威事实
