@@ -33,7 +33,7 @@ import {
 } from "./thread-queries.js";
 import { queryCodexAppUsageStats } from "./codex-app-usage.js";
 import { scopeWorkspaceParams, handleCodexNativeRequest } from "./request-scope.js";
-import type { BridgeFailureOrigin } from "./diagnostics.js";
+import type { BridgeFailureOrigin, BridgeStateDiagnostic } from "./diagnostics.js";
 import {
   isRuntimeNoticeMethod,
   readRuntimeNotice,
@@ -52,6 +52,7 @@ export interface BridgeRuntimeOptions {
   officialMarketplaceRoot?: string;
   notify(method: string, params: unknown): Promise<void>;
   logRuntimeNotice(notice: CodexRuntimeNoticeLog): void;
+  logStateDiagnostic?: (diagnostic: BridgeStateDiagnostic) => void;
   fatal(error: Error, origin?: BridgeFailureOrigin): void;
   nativeBrowserCua?: BridgeControlContext["nativeBrowserCua"];
   providerKeyGate?: import("./provider-key-gate.js").CodexProviderKeyGate;
@@ -101,6 +102,7 @@ export class BridgeRuntime {
       rewindNotices: this.rewindNotices,
       title: this.title,
       providerKeyGate: options.providerKeyGate,
+      onContinueRejected: options.logStateDiagnostic,
     });
     this.snapshots = new BridgeSnapshots(
       { rpc, cwd, auxiliary: this.auxiliary },
@@ -114,6 +116,7 @@ export class BridgeRuntime {
       snapshot: (topic, additionalDirectories) =>
         this.snapshots.topic(topic, additionalDirectories),
       notify,
+      onSnapshotPrepared: options.logStateDiagnostic,
       // 只有确定性、只读、可安全 resync 的行预算故障允许按 state 版本粘住重试；
       // 其余错误保持原有 dirty 重投与 fatal 判定（依据见 subscriptions.ts changed()）。
       recoverableProjectionFault: isRowBudgetExceeded,

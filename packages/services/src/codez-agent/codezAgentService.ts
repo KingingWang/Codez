@@ -389,6 +389,7 @@ import {
   type CommandEnvelope,
 } from "@codez/shared/codez-protocol-v4";
 import {
+  conversationWireCheckpoint,
   readTrustedCodezAgentV4Connection,
   readTrustedCodezAgentV4UnsubscribeRoute,
   type CodezAgentV4ConnectionContext,
@@ -2841,6 +2842,19 @@ export function createCodezAgentService(
           }
           const parsed = conversationTopicWireCandidateSchema.safeParse(message.params);
           if (parsed.success) {
+            const checkpoint = conversationWireCheckpoint(parsed.data);
+            if (checkpoint) {
+              // 原因：Bridge prepared 与桌面 applied 之间缺少 Host 入站证据；只记录
+              // 完整物理帧或末片，绝不序列化可能含用户正文的 inner payload。
+              try {
+                logger.info(undefined, "Codex conversation physical wire received", {
+                  event: "v4.conversation.wire.service_received",
+                  ...checkpoint,
+                });
+              } catch {
+                // 诊断写入失败不能丢帧。
+              }
+            }
             observeCodexUsageWire(workspace, parsed.data);
             getConversationFrameEmitter(workspace).fire(parsed.data);
           } else {

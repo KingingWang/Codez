@@ -10,6 +10,7 @@ import type {
   V4ConversationWorkflowRunsResult,
 } from "@codez/shared/codez-protocol-v4";
 import { ReplaceableConversationTransport } from "../src/v4/replaceableConversationTransport.js";
+import { logger } from "../src/logger.js";
 import type { ConversationTransport } from "../src/v4/transport.js";
 
 // 桩只带 workflowRunEvents：这条转发是无状态的（不看订阅 ownership 映射），replace 也不碰
@@ -29,6 +30,16 @@ const firstPage: V4ConversationWorkflowRunEventsResult = {
 const secondPage: V4ConversationWorkflowRunEventsResult = { events: [], hasMore: false };
 
 describe("ReplaceableConversationTransport workflowRunEvents", () => {
+  it("proxy replacement records bounded ownership summary", () => {
+    const info = vi.spyOn(logger.lifecycle, "info").mockImplementation(() => {});
+    try {
+      const first = stubTransport(firstPage);
+      const second = stubTransport(secondPage);
+      const replaceable = new ReplaceableConversationTransport(first.transport);
+      replaceable.replace(second.transport);
+      expect(info.mock.calls.find(([, entry]) => (entry as { event?: string })?.event === "v4.conversation.transport.replaced")?.[1]).toMatchObject({ invalidatedSubscriptions: 0, frameListeners: 0 });
+    } finally { info.mockRestore(); }
+  });
   it("原样转发给当前 transport，params 一个字段不动", async () => {
     const first = stubTransport(firstPage);
     const replaceable = new ReplaceableConversationTransport(first.transport);

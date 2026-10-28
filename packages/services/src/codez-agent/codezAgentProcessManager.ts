@@ -40,6 +40,7 @@ import {
   parseCodexBridgeTitleDiagnostic,
   parseCodexBridgeNativeStderrSummary,
   parseCodexBridgeRuntimeNoticeDiagnostic,
+  parseCodexBridgeStateDiagnostic,
 } from "./codexBridgeTitleDiagnostic.js";
 import { CodezProtocolClient } from "./codezProtocolClient.js";
 import { CodezStdioTransport } from "./codezStdioTransport.js";
@@ -1256,6 +1257,15 @@ export class CodezAgentProcessManager {
         if (nativeStderrSummary) {
           // 原因：原生 stderr 原文不可信；只允许 bridge 的闭合摘要进入生产 warn。
           warnLog("Codex native stderr summary", nativeStderrSummary);
+          return;
+        }
+        const stateDiagnostic = parseCodexBridgeStateDiagnostic(line);
+        if (stateDiagnostic) {
+          // 原因：远端 Bridge stderr 默认只落 debug；严格白名单后记录帧准备与继续拒绝，
+          // 才能与桌面已应用帧的日志对照，且不把原生正文透传到生产日志。
+          if (stateDiagnostic.kind === "snapshotPrepared")
+            log("Codex conversation snapshot prepared", stateDiagnostic);
+          else warnLog("Codex interrupted continuation refused", stateDiagnostic);
           return;
         }
         const runtimeNotice = parseCodexBridgeRuntimeNoticeDiagnostic(line);

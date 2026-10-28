@@ -771,7 +771,27 @@ export class ConversationProjectionStore {
   ): void {
     if (this.closed) return;
     // 代际防护：旧订阅的迟到帧直接丢弃。
-    if (frame.subscriptionId !== this.state.subscriptionId) return;
+    if (frame.subscriptionId !== this.state.subscriptionId) {
+      if (delivery?.deliveryKind === "initial" || delivery?.deliveryKind === "recovery") {
+        // 原因：已组帧却未落地可能只是旧订阅代际；明确与网络丢包区分。
+        try {
+          const safeId = (value: string | null) =>
+            value && /^[A-Za-z0-9_-]{1,64}$/.test(value) ? value : null;
+          logger.lifecycle.warn("v4 conversation frame discarded", {
+            event: "v4.conversation.frame.discarded",
+            reason: "staleSubscription",
+            sessionId: safeId(this.topic.slice("conversation/".length)),
+            subscriptionId: safeId(frame.subscriptionId),
+            currentSubscriptionId: safeId(this.state.subscriptionId),
+            deliveryKind: delivery.deliveryKind,
+            module: "ui.v4.conversation_projection_store",
+          });
+        } catch {
+          // 诊断失败不能阻断正常代际防护。
+        }
+      }
+      return;
+    }
     const awaitingInitial =
       this.awaitingInitial?.subscriptionId === frame.subscriptionId ? this.awaitingInitial : null;
     const deliveryKind = delivery?.deliveryKind ?? "online";
@@ -847,6 +867,26 @@ export class ConversationProjectionStore {
           : {}),
       });
       this.subscriptionHasAppliedBase = true;
+      if (context.subscribeMode !== null || context.recovery) {
+        // 原因：订阅 ACK 会先于首帧到达；只有真正替换投影后才能证明桌面已看到权威状态。
+        const safeId = (value: string | null | undefined) =>
+          value && /^[A-Za-z0-9_-]{1,64}$/.test(value) ? value : null;
+        try {
+          logger.lifecycle.info("v4 conversation snapshot applied", {
+            event: "v4.conversation.snapshot.applied",
+            deliveryKind: context.recovery ? "recovery" : "initial",
+            sessionId: safeId(snapshot.sessionId),
+            subscriptionId: safeId(frame.subscriptionId),
+            logEpoch: safeId(snapshot.logEpoch),
+            seq: snapshot.seq,
+            phase: snapshot.control.phase,
+            lastTurnId: safeId(snapshot.rows.window.at(-1)?.turnId),
+            module: "ui.v4.conversation_projection_store",
+          });
+        } catch {
+          // 日志桥写入失败不是投影失败，继续执行后续状态对齐。
+        }
+      }
       this.reconcileOptimistic(snapshot);
       this.reconcileAcceptedInputProjection(snapshot);
       // Bug 原因：initial 丢失时，publisher 允许完整 online snapshot 建立首个
