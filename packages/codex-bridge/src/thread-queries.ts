@@ -43,6 +43,34 @@ function isMissingNativeRolloutDeleteError(error: unknown): boolean {
   );
 }
 
+const MAX_RECONCILIATION_READS = 8;
+const reconciliationReadSlots = new WeakMap<
+  CodexRpcPort,
+  { active: number; waiting: Array<() => void> }
+>();
+
+async function readForReconciliation(rpc: CodexRpcPort, sessionId: string): Promise<unknown> {
+  let slots = reconciliationReadSlots.get(rpc);
+  if (!slots) {
+    slots = { active: 0, waiting: [] };
+    reconciliationReadSlots.set(rpc, slots);
+  }
+  // 修复原因：多个快照/请求同时对账时，各自限流仍会叠加压满同一原生出站队列；
+  // 只读对账共享每个原生连接的预算，不阻塞打开会话和命令所需的其他 RPC。
+  if (slots.active >= MAX_RECONCILIATION_READS) {
+    await new Promise<void>((resolve) => slots.waiting.push(resolve));
+  } else {
+    slots.active += 1;
+  }
+  try {
+    return await rpc.request("thread/read", { threadId: sessionId });
+  } finally {
+    const next = slots.waiting.shift();
+    if (next) next();
+    else slots.active -= 1;
+  }
+}
+
 /**
  * 执行 v4 deleteSession：
  * 修复原因：过去 deleteSession 先调 store.ensure(thread/resume) 再删除，对已收到 thread/deleted
@@ -131,64 +159,89 @@ export async function reconcileBridgeSessions(
     throw Object.assign(new Error("Request workspace scope mismatch"), { code: -32602 });
   }
   const uniqueIds = [...new Set(parsed.sessionIds)];
-  const sessions = await Promise.all(
-    uniqueIds.map(async (sessionId) => {
-      if (input.store.isDeleted(sessionId)) {
-        return {
-          sessionId,
-          exists: true as const,
-          deleted: true,
-          title: "",
-          titleSource: "default" as const,
-          createdAt: 0,
-          updatedAt: 0,
-        };
-      }
-      const cached = input.store.get(sessionId)?.thread;
-      let metadata: JsonObject;
-      if (cached) {
-        metadata = cached;
-      } else {
+  const sessions: SessionsIndexReconcileResult["sessions"] = new Array(uniqueIds.length);
+  let nextIndex = 0;
+  let failed = false;
+  let failure: unknown;
+  // 工作池最多只保留八个在途/等待任务；跨 reconcile 请求的总预算由上面的连接级槽位保证。
+  await Promise.all(
+    Array.from({ length: Math.min(MAX_RECONCILIATION_READS, uniqueIds.length) }, async () => {
+      while (!failed && nextIndex < uniqueIds.length) {
+        const index = nextIndex++;
         try {
-          const read = object(await input.rpc.request("thread/read", { threadId: sessionId }));
-          metadata = decorateNativeThread(read);
-        } catch {
-          return { sessionId, exists: false as const, deleted: false as const };
+          sessions[index] = await reconcileSession(uniqueIds[index]!);
+        } catch (error) {
+          failed = true;
+          failure ??= error;
         }
       }
-      if (
-        parentThreadIdOf(metadata) !== undefined ||
-        !(await sameExecutionPath(metadata.cwd, input.cwd))
-      ) {
-        return { sessionId, exists: false as const, deleted: false as const };
-      }
-      const thread = codexThreadSchema.parse({
-        ...metadata,
-        cwd: input.cwd,
-        turns: array(metadata.turns),
-      });
-      const last = thread.turns.at(-1);
-      const lastOutcome =
-        thread.status.type === "systemError" || last?.status === "failed"
-          ? ("error" as const)
-          : last?.status === "interrupted"
-            ? ("interrupted" as const)
-            : last?.status === "completed"
-              ? ("completed" as const)
-              : undefined;
+    }),
+  );
+  if (failed) throw failure;
+  return sessionsIndexReconcileResultSchema.parse({ sessions });
+
+  async function reconcileSession(
+    sessionId: string,
+  ): Promise<SessionsIndexReconcileResult["sessions"][number]> {
+    if (input.store.isDeleted(sessionId)) {
       return {
         sessionId,
         exists: true as const,
-        deleted: false,
-        title: nativeThreadTitle(thread),
+        deleted: true,
+        title: "",
         titleSource: "default" as const,
-        createdAt: thread.createdAt * 1000,
-        updatedAt: thread.updatedAt * 1000,
-        ...(lastOutcome ? { lastOutcome } : {}),
+        createdAt: 0,
+        updatedAt: 0,
       };
-    }),
-  );
-  return sessionsIndexReconcileResultSchema.parse({ sessions });
+    }
+    const cached = input.store.get(sessionId)?.thread;
+    let metadata: JsonObject;
+    if (cached) {
+      metadata = cached;
+    } else {
+      try {
+        const read = object(await readForReconciliation(input.rpc, sessionId));
+        metadata = decorateNativeThread(read);
+      } catch (error) {
+        // 修复原因：原生出站拥塞/超时以前被当成 not found；带删除意图的 Host 行
+        // 会被错误确认删除。仅原生明确的缺失错误可写不存在，其余失败保持未知并拒绝对账。
+        if (isMissingNativeThreadReadError(error)) {
+          return { sessionId, exists: false, deleted: false };
+        }
+        throw error;
+      }
+    }
+    if (
+      parentThreadIdOf(metadata) !== undefined ||
+      !(await sameExecutionPath(metadata.cwd, input.cwd))
+    ) {
+      return { sessionId, exists: false as const, deleted: false as const };
+    }
+    const thread = codexThreadSchema.parse({
+      ...metadata,
+      cwd: input.cwd,
+      turns: array(metadata.turns),
+    });
+    const last = thread.turns.at(-1);
+    const lastOutcome =
+      thread.status.type === "systemError" || last?.status === "failed"
+        ? ("error" as const)
+        : last?.status === "interrupted"
+          ? ("interrupted" as const)
+          : last?.status === "completed"
+            ? ("completed" as const)
+            : undefined;
+    return {
+      sessionId,
+      exists: true as const,
+      deleted: false,
+      title: nativeThreadTitle(thread),
+      titleSource: "default" as const,
+      createdAt: thread.createdAt * 1000,
+      updatedAt: thread.updatedAt * 1000,
+      ...(lastOutcome ? { lastOutcome } : {}),
+    };
+  }
 }
 
 /** 工作区会话列表：原生 thread/list 分页 + 物理路径归属过滤（不触碰投影缓存）。 */

@@ -338,6 +338,33 @@ unoffered persistence never reach Codex.
   returns `exists: false` for a Host row with a pending deletion intent
   (`handoff_pending & 1`), `task-facts` completes the deletion (`applyCliDeletion`)
   instead of leaving `cli_deleted = 0`.
+- Snapshot omission reconciliation reads Host task rows only when their CLI deletion
+  has not been confirmed, or when a delete/title handoff is still pending. A
+  confirmed `cli_deleted = 1` row without either pending intent must not issue a
+  native read on each snapshot; Host `deleted` alone is not proof of CLI deletion.
+  Host checks the snapshot generation between bounded batches so stale snapshots
+  do not start another batch. On one bridge/native connection, reconciliation
+  shares a small read-only `thread/read` concurrency budget across simultaneous
+  reconcile requests; explicit conversation reads and mutations are not queued
+  behind this background budget. Only the native missing-thread error and proven
+  foreign-workspace ownership produce `exists: false`. Native timeouts, overload,
+  connection errors and unknown RPC failures reject the entire reconcile request:
+  Host preserves existing rows and handoff intents for a later fresh snapshot,
+  never completing a pending deletion from a failed read.
+  ```text
+  sessions-index snapshot → Host tasks-index (filter confirmed tombstones)
+                          → Host task-facts (small batches + generation check)
+                          → Bridge (shared read-only slots per native connection)
+                          → Codex thread/read (authoritative existence)
+    explicit missing/foreign → Host mirrors verified absence
+    timeout/overload/unknown  → reject batch; Host keeps row and handoff intent
+  ```
+  Regression acceptance: hundreds of confirmed tombstones do not reach the
+  native adapter; two simultaneous reconciliation requests stay within the
+  shared read budget and preserve response order; an interrupted read cannot
+  confirm pending deletion; a replaced snapshot starts no further stale batch.
+  Opening a conversation and desktop continuous/mobile replayable subscriptions
+  retain their existing native owner and delivery behavior.
 - Native queue contents are owned by Codex. Unsupported auto-drain/paused intent
   semantics must be reported, never silently acknowledged.
 - Native transport frames are newline-delimited JSON with a hard cap of 32 MiB
