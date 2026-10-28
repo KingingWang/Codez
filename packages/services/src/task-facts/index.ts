@@ -172,8 +172,10 @@ export function createTaskFacts(options: {
       const rows = (await store.listReconciliationRows(target)).filter(
         (row) => !presentSessionIds.has(row.meta.taskId) || (row.handoffPending & 3) !== 0,
       );
-      for (let offset = 0; offset < rows.length && stillCurrent(); offset += 256) {
-        const batch = rows.slice(offset, offset + 256);
+      // 修复原因：256 个缺席行一批会在快照换代前产生无法撤销的原生请求；缩小
+      // 已授权的只读批次，在每批间核对代际，避免过期快照继续压满出站队列。
+      for (let offset = 0; offset < rows.length && stillCurrent(); offset += 32) {
+        const batch = rows.slice(offset, offset + 32);
         const pendingDeleteIds = new Set(
           batch.filter((row) => (row.handoffPending & 1) !== 0).map((row) => row.meta.taskId),
         );

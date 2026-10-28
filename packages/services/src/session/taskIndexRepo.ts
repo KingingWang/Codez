@@ -995,8 +995,13 @@ export class TaskIndexRepo {
     workspaceIdentity?: string;
   }): Promise<Array<{ meta: CodezTaskMeta; handoffPending: number }>> {
     await this.ensureReady();
+    // 修复原因：缺席快照对账会把已由 CLI 确认删除的历史行反复送去原生 thread/read，
+    // 大量墓碑行在远端重连时造成出站队列拥塞。修复依据：只跳过已确认且无待交接删除/标题
+    // 意图的行；Host 的 deleted 意图不能代替 CLI 事实，仍必须回源确认。
     const rows = this.getDatabase()
-      .prepare("SELECT * FROM tasks WHERE workspace_key=?")
+      .prepare(
+        "SELECT * FROM tasks WHERE workspace_key=? AND (coalesce(cli_deleted,0)<>1 OR (handoff_pending & 3)<>0)",
+      )
       .all(workspaceKey(target)) as unknown as TaskIndexRow[];
     return rows.map((row) => ({ meta: rowToMeta(row), handoffPending: row.handoff_pending ?? 0 }));
   }
