@@ -396,6 +396,21 @@ describe("ConversationProjectionStore", () => {
     transport.onFrame((frame, context) => store.handleFrame(frame, context));
   });
 
+  it("只对过期初始帧记录路由丢弃，online 不产生生命周期噪声", async () => {
+    const warn = vi.spyOn(logger.lifecycle, "warn").mockImplementation(() => {});
+    try {
+      await store.connect();
+      const stale = makeFrame("old-sub", 0, 7, { kind: "snapshot", snapshot: makeSnapshot({ seq: 7 }) });
+      transport.emitKind(stale, "initial");
+      transport.emitKind(stale, "online");
+      expect(warn.mock.calls.filter(([message]) => message === "v4 conversation frame discarded")).toHaveLength(1);
+      expect(store.getState().snapshot?.seq).toBe(5);
+    } finally {
+      warn.mockRestore();
+      await store.close();
+    }
+  });
+
   it("保留 subscribe ACK timing，并记录首帧到 projection apply 的 Renderer timing", async () => {
     transport.subscribeImpl = (params, subscriptionId) => ({
       ack: {
@@ -1767,6 +1782,19 @@ describe("SessionDataLayer", () => {
     clearConversationSnapshotHandoffs();
     transport = new FakeTransport();
     layer = new SessionDataLayer({ transport, keepWarmMs: 30_000 });
+  });
+
+  it("没有打开的 store 时记录丢失的首帧，不记录普通流式帧", () => {
+    const warn = vi.spyOn(logger.lifecycle, "warn").mockImplementation(() => {});
+    try {
+      const frame = makeFrame("sub-1", 0, 1, { kind: "deltas", deltas: [] });
+      transport.emitKind(frame, "initial");
+      transport.emitKind(frame, "online");
+      expect(warn.mock.calls.filter(([message]) => message === "v4 conversation frame discarded")).toHaveLength(1);
+      expect(warn.mock.calls.at(-1)?.[1]).toMatchObject({ reason: "missingStore", subscriptionId: "sub-1" });
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it("只在 E2E store bridge build 中缩放 keep-warm 时间", () => {

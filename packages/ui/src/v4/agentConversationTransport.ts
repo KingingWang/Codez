@@ -146,9 +146,48 @@ export function createAgentConversationTransport(
     Parameters<ConversationTransport["onRuntimeRestart"]>[0]
   >();
   const runtimeLifecycleListeners = new Set<(state: "available" | "unavailable") => void>();
+  const safeId = (value: string) => (/^[A-Za-z0-9_-]{1,64}$/.test(value) ? value : "none");
+  const logWire = (
+    stage: "received" | "assembled",
+    data: {
+      topic: string;
+      subscriptionId: string;
+      deliveryKind: TopicFrameDeliveryKind;
+      logicalFrameOrdinal?: number;
+      logEpoch?: string | null;
+      seq?: number;
+    },
+  ) => {
+    if (data.deliveryKind === "online") return;
+    try {
+      logger.lifecycle.info(`v4 conversation wire ${stage}`, {
+        event: `v4.conversation.wire.${stage}`,
+        sessionId: safeId(data.topic.slice("conversation/".length)),
+        subscriptionId: safeId(data.subscriptionId),
+        deliveryKind: data.deliveryKind,
+        ...(data.logicalFrameOrdinal !== undefined
+          ? { logicalFrameOrdinal: data.logicalFrameOrdinal }
+          : {}),
+        ...(data.logEpoch !== undefined
+          ? { logEpoch: data.logEpoch === null ? null : safeId(data.logEpoch) }
+          : {}),
+        ...(data.seq !== undefined ? { seq: data.seq } : {}),
+        module: "ui.v4.conversation_transport",
+      });
+    } catch {
+      // 诊断写入失败不改变物理帧组装。
+    }
+  };
   const decoder = createTopicWireDecoder(
     new TopicWireFrameAssembler(conversationTopicFrameSchema),
     (frame: ConversationTopicFrame, deliveryKind) => {
+      logWire("assembled", {
+        topic: frame.topic,
+        subscriptionId: frame.subscriptionId,
+        deliveryKind,
+        seq: frame.toSeq,
+        logEpoch: frame.payload.kind === "snapshot" ? frame.payload.snapshot.logEpoch : null,
+      });
       try {
         if (!target.workspaceIdentity?.trim()) {
           getLocalTtftObserver()?.receive(target.workspacePath, frame, deliveryKind);

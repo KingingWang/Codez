@@ -469,6 +469,27 @@ The remote-assets job builds the existing standalone server once per target and
 assembles Node 24.14.0 (official SHASUMS pins), Codex/bridge, target PTY prebuilds,
 repository search tools, notices and per-file hashes. It never builds the legacy
 agent. The six native desktop jobs download the same complete remote assets artifact.
+The producer retries a remote Node archive download only for bounded transient
+transport failures (including a response-body timeout/reset), HTTP 429 or HTTP
+5xx. Each retry removes the incomplete archive and starts a fresh request with
+backoff. HTTP 4xx other than 429, the archive size ceiling, SHA256 mismatch,
+explicit cancellation, extraction failures and notice failures remain terminal;
+the previous installed Node binary is never replaced by a failed attempt. A
+retry exhaustion fails the remote-assets job and therefore blocks all six native
+builds and publication.
+
+```text
+remote-assets owner → pinned Node fetch → stream + size cap + SHA256
+                                   ├ transient failure → discard partial → retry
+                                   ├ integrity/4xx failure → fail closed
+                                   └ verified archive → extract → publish Node
+```
+
+Regression acceptance: a timed-out or reset first download and an HTTP 503
+recover on a later attempt; HTTP 404, cancellation, oversize and checksum
+mismatch never retry or overwrite a previously installed binary. Exhausted
+retries report failure without publishing partial remote components.
+
 Build and packaging verify every selected archive, but package only the four
 current manifests and build-scoped index. The index pins the exact Codez release
 tag, app version, target manifests and their SHA256 values; app version or Latest

@@ -343,6 +343,63 @@ test("interrupted turn continues in the same thread without reverting completed 
   assert.equal(h.rpc.params("turn/start").length, 1);
 });
 
+test("older inProgress turn refuses continuation and reports bounded native state", async (t) => {
+  const h = await setup(t);
+  h.authority.thread.turns[0]!.status = "inProgress";
+  h.authority.thread.turns.push({ ...turn("latest-interrupted"), status: "interrupted" });
+  h.authority.thread.status = { type: "idle" };
+  h.store.markStarted(structuredClone(h.authority.thread));
+  const current = h.store.get(sessionId)!;
+  const row = projectThread(current.thread, { workspacePath: cwd }).rows.window.at(-1)!;
+  const diagnostics: unknown[] = [];
+  h.context.onContinueRejected = (diagnostic: unknown) => diagnostics.push(diagnostic);
+  const command = h.command("sendText", {
+    text: "",
+    interruptedContinueTarget: { rowId: row.rowId, entityId: row.entityId! },
+  });
+  const ack = await h.execute(command);
+  assert.equal(ack.status, "failed");
+  assert.equal(ack.message, "Cannot continue while a turn is still running");
+  assert.deepEqual(diagnostics, [
+    {
+      kind: "continueRejected",
+      sessionId,
+      commandId: command.commandId,
+      nativeStatus: "idle",
+      latestTurnStatus: "interrupted",
+      selectedRunningTurnId: "turn-1",
+      runningTurnCount: 1,
+      logEpoch: current.epoch,
+      seq: current.seq,
+      revision: current.revision,
+    },
+  ]);
+  assert.deepEqual(h.rpc.calls, []);
+  assert.deepEqual(await h.execute(command), ack);
+  assert.equal(diagnostics.length, 1);
+  const other = await setup(t);
+  other.authority.thread.turns[0]!.status = "inProgress";
+  other.authority.thread.turns.push({ ...turn("latest-interrupted"), status: "interrupted" });
+  other.store.markStarted(structuredClone(other.authority.thread));
+  other.context.onContinueRejected = () => {
+    throw new Error("diagnostic failed");
+  };
+  const otherRow = projectThread(other.store.get(sessionId)!.thread, {
+    workspacePath: cwd,
+  }).rows.window.at(-1)!;
+  const rejected = await other.execute(
+    other.command(
+      "sendText",
+      {
+        text: "",
+        interruptedContinueTarget: { rowId: otherRow.rowId, entityId: otherRow.entityId! },
+      },
+      "continue-with-failed-diagnostic",
+    ),
+  );
+  assert.equal(rejected.message, ack.message);
+});
+
 test("interrupted turn without completed tools reverts unfinished step and reruns original prompt", async (t) => {
   const h = await setup(t);
   const interrupted = h.authority.thread.turns[0]!;
