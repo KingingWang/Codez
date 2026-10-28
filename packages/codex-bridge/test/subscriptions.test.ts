@@ -10,7 +10,11 @@ import {
   v4ConversationResyncResultSchema,
   type RoutedTopicWireFrame,
 } from "@codez/shared/codez-protocol-v4";
-import { BridgeSubscriptions, MAX_BRIDGE_SUBSCRIPTIONS } from "../src/subscriptions.js";
+import {
+  BridgeSubscriptions,
+  MAX_BRIDGE_SUBSCRIPTIONS,
+  type BridgeSubscriptionsOptions,
+} from "../src/subscriptions.js";
 import { projectThread } from "../src/projection.js";
 import { threadFixture } from "./projection-fixtures.test.js";
 
@@ -22,7 +26,7 @@ const deferred = <T = void>() => Promise.withResolvers<T>();
 function fixture() {
   const frames: RoutedTopicWireFrame[] = [];
   const state = { seq: 1, epoch: "epoch-1", reads: 0, padding: "" };
-  const options = {
+  const options: BridgeSubscriptionsOptions = {
     workspaceId: "workspace-1",
     async snapshot(key: string) {
       state.reads++;
@@ -77,6 +81,62 @@ test("ACK-only result precedes initial notification, callback is idempotent", as
   assert.equal(frames[0]?.logicalFrameOrdinal, 1);
   await response.afterResponse();
   assert.equal(frames.length, 1);
+});
+
+test("initial and recovery diagnostics describe reserved conversation frames, not stale reads", async () => {
+  const { bridge, options, frames, state } = fixture();
+  const diagnostics: unknown[] = [];
+  options.onSnapshotPrepared = (diagnostic: unknown) => diagnostics.push(diagnostic);
+  const initial = await bridge.subscribe(params);
+  const subscriptionId = ack(initial.result).subscriptionId;
+  assert.deepEqual(diagnostics, [
+    {
+      kind: "snapshotPrepared",
+      deliveryKind: "initial",
+      sessionId: "thread-1",
+      subscriptionId,
+      logEpoch: "epoch-1",
+      seq: 1,
+      phase: "completedSuccess",
+      lastTurnId: "turn-1",
+    },
+  ]);
+  assert.equal(frames.length, 0);
+  await initial.afterResponse();
+  state.seq = 2;
+  const recovery = await bridge.resync({ ...owner(subscriptionId), base: null });
+  assert.equal(frames.length, 1);
+  assert.deepEqual(diagnostics.at(-1), {
+    kind: "snapshotPrepared",
+    deliveryKind: "recovery",
+    sessionId: "thread-1",
+    subscriptionId,
+    logEpoch: "epoch-1",
+    seq: 2,
+    phase: "completedSuccess",
+    lastTurnId: "turn-1",
+  });
+  await recovery.afterResponse();
+  assert.equal(frames.at(-1)?.deliveryKind, "recovery");
+});
+
+test("superseded snapshot read cannot produce a prepared diagnostic", async () => {
+  const { bridge, options } = fixture();
+  const diagnostics: unknown[] = [];
+  const original = options.snapshot;
+  const read = deferred<void>();
+  options.onSnapshotPrepared = (diagnostic: unknown) => diagnostics.push(diagnostic);
+  options.snapshot = async (...args: Parameters<typeof original>) => {
+    await read.promise;
+    return original(...args);
+  };
+  const stale = bridge.subscribe(params);
+  await Promise.resolve();
+  const current = bridge.subscribe(params);
+  read.resolve();
+  await assert.rejects(stale, { code: -32004 });
+  await current;
+  assert.equal(diagnostics.length, 1);
 });
 
 test("changes before ACK are gated, then flushed at increasing ordinals", async () => {

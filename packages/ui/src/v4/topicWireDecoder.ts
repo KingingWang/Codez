@@ -46,6 +46,27 @@ export function createTopicWireDecoder<F extends { topic: string; subscriptionId
       failedInBatch.add(key);
       faultedRoutes.add(key);
       assembler.abort(fault.topic, fault.subscriptionId);
+      // 原因：旧 warning 在生产 renderer 不落盘，导致“末片已收到但没有应用帧”
+      // 无法区分组装失败与页面路由丢弃；只提升闭合故障码与短 ID。
+      try {
+        const safeId = (value: string) =>
+          /^[A-Za-z0-9_-]{1,64}$/.test(value) ? value : "none";
+        logger.lifecycle.warn("v4 conversation wire assembly fault", {
+          event: "v4.conversation.wire.assembly_fault",
+          sessionId: safeId(fault.topic.slice("conversation/".length)),
+          subscriptionId: safeId(fault.subscriptionId),
+          deliveryKind: fault.deliveryKind ?? "unknown",
+          logicalFrameOrdinal: Number.isSafeInteger(fault.logicalFrameOrdinal)
+            ? fault.logicalFrameOrdinal
+            : null,
+          reasonCode: /^proto\.frame[A-Za-z]{1,64}$/.test(fault.reasonCode)
+            ? fault.reasonCode
+            : "unknown",
+          module: "ui.v4.topic_wire_decoder",
+        });
+      } catch {
+        // 诊断失败不改变组装器的 fail-closed 与 resync 行为。
+      }
       logger.warn("[v4-topic-wire] physical assembly rejected", fault);
       onFault?.(fault);
     }

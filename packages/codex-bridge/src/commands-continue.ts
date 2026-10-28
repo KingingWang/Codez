@@ -10,6 +10,7 @@ import { turnPermissionIntent } from "./control-common.js";
 import { array, object, string, type JsonObject } from "./json.js";
 import { projectThread } from "./projection.js";
 import { isHiddenContinuationUserMessage } from "./projection-item-extras.js";
+import { emitBridgeStateDiagnostic, type BridgeStateDiagnostic } from "./diagnostics.js";
 
 /** 原生 Codex 识别为 contextual user fragment 的内部继续标记，不会写入可见提示词文本。 */
 export const CODEX_INTERNAL_CONTINUE_TEXT =
@@ -24,11 +25,7 @@ const COMPLETED_STATUS_TOOL_TYPES = new Set([
   "imageGeneration",
 ]);
 
-const IMPLICITLY_COMPLETED_TOOL_TYPES = new Set([
-  "imageView",
-  "webSearch",
-  "functionCallOutput",
-]);
+const IMPLICITLY_COMPLETED_TOOL_TYPES = new Set(["imageView", "webSearch", "functionCallOutput"]);
 
 /** 判断中断轮中是否已有执行完成的工具调用。 */
 export function hasCompletedToolInCodexTurn(turn: JsonObject): boolean {
@@ -91,9 +88,27 @@ export async function executeInterruptedTurnContinue(input: {
   state: ThreadProjectionState;
   sessionId: string;
   running: JsonObject | undefined;
+  onContinueRejected?: (diagnostic: BridgeStateDiagnostic) => void;
 }): Promise<CommandResult> {
   const { command, payload, rpc, store, state, sessionId, running } = input;
   if (running) {
+    // 原因：页面只看最新中断轮，而原生准入会查整段历史；旧 inProgress 僵尸轮
+    // 会拒绝“继续”。记录两种状态的差异，不绕过原生执行守卫。
+    const turns = array(state.thread.turns).map(object);
+    const nativeStatus = object(state.thread.status).type;
+    const latestTurnStatus = turns.at(-1)?.status;
+    emitBridgeStateDiagnostic(input.onContinueRejected, {
+      kind: "continueRejected",
+      sessionId,
+      commandId: command.commandId,
+      nativeStatus: typeof nativeStatus === "string" ? nativeStatus : "unknown",
+      latestTurnStatus: typeof latestTurnStatus === "string" ? latestTurnStatus : "unknown",
+      selectedRunningTurnId: typeof running.id === "string" ? running.id : "none",
+      runningTurnCount: turns.filter((turn) => turn.status === "inProgress").length,
+      logEpoch: state.epoch,
+      seq: state.seq,
+      revision: state.revision,
+    });
     throw new Error("Cannot continue while a turn is still running");
   }
   const target = payload.interruptedContinueTarget;
@@ -102,8 +117,7 @@ export async function executeInterruptedTurnContinue(input: {
   }
   const snapshot = projectThread(state.thread, { workspacePath: store.cwd });
   const row = snapshot.rows.window.find(
-    (candidate) =>
-      candidate.rowId === target.rowId && candidate.entityId === target.entityId,
+    (candidate) => candidate.rowId === target.rowId && candidate.entityId === target.entityId,
   );
   const lastRow = snapshot.rows.window.at(-1);
   if (!row || !lastRow || row.turnId !== lastRow.turnId) {
@@ -118,11 +132,7 @@ export async function executeInterruptedTurnContinue(input: {
 
   const native = { threadId: sessionId };
   const controlContext = { rpc, cwd: store.cwd };
-  const permissions = await turnPermissionIntent(
-    controlContext,
-    state.thread,
-    payload.mode,
-  );
+  const permissions = await turnPermissionIntent(controlContext, state.thread, payload.mode);
   const settingsOverrides = {
     ...selectionOverrides(payload.modelSelection),
     ...turnMode(
@@ -155,9 +165,7 @@ export async function executeInterruptedTurnContinue(input: {
     const response = await rpc.request("turn/start", turnParams);
     store.applySettings(sessionId, {
       ...turnParams,
-      ...(payload.modelSelection
-        ? { modelProvider: payload.modelSelection.providerId }
-        : {}),
+      ...(payload.modelSelection ? { modelProvider: payload.modelSelection.providerId } : {}),
     });
     store.acceptTurnResponse(sessionId, response);
     store.rememberMode(sessionId, payload.mode);
@@ -177,9 +185,7 @@ export async function executeInterruptedTurnContinue(input: {
   const response = await rpc.request("turn/start", turnParams);
   store.applySettings(sessionId, {
     ...turnParams,
-    ...(payload.modelSelection
-      ? { modelProvider: payload.modelSelection.providerId }
-      : {}),
+    ...(payload.modelSelection ? { modelProvider: payload.modelSelection.providerId } : {}),
   });
   store.acceptTurnResponse(sessionId, response);
   store.rememberMode(sessionId, payload.mode);
