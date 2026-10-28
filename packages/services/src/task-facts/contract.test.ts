@@ -92,6 +92,35 @@ describe("task-facts contract", () => {
     await port.reconcile(target, new Set(), () => current);
     expect(store.markCliOrphan).not.toHaveBeenCalled();
   });
+  it("stops a stale snapshot before the next bounded reconciliation batch", async () => {
+    const { port, source, store } = fixture();
+    vi.mocked(store.listReconciliationRows).mockResolvedValue(
+      Array.from({ length: 70 }, (_, index) => ({
+        meta: { ...meta, taskId: `session-${index}` },
+        handoffPending: 0,
+      })),
+    );
+    let current = true;
+    vi.mocked(source.reconcile).mockImplementation(async () => {
+      current = false;
+      return { sessions: [] };
+    });
+    await port.reconcile(target, new Set(), () => current);
+    expect(source.reconcile).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(source.reconcile).mock.calls[0]![1]).toHaveLength(32);
+    expect(store.applyCliDeletion).not.toHaveBeenCalled();
+  });
+  it("preserves pending deletion and orphan state when native reconciliation fails", async () => {
+    const { port, source, store } = fixture();
+    vi.mocked(store.listReconciliationRows).mockResolvedValue([{ meta, handoffPending: 1 }]);
+    vi.mocked(source.reconcile).mockRejectedValue(new Error("native read timed out"));
+    await expect(port.reconcile(target, new Set(), () => true)).rejects.toThrow(
+      "native read timed out",
+    );
+    expect(store.applyCliDeletion).not.toHaveBeenCalled();
+    expect(store.markCliOrphan).not.toHaveBeenCalled();
+    expect(store.applyCliFacts).not.toHaveBeenCalled();
+  });
   it("completes deletion when CLI reports a pending-delete or just-deleted session as not found or tombstoned", async () => {
     const { port, source, store, changed } = fixture();
     vi.mocked(source.reconcile).mockResolvedValueOnce({

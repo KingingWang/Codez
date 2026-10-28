@@ -14,7 +14,7 @@ import {
 } from "@codez/shared/codez-protocol-v4";
 import { BridgeRuntime } from "../src/bridge-runtime.js";
 import type { CodexProcess, CodexNotification, CodexServerRequest } from "../src/contract.js";
-import { CodexRpcError } from "../src/rpc-errors.js";
+import { CodexRpcError, CodexTransportError } from "../src/rpc-errors.js";
 import { threadFixture } from "./projection-fixtures.test.js";
 // Adapter acceptance 4/7/9: runtime → native admission → ACK → post-response initial.
 // Scope regressions use fake RPCs; rejection must happen before native execution.
@@ -1553,7 +1553,7 @@ test("v4/sessionsIndex/reconcile reports tombstoned, existing and missing sessio
         },
       };
     }
-    throw new Error("thread not loaded");
+    throw new CodexRpcError(-32600, "thread not loaded");
   };
   h.handlers["thread/delete"] = () => ({});
 
@@ -1608,6 +1608,66 @@ test("v4/sessionsIndex/reconcile reports tombstoned, existing and missing sessio
     0,
     "reconcile and cold deleteSession must not resume unloaded threads",
   );
+});
+
+test("reconciliation bounds native reads across simultaneous requests without losing result order", async (t) => {
+  const h = await fixture(t);
+  let active = 0;
+  let peak = 0;
+  h.handlers["thread/read"] = async (params) => {
+    active += 1;
+    peak = Math.max(peak, active);
+    await new Promise<void>((resolve) => setTimeout(resolve, 2));
+    active -= 1;
+    return { thread: { ...h.authority.thread, id: params.threadId } };
+  };
+  const firstIds = Array.from({ length: 24 }, (_, index) => `first-${index}`);
+  const secondIds = Array.from({ length: 24 }, (_, index) => `second-${index}`);
+  const results = await Promise.all(
+    [firstIds, secondIds].map((sessionIds) =>
+      h.runtime.request(V4_METHODS.sessionsIndexReconcile, { workspaceId, sessionIds }),
+    ),
+  );
+  assert.ok(peak > 1);
+  assert.ok(peak <= 8, `native thread/read peak=${peak}`);
+  for (const [index, result] of results.entries()) {
+    assert.deepEqual(
+      (result.result as { sessions: Array<{ sessionId: string }> }).sessions.map(
+        (session) => session.sessionId,
+      ),
+      index === 0 ? firstIds : secondIds,
+    );
+  }
+  assert.equal(h.calls.filter((call) => call.method === "thread/read").length, 48);
+});
+
+test("native timeout and unknown RPC failures never become missing thread facts", async (t) => {
+  const h = await fixture(t);
+  for (const error of [
+    new CodexTransportError("TIMEOUT", "native request timed out"),
+    new CodexRpcError(-32000, "native read unavailable"),
+  ]) {
+    h.handlers["thread/read"] = () => {
+      throw error;
+    };
+    await assert.rejects(
+      h.runtime.request(V4_METHODS.sessionsIndexReconcile, {
+        workspaceId,
+        sessionIds: ["unavailable-thread"],
+      }),
+      error,
+    );
+  }
+  h.handlers["thread/read"] = () => {
+    throw new CodexRpcError(-32600, "thread not loaded");
+  };
+  const result = await h.runtime.request(V4_METHODS.sessionsIndexReconcile, {
+    workspaceId,
+    sessionIds: ["missing-thread"],
+  });
+  assert.deepEqual(result.result, {
+    sessions: [{ sessionId: "missing-thread", exists: false, deleted: false }],
+  });
 });
 
 for (const clientMode of ["desktop-continuous", "web-remote-replayable"] as const) {
