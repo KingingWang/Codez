@@ -816,6 +816,66 @@ real fix achieves, not the current baseline.
 
 ### Follow-up turn reliability and send latency
 
+#### Interrupted-continue state diagnostics
+
+The native Codex thread owns execution; the bridge owns the derived projection
+and command admission; the renderer only owns its last applied snapshot. A
+subscribe ACK reserves a route but does not prove that the initial frame reached
+the renderer. For initial and recovery snapshots, record one bounded,
+content-free state summary when the bridge has prepared the frame and another
+when the renderer has applied it. Include session ID, subscription ID, log epoch,
+sequence, projected phase and last visible turn ID. Do not log online frames,
+item content, workspace paths, prompts or credentials. If a requested
+interrupted-turn continuation is refused because any turn is `inProgress`,
+record its command ID, native thread status, latest turn status, selected running
+turn ID, number of `inProgress` turns and bridge epoch/sequence/revision.
+Forward only strictly validated bridge stderr diagnostics into production logs;
+malformed, oversized or unexpected fields remain debug-only. Diagnostics must
+never change admission, retry or subscription ordering, or throw into the
+runtime. Desktop continuous and mobile replayable both retain their existing
+snapshot and recovery semantics.
+
+```text
+Codex events/history → Bridge state → prepared initial/recovery snapshot
+                                      └→ command guard (same native owner)
+desktop/mobile transport → renderer applied snapshot → continue intent
+```
+
+Regression acceptance: a prepared snapshot without a delivered frame has no
+renderer-applied record; a delivered initial/recovery snapshot records the
+same epoch/sequence/phase at both ends. A previous `inProgress` turn followed
+by an interrupted latest turn produces a refusal summary identifying the
+older turn without changing the failed ACK. No arbitrary stderr text, path,
+item or prompt may be promoted into production logs.
+
+For a missing initial/recovery frame, the attachment and renderer must expose
+the intervening one-shot checkpoints: validated terminal physical wire received
+by the service, that wire forwarded/staged/released or dropped by connection
+ownership, physical wire received by the renderer, logical frame assembled,
+and the logical frame routed to an open store or discarded due to missing/stale
+ownership. Correlate by bounded session/subscription IDs, delivery kind and
+logical ordinal; the assembled frame may also include epoch and sequence. A
+fragmented snapshot logs only the terminal physical fragment per checkpoint,
+not every chunk; online/stream frames remain debug-only except typed assembly
+faults, whose bounded reason code must reach production logs. Record proxy replacement
+and runtime invalidation with bounded subscription counts and reasons. Production
+diagnostics must not contain raw wire payloads, conversation text, workspace
+paths, credentials or arbitrary error messages. A logging failure must not
+interfere with frame routing, replayable recovery or desktop continuous delivery.
+
+```text
+Bridge prepared → service received → attachment owned/staged/released
+                → renderer physical received → logical assembled
+                → store routed/applied (or bounded reason for discard)
+```
+
+Regression acceptance: a wire discarded before ACK due to a different ACK
+subscription ID has an attachment reason;
+one received at the renderer but not assembled has no logical checkpoint;
+one assembled for a closed store or old subscription has an explicit discard
+reason. Same tests cover desktop and replayable subscriptions without logging
+ordinary online frames or changing owner/sequence rules.
+
 - Native item IDs are scoped to a turn, not a whole conversation. Presentation
   entity IDs encode `(turnId, itemId)` without collisions; native RPCs retain raw
   IDs. Repeated IDs inside one turn remain invalid. Resume and live projections

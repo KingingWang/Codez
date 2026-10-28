@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
+import { emitBridgeStateDiagnostic, type BridgeStateDiagnostic } from "./diagnostics.js";
 import {
   encodeTopicWireFramesWithBytes,
   measureTopicNotificationEnvelopeBytes,
@@ -27,6 +28,7 @@ export interface BridgeSubscriptionsOptions {
   ): Promise<{ snapshot: unknown; seq: number; logEpoch: string }>;
   /** Resolves after the notification is written; rejects on transport failure. */
   notify(method: string, params: unknown): Promise<void>;
+  onSnapshotPrepared?: (diagnostic: BridgeStateDiagnostic) => void;
   /**
    * 判定「确定性且可恢复的投影故障」（当前只有行预算超限）。由 BridgeRuntime 注入，
    * publisher 保持纯传输层，不依赖投影实现里的具体错误类型。
@@ -39,7 +41,13 @@ export interface BridgeSubscriptionResponse {
 }
 export const MAX_BRIDGE_SUBSCRIPTIONS = 32;
 type Mode = V4ConversationSubscribeParams["clientMode"];
-type Batch = { frames: RoutedTopicWireFrame[]; bytes: number; seq: number; logEpoch: string };
+type Batch = {
+  frames: RoutedTopicWireFrame[];
+  bytes: number;
+  seq: number;
+  logEpoch: string;
+  summary?: { sessionId: string; phase: string; lastTurnId: string | null };
+};
 type SnapshotRead = { snapshot: unknown; seq: number; logEpoch: string };
 /** 单轮 changed(topic) 扇出内的 resolver 读取合并表；不跨调用复用。 */
 type SharedReads = Map<string, Promise<SnapshotRead>>;
@@ -316,6 +324,20 @@ export class BridgeSubscriptions {
       const result = schema.parse({
         ack: { subscriptionId: route.id, mode: "snapshot", logEpoch: batch.logEpoch },
       });
+      // 原因：ACK 只能证明路由已预留，不能证明通知帧已到达页面；在版本复核及
+      // ACK 校验后记录已准备的首帧，与 Renderer 实际应用点分开取证。
+      const summary = batch.summary;
+      if (summary)
+        emitBridgeStateDiagnostic(this.options.onSnapshotPrepared, {
+          kind: "snapshotPrepared",
+          deliveryKind: kind,
+          sessionId: summary.sessionId,
+          subscriptionId: route.id,
+          logEpoch: batch.logEpoch,
+          seq: batch.seq,
+          phase: summary.phase,
+          lastTurnId: summary.lastTurnId,
+        });
       let released = false;
       return {
         result,
@@ -382,7 +404,20 @@ export class BridgeSubscriptions {
     if (this.stagedBytes + bytes > PROTOCOL_V4_LIMITS.logicalFrameAssemblyMaxStagedBytes)
       fail(-32000, "Subscription staged byte limit exceeded");
     this.stagedBytes += bytes;
-    return { frames, bytes, seq, logEpoch };
+    return {
+      frames,
+      bytes,
+      seq,
+      logEpoch,
+      summary:
+        "sessionId" in payload
+          ? {
+              sessionId: payload.sessionId,
+              phase: payload.control.phase,
+              lastTurnId: payload.rows.window.at(-1)?.turnId ?? null,
+            }
+          : undefined,
+    };
   }
 
   /**

@@ -22,6 +22,31 @@ import type {
   CodezAgentRuntimePolicy,
   CodezAgentWorkspaceTarget,
 } from "./codezAgent.js";
+import { createServiceLogger } from "#src/logger/serviceLogger.js";
+
+const wireLog = createServiceLogger("codez-agent-connection-scope");
+const safeWireId = (value: string): string =>
+  /^[A-Za-z0-9_-]{1,64}$/.test(value) ? value : "none";
+
+/** 仅记录 initial/recovery 的末片；候选帧可能畸形，绝不记录原文或路径。 */
+export function conversationWireCheckpoint(wire: ConversationTopicWireCandidate) {
+  if (wire.deliveryKind !== "initial" && wire.deliveryKind !== "recovery") return null;
+  if (
+    wire.kind === "fragment" &&
+    (typeof wire.fragmentIndex !== "number" ||
+      typeof wire.fragmentCount !== "number" ||
+      wire.fragmentIndex !== wire.fragmentCount - 1)
+  )
+    return null;
+  if (!Number.isSafeInteger(wire.logicalFrameOrdinal) || wire.logicalFrameOrdinal < 1) return null;
+  return {
+    sessionId: safeWireId(wire.topic.slice("conversation/".length)),
+    subscriptionId: safeWireId(wire.subscriptionId),
+    deliveryKind: wire.deliveryKind,
+    logicalFrameOrdinal: wire.logicalFrameOrdinal,
+    physicalKind: wire.kind,
+  };
+}
 
 export type CodezAgentV4ClientMode = "desktop-continuous" | "web-remote-replayable";
 
@@ -460,6 +485,24 @@ export function createCodezAgentConnectionScope(
     ) {
       // 旧 ACK staging 超限时 shift 最旧帧，会把一个
       // logical frame 变成永久缺片。溢出必须清空整批并显式失败。
+      if (
+        pending.kind === "conversation" &&
+        (frame.deliveryKind === "initial" || frame.deliveryKind === "recovery")
+      ) {
+        try {
+          wireLog.warn(undefined, "Codex conversation wire ACK staging overflow", {
+            event: "v4.conversation.wire.staging_overflow",
+            sessionId: safeWireId(frame.topic.slice("conversation/".length)),
+            subscriptionId: safeWireId(frame.subscriptionId),
+            deliveryKind: frame.deliveryKind,
+            stagedFrames: pending.frames.length,
+            stagedBytes: pending.stagedBytes,
+            clientMode: context.clientMode,
+          });
+        } catch {
+          // 诊断失败不改变原有越界拒绝。
+        }
+      }
       pending.frames.length = 0;
       pending.stagedBytes = 0;
       pending.overflowReason = "fault.subscription.initialFrameStagingOverflow";
@@ -474,13 +517,36 @@ export function createCodezAgentConnectionScope(
     frame: RoutedTopicFrame,
     emitter: Emitter<RoutedTopicFrame>,
   ): void => {
+    const checkpoint =
+      kind === "conversation"
+        ? conversationWireCheckpoint(frame as ConversationTopicWireCandidate)
+        : null;
+    const report = (outcome: "forwarded" | "staged" | "unowned") => {
+      if (!checkpoint) return;
+      try {
+        const level = outcome === "unowned" ? wireLog.warn : wireLog.info;
+        level(undefined, "Codex conversation wire attachment routing", {
+          event: "v4.conversation.wire.scope_routed",
+          outcome,
+          clientMode: context.clientMode,
+          ...checkpoint,
+        });
+      } catch {
+        // 诊断不得阻断帧路由。
+      }
+    };
     if (ownsFrame(kind, target, frame)) {
+      report("forwarded");
       emitter.fire(frame);
       return;
     }
     const group = pendingByOwnership.get(ownershipKey(kind, target, frame.topic));
-    if (!group) return;
+    if (!group) {
+      report("unowned");
+      return;
+    }
     for (const pending of group) stageFrame(pending, frame);
+    if ([...group].some((pending) => !pending.overflowReason)) report("staged");
   };
   const routedEvent = <T extends RoutedTopicFrame>(
     kind: SubscriptionKind,
@@ -618,9 +684,28 @@ export function createCodezAgentConnectionScope(
     // 直到 await 返回才登记 owner，早帧会被永久丢弃；同 topic 双端 pending 时也不能
     // 猜 owner。ACK 后只释放 ACK subscriptionId 对应帧，保留原到达顺序。
     for (const frame of pending.frames) {
-      if (frame.subscriptionId === subscriptionId && ownsFrame(entry.kind, entry.target, frame)) {
-        route.emitter.fire(frame);
+      const matchesAck = frame.subscriptionId === subscriptionId;
+      const ownedByAttachment = matchesAck && ownsFrame(entry.kind, entry.target, frame);
+      if (entry.kind === "conversation") {
+        const checkpoint = conversationWireCheckpoint(frame as ConversationTopicWireCandidate);
+        if (checkpoint) {
+          try {
+            const level = ownedByAttachment ? wireLog.info : wireLog.warn;
+            level(undefined, "Codex conversation wire attachment routing", {
+              event: "v4.conversation.wire.scope_routed",
+              outcome: ownedByAttachment ? "released" : "discarded",
+              ...(!ownedByAttachment
+                ? { reason: matchesAck ? "ownershipLost" : "ackSubscriptionMismatch" }
+                : {}),
+              clientMode: entry.clientMode,
+              ...checkpoint,
+            });
+          } catch {
+            // 诊断不得阻断 ACK 前帧释放。
+          }
+        }
       }
+      if (ownedByAttachment) route.emitter.fire(frame);
     }
     pending.frames.length = 0;
     pending.stagedBytes = 0;

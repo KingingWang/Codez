@@ -173,6 +173,99 @@ function completeSessionsIndexWire(
 }
 
 describe("agent V4 connection transports", () => {
+  it("physical assembly fault is recorded without raw content", () => {
+    const warn = vi.spyOn(logger.lifecycle, "warn").mockImplementation(() => {});
+    try {
+      const decoder = createTopicWireDecoder(
+        new TopicWireFrameAssembler(conversationTopicFrameSchema), () => {},
+      );
+      const frame = emptyFrame("conversation/session-1", "sub-1");
+      decoder.accept({
+        ...completeConversationWire(frame, "logical-broken", 1, "initial"),
+        frame: { ...frame, payload: { kind: "deltas", deltas: "invalid" } } as unknown as ConversationTopicFrame,
+      });
+      const event = warn.mock.calls.find(([, value]) =>
+        (value as { event?: string })?.event === "v4.conversation.wire.assembly_fault"
+      )?.[1];
+      expect(event).toMatchObject({
+        sessionId: "session-1", subscriptionId: "sub-1",
+        reasonCode: "proto.frameAssemblyInvalidPayload", deliveryKind: "initial",
+      });
+      expect(JSON.stringify(event)).not.toContain("logical-broken");
+    } finally { warn.mockRestore(); }
+  });
+  it("diagnostic logger failure does not suppress the initial logical frame", async () => {
+    const info = vi.spyOn(logger.lifecycle, "info").mockImplementation((message) => {
+      if (message === "v4 conversation wire received" || message === "v4 conversation wire assembled")
+        throw new Error("log unavailable");
+    });
+    const agent = setupAgent();
+    const transport = createAgentConversationTransport(agent as never, { workspacePath: "/repo" });
+    const seen: ConversationTopicFrame[] = [];
+    const off = transport.onFrame((frame) => seen.push(frame));
+    try {
+      const result = await transport.subscribe({ topic: "conversation/session-1" });
+      transport.activate(result.ack.subscriptionId);
+      const frame = emptyFrame("conversation/session-1", result.ack.subscriptionId);
+      expect(() => agent.conversationFrames.fire(completeConversationWire(frame, "diagnostic-failure", 1, "initial"))).not.toThrow();
+      expect(seen).toEqual([frame]);
+    } finally { off(); info.mockRestore(); }
+  });
+  it("runtime restart records invalidated subscriptions without workspace paths", async () => {
+    const info = vi.spyOn(logger.lifecycle, "warn").mockImplementation(() => {});
+    const agent = setupAgent();
+    const transport = createAgentConversationTransport(agent as never, { workspacePath: "/repo" });
+    const off = transport.onRuntimeRestart(() => {});
+    try {
+      await transport.subscribe({ topic: "conversation/session-1" });
+      agent.runtimeRestarts.fire({ workspaceKey: "/repo" });
+      const entry = info.mock.calls.find(([, value]) => (value as { event?: string })?.event === "v4.conversation.runtime.invalidated");
+      expect(entry?.[1]).toMatchObject({ invalidatedSubscriptions: 1, runtimeGeneration: 1 });
+      expect(JSON.stringify(entry)).not.toContain("/repo");
+    } finally { off(); info.mockRestore(); }
+  });
+  it.each(["desktop-continuous", "web-remote-replayable"] as const)(
+    "records %s physical arrival and assembled initial/recovery without logging online content",
+    async (clientMode) => {
+      const info = vi.spyOn(logger.lifecycle, "info").mockImplementation(() => {});
+      const agent = setupAgent();
+      agent.helloConversationV4.mockResolvedValue({
+        ...(await agent.helloConversationV4()),
+        clientMode,
+        deliveryProfile: clientMode === "desktop-continuous" ? "continuous" : "replayable",
+      });
+      const transport = createAgentConversationTransport(agent as never, { workspacePath: "/repo" });
+      const seen: ConversationTopicFrame[] = [];
+      const off = transport.onFrame((frame) => seen.push(frame));
+      try {
+        const result = await transport.subscribe({ topic: "conversation/session-1" });
+        transport.activate(result.ack.subscriptionId);
+        const frame = emptyFrame("conversation/session-1", result.ack.subscriptionId);
+        const wires = encodeTopicWireFrames({ ...frame, toSeq: 1, payload: { kind: "deltas", deltas: [{ op: "row.delta", rowId: 1, path: "text", append: "secret".repeat(450) }] } }, {
+          deliveryKind: "initial", topic: frame.topic, subscriptionId: frame.subscriptionId,
+          logicalFrameId: "logical-initial", logicalFrameOrdinal: 1,
+          maxPhysicalFrameBytes: 550, measurePhysicalFrameBytes: utf8JsonByteLength,
+        }) as ConversationTopicWireFrame[];
+        expect(wires.length).toBeGreaterThan(1);
+        for (const wire of wires.slice(0, -1)) agent.conversationFrames.fire(wire);
+        expect(info.mock.calls.filter((call) => (call[1] as { event?: string })?.event === "v4.conversation.wire.received")).toHaveLength(0);
+        agent.conversationFrames.fire(wires.at(-1)!);
+        agent.conversationFrames.fire(completeConversationWire(frame, "logical-recovery", 2, "recovery"));
+        agent.conversationFrames.fire(completeConversationWire(frame, "logical-online", 3, "online"));
+        expect(seen).toHaveLength(3);
+        const events = info.mock.calls.map((call) => call[1] as { event?: string }).filter((entry) => entry?.event?.startsWith("v4.conversation.wire."));
+        expect(events.map((entry) => entry.event)).toEqual([
+          "v4.conversation.wire.received", "v4.conversation.wire.assembled",
+          "v4.conversation.wire.received", "v4.conversation.wire.assembled",
+        ]);
+        expect(JSON.stringify(events)).not.toContain("secret");
+        expect(JSON.stringify(events)).not.toContain("/repo");
+      } finally {
+        off();
+        info.mockRestore();
+      }
+    },
+  );
   it("assembles sent media chunks and preserves the exact row attachment target", async () => {
     const agent = setupAgent();
     agent.attachmentReadV4

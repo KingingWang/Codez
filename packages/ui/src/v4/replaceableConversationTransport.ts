@@ -67,6 +67,16 @@ export class ReplaceableConversationTransport implements ConversationTransport {
     if (transport === this.current) return;
 
     const previous = this.current;
+    try {
+      logger.lifecycle.info("v4 conversation transport proxy replaced", {
+        event: "v4.conversation.transport.replaced",
+        invalidatedSubscriptions: this.transportBySubscriptionId.size,
+        frameListeners: this.frameListeners.size,
+        module: "ui.v4.replaceable_conversation_transport",
+      });
+    } catch {
+      // 诊断失败不能延迟 proxy 换代。
+    }
     this.detachCurrentListeners();
     // 旧 proxy 上的 active subscription 必须先释放，但断线 RPC 可能永久
     // pending；cleanup 只做 best-effort，不能阻塞新 proxy 的重订阅接管。
