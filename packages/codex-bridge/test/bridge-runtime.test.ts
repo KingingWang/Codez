@@ -189,6 +189,58 @@ test("auxiliary dispatch precedes legacy unsupported control route and waits for
   assert.equal(h.listeners(), 2, "only runtime notification/request listeners remain");
 });
 
+for (const clientMode of ["desktop-continuous", "web-remote-replayable"]) {
+  test(`${clientMode} cold resume goal notifications reach initial and repeated snapshots`, async (t) => {
+    const h = await fixture(t);
+    h.handlers["thread/resume"] = (params) => {
+      assert.equal(params.excludeTurns, true);
+      h.emit("turn/started", {
+        threadId: "thread-1",
+        turn: {
+          id: "goal-turn",
+          status: "inProgress",
+          itemsView: "summary",
+          items: [],
+          startedAt: 121,
+        },
+      });
+      h.emit("item/completed", {
+        threadId: "thread-1",
+        turnId: "goal-turn",
+        item: {
+          id: "goal-user",
+          type: "userMessage",
+          content: [{ type: "text", text: "continue", text_elements: [] }],
+        },
+      });
+      return { thread: { ...h.authority.thread, turns: [] } };
+    };
+    const topic = "conversation/thread-1";
+    const first = await h.runtime.request(
+      V4_METHODS.conversationSubscribe,
+      subscribe(topic, clientMode),
+    );
+    await first.afterResponse!();
+    const firstFrame = h.frames.at(-1);
+    const firstPayload = firstFrame?.kind === "complete" ? firstFrame.frame.payload : undefined;
+    assert.ok(firstPayload?.kind === "snapshot");
+    const firstSnapshot = conversationSnapshotSchema.parse(firstPayload.snapshot);
+    assert.ok(firstSnapshot.rows.window.some((row) => row.turnId === "goal-turn"));
+
+    const second = await h.runtime.request(
+      V4_METHODS.conversationSubscribe,
+      subscribe(topic, clientMode),
+    );
+    await second.afterResponse!();
+    const secondFrame = h.frames.at(-1);
+    const secondPayload = secondFrame?.kind === "complete" ? secondFrame.frame.payload : undefined;
+    assert.ok(secondPayload?.kind === "snapshot");
+    const secondSnapshot = conversationSnapshotSchema.parse(secondPayload.snapshot);
+    assert.ok(secondSnapshot.rows.window.some((row) => row.turnId === "goal-turn"));
+    assert.equal(h.calls.filter(({ method }) => method === "thread/resume").length, 1);
+  });
+}
+
 test("native project creation uses the primary cwd, full roots and durable origin", async (t) => {
   const h = await fixture(t);
   const response = await h.runtime.request(V4_METHODS.command, {
