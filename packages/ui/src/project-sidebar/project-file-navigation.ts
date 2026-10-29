@@ -22,7 +22,7 @@ export async function resolveProjectFileTarget(input: {
     | "onCancelRemoteProject"
   >;
   remoteService?: IRemoteProjectService;
-  findSession(identity: string): { sessionId: string } | undefined;
+  findSession(identity: string, expectedSessionId?: string): { sessionId: string } | undefined;
   waitForPendingConnection?(workspaceKey: string): Promise<void>;
   /** 本次查看仍是最新意图；被取代后不再连接设备、绑定目录或改写 tab。 */
   isCurrent(): boolean;
