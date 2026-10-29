@@ -20,10 +20,41 @@
       },
       "response": {
         "statusCode": 200,
-        "headers": {
-          "content-type": "application/json; charset=utf-8"
-        },
-        "body": "{\"id\":\"ssh-cold-title\",\"object\":\"chat.completion\",\"created\":0,\"model\":\"e2e-ssh-remote-lifecycle-model\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"title\\\":\\\"SSH cold reconnect\\\"}\"},\"finish_reason\":\"stop\"}]}"
+        "headers": { "content-type": "text/event-stream; charset=utf-8" },
+        "body": "data: {\"id\":\"ssh-cold-title\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"e2e-ssh-remote-lifecycle-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"{\\\"title\\\":\\\"SSH cold reconnect\"}\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"ssh-cold-title\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"e2e-ssh-remote-lifecycle-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"
+      }
+    },
+    {
+      "id": "ssh-cold-running",
+      "description": "#30 完整冷重启及连续点击期间保持远端 running。",
+      "metadata": {
+        "kind": "synthetic",
+        "timingPolicy": "controlled-stream",
+        "source": "synthetic",
+        "syntheticReason": "冻结真实远端模型流以跨越完整 Desktop restart 和首挂连续点击窗口，断言后显式释放。"
+      },
+      "maxMatches": 1,
+      "match": {
+        "method": "POST",
+        "pathIncludes": "/chat/completions",
+        "lastUserMessageIncludes": ["E2E_SSH_P0_COLD_RECONNECT_RUNNING_RESTART"],
+        "bodyExcludes": ["Generate a concise title"]
+      },
+      "response": {
+        "statusCode": 200,
+        "headers": { "content-type": "text/event-stream; charset=utf-8" },
+        "releaseAfterChunks": 1,
+        "chunks": [
+          {
+            "offsetMs": 0,
+            "text": "data: {\"id\":\"ssh-cold-running\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"e2e-ssh-remote-lifecycle-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"SSH_COLD_RUNNING\"},\"finish_reason\":null}]}\n\n"
+          },
+          {
+            "offsetMs": 100,
+            "text": "data: {\"id\":\"ssh-cold-running\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"e2e-ssh-remote-lifecycle-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n"
+          },
+          { "offsetMs": 200, "text": "data: [DONE]\n\n" }
+        ]
       }
     },
     {

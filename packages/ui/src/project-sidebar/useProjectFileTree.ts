@@ -64,10 +64,12 @@ export function useProjectFileTree(
           onCancelRemoteProject,
         },
         remoteService,
-        isRemote: hosts.some((host) => host.id === project.hostId),
-        findSession: (identity) =>
+        isRemote: directory.hosts.some((host) => host.id === project.hostId),
+        findSession: (identity, expectedSessionId) =>
           Object.values(useRemoteWorkspaceSessionStore.getState().sessionsById).find(
-            (session) => session.workspaceIdentity === identity,
+            (session) =>
+              session.workspaceIdentity === identity &&
+              (!expectedSessionId || session.sessionId === expectedSessionId),
           ),
         waitForPendingConnection: waitForConnection,
       }).catch((error: unknown) => {

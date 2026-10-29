@@ -6,7 +6,10 @@ import type {
   ProjectTaskNavigation,
   ProjectTaskNavigationResult,
 } from "@/project-sidebar/contract.js";
-import { attachRemoteProjectWorkspace } from "@/project-sidebar/remote-navigation.js";
+import {
+  attachRemoteProjectWorkspace,
+  isProjectNavigationCanceledError,
+} from "@/project-sidebar/remote-navigation.js";
 import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
 import { openWebRemoteControlTask } from "@/hooks/useWebRemoteControlTaskOpen.js";
 import { logger } from "@/logger.js";

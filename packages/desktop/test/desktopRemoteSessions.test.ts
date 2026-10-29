@@ -230,6 +230,105 @@ beforeEach(() => {
 });
 
 describe("desktopRemoteSessions R1 window Host forwarding", () => {
+  it("rejects a throwing connected observer without orphaning its waiter or the joined route", async () => {
+    const child = new MockUtilityProcess(1001);
+    const win = createWindow(1, 101);
+    const manager = createManager(new Map([[101, child]]));
+    const first = manager.createRemoteWorkspaceSession(
+      win as never,
+      sshTarget,
+      "observer",
+      undefined,
+      {
+        onConnected: () => {
+          throw new Error("observer failed");
+        },
+      },
+    );
+    const failure = expect(first).rejects.toThrow("observer failed");
+    await emitConnected({ child, requestId: "observer", remoteSessionId: "scope" });
+    const joined = manager.createRemoteWorkspaceSession(win as never, sshTarget, "join");
+    await emitConnected({ child, requestId: "join", remoteSessionId: "scope" });
+    confirmLatestScopedAttachment(manager, win);
+    await failure;
+    await expect(joined).resolves.toBe("scope");
+    expect(child.postMessage).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: HostMessageTypes.DisposeRemoteWorkspaceSession }),
+    );
+    manager.disposeRemoteWorkspaceSessionsForWindow(101);
+  });
+
+  it("shares first-attach readiness with join and same-context bind while key installation is pending", async () => {
+    const child = new MockUtilityProcess(1001);
+    child.suspendInstallation = true;
+    const win = createWindow(1, 101);
+    const manager = createManager(new Map([[101, child]]));
+    const first = manager.createRemoteWorkspaceSession(win as never, sshTarget, "first");
+    await emitConnected({ child, requestId: "first", remoteSessionId: "scope" });
+    const joined = manager.createRemoteWorkspaceSession(win as never, sshTarget, "join");
+    await emitConnected({ child, requestId: "join", remoteSessionId: "scope" });
+    const bound = manager.bindRemoteWorkspaceSessionContext("scope", {
+      workspacePath: "/",
+      workspaceIdentity: buildRemoteWorkspaceIdentity("/", sshTarget),
+    });
+    const outcomes = vi.fn();
+    const waiting = [first, joined, bound].map((promise) => promise.then(outcomes, outcomes));
+    await Promise.resolve();
+    expect(outcomes).not.toHaveBeenCalled();
+    const install = child.postMessage.mock.calls.find(
+      ([message]) => message.operation === "install-runtime-keys",
+    )![0];
+    child.emit("message", {
+      type: HostResponseTypes.ProviderProvisioningExecutionResult,
+      requestId: install.requestId,
+      environmentKey: install.environmentKey,
+      status: "applied",
+    });
+    await vi.waitFor(() => expect(win.webContents.postMessage).toHaveBeenCalledOnce());
+    expect(outcomes).not.toHaveBeenCalled();
+    confirmLatestScopedAttachment(manager, win);
+    await Promise.all(waiting);
+    await expect(first).resolves.toBe("scope");
+    await expect(joined).resolves.toBe("scope");
+    await expect(bound).resolves.toMatchObject({ remoteSessionId: "scope" });
+    manager.disposeRemoteWorkspaceSessionsForWindow(101);
+  });
+
+  it.each(["dispose", "window", "host", "close", "shutdown"])(
+    "settles a first-attach %s immediately and never lets late keys attach a retired route",
+    async (boundary) => {
+      const child = new MockUtilityProcess(1001);
+      child.suspendInstallation = true;
+      const win = createWindow(1, 101);
+      const manager = createManager(new Map([[101, child]]));
+      const first = manager.createRemoteWorkspaceSession(win as never, sshTarget, "first");
+      const rejection = expect(first).rejects.toThrow();
+      await emitConnected({ child, requestId: "first", remoteSessionId: "scope" });
+      if (boundary === "dispose") manager.disposeRemoteWorkspaceSession("scope");
+      else if (boundary === "window") manager.disposeRemoteWorkspaceSessionsForWindow(101);
+      else if (boundary === "host") child.emit("exit");
+      else if (boundary === "shutdown") await manager.disposeAllAndWaitForAppShutdown("test");
+      else
+        child.emit("message", {
+          type: HostResponseTypes.RemoteWorkspaceClosed,
+          remoteSessionId: "scope",
+          reason: "connection-closed",
+        });
+      await rejection;
+      const install = child.postMessage.mock.calls.find(
+        ([message]) => message.operation === "install-runtime-keys",
+      )![0];
+      child.emit("message", {
+        type: HostResponseTypes.ProviderProvisioningExecutionResult,
+        requestId: install.requestId,
+        environmentKey: install.environmentKey,
+        status: "applied",
+      });
+      await Promise.resolve();
+      expect(win.webContents.postMessage).not.toHaveBeenCalled();
+    },
+  );
+
   it("按 requestId 把窗口 Host 的远程连接进度转发给发起连接的 renderer", () => {
     const child = new MockUtilityProcess(1001);
     const win = createWindow(1, 101);
@@ -2141,6 +2240,76 @@ describe("mobile scope admission joins", () => {
       remoteKind: "ssh",
       transition: "connected",
     });
+    manager.disposeRemoteWorkspaceSessionsForWindow(101);
+  });
+
+  it("failed desktop adoption preserves the mobile scope and allows adoption retry", async () => {
+    const { child, win, manager, prepare, reportRemoteConnectionStateChanged } = setup();
+    await prepare("mobile");
+    win.webContents.postMessage.mockImplementationOnce(() => {
+      throw new Error("port failed");
+    });
+    const first = manager.createRemoteWorkspaceSession(win as never, sshTarget, "failed-adoption");
+    const failure = expect(first).rejects.toThrow("port failed");
+    await emitConnected({ child, requestId: "failed-adoption", remoteSessionId: "mobile-scope" });
+    await failure;
+    expect(child.postMessage).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: HostMessageTypes.DisposeRemoteWorkspaceSession }),
+    );
+    expect(reportRemoteConnectionStateChanged).not.toHaveBeenCalled();
+    expect(manager.getRemoteConnectionStats().activeSessionCount).toBe(0);
+    expect(
+      manager.attachRemoteWorkspaceSessionHost({
+        windowId: 1,
+        remoteSessionId: "mobile-scope",
+        workspacePath: "/new",
+        workspaceIdentity: "remote:server:s:/new",
+        workspaceKey: "remote:server:s:/new",
+        clientMode: "web-remote-replayable",
+      }).process,
+    ).toBe(child);
+    const retry = manager.createRemoteWorkspaceSession(win as never, sshTarget, "retry-adoption");
+    await emitConnected({ child, requestId: "retry-adoption", remoteSessionId: "mobile-scope" });
+    confirmLatestScopedAttachment(manager, win);
+    await expect(retry).resolves.toBe("mobile-scope");
+    manager.disposeRemoteWorkspaceSessionsForWindow(101);
+  });
+
+  it("concurrent desktop adoption and same-context bind share the mobile provisioning/renderer flight", async () => {
+    const { child, win, manager, prepare } = setup();
+    const automaticPost = child.postMessage.getMockImplementation()!;
+    child.postMessage.mockImplementation(() => undefined);
+    const mobile = prepare("mobile");
+    const first = manager.createRemoteWorkspaceSession(win as never, sshTarget, "first");
+    await emitConnected({ child, requestId: "first", remoteSessionId: "mobile-scope" });
+    const joined = manager.createRemoteWorkspaceSession(win as never, sshTarget, "joined");
+    await emitConnected({ child, requestId: "joined", remoteSessionId: "mobile-scope" });
+    const bind = manager.bindRemoteWorkspaceSessionContext("mobile-scope", {
+      workspacePath: "/new",
+      workspaceIdentity: "remote:server:s:/new",
+    });
+    const settled = vi.fn();
+    const waiting = [first, joined, bind].map((promise) => promise.then(settled, settled));
+    await Promise.resolve();
+    expect(settled).not.toHaveBeenCalled();
+    const provision = child.postMessage.mock.calls.find(
+      ([message]) => message.type === HostMessageTypes.ProviderProvisioningExecute,
+    )![0];
+    child.postMessage.mockImplementation(automaticPost);
+    child.emit("message", {
+      type: HostResponseTypes.ProviderProvisioningExecutionResult,
+      requestId: provision.requestId,
+      environmentKey: provision.environmentKey,
+      status: "applied",
+    });
+    await mobile;
+    await vi.waitFor(() => expect(win.webContents.postMessage).toHaveBeenCalledOnce());
+    expect(settled).not.toHaveBeenCalled();
+    confirmLatestScopedAttachment(manager, win);
+    await Promise.all(waiting);
+    await expect(first).resolves.toBe("mobile-scope");
+    await expect(joined).resolves.toBe("mobile-scope");
+    await expect(bind).resolves.toMatchObject({ workspaceIdentity: "remote:server:s:/new" });
     manager.disposeRemoteWorkspaceSessionsForWindow(101);
   });
 
