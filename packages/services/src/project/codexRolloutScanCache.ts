@@ -7,7 +7,7 @@ import type { ParsedRolloutCandidate } from "#src/project/codexRolloutFacts.js";
 const logger = createServiceLogger("codex-rollout-scan-cache");
 
 /** 结构版本：字段增删必须递增；旧文件按不可读处理，fail-open 回全量解析。 */
-const SCAN_CACHE_VERSION = 1;
+const SCAN_CACHE_VERSION = 2;
 /**
  * 条目上限：超出即整份不落盘。
  * 原因：缓存内容随历史会话数线性增长，无上限会把「启动少解析」换成「每轮重写一份无界 JSON」。

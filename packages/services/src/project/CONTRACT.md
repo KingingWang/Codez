@@ -1,5 +1,10 @@
 # Host 项目服务
 
+Codex rollout 活动时间只取带可信时间的真实消息/tool/推理/turn 开始和终态记录；
+settings/goal/token/injected context 不推进时间，mtime/size 只作变化指纹。
+无可信活动时间稳定回退 createdAt。解析事实缓存版本 2 使旧 mtime 时间重解析；
+不迁移/回拨 tasks-index 已有时间，不改变 SQLite max 规则。
+
 唯一写者是当前 Host 的 tasks-index 存储。服务负责真实目录校验、默认目录创建与旧设置双写；自动归档由本模块的定时扫描器执行（启动首轮、每小时、设置变更补扫），不挂在任何读取或 UI 动作上；Repository 在事务内维护项目、roots 与任务归属。UI 只经 hooks 调用此契约。远程调用使用拥有组织态的现有 Host attachment，不让 main/relay 创建业务副本。
 
 全局 Codex rollout 扫描器（`codexGlobalRolloutSyncer`）是把 `$CODEX_HOME/sessions` 原生会话事实写入 tasks-index 的唯一入口：只读原生历史，不复制、不搬移、不删除。它的解析事实缓存（`codexRolloutScanCache`）落在 Codez 数据目录（`getCodexRolloutScanCachePath()`），按文件 `(mtimeMs, size)` 跨进程复用 head/tail 解析结果，使启动基线不再随历史会话数线性重解析。缓存只存文件派生事实（`mtimeMs`、`size`、`candidate`、`settled`），**不存 `synced`**：入库状态每次启动都重新与 tasks-index 对账，因此删任务、重建库、身份解析变化或缓存被复制到另一台机器都能自愈，不会出现「缓存说已入库、库里没有该行」导致会话永久不可见。缓存缺失、损坏、版本或 `$CODEX_HOME` 作用域不符一律 fail-open 回全量解析并记 warn；写入走既有 `atomicWriteText`（跨进程文件锁），内容未变化不写，超过条目上限整份不写。

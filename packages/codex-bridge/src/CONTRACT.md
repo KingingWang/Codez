@@ -1,5 +1,11 @@
 # Codex bridge
 
+Activity time is a monotonic rebuildable clock owned only by ThreadStateStore,
+fixed before cold resume and advanced by valid native conversation activity.
+Metadata appends do not overwrite it. Summary, legacy, list and reconcile share
+the clock; list overlays only activity after its scan completes. Historical reads
+use native timestamps, never receipt time. See specs/codex-desktop-adapter.md #31.
+
 Codex owns execution, threads, persisted items, queues, credentials and configuration.
 This executable translates desktop contracts and derives rebuildable projections.
 It is not imported by services; the boundary is stdio. The public TypeScript port

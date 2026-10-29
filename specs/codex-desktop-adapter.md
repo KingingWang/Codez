@@ -7,6 +7,55 @@ feature parity. A capability is not accepted until its test evidence exists.
 
 ## Scope
 
+### Activity clock (GitHub #31)
+
+`ThreadStateStore` alone owns a rebuildable, monotonic process-local activity
+clock. Cold attach fixes its baseline from the authorized pre-resume metadata;
+later metadata, resume replies, settings/goal/token/name/status notifications
+cannot advance it. Native raw `updatedAt` includes non-conversation appends;
+`recencyAt` has different semantics and is not mirrored mechanically.
+
+Only valid turn started/completed, item started/completed and successfully
+applied deltas advance activity. Prefer valid native turn seconds or item
+milliseconds; missing-time valid live activity uses receipt time. History reads
+never use wall time. Persisted real turn/item times supplement external
+writer-conflict history. Resume/paging commits cannot overwrite live activity.
+The internal clock keeps milliseconds, but native-shaped `updatedAt` remains
+integer seconds. Discovery does not freeze a thread: only start/load establishes
+the attach baseline. When an unbound or read-only thread's native metadata changes,
+inspect at most its latest turn summary and item entry without resume. These
+reads coalesce per thread and use four connection-level slots; unchanged scans
+and attached writable threads perform no additional history RPCs. Failed optional
+activity reads preserve the known clock rather than trusting metadata time.
+Freezing an attach baseline does not acknowledge a newer metadata fingerprint:
+read-only external history acknowledges it only after the bounded turn/item
+read succeeds, including a running turn whose last item is later than its start.
+
+```text
+pre-resume read → Store baseline → native resume + history paging
+live turn/item/delta → Store monotonic clock ← timed persisted history
+metadata/settings/goal/tokens ── no clock write
+Store clock → summary / legacy / list / reconcile activity fields
+```
+
+`list()` retains native collection, titles and cwd filtering, overlays only
+activity fields, and reads the latest clock after the scan completes. All
+summary/legacy/targeted/reconcile exits use the same clock. This adds no durable
+execution store and does not change continuous/replayable delivery.
+In particular, activity on one row while another row's optional read is pending
+must be reflected by the final synchronous activity overlay.
+
+The Host rollout scanner derives activity only from timed real messages, tools,
+reasoning and turn start/terminal records, excluding settings, goals, tokens and
+injected context. mtime/size remain change fingerprints; absent trustworthy time
+falls back to stable creation time. Reads remain asynchronous bounded head/tail;
+parse cache version changes from 1 to 2. No migration, timestamp rollback,
+tasks-index schema or SQLite max-rule change is authorized.
+
+Pending acceptance: open native Codex history, then run native/list/scanner
+discovery; task time and sort stay unchanged. Continue the same thread and verify
+activity advances normally. Keep the case pending until human review.
+
 ### Upstream v3.15.1 compatibility
 
 Rebase preserves every fork behavior and its regression suite. The obsolete

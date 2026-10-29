@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "caseName": "conversation-session-codex-project-history",
+  "spec": "./test/e2e/conversation-session/conversation-session-codex-project-history.test.ts",
+  "fixtures": []
+}

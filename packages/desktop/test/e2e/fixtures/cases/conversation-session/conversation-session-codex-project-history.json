@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "caseName": "conversation-session-codex-project-history",
+  "spec": "./test/e2e/conversation-session/conversation-session-codex-project-history.test.ts",
+  "providerFixtures": [
+    "./test/e2e/fixtures/upstream/common.json",
+    "./test/e2e/fixtures/upstream/conversation-session/conversation-session-codex-project-history.json"
+  ],
+  "fileFixtures": [],
+  "providerRequestPolicy": "none",
+  "noProviderRequests": true,
+  "requests": [],
+  "description": "No legacy upstream replay requests. The spec owns an isolated native Responses fixture for CLI history and follow-up; requires pinned Codex and codez-codex-history-* HOME. VP-CODEX-ACTIVITY-31 remains pending."
+}

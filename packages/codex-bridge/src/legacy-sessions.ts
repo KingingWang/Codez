@@ -72,7 +72,14 @@ export async function handleLegacySession(
         ? undefined
         : z.array(z.string().trim().min(1)).min(1).max(64).parse(p.sessionIds);
     const threads = sessionIds
-      ? await listTargetedThreads(rpc, store.cwd, sessionIds, (id) => store.get(id)?.thread)
+      ? await listTargetedThreads(
+          rpc,
+          store.cwd,
+          sessionIds,
+          (id) => store.get(id)?.thread,
+          (thread) => store.refreshActivityThread(thread),
+          (id) => store.get(id)?.readOnly === "writer-conflict",
+        )
       : await store.listAndStageForIndexRefresh();
     return {
       // 修复原因：辅助对话 child 不写入主任务表（tasks-index.sqlite），远程项目下
@@ -85,7 +92,8 @@ export async function handleLegacySession(
         ? threads
         : threads.filter((thread) => !isSelectionSideChatThread(thread))
       ).map((thread) => {
-        const session = projectLegacySnapshot(thread, store.cwd).session;
+        // 定向读取同样会等待其他行；出口只覆盖 activity，不回写旧 title/cwd 或等待期的旧 clock。
+        const session = projectLegacySnapshot(store.activityThread(thread), store.cwd).session;
         session.workspace = workspace;
         return session;
       }),
