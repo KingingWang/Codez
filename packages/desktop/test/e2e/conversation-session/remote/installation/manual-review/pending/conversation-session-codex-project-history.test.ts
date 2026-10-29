@@ -4,9 +4,27 @@ import { createServer, type Server } from "node:http";
 import { mkdir, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { TID_TASK_ITEM, testId } from "@codez/shared/test-ids";
+<<<<<<< HEAD:packages/desktop/test/e2e/conversation-session/remote/installation/manual-review/pending/conversation-session-codex-project-history.test.ts
 import { selectNativeProjectDirectories } from "#e2e/helpers/project-sidebar";
 import { waitForWorkspaceApp } from "#e2e/helpers/desktop-app";
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
+=======
+import { ServiceChannels } from "@codez/shared";
+import type { ProjectTree } from "@codez/services";
+import {
+  callHandoffHost,
+  installHandoffRpcProbe,
+  restoreHandoffProbes,
+} from "#e2e/helpers/remote-project-handoff-probe";
+import { selectNativeProjectDirectories } from "#e2e/helpers/project-sidebar";
+import { waitForWorkspaceApp } from "#e2e/helpers/desktop-app";
+import {
+  prepareV4ConversationE2E,
+  sendV4Prompt,
+  waitForV4ConversationState,
+  waitForV4TimelineContaining,
+} from "#e2e/helpers/v4-conversation";
+>>>>>>> 248abcf (fix(codex): preserve real activity when reopening history):packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-codex-project-history.test.ts
 
 const marker = "E2E_CODEX_PROJECT_HISTORY";
 
@@ -150,6 +168,7 @@ describe("Codex 单目录项目历史", () => {
   });
 
   after(async () => {
+    await restoreHandoffProbes();
     fixture?.closeAllConnections();
     if (fixture?.listening) await new Promise<void>((resolve) => fixture!.close(() => resolve()));
   });
@@ -179,7 +198,36 @@ describe("Codex 单目录项目历史", () => {
       join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "VP-CODEX-01-cli-history-projects.png"),
     );
 
-    await rowA.click();
+    await installHandoffRpcProbe();
+    const readTree = () => callHandoffHost<ProjectTree>(ServiceChannels.Project, "readTree");
+    const before = await readTree();
+    const original = before.tasks.find((task) => task.taskId === threadA)!;
+    expect(original).toBeTruthy();
+    const readNativeList = () =>
+      callHandoffHost<Array<{ sessionId: string; updatedAt: number }>>(
+        ServiceChannels.CodezAgent,
+        "listSessions",
+        [{ workspacePath: directoryA }],
+      );
+    const nativeBefore = (await readNativeList()).find((session) => session.sessionId === threadA)!;
+    expect(nativeBefore).toBeTruthy();
+    const recentOrder = async () => {
+      await $('[data-testid="sidebar-view-menu"]').click();
+      await $('[data-testid="sidebar-view-timeline"]').click();
+      await $('[data-testid="project-section"]').waitForExist({ reverse: true });
+      await $(`[data-testid="${testId(TID_TASK_ITEM, threadA)}"]`).waitForDisplayed();
+      await $(`[data-testid="${testId(TID_TASK_ITEM, threadB)}"]`).waitForDisplayed();
+      return browser.execute(
+        (ids) =>
+          Array.from(document.querySelectorAll<HTMLElement>('[data-testid^="task-item-"]'))
+            .map((row) => row.getAttribute("data-testid"))
+            .filter((id) => ids.includes(id ?? "")),
+        [testId(TID_TASK_ITEM, threadA), testId(TID_TASK_ITEM, threadB)],
+      );
+    };
+    const beforeOrder = await recentOrder();
+    expect(beforeOrder).toHaveLength(2);
+    await $(`[data-testid="${testId(TID_TASK_ITEM, threadA)}"]`).click();
     await waitForWorkspaceApp(directoryA, 30_000);
     await browser.waitUntil(
       () =>
@@ -189,6 +237,35 @@ describe("Codex 单目录项目历史", () => {
         ),
       { timeout: 30_000, timeoutMsg: "CLI thread did not open in the Codex conversation pane" },
     );
+    await waitForV4TimelineContaining(`${marker}_REPLY`);
+    // #31：同一 native thread/list 出口与 Host readTree 的 scanner catch-up 都实际执行。
+    const listed = await readNativeList();
+    expect(listed.find((session) => session.sessionId === threadA)?.updatedAt).toBe(
+      nativeBefore.updatedAt,
+    );
+    const scanned = await readTree();
+    expect(scanned.tasks.find((task) => task.taskId === threadA)?.updatedAt).toBe(
+      original.updatedAt,
+    );
+    expect(scanned.tasks.find((task) => task.taskId === threadB)?.updatedAt).toBe(
+      before.tasks.find((task) => task.taskId === threadB)?.updatedAt,
+    );
+    expect(await recentOrder()).toEqual(beforeOrder);
+    await sendV4Prompt(`${marker}_FOLLOW: reply briefly.`);
+    await waitForV4TimelineContaining(`${marker}_FOLLOW`);
+    await waitForV4ConversationState(
+      (snapshot) => snapshot.taskId === threadA && snapshot.state === "idle",
+      `${marker}: 历史续聊没有完成`,
+    );
+    await browser.waitUntil(
+      async () =>
+        ((await readTree()).tasks.find((task) => task.taskId === threadA)?.updatedAt ?? 0) >
+        original.updatedAt,
+      { timeout: 30_000, timeoutMsg: `${marker}: 有效续聊没有推进活动时间` },
+    );
+    expect((await recentOrder())[0]).toBe(testId(TID_TASK_ITEM, threadA));
+    await $('[data-testid="sidebar-view-menu"]').click();
+    await $('[data-testid="sidebar-view-projects"]').click();
     await browser.refresh();
     // 冷刷新允许回到全局草稿；项目和 CLI 行必须仍可重新导航，而不是要求保留当前 tab。
     const restored = $(`[data-project-name="${marker}_A"]`);

@@ -4120,6 +4120,22 @@ PDN01（pending）：`manual-review/pending/conversation-session-deleted-project
 
 2026-10-19 验证：基于 `hotfix/v3.16.2`，修复前两个桌面入口均复现 `project.prepareSession → project.not-found`（`desktop-e2e-20261019134940433-p64012-f66e1fde68ed6967`）；修复后桌面 2/2（`desktop-e2e-20261019-135945-065`）、真实 relay/shared-host 手机 Web 1/1（`desktop-e2e-20261019-140836-696`）通过，保留原会话/草稿并验证新草稿可输入。手机首次批次被运行器默认 120 秒总预算截断；单独重跑显式使用 `--mochaOpts.timeout 180000`，与用例声明一致，未修改产品等待或放宽断言。受影响单测 8 文件 / 76 项、root/E2E typecheck、fixture check、架构检查通过；lint 0 errors / 188 既有 warnings。代码与 spec 格式通过，catalog/matrix 的既有格式差异未扩大。未实跑 Windows/Linux、SSH/WSL 或实体手机；候选未转正。
 
+VP-CODEX-ACTIVITY-31（accepted/pending）：扩展
+`manual-review/pending/conversation-session-codex-project-history.test.ts`；
+打开 A 历史及 native/list/Host scanner 发现前后 activity 和最近排序不变，续聊才正常推进。
+单测与静态检查不替代 pinned Codex + Electron 动态结果；保持 pending，未晋级。
+
+2026-10-29 #31：Codex bridge 包 748 项通过、4 项既有跳过，rollout sync 23 项 UT、fixture 与 E2E typecheck
+通过。隔离 HOME 的 Electron 复跑在 renderer preflight 报 `session-bridge-missing`，
+未进入 case 产品断言，预检失败；artifact
+`packages/desktop/.e2e-artifacts/desktop-e2e-20261029-092049-452`。首轮另因继承
+`ELECTRON_RUN_AS_NODE` 无法创建 WebDriver 会话；仅对子进程移除后才进入上述预检。
+未修改测试基础设施来绕过门禁，未人工审阅或晋级。
+校验过的原生 Codex + bundled bridge smoke、外部项目历史发现/恢复 smoke 均通过；
+这两项不含本例的 GUI 时间/排序断言，不替代 pending 产品验收。
+更新 verified runtime 后的隔离 GUI 复跑仍停在同一 renderer preflight；
+artifact `packages/desktop/.e2e-artifacts/desktop-e2e-20261029103542617-p2002084-06ede50bab242595`。
+
 权威语义：`docs/superpowers/specs/2026-09-09-virtual-project-design.md`；覆盖剪枝及完整 VP01–VP10 在实施记录。下列候选未转正，不计 formal gate。
 
 | ID             | 状态              | Setup → action → assertion                                                                                                  | 非 UI 证据与 GUI 缺口                                                                                                                                                                                                                                                                                                             |
