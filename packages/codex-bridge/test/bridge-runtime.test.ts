@@ -190,6 +190,61 @@ test("auxiliary dispatch precedes legacy unsupported control route and waits for
 });
 
 for (const clientMode of ["desktop-continuous", "web-remote-replayable"]) {
+  test(`${clientMode} non-integral live activity stays valid in every wire projection`, async (t) => {
+    t.mock.method(Date, "now", () => 150123);
+    const h = await fixture(t);
+    const conversation = await h.runtime.request(
+      V4_METHODS.conversationSubscribe,
+      subscribe("conversation/thread-1", clientMode),
+    );
+    await conversation.afterResponse!();
+    h.emit("turn/started", {
+      threadId: "thread-1",
+      turn: { id: "fractional", status: "inProgress", items: [] },
+    });
+    h.emit("item/started", {
+      threadId: "thread-1",
+      turnId: "fractional",
+      startedAtMs: 150456,
+      item: { type: "agentMessage", id: "fractional-item", text: "" },
+    });
+    h.emit("item/agentMessage/delta", {
+      threadId: "thread-1",
+      turnId: "fractional",
+      itemId: "fractional-item",
+      delta: "live",
+    });
+    h.emit("item/completed", {
+      threadId: "thread-1",
+      turnId: "fractional",
+      completedAtMs: 151234,
+      item: { type: "agentMessage", id: "fractional-item", text: "done" },
+    });
+    await tick();
+    const index = await h.runtime.request(
+      V4_METHODS.conversationSubscribe,
+      subscribe(`sessions-index/${workspaceId}`, clientMode),
+    );
+    await index.afterResponse!();
+    assert.match(JSON.stringify(h.frames), /"lastActivityAt":151000/);
+    for (const params of [{}, { sessionIds: ["thread-1"] }]) {
+      const response = await h.runtime.request("session/list", params);
+      const result = response.result as { sessions: Array<{ updatedAt: number }> };
+      assert.equal(result.sessions[0]!.updatedAt, 151000);
+    }
+    const legacy = await h.runtime.request("session/read", { sessionId: "thread-1" });
+    assert.equal((legacy.result as { session: { updatedAt: number } }).session.updatedAt, 151000);
+    const reconciled = await h.runtime.request(V4_METHODS.sessionsIndexReconcile, {
+      workspaceId,
+      sessionIds: ["thread-1"],
+    });
+    assert.equal(
+      (reconciled.result as { sessions: Array<{ updatedAt: number }> }).sessions[0]!.updatedAt,
+      151000,
+    );
+    assert.deepEqual(h.fatal, []);
+  });
+
   test(`${clientMode} cold resume goal notifications reach initial and repeated snapshots`, async (t) => {
     const h = await fixture(t);
     h.handlers["thread/resume"] = (params) => {
