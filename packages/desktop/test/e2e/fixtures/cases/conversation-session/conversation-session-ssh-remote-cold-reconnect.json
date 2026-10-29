@@ -8,7 +8,29 @@
   ],
   "fileFixtures": [],
   "requests": [
-    { "id": "ssh-cold-reconnect-title", "description": "SSH cold reconnect task 标题辅助响应。", "kind": "common", "source": "synthetic", "timingPolicy": "fast-text", "syntheticReason": "标题不属于冷恢复断言。" },
-    { "id": "ssh-cold-reconnect-main", "description": "SSH cold reconnect 首发和续发响应。", "kind": "main", "source": "synthetic", "timingPolicy": "slow-stream", "syntheticReason": "首发与冷恢复续发都只需要稳定完成，用 task history 断言路由。" }
+    {
+      "id": "ssh-cold-reconnect-title",
+      "description": "SSH cold reconnect task 标题辅助响应。",
+      "kind": "common",
+      "source": "synthetic",
+      "timingPolicy": "fast-text",
+      "syntheticReason": "标题不属于冷恢复断言。"
+    },
+    {
+      "id": "ssh-cold-running",
+      "description": "#30 完整冷重启及连续点击期间保持远端 running。",
+      "kind": "synthetic",
+      "source": "synthetic",
+      "timingPolicy": "controlled-stream",
+      "syntheticReason": "冻结真实远端模型流以跨越完整 Desktop restart 和首挂连续点击窗口，断言后显式释放。"
+    },
+    {
+      "id": "ssh-cold-reconnect-main",
+      "description": "SSH cold reconnect 首发和续发响应。",
+      "kind": "main",
+      "source": "synthetic",
+      "timingPolicy": "slow-stream",
+      "syntheticReason": "首发与冷恢复续发都只需要稳定完成，用 task history 断言路由。"
+    }
   ]
 }

@@ -30,6 +30,27 @@ Source 换代 → Registry 更换 session/generation → Main 换 route → 重�
 
 ## 冷启动选择与存量 Renderer 挂回
 
+### 首挂共享门禁（GitHub #30）
+
+Main 在发布新 route 前同步登记唯一首挂 flight，覆盖 provisioning、临时 key 安装、
+端口投递与 Renderer ready ACK。重复 connect、同 context bind 和 mobileOnly 首次桌面
+采用均等待这条链；没有 candidate port 的中间态不是连接失败，也不是 ready。
+
+```text
+Host descriptor → Main 登记首挂 flight → 发布 route
+                 → provisioning → key ACK → attachRendererPort → renderer ACK
+join / 同 context bind ──────────────等待同一 flight───────────────┘
+close / dispose / window / Host exit → 立即拒绝 flight
+迟到 completion → 核对 route + session 代际 → 不发布、不回收新 route
+```
+
+首挂不新增超时或自动重试。已有 attachment ACK 预算不变；失败仅清理本次仍持有的 route，
+手机 replayable attachment 不变。回归需覆盖 provisioning/key 等待中的 join/bind、首次
+mobileOnly 采用、所有终止边界以及旧 completion 不影响新代际。
+桌面采用失败只撤销自己的 candidate 与 flight，并恢复原 mobile-only 路由和遥测资格；
+不能 dispose 手机仍持有的 logical session。重试继续采用同一 session。
+ready 后的同步通知回调异常只拒绝该调用者，不能让其 promise 悬挂，也不拆除其他 join 使用的 route。
+
 [虚拟项目 F5](../superpowers/specs/2026-09-09-virtual-project-design.md) 是新版持久化权威：
 冷启动只从 `lastActiveWorkspace` 恢复活动执行目录，其他项目入口从 Host SQLite 读取，用户打开时
 再创建 attachment。`lastWorkspaceSession` 是降级兼容投影，不是新版 open set；不得因其中有 A/B
@@ -87,4 +108,5 @@ Renderer 不能抢先调用 connectProfile 扩大同一恢复 flight，迟到握
 
 测试文件及执行证据见[覆盖矩阵](../testing/conversation-session-e2e-coverage-matrix.md)；旧候选表、
 Accepted Cases 和历史限制完整保存在 `git show a17a875588b8d66c2bee49236292e174df651363:docs/remote/desktop-remote-session-renderer-reattach.md`。
-本次仅修正文档，不补记运行结果或改变 formal/pending 状态。
+旧整理批次仅修正文档，不补记运行结果。GitHub #30 首挂修复的新增回归仍单列为 pending，
+不由旧记录推定动态通过，也不改变 formal 状态。

@@ -30,6 +30,7 @@ export {
   buildRemoteWorkspaceIdentity,
   buildServerRemoteWorkspaceIdentity,
   remoteHostIdFromWorkspaceIdentity,
+  REMOTE_BIND_CANCELED_ERROR_CODE,
 } from "@codez/shared";
 export type {
   WindowHostTaskAddress,
@@ -107,7 +108,11 @@ export interface ProjectSidebarProps {
   onConnectRemote: (
     options: RemoteTarget,
     requestId?: string,
-    context?: { confirmSourceServerInstall?: boolean },
+    context?: {
+      workspacePath?: string;
+      workspaceIdentity?: string;
+      confirmSourceServerInstall?: boolean;
+    },
     feedback?: import("@/app-shell/types.js").RemoteConnectionFeedbackOptions,
   ) => Promise<string>;
   onSelectRemoteProject: (

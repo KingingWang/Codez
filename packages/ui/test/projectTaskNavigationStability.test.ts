@@ -4,12 +4,51 @@ import { beforeEach, expect, it, vi } from "vitest";
 import type { ProjectSidebarProps } from "@/project-sidebar/contract.js";
 import { useProjectTaskNavigation } from "@/project-sidebar/useProjectTaskNavigation.js";
 const focus = vi.hoisted(() => ({ activeTaskId: "original", draftFocusVersion: 0 }));
+const feedback = vi.hoisted(() => ({ toast: vi.fn(), error: vi.fn() }));
+vi.mock("@/components/ui/toast.js", () => ({ toast: feedback.toast }));
+vi.mock("@/logger.js", () => ({ logger: { error: feedback.error, debug: vi.fn() } }));
 vi.mock("@/store/codezSessionStore.js", () => ({
   useCodezSessionStore: { getState: () => ({ getWorkspaceState: () => ({ ...focus }) }) },
 }));
 beforeEach(() => {
   focus.activeTaskId = "original";
   focus.draftFocusVersion = 0;
+  vi.clearAllMocks();
+});
+
+it.each([
+  [
+    Object.assign(new Error("project.navigation-cancelled"), {
+      code: "remote-connection-canceled",
+    }),
+    false,
+  ],
+  [Object.assign(new Error("bind canceled"), { code: "remote-bind-canceled" }), false],
+  [new DOMException("aborted", "AbortError"), false],
+  [new Error("provisioning failed"), true],
+  [new Error("remote-project.host-removed"), true],
+  [new Error("project.workspace-identity-mismatch"), true],
+])("navigation reports only non-cancellation errors: %s", async (error, visible) => {
+  const task = {
+    taskId: "remote-task",
+    workspacePath: "/same",
+    workspaceIdentity: "remote:server:s:/same",
+    hostId: "remote:server:s",
+  };
+  const { result } = renderHook(() =>
+    useProjectTaskNavigation(
+      { workspacePath: "/current", onSelectTask: vi.fn() } as unknown as ProjectSidebarProps,
+      { projects: [], tasks: [task] } as never,
+      {
+        readDirectory: async () => {
+          throw error;
+        },
+      } as never,
+    ),
+  );
+  await act(async () => result.current(task.workspacePath, task.taskId, task.workspaceIdentity));
+  expect(feedback.toast).toHaveBeenCalledTimes(visible ? 1 : 0);
+  expect(feedback.error).toHaveBeenCalledTimes(visible ? 1 : 0);
 });
 vi.mock("@/store/TabStoreProvider.js", () => ({
   useTabStore: (select: (state: unknown) => unknown) => select({ activeWorkspaceIdentity: null }),

@@ -39,9 +39,11 @@ export function useProjectFileTree(
         props,
         remoteService,
         isRemote: directory.hosts.some((host) => host.id === project.hostId),
-        findSession: (identity) =>
+        findSession: (identity, expectedSessionId) =>
           Object.values(useRemoteWorkspaceSessionStore.getState().sessionsById).find(
-            (session) => session.workspaceIdentity === identity,
+            (session) =>
+              session.workspaceIdentity === identity &&
+              (!expectedSessionId || session.sessionId === expectedSessionId),
           ),
       });
       // 原因：连接完成可能晚于另一次查看/关闭，旧目标不得覆盖最新文件树选择。

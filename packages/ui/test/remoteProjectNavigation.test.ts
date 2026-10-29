@@ -1,5 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { attachRemoteProjectWorkspace } from "@/project-sidebar/remote-navigation.js";
+import type { ProjectSidebarProps } from "@/project-sidebar/contract.js";
 
 function fixture() {
   const sessions = new Map<string, { sessionId: string }>();
@@ -15,7 +16,9 @@ function fixture() {
       })),
     } as never,
     findSession: (key: string) => sessions.get(key),
-    connect: vi.fn(async () => "new-session"),
+    connect: vi.fn(
+      async (..._args: Parameters<ProjectSidebarProps["onConnectRemote"]>) => "new-session",
+    ),
     bind: vi.fn(async (sessionId: string) => {
       sessions.set(identity, { sessionId });
     }),
@@ -28,6 +31,10 @@ it("uses the exact identity and existing physical connection, not another Source
   sessions.set("remote:server:other:/same", { sessionId: "other" });
   expect(await attachRemoteProjectWorkspace(input)).toBe("new-session");
   expect(input.connect).toHaveBeenCalledOnce();
+  expect(input.connect).toHaveBeenCalledWith({ kind: "docker", container: "s" }, undefined, {
+    workspacePath: "/same",
+    workspaceIdentity: input.workspaceIdentity,
+  });
   expect(input.bind).toHaveBeenCalledWith("new-session", "/same");
   expect(input.cancel).not.toHaveBeenCalled();
 });
@@ -55,7 +62,10 @@ it("does not bind a late connection after navigation is superseded and releases 
   });
   await expect(
     attachRemoteProjectWorkspace({ ...input, isCurrent: () => current }),
-  ).rejects.toThrow("project.navigation-cancelled");
+  ).rejects.toMatchObject({
+    message: "project.navigation-cancelled",
+    code: "remote-connection-canceled",
+  });
   expect(input.bind).not.toHaveBeenCalled();
   expect(input.cancel).toHaveBeenCalledWith("late");
 });
@@ -65,6 +75,44 @@ it("does not create an attachment when the Host response belongs to an old navig
     "project.navigation-cancelled",
   );
   expect(input.connect).not.toHaveBeenCalled();
+});
+
+it("does not release a joined attachment promoted while the old navigation was waiting", async () => {
+  const { sessions, identity, input } = fixture();
+  const gate = Promise.withResolvers<string>();
+  input.connect.mockImplementation(() => gate.promise);
+  let current = true;
+  const old = attachRemoteProjectWorkspace({ ...input, isCurrent: () => current });
+  const rejection = expect(old).rejects.toMatchObject({ code: "remote-connection-canceled" });
+  await vi.waitFor(() => expect(input.connect).toHaveBeenCalled());
+  current = false;
+  sessions.set(identity, { sessionId: "joined" });
+  gate.resolve("joined");
+  await rejection;
+  expect(input.cancel).not.toHaveBeenCalled();
+  await expect(attachRemoteProjectWorkspace(input)).resolves.toBe("joined");
+});
+
+it("keeps a context-connected shared session before the newer caller binds its project", async () => {
+  const { sessions, identity, input } = fixture();
+  const ready = Promise.withResolvers<string>();
+  let current = true;
+  input.connect.mockImplementation((_target, _requestId, context) => {
+    expect(context).toEqual({ workspacePath: "/same", workspaceIdentity: identity });
+    return ready.promise;
+  });
+  const stale = attachRemoteProjectWorkspace({ ...input, isCurrent: () => current });
+  const rejected = expect(stale).rejects.toMatchObject({ code: "remote-connection-canceled" });
+  const newer = attachRemoteProjectWorkspace(input);
+  await vi.waitFor(() => expect(input.connect).toHaveBeenCalledTimes(2));
+  current = false;
+  // 与真实 connect ready 合同一致：首挂 ACK 前注册 context 的目标身份，项目 bind 尚未执行。
+  sessions.set(identity, { sessionId: "shared-before-bind" });
+  ready.resolve("shared-before-bind");
+  await rejected;
+  await expect(newer).resolves.toBe("shared-before-bind");
+  expect(input.cancel).not.toHaveBeenCalled();
+  expect(input.bind).toHaveBeenCalledOnce();
 });
 
 it("does not bind a replaced Host membership after attachment preparation", async () => {

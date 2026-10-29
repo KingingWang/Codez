@@ -4,7 +4,10 @@ import type {
   ProjectTree,
   IRemoteProjectService,
 } from "@/project-sidebar/contract.js";
-import { attachRemoteProjectWorkspace } from "@/project-sidebar/remote-navigation.js";
+import {
+  attachRemoteProjectWorkspace,
+  isProjectNavigationCanceledError,
+} from "@/project-sidebar/remote-navigation.js";
 import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
 import { openWebRemoteControlTask } from "@/hooks/useWebRemoteControlTaskOpen.js";
 import { logger } from "@/logger.js";
@@ -93,9 +96,11 @@ export function useProjectTaskNavigation(
             workspaceIdentity: identity,
             remoteService,
             isCurrent,
-            findSession: (key) =>
+            findSession: (key, expectedSessionId) =>
               Object.values(useRemoteWorkspaceSessionStore.getState().sessionsById).find(
-                (session) => session.workspaceIdentity === key,
+                (session) =>
+                  session.workspaceIdentity === key &&
+                  (!expectedSessionId || session.sessionId === expectedSessionId),
               ),
             connect: props.onConnectRemote,
             bind: (sessionId, workspacePath, guard) =>
@@ -107,6 +112,10 @@ export function useProjectTaskNavigation(
       props.onSelectTask(path, taskId, identity, remoteSessionId, unreadAt);
     };
     void open().catch((error) => {
+      if (isProjectNavigationCanceledError(error)) {
+        logger.debug("[project-sidebar] 忽略已取消的任务导航");
+        return;
+      }
       logger.error("[project-sidebar] 打开任务失败", error);
       toast(String(error));
     });

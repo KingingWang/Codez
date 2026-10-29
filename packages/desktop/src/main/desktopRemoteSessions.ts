@@ -2,10 +2,7 @@ import { sanitizeRemoteConnectionLog, remoteConnectionFailureLogLevel } from "@c
 /* eslint-disable max-lines -- Main 的完整薄转发契约集中维护请求与端口关联。 */
 import { randomUUID } from "node:crypto";
 import { BrowserWindow, MessageChannelMain } from "electron";
-import type {
-  MessagePortMain,
-  UtilityProcess as ElectronUtilityProcess,
-} from "electron";
+import type { MessagePortMain, UtilityProcess as ElectronUtilityProcess } from "electron";
 import {
   buildRemoteWorkspaceIdentity,
   buildRemoteEnvironmentKey,
@@ -73,6 +70,8 @@ interface RemoteAttachmentRoute {
   /** 手机创建的目录 scope 不自动建立桌面 tab；桌面显式 join 后才提升。 */
   mobileOnly?: boolean;
   providerProvisioningReady?: Promise<void>;
+  /** 首次桌面采用的唯一门禁，发布 route 前登记，覆盖 key 安装到 renderer ACK。 */
+  firstRendererAttach?: PromiseWithResolvers<void>;
   webContentsId: number;
   // Main 只保留端口转发所需的 request/session 关联和脱敏 descriptor；连接/任务事实归 Host。
   descriptor: WindowHostRemoteWorkspaceDescriptor;
@@ -140,8 +139,7 @@ function isSameRemoteTarget(left: RemoteTarget, right: RemoteTarget): boolean {
     case "wsl":
       return (
         right.kind === "wsl" &&
-        (left.distro?.trim() || "default") ===
-          (right.distro?.trim() || "default") &&
+        (left.distro?.trim() || "default") === (right.distro?.trim() || "default") &&
         (left.user?.trim() ?? "") === (right.user?.trim() ?? "")
       );
     case "docker":
@@ -240,8 +238,7 @@ export function createRemoteWorkspaceSessionManager(options: {
     PendingProviderProvisioningExecution
   >();
   const providerProvisioningCoordinator =
-    options.providerProvisioningCoordinator ??
-    new ProviderProvisioningEnvironmentCoordinator();
+    options.providerProvisioningCoordinator ?? new ProviderProvisioningEnvironmentCoordinator();
   let appShutdownStarted = false;
   const monotonicNowMs = options.monotonicNowMs ?? (() => performance.now());
 
@@ -302,14 +299,11 @@ export function createRemoteWorkspaceSessionManager(options: {
       });
     } catch (error) {
       // 候选 port 的回收属于幂等清理，不能因 Host 已退出导致 ready promise 再次悬空。
-      options.logger.warn(
-        "[window-host-remote] detach renderer attachment failed",
-        {
-          attachmentId,
-          reason,
-          error,
-        },
-      );
+      options.logger.warn("[window-host-remote] detach renderer attachment failed", {
+        attachmentId,
+        reason,
+        error,
+      });
     }
   }
 
@@ -351,9 +345,7 @@ export function createRemoteWorkspaceSessionManager(options: {
       route.pendingRendererAttachment = undefined;
       detachServicePort(child, superseded.attachmentId, "superseded");
       superseded.reject(
-        new Error(
-          `renderer attachment 已被后续换代替代，sessionId=${descriptor.remoteSessionId}`,
-        ),
+        new Error(`renderer attachment 已被后续换代替代，sessionId=${descriptor.remoteSessionId}`),
       );
     }
 
@@ -366,14 +358,11 @@ export function createRemoteWorkspaceSessionManager(options: {
         const error = new Error(
           `renderer attachment ready 超时，sessionId=${descriptor.remoteSessionId}`,
         );
-        options.logger.warn(
-          "[window-host-remote] renderer attachment ready timeout",
-          {
-            sessionId: descriptor.remoteSessionId,
-            attachmentId,
-            reason,
-          },
-        );
+        options.logger.warn("[window-host-remote] renderer attachment ready timeout", {
+          sessionId: descriptor.remoteSessionId,
+          attachmentId,
+          reason,
+        });
         reject(error);
       }, options.rendererAttachmentReadyTimeoutMs ?? 15_000);
       timeout.unref?.();
@@ -418,6 +407,8 @@ export function createRemoteWorkspaceSessionManager(options: {
   }
 
   function waitForRendererAttachmentReady(route: RemoteAttachmentRoute): Promise<void> {
+    if (route.firstRendererAttach && !route.connectFinalized)
+      return route.firstRendererAttach.promise;
     if (route.pendingRendererAttachment) {
       return route.pendingRendererAttachment.ready();
     }
@@ -429,6 +420,49 @@ export function createRemoteWorkspaceSessionManager(options: {
         `远程 workspace route 尚无可用 renderer attachment，sessionId=${route.descriptor.remoteSessionId}`,
       ),
     );
+  }
+
+  async function prepareFirstRendererAttachment(
+    child: ElectronUtilityProcess,
+    win: BrowserWindow,
+    route: RemoteAttachmentRoute,
+    initialSync: Promise<void>,
+    reason: string,
+  ): Promise<void> {
+    const descriptor = route.descriptor;
+    const flight = route.firstRendererAttach;
+    const environmentKey = buildRemoteEnvironmentKey(descriptor.target);
+    const assertCurrent = () => {
+      if (
+        routesBySessionId.get(descriptor.remoteSessionId) !== route ||
+        route.descriptor !== descriptor ||
+        route.firstRendererAttach !== flight ||
+        route.attachmentState !== "attachable"
+      )
+        throw new Error("远程 workspace 已关闭，首次 attachment 结果已失效");
+    };
+    // 首连和 mobileOnly 首次桌面采用共享同一准备顺序；Key 不经过 Main，只等待所属 Host ACK。
+    await (codexKeyRotations.get(environmentKey)?.hold ?? Promise.resolve());
+    await initialSync;
+    assertCurrent();
+    await executeProviderProvisioning(
+      child,
+      descriptor.remoteSessionId,
+      environmentKey,
+      "environment-online",
+      "install-runtime-keys",
+    );
+    assertCurrent();
+    await executeProviderProvisioning(
+      child,
+      descriptor.remoteSessionId,
+      environmentKey,
+      "environment-online",
+      "install-codex-runtime-keys",
+    );
+    assertCurrent();
+    await attachRendererPort(win, route, reason);
+    assertCurrent();
   }
 
   function buildWorkspaceContextBindKey(params: {
@@ -469,14 +503,11 @@ export function createRemoteWorkspaceSessionManager(options: {
       !pending ||
       pending.attachmentId !== payload.attachmentId
     ) {
-      options.logger.warn(
-        "[window-host-remote] ignore stale renderer attachment ready",
-        {
-          webContentsId,
-          sessionId: payload.sessionId,
-          attachmentId: payload.attachmentId,
-        },
-      );
+      options.logger.warn("[window-host-remote] ignore stale renderer attachment ready", {
+        webContentsId,
+        sessionId: payload.sessionId,
+        attachmentId: payload.attachmentId,
+      });
       return;
     }
 
@@ -484,20 +515,14 @@ export function createRemoteWorkspaceSessionManager(options: {
     route.pendingRendererAttachment = undefined;
     const child = options.windowHostProcessMap.get(route.webContentsId);
     if (!child || child.pid == null) {
-      pending.reject(
-        new Error(`窗口 Local Host 已退出，sessionId=${payload.sessionId}`),
-      );
+      pending.reject(new Error(`窗口 Local Host 已退出，sessionId=${payload.sessionId}`));
       return;
     }
     route.rendererAttachmentId = pending.attachmentId;
     if (pending.previousAttachmentId) {
       // Host generation bind 会 fail-closed 立即失效 A；Main 仍需等 renderer 注册 B
       // 后再提升 route 并做幂等清理。reload 复挂没有 generation 换代，也因此不会提前拆掉可用旧 port。
-      detachServicePort(
-        child,
-        pending.previousAttachmentId,
-        "candidate-promoted",
-      );
+      detachServicePort(child, pending.previousAttachmentId, "candidate-promoted");
     }
     options.logger.info(
       `[window-host-remote] renderer attachment ready, sessionId=${payload.sessionId}, reason=${pending.reason}`,
@@ -525,6 +550,19 @@ export function createRemoteWorkspaceSessionManager(options: {
     }
   }
 
+  function settleConnectedRequest(
+    pending: PendingConnect,
+    descriptor: WindowHostRemoteWorkspaceDescriptor,
+  ): void {
+    try {
+      pending.onConnected?.(descriptor);
+      pending.resolve(descriptor.remoteSessionId);
+    } catch (error) {
+      // 观察者异常只拒绝自己的 waiter，不能让共享连接悬挂或回收其他 caller 的健康 route。
+      pending.reject(error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+
   function handleConnected(
     child: ElectronUtilityProcess,
     webContentsId: number,
@@ -534,6 +572,8 @@ export function createRemoteWorkspaceSessionManager(options: {
     const key = requestKey(webContentsId, requestId);
     const pending = pendingByRequestKey.get(key);
     if (!pending) {
+      // 旧请求的迟到 join 可能返回新 owner 正在使用的 session；缺 waiter 不授权回收健康 route。
+      if (routesBySessionId.has(descriptor.remoteSessionId)) return;
       child.postMessage({
         type: HostMessageTypes.DisposeRemoteWorkspaceSession,
         requestId: randomUUID(),
@@ -559,17 +599,41 @@ export function createRemoteWorkspaceSessionManager(options: {
         return;
       }
       if (existingRoute.mobileOnly) {
+        const previousTelemetryEligibility = existingRoute.remoteUsageTelemetryEligible;
+        const flight = Promise.withResolvers<void>();
+        existingRoute.firstRendererAttach = flight;
         existingRoute.mobileOnly = false;
         // 手机 scope 没有 renderer ready；桌面采用时重新走唯一的连接提交点。
         existingRoute.connectFinalized = false;
         existingRoute.remoteUsageTelemetryEligible ||= pending.remoteUsageTelemetryEligible;
-        void (existingRoute.providerProvisioningReady ?? Promise.resolve())
-          .then(() => attachRendererPort(pending.win, existingRoute, "desktop-join"))
-          .then(
-            () => pending.resolve(descriptor.remoteSessionId),
-            (error: unknown) =>
-              pending.reject(error instanceof Error ? error : new Error(String(error))),
-          );
+        void flight.promise.then(
+          () => {
+            settleConnectedRequest(pending, descriptor);
+          },
+          (error: unknown) =>
+            pending.reject(error instanceof Error ? error : new Error(String(error))),
+        );
+        void prepareFirstRendererAttachment(
+          child,
+          pending.win,
+          existingRoute,
+          existingRoute.providerProvisioningReady ?? Promise.resolve(),
+          "desktop-join",
+        ).then(flight.resolve, (error: unknown) => {
+          flight.reject(error);
+          // 桌面只拥有本次 candidate；采用失败不能回收手机仍持有的 replayable session。
+          if (
+            routesBySessionId.get(descriptor.remoteSessionId) === existingRoute &&
+            existingRoute.firstRendererAttach === flight &&
+            existingRoute.descriptor.remoteSessionId === descriptor.remoteSessionId &&
+            existingRoute.attachmentState === "attachable"
+          ) {
+            existingRoute.mobileOnly = true;
+            existingRoute.connectFinalized = true;
+            existingRoute.remoteUsageTelemetryEligible = previousTelemetryEligibility;
+            existingRoute.firstRendererAttach = undefined;
+          }
+        });
         return;
       }
       // Bug 原因：显式 conversation bind 与 Source 自动恢复可能 join 到同一个 Host
@@ -583,8 +647,7 @@ export function createRemoteWorkspaceSessionManager(options: {
       }
       void waitForJoinedRouteReady(existingRoute, descriptor).then(
         () => {
-          pending.onConnected?.(descriptor);
-          pending.resolve(descriptor.remoteSessionId);
+          settleConnectedRequest(pending, descriptor);
         },
         (error: unknown) =>
           pending.reject(error instanceof Error ? error : new Error(String(error))),
@@ -592,6 +655,7 @@ export function createRemoteWorkspaceSessionManager(options: {
       return;
     }
     const route: RemoteAttachmentRoute = {
+      firstRendererAttach: Promise.withResolvers<void>(),
       webContentsId,
       descriptor,
       attachmentState: "attachable",
@@ -599,78 +663,57 @@ export function createRemoteWorkspaceSessionManager(options: {
       connectFinalized: false,
       remoteUsageTelemetryEligible: pending.remoteUsageTelemetryEligible,
     };
+    const flight = route.firstRendererAttach!;
+    // 修复原因：route 已可 join 时 provisioning 尚未投递 port，旧 join/bind 会立即报“无 attachment”。
+    // 修复依据：同步登记首挂门禁，再发布 route；所有 caller 只等待同一条 renderer ACK 链。
+    void flight.promise.then(
+      () => {
+        settleConnectedRequest(pending, descriptor);
+      },
+      (error: unknown) => pending.reject(error instanceof Error ? error : new Error(String(error))),
+    );
     routesBySessionId.set(descriptor.remoteSessionId, route);
     const environmentKey = buildRemoteEnvironmentKey(descriptor.target);
     const registration = providerProvisioningCoordinator.register(
       environmentKey,
       descriptor.remoteSessionId,
       (trigger) =>
-        executeProviderProvisioning(
-          child,
-          descriptor.remoteSessionId,
-          environmentKey,
-          trigger,
-        ),
+        executeProviderProvisioning(child, descriptor.remoteSessionId, environmentKey, trigger),
     );
     route.providerProvisioningDispose = registration.dispose;
-    const assertCurrent = (): void => {
-      if (
-        routesBySessionId.get(descriptor.remoteSessionId) !== route ||
-        route.attachmentState !== "attachable"
-      ) {
-        throw new Error("远程 workspace 已关闭，临时 Key 安装结果已失效");
-      }
-    };
     // Codex 临时 Key 轮换期间，新连接必须等屏障解除后再安装/发布 ready，
     // 否则它可能在配置与凭据的中间态拿到旧事实。
-    void (codexKeyRotations.get(environmentKey)?.hold ?? Promise.resolve())
-      .then(() => registration.initialSync)
+    void prepareFirstRendererAttachment(
+      child,
+      pending.win,
+      route,
+      registration.initialSync,
+      "connect",
+    )
       .then(() => {
-        assertCurrent();
-        return executeProviderProvisioning(
-          child,
-          descriptor.remoteSessionId,
-          environmentKey,
-          "environment-online",
-          "install-runtime-keys",
-        );
-      })
-      .then(() => {
-        assertCurrent();
-        // Codex 原生供应商的本机临时 Key：缺凭据以 null 安装（连接可用、该供应商
-        // 模型请求 fail-closed），远端过旧且存在托管引用时在此明确拒绝连接。
-        return executeProviderProvisioning(
-          child,
-          descriptor.remoteSessionId,
-          environmentKey,
-          "environment-online",
-          "install-codex-runtime-keys",
-        );
-      })
-      .then(() => {
-        assertCurrent();
-        return attachRendererPort(pending.win, route, "connect");
-      })
-      .then(() => {
-        assertCurrent();
+        if (
+          routesBySessionId.get(descriptor.remoteSessionId) !== route ||
+          route.firstRendererAttach !== flight ||
+          route.attachmentState !== "attachable"
+        )
+          return;
         emitConnectionLog(pending.win, {
           requestId,
           sessionId: descriptor.remoteSessionId,
           level: "info",
           message: `远程 ${descriptor.target.kind} workspace 已连接`,
         });
-        pending.onConnected?.(descriptor);
-        pending.resolve(descriptor.remoteSessionId);
+        flight.resolve();
       })
       .catch((error: unknown) => {
-        route.providerProvisioningDispose?.();
-        if (routesBySessionId.get(descriptor.remoteSessionId) === route) {
-          routesBySessionId.delete(descriptor.remoteSessionId);
-          child.postMessage({
-            type: HostMessageTypes.DisposeRemoteWorkspaceSession,
-            requestId: randomUUID(),
-            remoteSessionId: descriptor.remoteSessionId,
-          });
+        flight.reject(error instanceof Error ? error : new Error(String(error)));
+        if (
+          routesBySessionId.get(descriptor.remoteSessionId) === route &&
+          route.firstRendererAttach === flight &&
+          route.descriptor.remoteSessionId === descriptor.remoteSessionId &&
+          route.attachmentState === "attachable"
+        ) {
+          disposeRemoteWorkspaceSession(descriptor.remoteSessionId);
         }
         emitConnectionLog(pending.win, {
           requestId,
@@ -678,9 +721,6 @@ export function createRemoteWorkspaceSessionManager(options: {
           level: "error",
           message: error instanceof Error ? error.message : String(error),
         });
-        pending.reject(
-          error instanceof Error ? error : new Error(String(error)),
-        );
       });
   }
 
@@ -703,6 +743,8 @@ export function createRemoteWorkspaceSessionManager(options: {
       return;
     }
     routesBySessionId.delete(previousRemoteSessionId);
+    route.firstRendererAttach?.reject(new Error("远程 workspace 首挂已被 Source 换代取消"));
+    route.firstRendererAttach = undefined;
     route.descriptor = descriptor;
     route.attachmentState = "attachable";
     routesBySessionId.set(descriptor.remoteSessionId, route);
@@ -736,6 +778,12 @@ export function createRemoteWorkspaceSessionManager(options: {
         : attachRendererPort(win, route, "source-server-reconnected")
     )
       .then(() => {
+        if (
+          routesBySessionId.get(descriptor.remoteSessionId) !== route ||
+          route.descriptor !== descriptor ||
+          route.attachmentState !== "attachable"
+        )
+          return;
         if (!descriptor.workspacePath || !descriptor.workspaceIdentity) return;
         // Bug 原因：手机 bridge 换代曾被 await 在 Desktop 关键路径上，手机 attachment
         // 失败会落入外层 catch 并 dispose 已就绪的 Desktop session。Desktop continuous
@@ -768,13 +816,13 @@ export function createRemoteWorkspaceSessionManager(options: {
           });
       })
       .catch((error: unknown) => {
-        route.providerProvisioningDispose?.();
-        routesBySessionId.delete(descriptor.remoteSessionId);
-        child.postMessage({
-          type: HostMessageTypes.DisposeRemoteWorkspaceSession,
-          requestId: randomUUID(),
-          remoteSessionId: descriptor.remoteSessionId,
-        });
+        // renderer ACK 换代失败仅回收自己持有的代际，不能拆掉后续 reconnect 的 route。
+        if (
+          routesBySessionId.get(descriptor.remoteSessionId) === route &&
+          route.descriptor === descriptor &&
+          route.attachmentState === "attachable"
+        )
+          disposeRemoteWorkspaceSession(descriptor.remoteSessionId);
         options.logger.warn("[window-host-remote] Source reconnect attachment failed", {
           previousRemoteSessionId,
           remoteSessionId: descriptor.remoteSessionId,
@@ -831,9 +879,7 @@ export function createRemoteWorkspaceSessionManager(options: {
     }
   >();
 
-  function codexKeyRotationRoutes(
-    environmentKey: string,
-  ): RemoteAttachmentRoute[] {
+  function codexKeyRotationRoutes(environmentKey: string): RemoteAttachmentRoute[] {
     return [...routesBySessionId.values()].filter(
       (route) =>
         route.attachmentState === "attachable" &&
@@ -869,31 +915,20 @@ export function createRemoteWorkspaceSessionManager(options: {
       }
       const results = await Promise.allSettled(
         routes.map((route) =>
-          executeCodexKeyOperation(
-            route,
-            environmentKey,
-            "codex-key-rotation-begin",
-          ),
+          executeCodexKeyOperation(route, environmentKey, "codex-key-rotation-begin"),
         ),
       );
       const failures = results.filter(
-        (result): result is PromiseRejectedResult =>
-          result.status === "rejected",
+        (result): result is PromiseRejectedResult => result.status === "rejected",
       );
       if (failures.length > 0) {
         // 部分连接已进入屏障：用当前事实安装并解除，避免持续 fail-closed。
         await Promise.allSettled(
           routes.map((route) =>
-            executeCodexKeyOperation(
-              route,
-              environmentKey,
-              "install-codex-runtime-keys",
-            ),
+            executeCodexKeyOperation(route, environmentKey, "install-codex-runtime-keys"),
           ),
         );
-        throw new Error(
-          `无法更新供应商 Key：${failures.length} 个远程连接未能停止旧运行时`,
-        );
+        throw new Error(`无法更新供应商 Key：${failures.length} 个远程连接未能停止旧运行时`);
       }
       // begin 成功后才建立 hold；随后 connect 的新连接会等待本 promise。
       let release!: () => void;
@@ -907,11 +942,7 @@ export function createRemoteWorkspaceSessionManager(options: {
     const rotation = codexKeyRotations.get(environmentKey);
     const results = await Promise.allSettled(
       routes.map((route) =>
-        executeCodexKeyOperation(
-          route,
-          environmentKey,
-          "install-codex-runtime-keys",
-        ),
+        executeCodexKeyOperation(route, environmentKey, "install-codex-runtime-keys"),
       ),
     );
     if (rotation) {
@@ -943,9 +974,7 @@ export function createRemoteWorkspaceSessionManager(options: {
       });
     }
     if (failedRoutes.length > 0) {
-      throw new Error(
-        `临时 Key 安装失败，已断开 ${failedRoutes.length} 个连接；重新连接后生效`,
-      );
+      throw new Error(`临时 Key 安装失败，已断开 ${failedRoutes.length} 个连接；重新连接后生效`);
     }
   }
 
@@ -978,6 +1007,18 @@ export function createRemoteWorkspaceSessionManager(options: {
       route.attachmentState === "attachable" &&
       route.connectFinalized;
     mutate();
+    // close/dispose/Host/window 退出不能等待未返回的 provisioning 才结算首挂 caller。
+    route.firstRendererAttach?.reject(new Error(`远程 workspace 已关闭，首挂已终止 (${reason})`));
+    const child = options.windowHostProcessMap.get(route.webContentsId);
+    for (const [requestId, execution] of pendingProviderProvisioningExecutions) {
+      if (
+        execution.child !== child ||
+        execution.remoteSessionId !== route.descriptor.remoteSessionId
+      )
+        continue;
+      pendingProviderProvisioningExecutions.delete(requestId);
+      execution.reject(new Error("远程 workspace 已关闭，Provider Provisioning 结果已失效"));
+    }
     if (!wasActive) return;
 
     const common = {
@@ -991,19 +1032,13 @@ export function createRemoteWorkspaceSessionManager(options: {
       });
     } catch (error) {
       // telemetry 是连接生命周期的旁路，不能因 reporter 异常回滚 route 退出状态。
-      options.logger.warn(
-        "[remote-usage-arms] disconnect gauge reporter failed",
-        { error },
-      );
+      options.logger.warn("[remote-usage-arms] disconnect gauge reporter failed", { error });
     }
     try {
       options.reportRemoteDisconnect?.({
         ...common,
         disconnectReason: reason,
-        durationMs: Math.max(
-          0,
-          Math.round(monotonicNowMs() - route.connectedAtMonotonicMs),
-        ),
+        durationMs: Math.max(0, Math.round(monotonicNowMs() - route.connectedAtMonotonicMs)),
       });
     } catch (error) {
       options.logger.warn("[remote-usage-arms] disconnect reporter failed", {
@@ -1031,20 +1066,12 @@ export function createRemoteWorkspaceSessionManager(options: {
     const route = routesBySessionId.get(event.remoteSessionId);
     if (!route || route.webContentsId !== webContentsId) return;
     const closedChild = options.windowHostProcessMap.get(webContentsId);
-    for (const [
-      requestId,
-      execution,
-    ] of pendingProviderProvisioningExecutions) {
-      if (
-        execution.child !== closedChild ||
-        execution.remoteSessionId !== event.remoteSessionId
-      ) {
+    for (const [requestId, execution] of pendingProviderProvisioningExecutions) {
+      if (execution.child !== closedChild || execution.remoteSessionId !== event.remoteSessionId) {
         continue;
       }
       pendingProviderProvisioningExecutions.delete(requestId);
-      execution.reject(
-        new Error("远程 workspace 已断开，Provider Provisioning 结果已失效"),
-      );
+      execution.reject(new Error("远程 workspace 已断开，Provider Provisioning 结果已失效"));
     }
     if (event.reason !== "connection-closed") {
       route.providerProvisioningDispose?.();
@@ -1209,9 +1236,7 @@ export function createRemoteWorkspaceSessionManager(options: {
         return;
       }
       if (parsed.data.type === HostResponseTypes.RemoteWorkspaceConnectionLog) {
-        const pending = pendingByRequestKey.get(
-          requestKey(webContentsId, parsed.data.requestId),
-        );
+        const pending = pendingByRequestKey.get(requestKey(webContentsId, parsed.data.requestId));
         if (!pending) return;
         // 多个远程连接共享 window Host，不能再从进程 label/stdout 猜日志归属；
         // Host 已带上连接 requestId，Main 只向对应发起窗口做薄转发。
@@ -1222,15 +1247,9 @@ export function createRemoteWorkspaceSessionManager(options: {
         });
         return;
       }
-      if (
-        parsed.data.type === HostResponseTypes.CodexProviderKeyRotationRequest
-      ) {
+      if (parsed.data.type === HostResponseTypes.CodexProviderKeyRotationRequest) {
         const request = parsed.data;
-        void coordinateCodexKeyRotation(
-          child,
-          request.environmentKey,
-          request.phase,
-        )
+        void coordinateCodexKeyRotation(child, request.environmentKey, request.phase)
           .then(() => {
             child.postMessage({
               type: HostMessageTypes.CodexProviderKeyRotationResult,
@@ -1248,9 +1267,7 @@ export function createRemoteWorkspaceSessionManager(options: {
           });
         return;
       }
-      if (
-        parsed.data.type === HostResponseTypes.ProviderProvisioningSourceChanged
-      ) {
+      if (parsed.data.type === HostResponseTypes.ProviderProvisioningSourceChanged) {
         const trigger = parsed.data.trigger;
         void providerProvisioningCoordinator
           .requestAll(trigger)
@@ -1261,9 +1278,7 @@ export function createRemoteWorkspaceSessionManager(options: {
               [...routesBySessionId.values()]
                 .filter((route) => route.attachmentState === "attachable")
                 .map(async (route) => {
-                  const owner = options.windowHostProcessMap.get(
-                    route.webContentsId,
-                  );
+                  const owner = options.windowHostProcessMap.get(route.webContentsId);
                   if (!owner) return;
                   try {
                     await executeProviderProvisioning(
@@ -1291,35 +1306,21 @@ export function createRemoteWorkspaceSessionManager(options: {
             );
           })
           .catch((error: unknown) => {
-            options.logger.warn(
-              "[provider-provisioning] runtime key install failed",
-              { error },
-            );
+            options.logger.warn("[provider-provisioning] runtime key install failed", { error });
           });
         return;
       }
-      if (
-        parsed.data.type ===
-        HostResponseTypes.ProviderProvisioningExecutionResult
-      ) {
-        const pending = pendingProviderProvisioningExecutions.get(
-          parsed.data.requestId,
-        );
+      if (parsed.data.type === HostResponseTypes.ProviderProvisioningExecutionResult) {
+        const pending = pendingProviderProvisioningExecutions.get(parsed.data.requestId);
         if (!pending || pending.child !== child) return;
         pendingProviderProvisioningExecutions.delete(parsed.data.requestId);
         const logContext = {
           environmentKey: parsed.data.environmentKey,
           trigger: pending.trigger,
           status: parsed.data.status,
-          durationMs: Math.max(
-            0,
-            monotonicNowMs() - pending.startedAtMonotonicMs,
-          ),
+          durationMs: Math.max(0, monotonicNowMs() - pending.startedAtMonotonicMs),
         };
-        if (
-          parsed.data.status !== "applied" &&
-          parsed.data.status !== "already-applied"
-        ) {
+        if (parsed.data.status !== "applied" && parsed.data.status !== "already-applied") {
           const errorCode =
             parsed.data.errorCode ??
             (parsed.data.status === "unsupported"
@@ -1327,13 +1328,10 @@ export function createRemoteWorkspaceSessionManager(options: {
               : "target-apply-failed");
           // 首次失败以前在 warning 前返回，连接面板也只剩开始日志，无法区分本地与远端故障。
           // 仅记录经过 schema 校验的阶段码；远端 error 自由文本仍不进入日志或反馈。
-          options.logger.warn(
-            "[provider-provisioning] Environment sync did not apply",
-            {
-              ...logContext,
-              errorCode,
-            },
-          );
+          options.logger.warn("[provider-provisioning] Environment sync did not apply", {
+            ...logContext,
+            errorCode,
+          });
           if (
             pending.trigger === "environment-online" ||
             pending.operation === "install-runtime-keys" ||
@@ -1341,28 +1339,18 @@ export function createRemoteWorkspaceSessionManager(options: {
             pending.operation === "install-codex-runtime-keys"
           ) {
             pending.reject(
-              new Error(
-                `Provider Provisioning 首次同步失败 (${parsed.data.status}; ${errorCode})`,
-              ),
+              new Error(`Provider Provisioning 首次同步失败 (${parsed.data.status}; ${errorCode})`),
             );
             return;
           }
         } else {
-          options.logger.info(
-            "[provider-provisioning] Environment sync completed",
-            logContext,
-          );
+          options.logger.info("[provider-provisioning] Environment sync completed", logContext);
         }
         pending.resolve();
         return;
       }
       if (parsed.data.type === HostResponseTypes.RemoteWorkspaceConnected) {
-        handleConnected(
-          child,
-          webContentsId,
-          parsed.data.requestId,
-          parsed.data.descriptor,
-        );
+        handleConnected(child, webContentsId, parsed.data.requestId, parsed.data.descriptor);
         return;
       }
       if (
@@ -1443,21 +1431,13 @@ export function createRemoteWorkspaceSessionManager(options: {
         codexKeyRotations.delete(environmentKey);
         rotation.release();
         for (const route of codexKeyRotationRoutes(environmentKey)) {
-          void executeCodexKeyOperation(
-            route,
-            environmentKey,
-            "install-codex-runtime-keys",
-          ).catch((installError: unknown) => {
-            options.logger.warn(
-              "[codex-provider-key] release after origin host exit failed",
-              {
-                error:
-                  installError instanceof Error
-                    ? installError.message
-                    : String(installError),
-              },
-            );
-          });
+          void executeCodexKeyOperation(route, environmentKey, "install-codex-runtime-keys").catch(
+            (installError: unknown) => {
+              options.logger.warn("[codex-provider-key] release after origin host exit failed", {
+                error: installError instanceof Error ? installError.message : String(installError),
+              });
+            },
+          );
         }
       }
       for (const [key, pending] of Array.from(pendingByRequestKey)) {
@@ -1515,9 +1495,7 @@ export function createRemoteWorkspaceSessionManager(options: {
     const resolvedRequestId = requestId ?? randomUUID();
     const key = requestKey(win.webContents.id, resolvedRequestId);
     if (pendingByRequestKey.has(key)) {
-      throw new Error(
-        `远程连接 requestId 重复，requestId=${resolvedRequestId}`,
-      );
+      throw new Error(`远程连接 requestId 重复，requestId=${resolvedRequestId}`);
     }
     emitConnectionLog(win, {
       requestId: resolvedRequestId,
@@ -1557,13 +1535,8 @@ export function createRemoteWorkspaceSessionManager(options: {
     if (!route) {
       throw new Error(`未找到远程 workspace session，sessionId=${sessionId}`);
     }
-    if (
-      expectedWebContentsId != null &&
-      route.webContentsId !== expectedWebContentsId
-    ) {
-      throw new Error(
-        `远程 workspace session 不属于当前窗口，sessionId=${sessionId}`,
-      );
+    if (expectedWebContentsId != null && route.webContentsId !== expectedWebContentsId) {
+      throw new Error(`远程 workspace session 不属于当前窗口，sessionId=${sessionId}`);
     }
     const requestedWorkspaceIdentity =
       context.workspaceIdentity?.trim() ||
@@ -1625,14 +1598,20 @@ export function createRemoteWorkspaceSessionManager(options: {
     workspaceIdentity: string;
   }): Promise<BindRemoteWorkspaceSessionContextResult> {
     const { route, sessionId, context, requestedWorkspaceIdentity, workspaceIdentity } = params;
+    if (route.firstRendererAttach && !route.connectFinalized)
+      await route.firstRendererAttach.promise;
+    if (
+      routesBySessionId.get(sessionId) !== route ||
+      route.descriptor.remoteSessionId !== sessionId ||
+      route.attachmentState !== "attachable"
+    )
+      throw new Error("远程 workspace bind scope 已失效");
     const child = options.windowHostProcessMap.get(route.webContentsId);
     const win = BrowserWindow.getAllWindows().find(
       (candidate) => candidate.webContents.id === route.webContentsId,
     );
     if (!child || !win) {
-      throw new Error(
-        `未找到远程 workspace 所属窗口 Host，sessionId=${sessionId}`,
-      );
+      throw new Error(`未找到远程 workspace 所属窗口 Host，sessionId=${sessionId}`);
     }
     const requestId = randomUUID();
     const bindRequestKey = requestKey(route.webContentsId, requestId);
@@ -1716,13 +1695,11 @@ export function createRemoteWorkspaceSessionManager(options: {
     };
   }
 
-  function reattachRemoteWorkspaceSessionsForWindow(
-    win: BrowserWindow,
-    reason: string,
-  ): void {
+  function reattachRemoteWorkspaceSessionsForWindow(win: BrowserWindow, reason: string): void {
     for (const route of routesBySessionId.values()) {
       if (
         !route.mobileOnly &&
+        !(route.firstRendererAttach && !route.connectFinalized) &&
         route.webContentsId === win.webContents.id &&
         route.attachmentState === "attachable"
       ) {
@@ -1747,17 +1724,12 @@ export function createRemoteWorkspaceSessionManager(options: {
     return {
       activeSessionCount: activeRoutes.length,
       activeTargetCount: new Set(
-        activeRoutes.map((route) =>
-          buildRemoteTargetTelemetryKey(route.descriptor.target),
-        ),
+        activeRoutes.map((route) => buildRemoteTargetTelemetryKey(route.descriptor.target)),
       ).size,
     };
   }
 
-  function disposeRemoteWorkspaceSession(
-    sessionId: string,
-    _reason?: string,
-  ): void {
+  function disposeRemoteWorkspaceSession(sessionId: string, _reason?: string): void {
     const route = routesBySessionId.get(sessionId);
     if (!route) return;
     retireActiveRoute(route, "disposed", () => {
@@ -1769,11 +1741,8 @@ export function createRemoteWorkspaceSessionManager(options: {
       const pending = route.pendingRendererAttachment;
       clearTimeout(pending.timeout);
       route.pendingRendererAttachment = undefined;
-      if (child)
-        detachServicePort(child, pending.attachmentId, "session-disposed");
-      pending.reject(
-        new Error(`远程 workspace session 已释放，sessionId=${sessionId}`),
-      );
+      if (child) detachServicePort(child, pending.attachmentId, "session-disposed");
+      pending.reject(new Error(`远程 workspace session 已释放，sessionId=${sessionId}`));
     }
     if (!child) return;
     if (route.rendererAttachmentId) {
@@ -1804,9 +1773,7 @@ export function createRemoteWorkspaceSessionManager(options: {
       route.providerProvisioningDispose?.();
       if (route.pendingRendererAttachment) {
         clearTimeout(route.pendingRendererAttachment.timeout);
-        route.pendingRendererAttachment.reject(
-          new Error("窗口已关闭，attachment 已取消"),
-        );
+        route.pendingRendererAttachment.reject(new Error("窗口已关闭，attachment 已取消"));
       }
     }
     for (const [key, pending] of Array.from(pendingByRequestKey)) {
@@ -1889,9 +1856,7 @@ export function createRemoteWorkspaceSessionManager(options: {
     const route = routesBySessionId.get(params.remoteSessionId);
     if (!route) {
       throw Object.assign(
-        new Error(
-          `未找到远程 workspace session，sessionId=${params.remoteSessionId}`,
-        ),
+        new Error(`未找到远程 workspace session，sessionId=${params.remoteSessionId}`),
         {
           code: "REMOTE_SESSION_MISSING" as const,
         },
@@ -1914,12 +1879,9 @@ export function createRemoteWorkspaceSessionManager(options: {
       descriptor.workspaceIdentity !== params.workspaceIdentity ||
       params.workspaceKey !== params.workspaceIdentity
     ) {
-      throw Object.assign(
-        new Error("远程 workspaceKey 与 logical session 不匹配。"),
-        {
-          code: "REMOTE_WORKSPACE_IDENTITY_MISMATCH" as const,
-        },
-      );
+      throw Object.assign(new Error("远程 workspaceKey 与 logical session 不匹配。"), {
+        code: "REMOTE_WORKSPACE_IDENTITY_MISMATCH" as const,
+      });
     }
     const process = getWindowHost(win);
     const { port1, port2 } = createMessageChannel();

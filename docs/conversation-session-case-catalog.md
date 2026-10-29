@@ -3127,6 +3127,11 @@ old generation resolves late ─────────────────
 | SSH-P0-LIFE-02 | A/B 共享在线 SSH Host                                                                   | 只终止本 case 启动的远端 server，再对 A 手动重连                                                  | Host transport 失败影响同组 workspace；重连一个 workspace 恢复仍打开的同组 workspace                                                                                                                    | A/B 同时 disconnected；本地不受影响；一次新 Host 建连；A/B 使用新且独立 session 恢复，路由不串                                                                                                        | ✅                                                                                                               |
 | SSH-P0-LIFE-03 | 历史关闭 workspace UI 场景                                                              | 旧的入口移除即释放 session 语义已退役                                                             | 当前入口移除沿 SSH-P0-TASK-02；待连请求取消沿 R3A-CON-03/04，runtime owner 仍由聚焦生命周期测试覆盖                                                                                                     | 不把 membership 移除当作 attachment 关闭                                                                                                                                                              | historical                                                                                                       |
 
+SSH-P0-LIFE-01 / GitHub #30 扩展（accepted，pending）：远端原任务处于受控 running，
+完整重启 Electron/Main/Host 后在 attachment 尚未就绪时连续点击原 task。点击前安装
+toast MutationObserver，覆盖瞬时消息；等待恢复后核对原 task/history，释放受控流并续聊。
+不以 renderer reload、最终截图无 toast 或既有冷启动通过记录代替本次执行证据。
+
 SSH-P0-LIFE-01 最终复验：2026-10-12 批次 `r3-server-20261012012923737-60d156` 的
 `coldreconnect` 已通过，覆盖活动 B 自动恢复、A 按需打开及双方原任务续聊。证据见
 [问题 11 最终验证](issues/remote-e2e-stability/11-ssh-credential-missing-after-restart.md)与

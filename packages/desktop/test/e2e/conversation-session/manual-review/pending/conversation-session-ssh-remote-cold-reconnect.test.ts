@@ -4,6 +4,8 @@ import {
   requestRemoteProjectConnection,
 } from "#e2e/helpers/remote-project-actions";
 import { parseRemoteWorkspaceIdentity } from "@codez/shared";
+import { TID_TASK_ITEM, testId } from "@codez/shared/test-ids";
+import { releaseControlledReplay } from "../../../helpers/controlled-replay.js";
 import { clearAppData, readSettings, seedSettings } from "../../../helpers/desktop-app.js";
 import { selectUpstreamProviderModelById } from "../../../helpers/upstream-provider.js";
 import {
@@ -19,6 +21,7 @@ import {
 import {
   prepareSSHConnectionPage,
   readHostProcesses,
+  runSSHCommand,
   readRemoteTabSnapshot,
   waitForRemoteTab,
 } from "../../../helpers/ssh-remote-p0.js";
@@ -33,6 +36,8 @@ import {
   waitForV4ConversationState,
   waitForV4AssistantMessageContaining,
   waitForV4Pane,
+  sendV4Prompt,
+  waitForV4TimelineContaining,
 } from "../../../helpers/v4-conversation.js";
 
 const CASE_MARKER = "E2E_SSH_P0_COLD_RECONNECT";
@@ -91,7 +96,14 @@ describe(`${CASE_MARKER}: SSH cold restart and automatic reconnect`, () => {
       60_000,
     );
     await waitForV4AssistantMessageContaining(taskB.firstReply);
-    await disconnectRemoteSource(sourceId!, CASE_MARKER);
+    // #30：完整 App restart 时远端仍 running，不能用 renderer reload 或已完成历史代替。
+    const runningPrompt = `${CASE_MARKER}_RUNNING_RESTART`;
+    await sendV4Prompt(runningPrompt);
+    await waitForV4TimelineContaining("SSH_COLD_RUNNING");
+    await waitForV4Pane(
+      (snapshot) => snapshot.sessionId === taskB.taskId && snapshot.canStop,
+      `${CASE_MARKER}: restart 前原 task 没有 running`,
+    );
     await browser.waitUntil(
       async () => {
         const settings = await readSettings();
@@ -104,8 +116,47 @@ describe(`${CASE_MARKER}: SSH cold restart and automatic reconnect`, () => {
     );
 
     // browser.reloadSession 才会重启 Electron/Main/Host/CLI；renderer reload 不足以证明冷恢复。
-    await reloadElectronSessionPreservingBrowserProfile(browser);
+    await reloadElectronSessionPreservingBrowserProfile(browser, {
+      afterElectronProcessExit: async () => {
+        const running = await runSSHCommand(
+          prepared.config,
+          '"$HOME/.codez/server/bin/codez" running-tasks --json',
+        );
+        expect(running.code).toBe(0);
+        expect(running.stdout).toContain(taskB.taskId);
+      },
+    });
     await waitForRendererAfterColdRestart(CASE_MARKER);
+    // 从首次点击前观察每次 toast DOM 变动，最终截图不能证明没有瞬时错误。
+    await browser.execute(() => {
+      const observed = { messages: [] as string[], observer: null as MutationObserver | null };
+      const capture = () => {
+        const text = document.getElementById("codez-toast-host")?.textContent?.trim();
+        if (text) observed.messages.push(text);
+      };
+      observed.observer = new MutationObserver(capture);
+      observed.observer.observe(document.body, {
+        subtree: true,
+        childList: true,
+        characterData: true,
+      });
+      (window as unknown as { __issue30Toasts: typeof observed }).__issue30Toasts = observed;
+    });
+    await browser.waitUntil(
+      () =>
+        browser.execute(
+          (taskId) => {
+            const row = document.querySelector<HTMLElement>(`[data-testid="${taskId}"]`);
+            if (!row) return false;
+            row.click();
+            row.click();
+            row.click();
+            return true;
+          },
+          testId(TID_TASK_ITEM, taskB.taskId),
+        ),
+      { timeout: 60_000, timeoutMsg: `${CASE_MARKER}: cold restart 原 task 行未恢复` },
+    );
     // F5：冷启动自动恢复最后活动的 B；A 保留项目入口，稍后按需打开。
     const reconnectedB = await waitForRemoteTab({
       caseMarker: CASE_MARKER,
@@ -130,6 +181,31 @@ describe(`${CASE_MARKER}: SSH cold restart and automatic reconnect`, () => {
     await waitForV4AssistantMessageContaining(taskB.firstReply);
 
     expect((await readRemoteTabSnapshot(taskA.identity)).remoteSessionId).toBeNull();
+    await waitForV4Pane(
+      (snapshot) => snapshot.sessionId === taskB.taskId && snapshot.canStop,
+      `${CASE_MARKER}: restart 后原 running task 未恢复`,
+    );
+    const toasts = await browser.execute(() => {
+      const observed = (
+        window as unknown as {
+          __issue30Toasts: { messages: string[]; observer: MutationObserver };
+        }
+      ).__issue30Toasts;
+      observed.observer.disconnect();
+      return observed.messages;
+    });
+    expect(
+      toasts.filter((text) =>
+        /project\.navigation-cancelled|remote-bind-canceled|尚无可用 renderer attachment|打开任务失败/.test(
+          text,
+        ),
+      ),
+    ).toEqual([]);
+    await releaseControlledReplay("ssh-cold-running");
+    await waitForV4ConversationState(
+      (snapshot) => snapshot.taskId === taskB.taskId && snapshot.state === "idle",
+      `${CASE_MARKER}: 释放流后原 task 没有完成`,
+    );
     await openWorkspaceDraftFromSidebar(workspaceA);
     const reconnectedA = await waitForRemoteTab({
       caseMarker: CASE_MARKER,
