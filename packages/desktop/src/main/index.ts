@@ -803,11 +803,6 @@ function wakeOffPeakScheduler(offPeakTaskId?: string): void {
   // 复用同一条 scheduler-wake 通道（tick 同时覆盖 cron 与 off-peak 分支），仅日志标签区分。
   cronScheduler?.wake(`offpeak:${offPeakTaskId ?? "sync"}`);
 }
-// 选一个本地 host 执行派发：本期本地 workspace 由任一本地窗口 host 的 createTask 按 path 拉起/复用 agent。
-function resolveCronDispatchHost(): ElectronUtilityProcess | null {
-  const first = windowHostProcessMap.values().next();
-  return first.done ? null : first.value;
-}
 const disposingHostProcessTimers = new WeakMap<
   ElectronUtilityProcess,
   ReturnType<typeof setTimeout>
@@ -2283,7 +2278,7 @@ app.whenReady().then(async () => {
       cronScheduler = spawnCronScheduler({
         hostProcessLocalEnv,
         logger,
-        resolveDispatchHost: resolveCronDispatchHost,
+        resolveDispatchHost: (target) => remoteSessionManager.resolveDispatchHost(target),
         // keep-awake 已改为纯设置驱动；计数上报保留给后续诊断/配额用途，不再联动 blocker。
         onOffPeakActiveCountChanged: () => {},
       });

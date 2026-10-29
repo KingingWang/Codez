@@ -19,7 +19,13 @@ export async function resolveAutomationSubmissionModelSelection(params: {
       selection,
       ...(params.workspace ? { workspace: params.workspace } : {}),
     });
-    if (view.selectionIssue || !view.effectiveSelection?.options?.reasoningLevel) {
+    // 原因：合法 Codex 自定义默认值可没有 effort；Host 的有效身份才是派发依据，
+    // 强制档位会让 GUI 已保存的稀疏模型在首次触发时失败，且不能伪造原生默认档位。
+    if (
+      view.selectionIssue ||
+      !view.effectiveSelection?.providerId.trim() ||
+      !view.effectiveSelection.modelId.trim()
+    ) {
       throw new Error("Automation 模型选择不可用，请重新选择模型与思考档位");
     }
     return view.effectiveSelection;
@@ -30,7 +36,7 @@ export async function resolveAutomationSubmissionModelSelection(params: {
       params.workspace ? { selection: null, workspace: params.workspace } : undefined,
     )
   ).preferredSelection;
-  if (!preferredSelection?.options?.reasoningLevel) {
+  if (!preferredSelection?.providerId.trim() || !preferredSelection.modelId.trim()) {
     throw new Error("Automation 无法从目标 Host 解析首选模型");
   }
   return preferredSelection;

@@ -129,7 +129,10 @@ import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
 import { useAutomationProjectOptions } from "@/hooks/useAutomationProjectOptions.js";
 import { useWorkspaceServicesResolution } from "@/hooks/useWorkspaceServices.js";
-import { useModelSelectionServiceView } from "@/hooks/useModelSelectionView.js";
+import {
+  attachWorkspaceToModelSelectionInput,
+  useModelSelectionServiceView,
+} from "@/hooks/useModelSelectionView.js";
 import { resolveModelThoughtOption } from "@/lib/modelThoughtOption.js";
 import { decodeCustomModelValue, encodeCustomModelValue } from "@/lib/codezCustomModelValue.js";
 import { parseModelPickerValue } from "@/lib/codezSessionProjection.js";
@@ -1449,18 +1452,26 @@ export function AutomationEditView({
       : null;
   }, [model, thoughtLevel]);
   // 模型候选属于当前表单目标 Host。项目切换时立即切换订阅；远程目标未连接时
-  // 等待远端时保持 unavailable；本地空项目直接读取同 Host 模型目录，不创建假 cwd。
+  // 等待远端时保持 unavailable；空本地项目保留 legacy 全局目录读取，Codex 不创建假 cwd。
   const selectionOwner = useWorkspaceServicesResolution(
     selectedWorkspacePath || null,
     selectedWorkspace?.remoteSessionId,
     selectedWorkspaceIdentity,
     selectedWorkspace?.remoteTarget,
   );
+  // 原因：原调用只传 selection，Codex Host 缺 workspace 按合同返回空目录。
+  // 复用 hook 的唯一入参注入，保留 legacy 空项目目录读取，不伪造 Codex cwd；
+  // workspace 事件必须先过滤身份，再比较各自独立的 revision。
   const modelSelectionRead = useModelSelectionServiceView(
     selectionOwner.services.modelSelectionService,
     Boolean(selectedWorkspace) && selectionOwner.connectionKind !== "remote-waiting",
     selectedWorkspace ? "remote-waiting" : "missing-target",
-    { selection: originalSelection },
+    attachWorkspaceToModelSelectionInput(
+      { selection: originalSelection },
+      selectedWorkspacePath,
+      selectedWorkspaceIdentity,
+    ),
+    selectedWorkspaceIdentity?.trim() || selectedWorkspacePath || undefined,
   );
   const modelSelectionView =
     modelSelectionRead.state.status === "ready" ? modelSelectionRead.state.view : null;

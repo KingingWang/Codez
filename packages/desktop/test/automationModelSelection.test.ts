@@ -68,8 +68,12 @@ describe("resolveAutomationSubmissionModelSelection", () => {
     expect(getView).not.toHaveBeenCalled();
   });
 
-  it("有效选择缺模型或档位时拒绝固定，不回退 preferredSelection", async () => {
-    for (const effectiveSelection of [null, { providerId: "current", modelId: "model" }]) {
+  it("无效模型或显式档位错误时拒绝固定，不回退 preferredSelection", async () => {
+    for (const effectiveSelection of [
+      null,
+      { providerId: "current", modelId: "" },
+      { providerId: "", modelId: "model" },
+    ]) {
       await expect(
         resolveAutomationSubmissionModelSelection({
           selection: { providerId: "old", modelId: "model" },
@@ -88,6 +92,45 @@ describe("resolveAutomationSubmissionModelSelection", () => {
         }),
       ).rejects.toThrow("Automation 模型选择不可用");
     }
+  });
+
+  it.each(["explicit", "preferred"] as const)(
+    "合法的 %s 自定义默认模型没有思考档位时原样固定",
+    async (kind) => {
+      const sparse = { providerId: "codex-custom", modelId: "configured-model" };
+      const getView = vi.fn().mockResolvedValue({
+        revision: 1,
+        providers: [],
+        effectiveSelection: sparse,
+        preferredSelection: sparse,
+      });
+      const workspace = { workspacePath: "/project", workspaceIdentity: "identity" };
+      await expect(
+        resolveAutomationSubmissionModelSelection({
+          ...(kind === "explicit" ? { selection: sparse } : {}),
+          modelSelectionService: { getView },
+          workspace,
+        }),
+      ).resolves.toEqual(sparse);
+      expect(getView).toHaveBeenCalledWith({
+        selection: kind === "explicit" ? sparse : null,
+        workspace,
+      });
+    },
+  );
+
+  it("Host 报告不支持显式思考档位时拒绝，不能抹掉错误继续派发", async () => {
+    await expect(
+      resolveAutomationSubmissionModelSelection({
+        selection: { providerId: "p", modelId: "m", options: { reasoningLevel: "invalid" } },
+        modelSelectionService: {
+          getView: vi.fn().mockResolvedValue({
+            effectiveSelection: { providerId: "p", modelId: "m" },
+            selectionIssue: "reasoning-level-not-supported",
+          }),
+        },
+      }),
+    ).rejects.toThrow("Automation 模型选择不可用");
   });
 
   it("跟随 Workspace 时在触发边界固定目标 Host preferredSelection", async () => {

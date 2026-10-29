@@ -11,6 +11,7 @@ import {
   HostMessageTypes,
   HostResponseTypes,
   hostResponseMessageSchema,
+  isRemoteWorkspaceIdentity,
   InternalChannels,
   PlatformChannels,
   REMOTE_BIND_CANCELED_ERROR_CODE,
@@ -73,6 +74,8 @@ interface RemoteAttachmentRoute {
   /** 首次桌面采用的唯一门禁，发布 route 前登记，覆盖 key 安装到 renderer ACK。 */
   firstRendererAttach?: PromiseWithResolvers<void>;
   webContentsId: number;
+  /** 端口所属进程；窗口 Host 换代后旧 attachment 不能被新进程冒用。 */
+  child: ElectronUtilityProcess;
   // Main 只保留端口转发所需的 request/session 关联和脱敏 descriptor；连接/任务事实归 Host。
   descriptor: WindowHostRemoteWorkspaceDescriptor;
   rendererAttachmentId?: string;
@@ -657,6 +660,7 @@ export function createRemoteWorkspaceSessionManager(options: {
     const route: RemoteAttachmentRoute = {
       firstRendererAttach: Promise.withResolvers<void>(),
       webContentsId,
+      child,
       descriptor,
       attachmentState: "attachable",
       connectedAtMonotonicMs: monotonicNowMs(),
@@ -1200,6 +1204,7 @@ export function createRemoteWorkspaceSessionManager(options: {
     }
     const route: RemoteAttachmentRoute = {
       webContentsId,
+      child,
       descriptor,
       mobileOnly: true,
       attachmentState: "attachable",
@@ -1841,6 +1846,42 @@ export function createRemoteWorkspaceSessionManager(options: {
     );
   }
 
+  function resolveDispatchHost(target: {
+    workspacePath: string;
+    workspaceIdentity?: string;
+    hostId?: string;
+  }): ElectronUtilityProcess | null {
+    if (appShutdownStarted) return null;
+    const identity = target.workspaceIdentity?.trim();
+    const remote = Boolean(
+      (identity && isRemoteWorkspaceIdentity(identity)) ||
+      (target.hostId && target.hostId !== "local"),
+    );
+    if (!remote) {
+      for (const child of options.windowHostProcessMap.values()) {
+        if (child.pid != null) return child;
+      }
+      return null;
+    }
+    // 原因：任取首窗口 Host 无法访问第二窗口独占的远端连接。
+    // 只用已有 attachment 的完整身份和进程所有者路由，不猜路径，也不回落本机。
+    if (!identity) return null;
+    const workspaceKey = resolveWorkspaceKey(target);
+    for (const route of routesBySessionId.values()) {
+      if (
+        route.attachmentState !== "attachable" ||
+        resolveWorkspaceKey({
+          workspacePath: route.descriptor.workspacePath ?? "",
+          workspaceIdentity: route.descriptor.workspaceIdentity,
+        }) !== workspaceKey
+      )
+        continue;
+      const child = options.windowHostProcessMap.get(route.webContentsId);
+      if (child === route.child && child.pid != null) return child;
+    }
+    return null;
+  }
+
   function attachRemoteWorkspaceSessionHost(params: {
     windowId: number;
     remoteSessionId: string;
@@ -1931,6 +1972,7 @@ export function createRemoteWorkspaceSessionManager(options: {
   }
 
   return {
+    resolveDispatchHost,
     prepareProjectWorkspace,
     createRemoteWorkspaceSession,
     attachRemoteWorkspaceSessionHost,

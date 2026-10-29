@@ -103,6 +103,16 @@ jobs:
           packages/ui/src/CurrentWorkspaceConcurrencyHint.test.ts
           packages/ui/src/CreateWorktreeDialog.test.tsx
           packages/ui/src/hooks/useWorktreeCreation.test.ts
+      - name: Scheduled prompt admission, window routing and scheduler recovery regressions (Linux once)
+        run: >-
+          pnpm exec vitest run
+          packages/desktop/test/automationModelSelection.test.ts
+          packages/desktop/test/cronHostSessionCreateTelemetry.test.ts
+          packages/desktop/test/desktopCronScheduler.test.ts
+          packages/desktop/test/desktopRemoteSessions.test.ts
+          packages/ui/test/automationEditSessionCreatedDirtyState.test.ts
+      - name: Automation model loading, workspace switching and sparse-default submission browser regression
+        run: node packages/ui/src/settings/codex/qa/automation-model-read-e2e.mjs
       - name: Assemble four remote targets without compiling Codex
         run: node scripts/codex-runtime-remote-assets.mjs
       - name: Assemble Source Server release

@@ -29,7 +29,14 @@ const stableHookValues = vi.hoisted(() => ({
   }>,
   selectRegistrations: 0,
   effectiveSelection: undefined as ModelSelection | null | undefined,
-  selectionInputs: [] as Array<{ selection: ModelSelection | null } | undefined>,
+  selectionInputs: [] as Array<
+    | {
+        selection: ModelSelection | null;
+        workspace?: { workspacePath: string; workspaceIdentity?: string };
+      }
+    | undefined
+  >,
+  eventWorkspaceKeys: [] as Array<string | undefined>,
   locale: "zh-CN" as "zh-CN" | "en-US",
   services: { codezAgentService: {} },
 }));
@@ -192,14 +199,21 @@ vi.mock("@/hooks/useWorkspaceServices.js", () => ({
     return { connectionKind: "local", services: stableHookValues.services };
   },
 }));
-vi.mock("@/hooks/useModelSelectionView.js", () => ({
+vi.mock("@/hooks/useModelSelectionView.js", async (importOriginal) => ({
+  // 入参注入是生产纯函数；不能由整体 hook mock 吞掉 workspace 合同。
+  ...(await importOriginal<typeof import("@/hooks/useModelSelectionView.js")>()),
   useModelSelectionServiceView: (
     _service: unknown,
     _enabled: boolean,
     _reason: string,
-    input?: { selection: ModelSelection | null },
+    input?: {
+      selection: ModelSelection | null;
+      workspace?: { workspacePath: string; workspaceIdentity?: string };
+    },
+    eventWorkspaceKey?: string,
   ) => {
     stableHookValues.selectionInputs.push(input);
+    stableHookValues.eventWorkspaceKeys.push(eventWorkspaceKey);
     return {
       state: stableHookValues.modelSelectionView
         ? {
@@ -319,6 +333,7 @@ beforeEach(() => {
   stableHookValues.modelSelectionTargets.length = 0;
   stableHookValues.effectiveSelection = undefined;
   stableHookValues.selectionInputs.length = 0;
+  stableHookValues.eventWorkspaceKeys.length = 0;
   Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
     configurable: true,
     value: vi.fn(),
@@ -347,7 +362,10 @@ describe("AutomationEditView session-created dirty state", () => {
       }),
     );
     await waitFor(() =>
-      expect(stableHookValues.selectionInputs.at(-1)).toEqual({ selection: original }),
+      expect(stableHookValues.selectionInputs.at(-1)).toEqual({
+        selection: original,
+        workspace: { workspacePath: "/workspace" },
+      }),
     );
     expect(screen.getByTestId("automation-model-trigger-label").textContent).toBe(
       "DeepSeek Provider/deepseek-v4-flash",
@@ -466,6 +484,11 @@ describe("AutomationEditView session-created dirty state", () => {
         workspaceIdentity: "ssh:server:/remote/project",
         remoteTarget: { type: "ssh", host: "server" },
       });
+      expect(stableHookValues.selectionInputs.at(-1)?.workspace).toEqual({
+        workspacePath: "/remote/project",
+        workspaceIdentity: "ssh:server:/remote/project",
+      });
+      expect(stableHookValues.eventWorkspaceKeys.at(-1)).toBe("ssh:server:/remote/project");
     });
   });
 

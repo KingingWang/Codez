@@ -79,6 +79,52 @@ Changing projects invalidates the previous model selection and view; a late resp
 
 The native model view may provide a configured custom default absent from discovery and without any reasoning level. A valid effective model from the Host is sufficient to create or save even if the menu has no matching catalog item; the form carries its sparse `modelSelection` unchanged and lets Codex use its native reasoning default. No UI-only catalog-item or required-effort gate may disagree with the visible default-model label. Workspace changes still invalidate the old Host view and must not make the new form submit-ready until the new workspace has a valid effective model.
 
+## Dispatch readiness and process recovery
+
+The form reuses the model hook's shared workspace-input helper with its selected
+Host subscription; it must not send an unscoped read when a workspace exists.
+Workspace identity filters change events before revision comparison. A selected
+empty local project preserves the legacy Host-global catalog read; Codex's
+unscoped empty view does not authorize a fabricated cwd or another project's
+defaults. An unavailable remote target never falls back to another Host's models.
+
+At submission, the target Host's `selectionIssue` and concrete provider/model identity
+decide validity. A valid sparse selection without reasoning effort is preserved in
+both the definition and the fixed run selection; dispatch does not invent or require
+an effort. Invalid models or explicitly unsupported efforts remain rejected.
+
+The Host's in-memory runId guard covers the complete dispatch, including target,
+capability, model and ledger reads. Every exit releases this guard. Before native-send
+evidence, a transient failure may retry the same runId; releasing the guard never
+authorizes resending a prepared, accepted, unknown or terminal native command.
+The existing persistent correlation ledger remains the sole resend authority.
+
+Main routes a remote dispatch by the complete workspace identity to an attachable
+route's current window Host, using the existing remote attachment registry. Missing,
+closed or replaced routes fail transiently without selecting an arbitrary local Host.
+Local dispatch uses an available local window Host. This introduces no task/session
+state in Main and does not create a new remote Host or mobile Agent.
+
+The Main scheduler handle owns exactly one live scheduler child or one pending
+restart timer. Unexpected exit or fork failure restarts with bounded exponential
+backoff (1 second initially, 30 seconds maximum). After a stable 60-second child
+lifetime the next failure starts at the initial delay. Events from an old child
+cannot affect its replacement. Shutdown cancels restart and waits only for the
+current child; repeated disposal is idempotent. Recovery reads the existing SQLite
+claims and native correlations; Main does not buffer or replay business messages.
+Desktop continuous and mobile replayable delivery semantics are unchanged.
+
+```text
+form → workspace-scoped model hook → target Host model view → sparse/explicit selection
+scheduler → stable runId → Main attachment route → owning window Host
+  → acquire guard → target/capability/model/ledger → native correlation → send/ACK
+  → finally release guard (also on pre-send failure)
+
+scheduler child exits → Main retires child → one backoff timer → replacement child
+  → existing SQLite claim/correlation recovery (no alternate queue or blind resend)
+app shutdown → cancel timer → dispose current child → no restart
+```
+
 ## Acceptance scenarios
 
 1. Migration `0004` succeeds on old/new databases, is idempotent, and enforces `(workspaceKey, runId)` uniqueness.
@@ -96,3 +142,18 @@ The native model view may provide a configured custom default absent from discov
 13. Replayed, duplicate or late terminal events cannot overwrite an already settled result, particularly Stopped. A running or not-yet-terminal native turn stays unresolved during reconciliation; no ACK or connectivity loss alone may fabricate Stopped.
 14. Fresh and existing databases accept the new `stopped` correlation terminal after migration `0005`; preexisting rows remain unchanged and repeated migrations are idempotent.
 15. A requested run terminal (success, failure or interruption) in the first history page resolves after one read even when `hasMore` is true; no older page is requested. Unrelated terminal turns, matching user input and running turns do not authorize this shortcut, and existing pagination/error cases remain unchanged.
+16. The real form supplies its selected workspace to every model read. Loading,
+    failure/retry, project switching and sparse-default submission are exercised
+    without accepting an unscoped fixture view; no workspace-default write occurs.
+17. A sparse configured custom model resolves, fixes and dispatches without an
+    invented effort. An invalid model or unsupported explicit effort is rejected.
+18. Target, capability, model or ledger read failure releases the Host runId guard;
+    recovery can retry the same runId. A concurrent duplicate remains rejected,
+    and native-send evidence still prevents a second native command.
+19. With a remote attachment only in the second window, dispatch resolves that
+    window Host. Same-path other identities, closed routes, retired Hosts and
+    disconnected remote workspaces do not authorize local fallback.
+20. Unexpected scheduler exit and initial/repeated fork failure recover through
+    one backoff timer. The replacement forwards dispatch/wake/results, stale-child
+    events are ignored, stable uptime resets backoff, and shutdown during backoff
+    or child lifetime never respawns.

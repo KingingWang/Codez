@@ -1229,206 +1229,213 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
     throw new Error(`Codex automation run is already dispatching: ${request.runId}`);
   }
   codexAutomationRunInFlight.add(request.runId);
-  const targetServices = resolveAutomationTargetServices(request);
-  const agentService = targetServices.getOptional(ICodezAgentService);
-  if (!agentService) {
-    throw new Error("Codez agent service is not initialized.");
-  }
-  await assertCodexScheduledPromptCapability(agentService);
-  const codezTaskService = targetServices.getOptional(ICodezTaskService);
-  if (!codezTaskService) {
-    throw new Error("Codez task service is not initialized.");
-  }
-  const modelSelectionService = targetServices.getOptional(IModelSelectionService);
-  if (!modelSelectionService) {
-    throw new Error("目标 Host Model Selection service is not initialized.");
-  }
-  // 长期配置是原意图；首次派发在目标 Host 解析后固定。已有 run 必须直接复用，
-  // 不能因账号变化或本次 Registry 读取失败重新解释历史执行选择。
-  const existingRun = await cronAutomationRepo.getRun(request.runId);
-  const resolvedSubmissionModelSelection = await resolveAutomationSubmissionModelSelection({
-    selection: request.modelSelection,
-    fixedSelection: existingRun?.modelSelection,
-    modelSelectionService,
-    workspace: {
-      workspacePath: request.workspacePath,
-      ...(request.workspaceIdentity ? { workspaceIdentity: request.workspaceIdentity } : {}),
-    },
-    // Repo 已在读取前完成离线导入；不再为迁移绕行 Agent/账号服务。
-    // 未迁入或损坏的新值仍由此入口明确拒绝，不能当成跟随 Workspace。
-    readSelection: () =>
-      cronAutomationRepo.getModelSelectionForDispatch(
-        request.automationId,
-        resolveWorkspaceKey(request),
-      ),
-  });
-  const submissionModelSelection = await cronAutomationRepo.fixRunModelSelection(
-    request.runId,
-    resolvedSubmissionModelSelection,
-  );
-  let trackedKey: string | null = null;
-  const workspaceKey = resolveWorkspaceKey(request);
-  const trigger = request.runId.includes(":manual:") ? "manual" : "schedule";
-  const scheduledAt = parseCronRunScheduledAt(request.runId, request.automationId);
-  let correlationPrepared = false;
+  // 原因：target/capability/model/Repo 首读曾位于 finally 外，临时失败留下 runId 锁，
+  // 后续同轮重试永久被挡住。guard 覆盖整个派发；原生是否可重发仍只由 correlation 决定。
   try {
-    const existingCorrelation = await cronAutomationRepo.getCodexAutomationCorrelation({
-      workspaceKey,
-      runId: request.runId,
-    });
-    if (existingCorrelation) {
-      return await dispatchExistingCronRunCorrelation({
-        codezTaskService,
-        agentService,
+    const targetServices = resolveAutomationTargetServices(request);
+    const agentService = targetServices.getOptional(ICodezAgentService);
+    if (!agentService) {
+      throw new Error("Codez agent service is not initialized.");
+    }
+    await assertCodexScheduledPromptCapability(agentService);
+    const codezTaskService = targetServices.getOptional(ICodezTaskService);
+    if (!codezTaskService) {
+      throw new Error("Codez task service is not initialized.");
+    }
+    const modelSelectionService = targetServices.getOptional(IModelSelectionService);
+    if (!modelSelectionService) {
+      throw new Error("目标 Host Model Selection service is not initialized.");
+    }
+    // 长期配置是原意图；首次派发在目标 Host 解析后固定。已有 run 必须直接复用，
+    // 不能因账号变化或本次 Registry 读取失败重新解释历史执行选择。
+    const existingRun = await cronAutomationRepo.getRun(request.runId);
+    const resolvedSubmissionModelSelection = await resolveAutomationSubmissionModelSelection({
+      selection: request.modelSelection,
+      fixedSelection: existingRun?.modelSelection,
+      modelSelectionService,
+      workspace: {
         workspacePath: request.workspacePath,
         ...(request.workspaceIdentity ? { workspaceIdentity: request.workspaceIdentity } : {}),
+      },
+      // Repo 已在读取前完成离线导入；不再为迁移绕行 Agent/账号服务。
+      // 未迁入或损坏的新值仍由此入口明确拒绝，不能当成跟随 Workspace。
+      readSelection: () =>
+        cronAutomationRepo.getModelSelectionForDispatch(
+          request.automationId,
+          resolveWorkspaceKey(request),
+        ),
+    });
+    const submissionModelSelection = await cronAutomationRepo.fixRunModelSelection(
+      request.runId,
+      resolvedSubmissionModelSelection,
+    );
+    let trackedKey: string | null = null;
+    const workspaceKey = resolveWorkspaceKey(request);
+    const trigger = request.runId.includes(":manual:") ? "manual" : "schedule";
+    const scheduledAt = parseCronRunScheduledAt(request.runId, request.automationId);
+    let correlationPrepared = false;
+    try {
+      const existingCorrelation = await cronAutomationRepo.getCodexAutomationCorrelation({
         workspaceKey,
         runId: request.runId,
-        automationId: request.automationId,
-        scheduledAt,
-        trigger,
       });
-    }
-    const task = request.targetTaskId
-      ? { taskId: request.targetTaskId }
-      : await codezTaskService.createTask({
-          projectId: request.projectId,
+      if (existingCorrelation) {
+        return await dispatchExistingCronRunCorrelation({
+          codezTaskService,
+          agentService,
+          workspacePath: request.workspacePath,
+          ...(request.workspaceIdentity ? { workspaceIdentity: request.workspaceIdentity } : {}),
+          workspaceKey,
+          runId: request.runId,
+          automationId: request.automationId,
+          scheduledAt,
+          trigger,
+        });
+      }
+      const task = request.targetTaskId
+        ? { taskId: request.targetTaskId }
+        : await codezTaskService.createTask({
+            projectId: request.projectId,
+            workspacePath: request.workspacePath,
+            workspaceIdentity: request.workspaceIdentity,
+            additionalDirectories: request.additionalDirectories,
+            model: formatModelPickerValue(submissionModelSelection),
+            mode: request.mode,
+            thoughtLevel: submissionModelSelection.options?.reasoningLevel,
+            automationId: request.automationId,
+          });
+      // 未绑定会话时不能沿用 createTask 的 session trace 作为首条 prompt trace：
+      // CLI 无法从 inputId 还原 manual/schedule admission。
+      // 建会话 trace 与执行 runId 是两种身份；两条派发路径的 prompt 都必须统一使用 runId。
+      const promptTraceId = request.runId as TraceId;
+      if (request.targetTaskId) {
+        // 绑定会话在 app 重启或切换 workspace 后通常不处于 active；旧实现直接
+        // setConfig/sendPrompt 会立即报 Session is not active，看起来像「立即运行」没有触发。
+        await codezTaskService.resumeTask({
+          taskId: task.taskId,
           workspacePath: request.workspacePath,
           workspaceIdentity: request.workspaceIdentity,
           additionalDirectories: request.additionalDirectories,
           model: formatModelPickerValue(submissionModelSelection),
-          mode: request.mode,
           thoughtLevel: submissionModelSelection.options?.reasoningLevel,
           automationId: request.automationId,
         });
-    // 未绑定会话时不能沿用 createTask 的 session trace 作为首条 prompt trace：
-    // CLI 无法从 inputId 还原 manual/schedule admission。
-    // 建会话 trace 与执行 runId 是两种身份；两条派发路径的 prompt 都必须统一使用 runId。
-    const promptTraceId = request.runId as TraceId;
-    if (request.targetTaskId) {
-      // 绑定会话在 app 重启或切换 workspace 后通常不处于 active；旧实现直接
-      // setConfig/sendPrompt 会立即报 Session is not active，看起来像「立即运行」没有触发。
-      await codezTaskService.resumeTask({
-        taskId: task.taskId,
-        workspacePath: request.workspacePath,
-        workspaceIdentity: request.workspaceIdentity,
-        additionalDirectories: request.additionalDirectories,
-        model: formatModelPickerValue(submissionModelSelection),
-        thoughtLevel: submissionModelSelection.options?.reasoningLevel,
-        automationId: request.automationId,
-      });
-      await applyCronRunConfigToExistingTask({
-        codezTaskService,
-        taskId: task.taskId,
-        traceId: promptTraceId,
-        modelSelection: submissionModelSelection,
-        mode: request.mode,
-      });
-    }
-    const botsService = targetServices.getOptional(IBotsService);
-    if (botsService) {
-      try {
-        await watchCronRunBotDelivery({
-          automationId: request.automationId,
-          runId: promptTraceId,
-          workspaceKey,
-          workspacePath: request.workspacePath,
-          ...(request.workspaceIdentity ? { workspaceIdentity: request.workspaceIdentity } : {}),
+        await applyCronRunConfigToExistingTask({
+          codezTaskService,
           taskId: task.taskId,
-          repo: cronAutomationRepo,
-          botsService,
+          traceId: promptTraceId,
+          modelSelection: submissionModelSelection,
+          mode: request.mode,
         });
-      } catch (error) {
-        // Bot 回推是 best-effort 辅助通道；配置/凭据/订阅失败不能阻断 automation 派发与结算。
-        logger.warn(
-          `automation Bot delivery subscription failed automation=${request.automationId} provider=unknown`,
-          error,
-        );
       }
-    }
-    trackedKey = cronRunSubscriptionKey(task.taskId, promptTraceId);
-    const prepared = await cronAutomationRepo.prepareCodexAutomationCorrelation({
-      workspaceKey,
-      runId: request.runId,
-      automationId: request.automationId,
-      threadId: task.taskId,
-    });
-    correlationPrepared = prepared.created;
-    if (!prepared.created) {
-      return await dispatchExistingCronRunCorrelation({
-        codezTaskService,
-        agentService,
-        workspacePath: request.workspacePath,
-        ...(request.workspaceIdentity ? { workspaceIdentity: request.workspaceIdentity } : {}),
+      const botsService = targetServices.getOptional(IBotsService);
+      if (botsService) {
+        try {
+          await watchCronRunBotDelivery({
+            automationId: request.automationId,
+            runId: promptTraceId,
+            workspaceKey,
+            workspacePath: request.workspacePath,
+            ...(request.workspaceIdentity ? { workspaceIdentity: request.workspaceIdentity } : {}),
+            taskId: task.taskId,
+            repo: cronAutomationRepo,
+            botsService,
+          });
+        } catch (error) {
+          // Bot 回推是 best-effort 辅助通道；配置/凭据/订阅失败不能阻断 automation 派发与结算。
+          logger.warn(
+            `automation Bot delivery subscription failed automation=${request.automationId} provider=unknown`,
+            error,
+          );
+        }
+      }
+      trackedKey = cronRunSubscriptionKey(task.taskId, promptTraceId);
+      const prepared = await cronAutomationRepo.prepareCodexAutomationCorrelation({
         workspaceKey,
         runId: request.runId,
         automationId: request.automationId,
+        threadId: task.taskId,
+      });
+      correlationPrepared = prepared.created;
+      if (!prepared.created) {
+        return await dispatchExistingCronRunCorrelation({
+          codezTaskService,
+          agentService,
+          workspacePath: request.workspacePath,
+          ...(request.workspaceIdentity ? { workspaceIdentity: request.workspaceIdentity } : {}),
+          workspaceKey,
+          runId: request.runId,
+          automationId: request.automationId,
+          scheduledAt,
+          trigger,
+        });
+      }
+      trackCronRunOutcome({
+        codezTaskService,
+        taskId: task.taskId,
+        traceId: promptTraceId,
+        workspacePath: request.workspacePath,
+        workspaceIdentity: request.workspaceIdentity,
+        runId: request.runId,
+        automationId: request.automationId,
+        workspaceKey,
         scheduledAt,
         trigger,
       });
-    }
-    trackCronRunOutcome({
-      codezTaskService,
-      taskId: task.taskId,
-      traceId: promptTraceId,
-      workspacePath: request.workspacePath,
-      workspaceIdentity: request.workspaceIdentity,
-      runId: request.runId,
-      automationId: request.automationId,
-      workspaceKey,
-      scheduledAt,
-      trigger,
-    });
-    await codezTaskService.sendPrompt({
-      taskId: task.taskId,
-      traceId: promptTraceId,
-      content: request.prompt,
-      clientMode: "desktop-continuous",
-      automationId: request.automationId,
-      modelSelection: submissionModelSelection,
-    });
-    await cronAutomationRepo.transitionCodexAutomationCorrelation({
-      workspaceKey,
-      runId: request.runId,
-      to: "accepted",
-      threadId: task.taskId,
-      now: Date.now(),
-    });
-    // prompt 创建的定时任务带 targetTaskId，追加原会话不能计成 session_create。
-    if (!request.targetTaskId) {
-      reportHostSessionCreate(parentPort, {
-        sessionId: task.taskId,
-        messageId: promptTraceId,
-        source: "automation_scheduled",
-        workspaceIdentity: request.workspaceIdentity,
+      await codezTaskService.sendPrompt({
+        taskId: task.taskId,
+        traceId: promptTraceId,
+        content: request.prompt,
+        clientMode: "desktop-continuous",
+        automationId: request.automationId,
+        modelSelection: submissionModelSelection,
       });
-    }
-    return { taskId: task.taskId, sessionId: task.taskId };
-  } catch (error) {
-    if (correlationPrepared) {
-      try {
-        await cronAutomationRepo.transitionCodexAutomationCorrelation({
-          workspaceKey,
-          runId: request.runId,
-          to: "unknown",
-          error: error instanceof Error ? error.message : String(error),
-          now: Date.now(),
+      await cronAutomationRepo.transitionCodexAutomationCorrelation({
+        workspaceKey,
+        runId: request.runId,
+        to: "accepted",
+        threadId: task.taskId,
+        now: Date.now(),
+      });
+      // prompt 创建的定时任务带 targetTaskId，追加原会话不能计成 session_create。
+      if (!request.targetTaskId) {
+        reportHostSessionCreate(parentPort, {
+          sessionId: task.taskId,
+          messageId: promptTraceId,
+          source: "automation_scheduled",
+          workspaceIdentity: request.workspaceIdentity,
         });
-      } catch (ledgerError) {
-        logger.warn(`回写 Codex automation ACK-loss 状态失败 runId=${request.runId}`, ledgerError);
       }
+      return { taskId: task.taskId, sessionId: task.taskId };
+    } catch (error) {
+      if (correlationPrepared) {
+        try {
+          await cronAutomationRepo.transitionCodexAutomationCorrelation({
+            workspaceKey,
+            runId: request.runId,
+            to: "unknown",
+            error: error instanceof Error ? error.message : String(error),
+            now: Date.now(),
+          });
+        } catch (ledgerError) {
+          logger.warn(
+            `回写 Codex automation ACK-loss 状态失败 runId=${request.runId}`,
+            ledgerError,
+          );
+        }
+      }
+      if (trackedKey) disposeCronRunSubscription(trackedKey);
+      markCronRunOutcome({
+        runId: request.runId,
+        automationId: request.automationId,
+        workspaceKey,
+        scheduledAt,
+        trigger,
+        outcome: "failed",
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
     }
-    if (trackedKey) disposeCronRunSubscription(trackedKey);
-    markCronRunOutcome({
-      runId: request.runId,
-      automationId: request.automationId,
-      workspaceKey,
-      scheduledAt,
-      trigger,
-      outcome: "failed",
-      error: error instanceof Error ? error.message : String(error),
-    });
-    throw error;
   } finally {
     codexAutomationRunInFlight.delete(request.runId);
   }
@@ -2419,9 +2426,7 @@ async function createWindowRemoteConnectionHandle(params: {
         serverId: reconnected.serverInfo.serverId,
         sourceServices: activeServices ?? undefined,
         targetKind: params.target.kind,
-        ...(params.target.kind !== "server"
-          ? { environmentKey, codexKeyRotationBridge }
-          : {}),
+        ...(params.target.kind !== "server" ? { environmentKey, codexKeyRotationBridge } : {}),
       });
       bindDesktopBrowserRelay(reconnected.services.codezAgentService);
       refreshResourceTelemetry();
@@ -2443,9 +2448,7 @@ async function createWindowRemoteConnectionHandle(params: {
     serverId: connection.serverInfo.serverId,
     targetKind: params.target.kind,
     sourceServices: activeServices ?? undefined,
-    ...(params.target.kind !== "server"
-      ? { environmentKey, codexKeyRotationBridge }
-      : {}),
+    ...(params.target.kind !== "server" ? { environmentKey, codexKeyRotationBridge } : {}),
   });
   bindDesktopBrowserRelay(connection.services.codezAgentService);
   if (params.target.kind === "server") {

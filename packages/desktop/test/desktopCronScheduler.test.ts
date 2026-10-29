@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { utilityProcess as electronUtilityProcess } from "electron";
 import { hostCronRunMessageSchema, hostOffPeakRunMessageSchema } from "@codez/shared";
 import { spawnCronScheduler } from "../src/main/desktopCronScheduler.js";
@@ -22,6 +22,13 @@ class MockSchedulerProcess extends EventEmitter {
 }
 
 describe("desktopCronScheduler", () => {
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+    vi.clearAllMocks();
+    vi.mocked(electronUtilityProcess.fork).mockReset();
+  });
+
   it.each(["cron", "offpeak"] as const)(
     "forwards and validates the saved %s project directory snapshot",
     async (kind) => {
@@ -83,6 +90,132 @@ describe("desktopCronScheduler", () => {
       type: "scheduler-wake",
       automationId: "automation-1",
     });
+  });
+
+  it.each(["cron", "offpeak"] as const)("按 %s 的完整目标选择 Host", async (kind) => {
+    const child = new MockSchedulerProcess();
+    const host = { postMessage: vi.fn() };
+    vi.mocked(electronUtilityProcess.fork).mockReturnValue(child as never);
+    const resolveDispatchHost = vi.fn(() => host as never);
+    const scheduler = spawnCronScheduler({
+      hostProcessLocalEnv: {},
+      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+      resolveDispatchHost,
+    });
+    const target = {
+      workspacePath: "/same-path",
+      workspaceIdentity: "remote:server:second:/same-path",
+      hostId: "remote:server:second",
+    };
+    child.emit("message", {
+      type: `${kind}-dispatch-request`,
+      ...target,
+      automationId: "a",
+      runId: "r",
+      offPeakTaskId: "o",
+      prompt: "test",
+    });
+    expect(resolveDispatchHost).toHaveBeenCalledWith(expect.objectContaining(target));
+    const disposing = scheduler.dispose();
+    child.emit("exit", 0);
+    await disposing;
+  });
+
+  it("退出后只启动一个替代进程，旧消息不能再派发，稳定 handle 转发给新进程", async () => {
+    vi.useFakeTimers();
+    const first = new MockSchedulerProcess();
+    const second = new MockSchedulerProcess();
+    const host = { postMessage: vi.fn() };
+    vi.mocked(electronUtilityProcess.fork)
+      .mockReturnValueOnce(first as never)
+      .mockReturnValueOnce(second as never);
+    const scheduler = spawnCronScheduler({
+      hostProcessLocalEnv: {},
+      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+      resolveDispatchHost: () => host as never,
+    });
+    first.emit("exit", 1);
+    first.emit("exit", 1);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(electronUtilityProcess.fork).toHaveBeenCalledTimes(2);
+    const message = {
+      type: "cron-dispatch-request",
+      automationId: "a",
+      runId: "r",
+      prompt: "test",
+      workspacePath: "/project",
+    };
+    first.emit("message", message);
+    expect(host.postMessage).not.toHaveBeenCalled();
+    second.emit("message", message);
+    expect(host.postMessage).toHaveBeenCalledOnce();
+    scheduler.wake("a");
+    scheduler.handleCronRunResult({ runId: "r", ok: true });
+    expect(second.postMessage).toHaveBeenCalledWith({ type: "scheduler-wake", automationId: "a" });
+    expect(second.postMessage).toHaveBeenCalledWith({
+      type: "cron-dispatch-result",
+      runId: "r",
+      ok: true,
+    });
+    const disposing = scheduler.dispose();
+    second.emit("exit", 0);
+    await disposing;
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(electronUtilityProcess.fork).toHaveBeenCalledTimes(2);
+  });
+
+  it("fork 失败保留稳定 handle，指数退避有上限，退出取消待重启", async () => {
+    vi.useFakeTimers();
+    vi.mocked(electronUtilityProcess.fork).mockImplementation(() => {
+      throw new Error("fork failed");
+    });
+    const scheduler = spawnCronScheduler({
+      hostProcessLocalEnv: {},
+      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+      resolveDispatchHost: () => null,
+    });
+    expect(electronUtilityProcess.fork).toHaveBeenCalledTimes(1);
+    for (const delay of [1_000, 2_000, 4_000, 8_000, 16_000, 30_000, 30_000]) {
+      const before = vi.mocked(electronUtilityProcess.fork).mock.calls.length;
+      await vi.advanceTimersByTimeAsync(delay - 1);
+      expect(electronUtilityProcess.fork).toHaveBeenCalledTimes(before);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(electronUtilityProcess.fork).toHaveBeenCalledTimes(before + 1);
+    }
+    await scheduler.dispose();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(electronUtilityProcess.fork).toHaveBeenCalledTimes(8);
+  });
+
+  it("稳定存活后重置退避；旧退出不能停止替代进程", async () => {
+    vi.useFakeTimers();
+    const children = [
+      new MockSchedulerProcess(),
+      new MockSchedulerProcess(),
+      new MockSchedulerProcess(),
+    ];
+    vi.mocked(electronUtilityProcess.fork)
+      .mockReturnValueOnce(children[0] as never)
+      .mockReturnValueOnce(children[1] as never)
+      .mockReturnValueOnce(children[2] as never);
+    const scheduler = spawnCronScheduler({
+      hostProcessLocalEnv: {},
+      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+      resolveDispatchHost: () => null,
+    });
+    children[0]!.emit("exit", 1);
+    await vi.advanceTimersByTimeAsync(1_000);
+    await vi.advanceTimersByTimeAsync(60_000);
+    children[1]!.emit("exit", 1);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(electronUtilityProcess.fork).toHaveBeenCalledTimes(3);
+    children[0]!.emit("exit", 1);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(electronUtilityProcess.fork).toHaveBeenCalledTimes(3);
+    const disposing = scheduler.dispose();
+    expect(scheduler.dispose()).toBe(disposing);
+    children[2]!.emit("exit", 0);
+    await disposing;
   });
 
   it("进入退出状态后停止向 Host 派发新任务", async () => {
