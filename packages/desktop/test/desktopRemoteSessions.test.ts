@@ -230,6 +230,49 @@ beforeEach(() => {
 });
 
 describe("desktopRemoteSessions R1 window Host forwarding", () => {
+  it("定时派发按完整 identity 命中第二窗口，关闭/旧 Host/同路径其他来源不落本机", async () => {
+    const first = new MockUtilityProcess(1001);
+    const second = new MockUtilityProcess(1002);
+    const win = createWindow(2, 102);
+    const hosts = new Map([
+      [101, first],
+      [102, second],
+    ]);
+    const manager = createManager(hosts);
+    const workspacePath = "/same-path";
+    const workspaceIdentity = buildRemoteWorkspaceIdentity(workspacePath, sshTarget);
+    const connecting = manager.createRemoteWorkspaceSession(win as never, sshTarget, "second", {
+      workspacePath,
+      workspaceIdentity,
+    });
+    await emitConnected({
+      child: second,
+      requestId: "second",
+      remoteSessionId: "second-scope",
+      workspacePath,
+      workspaceIdentity,
+    });
+    confirmLatestScopedAttachment(manager, win);
+    await connecting;
+    expect(manager.resolveDispatchHost({ workspacePath, workspaceIdentity })).toBe(second);
+    expect(manager.resolveDispatchHost({ workspacePath })).toBe(first);
+    expect(
+      manager.resolveDispatchHost({
+        workspacePath,
+        workspaceIdentity: buildRemoteWorkspaceIdentity(workspacePath, {
+          ...sshTarget,
+          host: "other.example",
+        } as RemoteTarget),
+      }),
+    ).toBeNull();
+    expect(manager.resolveDispatchHost({ workspacePath, hostId: "remote:unavailable" })).toBeNull();
+    hosts.set(102, new MockUtilityProcess(1003));
+    expect(manager.resolveDispatchHost({ workspacePath, workspaceIdentity })).toBeNull();
+    hosts.set(102, second);
+    manager.disposeRemoteWorkspaceSessionsForWindow(102);
+    expect(manager.resolveDispatchHost({ workspacePath, workspaceIdentity })).toBeNull();
+  });
+
   it("rejects a throwing connected observer without orphaning its waiter or the joined route", async () => {
     const child = new MockUtilityProcess(1001);
     const win = createWindow(1, 101);
