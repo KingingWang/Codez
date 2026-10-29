@@ -18,6 +18,11 @@ import { createCodexGlobalRolloutSyncer } from "../src/project/index.js";
 import type { CodexGlobalRolloutTaskStore } from "../src/project/codexGlobalRolloutSyncer.js";
 import { getCodexRolloutScanCachePath } from "../src/paths.js";
 import { TaskIndexRepo } from "../src/session/taskIndexRepo.js";
+import { parseRolloutCandidate } from "../src/project/codexRolloutFacts.js";
+import {
+  loadRolloutScanFacts,
+  serializeRolloutScanFacts,
+} from "../src/project/codexRolloutScanCache.js";
 
 // 本次优化的核心是「无变化时不再遍历目录、不再 stat/解析历史 rollout」，只断言入库结果
 // 无法证明扫描量真的收敛。这里把 stat/readdir/open 包一层透传 spy（实现仍是真实文件系统），
@@ -116,6 +121,197 @@ async function writeRollouts(
 }
 
 describe("createCodexGlobalRolloutSyncer", () => {
+  it("keeps SQLite activity unchanged for metadata writes and only advances for real activity", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "codez-rollout-sqlite-activity-"));
+    const codexHome = join(dir, ".codex");
+    const day = join(codexHome, "sessions", "2026", "10", "01");
+    await mkdir(day, { recursive: true });
+    const taskId = rolloutSessionId(9);
+    const path = await writeRollout(day, "2026-10-01T00-00-00", taskId, "activity SQL");
+    const at = Date.parse("2026-10-01T01:00:00Z");
+    const workspaceIdentity = `remote:server:activity:${SCAN_CWD}`;
+    const databasePath = join(dir, "tasks-index.sqlite");
+    const repo = new TaskIndexRepo(undefined, "remote:server:activity", databasePath);
+    const syncer = createCodexGlobalRolloutSyncer({
+      taskIndexRepo: repo,
+      env: { CODEX_HOME: codexHome },
+      resolveWorkspaceIdentity: async () => workspaceIdentity,
+    });
+    const target = { taskId, workspacePath: SCAN_CWD, workspaceIdentity };
+    const append = async (type: string, timestamp: number) =>
+      appendFile(
+        path,
+        JSON.stringify({
+          type: "event_msg",
+          timestamp: new Date(timestamp).toISOString(),
+          payload: { type },
+        }) + "\n",
+      );
+    try {
+      await append("task_complete", at);
+      await syncer.syncNow();
+      expect((await repo.getTaskMeta(target))?.updatedAt).toBe(at);
+      await append("token_count", at + 10000);
+      await append("thread_goal_updated", at + 20000);
+      await syncer.syncNow();
+      expect((await repo.getTaskMeta(target))?.updatedAt).toBe(at);
+      await append("task_complete", at + 30000);
+      await syncer.syncNow();
+      expect((await repo.getTaskMeta(target))?.updatedAt).toBe(at + 30000);
+      const meta = (await repo.getTaskMeta(target))!;
+      await repo.applyCliFacts({ meta: { ...meta, updatedAt: at + 50000 } });
+      await append("token_count", at + 60000);
+      await syncer.syncNow();
+      expect((await repo.getTaskMeta(target))?.updatedAt).toBe(
+        at + 50000,
+        "不迁移或回拨既有错误时间",
+      );
+      const database = new DatabaseSync(databasePath, { readOnly: true });
+      try {
+        expect(
+          database.prepare("select cli_updated_at from tasks where task_id=?").get(taskId),
+        ).toMatchObject({ cli_updated_at: at + 50000 });
+      } finally {
+        database.close();
+      }
+    } finally {
+      syncer.dispose();
+      repo.close();
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("uses timed conversation activity, not file mtime or settings/goal/token/context appends", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "codez-rollout-activity-"));
+    const name = `rollout-2026-10-01T00-00-00-${rolloutSessionId(1)}.jsonl`;
+    const path = join(dir, name);
+    const createdAt = Date.parse("2026-10-01T00:00:00Z");
+    const activityAt = createdAt + 10000;
+    const records = [
+      { type: "session_meta", payload: { id: rolloutSessionId(1), cwd: SCAN_CWD, source: "cli" } },
+      {
+        type: "event_msg",
+        timestamp: new Date(activityAt).toISOString(),
+        payload: { type: "user_message", message: "real prompt" },
+      },
+    ];
+    try {
+      await writeFile(path, records.map((record) => JSON.stringify(record)).join("\n") + "\n");
+      const first = await parseRolloutCandidate(path, name, createdAt + 999999);
+      expect(first.candidate?.updatedAt).toBe(activityAt);
+      await appendFile(
+        path,
+        [
+          { type: "turn_context", payload: { model: "changed" } },
+          {
+            type: "event_msg",
+            payload: { type: "thread_goal_updated", goal: { objective: "goal" } },
+          },
+          { type: "event_msg", payload: { type: "token_count" } },
+          {
+            type: "response_item",
+            payload: {
+              type: "message",
+              role: "user",
+              content: [{ text: "<environment_context><cwd>/work</cwd></environment_context>" }],
+            },
+          },
+        ]
+          .map((record) =>
+            JSON.stringify({ ...record, timestamp: new Date(activityAt + 50000).toISOString() }),
+          )
+          .join("\n") + "\n",
+      );
+      expect(
+        (await parseRolloutCandidate(path, name, createdAt + 1999999)).candidate?.updatedAt,
+      ).toBe(activityAt);
+      await appendFile(
+        path,
+        JSON.stringify({
+          type: "event_msg",
+          timestamp: new Date(activityAt + 60000).toISOString(),
+          payload: { type: "task_complete" },
+        }) + "\n",
+      );
+      expect(
+        (await parseRolloutCandidate(path, name, createdAt + 2999999)).candidate?.updatedAt,
+      ).toBe(activityAt + 60000);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("falls back to stable creation time and invalidates version 1 parse facts", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "codez-rollout-old-clock-cache-"));
+    try {
+      const path = await writeRollout(
+        dir,
+        "2026-10-01T00-00-00",
+        rolloutSessionId(1),
+        "untimed history",
+      );
+      const parsed = await parseRolloutCandidate(path, path.split("/").at(-1)!, Date.now());
+      expect(parsed.candidate?.updatedAt).toBe(parsed.candidate?.createdAt);
+      const content = serializeRolloutScanFacts(dir, [
+        [
+          path,
+          {
+            mtimeMs: 1,
+            size: 1,
+            candidate: parsed.candidate,
+            settled: false,
+          },
+        ],
+      ])!;
+      expect(JSON.parse(content).version).toBe(2);
+      const cachePath = join(dir, "cache.json");
+      await writeFile(cachePath, JSON.stringify({ ...JSON.parse(content), version: 1 }));
+      expect((await loadRolloutScanFacts(cachePath, dir)).size).toBe(0);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("prefers valid native turn/item times and includes real tool/reasoning records", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "codez-rollout-native-times-"));
+    const name = `rollout-2026-10-01T00-00-00-${rolloutSessionId(2)}.jsonl`;
+    const path = join(dir, name);
+    const createdAt = Date.parse("2026-10-01T00:00:00Z");
+    try {
+      const records = [
+        {
+          type: "session_meta",
+          payload: { id: rolloutSessionId(2), cwd: SCAN_CWD, source: "cli" },
+        },
+        { type: "event_msg", payload: { type: "user_message", message: "real user" } },
+        { type: "event_msg", payload: { type: "task_started", started_at: createdAt / 1000 + 10 } },
+        {
+          type: "event_msg",
+          payload: {
+            type: "item_completed",
+            completed_at_ms: createdAt + 20123,
+            item: { type: "Reasoning", id: "reason" },
+          },
+        },
+        {
+          type: "response_item",
+          timestamp: new Date(createdAt + 30000).toISOString(),
+          payload: { type: "function_call", call_id: "call", name: "read", arguments: "{}" },
+        },
+        {
+          type: "event_msg",
+          timestamp: new Date(createdAt + 999999).toISOString(),
+          payload: { type: "turn_complete", completed_at: createdAt / 1000 + 40 },
+        },
+      ];
+      await writeFile(path, records.map((record) => JSON.stringify(record)).join("\n") + "\n");
+      expect((await parseRolloutCandidate(path, name, Date.now())).candidate?.updatedAt).toBe(
+        createdAt + 40000,
+      );
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
   it("waits for a real user item after injected context and repairs an old title", async () => {
     const dir = await mkdtemp(join(tmpdir(), "codez-global-rollout-context-"));
     const codexHome = join(dir, ".codex");

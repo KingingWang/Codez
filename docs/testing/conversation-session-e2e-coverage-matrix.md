@@ -965,13 +965,13 @@ v4 硬切后默认门禁的 conversation 验收在 `conversation-session-v4-*.te
 
 Codex bridge 长会话另计（不借用 CLI PERF03 的通过证据）：
 
-| Case    | 状态                      | 证据入口                                                                                                                                                                         | 未覆盖门槛                                                                                        |
-| ------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| CXL-P01 | focused partial           | 桥接合成 2600 turn / 至少 10k rows 冷订阅 + 旧页：resume 只返回元数据、26 次分页，尾窗/旧页 rowId 连续；同版本查询重用派生投影                                                   | 尚无生产构建同机 10 次 cold/warm 的首次真实正文/可交互、native RPC 与峰值内存数据；缩页不能算提速 |
-| CXL-P02 | focused partial           | 33 MiB 合成双 item 单 turn 原页超限、各 item 独立低于 32 MiB：同 cursor 缩页，notLoaded + items/list 完整重组；单 item 超限、空页/重复游标拒绝；独立 33 MiB 真实 framer 丢帧单测 | 本地原生真实超大 rollout + 远端 Desktop 重开尚未运行；不可用 fake 页代替 pinned native end-to-end |
-| CXL-P03 | planned                   | V4 rows/range 缓存和 epoch 失效 focused tests、task-index index/full 派生等价与大帧测试                                                                                          | Desktop 长会话滚动锚点及远端索引需 E2E 复核                                                       |
-| CXL-P04 | blocked by native outline | 准确 rowId/totalCount 的原生有界 outline + tail-first、readable/ready 双阶段、desktop/mobile 分别验证                                                                            | 上游接口不存在；不能将现有 60 行 wire tail 误报为原生按需加载                                     |
-| CXL-P05 | focused partial           | `packages/codex-bridge/test/native-paging.test.ts` 与 `packages/codex-bridge/test/thread-state.test.ts` 覆盖分页返回 `summary/notLoaded` turn、缺失 `turn/started` 的 `turn/completed(summary)`、加载交错及 `thread/items/list` 只读补全 | 真实远端 Codex 异常返回非 full turn 的线上复现仍待通过有界诊断观测确认具体触发分支 |
+| Case    | 状态                      | 证据入口                                                                                                                                                                                                                                 | 未覆盖门槛                                                                                        |
+| ------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| CXL-P01 | focused partial           | 桥接合成 2600 turn / 至少 10k rows 冷订阅 + 旧页：resume 只返回元数据、26 次分页，尾窗/旧页 rowId 连续；同版本查询重用派生投影                                                                                                           | 尚无生产构建同机 10 次 cold/warm 的首次真实正文/可交互、native RPC 与峰值内存数据；缩页不能算提速 |
+| CXL-P02 | focused partial           | 33 MiB 合成双 item 单 turn 原页超限、各 item 独立低于 32 MiB：同 cursor 缩页，notLoaded + items/list 完整重组；单 item 超限、空页/重复游标拒绝；独立 33 MiB 真实 framer 丢帧单测                                                         | 本地原生真实超大 rollout + 远端 Desktop 重开尚未运行；不可用 fake 页代替 pinned native end-to-end |
+| CXL-P03 | planned                   | V4 rows/range 缓存和 epoch 失效 focused tests、task-index index/full 派生等价与大帧测试                                                                                                                                                  | Desktop 长会话滚动锚点及远端索引需 E2E 复核                                                       |
+| CXL-P04 | blocked by native outline | 准确 rowId/totalCount 的原生有界 outline + tail-first、readable/ready 双阶段、desktop/mobile 分别验证                                                                                                                                    | 上游接口不存在；不能将现有 60 行 wire tail 误报为原生按需加载                                     |
+| CXL-P05 | focused partial           | `packages/codex-bridge/test/native-paging.test.ts` 与 `packages/codex-bridge/test/thread-state.test.ts` 覆盖分页返回 `summary/notLoaded` turn、缺失 `turn/started` 的 `turn/completed(summary)`、加载交错及 `thread/items/list` 只读补全 | 真实远端 Codex 异常返回非 full turn 的线上复现仍待通过有界诊断观测确认具体触发分支                |
 
 Codex 外部 writer 冲突显式刷新（见 catalog CWR01–CWR03；不代表自动追踪 TUI 流）：
 
@@ -3219,6 +3219,22 @@ Todo139：SHARE30/31/32 的共享初始化 Hook／草稿单测与 `packages/ui/t
 官方版本请求安全校验的专属用例与验证记录在对应主题规格中维护。
 
 ## VP：虚拟项目重构（2026-09-11，实施中）
+
+VP-CODEX-ACTIVITY-31（accepted/pending）：扩展
+`manual-review/pending/conversation-session-codex-project-history.test.ts`；
+打开 A 历史及 native/list/Host scanner 发现前后 activity 和最近排序不变，续聊才正常推进。
+单测与静态检查不替代 pinned Codex + Electron 动态结果；保持 pending，未晋级。
+
+2026-10-29 #31：Codex bridge 包 748 项通过、4 项既有跳过，rollout sync 23 项 UT、fixture 与 E2E typecheck
+通过。隔离 HOME 的 Electron 复跑在 renderer preflight 报 `session-bridge-missing`，
+未进入 case 产品断言，预检失败；artifact
+`packages/desktop/.e2e-artifacts/desktop-e2e-20261029-092049-452`。首轮另因继承
+`ELECTRON_RUN_AS_NODE` 无法创建 WebDriver 会话；仅对子进程移除后才进入上述预检。
+未修改测试基础设施来绕过门禁，未人工审阅或晋级。
+校验过的原生 Codex + bundled bridge smoke、外部项目历史发现/恢复 smoke 均通过；
+这两项不含本例的 GUI 时间/排序断言，不替代 pending 产品验收。
+更新 verified runtime 后的隔离 GUI 复跑仍停在同一 renderer preflight；
+artifact `packages/desktop/.e2e-artifacts/desktop-e2e-20261029103542617-p2002084-06ede50bab242595`。
 
 权威语义：`docs/superpowers/specs/2026-09-09-virtual-project-design.md`；覆盖剪枝及完整 VP01–VP10 在实施记录。下列候选未转正，不计 formal gate。
 

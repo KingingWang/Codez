@@ -34,6 +34,13 @@ import { DeletedThreadError, type ThreadProjectionState } from "./thread-state-t
 import { listNativeQueue, listWorkspaceThreads } from "./thread-queries.js";
 import { upsertTurnPlanUpdate } from "./turn-plan-update.js";
 import { SubagentActivityTracker } from "./subagent-activity.js";
+import {
+  nativeActivityBaseline,
+  nativeHistoryActivity,
+  nativeLiveActivity,
+  readRecentNativeActivity,
+  type ThreadActivityClock,
+} from "./thread-activity.js";
 
 // 本文件仍是 store 词汇表的对外入口（与 projection.ts 的 facade 惯例一致）：
 // 定义移到 thread-state-types.ts 只是为了把 store 主体压回 400 行上限内。
@@ -51,6 +58,12 @@ export class ThreadStateStore {
   private clearStagedTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly loaded = new Set<string>();
   private readonly deleted = new Set<string>();
+  /** 冷 attach 前固定，invalidate/reload 不丢失；原生 metadata 不是第二个时间写者。 */
+  private readonly activityTimes = new Map<string, ThreadActivityClock>();
+  private readonly activityReads = new Map<
+    string,
+    { metadataAt: number; promise: Promise<void> }
+  >();
   private readonly completedItems = new Set<string>();
   /** 子线程活性与父子登记的单一所有者（见 subagent-activity.ts 头部说明）。 */
   private readonly subagentActivity = new SubagentActivityTracker();
@@ -76,6 +89,7 @@ export class ThreadStateStore {
   remove(id: string): void {
     this.deleted.add(id);
     this.states.delete(id);
+    this.activityTimes.delete(id);
     this.loaded.delete(id);
     this.clearStagedDiscoveredList();
   }
@@ -138,8 +152,79 @@ export class ThreadStateStore {
     if (this.deleted.has(id)) throw new DeletedThreadError();
   }
 
-  put(value: unknown): ThreadProjectionState {
+  /** 只覆盖活动字段；查询扫描结束后调用，保留原生集合/title/cwd 并读取最新 live 时钟。 */
+  activityThread(value: unknown, includeHistory = false): JsonObject {
     const thread = object(value);
+    const id = string(thread.id);
+    const metadataAt = nativeActivityBaseline(thread);
+    const clock = this.activityTimes.get(id) ?? {
+      at: metadataAt,
+      metadataAt,
+      frozen: false,
+    };
+    if (includeHistory) {
+      clock.at = Math.max(clock.at, nativeHistoryActivity(thread) ?? 0);
+      // 裸 full item 不含 envelope 时间；冻结 attach 基线不等于确认外部 writer 的最新活动指纹。
+      // 只有有界 turn/item 补读完整成功才消费较新指纹，否则 running turn 的后续 item 会被漏掉。
+      clock.frozen = true;
+    }
+    if (!this.deleted.has(id)) this.activityTimes.set(id, clock);
+    // 原生-shaped schema 要求整数秒；毫秒只留在唯一 clock owner 内，不让投影校验 fatal。
+    return { ...thread, updatedAt: Math.floor(clock.at / 1000) };
+  }
+
+  async refreshActivityThread(value: unknown): Promise<JsonObject> {
+    const thread = object(value);
+    const id = string(thread.id);
+    const clock = this.activityTimes.get(id);
+    const metadataAt = nativeActivityBaseline(thread);
+    const state = this.states.get(id);
+    const external =
+      !clock?.frozen ||
+      !state ||
+      state.readOnly === "writer-conflict" ||
+      (state.readOnly === "subagent-child" && state.attached !== true);
+    if (
+      !clock ||
+      metadataAt <= clock.metadataAt ||
+      !external ||
+      this.loads.has(id) ||
+      this.deleted.has(id)
+    )
+      return this.activityThread(thread);
+    const inFlight = this.activityReads.get(id);
+    if (inFlight) {
+      await inFlight.promise;
+      return metadataAt > inFlight.metadataAt
+        ? this.refreshActivityThread(thread)
+        : this.activityThread(thread);
+    }
+    // 发现不是 attach：外部 CLI 的真实追加必须刷新，但 raw updatedAt 的设置追加不能造活动。
+    const pending = readRecentNativeActivity(this.rpc, id)
+      .then((evidence) => {
+        if (this.deleted.has(id) || this.activityTimes.get(id) !== clock) return;
+        clock.at = Math.max(clock.at, evidence.at ?? 0);
+        if (evidence.complete) clock.metadataAt = Math.max(clock.metadataAt, metadataAt);
+        const current = this.states.get(id);
+        const seconds = Math.floor(clock.at / 1000);
+        if (current && current.thread.updatedAt !== seconds) {
+          current.thread.updatedAt = seconds;
+          this.touch(id);
+        }
+      })
+      .catch(() => {
+        // 可选活动证据失败只能保留已知值；不信任 metadata，也不消费指纹，后续显式扫描可重读。
+      })
+      .finally(() => {
+        if (this.activityReads.get(id)?.promise === pending) this.activityReads.delete(id);
+      });
+    this.activityReads.set(id, { metadataAt, promise: pending });
+    await pending;
+    return this.activityThread(thread);
+  }
+
+  put(value: unknown): ThreadProjectionState {
+    const thread = this.activityThread(value, true);
     const id = string(thread.id);
     this.assertAvailable(id);
     this.clearStagedDiscoveredList();
@@ -228,6 +313,9 @@ export class ThreadStateStore {
     // apply 会丢弃轮次通知，而分页又可能只返回旧历史，之后 ensure 永远命中缺轮次的缓存。
     // 修复依据：先验证工作区归属，再为历史加载建立同一个临时投影；授权前的通知仅等待这道门禁，
     // 不等待漫长的整段分页，也不对未授权的原生线程创建状态。
+    // 修复依据：resume 会追加 settings/goal/token 等非对话记录并提升 raw updatedAt；
+    // 授权 read 在 resume 之前固定时钟，后续 metadata 只能覆盖其他字段。
+    this.activityThread(metadata, true);
     if (!this.states.has(id)) onProvisional(this.put({ ...object(read.thread), turns: [] }));
     authorize();
     // attach 与只读降级的分流规则集中在 thread-load.ts（含子代理冷启拒绝路径）。
@@ -370,6 +458,7 @@ export class ThreadStateStore {
 
   /** 归属判定需要解析物理路径，所以事件投影是异步的；调用方必须保持事件串行。 */
   async apply(event: CodexNotification): Promise<string | undefined> {
+    const receivedAt = Date.now();
     const params = object(event.params ?? {});
     if (
       [
@@ -470,6 +559,13 @@ export class ThreadStateStore {
       const turns = array(state.thread.turns);
       // 增量索引定位替代 findIndex 的全历史线性扫描（thread-index.ts）。
       const existingEntry = findTurnEntry(state.thread, turn.id);
+      // 已终结轮的迟到 started 不是新活动；merge 虽会保留终态，但不能因此推进接收时钟。
+      if (
+        event.method === "turn/started" &&
+        existingEntry &&
+        existingEntry.turn.status !== "inProgress"
+      )
+        return;
       // 原生生命周期通知仅携 turn 摘要；当前连接已按 item 事件收齐的内容不能被 summary 清空。
       if (!existingEntry) {
         const turnId = string(turn.id);
@@ -539,7 +635,15 @@ export class ThreadStateStore {
     } else if (event.method.endsWith("/delta") || event.method.endsWith("Delta")) {
       if (!applyNativeItemDelta(state, event.method, params, this.completedItems)) return;
     } else return;
-    state.thread.updatedAt = Math.floor(Date.now() / 1000);
+    // 修复原因：旧统一收尾把 settings/goal/token/name/status 全当活动，打开历史就改变排序。
+    // 只在有效 turn/item 或成功 delta 后推进；历史/metadata 写入通过同一单调 owner 清洗。
+    const activity = nativeLiveActivity(event.method, params, receivedAt);
+    if (activity !== undefined) {
+      this.clearStagedDiscoveredList();
+      const clock = this.activityTimes.get(id)!;
+      clock.at = Math.max(clock.at, activity);
+      state.thread.updatedAt = Math.floor(clock.at / 1000);
+    }
     this.touch(id);
     // 已加载子线程的生命周期事件同样要让父会话重投影；否则父侧 subagents.running
     // 要等下一次父线程事件才收敛，状态面板在子代理结束后继续计时。
@@ -591,9 +695,15 @@ export class ThreadStateStore {
     // 3~4 套全量 thread/list 分页扫描，阻塞后续打开会话的 thread/read / resume / turns/list 并触发
     // 30s RPC 超时。这里仅合并同一时刻在途的扫描；完成后立即清空，不保留过期列表缓存。
     if (this.listInFlight) return this.listInFlight;
-    const pending = listWorkspaceThreads(this.rpc, this.cwd).finally(() => {
-      if (this.listInFlight === pending) this.listInFlight = undefined;
-    });
+    const pending = listWorkspaceThreads(this.rpc, this.cwd)
+      .then(async (rows) => {
+        await Promise.all(rows.map((row) => this.refreshActivityThread(row)));
+        // 各行可先完成补读；统一等待后无 await 覆盖最新 clock，避免其他行等待期的新活动被旧值遮盖。
+        return rows.map((row) => this.activityThread(row));
+      })
+      .finally(() => {
+        if (this.listInFlight === pending) this.listInFlight = undefined;
+      });
     this.listInFlight = pending;
     return pending;
   }

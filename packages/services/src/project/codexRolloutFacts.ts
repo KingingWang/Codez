@@ -89,6 +89,112 @@ function visibleUserText(text: string): string {
   return isInjectedCodexContextTitle(visible) ? "" : visible;
 }
 
+const ACTIVITY_ITEMS = new Set(
+  [
+    "agentmessage",
+    "reasoning",
+    "local_shell_call",
+    "function_call",
+    "function_call_output",
+    "custom_tool_call",
+    "custom_tool_call_output",
+    "tool_search_call",
+    "tool_search_output",
+    "web_search_call",
+    "commandexecution",
+    "filechange",
+    "mcptoolcall",
+    "websearch",
+    "collabagenttoolcall",
+    "plan",
+    "contextcompaction",
+  ].map((type) => type.replace(/_/g, "")),
+);
+const ACTIVITY_EVENTS = new Set(
+  [
+    "task_started",
+    "turn_started",
+    "task_complete",
+    "turn_complete",
+    "turn_completed",
+    "turn_aborted",
+    "interrupted",
+    "error",
+    "agent_message",
+    "agent_reasoning",
+    "agent_reasoning_raw_content",
+    "agent_message_content_delta",
+    "reasoning_content_delta",
+    "reasoning_raw_content_delta",
+    "exec_command_begin",
+    "exec_command_output_delta",
+    "exec_command_end",
+    "mcp_tool_call_begin",
+    "mcp_tool_call_end",
+    "patch_apply_begin",
+    "patch_apply_end",
+    "web_search_begin",
+    "web_search_end",
+  ].map((type) => type.replace(/_/g, "")),
+);
+
+function activityItem(item: Record<string, unknown>): boolean {
+  const type = String(item.type ?? "")
+    .replace(/_/g, "")
+    .toLowerCase();
+  if (type === "usermessage" || item.role === "user") {
+    const text =
+      typeof item.message === "string" ? item.message : extractTextFromContent(item.content);
+    return visibleUserText(text).length > 0;
+  }
+  if (type === "message") return item.role === "assistant" || item.role === "tool";
+  return ACTIVITY_ITEMS.has(type);
+}
+
+/** 原生事件时间优先，外层持久记录时间次之；非活动追加即使有 timestamp 也必须排除。 */
+function rolloutActivityTime(
+  type: string,
+  payload: Record<string, unknown>,
+  record: Record<string, unknown>,
+): number | undefined {
+  const eventType = String(payload.type ?? "")
+    .replace(/_/g, "")
+    .toLowerCase();
+  const isEvent = type === "event_msg" || type === "eventMsg";
+  let active = false;
+  if (isEvent) {
+    if (eventType === "usermessage") active = parseEventPreview(payload)?.kind === "user";
+    else if (eventType === "itemstarted" || eventType === "itemcompleted") {
+      active =
+        !!payload.item &&
+        typeof payload.item === "object" &&
+        activityItem(payload.item as Record<string, unknown>);
+    } else active = ACTIVITY_EVENTS.has(eventType);
+  } else if (type === "response_item" || type === "responseItem") {
+    const item =
+      payload.item && typeof payload.item === "object"
+        ? (payload.item as Record<string, unknown>)
+        : payload;
+    active = activityItem(item);
+  }
+  if (!active) return;
+  const nativeTimes = [
+    payload.started_at_ms,
+    payload.startedAtMs,
+    payload.completed_at_ms,
+    payload.completedAtMs,
+    ...[payload.started_at, payload.startedAt, payload.completed_at, payload.completedAt].map(
+      (value) => (typeof value === "number" ? value * 1000 : undefined),
+    ),
+  ].filter(
+    (value): value is number =>
+      typeof value === "number" && Number.isSafeInteger(value) && value > 0,
+  );
+  if (nativeTimes.length) return Math.max(...nativeTimes);
+  const timestamp = typeof record.timestamp === "string" ? Date.parse(record.timestamp) : NaN;
+  return Number.isFinite(timestamp) && timestamp > 0 ? timestamp : undefined;
+}
+
 function parseEventPreview(
   event: Record<string, unknown>,
 ): { kind: "user" | "goal"; text: string } | null {
@@ -193,7 +299,7 @@ async function readBoundedRolloutSlice(
 export async function parseRolloutCandidate(
   filePath: string,
   fileName: string,
-  mtimeMs: number,
+  _mtimeMs: number,
   fileSize = 0,
 ): Promise<RolloutParseResult> {
   const fileInfo = parseRolloutFileId(fileName);
@@ -206,7 +312,8 @@ export async function parseRolloutCandidate(
 
   let sessionId = fileInfo.sessionId;
   let cwd = "";
-  let createdAt = fileInfo.createdAtMs || Math.max(1, Math.trunc(mtimeMs));
+  let createdAt = fileInfo.createdAtMs || 1;
+  let activityAt = 0;
   let sawMeta = false;
   let userPreview = "";
   let responsePreview = "";
@@ -281,6 +388,9 @@ export async function parseRolloutCandidate(
       continue;
     }
 
+    // 修复原因：resume/设置/goal/token 追加都会改变 mtime，但并未发生对话活动。
+    // 只从真实活动记录读取可信时间；mtime/size 继续仅供扫描 owner 判定文件变化。
+    activityAt = Math.max(activityAt, rolloutActivityTime(type, payload, record) ?? 0);
     if (type === "event_msg" || type === "eventMsg") {
       // 修复原因：Codex 先落盘 user-role <environment_context> response_item，
       // 再落盘 item_completed/UserMessage；前者不是用户输入，不能抢占首个标题。
@@ -318,7 +428,7 @@ export async function parseRolloutCandidate(
   // 首条真实用户消息可能稍后才落盘，这类文件必须继续参与后续 stat。
   if (!preview) return PARSE_INCOMPLETE;
 
-  const updatedAt = Math.max(createdAt, Math.trunc(mtimeMs));
+  const updatedAt = Math.max(createdAt, activityAt);
   const title = Array.from(preview.replace(/\s+/g, " ").trim()).slice(0, 120).join("");
   if (!title) return PARSE_INCOMPLETE;
 

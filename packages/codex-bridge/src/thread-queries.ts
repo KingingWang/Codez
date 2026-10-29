@@ -148,6 +148,8 @@ export async function reconcileBridgeSessions(
     store: {
       get(id: string): ThreadProjectionState | undefined;
       isDeleted(id: string): boolean;
+      activityThread?(thread: unknown): JsonObject;
+      refreshActivityThread?(thread: unknown): Promise<JsonObject>;
     };
   },
 ): Promise<SessionsIndexReconcileResult> {
@@ -194,7 +196,8 @@ export async function reconcileBridgeSessions(
         updatedAt: 0,
       };
     }
-    const cached = input.store.get(sessionId)?.thread;
+    const state = input.store.get(sessionId);
+    const cached = state?.readOnly === "writer-conflict" ? undefined : state?.thread;
     let metadata: JsonObject;
     if (cached) {
       metadata = cached;
@@ -217,8 +220,11 @@ export async function reconcileBridgeSessions(
     ) {
       return { sessionId, exists: false as const, deleted: false as const };
     }
+    const activity = input.store.refreshActivityThread
+      ? await input.store.refreshActivityThread(metadata)
+      : (input.store.activityThread?.(metadata) ?? metadata);
     const thread = codexThreadSchema.parse({
-      ...metadata,
+      ...activity,
       cwd: input.cwd,
       turns: array(metadata.turns),
     });
@@ -276,13 +282,15 @@ export async function listTargetedThreads(
   cwd: string,
   sessionIds: readonly string[],
   getCachedThread: (id: string) => JsonObject | undefined,
+  activityThread: (thread: JsonObject) => JsonObject | Promise<JsonObject> = (thread) => thread,
+  shouldReadThread: (id: string) => boolean = () => false,
 ): Promise<unknown[]> {
   const uniqueIds = [...new Set(sessionIds)];
   const resolved = await Promise.all(
     uniqueIds.map(async (id) => {
       const cached = getCachedThread(id);
       let metadata: JsonObject;
-      if (cached) {
+      if (cached && !shouldReadThread(id)) {
         metadata = cached;
       } else {
         try {
@@ -304,7 +312,7 @@ export async function listTargetedThreads(
           parentThreadId,
         ));
       if (!ownedByWorkspace && !ownedByParent) return null;
-      return { ...metadata, cwd, turns: [] };
+      return { ...(await activityThread(metadata)), cwd, turns: [] };
     }),
   );
   return canonicalNativeThreads(resolved.filter((thread) => thread !== null));
