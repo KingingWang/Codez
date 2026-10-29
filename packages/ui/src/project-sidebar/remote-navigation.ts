@@ -3,6 +3,17 @@ import type {
   IRemoteProjectService,
   ProjectSidebarProps,
 } from "@/project-sidebar/contract.js";
+import { REMOTE_BIND_CANCELED_ERROR_CODE } from "@/project-sidebar/contract.js";
+
+export function isProjectNavigationCanceledError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    ((error as { code?: unknown }).code === "remote-connection-canceled" ||
+      (error as { code?: unknown }).code === REMOTE_BIND_CANCELED_ERROR_CODE ||
+      (error as { name?: unknown }).name === "AbortError")
+  );
+}
 
 /**
  * 同一设备在途的未指定目录连接。Host 把这类 connect 按设备复用为同一 logical session，
@@ -56,7 +67,7 @@ export async function attachRemoteProjectWorkspace(input: {
   projectService?: Pick<IProjectService, "readProjects">;
   remoteService: IRemoteProjectService;
   isCurrent?(): boolean;
-  findSession(identity: string): { sessionId: string } | undefined;
+  findSession(identity: string, expectedSessionId?: string): { sessionId: string } | undefined;
   connect: ProjectSidebarProps["onConnectRemote"];
   bind(
     sessionId: string,
@@ -66,7 +77,11 @@ export async function attachRemoteProjectWorkspace(input: {
   cancel: ProjectSidebarProps["onCancelRemoteProject"];
 }): Promise<string> {
   const assertCurrent = () => {
-    if (input.isCurrent?.() === false) throw new Error("project.navigation-cancelled");
+    // 连续点击使旧导航正常失效；结构化取消与真实连接/身份失败必须分开，避免瞬时错误 toast。
+    if (input.isCurrent?.() === false)
+      throw Object.assign(new Error("project.navigation-cancelled"), {
+        code: "remote-connection-canceled",
+      });
   };
   assertCurrent();
   const host = await input.remoteService.connectHost(input.hostId);
@@ -124,7 +139,13 @@ export async function attachRemoteProjectWorkspace(input: {
   // Bug 原因：首连 Provisioning 可达十几秒，期间再次点击会再发一次 connect，Host 把它 join 到同一
   // session。旧逻辑把每次 connect 结果都当作“本次创建”，被替代的旧点击在连接迟到成功后立即释放，
   // 最新点击随之失败。现在按设备合并在途连接：被替代的等待者只退出，由接管者或最后一个等待者释放。
-  const flight = joinHostConnectionFlight(input.hostId, () => input.connect(target));
+  // 已知目标应在首连时绑定 context；先连共享 "/" 再绑定会让旧导航误删仍被新 caller join 的 scope。
+  const flight = joinHostConnectionFlight(input.hostId, () =>
+    input.connect(target, undefined, {
+      workspacePath: input.workspacePath,
+      workspaceIdentity: input.workspaceIdentity,
+    }),
+  );
   let sessionId: string;
   try {
     sessionId = await flight.sessionId;
@@ -139,7 +160,15 @@ export async function attachRemoteProjectWorkspace(input: {
       claimed = true;
     });
   } catch (error) {
-    if (claimed || leaveHostConnectionFlight(input.hostId, flight)) await input.cancel(sessionId);
+    // 连接等待期间其他导航/恢复可 join 并提升同一 scope；接管者或最后等待者才可回收，
+    // 且必须确认当前 identity 没有绑定同一 session，避免误删新 caller 已接管的连接。
+    const ownsSession =
+      claimed || leaveHostConnectionFlight(input.hostId, flight);
+    if (
+      ownsSession &&
+      input.findSession(input.workspaceIdentity, sessionId)?.sessionId !== sessionId
+    )
+      await input.cancel(sessionId);
     throw error;
   }
 }

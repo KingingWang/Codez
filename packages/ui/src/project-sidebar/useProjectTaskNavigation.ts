@@ -4,7 +4,10 @@ import type {
   ProjectTree,
   IRemoteProjectService,
 } from "@/project-sidebar/contract.js";
-import { attachRemoteProjectWorkspace } from "@/project-sidebar/remote-navigation.js";
+import {
+  attachRemoteProjectWorkspace,
+  isProjectNavigationCanceledError,
+} from "@/project-sidebar/remote-navigation.js";
 import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
 import { openWebRemoteControlTask } from "@/hooks/useWebRemoteControlTaskOpen.js";
 import { logger } from "@/logger.js";
@@ -93,9 +96,11 @@ export function useProjectTaskNavigation(
             workspaceIdentity: identity,
             remoteService,
             isCurrent,
-            findSession: (key) =>
+            findSession: (key, expectedSessionId) =>
               Object.values(useRemoteWorkspaceSessionStore.getState().sessionsById).find(
-                (session) => session.workspaceIdentity === key,
+                (session) =>
+                  session.workspaceIdentity === key &&
+                  (!expectedSessionId || session.sessionId === expectedSessionId),
               ),
             connect: props.onConnectRemote,
             bind: (sessionId, workspacePath, guard) =>
@@ -111,7 +116,7 @@ export function useProjectTaskNavigation(
       // 同一连接失败，每次都弹错误。被替代是用户的新意图，结果只由最新导航提示。
       if (
         sequence.current !== request ||
-        (error instanceof Error && error.message === "project.navigation-cancelled")
+        isProjectNavigationCanceledError(error)
       )
         return;
       logger.error("[project-sidebar] 打开任务失败", error);
