@@ -33,6 +33,13 @@ workspace selection → existing Host model-view hook → loading / ready / erro
    separate bounded 20-second boot deadline for the first control; every
    subsequent interaction assertion keeps its 10-second deadline. A missing
    control must still fail, never be silently retried.
+7. The injected service validates the requested workspace and only resolves the
+   effective selection supplied by the form. After retry, submitting captures the
+   sparse native default unchanged; switching projects reads the new target,
+   clears the old effective model and ignores delayed old-target responses.
+8. A discovered model menu contains selectable entries. Selecting a reasoning
+   model and then returning to a sparse default does not retain the old effort
+   in the final submission.
 
 ## Reproduction
 
