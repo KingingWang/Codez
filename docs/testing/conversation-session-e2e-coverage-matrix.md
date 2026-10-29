@@ -3474,6 +3474,14 @@ WT-40 / SSH-P0-TASK-01（2026-11-06）：macOS Desktop → Linux arm64 Docker SS
 
 ## R3R. Source Server 统一远程主链覆盖
 
+SSH-P0-LIFE-01 / #30 的新增 accepted/pending 代表复用
+`manual-review/pending/conversation-session-ssh-remote-cold-reconnect.test.ts`：
+受控远端 running → 完整 App restart → 首挂期连续点击原 task（MutationObserver 捕获瞬时
+toast）→ 原 history 恢复、释放流、正常续聊。尚无本次动态执行/人工审阅证据，不计 formal。
+
+2026-10-29 #30：Main 与任务/文件远程导航定向 UT 通过；fixture 与 E2E typecheck
+通过。环境缺少隔离 SSH 目标/凭据，未执行新增 cold-running 动态场景，不继承旧 PASS。
+
 当前执行方案与用例矩阵见 [r3-remote-automation-plan.md](./r3-remote-automation-plan.md) 与
 [r3-remote-automation-case-matrix.md](./r3-remote-automation-case-matrix.md)；原发布测试方案已归档：
 [R3 Source Server 发布测试方案（历史）](../archive/remote-r3/r3-source-server-release-test-plan.md)。
