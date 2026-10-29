@@ -14,7 +14,7 @@ export async function resolveProjectFileTarget(input: {
   isRemote: boolean;
   props: ProjectSidebarProps;
   remoteService?: IRemoteProjectService;
-  findSession(identity: string): { sessionId: string } | undefined;
+  findSession(identity: string, expectedSessionId?: string): { sessionId: string } | undefined;
 }): Promise<SidebarFileTreeTarget | null> {
   const { project, rootPath, props } = input;
   if (!project.roots.some((root) => root.rootPath === rootPath))

@@ -43,6 +43,19 @@
 
 ## 2. 入口与连接顺序
 
+GitHub #30：连续点击原远程任务产生的旧导航失效使用
+`project.navigation-cancelled` 消息和既有 `remote-connection-canceled` 结构化 code。
+任务导航 catch 仅静默真正取消（该 code、`remote-bind-canceled`、AbortError）；
+Host/项目移除、身份不匹配、provisioning 或连接失败仍显示错误 toast。清理只针对本次
+新建 attachment，不放宽 workspaceIdentity、成员、owner 或 stale-result 检查。
+连接等待后必须复查精确 identity + sessionId 的已注册 attachment；它已被其他导航或恢复
+提升时，旧导航不得再凭点击前的 `!existing` 释放整个共享 session。
+已有项目导航通过现有 connect context 从首连开始携带目标 workspacePath/identity，
+不先建立共享 `/` scope 再绑定；ready 返回时目标身份已注册。这样旧导航的精确清理检查
+也覆盖尚未执行项目 bind 的 join，不把目标映射缺席误当作独占回收授权。
+pending SSH 回归必须完整退出并重启桌面（不是 renderer reload），保持远端任务 running，
+重启后连续点击原任务并从点击前开始观察瞬时 toast，确认原任务恢复且可以正常续聊。
+
 ```mermaid
 flowchart TD
     A[打开远程项目 / 手动连接设备] --> B{已指定项目目录?}
