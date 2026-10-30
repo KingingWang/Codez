@@ -120,6 +120,17 @@ CLI 定向回归与桌面/手机 E2E 候选的运行证据见 coverage matrix；
 
 MP01–MP12 的前置、动作、断言与证据见[移动端事件推送规格](web-remote-control/mobile-event-push.md#62-验收用例)。产品语义 accepted。HTTP 资格不建立 WS，远控开关独立；未配置设备接口时向全部设备发送。覆盖通知资格、控制权限隔离、五类实时事件、断网不补发、跨账号/工作区/Pod 和签名发送；不改变桌面本地通知与任务执行状态机。
 
+## CSSTOP32：Codex 子代理停止（issue #32，accepted）
+
+| Case        | Setup / Action                                  | Assertion                                                                                        |
+| ----------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| CSSTOP32-01 | root idle、child 慢流运行；父会话胶囊点击 Stop  | 同一 cancelBackgroundWork 精确打断 child；原生完成事件收敛 work，child envelope 仍只读           |
+| CSSTOP32-02 | root 与两个 child 慢流运行；root Stop           | root-first interrupt，随后逐个 child；单 child 失败不翻转 root ACK，原生 driver 拥有工具结算     |
+| CSSTOP32-03 | Desktop continuous / 手机 replayable 订阅同一父 | 同一 owner 的 running/work 收敛；未登记、异父、stale turn 与重复命令由 bridge focused tests 证明 |
+
+原生隔离集成候选为 `scripts/test-codex-subagent-stop.mjs`，不经人工审阅转正为 WDIO。
+既有 `conversation-session-v4-background-work.test.ts` 只证明共享 UI Stop，不替代 Codex 原生证据。
+
 ## 项目与任务草稿生命周期（2026-10-16）
 
 PD13–PD16（2026-10-30，accepted / pending）：远端草稿在 projectId 就绪后才预热和首发；覆盖保留作用域的完整冷启动、只删除导航作用域后的冷启动与 Enter 拦截、显式项目新建后的真实首发、手机 shared-host 恢复及本地未归类首发。候选 `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-remote-draft-prewarm.test.ts`；covered（候选未转正）：`packages/desktop/.e2e-artifacts/local-docker-20261030074146-15e10a` 完整通过，含真实 Provider 请求和 Host 项目归属断言。macOS Electron → SSH Linux arm64；手机为 Chrome 390px 触摸视口与真实 relay/Host，缺归属为受控 store 前置；不是实体手机或 Windows/Linux 桌面证据。缺失作用域不归因于升级。

@@ -70,3 +70,14 @@ test("state diagnostics whitelist IDs and statuses before writing stderr", () =>
   assert.match(rejected, /nativeStatus=unknown; latestTurnStatus=unknown/);
   assert.doesNotMatch(line + rejected, /private|token|secret/);
 });
+
+test("subagent stop fallback stderr 不包含原生错误正文或非法 ID", () => {
+  assert.equal(
+    formatBridgeStateDiagnostic({
+      kind: "subagentStopFallback",
+      sessionId: "parent-1",
+      childSessionId: "/private/token\nsecret",
+    }),
+    "Codex desktop bridge state: subagentStopFallback; sessionId=parent-1; childSessionId=none\n",
+  );
+});
