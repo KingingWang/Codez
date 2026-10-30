@@ -467,6 +467,13 @@ Header 按钮。文件搜索候选必须先从 fixture 所属项目建立草稿�
 
 `packages/desktop/test/e2e/conversation-session/manual-review/pending/mobile-event-push.test.ts` 验证 HTTP 资格查询不创建 WS、开启远控建立连接、关闭后释放连接。HTTP 上报、回执及失败不重发原由定向单测覆盖，App 业务单测已退役，待 E2E 补充。删除 WebSocket 通知遗留并与远控连接解耦后，HTTP 协议连接子集通过 Electron 回归：`desktop-e2e-20261021130936133-p92242-29b61df14b9503b6`，1/1 通过；真实手机送达、点击及远程工作区全组合仍 planned，未转正或加入 CI。
 
+## CSSTOP32：Codex 子代理停止
+
+| Case              | Accepted semantics                                                    | Evidence / admission                                                                                                        |
+| ----------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| CSSTOP32-01/02/03 | 父 cancel 精确停止 child；root-first 尽力级联；两种 delivery 同源收敛 | `scripts/test-codex-subagent-stop.mjs`：隔离 HOME + 合成慢流 + 真实 pinned Codex/bridge，原生集成候选，非正式 WDIO          |
+| CSSTOP32 UI       | 复用胶囊与唯一 childSessionId 关联的 Stop，不新增子侧输入             | 既有 `conversation-session-v4-background-work.test.ts` 证明共享 UI；bridge 单测证明 Codex work 与命令，不声称手机整机已验收 |
+
 ## 项目与任务草稿生命周期（PD，2026-10-16）
 
 PD01–PD12 定义及分层验证见 [统一生命周期规格](../ui/project-task-draft-lifecycle.md#本轮验证记录2026-10-16)。产品语义 accepted；自动化保持 manual-review/pending，未自动转正或加入 CI。
