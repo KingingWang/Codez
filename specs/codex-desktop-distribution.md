@@ -202,6 +202,16 @@ The Linux regression gate also explicitly runs the UI tests for workspace-scoped
 
 Each native build calls the root `pnpm typecheck` once; that script already includes the Codex bridge typecheck. Do not repeat the bridge typecheck as a separate workflow command. A regression asserts both the root-script coverage and the absence of the redundant command, without dropping any per-platform check.
 
+The bundled bridge smoke step includes `test-codex-subagent-stop.mjs` alongside
+the bridge, project-discovery, CUA and native-control isolation smokes on all six
+targets. Its strict workflow command assertion must carry the same complete
+list; changing a workflow smoke entry requires running
+`node --test scripts/test-codex-distribution*.mjs` separately from pre-push,
+whose affected Vitest selection does not include these Node tests.
+The first #32 push omitted that assertion update and failed 1/97 distribution
+tests before any native build started; the follow-up preserves the strict gate
+and updates its declared smoke set, not the production stop behavior.
+
 The workflow owns the validation step's Node heap budget: set
 `NODE_OPTIONS=--max-old-space-size=4096` on that step for all six native targets.
 The full TypeScript project-reference check exceeds the approximately 2 GiB

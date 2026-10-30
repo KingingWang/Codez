@@ -104,9 +104,11 @@ test("workflow gates six native targets, four bundled remote targets and isolate
   assert.ok(
     build.steps.findIndex((step) => step.run?.includes("test-codex-distribution")) < nativeSmoke,
   );
+  // #32 首次推送只追加了 workflow 的子代理停止 smoke，漏同步这份严格清单，
+  // distribution 回归先失败并阻断六平台构建；保留精确断言并同步完整 smoke 集。
   assert.equal(
     build.steps[nativeSmoke + 1].run,
-    "node --test scripts/test-codex-bridge-smoke.mjs scripts/test-codex-project-discovery.mjs scripts/test-codex-native-cua-smoke.mjs scripts/test-codex-native-control-isolation.mjs",
+    "node --test scripts/test-codex-bridge-smoke.mjs scripts/test-codex-project-discovery.mjs scripts/test-codex-native-cua-smoke.mjs scripts/test-codex-native-control-isolation.mjs scripts/test-codex-subagent-stop.mjs",
   );
   assert.equal(release.needs, "build");
   assert.match(release.if, /github.event_name == 'push'/);
