@@ -103,6 +103,7 @@ export class BridgeRuntime {
       title: this.title,
       providerKeyGate: options.providerKeyGate,
       onContinueRejected: options.logStateDiagnostic,
+      onSubagentStopFallback: options.logStateDiagnostic,
     });
     this.snapshots = new BridgeSnapshots(
       { rpc, cwd, auxiliary: this.auxiliary },

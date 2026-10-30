@@ -1,4 +1,8 @@
-import type { ConversationRow, SubagentProjectionState } from "@codez/shared/codez-protocol-v4";
+import type {
+  BackgroundWorkSummary,
+  ConversationRow,
+  SubagentProjectionState,
+} from "@codez/shared/codez-protocol-v4";
 import { isCodexKnownItem, type CodexThread, type CodexTurn } from "./codex-types.js";
 import type { RowBase } from "./projection-item-extras.js";
 
@@ -440,6 +444,24 @@ export function subagentEntityId(childThreadId: string): string {
 
 /** snapshot.subagents 的语义部分；revision 由 ThreadStateStore 记账（单一所有者）。 */
 export type SubagentsSemanticState = Omit<SubagentProjectionState, "revision">;
+
+/** #32：同一 running 投影派生 Stop 身份，不新建执行状态、不声称原生已 backgrounded。 */
+export function subagentBackgroundWorks(
+  running: SubagentsSemanticState["running"],
+  createdAt: number,
+  cancellable: boolean,
+): BackgroundWorkSummary[] {
+  return running.map((child) => ({
+    workId: child.childSessionId,
+    kind: "subagent",
+    title: child.title,
+    status: "running",
+    startedAt: child.startedAt ?? createdAt * 1000,
+    cancellable,
+    anchorRowId: null,
+    childSessionId: child.childSessionId,
+  }));
+}
 
 /**
  * 从已投影的 subagent 行派生会话级子代理态（不再回读原生，避免重复解析整段历史）。

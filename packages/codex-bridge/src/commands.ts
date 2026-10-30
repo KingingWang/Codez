@@ -43,6 +43,7 @@ import { executeThreadGoalCommand } from "./thread-goal.js";
 import { executeInterruptedTurnContinue } from "./commands-continue.js";
 import { deleteBridgeThread } from "./thread-queries.js";
 import type { BridgeStateDiagnostic } from "./diagnostics.js";
+import { cancelSubagentWork, cascadeSubagentStop } from "./subagent-stop.js";
 
 export interface CommandContext {
   rpc: CodexRpcPort;
@@ -59,6 +60,7 @@ export interface CommandContext {
   title?: SessionTitleCoordinator;
   providerKeyGate?: CodexProviderKeyGate;
   onContinueRejected?: (diagnostic: BridgeStateDiagnostic) => void;
+  onSubagentStopFallback?: (diagnostic: BridgeStateDiagnostic) => void;
 }
 
 /** Per-thread serialization covers admission decisions, not native execution. */
@@ -288,6 +290,12 @@ export class CommandRouter {
         if (p.expectedForegroundExecutionId && p.expectedForegroundExecutionId !== running?.id)
           throw new Error("Turn changed before stop");
         if (running) await rpc.request("turn/interrupt", { ...native, turnId: running.id });
+        await cascadeSubagentStop(this.context, sessionId, this.context.onSubagentStopFallback);
+        break;
+      }
+      case "cancelBackgroundWork": {
+        const p = commandPayloadSchemas.cancelBackgroundWork.parse(command.payload);
+        await cancelSubagentWork(this.context, sessionId, p.workId);
         break;
       }
       case "compact":

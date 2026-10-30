@@ -104,6 +104,13 @@ Subagent child threads stay Codex-owned: the parent thread's collab items are th
 only source of child identity, and a child is projected as a read-only session
 (`readOnly: "subagent-child"`) that never accepts writes, never enters the
 session index, and is listed only through `session/subagents` by parent id.
+Parent-envelope `cancelBackgroundWork` interrupts only a registered child's
+verified current turn; child envelopes remain deny-by-default. Root stop
+interrupts the root first, then best-effort interrupts registered running children.
+Running children supply derived cancellable background works, never another
+execution owner. Native lifecycle events, not ACKs, settle those projections and
+the parent driver owns tool settlement. Child cascade failures produce bounded
+`subagentStopFallback` diagnostics without changing the root ACK.
 Attach uses the native resume path only while Codex already has the child loaded
 (`idle`/`active`), where resume means replay-plus-subscribe; a `notLoaded` child is
 projected from lock-free reads without resume, because resuming it rewrites the
