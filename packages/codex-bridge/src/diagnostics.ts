@@ -3,6 +3,11 @@ import { z } from "zod";
 
 export type BridgeStateDiagnostic =
   | {
+      kind: "subagentStopFallback";
+      sessionId: string;
+      childSessionId: string;
+    }
+  | {
       kind: "snapshotPrepared";
       deliveryKind: "initial" | "recovery";
       sessionId: string;
@@ -30,6 +35,8 @@ const diagnosticId = (value: string | null): string =>
 
 /** stderr 只接受闭合枚举、计数与短 ID；原生文本不进入生产诊断。 */
 export function formatBridgeStateDiagnostic(diagnostic: BridgeStateDiagnostic): string {
+  if (diagnostic.kind === "subagentStopFallback")
+    return `Codex desktop bridge state: subagentStopFallback; sessionId=${diagnosticId(diagnostic.sessionId)}; childSessionId=${diagnosticId(diagnostic.childSessionId)}\n`;
   if (diagnostic.kind === "snapshotPrepared") {
     const phase = new Set([
       "draft",

@@ -27,6 +27,11 @@ export class SubagentActivityTracker {
     return this.threadActivity.get(id);
   }
 
+  /** 只返回该父快照登记的 child 身份副本；停止命令不得从任意 threadId 推测归属。 */
+  childrenOf(parentId: string): readonly string[] {
+    return [...(this.childrenByParent.get(parentId) ?? [])];
+  }
+
   /** 记录活性观测（事件旁路与一次性种子共用写入路径）。 */
   noteActivity(id: string, active: boolean): void {
     this.threadActivity.set(id, active);

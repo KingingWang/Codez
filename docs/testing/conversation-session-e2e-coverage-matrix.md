@@ -571,6 +571,13 @@ Header 按钮。文件搜索候选必须先从 fixture 所属项目建立草稿�
 
 MP13 在同一 pending spec 中通过真实设置页切换开关，Relay fixture 记录并回执 `POST /api/v1/remote/notification/events`。关闭时完成一轮对话：Main 日志出现 `task_completed` 的 `skipped`/`user_disabled`，Relay 通知上报数为 0；重新打开后完成第二轮：上报恰好 1 次，kind 为 `task_completed`，run_id 为第二轮，不补发第一轮。证据文件：`mobile-push-switch-evidence.json`、`mobile-push-switch-logs.txt`。回放使用显式 `E2E_PROVIDER_REPLAY_FIXTURE_PATH`（common + case-local），在 macOS 本地 Electron 单次运行通过；仅覆盖「任务完成」事件，未覆盖 question/approval/plan 的 open/resolved、多窗口与 Windows/Linux；仍为 manual-review/pending，未转正、未人工评审、未加入 CI。
 
+## CSSTOP32：Codex 子代理停止
+
+| Case              | Accepted semantics                                                    | Evidence / admission                                                                                                        |
+| ----------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| CSSTOP32-01/02/03 | 父 cancel 精确停止 child；root-first 尽力级联；两种 delivery 同源收敛 | `scripts/test-codex-subagent-stop.mjs`：隔离 HOME + 合成慢流 + 真实 pinned Codex/bridge，原生集成候选，非正式 WDIO          |
+| CSSTOP32 UI       | 复用胶囊与唯一 childSessionId 关联的 Stop，不新增子侧输入             | 既有 `conversation-session-v4-background-work.test.ts` 证明共享 UI；bridge 单测证明 Codex work 与命令，不声称手机整机已验收 |
+
 ## 项目与任务草稿生命周期（PD，2026-10-16）
 
 2026-11-10 PD13–PD16 已人工复核并转正。候选 `local-docker-20261110101907-919e75`、
