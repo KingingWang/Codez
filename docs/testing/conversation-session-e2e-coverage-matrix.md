@@ -1,5 +1,12 @@
 # Conversation Session E2E Coverage Matrix
 
+## CSSTOP32：Codex 子代理停止
+
+| Case              | Accepted semantics                                                    | Evidence / admission                                                                                                        |
+| ----------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| CSSTOP32-01/02/03 | 父 cancel 精确停止 child；root-first 尽力级联；两种 delivery 同源收敛 | `scripts/test-codex-subagent-stop.mjs`：隔离 HOME + 合成慢流 + 真实 pinned Codex/bridge，原生集成候选，非正式 WDIO          |
+| CSSTOP32 UI       | 复用胶囊与唯一 childSessionId 关联的 Stop，不新增子侧输入             | 既有 `conversation-session-v4-background-work.test.ts` 证明共享 UI；bridge 单测证明 Codex work 与命令，不声称手机整机已验收 |
+
 ## 项目与任务草稿生命周期（PD，2026-10-16）
 
 PD01–PD12 定义及分层验证见 [统一生命周期规格](../ui/project-task-draft-lifecycle.md#本轮验证记录2026-10-16)。产品语义 accepted；自动化保持 manual-review/pending，未自动转正或加入 CI。

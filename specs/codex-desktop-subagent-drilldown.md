@@ -50,8 +50,9 @@ Codex flavor 的子代理与原生 flavor 同形可下钻：父会话时间线�
   - 只读加载一律跳过 queue 读取。
 - cwd：子线程放宽，物理路径不同也允许只读投影（child id 只来自父线程 item，不是用户
   输入）；可写线程仍按物理路径严格校验。
-- 命令：任何非空 `readOnly` 一律 deny；子代理用 `guard.subagentReadOnly`（与原生
-  同 reasonCode），fork 逃生通道保留。availability 用同一 reasonCode 报禁用。
+- 命令：child envelope 仍 deny-by-default；子代理用 `guard.subagentReadOnly`（与原生
+  同 reasonCode），`forkAssistant` / `createSelectionSideSession` 逃生通道保留。
+  availability 用同一 reasonCode 报禁用。停止从父 envelope 的既有命令进入，见下节。
 - 不设置 `snapshot.writerConflict`：那条文案语义是「被别的窗口/进程占用」，与子代理
   只读不符。UI 只读由 side pane 的 `readOnly` prop + 命令层 deny 双层保证。
 - 子线程不进任务列表：`store.list()` 现有 `sourceKinds: ["cli","vscode","exec",
@@ -75,7 +76,8 @@ Codex flavor 的子代理与原生 flavor 同形可下钻：父会话时间线�
   `thread/turns/list` 剥掉了），所以时间线行的 `subagentType` 只能是 `subagent` fallback、
   标题走 spawn prompt 首个非空行；真实 `agentNickname`/`agentRole` 只有 `thread/list` /
   `thread/read` 的子线程元数据上有，因此只在 `session/subagents` 目录与 side pane tab 出现。
-- 子代理严格只读：Codex V2 子线程不接受客户端直接输入，因此不提供发送/停止/重试/编辑。
+- 子代理视图严格只读：不提供 child envelope 的发送/停止/重试/编辑；父会话胶囊
+  和状态面板复用 `cancelBackgroundWork` 停止 child，不放开子会话写权限。
 - 运行中判定：`snapshot.subagents.running` 以父线程事实为准，再按上表「running 收敛」的
   子线程活性观测把已结束的 child 从 running 里去掉（避免中断会话永久滞留「运行中」）。
   活性观测优先取已加载子线程的原生 `status`；未加载时取 bridge 记录的 turn/status 事件或
@@ -94,8 +96,64 @@ Codex flavor 的子代理与原生 flavor 同形可下钻：父会话时间线�
 - `send_input`/`resume_agent`/`wait_agent`/`close_agent` 等后续交互工具不进入该集合：
   同一 child 只允许一张可点卡片。
 
+## 父会话停止子代理（issue #32）
+
+根因已由源码确认：bridge 快照的 `backgroundWorks` 原本恒为空，胶囊及状态面板没有
+可关联的 Stop；root `stop` 仅 interrupt root turn，child 可能继续运行。
+
+- 每个 `snapshot.subagents.running` child 派生一条 `backgroundWorks`：
+  `workId = childSessionId`、`kind = "subagent"`、`status = "running"`、
+  `anchorRowId = null`，标题与开始时间沿用同一 running 投影（缺少时间用 thread 创建时间）。
+  可写父会话为 `cancellable: true`；只读会话为 false，不暴露无法执行的控制。
+  不声称原生 child 已 backgrounded，不给时间线 subagent 行添加 `workId`。
+- 唯一父子登记仍由 `ThreadStateStore` 内的 `SubagentActivityTracker` 持有；
+  快照完整历史的 child IDs 更新登记，不从窗口截断、标题、时间或用户输入推测关系。
+- 父 envelope 的 `cancelBackgroundWork { workId }` 必须命中该父的已登记 child，否则
+  fail closed 且不向目标发 RPC。登记命中后，用免锁 `thread/read` 验证返回 ID 与
+  `parentThreadId`，并用 `thread/turns/list(itemsView = "notLoaded")` 查询当前 turn；
+  不 resume child、不读取完整 items、不建立第二份执行状态。
+  无 inProgress turn 时幂等 accepted；唯一 inProgress turn 时只向该 child/turn 发一次
+  `turn/interrupt`。身份不匹配、多个 inProgress turn 或读取/interrupt 失败显式失败，
+  不重试 outcome-unknown mutation。
+- root `stop` 保留既有 `expectedForegroundExecutionId` stale guard，先 interrupt root；
+  root interrupt 失败不级联。root 已 idle 也可停止已登记 child。随后逐个检查已登记
+  child 的当前 turn，用同一 interrupt 实现尽力停止仍在运行的 child。
+  单 child 失败只发闭合 `subagentStopFallback` stderr 诊断，不翻转 root Stop ACK，
+  不泄露原生错误正文、凭据或路径；诊断回调失败也不影响 ACK。
+- commandId 的幂等及 outcome-unknown 规则沿用 `CommandLedger`；child turnId 是
+  精确执行目标。读取后 child 换 turn 时不改目标、不猜最新 turn、不自动重试。
+  bridge 不合成 child 或父 Agent tool 的 interrupted 终态，不提前清空 running；
+  Codex 父 driver 拥有工具结算，既有 child lifecycle 观测触发父快照收敛。
+- UI 继续按唯一 `childSessionId` 精确关联 `controlWorkId`；缺失/重复身份不显示 Stop。
+  不新增 child 侧 Stop、mailbox、发送入口或 live model/permission switch。
+- Desktop continuous 与手机 replayable 均读取相同 owner 的快照/事件和发同一命令；
+  本改动不改变 Host owner/lease、workspaceIdentity/remoteSessionId 路由或恢复链路。
+
+```mermaid
+sequenceDiagram
+  participant UI as "父会话胶囊 / Stop（Desktop 或手机）"
+  participant Bridge as "bridge 命令准入 / Ledger"
+  participant Store as "ThreadStateStore / 父子登记"
+  participant Codex as "Codex child turn / 父 driver"
+  UI->>Bridge: cancelBackgroundWork 或 root stop
+  Bridge->>Codex: root stop 先 interrupt root（若 active）
+  Bridge->>Store: 读取该父已登记 child
+  Bridge->>Codex: 免锁读取身份与当前 turn
+  Bridge->>Codex: turn/interrupt（精确 child + turnId）
+  Bridge-->>UI: ACK（不合成终态）
+  Codex->>Store: child turn/completed / status
+  Store-->>UI: 同一 owner 重投影 running 与 backgroundWorks
+```
+
 ## Acceptance
 
+- #32 单测：running child 可取消投影；cancel 精确打断当前 child turn；结束后幂等；
+  未登记/异父/错 ID/多个 running turn fail closed；重复 commandId 不重复 interrupt；
+  child envelope deny 保留；root-first 级联、idle root、stale root、root 失败、
+  单 child 失败及诊断失败不翻转 ACK；完成事件收敛 work 而非 ACK 合成终态。
+- #32 原生集成：隔离 Codex HOME、合成慢流 provider，真实 pinned app-server + bridge
+  验证 child interrupt 接受度、父 driver 结算，以及两种 delivery 的 work 收敛。
+  UI 胶囊与 Stop 复用既有 V4 background E2E，不把 native Agent 路径当作 Codex 证据。
 - bridge 单测：行投影（含并发两个 child 交错 activity 不串号）、只有 activity 的历史、
   `snapshot.subagents` 与 revision 语义、子线程只读加载三条路径（attach 成功 / resume
   被拒降级 / cwd 不同）、`notLoaded` 跳过 resume 与 `idle` 仍订阅、deny guard 的
@@ -103,3 +161,19 @@ Codex flavor 的子代理与原生 flavor 同形可下钻：父会话时间线�
 - UI 单测：`spawn_agent` 行 + subagent 行恰好产出一个 `agentToolCall` 渲染项且 subagent
   行不重复渲染；有无 `childSessionId` 时 side pane 入口 testid 的出现与缺席。
 - `pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed` 全绿。
+
+### #32 本次验证（2026-10-31）
+
+- bridge 包：759 passed、4 个已有 opt-in native skip、0 failed；新增停止测试均执行。
+- `node --test scripts/test-codex-subagent-stop.mjs`：真实 pinned Codex + bundled bridge
+  验证父 cancel、两个 child 的 root 级联、原生 interrupted 结算和两种 delivery 收敛，1/1 PASS。
+- 状态面板唯一 child 身份关联等 focused UI tests：28/28 PASS；根 typecheck、
+  lint（117 条现有 warning、0 error）、changed 架构检查通过。
+- 干净的隔离待提交快照执行 `pnpm verify:pre-push` 通过；affected 选择 0/2084 根 UT，
+  未执行根 UT，bridge 的 Node 测试及原生集成由以上独立入口验证。
+- 既有 `conversation-session-v4-background-work.test.ts` **未通过，不计入停止证据**：
+  首次受继承的 `ELECTRON_RUN_AS_NODE=1` 影响无法启动；移除后，默认 Codex flavor 的
+  legacy Provider 准备不匹配；显式 legacy 重跑仍在 `prepareV4ConversationE2E` /
+  `selectRegistryProviderModelById` 等待选模 trigger 可点击时失败，未到达发送/Stop。
+  最后一次 artifact：`packages/desktop/.e2e-artifacts/desktop-e2e-20261030162343068-p98109-12ad97bd4fd253c3/`。
+  本修复不改 UI 或该准备器；此失败不代表 Codex 停止链路已被 GUI 验证。

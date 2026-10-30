@@ -24,7 +24,7 @@ import { lastTurn } from "./thread-index.js";
 import { codexUserInputSchema, type CodexTurn } from "./codex-types.js";
 import { projectOwnedInput } from "./native-file-projection.js";
 import { projectConversationTailWindow } from "./projection-window.js";
-import { subagentsStateFromRows } from "./subagent-projection.js";
+import { subagentBackgroundWorks, subagentsStateFromRows } from "./subagent-projection.js";
 import { SubagentActivitySeedScheduler } from "./subagent-activity.js";
 import {
   sparseNativeTurnUsage,
@@ -405,25 +405,19 @@ export class BridgeSnapshots {
         queueItem.attachments = projected.refs;
       }
     }
-    // 行富化按轮进行：已 settled 的轮次命中缓存时只写回被改写的少数行，
-    // 同时顺带收集 subagent 行，避免每帧再对整段历史跑一次 subagentsStateFromRows。
+    // 按轮富化缓存只写回改动行，顺带收集 subagent 行，避免每帧重扫全史。
     const subagentRows = this.enrichRows(id, snapshot.rows.window, state, {
       idle,
       writerConflict,
       userProjections,
       imageViewFileNames,
     });
-    // 子代理下钻（specs/codex-desktop-subagent-drilldown.md）：running/ended 从已投影的
-    // subagent 行派生，不额外请求原生；revision 交给 store 记账，语义不变则不递增。
-    // 必须在 tail window 截断前用完整 rows 计算，否则旧会话的子代理会从目录里消失；
-    // 富化阶段收集的就是完整窗口里的全部 subagent 行（非 subagent 行原本也被跳过）。
+    // 下钻目录在 tail 截断前派生自全部 subagent 行；revision 由 store 按语义变化记账。
     const subagents = subagentsStateFromRows(subagentRows, {
       isChildActive: (childThreadId) => {
         const status = this.store.nativeThreadStatus(childThreadId);
         if (status) return status.type === "active";
-        // 未加载子线程退回事件/种子观测：父线程经常永远没有终态事实（v1 只在
-        // wait/send_input 观测时写 agentsStates，v2 只在 Completed 时写 activity），
-        // 没有这条旁路，状态面板会在子代理结束后一直计时。
+        // 父侧常缺终态事实；未加载 child 按事件/种子活性收敛，避免结束后一直计时。
         return this.store.observedThreadActive(childThreadId);
       },
     });
@@ -437,6 +431,12 @@ export class BridgeSnapshots {
       ),
       ...subagents,
     });
+    // Bug #32：目录 running 缺少可取消 work 时无法关联 Stop；原生完成事件一并收敛。
+    snapshot.backgroundWorks = subagentBackgroundWorks(
+      subagents.running,
+      Number(state.thread.createdAt),
+      !state.readOnly,
+    );
     if (this.store.get(id) !== state) throw new DeletedThreadError();
     this.attachmentViews.set(id, { epoch: snapshot.logEpoch, rows: snapshot.rows.window });
     if (state.seq === startSeq && state.revision === startRevision && state.epoch === startEpoch) {
