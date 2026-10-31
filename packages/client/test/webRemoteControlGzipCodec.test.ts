@@ -14,13 +14,13 @@ const gunzip = (bytes: Uint8Array) => gunzipSync(bytes);
 describe("webRemoteControlGzipCodec", () => {
   it("大 payload 压缩后往返还原，且体积显著下降", () => {
     const payload = {
-      zcode_type: "app-error",
+      codez_type: "app-error",
       reason: "unexpected-error",
       error: "x".repeat(8192),
     };
     const envelope = encodeWebRemoteControlGzipEnvelope(payload, gzip);
     expect(envelope).not.toBeNull();
-    expect(envelope!.zcode_type).toBe("relay-gzip");
+    expect(envelope!.codez_type).toBe("relay-gzip");
     expect(envelope!.v).toBe(1);
     // base64 后仍远小于原始 JSON（8192 个重复字符高度可压缩）。
     expect(envelope!.data.length).toBeLessThan(1024);
@@ -29,14 +29,14 @@ describe("webRemoteControlGzipCodec", () => {
   });
 
   it("小 payload 不压缩（低于阈值）", () => {
-    const payload = { zcode_type: "app-error", reason: "unexpected-error", error: "x" };
+    const payload = { codez_type: "app-error", reason: "unexpected-error", error: "x" };
     expect(encodeWebRemoteControlGzipEnvelope(payload, gzip)).toBeNull();
   });
 
   it("压缩无收益时不包信封", () => {
     // base64 噪声对 Huffman 仍有收益（64 符号字母表），用恒等压缩桩直接命中守卫分支。
     const payload = {
-      zcode_type: "app-error",
+      codez_type: "app-error",
       reason: "unexpected-error",
       error: Buffer.from(randomBytes(WEB_REMOTE_CONTROL_GZIP_MIN_BYTES * 2)).toString("base64"),
     };
@@ -48,18 +48,18 @@ describe("webRemoteControlGzipCodec", () => {
   it("畸形信封解码返回 null 而不是抛错", () => {
     expect(
       decodeWebRemoteControlGzipEnvelope(
-        { zcode_type: "relay-gzip", v: 1, data: "aGVsbG8=" }, // 合法 base64 但不是 gzip
+        { codez_type: "relay-gzip", v: 1, data: "aGVsbG8=" }, // 合法 base64 但不是 gzip
         gunzip,
       ),
     ).toBeNull();
     expect(
-      decodeWebRemoteControlGzipEnvelope({ zcode_type: "relay-gzip", v: 1, data: "####" }, gunzip),
+      decodeWebRemoteControlGzipEnvelope({ codez_type: "relay-gzip", v: 1, data: "####" }, gunzip),
     ).toBeNull();
   });
 
   it("异步变体（DecompressionStream 路径）同样往返一致", async () => {
     const payload = {
-      zcode_type: "rpc-frame",
+      codez_type: "rpc-frame",
       bridgeSessionId: "b1",
       messageSeq: 7,
       data: "y".repeat(4096),

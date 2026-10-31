@@ -37,7 +37,7 @@ describe("WebRemoteControlRelayPayloadSerializer", () => {
       seal: (wire) => phone.prepare(wire),
     });
     const plaintext: WebRemoteControlAppPayload = {
-      zcode_type: "app-error",
+      codez_type: "app-error",
       reason: "unexpected-error",
       error: "private",
     };
@@ -54,7 +54,7 @@ describe("WebRemoteControlRelayPayloadSerializer", () => {
   it("emits only the upstream wire discriminator without mutating the internal payload", () => {
     const serializer = new WebRemoteControlRelayPayloadSerializer();
     const payload = Object.freeze({
-      zcode_type: "bootstrap-response" as const,
+      codez_type: "bootstrap-response" as const,
       requestId: "bootstrap-upstream",
       success: true as const,
       result: { windowControlSessionId: "sid-1", workspaces: [] },
@@ -70,8 +70,8 @@ describe("WebRemoteControlRelayPayloadSerializer", () => {
       },
       client_ts: 100,
     });
-    expect(payload.zcode_type).toBe("bootstrap-response");
-    expect(payload).not.toHaveProperty("codez_type");
+    expect(payload.codez_type).toBe("bootstrap-response");
+    expect(payload).not.toHaveProperty("zcode_type");
     expect(prepared.bytes).toBe(new TextEncoder().encode(prepared.json).byteLength);
     expect(serializer.prepare(payload, 200)).toBe(prepared);
   });
@@ -97,7 +97,7 @@ describe("WebRemoteControlRelayPayloadSerializer", () => {
     const now = vi.spyOn(Date, "now").mockReturnValue(1_800_000_000_123);
     try {
       const prepared = new WebRemoteControlRelayPayloadSerializer().prepare({
-        zcode_type: "bootstrap-request",
+        codez_type: "bootstrap-request",
         requestId: "request-1",
       });
       expect(prepared.message.client_ts).toBe(1_800_000_000);
@@ -110,12 +110,12 @@ describe("WebRemoteControlRelayPayloadSerializer", () => {
   it("distinguishes a permanent oversize envelope from a bounded payload", () => {
     const serializer = new WebRemoteControlRelayPayloadSerializer();
     const bounded: WebRemoteControlAppPayload = {
-      zcode_type: "app-error",
+      codez_type: "app-error",
       reason: "unexpected-error",
       error: "中文🙂bounded",
     };
     const oversize: WebRemoteControlAppPayload = {
-      zcode_type: "app-error",
+      codez_type: "app-error",
       reason: "unexpected-error",
       error: "x".repeat(WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS.maxPhysicalFrameBytes),
     };
