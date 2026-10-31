@@ -1,0 +1,272 @@
+import type { CodezAndroidSocketBridge, NativeSocketEvent, SocketListener } from "../contract.js";
+import { arrayBufferToBase64, base64ToArrayBuffer, serializeHeaders } from "./encoding.js";
+
+type NativeHttpEvent =
+  | { type: "response"; status: number; body: string }
+  | { type: "error"; message?: string };
+
+/**
+ * 浏览器 WebSocket 子集适配类。事件目标用最小实现而不是 EventTarget，
+ * 避免依赖 WebView 对构造器子类化的支持差异。
+ */
+export class CodezAndroidWebSocket {
+  static readonly CONNECTING = 0;
+  static readonly OPEN = 1;
+  static readonly CLOSING = 2;
+  static readonly CLOSED = 3;
+  readonly CONNECTING = 0;
+  readonly OPEN = 1;
+  readonly CLOSING = 2;
+  readonly CLOSED = 3;
+
+  readonly url: string;
+  readonly extensions = "";
+  readonly protocol = "";
+  readonly bufferedAmount = 0;
+  binaryType: BinaryType = "arraybuffer";
+  readyState: number = CodezAndroidWebSocket.CONNECTING;
+
+  onopen: ((event: Event) => void) | null = null;
+  onmessage: ((event: MessageEvent) => void) | null = null;
+  onerror: ((event: Event) => void) | null = null;
+  onclose: ((event: CloseEvent) => void) | null = null;
+
+  private readonly id: number;
+  private readonly listeners = new Map<string, Set<SocketListener>>();
+
+  constructor(url: string) {
+    this.url = url;
+    const bridge = window.CodezAndroidSocket;
+    if (!bridge) {
+      throw new Error("CodezAndroidSocket bridge is not available");
+    }
+    this.id = nextSocketId();
+    registerSocket(this.id, this);
+    try {
+      bridge.open(this.id, url);
+    } catch (error) {
+      unregisterSocket(this.id);
+      throw error;
+    }
+  }
+
+  addEventListener(type: string, listener: SocketListener): void {
+    let bucket = this.listeners.get(type);
+    if (!bucket) {
+      bucket = new Set();
+      this.listeners.set(type, bucket);
+    }
+    bucket.add(listener);
+  }
+
+  removeEventListener(type: string, listener: SocketListener): void {
+    this.listeners.get(type)?.delete(listener);
+  }
+
+  send(data: string | ArrayBuffer | ArrayBufferView): void {
+    if (this.readyState !== CodezAndroidWebSocket.OPEN) {
+      // 与浏览器行为一致：非 OPEN 状态发送抛错。
+      throw new Error("WebSocket is not open");
+    }
+    const bridge = window.CodezAndroidSocket;
+    if (!bridge) {
+      return;
+    }
+    if (typeof data === "string") {
+      bridge.sendText(this.id, data);
+      return;
+    }
+    const buffer =
+      data instanceof ArrayBuffer
+        ? data
+        : data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+    bridge.sendBinary(this.id, arrayBufferToBase64(buffer as ArrayBuffer));
+  }
+
+  close(code = 1000, reason = ""): void {
+    if (
+      this.readyState === CodezAndroidWebSocket.CLOSING ||
+      this.readyState === CodezAndroidWebSocket.CLOSED
+    ) {
+      return;
+    }
+    this.readyState = CodezAndroidWebSocket.CLOSING;
+    window.CodezAndroidSocket?.close(this.id, code, reason);
+  }
+
+  /** 由原生事件回派调用，不在页面业务代码里直接使用。 */
+  dispatchNativeEvent(event: NativeSocketEvent): void {
+    switch (event.type) {
+      case "open":
+        if (this.readyState !== CodezAndroidWebSocket.CONNECTING) return;
+        this.readyState = CodezAndroidWebSocket.OPEN;
+        this.emit("open", new Event("open"));
+        break;
+      case "message": {
+        if (this.readyState !== CodezAndroidWebSocket.OPEN) return;
+        const data =
+          typeof event.text === "string" ? event.text : base64ToArrayBuffer(event.base64 ?? "");
+        // 不用 MessageEvent 构造器：旧 System WebView 与 Node 测试环境不一定提供。
+        this.emit("message", Object.assign(new Event("message"), { data }));
+        break;
+      }
+      case "error":
+        if (this.readyState >= CodezAndroidWebSocket.CLOSING) return;
+        this.emit("error", new Event("error"));
+        break;
+      case "close": {
+        if (this.readyState === CodezAndroidWebSocket.CLOSED) return;
+        this.readyState = CodezAndroidWebSocket.CLOSED;
+        unregisterSocket(this.id);
+        // 同上：CloseEvent 构造器并非全环境可用，事件对象只要形状匹配即可。
+        const closeEvent = Object.assign(new Event("close"), {
+          code: event.code,
+          reason: event.reason,
+          wasClean: event.wasClean,
+        });
+        this.emit("close", closeEvent);
+        break;
+      }
+    }
+  }
+
+  private emit(type: string, event: Event): void {
+    const handler =
+      type === "open"
+        ? this.onopen
+        : type === "message"
+          ? (this.onmessage as ((event: Event) => void) | null)
+          : type === "error"
+            ? this.onerror
+            : (this.onclose as ((event: Event) => void) | null);
+    handler?.call(this, event);
+    this.listeners.get(type)?.forEach((listener) => {
+      try {
+        listener.call(this, event);
+      } catch {
+        // 单个监听器异常不应阻断其余监听器（浏览器 EventTarget 语义）。
+      }
+    });
+  }
+}
+
+const socketRegistry = new Map<number, CodezAndroidWebSocket>();
+
+let socketIdSeed = 0;
+
+function nextSocketId(): number {
+  socketIdSeed += 1;
+  return socketIdSeed;
+}
+
+function registerSocket(id: number, socket: CodezAndroidWebSocket): void {
+  socketRegistry.set(id, socket);
+  ensureEventSinkInstalled();
+}
+
+function unregisterSocket(id: number): void {
+  socketRegistry.delete(id);
+}
+
+function ensureEventSinkInstalled(): void {
+  if (window.__codezAndroidSocketEvent) {
+    return;
+  }
+  window.__codezAndroidSocketEvent = (id, eventJson) => {
+    const socket = socketRegistry.get(id);
+    if (!socket) {
+      return;
+    }
+    let event: NativeSocketEvent;
+    try {
+      event = JSON.parse(eventJson) as NativeSocketEvent;
+    } catch {
+      return;
+    }
+    socket.dispatchNativeEvent(event);
+  };
+}
+
+const httpRegistry = new Map<
+  number,
+  {
+    resolve(response: Response): void;
+    reject(error: Error): void;
+    cleanup(): void;
+  }
+>();
+
+let httpIdSeed = 0;
+
+function ensureHttpEventSinkInstalled(): void {
+  if (typeof window === "undefined" || window.__codezAndroidHttpEvent) {
+    return;
+  }
+  window.__codezAndroidHttpEvent = (id, eventJson) => {
+    const pending = httpRegistry.get(id);
+    if (!pending) return;
+    httpRegistry.delete(id);
+    pending.cleanup();
+    let event: NativeHttpEvent;
+    try {
+      event = JSON.parse(eventJson) as NativeHttpEvent;
+    } catch {
+      pending.reject(new Error("Invalid native HTTP event"));
+      return;
+    }
+    if (event.type === "error") {
+      pending.reject(new Error(event.message || "Native HTTP request failed"));
+      return;
+    }
+    pending.resolve(
+      new Response(event.body, {
+        status: event.status,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  };
+}
+
+export function requestAndroidHttp(
+  bridge: CodezAndroidSocketBridge,
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  const signal = init?.signal;
+  if (signal?.aborted) {
+    throw new DOMException("The operation was aborted.", "AbortError");
+  }
+  const rawUrl =
+    typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+  const resolvedUrl = new URL(
+    rawUrl,
+    typeof window !== "undefined" && window.location?.href
+      ? window.location.href
+      : "https://zcode.z.ai",
+  ).toString();
+  const method = (init?.method ?? "GET").toUpperCase();
+  const headersJson = JSON.stringify(serializeHeaders(init?.headers));
+  const body = typeof init?.body === "string" ? init.body : "";
+  const id = ++httpIdSeed;
+  ensureHttpEventSinkInstalled();
+
+  return new Promise<Response>((resolve, reject) => {
+    const onAbort = () => {
+      if (!httpRegistry.delete(id)) return;
+      reject(new DOMException("The operation was aborted.", "AbortError"));
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
+    httpRegistry.set(id, {
+      resolve,
+      reject,
+      cleanup: () => signal?.removeEventListener("abort", onAbort),
+    });
+    try {
+      bridge.fetch!(id, resolvedUrl, method, headersJson, body);
+    } catch (error) {
+      httpRegistry.delete(id);
+      signal?.removeEventListener("abort", onAbort);
+      reject(error instanceof Error ? error : new Error(String(error)));
+    }
+  });
+}
