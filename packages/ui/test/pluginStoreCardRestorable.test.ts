@@ -328,14 +328,17 @@ describe("PluginStoreCard restorable built-ins", () => {
     expect(html).toContain("Install");
   });
 
-  it("keeps installed card and detail enablement inside the actions menu", async () => {
+  it("keeps installed card and detail enablement in the actions menu alongside the switch", async () => {
     const item = installedItemWithRuntimeInfo();
     const cardHtml = await renderCard(item, makeActions());
     const detailHtml = await renderDetail(item, makeActions());
 
     expect(cardHtml).toContain('data-testid="plugin-store-item-menu"');
-    expect(cardHtml).not.toContain('data-testid="plugin-store-enabled-switch"');
-    expect(detailHtml).not.toContain('data-testid="plugin-store-enabled-switch"');
     expect(detailHtml).toContain('data-testid="plugin-store-item-menu"');
+    // 上游 3.17.1 重写了 PluginStoreCard：已安装且有运行时信息的插件在卡片上直接给出启停开关
+    // （上游 E2E conversation-session-plugin-marketplace-installed-roundtrip 安装后就是等这个开关），
+    // 「…」菜单里仍保留启用/禁用项。fork 原先的「紧凑卡片只留菜单、开关只在详情页/管理视图」
+    // 被上游取代，这里改为锁定卡片同时具备菜单与开关两条入口。
+    expect(cardHtml).toContain('data-testid="plugin-store-enabled-switch"');
   });
 });
