@@ -254,7 +254,10 @@ export function createWebRemoteControlE2eeSession(options: E2eeSessionOptions) {
     const plaintext = xchacha20poly1305(receiveKey, nonceFor(receivePrefix, record.n), aad).decrypt(
       ciphertext,
     );
-    const value = JSON.parse(e2eeDecoder.decode(plaintext)) as { kind?: unknown; payload?: unknown };
+    const value = JSON.parse(e2eeDecoder.decode(plaintext)) as {
+      kind?: unknown;
+      payload?: unknown;
+    };
     if (role === "terminal" && phase === "finish") {
       if (value.kind !== "ready") throw new Error("e2ee.expectedReady");
       highestReceived = record.n;
