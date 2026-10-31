@@ -7,6 +7,7 @@ import {
 
 const unit = "packages/ui/test/example.test.ts";
 const e2e = "packages/desktop/test/e2e/conversation-session/example.test.ts";
+const nativeBridge = "packages/codex-bridge/test/bridge-runtime.test.ts";
 const options = { engineeringTests: new Set(["packages/desktop/test/fixture.test.ts"]) };
 
 test("retired evidence is rejected in prose, arbitrary aliases and extended case IDs", () => {
@@ -47,6 +48,19 @@ test("historical labels, planned E2E and retained CLI CUA browser engineering ev
     "`packages/desktop/test/fixture.test.ts`",
   ].join("\n");
   assert.deepEqual(inspectRetiredAppUnitEvidence(markdown, options), []);
+});
+
+test("native Codex bridge package evidence remains current and cannot be relabeled retired", () => {
+  assert.deepEqual(
+    inspectRetiredAppUnitEvidence(`| FSV06 | covered | \`${nativeBridge}\` | native |`, options),
+    [],
+  );
+  assert.ok(
+    inspectRetiredAppUnitEvidence(
+      `| FSV06 | unit-retired | \`retired:${nativeBridge}\` | native |`,
+      options,
+    ).some((error) => error.includes("protected evidence mislabeled as retired")),
+  );
 });
 
 test("all current coverage matrices stop claiming retired App evidence", async () => {
