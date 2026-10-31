@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { migrateControllerRemoteWorkspaceIdentity } from "../src/session/controllerRemoteIdentityMigration.js";
 import { TASK_GROUP_ADMISSIONS_SQL } from "#src/task-groups/migration-v6.js";
+import { SESSION_CREATION_COMMANDS_SQL } from "#src/project-storage/schema.js";
 import { runTasksDatabaseMigrations } from "#src/session/tasksDatabase/migrations.js";
 
 describe("controller remote identity migration inventory", () => {
@@ -71,6 +72,12 @@ describe("controller remote identity migration inventory", () => {
       "INSERT INTO tasks VALUES (?, ?, '/srv/project', 'task-1', 'remote:ssh:old.example:22:alice', 10, ?)",
     ).run(oldKey, oldKey, JSON.stringify({ taskId: "task-1", workspaceIdentity: oldKey }));
     db.exec(TASK_GROUP_ADMISSIONS_SQL);
+    // 上游 3.17.1 新增 session_creation_commands（创建命令 → 已分配 sessionId 的回执），
+    // 换身份迁移必须一起 rekey，否则旧客户端重试拿不到回执会再分配一个会话。
+    db.exec(SESSION_CREATION_COMMANDS_SQL);
+    db.prepare(
+      "INSERT INTO session_creation_commands VALUES (?, 'client-1', 'command-1', 'task-1')",
+    ).run(oldKey);
     db.prepare(
       "INSERT INTO task_group_admissions(workspace_key,task_id,user_organized,creation_id) VALUES (?, 'task-1', 1, 'created')",
     ).run(oldKey);
@@ -97,10 +104,11 @@ describe("controller remote identity migration inventory", () => {
     });
 
     expect(report.status).toBe("completed");
-    expect(Object.values(report.before)).toEqual([1, 1, 1, 1, 1, 1, 1, 1]);
+    expect(Object.values(report.before)).toEqual([1, 1, 1, 1, 1, 1, 1, 1, 1]);
     const verify = new DatabaseSync(dbPath);
     for (const table of [
       "tasks",
+      "session_creation_commands",
       "task_group_members",
       "task_group_admissions",
       "task_group_workspace_bootstraps",
@@ -150,8 +158,8 @@ describe("controller remote identity migration inventory", () => {
       migrationId: "migration-2",
       now: () => 200,
     });
-    expect(Object.values(repeated.before)).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
-    expect(Object.values(repeated.after)).toEqual([1, 1, 1, 1, 1, 1, 1, 1]);
+    expect(Object.values(repeated.before)).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    expect(Object.values(repeated.after)).toEqual([1, 1, 1, 1, 1, 1, 1, 1, 1]);
     const repeatedVerify = new DatabaseSync(dbPath);
     expect(
       repeatedVerify

@@ -82,6 +82,11 @@ async function createServiceWithClients(options: {
       getRuntimeIdentity() {
         return undefined;
       }
+      // 上游 3.17.1 的启动屏障会用共享 runtime 事实裁决能力协商失败是否致命；
+      // 本套用例都是独占 workspace runtime。
+      isSharedRuntime() {
+        return false;
+      }
       markReady() {}
       onRuntimeLifecycle() {
         return { dispose() {} };
@@ -108,6 +113,11 @@ async function createServiceWithClients(options: {
             protocolVersion: 1,
             workspaceKey: "/workspace/app",
           };
+        }
+        if (method === codezProtocolMethods.runtimeCapabilities) {
+          // 上游 3.17.1 在启动屏障协商 runtime/capabilities；本套用例不依赖任何能力位，
+          // 回空对象即「旧 Agent 不支持新增能力」，service 按既有降级路径继续。
+          return {};
         }
         throw new Error(`Unexpected request method: ${method}`);
       },

@@ -80,6 +80,8 @@ describe("server info HTTP endpoint", () => {
         desktopContinuous: true,
         websocketRpc: true,
         processResourceTelemetry: true,
+        // 上游 3.17.1 起 Server 无条件声明远端会话埋点能力（packages/server/src/http.ts）。
+        remoteConversationTelemetry: true,
       },
     });
   });
