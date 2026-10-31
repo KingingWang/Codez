@@ -7,8 +7,9 @@ Web、Provider、RPC、Client、Server 和 Source Server 中的业务 test/spec 
 包括源码旁未注册测试和模块 contract.test.ts。此次按归属退役，不逐项宣称测试没有价值。
 产品运行时代码与产品行为不变。
 
-保留 Agent CLI（apps/codez-cli）、CUA producer（packages/codez-cua）、桌面 E2E、
-浏览器验收、Android 设备验收，以及构建、发布、架构、数据库 schema、E2E 工具等工程测试。
+保留 Agent CLI（apps/codez-cli）、CUA producer（packages/codez-cua）、
+Codex 原生 bridge（packages/codex-bridge）、桌面 E2E、浏览器验收、Android 设备验收，
+以及构建、发布、架构、数据库 schema、E2E 工具等工程测试。
 工程测试按被测对象判断，不能因为它位于 packages/desktop/test 就删除。
 工程 Vitest 文件使用显式清单注册，禁止重新使用 packages/\*/test 的业务单测通配符。
 
@@ -50,6 +51,9 @@ App 单测路径属于退役前证据，不表示当前仍有该覆盖；历史�
 机器读取的现行自动化索引、精确路径白名单、roadmap 和派生统计必须同步移除退役证据；
 唯一证据退役的场景明确记为 missing / ready-to-write，不继续声明 partial / implemented。
 保留的 CLI/CUA 证据按完整路径确认归属，不能因同名 App 文件删除而标成退役。
+`packages/codex-bridge/` 的原生回归同样不是 App 退役证据，继续使用包内
+`pnpm --filter @codez/codex-bridge test`；覆盖审计接受其现行路径并拒绝误加 `retired:`，
+不把该路径加入工程 Vitest 白名单，也不扩大 fork App 回归准入。
 现行覆盖矩阵中的退役证据逐处使用 `retired:原路径` 标记，不能只写顶部说明；
 只有退役证据的状态行改为 unit-retired / missing，混合证据保留其实际剩余覆盖。
 覆盖审计扫描全部 coverage matrix 的正文、任意长度别名和状态行，不以主路径 ID 长度限制退役检查。
