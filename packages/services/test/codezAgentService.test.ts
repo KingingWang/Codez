@@ -37,7 +37,7 @@ const protocolModelPropertiesJson = JSON.stringify(protocolModelProperties);
 const writeFileSync: typeof writeFixtureFileSync = (file, data, options) => {
   const parser = "try { msg = JSON.parse(line); } catch { continue; }";
   const capabilitiesReply =
-    "\n    if (msg.method === \"runtime/capabilities\" && msg.id !== undefined) {\n      send({ id: msg.id, result: { sessionDirectorySource: true, sessionWorkspaceRouting: true } });\n      continue;\n    }";
+    '\n    if (msg.method === "runtime/capabilities" && msg.id !== undefined) {\n      send({ id: msg.id, result: { sessionDirectorySource: true, sessionWorkspaceRouting: true } });\n      continue;\n    }';
   const fixture =
     typeof file === "string" && file.endsWith(".cjs") && typeof data === "string"
       ? data.replace(parser, parser + capabilitiesReply)
