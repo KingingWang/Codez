@@ -1,4 +1,7 @@
-import { isPluginUiPinnedToolRow } from "@/plugin-ui/index.js";
+// 只取领域判定，不走 plugin-ui 桶口：桶口会拖进 React 组件与 .png 资产，
+// 让纯投影模块在 tsx/node --test 下直接 ERR_UNKNOWN_FILE_EXTENSION（CI 显式跑
+// src/v4/conversationTurnContinue.test.ts），也让渲染单元模块无谓依赖组件层。
+import { isPluginUiPinnedToolRow } from "@/plugin-ui/domain/pluginUiRowPolicy.js";
 import type {
   ConversationTurnRenderUnit,
   BuildConversationTurnRenderUnitsOptions,
