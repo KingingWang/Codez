@@ -104,7 +104,10 @@ it("keeps a context-connected shared session before the newer caller binds its p
   const stale = attachRemoteProjectWorkspace({ ...input, isCurrent: () => current });
   const rejected = expect(stale).rejects.toMatchObject({ code: "remote-connection-canceled" });
   const newer = attachRemoteProjectWorkspace(input);
-  await vi.waitFor(() => expect(input.connect).toHaveBeenCalledTimes(2));
+  // 上游 3.17.1 起同一设备在途的未指定目录连接按 hostId 合并（joinHostConnectionFlight）：
+  // Host 本来就把这类 connect 复用为同一 logical session，Renderer 也必须合并，
+  // 所有等待者共享同一结果与释放责任。因此第二个 caller 不再发起第二次 connect。
+  await vi.waitFor(() => expect(input.connect).toHaveBeenCalledTimes(1));
   current = false;
   // 与真实 connect ready 合同一致：首挂 ACK 前注册 context 的目标身份，项目 bind 尚未执行。
   sessions.set(identity, { sessionId: "shared-before-bind" });
