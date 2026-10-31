@@ -18,6 +18,9 @@ const resolution = {
 
 vi.mock("@/hooks/useWorkspaceServices.js", () => ({
   useWorkspaceServicesResolution: vi.fn(() => resolution),
+  // 上游 3.17.1 删除 SettingsMachine 后，来源徽标改读设备展示输入（useBaseWorkspaceServices）。
+  // 本文件不提供 sourceServerManagementService：组件按既有回退用 remoteTarget 展示设备名。
+  useBaseWorkspaceServices: () => ({}),
 }));
 
 function snapshot(totalTokens: number): AppUsageSnapshot {

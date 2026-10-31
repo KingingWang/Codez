@@ -99,6 +99,25 @@ vi.mock("@/v4/composer/V4ComposerToolbar.js", async () => {
   };
 });
 
+// 上游 3.17.1 的草稿事务重构给 ConversationComposer 增加了 5 个必填入口（scope token、热路径暂存、
+// 落盘、生命周期提交、发送事务），生产由 SessionPane 的 useDraftConfigControl 提供。
+// 本文件只验证错误横幅与升级动作，不涉及草稿持久化，因此全部桩为惰性实现：
+// 发送事务按生产语义桩为「已 claim 且仍在同一 scope」，让发送后的草稿结算照常发生。
+const stubComposerSubmissionDraftTransaction = {
+  claim: () => true,
+  restore: () => ({ current: true, applied: true }),
+  finalize: () => ({ current: true, applied: true }),
+  release: () => {},
+  matchesTarget: () => true,
+};
+const composerDraftTransactionProps = {
+  composerDraftScopeToken: Symbol("composer-draft-scope"),
+  stageComposerContent: () => {},
+  persistComposerContent: () => {},
+  captureComposerContentLifecycleCommit: () => () => {},
+  captureComposerSubmissionDraftTransaction: () => stubComposerSubmissionDraftTransaction,
+};
+
 const AnyConversationComposer = ConversationComposer as unknown as ComponentType<
   Record<string, unknown>
 >;
@@ -165,6 +184,7 @@ function renderComposerWithError(
       CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(AnyConversationComposer, {
+        ...composerDraftTransactionProps,
         snapshot: null,
         sessionId: "session-1",
         workspacePath: "/workspace",
@@ -199,6 +219,7 @@ function renderComposerWithSnapshot(
       createElement(RemoteConversationAvailability, {
         available: remoteAvailable,
         children: createElement(AnyConversationComposer, {
+          ...composerDraftTransactionProps,
           snapshot,
           sessionId: "session-1",
           workspacePath: "/workspace",
@@ -246,6 +267,7 @@ function renderHighspeedComposer(overrides: Record<string, unknown> = {}): strin
       CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(AnyConversationComposer, {
+        ...composerDraftTransactionProps,
         snapshot: makeSnapshot(),
         sessionId: "session-1",
         workspacePath: "/workspace",
@@ -275,6 +297,7 @@ function renderBlockedComposer(): string {
       CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(AnyConversationComposer, {
+        ...composerDraftTransactionProps,
         snapshot: makeSnapshot(),
         sessionId: "session-1",
         workspacePath: "/workspace",
@@ -434,6 +457,7 @@ it("离线输入栏优先显示禁发送原因，不让不可用模型控件挤�
         RemoteConversationAvailability,
         { available: false },
         createElement(AnyConversationComposer, {
+          ...composerDraftTransactionProps,
           workspacePath: "/workspace",
           sessionId: null,
           snapshot: null,
