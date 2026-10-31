@@ -1110,8 +1110,14 @@ describe("ConversationTurnGroup assistant history status", () => {
     expect(html).toContain("Goal");
     expect(html).toContain("开发一个招投标管理系统");
     expect(html).not.toContain("已工作 1 秒");
-    expect(html.match(/工作中 3 秒/g)).toHaveLength(1);
-    expect(html.match(/chat-assistant-history-trigger/g)).toHaveLength(1);
+    // 上游把运行中工时从折叠头文案移到聊天 loading 槽（「工作中」标签 + 独立等宽 span 的
+    // 十分位时长），且整轮生成期间不再渲染折叠头。H17 的不变量是「/goal query 与 continuation
+    // 合计只显示一个工作状态」，因此按 loading 槽计数，并锁定时长文案只出现一次。
+    expect(html.match(/data-testid="chat-loading"/g)).toHaveLength(1);
+    expect(html.match(/3\.0 秒/g)).toHaveLength(1);
+    // 上游把运行中的工作状态整体移出折叠头（整轮生成期间不渲染折叠入口），
+    // 所以这里不再有 trigger；「合计只显示一个工作状态」由上面唯一的 loading 槽承载。
+    expect(html.match(/chat-assistant-history-trigger/g)).toBeNull();
   });
 
   it("labels a running turn as working with the elapsed duration", () => {
@@ -1123,7 +1129,9 @@ describe("ConversationTurnGroup assistant history status", () => {
       }),
     );
 
-    expect(html).toContain("工作中 5 秒");
+    // 同上：运行中的工时由 loading 槽承载，标签与十分位时长分属两个 span。
+    expect(html).toContain("工作中");
+    expect(html).toContain("5.0 秒");
   });
 
   it("ETS01/ETS03：运行工作段尾部的单个 Explore 工具不创建父分组", () => {
