@@ -5,3 +5,5 @@
 保存成功才发布缓存结果，失败保留原状态。再次运行复用 saved-workflow launcher，默认目标从原会话解析，显式选项目则使用选择结果；不改写既有会话 cwd。查询与失效继续使用既有 generation/key，侧板提炼请求发给父会话。
 
 模块只调整源码边界，保持只读/灰度门、窄屏、主题及文案不变。桌面/手机继续使用宿主既有命令和 continuous/replayable 边界。
+
+run 侧板通过 `dynamic-workflow-availability` 的兼容 hook 入口读取 Root / Host 的同一能力快照，不独立发起 capability 请求或持有第二份灰度状态。保存与再次运行的命令 owner、投影缓存及提交时序不变。
