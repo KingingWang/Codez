@@ -1,5 +1,6 @@
 import { access, readFile, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { parse } from "yaml";
 
 export function resolvePatchedDependencyPackageName(key) {
   const value = key.trim();
@@ -19,9 +20,18 @@ async function pathExists(path) {
   );
 }
 
-export async function clearHoistedPatchedDependencyTargets({ rootDir, packageJsonPath }) {
-  const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8"));
-  const patchedDependencies = packageJson.pnpm?.patchedDependencies ?? {};
+/** pnpm 10 的有效 overrides/patches 归 pnpm-workspace.yaml 唯一持有。 */
+export async function readWorkspacePatchedDependencies(rootDir) {
+  const workspace = parse(await readFile(resolve(rootDir, "pnpm-workspace.yaml"), "utf8"));
+  const patchedDependencies = workspace?.patchedDependencies;
+  if (patchedDependencies === undefined) return {};
+  if (!patchedDependencies || typeof patchedDependencies !== "object" || Array.isArray(patchedDependencies))
+    throw new Error("Invalid workspace patchedDependencies");
+  return patchedDependencies;
+}
+
+export async function clearHoistedPatchedDependencyTargets({ rootDir }) {
+  const patchedDependencies = await readWorkspacePatchedDependencies(rootDir);
   const packageNames = Object.keys(patchedDependencies).map(resolvePatchedDependencyPackageName);
   const removed = [];
   for (const packageName of packageNames) {
