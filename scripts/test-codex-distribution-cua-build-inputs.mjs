@@ -129,7 +129,10 @@ test("Windows rebuilds the HWND-scoped addon and tests it before installer packa
   );
   assert.match(builder, /resolveWindowsCuaNativePackageRoots\(\{[\s\S]*?actualCuaTarget/u);
   const checks = workflow.jobs["remote-assets"].steps.map((step) => step.run ?? "").join("\n");
-  assert.ok(checks.includes("packages/desktop/scripts/windows-cua-native-package.test.mjs"));
+  assert.match(
+    checks,
+    /pnpm --filter @codez\/desktop exec node --test[\s\S]*scripts\/windows-cua-native-package\.test\.mjs/u,
+  );
 });
 
 test("Linux addon build uses native manylinux_2_28 and the upstream locked Cargo closure", async () => {
@@ -159,7 +162,12 @@ test("Linux addon build uses native manylinux_2_28 and the upstream locked Cargo
     "windows-cua-runtime-assets",
     "macos-cua-helper-app",
   ]) {
-    assert.ok(commands.includes(`packages/desktop/scripts/${name}.test.mjs`));
+    assert.ok(
+      new RegExp(
+        `pnpm --filter @codez/desktop exec node --test[\\s\\S]*scripts/${name}\\.test\\.mjs`,
+        "u",
+      ).test(commands),
+    );
   }
 });
 
