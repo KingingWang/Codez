@@ -269,6 +269,9 @@ describe("WorkspaceHelpMenuButton", () => {
         ...(desktop
           ? [
               "titleBar.menu.help.exportLogs",
+              // 上游 3.17.1 在桌面组新增「复制设备 MID」（a60ba6a7 的 WorkspaceHelpMenuButton.tsx
+              // 与两份 locale），位于导出日志之后、资源管理器之前；分组与分隔线结构不变。
+              "workspaceHeader.help.copyDeviceMid",
               "titleBar.menu.help.resourceManager",
               "titleBar.menu.help.checkForUpdates",
               "titleBar.menu.help.about",

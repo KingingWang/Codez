@@ -719,6 +719,9 @@ describe("McpSettingsSection status list", () => {
         name: "figma",
         type: "http",
         url: "https://mcp.example.test/mcp",
+        // 上游 3.17.1 给 CodezAgentMcpServer 增加了可选 scope（packages/shared/src/mcp.ts），
+        // 非 workspace 作用域的本地 MCP 服务器在 OAuth 状态刷新里按 user 下发。
+        scope: "user",
       },
     ]);
   });
