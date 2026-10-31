@@ -202,6 +202,19 @@ describe("Window Host 的 Source 重连与数据库启动整合", () => {
       `${compile(`async function run() { ${initNode.getText(source)} }`)};run;`,
       {
         databaseStartup: undefined,
+        // 上游 3.17.1 的 InitLocal handler 开头会把 msg.browserBackendIdentity 写回模块级 let；
+        // 抽出来的 handler 在新上下文里执行，缺这个绑定会直接 ReferenceError，
+        // 后续 createHostDatabaseStartup / createLocalServices 全都不会发生。
+        browserBackendIdentity: undefined,
+        // 同理：上游在 initializeServices 里新增注册「数据同步状态」与「provider provisioning 状态」，
+        // 这两个 token、工厂与模块级状态都不在抽取出的 handler 作用域内，必须显式注入，
+        // 否则启动屏障（数据库准备前不创建业务服务）根本走不到断言点。
+        IDeviceSyncStateService: "IDeviceSyncStateService",
+        IProviderProvisioningStatusService: "IProviderProvisioningStatusService",
+        createDeviceSyncStateService: () => ({}),
+        hostProviderProvisioningStatus: { service: {} },
+        getAppConfigDir: () => "/config",
+        join: (...parts: string[]) => parts.join("/"),
         nativeBrowserCuaMcpState: { set() {}, get: () => undefined },
         activeSessionRealtimePort: null,
         activeServices: null,
