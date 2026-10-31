@@ -1358,6 +1358,9 @@ describe("Codez legacy task compat task index", () => {
     expect(agent.disposeWorkspace).toHaveBeenCalledWith({
       workspacePath: "/repo",
       workspaceIdentity: "remote:wsl:ubuntu:/repo",
+      // 上游 3.17.1 给 disposeWorkspace 增加 releasePreparation：释放该 workspace 的准备栅栏，
+      // 正是本用例要锁定的「经 workspace-scoped agent 生命周期释放准备」语义。
+      releasePreparation: true,
     });
     expect(agent.disposeAll).not.toHaveBeenCalled();
   });
