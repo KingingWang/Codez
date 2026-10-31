@@ -391,7 +391,7 @@ export function encodeWebRemoteControlGzipEnvelope(
   if (raw.byteLength < WEB_REMOTE_CONTROL_GZIP_MIN_BYTES) return null;
   const compressed = gzip(raw);
   if (compressed.byteLength >= raw.byteLength) return null;
-  return { zcode_type: "relay-gzip", v: 1, data: encodeBase64(compressed) };
+  return { codez_type: "relay-gzip", v: 1, data: encodeBase64(compressed) };
 }
 
 export function decodeWebRemoteControlGzipEnvelope(
