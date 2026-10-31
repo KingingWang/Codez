@@ -110,39 +110,43 @@ jobs:
           pnpm --filter @codez/shared exec tsx --test test/remoteWorkspaceScope.test.ts
       - name: Codex UI settings regressions (Linux once)
         run: >-
-          pnpm --filter @codez/ui exec tsx --tsconfig tsconfig.json --test
-          src/settings/codex/CodexPanels.test.tsx
-          src/settings/codex/codexConversation.test.ts
-          src/settings/codex/codexMcpSettings.test.ts
-          src/settings/codex/codexSettings.test.ts
-          src/settings/codex/codexTitleModelSettings.test.ts
+          pnpm exec tsx --tsconfig packages/ui/tsconfig.json --test
+          packages/ui/src/settings/codex/CodexPanels.test.tsx
+          packages/ui/src/settings/codex/codexConversation.test.ts
+          packages/ui/src/settings/codex/codexMcpSettings.test.ts
+          packages/ui/src/settings/codex/codexSettings.test.ts
+          packages/ui/src/settings/codex/codexTitleModelSettings.test.ts
       # 这些回归不在 settings/codex 目录，必须显式纳入，防止 rebase 后修复失守。
+      # 修复原因：GitWorktreeMenu.test.tsx 以仓库根为 cwd 相对 spawn `node_modules/.bin/esbuild`
+      # 并传 `--tsconfig=packages/ui/tsconfig.json`；上一版改成 `pnpm --filter @codez/ui exec`
+      # 后 cwd 变成 packages/ui，CI 报 `spawn node_modules/.bin/esbuild ENOENT`（run 41216976466）。
+      # 因此 UI 的 tsx 步骤统一回到仓库根执行，测试文件本身保持与 fork 原始版本逐字节一致。
       - name: Automation, Git, Codex capability and conversation recovery UI regressions (Linux once)
         run: >-
-          pnpm --filter @codez/ui exec tsx --tsconfig tsconfig.json --test
-          src/hooks/useModelSelectionView.test.ts
-          src/settings/automationEditValidation.test.ts
-          src/v4/ConversationStatusPanel.test.tsx
-          src/v4/conversationStatusPanelModel.test.ts
-          src/v4/conversationTurnContinue.test.ts
-          src/capabilities/useGitAuxiliaryCapability.test.ts
-          src/capabilities/codexCapabilities.test.ts
-          src/capabilities/useCodexAutoReviewApprovals.test.ts
-          src/capabilities/useCodexMessageFeedbackCapability.test.tsx
-          src/settings/usage-stats/AppUsagePanel.test.tsx
-          src/TaskActionMenuContent.test.tsx
-          src/v4/composer/composerDraftModeNormalization.test.ts
-          src/v4/composer/codexFullAccessAcknowledgement.test.ts
-          src/lib/projectGrouping.test.ts
-          src/lib/remoteWorkspaceIdentityConsistency.test.ts
-          src/hooks/useProjectWorktreeDiscovery.test.ts
-          src/lib/worktreeSwitcherDisplay.test.ts
-          src/root/worktreeOpenIntent.test.ts
-          src/root/worktreeOpenExecution.test.ts
-          src/GitWorktreeMenu.test.tsx
-          src/CurrentWorkspaceConcurrencyHint.test.ts
-          src/CreateWorktreeDialog.test.tsx
-          src/hooks/useWorktreeCreation.test.ts
+          pnpm exec tsx --tsconfig packages/ui/tsconfig.json --test
+          packages/ui/src/hooks/useModelSelectionView.test.ts
+          packages/ui/src/settings/automationEditValidation.test.ts
+          packages/ui/src/v4/ConversationStatusPanel.test.tsx
+          packages/ui/src/v4/conversationStatusPanelModel.test.ts
+          packages/ui/src/v4/conversationTurnContinue.test.ts
+          packages/ui/src/capabilities/useGitAuxiliaryCapability.test.ts
+          packages/ui/src/capabilities/codexCapabilities.test.ts
+          packages/ui/src/capabilities/useCodexAutoReviewApprovals.test.ts
+          packages/ui/src/capabilities/useCodexMessageFeedbackCapability.test.tsx
+          packages/ui/src/settings/usage-stats/AppUsagePanel.test.tsx
+          packages/ui/src/TaskActionMenuContent.test.tsx
+          packages/ui/src/v4/composer/composerDraftModeNormalization.test.ts
+          packages/ui/src/v4/composer/codexFullAccessAcknowledgement.test.ts
+          packages/ui/src/lib/projectGrouping.test.ts
+          packages/ui/src/lib/remoteWorkspaceIdentityConsistency.test.ts
+          packages/ui/src/hooks/useProjectWorktreeDiscovery.test.ts
+          packages/ui/src/lib/worktreeSwitcherDisplay.test.ts
+          packages/ui/src/root/worktreeOpenIntent.test.ts
+          packages/ui/src/root/worktreeOpenExecution.test.ts
+          packages/ui/src/GitWorktreeMenu.test.tsx
+          packages/ui/src/CurrentWorkspaceConcurrencyHint.test.ts
+          packages/ui/src/CreateWorktreeDialog.test.tsx
+          packages/ui/src/hooks/useWorktreeCreation.test.ts
       - name: Scheduled prompt admission, window routing and scheduler recovery regressions (Linux once)
         run: >-
           pnpm test:fork
