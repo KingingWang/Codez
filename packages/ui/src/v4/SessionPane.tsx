@@ -3117,6 +3117,7 @@ export function SessionPane({
       : [];
     const planAction: AppSlashCommand = {
       value: "plan",
+      label: intl.formatMessage({ id: "chat.slash.app.plan.label" }),
       description: intl.formatMessage({ id: "chat.slash.app.plan.description" }),
       keywords: ["plan", "计划", "计划模式"],
       run: () => handleDraftSwitchMode("plan"),
