@@ -1028,6 +1028,11 @@ function createColdFakeApp(
     },
     runtime: {
       beginShutdown: () => undefined,
+      // fork 的 CLI 本地记忆配置（specs/codez-memory-settings.md）：createRecord 在应用 Host
+      // override 前会先快照本地值。与下面同一条论证——冷恢复 fake 必须显式提供这两个入口，
+      // 否则属性缺席会让每条经 materializeCreatedSession / 冷恢复 resume 的用例变成 TypeError。
+      getMemoryRuntimeConfig: () => undefined,
+      applyMemoryRuntimeConfig: async () => undefined,
       // TTL pool 在 resident 未超水位时也要读取权威 idle facts；冷恢复 fake 必须和
       // 生产 runtime 一样显式声明没有前台或后台工作，不能再依赖旧容量分支短路。
       hasActiveOrQueuedTurnWork: () => false,
