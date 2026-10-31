@@ -146,6 +146,10 @@ vi.mock("@/hooks/useGlobalTaskList.js", () => ({
 
 vi.mock("@/hooks/usePlatform.js", () => ({
   usePlatform: () => ({}),
+  // 上游 3.17.1 的同步入口按 useOptionalPlatform().requestSourceSettingsAttachment 判定可用性
+  // （只有桌面端能申请设备 source-settings attachment）。本用例断言的正是桌面端 Header 菜单里的
+  // Skills / MCP 同步项，所以必须提供该能力，否则整个入口不渲染。
+  useOptionalPlatform: () => ({ requestSourceSettingsAttachment: vi.fn() }),
 }));
 
 vi.mock("@/hooks/useWorkspaceServices.js", () => ({
@@ -350,14 +354,18 @@ describe("WorkspaceHeaderTitleSection", () => {
     },
   );
 
-  it("shows Skills and MCP sync actions for connected SSH workspace header menu", async () => {
+  it("shows Skills and MCP sync actions for a Source device SSH workspace header menu", async () => {
     const { WorkspaceHeaderTitleSection } = await import("@/WorkspaceHeaderSections.js");
 
     const html = renderToStaticMarkup(
       createElement(WorkspaceHeaderTitleSection, {
         workspaceAbsPath: "/root/folder1",
         remoteSessionId: "remote-session-1",
-        workspaceIdentity: "remote:ssh:localhost:2223:root:/root/folder1",
+        // 上游 3.17.1 用 data-sync 取代 fork 的 RemoteSyncActions：入口要求 remoteTarget 属于
+        // ssh/wsl/docker，且 workspace identity 能解析出 sourceServerId（旧格式 remote:ssh:host:port
+        // 解析不出，入口按 data-sync/domain/entry.ts 的文档注释不显示）。这里用受管设备的
+        // server identity + SSH target，覆盖「已连接远端设备的 Header 菜单展示同步项」。
+        workspaceIdentity: "remote:server:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa:/root/folder1",
         remoteTarget: {
           kind: "ssh",
           host: "localhost",
@@ -387,7 +395,7 @@ describe("WorkspaceHeaderTitleSection", () => {
       }),
     );
 
-    // 同步菜单已按原型 L1197-1203 收敛为 remote.sync* key 与分化图标（wand/cable）。
+    // 同步菜单仍按原型 L1197-1203 使用 remote.sync* key 与分化图标（wand/cable）。
     expect(html).toContain("remote.syncSkills");
     expect(html).toContain("remote.syncMcp");
   });

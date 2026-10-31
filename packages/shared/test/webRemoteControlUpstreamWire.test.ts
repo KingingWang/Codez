@@ -10,14 +10,14 @@ describe("upstream mobile remote wire compatibility", () => {
         zcode_type: "bootstrap-request",
         requestId: "bootstrap-upstream",
       }),
-    ).toEqual({ zcode_type: "bootstrap-request", requestId: "bootstrap-upstream" });
+    ).toEqual({ codez_type: "bootstrap-request", requestId: "bootstrap-upstream" });
     expect(
       parseWebRemoteControlAppPayload({
         zcode_type: "mobile-view-state-update",
         viewState: { activeWorkspaceKey: "/workspace", updatedAt: 1 },
       }),
     ).toEqual({
-      zcode_type: "mobile-view-state-update",
+      codez_type: "mobile-view-state-update",
       viewState: { activeWorkspaceKey: "/workspace", updatedAt: 1 },
     });
   });
@@ -30,8 +30,8 @@ describe("upstream mobile remote wire compatibility", () => {
       firstPhysicalSeq: 1,
       messageSeq: 1,
     });
-    const { zcode_type, ...fields } = frame;
-    expect(parseWebRemoteControlAppPayload({ zcode_type, ...fields })).toEqual(frame);
+    const { codez_type, ...fields } = frame;
+    expect(parseWebRemoteControlAppPayload({ zcode_type: codez_type, ...fields })).toEqual(frame);
     expect(
       parseWebRemoteControlAppPayload({
         zcode_type: "rpc-frame-ack",
@@ -41,14 +41,14 @@ describe("upstream mobile remote wire compatibility", () => {
         ackMessageSeq: 1,
       }),
     ).toEqual({
-      zcode_type: "rpc-frame-ack",
+      codez_type: "rpc-frame-ack",
       bridgeSessionId: frame.bridgeSessionId,
       bridgeGeneration: 2,
       recoveryId: "recovery-upstream",
       ackMessageSeq: 1,
     });
     expect(
-      parseWebRemoteControlAppPayload({ zcode_type, ...fields, extra: true }),
+      parseWebRemoteControlAppPayload({ zcode_type: codez_type, ...fields, extra: true }),
     ).toBeNull();
   });
 
@@ -75,7 +75,7 @@ describe("upstream mobile remote wire compatibility", () => {
         codez_type: "bootstrap-request",
         requestId: "bootstrap-fork",
       }),
-    ).toEqual({ zcode_type: "bootstrap-request", requestId: "bootstrap-fork" });
+    ).toEqual({ codez_type: "bootstrap-request", requestId: "bootstrap-fork" });
   });
 
   it("keeps public RPC service channels compatible with the hosted upstream page", () => {
