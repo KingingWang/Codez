@@ -1,13 +1,13 @@
 import { PlatformProvider } from "@/hooks/usePlatform.js";
-import { parseClientConfigSnapshot, type IPlatformService } from "@zcode/shared";
+import { parseClientConfigSnapshot, type IPlatformService } from "@codez/shared";
 import { useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import type { IServiceAccessor } from "@zcode/services";
+import type { IServiceAccessor } from "@codez/services";
 import { AnimatedSidePanePanel } from "@/app-shell/AnimatedSidePanePanel.js";
 import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import { ServiceProvider } from "@/hooks/useServices.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { PluginUiWorkspaceProvider, openPluginUiSidePane } from "@/plugin-ui/index.js";
 import type { OpenPluginUiSideTabRequest } from "@/plugin-ui/contract.js";
 import {
@@ -190,10 +190,10 @@ function Fixture() {
 
 createRoot(document.getElementById("root")!).render(
   <ServiceProvider services={services}>
-    <ZCodeIntlProvider initialLocale={params.get("locale") === "zh-CN" ? "zh-CN" : "en-US"}>
+    <CodezIntlProvider initialLocale={params.get("locale") === "zh-CN" ? "zh-CN" : "en-US"}>
       <TooltipProvider>
         <Fixture />
       </TooltipProvider>
-    </ZCodeIntlProvider>
+    </CodezIntlProvider>
   </ServiceProvider>,
 );

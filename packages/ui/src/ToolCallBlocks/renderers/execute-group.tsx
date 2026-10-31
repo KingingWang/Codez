@@ -1,6 +1,6 @@
 import { SquareTerminalIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { ToolLayout } from "@/ToolCallBlocks/ToolLayout.js";
 import type { ToolCallBlockRenderContext } from "@/ToolCallBlocks/shared.js";
 import { getExecuteSecondaryText } from "@/ToolCallBlocks/renderers/execute.js";
@@ -13,7 +13,7 @@ const EXECUTE_GROUP_ICON = (
 const ACTIVE_STATUSES = new Set(["pending", "in_progress"]);
 
 function formatCompletedSummary(
-  intl: ReturnType<typeof useZCodeIntl>["intl"],
+  intl: ReturnType<typeof useCodezIntl>["intl"],
   childStatuses: string[],
 ) {
   const parts = [
@@ -44,7 +44,7 @@ function formatCompletedSummary(
 
 export function ExecuteGroupToolCallBlock(context: ToolCallBlockRenderContext) {
   const ToolCallBlock = context.nestedToolRenderer;
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const { toolCallNode, isRunning, statusLabel, isOfficeMode = false } = context;
   const { toolCall, childToolCalls } = toolCallNode;
   const latestActiveChild = childToolCalls.findLast((child) =>

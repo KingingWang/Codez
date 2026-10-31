@@ -268,7 +268,7 @@ export async function createMarketingTouchFixture() {
           headers: {
             deviceMid: req.headers["x-device-mid"],
             language: req.headers["x-client-language"],
-            appVersion: req.headers["x-zcode-app-version"],
+            appVersion: req.headers["x-codez-app-version"],
             authenticated: Boolean(req.headers.authorization),
           },
         });
@@ -353,7 +353,7 @@ export async function createMarketingTouchFixture() {
                                 {
                                   text: { ...text(""), format: "" },
                                   action: {
-                                    type: "claim_zcode_plan",
+                                    type: "claim_codez_plan",
                                     args: { plan_id: "weekend-plan-e2e" },
                                   },
                                 },

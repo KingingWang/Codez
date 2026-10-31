@@ -1,5 +1,5 @@
 // 通过侧栏现有入口操作，验证真实标题投影或归档后的永久删除。
-import { TID_TASK_ITEM } from "@zcode/shared/test-ids";
+import { TID_TASK_ITEM } from "@codez/shared/test-ids";
 import { clearAppData } from "../helpers/desktop-app.js";
 import {
   clickV4DeleteSession,

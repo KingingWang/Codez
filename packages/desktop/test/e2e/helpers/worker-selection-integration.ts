@@ -9,17 +9,17 @@ import {
   createAccountProviderConfigSnapshot,
   createFailClosedAccountProviderConfigSnapshot,
   type ModelSelectionViewInput,
-} from "@zcode/provider";
-import { NodeProviderRegistryRuntime, createNodeModelSelectionFacade } from "@zcode/provider-node";
+} from "@codez/provider";
+import { NodeProviderRegistryRuntime, createNodeModelSelectionFacade } from "@codez/provider-node";
 import {
-  createZCodeAgentService,
-  createZCodeTaskServiceAdapter,
+  createCodezAgentService,
+  createCodezTaskServiceAdapter,
   getDataBaseDir,
   setDataBaseDir,
-} from "@zcode/services/node";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+} from "@codez/services/node";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 import { TaskIndexRepo } from "../../../../services/src/session/taskIndexRepo.js";
-import { createZCodeTaskIndexSyncer } from "../../../../services/src/zcode-agent/zcodeTaskIndexSyncer.js";
+import { createCodezTaskIndexSyncer } from "../../../../services/src/codez-agent/codezTaskIndexSyncer.js";
 import { getE2EAppDataPaths } from "./desktop-app.js";
 
 /** 独立测试 Host + 真实 stdio Worker；仅账号上游和模型 HTTP 使用隔离 fixture。 */
@@ -37,19 +37,19 @@ export async function createWorkerSelectionIntegration(
   const deliverySource = new MutableAccountProviderConfigSource();
   let deliveryPaused = false;
   const runtimePaths = {
-    zcodeBuiltinFilePath: resolve("../../config/provider/zcode-builtin.json"),
-    personalFilePath: join(home, ".zcode/v2/provider_config.json"),
+    codezBuiltinFilePath: resolve("../../config/provider/codez-builtin.json"),
+    personalFilePath: join(home, ".codez/v2/provider_config.json"),
   };
   // 独立 Host 不继承 Electron 设置。保持内建 HTTPS endpoint，
   // 将显式网络出口接到本轮数据面代理，避免假凭据直连或 HTTP 被官方请求安全校验拒绝。
-  const httpProxy = process.env.ZCODE_HTTP_PROXY?.trim();
-  const caCertFile = process.env.ZCODE_AGENT_CA_CERT?.trim();
+  const httpProxy = process.env.CODEZ_HTTP_PROXY?.trim();
+  const caCertFile = process.env.CODEZ_AGENT_CA_CERT?.trim();
   if (!httpProxy || !caCertFile) throw new Error("Worker 选择回归缺少隔离 HTTPS 数据面代理");
-  await mkdir(join(home, ".zcode/cli"), { recursive: true });
+  await mkdir(join(home, ".codez/cli"), { recursive: true });
   await writeFile(
-    join(home, ".zcode/cli/config.json"),
+    join(home, ".codez/cli/config.json"),
     JSON.stringify({
-      network: { httpProxy, caCertFile, noProxy: process.env.ZCODE_NO_PROXY },
+      network: { httpProxy, caCertFile, noProxy: process.env.CODEZ_NO_PROXY },
     }),
   );
   const runtime = new NodeProviderRegistryRuntime({
@@ -77,7 +77,7 @@ export async function createWorkerSelectionIntegration(
     }
     source.replace(
       createAccountProviderConfigSnapshot(
-        config.zcodeBuiltinRevision,
+        config.codezBuiltinRevision,
         new ProviderConfigMap([...providers]),
         Object.fromEntries(
           [individual, team].map((id) => [
@@ -104,7 +104,7 @@ export async function createWorkerSelectionIntegration(
   };
   const repo = new TaskIndexRepo();
   const projects: ProjectRepositoryContract = await repo.getProjectRepository();
-  const agent = createZCodeAgentService({
+  const agent = createCodezAgentService({
     // 真实 Host 创建端口必须预留任务归属；旧夹具漏装配，Worker 启动前即报 creation-unavailable。
     prepareSessionCreation: async (target) => {
       const prepared = projects.reserveCreatedTask({
@@ -119,17 +119,17 @@ export async function createWorkerSelectionIntegration(
       command: process.execPath,
       args: [
         ...(options.cliNodeArgs ?? []),
-        resolve("../../apps/zcode-cli/packages/cli/dist/zcode.cjs"),
+        resolve("../../apps/codez-cli/packages/cli/dist/codez.cjs"),
         "app-server",
         "--stdio",
       ],
       env: {
         HOME: home,
         USERPROFILE: home,
-        ZCODE_DATA_BASE_DIR: home,
-        ZCODE_RUNTIME_ENV: "development",
-        ZCODE_BUILTIN_PROVIDER_CONFIG_FILE: runtimePaths.zcodeBuiltinFilePath,
-        ZCODE_PERSONAL_PROVIDER_CONFIG_FILE: runtimePaths.personalFilePath,
+        CODEZ_DATA_BASE_DIR: home,
+        CODEZ_RUNTIME_ENV: "development",
+        CODEZ_BUILTIN_PROVIDER_CONFIG_FILE: runtimePaths.codezBuiltinFilePath,
+        CODEZ_PERSONAL_PROVIDER_CONFIG_FILE: runtimePaths.personalFilePath,
       },
     }),
     modelSelectionReadinessSource: modelSelectionService,
@@ -151,9 +151,9 @@ export async function createWorkerSelectionIntegration(
     // 夹具只用 Team Plan，不会读取验证配置；返回 null 保持 Start Plan 失败关闭的正式语义。
     readRequestVerificationConfig: async () => null,
   });
-  const syncer = createZCodeTaskIndexSyncer({ agentService: agent, taskIndexRepo: repo });
-  const task = createZCodeTaskServiceAdapter({
-    zcodeAgentService: agent,
+  const syncer = createCodezTaskIndexSyncer({ agentService: agent, taskIndexRepo: repo });
+  const task = createCodezTaskServiceAdapter({
+    codezAgentService: agent,
     taskIndexRepo: repo,
     taskIndexSyncer: syncer,
   });

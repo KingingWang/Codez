@@ -4,7 +4,7 @@
 >
 > 状态：研究结论；确定项已进入 Built-in Provider Config revision 4
 >
-> 设计依据：[`zcode-builtin-provider-config.md`](../design/registry/zcode-builtin-provider-config.md)
+> 设计依据：[`codez-builtin-provider-config.md`](../design/registry/codez-builtin-provider-config.md)
 
 ## 1. 范围与结论
 
@@ -63,14 +63,14 @@ Account Overlay 继续约束对应 Built-in Account Provider：
 
 - `enabled` 表达当前账号下该 Provider 是否可用；
 - Start Plan 返回的模型集合可以约束该 Provider 的模型成员；
-- Account 返回的模型集合不改写 ZCode Built-in Model Rules；
+- Account 返回的模型集合不改写 Codez Built-in Model Rules；
 - Personal Provider Config 和 Personal Model Rules 仍最后覆盖其允许覆盖的配置叶子。
 
 因此 Account 页面问题不改变本文后续 Built-in Provider Config 的写作规则。
 
 ## 3. Built-in Config 当前结构
 
-当前 `config/provider/zcode-builtin.json` 原子包含 Provider Map 和 Model Config Rules，覆盖三种 API Schema：
+当前 `config/provider/codez-builtin.json` 原子包含 Provider Map 和 Model Config Rules，覆盖三种 API Schema：
 
 - `anthropic-messages`
 - `openai-chat-completions`
@@ -367,10 +367,10 @@ Runtime 不判断 Plan ID、Access mode 或模型名称；它只读取 Active Mo
 
 必须检查的实现种子：
 
-- `config/provider/zcode-builtin.json`：Provider 成员、物理顺序和 Built-in Rules；
+- `config/provider/codez-builtin.json`：Provider 成员、物理顺序和 Built-in Rules；
 - `ModelConfigRules.composeEffective()` / `ModelConfigRules.resolve()`：顺序组合和 matcher 解析；
 - `packages/provider/src/resolver.ts`：Effective Provider/Model 完整性与 Registry 输入；
-- `packages/provider-node/test/zcode-builtin-integrity.test.ts`：真实 Built-in Provider/Model Config 事实证据；
+- `packages/provider-node/test/codez-builtin-integrity.test.ts`：真实 Built-in Provider/Model Config 事实证据；
 - `packages/ui/src/settings/model-provider-section/`：默认值预览、Personal 稀疏覆盖和模型编辑；
 - 各 Adapter 的 `responseJsonSchema`、Tool、MCS 与 reasoning 请求测试。
 
@@ -386,7 +386,7 @@ replayable、workspace identity、队列或任务恢复。
 | ACCOUNT-PLAN-002 | Z.ai/BigModel Team Provider       | 成员顺序为 5.3、5.3 Flash、5.2、5-Turbo | accepted |
 | ACCOUNT-PLAN-003 | Start/Individual/Team 任一成员    | Effective input 支持 Image/Video        | accepted |
 | ACCOUNT-PLAN-004 | 普通 Account API + GLM-5.3        | 原生事实保持文本；不报错不视为视觉支持  | accepted |
-| ACCOUNT-PLAN-005 | 普通 Account API + GLM-5.3-Flash  | 原生 Image/Video；ZCode 图片端到端可用  | accepted |
+| ACCOUNT-PLAN-005 | 普通 Account API + GLM-5.3-Flash  | 原生 Image/Video；Codez 图片端到端可用  | accepted |
 | ACCOUNT-PLAN-006 | Team Plan + GLM-5.2/5.3 Flash     | 有语义截图均能被准确理解                | accepted |
 | ACCOUNT-PLAN-007 | 普通 Account API 携带图片         | 服务可容忍，但模型不消费视觉内容        | accepted |
 

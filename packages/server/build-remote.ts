@@ -4,12 +4,12 @@ import { validateRemoteServerBundle } from "./buildRemoteValidation.js";
 import { loadBuiltinProviderConfig } from "../../scripts/builtin-provider-config.mjs";
 import { stageThirdPartyNotices } from "../../scripts/third-party-notices.mjs";
 
-const { version, zcodeCompatibility } = JSON.parse(readFileSync("../../package.json", "utf-8")) as {
+const { version, codezCompatibility } = JSON.parse(readFileSync("../../package.json", "utf-8")) as {
   version: string;
-  zcodeCompatibility?: { minCompatibleVersion?: string };
+  codezCompatibility?: { minCompatibleVersion?: string };
 };
-const minCompatibleVersion = zcodeCompatibility?.minCompatibleVersion ?? version;
-const { content: zcodeBuiltinProviderConfigJson } = await loadBuiltinProviderConfig();
+const minCompatibleVersion = codezCompatibility?.minCompatibleVersion ?? version;
+const { content: codezBuiltinProviderConfigJson } = await loadBuiltinProviderConfig();
 
 /**
  * Let esbuild bundle node-pty's JS code normally, but keep .node native
@@ -34,7 +34,7 @@ const nativeAddonPlugin: Plugin = {
 const buildResult = await build({
   entryPoints: ["src/entry-stdio.ts"],
   bundle: true,
-  outfile: "dist/remote/zcode-server.cjs",
+  outfile: "dist/remote/codez-server.cjs",
   platform: "node",
   format: "cjs",
   target: "node22",
@@ -47,17 +47,17 @@ const buildResult = await build({
   define: {
     "import.meta.url": "__import_meta_url",
     "import.meta.dirname": "__import_meta_dirname",
-    __ZCODE_VERSION__: JSON.stringify(version),
-    __ZCODE_MIN_COMPATIBLE_VERSION__: JSON.stringify(minCompatibleVersion),
-    __ZCODE_BUILTIN_PROVIDER_CONFIG_JSON__: JSON.stringify(zcodeBuiltinProviderConfigJson),
+    __CODEZ_VERSION__: JSON.stringify(version),
+    __CODEZ_MIN_COMPATIBLE_VERSION__: JSON.stringify(minCompatibleVersion),
+    __CODEZ_BUILTIN_PROVIDER_CONFIG_JSON__: JSON.stringify(codezBuiltinProviderConfigJson),
   },
   metafile: true,
 });
 
-const remoteBundleSource = readFileSync("dist/remote/zcode-server.cjs", "utf-8");
+const remoteBundleSource = readFileSync("dist/remote/codez-server.cjs", "utf-8");
 const bundledInputs = Object.keys(buildResult.metafile.inputs);
 validateRemoteServerBundle({ bundledInputs, source: remoteBundleSource });
 // 修复：remote 单文件 bundle 内联第三方代码，dist/remote 也必须附完整声明。
 await stageThirdPartyNotices("dist/remote");
 
-console.log("Built dist/remote/zcode-server.cjs");
+console.log("Built dist/remote/codez-server.cjs");

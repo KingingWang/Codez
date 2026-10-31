@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { win32 } from "node:path";
-import type { ApplicationIconInfo } from "@zcode/shared";
+import type { ApplicationIconInfo } from "@codez/shared";
 import { createEncodedPowerShellArgs } from "../../scripts/powershell-command.mjs";
 
 const SAFE_AUMID = /^[^\\/\s!]+![^\\/\s!]+$/u;
@@ -17,7 +17,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
 
-public static class ZCodeAumidIcon {
+public static class CodezAumidIcon {
   [StructLayout(LayoutKind.Sequential)]
   private struct SIZE { public int cx; public int cy; }
 
@@ -64,8 +64,8 @@ public static class ZCodeAumidIcon {
   }
 }
 '@;
-$zcodeIconBytes=[ZCodeAumidIcon]::Read($zcodeArg0);
-[Console]::Out.Write([Convert]::ToBase64String($zcodeIconBytes));
+$codezIconBytes=[CodezAumidIcon]::Read($codezArg0);
+[Console]::Out.Write([Convert]::ToBase64String($codezIconBytes));
 `;
 
 interface WindowsAumidIconDependencies {

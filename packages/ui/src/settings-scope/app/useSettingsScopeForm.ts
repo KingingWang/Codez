@@ -16,7 +16,7 @@ export interface SettingsScopeForm<T> {
  *
  * Bug 根因：子智能体页的 showForm / editingAgent、钩子页的 viewMode / editingHook 原是两份不带设备归属的状态。
  * 设备离线或连接中时表单只是隐藏（rpcReady=false），状态仍在；用户在列表页把 Scope 切到另一台设备后旧表单重现，
- * 保存把旧设备的路径和内容交给新设备的服务。钩子更危险：各设备的用户钩子 ID 都从 hook-zcode-user-0 编号，
+ * 保存把旧设备的路径和内容交给新设备的服务。钩子更危险：各设备的用户钩子 ID 都从 hook-codez-user-0 编号，
  * 按旧 hook ID 保存会覆盖新设备上的另一个钩子。
  * 修法：合成一份带设备 owner 的表单状态；渲染时 owner 不是当前设备就不渲染并清掉（render-time 更新，不用 effect，
  * 首个提交帧就不会出现旧表单）。owner 取设备级：同一设备内切换「用户」/ 项目不清表单，同一设备离线恢复后仍写回原设备。

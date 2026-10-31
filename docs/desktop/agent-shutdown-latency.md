@@ -2,7 +2,7 @@
 
 ## 背景
 
-桌面 App 退出会进入 `before-quit`，main process 等待各 workspace window 的 Local Host 以及仍存活的 Remote Host 完成资源回收。每个 Host 再等待其按 workspaceKey 托管的 ZCode CLI 进程树退出，避免 `zcode-cli` / `app-server` / MCP 子进程在 Windows、macOS、Linux 上残留。
+桌面 App 退出会进入 `before-quit`，main process 等待各 workspace window 的 Local Host 以及仍存活的 Remote Host 完成资源回收。每个 Host 再等待其按 workspaceKey 托管的 Codez CLI 进程树退出，避免 `codez-cli` / `app-server` / MCP 子进程在 Windows、macOS、Linux 上残留。
 
 2026-06-12 的运行日志显示，普通关闭从 `waiting for host process cleanup` 到 `host process cleanup completed` 约 2.4s 到 2.7s。静态代码确认主要原因是 `terminateProcessTreeAndWait()` 固定等待 `DEFAULT_FORCE_AFTER_MS + DEFAULT_WAIT_AFTER_FORCE_MS`，即使 agent 进程已经提前退出也不会立即返回。
 
@@ -46,11 +46,11 @@ Windows 普通退出属于高频交互，更新安装属于低频且必须释放
 
 ## 实现约束
 
-- `ZCodeStdioTransport.disposeAndWait()` 先关闭 stdin，触发 `app-server --stdio` 的 input close 路径；短窗口内未退出再进入进程树终止。
-- `ZCodeStdioTransport.disposeAndWait()` 必须在发送 stdin EOF 前保存进程树快照；否则根进程先退出后，已脱离或被系统接管的后代无法再通过 PPID 找回。
+- `CodezStdioTransport.disposeAndWait()` 先关闭 stdin，触发 `app-server --stdio` 的 input close 路径；短窗口内未退出再进入进程树终止。
+- `CodezStdioTransport.disposeAndWait()` 必须在发送 stdin EOF 前保存进程树快照；否则根进程先退出后，已脱离或被系统接管的后代无法再通过 PPID 找回。
 - 协议先失效，stderr reader 保留到流关闭，child exit 后最多再 drain 250ms，再用旧 runtime 身份生成 exit tail。仅 stderr 失败不关闭健康协议。
 - 普通 EOF 宽限为 1800ms，覆盖 CLI 自首个关闭事件起 1500ms 的总退出上限；等待仍扣减原进程树总预算，重复信号不续时。coverage 保留独立的写盘宽限。
-- `ZCodeStdioTransport` 的 `send()`、stdout frame 分发和 stderr line 分发只负责协议 I/O，不得调用同步或异步的 `ps`、PowerShell、`taskkill` 等进程管理命令，也不得依据消息 method/type 猜测何时刷新进程树。退出快照只允许在 `dispose()` / `disposeAndWait()` 已开始后获取。
+- `CodezStdioTransport` 的 `send()`、stdout frame 分发和 stderr line 分发只负责协议 I/O，不得调用同步或异步的 `ps`、PowerShell、`taskkill` 等进程管理命令，也不得依据消息 method/type 猜测何时刷新进程树。退出快照只允许在 `dispose()` / `disposeAndWait()` 已开始后获取。
 - 进程所有权来自 Host 的 spawn 关系和 Agent 自身的 MCP/process adapter，不来自协议消息活跃度。POSIX Agent 必须继续运行在独立进程组；Windows 继续以 CLI 根 PID 的 task tree 为关闭边界。Agent 正常 EOF 收尾负责先关闭其登记的 MCP 进程树，Host 的退出前快照和进程组/task tree 信号负责强制兜底。
 - `terminateProcessTreeAndWait()` 的完成边界是“回收前快照中已归属该 runtime 的进程树全部退出”，不是仅直接 child 退出。根进程先退出时，已发现后代仍必须经过 graceful / force 回收和存活复核；返回值必须显式携带残留 PID，调用方不能把“记录 warning 后结束有界等待”误当成 cleanup 成功。
 - cleanup timeout 只是进入“终态观察”的边界，不等于已经证明存在持久残留。所有平台统一按下面的终态判定释放进程所有权；在观察预算内稍晚投递的正常 exit 仍然属于 cleanup 成功，只有截止时仍存活的快照身份才报告 `cleanup incomplete`：

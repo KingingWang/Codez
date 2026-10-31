@@ -4,8 +4,8 @@ import {
   type IPlatformService,
   type RemoteTarget,
   type WebRemoteControlStatus,
-} from "@zcode/shared";
-import { playTaskNotificationSound } from "@zcode/ui";
+} from "@codez/shared";
+import { playTaskNotificationSound } from "@codez/ui";
 import { resolveWebCommunityUrl, resolveWebHelpConfig } from "#src/communityUrl.js";
 import type { WebRemoteControlPlatformProxy } from "#src/platform/contract.js";
 import { saveBrowserFile } from "#src/platform/saveBrowserFile.js";
@@ -48,7 +48,7 @@ export function createWebPlatform(options?: {
       _context?: {
         workspacePath: string;
         workspaceIdentity?: string;
-        connectTrigger?: import("@zcode/shared").RemoteWorkspaceConnectTrigger;
+        connectTrigger?: import("@codez/shared").RemoteWorkspaceConnectTrigger;
       },
     ) {
       if (platformProxy) {

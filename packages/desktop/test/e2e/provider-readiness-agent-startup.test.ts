@@ -1,5 +1,5 @@
 import { openWorkspaceDraftFromSidebar } from "./helpers/workspace-agent-warmup.js";
-import { BUILTIN_PROVIDER_TEMPLATE_IDS, decodeCustomModelValue } from "@zcode/shared";
+import { BUILTIN_PROVIDER_TEMPLATE_IDS, decodeCustomModelValue } from "@codez/shared";
 import {
   TID_CHAT_ERROR_BANNER,
   TID_CHAT_MODEL_SELECT_TRIGGER,
@@ -15,7 +15,7 @@ import {
   TID_V4_COMPOSER_INPUT,
   TID_V4_COMPOSER_SEND,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -90,7 +90,7 @@ describe("Provider/model readiness 只门禁模型执行", () => {
     expect(await $(`[data-testid="${TID_V4_COMPOSER_SEND}"]`).isEnabled()).toBe(false);
     await waitForV4ComposerText(blockedDraft, "缺模型门禁没有保留 composer 原文");
     expect(
-      await browser.execute(() => window.localStorage.getItem("zcode-v4-pending-commands:v1")),
+      await browser.execute(() => window.localStorage.getItem("codez-v4-pending-commands:v1")),
     ).toBeNull();
     await waitForModelConfigMissingBanner();
 
@@ -100,7 +100,7 @@ describe("Provider/model readiness 只门禁模型执行", () => {
     // 修复原因：sessions-index 是活动与详情的事实源。provider 未就绪时若完全禁止
     // workspace CLI 启动，已有 task-index row 也无法读取正文；这里只允许只读 topic，
     // 写路径仍由门禁拒绝。
-    await waitForAgentProcessCount(1, { workspaceNameSuffix: "-zcodeproject" });
+    await waitForAgentProcessCount(1, { workspaceNameSuffix: "-codezproject" });
 
     await switchToElectronRendererTarget(isMainRendererUrl);
     await clickModelSettingsFromMissingBanner();
@@ -133,16 +133,16 @@ describe("Provider/model readiness 只门禁模型执行", () => {
       timeoutMsg: "Provider 模型水合后发送按钮仍不可用",
     });
     expect(
-      await browser.execute(() => window.localStorage.getItem("zcode-v4-pending-commands:v1")),
+      await browser.execute(() => window.localStorage.getItem("codez-v4-pending-commands:v1")),
     ).toBeNull();
 
     await switchToElectronRendererTarget(isResourceManagerUrl);
-    await waitForAgentProcessCount(1, { workspaceNameSuffix: "-zcodeproject" });
+    await waitForAgentProcessCount(1, { workspaceNameSuffix: "-codezproject" });
 
     // 修复原因：只读 sessions-index 已经启动 workspace CLI；provider 就绪只提升写能力，
     // 稳定窗口内仍只能有一个 Agent，防止 read→write 升级重复创建进程。
     await browser.pause(1500);
-    expect(await countAgentProcessRows({ workspaceNameSuffix: "-zcodeproject" })).toBe(1);
+    expect(await countAgentProcessRows({ workspaceNameSuffix: "-codezproject" })).toBe(1);
   });
 });
 

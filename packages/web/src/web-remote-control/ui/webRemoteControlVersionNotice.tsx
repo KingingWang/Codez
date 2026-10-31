@@ -1,5 +1,5 @@
 import { createRoot } from "react-dom/client";
-import { Button } from "@zcode/ui/button";
+import { Button } from "@codez/ui/button";
 import { resolveWebRemoteControlScreenLocale } from "#src/web-remote-control/ui/webRemoteControlFailureScreen.js";
 
 /** 原页面保持挂载；原生 modal 阻止背景元素与其他 portal 的操作，全局快捷键由入口提前拦截。 */

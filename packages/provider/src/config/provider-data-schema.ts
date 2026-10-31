@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { sparseShape } from "@zcode/shared/config-schema";
+import { sparseShape } from "@codez/shared/config-schema";
 
 export const providerApiTypeDataSchema = z.enum([
   "anthropic-messages",
@@ -16,7 +16,7 @@ export const zhipuAccountModeDataSchema = z.enum([
   "individual-coding-plan",
   "team-coding-plan",
   "off-peak",
-  // 加速卡访问类别；与 zcodeProviderAccountAccessSchema.mode 同值，改动需同步两处。
+  // 加速卡访问类别；与 codezProviderAccountAccessSchema.mode 同值，改动需同步两处。
   "highspeed",
 ]);
 export const providerVisibilityDataSchema = z.enum(["visible", "hidden"]);

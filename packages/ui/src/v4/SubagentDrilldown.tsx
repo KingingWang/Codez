@@ -5,10 +5,10 @@
 // - 展示：不虚拟化，只取窗口最近 N 条 assistant 文本输出；工具调用由 Agent 摘要/子工具列表表达；
 // - 只读：不下发 onFork/onRetry/onEdit，行内动作面不出现。
 import { memo, useEffect, useMemo, useState } from "react";
-import { TID_V4_SUBAGENT_DRILLDOWN, testId } from "@zcode/shared/test-ids";
-import type { ConversationRow } from "@zcode/shared/zcode-protocol-v4";
+import { TID_V4_SUBAGENT_DRILLDOWN, testId } from "@codez/shared/test-ids";
+import type { ConversationRow } from "@codez/shared/codez-protocol-v4";
 import { ConversationRowView } from "@/v4/ConversationRowView.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import type { ConversationRowRenderContext } from "@/v4/conversationRowContext.js";
 import type { SessionLease } from "@/v4/sessionDataLayer.js";
 import { useConversationProjection } from "@/v4/useConversationProjection.js";
@@ -35,7 +35,7 @@ export const SubagentDrilldown = memo(function SubagentDrilldown({
   childSessionId,
   context,
 }: SubagentDrilldownProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const { layer } = useV4Conversation();
   const [lease, setLease] = useState<SessionLease | null>(null);
   useEffect(() => {

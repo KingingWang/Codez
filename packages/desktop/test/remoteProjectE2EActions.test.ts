@@ -48,8 +48,8 @@ describe("项目导航 E2E 动作归属", () => {
       }),
     };
     const window = {
-      __zcodeTabStoreE2E: { getState: () => ({ activeWorkspaceIdentity: identity }) },
-      __zcodeSessionStoreE2E: { getState: () => ({ workspaces: { [identity]: workspace } }) },
+      __codezTabStoreE2E: { getState: () => ({ activeWorkspaceIdentity: identity }) },
+      __codezSessionStoreE2E: { getState: () => ({ workspaces: { [identity]: workspace } }) },
     };
     vi.stubGlobal("$", () => ({
       waitForDisplayed: vi.fn(),

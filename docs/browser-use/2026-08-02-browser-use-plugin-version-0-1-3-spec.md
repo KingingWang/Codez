@@ -16,7 +16,7 @@ locator、action expected-effect 与 popup 双 registry 原子观察 guidance �
 所有当前版本事实源必须统一为 `0.1.3`：
 
 1. workspace package `package.json`；
-2. `.zcode-plugin/plugin.json`；
+2. `.codez-plugin/plugin.json`；
 3. Bootstrap `OFFICIAL_PLUGIN_DEFINITIONS`；
 4. SEA `officialSeaPlugins`；
 5. Bootstrap cache-path 契约与 SEA/version alignment 契约；
@@ -41,7 +41,7 @@ locator、action expected-effect 与 popup 双 registry 原子观察 guidance �
 
 | User scenario | UI entry | Shared implementation | Display/draft owner | Default/inherit source | Validation/gating | Commit action | Authority/persistence | Mode boundary | Must remain isolated from |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 启动后使用内置 Browser Use | Plugin settings / agent skill discovery | bundled official plugin seeding | 无本地草稿；UI 读取 discovered plugin | `OFFICIAL_PLUGIN_DEFINITIONS` + packaged manifest | package/manifest/seed/SEA 版本必须相等 | 启动时 seed 到 version-scoped cache | `~/.zcode/cli/plugins/cache/zcode-plugins-official/browser-use/0.1.3` | Desktop filesystem seed 与 SEA seed 使用同一版本；远端沿既有 runtime asset staging | conversation stream、workspace identity、browser tab runtime |
+| 启动后使用内置 Browser Use | Plugin settings / agent skill discovery | bundled official plugin seeding | 无本地草稿；UI 读取 discovered plugin | `OFFICIAL_PLUGIN_DEFINITIONS` + packaged manifest | package/manifest/seed/SEA 版本必须相等 | 启动时 seed 到 version-scoped cache | `~/.codez/cli/plugins/cache/zcode-plugins-official/browser-use/0.1.3` | Desktop filesystem seed 与 SEA seed 使用同一版本；远端沿既有 runtime asset staging | conversation stream、workspace identity、browser tab runtime |
 
 ### 2.3 Shared And Divergent Behavior
 
@@ -68,7 +68,7 @@ locator、action expected-effect 与 popup 双 registry 原子观察 guidance �
 | State/fact | Draft/display owner | Authoritative owner | Commit command/service | Persistence/cache | Evidence |
 | --- | --- | --- | --- | --- | --- |
 | workspace plugin version | package metadata | `package.json` | build/package collection | workspace package | package file |
-| runtime plugin identity | plugin manifest | `.zcode-plugin/plugin.json` | plugin discovery | seeded cache manifest | manifest |
+| runtime plugin identity | plugin manifest | `.codez-plugin/plugin.json` | plugin discovery | seeded cache manifest | manifest |
 | bundled current version | Bootstrap | `OFFICIAL_PLUGIN_DEFINITIONS` | `resolveOfficialPluginRoots` | official cache + marketplace partition | bundled plugin source/tests |
 | SEA embedded version | SEA asset collector | `officialSeaPlugins` | SEA build | embedded manifest then official cache | SEA source/tests |
 
@@ -87,7 +87,7 @@ locator、action expected-effect 与 popup 双 registry 原子观察 guidance �
 
 ### 2.7 Codegraph Evidence
 
-当前环境没有 ZCode codegraph 工具；按 skill 规则使用 feature graph seeds + depth-2 `rg`/direct-caller
+当前环境没有 Codez codegraph 工具；按 skill 规则使用 feature graph seeds + depth-2 `rg`/direct-caller
 fallback。
 
 | Seed | Query | Direct callers / key path | Depth | Interpretation |
@@ -174,11 +174,11 @@ seed temp directory -> atomic promote -> browser-use/0.1.3
 | Adapter stale/current cache test | 1 passed，46 skipped |
 | Browser Use plugin tests | 6 files / 29 tests 通过 |
 | SEA build tests | 39/39 通过；包含版本对齐、完整资产清单，以及缺失 Browser client 时拒绝打包 |
-| ZCode CLI workspace build | 15 tasks 全部成功 |
-| Browser Use plugin build | 通过，构建身份为 `@zcode/browser-use-plugin@0.1.3` |
+| Codez CLI workspace build | 15 tasks 全部成功 |
+| Browser Use plugin build | 通过，构建身份为 `@codez/browser-use-plugin@0.1.3` |
 | Bootstrap plugin tests | 1 file / 30 tests 通过；filesystem/SEA seed 缺必需 Browser 资产时拒绝，完整包正常 seed |
 | Browser 分发与文档聚焦回归 | core 16 + plugin 29 + desktop 38 + server 77 + SEA 39 全部通过 |
-| ZCode CLI workspace typecheck | 23/23 tasks 通过 |
+| Codez CLI workspace typecheck | 23/23 tasks 通过 |
 | 根仓库 `pnpm typecheck` | 通过 |
 | 根仓库 `pnpm lint` | 0 errors，36 条既有 warning |
 | Feature graph integrity | 150 nodes / 259 edges / 216 code seeds；无重复 node/edge、悬空 edge 或缺失 code seed |

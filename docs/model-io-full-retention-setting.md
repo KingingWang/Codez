@@ -23,7 +23,7 @@ Settings Switch
   |
   | ISettingService.update({ modelIoFullRetentionEnabled })
   v
-~/.zcode/v2/setting.json                    authoritative app preference
+~/.codez/v2/setting.json                    authoritative app preference
   |
   +--> current Local Host ------------------+
   |                                         |
@@ -33,7 +33,7 @@ Settings Switch
                               workspace/updateModelIoPreferences
                                             |
                                             v
-                              workspace-scoped zcode-cli process
+                              workspace-scoped codez-cli process
                                             |
                           +-----------------+-----------------+
                           |                                   |
@@ -89,7 +89,7 @@ sanitize headers / request metadata       always
 
 | User scenario | UI entry | Shared implementation | Display/draft owner | Default/inherit source | Validation/gating | Commit action | Authority/persistence | Mode boundary | Must remain isolated from |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 保留完整模型诊断轨迹 | Settings / General | `GeneralSectionContent` + `Switch` | `useSettings` shared snapshot | `appSettingsSchema` default `false` | boolean schema | `ISettingService.update` + runtime preference sync | `~/.zcode/v2/setting.json` + active CLI runtime snapshot | desktop/web UI 共用；local/remote Host 同步 | conversation/session recovery、provider 配置、日志脱敏 |
+| 保留完整模型诊断轨迹 | Settings / General | `GeneralSectionContent` + `Switch` | `useSettings` shared snapshot | `appSettingsSchema` default `false` | boolean schema | `ISettingService.update` + runtime preference sync | `~/.codez/v2/setting.json` + active CLI runtime snapshot | desktop/web UI 共用；local/remote Host 同步 | conversation/session recovery、provider 配置、日志脱敏 |
 
 ### Shared And Divergent Behavior
 
@@ -105,7 +105,7 @@ sanitize headers / request metadata       always
 | Rank | From | Semantic edge | To | Condition | Why inspect it | Evidence |
 | --- | --- | --- | --- | --- | --- | --- |
 | must-inspect | Settings switch | persists-to | App settings | always | 默认值与历史兼容 | `validationAppSettings.ts`, `settingService.ts` |
-| must-inspect | App settings | syncs-to | active local/remote CLI | active workspace | 切换需即时生效 | `useSettingService.ts`, `zcodeAgentService.ts`, `botRemoteWorkspaceBridge.ts` |
+| must-inspect | App settings | syncs-to | active local/remote CLI | active workspace | 切换需即时生效 | `useSettingService.ts`, `codezAgentService.ts`, `botRemoteWorkspaceBridge.ts` |
 | must-inspect | CLI preference | controls | ModelIO writer | every model attempt | 定义 full 与 bounded 分支 | `runner.ts`, `runner-debug.ts` |
 | should-inspect | full retention | increases | retained diagnostic volume | enabled | 脱敏不能关闭 | `runner-debug-redaction.ts`, i18n copy |
 | invariant-only | full retention | must-not-mutate | conversation delivery/recovery | all modes | 仅诊断持久化变化 | architecture docs |

@@ -4,7 +4,7 @@ import type {
   ReadResourceResult,
 } from "@modelcontextprotocol/client";
 import { INVALID_PARAMS, ProtocolError } from "@modelcontextprotocol/client";
-import type { IPluginUiBridgeService, PluginUiPluginScope } from "@zcode/services";
+import type { IPluginUiBridgeService, PluginUiPluginScope } from "@codez/services";
 import type { PluginUiHostBridge } from "./pluginUiHostBridge.js";
 
 /**
@@ -105,7 +105,7 @@ export function createPluginUiResourceSubscriptions(
           ...(request?.cursor ? { cursor: request.cursor } : {}),
         })) as unknown as ListResourceTemplatesResult;
       };
-      // resources/subscribe 是 ZCode 扩展（宣告 experimental["zcode/resourceSubscribe"]），规范方法走二参形式。
+      // resources/subscribe 是 Codez 扩展（宣告 experimental["codez/resourceSubscribe"]），规范方法走二参形式。
       bridge.setRequestHandler("resources/subscribe", async (request) => {
         await subscribe(request.params.uri);
         return {};

@@ -53,7 +53,7 @@
             "id": "toolu_bdo_small",
             "name": "Bash",
             "input": {
-              "command": "node \".zcode-e2e/bash-direct-output/中文 空格/writer.cjs\" small",
+              "command": "node \".codez-e2e/bash-direct-output/中文 空格/writer.cjs\" small",
               "timeout": 120000
             }
           },
@@ -61,7 +61,7 @@
             "id": "toolu_bdo_empty_error",
             "name": "Bash",
             "input": {
-              "command": "node \".zcode-e2e/bash-direct-output/中文 空格/writer.cjs\" empty-error",
+              "command": "node \".codez-e2e/bash-direct-output/中文 空格/writer.cjs\" empty-error",
               "timeout": 120000
             }
           }
@@ -120,7 +120,7 @@
             "id": "toolu_bdo_large",
             "name": "Bash",
             "input": {
-              "command": "node \".zcode-e2e/bash-direct-output/中文 空格/writer.cjs\" large",
+              "command": "node \".codez-e2e/bash-direct-output/中文 空格/writer.cjs\" large",
               "timeout": 120000
             }
           }
@@ -179,7 +179,7 @@
             "id": "toolu_bdo_progress_a",
             "name": "Bash",
             "input": {
-              "command": "node \".zcode-e2e/bash-direct-output/中文 空格/writer.cjs\" progress A",
+              "command": "node \".codez-e2e/bash-direct-output/中文 空格/writer.cjs\" progress A",
               "timeout": 120000
             }
           }
@@ -213,7 +213,7 @@
             "id": "toolu_bdo_progress_b",
             "name": "Bash",
             "input": {
-              "command": "node \".zcode-e2e/bash-direct-output/中文 空格/writer.cjs\" progress B",
+              "command": "node \".codez-e2e/bash-direct-output/中文 空格/writer.cjs\" progress B",
               "timeout": 120000
             }
           }
@@ -322,7 +322,7 @@
             "id": "toolu_bdo_query",
             "name": "Bash",
             "input": {
-              "command": "node \".zcode-e2e/bash-direct-output/中文 空格/writer.cjs\" query",
+              "command": "node \".codez-e2e/bash-direct-output/中文 空格/writer.cjs\" query",
               "timeout": 120000,
               "run_in_background": true
             }
@@ -562,7 +562,7 @@
             "id": "toolu_bdo_limit_foreground",
             "name": "Bash",
             "input": {
-              "command": "node \".zcode-e2e/bash-direct-output/中文 空格/writer.cjs\" limit foreground",
+              "command": "node \".codez-e2e/bash-direct-output/中文 空格/writer.cjs\" limit foreground",
               "timeout": 120000
             }
           }
@@ -650,7 +650,7 @@
             "id": "toolu_bdo_limit_background",
             "name": "Bash",
             "input": {
-              "command": "node \".zcode-e2e/bash-direct-output/中文 空格/writer.cjs\" limit background",
+              "command": "node \".codez-e2e/bash-direct-output/中文 空格/writer.cjs\" limit background",
               "timeout": 120000,
               "run_in_background": true
             }
@@ -710,7 +710,7 @@
             "id": "toolu_bdo_read_failure",
             "name": "Bash",
             "input": {
-              "command": "node \".zcode-e2e/bash-direct-output/中文 空格/writer.cjs\" read-failure",
+              "command": "node \".codez-e2e/bash-direct-output/中文 空格/writer.cjs\" read-failure",
               "timeout": 120000
             }
           }
@@ -769,7 +769,7 @@
             "id": "toolu_bdo_open_failure",
             "name": "Bash",
             "input": {
-              "command": "node \".zcode-e2e/bash-direct-output/中文 空格/writer.cjs\" small",
+              "command": "node \".codez-e2e/bash-direct-output/中文 空格/writer.cjs\" small",
               "timeout": 120000
             }
           }
@@ -828,7 +828,7 @@
             "id": "toolu_bdo_recovery",
             "name": "Bash",
             "input": {
-              "command": "node \".zcode-e2e/bash-direct-output/中文 空格/writer.cjs\" small",
+              "command": "node \".codez-e2e/bash-direct-output/中文 空格/writer.cjs\" small",
               "timeout": 120000
             }
           }
@@ -887,7 +887,7 @@
             "id": "toolu_bdo_realtime",
             "name": "Bash",
             "input": {
-              "command": "node \".zcode-e2e/bash-direct-output/中文 空格/writer.cjs\" realtime",
+              "command": "node \".codez-e2e/bash-direct-output/中文 空格/writer.cjs\" realtime",
               "timeout": 120000
             }
           }

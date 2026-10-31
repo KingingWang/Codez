@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRightLeft, Info, LoaderCircle, Plug, RotateCcw, Server, Upload } from "lucide-react";
-import type { DeviceSyncState, SourceServerManagementSnapshot } from "@zcode/shared";
+import type { DeviceSyncState, SourceServerManagementSnapshot } from "@codez/shared";
 import type {
   DeviceAdditionReturnTarget,
   RemoteConnectionOpenPreference,
@@ -8,7 +8,7 @@ import type {
 import { Button } from "@/components/ui/button.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.js";
 import { cn } from "@/components/lib/utils.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import {
   getRemoteDevicePresentationInput,
   resolveRemoteConnectionPresentation,
@@ -105,7 +105,7 @@ function isSameDay(left: number, right: number): boolean {
 }
 
 export function DataSyncSection(props: DataSyncSectionProps) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const now = props.now ?? Date.now;
   const devices = useMemo(() => buildDataSyncDevices(props.snapshot), [props.snapshot]);
   const [syncStates, setSyncStates] = useState<Record<string, DeviceSyncState>>({});

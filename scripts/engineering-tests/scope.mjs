@@ -40,7 +40,7 @@ async function firstPushBase(root, head) {
 export async function resolveScope(root, options = {}, env = process.env) {
   if (options.scope && !["worktree", "push"].includes(options.scope))
     throw new Error(`未知范围：${options.scope}`);
-  const explicit = options.base ?? env.ZCODE_AFFECTED_TEST_BASE ?? env.ZCODE_PRE_PUSH_BASE;
+  const explicit = options.base ?? env.CODEZ_AFFECTED_TEST_BASE ?? env.CODEZ_PRE_PUSH_BASE;
   if (options.files && (options.scope === "push" || explicit))
     throw new Error("--files 不能与 push 或 --base 混用");
   if (options.files)
@@ -49,7 +49,7 @@ export async function resolveScope(root, options = {}, env = process.env) {
 
   await checkPushWorktree(root, env);
   const head = await commit(root, "HEAD");
-  const entries = (env.ZCODE_PRE_PUSH_STDIN ?? "")
+  const entries = (env.CODEZ_PRE_PUSH_STDIN ?? "")
     .trim()
     .split(/\r?\n/u)
     .filter(Boolean)

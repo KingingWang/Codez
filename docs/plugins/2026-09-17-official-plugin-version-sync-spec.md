@@ -3,7 +3,7 @@
 > 日期：2026-09-17
 > 状态：已实现并验证
 > 关联改动：Computer Use 换成 node_repl SDK 重建，node_repl 宿主从 Browser Use 抽成独立
-> 官方插件 `@zcode/node-repl-host`。
+> 官方插件 `@codez/node-repl-host`。
 
 本规格同时覆盖三个包，因为这次它们的版本事实源清单**结构性地变了**：Browser Use 原本的
 五处事实源里，第五处 `NODE_REPL_SERVER_VERSION` 随宿主迁出，成了 node-repl-host 自己的
@@ -14,9 +14,9 @@
 
 | 包 | 旧版本 | 新版本 | 决策依据 |
 | --- | --- | --- | --- |
-| `@zcode/browser-use-plugin` | 0.4.2 | 0.5.0 | 发布单元内容变了：node_repl MCP server 不再由本插件携带（`dist/mcp/server.js` 移出 seed 清单），插件只剩 skill、client runtime 与文档。这是发布物构成的变化，不是缺陷修复，取 minor。 |
-| `@zcode/node-repl-host` | 0.4.2 | 0.5.0 | 宿主契约本身变了：从 Browser Use 内部抽成独立 seed 单元，工具面随 Computer Use 的 node_repl SDK 重建调整。抽出时它继承了 Browser Use 的 0.4.2，本次按同一 minor 台阶抬到 0.5.0。 |
-| `zcode-cua` / `@zcode/zcode-cua-plugin` | 0.5.14 | 0.6.0 | producer 侧是破坏性重建（`feat(cua)!`：工具面、后台输入与观察面破坏性重构），patch 号不足以让下游区分新旧 producer。 |
+| `@codez/browser-use-plugin` | 0.4.2 | 0.5.0 | 发布单元内容变了：node_repl MCP server 不再由本插件携带（`dist/mcp/server.js` 移出 seed 清单），插件只剩 skill、client runtime 与文档。这是发布物构成的变化，不是缺陷修复，取 minor。 |
+| `@codez/node-repl-host` | 0.4.2 | 0.5.0 | 宿主契约本身变了：从 Browser Use 内部抽成独立 seed 单元，工具面随 Computer Use 的 node_repl SDK 重建调整。抽出时它继承了 Browser Use 的 0.4.2，本次按同一 minor 台阶抬到 0.5.0。 |
+| `codez-cua` / `@codez/codez-cua-plugin` | 0.5.14 | 0.6.0 | producer 侧是破坏性重建（`feat(cua)!`：工具面、后台输入与观察面破坏性重构），patch 号不足以让下游区分新旧 producer。 |
 
 node-repl-host 与 Browser Use 数字相同**只是同源历史的巧合**，不构成耦合：两者各自独立升版，
 `NODE_REPL_SERVER_VERSION` 的注释里已就地记录这一点。
@@ -25,8 +25,8 @@ node-repl-host 与 Browser Use 数字相同**只是同源历史的巧合**，不
 
 ### 2.1 Browser Use（四处，手工维护）
 
-1. `apps/zcode-cli/packages/browser-use-plugin/package.json`；
-2. `apps/zcode-cli/packages/browser-use-plugin/.zcode-plugin/plugin.json`；
+1. `apps/codez-cli/packages/browser-use-plugin/package.json`；
+2. `apps/codez-cli/packages/browser-use-plugin/.codez-plugin/plugin.json`；
 3. Bootstrap `OFFICIAL_PLUGIN_DEFINITIONS` 里 `browser-use` 条目；
 4. SEA `officialSeaPlugins` 里 `browser-use` 条目。
 
@@ -34,8 +34,8 @@ node-repl-host 与 Browser Use 数字相同**只是同源历史的巧合**，不
 
 ### 2.2 node-repl-host（五处 + 一份产物，手工维护）
 
-1. `apps/zcode-cli/packages/node-repl-host/package.json`；
-2. `apps/zcode-cli/packages/node-repl-host/.zcode-plugin/plugin.json`；
+1. `apps/codez-cli/packages/node-repl-host/package.json`；
+2. `apps/codez-cli/packages/node-repl-host/.codez-plugin/plugin.json`；
 3. Bootstrap `OFFICIAL_PLUGIN_DEFINITIONS` 里 `node-repl-host` 条目；
 4. SEA `officialSeaPlugins` 里 `node-repl-host` 条目；
 5. `src/tool-contract.ts` 的 `NODE_REPL_SERVER_VERSION`，即 MCP `serverInfo.version`。
@@ -47,18 +47,18 @@ node-repl-host 不是面向用户的插件：无 skill、无市场 listing、无
 
 ### 2.3 Computer Use（机器派生，**不要手改**）
 
-CUA 的版本真相源是 workspace 包 `packages/zcode-cua/package.json` 的 `version`（2026-09 起
-CUA 并入 monorepo，git SHA pin、`bump-zcode-cua-producer.mjs`、`upstream.json` 已删除，见
-`docs/cua/zcode-cua-monorepo-migration.md`）。下列记录由 `check-version-coherence.mjs` 写回，
+CUA 的版本真相源是 workspace 包 `packages/codez-cua/package.json` 的 `version`（2026-09 起
+CUA 并入 monorepo，git SHA pin、`bump-codez-cua-producer.mjs`、`upstream.json` 已删除，见
+`docs/cua/codez-cua-monorepo-migration.md`）。下列记录由 `check-version-coherence.mjs` 写回，
 手改任一处都会被 `--check` 判为漂移：
 
-- producer `plugin/.zcode-plugin/plugin.json`；
-- wrapper `package.json` 与 `.zcode-plugin/plugin.json`；
+- producer `plugin/.codez-plugin/plugin.json`；
+- wrapper `package.json` 与 `.codez-plugin/plugin.json`；
 - Bootstrap `OFFICIAL_PLUGIN_DEFINITIONS` 里 `computer-use` 条目；
-- 各消费方（desktop / services / node-repl-host / core / adapters / wrapper）对 `@zcode/zcode-cua`
+- 各消费方（desktop / services / node-repl-host / core / adapters / wrapper）对 `@codez/codez-cua`
   的依赖声明必须是 `workspace:*`。
 
-`dist/` 不入 git：版本经 esbuild define `__ZCODE_CUA_VERSION__` 注入 bundle，改版本号后必须
+`dist/` 不入 git：版本经 esbuild define `__CODEZ_CUA_VERSION__` 注入 bundle，改版本号后必须
 重跑 `pnpm build:cua`（根 `prepare` 与 CI 安装后都会执行），否则本地 dist 仍是旧版本号。
 
 ## 3. 发布与缓存链路

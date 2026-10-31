@@ -41,7 +41,7 @@ function parseArgs(args) {
 
 function printUsage() {
   console.log(
-    "Usage: pnpm --filter @zcode/desktop e2e:promote:plugins -- --spec ./test/e2e/plugins/manual-review/pending/<case>.test.ts --reviewed --apply",
+    "Usage: pnpm --filter @codez/desktop e2e:promote:plugins -- --spec ./test/e2e/plugins/manual-review/pending/<case>.test.ts --reviewed --apply",
   );
 }
 

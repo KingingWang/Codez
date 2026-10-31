@@ -11,13 +11,13 @@ JS heap 还是 native、哪张内存表在涨。现有 ARMS 资源遥测只有 R
 host / agent CLI 四类进程，必须先有运行时证据才能决定修哪一条。
 
 本功能只解决**本机定位**：每个进程按门控规则往自己已有的本地日志写一行「heap 细分 +
-领域计数器」。它不上报 ARMS、不改 ZCode Protocol schema、不新增 host→main 或 renderer→main
+领域计数器」。它不上报 ARMS、不改 Codez Protocol schema、不新增 host→main 或 renderer→main
 消息类型、不改任何业务逻辑。
 
 ## 产品合同
 
 1. 四类进程各自采样自己的内存：main、renderer（每窗口）、utility_host（每窗口 Local Host）、
-   agent_node（每 workspace 的 `zcode-cli`）。采样周期固定 `60_000ms`；agent_node 复用既有的
+   agent_node（每 workspace 的 `codez-cli`）。采样周期固定 `60_000ms`；agent_node 复用既有的
    `process/resourceSample` sampler 节拍，不新增定时器。
 2. 采样与写盘分离。每次采样后按以下任一条件写盘，否则丢弃：
    - 首次采样（`reason=first`）；
@@ -35,18 +35,18 @@ host / agent CLI 四类进程，必须先有运行时证据才能决定修哪一
 ## 数据流
 
 ```text
- renderer(每窗口)                 host(每窗口)                    zcode-cli(每 workspace)
+ renderer(每窗口)                 host(每窗口)                    codez-cli(每 workspace)
  60s: performance.memory          60s: process.memoryUsage()      60s sampler(已存在) onSample 内
       + ui 领域计数器                  + services 领域计数器             process.memoryUsage()
       │ logger.logMemoryDiagnostics    │ host logger.info                + server 领域计数器
-      │ (绕过生产门控, 走 window.zcode.log) │ (既有 [host-log] 转发)          │ CLI logger.info
+      │ (绕过生产门控, 走 window.codez.log) │ (既有 [host-log] 转发)          │ CLI logger.info
       v                                v                                 v
- ~/.zcode/v2/logs/YYYY-MM-DD.log  ←── main 60s: memoryUsage + 按角色 working set + main 计数器
-                                                                ~/.zcode/cli/log/zcode-YYYY-MM-DD.jsonl
+ ~/.codez/v2/logs/YYYY-MM-DD.log  ←── main 60s: memoryUsage + 按角色 working set + main 计数器
+                                                                ~/.codez/cli/log/codez-YYYY-MM-DD.jsonl
 ```
 
 - main / host / renderer 三类进程的行都落在 Desktop 主日志（host 经既有 `[host-log]` 转发，
-  renderer 经既有 preload `window.zcode.log` 桥）。
+  renderer 经既有 preload `window.codez.log` 桥）。
 - agent_node 写 CLI 自己的 JSONL 日志。远端 workspace 的 CLI 日志留在远端机器上；这是刻意的，
   资源样本不经协议新增字段。
 - 日志导出（`exportLogs.ts`）与用户反馈压缩包（`prepareCompactLogArchive`）已覆盖上述文件，
@@ -65,7 +65,7 @@ Desktop 侧（main / host / renderer）一行 `key=value`：
 - 计数器按 `<provider>.<key>` 命名，按字典序输出，值取整。
 - 所有 KB 值取整。
 
-CLI 侧写结构化日志：`event=zcode_protocol.process.memory_sample`，`module=bootstrap.zcode_protocol`，
+CLI 侧写结构化日志：`event=codez_protocol.process.memory_sample`，`module=bootstrap.codez_protocol`，
 `context` 里放 `reason`、五个内存字段和 `counters` 对象。
 
 ## 领域计数器
@@ -74,10 +74,10 @@ CLI 侧写结构化日志：`event=zcode_protocol.process.memory_sample`，`modu
 | --- | --- | --- |
 | agent_node | `sessions` | 协议 server 常驻 session record 数 |
 | agent_node | `eventRows` | 全部 record 的内存 event store 行数之和 |
-| agent_node | `eventEvicted` / `eventTransientRetained` | 按 turn 窗口策略累计淘汰的瞬态事件数 / 当前仍驻留的瞬态事件数（`apps/zcode-cli/docs/design/v2/session-event-store-retention.md`） |
+| agent_node | `eventEvicted` / `eventTransientRetained` | 按 turn 窗口策略累计淘汰的瞬态事件数 / 当前仍驻留的瞬态事件数（`apps/codez-cli/docs/design/v2/session-event-store-retention.md`） |
 | agent_node | `v4.publishers` / `v4.detachedLive` / `v4.detachedTerminal` / `v4.rawSeqStates` | V4 gateway 的 publisher、detached 子 session、已终态待释放的 detached 子 session、raw seq 状态表大小 |
-| utility_host | `agent.sessionEmitters` / `agent.seqStates` / `agent.pendingPermissions` / `agent.pendingUserInputs` | `zcodeAgentService` 的 per-session 镜像表 |
-| utility_host | `task.runtimeCommands` / `task.toolMemoryTasks` / `task.taskEmitters` / `task.overlays` | `zcodeTaskServiceAdapter` 的 per-task 表 |
+| utility_host | `agent.sessionEmitters` / `agent.seqStates` / `agent.pendingPermissions` / `agent.pendingUserInputs` | `codezAgentService` 的 per-session 镜像表 |
+| utility_host | `task.runtimeCommands` / `task.toolMemoryTasks` / `task.taskEmitters` / `task.overlays` | `codezTaskServiceAdapter` 的 per-task 表 |
 | utility_host | `terminal.open` / `fileWatcher.open` | pty 与 `fs.watch` 实例数 |
 | utility_host | `bots.streamSubs` / `bots.runningTasks` / `bots.typingIntervals` / `bots.liveStatusProgress` | bots 的 per-task 状态 |
 | main | `app.windows` / `app.willDownloadListeners` | 窗口数、`defaultSession` 上的 `will-download` 监听数 |
@@ -87,7 +87,7 @@ CLI 侧写结构化日志：`event=zcode_protocol.process.memory_sample`，`modu
 | main | `ws.<process_role>`（`ws.main` / `ws.renderer_main` / `ws.renderer_guest` / `ws.gpu` / `ws.chromium_other` / `ws.host` / `ws.scheduler`） | `app.getAppMetrics()` 按 `process_role` 求和的 working set（KB）。角色词表与 ARMS `perf_process_window` 同源（`docs/monitoring/process-resource-telemetry.md`），只输出本 tick 有存活进程的角色 |
 | renderer | `shiki.tokensCache` / `shiki.highlighters` | 代码高亮 token 缓存条数 |
 | renderer | `taskSnapshotCache.entries` / `taskSnapshotCache.persisted` | task snapshot 内存缓存与持久缓存条数 |
-| renderer | `sessionStore.workspaces` | `zcodeSessionStore` 的 workspace 桶数 |
+| renderer | `sessionStore.workspaces` | `codezSessionStore` 的 workspace 桶数 |
 | renderer | `projection.stores` / `projection.rows` | 存活的 V4 projection store 数与其 `rows.window` 行数之和 |
 | renderer | `xterm.sessions` | 常驻侧栏终端实例数 |
 | renderer | `taskQueryCache.queryKeys` / `taskQueryCache.taskMetas` | task 列表查询缓存条数 |
@@ -98,12 +98,12 @@ CLI 侧写结构化日志：`event=zcode_protocol.process.memory_sample`，`modu
 
 ## 强制边界
 
-- 不改 `zcodeProcessResourceSampleSchema`；协议样本仍只发 `rssKb` / CPU 字段。
+- 不改 `codezProcessResourceSampleSchema`；协议样本仍只发 `rssKb` / CPU 字段。
 - 不把内存样本接入 `session/event`、V4 conversation frame、task realtime bus、snapshot、
   queue、continuous 或 replayable 恢复链路；手机 `/remote` 不参与。
 - renderer 通过 `packages/ui/src/logger.ts` 的 `logMemoryDiagnostics` 写入；它是
   `docs/performance/renderer-production-logging.md` 中"正式监控链路"例外，生产构建仍走桥，
-  Web 端无桥时 no-op。UI 模块不得直接调用 `window.zcode.log`。
+  Web 端无桥时 no-op。UI 模块不得直接调用 `window.codez.log`。
 - main 不用 `ps` / PowerShell 补采其他进程；只用 `process.memoryUsage()` 与
   `app.getAppMetrics()`。
 - CLI 侧每个 workspace 进程只有既有的一个 `unref()` 定时器。
@@ -112,11 +112,11 @@ CLI 侧写结构化日志：`event=zcode_protocol.process.memory_sample`，`modu
 
 ```bash
 # Desktop 主日志：按角色画 heapUsed 曲线
-grep '\[memory\] role=renderer' ~/.zcode/v2/logs/2026-09-03.log \
+grep '\[memory\] role=renderer' ~/.codez/v2/logs/2026-09-03.log \
   | sed -E 's/^\[([^]]+)\].*heapUsedKb=([0-9]+).*shiki\.tokensCache=([0-9]+).*/\1 \2 \3/'
 
 # CLI 日志
-grep memory_sample ~/.zcode/cli/log/zcode-2026-09-03.jsonl | jq -c '[.time, .context.heapUsedKb, .context.counters.eventRows]'
+grep memory_sample ~/.codez/cli/log/codez-2026-09-03.jsonl | jq -c '[.time, .context.heapUsedKb, .context.counters.eventRows]'
 ```
 
 判读顺序：先看哪个 `role` 的 `heapUsedKb` 单调上升；再看同一行里哪个计数器同步上升；
@@ -134,9 +134,9 @@ grep memory_sample ~/.zcode/cli/log/zcode-2026-09-03.jsonl | jq -c '[.time, .con
 
 - 共用：`packages/shared/src/memoryDiagnostics.ts`（`createMemorySampleWriteGate`、
   `formatMemorySampleLine`、`createMemoryDiagnosticsRegistry`、`memoryUsageToSampleFields`）
-- CLI：`apps/zcode-cli/packages/bootstrap/src/process-resource-sampler.ts`、
-  `zcode-protocol-entrypoint.ts`、`zcode-protocol/server.ts`、`zcode-protocol-v4/v4-gateway.ts`、
-  `apps/zcode-cli/packages/adapters/src/storage/index.ts`
+- CLI：`apps/codez-cli/packages/bootstrap/src/process-resource-sampler.ts`、
+  `codez-protocol-entrypoint.ts`、`codez-protocol/server.ts`、`codez-protocol-v4/v4-gateway.ts`、
+  `apps/codez-cli/packages/adapters/src/storage/index.ts`
 - services：`packages/services/src/memoryDiagnostics.ts` 与五个 service 的自注册
 - host：`packages/desktop/src/host/hostMemoryDiagnosticsLog.ts`（门控与行格式）；
   host/index.ts 的入口是 `hostSelfResourceTelemetry.ts`，它包住本模块，把同一次 `memoryUsage()`

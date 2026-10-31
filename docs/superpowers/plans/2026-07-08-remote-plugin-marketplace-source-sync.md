@@ -4,9 +4,9 @@
 
 **Goal:** SSH plugin sync supports installed marketplace plugins whose marketplace source is local `file`, local `directory`, or synthetic `settings`.
 
-**Architecture:** Keep marketplace plugin installation authoritative on the SSH host. Add a source mirror archive path to `IPluginSyncService`: the local service exports a normalized marketplace source directory containing `marketplace.json` and required local plugin source roots; the remote service imports it under `~/.zcode/plugins/marketplace-sources/<marketplace-id>-<hash>`, then the existing remote agent `addPluginMarketplace` and `installPlugin` calls run unchanged.
+**Architecture:** Keep marketplace plugin installation authoritative on the SSH host. Add a source mirror archive path to `IPluginSyncService`: the local service exports a normalized marketplace source directory containing `marketplace.json` and required local plugin source roots; the remote service imports it under `~/.codez/plugins/marketplace-sources/<marketplace-id>-<hash>`, then the existing remote agent `addPluginMarketplace` and `installPlugin` calls run unchanged.
 
-**Tech Stack:** TypeScript, Vitest, Node `fs/promises`, existing gzip tar plugin sync archive helpers, existing ZCode agent plugin protocol.
+**Tech Stack:** TypeScript, Vitest, Node `fs/promises`, existing gzip tar plugin sync archive helpers, existing Codez agent plugin protocol.
 
 ---
 
@@ -34,7 +34,7 @@ Expected: FAIL because `exportMarketplaceSourceArchive` / `importMarketplaceSour
 
 - [ ] **Step 3: Implement minimal source archive support**
 
-Add shared result types, interface methods, virtual tar file support for generated `marketplace.json`, local source resolution, same-marketplace dependency closure, source manifest rewriting, safe import to `~/.zcode/plugins/marketplace-sources`.
+Add shared result types, interface methods, virtual tar file support for generated `marketplace.json`, local source resolution, same-marketplace dependency closure, source manifest rewriting, safe import to `~/.codez/plugins/marketplace-sources`.
 
 - [ ] **Step 4: Run green tests**
 

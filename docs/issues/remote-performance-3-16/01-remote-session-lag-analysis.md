@@ -12,7 +12,7 @@ P0-1 已实施（见下文 P0-1「实施结果」）。P0-2、P1-2 仍等待下�
 - 修复可能以 hotfix 发布。代码行号以 `release/v3.16.2` 的 `2469e25346` 为准。修复合入后要同步回 staging，staging 上的行号不同。
 - 证据：
   - 用户提供的 Windows 客户端日志（2026-10-19～10-21，包含 main、host、renderer）。10-20 21:42 从 3.15.3 升级到 3.16.2，可以直接做前后对比。
-  - 远端主机上 zcode-cli 的 agent 日志。只有 agent 事件，没有 Server Core 的服务端日志。
+  - 远端主机上 codez-cli 的 agent 日志。只有 agent 事件，没有 Server Core 的服务端日志。
 
 ## 结论
 
@@ -88,7 +88,7 @@ P0-1 已实施（见下文 P0-1「实施结果」）。P0-2、P1-2 仍等待下�
 | -------------------------------------- | ---- |
 | `window-controller.listTaskList`       | 64   |
 | `window-controller.mutateTask`         | 63   |
-| `zcode-task.getTaskMeta`               | 47   |
+| `codez-task.getTaskMeta`               | 47   |
 | `source-server-management.getSnapshot` | 27   |
 | `task-groups.admit`                    | 14   |
 
@@ -202,8 +202,8 @@ P0-2 之后
 ### P2　后续项
 
 - **远端 `SourceServerWorkspaceAliasRepo`**：复用数据库连接，迁移检查只做一次。有了 P0-1 之后，只影响连接后第一次读取，所以优先级降低。
-- **远端订阅**：`subscribeConversationV4`（`packages/services/src/zcode-agent/zcodeAgentService.ts:5978` 起）有 3 段串行等待：provider 同步、父链 `sessionList`、目录解析。ack 中已经有 `openTiming` 分段数据，但日志没有记录。先在每次订阅时记下 `openTiming`，再判断瓶颈。
-- **未验证的猜测**：局域网内远端 RPC 最快也要约 40ms，两个版本都是这样，所以不是本次回归。可能是 SSH exec 通道和 `proxy-stdio` 的 loopback socket 没有关闭 Nagle（`packages/zcode-server-cli/src/server-core/proxyStdio.ts:39` 没有设置 `noDelay`）。可以单独做一次实验验证。
+- **远端订阅**：`subscribeConversationV4`（`packages/services/src/codez-agent/codezAgentService.ts:5978` 起）有 3 段串行等待：provider 同步、父链 `sessionList`、目录解析。ack 中已经有 `openTiming` 分段数据，但日志没有记录。先在每次订阅时记下 `openTiming`，再判断瓶颈。
+- **未验证的猜测**：局域网内远端 RPC 最快也要约 40ms，两个版本都是这样，所以不是本次回归。可能是 SSH exec 通道和 `proxy-stdio` 的 loopback socket 没有关闭 Nagle（`packages/codez-server-cli/src/server-core/proxyStdio.ts:39` 没有设置 `noDelay`）。可以单独做一次实验验证。
 
 ## 预期效果（估算）
 
@@ -256,7 +256,7 @@ P0-2 之后
 
 ### 2026-10-21 P0-1 SSH E2E 验证
 
-- 环境：macOS arm64 Desktop；远端是 `harness/remote` 镜像 `zcode-remote-ssh:test` 的新容器（每次运行重建）；用例 `conversation-session-ssh-remote-p0`（A/B 两个工作区，共 4 次发送）。基线是 `0da8590ddb~1`，修复是 `0da8590ddb`。两版都在 Host 实际发出远端登记处加了同样的临时日志，测完已删除。
+- 环境：macOS arm64 Desktop；远端是 `harness/remote` 镜像 `codez-remote-ssh:test` 的新容器（每次运行重建）；用例 `conversation-session-ssh-remote-p0`（A/B 两个工作区，共 4 次发送）。基线是 `0da8590ddb~1`，修复是 `0da8590ddb`。两版都在 Host 实际发出远端登记处加了同样的临时日志，测完已删除。
 - 交替 A/B（直连，同一时段）：修复 4/4 通过；基线 3/4 通过。
 - 每个用例的远端登记次数：基线 49–51 次；修复 3 次（每个物理连接、分支、路径各 1 次）。
 - 模拟局域网延迟（安装完成后每方向 20ms，RTT 约 40ms）：
@@ -270,4 +270,4 @@ P0-2 之后
 - 失败分析：两版都出现了同样的失败，失败原因与本次改动无关。
   - 远程项目创建后会自动打开；如果自动打开还没有收到 renderer attachment，用户（或用例）又点击了"新建任务"，第二次打开会加入同一个 route。`desktopRemoteSessions.ts` 的 `waitForRendererAttachmentReady` 立即拒绝（"尚无可用 renderer attachment"），随后共享会话被释放，工作区一直打不开。基线和修复都复现过。这是另一个已有问题，未在本次处理。
   - 加延迟后，切回任务时 `remoteSessionId` 被重建，`waitForRemoteTab` 不收敛。基线和修复各出现 1 次。
-  - 早期几次失败来自默认 120s 用例上限（需要与 harness 一样设置 `ZCODE_E2E_MANUAL_REVIEW_HOLD_MS`），以及 SSH 连接前的 UI 点击失败。这些都不涉及本次改动的代码路径。
+  - 早期几次失败来自默认 120s 用例上限（需要与 harness 一样设置 `CODEZ_E2E_MANUAL_REVIEW_HOLD_MS`），以及 SSH 连接前的 UI 点击失败。这些都不涉及本次改动的代码路径。

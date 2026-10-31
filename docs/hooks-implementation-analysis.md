@@ -1,28 +1,28 @@
-# ZCode Hooks 实现现状
+# Codez Hooks 实现现状
 
-> 文档目的：供后续同学快速理解 ZCode hooks 的分层架构、已支持能力，以及已知缺口与演进方向。
+> 文档目的：供后续同学快速理解 Codez hooks 的分层架构、已支持能力，以及已知缺口与演进方向。
 >
 > 更新时间：2026-07-10
-> 相关规范：`docs/plugin-hooks-compat.md`、`apps/zcode-cli/docs/design/v2/hooks.md`
+> 相关规范：`docs/plugin-hooks-compat.md`、`apps/codez-cli/docs/design/v2/hooks.md`
 
 ---
 
 ## 1. 架构分层（必读）
 
-ZCode hooks **不是单一模块**，分两层，行为可能不一致：
+Codez hooks **不是单一模块**，分两层，行为可能不一致：
 
 | 层级               | 路径                                                                                                     | 职责                                      | 实际执行？                     |
 | ------------------ | -------------------------------------------------------------------------------------------------------- | ----------------------------------------- | ------------------------------ |
-| **UI / 设置层**    | `packages/services/src/hooks/hooksService.ts`<br>`packages/ui/src/store/hooksStore.ts`                   | 读取、展示、编辑并写入 runtime hooks 配置 | 通过 `.zcode/config.json` 生效 |
-| **CLI Runtime 层** | `apps/zcode-cli/packages/core/src/hooks/`<br>`apps/zcode-cli/packages/core/src/runtime/methods/hooks.ts` | agent loop 中触发、执行、聚合决策         | **是**                         |
+| **UI / 设置层**    | `packages/services/src/hooks/hooksService.ts`<br>`packages/ui/src/store/hooksStore.ts`                   | 读取、展示、编辑并写入 runtime hooks 配置 | 通过 `.codez/config.json` 生效 |
+| **CLI Runtime 层** | `apps/codez-cli/packages/core/src/hooks/`<br>`apps/codez-cli/packages/core/src/runtime/methods/hooks.ts` | agent loop 中触发、执行、聚合决策         | **是**                         |
 
-**重要结论**：UI 层能读到 `.claude/settings.json` / `.agents/settings.json` 里的 legacy hooks，但 **runtime 不会自动执行** 这些配置；只有写入 `.zcode/config.json` 或通过**已启用插件**注入的 hooks 才会在会话中运行。
+**重要结论**：UI 层能读到 `.claude/settings.json` / `.agents/settings.json` 里的 legacy hooks，但 **runtime 不会自动执行** 这些配置；只有写入 `.codez/config.json` 或通过**已启用插件**注入的 hooks 才会在会话中运行。
 
 ---
 
 ## 2. Runtime 支持的事件（7 个）
 
-定义：`apps/zcode-cli/packages/contracts/src/hooks/index.ts`
+定义：`apps/codez-cli/packages/contracts/src/hooks/index.ts`
 
 | Event                | 触发点                                        | 可阻断                         | 主要代码入口                                         |
 | -------------------- | --------------------------------------------- | ------------------------------ | ---------------------------------------------------- |
@@ -49,7 +49,7 @@ ZCode hooks **不是单一模块**，分两层，行为可能不一致：
 | `http`                  | ❌            | HTTP POST hook                                                             |
 | `callback` / `function` | ⚠️ 仅测试/SDK | `InMemoryHookRunner` 内存回调，非用户配置持久化形态                        |
 
-实现入口：`apps/zcode-cli/packages/core/src/hooks/configured-runner.ts`
+实现入口：`apps/codez-cli/packages/core/src/hooks/configured-runner.ts`
 
 ---
 
@@ -57,16 +57,16 @@ ZCode hooks **不是单一模块**，分两层，行为可能不一致：
 
 ### 4.1 Runtime 生效配置
 
-1. **用户级**：`~/.zcode/cli/config.json` → `hooks` 字段
-2. **项目级**：`<workspace>/.zcode/config.json` → `hooks` 字段
+1. **用户级**：`~/.codez/cli/config.json` → `hooks` 字段
+2. **项目级**：`<workspace>/.codez/config.json` → `hooks` 字段
 3. **插件级**：已启用插件的 `hooks/hooks.json` 或 manifest `hooks` 字段
 
-合并逻辑：`apps/zcode-cli/packages/bootstrap/src/app/runtime-config.ts` 的 `mergeRuntimeHooks()`  
+合并逻辑：`apps/codez-cli/packages/bootstrap/src/app/runtime-config.ts` 的 `mergeRuntimeHooks()`  
 → 用户/项目 hooks 在前，**插件 hooks 追加在后**。
 
 插件发现规范见 `docs/plugin-hooks-compat.md`：
 
-- manifest 优先级：`.zcode-plugin` > `.claude-plugin` > `.codex-plugin`
+- manifest 优先级：`.codez-plugin` > `.claude-plugin` > `.codex-plugin`
 - 标准路径 `hooks/hooks.json` 自动加载
 - 未知 event 记 warning，不阻断插件加载
 
@@ -75,15 +75,15 @@ ZCode hooks **不是单一模块**，分两层，行为可能不一致：
 `hooksService.loadHooks()` 按顺序读取：
 
 ```
-project: .zcode → .agents → .claude
-user:    .zcode → .agents → .claude
+project: .codez → .agents → .claude
+user:    .codez → .agents → .claude
 ```
 
 来源行为：
 
-- ZCode 原生：`process` / `command` 都可编辑、逐条启停，user/project 分别写回对应
-  `.zcode/config.json`。
-- Legacy Claude/Agents：以 import-only、disabled 状态展示；一键导入会复制为同 scope 的 ZCode
+- Codez 原生：`process` / `command` 都可编辑、逐条启停，user/project 分别写回对应
+  `.codez/config.json`。
+- Legacy Claude/Agents：以 import-only、disabled 状态展示；一键导入会复制为同 scope 的 Codez
   hook，绝不静默执行或回写 legacy 文件。
 - 插件：设置页从 plugin runtime catalog 只读展示插件名、事件、matcher、命令和插件启用状态；
   启停入口仍归插件管理页。
@@ -115,7 +115,7 @@ Hook 触发
 | `SessionStart`                                                            | `source`                              |
 | `Stop`                                                                    | 无 query；执行该事件下全部 matcher 组 |
 
-实现：`apps/zcode-cli/packages/core/src/hooks/output.ts` → `matchesHookMatcher()`。简单
+实现：`apps/codez-cli/packages/core/src/hooks/output.ts` → `matchesHookMatcher()`。简单
 `A|B` 使用精确选项匹配，`*` 全匹配，其他字符串按正则处理；工具名同时支持兼容 alias。
 
 ### 5.2 stdin / stdout 契约
@@ -132,12 +132,12 @@ Claude 兼容输入投影集中在 `configured-runner-input.ts`，避免不同�
 
 子进程注入（节选）：
 
-- `ZCODE_SESSION_ID` / `CLAUDE_SESSION_ID` / `CLAUDE_CODE_SESSION_ID`
-- `ZCODE_PROJECT_DIR` / `CLAUDE_PROJECT_DIR`
-- 插件：`ZCODE_PLUGIN_ROOT`、`ZCODE_PLUGIN_DATA`、`ZCODE_PLUGIN_ID`、`ZCODE_PLUGIN_NAME`
+- `CODEZ_SESSION_ID` / `CLAUDE_SESSION_ID` / `CLAUDE_CODE_SESSION_ID`
+- `CODEZ_PROJECT_DIR` / `CLAUDE_PROJECT_DIR`
+- 插件：`CODEZ_PLUGIN_ROOT`、`CODEZ_PLUGIN_DATA`、`CODEZ_PLUGIN_ID`、`CODEZ_PLUGIN_NAME`
 - 兼容：`CLAUDE_PLUGIN_ROOT`、`CLAUDE_PLUGIN_DATA`
 
-命令字符串支持 `${ZCODE_PLUGIN_ROOT}` 等模板替换；`${CLAUDE_SKILL_DIR}` / `${ZCODE_SKILL_DIR}` 无 skill 上下文时会显式报错。
+命令字符串支持 `${CODEZ_PLUGIN_ROOT}` 等模板替换；`${CLAUDE_SKILL_DIR}` / `${CODEZ_SKILL_DIR}` 无 skill 上下文时会显式报错。
 
 ### 5.4 决策聚合
 
@@ -155,7 +155,7 @@ Lifecycle additional context 以 `hook_context` attachment 注入 message histor
 
 ---
 
-## 6. Hook 输出能力（ZCode 已支持）
+## 6. Hook 输出能力（Codez 已支持）
 
 ### 6.1 通用字段
 
@@ -188,7 +188,7 @@ Lifecycle additional context 以 `hook_context` attachment 注入 message histor
 
 ## 7. 插件兼容点
 
-为兼容 Claude Marketplace 插件的 hooks，ZCode 覆盖以下方面：
+为兼容 Claude Marketplace 插件的 hooks，Codez 覆盖以下方面：
 
 - 核心 7 事件的语义与决策优先级设计目标
 - `command` hook + Claude 环境变量 / 路径模板
@@ -207,7 +207,7 @@ Lifecycle additional context 以 `hook_context` attachment 注入 message histor
 
 ### 8.1 用户体验边界
 
-设置页明确拆分“已配置 Hooks”“兼容配置”“插件 Hooks”：只有 ZCode 原生配置和已启用
+设置页明确拆分“已配置 Hooks”“兼容配置”“插件 Hooks”：只有 Codez 原生配置和已启用
 插件进入 runtime；legacy 配置必须由用户显式导入。设置页修改影响新建或尚未启动的 draft，
 不会热改正在运行的 session。
 
@@ -223,7 +223,7 @@ Lifecycle additional context 以 `hook_context` attachment 注入 message histor
 | P2      | Config snapshot                                        | 防止会话中配置漂移         |
 | P3      | Notification / Elicitation / Worktree / FileChanged 等 | 完整事件覆盖               |
 
-设计文档中的 P1 规划见 `apps/zcode-cli/docs/design/v2/hooks.md`。
+设计文档中的 P1 规划见 `apps/codez-cli/docs/design/v2/hooks.md`。
 
 ### 8.3 内部特例
 
@@ -235,19 +235,19 @@ Lifecycle additional context 以 `hook_context` attachment 注入 message histor
 
 | 模块                   | 路径                                                                                          |
 | ---------------------- | --------------------------------------------------------------------------------------------- |
-| 事件 / 输入输出 schema | `apps/zcode-cli/packages/contracts/src/hooks/index.ts`                                        |
-| Hook runner            | `apps/zcode-cli/packages/core/src/hooks/runner.ts`                                            |
-| 配置 → 回调适配        | `apps/zcode-cli/packages/core/src/hooks/configured-runner.ts`                                 |
-| 输出解析与聚合         | `apps/zcode-cli/packages/core/src/hooks/output.ts`                                            |
-| Lifecycle 触发         | `apps/zcode-cli/packages/core/src/runtime/methods/hooks.ts`                                   |
-| Tool 链路触发          | `apps/zcode-cli/packages/core/src/tool/executor/hook-flow.ts`                                 |
-| Runtime 配置合并       | `apps/zcode-cli/packages/bootstrap/src/app/runtime-config.ts`                                 |
-| 插件 hook 发现         | `apps/zcode-cli/packages/adapters/src/plugins/index.ts`                                       |
+| 事件 / 输入输出 schema | `apps/codez-cli/packages/contracts/src/hooks/index.ts`                                        |
+| Hook runner            | `apps/codez-cli/packages/core/src/hooks/runner.ts`                                            |
+| 配置 → 回调适配        | `apps/codez-cli/packages/core/src/hooks/configured-runner.ts`                                 |
+| 输出解析与聚合         | `apps/codez-cli/packages/core/src/hooks/output.ts`                                            |
+| Lifecycle 触发         | `apps/codez-cli/packages/core/src/runtime/methods/hooks.ts`                                   |
+| Tool 链路触发          | `apps/codez-cli/packages/core/src/tool/executor/hook-flow.ts`                                 |
+| Runtime 配置合并       | `apps/codez-cli/packages/bootstrap/src/app/runtime-config.ts`                                 |
+| 插件 hook 发现         | `apps/codez-cli/packages/adapters/src/plugins/index.ts`                                       |
 | UI 配置读写            | `packages/services/src/hooks/hooksService.ts`                                                 |
 | Shared 类型（UI）      | `packages/shared/src/hooks.ts`                                                                |
 | 插件兼容规范           | `docs/plugin-hooks-compat.md`                                                                 |
-| v2 设计 / 验收         | `apps/zcode-cli/docs/design/v2/hooks.md`                                                      |
-| 7 事件合同测试         | `apps/zcode-cli/packages/core/tests/hooks-seven-events.test.ts`                               |
+| v2 设计 / 验收         | `apps/codez-cli/docs/design/v2/hooks.md`                                                      |
+| 7 事件合同测试         | `apps/codez-cli/packages/core/tests/hooks-seven-events.test.ts`                               |
 | 整体桌面 E2E           | `packages/desktop/test/e2e/conversation-session/conversation-session-hooks-lifecycle.test.ts` |
 
 ---
@@ -265,13 +265,13 @@ Lifecycle additional context 以 `hook_context` attachment 注入 message histor
 
 ```bash
 # 单元测试（lifecycle + tool hooks）
-pnpm --filter @zcode/core test runtime-hooks
-pnpm --filter @zcode/core test tool-hook-context
+pnpm --filter @codez/core test runtime-hooks
+pnpm --filter @codez/core test tool-hook-context
 
 # hooksService + 设置页
 pnpm exec vitest run packages/services/test/hooksService.test.ts packages/ui/test/hooksSection.test.ts
 
 # 整体 7 事件桌面 lifecycle
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts \
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts \
   --spec './test/e2e/conversation-session/conversation-session-hooks-lifecycle.test.ts'
 ```

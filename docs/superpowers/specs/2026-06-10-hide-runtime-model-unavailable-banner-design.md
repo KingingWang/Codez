@@ -2,7 +2,7 @@
 
 ## Background
 
-Historical ZCode tasks can carry a persisted model reference whose provider or model is no longer available in the current provider registry. The service layer reports this as `ZCODE_RUNTIME_MODEL_UNAVAILABLE` and keeps the guard in place so desktop continuous sessions do not silently resume with a different runtime model.
+Historical Codez tasks can carry a persisted model reference whose provider or model is no longer available in the current provider registry. The service layer reports this as `CODEZ_RUNTIME_MODEL_UNAVAILABLE` and keeps the guard in place so desktop continuous sessions do not silently resume with a different runtime model.
 
 The current UI shows that guard as a chat error banner with the message:
 
@@ -12,7 +12,7 @@ The desired product behavior is to keep the internal guard, logs, restore handli
 
 ## Goals
 
-- Hide the chat error banner for `ZCODE_RUNTIME_MODEL_UNAVAILABLE`.
+- Hide the chat error banner for `CODEZ_RUNTIME_MODEL_UNAVAILABLE`.
 - Keep the service error code and runtime protection unchanged.
 - Keep logs and task state available for diagnostics.
 - Preserve normal error banner behavior for all other error codes.
@@ -20,14 +20,14 @@ The desired product behavior is to keep the internal guard, logs, restore handli
 
 ## Non-Goals
 
-- Do not remove `ZCODE_RUNTIME_MODEL_UNAVAILABLE` from service or protocol logic.
+- Do not remove `CODEZ_RUNTIME_MODEL_UNAVAILABLE` from service or protocol logic.
 - Do not change model restore, fallback, or setModel semantics.
 - Do not remove tests that validate service-side unavailable-model protection.
 - Do not add a softer toast, inline hint, or toolbar warning.
 
 ## Design
 
-The narrowest safe boundary is the chat error presentation layer. `ChatErrorBanner` should treat `ZCODE_RUNTIME_MODEL_UNAVAILABLE` as a non-renderable UI error and return `null`. This keeps upstream state and diagnostics unchanged while preventing the visible banner from appearing.
+The narrowest safe boundary is the chat error presentation layer. `ChatErrorBanner` should treat `CODEZ_RUNTIME_MODEL_UNAVAILABLE` as a non-renderable UI error and return `null`. This keeps upstream state and diagnostics unchanged while preventing the visible banner from appearing.
 
 The component-level boundary is preferable to clearing the task error in `useTaskRestore`, because restore and model-switch flows still depend on that code to identify and clear historical unavailable-model state after a successful model switch.
 
@@ -35,7 +35,7 @@ The component-level boundary is preferable to clearing the task error in `useTas
 
 Add or update UI tests for `ChatErrorBanner`:
 
-- Rendering with `code: "ZCODE_RUNTIME_MODEL_UNAVAILABLE"` should not include the historical-model message in the HTML.
+- Rendering with `code: "CODEZ_RUNTIME_MODEL_UNAVAILABLE"` should not include the historical-model message in the HTML.
 - Rendering a normal error should still show the error message.
 
 No browser visual regression is required because the requested behavior removes an existing banner for one code path and does not add layout or styling.

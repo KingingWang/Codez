@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/conversation-session-tool-cross-product",
+      "path": ".codez-e2e/conversation-session-tool-cross-product",
       "source": "created-by-helper",
       "description": "prepareToolCrossProductFixtures 在每个工具轮前创建的读写工具沙箱目录，case 结束后删除。"
     }

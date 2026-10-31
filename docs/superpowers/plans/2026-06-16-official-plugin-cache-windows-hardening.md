@@ -6,7 +6,7 @@
 
 **架构：** 把修复拆成两层：bootstrap seed 写入端负责有界重试、陈旧工作目录清理、seed lock 和 manifest 原子写重试；adapter 插件发现端负责忽略官方插件缓存里的工作目录，保证历史残留不会污染插件加载。bootstrap 和 adapters 分属不同包，不互相跨包导入实现辅助模块；bootstrap 放文件系统重试辅助模块，adapters 放最小扫描过滤逻辑。
 
-**技术栈：** TypeScript、Node.js `fs` 同步 API、Vitest、`@zcode/bootstrap` 官方插件 seed、`@zcode/adapters` 插件发现。
+**技术栈：** TypeScript、Node.js `fs` 同步 API、Vitest、`@codez/bootstrap` 官方插件 seed、`@codez/adapters` 插件发现。
 
 ---
 
@@ -14,10 +14,10 @@
 
 已确认的失败链路：
 
-- `apps/zcode-cli/packages/bootstrap/src/app/bundled-plugins.ts` 的 `seedBundledOfficialPlugins()` 会把官方插件先写到 `${targetRoot}.tmp-${process.pid}-${Date.now()}`，再通过 `replaceSeedRoot()` 删除正式版本目录并 `renameSync(tmp, targetRoot)`。
+- `apps/codez-cli/packages/bootstrap/src/app/bundled-plugins.ts` 的 `seedBundledOfficialPlugins()` 会把官方插件先写到 `${targetRoot}.tmp-${process.pid}-${Date.now()}`，再通过 `replaceSeedRoot()` 删除正式版本目录并 `renameSync(tmp, targetRoot)`。
 - 当前 `replaceSeedRoot()` 只把 `EEXIST` / `ENOTEMPTY` 当成有限竞争重试，且 `rmSync(targetRoot)`、catch 里的 `rmSync(temporaryRoot)` 没有统一的有界重试/退避。Windows 上文件句柄、MCP 子进程、Defender/EDR 扫描都可能让目录删除或 rename 暂时失败。
-- `apps/zcode-cli/packages/bootstrap/src/app/official-plugin-runtime.ts` 的 `writeTextFileAtomically()` 对 `.zcode-plugin/plugin.json` 的重写也是裸 `renameSync`，带 MCP server 的官方插件更容易碰到 Windows manifest 句柄竞争。
-- `apps/zcode-cli/packages/adapters/src/plugins/index.ts` 的 `scanOfficialCache()` 会把 `cache/zcode-plugins-official/<plugin>/` 下所有目录都当作版本候选，没有过滤 `0.1.0.tmp-*` 或 `0.1.0.seed-lock`。
+- `apps/codez-cli/packages/bootstrap/src/app/official-plugin-runtime.ts` 的 `writeTextFileAtomically()` 对 `.codez-plugin/plugin.json` 的重写也是裸 `renameSync`，带 MCP server 的官方插件更容易碰到 Windows manifest 句柄竞争。
+- `apps/codez-cli/packages/adapters/src/plugins/index.ts` 的 `scanOfficialCache()` 会把 `cache/zcode-plugins-official/<plugin>/` 下所有目录都当作版本候选，没有过滤 `0.1.0.tmp-*` 或 `0.1.0.seed-lock`。
 
 修复判定标准：
 
@@ -27,22 +27,22 @@
 
 ## 文件结构
 
-- 新增：`apps/zcode-cli/packages/bootstrap/src/app/official-plugin-cache-fs.ts`
+- 新增：`apps/codez-cli/packages/bootstrap/src/app/official-plugin-cache-fs.ts`
   - bootstrap 专用的官方插件缓存文件系统辅助模块。
   - 负责临时 Windows 错误识别、同步重试/退避、目录删除、rename、manifest 原子写、陈旧 tmp/lock 清理、seed lock。
-- 修改：`apps/zcode-cli/packages/bootstrap/src/app/bundled-plugins.ts`
+- 修改：`apps/codez-cli/packages/bootstrap/src/app/bundled-plugins.ts`
   - 使用辅助模块替换 `replaceSeedRoot()` 中的裸 `rmSync` / `renameSync`。
   - seed 前清理陈旧工作目录，并用版本级 seed lock 串行化同一插件版本的替换。
   - 获取 lock 后重新检查 `isSeedCurrent()`，避免并发进程等待期间重复 seed。
-- 修改：`apps/zcode-cli/packages/bootstrap/src/app/official-plugin-runtime.ts`
-  - 使用辅助模块的 `writeTextFileAtomicallyWithRetry()` 重写 `.zcode-plugin/plugin.json`。
-- 修改：`apps/zcode-cli/packages/adapters/src/plugins/index.ts`
+- 修改：`apps/codez-cli/packages/bootstrap/src/app/official-plugin-runtime.ts`
+  - 使用辅助模块的 `writeTextFileAtomicallyWithRetry()` 重写 `.codez-plugin/plugin.json`。
+- 修改：`apps/codez-cli/packages/adapters/src/plugins/index.ts`
   - `scanOfficialCache()` 过滤官方插件缓存工作目录，避免把 `*.tmp-*` / `*.seed-lock` 当成插件版本目录。
-- 新增测试：`apps/zcode-cli/packages/bootstrap/tests/official-plugin-cache-fs.test.ts`
+- 新增测试：`apps/codez-cli/packages/bootstrap/tests/official-plugin-cache-fs.test.ts`
   - 单测重试/退避、临时错误判断、陈旧工作目录清理、陈旧 seed lock 接管。
-- 修改测试：`apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts`
+- 修改测试：`apps/codez-cli/packages/bootstrap/tests/plugins.test.ts`
   - 增加官方插件 seed 清理陈旧 `0.1.0.tmp-*` 并仍落正式版本的回归测试。
-- 修改测试：`apps/zcode-cli/packages/adapters/tests/plugins.test.ts`
+- 修改测试：`apps/codez-cli/packages/adapters/tests/plugins.test.ts`
   - 增加插件发现流程忽略官方插件缓存 tmp/lock 工作目录的回归测试。
 - 新增文档：`docs/official-plugin-cache-windows-hardening.md`
   - 记录本 bug 的原因、修复策略和 Windows 验证边界，满足 bugfix 轨迹要求。
@@ -52,16 +52,16 @@
 ### 任务 1：先锁住 adapter 发现流程的 tmp/lock 污染回归
 
 **文件：**
-- 修改：`apps/zcode-cli/packages/adapters/tests/plugins.test.ts`
-- 修改：`apps/zcode-cli/packages/adapters/src/plugins/index.ts`
+- 修改：`apps/codez-cli/packages/adapters/tests/plugins.test.ts`
+- 修改：`apps/codez-cli/packages/adapters/src/plugins/index.ts`
 
 - [ ] **步骤 1：写失败测试，证明 `.tmp-*` 和 `.seed-lock` 目前会污染插件发现**
 
-在 `apps/zcode-cli/packages/adapters/tests/plugins.test.ts` 的 `describe("NodePluginAdapter", () => { ... })` 内追加：
+在 `apps/codez-cli/packages/adapters/tests/plugins.test.ts` 的 `describe("NodePluginAdapter", () => { ... })` 内追加：
 
 ```ts
   it("ignores official cache work directories left by interrupted seed attempts", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "zcode-plugin-official-cache-workdirs-"));
+    const dir = await mkdtemp(join(tmpdir(), "codez-plugin-official-cache-workdirs-"));
     const storageRoot = join(dir, "plugins");
     const cacheRoot = join(storageRoot, "cache", "zcode-plugins-official", "document-skills");
     const temporaryVersionRoot = join(cacheRoot, "0.1.0.tmp-1234-1700000000000");
@@ -103,14 +103,14 @@
 运行：
 
 ```bash
-pnpm --dir apps/zcode-cli --filter @zcode/adapters exec vitest run tests/plugins.test.ts
+pnpm --dir apps/codez-cli --filter @codez/adapters exec vitest run tests/plugins.test.ts
 ```
 
 预期（实现前）：失败（FAIL）。失败点应是 `outcome.plugins` 包含 `document-skills@zcode-plugins-official`，或 diagnostics 包含 lock 目录缺少 manifest 的错误。
 
 - [ ] **步骤 3：在发现流程扫描端过滤工作目录**
 
-修改 `apps/zcode-cli/packages/adapters/src/plugins/index.ts`。
+修改 `apps/codez-cli/packages/adapters/src/plugins/index.ts`。
 
 在 `scanOfficialCache()` 上方新增 helper：
 
@@ -136,7 +136,7 @@ function isOfficialCacheWorkDirectoryName(name: string): boolean {
 运行：
 
 ```bash
-pnpm --dir apps/zcode-cli --filter @zcode/adapters exec vitest run tests/plugins.test.ts
+pnpm --dir apps/codez-cli --filter @codez/adapters exec vitest run tests/plugins.test.ts
 ```
 
 预期（实现后）：通过（PASS），新增测试不再从 tmp/lock 目录发现插件。
@@ -146,12 +146,12 @@ pnpm --dir apps/zcode-cli --filter @zcode/adapters exec vitest run tests/plugins
 ### 任务 2：Bootstrap 新增官方插件缓存文件系统辅助模块
 
 **文件：**
-- 新增：`apps/zcode-cli/packages/bootstrap/src/app/official-plugin-cache-fs.ts`
-- 新增：`apps/zcode-cli/packages/bootstrap/tests/official-plugin-cache-fs.test.ts`
+- 新增：`apps/codez-cli/packages/bootstrap/src/app/official-plugin-cache-fs.ts`
+- 新增：`apps/codez-cli/packages/bootstrap/tests/official-plugin-cache-fs.test.ts`
 
 - [ ] **步骤 1：写辅助模块的失败测试**
 
-创建 `apps/zcode-cli/packages/bootstrap/tests/official-plugin-cache-fs.test.ts`：
+创建 `apps/codez-cli/packages/bootstrap/tests/official-plugin-cache-fs.test.ts`：
 
 ```ts
 import { existsSync } from "node:fs";
@@ -196,7 +196,7 @@ describe("official plugin cache fs helpers", () => {
   });
 
   it("removes stale official plugin tmp and lock directories but keeps active tmp", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "zcode-official-plugin-cache-fs-"));
+    const dir = await mkdtemp(join(tmpdir(), "codez-official-plugin-cache-fs-"));
     const pluginDir = join(dir, "document-skills");
     const staleTmp = join(pluginDir, "0.1.0.tmp-111-1700000000000");
     const freshTmp = join(pluginDir, "0.1.0.tmp-222-1700000001000");
@@ -226,7 +226,7 @@ describe("official plugin cache fs helpers", () => {
   });
 
   it("takes over a stale seed lock and releases it after the action", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "zcode-official-plugin-seed-lock-"));
+    const dir = await mkdtemp(join(tmpdir(), "codez-official-plugin-seed-lock-"));
     const targetRoot = join(dir, "document-skills", "0.1.0");
     const lockRoot = `${targetRoot}.seed-lock`;
     const oldDate = new Date(Date.now() - 10 * 60_000);
@@ -258,14 +258,14 @@ describe("official plugin cache fs helpers", () => {
 运行：
 
 ```bash
-pnpm --dir apps/zcode-cli --filter @zcode/bootstrap exec vitest run tests/official-plugin-cache-fs.test.ts
+pnpm --dir apps/codez-cli --filter @codez/bootstrap exec vitest run tests/official-plugin-cache-fs.test.ts
 ```
 
 预期（实现前）：失败（FAIL），原因是 `../src/app/official-plugin-cache-fs.js` 还不存在。
 
 - [ ] **步骤 3：创建辅助模块实现**
 
-创建 `apps/zcode-cli/packages/bootstrap/src/app/official-plugin-cache-fs.ts`：
+创建 `apps/codez-cli/packages/bootstrap/src/app/official-plugin-cache-fs.ts`：
 
 ```ts
 import {
@@ -461,7 +461,7 @@ function sleepSync(ms: number): void {
 运行：
 
 ```bash
-pnpm --dir apps/zcode-cli --filter @zcode/bootstrap exec vitest run tests/official-plugin-cache-fs.test.ts
+pnpm --dir apps/codez-cli --filter @codez/bootstrap exec vitest run tests/official-plugin-cache-fs.test.ts
 ```
 
 预期（实现后）：通过（PASS），4 个辅助模块测试全部通过。
@@ -471,22 +471,22 @@ pnpm --dir apps/zcode-cli --filter @zcode/bootstrap exec vitest run tests/offici
 ### 任务 3：Bootstrap seed 写入端增加 lock、陈旧目录清理和重试
 
 **文件：**
-- 修改：`apps/zcode-cli/packages/bootstrap/src/app/bundled-plugins.ts`
-- 修改：`apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts`
+- 修改：`apps/codez-cli/packages/bootstrap/src/app/bundled-plugins.ts`
+- 修改：`apps/codez-cli/packages/bootstrap/tests/plugins.test.ts`
 
 - [ ] **步骤 1：写陈旧 tmp 清理回归测试**
 
-在 `apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts` 顶部 import 增加 `utimes`：
+在 `apps/codez-cli/packages/bootstrap/tests/plugins.test.ts` 顶部 import 增加 `utimes`：
 
 ```ts
 import { mkdir, mkdtemp, readFile, rm, stat, utimes, writeFile } from "node:fs/promises";
 ```
 
-在 `describe("ZCode plugins", () => { ... })` 内追加：
+在 `describe("Codez plugins", () => { ... })` 内追加：
 
 ```ts
   it("cleans stale official plugin seed work directories before reseeding", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-stale-plugin-tmp-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-bootstrap-stale-plugin-tmp-"));
     const entryRoot = join(root, "resources", "glm");
     const pluginStorageRoot = join(root, "plugins");
     const staleTmpRoot = join(
@@ -501,16 +501,16 @@ import { mkdir, mkdtemp, readFile, rm, stat, utimes, writeFile } from "node:fs/p
     const oldDate = new Date(Date.now() - 10 * 60_000);
 
     try {
-      await writeTestFile(join(entryRoot, "zcode.cjs"), "");
+      await writeTestFile(join(entryRoot, "codez.cjs"), "");
       await writePackagedPluginFixture(entryRoot, "document-skills-plugin", "document-skills");
-      await writeTestFile(join(staleTmpRoot, ".zcode-plugin", "plugin.json"), "{}");
+      await writeTestFile(join(staleTmpRoot, ".codez-plugin", "plugin.json"), "{}");
       await utimes(staleTmpRoot, oldDate, oldDate);
 
-      process.argv[1] = join(entryRoot, "zcode.cjs");
+      process.argv[1] = join(entryRoot, "codez.cjs");
       resolveOfficialPluginRoots({ storageRoot: pluginStorageRoot });
 
       expect(existsSync(staleTmpRoot)).toBe(false);
-      expect(existsSync(join(targetRoot, ".zcode-plugin", "plugin.json"))).toBe(true);
+      expect(existsSync(join(targetRoot, ".codez-plugin", "plugin.json"))).toBe(true);
       expect(existsSync(join(targetRoot, "skills", "demo", "SKILL.md"))).toBe(true);
     } finally {
       process.argv[1] = originalEntrypoint;
@@ -524,14 +524,14 @@ import { mkdir, mkdtemp, readFile, rm, stat, utimes, writeFile } from "node:fs/p
 运行：
 
 ```bash
-pnpm --dir apps/zcode-cli --filter @zcode/bootstrap exec vitest run tests/plugins.test.ts
+pnpm --dir apps/codez-cli --filter @codez/bootstrap exec vitest run tests/plugins.test.ts
 ```
 
 预期（实现前）：失败（FAIL）。失败点应是陈旧 tmp 仍然存在。
 
 - [ ] **步骤 3：修改 `bundled-plugins.ts` imports**
 
-在 `apps/zcode-cli/packages/bootstrap/src/app/bundled-plugins.ts` 中：
+在 `apps/codez-cli/packages/bootstrap/src/app/bundled-plugins.ts` 中：
 
 从 `node:fs` import 移除 `renameSync` 和 `rmSync`，保留其他使用项。
 
@@ -654,7 +654,7 @@ function replaceSeedRoot(
 运行：
 
 ```bash
-pnpm --dir apps/zcode-cli --filter @zcode/bootstrap exec vitest run tests/plugins.test.ts
+pnpm --dir apps/codez-cli --filter @codez/bootstrap exec vitest run tests/plugins.test.ts
 ```
 
 预期（实现后）：通过（PASS），陈旧 tmp 清理回归和既有官方插件 seed 行为都通过。
@@ -664,12 +664,12 @@ pnpm --dir apps/zcode-cli --filter @zcode/bootstrap exec vitest run tests/plugin
 ### 任务 4：Runtime manifest 重写使用带重试的原子写
 
 **文件：**
-- 修改：`apps/zcode-cli/packages/bootstrap/src/app/official-plugin-runtime.ts`
-- 修改：`apps/zcode-cli/packages/bootstrap/tests/official-plugin-cache-fs.test.ts`
+- 修改：`apps/codez-cli/packages/bootstrap/src/app/official-plugin-runtime.ts`
+- 修改：`apps/codez-cli/packages/bootstrap/tests/official-plugin-cache-fs.test.ts`
 
 - [ ] **步骤 1：给 atomic text write 加覆盖测试**
 
-在 `apps/zcode-cli/packages/bootstrap/tests/official-plugin-cache-fs.test.ts` import 中加入：
+在 `apps/codez-cli/packages/bootstrap/tests/official-plugin-cache-fs.test.ts` import 中加入：
 
 ```ts
   readFile,
@@ -685,7 +685,7 @@ pnpm --dir apps/zcode-cli --filter @zcode/bootstrap exec vitest run tests/plugin
 
 ```ts
   it("writes text files atomically without leaving temporary files on success", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "zcode-official-plugin-atomic-write-"));
+    const dir = await mkdtemp(join(tmpdir(), "codez-official-plugin-atomic-write-"));
     const filePath = join(dir, "plugin.json");
 
     try {
@@ -705,14 +705,14 @@ pnpm --dir apps/zcode-cli --filter @zcode/bootstrap exec vitest run tests/plugin
 运行：
 
 ```bash
-pnpm --dir apps/zcode-cli --filter @zcode/bootstrap exec vitest run tests/official-plugin-cache-fs.test.ts
+pnpm --dir apps/codez-cli --filter @codez/bootstrap exec vitest run tests/official-plugin-cache-fs.test.ts
 ```
 
 预期：通过（PASS）。
 
 - [ ] **步骤 3：修改 runtime manifest 原子写实现**
 
-在 `apps/zcode-cli/packages/bootstrap/src/app/official-plugin-runtime.ts` 中：
+在 `apps/codez-cli/packages/bootstrap/src/app/official-plugin-runtime.ts` 中：
 
 移除 `renameSync`、`writeFileSync` import，只保留：
 
@@ -743,7 +743,7 @@ import { writeTextFileAtomicallyWithRetry } from "./official-plugin-cache-fs.js"
 运行：
 
 ```bash
-pnpm --dir apps/zcode-cli --filter @zcode/bootstrap exec vitest run tests/plugins.test.ts
+pnpm --dir apps/codez-cli --filter @codez/bootstrap exec vitest run tests/plugins.test.ts
 ```
 
 预期：通过（PASS），iOS/Android MCP server args 仍指向 official plugin cache 下的 `dist/mcp/server.js`。
@@ -766,7 +766,7 @@ pnpm --dir apps/zcode-cli --filter @zcode/bootstrap exec vitest run tests/plugin
 
 Windows 桌面端启动时，内置官方插件会 seed 到：
 
-`~/.zcode/cli/plugins/cache/zcode-plugins-official/<plugin>/<version>/`
+`~/.codez/cli/plugins/cache/zcode-plugins-official/<plugin>/<version>/`
 
 事故日志显示 `document-skills@0.1.0` 附近有大量 `0.1.0.tmp-*` 残留，并伴随 `ENOTEMPTY` 与 `EPERM` rename 失败。
 
@@ -785,15 +785,15 @@ seed 流程先写 `${version}.tmp-<pid>-<time>`，再删除正式版本目录并
 
 ## 验证
 
-- `pnpm --dir apps/zcode-cli --filter @zcode/adapters exec vitest run tests/plugins.test.ts`
-- `pnpm --dir apps/zcode-cli --filter @zcode/bootstrap exec vitest run tests/official-plugin-cache-fs.test.ts`
-- `pnpm --dir apps/zcode-cli --filter @zcode/bootstrap exec vitest run tests/plugins.test.ts`
+- `pnpm --dir apps/codez-cli --filter @codez/adapters exec vitest run tests/plugins.test.ts`
+- `pnpm --dir apps/codez-cli --filter @codez/bootstrap exec vitest run tests/official-plugin-cache-fs.test.ts`
+- `pnpm --dir apps/codez-cli --filter @codez/bootstrap exec vitest run tests/plugins.test.ts`
 - `pnpm typecheck`
 - `pnpm lint`
 
 ## 影响面
 
-本修复只涉及 agent 侧 bootstrap/adapters 官方插件缓存文件系统逻辑，不改变 app/main/host process 职责，不改变 ZCode protocol，不改变桌面端 continuous 与 Web remote replayable 的 task realtime 语义。
+本修复只涉及 agent 侧 bootstrap/adapters 官方插件缓存文件系统逻辑，不改变 app/main/host process 职责，不改变 Codez protocol，不改变桌面端 continuous 与 Web remote replayable 的 task realtime 语义。
 ```
 
 - [ ] **步骤 2：检查文档没有把计划写成实现承诺**
@@ -819,7 +819,7 @@ rg -n "$PLACEHOLDER_PATTERN" docs/official-plugin-cache-windows-hardening.md
 运行：
 
 ```bash
-pnpm --dir apps/zcode-cli --filter @zcode/adapters exec vitest run tests/plugins.test.ts
+pnpm --dir apps/codez-cli --filter @codez/adapters exec vitest run tests/plugins.test.ts
 ```
 
 预期：通过（PASS）。
@@ -829,7 +829,7 @@ pnpm --dir apps/zcode-cli --filter @zcode/adapters exec vitest run tests/plugins
 运行：
 
 ```bash
-pnpm --dir apps/zcode-cli --filter @zcode/bootstrap exec vitest run tests/official-plugin-cache-fs.test.ts
+pnpm --dir apps/codez-cli --filter @codez/bootstrap exec vitest run tests/official-plugin-cache-fs.test.ts
 ```
 
 预期：通过（PASS）。
@@ -839,7 +839,7 @@ pnpm --dir apps/zcode-cli --filter @zcode/bootstrap exec vitest run tests/offici
 运行：
 
 ```bash
-pnpm --dir apps/zcode-cli --filter @zcode/bootstrap exec vitest run tests/plugins.test.ts
+pnpm --dir apps/codez-cli --filter @codez/bootstrap exec vitest run tests/plugins.test.ts
 ```
 
 预期：通过（PASS）。
@@ -867,7 +867,7 @@ pnpm lint
 运行：
 
 ```bash
-git diff -- apps/zcode-cli/packages/bootstrap/src/app/bundled-plugins.ts apps/zcode-cli/packages/bootstrap/src/app/official-plugin-runtime.ts apps/zcode-cli/packages/bootstrap/src/app/official-plugin-cache-fs.ts apps/zcode-cli/packages/bootstrap/tests/official-plugin-cache-fs.test.ts apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts apps/zcode-cli/packages/adapters/src/plugins/index.ts apps/zcode-cli/packages/adapters/tests/plugins.test.ts docs/official-plugin-cache-windows-hardening.md
+git diff -- apps/codez-cli/packages/bootstrap/src/app/bundled-plugins.ts apps/codez-cli/packages/bootstrap/src/app/official-plugin-runtime.ts apps/codez-cli/packages/bootstrap/src/app/official-plugin-cache-fs.ts apps/codez-cli/packages/bootstrap/tests/official-plugin-cache-fs.test.ts apps/codez-cli/packages/bootstrap/tests/plugins.test.ts apps/codez-cli/packages/adapters/src/plugins/index.ts apps/codez-cli/packages/adapters/tests/plugins.test.ts docs/official-plugin-cache-windows-hardening.md
 ```
 
 预期：diff 只包含 Windows 官方插件缓存加固相关改动。
@@ -877,7 +877,7 @@ git diff -- apps/zcode-cli/packages/bootstrap/src/app/bundled-plugins.ts apps/zc
 运行：
 
 ```bash
-git add apps/zcode-cli/packages/bootstrap/src/app/bundled-plugins.ts apps/zcode-cli/packages/bootstrap/src/app/official-plugin-runtime.ts apps/zcode-cli/packages/bootstrap/src/app/official-plugin-cache-fs.ts apps/zcode-cli/packages/bootstrap/tests/official-plugin-cache-fs.test.ts apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts apps/zcode-cli/packages/adapters/src/plugins/index.ts apps/zcode-cli/packages/adapters/tests/plugins.test.ts docs/official-plugin-cache-windows-hardening.md
+git add apps/codez-cli/packages/bootstrap/src/app/bundled-plugins.ts apps/codez-cli/packages/bootstrap/src/app/official-plugin-runtime.ts apps/codez-cli/packages/bootstrap/src/app/official-plugin-cache-fs.ts apps/codez-cli/packages/bootstrap/tests/official-plugin-cache-fs.test.ts apps/codez-cli/packages/bootstrap/tests/plugins.test.ts apps/codez-cli/packages/adapters/src/plugins/index.ts apps/codez-cli/packages/adapters/tests/plugins.test.ts docs/official-plugin-cache-windows-hardening.md
 git commit -m "fix(cli): harden official plugin cache replacement on Windows"
 ```
 

@@ -7,7 +7,7 @@ import {
   type DataSyncImportResultItem,
   type DataSyncListItem,
   type PluginDataSyncPayload,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { pathExists, updateJsonObjectFile } from "#src/fs/atomicFileUtils.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import {
@@ -40,7 +40,7 @@ const logger = createServiceLogger("plugin-data-sync");
 
 /**
  * 插件目录内的 `data/` 是该端的运行数据：不导出、不参与签名和哈希，覆盖时保留目标端的 `data/`。
- * （CLI 运行时的插件数据目录在 `~/.zcode/cli/plugins/data/<id>`，不在插件目录里，本来就不会被同步触碰。）
+ * （CLI 运行时的插件数据目录在 `~/.codez/cli/plugins/data/<id>`，不在插件目录里，本来就不会被同步触碰。）
  */
 const PLUGIN_DATA_DIRECTORY = "data";
 const CONTENT_OPTIONS = { excludeTopLevel: [PLUGIN_DATA_DIRECTORY] } as const;
@@ -136,7 +136,7 @@ export function createInlinePluginDataSyncMethods(options: {
   }
 
   /**
-   * 新建位置：`~/.zcode/plugins/<来源目录名>`；被占用时加短哈希后缀（目录名不参与对齐）。
+   * 新建位置：`~/.codez/plugins/<来源目录名>`；被占用时加短哈希后缀（目录名不参与对齐）。
    * 修复：原来先用同步 existsSync 选位置再 rename。existsSync 跟随软链，悬空软链被当成空位，
    * 之后 rename 失败、该项直接失败；检查与写入之间也有竞态。现在直接 rename 到首选位置，
    * 失败后用 lstat 确认是「已被占用」才换带后缀的位置，其他错误原样抛出。

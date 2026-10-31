@@ -1,14 +1,14 @@
-import type { RequestVerificationReason } from "@zcode/shared";
+import type { RequestVerificationReason } from "@codez/shared";
 import { createHash } from "node:crypto";
 import {
   BIGMODEL_PROVIDER_ID,
   type OAuthProviderId,
   type ProviderFamilyDomain,
   type ProjectAccessTokenMaterial,
-  type ZCodeAccountAccess,
-  type ZCodeProviderAccountAccess,
+  type CodezAccountAccess,
+  type CodezProviderAccountAccess,
   ZAI_PROVIDER_ID,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 export interface AccountRequestAuthMaterial {
   /** 私有传输字段兼容旧命名；套餐 OAuth 实际传入短期 Project Token。 */
@@ -21,7 +21,7 @@ export interface AccountRequestAuthMaterial {
 export interface AccountRequestAuthInput {
   providerId: string;
   modelId?: string;
-  accountAccess: ZCodeProviderAccountAccess | ZCodeAccountAccess;
+  accountAccess: CodezProviderAccountAccess | CodezAccountAccess;
   expectedAccountScope?: string;
   rejectedProjectTokenFingerprint?: string;
   reason: RequestVerificationReason | "off-peak" | "usage";
@@ -29,7 +29,7 @@ export interface AccountRequestAuthInput {
 
 export interface AccountAccessIdentityInput {
   providerId: string;
-  accountAccess: ZCodeProviderAccountAccess | ZCodeAccountAccess;
+  accountAccess: CodezProviderAccountAccess | CodezAccountAccess;
 }
 
 export class AccountRequestCredentialUnavailableError extends Error {
@@ -40,18 +40,18 @@ export class AccountRequestCredentialUnavailableError extends Error {
 }
 
 export interface AccountRequestAuthResolver {
-  resolveAccessCurrent(access: ZCodeProviderAccountAccess): Promise<ZCodeAccountAccess | null>;
+  resolveAccessCurrent(access: CodezProviderAccountAccess): Promise<CodezAccountAccess | null>;
   resolveCurrent(input: AccountRequestAuthInput): Promise<AccountRequestAuthMaterial>;
   assertCurrent(input: AccountAccessIdentityInput): Promise<void>;
 }
 
 interface AccountProviderRequestAuthServiceOptions {
   resolveCurrentAccountAccess(
-    access: ZCodeProviderAccountAccess,
-  ): Promise<ZCodeAccountAccess | null>;
+    access: CodezProviderAccountAccess,
+  ): Promise<CodezAccountAccess | null>;
   loadOAuthTokenSet(providerId: OAuthProviderId): Promise<{
     accessToken?: string | null;
-    zcodeJwtToken?: string | null;
+    codezJwtToken?: string | null;
   } | null>;
   loadIndividualPlanMaterial(
     providerId: string,
@@ -59,7 +59,7 @@ interface AccountProviderRequestAuthServiceOptions {
     rejectedProjectTokenFingerprint?: string,
   ): Promise<ProjectAccessTokenMaterial | null>;
   resolveTeamPlanMaterial(
-    access: Extract<ZCodeAccountAccess, { planKind: "team-coding-plan" }>,
+    access: Extract<CodezAccountAccess, { planKind: "team-coding-plan" }>,
     rejectedProjectTokenFingerprint?: string,
   ): Promise<ProjectAccessTokenMaterial | null>;
 }
@@ -71,7 +71,7 @@ class AccountProviderRequestAuthService implements AccountRequestAuthResolver {
     this.#options = options;
   }
 
-  resolveAccessCurrent(access: ZCodeProviderAccountAccess): Promise<ZCodeAccountAccess | null> {
+  resolveAccessCurrent(access: CodezProviderAccountAccess): Promise<CodezAccountAccess | null> {
     return this.#options.resolveCurrentAccountAccess(access);
   }
 
@@ -82,7 +82,7 @@ class AccountProviderRequestAuthService implements AccountRequestAuthResolver {
 
     if (access.planKind === "start-plan") {
       const tokenSet = await this.#options.loadOAuthTokenSet(resolveOAuthProviderId(access.family));
-      return { apiKey: requireApiKey(tokenSet?.zcodeJwtToken, providerId) };
+      return { apiKey: requireApiKey(tokenSet?.codezJwtToken, providerId) };
     }
 
     const scoped = input.reason !== "usage" || input.expectedAccountScope !== undefined;
@@ -115,7 +115,7 @@ class AccountProviderRequestAuthService implements AccountRequestAuthResolver {
     };
   }
 
-  async #scope(access: ZCodeAccountAccess): Promise<string> {
+  async #scope(access: CodezAccountAccess): Promise<string> {
     const login = await this.#options.loadOAuthTokenSet(resolveOAuthProviderId(access.family));
     if (!login?.accessToken?.trim())
       throw new AccountRequestCredentialUnavailableError(access.family);
@@ -128,7 +128,7 @@ class AccountProviderRequestAuthService implements AccountRequestAuthResolver {
             ? [access.organizationId, access.projectId, access.productId]
             : null,
           login.accessToken.trim(),
-          login.zcodeJwtToken?.trim() ?? null,
+          login.codezJwtToken?.trim() ?? null,
         ]),
       )
       .digest("hex");
@@ -141,8 +141,8 @@ class AccountProviderRequestAuthService implements AccountRequestAuthResolver {
   }
 
   #resolveAccess(
-    access: ZCodeProviderAccountAccess | ZCodeAccountAccess,
-  ): Promise<ZCodeAccountAccess | null> {
+    access: CodezProviderAccountAccess | CodezAccountAccess,
+  ): Promise<CodezAccountAccess | null> {
     return "mode" in access
       ? this.#options.resolveCurrentAccountAccess(access)
       : Promise.resolve(access);

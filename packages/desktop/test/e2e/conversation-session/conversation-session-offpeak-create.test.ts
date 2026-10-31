@@ -1,7 +1,7 @@
 import { join, resolve } from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
 import { DatabaseSync } from "node:sqlite";
-import { modelSelectionSchema, OFF_PEAK_PROVIDER_IDS, type ModelSelection } from "@zcode/shared";
+import { modelSelectionSchema, OFF_PEAK_PROVIDER_IDS, type ModelSelection } from "@codez/shared";
 import {
   TID_OFFPEAK_CARD,
   TID_OFFPEAK_CARD_SESSION,
@@ -11,7 +11,7 @@ import {
   TID_OFFPEAK_EDIT_VIEW,
   TID_OFFPEAK_FORM_TITLE,
   TID_OFFPEAK_TAB,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -45,7 +45,7 @@ const CASE_NAME = "conversation-session-offpeak-create";
 const MARKER = "E2E_OFFPEAK_CHAT_CREATE";
 const TASK_TITLE = "E2E_OFFPEAK_DIGEST";
 const UPDATED_TASK_TITLE = "E2E_OFFPEAK_DIGEST_EDITED";
-// wdio.conf startOffPeakE2EMock：spec 名含 offpeak → ZCODE_OFFPEAK_MOCK=1，
+// wdio.conf startOffPeakE2EMock：spec 名含 offpeak → CODEZ_OFFPEAK_MOCK=1，
 // 隔离 Built-in 单模型白名单 GLM-5.2，票据 60s 内保持 queued，位次为 1。
 const MOCK_ALLOWED_MODEL = "GLM-5.2";
 
@@ -347,7 +347,7 @@ async function readTestIdValue(currentTestId: string): Promise<string> {
 
 function resolveArtifactPath(fileName: string) {
   return resolve(
-    process.env.ZCODE_E2E_ARTIFACT_DIR?.trim() ||
+    process.env.CODEZ_E2E_ARTIFACT_DIR?.trim() ||
       process.env.CODEX_E2E_ARTIFACT_DIR?.trim() ||
       join(process.cwd(), ".e2e-artifacts", CASE_NAME),
     fileName,

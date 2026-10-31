@@ -76,7 +76,7 @@ JSON-001 使用显式 responseJsonSchema，结构符合 Schema 是协议能力�
 
 1. 读取 Provider 配置和测试清单，检查引用与配置是否合法。
 2. 遍历清单中的模型，按有效 property、option 选择用例、展开档位。
-3. 按三级并行上限执行；主对话、附件、工具闭环复用 ZCode 会话，专项能力调用现有产品处理函数。
+3. 按三级并行上限执行；主对话、附件、工具闭环复用 Codez 会话，专项能力调用现有产品处理函数。
 4. 保存每项结果。某项失败继续跑后面的项目，结束后生成报告。
 
 按清单设置并行数，缺省串行，每项设超时，工具循环沿用产品运行时，不另设测试回合上限。整轮开始后按清单执行到底，耗时增加不是主动取消的理由；只有用户要求停止或明确无法继续的执行故障才中止。单项超时、截断和调用失败应记录后继续其余项目。复杂题可在开跑前统一放宽超时，不能只给某个档位额外预算。缺 Key 的模型标记未测，其他模型继续。百万上下文、最大输出等高消耗压力测试不默认执行；普通用例成功不能证明容量上界已实测。
@@ -110,7 +110,7 @@ JSON-001 使用显式 responseJsonSchema，结构符合 Schema 是协议能力�
 
 ## 实现与验收
 
-用例库和执行器位于 `apps/zcode-cli/tools/provider-regression/`。上表用例均已接入选择流程；音频在产品尚无对应附件路径时明确未测；真实调用的验证范围见文末。
+用例库和执行器位于 `apps/codez-cli/tools/provider-regression/`。上表用例均已接入选择流程；音频在产品尚无对应附件路径时明确未测；真实调用的验证范围见文末。
 
 验收重点：不同模型自动选对用例；每个公开档位都执行；新增模型无需复制用例；失败不中断整轮；报告能看清失败原因和未测内容。
 
@@ -228,12 +228,12 @@ medium 正常结束，没有超时。发现单项耗时明显增加后主动暂�
 
 ## 复用产品执行路径
 
-测试工具只拥有清单调度、夹具、旁路观测和报告。ZCode 拥有请求装配、会话历史、附件处理、工具循环和恢复。
+测试工具只拥有清单调度、夹具、旁路观测和报告。Codez 拥有请求装配、会话历史、附件处理、工具循环和恢复。
 
 ```mermaid
 flowchart LR
  A[Provider 配置与测试清单] --> B[三级并行调度]
- B --> C[createZCodeApp / submitPrompt]
+ B --> C[createCodezApp / submitPrompt]
  C --> D[真实附件、上下文、工具执行]
  B --> E[真实 WebSearch handler]
  B --> F[思考档位、JSON、输出预算专项 Adapter 调用]
@@ -243,7 +243,7 @@ flowchart LR
  G --> H[旁路观测、增量结果、HTML]
 ```
 
-- TEXT、TOOL、IMAGE、VIDEO、PDF、CONTEXT、SYSTEM 使用独立 ZCode 会话。通过既有 runtime 配置限定工具，工具用例只注册无副作用夹具；不复制 Agent 循环或拼接工具历史。SYSTEM 的字符、首正文、请求数和耗时均以整项两轮会话为统计范围；首正文取第一轮最早事件，思考字符累加两轮，跨分块 Unicode 状态在每轮开始时重置。SYSTEM 同样使用真实会话：第一轮通过 outputStyle 设置 OLD，完成后通过 runtime.updateConfig 更新为 BLUE-42，再提交第二轮。中途消息的位置、包装和能力降级由产品负责，禁止手造 system/user/assistant 历史。
+- TEXT、TOOL、IMAGE、VIDEO、PDF、CONTEXT、SYSTEM 使用独立 Codez 会话。通过既有 runtime 配置限定工具，工具用例只注册无副作用夹具；不复制 Agent 循环或拼接工具历史。SYSTEM 的字符、首正文、请求数和耗时均以整项两轮会话为统计范围；首正文取第一轮最早事件，思考字符累加两轮，跨分块 Unicode 状态在每轮开始时重置。SYSTEM 同样使用真实会话：第一轮通过 outputStyle 设置 OLD，完成后通过 runtime.updateConfig 更新为 BLUE-42，再提交第二轮。中途消息的位置、包装和能力降级由产品负责，禁止手造 system/user/assistant 历史。
 - WEB 通过公开 builtInTools 中的 WebSearch handler，保留其辅助档位、预算、流式兼容与来源提取。来源为空不等于搜索失败。
 - REASON、JSON、OUTPUT 是明确标注的专项参数/协议探针；仍复用产品请求配置、网络路由和重试。REASON 保持固定架构题逐档 1 pass，避免全套业务背景影响长度比较。JSON 不替代产品具体结构化业务验收。
 - TOOL-002 是历史重复编号，选择时归并为 TOOL-001，只执行一次；工具参数/Schema 验证在真实工具循环中完成。
@@ -271,7 +271,7 @@ flowchart LR
 
 Go Chat 的 JSON-001 复核使用同一个产品 Adapter 和同一 Schema：GLM-5.3 通过，GLM-5.3-Flash 返回 Markdown 代码块导致解析失败，DeepSeek-V4.1-Flash 返回 HTTP 400。对内置未声明该能力的模型，仅在独立测试 Provider 配置中临时声明后探测：MiMo-V2.6-Flash 通过；MiniMax-M3.1-Flash 的上游拒绝数字枚举。跳过不等于失败，一种 Schema 被拒绝也不等于所有结构化输出均不可用。这些证据不能证明 Go Chat 完全不支持该能力。随后经用户确认，以简化维护为目的，在 revision 39 统一关闭 Go Chat 原生 JSON Schema 声明；这是入口策略，不是扩大失败归因。个人显式覆盖仍按既有规则优先。
 
-[Go 官方文档](https://opencode.ai/v2/docs/console/go/)及[Inference API 文档](https://opencode.ai/v2/docs/console/api/inference/)说明模型与协议入口，没有给出 Go 各模型均支持原生 JSON Schema 的保证。OpenCode 会话 SDK 的结构化输出含自身执行及重试逻辑，不能当作 Go HTTP 接口能力合同。JSON-001 是 Adapter 专项，不能代替 ZCode 具体业务场景验收。
+[Go 官方文档](https://opencode.ai/v2/docs/console/go/)及[Inference API 文档](https://opencode.ai/v2/docs/console/api/inference/)说明模型与协议入口，没有给出 Go 各模型均支持原生 JSON Schema 的保证。OpenCode 会话 SDK 的结构化输出含自身执行及重试逻辑，不能当作 Go HTTP 接口能力合同。JSON-001 是 Adapter 专项，不能代替 Codez 具体业务场景验收。
 
 StepFun step-3.7-flash 按原架构题再跑 1 pass：low、high 成功，medium 在约 180 秒后以 stop 结束但没有回答。与上一轮空回答重复，暂不能按偶发已恢复处理；当前证据仍不足以把根因归为供应商或客户端。保留现有档位，继续讨论后再改默认配置。
 
@@ -300,4 +300,4 @@ StepFun 3.7 Flash 的[官方模型仓库](https://github.com/stepfun-ai/Step-3.7
 | `packages/cli/tests/dwf-child-command.test.ts`：运行子命令、语法错误回传        | 两项失败；测试夹具只给 lowered，缺少运行身份，子进程初始化解析 undefined；未在本次供应商工作中修改该工作流合同 |
 | `packages/bootstrap/tests/dynamic-workflow-report-reads.test.ts`：65,536 条记录 | 该项达到 120000ms 超时，另四项通过；保留规模与超时断言，不把容器内耗时归因为 Provider                          |
 
-以上路径相对 `apps/zcode-cli/`，可在对应包执行其测试命令复核。按已确认的交付原则记录并继续提交，不宣称 CLI 全量通过；无新增桌面交互，本次未重跑桌面 E2E。真实模型的结果及局限沿用上面的单轮记录，收尾未重复发起计费测试。
+以上路径相对 `apps/codez-cli/`，可在对应包执行其测试命令复核。按已确认的交付原则记录并继续提交，不宣称 CLI 全量通过；无新增桌面交互，本次未重跑桌面 E2E。真实模型的结果及局限沿用上面的单轮记录，收尾未重复发起计费测试。

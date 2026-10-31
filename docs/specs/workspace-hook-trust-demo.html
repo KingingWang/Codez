@@ -1148,9 +1148,9 @@
           eventDescription: "当新任务开始时",
           name: "加载工作区上下文",
           handler: "命令",
-          command: ".zcode/hooks/session-start.sh",
+          command: ".codez/hooks/session-start.sh",
           timeout: "30 秒",
-          source: ".zcode/config.json",
+          source: ".codez/config.json",
           trusted: false,
           once: false,
           enabled: true,
@@ -1162,9 +1162,9 @@
           eventDescription: "工具执行前",
           name: "检查高风险命令",
           handler: "命令",
-          command: ".zcode/hooks/pre-tool-use.sh",
+          command: ".codez/hooks/pre-tool-use.sh",
           timeout: "10 秒",
-          source: ".zcode/config.json",
+          source: ".codez/config.json",
           trusted: false,
           once: false,
           enabled: true,
@@ -1176,9 +1176,9 @@
           eventDescription: "工具执行后",
           name: "记录工具执行结果",
           handler: "命令",
-          command: ".zcode/hooks/post-tool-use.sh",
+          command: ".codez/hooks/post-tool-use.sh",
           timeout: "10 秒",
-          source: ".zcode/config.json",
+          source: ".codez/config.json",
           trusted: false,
           once: false,
           enabled: true,
@@ -1473,8 +1473,8 @@
       byId("simulateChangeButton").addEventListener("click", () => {
         const changed = hooks[0];
         changed.command = changed.command.includes("--strict")
-          ? ".zcode/hooks/session-start.sh"
-          : ".zcode/hooks/session-start.sh --strict";
+          ? ".codez/hooks/session-start.sh"
+          : ".codez/hooks/session-start.sh --strict";
         changed.trusted = false;
         changed.once = false;
         changed.enabled = true;

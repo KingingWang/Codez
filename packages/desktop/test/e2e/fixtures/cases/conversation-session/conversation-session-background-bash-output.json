@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/background-bash-output/中文 空格/writer.cjs",
+      "path": ".codez-e2e/background-bash-output/中文 空格/writer.cjs",
       "source": "created-by-spec",
       "description": "case-local Node writer，文件 barrier 驱动实时窗口。"
     }

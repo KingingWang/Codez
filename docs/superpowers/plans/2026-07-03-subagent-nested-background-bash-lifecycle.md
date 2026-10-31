@@ -4,7 +4,7 @@
 
 **Goal:** 收敛 BG06：background subagent 内部启动 background Bash 后，Bash completion 归属于 child runtime 的 cleanup lifecycle，不复活已完成的 child model loop，也不补发 parent Agent result。
 
-**Architecture:** 不引入全局 `agentId -> task` owner routing。ZCode 已经通过 main/child `AgentRuntime` 隔离解决了 runtime 串线问题；本计划只在 child runtime 内增加 terminal/sealed background notification policy、subagent-scope Bash 最大运行时长和取消清理。parent/main background Agent、parent Bash、goal defer/wake 主链路保持现状。
+**Architecture:** 不引入全局 `agentId -> task` owner routing。Codez 已经通过 main/child `AgentRuntime` 隔离解决了 runtime 串线问题；本计划只在 child runtime 内增加 terminal/sealed background notification policy、subagent-scope Bash 最大运行时长和取消清理。parent/main background Agent、parent Bash、goal defer/wake 主链路保持现状。
 
 **Tech Stack:** TypeScript, `AgentRuntime`, `ToolExecutor`, `RuntimeTaskRegistry`, `ExecutionPort`, Vitest, desktop conversation E2E replay.
 
@@ -24,9 +24,9 @@
 
 ## Current Facts
 
-- child runtime 是独立 `AgentRuntime`，在 `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts` 中创建。
-- Bash background tracking 由 `apps/zcode-cli/packages/core/src/tool/executor/background-tasks.ts` 负责；terminal 后会尝试 enqueue `<task-notification>`。
-- runtime command queue 在 `apps/zcode-cli/packages/core/src/runtime/methods/runtime-command-queue.ts` 中消费 `task-notification`，当前会直接执行一轮 `executeTurnCommand(...)`。
+- child runtime 是独立 `AgentRuntime`，在 `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts` 中创建。
+- Bash background tracking 由 `apps/codez-cli/packages/core/src/tool/executor/background-tasks.ts` 负责；terminal 后会尝试 enqueue `<task-notification>`。
+- runtime command queue 在 `apps/codez-cli/packages/core/src/runtime/methods/runtime-command-queue.ts` 中消费 `task-notification`，当前会直接执行一轮 `executeTurnCommand(...)`。
 - `RuntimeTaskRegistry` 已可记录 `local_bash` / `local_agent` / `local_workflow`，但没有 owner lifecycle 状态。
 - 当前 BG06 文档仍是 `deferred`，且文字里还保留旧误解：“child runtime 消费 Bash notification 后再形成最终 Agent result”。本计划先修正文档语义。
 
@@ -73,34 +73,34 @@
 
 ### Runtime / Tool Executor
 
-- Modify: `apps/zcode-cli/packages/core/src/runtime/agent-runtime.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/agent-runtime.ts`
   - 增加 runtime-local sealed state。
   - 给 `createToolExecutor(...)` 传入 notification policy 和 subagent Bash timeout config。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/internal.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/internal.ts`
   - 扩展 `AgentRuntimeInternal` 字段/方法类型。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/types.ts`
   - 增加内部 runtime config：`subagents.backgroundBashMaxMs?: number`。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/background-notifications.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/background-notifications.ts`
   - 增加 `sealBackgroundTaskNotifications(...)` 和 policy 判断 helper。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts`
   - child `executeTurn(...)` 结束后 seal child runtime。
   - child turn 被 abort/cancel 时，取消 child runtime 内 running background Bash。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/index.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/index.ts`
   - 安装新增 runtime method。
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/types.ts`
   - 增加 `shouldEnqueueBackgroundTaskNotification` 与 `subagentBackgroundBashMaxMs` deps。
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/impl.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/impl.ts`
   - 传递新增 deps。
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/background-tasks.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/background-tasks.ts`
   - terminal 前检查 notification policy；sealed child Bash 只 terminal cleanup，不 mark notified。
   - 为 subagent-scope Bash background task 安装最大运行时长 timer。
   - clear timer in `stopTracking()`.
 
 ### Tests
 
-- Modify: `apps/zcode-cli/packages/core/tests/runtime-tool-loop.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/runtime-tool-loop.test.ts`
   - core runtime policy tests。
-- Modify: `apps/zcode-cli/packages/core/tests/subagent-background.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/subagent-background.test.ts`
   - subagent child runtime wiring tests，如现有 harness 合适。
 - Modify or add: `packages/desktop/test/e2e/conversation-session/conversation-session-background.test.ts`
   - 只有 manual review 通过后再纳入正式 spec 或现有 BG spec。
@@ -165,14 +165,14 @@ Expected:
 ## Phase 1: Runtime-local Sealed Notification Policy
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/runtime/agent-runtime.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/internal.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/background-notifications.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/index.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/types.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/impl.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/background-tasks.ts`
-- Test: `apps/zcode-cli/packages/core/tests/runtime-tool-loop.test.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/agent-runtime.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/internal.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/background-notifications.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/index.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/impl.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/background-tasks.ts`
+- Test: `apps/codez-cli/packages/core/tests/runtime-tool-loop.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -239,7 +239,7 @@ it("does not wake a sealed subagent runtime for background Bash completion", asy
     {
       mode: "yolo",
       taskType: "subagent_child",
-      workingDirectory: "/tmp/zcode-sealed-subagent-bg-bash",
+      workingDirectory: "/tmp/codez-sealed-subagent-bg-bash",
     },
     {
       ...mcsCapableModelConnectionDeps(),
@@ -439,9 +439,9 @@ Expected:
 ## Phase 2: Seal Child Runtime When Subagent Turn Ends
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts`
-- Test: `apps/zcode-cli/packages/core/tests/subagent-background.test.ts`
-- Test: `apps/zcode-cli/packages/core/tests/runtime-tool-loop.test.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts`
+- Test: `apps/codez-cli/packages/core/tests/subagent-background.test.ts`
+- Test: `apps/codez-cli/packages/core/tests/runtime-tool-loop.test.ts`
 
 **Interfaces:**
 - Consumes: `AgentRuntime.sealBackgroundTaskNotifications(...)` from Phase 1.
@@ -523,13 +523,13 @@ Expected:
 ## Phase 3: Subagent-scope Background Bash Max Runtime
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/runtime/types.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/agent-runtime.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/types.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/impl.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/background-tasks.ts`
-- Test: `apps/zcode-cli/packages/core/tests/runtime-tool-loop.test.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/agent-runtime.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/impl.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/background-tasks.ts`
+- Test: `apps/codez-cli/packages/core/tests/runtime-tool-loop.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -579,7 +579,7 @@ it("cancels subagent background Bash after the subagent max runtime", async () =
         mode: "yolo",
         taskType: "subagent_child",
         subagents: { backgroundBashMaxMs: 10 },
-        workingDirectory: "/tmp/zcode-subagent-bash-timeout",
+        workingDirectory: "/tmp/codez-subagent-bash-timeout",
       },
       {
         ...mcsCapableModelConnectionDeps(),
@@ -735,12 +735,12 @@ Expected:
 ## Phase 4: Cancel Running Child Background Bash on Subagent Cancellation
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/background.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/index.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/internal.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/agent-runtime.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts`
-- Test: `apps/zcode-cli/packages/core/tests/runtime-tool-loop.test.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/background.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/index.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/internal.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/agent-runtime.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts`
+- Test: `apps/codez-cli/packages/core/tests/runtime-tool-loop.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -759,7 +759,7 @@ it("cancels running subagent background Bash tasks when the subagent turn is can
   const cancelled: string[] = [];
   const runtime = new AgentRuntime(
     createSessionId("subagent-background-bash-cancel-cleanup"),
-    { mode: "yolo", taskType: "subagent_child", workingDirectory: "/tmp/zcode-child-cancel" },
+    { mode: "yolo", taskType: "subagent_child", workingDirectory: "/tmp/codez-child-cancel" },
     {
       ...mcsCapableModelConnectionDeps(),
       eventStore: createTestSessionEventStore(),
@@ -924,7 +924,7 @@ Run:
 ```bash
 python -m json.tool packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-background.json >/dev/null
 python -m json.tool packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-background.json >/dev/null
-pnpm --filter @zcode/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-background.test.ts
+pnpm --filter @codez/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-background.test.ts
 ```
 
 Expected:
@@ -954,12 +954,12 @@ Case-specific responses were added only to the existing background case-local fi
 Run:
 
 ```bash
-pnpm --filter @zcode/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-background.test.ts
+pnpm --filter @codez/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-background.test.ts
 
 E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-background.json \
-  pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-background.test.ts'
+  pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-background.test.ts'
 
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-background.test.ts'
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-background.test.ts'
 ```
 
 Expected:
@@ -998,7 +998,7 @@ Expected:
 Run:
 
 ```bash
-pnpm --filter @zcode/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-background.test.ts
+pnpm --filter @codez/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-background.test.ts
 ```
 
 Expected:
@@ -1010,7 +1010,7 @@ Expected:
 Run:
 
 ```bash
-pnpm --filter @zcode/desktop typecheck:e2e
+pnpm --filter @codez/desktop typecheck:e2e
 pnpm typecheck
 pnpm lint
 ```
@@ -1036,8 +1036,8 @@ paths = subprocess.check_output(
         "diff",
         "--name-only",
         "--",
-        "apps/zcode-cli/packages/core/src",
-        "apps/zcode-cli/packages/adapters/src",
+        "apps/codez-cli/packages/core/src",
+        "apps/codez-cli/packages/adapters/src",
         "packages/desktop/test/e2e",
         "docs/conversation-session-case-catalog.md",
         "docs/testing/conversation-session-background-e2e-coverage-matrix.md",

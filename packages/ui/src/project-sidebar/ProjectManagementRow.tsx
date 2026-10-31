@@ -11,7 +11,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.js";
 import { cn } from "@/components/lib/utils.js";
 import { REMOTE_KIND_PRESENTATION } from "@/remote-connection/RemoteConnectionTags.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import {
   formatCountMessage,
   type ProjectManagementRow,
@@ -33,7 +33,7 @@ const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
 ];
 /** 「2 分钟前 / 昨天 / 6 个月前」：按最大可用单位取整，跟随当前语言。 */
 export function useRelativeTime() {
-  const { locale } = useZCodeIntl();
+  const { locale } = useCodezIntl();
   return useMemo(() => {
     const format = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
     return (timestamp: number, now = Date.now()) => {
@@ -46,7 +46,7 @@ export function useRelativeTime() {
 }
 
 export function DeviceTag({ host, label }: { host?: RemoteProjectHost; label?: string }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   if (!host)
     return (
       <span className="truncate text-ui-sm text-foreground-subtle">
@@ -76,7 +76,7 @@ export function DeviceTag({ host, label }: { host?: RemoteProjectHost; label?: s
 }
 
 function ReasonTag({ row }: { row: ProjectManagementRow }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   if (!row.reason) return null;
   const text = intl.formatMessage(
     { id: `projectManagement.reason.${row.reason}` },
@@ -102,7 +102,7 @@ function ReasonTag({ row }: { row: ProjectManagementRow }) {
 
 /** 多 root 项目在主目录后跟「+N」；提示列出其余目录。点按也能打开，触屏没有悬停。 */
 function MoreRootsTag({ roots }: { roots: VirtualProject["roots"] }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [open, setOpen] = useState(false);
   if (!roots.length) return null;
   return (
@@ -151,7 +151,7 @@ export function ProjectManagementListRow({
   onCheckedChange(checked: boolean): void;
   onRemove(): void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const relative = useRelativeTime();
   const msg = (id: string, values?: Record<string, string | number>) =>
     intl.formatMessage({ id: `projectManagement.${id}` }, values);

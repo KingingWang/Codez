@@ -55,7 +55,7 @@
           "id": "toolu_r3_mobp_permission",
           "name": "Write",
           "input": {
-            "file_path": "/home/dev/r3-workspace-a/.zcode-e2e/r3-mobile-permission/permission-output.txt",
+            "file_path": "/home/dev/r3-workspace-a/.codez-e2e/r3-mobile-permission/permission-output.txt",
             "content": "R3_MOBILE_PERMISSION_RESULT\n"
           }
         }

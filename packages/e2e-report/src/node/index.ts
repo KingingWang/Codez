@@ -27,7 +27,7 @@ export function createE2EReportViewerUrl(
 ) {
   const baseUrl =
     options.baseUrl ??
-    process.env.ZCODE_E2E_REPORT_VIEWER_BASE_URL ??
+    process.env.CODEZ_E2E_REPORT_VIEWER_BASE_URL ??
     DEFAULT_E2E_REPORT_VIEWER_BASE_URL;
   const url = new URL(baseUrl);
   url.searchParams.set("summary", toViteFsPath(options.summaryJsonPath));

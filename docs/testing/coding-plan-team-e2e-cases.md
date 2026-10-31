@@ -36,7 +36,7 @@
 正式运行命令（本用例不调用模型，账户接口使用本地业务 mock）：
 
 ```bash
-pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/provider-family-responsive.test.ts'
+pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/provider-family-responsive.test.ts'
 ```
 
 通过证据：`packages/desktop/.e2e-artifacts/desktop-e2e-20260904060418619-p33484-6650d642259f46f0/summary.json`（1 passed）。本次修正 runner 的专属 JWT 初始化、等待真实刷新结束，以及 Radix 可见 tooltip 的 WebDriver 选择器；未改产品实现。
@@ -50,7 +50,7 @@ pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/provider-family-resp
 ### 通用约束
 
 - 本组 case 不生成 DeepSeek provider replay fixture，因为测试不发送模型请求。
-- 每次 mock scenario 重启前显式把 `lastWorkspaceSession` 固定到隔离 HOME 的 `ZCodeProject`；不能继承上一条 case 留下的 conversation workspace，否则 workspace 就绪断言和 model-resolution seed 会落到不同 bucket。
+- 每次 mock scenario 重启前显式把 `lastWorkspaceSession` 固定到隔离 HOME 的 `CodezProject`；不能继承上一条 case 留下的 conversation workspace，否则 workspace 就绪断言和 model-resolution seed 会落到不同 bucket。
 - WDIO mock server 负责业务接口：
   - `/api/biz/subscription/enterprise/v2/pricing`
   - `/api/biz/customer/getCustomerInfo`
@@ -64,7 +64,7 @@ pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/provider-family-resp
 
 - 直接执行 `wdio run wdio.conf.ts` 时也必须校验 Electron package 的 `path.txt` 以及它指向的真实可执行文件，不能只因 `node_modules/.bin/electron` 包装脚本存在就认为 Electron 已安装。
 - WDIO config 必须先按优先级加载 desktop/repo 的 `.env.e2e.local`，再读取 Electron 安装配置并执行二进制预检，保证 `ELECTRON_MIRROR`、代理、证书和缓存目录等本地配置同时传给安装子进程与后续 E2E 进程。
-- Electron package 存在但二进制缺失时，WDIO config 在创建 ChromeDriver session 前运行该 package 的 `install.js`，随后重新校验真实可执行文件。安装必须有界等待：`ZCODE_E2E_ELECTRON_INSTALL_TIMEOUT_MS` 可覆盖默认 5 分钟超时，超时后必须终止子进程。
+- Electron package 存在但二进制缺失时，WDIO config 在创建 ChromeDriver session 前运行该 package 的 `install.js`，随后重新校验真实可执行文件。安装必须有界等待：`CODEZ_E2E_ELECTRON_INSTALL_TIMEOUT_MS` 可覆盖默认 5 分钟超时，超时后必须终止子进程。
 - 安装失败、超时或安装脚本执行后仍无二进制时必须直接报告 Electron 安装根因，诊断包含生效超时、脱敏后的镜像地址并通过 `cause` 保留原始异常，不能继续运行并退化成笼统的 `Chrome instance exited`。
 - 该预检只修复本机 E2E 依赖，不改变桌面端 `desktop-continuous` session、手机端 `web-remote-replayable` 恢复链路或产品运行时状态。
 

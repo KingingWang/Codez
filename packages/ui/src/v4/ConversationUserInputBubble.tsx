@@ -1,4 +1,4 @@
-import type { ChannelContentPart } from "@zcode/shared";
+import type { ChannelContentPart } from "@codez/shared";
 import { ChannelMentionContent } from "@/v4/ChannelMentionContent.js";
 import { ConversationUserInputEpilogue } from "@/v4/ConversationUserInputEpilogue.js";
 import { ConversationUserInputBody } from "@/v4/ConversationUserInputBody.js";

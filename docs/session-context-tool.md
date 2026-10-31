@@ -1,6 +1,6 @@
 # On-Demand Session Context
 
-`ReadSessionContext` lets the agent use context from another persisted ZCode session only when a current turn actually needs it.
+`ReadSessionContext` lets the agent use context from another persisted Codez session only when a current turn actually needs it.
 
 ## Goals
 

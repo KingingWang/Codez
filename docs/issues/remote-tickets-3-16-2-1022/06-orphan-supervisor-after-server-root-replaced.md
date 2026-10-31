@@ -11,7 +11,7 @@ SSH 连接日志在 probe 之后直接出现 `Source Server registered with the 
 ## 机制（高概率，已复现）
 
 ```text
-外部：daemon 运行时删除/替换 ~/.zcode/server（推断的触发条件）
+外部：daemon 运行时删除/替换 ~/.codez/server（推断的触发条件）
   │  旧 Supervisor(S) 与旧 Core(C) 继续运行；旧 run/ 的 token/lock/control.sock 随目录消失
 旧 S：每条 Core 消息（heartbeat 10s）→ 按路径 rename 写新 run/status.json(ready, pid=C, port=P)
 Desktop 连接
@@ -24,14 +24,14 @@ ensureDaemon 打印 "registered…" → readFile run/ingress-token → 文件不
 - probe：`sourceServerProbe.ts:53` 只用 `kill -0` 判断 status 里的 Core pid。
 - 写入：`runtime/statusSnapshot.ts:33-50` 只按路径写；`supervisor.ts:463-493` 每条 Core 消息都持久化；token 只在 Core 启动时写一次（`server-core/core.ts:58`、`ingressToken.ts:5-17`）；服务端只有 uninstall 删 token，且 uninstall 先停服务；Desktop 不调用 uninstall。
 - CLI：`cli.ts:279-288` 只有 control socket 回应才复用；`serviceManager.ts:39` unit 名按路径哈希（重装后不变）、`:214` `enable --now` 不重启 active unit；`cli.ts:629-650` 只看 status.json。
-- 复现（Ubuntu 22.04 + systemd 249，3.16.2 官方 linux-arm64 包，3/3）：`rm -rf ~/.zcode/server` 后重装，`serve --daemon` 返回删除前旧 Core 的 pid；`cat run/ingress-token` 不存在；`run/` 只有 status.json；`/proc/<pid>/exe` 显示 `(deleted)`。`systemctl --user restart` 后恢复。
+- 复现（Ubuntu 22.04 + systemd 249，3.16.2 官方 linux-arm64 包，3/3）：`rm -rf ~/.codez/server` 后重装，`serve --daemon` 返回删除前旧 Core 的 pid；`cat run/ingress-token` 不存在；`run/` 只有 status.json；`/proc/<pid>/exe` 显示 `(deleted)`。`systemctl --user restart` 后恢复。
 - errno 被脱敏抹掉：v3.16.2 `sanitizeRemoteConnectionLog` 对 ENOENT/EACCES/EISDIR/ENOTDIR/EIO/ESTALE 都输出 `cat: [redacted-path]`（`shared/src/source-server/connectionLog.ts:44`、`:54`）。
 
 ## 未证实
 
-用户是否删除或移动过 `~/.zcode` / `~/.zcode/server`。G 样本“1h18m 前 daemon ready → 之后 `bin/zcode` 消失需重装”是强旁证；本工单没有更早的连接记录，也没有 app 日志（当天主日志未进包，推断超过 8 MiB）。
+用户是否删除或移动过 `~/.codez` / `~/.codez/server`。G 样本“1h18m 前 daemon ready → 之后 `bin/codez` 消失需重装”是强旁证；本工单没有更早的连接记录，也没有 app 日志（当天主日志未进包，推断超过 8 MiB）。
 
-已排除：token 未写完就 ready、状态过期 + PID 复用（token 仍在，症状是握手失败）、unit 的 HOME/ZCODE\_\* 不同（ExecStart 显式带 `--server-root`）、HOME 被启动输出污染（脱敏回放会留残留）。EACCES 可能性很低。
+已排除：token 未写完就 ready、状态过期 + PID 复用（token 仍在，症状是握手失败）、unit 的 HOME/CODEZ\_\* 不同（ExecStart 显式带 `--server-root`）、HOME 被启动输出污染（脱敏回放会留残留）。EACCES 可能性很低。
 
 ## 设计缺陷与需要的决定
 
@@ -55,10 +55,10 @@ ensureDaemon 打印 "registered…" → readFile run/ingress-token → 文件不
 ## 待补与临时恢复
 
 ```sh
-ls -la --time-style=full-iso ~/.zcode/server/run
-P=$(sed -n 's/^[[:space:]]*"pid"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p' ~/.zcode/server/run/status.json | head -n1)
+ls -la --time-style=full-iso ~/.codez/server/run
+P=$(sed -n 's/^[[:space:]]*"pid"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p' ~/.codez/server/run/status.json | head -n1)
 readlink /proc/$P/exe; ps -o pid,ppid,lstart,args -p "$P"
-systemctl --user show -p ActiveEnterTimestamp,MainPID 'com.zhipu.zcode.server.*'
+systemctl --user show -p ActiveEnterTimestamp,MainPID 'com.zhipu.codez.server.*'
 ```
 
-`run/` 只有 status.json、exe 显示 `(deleted)`、unit 启动早于 `run/` 创建 → 本机制成立。临时恢复：`systemctl --user restart 'com.zhipu.zcode.server.*'` 后重连。
+`run/` 只有 status.json、exe 显示 `(deleted)`、unit 启动早于 `run/` 创建 → 本机制成立。临时恢复：`systemctl --user restart 'com.zhipu.codez.server.*'` 后重连。

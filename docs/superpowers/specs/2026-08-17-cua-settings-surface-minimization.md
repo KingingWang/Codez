@@ -6,7 +6,7 @@
 
 ## 背景
 
-2026-08-15 的 Helper 实例隔离设计（zcode-cua `docs/refactor-port-specs/CUA-HELPER-INSTANCE-ISOLATION-PLAN.md` 第 7 步）
+2026-08-15 的 Helper 实例隔离设计（codez-cua `docs/refactor-port-specs/CUA-HELPER-INSTANCE-ISOLATION-PLAN.md` 第 7 步）
 把 controller 状态/接管/停止暴露到权限服务，并在桌面端渲染了两处 UI：
 
 1. 设置页「电脑控制」分区的 Input controller 行（owner 徽章 + Take control/Stop 按钮）；
@@ -26,12 +26,12 @@ Background mode）。产品评审结论：这些面都是多余的——
 
 「电脑控制」分区只保留：
 
-1. 总开关（zcode-cua 插件 enablement，联动 MCP + skill）；
+1. 总开关（codez-cua 插件 enablement，联动 MCP + skill）；
 2. macOS Accessibility / Screen Recording 两个权限行（含 Grant 引导、stale 时的
-   Helper 重启 + 重启 ZCode 兜底——沿用现行恢复链，不受本变更影响）。
+   Helper 重启 + 重启 Codez 兜底——沿用现行恢复链，不受本变更影响）。
 
 未授权时，权限行右侧的操作顺序固定为 `[Open… 按钮] [状态徽章]`；按钮与状态属于
-同一 control 区，不再把 Open 按钮放到行下方的 detail 区。stale 的 Helper/ZCode
+同一 control 区，不再把 Open 按钮放到行下方的 detail 区。stale 的 Helper/Codez
 重启恢复操作仍保留在 detail 区，但不重复渲染 Open 按钮。
 该宽 control 布局只用于 Computer Use 权限行：宽屏使用 280px 操作列，按钮和状态不换行；
 窄屏改为单列，整个 control 区移到描述下方。其他 `SettingsRow` 继续使用 192px 操作列。
@@ -63,12 +63,12 @@ CUA 状态。
 
 ## 边界（明确不做的事）
 
-- **controller lease 本体保留**：zcode-cua Helper 侧的用户级 lease 仲裁（多实例共存、
+- **controller lease 本体保留**：codez-cua Helper 侧的用户级 lease 仲裁（多实例共存、
   仅 owner 可派发副作用与 overlay）是安全机制，本次只下线桌面端的手动 UI。
 - **desktop controller facade 已退役**：producer 0.5.7 已从 `ICuaPermissionService` 删除
   `takeController/stopController/getHelperStatus`，z-code 同步删除零调用实现。raw broker
   controller protocol、lease/admission 与 Helper 内部显式 takeover 安全机械不受影响。
-- 权限引导流（onboarding、授权返回恢复、stale 验证、重启 ZCode 兜底）行为不变；
+- 权限引导流（onboarding、授权返回恢复、stale 验证、重启 Codez 兜底）行为不变；
   `restartHelper` / `getStatus` 服务面不变。
 
 ## 影响面清单

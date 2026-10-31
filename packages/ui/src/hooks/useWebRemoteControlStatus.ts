@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { WebRemoteControlStatus } from "@zcode/shared";
+import type { WebRemoteControlStatus } from "@codez/shared";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
 import { logger } from "@/logger.js";
 

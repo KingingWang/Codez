@@ -1,4 +1,4 @@
-# zcode-cli background subagent 修复计划
+# codez-cli background subagent 修复计划
 
 ## 目标
 
@@ -16,7 +16,7 @@
 这些能力当前已经存在或不属于本轮修复，不放进 P0：
 
 - 重新实现 `Agent` tool 或 Claude Code 兼容的 `Task` alias。
-- 重新实现 profile loader、用户/项目 `.zcode/agents` Markdown 加载、插件 agent 加载。
+- 重新实现 profile loader、用户/项目 `.codez/agents` Markdown 加载、插件 agent 加载。
 - 把 `Explore` 设为默认 agent。当前省略 `subagent_type` 时默认 `general-purpose`；`Explore` 只是 specialized built-in。
 - 重新实现 `general-purpose` / `Explore` built-in profile、child runtime 创建、artifact 写入、`SendMessage`。
 - teammate、swarm、workflow、worktree isolation、model-facing `TaskCreate` / `TaskList` / `TaskUpdate`。
@@ -31,14 +31,14 @@ P1 再考虑：
 
 ### Agent 和 profile
 
-- `apps/zcode-cli/packages/core/src/tool/handlers/agent.ts` 中 `parsed.subagent_type ?? AgentType.GeneralPurpose`，省略时默认 `general-purpose`。
-- `apps/zcode-cli/packages/core/src/subagent/profile.ts` 中 `DEFAULT_SUBAGENT_TYPE = GENERAL_PURPOSE_AGENT_TYPE`，`normalizeAgentProfiles()` 先注册 built-in `general-purpose`，再注册 built-in `Explore`，最后覆盖用户/项目/插件 profile。
-- `apps/zcode-cli/packages/bootstrap/src/subagents.ts` 已加载用户级 `~/.zcode/agents`、项目级 `.zcode/agents`、插件 `agents/*.md`，并保留 `general-purpose` / `Explore` reserved name。
-- `apps/zcode-cli/packages/contracts/src/tools/agent.ts` 已有 `run_in_background`，输出包含 `completed` 和 `async_launched` 两种状态。
+- `apps/codez-cli/packages/core/src/tool/handlers/agent.ts` 中 `parsed.subagent_type ?? AgentType.GeneralPurpose`，省略时默认 `general-purpose`。
+- `apps/codez-cli/packages/core/src/subagent/profile.ts` 中 `DEFAULT_SUBAGENT_TYPE = GENERAL_PURPOSE_AGENT_TYPE`，`normalizeAgentProfiles()` 先注册 built-in `general-purpose`，再注册 built-in `Explore`，最后覆盖用户/项目/插件 profile。
+- `apps/codez-cli/packages/bootstrap/src/subagents.ts` 已加载用户级 `~/.codez/agents`、项目级 `.codez/agents`、插件 `agents/*.md`，并保留 `general-purpose` / `Explore` reserved name。
+- `apps/codez-cli/packages/contracts/src/tools/agent.ts` 已有 `run_in_background`，输出包含 `completed` 和 `async_launched` 两种状态。
 
 ### Subagent runner
 
-- `apps/zcode-cli/packages/core/src/subagent/runner.ts` 里的 `createExploreSubagentPort` 名字仍偏旧，但实际是 profile-backed port。
+- `apps/codez-cli/packages/core/src/subagent/runner.ts` 里的 `createExploreSubagentPort` 名字仍偏旧，但实际是 profile-backed port。
 - `launch()` 根据 `runInBackground` 或 profile `background` 决定走 `start()` 还是 `run()`。
 - `start()` 已能直接后台启动：注册 `local_agent` task，返回 `async_launched`，子 runtime 异步跑完后调用 `finalizeBackgroundCompletion()` / `finalizeBackgroundFailure()`。
 - `run()` 已能前台转后台：注册 `isBackgrounded=false` task 后，把 `runAgentToCompletion()` 和 `RuntimeTaskRegistry.waitForBackgroundRequest(agentId)` 做 race；如果收到 background request，就立即返回 `async_launched`，同一个 child completion promise 继续在后台完成。
@@ -47,16 +47,16 @@ P1 再考虑：
 
 ### Parent runtime notification
 
-- `apps/zcode-cli/packages/core/src/runtime/agent-runtime.ts` 中 `pendingBackgroundTaskNotifications` 是 `AgentRuntime` 私有内存数组。
-- `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts` 中 `enqueueParentNotification` 只是 `push({ queuedAt, text, traceContext })`。
-- `apps/zcode-cli/packages/core/src/runtime/methods/background-notifications.ts` 的 drain 会把 notification 写入 `messageHistory.addUser(...)`，并持久化为 `source: "background_task"`。
+- `apps/codez-cli/packages/core/src/runtime/agent-runtime.ts` 中 `pendingBackgroundTaskNotifications` 是 `AgentRuntime` 私有内存数组。
+- `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts` 中 `enqueueParentNotification` 只是 `push({ queuedAt, text, traceContext })`。
+- `apps/codez-cli/packages/core/src/runtime/methods/background-notifications.ts` 的 drain 会把 notification 写入 `messageHistory.addUser(...)`，并持久化为 `source: "background_task"`。
 - `executeTurn()` 和 `runRegularTurnLoop()` 会在已有 turn/request 前调用 drain，所以“下一次显式用户输入”或“active turn 下一次 model request”能看到 `<task-notification>`。
 - 如果父 turn 已 finish/idle，当前没有 queue subscriber / wake scheduler，因此 completion 只停留在内存数组里，不会自动生成下一次父模型请求。
 - `ExecuteTurnOptions` 已支持 `inputVisibility: "model-only"` 和 `inputSource: "background_task"`，可以作为 idle wake 的最小实现基座。
 
 ### 测试覆盖现状
 
-- `apps/zcode-cli/packages/core/tests/subagent-explore.test.ts` 已覆盖默认 `general-purpose`、background launch、completion 在“后续显式 turn”中被 drain。
+- `apps/codez-cli/packages/core/tests/subagent-explore.test.ts` 已覆盖默认 `general-purpose`、background launch、completion 在“后续显式 turn”中被 drain。
 - 现有 background 测试会在子任务完成后手动调用 `runtime.executeTurn("continue")`，因此没有覆盖“父 turn 已 idle 后自动 wake”。
 - Bash/goal continuation 已有 model-only turn 相关测试，可复用其断言方式验证 `inputVisibility` / `inputSource`。
 
@@ -238,4 +238,4 @@ scheduleBackgroundTaskNotificationWake(reason): void;
 - **重复注入风险**：active drain 和 idle wake 共用 queue 后，claim/drain 必须是原子语义。
 - **用户输入污染风险**：background wake 不能走普通 user prompt 持久化路径，也不能生成真实用户气泡。
 - **重试/丢失边界风险**：只允许同一 query 内部的 provider attempt 有界重试；terminal failure/stop 不重新 enqueue 已 claim command，但必须保留 query 前已持久化的 batch input，并验证后续请求既不会丢内容也不会重复注入。
-- **移动端/remote 风险**：本轮只动 zcode-cli runtime 内部；如果后续把 app/service idle wake 接到远控链路，必须另开 spec 说明 desktop continuous 与 web-remote replayable 边界。
+- **移动端/remote 风险**：本轮只动 codez-cli runtime 内部；如果后续把 app/service idle wake 接到远控链路，必须另开 spec 说明 desktop continuous 与 web-remote replayable 边界。

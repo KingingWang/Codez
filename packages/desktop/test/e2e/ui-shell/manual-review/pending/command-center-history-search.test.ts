@@ -29,13 +29,13 @@ describe("Command Center Host 历史搜索", () => {
       })),
     }));
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "history-search-state.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "history-search-state.json"),
       JSON.stringify(snapshot, null, 2),
     );
   });
   before(async () => {
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 45_000);
-    home = process.env.ZCODE_E2E_HOME_DIR ?? "";
+    home = process.env.CODEZ_E2E_HOME_DIR ?? "";
     if (!basename(home).startsWith(".e2e-home-")) throw new Error("需要隔离 E2E HOME");
     closedWorkspace = join(home, "ClosedHistoryWorkspace");
     await mkdir(closedWorkspace, { recursive: true });
@@ -43,7 +43,7 @@ describe("Command Center Host 历史搜索", () => {
       afterElectronProcessExit: async () => {
         for (const name of cases) {
           await seedProviderReadinessHistoryFixture({
-            cliEntryPoint: resolve("../../apps/zcode-cli/packages/cli/dist/zcode.cjs"),
+            cliEntryPoint: resolve("../../apps/codez-cli/packages/cli/dist/codez.cjs"),
             e2eHomeDir: home,
             workspacePath: closedWorkspace,
             history: {
@@ -60,7 +60,7 @@ describe("Command Center Host 历史搜索", () => {
           });
         }
         // node:sqlite 只提供同步接口；夹具在 Host 退出后写入，避免与迁移/索引写入竞争。
-        const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
+        const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"));
         try {
           const stamp = Date.now() - 36 * 24 * 60 * 60 * 1000;
           db.prepare(`UPDATE tasks SET host_id='local', root_path=workspace_path,
@@ -82,7 +82,7 @@ describe("Command Center Host 历史搜索", () => {
         } finally {
           db.close();
         }
-        const settingsPath = join(home, ".zcode/v2/setting.json");
+        const settingsPath = join(home, ".codez/v2/setting.json");
         const settings = JSON.parse(await readFile(settingsPath, "utf8"));
         await writeFile(
           settingsPath,
@@ -96,9 +96,9 @@ describe("Command Center Host 历史搜索", () => {
     const tabs = await browser.execute(() => {
       const store = (
         window as typeof window & {
-          __zcodeTabStoreE2E?: { getState(): { tabs: Array<{ workspacePath?: string }> } };
+          __codezTabStoreE2E?: { getState(): { tabs: Array<{ workspacePath?: string }> } };
         }
-      ).__zcodeTabStoreE2E;
+      ).__codezTabStoreE2E;
       if (!store) throw new Error("缺少 tab store 测试入口");
       return store.getState().tabs.map((tab) => tab.workspacePath);
     });
@@ -107,7 +107,7 @@ describe("Command Center Host 历史搜索", () => {
     await searchAndExpect(marker, visibleCases);
     for (const name of visibleCases) await searchAndExpect(`${bodyMarker}_${name}`, [name]);
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "history-cold-search.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "history-cold-search.png"),
     );
     await browser.keys("Escape");
   });
@@ -124,7 +124,7 @@ describe("Command Center Host 历史搜索", () => {
     await openSearch();
     await searchAndExpect(marker, visibleCases);
     await browser.keys("Escape");
-    const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"), { readOnly: true });
+    const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"), { readOnly: true });
     try {
       expect(
         db.prepare("SELECT archived FROM tasks WHERE task_id='session_e2e_history_archived'").get(),
@@ -155,8 +155,8 @@ describe("Command Center Host 历史搜索", () => {
     const address = receiver.address();
     if (!address || typeof address === "string") throw new Error("pair receiver failed");
     const mobile = await chromium.launch({
-      ...(process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE
-        ? { executablePath: process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE }
+      ...(process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE
+        ? { executablePath: process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE }
         : { channel: "chrome" }),
       headless: true,
     });
@@ -200,7 +200,7 @@ describe("Command Center Host 历史搜索", () => {
       }, WEB_REMOTE_CONTROL_FIXTURE_CREDENTIALS);
       const page = await context.newPage();
       await openMobilePairingPage(page, await pairing, {
-        artifactDir: process.env.ZCODE_E2E_ARTIFACT_DIR!,
+        artifactDir: process.env.CODEZ_E2E_ARTIFACT_DIR!,
         caseMarker: "CC-HISTORY-03",
         phase: "history-search",
         readySelector: '[data-testid="sidebar-search-open"]',
@@ -223,7 +223,7 @@ describe("Command Center Host 历史搜索", () => {
         );
       }
       await page.screenshot({
-        path: join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "history-mobile-search.png"),
+        path: join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "history-mobile-search.png"),
       });
     } finally {
       await mobile.close();

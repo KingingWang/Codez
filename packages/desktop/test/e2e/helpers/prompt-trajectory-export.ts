@@ -11,7 +11,7 @@ interface TrajectoryManifest {
 }
 const execute = promisify(execFile);
 const cliPath = fileURLToPath(
-  new URL("../../../../../apps/zcode-cli/tools/prompt-trajectory/src/cli.ts", import.meta.url),
+  new URL("../../../../../apps/codez-cli/tools/prompt-trajectory/src/cli.ts", import.meta.url),
 );
 const tsxCli = createRequire(cliPath).resolve("tsx/cli");
 
@@ -21,8 +21,8 @@ export async function exportPromptTrajectory(
   label: string,
   querySource = "main_turn",
 ): Promise<TrajectoryManifest> {
-  const artifactRoot = process.env.ZCODE_E2E_ARTIFACT_DIR;
-  if (!artifactRoot) throw new Error("Missing ZCODE_E2E_ARTIFACT_DIR");
+  const artifactRoot = process.env.CODEZ_E2E_ARTIFACT_DIR;
+  if (!artifactRoot) throw new Error("Missing CODEZ_E2E_ARTIFACT_DIR");
   const out = join(artifactRoot, "prompt-trajectory", label);
   await mkdir(out, { recursive: true });
   const capture = process.env.E2E_PROVIDER_CAPTURE_PATH;

@@ -2,7 +2,7 @@
 
 ## 背景
 
-问题反馈服务从旧的独立反馈域名接口迁移到 ZCode Server 新接口：
+问题反馈服务从旧的独立反馈域名接口迁移到 Codez Server 新接口：
 
 - 旧接口：`https://feedback.example.invalid/v1/tickets`
 - 生产新接口：`https://zcode.z.ai/api/v1/feedback/*`
@@ -10,14 +10,14 @@
 
 UI 和 RPC 服务接口暂不扩展，`IFeedbackService` 继续向 UI 暴露现有的创建、列表、详情、评论和附件上传能力。迁移只收敛在 services 层的 HTTP 协议、鉴权、字段映射和匿名票据缓存。
 
-默认 feedback API base 必须跟随统一的 ZCode endpoint resolver：
+默认 feedback API base 必须跟随统一的 Codez endpoint resolver：
 
-- `ZCODE_ENV=production` 或未显式设置时，默认 `https://zcode.z.ai/api/v1`。
-- `ZCODE_ENV=test` 时，默认 `https://zcode.z.ai/api/v1`。
-- `ZCODE_BASE_URL`、`ZCODE_TEST_BASE_URL`、`ZCODE_PRODUCTION_BASE_URL` 等统一 endpoint 覆盖继续生效。
-- `ZCODE_FEEDBACK_API_BASE` 或显式传入的 `apiBaseUrl` 只作为人工覆盖，优先级高于环境默认值。
+- `CODEZ_ENV=production` 或未显式设置时，默认 `https://zcode.z.ai/api/v1`。
+- `CODEZ_ENV=test` 时，默认 `https://zcode.z.ai/api/v1`。
+- `CODEZ_BASE_URL`、`CODEZ_TEST_BASE_URL`、`CODEZ_PRODUCTION_BASE_URL` 等统一 endpoint 覆盖继续生效。
+- `CODEZ_FEEDBACK_API_BASE` 或显式传入的 `apiBaseUrl` 只作为人工覆盖，优先级高于环境默认值。
 
-反馈 API 的 HTTP 出口必须通过 services 层统一 `ApiClient` 收口，不直接调用全局 `fetch`。统一 `ApiClient` 负责 ZCode Server endpoint 重写、`x-request-id` 以及 `buildZCodeSourceHeaders()` 中的通参注入；反馈模块只在此基础上叠加接口自身关注的 header 和请求体。这样后续新增 ZCode Server 通参时，只需要修改统一 API client/source headers，不需要逐个业务模块补字段。
+反馈 API 的 HTTP 出口必须通过 services 层统一 `ApiClient` 收口，不直接调用全局 `fetch`。统一 `ApiClient` 负责 Codez Server endpoint 重写、`x-request-id` 以及 `buildCodezSourceHeaders()` 中的通参注入；反馈模块只在此基础上叠加接口自身关注的 header 和请求体。这样后续新增 Codez Server 通参时，只需要修改统一 API client/source headers，不需要逐个业务模块补字段。
 
 ## 新接口契约
 
@@ -46,13 +46,13 @@ UI 和 RPC 服务接口暂不扩展，`IFeedbackService` 继续向 UI 暴露现�
 服务层复用桌面宿主统一的 telemetry `deviceMid` 作为反馈匿名 `device_mid`：
 
 - `deviceMid` 由 main 进程在窗口创建前通过 `telemetry-state.json` 同步确保，并注入 host process。
-- 反馈服务不再维护独立的 `zcodefeedbackclientid`，避免同一台机器在 telemetry、ARMS、远控和 feedback 中被拆成多个设备。
-- 旧的 `zcodefeedbackclientid` / `X-Feedback-Client-Id` 只作为废弃数据保留在本地凭据中，不参与新接口请求或匿名列表隔离。
+- 反馈服务不再维护独立的 `codezfeedbackclientid`，避免同一台机器在 telemetry、ARMS、远控和 feedback 中被拆成多个设备。
+- 旧的 `codezfeedbackclientid` / `X-Feedback-Client-Id` 只作为废弃数据保留在本地凭据中，不参与新接口请求或匿名列表隔离。
 
 请求头规则：
 
-- 反馈请求通过统一 `ApiClient` 发送，自动携带 ZCode Server 通参，例如 `User-Agent`、`HTTP-Referer`、`X-ZCode-App-Version`、`X-Platform`、`X-Release-Channel`、`X-Client-Language`、`X-Client-Timezone`、`X-Os-Category`、`X-Os-Version` 和 `x-request-id`。
-- 如果本地凭据存在 `zcodejwttoken`，请求发送 `Authorization: Bearer <token>`。
+- 反馈请求通过统一 `ApiClient` 发送，自动携带 Codez Server 通参，例如 `User-Agent`、`HTTP-Referer`、`X-Codez-App-Version`、`X-Platform`、`X-Release-Channel`、`X-Client-Language`、`X-Client-Timezone`、`X-Os-Category`、`X-Os-Version` 和 `x-request-id`。
+- 如果本地凭据存在 `codezjwttoken`，请求发送 `Authorization: Bearer <token>`。
 - 所有反馈 API 请求发送 `X-Device-Mid: <telemetry deviceMid>`，用于匿名工单归属与详情访问。
 - `POST /feedback/ticket` 请求体同时发送 `device_mid`。
 - 不再发送旧接口使用的 `X-Feedback-Client-Id` 和 `X-Feedback-Account-Id`。

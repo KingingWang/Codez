@@ -1,4 +1,4 @@
-import { TID_CHAT_MODEL_SELECT_TRIGGER, TID_V4_MODEL_CONFIG } from "@zcode/shared/test-ids";
+import { TID_CHAT_MODEL_SELECT_TRIGGER, TID_V4_MODEL_CONFIG } from "@codez/shared/test-ids";
 
 /** 合并入口与开关由真实点击驱动，滑杆由键盘驱动，不用 DOM 值覆盖伪造 React 状态。 */
 export async function selectCombinedComposerThoughtLevel(value: string): Promise<boolean> {

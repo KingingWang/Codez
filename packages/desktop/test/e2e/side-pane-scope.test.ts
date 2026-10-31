@@ -1,11 +1,11 @@
 import { createServer } from "node:http";
-import { TID_BROWSER_ADDRESS_INPUT } from "@zcode/shared/test-ids";
+import { TID_BROWSER_ADDRESS_INPUT } from "@codez/shared/test-ids";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import { openFirstBrowserTab, clickCloseButton } from "#e2e/helpers/browser-side-pane";
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
 type ScopeStoreWindow = Window & {
-  __zcodeSessionStoreE2E?: {
+  __codezSessionStoreE2E?: {
     getState(): {
       workspaces: Record<string, { activeTaskId: string | null }>;
       setActiveTaskId(path: string, id: string): void;
@@ -95,7 +95,7 @@ describe("Side pane scope（manual review）", () => {
 
 async function switchConversation(owner: string) {
   await browser.execute((id) => {
-    const store = (window as ScopeStoreWindow).__zcodeSessionStoreE2E;
+    const store = (window as ScopeStoreWindow).__codezSessionStoreE2E;
     if (!store) throw new Error("Missing E2E store bridge");
     const state = store.getState();
     const workspace = Object.keys(state.workspaces)[0];
@@ -105,7 +105,7 @@ async function switchConversation(owner: string) {
   // scope effect 在当前 store 更新后统一选择可见标签，无固定延时。
   await browser.waitUntil(async () =>
     browser.execute((id) => {
-      const state = (window as ScopeStoreWindow).__zcodeSessionStoreE2E!.getState();
+      const state = (window as ScopeStoreWindow).__codezSessionStoreE2E!.getState();
       return Object.values(state.workspaces)[0]?.activeTaskId === id;
     }, owner),
   );

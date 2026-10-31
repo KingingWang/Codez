@@ -1,6 +1,6 @@
 import { skipOccupationOnboardingIfPresent } from "../helpers/occupation-onboarding.js";
-import { ModelConfig, ProviderConfig } from "@zcode/provider";
-import { NodePersonalProviderConfigRepository } from "@zcode/provider-node";
+import { ModelConfig, ProviderConfig } from "@codez/provider";
+import { NodePersonalProviderConfigRepository } from "@codez/provider-node";
 import { clearAppData, getE2EAppDataPaths } from "../helpers/desktop-app.js";
 import { refreshSeededOpenAIProvidersThroughSettings } from "../helpers/custom-openai-provider.js";
 import {

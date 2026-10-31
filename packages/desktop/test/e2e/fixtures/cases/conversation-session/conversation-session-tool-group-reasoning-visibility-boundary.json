@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/conversation-session-tool-group-reasoning-visibility-boundary",
+      "path": ".codez-e2e/conversation-session-tool-group-reasoning-visibility-boundary",
       "source": "created-by-spec",
       "description": "TGE04 Write/Edit 的 case-owned fixture。"
     }

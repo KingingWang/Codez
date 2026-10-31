@@ -1,17 +1,17 @@
 // 完成卡「保存」弹层（docs/dynamic-workflow/transcript-and-notifications.md「The popover」）。
 //
-// 两条路按**价值**排序而不是按成本：先是整条宽的「让 ZCode 帮我提炼保存」，一条细线之下才是
+// 两条路按**价值**排序而不是按成本：先是整条宽的「让 Codez 帮我提炼保存」，一条细线之下才是
 // 「按原样直接保存」的三个字段。刚跑完的脚本是一次性的，把两次运行之间会变的值抽成 args、写清
 // 说明与使用时机——这件事只有读过脚本的人能做，所以它排在第一位。
 //
-// 三个字段服务于两条路：填了什么，既随消息交给 ZCode，也是直接保存要写下去的那一份。
+// 三个字段服务于两条路：填了什么，既随消息交给 Codez，也是直接保存要写下去的那一份。
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { SparkleIcon } from "lucide-react";
-import type { ZCodeSavedWorkflowScope, ZCodeWorkflowsSaveResult } from "@zcode/shared";
+import type { CodezSavedWorkflowScope, CodezWorkflowsSaveResult } from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTitle } from "@/components/ui/popover.js";
 import { Spinner } from "@/components/ui/spinner.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { WorkflowSaveFields, type WorkflowSaveFailure } from "./WorkflowSaveFields.js";
 import {
   initialWorkflowSaveDraft,
@@ -26,25 +26,25 @@ const NAME_PROBE_DEBOUNCE_MS = 320;
 export interface WorkflowSavePopoverHost {
   /** 弹层打开那一刻用来预填名字与说明。 */
   runName?: string;
-  /** 老 agent 没有 `workflows/save`：只留 ZCode 那条路。 */
+  /** 老 agent 没有 `workflows/save`：只留 Codez 那条路。 */
   directSaveUnsupported: boolean;
   /** 远程项目不给全局档：`~` 在 agent 机器上，中枢从不读它。 */
   scopeLocked: boolean;
   saving: boolean;
   save: (input: {
     name: string;
-    scope: ZCodeSavedWorkflowScope;
+    scope: CodezSavedWorkflowScope;
     meta: { description: string };
     overwrite?: boolean;
-  }) => Promise<ZCodeWorkflowsSaveResult>;
-  checkNameTaken: (name: string, scope: ZCodeSavedWorkflowScope) => Promise<boolean>;
+  }) => Promise<CodezWorkflowsSaveResult>;
+  checkNameTaken: (name: string, scope: CodezSavedWorkflowScope) => Promise<boolean>;
   /**
    * 把那条用户消息发出去（宿主各有各的发送路径：卡在本会话，侧板在父会话）。
    * 缺席即这条路不可达——弹层只剩细线之下的那一半。
    */
   sendLead?: (draft: WorkflowSaveDraft) => Promise<void>;
   /** 写成之后：父级据此翻成「再次运行」并播一次 aria-live。 */
-  onSaved: (saved: { name: string; scope: ZCodeSavedWorkflowScope }) => void;
+  onSaved: (saved: { name: string; scope: CodezSavedWorkflowScope }) => void;
 }
 
 export function WorkflowSavePopover({
@@ -91,7 +91,7 @@ function WorkflowSaveForm({
   host: WorkflowSavePopoverHost;
   onClose: () => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const format = useCallback((id: string) => intl.formatMessage({ id }), [intl]);
   // 起点在打开那一刻定下（同「配置」弹层）：run 在弹层开着时变了，也不该把用户正在改的表单拽回去。
   const [draft, setDraft] = useState<WorkflowSaveDraft>(() =>
@@ -123,7 +123,7 @@ function WorkflowSaveForm({
     setProbe({ taken: false, shadowing: false });
     if (directSaveUnsupported || name.length === 0 || !isValidSavedWorkflowNameText(name)) return;
     let cancelled = false;
-    const other: ZCodeSavedWorkflowScope = scope === "global" ? "project" : "global";
+    const other: CodezSavedWorkflowScope = scope === "global" ? "project" : "global";
     const timer = window.setTimeout(() => {
       void Promise.all([
         checkNameTaken(name, scope),

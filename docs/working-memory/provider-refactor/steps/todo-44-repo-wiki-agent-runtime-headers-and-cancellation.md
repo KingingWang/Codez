@@ -35,7 +35,7 @@ Repo Wiki Service
         v
 Desktop Local Host / Services
         |
-        | ZCode Protocol over stdio
+        | Codez Protocol over stdio
         v
 repo-wiki Agent Process
         |
@@ -81,7 +81,7 @@ return client;
 Agent 发出 Runtime Headers Request
         |
         v
-Host ZCodeProtocolClient 解析成功
+Host CodezProtocolClient 解析成功
         |
         v
 requestEmitter.fire(request)
@@ -174,7 +174,7 @@ Repo Wiki Lane
 └─ 完整 Host Protocol Wiring
 ```
 
-所有 `ZCodeAgentProcessManager` 产出的、允许执行正式 Model 的 Client，都必须安装 Host Protocol Handlers。不得为 Repo
+所有 `CodezAgentProcessManager` 产出的、允许执行正式 Model 的 Client，都必须安装 Host Protocol Handlers。不得为 Repo
 Wiki 复制一份 Account Auth、Runtime Headers 或 Provider 解析逻辑。
 
 ### 4.2 取消消息属于控制面
@@ -219,7 +219,7 @@ timeout、鉴权、配置和 Protocol 错误从可重试集合中排除，依据
 
 ### 5.3 测试先行：真实 Transport 取消
 
-使用真实 `ZCodeProtocolNdjsonConnection`，而不是直接调用 `server.handleMessage()`：
+使用真实 `CodezProtocolNdjsonConnection`，而不是直接调用 `server.handleMessage()`：
 
 ```text
 generateText handler 已开始并挂起
@@ -287,7 +287,7 @@ retry scheduled
 
 1. Repo Wiki Lane Services 定向测试；
 2. Account Runtime Headers Services 定向测试；
-3. Bootstrap ZCode Protocol 双向请求与真实 Transport 取消测试；
+3. Bootstrap Codez Protocol 双向请求与真实 Transport 取消测试；
 4. Repo Wiki Deadline、Retry、终态回收定向测试；
 5. API Key Provider 与 Account Provider 各做一次本地 Repo Wiki 纵向验证；
 6. 运行时确认 Account Provider 出现 Runtime Headers applied、模型服务 TCP/HTTP 和 SSE 首包；
@@ -325,6 +325,6 @@ retry scheduled
 
 - Repo Wiki Lane、Account Runtime Headers、Services Deadline/Retry 定向测试通过；
 - Bootstrap Transport 全文件 13 项通过，Server workspace cancellation 定向测试通过；
-- `@zcode/bootstrap` typecheck、根 `pnpm typecheck`、根 `pnpm lint`、修改文件 lint 与
+- `@codez/bootstrap` typecheck、根 `pnpm typecheck`、根 `pnpm lint`、修改文件 lint 与
   `git diff --check` 通过；
 - CLI 全仓 `format:check` 仍报告 296 个既存格式基线文件，本次修改的 CLI 文件已单独格式化且检查无新增问题。

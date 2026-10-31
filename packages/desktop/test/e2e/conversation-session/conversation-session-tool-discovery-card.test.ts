@@ -6,7 +6,7 @@ import {
   TID_TASK_SETTINGS_BUTTON,
   TID_TOOL_SUMMARY_TRIGGER,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { releaseControlledReplay } from "#e2e/helpers/controlled-replay";
 import { seedCustomAnthropicMessagesProvider } from "#e2e/helpers/custom-openai-provider";
 import { restartIntoWorkspace } from "#e2e/helpers/model-provider-restart";

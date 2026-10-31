@@ -1,8 +1,8 @@
-// LRCD-02：已有 SSH Profile 的保存密码在本机无法解密（~/.zcode 换机 / 换用户）。
+// LRCD-02：已有 SSH Profile 的保存密码在本机无法解密（~/.codez 换机 / 换用户）。
 // 冷启动后从侧栏项目菜单点“连接”：连接屏要求补充密码，补充后连上原项目，并覆盖原凭据。
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { TID_SSH_DIALOG, TID_SSH_PASSWORD_INPUT } from "@zcode/shared/test-ids";
+import { TID_SSH_DIALOG, TID_SSH_PASSWORD_INPUT } from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -27,7 +27,7 @@ import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
 const MARKER = "E2E_PROFILE_SECRET_DECRYPT";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/profile-secret-decrypt",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/profile-secret-decrypt",
 );
 // IV/AuthTag 长度合法、内容为零：本机任何密钥都无法通过 GCM 校验（与 LRCD-01 相同的构造）。
 const UNDECRYPTABLE_VALUE = [
@@ -78,7 +78,7 @@ describe(`${MARKER}: Profile 密码在本机无法解密`, () => {
     const key = await readPasswordCredentialKey(config.port);
     expect(key).toBeTruthy();
 
-    // 退出应用后把这条密码换成本机解不开的密文，等同把 ~/.zcode 带到另一台机器。
+    // 退出应用后把这条密码换成本机解不开的密文，等同把 ~/.codez 带到另一台机器。
     await reloadElectronSessionPreservingBrowserProfile(browser, {
       afterElectronProcessExit: async () => {
         const credentials = JSON.parse(await readFile(credentialsFile, "utf-8")) as Record<

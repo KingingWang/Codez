@@ -17,7 +17,7 @@
 | `getAll` / `getAllCached`                                     | 设置页、模型选择、用量 UI、旧执行同步                | Settings View 或 Selection View；不再区分“触发远端同步”和“只读缓存”                                    |
 | `save` / `delete`                                             | 设置页与 API Key 登录表单写 Provider                 | `ProviderSettingsService` 写 Personal Config                                                           |
 | `getDisplayOrder` / `saveDisplayOrder`                        | 设置页与选择器排序                                   | ProviderConfig / ModelConfig 自身有序 Overlay；旧独立 Preference 退出                                  |
-| `resolveWorkspaceModelSelection`                              | 旧 Provider、Workspace Preference 和配置文件混合解析 | 已删除；统一 ZCode Agent 的回显只使用 prepare 回包、App Recent 与 Model Selection View                  |
+| `resolveWorkspaceModelSelection`                              | 旧 Provider、Workspace Preference 和配置文件混合解析 | 已删除；统一 Codez Agent 的回显只使用 prepare 回包、App Recent 与 Model Selection View                  |
 | `getEndpointSuggestions` / `getModelsByEndpoint`              | 旧 Add Provider 表单的 Endpoint 建议与远端模型探测   | 当前设置表单已改为显式填写 Provider Config；两个无生产调用方的旧接口及 `client/configs` 查询实现已删除 |
 | `getCatalogProviders`                                         | 设置页读取旧 Catalog                                 | Official Config 取代 Catalog 后退出                                                                    |
 | `testModelConnectivity`                                       | 设置页显式连通性测试                                 | 独立 Connectivity Service，结果不进入 Registry                                                         |

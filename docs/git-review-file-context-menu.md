@@ -12,7 +12,7 @@ Git 审查面板的文件行目前只能展开 diff。用户在审查某个文�
 
 ## 模块边界
 
-- `GitPaneChangeCard` 只负责展示文件行和菜单，不直接访问 Electron、`window.zcode` 或文件树状态。
+- `GitPaneChangeCard` 只负责展示文件行和菜单，不直接访问 Electron、`window.codez` 或文件树状态。
 - `GitPane` 负责把 `GitPaneFileChange` 解析成文件动作目标，包括绝对路径、workspace 相对路径、deleted 状态。
 - 通用文件动作封装在 UI hook 中，统一处理 clipboard、系统文件管理器、日志和 toast。
 - `WorkspaceShellLayout` 只接收“在文件树中显示”的 intent，并复用现有 `fileTreeOpenRequest` 打开左侧文件树。

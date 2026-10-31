@@ -4,7 +4,7 @@
 > 日期：2026-08-14。
 > 修订：2026-08-24，补齐运行期 tool caller 预算、共享恢复所有权与异常收敛。
 > 基线：`exa-oauth-analysis` / `bfc91c54a9`。
-> 生产 SDK：`@modelcontextprotocol/client@2.0.0`（`apps/zcode-cli/packages/adapters/package.json:105`）。
+> 生产 SDK：`@modelcontextprotocol/client@2.0.0`（`apps/codez-cli/packages/adapters/package.json:105`）。
 > 仓库同时存在 `@modelcontextprotocol/sdk@1.29.0`，本规格与实现只使用 `client@2.0.0`。
 > 根因分析：`docs/analysis/exa-oauth-reauth-analysis.md`。
 > 前置规格：`docs/mcp-oauth-client-auth.md`（配置、凭据完整性、设置页边界）。
@@ -15,7 +15,7 @@
 
 | 根因                  | 机制                                                                                                                                                                                                                                                                            | 现场证据                                                      |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| **R1 refresh 竞态**   | 多个 CLI 进程共享 `~/.zcode/v2/credentials.json`。`withFileLock` 只覆盖凭据读写，不覆盖网络 token exchange。access token 过期时各进程并发用同一 refresh token 刷新，撞授权服务器 rotation reuse-detection，整个 token family 被撤销；SDK 随后 invalidate tokens，退化为重新授权 | 8-12 `08:54:49Z` 连接成功，`09:00:13Z` 已进入交互授权         |
+| **R1 refresh 竞态**   | 多个 CLI 进程共享 `~/.codez/v2/credentials.json`。`withFileLock` 只覆盖凭据读写，不覆盖网络 token exchange。access token 过期时各进程并发用同一 refresh token 刷新，撞授权服务器 rotation reuse-detection，整个 token family 被撤销；SDK 随后 invalidate tokens，退化为重新授权 | 8-12 `08:54:49Z` 连接成功，`09:00:13Z` 已进入交互授权         |
 | **R2 二次授权死循环** | DCR 注册的 client 把 `redirect_uris` 锁死在注册当时的随机回调端口；回调服务器每次 `listen(0)` 换端口。redirect_uri 失配时授权服务器按 RFC 6749 §4.1.2.1 禁止回跳，就地渲染错误页；回调永不到达，重试永不自愈                                                                    | client 注册端口 `54735`，后续授权使用 `58670`/`58676`/`61820` |
 
 R2 的放大因素：设置页 lease 与 session lease 各建独立 OAuth 事务，产生多个 client、多个 state、多个授权 URL；session 启动预算 15 秒被错误实现为「授权事务只能活 15 秒」。
@@ -476,7 +476,7 @@ connecting record；失败时 failed record 替换 connecting record。禁止保
 
 ### 5.6 settings / session 双 lease 的 pending 投影
 
-settings adapter 与 session adapter 是独立 lease（`zcode-protocol-entrypoint.ts:115-133`），
+settings adapter 与 session adapter 是独立 lease（`codez-protocol-entrypoint.ts:115-133`），
 `connectionKey` 对非 workspace-isolated server 使用 `leaseId`（`pool.ts:317-328`）。因此 session 成为
 leader 时，settings follower 必须从共享 pending 键读取并把授权 URL 投影到自己的状态；现有状态更新只
 发生在当前 adapter 自己的 `onAuthorizationRequired` 回调里（`index.ts:770-785`），跨 lease 不可见。

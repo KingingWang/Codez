@@ -6,7 +6,7 @@ Status: ready-for-agent
 
 ## Problem Statement
 
-用户在本机配置了技能、MCP 服务器、插件、子智能体、命令和钩子。连接 SSH、WSL 或 Docker 远端设备后，远端 Agent 只读取远端自己的 `~/.zcode`，本机配置在远端不生效。现状有以下问题：
+用户在本机配置了技能、MCP 服务器、插件、子智能体、命令和钩子。连接 SSH、WSL 或 Docker 远端设备后，远端 Agent 只读取远端自己的 `~/.codez`，本机配置在远端不生效。现状有以下问题：
 
 - 只有技能、MCP、插件三类可以手动同步。入口分散在 6 处，对应 3 个不同的弹窗。
 - 现有同步只能新增。同名项一律跳过，用户无法更新远端已有的项，也看不出两端是否一致、哪一端较新。
@@ -95,7 +95,7 @@ Status: ready-for-agent
 
 ### 各分类
 
-39. 作为用户，我希望技能同步包含 `~/.zcode/skills` 和兼容目录 `~/.agents/skills` 下的用户技能，并统一写入远端 `~/.zcode/skills`，以便两种来源都能同步。
+39. 作为用户，我希望技能同步包含 `~/.codez/skills` 和兼容目录 `~/.agents/skills` 下的用户技能，并统一写入远端 `~/.codez/skills`，以便两种来源都能同步。
 40. 作为用户，我希望从技能商店安装的技能显示真实版本变化，以便判断是否需要更新。
 41. 作为用户，我希望 MCP 服务器同步时自动把本机 home 路径改写成远端 home 路径，以便 filesystem 类 MCP 在远端可用。
 42. 作为用户，我希望 MCP 配置里的环境变量和请求头按原样同步，以便远端 MCP 直接可用；我理解它们会写入远端配置文件。
@@ -106,7 +106,7 @@ Status: ready-for-agent
 47. 作为用户，我希望 Orphaned Installed Plugin（来源已删除）显示为不可同步并说明原因，以便理解为什么不能推送。
 48. 作为用户，我希望子智能体按名称对齐、按原文件推送，以便模型、工具、技能等所有字段原样保留。
 49. 作为用户，我希望子智能体引用的 MCP 或技能在远端不存在时，行内提示缺失项，以便我决定是否一并推送依赖。
-50. 作为用户，我希望命令同步包含 `~/.zcode/commands` 和兼容目录 `~/.agents/commands` 下的命令，并统一写入远端 `~/.zcode/commands`，以便两种来源都能同步。
+50. 作为用户，我希望命令同步包含 `~/.codez/commands` 和兼容目录 `~/.agents/commands` 下的命令，并统一写入远端 `~/.codez/commands`，以便两种来源都能同步。
 51. 作为用户，我希望命令按相对路径（例如 `/git/commit`）对齐并按原文件推送，以便子目录结构保持不变。
 52. 作为用户，我希望每条钩子定义作为一项单独同步，行内显示事件、matcher 和完整命令，以便清楚知道将在远端执行什么。
 53. 作为用户，我希望推送钩子时只合并选中的定义，远端已有的其他钩子和其他配置保持不变，以便不破坏远端配置。
@@ -126,7 +126,7 @@ Status: ready-for-agent
 61. 作为用户，我希望设置页的 Scope 菜单按设备分组：「本机」下列出用户和本机项目，每台在线远端设备下列出用户和该设备的项目，以便明确知道自己在改哪台设备。项目放在各设备的「项目」子菜单里，以便项目很多时也能直接切换设备。
 62. 作为用户，我希望 Scope 触发器显示「设备 · 用户」或「设备 · 项目」（本机也带设备名，例如「本机 · 用户」），以便关闭菜单后仍能看到当前目标。
 63. 作为用户，我希望打开设置时默认选中当前 workspace 所在设备的「用户」，以便直接修改正在使用的那台设备。
-64. 作为用户，我希望不打开远程项目也能编辑远端设备的用户级配置，以便直接维护远端 `~/.zcode`。
+64. 作为用户，我希望不打开远程项目也能编辑远端设备的用户级配置，以便直接维护远端 `~/.codez`。
 65. 作为用户，我希望离线设备不出现在 Scope 菜单中，以便不选中一个无法读写的目标。
 66. 作为用户，我希望所有使用 Scope 菜单的配置设置页（插件、MCP、技能、子智能体、命令、钩子）遵循同一规则，以便不再出现各页归属不一致的情况。
 
@@ -148,7 +148,7 @@ Status: ready-for-agent
 
 ### 范围
 
-- 只同步 User 级配置：本机 `~/.zcode` 推送到远端 `~/.zcode`。项目级配置已经在远端项目目录里，不参与同步。
+- 只同步 User 级配置：本机 `~/.codez` 推送到远端 `~/.codez`。项目级配置已经在远端项目目录里，不参与同步。
 - 只做推送（本机 → 远端）。拉取方向本期不做，但所有接口和弹窗状态都保留 `direction` 概念，两端服务保持对称，以后补拉取时不需要改服务形状。设计稿的「推送到远端 / 拉取到本机」分段控件本期隐藏。
 - 会话和记忆分类本期隐藏，概览也不显示这两行。
 - 设备范围：本机已知的 Source Server，传输方式为 SSH、WSL、Docker。设备的 `installState` 必须为已安装，且至少有一条未退役（`lifecycleState` 不是 `retired`）的 Connection Profile。dev-only 的 Server 直连不在列表中。
@@ -231,7 +231,7 @@ DataSyncDialog（Renderer）
 - 技能、MCP、插件沿用现有三个服务通道，扩展为上述形状。原有的「列出远端状态」类方法被目标端 `list` 取代，旧弹窗删除后一并删除。
 - `list` 结果可以带分类级的 `importBlockedReason`：该端作为目标时整类不能导入，比较时所有行都标为不能同步，两端都不计算哈希（MCP 远端使用 `~/.agents` 兼容配置时）。
 - 方法名统一为 `listSyncItems`、`getSyncContentHashes`、`checkSyncWriteAccess`、`exportSyncItems`、`importSyncItems`，接口 `IDataSyncCategoryService<TPayload>`（`packages/services/src/data-sync/contract.ts`）。共享类型在 `packages/shared/src/remote-sync.ts`。
-- 写权限预检的 15 秒超时在 Renderer 实现；技能分类同时预检 `~/.zcode/skills` 与 `~/.zcode/cli`（新建禁用项要写 `config.json`）。
+- 写权限预检的 15 秒超时在 Renderer 实现；技能分类同时预检 `~/.codez/skills` 与 `~/.codez/cli`（新建禁用项要写 `config.json`）。
 - 子智能体、命令、钩子新增一个服务通道，按 category 区分，在两端注册。新通道加入远程 workspace RPC 合同、source-settings 服务集合和远端 bundle 部署检查标记。R3 兼容门要求两端同版本，所以不需要做能力协商。
   - 通道 `user-config-sync`，接口 `IUserConfigSyncService`（accessor `userConfigSyncService`）。方法与 `IDataSyncCategoryService` 相同，每个方法多一个 `category` 参数（`UserConfigSyncCategory`），未知 category 直接报错。Renderer 适配层按 category 把它绑定成单个分类服务。
 - marketplace 插件依赖 Agent 的 add / install / update RPC，不放进文件型服务，保留独立的编排逻辑；编排逻辑同样以 source / target 为参数，不写死方向。
@@ -247,14 +247,14 @@ DataSyncDialog（Renderer）
 - 以下目标不覆盖，标为不能同步：
   - 目标是软链；
   - 目标位于 `~/.agents` 兼容目录；
-  - inline 插件的目标目录不在远端 `~/.zcode/plugins` 下。
+  - inline 插件的目标目录不在远端 `~/.codez/plugins` 下。
 - 目录类条目（技能、inline 插件）的目标目录之内还有目标端的其他条目时也不覆盖，例如嵌套技能 `parent/child`，或登记在另一个 inline 插件目录之内的插件。整目录替换会删除这些独立条目，或用来源版本改写它们。列表阶段不预先标出；导入时先做这项检查，再做内容哈希检查，该项失败，原因写明被包含的条目路径。
 
 ### 各分类规则
 
 **技能**
 
-- 来源：`~/.zcode/skills` 与 `~/.agents/skills`，按现有规则去重，结果统一写入远端 `~/.zcode/skills`。
+- 来源：`~/.codez/skills` 与 `~/.agents/skills`，按现有规则去重，结果统一写入远端 `~/.codez/skills`。
 - 对齐 key：归一化的 skill name（去空白、转小写）。目录名只表示位置；同名不同目录时以目标端实际路径为准。
 - SKILL.md 没有 frontmatter name 时，name 取技能目录的最后一段（例如 `group/plain` 取 `plain`）。两端扫描和目标端导入用同一规则；导入时校验 name 与 key 一致，不一致该项失败。
 - 技能目录内部含软链时不能同步（现有限制）。
@@ -269,24 +269,24 @@ DataSyncDialog（Renderer）
 
 **MCP 服务器**
 
-- 来源：本机「有效用户 MCP」（`~/.zcode/cli/config.json` 的 `mcp.servers`；为空时回退 `~/.agents/mcp.json`）。
+- 来源：本机「有效用户 MCP」（`~/.codez/cli/config.json` 的 `mcp.servers`；为空时回退 `~/.agents/mcp.json`）。
 - 对齐 key：server name，比较时转小写，写入时保留原大小写：新建按来源名称写入；覆盖沿用目标端已有的名称，只替换该 server 的配置。
 - 比较前先把来源配置改写成目标端路径，再比较排除启用状态后的规范化 JSON（key 排序，排除 `enabled` 和历史遗留的 `enable`）。MCP 条目没有签名，不进弹窗内哈希缓存，每次加载都重新计算。
 - 路径改写：不论从哪个入口打开，都做 home 改写。home 改写的范围保持现状：只改写 filesystem 类 stdio MCP 的 `args`，不改写其他 MCP 的 args、env、cwd。从带 workspace 上下文的入口（连接向导、Header、侧栏项目菜单）打开时，再做 workspace 改写。从设置页打开时只做 home 改写，MCP 设置页入口也不做 workspace 改写。
 - env、headers 原样写入远端配置文件，文件权限 0600。MCP OAuth token 不同步，远端需要重新授权。
-- 如果远端的有效 MCP 来自 `~/.agents/mcp.json`（即远端 `.zcode` 中没有任何 server），本分类整体不能推送，原因写「远端使用 ~/.agents 兼容配置，推送会使其失效」。
+- 如果远端的有效 MCP 来自 `~/.agents/mcp.json`（即远端 `.codez` 中没有任何 server），本分类整体不能推送，原因写「远端使用 ~/.agents 兼容配置，推送会使其失效」。
 
 **插件**
 
 - 只处理 scope 为 user 的插件。Builtin Plugin 不列出。
 - inline 插件：
-  - 来源为 `~/.zcode/cli/config.json` 中 `plugins.dirs` 登记的目录（服务 `pluginSyncService`，方法见「统一的同步服务形状」）。
+  - 来源为 `~/.codez/cli/config.json` 中 `plugins.dirs` 登记的目录（服务 `pluginSyncService`，方法见「统一的同步服务形状」）。
   - 对齐 key 为 `name@inline`（转小写，name 取 Plugin Manifest）；目录名只表示位置。比较 Plugin Manifest 版本与目录内容哈希。同 id 重复登记时取第一项，与 CLI 运行时一致。
-  - 导出时排除插件目录顶层的 `data/`，签名和哈希也不计入；覆盖时保留目标端的 `data/`、启用状态和 options。CLI 运行数据目录 `~/.zcode/cli/plugins/data/<id>` 不在插件目录中，同步不触碰。
-  - 单项上限 50MB，按目录原始字节（不含 `data/`）计算；每批导出、导入不超过 50MB。写权限预检 `~/.zcode/plugins` 与 `~/.zcode/cli`。
-  - 新建：写入远端 `~/.zcode/plugins/<来源目录名>`，目录名被占用时加短哈希后缀；再一次写入 `config.json` 的 `plugins.dirs`、启用状态（`plugins.enabledPlugins`）和 options（`plugins.options`）。写 `config.json` 失败时删除本次写入的目录，该项失败。
+  - 导出时排除插件目录顶层的 `data/`，签名和哈希也不计入；覆盖时保留目标端的 `data/`、启用状态和 options。CLI 运行数据目录 `~/.codez/cli/plugins/data/<id>` 不在插件目录中，同步不触碰。
+  - 单项上限 50MB，按目录原始字节（不含 `data/`）计算；每批导出、导入不超过 50MB。写权限预检 `~/.codez/plugins` 与 `~/.codez/cli`。
+  - 新建：写入远端 `~/.codez/plugins/<来源目录名>`，目录名被占用时加短哈希后缀；再一次写入 `config.json` 的 `plugins.dirs`、启用状态（`plugins.enabledPlugins`）和 options（`plugins.options`）。写 `config.json` 失败时删除本次写入的目录，该项失败。
   - 更新：原目录改名为同盘备份，备份中的 `data/` 移入新目录后换上；失败时还原。`config.json` 不改。
-  - 远端 `plugins.dirs` 中的同名插件不在远端 `~/.zcode/plugins` 下（例如开发中的 checkout）时不能更新，原因写「远端同名插件位于 ~/.zcode/plugins 以外的目录（例如开发中的 checkout），不能更新」。
+  - 远端 `plugins.dirs` 中的同名插件不在远端 `~/.codez/plugins` 下（例如开发中的 checkout）时不能更新，原因写「远端同名插件位于 ~/.codez/plugins 以外的目录（例如开发中的 checkout），不能更新」。
   - 新建时只同步安全子集的 options：已配置、非敏感、非路径类（`file` / `directory`）、类型与远端 schema 匹配的值。来源端导出前按本机 manifest 的 `userConfig` 筛一次（敏感值不离开本机），目标端写入前按刚写入的 manifest 再筛一次，与远端已有的同 id options 合并。
   - 推送后对该设备上已打开的项目复用插件刷新链：技能、slash commands、MCP，再发插件管理通知。
 - marketplace 插件：
@@ -299,7 +299,7 @@ DataSyncDialog（Renderer）
   - Orphaned Installed Plugin（本机来源已删除，overview 中没有该 marketplace）不能同步，原因写「来源已删除」。
   - 本地目录类来源镜像不支持跨 marketplace 的依赖：列表时由来源端 `pluginSyncService.inspectMarketplaceSourceMirror` 检查依赖闭包，有跨 marketplace 依赖的插件不能同步并写明原因。其他来源类型（如 npm）不能同步，原因写「来源类型不支持同步」。
   - 远端 add / install 期间，该行显示「停止」，复用 `cancelPluginOperation`。停止只作用于该行：该项立即结束并记为失败（显示「已停止」），其余项继续；远端已经开始的操作可能仍会完成。
-  - 写权限预检与 inline 插件相同（`~/.zcode/plugins` 与 `~/.zcode/cli`）；每项单独成功或失败。
+  - 写权限预检与 inline 插件相同（`~/.codez/plugins` 与 `~/.codez/cli`）；每项单独成功或失败。
 - 插件埋点：每个插件（inline 与 marketplace）在目标端导入结束后上报一条 `plugin_lifecycle`（action 与 trigger 均为 `sync`），结果按目标端导入结果映射为 success / failure / cancelled（「已停止」）/ noop，带耗时；inline 插件按批导入，耗时为该批的耗时。合同见 [插件生命周期业务埋点](../monitoring/plugin-lifecycle-telemetry.md)。
 
 **子智能体**
@@ -320,18 +320,18 @@ DataSyncDialog（Renderer）
 
 **命令**
 
-- 来源：`~/.zcode/commands` 与 `~/.agents/commands` 合并，递归扫描。合并规则与 CLI 运行时一致：两个目录有同名命令时，`.zcode` 优先。
-- 目标：结果统一写入远端 `~/.zcode/commands`。目标端的列表也按同一规则合并两个目录。
+- 来源：`~/.codez/commands` 与 `~/.agents/commands` 合并，递归扫描。合并规则与 CLI 运行时一致：两个目录有同名命令时，`.codez` 优先。
+- 目标：结果统一写入远端 `~/.codez/commands`。目标端的列表也按同一规则合并两个目录。
 - 对齐 key：去掉 `.md` 的相对路径，例如 `/git/commit`。key 转小写（CLI 运行时按小写命令名去重），显示名保留大小写。按原文件字节同步。
 - 扫描跳过 `.` 开头的条目，不进入软链目录；单个文件的哈希很便宜，`list` 直接返回 `contentHash`。
-- 新建时按来源相对路径写入目标 `~/.zcode/commands`，子目录结构保持不变；该路径已被占用时该项失败。更新时同目录临时文件 + rename，替换目标端该 key 对应的实际文件，保留其文件名和权限位。
+- 新建时按来源相对路径写入目标 `~/.codez/commands`，子目录结构保持不变；该路径已被占用时该项失败。更新时同目录临时文件 + rename，替换目标端该 key 对应的实际文件，保留其文件名和权限位。
 - 远端同名命令位于 `~/.agents/commands` 时，按覆盖的通用规则标为不能同步（`compat-directory`）；远端同名命令是软链时同样不能同步（`target-symlink`）。只影响该项，本分类不整体禁用。
 - 启用覆盖的键是绝对文件路径（`config.json` 的 `command`），新建时换算成目标端路径并带上来源状态；写入失败（例如 `config.json` 损坏）时删除本次新建的文件并标为失败。更新时保留目标端状态。
 - 推送后对该设备上已打开的项目刷新 slash commands（沿用插件同步后的命令刷新）。
 
 **钩子**
 
-- 只同步 `~/.zcode/cli/config.json` 中的 `hooks`。`~/.agents/settings.json`、`~/.claude/settings.json` 中的只读来源不列出。
+- 只同步 `~/.codez/cli/config.json` 中的 `hooks`。`~/.agents/settings.json`、`~/.claude/settings.json` 中的只读来源不列出。
 - 每条钩子定义算一项。对齐 key 是「事件 + matcher + 类型 + 命令」，process 类型再加 args，command 类型再加 shell。改了命令就算新的一项。
 - 其余字段（超时、async、状态文案、透传字段）参与内容哈希，不同就显示「差异 · 内容不同」。
 - 每条定义的 `enabled` 按启用状态通用规则处理：不参与内容哈希，只差 `enabled` 的两条定义显示「已同步」；新建时带上来源的 `enabled`，覆盖时其余字段替换为来源，保留目标端的 `enabled`。
@@ -389,7 +389,7 @@ DataSyncDialog（Renderer）
   - 「连接」按 `getRemoteDevicePresentationInput` 选出的 Profile 以设备管理模式打开向导（`completion: "device-management"`、`preferredProfileId`）。成功后 Root 回到发起时的设置 tab，不跳「远程设备」页；返回目标只在数据同步页仍挂载时有效，页面卸载后迟到或取消的结果被丢弃，不改变页面。
 - 设备行的连接状态只取自管理快照。页面不另存连接状态。
 - 设备同步状态：本机 Host 新增一个很小的状态文件，按 sourceServerId 记录 `lastSyncAt` 和 `lastResult`（`success` / `partial` / `failed`）。每次推送（单个分类或推送全部）结束后写入，作为设备行状态的唯一数据源。不写入 `setting.json`，不修改 Source 设备记录的 schema，也不同步到远端。
-- 状态文件为 `<appConfigDir>/data-sync-state.json`（默认 `~/.zcode/v2/data-sync-state.json`），服务 `IDeviceSyncStateService`（通道 `device-sync-state`）只在桌面本机 Host 注册，不进入远程 workspace RPC 合同、source-settings 服务集合和手机白名单。
+- 状态文件为 `<appConfigDir>/data-sync-state.json`（默认 `~/.codez/v2/data-sync-state.json`），服务 `IDeviceSyncStateService`（通道 `device-sync-state`）只在桌面本机 Host 注册，不进入远程 workspace RPC 合同、source-settings 服务集合和手机白名单。
 - 推送全部结束后只写一次；结果按条目汇总：没有失败为 `success`，全部失败为 `failed`，其余为 `partial`。推送中设备断开按失败写入。
 - 空状态的「连接远端设备」按钮打开已有的连接向导，以设备管理模式完成连接，`returnTarget` 同样为 `data-sync`。
 
@@ -457,7 +457,7 @@ DataSyncDialog（Renderer）
 
 ### 写入安全加固
 
-- 写 `~/.zcode/cli/config.json` 的写入方统一复用 `updateJsonObjectFile`：文件损坏时报错，不写入；写前重新读取，只改自己的字段，原子替换。原因：读失败当作空对象再写回，会冲掉整个文件。
+- 写 `~/.codez/cli/config.json` 的写入方统一复用 `updateJsonObjectFile`：文件损坏时报错，不写入；写前重新读取，只改自己的字段，原子替换。原因：读失败当作空对象再写回，会冲掉整个文件。
 - 写入方包括：
   - 命令、钩子、技能的设置服务；
   - 迁移导入（`packages/services/src/settings-sync/settingsSyncService.ts`，写入 MCP 和 `plugins.dirs`）。
@@ -465,7 +465,7 @@ DataSyncDialog（Renderer）
   - 主进程 MCP 设置页（`packages/desktop/src/main/mcpUserDirectory/index.ts`：新增 / 修改 / 删除、启用开关、历史覆盖清理、历史 `enable` 迁移）。文件损坏或根节点不是对象时拒绝写入，字节不变；写入权限 0600。启用开关和历史覆盖清理在没有对应 server 或覆盖项时不写文件。
   - MCP 数据同步导入（`packages/services/src/data-sync/mcpDataSync.ts`）。文件损坏时本批所有项标为失败。
 - 不新增跨进程锁。`config.json` 的多个写入方各自做到「写前重读 + 只改自己的字段 + 原子替换」。
-- 已知限制：这只能防止半截文件和「损坏当空对象」，不能防止并发写入互相覆盖。读取与替换之间没有锁，两个写入方同时执行时，后替换的一方会覆盖前一方刚写入的字段（例如技能开关或 MCP 配置丢失）。同一进程内的并发调用同样如此。写入方分布在桌面主进程（MCP 设置页）、Host（命令、钩子、技能、迁移导入、数据同步导入）和 CLI 自身（`apps/zcode-cli/packages/adapters/src/config/file-config.adapter.ts`），所以只在 `updateJsonObjectFile` 内加锁也不能覆盖全部写入方。根治需要 App 与 CLI 共用一套 `config.json` 锁协议，另建 issue。每次写入的窗口只有毫秒级，需要两个写入方几乎同时执行才会触发。这个竞态在本功能之前就存在，本功能新增的数据同步导入写入方使触发机会略有增加。
+- 已知限制：这只能防止半截文件和「损坏当空对象」，不能防止并发写入互相覆盖。读取与替换之间没有锁，两个写入方同时执行时，后替换的一方会覆盖前一方刚写入的字段（例如技能开关或 MCP 配置丢失）。同一进程内的并发调用同样如此。写入方分布在桌面主进程（MCP 设置页）、Host（命令、钩子、技能、迁移导入、数据同步导入）和 CLI 自身（`apps/codez-cli/packages/adapters/src/config/file-config.adapter.ts`），所以只在 `updateJsonObjectFile` 内加锁也不能覆盖全部写入方。根治需要 App 与 CLI 共用一套 `config.json` 锁协议，另建 issue。每次写入的窗口只有毫秒级，需要两个写入方几乎同时执行才会触发。这个竞态在本功能之前就存在，本功能新增的数据同步导入写入方使触发机会略有增加。
 
 ### 手机与 Web 边界
 
@@ -504,7 +504,7 @@ DataSyncDialog（Renderer）
   - MCP home 改写只作用于 filesystem 类 stdio MCP 的 `args`；
   - 钩子按字段合并，根级 `enabled` 只开不关；
   - 命令和子智能体原样保留文件字节；
-  - 命令来源合并 `.zcode` 与 `.agents` 两个目录，同名时 `.zcode` 优先；远端同名项位于 `.agents` 时不能同步；
+  - 命令来源合并 `.codez` 与 `.agents` 两个目录，同名时 `.codez` 优先；远端同名项位于 `.agents` 时不能同步；
   - `config.json` 损坏时拒绝写入。
 - 先例：现有技能、MCP、插件同步服务的单测（临时目录 + 真实文件系统）。
 
@@ -535,22 +535,22 @@ DataSyncDialog（Renderer）
 
 - 目标：在开发者自己的机器上，用真实的 Linux 远端包和真实的 Linux 容器验证数据同步。不依赖专用 Linux 服务器、VPN 或真实账号；只有「远端会话能否使用推送内容」一组用例需要模型回放（见下文覆盖内容最后一项）。开发机可以是 macOS 或 Linux；当前主要开发机是 Apple Silicon Mac，Docker 容器为 linux/arm64。
 - 运行步骤：
-  1. **打 Linux 远端包**：`ZCODE_ENV=test pnpm prepare:remote-assets:linux`，只构建 `linux-x64` 和 `linux-arm64`，写入当前版本的 mock-cdn 发布目录。必须用 `test`，与 E2E 桌面端的 `ZCODE_ENV=test` 一致：`ZCODE_ENV` 在构建时编译进远端 server，两端不一致时会连不同的后端域，远端的 E2E 测试钩子也会被关闭。
+  1. **打 Linux 远端包**：`CODEZ_ENV=test pnpm prepare:remote-assets:linux`，只构建 `linux-x64` 和 `linux-arm64`，写入当前版本的 mock-cdn 发布目录。必须用 `test`，与 E2E 桌面端的 `CODEZ_ENV=test` 一致：`CODEZ_ENV` 在构建时编译进远端 server，两端不一致时会连不同的后端域，远端的 E2E 测试钩子也会被关闭。
   2. **新建 Linux 容器模拟远程机器**：复用现有远程 harness 的 SSH 目标镜像（sshd + `dev` 用户），端口只绑定 `127.0.0.1`，每次运行新建，并设置随机密码。
-  3. **E2E 在容器上做实际验证**：Electron 在开发机本地原生运行，通过 `ZCODE_E2E_SSH_*` 环境变量合同经 SSH 连接容器；首次连接时把对应架构的 Linux 包安装进容器，在真实的远端 zcode-server 上执行推送；远端断言用 docker exec 读取容器内的 `~/.zcode`。
+  3. **E2E 在容器上做实际验证**：Electron 在开发机本地原生运行，通过 `CODEZ_E2E_SSH_*` 环境变量合同经 SSH 连接容器；首次连接时把对应架构的 Linux 包安装进容器，在真实的远端 codez-server 上执行推送；远端断言用 docker exec 读取容器内的 `~/.codez`。
 - 本机 E2E 只需要 Linux 包，不触发全平台的远程资源构建，也不能误用开发时打的 production 包。
 
 ```text
 开发机（本机）
- ├─ ① ZCODE_ENV=test pnpm prepare:remote-assets:linux ──▶ mock-cdn/releases/<版本>/（linux-x64、linux-arm64）
+ ├─ ① CODEZ_ENV=test pnpm prepare:remote-assets:linux ──▶ mock-cdn/releases/<版本>/（linux-x64、linux-arm64）
  ├─ ② docker：新建 Linux 容器（sshd + dev 用户，127.0.0.1:<端口>）
- └─ ③ wdio + Electron（ZCODE_ENV=test）
-        ├─ SSH ──▶ 容器：安装 Linux 包 → 启动远端 zcode-server → 数据同步推送
-        └─ 断言 ── docker exec ──▶ 容器内 /home/dev/.zcode
+ └─ ③ wdio + Electron（CODEZ_ENV=test）
+        ├─ SSH ──▶ 容器：安装 Linux 包 → 启动远端 codez-server → 数据同步推送
+        └─ 断言 ── docker exec ──▶ 容器内 /home/dev/.codez
 ```
 
 - 覆盖内容：
-  - 设置 → 数据同步 → 设备 → 推送技能、MCP、插件、子智能体、命令、钩子，在容器内 `~/.zcode` 断言实际写入的内容；
+  - 设置 → 数据同步 → 设备 → 推送技能、MCP、插件、子智能体、命令、钩子，在容器内 `~/.codez` 断言实际写入的内容；
   - 远端已有的不同内容默认不被覆盖，手动勾选后才覆盖；
   - 父子技能同时推送到空远端，两个技能都写入；
   - 6 处旧入口打开的是新弹窗，并定位到正确的设备和分类；
@@ -560,7 +560,7 @@ DataSyncDialog（Renderer）
   - 远端「用户」的子智能体编辑表单打开时设备离线，再切到「本机 · 用户」：不显示旧表单，本机不写入；
   - 推送子智能体后，在已打开的远程项目输入 / 能看到新子智能体；
   - 「迁移数据」按钮直接进入向导第一步；
-  - 没有打开项目时从「迁移数据」导入用户级技能，完成页显示已导入，文件写入本机 `~/.zcode/skills`。
+  - 没有打开项目时从「迁移数据」导入用户级技能，完成页显示已导入，文件写入本机 `~/.codez/skills`。
   - 推送后远端会话能否真正使用推送内容（DSYNC-17）：模型请求经 SSH 反向隧道回到本机回放（与 WPL-011 相同），用模型请求判断远端 Agent 看到了什么，再实际调用 MCP 工具、`Skill`、`Agent`，检查工具结果；钩子在远端写标记文件。分三个时机记录：推送前已有的 task、推送前打开的新建任务页、推送后新建的 task。子智能体在三个时机都断言可用，并在已有 task 中实际调用 `Agent`；钩子单独在另一个推送前打开的新建任务页推送，断言该页第一条消息执行了钩子。
 - 按 E2E 工作流 skill 登记 case ID，同步更新 case 目录与覆盖矩阵。先以 pending 形式提交，按流程转正。
 - 先例：插件远端显式同步用例 WPL-011、SSH P0 用例，以及远程 harness 的目标镜像与环境变量注入。
@@ -581,7 +581,7 @@ DataSyncDialog（Renderer）
 - 项目级配置同步。
 - Builtin Plugin、marketplace 缓存、插件 `data/`、敏感或路径类插件 options、MCP OAuth token、Bot 凭据的同步。
 - 模型提供商的手动逐项同步与远端编辑（保持路线 A）。
-- 设计稿以外的 Agent 运行开关（`memoryEnabled`、`toolSearchMode` 等）和 `~/.zcode/AGENTS.md`，另建 issue。
+- 设计稿以外的 Agent 运行开关（`memoryEnabled`、`toolSearchMode` 等）和 `~/.codez/AGENTS.md`，另建 issue。
 - 定时任务、闲时任务、highspeed 在远程场景下的问题，另建 issue。
 - 同步基线、基于 mtime 的新旧判断、自动 / 定时同步。
 - 设备上没有已打开项目时的模型配置下发。
@@ -601,10 +601,10 @@ DataSyncDialog（Renderer）
   - 远端同名命令位于 `~/.agents/commands` 时，该命令不能推送。
   - 钩子根级 `enabled` 只在本次推送有写入项时才会打开远端总开关；所有钩子定义都一致时，弹窗无法打开远端总开关，需要在远端钩子设置页直接打开。
   - 设备上没有已打开的项目时，模型配置不下发，也不能重试。
-  - 设置服务的命令列表（`commandsService.list`）仍按回退规则读取：`~/.zcode/commands` 有命令时不再读 `~/.agents/commands`；CLI 运行时与本弹窗按合并规则读取。推送命令后，远端设置页的命令列表可能不再显示远端 `~/.agents/commands` 中的命令，运行时仍然可用。
+  - 设置服务的命令列表（`commandsService.list`）仍按回退规则读取：`~/.codez/commands` 有命令时不再读 `~/.agents/commands`；CLI 运行时与本弹窗按合并规则读取。推送命令后，远端设置页的命令列表可能不再显示远端 `~/.agents/commands` 中的命令，运行时仍然可用。
   - Scope 菜单选中远端设备「用户」时，子智能体表单的模型只能选「继承默认」：source-settings 服务集合不含 model-selection（R3 §8.2）。页面不读取模型目录，也不显示「模型列表加载失败」。已存显式模型的子智能体保留原 model / 推理档位，推理控件显示「推理档位暂不可用」，不显示加载中。
   - 没有版本号的条目无法判断哪一端较新，只能显示「内容不同」。
-  - `~/.zcode/cli/config.json` 的多个写入方之间没有锁，同时写入时可能互相覆盖字段，见「写入安全加固」。
+  - `~/.codez/cli/config.json` 的多个写入方之间没有锁，同时写入时可能互相覆盖字段，见「写入安全加固」。
   - 技能或 inline 插件的目标目录之内嵌套了目标端的其他条目时，列表仍显示可勾选，推送时该项失败。
   - 本机 Docker E2E 是同机模拟，不覆盖真实跨机网络；Windows 开发机不在本机 runner 的支持范围内。
   - 推送内容在远端会话中的生效时机（DSYNC-17 实测）。远端 Agent 每个项目一个进程，每个会话只在创建时读取一次技能、MCP、插件和钩子：

@@ -136,7 +136,7 @@ node_repl 宿主在 `tools/call` 内按 `session_id + turn_id` 维护一份计�
 MCP `2026-07-28` 的 `_meta` 是请求 envelope/context，不是独立授权凭证。内置链路按以下顺序校验：
 
 ```text
-tools/call _meta["com.zcode/request-context"]
+tools/call _meta["com.codez/request-context"]
   -> node_repl 只读取宿主命名空间，不读取模型参数里的 session 字段
   -> child 使用进程私有 broker socket + 256-bit token
   -> broker 校验 token（不再按 runtimeScope 拒绝 subagent）
@@ -193,7 +193,7 @@ BrowserControl/desktop guest manager: tab/page authority
   真实 tool result 中的动态 stable tab id 执行 `tabs.get`。每次工具终态先断言 completed 和结果 marker，
   V4 投影滞后时以模型收到的 `tool_result.is_error` 为准；`ReferenceError` 等失败必须在工具边界直接
   暴露，不能退化成后续 UI 或 provider matcher 超时。
-- 同 workspace 两个 session 只保留一个稳定 `zcode-node-repl-mcp` frontend/PID；A/B 的 global、
+- 同 workspace 两个 session 只保留一个稳定 `codez-node-repl-mcp` frontend/PID；A/B 的 global、
   module dirs、tool result、权限和 tab 隔离。
 - `tools/list` 仍要求 title；直接 runtime call 接受 code-only。
 - `control-browser` 与 Browser API 文档保留升级前全部非状态 guidance；只替换 persistent/fresh、

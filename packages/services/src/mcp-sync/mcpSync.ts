@@ -3,13 +3,13 @@ import type {
   LoadCliMcpFromUserDirectoryResult,
   McpDataSyncPayload,
   SaveCliMcpToUserDirectoryRequest,
-  ZCodeAgentMcpServer,
-  ZCodeMcpListMode,
-  ZCodeMcpListResult,
+  CodezAgentMcpServer,
+  CodezMcpListMode,
+  CodezMcpListResult,
   WorkspaceMcpTrustDecision,
-  ZCodeWorkspaceMcpTrustResult,
-} from "@zcode/shared";
-import { ServiceChannels } from "@zcode/shared";
+  CodezWorkspaceMcpTrustResult,
+} from "@codez/shared";
+import { ServiceChannels } from "@codez/shared";
 import type { IDataSyncCategoryService } from "../data-sync/contract.js";
 import { createServiceDescriptor } from "../descriptors.js";
 
@@ -21,17 +21,17 @@ export interface IMcpSyncService extends IDataSyncCategoryService<McpDataSyncPay
     request?: LoadCliMcpFromUserDirectoryRequest,
   ): Promise<LoadCliMcpFromUserDirectoryResult>;
   /**
-   * workspace MCP server 运行态状态列表（原 UI 直调 zcodeAgentService 的
+   * workspace MCP server 运行态状态列表（原 UI 直调 codezAgentService 的
    * mcp/list）。真实 connect/listTools 检查必须发生在 agent 进程（PATH/cwd 是
    * workspace 环境），本服务只是 UI 的注入面——mcp/list 词的 host 消费收拢到实现一处。
    */
   listWorkspaceMcpServerStatuses(params: {
     workspacePath: string;
     workspaceIdentity?: string;
-    mcpServers?: ZCodeAgentMcpServer[];
-    mode?: ZCodeMcpListMode;
-  }): Promise<ZCodeMcpListResult>;
-  setWorkspaceMcpTrust?(params: WorkspaceMcpTrustDecision): Promise<ZCodeWorkspaceMcpTrustResult>;
+    mcpServers?: CodezAgentMcpServer[];
+    mode?: CodezMcpListMode;
+  }): Promise<CodezMcpListResult>;
+  setWorkspaceMcpTrust?(params: WorkspaceMcpTrustDecision): Promise<CodezWorkspaceMcpTrustResult>;
   saveMcpToUserDirectory(payload: SaveCliMcpToUserDirectoryRequest): Promise<void>;
 }
 

@@ -54,7 +54,7 @@ setResolution(resolution);
 新增和编辑模型都遵守同一条 Overlay 展示链：
 
 ```text
-ZCode Built-in + Personal Match Rules
+Codez Built-in + Personal Match Rules
                  |
                  v
         inheritedConfig

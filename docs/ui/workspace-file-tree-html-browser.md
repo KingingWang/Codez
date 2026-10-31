@@ -14,4 +14,4 @@
 ## 验证
 
 - `packages/ui/test/workspaceFileTree.test.ts` 覆盖 HTML 扩展名识别和 `file://` URL 生成。
-- 该变更不修改 ZCode session/task realtime、snapshot、queue、replayable/continuous 语义。
+- 该变更不修改 Codez session/task realtime、snapshot、queue、replayable/continuous 语义。

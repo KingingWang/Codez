@@ -24,6 +24,6 @@
 
 - 生产仅修改 UI 共用纯函数：增加 `start-plan`，变量改名避免把体验套餐称为 Coding Plan；设置行和模型菜单现有调用链不变。
 - 先红：两个单测文件共3项失败（两家 Start 菜单、设置行），两项浏览器用例均因 Start 的 GLM-5.3 仍有视觉标失败。修复后77项单测、2项浏览器用例通过；每项浏览器用例遍历两家 Start、个人、团队与手动套餐 Key。
-- 浏览器覆盖390中文浅色与1200英文深色，实际打开模型菜单并检查设置行；GLM-5.3 隐藏、Flash 保留，截图在 `/tmp/zcode-provider-settings-batch/vision-start-*.png`。使用已有隔离 Chromium 运行库解决本机 libatk 缺失，没有修改系统或产品依赖。此为共享组件浏览器验收，不代替 Windows/macOS 原生包或真实手机远控。
-- 根 `pnpm typecheck` 通过；`pnpm lint` 为0错误、42条未修改文件警告；架构检查0违规。首次单独 E2E 类型检查遇到旧依赖声明，根类型构建完成后重跑 `pnpm --filter @zcode/desktop typecheck:e2e` 通过。
+- 浏览器覆盖390中文浅色与1200英文深色，实际打开模型菜单并检查设置行；GLM-5.3 隐藏、Flash 保留，截图在 `/tmp/codez-provider-settings-batch/vision-start-*.png`。使用已有隔离 Chromium 运行库解决本机 libatk 缺失，没有修改系统或产品依赖。此为共享组件浏览器验收，不代替 Windows/macOS 原生包或真实手机远控。
+- 根 `pnpm typecheck` 通过；`pnpm lint` 为0错误、42条未修改文件警告；架构检查0违规。首次单独 E2E 类型检查遇到旧依赖声明，根类型构建完成后重跑 `pnpm --filter @codez/desktop typecheck:e2e` 通过。
 - 没有修改 Provider/Model 配置、Schema、网络、图片能力或上传链路，没有 builtin revision 变动。

@@ -1,4 +1,4 @@
-import { ProxyChannel, type IDisposable, type IChannelServer } from "@zcode/rpc";
+import { ProxyChannel, type IDisposable, type IChannelServer } from "@codez/rpc";
 import {
   ServiceCollection,
   type ITerminalService,
@@ -13,9 +13,9 @@ import {
   IGenUiService,
   createWindowProjectChangesService,
   type ServiceExposurePolicy,
-  type ZCodeAgentV4ClientMode,
-} from "@zcode/services";
-import { ServiceChannels } from "@zcode/shared";
+  type CodezAgentV4ClientMode,
+} from "@codez/services";
+import { ServiceChannels } from "@codez/shared";
 
 const WEB_REMOTE_REPLAYABLE_ALLOWED_CHANNELS = new Set<string>([
   ServiceChannels.File,
@@ -32,10 +32,10 @@ const WEB_REMOTE_REPLAYABLE_ALLOWED_CHANNELS = new Set<string>([
   ServiceChannels.CuaPermission,
   ServiceChannels.CuaPipSession,
   ServiceChannels.Broadcast,
-  ServiceChannels.ZCodeTask,
+  ServiceChannels.CodezTask,
   ServiceChannels.WindowController,
-  ServiceChannels.ZCodeAgent,
-  ServiceChannels.ZCodeSession,
+  ServiceChannels.CodezAgent,
+  ServiceChannels.CodezSession,
   ServiceChannels.Project,
   ServiceChannels.TaskGroups,
   ServiceChannels.RemoteProjects,
@@ -78,7 +78,7 @@ const WEB_REMOTE_REPLAYABLE_EXPOSURE_POLICY: ServiceExposurePolicy = {
 };
 
 export function resolveWindowHostServiceExposurePolicy(
-  clientMode: ZCodeAgentV4ClientMode,
+  clientMode: CodezAgentV4ClientMode,
 ): ServiceExposurePolicy | undefined {
   // Host 只向手机暴露明确允许的频道，避免新注册的高权限服务自动开放。
   // mobile 必须使用显式 allowlist，让未审阅 channel 默认 fail-closed；桌面继续保持完整服务面。
@@ -114,7 +114,7 @@ function scopeMcpSyncServiceForMobile(service: IMcpSyncService): IMcpSyncService
 
 function resolveAttachmentOverrides(
   services: ServiceCollection,
-  clientMode: ZCodeAgentV4ClientMode,
+  clientMode: CodezAgentV4ClientMode,
   overrides: ReadonlyMap<string, unknown> | undefined,
 ): ReadonlyMap<string, unknown> | undefined {
   if (clientMode !== "web-remote-replayable") return overrides;
@@ -128,7 +128,7 @@ function resolveAttachmentOverrides(
 export function exposeWindowHostAttachmentServices(params: {
   server: IChannelServer;
   services: ServiceCollection;
-  clientMode: ZCodeAgentV4ClientMode;
+  clientMode: CodezAgentV4ClientMode;
   overrides?: ReadonlyMap<string, unknown>;
   attachmentScope?: { kind: "local" | "remote" | "source-settings" };
   windowServices?: ServiceCollection;

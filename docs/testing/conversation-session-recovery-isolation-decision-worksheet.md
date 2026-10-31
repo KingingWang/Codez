@@ -14,7 +14,7 @@
 
 | 能力 | 可覆盖的 case |
 | --- | --- |
-| `ZCODE_E2E_FS_FAULTS` | session DB 写入、workspace 父目录创建 / 非原子写入 / 删除、settings/provider 保存、日志/artifact 写入 |
+| `CODEZ_E2E_FS_FAULTS` | session DB 写入、workspace 父目录创建 / 非原子写入 / 删除、settings/provider 保存、日志/artifact 写入 |
 | SQLite fault injection | DB open、migration、history write 的 `ENOSPC/EACCES/open_failed` |
 | replay/capture network artifact | 生命周期或断连前后的模型请求、SSE 请求、compact 请求是否继续 |
 | renderer store helpers | task runtime、queue、permission request、workspace init state、activeInputId |

@@ -22,7 +22,7 @@ async function inspect(root) {
 }
 
 async function makeRoot() {
-  const root = await mkdtemp(join(tmpdir(), "zcode-formal-admission-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-formal-admission-"));
   temporaryRoots.push(root);
   return root;
 }

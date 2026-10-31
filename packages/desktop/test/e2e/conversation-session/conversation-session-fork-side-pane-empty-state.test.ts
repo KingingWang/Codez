@@ -1,4 +1,4 @@
-import { TID_V4_COMPOSER_INPUT, TID_V4_SESSION_PANE } from "@zcode/shared/test-ids";
+import { TID_V4_COMPOSER_INPUT, TID_V4_SESSION_PANE } from "@codez/shared/test-ids";
 import { clearAppData } from "../helpers/desktop-app.js";
 import {
   clickFirstV4Fork,
@@ -188,13 +188,13 @@ async function setComposerText(paneTestId: string, text: string): Promise<void> 
           const bridge = (
             input as
               | (HTMLElement & {
-                  __zcodeLexicalInputE2E?: {
+                  __codezLexicalInputE2E?: {
                     getText: () => string;
                     setText: (value: string) => void;
                   };
                 })
               | undefined
-          )?.__zcodeLexicalInputE2E;
+          )?.__codezLexicalInputE2E;
           if (!bridge) return false;
           bridge.setText(nextText);
           return bridge.getText() === nextText;
@@ -216,10 +216,10 @@ async function readComposerText(paneTestId: string): Promise<string | null> {
         (
           input as
             | (HTMLElement & {
-                __zcodeLexicalInputE2E?: { getText: () => string };
+                __codezLexicalInputE2E?: { getText: () => string };
               })
             | undefined
-        )?.__zcodeLexicalInputE2E?.getText() ?? null
+        )?.__codezLexicalInputE2E?.getText() ?? null
       );
     },
     paneTestId,

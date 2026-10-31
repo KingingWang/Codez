@@ -324,7 +324,7 @@ GLM-5.3(团队套餐)
 | Session 桌面／手机提交入口 | 68 条通过，包含新增 6 组副屏确认／不了／关闭、父生效模型与草稿隔离断言；`/tmp/start156-session-mobile.log`                                                                                                                                                                                      |
 | 根代码检查                 | typecheck、lint、architecture:check --changed 通过；lint 54 个原有 warning，架构 0 violation。`/tmp/start156-{typecheck,lint,arch}-reviewed.log`                                                                                                                                                |
 | CLI 类型／受影响调用方     | 28 个 typecheck 任务通过；副屏 native 8 条通过；selection child、continuous/replayable、去重定向 3 文件 26 条通过（187 条筛选跳过），`/tmp/start156-cli-typecheck.log`、`/tmp/start156-side-cli-green.log`、`/tmp/start156-cli-integration.log`                                                 |
-| Pro 桌面 E2E               | `macbook-pro-admin`，隔离目录 `/Users/dev/zcode-start156-pro-e2e`；最终 run `desktop-e2e-20260917051754556-p53534-7ee59f80ae96b31e` 通过。覆盖团队下拉、Start 圆环／标签、Subagent／Automation 推荐、聊天关闭／不了／确认、副屏首条真实请求 Provider／思考、主草稿隔离，以及不再提示与重启保持 |
+| Pro 桌面 E2E               | `macbook-pro-admin`，隔离目录 `/Users/dev/codez-start156-pro-e2e`；最终 run `desktop-e2e-20260917051754556-p53534-7ee59f80ae96b31e` 通过。覆盖团队下拉、Start 圆环／标签、Subagent／Automation 推荐、聊天关闭／不了／确认、副屏首条真实请求 Provider／思考、主草稿隔离，以及不再提示与重启保持 |
 | Pro 浏览器页面状态         | 64 组：两品牌 × 8 状态 × 桌面／390px、中英文、深浅主题组合通过；修正 pending 夹具字段及空套餐泛用订购按钮后，16 组空套餐／待生效定向复测通过。`/tmp/start156-browser.log`、`/tmp/start156-browser-final2.log`（Pro）；截图已复制本地 `/tmp/start156-pro-evidence/browser/` 并目视核对           |
 
 补充 Pro 回归：`marketing-touch-entitlement.test.ts` 与 `repo-wiki-model-plan-selection.test.ts` 两例通过，run `desktop-e2e-20260917052049566-p56236-413567dc76597ef7`。断言领取后刷新不覆盖连接、旧 Start 选择保持、唯一付费候选可选，以及 Wiki 不了／确认切换后的持久化。两次最终 run 的 summary 已复制本地 `/tmp/start156-pro-evidence/{desktop,claim-wiki}/`。
@@ -343,7 +343,7 @@ SF-01～19 由组件／Hook／服务／CLI 与端上证据组合覆盖，不代�
 
 ### 14.4 未通过的基线门禁
 
-- `pnpm --dir apps/zcode-cli lint` 失败：telemetry／adapters／contracts／debug 等原文件超过现有 400 行限制，日志 `/tmp/start156-cli-lint.log`。例如 `telemetry/src/model-api-recorder.ts` 内容与 HEAD 完全一致。本轮根 lint 已通过，不把 CLI 全量失败归为本轮通过。
+- `pnpm --dir apps/codez-cli lint` 失败：telemetry／adapters／contracts／debug 等原文件超过现有 400 行限制，日志 `/tmp/start156-cli-lint.log`。例如 `telemetry/src/model-api-recorder.ts` 内容与 HEAD 完全一致。本轮根 lint 已通过，不把 CLI 全量失败归为本轮通过。
 - 扩展执行 `v4-native-boundary.test.ts` 发现 3 处原有 V4 → 旧协议 import：`commands/handlers/goal-compact.ts`、`commands/handlers/session-flow.ts`、`commands/prompt-turn.ts`；三文件逐字与 HEAD 相同。日志 `/tmp/start156-cli-tests.log`。本轮修改的副屏 handler 没有引入这类依赖。
 - Feature graph 可解析，但原图有 4 条悬空边，plan-entitlements 的旧 codeSeed 指向已不存在的 `modelProviderFamilyConnectionSelection.ts`；本轮只同步已确认的套餐不变量，未扩大图治理。Codegraph 服务当前不可调用，影响扫描使用实际引用及回归证据，不声称图索引验证通过。
 

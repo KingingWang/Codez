@@ -1,7 +1,7 @@
 /*
  * Derived from vercel/ai-elements (packages/elements/src/message.tsx).
  * Copyright 2023 Vercel, Inc. Licensed under Apache-2.0.
- * Modified by ZCode: local integration, formatting and adaptations.
+ * Modified by Codez: local integration, formatting and adaptations.
  * See THIRD-PARTY-NOTICES.md in the repository root for license and provenance.
  */
 "use client";
@@ -13,7 +13,7 @@ import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";
 import { createMathPlugin } from "@streamdown/math";
 import { mermaid } from "@streamdown/mermaid";
-import type { EditorInfo, FileStat, OpenInEditorOptions } from "@zcode/shared";
+import type { EditorInfo, FileStat, OpenInEditorOptions } from "@codez/shared";
 import type { UIMessage } from "ai";
 import {
   ChevronLeftIcon,
@@ -96,7 +96,7 @@ import { resolveWorkspaceEditorSelection } from "@/lib/workspaceEditorSelection.
 import { sortInstalledEditorsForFileTree } from "@/workspace-file-tree/helpers.js";
 import type { CodePreviewSettings } from "@/lib/codePreviewSettings.js";
 import { DEFAULT_CODE_PREVIEW_SETTINGS } from "@/lib/codePreviewSettings.js";
-import { useZCodeStore } from "@/store/StoreProvider.js";
+import { useCodezStore } from "@/store/StoreProvider.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { useOptionalPlatform, usePlatform } from "@/hooks/usePlatform.js";
 import { FileApplicationChoices, FileSaveAsMenuItem } from "@/file-menu/index.js";
@@ -105,13 +105,13 @@ import { useWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { useFileContextActions } from "@/hooks/useFileContextActions.js";
 import { useWorkspaceOpenInEditorTarget } from "@/hooks/useWorkspaceOpenInEditorTarget.js";
 import { useOptionalServices } from "@/hooks/useServices.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import type { Theme } from "@/useTheme.js";
-import { createZCodeFileCitationRemarkPlugin } from "@/lib/zcodeFileCitationRemarkPlugin.js";
+import { createCodezFileCitationRemarkPlugin } from "@/lib/codezFileCitationRemarkPlugin.js";
 import { windowsFileLinkEscapeRemarkPlugin } from "@/lib/windowsFileLinkEscapeRemarkPlugin.js";
-import { projectZCodeFileCitations } from "@/lib/zcodeFileCitation.js";
-import { rewriteMarkdownArtifactImageSources } from "@zcode/shared";
+import { projectCodezFileCitations } from "@/lib/codezFileCitation.js";
+import { rewriteMarkdownArtifactImageSources } from "@codez/shared";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
@@ -392,8 +392,8 @@ export type MessageResponseProps = {
   onOpenCodeViewer?: (source: CodeViewerSource) => void;
   onOpenFileLink?: (target: MessageFileLinkTarget) => void;
   onOpenExternalUrl?: (url: string) => void;
-  /** 仅 Assistant 正文开启：把完整 zcode-file-citation 投影为现有文件链接。 */
-  renderZCodeFileCitations?: boolean;
+  /** 仅 Assistant 正文开启：把完整 codez-file-citation 投影为现有文件链接。 */
+  renderCodezFileCitations?: boolean;
 };
 
 export interface MessageFileLinkTarget {
@@ -868,7 +868,7 @@ export function buildMessageStreamdownRenderKey(params: {
   attachmentReaderEpoch?: number;
   codeBlockTheme: BundledTheme;
   fontSizePx: number;
-  renderZCodeFileCitations?: boolean;
+  renderCodezFileCitations?: boolean;
   sessionId?: string;
   workspacePath?: string;
   workspaceHomePath?: string;
@@ -884,7 +884,7 @@ export function buildMessageStreamdownRenderKey(params: {
     params.codeBlockTheme,
     params.fontSizePx,
     params.wrapLongLines ? "wrap" : "scroll",
-    params.renderZCodeFileCitations ? "citations" : "plain",
+    params.renderCodezFileCitations ? "citations" : "plain",
     params.workspacePath ?? "",
     params.workspaceHomePath ?? "",
     params.workspaceIdentity ?? "",
@@ -1019,7 +1019,7 @@ function MessageExternalLink({
   onOpenExternalUrl,
   ...props
 }: MessageExternalLinkProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const platform = useOptionalPlatform();
   const handleOpen = useCallback(
     (options: { forceExternal?: boolean; forceInApp?: boolean } = {}) => {
@@ -1091,7 +1091,7 @@ function MessageExternalLink({
         {/* 通用“打开”无法说明目标；两个打开动作同组，用文案和图标区分内置与外部浏览器。 */}
         <ContextMenuItem onSelect={() => handleOpen({ forceInApp: true })}>
           <PanelRightIcon className="size-4" />
-          <span>{intl.formatMessage({ id: "chat.message.link.openInZCode" })}</span>
+          <span>{intl.formatMessage({ id: "chat.message.link.openInCodez" })}</span>
         </ContextMenuItem>
         <ContextMenuItem onSelect={() => handleOpen({ forceExternal: true })}>
           <ExternalLinkIcon className="size-4" />
@@ -1149,7 +1149,7 @@ function MessageFileLink(props: MessageFileLinkProps) {
 }
 
 function ScopedMessageFileLink({ className, fileIconSrc, fileLink, onOpen }: MessageFileLinkProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const platform = usePlatform();
   const services = useWorkspaceServices(
     fileLink.workspacePath,
@@ -1390,7 +1390,7 @@ export const messageResponsePropsAreEqual = (
   nextProps.workspaceRemoteSessionId === prevProps.workspaceRemoteSessionId &&
   nextProps.sessionId === prevProps.sessionId &&
   nextProps.readAttachment === prevProps.readAttachment &&
-  nextProps.renderZCodeFileCitations === prevProps.renderZCodeFileCitations &&
+  nextProps.renderCodezFileCitations === prevProps.renderCodezFileCitations &&
   nextProps.theme === prevProps.theme &&
   nextProps.codePreviewSettings === prevProps.codePreviewSettings &&
   nextProps.onOpenCodeViewer === prevProps.onOpenCodeViewer &&
@@ -1405,7 +1405,7 @@ export const MessageResponse = memo(
     onOpenCodeViewer,
     onOpenFileLink,
     onOpenExternalUrl,
-    renderZCodeFileCitations = false,
+    renderCodezFileCitations = false,
     workspacePath,
     workspaceHomePath,
     workspaceIdentity,
@@ -1421,10 +1421,10 @@ export const MessageResponse = memo(
     const renderStreaming = streaming;
     const projectedCitationMarkdown = useMemo(
       () =>
-        renderZCodeFileCitations
-          ? projectZCodeFileCitations(rawMarkdown, { streaming: renderStreaming }).visibleText
+        renderCodezFileCitations
+          ? projectCodezFileCitations(rawMarkdown, { streaming: renderStreaming }).visibleText
           : rawMarkdown,
-      [rawMarkdown, renderStreaming, renderZCodeFileCitations],
+      [rawMarkdown, renderStreaming, renderCodezFileCitations],
     );
     const targetMarkdown = useMemo(
       () =>
@@ -1444,11 +1444,11 @@ export const MessageResponse = memo(
         // Windows 绝对路径链接里的 `\.` 会在 remark 解析期被当成标点转义吃掉
         // rehype 阶段已经看不到原文。这条还原必须无条件生效，不能挂在 citation 开关下。
         windowsFileLinkEscapeRemarkPlugin,
-        ...(renderZCodeFileCitations && workspacePath
-          ? [createZCodeFileCitationRemarkPlugin(workspacePath, workspaceHomePath)]
+        ...(renderCodezFileCitations && workspacePath
+          ? [createCodezFileCitationRemarkPlugin(workspacePath, workspaceHomePath)]
           : []),
       ],
-      [renderZCodeFileCitations, workspaceHomePath, workspacePath],
+      [renderCodezFileCitations, workspaceHomePath, workspacePath],
     );
     const responseClassName = cn(
       "size-full text-ui-base leading-[1.75] tracking-wide [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
@@ -1459,8 +1459,8 @@ export const MessageResponse = memo(
       () =>
         renderStreaming
           ? `streaming:${streamdownMode}`
-          : `${streamdownMode}:${renderZCodeFileCitations ? "citations" : "plain"}:${hashMarkdownCacheKey(targetMarkdown)}`,
-      [renderStreaming, renderZCodeFileCitations, streamdownMode, targetMarkdown],
+          : `${streamdownMode}:${renderCodezFileCitations ? "citations" : "plain"}:${hashMarkdownCacheKey(targetMarkdown)}`,
+      [renderStreaming, renderCodezFileCitations, streamdownMode, targetMarkdown],
     );
     const boundaryScope = useMemo<MessageResponseBoundaryScope>(
       () => ({
@@ -1488,7 +1488,7 @@ export const MessageResponse = memo(
           attachmentReaderEpoch: getAttachmentReaderEpoch(readAttachment),
           codeBlockTheme,
           fontSizePx: codePreviewSettings.fontSizePx,
-          renderZCodeFileCitations,
+          renderCodezFileCitations,
           sessionId,
           workspacePath,
           workspaceHomePath,
@@ -1502,7 +1502,7 @@ export const MessageResponse = memo(
       codePreviewSettings.fontSizePx,
       wrapLongLines,
       forceCodeWrap,
-      renderZCodeFileCitations,
+      renderCodezFileCitations,
       readAttachment,
       sessionId,
       workspaceHomePath,

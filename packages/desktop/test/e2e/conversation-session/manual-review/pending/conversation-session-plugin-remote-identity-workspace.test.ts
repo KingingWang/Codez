@@ -23,7 +23,7 @@ const CASE_MARKER = "E2E_WPL_010_REMOTE_IDENTITY";
 const PLUGIN_NAME = "wpl-remote-identity";
 const PLUGIN_ID = `${PLUGIN_NAME}@inline`;
 // 服务器队列沿用 /workspace；本机非 root Docker 用户必须显式提供本轮专用目录。
-const ALLOWED_REMOTE_WORKSPACE = process.env.ZCODE_E2E_WPL010_WORKSPACE?.trim() || "/workspace";
+const ALLOWED_REMOTE_WORKSPACE = process.env.CODEZ_E2E_WPL010_WORKSPACE?.trim() || "/workspace";
 
 describe("WPL-010 remote Workspace Plugin identity/path authority E2E", () => {
   let providerA: SSHLifecycleProvider | null = null;
@@ -207,16 +207,16 @@ async function seedRemoteFixture(
   const command = [
     "set -eu",
     `rm -rf -- ${quoteShell(workspacePath)}`,
-    `mkdir -p -- ${quoteShell(posix.join(pluginRoot, ".zcode-plugin"))}`,
+    `mkdir -p -- ${quoteShell(posix.join(pluginRoot, ".codez-plugin"))}`,
     `mkdir -p -- ${quoteShell(posix.join(pluginRoot, "skills", "identity"))}`,
-    `mkdir -p -- ${quoteShell(posix.join(workspacePath, ".zcode"))}`,
+    `mkdir -p -- ${quoteShell(posix.join(workspacePath, ".codez"))}`,
     writeBase64Command(
-      posix.join(pluginRoot, ".zcode-plugin", "plugin.json"),
+      posix.join(pluginRoot, ".codez-plugin", "plugin.json"),
       `${JSON.stringify(manifest, null, 2)}\n`,
     ),
     writeBase64Command(posix.join(pluginRoot, "skills", "identity", "SKILL.md"), skill),
     writeBase64Command(
-      posix.join(workspacePath, ".zcode", "config.json"),
+      posix.join(workspacePath, ".codez", "config.json"),
       `${JSON.stringify(config, null, 2)}\n`,
     ),
   ].join(" && ");
@@ -231,7 +231,7 @@ async function readRemoteWorkspaceConfig(
 ): Promise<string> {
   const result = await runSSHCommand(
     target,
-    `cat -- ${quoteShell(posix.join(workspacePath, ".zcode", "config.json"))}`,
+    `cat -- ${quoteShell(posix.join(workspacePath, ".codez", "config.json"))}`,
   );
   expect(result.code).toBe(0);
   return result.stdout;

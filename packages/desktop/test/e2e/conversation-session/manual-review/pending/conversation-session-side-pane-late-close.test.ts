@@ -1,12 +1,12 @@
 import { join } from "node:path";
-import { PlatformChannels } from "@zcode/shared";
+import { PlatformChannels } from "@codez/shared";
 import {
   TID_LOGIN_TRIGGER,
   TID_LOGIN_MENU_ITEM,
   TID_LOGIN_USE_API_KEY_BUTTON,
   TID_LOGIN_API_KEY_SKIP_BUTTON,
   TID_SIDE_PANE_TOGGLE,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, DEFAULT_WORKSPACE, waitForWorkspaceApp } from "#e2e/helpers/desktop-app";
 import {
   prepareV4ConversationE2E,
@@ -148,9 +148,9 @@ describe("侧栏迟到关闭与 App 重挂", () => {
     );
     const after = await runTerminalProbe("LATE_CLOSE_AFTER");
     expect([...after.matchAll(/PTY_OWNER=(\d+)/gu)].at(-1)?.[1]).toBe(pid);
-    if (process.env.ZCODE_E2E_ARTIFACT_DIR) {
+    if (process.env.CODEZ_E2E_ARTIFACT_DIR) {
       await browser.saveScreenshot(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR, "side-pane-late-close.png"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR, "side-pane-late-close.png"),
       );
     }
   });

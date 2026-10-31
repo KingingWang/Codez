@@ -1,7 +1,7 @@
 import type { RemoteConnectionProgress } from "@/remote-connection-flow/contract.js";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { AlertTriangleIcon, LoaderIcon } from "lucide-react";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { resolveRemoteConnectionPhases } from "@/remote-connection/RemoteConnectionConnectingStep.js";
 import { formatRemoteLinkRailTarget } from "@/remote-connection/RemoteLinkRail.js";
 import { cn } from "@/components/lib/utils.js";
@@ -61,7 +61,7 @@ export function summarizeRemoteConnectionProgress(
 export function RemoteConnectionMinimizedProgress(props: RemoteConnectionProgress) {
   const { view, cancelled, target, name, error, reason, waiting, onResume, onCancel, ready } =
     props;
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const { active, percent, progressing } = summarizeRemoteConnectionProgress(props);
   const device = name ?? (target ? formatRemoteLinkRailTarget(target) : "");
   const title = intl.formatMessage(

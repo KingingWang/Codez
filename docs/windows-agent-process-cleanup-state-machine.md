@@ -10,9 +10,9 @@ Use Helper 凭据轮换以及 App 退出时，都必须回收 Agent 根进程与
 现有等待路径如下，禁止新增第二套等待语义：
 
 ```text
-ZCodeAgentProcessManager
-  -> ZCodeProtocolClient.disposeAndWait
-  -> ZCodeStdioTransport.disposeAndWait
+CodezAgentProcessManager
+  -> CodezProtocolClient.disposeAndWait
+  -> CodezStdioTransport.disposeAndWait
   -> terminateProcessTreeAndWait
   -> waitForProcessTreeTermination
 ```
@@ -30,7 +30,7 @@ ZCodeAgentProcessManager
 3. 多 workspace 共用的进程表查询可能早于新 Agent spawn 启动。新 root 的 cleanup 若复用
    这张旧表会查不到自身，随后正确地 fail-closed，却也因此无法发送 taskkill。
 
-这三项均属于清理状态机实现错误，不是 app 自动更新逻辑，也不是用户仍在运行 ZCode。
+这三项均属于清理状态机实现错误，不是 app 自动更新逻辑，也不是用户仍在运行 Codez。
 
 ## 安全不变量
 
@@ -106,7 +106,7 @@ waiterDeadline = waiterStartedAt                waiterDeadline = waiterStartedAt
 ```
 
 - `forceAfterMs` 默认 2,000 ms。
-- 进程层默认单次 taskkill 上限为 2,000 ms；ZCode transport 的等待式路径显式使用 1,000 ms。
+- 进程层默认单次 taskkill 上限为 2,000 ms；Codez transport 的等待式路径显式使用 1,000 ms。
 - graceful taskkill 从等待开始即与 force timer 并发，不为 graceful 与 force 两条命令各叠加
   一份 timeout；deadline 只在 force 余量后保留一份终态 taskkill 上限。
 - 身份查询不可用且没有任何已验证 identity 时，graceful 与 force 的目标集合都必然为空；此时
@@ -156,7 +156,7 @@ skip 原因、exit observation、deadline 与 remaining PID。日志不得包含
 
 ## 2026-08-24 验证记录
 
-- `zcodeAgentProcessManager.test.ts` 真机权限下连续 10 轮通过：360/360；
+- `codezAgentProcessManager.test.ts` 真机权限下连续 10 轮通过：360/360；
 - 进程终止器、stdio transport、manager 相关测试集：55 passed / 11 skipped；
 - 确定性用例覆盖 taskkill flight、exit 延迟、累加 deadline、PID 复用、身份查询失败与
   共享进程表新鲜度；其中无信号目标的 unverified 分支不预留 taskkill timeout，有已验证

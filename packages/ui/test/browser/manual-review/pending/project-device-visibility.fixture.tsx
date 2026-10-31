@@ -1,15 +1,15 @@
 import { createRoot } from "react-dom/client";
-import { Emitter } from "@zcode/rpc";
-import type { IBroadcastService, VirtualProject } from "@zcode/services";
-import { createZCodeStore } from "@/store/index.js";
-import { StoreContext, useZCodeStore } from "@/store/StoreProvider.js";
+import { Emitter } from "@codez/rpc";
+import type { IBroadcastService, VirtualProject } from "@codez/services";
+import { createCodezStore } from "@/store/index.js";
+import { StoreContext, useCodezStore } from "@/store/StoreProvider.js";
 import { TabStoreProvider } from "@/store/TabStoreProvider.js";
 import { ProjectSidebarNode } from "@/project-sidebar/ProjectSidebarNode.js";
 import { ProjectComposerMenu } from "@/project-sidebar/ProjectComposerMenu.js";
 import type { ProjectNodeProps } from "@/project-sidebar/ProjectNodeContent.js";
 import { projectKey } from "@/project-sidebar/view.js";
 import { SourceServerManagementPanel } from "@/settings/SourceServerManagementPanel.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import "@/styles.css";
@@ -31,7 +31,7 @@ const broadcast: IBroadcastService = {
   releaseClaim: async () => {},
   tryClaim: async () => false,
 };
-const store = createZCodeStore(broadcast);
+const store = createCodezStore(broadcast);
 document.documentElement.className = `${theme} theme-zai-${theme}`;
 const rows = (["online", "offline", "needs-upgrade"] as const).map((state, i) => {
   const project: VirtualProject = {
@@ -88,8 +88,8 @@ Object.assign(window, {
   },
 });
 function Fixture() {
-  const hidden = useZCodeStore((state) => state.hideProjectDeviceNames);
-  const setHidden = useZCodeStore((state) => state.setHideProjectDeviceNames);
+  const hidden = useCodezStore((state) => state.hideProjectDeviceNames);
+  const setHidden = useCodezStore((state) => state.setHideProjectDeviceNames);
   return (
     <main className="min-h-screen bg-background p-4 text-foreground">
       <section className="w-64 max-w-full bg-sidebar" aria-label="Projects">
@@ -136,13 +136,13 @@ function Fixture() {
 createRoot(document.getElementById("root")!).render(
   <StoreContext.Provider value={store}>
     <ServiceProvider services={{} as never}>
-      <ZCodeIntlProvider initialLocale={locale}>
+      <CodezIntlProvider initialLocale={locale}>
         <TooltipProvider>
           <TabStoreProvider>
             <Fixture />
           </TabStoreProvider>
         </TooltipProvider>
-      </ZCodeIntlProvider>
+      </CodezIntlProvider>
     </ServiceProvider>
   </StoreContext.Provider>,
 );

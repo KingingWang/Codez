@@ -1,4 +1,4 @@
-import { TID_V4_COMPOSER_INPUT } from "@zcode/shared/test-ids";
+import { TID_V4_COMPOSER_INPUT } from "@codez/shared/test-ids";
 import { clearAppData, readSettings } from "../helpers/desktop-app.js";
 import { waitForUpstreamNetworkRequestStarted } from "../helpers/upstream-capture.js";
 import {
@@ -39,7 +39,7 @@ describe("会话区 Background Guide Steer E2E", () => {
     this.timeout(BACKGROUND_GUIDE_STEER_TIMEOUT_MS);
 
     await prepareV4ConversationE2E();
-    expect((await readSettings()).zcodeInteractionBehavior).toBe("guide");
+    expect((await readSettings()).codezInteractionBehavior).toBe("guide");
     await startNewV4Draft();
 
     const runId = Date.now();

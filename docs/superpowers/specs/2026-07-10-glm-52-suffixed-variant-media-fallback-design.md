@@ -83,10 +83,10 @@ Leaving the capability unknown prevents only the capability projection from stri
 
 Implementation is limited to:
 
-- The provider-aware media fallback matcher in `apps/zcode-cli/packages/bootstrap/src/app/model-input-capabilities.ts`.
-- Focused capability-resolution tests in `apps/zcode-cli/packages/bootstrap/tests/model-selection.test.ts`.
-- Active-session provider registry refresh patch construction in `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts`.
-- A protocol integration regression test in `apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts`.
+- The provider-aware media fallback matcher in `apps/codez-cli/packages/bootstrap/src/app/model-input-capabilities.ts`.
+- Focused capability-resolution tests in `apps/codez-cli/packages/bootstrap/tests/model-selection.test.ts`.
+- Active-session provider registry refresh patch construction in `apps/codez-cli/packages/bootstrap/src/codez-protocol/workspace-model-catalog.ts`.
+- A protocol integration regression test in `apps/codez-cli/packages/bootstrap/tests/codez-protocol.test.ts`.
 - The accepted conversation-session case description and coverage row so they no longer claim that every GLM-family variant is fail-closed.
 
 No protocol schema, provider registry shape, persistent provider configuration, model reasoning policy, context-window policy, adapter request format, desktop/mobile delivery boundary, or remote-control ownership behavior changes.

@@ -8,12 +8,12 @@
 - 平台：Windows + WSL2 `Ubuntu`，Linux user `dev`
 - App 版本：`3.4.0`
 - Electron：`41.0.3`
-- remote 资源：内网 CDN `http://intranet.example.invalid:12345/zcode/@electron/release/v3.4.0/`
-- 启动变量：`ZCODE_DEV_REMOTE_ASSET_USE_CDN=1`，并用
-  `ZCODE_REMOTE_ASSET_CDN_BASE_URL` 指向上述内网根。
+- remote 资源：内网 CDN `http://intranet.example.invalid:12345/codez/@electron/release/v3.4.0/`
+- 启动变量：`CODEZ_DEV_REMOTE_ASSET_USE_CDN=1`，并用
+  `CODEZ_REMOTE_ASSET_CDN_BASE_URL` 指向上述内网根。
 
 本次验证使用当前分支重新构建的 `packages/desktop/out`，renderer 的 Chromium 参数包含
-`--app-path="E:\GitProject\z-code\z-code\packages\desktop"`。没有使用已安装的旧版 ZCode。
+`--app-path="E:\GitProject\z-code\z-code\packages\desktop"`。没有使用已安装的旧版 Codez。
 
 ## 自动化验证
 
@@ -37,7 +37,7 @@ WSL backend 和 stdio lifecycle。
 桌面端从当前分支启动，通过开发态固定端口 `9229` 的 CDP 调用 preload bridge：
 
 ```js
-window.zcode.connectRemote(
+window.codez.connectRemote(
   { kind: "wsl", distro: "Ubuntu" },
   requestId,
   { workspacePath, workspaceIdentity },
@@ -61,12 +61,12 @@ wsl.exe -d Ubuntu -- bash -lc "ps -eo pid,ppid,rss,lstart,args"
 | 层 | PID | RSS | 启动时间 | 说明 |
 | --- | ---: | ---: | --- | --- |
 | Windows remote UtilityProcess Host | 24868 | 未单独采集 | 17:26:13 | 第一个 WSL workspace 创建 |
-| WSL `zcode-server` | 1083 | 192188 KiB | 17:26:24 | 唯一 server |
+| WSL `codez-server` | 1083 | 192188 KiB | 17:26:24 | 唯一 server |
 
 ### 两个 workspace
 
 第二个 logical session 为 `ba41c70a-8a04-46dc-a193-aeaa9062d8f0`。连接后 Windows remote
-Host 仍为 PID `24868`，WSL `zcode-server` 仍为 PID `1083`，server 计数为 `1`。
+Host 仍为 PID `24868`，WSL `codez-server` 仍为 PID `1083`，server 计数为 `1`。
 
 ### 五个并发 workspace
 
@@ -87,13 +87,13 @@ remoteSessionId:
 | --- | ---: | ---: | ---: | ---: |
 | Windows remote UtilityProcess Host | 24708 | 3596 | 未单独采集 | 1 |
 | Windows `wsl.exe` launcher | 26684 | 24708 | 未单独采集 | 1 个 launcher 链路 |
-| WSL `zcode-server` | 1106 | 1105 | 198232 KiB | 1 |
+| WSL `codez-server` | 1106 | 1105 | 198232 KiB | 1 |
 
 释放第 4、5 个 logical session、保留三个 workspace 后，Host PID 仍为 `24708`，server PID
 仍为 `1106`，server 计数仍为 `1`；当时 RSS 为 `167216 KiB`。
 
 结论：同窗口、同 distro、同 user 的 1、3、5 个 logical workspace 都复用一套 Windows Host 和
-一套 WSL `zcode-server`。后续 attach 没有再创建 server。
+一套 WSL `codez-server`。后续 attach 没有再创建 server。
 
 ## 回收时间
 
@@ -108,7 +108,7 @@ remoteSessionId:
 
 ```text
 T+2s: Host PID 24868 present; server PID 1083 present
-约 60s 边界后: Host PID 24868 absent; zcode-server-count=0
+约 60s 边界后: Host PID 24868 absent; codez-server-count=0
 ```
 
 命令采样与 WSL 启动本身存在数秒调度开销，因此运行态只记录“约 60 秒边界”；精确
@@ -121,7 +121,7 @@ T+2s: Host PID 24868 present; server PID 1083 present
 | 资源 | 退出前 PID | 正常关闭后约 4.0s |
 | --- | ---: | --- |
 | Windows remote Host | 25468 | 不存在 |
-| WSL `zcode-server` | 1122 | 计数 0 |
+| WSL `codez-server` | 1122 | 计数 0 |
 
 主窗口调用 `CloseMainWindow()` 后，main process 在 `741ms` 退出；从发起关闭到最终 PID 检查为
 `4024ms`。第二轮仍有三个 workspace owner 时重复关闭，main 在 `396ms` 退出，`3641ms`
@@ -136,5 +136,5 @@ T+2s: Host PID 24868 present; server PID 1083 present
 - 没有执行手机 replayable 的真实设备连接；mobile attachment owner 边界由 desktop manager 测试覆盖。
 - Docker 没有进入本次 WSL PID 实测；代码与测试确认它仍走 dedicated `InitRemoteWorkspace`，本改动没有
   为 Docker 增加共享 pool。
-- 不调用 `wsl --terminate` 或 `wsl --shutdown`；验证结束后 distro 可继续运行，只有 ZCode-owned server
+- 不调用 `wsl --terminate` 或 `wsl --shutdown`；验证结束后 distro 可继续运行，只有 Codez-owned server
   被回收。

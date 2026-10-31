@@ -1,4 +1,4 @@
-import type { McpAppsStyleVariables } from "@zcode/shared/mcp-apps";
+import type { McpAppsStyleVariables } from "@codez/shared/mcp-apps";
 import { buildPluginUiStyleVariables } from "../domain/pluginUiStyleVariables.js";
 
 /**

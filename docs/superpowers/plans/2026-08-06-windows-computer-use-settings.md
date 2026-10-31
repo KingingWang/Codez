@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 让 Windows 桌面设置页显示「电脑控制」分区，并只提供与 macOS 共用的官方 `zcode-cua` 插件总开关。
+**Goal:** 让 Windows 桌面设置页显示「电脑控制」分区，并只提供与 macOS 共用的官方 `codez-cua` 插件总开关。
 
 **Architecture:** 设置页配置改为按明确的 `isMacDesktop` / `isWindowsDesktop` props 生成，避免 Web 端依赖 user agent 误露出桌面能力。`ComputerUseSection` 保留共享插件开关流程，同时把本地 Windows 的“开关能力”与仅限 macOS 的权限、Helper 和附加设置能力分开。
 
@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Windows 与 macOS 必须复用 `ZCODE_CUA_OFFICIAL_PLUGIN_ID`、插件 store 和 `setEnabled` 流程。
+- Windows 与 macOS 必须复用 `CODEZ_CUA_OFFICIAL_PLUGIN_ID`、插件 store 和 `setEnabled` 流程。
 - Windows 只显示总开关，不显示画中画、后台模式、Helper 状态或授权相关内容。
 - macOS 现有完整设置和权限能力判断保持不变。
 - Linux、普通 Web、手机远控和远程 workspace 不开放该本地设置能力。
@@ -286,7 +286,7 @@ Expected: PASS；平台配置顺序、不可见落点回退和既有 Windows 终
 **Interfaces:**
 
 - Consumes: `ComputerUseSectionProps.isWindowsDesktop?: boolean`
-- Consumes: `ZCODE_CUA_OFFICIAL_PLUGIN_ID`
+- Consumes: `CODEZ_CUA_OFFICIAL_PLUGIN_ID`
 - Preserves: `usePluginManagementStore.setEnabled(pluginId, next, pluginManagementService)`
 
 - [ ] **Step 1: 写 Windows 渲染和开关行为的失败测试**
@@ -312,7 +312,7 @@ it("Windows 只展示共享总开关", () => {
   expect(screen.queryByText("cuaPermission.perm.screenRecording")).toBeNull();
 });
 
-it("Windows 总开关复用官方 zcode-cua 启停流程", async () => {
+it("Windows 总开关复用官方 codez-cua 启停流程", async () => {
   render(
     <ComputerUseSection
       isWindowsDesktop
@@ -325,7 +325,7 @@ it("Windows 总开关复用官方 zcode-cua 启停流程", async () => {
 
   await waitFor(() => {
     expect(setEnabled).toHaveBeenCalledWith(
-      ZCODE_CUA_OFFICIAL_PLUGIN_ID,
+      CODEZ_CUA_OFFICIAL_PLUGIN_ID,
       false,
       pluginManagementService,
     );

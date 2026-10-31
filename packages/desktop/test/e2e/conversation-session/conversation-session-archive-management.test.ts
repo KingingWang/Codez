@@ -5,10 +5,10 @@ import { restartIntoWorkspacePreservingProfile } from "#e2e/helpers/model-provid
 import { waitForWorkspaceApp, DEFAULT_WORKSPACE } from "../helpers/desktop-app.js";
 
 const row = (id: string) => $(`[data-testid="archive-task"][data-task-id="${id}"]`);
-const home = process.env.ZCODE_E2E_HOME_DIR!;
+const home = process.env.CODEZ_E2E_HOME_DIR!;
 const ids = ["arm-alpha", "arm-beta", "arm-scheduled", "arm-loose", "arm-removed"];
 function readRow(id: string) {
-  const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"), { readOnly: true });
+  const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"), { readOnly: true });
   try {
     return db
       .prepare("SELECT archived,cli_deleted,project_id FROM tasks WHERE task_id=?")
@@ -47,14 +47,14 @@ describe("归档管理", () => {
   before(async function () {
     this.timeout(60000);
     // 原因：批量 runner 使用 runId 隔离 HOME，不能只接受早期手工回放的目录名。
-    if (!home || !/^(?:zcode-archive-e2e-|\.e2e-home-)/u.test(basename(home)))
+    if (!home || !/^(?:codez-archive-e2e-|\.e2e-home-)/u.test(basename(home)))
       throw new Error("isolated archive HOME required");
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 45000);
     // 旧夹具在运行中的 Host 下写库且缺少必填 meta，列表可见不代表任务命令能读取它。
     await restartIntoWorkspacePreservingProfile(DEFAULT_WORKSPACE, {
       afterElectronProcessExit: async () => {
-        const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
-        const cli = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"));
+        const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"));
+        const cli = new DatabaseSync(join(home, ".codez/cli/db/db.sqlite"));
         try {
           for (const [i, name] of [
             "E2E 虚拟项目甲",
@@ -186,7 +186,7 @@ describe("归档管理", () => {
     await $('[role="option"]*=7 天后归档').click();
     await expect(days).toHaveText("7 天后归档");
     await browser.waitUntil(async () => {
-      const settings = JSON.parse(await readFile(join(home, ".zcode/v2/setting.json"), "utf8"));
+      const settings = JSON.parse(await readFile(join(home, ".codez/v2/setting.json"), "utf8"));
       return (
         settings.taskAutoArchiveEnabled === false && settings.taskAutoArchiveOlderThanDays === 7
       );
@@ -200,7 +200,7 @@ describe("归档管理", () => {
     await expect(days).toHaveText("7 天后归档");
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-checked", "true");
-    expect(JSON.parse(await readFile(join(home, ".zcode/v2/setting.json"), "utf8"))).toMatchObject({
+    expect(JSON.parse(await readFile(join(home, ".codez/v2/setting.json"), "utf8"))).toMatchObject({
       taskAutoArchiveEnabled: true,
       taskAutoArchiveOlderThanDays: 7,
     });
@@ -208,7 +208,7 @@ describe("归档管理", () => {
     await $('[role="option"]*=14 天后归档').click();
     await expect(days).toHaveText("14 天后归档");
     await browser.waitUntil(async () => {
-      const settings = JSON.parse(await readFile(join(home, ".zcode/v2/setting.json"), "utf8"));
+      const settings = JSON.parse(await readFile(join(home, ".codez/v2/setting.json"), "utf8"));
       return (
         settings.taskAutoArchiveEnabled === true && settings.taskAutoArchiveOlderThanDays === 14
       );
@@ -227,14 +227,14 @@ describe("归档管理", () => {
     await $('[role="option"]*=30 天后归档').click();
     await expect(days).toHaveText("30 天后归档");
     await browser.waitUntil(async () => {
-      const settings = JSON.parse(await readFile(join(home, ".zcode/v2/setting.json"), "utf8"));
+      const settings = JSON.parse(await readFile(join(home, ".codez/v2/setting.json"), "utf8"));
       return (
         settings.taskAutoArchiveEnabled === false && settings.taskAutoArchiveOlderThanDays === 30
       );
     });
     expect(ids.map((id) => readRow(id).archived)).toEqual(ids.map(() => 1));
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "ARM07-disabled-30-days.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "ARM07-disabled-30-days.png"),
     );
   });
   it("ARM01/05/06：分组折叠、搜索、时间排序和项目选择", async () => {
@@ -325,7 +325,7 @@ describe("归档管理", () => {
     await $('[data-testid="confirm-dialog-confirm"]').click();
     await row("arm-beta").waitForExist({ reverse: true });
     expect(readRow("arm-beta").cli_deleted).toBe(1);
-    const cli = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"), { readOnly: true });
+    const cli = new DatabaseSync(join(home, ".codez/cli/db/db.sqlite"), { readOnly: true });
     try {
       expect(
         (
@@ -464,7 +464,7 @@ async function captureArchiveLayouts() {
         }
         await browser.saveScreenshot(
           join(
-            process.env.ZCODE_E2E_ARTIFACT_DIR!,
+            process.env.CODEZ_E2E_ARTIFACT_DIR!,
             `archive-${width}-${locale}-${theme}-collapsed.png`,
           ),
         );
@@ -479,7 +479,7 @@ async function captureArchiveLayouts() {
         ).toBe(true);
         await browser.saveScreenshot(
           join(
-            process.env.ZCODE_E2E_ARTIFACT_DIR!,
+            process.env.CODEZ_E2E_ARTIFACT_DIR!,
             `archive-${width}-${locale}-${theme}-expanded.png`,
           ),
         );

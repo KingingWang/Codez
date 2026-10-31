@@ -6,7 +6,7 @@
 
 **Architecture:** Keep capability precedence and the existing GLM-family matcher unchanged. Add a public structural predicate in the bootstrap capability resolver, normalize only the final provider-visible model ID segment before matching a non-empty hyphen suffix, then cover the fallback boundary with neutral unit fixtures and keep N08 scoped to its explicit text-only E2E contract.
 
-**Tech Stack:** TypeScript, Vitest, ZCode Protocol model catalog, conversation-session case catalog and coverage audit.
+**Tech Stack:** TypeScript, Vitest, Codez Protocol model catalog, conversation-session case catalog and coverage audit.
 
 ## Global Constraints
 
@@ -65,7 +65,7 @@ Expected: exit code `0` and no stale catalog/matrix coverage error for N08.
 ### Task 2: Add the failing capability boundary tests
 
 **Files:**
-- Test: `apps/zcode-cli/packages/bootstrap/tests/model-selection.test.ts:136-220`
+- Test: `apps/codez-cli/packages/bootstrap/tests/model-selection.test.ts:136-220`
 
 **Interfaces:**
 - Consumes: `resolveRuntimeModelInputCapabilities(modelRef, modelCatalog)`.
@@ -117,7 +117,7 @@ Also assert that `GLM-5.2-variant/other-model` remains image-unsupported, provin
 Run:
 
 ```bash
-pnpm --filter @zcode/bootstrap exec vitest run tests/model-selection.test.ts
+pnpm --filter @codez/bootstrap exec vitest run tests/model-selection.test.ts
 ```
 
 Expected: the three neutral suffixed-variant cases fail because the current broad GLM fallback returns `{ supportsImages: false }`; existing tests remain green.
@@ -125,16 +125,16 @@ Expected: the three neutral suffixed-variant cases fail because the current broa
 ### Task 3: Implement the public structural exception
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/bootstrap/src/app/model-input-capabilities.ts:1-179`
-- Test: `apps/zcode-cli/packages/bootstrap/tests/model-selection.test.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/app/model-input-capabilities.ts:1-179`
+- Test: `apps/codez-cli/packages/bootstrap/tests/model-selection.test.ts`
 
 **Interfaces:**
-- Consumes: `normalizeModelIdForProviderRequest(modelId: string): string` from `@zcode/adapters/model`.
+- Consumes: `normalizeModelIdForProviderRequest(modelId: string): string` from `@codez/adapters/model`.
 - Produces: `isGlm52SuffixedVariant(modelId: string): boolean`, used only by the provider-aware media fallback.
 
 - [ ] **Step 1: Import provider-request model ID normalization**
 
-Extend the existing `@zcode/adapters/model` import with:
+Extend the existing `@codez/adapters/model` import with:
 
 ```ts
 normalizeModelIdForProviderRequest,
@@ -181,7 +181,7 @@ Add the required Chinese bug-cause comment immediately above it:
 Run:
 
 ```bash
-pnpm --filter @zcode/bootstrap exec vitest run tests/model-selection.test.ts
+pnpm --filter @codez/bootstrap exec vitest run tests/model-selection.test.ts
 ```
 
 Expected: all model-selection tests pass, including the new neutral suffixed-variant and canonical normalization cases.
@@ -191,7 +191,7 @@ Expected: all model-selection tests pass, including the new neutral suffixed-var
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/media-capability.test.ts
+pnpm --filter @codez/core exec vitest run tests/media-capability.test.ts
 ```
 
 Expected: all tests pass; explicit false still strips, while unknown remains unchanged by capability projection before the separate media-budget projection runs.
@@ -199,8 +199,8 @@ Expected: all tests pass; explicit false still strips, while unknown remains unc
 ### Task 4: Clear stale active-session media capabilities on registry refresh
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts:964-1056`
-- Test: `apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts:3964-4141`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/workspace-model-catalog.ts:964-1056`
+- Test: `apps/codez-cli/packages/bootstrap/tests/codez-protocol.test.ts:3964-4141`
 
 **Interfaces:**
 - Consumes: `resolveRuntimeModelInputCapabilities(...)` and `AgentRuntime.updateConfig(...)` property-presence semantics.
@@ -228,7 +228,7 @@ expect(runtimeModelInputMediaCapabilities).toBeUndefined();
 Run:
 
 ```bash
-pnpm --filter @zcode/bootstrap exec vitest run tests/zcode-protocol.test.ts -t "clears active session"
+pnpm --filter @codez/bootstrap exec vitest run tests/codez-protocol.test.ts -t "clears active session"
 ```
 
 Expected: both parameterized cases FAIL because the current patch omits `modelInputMediaCapabilities`, leaving each captured runtime value at `{ [capabilityKey]: false }`.
@@ -260,7 +260,7 @@ If `resolveProviderModelLimits(...)` cannot find the model, return `{ modelInput
 Run:
 
 ```bash
-pnpm --filter @zcode/bootstrap exec vitest run tests/zcode-protocol.test.ts -t "clears active session"
+pnpm --filter @codez/bootstrap exec vitest run tests/codez-protocol.test.ts -t "clears active session"
 ```
 
 Expected: PASS; the patch includes the key and the captured runtime capability becomes `undefined`.
@@ -270,7 +270,7 @@ Expected: PASS; the patch includes the key and the captured runtime capability b
 Run:
 
 ```bash
-pnpm --filter @zcode/bootstrap exec vitest run tests/zcode-protocol.test.ts -t "refreshes active session context window when provider registry changes the current model|clears active session"
+pnpm --filter @codez/bootstrap exec vitest run tests/codez-protocol.test.ts -t "refreshes active session context window when provider registry changes the current model|clears active session"
 ```
 
 Expected: both active-session refresh tests pass, including context/max-token clearing and media-capability clearing.
@@ -289,7 +289,7 @@ Expected: both active-session refresh tests pass, including context/max-token cl
 Run:
 
 ```bash
-pnpm --filter @zcode/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-model-switch-image-strip.test.ts
+pnpm --filter @codez/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-model-switch-image-strip.test.ts
 ```
 
 Expected: fixture check passes; the explicit text-only GLM-5.2 request contract remains complete.
@@ -299,7 +299,7 @@ Expected: fixture check passes; the explicit text-only GLM-5.2 request contract 
 Run:
 
 ```bash
-pnpm --filter @zcode/desktop typecheck:e2e
+pnpm --filter @codez/desktop typecheck:e2e
 ```
 
 Expected: exit code `0`.
@@ -309,7 +309,7 @@ Expected: exit code `0`.
 Run:
 
 ```bash
-pnpm --filter @zcode/bootstrap typecheck
+pnpm --filter @codez/bootstrap typecheck
 pnpm typecheck
 pnpm lint
 ```
@@ -322,7 +322,7 @@ Run:
 
 ```bash
 node scripts/audit-conversation-session-case-coverage.mjs --check --json
-git diff --check -- apps/zcode-cli/packages/bootstrap/src/app/model-input-capabilities.ts apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts apps/zcode-cli/packages/bootstrap/tests/model-selection.test.ts apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts docs/conversation-session-case-catalog.md docs/testing/conversation-session-e2e-coverage-matrix.md docs/superpowers/specs/2026-07-10-glm-52-suffixed-variant-media-fallback-design.md docs/superpowers/plans/2026-07-10-glm-52-suffixed-variant-media-fallback.md
+git diff --check -- apps/codez-cli/packages/bootstrap/src/app/model-input-capabilities.ts apps/codez-cli/packages/bootstrap/src/codez-protocol/workspace-model-catalog.ts apps/codez-cli/packages/bootstrap/tests/model-selection.test.ts apps/codez-cli/packages/bootstrap/tests/codez-protocol.test.ts docs/conversation-session-case-catalog.md docs/testing/conversation-session-e2e-coverage-matrix.md docs/superpowers/specs/2026-07-10-glm-52-suffixed-variant-media-fallback-design.md docs/superpowers/plans/2026-07-10-glm-52-suffixed-variant-media-fallback.md
 ```
 
 Expected: audit and diff check exit `0`.

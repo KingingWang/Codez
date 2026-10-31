@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { RemoteTarget } from "#src/remoteTarget.js";
-import { publicZCodeErrorCodeSchema } from "./errorCodes.js";
+import { publicCodezErrorCodeSchema } from "./errorCodes.js";
 import { REMOTE_ASSET_INSTALL_MODES } from "../remoteAssetInstallMode.js";
 import { isKnownRemoteResourcePackageId } from "../remoteResourcePackages.js";
 import { wslUserSchema } from "../wslUserValidation.js";
@@ -343,7 +343,7 @@ export const sourceServerConnectionStateSnapshotSchema = z
     upgradeTarget: z.enum(["controller", "server"]).optional(),
     /** 远端当前 release 由显式降级安装时，被替换的版本；向导据此不自动升级。 */
     downgradedFrom: nonEmptyStringSchema.optional(),
-    errorCode: publicZCodeErrorCodeSchema.optional(),
+    errorCode: publicCodezErrorCodeSchema.optional(),
     retryable: z.boolean().optional(),
     installPreview: sourceServerInstallPreviewSchema.optional(),
     runningTasks: sourceServerRunningTasksSchema.optional(),

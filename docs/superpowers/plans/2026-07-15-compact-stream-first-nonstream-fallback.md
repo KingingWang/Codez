@@ -34,7 +34,7 @@
 ### Checklist
 
 - [x] 确认目标路径为 streaming-first，pre-commit terminal failure 后可转 non-stream。
-- [x] 确认 ZCode 变更前 compact 入口直接调用 `generateText()`。
+- [x] 确认 Codez 变更前 compact 入口直接调用 `generateText()`。
 - [x] 区分逻辑 compact attempt 与 provider 物理 SSE/HTTP request。
 - [x] 明确 cache-sharing fork 与 transport fallback 是两个独立概念，本次不实现前者。
 
@@ -83,11 +83,11 @@ node scripts/audit-conversation-session-case-coverage.mjs --check --json
 
 ### 文件
 
-- `apps/zcode-cli/packages/core/src/runtime/methods/compact-summary-model-request.ts`
-- `apps/zcode-cli/packages/core/src/runtime/methods/compact-active.ts`
-- `apps/zcode-cli/packages/core/tests/compact-summary-model-request.test.ts`
-- `apps/zcode-cli/packages/core/tests/runtime-compact.test.ts`
-- `apps/zcode-cli/packages/core/tests/media-budget.test.ts`
+- `apps/codez-cli/packages/core/src/runtime/methods/compact-summary-model-request.ts`
+- `apps/codez-cli/packages/core/src/runtime/methods/compact-active.ts`
+- `apps/codez-cli/packages/core/tests/compact-summary-model-request.test.ts`
+- `apps/codez-cli/packages/core/tests/runtime-compact.test.ts`
+- `apps/codez-cli/packages/core/tests/media-budget.test.ts`
 
 ### Checklist
 
@@ -108,7 +108,7 @@ node scripts/audit-conversation-session-case-coverage.mjs --check --json
 ### 验收
 
 ```bash
-pnpm --filter @zcode/core exec vitest run \
+pnpm --filter @codez/core exec vitest run \
   tests/compact-summary-model-request.test.ts \
   tests/runtime-compact.test.ts \
   tests/media-budget.test.ts \
@@ -119,10 +119,10 @@ pnpm --filter @zcode/core exec vitest run \
 
 ### 文件
 
-- `apps/zcode-cli/packages/contracts/src/model/index.ts`
-- `apps/zcode-cli/packages/adapters/src/model/streaming-tool-call-assembler.ts`
-- `apps/zcode-cli/packages/adapters/src/model/runner-stream.ts`
-- `apps/zcode-cli/packages/adapters/tests/runner.test.ts`
+- `apps/codez-cli/packages/contracts/src/model/index.ts`
+- `apps/codez-cli/packages/adapters/src/model/streaming-tool-call-assembler.ts`
+- `apps/codez-cli/packages/adapters/src/model/runner-stream.ts`
+- `apps/codez-cli/packages/adapters/tests/runner.test.ts`
 
 ### Checklist
 
@@ -151,7 +151,7 @@ pnpm --filter @zcode/core exec vitest run \
 ### 验收
 
 ```bash
-pnpm --filter @zcode/adapters exec vitest run \
+pnpm --filter @codez/adapters exec vitest run \
   tests/runner.test.ts \
   tests/runner-retry.test.ts \
   tests/openai-responses-json-compat.test.ts
@@ -198,8 +198,8 @@ pnpm --dir packages/desktop typecheck:e2e
 
 ### 文件
 
-- `apps/zcode-cli/e2e/compact-microcompact/README.md`
-- `apps/zcode-cli/e2e/compact-microcompact/case-openai-responses-compact.mjs`
+- `apps/codez-cli/e2e/compact-microcompact/README.md`
+- `apps/codez-cli/e2e/compact-microcompact/case-openai-responses-compact.mjs`
 - `packages/desktop/test/e2e/conversation-session/conversation-session-compact-stream-fallback.test.ts`
 - `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-compact-stream-fallback.json`
 - `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-compact-stream-fallback.json`
@@ -228,9 +228,9 @@ setup main stream success
 ### 验收
 
 ```bash
-pnpm --dir apps/zcode-cli build
-pnpm --filter zcode-cli exec tsx \
-  ../../apps/zcode-cli/e2e/compact-microcompact/run.mjs \
+pnpm --dir apps/codez-cli build
+pnpm --filter codez-cli exec tsx \
+  ../../apps/codez-cli/e2e/compact-microcompact/run.mjs \
   --case=openai-responses-compact --keep-tmp
 
 pnpm --dir packages/desktop test:e2e:serial -- \
@@ -253,9 +253,9 @@ pnpm --dir packages/desktop test:e2e:serial -- \
 ### 命令
 
 ```bash
-pnpm --dir apps/zcode-cli typecheck
-pnpm --dir apps/zcode-cli build
-pnpm --dir apps/zcode-cli lint
+pnpm --dir apps/codez-cli typecheck
+pnpm --dir apps/codez-cli build
+pnpm --dir apps/codez-cli lint
 
 pnpm --dir packages/desktop typecheck:e2e
 pnpm typecheck

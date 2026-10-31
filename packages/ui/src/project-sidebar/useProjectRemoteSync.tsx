@@ -11,7 +11,7 @@ import {
   useDataSyncEntry,
   type DataSyncEntryCategory,
 } from "@/data-sync/index.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useOptionalTabStore } from "@/store/TabStoreProvider.js";
 import { isWorkspaceTab } from "@/store/tabStore.js";
 
@@ -28,7 +28,7 @@ const LABEL_ID: Record<DataSyncEntryCategory, string> = {
 export function useProjectRemoteSync(directory: RemoteProjectDirectory) {
   const entry = useDataSyncEntry();
   const tabs = useOptionalTabStore((state) => state.tabs);
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   // ProjectSidebarNode 按属性浅比较做 memo；actions 换引用会让任务活动重绘所有项目节点。
   const { available, open } = entry;
   const actions = useCallback(

@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { ApiClient } from "@zcode/shared";
+import type { ApiClient } from "@codez/shared";
 
 /** 复用已有分享契约 fake，发布、preview、continuation 全程留在隔离测试控制面。 */
 export function createConversationShareMockRoute() {

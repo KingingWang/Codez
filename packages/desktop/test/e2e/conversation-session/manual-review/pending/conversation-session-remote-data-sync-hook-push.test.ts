@@ -5,7 +5,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -26,10 +26,10 @@ import {
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
 // DSYNC-11：设置 → 数据同步 → 设备 → 推送钩子（docs/remote/data-sync.md「钩子」）。
-// 只同步本机 ~/.zcode/cli/config.json 的 hooks；写入时合并到远端 events[事件] 中 matcher 相同的分组，
+// 只同步本机 ~/.codez/cli/config.json 的 hooks；写入时合并到远端 events[事件] 中 matcher 相同的分组，
 // 远端已有钩子和其他配置原样保留，根级 enabled 只开不关。远端断言用 docker exec 读容器内 config.json。
 const CASE_MARKER = "E2E_DSYNC_11_HOOK_PUSH";
-const REMOTE_CLI_CONFIG = "/home/dev/.zcode/cli/config.json";
+const REMOTE_CLI_CONFIG = "/home/dev/.codez/cli/config.json";
 const PUSHED_HOOK = {
   type: "command",
   command: `echo ${CASE_MARKER} post-bash`,
@@ -71,7 +71,7 @@ async function waitForHookRowStatus(command: string, status: string, timeoutMsg:
 
 /** 本机 config.json 读改写：只写 hooks，保留 E2E 预置的其他配置。 */
 async function writeLocalHooks(homeDir: string) {
-  const configPath = join(homeDir, ".zcode", "cli", "config.json");
+  const configPath = join(homeDir, ".codez", "cli", "config.json");
   let config: Record<string, unknown> = {};
   try {
     config = JSON.parse(await readFile(configPath, "utf-8")) as Record<string, unknown>;

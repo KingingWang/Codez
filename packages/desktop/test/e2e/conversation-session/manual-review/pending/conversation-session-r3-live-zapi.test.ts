@@ -2,8 +2,8 @@ import { execFile } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
-import { ApiKeyAccessConfig, ProviderApiConfig, ProviderConfig } from "@zcode/provider";
-import { NodePersonalProviderConfigRepository } from "@zcode/provider-node";
+import { ApiKeyAccessConfig, ProviderApiConfig, ProviderConfig } from "@codez/provider";
+import { NodePersonalProviderConfigRepository } from "@codez/provider-node";
 import { clearAppData, getE2EAppDataPaths } from "../../../helpers/desktop-app.js";
 import { refreshSeededOpenAIProvidersThroughSettings } from "../../../helpers/custom-openai-provider.js";
 import {
@@ -28,7 +28,7 @@ import {
 } from "../../../helpers/v4-conversation.js";
 
 const CASE_MARKER = "E2E_R3_LIVE_ZAPI";
-const artifactDir = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-live-zapi");
+const artifactDir = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-live-zapi");
 const LIVE_PROVIDER_ID = "e2e-r3-live-zapi";
 const LIVE_PROVIDER_NAME = "R3 Live ZAPI";
 const LIVE_MODEL_ID = "GLM-5.3";
@@ -143,7 +143,7 @@ async function readRemoteModelRequests(
 ): Promise<RemoteModelRequestRecord[]> {
   const result = await runSSHCommand(
     config,
-    `F=$(ls -t "$HOME/.zcode/cli/log/"*.jsonl | head -n1); awk -v since="${sinceIso}" -F'"timestamp":"' 'substr($2,1,24) >= since' "$F" | grep -E '"event":"model\\.(request|network)\\.(completed|failed)"|"event":"model\\.response\\.diagnostics"'`,
+    `F=$(ls -t "$HOME/.codez/cli/log/"*.jsonl | head -n1); awk -v since="${sinceIso}" -F'"timestamp":"' 'substr($2,1,24) >= since' "$F" | grep -E '"event":"model\\.(request|network)\\.(completed|failed)"|"event":"model\\.response\\.diagnostics"'`,
   );
   return result.stdout
     .split("\n")
@@ -200,8 +200,8 @@ describe(`${CASE_MARKER}: API Key 代表（ZAPI / GLM-5.3）经 Provisioning 到
 
   it("R3A-LIVE-01/03 本机导入 → 真实 SSH 同步 → 远端首发/续发 → 断线恢复后新请求仍命中 GLM-5.3", async function () {
     this.timeout(30 * 60_000);
-    const container = process.env.ZCODE_E2E_SSH_CONTAINER?.trim();
-    if (!container) throw new Error(`${CASE_MARKER}: 缺少 ZCODE_E2E_SSH_CONTAINER`);
+    const container = process.env.CODEZ_E2E_SSH_CONTAINER?.trim();
+    if (!container) throw new Error(`${CASE_MARKER}: 缺少 CODEZ_E2E_SSH_CONTAINER`);
     const config = readSSHRuntimeConfig(CASE_MARKER);
     const workspaceA = config.workspacePaths[0];
     await prepareV4ConversationE2E({ skipProvider: true });
@@ -223,7 +223,7 @@ describe(`${CASE_MARKER}: API Key 代表（ZAPI / GLM-5.3）经 Provisioning 到
       workspacePath: workspaceA,
     });
     // 同步后的远端 Personal 配置必须含该 provider 与 baseURL；secret 不落入本记录。
-    const remoteConfig = await runSSHCommand(config, 'cat "$HOME/.zcode/v2/provider_config.json"');
+    const remoteConfig = await runSSHCommand(config, 'cat "$HOME/.codez/v2/provider_config.json"');
     expect(remoteConfig.stdout).toContain(LIVE_PROVIDER_NAME);
     expect(remoteConfig.stdout).toContain(seeded.baseURL);
     facts.remoteConfigHasProvider = true;

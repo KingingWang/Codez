@@ -3,7 +3,7 @@ import type {
   RemoteConnectionOpenPreference,
 } from "@/app-shell/types.js";
 export { requestRemoteProjectConnection } from "@/remote-connection-flow/requestRemoteProjectConnection.js";
-import { type RemoteTarget, type RemoteWorkspaceSessionEntry } from "@zcode/shared";
+import { type RemoteTarget, type RemoteWorkspaceSessionEntry } from "@codez/shared";
 
 export interface RemoteConnectionFlowOptions {
   /** 新的显式入口；卡片恢复不改变该标识。 */

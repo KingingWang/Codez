@@ -7,13 +7,13 @@ Renderer 模块，层序 `domain → app → adapters → components`；公开�
 - 侧栏展示由宿主工作区/主视图、展开状态和当前标签共同派生。隐藏卡片同步解绑展示锚点，按资源声明选择隐藏或可执行后台表面；回收前恢复复用同一 guest，不以保活 DOM 尺寸推断展示意图。
 - 逻辑键包含 workspace identity（本地 fallback 为路径）、session、plugin、server、resource 和逻辑视图。surface 显式共享；普通工具只按明确的 widgetSessionId 与相同权限范围共享，否则按 toolCallId 隔离。禁止同回合同资源推断合并。
 - UI 不接触插件 HTML、数据库和连接凭据。经 `IPluginUiBridgeService` 获取句柄，平台端口只校验 sandboxId/initId；请求与 live 通知绑定 Agent runtimeId/generation/token/appIdentity。
-- 官方 ext-apps 2.0.0 每活页面一个 AppBridge；握手期限 15 秒。保留 `experimental["zcode/…"]` 的 widgetState、resourceSubscribe、surface、CSP、nestedFrames 扩展；旧宿主不宣告 nestedFrames，嵌套预览的页面据此降级；不模拟完整 OpenAI API。
+- 官方 ext-apps 2.0.0 每活页面一个 AppBridge；握手期限 15 秒。保留 `experimental["codez/…"]` 的 widgetState、resourceSubscribe、surface、CSP、nestedFrames 扩展；旧宿主不宣告 nestedFrames，嵌套预览的页面据此降级；不模拟完整 OpenAI API。
 - App-provided tools 在 initialized 后发现与登记；认领后用官方 SDK AbortSignal 执行，模型取消沿 live-only delta 到页面。callId 去重，终态结果不可再写入。页面调用 MCP 的目标由宿主固定，复用 Agent 的权限和审批路径，原始结果直接返回。
 - 页面 `availableDisplayModes` 是硬约束，作用于锚点、hostContext 和模式请求；握手前使用后台表面，不展示 guest 或自动打开侧栏。只注册 fullscreen 时，对话显示插件图标、名称、状态和打开按钮，关闭侧栏仍为卡片；inline-only 不提供侧栏入口。未声明兼容双模式，空集合或仅 pip 不显示 guest。详见 [展示模式 spec](../../../../docs/plugin-ui-display-modes-spec.md)。高度默认 240px、范围 [80,1200]，hostContext 只回传 width/maxHeight，避免高度回环。
-- widgetState 仅接受页面主动提交，唯一内存 store 按逻辑键隔离；重建时在 `hostContext["zcode/widgetState"]` 下发。切位置不复制；手动重试、任务淘汰、来源撤销清除；应用重启为空。
+- widgetState 仅接受页面主动提交，唯一内存 store 按逻辑键隔离；重建时在 `hostContext["codez/widgetState"]` 下发。切位置不复制；手动重试、任务淘汰、来源撤销清除；应用重启为空。
 - MCP 页面仅在资源 `_meta.ui.backgroundRetention: true` 时申请后台保留；未声明恢复隐藏五分钟/容量回收。每窗口超过四个后台声明页时，按最久未活跃优先回收三十分钟未活跃且不忙的页面。四为软阈值；三十任务/六十四活页面准入保持，无可回收候选时拒绝新建。`PluginUiBackgroundRetention` 只持有 MCP 活跃时间与期限；Gen UI 仍使用原五分钟/容量规则。
-- owner 准入后立即启动；能力握手前临时提供非零承载面让 guest 首次挂载，握手后只有声明页保留 inert 后台表面。只有声明页申请目标 guest 活动。可见期、模型/App 工具、sampling 与交付真实工作的 `_meta["zcode/activity"]: true` 更新活跃时间；空轮询、绘制与重复结果不续期。新工具结果可恢复已回收页面，重复投影不能复活它。详见 [后台执行 spec](../../../../docs/plugin-ui-background-execution.md)。
-- 已获准的主动释放先按原 sandboxId 解除导航/崩溃监听，避免 Main 停止页面的 about:blank 导航误报崩溃；真实运行中的导航/崩溃仍进入 error，重试后重建。导航指 shell 主 frame 或插件 frame 自身（`zcode-sandbox:` 文档）的跨文档导航；插件文档内部的子 frame（如 srcdoc 预览）导航不是重载，不进入 error。
+- owner 准入后立即启动；能力握手前临时提供非零承载面让 guest 首次挂载，握手后只有声明页保留 inert 后台表面。只有声明页申请目标 guest 活动。可见期、模型/App 工具、sampling 与交付真实工作的 `_meta["codez/activity"]: true` 更新活跃时间；空轮询、绘制与重复结果不续期。新工具结果可恢复已回收页面，重复投影不能复活它。详见 [后台执行 spec](../../../../docs/plugin-ui-background-execution.md)。
+- 已获准的主动释放先按原 sandboxId 解除导航/崩溃监听，避免 Main 停止页面的 about:blank 导航误报崩溃；真实运行中的导航/崩溃仍进入 error，重试后重建。导航指 shell 主 frame 或插件 frame 自身（`codez-sandbox:` 文档）的跨文档导航；插件文档内部的子 frame（如 srcdoc 预览）导航不是重载，不进入 error。
 - 自动回收、显式重载、任务删除、窗口关闭和来源/runtime 失效释放 MCP 页面。顺序：失效凭证、取消调用和登记、有界 resource-teardown、关闭端口/guest、释放 feed/lease。迟到 prepare、注销和锚点清理只作用于捕获的原实例。卡片卸载不切断保活页面的订阅。
 - `sendFollowUpMessage` 仍走既有会话动作和手势/可编辑确认；确认完成后验证实例。只读会话不登记动作。`updateModelContext` 只投递到该 workspace/session 的 composer，不是数据库状态。
 - `display.ui` 无效、Web/手机/远程、不支持平台或初始化失败继续普通 MCP 卡回退。工具行替代与折叠策略仍由投影派生；不会另建 accepted-input queue 或改变 continuous/replayable 语义。

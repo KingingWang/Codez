@@ -45,7 +45,7 @@ describe("NSIS installSection template patch", () => {
       ),
       "utf8",
     );
-    const root = await mkdtemp(join(tmpdir(), "zcode-nsis-template-"));
+    const root = await mkdtemp(join(tmpdir(), "codez-nsis-template-"));
     const path = join(root, "installSection.nsh");
     try {
       // 只修改隔离副本，不污染开发依赖；真实模板锚点变更不能被手写 fixture 掩盖。

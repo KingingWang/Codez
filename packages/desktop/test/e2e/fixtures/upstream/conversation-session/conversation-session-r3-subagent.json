@@ -328,7 +328,7 @@
           "id": "toolu_r3_sub_child_bash",
           "name": "Bash",
           "input": {
-            "command": "while [ ! -f '.zcode-e2e/r3-subagent/release-child' ]; do sleep 0.2; done; printf 'R3_SUBAGENT_CHILD_BASH_RELEASED\\n'",
+            "command": "while [ ! -f '.codez-e2e/r3-subagent/release-child' ]; do sleep 0.2; done; printf 'R3_SUBAGENT_CHILD_BASH_RELEASED\\n'",
             "description": "Wait for remote release file"
           }
         }

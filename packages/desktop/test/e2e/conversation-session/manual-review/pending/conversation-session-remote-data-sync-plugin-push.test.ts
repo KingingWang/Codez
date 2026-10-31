@@ -6,7 +6,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -28,29 +28,29 @@ import {
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
 // DSYNC-07：设置 → 数据同步 → 设备 → 推送 inline 插件（docs/remote/data-sync.md「插件」）。
-// 远端为本机 Docker runner（或服务器队列）提供的真实 Linux 容器；远端断言用 docker exec 读容器内 ~/.zcode。
+// 远端为本机 Docker runner（或服务器队列）提供的真实 Linux 容器；远端断言用 docker exec 读容器内 ~/.codez。
 const CASE_MARKER = "E2E_DSYNC_07_PLUGIN_PUSH";
 const PLUGIN_NAME = "e2e-dsync-plugin";
 const PLUGIN_KEY = `${PLUGIN_NAME}@inline`;
-const REMOTE_PLUGIN_DIR = `/home/dev/.zcode/plugins/${PLUGIN_NAME}`;
-const REMOTE_CONFIG = "/home/dev/.zcode/cli/config.json";
+const REMOTE_PLUGIN_DIR = `/home/dev/.codez/plugins/${PLUGIN_NAME}`;
+const REMOTE_CONFIG = "/home/dev/.codez/cli/config.json";
 const REMOTE_DATA_MARKER = `${CASE_MARKER}_REMOTE_DATA`;
 const BIG_PLUGIN_NAME = "e2e-dsync-big-plugin";
 const BIG_PLUGIN_KEY = `${BIG_PLUGIN_NAME}@inline`;
-const REMOTE_BIG_PLUGIN_DIR = `/home/dev/.zcode/plugins/${BIG_PLUGIN_NAME}`;
+const REMOTE_BIG_PLUGIN_DIR = `/home/dev/.codez/plugins/${BIG_PLUGIN_NAME}`;
 // 32MiB 随机内容：RPC 若把归档展开成 JSON 数字数组（约 3.6 倍）会超过远端 WebSocket 单条消息上限 100MiB；
 // 按 base64（约 4/3 倍）传输约 43MiB。
 const BIG_PLUGIN_PAYLOAD_BYTES = 32 * 1024 * 1024;
 
 function localPluginDir(): string {
-  return join(getE2EAppDataPaths().homeDir, ".zcode", "plugins", PLUGIN_NAME);
+  return join(getE2EAppDataPaths().homeDir, ".codez", "plugins", PLUGIN_NAME);
 }
 
 async function writeLocalPlugin(version: string): Promise<void> {
   const dir = localPluginDir();
-  await mkdir(join(dir, ".zcode-plugin"), { recursive: true });
+  await mkdir(join(dir, ".codez-plugin"), { recursive: true });
   await writeFile(
-    join(dir, ".zcode-plugin", "plugin.json"),
+    join(dir, ".codez-plugin", "plugin.json"),
     `${JSON.stringify({ name: PLUGIN_NAME, version, description: "data sync e2e plugin" }, null, 2)}\n`,
   );
   await mkdir(join(dir, "skills", "dsync-hello"), { recursive: true });
@@ -65,7 +65,7 @@ async function writeLocalPlugin(version: string): Promise<void> {
 
 /** 把插件目录登记到本机 config.json 的 plugins.dirs（保留已有字段）。 */
 async function registerLocalPlugin(pluginDir = localPluginDir()): Promise<void> {
-  const configPath = join(getE2EAppDataPaths().homeDir, ".zcode", "cli", "config.json");
+  const configPath = join(getE2EAppDataPaths().homeDir, ".codez", "cli", "config.json");
   let config: Record<string, unknown> = {};
   try {
     config = JSON.parse(await readFile(configPath, "utf-8")) as Record<string, unknown>;
@@ -174,7 +174,7 @@ describe(`${CASE_MARKER}: 数据同步页推送 inline 插件`, () => {
     await pushPluginsAndWait();
     await waitForRowStatus(PLUGIN_KEY, "synced", "推送后插件没有变为「已同步」");
     expect(
-      await readRemoteContainerFile(container, `${REMOTE_PLUGIN_DIR}/.zcode-plugin/plugin.json`),
+      await readRemoteContainerFile(container, `${REMOTE_PLUGIN_DIR}/.codez-plugin/plugin.json`),
     ).toContain('"version": "1.0.0"');
     expect(
       await readRemoteContainerFile(container, `${REMOTE_PLUGIN_DIR}/skills/dsync-hello/SKILL.md`),
@@ -199,7 +199,7 @@ describe(`${CASE_MARKER}: 数据同步页推送 inline 插件`, () => {
     await pushPluginsAndWait();
     await waitForRowStatus(PLUGIN_KEY, "synced", "更新后插件没有变为「已同步」");
     expect(
-      await readRemoteContainerFile(container, `${REMOTE_PLUGIN_DIR}/.zcode-plugin/plugin.json`),
+      await readRemoteContainerFile(container, `${REMOTE_PLUGIN_DIR}/.codez-plugin/plugin.json`),
     ).toContain('"version": "1.1.0"');
     expect(
       await readRemoteContainerFile(container, `${REMOTE_PLUGIN_DIR}/skills/dsync-hello/SKILL.md`),
@@ -220,10 +220,10 @@ describe(`${CASE_MARKER}: 数据同步页推送 inline 插件`, () => {
     await clickTestIdByDom("remote-sync-tab-overview");
     await clickTestIdByDom("remote-sync-close");
 
-    const dir = join(getE2EAppDataPaths().homeDir, ".zcode", "plugins", BIG_PLUGIN_NAME);
-    await mkdir(join(dir, ".zcode-plugin"), { recursive: true });
+    const dir = join(getE2EAppDataPaths().homeDir, ".codez", "plugins", BIG_PLUGIN_NAME);
+    await mkdir(join(dir, ".codez-plugin"), { recursive: true });
     await writeFile(
-      join(dir, ".zcode-plugin", "plugin.json"),
+      join(dir, ".codez-plugin", "plugin.json"),
       `${JSON.stringify({ name: BIG_PLUGIN_NAME, version: "1.0.0", description: "large data sync e2e plugin" }, null, 2)}\n`,
     );
     await writeFile(join(dir, "payload.bin"), randomBytes(BIG_PLUGIN_PAYLOAD_BYTES));

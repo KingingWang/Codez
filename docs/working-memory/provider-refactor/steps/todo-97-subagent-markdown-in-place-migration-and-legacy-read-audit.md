@@ -17,7 +17,7 @@
 ## 2. Subagent 已裁决方案
 
 - 用户／项目 Markdown 的正式格式继续为 `model`、`thoughtLevel`；创建、编辑、保存、Host 读取和 Agent 加载必须一致，不得保存后又生成 `modelSelection`。
-- **自动原地迁移仅限用户数据目录 `<data>/agents/`**。项目 `.zcode/agents/`、插件附带文件及其他来源全部不自动迁移、不写回；这不取消用户主动编辑保存项目配置的已有功能。
+- **自动原地迁移仅限用户数据目录 `<data>/agents/`**。项目 `.codez/agents/`、插件附带文件及其他来源全部不自动迁移、不写回；这不取消用户主动编辑保存项目配置的已有功能。
 - 按 [Todo 96](todo-96-selection-offline-migration-and-resolution-consolidation.md) 做确定性旧身份转换：旧 BigModel / Z.ai Coding Plan 迁为同域 Individual；不查询当前连接、登录、权益、Registry、View 或模型能力。Individual 只是迁移落点，不表示用户历史使用个人套餐，不切换连接。
 - 模型 ID、思考档位保留原意图；档位别名治理属于 Todo 95，不顺带改写。继承选择保持继承，不因身份迁移猜一个模型。
 - 正确解码实际旧字符串后，只变更 Provider 身份；覆盖旧 `provider/model` 和 `custom:...` 编码，保证模型 ID 无损往返，不能对正文全局替换。

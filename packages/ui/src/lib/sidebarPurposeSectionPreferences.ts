@@ -18,7 +18,7 @@ export const SIDEBAR_PURPOSE_SECTION_IDS = ["projects", "conversations"] as cons
 export type SidebarPurposeSectionId = (typeof SIDEBAR_PURPOSE_SECTION_IDS)[number];
 
 export const SIDEBAR_PURPOSE_SECTION_PREFERENCES_STORAGE_KEY =
-  "zcode-sidebar-purpose-section-preferences";
+  "codez-sidebar-purpose-section-preferences";
 
 const DEFAULT_SIDEBAR_PURPOSE_SECTION_PREFERENCES: SidebarPurposeSectionPreferences = {
   projectsExpanded: true,

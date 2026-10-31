@@ -101,12 +101,12 @@ dmg-builder@1.2.5 的 dmgbuild 会把 `dmg.contents` 中每个 `type:"file"` 条
 - 未签名 Windows x64 Preview 安装器由 electron-builder 26.17.0 成功生成。Builder 的 HTTP mirror 授权只进入 electron-builder 子进程，资产准备和常规编译显式清空该授权；`afterPack` 判断运行时闭包完整，不需要重写 `app.asar`；原生资源、PTY、Sharp、Koffi、CUA Helper 和 500 MiB 体积门禁通过。
 - 最终环境隔离产物为 273,884,905 字节（261.2 MiB）。`latest.yml` 的 URL、size 和 SHA-512 与最终 EXE 一致；blockmap v2 包含 13,089 个块并完整覆盖安装器字节。
 - 包内 Electron Node 报告 Electron 44.7.0 / Node 24.21.0，成功加载 electron-updater 6.8.10 和 Builder 26.17.0 构建元数据；随包 Agent `--version` 输出 0.17.0。
-- 使用隔离数据目录冷启动 `win-unpacked`，Chromium 152.0.7977.130 的 CDP 端点可用，日志中没有 `MODULE_NOT_FOUND`。测试结束后进程树已停止，`zcode://` 和 Explorer 菜单注册已恢复到原正式应用路径。
+- 使用隔离数据目录冷启动 `win-unpacked`，Chromium 152.0.7977.130 的 CDP 端点可用，日志中没有 `MODULE_NOT_FOUND`。测试结束后进程树已停止，`codez://` 和 Explorer 菜单注册已恢复到原正式应用路径。
 - 第三方通知按根 lockfile 的完整生产图重建并通过基础许可分类与输入哈希校验，包含 1203 个精确包版本。生成器先把两侧换行统一为 LF 再严格比对根 lockfile 与 pnpm 安装快照（autocrlf 工作区的 CRLF 不算漂移），再按根 workspace 逐项读取 lockfile-only 图，避免递归扫描的 Windows `EMFILE` 和跨 workspace dedupe 漏项。electron-updater 6.8.10 和 builder-util-runtime 9.7.0 已进入声明；`@electron-internal/extract-zip@1.0.5` 的发布包和精确源码树没有完整 LICENSE，按发布方 BSD-2-Clause 标识登记并保留 `reviewRequired`。OFL-1.1 按标准开放字体许可分类，仍要求对应字体包携带完整原文。
 
 ### 未通过或未验证
 
 - 严格第三方材料门禁仍有 25 项 `reviewRequired`，本次不把基础分类通过表述为发布合规完成。
-- 冷启动日志中的旧 Windows bundled binary 诊断仍报告 `glm` 缺失；当前正式路径已经改为 Electron Node 执行 `resources/glm/zcode.cjs`，且该入口实跑成功，因此不把这条旧诊断误报归因于 Builder 升级。
+- 冷启动日志中的旧 Windows bundled binary 诊断仍报告 `glm` 缺失；当前正式路径已经改为 Electron Node 执行 `resources/glm/codez.cjs`，且该入口实跑成功，因此不把这条旧诊断误报归因于 Builder 升级。
 - 未验证 Windows 正式签名、真实旧版本通过 feed 更新、Windows arm64 真机、macOS 签名/公证/ShipIt 和 Linux 四种安装格式。
 - pacman 配置仍沿用升级前行为：文件名使用 `.pkg.tar.zst`，未显式覆盖 Builder 的压缩默认值。26.17.0 的 FPM 默认仍为 xz，Linux 发布前必须用真实产物确认内容和扩展名合同；本次 Windows 验收不外推该结果。

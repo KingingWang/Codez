@@ -15,7 +15,7 @@
 
 ## 非目标
 
-- 不录制或回放 renderer IPC、ZCode Protocol event、UI store mutation。
+- 不录制或回放 renderer IPC、Codez Protocol event、UI store mutation。
 - 不把真实 API key 或鉴权 header 写入 artifact。
 - 不保证跨 provider 通用语义解析；本阶段只在 e2e 网络层保真 HTTP/SSE 响应节奏。
 
@@ -56,7 +56,7 @@ E2E_PROVIDER_PRESET=glmhighspeed \
 GLM_HIGHSPEED_E2E_API_KEY=... \
 E2E_PROVIDER_PROMPT='输出一篇很长的 Markdown，末尾包含 PERF_TRACE_DONE' \
 E2E_PROVIDER_EXPECT_REPLY_TEXT=PERF_TRACE_DONE \
-pnpm --filter @zcode/desktop test:e2e -- --spec ./test/e2e/upstream-provider.test.ts
+pnpm --filter @codez/desktop test:e2e -- --spec ./test/e2e/upstream-provider.test.ts
 ```
 
 `glmhighspeed` preset 使用 Anthropic-compatible endpoint
@@ -69,7 +69,7 @@ provider preset 时默认仍使用 DeepSeek v4 flash；只有显式设置
 capture artifact 默认写入：
 
 ```text
-packages/desktop/.e2e-home/.zcode/e2e-network-capture/upstream-provider.json
+packages/desktop/.e2e-home/.codez/e2e-network-capture/upstream-provider.json
 ```
 
 后续回放自定义 fixture 或 capture-derived fixture：
@@ -77,7 +77,7 @@ packages/desktop/.e2e-home/.zcode/e2e-network-capture/upstream-provider.json
 ```bash
 E2E_PROVIDER_PRESET=glmhighspeed \
 E2E_PROVIDER_REPLAY_FIXTURE_PATH=/absolute/path/to/replay-fixture-or-capture.json \
-pnpm --filter @zcode/desktop test:e2e -- --spec ./test/e2e/upstream-provider.test.ts
+pnpm --filter @codez/desktop test:e2e -- --spec ./test/e2e/upstream-provider.test.ts
 ```
 
 ## 风险与边界

@@ -21,11 +21,11 @@ mcp__node_repl__js_add_node_module_dir
 目标形态中 `node_repl` 是独立 stdio MCP server；`js` 再启动持久 Node kernel。browser client
 在 kernel 中初始化 `agent.browsers`，经产品受信 bridge 访问 browser backend。
 
-ZCode 当前的 `js/js_reset/js_add_node_module_dir` 是 Agent core 内建 tool，REPL 也运行在 Agent
+Codez 当前的 `js/js_reset/js_add_node_module_dir` 是 Agent core 内建 tool，REPL 也运行在 Agent
 进程内。虽然对象图和多数 cell 语义已经就位，但 tool identity、进程生命周期、MCP status/tool
 discovery 和 stdio 故障隔离都不符合目标形态。
 
-本轮目标是把 ZCode 的模型可见边界改为真实 MCP server，并保持现有 BrowserControl 产品链不回退：
+本轮目标是把 Codez 的模型可见边界改为真实 MCP server，并保持现有 BrowserControl 产品链不回退：
 
 ```text
 model
@@ -35,7 +35,7 @@ model
   -> import browser-use plugin scripts/browser-client.mjs
   -> authenticated local pipe
   -> current Agent session BrowserControlPort
-  -> existing ZCode Protocol interaction/browserExecute
+  -> existing Codez Protocol interaction/browserExecute
   -> shared host -> desktop main/IAB
 ```
 
@@ -56,12 +56,12 @@ description 必须在开头明确：
 
 2026-07-28 缺陷原因：host MCP 只描述了 persistent JavaScript kernel 的能力，没有描述 Browser Use
 使用边界。模型会把它识别成通用代码执行器，在与浏览器无关的任务中错误选择高权限
-`mcp__node_repl__js`。ZCode 中 `node_repl` 只有 Browser Use
+`mcp__node_repl__js`。Codez 中 `node_repl` 只有 Browser Use
 一个合法场景，因此必须把这个单一场景和反向禁用条件同时写入 server instructions 与三个 tool
 descriptions，并由 `tools/list` 自动化锁定。
 
 当前模型路由与 Browser Use guidance 合同以 Browser Use plugin `0.3.0` 发布。插件包 `package.json`、
-`.zcode-plugin/plugin.json`、`OFFICIAL_PLUGIN_DEFINITIONS`、SEA `officialSeaPlugins` 与
+`.codez-plugin/plugin.json`、`OFFICIAL_PLUGIN_DEFINITIONS`、SEA `officialSeaPlugins` 与
 `NODE_REPL_SERVER_VERSION` 的版本必须完全一致；bootstrap 自动化负责校验前三处，SEA build
 自动化负责校验 package/manifest/SEA 清单，MCP server 自动化负责校验 serverInfo 与 package，
 通过重叠事实源把五处版本机械闭环。禁止再次出现插件内容已升版、官方 seed、SEA asset path 或
@@ -69,7 +69,7 @@ MCP runtime 仍写入旧版本的漂移。
 
 ### 2.1 `js`
 
-模型侧输入合同复用 `@zcode/contracts` 的 `JsInputJsonSchema`，禁止 MCP server 另写一份会漂移的
+模型侧输入合同复用 `@codez/contracts` 的 `JsInputJsonSchema`，禁止 MCP server 另写一份会漂移的
 JSON Schema：
 
 - `code: string`，必填。
@@ -130,11 +130,11 @@ kernel 跨 `js` 调用持久；timeout/cancel 后必须废弃旧 context，迟�
   `hostMcpServerNames`，只表达产品归属和可观察性，不把它写回 plugin manifest，也不把运行时名称改成
   `plugin:browser:node_repl`。
 - browser-use 插件关闭后，设置页仍保留该关联项，因为通用 `node_repl` 的宿主生命周期不跟随 skill 开关；
-  行内文案必须说明它由 ZCode 宿主为 browser-use 插件提供，不能误报成“插件未启用”。
+  行内文案必须说明它由 Codez 宿主为 browser-use 插件提供，不能误报成“插件未启用”。
 - 宿主 `node_repl` 在用户/plugin MCP 合并后覆盖同名项；第三方/inline plugin 仍强制
   `plugin:<plugin>:<server>` namespace，不能冒充 `mcp__node_repl__*`。
 - browser-use plugin 增加 `scripts/browser-client.mjs`。skill 必须从宿主注入的
-  `ZCODE_PLUGIN_ROOT`（兼容 `CLAUDE_PLUGIN_ROOT`）读取插件根目录，再通过 `node:path.join` 和
+  `CODEZ_PLUGIN_ROOT`（兼容 `CLAUDE_PLUGIN_ROOT`）读取插件根目录，再通过 `node:path.join` 和
   `node:url.pathToFileURL` 生成跨平台绝对 file URL 后动态导入；禁止保留 `<plugin root>` 占位符，
   也禁止根据 Skill base directory 猜测插件根目录。这样既不依赖模型路径推理，也不依赖 core 在每个
   REPL context 中提前注入 `agent.browsers`。
@@ -201,7 +201,7 @@ stdin/stdout/stderr、exit/kill/chdir，以免破坏 MCP stdio 或关闭 child�
 | NRM-05 | add dir           | 绝对路径首次 true、重复 false、相对路径拒绝                                                                                               |
 | NRM-06 | output            | write/console/result、BigInt/circular error、image blocks、`_meta` 投影正确                                                               |
 | NRM-07 | timeout/cancel    | kernel reset，旧 async continuation 和旧 browser bridge 不可复用                                                                          |
-| NRM-08 | browser bootstrap | 使用宿主 `ZCODE_PLUGIN_ROOT` 构造跨平台 file URL 并 import `scripts/browser-client.mjs` 后 `agent.browsers` 可用；不从 Skill 目录猜路径   |
+| NRM-08 | browser bootstrap | 使用宿主 `CODEZ_PLUGIN_ROOT` 构造跨平台 file URL 并 import `scripts/browser-client.mjs` 后 `agent.browsers` 可用；不从 Skill 目录猜路径   |
 | NRM-09 | browser command   | pipe 校验 token/schema/context，调用同 session BrowserControlPort                                                                         |
 | NRM-10 | forged pipe       | 错 token、非法 op/command、错误 session 均 fail closed                                                                                    |
 | NRM-11 | plugin disabled   | browser skill/client bridge 不注入，宿主 `node_repl` 仍可执行通用 JS                                                                      |
@@ -221,16 +221,16 @@ stdin/stdout/stderr、exit/kill/chdir，以免破坏 MCP stdio 或关闭 child�
   identity；filesystem seed 与 SEA 使用一致的顶层资产白名单，Dev 缓存必须包含
   `scripts/browser-client.mjs`。
 - browser bootstrap 不再让模型把 `scripts/browser-client.mjs` 相对到 `skills/control-browser`；插件根目录
-  由 `node_repl` MCP child 的只读 `process.env.ZCODE_PLUGIN_ROOT` 提供，并在 Skill 模板内用
+  由 `node_repl` MCP child 的只读 `process.env.CODEZ_PLUGIN_ROOT` 提供，并在 Skill 模板内用
   `pathToFileURL(join(...))` 转为可移植的 ESM import URL。
-- `node_repl` MCP 的模型输入 schema 复用 `@zcode/contracts`；新调用强制提供用户可读 title，执行层继续
+- `node_repl` MCP 的模型输入 schema 复用 `@codez/contracts`；新调用强制提供用户可读 title，执行层继续
   接受旧 code-only 调用，避免 UI 再次退回固定完成文案，同时保持历史兼容。
-- 已按本规格做黑盒合同核验：ZCode 的 tools/list、严格 schema、空代码、
+- 已按本规格做黑盒合同核验：Codez 的 tools/list、严格 schema、空代码、
   module dir 首次/重复结果及非法路径 `-32602` 边界均符合预期。
 - browser-use-plugin typecheck/lint/build/test 通过；core、bootstrap、adapter、UI、SEA、Desktop 的相关定向
   测试通过；Agent workspace 全量 typecheck 通过。
 - root `pnpm typecheck` 通过；root `pnpm lint` 通过（78 条当前仓库既有 warning，0 error）。
-- 真实 ZCode MCP stdio child smoke 通过：tools/list 为三个预期工具，cell 得到 `42`，标准
+- 真实 Codez MCP stdio child smoke 通过：tools/list 为三个预期工具，cell 得到 `42`，标准
   `await import("node:path")` 可用，受限 `process.stdout` 不可见。带 fake BrowserControlPort 的
   MCP → browser-client → pipe → broker 集成链通过。
 
@@ -239,6 +239,6 @@ stdin/stdout/stderr、exit/kill/chdir，以免破坏 MCP stdio 或关闭 child�
 
 仍需实机补验：
 
-- ZCode Dev IAB 的真实 navigate + DOM snapshot（本轮完成 broker 集成测试，未用 mock 结果冒充真机）。
+- Codez Dev IAB 的真实 navigate + DOM snapshot（本轮完成 broker 集成测试，未用 mock 结果冒充真机）。
 - Windows named pipe、手机 Web remote、SSH/WSL/Docker remote workspace 回归。
 - SEA 与 Electron 三平台安装包的启动级 smoke；当前只有资产收集与 bundle contract 自动化。

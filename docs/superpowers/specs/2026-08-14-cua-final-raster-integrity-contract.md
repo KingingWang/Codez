@@ -7,7 +7,7 @@
 
 上游设计：飞书 `O3s2dIIooo1uuExdipOcVJ9Vnvg`，revision 75（V3）。
 
-producer 实现：workspace 包 `packages/zcode-cua`（导入基线 `zcode-cua@4a3c507dd16f3ed840e87bc92e709ce339e6a4f3`；包含 image-first、transport 内部 frame 绑定与 raster-only 恢复指引）。
+producer 实现：workspace 包 `packages/codez-cua`（导入基线 `codez-cua@4a3c507dd16f3ed840e87bc92e709ce339e6a4f3`；包含 image-first、transport 内部 frame 绑定与 raster-only 恢复指引）。
 
 revision 同时包含 0.5.7 producer surface 简化、最终栅格/Zoom 权威、WindowServer
 截图点击、window-event Ghost Cursor 反馈、Helper 更名及 `PERMISSION_REQUIRED` 授权指引，
@@ -23,7 +23,7 @@ revision 同时包含 0.5.7 producer surface 简化、最终栅格/Zoom 权威�
 
 `x/y` 是模型实际收到的那张图的整数像素。模型不选择 Retina、DPI、
 逻辑点、物理像素、crop、缩放、窗口原点或显示器坐标系；这些差异全部由
-`@zcode/zcode-cua` 和 Helper 内部处理。
+`@codez/codez-cua` 和 Helper 内部处理。
 
 该约束只定义“模型从图像选点”这条路径。模型直接使用可访问性树中的
 `state_id/index` 时仍可传 element target；element target 不携带图像坐标，也不得作为
@@ -35,16 +35,16 @@ revision 同时包含 0.5.7 producer surface 简化、最终栅格/Zoom 权威�
 Helper capture
     │ 原始 raster + capture/pointer/topology provenance
     ▼
-zcode-cua 最终 crop/resize/encode
+codez-cua 最终 crop/resize/encode
     │ 注册不可变内部 frame，并返回 image + image_ref + hint
     ▼
-ZCode MCP bridge
+Codez MCP bridge
     │ 官方 CUA 图像必须保持字节、尺寸、方向和 block 邻接关系
     ▼
 模型 provider 请求
     │ 模型按收到的 raster 只选择整数 x/y
     ▼
-zcode-cua transport 同步绑定当前 frame → registry → 像素中心投影
+codez-cua transport 同步绑定当前 frame → registry → 像素中心投影
     → Helper 二次 provenance 校验 → 原生输入
 ```
 
@@ -61,7 +61,7 @@ zcode-cua transport 同步绑定当前 frame → registry → 像素中心投影
 
 1. raster 必须是 tool result 首块，`image_ref` 文本块紧随其后；bridge 不得把任何
    diagnostic/hook 文本放到 raster 前面，也不得重排或拆散该原子对。
-2. raster 在 zcode-cua 已经按 190 KiB 预算编码，ZCode 不得再次 resize、crop、
+2. raster 在 codez-cua 已经按 190 KiB 预算编码，Codez 不得再次 resize、crop、
    rotate、重编码或替换为 artifact 文本。
 3. 若 raster 仍超过 provider 明确上限，结果整体 fail-closed，不能只保留
    `image_ref` 后继续允许该 frame 动作。
@@ -87,7 +87,7 @@ zcode-cua transport 同步绑定当前 frame → registry → 像素中心投影
    权威块排除在外，否则同一份权威出现在两处，第 7 条会把每一次带截图的观察全部拒掉。
 9. 拒绝面分两路，且不可合并：模型只拿到一句不含 `frame_id`、不含落盘路径的通用
    「重新截图」提示（被拒的帧不能反过来成为可用权威）；具体判据放在结果 `_meta`
-   的 `zcode.cua/frame-integrity-rejections-v1` 上。宿主 `formatMcpToolResult` 只读
+   的 `codez.cua/frame-integrity-rejections-v1` 上。宿主 `formatMcpToolResult` 只读
    一个特定 `_meta` 键、从不整体序列化 `_meta`，所以判据可诊断而不进模型上下文。
    判据不得只存在于函数局部变量：2026-09-11 真机上第 8 条被违反，判据被拒绝后即
    丢弃，于是「每一次带截图的观察都被自己的门禁否决」这种整条通道故障静默了一整天。

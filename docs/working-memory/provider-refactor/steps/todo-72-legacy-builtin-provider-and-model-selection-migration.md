@@ -42,7 +42,7 @@
 - 没有 API Key 时，不制造自定义副本，也不写空 Key 覆盖已有有效值。
 - 套餐 Token、JWT、动态 Headers 和旧账号状态不迁入 Personal，由当前账号凭据链重新提供。
 - 真正自定义 Provider 继续迁移调用配置、模型成员/顺序及合法 Context Window；其余模型能力按既定规则丢弃。
-- 不凭显示名称或 URL 判定内置身份。UUID 自定义 Provider 即使叫“智谱”或“ZCode”，也不能被误删。
+- 不凭显示名称或 URL 判定内置身份。UUID 自定义 Provider 即使叫“智谱”或“Codez”，也不能被误删。
 - 旧 `config.json` 保持原样，不生成备份，不恢复 `model-providers.json` 回退，不新增未发布中间版本兼容。
 
 本次处理旧文件首次导入。已经生成的 `provider_config.json` 不得被重新导入覆盖，也不得按名称扫描删除
@@ -106,7 +106,7 @@
 需要账号连接的入口显式接收已解析的迁移上下文，不让底层存储直接读取全局 UI 状态。
 
 实施接口：共享迁移函数只转换旧 Provider ID，显式接收当前环境账号服务解析出的
-`ZCodeAccountAccess`（可以为空）；不读取磁盘、不等待登录、不查询或扫描 Registry。
+`CodezAccountAccess`（可以为空）；不读取磁盘、不等待登录、不查询或扫描 Registry。
 普通当前 ID 原样交给各领域验证，未知 `builtin:*` 返回未绑定。模型成员与 Reasoning 的有效性仍由
 所属领域使用目标 Registry 判断。账号上下文沿用现有 `resolveCurrentAccountAccess` 的身份与连接规则，
 不能把仅保存的 Family 偏好直接当作已登录账号事实。

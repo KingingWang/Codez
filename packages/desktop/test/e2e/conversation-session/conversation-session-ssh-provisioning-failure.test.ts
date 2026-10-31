@@ -1,6 +1,6 @@
 import { withCredentialFault } from "#e2e/helpers/credential-fault";
-import { NodePersonalProviderConfigRepository } from "@zcode/provider-node";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { NodePersonalProviderConfigRepository } from "@codez/provider-node";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 import { clearAppData, getE2EAppDataPaths, waitForWorkspaceApp } from "../helpers/desktop-app.js";
 import { prepareV4ConversationE2E } from "../helpers/v4-conversation.js";
 import {

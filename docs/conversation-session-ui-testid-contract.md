@@ -13,7 +13,7 @@
 现有规则继续有效：
 
 - 所有 `data-testid` 常量统一声明在 `packages/shared/src/test-ids.ts`。
-- `test-ids.ts` 的常量只从 `@zcode/shared/test-ids` 导入，根入口 `@zcode/shared` 不导出它们；工作流一族 `test-ids-workflow.ts` 仍从根入口导入。原因见 [pre-push 说明](testing/pre-push-hook.md) 的受影响单测一节。
+- `test-ids.ts` 的常量只从 `@codez/shared/test-ids` 导入，根入口 `@codez/shared` 不导出它们；工作流一族 `test-ids-workflow.ts` 仍从根入口导入。原因见 [pre-push 说明](testing/pre-push-hook.md) 的受影响单测一节。
 - 新增常量必须带中文注释。
 - UI 组件禁止硬编码 test id 字符串。
 - E2E 使用 `packages/desktop/test/e2e/helpers/selectors.ts` 的 `sel(tid)` 或等价 helper。

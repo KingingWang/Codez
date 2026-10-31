@@ -7,7 +7,7 @@ import { chromium } from "playwright-core";
 // PCD01/02：真实 Dev App 创建项目并核对草稿头部，不替换组件、服务或导航，不发送 prompt。
 test("PCD: newly created projects select only the active draft", { timeout: 120_000 }, async () => {
   const browser = await chromium.connectOverCDP(
-    process.env.ZCODE_E2E_CDP_URL ?? "http://localhost:9229",
+    process.env.CODEZ_E2E_CDP_URL ?? "http://localhost:9229",
   );
   const page = browser
     .contexts()[0]
@@ -16,7 +16,7 @@ test("PCD: newly created projects select only the active draft", { timeout: 120_
   assert.ok(page, "需要运行中的 Dev App");
   page.setDefaultTimeout(10_000);
   const artifacts =
-    process.env.ZCODE_E2E_ARTIFACT_DIR ??
+    process.env.CODEZ_E2E_ARTIFACT_DIR ??
     fileURLToPath(
       new URL("../../../../../desktop/.e2e-artifacts/project-created-draft/", import.meta.url),
     );

@@ -1,13 +1,13 @@
-import type { RendererTelemetryEventPayload } from "@zcode/shared";
+import type { RendererTelemetryEventPayload } from "@codez/shared";
 /* eslint-disable max-lines -- Web 远程控制 manager 承担外部 relay app payload 路由与 workspace bridge 编排。 */
 import type { MessagePortMain, UtilityProcess as ElectronUtilityProcess } from "electron";
 import { randomUUID } from "node:crypto";
-import { MessagePortProtocol, type MessagePortLike, type MessagePortPayload } from "@zcode/rpc";
+import { MessagePortProtocol, type MessagePortLike, type MessagePortPayload } from "@codez/rpc";
 import {
   createAcknowledgedWebRemoteControlRelayProtocol,
   type AcknowledgedWebRemoteControlRelayProtocolAdapter,
   type WebRemoteControlPayloadSendResult,
-} from "@zcode/client";
+} from "@codez/client";
 import {
   buildWebRemoteControlExternalQrUrl,
   buildWebRemoteControlBridgeResultTelemetry,
@@ -15,7 +15,7 @@ import {
   classifyRemoteUsageError,
   parseRemoteWorkspaceIdentity,
   WEB_REMOTE_CONTROL_OUTBOUND_PAYLOAD_BUFFER_TIMEOUT_MS,
-  type ZCodeEndpointUrls,
+  type CodezEndpointUrls,
   type HostPreparedProjectWorkspace,
   type HostProjectWorkspaceNavigationInput,
   resolveUnrecognizedWebRemoteControlRequest,
@@ -45,8 +45,8 @@ import {
   type RemoteUsageRemoteKind,
   type TelemetryEventPayload,
   measureWebRemoteControlRpcRelayEnvelopeBytes,
-} from "@zcode/shared";
-import { WebRemoteControlV2ConnectionError } from "@zcode/shared/web-remote-relay";
+} from "@codez/shared";
+import { WebRemoteControlV2ConnectionError } from "@codez/shared/web-remote-relay";
 import {
   WebRemoteControlDeviceTransport,
   MobilePushConnection,
@@ -171,7 +171,7 @@ interface WindowControlRuntime {
 }
 
 interface WebRemoteControlManagerDependencies {
-  getEndpointUrls?: () => Promise<ZCodeEndpointUrls> | ZCodeEndpointUrls;
+  getEndpointUrls?: () => Promise<CodezEndpointUrls> | CodezEndpointUrls;
   relayWsUrl: string;
   mobileRemoteControlUrl: string;
   deviceMid: string;
@@ -833,7 +833,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       if (result.kind === "oversize") {
         // Bugfix：永久 oversize 不能伪装成临时不可发送后反复进入 50 项 buffer。
         dependencies.logger.warn("[web-remote-control] dropped oversize app payload", {
-          zcodeType: payload.zcode_type,
+          codezType: payload.zcode_type,
           bytes: result.bytes,
           maxBytes: result.maxBytes,
         });
@@ -858,7 +858,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
     }
     if (result.kind === "oversize") {
       dependencies.logger.warn("[web-remote-control] rejected oversize app payload", {
-        zcodeType: payload.zcode_type,
+        codezType: payload.zcode_type,
         bytes: result.bytes,
         maxBytes: result.maxBytes,
       });
@@ -1461,7 +1461,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       zcode_type: "app-error",
       requestId: request.requestId,
       reason: "unsupported-action",
-      error: `Desktop does not recognize app payload type: ${request.zcodeType}`,
+      error: `Desktop does not recognize app payload type: ${request.codezType}`,
     });
   }
 

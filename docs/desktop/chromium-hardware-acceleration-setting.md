@@ -2,7 +2,7 @@
 
 ## 背景
 
-ZCode 桌面端运行在 Electron/Chromium 上。部分显卡或驱动环境可能在 GPU 初始化、页面合成或 WebGL 路径上出现白屏、闪退、渲染异常。Electron 只允许在 `app.ready` 之前调用 `app.disableHardwareAcceleration()`，因此产品开关必须保存为启动期配置，并在下次启动生效。
+Codez 桌面端运行在 Electron/Chromium 上。部分显卡或驱动环境可能在 GPU 初始化、页面合成或 WebGL 路径上出现白屏、闪退、渲染异常。Electron 只允许在 `app.ready` 之前调用 `app.disableHardwareAcceleration()`，因此产品开关必须保存为启动期配置，并在下次启动生效。
 
 ## 产品语义
 
@@ -16,7 +16,7 @@ ZCode 桌面端运行在 Electron/Chromium 上。部分显卡或驱动环境可�
 ## 实现边界
 
 - 配置字段写入全局 `AppSettings`，只表达桌面端启动行为；Web 和手机端读取到该字段也不产生平台动作。
-- 启动早期使用同步文件读取 `~/.zcode/v2/setting.json`，避免等到 `createSettingService().get()` 或 `app.whenReady()` 后才读取导致调用时机过晚。
+- 启动早期使用同步文件读取 `~/.codez/v2/setting.json`，避免等到 `createSettingService().get()` 或 `app.whenReady()` 后才读取导致调用时机过晚。
 - 读取失败、配置缺失、配置类型非法时都回退为默认开启，不影响应用启动。
 - UI 仅在桌面端设置页展示开关，文案说明关闭硬件加速可规避部分显卡/驱动问题，并明确重启后生效。
 

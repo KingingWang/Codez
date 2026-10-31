@@ -6,7 +6,7 @@
 
 **架构：** 不引入长驻 shell，也不新增全局 system-reminder。继续使用现有 `ExecutionResult.resolvedCwd` 捕获通道，在 Bash handler 内增加一个小的 cwd policy 层，集中决定是否更新 cwd、是否 reset、是否追加 Bash stderr 文案。其它工具、hooks、background Bash、failed Bash、timeout Bash 不消费该 policy。
 
-**技术栈：** TypeScript、Vitest、`@zcode/contracts`、`@zcode/core`、现有 `ExecutionPort` cwd capture。
+**技术栈：** TypeScript、Vitest、`@codez/contracts`、`@codez/core`、现有 `ExecutionPort` cwd capture。
 
 ## 执行状态
 
@@ -17,12 +17,12 @@
 
 2026-06-16 验证结果：
 
-- `pnpm --filter @zcode/core exec vitest run tests/bash-handler.test.ts tests/runtime-tool-loop.test.ts tests/bash-result-mapping.test.ts --reporter=dot` 通过，129 tests passed。
-- `pnpm --filter @zcode/adapters exec vitest run tests/exec.test.ts --reporter=dot` 通过，52 tests passed / 2 skipped。
-- `pnpm --filter @zcode/core typecheck` 通过。
-- `pnpm --filter @zcode/adapters typecheck` 通过。
+- `pnpm --filter @codez/core exec vitest run tests/bash-handler.test.ts tests/runtime-tool-loop.test.ts tests/bash-result-mapping.test.ts --reporter=dot` 通过，129 tests passed。
+- `pnpm --filter @codez/adapters exec vitest run tests/exec.test.ts --reporter=dot` 通过，52 tests passed / 2 skipped。
+- `pnpm --filter @codez/core typecheck` 通过。
+- `pnpm --filter @codez/adapters typecheck` 通过。
 - `pnpm lint` 通过，0 errors / 66 warnings。
-- `pnpm typecheck` 仍失败在仓库级历史 `@zcode/shared` export/type 问题；失败文件不在本次 Bash reset 实现面内。
+- `pnpm typecheck` 仍失败在仓库级历史 `@codez/shared` export/type 问题；失败文件不在本次 Bash reset 实现面内。
 
 ---
 
@@ -33,16 +33,16 @@
   `<原 stderr 去首尾空白>\nShell cwd was reset to <root>` 作为 Bash result 的 stderr 暴露给 provider。
 - reset 文案只出现在 Bash tool result 的 stderr 中，不是独立 system-reminder；模型 effort 等其他设置不影响该行为。
 
-## 实现前 ZCode 状态
+## 实现前 Codez 状态
 
-- `apps/zcode-cli/packages/core/src/tool/handlers/bash.ts`
+- `apps/codez-cli/packages/core/src/tool/handlers/bash.ts`
   - foreground Bash 会设置 `captureCwdAfterSuccess: true`。
   - 成功且 `exitCode === 0` 时直接 `setWorkingDirectory(result.resolvedCwd)`。
   - 目前不会判断 `resolvedCwd` 是否离开 `workspaceRoot`，也不会追加 `Shell cwd was reset to ...`。
-- `apps/zcode-cli/packages/core/src/runtime/agent-runtime.ts`
+- `apps/codez-cli/packages/core/src/runtime/agent-runtime.ts`
   - `workingDirectory` 可被 Bash 更新。
   - `workspaceRoot` 保持 session 初始工作区边界。
-- `apps/zcode-cli/packages/core/src/tool/types.ts`
+- `apps/codez-cli/packages/core/src/tool/types.ts`
   - `ToolExecutionContext` 目前没有能区分主线程和 subagent 的 scope。
 
 ## 设计边界
@@ -57,28 +57,28 @@
 
 ## 文件规划
 
-- 修改：`apps/zcode-cli/docs/bash-cwd-persistence-plan.md`
+- 修改：`apps/codez-cli/docs/bash-cwd-persistence-plan.md`
   - 更新旧边界：provider-visible Bash output 会在 reset 场景追加 reset stderr。
-- 修改：Bash conformance 矩阵（已删除，Bash 行为以 `apps/zcode-cli/docs/design/v2/tool/04-bash.md` 为准）
+- 修改：Bash conformance 矩阵（已删除，Bash 行为以 `apps/codez-cli/docs/design/v2/tool/04-bash.md` 为准）
   - 更新 cwd reset case，标记为 production Bash handler 行为。
-- 修改：`apps/zcode-cli/packages/core/src/tool/types.ts`
+- 修改：`apps/codez-cli/packages/core/src/tool/types.ts`
   - 增加窄 scope：`ToolRuntimeScope = "main" | "subagent"`。
-- 修改：`apps/zcode-cli/packages/core/src/tool/executor/types.ts`
+- 修改：`apps/codez-cli/packages/core/src/tool/executor/types.ts`
   - 给 executor options/deps 增加 `runtimeScope`。
-- 修改：`apps/zcode-cli/packages/core/src/tool/executor/impl.ts`
+- 修改：`apps/codez-cli/packages/core/src/tool/executor/impl.ts`
   - executor 默认 scope 为 `"main"`。
-- 修改：`apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts`
+- 修改：`apps/codez-cli/packages/core/src/tool/executor/call-runner.ts`
   - 把 scope 放入 `ToolExecutionContext`。
-- 修改：`apps/zcode-cli/packages/core/src/runtime/agent-runtime.ts`
+- 修改：`apps/codez-cli/packages/core/src/runtime/agent-runtime.ts`
   - `taskType === "subagent_child"` 时传 `runtimeScope: "subagent"`，其它场景传 `"main"`。
-- 新增：`apps/zcode-cli/packages/core/src/tool/handlers/bash-cwd-policy.ts`
+- 新增：`apps/codez-cli/packages/core/src/tool/handlers/bash-cwd-policy.ts`
   - 集中实现 cwd update/reset/reminder 决策。
-- 修改：`apps/zcode-cli/packages/core/src/tool/handlers/bash.ts`
+- 修改：`apps/codez-cli/packages/core/src/tool/handlers/bash.ts`
   - 用 policy 替换直接 `setWorkingDirectory(result.resolvedCwd)`。
   - 在 `toBashOutput` 中通过参数追加 reset stderr。
-- 修改：`apps/zcode-cli/packages/core/tests/bash-handler.test.ts`
+- 修改：`apps/codez-cli/packages/core/tests/bash-handler.test.ts`
   - 增加 handler 层 cwd reset / subagent / env / Windows path 覆盖。
-- 修改：`apps/zcode-cli/packages/core/tests/runtime-tool-loop.test.ts`
+- 修改：`apps/codez-cli/packages/core/tests/runtime-tool-loop.test.ts`
   - 增加 runtime 端两次 Bash 调用的 cwd reset 回归。
 
 ---
@@ -87,12 +87,12 @@
 
 **文件：**
 
-- 修改：`apps/zcode-cli/docs/bash-cwd-persistence-plan.md`
-- 修改：Bash conformance 矩阵（已删除，Bash 行为以 `apps/zcode-cli/docs/design/v2/tool/04-bash.md` 为准）
+- 修改：`apps/codez-cli/docs/bash-cwd-persistence-plan.md`
+- 修改：Bash conformance 矩阵（已删除，Bash 行为以 `apps/codez-cli/docs/design/v2/tool/04-bash.md` 为准）
 
 - [x] **Step 1：更新 cwd persistence 文档中的 provider-visible 边界**
 
-在 `apps/zcode-cli/docs/bash-cwd-persistence-plan.md` 中把旧的“provider-visible Bash output 不变化”改成：
+在 `apps/codez-cli/docs/bash-cwd-persistence-plan.md` 中把旧的“provider-visible Bash output 不变化”改成：
 
 ```md
 ### Provider-visible cwd reset
@@ -104,7 +104,7 @@
 
 - [x] **Step 2：更新 conformance matrix 的 cwd reset 行**
 
-在 Bash conformance 矩阵（已删除，Bash 行为以 `apps/zcode-cli/docs/design/v2/tool/04-bash.md` 为准） 中把 cwd reset case 更新为：
+在 Bash conformance 矩阵（已删除，Bash 行为以 `apps/codez-cli/docs/design/v2/tool/04-bash.md` 为准） 中把 cwd reset case 更新为：
 
 ```md
 | 20 | real shell execution | `commands that leave cwd outside the project append a shell reset message` | 命令 `cd /tmp` 离开项目 cwd 后，provider-visible result 附加 cwd reset 提示。 | planned | 在 Bash result stderr 中追加 `Shell cwd was reset to <root>`，不是单独 system-reminder。 | 在 Bash handler 消费 `resolvedCwd` 时执行 cwd policy：main foreground success 出界 reset 到 workspaceRoot 并追加 stderr；subagent/background/failed/timeout 不触发。 |
@@ -115,7 +115,7 @@
 运行：
 
 ```bash
-git diff -- apps/zcode-cli/docs/bash-cwd-persistence-plan.md
+git diff -- apps/codez-cli/docs/bash-cwd-persistence-plan.md
 ```
 
 预期：只有文档语义更新，没有代码改动。
@@ -126,15 +126,15 @@ git diff -- apps/zcode-cli/docs/bash-cwd-persistence-plan.md
 
 **文件：**
 
-- 修改：`apps/zcode-cli/packages/core/src/tool/types.ts`
-- 修改：`apps/zcode-cli/packages/core/src/tool/executor/types.ts`
-- 修改：`apps/zcode-cli/packages/core/src/tool/executor/impl.ts`
-- 修改：`apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts`
-- 修改：`apps/zcode-cli/packages/core/src/runtime/agent-runtime.ts`
+- 修改：`apps/codez-cli/packages/core/src/tool/types.ts`
+- 修改：`apps/codez-cli/packages/core/src/tool/executor/types.ts`
+- 修改：`apps/codez-cli/packages/core/src/tool/executor/impl.ts`
+- 修改：`apps/codez-cli/packages/core/src/tool/executor/call-runner.ts`
+- 修改：`apps/codez-cli/packages/core/src/runtime/agent-runtime.ts`
 
 - [x] **Step 1：在 tool context 里新增可选 scope**
 
-在 `apps/zcode-cli/packages/core/src/tool/types.ts` 中增加：
+在 `apps/codez-cli/packages/core/src/tool/types.ts` 中增加：
 
 ```ts
 export type ToolRuntimeScope = "main" | "subagent";
@@ -150,7 +150,7 @@ export type ToolRuntimeScope = "main" | "subagent";
 
 - [x] **Step 2：executor types 增加 scope**
 
-在 `apps/zcode-cli/packages/core/src/tool/executor/types.ts` 中把 import 改为包含 `ToolRuntimeScope`：
+在 `apps/codez-cli/packages/core/src/tool/executor/types.ts` 中把 import 改为包含 `ToolRuntimeScope`：
 
 ```ts
 import type {
@@ -176,7 +176,7 @@ import type {
 
 - [x] **Step 3：executor 默认 main**
 
-在 `apps/zcode-cli/packages/core/src/tool/executor/impl.ts` 构造 `this.deps` 时增加：
+在 `apps/codez-cli/packages/core/src/tool/executor/impl.ts` 构造 `this.deps` 时增加：
 
 ```ts
       runtimeScope: options.runtimeScope ?? "main",
@@ -184,7 +184,7 @@ import type {
 
 - [x] **Step 4：call-runner 传入 context**
 
-在 `apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts` 构造 `ToolExecutionContext` 时增加：
+在 `apps/codez-cli/packages/core/src/tool/executor/call-runner.ts` 构造 `ToolExecutionContext` 时增加：
 
 ```ts
       runtimeScope: deps.runtimeScope,
@@ -192,20 +192,20 @@ import type {
 
 - [x] **Step 5：AgentRuntime 映射 subagent scope**
 
-在 `apps/zcode-cli/packages/core/src/runtime/agent-runtime.ts` 的 `createToolExecutor({...})` 参数中增加：
+在 `apps/codez-cli/packages/core/src/runtime/agent-runtime.ts` 的 `createToolExecutor({...})` 参数中增加：
 
 ```ts
         runtimeScope: this.config.taskType === "subagent_child" ? "subagent" : "main",
 ```
 
-这里不要用 `parentSessionId` 泛化判断。subagent 分支需要明确的子 agent 身份，ZCode 当前最贴近的明确语义是 `taskType === "subagent_child"`。
+这里不要用 `parentSessionId` 泛化判断。subagent 分支需要明确的子 agent 身份，Codez 当前最贴近的明确语义是 `taskType === "subagent_child"`。
 
 - [x] **Step 6：运行窄 type/test 验证**
 
 运行：
 
 ```bash
-pnpm --filter @zcode/core test -- bash-handler.test.ts
+pnpm --filter @codez/core test -- bash-handler.test.ts
 ```
 
 预期：如果失败，应只剩测试 helper 需要补 `runtimeScope` 的类型问题；不应该出现其它工具行为变化。
@@ -216,16 +216,16 @@ pnpm --filter @zcode/core test -- bash-handler.test.ts
 
 **文件：**
 
-- 新增：`apps/zcode-cli/packages/core/src/tool/handlers/bash-cwd-policy.ts`
-- 修改：`apps/zcode-cli/packages/core/tests/bash-handler.test.ts`
+- 新增：`apps/codez-cli/packages/core/src/tool/handlers/bash-cwd-policy.ts`
+- 修改：`apps/codez-cli/packages/core/tests/bash-handler.test.ts`
 
 - [x] **Step 1：创建 helper 文件**
 
-新增 `apps/zcode-cli/packages/core/src/tool/handlers/bash-cwd-policy.ts`：
+新增 `apps/codez-cli/packages/core/src/tool/handlers/bash-cwd-policy.ts`：
 
 ```ts
 import path from "node:path";
-import type { ExecutionResult } from "@zcode/contracts";
+import type { ExecutionResult } from "@codez/contracts";
 import type { ToolRuntimeScope } from "../types.js";
 
 export interface BashCwdPolicyInput {
@@ -362,7 +362,7 @@ describe("Bash cwd policy", () => {
 运行：
 
 ```bash
-pnpm --filter @zcode/core test -- bash-handler.test.ts
+pnpm --filter @codez/core test -- bash-handler.test.ts
 ```
 
 预期：在 helper/import 尚未接入或断言不匹配时失败。失败必须来自 cwd policy 相关测试。
@@ -373,7 +373,7 @@ pnpm --filter @zcode/core test -- bash-handler.test.ts
 
 **文件：**
 
-- 修改：`apps/zcode-cli/packages/core/src/tool/handlers/bash.ts`
+- 修改：`apps/codez-cli/packages/core/src/tool/handlers/bash.ts`
 
 - [x] **Step 1：引入 policy**
 
@@ -448,7 +448,7 @@ function appendStderrSuffix(stderr: string, suffix: string | undefined): string 
 运行：
 
 ```bash
-pnpm --filter @zcode/core test -- bash-handler.test.ts
+pnpm --filter @codez/core test -- bash-handler.test.ts
 ```
 
 预期：cwd policy 单测和原有 Bash handler 测试通过；如果 `resolvedCwd` privacy 测试失败，需要按 Task 5 更新断言。
@@ -459,7 +459,7 @@ pnpm --filter @zcode/core test -- bash-handler.test.ts
 
 **文件：**
 
-- 修改：`apps/zcode-cli/packages/core/tests/bash-handler.test.ts`
+- 修改：`apps/codez-cli/packages/core/tests/bash-handler.test.ts`
 
 - [x] **Step 1：更新项目内 cwd persistence 测试**
 
@@ -482,7 +482,7 @@ expect(content).not.toContain("Shell cwd was reset");
 
 ```ts
 it("resets main Bash cwd to workspace root and exposes reset stderr when final cwd leaves workspace", async () => {
-  const outsideCwd = resolve("/tmp/zcode-outside");
+  const outsideCwd = resolve("/tmp/codez-outside");
   let observedCwd: string | undefined;
   const executionPort: ExecutionPort = {
     async run() {
@@ -496,7 +496,7 @@ it("resets main Bash cwd to workspace root and exposes reset stderr when final c
   };
 
   const output = (await bashHandler(
-    { command: "cd /tmp/zcode-outside && echo done" } satisfies BashInput,
+    { command: "cd /tmp/codez-outside && echo done" } satisfies BashInput,
     contextWith(executionPort, {
       workingDirectory: projectRoot,
       workspaceRoot: projectRoot,
@@ -584,7 +584,7 @@ expect(JSON.stringify(content)).not.toContain("resolvedCwd");
 运行：
 
 ```bash
-pnpm --filter @zcode/core test -- bash-handler.test.ts
+pnpm --filter @codez/core test -- bash-handler.test.ts
 ```
 
 预期：所有 Bash handler 测试通过。
@@ -595,7 +595,7 @@ pnpm --filter @zcode/core test -- bash-handler.test.ts
 
 **文件：**
 
-- 修改：`apps/zcode-cli/packages/core/tests/runtime-tool-loop.test.ts`
+- 修改：`apps/codez-cli/packages/core/tests/runtime-tool-loop.test.ts`
 
 - [x] **Step 1：保留已有项目内 cwd persistence 测试**
 
@@ -608,8 +608,8 @@ pnpm --filter @zcode/core test -- bash-handler.test.ts
 ```ts
 it("resets Bash cwd to workspace root after a successful command leaves the workspace", async () => {
   const sessionId = createSessionId("runtime-bash-cwd-reset-reminder");
-  const workspaceRoot = await mkdtemp(join(tmpdir(), "zcode-bash-root-"));
-  const outsideCwd = await mkdtemp(join(tmpdir(), "zcode-bash-outside-"));
+  const workspaceRoot = await mkdtemp(join(tmpdir(), "codez-bash-root-"));
+  const outsideCwd = await mkdtemp(join(tmpdir(), "codez-bash-outside-"));
   const requests: ExecutionRequest[] = [];
 
   const executionPort: ExecutionPort = {
@@ -672,7 +672,7 @@ it("resets Bash cwd to workspace root after a successful command leaves the work
 运行：
 
 ```bash
-pnpm --filter @zcode/core test -- runtime-tool-loop.test.ts
+pnpm --filter @codez/core test -- runtime-tool-loop.test.ts
 ```
 
 预期：cwd persistence 旧测试通过，新 reset 测试通过。
@@ -683,8 +683,8 @@ pnpm --filter @zcode/core test -- runtime-tool-loop.test.ts
 
 **文件：**
 
-- 修改：`apps/zcode-cli/packages/core/tests/bash-handler.test.ts`
-- 可选修改：`apps/zcode-cli/packages/core/tests/bash-result-mapping.test.ts`
+- 修改：`apps/codez-cli/packages/core/tests/bash-handler.test.ts`
+- 可选修改：`apps/codez-cli/packages/core/tests/bash-result-mapping.test.ts`
 
 - [x] **Step 1：确认成功普通输出 shape**
 
@@ -710,14 +710,14 @@ expect(bashToolEntry.formatModelContent?.(output)).not.toContain("Shell cwd was 
 
 - [x] **Step 3：确认 image 分支不被 cwd reset 扩大**（本次未新增 image cwd reset 行为；已有 image short-circuit 覆盖继续通过）
 
-如果 stdout 是 image 且 cwd 出界，image 分支会 short-circuit。ZCode 当前 image 行为已经单独处理过；本次不要顺手改 image behavior。只验证普通 text Bash reset reminder，不新增 image cwd reset 行为。
+如果 stdout 是 image 且 cwd 出界，image 分支会 short-circuit。Codez 当前 image 行为已经单独处理过；本次不要顺手改 image behavior。只验证普通 text Bash reset reminder，不新增 image cwd reset 行为。
 
 - [x] **Step 4：运行相关测试**
 
 运行：
 
 ```bash
-pnpm --filter @zcode/core test -- bash-handler.test.ts bash-result-mapping.test.ts
+pnpm --filter @codez/core test -- bash-handler.test.ts bash-result-mapping.test.ts
 ```
 
 预期：provider-visible text 符合上述 cwd reset 语义；没有新的 image / error output 变化。
@@ -737,7 +737,7 @@ pnpm --filter @zcode/core test -- bash-handler.test.ts bash-result-mapping.test.
 
 ```bash
 git diff --stat
-git diff -- apps/zcode-cli/packages/core/src/tool/handlers/bash.ts apps/zcode-cli/packages/core/src/tool/handlers/bash-cwd-policy.ts apps/zcode-cli/packages/core/src/tool/types.ts apps/zcode-cli/packages/core/src/tool/executor/types.ts apps/zcode-cli/packages/core/src/tool/executor/impl.ts apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts apps/zcode-cli/packages/core/src/runtime/agent-runtime.ts
+git diff -- apps/codez-cli/packages/core/src/tool/handlers/bash.ts apps/codez-cli/packages/core/src/tool/handlers/bash-cwd-policy.ts apps/codez-cli/packages/core/src/tool/types.ts apps/codez-cli/packages/core/src/tool/executor/types.ts apps/codez-cli/packages/core/src/tool/executor/impl.ts apps/codez-cli/packages/core/src/tool/executor/call-runner.ts apps/codez-cli/packages/core/src/runtime/agent-runtime.ts
 ```
 
 预期：
@@ -752,7 +752,7 @@ git diff -- apps/zcode-cli/packages/core/src/tool/handlers/bash.ts apps/zcode-cl
 运行：
 
 ```bash
-pnpm --filter @zcode/core test -- bash-handler.test.ts runtime-tool-loop.test.ts bash-result-mapping.test.ts
+pnpm --filter @codez/core test -- bash-handler.test.ts runtime-tool-loop.test.ts bash-result-mapping.test.ts
 ```
 
 预期：通过。
@@ -762,7 +762,7 @@ pnpm --filter @zcode/core test -- bash-handler.test.ts runtime-tool-loop.test.ts
 运行：
 
 ```bash
-pnpm --filter @zcode/adapters test -- exec.test.ts
+pnpm --filter @codez/adapters test -- exec.test.ts
 ```
 
 预期：已有 `captureCwdAfterSuccess` 行为仍通过；background 不捕获 cwd。
@@ -772,7 +772,7 @@ pnpm --filter @zcode/adapters test -- exec.test.ts
 运行：
 
 ```bash
-pnpm --filter @zcode/core typecheck
+pnpm --filter @codez/core typecheck
 pnpm typecheck
 pnpm lint
 ```
@@ -781,13 +781,13 @@ pnpm lint
 
 - [x] **Step 5：可选 real-world session 验证**（已通过 `sess_3894adde-75bc-4be3-bde2-977020725c69` 覆盖；本次未重新跑）
 
-用现有 `apps/zcode-cli/real-world-test-prompt` 下的 Bash prompt 跑一轮包含以下串行命令的 session：
+用现有 `apps/codez-cli/real-world-test-prompt` 下的 Bash prompt 跑一轮包含以下串行命令的 session：
 
 ```md
 请串行执行以下 Bash tool call，不要做验证总结：
 
 1. `pwd`
-2. `mkdir -p /tmp/zcode-cwd-reset-check && cd /tmp/zcode-cwd-reset-check && pwd`
+2. `mkdir -p /tmp/codez-cwd-reset-check && cd /tmp/codez-cwd-reset-check && pwd`
 3. `pwd`
 4. `cd "$PWD" && pwd`
 ```
@@ -818,6 +818,6 @@ pnpm lint
 - macOS `/private/tmp`、`/private/var` alias 不导致误判。
 - symlink workspace 下，`pwd -P` 返回的物理 child path 仍被识别为项目内 cwd，不误追加 reset。
 - hooks/plugin shell command、generic `ExecutionPort` shell request、background Bash、subagent Bash、其它文件类 tools 不会自动消费 cwd policy。
-- `pnpm --filter @zcode/core test -- bash-handler.test.ts runtime-tool-loop.test.ts bash-result-mapping.test.ts` 通过。
-- `pnpm --filter @zcode/adapters test -- exec.test.ts` 通过。
+- `pnpm --filter @codez/core test -- bash-handler.test.ts runtime-tool-loop.test.ts bash-result-mapping.test.ts` 通过。
+- `pnpm --filter @codez/adapters test -- exec.test.ts` 通过。
 - `pnpm typecheck` 和 `pnpm lint` 通过，或仅剩明确无关的历史失败并有记录。

@@ -1,5 +1,5 @@
 import type { ImageComposerTarget } from "@/image-preview-editor/contract.js";
-const REQUEST_TARGET = "zcode:image-preview-composer-target";
+const REQUEST_TARGET = "codez:image-preview-composer-target";
 interface TargetRequest {
   target: ImageComposerTarget | null;
 }

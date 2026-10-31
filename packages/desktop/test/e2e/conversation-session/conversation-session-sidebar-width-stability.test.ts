@@ -10,13 +10,13 @@ const moreSelector = './/button[normalize-space(.)="显示更多" or normalize-s
 
 // 合成索引仅准备分页/长标题布局，不恢复这些任务，也不请求模型。
 async function seedTaskRows() {
-  const home = process.env.ZCODE_E2E_HOME_DIR;
+  const home = process.env.CODEZ_E2E_HOME_DIR;
   // 原因：批量 runner 使用 runId 隔离 HOME，不能要求旧手工执行的固定目录名。
-  if (!home || !/^(?:zcode-sidebar-width-|\.e2e-home-)/u.test(basename(home)))
+  if (!home || !/^(?:codez-sidebar-width-|\.e2e-home-)/u.test(basename(home)))
     throw new Error("隔离 HOME required");
   const root = join(home, "E2E_SIDEBAR_WIDTH_ROOT");
   await mkdir(root, { recursive: true });
-  const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
+  const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"));
   try {
     const now = Date.now();
     db.exec("BEGIN IMMEDIATE");
@@ -133,7 +133,7 @@ describe("项目侧栏长标题宽度", () => {
       }
     }
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "sidebar-width-samples.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "sidebar-width-samples.json"),
       JSON.stringify(evidence),
     );
     for (const section of [project, tasks]) {
@@ -149,7 +149,7 @@ describe("项目侧栏长标题宽度", () => {
     }
     await project.scrollIntoView();
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "sidebar-width-stable.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "sidebar-width-stable.png"),
     );
   });
 });

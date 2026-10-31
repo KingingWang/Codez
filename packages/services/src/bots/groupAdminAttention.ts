@@ -1,4 +1,4 @@
-import type { BotActor, BotOutboundMessage } from "@zcode/shared";
+import type { BotActor, BotOutboundMessage } from "@codez/shared";
 
 /** 仅由服务明确识别的配置/连接错误升级，不能扫描模型输出猜测管理员待办。 */
 export class BotAdminRequiredError extends Error {

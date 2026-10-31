@@ -21,9 +21,9 @@
 命中条件：
 
 - `raw._meta.claudeCode.toolName === "Agent"`
-- `raw._meta.zcode.toolName === "Agent"`
-- `raw._meta.zcode.toolName === "spawn_agent"` / `raw.name === "spawn_agent"` / `kind === "spawn_agent"`（Codex）
-- `kind === "think"` 且 `title === "Agent"`（GLM/ZCode Agent）
+- `raw._meta.codez.toolName === "Agent"`
+- `raw._meta.codez.toolName === "spawn_agent"` / `raw.name === "spawn_agent"` / `kind === "spawn_agent"`（Codex）
+- `kind === "think"` 且 `title === "Agent"`（GLM/Codez Agent）
 - 或 `kind === "think"` 且 `input.subagent_type` 存在
 
 ## 流式类型展示边界

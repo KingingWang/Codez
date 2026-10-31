@@ -18,7 +18,7 @@ flowchart LR
 
 验证：单测覆盖空目录无固定价格、无配置不渲染个人/团队横幅、有效体验套餐保持；浏览器回归覆盖桌面/手机及明暗主题的缺配置状态。
 
-浏览器用例：`packages/ui/test/browser/manual-review/pending/coding-plan-no-fallback.test.mjs`。前置为未登录 ZCode Dev 打开 BigModel 模型设置，公开配置缺少可用的 builtin/account 商品目录；执行 `node --test <用例路径>`，覆盖 390/1200 宽度和明暗主题，检查登录入口仍在、个人/团队横幅及固定价格均不存在。该用例为人工开发应用回归，不自动晋升 CI。
+浏览器用例：`packages/ui/test/browser/manual-review/pending/coding-plan-no-fallback.test.mjs`。前置为未登录 Codez Dev 打开 BigModel 模型设置，公开配置缺少可用的 builtin/account 商品目录；执行 `node --test <用例路径>`，覆盖 390/1200 宽度和明暗主题，检查登录入口仍在、个人/团队横幅及固定价格均不存在。该用例为人工开发应用回归，不自动晋升 CI。
 
 ## 第二阶段：静态配置键兼容
 

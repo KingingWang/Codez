@@ -2,14 +2,14 @@
 
 ## 范围
 
-本轮调整已有 ZCode 模型可见表面：首轮非 tool-search 轨迹中的长版 communication、共享 act-don't-rederive、目标分支的 autonomy appendix、Harness 的 MCS 说明，以及 EnterPlanMode 中 research/exploration 的一句措辞；同时固定 request-level user context 和文本附件 reminder 的精确文案与分隔。Agent provider 内容不在范围内。
+本轮调整已有 Codez 模型可见表面：首轮非 tool-search 轨迹中的长版 communication、共享 act-don't-rederive、目标分支的 autonomy appendix、Harness 的 MCS 说明，以及 EnterPlanMode 中 research/exploration 的一句措辞；同时固定 request-level user context 和文本附件 reminder 的精确文案与分隔。Agent provider 内容不在范围内。
 
 ## 组装约束
 
-- 不修改 ZCode 原有 prompt 字符；原文保存在 `default`。
+- 不修改 Codez 原有 prompt 字符；原文保存在 `default`。
 - 新增内容保存在 `additional`，当前直接加载，不加入模型或 provider 判断。
 - communication 位于 action caution 之前。
-- communication、action caution 与稳定的 `# Harness` 独立于 output style 的 `keepCodingInstructions`；目标组装只用该字段控制独立的 doing-tasks coding instructions。ZCode 当前没有对应的独立段，因此 `keepCodingInstructions: false` 不应裁掉任何 `# Harness` 内容。
+- communication、action caution 与稳定的 `# Harness` 独立于 output style 的 `keepCodingInstructions`；目标组装只用该字段控制独立的 doing-tasks coding instructions。Codez 当前没有对应的独立段，因此 `keepCodingInstructions: false` 不应裁掉任何 `# Harness` 内容。
 - active output style 严格按 `# Output Style: <name>\n<prompt>` 组装，标题与正文之间不插入空行。
 - context management 后依次组装 act-don't-rederive 与四段 autonomy appendix；git context（若存在）继续位于其后。
 - EnterPlanMode 的 input schema 保持严格空对象，只将 research/exploration 句改为 `use the Agent tool instead`。

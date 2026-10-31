@@ -10,13 +10,13 @@ export function stageDevCuaPluginRuntime({
   platform = process.platform,
   arch = process.arch,
   desktopPackageRoot = resolve(repositoryRoot, "packages", "desktop"),
-  pluginRoot = resolve(repositoryRoot, "apps", "zcode-cli", "packages", "zcode-cua-plugin"),
+  pluginRoot = resolve(repositoryRoot, "apps", "codez-cli", "packages", "codez-cua-plugin"),
 } = {}) {
-  if (env.ZCODE_CUA_DEV_MODE !== "1") return [];
+  if (env.CODEZ_CUA_DEV_MODE !== "1") return [];
   // 开源占位包不提供 Computer Use 原生能力，也不随附 Sharp：没有真实 producer 时不暂存。
   if (!isRealComputerUseProducerInstalled({ desktopPackageRoot })) return [];
 
-  const manifestPath = resolve(pluginRoot, ".zcode-plugin", "plugin.json");
+  const manifestPath = resolve(pluginRoot, ".codez-plugin", "plugin.json");
   if (!existsSync(manifestPath)) {
     throw new Error(
       `[stage-dev-cua-plugin-runtime] CUA plugin manifest is missing: ${manifestPath}`,

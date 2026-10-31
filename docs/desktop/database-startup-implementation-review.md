@@ -29,19 +29,19 @@
 - 原迁移差分/回滚/锁/崩溃/Reader 套件 7 文件 56 用例通过；随后涉及首因保留的增量 3 文件 12 用例通过。
 - 最终全量：1710 文件通过、2 文件失败、2 跳过；14996 用例通过、2 失败、26 跳过。两项失败是未修改的 provider-node 文件监听和 CUA socket 时序断言，单独重跑 2 文件 38 用例全部通过，首轮全量这两项也通过；保留偶发失败记录，不声称全量命令全绿。本次新增启动用例全部通过。首轮 3 个旧 mock/返回值适配问题已修正并回归。
 - Node 直接运行最终 tasks Worker 和 CLI bundle Worker：任务账本 3 项；会话相对路径落到传入真实 cwd，完成帧晚于关闭，均退出 0。探针只操作隔离临时目录。
-- 额外 main/preload/renderer 分项目 tsc 仍失败：存在 rootDir/shared 导入、浏览器类型、Window.zcode 与 CSS 声明等错误；未将其计为通过。新增协调/采样/遥测文件没有该检查诊断。
+- 额外 main/preload/renderer 分项目 tsc 仍失败：存在 rootDir/shared 导入、浏览器类型、Window.codez 与 CSS 声明等错误；未将其计为通过。新增协调/采样/遥测文件没有该检查诊断。
 
-测试入口：desktop 的 databaseStartup / databaseStartupDisk / databaseStartupRelay / databaseStartupTelemetry / hostDatabaseStartup / storagePreparationProtocol / storagePreparationWorker / startupTelemetryDelivery；services 的 tasksStartupPreparation / zcodeStorageStartupGate；UI 的 globalDatabaseStartupLoading。
+测试入口：desktop 的 databaseStartup / databaseStartupDisk / databaseStartupRelay / databaseStartupTelemetry / hostDatabaseStartup / storagePreparationProtocol / storagePreparationWorker / startupTelemetryDelivery；services 的 tasksStartupPreparation / codezStorageStartupGate；UI 的 globalDatabaseStartupLoading。
 
 ## 尚未通过的发布验收
 
-- Electron GUI：隔离最小 BrowserWindow 也在创建窗口前退出 133（Trace/breakpoint trap）；WDIO 返回 `session not created: Chrome instance exited`。新用例保持 manual-review/pending，不宣称 GUI 已通过。日志 `/tmp/zcode-global-startup-e2e.log`；报告 `packages/desktop/.e2e-artifacts/desktop-e2e-20260914-144856-843/summary.md`。
+- Electron GUI：隔离最小 BrowserWindow 也在创建窗口前退出 133（Trace/breakpoint trap）；WDIO 返回 `session not created: Chrome instance exited`。新用例保持 manual-review/pending，不宣称 GUI 已通过。日志 `/tmp/codez-global-startup-e2e.log`；报告 `packages/desktop/.e2e-artifacts/desktop-e2e-20260914-144856-843/summary.md`。
 - Windows/macOS 打包 Worker、主题/窗口交互、手机 shared-host 和远端真实回归尚未执行；Node Worker 测试不能替代这些平台结果。手机准备时继续既有连接状态，未新增手机数据库阶段页面。
 - ARMS 实际后台入库未发送生产事件验证；HTTP 接收确认不等于后台可查询。无跨重启 outbox / 周期 checkpoint；整应用强杀、离线、SDK 禁用可能丢终态。
 - 不做 20 GB 性能承诺，不减少原迁移峰值资源需求；未对真实用户数据库执行测试。
 - codegraph 工具不可用：未执行自动影响面扫描，使用受控 context 与人工源码审查；不声称全量静态调用图证明。
 
-日志保留于本机 `/tmp/zcode-global-startup-*`；本文件记录可审查结论，临时日志不会入库。合并/发布前需补齐上述 GUI 与目标平台验收。
+日志保留于本机 `/tmp/codez-global-startup-*`；本文件记录可审查结论，临时日志不会入库。合并/发布前需补齐上述 GUI 与目标平台验收。
 
 ## 提交状态
 
@@ -53,16 +53,16 @@
 2. 修复历史项目异常扩大为全局失败：普通 Agent 与准备入口共用异步 cwd 选择函数。ENOENT、ENOTDIR、EACCES、普通文件等按既有备用目录规则处理；无可用备用目录或自定义 command.cwd 不符合 fallback 条件则保留原路径。真实数据库错误仍失败，未改 SQL/checksum，也没有空库兜底。
 3. 异步 cwd preflight 放在最终 admission/销毁/代际检查之前，避免目录探测期间退出后仍派生 Agent。仅桌面本地启动端口增加 ID；手机 scoped attachment、remote workspaceIdentity、continuous/replayable 语义不变。
 
-验证：先运行新增回归，旧实现失败；修复后将端口到达顺序与跨代用例分开加强，最终 8 文件 87 项全部通过（`/tmp/zcode-startup-fixes-verified-tests.log`）。根 typecheck、desktop typecheck:e2e、lint（45 warnings / 0 errors）、architecture（0 violations）、tsup 和 Vite 构建通过。额外 Main/preload/renderer tsc 仍有此前的基线问题（已对比 9 月 14 日日志），不计通过；新增 ID/准入/cwd 文件未产生诊断。
+验证：先运行新增回归，旧实现失败；修复后将端口到达顺序与跨代用例分开加强，最终 8 文件 87 项全部通过（`/tmp/codez-startup-fixes-verified-tests.log`）。根 typecheck、desktop typecheck:e2e、lint（45 warnings / 0 errors）、architecture（0 violations）、tsup 和 Vite 构建通过。额外 Main/preload/renderer tsc 仍有此前的基线问题（已对比 9 月 14 日日志），不计通过；新增 ID/准入/cwd 文件未产生诊断。
 
-新增 GLOBALDB-27/28 E2E 已进入原 pending spec。实际 WDIO 执行在用例前失败：`session not created: Chrome instance exited`；不加载项目的最小 Electron BrowserWindow 同样以 SIGTRAP 退出。报告：`packages/desktop/.e2e-artifacts/desktop-e2e-20260915-030844-230/summary.md`；日志 `/tmp/zcode-startup-fixes-e2e.log`、`/tmp/zcode-startup-fixes-minimal-electron.log`。不把环境失败标成 GUI 验收通过。
+新增 GLOBALDB-27/28 E2E 已进入原 pending spec。实际 WDIO 执行在用例前失败：`session not created: Chrome instance exited`；不加载项目的最小 Electron BrowserWindow 同样以 SIGTRAP 退出。报告：`packages/desktop/.e2e-artifacts/desktop-e2e-20260915-030844-230/summary.md`；日志 `/tmp/codez-startup-fixes-e2e.log`、`/tmp/codez-startup-fixes-minimal-electron.log`。不把环境失败标成 GUI 验收通过。
 
 本轮继续遵守交互 E2E 通过后提交的要求，修复保留在工作区，未提交/推送。
 
 
 ## 2026-09-15 再次复审与交付
 
-- 只读复审后，相关 12 个测试文件 35 项通过，日志 `/tmp/zcode-startup-second-review-tests.log`。
+- 只读复审后，相关 12 个测试文件 35 项通过，日志 `/tmp/codez-startup-second-review-tests.log`。
 - 隔离事件探针确认两个未处理边界：Host 绑定前退出按钮没有监听器接收；迁移期间窗口关闭会解除 Host 终态遥测监听，漏报本次中断与缓存磁盘摘要。尚未复现实际 fork 创建失败，不能把按钮接收探针视为进程创建故障证据。正常启动早期、Host 尚未创建的窗口期同样没有退出接收方。
 - 2026-09-15 用户明确要求按当前代码提交、推送并提供 MR 链接，本次按此授权交付，保留上述边界问题，不扩大实现范围。之前“未提交/推送”的记录描述当时状态；本次交付后以 Git 和 MR 为准。
 - MR 保持 Draft；Electron GUI 环境阻塞、目标系统打包与手机远控实测、ARMS 后台入库验证仍未完成，不标为通过。正常执行提交与推送钩子，不绕过校验。

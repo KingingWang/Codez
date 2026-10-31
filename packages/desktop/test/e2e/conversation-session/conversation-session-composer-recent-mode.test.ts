@@ -2,8 +2,8 @@
 // 新建草稿按项目隔离；未归类任务仅在首发接纳后分配下一工作区。
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { TID_CHAT_MODE_SELECT_TRIGGER, TID_V4_COMPOSER_SEND } from "@zcode/shared/test-ids";
-import { ServiceChannels } from "@zcode/shared";
+import { TID_CHAT_MODE_SELECT_TRIGGER, TID_V4_COMPOSER_SEND } from "@codez/shared/test-ids";
+import { ServiceChannels } from "@codez/shared";
 import {
   installHandoffRpcProbe,
   callHandoffHost,
@@ -60,7 +60,7 @@ const CASE_NAME = "conversation-session-composer-recent-mode";
 const CASE_DIR = resolveE2ERuntimePath(CASE_NAME);
 const OUTPUT_PATH = resolveE2EToolPath(CASE_NAME, "result.txt");
 const EVIDENCE_DIR = join(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? join(process.cwd(), ".e2e-artifacts"),
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? join(process.cwd(), ".e2e-artifacts"),
   CASE_NAME,
 );
 
@@ -78,8 +78,8 @@ async function captureState(step: string) {
         ([key]) => key.includes("composer-") || key.includes("pending-command"),
       ),
       navigation: (
-        window as unknown as { __zcodeTabStoreE2E: { getState(): unknown } }
-      ).__zcodeTabStoreE2E.getState(),
+        window as unknown as { __codezTabStoreE2E: { getState(): unknown } }
+      ).__codezTabStoreE2E.getState(),
     })),
   };
   await writeFile(join(EVIDENCE_DIR, `${step}.json`), JSON.stringify(state, null, 2));
@@ -108,15 +108,15 @@ describe("Composer Recent 权限继承", () => {
           (await getV4PaneSnapshot()).sessionId === "draft" &&
           (await browser.execute(() => {
             const w = window as unknown as {
-              __zcodeTabStoreE2E: { getState(): { activeWorkspacePath: string } };
+              __codezTabStoreE2E: { getState(): { activeWorkspacePath: string } };
             };
             const pending = JSON.parse(
-              localStorage.getItem('zcode-pending-task-draft:v1:["desktop","local",null]') ??
+              localStorage.getItem('codez-pending-task-draft:v1:["desktop","local",null]') ??
                 "null",
             );
             return Boolean(
               pending?.workspacePath &&
-              pending.workspacePath === w.__zcodeTabStoreE2E.getState().activeWorkspacePath,
+              pending.workspacePath === w.__codezTabStoreE2E.getState().activeWorkspacePath,
             );
           })),
       );
@@ -126,9 +126,9 @@ describe("Composer Recent 权限继承", () => {
         () =>
           (
             window as unknown as {
-              __zcodeTabStoreE2E: { getState(): { activeWorkspacePath: string } };
+              __codezTabStoreE2E: { getState(): { activeWorkspacePath: string } };
             }
-          ).__zcodeTabStoreE2E.getState().activeWorkspacePath,
+          ).__codezTabStoreE2E.getState().activeWorkspacePath,
       );
     await startTask();
     await switchV4Model(UPSTREAM_PROVIDER_ID, UPSTREAM_MODEL, "");
@@ -242,15 +242,15 @@ describe("Composer Recent 权限继承", () => {
           (await getV4PaneSnapshot()).sessionId === "draft" &&
           (await browser.execute(() => {
             const w = window as unknown as {
-              __zcodeTabStoreE2E: { getState(): { activeWorkspacePath: string } };
+              __codezTabStoreE2E: { getState(): { activeWorkspacePath: string } };
             };
             const pending = JSON.parse(
-              localStorage.getItem('zcode-pending-task-draft:v1:["desktop","local",null]') ??
+              localStorage.getItem('codez-pending-task-draft:v1:["desktop","local",null]') ??
                 "null",
             );
             return Boolean(
               pending?.workspacePath &&
-              pending.workspacePath === w.__zcodeTabStoreE2E.getState().activeWorkspacePath,
+              pending.workspacePath === w.__codezTabStoreE2E.getState().activeWorkspacePath,
             );
           })),
       );
@@ -260,9 +260,9 @@ describe("Composer Recent 权限继承", () => {
         () =>
           (
             window as unknown as {
-              __zcodeTabStoreE2E: { getState(): { activeWorkspacePath: string } };
+              __codezTabStoreE2E: { getState(): { activeWorkspacePath: string } };
             }
-          ).__zcodeTabStoreE2E.getState().activeWorkspacePath,
+          ).__codezTabStoreE2E.getState().activeWorkspacePath,
       );
     await startTask();
     await switchV4Model(UPSTREAM_PROVIDER_ID, UPSTREAM_MODEL, "");

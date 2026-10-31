@@ -153,10 +153,10 @@ function parseArgs(args) {
 function printUsage() {
   console.log(
     "Usage:\n" +
-      "  pnpm --filter @zcode/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/<case>.test.ts\n" +
-      "  pnpm --filter @zcode/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/manual-review/pending/<case>.test.ts\n" +
-      "  pnpm --filter @zcode/desktop e2e:fixture:check -- --spec ./test/e2e/plugins/<case>.test.ts\n" +
-      "  pnpm --filter @zcode/desktop e2e:fixture:check -- --spec ./test/e2e/plugins/manual-review/pending/<case>.test.ts\n",
+      "  pnpm --filter @codez/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/<case>.test.ts\n" +
+      "  pnpm --filter @codez/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/manual-review/pending/<case>.test.ts\n" +
+      "  pnpm --filter @codez/desktop e2e:fixture:check -- --spec ./test/e2e/plugins/<case>.test.ts\n" +
+      "  pnpm --filter @codez/desktop e2e:fixture:check -- --spec ./test/e2e/plugins/manual-review/pending/<case>.test.ts\n",
   );
 }
 

@@ -47,7 +47,7 @@ export function assertNonEmptyE2EScheduledSpecFiles(
       `specs=${JSON.stringify(options.specs)}`,
       `exclude=${JSON.stringify(options.exclude)}`,
       `requestedSpecs=${JSON.stringify(options.requestedSpecs)}`,
-      `ZCODE_E2E_SPEC=${options.envSpec ?? ""}`,
+      `CODEZ_E2E_SPEC=${options.envSpec ?? ""}`,
       `argv=${JSON.stringify(options.argv)}`,
     ].join("\n"),
   );

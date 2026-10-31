@@ -3,7 +3,7 @@ import { DEFAULT_FLOATING_ANCHOR, parseFloatingAnchor } from "@/side-pane-full-v
 import { logger } from "@/logger.js";
 
 /** 浮窗吸附位置是全局偏好（spec：docs/ui/side-pane-full-view.md），不随对话切换。 */
-const FLOATING_ANCHOR_STORAGE_KEY = "zcode:side-pane-full-view:floating-anchor";
+const FLOATING_ANCHOR_STORAGE_KEY = "codez:side-pane-full-view:floating-anchor";
 
 export function readFloatingAnchorPreference(): FloatingAnchor {
   try {

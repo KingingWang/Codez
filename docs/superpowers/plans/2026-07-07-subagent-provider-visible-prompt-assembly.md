@@ -2,18 +2,18 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 将 ZCode subagent child request 的 provider-visible system prompt 组装收敛到统一的普通 subagent 形状，同时保留 `system[0] = "You are ZCode, an interactive coding agent"`；Explore/general-purpose 的 agent-specific body 只以测试中冻结的单一文案为基线。
+**Goal:** 将 Codez subagent child request 的 provider-visible system prompt 组装收敛到统一的普通 subagent 形状，同时保留 `system[0] = "You are Codez, an interactive coding agent"`；Explore/general-purpose 的 agent-specific body 只以测试中冻结的单一文案为基线。
 
-**Architecture:** 新增一个 subagent 专用 context builder，直接生成 child runtime 的 `ContextBuildResult`，避免先跑主线程 `ContextBuilder` 再覆盖 system messages。Explore、general-purpose、自定义 agent 统一走 `ZCode prefix + agent-specific prompt + common Notes + env/model context`，其中 Explore/general-purpose 的 agent-specific prompt body 只采用单一冻结文案；common Notes 和 env/model context 按 `agentPrompt + common Notes + env/model context` 固定分段，但 env/model context 的数据来源、fallback 和格式化优先复用当前 main runtime/context builder 逻辑。
+**Architecture:** 新增一个 subagent 专用 context builder，直接生成 child runtime 的 `ContextBuildResult`，避免先跑主线程 `ContextBuilder` 再覆盖 system messages。Explore、general-purpose、自定义 agent 统一走 `Codez prefix + agent-specific prompt + common Notes + env/model context`，其中 Explore/general-purpose 的 agent-specific prompt body 只采用单一冻结文案；common Notes 和 env/model context 按 `agentPrompt + common Notes + env/model context` 固定分段，但 env/model context 的数据来源、fallback 和格式化优先复用当前 main runtime/context builder 逻辑。
 
 **Tech Stack:** TypeScript, Vitest, `AgentRuntime`, `MessageHistoryImpl`, provider-visible request capture through mocked `modelAdapter`.
 
 ## Global Constraints
 
 - 本计划只处理 subagent provider-visible prompt assembly；不修改父侧 `Agent` tool schema/description、child `tools[]` schema、`SendMessage`、background notification、teammate、worktree isolation、fork/repl hydration。
-- `system[0]` 必须保留现有 ZCode 产品前缀：`You are ZCode, an interactive coding agent`。
-- 强要求：Explore 和 general-purpose 的 agent-specific prompt body 只使用一套冻结文案（以 `subagent-explore.test.ts` / `subagent-prompt-assembly.test.ts` 的精确断言为准）；不按模型、provider 或渠道引入文案变体，也不混入历史版本或 ZCode 临时实验分支文案。
-- Explore/general-purpose body 的标点、换行、操作性措辞都是 provider-visible 验收内容；除 ZCode 产品名替换和 ZCode 当前工具名差异外，不要做“意思差不多”的改写。
+- `system[0]` 必须保留现有 Codez 产品前缀：`You are Codez, an interactive coding agent`。
+- 强要求：Explore 和 general-purpose 的 agent-specific prompt body 只使用一套冻结文案（以 `subagent-explore.test.ts` / `subagent-prompt-assembly.test.ts` 的精确断言为准）；不按模型、provider 或渠道引入文案变体，也不混入历史版本或 Codez 临时实验分支文案。
+- Explore/general-purpose body 的标点、换行、操作性措辞都是 provider-visible 验收内容；除 Codez 产品名替换和 Codez 当前工具名差异外，不要做“意思差不多”的改写。
 - 除 `system[0]` 外，普通 subagent system body 按固定结构组织：agent-specific prompt、common subagent Notes、env/model context；其中 env/model context 的字段值、fallback、shell 展示、git repo 判定、model name 格式化以当前 main runtime/context builder 已有逻辑为准。
 - 不硬造当前 main 没有的数据；只有 main 已经能提供或已经 provider-visible 的数据才能进入 subagent env/model context。
 - 不新增“你是 subagent”这类额外身份叙事；只保留已有的操作性提示，如 `Agent threads...` 和 `parent agent reads your text output...`。
@@ -28,7 +28,7 @@
 ### In Scope
 
 - child `system` messages 的顺序和内容：
-  - `system[0]`: ZCode CLI prefix
+  - `system[0]`: Codez CLI prefix
   - `system[1]`: agent-specific prompt
   - `system[2]`: common subagent Notes
   - `system[3]`: env/model context
@@ -52,21 +52,21 @@
 
 当前路径：
 
-- `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts`
+- `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts`
   - 在 `runExploreAgent` 内计算 `systemPrompt: string`。
   - Explore 且 profile `systemPrompt` 为空时调用 `buildExploreSystemPrompt(...)`。
   - child `AgentRuntime` 通过 `systemPrompt` 配置进入 `ContextBuilder`。
-- `apps/zcode-cli/packages/core/src/context/builder.ts`
+- `apps/codez-cli/packages/core/src/context/builder.ts`
   - `customSystemPrompt` 存在时输出：
     - `system[0] = buildCliPrefixSection()`
     - `system[1] = "\n" + customSystemPrompt`
   - 同时跳过默认 identity/dynamic/env/git/output style system 段。
-- `apps/zcode-cli/packages/core/src/subagent/explore.ts`
+- `apps/codez-cli/packages/core/src/subagent/explore.ts`
   - 当前 `buildExploreSystemPrompt(...)` 同时包含 Explore agent prompt、common Notes、env/model context。
-- `apps/zcode-cli/packages/core/src/agent/message-history.ts`
+- `apps/codez-cli/packages/core/src/agent/message-history.ts`
   - `MessageHistoryImpl.init(...)` 已支持传入 `Array<ModelInputMessage | RuntimeMessageEntry>`，可直接初始化多段 system messages。
-- `apps/zcode-cli/packages/core/tests/subagent-explore.test.ts`
-  - 当前 `exploreSystemMessages` 断言 `system[0]` 是 ZCode prefix，`system[1]` 是带 leading newline 的整块 Explore prompt。
+- `apps/codez-cli/packages/core/tests/subagent-explore.test.ts`
+  - 当前 `exploreSystemMessages` 断言 `system[0]` 是 Codez prefix，`system[1]` 是带 leading newline 的整块 Explore prompt。
 
 目标路径：
 
@@ -76,29 +76,29 @@
 
 ## File Structure
 
-- Modify: `apps/zcode-cli/packages/core/src/runtime/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/types.ts`
   - 给 `AgentRuntimeConfig` 增加 `subagentContext?: { agentPrompt: string }`，不新增 `systemMessages` 覆盖配置。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/context.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/context.ts`
   - `createContextBuilderFromSnapshot(...)` 根据 `config.subagentContext` 创建 `SubagentContextBuilder`，主 runtime 继续创建 main `ContextBuilder`。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/config.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/config.ts`
   - 确认 lazy `getContextBuilder()` 也走 `createContextBuilderFromSnapshot(...)`，不额外引入 subagent special-case。
-- Modify: `apps/zcode-cli/packages/core/src/context/sections/env-info.ts`
+- Modify: `apps/codez-cli/packages/core/src/context/sections/env-info.ts`
   - 将 main 当前使用的 git repo 判定逻辑导出为共享 helper，避免 subagent env/model context 复制一套相似但可能漂移的判定。
-- Create: `apps/zcode-cli/packages/core/src/subagent/system-prompt.ts`
+- Create: `apps/codez-cli/packages/core/src/subagent/system-prompt.ts`
   - 提供 `buildSubagentCommonNotes()`、`buildSubagentEnvironmentContext(...)`；builder 只消费已经按 main 逻辑准备好的 `EnvInfo`。
-- Create: `apps/zcode-cli/packages/core/src/subagent/context-builder.ts`
+- Create: `apps/codez-cli/packages/core/src/subagent/context-builder.ts`
   - 提供 `SubagentContextBuilder` / `createSubagentContextBuilder(...)`，返回完整 `ContextBuildResult`，并复用 common Notes/env/model helper。
-- Modify: `apps/zcode-cli/packages/core/src/subagent/explore.ts`
+- Modify: `apps/codez-cli/packages/core/src/subagent/explore.ts`
   - 将 `buildExploreSystemPrompt(...)` 改为只返回 Explore agent-specific prompt。
-- Modify: `apps/zcode-cli/packages/core/src/subagent/general-purpose.ts`
+- Modify: `apps/codez-cli/packages/core/src/subagent/general-purpose.ts`
   - double check general-purpose agent-specific prompt body 是否与冻结文案一致；如果发现漂移，在本轮一并修正。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts`
   - 传入 `subagentContext.agentPrompt` 和 child `envInfo`，由 child runtime 自己的 builder 负责 prompt assembly。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/deps.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/deps.ts`
   - 若 runtime deps barrel 当前导出 `buildExploreSystemPrompt`，同步导出/导入新的 builder。
-- Modify: `apps/zcode-cli/packages/core/tests/subagent-explore.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/subagent-explore.test.ts`
   - 更新 Explore provider-visible system message 断言。
-- Create: `apps/zcode-cli/packages/core/tests/subagent-prompt-assembly.test.ts`
+- Create: `apps/codez-cli/packages/core/tests/subagent-prompt-assembly.test.ts`
   - 覆盖 Explore、general-purpose、custom agent 的 child system prompt 组装。
 - Modify: `docs/conversation-session-case-catalog.md`
   - 为 subagent prompt assembly 增加或更新 conversation E2E case 条目。
@@ -116,13 +116,13 @@
 ### Task 1: Add Provider-Visible Prompt Assembly Tests
 
 **Files:**
-- Create: `apps/zcode-cli/packages/core/tests/subagent-prompt-assembly.test.ts`
-- Modify: `apps/zcode-cli/packages/core/tests/subagent-explore.test.ts`
+- Create: `apps/codez-cli/packages/core/tests/subagent-prompt-assembly.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/subagent-explore.test.ts`
 
 **Interfaces:**
 - Consumes:
-  - `AgentRuntime` from `apps/zcode-cli/packages/core/src/runtime.ts`
-  - `createSessionId`, `ModelRole`, `ModelRefSource`, `modelMessageContentToText` from `@zcode/contracts`
+  - `AgentRuntime` from `apps/codez-cli/packages/core/src/runtime.ts`
+  - `createSessionId`, `ModelRole`, `ModelRefSource`, `modelMessageContentToText` from `@codez/contracts`
 - Produces:
   - Failing tests that describe final child provider request shape before implementation.
 
@@ -131,19 +131,19 @@
 Run:
 
 ```bash
-rg -n "You are ZCode Explore|You are an agent for ZCode|buildExploreSystemPrompt|buildGeneralPurposeSystemPrompt" apps/zcode-cli/packages/core/src/subagent apps/zcode-cli/packages/core/tests/subagent-explore.test.ts
+rg -n "You are Codez Explore|You are an agent for Codez|buildExploreSystemPrompt|buildGeneralPurposeSystemPrompt" apps/codez-cli/packages/core/src/subagent apps/codez-cli/packages/core/tests/subagent-explore.test.ts
 ```
 
 Expected:
 
-- ZCode Explore/general-purpose body matches the exact expected text frozen in `subagent-explore.test.ts`.
-- ZCode body does not include model-specific, provider-specific, historical, or experimental copy variants.
+- Codez Explore/general-purpose body matches the exact expected text frozen in `subagent-explore.test.ts`.
+- Codez body does not include model-specific, provider-specific, historical, or experimental copy variants.
 
-If ZCode body does not match the frozen expected text, do not treat this as out of scope. Add the expected body to the failing tests in this task, then align the implementation in Task 2 before changing the system message assembly.
+If Codez body does not match the frozen expected text, do not treat this as out of scope. Add the expected body to the failing tests in this task, then align the implementation in Task 2 before changing the system message assembly.
 
 - [ ] **Step 2: Create a helper to capture child provider requests**
 
-Add this helper in `apps/zcode-cli/packages/core/tests/subagent-prompt-assembly.test.ts`:
+Add this helper in `apps/codez-cli/packages/core/tests/subagent-prompt-assembly.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -154,7 +154,7 @@ import {
   createModelProviderId,
   createSessionId,
   modelMessageContentToText,
-} from "@zcode/contracts";
+} from "@codez/contracts";
 import { AgentRuntime } from "../src/runtime.js";
 import { createTestSessionEventStore } from "./test-event-store.js";
 
@@ -186,7 +186,7 @@ Add this test:
 
 ```ts
 describe("subagent provider-visible prompt assembly", () => {
-  it("assembles Explore child system messages with ZCode prefix, agent prompt, notes, and environment context", async () => {
+  it("assembles Explore child system messages with Codez prefix, agent prompt, notes, and environment context", async () => {
     const sessionId = createSessionId("subagent-prompt-explore");
     const eventStore = createTestSessionEventStore();
     const childRequests: any[] = [];
@@ -204,10 +204,10 @@ describe("subagent provider-visible prompt assembly", () => {
           path: "C:\\Program Files\\Git\\bin\\bash.exe",
           source: "user-config",
         },
-        workingDirectory: "/Users/dev/Desktop/Z/z-code/apps/zcode-cli",
+        workingDirectory: "/Users/dev/Desktop/Z/z-code/apps/codez-cli",
         currentDate: "2026-06-04",
         envInfo: {
-          cwd: "/Users/dev/Desktop/Z/z-code/apps/zcode-cli",
+          cwd: "/Users/dev/Desktop/Z/z-code/apps/codez-cli",
           platform: "darwin",
           shell: "zsh",
           osVersion: "Darwin 24.3.0",
@@ -272,8 +272,8 @@ describe("subagent provider-visible prompt assembly", () => {
     expect(childRequests).toHaveLength(1);
     const systems = systemContents(childRequests[0]);
     expect(systems).toHaveLength(4);
-    expect(systems[0]).toBe("You are ZCode, an interactive coding agent");
-    expect(systems[1]).toContain("You are ZCode Explore");
+    expect(systems[0]).toBe("You are Codez, an interactive coding agent");
+    expect(systems[1]).toContain("You are Codez Explore");
     expect(systems[1]).toContain("READ-ONLY MODE");
     expect(systems[1]).not.toContain("Agent threads always have their cwd reset");
     expect(systems[1]).not.toContain("Here is useful information about the environment");
@@ -281,7 +281,7 @@ describe("subagent provider-visible prompt assembly", () => {
     expect(systems[2]).toContain("Agent threads always have their cwd reset between bash calls");
     expect(systems[2]).toContain("the parent agent reads your text output");
     expect(systems[3]).toContain("Here is useful information about the environment you are running in:");
-    expect(systems[3]).toContain("Working directory: /Users/dev/Desktop/Z/z-code/apps/zcode-cli");
+    expect(systems[3]).toContain("Working directory: /Users/dev/Desktop/Z/z-code/apps/codez-cli");
     expect(systems[3]).toContain("Is directory a git repo: Yes");
     expect(systems[3]).toContain("Platform: darwin");
     expect(systems[3]).toContain("Shell: Git Bash");
@@ -379,8 +379,8 @@ Add this test in the same `describe` block:
 
     const systems = systemContents(childRequests[0]);
     expect(systems).toHaveLength(4);
-    expect(systems[0]).toBe("You are ZCode, an interactive coding agent");
-    expect(systems[1]).toContain("You are an agent for ZCode");
+    expect(systems[0]).toBe("You are Codez, an interactive coding agent");
+    expect(systems[1]).toContain("You are an agent for Codez");
     expect(systems[1]).toContain("the caller will relay this to the user");
     expect(systems[1]).not.toContain("Agent threads always have their cwd reset");
     expect(systems[2]).toContain("Agent threads always have their cwd reset between bash calls");
@@ -483,7 +483,7 @@ Add this test:
 
     const systems = systemContents(childRequests[0]);
     expect(systems).toHaveLength(4);
-    expect(systems[0]).toBe("You are ZCode, an interactive coding agent");
+    expect(systems[0]).toBe("You are Codez, an interactive coding agent");
     expect(systems[1]).toBe("You are a focused code researcher. Return concise findings.");
     expect(systems[2]).toContain("Notes:");
     expect(systems[3]).toContain("Is directory a git repo: No");
@@ -492,7 +492,7 @@ Add this test:
 
 - [ ] **Step 6: Update existing Explore test expectation**
 
-In `apps/zcode-cli/packages/core/tests/subagent-explore.test.ts`, replace the single combined `exploreSystemMessages` constant with split constants:
+In `apps/codez-cli/packages/core/tests/subagent-explore.test.ts`, replace the single combined `exploreSystemMessages` constant with split constants:
 
 ```ts
 const exploreAgentPrompt = `...`;
@@ -500,7 +500,7 @@ const subagentCommonNotes = `...`;
 const subagentEnvironmentContext = `...`;
 
 const exploreSystemMessages = [
-  "You are ZCode, an interactive coding agent",
+  "You are Codez, an interactive coding agent",
   exploreAgentPrompt,
   subagentCommonNotes,
   subagentEnvironmentContext,
@@ -514,7 +514,7 @@ Keep the exact body text consistent with the new builder from Phase 2. The old e
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run apps/zcode-cli/packages/core/tests/subagent-prompt-assembly.test.ts apps/zcode-cli/packages/core/tests/subagent-explore.test.ts
+pnpm --filter @codez/core exec vitest run apps/codez-cli/packages/core/tests/subagent-prompt-assembly.test.ts apps/codez-cli/packages/core/tests/subagent-explore.test.ts
 ```
 
 Expected before implementation:
@@ -527,16 +527,16 @@ Expected before implementation:
 ## Phase 2: Shared Subagent Prompt Pieces
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/context/sections/env-info.ts`
-- Create: `apps/zcode-cli/packages/core/src/subagent/system-prompt.ts`
-- Modify: `apps/zcode-cli/packages/core/src/subagent/explore.ts`
-- Modify: `apps/zcode-cli/packages/core/src/subagent/general-purpose.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/deps.ts`
+- Modify: `apps/codez-cli/packages/core/src/context/sections/env-info.ts`
+- Create: `apps/codez-cli/packages/core/src/subagent/system-prompt.ts`
+- Modify: `apps/codez-cli/packages/core/src/subagent/explore.ts`
+- Modify: `apps/codez-cli/packages/core/src/subagent/general-purpose.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/deps.ts`
 
 **Interfaces:**
 - Consumes:
-  - `EnvInfo` from `@zcode/contracts`
-  - `isEnvInfoGitRepository(info: EnvInfo): boolean` from `apps/zcode-cli/packages/core/src/context/sections/env-info.ts`
+  - `EnvInfo` from `@codez/contracts`
+  - `isEnvInfoGitRepository(info: EnvInfo): boolean` from `apps/codez-cli/packages/core/src/context/sections/env-info.ts`
 - Produces:
   - `buildSubagentCommonNotes(): string`
   - `buildSubagentEnvironmentContext(options): string`
@@ -544,7 +544,7 @@ Expected before implementation:
 
 - [ ] **Step 1: Export main git repo判定 helper**
 
-Modify `apps/zcode-cli/packages/core/src/context/sections/env-info.ts`.
+Modify `apps/codez-cli/packages/core/src/context/sections/env-info.ts`.
 
 Replace the private helper:
 
@@ -582,10 +582,10 @@ This keeps subagent git repo detection tied to the same logic main uses today.
 
 - [ ] **Step 2: Create the shared prompt-piece file**
 
-Create `apps/zcode-cli/packages/core/src/subagent/system-prompt.ts`:
+Create `apps/codez-cli/packages/core/src/subagent/system-prompt.ts`:
 
 ```ts
-import type { EnvInfo } from "@zcode/contracts";
+import type { EnvInfo } from "@codez/contracts";
 import { isEnvInfoGitRepository } from "../context/sections/env-info.js";
 
 export interface SubagentEnvironmentContextOptions {
@@ -633,7 +633,7 @@ Important boundary:
 
 - [ ] **Step 3: Refactor Explore prompt to agent-specific prompt only**
 
-In `apps/zcode-cli/packages/core/src/subagent/explore.ts`, rename `buildExploreSystemPrompt` to `buildExploreAgentPrompt` or keep the exported name with updated semantics if broader call sites are easier. Preferred:
+In `apps/codez-cli/packages/core/src/subagent/explore.ts`, rename `buildExploreSystemPrompt` to `buildExploreAgentPrompt` or keep the exported name with updated semantics if broader call sites are easier. Preferred:
 
 ```ts
 export function buildExploreAgentPrompt(options: {
@@ -653,7 +653,7 @@ export function buildExploreAgentPrompt(options: {
     : "ls, git status, git log, git diff, find, cat, head, tail";
 
   return [
-    "You are ZCode Explore, a file search and codebase research specialist for ZCode CLI. You excel at thoroughly navigating and exploring codebases.",
+    "You are Codez Explore, a file search and codebase research specialist for Codez CLI. You excel at thoroughly navigating and exploring codebases.",
     "",
     "=== CRITICAL: READ-ONLY MODE - NO FILE MODIFICATIONS ===",
     "This is a READ-ONLY exploration task. You are STRICTLY PROHIBITED from:",
@@ -693,7 +693,7 @@ Remove `workingDirectory`, `workspaceRoot`, `envInfo`, and `modelName` from this
 
 - [ ] **Step 4: Align general-purpose body if the baseline check found drift**
 
-If Task 1 Step 1 shows `apps/zcode-cli/packages/core/src/subagent/general-purpose.ts` has drifted from the frozen expected body, update `buildGeneralPurposeSystemPrompt()` before wiring the new system message builder.
+If Task 1 Step 1 shows `apps/codez-cli/packages/core/src/subagent/general-purpose.ts` has drifted from the frozen expected body, update `buildGeneralPurposeSystemPrompt()` before wiring the new system message builder.
 
 Keep the body identical to the frozen expected text. Preserve provider-visible punctuation, paragraph breaks, and operational wording exactly.
 
@@ -711,7 +711,7 @@ Remove the shim only if all imports can be updated in the same task.
 
 - [ ] **Step 6: Export the new prompt pieces through runtime deps**
 
-In `apps/zcode-cli/packages/core/src/runtime/deps.ts`, export/import:
+In `apps/codez-cli/packages/core/src/runtime/deps.ts`, export/import:
 
 ```ts
 export { buildExploreAgentPrompt, EXPLORE_AGENT_TYPE } from "../subagent/explore.js";
@@ -725,7 +725,7 @@ If `deps.ts` currently exports `buildExploreSystemPrompt`, replace that export o
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run apps/zcode-cli/packages/core/tests/subagent-prompt-assembly.test.ts
+pnpm --filter @codez/core exec vitest run apps/codez-cli/packages/core/tests/subagent-prompt-assembly.test.ts
 ```
 
 Expected after Task 2 only:
@@ -740,11 +740,11 @@ Expected after Task 2 only:
 ### Task 3: Let Child Runtime Select Its Own Context Builder
 
 **Files:**
-- Create: `apps/zcode-cli/packages/core/src/subagent/context-builder.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/types.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/context.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/config.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts`
+- Create: `apps/codez-cli/packages/core/src/subagent/context-builder.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/context.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/config.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts`
 
 **Interfaces:**
 - Consumes:
@@ -758,7 +758,7 @@ Expected after Task 2 only:
 
 - [ ] **Step 1: Add `SubagentContextBuilder`**
 
-Create `apps/zcode-cli/packages/core/src/subagent/context-builder.ts`.
+Create `apps/codez-cli/packages/core/src/subagent/context-builder.ts`.
 
 The builder must extend or otherwise satisfy the runtime's existing context builder type and return a full `ContextBuildResult`:
 
@@ -783,7 +783,7 @@ Do not include main identity, task behavior, project instructions, project conte
 
 - [ ] **Step 2: Add `subagentContext` to runtime config**
 
-In `apps/zcode-cli/packages/core/src/runtime/types.ts`, add near `systemPrompt?: string`:
+In `apps/codez-cli/packages/core/src/runtime/types.ts`, add near `systemPrompt?: string`:
 
 ```ts
   /**
@@ -797,7 +797,7 @@ In `apps/zcode-cli/packages/core/src/runtime/types.ts`, add near `systemPrompt?:
 
 - [ ] **Step 3: Select builder strategy in `createContextBuilderFromSnapshot(...)`**
 
-In `apps/zcode-cli/packages/core/src/runtime/methods/context.ts`, keep the shared `envInfo = { ...snapshot.envInfo, currentModel: formatModelRef(this.defaultModelRef) }` logic. After persisting `envInfo`, add:
+In `apps/codez-cli/packages/core/src/runtime/methods/context.ts`, keep the shared `envInfo = { ...snapshot.envInfo, currentModel: formatModelRef(this.defaultModelRef) }` logic. After persisting `envInfo`, add:
 
 ```ts
 if (this.config.subagentContext) {
@@ -819,7 +819,7 @@ Main runtime continues to use the existing `createContextBuilder(contextConfig)`
 
 - [ ] **Step 5: Pass `subagentContext` from `subagent.ts`**
 
-In `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts`, replace the current `systemPrompt` calculation with an `agentPrompt` calculation:
+In `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts`, replace the current `systemPrompt` calculation with an `agentPrompt` calculation:
 
 ```ts
 const agentPrompt =
@@ -856,7 +856,7 @@ Do not put currentDate into the four subagent system messages. If `currentDate` 
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run apps/zcode-cli/packages/core/tests/subagent-prompt-assembly.test.ts apps/zcode-cli/packages/core/tests/subagent-explore.test.ts
+pnpm --filter @codez/core exec vitest run apps/codez-cli/packages/core/tests/subagent-prompt-assembly.test.ts apps/codez-cli/packages/core/tests/subagent-explore.test.ts
 ```
 
 Expected:
@@ -889,18 +889,18 @@ Add a section near the prompt/system context part:
 
 本轮只收敛普通 subagent child request 的 provider-visible system prompt 组装，不处理父 `Agent` tool schema、child tool surface、SendMessage、background notification、fork/repl hydration、teammate/worktree。
 
-Explore/general-purpose 的 agent-specific body 只使用一套冻结文案。本轮执行时已 double check ZCode 当前 body 与冻结文案的一致性；如发现 drift，已在本轮修正后再做 system message 拆分和组装收敛。不引入按模型、provider、历史版本或实验分支区分的文案变体。
+Explore/general-purpose 的 agent-specific body 只使用一套冻结文案。本轮执行时已 double check Codez 当前 body 与冻结文案的一致性；如发现 drift，已在本轮修正后再做 system message 拆分和组装收敛。不引入按模型、provider、历史版本或实验分支区分的文案变体。
 
 当前 child system message 顺序：
 
-1. `You are ZCode, an interactive coding agent`
+1. `You are Codez, an interactive coding agent`
 2. agent-specific prompt（Explore / general-purpose / custom profile body）
 3. common subagent Notes（cwd reset、absolute paths、no emoji、no colon before tool calls、不要写 report/summary/findings/analysis `.md`）
 4. env/model context（working directory、git repo、platform、shell、OS version、model name）
 
 第 4 段的段落位置和外层结构固定，但字段值、fallback、shell 展示、git repo 判定和 model name 格式化以当前 main runtime/context builder 逻辑为准：从 `contextSourceSnapshot.envInfo` / `config.envInfo` 继承，沿用 session shell override，并用 `formatModelRef(childModelRef)` 写入 `envInfo.currentModel`。当前 main 没有提供的数据不在本轮硬造。
 
-这保留了 ZCode 产品身份前缀，同时让后续 child prompt body 统一为 `agentPrompt + common Notes + env/model context` 结构。
+这保留了 Codez 产品身份前缀，同时让后续 child prompt body 统一为 `agentPrompt + common Notes + env/model context` 结构。
 ```
 
 - [ ] **Step 2: Update gap matrix entry for child system prompt**
@@ -940,7 +940,7 @@ Expected:
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run apps/zcode-cli/packages/core/tests/subagent-prompt-assembly.test.ts apps/zcode-cli/packages/core/tests/subagent-explore.test.ts
+pnpm --filter @codez/core exec vitest run apps/codez-cli/packages/core/tests/subagent-prompt-assembly.test.ts apps/codez-cli/packages/core/tests/subagent-explore.test.ts
 ```
 
 Expected:
@@ -952,7 +952,7 @@ Expected:
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run apps/zcode-cli/packages/core/tests/context-builder.test.ts apps/zcode-cli/packages/core/tests/runtime-trace.test.ts
+pnpm --filter @codez/core exec vitest run apps/codez-cli/packages/core/tests/context-builder.test.ts apps/codez-cli/packages/core/tests/runtime-trace.test.ts
 ```
 
 Expected:
@@ -990,7 +990,7 @@ Expected:
 Use the failing/passing test debug output only if needed. The final child request must satisfy:
 
 ```text
-system[0] === "You are ZCode, an interactive coding agent"
+system[0] === "You are Codez, an interactive coding agent"
 system[1] contains agent-specific prompt
 system[1] does not contain "Agent threads always have their cwd reset"
 system[2] starts with "Notes:"
@@ -1019,7 +1019,7 @@ system[3] contains Working directory / git repo / Platform / Shell / OS Version 
 In `docs/conversation-session-case-catalog.md`, add a case entry for subagent prompt assembly. Use the existing table style in that file, with this semantic content:
 
 ```md
-| <next-id> | Subagent prompt assembly | 用户从前台窗口发起一次会触发 Explore/general-purpose subagent 的对话 | 子 agent provider-visible system prompt 保留 ZCode prefix，并将 agent prompt / common Notes / env-model context 拆成独立 system messages；主线程 prompt 不回归 | covered | `conversation-session-subagent-prompt-assembly.test.ts` |
+| <next-id> | Subagent prompt assembly | 用户从前台窗口发起一次会触发 Explore/general-purpose subagent 的对话 | 子 agent provider-visible system prompt 保留 Codez prefix，并将 agent prompt / common Notes / env-model context 拆成独立 system messages；主线程 prompt 不回归 | covered | `conversation-session-subagent-prompt-assembly.test.ts` |
 ```
 
 Use the next valid case id according to the current catalog conventions; do not invent a new numbering family if an existing subagent/conversation family already exists.
@@ -1049,7 +1049,7 @@ The spec must:
 - Assert the child request system messages satisfy:
 
 ```text
-system[0] === "You are ZCode, an interactive coding agent"
+system[0] === "You are Codez, an interactive coding agent"
 system[1] contains the agent-specific prompt
 system[1] does not contain "Agent threads always have their cwd reset"
 system[2] starts with "Notes:"
@@ -1072,7 +1072,7 @@ packages/desktop/test/e2e/helpers/conversation-session-network.ts
 Run the new spec with the local foreground Electron window, not only the container runner:
 
 ```bash
-ZCODE_E2E_SPEC=./test/e2e/conversation-session/conversation-session-subagent-prompt-assembly.test.ts pnpm --filter @zcode/desktop test:e2e
+CODEZ_E2E_SPEC=./test/e2e/conversation-session/conversation-session-subagent-prompt-assembly.test.ts pnpm --filter @codez/desktop test:e2e
 ```
 
 Expected:
@@ -1101,7 +1101,7 @@ The final implementation report must include:
 
 ```text
 E2E command:
-ZCODE_E2E_SPEC=./test/e2e/conversation-session/conversation-session-subagent-prompt-assembly.test.ts pnpm --filter @zcode/desktop test:e2e
+CODEZ_E2E_SPEC=./test/e2e/conversation-session/conversation-session-subagent-prompt-assembly.test.ts pnpm --filter @codez/desktop test:e2e
 
 E2E result:
 PASS
@@ -1135,11 +1135,11 @@ If the local machine cannot run foreground Electron E2E, do not mark the task co
 - Explore/general-purpose agent-specific body has been double checked against the frozen expected text and remains or has been brought into alignment, with no model-specific/provider-specific/historical/experimental copy mixed in.
 - Explore prompt no longer embeds common Notes/env/model context.
 - Subagent env/model context uses the fixed section placement and outer shape, while field values/fallbacks follow current main runtime/context builder logic.
-- Child provider-visible system messages are split into four entries with ZCode prefix at `system[0]`.
+- Child provider-visible system messages are split into four entries with Codez prefix at `system[0]`.
 - Main thread prompt assembly is unchanged.
 - Focused prompt tests pass.
 - A conversation-session E2E spec covers this prompt assembly behavior.
-- The E2E spec has been run through the local foreground Electron window with `ZCODE_E2E_SPEC=./test/e2e/conversation-session/conversation-session-subagent-prompt-assembly.test.ts pnpm --filter @zcode/desktop test:e2e`, and the result is PASS.
+- The E2E spec has been run through the local foreground Electron window with `CODEZ_E2E_SPEC=./test/e2e/conversation-session/conversation-session-subagent-prompt-assembly.test.ts pnpm --filter @codez/desktop test:e2e`, and the result is PASS.
 - `pnpm audit:conversation-session-coverage` passes after catalog/matrix updates.
 - `pnpm typecheck` and `pnpm lint` have been run, with any unrelated baseline failures explicitly reported.
 - No automatic commit is created. The final state remains reviewable in the working tree until the user explicitly asks to commit.

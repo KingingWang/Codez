@@ -5,7 +5,7 @@ import type {
   AppSettings,
   ProviderFamilyDomain,
   ProviderFamilyConnectionSelectionSettings,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   appSettingsPatchSchema,
   appSettingsSchema,
@@ -13,8 +13,8 @@ import {
   formatZodError,
   USER_INSTRUCTIONS_MAX_BYTES,
   USER_INSTRUCTIONS_TOO_LARGE_ERROR_CODE,
-} from "@zcode/shared";
-import { atomicWritePrivateTextFile } from "@zcode/shared/node";
+} from "@codez/shared";
+import { atomicWritePrivateTextFile } from "@codez/shared/node";
 import type { ISettingService, WorkspaceSettingsProjection } from "./setting.js";
 import { normalizeSettingsPatch } from "#src/setting/normalizeSettingsPatch.js";
 import {
@@ -42,7 +42,7 @@ const SETTINGS_PARSE_RETRY_COUNT = 3;
 const log = (...args: unknown[]) =>
   console.log(formatLogPrefix("settingService", process.pid), ...args);
 const debugLog = (...args: unknown[]) => {
-  // NODE_ENV 来自用户 shell 时会误导服务层 debug 开关；统一使用 ZCODE_RUNTIME_ENV。
+  // NODE_ENV 来自用户 shell 时会误导服务层 debug 开关；统一使用 CODEZ_RUNTIME_ENV。
   if (!isEffectiveDevelopmentNodeEnv()) {
     return;
   }
@@ -53,7 +53,7 @@ function resolveUserHomeDir() {
   // 独立桌面 Dev 实例已设置自己的 home，设置服务却仍写真实 HOME，
   // 导致启动迁移和外观操作污染其他实例。与 Electron 的显式 home 覆盖保持一致。
   const envHome =
-    process.env.ZCODE_DESKTOP_HOME_DIR?.trim() ||
+    process.env.CODEZ_DESKTOP_HOME_DIR?.trim() ||
     process.env.HOME?.trim() ||
     process.env.USERPROFILE?.trim();
   return envHome && envHome.length > 0 ? envHome : homedir();
@@ -233,7 +233,7 @@ export function createSettingServiceWithMigrations(): {
 } {
   // 原因：每次 IO 动态读 HOME 会让旧异步投影写进后来实例的目录。
   // 在实例创建时取值，既支持测试/Host 注入，也让读取、文件锁与替换始终同源。
-  const settingsFile = join(resolveUserHomeDir(), ".zcode", "v2", "setting.json");
+  const settingsFile = join(resolveUserHomeDir(), ".codez", "v2", "setting.json");
   // 个性化指令文件与 settingsFile 同理：实例创建时取值，读取与写入始终同源。
   const userInstructionsFile = getAgentUserInstructionsFilePath();
   // 修复原因（评审 CR-01）：atomicWriteText 只保证单次替换完整，不保证多次保存的提交顺序；
@@ -391,7 +391,7 @@ export function createSettingServiceWithMigrations(): {
       const targetBaseDir = newDir?.trim() || homedir();
       const validation = validateDataBaseDirTarget(targetBaseDir);
       if (!validation.ok) {
-        // Windows 安装目录由安装器/自动更新管理，把 .zcode/v2 放进去可能在升级时被覆盖。
+        // Windows 安装目录由安装器/自动更新管理，把 .codez/v2 放进去可能在升级时被覆盖。
         // 迁移前在 service 层拦截，避免 UI 入口变化或 RPC 调用绕过前端判断。
         const error = new Error(`${validation.code}: ${validation.forbiddenDir}`);
         (error as Error & { code: string }).code = validation.code;
@@ -437,7 +437,7 @@ export function createSettingServiceWithMigrations(): {
       }
       await enqueueUserInstructionsWrite(async () => {
         // 修复原因（评审 CR-01 回归）：acquireFileLock 以不带 recursive 的 mkdir(lockFile)
-        // 创建锁文件，父目录 ~/.zcode 不存在时会 ENOENT 抛出——建目录必须发生在取锁之前，
+        // 创建锁文件，父目录 ~/.codez 不存在时会 ENOENT 抛出——建目录必须发生在取锁之前，
         // 否则首次保存（目录尚不存在）永远失败。
         maybeThrowInjectedFsFault({ operation: "mkdir", path: dirname(userInstructionsFile) });
         await mkdir(dirname(userInstructionsFile), { recursive: true });

@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode/config.json",
+      "path": ".codez/config.json",
       "source": "created-by-spec",
       "description": "Direct workspace MCP fixture; session guidance and real runtime handshake are observed."
     },

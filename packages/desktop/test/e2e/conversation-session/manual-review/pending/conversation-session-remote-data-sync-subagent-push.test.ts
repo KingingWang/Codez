@@ -9,7 +9,7 @@ import {
   TID_TASK_SETTINGS_BUTTON,
   TID_V4_COMPOSER_INPUT,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -29,12 +29,12 @@ import {
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
 // DSYNC-09：设置 → 数据同步 → 设备 → 推送子智能体（docs/remote/data-sync.md「子智能体」）。
-// 子智能体经新同步通道 user-config-sync 按原文件字节推送；远端断言用 docker exec 读容器内 ~/.zcode/agents。
+// 子智能体经新同步通道 user-config-sync 按原文件字节推送；远端断言用 docker exec 读容器内 ~/.codez/agents。
 const CASE_MARKER = "E2E_DSYNC_09_SUBAGENT_PUSH";
 const AGENT_NAME = "E2E-DSync-Agent";
 const AGENT_KEY = AGENT_NAME.toLowerCase();
 const AGENT_FILE = "e2e-dsync-agent.md";
-const REMOTE_AGENTS = "/home/dev/.zcode/agents";
+const REMOTE_AGENTS = "/home/dev/.codez/agents";
 const DEPENDENCY_SKILL = "e2e-dsync-skill";
 const DEPENDENCY_MCP = "e2e-dsync-mcp";
 const DEPENDENCY_HINT = `远端缺少 MCP：${DEPENDENCY_MCP}；远端缺少技能：${DEPENDENCY_SKILL}`;
@@ -66,13 +66,13 @@ const AGENT_CONTENT = [
 
 /** 本机用户级技能与 MCP：子智能体引用的依赖在本机存在，远端缺少时才提示。 */
 async function writeLocalDependencies(home: string): Promise<void> {
-  const skillDir = join(home, ".zcode", "skills", DEPENDENCY_SKILL);
+  const skillDir = join(home, ".codez", "skills", DEPENDENCY_SKILL);
   await mkdir(skillDir, { recursive: true });
   await writeFile(
     join(skillDir, "SKILL.md"),
     `---\nname: ${DEPENDENCY_SKILL}\ndescription: dependency for data sync e2e\n---\nBody\n`,
   );
-  const cliDir = join(home, ".zcode", "cli");
+  const cliDir = join(home, ".codez", "cli");
   await mkdir(cliDir, { recursive: true });
   await writeFile(
     join(cliDir, "config.json"),
@@ -197,7 +197,7 @@ describe(`${CASE_MARKER}: 数据同步页推送子智能体`, () => {
     const workspacePath = config.workspacePaths[0];
 
     const localHome = getE2EAppDataPaths().homeDir;
-    const localAgents = join(localHome, ".zcode", "agents");
+    const localAgents = join(localHome, ".codez", "agents");
     await mkdir(localAgents, { recursive: true });
     await writeFile(join(localAgents, AGENT_FILE), AGENT_CONTENT);
     await writeLocalDependencies(localHome);
@@ -237,7 +237,7 @@ describe(`${CASE_MARKER}: 数据同步页推送子智能体`, () => {
 
   it("DSYNC-09-02 推送后，已打开的远程项目输入 / 能看到新子智能体", async function () {
     this.timeout(10 * 60_000);
-    const localAgents = join(getE2EAppDataPaths().homeDir, ".zcode", "agents");
+    const localAgents = join(getE2EAppDataPaths().homeDir, ".codez", "agents");
     await writeFile(
       join(localAgents, SLASH_AGENT_FILE),
       `---\nname: ${SLASH_AGENT_NAME}\ndescription: ${CASE_MARKER} slash\n---\nSlash prompt.\n`,

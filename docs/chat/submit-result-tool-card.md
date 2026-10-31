@@ -9,12 +9,12 @@
   明说实时流 / 冷恢复 / 回看全走既有 SessionPane 链路），所以 `submit_result` 以普通 v4
   `toolCall` 行到达，由主会话同一套 ToolCallBlocks registry 渲染；
 - `submit_result` 不在 UI 已知工具表里（`packages/shared/src/tool-identity.ts` 的
-  `ZCODE_KNOWN_TOOL_NAMES` 止于 `CreateWorkflow`）→ family `"unknown"` →
+  `CODEZ_KNOWN_TOOL_NAMES` 止于 `CreateWorkflow`）→ family `"unknown"` →
   `FallbackToolCallBlock`：扳手图标、首字母大写出来的标签「Submit_result」、以及**整个 toolCall
   对象**的 `JSON.stringify(…, null, 2)` 裸 `<pre>`（`renderers/fallback.tsx:63-67`，还用着
   off-token 的 `text-ui-xs`）；
 - 载荷全部在**输入**侧：工具输出 schema 只有 `{status: "accepted"}`
-  （`apps/zcode-cli/packages/contracts/src/tools/submit-result.ts:29-33`），输入是单键
+  （`apps/codez-cli/packages/contracts/src/tools/submit-result.ts:29-33`），输入是单键
   `{result: <unknown>}`——每次 ask 的具体 JSON Schema 走指令尾注而非工具声明（声明冻结以保
   prompt cache）。
 
@@ -44,7 +44,7 @@
 
 | Boundary | Decision | Includes | Excludes / prunes | Source |
 | --- | --- | --- | --- | --- |
-| 路由注册 | `packages/shared/src/tool-identity.ts`：`ZCODE_KNOWN_TOOL_NAMES` 加**字面** `"submit_result"`，`TOOL_FAMILY_BY_NAME` 归 family `"workflow"`（Record 是 total 的，TS 强制成对）；`resolveRenderer.ts` 的 `workflow` case 内按 `identity.toolName` 分派新渲染器 | 大小写不敏感匹配已有（`normalizeZCodeToolName` 走小写表），但下划线必须字面在场——wire 名就是 `submit_result`，仓库里唯一的 snake_case 工具 | 不新造 family（`message` family 对 `RespondToCoordinator` 的同款先例：family 内按名分派）；CLI 侧不改名 | `RespondToCoordinator` 先例（`resolveRenderer.ts:74-76`） |
+| 路由注册 | `packages/shared/src/tool-identity.ts`：`CODEZ_KNOWN_TOOL_NAMES` 加**字面** `"submit_result"`，`TOOL_FAMILY_BY_NAME` 归 family `"workflow"`（Record 是 total 的，TS 强制成对）；`resolveRenderer.ts` 的 `workflow` case 内按 `identity.toolName` 分派新渲染器 | 大小写不敏感匹配已有（`normalizeCodezToolName` 走小写表），但下划线必须字面在场——wire 名就是 `submit_result`，仓库里唯一的 snake_case 工具 | 不新造 family（`message` family 对 `RespondToCoordinator` 的同款先例：family 内按名分派）；CLI 侧不改名 | `RespondToCoordinator` 先例（`resolveRenderer.ts:74-76`） |
 | 数据源 | 渲染器直读 `toolCall.input.result`；接受态输出恒为「The result was accepted.」无信息量，不读 | `input` 经 `toolCallRowAdapter.ts:38-55` 已是解析对象；流式首帧可能是 `{}` 或半成品（`inputPreviewComplete: false`） | **不加** display union 成员——那要契约 + v4 + UI parser + producer 四处锁步（`toolDisplay.ts:125-128` 记档过漏一处静默降级的偏斜坑），而载荷本来就全在输入侧 | scout 双方一致结论 |
 | result 归一化 | 字符串先试一次宽容 `JSON.parse`，解析出对象/数组则用解析值；解析失败或本就是字符串 → 按 prose 对待 | 这是引擎侧实盘结论的**读侧镜像**：`engine/scheduler.ts:252-278` 记档「真实模型常把 `result` 序列化成 JSON 字符串」并做同款单次宽容 parse；UI 侧 `toRecord`（`respond-to-coordinator.tsx:13-29`）同 idiom | 只在读时归一化，绝不改写任何数据；不做多层递归 parse（引擎也只做一次） | `scheduler.ts:252-278` + `toRecord` 先例 |
 | body 渲染（prose 分支） | 归一化后是字符串 → 正文体渲染（pre-wrap、语义 token、**非 mono**） | 人话是 prose——`WorkflowRunSidePane.tsx:329-336` 对 run 错误文案引 DESIGN.md 的同一条论证（mono 留给路径/命令/代码/标识符/终端数据） | 不做 markdown 渲染（result 字符串没有 markdown 契约，渲染成富文本是无据的猜测） | DESIGN.md + run 错误文案先例 |
@@ -60,7 +60,7 @@
 actor 会话（真实持久会话）
   → v4 toolCall 行 {toolName: "submit_result", input: {result: <JSON | JSON-string>}, output: {text: "The result was accepted." | 违规文本}}
   → toolCallRowAdapter（input 原样透传；流式帧经 preview 重建，inputPreviewComplete=false）
-  → resolveToolCallIdentity：ZCODE_KNOWN_TOOL_NAMES 命中 "submit_result" → family "workflow"
+  → resolveToolCallIdentity：CODEZ_KNOWN_TOOL_NAMES 命中 "submit_result" → family "workflow"
   → resolveRenderer：workflow case 按 toolName 分派 → SubmitResultToolCallBlock
       标签：相位 → chat.toolCall.submitResult.{submitting|submitted|rejected|stopped}
       body（hasDetails 门后，默认折叠）：

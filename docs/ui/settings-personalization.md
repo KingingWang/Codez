@@ -6,20 +6,20 @@
 
 交互只有一层：点击侧栏「个性化」直接进入编辑器，不经过列表入口 → 二级编辑页的跳转。
 
-## 单一事实源：`~/.zcode/AGENTS.md`
+## 单一事实源：`~/.codez/AGENTS.md`
 
-编辑器读写的文件就是 CLI 已有的用户级默认指令文件 `{home}/.zcode/AGENTS.md`，不新增存储：
+编辑器读写的文件就是 CLI 已有的用户级默认指令文件 `{home}/.codez/AGENTS.md`，不新增存储：
 
-- CLI 侧 `apps/zcode-cli/packages/adapters/src/context/index.ts` 的 `resolveUserInstructions` 会把它作为 `scope: "user"` 的指令源，与 workspace `AGENTS.md` 一起注入每个会话的 Request User Context（读取上限 100KB，超出截断）。
+- CLI 侧 `apps/codez-cli/packages/adapters/src/context/index.ts` 的 `resolveUserInstructions` 会把它作为 `scope: "user"` 的指令源，与 workspace `AGENTS.md` 一起注入每个会话的 Request User Context（读取上限 100KB，超出截断）。
 - 因此「保存即生效于后续所有会话」，无需协议或 CLI 改动；文件缺失或内容为空等价于未配置。
-- home 解析必须与 CLI adapter 完全一致：`env.HOME || env.USERPROFILE || os.homedir()`。不使用 `ZCODE_DATA_BASE_DIR`（CLI 读该文件时忽略它），也不使用 `ZCODE_DESKTOP_HOME_DIR`（agent 子进程不认）。e2e 会把 `HOME`/`USERPROFILE` 指到隔离目录，链路天然一致。
+- home 解析必须与 CLI adapter 完全一致：`env.HOME || env.USERPROFILE || os.homedir()`。不使用 `CODEZ_DATA_BASE_DIR`（CLI 读该文件时忽略它），也不使用 `CODEZ_DESKTOP_HOME_DIR`（agent 子进程不认）。e2e 会把 `HOME`/`USERPROFILE` 指到隔离目录，链路天然一致。
 - onboarding 的 CLAUDE.md 迁移（settings-sync，见 `packages/services/src/settings-sync/settingsSyncService.ts`）写同一个文件，两者共存：都只是对该文件的普通读写。
 
 ## 服务边界
 
-- 能力挂在 `ISettingService`：`getUserInstructions()` 返回 `{ content, filePath }`（文件缺失时 `content` 为空串）；`saveUserInstructions(content)` 原子写回并按需创建 `~/.zcode` 目录。
+- 能力挂在 `ISettingService`：`getUserInstructions()` 返回 `{ content, filePath }`（文件缺失时 `content` 为空串）；`saveUserInstructions(content)` 原子写回并按需创建 `~/.codez` 目录。
 - **写入顺序由服务端保证（CR-01）**：`saveUserInstructions` 进程内 FIFO 排队并持有该文件的原子锁——`atomicWriteText` 只保证单次替换完整，慢 IO 下旧写的 rename 晚到会用旧内容覆盖新内容；排队后队尾写入即最新草稿。`getUserInstructions` 先排空写队列再读，保存后立即重开不会读到旧内容。多 Host 跨实例并发写本文件尚无版本仲裁（当前桌面为单 Host，不构成现实路径）。
-- **建目录在取锁之前（CR-01 回归修复）**：`acquireFileLock` 以不带 recursive 的 `mkdir` 创建锁文件，`~/.zcode` 不存在时取锁直接 ENOENT 失败；因此「按需创建目录」必须发生在取锁前。桌面 Host 启动即写 `~/.zcode/v2`，实际很难遇到目录缺失，但该顺序保证任何环境（如 CLI 从未运行过的 home）首次保存仍能成功。UI 级 E2E 无法构造「应用已启动但 `~/.zcode` 缺失」（启动本身会创建目录），该分支由顺序结构保证。
+- **建目录在取锁之前（CR-01 回归修复）**：`acquireFileLock` 以不带 recursive 的 `mkdir` 创建锁文件，`~/.codez` 不存在时取锁直接 ENOENT 失败；因此「按需创建目录」必须发生在取锁前。桌面 Host 启动即写 `~/.codez/v2`，实际很难遇到目录缺失，但该顺序保证任何环境（如 CLI 从未运行过的 home）首次保存仍能成功。UI 级 E2E 无法构造「应用已启动但 `~/.codez` 缺失」（启动本身会创建目录），该分支由顺序结构保证。
 - **文件权限固定私有（CR-01 权限）**：写入用 `atomicWritePrivateTextFile`（临时文件 `0600` 后 rename）。不能用不带 mode 的 `atomicWriteText`：rename 换 inode 后既有 `0600` 文件会放宽为 umask 默认（常见 `0644`），同机其他账号可读用户指令。固定 `0600` 只会收紧、不会放宽既有权限。
 - **字节上限与 Agent 读取一致（SG-01）**：共享常量 `USER_INSTRUCTIONS_MAX_BYTES`（`packages/shared/src/userInstructions.ts`，100KB，与 CLI adapter 的 DEFAULT_MAX_BYTES 对齐、两侧改动须同步）。服务端 `saveUserInstructions` 超限抛 `user_instructions_too_large`（最终防线，防其他 RPC 调用方绕过 UI）；UI 显示 UTF-8 字节计数（`x KB / 100 KB`），超限阻断保存并提示，防止「保存成功但 Agent 静默截断」的误判。
 - UI **仅桌面本地入口**渲染编辑器（`isDesktop`）：手机远控的 base services 可能归属远程 Source——`remoteWorkspaceServiceCollection` 把远程 Source 的 `settingService` 注册进该 workspace 的服务集合，文件路径不是跨机器身份，编辑会写错机器。Web 端只显示「前往本地桌面端设置」的指引（同 Memory 分区 localOnly 先例），不发起任何读写。桌面端激活远程 workspace 时编辑的仍是本机文件（远程 agent 的指令文件属于远端机器，本功能不覆盖）。界面文案明确「应用到你本机 Agent 的后续会话；远程设备需单独配置」。
@@ -40,7 +40,7 @@
 - E2E（`packages/desktop/test/e2e/settings/settings-personalization.test.ts`）：
   - 「个性化」是「Agent 能力」组第一项；
   - 点击后直接出现编辑器（无二级页、无卡片）；
-  - 首次进入时即使 `{HOME}/.zcode/AGENTS.md` 不存在也显示空编辑器；输入不创建文件，点击保存后才创建并落盘；
+  - 首次进入时即使 `{HOME}/.codez/AGENTS.md` 不存在也显示空编辑器；输入不创建文件，点击保存后才创建并落盘；
   - 离开再进入分区内容回显（文件为唯一事实源）；取消丢弃修改、文件不变；
   - 清空并保存后文件内容被清空；
   - 超过 100KB（含多字节字符）保存被阻断并提示，回到限内后保存恢复；

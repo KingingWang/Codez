@@ -48,7 +48,7 @@ describe("桌面端容器 headless boot demo", () => {
     );
 
     expect(mainWindow).toBeTruthy();
-    expect(mainWindow?.title).toBe("ZCode");
+    expect(mainWindow?.title).toBe("Codez");
     expect(mainWindow?.visible).toBe(true);
 
     // 修复原因：v4 renderer URL 只承载启动/恢复参数，workspace 绑定已经迁入 store。

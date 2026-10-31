@@ -127,12 +127,12 @@ export function resolveRipgrepDownloadPlan({
 
 export async function downloadRipgrepBinary({
   version = LEGACY_REMOTE_RIPGREP_VERSION,
-  targetPlatform = process.env.ZCODE_TARGET_OS || process.platform,
-  targetArch = process.env.ZCODE_TARGET_ARCH || process.arch,
-  localPlatform = process.env.ZCODE_TARGET_OS || process.platform,
-  localArch = process.env.ZCODE_TARGET_ARCH || process.arch,
+  targetPlatform = process.env.CODEZ_TARGET_OS || process.platform,
+  targetArch = process.env.CODEZ_TARGET_ARCH || process.arch,
+  localPlatform = process.env.CODEZ_TARGET_OS || process.platform,
+  localArch = process.env.CODEZ_TARGET_ARCH || process.arch,
   packageVersion = require(join(repoRoot, "package.json")).version,
-  forceRemoteOutput = process.env.ZCODE_FORCE_REMOTE_MOCK_CDN === "1",
+  forceRemoteOutput = process.env.CODEZ_FORCE_REMOTE_MOCK_CDN === "1",
   outputDir,
   env = process.env,
 } = {}) {
@@ -178,8 +178,8 @@ export async function downloadRipgrepBinary({
 async function main() {
   await downloadRipgrepBinary({
     version: RIPGREP_VERSION,
-    targetPlatform: process.argv[3] || process.env.ZCODE_TARGET_OS || process.platform,
-    targetArch: process.argv[4] || process.env.ZCODE_TARGET_ARCH || process.arch,
+    targetPlatform: process.argv[3] || process.env.CODEZ_TARGET_OS || process.platform,
+    targetArch: process.argv[4] || process.env.CODEZ_TARGET_ARCH || process.arch,
   });
 }
 

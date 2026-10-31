@@ -1,5 +1,5 @@
 import { ipcRenderer } from "electron";
-import { PluginSandboxChannels } from "@zcode/shared";
+import { PluginSandboxChannels } from "@codez/shared";
 
 /**
  * 插件 UI 沙箱 guest 的 preload。只做一件事：把 main 送来的那条 MessagePort 经 window.postMessage
@@ -7,7 +7,7 @@ import { PluginSandboxChannels } from "@zcode/shared";
  * 不暴露任何 contextBridge API；插件 iframe 在 shell 内的子 frame 里，且 nodeIntegrationInSubFrames=false，
  * 因此这段代码只在 shell 顶层 frame 运行。
  */
-const PLUGIN_SANDBOX_SCHEME = "zcode-sandbox:";
+const PLUGIN_SANDBOX_SCHEME = "codez-sandbox:";
 
 if (window.location.protocol === PLUGIN_SANDBOX_SCHEME && window.top === window) {
   ipcRenderer.on(

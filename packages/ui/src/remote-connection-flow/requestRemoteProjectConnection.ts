@@ -6,7 +6,7 @@ import { getErrorMessage } from "@/lib/errorMessage.js";
 import {
   getSourceServerUpdateTarget,
   hostRemoteWorkspaceConnectFailedResponseSchema,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 /** 只分派用户意图；连接状态、失败和日志仍归 Root/Host，向导仅接管需要交互的流程。 */
 export async function requestRemoteProjectConnection({

@@ -5,7 +5,7 @@ import {
   type DataSyncItemDependencies,
   type DataSyncListItem,
   type DeviceSyncResult,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 /**
  * 数据同步比较（docs/remote/data-sync.md「行状态与默认选择」）。纯函数，不做 IO。

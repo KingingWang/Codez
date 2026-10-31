@@ -4,7 +4,7 @@
 
 `ConversationProductProjection` 是 CLI 面向 App/Web 的会话读模型。产品语义以
 [conversation-product-protocol.md](../conversation-product-protocol.md) 为准，wire schema 以
-`packages/shared/src/zcode-protocol-v4/` 为准；本文说明当前代码如何从 runtime 事实生成并恢复该投影。
+`packages/shared/src/codez-protocol-v4/` 为准；本文说明当前代码如何从 runtime 事实生成并恢复该投影。
 
 ## 权威链路
 
@@ -20,10 +20,10 @@ runtime SessionEvent / persisted transcript
 
 当前实现入口：
 
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/event-normalizer.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/product-projection.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/conversation-topic-publisher.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/transcript-hydration.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/event-normalizer.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/product-projection.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/conversation-topic-publisher.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/transcript-hydration.ts`
 - `packages/ui/src/v4/conversationProjectionStore.ts`
 - `packages/ui/src/v4/sessionDataLayer.ts`
 
@@ -99,7 +99,7 @@ live 日志只覆盖部分 transcript，gateway 会按 footprint 检查选择完
   范围内。
 - 约束：新增只产生 `row.delta` 的 reducer 若同时改写上述任一输入，必须让它不满足这个判据；在事件之外
   改写这些输入的写入方必须自己物化。否则 actions 会停在旧值。
-- 回归：`apps/zcode-cli/packages/bootstrap/tests/product-projection-streaming-actions.test.ts`。
+- 回归：`apps/codez-cli/packages/bootstrap/tests/product-projection-streaming-actions.test.ts`。
   逐事件断言哪些事件不调用物化，以锁定判据；同时与总是物化的参考投影比较 delta、snapshot 与 edit
   target，防止输出回归。参考比较能抓到“只产 `row.delta` 却改写侧表”而让 `canEdit` 或历史轮 `canFork`
   变化的回归；运行中的轮次里 `canRetry`、`canRewindFiles` 和本轮 `canFork` 本来就关闭，参考比较分辨

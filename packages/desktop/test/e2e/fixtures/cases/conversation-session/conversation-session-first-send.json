@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/shared/readonly-tool.txt",
+      "path": ".codez-e2e/shared/readonly-tool.txt",
       "source": "created-by-helper",
       "description": "真实 Read 工具读取的只读文件。"
     }

@@ -1,4 +1,4 @@
-import type { BotActor, ZCodeStreamEvent } from "@zcode/shared";
+import type { BotActor, CodezStreamEvent } from "@codez/shared";
 import {
   createBotsServiceHarness,
   createFeishuConfig,
@@ -68,7 +68,7 @@ describe("BOT-E2E-TP-03 topic interaction routing", () => {
         };
         const botId = `${provider}-topic-card-e2e`;
         const h = createBotsServiceHarness({ config: createFeishuConfig(provider, botId) });
-        h.zcodeTaskService.submitBotGroupInput = async (params: { commandId: string }) => ({
+        h.codezTaskService.submitBotGroupInput = async (params: { commandId: string }) => ({
           commandId: params.commandId,
           status: "accepted",
           revisionAtDecision: 1,
@@ -111,7 +111,7 @@ describe("BOT-E2E-TP-03 topic interaction routing", () => {
             inputId,
             startedAt: Date.now(),
             inputOrigin: "desktop",
-          } as ZCodeStreamEvent);
+          } as CodezStreamEvent);
           await listener({
             type: "permission_request",
             taskId: "task-e2e-bot",
@@ -128,7 +128,7 @@ describe("BOT-E2E-TP-03 topic interaction routing", () => {
                 response: { decision: "allow" },
               },
             ],
-          } as ZCodeStreamEvent);
+          } as CodezStreamEvent);
           await listener({
             type: "elicitation_request",
             taskId: "task-e2e-bot",
@@ -136,7 +136,7 @@ describe("BOT-E2E-TP-03 topic interaction routing", () => {
             requestId: "question-cards",
             message: "Which option?",
             options: [{ value: "first", label: "First" }],
-          } as ZCodeStreamEvent);
+          } as CodezStreamEvent);
           const posts = requests.filter(
             (r) =>
               r.method === "POST" && (r.url.endsWith("/reply") || r.url.includes("/messages?")),

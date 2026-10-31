@@ -6,7 +6,7 @@ import {
   TID_CHAT_MODEL_SELECT_TRIGGER,
   TID_CHAT_MODEL_SELECT_ITEM,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { DEFAULT_WORKSPACE, clearAppData, getE2EAppDataPaths } from "../helpers/desktop-app.js";
 import { startConversationModelProviderReplayServer } from "../helpers/model-provider-replay.js";
 import { restartIntoWorkspacePreservingProfile } from "../helpers/model-provider-restart-runtime.js";
@@ -115,7 +115,7 @@ describe("Todo 70：模型选择残缺不阻止历史打开", () => {
       // 首轮发送已保存的合法 max，测到的是“已有草稿优先”而不是历史残缺恢复。
       await browser.execute(
         (workspacePath, targetSessionId) => {
-          const key = `zcode-v4-composer-drafts:v1:${encodeURIComponent(workspacePath)}`;
+          const key = `codez-v4-composer-drafts:v1:${encodeURIComponent(workspacePath)}`;
           const raw = localStorage.getItem(key);
           if (!raw) return;
           const file = JSON.parse(raw);
@@ -228,11 +228,11 @@ describe("Todo 70：模型选择残缺不阻止历史打开", () => {
               text: document.body.innerText,
               config: document.querySelector('[data-testid="v4-model-config"]')?.outerHTML,
               drafts: Object.fromEntries(
-                Object.entries(localStorage).filter(([key]) => key.startsWith("zcode-v4-composer")),
+                Object.entries(localStorage).filter(([key]) => key.startsWith("codez-v4-composer")),
               ),
             }));
             await writeFile(
-              join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `unbound-resume-${index}.json`),
+              join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `unbound-resume-${index}.json`),
               JSON.stringify({ index, selection, diagnostic }, null, 2),
             );
             throw error;

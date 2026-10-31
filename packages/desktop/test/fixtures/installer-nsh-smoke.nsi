@@ -1,7 +1,7 @@
 Unicode true
-Name "ZCode installer.nsh smoke"
+Name "Codez installer.nsh smoke"
 OutFile "${OUTPUT_FILE}"
-InstallDir "$TEMP\zcode-installer-nsh-smoke"
+InstallDir "$TEMP\codez-installer-nsh-smoke"
 RequestExecutionLevel user
 SilentInstall silent
 
@@ -14,21 +14,21 @@ SilentInstall silent
   !include "StrContains.nsh"
 !endif
 
-!define APP_DESCRIPTION "ZCode NSIS smoke fixture"
-!define APP_FILENAME "ZCode"
-!define APP_ID "dev.zcode.installer-nsh-smoke"
+!define APP_DESCRIPTION "Codez NSIS smoke fixture"
+!define APP_FILENAME "Codez"
+!define APP_ID "dev.codez.installer-nsh-smoke"
 !define UNINSTALL_FILENAME "uninstaller.exe"
 ; This fixture invokes the cleanup macro from a normal section; electron-builder's real uninstaller uses un.*.
 !ifdef BUILD_UNINSTALLER
-  !define ZCODE_UNINSTALLER_FUNCTION_PREFIX ""
+  !define CODEZ_UNINSTALLER_FUNCTION_PREFIX ""
 !endif
 ; Simulate a manually launched overwrite installer without --updated.
 !define isUpdated `1 == 0`
 !define allowToChangeInstallationDirectory
-!define ZCODE_INSTALLER_DEFAULT_LOG_PATH "${DEFAULT_LOG_PATH}"
-!define ZCODE_INSTALLER_ELEVATED_LOG_PATH "${ELEVATED_LOG_PATH}"
+!define CODEZ_INSTALLER_DEFAULT_LOG_PATH "${DEFAULT_LOG_PATH}"
+!define CODEZ_INSTALLER_ELEVATED_LOG_PATH "${ELEVATED_LOG_PATH}"
 !ifdef FORCE_ELEVATED_INNER
-  !define ZCODE_INSTALLER_IS_ELEVATED_INNER `1 == 1`
+  !define CODEZ_INSTALLER_IS_ELEVATED_INNER `1 == 1`
 !endif
 
 Var appExe
@@ -37,7 +37,7 @@ Var newStartMenuLink
 Var newDesktopLink
 Var keepShortcuts
 
-!include "${ZCODE_INSTALLER_NSH}"
+!include "${CODEZ_INSTALLER_NSH}"
 ; 回归原因：electron-builder 异步生成 header 时，自定义 include 可能先于插件目录注册。
 ; 普通场景使用真实 UAC 判据，避免恒假替身掩盖插件尚未可用的编译错误。
 !addplugindir /x86-unicode "${NSIS_PLUGIN_DIR}"
@@ -56,8 +56,8 @@ Var keepShortcuts
 
 Section
   SetOutPath "$INSTDIR"
-  File /oname=ZCode.exe "${FIXTURE_EXE}"
-  StrCpy $appExe "$INSTDIR\ZCode.exe"
+  File /oname=Codez.exe "${FIXTURE_EXE}"
+  StrCpy $appExe "$INSTDIR\Codez.exe"
   StrCpy $launchLink "$INSTDIR\stale-target.exe"
   StrCpy $newStartMenuLink "$INSTDIR\start-menu.lnk"
   StrCpy $newDesktopLink "$INSTDIR\desktop.lnk"
@@ -74,7 +74,7 @@ Section
 
     !ifndef BUILD_UNINSTALLER
       Push "$newStartMenuLink"
-      Call ZCodeReadShortcutTarget
+      Call CodezReadShortcutTarget
       Pop $R8
       FileOpen $0 "$INSTDIR\read-shortcut-target.txt" w
       FileWrite $0 "$R8"

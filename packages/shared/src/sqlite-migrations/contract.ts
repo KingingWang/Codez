@@ -36,7 +36,7 @@ export interface MigrationOptions {
   onCommitting?: () => void | Promise<void>;
   /** 保留已发布 Host 任务库的三列记账结构；默认使用 CLI/项目四列结构。 */
   journalTable?: "schema_migration" | "tasks_schema_migration";
-  /** 按优先级排列的可写卷目录；首项通常是 ~/.zcode/backup。 */
+  /** 按优先级排列的可写卷目录；首项通常是 ~/.codez/backup。 */
   backupDirectories: readonly string[];
   /** 首选卷失败后探测；默认枚举平台已挂载卷，测试可注入受控临时目录。 */
   fallbackBackupDirectories?: () => Promise<readonly string[]>;

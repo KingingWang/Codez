@@ -24,8 +24,8 @@
 
 - Modify: `docs/conversation-session-case-catalog.md`
 - Modify: `docs/testing/conversation-session-e2e-coverage-matrix.md`
-- Modify: `apps/zcode-cli/packages/adapters/tests/runner-options.test.ts`
-- Create: `apps/zcode-cli/packages/adapters/tests/openai-compatible-extra-body-wire.test.ts`
+- Modify: `apps/codez-cli/packages/adapters/tests/runner-options.test.ts`
+- Create: `apps/codez-cli/packages/adapters/tests/openai-compatible-extra-body-wire.test.ts`
 - Modify: `packages/desktop/test/e2e/conversation-session/conversation-session-glm52-reasoning-request-shape.test.ts`
 - Modify: `packages/desktop/test/e2e/conversation-session/conversation-session-deepseek-v4-reasoning-request-shape.test.ts`
 - Modify: `packages/desktop/test/e2e/conversation-session/conversation-session-gpt-openai-compatible-reasoning-effort.test.ts`
@@ -85,7 +85,7 @@ openaiCompatible: {
 Run:
 
 ```bash
-pnpm --dir apps/zcode-cli --filter @zcode/adapters test -- --run tests/openai-compatible-extra-body-wire.test.ts tests/runner-options.test.ts
+pnpm --dir apps/codez-cli --filter @codez/adapters test -- --run tests/openai-compatible-extra-body-wire.test.ts tests/runner-options.test.ts
 ```
 
 Expected: FAIL；现有代码把 `extra_body` 原样复制到 provider-name namespace，wire body 仍包含 wrapper。
@@ -100,7 +100,7 @@ I14/I15 改读顶层字段并断言 `extra_body` 为 `undefined`；I17 继续断
 
 **Files:**
 
-- Modify: `apps/zcode-cli/packages/adapters/src/model/runner-options.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/model/runner-options.ts`
 
 **Interfaces:**
 
@@ -147,7 +147,7 @@ function unwrapOpenAiCompatibleExtraBody(
 Run:
 
 ```bash
-pnpm --dir apps/zcode-cli --filter @zcode/adapters test -- --run tests/openai-compatible-extra-body-wire.test.ts tests/runner-options.test.ts
+pnpm --dir apps/codez-cli --filter @codez/adapters test -- --run tests/openai-compatible-extra-body-wire.test.ts tests/runner-options.test.ts
 ```
 
 Expected: 两个测试文件全部通过，真实 wire 无 `extra_body`。
@@ -156,9 +156,9 @@ Expected: 两个测试文件全部通过，真实 wire 无 `extra_body`。
 
 **Files:**
 
-- Modify: `apps/zcode-cli/packages/adapters/src/model/failure-classifier.ts`
-- Modify: `apps/zcode-cli/packages/adapters/src/model/runner-generate.ts`
-- Modify: `apps/zcode-cli/packages/adapters/tests/runner.test.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/model/failure-classifier.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/model/runner-generate.ts`
+- Modify: `apps/codez-cli/packages/adapters/tests/runner.test.ts`
 
 **Interfaces:**
 
@@ -188,7 +188,7 @@ expect(failedStatus).toMatchObject({
 Run:
 
 ```bash
-pnpm --dir apps/zcode-cli --filter @zcode/adapters test -- --run tests/runner.test.ts
+pnpm --dir apps/codez-cli --filter @codez/adapters test -- --run tests/runner.test.ts
 ```
 
 Expected: stream 尚未保留明确 invalid-request message；generate 的 options 异常尚未进入统一 catch。
@@ -204,7 +204,7 @@ Expected: stream 尚未保留明确 invalid-request message；generate 的 optio
 Run:
 
 ```bash
-pnpm --dir apps/zcode-cli --filter @zcode/adapters test -- --run tests/runner.test.ts
+pnpm --dir apps/codez-cli --filter @codez/adapters test -- --run tests/runner.test.ts
 ```
 
 Expected: generate/stream 两条新测试通过，既有 runner tests 无回归。
@@ -223,23 +223,23 @@ Expected: generate/stream 两条新测试通过，既有 runner tests 无回归�
 - [ ] **Step 1: 检查三个 fixture 合同**
 
 ```bash
-pnpm --filter @zcode/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-glm52-reasoning-request-shape.test.ts
-pnpm --filter @zcode/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-deepseek-v4-reasoning-request-shape.test.ts
-pnpm --filter @zcode/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-gpt-openai-compatible-reasoning-effort.test.ts
+pnpm --filter @codez/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-glm52-reasoning-request-shape.test.ts
+pnpm --filter @codez/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-deepseek-v4-reasoning-request-shape.test.ts
+pnpm --filter @codez/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-gpt-openai-compatible-reasoning-effort.test.ts
 ```
 
 - [ ] **Step 2: 跑三条 default replay E2E**
 
 ```bash
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-glm52-reasoning-request-shape.test.ts'
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-deepseek-v4-reasoning-request-shape.test.ts'
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-gpt-openai-compatible-reasoning-effort.test.ts'
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-glm52-reasoning-request-shape.test.ts'
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-deepseek-v4-reasoning-request-shape.test.ts'
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-gpt-openai-compatible-reasoning-effort.test.ts'
 ```
 
 - [ ] **Step 3: 跑静态和覆盖门禁**
 
 ```bash
-pnpm --filter @zcode/desktop typecheck:e2e
+pnpm --filter @codez/desktop typecheck:e2e
 pnpm audit:conversation-session-coverage
 pnpm typecheck
 pnpm lint

@@ -1,6 +1,6 @@
 import ELK, { type ElkExtendedEdge, type ElkNode, type ElkPoint } from "elkjs/lib/elk-api.js";
 import ElkWorker from "elkjs/lib/elk-worker.min.js?worker";
-import graph from "virtual:zcode-feature-boundary-graph";
+import graph from "virtual:codez-feature-boundary-graph";
 
 export const FEATURE_BOUNDARY_NODE_WIDTH = 236;
 export const FEATURE_BOUNDARY_NODE_HEIGHT = 72;

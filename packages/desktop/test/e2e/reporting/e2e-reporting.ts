@@ -197,14 +197,14 @@ const DEFAULT_PROCESS_SAMPLE_INTERVAL_MS = 3000;
 
 export function createE2EReporter(options: E2EReporterOptions) {
   const startedAt = new Date();
-  const runId = sanitizeFilePart(process.env.ZCODE_E2E_RUN_ID?.trim() || formatRunId(startedAt));
-  process.env.ZCODE_E2E_RUN_ID = runId;
+  const runId = sanitizeFilePart(process.env.CODEZ_E2E_RUN_ID?.trim() || formatRunId(startedAt));
+  process.env.CODEZ_E2E_RUN_ID = runId;
 
   const artifactDir = resolve(
-    process.env.ZCODE_E2E_ARTIFACT_DIR?.trim() ||
+    process.env.CODEZ_E2E_ARTIFACT_DIR?.trim() ||
       resolve(options.desktopDir, ".e2e-artifacts", runId),
   );
-  process.env.ZCODE_E2E_ARTIFACT_DIR = artifactDir;
+  process.env.CODEZ_E2E_ARTIFACT_DIR = artifactDir;
 
   const perfDir = resolve(artifactDir, "perf");
   const testsPath = resolve(artifactDir, "test-results.ndjson");
@@ -223,7 +223,7 @@ export function createE2EReporter(options: E2EReporterOptions) {
     repoRoot: options.repoRoot,
   });
   const processSampleIntervalMs = Number(
-    process.env.ZCODE_E2E_PERF_SAMPLE_INTERVAL_MS ?? DEFAULT_PROCESS_SAMPLE_INTERVAL_MS,
+    process.env.CODEZ_E2E_PERF_SAMPLE_INTERVAL_MS ?? DEFAULT_PROCESS_SAMPLE_INTERVAL_MS,
   );
   let processSampleTimer: ReturnType<typeof setInterval> | null = null;
   let processSamplingActive = false;
@@ -233,7 +233,7 @@ export function createE2EReporter(options: E2EReporterOptions) {
   };
 
   const processSamplePath = () => {
-    const workerId = sanitizeFilePart(process.env.ZCODE_E2E_WORKER_ID ?? "main");
+    const workerId = sanitizeFilePart(process.env.CODEZ_E2E_WORKER_ID ?? "main");
     return resolve(perfDir, `process-samples-${workerId}.ndjson`);
   };
 
@@ -243,7 +243,7 @@ export function createE2EReporter(options: E2EReporterOptions) {
     }
     processSamplingActive = true;
     try {
-      const workerId = process.env.ZCODE_E2E_WORKER_ID ?? "main";
+      const workerId = process.env.CODEZ_E2E_WORKER_ID ?? "main";
       const sample = await sessionBrowser.electron.execute((electron) => {
         return {
           capturedAt: new Date().toISOString(),
@@ -280,7 +280,7 @@ export function createE2EReporter(options: E2EReporterOptions) {
       appendJsonLine(resolve(perfDir, "process-sampling-errors.ndjson"), {
         capturedAt: new Date().toISOString(),
         error: error instanceof Error ? error.message : String(error),
-        workerId: process.env.ZCODE_E2E_WORKER_ID ?? "main",
+        workerId: process.env.CODEZ_E2E_WORKER_ID ?? "main",
       });
     } finally {
       processSamplingActive = false;
@@ -326,13 +326,13 @@ export function createE2EReporter(options: E2EReporterOptions) {
 
     beforeSession(cid: string, specs: string[]) {
       ensureDirs();
-      process.env.ZCODE_E2E_WORKER_ID = cid;
+      process.env.CODEZ_E2E_WORKER_ID = cid;
       nodeCoverage.beforeSession();
       const runtimeLogDir = resolve(artifactDir, "runtime-logs", sanitizeFilePart(cid));
       // 修复原因：并行 WDIO worker 若共享同一个按日日志文件，失败 case 只能按时间猜测
       // 来源且会串入其他 worker。测试态将 desktop 与 agent 日志落到 worker 专属目录。
-      process.env.ZCODE_E2E_RUNTIME_LOG_DIR = resolve(runtimeLogDir, "desktop");
-      process.env.ZCODE_LOG_DIR = resolve(runtimeLogDir, "agent");
+      process.env.CODEZ_E2E_RUNTIME_LOG_DIR = resolve(runtimeLogDir, "desktop");
+      process.env.CODEZ_LOG_DIR = resolve(runtimeLogDir, "agent");
       appendJsonLine(resolve(artifactDir, "workers.ndjson"), {
         capturedAt: new Date().toISOString(),
         cid,

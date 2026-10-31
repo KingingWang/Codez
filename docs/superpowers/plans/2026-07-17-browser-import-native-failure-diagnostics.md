@@ -40,8 +40,8 @@ it("只把白名单 helper 失败原因写入本地日志", async () => {
   const fixture = await createFixture();
   const runHelper = vi.fn(async (_path: string, args: string[]) =>
     args[0] === "--version"
-      ? { exitCode: 0, stdout: "ZCODE_BROWSER_IMPORT_HELPER\t2\tx64\t3.4.0\ttest" }
-      : { exitCode: 0, stdout: "ZCODE_BROWSER_IMPORT_V1\tERR\tcng_failed" },
+      ? { exitCode: 0, stdout: "CODEZ_BROWSER_IMPORT_HELPER\t2\tx64\t3.4.0\ttest" }
+      : { exitCode: 0, stdout: "CODEZ_BROWSER_IMPORT_V1\tERR\tcng_failed" },
   );
 
   await expect(
@@ -66,8 +66,8 @@ it("未知 helper 响应只记录 invalid_response 而不记录原文", async ()
   const secretMarker = "secret-path-or-key-material";
   const runHelper = vi.fn(async (_path: string, args: string[]) =>
     args[0] === "--version"
-      ? { exitCode: 0, stdout: "ZCODE_BROWSER_IMPORT_HELPER\t2\tx64\t3.4.0\ttest" }
-      : { exitCode: 0, stdout: `ZCODE_BROWSER_IMPORT_V1\tERR\t${secretMarker}` },
+      ? { exitCode: 0, stdout: "CODEZ_BROWSER_IMPORT_HELPER\t2\tx64\t3.4.0\ttest" }
+      : { exitCode: 0, stdout: `CODEZ_BROWSER_IMPORT_V1\tERR\t${secretMarker}` },
   );
 
   await expect(
@@ -169,8 +169,8 @@ git commit -m "fix(desktop): retain browser helper failure reason"
 
 **Files:**
 - Read: `%LOCALAPPDATA%\Google\Chrome\User Data\Local State`
-- Execute: `C:\Program Files\ZCode\resources\browser-import\zcode-browser-import-helper.exe`
-- Inspect: Windows service list for `ZCodeBrowserImport_*`
+- Execute: `C:\Program Files\Codez\resources\browser-import\codez-browser-import-helper.exe`
+- Inspect: Windows service list for `CodezBrowserImport_*`
 
 **Interfaces:**
 - Consumes: only the `APPB` encrypted key blob and discovered Chrome executable path in memory.
@@ -181,8 +181,8 @@ git commit -m "fix(desktop): retain browser helper failure reason"
 Run the following outside the filesystem sandbox after approval. The user accepts the UAC prompt. The script reads `Local State`, strips the four-byte `APPB` prefix, sends the existing request through stdin, parses stdout entirely in memory, and prints only a classified result:
 
 ```powershell
-$protocol = 'ZCODE_BROWSER_IMPORT_V1'
-$helperPath = 'C:\Program Files\ZCode\resources\browser-import\zcode-browser-import-helper.exe'
+$protocol = 'CODEZ_BROWSER_IMPORT_V1'
+$helperPath = 'C:\Program Files\Codez\resources\browser-import\codez-browser-import-helper.exe'
 $chromePath = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
 $localStatePath = Join-Path $env:LOCALAPPDATA 'Google\Chrome\User Data\Local State'
 $allowed = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -260,7 +260,7 @@ Do not echo the request or raw response.
 Run:
 
 ```powershell
-Get-Service -Name 'ZCodeBrowserImport_*' -ErrorAction SilentlyContinue
+Get-Service -Name 'CodezBrowserImport_*' -ErrorAction SilentlyContinue
 ```
 
 Expected: no residual temporary service remains.

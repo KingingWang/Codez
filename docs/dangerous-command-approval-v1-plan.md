@@ -22,9 +22,9 @@
 本轮运行证据（2026-09-24）：
 
 - 识别测试先红：原实现 35 条中 24 条失败；本轮三个参数归属修复新增回归后，58 条中 14 条失败，再修复转绿。最终选定 core 14 suites / 512 tests、bootstrap 8 suites / 52 tests 通过。七类及本轮回归批准/拒绝均经过真实内存 broker 的 pending/resolve，检查迟到批准无效、handler 0/1 次和项目规则零写入；YOLO 对照不新增请求。
-- `node apps/zcode-cli/packages/core/tests/fixtures/guarded-deletion-oracle.mjs`：macOS Bash 12 项通过（含 BSD rm 四种尾部选项形文件名）；同脚本通过 SSH 在 Windows 测试机（连接示例：`dev@192.0.2.10`）上执行 CMD/Git Bash 验证，24 项通过，临时目录均清理。本轮 6 条 Windows 回归的实际执行命令同时送入 matcher 核对：CMD 粘连开关与 Git Bash Robocopy 绝对盘符路径命中，`/L` 不命中。不冒充 Windows Desktop E2E。Robocopy 的冒号值、XF/XD 列表与 L 语义同时核对 [Microsoft 文档](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy) 与原生命令结果。
+- `node apps/codez-cli/packages/core/tests/fixtures/guarded-deletion-oracle.mjs`：macOS Bash 12 项通过（含 BSD rm 四种尾部选项形文件名）；同脚本通过 SSH 在 Windows 测试机（连接示例：`dev@192.0.2.10`）上执行 CMD/Git Bash 验证，24 项通过，临时目录均清理。本轮 6 条 Windows 回归的实际执行命令同时送入 matcher 核对：CMD 粘连开关与 Git Bash Robocopy 绝对盘符路径命中，`/L` 不命中。不冒充 Windows Desktop E2E。Robocopy 的冒号值、XF/XD 列表与 L 语义同时核对 [Microsoft 文档](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy) 与原生命令结果。
 - Desktop pending 5/5、正式 Guarded 16/16 通过，报告 `desktop-e2e-20260924091043202-p16067-b339773b57c600dd`。该次联跑的 Hook 用例因 pending 自动开启人工审核录屏，在收尾报 `spawn ffmpeg ENOENT`，不能记为整轮通过；不改代码，使用同一构建单独正式回放 Hook 1/1 通过，报告 `desktop-e2e-20260924091351270-p21173-3b35333ac8b83c4d`。新增 case-local fixture check 通过，不转正。
-- 根 typecheck、lint（213 warnings / 0 errors）、E2E/core typecheck、改动生产文件 CLI lint、架构检查通过。全 CLI 脚本因缺 turbo 无法直接运行；本次 `pnpm --dir apps/zcode-cli -r typecheck` 全包通过，先前 bootstrap 类型阻塞未再出现，未修改依赖。递归 CLI lint 和 core lint 仍因未修改文件 max-lines 失败。覆盖审计仍被未修改的 Highspeed fixture ledger 元数据不一致阻塞；功能图谱此前 4 条悬空边与 HEAD 一致，本轮不修改图谱。
+- 根 typecheck、lint（213 warnings / 0 errors）、E2E/core typecheck、改动生产文件 CLI lint、架构检查通过。全 CLI 脚本因缺 turbo 无法直接运行；本次 `pnpm --dir apps/codez-cli -r typecheck` 全包通过，先前 bootstrap 类型阻塞未再出现，未修改依赖。递归 CLI lint 和 core lint 仍因未修改文件 max-lines 失败。覆盖审计仍被未修改的 Highspeed fixture ledger 元数据不一致阻塞；功能图谱此前 4 条悬空边与 HEAD 一致，本轮不修改图谱。
 - 后续 find 定向修复：新增 `-d/-x/-d -x` 三组回归先失败，修复后 matcher/command/approval 三组共 364 条通过，覆盖谓词参数、exec 载荷、未知 arity、Guarded 批准/拒绝/取消及 YOLO 对照。macOS 原生 oracle 15/15，新增三条实际 find 命令与 matcher 成对核对；Robocopy 裸 glob 仍为 unsupported。根与 CLI 包级全量类型检查、根 lint、修改文件 CLI lint、架构检查通过，CLI 全量 lint 仍受既有 max-lines 阻塞。本次不改审批/UI，未重跑 Desktop E2E 或 Windows 原生测试，不更新其历史证据。
 
 本轮不修以上范围外基线问题。全量门禁未通过，不宣称 production ready，不自动提交/推送；新增 E2E 待人工审核，Linux 原生执行及 Windows Desktop/手机 UI 未运行。状态与审批核心未修改。
@@ -35,7 +35,7 @@
 
 ## 审批 E2E 录屏依赖修复（2026-09-17）
 
-转正后的 Hook 用例默认回放已复现：业务断言完成后，强制录屏收尾因 `spawn ffmpeg ENOENT` 失败（失败报告（本机报告 `desktop-e2e-20260917-105436-295`））。录屏是人工审核证据，不是审批功能的前置条件；仅当已有 `ZCODE_E2E_MANUAL_REVIEW=1` 时启用录屏及两段 3 秒阅读停留，编码器仍沿用 `ZCODE_E2E_FFMPEG_PATH` / PATH。默认回放保留截图、交互轨迹及全部业务断言，不创建录屏、不标记已生成视频。人工录屏失败继续报错，不捕获吞掉。
+转正后的 Hook 用例默认回放已复现：业务断言完成后，强制录屏收尾因 `spawn ffmpeg ENOENT` 失败（失败报告（本机报告 `desktop-e2e-20260917-105436-295`））。录屏是人工审核证据，不是审批功能的前置条件；仅当已有 `CODEZ_E2E_MANUAL_REVIEW=1` 时启用录屏及两段 3 秒阅读停留，编码器仍沿用 `CODEZ_E2E_FFMPEG_PATH` / PATH。默认回放保留截图、交互轨迹及全部业务断言，不创建录屏、不标记已生成视频。人工录屏失败继续报错，不捕获吞掉。
 
 验证：未配置 ffmpeg 的默认回放 1/1（本机报告 `desktop-e2e-20260917-110126-662`） 通过，产物 `video_capture_mode=null` 且无视频；显式人工录屏回放 1/1（本机报告 `desktop-e2e-20260917-110306-504`） 通过，产物标记 `electron_capture_page` 且视频非空。两条路径均保留全部审批和 provider result 断言。E2E/root typecheck、lint（195 warnings / 0 errors）、fixture check、架构及覆盖审计通过；未改生产代码或 provider fixture。
 
@@ -55,7 +55,7 @@
 
 本次只转正现有桌面闭环，不把整个 DCA-V1 合同标为完成：真实手机恢复、无人值守 scheduler 实机闭环等仍按用户决定在发版前确认。Docker suite 准入不在本次范围内；测试目录迁移不等于 Windows Desktop 或手机验收。
 
-本次实际验收（macOS，正式路径）：独立 common + case-local replay 的 Guarded 16/16（本机报告 `desktop-e2e-20260917-103040-969`）、Hook 改写 1/1（本机报告 `desktop-e2e-20260917-103358-154`） 均通过；两份 spec 的 default replay 联跑 17/17（本机报告 `desktop-e2e-20260917-103558-120`） 通过，无 flaky/skip/infra failure。录屏通过既有 `ZCODE_E2E_FFMPEG_PATH` 指向本机可用 ffmpeg，未改录屏 helper。
+本次实际验收（macOS，正式路径）：独立 common + case-local replay 的 Guarded 16/16（本机报告 `desktop-e2e-20260917-103040-969`）、Hook 改写 1/1（本机报告 `desktop-e2e-20260917-103358-154`） 均通过；两份 spec 的 default replay 联跑 17/17（本机报告 `desktop-e2e-20260917-103558-120`） 通过，无 flaky/skip/infra failure。录屏通过既有 `CODEZ_E2E_FFMPEG_PATH` 指向本机可用 ffmpeg，未改录屏 helper。
 
 两份 fixture check、Desktop E2E/root typecheck、lint（195 warnings / 0 errors）、架构检查（0 violations）及 diff check 通过。全局覆盖审计现为 101 formal admitted / 0 rejected、0 contract gaps、0 stale generated docs；未将基线的其他 pending 用例转正。逐字对比确认测试仅变更 helper/文件 fixture 相对路径，所有断言和 provider fixture 均保持不变；Guarded fixture check 的既有输出标记 `E2E_GUARDED_PARENT_DONE` warning 保留。
 
@@ -101,7 +101,7 @@ CLI 全包 lint 仍因 staging 已有的 `max-lines` 报错失败：contracts �
 
 | Feature Relationships / rank | 代码事实及处理 |
 | --- | --- |
-| must-inspect：Host 创建后的模式补发 | `zcodeAgentService.ts::sendConversationCommandV4`：撤回额外请求；服务测试断言只发送一次 createSession |
+| must-inspect：Host 创建后的模式补发 | `codezAgentService.ts::sendConversationCommandV4`：撤回额外请求；服务测试断言只发送一次 createSession |
 | must-inspect：Host firstInput 模式补齐 | 已撤回；缺省 mode 不注入，调用方显式 mode 不覆盖，模式解析仍由原 CLI 创建/Submission 链路承担 |
 | evidence-only：旧 schema 模拟 | 已删除 oldModeSchema 测试桩与拒绝旧版本用例；保留正常创建仅发送一次、payload 原样转发的回归 |
 | should-inspect：CLI 配置应用失败阻断 | `session-mgmt.ts::createSession` 防止配置失败后继续执行，属于真实失败处理而非版本探测，保留 |
@@ -340,7 +340,7 @@ DCA-V1-01/03..08 转为 guarded 合同；02 保持 PowerShell pruned；09..12 �
 1. spec/catalog/matrix/tool-chain 在先，失败测试在生产实现之前。
 2. 模式链路 -> matcher -> 共享审批 -> 多端投影，不重写 prefix registry。
 3. 每条规则至少一个真实拒绝闭环；批准路径使用隔离目录/受控 handler。检查 handler 次数、文件/规则存储及最终 provider tool_result。
-4. 新用例先 manual-review/pending；case-local synthetic fixture 写明原因，普通 fast-text、取消/迟到受控时序。文件统一 .zcode-e2e/<case>。人工审核后才 promotion。
+4. 新用例先 manual-review/pending；case-local synthetic fixture 写明原因，普通 fast-text、取消/迟到受控时序。文件统一 .codez-e2e/<case>。人工审核后才 promotion。
 5. Windows Git Bash/CMD 必须有真实运行证据；缺 runner 则明确待验证。手机恢复测试不冒充物理网络 E2E。
 6. 运行 targeted unit/integration、CLI typecheck、desktop typecheck:e2e、pnpm typecheck/lint、架构检查、覆盖审计。图谱基线统计漂移单列，不混入功能修复。
 
@@ -352,7 +352,7 @@ DCA-V1-01/03..08 转为 guarded 合同；02 保持 PowerShell pruned；09..12 �
 | --- | --- |
 | core 19 suites | 353 passed：guarded-*、permission service/broker/race、Memory、Plan、Bash、executor error/trace、普通子任务交互/事件、queue intent、CUA 原权限对照 |
 | bootstrap 11 suites | 160 passed：真实 V4 registry/command/projection 即时回应、问答与拒绝/取消；workflow/script child 受控执行后父仍需批准；严格配置失败、自动化透传、SQLite 冷恢复、queue promotion |
-| services + shared 3 suites | 125 passed：automationRepo、zcodeAgentService.v4、guardedMode。旧 runtime 测试是实际子进程模拟旧严格 schema，非旧版本二进制 |
+| services + shared 3 suites | 125 passed：automationRepo、codezAgentService.v4、guardedMode。旧 runtime 测试是实际子进程模拟旧严格 schema，非旧版本二进制 |
 | adapters 1 suite | 19 passed：session-store-model-selection-codec 保存值与解码 |
 | TUI 2 files | 8 passed：审批选项/伪造 project 响应拒绝、模式建议与键盘选择，使用 tsx + node:test |
 | feature graph targeted | 1 passed，3 个无关测试未运行；真实代码 seed 与隔离边界成立，未执行 codegraph 影响面扫描 |
@@ -378,12 +378,12 @@ DCA-V1-01/03..08 转为 guarded 合同；02 保持 PowerShell pruned；09..12 �
 ### 复现命令（2026-09-17 更新为正式路径）
 
 ```sh
-E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-guarded.json pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-guarded.test.ts'
-pnpm --filter @zcode/desktop e2e:fixture:check -- --spec './test/e2e/conversation-session/conversation-session-guarded.test.ts'
-pnpm --filter @zcode/bootstrap exec vitest run --no-file-parallelism tests/guarded-interaction-lifecycle.test.ts tests/guarded-permission-options.test.ts tests/guarded-projection.test.ts tests/guarded-workflow.test.ts tests/automation-port.test.ts tests/v4-native-session-mgmt.test.ts tests/v4-native-model-config.test.ts tests/v4-native-interaction-background.test.ts tests/workflow-effective-selection.test.ts tests/session-selection-cold-resume.test.ts tests/v4-native-queue.test.ts
+E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-guarded.json pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-guarded.test.ts'
+pnpm --filter @codez/desktop e2e:fixture:check -- --spec './test/e2e/conversation-session/conversation-session-guarded.test.ts'
+pnpm --filter @codez/bootstrap exec vitest run --no-file-parallelism tests/guarded-interaction-lifecycle.test.ts tests/guarded-permission-options.test.ts tests/guarded-projection.test.ts tests/guarded-workflow.test.ts tests/automation-port.test.ts tests/v4-native-session-mgmt.test.ts tests/v4-native-model-config.test.ts tests/v4-native-interaction-background.test.ts tests/workflow-effective-selection.test.ts tests/session-selection-cold-resume.test.ts tests/v4-native-queue.test.ts
 pnpm typecheck
-pnpm --filter @zcode/desktop typecheck:e2e
-pnpm --filter @zcode/core --filter @zcode/bootstrap --filter @zcode/cli --filter @zcode/tui typecheck
+pnpm --filter @codez/desktop typecheck:e2e
+pnpm --filter @codez/core --filter @codez/bootstrap --filter @codez/cli --filter @codez/tui typecheck
 pnpm lint
 pnpm architecture:check --changed
 pnpm audit:conversation-session-coverage

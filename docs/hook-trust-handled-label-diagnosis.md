@@ -11,14 +11,14 @@ HookTrust 的会话内 UI 删除后，hook 执行原本出现的位置（会话�
 ## 修复前根因链路
 
 ```
-CLI core (apps/zcode-cli/packages/core/src/hooks/)
+CLI core (apps/codez-cli/packages/core/src/hooks/)
   configured-runner.ts: workspace hook sourceKind="project"
   display-metadata.ts: clientVisible = sourceKind !== "internal" ⇒ true
   runner.ts 软门禁: 未信任 hook 不执行，但发 HookRunBlocked 事件
     （durationMs:0, outcome:"blocked"；成功执行的 hook 发 Started/Completed）
         │
         ▼
-Bootstrap 投影 (apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/product-projection.ts,
+Bootstrap 投影 (apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/product-projection.ts,
 onHookRunLifecycle)
   onHookRunLifecycle: HookRunBlocked/Completed ⇒ hookInvocation row
   （state:"completed"，row.appended 进会话 rows）

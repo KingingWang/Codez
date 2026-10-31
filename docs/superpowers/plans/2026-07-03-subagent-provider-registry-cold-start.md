@@ -4,9 +4,9 @@
 
 **Goal:** 修复 desktop local 和 remote workspace 中，subagent profile 绑定未被主会话使用过的 provider 时，CLI child runtime 找不到 provider config 的问题。
 
-**Architecture:** 修复语义是“任何会执行 subagent 的 agent runtime，在 turn 前必须拥有完整 app provider registry”。实现上分两条链路：local desktop 由 `zcodeAgentService` 在 service 内部把 `providerRegistrySource` 的完整 registry 注入当前 CLI workspace；remote workspace 保持现有 `remoteWorkspaceProviderSync` 专用链路，不把 local 行为混进 remote replayable 语义。subagent 不负责 provider 注入，继续复用父 runtime 的 `modelAdapter`。
+**Architecture:** 修复语义是“任何会执行 subagent 的 agent runtime，在 turn 前必须拥有完整 app provider registry”。实现上分两条链路：local desktop 由 `codezAgentService` 在 service 内部把 `providerRegistrySource` 的完整 registry 注入当前 CLI workspace；remote workspace 保持现有 `remoteWorkspaceProviderSync` 专用链路，不把 local 行为混进 remote replayable 语义。subagent 不负责 provider 注入，继续复用父 runtime 的 `modelAdapter`。
 
-**Tech Stack:** TypeScript, `@zcode/protocol`, ZCode Services, React/UI remote sync guard tests, Vitest, ZCode Desktop WDIO E2E.
+**Tech Stack:** TypeScript, `@codez/protocol`, Codez Services, React/UI remote sync guard tests, Vitest, Codez Desktop WDIO E2E.
 
 ## Global Constraints
 
@@ -18,7 +18,7 @@
 - 不修改 `Agent` tool schema，不把 provider config 放进 provider-visible tool input、child prompt 或 tool result。
 - 不把 workspace provider registry sync 放进 runtime headers 热路径。
 - 不重构 `packages/ui/src/lib/remoteWorkspaceProviderSync.ts` 的现有 remote 语义。
-- 修改完成后执行 `pnpm --filter @zcode/desktop typecheck:e2e`、`pnpm typecheck`、`pnpm lint`。
+- 修改完成后执行 `pnpm --filter @codez/desktop typecheck:e2e`、`pnpm typecheck`、`pnpm lint`。
 - 回归 E2E 使用正式 failing case：`packages/desktop/test/e2e/conversation-session/conversation-session-subagent-provider-registry-cold-start.test.ts`。
 
 ---
@@ -28,7 +28,7 @@
 已提交的 `SR / I14` E2E 证明当前链路里：
 
 - subagent profile 已加载，`custom:e2e-deepseek-alt:deepseek-v4-pro` 也被解析成 child model ref。
-- `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts` 创建 child runtime 时复用父 runtime 的 `this.modelAdapter`。
+- `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts` 创建 child runtime 时复用父 runtime 的 `this.modelAdapter`。
 - local cold start 时，CLI workspace catalog / model adapter 只有主会话 primary provider；alternate provider 没有被完整 app registry 注入。
 - child runtime resolve `e2e-deepseek-alt/deepseek-v4-pro` 时抛 `Model provider is not configured: e2e-deepseek-alt`。
 
@@ -38,8 +38,8 @@
 
 采用 **agent apply 水位线 + local service synchronizer + existing remote sync guard**：
 
-1. **Agent apply boundary:** 在 `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts` 的 `workspace/updateProviderRegistry` apply 边界记录 `providerRegistryGeneratedAt`。如果 incoming registry 的 `generatedAt` 早于当前已应用 registry，就返回当前 catalog，不覆盖 provider map。
-2. **Local desktop:** 在 `packages/services/src/zcode-agent/zcodeAgentService.ts` 内新增 local provider registry synchronizer。只在 `providerRegistrySource` 存在时工作；remote attached host 没有该 source，自然不会走 local 分支。
+1. **Agent apply boundary:** 在 `apps/codez-cli/packages/bootstrap/src/codez-protocol/workspace-model-catalog.ts` 的 `workspace/updateProviderRegistry` apply 边界记录 `providerRegistryGeneratedAt`。如果 incoming registry 的 `generatedAt` 早于当前已应用 registry，就返回当前 catalog，不覆盖 provider map。
+2. **Local desktop:** 在 `packages/services/src/codez-agent/codezAgentService.ts` 内新增 local provider registry synchronizer。只在 `providerRegistrySource` 存在时工作；remote attached host 没有该 source，自然不会走 local 分支。
 3. **Local create/resume/read:** 在 `createSession`、`resumeSession`、`readSession`、`readWorkspaceState` 发协议请求前，确保当前 CLI client 已应用完整 provider registry。
 4. **Local provider changes:** 扩展现有 `providerRegistrySource.onDidChangeProviderRegistry` 订阅。对 `activeClientsByWorkspaceKey` 里的本地 active workspace 先推完整 `workspace/updateProviderRegistry`，再更新已有 session 的 runtimeModel。
 5. **Remote workspace:** 保持 `syncAppGlobalStateToRemoteWorkspace` / `syncWorkspaceModelProvidersToAgent` 原状。remote subagent 场景继续由现有 remote preflight 在 prepare/create/resume/send 前下发完整 registry；因为 remote 也走同一个 agent protocol apply 边界，所以 stale registry 保护同时覆盖 remote。
@@ -56,17 +56,17 @@
 
 ## File Map
 
-- Modify: `packages/services/src/zcode-agent/zcodeAgentService.ts`
+- Modify: `packages/services/src/codez-agent/codezAgentService.ts`
   - 新增 service 内部 provider registry sync state 和 helper。
   - 在 local create/resume/read/readWorkspaceState 前同步完整 registry。
   - 在 provider registry changed event 中热推完整 registry 到 active local clients。
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/workspace-model-catalog.ts`
   - 在 `workspace/updateProviderRegistry` 的 apply 边界用 `providerRegistryGeneratedAt` 忽略 stale snapshot。
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-types.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/server-types.ts`
   - 在 workspace model catalog record 上记录当前 registry snapshot 的 `generatedAt` 水位。
-- Modify: `apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/tests/codez-protocol.test.ts`
   - 增加 agent apply 边界单测：先应用新 `generatedAt` registry，再发送旧 `generatedAt` registry，旧快照不能覆盖当前 provider catalog。
-- Modify: `packages/services/test/zcodeAgentService.providerRegistry.test.ts`
+- Modify: `packages/services/test/codezAgentService.providerRegistry.test.ts`
   - 增加 local session/create 前同步完整 registry 的红绿单测。
   - 增加 provider change 后 active workspace 热推 registry 的单测。
   - 增加 provider registry sync 并发时序单测：旧 in-flight 结束后再补发新 `generatedAt` registry，已应用新 registry 后忽略旧 `generatedAt` 事件。
@@ -76,7 +76,7 @@
   - 不改实现，只通过现有 tests 证明 remote 专用链路未被破坏。
 - Read/Guard: `packages/ui/test/remoteWorkspaceProviderSync.test.ts`
   - 跑现有 remote sync 测试。
-- Read/Guard: `packages/ui/test/zcodeSessionPromptControl.test.ts`
+- Read/Guard: `packages/ui/test/codezSessionPromptControl.test.ts`
   - 跑现有 create/resume/send 前 remote preflight 顺序测试。
 - Modify after E2E green: `docs/testing/conversation-session-e2e-coverage-matrix.md`
   - 仅在 E2E 通过后，把 I14 从 `failing` 改为 `covered`。
@@ -98,7 +98,7 @@
 Run:
 
 ```bash
-pnpm --filter @zcode/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-subagent-provider-registry-cold-start.test.ts
+pnpm --filter @codez/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-subagent-provider-registry-cold-start.test.ts
 ```
 
 Expected:
@@ -114,9 +114,9 @@ The title fixture may warn that its matcher has no E2E marker. That warning is a
 Run:
 
 ```bash
-ZCODE_DESKTOP_AGENT_BUILD_MODE=pnpm \
+CODEZ_DESKTOP_AGENT_BUILD_MODE=pnpm \
 E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-subagent-provider-registry-cold-start.json \
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-subagent-provider-registry-cold-start.test.ts'
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-subagent-provider-registry-cold-start.test.ts'
 ```
 
 Expected before fix: FAIL with:
@@ -136,23 +136,23 @@ If the E2E already passes before code changes, inspect recent commits and update
 ## Phase 1: Add Local Provider Registry Sync Tests
 
 **Files:**
-- Modify: `packages/services/test/zcodeAgentService.providerRegistry.test.ts`
+- Modify: `packages/services/test/codezAgentService.providerRegistry.test.ts`
 
 **Interfaces:**
-- Consumes: `createZCodeAgentService({ providerRegistrySource })`.
-- Consumes: `zcodeProtocolMethods.workspaceUpdateProviderRegistry`.
+- Consumes: `createCodezAgentService({ providerRegistrySource })`.
+- Consumes: `codezProtocolMethods.workspaceUpdateProviderRegistry`.
 - Produces: tests that require full registry sync before local session/create and after local provider registry changes.
 
 - [ ] **Step 1: Add test for session/create preflight**
 
-Add this test to `describe("createZCodeAgentService provider registry", ...)`:
+Add this test to `describe("createCodezAgentService provider registry", ...)`:
 
 ```ts
 it("syncs the full local provider registry before session/create", async () => {
   const calls: string[] = [];
   const request = vi.fn(async (method: string) => {
     calls.push(method);
-    if (method === zcodeProtocolMethods.workspaceUpdateProviderRegistry) {
+    if (method === codezProtocolMethods.workspaceUpdateProviderRegistry) {
       return {
         workspace: {
           workspacePath: "/workspace/app",
@@ -163,7 +163,7 @@ it("syncs the full local provider registry before session/create", async () => {
         providerCount: 2,
       };
     }
-    if (method === zcodeProtocolMethods.sessionCreate) {
+    if (method === codezProtocolMethods.sessionCreate) {
       return createSessionSnapshot({
         model: { providerId: "e2e-primary", modelId: "deepseek-v4-flash" },
       });
@@ -171,8 +171,8 @@ it("syncs the full local provider registry before session/create", async () => {
     throw new Error(`Unexpected method ${method}`);
   });
   vi.resetModules();
-  vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-    ZCodeAgentProcessManager: class {
+  vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+    CodezAgentProcessManager: class {
       async getClient() {
         return {
           request,
@@ -185,10 +185,10 @@ it("syncs the full local provider registry before session/create", async () => {
       disposeAll() {}
     },
   }));
-  const { createZCodeAgentService } = await import(
-    "../src/zcode-agent/zcodeAgentService.js"
+  const { createCodezAgentService } = await import(
+    "../src/codez-agent/codezAgentService.js"
   );
-  const service = createZCodeAgentService({
+  const service = createCodezAgentService({
     providerRegistrySource: {
       async getProviderRegistrySnapshot() {
         return {
@@ -219,12 +219,12 @@ it("syncs the full local provider registry before session/create", async () => {
   });
 
   expect(calls).toEqual([
-    zcodeProtocolMethods.workspaceUpdateProviderRegistry,
-    zcodeProtocolMethods.sessionCreate,
+    codezProtocolMethods.workspaceUpdateProviderRegistry,
+    codezProtocolMethods.sessionCreate,
   ]);
   expect(request).toHaveBeenNthCalledWith(
     1,
-    zcodeProtocolMethods.workspaceUpdateProviderRegistry,
+    codezProtocolMethods.workspaceUpdateProviderRegistry,
     expect.objectContaining({
       registry: expect.objectContaining({
         revision: "sha256:provider-registry-full",
@@ -248,9 +248,9 @@ it("syncs the full local provider registry before session/create", async () => {
 Add a tiny event source in the test file:
 
 ```ts
-function createProviderRegistryChangeSource(initial: ZCodeProviderRegistrySnapshot) {
+function createProviderRegistryChangeSource(initial: CodezProviderRegistrySnapshot) {
   let listener:
-    | ((event: { reason: string; snapshot: ZCodeProviderRegistrySnapshot }) => void)
+    | ((event: { reason: string; snapshot: CodezProviderRegistrySnapshot }) => void)
     | undefined;
   return {
     source: {
@@ -262,7 +262,7 @@ function createProviderRegistryChangeSource(initial: ZCodeProviderRegistrySnapsh
         return { dispose() {} };
       },
     },
-    emit(reason: string, snapshot: ZCodeProviderRegistrySnapshot) {
+    emit(reason: string, snapshot: CodezProviderRegistrySnapshot) {
       listener?.({ reason, snapshot });
     },
   };
@@ -274,7 +274,7 @@ Then add this test:
 ```ts
 it("pushes changed local provider registry to active workspace clients", async () => {
   const request = vi.fn(async (method: string) => {
-    if (method === zcodeProtocolMethods.workspaceUpdateProviderRegistry) {
+    if (method === codezProtocolMethods.workspaceUpdateProviderRegistry) {
       return {
         workspace: {
           workspacePath: "/workspace/app",
@@ -285,12 +285,12 @@ it("pushes changed local provider registry to active workspace clients", async (
         providerCount: 1,
       };
     }
-    if (method === zcodeProtocolMethods.sessionCreate) {
+    if (method === codezProtocolMethods.sessionCreate) {
       return createSessionSnapshot({
         model: { providerId: "e2e-primary", modelId: "deepseek-v4-flash" },
       });
     }
-    if (method === zcodeProtocolMethods.sessionUpdateRuntimeModelConfig) {
+    if (method === codezProtocolMethods.sessionUpdateRuntimeModelConfig) {
       return {
         sessionId: "sess_1",
         modelRuntimeRevision: "model-runtime:updated",
@@ -300,8 +300,8 @@ it("pushes changed local provider registry to active workspace clients", async (
     throw new Error(`Unexpected method ${method}`);
   });
   vi.resetModules();
-  vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-    ZCodeAgentProcessManager: class {
+  vi.doMock("../src/codez-agent/codezAgentProcessManager.js", () => ({
+    CodezAgentProcessManager: class {
       async getClient() {
         return {
           request,
@@ -340,10 +340,10 @@ it("pushes changed local provider registry to active workspace clients", async (
     revision: "sha256:registry-2",
   };
   const providerRegistrySource = createProviderRegistryChangeSource(initial);
-  const { createZCodeAgentService } = await import(
-    "../src/zcode-agent/zcodeAgentService.js"
+  const { createCodezAgentService } = await import(
+    "../src/codez-agent/codezAgentService.js"
   );
-  const service = createZCodeAgentService({
+  const service = createCodezAgentService({
     providerRegistrySource: providerRegistrySource.source,
   });
 
@@ -354,7 +354,7 @@ it("pushes changed local provider registry to active workspace clients", async (
   providerRegistrySource.emit("provider_saved", changed);
   await vi.waitFor(() => {
     expect(request).toHaveBeenCalledWith(
-      zcodeProtocolMethods.workspaceUpdateProviderRegistry,
+      codezProtocolMethods.workspaceUpdateProviderRegistry,
       expect.objectContaining({
         registry: expect.objectContaining({
           revision: "sha256:registry-2",
@@ -372,7 +372,7 @@ it("pushes changed local provider registry to active workspace clients", async (
 If TypeScript complains about the inline source type, type the helper as:
 
 ```ts
-import type { Event } from "@zcode/rpc";
+import type { Event } from "@codez/rpc";
 ```
 
 and return the callback as an `Event<ModelProviderRegistryChangedEvent>` using the local event shape already exported by services. Do not weaken the production type.
@@ -382,7 +382,7 @@ and return the callback as an `Event<ModelProviderRegistryChangedEvent>` using t
 Run:
 
 ```bash
-pnpm exec vitest run packages/services/test/zcodeAgentService.providerRegistry.test.ts
+pnpm exec vitest run packages/services/test/codezAgentService.providerRegistry.test.ts
 ```
 
 Expected before implementation: the new tests fail because `session/create` currently happens before `workspace/updateProviderRegistry`, and registry change does not hot-push full workspace registry.
@@ -392,18 +392,18 @@ Expected before implementation: the new tests fail because `session/create` curr
 ## Phase 2: Implement Agent Apply Waterline and Local Service Synchronizer
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-types.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts`
-- Modify: `packages/services/src/zcode-agent/zcodeAgentService.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/server-types.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/workspace-model-catalog.ts`
+- Modify: `packages/services/src/codez-agent/codezAgentService.ts`
 
 **Interfaces:**
-- Consumes: `providerRegistrySource?: ZCodeProviderRegistrySource`.
-- Consumes: `ZCodeProtocolClient.request(zcodeProtocolMethods.workspaceUpdateProviderRegistry, ...)`.
+- Consumes: `providerRegistrySource?: CodezProviderRegistrySource`.
+- Consumes: `CodezProtocolClient.request(codezProtocolMethods.workspaceUpdateProviderRegistry, ...)`.
 - Produces: agent-side stale snapshot guard plus private helpers that sync complete provider registry to local active CLI clients without touching remote helper code.
 
 - [ ] **Step 1: Add agent-side registry generatedAt waterline**
 
-In `ZCodeProtocolWorkspaceModelCatalogRecord`, add:
+In `CodezProtocolWorkspaceModelCatalogRecord`, add:
 
 ```ts
   providerRegistryGeneratedAt?: number;
@@ -427,19 +427,19 @@ Add a Chinese bugfix comment at the stale guard explaining:
 
 - [ ] **Step 2: Add workspace sync state**
 
-Near existing maps in `createZCodeAgentService`, add:
+Near existing maps in `createCodezAgentService`, add:
 
 ```ts
   const providerRegistrySyncByWorkspaceKey = new Map<
     string,
     {
-      client: ZCodeProtocolClient;
+      client: CodezProtocolClient;
       generatedAt?: number;
       inFlight?: Promise<void>;
       pending?: {
         includeWorkspaceState: boolean;
         reason: string;
-        registry: ZCodeProviderRegistrySnapshot;
+        registry: CodezProviderRegistrySnapshot;
       };
       revision?: string;
     }
@@ -484,10 +484,10 @@ Add:
 
 ```ts
   async function ensureLocalProviderRegistrySynced(params: {
-    client: ZCodeProtocolClient;
+    client: CodezProtocolClient;
     includeWorkspaceState?: boolean;
     reason: string;
-    workspace: ZCodeAgentWorkspaceTarget;
+    workspace: CodezAgentWorkspaceTarget;
   }): Promise<void> {
     if (!providerRegistrySource) {
       return;
@@ -515,7 +515,7 @@ Low-risk implementation:
 
 ```ts
       const result = await client.request(
-        zcodeProtocolMethods.workspaceUpdateProviderRegistry,
+        codezProtocolMethods.workspaceUpdateProviderRegistry,
         {
           workspace: buildWorkspaceRef(params),
           registry: params.registry,
@@ -523,7 +523,7 @@ Low-risk implementation:
             ? { includeWorkspaceState: params.includeWorkspaceState }
             : {}),
         },
-        zcodeWorkspaceUpdateProviderRegistryResultSchema,
+        codezWorkspaceUpdateProviderRegistryResultSchema,
       );
       if (result.appliedProviderRevision === params.registry.revision) {
         providerRegistryByWorkspaceKey.set(resolveWorkspaceKey(params), params.registry);
@@ -541,7 +541,7 @@ Do not change this method's external contract.
 ## Phase 3: Wire Local Sync Into Session Read/Create/Resume
 
 **Files:**
-- Modify: `packages/services/src/zcode-agent/zcodeAgentService.ts`
+- Modify: `packages/services/src/codez-agent/codezAgentService.ts`
 
 **Interfaces:**
 - Consumes: `ensureLocalProviderRegistrySynced(...)`.
@@ -611,7 +611,7 @@ Do not add this to `respondProviderRuntimeHeaders`. Do not add a blanket sync to
 Run:
 
 ```bash
-pnpm exec vitest run packages/services/test/zcodeAgentService.providerRegistry.test.ts
+pnpm exec vitest run packages/services/test/codezAgentService.providerRegistry.test.ts
 ```
 
 Expected: PASS.
@@ -621,8 +621,8 @@ Expected: PASS.
 ## Phase 4: Hot Push Local Provider Registry Changes
 
 **Files:**
-- Modify: `packages/services/src/zcode-agent/zcodeAgentService.ts`
-- Test: `packages/services/test/zcodeAgentService.providerRegistry.test.ts`
+- Modify: `packages/services/src/codez-agent/codezAgentService.ts`
+- Test: `packages/services/test/codezAgentService.providerRegistry.test.ts`
 
 **Interfaces:**
 - Consumes: `providerRegistrySource.onDidChangeProviderRegistry`.
@@ -637,7 +637,7 @@ Replace the current inline event body with a call:
     (event) => {
       void handleProviderRegistryChanged(event).catch((error) => {
         console.warn(
-          formatLogPrefix("zcode-agent", process.pid),
+          formatLogPrefix("codez-agent", process.pid),
           "provider registry 热同步失败",
           { message: error instanceof Error ? error.message : String(error) },
         );
@@ -733,7 +733,7 @@ Pick one style and keep tests aligned. Prefer `Promise.allSettled` if the produc
 Run:
 
 ```bash
-pnpm exec vitest run packages/services/test/zcodeAgentService.providerRegistry.test.ts
+pnpm exec vitest run packages/services/test/codezAgentService.providerRegistry.test.ts
 ```
 
 Expected: PASS.
@@ -745,8 +745,8 @@ Expected: PASS.
 **Files:**
 - Read/Guard: `packages/ui/src/lib/remoteWorkspaceProviderSync.ts`
 - Read/Guard: `packages/ui/test/remoteWorkspaceProviderSync.test.ts`
-- Read/Guard: `packages/ui/test/zcodeSessionPromptControl.test.ts`
-- Read/Guard: `packages/ui/src/lib/zcodeSessionPromptControl.ts`
+- Read/Guard: `packages/ui/test/codezSessionPromptControl.test.ts`
+- Read/Guard: `packages/ui/src/lib/codezSessionPromptControl.ts`
 
 **Interfaces:**
 - Consumes: existing remote provider registry preflight.
@@ -779,7 +779,7 @@ Expected: PASS.
 Run:
 
 ```bash
-pnpm exec vitest run packages/ui/test/zcodeSessionPromptControl.test.ts
+pnpm exec vitest run packages/ui/test/codezSessionPromptControl.test.ts
 ```
 
 Expected: PASS, including tests that verify remote/replayable create/resume/send call `syncAppGlobalStateBeforeRemoteSession` before agent commands.
@@ -789,7 +789,7 @@ Expected: PASS, including tests that verify remote/replayable create/resume/send
 Run:
 
 ```bash
-git diff -- packages/ui/src/lib/remoteWorkspaceProviderSync.ts packages/ui/src/lib/zcodeSessionPromptControl.ts
+git diff -- packages/ui/src/lib/remoteWorkspaceProviderSync.ts packages/ui/src/lib/codezSessionPromptControl.ts
 ```
 
 Expected:
@@ -818,7 +818,7 @@ If remote helper changed, stop and explain why the change is necessary before co
 Run:
 
 ```bash
-pnpm --filter @zcode/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-subagent-provider-registry-cold-start.test.ts
+pnpm --filter @codez/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-subagent-provider-registry-cold-start.test.ts
 ```
 
 Expected: PASS with the known title fixture warning.
@@ -828,9 +828,9 @@ Expected: PASS with the known title fixture warning.
 Run:
 
 ```bash
-ZCODE_DESKTOP_AGENT_BUILD_MODE=pnpm \
+CODEZ_DESKTOP_AGENT_BUILD_MODE=pnpm \
 E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-subagent-provider-registry-cold-start.json \
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-subagent-provider-registry-cold-start.test.ts'
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-subagent-provider-registry-cold-start.test.ts'
 ```
 
 Expected after fix: PASS.
@@ -851,7 +851,7 @@ Run:
 
 ```bash
 rg "workspace/updateProviderRegistry|provider_not_found|e2e-deepseek-alt|deepseek-v4-pro" \
-  packages/desktop/.e2e-home/.zcode/cli/log \
+  packages/desktop/.e2e-home/.codez/cli/log \
   packages/desktop/.e2e-artifacts
 ```
 
@@ -894,7 +894,7 @@ Do not mark `covered` before the replay passes.
 Run:
 
 ```bash
-pnpm --filter @zcode/desktop typecheck:e2e
+pnpm --filter @codez/desktop typecheck:e2e
 pnpm typecheck
 pnpm lint
 git diff --check
@@ -923,8 +923,8 @@ git diff --stat
 Expected changed files:
 
 ```text
-packages/services/src/zcode-agent/zcodeAgentService.ts
-packages/services/test/zcodeAgentService.providerRegistry.test.ts
+packages/services/src/codez-agent/codezAgentService.ts
+packages/services/test/codezAgentService.providerRegistry.test.ts
 docs/testing/conversation-session-e2e-coverage-matrix.md
 ```
 
@@ -936,8 +936,8 @@ Run:
 
 ```bash
 git add \
-  packages/services/src/zcode-agent/zcodeAgentService.ts \
-  packages/services/test/zcodeAgentService.providerRegistry.test.ts \
+  packages/services/src/codez-agent/codezAgentService.ts \
+  packages/services/test/codezAgentService.providerRegistry.test.ts \
   docs/testing/conversation-session-e2e-coverage-matrix.md
 git commit -m "fix(desktop): sync provider registry before local agent sessions"
 ```
@@ -962,7 +962,7 @@ Omit `docs/testing/conversation-session-e2e-coverage-matrix.md` from `git add` i
 
 If local provider registry sync introduces startup latency or repeated protocol calls:
 
-1. Revert only `packages/services/src/zcode-agent/zcodeAgentService.ts`.
+1. Revert only `packages/services/src/codez-agent/codezAgentService.ts`.
 2. Keep the failing E2E and tests as evidence.
-3. Re-run `packages/services/test/zcodeAgentService.providerRegistry.test.ts` to confirm the red local sync expectation returns.
+3. Re-run `packages/services/test/codezAgentService.providerRegistry.test.ts` to confirm the red local sync expectation returns.
 4. Reconsider a narrower public `workspace/prepareProviderRegistry` protocol call, but keep remote helper untouched unless remote evidence requires a separate fix.

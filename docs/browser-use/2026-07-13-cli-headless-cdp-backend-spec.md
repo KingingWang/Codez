@@ -9,7 +9,7 @@
 
 ## 1. 功能摘要
 
-Linux 服务机上的 ZCode CLI 需要能够直接运行 ZCode 自己的 Browser Use，而不是依赖
+Linux 服务机上的 Codez CLI 需要能够直接运行 Codez 自己的 Browser Use，而不是依赖
 Desktop IAB、`agent-browser` 或有图形界面的内置浏览器。CLI 通过显式参数创建并托管一个
 独立 Chromium，把它作为现有 browser-client 可发现的真实 `cdp` backend 暴露：
 
@@ -34,7 +34,7 @@ ownership 和生命周期语义不同而保持 `type: "iab"`。
 | CLI 自启动还是连接外部 CDP | 采用建议方案 | P0 由 CLI managed launch；attach-cdp 留后续 |
 | 是否默认启动 | 采用建议方案 | 必须显式 `--browser-use=headless` |
 | 浏览器 profile | 采用建议方案 | 每个 CLI 进程使用临时 profile，不跨进程恢复登录态 |
-| 生效入口 | 采用建议方案 | `--prompt`、`--target` 和 TUI；ZCode app-server 排除 |
+| 生效入口 | 采用建议方案 | `--prompt`、`--target` 和 TUI；Codez app-server 排除 |
 | 浏览器分发 | 采用建议方案 | P0 不下载/捆绑浏览器；显式路径优先，再查已安装 Chromium |
 
 ## 3. CLI 合同
@@ -49,7 +49,7 @@ ownership 和生命周期语义不同而保持 `type: "iab"`。
 示例：
 
 ```bash
-zcode --browser-use=headless \
+codez --browser-use=headless \
   --browser-executable=/usr/bin/chromium \
   --prompt "打开 http://127.0.0.1:4173 并测试登录流程"
 ```
@@ -62,7 +62,7 @@ zcode --browser-use=headless \
 - 未显式给路径时，adapter 按平台查找已安装的 Chrome/Chromium，以及 Playwright cache 中
   已存在的 Chromium；P0 不联网下载浏览器。
 - `--no-browser` 保持 OAuth 登录参数语义，不能复用为 Browser Use 开关。
-- `zcode app-server` / `zcode app-server --stdio` 使用该参数时 fail closed；不能为 Desktop、
+- `codez app-server` / `codez app-server --stdio` 使用该参数时 fail closed；不能为 Desktop、
   Web Remote 或 mobile shared-host 链路另起 CLI browser runtime。
 - 不新增环境变量；后续配置文件入口必须先定义优先级和来源审计。
 
@@ -75,13 +75,13 @@ zcode --browser-use=headless \
   id: `cdp:${runtimeId}`,
   generation,
   type: "cdp",
-  name: "ZCode Headless Chromium",
+  name: "Codez Headless Chromium",
   capabilities: {
     browser: [{ id: "viewport", description: "..." }],
     tab: []
   },
   metadata: {
-    provider: "zcode-cli",
+    provider: "codez-cli",
     launchMode: "managed",
     headless: "true"
   }
@@ -118,7 +118,7 @@ P0 必须通过 `apiSupportOverrides` 隐藏未完成能力：
 | 状态 | owner | 生命周期 |
 | --- | --- | --- |
 | Chromium process | managed CDP adapter | 当前 CLI/TUI app runtime |
-| BrowserContext | managed CDP adapter | 每个 ZCode session 一个隔离 context |
+| BrowserContext | managed CDP adapter | 每个 Codez session 一个隔离 context |
 | target/tab registry | managed CDP adapter | `workspaceKey + sessionId` scope |
 | request/cancel ledger | managed CDP adapter | request/turn，受 AbortSignal 控制 |
 | Browser/Tab JS binding | Node REPL kernel | kernel generation；backend generation 另外校验 |
@@ -198,18 +198,18 @@ Desktop/Web Remote 的 workspace identity、clientMode 或 deliveryKind 路由�
 | HCDP-013 | context/browser close 永不 settle | 每个 close 有 deadline；Browser 失败不阻断 Execution/MCP；CLI 最终有界退出 | adapter + session/CLI focused tests |
 
 真实 E2E 必须经过 `mcp__node_repl__js` 和 plugin browser-client；直接调用 adapter 只能证明
-adapter，不足以证明 ZCode Browser Use。
+adapter，不足以证明 Codez Browser Use。
 
 本机真实浏览器链路：
 
 ```bash
-pnpm --dir apps/zcode-cli test:browser-headless
+pnpm --dir apps/codez-cli test:browser-headless
 ```
 
 Linux、非 root、无 `DISPLAY`/Xvfb 的容器验收：
 
 ```bash
-pnpm --dir apps/zcode-cli test:browser-headless:linux
+pnpm --dir apps/codez-cli test:browser-headless:linux
 ```
 
 ## 10. 非目标
@@ -223,7 +223,7 @@ pnpm --dir apps/zcode-cli test:browser-headless:linux
 ## 11. 实现与验证记录
 
 - CLI prompt、target 与 TUI 通过依赖注入把 managed `BrowserControlPort` 交给现有
-  `createZCodeApp`；app-server 在参数边界拒绝。
+  `createCodezApp`；app-server 在参数边界拒绝。
 - adapter 以一个 Chromium process + 每 session 一个 BrowserContext 管理 tab、generation、取消与
   close；snapshot ref 由 adapter 持有 ElementHandle，不暴露给页面 `globalThis`。
 - context、browser 和 late launch cleanup 都执行有界等待；单个 Playwright close 悬空时继续其它

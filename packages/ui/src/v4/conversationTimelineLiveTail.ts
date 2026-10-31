@@ -1,5 +1,5 @@
-import type { BotTopicPreparation } from "@zcode/shared";
-import type { ConversationRow } from "@zcode/shared/zcode-protocol-v4";
+import type { BotTopicPreparation } from "@codez/shared";
+import type { ConversationRow } from "@codez/shared/codez-protocol-v4";
 import {
   sameItems,
   type ConversationTurnRenderUnit,

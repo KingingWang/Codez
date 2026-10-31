@@ -21,7 +21,7 @@ Desktop renderer / SSH/WSL/Docker window
 │ owner / lease / stale-run: 只负责跨 host 命令和阻塞请求路由 │
 │ relay/main: 鉴权、配对、心跳、payload/拥塞信号透传           │
 └──────────────────────────┬───────────────────────────────────┘
-                           │ stdio / @zcode/protocol-v4
+                           │ stdio / @codez/protocol-v4
                            v
 ┌──────────────────────── CLI runtime ─────────────────────────┐
 │ event log -> Projection -> per-subscriber publisher          │
@@ -59,8 +59,8 @@ interface TrustedConnectionContext {
 | 手机 `/remote` shared-host attachment | `web-remote-replayable` | `replayable` |
 | Web remote / relay WebSocket          | `web-remote-replayable` | `replayable` |
 
-`zcode-server /ws` 对所有普通连接固定使用 replayable；即使调用方携带旧的
-`x-zcode-rpc-client-mode` header，也不能把连接升格为 continuous。桌面
+`codez-server /ws` 对所有普通连接固定使用 replayable；即使调用方携带旧的
+`x-codez-rpc-client-mode` header，也不能把连接升格为 continuous。桌面
 server-remote 的 Node host 必须先向受现有 server auth middleware 保护的
 `POST /api/rpc-host-capability` 申请短期、一次性随机 capability，再把它放入
 Node-only header 连接专用 `/ws/host`。服务端消费 capability 后才建立 continuous

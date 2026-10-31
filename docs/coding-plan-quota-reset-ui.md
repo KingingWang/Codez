@@ -2,7 +2,7 @@
 
 ## 背景与结论
 
-客户端已具备“重置机会、手动重置、自动/运营重置完成提示”的 UI。本次接入 ZCode Server 最新重置接口，使 Personal Coding Plan 与 Team Plan 都以服务端状态为权威来源。
+客户端已具备“重置机会、手动重置、自动/运营重置完成提示”的 UI。本次接入 Codez Server 最新重置接口，使 Personal Coding Plan 与 Team Plan 都以服务端状态为权威来源。
 
 后端文档：`coding_plan_reset_mechanism_design.md`（2026-08-11 版本）。
 
@@ -42,10 +42,10 @@ Desktop renderer / Web remote renderer
               v
        IUsageStatsService (现有 Host RPC)
               |
-              | 读取 zcode JWT + 当前 Coding Plan credential
+              | 读取 codez JWT + 当前 Coding Plan credential
               | 构造 Personal/Team scope headers
               v
-       ZCode Server /api/v1/coding-plan/reset
+       Codez Server /api/v1/coding-plan/reset
               |
               | status / opportunity / use / history-read
               v
@@ -75,7 +75,7 @@ interface CodingPlanResetScopeRequest {
 Service 根据 scope 构造：
 
 ```text
-Authorization: Bearer <zcode_jwt>
+Authorization: Bearer <codez_jwt>
 X-Bigmodel-Authorization: <current_provider_business_jwt>
 Bigmodel-Target-Type: PERSONAL | TEAM
 Bigmodel-Organization: <TEAM only>
@@ -84,11 +84,11 @@ Bigmodel-Project: <TEAM only>
 
 约束：
 
-- JWT 从 credential service 的 `zcodejwttoken` 读取。
+- JWT 从 credential service 的 `codezjwttoken` 读取。
 - `X-Bigmodel-Authorization` 传当前 Coding Plan provider family 对应的业务 JWT，直传且不套 `Bearer`，**不是 Coding Plan API key**：Z.ai family 使用 credential service 的 `oauth:zai:access_token`，BigModel family 使用 `oauth:bigmodel:access_token`。两类凭据禁止互相回退，避免当前 provider identity 与服务端校验身份串用（2026-08-14 Z.ai reset 鉴权修正）。
 - Coding Plan provider 解析用于确认套餐已配置、选择与 provider family 一致的业务 JWT，并推导 Personal/Team scope；Team scope 完全由 `Bigmodel-Organization` / `Bigmodel-Project` header 承载，客户端不再为 reset 请求复制团队项目 API Key。
 - credential 值不得写日志、不得进入 UI store、不得持久化。
-- URL 使用 `buildRuntimeZCodeApiUrl(env, path)`，随 test/production/custom endpoint 设置切换。
+- URL 使用 `buildRuntimeCodezApiUrl(env, path)`，随 test/production/custom endpoint 设置切换。
 
 ### status 映射
 

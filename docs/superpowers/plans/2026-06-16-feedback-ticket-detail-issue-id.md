@@ -34,7 +34,7 @@ Confirm the change does not alter feedback service APIs, realtime stream boundar
 it("shows the issue id with a copy action", () => {
   const html = renderToStaticMarkup(
     createElement(
-      ZCodeIntlProvider,
+      CodezIntlProvider,
       { initialLocale: "zh-CN" },
       createElement(TicketDetailView, {
         ticket: createTicket(),

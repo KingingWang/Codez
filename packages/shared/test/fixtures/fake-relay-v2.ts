@@ -12,7 +12,7 @@ import {
   type WebRemoteControlRelayV2Meta,
   type WebRemoteControlRelayV2ErrorCode,
   type WebRemoteControlRelayV2PairStatus,
-} from "@zcode/shared/web-remote-relay";
+} from "@codez/shared/web-remote-relay";
 
 interface Connection {
   id: string;

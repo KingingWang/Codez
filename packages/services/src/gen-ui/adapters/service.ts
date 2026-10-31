@@ -1,13 +1,13 @@
 import { createHash, randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { z } from "zod";
-import { GEN_UI_OUTPUT_DIRECTORY } from "@zcode/shared/node";
+import { GEN_UI_OUTPUT_DIRECTORY } from "@codez/shared/node";
 import {
   GEN_UI_STATIC_DOMAINS,
   buildGenUiScopeKey,
   genUiStateTargetSchema,
-} from "@zcode/shared/gen-ui";
-import type { PluginSandboxHandle, PluginSandboxRegisterInput } from "@zcode/shared/mcp-apps";
+} from "@codez/shared/gen-ui";
+import type { PluginSandboxHandle, PluginSandboxRegisterInput } from "@codez/shared/mcp-apps";
 import type { IGenUiService } from "../contract.js";
 import { getAppConfigDir } from "../../paths.js";
 import { assertGenUiFragment, readGenUiDocument } from "./files.js";
@@ -59,7 +59,7 @@ export function createGenUiService(
         workspaceIdentity: input.workspaceIdentity,
         sessionId: input.sessionId,
         scopeId: input.instanceKey,
-        html: `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><!--__ZCODE_GEN_UI_STYLES__--><script type="application/json" id="zcode-gen-ui-initial-state">${initial}</script><script src="__ZCODE_GEN_UI_RUNTIME__"></script></head><body>${input.html}<!--__ZCODE_GEN_UI_INNER_KIT__--></body></html>`,
+        html: `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><!--__CODEZ_GEN_UI_STYLES__--><script type="application/json" id="codez-gen-ui-initial-state">${initial}</script><script src="__CODEZ_GEN_UI_RUNTIME__"></script></head><body>${input.html}<!--__CODEZ_GEN_UI_INNER_KIT__--></body></html>`,
         csp: {
           connectDomains: [],
           resourceDomains: GEN_UI_STATIC_DOMAINS.map((host) => `https://${host}`),

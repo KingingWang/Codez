@@ -1,8 +1,8 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
-import { TID_SSH_DIALOG, TID_SSH_ERROR } from "@zcode/shared/test-ids";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
+import { TID_SSH_DIALOG, TID_SSH_ERROR } from "@codez/shared/test-ids";
 import { readConnectRemoteFailures } from "#e2e/helpers/connect-remote-error-log";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import {
@@ -32,7 +32,7 @@ const SEAM_SCRIPT = "/home/dev/.e2e-hang-readdir.cjs";
 const DEADLINE_MS = 30_000;
 const desktopRoot = process.cwd();
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-workspace-folder-unresponsive-ssh",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-workspace-folder-unresponsive-ssh",
 );
 
 // 标记文件存在时，Core 读取 HANG_DIR/.（Host admission 的探测路径）不返回；目录浏览器读取

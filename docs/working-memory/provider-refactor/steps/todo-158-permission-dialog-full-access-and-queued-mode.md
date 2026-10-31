@@ -38,11 +38,11 @@
 | 事实                                                      | 实施含义                                                     | 入口                                                                                                                                                                                                      |
 | --------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Composer 菜单只修改当前 scope 草稿                        | 直接复用菜单回调不能解除当前审批                             | [SessionPane](../../../../packages/ui/src/v4/SessionPane.tsx)、[useDraftConfigControl](../../../../packages/ui/src/v4/composer/useDraftConfigControl.ts)                                                  |
-| 即时切换命令仍被 Bot、自动化、CLI/TUI 和兼容路径使用      | 不能视为死代码删除，也不能把审批批量同步推广到所有调用方     | [task adapter](../../../../packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts)、[session facade](../../../../apps/zcode-cli/packages/bootstrap/src/app/session-facade.ts)                       |
-| `app.setMode()` 更新 Runtime 后还写项目 `permission/mode` | 本次任务级授权不能直接继承项目偏好副作用                     | [session facade](../../../../apps/zcode-cli/packages/bootstrap/src/app/session-facade.ts)、[runtime config](../../../../apps/zcode-cli/packages/bootstrap/src/app/runtime-config.ts)                      |
+| 即时切换命令仍被 Bot、自动化、CLI/TUI 和兼容路径使用      | 不能视为死代码删除，也不能把审批批量同步推广到所有调用方     | [task adapter](../../../../packages/services/src/codez-agent/codezTaskServiceAdapter.ts)、[session facade](../../../../apps/codez-cli/packages/bootstrap/src/app/session-facade.ts)                       |
+| `app.setMode()` 更新 Runtime 后还写项目 `permission/mode` | 本次任务级授权不能直接继承项目偏好副作用                     | [session facade](../../../../apps/codez-cli/packages/bootstrap/src/app/session-facade.ts)、[runtime config](../../../../apps/codez-cli/packages/bootstrap/src/app/runtime-config.ts)                      |
 | 仅传 `mode=yolo` 会归一为 `planEnabled=false`             | 审批专用更新必须显式保留 Plan，不能盲改共享兼容解码规则      | [execution-state](../../../../packages/shared/src/execution-state.ts)                                                                                                                                     |
-| 每个工具调用开始时读取 Runtime mode，已有审批等待 broker  | 运行中可切，但不自动解除 pending，不重做已经读取旧模式的调用 | [call-runner](../../../../apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts)、[permission-flow](../../../../apps/zcode-cli/packages/core/src/tool/executor/permission-flow.ts)                |
-| 队列项携带独立 mode/Plan，消费时重新应用                  | 只改 Runtime 或 UI，下一条出队可能切回旧权限                 | [product projection](../../../../apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/product-projection.ts)、[turn-model](../../../../apps/zcode-cli/packages/core/src/runtime/methods/turn-model.ts) |
+| 每个工具调用开始时读取 Runtime mode，已有审批等待 broker  | 运行中可切，但不自动解除 pending，不重做已经读取旧模式的调用 | [call-runner](../../../../apps/codez-cli/packages/core/src/tool/executor/call-runner.ts)、[permission-flow](../../../../apps/codez-cli/packages/core/src/tool/executor/permission-flow.ts)                |
+| 队列项携带独立 mode/Plan，消费时重新应用                  | 只改 Runtime 或 UI，下一条出队可能切回旧权限                 | [product projection](../../../../apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/product-projection.ts)、[turn-model](../../../../apps/codez-cli/packages/core/src/runtime/methods/turn-model.ts) |
 
 `permission/mode` 是创建 Agent 时的项目模式 fallback；`permission/ruleset` 是“始终允许此命令”的规则集合；Session execution state 和 Composer Recent 又是不同事实源。本 Todo 不把它们合并，不写项目默认或新增权限规则。
 
@@ -169,11 +169,11 @@ resolveInteraction(fullAccess) → session FIFO → registry claim（Hook 退赛
 
 ## 9. 实跑证据与完成门槛
 
-本轮所有临时日志位于 `/tmp/zcode-todo158/`；测试文件与实际断言为可重放证据。
+本轮所有临时日志位于 `/tmp/codez-todo158/`；测试文件与实际断言为可重放证据。
 
 | 验证                                                           | 结果                                                                                       |
 | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| 根 `pnpm typecheck`、CLI `pnpm --dir apps/zcode-cli typecheck` | 通过；CLI 28 个任务成功                                                                    |
+| 根 `pnpm typecheck`、CLI `pnpm --dir apps/codez-cli typecheck` | 通过；CLI 28 个任务成功                                                                    |
 | 根 `pnpm lint`、`pnpm architecture:check --changed`            | 通过；lint 有原有警告，架构 0 违规                                                         |
 | SQLite 事务 / 固定目标 / 回滚 / 取消 / task 隔离               | 3 项通过，`adapters/tests/permission-full-access.test.ts`                                  |
 | Core 权限 / Hook claim / Plan                                  | 24 项通过，`permission-full-access`、`permission-responder-race`、`independent-plan-state` |
@@ -186,7 +186,7 @@ resolveInteraction(fullAccess) → session FIFO → registry claim（Hook 退赛
 | Desktop E2E 类型与 fixture 检查                                | 通过；fixture 的队列文本只用于入队/撤回，不执行模型请求，因此 matcher 警告保留             |
 | CLI lint                                                       | 未通过；基线同样存在 max-lines 错误（含 telemetry/debug/bootstrap 等），未顺带重构         |
 
-基线隔离：在同 HEAD 的 `/tmp/zcode-todo158/baseline` 应用任务开始时保存的原有 patch 后实跑，复现 SHARE32、gateway 的旧 revision 断言、background notification 时序断言与 CLI lint 失败。本功能用例均另列；不能宣称整个仓库测试全绿。
+基线隔离：在同 HEAD 的 `/tmp/codez-todo158/baseline` 应用任务开始时保存的原有 patch 后实跑，复现 SHARE32、gateway 的旧 revision 断言、background notification 时序断言与 CLI lint 失败。本功能用例均另列；不能宣称整个仓库测试全绿。
 
 尚未取得：手机 shared-host 的真实重连/跨设备重复点击 E2E、Windows/macOS 实跑。continuous/replayable 当前证据为同一 Gateway 的真实协议订阅与故障恢复单测，不冒充手机整链路。子 Agent 不投放完全访问已测试，未扩展其继承契约。
 
@@ -198,7 +198,7 @@ resolveInteraction(fullAccess) → session FIFO → registry claim（Hook 退赛
 
 合并最新 `origin/staging` 后复验（2026-09-17）：排除原有未提交改动的实际交付版本，根/CLI typecheck、根 lint、architecture 通过；UI 79、Core 24、SQLite 3、Contracts 27、Bootstrap 审批/队列 154、Gateway PA158 2 项通过，浏览器四组合通过。Linux Electron 再跑 1/1 通过，run `desktop-e2e-20260917120736651-p895163-873605a2d4994754`。首次构建因本机 Zod 旧依赖被 staging 的版本校验拦截，对齐本地安装至仓库要求的 4.6.5 后构建及 E2E 成功；未改依赖清单或锁文件。CLI lint 仍为原有 max-lines 失败。功能图新增节点/seed/边校验无新增问题，已有两个缺失 endpoint（`capability.mcp-oauth-authorization`、`persistence.desktop-user-data-root`）另记为基线缺口。
 
-发布前 `ZCODE_PRE_PUSH_BASE=origin/staging pnpm verify:pre-push` 通过（lint、architecture、变更测试及 related 受影响测试）。Zod 4.6.5 校验暴露的新增兼容测试缺少 `detail` 已补齐并复验；产品逻辑未因此变更。
+发布前 `CODEZ_PRE_PUSH_BASE=origin/staging pnpm verify:pre-push` 通过（lint、architecture、变更测试及 related 受影响测试）。Zod 4.6.5 校验暴露的新增兼容测试缺少 `detail` 已补齐并复验；产品逻辑未因此变更。
 
 ### CR-01 / CR-02 修复复验（2026-09-17）
 
@@ -206,4 +206,4 @@ resolveInteraction(fullAccess) → session FIFO → registry claim（Hook 退赛
 - CR-02：恢复时清空旧授权标记，损坏、未来字段及跨 session receipt 记录诊断后跳过，历史和已保存 execution state 继续恢复；授权幂等重试仍严格拒绝损坏 receipt。恢复、授权、Hook race、独立 Plan 共 30 项通过。额外运行的 `runtime-unbound-resume` 有 1 项既有错误文案断言失败，已在未修改实现的隔离基线复现。
 - CLI typecheck 28 个任务、根 lint、architecture 均通过。CLI lint 仍是基线 max-lines 错误。根 typecheck 本轮因 Node 堆内存耗尽未完成；扩大至 8 GB 及拆为逐项目检查后，仍在未修改的 services 阶段 OOM，不将其标为通过。
 - Linux Electron 审批 E2E 1/1 通过，run `desktop-e2e-20260917130117737-p944581-034f7d67ab10c80c`，exit 0。原工具、队列、各项 Plan 与撤回编辑链路通过；手机 shared-host、跨设备 ACK 及 Windows/macOS 仍沿用上述未验证边界。
-- 本轮日志为 `/tmp/zcode-todo158/cr-*.log`。用户明确要求修复并 push，按该指令提交本轮修改并保留以上验证限制；原 MR !2718 已合并，本轮修复属于原分支上的后续提交。
+- 本轮日志为 `/tmp/codez-todo158/cr-*.log`。用户明确要求修复并 push，按该指令提交本轮修改并保留以上验证限制；原 MR !2718 已合并，本轮修复属于原分支上的后续提交。

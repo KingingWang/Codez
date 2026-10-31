@@ -40,7 +40,7 @@ it.each([false, true])(
       env: {
         ...process.env,
         NODE_OPTIONS: `--import=${JSON.stringify(proxy)}`,
-        ZCODE_E2E_ARTIFACT_DIR: root,
+        CODEZ_E2E_ARTIFACT_DIR: root,
       },
       stdio: ["pipe", "pipe", "pipe"],
     });

@@ -13,4 +13,4 @@
 ## 兼容约束
 
 - 桌面侧栏、全局 grouped task 视图、浅色/深色主题使用一致 pill 样式。
-- 只调整 UI 标签外观，不改变 ZCode session / task realtime 消息流。
+- 只调整 UI 标签外观，不改变 Codez session / task realtime 消息流。

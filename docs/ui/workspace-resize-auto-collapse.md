@@ -17,4 +17,4 @@ Workspace 主界面包含左侧 sidebar、聊天 conversation、底部 terminal 
 
 - 桌面端和 Web 桌面端复用同一 conversation panel 监听。
 - 手机远控当前使用独立 overlay / mobile shell，不依赖该桌面分栏策略。
-- 该策略不改变 ZCode session / task realtime 消息流，不涉及 `desktop-continuous` 与 `web-remote-replayable` 的传输边界。
+- 该策略不改变 Codez session / task realtime 消息流，不涉及 `desktop-continuous` 与 `web-remote-replayable` 的传输边界。

@@ -3,9 +3,9 @@ import { dirname, posix } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
-export const DEV_ELECTRON_PROTOCOL_SCHEME = "zcode";
-export const DEV_ELECTRON_APP_NAME = "ZCode Dev";
-export const DEV_ELECTRON_APP_BUNDLE_ID = "dev.zcode.app.development";
+export const DEV_ELECTRON_PROTOCOL_SCHEME = "codez";
+export const DEV_ELECTRON_APP_NAME = "Codez Dev";
+export const DEV_ELECTRON_APP_BUNDLE_ID = "dev.codez.app.development";
 // 副本布局版本，见 prepareDevElectronAppBundle 中的指纹说明。
 export const DEV_ELECTRON_BUNDLE_FORMAT = 3;
 const execFileAsync = promisify(execFile);
@@ -53,8 +53,8 @@ function appendProtocolDeclaration(plist) {
 }
 
 /**
- * 为 macOS 本地 Dev runtime 写入产品身份和 zcode URL scheme。
- * raw Electron 的 Info.plist 没有 CFBundleURLTypes，系统只能把 zcode 交给
+ * 为 macOS 本地 Dev runtime 写入产品身份和 codez URL scheme。
+ * raw Electron 的 Info.plist 没有 CFBundleURLTypes，系统只能把 codez 交给
  * com.github.Electron；这里仅修改启动副本，避免污染 node_modules 中的 Electron。
  */
 export function patchDevElectronInfoPlist(plist) {
@@ -80,7 +80,7 @@ export async function prepareDevElectronAppBundle({
   const sourceExecutablePath = posix.join(electronAppPath, "Contents", "MacOS", "Electron");
   const existingExecutablePath = posix.join(appPath, "Contents", "MacOS", "Electron");
   // 源二进制的身份指纹，写在 .app 外面：放进 Contents 会污染 bundle 结构。
-  const sourceStampPath = posix.join(dirname(appPath), ".zcode-dev-electron-source.json");
+  const sourceStampPath = posix.join(dirname(appPath), ".codez-dev-electron-source.json");
   // 修复原因：这里原本把两个 Electron 可执行文件（各 ~100MB+）整份读进内存做 equals，
   // 每次 dev 启动都要付一次全量读盘。源二进制由 npm 包解压产出，记录它的 size+mtime
   // 即可判定是否需要重拷，语义等价而开销是常数级。

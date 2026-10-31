@@ -6,7 +6,7 @@ import {
   TID_V4_COMPOSER_INPUT,
   TID_V4_SESSION_PANE,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clickTestIdByDom,
   DEFAULT_WORKSPACE,
@@ -17,12 +17,12 @@ import { ensureUpstreamProviderForE2E, selectUpstreamModel } from "#e2e/helpers/
 import { prepareV4ConversationE2E, startNewV4Draft } from "#e2e/helpers/v4-conversation";
 
 vi.mock("./e2e/helpers/desktop-app.js", () => ({
-  DEFAULT_WORKSPACE: "/Users/dev/e2e/ZCodeProject",
+  DEFAULT_WORKSPACE: "/Users/dev/e2e/CodezProject",
   clickTestIdByDom: vi.fn(),
   waitForDefaultWorkspaceReady: vi.fn(),
 }));
 vi.mock("./e2e/helpers/project-sidebar.js", () => ({
-  projectNameForWorkspace: () => "ZCodeProject",
+  projectNameForWorkspace: () => "CodezProject",
   startDraftFromProject: vi.fn(),
   waitForProjectRow: vi.fn(),
 }));
@@ -37,12 +37,12 @@ vi.mock("./e2e/helpers/occupation-onboarding.js", () => ({
 
 function renderDraft({
   path = DEFAULT_WORKSPACE,
-  project = "ZCodeProject",
+  project = "CodezProject",
   session = "draft",
   text = "",
 } = {}) {
   document.body.innerHTML = `<div data-testid="${testId(TID_V4_SESSION_PANE, "workspace-main")}" data-session-id="${session}"><div data-testid="${TID_V4_COMPOSER_INPUT}" contenteditable="true">${text}</div></div><button data-testid="${TID_COMPOSER_WORKSPACE_TRIGGER}">${project}</button>`;
-  vi.stubGlobal("__zcodeTabStoreE2E", { getState: () => ({ activeWorkspacePath: path }) });
+  vi.stubGlobal("__codezTabStoreE2E", { getState: () => ({ activeWorkspacePath: path }) });
 }
 
 beforeEach(() => {
@@ -79,7 +79,7 @@ describe("V4 conversation E2E preparation", () => {
   });
 
   it.each([
-    { path: "/Users/dev/e2e/.zcode/workspace/generated", project: "" },
+    { path: "/Users/dev/e2e/.codez/workspace/generated", project: "" },
     { session: "existing-session" },
     { text: "unsent draft from previous case" },
   ])("returns to the fixture project before checking its cwd: %j", async (state) => {

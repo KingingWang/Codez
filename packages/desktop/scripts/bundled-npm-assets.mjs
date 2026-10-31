@@ -1,5 +1,5 @@
 // 随包 npm：桌面 agent 跑在 Electron Node 上，用户机器没装 Node 时，stdio MCP 的 npm/npx
-// 回退到这里 stage 的 npm（规格：apps/zcode-cli/docs/design/v2/mcp-node-fallback.md）。
+// 回退到这里 stage 的 npm（规格：apps/codez-cli/docs/design/v2/mcp-node-fallback.md）。
 //
 // 为什么下载 registry tarball 而不是加 pnpm 依赖：仓库用 node-linker=hoisted，npm 包的
 // npm/npx bin 会被链接进根 node_modules/.bin，覆盖开发者自己的 npm（新 npm 还不支持仓库
@@ -16,7 +16,7 @@ import { extractPrebuiltArchive } from "../../../scripts/prebuilt-binary-extract
 export const BUNDLED_NPM_VERSION = "12.2.0";
 export const BUNDLED_NPM_INTEGRITY =
   "sha512-ZsJjKpTnlmSXOLLXiU1xDCzC4Wlok4IwZmh/aw2KUuXytU7q6qMv/cUT7MoeSf95Slwuw/lRXYefGzGCspHPNQ==";
-/** 相对 glm 目录（zcode.cjs 所在目录）的位置；与 bootstrap mcp-node-fallback.ts 同一约定。 */
+/** 相对 glm 目录（codez.cjs 所在目录）的位置；与 bootstrap mcp-node-fallback.ts 同一约定。 */
 export const BUNDLED_NPM_STAGED_SEGMENTS = ["node-runtime", "npm"];
 const NPM_REGISTRY_TARBALL_BASE = "https://registry.npmjs.org/npm/-/";
 const NPM_TARBALL_PACKAGE_DIR = "package";
@@ -42,7 +42,7 @@ export async function stageBundledNpm({
   version = BUNDLED_NPM_VERSION,
 }) {
   const tarballPath = await ensureVerifiedTarball({ cacheDir, download, integrity, version });
-  const workDir = await mkdtemp(join(tmpdir(), "zcode-bundled-npm-"));
+  const workDir = await mkdtemp(join(tmpdir(), "codez-bundled-npm-"));
   try {
     extract({ archiveExt: "tgz", archivePath: tarballPath, cwd: workDir, extractDir: workDir });
     const packageRoot = join(workDir, NPM_TARBALL_PACKAGE_DIR);

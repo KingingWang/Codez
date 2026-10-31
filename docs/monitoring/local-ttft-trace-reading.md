@@ -4,7 +4,7 @@ Status: ready
 
 [父合同](ttft-stage-telemetry.md) · [查询与诊断合同](local-ttft-queries.md) · [看板模板](dashboards/local-ttft.json) · [上线清单](local-ttft-rollout-checklist.md)
 
-面向第一次打开 `zcode-local-ttft` 瀑布图的人。查询入口和指标口径见查询合同，本文只讲怎么把一条 Trace 读成结论。
+面向第一次打开 `codez-local-ttft` 瀑布图的人。查询入口和指标口径见查询合同，本文只讲怎么把一条 Trace 读成结论。
 
 ## 三个先决常识
 

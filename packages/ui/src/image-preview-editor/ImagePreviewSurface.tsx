@@ -3,7 +3,7 @@ import { MinusIcon, PlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
 import { toast } from "@/components/ui/toast.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import type { ImagePreviewSurfaceProps } from "@/image-preview-editor/contract.js";
 import { captureImageComposerTarget } from "@/image-preview-editor/composerTarget.js";
@@ -32,7 +32,7 @@ export function ImagePreviewSurface({
   onSaved,
   onClose,
 }: ImagePreviewSurfaceProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const viewportRef = useRef<HTMLDivElement>(null),
     surfaceRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null),

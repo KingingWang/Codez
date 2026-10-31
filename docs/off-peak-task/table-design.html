@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="ZCode Off-Peak Task 完整架构、对象模型、双轴状态机、数据表、业务分支与平滑演进说明。"
+      content="Codez Off-Peak Task 完整架构、对象模型、双轴状态机、数据表、业务分支与平滑演进说明。"
     />
     <title>Off-Peak Task · 完整架构与业务逻辑</title>
     <style>
@@ -1839,7 +1839,7 @@
 
       <main>
         <header class="hero">
-          <div class="eyebrow">ZCode / Off-Peak Task</div>
+          <div class="eyebrow">Codez / Off-Peak Task</div>
           <div class="hero-content">
             <h1>一个任务，<br /><em>多段续跑</em></h1>
             <div class="hero-deck">
@@ -1996,7 +1996,7 @@
               <article class="arch-node db wide">
                 <small>WAL · multi-process</small>
                 <strong>off_peak_tasks</strong>
-                <span>~/.zcode/v2/tasks-index.sqlite</span>
+                <span>~/.codez/v2/tasks-index.sqlite</span>
               </article>
               <article class="arch-node">
                 <small>Utility Process</small>
@@ -2014,7 +2014,7 @@
                 <span>create or resume + sendPrompt</span>
               </article>
               <article class="arch-node">
-                <small>ZCode CLI</small>
+                <small>Codez CLI</small>
                 <strong>Agent Loop</strong>
                 <span>per-turn idle plan overlay</span>
               </article>
@@ -2093,7 +2093,7 @@ Renderer ─RPC─▶ Host Service ─take/status/settle─▶ Server Ticket DB
               <article class="api-step">
                 <div class="api-number">04</div>
                 <div>
-                  <div class="api-owner">ZCODE CLI · ADMIT EACH MODEL CALL</div>
+                  <div class="api-owner">CODEZ CLI · ADMIT EACH MODEL CALL</div>
                   <h3 class="api-path">POST /anthropic/v1/messages</h3>
                   <p>每一次模型请求携带 <code>X-Off-Peak-Ticket-ID</code>。Agent 已启动不代表后续每个 turn 都天然获准。</p>
                 </div>
@@ -2263,7 +2263,7 @@ Renderer ─RPC─▶ Host Service ─take/status/settle─▶ Server Ticket DB
                 </div>
                 <div class="field">
                   <div class="field-name">permission_mode<b>TEXT · NOT NULL</b></div>
-                  <div class="field-desc">复用 ZCodeTaskMode；随每次首跑或 resume 派发。</div>
+                  <div class="field-desc">复用 CodezTaskMode；随每次首跑或 resume 派发。</div>
                 </div>
                 <div class="field">
                   <div class="field-name">model<b>TEXT · NULLABLE</b></div>
@@ -2305,7 +2305,7 @@ Renderer ─RPC─▶ Host Service ─take/status/settle─▶ Server Ticket DB
                 </div>
                 <div class="field">
                   <div class="field-name">conversation_id<b>TEXT · NULLABLE</b></div>
-                  <div class="field-desc">首次派发后回填 ZCode taskId；续跑用它定位同一任务。</div>
+                  <div class="field-desc">首次派发后回填 Codez taskId；续跑用它定位同一任务。</div>
                 </div>
                 <div class="field">
                   <div class="field-name">session_id<b>TEXT · NULLABLE</b></div>
@@ -3011,7 +3011,7 @@ history = visibility tombstone</pre>
         </div>
 
         <footer>
-          <span>ZCODE · OFF-PEAK TASK FIELD MANUAL</span>
+          <span>CODEZ · OFF-PEAK TASK FIELD MANUAL</span>
           <span>Source: current client code + server contract · docs/off-peak-task · 2026-07-20</span>
         </footer>
       </main>

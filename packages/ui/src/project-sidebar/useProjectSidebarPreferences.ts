@@ -12,7 +12,7 @@ import { reconcileProjectOrder, moveProjectOrder } from "@/project-sidebar/proje
 
 import { readProjectSidebarView } from "@/project-sidebar/view-preference.js";
 
-const KEY = "zcode-project-sidebar-preferences";
+const KEY = "codez-project-sidebar-preferences";
 const EMPTY_AVAILABILITY: ReadonlyMap<string, ProjectAvailability> = new Map();
 interface Preferences {
   order: string[];

@@ -135,7 +135,7 @@ Todo90 是模式行为/保存/代码简化的唯一主线，本项是交互和�
 
 清理后验证：`packages/ui` 和本次 desktop E2E 范围相对 HEAD 无差异；两个原有相关单测文件共 43 条通过，`pnpm typecheck` 通过，`pnpm lint` 0 errors / 40 个既有 warnings。图谱 YAML、唯一 ID、设置页来源文档和代码 seed 路径检查通过，edges 未变；未重跑完整桌面 E2E，也不宣称新方案已通过。
 
-旧预览保留位置：本地 `/tmp/zcode-retired-group-preview.6IUa9h`；Air `/Users/dev/.Trash/zcode-model-group-preview.oRYZZn`。两者已不在活动工作位置，可恢复；不作为新版本启动入口。
+旧预览保留位置：本地 `/tmp/codez-retired-group-preview.6IUa9h`；Air `/Users/dev/.Trash/codez-model-group-preview.oRYZZn`。两者已不在活动工作位置，可恢复；不作为新版本启动入口。
 
 ## 7. 2026-09-08 最终实现与联合验收
 
@@ -156,4 +156,4 @@ Todo90 是模式行为/保存/代码简化的唯一主线，本项是交互和�
 - 既有 `settings-ui-polish.test.ts`：UP-01、MP-UI-01～06（7 项，排除明确需要 SSH 的 remote 项）。
 - 既有 pending `provider-settings-write-recovery.test.ts`：修复入口、添加失败保留草稿。
 
-产物：Pro `/Users/dev/zcode-todo93-e2e.88xgST/packages/desktop/.e2e-artifacts/`，上述 run 的 summary；`todo90-92/model-editor-{dark,light}-390.png` 为最终视觉证据。317 条相关单测及 root typecheck/lint 通过（lint 40 个既有 warnings）。未改变共享 Button/Input 的全局样式、用户真实配置、账号/Selection/会话/remote 协议；未宣称 Windows、真实手机链路或所有品牌账号排列已实测。新 E2E 保留 pending，未代替用户人工转正。
+产物：Pro `/Users/dev/codez-todo93-e2e.88xgST/packages/desktop/.e2e-artifacts/`，上述 run 的 summary；`todo90-92/model-editor-{dark,light}-390.png` 为最终视觉证据。317 条相关单测及 root typecheck/lint 通过（lint 40 个既有 warnings）。未改变共享 Button/Input 的全局样式、用户真实配置、账号/Selection/会话/remote 协议；未宣称 Windows、真实手机链路或所有品牌账号排列已实测。新 E2E 保留 pending，未代替用户人工转正。

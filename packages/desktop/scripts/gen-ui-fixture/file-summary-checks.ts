@@ -45,7 +45,7 @@ export async function checkFileSummary(
       );
       assert.equal(
         await win.webContents.executeJavaScript(
-          "document.querySelectorAll('#file-preview-cards [data-zcode-stream-animate]').length",
+          "document.querySelectorAll('#file-preview-cards [data-codez-stream-animate]').length",
         ),
         1,
       );

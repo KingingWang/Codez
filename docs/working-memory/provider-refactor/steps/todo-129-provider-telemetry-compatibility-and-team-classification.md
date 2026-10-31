@@ -43,7 +43,7 @@
 
 - 调用了仓库真实 helper：两家 Team-only 均得到 `no_plan`；BigModel Team family/channel 为 `unknown` / 空字符串；BigModel Team/Start label 为原始 ID。
 - BigModel Start + GLM-5.2，同一个 baseURL：旧 `send_btn.model_name` 为 `custom:builtin%3Abigmodel-start-plan:GLM-5.2`，新为 `custom:account%3Abigmodel-start-plan:GLM-5.2`；`provider_name` 都为 `zcode.z.ai`。
-- 6 个现有测试文件合计 **82 个用例通过**：codingPlanFunnelTelemetry、messageTelemetry、automationTelemetry、offPeakTelemetry、codingPlanEmbeddedWebview、shared/zcodeNetworkDebugStatus。现有通过结果没有覆盖本次遗漏，不是修复验收。
+- 6 个现有测试文件合计 **82 个用例通过**：codingPlanFunnelTelemetry、messageTelemetry、automationTelemetry、offPeakTelemetry、codingPlanEmbeddedWebview、shared/codezNetworkDebugStatus。现有通过结果没有覆盖本次遗漏，不是修复验收。
 - WebView bootstrap 确实携带错误漏斗上下文；官网协议约定四个 purchase 事件使用该上下文。本轮没有抓取官网真实购买上报，不能写成四个线上事件都已实测错误。
 - `entry_plan_status` 与核心事件的 `plan_status / plan_product_id` 是两条来源；后者 `usePlanIdentitySnapshot` 已选择 Team Provider 查询，不顺手重构。
 - hostname 依赖地址可得性；completion/step 缺少请求开始 fact 时可能沿用 seed，不承诺所有事件都来自实际请求。
@@ -57,7 +57,7 @@
 4. family/channel 与成功事件 label 补齐 BigModel；两家行为对称，名称仍遵守各事件已有值，不统一改成一种标签。
 5. ID 兼容只允许作用于既有埋点输出；不倒改 Registry、ModelSelection、CLI 实际请求事实、鉴权身份、配置文件、数据库、历史消息或迁移脚本。
 6. 不新增埋点事件/重复发送新旧事件，不擅自增加报表字段，不改 token、耗时、成功率公式、事件触发与去重机制。不扩大到 ARMS 全面改造。
-7. **旧 `zcodeTaskNetworkDebugStatusFromPayload` parser 不并入本 Todo**。它的顶层身份适配属于旧投影链路问题；当前 V4 核心埋点有独立转换。只保留发现，不以“顺手修”夹带修改。
+7. **旧 `codezTaskNetworkDebugStatusFromPayload` parser 不并入本 Todo**。它的顶层身份适配属于旧投影链路问题；当前 V4 核心埋点有独立转换。只保留发现，不以“顺手修”夹带修改。
 8. Todo128 的 start/Registry 通知/资格刷新/并发协调独立执行；不改 Composer，也不借本轮抽取一套新的通用套餐服务或建立另一份权益缓存。
 9. 本轮只落盘。不能把“写一个 Todo”当作开始改产品代码的授权。
 

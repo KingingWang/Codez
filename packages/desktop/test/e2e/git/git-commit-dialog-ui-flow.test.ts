@@ -31,9 +31,9 @@ const TID_GIT_COMMIT_DIALOG = "git-commit-dialog";
 const TID_GIT_COMMIT_GENERATE_BUTTON = "git-commit-generate-button";
 const TID_GIT_COMMIT_INCLUDE_UNSTAGED = "git-commit-include-unstaged";
 const TID_GIT_COMMIT_MESSAGE_INPUT = "git-commit-message-input";
-const GIT_FIXTURE_FILE = join(".zcode-e2e", "git-commit-dialog", "tracked-file.md");
+const GIT_FIXTURE_FILE = join(".codez-e2e", "git-commit-dialog", "tracked-file.md");
 const GIT_FIXTURE_STAGED_FILE = join(
-  ".zcode-e2e",
+  ".codez-e2e",
   "git-commit-dialog",
   "staged-file.md",
 );
@@ -101,10 +101,10 @@ async function prepareGitRepositoryFixture(): Promise<void> {
   const fixturePath = join(DEFAULT_WORKSPACE, GIT_FIXTURE_FILE);
   await mkdir(dirname(fixturePath), { recursive: true });
   await execGit("git", ["init", "-q"], { cwd: DEFAULT_WORKSPACE });
-  await execGit("git", ["config", "user.email", "zcode-e2e@example.invalid"], {
+  await execGit("git", ["config", "user.email", "codez-e2e@example.invalid"], {
     cwd: DEFAULT_WORKSPACE,
   });
-  await execGit("git", ["config", "user.name", "ZCode E2E"], {
+  await execGit("git", ["config", "user.name", "Codez E2E"], {
     cwd: DEFAULT_WORKSPACE,
   });
   await writeFile(fixturePath, "baseline\n", "utf8");

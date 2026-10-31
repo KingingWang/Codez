@@ -4,7 +4,7 @@ import {
   TID_V4_COMPOSER_SEND,
   TID_CHAT_ATTACHMENT_BUTTON,
   TID_CHAT_ATTACHMENT_MENU_ITEM,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { DEFAULT_WORKSPACE, clearAppData } from "../../../helpers/desktop-app.js";
 import {
   assertUpstreamRequestCapture,

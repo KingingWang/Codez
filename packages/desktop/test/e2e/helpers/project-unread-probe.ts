@@ -1,5 +1,5 @@
-import { BufferReader, BufferWriter, deserialize, serialize, VSBuffer } from "@zcode/rpc";
-import { ServiceChannels } from "@zcode/shared";
+import { BufferReader, BufferWriter, deserialize, serialize, VSBuffer } from "@codez/rpc";
+import { ServiceChannels } from "@codez/shared";
 
 interface ProjectUnreadProbe {
   held: number[] | null;

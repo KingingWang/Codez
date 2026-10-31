@@ -1,6 +1,6 @@
 /* eslint-disable max-lines */
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import type { ZCodeProvider } from "@zcode/shared";
+import type { CodezProvider } from "@codez/shared";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { createPortal } from "react-dom";
 import { PaletteIcon, WandSparkles } from "lucide-react";
@@ -15,7 +15,7 @@ import {
   KEY_ESCAPE_COMMAND,
   KEY_TAB_COMMAND,
 } from "lexical";
-import { useZCodeIntl } from "../i18n/IntlProvider.js";
+import { useCodezIntl } from "../i18n/IntlProvider.js";
 import {
   extractActivePromptInputTrigger,
   getActivePromptInputTokenTailLength,
@@ -54,7 +54,7 @@ import {
   type ActivePromptInputTokenSnapshot,
 } from "./activePromptInputToken.js";
 import { getCurrentTextNodeSelection } from "./mentionHelpers.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 
 interface MentionPluginProps {
   container?: HTMLElement | null;
@@ -143,10 +143,10 @@ export function MentionPlugin({
   container,
   disabled = false,
   onWhiteboardMentionSelected,
-}: MentionPluginProps & { provider: ZCodeProvider }) {
+}: MentionPluginProps & { provider: CodezProvider }) {
   const [editor] = useLexicalComposerContext();
-  const { intl } = useZCodeIntl();
-  const draftProjectId = useZCodeSessionStore(
+  const { intl } = useCodezIntl();
+  const draftProjectId = useCodezSessionStore(
     (state) => state.getWorkspaceState(workspacePath, workspaceIdentity).draftProjectId,
   );
   const [activeTrigger, setActiveTrigger] = useState<ActivePromptInputTrigger | null>(null);

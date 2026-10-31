@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { create } from "zustand";
-import type { ISettingService } from "@zcode/services";
-import { USER_INSTRUCTIONS_MAX_BYTES } from "@zcode/shared";
+import type { ISettingService } from "@codez/services";
+import { USER_INSTRUCTIONS_MAX_BYTES } from "@codez/shared";
 import {
   TID_SETTINGS_PERSONALIZATION_CANCEL,
   TID_SETTINGS_PERSONALIZATION_EDITOR,
   TID_SETTINGS_PERSONALIZATION_SAVE,
   TID_SETTINGS_PERSONALIZATION_SIZE_HINT,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { Button } from "@/components/ui/button.js";
 import { toast } from "@/components/ui/toast.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { SettingsFormActions } from "@/settings/SettingsFormActions.js";
 import { SettingsFormTextarea } from "@/settings/SettingsFormTextarea.js";
 import { logger } from "@/logger.js";
@@ -125,7 +125,7 @@ const usePersonalizationDraftStore = create<PersonalizationDraftState>((set, get
 
 /**
  * 个性化（用户自定义指令）编辑页，单层直达：标题（框架渲染）→ 说明 → 直接铺在页面上的编辑器。
- * 唯一事实源是 `~/.zcode/AGENTS.md`（CLI 用户级默认指令，注入所有会话）。
+ * 唯一事实源是 `~/.codez/AGENTS.md`（CLI 用户级默认指令，注入所有会话）。
  * 仅桌面本地入口渲染编辑器（Web 远控给本地端指引，不发起任何读写）。
  * 显式「保存/取消」：保存仅脏态且未超限可用，取消丢弃修改恢复基线；Ctrl/Cmd+S 等价保存。
  * 表单状态在模块级 store，保存中切走分区后写入失败草稿仍可恢复重试。
@@ -151,7 +151,7 @@ export function PersonalizationSection({
 }
 
 function LocalOnlyPersonalizationHint() {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   return (
     <p className="text-ui-base leading-6 text-foreground-subtle">
       {intl.formatMessage({ id: "settings.personalization.localOnly" })}
@@ -164,7 +164,7 @@ function DesktopPersonalizationEditor({
 }: {
   settingService: PersonalizationSettingService;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const readState = usePersonalizationDraftStore((state) => state.readState);
   const baseline = usePersonalizationDraftStore((state) => state.baseline);
   const draft = usePersonalizationDraftStore((state) => state.draft);

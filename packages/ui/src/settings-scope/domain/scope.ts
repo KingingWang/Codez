@@ -1,4 +1,4 @@
-import { remoteHostIdFromWorkspaceIdentity } from "@zcode/shared";
+import { remoteHostIdFromWorkspaceIdentity } from "@codez/shared";
 import { getWorkspaceSourceServerId } from "@/conversation-workspace-target/sourceIdentity.js";
 import { formatRemoteDeviceName } from "@/lib/remoteConnectionPresentation.js";
 import { getWorkspaceKey } from "@/lib/workspaceKey.js";

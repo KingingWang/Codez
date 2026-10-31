@@ -4,7 +4,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clickTestIdByDom, readSettings, waitForTestIdByDom } from "./desktop-app.js";
 import {
   readRemoteTabSnapshot,

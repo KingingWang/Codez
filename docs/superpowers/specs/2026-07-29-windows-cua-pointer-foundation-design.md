@@ -6,18 +6,18 @@
 >
 > 范围：Windows 本地 desktop continuous 源码开发链路
 >
-> 关联仓库：`z-code`、`C:\Users\dev\zcode-cua`
+> 关联仓库：`z-code`、`C:\Users\dev\codez-cua`
 
 ## 1. 背景
 
 Windows CUA Phase 1 已经在源码开发环境中完成以下闭环：
 
-- ZCode local Host 按需启动独立 Windows Helper；
+- Codez local Host 按需启动独立 Windows Helper；
 - Helper 使用随机 named pipe 和 bearer token；
 - 官方 CUA plugin 通过 Host authority 获得 broker 凭据；
 - UIA 可以列举应用和窗口、观察元素树、执行已支持的语义动作；
 - `open_application`、元素/坐标点击和键盘输入可以在 Notepad 真机链路工作；
-- Helper 停止、重启和 ZCode 退出不会遗留可继续接受请求的旧 pipe。
+- Helper 停止、重启和 Codez 退出不会遗留可继续接受请求的旧 pipe。
 
 现有 30 个 MCP 工具中，Windows native addon 尚未导出
 `moveTo`、`scrollAt`、`drag`、`mouseDown` 和 `mouseUp`，所以
@@ -102,7 +102,7 @@ MCP pointer tool
   | resolve target -> screen point + app_ref
   | reject missing/mismatched scope
   v
-official zcode-cua plugin
+official codez-cua plugin
   |
   | broker action RPC
   | { point/start/end, app_ref, session_key, ... }
@@ -360,7 +360,7 @@ TERMINAL
 
 ## 12. 强制验证
 
-`zcode-cua`：
+`codez-cua`：
 
 ```powershell
 pnpm typecheck

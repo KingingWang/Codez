@@ -7,7 +7,7 @@
   "dialog": {
     "hero": {
       "type": "interactive_bundle",
-      "runtime": "zcode-hero-sandbox-v1",
+      "runtime": "codez-hero-sandbox-v1",
       "viewport": {
         "aspectRatio": "4:3"
       },

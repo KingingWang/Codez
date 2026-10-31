@@ -41,7 +41,7 @@ describe("项目软删除与应用退出 E2E", () => {
     await waitForWorkspaceApp(active, 30000);
     await waitForRestoredProjects(workspacePaths, 30000);
     await openWorkspaceDraftFromSidebar(removable);
-    // 本例使用两个专用目录，不能调用强制等待默认 ZCodeProject 的通用准备入口。
+    // 本例使用两个专用目录，不能调用强制等待默认 CodezProject 的通用准备入口。
     await selectUpstreamModel();
     await selectUpstreamThoughtLevel();
     await sendV4Prompt(`${MARKER}: reply exactly ${REPLY}`);
@@ -85,7 +85,7 @@ describe("项目软删除与应用退出 E2E", () => {
         (result) => result.stdout,
         () => "所有跟踪进程已被回收",
       );
-      await writeFile(join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "quit-process-state.txt"), state);
+      await writeFile(join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "quit-process-state.txt"), state);
     }
     const renamed = `${removable}-renamed`;
     // 进程退出屏障之后只操作一次，禁止靠重命名重试掩盖资源未释放。

@@ -5,7 +5,7 @@ import {
   TID_TASK_ITEM,
   TID_V4_SESSION_PANE,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData } from "./helpers/desktop-app.js";
 import {
   E2E_REPLY_TOKEN,
@@ -82,14 +82,14 @@ describe("任务列表归档二次确认 E2E", () => {
 async function useProjectConversationTaskView() {
   await browser.execute(() => {
     localStorage.setItem(
-      "zcode-sidebar-task-preferences",
+      "codez-sidebar-task-preferences",
       JSON.stringify({
         organizeBy: "project",
         sortBy: "updated",
       }),
     );
     localStorage.setItem(
-      "zcode-sidebar-purpose-section-preferences",
+      "codez-sidebar-purpose-section-preferences",
       JSON.stringify({
         projectsExpanded: true,
         conversationsExpanded: true,

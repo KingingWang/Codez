@@ -19,8 +19,8 @@
 
 替代物：per-session 只读 projection store + `apply()`（见 06-ui.md 与 09 §delta），预计新代码 < 1000 行。
 
-> **M5② 收尾状态（2026-07）**：本波次最后残余已清理——`zcodeChatMessages.ts`(3,089) +
-> `zcodeChatMessageHelpers.ts`(781) 删除（TaskChatMessage/TaskChatToolCall 类型 re-home 到
+> **M5② 收尾状态（2026-07）**：本波次最后残余已清理——`codezChatMessages.ts`(3,089) +
+> `codezChatMessageHelpers.ts`(781) 删除（TaskChatMessage/TaskChatToolCall 类型 re-home 到
 > `lib/taskChatMessageTypes.ts`，仅供 ToolCallBlocks/PermissionDialog/treemapping 等保留组件
 > type-only 消费）；bot 广播消息回放改由 v4 conversation 投影承接；TreemappingPane 改读
 > snapshot rows。zustand store 三切片未整体删除，但已剥掉全部死面
@@ -30,7 +30,7 @@
 >   paneLayoutStore），死期 = shell 选中态 v4 化；
 > - 侧栏乐观列表/未读（optimisticTaskListByTaskId/taskUnreadByTaskId/taskListCache/
 >   taskListVersion/groupedDraftTask）：sessions-index 不承载 pin/archive/unread/乐观新建，
->   仍由 legacy zcodeTaskService(sqlite) + 本 store 乐观层供数，死期 = membership 面补齐；
+>   仍由 legacy codezTaskService(sqlite) + 本 store 乐观层供数，死期 = membership 面补齐；
 > - 运行态 taskRuntimeByTaskId + taskUiByTaskId（权限/问答 pending）：bot 广播与
 >   remote shard 多端场景仍写入（useBotBroadcastEffects/remoteWorkspaceSessionRuntime/
 >   useGlobalTaskList），死期 = bot/remote 面 v4 订阅化；
@@ -42,28 +42,28 @@
 
 | 文件 | 行数 | 说明 |
 | --- | --- | --- |
-| `packages/ui/src/store/zcodeSessionStoreTaskSlice.ts` | 2,086 | task/session 运行态 slice |
-| `packages/ui/src/store/zcodeSessionStoreWorkspaceSlice.ts` | 1,223 | workspace 分桶 + "当前 task"单值 |
-| `packages/ui/src/store/zcodeSessionStoreTypes.ts` | 961 | 上述类型 |
-| `packages/ui/src/store/zcodeSessionStoreSelectors.ts` | 471 | 扫数组现算的派生态 |
-| `packages/ui/src/store/zcodeSessionStoreQueueSlice.ts` | 205 | renderer-local queue（新架构 queue 在 CLI projection） |
-| `packages/ui/src/store/zcodeSessionStoreNavigation.ts` | 77 | |
-| `packages/ui/src/store/zcodeSessionStore.ts` | 49 | 入口 |
+| `packages/ui/src/store/codezSessionStoreTaskSlice.ts` | 2,086 | task/session 运行态 slice |
+| `packages/ui/src/store/codezSessionStoreWorkspaceSlice.ts` | 1,223 | workspace 分桶 + "当前 task"单值 |
+| `packages/ui/src/store/codezSessionStoreTypes.ts` | 961 | 上述类型 |
+| `packages/ui/src/store/codezSessionStoreSelectors.ts` | 471 | 扫数组现算的派生态 |
+| `packages/ui/src/store/codezSessionStoreQueueSlice.ts` | 205 | renderer-local queue（新架构 queue 在 CLI projection） |
+| `packages/ui/src/store/codezSessionStoreNavigation.ts` | 77 | |
+| `packages/ui/src/store/codezSessionStore.ts` | 49 | 入口 |
 
 ### 1.2 事件 reduce 成消息时间线的整条链路（lib，约 4,680 行）
 
 | 文件 | 行数 | 说明 |
 | --- | --- | --- |
-| `packages/ui/src/lib/zcodeChatMessages.ts` | 3,089 | 病根本体：renderer 端事件 reducer |
-| `packages/ui/src/lib/zcodeChatMessageHelpers.ts` | 776 | |
-| `packages/ui/src/lib/zcodeChatMessageCleanup.ts` | 50 | |
-| `packages/ui/src/lib/zcodeTimelineIdentity.ts` | 116 | timeline placement 归属推导 |
-| `packages/ui/src/lib/zcodeTimelineRuntime.ts` | 68 | |
+| `packages/ui/src/lib/codezChatMessages.ts` | 3,089 | 病根本体：renderer 端事件 reducer |
+| `packages/ui/src/lib/codezChatMessageHelpers.ts` | 776 | |
+| `packages/ui/src/lib/codezChatMessageCleanup.ts` | 50 | |
+| `packages/ui/src/lib/codezTimelineIdentity.ts` | 116 | timeline placement 归属推导 |
+| `packages/ui/src/lib/codezTimelineRuntime.ts` | 68 | |
 | `packages/ui/src/lib/taskTimelineGroups.ts` | 131 | turn 分组 |
-| `packages/ui/src/lib/zcodeTurnSteerQueue.ts` | 149 | |
+| `packages/ui/src/lib/codezTurnSteerQueue.ts` | 149 | |
 | `packages/ui/src/lib/taskStreamChunkBatch.ts` | 45 | 客户端合批（新架构禁止第二层合并，合并点唯一在 CLI flush） |
 | `packages/ui/src/lib/taskStreamMirrorGap.ts` | 61 | mirror 缺口补偿（缺口唯一动作变为重订阅） |
-| `packages/ui/src/lib/taskRestoreRuntime.ts` / `taskRuntimeDisplayStatus.ts` / `taskRuntimePendingCommands.ts` / `zcodeTaskRuntimeMonitor*.ts` / `zcodeSessionTaskControl.ts` / `zcodeTaskMetaMerge.ts` | 合计约 1,500 | 运行态推导/合并/监控，全部由 projection 的 `control`/`availability` 替代（执行时逐个确认无非 chat 引用后删） |
+| `packages/ui/src/lib/taskRestoreRuntime.ts` / `taskRuntimeDisplayStatus.ts` / `taskRuntimePendingCommands.ts` / `codezTaskRuntimeMonitor*.ts` / `codezSessionTaskControl.ts` / `codezTaskMetaMerge.ts` | 合计约 1,500 | 运行态推导/合并/监控，全部由 projection 的 `control`/`availability` 替代（执行时逐个确认无非 chat 引用后删） |
 
 ### 1.3 stream 事件 hooks 链路（约 6,970 行）
 
@@ -82,13 +82,13 @@
 
 | 文件 | 行数 | 去向 |
 | --- | --- | --- |
-| `packages/ui/src/hooks/useZCodeChatSendPrompt.ts` | 2,185 | 重写为 `sendText` command + optimistic overlay（预计 <200 行） |
+| `packages/ui/src/hooks/useCodezChatSendPrompt.ts` | 2,185 | 重写为 `sendText` command + optimistic overlay（预计 <200 行） |
 | `packages/ui/src/hooks/useChatComposer.ts` | 2,265 | 输入路由判断（startNow/enqueue/guide）改读 projection.inputRouting；编辑器交互部分并入保留的输入组件 |
-| `packages/ui/src/hooks/useZCodeChat.ts` | 1,274 | 订阅生命周期重写为 `subscribe(base)` |
-| `packages/ui/src/hooks/useZCodeChatHistoryActions.ts` | 951 | fork/edit 改为 command，可用性读 row.actions |
+| `packages/ui/src/hooks/useCodezChat.ts` | 1,274 | 订阅生命周期重写为 `subscribe(base)` |
+| `packages/ui/src/hooks/useCodezChatHistoryActions.ts` | 951 | fork/edit 改为 command，可用性读 row.actions |
 | `packages/ui/src/hooks/useChatTaskControlActions.ts` | 589 | stop 等改为 command，可用性读 projection.control |
 | `packages/ui/src/hooks/useChatViewEffects.ts` | 353 | |
-| `packages/ui/src/hooks/zcodeChatShared.ts` | 213 | |
+| `packages/ui/src/hooks/codezChatShared.ts` | 213 | |
 | `packages/ui/src/hooks/useWorkspaceActiveTaskState.ts` | 180 | "全局当前 task"概念在新架构不存在（只有 pane 绑定） |
 | `packages/ui/src/hooks/chatActionHelpers.ts` | 122 | |
 
@@ -111,29 +111,29 @@
 
 ---
 
-## 波次 2：`@zcode/protocol` 重写
+## 波次 2：`@codez/protocol` 重写
 
 ### 2.1 协议本体
 
 | 文件 | 行数 | 处置 |
 | --- | --- | --- |
-| `packages/shared/src/zcode-protocol/index.ts` | 3,788 | 删除重写。新协议 = topic 帧信封 + ConversationSnapshot/Row/Delta + command/query（见 09、10），并且**只放 schema 类型 + coalesce 纯函数，运行时不进这个包** |
+| `packages/shared/src/codez-protocol/index.ts` | 3,788 | 删除重写。新协议 = topic 帧信封 + ConversationSnapshot/Row/Delta + command/query（见 09、10），并且**只放 schema 类型 + coalesce 纯函数，运行时不进这个包** |
 
 ### 2.2 shared 包内衍生类型（旧协议的影子，随之处理）
 
 | 文件 | 处置 |
 | --- | --- |
 | `packages/shared/src/task-realtime.ts` | 删（owner/mirror/deliveryKind 语义整体消灭） |
-| `packages/shared/src/zcode-task-types.ts` | 删/并入新 schema（task→session 概念收敛） |
-| `packages/shared/src/zcode-session-visible-content.ts` | 删（"可见内容"推导进 CLI projection） |
-| `packages/shared/src/zcode-session-task-status.ts` | 删（状态推导进 projection.control） |
-| `packages/shared/src/zcode-agent-model-state.ts` | 评估：模型状态若进 projection A 区则删 |
+| `packages/shared/src/codez-task-types.ts` | 删/并入新 schema（task→session 概念收敛） |
+| `packages/shared/src/codez-session-visible-content.ts` | 删（"可见内容"推导进 CLI projection） |
+| `packages/shared/src/codez-session-task-status.ts` | 删（状态推导进 projection.control） |
+| `packages/shared/src/codez-agent-model-state.ts` | 评估：模型状态若进 projection A 区则删 |
 
 ### 2.3 爆炸半径（重写协议后必须跟着改的消费方）
 
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-entrypoint.ts` 及 CLI 侧协议出入口：改为产出 ProductProjection 帧 + command inbox（02、03 的实现落点）。
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-entrypoint.ts` 及 CLI 侧协议出入口：改为产出 ProductProjection 帧 + command inbox（02、03 的实现落点）。
 - CLI 侧 `protocolEventSequences` 等 per-client seq 状态表：按 01-topology 上移/重构。
-- 相关测试：`packages/shared/test/zcodeProtocol.test.ts`、`apps/zcode-cli/packages/bootstrap/tests/zcode-protocol*.test.ts` 等随新 schema 重写；黄金测试（同一事件序列 × 两 profile 终态一致）作为新增测试主干。
+- 相关测试：`packages/shared/test/codezProtocol.test.ts`、`apps/codez-cli/packages/bootstrap/tests/codez-protocol*.test.ts` 等随新 schema 重写；黄金测试（同一事件序列 × 两 profile 终态一致）作为新增测试主干。
 
 ---
 
@@ -144,13 +144,13 @@
 | 文件 | 行数 | 处置 |
 | --- | --- | --- |
 | `packages/desktop/src/main/taskRealtimeBus.ts`（+ `packages/desktop/test/taskRealtimeBus.test.ts`） | 1,056 | 删。owner/lease/mirror 整层消灭（01-topology），所有客户端对等订阅 |
-| `packages/client/src/webRemoteControlRelayProtocol.ts` | 217 | 删。全系统只留 `@zcode/rpc` 一层帧级可靠性（05） |
+| `packages/client/src/webRemoteControlRelayProtocol.ts` | 217 | 删。全系统只留 `@codez/rpc` 一层帧级可靠性（05） |
 | `packages/desktop/src/main/webRemoteControlManager.ts` | 1,321 | 大改：去掉 base64 双层编码、bridgeSessionId 易失身份，退化为字节转发 + host attachment 调度 |
 | `packages/web/src/main.tsx` | 2,141 | 大改：三条 web 链路收敛为"连一个 endpoint"（01 部署收敛） |
-| `packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts` | 5,871 | 删。task→session 适配层的存在理由（旧 UI 讲 task 语言）随旧 UI 一起消失。**注意顺序：新 UI 可用之前它必须活着**，是波次 3 里最后删的 |
+| `packages/services/src/codez-agent/codezTaskServiceAdapter.ts` | 5,871 | 删。task→session 适配层的存在理由（旧 UI 讲 task 语言）随旧 UI 一起消失。**注意顺序：新 UI 可用之前它必须活着**，是波次 3 里最后删的 |
 | 旧协议生成目录 | — | 陈旧构建产物，清理 + 重新构建即可 |
 
-`@zcode/rpc`（`packages/rpc/src`，3,119 行）**不删**，打两个补丁：暴露拥塞信号（`unacknowledgedBytes` + `onSaturated/onDrained`）、重放缓冲加界（见 05）。
+`@codez/rpc`（`packages/rpc/src`，3,119 行）**不删**，打两个补丁：暴露拥塞信号（`unacknowledgedBytes` + `onSaturated/onDrained`）、重放缓冲加界（见 05）。
 
 ---
 
@@ -164,7 +164,7 @@ M5 ③-4 是删波次 2/3 的最终收口波：把前序测绘（③-2/③-3）�
 
 | 词 | 删除面 | 备注 |
 | --- | --- | --- |
-| `session/steer` | 全链（wire/op/agentService/sessionService/steerPrompt facade stub/ZCodeTurnSteerSendResult 类型） | adapter steerPrompt 本就返回 unsupported |
+| `session/steer` | 全链（wire/op/agentService/sessionService/steerPrompt facade stub/CodezTurnSteerSendResult 类型） | adapter steerPrompt 本就返回 unsupported |
 | `session/rewind` | 全链 + adapter `rewindTurn`（全仓零调用） | v4 edit/retry 经原生 handler 直发 `/rewind conversation <messageId>` slash command |
 | `session/rewindCascade` | 全链 | |
 | `session/previewFileRewind` | 全链 + UI `MessageFileRewindDialog` 整删、`MessageChangeSummaryPanel` 撤销 props 收敛 `onToggleFiles` | core workspace file-rewind 机制保留（`/rewind` slash command 消费） |
@@ -178,20 +178,20 @@ M5 ③-4 是删波次 2/3 的最终收口波：把前序测绘（③-2/③-3）�
 
 **同波删除的 ③-2 标死写路径死面（非词表词，但同为旧协议面）**：
 
-- `zcodeSessionService` 死 pass-through 六件：`sendPrompt`/`compactSession`/`goalSession`/`stopSession`/`cancelBackgroundTask`/`respondPermission`（生产调用清零复核；bots 写路径走 zcodeTaskService facade → v4 命令，renderer 走 dispatchCommand）。
-- `zcodeAgentService` 死客户端方法四件：`respondPermission`/`respondUserInput`（收敛 v4 resolveInteraction；反向请求登记与 permission.request/userInput.request 事件广播保留）、`stopSession`/`cancelBackgroundTask`（收敛 v4 stop/cancelBackgroundWork；wire case 留兼容）。
-- 旧 UI 控制孤儿复核：`zcodeSessionTaskControl`/`zcodeBackgroundTaskControl` 全仓零残余（③-2 已删净，本波仅复核）。
+- `codezSessionService` 死 pass-through 六件：`sendPrompt`/`compactSession`/`goalSession`/`stopSession`/`cancelBackgroundTask`/`respondPermission`（生产调用清零复核；bots 写路径走 codezTaskService facade → v4 命令，renderer 走 dispatchCommand）。
+- `codezAgentService` 死客户端方法四件：`respondPermission`/`respondUserInput`（收敛 v4 resolveInteraction；反向请求登记与 permission.request/userInput.request 事件广播保留）、`stopSession`/`cancelBackgroundTask`（收敛 v4 stop/cancelBackgroundWork；wire case 留兼容）。
+- 旧 UI 控制孤儿复核：`codezSessionTaskControl`/`codezBackgroundTaskControl` 全仓零残余（③-2 已删净，本波仅复核）。
 
 **存活 45 词（留存账：消费面 + 死期）**：
 
 | 词组 | 消费面（阻塞删除的活面） | 死期 |
 | --- | --- | --- |
-| `session/create·resume·list·read·messages·events·subscribe·close`（8） | 生命周期/读路径：zcodeSessionService（desktop 历史恢复/草稿）、adapter replayable 读路径、`session/subscribe` 的最后消费点 = adapter `onDynamicTaskEvent`（③-2 标注） | 波次 3（replayable v4 读路径 + adapter 退役） |
+| `session/create·resume·list·read·messages·events·subscribe·close`（8） | 生命周期/读路径：codezSessionService（desktop 历史恢复/草稿）、adapter replayable 读路径、`session/subscribe` 的最后消费点 = adapter `onDynamicTaskEvent`（③-2 标注） | 波次 3（replayable v4 读路径 + adapter 退役） |
 | `session/send` | adapter 附件回退分支（v4 sendText 的 attachmentRef 上传/寄存命令面未建模） | 附件命令面波次 |
 | `session/stop`、`session/cancelBackgroundTask` | **客户端方法已删**；仅剩 CLI wire case 兼容（transport bypass 名单引用 sessionStop） | 旧词删除波次（波次 3）一并摘 |
 | `session/fork` | op+schema = v4 fork 执行面（过渡钩子） | 波次 2（fork record 原生化） |
 | `session/compact`、`session/goal` | adapter replayable facade（旧 stateRevision 与 v4 conversation revision 两套 CAS 计数器不可互换，③-2 评估） | replayable v4 读路径波次 |
-| `session/setModel`、`session/setThoughtLevel`、`session/setMode` | replayable facade / zcodeSessionService（v4 switchModelConfig 缺 runtimeModel 凭据解析；setMode 的 auto 值域残留）（③-3 标注） | v4 模型目录/runtimeModel 命令面波次 |
+| `session/setModel`、`session/setThoughtLevel`、`session/setMode` | replayable facade / codezSessionService（v4 switchModelConfig 缺 runtimeModel 凭据解析；setMode 的 auto 值域残留）（③-3 标注） | v4 模型目录/runtimeModel 命令面波次 |
 | `session/updateRuntimeModelConfig` | provider runtime headers 热路径（请求期安全校验 headers/自定义 provider 直连） | 同上 |
 | `workspace/*` 6 词 + `workspace/generateText`（7） | CLI workspaceModelCatalogs 是 workspace 运行态事实源；generateText 的 LLM 执行面在 CLI（commit message/repoWiki）（③-3 评估：workspace 域命令需独立信封） | v4 workspace 命令/查询面波次 |
 | `mcp/list`、`plugins/*`（13） | 平台能力面：settings UI 经 platform 薄 service 消费（③-3 下沉），与 conversation 域无关 | 波次 3 重评（平台面 v4 化独立立项） |
@@ -205,8 +205,8 @@ M5 ③-4 是删波次 2/3 的最终收口波：把前序测绘（③-2/③-3）�
 | 簇 | 提交 | 净删（行） |
 | --- | --- | --- |
 | M5② store 收尾第一步（ChatInputToolbar/PlanModeToolPanel 等死簇） | `44a8e5e5f` | −12,013 |
-| M5② zcodeSessionStore 死面 + zcodeChatMessages 本体 | `ac1b30356` | −11,752 |
-| M5② useZCodeConfig/useWorkspacePrepare 死路径 + 类型 re-home | `e0cee071c` | −2,592 |
+| M5② codezSessionStore 死面 + codezChatMessages 本体 | `ac1b30356` | −11,752 |
+| M5② useCodezConfig/useWorkspacePrepare 死路径 + 类型 re-home | `e0cee071c` | −2,592 |
 | M5② bot 广播消息面退役 | `0ac436b55` | −94 |
 | ③-2 旧协议 UI 控制孤儿 | `70e887aad` | −506 |
 | ③-2 onDynamicSessionEvent 清扫 | `2e5e716c0` | −298 |
@@ -219,14 +219,14 @@ M5 ③-4 是删波次 2/3 的最终收口波：把前序测绘（③-2/③-3）�
 
 | 文件 | 行数 | 死期 |
 | --- | --- | --- |
-| `packages/shared/src/zcode-protocol/index.ts` | 2,450 | 波次 3 整删（词表 45 词见上表） |
-| `packages/shared/src/zcode-protocol-legacy-types.ts` | 559 | 波次 3（承重类型中立文件，③b re-home 产物） |
-| `packages/shared/src/zcode-task-types.ts` + `zcode-task-types-core.ts` | 230 + 1,107 | 波次 3（task→session 概念收敛） |
+| `packages/shared/src/codez-protocol/index.ts` | 2,450 | 波次 3 整删（词表 45 词见上表） |
+| `packages/shared/src/codez-protocol-legacy-types.ts` | 559 | 波次 3（承重类型中立文件，③b re-home 产物） |
+| `packages/shared/src/codez-task-types.ts` + `codez-task-types-core.ts` | 230 + 1,107 | 波次 3（task→session 概念收敛） |
 | `packages/shared/src/task-realtime.ts` + `task-realtime-core.ts` | 177 + 474 | 波次 3（stream-mirror 多端镜像退役） |
-| `packages/services/src/zcode-agent/zcodeAgentService.ts` + `zcodeAgent.ts` | 3,375 + 464 | 波次 3（读路径/生命周期/配置面/平台面） |
-| `packages/services/src/zcode-session/zcodeSessionService.ts` + `zcodeSession.ts` | 512 + 240 | 波次 3（生命周期/desktop-continuous 面收口） |
-| `packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts` + `session/zcodeTaskService.ts` | 5,592 + 734 | 波次 3 最后删（replayable facade + bots 写路径宿主） |
-| `apps/zcode-cli/.../zcode-protocol/server-operations.ts` + `server.ts` + `plugins.ts` | 3,808 + 455 + 402 | 波次 3（wire 面整删；fork op 段随波次 2 先摘） |
+| `packages/services/src/codez-agent/codezAgentService.ts` + `codezAgent.ts` | 3,375 + 464 | 波次 3（读路径/生命周期/配置面/平台面） |
+| `packages/services/src/codez-session/codezSessionService.ts` + `codezSession.ts` | 512 + 240 | 波次 3（生命周期/desktop-continuous 面收口） |
+| `packages/services/src/codez-agent/codezTaskServiceAdapter.ts` + `session/codezTaskService.ts` | 5,592 + 734 | 波次 3 最后删（replayable facade + bots 写路径宿主） |
+| `apps/codez-cli/.../codez-protocol/server-operations.ts` + `server.ts` + `plugins.ts` | 3,808 + 455 + 402 | 波次 3（wire 面整删；fork op 段随波次 2 先摘） |
 | `packages/desktop/src/main/taskRealtimeBus.ts` | 1,056 | 波次 3（owner/lease/mirror 整层消灭） |
 | `packages/client/src/webRemoteControlRelayProtocol.ts` | 217 | 波次 3 |
 | `packages/desktop/src/main/webRemoteControlManager.ts` | 1,373 | 波次 3 大改（字节转发 + attachment 调度） |
@@ -245,7 +245,7 @@ M5 ③-4 是删波次 2/3 的最终收口波：把前序测绘（③-2/③-3）�
   6. v4 模型目录/runtimeModel 命令面 → 删 setModel/setThoughtLevel/setMode/updateRuntimeModelConfig；
   7. v4 workspace 命令/查询面（独立信封设计）→ 删 workspace 7 词；
   8. 平台能力面载体迁移（plugins/mcp 13 词，独立立项）；
-  9. 上述清零后：usage/stop/cancelBackgroundTask wire 兼容 case 摘除 → 词表清零 → `zcode-protocol/index.ts`/legacy-types/server-operations/server 整删；taskRealtimeBus/relayProtocol/webRemoteControlManager/web main 收敛；`zcodeTaskServiceAdapter` 最后删。
+  9. 上述清零后：usage/stop/cancelBackgroundTask wire 兼容 case 摘除 → 词表清零 → `codez-protocol/index.ts`/legacy-types/server-operations/server 整删；taskRealtimeBus/relayProtocol/webRemoteControlManager/web main 收敛；`codezTaskServiceAdapter` 最后删。
 
 ---
 
@@ -309,11 +309,11 @@ conversation 相关 E2E 的既有工作流继续生效：**新写任何 case 前
 
 > 执行节奏的权威版本是 [08-phasing.md](./08-phasing.md) 的 M0–M5 里程碑（本节 1–6 步与之对应：步骤 1≈M1、2≈M2、3–4≈M3、5≈M4/M5）。波次 1 的删除动作发生在 M3 分支上；波次 2/3 发生在 M5。
 
-1. **先立新协议**：按 09/10 落 `@zcode/protocol` 新 schema + coalesce 纯函数 + 类型测试（此时新旧并存，旧代码尚未删）。
+1. **先立新协议**：按 09/10 落 `@codez/protocol` 新 schema + coalesce 纯函数 + 类型测试（此时新旧并存，旧代码尚未删）。
 2. **CLI 侧产出投影**：ProductProjection reducer + command inbox + `subscribe(base)`（02/03/04），黄金测试全过。
 3. **新 UI 骨架起步**：SessionDataLayer + `apply()` + 单 pane Timeline（虚拟滚动）先跑通一条"订阅→渲染→发送"竖切。
 4. **删除波次 1**：新竖切可用后整批删 UI 旧链路（本清单 1.1–1.6），同批把保留组件的 store 引用剥掉。
-5. **删除波次 2/3**：删旧协议本体与衍生类型、传输层收敛；`zcodeTaskServiceAdapter` 最后删。
+5. **删除波次 2/3**：删旧协议本体与衍生类型、传输层收敛；`codezTaskServiceAdapter` 最后删。
 6. 每一波删除后跑 `pnpm typecheck && pnpm lint`；conversation e2e 按上节「E2E 与测试资产处置」执行——case catalog 语义不变，旧 spec 降级 manual-review 显式标记（不静默跳过），新证据按黄金测试/WDIO 双轨重建。
 
 风险提示：本路径放弃了 08-phasing 的双写期，删除波次 1 到新 UI 可用之间桌面端 chat 不可用，**必须在独立分支上完成到竖切可用再合并**；手机远控与 web 在波次 3 完成前保持旧链路不动。

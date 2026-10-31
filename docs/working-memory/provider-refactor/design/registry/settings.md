@@ -166,7 +166,7 @@ new-provider-3
 首尾空格且全局唯一。内部状态和跨进程协议使用结构化 `ModelSelection`；Prompt CLI 的
 `provider/model` 只是在 Entry 边界的人类输入简写。
 
-ZCode Built-in 与 Account Built-in Provider 的 ID 由 ZCode Built-in Provider Config 管理，设置页不可重命名。
+Codez Built-in 与 Account Built-in Provider 的 ID 由 Codez Built-in Provider Config 管理，设置页不可重命名。
 它们仍可由 Built-in Config 提供只读 `label` 和品牌信息；`providerId` 始终是执行身份与无 label 时的
 展示回退。
 
@@ -319,7 +319,7 @@ Built-in 推断来源。锁定 Text 只表达不可编辑。
 新增 Personal Model 时，Host 的 Model Config Resolution 是该 `providerId/modelId/api.type` 的继承基线。Renderer
 将数字和 JSON 作为 placeholder，将格式和能力布尔值缓存为表单展示状态；展示缓存不属于 Personal Config，
 迟到的 Resolution 也不得覆盖用户已经触碰的字段。保存时仍按继承基线生成稀疏 Personal Overlay，禁止把
-ZCode Built-in Model Config Rules 的默认事实反向物化。
+Codez Built-in Model Config Rules 的默认事实反向物化。
 
 Provider/Model 保存与模型连接反馈使用应用既有窗口级 Toast，固定在 viewport 底部；不同对象向上堆叠，同一对象
 的 saving、success、failure 按 key 替换。保存或连接失败比成功停留更久，并提供必要的重试或关闭入口。模型级消息
@@ -419,7 +419,7 @@ Entitlement / Usage / Reset / Model Request
 动态账号事实由目标 Environment 的账号服务在调用时解析。Team usage 列表可以把已订阅产品响应与静态
 `team-coding-plan` mode 组合成查询 scope，但不得把该 scope 写回 Personal Config、Account Overlay 或 Registry。
 
-测试使用与 Agent 相同的流式 Adapter 路径，固定发送两条消息：system `You are ZCode connectivity probe.`，user `hi`，并消费完整流。文本、角色、顺序是白名单相关契约，不添加历史、工具、额外 system 或国际化文本（Todo 91）；不影响其他辅助请求。连接测试独立使用 1 Token 输出预算，Reasoning 显式使用有序档位的首项，不复用辅助内容生成的 5,000 Token 预算（Todo144）。正常 finish（含 length）即成功，不要求正文；流异常或缺少 finish 仍失败。测试路径不依赖已经退役的 Option Default，也不假设 Model 已绑定隐式默认 Options。超时、鉴权、预算参数拒绝、模型不存在、限流、服务端错误和响应解析错误由正式 Model/Adapter 错误边界归一化，再投影为设置页结果，不自动增加预算或更换模型。
+测试使用与 Agent 相同的流式 Adapter 路径，固定发送两条消息：system `You are Codez connectivity probe.`，user `hi`，并消费完整流。文本、角色、顺序是白名单相关契约，不添加历史、工具、额外 system 或国际化文本（Todo 91）；不影响其他辅助请求。连接测试独立使用 1 Token 输出预算，Reasoning 显式使用有序档位的首项，不复用辅助内容生成的 5,000 Token 预算（Todo144）。正常 finish（含 length）即成功，不要求正文；流异常或缺少 finish 仍失败。测试路径不依赖已经退役的 Option Default，也不假设 Model 已绑定隐式默认 Options。超时、鉴权、预算参数拒绝、模型不存在、限流、服务端错误和响应解析错误由正式 Model/Adapter 错误边界归一化，再投影为设置页结果，不自动增加预算或更换模型。
 
 测试成功表示保存后的正式 Model 能够完成一次真实请求，而不只是某个独立 HTTP Probe 收到了成功状态码。Start Plan、Coding Plan 和普通 API Provider 使用同一入口；它们的差异结束在 Provider、Request Auth 和 Adapter 内部。
 

@@ -97,7 +97,7 @@ UI pauseGoal/resumeGoal -> Host -> CLI command handler -> target state event
 - 进程区块标题行可折叠，左侧仅标题和箭头可点击；标题行最右侧始终展示 `completed/total`；收起时参考 Goal 标题右侧的辅助信息样式追加 `· 状态图标`，例如 `3/4 · <icon>`，右箭头同样仅在标题内容区域 hover / focus 时显示。
 - 进程 model 必须保留完整 todo snapshot，renderer 只应用上述用户可逆的聚焦窗口，不得在投影层丢弃项目。区块内容最多占 `20rem`，必须能容纳 6 个各占两行文案的 Todo；更长文案或展开分组后在进程区块内部滚动，标题和 `completed/total` 始终固定可见。
 
-goal todo 和普通 todo 都是 `ZCodePlanStep[]`；goal todo 的轮次语义只用于 Goal prompt 行，不再影响进程区块的列表结构。
+goal todo 和普通 todo 都是 `CodezPlanStep[]`；goal todo 的轮次语义只用于 Goal prompt 行，不再影响进程区块的列表结构。
 
 ### 终端与智能体
 

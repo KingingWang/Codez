@@ -2,8 +2,8 @@
 
 ## 目标
 
-ZCode 需要最大努力兼容 Claude Code Marketplace 插件，但不能把 Claude 的
-高权限运行时语义直接带入当前 ZCode runtime。第一阶段先实现 marketplace
+Codez 需要最大努力兼容 Claude Code Marketplace 插件，但不能把 Claude 的
+高权限运行时语义直接带入当前 Codez runtime。第一阶段先实现 marketplace
 生命周期、安装态、启用态、兼容诊断和低风险资源投影；缺少安全模型或运行基础
 的能力必须可识别、可展示、可诊断，但不能静默运行。
 
@@ -20,7 +20,7 @@ ZCode 需要最大努力兼容 Claude Code Marketplace 插件，但不能把 Cla
   保存启用态。
 - discovery 读取 installed cache roots，并保留已有 `plugins.dirs` inline 插件。
 - 兼容 Claude Marketplace 默认结构：优先读取 `.claude-plugin/marketplace.json`，
-  同时保留根目录 `marketplace.json` 作为 ZCode/旧数据 fallback。
+  同时保留根目录 `marketplace.json` 作为 Codez/旧数据 fallback。
 - 输出 compatibility diagnostics，包含 unsupported / diagnostic-only 能力；disabled
   插件也必须能在管理页展示这些诊断，不能只在 enabled 后才发现。
 
@@ -30,7 +30,7 @@ ZCode 需要最大努力兼容 Claude Code Marketplace 插件，但不能把 Cla
   defaults。`zcode-plugins-official` 和 `claude-plugins-official` 安装产物可注入
   hooks；其他第三方 marketplace 插件的 `hooks` V1 默认只解析和诊断，不注入
   runtime，后续必须有显式信任/权限门后才能启用。
-- 支持 Claude/ZCode 模板变量别名。
+- 支持 Claude/Codez 模板变量别名。
 - MCP server key 使用插件命名空间，避免多个插件声明同名 server 时覆盖。
 - sensitive `userConfig` 只能进入 MCP env / credential / runtime secret path，
   不能进入模型可见 command、skill 或 markdown 内容。
@@ -73,14 +73,14 @@ marketplace id，例如 `claude-plugins-official`。
 ## 存储布局
 
 ```text
-~/.zcode/cli/plugins/
+~/.codez/cli/plugins/
   known_marketplaces.json
   installed_plugins.json
   marketplaces/
     {marketplace}/marketplace.json
   cache/
     {marketplace}/{plugin}/{version}/
-      .zcode-plugin/plugin.json
+      .codez-plugin/plugin.json
       .claude-plugin/plugin.json
       .mcp.json
       skills/
@@ -92,7 +92,7 @@ marketplace id，例如 `claude-plugins-official`。
 `cache` 是可替换安装产物，`data` 是插件持久数据。卸载插件时默认移除安装
 产物，不删除 `data`；只有显式 purge 才删除 `data`。
 
-ZCode 自己的 `zcode-plugins-official` 是唯一官方市场：随安装包 seed 的内置目录分片与
+Codez 自己的 `zcode-plugins-official` 是唯一官方市场：随安装包 seed 的内置目录分片与
 官方 CDN source 下发的目录分片按插件名合并为同一个 marketplace manifest，冲突时
 CDN 市场条目优先。Claude 官方 `claude-plugins-official` 只内置 marketplace source，
 第一次展示、安装或校验时按需刷新 catalog；刷新失败必须返回诊断并保留插件管理页可用，
@@ -110,7 +110,7 @@ CDN 市场条目优先。Claude 官方 `claude-plugins-official` 只内置 marke
 - 设置页首次加载、市场详情、校验等会懒加载 Claude catalog 的路径同样受 30 秒预算保护；
   已有本地 manifest 时继续离线读取，不为概览读取强制联网。
 - 所有 marketplace catalog、Claude 图标和 GitHub Archive 的 HTTP 请求必须经过统一的
-  Web HTTP egress adapter，遵守 `ZCODE_HTTP_PROXY` / `ZCODE_NO_PROXY`，并在 Agent 封存
+  Web HTTP egress adapter，遵守 `CODEZ_HTTP_PROXY` / `CODEZ_NO_PROXY`，并在 Agent 封存
   用户 shell 后回退使用捕获的系统代理；禁止这些路径直接调用未配置代理的原生 `fetch`。
 - 该预算只约束 Claude **marketplace catalog**。用户实际安装的第三方插件源仍按其自身
   source 类型执行，不把 catalog 超时误当作插件安装超时。
@@ -125,7 +125,7 @@ Claude catalog request
 ```
 
 注册 marketplace 时，源仓库/目录的 canonical manifest 位置是
-`.claude-plugin/marketplace.json`；ZCode 本地缓存可继续把规范化后的 manifest
+`.claude-plugin/marketplace.json`；Codez 本地缓存可继续把规范化后的 manifest
 写入 `marketplaces/{marketplace}/marketplace.json`，但读取外部源时不能只认根目录
 `marketplace.json`。
 
@@ -181,7 +181,7 @@ diagnostic-only 能力做可见诊断。
 
 ## 协议接口
 
-新增方法必须在 `packages/shared/src/zcode-protocol/index.ts` 提供 Zod runtime
+新增方法必须在 `packages/shared/src/codez-protocol/index.ts` 提供 Zod runtime
 schema，并在 desktop / web / mobile 复用同一协议边界。
 
 - `plugins/overview`
@@ -234,13 +234,13 @@ Bugfix 约束：`plugins/describe` 的 MCP 与 hook 枚举口径必须对齐真�
 `plugins/list` 和 `plugins/overview` 返回的已发现插件必须包含可序列化的
 `hookDetails` 明细。每条明细按单个 hook 执行项展开，至少包含：
 
-- `event`：Claude/ZCode Hook 事件名，例如 `PreToolUse`、`PostToolUse`、`Stop`。
+- `event`：Claude/Codez Hook 事件名，例如 `PreToolUse`、`PostToolUse`、`Stop`。
 - `matcher`：可选 matcher 字符串；未声明时表示该事件下的默认 matcher。
 - `type`：`command` 或 `process`。
 - `command` / `args`：执行命令及参数。
 - `timeoutMs` / `timeout`、`async`、`shell`、`statusMessage`：原始 hook 配置中
-  ZCode 已识别的运行参数。
-- `sourcePath`：明细来自 `.claude-plugin/plugin.json`、`.zcode-plugin/plugin.json`
+  Codez 已识别的运行参数。
+- `sourcePath`：明细来自 `.claude-plugin/plugin.json`、`.codez-plugin/plugin.json`
   还是 `hooks/hooks.json`。
 - `runnable`：当前 runtime 是否会把该 hook 注入执行。官方 marketplace / inline
   受信插件可以为 `true`；第三方 marketplace 在 V1 默认必须为 `false`，仅诊断展示。
@@ -266,17 +266,17 @@ validate 的扫描深度按目标类型区分：
 
 ## 安全边界
 
-- Plugin agents V1 不运行。当前 ZCode Agent runtime 是 Explore-only，直接接入
+- Plugin agents V1 不运行。当前 Codez Agent runtime 是 Explore-only，直接接入
   Claude plugin agents 会绕过 tool allowlist、permission broker 和隔离策略。
 - sensitive `userConfig` 不允许替换进模型可见文本。
 - sensitive `userConfig` 未接入 credential store 前不允许通过 `plugins/configure`
   明文写入普通 config。
-- 第三方 marketplace hooks 默认不注入 runtime；只有 ZCode 官方、Claude 官方
+- 第三方 marketplace hooks 默认不注入 runtime；只有 Codez 官方、Claude 官方
   marketplace 或显式 inline trusted 插件保持 hook 行为。
 - dependency resolver 默认阻止跨 marketplace dependency。
 - inline command 生成路径必须通过 `resolveInside` 约束在 cache/data root 内。
 - Web/mobile remote 只通过 shared-host/agent protocol 读写插件状态，不在 relay
-  或 main process 下沉 ZCode session/task/plugin runtime 状态。
+  或 main process 下沉 Codez session/task/plugin runtime 状态。
 - 公开 GitHub 来源的无 Git物化、系统 Git fallback 与原子 cache 激活遵循
   [公开 GitHub 插件源无 Git安装规格](./plugin-github-archive-source.md)。已安装插件的 discovery
   只读本地 cache，Marketplace 刷新失败不得影响既有插件运行。

@@ -1,22 +1,22 @@
 /* eslint-disable max-lines -- Source Server transport 在同一适配器内汇合安装、daemon、channel 与 target 生命周期，继续拆分会割裂取消边界。 */
 import { Duplex } from "node:stream";
 import {
-  isPublicZCodeErrorCode,
+  isPublicCodezErrorCode,
   normalizeRemoteConnectionError,
   normalizeRemoteAssetInstallMode,
   sourceServerInstallProgressSchema,
   type SourceServerInstallProgress,
-  type PublicZCodeErrorCode,
+  type PublicCodezErrorCode,
   type RemoteTarget,
-} from "@zcode/shared";
-import type { IRemoteBackend } from "@zcode/server/remote/backend.js";
-import { createRemoteBackend } from "@zcode/server/remote/create-backend.js";
-import { detectRemoteTarTool } from "@zcode/server/remote/remoteAssetPreflight.js";
+} from "@codez/shared";
+import type { IRemoteBackend } from "@codez/server/remote/backend.js";
+import { createRemoteBackend } from "@codez/server/remote/create-backend.js";
+import { detectRemoteTarTool } from "@codez/server/remote/remoteAssetPreflight.js";
 import {
   probeSourceServer,
   SourceServerProbeEnvironmentError,
-} from "@zcode/server/source-server/sourceServerProbe.js";
-import { buildSourceServerReleaseDownloadCommand } from "@zcode/server/source-server/sourceServerReleaseDownload.js";
+} from "@codez/server/source-server/sourceServerProbe.js";
+import { buildSourceServerReleaseDownloadCommand } from "@codez/server/source-server/sourceServerReleaseDownload.js";
 import {
   collectCommand,
   duplexFromStdio,
@@ -26,9 +26,9 @@ import {
   readStructuredCommandError,
   throwIfAborted,
   type RemoteExecResult,
-} from "@zcode/server/source-server/sourceServerTransportRuntime.js";
+} from "@codez/server/source-server/sourceServerTransportRuntime.js";
 
-export type { RemoteExecResult } from "@zcode/server/source-server/sourceServerTransportRuntime.js";
+export type { RemoteExecResult } from "@codez/server/source-server/sourceServerTransportRuntime.js";
 
 export interface SourceServerProbeResult {
   platform: string;
@@ -85,7 +85,7 @@ export interface SourceServerEnsureDaemonOptions {
 export class SourceServerTransportOperationError extends Error {
   public constructor(
     message: string,
-    public readonly code: PublicZCodeErrorCode,
+    public readonly code: PublicCodezErrorCode,
     public readonly retryable?: boolean,
   ) {
     super(message);
@@ -100,7 +100,7 @@ export class SourceServerTransportOperationError extends Error {
 function createServerCommandError(result: RemoteExecResult, fallbackMessage: string): Error {
   try {
     const response = readLastJsonLine(result.stdout);
-    if (isPublicZCodeErrorCode(response.code)) {
+    if (isPublicCodezErrorCode(response.code)) {
       return new SourceServerTransportOperationError(
         typeof response.error === "string" && response.error.trim()
           ? response.error
@@ -165,9 +165,9 @@ export interface CreateSourceServerTransportAdapterOptions {
   createBackend?: (target: RemoteTarget) => Promise<IRemoteBackend>;
 }
 
-const SERVER_ROOT_READ_PATH = "~/.zcode/server";
-const SERVER_ROOT_SHELL = '"$HOME/.zcode/server"';
-const SERVER_BIN_SHELL = '"$HOME/.zcode/server/bin/zcode"';
+const SERVER_ROOT_READ_PATH = "~/.codez/server";
+const SERVER_ROOT_SHELL = '"$HOME/.codez/server"';
+const SERVER_BIN_SHELL = '"$HOME/.codez/server/bin/codez"';
 const STALE_BOOTSTRAP_AGE_MS = 30 * 60 * 1_000;
 const INSTALL_PROGRESS_MESSAGES: Record<SourceServerInstallProgress["phase"], string> = {
   "verify-archive": "Verifying Source Server archive",
@@ -257,8 +257,8 @@ class BackendSourceServerTransportAdapter implements SourceServerTransportAdapte
     const operationId = `${process.pid}-${Date.now()}`;
     const bootstrapRootShell = `${SERVER_ROOT_SHELL}/.bootstrap-${operationId}`;
     const bootstrapDirShell = `${bootstrapRootShell}/extract`;
-    const remoteArchive = `~/.zcode/server/.bootstrap-${operationId}/zcode-server.tar.gz`;
-    const remoteArchiveShell = `${bootstrapRootShell}/zcode-server.tar.gz`;
+    const remoteArchive = `~/.codez/server/.bootstrap-${operationId}/codez-server.tar.gz`;
+    const remoteArchiveShell = `${bootstrapRootShell}/codez-server.tar.gz`;
     const cleanupCommand = `rm -rf ${bootstrapRootShell}`;
     const cleanupStaleBootstrapRootsCommand =
       "now_ms=$(($(date +%s) * 1000)); " +
@@ -361,7 +361,7 @@ class BackendSourceServerTransportAdapter implements SourceServerTransportAdapte
       `tar -xzf ${remoteArchiveShell} -C ${bootstrapDirShell} --strip-components=1`,
       // Bug 原因：update 现在会重启完整 daemon；若不把既有 transport 能力边界传给目标
       // bootstrap CLI，WSL/Docker 会在 handoff 时误尝试注册不可用的 systemd user service。
-      `${this.kind === "ssh" ? "" : "ZCODE_SERVER_SKIP_SERVICE_REGISTRATION=1 "}${bootstrapDirShell}/bin/zcode update --from-archive ${remoteArchiveShell}${options.force ? " --force" : ""}${options.allowDowngrade ? " --allow-downgrade" : ""} --server-root ${SERVER_ROOT_SHELL} --json --progress`,
+      `${this.kind === "ssh" ? "" : "CODEZ_SERVER_SKIP_SERVICE_REGISTRATION=1 "}${bootstrapDirShell}/bin/codez update --from-archive ${remoteArchiveShell}${options.force ? " --force" : ""}${options.allowDowngrade ? " --allow-downgrade" : ""} --server-root ${SERVER_ROOT_SHELL} --json --progress`,
     ].join(" && ");
     // 上传完成后命令仍需解压、整树校验和 daemon 换代；必须实时消费阶段，不能等退出才显示。
     const result = await collectCommand(await backend.exec(command), (line) => {
@@ -491,7 +491,7 @@ class BackendSourceServerTransportAdapter implements SourceServerTransportAdapte
     const startsDaemon =
       (argv[0] === "serve" && argv.includes("--daemon")) || argv[0] === "restart";
     const daemonEnvironment =
-      this.kind !== "ssh" && startsDaemon ? "ZCODE_SERVER_SKIP_SERVICE_REGISTRATION=1 " : "";
+      this.kind !== "ssh" && startsDaemon ? "CODEZ_SERVER_SKIP_SERVICE_REGISTRATION=1 " : "";
     const command = [
       // Bug 原因：WSL/Docker 没有稳定的用户级服务管理器；若沿用 SSH 命令会尝试
       // 注册 systemd user service 并在常见环境中失败。两者必须显式进入 detached fallback。

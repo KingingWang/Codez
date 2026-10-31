@@ -14,7 +14,7 @@ import {
   type HighspeedServiceSnapshot,
   type HighspeedTurnExecution,
   type ModelSelection,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { IHighspeedCardService } from "./highspeedCard.js";
 
 export { createHighspeedHttpTransport } from "./highspeedHttpTransport.js";
@@ -26,12 +26,12 @@ export interface HighspeedServiceTransport {
 
 /**
  * 加速推理的动态鉴权材料。加速走 /api/v1/highspeed/ 网关，与 draw 复用同一套 Coding Plan
- * 双 JWT 契约：zcode JWT 标识会话身份，Coding Plan 业务 JWT + Team 身份头校验套餐权益。
+ * 双 JWT 契约：codez JWT 标识会话身份，Coding Plan 业务 JWT + Team 身份头校验套餐权益。
  * 这些字段必须来自同一次 selected connection 解析，禁止跨 Family 拼接
  * （ZAI JWT 配 BigModel key 只会在服务端取号时被拒）。
  */
 export interface HighspeedInferenceAuth {
-  zcodeJwt: string;
+  codezJwt: string;
   family: "zai" | "bigmodel";
   codingPlanAuthorization: string;
   targetType: "PERSONAL" | "TEAM";
@@ -70,21 +70,21 @@ type SendBudget = <T>(task: Promise<T>) => Promise<SendBudgetOutcome<T>>;
  * 鉴权中间件：两者必须携带完全一致的 Coding Plan 凭据，加速推理只是额外附带卡 ID。
  */
 export function buildHighspeedCodingPlanAuthHeaders(params: {
-  zcodeJwt: string;
+  codezJwt: string;
   codingPlanAuthorization: string;
   targetType: "PERSONAL" | "TEAM";
   organizationId?: string;
   projectId?: string;
 }): Record<string, string> {
-  const zcodeJwt = params.zcodeJwt.trim();
+  const codezJwt = params.codezJwt.trim();
   const codingPlanAuthorization = params.codingPlanAuthorization.trim();
-  if (!zcodeJwt) throw new Error("highspeed request requires zcode jwt");
+  if (!codezJwt) throw new Error("highspeed request requires codez jwt");
   if (!codingPlanAuthorization) throw new Error("highspeed request requires Coding Plan jwt");
   if (params.targetType === "TEAM" && (!params.organizationId || !params.projectId)) {
     throw new Error("highspeed team request requires organization and project");
   }
   return {
-    Authorization: /^Bearer\s/i.test(zcodeJwt) ? zcodeJwt : `Bearer ${zcodeJwt}`,
+    Authorization: /^Bearer\s/i.test(codezJwt) ? codezJwt : `Bearer ${codezJwt}`,
     // 接口契约要求 Bearer 前缀；凭据库可能存裸 token，这里统一归一化。
     "X-Bigmodel-Authorization": /^Bearer\s/i.test(codingPlanAuthorization)
       ? codingPlanAuthorization
@@ -112,7 +112,7 @@ function toSnapshot(card: HighspeedCardApi): HighspeedCardSnapshot {
 
 /**
  * 构造一次加速执行的选择与动态鉴权材料。Endpoint、API 形态和模型能力等静态事实由
- * ZCode Built-in Provider Config 提供，禁止再随单次发送下发 provider 定义。
+ * Codez Built-in Provider Config 提供，禁止再随单次发送下发 provider 定义。
  */
 export function buildHighspeedTurnExecution(params: {
   card: HighspeedCardSnapshot;
@@ -135,13 +135,13 @@ export function buildHighspeedTurnExecution(params: {
     },
     requestAuth: {
       // Anthropic 兼容客户端会发送 x-api-key；服务端仍以 Authorization、Coding Plan 双 JWT 与卡 ID 裁决。
-      apiKey: params.auth.zcodeJwt,
+      apiKey: params.auth.codezJwt,
       headers: {
-        // Bug 原因：加速推理曾只发 zcode JWT + 卡 ID，而它与 draw 走同一 highspeed 网关、同一
+        // Bug 原因：加速推理曾只发 codez JWT + 卡 ID，而它与 draw 走同一 highspeed 网关、同一
         // 鉴权中间件，缺少 Coding Plan 双 JWT + Team 身份头时网关无法校验套餐权益，返回
         // 401 auth_failed。这里复用与 draw 完全一致的 Coding Plan 头，再附加本次执行的卡 ID。
         ...buildHighspeedCodingPlanAuthHeaders({
-          zcodeJwt: params.auth.zcodeJwt,
+          codezJwt: params.auth.codezJwt,
           codingPlanAuthorization: params.auth.codingPlanAuthorization,
           targetType: params.auth.targetType,
           ...(params.auth.organizationId ? { organizationId: params.auth.organizationId } : {}),
@@ -192,7 +192,7 @@ export class HighspeedCardService implements IHighspeedCardService {
     this.resolveInferenceAuth =
       options.resolveInferenceAuth ??
       (async () => ({
-        zcodeJwt: "mock-zcode-jwt",
+        codezJwt: "mock-codez-jwt",
         family: "zai",
         codingPlanAuthorization: "mock-coding-plan-jwt",
         targetType: "PERSONAL",

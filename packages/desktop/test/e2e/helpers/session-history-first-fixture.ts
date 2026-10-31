@@ -35,7 +35,7 @@ export async function seedSessionHistoryFirstFixture(options: {
       },
     });
     // 通用 fixture 用于测试缺失 provider；此处补齐正式会话的 durable 模型选择，验证 ready 后续发。
-    const database = new DatabaseSync(join(options.e2eHomeDir, ".zcode", "cli", "db", "db.sqlite"));
+    const database = new DatabaseSync(join(options.e2eHomeDir, ".codez", "cli", "db", "db.sqlite"));
     try {
       database
         .prepare(`INSERT INTO session_entry (id, session_id, type, time_created, time_updated, data)
@@ -59,7 +59,7 @@ export async function seedSessionHistoryFirstFixture(options: {
       database.close();
     }
   }
-  const root = join(options.workspacePath, ".zcode", "history-first-e2e");
+  const root = join(options.workspacePath, ".codez", "history-first-e2e");
   await mkdir(root, { recursive: true });
   const script = join(root, "resume-gate.mjs");
   // 文件事件屏障证明首帧不等待 hook；不用固定 sleep 猜测初始化进度。
@@ -79,7 +79,7 @@ await new Promise((resolve, reject) => {
 process.stdout.write('{}');
 `,
   );
-  const config = join(options.e2eHomeDir, ".zcode", "cli", "config.json");
+  const config = join(options.e2eHomeDir, ".codez", "cli", "config.json");
   const settings = JSON.parse(await readFile(config, "utf8").catch(() => "{}"));
   await writeFile(
     config,

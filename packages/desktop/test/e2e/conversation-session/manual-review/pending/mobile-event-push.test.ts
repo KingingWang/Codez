@@ -5,8 +5,8 @@ import { join } from "node:path";
 describe("移动端事件通知连接", () => {
   it("自动 HTTP 资格查询不连接远控，关闭远控后释放连接且仍有通知资格", async function () {
     this.timeout(120_000);
-    const origin = process.env.ZCODE_E2E_REMOTE_AUTH_GATE_URL,
-      artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR;
+    const origin = process.env.CODEZ_E2E_REMOTE_AUTH_GATE_URL,
+      artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR;
     if (!origin || !artifacts) throw new Error("missing mobile push fixture");
     const evidence = async () =>
       (await (await fetch(`${origin}/__e2e/push`)).json()) as {
@@ -56,7 +56,7 @@ describe("移动端事件通知连接", () => {
       timeout: 10_000,
     });
     // E2E 的 Main 日志有独立目录，不能用生产配置目录推测测试日志位置。
-    const logDir = await browser.electron.execute(() => process.env.ZCODE_E2E_RUNTIME_LOG_DIR);
+    const logDir = await browser.electron.execute(() => process.env.CODEZ_E2E_RUNTIME_LOG_DIR);
     if (!logDir) throw new Error("missing E2E runtime log directory");
     const logFiles = (await readdir(logDir)).filter((name) => name.endsWith(".log"));
     const logs = (

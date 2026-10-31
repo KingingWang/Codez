@@ -2,13 +2,13 @@
 
 ## 背景
 
-手机端通过浏览器打开 Web Remote Control 页面时，标签页显示浏览器默认图标。根因是 `packages/web/index.html` 只设置了页面标题，没有声明 favicon；`packages/web/public` 中也没有 ZCode 品牌 favicon。
+手机端通过浏览器打开 Web Remote Control 页面时，标签页显示浏览器默认图标。根因是 `packages/web/index.html` 只设置了页面标题，没有声明 favicon；`packages/web/public` 中也没有 Codez 品牌 favicon。
 
 本地 `pnpm dev:web-remote-control` 还存在一个额外问题：Chrome 在部分 dev 场景下不会为 favicon 发起独立网络请求，只依赖入口 HTML 中已经可用的 icon metadata。仅提供 `/favicon.ico` 或 `/remote/favicon.ico` 静态资源无法覆盖这种情况。
 
 ## 目标
 
-- Web Remote Control 页面在常见桌面和手机浏览器标签中显示与桌面 App 一致的 ZCode 图标。
+- Web Remote Control 页面在常见桌面和手机浏览器标签中显示与桌面 App 一致的 Codez 图标。
 - 直接复用现有桌面 App 图标，不重新设计品牌资产。
 - 不改变桌面端 continuous 链路、手机端 replayable 链路或任何远控业务状态。
 

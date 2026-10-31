@@ -1,5 +1,5 @@
-import type { IBotsService, ServiceCollection } from "@zcode/services";
-import type { DynamicWorkflowMode, WindowHostAttachmentScope } from "@zcode/shared";
+import type { IBotsService, ServiceCollection } from "@codez/services";
+import type { DynamicWorkflowMode, WindowHostAttachmentScope } from "@codez/shared";
 import {
   connectServerRemoteOverDuplex,
   type ServerRemoteConnection,
@@ -20,7 +20,7 @@ export async function connectDesktopSourceServer(
 ): Promise<ServerRemoteConnection> {
   let connection: ServerRemoteConnection | undefined;
   const relay = createWindowTopicResourceRelay({
-    getPeerAgentService: () => connection?.services.zcodeAgentService,
+    getPeerAgentService: () => connection?.services.codezAgentService,
     resolveServices: deps.resolveServices,
     getBots: deps.getBots,
   });
@@ -37,7 +37,7 @@ export async function connectDesktopSourceServer(
     // 否则 manager 自动重连直接换 services，会丢失 Desktop 的当前用户选择。
     try {
       const mode = await deps.readDynamicWorkflowMode().catch(() => undefined);
-      await connection.services.zcodeAgentService.syncDynamicWorkflowUserMode(mode ? { mode } : {});
+      await connection.services.codezAgentService.syncDynamicWorkflowUserMode(mode ? { mode } : {});
     } catch (error) {
       // 旧版 Source 不认识此方法时保持可连接，与既有 workflow 同步兼容策略一致。
       deps.onModeSyncError(error);

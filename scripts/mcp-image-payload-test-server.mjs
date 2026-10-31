@@ -6,7 +6,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-const SERVER_NAME = "zcode-image-payload-test";
+const SERVER_NAME = "codez-image-payload-test";
 const SERVER_VERSION = "0.1.0";
 const DEFAULT_PRESET = "below_limit";
 const PRESETS = {
@@ -30,7 +30,7 @@ server.registerTool(
   {
     title: "Emit image with configurable base64 size",
     description:
-      "Return a valid PNG image block whose base64 payload is near the requested size. Use this to test ZCode MCP image output budgeting.",
+      "Return a valid PNG image block whose base64 payload is near the requested size. Use this to test Codez MCP image output budgeting.",
     inputSchema: {
       preset: z
         .enum(["tiny", "below_limit", "just_over_limit", "large", "huge"])
@@ -75,7 +75,7 @@ server.registerTool(
         {
           type: "text",
           text: [
-            "ZCode MCP image payload test",
+            "Codez MCP image payload test",
             `label=${label?.trim() || selectedPreset}`,
             `preset=${selectedPreset}`,
             `targetBase64Bytes=${targetBase64Bytes}`,
@@ -139,7 +139,7 @@ function createPngWithTextPayload(textPayload) {
 
   const scanline = Buffer.from([0x00, 0x2f, 0x80, 0xff, 0xff]);
   const idat = deflateSync(scanline, { level: 9 });
-  const text = Buffer.from(`zcode-mcp-payload\0${textPayload}`, "latin1");
+  const text = Buffer.from(`codez-mcp-payload\0${textPayload}`, "latin1");
 
   return Buffer.concat([
     PNG_SIGNATURE,

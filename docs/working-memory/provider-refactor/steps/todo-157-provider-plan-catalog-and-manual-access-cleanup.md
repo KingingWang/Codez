@@ -112,9 +112,9 @@ Model 已绑定的 Access + Base URL
 
 ## 5. 实施入口与验收
 
-配置入口为 `config/provider/zcode-builtin.json`；只编辑生产来源，通过 `pnpm provider:config:sync-test` 生成测试配置，并运行 `pnpm provider:config:check-test`。按实际最新 revision 递增，不固定沿用本轮基线 28，不自动发布线上配置。
+配置入口为 `config/provider/codez-builtin.json`；只编辑生产来源，通过 `pnpm provider:config:sync-test` 生成测试配置，并运行 `pnpm provider:config:check-test`。按实际最新 revision 递增，不固定沿用本轮基线 28，不自动发布线上配置。
 
-Access 与读取边界重点检查 `packages/provider/src/config/`、`packages/provider/src/resolver.ts`、`packages/provider-node/` 及现有持久化／导入消费者；安全校验准入入口为 `apps/zcode-cli/packages/adapters/src/model/model-execution.ts`。展示入口为 `packages/ui/src/lib/modelVisionBadge.ts`、`modelSelectionGroups.ts`、设置页 `ProviderFormControls.tsx` 及其 props 传递链。
+Access 与读取边界重点检查 `packages/provider/src/config/`、`packages/provider/src/resolver.ts`、`packages/provider-node/` 及现有持久化／导入消费者；安全校验准入入口为 `apps/codez-cli/packages/adapters/src/model/model-execution.ts`。展示入口为 `packages/ui/src/lib/modelVisionBadge.ts`、`modelSelectionGroups.ts`、设置页 `ProviderFormControls.tsx` 及其 props 传递链。
 
 - [ ] 实施前重新检查基线和用户改动，按命中目录规则做架构影响梳理；更新对应 spec 与历史冲突裁定，不将研究候选写成现行事实。
 - [ ] 先补预期测试：四个智谱模板均为 `api-key`；旧特殊类型读取归一、Key 保存和覆盖不丢失，模板关联与历史选择保留。

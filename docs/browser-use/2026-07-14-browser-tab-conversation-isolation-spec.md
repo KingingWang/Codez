@@ -9,9 +9,9 @@
 同为新对话首次执行 `browser.user.openTabs()`：
 
 - 期望：显式 IAB binding 返回 `[]`，不会观察到其它对话的标签页。
-- 实际：ZCode 返回同一 window/workspace 下 5 个 user tabs，其中 4 个是 `about:blank` 或 URL/title 均为空。
+- 实际：Codez 返回同一 window/workspace 下 5 个 user tabs，其中 4 个是 `about:blank` 或 URL/title 均为空。
 
-ZCode 的泄漏来自两个已有设计叠加：
+Codez 的泄漏来自两个已有设计叠加：
 
 1. 普通右侧 Browser tab 向 main attach guest 时只携带 `workspaceKey`，没有携带它已经存在于 UI 状态中的
    `ownerTaskId`；main 因而只能把它登记为 workspace 级全局可认领 tab。
@@ -62,7 +62,7 @@ user tab 只有在 guest 存活且当前 URL 为非空、非精确 `about:blank`
 - `closeSession({ closeTabs: true })` 真正关闭该 session 名下的全部 tab：仍受控的，以及此前经
   finalize / deliverable 释放回该 session user-tab 集合的。其它 session 的 tab 不受影响。它只给永远不会
   再回来认领的 session 用——dwf 子代理的 sessionId 不是任何对话，保留的 view 无人可见、无人可认领，
-  只会一直挂着 guest（`apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md`「Subagent sessions」）。
+  只会一直挂着 guest（`apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md`「Subagent sessions」）。
 - window close / 用户显式 close 仍真正关闭 tab。
 
 ### 2.4 对话切换时的可见性与后台保活
@@ -100,7 +100,7 @@ A active：resolve active tab from registry[A] + ensureResident[A] + side pane e
 - `packages/ui` 只通过 `IPlatformService.browserViewAttachGuest` 上报 tab ownership，不直接访问 Repo/main。
 - `packages/desktop` main 从发送方绑定 `windowId`，并把 renderer 提供的 `workspaceKey + sessionId` 交给
   `BrowserGuestManager`；renderer 不能伪造 windowId。
-- 本变更不修改 ZCode protocol 的 agent stdio BrowserCommand，不新增 main/relay 业务状态，也不改变
+- 本变更不修改 Codez protocol 的 agent stdio BrowserCommand，不新增 main/relay 业务状态，也不改变
   desktop `continuous` 与手机 `replayable` 消息流。
 - 手机 Web 没有 Electron `<webview>` attach；保持现有 fallback，不另起 browser runtime。
 

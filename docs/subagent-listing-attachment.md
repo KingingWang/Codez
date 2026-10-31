@@ -16,12 +16,12 @@ Agent 工具 description 仅指向会话中的 `<system-reminder>`。完整目�
 Agent description 的文案固定为 first-party MCS 分支的 lean 版本。
 续跑说明采用 `Use SendMessage with the agent's ID to continue a previously spawned agent with its context intact; a new Agent call starts fresh.`；
 当前只支持 agent ID 寻址，不引入按名称寻址的 `or name`。
-定义来源采用 ``Each agent type's model, reasoning effort, and tools come from its definition (`.zcode/agents/*.md` frontmatter).``；
-沿用定义来源句式并替换为 ZCode 的 Markdown 目录，不加入未支持的 SDK `agents` 入口；不改变实际加载路径、覆盖优先级或执行行为。
+定义来源采用 ``Each agent type's model, reasoning effort, and tools come from its definition (`.codez/agents/*.md` frontmatter).``；
+沿用定义来源句式并替换为 Codez 的 Markdown 目录，不加入未支持的 SDK `agents` 入口；不改变实际加载路径、覆盖优先级或执行行为。
 并发提示只保留在首次 listing，description 删除重复句；后台默认行为与 isolation 保持现状。
 
 本次 provider-visible 合同限定上述 first-party MCS 分支。关闭 MCS 的测试用于验证现有
-ZCode 兼容路径：不额外引入把 reminder 合入末条 tool_result 的序列化行为，也不宣称
+Codez 兼容路径：不额外引入把 reminder 合入末条 tool_result 的序列化行为，也不宣称
 非 MCS 全请求逐字节相同。历史 continuity source 的排除策略保持现状，listing 和其他
 普通 attachment 一起接受现有合法位置判断，不绕过这些边界。
 
@@ -148,7 +148,7 @@ provider-visible 合同的证明。当前合同必须重新运行 focused/wire �
   以及两条 background notification 包装断言；本次不修改这些基线问题。
 - `pnpm architecture:check --changed`：0 violations；根目录 `pnpm typecheck`、
   `pnpm lint`、Core typecheck/lint、Desktop `typecheck:e2e` 与 case fixture check 均通过。
-- 正式 Electron 命令：`pnpm --filter @zcode/desktop test:e2e -- --spec ./test/e2e/conversation-session/conversation-session-subagent-prompt-assembly.test.ts`。
+- 正式 Electron 命令：`pnpm --filter @codez/desktop test:e2e -- --spec ./test/e2e/conversation-session/conversation-session-subagent-prompt-assembly.test.ts`。
   I21/SA 1/1 passed，包含 general-purpose、Explore、custom、isolated custom 四组场景。
   实际父请求共 8 次，每次仅含一份 user listing；4 次 child 请求均无 Agent 和 listing。
   响应使用 case-local provider replay fixture，未调用真实模型服务。

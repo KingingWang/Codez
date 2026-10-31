@@ -57,7 +57,7 @@ export function createE2EStartupCredentialSeed(params: {
 - Produces: I32～I34 worker 的 `credentials.json` 不含 OAuth active provider/access token/user info/JWT
 
 - [ ] 在 WDIO 默认 credential 分支调用纯函数；readiness `{}` 与 corrupt recovery fixture 的优先级不变。
-- [ ] 运行 focused Vitest 与 `@zcode/desktop typecheck:e2e`。
+- [ ] 运行 focused Vitest 与 `@codez/desktop typecheck:e2e`。
 - [ ] 运行 I32～I34 整个 spec，要求 3/3 通过。
 - [ ] 在该 run 日志中搜索 `model-provider.refreshCodingPlanApiKey`、`billing/balance`、`api/biz/customer/getCustomerInfo`，要求无匹配。
 - [ ] 运行 `rtk pnpm typecheck`、`rtk pnpm lint`、`rtk git diff --check`。

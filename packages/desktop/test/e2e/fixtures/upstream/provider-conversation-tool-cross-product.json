@@ -174,7 +174,7 @@
           "id": "toolu_e2e_tool_cross_product_webfetch",
           "name": "WebFetch",
           "input": {
-            "url": "http://127.0.0.1:9/zcode-e2e-tool-cross-product",
+            "url": "http://127.0.0.1:9/codez-e2e-tool-cross-product",
             "prompt": "Return E2E_TOOL_RESULT_WEBFETCH"
           }
         }
@@ -438,7 +438,7 @@
           "id": "toolu_e2e_tool_cross_product_skill",
           "name": "Skill",
           "input": {
-            "skill": "zcode-e2e-missing-skill"
+            "skill": "codez-e2e-missing-skill"
           }
         }
       }

@@ -1,6 +1,6 @@
 # Sites E2E 用例
 
-ZCode Sites 的端到端行为合同。CLI 链路（Agent 经 Skill 调 `zcode-site`）和面板链路（插件 UI plugin，见 [Sites 面板](sites-panel.md)）共用同一个 mock Sites 服务端，状态只来自服务端。
+Codez Sites 的端到端行为合同。CLI 链路（Agent 经 Skill 调 `codez-site`）和面板链路（插件 UI plugin，见 [Sites 面板](sites-panel.md)）共用同一个 mock Sites 服务端，状态只来自服务端。
 
 ## 范围
 
@@ -15,8 +15,8 @@ ZCode Sites 的端到端行为合同。CLI 链路（Agent 经 Skill 调 `zcode-s
 
 ### SITE-E2E-CLI-01：首次部署
 
-- Setup：已登录、没有站点；项目里没有 `.zcode-site.json`。
-- 操作：Agent 按 Skill 准备 stage 并执行 `zcode-site deploy`。
+- Setup：已登录、没有站点；项目里没有 `.codez-site.json`。
+- 操作：Agent 按 Skill 准备 stage 并执行 `codez-site deploy`。
 - 断言：创建站点并写绑定文件；输出依次经过 preparing → uploading → publishing → verifying → success；退出码 0。
 
 ### SITE-E2E-CLI-02：更新失败保留线上
@@ -48,7 +48,7 @@ ZCode Sites 的端到端行为合同。CLI 链路（Agent 经 Skill 调 `zcode-s
 
 - Setup：本地工作区、已有会话。
 - 操作：从侧栏「打开标签页」的内置入口「部署」（排在「辅助对话」前）打开面板。
-- 断言：列表显示 mock 站点的名称、域名、状态和更新时间，没有 PV 列；没有工具审批弹窗（读走资源）；模型的工具列表里没有 `zcode-site` 的工具。
+- 断言：列表显示 mock 站点的名称、域名、状态和更新时间，没有 PV 列；没有工具审批弹窗（读走资源）；模型的工具列表里没有 `codez-site` 的工具。
 
 ### SITE-E2E-PANEL-02：部署进度
 

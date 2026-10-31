@@ -6,7 +6,7 @@
 
 **Architecture:** 不在发送图片、拖拽图片、Read/Bash/MCP tool 输出等入口分支做限制；真实 session history 保留原始媒体，provider-visible messages 在 core runtime 最后一跳投影成文字。adapter 侧继续保留第二道兜底，确保绕过 core 的调用也不会把明确 unsupported media 发给 AI SDK provider。
 
-**Tech Stack:** TypeScript, `@zcode/core` runtime, `@zcode/adapters` AI SDK adapter, `@zcode/contracts` model catalog/protocol schemas, Vitest, pnpm.
+**Tech Stack:** TypeScript, `@codez/core` runtime, `@codez/adapters` AI SDK adapter, `@codez/contracts` model catalog/protocol schemas, Vitest, pnpm.
 
 ## Global Constraints
 
@@ -24,63 +24,63 @@
 
 当前实现有两段能力，但没有接成闭环：
 
-- `apps/zcode-cli/packages/core/src/runtime/helpers/media-budget.ts` 只按请求体字节预算剥离历史媒体，默认保护最新 user media，不知道当前模型是否支持图片。
-- `apps/zcode-cli/packages/adapters/src/model/transform.ts` 已经支持 `supportsImages` / `supportsPdf` / `stripMedia`，但 `apps/zcode-cli/packages/adapters/src/model/runner-options.ts` 调 `toAiSdkMessages` 时没有把 resolved model capability 传入。
-- `apps/zcode-cli/packages/bootstrap/src/app/session-facade.ts` 动态切模型只刷新 `contextWindow`、`maxOutputTokens` 和 `modelProviderOptions`，没有刷新媒体输入能力。
+- `apps/codez-cli/packages/core/src/runtime/helpers/media-budget.ts` 只按请求体字节预算剥离历史媒体，默认保护最新 user media，不知道当前模型是否支持图片。
+- `apps/codez-cli/packages/adapters/src/model/transform.ts` 已经支持 `supportsImages` / `supportsPdf` / `stripMedia`，但 `apps/codez-cli/packages/adapters/src/model/runner-options.ts` 调 `toAiSdkMessages` 时没有把 resolved model capability 传入。
+- `apps/codez-cli/packages/bootstrap/src/app/session-facade.ts` 动态切模型只刷新 `contextWindow`、`maxOutputTokens` 和 `modelProviderOptions`，没有刷新媒体输入能力。
 - `ModelCapability.supportsImages` 是 boolean；直接读合并后的 capability 会把部分“未声明能力”的自定义模型误判为 false。
 
 ---
 
 ## File Structure
 
-- Create: `apps/zcode-cli/packages/core/src/runtime/helpers/media-capability.ts`
+- Create: `apps/codez-cli/packages/core/src/runtime/helpers/media-capability.ts`
   - 负责 provider request 的媒体能力投影、占位文本生成、debug 日志上下文。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/helpers/index.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/helpers/index.ts`
   - 导出 media capability helper。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/types.ts`
   - 在 `AgentRuntimeConfig` 增加当前模型输入媒体能力。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/config.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/config.ts`
   - `updateConfig` 支持动态刷新媒体能力。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/model.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/model.ts`
   - 在 `projectMessagesForMediaBudget` 之前应用 capability projection。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/compact-active.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/compact-active.ts`
   - compact request 保持 text-only；可复用 capability projection 但最终仍由 `maxMediaBytes: 0` 保证无媒体。
-- Modify: `apps/zcode-cli/packages/contracts/src/model/catalog.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/model/catalog.ts`
   - 扩展 catalog override/capability 的 PDF 输入能力字段。
-- Modify: `packages/shared/src/zcode-protocol/index.ts`
+- Modify: `packages/shared/src/codez-protocol/index.ts`
   - 如 UI 或远程协议需要展示/传递 PDF 能力，补充 optional schema 字段。
-- Modify: `apps/zcode-cli/packages/bootstrap/src/app/model-selection.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/app/model-selection.ts`
   - 增加 `resolveRuntimeModelInputCapabilities`，用三态解析当前模型媒体能力。
-- Modify: `apps/zcode-cli/packages/bootstrap/src/app/runtime-config.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/app/runtime-config.ts`
   - 初始化 runtime 时注入当前主模型媒体能力。
-- Modify: `apps/zcode-cli/packages/bootstrap/src/app/session-facade.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/app/session-facade.ts`
   - `setModel` 时同步刷新 runtime 媒体能力。
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/workspace-model-catalog.ts`
   - provider catalog 热更新影响当前模型时，同步刷新媒体能力。
-- Modify: `apps/zcode-cli/packages/bootstrap/src/model-config.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/model-config.ts`
   - 创建 AI SDK registry config 时携带模型媒体能力索引。
-- Modify: `apps/zcode-cli/packages/adapters/src/model/registry.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/model/registry.ts`
   - `AiSdkResolvedModel` 增加 `inputMediaCapabilities`。
-- Modify: `apps/zcode-cli/packages/adapters/src/model/runner-options.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/model/runner-options.ts`
   - 把 resolved media capability 传给 `toAiSdkMessages`。
-- Modify: `apps/zcode-cli/packages/adapters/src/model/transform.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/model/transform.ts`
   - 把 unsupported media 的兜底文本改为中性占位，不诱导模型每轮道歉。
-- Test: `apps/zcode-cli/packages/core/tests/media-capability.test.ts`
-- Test: `apps/zcode-cli/packages/core/tests/media-budget.test.ts`
-- Test: `apps/zcode-cli/packages/adapters/tests/model-transform.test.ts`
-- Test: `apps/zcode-cli/packages/adapters/tests/model-transform-tool-media.test.ts`
-- Test: `apps/zcode-cli/packages/bootstrap/tests/model-selection.test.ts`
-- Test: `apps/zcode-cli/packages/bootstrap/tests/model-config.test.ts`
-- Test: `apps/zcode-cli/packages/bootstrap/tests/runtime-config.test.ts`
+- Test: `apps/codez-cli/packages/core/tests/media-capability.test.ts`
+- Test: `apps/codez-cli/packages/core/tests/media-budget.test.ts`
+- Test: `apps/codez-cli/packages/adapters/tests/model-transform.test.ts`
+- Test: `apps/codez-cli/packages/adapters/tests/model-transform-tool-media.test.ts`
+- Test: `apps/codez-cli/packages/bootstrap/tests/model-selection.test.ts`
+- Test: `apps/codez-cli/packages/bootstrap/tests/model-config.test.ts`
+- Test: `apps/codez-cli/packages/bootstrap/tests/runtime-config.test.ts`
 
 ---
 
 ### Task 1: Add Core Media Capability Projection
 
 **Files:**
-- Create: `apps/zcode-cli/packages/core/src/runtime/helpers/media-capability.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/helpers/index.ts`
-- Test: `apps/zcode-cli/packages/core/tests/media-capability.test.ts`
+- Create: `apps/codez-cli/packages/core/src/runtime/helpers/media-capability.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/helpers/index.ts`
+- Test: `apps/codez-cli/packages/core/tests/media-capability.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -114,11 +114,11 @@
 
 - [ ] **Step 1: Write failing tests**
 
-  Add `apps/zcode-cli/packages/core/tests/media-capability.test.ts` with cases:
+  Add `apps/codez-cli/packages/core/tests/media-capability.test.ts` with cases:
 
   ```ts
   import { describe, expect, it } from "vitest";
-  import type { ModelInputMessage } from "@zcode/contracts";
+  import type { ModelInputMessage } from "@codez/contracts";
   import { projectMessagesForMediaCapabilities } from "../src/runtime/helpers/media-capability.js";
 
   describe("model request media capability projection", () => {
@@ -201,7 +201,7 @@
   Run:
 
   ```bash
-  pnpm --filter @zcode/core exec vitest run tests/media-capability.test.ts
+  pnpm --filter @codez/core exec vitest run tests/media-capability.test.ts
   ```
 
   Expected: fail because `media-capability.ts` does not exist.
@@ -220,7 +220,7 @@
 
 - [ ] **Step 4: Export helper**
 
-  Add this line to `apps/zcode-cli/packages/core/src/runtime/helpers/index.ts`:
+  Add this line to `apps/codez-cli/packages/core/src/runtime/helpers/index.ts`:
 
   ```ts
   export * from "./media-capability.js";
@@ -231,7 +231,7 @@
   Run:
 
   ```bash
-  pnpm --filter @zcode/core exec vitest run tests/media-capability.test.ts
+  pnpm --filter @codez/core exec vitest run tests/media-capability.test.ts
   ```
 
   Expected: all tests pass.
@@ -241,11 +241,11 @@
 ### Task 2: Apply Projection in Runtime Provider Requests
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/runtime/types.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/config.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/model.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/compact-active.ts`
-- Test: `apps/zcode-cli/packages/core/tests/media-budget.test.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/config.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/model.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/compact-active.ts`
+- Test: `apps/codez-cli/packages/core/tests/media-budget.test.ts`
 
 **Interfaces:**
 - Consumes: `ModelInputMediaCapabilities`, `projectMessagesForMediaCapabilities`, `logMediaCapabilityProjection`.
@@ -253,7 +253,7 @@
 
 - [ ] **Step 1: Write failing runtime tests**
 
-  Extend `apps/zcode-cli/packages/core/tests/media-budget.test.ts` with:
+  Extend `apps/codez-cli/packages/core/tests/media-budget.test.ts` with:
 
   ```ts
   it("textifies current user media for text-only models before applying media budget", async () => {
@@ -263,7 +263,7 @@
       {
         mode: "plan",
         modelInputMediaCapabilities: { supportsImages: false },
-        workingDirectory: "/tmp/zcode-runtime-media-capability-text-only",
+        workingDirectory: "/tmp/codez-runtime-media-capability-text-only",
       },
       {
         eventStore: createTestSessionEventStore(),
@@ -297,7 +297,7 @@
       {
         mode: "plan",
         modelInputMediaCapabilities: {},
-        workingDirectory: "/tmp/zcode-runtime-media-capability-unknown",
+        workingDirectory: "/tmp/codez-runtime-media-capability-unknown",
       },
       {
         eventStore: createTestSessionEventStore(),
@@ -327,14 +327,14 @@
   Run:
 
   ```bash
-  pnpm --filter @zcode/core exec vitest run tests/media-budget.test.ts
+  pnpm --filter @codez/core exec vitest run tests/media-budget.test.ts
   ```
 
   Expected: TypeScript or runtime failure because `modelInputMediaCapabilities` is not defined and projection is not applied.
 
 - [ ] **Step 3: Add runtime config field**
 
-  In `apps/zcode-cli/packages/core/src/runtime/types.ts`, import or re-export the capability type and add:
+  In `apps/codez-cli/packages/core/src/runtime/types.ts`, import or re-export the capability type and add:
 
   ```ts
   modelInputMediaCapabilities?: ModelInputMediaCapabilities;
@@ -344,7 +344,7 @@
 
 - [ ] **Step 4: Allow dynamic config refresh**
 
-  In `apps/zcode-cli/packages/core/src/runtime/methods/config.ts`, include `"modelInputMediaCapabilities"` in the `Pick<AgentRuntimeConfig, ...>` union and apply:
+  In `apps/codez-cli/packages/core/src/runtime/methods/config.ts`, include `"modelInputMediaCapabilities"` in the `Pick<AgentRuntimeConfig, ...>` union and apply:
 
   ```ts
   if ("modelInputMediaCapabilities" in patch) {
@@ -354,7 +354,7 @@
 
 - [ ] **Step 5: Apply projection before budget in `runModelTextRequest`**
 
-  In `apps/zcode-cli/packages/core/src/runtime/methods/model.ts`, change the request projection order to:
+  In `apps/codez-cli/packages/core/src/runtime/methods/model.ts`, change the request projection order to:
 
   ```ts
   const capabilityProjection = projectMessagesForMediaCapabilities(
@@ -382,7 +382,7 @@
   Run:
 
   ```bash
-  pnpm --filter @zcode/core exec vitest run tests/media-capability.test.ts tests/media-budget.test.ts
+  pnpm --filter @codez/core exec vitest run tests/media-capability.test.ts tests/media-budget.test.ts
   ```
 
   Expected: all tests pass.
@@ -392,14 +392,14 @@
 ### Task 3: Resolve Runtime Capabilities from Model Catalog
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/contracts/src/model/catalog.ts`
-- Modify: `packages/shared/src/zcode-protocol/index.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/app/model-selection.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/app/runtime-config.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/app/session-facade.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts`
-- Test: `apps/zcode-cli/packages/bootstrap/tests/model-selection.test.ts`
-- Test: `apps/zcode-cli/packages/bootstrap/tests/runtime-config.test.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/model/catalog.ts`
+- Modify: `packages/shared/src/codez-protocol/index.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/app/model-selection.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/app/runtime-config.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/app/session-facade.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/workspace-model-catalog.ts`
+- Test: `apps/codez-cli/packages/bootstrap/tests/model-selection.test.ts`
+- Test: `apps/codez-cli/packages/bootstrap/tests/runtime-config.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -413,7 +413,7 @@
 
 - [ ] **Step 1: Write failing model-selection tests**
 
-  Add cases to `apps/zcode-cli/packages/bootstrap/tests/model-selection.test.ts`:
+  Add cases to `apps/codez-cli/packages/bootstrap/tests/model-selection.test.ts`:
 
   ```ts
   it("resolves explicit text-only image capability as false", () => {
@@ -449,14 +449,14 @@
   Run:
 
   ```bash
-  pnpm --filter @zcode/bootstrap exec vitest run tests/model-selection.test.ts
+  pnpm --filter @codez/bootstrap exec vitest run tests/model-selection.test.ts
   ```
 
   Expected: fail because `resolveRuntimeModelInputCapabilities` does not exist.
 
 - [ ] **Step 3: Extend contracts for PDF capability**
 
-  In `apps/zcode-cli/packages/contracts/src/model/catalog.ts`, add optional PDF support fields:
+  In `apps/codez-cli/packages/contracts/src/model/catalog.ts`, add optional PDF support fields:
 
   ```ts
   supportsPdf?: boolean;
@@ -466,7 +466,7 @@
 
 - [ ] **Step 4: Extend protocol schema only as optional metadata**
 
-  In `packages/shared/src/zcode-protocol/index.ts`, add optional `supportsPdf: z.boolean().optional()` next to existing `supportsImages` fields if model list consumers need to surface it. This must stay optional for backward compatibility.
+  In `packages/shared/src/codez-protocol/index.ts`, add optional `supportsPdf: z.boolean().optional()` next to existing `supportsImages` fields if model list consumers need to surface it. This must stay optional for backward compatibility.
 
 - [ ] **Step 5: Implement tri-state resolver**
 
@@ -507,7 +507,7 @@
   Run:
 
   ```bash
-  pnpm --filter @zcode/bootstrap exec vitest run tests/model-selection.test.ts tests/runtime-config.test.ts
+  pnpm --filter @codez/bootstrap exec vitest run tests/model-selection.test.ts tests/runtime-config.test.ts
   ```
 
   Expected: all tests pass.
@@ -517,14 +517,14 @@
 ### Task 4: Wire Adapter-Side Capability Guard
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/bootstrap/src/model-config.ts`
-- Modify: `apps/zcode-cli/packages/adapters/src/model/registry.ts`
-- Modify: `apps/zcode-cli/packages/adapters/src/model/runner-options.ts`
-- Modify: `apps/zcode-cli/packages/adapters/src/model/transform.ts`
-- Modify: `apps/zcode-cli/packages/adapters/src/model/tool-result-media-projection.ts`
-- Test: `apps/zcode-cli/packages/bootstrap/tests/model-config.test.ts`
-- Test: `apps/zcode-cli/packages/adapters/tests/model-transform.test.ts`
-- Test: `apps/zcode-cli/packages/adapters/tests/model-transform-tool-media.test.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/model-config.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/model/registry.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/model/runner-options.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/model/transform.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/model/tool-result-media-projection.ts`
+- Test: `apps/codez-cli/packages/bootstrap/tests/model-config.test.ts`
+- Test: `apps/codez-cli/packages/adapters/tests/model-transform.test.ts`
+- Test: `apps/codez-cli/packages/adapters/tests/model-transform-tool-media.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -592,7 +592,7 @@
   Run:
 
   ```bash
-  pnpm --filter @zcode/adapters exec vitest run tests/model-transform.test.ts tests/model-transform-tool-media.test.ts
+  pnpm --filter @codez/adapters exec vitest run tests/model-transform.test.ts tests/model-transform-tool-media.test.ts
   ```
 
   Expected: unsupported image test fails due current `ERROR: Cannot read...` text.
@@ -629,8 +629,8 @@
   Run:
 
   ```bash
-  pnpm --filter @zcode/adapters exec vitest run tests/model-transform.test.ts tests/model-transform-tool-media.test.ts
-  pnpm --filter @zcode/bootstrap exec vitest run tests/model-config.test.ts
+  pnpm --filter @codez/adapters exec vitest run tests/model-transform.test.ts tests/model-transform-tool-media.test.ts
+  pnpm --filter @codez/bootstrap exec vitest run tests/model-config.test.ts
   ```
 
   Expected: all tests pass.
@@ -640,8 +640,8 @@
 ### Task 5: End-to-End Request Shape Verification
 
 **Files:**
-- Modify if needed: `apps/zcode-cli/packages/core/tests/runtime-tool-loop.test.ts`
-- Modify if needed: `apps/zcode-cli/packages/core/tests/runtime-trace.test.ts`
+- Modify if needed: `apps/codez-cli/packages/core/tests/runtime-tool-loop.test.ts`
+- Modify if needed: `apps/codez-cli/packages/core/tests/runtime-trace.test.ts`
 
 **Interfaces:**
 - Consumes: runtime projection from Task 2 and catalog capability from Task 3.
@@ -664,7 +664,7 @@
   Run:
 
   ```bash
-  pnpm --filter @zcode/core exec vitest run tests/runtime-tool-loop.test.ts tests/runtime-trace.test.ts
+  pnpm --filter @codez/core exec vitest run tests/runtime-tool-loop.test.ts tests/runtime-trace.test.ts
   ```
 
   Expected: all tests pass.
@@ -681,9 +681,9 @@
   Run:
 
   ```bash
-  pnpm --filter @zcode/core exec vitest run tests/media-capability.test.ts tests/media-budget.test.ts tests/runtime-tool-loop.test.ts tests/runtime-trace.test.ts
-  pnpm --filter @zcode/adapters exec vitest run tests/model-transform.test.ts tests/model-transform-tool-media.test.ts
-  pnpm --filter @zcode/bootstrap exec vitest run tests/model-selection.test.ts tests/model-config.test.ts tests/runtime-config.test.ts
+  pnpm --filter @codez/core exec vitest run tests/media-capability.test.ts tests/media-budget.test.ts tests/runtime-tool-loop.test.ts tests/runtime-trace.test.ts
+  pnpm --filter @codez/adapters exec vitest run tests/model-transform.test.ts tests/model-transform-tool-media.test.ts
+  pnpm --filter @codez/bootstrap exec vitest run tests/model-selection.test.ts tests/model-config.test.ts tests/runtime-config.test.ts
   ```
 
   Expected: all listed tests pass.

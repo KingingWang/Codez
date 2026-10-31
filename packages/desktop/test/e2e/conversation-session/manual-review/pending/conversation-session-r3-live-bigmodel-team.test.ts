@@ -20,7 +20,7 @@ import {
 } from "../../../helpers/v4-conversation.js";
 
 const CASE_MARKER = "E2E_R3_LIVE_TEAM";
-const artifactDir = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-live-team");
+const artifactDir = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-live-team");
 const TEAM_PROVIDER_ID = "account:bigmodel-team-coding-plan";
 // 原小写 API 名称无法匹配当前菜单与运行记录使用的规范 Model ID。
 const TEAM_MODEL_ID = "GLM-5.3-Flash";
@@ -29,7 +29,7 @@ async function readRemoteModelNetwork(config: SSHConnectionConfig, startedAt: st
   const result = await runSSHCommand(
     config,
     // 只回收网络阶段、模型身份和状态；凭据、请求头、prompt 不进入 E2E facts。
-    `cat "$HOME/.zcode/cli/log/"*.jsonl 2>/dev/null | awk -v since="${startedAt}" -F'"timestamp":"' 'substr($2,1,24) >= since' | grep -E '"event":"model\\.network\\.' | while IFS= read -r line; do printf '%s\\n' "$line" | grep -oE '"(timestamp|event|modelId|providerId|providerKind|baseURL|status|statusCode|responseStatus|durationMs|finishReason|errorCode|retryCount)":"?[^,"}]*' | paste -sd '\t' -; done`,
+    `cat "$HOME/.codez/cli/log/"*.jsonl 2>/dev/null | awk -v since="${startedAt}" -F'"timestamp":"' 'substr($2,1,24) >= since' | grep -E '"event":"model\\.network\\.' | while IFS= read -r line; do printf '%s\\n' "$line" | grep -oE '"(timestamp|event|modelId|providerId|providerKind|baseURL|status|statusCode|responseStatus|durationMs|finishReason|errorCode|retryCount)":"?[^,"}]*' | paste -sd '\t' -; done`,
   );
   return result.stdout.trim().split("\n").filter(Boolean);
 }
@@ -67,8 +67,8 @@ describe(`${CASE_MARKER}: 账号 Coding Plan 代表（BigModel Team / glm-5.3-fl
     // 不渲染 workspace 菜单（SessionPane 仅 isDraft 挂 contextHeader），远程连接入口
     // 不可达。本 case 的目标是 provisioning + 远端真实请求，非 conversation 工作区 UI——
     // 显式 seed 项目会话并预建目录，让 reloadSession 后与全批其它 case 同路径恢复
-    // ZCodeProject（产品已不再自动创建该目录，见 startupWorkspace 注释）。
-    const defaultWorkspace = resolve(getE2EAppDataPaths().homeDir, "ZCodeProject");
+    // CodezProject（产品已不再自动创建该目录，见 startupWorkspace 注释）。
+    const defaultWorkspace = resolve(getE2EAppDataPaths().homeDir, "CodezProject");
     await mkdir(defaultWorkspace, { recursive: true });
     await seedSettings({
       providerFamilyDomain: "bigmodel",
@@ -99,12 +99,12 @@ describe(`${CASE_MARKER}: 账号 Coding Plan 代表（BigModel Team / glm-5.3-fl
     const startedAt = new Date().toISOString();
     requestStartedAt = startedAt;
     await connectSSHWorkspace({ caseMarker: CASE_MARKER, config, workspacePath: workspaceA });
-    const remoteSettings = await runSSHCommand(config, 'cat "$HOME/.zcode/v2/setting.json"');
+    const remoteSettings = await runSSHCommand(config, 'cat "$HOME/.codez/v2/setting.json"');
     expect(remoteSettings.stdout).toContain('"providerFamilyDomain": "bigmodel"');
     // 远端只保证自带运行时，不要求全局 node；原 tr 会连同键名内部的冒号一起删除。
     const remoteCredentialKeys = await runSSHCommand(
       config,
-      `grep -o '"[^"]*":' "$HOME/.zcode/v2/credentials.json" | sed -E 's/^"//; s/":$//'`,
+      `grep -o '"[^"]*":' "$HOME/.codez/v2/credentials.json" | sed -E 's/^"//; s/":$//'`,
     );
     facts.remoteCredentialKeys = remoteCredentialKeys.stdout.trim().split("\n").filter(Boolean);
     // 当前合同只下发 OAuth 登录态，Team 请求在远端换证；旧 API Key 的落盘断言已过时。

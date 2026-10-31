@@ -23,14 +23,14 @@ import type {
   SourceServerConnectionState,
   SourceServerManagementSnapshot,
   RemoteWorkspaceSessionEntry,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   buildSshRemoteHostKey,
   createUuid,
   parseRemoteWorkspaceIdentity,
   stripRemoteTargetSecrets,
-} from "@zcode/shared";
-import type { IServiceAccessor } from "@zcode/services";
+} from "@codez/shared";
+import type { IServiceAccessor } from "@codez/services";
 import {
   bindRemoteWorkspaceIdentity,
   bindRemoteWorkspacePath,
@@ -75,7 +75,7 @@ import { useRemoteConnectionEntryVisibility } from "@/hooks/useRemoteConnectionE
 import { createRemoteWorkspaceController } from "@/remote/remoteWorkspaceController.js";
 import type { RemoteWorkspaceController } from "@/remote/remoteWorkspaceController.js";
 import { buildRemoteTargetFromProfile } from "@/lib/remoteConnectionWizard.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 import { loadConnectionProfileCredentials } from "@/root/reconnectRemoteWorkspaceHistoryEntry.js";
 import type { WorkspacePersistenceGate } from "@/hooks/useTabPersistence.js";
 
@@ -1062,7 +1062,7 @@ export function useRemoteWorkspaceHistory({
   onOpenRemoteConnection,
   manuallyOpeningWorkspaceTabId,
 }: {
-  intl: ReturnType<typeof import("@/i18n/IntlProvider.js").useZCodeIntl>["intl"];
+  intl: ReturnType<typeof import("@/i18n/IntlProvider.js").useCodezIntl>["intl"];
   services: IServiceAccessor;
   platform: IPlatformService;
   supportsSettings: boolean;
@@ -1261,7 +1261,7 @@ export function useRemoteWorkspaceHistory({
 
       // 远程连接成功只代表 main/host 已经建好 session，
       // renderer 侧的 MessagePort 仍然可能在下一拍才注册进 zustand store。
-      // 如果此时立刻 addTab，会短暂走到本地 services，导致首屏读目录/预热 ZCode Agent 命中错误服务。
+      // 如果此时立刻 addTab，会短暂走到本地 services，导致首屏读目录/预热 Codez Agent 命中错误服务。
       // 这里等 session 真正挂进 store 再继续。
       await waitForRemoteWorkspaceSessionReady(result.sessionId);
       if (!context) {
@@ -1817,7 +1817,7 @@ export function useRemoteWorkspaceHistory({
             (draftProjectId === undefined
               ? undefined
               : ({ workspacePath, workspaceIdentity }) => {
-                  useZCodeSessionStore
+                  useCodezSessionStore
                     .getState()
                     .startDraft(workspacePath, undefined, workspaceIdentity, {
                       projectId: draftProjectId,
