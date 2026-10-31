@@ -324,6 +324,31 @@ never probes or infers beyond that projection. One accepted divergence from loca
 while the relay socket is up but the Desktop broker is momentarily unreachable, a remote
 `tools/list` may still list the tools; individual calls then fail `backend_unavailable`.
 
+### Complete-frame byte decoding
+
+Every socket hop, including the Desktop Host client and Main broker, accumulates raw bytes and
+decodes UTF-8 only after the complete newline-delimited frame is available. A socket chunk is not
+a character or JSON boundary: splitting Chinese text or emoji across chunks must preserve the
+exact request/result. Scan only new bytes for the delimiter and measure the original frame bytes,
+not repeatedly decoded strings. Keep the existing 1 MiB Main/relay request bound and 32 MiB
+Host/bridge response bound; overflow fails closed, releases the connection and never truncates.
+
+```text
+socket chunks → same connection's bounded byte accumulator → complete frame
+  → UTF-8 / JSON / schema validation → token + live window validation → one dispatch
+response chunks → bounded byte accumulator → complete result → original caller
+```
+
+Each connection owns its accumulator and terminal settlement. Close, timeout, malformed/oversized
+frame or an obsolete connection cannot settle a later request, dispatch a partial command, or
+retry an action whose outcome is unknown. Desktop continuous and mobile replayable keep their
+existing attachment/lease boundaries; framing does not introduce another request queue.
+
+Repeatable runtime acceptance uses synthetic sockets and window/Browser ports, never a native
+desktop action: split a CJK/emoji request and response inside every multibyte character; verify
+exact payload and one dispatch; reject a 1 MiB+1 request and 32 MiB+1 response without dispatch,
+truncation or retry; retain authentication, timeout and window-revocation failures.
+
 ## Global enable toggle
 
 The independence rules and tool matrix in
