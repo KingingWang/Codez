@@ -33,11 +33,15 @@ test("workflow gates six native targets, four bundled remote targets and isolate
   const { build, release } = workflow.jobs;
   const remoteRuns = workflow.jobs["remote-assets"].steps.map((step) => step.run ?? "");
   const nativeRegressionRun = (command) =>
-    command.includes("pnpm exec tsx --test") &&
-    command.includes("packages/services/test/codex*.test.ts") &&
-    command.includes("packages/desktop/test/codex*.test.ts") &&
-    command.includes("packages/desktop/test/nativeBrowserCuaMcpBroker.test.ts") &&
-    command.includes("packages/server/test/codex*.test.ts");
+    command.includes("pnpm --filter @codez/services exec tsx --test") &&
+    command.includes("test/codexServiceIntegration.test.ts") &&
+    command.includes("pnpm --filter @codez/desktop exec tsx --test") &&
+    command.includes("test/nativeBrowserCuaMcpBroker.test.ts") &&
+    command.includes("pnpm --filter @codez/server exec tsx --test") &&
+    command.includes("test/codexRemoteDeployment.test.ts") &&
+    command.includes("pnpm test:fork") &&
+    command.includes("packages/client/test/remoteServiceAccess.test.ts") &&
+    command.includes("packages/services/test/codexGlobalRolloutSyncer.test.ts");
   assert.equal(remoteRuns.filter(nativeRegressionRun).length, 1);
   assert.equal(
     build.steps.some((step) => nativeRegressionRun(step.run ?? "")),
@@ -45,9 +49,9 @@ test("workflow gates six native targets, four bundled remote targets and isolate
   );
 
   const uiRegressionRun = (command) =>
-    command.includes("pnpm exec tsx --tsconfig packages/ui/tsconfig.json --test") &&
-    command.includes("packages/ui/src/settings/codex/*.test.ts") &&
-    command.includes("packages/ui/src/settings/codex/*.test.tsx");
+    command.includes("pnpm --filter @codez/ui exec tsx --tsconfig tsconfig.json --test") &&
+    command.includes("src/settings/codex/codexSettings.test.ts") &&
+    command.includes("src/settings/codex/CodexPanels.test.tsx");
   assert.equal(remoteRuns.filter(uiRegressionRun).length, 1);
   assert.equal(
     build.steps.some((step) => uiRegressionRun(step.run ?? "")),
@@ -133,16 +137,16 @@ test("workflow includes automation and Git UI regressions outside the Codex sett
   );
   const commands = workflow.jobs["remote-assets"].steps
     .map((step) => step.run ?? "")
-    .filter((command) => command.includes("tsx --tsconfig packages/ui/tsconfig.json --test"));
+    .filter((command) => command.includes("@codez/ui exec tsx --tsconfig tsconfig.json --test"));
   for (const path of [
-    "packages/ui/src/hooks/useModelSelectionView.test.ts",
-    "packages/ui/src/settings/automationEditValidation.test.ts",
-    "packages/ui/src/v4/ConversationStatusPanel.test.tsx",
-    "packages/ui/src/v4/conversationStatusPanelModel.test.ts",
-    "packages/ui/src/capabilities/useGitAuxiliaryCapability.test.ts",
-    "packages/ui/src/capabilities/useCodexMessageFeedbackCapability.test.tsx",
-    "packages/ui/src/settings/usage-stats/AppUsagePanel.test.tsx",
-    "packages/ui/src/TaskActionMenuContent.test.tsx",
+    "src/hooks/useModelSelectionView.test.ts",
+    "src/settings/automationEditValidation.test.ts",
+    "src/v4/ConversationStatusPanel.test.tsx",
+    "src/v4/conversationStatusPanelModel.test.ts",
+    "src/capabilities/useGitAuxiliaryCapability.test.ts",
+    "src/capabilities/useCodexMessageFeedbackCapability.test.tsx",
+    "src/settings/usage-stats/AppUsagePanel.test.tsx",
+    "src/TaskActionMenuContent.test.tsx",
   ]) {
     assert.ok(
       commands.some((command) => command.includes(path)),
