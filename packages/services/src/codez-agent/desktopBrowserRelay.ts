@@ -119,31 +119,44 @@ export function createDesktopBrowserRelay(options: {
 
   const readRequestLine = (socket: Socket): Promise<string> =>
     new Promise<string>((resolve, reject) => {
-      let buffer = "";
+      // 修复原因：socket 分片不是 UTF-8 字符边界，逐片解码会静默改变中文/emoji。
+      // 沿用原 1 MiB 接收字节上限，只扫描新增字节，并在完整 LF 帧后解码一次。
+      const chunks: Buffer[] = [];
+      let receivedBytes = 0;
+      let settled = false;
       const cleanup = () => {
         socket.off("data", onData);
         socket.off("error", onError);
         socket.off("close", onClose);
       };
+      const finish = (error?: Error, frame?: string) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        chunks.length = 0;
+        if (error) reject(error);
+        else resolve(frame!);
+      };
       const onData = (chunk: Buffer) => {
-        buffer += chunk.toString("utf8");
-        if (Buffer.byteLength(buffer) > NATIVE_BROWSER_CUA_RELAY_REQUEST_MAX_BYTES) {
-          cleanup();
-          reject(new Error("relay request exceeded the 1 MiB limit"));
+        if (settled) return;
+        receivedBytes += chunk.length;
+        if (receivedBytes > NATIVE_BROWSER_CUA_RELAY_REQUEST_MAX_BYTES) {
+          finish(new Error("relay request exceeded the 1 MiB limit"));
           return;
         }
-        const newline = buffer.indexOf("\n");
+        chunks.push(chunk);
+        const newline = chunk.indexOf(0x0a);
         if (newline < 0) return;
-        cleanup();
-        resolve(buffer.slice(0, newline));
+        const frame = Buffer.concat(chunks, receivedBytes)
+          .subarray(0, receivedBytes - chunk.length + newline)
+          .toString("utf8");
+        finish(undefined, frame);
       };
       const onError = (error: Error) => {
-        cleanup();
-        reject(error);
+        finish(error);
       };
       const onClose = () => {
-        cleanup();
-        reject(new Error("relay socket closed before a request line arrived"));
+        finish(new Error("relay socket closed before a request line arrived"));
       };
       socket.on("data", onData);
       socket.once("error", onError);
