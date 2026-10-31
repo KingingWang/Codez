@@ -7010,6 +7010,7 @@ const enUS: Record<string, string> = {
   "chat.goal.planModeBlocked": "Goal is unavailable in Plan mode. Switch modes to continue.",
   "chat.slash.app.plan.label": "Plan mode",
   "chat.slash.app.plan.description": "Enable Plan mode",
+  "chat.slash.app.plan.label": "Plan mode",
   "chat.compact.runningBlocked": "Compact context after the current task finishes.",
   "chat.compact.queued": "Compaction queued and will run in order.",
   "chat.compact.duplicateBlocked": "A compaction is already running or queued.",
