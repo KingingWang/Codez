@@ -947,9 +947,7 @@ function AssistantHistoryStatus({
     );
   }, [intl, numberFormatter, percentFormatter, sessionCumulative, turnTokenUsage]);
 
-<<<<<<< HEAD
   const Status = collapsible ? CollapsibleTrigger : "span";
-=======
   if (runningHighspeedTagOnly) {
     // 上游在整轮生成期间隐藏折叠头（运行中出现收起入口没有意义）；fork 的 Highspeed 状态标签
     // 原本挂在这个头上，生成期间必须仍然可见，且节省时间服从整轮终态，不能提前显示。
@@ -964,7 +962,6 @@ function AssistantHistoryStatus({
       </div>
     );
   }
->>>>>>> 07dabb3 (fix(ui): keep background result summary permanently expanded and Highspeed tag visible while running)
 
   return (
     <div
@@ -1155,9 +1152,6 @@ function ConversationWorkSegmentFlow({
       className="history-message flex flex-col [&>*+*:not([data-slot='collapsible-content'])]:mt-5"
     >
       {segment.flowItems.map((item, index) => {
-<<<<<<< HEAD
-        const showHistoryStatus = shouldShowHistoryStatus && index === firstAssistantFlowItemIndex;
-=======
         const stageTailIsRunning =
           segment.workStatus?.state === "running" &&
           index === segment.flowItems.length - 1 &&
@@ -1165,11 +1159,6 @@ function ConversationWorkSegmentFlow({
         const showHistoryStatus =
           (shouldShowHistoryStatus || showRunningHighspeedTag) &&
           index === firstAssistantFlowItemIndex;
-        const itemKey =
-          item.kind === "userInput" || item.kind === "assistantText"
-            ? `${item.kind}:${item.row.rowId}`
-            : `${item.kind}:${item.rows[0]?.rowId ?? index}`;
->>>>>>> 07dabb3 (fix(ui): keep background result summary permanently expanded and Highspeed tag visible while running)
         let content: React.ReactNode;
 
         if (item.kind === "userInput") {
@@ -1505,29 +1494,7 @@ function ConversationBackgroundResultWork({
   assistantCodeCommentProjectionEnabled: boolean;
   assistantPreviewCardsAutoOpenKey?: string;
 }) {
-<<<<<<< HEAD
-  const [historyOpen, setHistoryOpen] = useState(unit.assistantHistoryDefaultOpen);
-  useEffect(() => {
-    setHistoryOpen(unit.assistantHistoryDefaultOpen);
-  }, [unit.assistantHistoryDefaultOpen, unit.key]);
-  const open =
-    !unit.workStatus || unit.isRunning || unit.assistantHistoryDefaultOpen || historyOpen;
-  const historySegment: ConversationTurnWorkSegment = {
-    key: unit.key,
-    flowItems: unit.flowItems,
-    assistantWorkRows: unit.assistantWorkRows,
-    assistantHistoryRows: unit.assistantHistoryRows,
-    assistantFollowingRows: unit.assistantFollowingRows,
-    assistantHistoryDefaultOpen: unit.assistantHistoryDefaultOpen,
-    ...(unit.workStatus ? { workStatus: unit.workStatus } : {}),
-  };
-  // 后台通知可能有结果，但主模型没有可见过程；原来的空容器仍占外层 gap，
-  // 点击收起会在 display:none 时跳 20px。入口与内容共用同一份可见工作项投影。
-  const historyItems = useConversationAssistantWorkItems(unit.assistantHistoryRows, context);
-  const hasHistory = historyItems.length > 0;
-=======
   const hasHistory = unit.assistantHistoryRows.length > 0;
->>>>>>> 07dabb3 (fix(ui): keep background result summary permanently expanded and Highspeed tag visible while running)
   const hasFollowing = unit.assistantFollowingRows.length > 0;
   const showLoading = shouldShowTurnChatLoading({
     blockedByActiveWork: context.chatLoadingBlockedByActiveWork === true,
@@ -1607,25 +1574,7 @@ function ConversationBackgroundResultWork({
       : undefined;
 
   return (
-<<<<<<< HEAD
-    <Collapsible
-      open={open}
-      onOpenChange={hasHistory ? setHistoryOpen : undefined}
-      // 与普通工作段一致，历史间距进入动画层，避免收起末帧才删除 flex gap。
-      className="history-message flex flex-col [&>*+*:not([data-slot='collapsible-content'])]:mt-5 [&>[data-codez-chat-loading-slot]:not(:first-child)]:mt-3"
-    >
-      {!unit.isRunning && unit.workStatus ? (
-        <AssistantHistoryStatus
-          segment={historySegment}
-          collapsible={hasHistory}
-          open={open}
-          highspeed={false}
-          sourceCommandIds={unit.header?.sourceCommandId ? [unit.header.sourceCommandId] : []}
-        />
-      ) : null}
-=======
     <div className="flex flex-col gap-5">
->>>>>>> 07dabb3 (fix(ui): keep background result summary permanently expanded and Highspeed tag visible while running)
       {workflowNotification ? (
         <WorkflowNotificationToolRow
           notification={workflowNotification}
@@ -1651,14 +1600,6 @@ function ConversationBackgroundResultWork({
           </div>
         </div>
       )}
-<<<<<<< HEAD
-      <ConversationAssistantWorkContent
-        items={historyItems}
-        context={context}
-        assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
-        historyContainer={{ chunkKey: unit.key, open }}
-      />
-=======
       {hasHistory ? (
         <div className="flex flex-col gap-2">
           <ConversationAssistantWorkItems
@@ -1668,7 +1609,6 @@ function ConversationBackgroundResultWork({
           />
         </div>
       ) : null}
->>>>>>> 07dabb3 (fix(ui): keep background result summary permanently expanded and Highspeed tag visible while running)
       {latestAssistantTextRow ? (
         <ConversationTurnRow
           key={`${latestAssistantTextRow.rowId}:${latestAssistantTextRow.entityId ?? ""}`}
