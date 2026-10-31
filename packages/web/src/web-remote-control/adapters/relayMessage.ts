@@ -89,7 +89,7 @@ export function safePayloadMetadata(payload: unknown): Record<string, string | u
   }
   const record = payload as Record<string, unknown>;
   return {
-    zcode_type: typeof record.zcode_type === "string" ? record.zcode_type : undefined,
+    codez_type: typeof record.codez_type === "string" ? record.codez_type : undefined,
     requestId: typeof record.requestId === "string" ? record.requestId : undefined,
     bridgeSessionId:
       typeof record.bridgeSessionId === "string" ? record.bridgeSessionId : undefined,
@@ -98,7 +98,7 @@ export function safePayloadMetadata(payload: unknown): Record<string, string | u
 
 export function isRawTransportCandidate(payload: unknown): boolean {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
-  const type = (payload as { zcode_type?: unknown }).zcode_type;
+  const type = (payload as { codez_type?: unknown }).codez_type;
   return type === "rpc-frame" || type === "rpc-frame-ack";
 }
 
@@ -139,7 +139,7 @@ export function buildClientCapabilitiesPayload() {
     caps.push(WEB_REMOTE_CONTROL_CAP_RELAY_GZIP_V1);
   }
   return {
-    zcode_type: "client-capabilities" as const,
+    codez_type: "client-capabilities" as const,
     v: 1 as const,
     caps,
   };

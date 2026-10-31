@@ -11,7 +11,7 @@ import { z } from "zod";
 // 接收方在 schema 校验前拦截信封，gunzip 还原后继续原有路由。
 //
 // 版本协商：握手 schema 全部 .strict() 不能加字段，因此用 app 级
-// `client-capabilities` 消息宣告解码能力。旧版本对未知 zcode_type 一律静默丢弃
+// `client-capabilities` 消息宣告解码能力。旧版本对未知 codez_type 一律静默丢弃
 // （parseWebRemoteControlAppPayload 返回 null 即 drop），新消息对旧端安全。
 // 发送方仅在收到对端宣告 `relay-gzip.v1` 后才发送信封，两个方向的版本错配
 // （新手机+旧桌面 / 旧手机+新桌面）都退化为现状不压缩。
@@ -30,12 +30,12 @@ const base64Schema = z
   .regex(/^[A-Za-z0-9+/]+={0,2}$/u);
 
 /**
- * relay-gzip 信封；内部与外部均保留上游 zcode_type。
+ * relay-gzip 信封；内部与外部均保留上游 codez_type。
  * data = base64(gzip(JSON.stringify(内部 app payload)))。
  */
 export const webRemoteControlGzipEnvelopeSchema = z
   .object({
-    zcode_type: z.literal("relay-gzip"),
+    codez_type: z.literal("relay-gzip"),
     v: z.literal(1),
     data: base64Schema,
   })
@@ -46,7 +46,7 @@ export type WebRemoteControlGzipEnvelope = z.infer<typeof webRemoteControlGzipEn
 /** 能力宣告（内部形态）。 */
 export const webRemoteControlClientCapabilitiesSchema = z
   .object({
-    zcode_type: z.literal("client-capabilities"),
+    codez_type: z.literal("client-capabilities"),
     v: z.literal(1),
     caps: z.array(z.string().max(64)).max(16),
   })

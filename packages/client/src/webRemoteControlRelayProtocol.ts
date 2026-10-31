@@ -161,7 +161,7 @@ export function createWebRemoteControlRelayProtocol({
       }
       seq += 1;
       const frame = {
-        zcode_type: "rpc-frame",
+        codez_type: "rpc-frame",
         bridgeSessionId,
         ...(bridgeGeneration !== undefined ? { bridgeGeneration } : {}),
         ...(recoveryId ? { recoveryId } : {}),
@@ -193,7 +193,7 @@ export function createWebRemoteControlRelayProtocol({
       if (
         disposed ||
         degraded ||
-        payload.zcode_type !== "rpc-frame" ||
+        payload.codez_type !== "rpc-frame" ||
         payload.bridgeSessionId !== bridgeSessionId
       ) {
         return;

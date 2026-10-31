@@ -80,7 +80,7 @@ export function rawIdentityMatches(
 
 export function isRawTransportCandidate(candidate: unknown): boolean {
   if (typeof candidate !== "object" || candidate === null) return false;
-  const type = (candidate as { zcode_type?: unknown }).zcode_type;
+  const type = (candidate as { codez_type?: unknown }).codez_type;
   return type === "rpc-frame" || type === "rpc-frame-ack";
 }
 

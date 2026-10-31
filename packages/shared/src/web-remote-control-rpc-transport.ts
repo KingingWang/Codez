@@ -59,7 +59,7 @@ function isCanonicalBase64(value: string): boolean {
 
 export const webRemoteControlRpcTransportFrameSchema = z
   .object({
-    zcode_type: z.literal("rpc-frame"),
+    codez_type: z.literal("rpc-frame"),
     bridgeSessionId: webRemoteControlRpcTransportIdSchema,
     bridgeGeneration: nonnegativeSafeIntegerSchema.optional(),
     recoveryId: webRemoteControlRpcTransportIdSchema.optional(),
@@ -111,7 +111,7 @@ export type WebRemoteControlRpcTransportFramePayload = z.infer<
 
 export const webRemoteControlRpcTransportAckSchema = z
   .object({
-    zcode_type: z.literal("rpc-frame-ack"),
+    codez_type: z.literal("rpc-frame-ack"),
     bridgeSessionId: webRemoteControlRpcTransportIdSchema,
     bridgeGeneration: nonnegativeSafeIntegerSchema.optional(),
     recoveryId: webRemoteControlRpcTransportIdSchema.optional(),
@@ -301,7 +301,7 @@ function frameShell(params: {
   dataBase64: string;
 }): WebRemoteControlRpcTransportFramePayload {
   return {
-    zcode_type: "rpc-frame",
+    codez_type: "rpc-frame",
     ...params.identity,
     seq: params.seq,
     messageSeq: params.messageSeq,

@@ -55,7 +55,7 @@ export const webRemoteControlMobileLogDeviceSchema = z.object({
 export type WebRemoteControlMobileLogDevice = z.infer<typeof webRemoteControlMobileLogDeviceSchema>;
 
 export const webRemoteControlMobileLogPayloadSchema = z.object({
-  zcode_type: z.literal("mobile-log"),
+  codez_type: z.literal("mobile-log"),
   events: z.array(webRemoteControlMobileLogEntrySchema).min(1).max(limits.maxEventsPerFrame),
   device: webRemoteControlMobileLogDeviceSchema.optional(),
   /** 手机进程/启动会话标识；同一会话的日志落同一组文件。 */
@@ -70,7 +70,7 @@ export type WebRemoteControlMobileLogPullEncoding =
   (typeof WEB_REMOTE_CONTROL_MOBILE_LOG_PULL_ENCODINGS)[number];
 
 export const webRemoteControlMobileLogPullRequestPayloadSchema = z.object({
-  zcode_type: z.literal("mobile-log-pull-request"),
+  codez_type: z.literal("mobile-log-pull-request"),
   requestId: z.string().min(1).max(128),
   /** 事件时间窗（epoch 毫秒，闭区间），缺省不限。 */
   sinceTs: z.number().int().positive().optional(),
@@ -91,7 +91,7 @@ export type WebRemoteControlMobileLogPullRequestPayload = z.infer<
 >;
 
 const pullShardMetaShape = {
-  zcode_type: z.literal("mobile-log-pull-response"),
+  codez_type: z.literal("mobile-log-pull-response"),
   requestId: z.string().min(1).max(128),
   success: z.literal(true),
   /** 过滤后、截断前的匹配总数。 */
@@ -127,7 +127,7 @@ export const webRemoteControlMobileLogCompressedEntriesSchema = z
   .max(limits.maxEntriesPerCompressedShard);
 
 export const webRemoteControlMobileLogPullFailureSchema = z.object({
-  zcode_type: z.literal("mobile-log-pull-response"),
+  codez_type: z.literal("mobile-log-pull-response"),
   requestId: z.string().min(1).max(128),
   success: z.literal(false),
   /** 机器可读原因：unsupported-action（不支持）/ busy / unexpected-error 等。 */
