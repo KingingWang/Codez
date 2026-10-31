@@ -49,7 +49,7 @@ function rawBytes(raw: RawData): Buffer {
 
 function isRawTransportCandidate(payload: unknown): boolean {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
-  const type = (payload as { zcode_type?: unknown }).zcode_type;
+  const type = (payload as { codez_type?: unknown }).codez_type;
   return type === "rpc-frame" || type === "rpc-frame-ack";
 }
 
@@ -204,7 +204,7 @@ export class WebRemoteControlDeviceTransport {
   private sendClientCapabilities(): void {
     if (this.socket?.readyState !== WebSocket.OPEN) return;
     const prepared = this.serializer.prepare({
-      zcode_type: "client-capabilities",
+      codez_type: "client-capabilities",
       v: 1,
       caps: [WEB_REMOTE_CONTROL_CAP_RELAY_GZIP_V1],
     });
@@ -459,7 +459,7 @@ export class WebRemoteControlDeviceTransport {
           return;
         }
       }
-      // 原始 RPC 快捷分流只能接收通过 E2EE 验证及解压后的 zcode_type 帧，
+      // 原始 RPC 快捷分流只能接收通过 E2EE 验证及解压后的 codez_type 帧，
       // 不能因沿用上游直接帧入口而在握手期间绕过加密授权。
       value = normalizeWebRemoteControlWirePayload(value);
       const capabilities = parseWebRemoteControlClientCapabilities(value);
