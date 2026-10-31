@@ -24,6 +24,8 @@ export function inspectRetiredAppUnitEvidence(markdown, { engineeringTests = new
   const isAppUnit = (path) =>
     path.startsWith("packages/") &&
     !path.startsWith("packages/codez-cua/") &&
+    // Bugfix：Codex bridge 使用独立原生回归入口，不能因位于 packages/ 而误判为退役 App 单测。
+    !path.startsWith("packages/codex-bridge/") &&
     !/\/test\/(?:e2e|browser)\//u.test(path) &&
     !engineeringTests.has(path);
   for (const line of rows) {
