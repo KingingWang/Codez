@@ -1184,10 +1184,18 @@ describe("codezAgentService v4 conversation channel", () => {
       const off = service.onDynamicConversationFrame({ workspacePath })((wire) => seen.push(wire));
       await service.subscribeConversationV4({ workspacePath, sessionId: "trace-initial" });
       await vi.waitFor(() => expect(seen).toHaveLength(1));
-      expect(info.mock.calls.some((call) => (call[2] as { event?: string })?.event === "v4.conversation.wire.service_received")).toBe(true);
+      expect(
+        info.mock.calls.some(
+          (call) =>
+            (call[2] as { event?: string })?.event === "v4.conversation.wire.service_received",
+        ),
+      ).toBe(true);
       await service.subscribeConversationV4({ workspacePath, sessionId: "ordinary-online" });
       await vi.waitFor(() => expect(seen).toHaveLength(2));
-      const checkpoints = info.mock.calls.filter((call) => (call[2] as { event?: string })?.event === "v4.conversation.wire.service_received");
+      const checkpoints = info.mock.calls.filter(
+        (call) =>
+          (call[2] as { event?: string })?.event === "v4.conversation.wire.service_received",
+      );
       expect(checkpoints).toHaveLength(1);
       expect(JSON.stringify(checkpoints)).not.toContain(workspacePath);
       off.dispose();

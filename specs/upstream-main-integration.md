@@ -2,61 +2,61 @@
 
 ## Feature Summary
 
-| 项 | 约束 |
-| --- | --- |
-| 目的 | 将 Codez 定制提交迁移到 ZCode 上游 main，保留已有产品行为 |
-| 上游 | `a60ba6a7e5a06742270ca605f5d2cc2766afa7e1`，3.17.1 |
-| 原项目 | `3eafe4fe962b5824ecf2e69392f69900ba19d51d` |
-| 原基准 | `3c5b2276` → `c0695b7f`（原重命名提交） |
-| 新基准 | `56457972`，纯产品品牌及路径转换 |
-| 本地备份 | `backup/pre-rebase-20261031-3eafe4fe` |
-| 改动层 | presentation / validation / persistence / recovery 的兼容迁移，不新增产品语义 |
-| 模式 | impact-only；既有 spec 和回归证据继续定义产品行为 |
-| 范围外 | 新执行后端、第二个运行时、用户数据修复、原生 Codex HOME 修改 |
+| 项       | 约束                                                                          |
+| -------- | ----------------------------------------------------------------------------- |
+| 目的     | 将 Codez 定制提交迁移到 ZCode 上游 main，保留已有产品行为                     |
+| 上游     | `a60ba6a7e5a06742270ca605f5d2cc2766afa7e1`，3.17.1                            |
+| 原项目   | `3eafe4fe962b5824ecf2e69392f69900ba19d51d`                                    |
+| 原基准   | `3c5b2276` → `c0695b7f`（原重命名提交）                                       |
+| 新基准   | `56457972`，纯产品品牌及路径转换                                              |
+| 本地备份 | `backup/pre-rebase-20261031-3eafe4fe`                                         |
+| 改动层   | presentation / validation / persistence / recovery 的兼容迁移，不新增产品语义 |
+| 模式     | impact-only；既有 spec 和回归证据继续定义产品行为                             |
+| 范围外   | 新执行后端、第二个运行时、用户数据修复、原生 Codex HOME 修改                  |
 
 ## UI Surface Matrix
 
-| 场景 | 入口 / 共享实现 | 草稿 / 权威 owner | 提交与落点 | 模式与隔离 |
-| --- | --- | --- | --- | --- |
-| 对话、Queue、Guide、停止与继续 | V4 pane/composer、Codex bridge | Renderer 草稿；Codex thread/CommandInbox | 既有 V4 命令 → stdio → 原生 app-server | desktop-continuous 与 web-remote-replayable 分离 |
-| Codex 设置、模型与 Provider Key | settings/codex、useCodexSettings | 表单草稿；目标 Host / 原生配置 | 既有 workspace 配置端口 | 写目标不含 Agent 代际；真实 workspace 切换失效 |
-| 项目历史、标题与归档管理 | project-sidebar、task-index、rollout 同步 | CLI 会话事实；Host 组织态 | sessionsIndex/reconcile、幂等 deleteSession、项目事务 | Host + canonical workspace identity；cwd 用物理目录匹配 |
-| 手机、扩展与 Android 远控 | 既有 relay transport 和 shared-host attachment | 原 Host / transport owner | 原 X25519 + XChaCha20-Poly1305 E2EE + Gzip → 既有 RPC / replay | 不新增 Agent、Host、accepted queue 或业务 relay 状态 |
-| Source Server 更新与 Usage Stats | 连接管理、设置与用量面板 | 所属服务器 Host | GitHub Release 固定索引 / 原服务 | remoteSessionId、identity 和所属服务器贯穿 |
-| Automations | 既有表单与调度器 | 表单草稿；Host dispatch owner | 保存的目录/模型 → 所属窗口 attachment | 稀疏默认值、幂等关联、失败释放与有界恢复 |
-| Computer Use | 自研 codez-cua、原生 MCP 桥接 | Local Host 授权与既有 broker | 平台端口、按字节解帧 | 上游仍是 fail-closed stub，不替换真实实现 |
+| 场景                             | 入口 / 共享实现                                | 草稿 / 权威 owner                        | 提交与落点                                                     | 模式与隔离                                              |
+| -------------------------------- | ---------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------- |
+| 对话、Queue、Guide、停止与继续   | V4 pane/composer、Codex bridge                 | Renderer 草稿；Codex thread/CommandInbox | 既有 V4 命令 → stdio → 原生 app-server                         | desktop-continuous 与 web-remote-replayable 分离        |
+| Codex 设置、模型与 Provider Key  | settings/codex、useCodexSettings               | 表单草稿；目标 Host / 原生配置           | 既有 workspace 配置端口                                        | 写目标不含 Agent 代际；真实 workspace 切换失效          |
+| 项目历史、标题与归档管理         | project-sidebar、task-index、rollout 同步      | CLI 会话事实；Host 组织态                | sessionsIndex/reconcile、幂等 deleteSession、项目事务          | Host + canonical workspace identity；cwd 用物理目录匹配 |
+| 手机、扩展与 Android 远控        | 既有 relay transport 和 shared-host attachment | 原 Host / transport owner                | 原 X25519 + XChaCha20-Poly1305 E2EE + Gzip → 既有 RPC / replay | 不新增 Agent、Host、accepted queue 或业务 relay 状态    |
+| Source Server 更新与 Usage Stats | 连接管理、设置与用量面板                       | 所属服务器 Host                          | GitHub Release 固定索引 / 原服务                               | remoteSessionId、identity 和所属服务器贯穿              |
+| Automations                      | 既有表单与调度器                               | 表单草稿；Host dispatch owner            | 保存的目录/模型 → 所属窗口 attachment                          | 稀疏默认值、幂等关联、失败释放与有界恢复                |
+| Computer Use                     | 自研 codez-cua、原生 MCP 桥接                  | Local Host 授权与既有 broker             | 平台端口、按字节解帧                                           | 上游仍是 fail-closed stub，不替换真实实现               |
 
 ## Shared And Divergent Behavior
 
-| 关注点 | 共享部分 | 必须保留的差异 |
-| --- | --- | --- |
-| UI / 候选 | 已有共享组件、模型候选、项目目录投影 | 对话配置、Automation record 和 Subagent 配置的提交 owner 不合并 |
-| 默认与校验 | 当前公共协议、严格 schema 与平台注入 | yolo 必须 approvalPolicy=never；远端身份不能仅凭 cwd |
-| 提交 | 原 CommandInbox、owner/lease 与幂等 ID | 冷历史分页只读恢复不能重试 resume / 写命令 |
-| 持久化与恢复 | 既有索引和可重建投影 | rollout 缓存仅写 Codez 数据根，不持久化 synced，不写原生 Codex HOME |
+| 关注点       | 共享部分                               | 必须保留的差异                                                      |
+| ------------ | -------------------------------------- | ------------------------------------------------------------------- |
+| UI / 候选    | 已有共享组件、模型候选、项目目录投影   | 对话配置、Automation record 和 Subagent 配置的提交 owner 不合并     |
+| 默认与校验   | 当前公共协议、严格 schema 与平台注入   | yolo 必须 approvalPolicy=never；远端身份不能仅凭 cwd                |
+| 提交         | 原 CommandInbox、owner/lease 与幂等 ID | 冷历史分页只读恢复不能重试 resume / 写命令                          |
+| 持久化与恢复 | 既有索引和可重建投影                   | rollout 缓存仅写 Codez 数据根，不持久化 synced，不写原生 Codex HOME |
 
 ## Feature Relationships
 
-| Rank | 关系 | 证据 / 检查 |
-| --- | --- | --- |
-| must-inspect | 上游同步 → 新 rename → 各定制提交 | 逐提交迁移；记录冲突文件与处理理由 |
-| must-inspect | Codex thread owner → bridge 投影 → V4 / task-index | bridge 原生测试、定制回归、既有协议 spec |
-| must-inspect | 初次发现 / 创建 → Host 原子归属 → 首次 subscribe | 项目目录、task-index、session creation 三方保持原合同 |
-| must-inspect | renderer attachment 首帧 → pairedWaiters → join | connectionReadiness / initialPairingDeadline，不提前 join |
-| conditional | 上游 CUA 是否开源 → 实现选择 | README、placeholder 标记与 broker unavailable 实证：保留自研 |
-| invariant-only | 品牌转换 → 外部线协议 / 官方插件 | 例外原样；lockfile 和 upstream-snapshot 不作为冲突兜底数据 |
-| evidence-only | 上游测试退役 → 定制验证入口 | 区分工程、fork regression、CLI/CUA、bridge Node 测试与 E2E |
+| Rank           | 关系                                               | 证据 / 检查                                                  |
+| -------------- | -------------------------------------------------- | ------------------------------------------------------------ |
+| must-inspect   | 上游同步 → 新 rename → 各定制提交                  | 逐提交迁移；记录冲突文件与处理理由                           |
+| must-inspect   | Codex thread owner → bridge 投影 → V4 / task-index | bridge 原生测试、定制回归、既有协议 spec                     |
+| must-inspect   | 初次发现 / 创建 → Host 原子归属 → 首次 subscribe   | 项目目录、task-index、session creation 三方保持原合同        |
+| must-inspect   | renderer attachment 首帧 → pairedWaiters → join    | connectionReadiness / initialPairingDeadline，不提前 join    |
+| conditional    | 上游 CUA 是否开源 → 实现选择                       | README、placeholder 标记与 broker unavailable 实证：保留自研 |
+| invariant-only | 品牌转换 → 外部线协议 / 官方插件                   | 例外原样；lockfile 和 upstream-snapshot 不作为冲突兜底数据   |
+| evidence-only  | 上游测试退役 → 定制验证入口                        | 区分工程、fork regression、CLI/CUA、bridge Node 测试与 E2E   |
 
 ## State Owners And Commit Sinks
 
-| 状态 | 唯一 owner | 迁移不允许改变 |
-| --- | --- | --- |
-| 会话、轮次、已接受队列 | 原生 Codex / CLI CommandInbox | 不在 Renderer、Main、relay 增加副本 |
-| 项目、roots、归档、置顶、未读 | 所属 Host app 库 | 现有事务、CAS、迁移 checksum 与首次归属 |
-| 活动时间 | ThreadStateStore 单调时钟 | 仅接受活动 / 定时历史推进；rollout 取真实记录而非 mtime |
-| 冷恢复 | 现有 load single-flight 与 native history | metadata-only resume；有界只读分页；保留在飞轮次 |
-| Provider 写事务 | workspace 写目标与既有 mutation guard | deferredRuntimeRestarts 累计，errorTarget 保留错误 |
-| 网络连接与更新 | 既有窗口连接 Registry / Source Manager | attachment、lease、换代与下载终态校验 |
+| 状态                          | 唯一 owner                                | 迁移不允许改变                                          |
+| ----------------------------- | ----------------------------------------- | ------------------------------------------------------- |
+| 会话、轮次、已接受队列        | 原生 Codex / CLI CommandInbox             | 不在 Renderer、Main、relay 增加副本                     |
+| 项目、roots、归档、置顶、未读 | 所属 Host app 库                          | 现有事务、CAS、迁移 checksum 与首次归属                 |
+| 活动时间                      | ThreadStateStore 单调时钟                 | 仅接受活动 / 定时历史推进；rollout 取真实记录而非 mtime |
+| 冷恢复                        | 现有 load single-flight 与 native history | metadata-only resume；有界只读分页；保留在飞轮次        |
+| Provider 写事务               | workspace 写目标与既有 mutation guard     | deferredRuntimeRestarts 累计，errorTarget 保留错误      |
+| 网络连接与更新                | 既有窗口连接 Registry / Source Manager    | attachment、lease、换代与下载终态校验                   |
 
 既有事件顺序保持：
 
@@ -102,12 +102,12 @@ Host 组织命令 → 原事务 / CAS → 同一 app 索引 → 侧栏投影
 
 ## Codegraph Evidence
 
-| Seed | 方法 | 边界结论 |
-| --- | --- | --- |
-| BridgeRuntime / ThreadStateStore | 固定原 HEAD 的源码与原生测试、architecture:context codex-bridge | stdio 边界；Codex 权威不变 |
-| ProjectRepository / task-index / sidebar | 固定原 HEAD、功能图一跳、architecture:context project-storage | Host 组织态 / CLI 事实不合并 |
-| Remote transport / attachment / Source update | 固定 refs 的 Git diff 和目标合同 | 保留两种 delivery 及窗口连接 owner |
-| 上游构建 / 测试入口 | 最新 package.json / Git tree | 采用新工程链路，明确补充 fork 定制验证 |
+| Seed                                          | 方法                                                            | 边界结论                               |
+| --------------------------------------------- | --------------------------------------------------------------- | -------------------------------------- |
+| BridgeRuntime / ThreadStateStore              | 固定原 HEAD 的源码与原生测试、architecture:context codex-bridge | stdio 边界；Codex 权威不变             |
+| ProjectRepository / task-index / sidebar      | 固定原 HEAD、功能图一跳、architecture:context project-storage   | Host 组织态 / CLI 事实不合并           |
+| Remote transport / attachment / Source update | 固定 refs 的 Git diff 和目标合同                                | 保留两种 delivery 及窗口连接 owner     |
+| 上游构建 / 测试入口                           | 最新 package.json / Git tree                                    | 采用新工程链路，明确补充 fork 定制验证 |
 
 本次环境未提供 codegraph explore/callers/impact 接口；Git 精确差异、公共合同与测试作为证据，
 不把静态可达性宣称为产品依赖。功能图扫描深度为一跳，代码依赖按具体冲突补查。
@@ -123,41 +123,41 @@ Host 组织命令 → 原事务 / CAS → 同一 app 索引 → 侧栏投影
 以精确 roots 登记，保留当前文件路径和真实调用端口；不移动运行时 owner 或新增写入路径。
 先补合同与示例，再登记依赖方向，模块元数据不创造第二份产品状态。
 
-| 文件 | 模块 / 层 | 保持的 owner |
-| --- | --- | --- |
-| workspaceRemovalSafety、workspaceRuntimeRelease、pluginCreatorPrefill | conversation-workspace-target / app | 既有窗口 tab、Host service 和草稿 owner |
-| pluginIconSource | workspace-plugin-preview / ui | 既有 plugin catalog；仅可信图标展示 |
-| conversationShareConnectionScope | conversation-share-attachment / adapters | 既有 attachment / share service |
-| pluginStoreOrdering | plugin-store-ordering / domain | 纯排序，不写插件安装态 |
-| useDynamicWorkflowAvailability | dynamic-workflow-availability / app | 既有 capability query；hook 仅展示派生值 |
-| desktopUpdateMenu | desktop-update-presentation / domain | updater 权威不变；纯菜单投影 |
-| featureSuggestedPrompts、officeSuggestedPrompts | draft-suggested-prompts / domain | 既有草稿和业务配置；纯建议内容 |
+| 文件                                                                  | 模块 / 层                                | 保持的 owner                             |
+| --------------------------------------------------------------------- | ---------------------------------------- | ---------------------------------------- |
+| workspaceRemovalSafety、workspaceRuntimeRelease、pluginCreatorPrefill | conversation-workspace-target / app      | 既有窗口 tab、Host service 和草稿 owner  |
+| pluginIconSource                                                      | workspace-plugin-preview / ui            | 既有 plugin catalog；仅可信图标展示      |
+| conversationShareConnectionScope                                      | conversation-share-attachment / adapters | 既有 attachment / share service          |
+| pluginStoreOrdering                                                   | plugin-store-ordering / domain           | 纯排序，不写插件安装态                   |
+| useDynamicWorkflowAvailability                                        | dynamic-workflow-availability / app      | 既有 capability query；hook 仅展示派生值 |
+| desktopUpdateMenu                                                     | desktop-update-presentation / domain     | updater 权威不变；纯菜单投影             |
+| featureSuggestedPrompts、officeSuggestedPrompts                       | draft-suggested-prompts / domain         | 既有草稿和业务配置；纯建议内容           |
 
 剩余准入复用已有真实端口，不接管整个 UI、Host、Main 或 Service 目录。四件套仅包含
 `module.ts`、`contract.ts`、`contract.example.ts`、`CONTRACT.md`，不新增 App 单测。
 兼容入口保持现有路径；公开类型优先复用共享端口，不复制业务状态。
 
-| 模块 | 层 | 保持的职责与 owner |
-| --- | --- | --- |
-| desktop-codex-automation-reconciliation | adapters | 原 Host dispatch 的只读原生关联对账 |
-| desktop-model-selection-attachment | adapters | 原 Host 模型服务的可信 attachment 作用域 |
-| desktop-native-browser-control-host | adapters | Main 下发能力的 Host 投影和请求转发 |
-| desktop-native-browser-control-main | adapters | Main 唯一窗口 token、授权和 Browser dispatch |
-| desktop-product-runtime | adapters | 既有构建 flavor、数据根与固定发行索引 |
-| desktop-renderer-recovery | adapters | 原窗口的有界原地恢复，不替换 attachment |
-| cua-native-producer | adapters | 原 producer 的 native single-flight、snapshot、输入与销毁 |
-| cua-helper-runtime | adapters | 原 Helper factory 的认证、就绪、socket 和 shutdown |
-| cua-pip | adapters | 原 coordinator/presenter，保持 writer epoch |
-| cua-runtime-qa | adapters | 现有显式 CUA smoke，不成为产品服务 |
-| cli-memory-preferences | adapters | 原 Host 偏好与 CLI fallback 合成 |
-| codex-native-session-adapter | adapters | 原 stdio 命令、诊断和可重建事件投影 |
-| codex-automation-adapter | adapters | 原 dispatch/association owner，不增加 accepted queue |
-| codex-native-control-adapter | adapters | 原 grant publisher、relay 和 managed skill |
-| codex-file-rewind | adapters | 原文件校验、ledger 与补偿顺序 |
-| git-worktree-lifecycle | adapters | 原 Git operation/锁/preview digest 与安全删除 |
-| codex-model-selection | app | 原 workspace catalog 与 single-flight owner |
-| codex-provider-key | adapters | 原 source/native 写目标，保留轮换重启守卫 |
-| codex-usage-observation | app | 原所属 Host 的观察缓存，不合并 Coding Plan |
+| 模块                                    | 层       | 保持的职责与 owner                                        |
+| --------------------------------------- | -------- | --------------------------------------------------------- |
+| desktop-codex-automation-reconciliation | adapters | 原 Host dispatch 的只读原生关联对账                       |
+| desktop-model-selection-attachment      | adapters | 原 Host 模型服务的可信 attachment 作用域                  |
+| desktop-native-browser-control-host     | adapters | Main 下发能力的 Host 投影和请求转发                       |
+| desktop-native-browser-control-main     | adapters | Main 唯一窗口 token、授权和 Browser dispatch              |
+| desktop-product-runtime                 | adapters | 既有构建 flavor、数据根与固定发行索引                     |
+| desktop-renderer-recovery               | adapters | 原窗口的有界原地恢复，不替换 attachment                   |
+| cua-native-producer                     | adapters | 原 producer 的 native single-flight、snapshot、输入与销毁 |
+| cua-helper-runtime                      | adapters | 原 Helper factory 的认证、就绪、socket 和 shutdown        |
+| cua-pip                                 | adapters | 原 coordinator/presenter，保持 writer epoch               |
+| cua-runtime-qa                          | adapters | 现有显式 CUA smoke，不成为产品服务                        |
+| cli-memory-preferences                  | adapters | 原 Host 偏好与 CLI fallback 合成                          |
+| codex-native-session-adapter            | adapters | 原 stdio 命令、诊断和可重建事件投影                       |
+| codex-automation-adapter                | adapters | 原 dispatch/association owner，不增加 accepted queue      |
+| codex-native-control-adapter            | adapters | 原 grant publisher、relay 和 managed skill                |
+| codex-file-rewind                       | adapters | 原文件校验、ledger 与补偿顺序                             |
+| git-worktree-lifecycle                  | adapters | 原 Git operation/锁/preview digest 与安全删除             |
+| codex-model-selection                   | app      | 原 workspace catalog 与 single-flight owner               |
+| codex-provider-key                      | adapters | 原 source/native 写目标，保留轮换重启守卫                 |
+| codex-usage-observation                 | app      | 原所属 Host 的观察缓存，不合并 Coding Plan                |
 
 CUA 顶层 JS 是直接产品源码。为使真实依赖、环和行数进入检查，增加 package legacy 扫描根，
 再由精确 managed roots 接管；不能利用精确文件根未枚举的缺口假通过。Helper 与 producer
@@ -181,12 +181,12 @@ Node/tsx 测试独立执行，不能以 Vitest 未选中冒充通过。
 发布工作流保留原有测试意图及回放过程中新增的定向项，只调整执行入口，不新增 App
 单测、不恢复无关退役测试、不修改工程名单、依赖或 lockfile。
 
-| 验证类别 | 执行入口 | 必须拒绝的情况 |
-| --- | --- | --- |
-| 已登记 App Vitest | `pnpm test:fork <精确文件...>` | 空参数、目录/glob、未登记或尚未回放文件、Node/工程误送 |
-| 已登记 Node/tsx | 按所属包分别执行 `tsx --test <精确文件...>`，UI 保留其包 tsconfig | 跨包混跑、框架误送、用默认发现代替精确选择 |
-| 既有工程 Vitest | `pnpm test:engineering <精确工程文件...>` | App 回归进入 engineering 名单 |
-| Bridge、CLI/CUA、原生 smoke 与打包 Node 测试 | 原有包入口或明确的 `node --test` / smoke 命令 | 默认 Vitest 空选中或绕过原生验证 |
+| 验证类别                                     | 执行入口                                                          | 必须拒绝的情况                                         |
+| -------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------ |
+| 已登记 App Vitest                            | `pnpm test:fork <精确文件...>`                                    | 空参数、目录/glob、未登记或尚未回放文件、Node/工程误送 |
+| 已登记 Node/tsx                              | 按所属包分别执行 `tsx --test <精确文件...>`，UI 保留其包 tsconfig | 跨包混跑、框架误送、用默认发现代替精确选择             |
+| 既有工程 Vitest                              | `pnpm test:engineering <精确工程文件...>`                         | App 回归进入 engineering 名单                          |
+| Bridge、CLI/CUA、原生 smoke 与打包 Node 测试 | 原有包入口或明确的 `node --test` / smoke 命令                     | 默认 Vitest 空选中或绕过原生验证                       |
 
 执行顺序保持：先恢复全部定制提交，再核对工作流最终文件清单与根准入名单，
 然后进行定向验证和原有构建/发布。每个命令传递真实退出码；无测试选中、文件缺失或
@@ -202,8 +202,8 @@ pairing、路由、OAuth、恢复等最终回放后的定向文件及扩展构�
 
 ## Unresolved Questions
 
-| 项 | 处理边界 |
-| --- | --- |
+| 项                       | 处理边界                                                                                                                                                                                              |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 最终 lockfile 与定制依赖 | 用户已明确以定制功能完整为准：rename 保持纯转换；最终由 pnpm install 同步真实 importer、依赖和 patch hash，并复核 frozen install。snapshot 始终纯转换，不用忽略 manifest 或安装后恢复 lock 掩盖不一致 |
-| 上游 API 变化 | 按具体冲突审查；改变原定制产品语义时需用户确认 |
-| 运行时 / 平台验证 | 未实际运行的 GUI、手机或其他 OS 验收不能宣称通过 |
+| 上游 API 变化            | 按具体冲突审查；改变原定制产品语义时需用户确认                                                                                                                                                        |
+| 运行时 / 平台验证        | 未实际运行的 GUI、手机或其他 OS 验收不能宣称通过                                                                                                                                                      |
