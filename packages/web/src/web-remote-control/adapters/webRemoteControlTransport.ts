@@ -261,8 +261,8 @@ export class WebRemoteControlTerminalTransport {
       };
     }
     // 挂起期间只确认已收到的可靠帧，避免对端 45 秒期限误判；新的业务发送仍等 paired。
-    const retainedAck = payload.zcode_type === "rpc-frame-ack" && this.canContinueRetainedRpc();
-    if (this.state !== "paired" && !retainedAck) {
+    const retainedAck = payload.codez_type === "rpc-frame-ack" && this.canContinueRetainedRpc();
+    if ((this.state !== "paired" && !retainedAck) || this.staleWaitingCount > 0) {
       return { kind: "unavailable" };
     }
     return this.sendSerialized(prepared.message, prepared.json)

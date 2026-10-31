@@ -1,8 +1,10 @@
 # 加密远控与 Gzip 线协议
 
-精确登记 `web-remote-control-e2ee.ts` 与 `web-remote-control-gzip.ts` 的既有严格 schema、
-版本和预算。它们属于 contract，不持有密钥、nonce/序号、socket、压缩器或 attachment。
-relay 内部线字段原样保留 `zcode_type`，不能随品牌转换改为 `codez_type`。
+精确登记 `web-remote-control-e2ee.ts`、`web-remote-control-gzip.ts` 与上游 relay wire 兼容层的
+既有严格 schema、版本和预算。它们属于 contract，不持有密钥、nonce/序号、socket、压缩器或 attachment。
+E2EE 握手记录仍保留上游 `zcode_type`；普通 App/Gzip 内部字段使用 `codez_type`，
+只在 `toWebRemoteControlWirePayload` 外部发送边界转换为上游 `zcode_type`，
+入站由 `normalizeWebRemoteControlWirePayload` 还原并继续 schema/raw RPC 校验。
 
 ```text
 accepted app payload → negotiated Gzip envelope → existing E2EE record → relay

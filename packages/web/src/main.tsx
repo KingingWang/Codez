@@ -1109,7 +1109,7 @@ async function bootstrapExternalRelayWebRemoteControl(
     | WebRemoteControlWorkspaceBridgeServiceRegistration
     | undefined;
   let sendMobileDiagnosticPayload:
-    | ((payload: WebRemoteControlAppPayload & { zcode_type: "mobile-diagnostic" }) => void)
+    | ((payload: WebRemoteControlAppPayload & { codez_type: "mobile-diagnostic" }) => void)
     | undefined;
   const workspaceListUpdateListeners = new Set<WebRemoteControlWorkspaceListUpdateListener>();
 
@@ -1140,7 +1140,7 @@ async function bootstrapExternalRelayWebRemoteControl(
       return;
     }
     sendMobileDiagnosticPayload?.({
-      zcode_type: "mobile-diagnostic",
+      codez_type: "mobile-diagnostic",
       event: diagnostic.type,
       timestamp: diagnostic.timestamp,
       state: diagnostic.state,
@@ -1158,7 +1158,7 @@ async function bootstrapExternalRelayWebRemoteControl(
 
   const sendMobileFailureDiagnostic = (failure: WebRemoteControlFailure) => {
     sendMobileDiagnosticPayload?.({
-      zcode_type: "mobile-diagnostic",
+      codez_type: "mobile-diagnostic",
       event: "failure",
       timestamp: Date.now(),
       state: terminalTransportState,
@@ -1432,11 +1432,11 @@ async function bootstrapExternalRelayWebRemoteControl(
       if (terminated) {
         return;
       }
-      if (payload.zcode_type === "mobile-task-view-request") {
+      if (payload.codez_type === "mobile-task-view-request") {
         taskViewPublisher.request(payload.epoch);
         return;
       }
-      if (payload.zcode_type === "rpc-frame" || payload.zcode_type === "rpc-frame-ack") {
+      if (payload.codez_type === "rpc-frame" || payload.codez_type === "rpc-frame-ack") {
         if (!pendingRelayProtocol?.acceptPayload(payload))
           activeRelayProtocol?.acceptPayload(payload);
         return;
@@ -1444,11 +1444,11 @@ async function bootstrapExternalRelayWebRemoteControl(
       if (requester.acceptPayload(payload)) {
         return;
       }
-      if (payload.zcode_type === "workspace-list-updated") {
+      if (payload.codez_type === "workspace-list-updated") {
         applyWorkspaceListUpdated(payload.result);
         return;
       }
-      if (payload.zcode_type === "bridge-degraded") {
+      if (payload.codez_type === "bridge-degraded") {
         acceptWebRemoteControlBridgeInvalidation(
           pendingRelayProtocol,
           payload.bridgeSessionId,
@@ -1462,7 +1462,7 @@ async function bootstrapExternalRelayWebRemoteControl(
         );
         return;
       }
-      if (payload.zcode_type === "workspace-bridge-error") {
+      if (payload.codez_type === "workspace-bridge-error") {
         if (
           pendingRelayProtocol &&
           payload.bridgeSessionId === pendingRelayProtocol.getBridgeSessionId()
@@ -1481,7 +1481,7 @@ async function bootstrapExternalRelayWebRemoteControl(
         }
         return;
       }
-      if (payload.zcode_type === "app-error") {
+      if (payload.codez_type === "app-error") {
         renderBootstrapFailure(toWebRemoteControlFailure(payload.reason, payload.error));
       }
     },
@@ -1570,11 +1570,11 @@ async function bootstrapExternalRelayWebRemoteControl(
   const requestBootstrap = async (): Promise<WebRemoteControlWindowBootstrapResult> => {
     const requestId = createWebRemoteControlRequestId("bootstrap");
     const response = await requestAppPayload(
-      { zcode_type: "bootstrap-request", requestId, terminalClientSessionId },
+      { codez_type: "bootstrap-request", requestId, terminalClientSessionId },
       (
         payload,
-      ): payload is Extract<WebRemoteControlAppPayload, { zcode_type: "bootstrap-response" }> =>
-        payload.zcode_type === "bootstrap-response" && payload.requestId === requestId,
+      ): payload is Extract<WebRemoteControlAppPayload, { codez_type: "bootstrap-response" }> =>
+        payload.codez_type === "bootstrap-response" && payload.requestId === requestId,
     );
     return response.result;
   };
@@ -1611,7 +1611,7 @@ async function bootstrapExternalRelayWebRemoteControl(
     const response = await requestWithRelayRecovery(() => {
       const requestId = createWebRemoteControlRequestId("platform");
       const request = {
-        zcode_type: "platform-request",
+        codez_type: "platform-request",
         requestId,
         method,
         args,
@@ -1622,9 +1622,9 @@ async function bootstrapExternalRelayWebRemoteControl(
           payload,
         ): payload is Extract<
           WebRemoteControlPlatformResponsePayload,
-          { zcode_type: "platform-response" }
+          { codez_type: "platform-response" }
         > =>
-          payload.zcode_type === "platform-response" &&
+          payload.codez_type === "platform-response" &&
           payload.requestId === requestId &&
           payload.method === method,
       );
@@ -1639,13 +1639,13 @@ async function bootstrapExternalRelayWebRemoteControl(
     const requestWorkspaceList = async () => {
       const requestId = createWebRemoteControlRequestId("workspace-list");
       return requestAppPayload(
-        { zcode_type: "workspace-list-request", requestId },
+        { codez_type: "workspace-list-request", requestId },
         (
           payload,
         ): payload is Extract<
           WebRemoteControlAppPayload,
-          { zcode_type: "workspace-list-response" }
-        > => payload.zcode_type === "workspace-list-response" && payload.requestId === requestId,
+          { codez_type: "workspace-list-response" }
+        > => payload.codez_type === "workspace-list-response" && payload.requestId === requestId,
       );
     };
     const response = await requestWithRelayRecovery(() => requestWorkspaceList(), {
@@ -1660,7 +1660,7 @@ async function bootstrapExternalRelayWebRemoteControl(
     currentWorkspaceKey = workspaceKey;
     currentTaskId = taskId;
     transport.sendPayload({
-      zcode_type: "mobile-view-state-update",
+      codez_type: "mobile-view-state-update",
       viewState: {
         activeWorkspaceKey: workspaceKey,
         ...(taskId ? { activeTaskId: taskId } : {}),
@@ -1677,7 +1677,7 @@ async function bootstrapExternalRelayWebRemoteControl(
       const requestId = createWebRemoteControlRequestId("workspace-reconnect");
       return requestAppPayload(
         {
-          zcode_type: "workspace-reconnect-request",
+          codez_type: "workspace-reconnect-request",
           requestId,
           workspaceKey,
         },
@@ -1685,9 +1685,9 @@ async function bootstrapExternalRelayWebRemoteControl(
           payload,
         ): payload is Extract<
           WebRemoteControlAppPayload,
-          { zcode_type: "workspace-reconnect-response" }
+          { codez_type: "workspace-reconnect-response" }
         > =>
-          payload.zcode_type === "workspace-reconnect-response" &&
+          payload.codez_type === "workspace-reconnect-response" &&
           payload.requestId === requestId &&
           payload.workspaceKey === workspaceKey,
         {
@@ -1712,7 +1712,7 @@ async function bootstrapExternalRelayWebRemoteControl(
     options?: WebRemoteControlWorkspaceSwitchOptions & {
       project?: Extract<
         WebRemoteControlAppPayload,
-        { zcode_type: "workspace-bridge-open" }
+        { codez_type: "workspace-bridge-open" }
       >["project"];
       navigationRevision?: number;
     },
@@ -1897,7 +1897,7 @@ async function bootstrapExternalRelayWebRemoteControl(
                     .or(mobilePluginDiscoveryTelemetrySchema)
                     .safeParse(event);
                   if (parsed.success)
-                    transport.sendPayload({ zcode_type: "telemetry-report", event: parsed.data });
+                    transport.sendPayload({ codez_type: "telemetry-report", event: parsed.data });
                 },
               },
             })}
@@ -2040,7 +2040,7 @@ async function bootstrapExternalRelayWebRemoteControl(
                     .or(mobilePluginDiscoveryTelemetrySchema)
                     .safeParse(event);
                   if (parsed.success)
-                    transport.sendPayload({ zcode_type: "telemetry-report", event: parsed.data });
+                    transport.sendPayload({ codez_type: "telemetry-report", event: parsed.data });
                 },
               },
             })}

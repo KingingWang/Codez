@@ -141,10 +141,13 @@ describe("V2 手机入口", () => {
     await h.entry.start();
     const connection = h.connect.mock.calls[0][0];
     connection.onFailure({ reason: "device-not-owned" });
-    expect(h.onView).toHaveBeenLastCalledWith({
-      kind: "failure",
-      failure: { reason: "device-not-owned" },
-    });
+    // 上游 lost-target 接续会异步读取设备列表；空列表无法接续时仍显示原失败页。
+    await vi.waitFor(() =>
+      expect(h.onView).toHaveBeenLastCalledWith({
+        kind: "failure",
+        failure: { reason: "device-not-owned" },
+      }),
+    );
     expect(h.auth.logout).not.toHaveBeenCalled();
     await h.entry.switchAccount();
     expect(h.onView).toHaveBeenLastCalledWith({ kind: "login" });
