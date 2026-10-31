@@ -40,8 +40,6 @@ export const MOBILE_RELAY_FIXED_BYTES = utf8JsonByteLength({
   type: "data",
   payload: {
     codez_type: "rpc-frame",
-    // 外部 relay 线协议固定使用上游 zcode_type；产品内部才消费 codez_type。
-    zcode_type: "rpc-frame",
     bridgeSessionId: "x".repeat(PROTOCOL_V4_LIMITS.transportEnvelopeIdMaxChars),
     bridgeGeneration: Number.MAX_SAFE_INTEGER,
     recoveryId: "x".repeat(PROTOCOL_V4_LIMITS.transportEnvelopeIdMaxChars),

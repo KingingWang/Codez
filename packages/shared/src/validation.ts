@@ -271,12 +271,12 @@ export const webRemoteControlRendererActionResultSchema = z.union([
 
 const webRemoteControlActionPayloadSchemas = [
   z.object({
-    zcode_type: z.literal("workspace-create-request"),
+    codez_type: z.literal("workspace-create-request"),
     requestId: nonEmptyStringSchema,
     name: z.string(),
   }),
   z.object({
-    zcode_type: z.literal("workspace-create-response"),
+    codez_type: z.literal("workspace-create-response"),
     requestId: nonEmptyStringSchema,
     success: z.literal(true),
     workspacePath: nonEmptyStringSchema,
@@ -285,44 +285,44 @@ const webRemoteControlActionPayloadSchemas = [
     hostId: nonEmptyStringSchema.optional(),
   }),
   z.object({
-    zcode_type: z.literal("workspace-create-response"),
+    codez_type: z.literal("workspace-create-response"),
     requestId: nonEmptyStringSchema,
     success: z.literal(false),
     error: z.string(),
   }),
   z.object({
-    zcode_type: z.literal("task-pin-request"),
+    codez_type: z.literal("task-pin-request"),
     ...webRemoteControlTaskActionTargetShape,
     pinned: z.boolean(),
   }),
   z.object({
-    zcode_type: z.literal("task-pin-response"),
+    codez_type: z.literal("task-pin-response"),
     requestId: nonEmptyStringSchema,
     taskId: nonEmptyStringSchema,
     success: z.literal(true),
     pinned: z.boolean(),
   }),
   z.object({
-    zcode_type: z.literal("task-pin-response"),
+    codez_type: z.literal("task-pin-response"),
     requestId: nonEmptyStringSchema,
     taskId: nonEmptyStringSchema,
     success: z.literal(false),
     error: z.string(),
   }),
   z.object({
-    zcode_type: z.literal("task-archive-request"),
+    codez_type: z.literal("task-archive-request"),
     ...webRemoteControlTaskActionTargetShape,
     archived: z.boolean().optional(),
   }),
   z.object({
-    zcode_type: z.literal("task-archive-response"),
+    codez_type: z.literal("task-archive-response"),
     requestId: nonEmptyStringSchema,
     taskId: nonEmptyStringSchema,
     success: z.literal(true),
     archived: z.boolean(),
   }),
   z.object({
-    zcode_type: z.literal("task-archive-response"),
+    codez_type: z.literal("task-archive-response"),
     requestId: nonEmptyStringSchema,
     taskId: nonEmptyStringSchema,
     success: z.literal(false),
@@ -333,38 +333,38 @@ const webRemoteControlActionPayloadSchemas = [
 const webRemoteControlAppPayloadSchemas = [
   z
     .object({
-      zcode_type: z.literal("telemetry-report"),
+      codez_type: z.literal("telemetry-report"),
       event: z.union([sessionCreateTelemetrySchema, mobilePluginDiscoveryTelemetrySchema]),
     })
     .strict(),
   z.object({
-    zcode_type: z.literal("bootstrap-request"),
+    codez_type: z.literal("bootstrap-request"),
     terminalClientSessionId: webRemoteControlTransportIdSchema.optional(),
     requestId: nonEmptyStringSchema,
   }),
   z.object({
-    zcode_type: z.literal("bootstrap-response"),
+    codez_type: z.literal("bootstrap-response"),
     requestId: nonEmptyStringSchema,
     success: z.literal(true),
     result: webRemoteControlWindowBootstrapResultSchema,
   }),
   z.object({
-    zcode_type: z.literal("workspace-list-request"),
+    codez_type: z.literal("workspace-list-request"),
     requestId: nonEmptyStringSchema,
   }),
   z.object({
-    zcode_type: z.literal("workspace-list-response"),
+    codez_type: z.literal("workspace-list-response"),
     requestId: nonEmptyStringSchema,
     success: z.literal(true),
     result: webRemoteControlWorkspaceListResultSchema,
   }),
   z.object({
-    zcode_type: z.literal("workspace-list-updated"),
+    codez_type: z.literal("workspace-list-updated"),
     result: webRemoteControlWorkspaceListResultSchema,
   }),
   z
     .object({
-      zcode_type: z.literal("workspace-bridge-open"),
+      codez_type: z.literal("workspace-bridge-open"),
       terminalClientSessionId: webRemoteControlTransportIdSchema.optional(),
       requestId: nonEmptyStringSchema,
       bridgeSessionId: webRemoteControlTransportIdSchema,
@@ -399,7 +399,7 @@ const webRemoteControlAppPayloadSchemas = [
       "Project draft cannot target an existing task",
     ),
   z.object({
-    zcode_type: z.literal("workspace-bridge-ready"),
+    codez_type: z.literal("workspace-bridge-ready"),
     requestId: nonEmptyStringSchema,
     bridgeSessionId: webRemoteControlTransportIdSchema,
     bridgeGeneration: z.number().int().nonnegative().optional(),
@@ -407,7 +407,7 @@ const webRemoteControlAppPayloadSchemas = [
     bridge: webRemoteControlExternalWorkspaceBridgeSchema,
   }),
   z.object({
-    zcode_type: z.literal("workspace-bridge-error"),
+    codez_type: z.literal("workspace-bridge-error"),
     requestId: nonEmptyStringSchema,
     bridgeSessionId: webRemoteControlTransportIdSchema.optional(),
     bridgeGeneration: z.number().int().nonnegative().optional(),
@@ -416,31 +416,31 @@ const webRemoteControlAppPayloadSchemas = [
     error: z.string(),
   }),
   z.object({
-    zcode_type: z.literal("workspace-reconnect-request"),
+    codez_type: z.literal("workspace-reconnect-request"),
     requestId: nonEmptyStringSchema,
     workspaceKey: nonEmptyStringSchema,
   }),
   z.object({
-    zcode_type: z.literal("workspace-reconnect-response"),
+    codez_type: z.literal("workspace-reconnect-response"),
     requestId: nonEmptyStringSchema,
     workspaceKey: nonEmptyStringSchema,
     success: z.literal(true),
   }),
   z.object({
-    zcode_type: z.literal("workspace-reconnect-response"),
+    codez_type: z.literal("workspace-reconnect-response"),
     requestId: nonEmptyStringSchema,
     workspaceKey: nonEmptyStringSchema,
     success: z.literal(false),
     error: z.string(),
   }),
   z.object({
-    zcode_type: z.literal("mobile-view-state-update"),
+    codez_type: z.literal("mobile-view-state-update"),
     viewState: webRemoteControlMobileViewStateSchema,
     deviceInfo: webRemoteControlMobileDeviceInfoSchema.optional(),
   }),
   z
     .object({
-      zcode_type: z.literal("mobile-task-view-update"),
+      codez_type: z.literal("mobile-task-view-update"),
       epoch: webRemoteControlTransportIdSchema,
       seq: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
       bridgeSessionId: webRemoteControlTransportIdSchema,
@@ -450,25 +450,25 @@ const webRemoteControlAppPayloadSchemas = [
     .strict(),
   z
     .object({
-      zcode_type: z.literal("mobile-task-view-request"),
+      codez_type: z.literal("mobile-task-view-request"),
       epoch: webRemoteControlTransportIdSchema,
     })
     .strict(),
   z.object({
-    zcode_type: z.literal("platform-request"),
+    codez_type: z.literal("platform-request"),
     requestId: nonEmptyStringSchema,
     method: webRemoteControlPlatformMethodSchema,
     args: z.unknown().optional(),
   }),
   z.object({
-    zcode_type: z.literal("platform-response"),
+    codez_type: z.literal("platform-response"),
     requestId: nonEmptyStringSchema,
     method: webRemoteControlPlatformMethodSchema,
     success: z.literal(true),
     result: z.unknown(),
   }),
   z.object({
-    zcode_type: z.literal("platform-response"),
+    codez_type: z.literal("platform-response"),
     requestId: nonEmptyStringSchema,
     method: webRemoteControlPlatformMethodSchema,
     success: z.literal(false),
@@ -479,7 +479,7 @@ const webRemoteControlAppPayloadSchemas = [
   webRemoteControlRpcTransportFrameSchema,
   webRemoteControlRpcTransportAckSchema,
   z.object({
-    zcode_type: z.literal("bridge-degraded"),
+    codez_type: z.literal("bridge-degraded"),
     bridgeSessionId: webRemoteControlTransportIdSchema,
     bridgeGeneration: z.number().int().nonnegative().optional(),
     recoveryId: webRemoteControlTransportIdSchema.optional(),
@@ -496,14 +496,14 @@ const webRemoteControlAppPayloadSchemas = [
     droppedCount: z.number().int().nonnegative().optional(),
   }),
   z.object({
-    zcode_type: z.literal("app-error"),
+    codez_type: z.literal("app-error"),
     requestId: nonEmptyStringSchema.optional(),
     bridgeSessionId: webRemoteControlTransportIdSchema.optional(),
     reason: webRemoteControlFailureReasonSchema,
     error: z.string(),
   }),
   z.object({
-    zcode_type: z.literal("mobile-diagnostic"),
+    codez_type: z.literal("mobile-diagnostic"),
     event: z.enum([
       "state-transition",
       "socket-close",
@@ -532,8 +532,8 @@ const webRemoteControlAppPayloadSchemas = [
   ...webRemoteControlMobileLogAppPayloadSchemas,
 ] as const;
 
-// Bugfix: app payload 里多个消息共享 zcode_type（例如 platform-response），
-// 不能直接用 z.discriminatedUnion("zcode_type")，否则 schema 初始化会因重复值失败。
+// Bugfix: app payload 里多个消息共享 codez_type（例如 platform-response），
+// 不能直接用 z.discriminatedUnion("codez_type")，否则 schema 初始化会因重复值失败。
 // 这里保留同一批运行时约束，改用普通 union，让外部 relay 的不可信 payload
 // 在进入 desktop/web 路由前仍然先被机械校验。
 export const webRemoteControlAppPayloadSchema = z.union(webRemoteControlAppPayloadSchemas);

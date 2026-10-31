@@ -20,7 +20,7 @@ export function createWebRemoteControlTaskViewPublisher(
   const flush = () => {
     if (!bridge || !epoch || !dirty) return;
     dirty = !send({
-      zcode_type: "mobile-task-view-update",
+      codez_type: "mobile-task-view-update",
       epoch,
       seq: ++seq,
       bridgeSessionId: bridge.bridgeSessionId,
