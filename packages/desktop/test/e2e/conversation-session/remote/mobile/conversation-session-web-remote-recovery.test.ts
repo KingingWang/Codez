@@ -177,7 +177,7 @@ describe(`${CASE}: 失效通知补发与长后台恢复原项目任务`, () => {
             const frame = JSON.parse(String(message)) as { payload?: unknown };
             const payload = parseWebRemoteControlAppPayload(frame.payload);
             if (
-              payload?.zcode_type === "workspace-bridge-open" &&
+              payload?.codez_type === "workspace-bridge-open" &&
               (evidence.hiddenAt || evidence.faultStartedAt)
             )
               evidence.recoveryOpens.push({
@@ -190,19 +190,19 @@ describe(`${CASE}: 失效通知补发与长后台恢复原项目任务`, () => {
           server.onMessage((message) => {
             const frame = JSON.parse(String(message)) as { payload?: unknown };
             const payload = parseWebRemoteControlAppPayload(frame.payload);
-            if (payload?.zcode_type === "workspace-bridge-ready")
+            if (payload?.codez_type === "workspace-bridge-ready")
               currentBridgeSessionId = payload.bridgeSessionId;
             if (
               loseInvalidation &&
               evidence.faultStartedAt &&
-              payload?.zcode_type === "rpc-frame" &&
+              payload?.codez_type === "rpc-frame" &&
               payload.bridgeSessionId === evidence.blockedBridgeSessionId
             ) {
               evidence.droppedRawFrames += 1;
               return;
             }
             const observedInvalidation =
-              payload?.zcode_type === "bridge-degraded" &&
+              payload?.codez_type === "bridge-degraded" &&
               Boolean(evidence.hiddenAt || evidence.faultStartedAt);
             if (observedInvalidation) {
               evidence.invalidations += 1;
@@ -221,7 +221,7 @@ describe(`${CASE}: 失效通知补发与长后台恢复原项目任务`, () => {
             }
             if (
               loseInvalidation &&
-              payload?.zcode_type === "workspace-bridge-ready" &&
+              payload?.codez_type === "workspace-bridge-ready" &&
               evidence.faultStartedAt &&
               staleInvalidation &&
               !staleReplayed
@@ -367,18 +367,18 @@ describe(`${CASE}: 失效通知补发与长后台恢复原项目任务`, () => {
         route.onMessage((message) => {
           const frame = JSON.parse(String(message)) as { payload?: unknown };
           const payload = parseWebRemoteControlAppPayload(frame.payload);
-          if (evidence.hiddenAt && payload?.zcode_type === "workspace-bridge-open")
+          if (evidence.hiddenAt && payload?.codez_type === "workspace-bridge-open")
             evidence.bridgeOpensAfterHide += 1;
-          if (hidden && payload?.zcode_type === "rpc-frame-ack") evidence.hiddenUplinkAcks += 1;
-          if (hidden && payload?.zcode_type === "rpc-frame") evidence.hiddenUplinkFrames += 1;
+          if (hidden && payload?.codez_type === "rpc-frame-ack") evidence.hiddenUplinkAcks += 1;
+          if (hidden && payload?.codez_type === "rpc-frame") evidence.hiddenUplinkFrames += 1;
           server.send(message);
         });
         server.onMessage((message) => {
           const frame = JSON.parse(String(message)) as { payload?: unknown };
           const payload = parseWebRemoteControlAppPayload(frame.payload);
-          if (payload?.zcode_type === "workspace-bridge-ready")
+          if (payload?.codez_type === "workspace-bridge-ready")
             evidence.bridgeAtEnd = payload.bridgeSessionId;
-          if (hidden && payload?.zcode_type === "rpc-frame") evidence.hiddenDownlinkRawFrames += 1;
+          if (hidden && payload?.codez_type === "rpc-frame") evidence.hiddenDownlinkRawFrames += 1;
           route.send(message);
         });
       });
@@ -505,7 +505,7 @@ describe(`${CASE}: 失效通知补发与长后台恢复原项目任务`, () => {
             evidence.probesAfterShow.push({ socket, at: Date.now() });
           if (mode !== "normal" && frame.type === "data") {
             evidence.interceptedData += 1;
-            if (parseWebRemoteControlAppPayload(frame.payload)?.zcode_type === "rpc-frame-ack")
+            if (parseWebRemoteControlAppPayload(frame.payload)?.codez_type === "rpc-frame-ack")
               evidence.interceptedAcks += 1;
             dataInFlight += 1;
             setTimeout(() => {
@@ -647,7 +647,7 @@ describe(`${CASE}: 失效通知补发与长后台恢复原项目任务`, () => {
         const evidence = {
           bootstraps: 0,
           opens: [] as Array<
-            Extract<WebRemoteControlAppPayload, { zcode_type: "workspace-bridge-open" }>
+            Extract<WebRemoteControlAppPayload, { codez_type: "workspace-bridge-open" }>
           >,
           ready: [] as string[],
           viewUpdates: [] as string[],
@@ -666,19 +666,19 @@ describe(`${CASE}: 失效通知补发与长后台恢复原项目任务`, () => {
             route.onMessage((message) => {
               const frame = JSON.parse(String(message)) as { payload?: unknown };
               const payload = parseWebRemoteControlAppPayload(frame.payload);
-              if (payload?.zcode_type === "workspace-bridge-open") evidence.opens.push(payload);
-              if (payload?.zcode_type === "mobile-view-state-update")
+              if (payload?.codez_type === "workspace-bridge-open") evidence.opens.push(payload);
+              if (payload?.codez_type === "mobile-view-state-update")
                 evidence.viewUpdates.push(payload.viewState.activeWorkspaceKey ?? "");
               server.send(message);
             });
             server.onMessage((message) => {
               const frame = JSON.parse(String(message)) as { payload?: unknown };
               const payload = parseWebRemoteControlAppPayload(frame.payload);
-              if (payload?.zcode_type === "workspace-bridge-ready")
+              if (payload?.codez_type === "workspace-bridge-ready")
                 evidence.ready.push(payload.bridge.workspaceKey);
-              if (payload?.zcode_type === "workspace-bridge-error")
+              if (payload?.codez_type === "workspace-bridge-error")
                 evidence.errors.push(payload.error);
-              if (payload?.zcode_type === "bootstrap-response") {
+              if (payload?.codez_type === "bootstrap-response") {
                 evidence.bootstraps += 1;
                 route.send(
                   JSON.stringify({

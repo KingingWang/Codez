@@ -301,6 +301,8 @@ export interface SteerTurnOptions {
 
 export type SendInputOptions = SubmitPromptOptions & {
   inputId?: string;
+  /** 可信消费入口确定的呈现标记；不改变原始用户内容或调度语义。 */
+  inputPresentation?: ExecuteTurnOptions["inputPresentation"];
   delivery?: InputDelivery;
   /** sendText 的产品 guide/queue 意图；是否 busy 仍由 Core admission 判断。 */
   queueDelivery?: "guide" | "queue";
