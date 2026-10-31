@@ -5083,9 +5083,9 @@ export function createCodezAgentService(
       const active = activeClientsByWorkspaceKey.get(workspaceKey);
       if (active) {
         invalidateWorkspaceClient(workspaceKey, active.client);
-      } else {
-        interactionPreferenceSyncByWorkspaceKey.delete(workspaceKey);
       }
+      // 修复依据：偏好同步由物理 client 的唯一串行链持有；无 active 时不清理
+      // 已退役的 workspace-key 映射，也不能拆断共享 client 上其他 workspace 的顺序。
       remoteConversationTelemetry.get(workspaceKey)?.dispose();
       remoteConversationTelemetry.delete(workspaceKey);
     }
