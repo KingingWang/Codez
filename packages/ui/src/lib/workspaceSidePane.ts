@@ -1158,7 +1158,6 @@ export function isNativeBrowserCuaWindowTab(tab: WorkspaceSidePaneTab): boolean 
 export function resolveBrowserSidePaneGuestScope(
   tab: BrowserSidePaneTab,
   activeRemoteSessionId?: string | null,
-  activeWorkspaceKey?: string | null,
 ): { workspaceKey: string | undefined; remoteSessionId: string | undefined } {
   if (isNativeBrowserCuaWindowTab(tab)) {
     return {
@@ -1166,8 +1165,11 @@ export function resolveBrowserSidePaneGuestScope(
       remoteSessionId: tab.remoteSessionId ?? undefined,
     };
   }
+  // Bugfix：普通浏览器 tab 的 guest scope 不能带 workspaceKey。重放时这里被早一版的
+  // activeWorkspaceKey 回退覆盖，会把当前工作区（甚至切换后的新工作区）注入尚未切换的旧 guest，
+  // 正是本函数要拒绝的伪造 scope。原生 CUA popup 仍保留自己的 synthetic owner key。
   return {
-    workspaceKey: tab.workspaceKey ?? activeWorkspaceKey ?? undefined,
+    workspaceKey: undefined,
     remoteSessionId: tab.remoteSessionId ?? activeRemoteSessionId ?? undefined,
   };
 }
