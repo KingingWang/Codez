@@ -1,6 +1,5 @@
 import type {
   WebRemoteControlTerminalTransportState,
-  WebRemoteControlTerminalTransportDiagnostic,
   WebRemoteControlTerminalTransportDiagnosticInput,
   WebRemoteControlTerminalTransportOptions,
   WebRemoteControlConnectionEnsureOptions,
@@ -18,7 +17,6 @@ import {
 } from "#src/web-remote-control/adapters/relayMessage.js";
 import type { WebRemoteControlPayloadSendResult } from "@codez/client";
 import {
-  WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS,
   type WebRemoteControlAppPayload,
   type WebRemoteControlE2eeWirePayload,
   type WebRemoteControlFailure,
@@ -34,6 +32,13 @@ import {
 } from "@codez/shared/web-remote-relay";
 import { WebRemoteControlConnectionReadiness } from "#src/web-remote-control/adapters/connectionReadiness.js";
 import { WebRemoteControlPairedWaiters } from "#src/web-remote-control/adapters/pairedWaiters.js";
+import {
+  createOversizePayloadSendResult,
+  emitRelayMessageTrace,
+  isRelayFrameWithinPhysicalBudget,
+  isRelayIngressWithinPhysicalBudget,
+  projectTerminalDiagnostic,
+} from "#src/web-remote-control/adapters/transportDiagnostics.js";
 
 export class WebRemoteControlTerminalTransport {
   private readonly WebSocketCtor: typeof globalThis.WebSocket;
@@ -254,11 +259,7 @@ export class WebRemoteControlTerminalTransport {
     }
     const prepared = this.e2ee.serializer.prepare(payload, Math.floor(Date.now() / 1000));
     if (this.e2ee.serializer.isOversize(prepared)) {
-      return {
-        kind: "oversize",
-        bytes: prepared.bytes,
-        maxBytes: WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS.maxPhysicalFrameBytes,
-      };
+      return createOversizePayloadSendResult(prepared.bytes);
     }
     // 挂起期间只确认已收到的可靠帧，避免对端 45 秒期限误判；新的业务发送仍等 paired。
     const retainedAck = payload.codez_type === "rpc-frame-ack" && this.canContinueRetainedRpc();
@@ -351,9 +352,7 @@ export class WebRemoteControlTerminalTransport {
   }
 
   private async handleMessage(data: unknown, socket: WebSocket): Promise<void> {
-    if (
-      webSocketDataByteLength(data) > WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS.maxPhysicalFrameBytes
-    ) {
+    if (!isRelayIngressWithinPhysicalBudget(webSocketDataByteLength(data))) {
       this.options.onRawTransportFault?.("remote.rpcFrame.envelopeTooLarge");
       return;
     }
@@ -752,10 +751,7 @@ export class WebRemoteControlTerminalTransport {
       return false;
     }
     const serialized = JSON.stringify(message);
-    if (
-      new TextEncoder().encode(serialized).byteLength >
-      WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS.maxPhysicalFrameBytes
-    ) {
+    if (!isRelayFrameWithinPhysicalBudget(serialized)) {
       return false;
     }
     return this.sendSerialized(message, serialized);
@@ -774,39 +770,21 @@ export class WebRemoteControlTerminalTransport {
   }
 
   private logRelayTrace(direction: "send" | "recv", fields: Record<string, unknown>): void {
-    if (!this.traceRelayMessages) {
-      return;
-    }
-    // Bugfix: 远控 relay 消息量高，生产环境打印正文会快速放大日志体积并暴露敏感内容。
-    // 这里只在开发态输出摘要字段，排查链路足够且不会污染线上日志。
-    console.info("[web-remote-control][relay-message]", {
-      direction,
-      ...fields,
-    });
+    if (this.traceRelayMessages) emitRelayMessageTrace(direction, fields);
   }
 
   private emitDiagnostic(diagnostic: WebRemoteControlTerminalTransportDiagnosticInput): void {
-    if (diagnostic.type === "pair-status") {
-      const nextPairStatusDiagnostic = `${diagnostic.state}:${diagnostic.pairStatus ?? "unknown"}`;
-      if (this.lastPairStatusDiagnostic === nextPairStatusDiagnostic) {
-        return;
-      }
-      this.lastPairStatusDiagnostic = nextPairStatusDiagnostic;
-    }
-    const visibilityState = typeof document === "undefined" ? "unknown" : document.visibilityState;
-    const hiddenDurationMs =
-      this.hiddenStartedAt && visibilityState !== "hidden"
-        ? Date.now() - this.hiddenStartedAt
-        : undefined;
-    if (hiddenDurationMs !== undefined) {
-      this.hiddenStartedAt = undefined;
-    }
-    this.options.onDiagnostic?.({
-      ...diagnostic,
-      timestamp: Date.now(),
-      visibilityState,
-      online: typeof navigator === "undefined" ? true : navigator.onLine,
-      ...(hiddenDurationMs !== undefined ? { hiddenDurationMs } : {}),
-    } as WebRemoteControlTerminalTransportDiagnostic);
+    const projected = projectTerminalDiagnostic(
+      diagnostic,
+      {
+        hiddenStartedAt: this.hiddenStartedAt,
+        lastPairStatusDiagnostic: this.lastPairStatusDiagnostic,
+      },
+      Date.now(),
+    );
+    if (!projected) return;
+    this.hiddenStartedAt = projected.hiddenStartedAt;
+    this.lastPairStatusDiagnostic = projected.lastPairStatusDiagnostic;
+    this.options.onDiagnostic?.(projected.diagnostic);
   }
 }
