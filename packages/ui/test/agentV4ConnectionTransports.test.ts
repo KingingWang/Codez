@@ -1,4 +1,7 @@
-import { LocalTtftObserver, setLocalTtftObserver } from "../src/v4/telemetry/localTtftObserver.js";
+import {
+  LocalTtftObserver,
+  setLocalTtftObserver,
+} from "../src/v4/telemetry/local-ttft/localTtftObserver.js";
 import { Emitter } from "@codez/rpc";
 import type {
   ConversationTopicFrame,

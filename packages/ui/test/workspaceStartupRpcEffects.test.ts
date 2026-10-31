@@ -6,7 +6,7 @@ import type { IServiceAccessor } from "@codez/services";
 import { useEnsureWorkspaceMcpLoaded } from "@/hooks/useEnsureWorkspaceMcpLoaded.js";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { useWorkspaceTaskNotifications as useWorkspaceTerminalTaskNotifications } from "@/hooks/useTaskNotifications.js";
-import { setMcpStoreDirectoryService, setMcpStorePlatform, useMcpStore } from "@/store/mcpStore.js";
+import { setMcpStorePlatform, useMcpStore } from "@/store/mcpStore.js";
 import { DEFAULT_MCP_CONFIG } from "@/store/mcpStoreHelpers.js";
 
 const mountedRoots: Root[] = [];
@@ -155,7 +155,6 @@ function WorkspaceStartupRpcEffects({
 }
 
 beforeEach(() => {
-  setMcpStoreDirectoryService(null);
   setMcpStorePlatform(null);
   useMcpStore.setState((state) => ({
     ...state,
@@ -165,6 +164,10 @@ beforeEach(() => {
     statusSnapshots: {},
     currentProjectPath: "",
     currentWorkspaceIdentity: undefined,
+    // 上游 3.17.1 把全局 directory service setter 换成随目标绑定的 store 状态，
+    // 重置语义不变：每个用例都从「无目录服务」开始。
+    currentDirectoryService: null,
+    currentAuthorityKey: undefined,
     enabledStates: {},
     deletedPreloadMcpServers: new Set(),
     isConfigLoaded: false,
@@ -176,7 +179,6 @@ afterEach(() => {
   for (const root of mountedRoots.splice(0)) {
     act(() => root.unmount());
   }
-  setMcpStoreDirectoryService(null);
   delete (globalThis as { document?: unknown }).document;
   delete (globalThis as { window?: unknown }).window;
   delete (globalThis as { IS_REACT_ACT_ENVIRONMENT?: unknown }).IS_REACT_ACT_ENVIRONMENT;
