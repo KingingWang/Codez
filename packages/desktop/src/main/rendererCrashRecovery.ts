@@ -1,3 +1,13 @@
+import type {
+  RendererCrashRecovery,
+  RendererCrashRecoveryInput,
+} from "./renderer-recovery/contract.js";
+
+export type {
+  RendererCrashRecovery,
+  RendererCrashRecoveryOutcome,
+} from "./renderer-recovery/contract.js";
+
 /**
  * 主窗口 renderer 原生崩溃后的有界恢复策略。
  *
@@ -22,24 +32,9 @@ export const RECOVERABLE_RENDERER_CRASH_REASONS = new Set([
   "launch-failed",
 ]);
 
-export type RendererCrashRecoveryOutcome = "reloaded" | "budget-exhausted" | "ignored";
-
-export interface RendererCrashRecovery {
-  handle(details: { reason?: string }): RendererCrashRecoveryOutcome;
-  readonly autoReloadCount: number;
-}
-
-export function createRendererCrashRecovery(input: {
-  reload: () => void;
-  /** 延迟到期后的存活性判定；缺省视为可 reload。 */
-  canReload?: () => boolean;
-  /** 可注入的调度器，便于测试验证延迟与竞态。 */
-  schedule?: (task: () => void, delayMs: number) => void;
-  reloadDelayMs?: number;
-  isQuitting: () => boolean;
-  logger: { warn(message: string, payload?: unknown): void };
-  maxAutoReloads?: number;
-}): RendererCrashRecovery {
+export function createRendererCrashRecovery(
+  input: RendererCrashRecoveryInput,
+): RendererCrashRecovery {
   const maxAutoReloads = input.maxAutoReloads ?? 2;
   const reloadDelayMs = input.reloadDelayMs ?? 1000;
   const schedule =

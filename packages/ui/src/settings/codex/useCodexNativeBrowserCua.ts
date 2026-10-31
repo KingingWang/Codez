@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { DesktopCommandIds } from "@codez/shared";
-import type { IServiceAccessor } from "@codez/services";
+import type { IServiceAccessor } from "@/codex-settings-ui/contract.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 
 /**

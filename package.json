@@ -2,6 +2,7 @@
   "name": "codez",
   "version": "3.17.2",
   "private": true,
+  "license": "Apache-2.0",
   "type": "module",
   "scripts": {
     "dev:web": "concurrently -k -n server,web -c blue,green \"pnpm --filter @codez/server dev\" \"pnpm --filter @codez/web dev\"",
@@ -22,7 +23,7 @@
     "build:codex-bridge": "node scripts/build-codex-bridge.mjs",
     "prepare:codex-runtime": "node packages/desktop/scripts/prepare-codex-runtime.mjs",
     "test:codex": "pnpm --filter @codez/codex-bridge test && node --test scripts/test-codex-distribution*.mjs",
-    "test:fork": "vitest run --config vitest.fork.config.ts",
+    "test:fork": "node scripts/run-fork-regression-tests.mjs",
     "dep:graph": "node scripts/dependency-graph.mjs",
     "dep:refs": "node scripts/dep-refs.mjs",
     "audit:agent-remnants": "node scripts/audit-codez-agent-remnants.mjs",
@@ -83,7 +84,7 @@
     "provider:regression": "pnpm --filter @codez/bootstrap... build && tsx apps/codez-cli/tools/provider-regression/src/cli.ts",
     "test:engineering": "vitest run --project engineering",
     "test:engineering:affected": "node scripts/run-affected-engineering-tests.mjs",
-    "test:engineering-tools": "node --test scripts/test/affected-engineering-test-cli.test.mjs scripts/test/pre-push-worktree.test.mjs scripts/test/retired-app-unit-evidence.test.mjs scripts/test/e2e-remote-targets-check.test.mjs",
+    "test:engineering-tools": "node --test scripts/test/affected-engineering-test-cli.test.mjs scripts/test/pre-push-worktree.test.mjs scripts/test/retired-app-unit-evidence.test.mjs scripts/test/e2e-remote-targets-check.test.mjs scripts/test/fork-regression-test-admission.test.mjs",
     "check:e2e-remote-targets": "node scripts/check-e2e-remote-targets.mjs"
   },
   "dependencies": {
@@ -92,11 +93,11 @@
     "tailwind-scrollbar-hide": "^4.0.0"
   },
   "devDependencies": {
+    "@codez/codez-cua": "workspace:*",
     "@jridgewell/trace-mapping": "0.3.31",
     "@release-it/conventional-changelog": "^10.0.6",
     "@tanstack/react-virtual": "^3.13.23",
     "@types/node": "^25.5.0",
-    "@codez/codez-cua": "workspace:*",
     "concurrently": "^9.1.2",
     "conventional-changelog-conventionalcommits": "^9.3.1",
     "conventional-changelog-writer": "^8.4.0",
@@ -140,6 +141,5 @@
       "@aiden0z/pptx-renderer@1.2.4": "patches/@aiden0z__pptx-renderer@1.2.4.patch",
       "@extend-ai/react-xlsx@0.16.0": "patches/@extend-ai__react-xlsx@0.16.0.patch"
     }
-  },
-  "license": "Apache-2.0"
+  }
 }

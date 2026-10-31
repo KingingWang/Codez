@@ -3,7 +3,7 @@ import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import * as platformModule from "@/hooks/usePlatform.js";
 import * as servicesModule from "@/hooks/useServices.js";
 import type { IPlatformService } from "@codez/shared";
-import type { IServiceAccessor } from "@codez/services";
+import type { IServiceAccessor } from "@/github-feedback-entry-ui/contract.js";
 import type { FeedbackDiagnosticRuntime } from "@/feedback/feedbackDiagnostics.js";
 import { buildFeedbackEntryUrl, type FeedbackEntryContext } from "@/feedback/feedbackEntryPlan.js";
 import { logger } from "@/logger.js";
