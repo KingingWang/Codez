@@ -281,13 +281,27 @@ flowchart TB
 - root actions 继续拥有激活、显式打开与新建草稿的语义；新工作树显式打开成功后
   才在其自己的 identity/path 下进入草稿。远端复用既有 RemoteTarget 建连流程，
   不沿用来源树 identity。发现和菜单展开仍不得注册新 runtime。
+- Root 打开回调兼容既有第二参数布尔值及选项对象。布尔值继续只控制
+  `activateOtherWindow`；缺省为 `true`，跨窗口 focus 回调传 `false` 时不得再次
+  激活其他窗口。选项对象可分别指定 `activateOtherWindow` 与 `throwOnError`，
+  不改变 Host 原子 `saveProject({ roots: [path], reuseExistingRoot: true })`、
+  项目归属与 tab/草稿提交顺序。
+- Worktree 显式打开使用 `throwOnError: true`：目录接纳或平台打开失败时将原错误
+  返回给既有打开 Promise，创建表单保留已创建结果，只重试打开，不再创建工作树。
+  普通目录入口继续由 Root 记录当前导航错误，不向未请求异常传播的调用者抛出。
+  迟到结果仍受导航 sequence、tab 与 draft focus 守卫约束；旧失败不能覆盖新导航
+  的错误、tab 或草稿，但显式请求异常传播的原调用者仍收到该次操作的失败。
 
 ```text
 普通主按钮 / 快捷键 → 既有 root 新建路径 → 当前工作位置的草稿
 独立箭头 → UI 表单 → Git 只读预览 → 用户确认 → Git 创建/复检
                                                  ↓
-                                        root 显式打开 → 目标草稿
-                                                 └→ 失败仅重试打开
+                              Root 冻结导航 → Host 原子接纳项目
+                                                 ↓
+                              按 activateOtherWindow 调用平台 → 目标 tab/草稿
+                                                 └→ 失败：当前 Root 错误
+                                                      + throwOnError 返回原错误
+                                                      → 表单仅重试打开
 ```
 
 - 已有工作树切换入口同时可用于会话页，不再仅藏在空草稿里；切回保留现场。
@@ -360,6 +374,21 @@ flowchart TB
 21. 导航可达：已有会话中可打开工作树切换器；只打开菜单不会挂载其他树，切回
     已打开树不清空草稿或切到新会话。手机远控无创建能力时明确禁用额外入口，
     普通新建仍保持原行为。
+22. Root 打开参数兼容：缺省或 `true` 保留平台窗口激活；布尔 `false` 与
+    `{ activateOtherWindow: false }` 都跳过跨窗口激活，同时保留目标项目接纳与草稿
+    归属。Worktree 的 `{ throwOnError: true }` 不被误当成布尔开关或被吞掉。
+23. 打开失败收口：Host 项目接纳与平台打开失败都向显式请求异常的 Worktree 调用者
+    返回原错误，失败时不提交 tab/草稿；默认目录入口仍记录 Root 错误。新导航已
+    接管后，旧失败只能通知原调用者，不能覆盖新导航状态；失败重试仍只打开已创建树。
+
+可重复回调与 Node 边界回归沿用已有文件，不新增 App 业务单测入口：
+
+- `packages/ui/test/rootNewTaskWorkbenchContext.test.ts`：Root 布尔/选项兼容、异常传播、
+  项目归属与迟到失败守卫，使用隔离的 fork 回归入口。
+- `packages/ui/src/root/worktreeOpenExecution.test.ts`、
+  `packages/ui/src/root/rootWorkspaceSelectionAdmission.test.ts`、
+  `packages/ui/src/hooks/useWorktreeCreation.test.ts`：在途打开复用、删除窗口守卫与
+  创建后仅重试打开，使用所属包的 Node/tsx 入口。
 
 ## 本批桌面交互回归入口
 
