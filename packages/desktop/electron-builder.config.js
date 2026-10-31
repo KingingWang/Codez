@@ -154,6 +154,24 @@ const asarCliPath = resolve(
   "bin",
   "asar.js",
 );
+// Bugfix：electron-builder 26.17.0 的 pnpm collector 在 collectDepsRecursively 里直接跳过
+// pnpm 10.29.3+ 的 deduped 桩节点（dedupedDependenciesCount > 0）。pnpm list --prod 对重复子树
+// 只打印一次完整节点，其余全是桩；当那唯一的完整节点挂在被跳过的 link: 工作区包祖先之下时，
+// express / @hono/node-server 等生产依赖永远进不了 allDependencies，最终在 _getNodeModules 里
+// 记为「cannot find path for dependency」。用同版本 collector 在本地复现出与 CI run 41219858965
+// 完全一致的 48 个缺失项，六个打包目标全部在这一步失败。
+// 这里按本文件既有口径列出闭包根：afterPack 会递归注入整条运行时解析链，
+// 同时用同一份闭包生成 allowMissingDependencies 白名单，避免 collector 的解析缺陷直接阻断出包。
+const COLLECTOR_MISSING_CLOSURE_ROOTS = [
+  "@hono/node-server",
+  "ajv",
+  "ajv-formats",
+  "cors",
+  "cross-spawn",
+  "eventsource",
+  "express",
+  "express-rate-limit",
+];
 const REQUIRED_ASAR_RUNTIME_MODULES = [
   "module-details-from-path",
   "@opentelemetry/api-logs",
@@ -209,7 +227,19 @@ const REQUIRED_ASAR_RUNTIME_MODULES = [
   // 已在线上触发安装包启动即报 Cannot find module 'ms'（Require stack: debug/src/common.js），
   // 自动更新链路直接崩。ms 是叶子包，显式注入即可让 debug 在 app.asar 内稳定解析。
   "ms",
+  // 26.17.0 collector 漏掉的 deduped 传递依赖闭包根，见上方 COLLECTOR_MISSING_CLOSURE_ROOTS 说明。
+  ...COLLECTOR_MISSING_CLOSURE_ROOTS,
 ];
+// allowMissingDependencies 只放开「afterPack 已按闭包保证注入」的这批名字；
+// 其余任何生产依赖缺失仍然立即阻断打包，保留原先 `false` 的严格意图。
+const COLLECTOR_MISSING_ALLOWLIST = [
+  ...new Set(
+    collectRuntimeModuleClosureEntries(
+      COLLECTOR_MISSING_CLOSURE_ROOTS,
+      runtimeModuleLookupRoots,
+    ).map((entry) => entry.moduleName),
+  ),
+].sort();
 // pacman 依赖必须使用 Arch 官方仓库中的包名。electron-builder 的历史默认集合包含
 // 已移除的 libappindicator-gtk3/http-parser，且缺少 Electron 实际需要的运行库；显式
 // 维护最小运行时闭包，避免 pacman -U 无法解析依赖或启动时才暴露缺库。
@@ -951,7 +981,10 @@ export default {
   ],
   // pnpm 依赖图不完整时禁止仅记录警告并继续生成安装包；afterPack 只能补齐可解析依赖，
   // collector 已确认缺失的生产依赖必须在打包阶段停止。
-  allowMissingDependencies: false,
+  // 例外只有 COLLECTOR_MISSING_ALLOWLIST：那是 26.17.0 collector 的 deduped 解析缺陷误报的
+  // 生产依赖，已由 REQUIRED_ASAR_RUNTIME_MODULES 的闭包根在 afterPack 阶段递归注入 app.asar，
+  // 因此放开这批名字不会让安装包真的少包；白名单之外的缺失仍然立即失败。
+  allowMissingDependencies: COLLECTOR_MISSING_ALLOWLIST,
   // postinstall 会先优先复用 node-pty 自带的 Windows 预编译产物，其他平台再按需 electron-rebuild。
   // 打包阶段统一复用安装时准备好的原生文件，避免 electron-builder 再触发一轮不受控的本地编译。
   npmRebuild: false,
