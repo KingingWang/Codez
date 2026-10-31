@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CODEZ_AGENT_PROVIDER, type IPlatformService } from "@codez/shared";
+import type { IProjectService, VirtualProject } from "@codez/services";
 import {
   readV4ComposerDraft,
   readComposerWorkspaceScope,
@@ -21,6 +23,25 @@ import {
 } from "@/v4/paneLayoutStore.js";
 import { useWorkbenchGroupStore } from "@/v4/workbenchGroupStore.js";
 
+function projectFixture(id: string, roots: readonly string[] = []): VirtualProject {
+  return {
+    id,
+    hostId: "local",
+    name: "Fixture project",
+    nameOverridden: false,
+    roots: roots.map((rootPath, position) => ({
+      rootPath,
+      position,
+      isPrimary: position === 0,
+    })),
+    position: 0,
+    pinned: false,
+    deleted: false,
+    createdAt: 1,
+    updatedAt: 1,
+  };
+}
+
 function fixture(
   clientMode: "desktop-continuous" | "web-remote-replayable" = "desktop-continuous",
   openRemoteProjectWorkspace?: (target: {
@@ -29,6 +50,7 @@ function fixture(
     hostId: string;
   }) => Promise<void>,
   openMobileProjectDraft?: (request: CreateTaskOptions) => Promise<void>,
+  isDesktop = false,
 ) {
   let next = 0;
   const prepared = new Map<string, string>();
@@ -58,6 +80,13 @@ function fixture(
       projectId: string | null;
     }[],
   }));
+  const saveProject = vi.fn<IProjectService["saveProject"]>(async (input) =>
+    projectFixture("opened-project", input.roots ?? []),
+  );
+  const readProjects = vi.fn<IProjectService["readProjects"]>(async () => []);
+  const activateOrSetWorkspace = vi.fn<IPlatformService["activateOrSetWorkspace"]>(async () => ({
+    activated: false,
+  }));
   const addTab = vi.fn();
   const state = {
     tabs: [],
@@ -67,13 +96,14 @@ function fixture(
   };
   const options = {
     intl: { formatMessage: ({ id }: { id: string }) => id } as never,
-    platform: {} as never,
-    services: { projectService: { prepareSession, readTree } } as never,
+    platform: { activateOrSetWorkspace } as never,
+    services: { projectService: { prepareSession, readTree, saveProject, readProjects } } as never,
     tabStoreApi: { getState: () => state } as never,
     addTab,
     activeWorkspacePath: "/old",
     activeWorkspaceIdentity: null,
     supportsSettings: true,
+    isDesktop,
     allowOpenWorkspace: true,
     preferDirectoryBrowser: false,
     refreshProviderState: vi.fn(),
@@ -87,13 +117,131 @@ function fixture(
     ({ opener }) => useRootWorkspaceActions({ ...options, openRemoteProjectWorkspace: opener }),
     { initialProps: { opener: openRemoteProjectWorkspace } },
   );
-  return { result, rerender, prepareSession, readTree, addTab, state };
+  return {
+    result,
+    rerender,
+    prepareSession,
+    readTree,
+    readProjects,
+    saveProject,
+    activateOrSetWorkspace,
+    addTab,
+    state,
+  };
 }
 beforeEach(() => {
   localStorage.clear();
   useCodezSessionStore.setState({ workspaces: {} });
   usePaneLayoutStore.setState(INITIAL_PANE_LAYOUT);
   useWorkbenchGroupStore.getState().resetWorkbenchGroups();
+});
+describe("Root local project open compatibility", () => {
+  it.each([
+    [undefined, true],
+    [true, true],
+    [false, false],
+    [{ activateOtherWindow: false }, false],
+    [{ throwOnError: true }, true],
+    [{ activateOtherWindow: false, throwOnError: true }, false],
+  ] as const)("保留打开选项 %j 的窗口激活与项目归属", async (options, shouldActivate) => {
+    const path = "/worktree-open";
+    const { result, saveProject, activateOrSetWorkspace, addTab } = fixture(
+      "desktop-continuous",
+      undefined,
+      undefined,
+      true,
+    );
+    await act(async () => {
+      await result.current.handleSelectProject(path, options);
+    });
+    expect(saveProject).toHaveBeenCalledOnce();
+    expect(saveProject).toHaveBeenCalledWith({ roots: [path], reuseExistingRoot: true });
+    expect(activateOrSetWorkspace).toHaveBeenCalledTimes(shouldActivate ? 1 : 0);
+    if (shouldActivate) expect(activateOrSetWorkspace).toHaveBeenCalledWith(path);
+    expect(addTab).toHaveBeenCalledOnce();
+    expect(addTab).toHaveBeenCalledWith(path);
+    expect(useCodezSessionStore.getState().getWorkspaceState(path).draftProjectId).toBe(
+      "opened-project",
+    );
+    expect(result.current.workspaceActionError).toBeNull();
+  });
+
+  it("其他窗口已接管时保留项目接纳，不提交本窗口 tab/草稿", async () => {
+    const path = "/already-open";
+    const { result, saveProject, activateOrSetWorkspace, addTab } = fixture(
+      "desktop-continuous",
+      undefined,
+      undefined,
+      true,
+    );
+    activateOrSetWorkspace.mockResolvedValueOnce({ activated: true });
+    await act(async () => {
+      await result.current.handleSelectProject(path);
+    });
+    expect(saveProject).toHaveBeenCalledWith({ roots: [path], reuseExistingRoot: true });
+    expect(activateOrSetWorkspace).toHaveBeenCalledWith(path);
+    expect(addTab).not.toHaveBeenCalled();
+    expect(useCodezSessionStore.getState().workspaces[path]).toBeUndefined();
+  });
+
+  it.each(["project", "activation"] as const)(
+    "%s 失败向 throwOnError 调用者传播原错误，不提交 tab/草稿",
+    async (failureAt) => {
+      const error = new Error(`${failureAt} open failed`);
+      const { result, saveProject, activateOrSetWorkspace, addTab } = fixture(
+        "desktop-continuous",
+        undefined,
+        undefined,
+        true,
+      );
+      if (failureAt === "project") saveProject.mockRejectedValueOnce(error);
+      else activateOrSetWorkspace.mockRejectedValueOnce(error);
+      await act(async () => {
+        await expect(
+          result.current.handleSelectProject("/failed-open", { throwOnError: true }),
+        ).rejects.toBe(error);
+      });
+      expect(addTab).not.toHaveBeenCalled();
+      expect(result.current.workspaceActionError).toBe(error.message);
+    },
+  );
+
+  it("默认目录入口仍只记录 Root 错误，不抛给未请求异常的调用者", async () => {
+    const error = new Error("ordinary open failed");
+    const { result, activateOrSetWorkspace, addTab } = fixture();
+    activateOrSetWorkspace.mockRejectedValueOnce(error);
+    await act(async () => {
+      await expect(result.current.handleSelectProject("/ordinary-open")).resolves.toBeUndefined();
+    });
+    expect(result.current.workspaceActionError).toBe(error.message);
+    expect(addTab).not.toHaveBeenCalled();
+  });
+
+  it("迟到失败仍通知原 Worktree 调用者，但不覆盖新导航错误", async () => {
+    const previousError = new Error("previous open failed");
+    const currentError = new Error("current open failed");
+    const { result, activateOrSetWorkspace, addTab } = fixture();
+    let rejectPrevious: ((reason: Error) => void) | undefined;
+    activateOrSetWorkspace
+      .mockImplementationOnce(
+        () =>
+          new Promise<{ activated: boolean }>((_resolve, reject) => {
+            rejectPrevious = reject;
+          }),
+      )
+      .mockRejectedValueOnce(currentError);
+    await act(async () => {
+      const previous = result.current.handleSelectProject("/previous-open", {
+        throwOnError: true,
+      });
+      await result.current.handleSelectProject("/current-open");
+      if (!rejectPrevious) throw new Error("previous platform open was not started");
+      rejectPrevious(previousError);
+      await expect(previous).rejects.toBe(previousError);
+    });
+    expect(result.current.workspaceActionError).toBe(currentError.message);
+    expect(addTab).not.toHaveBeenCalled();
+  });
 });
 it.each([null, "other-project", "retained-project"])(
   "恢复原项目时显式初始化草稿归属，不沿用缓存 %s",
@@ -353,7 +501,8 @@ it("initializes a handed off draft with its project and exact input under the ne
   act(() =>
     result.current.startDraftInWorkspace("/new", "remote:server:s:/new", {
       projectId: "p",
-      provider: "codez",
+      // 上游 provider wire 使用引擎常量，产品名不是可提交的 provider 标识。
+      provider: CODEZ_AGENT_PROVIDER,
       initialPrompt: "$creator ",
       initialPromptMention: mention,
     }),
@@ -416,7 +565,8 @@ it.each(["desktop-continuous", "web-remote-replayable"] as const)(
   async (mode) => {
     useCodezSessionStore.getState().setActiveTaskId("/old", "session");
     const open = vi.fn(async () => {});
-    const { result, prepareSession, readTree } = fixture(mode, undefined, open);
+    const { result, prepareSession, readTree, readProjects } = fixture(mode, undefined, open);
+    readProjects.mockResolvedValueOnce([projectFixture("current", ["/old"])]);
     readTree.mockResolvedValueOnce({
       tasks: [
         { taskId: "session", workspacePath: "/other", projectId: "wrong" },
@@ -439,7 +589,8 @@ it("D3 inherits draft project without reading task history; explicit null opts o
   useCodezSessionStore
     .getState()
     .startDraft("/old", undefined, undefined, { projectId: "draft-project" });
-  const { result, prepareSession, readTree } = fixture();
+  const { result, prepareSession, readTree, readProjects } = fixture();
+  readProjects.mockResolvedValueOnce([projectFixture("draft-project", ["/old"])]);
   await act(async () => {
     await result.current.handleCreateTask();
   });
