@@ -65,6 +65,8 @@ describe("系统 default 项目纠偏", () => {
       expect((await port.migrate(db, context)).applied).toEqual([
         "0006_default_workspace_tasks",
         "0007_initial_workspace_order",
+        "0008_remote_entry_deleted_cache",
+        "0009_session_creation_commands",
       ]);
       expect(
         db.prepare("SELECT project_id FROM tasks WHERE task_id IN ('normal','archived')").all(),
