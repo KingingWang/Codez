@@ -165,19 +165,23 @@ vi.mock("react", async () => {
         return actual.useState(initialValue);
       }
       useStateCallCount += 1;
-      if (stateOverrides.has(useStateCallCount)) {
-        return [stateOverrides.get(useStateCallCount), vi.fn()] as const;
+      // 上游把「表单开合 / 当前编辑对象」两个 state 迁进 useSettingsScopeForm（下面用桩接回旧序号
+      // 7/8），组件自身的 useState 因此整体前移两位。这里把序号还原成重构前的编号，让各用例既有的
+      // stateOverrides（7=打开表单、8=编辑对象、9=saving…）继续对准同一个 state。
+      const legacyIndex = useStateCallCount + (useStateCallCount >= 7 ? 2 : 0);
+      if (stateOverrides.has(legacyIndex)) {
+        return [stateOverrides.get(legacyIndex), vi.fn()] as const;
       }
-      if (useStateCallCount === 1) {
+      if (legacyIndex === 1) {
         return [[], vi.fn()] as const;
       }
-      if (useStateCallCount === 2) {
+      if (legacyIndex === 2) {
         return [{ userScopeAvailable: false, userScopeReason: "desktop_only" }, vi.fn()] as const;
       }
-      if (useStateCallCount === 3) {
+      if (legacyIndex === 3) {
         return [false, vi.fn()] as const;
       }
-      if (useStateCallCount === 4) {
+      if (legacyIndex === 4) {
         return [false, vi.fn()] as const;
       }
       return [typeof initialValue === "function" ? initialValue() : initialValue, vi.fn()] as const;
