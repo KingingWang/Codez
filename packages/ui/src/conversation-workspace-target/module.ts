@@ -4,7 +4,7 @@
  */
 export const conversationWorkspaceTargetModule = {
   id: "conversation-workspace-target",
-  requires: ["shared", "ui"],
+  requires: ["shared", "ui", "services"],
   provides: ["conversation-workspace-target"],
   publicEntrypoints: [
     "index.ts",
@@ -14,5 +14,8 @@ export const conversationWorkspaceTargetModule = {
     "workbenchTarget.ts",
     "usePluginCreator.ts",
     "PluginAddMenu.tsx",
+    "../lib/workspaceRemovalSafety.ts",
+    "../lib/workspaceRuntimeRelease.ts",
+    "../settings/pluginCreatorPrefill.ts",
   ],
 } as const;

@@ -4,7 +4,7 @@
  */
 export const projectWorkflowModule = {
   id: "project-workflow",
-  requires: ["shared", "ui", "project-sidebar"],
+  requires: ["shared", "ui", "project-sidebar", "dynamic-workflow-availability"],
   provides: ["project-workflow"],
   publicEntrypoints: [
     "contract.ts",
