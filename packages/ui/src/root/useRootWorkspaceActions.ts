@@ -551,7 +551,15 @@ export function useRootWorkspaceActions({
   ]);
 
   const handleSelectProject = useCallback(
-    async (path: string, activateOtherWindow = true) => {
+    async (
+      path: string,
+      options: boolean | { activateOtherWindow?: boolean; throwOnError?: boolean } = true,
+    ) => {
+      // 原因：上游跨窗口 focus 传布尔 false，Worktree 传错误传播选项；把对象当布尔值
+      // 会误激活其他窗口。这里只归一化调用参数，项目接纳与导航提交仍走原路径。
+      const activateOtherWindow =
+        typeof options === "boolean" ? options : (options.activateOtherWindow ?? true);
+      const throwOnError = typeof options !== "boolean" && options.throwOnError === true;
       logger.info("[Root] handleSelectProject called with path:", path);
       const sequence = ++navigationSequence.current;
       const origin = tabStoreApi.getState();
@@ -630,9 +638,13 @@ export function useRootWorkspaceActions({
         setWorkspaceActionError(null);
         logger.info("[Root] 已打开目录", { path, projectId });
       } catch (err) {
-        if (!isCurrent()) return;
-        logger.error("[Root] handleSelectProject error:", err);
-        setWorkspaceActionError(err instanceof Error ? err.message : String(err));
+        if (isCurrent()) {
+          logger.error("[Root] handleSelectProject error:", err);
+          setWorkspaceActionError(err instanceof Error ? err.message : String(err));
+        }
+        // Worktree 已创建后必须把打开失败返回给原调用者，才能仅重试打开而不再建树；
+        // 迟到错误仍不得改写新导航状态，普通目录入口则保留原来的非抛异常行为。
+        if (throwOnError) throw err;
       }
     },
     [
