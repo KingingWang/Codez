@@ -15,6 +15,13 @@ export function createFakeApp(
   let bashShellSelection = options?.runtimeConfig?.bashShellSelection;
   let runtimeContextWindow = options?.runtimeConfig?.contextWindow ?? 128_000;
   let foregroundPromotionLeaseId: string | undefined;
+  // fork 的 CLI 本地记忆配置（specs/codez-memory-settings.md）：createRecord 必须在应用 Host
+  // override 之前快照本地值，热更新走 applyMemoryRuntimeConfig。上游 harness 不认识这两个入口，
+  // 而上游新增的 SessionLifecycleController.activate → materializeCreatedSession → createRecord
+  // 会走到它们；缺桩时所有经该路径的用例都在 createRecord 抛 TypeError。
+  let memoryRuntimeConfig:
+    | NonNullable<ReturnType<CodezApp["runtime"]["getMemoryRuntimeConfig"]>>
+    | undefined;
   const modelProperties = {
     inputFormat: {
       supportsText: true,
@@ -103,6 +110,10 @@ export function createFakeApp(
         return { kind: "acquired", leaseId };
       },
       emitModelSelected: async () => undefined,
+      getMemoryRuntimeConfig: () => memoryRuntimeConfig,
+      applyMemoryRuntimeConfig: async (patch) => {
+        memoryRuntimeConfig = { ...memoryRuntimeConfig, ...patch };
+      },
       getProjection: async () =>
         ({
           activeToolCalls: [],
