@@ -59,31 +59,37 @@ describe("Hooks settings page", () => {
 
   it("keeps a selected local workspace scope on the base host while a remote workspace is active", () => {
     const activePath = "/home/dev/project";
-    const activeIdentity = "remote:server:source-1:/home/dev/project";
+    // 上游 3.17.1 起 User Scope 不再跟随当前活动 workspace，而是使用 Scope 菜单选中设备的
+    // 「用户」锚点（本机项目 / 设备 home），且恒不携带 identity——从签名上就不可能把本机路径
+    // 配上远端身份发往 Source Server（远端 mkdir '/Users' 报 EACCES 的那类故障）。
+    const userTarget = { workspacePath: activePath };
 
     // 选中的本地项目没有 identity，不能借用活动远端工作区的 identity 把本机路径发往远端。
     expect(
       resolveHookScopeTarget(
         { workspacePath: "/Users/dev/local", workspaceIdentity: undefined },
-        activePath,
-        activeIdentity,
+        userTarget,
       ),
     ).toEqual({ workspacePath: "/Users/dev/local", workspaceIdentity: undefined });
     // 选中远端项目时沿用其自身 identity。
     expect(
       resolveHookScopeTarget(
         { workspacePath: "/srv/other", workspaceIdentity: "remote:server:source-2:/srv/other" },
-        activePath,
-        activeIdentity,
+        userTarget,
       ),
     ).toEqual({
       workspacePath: "/srv/other",
       workspaceIdentity: "remote:server:source-2:/srv/other",
     });
-    // User scope 未选项目：仍跟随当前 workspace 路由。
-    expect(resolveHookScopeTarget(undefined, activePath, activeIdentity)).toEqual({
+    // User scope 未选项目：使用选中设备的用户锚点路径，不带任何 workspace identity。
+    expect(resolveHookScopeTarget(undefined, userTarget)).toEqual({
       workspacePath: activePath,
-      workspaceIdentity: activeIdentity,
+      workspaceIdentity: undefined,
+    });
+    // 设备用户锚点尚未就绪时 fail-closed，不回退到活动 workspace。
+    expect(resolveHookScopeTarget(undefined, null)).toEqual({
+      workspacePath: undefined,
+      workspaceIdentity: undefined,
     });
   });
 
