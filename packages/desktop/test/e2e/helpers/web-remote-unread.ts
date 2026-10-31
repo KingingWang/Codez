@@ -14,7 +14,7 @@ export async function replayStaleBootstrapAfterReconnect(context: BrowserContext
     route.onMessage((message) => {
       const frame = JSON.parse(String(message)) as { type?: string; payload?: unknown };
       const payload = parseWebRemoteControlAppPayload(frame.payload);
-      if (payload?.zcode_type === "mobile-task-view-update" && payload.epoch === oldEpoch)
+      if (payload?.codez_type === "mobile-task-view-update" && payload.epoch === oldEpoch)
         evidence.staleReports += 1;
       server.send(message);
     });
@@ -22,11 +22,11 @@ export async function replayStaleBootstrapAfterReconnect(context: BrowserContext
       const frame = parseWebRemoteControlRelayV2IncomingMessage(JSON.parse(String(message)));
       const payload =
         frame?.type === "data" ? parseWebRemoteControlAppPayload(frame.payload) : null;
-      if (payload?.zcode_type === "mobile-task-view-request") {
+      if (payload?.codez_type === "mobile-task-view-request") {
         evidence.droppedRequests += 1;
         return;
       }
-      if (payload?.zcode_type === "bootstrap-response") {
+      if (payload?.codez_type === "bootstrap-response") {
         if (!held) {
           held = message;
           oldEpoch = payload.result.mobileTaskViewEpoch;
