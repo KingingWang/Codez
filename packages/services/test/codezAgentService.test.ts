@@ -610,7 +610,7 @@ process.stdin.on("data", (chunk) => {
             },
           },
         });
-      }, 80);
+      }, 700);
     }
   }
 });
@@ -1563,9 +1563,30 @@ describe("createCodezAgentService", () => {
   it("starts stdio app-server during initialize", async () => {
     const workspacePath = mkdtempSync(join(tmpdir(), "codez-agent-service-"));
     createdDirs.push(workspacePath);
+    // 上游 3.17.1 的启动屏障会协商 runtime/capabilities；本用例的子进程原本是彻底静默的
+    // setInterval 占位，屏障会一直挂到用例超时。这里只应答能力协商（空能力＝旧 Agent 语义），
+    // 其余请求保持静默，用例原本要锁定的「initialize 只拉起一次进程并返回 Host 自身协议身份」不变。
+    const silentAppServerScript = [
+      "let buf = '';",
+      "process.stdin.on('data', (chunk) => {",
+      "  buf += chunk.toString();",
+      "  let idx;",
+      "  while ((idx = buf.indexOf('\\n')) >= 0) {",
+      "    const line = buf.slice(0, idx);",
+      "    buf = buf.slice(idx + 1);",
+      "    if (!line.trim()) continue;",
+      "    let msg;",
+      "    try { msg = JSON.parse(line); } catch { continue; }",
+      "    if (msg.method === 'runtime/capabilities' && msg.id !== undefined) {",
+      "      process.stdout.write(JSON.stringify({ id: msg.id, result: {} }) + '\\n');",
+      "    }",
+      "  }",
+      "});",
+      "setInterval(() => {}, 1000);",
+    ].join("\n");
     const commandResolver = vi.fn(() => ({
       command: process.execPath,
-      args: ["-e", "setInterval(() => {}, 1000);"],
+      args: ["-e", silentAppServerScript],
     }));
     const processLifecycleReporter = {
       onSpawn: vi.fn(),
@@ -1686,7 +1707,12 @@ describe("createCodezAgentService", () => {
     const scriptPath = join(workspacePath, "agent.cjs");
     const logPath = join(workspacePath, "protocol.log");
     writeFileSync(scriptPath, SHELL_SETTINGS_SNAPSHOT_FAKE_AGENT);
-    const prepareSessionCreation = vi.fn(async () => ["/extra"]);
+    // 上游 3.17.1 起预留入口返回 { sessionId, additionalDirectories }：sessionId 由持库 Host
+    // 原子分配并记住，service 不再自己造 ID，wire 上必须用 Host 分配的那一个。
+    const prepareSessionCreation = vi.fn(async () => ({
+      sessionId: "reserved-native-session",
+      additionalDirectories: ["/extra"],
+    }));
     const service = createReadyCodezAgentService({
       prepareSessionCreation,
       commandResolver: () => ({ command: process.execPath, args: [scriptPath, logPath] }),
@@ -1699,9 +1725,12 @@ describe("createCodezAgentService", () => {
         .map((line) => JSON.parse(line))
         .find((entry) => entry.method === "session/create");
       expect(prepareSessionCreation).toHaveBeenCalledWith(
-        expect.objectContaining({ projectId: "p", sessionId: create.params.sessionId }),
+        // 上游 3.17.1：sessionId 由持库 Host 在预留时原子分配并回传，service 不再自带 ID。
+        // 本用例的不变量是「预留先于 wire，且 wire 用的正是 Host 分配的那个 ID」，
+        // 因此这里断言预留入参（归属 + 工作区），下面断言 wire 用了回传的 ID。
+        expect.objectContaining({ projectId: "p", workspacePath }),
       );
-      expect(create.params.sessionId).toBeTypeOf("string");
+      expect(create.params.sessionId).toBe("reserved-native-session");
       expect(create.params.additionalDirectories).toEqual(["/extra"]);
       expect(create.params).not.toHaveProperty("projectId");
       prepareSessionCreation.mockRejectedValueOnce(new Error("storage failed"));
@@ -2347,7 +2376,9 @@ describe("createCodezAgentService", () => {
     writeFileSync(scriptPath, DELAYED_COMPACT_FAKE_AGENT);
     const service = createReadyCodezAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath] }),
-      requestTimeoutMs: 20,
+      // 上游启动屏障要协商 runtime/capabilities，20ms 连子进程启动都不够；改成 300ms 仍远小于
+      // 夹具的 700ms compact 延迟，因此「compact 走自己的 5 分钟超时而不是默认超时」这条不变量照旧成立。
+      requestTimeoutMs: 300,
     });
 
     try {
