@@ -2,9 +2,10 @@ import { AppUsagePanel } from "@/settings/usage-stats/AppUsagePanel.js";
 import { Badge } from "@/components/ui/badge.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useWorkspaceServicesResolution } from "@/hooks/useWorkspaceServices.js";
-import type { RemoteTarget } from "@codez/shared";
+import { parseRemoteWorkspaceIdentity, type RemoteTarget } from "@codez/shared";
 import type { CodingPlanUsageSource } from "@/settings/usage-stats/CodingPlanUsagePanel.js";
-import { useSettingsMachineLabel } from "@/settings/SettingsMachine.js";
+import { useRemoteDevicePresentationInput } from "@/hooks/useSourceServerStatuses.js";
+import { formatRemoteDeviceName } from "@/lib/remoteConnectionPresentation.js";
 
 export type UsageStatsSectionTab = "app" | "codingPlan" | `codingPlan:${string}`;
 
@@ -50,7 +51,6 @@ export function UsageStatsSection({
         usageStatsService={services.usageStatsService}
       >
         <UsageStatsSourceBadge
-          remoteSessionId={remoteSessionId}
           remoteTarget={remoteTarget}
           workspaceIdentity={workspaceIdentity}
           connectionKind={connectionKind}
@@ -61,26 +61,24 @@ export function UsageStatsSection({
 }
 
 function UsageStatsSourceBadge({
-  remoteSessionId,
   remoteTarget,
   workspaceIdentity,
   connectionKind,
 }: {
-  remoteSessionId?: string | null;
   remoteTarget?: RemoteTarget | null;
   workspaceIdentity?: string;
   connectionKind: "local-ready" | "remote-waiting" | "remote-ready";
 }) {
-  const machine = useSettingsMachineLabel();
+  const sourceServerId = parseRemoteWorkspaceIdentity(workspaceIdentity ?? "")?.sourceServerId;
+  const deviceInput = useRemoteDevicePresentationInput(sourceServerId);
   const { intl } = useCodezIntl();
-  const { label } = machine(
-    {
-      workspaceIdentity,
-      remoteSessionId: remoteSessionId ?? undefined,
-      remoteTarget: remoteTarget ?? undefined,
-    },
-    undefined,
-  );
+  // 上游删除了旧 SettingsMachine；设备名只复用管理快照的展示输入，
+  // 不为此发起 attachment 或改变所属服务器的统计路由。
+  const label =
+    connectionKind === "local-ready"
+      ? intl.formatMessage({ id: "settings.scope.localDevice" })
+      : (formatRemoteDeviceName(deviceInput?.target ?? remoteTarget ?? undefined, deviceInput?.displayName) ??
+        intl.formatMessage({ id: "settings.machine.unknownRemote" }));
   // connectionKind 是服务解析权威；机器标签只提供展示名，不反向推断路由。
   void connectionKind;
   return (
