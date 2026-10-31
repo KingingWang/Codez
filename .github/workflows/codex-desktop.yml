@@ -50,7 +50,33 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/codex-runtime-resolve-latest.mjs codex-manifest.json
-      - run: pnpm install --frozen-lockfile
+      - name: Install dependencies (retry known transient pnpm rename failures)
+        shell: bash
+        # 修复原因：ubuntu-24.04-arm runner 上 `pnpm install --frozen-lockfile` 连续两次以同一类
+        # 瞬时故障失败——run 41219858965 命中 tsup、run 41224750918 命中 react-scan：
+        # ERR_PNPM_ENOENT rename 'node_modules/<pkg>/node_modules/_tmp_*'
+        #   -> 'node_modules/<pkg>/node_modules/esbuild'
+        # 这是 pnpm hoisted 布局落嵌套副本时的临时目录 rename 竞态，同一 commit 重跑即可通过，
+        # 但它会让整条 arm64 出包直接失败并阻塞 release（其余五个目标同时白跑）。
+        # 修复依据：沿用本文件既有口径（macOS hdiutil、installer upload 都只按已知签名重试一次）——
+        # 仅当失败输出命中已知的 pnpm rename 瞬时签名时重试一次；其他任何错误立即以原状态失败，
+        # 不用重试掩盖真实问题。
+        run: |
+          set -uo pipefail
+          INSTALL_LOG="$(mktemp)"
+          install_dependencies() {
+            pnpm install --frozen-lockfile 2>&1 | tee -a "$INSTALL_LOG"
+            return "${PIPESTATUS[0]}"
+          }
+          if install_dependencies; then
+            exit 0
+          fi
+          if ! grep -qE "ERR_PNPM_(ENOENT|EPERM|EBUSY).*rename|operation not permitted, rename|resource busy or locked, rename" "$INSTALL_LOG"; then
+            exit 1
+          fi
+          echo "::warning::pnpm install 命中已知瞬时 rename 故障，按既有口径重试一次"
+          rm -f "$INSTALL_LOG"
+          install_dependencies
       - run: node --test scripts/test-codex-distribution*.mjs
       - name: Codex service, desktop and remote deployment regressions (Linux once)
         run: |
@@ -243,7 +269,26 @@ jobs:
         run: |
           node -e 'if (process.version !== "v24.14.0" || process.platform !== process.env.CODEZ_TARGET_OS || process.arch !== process.env.CODEZ_TARGET_ARCH) throw new Error("Native toolchain mismatch")'
           test "$(pnpm --version)" = "10.33.2"
-      - run: pnpm install --frozen-lockfile
+      - name: Install dependencies (retry known transient pnpm rename failures)
+        shell: bash
+        # 与 remote-assets 作业同口径：只对已知的 pnpm 瞬时 rename 签名重试一次，
+        # 其余失败立即以原状态阻断，避免用重试掩盖真实依赖或 lockfile 问题。
+        run: |
+          set -uo pipefail
+          INSTALL_LOG="$(mktemp)"
+          install_dependencies() {
+            pnpm install --frozen-lockfile 2>&1 | tee -a "$INSTALL_LOG"
+            return "${PIPESTATUS[0]}"
+          }
+          if install_dependencies; then
+            exit 0
+          fi
+          if ! grep -qE "ERR_PNPM_(ENOENT|EPERM|EBUSY).*rename|operation not permitted, rename|resource busy or locked, rename" "$INSTALL_LOG"; then
+            exit 1
+          fi
+          echo "::warning::pnpm install 命中已知瞬时 rename 故障，按既有口径重试一次"
+          rm -f "$INSTALL_LOG"
+          install_dependencies
       - name: Mock distribution regression tests (before network downloads)
         run: node --test scripts/test-codex-distribution*.mjs
       - name: Typecheck, lint, architecture and adapter tests

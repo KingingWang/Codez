@@ -28,7 +28,15 @@ test("workflow gates six native targets, four bundled remote targets and isolate
       job.steps.find((step) => step.uses?.startsWith("pnpm/action-setup")).with.version,
       "10.33.2",
     );
-    assert.ok(job.steps.find((step) => step.run === "pnpm install --frozen-lockfile"));
+    // 安装步骤必须仍是 --frozen-lockfile；允许对 arm64 runner 实测复现的 pnpm 瞬时 rename
+    // 故障重试一次，但重试必须由已知签名收窄并保留「其他错误立即失败」的出口，
+    // 不能用无条件重跑掩盖真实的依赖或 lockfile 问题。
+    const installSteps = job.steps.filter(
+      (step) => typeof step.run === "string" && step.run.includes("pnpm install --frozen-lockfile"),
+    );
+    assert.equal(installSteps.length, 1);
+    assert.ok(installSteps[0].run.includes("ERR_PNPM_"));
+    assert.ok(installSteps[0].run.includes("exit 1"));
   }
   const { build, release } = workflow.jobs;
   const remoteRuns = workflow.jobs["remote-assets"].steps.map((step) => step.run ?? "");
