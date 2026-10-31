@@ -52,6 +52,8 @@ function expectedTelemetrySendOptions() {
         plan_product_id: "",
         message_source: "chat",
         task_trigger: "",
+        // 上游 3.17.1 给 prompt telemetry 增加 ui_mode；renderer 未提供界面模式时归一化为 unknown。
+        ui_mode: "unknown",
       },
     },
   });
@@ -292,6 +294,103 @@ function flushAsyncWork() {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
+type ComposerDraftContentLike = Pick<V4ComposerDraft, "text" | "editorStateJson" | "mention">;
+
+/**
+ * 上游 3.17.1 的草稿事务重构给 ConversationComposer 增加了 5 个必填入口（scope token、热路径暂存、
+ * 落盘、生命周期提交、发送事务），生产由 SessionPane 的 useDraftConfigControl 提供。
+ * 本文件断言的正是「claim 占用并清空草稿 → 传输失败 restore 写回 → 权威投影 finalize 结算清空」，
+ * 以及「等待期间产生新正文时，迟到的结算不得清空」；常量桩无法复现这套时序，
+ * 因此按 useDraftConfigControl 的同构语义实现桩，所有写盘都走调用方给定的 persist。
+ */
+function createComposerDraftTransactionProps(persist: (content: ComposerDraftContentLike) => void) {
+  let staged: ComposerDraftContentLike | null = null;
+  let revision = 0;
+  const clearedContent = (): ComposerDraftContentLike => ({
+    text: "",
+    editorStateJson: undefined,
+    mention: undefined,
+  });
+  return {
+    composerDraftScopeToken: Symbol("composer-draft-scope"),
+    stageComposerContent: (content: ComposerDraftContentLike) => {
+      staged = content;
+      // 上游 3.17.1 把输入热路径从 updateComposerContent 拆成 stage + 延迟落盘；本文件的草稿
+      // owner 同时代表 owner 内存草稿与 store 写入（等价于重构前的 updateComposerContent），
+      // 所以 stage 也同步更新 owner，否则用户在等待期间的新输入对结算断言不可见。
+      persist(content);
+    },
+    persistComposerContent: (content: ComposerDraftContentLike) => {
+      staged = content;
+      persist(content);
+    },
+    captureComposerContentLifecycleCommit: () => {
+      let active = true;
+      return (content: ComposerDraftContentLike) => {
+        if (!active) return;
+        active = false;
+        revision += 1;
+        persist(content);
+        staged = null;
+      };
+    },
+    captureComposerSubmissionDraftTransaction: (content: ComposerDraftContentLike) => {
+      const submitted = { ...content };
+      const capturedRevision = revision;
+      let state: "captured" | "claimed" | "restored" | "finalized" = "captured";
+      let claimedRevision: number | null = null;
+      let restoredRevision: number | null = null;
+      return {
+        matchesTarget: () => true,
+        claim: () => {
+          if (state !== "captured" || revision !== capturedRevision) return false;
+          revision += 1;
+          claimedRevision = revision;
+          state = "claimed";
+          persist(clearedContent());
+          staged = null;
+          return true;
+        },
+        restore: () => {
+          if (state !== "claimed" || claimedRevision === null) {
+            return { current: true, applied: state === "restored" };
+          }
+          const applied = revision === claimedRevision;
+          if (applied) {
+            revision += 1;
+            restoredRevision = revision;
+            persist({ ...submitted });
+            state = "restored";
+          }
+          staged = null;
+          return { current: true, applied };
+        },
+        release: () => {
+          state = "finalized";
+        },
+        finalize: () => {
+          // ACK、投影与发送 Promise 可能先后到达；结算副作用只允许发生一次。
+          if (state === "finalized") return null;
+          if (staged) {
+            revision += 1;
+            persist({ ...staged });
+            staged = null;
+          }
+          const expectedRevision =
+            state === "claimed" ? claimedRevision : state === "restored" ? restoredRevision : null;
+          const applied = expectedRevision !== null && revision === expectedRevision;
+          if (applied) {
+            revision += 1;
+            persist(clearedContent());
+          }
+          state = "finalized";
+          return { current: true, applied };
+        },
+      };
+    },
+  };
+}
+
 function renderComposerElement(
   onSendText: (text: string, options?: unknown) => Promise<ConversationComposerSendResult | void>,
   sessionId: string | null,
@@ -323,10 +422,12 @@ function renderComposerElement(
       ownedDraft = { ...ownedDraft, ...content };
       persistV4ComposerDraft("/workspace", undefined, scopeId, ownedDraft);
     });
+  const composerDraftTransactionProps = createComposerDraftTransactionProps(persistOwnedContent);
   return createElement(
     CodezIntlProvider,
     { initialLocale: "zh-CN" },
     createElement(ConversationComposer, {
+      ...composerDraftTransactionProps,
       draftMode: sessionId === null,
       onSelectModel: vi.fn(),
       onSelectThought: vi.fn(),

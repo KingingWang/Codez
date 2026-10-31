@@ -82,6 +82,10 @@ function setupBase() {
       revisionAtDecision: 1,
     })),
     onDynamicConversationFrame: vi.fn(() => conversationFrames.event),
+    // 上游 3.17.1 新增 workspace 级 session 生命周期事件；本文件不断言其语义，按 Event 契约提供空订阅。
+    // 上游 3.17.1 起订阅前先读一次生命周期事实；null 表示无事实，按既有路径继续订阅。
+    getSessionLifecycle: vi.fn(async () => null),
+    onDynamicSessionLifecycle: vi.fn(() => () => ({ dispose: () => {} })),
     // transport.onFrame 会顺带挂载本地 TTFT 检查点 emitter（desktop-continuous 本地
     // workspace 才有），base 必须提供该动态 Event，否则 connectionScope 转发时直接抛错。
     onDynamicLocalTtftFacts: vi.fn(() => localTtftFacts.event),
