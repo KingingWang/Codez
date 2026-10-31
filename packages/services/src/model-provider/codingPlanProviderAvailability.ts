@@ -21,7 +21,8 @@ import {
 } from "#src/bigmodel/codingPlanEntitlement.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import { readApiJson } from "../providers/api/apiJson.js";
-import { resolveBigModelStartPlanZcodeJwt } from "./bigmodelStartPlanCodezJwt.js";
+// 修复依据：Zcode JWT 混合大小写标识不属于品牌替换，导入路径必须匹配保留的上游文件名。
+import { resolveBigModelStartPlanZcodeJwt } from "./bigmodelStartPlanZcodeJwt.js";
 import {
   buildZaiStartPlanBalanceUrl,
   fetchZaiStartPlanBalanceEnvelope,
