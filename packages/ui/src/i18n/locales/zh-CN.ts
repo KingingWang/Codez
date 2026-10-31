@@ -5953,6 +5953,7 @@ const zhCN: Record<string, string> = {
   "chat.goal.runningBlocked": "请结束任务后设定目标。",
   "chat.goal.planModeBlocked": "Goal 无法在 Plan 模式下使用，请切换模式。",
   "chat.slash.app.plan.description": "开启计划模式",
+  "chat.slash.app.plan.label": "计划模式",
   "chat.compact.runningBlocked": "运行中不能压缩上下文，请等待当前任务结束。",
   "chat.compact.queued": "已加入队列，将按顺序压缩上下文。",
   "chat.compact.duplicateBlocked": "已有压缩任务正在运行或排队。",
