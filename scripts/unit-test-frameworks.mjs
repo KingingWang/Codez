@@ -1,8 +1,12 @@
 import { globSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+export function isNodeTestSource(source) {
+  return /\bfrom\s+["']node:test["']/u.test(source);
+}
+
 export function isNodeTestFile(file, root = process.cwd()) {
-  return /\bfrom\s+["']node:test["']/u.test(readFileSync(resolve(root, file), "utf8"));
+  return isNodeTestSource(readFileSync(resolve(root, file), "utf8"));
 }
 
 export function discoverNodeUnitTests(root = process.cwd()) {

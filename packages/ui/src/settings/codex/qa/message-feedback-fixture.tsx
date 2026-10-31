@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { ICodezAgentService } from "@codez/services";
+import type { ICodezAgentService } from "@/codex-settings-qa-ui/contract.js";
 import { Button } from "@/components/ui/button.js";
 import {
   isCodexMessageFeedbackAvailable,

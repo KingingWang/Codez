@@ -2,7 +2,7 @@
 // The service object is the isolated Host authority; no user files or credentials are touched.
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
-import type { IServiceAccessor } from "@codez/services";
+import type { IServiceAccessor } from "@/codex-settings-qa-ui/contract.js";
 import type { CodezAgentRoleSummary, IPlatformService } from "@codez/shared";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { PlatformProvider } from "@/hooks/usePlatform.js";

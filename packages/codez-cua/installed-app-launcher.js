@@ -1,4 +1,4 @@
-/* eslint-disable max-lines -- 三个平台的受信安装发现与启动参数必须共用同一 fail-closed 入口。 */
+// 三个平台的受信安装发现与启动参数共用同一 fail-closed 入口。
 import { spawn } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
 import { homedir } from "node:os";

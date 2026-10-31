@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { IGitService } from "@codez/services";
+import type { IGitService } from "@/git-worktree-ui/contract.js";
 import type {
   GitLocalBranch,
   GitWorktreeCreatePreview,

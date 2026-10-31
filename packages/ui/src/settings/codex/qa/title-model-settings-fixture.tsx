@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { appSettingsSchema, type AppSettings, type CodexModel } from "@codez/shared";
-import type { IServiceAccessor } from "@codez/services";
+import type { IServiceAccessor } from "@/codex-settings-qa-ui/contract.js";
 import type { CodexSettingsController } from "@/hooks/useCodexSettings.js";
 import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";

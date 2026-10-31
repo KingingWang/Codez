@@ -1,4 +1,4 @@
-import type { ISystemService } from "@codez/services";
+import type { ISystemService } from "@/provider-bootstrap-ui/contract.js";
 import { logger } from "@/logger.js";
 
 export type RootProviderStartupMode = "codex" | "legacy";
