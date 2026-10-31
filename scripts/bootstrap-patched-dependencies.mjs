@@ -25,7 +25,11 @@ export async function readWorkspacePatchedDependencies(rootDir) {
   const workspace = parse(await readFile(resolve(rootDir, "pnpm-workspace.yaml"), "utf8"));
   const patchedDependencies = workspace?.patchedDependencies;
   if (patchedDependencies === undefined) return {};
-  if (!patchedDependencies || typeof patchedDependencies !== "object" || Array.isArray(patchedDependencies))
+  if (
+    !patchedDependencies ||
+    typeof patchedDependencies !== "object" ||
+    Array.isArray(patchedDependencies)
+  )
     throw new Error("Invalid workspace patchedDependencies");
   return patchedDependencies;
 }

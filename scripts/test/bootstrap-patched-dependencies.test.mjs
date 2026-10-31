@@ -52,7 +52,10 @@ test("bootstrap install 前只清理 hoisted patched dependency 目标", async (
 test("workspace patchedDependencies 缺失或非法时明确失败，不静默丢 patch 来源", async () => {
   const rootDir = await mkdtemp(join(tmpdir(), "codez-bootstrap-patch-invalid-"));
   try {
-    await writeFile(join(rootDir, "pnpm-workspace.yaml"), "packages: []\npatchedDependencies: []\n");
+    await writeFile(
+      join(rootDir, "pnpm-workspace.yaml"),
+      "packages: []\npatchedDependencies: []\n",
+    );
     await assert.rejects(clearHoistedPatchedDependencyTargets({ rootDir }));
     await writeFile(join(rootDir, "pnpm-workspace.yaml"), "packages: []\n");
     assert.deepEqual(await clearHoistedPatchedDependencyTargets({ rootDir }), []);
