@@ -3421,6 +3421,7 @@ const enUS: Record<string, string> = {
   "settings.source.removeOpenProjects": "These open projects will be disconnected:\n{projects}",
   "settings.source.noOpenProjects": "This device has no open projects.",
   "settings.source.disconnectHint": "Remote tasks will continue running after you disconnect.",
+  "settings.machine.remote": "{name} (remote)",
   "settings.machine.unknownRemote": "Remote device",
   "settings.source.connectionName": "Connection name",
   "settings.source.connectionAddress": "Address",

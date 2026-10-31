@@ -3178,6 +3178,7 @@ const zhCN: Record<string, string> = {
   "settings.source.removeOpenProjects": "将断开以下已打开的项目：\n{projects}",
   "settings.source.noOpenProjects": "这台设备没有已打开的项目。",
   "settings.source.disconnectHint": "断开后，远端任务会继续运行。",
+  "settings.machine.remote": "{name}（远程）",
   "settings.machine.unknownRemote": "远程设备",
   "settings.source.connectionName": "连接名",
   "settings.source.connectionAddress": "地址",
