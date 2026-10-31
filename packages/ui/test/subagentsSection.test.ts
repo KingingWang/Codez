@@ -142,12 +142,26 @@ const mockModelSelectionView = vi.hoisted(() => ({
 
 vi.mock("react", async () => {
   const actual = await vi.importActual<typeof import("react")>("react");
+  // 上游 3.17.1 在 SubagentsSection 之前新增了 settings-scope / 配置目录等 hook，它们同样调用
+  // useState，会让下面按调用序号定制的 state 全部错位（例如把对象当成 scope key 传进
+  // resolveSettingsScope）。这里只统计「直接调用方是 SubagentsSection.tsx」的 useState，
+  // 其余 hook 走真实实现，保持各用例既有的序号语义。
+  const isSubagentsSectionState = (): boolean => {
+    for (const frame of (new Error().stack ?? "").split("\n").slice(1)) {
+      if (frame.includes("node_modules") || frame.includes("subagentsSection.test.ts")) continue;
+      return frame.includes("SubagentsSection.tsx");
+    }
+    return false;
+  };
   return {
     ...actual,
     useEffect: (effect: () => void | (() => void), dependencies?: readonly unknown[]) =>
       useRealReactHooks ? actual.useEffect(effect, dependencies) : undefined,
     useState: (initialValue: unknown) => {
       if (useRealReactHooks) {
+        return actual.useState(initialValue);
+      }
+      if (!isSubagentsSectionState()) {
         return actual.useState(initialValue);
       }
       useStateCallCount += 1;
@@ -237,30 +251,36 @@ vi.mock("@/store/pluginManagementStore.js", () => ({
 vi.mock("@/settings/PluginScopeMenu.js", () => ({
   PluginScopeMenu: ({
     workspaceTabs,
+    groups,
     onScopeKeyChange,
   }: {
-    workspaceTabs: Array<{ workspacePath: string; workspaceIdentity?: string }>;
+    workspaceTabs?: Array<{ workspacePath: string; workspaceIdentity?: string }>;
+    // 上游 3.17.1 的页头 Scope 菜单改吃 groups（设备 + 选项事实），表单内仍沿用 workspaceTabs。
+    // 两种形态都要渲染出可点击按钮，键值与既有断言一致（user / workspaceIdentity | workspacePath）。
+    groups?: Array<{ options: Array<{ key: string }> }>;
     onScopeKeyChange: (key: string) => void;
-  }) =>
-    mockScopeRouting.enabled
-      ? createElement(
-          "div",
-          null,
-          ["user", ...workspaceTabs.map((tab) => tab.workspaceIdentity || tab.workspacePath)].map(
-            (key) =>
-              createElement(
-                "button",
-                {
-                  key,
-                  type: "button",
-                  "data-testid": `scope-${key}`,
-                  onClick: () => onScopeKeyChange(key),
-                },
-                key,
-              ),
-          ),
-        )
-      : createElement("button", null, "scope"),
+  }) => {
+    if (!mockScopeRouting.enabled) return createElement("button", null, "scope");
+    const keys = groups
+      ? groups.flatMap((group) => group.options.map((option) => option.key))
+      : ["user", ...(workspaceTabs ?? []).map((tab) => tab.workspaceIdentity || tab.workspacePath)];
+    return createElement(
+      "div",
+      null,
+      keys.map((key) =>
+        createElement(
+          "button",
+          {
+            key,
+            type: "button",
+            "data-testid": `scope-${key}`,
+            onClick: () => onScopeKeyChange(key),
+          },
+          key,
+        ),
+      ),
+    );
+  },
   getPluginWorkspaceKey: (tab: { workspacePath: string; workspaceIdentity?: string }) =>
     mockScopeRouting.enabled ? tab.workspaceIdentity || tab.workspacePath : "workspace",
   isPluginScopeWorkspaceConnected: () => true,
@@ -336,9 +356,38 @@ vi.mock("@/hooks/useServices.js", () => ({
     },
 }));
 
+// 上游 3.17.1 起 SubagentsSection 的「用户」服务经 useSettingsScope 从 useBaseWorkspaceServices 取，
+// 不再直接读 useServices()。这里把 Base services 指回本套用例既有的假 accessor，
+// 保留「远端激活时 User 的列表/模型/插件/保存都属于本机」等断言的原有语义；
+// 其余导出保持真实实现（barrel mock 还要复用 useWorkspaceServicesResolution）。
+vi.mock("@/hooks/useWorkspaceServices.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/hooks/useWorkspaceServices.js")>();
+  return {
+    ...actual,
+    useBaseWorkspaceServices: () =>
+      mockScopeRouting.context ?? ({ subagentsService: mockSubagentsService } as never),
+  };
+});
+
 vi.mock("@/store/subagentsStore.js", () => ({
   refreshLoadedSubagentsStoreForWorkspace: mockRefreshLoadedSubagentsStoreForWorkspace,
 }));
+
+// 上游 3.17.1 把「表单开合 + 当前编辑对象」从 SubagentsSection 内部 useState 挪进
+// useSettingsScopeForm（settings-scope 模块）。本套用例仍按重构前的调用序号驱动状态
+// （7 = 打开表单，8 = 当前编辑的 agent），这里把这两个序号接回该 hook，
+// scope 事实（设备 / 用户 / 归属解析）仍走真实实现，保住路由断言的原有语义。
+vi.mock("@/settings-scope/index.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/settings-scope/index.js")>();
+  return {
+    ...actual,
+    useSettingsScopeForm: () => ({
+      form: stateOverrides.get(7) ? { agent: stateOverrides.get(8) ?? null } : null,
+      openForm: vi.fn(),
+      closeForm: vi.fn(),
+    }),
+  };
+});
 
 vi.mock("@/hooks/useModelProviders.js", () => ({
   useModelProviders: mockUseModelProviders,
@@ -1602,7 +1651,7 @@ describe("SubagentsSection", () => {
       model,
       modelAvailable: true,
       modelSelectionView: null,
-      modelSelectionLoading: true,
+      modelCatalogStatus: "loading",
       thoughtLevel: initial.thoughtLevel,
     });
     expect(unknownState).toEqual({ kind: "unknown", status: "loading" });
@@ -1612,7 +1661,7 @@ describe("SubagentsSection", () => {
       model,
       modelAvailable: true,
       modelSelectionView: mockModelSelectionView,
-      modelSelectionLoading: false,
+      modelCatalogStatus: "ready",
       thoughtLevel: initial.thoughtLevel,
     });
     expect(supportedState.option?.currentValue).toBe("");
@@ -1629,7 +1678,7 @@ describe("SubagentsSection", () => {
       model,
       modelAvailable: true,
       modelSelectionView: mockModelSelectionView,
-      modelSelectionLoading: false,
+      modelCatalogStatus: "ready",
       thoughtLevel: undefined,
     });
 
@@ -1678,14 +1727,14 @@ describe("SubagentsSection", () => {
     const base = {
       model: "custom:custom-openai:gpt-5.4",
       modelAvailable: true,
-      modelSelectionLoading: false,
+      modelCatalogStatus: "ready",
       thoughtLevel: undefined,
     };
 
     const loading = resolveSubagentThoughtOptionState({
       ...base,
       modelSelectionView: null,
-      modelSelectionLoading: true,
+      modelCatalogStatus: "loading",
     });
     expect(loading).toEqual({ kind: "unknown", status: "loading" });
     // Registry 尚未发布时保持未知，不能把已保存的档位误判为非法并清空。
@@ -1710,7 +1759,7 @@ describe("SubagentsSection", () => {
       ...base,
       thoughtLevel: "max",
       modelSelectionView: null,
-      modelSelectionLoading: true,
+      modelCatalogStatus: "loading",
     });
     expect(targetModelReconciling).toEqual({ kind: "unknown", status: "loading" });
 
@@ -1797,7 +1846,7 @@ describe("SubagentsSection", () => {
     expect(
       resolveSubagentThoughtOptionState({
         ...base,
-        modelSelectionLoading: true,
+        modelCatalogStatus: "loading",
       }),
     ).toMatchObject({
       kind: "supported",
@@ -1809,7 +1858,7 @@ describe("SubagentsSection", () => {
     expect(
       resolveSubagentThoughtOptionState({
         ...base,
-        modelSelectionLoading: false,
+        modelCatalogStatus: "ready",
       }),
     ).toMatchObject({
       kind: "supported",
@@ -1829,7 +1878,7 @@ describe("SubagentsSection", () => {
         model: encodeCustomModelValue("provider-demo", "GLM-5.2"),
         modelAvailable: true,
         modelSelectionView: null,
-        modelSelectionLoading: true,
+        modelCatalogStatus: "loading",
         thoughtLevel: undefined,
       }),
     ).toEqual({ kind: "unknown", status: "loading" });
@@ -1842,7 +1891,7 @@ describe("SubagentsSection", () => {
       model: "custom:custom-openai:plain-chat",
       modelAvailable: true,
       modelSelectionView: mockModelSelectionView,
-      modelSelectionLoading: false,
+      modelCatalogStatus: "ready",
       thoughtLevel: "high",
     };
     const disabled = resolveSubagentThoughtOptionState(base);
@@ -2071,7 +2120,9 @@ vi.mock("@/workspace-config-catalog/index.js", async (importOriginal) => {
   const workspace = await import("@/hooks/useWorkspaceServices.js");
   return {
     ...actual,
-    useConfigWorkspaceTargets: () => mockTabs.tabs,
+    // 上游 3.17.1 把 useConfigWorkspaceTargets 的返回值从数组改成 { targets, loaded }。
+    // 本套用例只关心已连接的 workspace 目标；测试环境不跑目录读取 effect，loaded 保持 false。
+    useConfigWorkspaceTargets: () => ({ targets: mockTabs.tabs, loaded: false }),
     useConfigWorkspaceServicesResolution: workspace.useWorkspaceServicesResolution,
   };
 });
