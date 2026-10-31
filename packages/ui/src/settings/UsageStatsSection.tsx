@@ -72,15 +72,19 @@ function UsageStatsSourceBadge({
   const sourceServerId = parseRemoteWorkspaceIdentity(workspaceIdentity ?? "")?.sourceServerId;
   const deviceInput = useRemoteDevicePresentationInput(sourceServerId);
   const { intl } = useCodezIntl();
-  // 上游删除了旧 SettingsMachine；设备名只复用管理快照的展示输入，
-  // 不为此发起 attachment 或改变所属服务器的统计路由。
+  // Bugfix：上游 3.17.1 删除了旧 SettingsMachine（连同 settings.machine.local/remote 两个文案），
+  // 迁移时若只取设备名，远端来源徽标会丢掉「（远程）」后缀，用户无法区分本机与所属服务器的统计。
+  // 这里恢复原 fork 的文案组合：设备名只复用管理快照的展示输入，不为此发起 attachment，
+  // 也不改变按所属服务器路由的统计口径；connectionKind 仍是服务解析权威，标签不反向推断路由。
+  const deviceName =
+    formatRemoteDeviceName(
+      deviceInput?.target ?? remoteTarget ?? undefined,
+      deviceInput?.displayName,
+    ) ?? intl.formatMessage({ id: "settings.machine.unknownRemote" });
   const label =
     connectionKind === "local-ready"
       ? intl.formatMessage({ id: "settings.scope.localDevice" })
-      : (formatRemoteDeviceName(deviceInput?.target ?? remoteTarget ?? undefined, deviceInput?.displayName) ??
-        intl.formatMessage({ id: "settings.machine.unknownRemote" }));
-  // connectionKind 是服务解析权威；机器标签只提供展示名，不反向推断路由。
-  void connectionKind;
+      : intl.formatMessage({ id: "settings.machine.remote" }, { name: deviceName });
   return (
     <div className="flex justify-end">
       <Badge
