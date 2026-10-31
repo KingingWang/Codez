@@ -489,11 +489,72 @@
     "source": "https://raw.githubusercontent.com/rrweb-io/rrweb/%40rrweb%2Futils%402.0.0/LICENSE"
   },
   {
+    "package": "@crowecawcaw/xa11y@0.15.0",
+    "license": "MIT",
+    "file": "third-party/upstream/f2d9c355bfd769a0eabfd81b4fa9b1db8d8f7a4ebaf93f0af63843c2fb9eed04.txt",
+    "sha256": "f2d9c355bfd769a0eabfd81b4fa9b1db8d8f7a4ebaf93f0af63843c2fb9eed04",
+    "source": "https://raw.githubusercontent.com/xa11y/xa11y/a3badccf5761615ea3412ee55c19ac3764e27913/LICENSE",
+    "referenceRevision": "a3badccf5761615ea3412ee55c19ac3764e27913",
+    "evidence": "The versioned npm archive contains no LICENSE/NOTICE/COPYING; this is the complete MIT LICENSE from its exact npm gitHead and the pinned CI addon source."
+  },
+  {
+    "package": "@crowecawcaw/xa11y-darwin-arm64@0.15.0",
+    "license": "MIT",
+    "file": "third-party/upstream/f2d9c355bfd769a0eabfd81b4fa9b1db8d8f7a4ebaf93f0af63843c2fb9eed04.txt",
+    "sha256": "f2d9c355bfd769a0eabfd81b4fa9b1db8d8f7a4ebaf93f0af63843c2fb9eed04",
+    "source": "https://raw.githubusercontent.com/xa11y/xa11y/a3badccf5761615ea3412ee55c19ac3764e27913/LICENSE",
+    "referenceRevision": "a3badccf5761615ea3412ee55c19ac3764e27913",
+    "evidence": "The 0.15.0 npm archive (dist.shasum 484b0bf7c048b8eec7555917e7e85c097fa480bb, re-verified 2026-10-31) ships only package.json, README.md and xa11y.darwin-arm64.node - no LICENSE/NOTICE/COPYING, and its README has no license section. napi-rs derives this package from xa11y-js/package.json at a3badccf5761615ea3412ee55c19ac3764e27913 (npm gitHead of @crowecawcaw/xa11y@0.15.0, committed 4 s after release tag v0.15.0 = 3b88c4f5c85f23a20d4834b7fc2f9077c65d9c57): binaryName 'xa11y' plus napi target aarch64-apple-darwin expands to exactly this package name, and that manifest's version 0.15.0, license MIT and repository https://github.com/xa11y/xa11y match the archive's own package.json (os darwin, cpu arm64). Published 2026-09-19T03:45:46Z in the same napi pre-publish run as @crowecawcaw/xa11y@0.15.0 (2026-09-19T03:45:59Z). The LICENSE blob is byte-identical at a3badccf5761615ea3412ee55c19ac3764e27913 and at tag v0.15.0."
+  },
+  {
+    "package": "@crowecawcaw/xa11y-darwin-x64@0.15.0",
+    "license": "MIT",
+    "file": "third-party/upstream/f2d9c355bfd769a0eabfd81b4fa9b1db8d8f7a4ebaf93f0af63843c2fb9eed04.txt",
+    "sha256": "f2d9c355bfd769a0eabfd81b4fa9b1db8d8f7a4ebaf93f0af63843c2fb9eed04",
+    "source": "https://raw.githubusercontent.com/xa11y/xa11y/a3badccf5761615ea3412ee55c19ac3764e27913/LICENSE",
+    "referenceRevision": "a3badccf5761615ea3412ee55c19ac3764e27913",
+    "evidence": "The 0.15.0 npm archive (dist.shasum df4e1987f5440dd5eaeb1b1d4708b8635e9b5ca9, re-verified 2026-10-31) ships only package.json, README.md and xa11y.darwin-x64.node - no LICENSE/NOTICE/COPYING, and its README has no license section. napi-rs derives this package from xa11y-js/package.json at a3badccf5761615ea3412ee55c19ac3764e27913 (npm gitHead of @crowecawcaw/xa11y@0.15.0, committed 4 s after release tag v0.15.0 = 3b88c4f5c85f23a20d4834b7fc2f9077c65d9c57): binaryName 'xa11y' plus napi target x86_64-apple-darwin expands to exactly this package name, and that manifest's version 0.15.0, license MIT and repository https://github.com/xa11y/xa11y match the archive's own package.json (os darwin, cpu x64). Published 2026-09-19T03:46:23Z in the same napi pre-publish run as @crowecawcaw/xa11y@0.15.0 (2026-09-19T03:45:59Z). The LICENSE blob is byte-identical at a3badccf5761615ea3412ee55c19ac3764e27913 and at tag v0.15.0."
+  },
+  {
+    "package": "@crowecawcaw/xa11y-linux-arm64-gnu@0.15.0",
+    "license": "MIT",
+    "file": "third-party/upstream/f2d9c355bfd769a0eabfd81b4fa9b1db8d8f7a4ebaf93f0af63843c2fb9eed04.txt",
+    "sha256": "f2d9c355bfd769a0eabfd81b4fa9b1db8d8f7a4ebaf93f0af63843c2fb9eed04",
+    "source": "https://raw.githubusercontent.com/xa11y/xa11y/a3badccf5761615ea3412ee55c19ac3764e27913/LICENSE",
+    "referenceRevision": "a3badccf5761615ea3412ee55c19ac3764e27913",
+    "evidence": "The 0.15.0 npm archive (dist.shasum 2aa9e3fd191f9b6ec1ef9a84395b64dc0e15a052, re-verified 2026-10-31) ships only package.json, README.md and xa11y.linux-arm64-gnu.node - no LICENSE/NOTICE/COPYING, and its README has no license section. napi-rs derives this package from xa11y-js/package.json at a3badccf5761615ea3412ee55c19ac3764e27913 (npm gitHead of @crowecawcaw/xa11y@0.15.0, committed 4 s after release tag v0.15.0 = 3b88c4f5c85f23a20d4834b7fc2f9077c65d9c57): binaryName 'xa11y' plus napi target aarch64-unknown-linux-gnu expands to exactly this package name, and that manifest's version 0.15.0, license MIT and repository https://github.com/xa11y/xa11y match the archive's own package.json (os linux, cpu arm64, libc glibc). Published 2026-09-19T03:45:37Z in the same napi pre-publish run as @crowecawcaw/xa11y@0.15.0 (2026-09-19T03:45:59Z). The LICENSE blob is byte-identical at a3badccf5761615ea3412ee55c19ac3764e27913 and at tag v0.15.0."
+  },
+  {
+    "package": "@crowecawcaw/xa11y-linux-x64-gnu@0.15.0",
+    "license": "MIT",
+    "file": "third-party/upstream/f2d9c355bfd769a0eabfd81b4fa9b1db8d8f7a4ebaf93f0af63843c2fb9eed04.txt",
+    "sha256": "f2d9c355bfd769a0eabfd81b4fa9b1db8d8f7a4ebaf93f0af63843c2fb9eed04",
+    "source": "https://raw.githubusercontent.com/xa11y/xa11y/a3badccf5761615ea3412ee55c19ac3764e27913/LICENSE",
+    "referenceRevision": "a3badccf5761615ea3412ee55c19ac3764e27913",
+    "evidence": "The 0.15.0 npm archive (dist.shasum 31a87035472aaa163a868495ab12206d05f7ffc0, re-verified 2026-10-31) ships only package.json, README.md and xa11y.linux-x64-gnu.node - no LICENSE/NOTICE/COPYING, and its README has no license section. napi-rs derives this package from xa11y-js/package.json at a3badccf5761615ea3412ee55c19ac3764e27913 (npm gitHead of @crowecawcaw/xa11y@0.15.0, committed 4 s after release tag v0.15.0 = 3b88c4f5c85f23a20d4834b7fc2f9077c65d9c57): binaryName 'xa11y' plus napi target x86_64-unknown-linux-gnu expands to exactly this package name, and that manifest's version 0.15.0, license MIT and repository https://github.com/xa11y/xa11y match the archive's own package.json (os linux, cpu x64, libc glibc). Published 2026-09-19T03:45:31Z in the same napi pre-publish run as @crowecawcaw/xa11y@0.15.0 (2026-09-19T03:45:59Z). The LICENSE blob is byte-identical at a3badccf5761615ea3412ee55c19ac3764e27913 and at tag v0.15.0."
+  },
+  {
+    "package": "@crowecawcaw/xa11y-win32-arm64-msvc@0.15.0",
+    "license": "MIT",
+    "file": "third-party/upstream/f2d9c355bfd769a0eabfd81b4fa9b1db8d8f7a4ebaf93f0af63843c2fb9eed04.txt",
+    "sha256": "f2d9c355bfd769a0eabfd81b4fa9b1db8d8f7a4ebaf93f0af63843c2fb9eed04",
+    "source": "https://raw.githubusercontent.com/xa11y/xa11y/a3badccf5761615ea3412ee55c19ac3764e27913/LICENSE",
+    "referenceRevision": "a3badccf5761615ea3412ee55c19ac3764e27913",
+    "evidence": "The 0.15.0 npm archive (dist.shasum 7b842828b6eec5825bf21e51348141366e755518, re-verified 2026-10-31) ships only package.json, README.md and xa11y.win32-arm64-msvc.node - no LICENSE/NOTICE/COPYING, and its README has no license section. napi-rs derives this package from xa11y-js/package.json at a3badccf5761615ea3412ee55c19ac3764e27913 (npm gitHead of @crowecawcaw/xa11y@0.15.0, committed 4 s after release tag v0.15.0 = 3b88c4f5c85f23a20d4834b7fc2f9077c65d9c57): binaryName 'xa11y' plus napi target aarch64-pc-windows-msvc expands to exactly this package name, and that manifest's version 0.15.0, license MIT and repository https://github.com/xa11y/xa11y match the archive's own package.json (os win32, cpu arm64). Published 2026-09-19T03:45:55Z in the same napi pre-publish run as @crowecawcaw/xa11y@0.15.0 (2026-09-19T03:45:59Z). The LICENSE blob is byte-identical at a3badccf5761615ea3412ee55c19ac3764e27913 and at tag v0.15.0."
+  },
+  {
+    "package": "@crowecawcaw/xa11y-win32-x64-msvc@0.15.0",
+    "license": "MIT",
+    "file": "third-party/upstream/f2d9c355bfd769a0eabfd81b4fa9b1db8d8f7a4ebaf93f0af63843c2fb9eed04.txt",
+    "sha256": "f2d9c355bfd769a0eabfd81b4fa9b1db8d8f7a4ebaf93f0af63843c2fb9eed04",
+    "source": "https://raw.githubusercontent.com/xa11y/xa11y/a3badccf5761615ea3412ee55c19ac3764e27913/LICENSE",
+    "referenceRevision": "a3badccf5761615ea3412ee55c19ac3764e27913",
+    "evidence": "The 0.15.0 npm archive (dist.shasum ac69c7c99575a48f32c8e91e75f375e6e8845c23, re-verified 2026-10-31) ships only package.json, README.md and xa11y.win32-x64-msvc.node - no LICENSE/NOTICE/COPYING, and its README has no license section. napi-rs derives this package from xa11y-js/package.json at a3badccf5761615ea3412ee55c19ac3764e27913 (npm gitHead of @crowecawcaw/xa11y@0.15.0, committed 4 s after release tag v0.15.0 = 3b88c4f5c85f23a20d4834b7fc2f9077c65d9c57): binaryName 'xa11y' plus napi target x86_64-pc-windows-msvc expands to exactly this package name, and that manifest's version 0.15.0, license MIT and repository https://github.com/xa11y/xa11y match the archive's own package.json (os win32, cpu x64). Published 2026-09-19T03:45:50Z in the same napi pre-publish run as @crowecawcaw/xa11y@0.15.0 (2026-09-19T03:45:59Z). The LICENSE blob is byte-identical at a3badccf5761615ea3412ee55c19ac3764e27913 and at tag v0.15.0."
+  },
+  {
     "package": "@electron-internal/extract-zip@1.0.5",
     "repo": "electron/extract-zip",
-    "refs": [
-      "b83e459fd04c53b0a1c8438a6792df8f64be47fc"
-    ],
+    "refs": ["b83e459fd04c53b0a1c8438a6792df8f64be47fc"],
     "file": "third-party/upstream/d8a3a14c4ea44385e299f072db9e8a73994e2ff2b344ea5ae5a39c09f11cc984.txt",
     "sha256": "d8a3a14c4ea44385e299f072db9e8a73994e2ff2b344ea5ae5a39c09f11cc984",
     "source": "https://registry.npmjs.org/@electron-internal%2fextract-zip/1.0.5",
@@ -507,5 +568,50 @@
       "sourceTreeUrl": "https://api.github.com/repos/electron/extract-zip/git/trees/b83e459fd04c53b0a1c8438a6792df8f64be47fc?recursive=1",
       "upstreamLicenseFiles": []
     }
+  },
+  {
+    "package": "@nut-tree-fork/default-clipboard-provider@4.2.6",
+    "license": "Apache-2.0",
+    "file": "third-party/upstream/c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "source": "https://raw.githubusercontent.com/ZachJW34/nut.js/0bcbcdc6d080c0fe007b8000a3915d4461a7685d/core/nut.js/LICENSE",
+    "referenceRevision": "0bcbcdc6d080c0fe007b8000a3915d4461a7685d",
+    "evidence": "The 4.2.6 npm archive (dist.shasum 87cd50e4904fa2a352b4ccec2433f3bbeedada33, sha256 b716a93f611dbac49367e7e2087d1c39bd7085ed01b221267f94932fd56a6e02, re-verified 2026-10-31) contains no LICENSE/NOTICE/COPYING and no README license section; the publisher only declares Apache-2.0 in package.json. The publishing monorepo is github.com/ZachJW34/nut.js (root manifest @nut-tree-fork/monorepo 4.2.6): at tag v4.2.6 = 0bcbcdc6d080c0fe007b8000a3915d4461a7685d (2025-03-13) providers/clipboardy/package.json declares @nut-tree-fork/default-clipboard-provider 4.2.6 with the same license, main and description as the archive. That tree carries exactly one license file, core/nut.js/LICENSE, and it is byte-identical to the LICENSE shipped inside the installed siblings @nut-tree-fork/nut-js@4.2.6 and @nut-tree-fork/libnut-linux@2.7.5, so this is the release's own text and not a canonical SPDX substitute. It retains the Apache-2.0 appendix boilerplate 'Copyright [yyyy] [name of copyright owner]'; no copyright holder is asserted or inferred."
+  },
+  {
+    "package": "@nut-tree-fork/libnut@4.2.6",
+    "license": "Apache-2.0",
+    "file": "third-party/upstream/c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "source": "https://raw.githubusercontent.com/ZachJW34/nut.js/0bcbcdc6d080c0fe007b8000a3915d4461a7685d/core/nut.js/LICENSE",
+    "referenceRevision": "0bcbcdc6d080c0fe007b8000a3915d4461a7685d",
+    "evidence": "The 4.2.6 npm archive (dist.shasum 66a251690bff0cd3da8368e33d1e7b6b7610f18d, sha256 78e613acb2af89e0bd5cfa5b77b424bc368afcf2b311938dec1978fcf2198332, re-verified 2026-10-31) contains no LICENSE/NOTICE/COPYING and its README has no license section; the publisher only declares Apache-2.0 in package.json. This meta package comes from the github.com/ZachJW34/nut.js monorepo (root manifest @nut-tree-fork/monorepo 4.2.6), not from the libnut-core addon repo whose platform packages are versioned 2.7.5: at tag v4.2.6 = 0bcbcdc6d080c0fe007b8000a3915d4461a7685d (2025-03-13) providers/libnut/package.json declares @nut-tree-fork/libnut 4.2.6 with the same license, main and description as the archive. That tree carries exactly one license file, core/nut.js/LICENSE, byte-identical to the LICENSE shipped inside the installed siblings @nut-tree-fork/nut-js@4.2.6 and @nut-tree-fork/libnut-linux@2.7.5. It retains the Apache-2.0 appendix boilerplate 'Copyright [yyyy] [name of copyright owner]'; no copyright holder is asserted or inferred."
+  },
+  {
+    "package": "@nut-tree-fork/provider-interfaces@4.2.6",
+    "license": "Apache-2.0",
+    "file": "third-party/upstream/c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "source": "https://raw.githubusercontent.com/ZachJW34/nut.js/0bcbcdc6d080c0fe007b8000a3915d4461a7685d/core/nut.js/LICENSE",
+    "referenceRevision": "0bcbcdc6d080c0fe007b8000a3915d4461a7685d",
+    "evidence": "The 4.2.6 npm archive (dist.shasum b73fbfdf9e58bb7636ed32890bf25c3ef04449eb, sha256 15ade1e4213919f3eac340aa6a0b2aaccf7a85478a9523fa266417f2ae0ad4b8, re-verified 2026-10-31) contains no LICENSE/NOTICE/COPYING and its README has no license section; the publisher only declares Apache-2.0 in package.json. The publishing monorepo is github.com/ZachJW34/nut.js (root manifest @nut-tree-fork/monorepo 4.2.6): at tag v4.2.6 = 0bcbcdc6d080c0fe007b8000a3915d4461a7685d (2025-03-13) core/provider-interfaces/package.json declares @nut-tree-fork/provider-interfaces 4.2.6 with the same license, main and description as the archive. That tree carries exactly one license file, core/nut.js/LICENSE, byte-identical to the LICENSE shipped inside the installed siblings @nut-tree-fork/nut-js@4.2.6 and @nut-tree-fork/libnut-linux@2.7.5. It retains the Apache-2.0 appendix boilerplate 'Copyright [yyyy] [name of copyright owner]'; no copyright holder is asserted or inferred."
+  },
+  {
+    "package": "@nut-tree-fork/shared@4.2.6",
+    "license": "Apache-2.0",
+    "file": "third-party/upstream/c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "source": "https://raw.githubusercontent.com/ZachJW34/nut.js/0bcbcdc6d080c0fe007b8000a3915d4461a7685d/core/nut.js/LICENSE",
+    "referenceRevision": "0bcbcdc6d080c0fe007b8000a3915d4461a7685d",
+    "evidence": "The 4.2.6 npm archive (dist.shasum 59b6ee41ec5e1e69c49cdc4a0c0f74e4dc27604e, sha256 4a7d96bb9ac42e4e6d6ae72859a1e46d714754225d3e62745e075d869868a7fb, re-verified 2026-10-31) contains no LICENSE/NOTICE/COPYING and its README has no license section; the publisher only declares Apache-2.0 in package.json. The publishing monorepo is github.com/ZachJW34/nut.js (root manifest @nut-tree-fork/monorepo 4.2.6): at tag v4.2.6 = 0bcbcdc6d080c0fe007b8000a3915d4461a7685d (2025-03-13) core/shared/package.json declares @nut-tree-fork/shared 4.2.6 with the same license, main and description as the archive. That tree carries exactly one license file, core/nut.js/LICENSE, byte-identical to the LICENSE shipped inside the installed siblings @nut-tree-fork/nut-js@4.2.6 and @nut-tree-fork/libnut-linux@2.7.5. It retains the Apache-2.0 appendix boilerplate 'Copyright [yyyy] [name of copyright owner]'; no copyright holder is asserted or inferred."
+  },
+  {
+    "package": "readable-web-to-node-stream@3.0.4",
+    "license": "MIT",
+    "file": "third-party/upstream/e5c641adbf7c94e7388f67b8f7c5735515e9e3e5679b253d5f3044fcc1c1bf4d.txt",
+    "sha256": "e5c641adbf7c94e7388f67b8f7c5735515e9e3e5679b253d5f3044fcc1c1bf4d",
+    "source": "https://raw.githubusercontent.com/Borewit/readable-web-to-node-stream/dcaea1e302f51bcb7d401fbd67374bb4c22bf788/README.md",
+    "referenceRevision": "dcaea1e302f51bcb7d401fbd67374bb4c22bf788",
+    "evidence": "The 3.0.4 npm archive (dist.shasum 392ba37707af5bf62d725c36c1b5d6ef4119eefc, sha256 e2ef4579f4844498f7a08e2c62471012d2eb6067fef2522c741dc366fd26437c, re-verified 2026-10-31) ships only package.json, README.md and lib/ - no LICENSE/NOTICE/COPYING. Upstream Borewit/readable-web-to-node-stream has never contained a standalone license file: git log --all --diff-filter=A over LICENSE*/LICENCE*/COPYING* paths returns nothing, including at HEAD. The publisher's own complete MIT text, carrying the copyright line 'Copyright (c) 2019 Borewit', is the '## Licence' section of README.md; that README is identical between the published archive and tag v3.0.4 = dcaea1e302f51bcb7d401fbd67374bb4c22bf788 (also the archive's npm gitHead) apart from the archive's CRLF line endings. The snapshot preserves the archive's published CRLF bytes, so it is byte-identical to the README license section readPackageNotices extracts from the installed package and the two deduplicate to one notice text. This is not a bare 'MIT' label substituted by a template: it is the full grant text published by the author at this exact version."
   }
 ]
