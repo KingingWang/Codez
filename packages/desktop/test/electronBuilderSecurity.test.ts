@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 import { NsisUpdater } from "electron-updater";
 import { writeWindowsUpdatePublisher } from "../scripts/windows-update-publisher.mjs";
@@ -200,10 +201,48 @@ it("Windows afterExtract 继续从 appOutDir 根目录保留 Electron 原始许�
   }
 });
 
-it("缺失生产依赖时打包必须失败", async () => {
+it("缺失生产依赖时打包必须失败，只放开 afterPack 已注入的 collector 缺陷名单", async () => {
   const { default: config } = await import("../electron-builder.config.js");
+  const { collectRuntimeModuleClosureEntries } =
+    await import("../scripts/runtime-dependency-closure.mjs");
 
-  expect(config.allowMissingDependencies).toBe(false);
+  // 修复原因：electron-builder 26.17.0 的 pnpm collector 跳过 pnpm 的 deduped 桩节点，
+  // 把 express / @hono/node-server 等生产依赖误报成「cannot find path for dependency」，
+  // 六个打包目标全部在这一步失败（CI run 41219858965）。这些包改由 afterPack 按闭包根
+  // 递归注入 app.asar，因此只放开这批名字：`true`（全量放开）会让真实缺包静默出包，
+  // `false`（原值）会被 collector 的解析缺陷直接阻断，两者都不可接受。
+  const allowed = config.allowMissingDependencies;
+  expect(allowed).not.toBe(true);
+  expect(allowed).not.toBe(false);
+  expect(Array.isArray(allowed)).toBe(true);
+
+  const names = allowed as string[];
+  expect(names.length).toBeGreaterThan(0);
+  // 白名单必须精确覆盖本地用同版本 collector 复现出的缺失集合，避免悄悄扩大门禁豁免。
+  for (const required of [
+    "@hono/node-server",
+    "ajv",
+    "body-parser",
+    "cors",
+    "cross-spawn",
+    "eventsource",
+    "express",
+    "express-rate-limit",
+    "qs",
+    "raw-body",
+  ]) {
+    expect(names).toContain(required);
+  }
+  expect(names.length).toBeLessThan(200);
+
+  // 白名单里的每个模块都必须能被 afterPack 从工作区解析到，否则「放开缺失」等于真的少包。
+  const desktopRoot = fileURLToPath(new URL("../", import.meta.url));
+  const lookupRoots = [desktopRoot, join(desktopRoot, "../..")];
+  const closure = collectRuntimeModuleClosureEntries(names, lookupRoots);
+  const unresolvable = closure
+    .filter((entry: { sourceModulePath: string | null }) => !entry.sourceModulePath)
+    .map((entry: { moduleName: string }) => entry.moduleName);
+  expect(unresolvable).toEqual([]);
 });
 
 it("Windows 打包关闭 Node Inspector，保留 Agent 所需的 RunAsNode", async () => {

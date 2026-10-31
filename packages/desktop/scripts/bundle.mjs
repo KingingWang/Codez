@@ -123,6 +123,18 @@ const requiredRuntimeModules = [
   "asn1",
   "bcrypt-pbkdf",
   "tweetnacl",
+  // 26.17.0 的 pnpm collector 会跳过 pnpm 的 deduped 桩节点，把 express / @hono/node-server
+  // 等生产依赖误报成缺失（本地复现 48 项，与 CI run 41219858965 一致）。这些包改由
+  // electron-builder.config.js 的 afterPack 按同一批闭包根注入 app.asar，
+  // 因此这里同口径机械校验最终产物，确保「collector 放开缺失」不等于安装包真的少包。
+  "@hono/node-server",
+  "ajv",
+  "ajv-formats",
+  "cors",
+  "cross-spawn",
+  "eventsource",
+  "express",
+  "express-rate-limit",
 ];
 const electronBuilderRetryCount = 3;
 const electronBuilderRetryDelayMs = 5_000;
