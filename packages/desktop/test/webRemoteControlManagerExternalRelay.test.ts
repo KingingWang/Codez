@@ -1625,13 +1625,17 @@ describe("createWebRemoteControlManager external relay", () => {
       (payload) => payload.codez_type === "bridge-degraded",
     ).length;
     emitTransportSendReady("same-socket");
+    // 上游 3.17.1 把失效通知改成沿每次 send-ready 补发（后台可能丢弃首条通知）。
+    // 重复补发是安全的：Web 侧 acceptWebRemoteControlBridgeInvalidation 只在
+    // bridgeSessionId 匹配且尚未 degraded 时才 markDegraded，因此不会重建恢复 generation，
+    // 也不会重置 1s/2s/5s 有界退避预算——这正是本仓库原先在桌面侧加门禁要防的问题。
     expect(sentPayloads.filter((payload) => payload.codez_type === "bridge-degraded")).toHaveLength(
-      firstReplayCount,
+      firstReplayCount + 1,
     );
 
     emitTransportSendReady("reconnected-socket");
     expect(sentPayloads.filter((payload) => payload.codez_type === "bridge-degraded")).toHaveLength(
-      firstReplayCount + 1,
+      firstReplayCount + 2,
     );
   });
 

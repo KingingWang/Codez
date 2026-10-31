@@ -348,7 +348,8 @@ describe("V2 manager public API with real relay", () => {
       expect(current.messages).toContainEqual(
         expect.objectContaining({
           type: "data",
-          payload: expect.objectContaining({ codez_type: "bootstrap-response" }),
+          // relay 实际收到的是 wire 形态，判别字段为上游 zcode_type。
+          payload: expect.objectContaining({ zcode_type: "bootstrap-response" }),
         }),
       ),
     );
