@@ -48,10 +48,14 @@ test("workflow gates six native targets, four bundled remote targets and isolate
     false,
   );
 
+  // 修复原因：UI 的 tsx 回归必须以仓库根为 cwd 执行——GitWorktreeMenu.test.tsx 会相对
+  // spawn `node_modules/.bin/esbuild` 并传 `--tsconfig=packages/ui/tsconfig.json`，
+  // `pnpm --filter @codez/ui exec`（cwd=packages/ui）在 CI 报 esbuild ENOENT。
+  // 因此这里断言根相对调用形式，包内精确文件枚举保持不变。
   const uiRegressionRun = (command) =>
-    command.includes("pnpm --filter @codez/ui exec tsx --tsconfig tsconfig.json --test") &&
-    command.includes("src/settings/codex/codexSettings.test.ts") &&
-    command.includes("src/settings/codex/CodexPanels.test.tsx");
+    command.includes("pnpm exec tsx --tsconfig packages/ui/tsconfig.json --test") &&
+    command.includes("packages/ui/src/settings/codex/codexSettings.test.ts") &&
+    command.includes("packages/ui/src/settings/codex/CodexPanels.test.tsx");
   assert.equal(remoteRuns.filter(uiRegressionRun).length, 1);
   assert.equal(
     build.steps.some((step) => uiRegressionRun(step.run ?? "")),
@@ -137,16 +141,18 @@ test("workflow includes automation and Git UI regressions outside the Codex sett
   );
   const commands = workflow.jobs["remote-assets"].steps
     .map((step) => step.run ?? "")
-    .filter((command) => command.includes("@codez/ui exec tsx --tsconfig tsconfig.json --test"));
+    .filter((command) =>
+      command.includes("pnpm exec tsx --tsconfig packages/ui/tsconfig.json --test"),
+    );
   for (const path of [
-    "src/hooks/useModelSelectionView.test.ts",
-    "src/settings/automationEditValidation.test.ts",
-    "src/v4/ConversationStatusPanel.test.tsx",
-    "src/v4/conversationStatusPanelModel.test.ts",
-    "src/capabilities/useGitAuxiliaryCapability.test.ts",
-    "src/capabilities/useCodexMessageFeedbackCapability.test.tsx",
-    "src/settings/usage-stats/AppUsagePanel.test.tsx",
-    "src/TaskActionMenuContent.test.tsx",
+    "packages/ui/src/hooks/useModelSelectionView.test.ts",
+    "packages/ui/src/settings/automationEditValidation.test.ts",
+    "packages/ui/src/v4/ConversationStatusPanel.test.tsx",
+    "packages/ui/src/v4/conversationStatusPanelModel.test.ts",
+    "packages/ui/src/capabilities/useGitAuxiliaryCapability.test.ts",
+    "packages/ui/src/capabilities/useCodexMessageFeedbackCapability.test.tsx",
+    "packages/ui/src/settings/usage-stats/AppUsagePanel.test.tsx",
+    "packages/ui/src/TaskActionMenuContent.test.tsx",
   ]) {
     assert.ok(
       commands.some((command) => command.includes(path)),
