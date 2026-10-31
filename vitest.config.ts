@@ -54,6 +54,7 @@ export default defineConfig({
     maxWorkers: 4,
     testTimeout: 30_000,
     // 工程测试使用明确清单；不再发现 App 业务单测。真实子进程测试串行运行。
+    // 自研 CUA 由包内 Node 入口验证，不引用已移除的上游 Vitest 配置。
     projects: [
       {
         extends: true,
@@ -65,7 +66,6 @@ export default defineConfig({
           maxWorkers: 1,
         },
       },
-      "packages/codez-cua/vitest.config.ts",
     ],
   },
 });

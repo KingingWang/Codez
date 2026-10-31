@@ -1,5 +1,9 @@
 import type { CodezTaskMeta, CodezWorkspaceTaskListChanged } from "@codez/shared";
 import type { SessionSummary, SessionsIndexReconcileResult } from "@codez/shared/codez-protocol-v4";
+import type { repairSelectionSideChatTaskIndex } from "../codez-agent/repairSelectionSideChatTaskIndex.js";
+
+/** 原 existing-only/index 查询兼容端口，Host 索引和 native 转录 owner 不变。 */
+export type SelectionSideChatIndexRepair = Parameters<typeof repairSelectionSideChatTaskIndex>[0];
 
 export interface TaskWorkspace {
   workspacePath: string;

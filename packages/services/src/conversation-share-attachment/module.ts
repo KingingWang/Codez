@@ -6,5 +6,9 @@ export const conversationShareAttachmentModule = {
   id: "conversation-share-attachment",
   requires: ["services", "shared", "rpc"],
   provides: ["conversation-share-attachment"],
-  publicEntrypoints: ["contract.ts", "../conversation-share/conversationShareConnectionScope.ts"],
+  publicEntrypoints: [
+    "contract.ts",
+    "../conversation-share/conversationShareConnectionScope.ts",
+    "../conversation-share/codexSharedContextContentCopy.ts",
+  ],
 } as const;

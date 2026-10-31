@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import type { IServiceAccessor } from "@codez/services";
+import type { IServiceAccessor } from "@/codex-settings-qa-ui/contract.js";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { CodexOnlyUsagePanel } from "@/settings/usage-stats/CodexOnlyUsagePanel.js";
 import { Button } from "@/components/ui/button.js";

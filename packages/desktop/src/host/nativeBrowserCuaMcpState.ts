@@ -2,8 +2,17 @@ import {
   CODEZ_NATIVE_BROWSER_CUA_ENDPOINT_ENV,
   CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME,
   CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE_ENV,
-  type DesktopCodexMcpServer,
 } from "@codez/shared";
+import type {
+  NativeBrowserCuaMcpState,
+  NativeBrowserCuaMcpStateHolder,
+} from "./native-browser-control/contract.js";
+
+export type {
+  NativeBrowserCuaBrokerTarget,
+  NativeBrowserCuaMcpState,
+  NativeBrowserCuaMcpStateHolder,
+} from "./native-browser-control/contract.js";
 
 /**
  * 窗口级内置浏览器 MCP 状态的 Host 侧持有器
@@ -12,25 +21,6 @@ import {
  * InitLocal 快照初始化，Main 经 NativeBrowserCuaMcpServersChanged 推送即时更新；
  * createLocalServices 的 resolveSpawnEnv 每次 spawn 现读，远程 relay 联动也从这里取事实。
  */
-
-export interface NativeBrowserCuaMcpState {
-  servers: readonly DesktopCodexMcpServer[];
-  nativeBrowserCua?: { browserAvailable: boolean; cuaAvailable: boolean };
-}
-
-export interface NativeBrowserCuaBrokerTarget {
-  endpoint: string;
-  tokenFile: string;
-}
-
-export interface NativeBrowserCuaMcpStateHolder {
-  get(): NativeBrowserCuaMcpState;
-  set(next: NativeBrowserCuaMcpState): void;
-  /** 状态变更订阅（Main 推送驱动）；返回注销函数。 */
-  subscribe(listener: (state: NativeBrowserCuaMcpState) => void): () => void;
-  /** 当前 Main broker 目标；无授权（空清单/条目缺失/环境缺字段）时 undefined。 */
-  brokerTarget(): NativeBrowserCuaBrokerTarget | undefined;
-}
 
 export function createNativeBrowserCuaMcpStateHolder(
   initial?: Partial<NativeBrowserCuaMcpState>,

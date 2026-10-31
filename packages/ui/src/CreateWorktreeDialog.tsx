@@ -11,11 +11,12 @@ import {
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { cn } from "@/components/lib/utils.js";
 import { AlertCircleIcon, CheckCircle2Icon, LoaderIcon } from "lucide-react";
+// 类型直接来自原 model，避免 Dialog → hook → Dialog 的静态依赖环。
 import type {
   WorktreeCreationAvailability,
   WorktreeCreationFormState,
   WorktreeCreationMode,
-} from "./hooks/useWorktreeCreation.js";
+} from "./hooks/worktreeCreationModel.js";
 
 export interface CreateWorktreeDialogProps {
   open: boolean;
