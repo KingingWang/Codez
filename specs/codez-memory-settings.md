@@ -10,7 +10,7 @@ materialization 时经 `session/requestRuntimePreferences` 读取：修改开关
 
 上游 Codex 的 `[memories]` 配置提供了参照：`use_memories`（注入记忆）、
 `generate_memories`（生成记忆）、`extract_model` / `consolidation_model`
-（记忆流水线单独模型）。ZCode 的记忆流水线是「工作区记忆文件 + 每轮成功 turn 后
+（记忆流水线单独模型）。Codez 的记忆流水线是「工作区记忆文件 + 每轮成功 turn 后
 自动提取」，与 Codex 的 rollout 整合流水线不同，因此只映射语义对应的开关：
 使用（use）、生成（extraction）、提取模型（extraction model）。
 
@@ -68,7 +68,7 @@ memoryExtractionModel: ModelSelection | null | undefined (缺省 = 跟随会话�
 
 - `CodezAgentAppRuntimePreferences` 增加可选 memory 字段；
   `codezAgentService.syncAppRuntimePreferences` 把 memory 偏好随既有
-  interaction-preferences 同步队列一起推送（每 workspace 串行、快照去重）。
+  interaction-preferences 同步链一起推送（按物理 client 串行，workspace ref 定位命令目标）。
 - `resolveSessionRuntimePreferences`（node.ts）返回完整 memory 偏好。
 
 ### CLI runtime
@@ -86,16 +86,22 @@ UI Switch/Select
   → settingService.update (持久化, 唯一事实源)
   → refresh 本地设置快照
   → codezAgentService.syncAppRuntimePreferences (含 memory 偏好)
-      → 每个活动 workspace client 串行发送 workspace/updateMemoryPreferences
+      → 同一物理 client 的 ByClient 串行链
+          → 携带 workspace ref 发送 workspace/updateMemoryPreferences
           → CLI: 更新 appRuntimePreferences.memory
           → CLI: 对每个 session record 计算 effective 并 applyMemoryRuntimeConfig
   → broadcastService.send (其他窗口同步设置快照)
 ```
 
-幂等与乱序：同一 workspace 的推送复用既有 `interactionPreferenceSyncByWorkspaceKey`
-串行队列（最新快照覆盖语义）；stale 结果不存在的判定沿用队列尾部快照，
-无独立过期规则。远程 workspace 链路经 `botRemoteWorkspaceBridge` 同一入口转发，
+幂等与乱序：`interactionPreferenceSyncByClient` 是既有同步链的唯一所有者，
+原生与 legacy Host 传输均按物理 `CodezProtocolClient` 串行应用 interaction/model-IO/memory
+快照；共享 client 的不同 workspace 不建立并行的 workspace-key 链。每条命令仍携带
+原 workspace ref、identity 与既有 attachment scope。前一步失败不阻断后续快照；
+完成/失败只在链尾仍是当前 Promise 时清理，不让旧结果拆断新链。runtime 换代使用
+新 client 同步最新缓存，单 workspace 释放不删除另一 workspace 共用的同步链。
+远程 workspace 链路经 `botRemoteWorkspaceBridge` 同一入口转发，
 `sessionRuntimePreferencesAuthority: "external"` 的远端 Host 由其自行同步。
+这只是 Host 传输的串行化边界，不改变下文 Codex 原生记忆配置的唯一事实源。
 
 ## 失败语义
 
