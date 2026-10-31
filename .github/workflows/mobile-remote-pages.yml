@@ -36,7 +36,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Verify encrypted mobile transport, route and desktop pairing
         run: >-
-          pnpm exec vitest run
+          pnpm test:fork
           packages/client/test/webRemoteControlE2ee.test.ts
           packages/client/test/webRemoteControlGzipCodec.test.ts
           packages/client/test/webRemoteControlRelayPayloadSerializer.test.ts
@@ -51,7 +51,7 @@ jobs:
           packages/web/test/webRemoteControlTransport.test.ts
           packages/web/test/webRemoteControlTransportReadiness.test.ts
           packages/web/test/webRemoteControlConnectingScreen.test.ts
-          packages/web/test/webRemoteControlBridgeRecovery.test.ts
+          packages/web/test/webRemoteControlTransportV2.test.ts
           packages/web/test/externalRelayFrameGapRecovery.test.ts
           packages/web/test/webRemoteControlNativeSocket.test.ts
       - run: pnpm typecheck
