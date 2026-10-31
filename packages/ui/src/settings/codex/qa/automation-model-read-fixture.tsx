@@ -1,7 +1,7 @@
 // Browser-only QA fixture: real AutomationEditView, injected service states, no production hooks.
 import { useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import type { IServiceAccessor } from "@codez/services";
+import type { IServiceAccessor } from "@/codex-settings-qa-ui/contract.js";
 import type { IPlatformService } from "@codez/shared";
 import type { ModelSelectionView } from "@codez/provider";
 import { ServiceProvider } from "@/hooks/useServices.js";

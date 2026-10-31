@@ -1,8 +1,8 @@
-/* eslint-disable max-lines -- QA fixture 集中注入隔离 Host 与交互场景，保持一份可复现的运行状态。 */
+// QA fixture 集中注入隔离 Host 与交互场景，保持一份可复现的运行状态。
 // Browser-only fixture: real UI/hooks, injected Host authority, no filesystem or native credentials.
 import { StrictMode, useCallback, useState } from "react";
 import { createRoot } from "react-dom/client";
-import type { IServiceAccessor } from "@codez/services";
+import type { IServiceAccessor } from "@/codex-settings-qa-ui/contract.js";
 import type {
   CodexRequest,
   CodezAgentRoleScope,
@@ -166,7 +166,8 @@ const services = {
                     matcher: "Edit|Write",
                     timeoutSec: 30,
                     statusMessage: null,
-                    sourcePath: "~/.codex/plugins/cache/codez-official/lint-guard/1.0.0/hooks/hooks.json",
+                    sourcePath:
+                      "~/.codex/plugins/cache/codez-official/lint-guard/1.0.0/hooks/hooks.json",
                     source: "plugin",
                     pluginId: "lint-guard@codez-plugins-official",
                     displayOrder: 2,

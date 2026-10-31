@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import type { ICodezTaskService } from "@codez/services";
+import type { ICodezTaskService } from "@/git-worktree-ui/contract.js";
 import { buildRemoteWorkspaceIdentity } from "@/lib/remoteWorkspaceHistory.js";
 import {
   normalizeWorkspacePathForComparison,

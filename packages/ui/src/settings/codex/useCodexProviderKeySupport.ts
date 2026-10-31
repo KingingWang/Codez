@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import type { IServiceAccessor } from "@codez/services";
-import {
-  isCodexManagedEnvKey,
-  type CodexProviderView,
-} from "./codexProviderSettings.js";
+import type { IServiceAccessor } from "@/codex-settings-ui/contract.js";
+import { isCodexManagedEnvKey, type CodexProviderView } from "./codexProviderSettings.js";
 
 /**
  * 探测当前 workspace 的 Host 是否提供「本机临时 Key」服务
@@ -48,15 +45,12 @@ export function useCodexManagedKeyState(
   probeProvider: (view: Pick<CodexProviderView, "id" | "envKey">) => void;
   reset: () => void;
 } {
-  const [managedKeyConfigured, setManagedKeyConfigured] = useState<
-    boolean | undefined
-  >(undefined);
+  const [managedKeyConfigured, setManagedKeyConfigured] = useState<boolean | undefined>(undefined);
   const reset = useCallback(() => setManagedKeyConfigured(undefined), []);
   const probeProvider = useCallback(
     (view: Pick<CodexProviderView, "id" | "envKey">) => {
       setManagedKeyConfigured(undefined);
-      if (!isCodexManagedEnvKey(view.envKey) || !keyService || !supported)
-        return;
+      if (!isCodexManagedEnvKey(view.envKey) || !keyService || !supported) return;
       keyService
         .getKeyState({ providerId: view.id })
         .then((state) => setManagedKeyConfigured(state.configured))

@@ -113,30 +113,30 @@ modules:
     layers: {adapters: .}
     owner: conversation
   - id: codex-bridge
-    roots: [packages/codex-bridge/src]
+    roots: [ packages/codex-bridge/src ]
     managed: true
-    requires: [shared]
-    publicEntrypoints: [packages/codex-bridge/src/contract.ts]
+    requires: [ shared ]
+    publicEntrypoints: [ packages/codex-bridge/src/contract.ts ]
     owner: codex-runtime-adaptation
   - id: rpc
-    roots: [packages/rpc/src]
+    roots: [ packages/rpc/src ]
     managed: false
   - id: shared
-    roots: [packages/shared/src]
+    roots: [ packages/shared/src ]
     managed: false
   - id: provider
-    roots: [packages/provider/src]
+    roots: [ packages/provider/src ]
     managed: false
   - id: provider-node
-    roots: [packages/provider-node/src]
+    roots: [ packages/provider-node/src ]
     managed: false
   - id: services
-    roots: [packages/services/src]
+    roots: [ packages/services/src ]
     managed: false
   - id: session
-    roots: [packages/services/src/session]
+    roots: [ packages/services/src/session ]
     managed: false
-    requires: [shared]
+    requires: [ shared ]
     publicEntrypoints:
       - packages/services/src/session/contract.ts
       - packages/services/src/session/codezTaskService.ts
@@ -147,39 +147,39 @@ modules:
       - packages/services/src/session/tasksDatabase/prepared.ts
     owner: conversation
   - id: storage
-    roots: [packages/services/src/storage]
+    roots: [ packages/services/src/storage ]
     managed: true
-    requires: [shared, rpc, services]
-    publicEntrypoints: [packages/services/src/storage/contract.ts]
+    requires: [ shared, rpc, services ]
+    publicEntrypoints: [ packages/services/src/storage/contract.ts ]
     layers: { domain: domain, app: app, adapters: adapters }
-    layerOrder: [domain, app, adapters]
+    layerOrder: [ domain, app, adapters ]
     owner: desktop-settings
   - id: client
-    roots: [packages/client/src]
+    roots: [ packages/client/src ]
     managed: false
   - id: server
-    roots: [packages/server/src]
+    roots: [ packages/server/src ]
     managed: false
   - id: codez-server-cli
-    roots: [packages/codez-server-cli/src]
+    roots: [ packages/codez-server-cli/src ]
     managed: false
   - id: ui
-    roots: [packages/ui/src]
+    roots: [ packages/ui/src ]
     managed: false
   - id: web
-    roots: [packages/web/src]
+    roots: [ packages/web/src ]
     managed: false
   - id: desktop
-    roots: [packages/desktop/src]
+    roots: [ packages/desktop/src ]
     managed: false
   - id: formal-proof
-    roots: [packages/formal-proof/src]
+    roots: [ packages/formal-proof/src ]
     managed: false
   - id: stream-animate
-    roots: [packages/stream-animate/src]
+    roots: [ packages/stream-animate/src ]
     managed: false
   - id: e2e-report
-    roots: [packages/e2e-report/src]
+    roots: [ packages/e2e-report/src ]
     managed: false
   # design-runtime：内置浏览器设计模式注入页面的运行时（docs/browser-use/2026-11-03-browser-design-mode-spec.md）
   - id: design-runtime
@@ -192,7 +192,7 @@ modules:
     layers: {app: "."}
     owner: browser
   - id: codez-cli
-    roots: [apps/codez-cli]
+    roots: [ apps/codez-cli ]
     managed: false
   # sqlite-migrations：由 architecture:adopt 登记
   # Agent runtime 退出诊断：desktop 稳定性上报与 Host 退出提示共用的纯函数判定。
@@ -206,25 +206,25 @@ modules:
     layers: {app: "."}
     owner: desktop
   - id: conversation-telemetry-engine
-    roots: [packages/shared/src/conversation-telemetry]
+    roots: [ packages/shared/src/conversation-telemetry ]
     managed: true
-    requires: [shared]
+    requires: [ shared ]
     publicEntrypoints:
       - packages/shared/src/conversation-telemetry/index.ts
       - packages/shared/src/conversation-telemetry/contract.ts
       - packages/shared/src/conversation-telemetry/messageTelemetry.ts
       - packages/shared/src/conversation-telemetry/providerTelemetryIdentity.ts
       - packages/shared/src/conversation-telemetry/remoteTelemetryEvent.ts
-    layers: {app: "."}
+    layers: { app: "." }
     owner: conversation
   - id: conversation-telemetry-service
-    roots: [packages/services/src/conversation-telemetry]
+    roots: [ packages/services/src/conversation-telemetry ]
     managed: true
-    requires: [shared, services, rpc, conversation-telemetry-engine]
+    requires: [ shared, services, rpc, conversation-telemetry-engine ]
     publicEntrypoints:
       - packages/services/src/conversation-telemetry/remoteConversationTelemetry.ts
       - packages/services/src/conversation-telemetry/contract.ts
-    layers: {app: "."}
+    layers: { app: "." }
     owner: conversation
   - id: sqlite-migrations
     roots:
@@ -264,7 +264,7 @@ modules:
     roots:
       - packages/services/src/project
     managed: true
-    requires: [project-storage, services, shared]
+    requires: [ project-storage, services, shared ]
     publicEntrypoints:
       - packages/services/src/project/index.ts
       - packages/services/src/project/contract.ts
@@ -275,12 +275,17 @@ modules:
   - id: task-facts
     roots:
       - packages/services/src/task-facts
+      - packages/services/src/codez-agent/repairSelectionSideChatTaskIndex.ts
     managed: true
-    requires: [shared]
+    requires:
+      - shared
+      - services
+      - session
     publicEntrypoints:
       - packages/services/src/task-facts/index.ts
       - packages/services/src/task-facts/contract.ts
       - packages/services/src/task-facts/repairSubagentTaskIndex.ts
+      - packages/services/src/codez-agent/repairSelectionSideChatTaskIndex.ts
     layers:
       app: .
     owner: conversation
@@ -288,6 +293,7 @@ modules:
   - id: project-sidebar
     roots:
       - packages/ui/src/project-sidebar
+      - packages/ui/src/hooks/useCodexProjectDiscovery.ts
     managed: true
     requires:
       - resource-manager
@@ -313,6 +319,7 @@ modules:
       - packages/ui/src/project-sidebar/useRemoteProjectConnectionPresentation.ts
       - packages/ui/src/project-sidebar/OfflineRemoteProjectRows.tsx
       - packages/ui/src/project-sidebar/RemoteConversationDisconnected.tsx
+      - packages/ui/src/hooks/useCodexProjectDiscovery.ts
     layers:
       contract: contract.ts
       ui: .
@@ -322,7 +329,7 @@ modules:
     roots:
       - packages/services/src/remote-projects
     managed: true
-    requires: [services, shared, project-storage]
+    requires: [ services, shared, project-storage ]
     publicEntrypoints:
       - packages/services/src/remote-projects/index.ts
       - packages/services/src/remote-projects/contract.ts
@@ -347,7 +354,7 @@ modules:
     roots:
       - packages/ui/src/workspace-config-catalog
     managed: true
-    requires: [services, shared, ui]
+    requires: [ services, shared, ui ]
     publicEntrypoints:
       - packages/ui/src/workspace-config-catalog/index.ts
       - packages/ui/src/workspace-config-catalog/contract.ts
@@ -361,7 +368,7 @@ modules:
     roots:
       - packages/services/src/project-catalog
     managed: true
-    requires: [project, remote-projects]
+    requires: [ project, remote-projects ]
     publicEntrypoints:
       - packages/services/src/project-catalog/index.ts
       - packages/services/src/project-catalog/contract.ts
@@ -375,7 +382,7 @@ modules:
     roots:
       - packages/services/src/bot-project-runtime
     managed: true
-    requires: [services, shared, remote-projects]
+    requires: [ services, shared, remote-projects ]
     publicEntrypoints:
       - packages/services/src/bot-project-runtime/index.ts
       - packages/services/src/bot-project-runtime/contract.ts
@@ -388,7 +395,7 @@ modules:
     roots:
       - packages/services/src/project-workspace-navigation
     managed: true
-    requires: [project, project-catalog, remote-projects, shared]
+    requires: [ project, project-catalog, remote-projects, shared ]
     publicEntrypoints:
       - packages/services/src/project-workspace-navigation/index.ts
       - packages/services/src/project-workspace-navigation/contract.ts
@@ -404,7 +411,7 @@ modules:
       - packages/ui/src/lib/workspaceRuntimeRelease.ts
       - packages/ui/src/settings/pluginCreatorPrefill.ts
     managed: true
-    requires: [shared, ui, services]
+    requires: [ shared, ui, services ]
     publicEntrypoints:
       - packages/ui/src/conversation-workspace-target/index.ts
       - packages/ui/src/conversation-workspace-target/contract.ts
@@ -422,51 +429,36 @@ modules:
     owner: conversation
 
   - id: gen-ui-protocol
-    roots: [packages/shared/src/gen-ui]
+    roots: [ packages/shared/src/gen-ui ]
     managed: true
     requires: []
-    publicEntrypoints: [packages/shared/src/gen-ui/index.ts, packages/shared/src/gen-ui/contract.ts]
+    publicEntrypoints: [ packages/shared/src/gen-ui/index.ts, packages/shared/src/gen-ui/contract.ts ]
     layers: { domain: "." }
     owner: conversation
   - id: gen-ui-service
-    roots: [packages/services/src/gen-ui]
+    roots: [ packages/services/src/gen-ui ]
     managed: true
-    requires: [services, shared, rpc, gen-ui-protocol, mcp-apps-protocol]
-    publicEntrypoints:
-      [
-        packages/services/src/gen-ui/index.ts,
-        packages/services/src/gen-ui/contract.ts,
-        packages/services/src/gen-ui/node.ts,
-      ]
+    requires: [ services, shared, rpc, gen-ui-protocol, mcp-apps-protocol ]
+    publicEntrypoints: [ packages/services/src/gen-ui/index.ts, packages/services/src/gen-ui/contract.ts, packages/services/src/gen-ui/node.ts ]
     layers: { domain: domain, app: app, adapters: adapters }
-    layerOrder: [domain, app, adapters]
+    layerOrder: [ domain, app, adapters ]
     owner: conversation
 
   - id: gen-ui
-    roots: [packages/ui/src/gen-ui]
+    roots: [ packages/ui/src/gen-ui ]
     managed: true
-    requires: [ui, services, gen-ui-service, gen-ui-protocol, mcp-apps-protocol, plugin-ui]
-    publicEntrypoints:
-      [
-        packages/ui/src/gen-ui/index.ts,
-        packages/ui/src/gen-ui/contract.ts,
-        packages/ui/src/gen-ui/host.ts,
-      ]
+    requires: [ ui, services, gen-ui-service, gen-ui-protocol, mcp-apps-protocol, plugin-ui ]
+    publicEntrypoints: [ packages/ui/src/gen-ui/index.ts, packages/ui/src/gen-ui/contract.ts, packages/ui/src/gen-ui/host.ts ]
     layers: { domain: domain, app: app, adapters: adapters, ui: components }
-    layerOrder: [domain, app, adapters, ui]
+    layerOrder: [ domain, app, adapters, ui ]
     owner: conversation
 
   # 插件 UI（MCP Apps 沙箱）：模块边界见各模块 CONTRACT.md。
   - id: mcp-apps-protocol
-    roots: [packages/shared/src/mcp-apps]
+    roots: [ packages/shared/src/mcp-apps ]
     managed: true
     requires: []
-    publicEntrypoints:
-      [
-        packages/shared/src/mcp-apps/index.ts,
-        packages/shared/src/mcp-apps/contract.ts,
-        packages/shared/src/mcp-apps/hostContract.ts,
-      ]
+    publicEntrypoints: [ packages/shared/src/mcp-apps/index.ts, packages/shared/src/mcp-apps/contract.ts, packages/shared/src/mcp-apps/hostContract.ts ]
     layers:
       domain: "."
     owner: plugin
@@ -486,16 +478,10 @@ modules:
       app: "."
     owner: plugin
   - id: plugin-ui-bridge
-    roots: [packages/services/src/plugin-ui-bridge]
+    roots: [ packages/services/src/plugin-ui-bridge ]
     managed: true
-    requires: [services, shared, mcp-apps-protocol]
-    publicEntrypoints:
-      [
-        packages/services/src/plugin-ui-bridge/index.ts,
-        packages/services/src/plugin-ui-bridge/contract.ts,
-        packages/services/src/plugin-ui-bridge/appToolsContract.ts,
-        packages/services/src/plugin-ui-bridge/samplingContract.ts,
-      ]
+    requires: [ services, shared, mcp-apps-protocol ]
+    publicEntrypoints: [ packages/services/src/plugin-ui-bridge/index.ts, packages/services/src/plugin-ui-bridge/contract.ts, packages/services/src/plugin-ui-bridge/appToolsContract.ts, packages/services/src/plugin-ui-bridge/samplingContract.ts ]
     layers:
       app: "."
     owner: plugin
@@ -506,8 +492,9 @@ modules:
       - packages/desktop/src/preload/pluginSandbox
       - packages/desktop/src/renderer/src/plugin-sandbox
     managed: true
-    requires: [desktop, shared, mcp-apps-protocol, gen-ui-protocol]
-    publicEntrypoints: [
+    requires: [ desktop, shared, mcp-apps-protocol, gen-ui-protocol ]
+    publicEntrypoints:
+      [
         packages/desktop/src/host/pluginSandbox/index.ts,
         packages/desktop/src/host/pluginSandbox/contract.ts,
         packages/desktop/src/preload/pluginSandbox/hostBridge.ts,
@@ -515,27 +502,22 @@ modules:
         packages/desktop/src/main/pluginSandbox/contract.ts,
         # 页面兼容接口由宿主及其契约测试维护。
         packages/desktop/src/renderer/src/plugin-sandbox/aliasRuntime.ts,
-        packages/desktop/src/renderer/src/plugin-sandbox/aliasApi.ts,
+        packages/desktop/src/renderer/src/plugin-sandbox/aliasApi.ts
       ]
     layers:
       adapters: "."
     owner: plugin
   - id: plugin-ui
-    roots: [packages/ui/src/plugin-ui]
+    roots: [ packages/ui/src/plugin-ui ]
     managed: true
-    requires: [ui, shared, services, mcp-apps-protocol, plugin-ui-bridge, plugin-sandbox]
-    publicEntrypoints:
-      [
-        packages/ui/src/plugin-ui/index.ts,
-        packages/ui/src/plugin-ui/contract.ts,
-        packages/ui/src/plugin-ui/hostPrimitives.ts,
-      ]
+    requires: [ ui, shared, services, mcp-apps-protocol, plugin-ui-bridge, plugin-sandbox ]
+    publicEntrypoints: [ packages/ui/src/plugin-ui/index.ts, packages/ui/src/plugin-ui/contract.ts, packages/ui/src/plugin-ui/hostPrimitives.ts ]
     layers:
       domain: domain
       app: app
       adapters: adapters
       ui: components
-    layerOrder: [domain, app, adapters, ui]
+    layerOrder: [ domain, app, adapters, ui ]
     owner: plugin
   # remote-connection-flow：由 architecture:adopt 登记
   - id: remote-connection-flow
@@ -552,7 +534,7 @@ modules:
     layers:
       app: .
       ui: ui
-    layerOrder: [app, ui]
+    layerOrder: [ app, ui ]
     owner: remote
   # project-workflow：由 architecture:adopt 登记
   - id: project-workflow
@@ -771,7 +753,7 @@ modules:
       - apps/codez-cli/packages/core/src/tool/handlers/fill-workflow-hole.ts
       - apps/codez-cli/packages/core/tests/workflow-entrypoints
     managed: true
-    requires: [codez-cli]
+    requires: [ codez-cli ]
     publicEntrypoints:
       - apps/codez-cli/packages/core/src/tool/handlers/amend-workflow.ts
       - apps/codez-cli/packages/core/src/tool/handlers/list-models.ts
@@ -786,7 +768,7 @@ modules:
       - apps/codez-cli/packages/core/src/runtime/methods/tool-result-settlement.ts
       - apps/codez-cli/packages/core/tests/tool-result-settlement
     managed: true
-    requires: [codez-cli, session-features]
+    requires: [ codez-cli, session-features ]
     publicEntrypoints:
       - apps/codez-cli/packages/core/src/runtime/methods/tool-result-settlement.ts
       - apps/codez-cli/packages/core/src/runtime/tool-result-settlement/contract.ts
@@ -802,13 +784,13 @@ modules:
       - apps/codez-cli/packages/bootstrap/src/codez-protocol/input-prediction-handler.ts
       - apps/codez-cli/packages/core/src/runtime/methods/input-prediction-sidecar.ts
     managed: true
-    requires: [shared, codez-cli]
+    requires: [ shared, codez-cli ]
     publicEntrypoints:
       - packages/shared/src/codez-protocol-v4/input-prediction/contract.ts
       - packages/services/src/codez-agent/inputPredictionSwitch.ts
       - apps/codez-cli/packages/bootstrap/src/codez-protocol/input-prediction-handler.ts
       - apps/codez-cli/packages/core/src/runtime/methods/input-prediction-sidecar.ts
-    layers: {app: .}
+    layers: { app: . }
     owner: remote
   # context-composition：context 组成（扩展进程 P1）：v4 线格式、CLI 分类/预演/修订号/协议处理、App 侧查询与通知。
   # 规格：apps/codez-cli/docs/design/v2/model/context-composition.md。
@@ -863,10 +845,10 @@ modules:
     roots:
       - packages/services/src/codez-agent/resident-rows-range
     managed: true
-    requires: [shared, services]
+    requires: [ shared, services ]
     publicEntrypoints:
       - packages/services/src/codez-agent/resident-rows-range/contract.ts
-    layers: {app: .}
+    layers: { app: . }
     owner: remote
   # 官方市场工具只在接到支持卡片的输入时开放，目录排序和安装由 CLI 所有。
   - id: agent-plugin-discovery
@@ -914,7 +896,7 @@ modules:
       - apps/codez-cli/packages/contracts/src/tools/tool-search.ts
       - apps/codez-cli/packages/core/tests/tool-discovery
     managed: true
-    requires: [codez-cli]
+    requires: [ codez-cli ]
     publicEntrypoints:
       - apps/codez-cli/packages/core/src/tool/search/contract.ts
       - apps/codez-cli/packages/core/src/tool/search/exposure.ts
@@ -925,7 +907,7 @@ modules:
       - apps/codez-cli/packages/core/src/tool/handlers/tool-search.ts
       - apps/codez-cli/packages/core/src/tool/handlers/deferred-tool-call.ts
       - apps/codez-cli/packages/contracts/src/tools/tool-search.ts
-    layers: {app: .}
+    layers: { app: . }
     owner: agent
   # node-repl-call-ledger：node_repl 结果里可信事实的唯一来源（apps/codez-cli/docs/design/v2/tool/20-node-repl-call-ledger.md）
   - id: node-repl-call-ledger
@@ -933,30 +915,30 @@ modules:
       - apps/codez-cli/packages/node-repl-host/src/call-ledger
       - apps/codez-cli/packages/node-repl-host/test/call-ledger
     managed: true
-    requires: [codez-cli]
+    requires: [ codez-cli ]
     publicEntrypoints:
       - apps/codez-cli/packages/node-repl-host/src/call-ledger/contract.ts
-    layers: {adapters: .}
+    layers: { adapters: . }
     owner: agent
   - id: session-features
     roots:
       - apps/codez-cli/packages/core/src/runtime/session-features
       - apps/codez-cli/packages/core/tests/session-features
     managed: true
-    requires: [codez-cli]
+    requires: [ codez-cli ]
     publicEntrypoints:
       - apps/codez-cli/packages/core/src/runtime/session-features/contract.ts
-    layers: {app: .}
+    layers: { app: . }
     owner: agent
   - id: provider-tool-rounds
     roots:
       - apps/codez-cli/packages/core/src/runtime/provider-tool-rounds
       - apps/codez-cli/packages/core/tests/provider-tool-rounds
     managed: true
-    requires: [codez-cli]
+    requires: [ codez-cli ]
     publicEntrypoints:
       - apps/codez-cli/packages/core/src/runtime/provider-tool-rounds/contract.ts
-    layers: {app: .}
+    layers: { app: . }
     owner: agent
   - id: provider-builtin-tool-compat
     roots:
@@ -966,7 +948,7 @@ modules:
     requires: []
     publicEntrypoints:
       - apps/codez-cli/packages/adapters/src/model/provider-builtin-tool-compat/contract.ts
-    layers: {adapters: .}
+    layers: { adapters: . }
     owner: agent
   - id: conversation-quote-context
     roots:
@@ -974,11 +956,11 @@ modules:
       - apps/codez-cli/packages/core/src/runtime/helpers/conversation-quotes.ts
       - apps/codez-cli/packages/core/tests/conversation-quote-context
     managed: true
-    requires: [codez-cli]
+    requires: [ codez-cli ]
     publicEntrypoints:
       - apps/codez-cli/packages/core/src/runtime/conversation-quote-context/contract.ts
       - apps/codez-cli/packages/core/src/runtime/helpers/conversation-quotes.ts
-    layers: {domain: .}
+    layers: { domain: . }
     owner: agent
   - id: tool-search-comparison
     roots:
@@ -986,11 +968,11 @@ modules:
       - apps/codez-cli/tools/prompt-trajectory/src/tool-search-comparison.ts
       - apps/codez-cli/tools/prompt-trajectory/tests/tool-search-comparison
     managed: true
-    requires: [codez-cli]
+    requires: [ codez-cli ]
     publicEntrypoints:
       - apps/codez-cli/tools/prompt-trajectory/src/tool-search-comparison-contract/contract.ts
       - apps/codez-cli/tools/prompt-trajectory/src/tool-search-comparison.ts
-    layers: {domain: .}
+    layers: { domain: . }
     owner: agent
   - id: window-topic-resource-relay
     roots:
@@ -998,11 +980,11 @@ modules:
       - packages/desktop/src/host/windowTopicResourceRelay.ts
       - packages/desktop/test/topic-resource-relay
     managed: true
-    requires: [services, shared]
+    requires: [ services, shared ]
     publicEntrypoints:
       - packages/desktop/src/host/topic-resource-relay/contract.ts
       - packages/desktop/src/host/windowTopicResourceRelay.ts
-    layers: {adapters: .}
+    layers: { adapters: . }
     owner: desktop
   - id: channel-reply-tool
     roots:
@@ -1010,7 +992,7 @@ modules:
       - apps/codez-cli/packages/core/src/tool/handlers/reply-to-channel.ts
       - apps/codez-cli/packages/core/tests/channel-reply
     managed: true
-    requires: [shared, codez-cli]
+    requires: [ shared, codez-cli ]
     publicEntrypoints:
       - apps/codez-cli/packages/core/src/tool/handlers/reply-to-channel.ts
       - apps/codez-cli/packages/core/src/tool/channel-reply/contract.ts
@@ -1238,7 +1220,7 @@ modules:
       domain: domain
       app: app
       ui: .
-    layerOrder: [contract, domain, app, ui]
+    layerOrder: [ contract, domain, app, ui ]
     owner: remote
   # voice-input：Composer 语音输入按钮、状态机与麦克风采集（docs/chat/composer-voice-input.md）
   - id: voice-input
@@ -1278,7 +1260,7 @@ modules:
       domain: domain
       app: app
       ui: .
-    layerOrder: [contract, domain, app, ui]
+    layerOrder: [ contract, domain, app, ui ]
     owner: remote
   # side-pane-full-view：由 architecture:adopt 登记
   - id: side-pane-full-view
@@ -1297,15 +1279,15 @@ modules:
 
   # 发行策略使用独立目录；修改后的文件由本模块承担边界检查。
   - id: request-security-edition
-    roots: [packages/shared/src/request-security-edition]
+    roots: [ packages/shared/src/request-security-edition ]
     managed: true
-    requires: [shared]
+    requires: [ shared ]
     publicEntrypoints:
       - packages/shared/src/request-security-edition/index.ts
       - packages/shared/src/request-security-edition/policy.ts
       - packages/shared/src/request-security-edition/verification-policy.ts
       - packages/shared/src/request-security-edition/contract.ts
-    layers: {adapters: .}
+    layers: { adapters: . }
     owner: request-security
 
   # local-ttft-contract：由 architecture:adopt 登记
@@ -1388,7 +1370,7 @@ modules:
     roots:
       - packages/desktop/src/main/file-open-apps
     managed: true
-    requires: [shared]
+    requires: [ shared ]
     publicEntrypoints:
       - packages/desktop/src/main/file-open-apps/index.ts
       - packages/desktop/src/main/file-open-apps/contract.ts
@@ -1508,13 +1490,13 @@ modules:
       app: .
     owner: plugin
   - id: provider-regression
-    roots: [apps/codez-cli/tools/provider-regression]
+    roots: [ apps/codez-cli/tools/provider-regression ]
     managed: true
-    requires: [codez-cli, provider, provider-node, shared]
+    requires: [ codez-cli, provider, provider-node, shared ]
     publicEntrypoints:
       - apps/codez-cli/tools/provider-regression/index.ts
       - apps/codez-cli/tools/provider-regression/contract.ts
-    layers: {adapters: .}
+    layers: { adapters: . }
     owner: agent
   # session-lifecycle：由 architecture:adopt 登记
   - id: session-lifecycle
@@ -1522,7 +1504,7 @@ modules:
       - apps/codez-cli/packages/bootstrap/src/session-lifecycle
       - apps/codez-cli/packages/bootstrap/tests/session-lifecycle
     managed: true
-    requires: [shared]
+    requires: [ shared ]
     publicEntrypoints:
       - apps/codez-cli/packages/bootstrap/src/session-lifecycle/index.ts
       - apps/codez-cli/packages/bootstrap/src/session-lifecycle/contract.ts
@@ -1534,7 +1516,7 @@ modules:
     roots:
       - apps/codez-cli/packages/bootstrap/src/workspace-mcp-trust
     managed: true
-    requires: [codez-cli, shared]
+    requires: [ codez-cli, shared ]
     publicEntrypoints:
       - apps/codez-cli/packages/bootstrap/src/workspace-mcp-trust/index.ts
       - apps/codez-cli/packages/bootstrap/src/workspace-mcp-trust/contract.ts
@@ -1863,45 +1845,47 @@ modules:
     roots:
       - packages/services/src/conversation-share-attachment
       - packages/services/src/conversation-share/conversationShareConnectionScope.ts
+      - packages/services/src/conversation-share/codexSharedContextContentCopy.ts
     managed: true
-    requires: [services, shared, rpc]
+    requires: [ services, shared, rpc ]
     publicEntrypoints:
       - packages/services/src/conversation-share-attachment/contract.ts
       - packages/services/src/conversation-share/conversationShareConnectionScope.ts
-    layers: {adapters: .}
+      - packages/services/src/conversation-share/codexSharedContextContentCopy.ts
+    layers: { adapters: . }
     owner: conversation
   - id: plugin-store-ordering
     roots:
       - packages/shared/src/plugin-store-ordering
       - packages/shared/src/pluginStoreOrdering.ts
     managed: true
-    requires: [shared]
+    requires: [ shared ]
     publicEntrypoints:
       - packages/shared/src/plugin-store-ordering/contract.ts
       - packages/shared/src/pluginStoreOrdering.ts
-    layers: {domain: .}
+    layers: { domain: . }
     owner: plugin
   - id: dynamic-workflow-availability
     roots:
       - packages/ui/src/dynamic-workflow-availability
       - packages/ui/src/hooks/useDynamicWorkflowAvailability.ts
     managed: true
-    requires: [services, shared, ui]
+    requires: [ services, shared, ui ]
     publicEntrypoints:
       - packages/ui/src/dynamic-workflow-availability/contract.ts
       - packages/ui/src/hooks/useDynamicWorkflowAvailability.ts
-    layers: {app: .}
+    layers: { app: . }
     owner: conversation
   - id: desktop-update-presentation
     roots:
       - packages/ui/src/desktop-update-presentation
       - packages/ui/src/lib/desktopUpdateMenu.ts
     managed: true
-    requires: [shared]
+    requires: [ shared ]
     publicEntrypoints:
       - packages/ui/src/desktop-update-presentation/contract.ts
       - packages/ui/src/lib/desktopUpdateMenu.ts
-    layers: {domain: .}
+    layers: { domain: . }
     owner: desktop
   - id: draft-suggested-prompts
     roots:
@@ -1909,12 +1893,12 @@ modules:
       - packages/ui/src/v4/featureSuggestedPrompts.ts
       - packages/ui/src/v4/officeSuggestedPrompts.ts
     managed: true
-    requires: [ui]
+    requires: [ ui ]
     publicEntrypoints:
       - packages/ui/src/draft-suggested-prompts/contract.ts
       - packages/ui/src/v4/featureSuggestedPrompts.ts
       - packages/ui/src/v4/officeSuggestedPrompts.ts
-    layers: {domain: .}
+    layers: { domain: . }
     owner: conversation
 
   # codex-model-trajectory：由 architecture:adopt 登记
@@ -1922,13 +1906,918 @@ modules:
     roots:
       - packages/services/src/codez-agent/model-trajectory
     managed: true
-    requires: [services, session]
+    requires: [ services, session ]
     publicEntrypoints:
       - packages/services/src/codez-agent/model-trajectory/index.ts
       - packages/services/src/codez-agent/model-trajectory/contract.ts
     layers:
       adapters: .
     owner: conversation
+  - id: codez-cua
+    roots:
+      - packages/codez-cua
+    managed: false
+    requires: []
+    publicEntrypoints:
+      - packages/codez-cua/index.js
+      - packages/codez-cua/index.d.ts
+      - packages/codez-cua/frame-contract.js
+      - packages/codez-cua/frame-contract.d.ts
+      - packages/codez-cua/host-display-contract.js
+      - packages/codez-cua/host-display-contract.d.ts
+      - packages/codez-cua/request-access-contract.js
+      - packages/codez-cua/request-access-contract.d.ts
+      - packages/codez-cua/pip-session.js
+      - packages/codez-cua/pip-session.d.ts
+      - packages/codez-cua/pip-session-node.js
+      - packages/codez-cua/pip-session-node.d.ts
+      - packages/codez-cua/broker.js
+      - packages/codez-cua/broker.d.ts
+      - packages/codez-cua/broker-server.js
+      - packages/codez-cua/broker-server.d.ts
+      - packages/codez-cua/broker-ports.js
+      - packages/codez-cua/broker-ports.d.ts
+      - packages/codez-cua/broker-socket-path.js
+      - packages/codez-cua/broker-socket-path.d.ts
+      - packages/codez-cua/broker-helper-constants.js
+      - packages/codez-cua/broker-helper-constants.d.ts
+      - packages/codez-cua/broker-helper-health.js
+      - packages/codez-cua/broker-helper-health.d.ts
+    owner: computer-use
+  - id: cua-native-producer
+    roots:
+      - packages/codez-cua/producer
+      - packages/codez-cua/cua-driver.js
+      - packages/codez-cua/cua-driver.d.ts
+      - packages/codez-cua/installed-app-launcher.js
+      - packages/codez-cua/installed-app-launcher.d.ts
+      - packages/codez-cua/motion-profile.js
+      - packages/codez-cua/motion-profile.d.ts
+      - packages/codez-cua/png.js
+      - packages/codez-cua/png.d.ts
+      - packages/codez-cua/windows-app-discovery.js
+      - packages/codez-cua/xa11y-errors.js
+      - packages/codez-cua/xa11y-native-loader.js
+      - packages/codez-cua/xa11y-producer.js
+      - packages/codez-cua/xa11y-producer.d.ts
+    managed: true
+    requires: []
+    publicEntrypoints:
+      - packages/codez-cua/producer/contract.ts
+      - packages/codez-cua/cua-driver.js
+      - packages/codez-cua/cua-driver.d.ts
+      - packages/codez-cua/installed-app-launcher.js
+      - packages/codez-cua/windows-app-discovery.js
+      - packages/codez-cua/xa11y-errors.js
+      - packages/codez-cua/xa11y-native-loader.js
+      - packages/codez-cua/xa11y-producer.js
+      - packages/codez-cua/xa11y-producer.d.ts
+    layers:
+      adapters: .
+    owner: computer-use
+  - id: cua-helper-runtime
+    roots:
+      - packages/codez-cua/helper-runtime
+      - packages/codez-cua/helper-entry.js
+      - packages/codez-cua/runtime.js
+      - packages/codez-cua/runtime.d.ts
+    managed: true
+    requires:
+      - codez-cua
+      - cua-native-producer
+      - cua-pip
+    publicEntrypoints:
+      - packages/codez-cua/helper-runtime/contract.ts
+      - packages/codez-cua/helper-entry.js
+      - packages/codez-cua/runtime.js
+      - packages/codez-cua/runtime.d.ts
+    layers:
+      adapters: .
+    owner: computer-use
+  - id: cua-pip
+    roots:
+      - packages/codez-cua/pip
+      - packages/codez-cua/pip-presentation-macos.js
+      - packages/codez-cua/pip-session-coordinator.js
+      - packages/codez-cua/pip-session-server.js
+    managed: true
+    requires:
+      - codez-cua
+    publicEntrypoints:
+      - packages/codez-cua/pip/contract.ts
+      - packages/codez-cua/pip-presentation-macos.js
+      - packages/codez-cua/pip-session-coordinator.js
+      - packages/codez-cua/pip-session-server.js
+    layers:
+      adapters: .
+    owner: computer-use
+  - id: cua-runtime-qa
+    roots:
+      - packages/codez-cua/qa
+      - packages/codez-cua/e2e-helper.mjs
+      - packages/codez-cua/e2e-local.mjs
+      - packages/codez-cua/e2e-packaged-node-repl.mjs
+    managed: true
+    requires:
+      - codez-cli
+      - codez-cua
+      - cua-helper-runtime
+      - cua-native-producer
+    publicEntrypoints:
+      - packages/codez-cua/qa/contract.ts
+      - packages/codez-cua/e2e-helper.mjs
+      - packages/codez-cua/e2e-local.mjs
+      - packages/codez-cua/e2e-packaged-node-repl.mjs
+    layers:
+      adapters: .
+    owner: computer-use
+  - id: cli-memory-preferences
+    roots:
+      - apps/codez-cli/packages/bootstrap/src/codez-protocol/memory-preference-contract
+      - apps/codez-cli/packages/bootstrap/src/codez-protocol/memory-preferences.ts
+    managed: true
+    requires:
+      - codez-cli
+      - shared
+    publicEntrypoints:
+      - apps/codez-cli/packages/bootstrap/src/codez-protocol/memory-preference-contract/contract.ts
+      - apps/codez-cli/packages/bootstrap/src/codez-protocol/memory-preferences.ts
+    layers:
+      adapters: .
+    owner: agent-runtime
+  - id: desktop-codex-automation-reconciliation
+    roots:
+      - packages/desktop/src/host/codex-automation-reconciliation
+      - packages/desktop/src/host/codexAutomationCorrelation.ts
+    managed: true
+    requires:
+      - services
+      - shared
+    publicEntrypoints:
+      - packages/desktop/src/host/codex-automation-reconciliation/contract.ts
+      - packages/desktop/src/host/codexAutomationCorrelation.ts
+    layers:
+      contract: contract.ts
+      adapters: .
+    layerOrder:
+      - contract
+      - domain
+      - app
+      - adapters
+      - ui
+    owner: automation-dispatch
+  - id: desktop-model-selection-attachment
+    roots:
+      - packages/desktop/src/host/model-selection-attachment
+      - packages/desktop/src/host/modelSelectionAttachmentScope.ts
+    managed: true
+    requires:
+      - services
+      - shared
+      - rpc
+    publicEntrypoints:
+      - packages/desktop/src/host/model-selection-attachment/contract.ts
+      - packages/desktop/src/host/modelSelectionAttachmentScope.ts
+    layers:
+      contract: contract.ts
+      adapters: .
+    layerOrder:
+      - contract
+      - domain
+      - app
+      - adapters
+      - ui
+    owner: desktop-host-attachment
+  - id: desktop-native-browser-control-host
+    roots:
+      - packages/desktop/src/host/native-browser-control
+      - packages/desktop/src/host/nativeBrowserCuaBrokerClient.ts
+      - packages/desktop/src/host/nativeBrowserCuaMcpState.ts
+    managed: true
+    requires:
+      - shared
+    publicEntrypoints:
+      - packages/desktop/src/host/native-browser-control/contract.ts
+      - packages/desktop/src/host/nativeBrowserCuaBrokerClient.ts
+      - packages/desktop/src/host/nativeBrowserCuaMcpState.ts
+    layers:
+      contract: contract.ts
+      adapters: .
+    layerOrder:
+      - contract
+      - domain
+      - app
+      - adapters
+      - ui
+    owner: desktop-host-native-control
+  - id: desktop-native-browser-control-main
+    roots:
+      - packages/desktop/src/main/native-browser-control
+      - packages/desktop/src/main/browserView/nativeBrowserCuaMcpBroker.ts
+      - packages/desktop/src/main/desktopCodexMcpAvailability.ts
+    managed: true
+    requires:
+      - shared
+      - desktop
+    publicEntrypoints:
+      - packages/desktop/src/main/native-browser-control/contract.ts
+      - packages/desktop/src/main/browserView/nativeBrowserCuaMcpBroker.ts
+      - packages/desktop/src/main/desktopCodexMcpAvailability.ts
+    layers:
+      contract: contract.ts
+      adapters: .
+    layerOrder:
+      - contract
+      - domain
+      - app
+      - adapters
+      - ui
+    owner: desktop-main-native-control
+  - id: desktop-product-runtime
+    roots:
+      - packages/desktop/src/main/product-runtime
+      - packages/desktop/src/main/desktopProductRuntime.ts
+    managed: true
+    requires:
+      - shared
+    publicEntrypoints:
+      - packages/desktop/src/main/product-runtime/contract.ts
+      - packages/desktop/src/main/desktopProductRuntime.ts
+    layers:
+      contract: contract.ts
+      adapters: .
+    layerOrder:
+      - contract
+      - domain
+      - app
+      - adapters
+      - ui
+    owner: desktop-distribution
+  - id: desktop-renderer-recovery
+    roots:
+      - packages/desktop/src/main/renderer-recovery
+      - packages/desktop/src/main/rendererCrashRecovery.ts
+    managed: true
+    requires: []
+    publicEntrypoints:
+      - packages/desktop/src/main/renderer-recovery/contract.ts
+      - packages/desktop/src/main/rendererCrashRecovery.ts
+    layers:
+      contract: contract.ts
+      adapters: .
+    layerOrder:
+      - contract
+      - domain
+      - app
+      - adapters
+      - ui
+    owner: desktop-window-lifecycle
+  - id: codex-native-session-adapter
+    roots:
+      - packages/services/src/codez-agent/codex-native-session-adapter
+      - packages/services/src/codez-agent/codexBridgeCommand.ts
+      - packages/services/src/codez-agent/codexBridgeTitleDiagnostic.ts
+      - packages/services/src/codez-agent/codexSessionEventProjection.ts
+    managed: true
+    requires:
+      - shared
+      - services
+    publicEntrypoints:
+      - packages/services/src/codez-agent/codex-native-session-adapter/contract.ts
+      - packages/services/src/codez-agent/codexBridgeCommand.ts
+      - packages/services/src/codez-agent/codexBridgeTitleDiagnostic.ts
+      - packages/services/src/codez-agent/codexSessionEventProjection.ts
+    layers:
+      adapters: .
+    owner: codex-runtime-adaptation
+  - id: codex-automation-adapter
+    roots:
+      - packages/services/src/codez-agent/codex-automation-adapter
+      - packages/services/src/codez-agent/codexAutomationAdapter.ts
+      - packages/services/src/session/codexAutomationCorrelation.ts
+    managed: true
+    requires:
+      - shared
+    publicEntrypoints:
+      - packages/services/src/codez-agent/codex-automation-adapter/contract.ts
+      - packages/services/src/codez-agent/codexAutomationAdapter.ts
+      - packages/services/src/session/codexAutomationCorrelation.ts
+    layers:
+      adapters: .
+    owner: automation
+  - id: codex-native-control-adapter
+    roots:
+      - packages/services/src/codez-agent/codex-native-control-adapter
+      - packages/services/src/codez-agent/cuaCredentialGrantPublisher.ts
+      - packages/services/src/codez-agent/desktopBrowserRelay.ts
+      - packages/services/src/plugins/codexNativeCuaSkill.ts
+    managed: true
+    requires:
+      - shared
+      - services
+      - rpc
+      - codez-cua
+    publicEntrypoints:
+      - packages/services/src/codez-agent/codex-native-control-adapter/contract.ts
+      - packages/services/src/codez-agent/cuaCredentialGrantPublisher.ts
+      - packages/services/src/codez-agent/desktopBrowserRelay.ts
+      - packages/services/src/plugins/codexNativeCuaSkill.ts
+    layers:
+      adapters: .
+    owner: computer-use
+  - id: codex-file-rewind
+    roots:
+      - packages/services/src/desktop-file-rewind
+      - packages/services/src/desktop-file-rewind.ts
+      - packages/services/src/desktop-file-rewindFiles.ts
+      - packages/services/src/desktop-file-rewindLedger.ts
+      - packages/services/src/desktop-file-rewindPatch.ts
+      - packages/services/src/desktop-file-rewindPlans.ts
+      - packages/services/src/desktop-file-rewindService.ts
+    managed: true
+    requires:
+      - shared
+      - services
+    publicEntrypoints:
+      - packages/services/src/desktop-file-rewind/contract.ts
+      - packages/services/src/desktop-file-rewind.ts
+      - packages/services/src/desktop-file-rewindService.ts
+    layers:
+      adapters: .
+    owner: conversation
+  - id: git-worktree-lifecycle
+    roots:
+      - packages/services/src/git/worktree-lifecycle
+      - packages/services/src/git/repo/gitBranchDeletion.ts
+      - packages/services/src/git/repo/gitRemovalErrors.ts
+      - packages/services/src/git/repo/gitWorktreeCreation.ts
+      - packages/services/src/git/repo/gitWorktreeRemoval.ts
+      - packages/services/src/git/repo/gitWorktreeRemovalRecord.ts
+      - packages/services/src/git/repo/gitWorktreeRemovalScan.ts
+    managed: true
+    requires:
+      - shared
+      - services
+    publicEntrypoints:
+      - packages/services/src/git/worktree-lifecycle/contract.ts
+      - packages/services/src/git/repo/gitBranchDeletion.ts
+      - packages/services/src/git/repo/gitRemovalErrors.ts
+      - packages/services/src/git/repo/gitWorktreeCreation.ts
+      - packages/services/src/git/repo/gitWorktreeRemoval.ts
+    layers:
+      adapters: .
+    owner: git
+  - id: codex-model-selection
+    roots:
+      - packages/services/src/model-provider/codex-model-selection
+      - packages/services/src/model-provider/codexHostModelCatalog.ts
+      - packages/services/src/model-provider/codexModelSelectionService.ts
+    managed: true
+    requires:
+      - provider
+      - shared
+      - rpc
+      - services
+    publicEntrypoints:
+      - packages/services/src/model-provider/codex-model-selection/contract.ts
+      - packages/services/src/model-provider/codexHostModelCatalog.ts
+      - packages/services/src/model-provider/codexModelSelectionService.ts
+    layers:
+      app: .
+    owner: model-provider
+  - id: codex-provider-key
+    roots:
+      - packages/services/src/model-provider/codex-provider-key
+      - packages/services/src/model-provider/codexNativeProviderKey.ts
+      - packages/services/src/model-provider/codexNativeProviderKeyService.ts
+      - packages/services/src/model-provider/providerKeySourceService.ts
+    managed: true
+    requires:
+      - provider
+      - shared
+      - services
+    publicEntrypoints:
+      - packages/services/src/model-provider/codex-provider-key/contract.ts
+      - packages/services/src/model-provider/codexNativeProviderKey.ts
+      - packages/services/src/model-provider/codexNativeProviderKeyService.ts
+      - packages/services/src/model-provider/providerKeySourceService.ts
+    layers:
+      adapters: .
+    owner: model-provider
+  - id: codex-usage-observation
+    roots:
+      - packages/services/src/usage-stats/codex-usage-observation
+      - packages/services/src/usage-stats/codexUsageObservationCache.ts
+    managed: true
+    requires: []
+    publicEntrypoints:
+      - packages/services/src/usage-stats/codex-usage-observation/contract.ts
+      - packages/services/src/usage-stats/codexUsageObservationCache.ts
+    layers:
+      app: .
+    owner: usage-stats
+  - id: codex-native-protocol
+    roots:
+      - packages/shared/src/codex-native-protocol
+      - packages/shared/src/codex-runtime.ts
+      - packages/shared/src/codex-native-provider-key.ts
+    managed: true
+    requires: []
+    publicEntrypoints:
+      - packages/shared/src/codex-native-protocol/contract.ts
+      - packages/shared/src/codex-runtime.ts
+      - packages/shared/src/codex-native-provider-key.ts
+    layers:
+      contract: .
+    owner: codex-runtime-adaptation
+  - id: native-browser-cua-protocol
+    roots:
+      - packages/shared/src/native-browser-cua-protocol
+      - packages/shared/src/browser-use/nativeMcp.ts
+      - packages/shared/src/browser-use/nativeCuaMcp.ts
+    managed: true
+    requires:
+      - shared
+    publicEntrypoints:
+      - packages/shared/src/native-browser-cua-protocol/contract.ts
+      - packages/shared/src/browser-use/nativeMcp.ts
+      - packages/shared/src/browser-use/nativeCuaMcp.ts
+    layers:
+      contract: .
+    owner: desktop
+  - id: git-removal-contract
+    roots:
+      - packages/shared/src/git-removal-contract
+      - packages/shared/src/gitRemoval.ts
+    managed: true
+    requires:
+      - shared
+    publicEntrypoints:
+      - packages/shared/src/git-removal-contract/contract.ts
+      - packages/shared/src/gitRemoval.ts
+    layers:
+      contract: .
+    owner: git
+  - id: tool-diff-display-policy
+    roots:
+      - packages/shared/src/tool-diff-display-policy
+      - packages/shared/src/toolDiffDisplayLimits.ts
+    managed: true
+    requires: []
+    publicEntrypoints:
+      - packages/shared/src/tool-diff-display-policy/contract.ts
+      - packages/shared/src/toolDiffDisplayLimits.ts
+    layers:
+      contract: .
+    owner: conversation
+  - id: web-remote-wire-protocol
+    roots:
+      - packages/shared/src/web-remote-wire-protocol
+      - packages/shared/src/web-remote-control-e2ee.ts
+      - packages/shared/src/web-remote-control-gzip.ts
+    managed: true
+    requires: []
+    publicEntrypoints:
+      - packages/shared/src/web-remote-wire-protocol/contract.ts
+      - packages/shared/src/web-remote-control-e2ee.ts
+      - packages/shared/src/web-remote-control-gzip.ts
+    layers:
+      contract: .
+    owner: remote
+  - id: codex-remote-runtime
+    roots:
+      - packages/server/src/codex-remote-runtime
+      - packages/server/src/remote/bundledRemoteAssets.ts
+      - packages/server/src/remote/codexFallbackInstaller.ts
+      - packages/server/src/remote/codexReleaseRemoteAssets.ts
+      - packages/server/src/remote/codexRuntimeDeploy.ts
+      - packages/server/src/remote/remoteRuntime.ts
+    managed: true
+    requires:
+      - server
+      - shared
+    publicEntrypoints:
+      - packages/server/src/codex-remote-runtime/contract.ts
+      - packages/server/src/remote/bundledRemoteAssets.ts
+      - packages/server/src/remote/codexFallbackInstaller.ts
+      - packages/server/src/remote/codexReleaseRemoteAssets.ts
+      - packages/server/src/remote/codexRuntimeDeploy.ts
+      - packages/server/src/remote/remoteRuntime.ts
+    layers:
+      adapters: .
+    owner: remote
+  - id: web-remote-native-io
+    roots:
+      - packages/web/src/web-remote-native-io
+      - packages/web/src/webRemoteControlNativeSocket.ts
+    managed: true
+    requires:
+      - web-remote-relay
+    publicEntrypoints:
+      - packages/web/src/web-remote-native-io/contract.ts
+      - packages/web/src/webRemoteControlNativeSocket.ts
+    layers:
+      contract: contract.ts
+      adapters: .
+    owner: remote
+  - id: git-worktree-ui
+    roots:
+      - packages/ui/src/git-worktree-ui
+      - packages/ui/src/CreateWorktreeDialog.tsx
+      - packages/ui/src/DeleteBranchDialog.tsx
+      - packages/ui/src/GitWorktreeMenu.tsx
+      - packages/ui/src/ProjectWorktreeSwitcher.tsx
+      - packages/ui/src/RemoveWorktreeDialog.tsx
+      - packages/ui/src/WorktreeSessionMenu.tsx
+      - packages/ui/src/git-branch-switcher/GitBranchListItem.tsx
+      - packages/ui/src/hooks/branchDeletionModel.ts
+      - packages/ui/src/hooks/useBranchDeletion.tsx
+      - packages/ui/src/hooks/useProjectWorktreeDiscovery.ts
+      - packages/ui/src/hooks/useWorktreeCreation.tsx
+      - packages/ui/src/hooks/useWorktreeRemoval.tsx
+      - packages/ui/src/hooks/useWorktreeRemovalTargets.ts
+      - packages/ui/src/hooks/worktreeCreationModel.ts
+      - packages/ui/src/hooks/worktreeRemovalModel.ts
+      - packages/ui/src/lib/projectGrouping.ts
+      - packages/ui/src/lib/worktreeSwitcherDisplay.ts
+      - packages/ui/src/root/rootWorkspaceSelectionAdmission.ts
+      - packages/ui/src/root/useWorktreeOpenActions.ts
+      - packages/ui/src/root/worktreeOpenExecution.ts
+      - packages/ui/src/root/worktreeOpenIntent.ts
+      - packages/ui/src/store/worktreeRemovalGuardStore.ts
+    managed: true
+    requires:
+      - conversation-workspace-target
+      - services
+      - shared
+      - ui
+    publicEntrypoints:
+      - packages/ui/src/git-worktree-ui/contract.ts
+      - packages/ui/src/GitWorktreeMenu.tsx
+      - packages/ui/src/ProjectWorktreeSwitcher.tsx
+      - packages/ui/src/WorktreeSessionMenu.tsx
+      - packages/ui/src/git-branch-switcher/GitBranchListItem.tsx
+      - packages/ui/src/hooks/useBranchDeletion.tsx
+      - packages/ui/src/hooks/useProjectWorktreeDiscovery.ts
+      - packages/ui/src/hooks/useWorktreeCreation.tsx
+      - packages/ui/src/hooks/useWorktreeRemoval.tsx
+      - packages/ui/src/lib/projectGrouping.ts
+      - packages/ui/src/lib/worktreeSwitcherDisplay.ts
+      - packages/ui/src/root/rootWorkspaceSelectionAdmission.ts
+      - packages/ui/src/root/useWorktreeOpenActions.ts
+    layers:
+      contract: contract.ts
+      ui: .
+    layerOrder:
+      - contract
+      - ui
+    owner: git
+  - id: codex-conversation-ui
+    roots:
+      - packages/ui/src/codex-conversation-ui
+      - packages/ui/src/CurrentWorkspaceConcurrencyHint.tsx
+      - packages/ui/src/v4/CodexRetryStatus.tsx
+      - packages/ui/src/v4/composer/CodexFollowupModeMenu.tsx
+      - packages/ui/src/v4/composer/acceptedGuideNotices.ts
+      - packages/ui/src/v4/composer/codexFullAccessAcknowledgement.ts
+      - packages/ui/src/v4/composer/codexSessionUsage.ts
+      - packages/ui/src/v4/composer/composerDraftModeNormalization.ts
+      - packages/ui/src/v4/composer/sharedContextContentCopy.ts
+      - packages/ui/src/v4/conversationSnapshotHandoff.ts
+      - packages/ui/src/v4/conversationTurnContinue.ts
+    managed: true
+    requires:
+      - shared
+      - ui
+    publicEntrypoints:
+      - packages/ui/src/codex-conversation-ui/contract.ts
+      - packages/ui/src/CurrentWorkspaceConcurrencyHint.tsx
+      - packages/ui/src/v4/CodexRetryStatus.tsx
+      - packages/ui/src/v4/composer/CodexFollowupModeMenu.tsx
+      - packages/ui/src/v4/composer/acceptedGuideNotices.ts
+      - packages/ui/src/v4/composer/codexFullAccessAcknowledgement.ts
+      - packages/ui/src/v4/composer/codexSessionUsage.ts
+      - packages/ui/src/v4/composer/composerDraftModeNormalization.ts
+      - packages/ui/src/v4/composer/sharedContextContentCopy.ts
+      - packages/ui/src/v4/conversationSnapshotHandoff.ts
+      - packages/ui/src/v4/conversationTurnContinue.ts
+    layers:
+      contract: contract.ts
+      ui: .
+    layerOrder:
+      - contract
+      - ui
+    owner: conversation
+  - id: codex-capability-ui
+    roots:
+      - packages/ui/src/codex-capability-ui
+      - packages/ui/src/capabilities/codexCapabilities.ts
+      - packages/ui/src/capabilities/useCodexAutoReviewApprovals.ts
+      - packages/ui/src/capabilities/useCodexDesktopFileRewindCapability.ts
+      - packages/ui/src/capabilities/useCodexHistory.ts
+      - packages/ui/src/capabilities/useCodexMessageFeedbackCapability.ts
+      - packages/ui/src/capabilities/useCodexNativeHost.ts
+      - packages/ui/src/capabilities/useGitAuxiliaryCapability.ts
+    managed: true
+    requires:
+      - services
+      - shared
+      - ui
+    publicEntrypoints:
+      - packages/ui/src/codex-capability-ui/contract.ts
+      - packages/ui/src/capabilities/codexCapabilities.ts
+      - packages/ui/src/capabilities/useCodexAutoReviewApprovals.ts
+      - packages/ui/src/capabilities/useCodexDesktopFileRewindCapability.ts
+      - packages/ui/src/capabilities/useCodexHistory.ts
+      - packages/ui/src/capabilities/useCodexMessageFeedbackCapability.ts
+      - packages/ui/src/capabilities/useCodexNativeHost.ts
+      - packages/ui/src/capabilities/useGitAuxiliaryCapability.ts
+    layers:
+      contract: contract.ts
+      ui: .
+    layerOrder:
+      - contract
+      - ui
+    owner: conversation
+  - id: artifact-image-preview-cache
+    roots:
+      - packages/ui/src/artifact-image-preview-cache
+      - packages/ui/src/components/ai-elements/artifactImageCache.ts
+    managed: true
+    requires: []
+    publicEntrypoints:
+      - packages/ui/src/artifact-image-preview-cache/contract.ts
+      - packages/ui/src/components/ai-elements/artifactImageCache.ts
+    layers:
+      contract: contract.ts
+      adapters: .
+    layerOrder:
+      - contract
+      - adapters
+    owner: conversation
+  - id: github-feedback-entry-ui
+    roots:
+      - packages/ui/src/github-feedback-entry-ui
+      - packages/ui/src/feedback/feedbackDiagnostics.ts
+      - packages/ui/src/feedback/feedbackEntryPlan.ts
+      - packages/ui/src/feedback/useFeedbackEntryAction.ts
+    managed: true
+    requires:
+      - services
+      - shared
+      - ui
+    publicEntrypoints:
+      - packages/ui/src/github-feedback-entry-ui/contract.ts
+      - packages/ui/src/feedback/feedbackDiagnostics.ts
+      - packages/ui/src/feedback/feedbackEntryPlan.ts
+      - packages/ui/src/feedback/useFeedbackEntryAction.ts
+    layers:
+      contract: contract.ts
+      ui: .
+    layerOrder:
+      - contract
+      - ui
+    owner: feedback
+  - id: codex-settings-ui
+    roots:
+      - packages/ui/src/codex-settings-ui
+      - packages/ui/src/hooks/useCodexAgents.ts
+      - packages/ui/src/hooks/useCodexModelCatalog.ts
+      - packages/ui/src/hooks/useCodexSettings.ts
+      - packages/ui/src/hooks/useCodexTitleModel.ts
+      - packages/ui/src/hooks/usePromptSubagents.ts
+      - packages/ui/src/lib/codexSubagentSuggestions.ts
+      - packages/ui/src/settings/codex/CodexAccountPanel.tsx
+      - packages/ui/src/settings/codex/CodexAgentsPanel.tsx
+      - packages/ui/src/settings/codex/CodexComposerModelControls.tsx
+      - packages/ui/src/settings/codex/CodexConfigPanel.tsx
+      - packages/ui/src/settings/codex/CodexHistoryPanel.tsx
+      - packages/ui/src/settings/codex/CodexHookForm.tsx
+      - packages/ui/src/settings/codex/CodexHooksPanel.tsx
+      - packages/ui/src/settings/codex/CodexMcpPanel.tsx
+      - packages/ui/src/settings/codex/CodexMcpServerForm.tsx
+      - packages/ui/src/settings/codex/CodexMemoryPanel.tsx
+      - packages/ui/src/settings/codex/CodexNativeBrowserCuaCard.tsx
+      - packages/ui/src/settings/codex/CodexProviderForms.tsx
+      - packages/ui/src/settings/codex/CodexProviderRow.tsx
+      - packages/ui/src/settings/codex/CodexProvidersPanel.tsx
+      - packages/ui/src/settings/codex/CodexQuestionDialog.tsx
+      - packages/ui/src/settings/codex/CodexResourcesPanel.tsx
+      - packages/ui/src/settings/codex/CodexSettingsParts.tsx
+      - packages/ui/src/settings/codex/CodexSettingsSection.tsx
+      - packages/ui/src/settings/codex/CodexTitleModelSettings.tsx
+      - packages/ui/src/settings/codex/CodexWelcomePanel.tsx
+      - packages/ui/src/settings/codex/codexConfigValidation.ts
+      - packages/ui/src/settings/codex/codexHistorySelection.ts
+      - packages/ui/src/settings/codex/codexHooksSettings.ts
+      - packages/ui/src/settings/codex/codexMcpSettings.ts
+      - packages/ui/src/settings/codex/codexMemorySettings.ts
+      - packages/ui/src/settings/codex/codexModelCatalog.ts
+      - packages/ui/src/settings/codex/codexProviderKeyFlow.ts
+      - packages/ui/src/settings/codex/codexProviderSettings.ts
+      - packages/ui/src/settings/codex/codexQuestions.ts
+      - packages/ui/src/settings/codex/codexRuntimePreferences.ts
+      - packages/ui/src/settings/codex/codexSettingsData.ts
+      - packages/ui/src/settings/codex/codexSettingsNav.ts
+      - packages/ui/src/settings/codex/codexSubmissionSettings.ts
+      - packages/ui/src/settings/codex/messages.ts
+      - packages/ui/src/settings/codex/messagesHooks.ts
+      - packages/ui/src/settings/codex/messagesMcp.ts
+      - packages/ui/src/settings/codex/messagesProviders.ts
+      - packages/ui/src/settings/codex/useCodexCatalogModelActions.ts
+      - packages/ui/src/settings/codex/useCodexNativeBrowserCua.ts
+      - packages/ui/src/settings/codex/useCodexProviderKeySupport.ts
+    managed: true
+    requires:
+      - codex-capability-ui
+      - codex-conversation-ui
+      - services
+      - shared
+      - ui
+    publicEntrypoints:
+      - packages/ui/src/codex-settings-ui/contract.ts
+      - packages/ui/src/hooks/useCodexAgents.ts
+      - packages/ui/src/hooks/useCodexModelCatalog.ts
+      - packages/ui/src/hooks/useCodexSettings.ts
+      - packages/ui/src/hooks/useCodexTitleModel.ts
+      - packages/ui/src/hooks/usePromptSubagents.ts
+      - packages/ui/src/settings/codex/CodexComposerModelControls.tsx
+      - packages/ui/src/settings/codex/CodexConfigPanel.tsx
+      - packages/ui/src/settings/codex/CodexNativeBrowserCuaCard.tsx
+      - packages/ui/src/settings/codex/CodexQuestionDialog.tsx
+      - packages/ui/src/settings/codex/CodexSettingsSection.tsx
+      - packages/ui/src/settings/codex/CodexTitleModelSettings.tsx
+      - packages/ui/src/settings/codex/CodexWelcomePanel.tsx
+      - packages/ui/src/settings/codex/codexHistorySelection.ts
+      - packages/ui/src/settings/codex/codexModelCatalog.ts
+      - packages/ui/src/settings/codex/codexQuestions.ts
+      - packages/ui/src/settings/codex/codexRuntimePreferences.ts
+      - packages/ui/src/settings/codex/codexSettingsData.ts
+      - packages/ui/src/settings/codex/codexSettingsNav.ts
+      - packages/ui/src/settings/codex/codexSubmissionSettings.ts
+      - packages/ui/src/settings/codex/messages.ts
+      - packages/ui/src/settings/codex/useCodexNativeBrowserCua.ts
+    layers:
+      contract: contract.ts
+      ui: .
+    layerOrder:
+      - contract
+      - ui
+    owner: codex-settings
+  - id: provider-bootstrap-ui
+    roots:
+      - packages/ui/src/provider-bootstrap-ui
+      - packages/ui/src/hooks/useRootProviderStartupMode.ts
+      - packages/ui/src/root/legacyOAuthRestore.ts
+      - packages/ui/src/root/legacyProviderStartup.ts
+      - packages/ui/src/root/rootProviderStartupMode.ts
+    managed: true
+    requires:
+      - services
+      - shared
+      - ui
+    publicEntrypoints:
+      - packages/ui/src/provider-bootstrap-ui/contract.ts
+      - packages/ui/src/hooks/useRootProviderStartupMode.ts
+      - packages/ui/src/root/legacyOAuthRestore.ts
+      - packages/ui/src/root/legacyProviderStartup.ts
+      - packages/ui/src/root/rootProviderStartupMode.ts
+    layers:
+      contract: contract.ts
+      ui: .
+    layerOrder:
+      - contract
+      - ui
+    owner: identity
+  - id: lexical-ime-qa
+    roots:
+      - packages/ui/src/lexical-ime-qa
+      - packages/ui/src/qa/lexical-ime/main.tsx
+    managed: true
+    requires: []
+    publicEntrypoints:
+      - packages/ui/src/lexical-ime-qa/contract.ts
+      - packages/ui/src/qa/lexical-ime/main.tsx
+    layers:
+      contract: contract.ts
+      ui: .
+    layerOrder:
+      - contract
+      - ui
+    owner: qa
+  - id: codex-settings-qa-ui
+    roots:
+      - packages/ui/src/codex-settings-qa-ui
+      - packages/ui/src/settings/codex/qa/additional-fixtures.tsx
+      - packages/ui/src/settings/codex/qa/automation-model-read-fixture.tsx
+      - packages/ui/src/settings/codex/qa/catalog-lifetime-fixture.tsx
+      - packages/ui/src/settings/codex/qa/catalog-models-fixture.ts
+      - packages/ui/src/settings/codex/qa/desktop-update-menu-fixture.tsx
+      - packages/ui/src/settings/codex/qa/general-accessibility-fixture.tsx
+      - packages/ui/src/settings/codex/qa/harness.tsx
+      - packages/ui/src/settings/codex/qa/harnessConfig.ts
+      - packages/ui/src/settings/codex/qa/mapped-provider-fixture.tsx
+      - packages/ui/src/settings/codex/qa/message-feedback-fixture.tsx
+      - packages/ui/src/settings/codex/qa/project-discovery-fixture.tsx
+      - packages/ui/src/settings/codex/qa/root-provider-startup-fixture.tsx
+      - packages/ui/src/settings/codex/qa/subagent-mention-fixture.tsx
+      - packages/ui/src/settings/codex/qa/title-model-settings-fixture.tsx
+      - packages/ui/src/settings/codex/qa/usage-observation-fixture.tsx
+    managed: true
+    requires:
+      - codex-capability-ui
+      - codex-settings-ui
+      - codex-usage-ui
+      - dynamic-workflow-availability
+      - project-sidebar
+      - provider
+      - provider-bootstrap-ui
+      - services
+      - shared
+      - ui
+    publicEntrypoints:
+      - packages/ui/src/codex-settings-qa-ui/contract.ts
+      - packages/ui/src/settings/codex/qa/harness.tsx
+      - packages/ui/src/settings/codex/qa/automation-model-read-fixture.tsx
+      - packages/ui/src/settings/codex/qa/subagent-mention-fixture.tsx
+      - packages/ui/src/settings/codex/qa/title-model-settings-fixture.tsx
+    layers:
+      contract: contract.ts
+      ui: .
+    layerOrder:
+      - contract
+      - ui
+    owner: qa
+  - id: codex-settings-qa-adapters
+    roots:
+      - packages/ui/src/codex-settings-qa-adapters
+      - packages/ui/src/settings/codex/qa/automation-model-read-e2e.mjs
+      - packages/ui/src/settings/codex/qa/bootstrap-watchdog-e2e.mjs
+      - packages/ui/src/settings/codex/qa/desktop-check.mjs
+      - packages/ui/src/settings/codex/qa/desktop-conversation-check.mjs
+      - packages/ui/src/settings/codex/qa/desktop-followup-check.mjs
+      - packages/ui/src/settings/codex/qa/desktop-general-accessibility-check.mjs
+      - packages/ui/src/settings/codex/qa/desktop-interrupted-turn-check.mjs
+      - packages/ui/src/settings/codex/qa/desktop-mapped-provider-check.mjs
+      - packages/ui/src/settings/codex/qa/desktop-mapped-provider-config.mjs
+      - packages/ui/src/settings/codex/qa/desktop-mock-provider.mjs
+      - packages/ui/src/settings/codex/qa/desktop-probe-env.mjs
+      - packages/ui/src/settings/codex/qa/desktop-probe-ports.mjs
+      - packages/ui/src/settings/codex/qa/desktop-probe.mjs
+      - packages/ui/src/settings/codex/qa/desktop-retry-check.mjs
+      - packages/ui/src/settings/codex/qa/help-menu-flavors-e2e.mjs
+      - packages/ui/src/settings/codex/qa/interaction-e2e.mjs
+      - packages/ui/src/settings/codex/qa/mapped-provider-e2e.mjs
+      - packages/ui/src/settings/codex/qa/mapped-provider-runner.mjs
+      - packages/ui/src/settings/codex/qa/memory-locale-e2e.mjs
+      - packages/ui/src/settings/codex/qa/project-discovery-e2e.mjs
+      - packages/ui/src/settings/codex/qa/provider-model-slug-e2e.mjs
+      - packages/ui/src/settings/codex/qa/settings-regressions-e2e.mjs
+    managed: true
+    requires: []
+    publicEntrypoints:
+      - packages/ui/src/codex-settings-qa-adapters/contract.ts
+      - packages/ui/src/settings/codex/qa/automation-model-read-e2e.mjs
+      - packages/ui/src/settings/codex/qa/bootstrap-watchdog-e2e.mjs
+      - packages/ui/src/settings/codex/qa/desktop-check.mjs
+      - packages/ui/src/settings/codex/qa/desktop-conversation-check.mjs
+      - packages/ui/src/settings/codex/qa/desktop-followup-check.mjs
+      - packages/ui/src/settings/codex/qa/desktop-general-accessibility-check.mjs
+      - packages/ui/src/settings/codex/qa/desktop-interrupted-turn-check.mjs
+      - packages/ui/src/settings/codex/qa/desktop-mapped-provider-check.mjs
+      - packages/ui/src/settings/codex/qa/desktop-probe.mjs
+      - packages/ui/src/settings/codex/qa/desktop-retry-check.mjs
+      - packages/ui/src/settings/codex/qa/help-menu-flavors-e2e.mjs
+      - packages/ui/src/settings/codex/qa/interaction-e2e.mjs
+      - packages/ui/src/settings/codex/qa/mapped-provider-runner.mjs
+      - packages/ui/src/settings/codex/qa/provider-model-slug-e2e.mjs
+    layers:
+      contract: contract.ts
+      adapters: .
+    layerOrder:
+      - contract
+      - adapters
+    owner: qa
+  - id: codex-usage-ui
+    roots:
+      - packages/ui/src/codex-usage-ui
+      - packages/ui/src/settings/usage-stats/CodexOnlyUsagePanel.tsx
+      - packages/ui/src/settings/usage-stats/codexUsageThreads.ts
+    managed: true
+    requires:
+      - shared
+      - ui
+    publicEntrypoints:
+      - packages/ui/src/codex-usage-ui/contract.ts
+      - packages/ui/src/settings/usage-stats/CodexOnlyUsagePanel.tsx
+      - packages/ui/src/settings/usage-stats/codexUsageThreads.ts
+    layers:
+      contract: contract.ts
+      ui: .
+    layerOrder:
+      - contract
+      - ui
+    owner: usage
 
 global:
   # 临时时间戳（2026-09-10）：unmanaged-new-file 只约束此日期之后首次入库的文件。
@@ -1962,27 +2851,27 @@ exceptions:
     reason: 已准入的调试工具比较回复前折叠多个文字块，适配每个文字块单独回放（apps/codez-cli/docs/design/v2/model/assistant-block-order.md）；只读比较逻辑，不改变模块边界。
   - id: session-features-attribution-header-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/adapters/src/model/runner-attribution.ts]
+    paths: [ apps/codez-cli/packages/adapters/src/model/runner-attribution.ts ]
     reason: 已准入的归因头构造器只追加 x-codez-session-features（docs/design/v2/model/session-features-header.md）；它仍是全部归因头的唯一写入点，签名与模块边界不变，接管整个 adapters 包不在本次范围内。
   - id: session-features-workflow-command-pattern-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/core/src/runtime/methods/dynamic-workflow-activation.ts]
+    paths: [ apps/codez-cli/packages/core/src/runtime/methods/dynamic-workflow-activation.ts ]
     reason: 已准入的动态工作流激活只导出既有 `/workflow` 历史判据常量，供 session-features 的历史推导复用同一判据；激活行为、owner 与模块边界不变。
   - id: node-repl-call-ledger-cua-bridge-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/node-repl-host/src/cua-bridge.ts]
+    paths: [ apps/codez-cli/packages/node-repl-host/src/cua-bridge.ts ]
     reason: 已准入的 node_repl CUA bridge 只删去 Worker 侧的会话信息构造与目标应用身份记录，二者移到主线程 CUA broker（apps/codez-cli/docs/design/v2/tool/20-node-repl-call-ledger.md）；subagent 拒绝与对模型的行为不变，接管整个 node-repl-host 包不在本次范围内。
   - id: node-repl-call-ledger-cua-broker-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/node-repl-host/src/cua-broker.ts]
+    paths: [ apps/codez-cli/packages/node-repl-host/src/cua-broker.ts ]
     reason: 已准入的 node_repl CUA broker 改为只认 node-repl-call-ledger 签发的本次调用 token，按账本条目构造会话信息并把目标应用身份记进账本（20-node-repl-call-ledger.md「CUA broker」）；MR !3207 再在 token 校验之后把会话能力标签用的 computerUse 记进账本（docs/design/v2/model/session-features-header.md）；runtime 调用与响应格式不变。
   - id: node-repl-call-ledger-result-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/node-repl-host/src/result.ts]
+    paths: [ apps/codez-cli/packages/node-repl-host/src/result.ts ]
     reason: 已准入的 node_repl 结果组装改为只从账本 facts 取可信 key，忽略 Worker 结果消息里的同名字段（20-node-repl-call-ledger.md「结果组装」）；MR !3207 按同样处置追加 codez/nodeReplBrowserUse、codez/nodeReplComputerUse 两个 key（docs/design/v2/model/session-features-header.md）；结果内容与其他 meta 处置不变。
   - id: offpeak-expiration-codes-existing-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/core/src/runtime/off-peak/model-binding.ts]
+    paths: [ apps/codez-cli/packages/core/src/runtime/off-peak/model-binding.ts ]
     reason: 已准入的闲时请求包装器仅复用共享错误码判断，补齐 3106 运行超时的既有生命周期通知；不改变 owner、控制协议或模块边界，不扩展为整个 CLI runtime 目录接管。
   - id: multi-cursor-badge-title-passthrough-edit
     rule: unmanaged-new-file
@@ -2003,7 +2892,7 @@ exceptions:
     reason: 已准入的引用模型材料拼装只在引用带批注时追加一句说明（docs/ui/conversation-selection-side-chat.md「选区批注」）；仍是 withConversationQuotes 的唯一实现，canonical 正文与 Bot 投递边界不变，接管整个 core 包不在本次范围内。
   - id: side-pane-full-view-shortcut-command-edit
     rule: unmanaged-new-file
-    paths: [packages/shared/src/shortcutCommands.ts]
+    paths: [ packages/shared/src/shortcutCommands.ts ]
     reason: 已准入的快捷键命令表只追加一条 toggleSidePaneFullView 命令（Side Pane 完整视图，docs/ui/side-pane-full-view.md）；命令表仍是唯一数据源，签名与模块边界不变，接管整个 shared 包不在本次范围内。
   - id: browser-session-recent-visits-ui
     rule: unmanaged-new-file
@@ -2012,11 +2901,11 @@ exceptions:
     reason: Session 最近访问仅为 renderer 内存态展示数据，复用既有 UI store 与浏览器 owner，不改变 UI 模块边界或跨层契约。
   - id: codez-site-deploy-runtime-template
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/codez-site-plugin/skills/site-deploy/templates/static-server.mjs]
+    paths: [ apps/codez-cli/packages/codez-site-plugin/skills/site-deploy/templates/static-server.mjs ]
     reason: site-deploy 技能复制进用户部署包的静态站服务器模板，只在 Sites runner 的容器里由 start.sh 执行；仓库代码不 import 它，也不属于任何运行时模块。同目录的 start.sh 模板是 shell，不受本规则约束。
   - id: opensource-cua-test-project-config
     rule: unmanaged-new-file
-    paths: [packages/codez-cua/vitest.config.ts]
+    paths: [ packages/codez-cua/vitest.config.ts ]
     reason: 该文件只装配测试项目，开源占位版本用于保持根单测入口可运行；不包含 producer 运行逻辑，不为同目录实现文件开放例外。
   - id: project-location-cache-recovery-existing-edit
     rule: unmanaged-new-file
@@ -2041,39 +2930,39 @@ exceptions:
     reason: 已准入的存量文件只把 TID 导入从 @codez/shared 根入口改为 @codez/shared/test-ids 子路径（根入口不再导出 test-ids，以收窄受影响单测范围）；行为与模块边界不变，接管 ui 目录不在本次范围内。
   - id: settings-personalization-section-new-file
     rule: unmanaged-new-file
-    paths: [packages/ui/src/settings/PersonalizationSection.tsx]
+    paths: [ packages/ui/src/settings/PersonalizationSection.tsx ]
     reason: 个性化设置分区组件只编排 ISettingService 的 getUserInstructions/saveUserInstructions 与既有设置页 UI 原语（spec：docs/ui/settings-personalization.md）；读写唯一事实源在服务层，不新增平行状态，接管整个 ui 目录不在本次范围内。
   - id: settings-personalization-size-constant-new-file
     rule: unmanaged-new-file
-    paths: [packages/shared/src/userInstructions.ts]
+    paths: [ packages/shared/src/userInstructions.ts ]
     reason: 用户自定义指令字节上限共享常量（与 CLI 读取截断对齐，spec：docs/ui/settings-personalization.md），服务层校验与 UI 计数共用同一数值；仅两个常量导出，接管整个 shared 目录不在本次范围内。
   - id: remote-workspace-admission-deadline-existing-edit
     rule: unmanaged-new-file
-    paths: [packages/desktop/src/host/remoteWorkspacePreparation.ts]
+    paths: [ packages/desktop/src/host/remoteWorkspacePreparation.ts ]
     reason: 已准入的远程项目目录 admission 只增加 30 秒截止时间和可重试的无响应错误码（3.16.2 远端回归 R8，docs/remote/project-first-remote-navigation-spec.md §2.4）；owner、调用方与模块边界不变，接管 desktop host 目录不在本次修复范围内。
   - id: gen-ui-existing-capability-check
     rule: unmanaged-new-file
-    paths: [packages/services/src/codez-agent/independentPlanSupport.ts]
+    paths: [ packages/services/src/codez-agent/independentPlanSupport.ts ]
     reason: 在已存在的 CLI 能力查询入口补充 GenUI 上下文能力检查，防止旧 CLI 静默丢弃状态；保持既有 services/agent 边界，不扩展本次修复为整个 codez-agent 模块接管。
   - id: connection-log-secret-token-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [packages/shared/src/source-server/connectionLog.ts]
+    paths: [ packages/shared/src/source-server/connectionLog.ts ]
     reason: 已存在的连接日志过滤函数只把已知秘密从子串替换改为完整 token 匹配，修复短密码反推泄露；签名与模块边界不变，接管整个 shared 包不在本次修复范围内。
   - id: connection-errors-econnreset-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [packages/shared/src/source-server/connectionErrors.ts]
+    paths: [ packages/shared/src/source-server/connectionErrors.ts ]
     reason: 已存在的连接错误归一化码表补一项 ECONNRESET → remote-host-unreachable，修复在线断连恢复失败被误报为预检失败；签名与模块边界不变，接管整个 shared 包不在本次修复范围内。
   - id: remote-authentication-unsupported-presentation-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [packages/ui/src/lib/remoteConnectionPresentationErrors.ts]
+    paths: [ packages/ui/src/lib/remoteConnectionPresentationErrors.ts ]
     reason: 已存在的远程连接错误展示映射为新增公开码 remote-authentication-unsupported 补一项标题与“查看详情”操作，修复 SSH 二次验证失败被提示为检查密码；签名与模块边界不变，接管 ui 目录不在本次修复范围内。
   - id: source-server-operation-log-level-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [packages/desktop/src/host/sourceServerOperationLogs.ts]
+    paths: [ packages/desktop/src/host/sourceServerOperationLogs.ts ]
     reason: 已有连接日志封装透传 TransportContext 已定义的 level，使低版本 glibc 提示保留 warn；Host 仍是唯一日志 owner，签名与模块边界不变，接管整个 desktop 包不在本次范围内。
   - id: client-config-public-field-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [packages/shared/src/clientConfig.ts]
+    paths: [ packages/shared/src/clientConfig.ts ]
     reason: Existing upstream public config parser gains one validated recommendation field; ownership and module boundaries remain unchanged, and adopting the shared package is outside this change.
   - id: highspeed-transcript-owner-existing-edit
     rule: unmanaged-new-file
@@ -2087,7 +2976,7 @@ exceptions:
     reason: 现有配置读取器新增宿主注入的可选 JWT，并隔离身份缓存和 CDN 请求头；不新增源码文件或改变服务与下载器的 owner，整包架构接管不属于本次请求头修复。
   - id: highspeed-fallback-snapshot-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/core/src/runtime/methods/turn-execution-fallback.ts]
+    paths: [ apps/codez-cli/packages/core/src/runtime/methods/turn-execution-fallback.ts ]
     reason: 合并已存在于 staging 的加速卡回退模块，仅将可变 Session 读取替换为本轮固定候选；保持现有 Core 模块边界，不在同步分支时机械拆分整个 runtime。
   - id: session-owned-workflow-shutdown-existing-files
     rule: unmanaged-new-file
@@ -2097,7 +2986,7 @@ exceptions:
     reason: 两个文件已存在于集成基线；本次在既有 bootstrap owner 内补启动关闭互斥和 actor 清理等待，不新增模块或跨层依赖。整个 bootstrap/app 的接管另行治理，生命周期公开模块边界保持不变。
   - id: workflow-quota-auto-resume-unmanaged-file
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/bootstrap/src/app/dynamic-workflow-quota-resume.ts]
+    paths: [ apps/codez-cli/packages/bootstrap/src/app/dynamic-workflow-quota-resume.ts ]
     reason: 额度停止的 run 到点自动续跑，是 run service 旁的一个宿主模块（只读 journal 行、订阅结算、经注入的 resume 续跑）；与同目录的 run service 文件同属未受管的 codez-cli bootstrap，接管该目录需要单独的模块边界整理。
   - id: mcp-node-fallback-unmanaged-file
     rule: unmanaged-new-file
@@ -2107,7 +2996,7 @@ exceptions:
     reason: 桌面 Electron Node 下 stdio MCP 的 node/npm/npx 回退（apps/codez-cli/docs/design/v2/mcp-node-fallback.md）。adapters 文件只负责 shim 目录与子进程 env 合并，经 CreateMcpAdapterOptions.nodeFallback 注入；bootstrap 文件只判定 Electron 并给出随包 npm 候选目录。两者同属未受管的 codez-cli，接管 adapters/mcp 或 bootstrap/app 需要单独的模块边界整理。
   - id: workflow-unrecognized-code-cap-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/adapters/src/model/workflow-model-failure-policy.ts]
+    paths: [ apps/codez-cli/packages/adapters/src/model/workflow-model-failure-policy.ts ]
     reason: 已准入的 workflow 模型错误策略表只增加一行（分类器不认识的业务码在同一次请求里连续出现 10 次时停 run）、一个连续计数入参与两个计数纯函数；runner 与 driver 读同一函数的约束与模块边界不变，接管 adapters/model 目录不在本次范围内。
   - id: plugin-async-discovery-existing-callers
     rule: unmanaged-new-file
@@ -2120,15 +3009,15 @@ exceptions:
     reason: 已有插件发现调用方迁移为 await；runtime-cleanup 在原进程关闭编排中释放注入的准备 owner，没有新增文件。对应契约见 docs/workspace-capability-discovery-cache.md，不为此次异步化与预热接管整个 CLI 或协议目录。
   - id: automation-self-pause-turn-visibility-existing-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/core/src/runtime/methods/turn-tool-visibility.ts]
+    paths: [ apps/codez-cli/packages/core/src/runtime/methods/turn-tool-visibility.ts ]
     reason: 已有 turn 工具可见性 owner 仅增加当前 automation 自暂停的反向可见性规则；不新增跨模块依赖或 owner，接管整个 codez-cli runtime 超出本次缺陷修复范围。
   - id: compact-bundle-reminder-builder-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/core/src/runtime/methods/runtime-reminder-persistence.ts]
+    paths: [ apps/codez-cli/packages/core/src/runtime/methods/runtime-reminder-persistence.ts ]
     reason: 已入库的隐藏提醒落盘函数拆出只构建记录的函数，供 compaction 把公告、summary 与附件交给同一个 store 事务；记录不再写 tools 字段，中断标记按普通 user 文本取正文；Core 模块边界不变，接管整个 runtime 目录不在本次范围内。
   - id: tool-search-schema-key-order-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/contracts/src/tools/tool-search.ts]
+    paths: [ apps/codez-cli/packages/contracts/src/tools/tool-search.ts ]
     reason: 已入库的 ToolSearch 输入 schema 改走统一的 toToolJsonSchema，使 key 顺序与其他工具一致，$schema 随之从 draft-07 改为 2020-12；contracts 模块边界不变，接管整个 tools 目录不在本次范围内。
   - id: tool-search-removal-reason-unmanaged-edit
     rule: unmanaged-new-file
@@ -2139,7 +3028,7 @@ exceptions:
     reason: 已入库的 ToolSearch 能力解析、公告渲染与离线轨迹识别按删除原因分段，并由 adapter 声明 Anthropic 协议的提醒折叠能力；增量事实、持久化与模块边界不变，接管整个 codez-cli 目录不在本次范围内。
   - id: interrupt-marker-unmanaged-new-file
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/core/src/runtime/methods/interrupt-marker.ts]
+    paths: [ apps/codez-cli/packages/core/src/runtime/methods/interrupt-marker.ts ]
     reason: 停止轮次后给模型的中断标记放在 runtime/methods 的独立小文件，避免继续增大已超行数的 turn.ts；复用隐藏提醒的落盘函数（persistRuntimeReminderMessage）与历史提交，Core 模块边界不变，接管整个 codez-cli 目录不在本次范围内。
   - id: instruction-files-delta-unmanaged-new-file
     rule: unmanaged-new-file
@@ -2155,11 +3044,11 @@ exceptions:
     reason: 已入库的 Gen UI 输出目录解析加一个可选 session id 参数，fork 时取子会话自己的目录写入环境更新（docs/specs/gen-ui-output-directory.md）；默认仍取当前会话，调用方与 Core 模块边界不变，接管整个 codez-cli 目录不在本次范围内。
   - id: off-peak-takeover-context-prefix-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/core/src/runtime/off-peak/turn.ts]
+    paths: [ apps/codez-cli/packages/core/src/runtime/off-peak/turn.ts ]
     reason: 已入库的闲时接管函数换成用户模型后，按新模型重建 Context Prefix，与 guide 换模型共用 rebuildContextPrefix；接管时机、归属与 Core 模块边界不变，接管整个 codez-cli 目录不在本次范围内。
   - id: turn-work-segment-comment-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [packages/ui/src/v4/conversationTurnRenderUnitTypes.ts]
+    paths: [ packages/ui/src/v4/conversationTurnRenderUnitTypes.ts ]
     reason: 已入库的渲染单元类型只更新 workSegments 字段注释，使其与同一 drain 边界的 guide 共用一段的行为一致；类型与 ui 模块边界不变，接管整个 v4 目录不在本次范围内。
   - id: shortcut-settings-existing-ui-edit
     rule: unmanaged-new-file
@@ -2170,7 +3059,7 @@ exceptions:
     reason: Existing upstream shortcut components and keycap primitive edited for shared controls, responsive layout and save admission; adopting the entire settings directory requires a separate boundary refactor.
   - id: sidebar-workflow-tooltip-existing-ui-edit
     rule: unmanaged-new-file
-    paths: [packages/ui/src/components/workflow-run-line/WorkflowRunRail.tsx]
+    paths: [ packages/ui/src/components/workflow-run-line/WorkflowRunRail.tsx ]
     reason: Existing upstream workflow rail edited only to adapt native titles within the sidebar tooltip scope; workflow ownership and imports remain unchanged except for the shared UI tooltip adapter.
   - id: onboarding-existing-module-edit
     rule: unmanaged-new-file
@@ -2184,15 +3073,15 @@ exceptions:
     reason: 已有的主动任务推荐设置行只增加 SettingsRow 的稳定定位 id，不改变引导记录读写和模块依赖；搜索实现独立登记在 settings-search 模块，不把现有引导设置迁入搜索模块。
   - id: remote-connection-flow-existing-size
     rule: max-file-lines
-    paths: [packages/ui/src/remote-connection-flow/index.ts]
+    paths: [ packages/ui/src/remote-connection-flow/index.ts ]
     reason: Preserve the existing single hook owner and closure; module adoption must not mechanically split state to satisfy line counts.
   - id: gen-ui-tweak-runtime-size
     rule: max-file-lines
-    paths: [packages/desktop/src/renderer/src/plugin-sandbox/genUiTweakRuntime.js]
+    paths: [ packages/desktop/src/renderer/src/plugin-sandbox/genUiTweakRuntime.js ]
     reason: Keep parameter binding and registration lifecycle together; runtime-manifest.json and tests verify file integrity.
   - id: gen-ui-tweak-runtime-lint
     rule: disable-count
-    paths: [packages/desktop/src/renderer/src/plugin-sandbox/genUiTweakRuntime.js]
+    paths: [ packages/desktop/src/renderer/src/plugin-sandbox/genUiTweakRuntime.js ]
     reason: Allow the control-character validation regex and the single-file parameter-control runtime.
   - id: workflow-amend-provider-boundary-unmanaged-edit
     rule: unmanaged-new-file
@@ -2291,15 +3180,15 @@ exceptions:
     reason: Admitted upstream analyzer files edited only to stop the workflow analysis from growing much faster than the script (callback bindings, loop regions, join control, flow strands); adopting apps/codez-cli/packages/dynamic-workflow needs a separate module boundary refactor that first breaks its 24 internal import cycles.
   - id: off-peak-model-descriptor-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/core/src/runtime/off-peak/model-binding.ts]
+    paths: [ apps/codez-cli/packages/core/src/runtime/off-peak/model-binding.ts ]
     reason: 已入库的闲时 Model 包装改用 contracts 的 modelDescriptorOf 复制全部数据字段，修复逐字段手抄漏掉 requestCapabilities；包装行为与 Core 模块边界不变，接管整个 runtime 目录不在本次范围内。
   - id: workflow-draft-read-state-per-path-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/core/src/tool/handlers/workflow-draft-read-state.ts]
+    paths: [ apps/codez-cli/packages/core/src/tool/handlers/workflow-draft-read-state.ts ]
     reason: 已入库的工作流草稿读状态登记改走 setReadFileStateEntry，跟随读状态改为每个路径一条；草稿流程与 Core 模块边界不变，接管整个 tool 目录不在本次范围内。
   - id: workflow-skill-gate-compact-read-state-comment-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/core/src/tool/handlers/workflow-skill-gate.ts]
+    paths: [ apps/codez-cli/packages/core/src/tool/handlers/workflow-skill-gate.ts ]
     reason: 已入库的工作流技能门只更新一句注释，跟随 compaction 后读取状态改为只留补回的文件；门的判据、代码与 Core 模块边界不变，接管整个 tool 目录不在本次范围内。
   - id: conversation-telemetry-existing-state-machine-size
     rule: max-file-lines
@@ -2315,7 +3204,7 @@ exceptions:
     reason: Preserve the two original file-length annotations while relocating the existing implementation.
   - id: host-service-telemetry-existing-file
     rule: unmanaged-new-file
-    paths: [packages/desktop/src/host/hostServiceResourceTelemetry.ts]
+    paths: [ packages/desktop/src/host/hostServiceResourceTelemetry.ts ]
     reason: Existing main-branch registration point gains a Host-only event and capability gate; adopting the whole Host runtime is outside this telemetry change.
   - id: browser-device-presets-export-unmanaged-new-files
     rule: unmanaged-new-file

@@ -1,6 +1,12 @@
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { CODEZ_PRODUCT_FLAVOR, type CodezProductFlavor } from "@codez/shared";
+import type {
+  CodexGitHubUpdateFeedOptions,
+  DesktopRemoteAssetDirectories,
+  DesktopRemoteAssetDirectoryInput,
+  DesktopUpdatePolicy,
+} from "./product-runtime/contract.js";
 
 export const isCodexDesktop = CODEZ_PRODUCT_FLAVOR === "codex";
 export const desktopProtocolScheme = isCodexDesktop ? "codez-codex" : "codez";
@@ -33,19 +39,16 @@ export function resolveDesktopBootstrapSettingsFile(
   return join(resolveDesktopDataBaseDir(undefined, home, flavor), ".codez", "v2", "setting.json");
 }
 
-export function resolveDesktopUpdatePolicy(flavor: CodezProductFlavor = CODEZ_PRODUCT_FLAVOR) {
+export function resolveDesktopUpdatePolicy(
+  flavor: CodezProductFlavor = CODEZ_PRODUCT_FLAVOR,
+): DesktopUpdatePolicy {
   // codex 已接入 GitHub releases 自动更新（electron-updater github provider + per-arch
   // channel，见 specs/codex-desktop-distribution.md），不再回退到手动打开发布页。
   // 只有 preview 保持关闭：preview 身份不对外分发更新。
   return { automatic: flavor !== "preview" };
 }
 
-export function resolveCodexGitHubUpdateFeedOptions(arch: string): {
-  provider: "github";
-  owner: string;
-  repo: string;
-  channel: string;
-} {
+export function resolveCodexGitHubUpdateFeedOptions(arch: string): CodexGitHubUpdateFeedOptions {
   // 运行时 channel 必须随 feed 显式给出：setFeedURL 会直接安装 provider，
   // electron-updater 的 GitHub provider 只从 feed options（或 autoUpdater.channel）取
   // channel，不再回读 app-update.yml 的烘焙值；缺省静默回退 "latest"，请求
@@ -58,12 +61,9 @@ export function resolveCodexGitHubUpdateFeedOptions(arch: string): {
   };
 }
 
-export function resolveCodexRemoteAssetDirs(options: {
-  isPackaged: boolean;
-  resourcesPath: string;
-  desktopRoot: string;
-  cacheDir: string;
-}): { packagedRemoteAssetsDir: string; remoteCacheDir: string } {
+export function resolveCodexRemoteAssetDirs(
+  options: DesktopRemoteAssetDirectoryInput,
+): DesktopRemoteAssetDirectories {
   // 安装包只携带 build-pinned index 和目标清单；server 选择目标与下载方式。
   return {
     packagedRemoteAssetsDir: options.isPackaged
