@@ -21,6 +21,19 @@ const captured = vi.hoisted(() => ({
   modelConfigTarget: null as "local" | "remote" | null,
 }));
 
+// 上游 3.17.1 新增 SessionPane 的运行时重启入口：useSessionRuntimeRestart →
+// useWorkspaceServices → useResolvedRemoteWorkspaceSessionId → useTabStore，要求 TabStoreProvider。
+// 本文件只验证既有目标，按本仓库既有隔离做法桩掉该入口，不引入真实 Tab store；
+// 桩必须是稳定引用，避免 SessionPane 的 effect 依赖每轮变化。
+const sessionRuntimeRestartStub = vi.hoisted(() => ({
+  restart: async () => false,
+  pending: false,
+}));
+vi.mock("@/app-shell/useWorkspaceSessionReload.js", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return { ...actual, useSessionRuntimeRestart: () => sessionRuntimeRestartStub };
+});
+
 vi.mock("@/v4/useConversationProjection.js", () => ({
   useConversationProjection: () => projectionState.current,
 }));
