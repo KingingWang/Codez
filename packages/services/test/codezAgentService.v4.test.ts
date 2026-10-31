@@ -44,6 +44,10 @@ process.stdin.on("data", (chunk) => {
     if (!line.trim()) continue;
     let msg;
     try { msg = JSON.parse(line); } catch { continue; }
+    if (msg.method === "runtime/capabilities" && msg.id !== undefined) {
+      send({ id: msg.id, result: { sessionDirectorySource: true, sessionWorkspaceRouting: true } });
+      continue;
+    }
     if (logPath && msg.method) fs.appendFileSync(logPath, line + "\\n");
     if (msg.method === "session/list" && msg.id !== undefined) {
       const sessions = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
@@ -1194,7 +1198,12 @@ describe("codezAgentService v4 conversation channel", () => {
   });
 
   it("reserves explicit NULL for legacy V4 callers that omit projectId", async () => {
-    const prepareSessionCreation = vi.fn(async () => [] as string[]);
+    // 上游 3.17.1 起预留入口返回 { sessionId, additionalDirectories }：sessionId 由持库 Host
+    // 依据 creationCommand 原子分配并记住，预留仍发生在 create wire 之前。
+    const prepareSessionCreation = vi.fn(async () => ({
+      sessionId: "session-legacy-reserved",
+      additionalDirectories: [] as string[],
+    }));
     const { service, workspacePath } = setupService({ prepareSessionCreation });
     try {
       await service.sendConversationCommandV4({
@@ -1209,7 +1218,12 @@ describe("codezAgentService v4 conversation channel", () => {
         },
       });
       expect(prepareSessionCreation).toHaveBeenCalledWith(
-        expect.objectContaining({ projectId: null, sessionId: expect.any(String) }),
+        // 缺省 projectId 的旧调用方仍必须显式预留 NULL 归属；去重身份换成 creationCommand，
+        // 因为 ID 不再由调用方预分配。
+        expect.objectContaining({
+          projectId: null,
+          creationCommand: { clientId: "test", commandId: "legacy-create" },
+        }),
       );
     } finally {
       await service.disposeAllAndWait();
@@ -1218,9 +1232,15 @@ describe("codezAgentService v4 conversation channel", () => {
 
   it("reserves project ownership before create wire and passes only directories to CLI", async () => {
     const prepareSessionCreation = vi.fn(
-      async (_target: { workspacePath: string; sessionId: string; projectId: string | null }) => [
-        "/extra",
-      ],
+      async (target: {
+        workspacePath: string;
+        projectId: string | null;
+        creationCommand?: { clientId: string; commandId: string };
+      }) => ({
+        // 同一条创建命令重试必须拿回同一个 sessionId，等价于 Host 侧的原子去重预留。
+        sessionId: `session_${target.creationCommand?.commandId ?? "reserved"}`,
+        additionalDirectories: ["/extra"],
+      }),
     );
     const { service, workspacePath, logPath } = setupService({ prepareSessionCreation });
     const envelope = {
@@ -1240,13 +1260,14 @@ describe("codezAgentService v4 conversation channel", () => {
       expect(target).toMatchObject({
         workspacePath,
         projectId: "project-a",
-        sessionId: expect.any(String),
+        creationCommand: { clientId: "test", commandId: "project-create" },
       });
+      const reservedSessionId = (await prepareSessionCreation.mock.results[0]!.value).sessionId;
       expect(creates[0]?.params.payload).toMatchObject({
-        sessionId: target.sessionId,
+        sessionId: reservedSessionId,
         additionalDirectories: ["/extra"],
       });
-      expect(creates[1]?.params.payload.sessionId).toBe(target.sessionId);
+      expect(creates[1]?.params.payload.sessionId).toBe(reservedSessionId);
       expect(creates[0]?.params.payload).not.toHaveProperty("projectId");
       prepareSessionCreation.mockRejectedValueOnce(new Error("database unavailable"));
       await expect(
@@ -1933,6 +1954,9 @@ describe("codezAgentService v4 conversation channel", () => {
         type: "editUserQuery",
         baseRevision: 12,
         baseLogEpoch: "epoch-mobile",
+        // 上游 3.17.1 起 service 在 envelope 顶层按可信 attachment 注入 inputOrigin；
+        // 组合 rewind 命令本身仍原样透传，手机链路标记为 mobile。
+        inputOrigin: "mobile",
         payload: {
           target: { rowId: 18, entityId: "msg-mobile-user" },
           newText: "mobile edited query",
