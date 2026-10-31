@@ -4,7 +4,7 @@ import {
   readFileSync,
   realpathSync,
   rmSync,
-  writeFileSync,
+  writeFileSync as writeFixtureFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -32,6 +32,18 @@ const protocolModelProperties = {
   outputFormat: { supportsText: true },
 };
 const protocolModelPropertiesJson = JSON.stringify(protocolModelProperties);
+
+// 修复依据：保留的 fake 需响应上游启动协商；仅改合成 CJS 输入，不改 JSON 夹具或生产协议。
+const writeFileSync: typeof writeFixtureFileSync = (file, data, options) => {
+  const parser = "try { msg = JSON.parse(line); } catch { continue; }";
+  const capabilitiesReply =
+    "\n    if (msg.method === \"runtime/capabilities\" && msg.id !== undefined) {\n      send({ id: msg.id, result: { sessionDirectorySource: true, sessionWorkspaceRouting: true } });\n      continue;\n    }";
+  const fixture =
+    typeof file === "string" && file.endsWith(".cjs") && typeof data === "string"
+      ? data.replace(parser, parser + capabilitiesReply)
+      : data;
+  writeFixtureFileSync(file, fixture, options);
+};
 
 function createReadyCodezAgentService(options?: Parameters<typeof createCodezAgentService>[0]) {
   return createCodezAgentService({
