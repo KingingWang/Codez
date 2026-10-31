@@ -6,5 +6,5 @@ export const workspacePluginPreviewModule = {
   id: "workspace-plugin-preview",
   requires: ["shared", "ui"],
   provides: ["workspace-plugin-preview"],
-  publicEntrypoints: ["index.ts", "contract.ts"],
+  publicEntrypoints: ["index.ts", "contract.ts", "../lib/pluginIconSource.ts"],
 } as const;
