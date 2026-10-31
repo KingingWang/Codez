@@ -141,16 +141,20 @@ for (const { runtime, clientMode } of nativeRoutes) {
         assert.deepEqual(sent.at(-1), {
           id: sent.length,
           method: V4_METHODS.command,
-          params:
-            envelope.type === "sendText"
+          params: {
+            ...envelope,
+            // 上游 3.17.1 起 service 在 envelope 顶层按可信 attachment 注入 inputOrigin；
+            // sendText 仍额外在 payload 内注入，供 CLI 区分桌面/手机输入。
+            inputOrigin: clientMode === "web-remote-replayable" ? "mobile" : "desktop",
+            ...(envelope.type === "sendText"
               ? {
-                  ...envelope,
                   payload: {
                     ...envelope.payload,
                     inputOrigin: clientMode === "web-remote-replayable" ? "mobile" : "desktop",
                   },
                 }
-              : envelope,
+              : {}),
+          },
         });
       }
       assert.equal(
