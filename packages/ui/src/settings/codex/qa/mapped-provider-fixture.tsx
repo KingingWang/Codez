@@ -1,6 +1,6 @@
 // 隔离 Host 事实复现：配置 provider 没有模型分组；真实草稿/控件/Lexical 共同消费目录。
 import { useEffect, useRef, useState } from "react";
-import type { IServiceAccessor } from "@codez/services";
+import type { IServiceAccessor } from "@/codex-settings-qa-ui/contract.js";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { useCodexModelCatalog } from "@/hooks/useCodexModelCatalog.js";
 import { LexicalChatInput, type LexicalChatInputHandle } from "@/LexicalChatInput.js";

@@ -1,4 +1,4 @@
-/* eslint-disable max-lines -- 产品 broker runtime 与仅供包内测试的本地 driver seam 共用失败契约。 */
+// 产品 broker runtime 与仅供包内测试的本地 driver seam 共用失败契约。
 // Computer Use runtime 的内部实现：权限门 + 动作校验 + 串行化队列 + 驱动 dispatch。
 // 设计约束见 specs/computer-use-open-replacement.md：
 // - transport/凭据失败返回占位文案；Helper 已认证的产品错误保留结构化 envelope。

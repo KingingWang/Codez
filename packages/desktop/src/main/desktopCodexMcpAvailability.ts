@@ -3,12 +3,13 @@ import {
   CODEZ_NATIVE_BROWSER_CUA_MCP_SERVER_NAME,
   type DesktopCodexMcpServer,
 } from "@codez/shared";
+import type { NativeBrowserCuaAvailability } from "./native-browser-control/contract.js";
 
 /** A different window's registered broker must never make this Host advertise Browser support. */
 export function localBrowserMcpAvailability(
-  availability: { browserAvailable: boolean; cuaAvailable: boolean },
+  availability: NativeBrowserCuaAvailability,
   servers: readonly DesktopCodexMcpServer[],
-) {
+): NativeBrowserCuaAvailability {
   return {
     ...availability,
     browserAvailable:

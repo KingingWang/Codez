@@ -1,43 +1,28 @@
-import type { ICodezAgentService } from "@codez/services";
-import type { CodexAutomationCorrelationState } from "@codez/services/node";
 import {
   isCodexScheduledPromptCapabilitySupported,
   resolveCodexAutomationHistory,
-  type CodexAutomationHistoryResolution,
 } from "@codez/services/node";
 import type { ConversationRow } from "@codez/shared/codez-protocol-v4";
-import type { CodezAutomationRunOutcome } from "@codez/shared";
+import type {
+  CodexAutomationHistoryReconciliation,
+  CodexAutomationHistoryReconciliationInput,
+  CodexAutomationTerminalOutcome,
+  CodexAutomationTerminalState,
+  CodexScheduledPromptCapabilityReader,
+} from "./codex-automation-reconciliation/contract.js";
+
+export type { CodexAutomationHistoryReconciliation } from "./codex-automation-reconciliation/contract.js";
 
 export function codexCorrelationStateFromRunOutcome(
-  outcome: Exclude<CodezAutomationRunOutcome, "running">,
-): "completed" | "failed" | "stopped" {
+  outcome: CodexAutomationTerminalOutcome,
+): CodexAutomationTerminalState {
   return outcome === "succeeded" ? "completed" : outcome;
 }
 
 export function codexRunOutcomeFromCorrelationState(
-  state: Extract<CodexAutomationCorrelationState, "completed" | "failed" | "stopped">,
-): Exclude<CodezAutomationRunOutcome, "running"> {
+  state: CodexAutomationTerminalState,
+): CodexAutomationTerminalOutcome {
   return state === "completed" ? "succeeded" : state;
-}
-
-export type CodexAutomationHistoryReconciliation =
-  | { kind: "resolved"; resolution: CodexAutomationHistoryResolution }
-  | { kind: "missing" }
-  | { kind: "unrecoverable"; error: unknown }
-  | { kind: "unavailable"; error: unknown };
-
-interface ConversationRowsRangeReader {
-  conversationRowsRangeV4(params: {
-    workspacePath: string;
-    workspaceIdentity?: string;
-    remoteSessionId?: string;
-    sessionId: string;
-    beforeRowId?: number;
-    limit: number;
-  }): Promise<{
-    rows: ConversationRow[];
-    hasMore: boolean;
-  }>;
 }
 
 /**
@@ -45,7 +30,7 @@ interface ConversationRowsRangeReader {
  * stop the automation before any native send, rather than being inferred from a command failure.
  */
 export async function assertCodexScheduledPromptCapability(
-  agentService: Pick<ICodezAgentService, "helloConversationV4">,
+  agentService: CodexScheduledPromptCapabilityReader,
 ): Promise<void> {
   const hello = await agentService.helloConversationV4();
   const capability = hello.capabilities.codex?.scheduledPromptAutomations;
@@ -60,14 +45,9 @@ export async function assertCodexScheduledPromptCapability(
  * Reconciliation reads authoritative native history by run-derived command id. It never resends;
  * only a terminal row can resolve an ambiguous send.
  */
-export async function reconcileCodexAutomationHistory(params: {
-  agentService: ConversationRowsRangeReader;
-  workspacePath: string;
-  workspaceIdentity?: string;
-  remoteSessionId?: string;
-  threadId: string;
-  commandId: string;
-}): Promise<CodexAutomationHistoryReconciliation> {
+export async function reconcileCodexAutomationHistory(
+  params: CodexAutomationHistoryReconciliationInput,
+): Promise<CodexAutomationHistoryReconciliation> {
   const rows: ConversationRow[] = [];
   let beforeRowId: number | undefined;
   let hasMore = true;

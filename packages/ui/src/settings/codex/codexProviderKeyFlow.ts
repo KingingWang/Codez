@@ -1,4 +1,4 @@
-import type { ICodexNativeProviderKeyService } from "@codez/services";
+import type { ICodexNativeProviderKeyService } from "@/codex-settings-ui/contract.js";
 import {
   codexProviderCreateEdits,
   codexProviderDeleteEdits,
@@ -29,10 +29,7 @@ async function rollbackKeySource(
   await keyService
     .finishKeySource({ providerId, commit: false })
     .catch((rollbackError: unknown) => {
-      throw new AggregateError(
-        [cause, rollbackError],
-        "配置写入与凭据恢复均失败",
-      );
+      throw new AggregateError([cause, rollbackError], "配置写入与凭据恢复均失败");
     });
   throw cause;
 }
@@ -68,8 +65,7 @@ export async function saveCodexProviderWithKeySource(
     if (prepared) await rollbackKeySource(deps.keyService!, providerId, error);
     throw error;
   }
-  if (prepared)
-    await deps.keyService!.finishKeySource({ providerId, commit: true });
+  if (prepared) await deps.keyService!.finishKeySource({ providerId, commit: true });
 }
 
 /** 删除供应商：托管引用存在时同步清理本机凭据与注册表，失败则整事务回滚。 */

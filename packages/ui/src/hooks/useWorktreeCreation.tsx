@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { IGitService } from "@codez/services";
+import type { IGitService } from "@/git-worktree-ui/contract.js";
 import { CreateWorktreeDialog } from "@/CreateWorktreeDialog.js";
 import { useWorkspaceServicesResolution } from "@/hooks/useWorkspaceServices.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";

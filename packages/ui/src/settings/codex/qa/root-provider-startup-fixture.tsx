@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { IServiceAccessor } from "@codez/services";
+import type { IServiceAccessor } from "@/codex-settings-qa-ui/contract.js";
 import type { IPlatformService } from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
 import { useDynamicWorkflowAvailabilityLoader } from "@/hooks/useDynamicWorkflowAvailability.js";

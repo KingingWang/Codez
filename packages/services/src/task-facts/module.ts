@@ -4,7 +4,12 @@
  */
 export const taskFactsModule = {
   id: "task-facts",
-  requires: ["shared"],
+  requires: ["shared", "services", "session"],
   provides: ["task-facts"],
-  publicEntrypoints: ["index.ts", "contract.ts", "repairSubagentTaskIndex.ts"],
+  publicEntrypoints: [
+    "index.ts",
+    "contract.ts",
+    "repairSubagentTaskIndex.ts",
+    "../codez-agent/repairSelectionSideChatTaskIndex.ts",
+  ],
 } as const;

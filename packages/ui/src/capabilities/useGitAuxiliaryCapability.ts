@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { IServiceAccessor } from "@codez/services";
+import type { IServiceAccessor } from "@/codex-capability-ui/contract.js";
 import {
   codexCapabilityGate,
   projectCodexCapabilities,

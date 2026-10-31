@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ICodezAgentService } from "@codez/services";
+import type { ICodezAgentService } from "@/codex-capability-ui/contract.js";
 import { codexCapabilitySource } from "@/capabilities/codexCapabilities.js";
 
 /** hello 响应 → 对端 Host 是否为 Codex bridge（纯函数，供 hook 与测试共用）。 */

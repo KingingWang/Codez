@@ -172,7 +172,7 @@ for (const arch of ["x64", "arm64"]) {
   });
 }
 
-test("repository Helper stages Windows discovery and native error classification in its closure", async (t) => {
+test("repository Helper stages native discovery and extracted adapters in its closure", async (t) => {
   const fixture = await createFixture();
   t.after(() => rm(dirname(fixture.appOutDir), { recursive: true, force: true }));
   const result = await stageWindowsCuaRuntimeAssets({
@@ -182,12 +182,25 @@ test("repository Helper stages Windows discovery and native error classification
     electronVersion: "41.0.3",
     targetPlatform: { os: "win32", arch: "x64", key: "win32-x64" },
   });
-  for (const file of ["windows-app-discovery.js", "xa11y-errors.js", "xa11y-producer.js"]) {
+  for (const file of [
+    "windows-app-discovery.js",
+    "xa11y-errors.js",
+    "xa11y-producer.js",
+    "helper-runtime/native-access.js",
+    "helper-runtime/result-projection.js",
+    "producer/protocol.js",
+    "producer/observation.js",
+    "producer/app-resolver.js",
+  ]) {
     assert.ok(result.runtimeModules.includes(file), `${file} must be shipped with Helper`);
-    await assert.doesNotReject(readFile(resolve(result.runtimeRoot, file)));
+    assert.deepEqual(
+      await readFile(resolve(result.runtimeRoot, file)),
+      await readFile(resolve(import.meta.dirname, "../../codez-cua", file)),
+      `${file} must retain the repository implementation`,
+    );
   }
   assert.equal(
-    result.runtimeModules.some((file) => file.endsWith(".test.js")),
+    result.runtimeModules.some((file) => file.endsWith(".test.js") || file.endsWith(".ts")),
     false,
   );
 });

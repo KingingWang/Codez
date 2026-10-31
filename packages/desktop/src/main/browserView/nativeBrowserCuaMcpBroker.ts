@@ -3,7 +3,7 @@ import { chmod, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { connect, createServer, type Server, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname } from "node:path";
-import { BrowserWindow } from "electron";
+import type { BrowserWindow } from "electron";
 import {
   CODEZ_NATIVE_BROWSER_CUA_UNAVAILABLE_REASON,
   NATIVE_BROWSER_CUA_SESSION_ID,
@@ -12,37 +12,17 @@ import {
   nativeBrowserCuaMcpRequestSchema,
   nativeBrowserCuaMcpTokenFilePath,
   type BrowserCommandResult,
-  type NativeBrowserCuaMcpDescriptor,
   type NativeBrowserCuaMcpResponse,
 } from "@codez/shared";
 import type { BrowserGuestManager } from "./browserGuestManager.js";
+import type { NativeBrowserCuaMcpBroker } from "../native-browser-control/contract.js";
+
+export type { NativeBrowserCuaMcpBroker } from "../native-browser-control/contract.js";
 
 const MAX_REQUEST_BYTES = 1024 * 1024;
 // 探测残留 endpoint 的等待上限：只用于判断是否存在活着的监听者，不参与业务超时。
 const STALE_ENDPOINT_PROBE_TIMEOUT_MS = 1500;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
-
-export interface NativeBrowserCuaMcpBroker {
-  readonly ready: Promise<void>;
-  readonly readiness: Promise<void>;
-  readonly availability: {
-    browserAvailable: boolean;
-    cuaAvailable: boolean;
-  };
-  /**
-   * 全局开关（spec: codex-desktop-native-browser-cua「Global enable toggle」）。
-   * 关闭后所有请求在 schema 校验后立即 fail closed，能力描述符同步不可用。
-   */
-  setEnabled(enabled: boolean): void;
-  registerWindow(windowId: number): Promise<void>;
-  revokeWindow(windowId: number): Promise<void>;
-  descriptor(input: {
-    executable: string;
-    bridgePath: string;
-    windowId: number;
-  }): NativeBrowserCuaMcpDescriptor;
-  close(): Promise<void>;
-}
 
 interface WindowCapability {
   token: string;
@@ -61,6 +41,8 @@ export function createNativeBrowserCuaMcpBroker(input: {
     warn: (...args: unknown[]) => void;
   };
   tokenFileWriter?: (path: string, contents: string) => Promise<void>;
+  /** 同一 socket owner 的注入端口；可重复字节分片验收不执行真实 native action。 */
+  serverFactory?: (connectionListener: (socket: Socket) => void) => Server;
 }): NativeBrowserCuaMcpBroker {
   const platform = input.platform ?? process.platform;
   const endpoint = nativeBrowserCuaMcpEndpointPath({
@@ -81,7 +63,7 @@ export function createNativeBrowserCuaMcpBroker(input: {
   // 仍会走完 broker 创建，退出期 rm 会删掉正在服役实例的 socket 路径与凭据，
   // 使其 MCP 请求全部 authentication_failed（GUI 实测复现）。
   let endpointOwned = false;
-  const server: Server = createServer((socket) => {
+  const server: Server = (input.serverFactory ?? createServer)((socket) => {
     void handleSocket(socket).catch((error: unknown) => {
       input.logger.warn("Native Browser/CUA MCP request failed", {
         error: error instanceof Error ? error.message : String(error),
@@ -375,31 +357,44 @@ export function createNativeBrowserCuaMcpBroker(input: {
 
 async function readLine(socket: Socket, signal: AbortSignal): Promise<string> {
   return await new Promise<string>((resolve, reject) => {
-    let buffer = "";
+    // 修复原因：请求中的中文/emoji 也可能跨 socket 分片；逐片解码会在 JSON
+    // 校验仍成功时改变实际控制文本。完整帧才解码，保留原 1 MiB 字节边界与单次结算。
+    const chunks: Buffer[] = [];
+    let receivedBytes = 0;
+    let settled = false;
     const cleanup = () => {
       socket.off("data", onData);
       socket.off("error", onError);
       signal.removeEventListener("abort", onAbort);
     };
+    const finish = (error?: Error, frame?: string) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      chunks.length = 0;
+      if (error) reject(error);
+      else resolve(frame!);
+    };
     const onData = (chunk: Buffer) => {
-      buffer += chunk.toString("utf8");
-      if (Buffer.byteLength(buffer) > MAX_REQUEST_BYTES) {
-        cleanup();
-        reject(new Error("Native Browser/CUA request exceeded the 1 MiB limit"));
+      if (settled) return;
+      receivedBytes += chunk.length;
+      if (receivedBytes > MAX_REQUEST_BYTES) {
+        finish(new Error("Native Browser/CUA request exceeded the 1 MiB limit"));
         return;
       }
-      const newline = buffer.indexOf("\n");
+      chunks.push(chunk);
+      const newline = chunk.indexOf(0x0a);
       if (newline < 0) return;
-      cleanup();
-      resolve(buffer.slice(0, newline));
+      const frame = Buffer.concat(chunks, receivedBytes)
+        .subarray(0, receivedBytes - chunk.length + newline)
+        .toString("utf8");
+      finish(undefined, frame);
     };
     const onError = (error: Error) => {
-      cleanup();
-      reject(error);
+      finish(error);
     };
     const onAbort = () => {
-      cleanup();
-      reject(new DOMException("aborted", "AbortError"));
+      finish(new DOMException("aborted", "AbortError"));
     };
     socket.on("data", onData);
     socket.once("error", onError);

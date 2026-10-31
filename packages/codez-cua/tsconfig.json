@@ -6,5 +6,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["*.d.ts"]
+  "include": ["*.d.ts", "producer/**/*.ts", "helper-runtime/**/*.ts", "pip/**/*.ts", "qa/**/*.ts"]
 }

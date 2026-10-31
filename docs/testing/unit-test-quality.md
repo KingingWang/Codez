@@ -16,7 +16,8 @@ Web、Provider、RPC、Client、Server 和 Source Server 中的业务 test/spec 
 
 - 移除 App 的 test、test:unit、test:unit:affected、test:coverage 命令；工程 affected 选择器限定在工程项目。
 - 保留独立 test:engineering（Vitest 工程检查）、test:architecture、db:schema:check、
-  CLI/CUA 自有测试命令与现有 E2E 入口。根 Vitest 配置只注册工程测试和 CUA。
+  CLI/CUA 自有测试命令与现有 E2E 入口。根 Vitest 配置只注册工程测试；
+  当前自研 CUA 使用包内 `node --test`，不引用已移除的上游 CUA Vitest 配置。
 - 根 `pnpm typecheck` 纳入 `packages/desktop/tsconfig.renderer-services.json`，检查 Renderer 的远程服务装配是否满足共享接口；工程回归验证该文件确实被根命令及其项目引用覆盖。该窄工程不宣称覆盖完整 Renderer，后者仍由 `tsconfig.renderer.json` 单独检查。
 - pre-push 保留工作区干净、非删除目标解析为 HEAD commit、Lint、schema、架构检查及受影响工程测试；不选择或执行 App 单测。
 - 例外：守隐私或安全边界的定向取样，可以作为按路径触发的 MR CI job 自动执行（不进 pre-push，也不进工程 Vitest 清单），
@@ -29,6 +30,10 @@ Web、Provider、RPC、Client、Server 和 Source Server 中的业务 test/spec 
   全量选择仍按既有规则跳过，不据此宣称测试通过；显式全量使用 test:engineering。
 - 移除只用于 App 单测的 lint-staged 接线、coverage 配置和禁用的 CI 单测 job。
   Vitest 及其修补若仍被工程、CLI 或 CUA 使用，继续保留。
+
+Codez fork 上游集成仅保留定制提交涉及的既有回归例外，使用独立 `test:fork` 精确文件名单；
+不回到 App 通配注册，不加入工程名单，不替代 E2E。来源、框架分流与执行合同见
+[fork 回归准入规格](../../specs/fork-regression-test-admission.md)。
 
 ## 架构和开发规则
 

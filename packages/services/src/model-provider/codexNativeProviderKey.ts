@@ -1,4 +1,4 @@
-/* eslint-disable max-lines -- 注册表、凭据与保存事务的不变量集中在同一模块，拆开会让回滚路径失真。 */
+// 注册表、凭据与保存事务在同一 owner 中；当前文件在预算内，无需屏蔽检查。
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";

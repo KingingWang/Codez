@@ -1,6 +1,6 @@
 // 创建闭环必须在一个原子流程中完成“预检 -> 独占预留 -> Git 写入 -> 精确复核”。
 // 拆到多个文件会让跨进程竞态与超时恢复的时序边界失去单处审计视图。
-/* eslint-disable max-lines */
+// 当前实现仍在行数预算内，保持正常架构检查。
 import { lstat, mkdir, open, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type {

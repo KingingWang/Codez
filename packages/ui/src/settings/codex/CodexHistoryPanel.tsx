@@ -5,7 +5,7 @@ import { useCodexMessages } from "./messages.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { cn } from "@/components/lib/utils.js";
 import { useCodexHistoryRuns } from "@/capabilities/useCodexHistory.js";
-import type { ICodezAgentService } from "@codez/services";
+import type { ICodezAgentService } from "@/codex-settings-ui/contract.js";
 import { CodexNotice } from "./CodexSettingsParts.js";
 
 const statusClass = {

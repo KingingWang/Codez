@@ -1,7 +1,6 @@
-/* eslint-disable max-lines -- Helper lifecycle, broker transport and result projection form one process boundary. */
+// 原 Helper factory 继续唯一持有认证、socket、shutdown 与 idle 状态。
 import { randomBytes, timingSafeEqual } from "node:crypto";
-import { constants as fsConstants } from "node:fs";
-import { access, appendFile, chmod, rm } from "node:fs/promises";
+import { appendFile, chmod, rm } from "node:fs/promises";
 import { createServer } from "node:net";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -14,37 +13,39 @@ import {
   parseHelperBootstrapCredentials,
   serializeResponse,
 } from "./broker.js";
-import {
-  HELPER_ADDON_ENV,
-  HELPER_BUNDLE_ID,
-  HELPER_CONTROL_PROTOCOL,
-  HELPER_DISPLAY_NAME,
-} from "./broker-helper-constants.js";
-import {
-  OFFICIAL_CUA_FRAME_INTEGRITY_META_KEY,
-  OFFICIAL_CUA_FRAME_MODEL_CONTENT_PROTECTION,
-  readRasterEnvelopeIdentity,
-} from "./frame-contract.js";
-import { CUA_APP_ASSOCIATIONS_META_KEY } from "./host-display-contract.js";
+import { HELPER_BUNDLE_ID, HELPER_CONTROL_PROTOCOL } from "./broker-helper-constants.js";
 import { createInstalledAppLauncher } from "./installed-app-launcher.js";
 import { createMacOsPipPresenter } from "./pip-presentation-macos.js";
 import { createPipSessionCoordinator } from "./pip-session-coordinator.js";
 import { createPipSessionServer } from "./pip-session-server.js";
-import { createXa11yProducer, Xa11yProducerError } from "./xa11y-producer.js";
-import { isXa11yPermissionDenied } from "./xa11y-errors.js";
+import { createXa11yProducer } from "./xa11y-producer.js";
 import { discoverWindowsApps } from "./windows-app-discovery.js";
+import {
+  loadHelperXa11y,
+  preflightLinuxHelperCapabilities,
+  probePermission,
+  readHelperPermissionStatus,
+  createPermissionAdapter,
+  createPasteAdapter,
+} from "./helper-runtime/native-access.js";
+import {
+  isPlainObject,
+  projectProducerResult,
+  producerError,
+  trustedCaptureFromResult,
+} from "./helper-runtime/result-projection.js";
+export {
+  loadHelperXa11y,
+  preflightLinuxHelperCapabilities,
+  readHelperPermissionStatus,
+} from "./helper-runtime/native-access.js";
+export { projectProducerResult } from "./helper-runtime/result-projection.js";
 
 const PARENT_CHECK_INTERVAL_MS = 2000;
 const STANDALONE_IDLE_TIMEOUT_MS = 300_000;
 const DEFAULT_CREDENTIAL_BOOTSTRAP_TIMEOUT_MS = 10_000;
 const MAX_CREDENTIAL_BOOTSTRAP_TIMEOUT_MS = 30_000;
 const utf8Decoder = new TextDecoder("utf-8", { fatal: true });
-const LINUX_PREFLIGHT_ERRORS = Object.freeze({
-  NO_DISPLAY: "Linux Computer Use Helper requires an X11 or Wayland display session.",
-  UINPUT_DENIED: "Linux Wayland Computer Use requires writable /dev/uinput.",
-  ATSPI_UNAVAILABLE: "Linux Computer Use Helper AT-SPI capability is unavailable.",
-  INPUT_UNAVAILABLE: "Linux Computer Use Helper input simulation capability is unavailable.",
-});
 
 const VALUE_ARGUMENTS = new Map([
   ["--socket", "socketPath"],
@@ -57,40 +58,6 @@ const VALUE_ARGUMENTS = new Map([
   ["--permission-request", "permissionRequest"],
   ["--permission-preflight", "permissionPreflight"],
 ]);
-const PRODUCER_ERROR_CODES = Object.freeze({
-  PERMISSION_DENIED: "permission_denied",
-  INVALID_REQUEST: "invalid_request",
-  APP_NOT_FOUND: "app_not_found",
-  APP_NOT_READY: "app_not_ready",
-  LAUNCH_FAILED: "launch_failed",
-  AMBIGUOUS_APP: "ambiguous_app",
-  INVALID_APP: "invalid_request",
-  ELEMENT_UNAVAILABLE: "element_unavailable",
-  STALE_STATE: "element_unavailable",
-  NOT_SETTABLE: "not_settable",
-  NOT_SELECTABLE: "not_selectable",
-  ACTION_UNAVAILABLE: "action_unavailable",
-  FOREGROUND_REQUIRED: "foreground_required",
-  CONTROL_STOPPED: "controller_busy",
-  HELPER_UNAVAILABLE: "broker_unavailable",
-  TIMEOUT: "timeout",
-  STRUCTURED_STATE_UNAVAILABLE: "element_unavailable",
-  INTERNAL: "internal",
-});
-
-function isPlainObject(value) {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
-  const prototype = Object.getPrototypeOf(value);
-  return prototype === Object.prototype || prototype === null;
-}
-
-function hasControlCharacter(value) {
-  for (const character of value) {
-    const codePoint = character.codePointAt(0);
-    if (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f)) return true;
-  }
-  return false;
-}
 
 function requiredString(value, label) {
   if (typeof value !== "string" || value.trim().length === 0) {
@@ -190,369 +157,6 @@ function equalCapability(actual, expected) {
   const actualBytes = Buffer.from(actual, "utf8");
   const expectedBytes = Buffer.from(expected, "utf8");
   return actualBytes.length === expectedBytes.length && timingSafeEqual(actualBytes, expectedBytes);
-}
-
-function normalizeXa11yModule(module) {
-  // Node 对 CJS 的动态 import 会合成部分具名导出；xa11y 的 App 可能在 namespace 上，
-  // screenshot/inputSim 却只在 default 上。必须优先完整 default，否则 Helper 启动后截图必坏。
-  if (module?.default && typeof module.default === "object") return module.default;
-  if (module && typeof module === "object" && module.App) return module;
-  throw new CuaHelperError("xa11y native module is unavailable.", {
-    code: "broker_unavailable",
-  });
-}
-
-export async function loadHelperXa11y(options = {}) {
-  const env = options.env ?? process.env;
-  const configuredPath = env[HELPER_ADDON_ENV]?.trim();
-  if (!configuredPath) {
-    return normalizeXa11yModule(await import("@crowecawcaw/xa11y"));
-  }
-  const loader = await import(pathToFileURL(resolve(configuredPath)).href);
-  const load = loader.loadXa11y ?? loader.default;
-  if (typeof load !== "function") {
-    throw new CuaHelperError("Configured xa11y loader has no load function.", {
-      code: "broker_unavailable",
-    });
-  }
-  return normalizeXa11yModule(await load());
-}
-
-function linuxPreflightError(message) {
-  return new CuaHelperError(message, { code: "broker_unavailable" });
-}
-
-function detectLinuxDisplaySession(env) {
-  const sessionType =
-    typeof env?.XDG_SESSION_TYPE === "string" ? env.XDG_SESSION_TYPE.trim().toLowerCase() : "";
-  const hasWaylandDisplay =
-    typeof env?.WAYLAND_DISPLAY === "string" && env.WAYLAND_DISPLAY.trim().length > 0;
-  const hasX11Display = typeof env?.DISPLAY === "string" && env.DISPLAY.trim().length > 0;
-  // Bug 根因：systemd/SSH 环境可能继承 XDG_SESSION_TYPE，却没有显示 socket；只看 session type
-  // 会把无显示 Helper 误判为可用。它只用于两种 socket 同时存在时选择当前会话。
-  if (sessionType === "wayland" && hasWaylandDisplay) return "wayland";
-  if (sessionType === "x11" && hasX11Display) return "x11";
-  if (hasWaylandDisplay) return "wayland";
-  if (hasX11Display) return "x11";
-  throw linuxPreflightError(LINUX_PREFLIGHT_ERRORS.NO_DISPLAY);
-}
-
-export async function preflightLinuxHelperCapabilities(options) {
-  const platform = options?.platform ?? process.platform;
-  if (platform !== "linux") return;
-  const xa11y = options?.xa11y;
-  const session = detectLinuxDisplaySession(options?.env ?? process.env);
-  if (session === "wayland") {
-    try {
-      // Bug 根因：只验证 inputSim 能构造会把 /dev/uinput 的权限错误推迟到首个真实输入；
-      // 必须由即将执行动作的同一 Helper 进程先做 W_OK 检查，不能由 Host 代查身份。
-      await (options?.accessFile ?? access)("/dev/uinput", fsConstants.W_OK);
-    } catch {
-      throw linuxPreflightError(LINUX_PREFLIGHT_ERRORS.UINPUT_DENIED);
-    }
-  }
-  try {
-    if (!xa11y?.App || typeof xa11y.App.list !== "function") throw new Error("missing App.list");
-    const apps = await xa11y.App.list();
-    if (!Array.isArray(apps)) throw new Error("invalid App.list result");
-  } catch {
-    throw linuxPreflightError(LINUX_PREFLIGHT_ERRORS.ATSPI_UNAVAILABLE);
-  }
-  try {
-    if (typeof xa11y?.inputSim !== "function") throw new Error("missing inputSim");
-    const simulator = await xa11y.inputSim();
-    if (
-      !simulator ||
-      (typeof simulator !== "object" && typeof simulator !== "function") ||
-      (simulator.dispose !== undefined && typeof simulator.dispose !== "function")
-    ) {
-      throw new Error("invalid inputSim result");
-    }
-    // xa11y 0.15 的 InputSim 随 JS wrapper 生命周期释放，没有公开 dispose；未来版本若提供
-    // 显式钩子则必须在 ready 前调用并等待完成，当前版本则在函数返回时丢弃唯一局部引用。
-    await simulator.dispose?.();
-  } catch {
-    // Bug 根因：延迟创建 inputSim 会让 Helper 先发布 ready，再在第一次 click/key 时才暴露
-    // 原生驱动或权限故障。启动门必须验证初始化和释放都成功，且不能产生输入副作用。
-    throw linuxPreflightError(LINUX_PREFLIGHT_ERRORS.INPUT_UNAVAILABLE);
-  }
-}
-
-function appIdentity(app) {
-  if (!isPlainObject(app)) return undefined;
-  const pid = Number.isSafeInteger(app.pid) && app.pid > 0 ? app.pid : undefined;
-  const bundleId = typeof app.bundle_id === "string" && app.bundle_id ? app.bundle_id : undefined;
-  const name = typeof app.name === "string" && app.name ? app.name : undefined;
-  const appKey = bundleId ?? (pid === undefined ? undefined : `pid:${pid}`);
-  if (!appKey) return undefined;
-  return { appKey, ...(name ? { displayName: name } : {}) };
-}
-
-function appAssociations(method, value) {
-  if (method === "list_apps" && Array.isArray(value)) {
-    const items = value.map(appIdentity).map((identity) => identity ?? null);
-    return { items };
-  }
-  const state = isPlainObject(value?.state) ? value.state : value;
-  const primary = appIdentity(state?.app);
-  return primary ? { primary } : undefined;
-}
-
-function frameAppRef(state) {
-  if (!isPlainObject(state) || !isPlainObject(state.app)) return undefined;
-  const app = state.app;
-  const appRef =
-    Number.isSafeInteger(app.pid) && app.pid > 0
-      ? { pid: app.pid }
-      : typeof app.bundle_id === "string" && app.bundle_id.length > 0
-        ? { bundle_id: app.bundle_id }
-        : typeof app.name === "string" && app.name.length > 0
-          ? { name: app.name }
-          : undefined;
-  if (!appRef) return undefined;
-  const windowId = isPlainObject(state.window) ? state.window.window_id : undefined;
-  return Number.isSafeInteger(windowId) && windowId >= 0
-    ? { ...appRef, window_id: windowId }
-    : appRef;
-}
-
-function createFrameBlocks(screenshot, state) {
-  if (!isPlainObject(screenshot)) return undefined;
-  const { data, width, height, frame_id: frameId } = screenshot;
-  if (
-    typeof data !== "string" ||
-    data.length === 0 ||
-    !Number.isSafeInteger(width) ||
-    width <= 0 ||
-    !Number.isSafeInteger(height) ||
-    height <= 0 ||
-    typeof frameId !== "string" ||
-    frameId.length === 0
-  ) {
-    return undefined;
-  }
-  const mimeType = screenshot.mime_type === "image/png" ? screenshot.mime_type : undefined;
-  if (!mimeType) return undefined;
-  const envelope = readRasterEnvelopeIdentity({ width, height, mimeType });
-  if (!envelope) return undefined;
-  const appRef = frameAppRef(state);
-  const officialRef = {
-    type: "codez_cua_frame_ref",
-    schemaVersion: 1,
-    authority: "codez.cua/open-frame/xa11y-helper",
-    frameId,
-    contentProtection: OFFICIAL_CUA_FRAME_MODEL_CONTENT_PROTECTION,
-    mimeType,
-    width,
-    height,
-    envelopeAlgorithm: envelope.algorithm,
-    ...(appRef ? { appRef } : {}),
-  };
-  return {
-    content: [
-      { type: "image", data, mimeType },
-      { type: "text", text: JSON.stringify(officialRef) },
-      {
-        type: "text",
-        text: JSON.stringify({
-          image_ref: { frame_id: frameId, mime_type: mimeType, width, height },
-        }),
-      },
-    ],
-    integrity: {
-      contentProtection: OFFICIAL_CUA_FRAME_MODEL_CONTENT_PROTECTION,
-      envelopeAlgorithm: envelope.algorithm,
-    },
-  };
-}
-
-function withoutScreenshot(value) {
-  if (!isPlainObject(value) || !Object.hasOwn(value, "screenshot")) return value;
-  const { screenshot: _screenshot, mode, ...rest } = value;
-  return { ...rest, ...(mode ? { mode, snapshot_mode: mode } : {}) };
-}
-
-export function projectProducerResult(method, value) {
-  const state = isPlainObject(value?.state) ? value.state : value;
-  const frame = createFrameBlocks(state?.screenshot, state);
-  const structuredValue = isPlainObject(value?.state)
-    ? { ...value, state: withoutScreenshot(value.state) }
-    : withoutScreenshot(value);
-  const structuredContent =
-    isPlainObject(structuredValue) && structuredValue.mode
-      ? { ...structuredValue, snapshot_mode: structuredValue.mode }
-      : structuredValue;
-  const content = frame?.content ?? [
-    { type: "text", text: JSON.stringify(value === undefined ? null : value) },
-  ];
-  const associations = appAssociations(method, value);
-  const meta = {
-    ...(frame ? { [OFFICIAL_CUA_FRAME_INTEGRITY_META_KEY]: frame.integrity } : {}),
-    ...(associations ? { [CUA_APP_ASSOCIATIONS_META_KEY]: associations } : {}),
-  };
-  return {
-    content,
-    ...(structuredContent !== undefined ? { structuredContent } : {}),
-    ...(Object.keys(meta).length > 0 ? { _meta: meta } : {}),
-  };
-}
-
-function producerError(error) {
-  if (!(error instanceof Xa11yProducerError)) return error;
-  return new CuaHelperError(error.message, {
-    code: PRODUCER_ERROR_CODES[error.code] ?? "internal",
-    details: error.details,
-    possiblySent: error.actionSent,
-    retryable: error.retry === "retry",
-  });
-}
-
-async function probePermission(xa11y, capability, platform = process.platform) {
-  try {
-    if (capability === "screen_recording") {
-      const screenshot = await xa11y.screenshot();
-      const width = screenshot?.width;
-      const height = screenshot?.height;
-      const png = screenshot?.toPng?.();
-      // 根因：原生绑定在 ABI 不匹配时可能 resolve 空对象；仅以“不抛异常”判 granted
-      // 会把不可用的截图权限误报为已授权，因此必须校验真实栅格和 PNG 结果。
-      if (
-        !Number.isSafeInteger(width) ||
-        width <= 0 ||
-        !Number.isSafeInteger(height) ||
-        height <= 0 ||
-        !Buffer.isBuffer(png) ||
-        png.length === 0
-      ) {
-        throw new Error("screen recording probe returned an invalid screenshot");
-      }
-    } else if (platform === "win32") {
-      // 全桌面 App.list 超时不等于权限拒绝；前台绑定走 HWND，不访问无关 UIA provider。
-      const app = await xa11y.App.foreground({ timeout: 0 });
-      if (!Number.isSafeInteger(app?.pid) || app.pid <= 0) {
-        throw new Error("accessibility probe has no foreground application");
-      }
-    } else {
-      const apps = await xa11y.App.list();
-      if (!Array.isArray(apps)) {
-        throw new Error("accessibility probe returned an invalid app list");
-      }
-    }
-    return { state: "granted" };
-  } catch (error) {
-    return {
-      // 枚举超时、原生结果损坏都不是权限裁决，不能引导用户反复授权。
-      state: isXa11yPermissionDenied(error) ? "denied" : "unknown",
-      error: error instanceof Error ? error.message : "permission probe failed",
-    };
-  }
-}
-
-export async function readHelperPermissionStatus(xa11y, options = {}) {
-  const platform = options.platform ?? process.platform;
-  const [accessibility, screenRecording] = await Promise.all([
-    probePermission(xa11y, "accessibility", platform),
-    probePermission(xa11y, "screen_recording", platform),
-  ]);
-  return {
-    available: true,
-    platform,
-    grant_owner: HELPER_BUNDLE_ID,
-    owner: { bundle_id: HELPER_BUNDLE_ID, display_name: HELPER_DISPLAY_NAME },
-    accessibility: accessibility.state,
-    accessibility_probe_ok: accessibility.state === "granted",
-    accessibility_probe: {
-      ok: accessibility.state === "granted",
-      ...(accessibility.error ? { reason: accessibility.error } : {}),
-    },
-    screen_recording: screenRecording.state,
-    screen_capture_probe: {
-      ok: screenRecording.state === "granted",
-      ...(screenRecording.error ? { reason: screenRecording.error } : {}),
-    },
-  };
-}
-
-function createPermissionAdapter(xa11y) {
-  return async ({ capabilities }) => {
-    const requested =
-      Array.isArray(capabilities) && capabilities.length > 0
-        ? capabilities
-        : ["accessibility", "screen_recording"];
-    const status = {};
-    for (const capability of requested) {
-      status[capability] = (await probePermission(xa11y, capability)).state;
-    }
-    return { ready: Object.values(status).every((state) => state === "granted"), status };
-  };
-}
-
-function createPasteAdapter(xa11y) {
-  return async ({ text }) => {
-    const simulator = xa11y.inputSim?.();
-    if (!simulator || typeof simulator.typeText !== "function") {
-      throw new CuaHelperError("xa11y input simulator is unavailable.", {
-        code: "broker_unavailable",
-      });
-    }
-    // xa11y 没有跨平台剪贴板 API；直接注入同一文本可避免覆盖用户剪贴板，同时保留
-    // `paste` 的可观察结果。富文本格式降级为文本是开源 Helper 的明确兼容语义。
-    await simulator.typeText(text);
-    await simulator.dispose?.();
-  };
-}
-
-function trustedCaptureFromResult(method, input, value, context) {
-  if (
-    method !== "get_app_state" ||
-    !isPlainObject(input) ||
-    input.include_screenshot !== true ||
-    !isPlainObject(context)
-  ) {
-    return undefined;
-  }
-  const sessionId =
-    typeof context.sessionId === "string" && context.sessionId.trim() === context.sessionId
-      ? context.sessionId
-      : undefined;
-  const turnId =
-    typeof context.turnId === "string" && context.turnId.trim() === context.turnId
-      ? context.turnId
-      : undefined;
-  const state = isPlainObject(value?.state) ? value.state : value;
-  const screenshot = isPlainObject(state?.screenshot) ? state.screenshot : undefined;
-  if (!sessionId || !turnId || !isPlainObject(state) || !screenshot) return undefined;
-  const frameId = screenshot.frame_id;
-  if (
-    typeof frameId !== "string" ||
-    frameId.length === 0 ||
-    (state.frame_id !== undefined && state.frame_id !== frameId)
-  ) {
-    return undefined;
-  }
-  const rawTitle =
-    (isPlainObject(state.window) && typeof state.window.title === "string"
-      ? state.window.title
-      : undefined) ??
-    (isPlainObject(state.app) && typeof state.app.name === "string" ? state.app.name : undefined);
-  const title =
-    typeof rawTitle === "string" &&
-    rawTitle.length > 0 &&
-    Buffer.byteLength(rawTitle, "utf8") <= 256 &&
-    !hasControlCharacter(rawTitle) &&
-    rawTitle.trim() === rawTitle
-      ? rawTitle
-      : undefined;
-  return {
-    sessionId,
-    turnId,
-    frameId,
-    mimeType: screenshot.mime_type,
-    data: screenshot.data,
-    width: screenshot.width,
-    height: screenshot.height,
-    ...(title ? { title } : {}),
-  };
 }
 
 export function createHelperBackend(options) {

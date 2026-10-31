@@ -11,3 +11,5 @@
 - 标题/删除意图仅是旧版本交接。bit 1=删除，bit 2=标题，bit 4=orphan，bit 8=归属已判断；确认后的位清理由存储事务完成。
 
 冷恢复 child 索引修复通过最小 listSessions/listTaskMetas/removeSubagentIndexRow 端口执行，每批 64 条、existing-only，逐条核对工作区身份和订阅代际；只删被 CLI 明确标为 subagent_child、workflow_child、nested_workflow_child、selection_side_chat 的隐藏索引，不删正文。fork、workflow_parent、未知类型及身份未确认的记录保留；列表隐藏不改变辅助对话的聊天能力。
+
+保留原 selection-side-chat 的 targeted `readSession` 兼容端口：existing-only/index 读取明确类型与身份后才软删派生索引，读取失败、缺席、未知类型或迟到结果保守保留，不写原生转录。它与 64/batch 路径按既有行为保留；登记不等于已证明两者等价，不因名称相近删除原路径，也不新增第三条修复路径。

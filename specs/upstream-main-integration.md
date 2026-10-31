@@ -21,7 +21,7 @@
 | 对话、Queue、Guide、停止与继续 | V4 pane/composer、Codex bridge | Renderer 草稿；Codex thread/CommandInbox | 既有 V4 命令 → stdio → 原生 app-server | desktop-continuous 与 web-remote-replayable 分离 |
 | Codex 设置、模型与 Provider Key | settings/codex、useCodexSettings | 表单草稿；目标 Host / 原生配置 | 既有 workspace 配置端口 | 写目标不含 Agent 代际；真实 workspace 切换失效 |
 | 项目历史、标题与归档管理 | project-sidebar、task-index、rollout 同步 | CLI 会话事实；Host 组织态 | sessionsIndex/reconcile、幂等 deleteSession、项目事务 | Host + canonical workspace identity；cwd 用物理目录匹配 |
-| 手机、扩展与 Android 远控 | 既有 relay transport 和 shared-host attachment | 原 Host / transport owner | E2EE + Gzip → 既有 RPC / replay | 不新增 Agent、Host、accepted queue 或业务 relay 状态 |
+| 手机、扩展与 Android 远控 | 既有 relay transport 和 shared-host attachment | 原 Host / transport owner | 原 X25519 + XChaCha20-Poly1305 E2EE + Gzip → 既有 RPC / replay | 不新增 Agent、Host、accepted queue 或业务 relay 状态 |
 | Source Server 更新与 Usage Stats | 连接管理、设置与用量面板 | 所属服务器 Host | GitHub Release 固定索引 / 原服务 | remoteSessionId、identity 和所属服务器贯穿 |
 | Automations | 既有表单与调度器 | 表单草稿；Host dispatch owner | 保存的目录/模型 → 所属窗口 attachment | 稀疏默认值、幂等关联、失败释放与有界恢复 |
 | Computer Use | 自研 codez-cua、原生 MCP 桥接 | Local Host 授权与既有 broker | 平台端口、按字节解帧 | 上游仍是 fail-closed stub，不替换真实实现 |
@@ -81,10 +81,13 @@ Host 组织命令 → 原事务 / CAS → 同一 app 索引 → 侧栏投影
 - 完整保留 Codex 原生设置、调用轨迹、工具卡/图片/Plan/MCP approval、auto-approval review、
   instant_interrupt=false、Gemini wire API、Provider Key 轮换与并发读取合并。
 - 保留物理 cwd 历史发现、首次归属预留、同 roots 恢复项目、全局 rollout 补种和 ensureHost 屏障。
-- 保留 X25519/AES-GCM、Gzip、扩展及 Android 资产、OAuth/QR query/hash、
+- 保留源码实际已有的 X25519/XChaCha20-Poly1305、Gzip、扩展及 Android 资产、OAuth/QR query/hash、
   attachment 首帧 readiness、跨 workspace 加密 transport 复用和 replayable reasoning 抑制。
 - 保留 GitHub Release 分发、内嵌 runtime、Source Server 必需升级与重试、SSH auto、
   Automation 隔离、任务悬浮卡/时间戳/错误详情、Worktree 和全部定制 CI 抗抖动守卫。
+
+提示词的 AES-GCM 描述与原 HEAD 的真实 E2EE 实现不符。本轮以功能及客户端兼容为准，
+保留原 cipher、nonce、key derivation 与 `#e2ee=v1&k=...` 线协议，不静默替换算法。
 
 ## 品牌转换
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { GitWorktreeEntry } from "@codez/shared";
-import type { IGitService } from "@codez/services";
+import type { IGitService } from "@/git-worktree-ui/contract.js";
 import {
   deriveProjectGroups,
   deriveWorktreeDiscoveryEntries,
@@ -260,6 +260,6 @@ export function useProjectWorktreeDiscovery(): ProjectWorktreeDiscovery {
       refresh,
     };
     // tabSignature 代表 tab 集合变化；facts/trees 是台账读取结果。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // tabStore 是原 Provider 持有的稳定访问端口；保留签名驱动的投影依赖，不改变扫描触发。
   }, [factsByWorkspaceKey, treesByProjectKey, failedListProjectKeys, tabSignature, refresh]);
 }

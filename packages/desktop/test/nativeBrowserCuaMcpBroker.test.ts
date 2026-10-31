@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { spawn } from "node:child_process";
-import { connect } from "node:net";
+import { EventEmitter } from "node:events";
+import { connect, createServer, type Socket } from "node:net";
 import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createNativeBrowserCuaMcpBroker } from "../src/main/browserView/nativeBrowserCuaMcpBroker.js";
+import { executeNativeBrowserCuaBrokerRequest } from "../src/host/nativeBrowserCuaBrokerClient.js";
 
 function once<T = void>() {
   let resolve!: (value: T) => void;
@@ -178,6 +180,7 @@ test("native broker window token failure rejects registerWindow and fails closed
   await broker.ready;
   const registration = broker.registerWindow(1);
   await new Promise((resolve) => setImmediate(resolve));
+  assert.ok(rejectToken);
   rejectToken(new Error("token write fixture failed"));
   await assert.rejects(registration, /token write fixture failed/u);
   assert.deepEqual(broker.availability, { browserAvailable: false, cuaAvailable: false });
@@ -190,7 +193,7 @@ test("native broker scopes tokens to exact windows and revokes only the owned cr
   const executed: { windowId: number; browserId: string; workspaceKey: string }[] = [];
   const broker = createNativeBrowserCuaMcpBroker({
     manager: {
-      async execute(owner) {
+      async execute(owner: { windowId: number; browserId: string; workspaceKey: string }) {
         executed.push({
           windowId: owner.windowId,
           browserId: owner.browserId,
@@ -540,6 +543,240 @@ test("native broker toggle disables dispatch immediately and re-enables cleanly"
     const accepted = await send();
     assert.match(accepted, /"ok":true/u);
     assert.equal(executed.length, 1);
+  } finally {
+    await broker.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+class FixtureMainBrokerSocket extends EventEmitter {
+  readonly response = once<string>();
+  responses = 0;
+  writable = true;
+  end(value: string) {
+    this.responses += 1;
+    this.response.resolve(value.trimEnd());
+    this.writable = false;
+    this.emit("close");
+    return this;
+  }
+}
+
+async function withFramedMainBroker(
+  run: (fixture: {
+    token: string;
+    commands: unknown[];
+    startConnection: (socket: FixtureMainBrokerSocket) => void;
+  }) => Promise<void>,
+) {
+  const directory = await mkdtemp(join(tmpdir(), "native-browser-cua-frame-"));
+  const commands: unknown[] = [];
+  let acceptConnection: ((socket: Socket) => void) | undefined;
+  const broker = createNativeBrowserCuaMcpBroker({
+    manager: {
+      async execute(_owner: unknown, command: unknown) {
+        commands.push(command);
+        return { ok: true, elapsedMs: 0 };
+      },
+    } as never,
+    flavor: "frame-test",
+    userDataPath: directory,
+    temporaryDirectory: directory,
+    eligibleWindowResolver: (windowId) => ({ id: windowId }) as never,
+    logger: { warn: () => {} },
+    serverFactory: (listener) => {
+      acceptConnection = listener;
+      return createServer();
+    },
+  });
+  try {
+    await broker.ready;
+    await broker.registerWindow(1);
+    const descriptor = broker.descriptor({
+      executable: process.execPath,
+      bridgePath: "/fixture/bridge.cjs",
+      windowId: 1,
+    });
+    const token = (await readFile(descriptor.tokenFile, "utf8")).trim();
+    await run({
+      token,
+      commands,
+      startConnection(socket) {
+        assert.ok(acceptConnection);
+        acceptConnection(socket as unknown as Socket);
+      },
+    });
+  } finally {
+    await broker.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+}
+
+test("native broker request preserves every CJK and emoji byte split with one dispatch", async (t) => {
+  await withFramedMainBroker(async ({ token, commands, startConnection }) => {
+    const command = { method: "type", text: "输入中文🙂 日本語🧪 保留原样" };
+    const frame = Buffer.from(
+      `${JSON.stringify({
+        id: "00000000-0000-4000-8000-000000000042",
+        token,
+        command,
+      })}\n`,
+    );
+    let checkedSplits = 0;
+    for (let offset = 1; offset < frame.length; offset += 1) {
+      if ((frame[offset]! & 0xc0) !== 0x80) continue;
+      const socket = new FixtureMainBrokerSocket();
+      const before = commands.length;
+      startConnection(socket);
+      socket.emit("data", frame.subarray(0, offset));
+      socket.emit("data", frame.subarray(offset));
+      socket.emit("data", frame);
+      const response = JSON.parse(await socket.response.promise);
+      assert.equal(response.ok, true, `UTF-8 split at byte ${offset}`);
+      assert.deepEqual(commands.at(-1), command);
+      assert.equal(commands.length, before + 1);
+      assert.equal(socket.responses, 1);
+      checkedSplits += 1;
+    }
+    assert.ok(checkedSplits >= 20);
+    t.diagnostic(`verified multibyte request splits: ${checkedSplits}`);
+  });
+});
+
+test("native broker keeps the 1 MiB request boundary and rejects overflow without dispatch", async () => {
+  await withFramedMainBroker(async ({ token, commands, startConnection }) => {
+    const limit = 1024 * 1024;
+    const payload = {
+      id: "00000000-0000-4000-8000-000000000043",
+      token,
+      command: { method: "type", text: "" },
+    };
+    const overhead = Buffer.byteLength(`${JSON.stringify(payload)}\n`);
+    payload.command.text = "a".repeat(limit - overhead);
+    const boundary = Buffer.from(`${JSON.stringify(payload)}\n`);
+    assert.equal(boundary.length, limit);
+    const accepted = new FixtureMainBrokerSocket();
+    startConnection(accepted);
+    accepted.emit("data", boundary.subarray(0, 65_537));
+    accepted.emit("data", boundary.subarray(65_537));
+    assert.equal(JSON.parse(await accepted.response.promise).ok, true);
+    assert.equal(commands.length, 1);
+    assert.deepEqual(commands[0], payload.command);
+
+    const rejected = new FixtureMainBrokerSocket();
+    startConnection(rejected);
+    rejected.emit("data", Buffer.alloc(limit, 0x61));
+    rejected.emit("data", Buffer.from("b"));
+    rejected.emit("data", boundary);
+    const response = JSON.parse(await rejected.response.promise);
+    assert.equal(response.ok, false);
+    assert.equal(response.error, "invalid_request");
+    assert.match(response.message, /could not be read/u);
+    assert.equal(commands.length, 1);
+    assert.equal(rejected.responses, 1);
+  });
+});
+
+test("native broker drops a partial closed connection before dispatch", async () => {
+  await withFramedMainBroker(async ({ commands, startConnection }) => {
+    const socket = new FixtureMainBrokerSocket();
+    startConnection(socket);
+    socket.emit("data", Buffer.from('{"title":"未完成🙂'));
+    socket.writable = false;
+    socket.emit("close");
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    assert.deepEqual(commands, []);
+    assert.equal(socket.responses, 0);
+    assert.equal(socket.listenerCount("data"), 0);
+  });
+});
+
+test("real socket Host-to-Main request and response retain large Unicode frames", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "native-browser-cua-unicode-"));
+  const text = "输入中文😀日本語🧪".repeat(10_000);
+  const title = "页面中文🙂多字节🧪".repeat(20_000);
+  const commands: unknown[] = [];
+  let requestChunks = 0;
+  let responseChunks = 0;
+  const broker = createNativeBrowserCuaMcpBroker({
+    manager: {
+      async execute(_owner: unknown, command: unknown) {
+        commands.push(command);
+        return {
+          ok: true,
+          state: {
+            url: "https://example.invalid",
+            title,
+            canGoBack: false,
+            canGoForward: false,
+          },
+          elapsedMs: 0,
+        };
+      },
+    } as never,
+    flavor: "unicode-test",
+    userDataPath: directory,
+    temporaryDirectory: directory,
+    eligibleWindowResolver: (windowId) => ({ id: windowId }) as never,
+    logger: { warn: () => {} },
+    serverFactory: (listener) =>
+      createServer((socket) => {
+        socket.on("data", () => {
+          requestChunks += 1;
+        });
+        listener(socket);
+      }),
+  });
+  try {
+    await broker.ready;
+    await broker.registerWindow(1);
+    const target = broker.descriptor({
+      executable: process.execPath,
+      bridgePath: "/fixture/bridge.cjs",
+      windowId: 1,
+    });
+    const command = { method: "type", text };
+    const id = "00000000-0000-4000-8000-000000000044";
+    const windowToken = (await readFile(target.tokenFile, "utf8")).trim();
+    const requestFrameBytes = Buffer.byteLength(
+      `${JSON.stringify({ id, token: windowToken, command })}\n`,
+    );
+    const line = await executeNativeBrowserCuaBrokerRequest({
+      target,
+      payload: JSON.stringify({
+        id,
+        token: "synthetic-remote-token-must-be-replaced",
+        command,
+      }),
+      connect: (endpoint) => {
+        const socket = connect(endpoint);
+        socket.on("data", () => {
+          responseChunks += 1;
+        });
+        return socket;
+      },
+    });
+    const response = JSON.parse(line);
+    assert.equal(response.ok, true);
+    assert.equal(response.id, id);
+    assert.equal(commands.length, 1);
+    assert.ok(
+      JSON.stringify(commands[0]) === JSON.stringify(command),
+      "request text must be exact",
+    );
+    assert.ok(response.result.state.title === title, "response title must be exact");
+    assert.equal(line.includes("\ufffd"), false);
+    assert.ok(requestChunks > 1, `request must cross socket chunks: ${requestChunks}`);
+    assert.ok(responseChunks > 1, `response must cross socket chunks: ${responseChunks}`);
+    t.diagnostic(
+      JSON.stringify({
+        requestFrameBytes,
+        responseFrameBytes: Buffer.byteLength(line) + 1,
+        requestChunks,
+        responseChunks,
+        dispatches: commands.length,
+      }),
+    );
   } finally {
     await broker.close();
     await rm(directory, { recursive: true, force: true });
