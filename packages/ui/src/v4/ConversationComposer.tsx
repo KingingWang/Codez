@@ -1916,7 +1916,10 @@ function ConversationComposerImpl({
             inputApiRef.current?.clear();
             updateText("");
           }
-          finalizeSubmittedDraft();
+          // 无参数 `/model`、`/mode` 只打开 picker，没有发送消息；这里只结算草稿事务，
+          // 不交接附件或移除上下文，避免把用户尚未提交的内容当成已发送。
+          submissionDraftTransaction.finalize();
+          activeSubmissionDraftTransactionRef.current = null;
           handleConfigPickerOpenChange(sendResult.picker, true);
           sendAction.noop();
           return;
@@ -3127,7 +3130,7 @@ function ConversationComposerImpl({
           // Bugfix 原因：命令目录必须完整来自 CLI workspace slash catalog；UI 只在
           // secondary pane 按产品能力隐藏 goal，不再追加任何内建命令或别名。
           excludedSlashCommandNames={suppressGoalCommands ? ["goal"] : undefined}
-          appSlashCommands={combinedAppSlashCommands.filter((command) =>
+          appSlashCommands={combinedAppSlashCommands?.filter((command) =>
             command.recovery ? recoveryAvailable : !runtimeBlocked,
           )}
           enableMentionPanel
