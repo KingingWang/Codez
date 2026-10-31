@@ -586,37 +586,37 @@ export type WebRemoteControlExternalWorkspaceBridge =
 
 export interface WebRemoteControlBootstrapRequestPayload {
   terminalClientSessionId?: string;
-  zcode_type: "bootstrap-request";
+  codez_type: "bootstrap-request";
   requestId: string;
 }
 
 export interface WebRemoteControlBootstrapResponsePayload {
-  zcode_type: "bootstrap-response";
+  codez_type: "bootstrap-response";
   requestId: string;
   success: true;
   result: WebRemoteControlWindowBootstrapResult;
 }
 
 export interface WebRemoteControlWorkspaceListRequestPayload {
-  zcode_type: "workspace-list-request";
+  codez_type: "workspace-list-request";
   requestId: string;
 }
 
 export interface WebRemoteControlWorkspaceListResponsePayload {
-  zcode_type: "workspace-list-response";
+  codez_type: "workspace-list-response";
   requestId: string;
   success: true;
   result: WebRemoteControlWorkspaceListResult;
 }
 
 export interface WebRemoteControlWorkspaceListUpdatedPayload {
-  zcode_type: "workspace-list-updated";
+  codez_type: "workspace-list-updated";
   result: WebRemoteControlWorkspaceListResult;
 }
 
 export interface WebRemoteControlWorkspaceBridgeOpenPayload {
   terminalClientSessionId?: string;
-  zcode_type: "workspace-bridge-open";
+  codez_type: "workspace-bridge-open";
   requestId: string;
   bridgeSessionId: string;
   bridgeGeneration?: number;
@@ -630,7 +630,7 @@ export interface WebRemoteControlWorkspaceBridgeOpenPayload {
 }
 
 export interface WebRemoteControlWorkspaceBridgeReadyPayload {
-  zcode_type: "workspace-bridge-ready";
+  codez_type: "workspace-bridge-ready";
   requestId: string;
   bridgeSessionId: string;
   bridgeGeneration?: number;
@@ -639,7 +639,7 @@ export interface WebRemoteControlWorkspaceBridgeReadyPayload {
 }
 
 export interface WebRemoteControlWorkspaceBridgeErrorPayload {
-  zcode_type: "workspace-bridge-error";
+  codez_type: "workspace-bridge-error";
   requestId: string;
   bridgeSessionId?: string;
   bridgeGeneration?: number;
@@ -649,20 +649,20 @@ export interface WebRemoteControlWorkspaceBridgeErrorPayload {
 }
 
 export interface WebRemoteControlWorkspaceReconnectRequestPayload {
-  zcode_type: "workspace-reconnect-request";
+  codez_type: "workspace-reconnect-request";
   requestId: string;
   workspaceKey: string;
 }
 
 export type WebRemoteControlWorkspaceReconnectResponsePayload =
   | {
-      zcode_type: "workspace-reconnect-response";
+      codez_type: "workspace-reconnect-response";
       requestId: string;
       workspaceKey: string;
       success: true;
     }
   | {
-      zcode_type: "workspace-reconnect-response";
+      codez_type: "workspace-reconnect-response";
       requestId: string;
       workspaceKey: string;
       success: false;
@@ -670,7 +670,7 @@ export type WebRemoteControlWorkspaceReconnectResponsePayload =
     };
 
 export interface WebRemoteControlMobileViewStatePayload {
-  zcode_type: "mobile-view-state-update";
+  codez_type: "mobile-view-state-update";
   viewState: WebRemoteControlMobileViewState;
   deviceInfo?: WebRemoteControlMobileDeviceInfo;
 }
@@ -682,7 +682,7 @@ export interface WebRemoteControlMobileTaskView {
 }
 
 export interface WebRemoteControlMobileTaskViewUpdatePayload {
-  zcode_type: "mobile-task-view-update";
+  codez_type: "mobile-task-view-update";
   epoch: string;
   seq: number;
   bridgeSessionId: string;
@@ -691,13 +691,13 @@ export interface WebRemoteControlMobileTaskViewUpdatePayload {
 }
 
 export interface WebRemoteControlMobileTaskViewRequestPayload {
-  zcode_type: "mobile-task-view-request";
+  codez_type: "mobile-task-view-request";
   epoch: string;
 }
 
 export type WebRemoteControlPlatformRequestPayload = {
   [K in WebRemoteControlPlatformMethod]: {
-    zcode_type: "platform-request";
+    codez_type: "platform-request";
     requestId: string;
     method: K;
     args?: WebRemoteControlPlatformMethodArgsMap[K];
@@ -707,7 +707,7 @@ export type WebRemoteControlPlatformRequestPayload = {
 export type WebRemoteControlPlatformResponsePayload =
   | {
       [K in WebRemoteControlPlatformMethod]: {
-        zcode_type: "platform-response";
+        codez_type: "platform-response";
         requestId: string;
         method: K;
         success: true;
@@ -715,7 +715,7 @@ export type WebRemoteControlPlatformResponsePayload =
       };
     }[WebRemoteControlPlatformMethod]
   | {
-      zcode_type: "platform-response";
+      codez_type: "platform-response";
       requestId: string;
       method: WebRemoteControlPlatformMethod;
       success: false;
@@ -724,7 +724,7 @@ export type WebRemoteControlPlatformResponsePayload =
 
 /** @deprecated 仅供 legacy adapter 单测/迁移使用；production parser 自 04D-3 起拒绝。 */
 export interface WebRemoteControlRpcFramePayload {
-  zcode_type: "rpc-frame";
+  codez_type: "rpc-frame";
   bridgeSessionId: string;
   bridgeGeneration?: number;
   recoveryId?: string;
@@ -733,7 +733,7 @@ export interface WebRemoteControlRpcFramePayload {
 }
 
 export interface WebRemoteControlBridgeDegradedPayload {
-  zcode_type: "bridge-degraded";
+  codez_type: "bridge-degraded";
   bridgeSessionId: string;
   bridgeGeneration?: number;
   recoveryId?: string;
@@ -750,7 +750,7 @@ export interface WebRemoteControlBridgeDegradedPayload {
 }
 
 export interface WebRemoteControlAppErrorPayload {
-  zcode_type: "app-error";
+  codez_type: "app-error";
   requestId?: string;
   bridgeSessionId?: string;
   reason: WebRemoteControlFailureReason;
@@ -767,7 +767,7 @@ export type WebRemoteControlMobileDiagnosticEvent =
   | "failure";
 
 export interface WebRemoteControlMobileDiagnosticPayload {
-  zcode_type: "mobile-diagnostic";
+  codez_type: "mobile-diagnostic";
   event: WebRemoteControlMobileDiagnosticEvent;
   timestamp: number;
   state?: string;
@@ -786,7 +786,7 @@ export interface WebRemoteControlMobileDiagnosticPayload {
 
 export type WebRemoteControlAppPayload =
   | {
-      zcode_type: "telemetry-report";
+      codez_type: "telemetry-report";
       event: MobileSessionCreateTelemetry | MobilePluginDiscoveryTelemetry;
     }
   | WebRemoteControlBootstrapRequestPayload
@@ -811,41 +811,45 @@ export type WebRemoteControlAppPayload =
   | WebRemoteControlActionPayload
   | WebRemoteControlMobileLogAppPayload;
 
-export type WebRemoteControlWireAppPayload = WebRemoteControlAppPayload;
+type UpstreamWirePayload<T> = T extends { codez_type: infer TType }
+  ? Omit<T, "codez_type"> & { zcode_type: TType }
+  : never;
+
+export type WebRemoteControlWireAppPayload = UpstreamWirePayload<WebRemoteControlAppPayload>;
 
 /**
  * transport 层在序列化前注入的控制/编码信封（gzip 信封 / 能力宣告），不参与业务
- * 路由 schema 校验；接收端在 parseWebRemoteControlAppPayload 之前按 zcode_type 拦截还原。
- * 旧版本收到未知 zcode_type 会静默丢弃，协商对旧端安全。
+ * 路由 schema 校验；接收端在 parseWebRemoteControlAppPayload 之前按 codez_type 拦截还原。
+ * 旧版本收到未知 codez_type 会静默丢弃，协商对旧端安全。
  */
 export type WebRemoteControlTransportEnvelopePayload =
   | WebRemoteControlGzipEnvelope
   | WebRemoteControlClientCapabilities;
 
-/** 信封直接保留上游线级字段。 */
+/** 信封的 wire 形态（codez_type 在外部 relay 边界改名为 zcode_type）。 */
 export type WebRemoteControlWireTransportEnvelopePayload =
-  WebRemoteControlTransportEnvelopePayload;
+  UpstreamWirePayload<WebRemoteControlTransportEnvelopePayload>;
 
 /** 只转换外部 relay 字段；不改变内部路由、RPC 字节或业务状态。 */
 export function toWebRemoteControlWirePayload(
   payload: WebRemoteControlAppPayload | WebRemoteControlTransportEnvelopePayload,
 ): WebRemoteControlWireAppPayload | WebRemoteControlWireTransportEnvelopePayload {
-  // 修复依据：新品牌基准已保留 zcode_type，不能再次反转字段或丢失上游新增 payload。
-  return payload;
+  // 原因：二维码/扩展打开的是上游托管 relay；品牌重命名不能改变外部线级 discriminator。
+  const { codez_type, ...fields } = payload as { codez_type: string };
+  return { zcode_type: codez_type, ...fields } as
+    | WebRemoteControlWireAppPayload
+    | WebRemoteControlWireTransportEnvelopePayload;
 }
 
 /** 输入仍是不可信数据，归一之后必须继续经过原有 schema / raw RPC 校验。 */
 export function normalizeWebRemoteControlWirePayload(payload: unknown): unknown {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return payload;
   const record = payload as Record<string, unknown>;
+  if (!("zcode_type" in record)) return payload;
   // 两种字段同时出现时拒绝，避免普通业务 schema 的 strip 隐藏歧义或 raw strict 校验被绕过。
-  if ("zcode_type" in record && "codez_type" in record) return null;
-  // 旧 fork 的内部调用允许兼容输入，但归一结果和外部发送始终使用同一个上游字段。
-  if ("codez_type" in record) {
-    const { codez_type, ...fields } = record;
-    return { zcode_type: codez_type, ...fields };
-  }
-  return payload;
+  if ("codez_type" in record) return null;
+  const { zcode_type, ...fields } = record;
+  return { codez_type: zcode_type, ...fields };
 }
 
 export interface WebRemoteControlWorkspaceTarget {
