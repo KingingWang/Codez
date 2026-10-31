@@ -579,7 +579,17 @@ describe("WorkflowArtifactSidePane 作为文件打开", () => {
         { id: "vscode", name: "VS Code", iconDataUrl: "data:," },
         { id: "finder", name: "Finder", iconDataUrl: "data:," },
       ]),
+      // 上游 3.17.1 的「打开方式」改为查询系统对该文件副本的关联应用（getFileApplications
+      // 需要真实路径，因此只有打开菜单这类用户操作才会物化副本），不再读已装编辑器列表。
+      // FileApplicationChoices 按 isDefault 优先排序，其余保持平台返回顺序。
+      getFileApplications: vi.fn(async () => [
+        { id: "finder", name: "Finder", iconDataUrl: "data:,", isDefault: true },
+        { id: "vscode", name: "VS Code", iconDataUrl: "data:,", isDefault: false },
+      ]),
       openInEditor: vi.fn(async () => ({ success: true })),
+      // 上游 3.17.1 用 openFileWithApplication(appId, { path, pathKind }) 打开系统关联应用，
+      // 不再走 fork 的 openInEditor(id, path, { pathKind })。
+      openFileWithApplication: vi.fn(async () => ({ success: true })),
       ...overrides,
     };
   }
@@ -740,7 +750,7 @@ describe("WorkflowArtifactSidePane 作为文件打开", () => {
     expect(platform.openExternalFile).not.toHaveBeenCalled();
   });
 
-  it("选择打开方式：列出已装 App（文件管理器在前），选中即用它打开副本", async () => {
+  it("选择打开方式：列出系统关联 App（默认应用在前），选中即用它打开副本", async () => {
     workflowRunArtifacts.mockResolvedValue({ artifacts: [markdownRecord()] });
     workflowRunArtifactRead.mockResolvedValue(textChunk("# hi", "text/markdown"));
     const platform = desktopPlatform();
@@ -753,11 +763,14 @@ describe("WorkflowArtifactSidePane 作为文件打开", () => {
     });
     await waitFor(() => expect(view.getByText("VS Code")).toBeTruthy());
     const names = view.getAllByRole("menuitem").map((item) => item.textContent);
-    expect(names.slice(0, 2)).toEqual(["Finder", "VS Code"]);
+    // 上游把默认关联应用渲染成动作式文案（在 Finder 中打开），其余应用仍是裸名称；
+    // 「默认/文件管理器在最前」这条排序不变量保持。
+    expect(names.slice(0, 2)).toEqual(["在 Finder 中打开", "VS Code"]);
 
     fireEvent.click(view.getByText("VS Code"));
     await waitFor(() =>
-      expect(platform.openInEditor).toHaveBeenCalledWith("vscode", "/copies/notes.md", {
+      expect(platform.openFileWithApplication).toHaveBeenCalledWith("vscode", {
+        path: "/copies/notes.md",
         pathKind: "file",
       }),
     );
@@ -783,10 +796,15 @@ describe("WorkflowArtifactSidePane 作为文件打开", () => {
     // 位置类动作排在 App 之后：先「在工作区显示」，再「复制绝对路径」。
     expect(names.slice(-2)).toEqual(["在工作区显示", "复制绝对路径"]);
 
+    const materializedBeforeReveal = platform.materializeWorkflowArtifactFile.mock.calls.length;
     fireEvent.click(view.getByTestId("workflow-artifact-open-as-file-reveal"));
     expect(onRevealFileInTree).toHaveBeenCalledWith("/workspace/out/book.pdf");
-    // 显示位置不落副本。
-    expect(platform.materializeWorkflowArtifactFile).not.toHaveBeenCalled();
+    // 显示位置本身不落副本：reveal 走工作区原件路径。注意上游打开菜单时会为「查询系统关联应用」
+    // 物化一次版本副本（getFileApplications 必须要真实路径），那不是 reveal 造成的，
+    // 因此这里锁定的是「点击 reveal 之后不再产生新的副本」。
+    expect(platform.materializeWorkflowArtifactFile).toHaveBeenCalledTimes(
+      materializedBeforeReveal,
+    );
   });
 
   it("没有工作区出处（markdown）或远程工作区时，菜单里没有「在工作区显示」", async () => {
