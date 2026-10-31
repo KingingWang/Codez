@@ -175,6 +175,27 @@ Host→Main 浏览器 broker 与 bridge 统一完整帧字节解码，保留请�
 上游 `engineering`、affected、worktree / schema / architecture / retired evidence 门禁继续保留。
 Node/tsx 测试独立执行，不能以 Vitest 未选中冒充通过。
 
+### CI 定向验证合同
+
+`scripts/fork-regression-test-files.json` 是既有定制回归的唯一准入和框架分类来源。
+发布工作流保留原有测试意图及回放过程中新增的定向项，只调整执行入口，不新增 App
+单测、不恢复无关退役测试、不修改工程名单、依赖或 lockfile。
+
+| 验证类别 | 执行入口 | 必须拒绝的情况 |
+| --- | --- | --- |
+| 已登记 App Vitest | `pnpm test:fork <精确文件...>` | 空参数、目录/glob、未登记或尚未回放文件、Node/工程误送 |
+| 已登记 Node/tsx | 按所属包分别执行 `tsx --test <精确文件...>`，UI 保留其包 tsconfig | 跨包混跑、框架误送、用默认发现代替精确选择 |
+| 既有工程 Vitest | `pnpm test:engineering <精确工程文件...>` | App 回归进入 engineering 名单 |
+| Bridge、CLI/CUA、原生 smoke 与打包 Node 测试 | 原有包入口或明确的 `node --test` / smoke 命令 | 默认 Vitest 空选中或绕过原生验证 |
+
+执行顺序保持：先恢复全部定制提交，再核对工作流最终文件清单与根准入名单，
+然后进行定向验证和原有构建/发布。每个命令传递真实退出码；无测试选中、文件缺失或
+选择器失败不能记为通过，也不能通过默认全量发现扩大验证范围。
+
+`codex-desktop` 保留 Linux 一次性 service/desktop/server/UI 回归、六个桌面 OS/arch
+构建目标、四个远端目标及所有原生 smoke；`mobile-remote-pages` 保留加密、Gzip、
+pairing、路由、OAuth、恢复等最终回放后的定向文件及扩展构建/Pages 发布流程。
+
 按顺序执行 pnpm install、typecheck、bridge test、test:codex、CLI build 与冲突相关定向验证，
 最后 `CODEZ_PRE_PUSH_BASE=56457972 pnpm verify:pre-push`。报告真实失败及允许的环境限制。
 远端原 main 先备份至 `backup/pre-rebase-3.17.1`，发布使用原远端 SHA 的显式 force-with-lease。
