@@ -25,6 +25,19 @@ import { logger } from "@/logger.js";
 const recommendation = vi.hoisted(() =>
   vi.fn(async (selection: ModelSelection): Promise<ModelSelection | null> => selection),
 );
+// 上游 3.17.1 新增 SessionPane 的运行时重启入口：useSessionRuntimeRestart →
+// useWorkspaceServices → useResolvedRemoteWorkspaceSessionId → useTabStore，要求 TabStoreProvider。
+// 本文件只验证既有目标，按本仓库既有隔离做法桩掉该入口，不引入真实 Tab store；
+// 桩必须是稳定引用，避免 SessionPane 的 effect 依赖每轮变化。
+const sessionRuntimeRestartStub = vi.hoisted(() => ({
+  restart: async () => false,
+  pending: false,
+}));
+vi.mock("@/app-shell/useWorkspaceSessionReload.js", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return { ...actual, useSessionRuntimeRestart: () => sessionRuntimeRestartStub };
+});
+
 vi.mock("@/hooks/useStartPlanRecommendation.js", () => ({
   useStartPlanRecommendation: () => recommendation,
 }));
@@ -353,7 +366,10 @@ vi.mock("@/v4/composer/useDraftConfigControl.js", async (importOriginal) => {
       handleDraftSelectModel: draftConfigMock.handleDraftSelectModel,
       handleDraftSelectThought: draftConfigMock.handleDraftSelectThought,
       handleDraftSwitchMode: draftConfigMock.handleDraftSwitchMode,
-      promoteComposerDraft: vi.fn(),
+      // 上游 3.17.1 起 handleDraftSessionCreated 用 promoteComposerDraft 的返回值做代际门禁
+      // （草稿已切走则不导航、不绑定埋点）。本组用例都在同一 pane 内完成首发提升，
+      // 因此桩必须回报提升成功，否则 onSessionCreated 永远不会被调用。
+      promoteComposerDraft: vi.fn(() => true),
       replaceComposerDraft: vi.fn(),
       updateComposerContent: vi.fn(),
     }),
