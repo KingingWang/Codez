@@ -130,6 +130,41 @@ Host 组织命令 → 原事务 / CAS → 同一 app 索引 → 侧栏投影
 | desktopUpdateMenu | desktop-update-presentation / domain | updater 权威不变；纯菜单投影 |
 | featureSuggestedPrompts、officeSuggestedPrompts | draft-suggested-prompts / domain | 既有草稿和业务配置；纯建议内容 |
 
+剩余准入复用已有真实端口，不接管整个 UI、Host、Main 或 Service 目录。四件套仅包含
+`module.ts`、`contract.ts`、`contract.example.ts`、`CONTRACT.md`，不新增 App 单测。
+兼容入口保持现有路径；公开类型优先复用共享端口，不复制业务状态。
+
+| 模块 | 层 | 保持的职责与 owner |
+| --- | --- | --- |
+| desktop-codex-automation-reconciliation | adapters | 原 Host dispatch 的只读原生关联对账 |
+| desktop-model-selection-attachment | adapters | 原 Host 模型服务的可信 attachment 作用域 |
+| desktop-native-browser-control-host | adapters | Main 下发能力的 Host 投影和请求转发 |
+| desktop-native-browser-control-main | adapters | Main 唯一窗口 token、授权和 Browser dispatch |
+| desktop-product-runtime | adapters | 既有构建 flavor、数据根与固定发行索引 |
+| desktop-renderer-recovery | adapters | 原窗口的有界原地恢复，不替换 attachment |
+| cua-native-producer | adapters | 原 producer 的 native single-flight、snapshot、输入与销毁 |
+| cua-helper-runtime | adapters | 原 Helper factory 的认证、就绪、socket 和 shutdown |
+| cua-pip | adapters | 原 coordinator/presenter，保持 writer epoch |
+| cua-runtime-qa | adapters | 现有显式 CUA smoke，不成为产品服务 |
+| cli-memory-preferences | adapters | 原 Host 偏好与 CLI fallback 合成 |
+| codex-native-session-adapter | adapters | 原 stdio 命令、诊断和可重建事件投影 |
+| codex-automation-adapter | adapters | 原 dispatch/association owner，不增加 accepted queue |
+| codex-native-control-adapter | adapters | 原 grant publisher、relay 和 managed skill |
+| codex-file-rewind | adapters | 原文件校验、ledger 与补偿顺序 |
+| git-worktree-lifecycle | adapters | 原 Git operation/锁/preview digest 与安全删除 |
+| codex-model-selection | app | 原 workspace catalog 与 single-flight owner |
+| codex-provider-key | adapters | 原 source/native 写目标，保留轮换重启守卫 |
+| codex-usage-observation | app | 原所属 Host 的观察缓存，不合并 Coding Plan |
+
+CUA 顶层 JS 是直接产品源码。为使真实依赖、环和行数进入检查，增加 package legacy 扫描根，
+再由精确 managed roots 接管；不能利用精确文件根未枚举的缺口假通过。Helper 与 producer
+按无状态解析、native 观察、应用解析职责拆分，原 factory 保留全部 mutable state；
+原 exports、14 个 wire method、验证/授权顺序、late-result 防护和打包入口不变。
+新增嵌套 JS 必须通过现有运行时闭包打包回归。
+
+Host→Main 浏览器 broker 与 bridge 统一完整帧字节解码，保留请求 1 MiB、响应 32 MiB 上限，
+不重发 native mutation；细则及可重复 socket 场景见 native Browser/CUA spec。
+
 ## 测试与发布
 
 采用本轮用户明确要求的定向 App Vitest 作为 fork 定制回归例外：
@@ -145,6 +180,6 @@ Node/tsx 测试独立执行，不能以 Vitest 未选中冒充通过。
 
 | 项 | 处理边界 |
 | --- | --- |
-| 最终 lockfile 与定制依赖 | 新 rename 必须纯转换；最终依赖一致性也必须验证。若定制 importer 无法保持纯转换，必须明确报告并取得裁决，不交付 manifest / frozen lock 不一致 |
+| 最终 lockfile 与定制依赖 | 用户已明确以定制功能完整为准：rename 保持纯转换；最终由 pnpm install 同步真实 importer、依赖和 patch hash，并复核 frozen install。snapshot 始终纯转换，不用忽略 manifest 或安装后恢复 lock 掩盖不一致 |
 | 上游 API 变化 | 按具体冲突审查；改变原定制产品语义时需用户确认 |
 | 运行时 / 平台验证 | 未实际运行的 GUI、手机或其他 OS 验收不能宣称通过 |
