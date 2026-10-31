@@ -45,7 +45,26 @@ docker run --rm \
   --env "CUA_TARGET_ARCH=$target_arch" \
   "quay.io/pypa/manylinux_2_28_$native_machine" \
   bash -euo pipefail -c '
-    dnf install -y libxkbcommon-devel
+    # 修复原因：manylinux_2_28 容器内的 AlmaLinux 8 镜像源偶发返回空 repomd.xml
+    # （CI run 41226957571 的 linux-arm64：Failed to download metadata for repo baseos:
+    # repomd.xml parser error: Parse error at line: 1 (Document is empty)），
+    # 属镜像站瞬时故障，同一 commit 重跑即可通过，但它会让整条 linux 出包失败并阻塞 release。
+    # 修复依据：与本脚本 curl --retry 3 及 codex-desktop.yml 既有抗抖动口径一致——
+    # 只对已知的仓库元数据下载失败签名做一次有界重试（先 dnf clean all 再装），
+    # 其他任何 dnf 失败立即以原状态退出，不用重试掩盖真实问题。
+    dnf_log=/tmp/dnf-libxkbcommon.log
+    set +e
+    dnf install -y libxkbcommon-devel 2>&1 | tee "$dnf_log"
+    dnf_status=${PIPESTATUS[0]}
+    set -e
+    if [[ $dnf_status -ne 0 ]]; then
+      if ! grep -qE "Failed to download metadata for repo|repomd.xml parser error|Curl error|Could not resolve host|Cannot download|Empty file|transfer failed" "$dnf_log"; then
+        exit "$dnf_status"
+      fi
+      echo "dnf 命中已知的仓库元数据瞬时故障，清缓存后按既有口径重试一次" >&2
+      dnf clean all
+      dnf install -y libxkbcommon-devel
+    fi
     curl --proto "=https" --tlsv1.2 --retry 3 -fsS https://sh.rustup.rs -o /build/rustup-init.sh
     sh /build/rustup-init.sh -y --profile minimal --default-toolchain 1.95.0 --no-modify-path
     export PATH="/build/cargo/bin:$PATH"
