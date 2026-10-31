@@ -1,6 +1,6 @@
-// Bugfix：本文件在分享只读时间线闭包里，从 `@/plugin-ui/index.js` 桶文件导入会把 plugin-ui
-// 全量组件拖进 web-share 构建，`@codez/shared/mcp-apps` 等子路径无法解析，分享落地页镜像构建失败。
-// 所以直接引用纯函数模块。
+// 只取领域判定，不走 plugin-ui 桶口：桶口会拖进 React 组件与 .png 资产，
+// 让纯投影模块在 tsx/node --test 下直接 ERR_UNKNOWN_FILE_EXTENSION（CI 显式跑
+// src/v4/conversationTurnContinue.test.ts），也让渲染单元模块无谓依赖组件层。
 import { isPluginUiPinnedToolRow } from "@/plugin-ui/domain/pluginUiRowPolicy.js";
 import type {
   ConversationTurnRenderUnit,
