@@ -259,8 +259,11 @@ modules:
   - id: conversation-workspace-target
     roots:
       - packages/ui/src/conversation-workspace-target
+      - packages/ui/src/lib/workspaceRemovalSafety.ts
+      - packages/ui/src/lib/workspaceRuntimeRelease.ts
+      - packages/ui/src/settings/pluginCreatorPrefill.ts
     managed: true
-    requires: [shared, ui]
+    requires: [shared, ui, services]
     publicEntrypoints:
       - packages/ui/src/conversation-workspace-target/index.ts
       - packages/ui/src/conversation-workspace-target/contract.ts
@@ -269,6 +272,9 @@ modules:
       - packages/ui/src/conversation-workspace-target/workbenchTarget.ts
       - packages/ui/src/conversation-workspace-target/usePluginCreator.ts
       - packages/ui/src/conversation-workspace-target/PluginAddMenu.tsx
+      - packages/ui/src/lib/workspaceRemovalSafety.ts
+      - packages/ui/src/lib/workspaceRuntimeRelease.ts
+      - packages/ui/src/settings/pluginCreatorPrefill.ts
     layers:
       contract: contract.ts
       app: .
@@ -384,6 +390,7 @@ modules:
       - shared
       - ui
       - project-sidebar
+      - dynamic-workflow-availability
     publicEntrypoints:
       - packages/ui/src/project-workflow/contract.ts
       - packages/ui/src/project-workflow/useWorkflowRunSave.ts
@@ -818,6 +825,7 @@ modules:
   - id: workspace-plugin-preview
     roots:
       - packages/ui/src/workspace-plugin-preview
+      - packages/ui/src/lib/pluginIconSource.ts
     managed: true
     requires:
       - shared
@@ -825,6 +833,7 @@ modules:
     publicEntrypoints:
       - packages/ui/src/workspace-plugin-preview/index.ts
       - packages/ui/src/workspace-plugin-preview/contract.ts
+      - packages/ui/src/lib/pluginIconSource.ts
     layers:
       ui: .
     owner: plugin
@@ -1172,6 +1181,65 @@ modules:
     layers:
       adapters: .
     owner: cli
+
+  # 精确接纳既有 helper；metadata 不移动业务 owner，不扩展原目录可见性。
+  - id: conversation-share-attachment
+    roots:
+      - packages/services/src/conversation-share-attachment
+      - packages/services/src/conversation-share/conversationShareConnectionScope.ts
+    managed: true
+    requires: [services, shared, rpc]
+    publicEntrypoints:
+      - packages/services/src/conversation-share-attachment/contract.ts
+      - packages/services/src/conversation-share/conversationShareConnectionScope.ts
+    layers: {adapters: .}
+    owner: conversation
+  - id: plugin-store-ordering
+    roots:
+      - packages/shared/src/plugin-store-ordering
+      - packages/shared/src/pluginStoreOrdering.ts
+    managed: true
+    requires: [shared]
+    publicEntrypoints:
+      - packages/shared/src/plugin-store-ordering/contract.ts
+      - packages/shared/src/pluginStoreOrdering.ts
+    layers: {domain: .}
+    owner: plugin
+  - id: dynamic-workflow-availability
+    roots:
+      - packages/ui/src/dynamic-workflow-availability
+      - packages/ui/src/hooks/useDynamicWorkflowAvailability.ts
+    managed: true
+    requires: [services, shared, ui]
+    publicEntrypoints:
+      - packages/ui/src/dynamic-workflow-availability/contract.ts
+      - packages/ui/src/hooks/useDynamicWorkflowAvailability.ts
+    layers: {app: .}
+    owner: conversation
+  - id: desktop-update-presentation
+    roots:
+      - packages/ui/src/desktop-update-presentation
+      - packages/ui/src/lib/desktopUpdateMenu.ts
+    managed: true
+    requires: [shared]
+    publicEntrypoints:
+      - packages/ui/src/desktop-update-presentation/contract.ts
+      - packages/ui/src/lib/desktopUpdateMenu.ts
+    layers: {domain: .}
+    owner: desktop
+  - id: draft-suggested-prompts
+    roots:
+      - packages/ui/src/draft-suggested-prompts
+      - packages/ui/src/v4/featureSuggestedPrompts.ts
+      - packages/ui/src/v4/officeSuggestedPrompts.ts
+    managed: true
+    requires: [ui]
+    publicEntrypoints:
+      - packages/ui/src/draft-suggested-prompts/contract.ts
+      - packages/ui/src/v4/featureSuggestedPrompts.ts
+      - packages/ui/src/v4/officeSuggestedPrompts.ts
+    layers: {domain: .}
+    owner: conversation
 
 global:
   # 临时时间戳（2026-09-10）：unmanaged-new-file 只约束此日期之后首次入库的文件。

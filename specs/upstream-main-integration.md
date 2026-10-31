@@ -114,6 +114,22 @@ Host 组织命令 → 原事务 / CAS → 同一 app 索引 → 侧栏投影
 没有新增产品语义；不重写功能图。上游测试证据退役及新模块属于工程迁移，
 既有定制回归引用按最终实际入口维护。
 
+## 定制文件的模块准入
+
+上游快照保持纯转换，不能把本地新增文件伪装成 upstream admission。以下既有定制文件
+以精确 roots 登记，保留当前文件路径和真实调用端口；不移动运行时 owner 或新增写入路径。
+先补合同与示例，再登记依赖方向，模块元数据不创造第二份产品状态。
+
+| 文件 | 模块 / 层 | 保持的 owner |
+| --- | --- | --- |
+| workspaceRemovalSafety、workspaceRuntimeRelease、pluginCreatorPrefill | conversation-workspace-target / app | 既有窗口 tab、Host service 和草稿 owner |
+| pluginIconSource | workspace-plugin-preview / ui | 既有 plugin catalog；仅可信图标展示 |
+| conversationShareConnectionScope | conversation-share-attachment / adapters | 既有 attachment / share service |
+| pluginStoreOrdering | plugin-store-ordering / domain | 纯排序，不写插件安装态 |
+| useDynamicWorkflowAvailability | dynamic-workflow-availability / app | 既有 capability query；hook 仅展示派生值 |
+| desktopUpdateMenu | desktop-update-presentation / domain | updater 权威不变；纯菜单投影 |
+| featureSuggestedPrompts、officeSuggestedPrompts | draft-suggested-prompts / domain | 既有草稿和业务配置；纯建议内容 |
+
 ## 测试与发布
 
 采用本轮用户明确要求的定向 App Vitest 作为 fork 定制回归例外：
