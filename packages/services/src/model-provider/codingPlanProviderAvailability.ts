@@ -17,7 +17,8 @@ import {
 } from "#src/bigmodel/codingPlanEntitlement.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import { readApiJson } from "../providers/api/apiJson.js";
-import { resolveBigModelStartPlanZcodeJwt } from "./bigmodelStartPlanCodezJwt.js";
+// 修复依据：Zcode JWT 混合大小写标识不属于品牌替换，导入路径必须匹配保留的上游文件名。
+import { resolveBigModelStartPlanZcodeJwt } from "./bigmodelStartPlanZcodeJwt.js";
 import {
   buildZaiStartPlanBalanceUrl,
   fetchZaiStartPlanBalanceEnvelope,
@@ -371,7 +372,10 @@ async function validateSubscriptionListAvailability(
   url: string,
 ): Promise<CodingPlanAvailabilityResult> {
   // 账号凭据已是三段 PAT；旧手工 Key 归一化会按 id.secret 截掉签名。
-  const authorization = (provider.apiKey ?? "").trim().replace(/^Bearer\s+/i, "").trim();
+  const authorization = (provider.apiKey ?? "")
+    .trim()
+    .replace(/^Bearer\s+/i, "")
+    .trim();
   // 请求期 Token 尚未准备好只能表示权益未知；不能用凭据缺失证明未订阅。
   if (!authorization) return { kind: "unknown" };
   try {
@@ -453,7 +457,10 @@ async function resolveStartPlanAuthorization(
   }
 
   const credentialJwt = await loadZaiProviderConnectionZcodeJwtToken(context);
-  const providerJwt = (provider.apiKey ?? "").trim().replace(/^Bearer\s+/i, "").trim();
+  const providerJwt = (provider.apiKey ?? "")
+    .trim()
+    .replace(/^Bearer\s+/i, "")
+    .trim();
   return {
     value: credentialJwt || providerJwt ? `Bearer ${credentialJwt || providerJwt}` : "",
     missingReason: "coding_plan_not_authenticated",
