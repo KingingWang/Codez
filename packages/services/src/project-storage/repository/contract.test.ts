@@ -32,8 +32,6 @@ describe("project repository contract", () => {
       workspacePath: "/old",
       projectId: project.id,
       additionalDirectories: ["/extra"],
-      // 上游 3.17.1 起预留结果回传最终 taskId：Host 依据 creationCommand 原子分配并记住，
-      // 调用方不再自己预分配 ID（契约见 repository-contract.ts 的 reserveCreatedTask）。
       taskId: "scheduled",
     });
     expect(() =>
