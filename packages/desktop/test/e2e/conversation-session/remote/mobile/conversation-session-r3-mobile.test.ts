@@ -186,7 +186,7 @@ async function installSubmissionBridgeProbe(page: Page) {
       if (
         commandMarker &&
         !accepted &&
-        payload?.zcode_type === "rpc-frame" &&
+        payload?.codez_type === "rpc-frame" &&
         payload.fragmentCount === 1
       ) {
         const reader = new BufferReader(VSBuffer.wrap(Buffer.from(payload.dataBase64, "base64")));
@@ -206,7 +206,7 @@ async function installSubmissionBridgeProbe(page: Page) {
                   JSON.stringify({
                     type: "data",
                     payload: {
-                      zcode_type: "bridge-degraded",
+                      codez_type: "bridge-degraded",
                       bridgeSessionId: payload.bridgeSessionId,
                       reason: "rpc-transport-fault",
                     },
@@ -222,12 +222,12 @@ async function installSubmissionBridgeProbe(page: Page) {
       // 扣帧期间也扣住其 replay 与后续旧 bridge 数据，避免夹具自己制造缺片或漏放原请求。
       if (
         held &&
-        payload?.zcode_type === "rpc-frame" &&
+        payload?.codez_type === "rpc-frame" &&
         payload.bridgeSessionId === held.bridgeId &&
         payload.messageSeq >= held.sequence
       )
         return;
-      if (armed && !held && payload?.zcode_type === "rpc-frame" && payload.fragmentCount === 1) {
+      if (armed && !held && payload?.codez_type === "rpc-frame" && payload.fragmentCount === 1) {
         const header = deserialize(
           new BufferReader(VSBuffer.wrap(Buffer.from(payload.dataBase64, "base64"))),
         ) as unknown[];
@@ -242,7 +242,7 @@ async function installSubmissionBridgeProbe(page: Page) {
                 JSON.stringify({
                   type: "data",
                   payload: {
-                    zcode_type: "bridge-degraded",
+                    codez_type: "bridge-degraded",
                     bridgeSessionId: payload.bridgeSessionId,
                     reason: "rpc-transport-fault",
                   },
@@ -259,7 +259,7 @@ async function installSubmissionBridgeProbe(page: Page) {
       // MRS06 放行真实提交，只扣该代下行；模型请求是远端接纳的独立证据。
       if (
         accepted &&
-        payload?.zcode_type === "rpc-frame" &&
+        payload?.codez_type === "rpc-frame" &&
         payload.bridgeSessionId === accepted.bridgeId
       ) {
         if (payload.fragmentCount === 1) {
@@ -270,7 +270,7 @@ async function installSubmissionBridgeProbe(page: Page) {
         }
         return;
       }
-      if (payload?.zcode_type === "workspace-bridge-ready") bridgeId = payload.bridgeSessionId;
+      if (payload?.codez_type === "workspace-bridge-ready") bridgeId = payload.bridgeSessionId;
       route.send(message);
     });
   });

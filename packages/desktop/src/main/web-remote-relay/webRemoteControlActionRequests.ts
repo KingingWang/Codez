@@ -44,7 +44,7 @@ export async function respondToWebRemoteControlActionRequest(
   request: WebRemoteControlActionRequestPayload,
   runRendererAction: RunWebRemoteControlRendererAction | undefined,
 ): Promise<WebRemoteControlAppPayload> {
-  switch (request.zcode_type) {
+  switch (request.codez_type) {
     case "task-pin-request":
       try {
         if (!runRendererAction) throw new Error("Task pin is unavailable on this desktop.");
@@ -54,7 +54,7 @@ export async function respondToWebRemoteControlActionRequest(
           pinned: request.pinned,
         });
         return {
-          zcode_type: "task-pin-response",
+          codez_type: "task-pin-response",
           requestId: request.requestId,
           taskId: request.taskId,
           success: true,
@@ -62,7 +62,7 @@ export async function respondToWebRemoteControlActionRequest(
         };
       } catch (error) {
         return {
-          zcode_type: "task-pin-response",
+          codez_type: "task-pin-response",
           requestId: request.requestId,
           taskId: request.taskId,
           success: false,
@@ -79,7 +79,7 @@ export async function respondToWebRemoteControlActionRequest(
           archived,
         });
         return {
-          zcode_type: "task-archive-response",
+          codez_type: "task-archive-response",
           requestId: request.requestId,
           taskId: request.taskId,
           success: true,
@@ -87,7 +87,7 @@ export async function respondToWebRemoteControlActionRequest(
         };
       } catch (error) {
         return {
-          zcode_type: "task-archive-response",
+          codez_type: "task-archive-response",
           requestId: request.requestId,
           taskId: request.taskId,
           success: false,
@@ -104,7 +104,7 @@ export async function respondToWebRemoteControlActionRequest(
         const result = await runRendererAction(windowId, { kind: "workspace-create", name });
         if (!result.workspacePath) throw new Error("Workspace creation returned no path.");
         return {
-          zcode_type: "workspace-create-response",
+          codez_type: "workspace-create-response",
           requestId: request.requestId,
           success: true,
           workspacePath: result.workspacePath,
@@ -116,7 +116,7 @@ export async function respondToWebRemoteControlActionRequest(
         };
       } catch (error) {
         return {
-          zcode_type: "workspace-create-response",
+          codez_type: "workspace-create-response",
           requestId: request.requestId,
           success: false,
           error: errorMessage(error),

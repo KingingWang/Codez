@@ -30,7 +30,7 @@ export async function createMobileRemoteRelayFixture() {
           }),
         );
       } else if (message.type === "data") {
-        wire.push({ role, type: message.payload.zcode_type });
+        wire.push({ role, type: message.payload.zcode_type ?? message.payload.codez_type });
         const peer = peers.get(role === "device" ? "terminal" : "device");
         if (peer?.readyState === WebSocket.OPEN) peer.send(raw.toString());
       }

@@ -237,7 +237,7 @@ describe("desktop relay V2 transport", () => {
       expect(received).toContainEqual(
         expect.objectContaining({
           type: "data",
-          payload: { zcode_type: "bootstrap-request", requestId: "paired" },
+          payload: { codez_type: "bootstrap-request", requestId: "paired" },
         }),
       ),
     );
@@ -359,7 +359,7 @@ describe("desktop relay V2 transport", () => {
       if (message.type === "auth_ack" && message.pair_status === "matched") {
         phoneSession.start();
       } else if (message.type === "data" && message.payload) {
-        const wire = message.payload as { zcode_type?: string };
+        const wire = message.payload as { codez_type?: string };
         if (wire.zcode_type === "e2ee-rekey") return;
         const accepted = phoneSession.accept(message.payload);
         if (accepted.kind === "payload") decryptedByPhone.push(accepted.payload);

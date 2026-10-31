@@ -360,7 +360,7 @@ export function createMobileTerminalScenario(remote: boolean) {
         };
         if (frame.type === "auth_ack" && frame.pair_status === "matched") pairedAt.push(Date.now());
         const payload = parseWebRemoteControlAppPayload(frame.payload);
-        if (payload?.zcode_type === "workspace-bridge-ready") {
+        if (payload?.codez_type === "workspace-bridge-ready") {
           bridges.push(payload);
           // 只注入当前 bridge 的失效通知；重建、Host attachment 与 PTY 全走真实路径。
           invalidateBridge = () =>
@@ -368,7 +368,7 @@ export function createMobileTerminalScenario(remote: boolean) {
               JSON.stringify({
                 ...frame,
                 payload: {
-                  zcode_type: "bridge-degraded",
+                  codez_type: "bridge-degraded",
                   bridgeSessionId: payload.bridgeSessionId,
                   bridgeGeneration: payload.bridgeGeneration,
                   recoveryId: payload.recoveryId,
@@ -582,8 +582,8 @@ export function createMobileTerminalScenario(remote: boolean) {
       route.onMessage((message) => {
         const frame = JSON.parse(String(message)) as { payload?: Record<string, unknown> };
         if (
-          frame.payload?.zcode_type === "bootstrap-request" ||
-          frame.payload?.zcode_type === "workspace-bridge-open"
+          frame.payload?.codez_type === "bootstrap-request" ||
+          frame.payload?.codez_type === "workspace-bridge-open"
         ) {
           delete frame.payload.terminalClientSessionId;
           server.send(JSON.stringify(frame));

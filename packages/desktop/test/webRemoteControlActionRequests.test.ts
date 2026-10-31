@@ -3,7 +3,7 @@ import { respondToWebRemoteControlActionRequest } from "#src/main/web-remote-rel
 
 describe("respondToWebRemoteControlActionRequest", () => {
   const pin = {
-    zcode_type: "task-pin-request" as const,
+    codez_type: "task-pin-request" as const,
     requestId: "pin-1",
     taskId: "t1",
     workspacePath: "/w",
@@ -15,7 +15,7 @@ describe("respondToWebRemoteControlActionRequest", () => {
       throw new Error("Web remote control action timed out.");
     });
     await expect(respondToWebRemoteControlActionRequest(1, pin, run)).resolves.toEqual({
-      zcode_type: "task-pin-response",
+      codez_type: "task-pin-response",
       requestId: "pin-1",
       taskId: "t1",
       success: false,
@@ -27,17 +27,17 @@ describe("respondToWebRemoteControlActionRequest", () => {
     await expect(
       respondToWebRemoteControlActionRequest(
         1,
-        { zcode_type: "task-archive-request", requestId: "a", taskId: "t1", workspacePath: "/w" },
+        { codez_type: "task-archive-request", requestId: "a", taskId: "t1", workspacePath: "/w" },
         undefined,
       ),
-    ).resolves.toMatchObject({ zcode_type: "task-archive-response", success: false });
+    ).resolves.toMatchObject({ codez_type: "task-archive-response", success: false });
     await expect(
       respondToWebRemoteControlActionRequest(
         1,
-        { zcode_type: "workspace-create-request", requestId: "c", name: "demo" },
+        { codez_type: "workspace-create-request", requestId: "c", name: "demo" },
         undefined,
       ),
-    ).resolves.toMatchObject({ zcode_type: "workspace-create-response", success: false });
+    ).resolves.toMatchObject({ codez_type: "workspace-create-response", success: false });
   });
 
   it("取消归档：archived:false 透传给 Renderer 并回显", async () => {
@@ -46,7 +46,7 @@ describe("respondToWebRemoteControlActionRequest", () => {
       respondToWebRemoteControlActionRequest(
         1,
         {
-          zcode_type: "task-archive-request",
+          codez_type: "task-archive-request",
           requestId: "u",
           taskId: "t1",
           workspacePath: "/w",
@@ -55,7 +55,7 @@ describe("respondToWebRemoteControlActionRequest", () => {
         run,
       ),
     ).resolves.toEqual({
-      zcode_type: "task-archive-response",
+      codez_type: "task-archive-response",
       requestId: "u",
       taskId: "t1",
       success: true,
@@ -74,11 +74,11 @@ describe("respondToWebRemoteControlActionRequest", () => {
     await expect(
       respondToWebRemoteControlActionRequest(
         1,
-        { zcode_type: "workspace-create-request", requestId: "c", name: "demo" },
+        { codez_type: "workspace-create-request", requestId: "c", name: "demo" },
         run,
       ),
     ).resolves.toEqual({
-      zcode_type: "workspace-create-response",
+      codez_type: "workspace-create-response",
       requestId: "c",
       success: false,
       error: "Workspace creation returned no path.",
