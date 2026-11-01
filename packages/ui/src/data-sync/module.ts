@@ -5,7 +5,9 @@
  */
 export const dataSyncModule = {
   id: "data-sync",
-  requires: ["services", "shared", "ui", "conversation-workspace-target"],
+  // provider-bootstrap-ui：复用 UI 唯一的 Host 运行时解析器 resolveRootProviderStartupMode
+  // （specs/data-sync-codex-backend.md「判定信号与唯一来源」），不新造第二个 agentRuntimeMode 解释。
+  requires: ["services", "shared", "ui", "conversation-workspace-target", "provider-bootstrap-ui"],
   provides: ["data-sync"],
   publicEntrypoints: ["index.ts", "contract.ts"],
 } as const;

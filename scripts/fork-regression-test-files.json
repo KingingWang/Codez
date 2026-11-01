@@ -121,6 +121,7 @@
     "packages/ui/test/codexSubagentSuggestions.test.ts",
     "packages/ui/test/codezSessionProjection.test.ts",
     "packages/ui/test/composerSubmissionConfig.test.ts",
+    "packages/ui/test/dataSyncCodexAvailability.test.ts",
     "packages/ui/test/draftSuggestedPromptItems.test.ts",
     "packages/ui/test/draftSuggestedPromptPrefill.test.ts",
     "packages/ui/test/dynamicWorkflowUserModeSync.test.ts",

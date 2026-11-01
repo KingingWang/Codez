@@ -462,22 +462,35 @@ function isInlineKey(key: string): boolean {
 export function createPluginCategoryDataSyncService(
   services: IServiceAccessor,
   control?: DataSyncPushControl,
+  /**
+   * `inlinePlugins: false` 时整个分类只保留 marketplace 行（specs/data-sync-codex-backend.md）。
+   * 原因：设备跑 Codex 原生后端时，inline 插件写入 `~/.codez/plugins` 与 `~/.codez/cli/config.json`
+   * 的 `plugins.dirs`，而 Codex 只认原生插件状态（`$CODEX_HOME/plugins/cache`），推送会返回成功
+   * 但对会话完全无效；marketplace 行走 Agent → bridge `plugins/install`，落到 Codex 自己的插件状态。
+   */
+  options?: { inlinePlugins?: boolean },
 ): IDataSyncCategoryService<PluginCategorySyncPayload> {
   const inline = services.pluginSyncService;
   const marketplace = createMarketplacePluginDataSyncService(services, control);
+  const includeInline = options?.inlinePlugins !== false;
   return {
     async listSyncItems() {
       const [inlineList, marketplaceList] = await Promise.all([
-        inline.listSyncItems(),
+        // 排除 inline 时连本端的插件目录扫描都不做：它既不会被勾选，也不该产生无谓的 IO。
+        includeInline ? inline.listSyncItems() : undefined,
         marketplace.listSyncItems(),
       ]);
       return {
-        items: [...inlineList.items, ...marketplaceList.items],
-        homeDir: inlineList.homeDir,
+        items: [...(inlineList?.items ?? []), ...marketplaceList.items],
+        // homeDir 只用于需要路径改写的分类的哈希比较；没有 inline 行时没有这类项，
+        // 但合同要求该字段存在，因此退回本端 Host 的 home（与本文件既有口径一致）。
+        homeDir: inlineList?.homeDir ?? (await services.systemService.info()).homedir,
       };
     },
     // marketplace 条目只按版本比较，不会被请求哈希。
     getSyncContentHashes: (params) => inline.getSyncContentHashes(params),
+    // 写权限预检保持检查 `~/.codez/plugins` 与 `~/.codez/cli`：即使排除 inline 行，
+    // mirror 类型 marketplace 来源仍要先经 importMarketplaceSourceArchive 落到这两个目录。
     checkSyncWriteAccess: () => inline.checkSyncWriteAccess(),
     async exportSyncItems({ keys }) {
       const inlineKeys = keys.filter(isInlineKey);
