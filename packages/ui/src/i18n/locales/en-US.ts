@@ -106,6 +106,13 @@ const enUS: Record<string, string> = {
   "projectManagement.confirm.data.noteOne":
     "Sessions, session files, checkpoints and memory of the project on this computer.",
   "projectManagement.confirm.data.calculating": "Calculating…",
+  "projectManagement.confirm.data.unsupported":
+    "This backend does not support deleting session data. Removing projects keeps their data.",
+  "projectManagement.confirm.data.error":
+    "Could not measure session data safely. Data deletion is unavailable; you can still remove projects without deleting data.",
+  "projectManagement.confirm.data.retry": "Measure again",
+  "worktree.create.error.gitUpgradeRequired":
+    "Listing worktrees and safe removal checks require Git 2.36 or newer. Upgrade Git on this workspace's host and restart the Host or app. Other Git features still work with Git 2.23 or newer.",
   "projectManagement.confirm.data.sessions": "{count} sessions and their files",
   "projectManagement.confirm.data.sessionsOne": "1 session and its files",
   "projectManagement.confirm.data.checkpoints": "File checkpoints",

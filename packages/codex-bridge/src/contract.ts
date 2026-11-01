@@ -10,6 +10,8 @@ export interface CodexRpcPort {
 export interface CodexNotification {
   method: string;
   params?: unknown;
+  /** 原生通知信封时间；只用于事实诊断，绝不作为 admission/活动时钟的写入来源。 */
+  emittedAtMs?: number;
 }
 
 export interface CodexServerRequest extends CodexNotification {

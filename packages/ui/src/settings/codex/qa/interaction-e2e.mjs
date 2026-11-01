@@ -232,7 +232,7 @@ try {
 
   for (const [label, id] of [
     ["Allow", "accept"],
-    ["Allow for this session", "acceptForSession"],
+    ["Allow for session", "acceptForSession"],
     ["Deny", "decline"],
     ["Cancel turn", "cancel"],
   ]) {
@@ -254,6 +254,9 @@ try {
   await page.getByRole("button", { name: "Toggle settings", exact: true }).click();
   await page.getByRole("button", { name: "Models & permissions", exact: true }).click();
   const settings = page.getByTestId("codex-settings");
+  await settings.getByRole("combobox", { name: "Global title model", exact: true }).waitFor();
+  assert.deepEqual(errors, [], "Pending title preferences must not crash Models settings");
+  checks.push("Pending title preference leaves its empty picker rendered without a parse error");
   await settings.getByRole("combobox", { name: "Default model" }).click();
   await page.getByRole("option", { name: "second-model", exact: true }).click();
   const beforeSettingsWriteConfigReads = await catalogConfigReads();
@@ -299,15 +302,19 @@ try {
     settings
       .getByTestId(`codex-provider-row-${id}`)
       .getByRole("button", { name: "Delete", exact: true });
+  await settings.getByTestId("codex-provider-nav-unused-provider").click();
   assert.equal(await providerDelete("unused-provider").isDisabled(), true);
   await page.getByRole("button", { name: "Toggle provider catalog failure" }).click();
   await settings.getByRole("button", { name: "Models & permissions", exact: true }).click();
   await settings.getByRole("button", { name: "Providers", exact: true }).click();
+  await settings.getByTestId("codex-provider-nav-unused-provider").click();
   await settings
     .getByTestId("codex-provider-row-unused-provider")
     .getByText(/0 models/)
     .waitFor();
+  await settings.getByTestId("codex-provider-nav-referenced-provider").click();
   assert.equal(await providerDelete("referenced-provider").isDisabled(), true);
+  await settings.getByTestId("codex-provider-nav-unused-provider").click();
   assert.equal(await providerDelete("unused-provider").isEnabled(), true);
   await page.screenshot({ path: join(evidence, "provider-catalog-recovered.png") });
   await providerDelete("unused-provider").click();

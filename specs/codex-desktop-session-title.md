@@ -23,6 +23,9 @@
   follows the native catalog or an explicit native configuration, including API-key sign-in;
   the account type alone must not exclude a listed model. A missing setting read also cannot
   reject the user's input.
+- While the controller preference read is pending or has no global selection, the title
+  picker displays its empty placeholder without parsing it as a provider/model pair.
+  It neither crashes the Models settings panel nor writes a default preference on mount.
 - Global changes affect inheriting workspaces; explicit overrides remain unchanged. Resetting an
   override restores inheritance. A submitted first input freezes the effective model for that
   attempt; changing settings while generation is pending affects future sessions only.
@@ -100,3 +103,6 @@ Controller SettingService (global default + workspaceIdentity override)
    preview and each emit exactly one bounded `warn` line naming its stage and reason; for a
    remote workspace the same line reaches the exported desktop log. No line contains the prompt,
    the model answer, a workspace path or a credential. An intentional manual rename emits none.
+8. Open Models settings before preferences are loaded: the global title model remains an
+   empty/disabled picker, the conversation model controls stay rendered, and there is no
+   uncaught JSON parse error or implicit settings write.

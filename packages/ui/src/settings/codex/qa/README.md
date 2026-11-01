@@ -296,6 +296,7 @@ reconnect. Actual Electron smoke independently confirms selected-thread history,
 native streamed/image/queued turns, and Codex-only usage; it does not cover
 credentialed models or every desktop and mobile operation.
 The browser fixture additionally mounts the shared General settings component
+and the current independent `TaskAutoArchiveSettings` controls
 to test desktop/Windows accessible names and mouse/keyboard switch parity, and
 mounts Root's provider snapshot/OAuth hooks against fake Host services to assert
 zero legacy account/provider reads on Codex versus active legacy subscriptions

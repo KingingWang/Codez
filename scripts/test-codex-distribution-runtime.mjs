@@ -40,6 +40,17 @@ test("workflow gates six native targets, four bundled remote targets and isolate
   }
   const { build, release } = workflow.jobs;
   const remoteRuns = workflow.jobs["remote-assets"].steps.map((step) => step.run ?? "");
+  assert.equal(
+    remoteRuns.filter((run) => run === "pnpm --filter @codez/codex-bridge test").length,
+    1,
+  );
+  const boundaryRuns = remoteRuns.filter((run) =>
+    run.includes("packages/ui/test/dataSyncCodexAvailability.test.ts"),
+  );
+  assert.equal(boundaryRuns.length, 1);
+  assert.match(boundaryRuns[0], /pnpm test:fork/);
+  assert.match(boundaryRuns[0], /packages\/ui\/test\/subagentsSection\.test\.ts/);
+  assert.ok(remoteRuns.some((run) => run.includes("test/gitCliRepo.test.ts")));
   const nativeRegressionRun = (command) =>
     command.includes("pnpm --filter @codez/services exec tsx --test") &&
     command.includes("test/codexServiceIntegration.test.ts") &&

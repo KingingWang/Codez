@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button.js";
-import { GeneralSectionContent } from "@/settingsPageHelpers.js";
+import { GeneralSectionContent, TaskAutoArchiveSettings } from "@/settingsPageHelpers.js";
 
 const noopAsync = async () => {};
 
@@ -55,6 +55,13 @@ export function GeneralAccessibilityFixture() {
             onCodezInteractionBehaviorChange={noopAsync}
             onToolSearchModeChange={noopAsync}
             onOpenOnboardingDialog={() => {}}
+          />
+          {/* 上游已把归档偏好移到独立设置区；夹具仍验收同一组公开控件，不恢复旧通用页实现。 */}
+          <TaskAutoArchiveSettings
+            taskAutoArchiveEnabled={archive}
+            taskAutoArchiveOlderThanDays={7}
+            onTaskAutoArchiveEnabledChange={async (enabled) => setArchive(enabled)}
+            onTaskAutoArchiveOlderThanDaysChange={noopAsync}
           />
         </div>
       ) : null}

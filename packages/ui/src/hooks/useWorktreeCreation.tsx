@@ -20,6 +20,7 @@ import {
   buildWorktreePreviewRequest,
   reduceWorktreePreview,
   openCreatedWorktree,
+  worktreeCreationErrorMessage,
   type UseWorktreeCreationParams,
   type UseWorktreeCreationResult,
   type WorktreeCreationAvailability,
@@ -78,7 +79,11 @@ async function loadWorktreeFormFacts(params: {
       workspacePath: params.workspacePath,
       error: getErrorMessage(error),
     });
-    params.onState({ ...params.form, previewPending: false, error: getErrorMessage(error) });
+    params.onState({
+      ...params.form,
+      previewPending: false,
+      error: worktreeCreationErrorMessage(error),
+    });
   }
 }
 
@@ -123,7 +128,7 @@ async function createWorktreePreviewForm(params: {
       occupiedPath: null,
       error: isUnsupportedRemoteMethod(error)
         ? "worktree.create.error.unsupported"
-        : getErrorMessage(error),
+        : worktreeCreationErrorMessage(error),
     });
   }
 }

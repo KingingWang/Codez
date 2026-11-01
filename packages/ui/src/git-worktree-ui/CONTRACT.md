@@ -10,3 +10,7 @@
 
 contract 只公开已有 Git/Task 类型端口；旧路径仍是兼容入口。Dialog 从 model/contract
 读取类型，不反向依赖负责挂载 Dialog 的 hook。E2E 与既有 fork 回归仍使用原入口。
+
+Host 的稳定 `git_worktree_list_nul_unsupported` 能力错误经既有错误通道传递，
+安全删除预检 UI 显示 Git ≥2.36 升级说明，发现按 unsupported 降级而不进入瞬时失败集合；
+普通 Git ≥2.23 功能（包括不依赖 NUL 列举的创建）不变。错误码由 shared 公开常量唯一提供。

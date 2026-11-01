@@ -27,7 +27,7 @@ export function CodexProviderRow({
   return (
     <div
       data-testid={`codex-provider-row-${view.id}`}
-      className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-hover"
+      className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 px-4 py-3 transition-colors hover:bg-hover md:grid-cols-[auto_minmax(0,1fr)_auto]"
     >
       <div
         className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-background text-foreground-subtle"
@@ -35,7 +35,7 @@ export function CodexProviderRow({
       >
         <Package className="size-4" />
       </div>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1" data-testid="codex-provider-description">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <p className="truncate text-ui-base font-medium text-foreground">{view.name}</p>
           {view.isDefault ? (
@@ -62,7 +62,7 @@ export function CodexProviderRow({
           </p>
         ) : null}
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="col-span-2 flex flex-wrap items-center gap-2 md:col-span-1">
         {!view.isDefault ? (
           <Button variant="outline" size="sm" disabled={disabled} onClick={onSetDefault}>
             {text.providerSetDefault}
