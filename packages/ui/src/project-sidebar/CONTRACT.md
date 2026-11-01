@@ -124,3 +124,7 @@ Root 的原项目完成 guard 从成员目录异步复验 entryId、membershipId
 Composer 头部通过 `ProjectComposerMenu.showEditProject` 启用当前项目 Plus 编辑入口；`children` 放置分支等既有控件，顺序为项目、children、编辑按钮。当前项目解析仍由菜单持有。复用 ProjectEditor 与目录服务，在线且非 legacySingleRoot 才能编辑；Host/project 身份、会话或草稿切换使已打开编辑器失效。保存/删除仅刷新目录，不调用导航；其他选择器默认不启用入口。
 
 目录读取保留同一 Provider owner。只发送目录命令的 pane 使用 `useOptionalProjectDirectoryActions`，不订阅任务树；工作区选择器使用项目/设备切片。任务活动仍只广播给任务消费者，项目、设备和权限变化继续发布给相关选择器。
+
+项目移除对话框的测量结果按冻结批次归属，只明确不支持返回 null，真实读取错误由原 hook 上抛。
+对话框区分 calculating/empty/unsupported/error/available，错误提供显式重测而不开放删除数据。
+候选切换同步丢弃旧结果资格，关闭/重测的迟到结果不得开启 checkbox；默认不勾选与确认词保护不变。

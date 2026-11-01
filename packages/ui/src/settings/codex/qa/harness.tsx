@@ -200,6 +200,8 @@ const services = {
       }
     },
   },
+  // 帮助菜单按当前公共配置服务读取漏洞入口；隔离夹具明确没有外部链接。
+  clientConfigService: { getSnapshot: async () => ({ zsrcUrl: null }) },
   settingService: { get: async () => ({}) },
   modelSelectionService: {
     getView: () => {
@@ -211,7 +213,9 @@ const services = {
       throw new Error("Legacy registry subscribed");
     },
   },
+  // 本地发现也消费 Host 广播端口；仅补 listSessions 会在从远端切回本机时使夹具崩溃。
   codezSessionService: createProjectDiscoveryLocalServices().codezSessionService,
+  broadcastService: createProjectDiscoveryLocalServices().broadcastService,
 } as unknown as IServiceAccessor;
 initializeProjectDiscoveryFixture();
 function Harness() {

@@ -128,7 +128,8 @@ export function CreateWorktreeDialogBody({
 
         {state.error ? (
           <div className="rounded-lg bg-destructive/10 px-3 py-2 text-ui-base text-destructive">
-            {state.error === "worktree.create.error.unsupported"
+            {state.error === "worktree.create.error.unsupported" ||
+            state.error === "worktree.create.error.gitUpgradeRequired"
               ? intl.formatMessage({ id: state.error })
               : intl.formatMessage(
                   { id: "worktree.create.error.requestFailed" },

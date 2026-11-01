@@ -13,6 +13,10 @@
   `text-ui-xl font-semibold text-foreground`，副标题使用上述辅助信息样式；标题根据新建/编辑状态切换，
   不用任务名称代替页面动作标题。
 - 字段 label 使用 `text-ui-base font-medium text-foreground-subtle`。
+- 设置行的视觉 label 不自动成为控件的无障碍名称；语言、终端继承/选择、通知、通知音与
+  关闭到托盘控件显式复用同一国际化字段作为 `aria-label`。键盘和读屏操作仍走原回调、
+  原禁用条件，不引入第二条偏好写入路径。自动归档控件按当前独立归档设置区验收，
+  关闭归档时仍可先选择保留天数。
 - 普通字段使用现有 `Input` / `Textarea` / `Select` 组件和 `size="lg"`。
 - Subagent 表单的 Model picker 虽复用工具栏 `ModelConfigSelect`，其 trigger 必须使用
   `bg-clip-border` 覆盖 Button 基础 `bg-clip-padding`，保持与普通 Select 相同的输入背景边界。

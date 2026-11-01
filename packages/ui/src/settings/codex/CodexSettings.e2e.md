@@ -45,6 +45,24 @@ credentials or install a real external plugin for these tests.
     message (including an attachment). Assert that no legacy `setFollowupMode`
     command is sent while the capability is pending, and that the first native
     admission is accepted after the hello resolves.
+12. Open Providers with two native providers and a catalog-only group. Verify the
+    shared pre-fork provider split panel, select each target with mouse/keyboard,
+    and check that selection sends no mutation. The right-hand catalog contains
+    only that target's models. Add/edit provider, retain masked Key handling and
+    Gemini wire API, edit a model slug, and exercise the last-model/restart guards.
+    Check 390px/1280px, Chinese/English and light/dark. This is a real-component
+    browser acceptance case, not proof of native credential storage or real SSH.
+
+2026-11-02 case 12 passed through `qa/provider-model-slug-e2e.mjs`: six bounded
+rules and eight Zai light/dark, Chinese/English, 390/1280px layouts; evidence
+`/tmp/codex-ui-provider-model-slug-rEpxvf`. Two catalog writes included one
+original-slug rename; navigation and layout checks added no writes.
+
+The final real-component interaction run also passed 52 bounded checks with zero
+page errors (`/tmp/codex-ui-interaction-e2e-IKa4ah`), including pending title
+preferences, native writes, approval IDs, catalog/restart guards, Host identity
+isolation, stale legacy OAuth callbacks/polls, reauthentication cancellation and
+localized Memory controls. It is not an external OAuth or all-platform desktop pass.
 
 Record runner command, native build/schema revision, screenshots, RPC assertions,
 and cleanup evidence when these cases are actually executed. This plan is not an

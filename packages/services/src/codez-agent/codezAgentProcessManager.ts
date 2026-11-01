@@ -1320,6 +1320,11 @@ export class CodezAgentProcessManager {
           // 才能与桌面已应用帧的日志对照，且不把原生正文透传到生产日志。
           if (stateDiagnostic.kind === "snapshotPrepared")
             log("Codex conversation snapshot prepared", stateDiagnostic);
+          else if (stateDiagnostic.kind === "nativeFirstOutput")
+            // 小范围单进程计时只落 Host 日志，不冒充 Renderer TTFT 或进入会话快照。
+            log("[ttft] Codex bridge native first output", stateDiagnostic);
+          else if (stateDiagnostic.kind === "conversationTelemetryDropped")
+            warnLog("Codex conversation telemetry facts dropped", stateDiagnostic);
           else warnLog("Codex interrupted continuation refused", stateDiagnostic);
           return;
         }

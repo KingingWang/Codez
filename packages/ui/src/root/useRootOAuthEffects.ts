@@ -1,5 +1,5 @@
 /* eslint-disable max-lines -- OAuth lifecycle effects intentionally share one coordination point. */
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type {
   IPlatformService,
   OAuthProviderId,
@@ -42,7 +42,9 @@ export async function handleOAuthCallbackSuccess(params: {
   setProviderFamilyDomain: (provider: OAuthProviderId) => Promise<void>;
   setUser: (user: UserInfo | null) => void;
   setOAuthError: (error: string | null) => void;
+  isCurrent?: () => boolean;
 }) {
+  if (params.isCurrent?.() === false) return;
   const loginProvider = resolveProviderTelemetryLabel(params.result.provider);
   params.setUser(params.result.userInfo);
   params.setOAuthError(null);
@@ -58,6 +60,7 @@ export async function handleOAuthCallbackSuccess(params: {
       error,
     });
   }
+  if (params.isCurrent?.() === false) return;
   if (params.refreshLatestModelProviderFamilySelection || !connectionInitialized) {
     let selection: ModelProviderFamilyConnectionSelection | null = null;
     try {
@@ -71,6 +74,7 @@ export async function handleOAuthCallbackSuccess(params: {
         error,
       });
     }
+    if (params.isCurrent?.() === false) return;
     const selectedConnection = selection ? JSON.stringify(selection) : "";
     if ((selection || !connectionInitialized) && params.refreshAppSettings) {
       try {
@@ -87,8 +91,10 @@ export async function handleOAuthCallbackSuccess(params: {
       }
     }
   }
+  if (params.isCurrent?.() === false) return;
   // selectedKey 与账号状态收敛后统一刷新 Account Source 与 Registry。
   await params.refreshProviderState();
+  if (params.isCurrent?.() === false) return;
   if (loginProvider) {
     void reportAppTelemetryEvent(
       params.platform,
@@ -136,6 +142,22 @@ export function useRootOAuthEffects({
   onReauthenticationRequired: () => void;
 }) {
   const legacyOAuthEnabled = startupMode === "legacy";
+  // 登录效果只归当前 Host/身份/runtime；任意旧 IO 返回后必须验证原 scope，不能靠新回调刷新续命。
+  const loginScope = useMemo(
+    () => ({}),
+    [accountIntentKey, legacyOAuthEnabled, platform, services],
+  );
+  const loginScopeRef = useRef(loginScope);
+  loginScopeRef.current = loginScope;
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+  const isCurrentLogin = () =>
+    mountedRef.current && legacyOAuthEnabled && loginScopeRef.current === loginScope;
   useAccountConnectionLossNotification(
     services,
     accountIntentKey,
@@ -147,6 +169,11 @@ export function useRootOAuthEffects({
   const oauthLoginSucceededRef = useRef(false);
   const oauthLoginSuccessInFlightRef = useRef(false);
   const oauthLoginSuccessOwnerRef = useRef<"polling" | "deep-link" | null>(null);
+  useEffect(() => {
+    oauthLoginSucceededRef.current = false;
+    oauthLoginSuccessInFlightRef.current = false;
+    oauthLoginSuccessOwnerRef.current = null;
+  }, [loginScope]);
 
   useEffect(() => {
     if (!legacyOAuthEnabled) {
@@ -155,6 +182,7 @@ export function useRootOAuthEffects({
       return;
     }
     let disposed = false;
+    const prompt = new AbortController();
     async function restoreOAuthSessionInBackground() {
       logger.info("[Root] 后台启动 OAuth 本地会话恢复");
       let hasRestoredUser = false;
@@ -170,10 +198,13 @@ export function useRootOAuthEffects({
         hasRestoredUser = await applyCachedOAuthSessionRestoreResult({
           result,
           setUser,
-          requestAlert,
+          requestAlert: (request) => requestAlert(request, prompt.signal),
           onReauthenticationRequired,
-          shouldReauthenticate: async () =>
-            !disposed && (await services.oauthService.getActiveProvider()) === null,
+          shouldReauthenticate: async () => {
+            if (disposed || !isCurrentLogin()) return false;
+            const provider = await services.oauthService.getActiveProvider();
+            return !disposed && isCurrentLogin() && provider === null;
+          },
           copy: {
             title: intl.formatMessage({ id: "login.expired.title" }),
             description: intl.formatMessage({ id: "login.expired.description" }),
@@ -191,6 +222,7 @@ export function useRootOAuthEffects({
       // sidebar 会先按 user=null 渲染成“登录”，而登录弹窗又还能读到本地 activeProvider，
       // 用户就会看到“外面未登录、弹窗里已登录提供方”的分裂展示。
       // 这里在恢复主流程结束后立刻落定状态，让 footer 先显示 loading，再收敛到最终登录态。
+      if (disposed || !isCurrentLogin()) return;
       setIsRestoringOAuthSession(false);
 
       try {
@@ -201,10 +233,12 @@ export function useRootOAuthEffects({
             activeProvider,
             services,
             refreshAppSettings,
+            isCurrent: () => !disposed && isCurrentLogin(),
           });
         }
 
         // OAuth 会话恢复与 Provider Runtime 刷新保持后台执行，避免首屏等待网络链路。
+        if (disposed || !isCurrentLogin()) return;
         await refreshProviderState();
       } catch (error) {
         // 启动刷新失败不能跳过后续订阅，否则网络恢复后账号失效协调也永久停止。
@@ -217,6 +251,7 @@ export function useRootOAuthEffects({
 
     return () => {
       disposed = true;
+      prompt.abort();
     };
   }, [
     intl,
@@ -229,11 +264,13 @@ export function useRootOAuthEffects({
     setIsRestoringOAuthSession,
     setUser,
     startupMode,
+    loginScope,
   ]);
 
   useEffect(() => {
     if (!legacyOAuthEnabled) return;
     let disposed = false;
+    const prompt = new AbortController();
     let promptPending = false;
     const disposable = services.broadcastService.onMessage((message) => {
       if (message.channel !== CODEZ_JWT_INVALID_BROADCAST_CHANNEL || disposed || promptPending) {
@@ -243,12 +280,15 @@ export function useRootOAuthEffects({
       // 业务 token 撤销后仍显示头像并要求重启会阻断恢复；与启动过期共用 Welcome 登录入口。
       void requestOAuthReauthentication({
         setUser,
-        requestAlert,
+        requestAlert: (request) => requestAlert(request, prompt.signal),
         onReauthenticationRequired: () => {
           if (!disposed) onReauthenticationRequired();
         },
-        shouldReauthenticate: async () =>
-          !disposed && (await services.oauthService.getActiveProvider()) === null,
+        shouldReauthenticate: async () => {
+          if (disposed || !isCurrentLogin()) return false;
+          const provider = await services.oauthService.getActiveProvider();
+          return !disposed && isCurrentLogin() && provider === null;
+        },
         copy: {
           title: intl.formatMessage({ id: "login.expired.title" }),
           description: intl.formatMessage({ id: "login.expired.description" }),
@@ -262,6 +302,7 @@ export function useRootOAuthEffects({
     });
     return () => {
       disposed = true;
+      prompt.abort();
       disposable.dispose();
     };
   }, [
@@ -271,25 +312,29 @@ export function useRootOAuthEffects({
     requestAlert,
     services.broadcastService,
     setUser,
+    loginScope,
   ]);
 
   useEffect(() => {
-    if (!oauthPollingActive) {
+    if (!legacyOAuthEnabled || !oauthPollingActive) {
+      if (!legacyOAuthEnabled && oauthPollingActive) setOAuthPollingActive(false);
       return;
     }
+    let disposed = false;
+    const isCurrent = () => !disposed && isCurrentLogin();
     oauthLoginSucceededRef.current = false;
     oauthLoginSuccessInFlightRef.current = false;
     oauthLoginSuccessOwnerRef.current = null;
     let pollInFlight = false;
     const pollTimer = window.setInterval(() => {
-      if (pollInFlight) {
+      if (pollInFlight || !isCurrent()) {
         return;
       }
       pollInFlight = true;
       void services.oauthService
         .pollPendingOAuth()
         .then(async (result) => {
-          if (!result || result.kind !== "session") {
+          if (!isCurrent() || !result || result.kind !== "session") {
             return;
           }
           oauthLoginSuccessOwnerRef.current = "polling";
@@ -298,18 +343,24 @@ export function useRootOAuthEffects({
             result,
             platform,
             refreshLatestModelProviderFamilySelection: (provider) =>
-              refreshLatestModelProviderFamilySelectionAfterLogin({ provider, services }),
+              refreshLatestModelProviderFamilySelectionAfterLogin({
+                provider,
+                services,
+                isCurrent,
+              }),
             refreshAppSettings,
             refreshProviderState,
             setProviderFamilyDomain: async (provider) => {
               const domain = resolveProviderFamilyDomainFromOAuthProvider(provider);
               if (domain) {
-                await setProviderFamilyDomain(services.settingService, domain);
+                await setProviderFamilyDomain(services.settingService, domain, isCurrent);
               }
             },
             setUser,
             setOAuthError,
+            isCurrent,
           });
+          if (!isCurrent()) return;
           oauthLoginSucceededRef.current = true;
           oauthLoginSuccessOwnerRef.current = null;
           oauthLoginSuccessInFlightRef.current = false;
@@ -317,6 +368,7 @@ export function useRootOAuthEffects({
           setOAuthPollingActive(false);
         })
         .catch((error) => {
+          if (!isCurrent()) return;
           setOAuthPollingActive(false);
           const ownSuccessHandlerFailed = oauthLoginSuccessOwnerRef.current === "polling";
           if (ownSuccessHandlerFailed) {
@@ -343,6 +395,7 @@ export function useRootOAuthEffects({
     }, 1_000);
 
     return () => {
+      disposed = true;
       window.clearInterval(pollTimer);
     };
   }, [
@@ -356,94 +409,102 @@ export function useRootOAuthEffects({
     setOAuthError,
     setOAuthPollingActive,
     setUser,
+    legacyOAuthEnabled,
+    loginScope,
   ]);
 
-  useEffect(() => {
-    const disposeOAuth = platform.onOAuthCallback(async (url) => {
-      try {
-        const result = await services.oauthService.handleCallback(url);
-        // 取消或切换 flow 会使已接收的回调失效，正常空结果不能被当作登录异常。
-        if (!result) {
-          logger.info("[Root] 已忽略失效 OAuth 回调");
-          return;
-        }
-        if (result.kind === "attribution") {
-          logger.info("[Root] OAuth 登录归因参数已缓存:", result.provider);
-          return;
-        }
-        if (result.kind === "duplicate") {
-          logger.info("[Root] 已忽略 polling 完成后的迟到 OAuth deep link");
-          return;
-        }
+  const callbackRef = useRef<(url: string, isAttached: () => boolean) => Promise<void>>(
+    async () => {},
+  );
+  callbackRef.current = async (url, isAttached) => {
+    // pending/Codex 只完成 transport 确认；不能为旧链接调用 legacy 鉴权或把账号写回。
+    const isCurrent = () => isAttached() && isCurrentLogin();
+    if (!isCurrent()) return;
+    try {
+      const result = await services.oauthService.handleCallback(url);
+      if (!isCurrent()) return;
+      // 取消或切换 flow 会使已接收的回调失效，正常空结果不能被当作登录异常。
+      if (!result) {
+        logger.info("[Root] 已忽略失效 OAuth 回调");
+        return;
+      }
+      if (result.kind === "attribution") {
+        logger.info("[Root] OAuth 登录归因参数已缓存:", result.provider);
+        return;
+      }
+      if (result.kind === "duplicate") {
+        logger.info("[Root] 已忽略 polling 完成后的迟到 OAuth deep link");
+        return;
+      }
 
-        oauthLoginSuccessOwnerRef.current = "deep-link";
-        oauthLoginSuccessInFlightRef.current = true;
-        await handleOAuthCallbackSuccess({
-          result,
-          platform,
-          refreshLatestModelProviderFamilySelection: (provider) =>
-            refreshLatestModelProviderFamilySelectionAfterLogin({
-              provider,
-              services,
-            }),
-          refreshAppSettings,
-          refreshProviderState,
-          setProviderFamilyDomain: async (provider) => {
-            const domain = resolveProviderFamilyDomainFromOAuthProvider(provider);
-            if (!domain) {
-              return;
-            }
-            await setProviderFamilyDomain(services.settingService, domain);
-          },
-          setUser,
-          setOAuthError,
-        });
-        oauthLoginSucceededRef.current = true;
+      oauthLoginSuccessOwnerRef.current = "deep-link";
+      oauthLoginSuccessInFlightRef.current = true;
+      await handleOAuthCallbackSuccess({
+        result,
+        platform,
+        refreshLatestModelProviderFamilySelection: (provider) =>
+          refreshLatestModelProviderFamilySelectionAfterLogin({
+            provider,
+            services,
+            isCurrent,
+          }),
+        refreshAppSettings,
+        refreshProviderState,
+        setProviderFamilyDomain: async (provider) => {
+          const domain = resolveProviderFamilyDomainFromOAuthProvider(provider);
+          if (!domain) {
+            return;
+          }
+          await setProviderFamilyDomain(services.settingService, domain, isCurrent);
+        },
+        setUser,
+        setOAuthError,
+        isCurrent,
+      });
+      if (!isCurrent()) return;
+      oauthLoginSucceededRef.current = true;
+      oauthLoginSuccessOwnerRef.current = null;
+      oauthLoginSuccessInFlightRef.current = false;
+      setOAuthPollingActive(false);
+      markOAuthSuccess(result.provider);
+    } catch (err) {
+      if (!isCurrent()) return;
+      // 之前把底层 OAuth 错误原文写入 UI，用户会看到 provider/token 等具体失败原因。
+      // 登录页只保留统一可重试提示，具体原因继续进入 logger 便于排查。
+      // polling 成功后可能收到迟到/重复的 deep-link；该回调失败不能覆盖已完成的登录态。
+      const ownSuccessHandlerFailed = oauthLoginSuccessOwnerRef.current === "deep-link";
+      if (ownSuccessHandlerFailed) {
         oauthLoginSuccessOwnerRef.current = null;
         oauthLoginSuccessInFlightRef.current = false;
-        setOAuthPollingActive(false);
-        markOAuthSuccess(result.provider);
-      } catch (err) {
-        // 之前把底层 OAuth 错误原文写入 UI，用户会看到 provider/token 等具体失败原因。
-        // 登录页只保留统一可重试提示，具体原因继续进入 logger 便于排查。
-        // polling 成功后可能收到迟到/重复的 deep-link；该回调失败不能覆盖已完成的登录态。
-        const ownSuccessHandlerFailed = oauthLoginSuccessOwnerRef.current === "deep-link";
-        if (ownSuccessHandlerFailed) {
-          oauthLoginSuccessOwnerRef.current = null;
-          oauthLoginSuccessInFlightRef.current = false;
-        }
-        const shouldApplyFailure = ownSuccessHandlerFailed
-          ? !oauthLoginSucceededRef.current
-          : shouldApplyOAuthPollingFailure(
-              oauthLoginSucceededRef.current,
-              oauthLoginSuccessInFlightRef.current,
-            ) && !oauthPollingActive;
-        logger.warn("[Root] OAuth deep-link 失败判定", {
-          succeeded: oauthLoginSucceededRef.current,
-          successInFlight: oauthLoginSuccessInFlightRef.current,
-          pollingActive: oauthPollingActive,
-          shouldApplyFailure,
-        });
-        if (shouldApplyFailure) {
-          setOAuthError(intl.formatMessage({ id: "login.oauth.loginFailure" }));
-        }
-        logger.error("[Root] OAuth 回调处理失败:", err);
       }
+      const shouldApplyFailure = ownSuccessHandlerFailed
+        ? !oauthLoginSucceededRef.current
+        : shouldApplyOAuthPollingFailure(
+            oauthLoginSucceededRef.current,
+            oauthLoginSuccessInFlightRef.current,
+          ) && !oauthPollingActive;
+      logger.warn("[Root] OAuth deep-link 失败判定", {
+        succeeded: oauthLoginSucceededRef.current,
+        successInFlight: oauthLoginSuccessInFlightRef.current,
+        pollingActive: oauthPollingActive,
+        shouldApplyFailure,
+      });
+      if (shouldApplyFailure) {
+        setOAuthError(intl.formatMessage({ id: "login.oauth.loginFailure" }));
+      }
+      logger.error("[Root] OAuth 回调处理失败:", err);
+    }
+  };
+  useEffect(() => {
+    let active = true;
+    const disposeOAuth = platform.onOAuthCallback(async (url) => {
+      if (active) await callbackRef.current(url, () => active);
     });
+    // callback 安装先于 ready；同一 platform attachment 的回调依赖变化不能重复通知 Main。
     platform.notifyRendererReady();
     return () => {
+      active = false;
       disposeOAuth();
     };
-  }, [
-    intl,
-    platform,
-    refreshAppSettings,
-    refreshProviderState,
-    services,
-    markOAuthSuccess,
-    oauthPollingActive,
-    setUser,
-    setOAuthError,
-    setOAuthPollingActive,
-  ]);
+  }, [platform]);
 }

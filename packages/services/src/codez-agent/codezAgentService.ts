@@ -5397,11 +5397,17 @@ export function createCodezAgentService(
     async measureSessionData(params) {
       // 只读测量：和全局工作流同一载体选择（本机已活跃 runtime，否则管理面进程）。
       const { client } = await resolveGlobalSavedWorkflowCarrier();
-      return client.request(
-        V4_METHODS.sessionDataMeasure,
-        { sessionIds: params.sessionIds, directories: params.directories },
-        v4SessionDataMeasureResultSchema,
-      );
+      try {
+        return await client.request(
+          V4_METHODS.sessionDataMeasure,
+          { sessionIds: params.sessionIds, directories: params.directories },
+          v4SessionDataMeasureResultSchema,
+        );
+      } catch (error) {
+        // 原因：只有原生 method-not-found 才证明旧后端不支持，IO/连接失败不能伪装为空数据。
+        if (isProtocolMethodNotFoundError(error)) throw new Error("project.data-unavailable");
+        throw error;
+      }
     },
 
     async purgeSessionData({ workspace, ...params }) {

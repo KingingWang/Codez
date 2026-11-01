@@ -116,7 +116,8 @@ export function CodexTitleModelSettings({
     onChange: (value: string) => void,
     inherit = false,
   ) {
-    const unavailable = value !== INHERIT && !options.has(value);
+    // 偏好尚未读到时全局值是空占位符，不是 modelKey；解析空串会让整个模型设置页崩溃。
+    const unavailable = Boolean(value) && value !== INHERIT && !options.has(value);
     return (
       <SettingsRow
         controlLayout="wide"

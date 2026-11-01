@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/alert-dialog.js";
 import { Checkbox } from "@/components/ui/checkbox.js";
 import { Input } from "@/components/ui/input.js";
+import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import {
@@ -27,8 +28,8 @@ import {
 } from "@/project-sidebar/useProjectManagement.js";
 import { formatBytes } from "@/resource-manager/resourceUsageView.js";
 
-/** undefined = 本批无本机候选；"measuring" = 正在计算；null = 测量失败或无数据，隐藏选项。 */
-type DataState = ProjectDataTotals | "measuring" | null | undefined;
+/** 明确区分不支持、真错误与空数据，不让失败隐式开放破坏性操作。 */
+type DataState = ProjectDataTotals | "measuring" | "empty" | "unsupported" | "error" | undefined;
 
 /**
  * 确认时的行集合由调用方冻结；对话框只展示按设备拆分的后果。
@@ -54,9 +55,23 @@ export function ProjectRemovalDialog({
   const last = useRef(rows);
   if (rows) last.current = rows;
   const shown = rows ?? last.current;
-  const [data, setData] = useState<DataState>(undefined);
+  const [measurement, setMeasurement] = useState<{
+    rows: readonly ProjectManagementRow[];
+    value: DataState;
+  } | null>(null);
+  const [retry, setRetry] = useState(0);
+  // 原因：effect 在渲染后才复位；新批次必须同步拒绝旧批次已开放的删除资格。
+  const data = measurement?.rows === shown ? measurement.value : undefined;
   const [deleteData, setDeleteData] = useState(false);
   const [word, setWord] = useState("");
+  const [batch, setBatch] = useState(rows);
+  if (batch !== rows) {
+    // 关闭后重开同一个数组也属于新授权；不能在 effect 前短暂继承旧勾选与确认词。
+    setBatch(rows);
+    setDeleteData(false);
+    setWord("");
+    setMeasurement(null);
+  }
 
   // 每次打开新批次都重新测量，并把选项复位为不勾选；迟到的旧批次结果丢弃。
   useEffect(() => {
@@ -64,25 +79,38 @@ export function ProjectRemovalDialog({
     setDeleteData(false);
     setWord("");
     if (!measureData || !rows.some(isProjectDataCandidate)) {
-      setData(undefined);
+      setMeasurement({ rows, value: undefined });
       return;
     }
     let current = true;
-    setData("measuring");
-    void measureData(rows).then((totals) => {
-      if (!current) return;
-      setData(totals && (totals.sessions > 0 || totals.totalBytes > 0) ? totals : null);
-    });
+    setMeasurement({ rows, value: "measuring" });
+    void measureData(rows).then(
+      (totals) => {
+        if (!current) return;
+        setMeasurement({
+          rows,
+          value:
+            totals === null
+              ? "unsupported"
+              : totals.sessions > 0 || totals.totalBytes > 0
+                ? totals
+                : "empty",
+        });
+      },
+      () => {
+        if (current) setMeasurement({ rows, value: "error" });
+      },
+    );
     return () => {
       current = false;
     };
-  }, [rows, measureData]);
+  }, [rows, measureData, retry]);
 
   const summary = shown ? summarizeProjectRemoval(shown) : null;
   const hasLocal = summary?.devices.some((device) => device.hostId === "local");
   const hasRemote = summary?.devices.some((device) => device.hostId !== "local");
   const localCount = shown?.filter(isProjectDataCandidate).length ?? 0;
-  const totals = data && data !== "measuring" ? data : null;
+  const totals = typeof data === "object" ? data : null;
   const confirmWord = msg("confirm.data.word");
   const deleting = deleteData && Boolean(totals);
   const remoteDevices = new Intl.ListFormat(locale, { type: "conjunction" }).format(
@@ -145,7 +173,31 @@ export function ProjectRemovalDialog({
                 </div>
               ))}
             </div>
-            {data ? (
+            {data === "unsupported" || data === "error" ? (
+              <div
+                data-testid="project-management-data-status"
+                data-status={data}
+                className="flex flex-wrap items-center gap-2 rounded-xl border border-border px-3 py-3 text-ui-sm text-foreground-subtle"
+              >
+                <span className="min-w-0 flex-1">
+                  {msg(data === "unsupported" ? "confirm.data.unsupported" : "confirm.data.error")}
+                </span>
+                {data === "error" ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setDeleteData(false);
+                      setWord("");
+                      setMeasurement(rows ? { rows, value: "measuring" } : null);
+                      setRetry((value) => value + 1);
+                    }}
+                  >
+                    {msg("confirm.data.retry")}
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
+            {totals || data === "measuring" ? (
               <label
                 data-testid="project-management-confirm-data"
                 data-checked={deleting ? "true" : "false"}

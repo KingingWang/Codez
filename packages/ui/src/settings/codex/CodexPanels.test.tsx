@@ -738,13 +738,14 @@ test("providers panel renders provider facts without ever exposing the bearer to
   );
   assert.match(markup, /Ollama One/);
   assert.match(markup, /openai-my/);
-  assert.match(markup, /claude-my · anthropic/);
-  assert.match(markup, /http:\/\/127\.0\.0\.1:39081\/v1/);
-  assert.match(markup, /Set as default/);
+  assert.match(markup, /codex-provider-nav-claude-my/);
+  assert.match(markup, /http:\/\/127\.0\.0\.1:39080\/v1/);
+  assert.match(markup, /data-model-provider-split-panel/);
+  assert.doesNotMatch(markup, /http:\/\/127\.0\.0\.1:39081\/v1/);
   assert.match(markup, /Add provider/);
   assert.match(markup, /Catalog models/);
   const deleteButtons = markup.match(/<button[^>]*>Delete<\/button>/g) ?? [];
-  assert.equal(deleteButtons.length, 3);
+  assert.equal(deleteButtons.length, 1, "only the selected provider detail is rendered");
   assert.ok(
     deleteButtons.every((button) => button.includes('disabled=""')),
     "While the catalog is unread, even a non-default provider cannot be safely deleted",
