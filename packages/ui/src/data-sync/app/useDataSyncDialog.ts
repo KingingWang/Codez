@@ -89,6 +89,18 @@ function createInitialView(id: DataSyncCategoryId): DataSyncCategoryView {
   };
 }
 
+/** 按当前分类适配器列表重建视图键：保留仍在列表中的分类状态，其余补初始视图 / 丢弃。 */
+function rebuildCategoryViews(
+  current: Record<string, DataSyncCategoryView>,
+  categories: readonly DataSyncCategoryAdapter[],
+): Record<string, DataSyncCategoryView> {
+  const next: Record<string, DataSyncCategoryView> = {};
+  for (const category of categories) {
+    next[category.id] = current[category.id] ?? createInitialView(category.id);
+  }
+  return next;
+}
+
 function signatureOf(item: DataSyncListItem): string {
   return item.signature ? `${item.signature.fileCount}:${item.signature.totalBytes}` : "";
 }
@@ -187,6 +199,17 @@ export function useDataSyncDialog(params: {
   const [views, setViews] = useState<Record<string, DataSyncCategoryView>>(() =>
     Object.fromEntries(categories.map((category) => [category.id, createInitialView(category.id)])),
   );
+  // 分类集合随后端事实变化（specs/data-sync-codex-backend.md）：弹窗刚打开时 target 端的运行时事实
+  // 还没读到，分类列表暂为空；读到之后被屏蔽的分类会退出列表。这里在渲染期同步视图键（React 的
+  // derived-state 写法，保证同一轮渲染就能看到正确键集，加载 effect 不会丢更新）：
+  // 新进入列表的分类补初始视图，退出列表的分类连视图一起丢弃——否则它残留的勾选会让「推送全部」
+  // 看起来可点，而 pushAll 只遍历当前列表，点击后静默什么都不做，又是一次「报成功但没做事」。
+  const categoryKey = categories.map((category) => category.id).join("|");
+  const [viewsCategoryKey, setViewsCategoryKey] = useState(categoryKey);
+  if (viewsCategoryKey !== categoryKey) {
+    setViewsCategoryKey(categoryKey);
+    setViews((current) => rebuildCategoryViews(current, categories));
+  }
   const [pushAllState, setPushAllState] = useState<DataSyncPushAllState>("idle");
   const viewsRef = useRef(views);
   viewsRef.current = views;

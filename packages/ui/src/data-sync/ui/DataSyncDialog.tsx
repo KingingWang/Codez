@@ -1,15 +1,5 @@
 import { useMemo, useState } from "react";
-import {
-  ArrowRight,
-  Check,
-  ChevronRight,
-  CircleStop,
-  CloudOff,
-  Info,
-  Package,
-  RefreshCw,
-} from "lucide-react";
-import type { DataSyncBlockedReason } from "@codez/shared";
+import { Check, ChevronRight, CloudOff, Package, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { Checkbox } from "@/components/ui/checkbox.js";
 import {
@@ -25,114 +15,40 @@ import { useOptionalPlatform } from "@/hooks/usePlatform.js";
 import {
   DATA_SYNC_CATEGORIES,
   DATA_SYNC_OVERVIEW_ICON,
+  selectDataSyncCategories,
   type DataSyncCategoryAdapter,
 } from "@/data-sync/app/categories.js";
 import type { DataSyncCategoryId, DataSyncDialogProps } from "@/data-sync/contract.js";
+import { createPluginSyncResultReporter } from "@/data-sync/app/marketplacePluginSync.js";
+import { useDataSyncRuntimeModes } from "@/data-sync/app/useDataSyncRuntimeModes.js";
 import {
-  DATA_SYNC_STOPPED_ERROR,
-  createPluginSyncResultReporter,
-} from "@/data-sync/app/marketplacePluginSync.js";
+  resolveDataSyncCategoryBadge,
+  resolveDataSyncCodexAvailability,
+  type DataSyncCodexAvailability,
+} from "@/data-sync/domain/codexBackend.js";
 import {
-  findMissingDataSyncDependencies,
-  resolveDataSyncCheckState,
-  type DataSyncDependencyKeys,
-  type DataSyncMissingDependencies,
-  type DataSyncRow,
-  type DataSyncRowStatus,
-} from "@/data-sync/domain/compare.js";
+  DataSyncCodexBanners,
+  DataSyncCodexBlockedPanel,
+  DataSyncCodexCategoryBadge,
+  DataSyncCodexPartialNotice,
+} from "@/data-sync/ui/DataSyncCodexNotices.js";
+import { resolveDataSyncCheckState } from "@/data-sync/domain/compare.js";
 import { useDataSyncProviders } from "@/data-sync/app/useDataSyncProviders.js";
 import {
   DataSyncProvidersOverviewRow,
   DataSyncProvidersPanel,
 } from "@/data-sync/ui/DataSyncProvidersPanel.js";
 import {
-  DATA_SYNC_OFFLINE_ERROR,
-  DATA_SYNC_PREFLIGHT_TIMEOUT_ERROR,
-  useDataSyncDialog,
-  type DataSyncCategoryView,
-  type DataSyncItemError,
-} from "@/data-sync/app/useDataSyncDialog.js";
+  CategoryPanel,
+  CategoryPendingPanel,
+  readyDependencyKeys,
+  type DataSyncFormatMessage,
+} from "@/data-sync/ui/DataSyncCategoryPanel.js";
+import { useDataSyncDialog, type DataSyncCategoryView } from "@/data-sync/app/useDataSyncDialog.js";
 
 // 模型提供商是只读分类，不是 IDataSyncCategoryService：不参与勾选与「推送全部」，单独渲染。
 type ActiveTab = "overview" | "providers" | DataSyncCategoryId;
-type FormatMessage = ReturnType<typeof useCodezIntl>["intl"]["formatMessage"];
-
-const BLOCKED_REASON_MESSAGE_ID: Record<DataSyncBlockedReason, string> = {
-  "size-limit": "remoteSync.blocked.sizeLimit",
-  "contains-symlink": "remoteSync.blocked.containsSymlink",
-  "target-symlink": "remoteSync.blocked.targetSymlink",
-  "compat-directory": "remoteSync.blocked.compatDirectory",
-  "external-directory": "remoteSync.blocked.externalDirectory",
-  "target-compat-config": "remoteSync.blocked.targetCompatConfig",
-  "source-removed": "remoteSync.blocked.sourceRemoved",
-  "remote-latest-mismatch": "remoteSync.blocked.remoteLatestMismatch",
-  "cross-marketplace-dependency": "remoteSync.blocked.crossMarketplaceDependency",
-  "unsupported-source": "remoteSync.blocked.unsupportedSource",
-};
-
-// 标签颜色遵循 DESIGN.md 的 *-surface 语义对；「更新」用蓝色的 progress surface，
-// 它在四套主题下都保证 4.5:1 对比度（设计稿的 blue-500/15 依赖系统深色媒体查询，切换应用主题时不跟随）。
-const BADGE_CLASS: Record<Exclude<DataSyncRowStatus, "blocked">, string> = {
-  push: "bg-success-surface text-success-surface-foreground",
-  update: "bg-progress-surface text-progress-surface-foreground",
-  difference: "bg-warning-surface text-warning-surface-foreground",
-  synced: "bg-surface text-foreground-subtle",
-};
-
-function formatPushError(formatMessage: FormatMessage, error: string): string {
-  if (error === DATA_SYNC_OFFLINE_ERROR) {
-    return formatMessage({ id: "remoteSync.error.offline" });
-  }
-  if (error === DATA_SYNC_PREFLIGHT_TIMEOUT_ERROR) {
-    return formatMessage({ id: "remoteSync.error.preflightTimeout" });
-  }
-  return formatMessage({ id: "remoteSync.error.pushFailed" }, { error });
-}
-
-function formatItemError(formatMessage: FormatMessage, error: DataSyncItemError): string {
-  if (error.message === DATA_SYNC_STOPPED_ERROR) {
-    return formatMessage({ id: "remoteSync.item.stopped" });
-  }
-  return error.status === "conflict"
-    ? formatMessage({ id: "remoteSync.item.conflict" })
-    : formatMessage(
-        { id: "remoteSync.item.failed" },
-        { error: error.message ?? formatMessage({ id: "remoteSync.item.unknownError" }) },
-      );
-}
-
-/** 多个缺失项合并为一行：同类名称之间、MCP 与技能两组之间各用本地化分隔符。 */
-function formatMissingDependencies(
-  formatMessage: FormatMessage,
-  missing: DataSyncMissingDependencies,
-): string {
-  const nameSeparator = formatMessage({ id: "remoteSync.dependency.nameSeparator" });
-  const groups: string[] = [];
-  if (missing.mcpServers.length > 0) {
-    groups.push(
-      formatMessage(
-        { id: "remoteSync.dependency.missingMcp" },
-        { names: missing.mcpServers.join(nameSeparator) },
-      ),
-    );
-  }
-  if (missing.skills.length > 0) {
-    groups.push(
-      formatMessage(
-        { id: "remoteSync.dependency.missingSkills" },
-        { names: missing.skills.join(nameSeparator) },
-      ),
-    );
-  }
-  return groups.join(formatMessage({ id: "remoteSync.dependency.groupSeparator" }));
-}
-
-/** 依赖提示的两端列表：只用已就绪分类的最近一次加载结果，推送后刷新完成即随之更新。 */
-function readyDependencyKeys(
-  view: DataSyncCategoryView | undefined,
-): DataSyncDependencyKeys | undefined {
-  return view?.phase === "ready" ? { source: view.sourceKeys, target: view.targetKeys } : undefined;
-}
+type FormatMessage = DataSyncFormatMessage;
 
 export function DataSyncDialog(props: DataSyncDialogProps) {
   const { intl } = useCodezIntl();
@@ -143,8 +59,32 @@ export function DataSyncDialog(props: DataSyncDialogProps) {
     () => (platform ? createPluginSyncResultReporter(platform, remoteKind) : undefined),
     [platform, remoteKind],
   );
+  // Codex 原生后端下的诚实标注（specs/data-sync-codex-backend.md）：两端各读一次自己的
+  // systemService.info().agentRuntimeMode，判定只有 useDataSyncRuntimeModes 一个 owner。
+  const runtimeModes = useDataSyncRuntimeModes({
+    sourceServices: props.sourceServices,
+    targetServices: props.targetServices,
+    online: props.online,
+  });
+  const codex = useMemo(
+    () =>
+      resolveDataSyncCodexAvailability({
+        sourceMode: runtimeModes.source,
+        targetMode: runtimeModes.target,
+      }),
+    [runtimeModes],
+  );
+  /**
+   * 后端事实落定前不加载任何分类：设备跑 Codex 时，子智能体 / MCP / 技能 / 命令 / 钩子整类不生效，
+   * 提前加载既浪费两端 list / 哈希 RPC，也会让子智能体 list 顺带触发一次 Codez 存储迁移写入。
+   * 事实读不到（离线、旧 Host、查询失败）时按 legacy 处理，全部分类照常同步。
+   */
+  const categories = useMemo(
+    () => (runtimeModes.target === "pending" ? [] : selectDataSyncCategories(codex)),
+    [codex, runtimeModes.target],
+  );
   const state = useDataSyncDialog({
-    categories: DATA_SYNC_CATEGORIES,
+    categories,
     sourceServerId: props.device.sourceServerId,
     sourceServices: props.sourceServices,
     targetServices: props.targetServices,
@@ -162,6 +102,9 @@ export function DataSyncDialog(props: DataSyncDialogProps) {
   });
   const activeCategory = DATA_SYNC_CATEGORIES.find((category) => category.id === activeTab);
   const activeView = activeCategory ? state.views[activeCategory.id] : undefined;
+  const activeBadge = activeCategory
+    ? resolveDataSyncCategoryBadge(codex, activeCategory.id)
+    : null;
   const disabled = !state.connected || state.pushing;
   const offline = !props.online;
   // 推送中禁止关闭弹窗；没有全局取消，结果完整返回后才能关闭。
@@ -210,6 +153,10 @@ export function DataSyncDialog(props: DataSyncDialogProps) {
                   ...DATA_SYNC_CATEGORIES,
                 ].map((item) => {
                   const Icon = item.icon;
+                  // 导航始终列出全部分类：被屏蔽的分类点进去是解释，不是静默消失。
+                  const categoryId =
+                    item.id === "overview" || item.id === "providers" ? null : item.id;
+                  const badge = categoryId ? resolveDataSyncCategoryBadge(codex, categoryId) : null;
                   return (
                     <button
                       key={item.id}
@@ -226,6 +173,15 @@ export function DataSyncDialog(props: DataSyncDialogProps) {
                     >
                       <Icon className="size-4 shrink-0" aria-hidden="true" />
                       {intl.formatMessage({ id: `remoteSync.category.${item.id}` })}
+                      {badge && categoryId ? (
+                        <DataSyncCodexCategoryBadge
+                          badge={badge}
+                          category={categoryId}
+                          scope="nav"
+                          formatMessage={intl.formatMessage}
+                          className="md:ml-auto"
+                        />
+                      ) : null}
                     </button>
                   );
                 })}
@@ -265,9 +221,21 @@ export function DataSyncDialog(props: DataSyncDialogProps) {
                 {intl.formatMessage({ id: "remoteSync.dialog.offline" })}
               </div>
             ) : null}
+            <DataSyncCodexBanners availability={codex} formatMessage={intl.formatMessage} />
+            {activeCategory && activeBadge === "partial" ? (
+              <DataSyncCodexPartialNotice
+                category={activeCategory.id}
+                formatMessage={intl.formatMessage}
+              />
+            ) : null}
             <div className="min-h-0 flex-1 overflow-hidden">
               {activeTab === "providers" ? (
                 <DataSyncProvidersPanel state={providers} disabled={offline} />
+              ) : activeCategory && activeBadge === "blocked" ? (
+                <DataSyncCodexBlockedPanel
+                  category={activeCategory.id}
+                  formatMessage={intl.formatMessage}
+                />
               ) : activeCategory && activeView ? (
                 <CategoryPanel
                   key={activeCategory.id}
@@ -281,10 +249,15 @@ export function DataSyncDialog(props: DataSyncDialogProps) {
                   onSelectionChange={(keys) => state.setSelection(activeCategory.id, keys)}
                   onStop={(key) => state.stopItem(activeCategory.id, key)}
                 />
+              ) : activeCategory ? (
+                // 后端事实还没落定（或设备离线）时分类没有视图：显示加载态，不回落到概览，
+                // 否则导航高亮的分类与右侧内容会不一致。
+                <CategoryPendingPanel formatMessage={intl.formatMessage} />
               ) : (
                 <OverviewPanel
                   providers={providers}
                   views={state.views}
+                  codex={codex}
                   disabled={disabled}
                   formatMessage={intl.formatMessage}
                   onNavigate={setActiveTab}
@@ -293,14 +266,16 @@ export function DataSyncDialog(props: DataSyncDialogProps) {
               )}
             </div>
             <DialogFooterBar
-              providersTab={activeTab === "providers"}
+              // 模型提供商只读；被屏蔽的分类没有可推送内容，两者都只留「关闭」。
+              readOnlyTab={activeTab === "providers" || activeBadge === "blocked"}
               activeCategory={activeCategory}
               activeView={activeView}
               offline={!state.connected}
               pushing={state.pushing}
               pushAllState={state.pushAllState}
-              hasOverviewSelection={Object.values(state.views).some(
-                (view) => view.selected.size > 0,
+              // 只看当前真正可同步的分类：被屏蔽分类的残留视图不该让「推送全部」显得可点。
+              hasOverviewSelection={categories.some(
+                (category) => (state.views[category.id]?.selected.size ?? 0) > 0,
               )}
               formatMessage={intl.formatMessage}
               onClose={() => props.onOpenChange(false)}
@@ -318,6 +293,7 @@ export function DataSyncDialog(props: DataSyncDialogProps) {
 function OverviewPanel(props: {
   providers: ReturnType<typeof useDataSyncProviders>;
   views: Readonly<Record<string, DataSyncCategoryView>>;
+  codex: DataSyncCodexAvailability;
   disabled: boolean;
   formatMessage: FormatMessage;
   onNavigate(id: "providers" | DataSyncCategoryId): void;
@@ -348,9 +324,14 @@ function OverviewPanel(props: {
             onNavigate={() => props.onNavigate("providers")}
           />
           {DATA_SYNC_CATEGORIES.map((category) => {
-            const view = props.views[category.id];
-            if (!view) return null;
-            const selectableKeys = view.rows.filter((row) => row.selectable).map((row) => row.key);
+            const badge = resolveDataSyncCategoryBadge(props.codex, category.id);
+            // 被屏蔽的分类不加载，因此可能没有视图；后端事实未落定（或设备离线）时同样没有视图。
+            // 两种情况都保留行本身：用户要能看到「这一类为什么不在同步范围里」，而不是行直接消失。
+            const blocked = badge === "blocked";
+            const view = blocked ? undefined : props.views[category.id];
+            const selectableKeys = view
+              ? view.rows.filter((row) => row.selectable).map((row) => row.key)
+              : [];
             const label = formatMessage({ id: `remoteSync.category.${category.id}` });
             return (
               <div
@@ -361,8 +342,9 @@ function OverviewPanel(props: {
                 <Checkbox
                   data-testid={`remote-sync-overview-checkbox-${category.id}`}
                   aria-label={label}
-                  checked={resolveDataSyncCheckState(view.rows, view.selected)}
-                  disabled={props.disabled || selectableKeys.length === 0}
+                  checked={view ? resolveDataSyncCheckState(view.rows, view.selected) : false}
+                  // 被屏蔽的分类不可勾选：目标端 Codex 读的是另一套存储，勾了也只会得到「成功但不生效」。
+                  disabled={props.disabled || blocked || selectableKeys.length === 0}
                   onCheckedChange={(checked) =>
                     props.onSelectionChange(category.id, checked === true ? selectableKeys : [])
                   }
@@ -373,31 +355,44 @@ function OverviewPanel(props: {
                   onClick={() => props.onNavigate(category.id)}
                   className="grid w-full grid-cols-[minmax(0,1fr)_64px_64px_minmax(120px,220px)] items-center gap-4 py-3 text-left text-ui-base"
                 >
-                  <span className="truncate font-medium text-foreground">{label}</span>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="truncate font-medium text-foreground">{label}</span>
+                    {badge ? (
+                      <DataSyncCodexCategoryBadge
+                        badge={badge}
+                        category={category.id}
+                        scope="overview"
+                        formatMessage={formatMessage}
+                      />
+                    ) : null}
+                  </span>
                   <span
                     data-testid={`remote-sync-overview-local-${category.id}`}
                     className="text-center tabular-nums text-foreground-subtle"
                   >
-                    {view.phase === "ready" ? view.localCount : "–"}
+                    {view?.phase === "ready" ? view.localCount : "–"}
                   </span>
                   <span
                     data-testid={`remote-sync-overview-remote-${category.id}`}
                     className="text-center tabular-nums text-foreground-subtle"
                   >
-                    {view.phase === "ready" ? view.remoteCount : "–"}
+                    {view?.phase === "ready" ? view.remoteCount : "–"}
                   </span>
                   <span className="flex min-w-0 items-center justify-end gap-2 text-foreground-subtle">
                     <span className="truncate text-right">
-                      {view.phase === "loading"
-                        ? formatMessage({ id: "remoteSync.overview.loading" })
-                        : view.phase === "error"
-                          ? formatMessage({ id: "remoteSync.overview.loadFailed" })
-                          : selectableKeys.length === 0 && view.localCount === view.remoteCount
-                            ? formatMessage({ id: "remoteSync.difference.matching" })
-                            : formatMessage(
-                                { id: "remoteSync.difference.changes" },
-                                { count: selectableKeys.length },
-                              )}
+                      {/* 被屏蔽的分类不算差异：状态列留空，标记已经说明原因。 */}
+                      {blocked
+                        ? null
+                        : !view || view.phase === "loading"
+                          ? formatMessage({ id: "remoteSync.overview.loading" })
+                          : view.phase === "error"
+                            ? formatMessage({ id: "remoteSync.overview.loadFailed" })
+                            : selectableKeys.length === 0 && view.localCount === view.remoteCount
+                              ? formatMessage({ id: "remoteSync.difference.matching" })
+                              : formatMessage(
+                                  { id: "remoteSync.difference.changes" },
+                                  { count: selectableKeys.length },
+                                )}
                     </span>
                     <ChevronRight className="size-3.5 shrink-0" aria-hidden="true" />
                   </span>
@@ -411,210 +406,9 @@ function OverviewPanel(props: {
   );
 }
 
-function SelectionBox(props: { checked: boolean; disabled?: boolean }) {
-  return (
-    <span className="flex size-5 shrink-0 items-center justify-center">
-      <span
-        className={cn(
-          "flex size-4 items-center justify-center rounded-sm border",
-          props.checked
-            ? "border-primary bg-primary text-primary-foreground"
-            : props.disabled
-              ? "border-border/50 bg-surface text-transparent"
-              : "border-border bg-background text-transparent",
-        )}
-      >
-        <Check className="size-3.5" aria-hidden="true" />
-      </span>
-    </span>
-  );
-}
-
-function RowNote(props: { row: DataSyncRow; formatMessage: FormatMessage }) {
-  const { note } = props.row;
-  if (note.kind === "version") {
-    return (
-      <span className="flex items-center gap-1 font-mono text-ui-xs text-foreground">
-        <span>{note.from}</span>
-        <ArrowRight className="size-3 text-foreground-subtle" aria-hidden="true" />
-        <span>{note.to}</span>
-      </span>
-    );
-  }
-  if (note.kind === "sourceOlder" || note.kind === "contentDiffers") {
-    return (
-      <span className="text-ui-xs text-foreground">
-        {props.formatMessage({
-          id:
-            note.kind === "sourceOlder"
-              ? "remoteSync.version.pushSourceOlder"
-              : "remoteSync.version.contentDiffers",
-        })}
-      </span>
-    );
-  }
-  return null;
-}
-
-function CategoryPanel(props: {
-  view: DataSyncCategoryView;
-  dependencyTargets: Parameters<typeof findMissingDataSyncDependencies>[1];
-  disabled: boolean;
-  formatMessage: FormatMessage;
-  onSelectionChange(keys: Iterable<string>): void;
-  onStop(key: string): void;
-}) {
-  const { view, formatMessage } = props;
-  const selectableKeys = view.rows.filter((row) => row.selectable).map((row) => row.key);
-  const allSelected = resolveDataSyncCheckState(view.rows, view.selected) === true;
-  return (
-    <div
-      data-testid="remote-sync-resource-panel"
-      className="flex h-full min-h-0 flex-col gap-3 overflow-hidden"
-    >
-      {view.pushError ? (
-        <div
-          data-testid="remote-sync-push-error"
-          className="flex shrink-0 items-start gap-2 rounded-xl bg-destructive-surface px-3 py-2 text-ui-sm text-destructive-surface-foreground"
-        >
-          <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          {formatPushError(formatMessage, view.pushError)}
-        </div>
-      ) : null}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-background/50">
-        <div className="flex shrink-0 items-center gap-3 border-b border-border bg-surface/50 px-5 py-3">
-          <button
-            data-testid="remote-sync-select-all"
-            type="button"
-            role="checkbox"
-            aria-checked={allSelected}
-            disabled={props.disabled || selectableKeys.length === 0}
-            onClick={() => props.onSelectionChange(allSelected ? [] : selectableKeys)}
-            className="flex items-center gap-3 text-ui-base text-foreground-subtle hover:text-foreground disabled:opacity-60"
-          >
-            <SelectionBox checked={allSelected} />
-            {formatMessage({ id: "remoteSync.selection.selectAll" })}
-          </button>
-        </div>
-        <div
-          data-testid="remote-sync-resource-list"
-          className="flex min-h-0 flex-col gap-1 overflow-y-auto p-2"
-        >
-          {view.phase === "loading" ? (
-            <p className="px-3 py-6 text-center text-ui-sm text-foreground-subtle">
-              {formatMessage({ id: "remoteSync.overview.loading" })}
-            </p>
-          ) : view.phase === "error" ? (
-            <p className="px-3 py-6 text-center text-ui-sm text-destructive">
-              {formatMessage({ id: "remoteSync.category.loadFailed" }, { error: view.error ?? "" })}
-            </p>
-          ) : view.rows.length === 0 ? (
-            <p className="px-3 py-6 text-center text-ui-sm text-foreground-subtle">
-              {formatMessage({ id: "remoteSync.category.empty" })}
-            </p>
-          ) : (
-            view.rows.map((row) => {
-              const checked = view.selected.has(row.key);
-              const rowDisabled = props.disabled || !row.selectable;
-              const itemError = view.itemErrors[row.key];
-              const missingDependencies = findMissingDataSyncDependencies(
-                row.dependencies,
-                props.dependencyTargets,
-              );
-              const stoppable = view.push === "pushing" && view.stoppable.has(row.key);
-              const rowButton = (
-                <button
-                  key={row.key}
-                  type="button"
-                  role="checkbox"
-                  data-testid={`remote-sync-row-${row.key}`}
-                  data-sync-key={row.key}
-                  data-sync-status={row.status}
-                  aria-label={row.name}
-                  aria-checked={checked}
-                  disabled={rowDisabled}
-                  onClick={() => {
-                    const next = new Set(view.selected);
-                    if (checked) next.delete(row.key);
-                    else next.add(row.key);
-                    props.onSelectionChange(next);
-                  }}
-                  className="flex w-full cursor-pointer gap-3 rounded-lg bg-background p-3 text-left transition-colors hover:bg-surface-hover/50 disabled:cursor-default disabled:hover:bg-background"
-                >
-                  <SelectionBox checked={checked} disabled={!row.selectable} />
-                  <span className={cn("min-w-0 flex-1", !row.selectable && "opacity-60")}>
-                    <span className="block truncate text-ui-base font-medium text-foreground">
-                      {row.name}
-                    </span>
-                    {/* 说明行不截断：钩子在这里显示完整命令，长路径需要折行。 */}
-                    <span className="mt-0.5 block break-words text-ui-sm text-foreground-subtle">
-                      {row.note.kind === "blocked"
-                        ? formatMessage({ id: BLOCKED_REASON_MESSAGE_ID[row.note.reason] })
-                        : (row.description ?? "")}
-                    </span>
-                    {missingDependencies ? (
-                      <span
-                        data-testid={`remote-sync-row-hint-${row.key}`}
-                        className="mt-0.5 block text-ui-sm text-warning-surface-foreground"
-                      >
-                        {formatMissingDependencies(formatMessage, missingDependencies)}
-                      </span>
-                    ) : null}
-                    {itemError ? (
-                      <span
-                        data-testid={`remote-sync-row-error-${row.key}`}
-                        className="mt-0.5 block text-ui-sm text-destructive"
-                      >
-                        {formatItemError(formatMessage, itemError)}
-                      </span>
-                    ) : null}
-                  </span>
-                  <span
-                    data-testid={`remote-sync-difference-${row.key}`}
-                    className="mt-0.5 flex shrink-0 items-center gap-2 self-start"
-                  >
-                    <RowNote row={row} formatMessage={formatMessage} />
-                    {row.status !== "blocked" ? (
-                      <span
-                        className={cn(
-                          "shrink-0 rounded-full px-2 py-0.5 text-ui-xs",
-                          BADGE_CLASS[row.status],
-                        )}
-                      >
-                        {formatMessage({ id: `remoteSync.operation.${row.status}` })}
-                      </span>
-                    ) : null}
-                  </span>
-                </button>
-              );
-              if (!stoppable) return rowButton;
-              // 远端 add / install 期间该行可单独「停止」；按钮放在行外，避免嵌套在行按钮里。
-              return (
-                <div key={row.key} className="flex items-center gap-2">
-                  <div className="min-w-0 flex-1">{rowButton}</div>
-                  <Button
-                    type="button"
-                    data-testid={`remote-sync-row-stop-${row.key}`}
-                    variant="secondary"
-                    size="sm"
-                    className="mr-2 shrink-0"
-                    onClick={() => props.onStop(row.key)}
-                  >
-                    <CircleStop aria-hidden="true" />
-                    {formatMessage({ id: "remoteSync.action.stop" })}
-                  </Button>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function DialogFooterBar(props: {
-  providersTab: boolean;
+  /** 只读标签页（模型提供商）与整类不同步的分类：没有推送按钮，也不参与「推送全部」。 */
+  readOnlyTab: boolean;
   activeCategory: DataSyncCategoryAdapter | undefined;
   activeView: DataSyncCategoryView | undefined;
   offline: boolean;
@@ -628,8 +422,7 @@ function DialogFooterBar(props: {
   onPushAll(): void;
 }) {
   const { activeCategory, activeView, formatMessage } = props;
-  if (props.providersTab) {
-    // 模型提供商只读：没有推送按钮，也不参与「推送全部」。
+  if (props.readOnlyTab) {
     return (
       <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
         {!props.pushing ? (

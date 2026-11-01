@@ -6,6 +6,7 @@
 - `domain/compare.ts`：比较纯函数（哈希请求、行状态、排序、三态、分批、设备结果汇总）。分批时子技能跟随最上层的已选上级（`parentKey` 链）放进同一批、上级在前。
 - `app/categories.ts`：分类适配器注册表。新增分类 = 服务实现 `IDataSyncCategoryService` + 在 `DATA_SYNC_CATEGORIES` 注册 + 文案 `remoteSync.category.<id>`。
 - `app/useDataSyncDialog.ts`：弹窗状态唯一 owner（选择、加载、推送、generation）。
+- `domain/codexBackend.ts` + `app/useDataSyncRuntimeModes.ts` + `ui/DataSyncCodexNotices.tsx`：Codex 原生后端下的诚实标注（`specs/data-sync-codex-backend.md`）。两端各读一次自己的 `systemService.info().agentRuntimeMode`（复用 `resolveRootProviderStartupMode`），domain 纯函数把分类映射成「可同步 / 部分 / 不可同步」，弹窗据此裁剪传给 `useDataSyncDialog` 的分类适配器并渲染标记与解释。
 - 模型提供商（只读，不是 `IDataSyncCategoryService`）：`domain/providers.ts`（Personal Layer 提供商行、API Key 掩码、状态展示态）+ `app/useDataSyncProviders.ts`（本机 `providerSettingsService.getView()` 与 `providerProvisioningStatusService` 的 lane 状态 / 重试）+ `ui/DataSyncProvidersPanel.tsx`。不参与勾选与「推送全部」；最近结果的唯一数据源是 Main 协调器的 lane。
 - `domain/marketplacePlugins.ts` + `app/marketplacePluginSync.ts`：marketplace 插件把插件管理服务的 add / install 编排成 `IDataSyncCategoryService` 形状（export 在来源端、import 在目标端），与 inline 插件组合为「插件」分类。两端都以各自 Host 的 home（`systemService.info`）+ `configScope: "user"` 读取 User scope。
 
@@ -14,6 +15,8 @@
 
 不变量：
 
+- 后端判定只有 `useDataSyncRuntimeModes` 一个 owner：不在 data-sync 缓存或复制第二份 Codex 事实，解析失败 / 字段缺失 / attachment 未就绪一律按 legacy 处理（不加标记、不禁用）。换代随 `targetServices` 与 `online`，迟到结果按发起时的 services 身份丢弃。
+- 被屏蔽的分类不进入 `useDataSyncDialog` 的分类列表，因此不会被加载、勾选、单类推送或「推送全部」；不存在「UI 禁用但状态机仍可推送」的第二条写路径。target 端为 Codex 时，插件分类只保留 marketplace 行（inline 行写入 `~/.codez/plugins`，Codex 不读取）。
 - 弹窗绑定设备的一次连接（generation = `online && targetServices`）。换代时进行中的推送标为失败并写入设备同步状态，迟到结果按 push session 身份丢弃；重新在线后重新加载。
 - 推送中禁止关闭弹窗，没有全局取消。marketplace 插件行在远端 add / install 期间可按行「停止」：弹窗经 `getService(target, control)` 注入 `DataSyncPushControl`，停止发出 `cancelPluginOperation` 并让该项以「已停止」失败，不影响其他项和 push session。
 - 推送按分类串行；每次推送（单个分类或推送全部）结束后调用一次 `onPushFinished`，设备行只从设备同步状态读取上次结果。

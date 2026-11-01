@@ -930,6 +930,8 @@ modules:
       - shared
       - ui
       - conversation-workspace-target
+      # Codex 后端下的诚实标注复用 UI 唯一的 Host 运行时解析器（specs/data-sync-codex-backend.md）。
+      - provider-bootstrap-ui
     publicEntrypoints:
       - packages/ui/src/data-sync/index.ts
       - packages/ui/src/data-sync/contract.ts
