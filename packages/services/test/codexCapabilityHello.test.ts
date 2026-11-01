@@ -149,6 +149,28 @@ test("Codex hello distinguishes bridge failure, old peer, and connection scope",
     });
     assert.equal(scoped.capabilities.codexUnavailable, undefined);
 
+    // 修复原因：createHello 曾把 workspaceHookReview / genUiContext / residentRowsRange /
+    // inputPrediction 硬编码为 true，而本 service 是 desktop 默认 Codex bridge 后端，base 明确
+    // 关掉了这些能力；合并时又只从 base 取 workflowRunDeltas/codex/codexUnavailable，于是经
+    // connection scope 上线的客户端收到一份对 Codex 说谎的能力集——手机按 residentRowsRange
+    // 预加载必然吃 proto.sessionNotResident，按 inputPrediction 发起预测必然吃 -32601 后静默
+    // 降级为空结果，UI 侧 genUiContext 的显式 unsupported 守卫也永不触发。
+    // 修复依据：hostCapabilitiesSchema 规定这些键「缺失等价于 false，调用方必须用 === true
+    // 判断」，attachment 只逐键转发 base 的事实。这里用真实 Codex 后端 service 守住降级。
+    for (const key of [
+      "workspaceHookReview",
+      "genUiContext",
+      "residentRowsRange",
+      "inputPrediction",
+      "workflowRunDeltas",
+    ] as const) {
+      assert.equal(scoped.capabilities[key], undefined, `Codex hello 不得宣告 ${key}`);
+    }
+    // 连接自有事实与 base 无条件支持的能力不受降级影响。
+    assert.equal(scoped.capabilities.nativeDialogs, true);
+    assert.equal(scoped.capabilities.independentPlanState, true);
+    assert.equal(scoped.capabilities.historyFirst, true);
+
     t.mock.method(CodezAgentProcessManager.prototype, "getClient", async () => old.client);
     oldService = createCodezAgentService({ presentationSurface: "desktop" });
     const oldHello = await oldService.helloConversationV4();

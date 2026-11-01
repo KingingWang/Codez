@@ -7394,6 +7394,12 @@ export function createCodezAgentService(
                 workflowRunDeltas: true,
                 historyFirst: true,
                 residentRowsRange: true,
+                // 手机远控输入预测：受 Host 开关控制。Codex bridge 未实现
+                // `v4/conversation/inputPrediction`（请求会落到 bridge 的 unsupported 分支回
+                // -32601，再被 conversationInputPredictionV4 静默降级成空结果），所以必须与
+                // 上面几项同口径按后端降级：hostCapabilitiesSchema 已写明该键「缺失等价于
+                // false，手机必须用 === true 判断，否则不发预测请求」。
+                ...(isRemoteInputPredictionEnabled() ? { inputPrediction: true } : {}),
               }
             : {}),
           // Codex bridge 尚无 DWF 增量投影；Host 不能自制 legacy workflow capability。
@@ -7940,7 +7946,16 @@ export function createCodezAgentService(
           },
           v4ConversationInputPredictionResultSchema,
         );
-      } catch {
+      } catch (cause) {
+        // 修复原因：这里原先是裸 catch。Codex bridge 未实现 `v4/conversation/inputPrediction`，
+        // 每次请求都吃 -32601 却不留任何痕迹，表现为「Host 开关显示开着、手机端 ghost hint
+        // 永远不出现」且无从诊断。降级语义保持不变（预测是可有可无的建议，绝不因它失败阻塞
+        // 输入），只补一条 warn，并带上后端事实便于区分「未实现」与「真实故障」。
+        logger.warn("[input-prediction] 预测查询失败，按不可用降级", {
+          requestId: params.requestId,
+          usesDefaultCodexBridge,
+          cause: cause instanceof Error ? cause.message : String(cause),
+        });
         return emptyInputPredictionResult("unavailable", params.requestId);
       }
     },
