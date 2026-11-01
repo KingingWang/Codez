@@ -8886,6 +8886,29 @@ const zhCN: Record<string, string> = {
   "voiceInput.error.upstream_timeout": "语音识别超时，请重试。",
   "voiceInput.error.audio_limit_exceeded": "已达到单次录音时长上限，已保留识别到的文字。",
   "voiceInput.error.failed": "语音识别失败，请重试。",
+  "remoteSync.codex.badge.blocked": "Codex 不同步",
+  "remoteSync.codex.badge.partial": "部分同步",
+  "remoteSync.codex.targetBanner":
+    "目标设备运行 Codex 原生后端：它的配置由 Codex 自己管理，跨设备数据同步只覆盖 Codez 自有存储（~/.codez）。标记为「Codex 不同步」的分类即使推送成功，也不会对该设备上的 Codex 会话生效。",
+  "remoteSync.codex.sourceBanner":
+    "本机运行 Codex 原生后端：这里的「本机」条目只来自 Codez 自有存储（~/.codez），不包含你在设置页 Codex 面板里配置的 MCP、子智能体、钩子与技能启用态；这些配置目前不参与跨设备同步。",
+  "remoteSync.codex.sectionNotice":
+    "本机运行 Codex 原生后端：数据同步只覆盖 Codez 自有存储（~/.codez），不包含 Codex 自己管理的 MCP、子智能体、钩子与技能启用态。要修改这些配置，请打开设置页对应的 Codex 面板。",
+  "remoteSync.codex.blocked.title": "该分类在 Codex 后端下不同步",
+  "remoteSync.codex.blocked.body":
+    "目标设备运行 Codex 原生后端，它只读取自己的配置文件；跨设备数据同步只写 Codez 自有存储，推送会返回成功但对 Codex 会话没有任何影响，因此这里不提供勾选与推送。",
+  "remoteSync.codex.category.subagents":
+    "子智能体同步写入 ~/.codez/agents，启用态写入 ~/.codez/v2/agents-state.json；Codex 只读取 $CODEX_HOME/agents 与 <项目>/.codex/agents。请在设置页的「子智能体」分区（Codex 面板）中管理。",
+  "remoteSync.codex.category.mcp":
+    "MCP 同步写入 ~/.codez/cli/config.json 的 mcp.servers；Codex 只读取 $CODEX_HOME/config.toml 与 <项目>/.codex/config.toml。请在设置页的「MCP 服务器」分区（Codex 面板）中管理。",
+  "remoteSync.codex.category.skills":
+    "技能同步写入 ~/.codez/skills，启用态写入 ~/.codez/cli/config.json；Codex 扫描 $CODEX_HOME/skills 与 ~/.agents/skills，启用态在 config.toml 的 [skills] 中。列表里来自 ~/.agents/skills 的技能，文件本身两端共用，但同步只会把它写到目标端的 ~/.codez/skills，Codex 不会因此看到它。请在设置页的「技能」分区（Codex 面板）中查看与启停。",
+  "remoteSync.codex.category.commands":
+    "命令同步写入 ~/.codez/commands；Codex 原生没有自定义斜杠命令运行时，也不扫描 ~/.agents/commands，设置页的「命令」分区在 Codex 后端下同样不可用。需要复用的提示词请改写成技能，再在「技能」分区（Codex 面板）中启用。",
+  "remoteSync.codex.category.hooks":
+    "钩子同步写入 ~/.codez/cli/config.json 的 hooks；Codex 只读取 $CODEX_HOME/hooks.json、<项目>/.codex/hooks.json 与 config.toml 的 [hooks]。请在设置页的「钩子」分区（Codex 面板）中管理。",
+  "remoteSync.codex.category.plugins":
+    "插件分类里只有 marketplace 插件会生效：它经 Agent 安装，落到 Codex 原生的插件状态。本地（inline）插件写入 ~/.codez/plugins 与 plugins.dirs，Codex 不读取，已从本分类的列表中排除。",
   ...requestSecurityMessagesZhCN,
 };
 

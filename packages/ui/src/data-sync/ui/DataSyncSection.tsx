@@ -18,6 +18,18 @@ import type { DataSyncDeviceSummary, IDeviceSyncStateService } from "@/data-sync
 import { toDataSyncDeviceSummary } from "@/data-sync/ui/DataSyncDialogContainer.js";
 import { useDataSyncEntry } from "@/data-sync/ui/DataSyncEntry.js";
 import { useDataSyncResultVersion } from "@/data-sync/ui/DataSyncDialogProvider.js";
+import type {
+  DataSyncDeviceSummary,
+  IDeviceSyncStateService,
+  IServiceAccessor,
+} from "@/data-sync/contract.js";
+import { useDataSyncRuntimeModes } from "@/data-sync/app/useDataSyncRuntimeModes.js";
+import {
+  DataSyncDialogContainer,
+  recordDataSyncResult,
+  toDataSyncDeviceSummary,
+} from "@/data-sync/ui/DataSyncDialogContainer.js";
+import { DataSyncCodexSectionNotice } from "@/data-sync/ui/DataSyncCodexNotices.js";
 
 export interface DataSyncSectionProps {
   snapshot: SourceServerManagementSnapshot | null;
@@ -104,6 +116,9 @@ export function DataSyncSection(props: DataSyncSectionProps) {
   const deviceSyncStateService = props.deviceSyncStateService;
   const onOpenRemoteConnection = props.onOpenRemoteConnection;
   const mounted = useRef(false);
+  // 本机跑 Codex 原生后端时先说清口径：本页比较的是 Codez 自有存储，不含 Codex 面板里的配置。
+  // 判定只读本机 Host 的 agentRuntimeMode（specs/data-sync-codex-backend.md），设备侧在弹窗里判。
+  const runtimeModes = useDataSyncRuntimeModes({ sourceServices: props.sourceServices });
 
   useEffect(() => {
     mounted.current = true;
@@ -233,6 +248,9 @@ export function DataSyncSection(props: DataSyncSectionProps) {
           </Popover>
         </div>
       </div>
+      {runtimeModes.source === "codex" ? (
+        <DataSyncCodexSectionNotice formatMessage={intl.formatMessage} />
+      ) : null}
       {devices.length === 0 ? (
         <div
           data-testid="remote-sync-empty"

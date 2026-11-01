@@ -9400,6 +9400,29 @@ const enUS: Record<string, string> = {
   "voiceInput.error.audio_limit_exceeded":
     "The recording reached the maximum length. The recognized text was kept.",
   "voiceInput.error.failed": "Speech recognition failed. Try again.",
+  "remoteSync.codex.badge.blocked": "Not synced (Codex)",
+  "remoteSync.codex.badge.partial": "Partially synced",
+  "remoteSync.codex.targetBanner":
+    "The target device runs the native Codex backend: Codex manages its own configuration, and cross-device data sync only covers Codez-owned storage (~/.codez). Categories marked “Not synced (Codex)” do not take effect in Codex sessions on that device, even when the push reports success.",
+  "remoteSync.codex.sourceBanner":
+    "This machine runs the native Codex backend: the “local” items listed here come only from Codez-owned storage (~/.codez). They do not include the MCP servers, subagents, hooks or skill enablement you configured in the Codex panels, which are not part of cross-device sync today.",
+  "remoteSync.codex.sectionNotice":
+    "This machine runs the native Codex backend: data sync only covers Codez-owned storage (~/.codez), not the MCP servers, subagents, hooks and skill enablement that Codex manages itself. To change those, open the matching Codex panel in Settings.",
+  "remoteSync.codex.blocked.title": "This category is not synced under the Codex backend",
+  "remoteSync.codex.blocked.body":
+    "The target device runs the native Codex backend and only reads its own configuration files, while cross-device data sync writes Codez-owned storage only. A push would report success without changing any Codex session, so selection and push are not offered here.",
+  "remoteSync.codex.category.subagents":
+    "Subagent sync writes ~/.codez/agents and keeps enablement in ~/.codez/v2/agents-state.json, while Codex reads $CODEX_HOME/agents and <project>/.codex/agents. Manage subagents in Settings → Subagents (Codex panel).",
+  "remoteSync.codex.category.mcp":
+    "MCP sync writes mcp.servers in ~/.codez/cli/config.json, while Codex reads $CODEX_HOME/config.toml and <project>/.codex/config.toml. Manage MCP servers in Settings → MCP Servers (Codex panel).",
+  "remoteSync.codex.category.skills":
+    "Skill sync writes ~/.codez/skills and keeps enablement in ~/.codez/cli/config.json, while Codex scans $CODEX_HOME/skills and ~/.agents/skills and keeps enablement in [skills] of config.toml. Skills listed from ~/.agents/skills share the same files with Codex, but sync only writes them to ~/.codez/skills on the target, so Codex will not pick them up. Review and toggle skills in Settings → Skills (Codex panel).",
+  "remoteSync.codex.category.commands":
+    "Command sync writes ~/.codez/commands. Native Codex has no custom slash-command runtime and does not scan ~/.agents/commands either, and the Settings → Commands section is unavailable under the Codex backend as well. Turn a reusable prompt into a skill and enable it in Settings → Skills (Codex panel).",
+  "remoteSync.codex.category.hooks":
+    "Hook sync writes hooks in ~/.codez/cli/config.json, while Codex reads $CODEX_HOME/hooks.json, <project>/.codex/hooks.json and [hooks] in config.toml. Manage hooks in Settings → Hooks (Codex panel).",
+  "remoteSync.codex.category.plugins":
+    "Only marketplace plugins take effect in this category: they are installed through the Agent and land in the native Codex plugin state. Local (inline) plugins are written to ~/.codez/plugins and plugins.dirs, which Codex does not read, so they are excluded from this list.",
   ...requestSecurityMessagesEnUS,
 };
 
