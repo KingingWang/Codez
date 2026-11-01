@@ -67,14 +67,32 @@ it.each(["desktop-continuous", "web-remote-replayable"] as const)(
     try {
       await scope.service.helloConversationV4();
       await scope.service.initializeConversationV4({
-        kind: "clientHello", protocolVersion: 3, clientId: "diagnostic", appVersion: "4.0.0",
+        kind: "clientHello",
+        protocolVersion: 3,
+        clientId: "diagnostic",
+        appVersion: "4.0.0",
       });
       const received: ConversationTopicWireFrame[] = [];
-      scope.service.onDynamicConversationFrame({ workspacePath: "/repo" })((wire) => received.push(wire as ConversationTopicWireFrame));
-      let resolve!: (value: { ack: { subscriptionId: string; mode: "snapshot"; logEpoch: string } }) => void;
-      vi.mocked(base.subscribeConversationV4).mockImplementationOnce(() => new Promise((done) => { resolve = done; }));
-      const pending = scope.service.subscribeConversationV4({ workspacePath: "/repo", sessionId: "session-1" });
-      const initial = { ...completeWire(makeFrame("conversation/session-1", "sub-1")), deliveryKind: "initial" as const };
+      scope.service.onDynamicConversationFrame({ workspacePath: "/repo" })((wire) =>
+        received.push(wire as ConversationTopicWireFrame),
+      );
+      let resolve!: (value: {
+        ack: { subscriptionId: string; mode: "snapshot"; logEpoch: string };
+      }) => void;
+      vi.mocked(base.subscribeConversationV4).mockImplementationOnce(
+        () =>
+          new Promise((done) => {
+            resolve = done;
+          }),
+      );
+      const pending = scope.service.subscribeConversationV4({
+        workspacePath: "/repo",
+        sessionId: "session-1",
+      });
+      const initial = {
+        ...completeWire(makeFrame("conversation/session-1", "sub-1")),
+        deliveryKind: "initial" as const,
+      };
       conversationFrames.fire(initial);
       conversationFrames.fire({ ...initial, subscriptionId: "old-sub" });
       expect(received).toHaveLength(0);
@@ -84,10 +102,25 @@ it.each(["desktop-continuous", "web-remote-replayable"] as const)(
       conversationFrames.fire({ ...initial, subscriptionId: "old-sub" });
       conversationFrames.fire({ ...initial, logicalFrameOrdinal: 3 });
       conversationFrames.fire({ ...initial, deliveryKind: "online", logicalFrameOrdinal: 2 });
-      const events = info.mock.calls.map((call) => call[2] as { event?: string; outcome?: string }).filter((entry) => entry?.event === "v4.conversation.wire.scope_routed");
-      expect(events.map((entry) => entry.outcome)).toEqual(["staged", "staged", "released", "forwarded"]);
-      expect(warn.mock.calls.some((call) => (call[2] as { outcome?: string })?.outcome === "unowned")).toBe(true);
-      expect(warn.mock.calls.some((call) => (call[2] as { outcome?: string; reason?: string })?.outcome === "discarded" && (call[2] as { reason?: string }).reason === "ackSubscriptionMismatch")).toBe(true);
+      const events = info.mock.calls
+        .map((call) => call[2] as { event?: string; outcome?: string })
+        .filter((entry) => entry?.event === "v4.conversation.wire.scope_routed");
+      expect(events.map((entry) => entry.outcome)).toEqual([
+        "staged",
+        "staged",
+        "released",
+        "forwarded",
+      ]);
+      expect(
+        warn.mock.calls.some((call) => (call[2] as { outcome?: string })?.outcome === "unowned"),
+      ).toBe(true);
+      expect(
+        warn.mock.calls.some(
+          (call) =>
+            (call[2] as { outcome?: string; reason?: string })?.outcome === "discarded" &&
+            (call[2] as { reason?: string }).reason === "ackSubscriptionMismatch",
+        ),
+      ).toBe(true);
       expect(JSON.stringify([...info.mock.calls, ...warn.mock.calls])).not.toContain("/repo");
     } finally {
       info.mockRestore();
@@ -327,7 +360,7 @@ describe("CodezAgent connection-scoped service facade", () => {
     },
   );
 
-  it("desktop continuous 与 web replayable 都宣告 Host review domain capability", async () => {
+  it("Host review 能力由 base 逐键转发，两种 clientMode 都不自行宣告", async () => {
     const { base } = setupBase();
     const desktop = createCodezAgentConnectionScope(base, {
       connectionId: "desktop-hook-capability",
@@ -338,6 +371,10 @@ describe("CodezAgent connection-scoped service facade", () => {
       clientMode: "web-remote-replayable",
     });
 
+    // base 显式支持时，两种投递语义的连接都转发同一份事实。
+    vi.mocked(base.helloConversationV4).mockResolvedValue({
+      capabilities: { workspaceHookReview: true },
+    });
     await expect(desktop.service.helloConversationV4()).resolves.toMatchObject({
       clientMode: "desktop-continuous",
       capabilities: { workspaceHookReview: true },
@@ -346,6 +383,63 @@ describe("CodezAgent connection-scoped service facade", () => {
       clientMode: "web-remote-replayable",
       deliveryProfile: "replayable",
       capabilities: { workspaceHookReview: true },
+    });
+
+    // base 未支持时（Codex 后端就是这一支：bridge 不支持旧 Hooks 审批写入），attachment 必须
+    // 让该键缺席——hostCapabilitiesSchema 规定「缺失等价于 false，调用方用 === true 判断」。
+    // 之前 createHello 硬编码 workspaceHookReview: true，这一支会对 Codex 说谎。
+    vi.mocked(base.helloConversationV4).mockResolvedValue({ capabilities: {} });
+    const desktopDowngraded = await desktop.service.helloConversationV4();
+    const mobileDowngraded = await mobile.service.helloConversationV4();
+    expect(desktopDowngraded.capabilities).not.toHaveProperty("workspaceHookReview");
+    expect(mobileDowngraded.capabilities).not.toHaveProperty("workspaceHookReview");
+    // 连接自有事实不受降级影响。
+    expect(desktopDowngraded.capabilities.nativeDialogs).toBe(true);
+    expect(mobileDowngraded.capabilities.nativeDialogs).toBe(false);
+    expect(mobileDowngraded.deliveryProfile).toBe("replayable");
+  });
+
+  it("base 未支持的 runtime 能力一律缺席，attachment 不代为宣告", async () => {
+    const { base } = setupBase();
+    const scope = createCodezAgentConnectionScope(base, {
+      connectionId: "downgraded-capabilities",
+      clientMode: "web-remote-replayable",
+    });
+
+    // Codex 后端下 base 的能力集：genUiContext / residentRowsRange / inputPrediction /
+    // workflowRunDeltas / workspaceHookReview 全部缺席。
+    vi.mocked(base.helloConversationV4).mockResolvedValue({
+      capabilities: { independentPlanState: true },
+    });
+    const hello = await scope.service.helloConversationV4();
+    for (const key of [
+      "genUiContext",
+      "residentRowsRange",
+      "inputPrediction",
+      "workflowRunDeltas",
+      "workspaceHookReview",
+    ]) {
+      expect(hello.capabilities).not.toHaveProperty(key);
+    }
+    expect(hello.capabilities.independentPlanState).toBe(true);
+
+    // base 显式支持后，同一 attachment 立刻逐键转发，证明降级不是写死关闭。
+    vi.mocked(base.helloConversationV4).mockResolvedValue({
+      capabilities: {
+        genUiContext: true,
+        residentRowsRange: true,
+        inputPrediction: true,
+        workflowRunDeltas: true,
+        workspaceHookReview: true,
+      },
+    });
+    const upgraded = await scope.service.helloConversationV4();
+    expect(upgraded.capabilities).toMatchObject({
+      genUiContext: true,
+      residentRowsRange: true,
+      inputPrediction: true,
+      workflowRunDeltas: true,
+      workspaceHookReview: true,
     });
   });
   // 增量能力是一条**单向**握手（shared transport.ts）：Host 先在 hello 里宣告，客户端才敢在
@@ -841,9 +935,15 @@ describe("CodezAgent connection-scoped service facade", () => {
       },
     });
     await expect(subscribing).rejects.toThrow("fault.subscription.initialFrameStagingOverflow");
-    const overflow = warn.mock.calls.filter((call) => (call[2] as { event?: string })?.event === "v4.conversation.wire.staging_overflow");
+    const overflow = warn.mock.calls.filter(
+      (call) => (call[2] as { event?: string })?.event === "v4.conversation.wire.staging_overflow",
+    );
     expect(overflow).toHaveLength(1);
-    expect(overflow[0]?.[2]).toMatchObject({ sessionId: "physical-overflow-session", subscriptionId: "sub-physical-overflow", stagedFrames: 1024 });
+    expect(overflow[0]?.[2]).toMatchObject({
+      sessionId: "physical-overflow-session",
+      subscriptionId: "sub-physical-overflow",
+      stagedFrames: 1024,
+    });
     expect(JSON.stringify(overflow)).not.toContain("/repo");
     warn.mockRestore();
     expect(seen).toEqual([]);
