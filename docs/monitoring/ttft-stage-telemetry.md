@@ -192,6 +192,16 @@ flowchart TD
 - 明细保留阶段 interval、duration、因果关联与缺失信息。可解释区间的并集与总时长核对，重叠不重复累计，差额展示为未归因或缺失，不强行塞给模型或网络。
 - 模型服务内部排队和推理、DNS/TLS/网络 TTFB 不在缺乏对应事实时细分；SDK 首事件不能冒充网络首字节。
 
+### Codex 原生后端的时钟校准
+
+Codex bridge 是独立进程，renderer 的端到端 TTFT 必须靠 `commandsQuery` 的 `clock: true` 探针完成跨进程校准，口径与 CLI 完全一致：
+
+- `receivedAt` 在参数解析**之前**取，代表请求到达 runtime 的最早时刻；`sentAt` 在构造应答时取；两者都用 `localTtftNow()`（`performance.timeOrigin + performance.now()`），与 renderer 同源函数。
+- `instanceId` 是每个 bridge 进程一个 `randomUUID`，且在该进程生命周期内稳定。renderer 用它判定校准样本属于哪一次 runtime 生命周期，避免把旧进程的偏移量套到重启后的新区间上。
+- 校准是**纯时钟探测，必须短路**：不触发命令账本查询、不触发恢复、不进 admission gate，所有 key 一律按 `unknown` 应答。schema 已要求 clock 探针的 `sessionId` 全为 `null`。
+- 时钟探针之外，Codex 后端目前**不产出** TTFT 阶段事实（`admittedAt` / `executionAt` / `requestAt` / `outputAt`）。按本节既有口径，缺失阶段一律缺席、不得填零；renderer 的记录因此仍会以未收口或质量缺失呈现，直到 bridge 侧补齐首输出打点与命令→轮次归因。
+- Codex 协议层拿不到 Codex 自己算的 `time_to_first_token_ms`（app-server 在 `handle_turn_complete` 丢弃了它，`Turn` 结构体也没有该字段）。后续补首输出打点时，基准应取 `turn/started` 的 `emittedAtMs`、首输出取首个符合条件的 `item/started.startedAtMs`；注意 `turn.startedAt` 是**秒**级，不可与毫秒字段混用。
+
 ### 统计、结果和查询
 
 - 一次独立发送是主 TTFT 统计单位。模型 attempt 和准备子阶段有各自统计单位，查询必须标明，避免将后续工具循环请求混入用户首次响应统计。

@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import test, { type TestContext } from "node:test";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { codezWorkspaceGenerateTextResultSchema } from "@codez/shared";
 import {
   V4_METHODS,
   commandAckSchema,
+  commandsQueryResultSchema,
   v4ConversationSubscribeResultSchema,
   routedTopicWireFrameSchema,
   conversationSnapshotSchema,
@@ -1906,3 +1908,43 @@ for (const clientMode of ["desktop-continuous", "web-remote-replayable"] as cons
     );
   });
 }
+
+test("时钟探针应答 TTFT 校准，且不触碰命令账本与原生 RPC", async (t) => {
+  const h = await fixture(t);
+  // renderer 的 calibrate() 发的是 sessionId:null + 合成 commandId 的纯时钟探针
+  // （packages/ui/src/v4/agentConversationTransport.ts）。
+  const key = { sessionId: null, commandId: `ttft-clock-${randomUUID()}` };
+  const probe = { commands: [key], clock: true as const };
+  const callsBefore = h.calls.length;
+
+  const first = commandsQueryResultSchema.parse(
+    (await h.runtime.request(V4_METHODS.commandsQuery, probe)).result,
+  );
+  // 修复原因：bridge 之前只返回 { results }、不带 clock，renderer 侧 .catch(() => {}) 静默吞掉，
+  // Codex 会话的本地 TTFT 因此永远拿不到跨进程时钟校准。
+  assert.ok(first.clock, "时钟探针必须回 clock，否则 renderer 无法做跨进程校准");
+  assert.match(
+    first.clock.instanceId,
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u,
+  );
+  assert.ok(first.clock.sentAt >= first.clock.receivedAt, "sentAt 不得早于 receivedAt");
+  assert.ok(first.clock.receivedAt > 0);
+  // 校准是纯时钟探测：所有 key 一律 unknown，且不触发账本查询或任何原生 RPC。
+  assert.deepEqual(first.results, [{ key, result: "unknown" }]);
+  assert.equal(h.calls.length, callsBefore, "时钟探针不得触发原生调用");
+
+  // 同一 runtime 生命周期内 instanceId 必须稳定，否则 renderer 会把偏移量算到别的进程上。
+  const second = commandsQueryResultSchema.parse(
+    (await h.runtime.request(V4_METHODS.commandsQuery, probe)).result,
+  );
+  assert.equal(second.clock?.instanceId, first.clock?.instanceId);
+  assert.ok(second.clock!.sentAt >= first.clock!.sentAt);
+  assert.equal(h.calls.length, callsBefore);
+
+  // 普通查询（不带 clock）仍走账本，证明短路只作用于校准探针。
+  const plain = commandsQueryResultSchema.parse(
+    (await h.runtime.request(V4_METHODS.commandsQuery, { commands: [key] })).result,
+  );
+  assert.equal(plain.clock, undefined);
+  assert.deepEqual(plain.results, [{ key, result: "unknown" }]);
+});
