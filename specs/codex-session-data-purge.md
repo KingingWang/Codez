@@ -198,6 +198,10 @@ Host 是任务索引行、检查点与目录集合的唯一写者。
 作为唯一入口。为把 usage-store 压回 oxlint max-lines 之内，纯 SQL 计划与行映射拆到
 `codex-app-usage-sql.ts`（`ThreadRow`/`TurnRecord` 仍从 usage-store 再导出，既有消费方不变）。
 
+查询完成必须意味着本次 SQLite 连接已关闭：worker 先 `db.close()` 再发送结果。
+Windows CI 41327506675 的 SD-CODEX-05/06 在已收到结果后重建夹具库时报 EPERM，
+旧顺序 `postMessage → close` 留下文件句柄竞争；修复不放宽预检，也不增加删除重试。
+
 ### 调度与竞争
 
 purge 的破坏性步骤逐会话串行，同一 bridge 内不并发发起两次 `thread/delete`。但 bridge 的请求
