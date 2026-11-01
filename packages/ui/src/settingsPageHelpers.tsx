@@ -356,6 +356,7 @@ export function GeneralSectionContent({
                 size="lg"
                 className="w-[260px] min-w-0 justify-between"
                 data-testid={TID_SETTINGS_LOCALE_SELECT_TRIGGER}
+                aria-label={intl.formatMessage({ id: "settings.locale" })}
               >
                 <SelectValue />
               </SelectTrigger>
@@ -422,6 +423,8 @@ export function GeneralSectionContent({
           description={intl.formatMessage({ id: "settings.terminalProfileDescription" })}
           control={
             <Switch
+              // SettingsRow 的视觉 label 没有关联到控件；复用同一翻译给键盘/读屏明确名称。
+              aria-label={intl.formatMessage({ id: "settings.terminalProfile" })}
               checked={terminalInheritSystemProfile}
               onCheckedChange={(checked) => {
                 void onTerminalInheritSystemProfileChange(checked);
@@ -476,7 +479,11 @@ export function GeneralSectionContent({
                   void handleIntegratedTerminalShellChange(value);
                 }}
               >
-                <SelectTrigger size="lg" className="w-[260px] min-w-0 justify-between">
+                <SelectTrigger
+                  size="lg"
+                  className="w-[260px] min-w-0 justify-between"
+                  aria-label={intl.formatMessage({ id: "settings.integratedTerminalShell" })}
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -671,7 +678,11 @@ export function GeneralSectionContent({
             id: "settings.notificationDescription",
           })}
           control={
-            <Switch checked={notificationEnabled} onCheckedChange={setNotificationEnabled} />
+            <Switch
+              aria-label={intl.formatMessage({ id: "settings.notification" })}
+              checked={notificationEnabled}
+              onCheckedChange={setNotificationEnabled}
+            />
           }
         />
         <SettingsRow
@@ -682,6 +693,7 @@ export function GeneralSectionContent({
           })}
           control={
             <Switch
+              aria-label={intl.formatMessage({ id: "settings.notificationSound" })}
               checked={notificationSoundEnabled}
               disabled={!notificationEnabled}
               onCheckedChange={setNotificationSoundEnabled}
@@ -720,6 +732,7 @@ export function GeneralSectionContent({
             }
             control={
               <Switch
+                aria-label={intl.formatMessage({ id: "settings.closeToTrayOnWindows" })}
                 checked={closeToTrayOnWindows}
                 // Linux 上托盘能力未知（探测中）或确认不可用时都锁定，防止误开导致关窗失联
                 //（spec：docs/desktop/linux-close-to-tray.md）。

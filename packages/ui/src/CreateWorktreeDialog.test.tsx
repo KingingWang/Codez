@@ -97,6 +97,14 @@ test("worktree form renders branch modes, host preview facts, and isolation disc
   assert.match(html, /\/host\/repo-worktrees\/feature-new/);
 });
 
+test("unsupported NUL worktree listing shows the Host Git upgrade action in the active locale", () => {
+  const html = renderDialog(state({ error: "worktree.create.error.gitUpgradeRequired" }));
+  assert.match(html, /Git 2\.36/);
+  assert.match(html, /请升级此工作区所在设备的 Git/);
+  assert.match(html, /Git 2\.23/);
+  assert.doesNotMatch(html, /worktree\.create\.error\.gitUpgradeRequired/);
+});
+
 test("occupied existing branch shows the host path and explicit jump action", () => {
   const html = renderDialog(
     state({

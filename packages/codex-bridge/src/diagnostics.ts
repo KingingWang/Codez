@@ -1,7 +1,14 @@
 import { CodexRpcError, CodexTransportError } from "./rpc-errors.js";
 import { z } from "zod";
+import type { NativeFirstOutputDiagnostic } from "./conversation-observation-types.js";
 
 export type BridgeStateDiagnostic =
+  | NativeFirstOutputDiagnostic
+  | {
+      kind: "conversationTelemetryDropped";
+      reason: "capacity" | "invalid" | "transport";
+      count: number;
+    }
   | {
       kind: "subagentStopFallback";
       sessionId: string;
@@ -35,6 +42,17 @@ const diagnosticId = (value: string | null): string =>
 
 /** stderr 只接受闭合枚举、计数与短 ID；原生文本不进入生产诊断。 */
 export function formatBridgeStateDiagnostic(diagnostic: BridgeStateDiagnostic): string {
+  if (diagnostic.kind === "nativeFirstOutput") {
+    const duration =
+      typeof diagnostic.durationMs === "number" &&
+      Number.isFinite(diagnostic.durationMs) &&
+      diagnostic.durationMs >= 0
+        ? diagnostic.durationMs.toFixed(3)
+        : "none";
+    return `Codex desktop bridge state: nativeFirstOutput; instanceId=${diagnosticId(diagnostic.instanceId)}; observationId=${diagnosticId(diagnostic.observationId)}; commandId=${diagnosticId(diagnostic.commandId)}; sessionId=${diagnosticId(diagnostic.sessionId ?? null)}; turnId=${diagnosticId(diagnostic.turnId ?? null)}; outcome=${diagnostic.outcome}; reason=${diagnostic.reason ?? "none"}; durationMs=${duration}; outputKind=${diagnostic.outputKind ?? "none"}\n`;
+  }
+  if (diagnostic.kind === "conversationTelemetryDropped")
+    return `Codex desktop bridge state: conversationTelemetryDropped; reason=${diagnostic.reason}; count=${diagnostic.count}\n`;
   if (diagnostic.kind === "subagentStopFallback")
     return `Codex desktop bridge state: subagentStopFallback; sessionId=${diagnosticId(diagnostic.sessionId)}; childSessionId=${diagnosticId(diagnostic.childSessionId)}\n`;
   if (diagnostic.kind === "snapshotPrepared") {

@@ -9,5 +9,8 @@ Provider 写目标不包含 Agent 代际；同一目标的轮换重启通过 def
 Key 的 prepare/write/finish（失败 rollback）复用原 port，不在 UI 持久化密钥。
 
 catalog single-flight、瞬时读取重试和模型失效继续由既有 hooks/Host 承担，不新增缓存。
+模型供应商页复用原模型配置页的纯展示分栏；左侧选择仅归本地 UI，不修改默认
+供应商或会话选择。供应商表与目录模型仍走上述 native port，不能借复用布局
+重新调用 legacy Provider Registry。目录中未配置的 provider 组保持可见。
 native hooks、MCP、memory、resources、agents、history、title-model 和 Gemini wire API
 面板保持原语义。metadata 不恢复 Node/App 测试，也不接管整片 settings 目录。
