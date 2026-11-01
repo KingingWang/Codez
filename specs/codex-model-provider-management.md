@@ -1,14 +1,27 @@
 # Codex 模型供应商与目录模型的 GUI 管理
 
-Status: 实现中。设置 → Codex 新增「模型供应商」面板：直接管理 config.toml 的
+Status: 已实现；2026-11-01 收口原设置布局。设置 → Codex 的「模型供应商」面板直接管理 config.toml 的
 `model_providers` 与 `model_catalog_json` 目录文件中的模型条目，不再只能手编
 TOML/JSON。分组显示与跨 provider 路由的事实源契约见
 specs/codex-model-provider-grouping.md，本 spec 只定义管理（写）路径。
 
 ## 产品规则
 
-- 面板分两个区块：**供应商**（`model_providers` 表）与**模型**（catalog 文件
-  条目）。模型按 catalog provider 分组列出，与 composer 下拉同一归属口径。
+- 面板复用 fork 前模型配置页的左右分栏：左侧选择供应商，右侧显示该供应商的
+  配置与目录模型。新增供应商、刷新仍位于共享设置页头部。只恢复展示与操作
+  布局，不接回旧 Provider Registry 的配置、鉴权或模型写入路径。
+- 窄屏保留左侧导航与右侧同一配置目标；供应商操作另起一行，模型操作在说明
+  下方换行，不能把名称/地址区域挤成逐字纵排。390px、中英文与明暗都检查实际文字宽度。
+- 2026-11-02 实际组件浏览器验收：供应商切换、单模型删除保护、可见性、原地改名、
+  重启确认与 390/1280px × 中英文 × Zai 明暗通过，工件
+  `/tmp/codex-ui-provider-model-slug-rEpxvf`。布局/切换未产生配置写入；
+  目录写入 2 次，其中原 slug 改名 1 次。浏览器假 Host 不替代真实 Key 存储或 SSH 验收。
+- 右侧分两个区块：**供应商**（`model_providers` 表）与**模型**（catalog 文件
+  条目）。模型按 catalog provider 筛选，与 composer 下拉同一归属口径；
+  没有已配置供应商的目录组仍可通过左侧独立入口查看，不因布局改变隐藏历史条目。
+- 供应商选择只归面板本地 UI；不能写 `config.model_provider` 或改变会话模型。
+  切换供应商关闭尚未提交的供应商/模型表单，切换 workspace/service/identity
+  沿用外层 formKey 清理，不能带着旧目标草稿写入新目标。
 - 供应商字段（MVP）：id、name、base_url、wire_api（chat/responses/anthropic/gemini）、
   API Key（`experimental_bearer_token`）、requires_openai_auth。id 创建后不可改
   （TOML 表键即身份；改名 = 新建 + 删除）。
@@ -218,6 +231,14 @@ deleteCodexCatalogModel`，载体铁律与 `readCodexCatalog` 相同（workspace
     `model_providers.<id>.wire_api`；重新读取时仍显示 `gemini`，不被归一化为 `chat`。
     其他协议及未知值回退行为保持不变。本场景只验证配置管理，不替代 runtime 的
     Gemini 请求、流式响应与工具调用验证。
+15. 打开模型供应商页：出现与原模型配置页共用的左右分栏，左侧供应商选择、
+    右侧配置及所属模型。选择另一供应商不发送任何写请求，不改默认供应商或
+    会话模型；编辑/新增/删除/Key 保存继续通过既有 native port。以浏览器
+    真实组件检查 390px 与 1280px、中英双语、明暗主题和键盘选择。
+16. 目录有未配置供应商的模型：左侧仍提供该目录组入口，可编辑/删除这些模型；
+    默认选择刷新后失效时回落到现有首个入口，不展示旧目标的编辑表单。
+    Provider Key 轮换引起的同目标 runtime 重启不得关闭未成功保存的表单或
+    将成功回包当成旧目标回包。
 
 ```text
 GUI 已观察目录 → 展示禁用或确认 → bridge 接收 deleteModel

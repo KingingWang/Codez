@@ -19,6 +19,10 @@ import type { CodexProviderKeyGate } from "./provider-key-gate.js";
 import { resolveCodexInitSlashCommandPrompt } from "./builtin-init-command.js";
 import { nativeProjectSource } from "./project-origin.js";
 import { isAbsolute } from "node:path";
+import {
+  observeConversationSafely,
+  type CommandObservations,
+} from "./conversation-observation-types.js";
 
 export async function createNativeSession(
   command: CommandEnvelope,
@@ -29,6 +33,7 @@ export async function createNativeSession(
     attachments?: ResolveAttachments;
     title?: SessionTitleCoordinator;
     providerKeyGate?: CodexProviderKeyGate;
+    observations?: CommandObservations;
   },
 ): Promise<CommandResult> {
   const { rpc, store, workspaceId, attachments } = context;
@@ -111,9 +116,11 @@ export async function createNativeSession(
         },
       ),
     };
+    observeConversationSafely(() => context.observations?.beginTurn(command, sessionId, true));
     const response = await rpc.request("turn/start", turnParams);
     store.applySettings(sessionId, turnParams);
     store.acceptTurnResponse(sessionId, response);
+    observeConversationSafely(() => context.observations?.acceptTurn(command, sessionId, response));
   }
   // 记住显式档位（bridge 进程内事实）；快照投影与 queue 守卫共用（specs/codex-permission-modes.md）。
   store.rememberMode(sessionId, p.firstInput?.mode ?? p.config?.mode);

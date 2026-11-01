@@ -256,6 +256,7 @@ function CodexSettingsContent(props: CodexSettingsSectionProps) {
           {panel === "providers" ? (
             <CodexProvidersPanel
               controller={controller}
+              showRefresh={props.embeddedInSettingsPage === true}
               workspacePath={props.workspacePath}
               workspaceIdentity={props.workspaceIdentity}
             />

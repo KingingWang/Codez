@@ -377,6 +377,10 @@ export interface GitWorktreeListResult {
   worktrees: GitWorktreeEntry[];
 }
 
+/** NUL 工作树列举能力的公开事实，Host 与 renderer 不能各自猜测错误串。 */
+export const GIT_WORKTREE_LIST_NUL_UNSUPPORTED_CODE = "git_worktree_list_nul_unsupported" as const;
+export const GIT_WORKTREE_LIST_NUL_MIN_GIT_VERSION = "2.36.0" as const;
+
 export type GitWorktreeCreateMode = "new-branch" | "existing-branch";
 
 export interface GitWorktreeCreatePreviewRequest {

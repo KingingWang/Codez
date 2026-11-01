@@ -3206,6 +3206,9 @@ describe("createCodezTaskIndexSyncer", () => {
     vi.mocked(env.agent.subscribeSessionsIndexV4).mockRejectedValue(persistentError);
     vi.mocked(env.agent.subscribeWorkspaceConfigV4).mockRejectedValue(persistentError);
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    // 全局 console 可能同时收到其他异步诊断；用本例唯一的故障实例界定 owner，
+    // 仍精确验证两个 topic 的日志与一分钟限频，不能把无关 warn 算作重复订阅故障。
+    const topicWarnings = () => warnSpy.mock.calls.filter((call) => call[2] === persistentError);
     const syncer = createCodezTaskIndexSyncer({
       agentService: env.agent,
       taskIndexRepo: env.repo,
@@ -3215,14 +3218,14 @@ describe("createCodezTaskIndexSyncer", () => {
     try {
       syncer.ensureWorkspaceSubscription({ workspacePath: "/repo" });
       await vi.advanceTimersByTimeAsync(0);
-      expect(warnSpy).toHaveBeenCalledTimes(2);
+      expect(topicWarnings()).toHaveLength(2);
 
       await vi.advanceTimersByTimeAsync(59_999);
-      expect(warnSpy).toHaveBeenCalledTimes(2);
+      expect(topicWarnings()).toHaveLength(2);
 
       await vi.advanceTimersByTimeAsync(1_000);
-      expect(warnSpy).toHaveBeenCalledTimes(4);
-      const messages = warnSpy.mock.calls.map((call) => String(call[1]));
+      expect(topicWarnings()).toHaveLength(4);
+      const messages = topicWarnings().map((call) => String(call[1]));
       expect(messages.filter((message) => message.includes("reason=initial"))).toHaveLength(2);
       expect(messages.filter((message) => message.includes("reason=retry"))).toHaveLength(2);
       expect(messages.every((message) => !message.includes("retry:retry"))).toBe(true);

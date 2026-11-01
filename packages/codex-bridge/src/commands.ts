@@ -2,6 +2,7 @@ import {
   commandAckSchema,
   commandPayloadSchemas,
   parseCommandEnvelope,
+  localTtftNow,
   type CommandAck,
   type CommandEnvelope,
   type CommandResult,
@@ -44,6 +45,10 @@ import { executeInterruptedTurnContinue } from "./commands-continue.js";
 import { deleteBridgeThread } from "./thread-queries.js";
 import type { BridgeStateDiagnostic } from "./diagnostics.js";
 import { cancelSubagentWork, cascadeSubagentStop } from "./subagent-stop.js";
+import {
+  observeConversationSafely,
+  type CommandObservations,
+} from "./conversation-observation-types.js";
 
 export interface CommandContext {
   rpc: CodexRpcPort;
@@ -61,21 +66,42 @@ export interface CommandContext {
   providerKeyGate?: CodexProviderKeyGate;
   onContinueRejected?: (diagnostic: BridgeStateDiagnostic) => void;
   onSubagentStopFallback?: (diagnostic: BridgeStateDiagnostic) => void;
+  observations?: CommandObservations;
 }
 
 /** Per-thread serialization covers admission decisions, not native execution. */
 export class CommandRouter {
   private readonly serial = new Map<string, Promise<unknown>>();
+  private maintenance: Promise<unknown> = Promise.resolve();
   constructor(private readonly context: CommandContext) {}
 
+  /** 原 admission owner 的全局维护屏障；不建立第二份 accepted queue。 */
+  exclusiveMaintenance<T>(operation: () => Promise<T>): Promise<T> {
+    const active = [...this.serial.values()];
+    const next = this.maintenance
+      .catch(() => {})
+      .then(() => Promise.all(active.map((entry) => entry.catch(() => {}))))
+      .then(operation);
+    // 同步安装屏障，随后到达的命令才能排到维护之后；失败也要解除屏障。
+    this.maintenance = next.catch(() => {});
+    return next;
+  }
+
   async execute(value: unknown): Promise<CommandAck> {
+    const receivedAt = localTtftNow();
     const parsed = parseCommandEnvelope(value);
     if (!parsed.ok)
       throw Object.assign(new Error("Invalid conversation command"), { code: -32602 });
     const command = parsed.envelope;
     const key = command.sessionId ?? "create";
+    const maintenance = this.maintenance;
     const previous = this.serial.get(key) ?? Promise.resolve();
-    const next = previous.catch(() => {}).then(() => this.admit(command));
+    const next = previous
+      .catch(() => {})
+      .then(async () => {
+        await maintenance;
+        return this.admit(command, receivedAt);
+      });
     this.serial.set(key, next);
     try {
       return await next;
@@ -84,7 +110,7 @@ export class CommandRouter {
     }
   }
 
-  private async admit(command: CommandEnvelope): Promise<CommandAck> {
+  private async admit(command: CommandEnvelope, receivedAt: number): Promise<CommandAck> {
     const { store, ledger } = this.context;
     const existing = await ledger.lookup(command.sessionId, command.commandId);
     if (existing && existing !== "unknown") return existing;
@@ -98,6 +124,7 @@ export class CommandRouter {
         revisionAtDecision: 0,
       };
     }
+    observeConversationSafely(() => this.context.observations?.received(command, receivedAt));
     let ack: CommandAck;
     try {
       // deleteSession 走免锁只读归属校验与幂等删除，避免为删除把未加载会话重新 resume 或因已删 tombstone 报错。
@@ -153,6 +180,7 @@ export class CommandRouter {
           };
     }
     await ledger.finish(command.sessionId, ack);
+    observeConversationSafely(() => this.context.observations?.decided(command, ack));
     return commandAckSchema.parse(ack);
   }
 
@@ -254,12 +282,18 @@ export class CommandRouter {
               permissions,
             ),
           };
+          observeConversationSafely(() =>
+            this.context.observations?.beginTurn(command, sessionId, !running),
+          );
           const response = await rpc.request("turn/start", turnParams);
           store.applySettings(sessionId, {
             ...turnParams,
             ...(p.modelSelection ? { modelProvider: p.modelSelection.providerId } : {}),
           });
           store.acceptTurnResponse(sessionId, response);
+          observeConversationSafely(() =>
+            this.context.observations?.acceptTurn(command, sessionId, response),
+          );
           store.rememberMode(sessionId, p.mode);
         }
         if (rewindNotice) this.context.rewindNotices?.clear(sessionId, rewindNotice);

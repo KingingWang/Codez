@@ -24,6 +24,7 @@ const mockTabs = vi.hoisted(() => ({ tabs: [] as unknown[] }));
 const mockScopeRouting = vi.hoisted(() => ({
   enabled: false,
   context: null as IServiceAccessor | null,
+  base: null as IServiceAccessor | null,
   modelServices: [] as unknown[],
 }));
 const mockInitializePlugins = vi.hoisted(() => vi.fn(async () => {}));
@@ -368,8 +369,13 @@ vi.mock("@/hooks/useWorkspaceServices.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/hooks/useWorkspaceServices.js")>();
   return {
     ...actual,
+    // Base services 是「本机设备」的服务（真实实现读 remoteWorkspaceSessionStore.baseServices）。
+    // 这里指回本套用例的本机假 accessor，让「本机 User / 本机项目」断言真的落在本机上；
+    // 未显式设置时保持旧回退（context / 默认假服务）。
     useBaseWorkspaceServices: () =>
-      mockScopeRouting.context ?? ({ subagentsService: mockSubagentsService } as never),
+      mockScopeRouting.base ??
+      mockScopeRouting.context ??
+      ({ subagentsService: mockSubagentsService } as never),
   };
 });
 
@@ -385,11 +391,28 @@ vi.mock("@/settings-scope/index.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/settings-scope/index.js")>();
   return {
     ...actual,
-    useSettingsScopeForm: () => ({
-      form: stateOverrides.get(7) ? { agent: stateOverrides.get(8) ?? null } : null,
-      openForm: vi.fn(),
-      closeForm: vi.fn(),
-    }),
+    // 交互式用例（useRealReactHooks）必须走真实表单状态：点「新建」要真的把表单打开，
+    // 名称输入框与 ModelConfigSelect 才会渲染；桩掉的 openForm 会让表单永远打不开。
+    // 静态用例（renderToStaticMarkup）没有事件循环，仍按重构前的 useState 调用序号驱动
+    // 状态（7 = 打开表单，8 = 当前编辑的 agent）。scope 事实（设备 / 用户 / 归属解析）
+    // 两种模式都走真实实现，保住路由断言的原有语义。
+    useSettingsScopeForm: (
+      scope: Parameters<typeof actual.useSettingsScopeForm>[0],
+    ): ReturnType<typeof actual.useSettingsScopeForm> => {
+      if (useRealReactHooks) {
+        return actual.useSettingsScopeForm(scope);
+      }
+      // 静态用例按旧序号驱动：7 = 打开表单（新建），8 = 当前编辑的 agent。
+      // 旧组件里「编辑表单」只看 editingAgent 是否非空（用例只写 8，不写 7），
+      // 新契约是 form: { agent }（agent 为 null 表示新建），因此两者任一非空即视为已打开。
+      const opened = stateOverrides.get(7);
+      const editing = stateOverrides.get(8) ?? null;
+      return {
+        form: opened || editing ? { agent: editing } : null,
+        openForm: vi.fn(),
+        closeForm: vi.fn(),
+      };
+    },
   };
 });
 
@@ -530,6 +553,7 @@ describe("SubagentsSection", () => {
     useRealReactHooks = false;
     mockScopeRouting.enabled = false;
     mockScopeRouting.context = null;
+    mockScopeRouting.base = null;
     mockScopeRouting.modelServices = [];
     useRemoteWorkspaceSessionStore.setState({
       baseServices: null,
@@ -556,7 +580,9 @@ describe("SubagentsSection", () => {
   function setupScopeRouting(includeLocalWorkspace = true, connected = true) {
     useRealReactHooks = true;
     mockScopeRouting.enabled = true;
-    const makeServices = () => ({
+    // 服务桩带 label：三套 accessor 的 pluginManagementService / modelSelectionService
+    // 原本都是空对象，结构化比较下彼此相等，路由断言会假通过（评审实测）。
+    const makeServices = (label: string) => ({
       subagentsService: {
         ...mockSubagentsService,
         list: vi.fn(async () => ({
@@ -567,12 +593,12 @@ describe("SubagentsSection", () => {
         })),
         createAgent: vi.fn(async () => ({})),
       },
-      pluginManagementService: {},
-      modelSelectionService: {},
+      pluginManagementService: { label },
+      modelSelectionService: { label },
     });
-    const local = makeServices();
-    const remoteA = makeServices();
-    const remoteB = makeServices();
+    const local = makeServices("local");
+    const remoteA = makeServices("remote-a");
+    const remoteB = makeServices("remote-b");
     const path = "/workspace/same-path";
     const identityA = `remote:server:source-a:${path}`;
     const identityB = `remote:server:source-b:${path}`;
@@ -640,24 +666,60 @@ describe("SubagentsSection", () => {
     await waitFor(() => expect(container.querySelector("form")).toBeNull());
   }
 
-  it("远端激活时 User 的列表、模型、插件初始化和保存都属于本机", async () => {
+  it("远端 workspace 激活时列表、模型与插件初始化属于该远端设备；切「用户」后回到本机", async () => {
     const { local, remoteA, path, identityA } = setupScopeRouting();
+    mockScopeRouting.base = local as unknown as IServiceAccessor;
     const { SubagentsSection } = await import("@/settings/SubagentsSection.js");
     const view = render(
       createElement(SubagentsSection, { workspacePath: path, workspaceIdentity: identityA }),
     );
-    await waitFor(() => expect(local.subagentsService.list).toHaveBeenCalled());
+    // Scope 状态唯一 owner：默认选中 props 指向的远端 workspace，事实全部来自该设备的服务。
+    // 旧行为（远端激活时也把「用户」固定成本机并立即读写本机）已废除。
+    await waitFor(() =>
+      expect(remoteA.subagentsService.list).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workspacePath: path,
+          workspaceIdentity: identityA,
+          mode: "allRuntimeScopes",
+        }),
+      ),
+    );
     expect(view.container.querySelector("[data-settings-machine]")).toBeNull();
-    expect(remoteA.subagentsService.list).not.toHaveBeenCalled();
+    expect(local.subagentsService.list).not.toHaveBeenCalled();
+    expect(mockScopeRouting.modelServices.at(-1)).toBe(remoteA.modelSelectionService);
+    expect(mockInitializePlugins).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspacePath: path,
+        workspaceIdentity: identityA,
+        pluginService: remoteA.pluginManagementService,
+      }),
+    );
+    expect(mockInitializePlugins).not.toHaveBeenCalledWith(
+      expect.objectContaining({ pluginService: local.pluginManagementService }),
+    );
+
+    // 页面级「用户」入口是本机 User（toLocalScopeKey 把用户键归一到 LOCAL_USER_SCOPE_KEY）：
+    // 切过去之后列表、模型目录与插件初始化都必须落在本机服务上，而不是留在远端设备。
+    mockInitializePlugins.mockClear();
+    fireEvent.click(screen.getByTestId("scope-user"));
+    await waitFor(() =>
+      expect(local.subagentsService.list).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workspacePath: path,
+          workspaceIdentity: undefined,
+          mode: "settingsUserOnly",
+        }),
+      ),
+    );
     expect(mockScopeRouting.modelServices.at(-1)).toBe(local.modelSelectionService);
     expect(mockInitializePlugins).toHaveBeenCalledWith(
       expect.objectContaining({
         workspacePath: path,
-        workspaceIdentity: undefined,
         configScope: "user",
         pluginService: local.pluginManagementService,
       }),
     );
+
     await submitScopeAgent(view.container);
     expect(local.subagentsService.createAgent).toHaveBeenCalledWith(
       expect.objectContaining({ scope: "user", workspaceIdentity: undefined }),
@@ -668,24 +730,19 @@ describe("SubagentsSection", () => {
     );
   });
 
-  it("没有本机 workspace 且远端离线时 User 仍可保存，不借远端目录初始化插件", async () => {
-    const { local, path, identityA } = setupScopeRouting(false, false);
+  it("没有本机 workspace 且远端离线时 fail-closed：不借本机服务，也不初始化插件", async () => {
+    const { local, remoteA, path, identityA } = setupScopeRouting(false, false);
     const { SubagentsSection } = await import("@/settings/SubagentsSection.js");
-    const view = render(
-      createElement(SubagentsSection, { workspacePath: path, workspaceIdentity: identityA }),
-    );
-    await waitFor(() =>
-      expect(local.subagentsService.list).toHaveBeenCalledWith(
-        expect.objectContaining({
-          workspacePath: "",
-          workspaceIdentity: undefined,
-          mode: "settingsUserOnly",
-        }),
-      ),
-    );
+    render(createElement(SubagentsSection, { workspacePath: path, workspaceIdentity: identityA }));
+    // 选中设备离线 → 分区不渲染列表或表单，也不回退本机（旧「离线时 User 仍可保存」已废除）。
+    await waitFor(() => expect(screen.getByTestId("settings-scope-blocked")).toBeTruthy());
+    // 没有任何 workspace tab 时 resolution 是 missing，按 resolveSettingsScopeBlock 归到
+    // connecting（不是 offline）；本用例锁住的是 fail-closed 事实：不发 RPC、不初始化插件。
+    expect(screen.getByTestId("settings-scope-blocked").dataset.scopeBlocked).toBe("connecting");
+    expect(local.subagentsService.list).not.toHaveBeenCalled();
+    expect(remoteA.subagentsService.list).not.toHaveBeenCalled();
+    expect(local.subagentsService.createAgent).not.toHaveBeenCalled();
     expect(mockInitializePlugins).not.toHaveBeenCalled();
-    await submitScopeAgent(view.container);
-    expect(local.subagentsService.createAgent).toHaveBeenCalledOnce();
   });
 
   it("显式 Source User 无 workspace attachment 时仍使用注入的 Source 服务", async () => {
@@ -710,6 +767,7 @@ describe("SubagentsSection", () => {
 
   it("选中同路径的 Source B workspace 后通过 B 保存，再切 User 回到本机", async () => {
     const { local, remoteA, remoteB, path, identityA, identityB } = setupScopeRouting();
+    mockScopeRouting.base = local as unknown as IServiceAccessor;
     const { SubagentsSection } = await import("@/settings/SubagentsSection.js");
     const view = render(
       createElement(SubagentsSection, { workspacePath: path, workspaceIdentity: identityA }),
@@ -727,6 +785,7 @@ describe("SubagentsSection", () => {
     expect(remoteA.subagentsService.createAgent).not.toHaveBeenCalled();
     fireEvent.click(screen.getByTestId("scope-user"));
     await waitFor(() => expect(local.subagentsService.list).toHaveBeenCalled());
+    expect(remoteB.subagentsService.createAgent).toHaveBeenCalledTimes(1);
     expect(mockScopeRouting.modelServices.at(-1)).toBe(local.modelSelectionService);
   });
 
@@ -1104,7 +1163,9 @@ describe("SubagentsSection", () => {
     });
     await waitFor(() =>
       expect(mockSubagentsService.list).toHaveBeenCalledWith({
-        workspacePath: "",
+        // 本机 User 的 target 现在带页面 workspacePath（targetWorkspacePath =
+        // userScope.target.workspacePath），不再是空串；mode 仍是 settingsUserOnly。
+        workspacePath: "/repo",
         workspaceIdentity: undefined,
         provider: "glm",
         mode: "settingsUserOnly",
@@ -1910,12 +1971,16 @@ describe("SubagentsSection", () => {
     expect(isSubagentThoughtLevelAvailable(disabled, "high")).toBe(false);
   });
 
-  it("defers persisted model availability validation only during initial provider loading", async () => {
+  it("defers persisted model availability validation until the model catalog is ready", async () => {
     const { isSubagentModelAvailable } = await import("../src/settings/SubagentsSection.js");
     const model = "custom:custom-anthropic:claude-opus-4-8";
 
-    expect(isSubagentModelAvailable([], model, true)).toBe(true);
-    expect(isSubagentModelAvailable([], model, false)).toBe(false);
+    // 目录状态从 boolean loading 换成 "ready" | "loading" | "unavailable"：
+    // 只有 ready 才能证明模型已失效，首读中与不可用都必须保留用户原有意图。
+    expect(isSubagentModelAvailable([], model, "loading")).toBe(true);
+    expect(isSubagentModelAvailable([], model, "unavailable")).toBe(true);
+    expect(isSubagentModelAvailable([], model, "ready")).toBe(false);
+    expect(isSubagentModelAvailable([], model)).toBe(false);
   });
 
   it("defaults new and legacy custom agents to AGENTS.md injection and preserves false", async () => {

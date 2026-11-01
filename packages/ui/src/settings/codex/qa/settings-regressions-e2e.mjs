@@ -172,7 +172,7 @@ export async function verifyGeneralAccessibility(page, checks) {
     "Task notifications",
     "Notification sound",
     "Hide to tray when closing window",
-    "Auto-archive old tasks",
+    "Auto-archive old sessions",
   ])
     await controls.getByRole("switch", { name, exact: true }).waitFor();
   for (const name of ["Language", "Integrated terminal shell", "Archive retention"])
@@ -186,7 +186,12 @@ export async function verifyGeneralAccessibility(page, checks) {
   await notification.focus();
   await notification.press("Space");
   assert.equal(await notification.getAttribute("aria-checked"), "false");
-  const archive = controls.getByRole("switch", { name: "Auto-archive old tasks" });
+  const archive = controls.getByRole("switch", { name: "Auto-archive old sessions" });
+  assert.equal(
+    await controls.getByRole("combobox", { name: "Archive retention" }).isEnabled(),
+    true,
+    "Retention can be selected safely before auto-archive is enabled",
+  );
   await archive.click();
   assert.equal(
     await controls.getByRole("combobox", { name: "Archive retention" }).isEnabled(),
@@ -248,7 +253,17 @@ export async function inspectRpcLog(page, result) {
 }
 
 export async function verifySingleCatalogModelAndRestart(page, settings, result, checks) {
-  const catalogModels = settings.getByRole("heading", { name: "Catalog models" }).locator("..");
+  // 模型管理恢复原供应商分栏；选择仅改变 UI，不能触发默认供应商写入。
+  const beforeSelection = await inspectRpcLog(page, result);
+  await settings.getByTestId("codex-provider-nav-referenced-provider").click();
+  assert.equal(await settings.locator("[data-model-provider-split-panel]").count(), 1);
+  const afterSelection = await inspectRpcLog(page, result);
+  assert.deepEqual(afterSelection.requests, beforeSelection.requests);
+  assert.equal(afterSelection.catalogWrites, beforeSelection.catalogWrites);
+  checks.push("Provider navigation reuses the shared split panel and sends no native mutation");
+  const catalogModels = settings
+    .getByRole("heading", { name: "Catalog models" })
+    .locator("xpath=ancestor::section[1]");
   const deleteLast = catalogModels.getByRole("button", { name: "Delete second-model" });
   await deleteLast.waitFor();
   assert.equal(await deleteLast.isDisabled(), true);
@@ -286,6 +301,7 @@ export async function verifySingleCatalogModelAndRestart(page, settings, result,
       slug: "renamed-model",
       provider: "referenced-provider",
       display_name: "second-model",
+      description: "second-model",
       visibility: "hidden",
     },
     originalSlug: "second-model",

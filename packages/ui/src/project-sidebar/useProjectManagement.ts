@@ -95,13 +95,14 @@ export function useProjectManagement() {
     });
   };
 
-  /** 只读测量；旧 Agent 不支持、服务不可用时返回 null，对话框据此隐藏选项。 */
+  /** 只读测量；仅明确不支持返回 null，真实错误交给对话框安全提示与显式重测。 */
   // 稳定引用：对话框按「批次 + 测量函数」触发测量，函数每次渲染都变会反复重测。
   const measureData = useCallback(
     async (rows: readonly ProjectManagementRow[]): Promise<ProjectDataTotals | null> => {
       const ids = rows.filter(isProjectDataCandidate).map((row) => row.project.id);
       const service = latest.current.service;
-      if (!ids.length || !service) return null;
+      if (!ids.length) return null;
+      if (!service) throw new Error("project.service-unavailable");
       try {
         const { projects } = await service.measureProjectData(ids, "local");
         const sum = (pick: (entry: (typeof projects)[number]) => number) =>
@@ -118,8 +119,9 @@ export function useProjectManagement() {
           totalBytes: totals.sessionBytes + totals.checkpointBytes + totals.memoryBytes,
         };
       } catch (cause) {
+        if (cause instanceof Error && cause.message === "project.data-unavailable") return null;
         logger.warn("[project-management] 测量项目数据失败", { count: ids.length, cause });
-        return null;
+        throw cause;
       }
     },
     [],

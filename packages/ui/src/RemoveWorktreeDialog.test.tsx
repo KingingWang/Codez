@@ -69,6 +69,15 @@ test("干净树：直接出现危险确认按钮且无勾选要求", () => {
   assert.match(html, /\/repo-worktrees\/feature/);
 });
 
+test("旧 Git 的删除预检明确提示所属 Host 升级，不显示内部文案键", () => {
+  const html = render(
+    state(null, { phase: "error", errorMessage: "worktree.create.error.gitUpgradeRequired" }),
+  );
+  assert.match(html, /工作树列举和安全删除预检需要 Git 2\.36/);
+  assert.match(html, /重启 Host 或应用/);
+  assert.doesNotMatch(html, /worktree\.create\.error\.gitUpgradeRequired/);
+});
+
 test("ignored 敏感配置：列出关注区并强制勾选（审查①）", () => {
   const html = render(
     state(preview({ attentionPaths: [".env", ".npmrc"], attentionTotalCount: 2 })),

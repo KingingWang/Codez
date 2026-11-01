@@ -4,6 +4,7 @@ import type { ModelProviderNavGroup } from "@/settings/model-provider-section/co
 import { ModelProviderSectionNavigation } from "@/settings/model-provider-section/Navigation.js";
 import { ProviderDetailFeedbackBoundary } from "@/settings/model-provider-section/ProviderDetailFeedback.js";
 import { SettingsResourceHeaderActions } from "@/settings/SettingsResourceHeaderActions.js";
+import { ModelProviderSplitPanel } from "@/settings/SettingsResourceGroup.js";
 
 interface ModelProviderSectionLayoutProps {
   description: string;
@@ -64,35 +65,23 @@ export function ModelProviderSectionLayout({
         />
       </div>
 
-      <div className="overflow-clip rounded-xl border border-border bg-card">
-        <div
-          className="grid min-h-[36rem] grid-cols-[56px_minmax(0,1fr)] gap-0 md:grid-cols-[224px_minmax(0,1fr)]"
-          data-model-provider-split-panel="true"
-        >
-          <div
-            className="min-w-0 border-r border-border"
-            data-model-provider-navigation-scroll="true"
-          >
-            <ModelProviderSectionNavigation
-              navigationGroups={navigationGroups}
-              selectedNodeKey={selectedNodeKey}
-              presetLoading={presetLoading}
-              customLoading={customLoading}
-              onSelectNavItem={onSelectNavItem}
-              onReorderProviderIds={onReorderProviderIds}
-              reorderableProviderIds={reorderableProviderIds}
-            />
-          </div>
-          <div
-            className="relative min-w-0 p-4 pb-20 sm:p-6 sm:pb-24"
-            data-model-provider-detail-scroll="true"
-          >
-            <ProviderDetailFeedbackBoundary key={selectedNodeKey ?? "unselected-provider"}>
-              {children}
-            </ProviderDetailFeedbackBoundary>
-          </div>
-        </div>
-      </div>
+      <ModelProviderSplitPanel
+        navigation={
+          <ModelProviderSectionNavigation
+            navigationGroups={navigationGroups}
+            selectedNodeKey={selectedNodeKey}
+            presetLoading={presetLoading}
+            customLoading={customLoading}
+            onSelectNavItem={onSelectNavItem}
+            onReorderProviderIds={onReorderProviderIds}
+            reorderableProviderIds={reorderableProviderIds}
+          />
+        }
+      >
+        <ProviderDetailFeedbackBoundary key={selectedNodeKey ?? "unselected-provider"}>
+          {children}
+        </ProviderDetailFeedbackBoundary>
+      </ModelProviderSplitPanel>
     </div>
   );
 }

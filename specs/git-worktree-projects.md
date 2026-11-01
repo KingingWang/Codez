@@ -195,6 +195,59 @@ flowchart TB
   的操作呈现明确文案（如"此连接暂不支持该操作"），禁止点击后无响应或假死。
   能力缺失一律视为 unsupported 并隐藏或禁用入口，不从命令错误串推断。
 
+- **R15a Git CLI 能力地板与 `worktree list -z` 守卫**：
+  - 普通 Git 地板仍是 **2.23**（`switch --no-guess` / `restore` / `%(worktreepath)`，
+    见 `packages/services/src/git/repo/gitCliRepo.ts` 内既有注释）；不得为了 worktree
+    发现抬高地板，让旧 Git 主机整体不可用。
+  - 事实：`git worktree list` 的 `-z`（NUL 分隔记录）由 **Git 2.36.0** 引入
+    （v2.35.0 `builtin/worktree.c` 无该选项，v2.36.0 起有 "terminate records with a
+    NUL character"）；`--porcelain` 本身在 2.23 已可用。发现链路
+    （`listWorktrees`）依赖 `-z`，因此在 2.23–2.35 的主机上不可用。
+  - 能力判定必须来自**显式探测**：读 `git worktree list -h` 的选项表里是否出现
+    `-z`（选项拼写不随 locale 变化；退出码与输出流在不同版本上不一致，因此只认
+    选项文本，同时读 stdout 与 stderr）。禁止按 R15 从失败命令的错误串
+    （`unknown option`，git 会 gettext 翻译）反推能力。
+  - 探测结果按 Host 内的 git 二进制缓存一次（同一实例不重复探测），并发调用共享
+    同一次在途探测；探测失败或用法文本为空时 **fail-open**，保持既有 `-z` 行为，
+    不把可用主机误判成 unsupported。缓存不随仓库变更失效：升级 Git 后需要重启
+    Host/App 才重新探测。
+  - 判定为不支持时抛**稳定错误码** `git_worktree_list_nul_unsupported`（services
+    本地码，随 RPC 的 `code` / `data` 固定字段透传），`data` 携带
+    `minGitVersion: "2.36.0"` 与 `detectedGitVersion`（`git --version` 首行，失败为
+    `null`）。`message` 为安全英文串：只含版本事实与"升级到 ≥ 2.36"的建议，不含
+    仓库路径、命令原始 stderr 或任何用户数据。同一个码在 services（抛出方）与 UI
+    （分类方）之间只有一个事实源；UI 侧必须同时接受本机 Host 的顶层 `code` 与远端
+    RPC 的 `data.code` 两种到达形态（远端外层 `code` 是 JSON-RPC 数字码），不得按
+    原始 stderr 猜测。
+  - UI 呈现口径按面分别定义，**不新增并行的 UI 状态通道**：
+    - 发现 / 项目分组：按 unsupported **静默降级**。不进入"瞬时失败 / 状态未知"集合
+      （不重试，也不当作 R14 的"暂时不可访问"），不为它另建一份 UI 状态；只保留
+      一次 diagnostic —— `onDowngrade("worktree-list", projectKey, error)` 加一条
+      warn 日志，不随每次自动刷新重复上报。原始错误消息不进用户可见文案，只进日志。
+    - 安全删除预检：必须显示明确的升级说明（需要 Git ≥ 2.36），可带
+      `minGitVersion` / `detectedGitVersion`；不得把 services 的英文 `message`
+      原样塞进本地化模板。原因：预检要读台账影响面，走的就是发现链路的
+      `listWorktrees`，因此它是旧 Git 上唯一会被用户主动撞到的写入口。
+    - 创建独立工作区：**不强制 2.36**。创建走 `gitWorktreeCreation.ts` 自己的无
+      `-z` porcelain 路径，删除执行（`worktree remove` / `prune`）本身也不含
+      `worktree list -z`，两者在 2.23 上照常可用，不得因发现链路能力缺失而禁用。
+  - 本轮**不做无 `-z` 降级**：逐行 porcelain 会把含换行/引号的路径解析成多条错误
+    记录，宁可报 unsupported，也不给出错误的项目分组与删除影响面。
+  - 旧 Git（2.23–2.35）上仍可用的普通功能不得被连带禁用：`status`、Git Graph、
+    分支切换、checkpoint、分组用的 common dir 解析，以及上面说的创建 / 删除执行，
+    都不含 `worktree list -z`。需要 `-z` 的只有发现链路 `listWorktrees`，以及经它
+    取台账的删除**预检**（`gitWorktreeRemoval.ts` 的 preview 通过 `gitCliRepo` 的
+    `listWorktrees` 读影响面；`remove` 本身不调用它）。
+  - 回归证据：① `packages/services/test/gitCliRepo.test.ts`（fake command provider，
+    覆盖 不支持→稳定码 + 不执行必然失败的命令 + 缓存不重复探测、fail-open、
+    支持→正常列举、旧 Git 上 `getStatus` 仍可用）；②
+    `packages/ui/src/hooks/useProjectWorktreeDiscovery.test.ts`（本机顶层 `code` 与
+    远端 `data.code` 两形态都不进瞬时失败集合、仍上报一次 downgrade、分组事实不受
+    影响、只查询一次，以及分类器不误判 `-32601` 与删除类 typed issue）。本机与 CI
+    的 git 均 ≥ 2.36，真机无法复现旧版本，因此以 fake provider / fake service 作为
+    该分支的唯一回归证据。UI 侧 Node 测试必须在 `packages/ui` 目录内执行，否则 `@/`
+    别名解析失败会假红。
+
 ## 非 Git 工作区
 
 - **R16 无错误降级**：非 Git 工作区下，本特性在任何路径上不产生错误。"新的
@@ -211,6 +264,9 @@ flowchart TB
 - 工作区列表投影携带推导出的项目分组 key；分组不持久化。
 - RPC 版本容忍：远端旧版本 server 无新能力字段时视为 unsupported（遵循
   codex-desktop-capabilities 既有约定）。
+- Git CLI 能力容忍：`listWorktrees` 在 Git < 2.36 上以稳定错误码
+  `git_worktree_list_nul_unsupported` 报 unsupported（R15a），错误经既有
+  `code` / `data` 字段透传，不新增协议字段、不改 `GitWorktreeListResult` 形状。
 - 远程工作区：建树/删树经现有 Host 通道在远端执行；路径与平台差异走既有依赖
   注入，不在业务代码手写远程路径格式。
 

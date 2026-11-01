@@ -131,7 +131,8 @@ export function createCodexProcess(options: CodexProcessOptions): CodexProcess {
           ? "unknown"
           : "response";
     // 只有顶层 id 与在途请求匹配时才知道 response 的原生方法；不从用户正文猜测。
-    const method = hint.method ?? (hint.id === undefined ? undefined : pending.get(hint.id)?.method);
+    const method =
+      hint.method ?? (hint.id === undefined ? undefined : pending.get(hint.id)?.method);
     const error = new CodexTransportError("LIMIT", "Codex response frame exceeds size limit");
     if (hint.method === undefined && hint.id === undefined) {
       // 前缀可能来自原生 server request；不知道 id 就无法安全应答，必须失败关闭。
@@ -158,10 +159,7 @@ export function createCodexProcess(options: CodexProcessOptions): CodexProcess {
       options.onFrameDropped?.({
         observedBytes: frame.observedBytes,
         kind,
-        method:
-          method && /^[A-Za-z0-9_/-]{1,64}$/.test(method)
-            ? method
-            : "unknown",
+        method: method && /^[A-Za-z0-9_/-]{1,64}$/.test(method) ? method : "unknown",
       });
     } catch {
       // 诊断回调绝不能破坏传输状态机。
@@ -270,7 +268,15 @@ export function createCodexProcess(options: CodexProcessOptions): CodexProcess {
             serverRequests.delete(id);
           }
         }
-        notify(notifications, { method: message.method, params: message.params });
+        notify(notifications, {
+          method: message.method,
+          params: message.params,
+          ...(typeof message.emittedAtMs === "number" &&
+          Number.isFinite(message.emittedAtMs) &&
+          message.emittedAtMs >= 0
+            ? { emittedAtMs: message.emittedAtMs }
+            : {}),
+        });
       } else {
         const id = message.id;
         if (!ready || serverRequests.has(id) || serverRequests.size >= MAX_PENDING) {

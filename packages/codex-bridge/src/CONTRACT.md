@@ -139,3 +139,28 @@ integrity verification caches validated `(workspace, id, dev, ino, mtimeMs, size
 identities across paginated reads while keeping metadata/ownership checks on every
 call. `v4/codex/conversation/historyRuns` and `session/subagents` cache validated
 per-turn and per-revision projections with bounded child-list failure backoff.
+
+Live conversation observations derive six existing telemetry fact kinds without
+retaining text or inventing native model-request/compaction/subagent lifecycles.
+CommandRouter receipt and real turn/start responses own input association; native
+notification arrival times use the same monotonic clock for host-local first-output
+diagnostics. Bounded asynchronous telemetry delivery never blocks admission or
+native event projection. See specs/codex-conversation-observations.md.
+
+Host-authorized local `sessionData/measure` and `sessionData/purge` use native
+metadata, strict read-only SQLite and bounded file measurement. Only native
+`thread/delete(root)` may remove Codex history; running, referenced or unknown
+trees remain intact. CommandRouter owns a maintenance admission barrier for purge:
+it drains existing command admissions, holds later admissions, then releases them
+after purge success or failure. Native event processing is never held by this
+barrier. Native writer locks protect cross-process deletion; the bridge does not
+write CODEX_HOME or retry unknown deletion results.
+
+```text
+existing command admissions → maintenance barrier → preflight → native delete
+later command admissions ─────── wait ────────────────┘       → release
+native events ───────── continuous ordered projection ────────→ tombstone guard
+```
+
+See specs/codex-session-data-purge.md for the global local carrier, shared references,
+actual released bytes and retry boundaries.

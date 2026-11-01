@@ -4431,6 +4431,14 @@ PJM01–PJM06（accepted/pending，2026-10-24）：设置 › 数据与统计新
 PJM08（accepted/pending，2026-11-02）：项目管理行菜单复用首页编辑器；取消不保存，保存名称与主目录后列表/侧栏同步，同 cwd 的其他项目与已有会话 cwd/归属不变；PJM06 扩充中英文、深浅主题、1200/390px 菜单与编辑器可达/布局。沿用同一 pending spec，PJM09 验证 Chrome 触屏视口经真实 WebSocket/RPC 编辑同一 Host 项目并同步桌面；外部账号/relay 使用 loopback fixture。2026-11-02 PJM01–PJM09 共 9 项通过（covered，仍在 pending 路径），证据 `packages/desktop/.e2e-artifacts/desktop-e2e-20261102072543389-p405-86d835c273376265`；桌面 1200/390px 中英文深浅主题及 Chrome 390px 触屏共享 Host 验证通过。真实远程 Host、Windows/Linux 桌面和实体手机未验证。
 
 PJM07（pending，2026-10-24）：确认对话框勾选「同时删除它们的 Codez 数据」，打开即测量、默认不勾选，输入「删除」后才可确认；确认后会话行、`cli/artifacts/<sid>` 与任务索引行删除，项目行因无引用而删除、不进入「已移除的项目」，结果 toast 不带撤销。运行中会话保留的 CLI 边界由 `apps/codez-cli/packages/bootstrap/tests/session-data.test.ts` 保留；services 共享目录扣除与 UI 测量失败隐藏选项的独立断言随 App 单测退役，仍待补。2026-11-02 macOS 回放通过，证据 `packages/desktop/.e2e-artifacts/desktop-e2e-20261102072543389-p405-86d835c273376265`；保留 pending，未转正或加入 CI。
+PJM07（accepted/browser-covered，2026-11-02）：真实移除对话框区分 measuring/empty/unsupported/error/available；
+测量错误不开放删除且不展示错误原文，显式重测后仍默认不勾选，确认词与取消勾选清空不变；
+冻结批次替换后丢弃迟到测量，同一批次关闭重开不得继承勾选或确认词。
+浏览器入口 `packages/ui/src/project-sidebar/qa/removal-e2e.mjs`，3 组规则及
+390/1280、中英文、Zai 明暗 8 种布局通过，工件 `/tmp/codez-project-removal-U91ndy`；
+不替代 PJM01–06 的真实 Host/Electron 和删除验收。
+
+PJM07（pending，2026-10-24）：确认对话框勾选「同时删除它们的 Codez 数据」，打开即测量、默认不勾选，输入「删除」后才可确认；确认后会话行、`cli/artifacts/<sid>` 与任务索引行删除，项目行因无引用而删除、不进入「已移除的项目」，结果 toast 不带撤销。运行中会话保留的 CLI 边界由 `apps/codez-cli/packages/bootstrap/tests/session-data.test.ts` 保留；services 共享目录扣除与 UI 测量失败隐藏选项的独立断言随 App 单测退役，仍待补。pending E2E 尚未运行。
 
 ### 当前任务标题与自动归档收尾（AMT，2026-09-11）
 

@@ -78,6 +78,8 @@ jobs:
           rm -f "$INSTALL_LOG"
           install_dependencies
       - run: node --test scripts/test-codex-distribution*.mjs
+      - name: Codex bridge native contract regressions (Linux once)
+        run: pnpm --filter @codez/codex-bridge test
       - name: Codex service, desktop and remote deployment regressions (Linux once)
         run: |
           # 原因：上游根 Vitest 只发现 engineering；按根准入名单的框架和包精确分流，避免空选中。
@@ -134,6 +136,12 @@ jobs:
         run: |
           pnpm --filter @codez/services exec tsx --test test/gitWorktree.test.ts test/gitWorktreeCreation.test.ts
           pnpm --filter @codez/shared exec tsx --test test/remoteWorkspaceScope.test.ts
+      - name: Codex data-sync boundary and subagent scope regressions (Linux once)
+        run: >-
+          pnpm test:fork
+          packages/ui/test/dataSyncCodexAvailability.test.ts
+          packages/ui/test/subagentsSection.test.ts
+          packages/services/test/gitCliRepo.test.ts
       - name: Codex UI settings regressions (Linux once)
         run: >-
           pnpm exec tsx --tsconfig packages/ui/tsconfig.json --test

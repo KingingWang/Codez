@@ -4,6 +4,10 @@ import { toast } from "@/components/ui/toast.js";
 import { RemoveWorktreeDialog } from "@/RemoveWorktreeDialog.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { getErrorMessage } from "@/lib/errorMessage.js";
+import {
+  isWorktreeListNulUnsupported,
+  worktreeCreationErrorMessage,
+} from "./worktreeCreationModel.js";
 import { normalizeWorkspacePathForComparison } from "@/lib/projectGrouping.js";
 import { isRemoteWorkspaceDisconnectedError } from "@/lib/remoteWorkspaceServiceError.js";
 import {
@@ -206,7 +210,7 @@ export function useWorktreeRemoval(params: UseWorktreeRemovalParams) {
         setState((current) => ({
           ...current,
           phase: "error",
-          errorMessage: getErrorMessage(error),
+          errorMessage: worktreeCreationErrorMessage(error),
         }));
       }
     },
@@ -333,7 +337,9 @@ export function useWorktreeRemoval(params: UseWorktreeRemovalParams) {
         setState((previous) => ({
           ...previous,
           phase: "error",
-          errorMessage: issue?.message ?? getErrorMessage(error),
+          errorMessage: isWorktreeListNulUnsupported(error)
+            ? worktreeCreationErrorMessage(error)
+            : (issue?.message ?? getErrorMessage(error)),
           preview: issue?.latestPreview ?? previous.preview,
         }));
       } finally {

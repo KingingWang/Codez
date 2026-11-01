@@ -139,3 +139,6 @@ Composer 头部通过 `ProjectComposerMenu.showEditProject` 启用当前项目 P
 新建补全 tab 分类不能重建项目操作；远端同步菜单只订阅 identity 到本地目录的映射，映射变更仍刷新目标。
 单行读取同一 session store 中自身的选中布尔值，保持 workspace 身份隔离，不增加选中态副本。
 导航状态变化不能传播到全部项目内容，真实文件回调和连接身份变化仍需生效。见 `docs/performance/ui-render-stability.md` 的 SPT08。
+项目移除对话框的测量结果按冻结批次归属，只明确不支持返回 null，真实读取错误由原 hook 上抛。
+对话框区分 calculating/empty/unsupported/error/available，错误提供显式重测而不开放删除数据。
+候选切换同步丢弃旧结果资格，关闭/重测的迟到结果不得开启 checkbox；默认不勾选与确认词保护不变。

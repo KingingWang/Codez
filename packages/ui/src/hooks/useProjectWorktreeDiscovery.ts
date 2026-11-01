@@ -15,6 +15,7 @@ import {
   useRemoteWorkspaceSessionStore,
 } from "@/store/remoteWorkspaceSessionStore.js";
 import { useTabStore, useTabStoreApi } from "@/store/TabStoreProvider.js";
+import { isWorktreeListNulUnsupported } from "./worktreeCreationModel.js";
 
 /**
  * 项目分组 + worktree 发现（specs/git-worktree-projects.md 阶段一）。
@@ -142,7 +143,8 @@ export async function fetchProjectWorktreeFacts(params: {
         }
       } catch (error) {
         onDowngrade?.("worktree-list", group.projectKey, error);
-        if (!isUnsupportedRemoteMethod(error)) {
+        // 原因：Git 能力缺失是永久 unsupported，不应进入“瞬时失败/状态未知”的重试集合。
+        if (!isUnsupportedRemoteMethod(error) && !isWorktreeListNulUnsupported(error)) {
           failedListProjectKeys.push(group.projectKey);
         }
       }
@@ -168,6 +170,8 @@ function createDowngradeLogger(): (kind: string, key: string, error: unknown) =>
 
 export function useProjectWorktreeDiscovery(): ProjectWorktreeDiscovery {
   const tabStore = useTabStoreApi();
+  // 诊断去重归 hook 生命周期；放在每次 effect 内会让同一旧 Git 设备反复 warn。
+  const onDowngrade = useMemo(createDowngradeLogger, []);
   const tabSignature = useTabStore((state) =>
     state.tabs
       .filter(isWorkspaceTab)
@@ -192,7 +196,6 @@ export function useProjectWorktreeDiscovery(): ProjectWorktreeDiscovery {
   // tab 集合 / 远程连接集合 / base 服务注册 / 显式刷新变化时重读 git 台账。全部只读。
   useEffect(() => {
     let cancelled = false;
-    const onDowngrade = createDowngradeLogger();
     const tabs = tabStore.getState().tabs.filter(isWorkspaceTab);
 
     void fetchProjectWorktreeFacts({
@@ -221,7 +224,7 @@ export function useProjectWorktreeDiscovery(): ProjectWorktreeDiscovery {
     return () => {
       cancelled = true;
     };
-  }, [tabStore, tabSignature, sessionsById, baseServices, refreshIndex]);
+  }, [tabStore, tabSignature, sessionsById, baseServices, refreshIndex, onDowngrade]);
 
   return useMemo(() => {
     const tabs = tabStore.getState().tabs.filter(isWorkspaceTab);

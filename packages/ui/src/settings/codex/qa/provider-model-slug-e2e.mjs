@@ -43,6 +43,53 @@ try {
     const settings = page.getByTestId("codex-settings");
     await settings.getByRole("button", { name: "Providers", exact: true }).click();
     await verifySingleCatalogModelAndRestart(page, settings, result, checks);
+    const beforeLayouts = await inspectRpcLog(page, result);
+    for (const width of [390, 1280])
+      for (const locale of ["en-US", "zh-CN"])
+        for (const theme of ["light", "dark"]) {
+          await page.setViewportSize({ width, height: 900 });
+          await page
+            .getByRole("button", {
+              name:
+                locale === "zh-CN" ? "Use Chinese locale fixture" : "Use English locale fixture",
+            })
+            .click();
+          await settings
+            .getByRole("heading", { name: locale === "zh-CN" ? "目录模型" : "Catalog models" })
+            .waitFor();
+          await page.evaluate((value) => {
+            const root = document.documentElement;
+            root.classList.toggle("dark", value === "dark");
+            root.classList.toggle("theme-zai-dark", value === "dark");
+            root.classList.toggle("theme-zai-light", value === "light");
+            root.setAttribute("data-codez-browser-theme-surface", value);
+          }, theme);
+          const split = settings.locator("[data-model-provider-split-panel]");
+          await page.waitForFunction(() => {
+            const button = document.querySelector(
+              '[data-testid="codex-provider-row-referenced-provider"] button',
+            );
+            return button instanceof HTMLButtonElement && !button.disabled;
+          });
+          assert.equal(
+            await split.evaluate((element) => element.scrollWidth > element.clientWidth),
+            false,
+          );
+          assert.ok(
+            await settings
+              .getByTestId("codex-provider-description")
+              .evaluate((element) => element.clientWidth >= 80),
+          );
+          await settings.getByTestId("codex-provider-description").scrollIntoViewIfNeeded();
+          await page.screenshot({
+            path: join(evidence, `providers-${width}-${locale}-${theme}.png`),
+          });
+        }
+    const afterLayouts = await inspectRpcLog(page, result);
+    assert.equal(afterLayouts.catalogWrites, beforeLayouts.catalogWrites);
+    checks.push(
+      "Provider split layout works at 390/1280px in Chinese/English and light/dark without native writes",
+    );
     assert.deepEqual(errors, []);
   } catch (error) {
     await page.screenshot({ path: join(evidence, "failure.png"), fullPage: true });

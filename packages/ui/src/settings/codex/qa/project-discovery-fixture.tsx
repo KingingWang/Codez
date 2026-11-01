@@ -31,6 +31,8 @@ export function ProjectDiscoveryTabSeeder() {
 
 const createServices = (generation: number, hold = false): IServiceAccessor =>
   ({
+    // 上游发现 hook 现需订阅 Host 广播；夹具不制造广播，但必须提供真实接口形状。
+    broadcastService: { onMessage: () => ({ dispose() {} }) },
     codezSessionService: {
       listSessions: async (params: { workspacePath: string; workspaceIdentity?: string }) => {
         calls.push({

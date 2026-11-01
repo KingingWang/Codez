@@ -22,6 +22,14 @@ import type {
   GitWorktreeCreateRequest,
   GitWorktreeCreateResult,
 } from "@codez/shared";
+import {
+  GIT_WORKTREE_LIST_NUL_MIN_GIT_VERSION,
+  GIT_WORKTREE_LIST_NUL_UNSUPPORTED_CODE,
+} from "@codez/shared";
+export {
+  GIT_WORKTREE_LIST_NUL_MIN_GIT_VERSION,
+  GIT_WORKTREE_LIST_NUL_UNSUPPORTED_CODE,
+} from "@codez/shared";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import {
   DEFAULT_GIT_COMMAND_TIMEOUT_MS,
@@ -656,6 +664,57 @@ function parseGitIndexEntries(stdout: string): GitIndexEntry[] {
     });
 }
 
+/**
+ * `git worktree list` 的 `-z`（NUL 分隔记录）由 Git 2.36.0 引入；仓库普通地板仍是
+ * 2.23（switch --no-guess / restore / %(worktreepath)），不为发现链路抬高地板。
+ * 规则与验收见 specs/git-worktree-projects.md R15a。
+ */
+
+/**
+ * services 本地稳定错误码：UI 按它渲染"升级 Git"的 unsupported 文案，不当瞬时失败重试。
+ * shared 的 `as const` 保留非 widening 字面量，避免 Object.assign 属性推断成 string（TS2322）。
+ */
+
+export interface GitWorktreeListNulUnsupportedIssue {
+  code: typeof GIT_WORKTREE_LIST_NUL_UNSUPPORTED_CODE;
+  message: string;
+  minGitVersion: string;
+  detectedGitVersion: string | null;
+}
+
+/**
+ * 能力缺失错误：message 只含版本事实与升级建议，不含仓库路径、命令原始 stderr 或
+ * 任何用户数据；code/data 走 RPC 既有固定字段（与 gitRemovalErrors.ts 同一约定）。
+ */
+export function gitWorktreeListNulUnsupportedError(detectedGitVersion: string | null): Error & {
+  code: typeof GIT_WORKTREE_LIST_NUL_UNSUPPORTED_CODE;
+  data: GitWorktreeListNulUnsupportedIssue;
+} {
+  const message = [
+    `git worktree list --porcelain -z requires Git ${GIT_WORKTREE_LIST_NUL_MIN_GIT_VERSION} or newer`,
+    `detected: ${detectedGitVersion ?? "unknown"}`,
+    `Upgrade Git to ${GIT_WORKTREE_LIST_NUL_MIN_GIT_VERSION}+ to use independent worktrees; other Git features keep working on Git 2.23+.`,
+  ].join("; ");
+  return Object.assign(new Error(message), {
+    code: GIT_WORKTREE_LIST_NUL_UNSUPPORTED_CODE,
+    data: {
+      code: GIT_WORKTREE_LIST_NUL_UNSUPPORTED_CODE,
+      message,
+      minGitVersion: GIT_WORKTREE_LIST_NUL_MIN_GIT_VERSION,
+      detectedGitVersion,
+    },
+  });
+}
+
+/**
+ * `-z` 能力判定只看 `git worktree list -h` 的选项拼写：git 的错误串会被 gettext
+ * 翻译（`unknown option` 在中文 locale 下变形），退出码与输出流在各版本上也不一致，
+ * 因此既不能按错误串推断（R15），也不能只看 stdout 或 exitCode。
+ */
+function usageTextAdvertisesWorktreeListNul(usageText: string): boolean {
+  return /(^|\s)-z(?=\s|$|\])/.test(usageText);
+}
+
 export function createGitCliRepo(options?: { commandProvider?: GitCommandProvider }): GitCliRepo {
   const commandProvider = options?.commandProvider ?? createGitCommandProvider();
   const repositoryResolutionRequests = new Map<string, Promise<GitResolvedRepository>>();
@@ -733,6 +792,76 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
     repositoryResolutionRequests.delete(workspacePath);
     workspaceRepositoryInfoRequests.delete(workspacePath);
     statusRequests.delete(workspacePath);
+  }
+
+  interface WorktreeListNulCapability {
+    supported: boolean;
+    detectedGitVersion: string | null;
+  }
+
+  // `-z` 能力只取决于 git 二进制，不随仓库变化：一个实例只探测一次并缓存，
+  // 旧 Git 主机上不会每次自动刷新都重复执行一次必然失败的命令（R15a：无无限重试）。
+  let worktreeListNulCapability: WorktreeListNulCapability | null = null;
+  let worktreeListNulProbeRequest: Promise<WorktreeListNulCapability> | null = null;
+
+  async function detectGitVersionBanner(cwd: string): Promise<string | null> {
+    try {
+      const result = await commandProvider.run({
+        cwd,
+        args: ["--version"],
+        timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+      });
+      const banner = (result.stdout || result.stderr).trim().split(/\r?\n/)[0]?.trim();
+      return banner && banner.length > 0 ? banner.slice(0, 120) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * 显式能力探测（R15a）：问 git 自己支持哪些选项，而不是从失败命令的错误串反推。
+   * 探测失败或用例文本为空时 fail-open，保持既有 `-z` 行为，不把可用主机误判成
+   * unsupported。
+   */
+  async function probeWorktreeListNulCapability(
+    repoRoot: string,
+  ): Promise<WorktreeListNulCapability> {
+    if (worktreeListNulCapability) {
+      return worktreeListNulCapability;
+    }
+    if (!worktreeListNulProbeRequest) {
+      worktreeListNulProbeRequest = (async (): Promise<WorktreeListNulCapability> => {
+        try {
+          const usage = await commandProvider.run({
+            cwd: repoRoot,
+            args: ["worktree", "list", "-h"],
+            timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+          });
+          // `-h` 在新版本写 stdout、旧版本写 stderr 且退出码不同，因此只认选项文本。
+          const usageText = `${usage.stdout}\n${usage.stderr}`;
+          if (usageText.trim().length === 0 || usageTextAdvertisesWorktreeListNul(usageText)) {
+            return { supported: true, detectedGitVersion: null };
+          }
+          const detectedGitVersion = await detectGitVersionBanner(repoRoot);
+          log.warn(
+            undefined,
+            `git worktree list -z unsupported; requiring Git >= ${GIT_WORKTREE_LIST_NUL_MIN_GIT_VERSION}, detected=${
+              detectedGitVersion ?? "unknown"
+            }`,
+          );
+          return { supported: false, detectedGitVersion };
+        } catch {
+          return { supported: true, detectedGitVersion: null };
+        }
+      })();
+    }
+
+    try {
+      worktreeListNulCapability = await worktreeListNulProbeRequest;
+      return worktreeListNulCapability;
+    } finally {
+      worktreeListNulProbeRequest = null;
+    }
   }
 
   async function validateBranchName(
@@ -1208,6 +1337,14 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
           isRepository: false,
           worktrees: [],
         };
+      }
+
+      const nulCapability = await probeWorktreeListNulCapability(resolution.repoRoot);
+      if (!nulCapability.supported) {
+        // 能力缺失按 unsupported 处理（R15/R15a）：抛稳定错误码并给出升级建议，
+        // 不退化成无 `-z` 的逐行 porcelain（含换行的路径会被解析成多棵错误工作树，
+        // 进而污染项目分组与删除影响面），也不再执行必然失败的命令。
+        throw gitWorktreeListNulUnsupportedError(nulCapability.detectedGitVersion);
       }
 
       const result = await commandProvider.run({

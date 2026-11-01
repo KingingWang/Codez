@@ -6,9 +6,26 @@ import type {
   GitWorktreeCreatePreviewRequest,
   GitWorktreeCreateResult,
 } from "@codez/shared";
-import { createUuid } from "@codez/shared";
+import { createUuid, GIT_WORKTREE_LIST_NUL_UNSUPPORTED_CODE } from "@codez/shared";
 import { getErrorMessage } from "@/lib/errorMessage.js";
 import { isRemoteWorkspaceDisconnectedError } from "@/lib/remoteWorkspaceServiceError.js";
+
+export function isWorktreeListNulUnsupported(error: unknown): boolean {
+  const value =
+    typeof error === "object" && error !== null
+      ? (error as { code?: unknown; data?: { code?: unknown } })
+      : undefined;
+  // 原因：远端 RPC 外层 code 为数字，能力原因仍由 Host 的 data.code 保留，不能按原始 stderr 猜测。
+  return (
+    value?.code === GIT_WORKTREE_LIST_NUL_UNSUPPORTED_CODE ||
+    value?.data?.code === GIT_WORKTREE_LIST_NUL_UNSUPPORTED_CODE
+  );
+}
+
+export function worktreeCreationErrorMessage(error: unknown): string {
+  if (isWorktreeListNulUnsupported(error)) return "worktree.create.error.gitUpgradeRequired";
+  return getErrorMessage(error);
+}
 
 export type WorktreeCreationPreview = GitWorktreeCreatePreview;
 export type WorktreeCreationResult = GitWorktreeCreateResult;
@@ -346,7 +363,7 @@ export async function runWorktreeCreation(params: {
       ...pendingState,
       phase: "create-unknown",
       pending: false,
-      error: getErrorMessage(error),
+      error: worktreeCreationErrorMessage(error),
     };
   }
 }

@@ -9,6 +9,58 @@ import {
   parseCodexBridgeStateDiagnostic,
 } from "../src/codez-agent/codexBridgeTitleDiagnostic.js";
 
+test("native first-output diagnostics cannot inject paths, content or fabricated success", () => {
+  const line =
+    "Codex desktop bridge state: nativeFirstOutput; instanceId=instance-1; observationId=observation-1; commandId=command-1; sessionId=thread-1; turnId=turn-1; outcome=success; reason=none; durationMs=125.250; outputKind=reasoning";
+  assert.deepEqual(parseCodexBridgeStateDiagnostic(line), {
+    kind: "nativeFirstOutput",
+    instanceId: "instance-1",
+    observationId: "observation-1",
+    commandId: "command-1",
+    sessionId: "thread-1",
+    turnId: "turn-1",
+    outcome: "success",
+    durationMs: 125.25,
+    outputKind: "reasoning",
+  });
+  for (const malformed of [
+    line + "; prompt=secret",
+    line + "\n",
+    line.replace("durationMs=125.250", "durationMs=-1.000"),
+    line.replace("durationMs=125.250", "durationMs=none"),
+    line.replace("outputKind=reasoning", "outputKind=none"),
+    line.replace("reason=none", "reason=busy"),
+    line.replace("thread-1", "/private/path"),
+    line.replace("instance-1", "x".repeat(65)),
+  ])
+    assert.equal(parseCodexBridgeStateDiagnostic(malformed), undefined);
+  assert.deepEqual(
+    parseCodexBridgeStateDiagnostic(
+      line
+        .replace("outcome=success", "outcome=excluded")
+        .replace("reason=none", "reason=clock-invalid")
+        .replace("durationMs=125.250", "durationMs=none")
+        .replace("outputKind=reasoning", "outputKind=none"),
+    ),
+    {
+      kind: "nativeFirstOutput",
+      instanceId: "instance-1",
+      observationId: "observation-1",
+      commandId: "command-1",
+      sessionId: "thread-1",
+      turnId: "turn-1",
+      outcome: "excluded",
+      reason: "clock-invalid",
+    },
+  );
+  assert.deepEqual(
+    parseCodexBridgeStateDiagnostic(
+      "Codex desktop bridge state: conversationTelemetryDropped; reason=capacity; count=12",
+    ),
+    { kind: "conversationTelemetryDropped", reason: "capacity", count: 12 },
+  );
+});
+
 test("snapshot and continuation diagnostics are strictly bounded and content-free", () => {
   const prefix = "Codex desktop bridge state: ";
   const snapshot =

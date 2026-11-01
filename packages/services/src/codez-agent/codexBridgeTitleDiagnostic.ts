@@ -11,6 +11,23 @@ export interface CodexBridgeRpcTimeoutDiagnostic {
 
 export type CodexBridgeStateDiagnostic =
   | {
+      kind: "nativeFirstOutput";
+      instanceId: string;
+      observationId: string;
+      commandId: string;
+      sessionId: string;
+      turnId: string;
+      outcome: "success" | "failed" | "interrupted" | "excluded" | "unclosed";
+      reason?: "busy" | "unsupported" | "capacity" | "clock-invalid";
+      durationMs?: number;
+      outputKind?: "text" | "reasoning" | "tool";
+    }
+  | {
+      kind: "conversationTelemetryDropped";
+      reason: "capacity" | "invalid" | "transport";
+      count: number;
+    }
+  | {
       kind: "snapshotPrepared";
       deliveryKind: "initial" | "recovery";
       sessionId: string;
@@ -91,10 +108,53 @@ const SNAPSHOT_PREPARED = new RegExp(
 const CONTINUE_REJECTED = new RegExp(
   `${STATE_PREFIX}continueRejected; sessionId=${STATE_ID}; commandId=${STATE_ID}; nativeStatus=(notLoaded|idle|systemError|active|unknown); latestTurnStatus=(inProgress|completed|interrupted|failed|unknown); selectedRunningTurnId=${STATE_ID}; runningTurnCount=(\\d{1,4}); logEpoch=${STATE_ID}; seq=${STATE_NUMBER}; revision=${STATE_NUMBER}(?![\\s\\S])`,
 );
+const NATIVE_FIRST_OUTPUT = new RegExp(
+  `${STATE_PREFIX}nativeFirstOutput; instanceId=${STATE_ID}; observationId=${STATE_ID}; commandId=${STATE_ID}; sessionId=${STATE_ID}; turnId=${STATE_ID}; outcome=(success|failed|interrupted|excluded|unclosed); reason=(none|busy|unsupported|capacity|clock-invalid); durationMs=(none|\\d{1,10}\\.\\d{3}); outputKind=(none|text|reasoning|tool)(?![\\s\\S])`,
+);
+const TELEMETRY_DROPPED = new RegExp(
+  `${STATE_PREFIX}conversationTelemetryDropped; reason=(capacity|invalid|transport); count=${STATE_NUMBER}(?![\\s\\S])`,
+);
 
 export function parseCodexBridgeStateDiagnostic(
   line: string,
 ): CodexBridgeStateDiagnostic | undefined {
+  const output = NATIVE_FIRST_OUTPUT.exec(line);
+  if (output) {
+    const durationMs = output[8] === "none" ? undefined : Number(output[8]);
+    if (durationMs !== undefined && (!Number.isFinite(durationMs) || durationMs < 0))
+      return undefined;
+    // 只有实际有效输出才算成功；任意 stderr 不能注入无输出或无时间的成功样本。
+    if (
+      output[6] === "success" &&
+      (durationMs === undefined || output[9] === "none" || output[7] !== "none")
+    )
+      return undefined;
+    return {
+      kind: "nativeFirstOutput",
+      instanceId: output[1]!,
+      observationId: output[2]!,
+      commandId: output[3]!,
+      sessionId: output[4]!,
+      turnId: output[5]!,
+      outcome: output[6] as "success" | "failed" | "interrupted" | "excluded" | "unclosed",
+      ...(output[7] !== "none"
+        ? { reason: output[7] as "busy" | "unsupported" | "capacity" | "clock-invalid" }
+        : {}),
+      ...(durationMs !== undefined ? { durationMs } : {}),
+      ...(output[9] !== "none" ? { outputKind: output[9] as "text" | "reasoning" | "tool" } : {}),
+    };
+  }
+  const dropped = TELEMETRY_DROPPED.exec(line);
+  if (dropped) {
+    const count = Number(dropped[2]);
+    return Number.isSafeInteger(count) && count > 0
+      ? {
+          kind: "conversationTelemetryDropped",
+          reason: dropped[1] as "capacity" | "invalid" | "transport",
+          count,
+        }
+      : undefined;
+  }
   const snapshot = SNAPSHOT_PREPARED.exec(line);
   if (snapshot) {
     const seq = Number(snapshot[5]);

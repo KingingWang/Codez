@@ -232,7 +232,9 @@ export function RemoveWorktreeDialogBody({
         ) : null}
         {state.phase === "error" && state.errorMessage ? (
           <p role="alert" className="text-ui-base text-danger">
-            {intl.formatMessage({ id: "worktree.remove.failed" }, { error: state.errorMessage })}
+            {state.errorMessage === "worktree.create.error.gitUpgradeRequired"
+              ? intl.formatMessage({ id: state.errorMessage })
+              : intl.formatMessage({ id: "worktree.remove.failed" }, { error: state.errorMessage })}
           </p>
         ) : null}
       </div>

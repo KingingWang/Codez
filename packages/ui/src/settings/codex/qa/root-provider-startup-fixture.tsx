@@ -65,6 +65,7 @@ const services = {
     },
   },
   oauthService: {
+    getActiveProvider: async () => null,
     async restoreCachedSessionState() {
       counts.oauthRestores++;
       if (nextRestoreRequiresReauthentication) {

@@ -473,3 +473,175 @@ describe("gitCliRepo", () => {
     });
   });
 });
+
+describe("gitCliRepo worktree list -z capability guard", () => {
+  // 本机与 CI 的 git 都 >= 2.36，真机复现不了旧版本；这里用 fake provider 精确给出
+  // `git worktree list -h` 的选项表（R15a：能力来自显式探测，不来自错误串）。
+  const NUL_PORCELAIN_STDOUT =
+    "worktree /repo\0HEAD 0000000000000000000000000000000000000000\0branch refs/heads/main\0\0" +
+    "worktree /repo/trees/a\0HEAD 1111111111111111111111111111111111111111\0branch refs/heads/a\0\0";
+  const SUPPORTED_USAGE =
+    "usage: git worktree list [-v | --porcelain [-z]]\n\n" +
+    "    --[no-]porcelain      machine-readable output\n" +
+    "    -z                    terminate records with a NUL character\n";
+  const UNSUPPORTED_USAGE =
+    "usage: git worktree list [--porcelain]\n\n    --porcelain       machine-readable output\n";
+
+  function createCapabilityCommandProvider(options: {
+    usageText?: string;
+    usageThrows?: boolean;
+    gitVersion?: string;
+  }): {
+    commandProvider: GitCommandProvider;
+    calls: string[];
+    countOf: (command: string) => number;
+  } {
+    const calls: string[] = [];
+    const run = vi.fn(
+      async (command: GitCommandExecutionOptions): Promise<GitCommandExecutionResult> => {
+        const argv = command.args.join(" ");
+        calls.push(argv);
+        switch (argv) {
+          case "rev-parse --show-toplevel --show-prefix --absolute-git-dir --git-common-dir":
+            return createCommandResult(command, {
+              stdout: "/repo\npackages/app/\n/repo/.git\n.git\n",
+            });
+          case "worktree list -h":
+            if (options.usageThrows) {
+              throw new Error("capability probe unavailable");
+            }
+            // 旧 git 的 `-h` 写 stderr 且退出码非 0，新 git 写 stdout 且退出 0；
+            // 这里统一按旧形状给出，实现必须同时读两个流才判得对。
+            return createCommandResult(command, {
+              stderr: options.usageText ?? "",
+              exitCode: 129,
+            });
+          case "--version":
+            return createCommandResult(command, {
+              stdout: `${options.gitVersion ?? "git version 2.30.0"}\n`,
+            });
+          case "worktree list --porcelain -z":
+            return createCommandResult(command, { stdout: NUL_PORCELAIN_STDOUT });
+          case "worktree list --porcelain":
+            throw new Error("本轮不做无 -z 降级：不应执行该命令");
+          case "status --porcelain=v2 --branch --untracked-files=all -z":
+            return createCommandResult(command, { stdout: "# branch.head main\0" });
+          case "diff --cached --numstat -z --find-renames --":
+          case "diff --numstat -z --find-renames --":
+            return createCommandResult(command);
+          default:
+            throw new Error(`Unexpected git command in test: ${argv}`);
+        }
+      },
+    );
+
+    return {
+      commandProvider: { resolveGitBinary: vi.fn().mockResolvedValue("git"), run },
+      calls,
+      countOf: (command: string) => calls.filter((entry) => entry === command).length,
+    };
+  }
+
+  it("Git < 2.36：抛稳定错误码与升级建议，不执行必然失败的命令，也不重复探测", async () => {
+    const { commandProvider, calls, countOf } = createCapabilityCommandProvider({
+      usageText: UNSUPPORTED_USAGE,
+      gitVersion: "git version 2.30.0",
+    });
+    const repo = createGitCliRepo({ commandProvider });
+
+    const error = (await repo
+      .listWorktrees("/repo/packages/app")
+      .catch((caught: unknown) => caught)) as {
+      code?: string;
+      message?: string;
+      data?: {
+        code?: string;
+        message?: string;
+        minGitVersion?: string;
+        detectedGitVersion?: string | null;
+      };
+    };
+
+    expect(error.code).toBe("git_worktree_list_nul_unsupported");
+    expect(error.data?.code).toBe("git_worktree_list_nul_unsupported");
+    expect(error.data?.minGitVersion).toBe("2.36.0");
+    expect(error.data?.detectedGitVersion).toBe("git version 2.30.0");
+    // message 只含版本事实与升级建议，不泄漏仓库路径或 git 原始 stderr。
+    expect(error.data?.message).toContain("Git 2.36.0 or newer");
+    expect(error.data?.message).toContain("git version 2.30.0");
+    expect(error.data?.message).not.toContain("/repo");
+    expect(error.data?.message).not.toContain("unknown option");
+
+    // 不执行必然失败的 `-z` 命令，也不做无 `-z` 降级。
+    expect(calls).not.toContain("worktree list --porcelain -z");
+    expect(calls).not.toContain("worktree list --porcelain");
+
+    // 缓存生效：第二次发现不再探测、不再取版本（无无限重试）。
+    await expect(repo.listWorktrees("/repo/packages/app")).rejects.toMatchObject({
+      code: "git_worktree_list_nul_unsupported",
+    });
+    expect(countOf("worktree list -h")).toBe(1);
+    expect(countOf("--version")).toBe(1);
+
+    // 旧 Git 上普通功能不受影响：状态读取照常工作（地板仍是 2.23）。
+    const status = await repo.getStatus("/repo/packages/app");
+    expect(status.summary.branchName).toBe("main");
+  });
+
+  it("Git >= 2.36：探测到 -z 后正常列举，探测只做一次", async () => {
+    const { commandProvider, countOf } = createCapabilityCommandProvider({
+      usageText: SUPPORTED_USAGE,
+    });
+    const repo = createGitCliRepo({ commandProvider });
+
+    const first = await repo.listWorktrees("/repo/packages/app");
+    expect(first.isRepository).toBe(true);
+    expect(first.worktrees.length).toBe(2);
+    expect(first.worktrees[0]?.isMain).toBe(true);
+    expect(first.worktrees[1]?.branchName).toBe("a");
+
+    const second = await repo.listWorktrees("/repo/packages/app");
+    expect(second.worktrees.length).toBe(2);
+
+    expect(countOf("worktree list -h")).toBe(1);
+    expect(countOf("worktree list --porcelain -z")).toBe(2);
+    // 支持时不需要额外取版本号。
+    expect(countOf("--version")).toBe(0);
+  });
+
+  it("并发发现共享同一次能力探测", async () => {
+    const { commandProvider, countOf } = createCapabilityCommandProvider({
+      usageText: SUPPORTED_USAGE,
+    });
+    const repo = createGitCliRepo({ commandProvider });
+
+    const results = await Promise.all([
+      repo.listWorktrees("/repo/packages/app"),
+      repo.listWorktrees("/repo/packages/app"),
+    ]);
+
+    expect(results.every((result) => result.worktrees.length === 2)).toBe(true);
+    expect(countOf("worktree list -h")).toBe(1);
+  });
+
+  it("探测不可用时 fail-open：保持既有 -z 行为，不误报升级", async () => {
+    const { commandProvider, calls, countOf } = createCapabilityCommandProvider({
+      usageThrows: true,
+    });
+    const repo = createGitCliRepo({ commandProvider });
+
+    const result = await repo.listWorktrees("/repo/packages/app");
+    expect(result.worktrees.length).toBe(2);
+    expect(calls).toContain("worktree list --porcelain -z");
+    expect(countOf("--version")).toBe(0);
+  });
+
+  it("用法文本为空时 fail-open：不当作能力缺失", async () => {
+    const { commandProvider, calls } = createCapabilityCommandProvider({ usageText: "" });
+    const repo = createGitCliRepo({ commandProvider });
+
+    const result = await repo.listWorktrees("/repo/packages/app");
+    expect(result.worktrees.length).toBe(2);
+    expect(calls).toContain("worktree list --porcelain -z");
+  });
+});

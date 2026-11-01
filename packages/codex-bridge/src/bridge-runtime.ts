@@ -1,5 +1,6 @@
 import {
   V4_METHODS,
+  V4_NOTIFICATIONS,
   commandsQueryParamsSchema,
   codexConversationHistoryRunsParamsSchema,
   localTtftNow,
@@ -41,6 +42,9 @@ import {
   readRuntimeNotice,
   type CodexRuntimeNoticeLog,
 } from "./runtime-notices.js";
+import { BridgeConversationObservations } from "./conversation-observations.js";
+import { measureSessionData, purgeSessionData } from "./session-data.js";
+import { observeConversationSafely } from "./conversation-observation-types.js";
 
 export interface BridgeResponse {
   result: unknown;
@@ -63,6 +67,7 @@ export interface BridgeRuntimeOptions {
 export class BridgeRuntime {
   private readonly store: ThreadStateStore;
   private readonly interactions: InteractionBroker;
+  private readonly observations: BridgeConversationObservations;
   private readonly ledger: CommandLedger;
   private readonly commands: CommandRouter;
   private readonly rewindNotices = new RewindNoticeStore();
@@ -87,13 +92,23 @@ export class BridgeRuntime {
   constructor(private readonly options: BridgeRuntimeOptions) {
     const { rpc, cwd, workspaceId, stateRoot, notify } = options;
     this.store = new ThreadStateStore(rpc, cwd);
+    this.observations = new BridgeConversationObservations({
+      instanceId: this.ttftInstanceId,
+      state: (id) => this.store.get(id),
+      notify: (fact) => notify(V4_NOTIFICATIONS.conversationTelemetryFact, fact),
+      diagnostic: options.logStateDiagnostic,
+    });
     this.auxiliary = new AuxiliaryText({ rpc, cwd, providerKeyGate: options.providerKeyGate });
     const titleDeps = { rpc, store: this.store, auxiliary: this.auxiliary, cwd, workspaceId };
     this.title = new SessionTitleCoordinator(titleDeps);
     this.officialPlugins = options.officialMarketplaceRoot
       ? new OfficialPluginMarketplace(options.officialMarketplaceRoot)
       : undefined;
-    this.interactions = new InteractionBroker(rpc, (id) => this.store.touch(id));
+    this.interactions = new InteractionBroker(
+      rpc,
+      (id) => this.store.touch(id),
+      (request, phase, decision) => this.observations.permission(request, phase, decision),
+    );
     this.ledger = new CommandLedger(join(stateRoot, "commands"));
     this.attachments = new AttachmentStore({
       cwd,
@@ -112,6 +127,7 @@ export class BridgeRuntime {
       providerKeyGate: options.providerKeyGate,
       onContinueRejected: options.logStateDiagnostic,
       onSubagentStopFallback: options.logStateDiagnostic,
+      observations: this.observations,
     });
     this.snapshots = new BridgeSnapshots(
       { rpc, cwd, auxiliary: this.auxiliary },
@@ -177,6 +193,7 @@ export class BridgeRuntime {
     );
     this.unsubscribe.push(
       rpc.onNotification((event) => {
+        const receivedAt = localTtftNow();
         this.eventTail = this.eventTail
           .then(async () => {
             if (this.closed) return;
@@ -188,6 +205,8 @@ export class BridgeRuntime {
             // 运行期通知只写日志，不经过 thread 状态门禁或快照广播；malformed 通知
             // 也不能被通用 params 强校验升级为 native-event fatal。
             if (!noticeMethod) await this.store.apply(event);
+            if (!noticeMethod)
+              observeConversationSafely(() => this.observations.observe(event, receivedAt));
             void this.title.onNotification(event).catch(() => {});
             if (event.method === "serverRequest/resolved") {
               await this.interactions.resolved(string(params.threadId), params.requestId);
@@ -411,6 +430,28 @@ export class BridgeRuntime {
           result: await queryCodexAppUsageStats(params),
         };
       }
+      case V4_METHODS.sessionDataMeasure:
+        return {
+          result: await measureSessionData(params, {
+            rpc,
+            store: this.store,
+            carrier: { cwd, workspaceId, stateRoot: this.options.stateRoot },
+          }),
+        };
+      case V4_METHODS.sessionDataPurge: {
+        const result = await this.commands.exclusiveMaintenance(async () => {
+          // 屏障只挡命令 admission；先消费已到达原生事实，预检期间的 native events 仍持续推进。
+          await this.eventTail;
+          return purgeSessionData(params, {
+            rpc,
+            store: this.store,
+            carrier: { cwd, workspaceId, stateRoot: this.options.stateRoot },
+          });
+        });
+        for (const entry of result.deleted) this.title.cancel(entry.sessionId);
+        this.refreshSidebar("sessions-index");
+        return { result };
+      }
       case V4_METHODS.codexConversationHistoryRuns: {
         const parsed = codexConversationHistoryRunsParamsSchema.parse(params);
         const state = await this.store.ensure(parsed.sessionId);
@@ -513,6 +554,7 @@ export class BridgeRuntime {
 
   async close(): Promise<void> {
     this.closed = true;
+    this.observations.close();
     this.title.close();
     for (const dispose of this.unsubscribe) dispose();
     this.subscriptions.close();

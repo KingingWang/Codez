@@ -1,9 +1,17 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="theme-zai-light" data-codez-browser-theme-surface="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Codex isolated component QA</title>
+    <style>
+      /* 与 Web 入口相同：浏览器画布不能继承 Electron vibrancy 的透明背景。 */
+      html[data-codez-browser-theme-surface],
+      html[data-codez-browser-theme-surface] body,
+      html[data-codez-browser-theme-surface] #root {
+        background: var(--color-background) !important;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

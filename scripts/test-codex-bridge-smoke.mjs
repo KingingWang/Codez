@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { mkdtemp, mkdir, readFile, writeFile, rm, symlink } from "node:fs/promises";
@@ -64,11 +64,15 @@ test(
     let child;
     let closeChild;
     const frames = [];
+    let stderr = "";
     const start = () => {
       child = spawn(process.execPath, [bridge], { cwd: workspace, env, stdio: "pipe" });
       closeChild = once(child, "close");
       closeChild.catch(() => {});
-      child.stderr.on("data", (chunk) => process.stderr.write(chunk));
+      child.stderr.on("data", (chunk) => {
+        stderr += chunk.toString();
+        process.stderr.write(chunk);
+      });
       const pending = new Map();
       let nextId = 0;
       const lines = createInterface({ input: child.stdout });
@@ -219,8 +223,11 @@ test(
       );
       assert.ok(requests() > 0);
       checkDesktopContext(modelRequests.at(-1));
+      const firstImageObservationId = randomUUID();
       const firstImage = await rpc("v4/command", {
         commandId: "start-image",
+        inputOrigin: "desktop",
+        ttft: { version: 1, observationId: firstImageObservationId, localOnly: true },
         clientId: "desktop",
         sessionId,
         type: "sendText",
@@ -262,6 +269,20 @@ test(
         "two real turns reuse the native message ID but keep turn-scoped entity IDs",
       );
       assert.equal(new Set(completedAnswers.map((row) => row.entityId)).size, 2);
+      const firstImageFacts = frames
+        .filter((frame) => frame.method === "v4/telemetry/event")
+        .map((frame) => frame.params)
+        .filter((fact) => fact.sourceCommandId === "start-image");
+      assert.ok(firstImageFacts.some((fact) => fact.kind === "turn.started"));
+      assert.ok(firstImageFacts.some((fact) => fact.kind === "stream.chunk"));
+      assert.ok(firstImageFacts.some((fact) => fact.kind === "turn.terminal"));
+      assert.ok(firstImageFacts.every((fact) => fact.sessionId === sessionId));
+      assert.match(
+        stderr,
+        new RegExp(
+          `nativeFirstOutput; .*observationId=${firstImageObservationId}; .*outcome=success;`,
+        ),
+      );
       const forked = await rpc("v4/command", {
         commandId: "fork-context",
         clientId: "desktop",
@@ -446,6 +467,31 @@ test(
         await new Promise((resolve) => setTimeout(resolve, 50));
       }
       assert.ok(toolCompleted, "native tool turn completes before session deletion");
+      const facts = frames
+        .filter((frame) => frame.method === "v4/telemetry/event")
+        .map((frame) => frame.params);
+      assert.ok(
+        facts.some(
+          (fact) => fact.kind === "tool.lifecycle" && fact.sourceCommandId === "native-tool-host",
+        ),
+      );
+      assert.ok(
+        facts.every((fact) =>
+          [
+            "turn.started",
+            "stream.chunk",
+            "tool.lifecycle",
+            "permission.lifecycle",
+            "usage.delta",
+            "turn.terminal",
+          ].includes(fact.kind),
+        ),
+      );
+      assert.equal(
+        new Set(facts.map((fact) => fact.eventId)).size,
+        facts.length,
+        "bridge restarts do not reuse event identities",
+      );
       const deleted = await rpc("v4/command", {
         commandId: "delete-1",
         clientId: "mobile",
@@ -486,6 +532,78 @@ test(
         issuedAt: Date.now(),
       });
       assert.equal(deletedAgain.status, "accepted", deletedAgain.message);
+      // 彻底删除走独立的全局控制面，不能把普通 deleteSession 的免锁幂等规则当 purge 成功。
+      const dataParams = {
+        sessionIds: [sessionId],
+        directories: [{ workspacePath: workspace, workspaceIdentity: workspace }],
+      };
+      const measuredAttachments = await rpc("v4/storage/sessionData/measure", dataParams);
+      assert.ok(
+        measuredAttachments.sessions[0].bytes > 0,
+        "ordinary delete leaves bridge-owned attachment objects for explicit purge",
+      );
+      const purgedAttachments = await rpc("v4/storage/sessionData/purge", dataParams);
+      assert.deepEqual(purgedAttachments.failed, []);
+      assert.ok(purgedAttachments.deleted[0].bytes > 0);
+      assert.deepEqual(purgedAttachments.memory, [{ workspacePath: workspace, bytes: 0 }]);
+      const repeatPurge = await rpc("v4/storage/sessionData/purge", dataParams);
+      assert.deepEqual(repeatPurge.deleted, [{ sessionId, bytes: 0 }]);
+      assert.deepEqual(repeatPurge.failed, []);
+      const purgeCreated = await rpc("v4/command", {
+        commandId: "purge-create",
+        clientId: "desktop",
+        sessionId: null,
+        type: "createSession",
+        payload: { workspaceId: workspace },
+        issuedAt: Date.now(),
+      });
+      assert.equal(purgeCreated.status, "accepted", purgeCreated.message);
+      const purgeSessionId = purgeCreated.result.sessionId;
+      const purgeSent = await rpc("v4/command", {
+        commandId: "purge-send",
+        clientId: "desktop",
+        sessionId: purgeSessionId,
+        type: "sendText",
+        payload: { text: "Temporary native purge smoke", requestedDelivery: "startNow" },
+        issuedAt: Date.now(),
+      });
+      assert.equal(purgeSent.status, "accepted", purgeSent.message);
+      const purgeDeadline = Date.now() + 20000;
+      let purgeIdle = false;
+      while (Date.now() < purgeDeadline) {
+        const state = await rpc("v4/conversation/rowsRange", {
+          sessionId: purgeSessionId,
+          limit: 200,
+        });
+        if (
+          state.rows.some((row) => row.kind === "turnHeader" && row.state === "completedSuccess")
+        ) {
+          purgeIdle = true;
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      assert.ok(purgeIdle, "the persisted purge fixture is idle before destructive admission");
+      const nativeDataParams = { sessionIds: [purgeSessionId], directories: [] };
+      const measuredNative = await rpc("v4/storage/sessionData/measure", nativeDataParams);
+      assert.ok(
+        measuredNative.sessions[0].bytes > 0,
+        "native rollout bytes are measured before deletion",
+      );
+      const purgedNative = await rpc("v4/storage/sessionData/purge", nativeDataParams);
+      assert.deepEqual(purgedNative.failed, []);
+      assert.deepEqual(purgedNative.kept, []);
+      assert.ok(
+        purgedNative.deleted[0].bytes > 0,
+        "native thread/delete actually releases the persisted rollout",
+      );
+      const nativeAfterPurge = await rpc("v4/storage/sessionData/measure", nativeDataParams);
+      assert.deepEqual(nativeAfterPurge.sessions, [{ sessionId: purgeSessionId, bytes: 0 }]);
+      const nativeReconciled = await rpc("v4/sessionsIndex/reconcile", {
+        workspaceId: workspace,
+        sessionIds: [purgeSessionId],
+      });
+      assert.equal(nativeReconciled.sessions[0].deleted, true);
       await assert.rejects(
         rpc("v4/attachment/read", {
           sessionId,
