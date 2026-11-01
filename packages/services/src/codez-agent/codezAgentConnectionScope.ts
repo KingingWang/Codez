@@ -22,7 +22,6 @@ import type {
   CodezAgentRuntimePolicy,
   CodezAgentWorkspaceTarget,
 } from "./codezAgent.js";
-import { isRemoteInputPredictionEnabled } from "./inputPredictionSwitch.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 
 const safeWireId = (value: string): string =>
@@ -240,20 +239,19 @@ function createHello(context: CodezAgentV4ConnectionContext): HelloMessage {
     deliveryProfile: deliveryProfileFor(context.clientMode),
     serverTime: Date.now(),
     capabilities: {
+      // 只有这四个键是「本条连接」自己的事实：原生对话框/本地终端由 clientMode 决定，
+      // 二进制帧与压缩由 attachment 所在 relay 链路协商。其余 runtime 能力一律由
+      // helloConversationV4 逐键转发 base 的事实，attachment 不自行赋予。
       nativeDialogs: continuous,
       localTerminal: continuous,
       binaryFrames: false,
       compression: "none",
-      workspaceHookReview: true,
-      independentPlanState: true,
-      genUiContext: true,
-      // Bug 原因：attachment 不是能力所有者；Codex/base 缺失键级增量时不能预先宣告 true。
-      // helloConversationV4 只在底层显式支持后补上该能力，避免客户端错误协商。
+      // 例外：historyFirst 仍由 attachment 宣告，保持 fork 既有行为不变。
+      // base 的 `!usesDefaultCodexBridge` 门禁把 Codex 的 historyFirst 一并关掉，但 Codex
+      // bridge 实际服务 `v4/conversation/rowsRange`、metadata-only resume 与游标分页，
+      // 「订阅 ACK 只表示历史可读」这条语义在 Codex 上成立——到底是 base 少广告还是
+      // attachment 多广告尚未定论，本轮不按键降级，留待单独核实后再收口。
       historyFirst: true,
-      // 手机远控输入预测：受 Host 开关控制；缺席/false 时手机不得发起 inputPrediction。
-      inputPrediction: isRemoteInputPredictionEnabled(),
-      // 手机任务列表预加载：rowsRange 支持 residency=resident-only（只读热会话）。
-      residentRowsRange: true,
     },
     auth: {},
   };
@@ -795,16 +793,31 @@ export function createCodezAgentConnectionScope(
       // The base service owns bridge/service capability discovery. This connection-scoped
       // hello keeps its routing identity and copies only the validated Codex projection.
       const upstream = await base.helloConversationV4();
-      const codex = upstream.capabilities.codex;
-      const codexUnavailable = upstream.capabilities.codexUnavailable;
+      const facts = upstream.capabilities;
       return {
         ...hello,
         capabilities: {
           ...hello.capabilities,
-          // 能力事实由 base runtime 持有；attachment 只转发显式支持，不自行赋予 Codex。
-          ...(upstream.capabilities.workflowRunDeltas === true ? { workflowRunDeltas: true } : {}),
-          ...(codex ? { codex } : {}),
-          ...(codexUnavailable ? { codexUnavailable } : {}),
+          // 能力事实由 base runtime 持有；attachment 只逐键转发显式支持，不自行赋予任何
+          // runtime 能力（含 Codex）。
+          // 修复原因：这几项原先在 createHello 里被硬编码为 true，而 base 对 Codex 后端明确
+          // 关掉了它们，合并时又只取 workflowRunDeltas/codex/codexUnavailable，于是经
+          // connection scope 上线的客户端收到一份对 Codex 说谎的能力集——手机按
+          // residentRowsRange 预加载必然吃 proto.sessionNotResident，按 inputPrediction 发起
+          // 预测必然吃 -32601 后静默降级为空结果，UI 侧 genUiContext 的显式
+          // proto.genUiContextUnsupported 守卫也永不触发（改成把 bridge 不认识的字段发过去
+          // 后被静默忽略）。
+          // 修复依据：hostCapabilitiesSchema 对这些键都写明「缺失等价于 false，调用方必须用
+          // === true 判断」，所以按键缺席就是协议认可的不支持表达；同文件既有测试
+          // 「base runtime 未支持 workflowRunDeltas 时 attachment 不自行宣告」已是同一口径。
+          ...(facts.workspaceHookReview === true ? { workspaceHookReview: true } : {}),
+          ...(facts.independentPlanState === true ? { independentPlanState: true } : {}),
+          ...(facts.genUiContext === true ? { genUiContext: true } : {}),
+          ...(facts.workflowRunDeltas === true ? { workflowRunDeltas: true } : {}),
+          ...(facts.residentRowsRange === true ? { residentRowsRange: true } : {}),
+          ...(facts.inputPrediction === true ? { inputPrediction: true } : {}),
+          ...(facts.codex ? { codex: facts.codex } : {}),
+          ...(facts.codexUnavailable ? { codexUnavailable: facts.codexUnavailable } : {}),
         },
       };
     },

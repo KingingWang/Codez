@@ -30,6 +30,19 @@ Required features and initial states:
 
 Disconnect has no capability projection: the previous explicit state may remain cached for display, but a fresh read is `unavailable`. Host and UI must not synthesize support while the authority cannot answer.
 
+### Host hello capability ownership
+
+`hostCapabilities` in the V4 `hello` has two owners, and they must not be mixed:
+
+- The connection attachment owns only per-connection facts: `nativeDialogs` and `localTerminal` (derived from `clientMode`), plus `binaryFrames` and `compression` (negotiated by the relay link it sits on).
+- The base runtime owns every backend-dependent key: `workspaceHookReview`, `independentPlanState`, `genUiContext`, `workflowRunDeltas`, `residentRowsRange`, `inputPrediction`, `codex`, `codexUnavailable`.
+
+The attachment forwards a runtime-owned key only when the base hello states it `=== true`, and omits it otherwise. Omission is the protocol's own encoding of "not supported": `hostCapabilitiesSchema` documents these keys as wire-compatible with absence meaning `false`, and consumers must test `=== true`. An attachment must never hardcode a runtime capability to `true`, because that advertises support the base explicitly gated off for the Codex backend — phones would then preload `rowsRange` into a guaranteed `sessionNotResident` error and send `inputPrediction` into a guaranteed `-32601`, and the UI's explicit `genUiContextUnsupported` guard would never fire. All three degrade silently, so the lie is only observable as a feature that never works.
+
+`inputPrediction` additionally stays behind the Host switch: the base advertises it only when the runtime is not the default Codex bridge and the remote input-prediction switch is on. A failed prediction query still degrades to an empty result (a ghost hint must never block input), but it now leaves a warning carrying the backend fact, so "the switch reads on yet hints never appear" is diagnosable.
+
+Known exception: `historyFirst` is still declared by the attachment. The base gates it off for Codex together with the workflow keys, but the bridge does serve `v4/conversation/rowsRange`, metadata-only resume and cursor paging, so "the subscription ACK only means history is readable" holds on Codex. Whether the base under-advertises or the attachment over-advertises is unresolved; this key is deliberately left at its pre-existing value pending that decision.
+
 ## Ownership and event order
 
 ```text
