@@ -2,6 +2,7 @@ import {
   V4_METHODS,
   commandsQueryParamsSchema,
   codexConversationHistoryRunsParamsSchema,
+  localTtftNow,
   v4ConversationFileChangesParamsSchema,
   v4ConversationFileRewindProjectionOverlayParamsSchema,
 } from "@codez/shared/codez-protocol-v4";
@@ -23,6 +24,7 @@ import { array, object, string, unsupported } from "./json.js";
 import { projectTurnFileChanges } from "./file-changes.js";
 import { projectCodexHistoryRuns } from "./history-runs.js";
 import { join } from "node:path";
+import { randomUUID } from "node:crypto";
 import { AuxiliaryText } from "./auxiliary-text.js";
 import { SessionTitleCoordinator } from "./session-title.js";
 import {
@@ -72,6 +74,12 @@ export class BridgeRuntime {
   private readonly officialPlugins: OfficialPluginMarketplace | undefined;
   private readonly unsubscribe: (() => void)[] = [];
   private readonly pendingChangedIds = new Set<string>();
+  /**
+   * 本地 TTFT 跨进程时钟校准的 runtime 侧实例标识。
+   * 与 apps/codez-cli 的 local-ttft recorder 同口径：每个进程一个 randomUUID，
+   * renderer 用它判定校准样本属于哪一次 runtime 生命周期，避免拿旧进程的偏移量算新区间。
+   */
+  private readonly ttftInstanceId = randomUUID();
   private changeFlushScheduled = false;
   private eventTail: Promise<void> = Promise.resolve();
   private closed = false;
@@ -351,7 +359,30 @@ export class BridgeRuntime {
           },
         };
       case V4_METHODS.commandsQuery: {
+        // receivedAt 必须在 parse 之前取：校准探针要测的是「请求到达 runtime 的最早时刻」，
+        // 与 apps/codez-cli 的 v4-gateway.queryCommands 同一口径。
+        const clockReceivedAt = localTtftNow();
         const parsed = commandsQueryParamsSchema.parse(params);
+        // 修复原因：renderer 会发 `clock: true` 的纯时钟探针做跨进程校准
+        // （packages/ui/src/v4/agentConversationTransport.ts 的 calibrate()），而 bridge 之前只返回
+        // `{ results }`、不带 `clock`，renderer 侧 `.catch(() => {})` 把失败静默吞掉；于是 Codex
+        // 会话的本地 TTFT 永远拿不到时钟校准，只能产出 clock_invalid / unclosed 残记录。
+        // service 层已正确透传 clock 并按 commandsQueryResultSchema 校验返回值
+        // （codezAgentService.ts 的 queryConversationCommandsV4），bridge 是链路上唯一缺的一环。
+        // 修复依据：与 CLI 的 queryCommands 完全同语义——校准是纯时钟探测，必须短路，
+        // 不触发命令账本查询、恢复或 admission gate，所有 key 一律按 unknown 应答。
+        if (parsed.clock) {
+          return {
+            result: {
+              results: parsed.commands.map((key) => ({ key, result: "unknown" as const })),
+              clock: {
+                instanceId: this.ttftInstanceId,
+                receivedAt: clockReceivedAt,
+                sentAt: localTtftNow(),
+              },
+            },
+          };
+        }
         const results = await Promise.all(
           parsed.commands.map(async (key) => ({
             key,
