@@ -355,6 +355,14 @@ DataSyncDialog（Renderer）
 - 实现：本机 Host 服务 `IProviderProvisioningStatusService`（通道 `provider-provisioning-status`）提供 `getStatus({ sourceServerId, waitForIdle? })` 与 `retry({ sourceServerId })`，经 Host → Main 的 `provider-provisioning-lane-request` / `-result` 消息读写协调器（R3 §8.3.6）。它与设备同步状态一样只在桌面本机 Host 注册，不进入远程 workspace RPC 合同、source-settings 服务集合和手机白名单。返回 `{ lane: "none" }` 或 `{ lane: "present", running, lastResult?: { at, outcome, errorCode? } }`。
 - 打开时读取一次；正在执行时再以 `waitForIdle` 等这次执行结束；重试等本次推进的代际执行完后返回结果。重试合并进正在执行的首次上线同步时，首次失败照常立即结束首次同步（发布屏障不等重试），重试随后在同一条 lane 上再执行一次，返回这次的结果。失败原因按固定阶段码显示本地化文案。
 
+### Codex 原生后端下的诚实标注
+
+- 本 fork 桌面端默认执行后端是 Codex 原生桥接，而本功能的六个推送分类读写的都是 Codez 自有存储（`~/.codez/**`）。产品裁决：Codex 原生配置不纳入跨设备同步，本轮只做诚实标注，规则与逐类别证据见 [specs/data-sync-codex-backend.md](../../specs/data-sync-codex-backend.md)。
+- 判定事实源是两端各自 Host 的 `systemService.info().agentRuntimeMode`，UI 复用既有解析器 `resolveRootProviderStartupMode`；缺失或查询失败按 legacy 处理（不标记、不禁用）。data-sync 不缓存第二份后端判定。
+- 目标设备跑 Codex 时：子智能体、MCP、技能、命令、钩子整类不可同步（不加载、不可勾选、不进「推送全部」，导航与概览显示标记，分类页显示原因与「设置 → Codex」指引）；插件分类只保留 marketplace 行（经 Agent 落到 Codex 原生插件状态），inline 行从两端列表排除。
+- 本机跑 Codex 时：分区与弹窗显示一条口径提示——列表里的「本机」条目只来自 Codez 自有存储，不含 Codex 面板里的配置；推送不被禁用（legacy 目标端仍然生效）。
+- 两端都不是 Codex 时，文案与行为与本节之前的描述完全一致。
+
 ### 设备列表与设备同步状态
 
 - 首页采用「清晰列表」布局：标题右侧是低强调的「迁移数据」入口，下一行说明为「同步本机配置到远端。」。说明后的信息按钮可通过点击、键盘打开「同步规则」浮层，内容为「仅新增或更新，保留远端独有内容。」。

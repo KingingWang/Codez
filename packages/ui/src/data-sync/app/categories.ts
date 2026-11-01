@@ -29,6 +29,7 @@ import {
 import { refreshSubagentsStoreForRemoteWorkspaces } from "@/store/subagentsStore.js";
 import type { WorkspaceTabState } from "@/store/tabStore.js";
 import type { DataSyncCategoryId } from "@/data-sync/contract.js";
+import type { DataSyncCodexAvailability } from "@/data-sync/domain/codexBackend.js";
 import {
   createPluginCategoryDataSyncService,
   type DataSyncPushControl,
@@ -214,3 +215,29 @@ export const DATA_SYNC_CATEGORIES: readonly DataSyncCategoryAdapter[] = [
     afterPush: refreshHooksAfterPush,
   },
 ];
+
+/**
+ * 当前后端事实下**真正可同步**的分类适配器（specs/data-sync-codex-backend.md）。
+ *
+ * 设备跑 Codex 原生后端时，被屏蔽的分类根本不进入弹窗状态机：不加载（避免无谓的两端 list / 哈希 RPC，
+ * 以及子智能体 list 顺带触发的 Codez 存储迁移写入）、不可勾选、不参与单类推送与「推送全部」。
+ * 这样「不可同步」只有一个表达位置（这份列表），不存在 UI 禁用但状态机仍能推送的第二条写路径。
+ *
+ * 插件分类是部分生效：marketplace 行经 `IPluginManagementService` → Agent → bridge `plugins/install`
+ * 落到 Codex 原生插件状态，仍然同步；inline 行写 `~/.codez/plugins` 与 `plugins.dirs`，Codex 不读取，
+ * 推送只会产生「成功但不生效」的结果，因此从两端列表中排除。
+ */
+export function selectDataSyncCategories(
+  availability: DataSyncCodexAvailability,
+): readonly DataSyncCategoryAdapter[] {
+  return DATA_SYNC_CATEGORIES.filter((category) => !availability.blocked.has(category.id)).map(
+    (category) =>
+      category.id === "plugins" && !availability.inlinePlugins
+        ? {
+            ...category,
+            getService: (services: IServiceAccessor, control?: DataSyncPushControl) =>
+              createPluginCategoryDataSyncService(services, control, { inlinePlugins: false }),
+          }
+        : category,
+  );
+}
