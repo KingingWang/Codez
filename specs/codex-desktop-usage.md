@@ -75,6 +75,18 @@ Rollout usage parsing coalesces concurrent in-flight file reads (such as simulta
 
 `AppUsagePanel` renders the pre-fork four-section layout (lifetime summary strip, 52-week token activity heatmap, time range switcher `7d` / `30d` / `all`, daily model token trend chart with per-model breakdown tooltip, and model usage donut chart + breakdown list).
 
+SQLite reader completion is also a resource-lifetime barrier: the worker closes
+its per-query read-only connection before posting either rows or an error to the
+caller. The persistent worker itself remains reusable. Closing after the result
+message is insufficient on Windows: CI run 41327506675 returned from a query while
+`state_5.sqlite` was still locked, breaking immediate fixture replacement/cleanup
+(`codex-app-usage.test.ts` and SD-CODEX-05/06). Do not hide this ordering defect with
+cleanup retries or terminate/recreate the worker for every query.
+
+```text
+query request → reusable worker → read-only SQLite rows → close DB → result message → caller continues
+```
+
 The Host-owned `CodexUsageObservationCache` and `CodexOnlyUsagePanel` remain available for explicit observation-race QA harnesses and isolated thread telemetry checks, where read responses stay scoped to the current workspace identity and Host service generation:
 Read responses are scoped to the current workspace identity and Host service
 generation. A later refresh, Host reconnect, identity switch or unmount
