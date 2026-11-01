@@ -219,8 +219,12 @@ const SQLITE_READER_WORKER_SOURCE = `
     try {
       const fingerprint = fingerprintOf(msg.dbPath);
       const db = new sqlite.DatabaseSync(msg.dbPath, { open: true, readOnly: true });
-      try { port.postMessage({ id: msg.id, rows: db.prepare(msg.sql).all(...msg.params), fingerprint }); }
+      let rows;
+      try { rows = db.prepare(msg.sql).all(...msg.params); }
       finally { db.close(); }
+      // Windows 上先发结果会让调用方在连接关闭前删除/重建 SQLite，触发 EBUSY/EPERM。
+      // 完成消息必须晚于 close；仅关闭本次连接，保留 worker 复用与已有缓存。
+      port.postMessage({ id: msg.id, rows, fingerprint });
     } catch (queryFailed) {
       port.postMessage({ id: msg.id, error: String((queryFailed && queryFailed.message) || queryFailed) });
     }
