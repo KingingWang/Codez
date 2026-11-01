@@ -26,12 +26,30 @@ export class InteractionBroker {
   constructor(
     private readonly rpc: CodexRpcPort,
     private readonly changed: (threadId: string) => void | Promise<void>,
+    private readonly observed?: (
+      request: CodexServerRequest,
+      phase: "requested" | "resolved" | "denied",
+      decision?: "allow" | "deny" | "modify" | "escalate",
+    ) => void,
   ) {}
 
   list(threadId: string): PendingInteraction[] {
     return [...this.pending.values()]
       .filter((entry) => entry.threadId === threadId)
       .map((entry) => entry.interaction);
+  }
+
+  private recordObservation(
+    request: CodexServerRequest,
+    phase: "requested" | "resolved" | "denied",
+    decision?: "allow" | "deny" | "modify" | "escalate",
+  ): void {
+    // 观察失败不能把已经受理/已经回复的原生审批改成业务错误，也不能导致批准重发。
+    try {
+      this.observed?.(request, phase, decision);
+    } catch {
+      /* 只读诊断 */
+    }
   }
 
   async accept(request: CodexServerRequest): Promise<void> {
@@ -87,6 +105,7 @@ export class InteractionBroker {
       responding: false,
       turnId: typeof params.turnId === "string" ? params.turnId : undefined,
     });
+    this.recordObservation(request, "requested");
     await this.changed(threadId);
   }
 
@@ -340,6 +359,31 @@ export class InteractionBroker {
     entry.responding = true;
     await this.rpc.respond(entry.request.id, response);
     this.pending.delete(interactionId);
+    const nativeResponse = object(response);
+    const decisionValue =
+      nativeResponse.decision ??
+      nativeResponse.action ??
+      (entry.request.method === "item/permissions/requestApproval" ? answer.optionId : undefined);
+    const decisionKind =
+      typeof decisionValue === "string"
+        ? decisionValue
+        : decisionValue && typeof decisionValue === "object" && !Array.isArray(decisionValue)
+          ? Object.keys(decisionValue)[0]
+          : undefined;
+    const denied = ["decline", "declineWithFeedback", "deny", "cancel"].includes(
+      decisionKind ?? "",
+    );
+    this.recordObservation(
+      entry.request,
+      denied ? "denied" : "resolved",
+      denied
+        ? "deny"
+        : ["accept", "acceptForSession", "acceptAlways"].includes(decisionKind ?? "")
+          ? "allow"
+          : decisionKind?.includes("Amendment")
+            ? "modify"
+            : undefined,
+    );
     await this.changed(threadId);
   }
 
@@ -352,7 +396,10 @@ export class InteractionBroker {
 
   async resolved(threadId: string, requestId: unknown): Promise<void> {
     for (const [id, entry] of this.pending) {
-      if (entry.threadId === threadId && entry.request.id === requestId) this.pending.delete(id);
+      if (entry.threadId === threadId && entry.request.id === requestId) {
+        this.pending.delete(id);
+        this.recordObservation(entry.request, "resolved");
+      }
     }
     await this.changed(threadId);
   }

@@ -1,5 +1,36 @@
 import type { ReactNode } from "react";
 
+/** 纯展示分栏；不引入 legacy 供应商目录、鉴权或图片资产。 */
+export function ModelProviderSplitPanel({
+  navigation,
+  children,
+}: {
+  navigation: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div className="overflow-clip rounded-xl border border-border bg-card">
+      <div
+        className="grid min-h-[36rem] grid-cols-[56px_minmax(0,1fr)] gap-0 md:grid-cols-[224px_minmax(0,1fr)]"
+        data-model-provider-split-panel="true"
+      >
+        <div
+          className="min-w-0 border-r border-border"
+          data-model-provider-navigation-scroll="true"
+        >
+          {navigation}
+        </div>
+        <div
+          className="relative min-w-0 p-4 pb-20 sm:p-6 sm:pb-24"
+          data-model-provider-detail-scroll="true"
+        >
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function SettingsResourceGroupHeader({
   actions,
   count,

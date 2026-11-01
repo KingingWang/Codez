@@ -188,6 +188,12 @@ const zhCN: Record<string, string> = {
   "projectManagement.confirm.data.note": "这 {count} 个本机项目的会话、会话文件、检查点和记忆。",
   "projectManagement.confirm.data.noteOne": "这个本机项目的会话、会话文件、检查点和记忆。",
   "projectManagement.confirm.data.calculating": "正在计算…",
+  "projectManagement.confirm.data.unsupported": "此后端不支持删除会话数据。移除项目仍会保留数据。",
+  "projectManagement.confirm.data.error":
+    "无法安全测量会话数据，暂不可删除数据；仍可仅移除项目并保留数据。",
+  "projectManagement.confirm.data.retry": "重新测量",
+  "worktree.create.error.gitUpgradeRequired":
+    "工作树列举和安全删除预检需要 Git 2.36 或更新版本，请升级此工作区所在设备的 Git 并重启 Host 或应用。其他 Git 功能仍支持 Git 2.23 或更新版本。",
   "projectManagement.confirm.data.sessions": "{count} 个会话及其文件",
   "projectManagement.confirm.data.sessionsOne": "1 个会话及其文件",
   "projectManagement.confirm.data.checkpoints": "文件检查点",

@@ -11,27 +11,37 @@ import {
   persistV4ComposerDraft,
   readV4ComposerDraft,
   V4_DRAFT_SCOPE_ROOT,
+  resolveComposerScope,
 } from "@/v4/composer/composerDraftStore.js";
 import { CodexComposerModelControls } from "../CodexComposerModelControls.js";
 import { model } from "./harnessConfig.js";
 
 export const mappedProviderScenario = new URLSearchParams(location.search).get("mapped-provider");
 const workspacePath = `/isolated/mapped-provider-${mappedProviderScenario}`;
+// 新版 Root 草稿按 client/host/project 归属，不再按 cwd 隔离；两个 QA 场景用独立客户端命名空间。
+const clientNamespace = `qa-mapped-provider-${mappedProviderScenario}`;
+const rootScope = resolveComposerScope(null, undefined, clientNamespace);
 if (
   mappedProviderScenario === "stale" &&
-  !readV4ComposerDraft(workspacePath, undefined, V4_DRAFT_SCOPE_ROOT)
+  !readV4ComposerDraft(workspacePath, undefined, V4_DRAFT_SCOPE_ROOT, rootScope)
 ) {
-  persistV4ComposerDraft(workspacePath, undefined, V4_DRAFT_SCOPE_ROOT, {
-    text: "你好",
-    mode: "yolo",
-    permissionModeGen: 2,
-    planEnabled: true,
-    modelSelection: {
-      providerId: "config-provider",
-      modelId: "second-model",
-      options: { reasoningLevel: "high" },
+  persistV4ComposerDraft(
+    workspacePath,
+    undefined,
+    V4_DRAFT_SCOPE_ROOT,
+    {
+      text: "你好",
+      mode: "yolo",
+      permissionModeGen: 2,
+      planEnabled: true,
+      modelSelection: {
+        providerId: "config-provider",
+        modelId: "second-model",
+        options: { reasoningLevel: "high" },
+      },
     },
-  });
+    rootScope,
+  );
 }
 
 export function MappedProviderFixture({ services }: { services: IServiceAccessor }) {
@@ -80,7 +90,7 @@ export function MappedProviderFixture({ services }: { services: IServiceAccessor
     },
   }));
   return (
-    <ServiceProvider services={mappedServices}>
+    <ServiceProvider services={mappedServices} composerClientNamespace={clientNamespace}>
       <MappedProviderComposer services={mappedServices} />
     </ServiceProvider>
   );

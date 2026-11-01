@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveWorktreeCreationGate } from "./worktreeCreationModel.js";
+import {
+  resolveWorktreeCreationGate,
+  worktreeCreationErrorMessage,
+} from "./worktreeCreationModel.js";
 import type { IGitService } from "@codez/services";
 import type { GitLocalBranch, GitRepositorySummary, GitWorktreeCreatePreview } from "@codez/shared";
 import {
@@ -17,6 +20,16 @@ import {
   runWorktreeCreation,
   shouldCloseAfterWorktreeCreation,
 } from "./useWorktreeCreation.js";
+
+test("worktree Git capability errors survive direct and remote RPC envelopes without parsing stderr", () => {
+  for (const error of [
+    { code: "git_worktree_list_nul_unsupported", message: "native message" },
+    { code: -32000, data: { code: "git_worktree_list_nul_unsupported" }, message: "RPC wrapper" },
+  ])
+    assert.equal(worktreeCreationErrorMessage(error), "worktree.create.error.gitUpgradeRequired");
+  assert.equal(worktreeCreationErrorMessage(new Error("permission denied")), "permission denied");
+  assert.equal(worktreeCreationErrorMessage(new Error("unknown option -z")), "unknown option -z");
+});
 
 function fakeSummary(overrides: Partial<GitRepositorySummary> = {}): GitRepositorySummary {
   return {

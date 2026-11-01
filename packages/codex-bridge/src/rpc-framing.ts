@@ -11,6 +11,7 @@ export type RpcEnvelope = {
   params?: unknown;
   result?: unknown;
   error?: { code: number; message: string };
+  emittedAtMs?: number;
 };
 
 export interface CodexDroppedFrame {
