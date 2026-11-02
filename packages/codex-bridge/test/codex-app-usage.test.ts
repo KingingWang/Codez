@@ -15,8 +15,18 @@ const OLD_TOKENS_EACH = 500;
 const POISON_TOKENS_EACH = 999_999;
 const OLD_THREAD_AGE_MS = 400 * DAY_MS;
 const TURN_DURATION_MS = 60_000;
-/** usage 查询期间允许的 bridge event-loop lag 上限 */
-const EVENT_LOOP_LAG_BUDGET_MS = 60;
+/**
+ * usage 查询期间允许的 bridge event-loop lag 上限。
+ * 60ms 足以抓住该探针真正防的回归：1205 线程冷读若退回主线程同步 SQLite 或出现不让出的
+ * 解析循环，量级是秒级，远超任何平台预算。
+ * Intel macOS runner（macos-15-intel）历史上明显慢于其他平台（见 87e82f90 对原生 exec
+ * 预算的同平台校准先例），且 bridge 套件默认整目录并发执行。Codez desktop run 41465756800
+ * 的 attempt 1/2 仅该平台在此断言量到 199.9ms / 128.6ms，而同次运行「worker +2 / 主线程 0」
+ * 等同步工作断言全部通过、Linux 孤立单例也通过，说明量到的是 GC / CPU 抢占等环境干扰，
+ * 不是主线程同步工作。故仅 darwin x64 校准为 250ms，仍与秒级回归保持数量级余量。
+ */
+const EVENT_LOOP_LAG_BUDGET_MS =
+  process.platform === "darwin" && process.arch === "x64" ? 250 : 60;
 
 async function createFixtureCodexHome(now: number): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "codex-app-usage-"));
