@@ -48,6 +48,7 @@ import {
   TID_V4_RETRY,
   TID_V4_ROW,
   TID_V4_ROW_ATTACHMENTS,
+  TID_V4_SUBAGENT_OPEN_SIDE_PANE,
   testId,
 } from "@codez/shared/test-ids";
 import type {
@@ -132,6 +133,7 @@ import {
   isConversationReasoningRowVisible,
   type ConversationRowRenderContext,
 } from "@/v4/conversationRowContext.js";
+import { openSubagentSessionFromSummary } from "@/v4/ConversationAgentToolCallRow.js";
 import { toolCallRowToLegacyNode } from "@/v4/toolCallRowAdapter.js";
 import { CodeCommentAttachmentChip } from "@/v4/composer/CodeCommentAttachmentChip.js";
 import {
@@ -2494,9 +2496,31 @@ const ToolCallRowView = memo(function ToolCallRowView({
   );
 });
 
-const SubagentRowView = memo(function SubagentRowView({ row }: { row: SubagentRow }) {
-  // subagent 行已经和 Agent/Task 工具行配对渲染；裸行只保留异常兜底摘要，
-  // 避免再生成一个“子会话”卡片或第二套下钻入口。
+const SubagentRowView = memo(function SubagentRowView({
+  row,
+  context,
+}: {
+  row: SubagentRow;
+  context: ConversationRowRenderContext;
+}) {
+  const { intl } = useCodezIntl();
+  const { childSessionId, subagentType } = row;
+  const title = row.summaryText || subagentType;
+  const openLabel = intl.formatMessage({ id: "chat.toolCall.agent.openInSidePane" });
+  const canOpenChildSession = Boolean(
+    childSessionId && context.sessionId && context.onOpenSubagentSession,
+  );
+  const handleOpenChildSession = useCallback(() => {
+    runUserAction({
+      input: { featureId: "conversation.subagent", action: "open_side_pane", trigger: "button" },
+      operation: () =>
+        openSubagentSessionFromSummary({ childSessionId, context, subagentType, title }),
+      completed: { resultSource: "local_commit" },
+      failureStage: "subagent_open",
+    });
+  }, [childSessionId, context, subagentType, title]);
+  // Codex v2 的 activity-only 历史没有 Agent 工具可配对，不能把带真实 child ID 的裸行
+  // 当作异常而移除下钻入口；已配对行在工作项投影中已被消费，这里复用同一 opener 不会重复。
   const summary = (
     <>
       {row.subagentType} · {row.status}
@@ -2505,7 +2529,21 @@ const SubagentRowView = memo(function SubagentRowView({ row }: { row: SubagentRo
   );
   return (
     <RowShell rowId={row.rowId}>
-      <div className="text-ui-sm text-[var(--color-foreground-subtle)]">{summary}</div>
+      {canOpenChildSession && childSessionId ? (
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-auto max-w-full cursor-pointer justify-start whitespace-normal px-2 py-1 text-left text-ui-sm text-foreground-subtle focus-visible:bg-hover focus-visible:text-foreground"
+          data-testid={testId(TID_V4_SUBAGENT_OPEN_SIDE_PANE, childSessionId)}
+          aria-label={`${openLabel}: ${title}`}
+          title={openLabel}
+          onClick={handleOpenChildSession}
+        >
+          <span className="min-w-0 break-words">{summary}</span>
+        </Button>
+      ) : (
+        <div className="text-ui-sm text-foreground-subtle">{summary}</div>
+      )}
     </RowShell>
   );
 });
@@ -2582,7 +2620,7 @@ function ConversationRowViewImpl({
       }
       return <ToolCallRowView row={row} context={context} />;
     case "subagent":
-      return <SubagentRowView row={row} />;
+      return <SubagentRowView row={row} context={context} />;
     case "artifact":
       return <ArtifactRowView row={row} />;
     default:
