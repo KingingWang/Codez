@@ -3,7 +3,8 @@
 ## Outcome
 
 Codex flavor 的子代理与原生 flavor 同形可下钻：父会话时间线里的 `spawn_agent`
-卡片可点击，在右侧只读面板打开子代理自己的会话；状态面板显示运行中子代理并同样
+卡片可点击；只有 activity 的 v2 历史以常驻摘要入口下钻，两者都在既有右侧只读面板
+打开子代理自己的会话。状态面板显示运行中子代理并同样
 可点；「已结束」目录通过 `session/subagents` 回看。子线程的事实源始终是 Codex
 （独立 threadId + 独立 rollout），bridge 只翻译，不新建持久化、不复制历史。
 
@@ -28,7 +29,7 @@ Codex flavor 的子代理与原生 flavor 同形可下钻：父会话时间线�
 | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `subagent` row                                                              | 每个 childThreadId 一行，锚定 spawn item 所在 turn 与位置；`entityId` = `codex:subagent:<childThreadId>`；`summaryText` = spawn prompt 首个非空行（≤200 字符）?? `agentPath` ?? `""`；不设 `backgrounded`/`workId`（Codex 无对应事实）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | 行 status 优先级                                                            | ① `subAgentActivity`：`completed`→success、`interrupted`→cancelled；② 否则 `agentsStates[childId].status`：`completed`→success、`errored`→failed、`interrupted`/`shutdown`→cancelled、`pendingInit`/`running`→running、`notFound`→无信息不覆盖；③ 都没有→running                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| 只有 activity 没有 spawn item 的历史                                        | 仍产出行，锚定首个 activity item，不带 `parentToolCallId`，走 UI 既有「同 turn 唯一剩余一对」legacy 配对                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| 只有 activity 没有 spawn item 的历史                                        | 仍产出行，锚定首个 activity item，不带 `parentToolCallId`；有唯一剩余 Agent 工具时沿用 legacy 配对，否则由未配对 subagent 摘要提供同一只读下钻入口，不合成工具调用                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `snapshot.subagents`                                                        | `childSessionIds` 去重；`running` 只含 status=running（收敛规则见下）；`endedTotal = max(0, childSessionIds.length - running.length)`；`revision`：空=0、非空≥1，仅在派生语义变化时 +1（renderer 用作 refresh key 与 child tab 同步 CAS）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | running 收敛（终态到达前不能把子代理从 running 拿掉，结束后也不能一直留着） | 父线程事实是主依据；但 v1 只在 `wait`/`send_input` 碰巧观测到终态时才写 `agentsStates`（实测多数 child 永远没有父侧终态），v2 只在 `Completed` 时写 `subAgentActivity`。因此 bridge 额外维护「子线程活性观测」：① 已加载子线程的原生 `status`；② 所有线程的 `turn/started`→active、`turn/completed`→非 active、`thread/status/changed` 按类型映射（子线程创建时原生会为已初始化连接自动挂 listener，事件无需打开子面板即可到达）；③ 一次性 `thread/list { parentThreadId, sourceKinds: subAgent* }` 种子：`active`→运行中，`idle` 且没有任何 turn →还在排队不判死，`idle` 且有 turn 且无 inProgress→已结束，`systemError`/`notLoaded`→已结束。命中「非 active」即不计入 running。子线程生命周期事件同时 touch 父会话触发重投影，不等下一次父事件 |
 | `session/subagents`                                                         | `thread/list { parentThreadId, cwd, sourceKinds: subAgent*, modelProviders: [], archived: false }`；原生 status `active`→running，其余→ended；ended status 用父线程事实推导，不可判定用 `lost`；bridge 侧按 offset 分页并返回不透明 cursor，`ended.total` 为精确已结束数                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
@@ -96,6 +97,37 @@ Codex flavor 的子代理与原生 flavor 同形可下钻：父会话时间线�
 - `send_input`/`resume_agent`/`wait_agent`/`close_agent` 等后续交互工具不进入该集合：
   同一 child 只允许一张可点卡片。
 
+### activity-only 时间线入口（issue #33）
+
+确认的缺口是 UI 把所有未配对行当作异常摘要；合法的 activity-only 历史没有 Agent 工具，
+因此即使带有 `childSessionId` 也不可能通过 legacy 配对获得入口。无需依赖上游 feature flag
+的具体实现归因，也不向 bridge 添加并未发生的 `spawn_agent` 工具事实。
+
+- 未配对 `subagent` 行在同时具备 `childSessionId`、当前 parent `sessionId` 和
+  `onOpenSubagentSession` 时提供语义化按钮，支持点击、Enter 和 Space。running、success、
+  failed、cancelled 等状态均保留入口；状态更新或 child ID 后到不自动打开详情。
+- 复用 `openSubagentSessionFromSummary`、既有入口 test ID、打开提示文案及用户动作遥测。
+  请求标题使用可见的 `summaryText`，为空时使用 `subagentType`；不把可变状态拼进 tab 标题。
+  已配对行只由 Agent 工具卡提供入口，不额外渲染未配对摘要。
+- 缺 child、parent 或 callback 时保持静态摘要，不添加按钮、tab stop 或入口 test ID；
+  不按同 turn 顺序猜 child。多个未配对 child 各自使用其真实 ID。
+- 根/父/子 lineage、workspaceIdentity、remoteSessionId 和 tab 去重仍由现有 context/opener/
+  Side Pane 所有者处理。UI 不新增会话状态、加载路径、inline prompt/output 或 child 写权限。
+- Desktop continuous 与手机 replayable 使用同一渲染入口；本改动不改变协议、订阅、
+  owner/lease 或恢复语义。窄屏浏览器证据不等同于实体手机远控整机验收。
+
+入口分发（不增加状态所有者）：
+
+```text
+Codex 历史 → bridge 的真实 subagent 行 → UI 既有配对
+                                        ├─ 配对成功：Agent 工具摘要
+                                        └─ 未配对且身份/能力齐全：subagent 摘要按钮
+                                                     ↓
+                                 同一 openSubagentSessionFromSummary
+                                                     ↓
+                               既有 scoped Side Pane / 只读 child 订阅
+```
+
 ## 父会话停止子代理（issue #32）
 
 根因已由源码确认：bridge 快照的 `backgroundWorks` 原本恒为空，胶囊及状态面板没有
@@ -158,9 +190,24 @@ sequenceDiagram
   `snapshot.subagents` 与 revision 语义、子线程只读加载三条路径（attach 成功 / resume
   被拒降级 / cwd 不同）、`notLoaded` 跳过 resume 与 `idle` 仍订阅、deny guard 的
   reasonCode、`session/subagents` 分页与分类、`session/list` 不含子线程。
-- UI 单测：`spawn_agent` 行 + subagent 行恰好产出一个 `agentToolCall` 渲染项且 subagent
-  行不重复渲染；有无 `childSessionId` 时 side pane 入口 testid 的出现与缺席。
+- #33 浏览器验收：生产 `ConversationTimeline` 覆盖 activity-only 的运行中到终态、
+  完成后回看、点击/Enter/Space、多个 child 精确路由、v1 配对不重复，以及缺 child/parent/
+  callback 时静态展示。390/1200px、Zai Light/Dark、中英文检查入口和横向溢出。
+  候选保持 `manual-review/pending`，不新增或恢复 App 业务单测；运行产物见 coverage matrix。
 - `pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed` 全绿。
+
+### #33 本次验证（2026-11-02）
+
+- 生产时间线浏览器验收：修复前真实缺失入口，修复后 8/8 通过、0 skip；
+  包含窄屏长摘要和全部 CSNAV33 场景。具体红/绿截图与请求断言产物见 coverage matrix。
+- 独立浏览器操作确认 390px 深色中文入口可点击、root/parent/child 请求准确、
+  单入口且无横向溢出或 pageerror。候选保持 pending，不声称已人工转正。
+- bridge 既有下钻回归 29/29 通过，覆盖 activity-only 投影、生命周期及只读加载/命令边界。
+- 根 typecheck、Desktop E2E typecheck、changed 架构检查通过；lint 为 105 warning、
+  0 error。本次没有协议或状态所有权变化，现有 `ui` 模块未受完整 managed-layer 治理，
+  不把静态架构通过当作所有运行时边界的证明。
+- 未运行实体手机、原生 Codex v2 provider 或完整 Side Pane 订阅 E2E；
+  浏览器请求与 bridge 回归分别证明入口及既有下钻合同，不替代这些整机证据。
 
 ### #32 本次验证（2026-10-31）
 
