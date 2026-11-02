@@ -131,6 +131,22 @@ MP01–MP12 的前置、动作、断言与证据见[移动端事件推送规格]
 原生隔离集成候选为 `scripts/test-codex-subagent-stop.mjs`，不经人工审阅转正为 WDIO。
 既有 `conversation-session-v4-background-work.test.ts` 只证明共享 UI Stop，不替代 Codex 原生证据。
 
+## CSNAV33：Codex activity-only 子代理下钻（issue #33，accepted）
+
+规格见 [Codex 子代理下钻](../specs/codex-desktop-subagent-drilldown.md#activity-only-时间线入口issue-33)。
+复用 SAT01/SAT10/SAT11 的只读入口语义，补充无 Agent 工具可配对的合法历史。
+
+| Case       | Setup / Action                                                 | Assertion                                                                                                 |
+| ---------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| CSNAV33-01 | activity marker + completed subagent，无 Agent tool；点击摘要  | 常驻且只有一个入口；准确传递 root/parent/child 与可见标题，不展开 inline 内容                             |
+| CSNAV33-02 | activity-only child running → success；分别点击、Enter、Space  | 更新不自动打开，终态入口保留；每次激活仍指向同一 child，状态不进入 tab 标题                               |
+| CSNAV33-03 | 同 turn 多个 orphan child；另有 v1 spawn_agent + 配对 subagent | 每个 orphan 路由自己的 child；v1 仍只有一个工具摘要入口，不重复渲染 subagent                              |
+| CSNAV33-04 | child ID 缺失/后到、parent 缺失或 opener 缺失                  | 缺条件时静态摘要，无按钮/tab stop/入口 test ID；ID 后到只启用入口，不自动打开或猜号                       |
+| CSNAV33-05 | 390/1200px、Zai Light/Dark、中英文；执行上述共享 renderer 操作 | 入口可操作、提示本地化、无横向溢出或 pageerror；不声称真实手机 shared-host/drawer 或原生 Codex E2E 已覆盖 |
+
+浏览器候选：`packages/ui/test/browser/manual-review/pending/codex-subagent-drilldown.test.mjs`。
+直接挂载生产时间线并记录既有 opener 请求；保持 pending，不转正、不加入正式 CI。
+
 ## 项目与任务草稿生命周期（2026-10-16）
 
 PD13–PD16（2026-10-30，accepted / pending）：远端草稿在 projectId 就绪后才预热和首发；覆盖保留作用域的完整冷启动、只删除导航作用域后的冷启动与 Enter 拦截、显式项目新建后的真实首发、手机 shared-host 恢复及本地未归类首发。候选 `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-remote-draft-prewarm.test.ts`；covered（候选未转正）：`packages/desktop/.e2e-artifacts/local-docker-20261030074146-15e10a` 完整通过，含真实 Provider 请求和 Host 项目归属断言。macOS Electron → SSH Linux arm64；手机为 Chrome 390px 触摸视口与真实 relay/Host，缺归属为受控 store 前置；不是实体手机或 Windows/Linux 桌面证据。缺失作用域不归因于升级。
