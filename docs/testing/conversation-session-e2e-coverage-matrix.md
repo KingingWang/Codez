@@ -578,6 +578,23 @@ MP13 在同一 pending spec 中通过真实设置页切换开关，Relay fixture
 | CSSTOP32-01/02/03 | 父 cancel 精确停止 child；root-first 尽力级联；两种 delivery 同源收敛 | `scripts/test-codex-subagent-stop.mjs`：隔离 HOME + 合成慢流 + 真实 pinned Codex/bridge，原生集成候选，非正式 WDIO          |
 | CSSTOP32 UI       | 复用胶囊与唯一 childSessionId 关联的 Stop，不新增子侧输入             | 既有 `conversation-session-v4-background-work.test.ts` 证明共享 UI；bridge 单测证明 Codex work 与命令，不声称手机整机已验收 |
 
+## CSNAV33：Codex activity-only 子代理下钻
+
+| Case                   | Accepted semantics                                                | Status             | Evidence / admission                                                                                                                                                                |
+| ---------------------- | ----------------------------------------------------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CSNAV33-01/02/03/04/05 | 无工具卡的常驻下钻、终态、键盘、多 child、配对去重与身份/能力门禁 | covered（browser） | `packages/ui/test/browser/manual-review/pending/codex-subagent-drilldown.test.mjs`；8/8 通过，产物 `packages/desktop/.e2e-artifacts/codex-subagent-drilldown-hM2Gqr/`；保持 pending |
+
+本候选只证明生产时间线 → 既有 opener 的准确请求及桌面/手机宽度共享呈现；
+不替代 Codex 原生 app-server、真实 Side Pane 订阅或手机 replayable/shared-host 整机证据。
+
+2026-11-02：修复前单组浏览器用例因缺失下钻入口失败，时间线行存在且无 pageerror，
+产物 `packages/desktop/.e2e-artifacts/codex-subagent-drilldown-EgU4TG/`。
+修复后 390/1200px × Zai Light/Dark × 中英文 8/8 通过，包含 200 字符无空格标题、
+running→success、failed/cancelled、多 child、v1 配对、点击/Enter/Space 和缺条件/晚到 ID。
+独立浏览器检查 390px 深色中文的真实点击请求、单入口和换行，
+产物 `packages/desktop/.e2e-artifacts/codex-subagent-drilldown-manual/`。
+bridge 既有下钻回归 29/29 通过；未新增或恢复 App 业务单测，未转正或加入正式 CI。
+
 ## 项目与任务草稿生命周期（PD，2026-10-16）
 
 2026-11-10 PD13–PD16 已人工复核并转正。候选 `local-docker-20261110101907-919e75`、
