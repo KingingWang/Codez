@@ -27,14 +27,14 @@ const STARTING_WINDOW_ENABLED = process.env.R3_DAEMON_STARTING_WINDOW !== "0";
 // Core 在 require 阶段同步阻塞的时长。要短于 Supervisor 首启 15 秒的 ready 预算，
 // 又要长到 Desktop 的 probe 与 serve --daemon 落在 starting 窗口内。
 const SLOW_CORE_MS = 8_000;
-const SERVER_ROOT = "/home/dev/.zcode/server";
+const SERVER_ROOT = "/home/dev/.codez/server";
 const SLOW_CORE_SCRIPT = "/home/dev/.e2e-slow-core.cjs";
 const SAMPLER_SCRIPT = "/home/dev/.e2e-daemon-sampler.sh";
 const SAMPLER_LOG = "/tmp/e2e-daemon-samples.log";
 const desktopRoot = process.cwd();
 const repoRoot = resolve(desktopRoot, "../..");
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-daemon-starting-reuse",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-daemon-starting-reuse",
 );
 const execFileAsync = promisify(execFile);
 
@@ -58,24 +58,24 @@ async function preinstallRemoteRelease(container: string, appVersion: string): P
     desktopRoot,
     "mock-cdn/releases",
     appVersion,
-    `zcode-server-${target}.tar.gz`,
+    `codez-server-${target}.tar.gz`,
   );
-  await docker(["cp", archive, `${container}:/tmp/e2e-zcode-server.tar.gz`]);
-  await execInRemoteContainer(container, ["chown", "dev:dev", "/tmp/e2e-zcode-server.tar.gz"], {
+  await docker(["cp", archive, `${container}:/tmp/e2e-codez-server.tar.gz`]);
+  await execInRemoteContainer(container, ["chown", "dev:dev", "/tmp/e2e-codez-server.tar.gz"], {
     user: "0",
   });
   await shInContainer(
     container,
     [
       "set -eu",
-      'b="$HOME/.zcode/server/.e2e-bootstrap"',
+      'b="$HOME/.codez/server/.e2e-bootstrap"',
       'rm -rf "$b"',
       'mkdir -p "$b"',
-      'tar -xzf /tmp/e2e-zcode-server.tar.gz -C "$b" --strip-components=1',
-      '"$b/bin/zcode" update --from-archive /tmp/e2e-zcode-server.tar.gz --server-root "$HOME/.zcode/server" --json',
+      'tar -xzf /tmp/e2e-codez-server.tar.gz -C "$b" --strip-components=1',
+      '"$b/bin/codez" update --from-archive /tmp/e2e-codez-server.tar.gz --server-root "$HOME/.codez/server" --json',
       // update 会拉起 daemon；停掉后由本用例按需制造 starting 窗口。
-      '"$HOME/.zcode/server/bin/zcode" stop --wait --server-root "$HOME/.zcode/server" --json',
-      'rm -rf "$b" /tmp/e2e-zcode-server.tar.gz',
+      '"$HOME/.codez/server/bin/codez" stop --wait --server-root "$HOME/.codez/server" --json',
+      'rm -rf "$b" /tmp/e2e-codez-server.tar.gz',
     ].join("; "),
   );
 }
@@ -137,7 +137,7 @@ async function startDaemonInStartingWindow(container: string): Promise<number> {
     container,
     "sh",
     "-c",
-    `"$HOME/.zcode/server/bin/zcode" serve --daemon --server-root "$HOME/.zcode/server" > /tmp/e2e-background-serve.log 2>&1`,
+    `"$HOME/.codez/server/bin/codez" serve --daemon --server-root "$HOME/.codez/server" > /tmp/e2e-background-serve.log 2>&1`,
   ]);
   let snapshot: DaemonSnapshot = { lockPid: null, state: null };
   await browser.waitUntil(
@@ -173,7 +173,7 @@ describe(`${MARKER}: 远端 daemon 正在 starting 时连接，以及远端 agen
   it("R4 复用 starting 的 Supervisor 等到 ready 才连接；R9 远端模型请求报 App 版本", async function () {
     this.timeout(15 * 60_000);
     const appVersion = readPackageVersion(resolve(repoRoot, "package.json"));
-    const cliVersion = readPackageVersion(resolve(repoRoot, "apps/zcode-cli/package.json"));
+    const cliVersion = readPackageVersion(resolve(repoRoot, "apps/codez-cli/package.json"));
     facts.appVersion = appVersion;
     facts.cliVersion = cliVersion;
     const prepared = await prepareSSHLifecycle(MARKER, { tunnelUsername: "tunnel" });
@@ -234,13 +234,13 @@ describe(`${MARKER}: 远端 daemon 正在 starting 时连接，以及远端 agen
       .map((record) => ({
         platform: record.requestHeaders["x-platform"],
         userAgent: record.requestHeaders["user-agent"],
-        appVersion: record.requestHeaders["x-zcode-app-version"],
+        appVersion: record.requestHeaders["x-codez-app-version"],
       }));
     facts.remoteRequests = remoteRequests;
     expect(remoteRequests.length).toBeGreaterThan(0);
     for (const request of remoteRequests) {
       // AI SDK 会在产品标识后追加 ai-sdk/runtime 片段；断言首个产品标识是 App 版本。
-      expect(request.userAgent?.split(" ")[0]).toBe(`ZCode/${appVersion}`);
+      expect(request.userAgent?.split(" ")[0]).toBe(`Codez/${appVersion}`);
       expect(request.appVersion).toBe(appVersion);
     }
   });

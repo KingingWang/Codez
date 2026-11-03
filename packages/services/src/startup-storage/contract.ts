@@ -1,4 +1,4 @@
-import type { MigrationResult } from "@zcode/shared/sqlite-migrations";
+import type { MigrationResult } from "@codez/shared/sqlite-migrations";
 
 export interface AgentStorageMigrationInput {
   /** 复用已有 Agent executable resolver 的结果；协议命令前的 runtime 参数原样保留。 */

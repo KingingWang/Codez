@@ -30,10 +30,10 @@ const RESET_TOOL_CALL_ID = "toolu_e2e_plan_mcp_reset";
 const LOOKUP_TOOL_NAME = "mcp__plan_mode_e2e__lookup";
 const RESET_TOOL_NAME = "mcp__plan_mode_e2e__reset";
 const CASE_ROOT = join(DEFAULT_WORKSPACE, "plan-mode-mcp-permission-e2e");
-// 修复原因：工作区 MCP 自 2026-10-23 起需逐条信任才会连接，写在工作区 `.zcode/config.json`
+// 修复原因：工作区 MCP 自 2026-10-23 起需逐条信任才会连接，写在工作区 `.codez/config.json`
 // 的 fixture server 停在 untrusted，lookup 报“工具未注册”，走不到 Plan 权限判定。
 // 本例只验证 Plan 权限边界，改用隔离 E2E HOME 下的用户级配置注入 server，结束时还原。
-const MCP_CONFIG_DIR = join(dirname(DEFAULT_WORKSPACE), ".zcode", "cli");
+const MCP_CONFIG_DIR = join(dirname(DEFAULT_WORKSPACE), ".codez", "cli");
 const MCP_CONFIG_FILE = join(MCP_CONFIG_DIR, "config.json");
 // undefined 表示本例尚未写入用户配置；null 表示写入前没有用户配置。
 let originalUserConfig: string | null | undefined;

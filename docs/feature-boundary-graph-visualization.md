@@ -2,8 +2,8 @@
 
 ## 目标
 
-在 `@zcode/dev-docs` 中提供 `feature-boundary-planner` 语义图的可读视图，替代在对话区域查看大图。页面直接读取
-`.agents/skills/feature-boundary-planner/references/zcode-feature-graph.yaml`，让开发者可以从能力节点追踪 UI 入口、状态 owner、服务、持久化和交付边界。
+在 `@codez/dev-docs` 中提供 `feature-boundary-planner` 语义图的可读视图，替代在对话区域查看大图。页面直接读取
+`.agents/skills/feature-boundary-planner/references/codez-feature-graph.yaml`，让开发者可以从能力节点追踪 UI 入口、状态 owner、服务、持久化和交付边界。
 
 ## 产品边界
 
@@ -23,4 +23,4 @@
 ## 验证证据
 
 - 单元测试校验 YAML 解析后的节点/边计数、未声明端点保留和直接邻居计算。
-- `@zcode/dev-docs` 的 typecheck、lint、unit test 和 production build 必须通过。
+- `@codez/dev-docs` 的 typecheck、lint、unit test 和 production build 必须通过。

@@ -1,6 +1,6 @@
 import { gzipSync } from "node:zlib";
 import { describe, expect, it, vi } from "vitest";
-import type { WebRemoteControlMobileLogPullRequestPayload } from "@zcode/shared";
+import type { WebRemoteControlMobileLogPullRequestPayload } from "@codez/shared";
 import {
   createMobileLogPullCoordinator,
   decodeCompressedMobileLogShard,

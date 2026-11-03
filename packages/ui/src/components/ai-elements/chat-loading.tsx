@@ -3,7 +3,7 @@
 import { useEffect, useState, type ComponentPropsWithoutRef } from "react";
 import { cn } from "@/components/lib/utils.js";
 import { formatRunningWorkDuration } from "@/lib/workDuration.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 
 export interface ChatLoadingProps extends ComponentPropsWithoutRef<"div"> {
   loading: boolean;
@@ -22,7 +22,7 @@ export function ChatLoadingPixels() {
       {Array.from({ length: 9 }, (_, index) => (
         <span
           key={index}
-          className="zcode-loading-pixel size-full rounded-[1px] bg-current"
+          className="codez-loading-pixel size-full rounded-[1px] bg-current"
           style={{
             opacity: index === 4 ? 0.07 : 0.15,
             animationName: index === 4 ? "none" : undefined,
@@ -42,7 +42,7 @@ export function ChatLoading({
   size: _size,
   ...props
 }: ChatLoadingProps) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const [elapsedMs, setElapsedMs] = useState(initialElapsedMs);
   useEffect(() => {
     if (!loading) return;
@@ -58,12 +58,12 @@ export function ChatLoading({
     <div
       role="status"
       aria-label={intl.formatMessage({ id: "common.loading" })}
-      data-zcode-chat-loading-animate="true"
+      data-codez-chat-loading-animate="true"
       {...props}
       className={cn("inline-flex w-fit items-center gap-2.5", className)}
     >
       <ChatLoadingPixels />
-      <span className="zcode-loading-label text-ui-base font-medium">
+      <span className="codez-loading-label text-ui-base font-medium">
         {intl.formatMessage({ id: "chat.loading.working" })}
       </span>
       <span

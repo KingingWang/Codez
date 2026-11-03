@@ -2,8 +2,8 @@ import { copyFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import assert from "node:assert/strict";
 import { webContents, type BrowserWindow } from "electron";
-import { getGenUiOutputDirectory } from "@zcode/shared/node";
-import type { IGenUiService } from "@zcode/services";
+import { getGenUiOutputDirectory } from "@codez/shared/node";
+import type { IGenUiService } from "@codez/services";
 
 export async function prepareOutputFiles(root: string) {
   // 回归：打开 Home 一类包含应用数据目录的工作区，固定 Gen UI 输出仍须可读。
@@ -55,7 +55,7 @@ export async function checkRemoteOutput(
     .fromId(guestId)!
     .mainFrame.frames.find((f) => f.url.includes("/instance/"))!;
   await frame.executeJavaScript(
-    "window.zcode.setWidgetState({modelContent:{remote:42},privateContent:{desktop:true}})",
+    "window.codez.setWidgetState({modelContent:{remote:42},privateContent:{desktop:true}})",
   );
   assert.deepEqual(await desktop.getState(target), {
     modelContent: { remote: 42 },

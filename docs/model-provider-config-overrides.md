@@ -2,14 +2,14 @@
 
 ## 背景
 
-App 侧模型供应商权威源是 `~/.zcode/v2/config.json` 的 `provider` 字段。这个文件可能来自
+App 侧模型供应商权威源是 `~/.codez/v2/config.json` 的 `provider` 字段。这个文件可能来自
 旧版本迁移、远端同步、用户手动编辑或设置页保存。用户已经显式配置的模型 metadata 必须
 保留；本地 catalog 只负责补齐缺失事实。
 
 ## 设计
 
 `packages/services/src/model-provider/modelProviderServiceStorage.ts` 在读取
-`~/.zcode/v2/config.json` 后，先把 provider 配置转为内部 `ModelProviderConfig`，再执行 catalog
+`~/.codez/v2/config.json` 后，先把 provider 配置转为内部 `ModelProviderConfig`，再执行 catalog
 metadata merge。
 
 合并规则统一为 fill-only：
@@ -25,7 +25,7 @@ metadata merge。
 - 缺失 metadata 被补齐后，既有 `writeProviderStoreFile` 持久化流程保持不变。
 
 当前补缺数据源使用仓库根目录的
-`models_catalog_china_llm_zcode_2026-06-03.json`。`apps/zcode-cli/api.json` / models-dev
+`models_catalog_china_llm_codez_2026-06-03.json`。`apps/codez-cli/api.json` / models-dev
 snapshot 不参与 App config 的 catalog merge。
 
 ## 配置优先级

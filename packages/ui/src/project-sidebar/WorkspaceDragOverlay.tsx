@@ -1,5 +1,5 @@
 import { Cloud, Folder } from "lucide-react";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useSourceServerDisplayNames } from "@/hooks/useSourceServerDisplayNames.js";
 import { formatRemoteDeviceName } from "@/lib/remoteConnectionPresentation.js";
 import { getWorkspaceSourceServerId } from "@/conversation-workspace-target/sourceIdentity.js";
@@ -14,7 +14,7 @@ export function WorkspaceDragOverlay({
   width: number | null;
   sourceDisplayName?: string;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const names = useSourceServerDisplayNames();
   const sourceId = getWorkspaceSourceServerId(tab);
   const deviceName =

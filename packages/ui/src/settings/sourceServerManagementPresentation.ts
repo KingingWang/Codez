@@ -1,4 +1,4 @@
-import type { SourceServerMigrationReportRow } from "@zcode/shared";
+import type { SourceServerMigrationReportRow } from "@codez/shared";
 
 const SOURCE_MIGRATION_STATUS_MESSAGE_IDS = {
   running: "settings.source.migrationStatus.running",

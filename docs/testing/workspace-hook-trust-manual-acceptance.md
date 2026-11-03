@@ -18,14 +18,14 @@
 
 ```bash
 nvm use 24
-pnpm --dir apps/zcode-cli/packages/cli build:desktop-agent
+pnpm --dir apps/codez-cli/packages/cli build:desktop-agent
 node scripts/create-workspace-hook-trust-uat-fixture.mjs
 ```
 
 最后一条命令会输出一个新的临时 workspace，例如：
 
 ```text
-/private/tmp/zcode-workspace-hook-trust-uat-XXXXXX
+/private/tmp/codez-workspace-hook-trust-uat-XXXXXX
 ```
 
 记录该路径，并启动 Desktop：
@@ -127,7 +127,7 @@ test -f "<workspace>/.workspace-hook-trust-uat/executions.jsonl" \
 - workspace 路径与具体 Hook 行；
 - 实际按钮/开关状态；
 - `executions.jsonl` 内容；
-- `~/.zcode/cli/log` 中对应 session 的日志片段（不要附敏感命令内容）。
+- `~/.codez/cli/log` 中对应 session 的日志片段（不要附敏感命令内容）。
 
 自动化验证范围见
 [`workspace-hook-trust-persistent-only.md`](../specs/workspace-hook-trust-persistent-only.md)。

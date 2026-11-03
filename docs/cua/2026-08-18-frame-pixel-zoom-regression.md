@@ -1,6 +1,6 @@
 # CUA 截图像素与 Zoom 回归测试记录
 
-状态：producer、独立 MCP、ZCode Agent 与可见 Desktop 的 Kimi K3 真机链路均通过；Skill 精简候选待 MR/CI 复验；透明覆盖窗像素归属修复已在 producer 落地，catalog pin 待 bump
+状态：producer、独立 MCP、Codez Agent 与可见 Desktop 的 Kimi K3 真机链路均通过；Skill 精简候选待 MR/CI 复验；透明覆盖窗像素归属修复已在 producer 落地，catalog pin 待 bump
 
 ## 0.5.8 透明覆盖窗静默截走坐标点击
 
@@ -56,7 +56,7 @@ coordinate target。
 
 模型只从当前工具结果交付的 raster 读取整数 `(x,y)`，并原样携带相邻的 `frame_id`。所有
 resize、byte-budget、Retina/DPI、crop、window/display origin 和 native dispatch 投影均由
-`@zcode/zcode-cua` 内部完成，不得要求模型计算。
+`@codez/codez-cua` 内部完成，不得要求模型计算。
 
 Zoom 不属于常规流程。当前 raster 中的目标清晰可辨时必须直接点击；只有目标过小或存在
 歧义、无法可靠选点时，才把 Zoom 作为最后手段。C07 模型提示与工具 description 使用相同
@@ -81,17 +81,17 @@ WindowServer，dispatch 前却使用 AX hit-test。全屏 Dock layer-20 管理�
 Zoom 子图都在 Helper 最终派发前比较 capture/live owner、window bounds 和 display
 topology，不使用 AX `elementAtPoint`/`captureApp`。element target/AXPress 不变。
 
-C07 保持 canvas 内部目标不可由 AX tree 定位，并补齐 direct MCP 与 ZCode Agent 两层证据。
+C07 保持 canvas 内部目标不可由 AX tree 定位，并补齐 direct MCP 与 Codez Agent 两层证据。
 marker-grid 覆盖 window/full/zoom，记录 raster hash/尺寸、frame id、crop、像素、独立投影点、
 capture/live owner、raw dispatch method 和 authenticated DOM hit。该变更不进入 conversation
 状态、snapshot/replay 或手机 remote 链路，因此不修改 conversation catalog/matrix。
 macOS Accessibility/Screen Recording 已授权；像素实现 producer `625b32ad` 的 direct C07 与
 Calculator AX 回归均为 100 分。独立 marker-grid 的窗口帧、全图、Zoom 与 stale-frame
-门禁全部通过；可见 ZCode Desktop 中 Kimi K3 也使用窗口截图的精确 `frame_id` 完成了
+门禁全部通过；可见 Codez Desktop 中 Kimi K3 也使用窗口截图的精确 `frame_id` 完成了
 无 AX canvas 点击。
 
 可见 Desktop 首次回归还暴露了一个独立的开发缓存问题：MCP bundle 正确将原生 `sharp`
-保留为 external，但开发态 `~/.zcode/cli/plugins/cache` 只同步 JS 时无法解析该依赖，导致
+保留为 external，但开发态 `~/.codez/cli/plugins/cache` 只同步 JS 时无法解析该依赖，导致
 截图和 Zoom 报 `Cannot find module 'sharp'`。开发缓存现在复用产品打包的 sharp runtime
 staging，并有真实 native load smoke；同步后新 MCP 进程上的同一 K3 用例通过。产品包与
 开发缓存因此使用同一条原生媒体依赖链路，不再依赖仓库根的 hoist 偶然可见。
@@ -116,13 +116,13 @@ request lifetime 修复，以及 `d55c5f3a7713a3499bfd7102fd7d2842b53e71ec` 的 
 简化。前者继承
 `a0d4eaca6342b3cbff41b444309726873d0f5b11` 的最终栅格与旧棋盘轨迹负向回放，
 补齐子 Agent runtime-scope 拒绝的稳定 `structuredContent.code`，并统一 WindowServer
-截图/派发 owner 权威与 retained-raster Zoom crop。ZCode catalog
+截图/派发 owner 权威与 retained-raster Zoom crop。Codez catalog
 使用精确 commit 锁定，wrapper、bundled skill、Helper runtime contract 与 producer
 最终 package 版本统一为 `0.5.7`。
 
 标准 `pnpm dev:desktop` 构建必须无条件把 CUA plugin 视为开发态 filesystem seed，
 将 `sharp` 及当前平台 native closure 写入 seed source 后再构建 agent。不能要求调用者额外设置
-`ZCODE_CUA_DEV_MODE=1`；否则 bootstrap 会用不含 `sharp` 的同版本 seed 原子替换缓存，
+`CODEZ_CUA_DEV_MODE=1`；否则 bootstrap 会用不含 `sharp` 的同版本 seed 原子替换缓存，
 `screenshot`、`zoom` 与 `get_app_state(include_screenshot=true)` 会在真实模型回合中同时失效。
 
 模型可见的 `frame_id` 使用短不透明 token（例如 `frame-a1b2c3d4`），不公开可被模型
@@ -164,7 +164,7 @@ capture/zoom -> final raster + frame_id -> model {frame_id, x, y}
    - screenshot -> zoom -> screenshot -> 旧帧 click 拒绝。
    - Retina、奇数尺寸、负屏幕原点、部分越界裁剪保持像素中心投影。
    - resize/move、owner 或 display topology 改变后拒绝旧帧。
-3. **ZCode 最后一公里**
+3. **Codez 最后一公里**
    - `image_ref` 与 image 相邻，字节、MIME、宽高不变。
    - 无效、重复、跨 session frame 在 action broker RPC 前拒绝。
    - producer 候选缺失 frame-contract 导出时，版本一致性门禁失败；最低基线合入关系另记入
@@ -172,8 +172,8 @@ capture/zoom -> final raster + frame_id -> model {frame_id, x, y}
 
 ## macOS 实机验收
 
-- 先运行确定性 marker-grid/C07 replay，再分别运行 direct MCP、ZCode Agent 和可见
-  ZCode Desktop 真模型链路。
+- 先运行确定性 marker-grid/C07 replay，再分别运行 direct MCP、Codez Agent 和可见
+  Codez Desktop 真模型链路。
 - 每次保留 raster SHA-256/尺寸、frame_id、模型像素、投影点、窗口/显示器 provenance、
   点击前后业务标记及截图；不保存 provider 请求中的完整图片字节。
 - 确定性 window/full/Zoom 必须全部正确命中；真模型链路必须正确命中或在原生动作前
@@ -192,25 +192,25 @@ capture/zoom -> final raster + frame_id -> model {frame_id, x, y}
 | 最终 producer `v0.5.6/c863cff9`       | 2814 passed、23 skipped  | 合并最新 `main` 的 AX authoritative-state 屏障后，230 个文件通过、1 个文件跳过；build/typecheck/lint、evaluator 472/472、Python 32/32 通过                                                        |
 | 最终 producer `v0.5.6/07a6dca8`       | 2814 passed、23 skipped  | frame hint 固定在图片与 AX tree 之间，trace 在截断前只记录已交付 frame provenance；230 个文件通过、1 个跳过，evaluator 474/474、Python 32/32，Kimi K3 direct/app-server 通过                      |
 | producer 轨迹/坐标重点集              | 77/77 通过               | 12 个文件；旧棋盘轨迹新增 3 个 fail-closed 用例                                                                                                                                                   |
-| ZCode consumer 完整性                 | 124/124 通过             | 6 个文件；最终依赖固定为 `07a6dca8`/`0.5.6`，提交前完整门禁与 MR pipeline 仍需复验                                                                                                                |
+| Codez consumer 完整性                 | 124/124 通过             | 6 个文件；最终依赖固定为 `07a6dca8`/`0.5.6`，提交前完整门禁与 MR pipeline 仍需复验                                                                                                                |
 | wrapper 版本/skill/contract 门禁      | 13/13 通过               | 缺少 Windows Helper 或 final-raster frame-contract 均直接拒绝                                                                                                                                     |
 | wrapper host authority                | 1/1 通过                 | 产品包 host 权限路径保持一致                                                                                                                                                                      |
 | CUA eval 判定器                       | 474/474 通过             | Node evaluator 全集；另有 Python 32/32，覆盖 C07、region、K3 model-I/O 与 frame-id 恢复                                                                                                           |
 | CUA eval definition                   | 31/31 通过               | definition-only quality 100                                                                                                                                                                       |
-| ZCode 全量单测                        | 11476 passed、12 skipped | 1309 个文件通过、1 个文件跳过；本地对 consumer 最终树执行完整 `test:unit`，提交后再由 affected/pre-push 门禁按 commit range 复验                                                                  |
-| ZCode Node 24.14.0                    | 通过                     | `typecheck`；`lint` 0 error、38 条既有 warning                                                                                                                                                    |
+| Codez 全量单测                        | 11476 passed、12 skipped | 1309 个文件通过、1 个文件跳过；本地对 consumer 最终树执行完整 `test:unit`，提交后再由 affected/pre-push 门禁按 commit range 复验                                                                  |
+| Codez Node 24.14.0                    | 通过                     | `typecheck`；`lint` 0 error、38 条既有 warning                                                                                                                                                    |
 | producer Node 24.14.0                 | 通过                     | `typecheck`；`lint` 0 error、14 条既有 warning                                                                                                                                                    |
 | 插件产品包校验                        | 通过                     | bundled skill provenance、producer SHA、版本与 contract 一致                                                                                                                                      |
-| 独立 `zcode-cua` MCP                  | 通过                     | Node `24.14.0` 以 stdio 启动 `v0.5.6`；canvas marker-grid 的 window 5/5、full、strict-interior Zoom、drag 均由 authenticated DOM oracle 证明命中，全部报告 `window_event`；stale frame 零派发     |
+| 独立 `codez-cua` MCP                  | 通过                     | Node `24.14.0` 以 stdio 启动 `v0.5.6`；canvas marker-grid 的 window 5/5、full、strict-interior Zoom、drag 均由 authenticated DOM oracle 证明命中，全部报告 `window_event`；stale frame 零派发     |
 | Chrome                                | 已安装                   | `151.0.7922.138`；C07 fixture 可启动并置前台                                                                                                                                                      |
 | Godot                                 | 已安装                   | `4.7.1.stable.official.a13da4feb`；应用可启动                                                                                                                                                     |
-| CUA Helper dev 包装                   | 构建通过                 | 使用 Node `24.14.0` SEA base 与同 ABI `ax_native.node`，provenance `arm64/node_abi=137` 通过并安装到 `~/.zcode/computer-use/dev`                                                                  |
+| CUA Helper dev 包装                   | 构建通过                 | 使用 Node `24.14.0` SEA base 与同 ABI `ax_native.node`，provenance `arm64/node_abi=137` 通过并安装到 `~/.codez/computer-use/dev`                                                                  |
 | macOS C07 runtime                     | 通过                     | 最新 Dev Helper 的 Accessibility/Screen Recording 均为 granted；final-SHA direct C07 与 Calculator M02 AX 均为 100 分                                                                             |
-| Kimi K3 app-server                    | 通过                     | final-SHA gate 的 direct 与 `zcode_agent_core` 两条 lane 均通过；product/release score 100，模型请求确实携带并识别截图                                                                            |
-| Kimi K3 可见 ZCode Desktop            | 通过                     | session `sess_be30c6a3-2ce7-4574-aaac-2fe821e311ed`；窗口 raster `1280×900`、`frame-0c9a96ea`、模型像素 `(641,496)`，DOM oracle 为 `Marker placed at 450, 280`，canvas 无 AX 子元素               |
+| Kimi K3 app-server                    | 通过                     | final-SHA gate 的 direct 与 `codez_agent_core` 两条 lane 均通过；product/release score 100，模型请求确实携带并识别截图                                                                            |
+| Kimi K3 可见 Codez Desktop            | 通过                     | session `sess_be30c6a3-2ce7-4574-aaac-2fe821e311ed`；窗口 raster `1280×900`、`frame-0c9a96ea`、模型像素 `(641,496)`，DOM oracle 为 `Marker placed at 450, 280`，canvas 无 AX 子元素               |
 | Desktop 插件缓存 sharp                | 通过                     | 首次运行稳定复现缺少 sharp；`sync:cache` 复用产品 staging 后，sharp `0.34.5`/libvips `8.17.3` native load smoke 与全新 MCP/K3 C07 均通过                                                          |
 
-最终 Kimi K3 真机记录绑定 producer `07a6dca8`：direct C07 为 100 分；ZCode
+最终 Kimi K3 真机记录绑定 producer `07a6dca8`：direct C07 为 100 分；Codez
 app-server lane 为 `vision-pass`、product score 100。模型实际收到窗口图
 `frame-8ce8ecf9`，提交整数像素 `(641,469)`，Helper 以 `window_event` 派发，DOM
 oracle 返回 `Marker placed at 450, 280`。同一候选的 direct C07 还覆盖 retained-raster

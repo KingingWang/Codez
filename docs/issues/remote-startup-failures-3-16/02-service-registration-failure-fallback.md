@@ -6,7 +6,7 @@ Status: done
 
 ## 现象
 
-SSH 连接在 `Starting Source Server` 后报 `Failed to register service com.zhipu.zcode.server.<hash> (...)`，每次重试都失败。
+SSH 连接在 `Starting Source Server` 后报 `Failed to register service com.zhipu.codez.server.<hash> (...)`，每次重试都失败。
 5 条工单来自 4 个用户：
 
 | 子类                                                      | 工单                                                                         | 根因       |
@@ -23,11 +23,11 @@ SSH 连接在 `Starting Source Server` 后报 `Failed to register service com.zh
         └─ user manager 读 unit 文件失败（EACCES / ENOENT）── 抛错，不回退 fallback ── 每次重试都失败
 ```
 
-- 探测：`packages/zcode-server-cli/src/platform/serviceManager.ts:176`。它不证明 manager 能读 server root。
-- 不回退：`packages/zcode-server-cli/src/cli.ts:324-326` 明确规定“探测通过后注册失败必须返回根因，不能再用 detached fallback 掩盖”。
+- 探测：`packages/codez-server-cli/src/platform/serviceManager.ts:176`。它不证明 manager 能读 server root。
+- 不回退：`packages/codez-server-cli/src/cli.ts:324-326` 明确规定“探测通过后注册失败必须返回根因，不能再用 detached fallback 掩盖”。
 - 复现（arm64 ubuntu 22.04 + systemd 249 + sshd，真实 3.16.2 CLI）：
-  - `~/.zcode` 指向只有某个组能进的目录，并在 user manager 启动后才把用户加进该组：输出与工单逐字相同的 `Access denied`。
-  - user manager 使用私有 `/tmp`，`~/.zcode` 指向 `/tmp`：输出与工单相同的 `Unit file … does not exist.`。
+  - `~/.codez` 指向只有某个组能进的目录，并在 user manager 启动后才把用户加进该组：输出与工单逐字相同的 `Access denied`。
+  - user manager 使用私有 `/tmp`，`~/.codez` 指向 `/tmp`：输出与工单相同的 `Unit file … does not exist.`。
 - 用户实际是哪种环境（组变更、家目录在网络文件系统、manager 的挂载视图不同）未知。
 - 这两类环境里，即使 unit 写到 `~/.config/systemd/user`，`ExecStart` 仍指向 manager 读不到的 server root，服务照样起不来。所以没有不改语义的局部修法。
 
@@ -57,7 +57,7 @@ serve --daemon
 
 ## 待补证据（空 stderr 子类）
 
-请用户在远端执行并回传：`id`、`type systemctl`、`systemctl --user status`、`journalctl --user -u 'com.zhipu.zcode.server.*' -n 50`。
+请用户在远端执行并回传：`id`、`type systemctl`、`systemctl --user status`、`journalctl --user -u 'com.zhipu.codez.server.*' -n 50`。
 
 ## Comments
 

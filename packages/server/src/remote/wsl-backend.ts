@@ -4,28 +4,28 @@ import type { ChildProcess } from "node:child_process";
 import { access, copyFile, mkdir, readFile, stat } from "node:fs/promises";
 import { createReadStream } from "node:fs";
 import { dirname, posix } from "node:path";
-import { isValidWslUser, type WSLConnectOptions } from "@zcode/shared";
+import { isValidWslUser, type WSLConnectOptions } from "@codez/shared";
 import type {
   IRemoteBackend,
   RemoteEnvironment,
   RemoteUploadOptions,
   StdioStream,
-} from "@zcode/server/remote/backend.js";
+} from "@codez/server/remote/backend.js";
 import {
   createCloseEventController,
   resolveRemoteExitCode,
-} from "@zcode/server/remote/closeEvent.js";
+} from "@codez/server/remote/closeEvent.js";
 import {
   normalizeRemoteArch,
   normalizeRemotePlatform,
   resolveRemotePlatform,
-} from "@zcode/server/remote/detectEnv.js";
+} from "@codez/server/remote/detectEnv.js";
 import {
   createWslExecError,
   isWSLAvailable,
   listWSLDistros,
   type WSLDistro,
-} from "@zcode/server/remote/wsl-detect.js";
+} from "@codez/server/remote/wsl-detect.js";
 import {
   buildWslHostGatewayCommand,
   buildWslProxyPortProbeCommand,
@@ -34,7 +34,7 @@ import {
   parseWslHostGatewayOutput,
   parseWslProxyPortProbeOutput,
   replaceProxyHostname,
-} from "@zcode/server/remote/wslProxy.js";
+} from "@codez/server/remote/wslProxy.js";
 
 interface ResolvedWSLInfo {
   distroName: string | null;
@@ -50,7 +50,7 @@ export interface ResolvedWSLIdentity {
 
 const WSL_COMMAND = "wsl.exe";
 const WSL_EXEC_MAX_BUFFER = 8 * 1024 * 1024;
-const WSL_IDENTITY_SENTINEL = "__ZCODE_WSL_IDENTITY__";
+const WSL_IDENTITY_SENTINEL = "__CODEZ_WSL_IDENTITY__";
 // Bug 原因：身份探测曾用 `bash -lc` 并按行解析；profile 里的 echo 先于身份输出，被当成
 // distro/user 写进设备 Profile，此后每次连接都报“未找到名为 … 的 WSL distro”。身份只依赖
 // WSL 注入的 $WSL_DISTRO_NAME、id 与 $HOME，不需要登录环境；哨兵隔开 wsl.exe 或 shell 的其余输出。

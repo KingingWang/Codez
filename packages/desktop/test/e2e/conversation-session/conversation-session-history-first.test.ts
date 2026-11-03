@@ -5,7 +5,7 @@ import {
   TID_V4_COMPOSER_INPUT,
   TID_V4_COMPOSER_SEND,
   TID_WORKSPACE_MORE_BUTTON,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -25,10 +25,10 @@ import {
   HISTORY_FIRST_TEXT,
 } from "../helpers/session-history-first-fixture.js";
 
-const root = join(DEFAULT_WORKSPACE, ".zcode", "history-first-e2e");
+const root = join(DEFAULT_WORKSPACE, ".codez", "history-first-e2e");
 const release = join(root, "release");
 const entered = join(root, "entered");
-const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR ?? join(process.cwd(), ".e2e-artifacts");
+const artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR ?? join(process.cwd(), ".e2e-artifacts");
 
 describe("HF01：历史首帧早于 resume hook 完成", () => {
   afterEach(async function () {
@@ -95,7 +95,7 @@ describe("HF01：历史首帧早于 resume hook 完成", () => {
     );
     await waitForV4TimelineContaining("HISTORY_FIRST_OK", 30_000);
     const database = new DatabaseSync(
-      join(DEFAULT_WORKSPACE, "..", ".zcode", "cli", "db", "db.sqlite"),
+      join(DEFAULT_WORKSPACE, "..", ".codez", "cli", "db", "db.sqlite"),
     );
     try {
       expect(
@@ -121,7 +121,7 @@ describe("HF01：历史首帧早于 resume hook 完成", () => {
     await scrollV4TimelineToTop();
     const scrollBefore = (await getV4TimelineScrollState()).scrollTop;
     const database = new DatabaseSync(
-      join(DEFAULT_WORKSPACE, "..", ".zcode", "cli", "db", "db.sqlite"),
+      join(DEFAULT_WORKSPACE, "..", ".codez", "cli", "db", "db.sqlite"),
     );
     try {
       // 在 M0 已展示、hook 尚未完成时损坏会话分支字段，触发真实最终物化读取错误。

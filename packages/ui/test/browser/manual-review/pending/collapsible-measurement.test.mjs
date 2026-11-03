@@ -12,7 +12,7 @@ import { chromium, _electron } from "playwright-core";
 const root = fileURLToPath(new URL("../../../../../../", import.meta.url));
 const entry = "/packages/ui/test/browser/manual-review/pending/collapsible-measurement.fixture.tsx";
 const artifacts =
-  process.env.ZCODE_E2E_ARTIFACT_DIR ||
+  process.env.CODEZ_E2E_ARTIFACT_DIR ||
   join(root, "packages/desktop/.e2e-artifacts/collapsible-measurement");
 let server, browser, electron, origin;
 before(async () => {
@@ -46,7 +46,7 @@ before(async () => {
   });
   await server.listen();
   origin = server.resolvedUrls.local[0];
-  if (process.env.ZCODE_COLLAPSIBLE_ELECTRON_PATH) {
+  if (process.env.CODEZ_COLLAPSIBLE_ELECTRON_PATH) {
     const main = join(artifacts, "renderer.cjs");
     await writeFile(
       main,
@@ -55,7 +55,7 @@ before(async () => {
     const env = { ...process.env };
     delete env.ELECTRON_RUN_AS_NODE;
     electron = await _electron.launch({
-      executablePath: process.env.ZCODE_COLLAPSIBLE_ELECTRON_PATH,
+      executablePath: process.env.CODEZ_COLLAPSIBLE_ELECTRON_PATH,
       args: [main],
       env,
     });

@@ -80,7 +80,7 @@ Provider Refactor Release Candidate
 
 ### 主要工作
 
-- 增加直接加载真实 `config/provider/zcode-builtin.json` 的永久测试，遍历验证 Provider 成员、Model Rule 解析和 Effective Model Config 完整性。
+- 增加直接加载真实 `config/provider/codez-builtin.json` 的永久测试，遍历验证 Provider 成员、Model Rule 解析和 Effective Model Config 完整性。
 - 使用真实 Built-in Config 证明 API Key、Account 与 Request Auth 三条路径能够经 Resolver、Registry、ModelFactory 进入 Adapter。
 - 审计普通请求、Compact、Memory、Subagent 与 Off-Peak 对同一 Active Model 的使用，只补确实缺失的测试断点。
 - 校验并在人工 review 通过后晋升 Provider 身份、Registry 冷启动、闲时子 Agent 与候选过滤四个关键 E2E。
@@ -123,7 +123,7 @@ Provider Refactor Release Candidate
 ### 主要工作
 
 - 构建并安装 Desktop、Standalone CLI、Server 和 Remote 正式产物。
-- 验证所有产物都能定位并加载 `zcode-builtin.json`。
+- 验证所有产物都能定位并加载 `codez-builtin.json`。
 - 使用真实 API Key Provider 验证配置、连通性检查和模型请求。
 - 使用真实 Start Plan、Individual、Team 与 Off-Peak 账号验证登录、刷新、退出、账号切换、动态 Request Auth 和服务端拒绝行为。
 - 验证普通请求、Compact、Memory、Subagent、闲时任务使用正确的 Provider、Model 和访问上下文。

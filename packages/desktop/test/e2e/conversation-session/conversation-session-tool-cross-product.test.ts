@@ -162,7 +162,7 @@ describe("会话区工具叉乘 E2E", () => {
 });
 
 function readSelectedToolCrossProductCases() {
-  const configured = process.env.ZCODE_E2E_TOOL_CROSS_PRODUCT_ONLY?.trim();
+  const configured = process.env.CODEZ_E2E_TOOL_CROSS_PRODUCT_ONLY?.trim();
   if (!configured) {
     return TOOL_CROSS_PRODUCT_CASES;
   }
@@ -179,7 +179,7 @@ function readSelectedToolCrossProductCases() {
   );
   if (cases.length === 0) {
     throw new Error(
-      `ZCODE_E2E_TOOL_CROSS_PRODUCT_ONLY did not match any tool: ${configured}`,
+      `CODEZ_E2E_TOOL_CROSS_PRODUCT_ONLY did not match any tool: ${configured}`,
     );
   }
   return cases;

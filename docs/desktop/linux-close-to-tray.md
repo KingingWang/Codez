@@ -2,7 +2,7 @@
 
 ## 背景与目标
 
-Windows 已支持"关闭窗口时隐藏到托盘驻留"(`closeToTrayOnWindows` 设置,默认开)。Linux 现状是关窗即走"确认退出 → `app.quit()`",与 ZCode 长任务后台型应用的产品意图(防误关打断 agent 会话)不符。
+Windows 已支持"关闭窗口时隐藏到托盘驻留"(`closeToTrayOnWindows` 设置,默认开)。Linux 现状是关窗即走"确认退出 → `app.quit()`",与 Codez 长任务后台型应用的产品意图(防误关打断 agent 会话)不符。
 
 macOS 的"关窗不退"依赖系统级应用生命周期模型(Dock 常驻 + 运行指示),Linux 桌面没有该模型;Linux 上唯一带可见入口的驻留机制是系统托盘(StatusNotifierItem)。因此 Linux 对齐 **Windows 托盘模式**,而不是 mac 模式。
 
@@ -63,7 +63,7 @@ createCloseToTrayCapabilityMonitor
 - app ready 后首次探测
 - 设置页通过 IPC 查询时(缓存 stale 超过 10s 则重新探测)——用户装完扩展打开设置页即可看到开关解除置灰
 
-启动时序说明:自启动场景下 Linux 的 StatusNotifierWatcher 可能晚于 ZCode 启动,首次探测为 false、随后用户开设置页会重新探测并纠正;期间关窗走安全路径(确认退出),可接受。
+启动时序说明:自启动场景下 Linux 的 StatusNotifierWatcher 可能晚于 Codez 启动,首次探测为 false、随后用户开设置页会重新探测并纠正;期间关窗走安全路径(确认退出),可接受。
 
 ### 托盘创建时机与"可隐藏能力"合并(CR-01)
 
@@ -129,7 +129,7 @@ main 进程(唯一数据源)
   mainSettingService(设置持久化)──closeToTrayOnWindows──→ 关窗分支
         │ ipcMain.handle(GetCloseToTrayCapability)
         ▼
-preload bridge(window.zcode.getCloseToTrayCapability)
+preload bridge(window.codez.getCloseToTrayCapability)
         ▼
 renderer desktopPlatform(IPlatformService 适配)
         ▼

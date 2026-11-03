@@ -1,4 +1,4 @@
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 import { prepareSourceServerUpdateArchive } from "#e2e/helpers/source-server-update-fixture";
 import {
   connectRemoteSourceFromSettings,
@@ -17,7 +17,7 @@ import { prepareV4ConversationE2E } from "../helpers/v4-conversation.js";
 
 const CASE_MARKER = "E2E_REMOTE_INSTALL_PROGRESS";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-install-progress",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-install-progress",
 );
 
 interface Observation {
@@ -54,8 +54,8 @@ describe(`${CASE_MARKER}: 远端安装真实阶段`, () => {
     this.timeout(10 * 60_000);
     // harness 的目标 suffix 支持命名批次，不限十六进制；仍只允许其独立容器命名空间。
     // 在本 case 内真实首装，再制造同版本新 SHA 验证更新。
-    expect(process.env.ZCODE_E2E_SSH_CONTAINER).toMatch(
-      /^zcode-(?:progress-e2e-|r3-server-)[a-z0-9-]+$/u,
+    expect(process.env.CODEZ_E2E_SSH_CONTAINER).toMatch(
+      /^codez-(?:progress-e2e-|r3-server-)[a-z0-9-]+$/u,
     );
     const config = readSingleSSHWorkspaceRuntimeConfig(CASE_MARKER);
     // 隔离 HOME 首次进入职业引导；先退出引导，再使用已有 workspace 准备链。
@@ -78,7 +78,7 @@ describe(`${CASE_MARKER}: 远端安装真实阶段`, () => {
     });
     const sourceId = parseRemoteWorkspaceIdentity(initial.workspaceIdentity!)?.sourceServerId;
     if (!sourceId) throw new Error(`${CASE_MARKER}: 首装缺少 Source 身份`);
-    const installed = await runSSHCommand(config, 'cat "$HOME/.zcode/server/current.json"');
+    const installed = await runSSHCommand(config, 'cat "$HOME/.codez/server/current.json"');
     const oldSha = JSON.parse(installed.stdout).archiveSha256 as string;
     await disconnectRemoteSource(sourceId, CASE_MARKER);
     const update = await prepareSourceServerUpdateArchive(oldSha, CASE_MARKER);
@@ -90,7 +90,7 @@ describe(`${CASE_MARKER}: 远端安装真实阶段`, () => {
       state.__duplicateUpdateToasts = [];
       const capture = () => {
         // 从连接发起前持续观察，捕获 needs-upgrade 到 updating 之间短暂出现的重复按钮。
-        const toastHost = document.querySelector<HTMLElement>("#zcode-toast-host");
+        const toastHost = document.querySelector<HTMLElement>("#codez-toast-host");
         if (
           [...(toastHost?.querySelectorAll("button") ?? [])].some((button) =>
             /^(立即更新|Update now)$/iu.test(button.textContent?.trim() ?? ""),

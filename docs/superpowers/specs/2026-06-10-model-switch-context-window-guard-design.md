@@ -53,7 +53,7 @@ V4 composer 当前直接执行 `switchModelConfig`，没有恢复 legacy toolbar
 
 - V4 模型入口：`packages/ui/src/v4/composer/V4ComposerToolbar.tsx` 当前把选择直接交给 `onSelectModel`。
 - V4 模型写入：`packages/ui/src/v4/SessionPane.tsx` 当前通过 `switchModelConfigWithRecovery` 和 revision CAS 写 session config。
-- usage 权威字段：`packages/shared/src/zcode-protocol-v4/snapshot.ts` 的 `usage.contextWindow.usedTokens/maxTokens/autoCompactThresholdTokens`。
+- usage 权威字段：`packages/shared/src/codez-protocol-v4/snapshot.ts` 的 `usage.contextWindow.usedTokens/maxTokens/autoCompactThresholdTokens`。
 - 目标模型 metadata：`ModelProviderModelConfig.contextWindow/maxOutputTokens`；`resolveModelProviderContextWindow()` 负责 fallback 与 `[1m]`。
 - 普通 compact：`commandPayloadSchemas.compact` 当前为空 payload；CLI `goal-compact.ts` 在 busy/held 下把它追加到 FIFO。
 - stop：CLI `session-flow.ts` 先 pause active goal，再 abort 当前 controller；既有 B02-B04 语义要求 queue 保留并关闭 auto-drain。
@@ -121,7 +121,7 @@ desktop-continuous / web-remote-replayable renderer
 
 不能在 renderer 连续发送 `stop` 和普通 `compact`：两个 command 之间存在 queue auto-drain/跨端命令插入竞态，普通 compact 还会按当前协议落到队尾。
 
-计划在 `packages/shared/src/zcode-protocol-v4/index.ts` 导出的严格 command schema 中增加独立的 guard 抢占命令（实现命名建议 `preemptCompact`）：
+计划在 `packages/shared/src/codez-protocol-v4/index.ts` 导出的严格 command schema 中增加独立的 guard 抢占命令（实现命名建议 `preemptCompact`）：
 
 - 必须携带 `baseRevision`，在 CLI 开始 destructive stop 前拒绝陈旧确认。
 - commandId 是幂等边界；同一 session 已有 manual/guard compact running 或 queued 时返回 `compactOperationLock`。

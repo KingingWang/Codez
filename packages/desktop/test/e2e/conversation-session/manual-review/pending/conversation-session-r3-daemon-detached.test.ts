@@ -5,7 +5,7 @@ import {
 } from "#e2e/helpers/remote-project-actions";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 import { clearAppData } from "../../../helpers/desktop-app.js";
 import {
   connectSSHWorkspaceAndSendFirstTurn,
@@ -26,7 +26,7 @@ import {
 
 const CASE_MARKER = "E2E_R3_DAEMON_DETACHED";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-daemon-detached",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-daemon-detached",
 );
 
 describe(`${CASE_MARKER}: 无 user service manager 目标的 daemon 生命周期`, () => {
@@ -57,7 +57,7 @@ describe(`${CASE_MARKER}: 无 user service manager 目标的 daemon 生命周期
     });
     const core0 = await readRemoteCoreIdentity(prepared.config, CASE_MARKER);
     const status0 = JSON.parse(
-      (await runSSHCommand(prepared.config, 'cat "$HOME/.zcode/server/run/status.json"')).stdout,
+      (await runSSHCommand(prepared.config, 'cat "$HOME/.codez/server/run/status.json"')).stdout,
     ) as { serviceRegistered: boolean; state: string };
     // 容器没有 systemd user manager：只能是 detached daemon，且不得伪装成已注册服务。
     expect(status0.serviceRegistered).toBe(false);
@@ -110,7 +110,7 @@ describe(`${CASE_MARKER}: 无 user service manager 目标的 daemon 生命周期
 
     // Bug 原因：systemd offline 会跳过探测并返回 0；旧代码误判可用，在 enable --now 报 user bus 错误。
     // 在独立 SSH 目标的非交互 shell 注入真实 offline 环境，不替换 systemctl 或伪造探测结果。
-    const fixtureRoot = `'${`${workspaceA}/.zcode-e2e/${CASE_MARKER}`.replaceAll("'", "'\\''")}'`;
+    const fixtureRoot = `'${`${workspaceA}/.codez-e2e/${CASE_MARKER}`.replaceAll("'", "'\\''")}'`;
     const backup = `${fixtureRoot}/bashrc.original`;
     const setup = await runSSHCommand(
       prepared.config,
@@ -128,7 +128,7 @@ describe(`${CASE_MARKER}: 无 user service manager 目标的 daemon 生命周期
     expect(configured.code).toBe(0);
     const skippedProbe = await runSSHCommand(
       prepared.config,
-      'test "$SYSTEMD_OFFLINE" = 1 && test "${ZCODE_SERVER_SKIP_SERVICE_REGISTRATION-}" != 1 && systemctl --user show --property=Version',
+      'test "$SYSTEMD_OFFLINE" = 1 && test "${CODEZ_SERVER_SKIP_SERVICE_REGISTRATION-}" != 1 && systemctl --user show --property=Version',
     );
     expect(skippedProbe.code).toBe(0);
     expect(skippedProbe.stdout.trim()).toBe("");
@@ -150,7 +150,7 @@ describe(`${CASE_MARKER}: 无 user service manager 目标的 daemon 生命周期
     expect(core1.supervisorPid).not.toBe(core0.supervisorPid);
     expect(core1.state).toBe("ready");
     const status1 = JSON.parse(
-      (await runSSHCommand(prepared.config, 'cat "$HOME/.zcode/server/run/status.json"')).stdout,
+      (await runSSHCommand(prepared.config, 'cat "$HOME/.codez/server/run/status.json"')).stdout,
     ) as { serviceRegistered: boolean };
     expect(status1.serviceRegistered).toBe(false);
     facts.core1 = core1;

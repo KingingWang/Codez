@@ -12,7 +12,7 @@ Todo66 已要求复杂 Map 保留换行和缩进。`9b0f11e996` 实施 Todo95 �
 
 ## 2. 范围和改造边界
 
-- 主体只修改 `config/provider/zcode-builtin.json` 中需要整理的 Map 排版，并按既有发布契约更新 revision；补必要测试和验证记录。唯一追加产品代码改动为下述已批准键盘拖拽隔离。
+- 主体只修改 `config/provider/codez-builtin.json` 中需要整理的 Map 排版，并按既有发布契约更新 revision；补必要测试和验证记录。唯一追加产品代码改动为下述已批准键盘拖拽隔离。
 - 不恢复冗余分支，不改变表达式 AST、合法输入的请求结果、字段省略/null、模式、预算或上限。这是本次修复的改造约束，不是写作风格定义。
 - 不修改档位名称/values、Selection 迁移、规则匹配、优先级、Overlay 或 UI 编辑器格式/保存行为；Todo95C 独立提交，不混入本项排版差异。
 - 不新增 Formatter、DSL 或运行时格式转换；不重排 Personal Map，不兼容或迁移未发布旧配置。

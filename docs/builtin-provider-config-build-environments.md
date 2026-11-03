@@ -4,14 +4,14 @@
 
 ## 所有权与边界
 
-构建工具单独拥有配置选择职责，读取现有 `ZCODE_ENV=test|production`。
+构建工具单独拥有配置选择职责，读取现有 `CODEZ_ENV=test|production`。
 显式环境变量优先；未设置时读取仓库现有 .env 环境文件，再默认 test。
-`NODE_ENV` 只影响读取哪组 .env 文件，不直接决定产品环境。非法非空 ZCODE_ENV 报错。
+`NODE_ENV` 只影响读取哪组 .env 文件，不直接决定产品环境。非法非空 CODEZ_ENV 报错。
 
 | 产品环境   | 仓库源文件                              |
 | ---------- | --------------------------------------- |
-| production | config/provider/zcode-builtin.json      |
-| test       | config/provider/zcode-builtin.test.json |
+| production | config/provider/codez-builtin.json      |
+| test       | config/provider/codez-builtin.test.json |
 
 两份都是完整 Release。生产文件是唯一编辑源，测试文件由
 `pnpm provider:config:sync-test` 生成并提交，revision 跟随生产文件。
@@ -50,7 +50,7 @@
 账号 Start／Off-Peak 的不签名例外优先于域名；个人／团队及显式套餐 Key 继续走原入口。
 
 ```text
-ZCODE_ENV + 对应完整 JSON
+CODEZ_ENV + 对应完整 JSON
              |
              v
 共同构建入口：选文件、完整 Release 解码校验
@@ -65,8 +65,8 @@ Desktop / CLI / SEA 资源     HTTP / Remote / Server CLI 嵌入常量
           原有 Built-in Source / Registry
 ```
 
-Desktop 资源仍为 `resources/config/provider/zcode-builtin.json`；CLI 为
-`dist/provider/zcode-builtin.json`；SEA key 仍为 `zcode-provider/zcode-builtin.json`。
+Desktop 资源仍为 `resources/config/provider/codez-builtin.json`；CLI 为
+`dist/provider/codez-builtin.json`；SEA key 仍为 `codez-provider/codez-builtin.json`。
 Server 保持原有 JSON 编译常量。开发态 Desktop 根据同一个编译环境定位仓库源文件。
 显式配置路径注入优先级不变。
 
@@ -81,7 +81,7 @@ Server 保持原有 JSON 编译常量。开发态 Desktop 根据同一个编译�
 
 - 普通 CLI、Desktop、Server 构建仍按原流程执行，不新增缓存层。
 - bootstrap 每次重新构建 Agent JS，并由同次 CLI 构建验证和刷新旁边的配置资源，避免 Source Server archive 带入旧 Agent。
-- Turbo 的 CLI build 与 build:desktop-agent 包含 ZCODE_ENV、相关 .env、两份配置及公共构建工具。
+- Turbo 的 CLI build 与 build:desktop-agent 包含 CODEZ_ENV、相关 .env、两份配置及公共构建工具。
 - Desktop E2E 构建指纹包含公共工具与配置输入；已有环境指纹继续复用。
 - 远程 Server 已将配置嵌入 JS；现有 source hash / artifact hash 自然使配置变化触发重新打包。
 - 不通过覆写仓库源文件选择环境；不同环境并行构建须使用各自 worktree／输出目录，

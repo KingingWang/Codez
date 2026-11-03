@@ -383,7 +383,7 @@
           "id": "toolu_e2e_subagent_response_barrier_bash",
           "name": "Bash",
           "input": {
-            "command": "while [ ! -f '.zcode-e2e/conversation-session-subagent-respond-to-coordinator/release-child-bash' ]; do sleep 0.1; done; printf 'E2E_SUBAGENT_CHILD_BASH_RELEASED\\n'",
+            "command": "while [ ! -f '.codez-e2e/conversation-session-subagent-respond-to-coordinator/release-child-bash' ]; do sleep 0.1; done; printf 'E2E_SUBAGENT_CHILD_BASH_RELEASED\\n'",
             "description": "Wait for coordinator question delivery"
           }
         }
@@ -469,7 +469,7 @@
           "id": "toolu_e2e_subagent_response_continued_bash",
           "name": "Bash",
           "input": {
-            "command": "while [ ! -f '.zcode-e2e/conversation-session-subagent-respond-to-coordinator/release-child-final' ]; do sleep 0.1; done; printf 'E2E_SUBAGENT_CONTINUED_WORK_TOOL_DONE\\n'",
+            "command": "while [ ! -f '.codez-e2e/conversation-session-subagent-respond-to-coordinator/release-child-final' ]; do sleep 0.1; done; printf 'E2E_SUBAGENT_CONTINUED_WORK_TOOL_DONE\\n'",
             "description": "Continue child work after coordinator response"
           }
         }
@@ -819,7 +819,7 @@
           "id": "toolu_e2e_error_child_barrier",
           "name": "Bash",
           "input": {
-            "command": "while [ ! -f '.zcode-e2e/conversation-session-subagent-respond-to-coordinator/release-error-child' ]; do sleep 0.1; done; printf 'E2E_ERROR_CHILD_RELEASED\\n'",
+            "command": "while [ ! -f '.codez-e2e/conversation-session-subagent-respond-to-coordinator/release-error-child' ]; do sleep 0.1; done; printf 'E2E_ERROR_CHILD_RELEASED\\n'",
             "description": "Wait before triggering the RespondToCoordinator error"
           }
         }
@@ -1081,7 +1081,7 @@
           "id": "incoming-tool-child-gate",
           "name": "Bash",
           "input": {
-            "command": "while [ ! -f '.zcode-e2e/incoming-message-active/tool-child-message' ]; do sleep 0.1; done; printf 'E2E_INCOMING_TOOL_CHILD_RELEASED\\n'",
+            "command": "while [ ! -f '.codez-e2e/incoming-message-active/tool-child-message' ]; do sleep 0.1; done; printf 'E2E_INCOMING_TOOL_CHILD_RELEASED\\n'",
             "description": "Wait for coordinator"
           }
         }
@@ -1158,7 +1158,7 @@
           "id": "incoming-tool-parent-peer-gate",
           "name": "Bash",
           "input": {
-            "command": "while [ ! -f '.zcode-e2e/incoming-message-active/tool-parent-peer' ]; do sleep 0.1; done; printf 'E2E_INCOMING_TOOL_PARENT_PEER_DONE\\n'",
+            "command": "while [ ! -f '.codez-e2e/incoming-message-active/tool-parent-peer' ]; do sleep 0.1; done; printf 'E2E_INCOMING_TOOL_PARENT_PEER_DONE\\n'",
             "description": "Continue main task while child works"
           }
         }
@@ -1243,7 +1243,7 @@
           "id": "incoming-tool-child-final-gate",
           "name": "Bash",
           "input": {
-            "command": "while [ ! -f '.zcode-e2e/incoming-message-active/tool-child-final' ]; do sleep 0.1; done; printf 'E2E_INCOMING_TOOL_CHILD_FINAL_BARRIER_DONE\\n'",
+            "command": "while [ ! -f '.codez-e2e/incoming-message-active/tool-child-final' ]; do sleep 0.1; done; printf 'E2E_INCOMING_TOOL_CHILD_FINAL_BARRIER_DONE\\n'",
             "description": "Continue child after progress reply"
           }
         }
@@ -1313,7 +1313,7 @@
           "id": "incoming-tool-parent-task-gate",
           "name": "Bash",
           "input": {
-            "command": "while [ ! -f '.zcode-e2e/incoming-message-active/tool-parent-task' ]; do sleep 0.1; done; printf 'E2E_INCOMING_TOOL_PARENT_TASK_DONE\\n'",
+            "command": "while [ ! -f '.codez-e2e/incoming-message-active/tool-parent-task' ]; do sleep 0.1; done; printf 'E2E_INCOMING_TOOL_PARENT_TASK_DONE\\n'",
             "description": "Continue main task while child works"
           }
         }
@@ -1569,7 +1569,7 @@
           "id": "incoming-text-child-gate",
           "name": "Bash",
           "input": {
-            "command": "while [ ! -f '.zcode-e2e/incoming-message-active/text-child-message' ]; do sleep 0.1; done; printf 'E2E_INCOMING_TEXT_CHILD_RELEASED\\n'",
+            "command": "while [ ! -f '.codez-e2e/incoming-message-active/text-child-message' ]; do sleep 0.1; done; printf 'E2E_INCOMING_TEXT_CHILD_RELEASED\\n'",
             "description": "Wait for coordinator"
           }
         }
@@ -1727,7 +1727,7 @@
           "id": "incoming-text-child-final-gate",
           "name": "Bash",
           "input": {
-            "command": "while [ ! -f '.zcode-e2e/incoming-message-active/text-child-final' ]; do sleep 0.1; done; printf 'E2E_INCOMING_TEXT_CHILD_FINAL_BARRIER_DONE\\n'",
+            "command": "while [ ! -f '.codez-e2e/incoming-message-active/text-child-final' ]; do sleep 0.1; done; printf 'E2E_INCOMING_TEXT_CHILD_FINAL_BARRIER_DONE\\n'",
             "description": "Continue child after progress reply"
           }
         }

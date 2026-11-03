@@ -22,7 +22,7 @@ export async function waitForToastContaining(
 
 export function getToastMessages() {
   return browser.execute(() => {
-    const host = document.querySelector("#zcode-toast-host");
+    const host = document.querySelector("#codez-toast-host");
     if (!host) {
       return [];
     }

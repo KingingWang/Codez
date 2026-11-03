@@ -1,11 +1,11 @@
 // MD07：真实 Web 入口，受控 relay/桌面响应；不替代真机 OAuth/线上部署验收。
-// 启动：pnpm --filter @zcode/web exec vite --host 127.0.0.1 --port 5178 --strictPort
+// 启动：pnpm --filter @codez/web exec vite --host 127.0.0.1 --port 5178 --strictPort
 // 运行：pnpm exec tsx packages/web/test/e2e/manual-review/pending/remote-device-switch.mjs
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium } from "playwright-core";
-import { TID_AUTOMATIONS_OPEN, TID_TASK_NEW_BUTTON } from "@zcode/shared/test-ids";
+import { TID_AUTOMATIONS_OPEN, TID_TASK_NEW_BUTTON } from "@codez/shared/test-ids";
 import { createDeviceSwitchDesktopBridge } from "./remote-device-switch.helpers.mjs";
 import { setup, mixedDevices, assertEventually } from "./remote-login-v2.helpers.mjs";
 
@@ -193,7 +193,7 @@ try {
             assert.equal(new URL(page.url()).searchParams.has("name"), false);
             assert.equal(new URL(page.url()).searchParams.get("app_version"), "3.13.0");
             assert.equal(
-              await page.evaluate(() => localStorage.getItem("zcode-web-remote-last-device-sid")),
+              await page.evaluate(() => localStorage.getItem("codez-web-remote-last-device-sid")),
               "e2e-device",
             );
             await page.getByRole("button", { name: /Alice’s MacBook/ }).waitFor();

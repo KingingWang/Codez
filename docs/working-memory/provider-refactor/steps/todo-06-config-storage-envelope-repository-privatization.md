@@ -63,7 +63,7 @@ Provider Domain 只认识：
 - Config Overlay、完整性校验、Registry 和初始模型选择解析。
 
 `schemaVersion`、文件顶层对象、JSON 字段布局和 migration 只描述“如何保存”，不构成新的 Config Layer、
-Effective Config 或运行时状态。因此 `@zcode/provider` 不得再导出带 `Document` 语义的对象。
+Effective Config 或运行时状态。因此 `@codez/provider` 不得再导出带 `Document` 语义的对象。
 
 ### 2.2 不用新中间层替代 `Document`
 
@@ -103,7 +103,7 @@ interface StoredModelSelectionConfigV1 {
 ```
 
 准确字段类型由私有 Zod Schema 和序列化函数约束。名称可以使用 `Stored*Vn` 或 `*FileVn`，但不能从
-`@zcode/provider-node` 的公共 barrel 导出，也不能成为 Service、UI、Runtime 或 Protocol 的 Contract。
+`@codez/provider-node` 的公共 barrel 导出，也不能成为 Service、UI、Runtime 或 Protocol 的 Contract。
 
 ### 2.4 存储可靠性完整保留
 
@@ -125,7 +125,7 @@ Repository 私有化不等于直接 `JSON.parse()` 后信任类型。以下能�
 ### 3.1 Domain 与 Repository
 
 ```text
-@zcode/provider
+@codez/provider
 |- ProviderConfigMap
 |- ModelConfigRules
 |- ProviderConfigLayerSnapshot
@@ -135,7 +135,7 @@ Repository 私有化不等于直接 `JSON.parse()` 后信任类型。以下能�
              |
              | read/update
              v
-@zcode/provider-node
+@codez/provider-node
 |- NodeOfficialProviderConfigSource
 |- NodePersonalProviderConfigRepository
 `- private provider-config-file-codec
@@ -172,12 +172,12 @@ Repository 负责校验领域值、套上当前版本文件外壳并写入。Leg
 当前 `model-selection-config.ts` 混合了文件存储和领域解析，必须拆开：
 
 ```text
-@zcode/provider
+@codez/provider
 |- ModelSelection
 |- InitialModelSelectionResolution
 `- resolveInitialModelSelection()
 
-@zcode/provider-node
+@codez/provider-node
 |- NodeModelSelectionConfigRepository
 `- private model-selection-config-file-codec
    |- StoredModelSelectionConfigVn
@@ -277,8 +277,8 @@ Repository private N -> N+1 migration
 
 ### 7.4 机械归零
 
-- `@zcode/provider` 不再导出 `ProviderConfigDocument*`；
-- `@zcode/provider` 不再导出 `ModelSelectionConfigDocument*`；
+- `@codez/provider` 不再导出 `ProviderConfigDocument*`；
+- `@codez/provider` 不再导出 `ModelSelectionConfigDocument*`；
 - `packages/provider` 生产代码无 `schemaVersion` 和 Config 文件 migration；
 - Service、Bootstrap、UI、Runtime 不传递 `Document`、`Envelope` 或同形存储 DTO；
 - JSON/version/migration 测试全部归属 `provider-node`；
@@ -308,7 +308,7 @@ Repository private N -> N+1 migration
 
 ### Step D：删除 Domain Document
 
-- 从 `@zcode/provider` 删除两个 Document class、存储 parser/migration 和对应 exports；
+- 从 `@codez/provider` 删除两个 Document class、存储 parser/migration 和对应 exports；
 - 把 `resolveInitialModelSelection()` 与相关领域类型留在 Provider Domain；
 - 移动并重组测试，删除只证明公共 Document class 存在的测试。
 

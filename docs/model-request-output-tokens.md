@@ -2,7 +2,7 @@
 
 更新日期：2026-08-13
 
-本文说明 zcode-cli 如何把模型级 `maxOutputTokens` 转换为每次请求的输出预算。桌面本地、
+本文说明 codez-cli 如何把模型级 `maxOutputTokens` 转换为每次请求的输出预算。桌面本地、
 远程 workspace 和手机 Web 远控复用同一条 agent 请求链路，策略一致。
 
 ## 模型级预算
@@ -41,7 +41,7 @@ Rule，完整契约见
 
 所有新 Runtime（桌面本地、远程 workspace、手机 shared-host、纯 CLI、子 Agent）统一使用
 `preflight-v1`。不再消费 `client/configs.modelContextBudget.strategy`；兼容旧 Host 的协议字段
-仍接受 `legacy`，但在本版本 Runtime 边界归一到共享常量 `DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY`。
+仍接受 `legacy`，但在本版本 Runtime 边界归一到共享常量 `DEFAULT_CODEZ_MODEL_CONTEXT_BUDGET_STRATEGY`。
 运行中的旧进程不热切换；升级后创建或冷恢复的 Runtime 采用新规则。
 
 `getModelContextBudgetStrategy()` 保留服务兼容接口，但仅返回共享常量，不读缓存、不发请求、
@@ -192,7 +192,7 @@ network/model-io、Runtime diagnostics 与 `providerMetadata.rawFinishReason` �
 
 真正以 request error 抛出的 context overflow 不属于本节，继续走既有 Reactive Compact。完整 tool
 call 的优先级高于 output-limit；判断使用 adapter 已经完成组装的全部 tool calls，而不是只看本地可执行
-tool calls。例外是服务端内置工具轮次（见 `apps/zcode-cli/docs/design/v2/model/anthropic-stream-compat.md`
+tool calls。例外是服务端内置工具轮次（见 `apps/codez-cli/docs/design/v2/model/anthropic-stream-compat.md`
 「Provider 内置工具多轮回放」）：这些调用在流中已切成带结果的前序轮次单独提交，不属于本 step 的最终调用，
 不参与本判断；最后一轮被截断时照常续写。web_search 等未切轮的 provider 调用仍按完整 tool call 处理。只有命中上述 output-limit 判据时，text、reasoning 和 usage 全空的响应才允许恢复；其他空
 响应继续走 suspicious-empty 错误。

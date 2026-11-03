@@ -14,7 +14,7 @@ Goal Verifier 沿用验证开始时 Session 的模型与思考配置，使用该
 - main 的 `resolveNormalRequestMaxOutputTokens` 使用 Model 已解析的 `maxOutputTokens`；有效值原样取整使用，缺失或无效才兜底 32,000。32,000 不是封顶，Verifier 没有专用 5,000 限制。
 - 当前 Verifier 仍先读取 Session ModelSelection 并创建 Model，但提交 `5aaddd0bdf` 将请求参数改为 `auxiliaryModelOptions(model)`：强制 `reasoningLevel.values[0]`，并设置 `min(5000, maxOutputTokens.max)`。
 - 根因是把 Goal Verifier 归入了低成本辅助调用策略；统一调用实现时同时改变了业务行为，不是单纯接口迁接。
-- 相关代码：`apps/zcode-cli/packages/core/src/runtime/methods/target-completion-verification.ts`、`apps/zcode-cli/packages/core/src/model/auxiliary-model-options.ts`。
+- 相关代码：`apps/codez-cli/packages/core/src/runtime/methods/target-completion-verification.ts`、`apps/codez-cli/packages/core/src/model/auxiliary-model-options.ts`。
 
 ## 实施要求
 

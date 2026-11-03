@@ -40,8 +40,8 @@ staging: 0e867f1323
 
 文件：
 
-- `packages/zcode-server-cli/test/releaseInstaller.test.ts`
-- `packages/zcode-server-cli/test/packaging.test.ts`
+- `packages/codez-server-cli/test/releaseInstaller.test.ts`
+- `packages/codez-server-cli/test/packaging.test.ts`
 
 失败用例：
 
@@ -167,7 +167,7 @@ TypeError: native.probeAccessibility is not a function
 共同错误形态：
 
 ```text
-CuaHelperError: Failed to verify the live ZCode Computer Use process identity
+CuaHelperError: Failed to verify the live Codez Computer Use process identity
 Caused by: ENOENT: no such file or directory,
 rename '<socket>.pending' -> '<socket>'
 ```
@@ -206,8 +206,8 @@ pnpm verify:pre-push
 
 ```bash
 pnpm exec vitest run \
-  packages/zcode-server-cli/test/releaseInstaller.test.ts \
-  packages/zcode-server-cli/test/packaging.test.ts \
+  packages/codez-server-cli/test/releaseInstaller.test.ts \
+  packages/codez-server-cli/test/packaging.test.ts \
   packages/desktop/test/notarizeMacosScript.test.ts \
   packages/desktop/test/cuaHelperDevIdentity.test.ts \
   packages/desktop/test/cuaSystemSettingsWindowWatcher.test.ts \

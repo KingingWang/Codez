@@ -19,10 +19,10 @@
 
 ## 1. 产品目标
 
-ZCode Browser Use 最终应让同一份 browser-use skill/browser-client 在以下三类 backend 上工作：
+Codez Browser Use 最终应让同一份 browser-use skill/browser-client 在以下三类 backend 上工作：
 
-- `iab`：ZCode in-app browser。
-- `extension`：ZCode 自有 Chrome extension + native host，控制用户 Chrome。
+- `iab`：Codez in-app browser。
+- `extension`：Codez 自有 Chrome extension + native host，控制用户 Chrome。
 - `cdp`：独立、受 feature/security gate 的 CDP backend。
 
 Playwright 是三类 backend 之上的统一 `Tab.playwright` facade，不是 backend。模型对 `agent.browsers` 的选择、对象图、错误、capability、安全确认、tab 生命周期和 response meta，由本规格统一冻结，三类 backend 保持一致。
@@ -33,8 +33,8 @@ Playwright 是三类 backend 之上的统一 `Tab.playwright` facade，不是 ba
 | ------------------ | ---------------------------------------------------------------- | --------------------------------------------------------------------------- | -------------- | --------------------------------- |
 | backend enum       | `iab                                                             | extension                                                                   | cdp`           | 三类 backend 共用同一 observable contract |
 | Playwright         | Tab API 层                                                       | 避免错误建成第四 backend                                                    |
-| Chrome 资产        | ZCode clean-room 自研                                            | 不依赖任何第三方私有插件或二进制                                            |
-| IAB transport      | 保留 ZCode Protocol adapter                                      | 兼容 local/remote shared-host 架构                                          |
+| Chrome 资产        | Codez clean-room 自研                                            | 不依赖任何第三方私有插件或二进制                                            |
+| IAB transport      | 保留 Codez Protocol adapter                                      | 兼容 local/remote shared-host 架构                                          |
 | browser identity   | descriptor 的 runtime id，不用 type 代替                         | 支持多个 Chrome profile/window/peer                                         |
 | workspace identity | `workspaceIdentity?.trim()                                       |                                                                             | workspacePath` | 遵守隔离语义                      |
 | client mode        | 每次 request 必带                                                | 保持 desktop continuous / web replayable 边界                               |
@@ -68,9 +68,9 @@ Node REPL runtime（通用、与 browser-use plugin 解耦）
 
 Backend providers
   ├─ IabBackendConnection
-  │   └─ ZCode Protocol → shared host → desktop main → webview guest/CDP
+  │   └─ Codez Protocol → shared host → desktop main → webview guest/CDP
   ├─ ExtensionBackendConnection
-  │   └─ native pipe → ZCode native host → Chrome extension
+  │   └─ native pipe → Codez native host → Chrome extension
   └─ CdpBackendConnection
       └─ native pipe/direct gated host → CDP targets
 
@@ -223,12 +223,12 @@ IAB 的可见性、默认 tab、活动 tab、pending request 和 cleanup 均按�
   恢复时，producer 必须先重放 Ready，再重放 visibility，禁止只用 visibility 恢复 shell。旧
   `browserGeneration`、不同 `remoteSessionId` 或已经 close 的 tab 的 visibility 一律忽略。
 
-- ZCode 在这里采用“browser use 对其所属对话可见”的产品语义；visibility capability 只控制现存
+- Codez 在这里采用“browser use 对其所属对话可见”的产品语义；visibility capability 只控制现存
   logical shell 的显隐，不承担 logical shell 恢复。
 - `close()` 把 tab 标记为 closed、detach CDP、取消 waiter 并只通知 owner window；迟到 attach 不得复活 tab。
 - `finalize()` 把 tab 标记为 deliverable；IAB 页面在 session 存续期间保持可见。
 - `turnEnded()` 取消该 turn 尚未完成的 request/waiter；已下发动作按 uncertain side-effect 语义返回。
-  ZCode IAB 采用进程内默认持久语义：所有 agent-created active/handoff tab 都继续可见、可控，不能因
+  Codez IAB 采用进程内默认持久语义：所有 agent-created active/handoff tab 都继续可见、可控，不能因
   模型漏调 finalize、已有 handoff、turn 成功/失败而自动关闭。显式 deliverable 和 claimed user tab
   在 turn end 释放给用户，但仍保持可见。
 - `tabs.finalize({ keep })` 只给列入 `keep` 的 tab 应用 `handoff`/`deliverable` 状态；未列入的 tab
@@ -283,7 +283,7 @@ BrowserRegistry 每次需要时刷新或按 TTL/peer event 更新 descriptor。�
 - Node REPL 是通用 runtime，不因 browser-use plugin 被禁用而消失。
 - browser/chrome plugin 携带同一 build 产物的 browser-client、API manifest 和 docs manifest。
 - skill 在 fresh kernel 中显式 import 并执行一次 setup；重复 setup 幂等。
-- ZCode 可保留内部自动 bootstrap 作为迁移兼容，但模型文档和稳定 contract 以插件 asset 为准；迁移期结束后移除 core 私有 facade 实现。
+- Codez 可保留内部自动 bootstrap 作为迁移兼容，但模型文档和稳定 contract 以插件 asset 为准；迁移期结束后移除 core 私有 facade 实现。
 - plugin disable 只移除相应 skill/client/backend 产品入口，不应破坏通用 Node REPL。
 - official asset staging 的 SEA/Desktop/remote/prebuild 四条链必须包含 `scripts` 和必要平台资产。
 
@@ -418,7 +418,7 @@ download 都必须经合同/E2E 验证；在这些用例通过前，只能宣称
    至少覆盖 heading、paragraph、list、landmark、table、image alt 和稳定定位属性。它不替代第 8.5 节的
    Playwright AI/ARIA 字符串合同。
 7. `dom_cua.get_visible_dom()` 复用同一份丰富 DOM 观察，不得只是名称像 DOM、结果仍只有可交互元素。
-8. ZCode 不在导航/点击后自动抓取客户端 preview screenshot。普通 browser command 的 response meta 只携带 marker、backend、browserId、tab/open-tab、sessionEnded 与脱敏 URL；截图只能由模型在视觉分支显式调用。`tab.screenshot()` 只产生内部 PNG bytes，模型调用必须写成 `nodeRepl.emitImage(await tab.screenshot())`，只有该路径才成为模型 image block。
+8. Codez 不在导航/点击后自动抓取客户端 preview screenshot。普通 browser command 的 response meta 只携带 marker、backend、browserId、tab/open-tab、sessionEnded 与脱敏 URL；截图只能由模型在视觉分支显式调用。`tab.screenshot()` 只产生内部 PNG bytes，模型调用必须写成 `nodeRepl.emitImage(await tab.screenshot())`，只有该路径才成为模型 image block。
 9. `nodeRepl.emitImage(...)` 产生的图片除进入 provider-visible image block 外，还必须通过有界的
    `ToolResult.display` 图片元数据进入工具卡片。UI 在实时 `desktop-continuous` 事件与
    `web-remote-replayable` snapshot/replay 中都直接渲染图片，不再只显示
@@ -575,7 +575,7 @@ IAB 的 locator 与 `domSnapshot()` 必须共享固定版本的 Playwright injec
 
 ### 8.9 输入目标所有权与虚拟 clipboard
 
-2026-07-15 运行日志记录到同一 IAB tab 的 click 成功后约 501ms 才执行 type；这段空窗允许 ZCode
+2026-07-15 运行日志记录到同一 IAB tab 的 click 成功后约 501ms 才执行 type；这段空窗允许 Codez
 composer 的 requestAnimationFrame autofocus 抢回 Electron window focus。旧 executor 随后调用
 `Input.insertText`，没有重新解析网页 active element、frame target 或 input identity，因此存在文本进入
 embedder 主输入框的实际串写风险。
@@ -640,7 +640,7 @@ IAB 的 desktop-continuous 主链继续 direct continuous；手机 web remote �
 
 ## 10. Extension backend
 
-ZCode 自研内容：
+Codez 自研内容：
 
 - MV3 Chrome extension，使用自有 extension id。
 - 三平台 native messaging manifest 安装器。
@@ -661,7 +661,7 @@ ZCode 自研内容：
 
 ## 11. CDP backend
 
-- 独立 backend，不等于“IAB 内部碰巧用 CDP”。ZCode 首选把它建成可插拔远端/cloud provider，而不是把 Playwright 进程改名为 CDP。
+- 独立 backend，不等于“IAB 内部碰巧用 CDP”。Codez 首选把它建成可插拔远端/cloud provider，而不是把 Playwright 进程改名为 CDP。
 - 默认 feature-gated；只连接明确配置/授权的 endpoint。
 - target/context 生命周期独立管理。
 - raw full CDP 是单独 capability，受 allow/block policy 和 enterprise/product gate。
@@ -703,9 +703,9 @@ ZCode 自研内容：
 - 不因普通动作附加 screenshot；只有模型显式调用 screenshot API 时才返回图像结果。
 - tab ownership/lifecycle 状态（如需要）。
 
-内部归一化字段冻结为 `browserUse/backendType/browserId/browserGeneration/openTabIds/tabId/currentUrl/lifecycle`；Node REPL 对模型/客户端暴露时还必须形成 `browser_use`、`zcode/browserUse` 和 `zcode/toolSurface` 外层 marker。`currentUrl` 进入 meta 前必须移除 credential、query 和 hash。失败结果同样带不含敏感数据的 meta。取消发生在 backend action 下发前时错误标记 `sideEffect: "none"`；下发后无法证明动作未发生时标记 `sideEffect: "uncertain"`。
+内部归一化字段冻结为 `browserUse/backendType/browserId/browserGeneration/openTabIds/tabId/currentUrl/lifecycle`；Node REPL 对模型/客户端暴露时还必须形成 `browser_use`、`codez/browserUse` 和 `codez/toolSurface` 外层 marker。`currentUrl` 进入 meta 前必须移除 credential、query 和 hash。失败结果同样带不含敏感数据的 meta。取消发生在 backend action 下发前时错误标记 `sideEffect: "none"`；下发后无法证明动作未发生时标记 `sideEffect: "uncertain"`。
 
-ZCode **不在**成功的导航/点击/输入等 side-effect cell 结束后自动截图，也不把截图放进 `zcode/toolSurface` 供工具面板预览：不得因普通页面动作调用 screenshot，也不得把显式 screenshot 结果自动复制成 preview meta。这一取舍只影响工具面板预览，不改变 DOM-first 观察、显式视觉截图或 tab 生命周期。
+Codez **不在**成功的导航/点击/输入等 side-effect cell 结束后自动截图，也不把截图放进 `codez/toolSurface` 供工具面板预览：不得因普通页面动作调用 screenshot，也不得把显式 screenshot 结果自动复制成 preview meta。这一取舍只影响工具面板预览，不改变 DOM-first 观察、显式视觉截图或 tab 生命周期。
 
 ### 13.1 Provider-visible IAB ambient context
 
@@ -729,7 +729,7 @@ ZCode **不在**成功的导航/点击/输入等 side-effect cell 结束后自�
    - Current URL: ...
    </in-app-browser-context>
 
-   ## My request for ZCode:
+   ## My request for Codez:
    <真实用户输入>
    ```
 
@@ -747,7 +747,7 @@ ZCode **不在**成功的导航/点击/输入等 side-effect cell 结束后自�
 6. App 与 Agent 允许短暂版本错位。旧 Agent 对 `browserAmbientContext` 返回 `-32602` 时，App 必须同时识别
    `Invalid params` 与带字段摘要的 `Invalid params — ...`，从结构化 Zod issues 确认只有可降级字段后，删除该字段
    重试一次；不得把兼容错误直接暴露为用户第二轮发送失败。`dev:local-cli` 启动前必须重建 desktop agent bundle，
-   不能因为仓库里存在旧 `dist/zcode.cjs` 就优先启动过期协议实现。
+   不能因为仓库里存在旧 `dist/codez.cjs` 就优先启动过期协议实现。
 
 ### 13.2 Electron navigation already committed
 
@@ -785,10 +785,10 @@ IAB 应支持以下序列：
    `{ controlledTabs, userTabs }` 作为最终结果统一返回；模型只能在完整结果上做一次效果判断，再在下一
    cell 执行 `tabs.get` 或 `user.claimTab`。禁止先返回 controlled list，再决定是否查询 user tabs。
 6. 导航成功后用 `playwright.domSnapshot()` 获取 AI/ARIA 页面状态，不主动截图。
-7. 可用 `tabs.finalize({ keep: [{ tab, status: "deliverable" }] })` 标记交付/接续状态；ZCode IAB 不再
+7. 可用 `tabs.finalize({ keep: [{ tab, status: "deliverable" }] })` 标记交付/接续状态；Codez IAB 不再
    清理未列入 `keep` 的 tab。无论模型是否调用 finalize，所有未被模型或用户显式关闭的 tab 都在当前
-   ZCode 进程内持续保留；退出 ZCode 后不承诺恢复。
-8. 所有 browser command 都携带 session/turn/sessionContext，并返回脱敏的 browser-use meta；ZCode 不附加自动 preview screenshot。
+   Codez 进程内持续保留；退出 Codez 后不承诺恢复。
+8. 所有 browser command 都携带 session/turn/sessionContext，并返回脱敏的 browser-use meta；Codez 不附加自动 preview screenshot。
 9. stale/missing tab、locator strict violation、locator timeout 的模型可见错误必须给出可执行且有界的
    恢复动作：先刷新 DOM 或枚举并重新取得 tab，再重建 locator；禁止重试同一 locator、用
    `first/last/nth` 掩盖歧义或在没有 snapshot 证据时猜 selector。JS 工具只输出一次错误标题与
@@ -827,7 +827,7 @@ IAB 应支持以下序列：
 
 - shared/contracts 定义 descriptor/type/context/list result。
 - BrowserControlPort 支持真实 list/discovery 和 browserId-aware execute。
-- ZCode Protocol 新增严格 schema 的 browser list，execute 带 browserId/context。
+- Codez Protocol 新增严格 schema 的 browser list，execute 带 browserId/context。
 - services/host 暴露 IAB adapter descriptor；facade 通过 registry，不再硬编码 IAB。
 - 实现第 5 节 selection 纯函数与单测。
 - 当前只发现 IAB，不宣称 extension/cdp available。
@@ -860,7 +860,7 @@ IAB 应支持以下序列：
 
 ### Slice E：Extension
 
-- ZCode Chrome extension/native host、安装/升级/诊断/profile selection。
+- Codez Chrome extension/native host、安装/升级/诊断/profile selection。
 - user tabs/history/claim/finalize 和安全确认。
 
 ### Slice F：CDP

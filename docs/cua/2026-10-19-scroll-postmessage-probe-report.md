@@ -1,7 +1,7 @@
 # S4.4 scroll 后台可行性探针报告
 
 > 状态：已完成取证（2026-10-19）。计划：[S4 计划 §5-1](./2026-10-19-windows-input-s4-plan.md)。
-> 探针脚本：`packages/zcode-cua/scripts/windows-scroll-postmessage-probe.ps1`。
+> 探针脚本：`packages/codez-cua/scripts/windows-scroll-postmessage-probe.ps1`。
 > 原始证据：`test/fixtures/reports/scroll-probe-2026-10-19T17-45-53Z.json`（34 组合 ×
 > 5 宿主，全程 `backgroundHeld=true` 取证）。
 

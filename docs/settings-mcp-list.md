@@ -54,7 +54,7 @@ ANSI 不出现在 UI。MCP-DIAG-02：桌面/手机、中英文与深浅主题；
 旧错误及详情入口消失。CLI 定向回归覆盖 stderr 边界、脱敏及 HTTP 隔离。
 
 官方 Server MCP 的 JSON-RPC 错误码会先转换为稳定的设置页分类：`1006` 显示“未登录，请先登录
-ZCode”，`3101` 显示“当前账号没有 Coding Plan，请先购买或配置 Coding Plan”；这两类提示不再
+Codez”，`3101` 显示“当前账号没有 Coding Plan，请先购买或配置 Coding Plan”；这两类提示不再
 显示为笼统的“协议请求失败”。
 
 MCP、Skills、Commands 共用 `SettingsResourceGroupHeader` 与 `SettingsResourceList`：分组间

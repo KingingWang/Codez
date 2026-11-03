@@ -1,1 +1,1 @@
-export * from "@zcode/shared/conversation-telemetry/providerTelemetryIdentity";
+export * from "@codez/shared/conversation-telemetry/providerTelemetryIdentity";

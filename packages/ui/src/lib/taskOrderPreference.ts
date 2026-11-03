@@ -1,11 +1,11 @@
-import type { ZCodeTaskMeta } from "@zcode/shared";
+import type { CodezTaskMeta } from "@codez/shared";
 
 interface StorageLike {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
 }
 
-const TASK_ORDER_STORAGE_KEY_PREFIX = "zcode-task-order:";
+const TASK_ORDER_STORAGE_KEY_PREFIX = "codez-task-order:";
 
 function getBrowserStorage(): StorageLike | null {
   if (typeof window === "undefined") {
@@ -65,12 +65,12 @@ export function persistTaskOrder(
   storage?.setItem(getTaskOrderStorageKey(workspacePath), JSON.stringify(normalizeTaskOrder(taskIds)));
 }
 
-export function pruneTaskOrder(taskOrder: readonly string[], tasks: readonly ZCodeTaskMeta[]): string[] {
+export function pruneTaskOrder(taskOrder: readonly string[], tasks: readonly CodezTaskMeta[]): string[] {
   const taskIds = new Set(tasks.map((task) => task.taskId));
   return normalizeTaskOrder(taskOrder).filter((taskId) => taskIds.has(taskId));
 }
 
-export function sortTasksByOrder(tasks: readonly ZCodeTaskMeta[], taskOrder: readonly string[]): ZCodeTaskMeta[] {
+export function sortTasksByOrder(tasks: readonly CodezTaskMeta[], taskOrder: readonly string[]): CodezTaskMeta[] {
   const normalizedTaskOrder = normalizeTaskOrder(taskOrder);
   const orderedIndexByTaskId = new Map(
     normalizedTaskOrder.map((taskId, index) => [taskId, index] as const),

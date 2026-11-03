@@ -1,14 +1,14 @@
 import { SidebarNativeTooltip, ControlHintTooltip } from "@/ControlHintTooltip.js";
 /* oxlint-disable eslint(max-lines) -- footer 聚合账户、主题、模式和快捷键菜单。 */
-import type { Locale, UserInfo } from "@zcode/shared";
+import type { Locale, UserInfo } from "@codez/shared";
 import { memo, useCallback, useEffect, useState, type ReactNode } from "react";
-import { DesktopCommandIds } from "@zcode/shared";
+import { DesktopCommandIds } from "@codez/shared";
 import {
   TID_LOGIN_MENU_ITEM,
   TID_LOGIN_TRIGGER,
   TID_LOGOUT_BUTTON,
   TID_TASK_SETTINGS_BUTTON,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar.js";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
@@ -44,9 +44,9 @@ import {
 } from "lucide-react";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useOpenRewards } from "@/rewards/RewardsProvider.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useShortcutCommandLabel } from "@/shortcuts/useShortcutBindings.js";
-import { useZCodeStore } from "@/store/StoreProvider.js";
+import { useCodezStore } from "@/store/StoreProvider.js";
 import { normalizeInterfaceMode } from "@/lib/interfaceMode.js";
 import type { Theme } from "@/useTheme.js";
 import { WorkspaceWebRemoteControlTrigger } from "@/WorkspaceWebRemoteControlTrigger.js";
@@ -70,12 +70,12 @@ function getSidebarProfileName(user?: UserInfo | null): string {
     return username;
   }
 
-  return "ZCode";
+  return "Codez";
 }
 
 function getSidebarProfileBadge(
   user: UserInfo | null | undefined,
-  formatMessage: ReturnType<typeof useZCodeIntl>["intl"]["formatMessage"],
+  formatMessage: ReturnType<typeof useCodezIntl>["intl"]["formatMessage"],
 ): string {
   if (user) {
     return getSidebarProfileName(user);
@@ -130,15 +130,15 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
   banner?: ReactNode;
   className?: string;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const platform = usePlatform();
   const openRewards = useOpenRewards();
-  const interfaceMode = useZCodeStore((state) => state.interfaceMode);
-  const setInterfaceMode = useZCodeStore((state) => state.setInterfaceMode);
+  const interfaceMode = useCodezStore((state) => state.interfaceMode);
+  const setInterfaceMode = useCodezStore((state) => state.setInterfaceMode);
   const zoomInShortcutLabel = useShortcutCommandLabel("zoomIn");
   const zoomOutShortcutLabel = useShortcutCommandLabel("zoomOut");
   const resetZoomShortcutLabel = useShortcutCommandLabel("resetZoom");
-  const isRestoringOAuthSession = useZCodeStore((state) => state.isRestoringOAuthSession);
+  const isRestoringOAuthSession = useCodezStore((state) => state.isRestoringOAuthSession);
   const profileBadge = getSidebarProfileBadge(user, intl.formatMessage);
   const avatarFallbackText = getAvatarFallbackText(user);
   const avatarKey = user?.avatarUrl ?? user?.id ?? "guest";

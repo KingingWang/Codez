@@ -3,7 +3,7 @@ import {
   defaultCuaHelperVerifierDependencies,
   type CuaHelperInstaller,
   type CuaHelperInstallerOptions,
-} from "@zcode/zcode-cua/broker/server";
+} from "@codez/codez-cua/broker/server";
 
 type CuaHelperInstallerFactory = (options: CuaHelperInstallerOptions) => CuaHelperInstaller;
 

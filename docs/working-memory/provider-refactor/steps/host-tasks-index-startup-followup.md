@@ -1,6 +1,6 @@
 # 后续任务：Host tasks-index 初始化可观测性
 
-> 最新范围：已并入 [Todo 145：进入 ZCode 前统一准备数据库](./todo-145-global-database-startup-loading.md)，不再单独延后。以下为前轮范围记录；Repo 构造与实际打开/迁移的时机须按新 TODO 重新核对。
+> 最新范围：已并入 [Todo 145：进入 Codez 前统一准备数据库](./todo-145-global-database-startup-loading.md)，不再单独延后。以下为前轮范围记录；Repo 构造与实际打开/迁移的时机须按新 TODO 重新核对。
 
 状态：待单独设计；不纳入 Todo 144 本次会话库 hotfix。
 

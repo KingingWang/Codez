@@ -52,7 +52,7 @@ quota 正在加载且没有快照 ────────┘
 `ProviderSettingsView` 不是新的配置层或第二份配置权威。它是同一次正式 Resolver 结果面向设置页的只读投影：
 
 ```text
-ZCode Built-in Provider Config
+Codez Built-in Provider Config
              |
              v
 Account Provider Config

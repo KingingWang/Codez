@@ -2,18 +2,18 @@
 
 ## 背景
 
-Renderer 层运行在桌面窗口和 Web 远控页面内，日志调用会和 React 渲染、消息流处理、远控恢复链路抢主线程时间。历史上 UI 日志统一写 console，并在桌面端通过 `window.zcode.log` 转发到 main 进程落盘；当会话流、工具调用、任务快照和远控同步变多时，这些同步格式化、IPC 转发和文件写入会放大生产版本的性能成本。
+Renderer 层运行在桌面窗口和 Web 远控页面内，日志调用会和 React 渲染、消息流处理、远控恢复链路抢主线程时间。历史上 UI 日志统一写 console，并在桌面端通过 `window.codez.log` 转发到 main 进程落盘；当会话流、工具调用、任务快照和远控同步变多时，这些同步格式化、IPC 转发和文件写入会放大生产版本的性能成本。
 
 ## 目标
 
 - 生产构建里的 renderer 本地日志默认不输出。
-- 生产构建里的 UI 日志不再通过 `window.zcode.log` 转发到 main 进程落盘。
+- 生产构建里的 UI 日志不再通过 `window.codez.log` 转发到 main 进程落盘。
 - 开发构建继续保留 renderer console 和桌面日志桥，方便本地排查。
 - 正式监控链路不属于本策略的关闭范围，例如 ARMS、telemetry、crash capture、用户主动导出日志、服务层和 host/main 进程日志。
 
 ## 环境边界
 
-日志开关以 Vite 构建态 `import.meta.env.PROD` 为准，而不是 `ZCODE_ENV`。原因是 `ZCODE_ENV=production` 只表示连接生产产品环境；`dev:desktop:prod` 仍是本地开发运行态，仍需要 renderer 日志辅助调试。只有真实生产构建才应让 renderer 本地日志 no-op。测试或诊断场景可以通过 `globalThis.__ZCODE_RENDERER_DISABLE_LOGGING__ === true` 强制关闭 renderer 日志；该开关只能额外关闭日志，不能在生产构建中重新打开日志。
+日志开关以 Vite 构建态 `import.meta.env.PROD` 为准，而不是 `CODEZ_ENV`。原因是 `CODEZ_ENV=production` 只表示连接生产产品环境；`dev:desktop:prod` 仍是本地开发运行态，仍需要 renderer 日志辅助调试。只有真实生产构建才应让 renderer 本地日志 no-op。测试或诊断场景可以通过 `globalThis.__CODEZ_RENDERER_DISABLE_LOGGING__ === true` 强制关闭 renderer 日志；该开关只能额外关闭日志，不能在生产构建中重新打开日志。
 
 ## 实现约束
 

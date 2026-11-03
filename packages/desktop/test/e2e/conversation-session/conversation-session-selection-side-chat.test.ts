@@ -7,7 +7,7 @@ import {
   TID_V4_COMPOSER_SEND,
   TID_V4_SESSION_PANE,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, DEFAULT_WORKSPACE } from "../helpers/desktop-app.js";
 import {
   prepareV4ConversationE2E,
@@ -345,7 +345,7 @@ async function selectMainTimelineText(text: string): Promise<void> {
         (window as Window & { __selectionTrace?: { events: unknown[] } }).__selectionTrace?.events,
     );
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "selection-events.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "selection-events.json"),
       JSON.stringify(
         {
           text,
@@ -622,10 +622,10 @@ async function expectComposerText(paneTestId: string, text: string): Promise<voi
             (
               input as
                 | (HTMLElement & {
-                    __zcodeLexicalInputE2E?: { getText: () => string };
+                    __codezLexicalInputE2E?: { getText: () => string };
                   })
                 | undefined
-            )?.__zcodeLexicalInputE2E?.getText() === expectedText
+            )?.__codezLexicalInputE2E?.getText() === expectedText
           );
         },
         paneTestId,

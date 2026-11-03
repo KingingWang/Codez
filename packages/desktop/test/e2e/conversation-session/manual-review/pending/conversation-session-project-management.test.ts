@@ -11,7 +11,7 @@ import { waitForWorkspaceApp, DEFAULT_WORKSPACE } from "../../../helpers/desktop
  * （文件夹不存在 / 没有会话 / 两个超过 90 天）、一个置顶的久未使用项目和一个已软删除且目录不存在的项目；
  * 另有一个独占目录、带会话文件的活跃项目，供 PJM07 彻底删除数据。
  */
-const home = process.env.ZCODE_E2E_HOME_DIR!;
+const home = process.env.CODEZ_E2E_HOME_DIR!;
 const DAY = 86_400_000;
 const PROJECTS = [
   { id: "pjm-active", name: "PJM 活跃", lastActive: 1 },
@@ -24,12 +24,12 @@ const PROJECTS = [
   { id: "pjm-purge", name: "PJM 删除数据", lastActive: 2, own: true },
 ] as const;
 const PURGE_SESSION = "pjm-purge-task";
-const purgeArtifacts = () => join(home, ".zcode/cli/artifacts", PURGE_SESSION);
+const purgeArtifacts = () => join(home, ".codez/cli/artifacts", PURGE_SESSION);
 const CANDIDATES = ["pjm-missing", "pjm-idle", "pjm-keep", "pjm-empty"];
 
 const row = (id: string) => $(`[data-testid="project-management-row"][data-project-id="${id}"]`);
 function readProjects() {
-  const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"), { readOnly: true });
+  const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"), { readOnly: true });
   try {
     return Object.fromEntries(
       (
@@ -43,7 +43,7 @@ function readProjects() {
   }
 }
 function readTaskProject(id: string) {
-  const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"), { readOnly: true });
+  const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"), { readOnly: true });
   try {
     return (
       db.prepare("SELECT project_id FROM tasks WHERE task_id=?").get(id) as {
@@ -78,13 +78,13 @@ async function setLocaleAndTheme(locale: string, theme: string) {
 describe("项目管理", () => {
   before(async function () {
     this.timeout(60000);
-    if (!home || !/^(?:zcode-project-management-e2e-|\.e2e-home-)/u.test(basename(home)))
+    if (!home || !/^(?:codez-project-management-e2e-|\.e2e-home-)/u.test(basename(home)))
       throw new Error("isolated project management HOME required");
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 45000);
     await restartIntoWorkspacePreservingProfile(DEFAULT_WORKSPACE, {
       afterElectronProcessExit: async () => {
-        const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
-        const cli = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"));
+        const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"));
+        const cli = new DatabaseSync(join(home, ".codez/cli/db/db.sqlite"));
         const now = Date.now();
         try {
           for (const [i, project] of PROJECTS.entries()) {
@@ -234,7 +234,7 @@ describe("项目管理", () => {
     const devices = await dialog.$$('[data-testid="project-management-confirm-device"]');
     expect(devices).toHaveLength(1);
     await expect(devices[0]!).toHaveText(expect.stringContaining("3 个项目"));
-    await browser.saveScreenshot(join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "PJM03-confirm.png"));
+    await browser.saveScreenshot(join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "PJM03-confirm.png"));
     await dialog.$('[data-testid="project-management-confirm-remove"]').click();
     await dialog.waitForExist({ reverse: true });
     await browser.waitUntil(() => readProjects()["pjm-idle"] === 1);
@@ -325,7 +325,7 @@ describe("项目管理", () => {
           expect(fits).toBe(true);
           await browser.saveScreenshot(
             join(
-              process.env.ZCODE_E2E_ARTIFACT_DIR!,
+              process.env.CODEZ_E2E_ARTIFACT_DIR!,
               `project-management-${width}-${locale}-${theme}.png`,
             ),
           );
@@ -359,7 +359,7 @@ describe("项目管理", () => {
     await expect(confirm).toBeDisabled();
     await dialog.$('[data-testid="project-management-confirm-data-word"]').setValue("删除");
     await expect(confirm).toBeEnabled();
-    await browser.saveScreenshot(join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "PJM07-confirm.png"));
+    await browser.saveScreenshot(join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "PJM07-confirm.png"));
     await confirm.click();
     await dialog.waitForExist({ reverse: true });
     // 结果 toast 不带撤销；项目行在无引用后删除，不进入「已移除的项目」。
@@ -367,7 +367,7 @@ describe("项目管理", () => {
     await browser.waitUntil(() => !("pjm-purge" in readProjects()), { timeout: 30000 });
     expect(readTaskProject(PURGE_SESSION)).toBeUndefined();
     expect(existsSync(purgeArtifacts())).toBe(false);
-    const cli = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"), { readOnly: true });
+    const cli = new DatabaseSync(join(home, ".codez/cli/db/db.sqlite"), { readOnly: true });
     try {
       expect(cli.prepare("SELECT id FROM session WHERE id=?").get(PURGE_SESSION)).toBeUndefined();
     } finally {

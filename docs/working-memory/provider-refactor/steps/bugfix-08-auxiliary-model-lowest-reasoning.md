@@ -113,7 +113,7 @@ reasoningLevel.default               普通请求的默认档位（可以不是�
 - 根 `typecheck`、CLI 受影响包 typecheck、`lint` 通过；
 - 全量单测通过：1491 个测试文件通过、1 个跳过；12720 个测试通过、25 个跳过。
 - 本次 26 个修改文件的格式检查与 `git diff --check` 通过；全仓 `fmt:check` 仍被既有 Electron
-  示例 HTML 语法和 `apps/zcode-cli/tests/gb2312.js` 读取问题阻断，本次未扩大范围修复。
+  示例 HTML 语法和 `apps/codez-cli/tests/gb2312.js` 读取问题阻断，本次未扩大范围修复。
 - Todo 42 已进一步删除 Git Commit Message 的失效 256 Token 假参数、Core 的对应特殊忽略分支，以及
   Adapter Telemetry 的关闭档位名称扫描；无 Reasoning Spec 的 Title、Git Commit 与 Recall 均有直接测试。
 - 2026-08-30 复核发现 Provider 连接测试仍遗漏最低档位绑定；本 Bugfix 将它纳入同一直接

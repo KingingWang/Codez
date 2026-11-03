@@ -76,7 +76,7 @@ Composer 草稿和已发送 user row 均可打开现有 PdfViewer。
 local/staged path 或 V4 upload bytes
   -> TurnAttachment(type=pdf)
   -> 校验 MIME、20MiB 上限和 %PDF magic
-  -> durable zcode-artifact:// URI
+  -> durable codez-artifact:// URI
   -> part.data 中的 FilePart link + metadata
   -> <storageRoot>/cli/pdf-cache/<sessionId>/pdf-<uri-hash>.pdf
   -> request 前 materialize path，再按 supportsPdf 做 omit/restore
@@ -148,7 +148,7 @@ ConversationRow.userInput.attachments
      -> workspace service（沿当前 workspaceIdentity / remoteSessionId attachment）
         -> v4/attachment/read(sessionId, previewRef ?? ref, offset, limit)
            -> CLI 先验证 ref 属于当前 session 的图片 row
-              -> zcode-artifact:// ref：读取持久化 artifact
+              -> codez-artifact:// ref：读取持久化 artifact
               -> local / SSH / WSL / Docker path：由该 session 所在 runtime 读取
            -> <= 512 KiB decoded chunk，NDJSON 返回 base64
         -> renderer 拼成 Blob URL -> 图片预览 dialog

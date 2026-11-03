@@ -463,7 +463,7 @@ invalid-explicit -> Generate disabled
 按风险递增执行：
 
 1. 受影响 Helper/Store/Selection 单测。
-2. `pnpm --filter @zcode/desktop typecheck:e2e`。
+2. `pnpm --filter @codez/desktop typecheck:e2e`。
 3. Fixture 与 case-local 配置校验。
 4. 单独运行 12 个原失败 Case，保留每条 artifact。
 5. 按 spec 重跑受影响分组，确认无 case-order 污染。

@@ -14,7 +14,7 @@
 
 标签组件仍在，不是设计师 `fix/model-settings-ui-polish` 分支删除了标签，也不是本次发现的 CSS 问题。
 
-Air 的 `~/.zcode/v2/logs/2026-09-03.log` 在 15:51:36.836 记录的账号同步结果：
+Air 的 `~/.codez/v2/logs/2026-09-03.log` 在 15:51:36.836 记录的账号同步结果：
 
 - `account:bigmodel-individual-coding-plan.access.entitled = false`；
 - `account:bigmodel-team-coding-plan.access.entitled = true`。

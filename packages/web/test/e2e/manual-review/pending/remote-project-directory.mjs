@@ -1,12 +1,12 @@
 // MRO02：真实 Web 页面、RPC、Host 项目服务和隔离 SQLite；不发送模型请求。
-// 启动：pnpm --filter @zcode/web exec vite --host 127.0.0.1 --port 5178 --strictPort
+// 启动：pnpm --filter @codez/web exec vite --host 127.0.0.1 --port 5178 --strictPort
 // 运行：pnpm exec tsx packages/web/test/e2e/manual-review/pending/remote-project-directory.mjs
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium } from "playwright-core";
-import { ServiceChannels } from "@zcode/shared";
-import { V4_WIRE_PROTOCOL_VERSION } from "@zcode/shared/zcode-protocol-v4";
+import { ServiceChannels } from "@codez/shared";
+import { V4_WIRE_PROTOCOL_VERSION } from "@codez/shared/codez-protocol-v4";
 import { BufferReader, deserialize, Emitter, VSBuffer } from "../../../../../rpc/src/index.ts";
 import { taskSnapshotFrame } from "./remote-task-open.fixture.mjs";
 import { createProjectDirectoryFixture } from "./remote-project-directory.fixture.mjs";
@@ -153,7 +153,7 @@ try {
           theme,
           events: {
             ...channels.events,
-            [`${ServiceChannels.ZCodeAgent}:onDynamicConversationFrame`]: frames.event,
+            [`${ServiceChannels.CodezAgent}:onDynamicConversationFrame`]: frames.event,
           },
           responses: {
             ...channels.responses,
@@ -163,7 +163,7 @@ try {
               return channels.responses["window-project-changes:getCapabilities"](...args);
             },
             [`${ServiceChannels.SettingsSync}:getFirstRunPromptState`]: { handled: true },
-            [`${ServiceChannels.ZCodeAgent}:helloConversationV4`]: {
+            [`${ServiceChannels.CodezAgent}:helloConversationV4`]: {
               kind: "hello",
               protocolVersion: V4_WIRE_PROTOCOL_VERSION,
               connectionId: bridge.bridgeSessionId,
@@ -178,17 +178,17 @@ try {
                 compression: "none",
               },
             },
-            [`${ServiceChannels.ZCodeAgent}:initializeConversationV4`]: null,
-            [`${ServiceChannels.ZCodeAgent}:subscribeConversationV4`]: (input) => {
+            [`${ServiceChannels.CodezAgent}:initializeConversationV4`]: null,
+            [`${ServiceChannels.CodezAgent}:subscribeConversationV4`]: (input) => {
               const subscriptionId = `sub-${bridge.bridgeSessionId}-${input.sessionId}`;
               snapshots.set(input.sessionId, () =>
                 frames.fire(taskSnapshotFrame(input.sessionId, subscriptionId)),
               );
               return { ack: { subscriptionId, mode: "snapshot", logEpoch: "e2e" } };
             },
-            [`${ServiceChannels.ZCodeAgent}:unsubscribeConversationV4`]: null,
-            [`${ServiceChannels.ZCodeAgent}:conversationWorkflowRunsV4`]: { runs: [] },
-            [`${ServiceChannels.ZCodeAgent}:conversationPlansV4`]: { plans: [] },
+            [`${ServiceChannels.CodezAgent}:unsubscribeConversationV4`]: null,
+            [`${ServiceChannels.CodezAgent}:conversationWorkflowRunsV4`]: { runs: [] },
+            [`${ServiceChannels.CodezAgent}:conversationPlansV4`]: { plans: [] },
           },
         });
         bridges.set(bridge.bridgeSessionId, desktopBridge);
@@ -230,7 +230,7 @@ try {
         new URL("/remote/v4?app_version=3.15.1&sid=e2e-device&mid=e2e-mid", origin).href,
       );
       const onboarding = page.getByTestId("onboarding-page");
-      const welcome = page.getByRole("dialog", { name: /欢迎使用 ZCode|Welcome to ZCode/ });
+      const welcome = page.getByRole("dialog", { name: /欢迎使用 Codez|Welcome to Codez/ });
       await local().or(onboarding).or(welcome).first().waitFor();
       if (await onboarding.isVisible())
         await onboarding.getByRole("button", { name: /退出引导|Exit onboarding/ }).click();

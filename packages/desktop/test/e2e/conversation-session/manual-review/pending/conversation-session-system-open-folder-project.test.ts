@@ -1,7 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { ServiceChannels } from "@zcode/shared";
-import type { VirtualProject } from "@zcode/services";
+import { ServiceChannels } from "@codez/shared";
+import type { VirtualProject } from "@codez/services";
 import {
   getE2EAppDataPaths,
   waitForDefaultWorkspaceReady,
@@ -17,14 +17,14 @@ import {
 async function openFolder(path: string) {
   // 使用 Explorer 的 argv 入口，保留真实 Main → preload → Root → Host 项目保存链路。
   await browser.electron.execute((electron, folder) => {
-    electron.app.emit("second-instance", {}, ["ZCode.exe", "--open-workspace", folder], "", {});
+    electron.app.emit("second-instance", {}, ["Codez.exe", "--open-workspace", folder], "", {});
   }, path);
 }
 async function draft() {
   return browser.execute(() => {
     const target = window as Window & {
-      __zcodeTabStoreE2E?: { getState(): { activeWorkspacePath: string | null } };
-      __zcodeSessionStoreE2E?: {
+      __codezTabStoreE2E?: { getState(): { activeWorkspacePath: string | null } };
+      __codezSessionStoreE2E?: {
         getState(): {
           getWorkspaceState(path: string): {
             activeTaskId: string | null;
@@ -33,9 +33,9 @@ async function draft() {
         };
       };
     };
-    const path = target.__zcodeTabStoreE2E?.getState().activeWorkspacePath;
+    const path = target.__codezTabStoreE2E?.getState().activeWorkspacePath;
     const state = path
-      ? target.__zcodeSessionStoreE2E?.getState().getWorkspaceState(path)
+      ? target.__codezSessionStoreE2E?.getState().getWorkspaceState(path)
       : undefined;
     return { path, projectId: state?.draftProjectId, taskId: state?.activeTaskId };
   });
@@ -101,7 +101,7 @@ describe("系统目录打开项目", () => {
       (await readProjects()).filter((item) => item.roots.some((entry) => entry.rootPath === warm)),
     ).toHaveLength(1);
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "OFP02-project-reused.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "OFP02-project-reused.png"),
     );
   });
   it("OFP01: argv 冷启动先创建项目再初始化草稿", async function () {
@@ -124,7 +124,7 @@ describe("系统目录打开项目", () => {
       (await readProjects()).filter((item) => item.roots.some((entry) => entry.rootPath === cold)),
     ).toHaveLength(1);
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "OFP01-cold-project.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "OFP01-cold-project.png"),
     );
   });
 });

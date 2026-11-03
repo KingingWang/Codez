@@ -12,13 +12,13 @@
 
 - pin task 时：
   - task 快照文件保持 `{taskId}.json`
-  - 更新 `~/.zcode/v2/tasks-index.sqlite` 中对应 task 的 `pinned` 状态
+  - 更新 `~/.codez/v2/tasks-index.sqlite` 中对应 task 的 `pinned` 状态
 - unpin task 时：
   - task 快照文件保持 `{taskId}.json`
-  - 更新 `~/.zcode/v2/tasks-index.sqlite` 中对应 task 的 `pinned` 状态
+  - 更新 `~/.codez/v2/tasks-index.sqlite` 中对应 task 的 `pinned` 状态
 - archive task 时：
   - task 快照文件保持 `{taskId}.json`
-  - 更新 `~/.zcode/v2/tasks-index.sqlite` 中对应 task 的 `archived` 状态
+  - 更新 `~/.codez/v2/tasks-index.sqlite` 中对应 task 的 `archived` 状态
   - 若之前已 pin，会同步把 sqlite 中 `pinned` 状态清掉
 
 ## 读取规则
@@ -59,7 +59,7 @@
 ## 相关实现
 
 - 持久化：`packages/services/src/session/taskIndexRepo.ts`
-- 服务接口：`packages/services/src/session/zcodeTaskService.ts`
+- 服务接口：`packages/services/src/session/codezTaskService.ts`
 - UI 全局列表：`packages/ui/src/hooks/useGlobalTaskList.ts`
 - UI workspace 分组列表：`packages/ui/src/hooks/useWorkspaceTaskLists.ts`
 - 前端 query cache：`packages/ui/src/store/taskQueryCacheStore.ts`

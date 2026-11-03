@@ -168,13 +168,13 @@ try {
               assert.equal(url.searchParams.get("app_version"), "3.14.1");
               assert.equal(
                 await h.page.evaluate(() =>
-                  localStorage.getItem("zcode-web-remote-last-device-sid"),
+                  localStorage.getItem("codez-web-remote-last-device-sid"),
                 ),
                 selected.device_sid,
               );
               assert.equal(
                 await h.page.evaluate(() =>
-                  localStorage.getItem("zcode-web-remote-last-device-mid"),
+                  localStorage.getItem("codez-web-remote-last-device-mid"),
                 ),
                 selected.device_mid,
               );

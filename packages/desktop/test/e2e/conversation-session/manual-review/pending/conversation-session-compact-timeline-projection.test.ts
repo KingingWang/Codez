@@ -125,7 +125,7 @@ function readTurns() {
 }
 
 function seedManualFailedHistory(sessionId: string, tail: string) {
-  const db = new DatabaseSync(join(homedir(), ".zcode/cli/db/db.sqlite"));
+  const db = new DatabaseSync(join(homedir(), ".codez/cli/db/db.sqlite"));
   try {
     const message = db
       .prepare(

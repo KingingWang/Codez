@@ -29,7 +29,7 @@ await build({
     contents: `
       import { app, BrowserWindow, ipcMain } from "electron";
       import pkg from "electron-updater";
-      import { PlatformChannels } from "@zcode/shared";
+      import { PlatformChannels } from "@codez/shared";
       import { initAutoUpdater, downloadAvailableUpdate } from "./src/main/autoUpdater.ts";
 
       (async () => {
@@ -128,7 +128,7 @@ await build({
   platform: "node",
   format: "cjs",
   external: ["electron", "electron-updater", "semver"],
-  alias: { "@zcode/shared": resolve(repoRoot, "packages/shared/src/index.ts") },
+  alias: { "@codez/shared": resolve(repoRoot, "packages/shared/src/index.ts") },
   plugins: [
     {
       name: "isolated-smoke-logger",

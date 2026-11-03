@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { ipcMain, session, webContents, type BrowserWindow, type UtilityProcess } from "electron";
-import { HostMessageTypes, PlatformChannels, type NetworkCaptureBatch } from "@zcode/shared";
-import { createNodeNetworkCapture } from "@zcode/shared/node";
+import { HostMessageTypes, PlatformChannels, type NetworkCaptureBatch } from "@codez/shared";
+import { createNodeNetworkCapture } from "@codez/shared/node";
 import { NetworkCaptureBuffer } from "./networkCaptureBuffer.js";
 import { subscribeBeforeRequest } from "./observeBeforeRequest.js";
 
@@ -38,8 +38,8 @@ export function startResourceManagerNetwork(
   // 只订阅 App 拥有的 session；内置浏览器/录屏的独立 session 不进入采集。
   const sessions = [
     session.defaultSession,
-    session.fromPartition("persist:zcode-coding-plan"),
-    session.fromPartition("persist:zcode-rewards"),
+    session.fromPartition("persist:codez-coding-plan"),
+    session.fromPartition("persist:codez-rewards"),
   ];
   for (const appSession of sessions) {
     disposers.push(

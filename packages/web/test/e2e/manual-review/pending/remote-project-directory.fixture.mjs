@@ -1,7 +1,7 @@
 // MRO02：真实 ProjectService / RemoteProjectService / SQLite，网络和模型由用例控制。
 import { mkdir, mkdtemp } from "node:fs/promises";
 import { join } from "node:path";
-import { ServiceChannels } from "@zcode/shared";
+import { ServiceChannels } from "@codez/shared";
 import { Emitter } from "../../../../../rpc/src/index.ts";
 import { TaskIndexRepo } from "../../../../../services/src/session/taskIndexRepo.ts";
 import {
@@ -161,7 +161,7 @@ export async function createProjectDirectoryFixture(artifacts) {
           ...bind("window", "window-project", windowProject, projectMethods),
           ...bind("window", "window-remote-projects", windowRemote, remoteMethods),
           ...bind("window", "window-project-changes", windowChanges, ["getCapabilities"]),
-          [`${ServiceChannels.ZCodeTask}:getTaskMeta`]: (input) =>
+          [`${ServiceChannels.CodezTask}:getTaskMeta`]: (input) =>
             tasks.find((task) => task.taskId === input.taskId) ?? null,
         },
         events: {

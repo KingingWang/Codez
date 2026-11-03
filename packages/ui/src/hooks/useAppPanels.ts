@@ -6,8 +6,8 @@ import {
 } from "@/lib/workspaceSidePane.js";
 /* eslint-disable max-lines */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { createUuid } from "@zcode/shared";
-import type { EmbeddedBrowserOpenUrlRequest, IPlatformService } from "@zcode/shared";
+import { createUuid } from "@codez/shared";
+import type { EmbeddedBrowserOpenUrlRequest, IPlatformService } from "@codez/shared";
 import type { CodeViewerSource } from "@/lib/codeViewer.js";
 // 保活：side pane terminal 跨 workspace 会话上移到模块级 registry。
 // 关闭 terminal tab 时必须显式 release，杀掉 PTY，避免常驻 registry 造成孤儿进程。
@@ -197,7 +197,7 @@ export function useAppPanels(options: {
     pluginUiWorkspaceKey,
   });
   pluginUiScopeRef.current = { pluginUiSessionId: pluginUiTarget.sessionId, pluginUiWorkspaceKey };
-  const { zcodeAgentService, zcodeSessionService } = useServices();
+  const { codezAgentService, codezSessionService } = useServices();
   const isOfficeMode = useIsOfficeMode();
   const sidePaneMemoryKey = useMemo(
     () =>
@@ -1273,7 +1273,7 @@ export function useAppPanels(options: {
         try {
           // 判据已经保证是本地 workspace（无 workspaceIdentity / remoteSessionId），
           // 这里只带 workspacePath。
-          const result = await zcodeAgentService.conversationWorkflowRunArtifactsV4({
+          const result = await codezAgentService.conversationWorkflowRunArtifactsV4({
             workspacePath: request.workspacePath,
             sessionId: request.parentSessionId,
             runId: request.runId,
@@ -1304,7 +1304,7 @@ export function useAppPanels(options: {
       commitOpenedSidePaneState,
       openFileUrlInBrowserSidePane,
       supportsEmbeddedBrowser,
-      zcodeAgentService,
+      codezAgentService,
     ],
   );
 
@@ -1312,7 +1312,7 @@ export function useAppPanels(options: {
     (tab: Extract<WorkspaceSidePaneTab, { type: "selection-side-chat" }>) => {
       clearSelectionSideChat(tab.childSessionId);
       clearConversationSelectionReferenceScope(tab.childSessionId, tab.workspaceKey);
-      void zcodeSessionService
+      void codezSessionService
         .closeSession({
           workspacePath: tab.workspacePath,
           ...(tab.workspaceIdentity ? { workspaceIdentity: tab.workspaceIdentity } : {}),
@@ -1326,7 +1326,7 @@ export function useAppPanels(options: {
           });
         });
     },
-    [zcodeSessionService],
+    [codezSessionService],
   );
 
   useEffect(() => {

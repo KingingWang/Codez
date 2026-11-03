@@ -1,4 +1,4 @@
-# ZCode 移动端事件推送开发规格
+# Codez 移动端事件推送开发规格
 
 ## 1. 目标与规则
 
@@ -57,7 +57,7 @@ Host/services 观察 CLI/runtime 权威投影，独立于手机订阅与 Rendere
 
 ### 3.2 HTTP 上报
 
-- `GET /api/v1/remote/notification/status` 使用 ZCode Bearer JWT，返回 `data: {protocol_version:1,event_transport:"http",status:"available|unavailable|unknown"}`。新桌面必须确认 HTTP 能力，不回退 WebSocket。
+- `GET /api/v1/remote/notification/status` 使用 Codez Bearer JWT，返回 `data: {protocol_version:1,event_transport:"http",status:"available|unavailable|unknown"}`。新桌面必须确认 HTTP 能力，不回退 WebSocket。
 - `POST /api/v1/remote/notification/events` 使用同一认证，正文为 `{device_sid,event}`。event 沿用 version、event_id、kind、workspace_id、session_id、run_id、interaction_id、state、occurred_at、locale。
 - 复用现有桌面注册 API 和串行注册 owner 获取 DeviceSID，不为通知另建一份设备身份。
 - server 从 JWT 获取用户，检查 DeviceSID 归属；正文不允许指定接收用户。未认证或设备越权拒绝，未知版本和业务类型 ignored。
@@ -97,7 +97,7 @@ HTTP 来源允许无 presence；旧 WebSocket 来源仍要求有效 presence。R
 5. 使用认证来源的原始 user_id 调用 inner-send；未配置查询地址时省略 device_ids，配置后传入查询列表；模板只含简短提醒，不含任务结果。
 6. 每个事件仅调用下游一次；网络错误、超时和业务错误返回 rejected，不自动重试，且不得超过事件有效期。
 
-dedup_key 使用稳定事件身份，加入 zcode 命名空间，并限制在 64 字节内；相同事件不更换键。Redis 去重标记保留 24 小时，不保存待发载荷。客户端发生时间用于过期判断，不能通过重新入队或重试刷新有效期。
+dedup_key 使用稳定事件身份，加入 codez 命名空间，并限制在 64 字节内；相同事件不更换键。Redis 去重标记保留 24 小时，不保存待发载荷。客户端发生时间用于过期判断，不能通过重新入队或重试刷新有效期。
 
 状态读取错误、配置查询后的无设备、已配对、已解决、已过期分别记录并停止。参数与签名错误停止并告警。不增加 MySQL 通知中心或额外可靠 outbox。
 
@@ -108,7 +108,7 @@ dedup_key 使用稳定事件身份，加入 zcode 命名空间，并限制在 64
 下列是待提供接口的开发契约，不表示当前用户态 /me 接口已经取消鉴权。地址可配置；server 不获取、不保存用户上游 access token。
 
 ```http
-GET {device_lookup_url}?provider={provider}&user_id={zcode_user_id}
+GET {device_lookup_url}?provider={provider}&user_id={codez_user_id}
 ```
 
 请求不发送 Bearer 或 Push 签名，查询身份来自 server 认证用户记录。参数使用标准 URL 编码。
@@ -134,7 +134,7 @@ GET {device_lookup_url}?provider={provider}&user_id={zcode_user_id}
 mobile_push:
   enabled: false
   base_url: ""
-  app_id: "zcode"
+  app_id: "codez"
   secret: ""
   device_lookup_url: ""
   device_cache_ttl: "30s"
@@ -149,7 +149,7 @@ mobile_push:
 ```http
 POST {base_url}/agent-im/v1/push/inner-send
 Content-Type: application/json
-x-auth-appid: zcode
+x-auth-appid: codez
 x-auth-timestamp: <Unix 秒>
 x-auth-sign: <小写十六进制 MD5>
 ```
@@ -164,11 +164,11 @@ sign = md5(appid + "&" + timestamp + "&" + secret)
   "device_ids": ["dev_example"],
   "kind": "task_completed",
   "title": "修复登录接口超时",
-  "body": "任务已完成\nZCode 远程控制 · macOS",
-  "dedup_key": "zcode:task:example",
+  "body": "任务已完成\nCodez 远程控制 · macOS",
+  "dedup_key": "codez:task:example",
   "data": {
     "v": "1",
-    "open_target": "zcode_remote_control",
+    "open_target": "codez_remote_control",
     "source_device_id": "desktop_example",
     "conversation_id": "session_example",
     "run_id": "run_example",
@@ -180,7 +180,7 @@ sign = md5(appid + "&" + timestamp + "&" + secret)
 
 `device_ids` 可选：传入非空列表时定向发送；nil 或空列表在 JSON 中省略，由上游推送到该用户全部设备。未配置设备查询地址时 API 同步发送 直接使用认证账号原始 user_id，省略 device_ids；配置查询地址后查询失败或空列表仍跳过。
 
-`data` 透传为点击 Ext，`open_target` 固定为 `zcode_remote_control`。`source_device_id` 对应来源桌面 DeviceSID，`conversation_id` 对应会话 ID；`run_id` 仅为执行标识，不代替会话 ID。Ext 的 source、push_id、target_user_id 仍由上游生成；标题和正文仍放外层，业务事件种类、签名和幂等不变，取消自动重试。
+`data` 透传为点击 Ext，`open_target` 固定为 `codez_remote_control`。`source_device_id` 对应来源桌面 DeviceSID，`conversation_id` 对应会话 ID；`run_id` 仅为执行标识，不代替会话 ID。Ext 的 source、push_id、target_user_id 仍由上游生成；标题和正文仍放外层，业务事件种类、签名和幂等不变，取消自动重试。
 
 每次请求重新生成秒级 timestamp/sign，时差不超过上游 10 分钟窗口。kind 不超过 32 字节；title 不超过 40 UTF-16 单位；body 保守限制在 100 UTF-16 单位；data 不超过 1KB。文案不包含问题全文、命令、代码或任务结果。
 
@@ -203,7 +203,7 @@ HTTP 401/业务 code=401 按签名错误处理，code=400 为参数错误，code
 
 状态、校验、发送属于本轮变化；不新增 UI 设置或视觉样式。服务源事件、Main 转发和手机交互的测试需独立验证，不能以单层 mock 证明完整链路。
 
-代码阅读入口：Main 的 webRemoteControlManager 与 WebRemoteControlDeviceTransport；Host 的 zcodeTaskIndexSyncer 及会话投影；shared 的 Relay V2 和 protocol-v4 schema。现有 UI taskNotificationOrchestrator 可核对分类，但不是后台事件生产者。代码图谱不可用时使用定向调用链，不能据此声称完成图索引验证。
+代码阅读入口：Main 的 webRemoteControlManager 与 WebRemoteControlDeviceTransport；Host 的 codezTaskIndexSyncer 及会话投影；shared 的 Relay V2 和 protocol-v4 schema。现有 UI taskNotificationOrchestrator 可核对分类，但不是后台事件生产者。代码图谱不可用时使用定向调用链，不能据此声称完成图索引验证。
 
 ### 6.2 验收用例
 
@@ -251,19 +251,19 @@ HTTP 401/业务 code=401 按签名错误处理，code=400 为参数错误，code
 
 ## 会话标题、桌面来源与通知直达
 
-HTTP 事件增加可选 session_title、desktop_platform（windows/macos/linux）。Host 从当前会话投影取标题；Main 覆盖为桌面宿主平台。标题变化本身不触发通知。server 将标题清理并限制为 40 UTF-16 单位；空值按语言显示“未命名会话”/“Untitled conversation”。正文为事件文案加换行及“ZCode 远程控制 · macOS”等来源，限制 100 UTF-16 单位，不拆分 Unicode 码点。不显示项目、hostname 或任务正文。
+HTTP 事件增加可选 session_title、desktop_platform（windows/macos/linux）。Host 从当前会话投影取标题；Main 覆盖为桌面宿主平台。标题变化本身不触发通知。server 将标题清理并限制为 40 UTF-16 单位；空值按语言显示“未命名会话”/“Untitled conversation”。正文为事件文案加换行及“Codez 远程控制 · macOS”等来源，限制 100 UTF-16 单位，不拆分 Unicode 码点。不显示项目、hostname 或任务正文。
 
 五类中文文案：有问题需要你回复、有一项操作等待你确认、有一份计划等待你确认、任务已完成、任务执行失败，请查看。旧事件无平台时仅显示产品来源；新字段不参与幂等。交互类点击载荷补充 interaction_id，其他既有标识不变。
 
-手机仅将 source=zcode/open_target=zcode_remote_control 路由到 ZCode 页面。当前环境、目标账号、来源 device_sid、workspace_id、conversation_id 共同定位。手机对已认证工作区 key（trim 后 identity 优先，否则 path）按 UTF-8 SHA-256 小写 hex 匹配，不通过名称定位，不信任通知提供的 URL。复用现有远控 session/selectTask；不依赖任务首屏列表。
+手机仅将 source=codez/open_target=codez_remote_control 路由到 Codez 页面。当前环境、目标账号、来源 device_sid、workspace_id、conversation_id 共同定位。手机对已认证工作区 key（trim 后 identity 优先，否则 path）按 UTF-8 SHA-256 小写 hex 匹配，不通过名称定位，不信任通知提供的 URL。复用现有远控 session/selectTask；不依赖任务首屏列表。
 
 ```text
-点击 → 账号门禁 → ZCode 来源桌面 → 远控连接 → 工作区摘要匹配 → 会话最新状态
+点击 → 账号门禁 → Codez 来源桌面 → 远控连接 → 工作区摘要匹配 → 会话最新状态
         └ 未登录暂存         └ 不可达提示重试                  └ 交互仍待处理才定位
 ```
 
-手机单一导航 owner 管理目标，最新点击替代旧目标；切号或退出取消旧异步操作。未登录保留本次 ZCode 点击，其他通知行为不变；账号不匹配不自动切号。远控关闭不自动开启，桌面离线不新增云端副本。缺定位字段的旧通知仅进入 ZCode 入口。端到端验证冷/热启动、本地/远程工作区、切号、连续点击、断线、会话删除及已解决交互。日志仅记录关联 ID 和结果，不记录标题正文或凭据。
+手机单一导航 owner 管理目标，最新点击替代旧目标；切号或退出取消旧异步操作。未登录保留本次 Codez 点击，其他通知行为不变；账号不匹配不自动切号。远控关闭不自动开启，桌面离线不新增云端副本。缺定位字段的旧通知仅进入 Codez 入口。端到端验证冷/热启动、本地/远程工作区、切号、连续点击、断线、会话删除及已解决交互。日志仅记录关联 ID 和结果，不记录标题正文或凭据。
 
-实现边界：本轮复用手机 Remote control → ZCode 的远控 session 和会话页面。通过实时 pendingInteractions.anchorRowId 定位现有工具卡片，已解决、自动解决或锚点不可见时不猜测；不新增审批操作按钮。
+实现边界：本轮复用手机 Remote control → Codez 的远控 session 和会话页面。通过实时 pendingInteractions.anchorRowId 定位现有工具卡片，已解决、自动解决或锚点不可见时不猜测；不新增审批操作按钮。
 
 HTTP 通知由独立 MobilePushController 调用通知服务，设备归属校验不经过 RelayService。当前请求内同步调用一次下游，删除 goroutine、任务组、退出等待及重试。桌面上报总预算20秒，下游默认5秒。只有上游受理/确认去重返回 accepted；本地重复或规则跳过 ignored；调用失败 rejected；解决状态写入成功的 accepted 只表示状态同步完成。超时不证明未发送，不更换 dedup_key 补发。

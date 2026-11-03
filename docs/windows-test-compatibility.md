@@ -13,12 +13,12 @@ rebase 到最新 staging 后全量单测 **9 失败 / 12444 通过**，无崩溃
 
 | 类别 | 数量 | 说明 |
 | --- | --- | --- |
-| Windows 进程树回收残余 | 3 | `zcodeAgentProcessManager`；lifecycle fixtures 工作已把该项从 8 修到 3 |
+| Windows 进程树回收残余 | 3 | `codezAgentProcessManager`；lifecycle fixtures 工作已把该项从 8 修到 3 |
 | staging 存量漂移（任何平台都挂） | 3 | settings MCP/skill/subagent scope badge 的 `formatCanonicalPluginName` 断言；`a9263f3d03` 从列表组件移除该调用但未同步测试，需业务定性 |
 | 跨平台漂移 | 2 | `feedbackHttpClient`、`stdioDesktopPresentationSurface`（见下） |
 | flaky（负载超时） | 1 | `appUsagePanel`，单独运行通过 |
 
-rebase 附带处理：staging 的 CUA 单包合并（broker 51 文件并入 `@zcode/zcode-cua`）
+rebase 附带处理：staging 的 CUA 单包合并（broker 51 文件并入 `@codez/codez-cua`）
 移除了 `launchSocketPath` / `reservedTransport`（rendezvous `.pending` 让渡机制），
 本地 windowsCuaDevHelperHost / node.ts 与相关测试已对齐新 API（Windows named pipe
 无 fs 让渡语义，socketPath 即唯一事实源；caller_timeout 一律 warming up fail-closed）。
@@ -50,7 +50,7 @@ rebase 附带处理：staging 的 CUA 单包合并（broker 51 文件并入 `@zc
 4. **Unix socket / macOS 专属链路（约 50 用例）**：CUA 权限代理是 macOS/Linux 专属
    （.app / LaunchServices / codesign / ps+SIGTERM），相关 describe/it 用
    `describe.skipIf(process.platform === "win32")` 并注明原因；平台无关的纯逻辑
-   组保留运行。ZCode Server control channel 不属于此类：Windows 产品实现使用 named
+   组保留运行。Codez Server control channel 不属于此类：Windows 产品实现使用 named
    pipe，测试必须用 `resolveServerLayout(...).controlEndpoint` 或等价的平台 endpoint
    helper 覆盖。规则：skip 必须写清"产品为什么不支持 Windows"，禁止无注释 skip。
 5. **路径分隔符（约 20 用例）**：mock POSIX 风格输入的用例，期望值与产品同源构造
@@ -67,9 +67,9 @@ rebase 附带处理：staging 的 CUA 单包合并（broker 51 文件并入 `@zc
 
 ### Windows 进程树回收不彻底（当前最大剩余失败源）
 
-现象：`zcodeAgentProcessManager`（8 用例）报
+现象：`codezAgentProcessManager`（8 用例）报
 `runtime process tree cleanup incomplete; remaining pid=...`；其衍生效应使
-`zcodeAgentService(.v4)` / `localServicesRemoteAuthority` / `daemonRegistration`
+`codezAgentService(.v4)` / `localServicesRemoteAuthority` / `daemonRegistration`
 （约 32 用例）在 afterEach 删除 temp 目录时 EPERM——**agent 子进程未完全退出时
 cwd 占用目录，Windows 无法删除任何进程的 cwd 目录**（已用最小 repro 验证：
 进程活着 → EPERM 恒失败；退出后 → 删除成功）。
@@ -91,7 +91,7 @@ retry）。修完恢复原 mock 顺序作为回归。
 
 - `stdioDesktopPresentationSurface`：期望装配传 `presentationSurface: "desktop"`，
   `packages/server/src` 无该字段（services 层有）；
-- `feedbackHttpClient`：ZCODE_ENV=test 期望 base `zcode.z.ai`，实际 `zcode.z.ai`；
+- `feedbackHttpClient`：CODEZ_ENV=test 期望 base `zcode.z.ai`，实际 `zcode.z.ai`；
 - `useCodingPlanQuotaResetUi`：mock 收到 `builtin:personal-granted`，期望 `builtin:team`。
 
 ### 间歇性 0xC0000005

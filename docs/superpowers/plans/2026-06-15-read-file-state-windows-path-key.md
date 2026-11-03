@@ -6,25 +6,25 @@
 
 **架构：** Read、Write、Edit 共享同一套归一化后的 read-state key，而不是各 handler 自己比较原始路径字符串。路径 canonicalization 只用于内部 read-before-write/edit 状态身份判断，不改变 provider-visible 的 `filePath`、权限路径、diff 路径或全局 path policy。
 
-**技术栈：** TypeScript、Node path API、Vitest、现有 `@zcode/core` 文件工具 handler。
+**技术栈：** TypeScript、Node path API、Vitest、现有 `@codez/core` 文件工具 handler。
 
 ---
 
 ## 文件结构
 
-- 新增：`apps/zcode-cli/packages/core/src/tool/read-file-state.ts`
+- 新增：`apps/codez-cli/packages/core/src/tool/read-file-state.ts`
   - 负责 read-state key 构造、Windows 路径身份归一化，以及 Read/Write/Edit 共享的 read-state 查找 helper。
-- 修改：`apps/zcode-cli/packages/core/src/tool/handlers/read.ts`
+- 修改：`apps/codez-cli/packages/core/src/tool/handlers/read.ts`
   - 用共享 helper 替换本地 cache-key 构造。
-- 修改：`apps/zcode-cli/packages/core/src/tool/handlers/write.ts`
+- 修改：`apps/codez-cli/packages/core/src/tool/handlers/write.ts`
   - 用共享 helper 替换 `entry.path !== filePath` 扫描逻辑和本地 full-read key 构造。
-- 修改：`apps/zcode-cli/packages/core/src/tool/handlers/edit.ts`
+- 修改：`apps/codez-cli/packages/core/src/tool/handlers/edit.ts`
   - 用共享 helper 替换 `entry.path !== filePath` 扫描逻辑和本地 full-read key 构造，同时保留现有 partial-read fallback 行为。
-- 修改：`apps/zcode-cli/packages/core/tests/write-tool-contract.test.ts`
+- 修改：`apps/codez-cli/packages/core/tests/write-tool-contract.test.ts`
   - 增加 normalized read-state key 的 Write 回归测试，避免 mac runner 用当前平台 `node:path` 误测 Windows handler 行为。
-- 修改：`apps/zcode-cli/packages/core/tests/edit-tool-contract.test.ts`
+- 修改：`apps/codez-cli/packages/core/tests/edit-tool-contract.test.ts`
   - 增加 normalized read-state key 的 Edit 回归测试，避免 mac runner 用当前平台 `node:path` 误测 Windows handler 行为。
-- 新增测试：`apps/zcode-cli/packages/core/tests/read-file-state.test.ts`
+- 新增测试：`apps/codez-cli/packages/core/tests/read-file-state.test.ts`
   - 单测平台相关的 key 归一化逻辑，不依赖真实 Windows runner。
 
 ---
@@ -32,11 +32,11 @@
 ### 任务 1：增加失败的 path-key 单测
 
 **文件：**
-- 新增：`apps/zcode-cli/packages/core/tests/read-file-state.test.ts`
+- 新增：`apps/codez-cli/packages/core/tests/read-file-state.test.ts`
 
 - [ ] **步骤 1：为内部路径身份写失败单测**
 
-创建 `apps/zcode-cli/packages/core/tests/read-file-state.test.ts`：
+创建 `apps/codez-cli/packages/core/tests/read-file-state.test.ts`：
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -44,8 +44,8 @@ import { createReadFileStatePathKey } from "../src/tool/read-file-state.js";
 
 describe("read file state path keys", () => {
   it("treats equivalent Windows drive-letter paths as the same read-state file", () => {
-    expect(createReadFileStatePathKey("c:/zcode-readwrite-repro/repro.txt", "win32")).toBe(
-      createReadFileStatePathKey("C:\\zcode-readwrite-repro\\repro.txt", "win32"),
+    expect(createReadFileStatePathKey("c:/codez-readwrite-repro/repro.txt", "win32")).toBe(
+      createReadFileStatePathKey("C:\\codez-readwrite-repro\\repro.txt", "win32"),
     );
   });
 
@@ -92,8 +92,8 @@ describe("read file state path keys", () => {
   });
 
   it("does not case-fold non-Windows paths", () => {
-    expect(createReadFileStatePathKey("/tmp/ZCode/File.txt", "linux")).not.toBe(
-      createReadFileStatePathKey("/tmp/zcode/file.txt", "linux"),
+    expect(createReadFileStatePathKey("/tmp/Codez/File.txt", "linux")).not.toBe(
+      createReadFileStatePathKey("/tmp/codez/file.txt", "linux"),
     );
   });
 
@@ -110,7 +110,7 @@ describe("read file state path keys", () => {
 运行：
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/read-file-state.test.ts
+pnpm --filter @codez/core exec vitest run tests/read-file-state.test.ts
 ```
 
 预期：失败，原因是 `../src/tool/read-file-state.js` 还不存在。
@@ -120,11 +120,11 @@ pnpm --filter @zcode/core exec vitest run tests/read-file-state.test.ts
 ### 任务 2：实现共享 read-state key helper
 
 **文件：**
-- 新增：`apps/zcode-cli/packages/core/src/tool/read-file-state.ts`
+- 新增：`apps/codez-cli/packages/core/src/tool/read-file-state.ts`
 
 - [ ] **步骤 1：新增共享 helper 模块**
 
-创建 `apps/zcode-cli/packages/core/src/tool/read-file-state.ts`：
+创建 `apps/codez-cli/packages/core/src/tool/read-file-state.ts`：
 
 ```ts
 // ============================================================
@@ -254,7 +254,7 @@ function stripWindowsExtendedPathPrefix(filePath: string): string {
 运行：
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/read-file-state.test.ts
+pnpm --filter @codez/core exec vitest run tests/read-file-state.test.ts
 ```
 
 预期：通过。
@@ -264,7 +264,7 @@ pnpm --filter @zcode/core exec vitest run tests/read-file-state.test.ts
 ### 任务 3：让 Read 使用共享 key
 
 **文件：**
-- 修改：`apps/zcode-cli/packages/core/src/tool/handlers/read.ts`
+- 修改：`apps/codez-cli/packages/core/src/tool/handlers/read.ts`
 
 - [ ] **步骤 1：导入共享 key helper**
 
@@ -303,7 +303,7 @@ function createReadCacheKey(filePath: string, offset: number, limit: number | un
 运行：
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/read-file-state.test.ts tests/file-tool-port.test.ts
+pnpm --filter @codez/core exec vitest run tests/read-file-state.test.ts tests/file-tool-port.test.ts
 ```
 
 预期：通过。
@@ -313,7 +313,7 @@ pnpm --filter @zcode/core exec vitest run tests/read-file-state.test.ts tests/fi
 ### 任务 4：增加 Write 回归覆盖
 
 **文件：**
-- 修改：`apps/zcode-cli/packages/core/tests/write-tool-contract.test.ts`
+- 修改：`apps/codez-cli/packages/core/tests/write-tool-contract.test.ts`
 
 - [ ] **步骤 1：导入共享 key helper**
 
@@ -374,7 +374,7 @@ it("accepts a normalized read-state key when the stored display path differs", a
 运行：
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/write-tool-contract.test.ts -t "normalized read-state key"
+pnpm --filter @codez/core exec vitest run tests/write-tool-contract.test.ts -t "normalized read-state key"
 ```
 
 任务 5 实现前的预期：失败，错误为 `File has not been read yet. Read it first before writing to it.`
@@ -384,7 +384,7 @@ pnpm --filter @zcode/core exec vitest run tests/write-tool-contract.test.ts -t "
 ### 任务 5：让 Write 使用共享 lookup
 
 **文件：**
-- 修改：`apps/zcode-cli/packages/core/src/tool/handlers/write.ts`
+- 修改：`apps/codez-cli/packages/core/src/tool/handlers/write.ts`
 
 - [ ] **步骤 1：导入共享 helper**
 
@@ -475,7 +475,7 @@ import type { ReadFileStateMap, ToolExecutionContext } from "../types.js";
 运行：
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/write-tool-contract.test.ts tests/read-file-state.test.ts
+pnpm --filter @codez/core exec vitest run tests/write-tool-contract.test.ts tests/read-file-state.test.ts
 ```
 
 预期：通过。
@@ -485,7 +485,7 @@ pnpm --filter @zcode/core exec vitest run tests/write-tool-contract.test.ts test
 ### 任务 6：增加 Edit 回归覆盖
 
 **文件：**
-- 修改：`apps/zcode-cli/packages/core/tests/edit-tool-contract.test.ts`
+- 修改：`apps/codez-cli/packages/core/tests/edit-tool-contract.test.ts`
 
 - [ ] **步骤 1：导入共享 key helper**
 
@@ -548,7 +548,7 @@ it("accepts a normalized read-state key when the stored display path differs", a
 运行：
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/edit-tool-contract.test.ts -t "normalized read-state key"
+pnpm --filter @codez/core exec vitest run tests/edit-tool-contract.test.ts -t "normalized read-state key"
 ```
 
 任务 7 实现前的预期：失败，错误为 `File has not been read yet. Read it first before writing to it.`
@@ -558,7 +558,7 @@ pnpm --filter @zcode/core exec vitest run tests/edit-tool-contract.test.ts -t "n
 ### 任务 7：让 Edit 使用共享 lookup
 
 **文件：**
-- 修改：`apps/zcode-cli/packages/core/src/tool/handlers/edit.ts`
+- 修改：`apps/codez-cli/packages/core/src/tool/handlers/edit.ts`
 
 - [ ] **步骤 1：导入共享 helper**
 
@@ -648,7 +648,7 @@ return partialRead;
 运行：
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/edit-tool-contract.test.ts tests/read-file-state.test.ts
+pnpm --filter @codez/core exec vitest run tests/edit-tool-contract.test.ts tests/read-file-state.test.ts
 ```
 
 预期：通过。
@@ -658,7 +658,7 @@ pnpm --filter @zcode/core exec vitest run tests/edit-tool-contract.test.ts tests
 ### 任务 8：校准 file-tool-port direct-handler 测试
 
 **文件：**
-- 修改：`apps/zcode-cli/packages/core/tests/file-tool-port.test.ts`
+- 修改：`apps/codez-cli/packages/core/tests/file-tool-port.test.ts`
 
 - [ ] **步骤 1：给 direct-handler Write existing-file 用例补显式 read-state**
 
@@ -713,7 +713,7 @@ Write/Edit 的 provider-visible result 继续保留原始 tool input path；不�
 运行：
 
 ```bash
-pnpm --filter @zcode/core exec vitest run \
+pnpm --filter @codez/core exec vitest run \
   tests/read-file-state.test.ts \
   tests/write-tool-contract.test.ts \
   tests/edit-tool-contract.test.ts \
@@ -727,7 +727,7 @@ pnpm --filter @zcode/core exec vitest run \
 运行：
 
 ```bash
-pnpm --filter @zcode/core typecheck
+pnpm --filter @codez/core typecheck
 ```
 
 预期：通过。
@@ -737,7 +737,7 @@ pnpm --filter @zcode/core typecheck
 运行：
 
 ```bash
-pnpm --filter @zcode/core lint
+pnpm --filter @codez/core lint
 ```
 
 预期：通过。
@@ -747,10 +747,10 @@ pnpm --filter @zcode/core lint
 运行：
 
 ```bash
-git diff -- apps/zcode-cli/packages/core/src/tool/handlers/read.ts \
-  apps/zcode-cli/packages/core/src/tool/handlers/write.ts \
-  apps/zcode-cli/packages/core/src/tool/handlers/edit.ts \
-  apps/zcode-cli/packages/core/src/tool/read-file-state.ts
+git diff -- apps/codez-cli/packages/core/src/tool/handlers/read.ts \
+  apps/codez-cli/packages/core/src/tool/handlers/write.ts \
+  apps/codez-cli/packages/core/src/tool/handlers/edit.ts \
+  apps/codez-cli/packages/core/src/tool/read-file-state.ts
 ```
 
 确认：

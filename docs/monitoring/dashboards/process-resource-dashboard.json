@@ -1,5 +1,5 @@
 {
-  "displayName": "ZCode 全进程资源监控",
+  "displayName": "Codez 全进程资源监控",
   "description": "全进程资源监控：设备等权的版本比较、本机与远端分区、MCP/慢 Bash、单设备排查与采集质量。仅新资源事件；local 和少于100设备标识仅观察，不作回归结论。",
   "attribute": {
     "type": "grid",

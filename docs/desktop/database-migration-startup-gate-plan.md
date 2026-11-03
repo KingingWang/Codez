@@ -1,4 +1,4 @@
-# 进入 ZCode 前统一准备数据库
+# 进入 Codez 前统一准备数据库
 
 状态：2026-09-14 已实现，完成代码复审；自动化验证和平台限制见 [实施复审](./database-startup-implementation-review.md)。执行与验收清单见 [Todo 145](../working-memory/provider-refactor/steps/todo-145-global-database-startup-loading.md)。
 
@@ -103,4 +103,4 @@ SQLite 拿锁 → 读取起点 → 原迁移/COMMIT 或失败
 
 验收：空库 none、旧库准确起点、重开为最新编号；另一写者先提交后读到其结果；执行失败保留迁移前编号；未知与无记录区分；多库不混淆、重复快照不重复上报、手动重试清空；原 SQL 和 checksum 不变。
 
-验证记录：应用侧 7 文件 39 项、CLI 原迁移/异步锁/崩溃恢复/session-store 4 文件 60 项通过；root `pnpm typecheck`、`pnpm lint`（45 warnings / 0 errors）、architecture（0 violations）、CLI adapters/bootstrap tsc 与 adapters lint、桌面 tsup 通过。构建后的真实 tasks Worker 在隔离临时库验证：空库起点 null；只缺 0003 时起点 0002 且提交 1 项；再次打开起点 0003 且执行 0 项。没有修改 UI/E2E 交互，没有发送生产 ARMS 事件；后台入库仍待验证。日志在本机 `/tmp/zcode-migration-baseline-*.log`。
+验证记录：应用侧 7 文件 39 项、CLI 原迁移/异步锁/崩溃恢复/session-store 4 文件 60 项通过；root `pnpm typecheck`、`pnpm lint`（45 warnings / 0 errors）、architecture（0 violations）、CLI adapters/bootstrap tsc 与 adapters lint、桌面 tsup 通过。构建后的真实 tasks Worker 在隔离临时库验证：空库起点 null；只缺 0003 时起点 0002 且提交 1 项；再次打开起点 0003 且执行 0 项。没有修改 UI/E2E 交互，没有发送生产 ARMS 事件；后台入库仍待验证。日志在本机 `/tmp/codez-migration-baseline-*.log`。

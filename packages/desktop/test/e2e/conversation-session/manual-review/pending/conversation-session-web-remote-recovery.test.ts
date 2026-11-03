@@ -1,14 +1,14 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Page } from "playwright-core";
-import type { ProjectTree, VirtualProject } from "@zcode/services";
+import type { ProjectTree, VirtualProject } from "@codez/services";
 import {
   buildRemoteHostWorkspaceIdentity,
   parseWebRemoteControlAppPayload,
   ServiceChannels,
   type WebRemoteControlAppPayload,
-} from "@zcode/shared";
-import { TID_V4_COMPOSER_INPUT, TID_V4_COMPOSER_SEND, TID_V4_STOP } from "@zcode/shared/test-ids";
+} from "@codez/shared";
+import { TID_V4_COMPOSER_INPUT, TID_V4_COMPOSER_SEND, TID_V4_STOP } from "@codez/shared/test-ids";
 import { clearAppData, DEFAULT_WORKSPACE } from "#e2e/helpers/desktop-app";
 import { releaseControlledReplay } from "#e2e/helpers/controlled-replay";
 import { resolveE2ERuntimePath } from "#e2e/helpers/e2e-runtime-paths";
@@ -58,11 +58,11 @@ async function readDesktopWorkspacePaths(): Promise<string[]> {
   return browser.execute(() => {
     const state = (
       window as Window & {
-        __zcodeTabStoreE2E?: {
+        __codezTabStoreE2E?: {
           getState(): { tabs: Array<{ workspacePath?: string }> };
         };
       }
-    ).__zcodeTabStoreE2E?.getState();
+    ).__codezTabStoreE2E?.getState();
     if (!state) throw new Error("MRO04 desktop tab store missing");
     return state.tabs.flatMap((tab) => (tab.workspacePath ? [tab.workspacePath] : []));
   });
@@ -72,9 +72,9 @@ async function readWebWorkspace(page: Page): Promise<string | null> {
   return page.evaluate(() => {
     const state = (
       window as Window & {
-        __zcodeTabStoreE2E?: { getState(): { activeWorkspacePath: string | null } };
+        __codezTabStoreE2E?: { getState(): { activeWorkspacePath: string | null } };
       }
-    ).__zcodeTabStoreE2E?.getState();
+    ).__codezTabStoreE2E?.getState();
     return state?.activeWorkspacePath ?? null;
   });
 }
@@ -147,8 +147,8 @@ describe(`${CASE}: 失效通知补发与长后台恢复原项目任务`, () => {
       : "真实后台46秒后回前台15秒内显示原task完成内容";
     it(`MRO04-${width}: ${title}`, async function () {
       this.timeout(5 * 60_000);
-      const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR;
-      if (!artifacts || !process.env.ZCODE_E2E_HOME_DIR)
+      const artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR;
+      if (!artifacts || !process.env.CODEZ_E2E_HOME_DIR)
         throw new Error("MRO04 requires isolated Electron runner");
       const target = await prepareMobileOnlyProject(String(width));
       const { workspacePath, pairingUrl } = target;
@@ -332,8 +332,8 @@ describe(`${CASE}: 失效通知补发与长后台恢复原项目任务`, () => {
   }
   it("MRO04-06: 运行中短后台持续收帧，回前台复用原socket与bridge完成原task", async function () {
     this.timeout(4 * 60_000);
-    const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR;
-    if (!artifacts || !process.env.ZCODE_E2E_HOME_DIR)
+    const artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR;
+    if (!artifacts || !process.env.CODEZ_E2E_HOME_DIR)
       throw new Error("MRO04 requires isolated Electron runner");
     const marker = "MRO04-short-390";
     const fixtureId = "mro04-mobile-short-390";
@@ -443,8 +443,8 @@ describe(`${CASE}: 失效通知补发与长后台恢复原项目任务`, () => {
   });
   it("MRO04-07: 后台多个在途ACK各收到INTERNAL，回前台先探测原socket，桌面离开期间不进失败页", async function () {
     this.timeout(4 * 60_000);
-    const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR;
-    if (!artifacts || !process.env.ZCODE_E2E_HOME_DIR)
+    const artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR;
+    if (!artifacts || !process.env.CODEZ_E2E_HOME_DIR)
       throw new Error("MRO04 requires isolated Electron runner");
     const marker = "MRO04-internal-390";
     const fixtureId = "mro04-mobile-internal-390";
@@ -631,8 +631,8 @@ describe(`${CASE}: 失效通知补发与长后台恢复原项目任务`, () => {
     for (const scenario of ["offline", "deleted-task", "removed-host"] as const) {
       it(`MRO04-cold-${width}-${scenario}: 首次加载和刷新使用可用workspace`, async function () {
         this.timeout(3 * 60_000);
-        const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR;
-        if (!artifacts || !process.env.ZCODE_E2E_HOME_DIR)
+        const artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR;
+        if (!artifacts || !process.env.CODEZ_E2E_HOME_DIR)
           throw new Error("MRO04 cold start requires isolated Electron runner");
         await prepareSSHConnectionPage(CASE);
         await startDraftFromProject(DEFAULT_WORKSPACE);

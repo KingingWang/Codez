@@ -18,7 +18,7 @@ describe("mobile log sink", () => {
   const logger = { info: vi.fn(), warn: vi.fn() };
 
   beforeEach(async () => {
-    rootDir = await mkdtemp(join(tmpdir(), "zcode-mobile-log-"));
+    rootDir = await mkdtemp(join(tmpdir(), "codez-mobile-log-"));
     logger.info.mockClear();
     logger.warn.mockClear();
   });

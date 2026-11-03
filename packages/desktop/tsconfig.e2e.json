@@ -16,7 +16,7 @@
     ],
     "noEmit": true,
     "paths": {
-      "@zcode/e2e-report": [
+      "@codez/e2e-report": [
         "../e2e-report/src/node/index.ts"
       ]
     }
@@ -26,7 +26,7 @@
     { "path": "../shared" },
     { "path": "../ui" },
     { "path": "../e2e-report" },
-    { "path": "../zcode-server-cli" }
+    { "path": "../codez-server-cli" }
 
   ]
 }

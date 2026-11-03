@@ -28,7 +28,7 @@ Execute renderer、TaskOutput/TaskStop；相邻 Hook 用例验证共享 pipe col
 | 输出文件链接 | Desktop code viewer | 打开真实输出路径，不执行额外 Bash |
 | Hook | 通用 execution pipe | stdin 与 stdout/stderr 仍经 collector 正常交付 |
 
-测量使用 `ZCODE_E2E_COVERAGE=1` 的四域报告。每个报告必须 `complete=true`。
+测量使用 `CODEZ_E2E_COVERAGE=1` 的四域报告。每个报告必须 `complete=true`。
 四域分别统计，不合并百分比；用例通过率与代码命中率分别列出。
 改动行口径为 **Istanbul 源码语句起始行 ∩ 新增/修改 diff 行**，不把类型、import/export、
 注释、空行或删除行放入分母。同一域多个 run 按源码位置取命中并集，不混用 statement ID。
@@ -165,7 +165,7 @@ Terminal fixture 同步补齐本 case 的自动标题响应，避免隔离回放
 
 ### 尚未由通过的 Bash E2E 命中的改动行
 
-以下 adapter 文件均在 `apps/zcode-cli/packages/adapters/src/exec/`；行号对应目标提交。
+以下 adapter 文件均在 `apps/codez-cli/packages/adapters/src/exec/`；行号对应目标提交。
 
 | 文件 | 未命中行 | 原因 / 证据边界 |
 | --- | --- | --- |
@@ -176,7 +176,7 @@ Terminal fixture 同步补齐本 case 的自动标题响应，避免隔离回放
 | `node-execution-adapter-run.ts` | 192、314 | open 完成后的取消窗口、spawn error；由执行层确定性测试补充 |
 | 同上 | 278–280、284–287、298、300、306、312 | 通用 pipe progress / drain / collector close |
 | `output-collector.ts` | 81–83、88、133、141、171 | 通用 collector 保留分支，普通 Bash 不再创建 collector |
-| `packages/shared/src/zcode-protocol/index.ts` | 141、144–146 | 旧协议结果校验；V4 Desktop 入口不触发。CLI/Host/Main 中均未命中 |
+| `packages/shared/src/codez-protocol/index.ts` | 141、144–146 | 旧协议结果校验；V4 Desktop 入口不触发。CLI/Host/Main 中均未命中 |
 
 仅为共享 pipe 选取的既有 `HK-LC-01` 在 `bash-output-compat-r5-20260908` 中完成了
 stdin/输出及 provider-visible Hook context 断言，随后因 UI 在英文环境显示 `Hooks`、
@@ -196,8 +196,8 @@ fixture check 唯一提示为 response-only 的 `E2E_BDO_QUERY_NOTIFIED` 未作�
 从仓库根目录运行两个正式 spec（加入 BDO07 后为 10 条用例，不使用全局 preset）：
 
 ```bash
-ZCODE_E2E_COVERAGE=1 \
-pnpm --filter @zcode/desktop test:e2e -- \
+CODEZ_E2E_COVERAGE=1 \
+pnpm --filter @codez/desktop test:e2e -- \
   --spec ./test/e2e/conversation-session/conversation-session-bash-direct-output.test.ts \
   --spec ./test/e2e/conversation-session/conversation-session-terminal-expanded-details-and-status.test.ts
 ```
@@ -207,7 +207,7 @@ pnpm --filter @zcode/desktop test:e2e -- \
 V4 background-work 的本次证据仅取 Bash cancel 单条；不把整个文件中的其它场景算入验收集。
 
 最终 run 复用了同一工作区、同一 coverage 配置下已完成的 Desktop/CLI 构建，以
-`ZCODE_E2E_SKIP_BUILD=1 ZCODE_E2E_SKIP_AGENT_BUILD=1` 直接执行 `wdio run wdio.conf.ts`。
+`CODEZ_E2E_SKIP_BUILD=1 CODEZ_E2E_SKIP_AGENT_BUILD=1` 直接执行 `wdio run wdio.conf.ts`。
 首次回归和修正测试配置后的回归均走过完整构建；没有使用其它 checkout 的产物。
 本轮没有跑 Windows/Linux Desktop E2E，也没有跑手机 replayable 或 TUI。
 
@@ -232,7 +232,7 @@ V4 background-work 的本次证据仅取 Bash cancel 单条；不把整个文件
 仅复跑新用例（保留同一 wrapper 的 HOME/artifact 隔离；不增加额外 `--` 以免 grep 被忽略）：
 
 ```bash
-pnpm --filter @zcode/desktop test:e2e \
+pnpm --filter @codez/desktop test:e2e \
   --spec ./test/e2e/conversation-session/conversation-session-bash-direct-output.test.ts \
   --mochaOpts.grep BDO07
 ```

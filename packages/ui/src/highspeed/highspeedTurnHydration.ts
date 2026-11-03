@@ -1,7 +1,7 @@
 // transcript → 内存记录的水合合并纯逻辑。从 highspeedTurnStore 拆出：store 只做状态 owner
 // 与查询，合并口径在这里收敛，便于单独理解与测试。本模块不触碰 store 状态，读取一律通过
 // context 注入，因此不与 store 形成运行时循环依赖（只保留编译期擦除的 type import）。
-import type { HighspeedMessageMeta } from "@zcode/shared";
+import type { HighspeedMessageMeta } from "@codez/shared";
 import type {
   HighspeedTranscriptRow,
   HighspeedTurnMetrics,

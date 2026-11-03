@@ -55,14 +55,14 @@ storagePrepared、exit 0，stderr 为空。
 | 时点           | 退出码 | stderr                                                                   | 最后控制帧              |
 | -------------- | ------ | ------------------------------------------------------------------------ | ----------------------- |
 | 修改数据目录前 | 0      | 空                                                                       | startup/storagePrepared |
-| 保存并冷重启后 | 1      | `--cwd path is not accessible: <new-data-root>/.zcode/workspace/default` | 无                      |
+| 保存并冷重启后 | 1      | `--cwd path is not accessible: <new-data-root>/.codez/workspace/default` | 无                      |
 
-在失败页仍存在时检查文件系统：新 data root 和 `.zcode` 存在，但 `.zcode/workspace`
+在失败页仍存在时检查文件系统：新 data root 和 `.codez` 存在，但 `.codez/workspace`
 及其 `default` 子目录均不存在。这是缺少启动工作目录，不是已观察到的数据库损坏或硬件加速故障。
 
 ```text
 远程项目为 lastActiveWorkspace + 新数据根
-  → copyDataDirectory 只复制 .zcode/v2
+  → copyDataDirectory 只复制 .codez/v2
   → resolveStartupWindowBootstrap 远程活动分支返回 {}，未创建本机默认 cwd
   → Main 仍把新根下 default 作为 agentSpawnFallbackCwd
   → Host 无本地 warmup targets，选用该 cwd 准备会话库
@@ -72,7 +72,7 @@ storagePrepared、exit 0，stderr 为空。
 
 责任边界：`packages/desktop/src/main/startupWorkspace.ts:resolveStartupWindowBootstrap`
 与 `index.ts` 的 `agentSpawnFallbackCwd` 交接，未保证交给存储准备的 app-owned cwd 存在。
-`resolveZCodeAgentSpawnCwd` 在请求与备用目录都不可用时保留原路径，CLI 的拒绝符合路径准入契约。
+`resolveCodezAgentSpawnCwd` 在请求与备用目录都不可用时保留原路径，CLI 的拒绝符合路径准入契约。
 
 反证与最小探针：
 

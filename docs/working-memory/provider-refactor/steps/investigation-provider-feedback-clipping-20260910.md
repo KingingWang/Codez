@@ -10,7 +10,7 @@ Air 的连接测试成功横幅下半部缺失，模型行仍可见；下方同�
 
 ## 实际调查
 
-- Pro 没有运行中的 ZCode，从已有开发构建启动 Electron 并连接 CDP。发现其构建较旧，不能作为 Air 同版本验证。
+- Pro 没有运行中的 Codez，从已有开发构建启动 Electron 并连接 CDP。发现其构建较旧，不能作为 Air 同版本验证。
 - 从 Air 当前安装包只提取 renderer 资源，在 Pro 临时目录加载这份实际前端。未替换源码或原构建。Host 仍为 Pro 原构建，存在账号／配置 DTO 不一致，因此仅用于前端布局诊断，不代表完整应用同版本验收。
 - 两台 Electron 均为 41.0.3、macOS 均为 26.6.2；Air 为 M4，Pro 为 M5。Pro GPU 合成和 Metal 均开启。
 - 通过原有 `ProviderDetailFeedbackBoundary` 的 Context 注入临时 success / pending，不调用模型接口，不保存 Provider 配置；另设置模型行的临时 isTesting 状态以复现原图转圈动画。临时调整列表位置使模型行位于横幅下方。
@@ -32,6 +32,6 @@ Air 的连接测试成功横幅下半部缺失，模型行仍可见；下方同�
 - 本机 `/tmp/pro-banner-stress-evidence.json`：每轮几何及命中结果。
 - 本机 `/tmp/pro-banner-frame-0.png` 至 `11.png`：采样帧。
 - 本机 `/tmp/pro-banner-row-spinner.png`：模型行与横幅同时转圈场景。
-- 本机 `/tmp/zcode-banner-stress.cjs`、`/tmp/zcode-pro-banner-cdp.cjs`：诊断脚本，不是正式测试或生产代码。
+- 本机 `/tmp/codez-banner-stress.cjs`、`/tmp/codez-pro-banner-cdp.cjs`：诊断脚本，不是正式测试或生产代码。
 
 以上为临时诊断文件，不是永久回归证据；实施修复时仍须留下可重复的正式用例。

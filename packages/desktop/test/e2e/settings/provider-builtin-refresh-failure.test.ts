@@ -1,7 +1,7 @@
 import { createServer, request as forwardRequest } from "node:http";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { BUILTIN_MODEL_PROVIDER_IDS as ids } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS as ids } from "@codez/shared";
 import {
   TID_MODEL_PROVIDER_CONNECTION_MODE_ITEM,
   TID_MODEL_PROVIDER_CONNECTION_MODE_TRIGGER,
@@ -10,7 +10,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -38,7 +38,7 @@ describe("Builtin 下载失败时的套餐操作", () => {
 
   it("BR117-F01：HTTP 下载失败后有效本地配置保留 Team 切换和 Start 模型选择", async function () {
     this.timeout(180_000);
-    const upstream = process.env.ZCODE_E2E_CODING_PLAN_MOCK_URL;
+    const upstream = process.env.CODEZ_E2E_CODING_PLAN_MOCK_URL;
     if (!upstream) throw new Error("Missing isolated account control plane");
     const paths = getE2EAppDataPaths();
     let controlRequests = 0;
@@ -94,7 +94,7 @@ describe("Builtin 下载失败时的套餐操作", () => {
         afterElectronProcessExit: async () => {
           await seedBigModelStartPlanCredential();
           await seedBigModelConnectionSelection({ kind: "individual-coding-plan" });
-          await seedSettings({ zcodeEndpointOrigin: `http://127.0.0.1:${port}` });
+          await seedSettings({ codezEndpointOrigin: `http://127.0.0.1:${port}` });
         },
       });
       await browser.waitUntil(() => controlRequests > 0, {
@@ -163,7 +163,7 @@ describe("Builtin 下载失败时的套餐操作", () => {
       // HTTP 地址应真正发起下载；服务返回 500 后仍保留本地配置和账号切换能力。
       expect(downloadRequests).toBeGreaterThan(0);
       const artifacts = join(
-        process.env.ZCODE_E2E_ARTIFACT_DIR || join(process.cwd(), ".e2e-artifacts"),
+        process.env.CODEZ_E2E_ARTIFACT_DIR || join(process.cwd(), ".e2e-artifacts"),
         "builtin-refresh-failure",
       );
       await mkdir(artifacts, { recursive: true });
@@ -184,7 +184,7 @@ describe("Builtin 下载失败时的套餐操作", () => {
 });
 
 async function readRuntimeLogs(configDir: string): Promise<string> {
-  const dir = process.env.ZCODE_E2E_RUNTIME_LOG_DIR?.trim() || join(configDir, "logs");
+  const dir = process.env.CODEZ_E2E_RUNTIME_LOG_DIR?.trim() || join(configDir, "logs");
   const files = await readdir(dir).catch(() => []);
   return (
     await Promise.all(

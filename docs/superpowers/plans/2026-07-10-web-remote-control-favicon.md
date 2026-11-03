@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 在手机和桌面浏览器的 Web Remote Control 标签页显示与桌面 App 一致的 ZCode 图标。
+**Goal:** 在手机和桌面浏览器的 Web Remote Control 标签页显示与桌面 App 一致的 Codez 图标。
 
 **Architecture:** 将桌面端现有多尺寸 ICO 原样复制到 Web 的 Vite `public` 目录，保留传统 `/favicon.ico` 兼容路径；同时在 HTML 入口内嵌现有 App 32x32 PNG data URL favicon，让浏览器在解析入口 HTML 时即可拿到标签图标。回归测试同时约束 HTML metadata、PNG data URL 来源和两端图标二进制一致性，构建验证覆盖非根部署前缀下的 data URL 稳定性。
 

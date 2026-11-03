@@ -90,7 +90,7 @@ execution_ms = max(duration_ms - waiting_ms, 0)
   聚合口径，不改变各自的消息恢复协议。
 - replayable 重放、前后台监听重复看到同一请求或响应时，不得重置起点或重复累计。
 - 手机完成授权后，桌面 observer 收到的 `permission_response` 可以正常收口。
-- 本变更不修改 relay、main、host 或 ZCode protocol 的业务职责。
+- 本变更不修改 relay、main、host 或 Codez protocol 的业务职责。
 
 ## 校验与测试
 

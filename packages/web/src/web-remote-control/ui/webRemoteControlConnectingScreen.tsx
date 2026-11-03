@@ -1,5 +1,5 @@
 import { LoaderCircleIcon } from "lucide-react";
-import { DevicePlatformIcon } from "@zcode/ui/device-platform-icon";
+import { DevicePlatformIcon } from "@codez/ui/device-platform-icon";
 import { WebRemoteControlBrand } from "#src/web-remote-control/ui/webRemoteControlBrand.js";
 import type { WebRemoteControlScreenLocale } from "#src/web-remote-control/domain/webRemoteControlScreenCopy.js";
 import type { WebRemoteControlTerminalTransportState } from "#src/web-remote-control/contract.js";

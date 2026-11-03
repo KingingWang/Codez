@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
 import { Client } from "ssh2";
-import { sourceServerReleaseDescriptorSchema } from "@zcode/shared";
+import { sourceServerReleaseDescriptorSchema } from "@codez/shared";
 import type { SSHConnectionConfig } from "#e2e/helpers/ssh-remote-p0";
 
 const run = promisify(execFile);
@@ -16,8 +16,8 @@ export async function prepareVersionPolicyArchive(options: {
   version: string;
   minimum: string;
 }) {
-  const runId = process.env.ZCODE_E2E_RUN_ID;
-  const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR;
+  const runId = process.env.CODEZ_E2E_RUN_ID;
+  const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR;
   if (!runId || !artifactDir) throw new Error("版本 fixture 缺少隔离 run 身份");
   const desktopRoot = resolve(import.meta.dirname, "../../..");
   const { version } = JSON.parse(
@@ -47,13 +47,13 @@ export async function prepareVersionPolicyArchive(options: {
     let source = await readFile(path, "utf8");
     let versionCount = 0;
     // 编译入口可能先声明变量、再在模块初始化器中赋值；不能只匹配内联 var 声明。
-    source = source.replace(/(ZCODE_VERSION\d* = true \? )"[^"]+"/gu, (_match, prefix) => {
+    source = source.replace(/(CODEZ_VERSION\d* = true \? )"[^"]+"/gu, (_match, prefix) => {
       versionCount += 1;
       return prefix + JSON.stringify(options.version);
     });
     if (!versionCount) throw new Error(`版本 fixture 未找到 ${file} 的编译版本常量`);
     source = source.replace(
-      /(ZCODE_MIN_COMPATIBLE_VERSION\d* = true \? )"[^"]+"/gu,
+      /(CODEZ_MIN_COMPATIBLE_VERSION\d* = true \? )"[^"]+"/gu,
       (_match, prefix) => prefix + JSON.stringify(options.minimum),
     );
     await writeFile(path, source);
@@ -96,7 +96,7 @@ export async function prepareSSHHistoryFixtureNode(
   remoteRoot: string,
 ): Promise<string> {
   const desktopRoot = resolve(import.meta.dirname, "../../..");
-  const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR;
+  const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR;
   if (!artifactDir) throw new Error("历史 Node fixture 缺少隔离 artifact 目录");
   const { version } = JSON.parse(
     await readFile(resolve(desktopRoot, "../../package.json"), "utf8"),

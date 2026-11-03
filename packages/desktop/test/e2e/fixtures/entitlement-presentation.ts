@@ -1,4 +1,4 @@
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 import { buildProviderResponsiveStartBalance } from "./provider-family-responsive.js";
 
 /** 专属展示夹具；不改变其他套餐 E2E 的默认响应。 */

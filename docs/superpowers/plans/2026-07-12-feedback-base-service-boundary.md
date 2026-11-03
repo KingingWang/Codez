@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - Update the spec before implementation; the approved design is `docs/superpowers/specs/2026-07-12-feedback-base-service-boundary-design.md`.
-- Do not modify the `ZCODE_REMOTE_WORKSPACE_DISCONNECTED` proxy or allow remote workspace calls to fall back to local file/task services.
+- Do not modify the `CODEZ_REMOTE_WORKSPACE_DISCONNECTED` proxy or allow remote workspace calls to fall back to local file/task services.
 - Preserve desktop `desktop-continuous` and mobile `web-remote-replayable` boundaries.
 - Keep Web remote feedback unsupported; pass through the feedback service already supplied by the Web root accessor.
 - Preserve macOS, Windows, Linux, light/dark themes, and internationalization behavior; this change introduces no visual or copy changes.
@@ -79,7 +79,7 @@ Expected: FAIL because `Root` does not yet pass `baseFeedbackService` and `App` 
 - Test: `packages/ui/test/feedbackBaseServiceBoundary.test.ts`
 
 **Interfaces:**
-- Consumes: `IFeedbackService` from `@zcode/services` and `RootProps.services.feedbackService`.
+- Consumes: `IFeedbackService` from `@codez/services` and `RootProps.services.feedbackService`.
 - Produces: required `AppProps.baseFeedbackService: IFeedbackService`; `WorkspaceShellLayoutProps` excludes that application-level dependency.
 
 - [ ] **Step 1: Add the typed application-level dependency**
@@ -87,7 +87,7 @@ Expected: FAIL because `Root` does not yet pass `baseFeedbackService` and `App` 
 Change the service type import and props in `packages/ui/src/app-shell/types.ts`:
 
 ```ts
-import type { IFeedbackService, IServiceAccessor } from "@zcode/services";
+import type { IFeedbackService, IServiceAccessor } from "@codez/services";
 
 export interface AppProps {
   services: IServiceAccessor;
@@ -105,7 +105,7 @@ Insert `baseFeedbackService` immediately after `services`. Replace only the `ext
 Update the type import, prop declaration, destructuring, and `StableWorkspaceApp` invocation in `packages/ui/src/root/RootWorkspaceContent.tsx`:
 
 ```ts
-import type { IFeedbackService, IServiceAccessor } from "@zcode/services";
+import type { IFeedbackService, IServiceAccessor } from "@codez/services";
 
 interface RootWorkspaceContentProps {
   workspaceScopedServices: IServiceAccessor;

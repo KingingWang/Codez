@@ -5,7 +5,7 @@ import {
   decodeCustomModelValue,
   encodeCustomModelValue,
   formatSubagentMarkdownModel,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   TID_CHAT_MODEL_SELECT_GROUP,
   TID_CHAT_MODEL_SELECT_ITEM,
@@ -20,7 +20,7 @@ import {
   TID_TASK_SETTINGS_BUTTON,
   TID_V4_MODEL_CONFIG,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { selectCombinedComposerThoughtLevel } from "../helpers/composer-model-picker.js";
 import {
   DEFAULT_WORKSPACE,

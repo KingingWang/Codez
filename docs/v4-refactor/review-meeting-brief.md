@@ -137,7 +137,7 @@ base      = 客户端告诉 CLI：“我手里有 logEpoch=X、seq=W 时刻的�
 
 ```text
 几百毫秒到几秒的抖动
-  -> @zcode/rpc 用 ACK / 心跳 / 重连重放解决
+  -> @codez/rpc 用 ACK / 心跳 / 重连重放解决
   -> conversation topic 不感知，seq 不断
 
 刷新、长断线、relay/手机页面重建、CLI 代际变化
@@ -178,7 +178,7 @@ v4 要合并的是协议模型，不是把所有端的运行语义抹平。
 模型事件流
   -> CLI reducer 生成权威 projection delta
   -> host 通道层按订阅者 profile coalesce
-  -> @zcode/rpc 负责帧级 ACK / 心跳 / 重连重放
+  -> @codez/rpc 负责帧级 ACK / 心跳 / 重连重放
   -> 客户端用同一个 apply 算法渲染
 ```
 
@@ -261,7 +261,7 @@ UI action
 ## 关联文档
 
 - [V4 重构 README](./README.md)
-- [ZCode Protocol v4 字段级规范](./10-protocol-spec.md)
+- [Codez Protocol v4 字段级规范](./10-protocol-spec.md)
 - [订阅与恢复](./04-sync-and-recovery.md)
 - [传输与背压](./05-transport-and-backpressure.md)
 - [V4 重构设计 Review](./design-review.md)

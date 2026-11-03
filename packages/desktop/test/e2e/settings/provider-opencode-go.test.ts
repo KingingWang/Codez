@@ -1,9 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
-  decodeZCodeBuiltinRelease,
+  decodeCodezBuiltinRelease,
   NodePersonalProviderConfigRepository,
-} from "@zcode/provider-node";
+} from "@codez/provider-node";
 import {
   TID_MODEL_PROVIDER_ADD_PROVIDER_BUTTON,
   TID_MODEL_PROVIDER_TEMPLATE_ITEM,
@@ -14,7 +14,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom, getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
 import { restartIntoWorkspace, seedReplayProvider } from "#e2e/helpers/model-provider-restart";
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
@@ -27,9 +27,9 @@ describe("Todo149 OpenCode Go 模板创建", () => {
   it("G149-01：按协议创建并保存假 Key，保留成员和个人身份", async function () {
     this.timeout(150_000);
     const builtinPath =
-      process.env.ZCODE_BUILTIN_PROVIDER_CONFIG_FILE?.trim() ||
-      resolve(process.cwd(), "../../config/provider/zcode-builtin.json");
-    const release = decodeZCodeBuiltinRelease(JSON.parse(await readFile(builtinPath, "utf8")));
+      process.env.CODEZ_BUILTIN_PROVIDER_CONFIG_FILE?.trim() ||
+      resolve(process.cwd(), "../../config/provider/codez-builtin.json");
+    const release = decodeCodezBuiltinRelease(JSON.parse(await readFile(builtinPath, "utf8")));
     const repository = new NodePersonalProviderConfigRepository({
       filePath: getE2EAppDataPaths().configFile,
       pollingIntervalMs: false,

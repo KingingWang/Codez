@@ -61,7 +61,7 @@ model_usage.variant
 
 ### 3.3 人工修复已受影响环境
 
-人工修复不是仓库 migration，也不在应用启动时自动执行。操作前必须退出 ZCode 并备份对应 SQLite 文件：
+人工修复不是仓库 migration，也不在应用启动时自动执行。操作前必须退出 Codez 并备份对应 SQLite 文件：
 
 ```sql
 BEGIN IMMEDIATE;

@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 为普通 ZCode subagent 增加 child-only 的 `RespondToCoordinator` 工具，使 child 收到 main 通过 `SendMessage` 注入的 coordinator 消息后，可以把回复投递回父 runtime，同时继续当前长程任务。
+**Goal:** 为普通 Codez subagent 增加 child-only 的 `RespondToCoordinator` 工具，使 child 收到 main 通过 `SendMessage` 注入的 coordinator 消息后，可以把回复投递回父 runtime，同时继续当前长程任务。
 
 **Architecture:** 保留现有 `main -> SendMessage -> child steerTurn` 路径不变。新增 `child -> RespondToCoordinator -> CoordinatorResponsePort -> parent runtime command queue` 路径；父 runtime 使用独立的 `subagent-message` command，在 active loop 下一次合法 provider request 前合流，或在 idle 时启动 model-only turn。回复不会成为真实用户消息，不复用 background task completion 的 `task-notification` 语义，也不会直接并发调用父模型。
 
-**Tech Stack:** TypeScript、Zod、Vitest、ZCode tool registry/executor、AgentRuntime command queue、ZCode Protocol、WebdriverIO provider replay E2E。
+**Tech Stack:** TypeScript、Zod、Vitest、Codez tool registry/executor、AgentRuntime command queue、Codez Protocol、WebdriverIO provider replay E2E。
 
 ## Execution Baseline
 
@@ -34,7 +34,7 @@
 - 回复指导只写入 `RespondToCoordinator.metadata.modelInstructions`。不得向所有 child 的 common system prompt 无条件注入一个可能不存在的工具名。
 - `subagent_message` 除普通消息列表和标题外，也不得进入 `ReadSessionContext` 的用户可见历史摘要。
 - P0 保留现有 child tool-event mirror：`RespondToCoordinator` 可作为 parent Agent card 内的嵌套 child tool block 展示以便观察；只有 synthetic reply carrier 必须禁止显示为顶层 user bubble。
-- 不新增 app-to-agent RPC 方法。只为新的 synthetic source 更新 `packages/shared/src/zcode-protocol/index.ts` 运行时 schema。
+- 不新增 app-to-agent RPC 方法。只为新的 synthetic source 更新 `packages/shared/src/codez-protocol/index.ts` 运行时 schema。
 - 桌面 `desktop-continuous` 和手机 `web-remote-replayable` 继续共享同一 host/agent runtime；本轮 E2E 只证明桌面主路径，shared protocol/visibility 单测证明 replayable payload 不被 schema 拒绝或渲染成用户气泡。
 - 不修改 workspace identity、workspace path、remote session routing 或 client command queue 语义。
 - 新增功能先写 spec 和 case/matrix，再写实现。
@@ -81,12 +81,12 @@ main model
 
 当前关键事实：
 
-- `apps/zcode-cli/packages/core/src/subagent/message-steering.ts` 已负责 coordinator 文案和 child steer。
-- `apps/zcode-cli/packages/core/src/runtime/methods/turn-loop.ts` 在下一次 model request 前 drain steer 和 active-loop runtime commands。
-- `apps/zcode-cli/packages/core/src/runtime/methods/runtime-command-queue.ts` 已负责 command 串行执行和 idle wake。
-- `apps/zcode-cli/packages/core/src/runtime/methods/background-notifications.ts` 当前只处理 task notification persistence 和 active-loop intake。
-- `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts` 是 child runtime、tool allowlist 和 parent closure 的组装入口。
-- `apps/zcode-cli/packages/core/src/tool/scheduler.ts` 已根据 `concurrentSafe` 决定工具执行分组，本功能不修改调度算法。
+- `apps/codez-cli/packages/core/src/subagent/message-steering.ts` 已负责 coordinator 文案和 child steer。
+- `apps/codez-cli/packages/core/src/runtime/methods/turn-loop.ts` 在下一次 model request 前 drain steer 和 active-loop runtime commands。
+- `apps/codez-cli/packages/core/src/runtime/methods/runtime-command-queue.ts` 已负责 command 串行执行和 idle wake。
+- `apps/codez-cli/packages/core/src/runtime/methods/background-notifications.ts` 当前只处理 task notification persistence 和 active-loop intake。
+- `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts` 是 child runtime、tool allowlist 和 parent closure 的组装入口。
+- `apps/codez-cli/packages/core/src/tool/scheduler.ts` 已根据 `concurrentSafe` 决定工具执行分组，本功能不修改调度算法。
 
 ## Target Data Flow
 
@@ -120,14 +120,14 @@ Provider-visible payload：
 | File                                                                                                                                | Responsibility                                                                  |
 | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | `docs/subagent-respond-to-coordinator.md`                                                                                           | 产品语义、状态边界、非目标和验收标准的 source-of-truth spec                     |
-| `apps/zcode-cli/packages/contracts/src/tools/respond-to-coordinator.ts`                                                             | tool input/runtime output schema 和常量                                         |
-| `apps/zcode-cli/packages/contracts/src/interfaces/coordinator-response.port.ts`                                                     | child tool 到父 runtime 的窄端口                                                |
-| `apps/zcode-cli/packages/core/src/tool/handlers/respond-to-coordinator.ts`                                                          | provider-visible tool metadata、handler 和 model result formatting              |
-| `apps/zcode-cli/packages/core/src/subagent/coordinator-response.ts`                                                                 | 绑定 authoritative child identity，并把结构化回复提交给 parent enqueue callback |
-| `apps/zcode-cli/packages/core/src/runtime/methods/subagent-messages.ts`                                                             | parent command enqueue、XML formatting、persistence                             |
-| `apps/zcode-cli/packages/core/src/runtime/methods/runtime-command-active-loop.ts`                                                   | active loop 对允许 command 类型的统一 intake                                    |
-| `apps/zcode-cli/packages/contracts/tests/respond-to-coordinator.test.ts`                                                            | schema 边界测试                                                                 |
-| `apps/zcode-cli/packages/core/tests/runtime-tool-allowlist.test.ts`                                                                 | Explore/custom child 最终 built-in allowlist 投影测试                           |
+| `apps/codez-cli/packages/contracts/src/tools/respond-to-coordinator.ts`                                                             | tool input/runtime output schema 和常量                                         |
+| `apps/codez-cli/packages/contracts/src/interfaces/coordinator-response.port.ts`                                                     | child tool 到父 runtime 的窄端口                                                |
+| `apps/codez-cli/packages/core/src/tool/handlers/respond-to-coordinator.ts`                                                          | provider-visible tool metadata、handler 和 model result formatting              |
+| `apps/codez-cli/packages/core/src/subagent/coordinator-response.ts`                                                                 | 绑定 authoritative child identity，并把结构化回复提交给 parent enqueue callback |
+| `apps/codez-cli/packages/core/src/runtime/methods/subagent-messages.ts`                                                             | parent command enqueue、XML formatting、persistence                             |
+| `apps/codez-cli/packages/core/src/runtime/methods/runtime-command-active-loop.ts`                                                   | active loop 对允许 command 类型的统一 intake                                    |
+| `apps/codez-cli/packages/contracts/tests/respond-to-coordinator.test.ts`                                                            | schema 边界测试                                                                 |
+| `apps/codez-cli/packages/core/tests/runtime-tool-allowlist.test.ts`                                                                 | Explore/custom child 最终 built-in allowlist 投影测试                           |
 | `packages/desktop/test/e2e/conversation-session/conversation-session-subagent-respond-to-coordinator.test.ts`                       | 独立 formal BG25 replay spec，使用正常 context window                         |
 | `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-subagent-respond-to-coordinator.json`        | BG25 case-local provider replay fixture                                         |
 | `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-subagent-respond-to-coordinator.json`           | BG25 replay manifest                                                            |
@@ -140,40 +140,40 @@ Provider-visible payload：
 | `docs/conversation-session-case-catalog.md`                                    | 新增 BG25 accepted case                                                           |
 | `docs/testing/conversation-session-background-e2e-coverage-matrix.md`          | 增加 response channel 维度和 planned/covered 状态                                 |
 | `docs/testing/conversation-session-e2e-coverage-matrix.md`                     | 登记 BG25                                                                         |
-| 历史差异审计文档（已删除）                                        | 标记为 ZCode narrow extension，不误报为完整 Agent Teams 能力                      |
-| `apps/zcode-cli/packages/contracts/src/tools/index.ts`                         | 导出 tool contract                                                                |
-| `apps/zcode-cli/packages/contracts/src/index.ts`                               | 导出 coordinator port                                                             |
-| `apps/zcode-cli/packages/contracts/src/interfaces/session-store.port.ts`       | 增加 `subagent_message` synthetic source                                          |
-| `packages/shared/src/zcode-protocol/index.ts`                                  | 接受 `subagent_message` source/inputSource                                        |
-| `apps/zcode-cli/packages/core/src/tool/handlers/index.ts`                      | 注册 child-only tool                                                              |
-| `apps/zcode-cli/packages/core/src/tool/types.ts`                               | ToolExecutionContext 增加 coordinator port，并增加 `allowedInPlanMode` capability |
-| `apps/zcode-cli/packages/core/src/tool/executor/types.ts`                      | executor options/deps 增加 coordinator port                                       |
-| `apps/zcode-cli/packages/core/src/tool/executor/impl.ts`                       | 透传 coordinator port                                                             |
-| `apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts`                | 将 coordinator port 放入 handler context                                          |
-| `apps/zcode-cli/packages/core/src/permission/service.ts`                       | 在既有 deny/ask 之后允许显式 Plan-mode session capability                         |
-| `apps/zcode-cli/packages/core/src/runtime/types.ts`                            | AgentRuntimeDeps 增加 coordinator port                                            |
-| `apps/zcode-cli/packages/core/src/runtime/command-queue.ts`                    | 增加 `SubagentMessageRuntimeCommand`                                              |
-| `apps/zcode-cli/packages/core/src/runtime/internal-methods.ts`                 | 声明 enqueue/persist intake 方法                                                  |
-| `apps/zcode-cli/packages/core/src/runtime/methods/index.ts`                    | 绑定新 runtime methods                                                            |
-| `apps/zcode-cli/packages/core/src/runtime/helpers/runtime-tools.ts`            | 条件注册工具并透传 port                                                           |
-| `apps/zcode-cli/packages/core/src/runtime/helpers/tool-allowlist.ts`           | 在 Explore 最终交集后保留 child control tool                                      |
-| `apps/zcode-cli/packages/core/src/runtime/methods/background-notifications.ts` | 移出 generic active-loop drain，保留 task notification 专属逻辑                   |
-| `apps/zcode-cli/packages/core/src/runtime/methods/runtime-command-queue.ts`    | 执行 idle `subagent-message` command                                              |
-| `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts`                 | child tool allowlist 和 coordinator port wiring                                   |
-| `apps/zcode-cli/packages/core/src/agent/session-history-hydrator.ts`           | 恢复 `subagent_message` user-like metadata                                        |
-| `apps/zcode-cli/packages/core/src/runtime/helpers/runtime-reminders.ts`        | 映射 `subagent_message` runtime metadata                                          |
-| `apps/zcode-cli/packages/core/src/session-context/parts.ts`                    | 从 ReadSessionContext 摘要中排除 internal coordinator reply                       |
-| `apps/zcode-cli/packages/core/tests/tool-contracts.test.ts`                    | provider tool exposure 和 metadata 测试                                           |
-| `apps/zcode-cli/packages/core/tests/runtime-hooks.test.ts`                     | handler/port 参数和 ack 测试                                                      |
-| `apps/zcode-cli/packages/core/tests/permission-service.test.ts`                | Plan-mode capability 优先级测试                                                   |
-| `apps/zcode-cli/packages/core/tests/runtime-tool-loop.test.ts`                 | active/idle command、ordering 和单并发测试                                        |
-| `apps/zcode-cli/packages/core/tests/subagent-explore.test.ts`                  | child tool surface、双向消息和继续工作测试                                        |
-| `apps/zcode-cli/packages/core/tests/scheduler.test.ts`                         | concurrent-safe 分组边界回归                                                      |
-| `apps/zcode-cli/packages/core/tests/session-history-hydrator.test.ts`          | hydrate 语义测试                                                                  |
-| `apps/zcode-cli/packages/core/tests/read-session-context-tool.test.ts`         | model-only coordinator reply 不进入 session context                               |
-| `packages/shared/test/zcodeProtocol.test.ts`                                   | protocol source 解析测试                                                          |
-| `packages/shared/src/zcode-session-visible-content.ts`                         | 增加 `subagent_message` source-only visibility fallback                           |
-| `packages/shared/test/zcodeSessionVisibleContent.test.ts`                      | model-only 消息不可见测试                                                         |
+| 历史差异审计文档（已删除）                                        | 标记为 Codez narrow extension，不误报为完整 Agent Teams 能力                      |
+| `apps/codez-cli/packages/contracts/src/tools/index.ts`                         | 导出 tool contract                                                                |
+| `apps/codez-cli/packages/contracts/src/index.ts`                               | 导出 coordinator port                                                             |
+| `apps/codez-cli/packages/contracts/src/interfaces/session-store.port.ts`       | 增加 `subagent_message` synthetic source                                          |
+| `packages/shared/src/codez-protocol/index.ts`                                  | 接受 `subagent_message` source/inputSource                                        |
+| `apps/codez-cli/packages/core/src/tool/handlers/index.ts`                      | 注册 child-only tool                                                              |
+| `apps/codez-cli/packages/core/src/tool/types.ts`                               | ToolExecutionContext 增加 coordinator port，并增加 `allowedInPlanMode` capability |
+| `apps/codez-cli/packages/core/src/tool/executor/types.ts`                      | executor options/deps 增加 coordinator port                                       |
+| `apps/codez-cli/packages/core/src/tool/executor/impl.ts`                       | 透传 coordinator port                                                             |
+| `apps/codez-cli/packages/core/src/tool/executor/call-runner.ts`                | 将 coordinator port 放入 handler context                                          |
+| `apps/codez-cli/packages/core/src/permission/service.ts`                       | 在既有 deny/ask 之后允许显式 Plan-mode session capability                         |
+| `apps/codez-cli/packages/core/src/runtime/types.ts`                            | AgentRuntimeDeps 增加 coordinator port                                            |
+| `apps/codez-cli/packages/core/src/runtime/command-queue.ts`                    | 增加 `SubagentMessageRuntimeCommand`                                              |
+| `apps/codez-cli/packages/core/src/runtime/internal-methods.ts`                 | 声明 enqueue/persist intake 方法                                                  |
+| `apps/codez-cli/packages/core/src/runtime/methods/index.ts`                    | 绑定新 runtime methods                                                            |
+| `apps/codez-cli/packages/core/src/runtime/helpers/runtime-tools.ts`            | 条件注册工具并透传 port                                                           |
+| `apps/codez-cli/packages/core/src/runtime/helpers/tool-allowlist.ts`           | 在 Explore 最终交集后保留 child control tool                                      |
+| `apps/codez-cli/packages/core/src/runtime/methods/background-notifications.ts` | 移出 generic active-loop drain，保留 task notification 专属逻辑                   |
+| `apps/codez-cli/packages/core/src/runtime/methods/runtime-command-queue.ts`    | 执行 idle `subagent-message` command                                              |
+| `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts`                 | child tool allowlist 和 coordinator port wiring                                   |
+| `apps/codez-cli/packages/core/src/agent/session-history-hydrator.ts`           | 恢复 `subagent_message` user-like metadata                                        |
+| `apps/codez-cli/packages/core/src/runtime/helpers/runtime-reminders.ts`        | 映射 `subagent_message` runtime metadata                                          |
+| `apps/codez-cli/packages/core/src/session-context/parts.ts`                    | 从 ReadSessionContext 摘要中排除 internal coordinator reply                       |
+| `apps/codez-cli/packages/core/tests/tool-contracts.test.ts`                    | provider tool exposure 和 metadata 测试                                           |
+| `apps/codez-cli/packages/core/tests/runtime-hooks.test.ts`                     | handler/port 参数和 ack 测试                                                      |
+| `apps/codez-cli/packages/core/tests/permission-service.test.ts`                | Plan-mode capability 优先级测试                                                   |
+| `apps/codez-cli/packages/core/tests/runtime-tool-loop.test.ts`                 | active/idle command、ordering 和单并发测试                                        |
+| `apps/codez-cli/packages/core/tests/subagent-explore.test.ts`                  | child tool surface、双向消息和继续工作测试                                        |
+| `apps/codez-cli/packages/core/tests/scheduler.test.ts`                         | concurrent-safe 分组边界回归                                                      |
+| `apps/codez-cli/packages/core/tests/session-history-hydrator.test.ts`          | hydrate 语义测试                                                                  |
+| `apps/codez-cli/packages/core/tests/read-session-context-tool.test.ts`         | model-only coordinator reply 不进入 session context                               |
+| `packages/shared/test/codezProtocol.test.ts`                                   | protocol source 解析测试                                                          |
+| `packages/shared/src/codez-session-visible-content.ts`                         | 增加 `subagent_message` source-only visibility fallback                           |
+| `packages/shared/test/codezSessionVisibleContent.test.ts`                      | model-only 消息不可见测试                                                         |
 | `docs/design/v2/tool/00-tool-change-chain.md`                                  | 记录 `allowedInPlanMode` 的窄语义和禁止伪装 read-only 约束                        |
 | `scripts/test-desktop-e2e-container.sh`                                        | Docker admission 后把正式 BG25 spec 纳入 verified preset                          |
 | `docs/testing/conversation-session-docker-automation-plan.md`                  | Docker admission 工具同步准入记录                                                 |
@@ -311,7 +311,7 @@ assistant step 中继续发出下一项工作工具调用。
 增加一条 scope note，明确：
 
 ```markdown
-RespondToCoordinator 是 ZCode 为普通 local_agent 增加的窄 child-to-parent reply channel。
+RespondToCoordinator 是 Codez 为普通 local_agent 增加的窄 child-to-parent reply channel。
 它不表示已实现 Agent Teams，也不改变默认 main-only SendMessage 的语义。
 ```
 
@@ -356,14 +356,14 @@ Expected staged paths: 仅上面六个文档。若任一文件已有不可分离
 
 **Files:**
 
-- Create: `apps/zcode-cli/packages/contracts/src/tools/respond-to-coordinator.ts`
-- Create: `apps/zcode-cli/packages/contracts/src/interfaces/coordinator-response.port.ts`
-- Create: `apps/zcode-cli/packages/contracts/tests/respond-to-coordinator.test.ts`
-- Modify: `apps/zcode-cli/packages/contracts/src/tools/index.ts`
-- Modify: `apps/zcode-cli/packages/contracts/src/index.ts`
-- Modify: `apps/zcode-cli/packages/contracts/src/interfaces/session-store.port.ts`
-- Modify: `packages/shared/src/zcode-protocol/index.ts`
-- Modify: `packages/shared/test/zcodeProtocol.test.ts`
+- Create: `apps/codez-cli/packages/contracts/src/tools/respond-to-coordinator.ts`
+- Create: `apps/codez-cli/packages/contracts/src/interfaces/coordinator-response.port.ts`
+- Create: `apps/codez-cli/packages/contracts/tests/respond-to-coordinator.test.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/tools/index.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/index.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/interfaces/session-store.port.ts`
+- Modify: `packages/shared/src/codez-protocol/index.ts`
+- Modify: `packages/shared/test/codezProtocol.test.ts`
 
 **Interfaces:**
 
@@ -379,7 +379,7 @@ export interface CoordinatorResponsePort {
 
 - [ ] **Step 1：先写 contracts failing tests**
 
-创建 `apps/zcode-cli/packages/contracts/tests/respond-to-coordinator.test.ts`：
+创建 `apps/codez-cli/packages/contracts/tests/respond-to-coordinator.test.ts`：
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -447,14 +447,14 @@ describe("RespondToCoordinator contract", () => {
 Run:
 
 ```bash
-pnpm --filter @zcode/contracts exec vitest run tests/respond-to-coordinator.test.ts
+pnpm --filter @codez/contracts exec vitest run tests/respond-to-coordinator.test.ts
 ```
 
 Expected: FAIL，提示 `RespondToCoordinatorInputSchema` 等 export 不存在。
 
 - [ ] **Step 3：实现 tool schemas**
 
-`apps/zcode-cli/packages/contracts/src/tools/respond-to-coordinator.ts`：
+`apps/codez-cli/packages/contracts/src/tools/respond-to-coordinator.ts`：
 
 ```ts
 import { z } from "zod";
@@ -493,7 +493,7 @@ export type RespondToCoordinatorOutput = z.infer<typeof RespondToCoordinatorOutp
 
 - [ ] **Step 4：实现同步窄端口**
 
-`apps/zcode-cli/packages/contracts/src/interfaces/coordinator-response.port.ts`：
+`apps/codez-cli/packages/contracts/src/interfaces/coordinator-response.port.ts`：
 
 ```ts
 import type { TraceContext } from "../tracing/tracer.js";
@@ -534,18 +534,18 @@ export interface CoordinatorResponsePort {
 
 修改位置：
 
-- `apps/zcode-cli/packages/contracts/src/interfaces/session-store.port.ts`
-- `packages/shared/src/zcode-protocol/index.ts`
+- `apps/codez-cli/packages/contracts/src/interfaces/session-store.port.ts`
+- `packages/shared/src/codez-protocol/index.ts`
 
-在 `packages/shared/test/zcodeProtocol.test.ts` 增加 user message 和 TurnStarted payload 对 `subagent_message` 的成功解析断言。
+在 `packages/shared/test/codezProtocol.test.ts` 增加 user message 和 TurnStarted payload 对 `subagent_message` 的成功解析断言。
 
 - [ ] **Step 6：运行 focused tests**
 
 Run:
 
 ```bash
-pnpm --filter @zcode/contracts exec vitest run tests/respond-to-coordinator.test.ts
-pnpm exec vitest run packages/shared/test/zcodeProtocol.test.ts
+pnpm --filter @codez/contracts exec vitest run tests/respond-to-coordinator.test.ts
+pnpm exec vitest run packages/shared/test/codezProtocol.test.ts
 ```
 
 Expected: PASS。
@@ -555,7 +555,7 @@ Expected: PASS。
 Run:
 
 ```bash
-pnpm --filter @zcode/contracts typecheck
+pnpm --filter @codez/contracts typecheck
 pnpm exec tsc -p packages/shared/tsconfig.json --noEmit
 ```
 
@@ -564,7 +564,7 @@ Expected: 两条命令 exit code `0`。
 - [ ] **Step 8：提交 Phase 1**
 
 ```bash
-git add apps/zcode-cli/packages/contracts/src/tools/respond-to-coordinator.ts apps/zcode-cli/packages/contracts/src/interfaces/coordinator-response.port.ts apps/zcode-cli/packages/contracts/src/tools/index.ts apps/zcode-cli/packages/contracts/src/index.ts apps/zcode-cli/packages/contracts/src/interfaces/session-store.port.ts apps/zcode-cli/packages/contracts/tests/respond-to-coordinator.test.ts packages/shared/src/zcode-protocol/index.ts packages/shared/test/zcodeProtocol.test.ts
+git add apps/codez-cli/packages/contracts/src/tools/respond-to-coordinator.ts apps/codez-cli/packages/contracts/src/interfaces/coordinator-response.port.ts apps/codez-cli/packages/contracts/src/tools/index.ts apps/codez-cli/packages/contracts/src/index.ts apps/codez-cli/packages/contracts/src/interfaces/session-store.port.ts apps/codez-cli/packages/contracts/tests/respond-to-coordinator.test.ts packages/shared/src/codez-protocol/index.ts packages/shared/test/codezProtocol.test.ts
 git diff --cached --name-only
 git commit -m "feat(cli): define subagent coordinator response contracts"
 ```
@@ -579,18 +579,18 @@ Expected staged paths: 仅 Phase 1 文件。
 
 **Files:**
 
-- Create: `apps/zcode-cli/packages/core/src/tool/handlers/respond-to-coordinator.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/handlers/index.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/types.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/types.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/impl.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts`
-- Modify: `apps/zcode-cli/packages/core/src/permission/service.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/types.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/helpers/runtime-tools.ts`
-- Modify: `apps/zcode-cli/packages/core/tests/tool-contracts.test.ts`
-- Modify: `apps/zcode-cli/packages/core/tests/runtime-hooks.test.ts`
-- Modify: `apps/zcode-cli/packages/core/tests/permission-service.test.ts`
+- Create: `apps/codez-cli/packages/core/src/tool/handlers/respond-to-coordinator.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/handlers/index.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/impl.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/call-runner.ts`
+- Modify: `apps/codez-cli/packages/core/src/permission/service.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/helpers/runtime-tools.ts`
+- Modify: `apps/codez-cli/packages/core/tests/tool-contracts.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/runtime-hooks.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/permission-service.test.ts`
 - Modify: `docs/design/v2/tool/00-tool-change-chain.md`
 
 **Interfaces:**
@@ -673,8 +673,8 @@ plan + allowedInPlanMode 但 destructive/needsApproval/非 session -> deny / mod
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/tool-contracts.test.ts tests/runtime-hooks.test.ts -t "RespondToCoordinator"
-pnpm --filter @zcode/core exec vitest run tests/permission-service.test.ts -t "explicit session capability|non-read-only session"
+pnpm --filter @codez/core exec vitest run tests/tool-contracts.test.ts tests/runtime-hooks.test.ts -t "RespondToCoordinator"
+pnpm --filter @codez/core exec vitest run tests/permission-service.test.ts -t "explicit session capability|non-read-only session"
 ```
 
 Expected: FAIL，工具尚未注册、context 缺少 port，且 permission capability 尚不存在。
@@ -915,8 +915,8 @@ if (
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/tool-contracts.test.ts tests/runtime-hooks.test.ts -t "RespondToCoordinator"
-pnpm --filter @zcode/core exec vitest run tests/permission-service.test.ts -t "explicit session capability|non-read-only session"
+pnpm --filter @codez/core exec vitest run tests/tool-contracts.test.ts tests/runtime-hooks.test.ts -t "RespondToCoordinator"
+pnpm --filter @codez/core exec vitest run tests/permission-service.test.ts -t "explicit session capability|non-read-only session"
 ```
 
 Expected: PASS。
@@ -924,7 +924,7 @@ Expected: PASS。
 - [ ] **Step 11：提交 Phase 2**
 
 ```bash
-git add apps/zcode-cli/packages/core/src/tool/handlers/respond-to-coordinator.ts apps/zcode-cli/packages/core/src/tool/handlers/index.ts apps/zcode-cli/packages/core/src/tool/types.ts apps/zcode-cli/packages/core/src/tool/executor/types.ts apps/zcode-cli/packages/core/src/tool/executor/impl.ts apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts apps/zcode-cli/packages/core/src/permission/service.ts apps/zcode-cli/packages/core/src/runtime/types.ts apps/zcode-cli/packages/core/src/runtime/helpers/runtime-tools.ts apps/zcode-cli/packages/core/tests/tool-contracts.test.ts apps/zcode-cli/packages/core/tests/runtime-hooks.test.ts apps/zcode-cli/packages/core/tests/permission-service.test.ts docs/design/v2/tool/00-tool-change-chain.md
+git add apps/codez-cli/packages/core/src/tool/handlers/respond-to-coordinator.ts apps/codez-cli/packages/core/src/tool/handlers/index.ts apps/codez-cli/packages/core/src/tool/types.ts apps/codez-cli/packages/core/src/tool/executor/types.ts apps/codez-cli/packages/core/src/tool/executor/impl.ts apps/codez-cli/packages/core/src/tool/executor/call-runner.ts apps/codez-cli/packages/core/src/permission/service.ts apps/codez-cli/packages/core/src/runtime/types.ts apps/codez-cli/packages/core/src/runtime/helpers/runtime-tools.ts apps/codez-cli/packages/core/tests/tool-contracts.test.ts apps/codez-cli/packages/core/tests/runtime-hooks.test.ts apps/codez-cli/packages/core/tests/permission-service.test.ts docs/design/v2/tool/00-tool-change-chain.md
 git diff --cached --name-only
 git commit -m "feat(cli): add RespondToCoordinator tool"
 ```
@@ -937,15 +937,15 @@ git commit -m "feat(cli): add RespondToCoordinator tool"
 
 **Files:**
 
-- Create: `apps/zcode-cli/packages/core/src/runtime/methods/subagent-messages.ts`
-- Create: `apps/zcode-cli/packages/core/src/runtime/methods/runtime-command-active-loop.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/command-queue.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/types.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/internal-methods.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/index.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/background-notifications.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/runtime-command-queue.ts`
-- Modify: `apps/zcode-cli/packages/core/tests/runtime-tool-loop.test.ts`
+- Create: `apps/codez-cli/packages/core/src/runtime/methods/subagent-messages.ts`
+- Create: `apps/codez-cli/packages/core/src/runtime/methods/runtime-command-active-loop.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/command-queue.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/internal-methods.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/index.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/background-notifications.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/runtime-command-queue.ts`
+- Modify: `apps/codez-cli/packages/core/tests/runtime-tool-loop.test.ts`
 
 **Interfaces:**
 
@@ -1019,7 +1019,7 @@ outer runtime command queue starts exactly one model-only request #2
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/runtime-tool-loop.test.ts -t "subagent message"
+pnpm --filter @codez/core exec vitest run tests/runtime-tool-loop.test.ts -t "subagent message"
 ```
 
 Expected: FAIL，`enqueueSubagentMessage` 或 command mode 尚不存在。
@@ -1192,8 +1192,8 @@ if (command.mode === "subagent-message") {
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/runtime-tool-loop.test.ts -t "subagent message"
-pnpm --filter @zcode/core exec vitest run tests/runtime-tool-loop.test.ts -t "runtime task notifications before the next active tool-loop"
+pnpm --filter @codez/core exec vitest run tests/runtime-tool-loop.test.ts -t "subagent message"
+pnpm --filter @codez/core exec vitest run tests/runtime-tool-loop.test.ts -t "runtime task notifications before the next active tool-loop"
 ```
 
 Expected: 新测试 PASS；既有 task notification active-loop test 继续 PASS。
@@ -1201,7 +1201,7 @@ Expected: 新测试 PASS；既有 task notification active-loop test 继续 PASS
 - [ ] **Step 12：提交 Phase 3**
 
 ```bash
-git add apps/zcode-cli/packages/core/src/runtime/methods/subagent-messages.ts apps/zcode-cli/packages/core/src/runtime/methods/runtime-command-active-loop.ts apps/zcode-cli/packages/core/src/runtime/command-queue.ts apps/zcode-cli/packages/core/src/runtime/types.ts apps/zcode-cli/packages/core/src/runtime/internal-methods.ts apps/zcode-cli/packages/core/src/runtime/methods/index.ts apps/zcode-cli/packages/core/src/runtime/methods/background-notifications.ts apps/zcode-cli/packages/core/src/runtime/methods/runtime-command-queue.ts apps/zcode-cli/packages/core/tests/runtime-tool-loop.test.ts
+git add apps/codez-cli/packages/core/src/runtime/methods/subagent-messages.ts apps/codez-cli/packages/core/src/runtime/methods/runtime-command-active-loop.ts apps/codez-cli/packages/core/src/runtime/command-queue.ts apps/codez-cli/packages/core/src/runtime/types.ts apps/codez-cli/packages/core/src/runtime/internal-methods.ts apps/codez-cli/packages/core/src/runtime/methods/index.ts apps/codez-cli/packages/core/src/runtime/methods/background-notifications.ts apps/codez-cli/packages/core/src/runtime/methods/runtime-command-queue.ts apps/codez-cli/packages/core/tests/runtime-tool-loop.test.ts
 git diff --cached --name-only
 git commit -m "feat(cli): route subagent messages through runtime commands"
 ```
@@ -1214,12 +1214,12 @@ git commit -m "feat(cli): route subagent messages through runtime commands"
 
 **Files:**
 
-- Create: `apps/zcode-cli/packages/core/src/subagent/coordinator-response.ts`
-- Create: `apps/zcode-cli/packages/core/tests/runtime-tool-allowlist.test.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/helpers/tool-allowlist.ts`
-- Modify: `apps/zcode-cli/packages/core/tests/subagent-explore.test.ts`
-- Modify: `apps/zcode-cli/packages/core/tests/scheduler.test.ts`
+- Create: `apps/codez-cli/packages/core/src/subagent/coordinator-response.ts`
+- Create: `apps/codez-cli/packages/core/tests/runtime-tool-allowlist.test.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/helpers/tool-allowlist.ts`
+- Modify: `apps/codez-cli/packages/core/tests/subagent-explore.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/scheduler.test.ts`
 
 **Interfaces:**
 
@@ -1286,7 +1286,7 @@ expectProviderMarkerBefore(parentRequests, "<subagent-message>", "<task-notifica
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/subagent-explore.test.ts -t "RespondToCoordinator|SendMessage to a running"
+pnpm --filter @codez/core exec vitest run tests/subagent-explore.test.ts -t "RespondToCoordinator|SendMessage to a running"
 ```
 
 Expected: FAIL，child tool surface 尚未包含回复工具或 parent 未收到 reply command。
@@ -1296,7 +1296,7 @@ Expected: FAIL，child tool surface 尚未包含回复工具或 parent 未收到
 `subagent/coordinator-response.ts`：
 
 ```ts
-import type { CoordinatorResponsePort, SessionId } from "@zcode/contracts";
+import type { CoordinatorResponsePort, SessionId } from "@codez/contracts";
 import type { EnqueueSubagentMessageInput } from "../runtime/types.js";
 
 export interface CreateCoordinatorResponsePortOptions {
@@ -1428,9 +1428,9 @@ expect(bashMetadata.concurrentSafe).toBe(false);
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/subagent-explore.test.ts -t "RespondToCoordinator|SendMessage to a running"
-pnpm --filter @zcode/core exec vitest run tests/runtime-tool-allowlist.test.ts
-pnpm --filter @zcode/core exec vitest run tests/scheduler.test.ts
+pnpm --filter @codez/core exec vitest run tests/subagent-explore.test.ts -t "RespondToCoordinator|SendMessage to a running"
+pnpm --filter @codez/core exec vitest run tests/runtime-tool-allowlist.test.ts
+pnpm --filter @codez/core exec vitest run tests/scheduler.test.ts
 ```
 
 Expected: PASS。
@@ -1438,7 +1438,7 @@ Expected: PASS。
 - [ ] **Step 10：提交 Phase 4**
 
 ```bash
-git add apps/zcode-cli/packages/core/src/subagent/coordinator-response.ts apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts apps/zcode-cli/packages/core/src/runtime/helpers/tool-allowlist.ts apps/zcode-cli/packages/core/tests/runtime-tool-allowlist.test.ts apps/zcode-cli/packages/core/tests/subagent-explore.test.ts apps/zcode-cli/packages/core/tests/scheduler.test.ts
+git add apps/codez-cli/packages/core/src/subagent/coordinator-response.ts apps/codez-cli/packages/core/src/runtime/methods/subagent.ts apps/codez-cli/packages/core/src/runtime/helpers/tool-allowlist.ts apps/codez-cli/packages/core/tests/runtime-tool-allowlist.test.ts apps/codez-cli/packages/core/tests/subagent-explore.test.ts apps/codez-cli/packages/core/tests/scheduler.test.ts
 git diff --cached --name-only
 git commit -m "feat(cli): let subagents respond to coordinators"
 ```
@@ -1451,15 +1451,15 @@ git commit -m "feat(cli): let subagents respond to coordinators"
 
 **Files:**
 
-- Modify: `apps/zcode-cli/packages/core/src/runtime/helpers/runtime-reminders.ts`
-- Modify: `apps/zcode-cli/packages/core/src/agent/session-history-hydrator.ts`
-- Modify: `apps/zcode-cli/packages/core/src/session-context/parts.ts`
-- Modify: `apps/zcode-cli/packages/core/tests/session-history-hydrator.test.ts`
-- Modify: `apps/zcode-cli/packages/core/tests/runtime-tool-loop.test.ts`
-- Modify: `apps/zcode-cli/packages/core/tests/subagent-explore.test.ts`
-- Modify: `apps/zcode-cli/packages/core/tests/read-session-context-tool.test.ts`
-- Modify: `packages/shared/src/zcode-session-visible-content.ts`
-- Modify: `packages/shared/test/zcodeSessionVisibleContent.test.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/helpers/runtime-reminders.ts`
+- Modify: `apps/codez-cli/packages/core/src/agent/session-history-hydrator.ts`
+- Modify: `apps/codez-cli/packages/core/src/session-context/parts.ts`
+- Modify: `apps/codez-cli/packages/core/tests/session-history-hydrator.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/runtime-tool-loop.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/subagent-explore.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/read-session-context-tool.test.ts`
+- Modify: `packages/shared/src/codez-session-visible-content.ts`
+- Modify: `packages/shared/test/codezSessionVisibleContent.test.ts`
 
 **Interfaces:**
 
@@ -1490,18 +1490,18 @@ expect(providerText).not.toContain("<system-reminder");
 
 - [ ] **Step 2：写 visibility fallback 和 title failing tests**
 
-在 `zcodeSessionVisibleContent.test.ts` 增加三组断言：
+在 `codezSessionVisibleContent.test.ts` 增加三组断言：
 
 ```ts
 // canonical persisted shape：当前 visibility 逻辑应直接隐藏，用作回归断言。
-expect(getZCodeUserVisibleMessages([messageWithInfoVisibilityModelOnly])).toEqual([]);
+expect(getCodezUserVisibleMessages([messageWithInfoVisibilityModelOnly])).toEqual([]);
 
 // source-only replay fallback：没有 visibility 但 source= subagent_message 时也必须隐藏。
-expect(getZCodeUserVisibleMessages([sourceOnlySubagentMessage])).toEqual([]);
+expect(getCodezUserVisibleMessages([sourceOnlySubagentMessage])).toEqual([]);
 
 // title 不得采用 synthetic reply；仍选择真实 user text 或 target title fallback。
 expect(
-  resolveZCodeVisibleSessionTitle({
+  resolveCodezVisibleSessionTitle({
     messages: [sourceOnlySubagentMessage, realUserMessage],
     target: null,
   }),
@@ -1545,9 +1545,9 @@ provider-visible model content 必须同时包含失败原因和 `Continue the c
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/session-history-hydrator.test.ts tests/runtime-tool-loop.test.ts tests/subagent-explore.test.ts -t "subagent message"
-pnpm --filter @zcode/core exec vitest run tests/read-session-context-tool.test.ts -t "subagent message"
-pnpm exec vitest run packages/shared/test/zcodeSessionVisibleContent.test.ts -t "subagent message"
+pnpm --filter @codez/core exec vitest run tests/session-history-hydrator.test.ts tests/runtime-tool-loop.test.ts tests/subagent-explore.test.ts -t "subagent message"
+pnpm --filter @codez/core exec vitest run tests/read-session-context-tool.test.ts -t "subagent message"
+pnpm exec vitest run packages/shared/test/codezSessionVisibleContent.test.ts -t "subagent message"
 ```
 
 Expected: FAIL，hydrate source 尚未映射，source-only visibility fallback 和 ReadSessionContext skip 尚未实现。
@@ -1564,13 +1564,13 @@ if (source === "background_task" || source === "subagent_message") {
 
 `metadataFromSyntheticTextPart()` 使用同样判断，确保 hydrate 不走 legacy `source === "subagent"` 的 system reminder 分支。
 
-在 `packages/shared/src/zcode-session-visible-content.ts` 的 `MODEL_ONLY_SYNTHETIC_NOTICE_SOURCES` 增加：
+在 `packages/shared/src/codez-session-visible-content.ts` 的 `MODEL_ONLY_SYNTHETIC_NOTICE_SOURCES` 增加：
 
 ```ts
 "subagent_message",
 ```
 
-并让 `isZCodeModelOnlySyntheticUserMessage()` 同时检查 `message.info.source`，不能只检查 text part metadata：
+并让 `isCodezModelOnlySyntheticUserMessage()` 同时检查 `message.info.source`，不能只检查 text part metadata：
 
 ```ts
 if (MODEL_ONLY_SYNTHETIC_NOTICE_SOURCES.has(String(message.info.source ?? ""))) {
@@ -1578,16 +1578,16 @@ if (MODEL_ONLY_SYNTHETIC_NOTICE_SOURCES.has(String(message.info.source ?? ""))) 
 }
 ```
 
-在 `apps/zcode-cli/packages/core/src/session-context/parts.ts` 的 `SKIPPED_SYNTHETIC_TEXT_SOURCES` 增加同一 source。canonical `visibility` 是主判据，source set 是旧数据、replay 和局部 metadata 丢失时的 defense-in-depth fallback。
+在 `apps/codez-cli/packages/core/src/session-context/parts.ts` 的 `SKIPPED_SYNTHETIC_TEXT_SOURCES` 增加同一 source。canonical `visibility` 是主判据，source set 是旧数据、replay 和局部 metadata 丢失时的 defense-in-depth fallback。
 
 - [ ] **Step 7：运行 persistence/visibility/context tests**
 
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/session-history-hydrator.test.ts tests/runtime-tool-loop.test.ts tests/subagent-explore.test.ts -t "subagent message"
-pnpm --filter @zcode/core exec vitest run tests/read-session-context-tool.test.ts -t "subagent message"
-pnpm exec vitest run packages/shared/test/zcodeSessionVisibleContent.test.ts -t "subagent message"
+pnpm --filter @codez/core exec vitest run tests/session-history-hydrator.test.ts tests/runtime-tool-loop.test.ts tests/subagent-explore.test.ts -t "subagent message"
+pnpm --filter @codez/core exec vitest run tests/read-session-context-tool.test.ts -t "subagent message"
+pnpm exec vitest run packages/shared/test/codezSessionVisibleContent.test.ts -t "subagent message"
 ```
 
 Expected: PASS。
@@ -1597,7 +1597,7 @@ Expected: PASS。
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/runtime-tool-loop.test.ts -t "task notification|background notification|subagent message"
+pnpm --filter @codez/core exec vitest run tests/runtime-tool-loop.test.ts -t "task notification|background notification|subagent message"
 ```
 
 Expected: PASS；`task-notification` 的 active/idle、goal continuation 和 sealed child cleanup 语义没有变化。
@@ -1605,7 +1605,7 @@ Expected: PASS；`task-notification` 的 active/idle、goal continuation 和 sea
 - [ ] **Step 9：提交 Phase 5**
 
 ```bash
-git add apps/zcode-cli/packages/core/src/runtime/helpers/runtime-reminders.ts apps/zcode-cli/packages/core/src/agent/session-history-hydrator.ts apps/zcode-cli/packages/core/src/session-context/parts.ts apps/zcode-cli/packages/core/tests/session-history-hydrator.test.ts apps/zcode-cli/packages/core/tests/runtime-tool-loop.test.ts apps/zcode-cli/packages/core/tests/subagent-explore.test.ts apps/zcode-cli/packages/core/tests/read-session-context-tool.test.ts packages/shared/src/zcode-session-visible-content.ts packages/shared/test/zcodeSessionVisibleContent.test.ts
+git add apps/codez-cli/packages/core/src/runtime/helpers/runtime-reminders.ts apps/codez-cli/packages/core/src/agent/session-history-hydrator.ts apps/codez-cli/packages/core/src/session-context/parts.ts apps/codez-cli/packages/core/tests/session-history-hydrator.test.ts apps/codez-cli/packages/core/tests/runtime-tool-loop.test.ts apps/codez-cli/packages/core/tests/subagent-explore.test.ts apps/codez-cli/packages/core/tests/read-session-context-tool.test.ts packages/shared/src/codez-session-visible-content.ts packages/shared/test/codezSessionVisibleContent.test.ts
 git diff --cached --name-only
 git commit -m "feat(cli): preserve subagent response history"
 ```
@@ -1649,7 +1649,7 @@ spec 直接放在 formal `conversation-session/` 目录，使用 provider 的正
 避免依赖开发机仓库文件：
 
 ```ts
-const E2E_ROOT = "/tmp/zcode-e2e-respond-to-coordinator";
+const E2E_ROOT = "/tmp/codez-e2e-respond-to-coordinator";
 const RELEASE_FILE = join(E2E_ROOT, "release-child-bash");
 const CONTINUED_WORK_FILE = join(E2E_ROOT, "continued-work.txt");
 ```
@@ -1690,7 +1690,7 @@ manifest 的 `spec` 必须直接指向 formal BG25 spec，不得指向 `manual-r
 - [ ] **Step 3：运行 fixture checker**
 
 ```bash
-pnpm --filter @zcode/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-subagent-respond-to-coordinator.test.ts
+pnpm --filter @codez/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-subagent-respond-to-coordinator.test.ts
 ```
 
 Expected: exit code `0`，所有 synthetic request 均有 `syntheticReason`。
@@ -1698,7 +1698,7 @@ Expected: exit code `0`，所有 synthetic request 均有 `syntheticReason`。
 - [ ] **Step 4：运行 isolated replay**
 
 ```bash
-E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-subagent-respond-to-coordinator.json pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-subagent-respond-to-coordinator.test.ts'
+E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-subagent-respond-to-coordinator.json pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-subagent-respond-to-coordinator.test.ts'
 ```
 
 Expected: PASS，证明不依赖 legacy shared fixture；运行生成的 CLI config 不包含 `240/80`
@@ -1707,7 +1707,7 @@ auto-compact override，provider capture 不包含 compact summary request，UI 
 - [ ] **Step 5：运行 default replay**
 
 ```bash
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-subagent-respond-to-coordinator.test.ts'
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-subagent-respond-to-coordinator.test.ts'
 ```
 
 Expected: PASS。
@@ -1724,7 +1724,7 @@ Expected: PASS。
 
 ```bash
 node scripts/audit-conversation-session-case-coverage.mjs --check --json
-pnpm --filter @zcode/desktop typecheck:e2e
+pnpm --filter @codez/desktop typecheck:e2e
 ```
 
 Expected: 两条命令 exit code `0`。
@@ -1740,7 +1740,7 @@ Expected: PASS，并记录实际 artifact 目录 `packages/desktop/.e2e-artifact
 - [ ] **Step 9：执行 Docker admission 并复跑 verified suite**
 
 ```bash
-pnpm --filter @zcode/desktop e2e:docker:admit -- --spec ./test/e2e/conversation-session/conversation-session-subagent-respond-to-coordinator.test.ts --verified --artifact packages/desktop/.e2e-artifacts/<run-id> --apply
+pnpm --filter @codez/desktop e2e:docker:admit -- --spec ./test/e2e/conversation-session/conversation-session-subagent-respond-to-coordinator.test.ts --verified --artifact packages/desktop/.e2e-artifacts/<run-id> --apply
 pnpm run test:e2e:container:conversation
 ```
 
@@ -1776,8 +1776,8 @@ git commit -m "test(e2e): cover subagent coordinator responses"
 - [ ] **Step 1：运行 contracts/core focused suite**
 
 ```bash
-pnpm --filter @zcode/contracts exec vitest run tests/respond-to-coordinator.test.ts
-pnpm --filter @zcode/core exec vitest run tests/tool-contracts.test.ts tests/runtime-hooks.test.ts tests/permission-service.test.ts tests/runtime-tool-allowlist.test.ts tests/runtime-tool-loop.test.ts tests/subagent-explore.test.ts tests/session-history-hydrator.test.ts tests/read-session-context-tool.test.ts tests/scheduler.test.ts
+pnpm --filter @codez/contracts exec vitest run tests/respond-to-coordinator.test.ts
+pnpm --filter @codez/core exec vitest run tests/tool-contracts.test.ts tests/runtime-hooks.test.ts tests/permission-service.test.ts tests/runtime-tool-allowlist.test.ts tests/runtime-tool-loop.test.ts tests/subagent-explore.test.ts tests/session-history-hydrator.test.ts tests/read-session-context-tool.test.ts tests/scheduler.test.ts
 ```
 
 Expected: PASS。
@@ -1785,7 +1785,7 @@ Expected: PASS。
 - [ ] **Step 2：运行 shared focused suite**
 
 ```bash
-pnpm exec vitest run packages/shared/test/zcodeProtocol.test.ts packages/shared/test/zcodeSessionVisibleContent.test.ts
+pnpm exec vitest run packages/shared/test/codezProtocol.test.ts packages/shared/test/codezSessionVisibleContent.test.ts
 ```
 
 Expected: PASS。
@@ -1793,10 +1793,10 @@ Expected: PASS。
 - [ ] **Step 3：运行 CLI package checks**
 
 ```bash
-pnpm --filter @zcode/contracts typecheck
-pnpm --filter @zcode/core typecheck
-pnpm --filter @zcode/contracts lint
-pnpm --filter @zcode/core lint
+pnpm --filter @codez/contracts typecheck
+pnpm --filter @codez/core typecheck
+pnpm --filter @codez/contracts lint
+pnpm --filter @codez/core lint
 ```
 
 Expected: PASS。

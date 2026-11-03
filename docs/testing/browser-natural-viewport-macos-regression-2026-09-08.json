@@ -29,7 +29,7 @@
     ]
   },
   "red": {
-    "kind": "real ZCode dev with live model Node REPL",
+    "kind": "real Codez dev with live model Node REPL",
     "desktopZoomLevel": -2,
     "artifacts": "/tmp/zct-natural-viewport/{red.json,red.png,events.jsonl}",
     "before": {

@@ -6,7 +6,7 @@
 
 **Architecture:** Reuse existing shared provider kind/API format helpers instead of adding a new domain model. The settings connection section derives selectable API formats from provider endpoint paths and model `kinds`; the model list stays complete and passes the current format kind into each row for fixed-column tag highlighting and test-button gating.
 
-**Tech Stack:** TypeScript, React, Vitest, existing ZCode UI components and i18n message ids.
+**Tech Stack:** TypeScript, React, Vitest, existing Codez UI components and i18n message ids.
 
 ---
 

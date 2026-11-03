@@ -21,7 +21,7 @@
 | 根 AGENTS.md                      | 任务边界、spec、关键工程约束、验证与完成条件、阅读入口 | 所有仓库任务                                |
 | packages/ui/AGENTS.md             | UI 服务访问、状态、平台适配、日志                      | UI 组件、页面、样式或 hooks 变更            |
 | packages/services/AGENTS.md       | 服务日志和服务层注意事项                               | 服务实现变更                                |
-| apps/zcode-cli/AGENTS.md          | CLI 特有契约、工具链和验证                             | CLI 代码变更                                |
+| apps/codez-cli/AGENTS.md          | CLI 特有契约、工具链和验证                             | CLI 代码变更                                |
 | docs/agents/runtime-boundaries.md | 进程、工作区身份、桌面/手机状态边界                    | process、workspace 状态、远控或实时链路变更 |
 | .claude/CLAUDE.md 与 CLI 对应入口 | 导入共享 AGENTS.md                                     | Claude 加载项目指令                         |
 | 现有领域文档、skills              | 领域事实、专用工具与工作流                             | 根文件或任务命中对应触发条件                |
@@ -71,7 +71,7 @@ MR 设计意图归档的补充验收（2026-10-20）：
 
 MR 同时服务当前评审与长期设计理解。不了解聊天背景的人和 Agent，应能仅凭正文理解为什么要改、
 希望建立什么行为、为何选择这套机制，以及未来修改时应保持什么。文件数、标题完整和测试通过数量
-都不能单独证明该目标达成。写作契约由 [zcode-mr](../../.agents/skills/zcode-mr/SKILL.md#mr-description-contract)
+都不能单独证明该目标达成。写作契约由 [codez-mr](../../.agents/skills/codez-mr/SKILL.md#mr-description-contract)
 维护，本节只定义验收场景。
 
 | 场景                                                         | 验收预期                                                                                                             |

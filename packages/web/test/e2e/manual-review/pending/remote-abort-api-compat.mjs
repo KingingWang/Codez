@@ -1,5 +1,5 @@
 // ML08：真实 Web 入口移除静态 API，复用受控 HTTP/WS 验证配对到 bootstrap。
-// 启动：pnpm --filter @zcode/web exec vite --host 127.0.0.1 --port 5178 --strictPort
+// 启动：pnpm --filter @codez/web exec vite --host 127.0.0.1 --port 5178 --strictPort
 // 运行：node packages/web/test/e2e/manual-review/pending/remote-abort-api-compat.mjs
 // 此用例保持 pending，不替代真机浏览器或生产 relay 验收。
 import assert from "node:assert/strict";

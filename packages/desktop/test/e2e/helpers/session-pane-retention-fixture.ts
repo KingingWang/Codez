@@ -17,7 +17,7 @@ export async function seedSessionPaneRetentionFixture(options: {
   if (home === resolve(homedir())) throw new Error("不能向用户 HOME 写入合成历史");
   const workspacePath = join(home, "Workspace");
   await mkdir(workspacePath, { recursive: true });
-  await mkdir(join(home, ".zcode/v2"), { recursive: true });
+  await mkdir(join(home, ".codez/v2"), { recursive: true });
   for (let index = 0; index < 8; index++) {
     await seedProviderReadinessHistoryFixture({
       ...options,
@@ -36,7 +36,7 @@ export async function seedSessionPaneRetentionFixture(options: {
     });
   }
   // node:sqlite 只有同步 API；此处仅离线播种测试 fixture，不在产品 IO 路径执行。
-  const db = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"));
+  const db = new DatabaseSync(join(home, ".codez/cli/db/db.sqlite"));
   try {
     for (let index = 0; index < 8; index++) {
       const sessionId = `sess_probe_retention_${index}`;
@@ -84,7 +84,7 @@ export async function seedSessionPaneRetentionFixture(options: {
   } finally {
     db.close();
   }
-  const providerFile = join(home, ".zcode/v2/provider_config.json");
+  const providerFile = join(home, ".codez/v2/provider_config.json");
   await seedPersonalProviderConfig(providerFile, {
     id: "probe-local",
     label: "Retention Local Fixture",
@@ -99,7 +99,7 @@ export async function seedSessionPaneRetentionFixture(options: {
     modelId: "probe-model",
   });
   await writeFile(
-    join(home, ".zcode/v2/setting.json"),
+    join(home, ".codez/v2/setting.json"),
     JSON.stringify({
       providerFamilyDomain: "zai",
       providerFamilyDomainMigrated: true,
@@ -110,6 +110,6 @@ export async function seedSessionPaneRetentionFixture(options: {
       lastActiveTabIndex: 0,
     }),
   );
-  await writeFile(join(home, ".zcode/v2/credentials.json"), "{}");
+  await writeFile(join(home, ".codez/v2/credentials.json"), "{}");
   return { home, workspacePath, sessions: 8, messages: 16, parts: 24 };
 }

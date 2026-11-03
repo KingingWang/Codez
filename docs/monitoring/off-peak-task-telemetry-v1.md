@@ -20,7 +20,7 @@ aggregator, a persistent outbox, restart replay, or accurate step-level token
 accounting. Background Off-Peak turns do not emit `send_btn`.
 
 The implementation uses the existing business telemetry route. Desktop reports
-to `POST /api/v1/event/report` on the active ZCode endpoint. Web and mobile keep
+to `POST /api/v1/event/report` on the active Codez endpoint. Web and mobile keep
 `reportTelemetryEvent` as a no-op. The new contract is never sent directly to
 ARMS.
 
@@ -103,7 +103,7 @@ OffPeakTaskService.createTask
            +------> UI result/toast/navigation/task execution
            |
            `------> fire-and-forget business telemetry
-                    POST active ZCode /api/v1/event/report
+                    POST active Codez /api/v1/event/report
                     bounded in-memory retry + bounded app-quit drain
                     final failure is swallowed by the UI helper
 ```

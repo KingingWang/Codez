@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/conversation-session-changes-group-responsive-file-summary",
+      "path": ".codez-e2e/conversation-session-changes-group-responsive-file-summary",
       "source": "created-by-spec",
       "description": "TGE03 四个写入文件及重复 Edit 的 case-owned fixture。"
     }

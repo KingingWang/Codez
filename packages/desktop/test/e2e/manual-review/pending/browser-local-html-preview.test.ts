@@ -3,7 +3,7 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { TID_BROWSER_ADDRESS_INPUT, TID_BROWSER_WEBVIEW } from "@zcode/shared/test-ids";
+import { TID_BROWSER_ADDRESS_INPUT, TID_BROWSER_WEBVIEW } from "@codez/shared/test-ids";
 import { openFirstBrowserTab } from "#e2e/helpers/browser-side-pane";
 import { prepareConversationE2E } from "#e2e/helpers/conversation-session";
 
@@ -38,7 +38,7 @@ describe("本地 HTML 预览的文件权限边界", () => {
     const address = server.address();
     if (!address || typeof address === "string") throw new Error("HTTP fixture did not start");
     httpUrl = `http://127.0.0.1:${address.port}/`;
-    directory = await mkdtemp(join(tmpdir(), "zcode-html-preview-"));
+    directory = await mkdtemp(join(tmpdir(), "codez-html-preview-"));
     const preview = join(directory, "预览 空格");
     const outside = join(directory, "outside");
     await Promise.all([mkdir(preview), mkdir(outside)]);
@@ -85,7 +85,7 @@ describe("本地 HTML 预览的文件权限边界", () => {
       async () => (await runInGuest("document.title")) === "Local HTML boundary",
       { timeout: 30_000, timeoutMsg: "本地 HTML 未加载" },
     );
-    expect(await runInGuest("location.protocol")).toBe("zcode-html:");
+    expect(await runInGuest("location.protocol")).toBe("codez-html:");
     expect(await input.getValue()).toBe(canonicalFileUrl);
     await browser.waitUntil(
       async () =>
@@ -153,7 +153,7 @@ describe("本地 HTML 预览的文件权限边界", () => {
         show: false,
         webPreferences: {
           sandbox: true,
-          partition: "persist:zcode-embedded-browser",
+          partition: "persist:codez-embedded-browser",
         },
       });
       try {
@@ -183,11 +183,11 @@ describe("本地 HTML 预览的文件权限边界", () => {
         };
         const platform = (
           window as Window & {
-            zcode?: {
+            codez?: {
               browserViewLoadUrl(payload: { webContentsId: number; url: string }): Promise<void>;
             };
           }
-        ).zcode;
+        ).codez;
         if (!platform) throw new Error("Desktop platform bridge is missing");
         const webContentsId = guest.getWebContentsId();
         await Promise.allSettled([

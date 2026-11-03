@@ -1,12 +1,12 @@
 # Plugin 注册资源的设置页分组
 
-ZCode 设置页中的 Skills、Commands、MCP Servers 会把本地配置资源和 plugin 注册资源分开展示。
+Codez 设置页中的 Skills、Commands、MCP Servers 会把本地配置资源和 plugin 注册资源分开展示。
 
 Plugin item 的描述与辅助元数据统一使用 `text-ui-sm text-foreground-subtle`，与其他设置列表 item 保持一致。
 
 ## 分组规则
 
-- 本地资源：来自工作区或用户配置目录，例如 `.zcode/skills`、`.zcode/commands`、用户/工作区 MCP 配置。
+- 本地资源：来自工作区或用户配置目录，例如 `.codez/skills`、`.codez/commands`、用户/工作区 MCP 配置。
 - Plugin 资源：来自已启用 plugin manifest 中声明的 `skills`、`commands`、`mcpServers`。
 - Plugin 资源在对应设置页中只读展示，并提示“由插件注册，修改请到对应插件中进行”。
 - manifest `skills` 数组项按 Claude 规范指向「技能目录本身」（项内直接是 `SKILL.md`），

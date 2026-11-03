@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import type { DeviceSyncResult, SourceServerWorkspaceHistoryEntry } from "@zcode/shared";
+import type { DeviceSyncResult, SourceServerWorkspaceHistoryEntry } from "@codez/shared";
 import {
   formatRemoteConnectionDescription,
   formatRemoteDeviceName,

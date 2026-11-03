@@ -1,17 +1,17 @@
-import { completeNewModelSelection } from "@zcode/provider";
+import { completeNewModelSelection } from "@codez/provider";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   useBaseWorkspaceServices,
   useWorkspaceServicesResolution,
 } from "@/hooks/useWorkspaceServices.js";
 import { useSettings } from "@/hooks/useSettingService.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { persistProviderFamilyConnection } from "@/lib/providerFamilyConnectionTransition.js";
 import { chooseConnectionModel, type ComposerConnection } from "@/lib/composerPlanGroups.js";
 import { buildRegistryModelSelectGroups } from "@/lib/modelSelectionGroups.js";
-import { decodeCustomModelValue } from "@/lib/zcodeCustomModelValue.js";
+import { decodeCustomModelValue } from "@/lib/codezCustomModelValue.js";
 import { logger } from "@/logger.js";
-import { resolveModelProviderFamilySpecByProviderId, type ZCodeProvider } from "@zcode/shared";
+import { resolveModelProviderFamilySpecByProviderId, type CodezProvider } from "@codez/shared";
 
 export function useComposerConnectionSwitch({
   workspacePath,
@@ -27,7 +27,7 @@ export function useComposerConnectionSwitch({
 }: {
   workspacePath: string;
   workspaceIdentity?: string;
-  agentProvider: ZCodeProvider;
+  agentProvider: CodezProvider;
   normalizedValue: string;
   onSelectModel: (value: string, reasoningLevel?: string) => void;
   waitForPresentation?: boolean;
@@ -43,7 +43,7 @@ export function useComposerConnectionSwitch({
     workspaceIdentity,
   );
   const { update } = useSettings({ services: base });
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const workspaceKey = workspaceIdentity?.trim() || workspacePath;
   const token = useMemo(() => ({}), [target, base, workspaceKey]);
   const owner = useRef({ token, mounted: true });

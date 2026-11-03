@@ -3,8 +3,8 @@
 ## 边界
 
 内置浏览器打开本机 `file://` 的 `.html` / `.htm` 时，由 main 转成
-`zcode-html://` 地址。卡片、文件树、地址栏仍使用现有打开入口。
-仅 `persist:zcode-embedded-browser` 安装协议 handler；defaultSession 沿用现有加载逻辑，
+`codez-html://` 地址。卡片、文件树、地址栏仍使用现有打开入口。
+仅 `persist:codez-embedded-browser` 安装协议 handler；defaultSession 沿用现有加载逻辑，
 Web 和手机端不注入本机预览能力。HTTP/HTTPS 的导航语义不变。
 
 修复原因：Electron 默认赋予 file 页面额外的跨文件读取权限，sandbox 和
@@ -70,7 +70,7 @@ renderer 继续沿用现有 pendingUrl 和 guest 接管回执，不增加导航�
 可重复运行安全用例（仅使用本地 fixture，不调用模型）：
 
 ```bash
-ZCODE_E2E_MANUAL_REVIEW=1 E2E_PROVIDER_HTTP_MODE=replay \
+CODEZ_E2E_MANUAL_REVIEW=1 E2E_PROVIDER_HTTP_MODE=replay \
 E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json \
-pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/manual-review/pending/browser-local-html-preview.test.ts'
+pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/manual-review/pending/browser-local-html-preview.test.ts'
 ```

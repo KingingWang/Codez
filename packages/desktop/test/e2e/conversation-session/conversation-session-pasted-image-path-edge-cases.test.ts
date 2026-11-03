@@ -1,12 +1,12 @@
 import { readdir, readFile, stat, unlink } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join } from "node:path";
-import { encodeCustomModelValue } from "@zcode/shared";
+import { encodeCustomModelValue } from "@codez/shared";
 import {
   TID_CHAT_ERROR_BANNER,
   TID_CHAT_MODEL_SELECT_TRIGGER,
   TID_CHAT_MODEL_SELECT_ITEM,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, getE2EAppDataPaths, waitForTestIdByDom } from "../helpers/desktop-app.js";
 import {
   assertUpstreamRequestCapture,
@@ -46,8 +46,8 @@ const VALID_PNG_BASE64 =
 // 1x1 24-bit BMP。Jimp/provider 链路可解码，但派生缓存故意不支持 image/bmp。
 const VALID_BMP_BASE64 =
   "Qk06AAAAAAAAADYAAAAoAAAAAQAAAAEAAAABABgAAAAAAAQAAAATCwAAEwsAAAAAAAAAAAAAAAD/AA==";
-const artifactRoot = join(getE2EAppDataPaths().homeDir, ".zcode", "cli", "artifacts");
-const imageCacheRoot = join(getE2EAppDataPaths().homeDir, ".zcode", "cli", "image-cache");
+const artifactRoot = join(getE2EAppDataPaths().homeDir, ".codez", "cli", "artifacts");
+const imageCacheRoot = join(getE2EAppDataPaths().homeDir, ".codez", "cli", "image-cache");
 
 let modelProviderReplayServer: Awaited<
   ReturnType<typeof startConversationModelProviderReplayServer>

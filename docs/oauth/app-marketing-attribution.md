@@ -2,13 +2,13 @@
 
 ## 目标
 
-ZCode Desktop 从统一 OAuth 回调接收官网营销归因，并在所有发往
+Codez Desktop 从统一 OAuth 回调接收官网营销归因，并在所有发往
 `/api/v1/event/report` 的 App 业务埋点中固定携带顶层字符串字段
 `marketing_params`。
 
 ## 回调协议
 
-统一回调 `zcode://oauth/callback` 支持：
+统一回调 `codez://oauth/callback` 支持：
 
 - `channel_id`
 - `utm_source`

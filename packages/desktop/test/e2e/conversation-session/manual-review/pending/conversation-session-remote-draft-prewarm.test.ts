@@ -1,8 +1,8 @@
 import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium, type Browser, type Page } from "playwright-core";
-import { ServiceChannels, parseRemoteWorkspaceIdentity } from "@zcode/shared";
-import type { ProjectTree } from "@zcode/services";
+import { ServiceChannels, parseRemoteWorkspaceIdentity } from "@codez/shared";
+import type { ProjectTree } from "@codez/services";
 import {
   TID_CHAT_MODEL_SELECT_TRIGGER,
   TID_CHAT_MODEL_SELECT_GROUP,
@@ -11,7 +11,7 @@ import {
   testId,
   TID_V4_COMPOSER_INPUT,
   TID_V4_COMPOSER_SEND,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { waitForUpstreamRequest } from "#e2e/helpers/conversation-session-network";
 import {
   seedCustomOpenAIChatCompletionsProvider,
@@ -54,11 +54,11 @@ const REPLY = "REMOTE_DRAFT_PREWARM_REPLY";
 type Address = { path: string; identity?: string };
 type Ack = { type: string; status: string; reasonCode?: string };
 type ProbeWindow = Window & {
-  __zcodeV4CommandAcksE2E?: Ack[];
-  __zcodeTabStoreE2E?: {
+  __codezV4CommandAcksE2E?: Ack[];
+  __codezTabStoreE2E?: {
     getState(): { activeWorkspacePath: string; activeWorkspaceIdentity?: string };
   };
-  __zcodeSessionStoreE2E?: {
+  __codezSessionStoreE2E?: {
     getState(): {
       getWorkspaceState(
         path: string,
@@ -77,20 +77,20 @@ type ProbeWindow = Window & {
 // 同时读取实际 Composer、workspace owner 与真实命令回执，不用模拟 createSession 结果。
 function readDraft(address?: Address) {
   const w = window as ProbeWindow;
-  const tab = w.__zcodeTabStoreE2E!.getState();
+  const tab = w.__codezTabStoreE2E!.getState();
   const path = address?.path ?? tab.activeWorkspacePath;
   const identity = address?.identity ?? tab.activeWorkspaceIdentity;
-  const state = w.__zcodeSessionStoreE2E!.getState().getWorkspaceState(path, identity);
+  const state = w.__codezSessionStoreE2E!.getState().getWorkspaceState(path, identity);
   return {
     path,
     identity,
     activeTaskId: state.activeTaskId,
     projectId: state.draftProjectId ?? null,
-    createAcks: (w.__zcodeV4CommandAcksE2E ?? []).filter((a) => a.type === "createSession"),
+    createAcks: (w.__codezV4CommandAcksE2E ?? []).filter((a) => a.type === "createSession"),
   };
 }
 function clearAcks() {
-  (window as ProbeWindow).__zcodeV4CommandAcksE2E = [];
+  (window as ProbeWindow).__codezV4CommandAcksE2E = [];
 }
 
 function assertNoCreateErrors(facts: ReturnType<typeof readDraft>) {
@@ -103,7 +103,7 @@ describe(`${CASE}: 远端草稿先确定项目归属再预热`, () => {
   let mobile: Browser | undefined;
   let page: Page | undefined;
   const evidence: Record<string, unknown> = {};
-  const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR!;
+  const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR!;
 
   after(async () => {
     await writeFile(
@@ -143,7 +143,7 @@ describe(`${CASE}: 远端草稿先确定项目归属再预热`, () => {
       if (removeScope) {
         const removed = await browser.execute((identity) => {
           const keys = Object.keys(localStorage).filter(
-            (k) => k.startsWith("zcode-composer-workspace-scope:v1:") && k.includes(identity),
+            (k) => k.startsWith("codez-composer-workspace-scope:v1:") && k.includes(identity),
           );
           keys.forEach((k) => localStorage.removeItem(k));
           return keys.length;
@@ -246,8 +246,8 @@ describe(`${CASE}: 远端草稿先确定项目归属再预热`, () => {
 
     const pairingUrl = await obtainUnreadPairingUrl();
     mobile = await chromium.launch({
-      ...(process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE
-        ? { executablePath: process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE }
+      ...(process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE
+        ? { executablePath: process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE }
         : { channel: "chrome" }),
       headless: true,
     });
@@ -275,7 +275,7 @@ describe(`${CASE}: 远端草稿先确定项目归属再预热`, () => {
       await row.getByTestId("virtual-project-create-task").click();
       await page!.waitForFunction(
         ({ path, identity, projectId }) => {
-          const state = (window as ProbeWindow).__zcodeSessionStoreE2E
+          const state = (window as ProbeWindow).__codezSessionStoreE2E
             ?.getState()
             .getWorkspaceState(path, identity);
           return state?.draftProjectId === projectId && !state.activeTaskId;
@@ -361,7 +361,7 @@ describe(`${CASE}: 远端草稿先确定项目归属再预热`, () => {
     // 手机正常导航显式交付项目；这里仅将缺失归属作为受控前置，后续恢复仍走真实 UI。
     await page.evaluate(({ path, identity }) => {
       (window as ProbeWindow)
-        .__zcodeSessionStoreE2E!.getState()
+        .__codezSessionStoreE2E!.getState()
         .startDraft(path, undefined, identity, { projectId: null });
     }, address);
     const input = page.getByTestId(TID_V4_COMPOSER_INPUT).first();

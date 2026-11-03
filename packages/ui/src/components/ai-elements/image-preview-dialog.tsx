@@ -1,14 +1,14 @@
 "use client";
 
 import { ArrowLeftIcon, ArrowRightIcon, DownloadIcon, XIcon } from "lucide-react";
-import type { IPlatformService } from "@zcode/shared";
+import type { IPlatformService } from "@codez/shared";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog.js";
 import { toast } from "@/components/ui/toast.js";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import { ImagePreviewSurface } from "@/image-preview-editor/index.js";
 
@@ -224,7 +224,7 @@ export function ImagePreviewDialog({
   onOpenChange: (open: boolean) => void;
   open: boolean;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const platform = useOptionalPlatform();
   const [activeIndex, setActiveIndex] = useState(initialIndex);
   const [isDownloading, setIsDownloading] = useState(false);

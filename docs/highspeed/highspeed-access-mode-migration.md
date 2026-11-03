@@ -9,7 +9,7 @@
 
 ## 1. 背景与问题
 
-Highspeed 早于 Provider 重构落地，它用 `turnRuntimeModel`（`zcodeModelRuntimeConfigSchema`）
+Highspeed 早于 Provider 重构落地，它用 `turnRuntimeModel`（`codezModelRuntimeConfigSchema`）
 把「本轮用哪个模型」和「用什么端点/凭据打」打成一个包随发送下发：
 
 ```ts
@@ -28,10 +28,10 @@ turnRuntimeModel: {
 }
 ```
 
-Provider 重构删除了 `zcodeModelRuntimeConfigSchema` / `zcodeModelRefSchema` /
-`zcodeModelProviderInputSchema` 整族契约，取而代之的规则是**静态/动态分离**：
+Provider 重构删除了 `codezModelRuntimeConfigSchema` / `codezModelRefSchema` /
+`codezModelProviderInputSchema` 整族契约，取而代之的规则是**静态/动态分离**：
 
-- 端点、API 形态、模型能力等**静态事实**只能来自 ZCode Built-in Provider Config；
+- 端点、API 形态、模型能力等**静态事实**只能来自 Codez Built-in Provider Config；
 - 只有**单次执行的动态鉴权材料**（`apiKey` / `headers`）随发送下发。
 
 同时官方版本请求安全校验的豁免判定从「endpoint 路径白名单」收敛到共享 Adapter 按
@@ -61,7 +61,7 @@ Highspeed 直接复用同一套机制，不新建平行管道。
 
 ### 3.1 新增 Access mode
 
-`zcodeProviderAccountAccessSchema.mode` 增加 `"highspeed"`：
+`codezProviderAccountAccessSchema.mode` 增加 `"highspeed"`：
 
 ```ts
 mode: z.enum([
@@ -79,7 +79,7 @@ mode: z.enum([
 
 ### 3.2 新增 Built-in Provider（静态事实）
 
-`config/provider/zcode-builtin.json` 的 `providerConfigRules.providerRules` 按 Off-Peak
+`config/provider/codez-builtin.json` 的 `providerConfigRules.providerRules` 按 Off-Peak
 同构新增两个隐藏 Provider。Access 的 `accountType` 是必填枚举，且加速卡是对当前账号
 Coding Plan 权益的抽取，因此**必须按账号 Family 拆分**，不跨 Family 静默迁移：
 
@@ -94,12 +94,12 @@ Coding Plan 权益的抽取，因此**必须按账号 Family 拆分**，不跨 F
 
 **站点能力规则必须同步新增。** `modelConfigRules.providerSiteRules` 按 `baseUrl` 匹配，
 新端点没有规则就会静默落回 `modelRules` 的保守默认值。加速端点必须与 Coding Plan
-站点（`api.z.ai` / `open.bigmodel.cn` / `zcode-plan`）逐项对齐，因此新增两条规则：
+站点（`api.z.ai` / `open.bigmodel.cn` / `codez-plan`）逐项对齐，因此新增两条规则：
 
 | 匹配                                                | 属性                                                                     | 与哪个站点对齐                                                   |
 | --------------------------------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------- |
-| `https://zcode\.z\.ai/api/v1/highspeed/anthropic/?` | `inputFormat.supportsImage/supportsVideo = true`                         | 同 `zcode-plan`                                                  |
-| 同上 + `apiTypeMatch: anthropic-messages`           | `supportsMidConversationSystem = true`、`supportsNativeWebSearch = true` | 同 `zcode-plan`，**不同于 `off-peak`**（Todo140 只关闭闲时搜索） |
+| `https://zcode\.z\.ai/api/v1/highspeed/anthropic/?` | `inputFormat.supportsImage/supportsVideo = true`                         | 同 `codez-plan`                                                  |
+| 同上 + `apiTypeMatch: anthropic-messages`           | `supportsMidConversationSystem = true`、`supportsNativeWebSearch = true` | 同 `codez-plan`，**不同于 `off-peak`**（Todo140 只关闭闲时搜索） |
 
 理由是能力事实必须在同一会话内稳定，而不是随本轮是否加速抖动：
 
@@ -107,7 +107,7 @@ Coding Plan 权益的抽取，因此**必须按账号 Family 拆分**，不跨 F
   普通轮为 `true`、加速轮为 `false` 会让同一段历史被两种方式改写。全部 Zhipu 站点
   （含 `off-peak`）都是 `true`，此处没有歧义。
 - `supportsNativeWebSearch` 决定 `shouldExposeWebSearch` 是否把 WebSearch 暴露给模型
-  （`apps/zcode-cli/packages/core/src/runtime/methods/config.ts`，读的是**本轮 Active Model**）。
+  （`apps/codez-cli/packages/core/src/runtime/methods/config.ts`，读的是**本轮 Active Model**）。
   取 `false` 会让加速轮的工具集少一个工具，等于把「只改变速度」变成「顺带改变工具集」。
 - `inputFormat` 决定附件能否进入本轮。会话普通轮支持图片而加速轮不支持时，已经写好的
   图片输入会在发送瞬间失去合法性。
@@ -117,9 +117,9 @@ Coding Plan 权益的抽取，因此**必须按账号 Family 拆分**，不跨 F
 那不是设计结论，只是没有站点规则的副作用。若后端确认加速端点确实不透传 native
 web search，只需把这一条属性改 `false`，不影响其余迁移面。
 
-**测试环境发布包必须同步派生。** 生产文件 `config/provider/zcode-builtin.json` 是唯一编辑源，
-`config/provider/zcode-builtin.test.json` 由 `pnpm provider:config:sync-test` 机械派生
-（`ZCODE_ENV` 选择实际加载哪个）。派生脚本按端点白名单改写 `zhipu-account` 的 `baseUrl`
+**测试环境发布包必须同步派生。** 生产文件 `config/provider/codez-builtin.json` 是唯一编辑源，
+`config/provider/codez-builtin.test.json` 由 `pnpm provider:config:sync-test` 机械派生
+（`CODEZ_ENV` 选择实际加载哪个）。派生脚本按端点白名单改写 `zhipu-account` 的 `baseUrl`
 并复制站点规则，因此新增加速端点必须同时登记测试孪生端点，否则 `pnpm provider:config:check-test`
 直接抛 `Unknown account Provider endpoint`，加速卡在测试环境也拿不到 Provider：
 
@@ -232,7 +232,7 @@ Selection 的 `providerId` 命中声明值，且失败归因未指向其他 prov
 
 `modelExecution` 只描述「怎么打」，Selection 才是「打谁」。二者分离后必须在协议层
 保证不会出现「带凭据但没有选型」的请求，否则执行期会拿加速卡凭据去打会话默认 Provider。
-`packages/shared/src/zcode-protocol-v4/command.ts` 的三条命令各加一条 superRefine：
+`packages/shared/src/codez-protocol-v4/command.ts` 的三条命令各加一条 superRefine：
 
 | 命令            | 迁移前 | 迁移后                                            |
 | --------------- | ------ | ------------------------------------------------- |
@@ -264,7 +264,7 @@ individual/team Coding Plan 访问事实，账号切换后不会冻结旧权益�
 `organizationId` / `projectId` 改为必填 `accountAccess`：
 
 ```ts
-accountAccess: ZCodeProviderAccountAccess | ZCodeAccountAccess;
+accountAccess: CodezProviderAccountAccess | CodezAccountAccess;
 ```
 
 Bug 原因：此前该请求只带 org/project，请求期鉴权靠 host 自行按 provider 猜账号。
@@ -340,10 +340,10 @@ Renderer                       Highspeed service            CLI admission       
 
 ### 6.1 `v4-native-boundary` 无桥禁令已红
 
-`v4-native-boundary.test.ts` 断言 `zcode-protocol-v4/` 下任何文件不得 import
-`zcode-protocol/`。staging 自身已有 3 处违反（`session-flow.ts`、`goal-compact.ts`、
+`v4-native-boundary.test.ts` 断言 `codez-protocol-v4/` 下任何文件不得 import
+`codez-protocol/`。staging 自身已有 3 处违反（`session-flow.ts`、`goal-compact.ts`、
 `prompt-turn.ts`）。本次迁移让 `fork-edit-retry.ts` 与 `queue.ts` 也从
-`../../../zcode-protocol/model-execution.js` 取 `createModelExecutionContext`，
+`../../../codez-protocol/model-execution.js` 取 `createModelExecutionContext`，
 违规清单增加 2 行。
 
 选择与 staging 保持同一 import 写法（`session-flow.ts` 取的就是同一个符号、同一个路径），
@@ -352,7 +352,7 @@ Renderer                       Highspeed service            CLI admission       
 
 ### 6.2 CLI 测试文件不参与 typecheck
 
-`apps/zcode-cli/packages/bootstrap/tsconfig.json` 的 `include` 只有 `src/**/*`，
+`apps/codez-cli/packages/bootstrap/tsconfig.json` 的 `include` 只有 `src/**/*`，
 测试文件不进 `tsc --noEmit`。后果已经实际发生过：`transcript-hydration.test.ts` 里
 Highspeed 相关夹具在 Provider 重构后仍使用已删除的 `providerID` / `modelID` 键名，
 所有 selection 静默变成 `undefined`，「加速轮不参与普通模型切换基线」这条断言长期**假通过**
@@ -361,7 +361,7 @@ Highspeed 相关夹具在 Provider 重构后仍使用已删除的 `providerID` /
 ## 7. 验证
 
 - `pnpm typecheck`、`pnpm lint`
-- shared：`zcodeProtocolV4Command.test.ts`
+- shared：`codezProtocolV4Command.test.ts`
 - services：`highspeedCardService.test.ts`
 - provider-node：`builtin-provider-build.test.ts`（含 `sync-test` 契约：生产文件与派生测试发布包一致）
 - ui：`highspeed/highspeedSend.test.ts`

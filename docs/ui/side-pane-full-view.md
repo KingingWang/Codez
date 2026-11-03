@@ -72,7 +72,7 @@ slot 是面板 tab 栏下方的内容区。宿主通过 ResizeObserver 读取 sl
 按 session 记忆：taskSidePaneMemory.sidePaneFullViewByOwner[ownerTaskId ?? "__draft__"]
 └─ { surface: "conversation" | "side-pane", floating: "collapsed" | "expanded" | "minimized" } | 缺省
 
-全局偏好：localStorage「zcode:side-pane-full-view:floating-anchor」
+全局偏好：localStorage「codez:side-pane-full-view:floating-anchor」
 └─ 7 个吸附位置之一，默认 bottom-right
 
 宿主组件内临时状态（不记忆）

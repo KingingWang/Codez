@@ -20,12 +20,12 @@
 
 ## Code Anchors
 
-- `TaskStop` contract: `apps/zcode-cli/packages/contracts/src/tools/task-stop.ts`
-- `TaskStop` model-facing handler: `apps/zcode-cli/packages/core/src/tool/handlers/task-stop.ts`
-- Runtime background stop dispatch: `apps/zcode-cli/packages/core/src/runtime/methods/background.ts`
-- UI/session cancel protocol: `session/cancelBackgroundTask` in `packages/shared/src/zcode-protocol/index.ts`
-- Bash task stop: `apps/zcode-cli/packages/adapters/src/exec/node-execution-adapter-lifecycle.ts`
-- Agent task stop: `apps/zcode-cli/packages/core/src/subagent/runner.ts`
+- `TaskStop` contract: `apps/codez-cli/packages/contracts/src/tools/task-stop.ts`
+- `TaskStop` model-facing handler: `apps/codez-cli/packages/core/src/tool/handlers/task-stop.ts`
+- Runtime background stop dispatch: `apps/codez-cli/packages/core/src/runtime/methods/background.ts`
+- UI/session cancel protocol: `session/cancelBackgroundTask` in `packages/shared/src/codez-protocol/index.ts`
+- Bash task stop: `apps/codez-cli/packages/adapters/src/exec/node-execution-adapter-lifecycle.ts`
+- Agent task stop: `apps/codez-cli/packages/core/src/subagent/runner.ts`
 
 ## Completed Phases
 
@@ -33,7 +33,7 @@
 
 - [x] Fixed scope to already-background `local_bash` / `local_agent` stop control plus provider-visible `TaskStop`.
 - [x] Kept foreground-to-background controls, `TaskOutput`, and non-shared task types out of this round.
-- [x] Recorded code anchors and current ZCode starting points.
+- [x] Recorded code anchors and current Codez starting points.
 
 ### Phase 1 - Runtime Stop Dispatcher
 
@@ -99,14 +99,14 @@
 Commands run during implementation and cleanup:
 
 ```bash
-pnpm exec oxfmt --check apps/zcode-cli/packages/core/src/tool/executor/impl.ts apps/zcode-cli/packages/core/tests/task-stop-tool.test.ts apps/zcode-cli/packages/core/tests/tool-contracts.test.ts packages/desktop/test/e2e/conversation-session/conversation-session-background.test.ts
-pnpm --filter @zcode/core exec vitest run tests/task-stop-tool.test.ts tests/background-task-control.test.ts tests/tool-contracts.test.ts tests/subagent-explore.test.ts -t "TaskStop|background task control|orders shared provider-visible|runs through Agent"
-pnpm exec vitest --run packages/ui/test/zcodeSessionProjection.test.ts packages/ui/test/agentToolCallBlock.test.ts -t "task notification|background Agent|single background task"
-pnpm exec vitest --run packages/services/test/zcodeLegacyTaskCompatTaskIndex.test.ts -t "task notification|background Agent"
-pnpm exec vitest --run packages/shared/test/backgroundBashJobs.test.ts packages/ui/test/chatViewSummaryPanel.test.ts packages/ui/test/zcodeBackgroundTaskControl.test.ts -t "background Agent|background task|background Bash|running task"
-pnpm exec vitest --run packages/shared/test/backgroundBashJobs.test.ts packages/ui/test/chatViewSummaryPanel.test.ts packages/ui/test/backgroundTaskSnapshotSync.test.ts packages/ui/test/zcodeBackgroundTaskControl.test.ts packages/ui/test/longRunningToolCalls.test.ts
-pnpm exec vitest --run packages/ui/test/zcodeBackgroundTaskControl.test.ts packages/ui/test/chatViewSummaryPanel.test.ts
-E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-background.json pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-background.test.ts'
+pnpm exec oxfmt --check apps/codez-cli/packages/core/src/tool/executor/impl.ts apps/codez-cli/packages/core/tests/task-stop-tool.test.ts apps/codez-cli/packages/core/tests/tool-contracts.test.ts packages/desktop/test/e2e/conversation-session/conversation-session-background.test.ts
+pnpm --filter @codez/core exec vitest run tests/task-stop-tool.test.ts tests/background-task-control.test.ts tests/tool-contracts.test.ts tests/subagent-explore.test.ts -t "TaskStop|background task control|orders shared provider-visible|runs through Agent"
+pnpm exec vitest --run packages/ui/test/codezSessionProjection.test.ts packages/ui/test/agentToolCallBlock.test.ts -t "task notification|background Agent|single background task"
+pnpm exec vitest --run packages/services/test/codezLegacyTaskCompatTaskIndex.test.ts -t "task notification|background Agent"
+pnpm exec vitest --run packages/shared/test/backgroundBashJobs.test.ts packages/ui/test/chatViewSummaryPanel.test.ts packages/ui/test/codezBackgroundTaskControl.test.ts -t "background Agent|background task|background Bash|running task"
+pnpm exec vitest --run packages/shared/test/backgroundBashJobs.test.ts packages/ui/test/chatViewSummaryPanel.test.ts packages/ui/test/backgroundTaskSnapshotSync.test.ts packages/ui/test/codezBackgroundTaskControl.test.ts packages/ui/test/longRunningToolCalls.test.ts
+pnpm exec vitest --run packages/ui/test/codezBackgroundTaskControl.test.ts packages/ui/test/chatViewSummaryPanel.test.ts
+E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-background.json pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-background.test.ts'
 pnpm typecheck
 pnpm lint
 git diff --check
@@ -125,7 +125,7 @@ These are known adjacent capabilities, but they were intentionally not implement
 
 ## Final Self-Review
 
-- [x] Changed behavior traces back to the spec scope above or current ZCode behavior.
+- [x] Changed behavior traces back to the spec scope above or current Codez behavior.
 - [x] No generic background manager was added.
 - [x] `local_bash` and `local_agent` stop through one runtime dispatcher.
 - [x] Stop lifecycle is registry-first rather than projection-first.

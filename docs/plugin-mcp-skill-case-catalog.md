@@ -1,10 +1,10 @@
 # Plugin MCP Skill Case Catalog
 
-目标：把 ZCode 桌面端"插件提供的 MCP skill"从导入到关闭的产品语义展开成 e2e case，供产品、QA、开发 review。本目录 v1 只覆盖三个最基础的 happy-path 状态（未安装 / 安装并启用 / 安装但禁用）；后续导入动作的多步路径、per-skill 关闭、跨工作区继承、卸载后清状态等行为单独维护 catalog 增量。
+目标：把 Codez 桌面端"插件提供的 MCP skill"从导入到关闭的产品语义展开成 e2e case，供产品、QA、开发 review。本目录 v1 只覆盖三个最基础的 happy-path 状态（未安装 / 安装并启用 / 安装但禁用）；后续导入动作的多步路径、per-skill 关闭、跨工作区继承、卸载后清状态等行为单独维护 catalog 增量。
 
 ## 命名与固定标记
 
-- 工具命名空间（runtime）：agent 加载 plugin MCP server 后通过 `apps/zcode-cli/packages/adapters/src/mcp/descriptor.ts` 把 `plugin:<plugin-name>:<server>` 重写为 anthropic 兼容的 `mcp__plugin_<plugin-name>_<server>__<tool>`，这是真正发给模型的 tool name。本目录用例固定使用：
+- 工具命名空间（runtime）：agent 加载 plugin MCP server 后通过 `apps/codez-cli/packages/adapters/src/mcp/descriptor.ts` 把 `plugin:<plugin-name>:<server>` 重写为 anthropic 兼容的 `mcp__plugin_<plugin-name>_<server>__<tool>`，这是真正发给模型的 tool name。本目录用例固定使用：
   - 插件：`e2e-plugin-mcp-ping`（fixture 路径 `packages/desktop/test/e2e/fixtures/plugin-mcp-skill/e2e-plugin-mcp-ping/`）
   - server：`ping`
   - plugin 命名空间（plugin 内部）：`plugin:e2e-plugin-mcp-ping:ping`（仅用于 debug 日志 / `getEnabledMcpServers`）
@@ -47,7 +47,7 @@
   - P02 已安装并启用（marker `E2E_PLUGIN_MCP_PING_INSTALLED_ENABLED_*`，deepseek replay 回 `toolUse.name="mcp__plugin_e2e-plugin-mcp-ping_ping__ping"`）→ 9s 通过；chat 端成功渲染对应 tool-call block。
   - P03 已安装但禁用（marker `E2E_PLUGIN_MCP_PING_DISABLED_*`）→ 7s 通过；`enabledPlugins[id] = false` 生效，请求 `tools[]` 0 个 plugin MCP。
 - 关键 fix（v1 → 跑通）：
-  1. `installed_plugins.json` 必须落到 `<E2E_HOME>/.zcode/cli/plugins/` 而不是 `cli/`（bootstrap 的 `pluginStorageRoot = cli/plugins`，`listInstalledPluginRecords(pluginStorageRoot)` 读 `<pluginStorageRoot>/installed_plugins.json`）。
+  1. `installed_plugins.json` 必须落到 `<E2E_HOME>/.codez/cli/plugins/` 而不是 `cli/`（bootstrap 的 `pluginStorageRoot = cli/plugins`，`listInstalledPluginRecords(pluginStorageRoot)` 读 `<pluginStorageRoot>/installed_plugins.json`）。
   2. 安装型 plugin `defaultEnabled = false`，必须显式 `config.plugins.enabledPlugins[id] = true`；delete 字段会被当成默认 false。
   3. agent 注入模型的工具名是 `mcp__plugin_<plugin-name>_<server>__<tool>`，不是 `plugin:<plugin-name>:<server>`（后者只在 plugin 内部命名空间用）。replay fixture 与 chat 断言都要用前者。
 
@@ -55,10 +55,10 @@
 
 ### e2e 启动前由 wdio.conf.ts 写入
 
-- `<E2E_HOME>/.zcode/cli/plugins/installed_plugins.json`：
+- `<E2E_HOME>/.codez/cli/plugins/installed_plugins.json`：
   - A 状态：`resetE2EHome()` 已清空 E2E home，不写 plugin 安装记录
   - B/C 状态：从 `fixtures/plugin-mcp-skill/installed-plugins.{enabled,disabled}.template.json` 渲染（占位 `__INSTALL_PATH__` 替换为绝对路径），name=`e2e-plugin-mcp-ping`，marketplace=`e2e-fixture`，scope=`user`
-- `<E2E_HOME>/.zcode/cli/config.json`（必须在 `seedUpstreamE2EModelConfig` 之后再 patch）：
+- `<E2E_HOME>/.codez/cli/config.json`（必须在 `seedUpstreamE2EModelConfig` 之后再 patch）：
   - B 状态：`plugins.enabledPlugins["e2e-plugin-mcp-ping@e2e-fixture"] = true`（必须显式 true，因为安装型 plugin 在 `NodePluginAdapter.resolveCandidates` 里 `defaultEnabled = false`）
   - C 状态：`plugins.enabledPlugins["e2e-plugin-mcp-ping@e2e-fixture"] = false`
 
@@ -84,6 +84,6 @@
 
 ## 失败定位速查
 
-- `installed_plugins.json` 在 wdio 启动时如果被 agent 忽略（路径错位）→ 看 `apps/zcode-cli/packages/adapters/src/exec/index.ts:78` 的 `ZCODE_STORAGE_DIR` / `homedir()`，确认 agent 进程实际读的是 `<E2E_HOME>/.zcode/cli/`
+- `installed_plugins.json` 在 wdio 启动时如果被 agent 忽略（路径错位）→ 看 `apps/codez-cli/packages/adapters/src/exec/index.ts:78` 的 `CODEZ_STORAGE_DIR` / `homedir()`，确认 agent 进程实际读的是 `<E2E_HOME>/.codez/cli/`
 - `tools[]` 命名空间不是 `plugin:<name>:<server>` → 直接 grep `toNamespacedServerName` 确认实现
 - deepseek capture artifact 拿不到 `requestJson` → fallback 走 `record.requestBody` 的文本扫描（弱证据，仅证明 marker 进入请求体）

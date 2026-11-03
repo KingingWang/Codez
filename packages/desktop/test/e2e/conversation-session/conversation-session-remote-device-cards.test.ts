@@ -1,8 +1,8 @@
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { createServer } from "node:net";
-import { buildRemoteHostWorkspaceIdentity, ServiceChannels } from "@zcode/shared";
-import type { RemoteProjectDirectory } from "@zcode/services";
+import { buildRemoteHostWorkspaceIdentity, ServiceChannels } from "@codez/shared";
+import type { RemoteProjectDirectory } from "@codez/services";
 import { callHandoffHost, installHandoffRpcProbe } from "#e2e/helpers/remote-project-handoff-probe";
 import {
   TID_CONFIRM_DIALOG_CONFIRM,
@@ -10,7 +10,7 @@ import {
   TID_TASK_SETTINGS_BUTTON,
   TID_SETTINGS_SECTION_NAV,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom, waitForWorkspaceApp } from "../helpers/desktop-app.js";
 import { prepareV4ConversationE2E } from "../helpers/v4-conversation.js";
 import { selectTaskOrganizeMode } from "../helpers/workspace-agent-warmup.js";
@@ -115,7 +115,7 @@ describe(`${CASE_MARKER}: 设置设备列表与未完成连接`, () => {
       // 模拟旧版本缺少草稿范围或同目录残留其他项目；最近项目必须由 Host 入口决定归属。
       await browser.execute(
         (identity, hostId, projectId) => {
-          const key = `zcode-composer-workspace-scope:v1:${JSON.stringify(["desktop", identity])}`;
+          const key = `codez-composer-workspace-scope:v1:${JSON.stringify(["desktop", identity])}`;
           if (projectId === null) localStorage.removeItem(key);
           else
             localStorage.setItem(
@@ -149,7 +149,7 @@ describe(`${CASE_MARKER}: 设置设备列表与未完成连接`, () => {
       const projectId = await browser.execute(
         (path, identity) => {
           const bridge = window as Window & {
-            __zcodeSessionStoreE2E?: {
+            __codezSessionStoreE2E?: {
               getState(): {
                 getWorkspaceState(
                   path: string,
@@ -158,7 +158,7 @@ describe(`${CASE_MARKER}: 设置设备列表与未完成连接`, () => {
               };
             };
           };
-          return bridge.__zcodeSessionStoreE2E?.getState().getWorkspaceState(path, identity)
+          return bridge.__codezSessionStoreE2E?.getState().getWorkspaceState(path, identity)
             .draftProjectId;
         },
         config.workspacePaths[0],
@@ -166,7 +166,7 @@ describe(`${CASE_MARKER}: 设置设备列表与未完成连接`, () => {
       );
       expect(projectId).toBe(original.projectId);
       const rememberedProjectId = await browser.execute((identity) => {
-        const key = `zcode-composer-workspace-scope:v1:${JSON.stringify(["desktop", identity])}`;
+        const key = `codez-composer-workspace-scope:v1:${JSON.stringify(["desktop", identity])}`;
         return JSON.parse(localStorage.getItem(key) ?? "null")?.projectId;
       }, identity);
       expect(rememberedProjectId).toBe(original.projectId);
@@ -263,7 +263,7 @@ describe(`${CASE_MARKER}: 设置设备列表与未完成连接`, () => {
       ),
     ).toBe(true);
     const artifactRoot = resolve(
-      process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-device-cards",
+      process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-device-cards",
     );
     await mkdir(artifactRoot, { recursive: true });
     await browser.saveScreenshot(resolve(artifactRoot, "device-row-deep-link-highlight.png"));

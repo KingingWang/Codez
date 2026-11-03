@@ -6,7 +6,7 @@
 
 **Architecture:** 在 runtime command queue 提供 priority 候选能力，让 `runRegularTurnLoop()` 在每次 provider request projection 前查看“priority rank 不大于 `next`”的 pending runtime commands，也就是优先级至少为 `next` 的 `now` / `next` commands。候选集进入 active loop 前还必须经过显式白名单；本阶段只允许 `task-notification` 在 active loop 合流，普通 `prompt` / target continuation 仍留在 outer runtime command queue。idle 路径继续由 `task-notification` command 调 `executeTurnCommand()`；subagent child runtime terminal 后的 nested Bash cleanup-only suppression 在 active-loop 和 idle 消费侧共用同一个判定。
 
-**Tech Stack:** TypeScript, Vitest, zcode runtime command queue, `MessageHistoryImpl`, runtime task notification, conversation-session E2E fixtures.
+**Tech Stack:** TypeScript, Vitest, codez runtime command queue, `MessageHistoryImpl`, runtime task notification, conversation-session E2E fixtures.
 
 ## Execution Status
 
@@ -20,8 +20,8 @@
 - [x] Phase 7 compact/visibility regression covered by `runtime-compact.test.ts`.
 - [x] Phase 8 coverage docs updated and coverage audit passed.
 - [x] Phase 9 focused tests, root `pnpm typecheck`, root `pnpm lint`, direct core/adapters/bootstrap `tsc`, and `git diff --check` executed.
-- [ ] Phase 9 `apps/zcode-cli` package-level `pnpm typecheck` / `turbo run typecheck` is blocked by current workspace dependency resolution: `@zcode/shared@workspace:*` is referenced by `packages/adapters`, but the workspace only contains `@zcode/shared-types`.
-- [x] Phase 9 E2E formalization gates executed with the correct package scripts: `pnpm --filter @zcode/desktop typecheck:e2e` and `pnpm --filter @zcode/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-background.test.ts`.
+- [ ] Phase 9 `apps/codez-cli` package-level `pnpm typecheck` / `turbo run typecheck` is blocked by current workspace dependency resolution: `@codez/shared@workspace:*` is referenced by `packages/adapters`, but the workspace only contains `@codez/shared-types`.
+- [x] Phase 9 E2E formalization gates executed with the correct package scripts: `pnpm --filter @codez/desktop typecheck:e2e` and `pnpm --filter @codez/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/conversation-session-background.test.ts`.
 
 ## Global Constraints
 
@@ -38,27 +38,27 @@
 
 ## File Map
 
-- Modify: `apps/zcode-cli/packages/core/src/runtime/command-queue.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/command-queue.ts`
   - 增加 queue 级别的受控 drain API，用于取出 priority rank 不大于 `"next"` 的 commands，保持现有优先级顺序。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/internal-methods.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/internal-methods.ts`
   - 暴露 runtime 内部 active-loop runtime command drain 方法。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/internal.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/internal.ts`
   - 将新内部方法纳入 `AgentRuntimeInternal` 类型。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/index.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/index.ts`
   - 将新方法挂到 runtime prototype。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/background-notifications.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/background-notifications.ts`
   - 复用现有 `persistBackgroundTaskNotificationCommand()`，新增 active-loop runtime command intake helper。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/turn-loop.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/turn-loop.ts`
   - 在下一次 provider request projection 前调用 active-loop runtime command drain。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/runtime-command-queue.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/runtime-command-queue.ts`
   - idle `task-notification` command path 保持现有语义；必要时复用提取出的 helper，避免 persistence 逻辑分叉。
-- Modify/Test: `apps/zcode-cli/packages/core/tests/runtime-command-queue.test.ts`
+- Modify/Test: `apps/codez-cli/packages/core/tests/runtime-command-queue.test.ts`
   - 覆盖 queue drain API 的优先级上限、移除语义和 FIFO 行为。
-- Modify/Test: `apps/zcode-cli/packages/core/tests/subagent-background.test.ts`
+- Modify/Test: `apps/codez-cli/packages/core/tests/subagent-background.test.ts`
   - 更新“active prompt 后 notification 才作为独立 next turn”的旧断言；新增 active-loop 合流断言。
-- Modify/Test: `apps/zcode-cli/packages/core/tests/runtime-tool-loop.test.ts`
+- Modify/Test: `apps/codez-cli/packages/core/tests/runtime-tool-loop.test.ts`
   - 覆盖 main runtime background Bash/Agent notification 在工具结果后、下一次 provider request 前被合流。
-- Modify/Test: `apps/zcode-cli/packages/core/tests/runtime-compact.test.ts`
+- Modify/Test: `apps/codez-cli/packages/core/tests/runtime-compact.test.ts`
   - 覆盖 active-loop 合流发生在 compact projection 前后不会破坏 model-only synthetic history。
 - Modify: `docs/testing/conversation-session-background-e2e-coverage-matrix.md`
   - 更新 background notification active-loop coverage 状态。
@@ -81,9 +81,9 @@
   - command queue 支持 `prompt` / `task-notification` 和 `now < next < later`。
   - background Agent completion enqueue `mode: "task-notification", priority: "next"`。
   - Bash completion enqueue `mode: "task-notification", priority: "next"`。
-- [ ] 复查当前 zcode 偏差：
-  - `apps/zcode-cli/packages/core/src/runtime/methods/runtime-command-queue.ts`：`task-notification` 作为 outer command 调 `executeTurnCommand(command.text)`。
-  - `apps/zcode-cli/packages/core/src/runtime/methods/turn-loop.ts`：下一次 provider request 前只 drain steer 和旧 subagent notification，没有 drain runtime command queue task-notification。
+- [ ] 复查当前 codez 偏差：
+  - `apps/codez-cli/packages/core/src/runtime/methods/runtime-command-queue.ts`：`task-notification` 作为 outer command 调 `executeTurnCommand(command.text)`。
+  - `apps/codez-cli/packages/core/src/runtime/methods/turn-loop.ts`：下一次 provider request 前只 drain steer 和旧 subagent notification，没有 drain runtime command queue task-notification。
 - [ ] 记录验收口径：
   - Active loop 正在跑且会进入下一次 provider request：pending task notification 必须进入这次 request。
   - Active loop 已结束或 runtime idle：pending task notification 必须按现有 idle command wake 路径执行。
@@ -119,7 +119,7 @@ export interface RuntimeCommandQueue {
 **Checklist:**
 
 - [ ] 重新阅读本 plan 和当前 `git diff`。
-- [ ] 在 `apps/zcode-cli/packages/core/tests/runtime-command-queue.test.ts` 先写失败测试：
+- [ ] 在 `apps/codez-cli/packages/core/tests/runtime-command-queue.test.ts` 先写失败测试：
   - `getByMaxPriority("next")` 返回所有 `now` 和 `next` commands。
   - 不返回 `later` commands。
   - 同 priority FIFO。
@@ -127,16 +127,16 @@ export interface RuntimeCommandQueue {
 - [ ] 运行：
 
 ```bash
-pnpm --dir apps/zcode-cli exec vitest packages/core/tests/runtime-command-queue.test.ts --run
+pnpm --dir apps/codez-cli exec vitest packages/core/tests/runtime-command-queue.test.ts --run
 ```
 
 Expected: 新增测试失败，错误应指向 `getByMaxPriority` 未实现或行为不符。
 
-- [ ] 修改 `apps/zcode-cli/packages/core/src/runtime/command-queue.ts`，实现 `getByMaxPriority()`。
+- [ ] 修改 `apps/codez-cli/packages/core/src/runtime/command-queue.ts`，实现 `getByMaxPriority()`。
 - [ ] 再次运行：
 
 ```bash
-pnpm --dir apps/zcode-cli exec vitest packages/core/tests/runtime-command-queue.test.ts --run
+pnpm --dir apps/codez-cli exec vitest packages/core/tests/runtime-command-queue.test.ts --run
 ```
 
 Expected: PASS。
@@ -177,7 +177,7 @@ drainPendingRuntimeCommandsForActiveLoop(traceContext: TraceContext): Promise<{
 **Checklist:**
 
 - [ ] 重新阅读本 plan 和当前 `git diff`。
-- [ ] 在 `apps/zcode-cli/packages/core/tests/subagent-background.test.ts` 或更合适的 runtime test 中先写失败测试：
+- [ ] 在 `apps/codez-cli/packages/core/tests/subagent-background.test.ts` 或更合适的 runtime test 中先写失败测试：
   - enqueue 两条 task-notification。
   - 调用内部 helper。
   - 断言 `sessionStore.savedMessages` 中有两条 `source === "background_task"`、`visibility === "model-only"`。
@@ -187,14 +187,14 @@ drainPendingRuntimeCommandsForActiveLoop(traceContext: TraceContext): Promise<{
 - [ ] 运行 focused test，确认失败：
 
 ```bash
-pnpm --dir apps/zcode-cli exec vitest packages/core/tests/subagent-background.test.ts --run
+pnpm --dir apps/codez-cli exec vitest packages/core/tests/subagent-background.test.ts --run
 ```
 
 - [ ] 修改：
-  - `apps/zcode-cli/packages/core/src/runtime/methods/background-notifications.ts`
-  - `apps/zcode-cli/packages/core/src/runtime/internal-methods.ts`
-  - `apps/zcode-cli/packages/core/src/runtime/internal.ts`
-  - `apps/zcode-cli/packages/core/src/runtime/methods/index.ts`
+  - `apps/codez-cli/packages/core/src/runtime/methods/background-notifications.ts`
+  - `apps/codez-cli/packages/core/src/runtime/internal-methods.ts`
+  - `apps/codez-cli/packages/core/src/runtime/internal.ts`
+  - `apps/codez-cli/packages/core/src/runtime/methods/index.ts`
 - [ ] 再次运行 focused test。
 
 **Pass Criteria:**
@@ -212,7 +212,7 @@ pnpm --dir apps/zcode-cli exec vitest packages/core/tests/subagent-background.te
 
 **Placement:**
 
-In `apps/zcode-cli/packages/core/src/runtime/methods/turn-loop.ts`:
+In `apps/codez-cli/packages/core/src/runtime/methods/turn-loop.ts`:
 
 ```ts
 await this.drainPendingSubagentNotifications(state.turnTraceContext);
@@ -236,25 +236,25 @@ const providerProjection = buildRuntimeProviderRequestMessages(this, {
 **Checklist:**
 
 - [ ] 重新阅读本 plan 和当前 `git diff`。
-- [ ] 在 `apps/zcode-cli/packages/core/tests/runtime-tool-loop.test.ts` 写失败测试：background Bash 在一个 tool step 执行完成后、下一次 provider request 前 enqueue notification。
+- [ ] 在 `apps/codez-cli/packages/core/tests/runtime-tool-loop.test.ts` 写失败测试：background Bash 在一个 tool step 执行完成后、下一次 provider request 前 enqueue notification。
   - 第一次 model request 返回一个 foreground tool call，tool result 触发 background notification enqueue。
   - 第二次 model request 的 `messages` 必须同时包含 tool result 和 `<task-notification>`。
   - 断言没有第三个“notification-only” model request。
 - [ ] 运行：
 
 ```bash
-pnpm --dir apps/zcode-cli exec vitest packages/core/tests/runtime-tool-loop.test.ts --run -t "background notification"
+pnpm --dir apps/codez-cli exec vitest packages/core/tests/runtime-tool-loop.test.ts --run -t "background notification"
 ```
 
 Expected: 新测试先失败，表现为 notification 只在当前 prompt command 完成后作为独立 request 出现。
 
-- [ ] 修改 `apps/zcode-cli/packages/core/src/runtime/methods/turn-loop.ts`，接入 helper。
+- [ ] 修改 `apps/codez-cli/packages/core/src/runtime/methods/turn-loop.ts`，接入 helper。
 - [ ] 更新旧测试：
-  - `apps/zcode-cli/packages/core/tests/subagent-background.test.ts` 里“queues task-notification commands behind an active prompt command”如果只断言 active prompt 期间不打断 in-flight request，应保留；如果断言 prompt 完成后一定是独立 notification turn，应改成 active-loop 合流或 idle fallback 分别覆盖。
+  - `apps/codez-cli/packages/core/tests/subagent-background.test.ts` 里“queues task-notification commands behind an active prompt command”如果只断言 active prompt 期间不打断 in-flight request，应保留；如果断言 prompt 完成后一定是独立 notification turn，应改成 active-loop 合流或 idle fallback 分别覆盖。
 - [ ] 运行：
 
 ```bash
-pnpm --dir apps/zcode-cli exec vitest packages/core/tests/subagent-background.test.ts packages/core/tests/runtime-tool-loop.test.ts --run
+pnpm --dir apps/codez-cli exec vitest packages/core/tests/subagent-background.test.ts packages/core/tests/runtime-tool-loop.test.ts --run
 ```
 
 **Pass Criteria:**
@@ -273,7 +273,7 @@ pnpm --dir apps/zcode-cli exec vitest packages/core/tests/subagent-background.te
 **Checklist:**
 
 - [ ] 重新阅读本 plan 和当前 `git diff`。
-- [ ] 保留并必要时更新 `apps/zcode-cli/packages/core/tests/subagent-background.test.ts` 中的 idle wake 测试：
+- [ ] 保留并必要时更新 `apps/codez-cli/packages/core/tests/subagent-background.test.ts` 中的 idle wake 测试：
   - `runs each idle background notification as a model-only task-notification command`
   - `wakes idle runtime synchronously when a background notification is enqueued`
 - [ ] 新增或更新测试，明确 active-loop runtime command helper 不会吞掉 idle notification：
@@ -284,7 +284,7 @@ pnpm --dir apps/zcode-cli exec vitest packages/core/tests/subagent-background.te
 - [ ] 运行：
 
 ```bash
-pnpm --dir apps/zcode-cli exec vitest packages/core/tests/subagent-background.test.ts --run
+pnpm --dir apps/codez-cli exec vitest packages/core/tests/subagent-background.test.ts --run
 ```
 
 **Pass Criteria:**
@@ -302,7 +302,7 @@ pnpm --dir apps/zcode-cli exec vitest packages/core/tests/subagent-background.te
 **Checklist:**
 
 - [ ] 重新阅读本 plan 和当前 `git diff`。
-- [ ] 更新或新增 `apps/zcode-cli/packages/core/tests/runtime-tool-loop.test.ts` goal 相关用例：
+- [ ] 更新或新增 `apps/codez-cli/packages/core/tests/runtime-tool-loop.test.ts` goal 相关用例：
   - Active loop 合流 notification 后，同一 prompt command 的 post-turn goal loop 会继续检查 active target。
   - 如果 `RuntimeTaskRegistry` 仍有 running background task，verifier defer。
   - 多个 notification 中第一个合流、第二个 idle fallback 时，goal loop 不抢跑 queued command。
@@ -310,13 +310,13 @@ pnpm --dir apps/zcode-cli exec vitest packages/core/tests/subagent-background.te
 - [ ] 运行：
 
 ```bash
-pnpm --dir apps/zcode-cli exec vitest packages/core/tests/runtime-tool-loop.test.ts --run -t "target"
+pnpm --dir apps/codez-cli exec vitest packages/core/tests/runtime-tool-loop.test.ts --run -t "target"
 ```
 
 - [ ] 再运行完整 runtime tool-loop focused suite：
 
 ```bash
-pnpm --dir apps/zcode-cli exec vitest packages/core/tests/runtime-tool-loop.test.ts --run
+pnpm --dir apps/codez-cli exec vitest packages/core/tests/runtime-tool-loop.test.ts --run
 ```
 
 **Pass Criteria:**
@@ -335,7 +335,7 @@ pnpm --dir apps/zcode-cli exec vitest packages/core/tests/runtime-tool-loop.test
 **Checklist:**
 
 - [ ] 重新阅读本 plan 和当前 `git diff`。
-- [ ] 在 `apps/zcode-cli/packages/core/tests/runtime-tool-loop.test.ts` 或 `subagent-background.test.ts` 更新 BG06 单测：
+- [ ] 在 `apps/codez-cli/packages/core/tests/runtime-tool-loop.test.ts` 或 `subagent-background.test.ts` 更新 BG06 单测：
   - subagent child runtime 内 Bash background completion 发生在 child loop 下一次 provider request 前。
   - child 第二次 provider request 包含 nested Bash `<task-notification>`。
   - parent Agent result 不因为 nested Bash 后续结果被重写。
@@ -347,7 +347,7 @@ pnpm --dir apps/zcode-cli exec vitest packages/core/tests/runtime-tool-loop.test
 - [ ] 运行：
 
 ```bash
-pnpm --dir apps/zcode-cli exec vitest packages/core/tests/runtime-tool-loop.test.ts packages/core/tests/subagent-background.test.ts --run -t "background"
+pnpm --dir apps/codez-cli exec vitest packages/core/tests/runtime-tool-loop.test.ts packages/core/tests/subagent-background.test.ts --run -t "background"
 ```
 
 **Pass Criteria:**
@@ -366,14 +366,14 @@ pnpm --dir apps/zcode-cli exec vitest packages/core/tests/runtime-tool-loop.test
 **Checklist:**
 
 - [ ] 重新阅读本 plan 和当前 `git diff`。
-- [ ] 更新 `apps/zcode-cli/packages/core/tests/runtime-compact.test.ts`：
+- [ ] 更新 `apps/codez-cli/packages/core/tests/runtime-compact.test.ts`：
   - active-loop runtime command drain 后触发 mid-turn compact 时，`<task-notification>` 仍保留在 provider-visible history 中。
   - compact 不把 model-only notification 变成 real user message。
   - cache-control 仍由 `buildRuntimeProviderRequestMessages()` 统一投影。
 - [ ] 运行：
 
 ```bash
-pnpm --dir apps/zcode-cli exec vitest packages/core/tests/runtime-compact.test.ts --run -t "task-notification"
+pnpm --dir apps/codez-cli exec vitest packages/core/tests/runtime-compact.test.ts --run -t "task-notification"
 ```
 
 - [ ] 如有轨迹转换 helper 测试覆盖，补充一次 “active-loop notification 合流后 append-only” fixture 或 snapshot 检查。
@@ -434,7 +434,7 @@ pnpm e2e:fixture:check -- --case conversation-session-background
 - [ ] 运行 focused core tests：
 
 ```bash
-pnpm --dir apps/zcode-cli exec vitest \
+pnpm --dir apps/codez-cli exec vitest \
   packages/core/tests/runtime-command-queue.test.ts \
   packages/core/tests/subagent-background.test.ts \
   packages/core/tests/runtime-tool-loop.test.ts \
@@ -445,7 +445,7 @@ pnpm --dir apps/zcode-cli exec vitest \
 - [ ] 运行 Bash/background focused tests：
 
 ```bash
-pnpm --dir apps/zcode-cli exec vitest \
+pnpm --dir apps/codez-cli exec vitest \
   packages/adapters/src/exec/index.test.ts \
   packages/core/tests/bash-run-conformance.test.ts \
   --run -t "background|auto-background|task-notification"
@@ -454,7 +454,7 @@ pnpm --dir apps/zcode-cli exec vitest \
 - [ ] 运行 workflow detach focused test：
 
 ```bash
-pnpm --dir apps/zcode-cli exec vitest packages/bootstrap/tests/script-workflow.test.ts --run -t "background"
+pnpm --dir apps/codez-cli exec vitest packages/bootstrap/tests/script-workflow.test.ts --run -t "background"
 ```
 
 - [ ] 运行 repo gates：

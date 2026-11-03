@@ -6,7 +6,7 @@
 
 **Architecture:** 把 goal continuation 和 goal state change 都作为 append-only provider-visible history 事实。`target_continuation` 不再靠过滤隐藏；后续 goal pause/clear/resume 通过新的 persisted system reminder source 覆盖旧 continuation 语义。`/goal set|replace` 依靠真实 user objective 表达新目标；只有从 paused 状态重新变为 active 时才追加 active-again reminder。支持 MCS 的 provider 投成 mid-conversation `system`，否则 fallback 为 `<system-reminder>` user message。若 pause 发生在 active regular turn，target DB 与 `target_changed` 仍在发起该操作的 command mutation 内完成，并且早于 abort；只有 reminder 延迟到 cancelled tool results 全部持久化并进入 live history 后、turn terminal event 前物化。idle 状态变化仍立即物化。
 
-**Tech Stack:** TypeScript, Vitest, zcode-cli runtime message history, session store hydration, provider request projection.
+**Tech Stack:** TypeScript, Vitest, codez-cli runtime message history, session store hydration, provider request projection.
 
 ## Global Constraints
 
@@ -26,10 +26,10 @@
 **目标:** 增加一个专门表达 goal 状态变化的 persisted + MCS-capable system reminder source。
 
 **Files:**
-- Modify: `/Users/dev/Desktop/Z/z-code/apps/zcode-cli/packages/core/src/system-reminder/source.ts`
-- Modify: `/Users/dev/Desktop/Z/z-code/apps/zcode-cli/packages/core/src/agent/session-history-hydrator.ts`
-- Test: `/Users/dev/Desktop/Z/z-code/apps/zcode-cli/packages/core/tests/session-history-hydrator.test.ts`
-- Test: `/Users/dev/Desktop/Z/z-code/apps/zcode-cli/packages/core/tests/runtime-provider-request-messages.test.ts` 或现有 provider projection 测试文件
+- Modify: `/Users/dev/Desktop/Z/z-code/apps/codez-cli/packages/core/src/system-reminder/source.ts`
+- Modify: `/Users/dev/Desktop/Z/z-code/apps/codez-cli/packages/core/src/agent/session-history-hydrator.ts`
+- Test: `/Users/dev/Desktop/Z/z-code/apps/codez-cli/packages/core/tests/session-history-hydrator.test.ts`
+- Test: `/Users/dev/Desktop/Z/z-code/apps/codez-cli/packages/core/tests/runtime-provider-request-messages.test.ts` 或现有 provider projection 测试文件
 
 **Checklist:**
 - [x] 新增 source：`goal_state_change`
@@ -57,15 +57,15 @@
 **目标:** 在 `/goal pause|clear|resume` 发生时追加 model-only synthetic notice，表达最新 goal 状态。`set|replace` 的目标正文已经是真实 user message，不再重复写 reminder。
 
 **Files:**
-- Modify: `/Users/dev/Desktop/Z/z-code/apps/zcode-cli/packages/bootstrap/src/app/session-facade.ts`
-- Modify: `/Users/dev/Desktop/Z/z-code/apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts` 如需要补 protocol 边界行为
-- Add: `/Users/dev/Desktop/Z/z-code/apps/zcode-cli/packages/core/src/runtime/methods/goal-state-reminder.ts`
-- Modify: `/Users/dev/Desktop/Z/z-code/apps/zcode-cli/packages/core/src/runtime/methods/turn.ts`
-- Modify: `/Users/dev/Desktop/Z/z-code/apps/zcode-cli/packages/core/src/runtime/types.ts`
-- Modify: `/Users/dev/Desktop/Z/z-code/apps/zcode-cli/packages/core/src/runtime/internal-methods.ts` 如需要新增 runtime helper
-- Modify: `/Users/dev/Desktop/Z/z-code/apps/zcode-cli/packages/core/src/runtime/agent-runtime.ts` 如需要声明 helper
-- Test: `/Users/dev/Desktop/Z/z-code/apps/zcode-cli/packages/bootstrap/tests/session-persistence.test.ts`
-- Test: `/Users/dev/Desktop/Z/z-code/apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts`
+- Modify: `/Users/dev/Desktop/Z/z-code/apps/codez-cli/packages/bootstrap/src/app/session-facade.ts`
+- Modify: `/Users/dev/Desktop/Z/z-code/apps/codez-cli/packages/bootstrap/src/codez-protocol/server-operations.ts` 如需要补 protocol 边界行为
+- Add: `/Users/dev/Desktop/Z/z-code/apps/codez-cli/packages/core/src/runtime/methods/goal-state-reminder.ts`
+- Modify: `/Users/dev/Desktop/Z/z-code/apps/codez-cli/packages/core/src/runtime/methods/turn.ts`
+- Modify: `/Users/dev/Desktop/Z/z-code/apps/codez-cli/packages/core/src/runtime/types.ts`
+- Modify: `/Users/dev/Desktop/Z/z-code/apps/codez-cli/packages/core/src/runtime/internal-methods.ts` 如需要新增 runtime helper
+- Modify: `/Users/dev/Desktop/Z/z-code/apps/codez-cli/packages/core/src/runtime/agent-runtime.ts` 如需要声明 helper
+- Test: `/Users/dev/Desktop/Z/z-code/apps/codez-cli/packages/bootstrap/tests/session-persistence.test.ts`
+- Test: `/Users/dev/Desktop/Z/z-code/apps/codez-cli/packages/bootstrap/tests/codez-protocol.test.ts`
 
 **Reminder 文案建议:**
 - pause:
@@ -100,8 +100,8 @@
 **目标:** 删除普通请求过滤 `target_continuation` 的特殊逻辑，让 goal continuation 成为稳定 history 事实。
 
 **Files:**
-- Modify: `/Users/dev/Desktop/Z/z-code/apps/zcode-cli/packages/core/src/runtime/helpers/runtime-provider-request-messages.ts`
-- Test: `/Users/dev/Desktop/Z/z-code/apps/zcode-cli/packages/core/tests/runtime-tool-loop.test.ts`
+- Modify: `/Users/dev/Desktop/Z/z-code/apps/codez-cli/packages/core/src/runtime/helpers/runtime-provider-request-messages.ts`
+- Test: `/Users/dev/Desktop/Z/z-code/apps/codez-cli/packages/core/tests/runtime-tool-loop.test.ts`
 
 **Checklist:**
 - [x] 删除 `includeTargetContinuationReminders` 分支过滤
@@ -123,8 +123,8 @@
 **目标:** 确认 pause/replace/clear 与正在运行的 verifier/continuation 不会串目标。
 
 **Files:**
-- Test: `/Users/dev/Desktop/Z/z-code/apps/zcode-cli/packages/core/tests/runtime-tool-loop.test.ts`
-- Test: `/Users/dev/Desktop/Z/z-code/apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts`
+- Test: `/Users/dev/Desktop/Z/z-code/apps/codez-cli/packages/core/tests/runtime-tool-loop.test.ts`
+- Test: `/Users/dev/Desktop/Z/z-code/apps/codez-cli/packages/bootstrap/tests/codez-protocol.test.ts`
 
 **Checklist:**
 - [x] verifier 返回期间用户 replace goal：旧 targetID 不继续，新 targetID 继续
@@ -174,11 +174,11 @@
 **目标:** 确认新 synthetic reminder 对 UI、visible content、compact、session context 没有副作用。
 
 **Files:**
-- Modify if needed: `/Users/dev/Desktop/Z/z-code/packages/shared/src/zcode-session-visible-content.ts`
-- Modify if needed: `/Users/dev/Desktop/Z/z-code/packages/ui/src/lib/zcodeChatMessages.ts`
-- Test: `/Users/dev/Desktop/Z/z-code/packages/shared/test/zcodeSessionVisibleContent.test.ts`
-- Test: `/Users/dev/Desktop/Z/z-code/packages/ui/test/zcodeSessionProjection.test.ts`
-- Test: `/Users/dev/Desktop/Z/z-code/apps/zcode-cli/packages/core/tests/session-history-hydrator.test.ts`
+- Modify if needed: `/Users/dev/Desktop/Z/z-code/packages/shared/src/codez-session-visible-content.ts`
+- Modify if needed: `/Users/dev/Desktop/Z/z-code/packages/ui/src/lib/codezChatMessages.ts`
+- Test: `/Users/dev/Desktop/Z/z-code/packages/shared/test/codezSessionVisibleContent.test.ts`
+- Test: `/Users/dev/Desktop/Z/z-code/packages/ui/test/codezSessionProjection.test.ts`
+- Test: `/Users/dev/Desktop/Z/z-code/apps/codez-cli/packages/core/tests/session-history-hydrator.test.ts`
 
 **Checklist:**
 - [x] `goal_state_change` model-only synthetic notice 不显示为普通 user bubble
@@ -197,27 +197,27 @@
 ## Phase 6: Final Verification
 
 **Commands:**
-- [x] `pnpm --dir apps/zcode-cli exec vitest packages/core/tests/runtime-tool-loop.test.ts --run`
+- [x] `pnpm --dir apps/codez-cli exec vitest packages/core/tests/runtime-tool-loop.test.ts --run`
   - 2026-07-12 全量 129 条通过，包含调度前、checkpoint 期间和 terminal 持久化窗口三个确定性 Stop 竞态。
-- [x] `pnpm --dir apps/zcode-cli exec vitest packages/core/tests/session-history-hydrator.test.ts packages/core/tests/provider-request-messages.test.ts --run`
+- [x] `pnpm --dir apps/codez-cli exec vitest packages/core/tests/session-history-hydrator.test.ts packages/core/tests/provider-request-messages.test.ts --run`
   - 2026-07-12 共 51 条通过，覆盖 cold hydration、MCS system 与 legacy fallback。
-- [x] `pnpm --dir apps/zcode-cli exec vitest packages/bootstrap/tests/session-persistence.test.ts --run -t 'persists model-only goal state change reminders for goal lifecycle changes|persists replacement goal objective as real user prompt without state reminders'`
+- [x] `pnpm --dir apps/codez-cli exec vitest packages/bootstrap/tests/session-persistence.test.ts --run -t 'persists model-only goal state change reminders for goal lifecycle changes|persists replacement goal objective as real user prompt without state reminders'`
   - 2026-07-12 focused 2 条通过。
-- [ ] `pnpm --dir apps/zcode-cli exec vitest packages/bootstrap/tests/session-persistence.test.ts --run`
+- [ ] `pnpm --dir apps/codez-cli exec vitest packages/bootstrap/tests/session-persistence.test.ts --run`
   - 2026-07-12 全量仍有 12 个既有 system-prompt/shell/tool fixture 预期失败；本改动相关的 goal lifecycle focused 用例通过。
-- [x] `pnpm --dir apps/zcode-cli exec vitest packages/bootstrap/tests/zcode-protocol.test.ts --run`
-- [x] `pnpm --dir apps/zcode-cli exec vitest packages/bootstrap/tests/zcode-protocol.test.ts --run -t 'allows session goal pause to stop a running prompt|pauses an active goal when session stop cancels goal continuation'`
+- [x] `pnpm --dir apps/codez-cli exec vitest packages/bootstrap/tests/codez-protocol.test.ts --run`
+- [x] `pnpm --dir apps/codez-cli exec vitest packages/bootstrap/tests/codez-protocol.test.ts --run -t 'allows session goal pause to stop a running prompt|pauses an active goal when session stop cancels goal continuation'`
   - 2026-07-12 focused 2 条通过，覆盖 `/goal pause` 与 Generic Stop 两个上游入口。
-- [x] `pnpm exec vitest packages/shared/test/zcodeSessionVisibleContent.test.ts --run`
-- [x] `pnpm exec vitest packages/ui/test/zcodeSessionProjection.test.ts --run`
+- [x] `pnpm exec vitest packages/shared/test/codezSessionVisibleContent.test.ts --run`
+- [x] `pnpm exec vitest packages/ui/test/codezSessionProjection.test.ts --run`
   - 2026-07-12 两个文件合计 108 条通过，model-only reminder 未变成可见 user bubble。
-- [x] `pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-stop-empty.test.ts'`
+- [x] `pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/conversation-session-stop-empty.test.ts'`
   - 2026-07-12 B12 等 2 条通过；tool call 运行中 Stop 且 queue=0 后，下一条普通消息立即发起并完成。
-- [x] `pnpm --filter @zcode/desktop typecheck:e2e`
+- [x] `pnpm --filter @codez/desktop typecheck:e2e`
 - [x] `pnpm typecheck`
-- [x] `pnpm --dir apps/zcode-cli typecheck`
+- [x] `pnpm --dir apps/codez-cli typecheck`
 - [x] `pnpm lint`
-  - 根仓库 lint 通过（75 个既有 warning、0 error）；本次所有变更 TypeScript 文件的 targeted oxlint 通过。`apps/zcode-cli` 全量 lint 仍被既有 max-lines/unused 基线阻断。
+  - 根仓库 lint 通过（75 个既有 warning、0 error）；本次所有变更 TypeScript 文件的 targeted oxlint 通过。`apps/codez-cli` 全量 lint 仍被既有 max-lines/unused 基线阻断。
 
 **Manual / Evidence Checks:**
 - [ ] 创建 goal，跑出一次 continuation

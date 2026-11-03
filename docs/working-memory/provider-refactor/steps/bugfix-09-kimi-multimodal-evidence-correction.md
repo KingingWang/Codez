@@ -14,7 +14,7 @@ Built-in Config 把下列模型能力写错：
 | `kimi-k2.7-code` | Image=false、Video=false | Kimi 官方 FAQ 明确支持 Text、Image、Video                 | true / true  |
 | `k3-256k`        | Image=true、Video=true   | Kimi Code 模型表明确为 Image only                         | true / false |
 
-`packages/provider-node/test/zcode-builtin-integrity.test.ts` 又断言了前两个错误值，使错误配置能够稳定通过测试。
+`packages/provider-node/test/codez-builtin-integrity.test.ts` 又断言了前两个错误值，使错误配置能够稳定通过测试。
 
 ## 根因
 
@@ -53,6 +53,6 @@ Provider Registry / Active Model.properties
 ## 验证
 
 - 真实 Built-in Config 解析：K3、K2.7 Code、K3-256K 三项媒体能力。
-- `@zcode/provider-node` 定向单测与 typecheck。
+- `@codez/provider-node` 定向单测与 typecheck。
 - 根 `pnpm typecheck`、`pnpm lint`。
 - 配置与文档格式检查、`git diff --check`。

@@ -1,12 +1,12 @@
 import {
   normalizeTelemetryUiMode,
-  ZCODE_AGENT_PROVIDER,
+  CODEZ_AGENT_PROVIDER,
   type TelemetryUiMode,
   type PlanIdentitySnapshot,
-  type ZCodeProvider,
-} from "@zcode/shared";
+  type CodezProvider,
+} from "@codez/shared";
 import { buildPromptTelemetryExtraDetail } from "@/lib/messageTelemetry.js";
-import { encodeCustomModelValue } from "@/lib/zcodeCustomModelValue.js";
+import { encodeCustomModelValue } from "@/lib/codezCustomModelValue.js";
 import { legacyTelemetryProviderId } from "@/lib/providerTelemetryIdentity.js";
 
 export function resolveLegacyConversationModelValue(params: {
@@ -15,7 +15,7 @@ export function resolveLegacyConversationModelValue(params: {
 }): string | null | undefined {
   const configProvider = params.configProvider?.trim();
   const modelName = params.modelName?.trim();
-  if (!configProvider || !modelName || configProvider === ZCODE_AGENT_PROVIDER) {
+  if (!configProvider || !modelName || configProvider === CODEZ_AGENT_PROVIDER) {
     return params.modelName;
   }
   // 修复原因：V4 config 把 provider/model 拆开保存，直接上报 model 会丢失旧 UI
@@ -23,19 +23,19 @@ export function resolveLegacyConversationModelValue(params: {
   return encodeCustomModelValue(legacyTelemetryProviderId(configProvider), modelName);
 }
 
-export { resolveLegacyRuntimeModelValue } from "@zcode/shared/conversation-telemetry";
+export { resolveLegacyRuntimeModelValue } from "@codez/shared/conversation-telemetry";
 
-/** V4 config.provider 是实际模型 provider id；agentProvider 表示 ZCode 运行时。 */
+/** V4 config.provider 是实际模型 provider id；agentProvider 表示 Codez 运行时。 */
 export function buildV4ConversationPromptTelemetryExtraDetail(params: {
   uiMode?: TelemetryUiMode;
-  agentProvider?: ZCodeProvider;
+  agentProvider?: CodezProvider;
   configProvider?: string | null;
   modelName?: string | null;
   askMode?: string | null;
   providerBaseURL?: string | null;
   planIdentitySnapshot?: PlanIdentitySnapshot | null;
 }): Record<string, string> {
-  const agentProvider = params.agentProvider ?? ZCODE_AGENT_PROVIDER;
+  const agentProvider = params.agentProvider ?? CODEZ_AGENT_PROVIDER;
   const base = buildPromptTelemetryExtraDetail({
     askMode: params.askMode,
     modelName: resolveLegacyConversationModelValue(params),
@@ -51,7 +51,7 @@ export function buildV4ConversationPromptTelemetryExtraDetail(params: {
     model_provider: legacyTelemetryProviderId(
       params.configProvider?.trim() || base.model_provider || "",
     ),
-    // agent 表示 ZCode 运行时，不能用模型 provider id 替代。
+    // agent 表示 Codez 运行时，不能用模型 provider id 替代。
     agent: agentProvider,
   };
 }

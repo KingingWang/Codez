@@ -11,7 +11,7 @@
 | Change | 修复 `message_completion` 错误累计整个 session 历史的问题，并以失败复现 E2E 锁定 message scope |
 | User-visible surfaces | 无 UI 新行为；验证 `/report` 的 `agent_trace` payload |
 | Existing docs | `docs/monitoring/business-monitoring.md`、`docs/monitoring/performance-telemetry-catalog.md`、`docs/conversation-session-case-catalog.md` |
-| Existing code owners | `packages/ui/src/lib/messageTelemetry.ts`、`packages/ui/src/hooks/useZCodeChat.ts`、`packages/ui/src/hooks/taskStreamEventHandlers.ts` |
+| Existing code owners | `packages/ui/src/lib/messageTelemetry.ts`、`packages/ui/src/hooks/useCodezChat.ts`、`packages/ui/src/hooks/taskStreamEventHandlers.ts` |
 | Out of scope | queue/stop、跨 session、手机 replayable 恢复协议、真实 telemetry 服务端接收 |
 
 ## Clarification Log

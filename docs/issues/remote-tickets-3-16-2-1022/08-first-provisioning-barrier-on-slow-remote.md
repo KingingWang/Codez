@@ -41,7 +41,7 @@ macOS 用户从 3.15.3 自动更新到 3.16.2 后，SSH 远程项目“点不开
 
 ## 待补
 
-远端 `df -hT ~; findmnt -T ~`、`nproc; uptime; cat /sys/fs/cgroup/cpu.max`、元数据延迟循环测试、远端访问 ZCode 服务域名的耗时（`time curl -sS -o /dev/null <服务地址>`）；`localhost` 端口转发如何建立；连接面板安装日志与截图。
+远端 `df -hT ~; findmnt -T ~`、`nproc; uptime; cat /sys/fs/cgroup/cpu.max`、元数据延迟循环测试、远端访问 Codez 服务域名的耗时（`time curl -sS -o /dev/null <服务地址>`）；`localhost` 端口转发如何建立；连接面板安装日志与截图。
 
 ## 诊断建议
 

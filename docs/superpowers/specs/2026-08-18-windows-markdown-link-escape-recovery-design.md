@@ -12,17 +12,17 @@
 还有第二个用户可见故障：模型走 PowerShell 兜底截图成功落盘
 
 ```text
-C:\Users\dev\.zcode\workspace\default\screenshot.png   518252 bytes
+C:\Users\dev\.codez\workspace\default\screenshot.png   518252 bytes
 ```
 
 但会话区里的预览打不开，`file.stat` / `file.readMediaPreview` 报 ENOENT，
 实际请求的是
 
 ```text
-C:/Users/dev.zcode/workspace/default/screenshot.png
+C:/Users/dev.codez/workspace/default/screenshot.png
 ```
 
-`\.zcode` 变成了 `.zcode` —— 少了一个反斜杠。
+`\.codez` 变成了 `.codez` —— 少了一个反斜杠。
 
 ## 根因
 
@@ -30,10 +30,10 @@ CommonMark 规定链接目标里的反斜杠转义**只对 ASCII 标点生效**�
 时产出 X 本身，否则反斜杠原样保留。Windows 路径恰好横跨这两类：
 
 ```text
-源码   [screenshot.png](C:\Users\dev\.zcode\workspace\default\screenshot.png)
+源码   [screenshot.png](C:\Users\dev\.codez\workspace\default\screenshot.png)
                           ↑U    ↑z   ↑.      ↑w        ↑d       ↑s
                           留    留   吃掉    留        留       留
-mdast  url = C:\Users\dev.zcode\workspace\default\screenshot.png
+mdast  url = C:\Users\dev.codez\workspace\default\screenshot.png
 ```
 
 实测（`remark-parse`）确认：只有 `\.` 这一处塌掉，其余反斜杠全部存活。
@@ -116,7 +116,7 @@ markdown 源文本
 ### 挂载
 
 `message.tsx` 里 `messageRemarkPlugins` 目前只在
-`renderZCodeFileCitations && workspacePath` 时才显式提供，否则传 `undefined`
+`renderCodezFileCitations && workspacePath` 时才显式提供，否则传 `undefined`
 （走 Streamdown 默认）。本插件必须**无条件**生效，因此改为始终显式提供
 `defaultRemarkPlugins + windowsFileLinkEscapeRemarkPlugin`，citation 插件仍按原
 条件追加。显式传入默认插件是既有约定（见该处既有注释：不带默认插件会让表格退化）。
@@ -131,9 +131,9 @@ markdown 源文本
 
 ## 验收
 
-1. 新增单测覆盖：`\.zcode` 还原、image 节点、UNC 前导反斜杠塌陷、引用式 definition、
+1. 新增单测覆盖：`\.codez` 还原、image 节点、UNC 前导反斜杠塌陷、引用式 definition、
    无需还原时不动、非 Windows URL 不动、带 title 跳过、尖括号跳过、
    验证不通过（实体引用）时保持原值。
 2. `pnpm exec vitest run packages/ui/test/windowsFileLinkEscapeRemarkPlugin.test.ts` 通过，
    且 message.tsx 依赖的 11 个既有测试文件全绿。
-3. 端到端：会话里 `[x](C:\Users\dev\.zcode\...\screenshot.png)` 预览可打开。
+3. 端到端：会话里 `[x](C:\Users\dev\.codez\...\screenshot.png)` 预览可打开。

@@ -1,4 +1,4 @@
-import type { SourceServerConnectionStateSnapshot } from "@zcode/shared";
+import type { SourceServerConnectionStateSnapshot } from "@codez/shared";
 import type { WindowRemoteConnectionCloseEvent } from "./windowRemoteConnectionRegistry.js";
 
 export function isSourceServerAutomaticRecoveryTerminalState(

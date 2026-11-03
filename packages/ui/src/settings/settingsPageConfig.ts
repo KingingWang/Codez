@@ -78,7 +78,7 @@ const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
     titleId: "settings.modelProviderTitle",
     groupId: "basics",
   },
-  // 个性化（用户自定义指令）是 Agent 能力组的第一项：编辑 ~/.zcode/AGENTS.md，
+  // 个性化（用户自定义指令）是 Agent 能力组的第一项：编辑 ~/.codez/AGENTS.md，
   // 对所有会话生效（spec：docs/ui/settings-personalization.md）。
   {
     id: "personalization",
@@ -164,7 +164,7 @@ const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
     titleId: "settings.shortcuts.title",
     groupId: "basics",
   },
-  // 工作区搜索范围（.zcodeignore）：面向所有用户的基础工作区行为配置，收在基础设置末尾。
+  // 工作区搜索范围（.codezignore）：面向所有用户的基础工作区行为配置，收在基础设置末尾。
   {
     id: "workspaceFileSearch",
     icon: FileSearch,

@@ -2,14 +2,14 @@
 
 > 请求预算更新：下文的独立 video 预算桶是历史方案。当前所有媒体共用 `40MiB`
 > 编码后请求预算，单个视频仍按原始文件 `30MiB` 校验；以
-> [附件请求预算 spec](../../apps/zcode-cli/docs/design/v2/message-attachments.md#413-请求体防线) 为准。
+> [附件请求预算 spec](../../apps/codez-cli/docs/design/v2/message-attachments.md#413-请求体防线) 为准。
 
 - 日期：2026-08-17
 - 状态：一期实现收口中（已有链路保留；本轮补齐 provider effective capability、严格 schema、catalog 合并、Read 边界读取、tool result 媒体持久化与观测缺口。Web/mobile 大视频上传架构不在本轮调整）
 - 分支：`feat/video-input-support`
 - 范围：video 输入（不含 audio）；输入框附件 + Read 工具两个场景
 - 实现备注：
-  - 双 patch 落在 **root** `patches/`（root package.json `pnpm.patchedDependencies`）——实测 CLI 运行时从 root node_modules 解析 `@ai-sdk/*`（`node-linker=hoisted`）；apps/zcode-cli 自己的 node_modules/.pnpm 是遗留产物
+  - 双 patch 落在 **root** `patches/`（root package.json `pnpm.patchedDependencies`）——实测 CLI 运行时从 root node_modules 解析 `@ai-sdk/*`（`node-linker=hoisted`）；apps/codez-cli 自己的 node_modules/.pnpm 是遗留产物
   - V4 上传继续沿用既有 20MiB、64 chunks、64MiB staging 边界；本期不为 Web/mobile 大视频扩张协议资源上限
   - 已发送 image/video 复用同一媒体预览 Dialog；V4 上传仍为 20MiB，preview read 按媒体类型分别限制为 image 20MiB、video 30MiB，每帧继续不超过 512KiB
   - patch-commit 后需显式 `pnpm install` 才会应用到 hoisted 目录
@@ -35,7 +35,7 @@
 - `@ai-sdk/openai-compatible@2.0.60`：无 video 分支（同样 throw）。
 - 解法：pnpm patch 两个包各加一个 `video/*` 分支（仓库已有 `patches/vitest@4.1.7.patch` 先例）。
 
-### 1.4 zcode 协议现状（接入前）
+### 1.4 codez 协议现状（接入前）
 
 - 全链路 image 判定都是精确 `mime.startsWith("image/")` 或图片扩展名，video 不命中任何 image 分支：UI serialize 落 `kind:"file"`、CLI ref 映射落 `type:"file"`、core 落 `binary_file` 路径引用、Read 落 `looksLikeBinary` 模糊报错。**video 无法搭 image 通道便车，必须新开通道。**
 - `ModelProviderModality` 枚举与存储 zod 已含 `"video"`；models-dev 快照中 `glm-5v-turbo` 的 `modalities.input` 已声明 `video`。缺的只是投影集合（`PROTOCOL_MEDIA_INPUT_MODALITIES`）与下游能力字段。
@@ -50,7 +50,7 @@
   │ 桌面: localPath 零拷贝                   │ inferVideoMimeFromPath
   │ Web: dataBase64（沿用 V4 20MiB 上限）    │ readBinaryFile(≤全局30MiB, 无压缩)
   ▼                                          ▼
-ZCodePromptVideoAttachment{kind:"video"}   ReadVideoOutput{type:"video"}
+CodezPromptVideoAttachment{kind:"video"}   ReadVideoOutput{type:"video"}
   ▼ mapProtocolPromptAttachment /            │ formatReadVideoOutput
     attachment-refs(isVideoRef)              ▼
 TurnAttachment{type:"video"} ──────► ModelVideoContentBlock{type:"video",
@@ -103,7 +103,7 @@ interface ModelVideoContentBlock {
 ### 2.4 Provider-neutral 持久化与模型切换
 
 session DB 只保存可跨 provider 重建的媒体事实：`FilePart` 的 MIME、文件名、大小/摘要等
-metadata，以及指向完整媒体 snapshot 的 `zcode-artifact://` URI。base64 wire 不是消息事实，
+metadata，以及指向完整媒体 snapshot 的 `codez-artifact://` URI。base64 wire 不是消息事实，
 只能在当前请求投影时生成。
 
 ```text
@@ -149,7 +149,7 @@ CLI authorizes row/entity/ref            │                 ├─ loadedmetada
         ▼                                │
 persisted user FilePart                  │
         ├─ durable artifact exists
-        │      ├─ Desktop local -> .zcode video-cache path ─┐
+        │      ├─ Desktop local -> .codez video-cache path ─┐
         │      └─ remote/web or path unavailable -> chunked artifact read
         └─ no artifact
                ├─ Desktop local_ref -> authorized local path ─┤
@@ -169,7 +169,7 @@ persisted user FilePart                  │
   row/index 均可通过授权。新消息尚未形成持久 message 锚点，或旧历史没有 durable artifact 时，
   才读取已授权的原 ref。单次 read 失败只在当前 Dialog 展示错误，关闭后仍可再次打开并重试。
 - V4 upload 与 image preview read 仍以 20MiB 为总量上限。Desktop local sent-video 先请求
-  authorized local source：artifact 对应 `.zcode` 派生路径优先，其次才是没有 artifact 的
+  authorized local source：artifact 对应 `.codez` 派生路径优先，其次才是没有 artifact 的
   `metadata_only/local_ref`；本地播放器不做 full read，所以不受 `VIDEO_INPUT_MAX_BYTES = 30MiB`
   限制，也不为超限 local-ref 再复制一份文件。artifact 存在但派生路径不可用时只能从 artifact
   走原有 512KiB 分片，不能退回原始路径。
@@ -192,7 +192,7 @@ persisted user FilePart                  │
 | 决策                   | 结论                                                                                     | 依据                                                              |
 | ---------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
 | 内容形态               | 一期仅 base64（dataUrl）                                                                 | 用户决策；与现有 image 管线同构；无上传基础设施依赖             |
-| video 上限             | ZCode 全局固定 30MiB，不进入模型 catalog/session 能力                                    | 与 image 一致：模型只声明是否支持该模态，产品策略统一约束输入大小 |
+| video 上限             | Codez 全局固定 30MiB，不进入模型 catalog/session 能力                                    | 与 image 一致：模型只声明是否支持该模态，产品策略统一约束输入大小 |
 | Web/mobile 传输        | 沿用 V4 既有 20MiB 附件上限                                                              | 大视频传输方案暂不处理，不扩张 chunk/staging 资源边界             |
 | wire 覆盖              | openai `video_url` + anthropic `video` block 双格式，转换层对 apiFormat 通用，不特化端点 | 用户决策                                                          |
 | 模态互斥               | 一期不处理（GLM 明确"不支持同时理解文件、视频和图像"），混合附件网关报错透传             | 用户决策                                                          |
@@ -205,7 +205,7 @@ persisted user FilePart                  │
 ### Phase 1 类型与能力链路
 
 - contracts：`ModelVideoContentBlock` + union + 文本投影；`media-policy` 加 `supportsVideo` 与全局 video 输入上限常量；`ModelProperties`/`ModelCapability` 加 `supportsVideo`；`ReadVideoOutput` + schema + `READ_VIDEO_MAX_INPUT_BYTES`
-- shared：`PROTOCOL_MEDIA_INPUT_MODALITIES` 加 video + `supportsVideo` 投影 + zod schema 字段；`ZCodePromptVideoAttachment`；V4 继续沿用既有 20MiB 上传边界
+- shared：`PROTOCOL_MEDIA_INPUT_MODALITIES` 加 video + `supportsVideo` 投影 + zod schema 字段；`CodezPromptVideoAttachment`；V4 继续沿用既有 20MiB 上传边界
 - core：`TurnAttachment.type` 加 `"video"`
 
 ### Phase 2 core 链路

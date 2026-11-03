@@ -46,7 +46,7 @@
 
 ## 95% 审计规则
 
-1. 运行 trajectory E2E 时设置 `ZCODE_E2E_COVERAGE=1`。
+1. 运行 trajectory E2E 时设置 `CODEZ_E2E_COVERAGE=1`。
 2. 合并 Renderer Istanbul 与 Node V8 报告后，仅筛选固定区间内、且由上述 trajectory commits 引入的相关可执行变更行；以目标 revision 的 blame 归因，Babel/Istanbul statement 起始行确定 TS/TSX 可执行行。
 3. 每个 case 必须具备 setup、action、assertion；仅路过代码不计作语义覆盖。
 4. 若聚合低于 95%，先补有产品意义的 case/断言；不可用无断言调用伪造覆盖率。
@@ -56,7 +56,7 @@
 
 - Formal case：`conversation-session-model-trajectory-viewer.test.ts`，TRJ01–TRJ08 全部自动化归并为一次真实 Desktop/host 链路运行，并已通过人工 review 与 formal admission audit。
 - Case-local provider fixture 与 manifest 已通过 `e2e:fixture:check`；运行时 model-io 文件由 spec 按真实 task id 创建。
-- `ZCODE_E2E_COVERAGE=1` 正式运行通过，artifact run id：
+- `CODEZ_E2E_COVERAGE=1` 正式运行通过，artifact run id：
   `desktop-e2e-20260824030501067-p90124-d7b5300b50c7a917`。
 - Renderer/host 源码报告与 CLI V8 dist 对应行合并后，保守计入 CLI 本次新增的全部 27 行，
   changed-line 命中为 **1382 / 1437（96.17%）**，超过 95% 门槛。

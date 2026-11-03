@@ -2,14 +2,14 @@ import type {
   IDeviceSyncStateService,
   IServiceAccessor,
   ProviderSettingsView,
-} from "@zcode/services";
+} from "@codez/services";
 import type {
   DataSyncWorkspaceMapping,
   DeviceSyncResult,
   ProviderProvisioningLaneStatus,
   RemoteTarget,
   SourceServerWorkspaceHistoryEntry,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { WorkspaceTabState } from "@/store/tabStore.js";
 
 /** 当前已接入的数据同步分类；新分类在 categories.ts 注册适配器后加入这里。 */

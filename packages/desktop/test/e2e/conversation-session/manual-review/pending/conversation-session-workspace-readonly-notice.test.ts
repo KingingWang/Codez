@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { mkdir, rename, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { TID_V4_COMPOSER_INPUT, TID_V4_COMPOSER_SEND } from "@zcode/shared/test-ids";
+import { TID_V4_COMPOSER_INPUT, TID_V4_COMPOSER_SEND } from "@codez/shared/test-ids";
 import { DEFAULT_WORKSPACE, waitForWorkspaceApp } from "#e2e/helpers/desktop-app";
 import { reloadElectronSessionPreservingBrowserProfile } from "#e2e/helpers/e2e-electron-reload";
 import { selectNativeProjectDirectories } from "#e2e/helpers/project-sidebar";
@@ -13,9 +13,9 @@ const HISTORY_BODY = "E2E_READONLY_NOTICE_HISTORY_BODY";
 const NOTICE = '[data-testid="v4-workspace-readonly-notice"]';
 const COPY = {
   "zh-CN":
-    "工作区目录不存在或无法访问，当前仅可查看历史记录。恢复该目录后重启 ZCode 即可继续使用。",
+    "工作区目录不存在或无法访问，当前仅可查看历史记录。恢复该目录后重启 Codez 即可继续使用。",
   "en-US":
-    "The workspace directory does not exist or cannot be accessed. You can only view history for now. Restore the directory and restart ZCode to continue.",
+    "The workspace directory does not exist or cannot be accessed. You can only view history for now. Restore the directory and restart Codez to continue.",
 };
 type TestWindow = Window & {
   __testActions?: { setLocale(locale: string): void; setTheme(theme: string): void };
@@ -24,8 +24,8 @@ type TestWindow = Window & {
 describe("VP-ROOT-02：目录失效时的会话输入区提示", () => {
   it("冷启动只读历史在原输入区说明原因，目录恢复并重启后恢复输入", async function () {
     this.timeout(240_000);
-    const artifact = process.env.ZCODE_E2E_ARTIFACT_DIR!;
-    const root = join(DEFAULT_WORKSPACE, ".zcode-e2e", "readonly-notice");
+    const artifact = process.env.CODEZ_E2E_ARTIFACT_DIR!;
+    const root = join(DEFAULT_WORKSPACE, ".codez-e2e", "readonly-notice");
     const primary = join(root, "primary");
     const moved = join(root, "moved");
     await prepareV4ConversationE2E({ skipProvider: true });
@@ -197,10 +197,10 @@ async function emulateViewport(width?: number) {
 
 function seedHistory(workspacePath: string) {
   // 只写 runner 的隔离 HOME；复用真实 Host/CLI 两库数据合同，不 mock 消息或目录状态。
-  const home = process.env.ZCODE_E2E_HOME_DIR;
+  const home = process.env.CODEZ_E2E_HOME_DIR;
   if (!home || !DEFAULT_WORKSPACE.startsWith(home)) throw new Error("isolated HOME required");
-  const app = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
-  const cli = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"));
+  const app = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"));
+  const cli = new DatabaseSync(join(home, ".codez/cli/db/db.sqlite"));
   try {
     const projectId = app
       .prepare("SELECT project_id FROM project_roots WHERE root_path=? LIMIT 1")

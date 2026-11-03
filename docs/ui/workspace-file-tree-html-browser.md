@@ -14,4 +14,4 @@
 ## 验证
 
 - 浏览器安全与资源加载由 `packages/desktop/test/e2e/manual-review/pending/browser-local-html-preview.test.ts` 验证；文件树入口保持现有 HTML 类型判断。
-- 该变更不修改 ZCode session/task realtime、snapshot、queue、replayable/continuous 语义。
+- 该变更不修改 Codez session/task realtime、snapshot、queue、replayable/continuous 语义。

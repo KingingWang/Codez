@@ -2,7 +2,7 @@
 /*
  * 本地自测用的 fake 官方 Server MCP（Streamable HTTP）。
  *
- * 用途：验证运行中的 ZCode 实际发出的官方 MCP 身份头是否正确——包括当前登录身份的 JWT、
+ * 用途：验证运行中的 Codez 实际发出的官方 MCP 身份头是否正确——包括当前登录身份的 JWT、
  * 选中 Coding Plan 的 key、Bigmodel-Target-Type，以及 Team 场景的 organization/project。
  * 同时跟踪协议生命周期（initialize / initialized / tools/list / tools/call），把每一步是否
  * 成功、失败原因、以及工具调用的入参与结果都打印出来。
@@ -13,7 +13,7 @@
  *        [--fail-on all|initialize|tools/call]
  *        [--mcp-path /api/v1/mcp/server/image_search]
  *
- * 路由形态刻意与 zcode-server 对齐（`POST /api/v1/mcp/server/:mcp_group`，gin）：非匹配路径回
+ * 路由形态刻意与 codez-server 对齐（`POST /api/v1/mcp/server/:mcp_group`，gin）：非匹配路径回
  * 404、路径带尾斜杠回 307。这样把线上那两个易错点（漏 group 段、多写尾斜杠）在本地就能复现。
  *
  * 只监听 127.0.0.1，不属于任何发布产物。
@@ -25,7 +25,7 @@ const { values } = parseArgs({
   options: {
     port: { default: "3999", short: "p", type: "string" },
     // 与线上真实端点同形：/api/v1/mcp/server/:mcp_group。image_search 是服务端目前唯一注册的
-    // group（zcode-server internal/domain/servermcp/service.go 的 MCPGroupTools）。
+    // group（codez-server internal/domain/servermcp/service.go 的 MCPGroupTools）。
     "mcp-path": { default: "/api/v1/mcp/server/image_search", type: "string" },
     // 故障注入：验证 spec §6.3.3 的失败分类。
     //   ok          正常
@@ -69,7 +69,7 @@ const PLUGIN_NAME = "dev-official-mcp";
 const MCP_KEY = "dev-search";
 const QUALIFIED_TOOL_NAME = `mcp__plugin_${PLUGIN_NAME}_${MCP_KEY}__${TOOL_NAME}`;
 
-// 业务级失败的结果文本，与线上逐字段同形：zcode-server 的 ToolError.Error() 渲染成一行 JSON，
+// 业务级失败的结果文本，与线上逐字段同形：codez-server 的 ToolError.Error() 渲染成一行 JSON，
 // 客户端只认 error_code 并据此在输入框上方提示（quota-banner spec §4）；形状不一致会让本地
 // 看到的提示与线上不是一回事。
 const IN_BAND_TOOL_FAILURES = {
@@ -206,7 +206,7 @@ const server = createServer((request, response) => {
           : ""),
     );
 
-    // 路由：与 zcode-server 的 gin 路由树同形，把线上两个易错点在本地复现。
+    // 路由：与 codez-server 的 gin 路由树同形，把线上两个易错点在本地复现。
     const requestPath = (request.url ?? "/").split("?")[0];
     if (requestPath === `${MCP_PATH}/`) {
       console.log(`   ✗ 路径多了尾斜杠 → 回 307（gin 同行为）。客户端 redirect:"manual"，`);
@@ -425,7 +425,7 @@ server.listen(port, "127.0.0.1", () => {
   // installedPlugins 里有记录的、或 source === "official" 的插件，
   // 因此经 plugins.dirs 挂进来的 inline 插件在那里不可见（agent 侧照常加载）。
   const pluginId = `${PLUGIN_NAME}@${marketplace}`;
-  const marketRoot = `${process.env.HOME ?? "~"}/.zcode-dev-plugins/${marketplace}`;
+  const marketRoot = `${process.env.HOME ?? "~"}/.codez-dev-plugins/${marketplace}`;
 
   console.log(`fake 官方 MCP 已监听 ${origin}${MCP_PATH}`);
   console.log("  （路径与线上 POST /api/v1/mcp/server/:mcp_group 同形；其它路径回 404）");
@@ -435,14 +435,14 @@ server.listen(port, "127.0.0.1", () => {
   console.log("=== 四步 ===\n");
   console.log("1) 建本地 marketplace（含一个插件）：");
   console.log(`
-mkdir -p ${marketRoot}/.claude-plugin ${marketRoot}/${PLUGIN_NAME}/.zcode-plugin
+mkdir -p ${marketRoot}/.claude-plugin ${marketRoot}/${PLUGIN_NAME}/.codez-plugin
 cat > ${marketRoot}/.claude-plugin/marketplace.json <<'JSON'
 {
   "name": "${marketplace}",
   "plugins": [{ "name": "${PLUGIN_NAME}", "source": "./${PLUGIN_NAME}" }]
 }
 JSON
-cat > ${marketRoot}/${PLUGIN_NAME}/.zcode-plugin/plugin.json <<'JSON'
+cat > ${marketRoot}/${PLUGIN_NAME}/.codez-plugin/plugin.json <<'JSON'
 { "name": "${PLUGIN_NAME}", "version": "0.0.1" }
 JSON
 cat > ${marketRoot}/${PLUGIN_NAME}/.mcp.json <<'JSON'
@@ -451,7 +451,7 @@ cat > ${marketRoot}/${PLUGIN_NAME}/.mcp.json <<'JSON'
     "${MCP_KEY}": {
       "type": "http",
       "url": "${origin}${MCP_PATH}",
-      "auth": { "type": "zcode_official", "provider": "jwt_token" }
+      "auth": { "type": "codez_official", "provider": "jwt_token" }
     }
   }
 }
@@ -460,14 +460,14 @@ JSON
   console.log("2) 在设置页「添加 marketplace」里填这个目录（注意是 marketplace 根目录，");
   console.log(`   不是插件目录）：${marketRoot}`);
   console.log("   然后在插件列表里找到 " + PLUGIN_NAME + " 并「安装」。");
-  console.log("   若之前用 plugins.dirs 挂过同名插件，先从 ~/.zcode/cli/config.json 的");
+  console.log("   若之前用 plugins.dirs 挂过同名插件，先从 ~/.codez/cli/config.json 的");
   console.log("   plugins.dirs 里移除，避免两个来源的同名插件互相干扰。\n");
   console.log("3) 安装后**启用**它——marketplace 安装的插件默认不启用，未启用时其 MCP 不会被解析：");
   console.log("   设置页直接打开开关即可；或写配置：");
   console.log(`
 node -e '
 const fs=require("fs"),os=require("os"),path=require("path");
-const f=path.join(os.homedir(),".zcode/cli/config.json");
+const f=path.join(os.homedir(),".codez/cli/config.json");
 const c=JSON.parse(fs.readFileSync(f,"utf8"));
 c.plugins=c.plugins||{};
 c.plugins.enabled=true;
@@ -480,12 +480,12 @@ console.log("plugins.dirs =",c.plugins.dirs);
 `);
   console.log("4) 带 dev 开关启动 desktop（值为逗号分隔的 loopback origin）：");
   console.log(`
-export ZCODE_OFFICIAL_MCP_DEV_TRUSTED_ORIGINS='${origin}'
+export CODEZ_OFFICIAL_MCP_DEV_TRUSTED_ORIGINS='${origin}'
 pnpm dev:desktop
 `);
   console.log("   该开关只接受 http loopback，无法把凭证导向远端；不设置时一切 fail closed。");
   console.log(
-    "   正式规则是「官方 marketplace 的 plugin + origin 等于当前 ZCode API origin」。\n" +
+    "   正式规则是「官方 marketplace 的 plugin + origin 等于当前 Codez API origin」。\n" +
       `   本地 marketplace 叫 ${marketplace}（非官方），且 origin 是 loopback，\n` +
       "   因此自测必须依赖该开关。\n",
   );

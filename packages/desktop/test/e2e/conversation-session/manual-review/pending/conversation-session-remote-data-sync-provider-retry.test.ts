@@ -3,7 +3,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom, waitForTestIdByDom } from "#e2e/helpers/desktop-app";
 import { createAndConfigurePersonalProvider } from "#e2e/helpers/personal-provider-settings";
 import {
@@ -19,14 +19,14 @@ import {
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
 // DSYNC-13：数据同步页「模型提供商」只读分类与失败重试（docs/remote/data-sync.md「模型提供商（只读）」）。
-// 事件顺序：打开该设备上的项目（lane 注册，首次下发成功）→ 容器内 ~/.zcode/v2 设为只读
+// 事件顺序：打开该设备上的项目（lane 注册，首次下发成功）→ 容器内 ~/.codez/v2 设为只读
 // → 本机保存一次模型配置（personal-config 下发失败，lane 记录失败）→ 分类显示失败与「重试」
 // → 恢复可写 → 点「重试」（同一条 lane，trigger user-retry）→ 状态变为成功，容器内配置已更新。
 const CASE_MARKER = "E2E_DSYNC_13_PROVIDER_RETRY";
 const PROVIDER_NAME = "E2E DSYNC 13 Provider";
 const PROVIDER_BASE_URL = "https://dsync13.example.com/v1";
 const PROVIDER_API_KEY = "sk-e2e-dsync13-0123456789abcd";
-const REMOTE_PROVIDER_DIR = "/home/dev/.zcode/v2";
+const REMOTE_PROVIDER_DIR = "/home/dev/.codez/v2";
 const REMOTE_PROVIDER_CONFIG = `${REMOTE_PROVIDER_DIR}/provider_config.json`;
 const SYNC_TIMEOUT_MS = 120_000;
 

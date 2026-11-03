@@ -11,7 +11,7 @@ import { chromium } from "playwright-core";
 
 const root = fileURLToPath(new URL("../../../../../../", import.meta.url));
 const entry = "/packages/ui/test/browser/manual-review/pending/plugin-marketplace-risk.fixture.tsx";
-const artifacts = join(tmpdir(), "zcode-marketplace-risk");
+const artifacts = join(tmpdir(), "codez-marketplace-risk");
 let server;
 let browser;
 let origin;

@@ -11,7 +11,7 @@ Browser Use 与 Computer Use 共用的 shared `node_repl` MCP（只有 `js` 一�
 pnpm dev:desktop
   |
   +-- stage Browser node_repl runtime (the only MCP server)
-  +-- stage zcode-cua SDK/docs/skill (no mcpServers entry)
+  +-- stage codez-cua SDK/docs/skill (no mcpServers entry)
   `-- build Agent bundle and filesystem seed
           |
           v
@@ -28,9 +28,9 @@ Helper/CUA runtime。桌面使用 `desktop-continuous`，手机使用 `web-remot
 
 | 事实 | 权威 owner | 产物/校验 |
 | --- | --- | --- |
-| CUA SDK | `@zcode/zcode-cua-plugin` | `scripts/computer-use-client.mjs` + `scripts/check-sdk.mjs` |
+| CUA SDK | `@codez/codez-cua-plugin` | `scripts/computer-use-client.mjs` + `scripts/check-sdk.mjs` |
 | CUA 文档与 Skill | producer plugin | `docs/computer-use.md`、`skills/computer-use/SKILL.md` |
-| node_repl MCP | `@zcode/browser-use-plugin` | `dist/mcp/server.js` + `scripts/computer-use-client.mjs`（shared host runtime） |
+| node_repl MCP | `@codez/browser-use-plugin` | `dist/mcp/server.js` + `scripts/computer-use-client.mjs`（shared host runtime） |
 | CUA runtime/session/frame | shared-host `CuaControlPort` | `createComputerUseRuntime()`；按 `workspaceKey`/`remoteSessionId`/`sessionId` 隔离 |
 | native capability | CUA Helper + TCC | broker token、frame freshness、kill switch、input cleanup |
 
@@ -57,9 +57,9 @@ Helper/CUA runtime。桌面使用 `desktop-continuous`，手机使用 `web-remot
 
 ## 相关实现
 
-- `apps/zcode-cli/packages/browser-use-plugin/src/cua-bridge.ts`
-- `apps/zcode-cli/packages/browser-use-plugin/src/mcp/cua-broker.ts`
-- `apps/zcode-cli/packages/browser-use-plugin/src/mcp/server.ts`
-- `apps/zcode-cli/packages/zcode-cua-plugin/scripts/computer-use-client.mjs`
-- `apps/zcode-cli/packages/bootstrap/src/app/built-in-node-repl.ts`
+- `apps/codez-cli/packages/browser-use-plugin/src/cua-bridge.ts`
+- `apps/codez-cli/packages/browser-use-plugin/src/mcp/cua-broker.ts`
+- `apps/codez-cli/packages/browser-use-plugin/src/mcp/server.ts`
+- `apps/codez-cli/packages/codez-cua-plugin/scripts/computer-use-client.mjs`
+- `apps/codez-cli/packages/bootstrap/src/app/built-in-node-repl.ts`
 - `docs/cua/2026-08-24-cua-node-repl-sdk-migration-spec.md`

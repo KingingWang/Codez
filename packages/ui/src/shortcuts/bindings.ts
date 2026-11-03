@@ -11,7 +11,7 @@ import {
   parseShortcutBinding,
   serializeShortcutBinding,
   SHORTCUT_COMMANDS,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   isAppleKeyboardPlatform,
   type KeyboardShortcutPlatformInfo,

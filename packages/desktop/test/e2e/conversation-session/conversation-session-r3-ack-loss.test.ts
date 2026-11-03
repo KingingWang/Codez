@@ -7,8 +7,8 @@ import {
   type Socket,
 } from "node:net";
 import { resolve } from "node:path";
-import { BufferWriter, serialize } from "@zcode/rpc";
-import { ServiceChannels } from "@zcode/shared";
+import { BufferWriter, serialize } from "@codez/rpc";
+import { ServiceChannels } from "@codez/shared";
 import { clearAppData } from "../helpers/desktop-app.js";
 import {
   getUpstreamRequestRecordCount,
@@ -38,7 +38,7 @@ import {
 } from "../helpers/v4-conversation.js";
 
 const CASE_MARKER = "E2E_R3_ACK_LOSS";
-const artifactDir = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-ack-loss");
+const artifactDir = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-ack-loss");
 
 declare global {
   interface Window {
@@ -49,7 +49,7 @@ declare global {
 /** 只暂挂本例原始输入，不伪造 RPC 结果，也不拦截发送前的配置查询。 */
 async function holdInputCommand(marker: string): Promise<void> {
   const signature = new BufferWriter();
-  serialize(signature, ServiceChannels.ZCodeAgent);
+  serialize(signature, ServiceChannels.CodezAgent);
   serialize(signature, "sendConversationCommandV4");
   await browser.execute(
     (signature, marker) => {
@@ -341,7 +341,7 @@ describe(`${CASE_MARKER}: command 已 admitted 但 ACK 经代理丢失后的唯�
     expect(replayRecords).toBe(1);
     const remoteStatus = await runSSHCommand(
       direct,
-      'tr -d "\\n " < "$HOME/.zcode/server/run/status.json" | cut -c1-120',
+      'tr -d "\\n " < "$HOME/.codez/server/run/status.json" | cut -c1-120',
     );
     facts.remoteStatus = remoteStatus.stdout.trim();
   });

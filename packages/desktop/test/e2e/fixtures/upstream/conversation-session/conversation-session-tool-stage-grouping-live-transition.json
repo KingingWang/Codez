@@ -85,7 +85,7 @@
           },
           {
             "offsetMs": 0,
-            "text": "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"command\\\":\\\"wc -l .zcode-e2e/conversation-session-tool-stage-grouping-live-transition/seed.txt\\\"}\"}}\n\n"
+            "text": "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"command\\\":\\\"wc -l .codez-e2e/conversation-session-tool-stage-grouping-live-transition/seed.txt\\\"}\"}}\n\n"
           },
           {
             "offsetMs": 0,

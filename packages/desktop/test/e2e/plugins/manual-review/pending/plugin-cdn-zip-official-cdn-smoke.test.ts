@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { ZCodePluginInfo } from "@zcode/shared";
+import type { CodezPluginInfo } from "@codez/shared";
 import { clearAppData, getE2EAppDataPaths } from "../../../helpers/desktop-app.js";
 import {
   capturePluginManualReview,
@@ -50,7 +50,7 @@ describe("PLM-LC-007b Desktop real official CDN ZIP smoke", () => {
 
     const cacheRoot = join(
       getE2EAppDataPaths().homeDir,
-      ".zcode",
+      ".codez",
       "cli",
       "plugins",
       "cache",
@@ -61,7 +61,7 @@ describe("PLM-LC-007b Desktop real official CDN ZIP smoke", () => {
     expect(existsSync(join(cacheRoot, ".claude-plugin", "plugin.json"))).toBe(true);
     const installedState = JSON.parse(
       readFileSync(
-        join(getE2EAppDataPaths().homeDir, ".zcode", "cli", "plugins", "installed_plugins.json"),
+        join(getE2EAppDataPaths().homeDir, ".codez", "cli", "plugins", "installed_plugins.json"),
         "utf-8",
       ),
     ) as {
@@ -91,7 +91,7 @@ describe("PLM-LC-007b Desktop real official CDN ZIP smoke", () => {
   });
 });
 
-function componentNames(plugin: ZCodePluginInfo | undefined, kind: "command" | "skill"): string[] {
+function componentNames(plugin: CodezPluginInfo | undefined, kind: "command" | "skill"): string[] {
   return (
     plugin?.components?.find((group) => group.kind === kind)?.items.map((item) => item.name) ?? []
   );

@@ -34,7 +34,7 @@ import {
 
 const CASE_MARKER = "E2E_R3_QUEUE_SELECTION";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-queue-selection",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-queue-selection",
 );
 const PROVIDER_B_ID = "e2e-r3-queue-selection-b";
 const PROVIDER_B_NAME = "R3 Queue Model B";
@@ -77,7 +77,7 @@ describe(`${CASE_MARKER}: running 期间已 admitted 的 queue 与配置/selecti
     });
     const remoteConfig = await runSSHCommand(
       prepared.config,
-      'cat "$HOME/.zcode/v2/provider_config.json"',
+      'cat "$HOME/.codez/v2/provider_config.json"',
     );
     expect(remoteConfig.stdout).toContain(PROVIDER_B_NAME);
 

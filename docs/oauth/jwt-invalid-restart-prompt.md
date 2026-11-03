@@ -1,13 +1,13 @@
-# ZCode JWT 失效提示与重启
+# Codez JWT 失效提示与重启
 
-当 Host 通过统一 `NodeApiClient` 检测到 ZCode JWT 请求返回 401 时，先复用 OAuth logout 清理本地凭据，再通过 Broadcast 通知 Renderer。Renderer 使用统一 AlertDialog 提示“登录已过期”，用户确认后写入一次性 restart marker 并执行 `RelaunchApp`。新 Renderer 启动时消费并删除 marker，强制以 `session-expired` 原因进入登录页。
+当 Host 通过统一 `NodeApiClient` 检测到 Codez JWT 请求返回 401 时，先复用 OAuth logout 清理本地凭据，再通过 Broadcast 通知 Renderer。Renderer 使用统一 AlertDialog 提示“登录已过期”，用户确认后写入一次性 restart marker 并执行 `RelaunchApp`。新 Renderer 启动时消费并删除 marker，强制以 `session-expired` 原因进入登录页。
 
 ```text
-401 + 当前 ZCode JWT
+401 + 当前 Codez JWT
         ↓
 Host logout 清理凭据与派生 provider
         ↓
-auth:zcode-jwt-invalid 广播
+auth:codez-jwt-invalid 广播
         ↓
 Renderer AlertDialog
         ↓ 用户确认

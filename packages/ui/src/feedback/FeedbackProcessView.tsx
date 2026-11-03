@@ -1,12 +1,12 @@
 import { ChevronLeft, Clock3, ListChecks } from "lucide-react";
-import type { FeedbackTicketDetail } from "@zcode/shared";
-import type { IFeedbackService } from "@zcode/services";
+import type { FeedbackTicketDetail } from "@codez/shared";
+import type { IFeedbackService } from "@codez/services";
 import { Button } from "@/components/ui/button.js";
 import { FeedbackProgress } from "@/feedback/feedbackProgress.js";
 import { FeedbackSupplementComposer } from "@/feedback/FeedbackSupplementComposer.js";
 import { FeedbackTimeline, getFeedbackTimelineItems } from "@/feedback/feedbackTimeline.js";
 import { formatRelativeTime } from "@/feedback/feedbackUserView.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 
 export function FeedbackProcessView({
   ticket,
@@ -19,7 +19,7 @@ export function FeedbackProcessView({
   onBack: () => void;
   onRefresh: () => Promise<void>;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const formatMessage = intl.formatMessage;
   const timelineItems = getFeedbackTimelineItems(ticket.events ?? [], ticket.comments, formatMessage);
   const latestItem = timelineItems.at(-1);

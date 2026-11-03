@@ -122,7 +122,7 @@ export async function downloadAndExtractPrebuiltBinary({
   const normalizedArchiveSha256 = assertPrebuiltArchiveSha256(archiveSha256);
   mkdirSync(dirname(binaryPath), { recursive: true });
   mkdirSync(tmpdir(), { recursive: true });
-  const tempDir = mkdtempSync(join(tmpdir(), "zcode-prebuilt-binary-"));
+  const tempDir = mkdtempSync(join(tmpdir(), "codez-prebuilt-binary-"));
   const archivePath = join(tempDir, `archive.${archiveExt}`);
   const extractDir = join(tempDir, "extract");
 

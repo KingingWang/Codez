@@ -10,10 +10,10 @@ import {
   RemoteServiceAccess,
   connectViaProtocol,
   createAcknowledgedWebRemoteControlRelayProtocol,
-} from "@zcode/client";
-import { ServiceChannels } from "@zcode/shared";
-import { V4_WIRE_PROTOCOL_VERSION } from "@zcode/shared/zcode-protocol-v4";
-import { TID_V4_COMPOSER_INPUT, TID_V4_COMPOSER_SEND } from "@zcode/shared/test-ids";
+} from "@codez/client";
+import { ServiceChannels } from "@codez/shared";
+import { V4_WIRE_PROTOCOL_VERSION } from "@codez/shared/codez-protocol-v4";
+import { TID_V4_COMPOSER_INPUT, TID_V4_COMPOSER_SEND } from "@codez/shared/test-ids";
 import { createDeviceSwitchDesktopBridge } from "./remote-device-switch.helpers.mjs";
 import { taskSnapshotFrame } from "./remote-task-open.fixture.mjs";
 import { setup, assertEventually } from "./remote-login-v2.helpers.mjs";
@@ -267,7 +267,7 @@ async function scenario({ width, theme, locale, remote }) {
         createDeviceSwitchDesktopBridge(socket, bridge, {
           locale,
           theme,
-          events: { [`${ServiceChannels.ZCodeAgent}:onDynamicConversationFrame`]: frames.event },
+          events: { [`${ServiceChannels.CodezAgent}:onDynamicConversationFrame`]: frames.event },
           responses: {
             [`${ServiceChannels.OnboardingRecord}:shouldOnboard`]: false,
             [`${ServiceChannels.SettingsSync}:getFirstRunPromptState`]: { handled: true },
@@ -285,8 +285,8 @@ async function scenario({ width, theme, locale, remote }) {
               projectId: project.id,
               workspacePath,
             },
-            [`${ServiceChannels.ZCodeTask}:getTaskMeta`]: task,
-            [`${ServiceChannels.ZCodeAgent}:helloConversationV4`]: {
+            [`${ServiceChannels.CodezTask}:getTaskMeta`]: task,
+            [`${ServiceChannels.CodezAgent}:helloConversationV4`]: {
               kind: "hello",
               protocolVersion: V4_WIRE_PROTOCOL_VERSION,
               connectionId: bridge.bridgeSessionId,
@@ -301,8 +301,8 @@ async function scenario({ width, theme, locale, remote }) {
                 compression: "none",
               },
             },
-            [`${ServiceChannels.ZCodeAgent}:initializeConversationV4`]: null,
-            [`${ServiceChannels.ZCodeAgent}:subscribeConversationV4`]: () => {
+            [`${ServiceChannels.CodezAgent}:initializeConversationV4`]: null,
+            [`${ServiceChannels.CodezAgent}:subscribeConversationV4`]: () => {
               const subscriptionId = `sub-${bridge.bridgeSessionId}`;
               snapshots.set(bridge.bridgeSessionId, () => {
                 const frame = taskSnapshotFrame(taskId, subscriptionId);
@@ -318,11 +318,11 @@ async function scenario({ width, theme, locale, remote }) {
               });
               return { ack: { subscriptionId, mode: "snapshot", logEpoch: "e2e" } };
             },
-            [`${ServiceChannels.ZCodeAgent}:unsubscribeConversationV4`]: null,
-            [`${ServiceChannels.ZCodeAgent}:conversationWorkflowRunsV4`]: { runs: [] },
-            [`${ServiceChannels.ZCodeAgent}:conversationPlansV4`]: { plans: [] },
-            [`${ServiceChannels.ZCodeAgent}:queryConversationCommandsV4`]: { results: [] },
-            [`${ServiceChannels.ZCodeAgent}:sendConversationCommandV4`]: ({ envelope }) => {
+            [`${ServiceChannels.CodezAgent}:unsubscribeConversationV4`]: null,
+            [`${ServiceChannels.CodezAgent}:conversationWorkflowRunsV4`]: { runs: [] },
+            [`${ServiceChannels.CodezAgent}:conversationPlansV4`]: { plans: [] },
+            [`${ServiceChannels.CodezAgent}:queryConversationCommandsV4`]: { results: [] },
+            [`${ServiceChannels.CodezAgent}:sendConversationCommandV4`]: ({ envelope }) => {
               traffic.commands.push(envelope);
               return {
                 commandId: envelope.commandId,

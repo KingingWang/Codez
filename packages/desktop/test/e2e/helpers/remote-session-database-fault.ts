@@ -1,6 +1,6 @@
 import { execInRemoteContainer } from "#e2e/helpers/remote-docker-target";
 
-const SESSION_DB_DIR = '"$HOME/.zcode/cli/db"';
+const SESSION_DB_DIR = '"$HOME/.codez/cli/db"';
 const SESSION_DB_FILES = "db.sqlite db.sqlite-wal db.sqlite-shm";
 
 /**

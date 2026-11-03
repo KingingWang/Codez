@@ -4,8 +4,8 @@ import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { BUILTIN_MODEL_PROVIDER_IDS, resolveWorkspaceKey } from "@zcode/shared";
-import type { CommandAck, CommandEnvelope } from "@zcode/shared/zcode-protocol-v4";
+import { BUILTIN_MODEL_PROVIDER_IDS, resolveWorkspaceKey } from "@codez/shared";
+import type { CommandAck, CommandEnvelope } from "@codez/shared/codez-protocol-v4";
 import { projectStorage } from "../../../../services/src/project-storage/index.js";
 import { createWorkerSelectionIntegration } from "#e2e/helpers/worker-selection-integration";
 
@@ -67,7 +67,7 @@ export async function verifySessionCreationRetries() {
     );
   };
   const cliFacts = () => {
-    const db = new DatabaseSync(join(host.home, ".zcode/cli/db/db.sqlite"), { readOnly: true });
+    const db = new DatabaseSync(join(host.home, ".codez/cli/db/db.sqlite"), { readOnly: true });
     try {
       return {
         sessions: db.prepare("SELECT * FROM session ORDER BY id").all(),

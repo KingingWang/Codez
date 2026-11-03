@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "zcode-android"
+rootProject.name = "codez-android"
 include(":app")

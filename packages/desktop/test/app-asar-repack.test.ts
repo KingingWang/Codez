@@ -16,7 +16,7 @@ const asarCliPath = resolve(
 
 describe("app asar repack", () => {
   it("TMPDIR 含隐藏目录时仍应 unpack native，并删除旧 sidecar 残留", async () => {
-    const rootDir = mkdtempSync(resolve(tmpdir(), ".zcode-asar-repack-test-"));
+    const rootDir = mkdtempSync(resolve(tmpdir(), ".codez-asar-repack-test-"));
     try {
       const sourceDir = resolve(rootDir, "source");
       const targetPrebuildDir = resolve(sourceDir, "node_modules/node-pty/prebuilds/darwin-arm64");

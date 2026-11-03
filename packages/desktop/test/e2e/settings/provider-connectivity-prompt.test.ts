@@ -6,7 +6,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom, getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
 import { restartIntoWorkspace, seedReplayProvider } from "#e2e/helpers/model-provider-restart";
 import { prepareV4ConversationE2E, getV4DraftThoughtState } from "#e2e/helpers/v4-conversation";
@@ -112,7 +112,7 @@ describe("C91-04 connectivity whitelist prompt", () => {
         expect(body.stream).toBe(true);
         expect(body.max_completion_tokens).toBe(1);
         expect(body.messages).toEqual([
-          { role: "system", content: "You are ZCode connectivity probe." },
+          { role: "system", content: "You are Codez connectivity probe." },
           { role: "user", content: "hi" },
         ]);
         expect(body.tools).toBeUndefined();

@@ -1,17 +1,17 @@
 import { useCallback, useState } from "react";
 import { createRoot } from "react-dom/client";
-import type { IServiceAccessor } from "@zcode/services";
-import type { IPlatformService } from "@zcode/shared";
+import type { IServiceAccessor } from "@codez/services";
+import type { IPlatformService } from "@codez/shared";
 import { AssistantPreviewCards } from "@/AssistantPreviewCards.js";
 import { PlatformProvider } from "@/hooks/usePlatform.js";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { TabStoreProvider } from "@/store/TabStoreProvider.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import "@/styles.css";
 
 const params = new URLSearchParams(location.search);
 const locale = params.get("locale") === "en-US" ? "en-US" : "zh-CN";
-localStorage.setItem("zcode-locale-preference", locale);
+localStorage.setItem("codez-locale-preference", locale);
 document.documentElement.className =
   params.get("theme") === "light" ? "theme-zai-light" : "theme-zai-dark dark";
 
@@ -68,7 +68,7 @@ function Fixture() {
 }
 
 createRoot(document.getElementById("root")!).render(
-  <ZCodeIntlProvider initialLocale={locale}>
+  <CodezIntlProvider initialLocale={locale}>
     <ServiceProvider services={services}>
       <PlatformProvider platform={platform}>
         <TabStoreProvider>
@@ -76,5 +76,5 @@ createRoot(document.getElementById("root")!).render(
         </TabStoreProvider>
       </PlatformProvider>
     </ServiceProvider>
-  </ZCodeIntlProvider>,
+  </CodezIntlProvider>,
 );

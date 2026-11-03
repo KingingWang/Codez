@@ -43,14 +43,14 @@ CLI build/upload → 成功时 notifyCiResult；失败时 after_script ──┘
 
 ## 消息契约
 
-通知由 CI 脚本组装 Feishu Card 2.0，交给 zcode-internal 的通用飞书通知服务发送：
+通知由 CI 脚本组装 Feishu Card 2.0，交给 codez-internal 的通用飞书通知服务发送：
 
 ```
-POST <ZCODE_FEISHU_NOTIFY_BASE_URL>/api/v1/feishu/messages
-Authorization: Bearer $ZCODE_FEISHU_NOTIFY_TOKEN
+POST <CODEZ_FEISHU_NOTIFY_BASE_URL>/api/v1/feishu/messages
+Authorization: Bearer $CODEZ_FEISHU_NOTIFY_TOKEN
 ```
 
-服务用 ZCode Infra 应用投递，CI 侧不再持有飞书应用凭证。`scene` 为
+服务用 Codez Infra 应用投递，CI 侧不再持有飞书应用凭证。`scene` 为
 `ci.build.completed` / `ci.build.failed`；收件人优先用 CI 自己的 `FEISHU_RECEIVE_ID`
 （显式传给服务），未配置时回落到服务端的场景默认收件人。原 Template 所使用的字段保持不变：
 
@@ -61,7 +61,7 @@ Authorization: Bearer $ZCODE_FEISHU_NOTIFY_TOKEN
 
 提交作者的 @ 改为卡片内的 `{{mention:<CI_COMMIT_AUTHOR>}}` 占位符，由通知服务用统一的
 「人员配置」目录解析成 `<at id=ou_xxx></at>`——该目录就是控制台「人员配置」页维护的那份，
-覆盖原 `zcode-labs` 对照表的 15 位 GitLab 用户。也可通过 `FEISHU_MENTION_OPEN_IDS`
+覆盖原 `codez-labs` 对照表的 15 位 GitLab 用户。也可通过 `FEISHU_MENTION_OPEN_IDS`
 （逗号分隔的飞书 `open_id`）额外指定 @ 对象，这些显式 id 仍直接内联在卡片里。占位符未命中时
 服务退化为纯文本，不伪造 @；未命中且未额外配置时不渲染「相关人员」区块。
 
@@ -80,20 +80,20 @@ Authorization: Bearer $ZCODE_FEISHU_NOTIFY_TOKEN
 成功卡片使用蓝色 Header 与 `success_colorful` 图标，失败卡片使用红色 Header 与
 `fail_colorful` 图标，确保两种状态在通知列表中可以快速区分。
 
-配置 `FEISHU_HEADER_ICON_IMAGE_KEY` 后，Header 改用飞书 `custom_icon` 展示 ZCode
+配置 `FEISHU_HEADER_ICON_IMAGE_KEY` 后，Header 改用飞书 `custom_icon` 展示 Codez
 Logo；该 key 必须由同一个飞书应用在具备 `im:resource:upload` 或 `im:resource` 权限后
 上传 `public/icon_512@2x.png` 获得。未配置时回退上述成功/失败标准图标。
 
 ## 配置与测试
 
-需要新增 GitLab CI/CD 变量 `ZCODE_FEISHU_NOTIFY_TOKEN`（与服务端同值），可选
-`ZCODE_FEISHU_NOTIFY_BASE_URL`（默认 `http://intranet.example.invalid:3011`）。生产接收方仍由
+需要新增 GitLab CI/CD 变量 `CODEZ_FEISHU_NOTIFY_TOKEN`（与服务端同值），可选
+`CODEZ_FEISHU_NOTIFY_BASE_URL`（默认 `http://intranet.example.invalid:3011`）。生产接收方仍由
 GitLab 的 `FEISHU_RECEIVE_ID` 提供。构建通知单元测试和后续手动验证统一使用临时测试群
 `oc_5725795450da6920872fdb25412848bf`，不得把该测试群写入生产 CI 默认配置。
 
 构建通知只有这一条发送链路：CI 侧不持有任何飞书应用凭证，`FEISHU_APP_ID` /
-`FEISHU_APP_SECRET` 与该脚本无关。缺少 `ZCODE_FEISHU_NOTIFY_TOKEN` 时记录配置错误并跳过投递，
-不会静默降级到别的发送身份——否则群里会混入非 ZCode Infra 的机器人。
+`FEISHU_APP_SECRET` 与该脚本无关。缺少 `CODEZ_FEISHU_NOTIFY_TOKEN` 时记录配置错误并跳过投递，
+不会静默降级到别的发送身份——否则群里会混入非 Codez Infra 的机器人。
 
 ## 失败边界
 

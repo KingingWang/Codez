@@ -1,6 +1,6 @@
 /* oxlint-disable eslint(max-lines) -- Share 与 Desktop 共用的只读 Row/turn presentation 需要保持在同一安全边界。
  * 安全边界约束：本文件被匿名公开分享页（packages/web/src/share）直接引用，新增依赖必须考虑
- * 公开页 bundle 体积与无 Desktop 宿主（window.zcode / PlatformProvider / tab store）的运行环境；
+ * 公开页 bundle 体积与无 Desktop 宿主（window.codez / PlatformProvider / tab store）的运行环境；
  * Desktop 专属能力（如 open-with 子树）一律由消费方经组件注入，不得静态 import。 */
 import { ToolPresentation } from "@/ToolCallBlocks/ToolPresentation.js";
 import {
@@ -8,7 +8,7 @@ import {
   ToolPresentationCapabilitiesProvider,
 } from "@/ToolCallBlocks/presentationCapabilities.js";
 import { toolCallRowToLegacyNode } from "@/v4/toolCallRowAdapter.js";
-import type { ShareToolPresentationPayload } from "@zcode/shared";
+import type { ShareToolPresentationPayload } from "@codez/shared";
 import {
   createContext,
   Fragment,
@@ -26,7 +26,7 @@ import {
   conversationShareContentEnvelopeSchema,
   decodeConversationShareContentBlocks,
   type Locale,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type {
   ArtifactRow,
   AssistantTextRow,
@@ -35,7 +35,7 @@ import type {
   TimelineMarkerRow,
   ToolCallRow,
   UserInputRow,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { MessageResponse, type MessageFileLinkTarget } from "@/components/ai-elements/message.js";
 import {
   Reasoning,
@@ -72,7 +72,7 @@ import {
   DEFAULT_CODE_PREVIEW_SETTINGS,
   type CodePreviewSettings,
 } from "@/lib/codePreviewSettings.js";
-import { ZCodeIntlProvider, useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider, useCodezIntl } from "@/i18n/IntlProvider.js";
 import type { Theme } from "@/useTheme.js";
 import { FileDisplayIcon, resolveFileDisplayDescriptor } from "@/lib/fileDisplay.js";
 import { formatAttachmentSize } from "@/lib/chatAttachmentMetadata.js";
@@ -176,12 +176,12 @@ function resolveImportedArtifactPath(
   workspacePath: string,
   workspaceRelativePath: string | undefined,
 ): string | null {
-  // 取舍：这里只校验形状（.zcode-share/<dir>/shared-artifacts/<file> 四段），刻意不把
+  // 取舍：这里只校验形状（.codez-share/<dir>/shared-artifacts/<file> 四段），刻意不把
   // 段 2 与导入记录的 shareId 交叉比对。元数据由本端导入服务自写（conversationShareService
   // 落盘时用 sanitizeFileSegment(share_id) 作目录名），自洽；若在 UI 侧比对，就得复制
   // service 层的 sanitize 规则，两边漂移会让合法导入静默丢打开按钮，而收益仅是防住
   // 「指向另一 share 目录」这种一致性噪声——路径仍被限制在 workspace 的
-  // .zcode-share/*/shared-artifacts/ 内，无越权读放大。
+  // .codez-share/*/shared-artifacts/ 内，无越权读放大。
   const normalizedPath = workspaceRelativePath?.trim();
   if (!normalizedPath || isAbsoluteFilePath(normalizedPath)) {
     return null;
@@ -191,7 +191,7 @@ function resolveImportedArtifactPath(
   if (
     segments.length !== 4 ||
     segments.some((segment) => !segment || segment === "." || segment === "..") ||
-    segments[0] !== ".zcode-share" ||
+    segments[0] !== ".codez-share" ||
     segments[2] !== "shared-artifacts"
   ) {
     return null;
@@ -321,7 +321,7 @@ const AssistantTextPresentation = memo(function AssistantTextPresentation({
           streaming={false}
           theme={theme}
           codePreviewSettings={codePreviewSettings}
-          renderZCodeFileCitations={false}
+          renderCodezFileCitations={false}
           onOpenExternalUrl={onOpenExternalUrl}
         >
           {markdown}
@@ -433,7 +433,7 @@ const ArtifactPresentation = memo(function ArtifactPresentation({
   url?: string;
   previewLabel: string;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const artifactOpenContext = useContext(ArtifactOpenContext);
   const OpenAction = artifactOpenContext?.openAction;
   // 与 AssistantPreviewCards 保持同一视觉：44px 图标底板 + 真实文件类型图标 + 中粗标题 + 类型副标题。
@@ -742,7 +742,7 @@ function ReadonlyHistoryStatus({
   labels: ReadonlyLabels;
   locale: Locale;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const duration = formatConversationWorkDuration(segment.workStatus?.durationMs, intl, locale);
   const label =
     segment.workStatus?.state === "interrupted"
@@ -1024,9 +1024,9 @@ function ReadonlyTurn({
 
 export function ConversationShareReadonlyTimeline(props: ConversationShareReadonlyTimelineProps) {
   return (
-    <ZCodeIntlProvider initialLocale={props.locale ?? "zh-CN"}>
+    <CodezIntlProvider initialLocale={props.locale ?? "zh-CN"}>
       <ConversationShareReadonlyTimelineContent {...props} />
-    </ZCodeIntlProvider>
+    </CodezIntlProvider>
   );
 }
 
@@ -1047,7 +1047,7 @@ function ConversationShareReadonlyTimelineContent({
   artifactOpenAction,
   unsupportedRowCount = 0,
 }: ConversationShareReadonlyTimelineProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const rowsById = new Map(rows.map((row) => [row.rowId, row] as const));
   const allBlocks = decodeConversationShareContentBlocks(contentBlocks).filter((block) => {
     const row = rowsById.get(block.fallback_row_id);

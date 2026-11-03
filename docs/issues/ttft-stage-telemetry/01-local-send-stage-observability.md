@@ -46,7 +46,7 @@
 - 根级全量单测 1707 文件通过，14991 条通过，14 条跳过；根级 typecheck、E2E typecheck、lint 和 architecture gate 通过。
 - CLI 全量直接 Vitest：442 文件通过、76 文件失败；5872 条通过、187 条失败。默认 turbo 入口在本环境缺失。不能宣称 CLI 全量通过；失败未逐项归因。本次受影响 gateway 的 stale 场景在开工 HEAD 同样失败，已通过隔离源码加载复现；oversize 单跑通过（2.91 秒），全量时曾受 5 秒测试预算影响。
 - 额外 Desktop 全工程 tsc 发现既有 rootDir/global declaration 等错误；新增 exporter 单独 strict typecheck 通过。
-- 当前 ARMS 北京项目可只读查询既有 ZCode Trace/Metric，SLS SQL+PromQL 查询已验证。新 service 样本仍为 0，本机未配置目标 OTLP 写入 endpoint/headers；未验证新样本入库、实际瀑布跳转及平台保留策略。
+- 当前 ARMS 北京项目可只读查询既有 Codez Trace/Metric，SLS SQL+PromQL 查询已验证。新 service 样本仍为 0，本机未配置目标 OTLP 写入 endpoint/headers；未验证新样本入库、实际瀑布跳转及平台保留策略。
 - 测试仍为 manual-review/pending 候选，未自行转正或加入 Docker suite；本次没有 Windows/Linux 实机与手机远控 E2E 运行证据。
 
 ## 平台验收（2026-09-15）

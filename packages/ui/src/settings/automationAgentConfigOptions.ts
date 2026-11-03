@@ -1,16 +1,16 @@
 import {
-  getZCodeAgentModeSelectOptions,
+  getCodezAgentModeSelectOptions,
   type ModelSelection,
-  type ZCodeConfigOption,
-  type ZCodeProvider,
-} from "@zcode/shared";
-import type { ModelSelectionView } from "@zcode/services";
+  type CodezConfigOption,
+  type CodezProvider,
+} from "@codez/shared";
+import type { ModelSelectionView } from "@codez/services";
 import type { ModelSelectGroup, ModelSelectGroupItem } from "@/ModelConfigSelect.js";
 import {
   buildRegistryModelSelectGroups,
   type ModelProviderGroupLabelOptions,
 } from "@/lib/modelSelectionGroups.js";
-import { decodeCustomModelValue, encodeCustomModelValue } from "@/lib/zcodeCustomModelValue.js";
+import { decodeCustomModelValue, encodeCustomModelValue } from "@/lib/codezCustomModelValue.js";
 import { resolveV4ModelTriggerLabel } from "@/v4/composer/modelTriggerDisplay.js";
 
 // 定时任务表单必须是纯本地草稿，不能借用 workspace 默认配置写接口来获取选项；
@@ -28,7 +28,7 @@ export function resolveAutomationPreferredModelValue(
 }
 
 export function buildAutomationModelSelectGroups(params: {
-  selectedProvider: ZCodeProvider;
+  selectedProvider: CodezProvider;
   labels: ModelProviderGroupLabelOptions;
   registrySelectionView: ModelSelectionView;
 }): ModelSelectGroup[] {
@@ -39,14 +39,14 @@ export function buildAutomationModelSelectGroups(params: {
   );
 }
 
-export function buildAutomationModeOption(currentValue: string): ZCodeConfigOption {
+export function buildAutomationModeOption(currentValue: string): CodezConfigOption {
   return {
     id: "mode",
     name: "Mode",
     category: "mode",
     type: "select",
     currentValue,
-    options: getZCodeAgentModeSelectOptions(),
+    options: getCodezAgentModeSelectOptions(),
   };
 }
 
@@ -84,7 +84,7 @@ export function resolveAutomationModelItem(
     if (providerMatches.length === 1) return providerMatches[0] ?? null;
   }
   // 历史 automation 可能只保存纯模型名；同名模型跨 provider 时不能猜测来源。
-  // workspace runtime 也可能返回 zcode-openai-compatible/model 这类包装值，provider 对不上时
+  // workspace runtime 也可能返回 codez-openai-compatible/model 这类包装值，provider 对不上时
   // 只有模型名全局唯一才允许回填菜单项，避免默认模型丢失对应的 think 元数据。
   return modelMatches.length === 1 ? (modelMatches[0] ?? null) : null;
 }
@@ -128,9 +128,9 @@ export function resolveAutomationModelTriggerLabel(params: {
 }
 
 export function buildAutomationThoughtLevelOption(
-  runtimeOption: ZCodeConfigOption | undefined,
+  runtimeOption: CodezConfigOption | undefined,
   currentValue: string,
-): ZCodeConfigOption | null {
+): CodezConfigOption | null {
   const options = runtimeOption?.options ?? [];
   if (options.length === 0) return null;
   const validCurrentValue = options.some((option) => option.value === currentValue);

@@ -90,7 +90,7 @@ describe("Desktop E2E atomic JSON file", () => {
   it.runIf(process.platform === "win32")(
     "waits until a Windows reader releases the previous capture artifact",
     async () => {
-      const artifactPath = join(tmpdir(), `zcode-e2e-atomic-${process.pid}.json`);
+      const artifactPath = join(tmpdir(), `codez-e2e-atomic-${process.pid}.json`);
       await writeFile(artifactPath, JSON.stringify({ version: "old" }), "utf-8");
       const reader = await open(artifactPath, "r");
       const releaseReader = setTimeout(() => {

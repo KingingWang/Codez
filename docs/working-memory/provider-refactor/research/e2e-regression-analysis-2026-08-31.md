@@ -13,7 +13,7 @@
 当前正式事实链是：
 
 ```text
-ZCode Built-in Provider Config
+Codez Built-in Provider Config
               |
               v
 Account Overlay
@@ -59,7 +59,7 @@ legacy family mode / selectedKey
 - Samantha 工作区：独立 worktree
 - MacBook Pro 标准仓库：`/Users/dev/Desktop/projects/Z.AI/z-code`
 - 两端提交：`21c38683e1 test(ui): remove stale built-in model label assertion`
-- MacBook Pro 使用已有标准 bootstrap/build 结果；执行时设置 `ZCODE_E2E_SKIP_BUILD=1`、`ZCODE_E2E_SKIP_AGENT_BUILD=1`，没有修改系统配置。
+- MacBook Pro 使用已有标准 bootstrap/build 结果；执行时设置 `CODEZ_E2E_SKIP_BUILD=1`、`CODEZ_E2E_SKIP_AGENT_BUILD=1`，没有修改系统配置。
 
 ### 2.2 四轮原生 Desktop E2E
 
@@ -192,13 +192,13 @@ I20 在选择 `high` 后仍轮询原始 JSON 的 `builtInThoughtLevelOverrides.E
 三项测试都把下面的日志当成 readiness barrier：
 
 ```text
-zcode_protocol.workspace_update_provider_registry.completed
+codez_protocol.workspace_update_provider_registry.completed
 ```
 
 当前生产代码已经没有这个事件，仓库中只剩这三个 E2E 在搜索它。Provider 重构后 Registry 是 process-owned runtime，启动事件是：
 
 ```text
-zcode_protocol.provider_registry.ready
+codez_protocol.provider_registry.ready
 ```
 
 Personal Config 的更新也由正式 Runtime/Registry source 处理，不再向每个 workspace 推一份 Registry snapshot。
@@ -226,7 +226,7 @@ modelProviderFamilyModes + modelProviderFamilySelectedKeys
 
 ### R7. CPUW-03 的 Webview mock 假设也已过时
 
-`triggerCodingPlanWebviewPurchaseComplete()` 先读取可见 Webview origin，再把这个 origin 当作本地 upgrade mock server 调用“标记购买完成”。当前实际 Webview URL 是正式 ZCode Endpoint：
+`triggerCodingPlanWebviewPurchaseComplete()` 先读取可见 Webview origin，再把这个 origin 当作本地 upgrade mock server 调用“标记购买完成”。当前实际 Webview URL 是正式 Codez Endpoint：
 
 ```text
 https://zcode.z.ai/coding-plan...
@@ -236,7 +236,7 @@ https://zcode.z.ai/coding-plan...
 
 判断：当前失败点是 Webview E2E mock 接线和 Account 状态断言过时；尚未证明购买完成 bridge 或刷新逻辑失败。
 
-正确处理：mock 控制面地址必须来自 WDIO 启动的 upgrade mock，而不是从 Webview 可见 origin 反推；Webview 页面/导航可继续使用受信 ZCode Endpoint fixture。购买后通过正式 Provider Settings/Account entitlement 观察刷新结果。
+正确处理：mock 控制面地址必须来自 WDIO 启动的 upgrade mock，而不是从 Webview 可见 origin 反推；Webview 页面/导航可继续使用受信 Codez Endpoint fixture。购买后通过正式 Provider Settings/Account entitlement 观察刷新结果。
 
 ## 4. 37 条逐项结论
 

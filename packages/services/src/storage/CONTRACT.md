@@ -1,6 +1,6 @@
 # storage 模块契约
 
-设置页「数据与统计 → 存储管理」的服务端：扫描本机 `.zcode` 数据根、按类别聚合、按类别清理。spec 见 `docs/settings-storage-management.md`。
+设置页「数据与统计 → 存储管理」的服务端：扫描本机 `.codez` 数据根、按类别聚合、按类别清理。spec 见 `docs/settings-storage-management.md`。
 
 类型与测试表达不了的不变量：
 

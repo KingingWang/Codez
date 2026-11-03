@@ -306,7 +306,7 @@ A direct live stream   -X->  B 绕过 replayable recovery
 - 视觉 E2E 必须先把真实 Anchor 滚入 viewport，再使用 WebDriver pointer/click；禁止用
   `HTMLElement.click()` 打开不可见触发器后把截图当作布局通过证据。打开后同时断言 Popover rect 位于
   viewport 内、列表确定溢出且滚动容器是内部 `ul`；滚到底后必须验证末项可见。
-- 机械门禁：`pnpm --filter @zcode/desktop typecheck:e2e`、`pnpm typecheck`、`pnpm lint`。
+- 机械门禁：`pnpm --filter @codez/desktop typecheck:e2e`、`pnpm typecheck`、`pnpm lint`。
 
 ## 实施结果（2026-08-19）
 
@@ -344,11 +344,11 @@ A direct live stream   -X->  B 绕过 replayable recovery
 - 2026-08-21 Popover 密度微调：保持 `w-80`、字号与信息层级不变，标题/列表/行垂直 padding
   分别收紧到 8px/2px/6px；正式 Electron replay 4/4 通过，artifact：
   `packages/desktop/.e2e-artifacts/desktop-e2e-20260821-030515-480`，截图：
-  `/private/tmp/zcode-hook-turn-summary-compact.png`。
+  `/private/tmp/codez-hook-turn-summary-compact.png`。
 - 2026-08-21 逐条耗时已加入来源之后：运行中保持空缺，终态显示紧凑 `Nms` / `N.NNs`；
   定向 UI tests 5/5、正式 Electron replay 4/4 通过，artifact：
   `packages/desktop/.e2e-artifacts/desktop-e2e-20260821-032205-891`，截图：
-  `/private/tmp/zcode-hook-turn-summary-duration.png`。
+  `/private/tmp/codez-hook-turn-summary-duration.png`。
 - client-safe Hook row、startup/resume SessionStart product-turn 归位、cold merge、continuous/replayable
   delivery 已实现。
 - Renderer 使用 `ConversationTurnRenderUnit.hookInvocations` 独立承载摘要，不进入 assistant work、
@@ -368,7 +368,7 @@ A direct live stream   -X->  B 绕过 replayable recovery
   定向 tests 17/17 通过。
 - 2026-08-20 逐条版正式 Electron replay 4/4 通过，artifact：
   `packages/desktop/.e2e-artifacts/desktop-e2e-20260820-055755-608`；视觉抽样 1/1 通过，artifact：
-  `desktop-e2e-20260820-055915-282`，本地截图：`/private/tmp/zcode-hook-turn-summary-v3.png`。
+  `desktop-e2e-20260820-055915-282`，本地截图：`/private/tmp/codez-hook-turn-summary-v3.png`。
   1200×800 viewport 中 Popover bounds 为 `left=450.0, right=769.7, top=55.9, bottom=375.6`。
 - 2026-08-20 旧聚合版复验记录：正式 Electron E2E 先将 Anchor 滚入 viewport、hover 后使用 WebDriver
   click；1200×800 viewport 中 Popover bounds 为 `left=450, right=770, top=55.5, bottom=375.5`。

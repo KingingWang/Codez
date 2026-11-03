@@ -3,15 +3,15 @@ import type {
   NetworkCaptureBridge,
   ResourceUsageSnapshot,
   StorageManagementBridge,
-} from "@zcode/shared";
-import "@zcode/ui/styles.css";
+} from "@codez/shared";
+import "@codez/ui/styles.css";
 import {
   ResourceManagerApp,
-  ZCodeIntlProvider,
+  CodezIntlProvider,
   applyUiFontSizePx,
   loadUiFontSizePx,
   subscribeToUiFontSizeStorageChanges,
-} from "@zcode/ui";
+} from "@codez/ui";
 
 declare global {
   interface Window {
@@ -34,7 +34,7 @@ function resolveTheme(theme: Theme): "light" | "dark" {
 }
 
 function applyResourceManagerTheme(): void {
-  const savedTheme = (localStorage.getItem("zcode-theme") as Theme | null) ?? "zai-dark";
+  const savedTheme = (localStorage.getItem("codez-theme") as Theme | null) ?? "zai-dark";
   const resolvedTheme = resolveTheme(savedTheme);
   const appliedTheme =
     savedTheme === "system"
@@ -61,7 +61,7 @@ const root = document.getElementById("root");
 if (root) {
   createRoot(root).render(
     // 语言沿用主窗口写入 localStorage 的偏好；不接 settingService，避免独立窗口再起一份 RPC。
-    <ZCodeIntlProvider>
+    <CodezIntlProvider>
       <ResourceManagerApp
         setSamplingActive={window.resourceManager?.setSamplingActive}
         getSnapshot={
@@ -70,6 +70,6 @@ if (root) {
         storage={window.resourceManager?.storage}
         network={window.resourceManager?.network}
       />
-    </ZCodeIntlProvider>,
+    </CodezIntlProvider>,
   );
 }

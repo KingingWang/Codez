@@ -1,12 +1,12 @@
 import { join } from "node:path";
 import { writeFile } from "node:fs/promises";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 import {
   TID_SETTINGS_BACK_BUTTON,
   TID_TASK_SETTINGS_BUTTON,
   TID_TASK_ITEM,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -52,7 +52,7 @@ const switchSelector = '[data-testid="hide-project-device-names"]';
 const row = (identity: string) =>
   $(`[data-project-workspace-identity=${JSON.stringify(identity)}]`);
 async function screenshot(name: string) {
-  await browser.saveScreenshot(join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `device-${name}.png`));
+  await browser.saveScreenshot(join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `device-${name}.png`));
 }
 async function leaveDetails() {
   const outside = await browser.execute(() => ({ x: innerWidth - 24, y: 24 }));
@@ -164,7 +164,7 @@ describe(marker, () => {
     if (this.currentTest?.state === "failed") {
       await screenshot("failure");
       await writeFile(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "device-failure-page.txt"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "device-failure-page.txt"),
         await $("body").getText(),
       );
     }
@@ -350,7 +350,7 @@ describe(marker, () => {
     const remoteCoreAfter = await readRemoteCoreIdentity(secondConfig, marker);
     await screenshot("restored-after-container-restart");
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "device-ssh-evidence.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "device-ssh-evidence.json"),
       JSON.stringify(
         {
           sourceIds,

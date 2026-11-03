@@ -12,7 +12,7 @@
 
 ## 注入边界
 
-文件系统故障只能在测试运行态启用。默认只接受 `ZCODE_ENV=test` 下的注入配置；若未来需要在特殊调试包里启用，必须显式设置 `ZCODE_E2E_FS_FAULTS_ALLOW=1`，避免用户生产环境因为环境变量残留被注入错误。
+文件系统故障只能在测试运行态启用。默认只接受 `CODEZ_ENV=test` 下的注入配置；若未来需要在特殊调试包里启用，必须显式设置 `CODEZ_E2E_FS_FAULTS_ALLOW=1`，避免用户生产环境因为环境变量残留被注入错误。
 
 第一阶段先提供独立 helper，并先接入 `atomicWriteText` 这类配置原子写入口。后续接入顺序：
 
@@ -30,11 +30,11 @@
 
 `NodeFileSystemAdapter.writeTextFile` 的默认 `atomic: true` 路径：写入 temp 文件、复制原文件权限、sync、rename；若该 atomic 路径失败，会清理 temp 文件，并 fallback 到 `O_TRUNC` 非原子写入目标文件。这个 fallback 在 `ENOSPC` / `EIO` 等异常磁盘错误下可能截断已有目标文件；当前 file tools 权限回归暂接受这一行为。
 
-为避免 test-only `ZCODE_E2E_FS_FAULTS` 污染这条 prod 逻辑，workspace 默认 atomic temp 写入 / rename 不插入 fault hook。`D02` 若需要稳定模拟 workspace 写失败，应使用 `atomic: false` 的直接写入、父目录创建、删除或其他已接入的存储边界；是否为默认 atomic 路径重新引入专用测试 seam，需要先单独确认产品语义。
+为避免 test-only `CODEZ_E2E_FS_FAULTS` 污染这条 prod 逻辑，workspace 默认 atomic temp 写入 / rename 不插入 fault hook。`D02` 若需要稳定模拟 workspace 写失败，应使用 `atomic: false` 的直接写入、父目录创建、删除或其他已接入的存储边界；是否为默认 atomic 路径重新引入专用测试 seam，需要先单独确认产品语义。
 
 ## 配置格式
 
-环境变量：`ZCODE_E2E_FS_FAULTS`
+环境变量：`CODEZ_E2E_FS_FAULTS`
 
 值为 JSON 数组，每条 rule 描述一个故障等价类：
 
@@ -44,7 +44,7 @@
     "id": "D01-session-history-enospc",
     "code": "ENOSPC",
     "operations": ["writeFile", "rename"],
-    "pathIncludes": "/.zcode/",
+    "pathIncludes": "/.codez/",
     "maxMatches": 1,
     "message": "Injected ENOSPC while persisting session history"
   }
@@ -79,8 +79,8 @@
 {
   code: "ENOSPC",
   syscall: "writeFile",
-  path: "/tmp/workspace/.zcode/session.json",
-  zcodeFsFaultId: "D01-session-history-enospc"
+  path: "/tmp/workspace/.codez/session.json",
+  codezFsFaultId: "D01-session-history-enospc"
 }
 ```
 

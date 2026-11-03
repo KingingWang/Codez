@@ -1,4 +1,4 @@
-import type { RemoteTarget } from "@zcode/shared";
+import type { RemoteTarget } from "@codez/shared";
 
 export function formatRemoteLinkRailTarget(target: RemoteTarget): string {
   switch (target.kind) {

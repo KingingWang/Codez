@@ -11,10 +11,10 @@ afterEach(() => {
 
 describe("desktop e2e test id lookup", () => {
   it.each([
-    ["macOS", "workspace-item-/Users/dev/Code/z-code/.e2e-home/ZCodeProject"],
+    ["macOS", "workspace-item-/Users/dev/Code/z-code/.e2e-home/CodezProject"],
     [
       "Windows",
-      String.raw`workspace-item-C:\gitlab-runner\builds\project\packages\desktop\.e2e-home\ZCodeProject`,
+      String.raw`workspace-item-C:\gitlab-runner\builds\project\packages\desktop\.e2e-home\CodezProject`,
     ],
   ])("matches the %s workspace path as an exact attribute value", (_platform, testId) => {
     const element = document.createElement("button");
@@ -27,7 +27,7 @@ describe("desktop e2e test id lookup", () => {
   });
 
   it("dispatches mousedown for a Windows skill option id", () => {
-    const optionId = String.raw`skill:glm:workspace:C:\gitlab-runner\builds\project\.zcode\skills\demo\SKILL.md`;
+    const optionId = String.raw`skill:glm:workspace:C:\gitlab-runner\builds\project\.codez\skills\demo\SKILL.md`;
     const testId = `prompt-suggestion-option-${optionId}`;
     const element = document.createElement("button");
     const onMouseDown = vi.fn();

@@ -22,7 +22,7 @@
 - 当前两家闲时 `builtinModelIds` 都是 Flash、5.2、Turbo，并各有对应的 enabled 规则，缺少 5.3。列表与配套规则必须一起收口。
 - GLM-5.3 通用规则已关闭图片／视频，Flash 的专用规则开启图片／视频／PDF；优先复用既有规则，不复制整份普通 API 配置，不无意义地新增同值覆盖。
 - 闲时站点 `https://zcode.z.ai/api/v1/off-peak/anthropic` 当前同时开启搜索和 MCS；只关闭搜索，保留 MCS。
-- 主要修改 `config/provider/zcode-builtin.json`，按实施时的最新基线递增 revision，避免覆盖并行配置更新。同步相关配置 spec 与测试。
+- 主要修改 `config/provider/codez-builtin.json`，按实施时的最新基线递增 revision，避免覆盖并行配置更新。同步相关配置 spec 与测试。
 
 ## 不改的边界
 

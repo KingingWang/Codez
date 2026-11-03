@@ -17,7 +17,7 @@
 | Round | Question                 | User answer                                   | Boundary fixed                           | Follow-up needed |
 | ----- | ------------------------ | --------------------------------------------- | ---------------------------------------- | ---------------- |
 | 1     | 静态套餐和文案从哪里获取 | 使用 `client/configs`                         | configs 是静态目录权威源                 | no               |
-| 2     | 本地开发如何读取测试数据 | 使用 `ZCODE_ENV=test`                         | 连接 ZCode 测试环境 endpoint             | no               |
+| 2     | 本地开发如何读取测试数据 | 使用 `CODEZ_ENV=test`                         | 连接 Codez 测试环境 endpoint             | no               |
 | 3     | provider 如何隔离        | Team 区分 Z.AI/BigModel，当前 Z.AI 无团队套餐 | provider key 严格匹配，不跨品牌回退      | no               |
 | 4     | Start Plan 如何处理      | 补入完整 configs                              | 保持 provider-neutral `startPlanPreview` | no               |
 | 5     | 迁移后个人套餐描述文案   | `description` 恢复迁移前卡片文案              | 仅恢复描述，不回退商品、价格或权益        | no               |
@@ -29,7 +29,7 @@
 | 静态目录      | configs 为权威源             | 商品身份、名称、周期、静态价格、卡片文案 | 本地常量覆盖远端         | user          |
 | 文案缺失      | 保持为空                     | 个人/团队权益、描述与 Start 文案         | 前端硬编码文案兜底       | user          |
 | 实时状态      | preview/pricing 覆盖动态字段 | 实付价格、可购、售罄、订阅状态           | 覆盖远端卡片文案         | existing spec |
-| 测试环境      | `ZCODE_ENV=test`             | 远端测试环境 `client/configs`            | 本地开发 mock            | user          |
+| 测试环境      | `CODEZ_ENV=test`             | 远端测试环境 `client/configs`            | 本地开发 mock            | user          |
 | Team provider | 精确 provider key            | BigModel 8 SKU、Z.AI 空数组              | BigModel → Z.AI fallback | user          |
 | Start         | 独立 preview                 | planId/name/entitlements                 | 伪装成支付 SKU           | existing spec |
 
@@ -79,7 +79,7 @@
 | CPCFG-04 | Team pricing 失败                      | 切换团队         | 静态卡仍存在并展示错误                               | unit                  | planned  |
 | CPCFG-05 | Z.AI team `[]`                         | 打开 Z.AI 升级页 | 无跨品牌团队卡                                       | unit                  | planned  |
 | CPCFG-06 | Start fixture                          | 打开升级页       | Start 名称和 5M entitlement 汇总正确                 | unit + E2E UI         | planned  |
-| CPCFG-08 | `ZCODE_ENV=test`                       | 请求 configs     | 使用测试环境 endpoint 并附加客户端参数               | unit                  | verified |
+| CPCFG-08 | `CODEZ_ENV=test`                       | 请求 configs     | 使用测试环境 endpoint 并附加客户端参数               | unit                  | verified |
 
 ## E2E handoff notes
 

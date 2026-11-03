@@ -3,7 +3,7 @@
 ## 背景
 
 在 `docs/hooks-implementation-analysis.md` 之后，需要继续验证 Claude Code marketplace
-中同时包含 **skills、commands、MCP servers** 的插件，确认 ZCode 当前插件发现、安装、
+中同时包含 **skills、commands、MCP servers** 的插件，确认 Codez 当前插件发现、安装、
 runtime projection 与下游 skill/command/MCP adapter 是否能完整兼容。
 
 本轮只验证低风险资源投影：不启动真实 MCP server、不执行 command、不运行 hook。
@@ -63,13 +63,13 @@ runtime projection 与下游 skill/command/MCP adapter 是否能完整兼容。
 - 默认 `skills/` / `commands/` 目录可投影到 runtime roots。
 - manifest path 形式（例如 `skills: "./skills/"`、`commands: "./commands/"`、
   `mcpServers: "./.mcp.json"`）可投影。
-- `.mcp.json` 可被读取并转换为 ZCode `McpServerConfig`。
-- MCP env 中 `${CLAUDE_PLUGIN_ROOT}`、`${CLAUDE_PLUGIN_DATA}`、`${ZCODE_PROJECT_DIR}`
+- `.mcp.json` 可被读取并转换为 Codez `McpServerConfig`。
+- MCP env 中 `${CLAUDE_PLUGIN_ROOT}`、`${CLAUDE_PLUGIN_DATA}`、`${CODEZ_PROJECT_DIR}`
   等变量可替换。
 
 认为不兼容或需单独诊断：
 
-- 只有根目录 `mcp.json` 且 manifest 未通过 `mcpServers` 指向时，ZCode 当前不会自动读取。
+- 只有根目录 `mcp.json` 且 manifest 未通过 `mcpServers` 指向时，Codez 当前不会自动读取。
 - 真实 MCP server 是否能启动不在本轮测试范围内；本轮只验证配置投影。
 
 ## skills 字段语义（已修复差一层目录问题）
@@ -77,11 +77,11 @@ runtime projection 与下游 skill/command/MCP adapter 是否能完整兼容。
 Claude 插件规范里 manifest `skills` 的数组项指向「技能目录本身」（项内直接是
 `SKILL.md`，如 `./skills/engineering/tdd`）；字符串形式则指向「技能集合目录」
 （其下一层子目录各自是技能）。两类形态统一由共享扫描规则
-（`apps/zcode-cli/packages/adapters/src/skills/scan.ts`）处理：
+（`apps/codez-cli/packages/adapters/src/skills/scan.ts`）处理：
 
 - 技能根自身含 `SKILL.md` 时，根自身就是一个技能（数组项语义，与桌面 services 侧
   `skillDiscoveryWalk` 的 depth-0 产出一致）；
-- 再扫一层子目录（字符串形式/默认 `skills/` 目录的 ZCode 一层布局），子目录命中
+- 再扫一层子目录（字符串形式/默认 `skills/` 目录的 Codez 一层布局），子目录命中
   需校验 `SKILL.md` 真实存在，分类目录（如 `skills/engineering/`）不会误计；
 - 声明根与默认根命中同一个 `SKILL.md` 时按文件路径去重，计数与发现结果不翻倍；
 - manifest 显式声明的 skills 路径扫描为 0 个技能时发 `plugin_skill_root_empty`
@@ -95,13 +95,13 @@ Claude 插件规范里 manifest `skills` 的数组项指向「技能目录本身
   credentials`）同标准封堵；拒绝链接即无逃逸，不依赖判定链接指向（无跨盘符
   `relative` 谓词，无平台分支）。组件枚举（`collectSkillComponents`）对插件根
   无条件适用同一规则，不依赖 manifest 是否解析成功。词法防线（`resolveInside`
-  拒绝绝对路径与 `..` 穿越）继续生效。用户级技能根（`~/.zcode/skills` 的
+  拒绝绝对路径与 `..` 穿越）继续生效。用户级技能根（`~/.codez/skills` 的
   symlink 导入是受支持功能）保持默认跟随，行为不变。
 
 ## 验证命令
 
 ```bash
-pnpm --filter @zcode/adapters test plugins
+pnpm --filter @codez/adapters test plugins
 pnpm typecheck
 pnpm lint
 ```

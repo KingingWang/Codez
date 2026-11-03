@@ -8,12 +8,12 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode/hooks-full-e2e-recorder.mjs",
+      "path": ".codez/hooks-full-e2e-recorder.mjs",
       "source": "created-by-spec",
       "description": "Recorder shared by process and command Hooks across all four scenarios."
     },
     {
-      "path": ".zcode/config.json",
+      "path": ".codez/config.json",
       "source": "created-by-spec",
       "description": "Project Hook configuration installed before each new session snapshot."
     }

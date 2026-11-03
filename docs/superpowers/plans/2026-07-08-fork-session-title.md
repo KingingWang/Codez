@@ -4,7 +4,7 @@
 
 **Architecture:** Runtime resume will publish persisted session title into the current session event stream, so `ProductProjection.meta` becomes the single live title source. Bootstrap live records will preserve `parentSessionId` and expose it through `getSessionIndexMeta`, allowing sessions-index summaries to retain fork identity.
 
-**Tech Stack:** TypeScript, Vitest, ZCode runtime event store, v4 ProductProjection, sessions-index publisher.
+**Tech Stack:** TypeScript, Vitest, Codez runtime event store, v4 ProductProjection, sessions-index publisher.
 
 ## Global Constraints
 
@@ -19,11 +19,11 @@
 ### Task 1: Add Regression Coverage
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/tests/runtime-persistence.test.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/tests/v4-cold-resume.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/runtime-persistence.test.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/tests/v4-cold-resume.test.ts`
 
 **Interfaces:**
-- Consumes: `AgentRuntime.resumeFromStore()`, `ZCodeProtocolAgentServer` v4 cold subscribe, sessions-index subscribe.
+- Consumes: `AgentRuntime.resumeFromStore()`, `CodezProtocolAgentServer` v4 cold subscribe, sessions-index subscribe.
 - Produces: failing tests proving persisted fork title must become a runtime event and live sessions-index summaries must include `parentSessionId`.
 
 - [x] **Step 1: Write the failing core resume test**
@@ -35,7 +35,7 @@ Add a test that creates a persisted fork child with `title: "Fork of Checkpoint�
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/runtime-persistence.test.ts -t "emits persisted generated title before SessionResumed"
+pnpm --filter @codez/core exec vitest run tests/runtime-persistence.test.ts -t "emits persisted generated title before SessionResumed"
 ```
 
 Expected before implementation: failure because `titleEventIndex === -1`.
@@ -47,7 +47,7 @@ Extend `v4-cold-resume.test.ts` so the persisted session has `parentID`. Assert 
 Run:
 
 ```bash
-pnpm --filter @zcode/bootstrap exec vitest run tests/v4-cold-resume.test.ts -t "重启后冷订阅"
+pnpm --filter @codez/bootstrap exec vitest run tests/v4-cold-resume.test.ts -t "重启后冷订阅"
 ```
 
 Expected before implementation: failure because `resumedSummary.parentSessionId` is `undefined`.
@@ -55,17 +55,17 @@ Expected before implementation: failure because `resumedSummary.parentSessionId`
 ### Task 2: Preserve Parent Session Identity in Live Index Meta
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-types.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/v4-bridge.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/server-types.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/server-operations.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/v4-bridge.ts`
 
 **Interfaces:**
 - Consumes: `params.parentSessionId` from create/fork record params and persisted `session.parentID` from resume.
-- Produces: `ZCodeProtocolSessionRecord.parentSessionId?: string` and `getSessionIndexMeta(...).parentSessionId`.
+- Produces: `CodezProtocolSessionRecord.parentSessionId?: string` and `getSessionIndexMeta(...).parentSessionId`.
 
 - [x] **Step 1: Implement record parent propagation**
 
-Add `parentSessionId?: string` to `ZCodeProtocolSessionRecord`. In `createRecord`, set it when `params.parentSessionId` exists. In `resumeSession`, after loading persisted session, set `record.parentSessionId = String(session.parentID)` when present. In `forkSession`, pass `parentSessionId: fork.parentSessionId` into `createRecord`.
+Add `parentSessionId?: string` to `CodezProtocolSessionRecord`. In `createRecord`, set it when `params.parentSessionId` exists. In `resumeSession`, after loading persisted session, set `record.parentSessionId = String(session.parentID)` when present. In `forkSession`, pass `parentSessionId: fork.parentSessionId` into `createRecord`.
 
 - [x] **Step 2: Expose parent through v4 bridge**
 
@@ -84,7 +84,7 @@ return {
 Run:
 
 ```bash
-pnpm --filter @zcode/bootstrap exec vitest run tests/v4-cold-resume.test.ts -t "重启后冷订阅"
+pnpm --filter @codez/bootstrap exec vitest run tests/v4-cold-resume.test.ts -t "重启后冷订阅"
 ```
 
 Expected: the parent relation assertion passes.
@@ -92,7 +92,7 @@ Expected: the parent relation assertion passes.
 ### Task 3: Sync Persisted Title on Resume
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/resume.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/resume.ts`
 
 **Interfaces:**
 - Consumes: persisted `SessionInfo.title` and `SessionInfo.titleSource`.
@@ -117,8 +117,8 @@ Document that session store title was already correct, but v4 live projection on
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/runtime-persistence.test.ts -t "emits persisted generated title before SessionResumed"
-pnpm --filter @zcode/bootstrap exec vitest run tests/v4-cold-resume.test.ts -t "重启后冷订阅"
+pnpm --filter @codez/core exec vitest run tests/runtime-persistence.test.ts -t "emits persisted generated title before SessionResumed"
+pnpm --filter @codez/bootstrap exec vitest run tests/v4-cold-resume.test.ts -t "重启后冷订阅"
 ```
 
 Expected: both pass.
@@ -147,7 +147,7 @@ Expected: exit code 0 for both.
 Run:
 
 ```bash
-git diff -- docs/superpowers/specs/2026-07-08-fork-session-title-design.md docs/superpowers/plans/2026-07-08-fork-session-title.md apps/zcode-cli/packages/core/tests/runtime-persistence.test.ts apps/zcode-cli/packages/core/src/runtime/methods/resume.ts apps/zcode-cli/packages/bootstrap/tests/v4-cold-resume.test.ts apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-types.ts apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts apps/zcode-cli/packages/bootstrap/src/zcode-protocol/v4-bridge.ts
+git diff -- docs/superpowers/specs/2026-07-08-fork-session-title-design.md docs/superpowers/plans/2026-07-08-fork-session-title.md apps/codez-cli/packages/core/tests/runtime-persistence.test.ts apps/codez-cli/packages/core/src/runtime/methods/resume.ts apps/codez-cli/packages/bootstrap/tests/v4-cold-resume.test.ts apps/codez-cli/packages/bootstrap/src/codez-protocol/server-types.ts apps/codez-cli/packages/bootstrap/src/codez-protocol/server-operations.ts apps/codez-cli/packages/bootstrap/src/codez-protocol/v4-bridge.ts
 ```
 
 Expected: only scoped fork title / parent meta changes.
@@ -157,6 +157,6 @@ Expected: only scoped fork title / parent meta changes.
 Run:
 
 ```bash
-git add docs/superpowers/specs/2026-07-08-fork-session-title-design.md docs/superpowers/plans/2026-07-08-fork-session-title.md apps/zcode-cli/packages/core/tests/runtime-persistence.test.ts apps/zcode-cli/packages/core/src/runtime/methods/resume.ts apps/zcode-cli/packages/bootstrap/tests/v4-cold-resume.test.ts apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-types.ts apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts apps/zcode-cli/packages/bootstrap/src/zcode-protocol/v4-bridge.ts
+git add docs/superpowers/specs/2026-07-08-fork-session-title-design.md docs/superpowers/plans/2026-07-08-fork-session-title.md apps/codez-cli/packages/core/tests/runtime-persistence.test.ts apps/codez-cli/packages/core/src/runtime/methods/resume.ts apps/codez-cli/packages/bootstrap/tests/v4-cold-resume.test.ts apps/codez-cli/packages/bootstrap/src/codez-protocol/server-types.ts apps/codez-cli/packages/bootstrap/src/codez-protocol/server-operations.ts apps/codez-cli/packages/bootstrap/src/codez-protocol/v4-bridge.ts
 git commit -m "fix(v4): preserve fork session titles"
 ```

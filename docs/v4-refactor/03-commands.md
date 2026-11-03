@@ -3,9 +3,9 @@
 更新日期：2026-08-25
 
 所有 conversation 写操作都通过 `v4/command` 进入 CLI。schema 位于
-`packages/shared/src/zcode-protocol-v4/command.ts`，admission 位于
-`apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/command-inbox.ts`，业务 handler 位于
-`apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/`。
+`packages/shared/src/codez-protocol-v4/command.ts`，admission 位于
+`apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/command-inbox.ts`，业务 handler 位于
+`apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/commands/handlers/`。
 
 ## 信封与单写者
 

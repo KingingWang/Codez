@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 让 GitLab pipeline 可通过可选的 `ZCODE_BUILD_PLATFORMS` 完整 token 列表选择自动打包平台，未传时保持六个平台全自动，未选平台保留为非阻塞手动 job。
+**Goal:** 让 GitLab pipeline 可通过可选的 `CODEZ_BUILD_PLATFORMS` 完整 token 列表选择自动打包平台，未传时保持六个平台全自动，未选平台保留为非阻塞手动 job。
 
 **Architecture:** 在 `.gitlab/ci/30-build.yml` 定义六个按平台拆分的隐藏 rules 模板，各 job 通过 GitLab `!reference` 复用。相同平台规则应用到安装包 build、macOS CUA Helper 与飞书通知，避免未打包平台仍自动构建 helper 或发送通知；仅 MR、web、API pipeline 支持裁剪，tag 与 `ci/*` 发布链路保持全平台自动。
 
@@ -19,7 +19,7 @@
 ### Task 1: 添加失败的 CI 图契约测试
 
 - [x] 在 `packages/desktop/test/gitlabCiBuildGraph.test.ts` 增加辅助断言，读取各平台 job 的 `rules` 引用。
-- [x] 增加六个平台规则模板测试：断言 `ZCODE_BUILD_PLATFORMS` 为 null/空字符串时 `on_success`，用 `(^|,)platform(,|$)` 完整 token 正则命中时 `on_success`，最终回退为 `manual` 且 `allow_failure: true`。
+- [x] 增加六个平台规则模板测试：断言 `CODEZ_BUILD_PLATFORMS` 为 null/空字符串时 `on_success`，用 `(^|,)platform(,|$)` 完整 token 正则命中时 `on_success`，最终回退为 `manual` 且 `allow_failure: true`。
 - [x] 增加 job 映射测试：六个 build、两个 CUA Helper、六个通知 job 必须引用对应平台规则。
 - [x] 运行 `pnpm exec vitest run packages/desktop/test/gitlabCiBuildGraph.test.ts`，预期因 rules 模板尚不存在而失败。
 

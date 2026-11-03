@@ -2,7 +2,7 @@
 
 ## 目标
 
-Desktop 把 ZCode task 的未读数显示到应用 Dock / launcher badge，口径以 task meta 的 `unreadAt` 为准，也就是“后台完成后还没点开看的 task 数”。
+Desktop 把 Codez task 的未读数显示到应用 Dock / launcher badge，口径以 task meta 的 `unreadAt` 为准，也就是“后台完成后还没点开看的 task 数”。
 
 ## 数据流
 

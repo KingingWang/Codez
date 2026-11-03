@@ -21,7 +21,7 @@
 
 ## 2. 当前事实与表达式原则
 
-主要配置位于 `config/provider/zcode-builtin.json`。当前通用模型规则只声明 `disabled`，Reasoning Map 为 `{}`；API Schema 兜底规则已有输出上限映射，但缺少本次讨论的推理映射。专用规则中存在逐档位返回同名字符串、重复构造相同对象的分支。
+主要配置位于 `config/provider/codez-builtin.json`。当前通用模型规则只声明 `disabled`，Reasoning Map 为 `{}`；API Schema 兜底规则已有输出上限映射，但缺少本次讨论的推理映射。专用规则中存在逐档位返回同名字符串、重复构造相同对象的分支。
 
 1. `values` 声明合法档位，统一校验层拒绝非法档位；Map 只负责把合法输入转换成请求字段。
 2. 相同名称直接透传，不写 `low → low / high → high / max → max` 的枚举三目。
@@ -173,7 +173,7 @@ reasoningLevel == "disabled"
 
 | 优先级 / 入口 | 公共边界及应查内容 | 提交 / 保存边界 |
 | --- | --- | --- |
-| 必查：Built-in / Resolver | `zcode-builtin.json`、`packages/provider/src/resolver.ts`；规则层级、来源与专用覆盖 | Personal 配置不因加载改写 |
+| 必查：Built-in / Resolver | `codez-builtin.json`、`packages/provider/src/resolver.ts`；规则层级、来源与专用覆盖 | Personal 配置不因加载改写 |
 | 必查：编译与请求 | `packages/model-option-map/src/`、Agent `model-option-map-fetch.ts`；编译、Merge Patch、与输出 Map 的冲突 | 最终 Model 构建校验与请求仍为权威 |
 | 必查：共享选择解析 | `packages/provider/src/effective-model-selection.ts`、Registry 校验 | 临时 effective 与持久意图区分 |
 | 必查：添加/编辑模型 | 共用模型草稿、`useModelSelectionView`；只加档位可继承兜底，显式 Map/固定配置保持 | 用户保存时写 Personal；不改变智能配置开关语义 |

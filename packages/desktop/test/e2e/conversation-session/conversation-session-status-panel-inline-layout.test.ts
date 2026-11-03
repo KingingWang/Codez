@@ -1,5 +1,5 @@
 import { setRendererViewport, clearRendererViewport } from "#e2e/helpers/renderer-viewport";
-import { TID_CHAT_SUMMARY_PANEL } from "@zcode/shared/test-ids";
+import { TID_CHAT_SUMMARY_PANEL } from "@codez/shared/test-ids";
 import { clearAppData } from "../helpers/desktop-app.js";
 import {
   E2E_REPLY_TOKEN,

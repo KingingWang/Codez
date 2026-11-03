@@ -19,7 +19,7 @@ import {
   TID_AUTOMATION_SCHEDULE_ADD,
   TID_AUTOMATIONS_LIST,
   TID_AUTOMATIONS_OPEN,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -211,7 +211,7 @@ async function waitForAutomationRecordByTitle(title: string): Promise<Automation
 
 function readAutomationRecordByTitle(title: string): AutomationRecord | null {
   // Node 内置 SQLite 当前仅提供同步 DatabaseSync；E2E 每次只读一行并立即关闭。
-  const database = new DatabaseSync(join(homedir(), ".zcode", "v2", "tasks-index.sqlite"), {
+  const database = new DatabaseSync(join(homedir(), ".codez", "v2", "tasks-index.sqlite"), {
     readOnly: true,
   });
   try {

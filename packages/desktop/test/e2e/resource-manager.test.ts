@@ -41,7 +41,7 @@ describe("资源管理器", () => {
     await switchToElectronRendererTarget(isResourceManagerUrl);
     await waitForResourceManagerReady();
 
-    // 默认 CPU tab：三类分组固定存在（空组也要显示），CPU 指标卡带 ZCode / 整机两个读数。
+    // 默认 CPU tab：三类分组固定存在（空组也要显示），CPU 指标卡带 Codez / 整机两个读数。
     for (const category of ["base", "builtin-plugin", "community-plugin"]) {
       await expect($(`[data-testid="resource-manager-group-${category}"]`)).toBeDisplayed();
     }
@@ -83,7 +83,7 @@ describe("资源管理器", () => {
       async () => {
         const snapshot = await readResourceUsageSnapshot();
         const agent = snapshot?.processes.find((process) =>
-          process.name.startsWith("zcode-agent-"),
+          process.name.startsWith("codez-agent-"),
         );
         return Boolean(agent && agent.sampled && agent.memoryBytes > 0);
       },
@@ -96,8 +96,8 @@ describe("资源管理器", () => {
 
     const snapshot = await readResourceUsageSnapshot();
     expect(snapshot).not.toBeNull();
-    expect(snapshot!.processes.some((process) => process.name === "zcode-main")).toBe(true);
-    expect(snapshot!.processes.some((process) => process.name.startsWith("zcode-host-"))).toBe(
+    expect(snapshot!.processes.some((process) => process.name === "codez-main")).toBe(true);
+    expect(snapshot!.processes.some((process) => process.name.startsWith("codez-host-"))).toBe(
       true,
     );
     // 所有进程行的 CPU 都是整机口径，总和不能超过 100%。
@@ -110,7 +110,7 @@ describe("资源管理器", () => {
         document.querySelectorAll<HTMLElement>('[data-testid="resource-manager-process-row"]'),
       ).map((element) => element.dataset.processName ?? ""),
     );
-    expect(rowNames.some((name) => name.startsWith("zcode-agent-"))).toBe(true);
+    expect(rowNames.some((name) => name.startsWith("codez-agent-"))).toBe(true);
 
     await switchToElectronRendererTarget(isMainRendererUrl);
   });

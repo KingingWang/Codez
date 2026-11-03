@@ -1,4 +1,4 @@
-import type { TelemetryRendererContext } from "@zcode/shared";
+import type { TelemetryRendererContext } from "@codez/shared";
 
 interface StartupCoordinatorLike {
   onRendererReady(input: { hasPendingOAuthCallback: boolean; rendererId: number }): boolean;

@@ -18,10 +18,10 @@
 
 ## 2. 三段式落点
 
-- **contracts** `apps/zcode-cli/packages/contracts/src/tools/node-repl.ts`（新）：
+- **contracts** `apps/codez-cli/packages/contracts/src/tools/node-repl.ts`（新）：
   - `JsInputSchema`/`JsOutputSchema`、`JsResetInputSchema`/`...Output`、`JsAddModuleDirInputSchema`/`...Output`（zod），各配 `toToolJsonSchema()` 的 JsonSchema。
   - 在 `contracts/src/tools/index.ts` 加 `export * from "./node-repl.js"`。
-- **core handler** `apps/zcode-cli/packages/core/src/tool/handlers/node-repl.ts`（新）：
+- **core handler** `apps/codez-cli/packages/core/src/tool/handlers/node-repl.ts`（新）：
   - 模块级 `const sessions = new Map<SessionId, NodeReplSession>()`（跨工具调用持久，key=`context.sessionId`）。
   - `getSession(ctx)`：无则 `new NodeReplSession({ injectedGlobals })`（T2 阶段 injectedGlobals 为空；T6 注入 browser execute + agent）。
   - 三个 `ToolEntry` 导出：`jsToolEntry`/`jsResetToolEntry`/`jsAddModuleDirToolEntry`。

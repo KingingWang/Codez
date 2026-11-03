@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from "react";
-import type { WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import type { WorkflowCausalityGraphData } from "@/components/workflow-graph/types.js";
 import { draftTimeline, scanWorkflowDraft } from "@/components/workflow-timeline/draft-scan.js";
 import { narrowTimelineToFill } from "@/components/workflow-timeline/timeline-holes.js";

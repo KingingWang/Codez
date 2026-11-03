@@ -1,5 +1,5 @@
 import { SidebarTooltipProvider } from "@/ControlHintTooltip.js";
-import type { IPlatformService, UpdateStatePayload } from "@zcode/shared";
+import type { IPlatformService, UpdateStatePayload } from "@codez/shared";
 import { cn } from "@/components/lib/utils.js";
 import {
   ArrowLeftIcon,
@@ -8,10 +8,10 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { UpdateStatusButton } from "@/UpdateStatusButton.js";
 import { DesktopTopOverlayActionButton } from "@/DesktopTopOverlayActionButton.js";
-import { ZCodeStartupLogoBadge } from "@/root/RootStartupLoading.js";
+import { CodezStartupLogoBadge } from "@/root/RootStartupLoading.js";
 import {
   createWindowsCaptionControlsStyle,
   WINDOWS_CAPTION_CONTROLS_RIGHT_INSET_VAR,
@@ -76,7 +76,7 @@ export function DesktopTopOverlay({
   hideTaskNavigationButtons = false,
   newTaskDisabledReason,
 }: DesktopTopOverlayProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const SidebarToggleIcon = isSidebarVisible ? PanelLeftClose : PanelLeftOpen;
   const isLinuxDesktop = Boolean(isDesktop && !isMacDesktop && !isWindowsDesktop);
   const usesCustomCaptionArea = isWindowsDesktop || isLinuxDesktop;
@@ -149,7 +149,7 @@ export function DesktopTopOverlay({
                   data-desktop-logo-visual
                   className="flex size-5 items-center justify-center transition-opacity duration-150 group-hover:opacity-0 group-focus-visible:opacity-0"
                 >
-                  <ZCodeStartupLogoBadge size="titlebar" animated={false} />
+                  <CodezStartupLogoBadge size="titlebar" animated={false} />
                 </span>
                 <SidebarToggleIcon className="absolute inset-0 m-auto size-4 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100" />
               </DesktopTopOverlayActionButton>

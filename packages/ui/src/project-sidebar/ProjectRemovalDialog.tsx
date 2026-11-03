@@ -13,7 +13,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox.js";
 import { Input } from "@/components/ui/input.js";
 import { cn } from "@/components/lib/utils.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import {
   formatCountMessage,
   summarizeProjectRemoval,
@@ -32,7 +32,7 @@ type DataState = ProjectDataTotals | "measuring" | null | undefined;
 
 /**
  * 确认时的行集合由调用方冻结；对话框只展示按设备拆分的后果。
- * 本机候选可勾选「同时删除 ZCode 数据」：每次打开默认不勾选，勾选后改写标题、说明与按钮，并要求输入确认词。
+ * 本机候选可勾选「同时删除 Codez 数据」：每次打开默认不勾选，勾选后改写标题、说明与按钮，并要求输入确认词。
  */
 export function ProjectRemovalDialog({
   rows,
@@ -45,7 +45,7 @@ export function ProjectRemovalDialog({
   onCancel(): void;
   onConfirm(rows: readonly ProjectManagementRow[], options?: ProjectRemovalOptions): void;
 }) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const msg = (id: string, values?: Record<string, string | number>) =>
     intl.formatMessage({ id: `projectManagement.${id}` }, values);
   const count = (id: string, n: number, values?: Record<string, string | number>) =>

@@ -2,7 +2,7 @@
 
 ## 背景
 
-WSL remote workspace 通过 `wsl.exe` 启动远端 host 和 agent。WSL 不需要 SSH 密码鉴权，但每个命令仍然会在某个 Linux 用户身份下运行。默认情况下，ZCode 使用该 distro 的默认用户。
+WSL remote workspace 通过 `wsl.exe` 启动远端 host 和 agent。WSL 不需要 SSH 密码鉴权，但每个命令仍然会在某个 Linux 用户身份下运行。默认情况下，Codez 使用该 distro 的默认用户。
 
 文件 mention 的 `@` 菜单会从 workspace 根目录递归建立候选列表。Linux 列目录需要目录的 read/execute 权限；当某个子目录由 root 或其他用户创建且当前用户不可读时，`readdir` 会返回 `EACCES` / `EPERM`。
 
@@ -15,15 +15,15 @@ WSL remote workspace 通过 `wsl.exe` 启动远端 host 和 agent。WSL 不需�
 - 开发态 remote assets 的 `mock-cdn` 只是离线缓存；当前版本缓存不存在时必须回退 CDN/cache，避免 WSL 重连旧地址时被本机缺包误判为连接失败。
 - 连接 UI 对 root 用户展示 warning，提示后续创建的文件可能属于 root。该 warning 不阻止连接。
 - 文件 mention 索引遇到单个不可读或已消失目录时跳过该目录，继续展示其余可访问文件。不可读目录不应让整个 `@` 菜单失败。
-- remote workspace 的 prompt 附件会先从 host 侧上传到远端用户私有目录 `~/.zcode/tmp/prompt-attachments/<trace>/<random>/...`，再把 prompt 中的 host 路径改写为远端路径。上传前会将目录 chmod 为 `700`，上传后会将文件 chmod 为 `600`，避免长文本粘贴、图片或本地缓存附件落到公共 `/tmp` 后被同机其他用户读取。
-- 当前版本不在 task 结束时自动删除远端 prompt 附件目录：这些文件位于当前远端用户的 `~/.zcode/tmp` 下，便于同一会话内重试/恢复时继续读取。后续如果引入自动清理，必须绑定 task/session 生命周期并只删除本次 trace 的随机私有目录，失败仅记录 warn。
+- remote workspace 的 prompt 附件会先从 host 侧上传到远端用户私有目录 `~/.codez/tmp/prompt-attachments/<trace>/<random>/...`，再把 prompt 中的 host 路径改写为远端路径。上传前会将目录 chmod 为 `700`，上传后会将文件 chmod 为 `600`，避免长文本粘贴、图片或本地缓存附件落到公共 `/tmp` 后被同机其他用户读取。
+- 当前版本不在 task 结束时自动删除远端 prompt 附件目录：这些文件位于当前远端用户的 `~/.codez/tmp` 下，便于同一会话内重试/恢复时继续读取。后续如果引入自动清理，必须绑定 task/session 生命周期并只删除本次 trace 的随机私有目录，失败仅记录 warn。
 
 ## 非目标
 
 - 不在 `@` 菜单中自动 sudo 或静默提权。
 - 不为 WSL user 增加密码字段；`wsl.exe --user` 要求目标 Linux 用户已存在，本身不消费密码。
 - 不改变桌面 `desktop-continuous` 与手机 `/remote` `web-remote-replayable` 的 realtime 边界。
-- 不在本次修复里自动清理历史已经写入 `/tmp/zcode-prompt-attachments` 的附件目录；旧目录需要用户或后续迁移脚本手动处理。
+- 不在本次修复里自动清理历史已经写入 `/tmp/codez-prompt-attachments` 的附件目录；旧目录需要用户或后续迁移脚本手动处理。
 
 ## 验证点
 
