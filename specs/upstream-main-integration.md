@@ -1,15 +1,15 @@
-# 上游 main 集成合同（3.17.1）
+# 上游 main 集成合同（3.17.2）
 
 ## Feature Summary
 
 | 项       | 约束                                                                          |
 | -------- | ----------------------------------------------------------------------------- |
 | 目的     | 将 Codez 定制提交迁移到 ZCode 上游 main，保留已有产品行为                     |
-| 上游     | `a60ba6a7e5a06742270ca605f5d2cc2766afa7e1`，3.17.1                            |
-| 原项目   | `3eafe4fe962b5824ecf2e69392f69900ba19d51d`                                    |
-| 原基准   | `3c5b2276` → `c0695b7f`（原重命名提交）                                       |
-| 新基准   | `56457972`，纯产品品牌及路径转换                                              |
-| 本地备份 | `backup/pre-rebase-20261031-3eafe4fe`                                         |
+| 上游     | `a9fe401eede6e6e5e01be9048679c206fe6f02d9`，3.17.2                            |
+| 原项目   | `3705cb4e3ac3a4faf093c472957bd9e5dbaf4ca7`                                    |
+| 原基准   | `a60ba6a7` → `5645797268015d220d375aecf35781ba1034f40c`（原重命名提交）        |
+| 新基准   | `efc30ef2eaa80b2a9b7939ad6ebf38564d5b978c`，纯产品品牌及路径转换              |
+| 本地备份 | `backup/pre-rebase-20261103-3705cb4e`                                         |
 | 改动层   | presentation / validation / persistence / recovery 的兼容迁移，不新增产品语义 |
 | 模式     | impact-only；既有 spec 和回归证据继续定义产品行为                             |
 | 范围外   | 新执行后端、第二个运行时、用户数据修复、原生 Codex HOME 修改                  |
@@ -96,6 +96,8 @@ Host 组织命令 → 原事务 / CAS → 同一 app 索引 → 侧栏投影
 `cdn-zcode.z.ai`、`zcode.z.ai`、`/api/v1/zcode-plan`、`zcode-plugins-official`、
 `ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID`、`.zcode-runtime`、`zcode_type`、混合大小写 `Zcode*`，
 以及 bridge / `specs/codex-zcode-plugin-compatibility.md` 的官方插件 `ZCode*` / `ZCODE_PLUGIN_ROOT`。
+域名例外同时涵盖正则和 JSON 转义形式 `zcode\.z\.ai` / `zcode\\.z\\.ai`，
+避免品牌转换后失去官方 endpoint 的匹配能力。
 
 新 rename 的 `pnpm-lock.yaml` 与 `scripts/architecture/upstream-snapshot.json`
 必须逐字节等于上游相同转换结果，不重生成 snapshot，不覆盖上游新模块。
@@ -197,13 +199,74 @@ Node/tsx 测试独立执行，不能以 Vitest 未选中冒充通过。
 pairing、路由、OAuth、恢复等最终回放后的定向文件及扩展构建/Pages 发布流程。
 
 按顺序执行 pnpm install、typecheck、bridge test、test:codex、CLI build 与冲突相关定向验证，
-最后 `CODEZ_PRE_PUSH_BASE=56457972 pnpm verify:pre-push`。报告真实失败及允许的环境限制。
-远端原 main 先备份至 `backup/pre-rebase-3.17.1`，发布使用原远端 SHA 的显式 force-with-lease。
+最后 `CODEZ_PRE_PUSH_BASE=efc30ef2eaa80b2a9b7939ad6ebf38564d5b978c pnpm verify:pre-push`。
+报告真实失败及允许的环境限制。
+远端原 main 先备份至 `backup/pre-rebase-3.17.2`，发布使用原远端 SHA 的显式 force-with-lease。
+测试完成后、最终 pre-push 与提交前再次 fetch `origin/main`；若相对备份点有新增定制提交，
+先核查并回放这些增量，不能把旧 fork 基准重新 rebase 进已迁移的新历史。
+push 成功后仅跟踪最终发布 SHA 的构建，使用 `clock.sleep` 每十分钟查询一次；
+失败时读取真实失败日志、按本合同修复验证后再推送，不将 rerun/旧 SHA 成功当作最终成功。
+
+### 3.17.2 迁移验收
+
+原工作树干净，原 rename 之后是 144 个线性定制提交，无 merge。逐提交回放，不以覆盖整个
+文件或整棵旧 tree 的方式丢弃上游变化。分页合同已在 `specs/codex-desktop-adapter.md`，
+原 HEAD 没有未提交的 `specs/codex-cold-history-paging.md`。
+
+本轮不新增产品语义，优先适配上游新的 draft prewarm / restart、MCP 控制面、
+本地 HTML 预览、文件打开应用及依赖清理接口，保持既有 owner、lease 和 admission 顺序。
+README 更新段同时保留 3.17.2 上游条目与 Codez Computer Use / Codex bridge 条目。
+发行测试中真正的 app 版本断言改为 3.17.2，relay wire 继续为 `zcode_type`。
+
+新增上游源文件由本轮纯转换 snapshot 准入；定制文件仍由已有精确模块 roots 管理，
+不向 snapshot 写入定制事实。使用新 rename 作为大范围 diff 的复核基准。
+
+上游 fork 预留方法与既有物理目录逻辑合并后，`project-repository.ts` 达到 843 行，
+超过现有 800 行工程限制。将 `readProjects`、`requireProject`、`tableExists`、`readTask`
+等只读记录 helper 移入同模块 adapters 内部 `project-records.ts`；SQL、数据映射、
+调用方 Host 过滤与事务边界保持不变，不新增缓存、写入 owner、跨模块公开入口或 App 单测。
+回归依据为既有项目仓库、原生归属、远端单 root 和 migration-order 定制回归，
+再执行类型、Lint 与收窄架构门禁。
+
+上游 3.17.2 的「远端 NULL 归属是未完成交接」包含两部分：一次性迁移
+`0010_remote_task_ownership` 与 `admitTaskIdentity` 在后续事实摄入时的宽 WHERE 重算。
+本轮保留前者，收窄后者为 fork 的「首次发现判定一次」（`host_id IS NULL`），已决定行只补
+当前 owner 的 `physical_root_path`。依据是本 fork 让远端外部 Codex 历史的 NULL 成为合法
+只读状态（任务区可见、可打开、按物理 cwd 匹配），若摄入时重算，用户新建同目录项目会静默
+吞并这些历史任务，违反 session-management 不变量 I17 与保留回归
+`codexGlobalRolloutSyncer.test.ts`「先有 rollout 后建软链接项目」；上游晚到父证据仍由
+`reserveCreatedTask({parentTaskId})` 的 ACK 前交接补齐，`repairRemoteTaskOwnership`
+只在迁移中运行。该取舍属于上游语义变化影响 fork 产品行为，已在最终报告中列为需确认项。
+
+同时把 fork 保留的旧库夹具 `project-storage/test-fixture.ts` 的 tasks 表补上
+`forked_from_task_id`：真实基线 `session/tasksDatabase/schema-v1.ts` 自开源首版就有该列，
+上游 0010 迁移读取它，夹具缺列会让迁移在测试里报 no such column。
+
+上游 3.17.2 还在 CLI 冷恢复物化路径新增了创建期 `runtimeConfig.memory.enabled=false` 注入。
+Codez 不采用该第二条写入路径：Host 记忆偏好继续只由 `materializeSessionRecord` 创建后的
+`applyHostMemoryPreferencesToRecord` 应用（`specs/codez-memory-settings.md`），因为它同时承担
+热更新与「CLI config.json 显式禁用不被 Host 开启值反向覆盖」的 `host && local` 规则；创建期注入
+会把 Host 值混进本地快照，使该规则失效。上游 `v4-cold-resume` 的对应用例改为断言冷恢复物化后
+runtime 上实际生效的 `memory.enabled === false`，覆盖意图（Host 关闭时冷恢复不得启用记忆、
+且只物化一次）不变，仅观察点从创建参数换成生效配置。
+
+fork 保留的项目迁移回归按上游账本对齐：`schema_migration` 与 `result.applied` 断言补上
+`0010_remote_task_ownership`，不修改任何已发布迁移的 SQL 或 checksum。
+
+发布前分别报告：冲突提交/文件/处理依据、回放计数、核心回归清单、真实验证退出码、
+安装导致的最终依赖锁变化，以及未实际完成的 GUI / 手机 / 其他 OS 验收。
+若上游 CUA 仍有 placeholder / unavailable，则保留自研实现；若已完整开源且切换会改变
+授权或 Codex MCP 语义，先列出兼容性差异并取得用户确认。
+
+重命名基准中的 lockfile 必须是逐字节纯转换。原最终 lock 含 Codex bridge importer、
+E2EE 与 UI 回归依赖，不能把后续 install 同步的定制依赖变化称为纯转换；若本轮要求
+最终 lock 也完全等于上游转换，且上游仍缺这些 importer / 依赖，发布前必须确认该约束，
+不得删除依赖、伪造 frozen-install 通过或安装后恢复旧锁掩盖差异。
 
 ## Unresolved Questions
 
 | 项                       | 处理边界                                                                                                                                                                                              |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 最终 lockfile 与定制依赖 | 用户已明确以定制功能完整为准：rename 保持纯转换；最终由 pnpm install 同步真实 importer、依赖和 patch hash，并复核 frozen install。snapshot 始终纯转换，不用忽略 manifest 或安装后恢复 lock 掩盖不一致 |
+| 最终 lockfile 与定制依赖 | 按任务第 1 步重命名基准的边界，rename 保持纯转换；最终由 pnpm install 同步真实 importer、依赖和 patch hash，并复核 frozen install。已向用户说明这一解释；snapshot 始终纯转换，不用忽略 manifest 或安装后恢复 lock 掩盖不一致 |
 | 上游 API 变化            | 按具体冲突审查；改变原定制产品语义时需用户确认                                                                                                                                                        |
 | 运行时 / 平台验证        | 未实际运行的 GUI、手机或其他 OS 验收不能宣称通过                                                                                                                                                      |
