@@ -316,14 +316,14 @@ export function admitTaskIdentity(
     hostId === (ownerHostId ?? "local")
       ? (resolvePhysicalPathSync(task.workspacePath) ?? null)
       : null;
-  if (
-    row.host_id != null &&
-    (row.host_id !== hostId ||
-      hostId === "local" ||
-      row.project_id != null ||
-      originProjectId !== undefined)
-  ) {
-    // 已决定组织态的行只补当前 owner 的物理目录事实，不因后续摄入重新归属。
+  // 原因：会话归属只在首次发现（host_id IS NULL）判定一次，之后不因启动、对账或新增
+  // 同目录项目自动归入（session-management 不变量 I17；回归
+  // packages/services/test/codexGlobalRolloutSyncer.test.ts「先有 rollout 后建软链接项目」）。
+  // 上游 3.17.2 的「远端 NULL 是未完成交接」修复保留在一次性迁移 0010_remote_task_ownership
+  // 与 fork ACK 的 reserveForkedTask 父归属交接路径，不放到事实摄入里重算，
+  // 否则远端外部 Codex 历史会在用户新建同目录项目后被静默归入。
+  if (row.host_id != null) {
+    // 已决定组织态的行只补当前 owner 的物理目录事实，不重新归属。
     if (physicalRootPath && row.host_id === hostId) {
       db.prepare(
         "UPDATE tasks SET physical_root_path=coalesce(physical_root_path,?) WHERE workspace_key=? AND task_id=?",
@@ -333,7 +333,7 @@ export function admitTaskIdentity(
   }
   // 原因：多目录项目共享 cwd，唯一目录匹配不能表达创建时的项目选择；原生
   // threadSource 只在首次插入决定组织归属，已决定的行（含用户移动）由上方守卫保护。
-  // 3.17.2 的远端缺失归属修复仍走确切父事实/唯一目录，不重新应用原生创建提示。
+  // 首次摄入仍按上游顺序：确切 fork 父事实优先，其次唯一未删除单 root 项目（含物理路径匹配）。
   if (originProjectId) {
     const owner = db
       .prepare("SELECT host_id FROM projects WHERE project_id=?")
@@ -357,16 +357,15 @@ export function admitTaskIdentity(
         )
       : originProjectId;
   db.prepare(`UPDATE tasks SET host_id=?,root_path=workspace_path,physical_root_path=coalesce(physical_root_path,?),project_id=?,handoff_pending=handoff_pending | ?
-    WHERE workspace_key=? AND task_id=? AND (host_id IS NULL OR (host_id=? AND project_id IS NULL))`).run(
+    WHERE workspace_key=? AND task_id=? AND host_id IS NULL`).run(
     hostId,
     physicalRootPath,
     projectId,
     OWNERSHIP_DECIDED,
     key,
     task.taskId,
-    hostId,
   );
-  if (row.host_id == null && row.forked_from_task_id) {
+  if (row.forked_from_task_id) {
     // 首条 fork 事实先到时也继承固化目录，不能因 ACK/通知顺序改变恢复后的执行范围。
     db.prepare(`UPDATE tasks SET execution_directories=(SELECT execution_directories FROM tasks
       WHERE workspace_key=? AND task_id=? AND host_id=? AND root_path=?)

@@ -67,6 +67,8 @@ describe("系统 default 项目纠偏", () => {
         "0007_initial_workspace_order",
         "0008_remote_entry_deleted_cache",
         "0009_session_creation_commands",
+        // 上游 3.17.2 的一次性远端归属修复迁移在 0006 纠偏之后执行，不改变本用例的任务事实断言。
+        "0010_remote_task_ownership",
       ]);
       expect(
         db.prepare("SELECT project_id FROM tasks WHERE task_id IN ('normal','archived')").all(),
