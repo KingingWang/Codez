@@ -52,7 +52,7 @@ describe("remoteAssetCdn URL encoding", () => {
     expect(
       buildReleaseBaseCandidates(
         ["https://github.com/KingingWang/Codez/releases/download/codez-build-1-0123456789ab"],
-        "3.16.1",
+        "3.17.2",
       ),
     ).toEqual([
       "https://github.com/KingingWang/Codez/releases/download/codez-build-1-0123456789ab",
