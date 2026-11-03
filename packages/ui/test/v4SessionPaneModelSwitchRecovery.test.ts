@@ -366,6 +366,10 @@ vi.mock("@/v4/composer/useDraftConfigControl.js", async (importOriginal) => {
       handleDraftSelectModel: draftConfigMock.handleDraftSelectModel,
       handleDraftSelectThought: draftConfigMock.handleDraftSelectThought,
       handleDraftSwitchMode: draftConfigMock.handleDraftSwitchMode,
+      // 上游 3.17.2 的草稿预热会在 prewarm session 就绪后观察权限授予
+      // （SessionPane 的 observeDraftPermissionGrant effect）；缺桩会在 effect 里 TypeError，
+      // 让整组 prewarm 用例在断言前崩溃。本组用例不断言权限观察，只需稳定空桩。
+      observeDraftPermissionGrant: vi.fn(),
       // 上游 3.17.1 起 handleDraftSessionCreated 用 promoteComposerDraft 的返回值做代际门禁
       // （草稿已切走则不导航、不绑定埋点）。本组用例都在同一 pane 内完成首发提升，
       // 因此桩必须回报提升成功，否则 onSessionCreated 永远不会被调用。
