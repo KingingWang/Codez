@@ -108,6 +108,8 @@ describe("project-storage migration contract", () => {
       { id: "0007_initial_workspace_order" },
       { id: "0008_remote_entry_deleted_cache" },
       { id: "0009_session_creation_commands" },
+      // 上游 3.17.2 新增的一次性远端归属修复迁移；集成后顺延在 fork 的 0009 之后。
+      { id: "0010_remote_task_ownership" },
     ]);
   });
 
@@ -132,6 +134,7 @@ describe("project-storage migration contract", () => {
       "0007_initial_workspace_order",
       "0008_remote_entry_deleted_cache",
       "0009_session_creation_commands",
+      "0010_remote_task_ownership",
     ]);
     expect(
       db.prepare("SELECT id,checksum FROM schema_migration WHERE id='0005_projects'").all(),

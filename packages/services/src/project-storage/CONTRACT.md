@@ -56,7 +56,15 @@ Host 在拿到原生分配的 `sessionId`（新建或 fork）后立即预留空�
 
 `reserveCreatedTask` 在 CLI fork 成功后、ACK 返回前，原子继承同 owner / workspace / root 父任务的项目与执行目录。事实先到与 ACK 先到顺序可交换；已完成归属判定的行（含 NULL）不重分配。受管 worktree 的两条首次写入路径共用父行继承函数，同时保存 cwd、worktree_root 和附加目录，不能将 cwd 当成 workspace。CLI 事实首次摄入优先使用持久化 fork 父引用，不把同目录的其他项目当作父归属。
 
-`0010_remote_task_ownership` 保留 3.17.2 已发布的历史迁移及 checksum：完整同 workspace 父引用，或无父引用时唯一未删除 root 匹配。只写 tasks 的项目与判定位，不改事实/排序/未读/归档/执行目录，不创建项目，不重跑旧 migration。后续事实摄入与 fork ACK 只补齐同一远端 owner 尚未完成归属判定的行；已判定的 NULL 与本地 NULL 保持原值。
+`0010_remote_task_ownership` 仅修复历史远端 NULL：完整同 workspace 父引用，或无父引用时唯一未删除 root 匹配。只写 tasks 的项目与判定位，不改事实/排序/未读/归档/执行目录，不创建项目，不修改旧 migration。本地 NULL 始终保留。
+
+3.17.2 集成裁决：该修复是一次性数据迁移，不延伸到事实摄入。`admitTaskIdentity` 仍只在
+`host_id IS NULL` 的首次发现判定一次归属（父引用优先、其次唯一 root，含物理路径匹配），
+已决定的行只补当前 owner 的 `physical_root_path`，永不重新归属；晚到的父证据由
+`reserveCreatedTask({parentTaskId})` 的 ACK 前交接补齐。原因是远端外部 Codex 历史的
+NULL 在本 fork 是合法只读状态（任务区可见、可打开），若按上游在摄入时重算，用户新建
+同目录项目会静默吞并这些历史任务。回归：`packages/services/test/codexGlobalRolloutSyncer.test.ts`
+「先有 rollout 后建软链接项目」。
 
 3.17.2 集成保留已发布的 `0009_session_creation_commands`，归属修复顺延为 `0010_remote_task_ownership`。普通创建继续返回 Host 首次分配的 taskId 并保持命令回执幂等；fork 分支使用 CLI 已提交的 child ID，不再分配新 ID。
 
