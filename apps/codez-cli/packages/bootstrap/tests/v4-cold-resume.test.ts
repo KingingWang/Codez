@@ -913,6 +913,13 @@ function createColdFakeApp(
   const sessionId = options?.sessionId ?? ("sess_cold" as SessionId);
   const traceId = options?.traceContext?.traceId ?? ("trace_cold" as never);
   let runtimeSink: { onSessionEvent(event: SessionEvent): Promise<void> | void } | undefined;
+  // Codez 的 Host 记忆偏好只有一条写入路径：materializeSessionRecord 创建 app 后立即
+  // applyHostMemoryPreferencesToRecord（specs/codez-memory-settings.md）。不在创建参数里再注入
+  // memory.enabled，否则 CLI config.json 的显式禁用会被 Host 之后的开启值反向覆盖。
+  // 冷恢复 fake 因此记录实际生效值，让断言观察 runtime 上的记忆配置而不是创建参数。
+  let appliedMemoryConfig:
+    | NonNullable<ReturnType<CodezApp["runtime"]["getMemoryRuntimeConfig"]>>
+    | undefined;
   let mode = options?.runtimeConfig?.mode ?? "build";
   let model = options?.runtimeConfig?.modelSelection
     ? `${options.runtimeConfig.modelSelection.providerId}/${options.runtimeConfig.modelSelection.modelId}`
@@ -1031,8 +1038,10 @@ function createColdFakeApp(
       // fork 的 CLI 本地记忆配置（specs/codez-memory-settings.md）：createRecord 在应用 Host
       // override 前会先快照本地值。与下面同一条论证——冷恢复 fake 必须显式提供这两个入口，
       // 否则属性缺席会让每条经 materializeCreatedSession / 冷恢复 resume 的用例变成 TypeError。
-      getMemoryRuntimeConfig: () => undefined,
-      applyMemoryRuntimeConfig: async () => undefined,
+      getMemoryRuntimeConfig: () => (appliedMemoryConfig ? { ...appliedMemoryConfig } : undefined),
+      applyMemoryRuntimeConfig: async (patch) => {
+        appliedMemoryConfig = { ...(appliedMemoryConfig ?? {}), ...patch };
+      },
       // TTL pool 在 resident 未超水位时也要读取权威 idle facts；冷恢复 fake 必须和
       // 生产 runtime 一样显式声明没有前台或后台工作，不能再依赖旧容量分支短路。
       hasActiveOrQueuedTurnWork: () => false,
@@ -1318,6 +1327,7 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
     sentInputs: Array<{ text: string }>,
     probe?: ColdFakeAppProbe,
     createdAppOptions: CodezAppOptions[] = [],
+    createdApps: CodezApp[] = [],
   ) {
     const store = await createSqliteSessionStore({ dbPath });
     const providerRegistry = createColdProviderRegistry();
@@ -1325,7 +1335,9 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
       createCodezApp: (options) => {
         const effectiveOptions = { ...options, providerRegistry };
         createdAppOptions.push(effectiveOptions);
-        return createColdFakeApp(effectiveOptions, sentInputs, probe);
+        const app = createColdFakeApp(effectiveOptions, sentInputs, probe);
+        createdApps.push(app);
+        return app;
       },
       cwd: WORKSPACE_PATH,
       sessionStore: store,
@@ -1720,7 +1732,14 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
     const dbPath = join(tempRoot, "sessions.db");
     await seedPersistedSession(dbPath);
     const createdAppOptions: CodezAppOptions[] = [];
-    const { server, store } = await bootRestartedServer(dbPath, [], undefined, createdAppOptions);
+    const createdApps: CodezApp[] = [];
+    const { server, store } = await bootRestartedServer(
+      dbPath,
+      [],
+      undefined,
+      createdAppOptions,
+      createdApps,
+    );
     let pendingPreferenceRequestId: string | number | undefined;
     let markPreferenceRequested: (() => void) | undefined;
     const preferenceRequested = new Promise<void>((resolve) => {
@@ -1776,7 +1795,12 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
       expect(resumedRuntimeOptions).toHaveLength(1);
       expect(resumedRuntimeOptions[0]?.additionalDirectories).toEqual(["/work/backend"]);
       expect(resumedRuntimeOptions[0]?.runtimeConfig?.nativeSearchEnhancementsEnabled).toBe(false);
-      expect(resumedRuntimeOptions[0]?.runtimeConfig?.memory?.enabled).toBe(false);
+      // 修复依据：上游在创建参数里注入 memory.enabled，Codez 保留单一写入路径
+      // （materializeSessionRecord 创建后立即 applyHostMemoryPreferencesToRecord），
+      // 因此断言观察 runtime 上实际生效的记忆配置：Host 关闭时冷恢复物化后必须为 false。
+      const resumedApps = createdApps.filter((app) => app.sessionId === SESSION_ID);
+      expect(resumedApps).toHaveLength(1);
+      expect(resumedApps[0]?.runtime.getMemoryRuntimeConfig()?.enabled).toBe(false);
     } finally {
       store.close();
     }
