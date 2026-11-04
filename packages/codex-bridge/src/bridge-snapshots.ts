@@ -20,7 +20,7 @@ import { parseCodexThreadIncremental, projectThread, projectSessionsIndex } from
 import { array, object } from "./json.js";
 import { projectTurnFileChanges } from "./file-changes.js";
 import { itemEntityId } from "./projection-rows.js";
-import { lastTurn } from "./thread-index.js";
+import { lastTurn, nativeTurnIdOf as rawTurnId } from "./thread-index.js";
 import { codexUserInputSchema, type CodexTurn } from "./codex-types.js";
 import { projectOwnedInput } from "./native-file-projection.js";
 import { projectConversationTailWindow } from "./projection-window.js";
@@ -56,12 +56,6 @@ type OwnedInputProjection = Awaited<ReturnType<typeof projectOwnedInput>>;
 function additionalDirectoriesKey(directories?: readonly string[]): string {
   if (!directories || directories.length === 0) return "";
   return [...new Set(directories)].sort().join("\u0000");
-}
-
-function rawTurnId(candidate: unknown): string | undefined {
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return undefined;
-  const id = (candidate as { id?: unknown }).id;
-  return typeof id === "string" ? id : undefined;
 }
 
 /** 单个已 settled 轮次的行富化结果；键是 projectRows 复用的 turnHeader 行对象身份。 */
@@ -727,6 +721,7 @@ export class BridgeSnapshots {
           workspacePath: this.store.cwd,
           workspaceId: this.workspaceId,
           logEpoch: this.indexEpoch,
+          interactions: (id) => this.interactions.list(id),
         }),
         seq: ++this.indexSeq,
         logEpoch: this.indexEpoch,

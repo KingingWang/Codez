@@ -419,8 +419,16 @@ test("malformed upstream data is not a fabricated empty catalog", async () => {
   });
 });
 
-test("disabled compatibility preferences acknowledge zero bridge-owned sessions", async () => {
+test("interaction preferences require a live owner even when disabled; retention remains unsupported", async () => {
   const { context, calls } = fixture();
+  await assert.rejects(
+    handleControlRequest(
+      "workspace/updateInteractionPreferences",
+      { workspace, preferences: { askUserQuestionAutoResolutionEnabled: false } },
+      context,
+    ),
+    { code: -32601 },
+  );
   const interaction = codezWorkspaceUpdateInteractionPreferencesResultSchema.parse(
     await handleControlRequest(
       "workspace/updateInteractionPreferences",
@@ -428,7 +436,14 @@ test("disabled compatibility preferences acknowledge zero bridge-owned sessions"
         workspace,
         preferences: { askUserQuestionAutoResolutionEnabled: false },
       },
-      context,
+      {
+        ...context,
+        interactionPreferences: {
+          async updatePreferences(enabled) {
+            return { askUserQuestionAutoResolutionEnabled: enabled, snoozedInteractionCount: 0 };
+          },
+        },
+      },
     ),
   );
   assert.equal(interaction.snoozedInteractionCount, 0);

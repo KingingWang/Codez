@@ -4,11 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { Emitter } from "@codez/rpc";
-import {
-  appSettingsSchema,
-  resolveWorkspaceKey,
-  type CodezProtocolMessage,
-} from "@codez/shared";
+import { appSettingsSchema, resolveWorkspaceKey, type CodezProtocolMessage } from "@codez/shared";
 import { setDataBaseDir } from "../src/paths.js";
 import { createCodezAgentService } from "../src/codez-agent/codezAgentService.js";
 import { CodezAgentProcessManager } from "../src/codez-agent/codezAgentProcessManager.js";
@@ -52,6 +48,7 @@ test("syncAppRuntimePreferences 推送记忆偏好到活动 agent，并兼容未
   delete process.env.CODEZ_AGENT_SERVER_COMMAND;
   const sent: Array<{ key: string; message: CodezProtocolMessage }> = [];
   let refuseMemoryMethod = false;
+  let questionErrorCode: number | undefined;
   t.mock.method(CodezAgentProcessManager.prototype, "getClient", async (workspace) => {
     const key = resolveWorkspaceKey(workspace);
     const messages = new Emitter<CodezProtocolMessage>();
@@ -63,10 +60,17 @@ test("syncAppRuntimePreferences 推送记忆偏好到活动 agent，并兼容未
       async send(message) {
         sent.push({ key, message });
         if ("id" in message && "method" in message) {
-          if (
-            refuseMemoryMethod &&
-            message.method === "workspace/updateMemoryPreferences"
-          ) {
+          if (message.method === "workspace/updateInteractionPreferences" && questionErrorCode) {
+            messages.fire({
+              id: message.id,
+              error: {
+                code: questionErrorCode,
+                message: "Synthetic native question method failure",
+              },
+            });
+            return;
+          }
+          if (refuseMemoryMethod && message.method === "workspace/updateMemoryPreferences") {
             // 旧 CLI / codex-bridge：方法未实现，-32601 应被 Host 降级忽略。
             messages.fire({
               id: message.id,
@@ -144,6 +148,18 @@ test("syncAppRuntimePreferences 推送记忆偏好到活动 agent，并兼容未
       memoryExtractionEnabled: false,
       memoryExtractionModel: { providerId: "zai", modelId: "glm-5.3" },
     });
+    const questionRequest = sent.find(
+      ({ message }) =>
+        "method" in message && message.method === "workspace/updateInteractionPreferences",
+    )!.message as {
+      params: {
+        workspace: { workspaceIdentity: string };
+        preferences: { askUserQuestionAutoResolutionEnabled: boolean };
+      };
+    };
+    // #34：原生 Host 边界曾强制 false，导致设置无法传给本地/远端 attachment 的 broker。
+    assert.equal(questionRequest.params.preferences.askUserQuestionAutoResolutionEnabled, true);
+    assert.equal(questionRequest.params.workspace.workspaceIdentity, "ws-memory");
 
     const memoryRequest = sent.find(
       ({ message }) =>
@@ -185,12 +201,40 @@ test("syncAppRuntimePreferences 推送记忆偏好到活动 agent，并兼容未
       modelIoFullRetentionEnabled: true,
     });
     const newMessages = sent.slice(before);
+    const disabledQuestion = newMessages.find(
+      ({ message }) =>
+        "method" in message && message.method === "workspace/updateInteractionPreferences",
+    )!.message as { params: { preferences: { askUserQuestionAutoResolutionEnabled: boolean } } };
+    assert.equal(disabledQuestion.params.preferences.askUserQuestionAutoResolutionEnabled, false);
     assert.equal(
       newMessages.some(
         ({ message }) =>
           "method" in message && message.method === "workspace/updateMemoryPreferences",
       ),
       false,
+    );
+    // 旧远端只降级已明确拒绝的可选能力，不做 false 重试，也不把未知结果当成功。
+    questionErrorCode = -32601;
+    const beforeOldPeer = sent.length;
+    await service.syncAppRuntimePreferences({ askUserQuestionAutoResolutionEnabled: true });
+    const oldPeerQuestions = sent
+      .slice(beforeOldPeer)
+      .filter(
+        ({ message }) =>
+          "method" in message && message.method === "workspace/updateInteractionPreferences",
+      );
+    assert.equal(oldPeerQuestions.length, 1);
+    assert.equal(
+      (oldPeerQuestions[0]!.message as typeof questionRequest).params.preferences
+        .askUserQuestionAutoResolutionEnabled,
+      true,
+    );
+    questionErrorCode = -32000;
+    await assert.rejects(
+      service.syncAppRuntimePreferences({
+        askUserQuestionAutoResolutionEnabled: true,
+      }),
+      /Synthetic native question method failure/,
     );
   } finally {
     await service.disposeAllAndWait();

@@ -228,12 +228,15 @@ async function dispatch(
     case "workspace/updateInteractionPreferences": {
       const p = input(s.codezWorkspaceUpdateInteractionPreferencesParamsSchema, params, method);
       checkWorkspace(p.workspace, context, method);
-      if (p.preferences.askUserQuestionAutoResolutionEnabled)
-        unsupported(method, "Codex questions require explicit user answers");
+      if (!context.interactionPreferences)
+        return unsupported(method, "No live Codex interaction owner is available");
+      // 过去固定 false/0 掩盖了未接入 broker；ACK 必须来自真实 owner 的串行设置转换。
+      const preferences = await context.interactionPreferences.updatePreferences(
+        p.preferences.askUserQuestionAutoResolutionEnabled,
+      );
       return s.codezWorkspaceUpdateInteractionPreferencesResultSchema.parse({
         workspace: p.workspace,
-        askUserQuestionAutoResolutionEnabled: false,
-        snoozedInteractionCount: 0,
+        ...preferences,
       });
     }
     case "workspace/updateModelIoPreferences": {

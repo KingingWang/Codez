@@ -179,6 +179,14 @@ MP01–MP13 的前置、动作、断言与证据见[移动端事件推送规格]
 浏览器候选：`packages/ui/test/browser/manual-review/pending/codex-subagent-drilldown.test.mjs`。
 直接挂载生产时间线并记录既有 opener 请求；保持 pending，不转正、不加入正式 CI。
 
+## CSAQ34：Codex 普通提问自动继续（issue #34，accepted）
+
+前置、动作、断言、边界和剪枝见
+[Codex 普通提问自动继续](../specs/codex-question-auto-resolution.md#dimensions--candidate-combinations--accepted-cases)。
+沿用 Q09–Q14、Q23–Q25 的产品语义；CSAQ34-01～08 单独证明原生 pending owner、
+空答案、设置传递、首次操作、串行竞争、双 delivery 恢复、权限隔离和 timer 清理。
+browser/native 候选保持 pending，不自动转正；浏览器证据不代替实体手机或 Electron 全链路。
+
 ## 项目与任务草稿生命周期（2026-10-16）
 
 2026-11-10：PD13–PD16 已人工复核并转正，正式独立与默认 SSH 回放均通过；证据及平台边界见[本轮清单](testing/e2e-business-scenarios.md#2026-11-10-人工复核与转正回放)。

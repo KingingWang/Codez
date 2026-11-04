@@ -127,10 +127,10 @@ test("native follow-up intent defaults to codezInteractionBehavior setting and p
   );
 });
 
-test("Codex runtime preferences never auto-answer or enable unsupported retention; Web is unchanged", () => {
+test("Codex runtime preferences preserve question settings and disable unsupported retention; Web is unchanged", () => {
   const legacy = { askUserQuestionAutoResolutionEnabled: true, modelIoFullRetentionEnabled: true };
   assert.deepEqual(resolveDesktopRuntimePreferences(legacy, true), {
-    askUserQuestionAutoResolutionEnabled: false,
+    askUserQuestionAutoResolutionEnabled: true,
     modelIoFullRetentionEnabled: false,
   });
   assert.equal(resolveDesktopRuntimePreferences(legacy, false), legacy);
@@ -657,7 +657,10 @@ test("useCodexModelCatalog transient retry self-heals stdout_closed / RPC timeou
   ]) {
     assert.equal(isTransientCodexCatalogReadError(new Error(transientMessage)), true);
   }
-  assert.equal(isTransientCodexCatalogReadError(new Error("Invalid native settings request")), false);
+  assert.equal(
+    isTransientCodexCatalogReadError(new Error("Invalid native settings request")),
+    false,
+  );
 
   const waitedDelays: number[] = [];
   let attempts = 0;
