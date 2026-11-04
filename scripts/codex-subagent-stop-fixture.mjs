@@ -97,8 +97,16 @@ export function createSubagentStopModel() {
   return { server, held, requests, errors };
 }
 
-export function startSubagentStopBridge({ bridge, binary, workspace, codexHome, stateRoot }) {
+export function startSubagentStopBridge({
+  bridge,
+  binary,
+  workspace,
+  codexHome,
+  stateRoot,
+  extraEnv,
+}) {
   const env = {
+    ...extraEnv,
     CODEX_HOME: codexHome,
     CODEZ_CODEX_COMMAND: binary,
     CODEZ_CODEX_BRIDGE_HOME: stateRoot,

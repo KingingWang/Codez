@@ -6,6 +6,13 @@
 
 普通权限请求和 `ExitPlanMode` 计划审批不参与自动结束。
 
+Codex 原生 `item/tool/requestUserInput` 同样执行普通提问规则。其 pending 请求和 timer
+由 Codex bridge 的 `InteractionBroker` 持有，不经过 Codez CLI registry；V4 继续使用
+`kind=userInput` 与 `toolName=AskUserQuestion`。原生普通提问的设置、暂停、空答案、
+历史与两种 delivery 验收见 [Codex 普通提问自动继续](../specs/codex-question-auto-resolution.md)。
+原生 reverse-RPC 的进程 lifetime 边界不变：客户端刷新/重连恢复同一 live owner，
+不从旧历史重建失效请求。
+
 用户可以在设置页关闭“提问自动继续”。配置默认开启以保持升级兼容；关闭后，当前所有普通
 `AskUserQuestion` 和关闭期间注册的问答都永久等待用户回答。重新开启只影响开启后新注册的问题，
 不得恢复旧问题的 deadline。

@@ -12,12 +12,14 @@ import {
   v4ConversationSubscribeResultSchema,
   routedTopicWireFrameSchema,
   conversationSnapshotSchema,
+  sessionsIndexSnapshotSchema,
   type RoutedTopicWireFrame,
 } from "@codez/shared/codez-protocol-v4";
 import { BridgeRuntime } from "../src/bridge-runtime.js";
 import type { CodexProcess, CodexNotification, CodexServerRequest } from "../src/contract.js";
 import { CodexRpcError, CodexTransportError } from "../src/rpc-errors.js";
 import { threadFixture } from "./projection-fixtures.test.js";
+import type { QuestionAutoResolutionOptions } from "../src/interaction-auto-resolution.js";
 // Adapter acceptance 4/7/9: runtime → native admission → ACK → post-response initial.
 // Scope regressions use fake RPCs; rejection must happen before native execution.
 const cwd = "/workspace",
@@ -44,12 +46,17 @@ const create = (id = "create-1", identity = workspaceId) => ({
   issuedAt: 1,
   payload: { workspaceId: identity },
 });
-async function fixture(t: TestContext, officialMarketplaceRoot?: string) {
+async function fixture(
+  t: TestContext,
+  officialMarketplaceRoot?: string,
+  questionAutoResolution?: QuestionAutoResolutionOptions,
+) {
   const root = await mkdtemp(join(tmpdir(), "codez-runtime-qa-"));
   const notifications = new Set<(event: CodexNotification) => void>();
   const requests = new Set<(event: CodexServerRequest) => void>();
   const closes = new Set<(error: Error) => void>();
   const calls: { method: string; params: unknown }[] = [];
+  const responses: Array<{ id: string | number; result: unknown }> = [];
   const frames: RoutedTopicWireFrame[] = [],
     order: string[] = [],
     fatal: Error[] = [],
@@ -109,7 +116,9 @@ async function fixture(t: TestContext, officialMarketplaceRoot?: string) {
       return () => closes.delete(fn);
     },
     async initialize() {},
-    async respond() {},
+    async respond(id, result) {
+      responses.push({ id, result });
+    },
     async respondError() {},
     async close() {
       closeCount++;
@@ -120,6 +129,7 @@ async function fixture(t: TestContext, officialMarketplaceRoot?: string) {
     cwd,
     workspaceId,
     stateRoot: root,
+    questionAutoResolution,
     ...(officialMarketplaceRoot ? { officialMarketplaceRoot } : {}),
     async notify(method, params) {
       assert.equal(method, "v4/conversation/frame");
@@ -150,6 +160,7 @@ async function fixture(t: TestContext, officialMarketplaceRoot?: string) {
   return {
     runtime,
     calls,
+    responses,
     handlers,
     frames,
     fatal,
@@ -159,11 +170,289 @@ async function fixture(t: TestContext, officialMarketplaceRoot?: string) {
     started,
     authority,
     emit,
+    emitRequest: (request: CodexServerRequest) => {
+      for (const listener of requests) listener(request);
+    },
     close,
     listeners: () => notifications.size + requests.size + closes.size,
     closeCount: () => closeCount,
   };
 }
+
+test("CSAQ34-05: desktop and mobile share live deadline, sidebar summary, refresh and idempotent snooze", async (t) => {
+  const START = 1_700_000_000_000;
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: START });
+  const h = await fixture(t);
+  const routes: Array<{ topic: string; connectionId: string; subscriptionId: string }> = [];
+  for (const clientMode of ["desktop-continuous", "web-remote-replayable"]) {
+    for (const topic of ["conversation/thread-1", `sessions-index/${workspaceId}`]) {
+      const response = await h.runtime.request(V4_METHODS.conversationSubscribe, {
+        ...subscribe(topic, clientMode),
+        connectionId: clientMode,
+      });
+      const { ack } = v4ConversationSubscribeResultSchema.parse(response.result);
+      routes.push({ topic, connectionId: clientMode, subscriptionId: ack.subscriptionId });
+      await response.afterResponse!();
+    }
+  }
+  h.emit("turn/started", {
+    threadId: "thread-1",
+    turn: { id: "question-turn", status: "inProgress", items: [] },
+  });
+  h.emitRequest({
+    id: "question-rpc",
+    method: "item/tool/requestUserInput",
+    params: {
+      threadId: "thread-1",
+      turnId: "question-turn",
+      itemId: "question-item",
+      questions: [
+        { id: "target", header: "Target", question: "E2E_CSAQ34 wire question", options: [] },
+      ],
+    },
+  });
+  await tick();
+  const read = async (route: (typeof routes)[number]) => {
+    const response = await h.runtime.request(V4_METHODS.conversationResync, {
+      ...route,
+      base: null,
+    });
+    await response.afterResponse!();
+    const frame = h.frames.findLast(
+      (candidate) => candidate.subscriptionId === route.subscriptionId,
+    );
+    assert.equal(frame?.kind, "complete");
+    assert.equal(frame?.deliveryKind, "recovery");
+    if (frame?.kind !== "complete") assert.fail("Expected a complete recovery");
+    if (frame.frame.payload.kind !== "snapshot") assert.fail("Expected a recovery snapshot");
+    return frame.frame.payload.snapshot;
+  };
+  const first = conversationSnapshotSchema.parse(await read(routes[0]!)).pendingInteractions[0]!;
+  assert.equal(
+    first.turnId,
+    "question-turn",
+    "request must follow the already received turn event",
+  );
+  assert.deepEqual(first.autoResolution, {
+    state: "hiddenGrace",
+    startedAt: START,
+    visibleAt: START + 60_000,
+    deadlineAt: START + 300_000,
+  });
+  const verify = async (state: "hiddenGrace" | "visibleCountdown" | "snoozed") => {
+    for (const route of routes) {
+      const value = await read(route);
+      const pending = route.topic.startsWith("conversation/")
+        ? conversationSnapshotSchema.parse(value).pendingInteractions[0]!
+        : sessionsIndexSnapshotSchema.parse(value).sessions[0]!.pendingInteraction!;
+      assert.equal(pending.interactionId, first.interactionId);
+      assert.equal(pending.autoResolution?.state, state);
+      assert.equal(pending.autoResolution?.startedAt, START);
+      if (route.topic.startsWith("sessions-index/")) {
+        const session = sessionsIndexSnapshotSchema.parse(value).sessions[0]!;
+        assert.deepEqual(session.pendingInteractionSummary, {
+          permissionCount: 0,
+          userInputCount: 1,
+        });
+        assert.equal(JSON.stringify(session.pendingInteraction).includes("wire question"), false);
+      }
+    }
+  };
+  await verify("hiddenGrace");
+  t.mock.timers.tick(60_000);
+  await tick();
+  await verify("visibleCountdown");
+  for (const [index, expected] of [
+    [0, "accepted"],
+    [1, "noop"],
+  ] as const) {
+    const response = await h.runtime.request(V4_METHODS.command, {
+      type: "snoozeInteractionAutoResolution",
+      commandId: `snooze-${index}`,
+      clientId: "phone",
+      sessionId: "thread-1",
+      issuedAt: START + 60_000,
+      payload: { interactionId: first.interactionId },
+    });
+    assert.equal(commandAckSchema.parse(response.result).status, expected);
+    await response.afterResponse!();
+  }
+  await verify("snoozed");
+  t.mock.timers.tick(600_000);
+  await tick();
+  assert.deepEqual(h.responses, []);
+  const enabled = await h.runtime.request("workspace/updateInteractionPreferences", {
+    workspace: { ...generate.workspace, remoteSessionId: "attachment" },
+    preferences: { askUserQuestionAutoResolutionEnabled: true },
+  });
+  assert.equal(
+    (enabled.result as { askUserQuestionAutoResolutionEnabled: boolean })
+      .askUserQuestionAutoResolutionEnabled,
+    true,
+  );
+  await verify("snoozed");
+  await h.close();
+  t.mock.timers.tick(600_000);
+  await tick();
+  assert.deepEqual(h.responses, []);
+});
+
+for (const cleanup of ["serverRequest/resolved", "turn/completed"]) {
+  test(`CSAQ34-08: ${cleanup} revokes the timer while another thread's history is blocked`, async (t) => {
+    const START = 1_700_000_000_000;
+    t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: START });
+    const h = await fixture(t);
+    const response = await h.runtime.request(
+      V4_METHODS.conversationSubscribe,
+      subscribe("conversation/thread-1"),
+    );
+    const { ack } = v4ConversationSubscribeResultSchema.parse(response.result);
+    await response.afterResponse!();
+    const read = async () => {
+      const recovery = await h.runtime.request(V4_METHODS.conversationResync, {
+        topic: "conversation/thread-1",
+        connectionId: "desktop-1",
+        subscriptionId: ack.subscriptionId,
+        base: null,
+      });
+      await recovery.afterResponse!();
+      const frame = h.frames.findLast((entry) => entry.subscriptionId === ack.subscriptionId);
+      if (frame?.kind !== "complete" || frame.frame.payload.kind !== "snapshot")
+        assert.fail("Expected a recovery snapshot");
+      return conversationSnapshotSchema.parse(frame.frame.payload.snapshot);
+    };
+    h.emit("turn/started", {
+      threadId: "thread-1",
+      turn: { id: "question-turn", status: "inProgress", items: [] },
+    });
+    h.emitRequest({
+      id: "question-rpc",
+      method: "item/tool/requestUserInput",
+      params: {
+        threadId: "thread-1",
+        turnId: "question-turn",
+        itemId: "question-item",
+        questions: [{ id: "target", header: "Target", question: "E2E_CSAQ34", options: [] }],
+      },
+    });
+    await tick();
+    assert.equal((await read()).pendingInteractions.length, 1);
+    const entered = Promise.withResolvers<void>();
+    const history = Promise.withResolvers<unknown>();
+    h.handlers["thread/items/list"] = () => {
+      entered.resolve();
+      return history.promise;
+    };
+    h.emit("thread/started", { thread: { ...threadFixture(), id: "other-thread" } });
+    h.emit("turn/completed", {
+      threadId: "other-thread",
+      turn: { id: "cold-turn", status: "completed", items: [], itemsView: "summary" },
+    });
+    await entered.promise;
+    try {
+      h.emit(
+        cleanup,
+        cleanup === "serverRequest/resolved"
+          ? { threadId: "thread-1", requestId: "question-rpc" }
+          : {
+              threadId: "thread-1",
+              turn: { id: "question-turn", status: "interrupted", items: [] },
+            },
+      );
+      await tick();
+      t.mock.timers.tick(300_000);
+      await tick();
+      assert.deepEqual(h.responses, [], "Native reply authority has already ended");
+      assert.deepEqual((await read()).pendingInteractions, []);
+    } finally {
+      history.resolve({ data: [], nextCursor: null });
+      await tick();
+    }
+  });
+}
+
+test("CSAQ34-08: native question registration and deadline do not wait for projection I/O", async (t) => {
+  const START = 1_700_000_000_000;
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: START });
+  const h = await fixture(t);
+  const response = await h.runtime.request(
+    V4_METHODS.conversationSubscribe,
+    subscribe("conversation/thread-1"),
+  );
+  const { ack } = v4ConversationSubscribeResultSchema.parse(response.result);
+  await response.afterResponse!();
+  h.emit("turn/started", {
+    threadId: "thread-1",
+    turn: { id: "question-turn", status: "inProgress", items: [] },
+  });
+  await tick();
+  const entered = Promise.withResolvers<void>();
+  const history = Promise.withResolvers<unknown>();
+  h.handlers["thread/items/list"] = () => {
+    entered.resolve();
+    return history.promise;
+  };
+  h.emit("thread/started", { thread: { ...threadFixture(), id: "other-thread" } });
+  h.emit("turn/completed", {
+    threadId: "other-thread",
+    turn: { id: "cold-turn", status: "completed", items: [], itemsView: "summary" },
+  });
+  await entered.promise;
+  try {
+    h.emitRequest({
+      id: "question-rpc",
+      method: "item/tool/requestUserInput",
+      params: {
+        threadId: "thread-1",
+        turnId: "question-turn",
+        itemId: "question-item",
+        questions: [{ id: "target", header: "Target", question: "E2E_CSAQ34", options: [] }],
+      },
+    });
+    await tick();
+    t.mock.timers.tick(300_000);
+    await tick();
+    assert.deepEqual(h.responses, [{ id: "question-rpc", result: { answers: {} } }]);
+    // 同一轮消息中先注册、后撤销；不能因投影阻塞而在撤销之后迟到注册。
+    h.emitRequest({
+      id: "immediately-resolved-rpc",
+      method: "item/tool/requestUserInput",
+      params: {
+        threadId: "thread-1",
+        turnId: "question-turn",
+        itemId: "cancelled-question-item",
+        questions: [{ id: "target", header: "Target", question: "E2E_CSAQ34", options: [] }],
+      },
+    });
+    h.emit("serverRequest/resolved", {
+      threadId: "thread-1",
+      requestId: "immediately-resolved-rpc",
+    });
+    await tick();
+    t.mock.timers.tick(300_000);
+    await tick();
+    assert.deepEqual(h.responses, [{ id: "question-rpc", result: { answers: {} } }]);
+  } finally {
+    history.resolve({ data: [], nextCursor: null });
+    await tick();
+  }
+  const recovery = await h.runtime.request(V4_METHODS.conversationResync, {
+    topic: "conversation/thread-1",
+    connectionId: "desktop-1",
+    subscriptionId: ack.subscriptionId,
+    base: null,
+  });
+  await recovery.afterResponse!();
+  const frame = h.frames.findLast((entry) => entry.subscriptionId === ack.subscriptionId);
+  if (frame?.kind !== "complete" || frame.frame.payload.kind !== "snapshot")
+    assert.fail("Expected a recovery snapshot");
+  const snapshot = conversationSnapshotSchema.parse(frame.frame.payload.snapshot);
+  assert.deepEqual(snapshot.pendingInteractions, []);
+  const questionRows = snapshot.rows.window.filter(
+    (row) => row.kind === "toolCall" && row.toolCallId === "question-item",
+  );
+  assert.equal(questionRows.length, 1, "delayed read-only history must retain the turn anchor");
+});
 
 test("auxiliary dispatch precedes legacy unsupported control route and waits for completion", async (t) => {
   const h = await fixture(t);

@@ -12,6 +12,7 @@ import {
   type SessionsIndexSnapshot,
   type SessionUsageState,
   type SessionActionAvailability,
+  type PendingInteraction,
 } from "@codez/shared/codez-protocol-v4";
 import {
   codexThreadSchema,
@@ -60,6 +61,7 @@ export interface SessionsIndexOptions {
   workspaceIdentity?: string;
   /** Host index epoch, independent of any conversation epoch. */
   logEpoch: string;
+  interactions?: (sessionId: string) => readonly PendingInteraction[];
 }
 
 const nonempty = z.string().trim().min(1);
@@ -522,7 +524,26 @@ export function projectSessionsIndex(
   const sessions = canonicalNativeThreads(threads)
     // 辅助对话 child 不进任务列表；身份由持久化 threadSource 判定，重启后一致。
     .filter((thread) => !isSelectionSideChatThread(thread))
-    .map((thread) => projectSessionSummary(thread, workspaceId));
+    .map((thread) => {
+      const session = projectSessionSummary(thread, workspaceId);
+      const pending = options.interactions?.(session.sessionId) ?? [];
+      const first = pending[0];
+      if (!first || first.payload.kind === "workspaceHookReview") return session;
+      // 只读同一 broker 的轻量摘要；不复制问题内容、计时状态或 Host 任务组织态。
+      return {
+        ...session,
+        pendingInteraction: {
+          interactionId: first.interactionId,
+          kind: first.payload.kind,
+          toolName: first.payload.toolName,
+          autoResolution: first.autoResolution,
+        },
+        pendingInteractionSummary: {
+          permissionCount: pending.filter((entry) => entry.kind === "permission").length,
+          userInputCount: pending.filter((entry) => entry.kind === "userInput").length,
+        },
+      };
+    });
   return sessionsIndexSnapshotSchema.parse({
     protocolVersion: 1,
     workspaceId,

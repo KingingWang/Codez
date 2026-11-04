@@ -1295,9 +1295,11 @@ nodes:
       - "ask user question auto continue"
       - "提问自动继续"
       - "提问自动倒计时"
+      - "Codex requestUserInput"
     docs:
       - "docs/ask-user-question-auto-resolution.md"
       - "docs/conversation-session-case-catalog.md"
+      - "specs/codex-question-auto-resolution.md"
 
   - id: "capability.project-memory"
     kind: "capability"
@@ -3630,8 +3632,12 @@ nodes:
 
   - id: "service.interaction-auto-resolution-runtime"
     kind: "service"
-    label: "CLI interaction auto-resolution registry"
+    label: "CLI/native bridge interaction auto-resolution owner"
     codeSeeds:
+      - symbol: "InteractionBroker"
+        file: "packages/codex-bridge/src/interactions.ts"
+      - symbol: "CodexQuestionDialog"
+        file: "packages/ui/src/settings/codex/CodexQuestionDialog.tsx"
       - symbol: "V4InteractionRegistry"
         file: "apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/interaction-registry.ts"
       - symbol: "syncAppRuntimePreferences"

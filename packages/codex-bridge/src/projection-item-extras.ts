@@ -244,9 +244,20 @@ export function collabAgentToolCallRow(
 export function dynamicToolCallRow(
   item: CodexItemOf<"dynamicToolCall">,
   base: RowBase,
+  turnStatus?: string,
 ): ConversationRow {
-  const toolName = item.namespace ? `${item.namespace}.${item.tool}` : item.tool;
-  const status = projectItemStatus(item.status);
+  const nativeQuestion =
+    item.tool === "request_user_input" && (!item.namespace || item.namespace === "functions");
+  const toolName = nativeQuestion
+    ? "AskUserQuestion"
+    : item.namespace
+      ? `${item.namespace}.${item.tool}`
+      : item.tool;
+  // 原生轮次被中断时可能没有工具结果；只收敛普通问题，不让历史永久显示 running。
+  const status =
+    nativeQuestion && item.status === "inProgress" && turnStatus && turnStatus !== "inProgress"
+      ? "cancelled"
+      : projectItemStatus(item.status);
   const outputText = contentItemsText(item.contentItems ?? []);
   return {
     ...base,

@@ -6,7 +6,7 @@ import { enProviders, zhProviders } from "./messagesProviders.js";
 
 const en = {
   legacyPreferences:
-    "Codex questions require your explicit answer. Legacy follow-up preferences, automatic answers and full model-I/O retention do not apply to Codex.",
+    "Ordinary Codex questions follow the automatic-continuation preference. Legacy follow-up preferences and full model-I/O retention do not apply to Codex.",
   configured: "Configured in Codex",
   nativeDefault: "Native default",
   configuredHelp:
@@ -210,7 +210,7 @@ const en = {
 };
 const zh: Record<keyof typeof en, string> = {
   legacyPreferences:
-    "Codex 提问需要您明确回答。旧追加输入偏好、自动回答及完整模型输入输出日志不适用于 Codex。",
+    "Codex 普通提问遵循提问自动继续设置。旧追加输入偏好及完整模型输入输出日志不适用于 Codex。",
   configured: "Codex 显式配置",
   nativeDefault: "原生默认值",
   configuredHelp: "使用原生显式配置；模型发现未返回其能力信息。",
