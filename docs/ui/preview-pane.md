@@ -15,6 +15,13 @@
 - `office`：以只读模式预览 `.xlsx`、`.xlsm`、`.xls`、`.docx` 和 `.doc`；Excel 以 `.xlsx` 为完整支持路径，`.xlsm` / `.xls` 仅展示渲染库能够解析的数据，`.docx` / `.doc` 统一交给 Word 渲染器。`.xlsx` 在插件面板可用时优先分流到内置 `spreadsheets` 查看面板，Preview Pane 只承接 `.xlsm` / `.xls` 与回退路径，分流规则见 [office-file-preview](office-file-preview.md) 的入口路由章节
 - `pptx`：渲染 PPTX 只读预览；当前识别 `.pptx`，以左侧垂直缩略图列表和右侧单页预览展示，底部工具栏提供翻页、页码跳转和缩放。所有入口仍创建 `file` source，由 PreviewPane 惰性升级为 `pptx`，保证 tab key 继续走 `file:{path}` 去重。第一期只实现 `PresentationPreviewEngine`，编辑、导出、写回仅保留分层接口。新 Host 使用 `64MB` 上限；旧远端缺少 `stat.size/readFileRange` 时保留 `8MB` base64 兼容上限，并显示独立的本地化提示而不是误报 `64MB` 或透出远端路径。详见 `docs/ui/pptx-preview.md`
 
+## 阅读位置恢复
+
+- Markdown 与 PDF 预览在 side pane tab 存续期间保留阅读位置；切换会话或临时卸载重内容后切回，应恢复滚动位置，PDF 同时恢复页码。
+- 切换到不同 `CodeViewerSource` 时恢复缓存重置，不把旧文件的滚动位置或页码套用到新文件。
+- 该状态仅存在于 renderer 的 `preview-scroll-restore` boundary，不写入 task、session、Host、relay 或持久化存储。
+- 关闭 tab、重启应用或更换 source 后不保证恢复。
+
 ## 文件与文本渲染规则
 
 ### 原生媒体控件主题

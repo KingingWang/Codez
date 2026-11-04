@@ -1,6 +1,6 @@
 "use client";
 
-import type { HTMLAttributes, KeyboardEvent as ReactKeyboardEvent } from "react";
+import type { HTMLAttributes, KeyboardEvent as ReactKeyboardEvent, Ref } from "react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeftIcon, ChevronRightIcon, ZoomInIcon, ZoomOutIcon } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
@@ -100,6 +100,9 @@ export interface PdfViewerProps extends HTMLAttributes<HTMLDivElement> {
   source: PdfViewerSource;
   labels?: Partial<PdfViewerLabels>;
   onLoadError?: (error: Error) => void;
+  initialPageNumber?: number;
+  initialScrollTop?: number;
+  scrollContainerRef?: Ref<HTMLDivElement>;
 }
 
 type PdfDocumentFile = string | Blob | { data: Uint8Array } | { range: PdfViewerRangeTransport };
@@ -119,19 +122,38 @@ function normalizePdfSource(
   return { data: new Uint8Array(source) };
 }
 
-export function PdfViewer({ source, labels, onLoadError, className, ...props }: PdfViewerProps) {
+function setOptionalRefValue<T>(ref: Ref<T> | undefined, value: T | null) {
+  if (!ref) return;
+  if (typeof ref === "function") {
+    ref(value);
+    return;
+  }
+  (ref as { current: T | null }).current = value;
+}
+
+export function PdfViewer({
+  source,
+  labels,
+  onLoadError,
+  initialPageNumber,
+  initialScrollTop,
+  scrollContainerRef,
+  className,
+  ...props
+}: PdfViewerProps) {
   const mergedLabels = { ...DEFAULT_LABELS, ...labels };
   const [numPages, setNumPages] = useState<number | null>(null);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [pageInput, setPageInput] = useState("1");
+  const [pageNumber, setPageNumber] = useState(initialPageNumber ?? 1);
+  const [pageInput, setPageInput] = useState(String(initialPageNumber ?? 1));
   // renderScale 是真正传给 <Page> 的值；displayScale 是用户看到的目标倍率，
   // 缩放手势期间只更新 displayScale（CSS transform 预览），停顿后再提交给 renderScale。
   const [renderScale, setRenderScale] = useState(pdfZoom.DEFAULT_SCALE);
   const [displayScale, setDisplayScale] = useState(pdfZoom.DEFAULT_SCALE);
   const [pageIntrinsicSize, setPageIntrinsicSize] = useState<pdfZoom.PdfPageSize | null>(null);
   const [rangeError, setRangeError] = useState(false);
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const internalScrollContainerRef = useRef<HTMLDivElement | null>(null);
   const pendingScrollToTopRef = useRef(false);
+  const pendingInitialScrollTopRef = useRef(initialScrollTop ?? 0);
   const displayScaleRef = useRef(pdfZoom.DEFAULT_SCALE);
   const renderScaleRef = useRef(pdfZoom.DEFAULT_SCALE);
   const pendingZoomAnchorRef = useRef<pdfZoom.PdfZoomAnchor | null>(null);
@@ -156,6 +178,14 @@ export function PdfViewer({ source, labels, onLoadError, className, ...props }: 
     return normalizePdfSource(source as Exclude<PdfViewerSource, PdfViewerRangeSource>);
   }, [rangeTransport, source]);
 
+  const assignScrollContainerRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      internalScrollContainerRef.current = node;
+      setOptionalRefValue(scrollContainerRef, node);
+    },
+    [scrollContainerRef],
+  );
+
   useEffect(() => {
     return () => {
       // 文档切换/卸载时中止 range 传输，让 pdf.js 停止等待未完成的分段请求
@@ -165,18 +195,20 @@ export function PdfViewer({ source, labels, onLoadError, className, ...props }: 
 
   useEffect(() => {
     setNumPages(null);
-    setPageNumber(1);
-    setPageInput("1");
+    const initialPage = initialPageNumber ?? 1;
+    setPageNumber(initialPage);
+    setPageInput(String(initialPage));
     setRenderScale(pdfZoom.DEFAULT_SCALE);
     setDisplayScale(pdfZoom.DEFAULT_SCALE);
     setPageIntrinsicSize(null);
     setRangeError(false);
+    pendingInitialScrollTopRef.current = initialScrollTop ?? 0;
     displayScaleRef.current = pdfZoom.DEFAULT_SCALE;
     renderScaleRef.current = pdfZoom.DEFAULT_SCALE;
     pendingScrollToTopRef.current = false;
     pendingZoomAnchorRef.current = null;
     clearZoomOverlay();
-  }, [clearZoomOverlay, file]);
+  }, [clearZoomOverlay, file, initialPageNumber, initialScrollTop]);
 
   const goToPage = useCallback(
     (target: number) => {
@@ -207,7 +239,7 @@ export function PdfViewer({ source, labels, onLoadError, className, ...props }: 
         pdfZoom.resolvePdfPageSize(current, originalWidth, originalHeight),
       );
       clearZoomOverlay();
-      const container = scrollContainerRef.current;
+      const container = internalScrollContainerRef.current;
       const pendingScrollToTop = pendingScrollToTopRef.current;
       pendingScrollToTopRef.current = false;
       if (!container) {
@@ -215,6 +247,13 @@ export function PdfViewer({ source, labels, onLoadError, className, ...props }: 
       }
       if (pendingScrollToTop) {
         container.scrollTop = 0;
+      }
+      if (pendingInitialScrollTopRef.current > 0) {
+        container.scrollTop = Math.min(
+          pendingInitialScrollTopRef.current,
+          Math.max(0, container.scrollHeight - container.clientHeight),
+        );
+        pendingInitialScrollTopRef.current = 0;
       }
     },
     [clearZoomOverlay],
@@ -255,7 +294,7 @@ export function PdfViewer({ source, labels, onLoadError, className, ...props }: 
       if (next === current) {
         return;
       }
-      const container = scrollContainerRef.current;
+      const container = internalScrollContainerRef.current;
       const pageViewport = pageViewportRef.current;
       pendingZoomAnchorRef.current =
         container && pageViewport
@@ -269,7 +308,7 @@ export function PdfViewer({ source, labels, onLoadError, className, ...props }: 
 
   useLayoutEffect(() => {
     const anchor = pendingZoomAnchorRef.current;
-    const container = scrollContainerRef.current;
+    const container = internalScrollContainerRef.current;
     const pageViewport = pageViewportRef.current;
     pendingZoomAnchorRef.current = null;
     if (anchor && container && pageViewport) {
@@ -299,7 +338,7 @@ export function PdfViewer({ source, labels, onLoadError, className, ...props }: 
   }, [displayScale, renderScale, stageZoomOverlay]);
 
   useEffect(() => {
-    const container = scrollContainerRef.current;
+    const container = internalScrollContainerRef.current;
     if (!container || !documentLoaded) {
       return;
     }
@@ -346,7 +385,12 @@ export function PdfViewer({ source, labels, onLoadError, className, ...props }: 
       className={cn("flex h-full min-h-0 flex-col outline-none", className)}
       {...props}
     >
-      <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-auto">
+      <div
+        ref={assignScrollContainerRef}
+        className="min-h-0 flex-1 overflow-auto"
+        data-preview-scroll-container="true"
+        data-preview-page-number={pageNumber}
+      >
         <div className="mx-auto w-max p-4">
           {rangeError ? (
             <div className="p-3 text-ui-base text-destructive">{mergedLabels.loadError}</div>

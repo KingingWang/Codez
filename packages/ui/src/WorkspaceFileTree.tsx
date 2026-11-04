@@ -3,6 +3,7 @@ import { logger } from "@/logger.js";
 import { useEffect, useLayoutEffect, useRef, useState, type ComponentProps } from "react";
 import { FolderOpenIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
 import { PreviewPane } from "@/PreviewPane.js";
+import { PreviewScrollRestoreBoundary } from "@/preview-scroll-restore/index.js";
 import { WorkspaceFileTree } from "@/workspace-file-tree/WorkspaceFileTree.js";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
@@ -195,7 +196,9 @@ export function FileManagerPane({
           className="min-h-0 min-w-0"
         >
           {source ? (
-            <PreviewPane {...previewProps} source={source} headerContainer={headerContainer} />
+            <PreviewScrollRestoreBoundary source={source}>
+              <PreviewPane {...previewProps} source={source} headerContainer={headerContainer} />
+            </PreviewScrollRestoreBoundary>
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-3 p-4 text-ui-base text-foreground-subtle">
               <FolderOpenIcon className="size-6" />
