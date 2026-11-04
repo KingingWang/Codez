@@ -8,6 +8,8 @@
 - Desktop 使用 pdf.js 默认构建。Web 构建在 `packages/web/vite.config.ts` 中把 `pdfjs-dist` 主入口和上述 Worker 路径 alias 到同版本的 `pdfjs-dist/legacy/build/`，让旧浏览器的主线程和 Worker 都具备 pdf.js 需要的运行时 API；组件源码不感知该切换。原因与范围见 `docs/web-remote-control/web-browser-support.md`
 - Desktop 与 Web 的 Vite 构建都必须把 `pdfjs-dist/cmaps` 发布到当前构建基址下的 `pdfjs/cmaps/`。`PdfViewer` 对所有 source（整档与 range）使用同一组模块级稳定 options，传入 `cMapUrl` 与 `cMapPacked: true`；否则使用 `UniGB-UCS2-H` 等预定义 CMap、且未嵌入字符映射的 CJK PDF 会在 pdf.js 中丢失非拉丁文本。CMap 请求只读取应用自身静态资源，不进入 workspace file service、Host/relay 或 task continuous/replayable 消息链路
 - `source` prop 接受 `string`（URL / data URL）、`Blob`、`ArrayBuffer`、`Uint8Array`，以及大文件按需分段加载用的 range 变体 `{ totalBytes, initialData?, requestRange(offset, length) }`；内部 memoize 归一化为 react-pdf 的 `file` 入参，避免引用变化触发文档重新加载。二进制输入会复制一份再交给 pdf.js，防止 worker transfer 把调用方持有的 buffer 置为 detached
+- Preview Pane 的恢复包装会传入 `initialPageNumber` / `initialScrollTop`，并通过 `scrollContainerRef` 定位真实滚动容器；页码和滚动位置只作为恢复缓存读取，不改变 PDF runtime 的状态所有权
+- 滚动容器带有 `data-preview-scroll-container` 与 `data-preview-page-number`，供预览恢复模块和回归验收定位；不得依赖这些属性推断业务状态
 - range 变体内部构造 pdf.js `PDFDataRangeTransport`（`requestDataRange` → `requestRange` → `onDataRange`），并以模块级常量 options 开启 `disableAutoFetch` / `disableStream`、`rangeChunkSize = 256KB`（与 service 层 `readFileRange` 的默认分段大小对齐），只按需拉取当前页所需的字节段；分段请求失败时展示加载失败文案并回调 `onLoadError`，文档切换/卸载时 `abort()` 传输
 - 单页模式：一次只渲染当前页；页面尺寸超过容器时内容区自身滚动，页面小于容器时水平居中
 - 文本层保持开启，支持选中复制；批注/链接层关闭，避免 PDF 内链接在桌面端触发整窗导航
