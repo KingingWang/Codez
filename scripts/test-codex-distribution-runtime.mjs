@@ -44,6 +44,14 @@ test("workflow gates six native targets, four bundled remote targets and isolate
     remoteRuns.filter((run) => run === "pnpm --filter @codez/codex-bridge test").length,
     1,
   );
+  // #34 首次新增验收把原单命令改成多行，精确门禁先失败；独立步骤保留原合同，
+  // 并把普通提问的真实 Native 回归纳入同一严格清单，不能遗漏或在六平台重复执行。
+  const questionRegression = "node --test scripts/test-codex-question-auto-resolution.mjs";
+  assert.equal(remoteRuns.filter((run) => run === questionRegression).length, 1);
+  assert.equal(
+    build.steps.some((step) => step.run?.includes("test-codex-question-auto-resolution.mjs")),
+    false,
+  );
   const boundaryRuns = remoteRuns.filter((run) =>
     run.includes("packages/ui/test/dataSyncCodexAvailability.test.ts"),
   );
