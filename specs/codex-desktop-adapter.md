@@ -1296,6 +1296,11 @@ replace each other's ownership; discovered history can be resumed.
 The six-target release matrix runs the discovery/resume regression against its
 verified native Codex executable with isolated configuration and a loopback model
 fixture; ordinary adapter unit tests may skip that test before native staging.
+The fixture keeps cross-provider discovery independent from resume admission:
+before input or cold resume, explicitly select the thread's configured provider
+and verify the cold selection. Preserve the saved provider, cwd and current roots;
+do not rewrite thread metadata or use a resume override to bypass Native's
+provider validation. Listing other providers remains part of the discovery gate.
 
 The remote deployment owner remains `packages/server/src/remote`: reuse its pinned
 per-platform release manifest, verified component installer and install-root lock.

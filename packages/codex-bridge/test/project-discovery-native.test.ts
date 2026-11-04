@@ -215,25 +215,27 @@ test(
     });
     const address = server.address();
     assert.ok(address && typeof address !== "string");
-    await writeFile(
-      join(codexHome, "config.toml"),
-      [
-        'model_provider = "fixture"',
-        'model = "fixture-model"',
-        "[model_providers.fixture]",
-        'name = "Isolated fixture"',
-        `base_url = "http://127.0.0.1:${address.port}/v1"`,
-        'wire_api = "responses"',
-        "requires_openai_auth = false",
-        "[model_providers.cross-provider]",
-        'name = "Isolated second provider"',
-        `base_url = "http://127.0.0.1:${address.port}/v1"`,
-        'wire_api = "responses"',
-        "requires_openai_auth = false",
-        "[analytics]",
-        "enabled = false",
-      ].join("\n"),
-    );
+    const selectProvider = (provider: "fixture" | "cross-provider") =>
+      writeFile(
+        join(codexHome, "config.toml"),
+        [
+          `model_provider = ${JSON.stringify(provider)}`,
+          'model = "fixture-model"',
+          "[model_providers.fixture]",
+          'name = "Isolated fixture"',
+          `base_url = "http://127.0.0.1:${address.port}/v1"`,
+          'wire_api = "responses"',
+          "requires_openai_auth = false",
+          "[model_providers.cross-provider]",
+          'name = "Isolated second provider"',
+          `base_url = "http://127.0.0.1:${address.port}/v1"`,
+          'wire_api = "responses"',
+          "requires_openai_auth = false",
+          "[analytics]",
+          "enabled = false",
+        ].join("\n"),
+      );
+    await selectProvider("fixture");
 
     const externalThreadId = await execPinnedCodex({
       t,
@@ -259,6 +261,8 @@ test(
     await rpc.initialize();
     const store = new ThreadStateStore(rpc, cwd);
 
+    // Native 的输入也检查当前 provider；显式选择新会话所属 provider 后再启动/输入。
+    await selectProvider("cross-provider");
     const desktopStarted = await rpc.request<{
       thread: { id: string };
       runtimeWorkspaceRoots: string[];
@@ -290,6 +294,7 @@ test(
     assert.equal(desktop.modelProvider, "cross-provider");
     assert.equal(projectSessionSummary(desktop, cwd).originProjectId, "fixture-ab");
 
+    await selectProvider("fixture");
     const resumed = await store.ensure(externalThreadId);
     // 原生回传物理路径；归属按物理目录判断，不要求与别名拼写字符串相等。
     assert.equal(await sameExecutionPath(resumed.thread.cwd, physicalCwd), true);
@@ -305,6 +310,9 @@ test(
 
     // 完整关闭 app-server 再以当前项目 A+C 恢复；原生返回当前 roots，而 cwd 仍是 A。
     await rpc.close();
+    // 当前 Native 会校验保存的 provider 与当前配置；发现其他 provider 的历史不等于
+    // 可以借 resume 覆盖绕过该门禁。冷恢复前显式选择所属 provider，保留 roots/cwd 验收。
+    await selectProvider("cross-provider");
     rpc = createCodexProcess({
       executable: process.env.CODEX_AUXILIARY_TEST_BINARY!,
       cwd,
@@ -312,14 +320,19 @@ test(
       requestTimeoutMs: 20_000,
     });
     await rpc.initialize();
+    const config = await rpc.request<{ config: { model_provider: string } }>("config/read", {
+      includeLayers: false,
+    });
+    assert.equal(config.config.model_provider, "cross-provider");
     const cold = await rpc.request<{
-      thread: { id: string; cwd: string };
+      thread: { id: string; cwd: string; modelProvider: string };
       runtimeWorkspaceRoots: string[];
     }>("thread/resume", {
       threadId: desktopStarted.thread.id,
       runtimeWorkspaceRoots: [cwd, changedRoot],
     });
     assert.equal(cold.thread.id, desktopStarted.thread.id);
+    assert.equal(cold.thread.modelProvider, "cross-provider");
     assert.equal(await sameExecutionPath(cold.thread.cwd, physicalCwd), true);
     assert.deepEqual(cold.runtimeWorkspaceRoots, [cwd, changedRoot]);
   },

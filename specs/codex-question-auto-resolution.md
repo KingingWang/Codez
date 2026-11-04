@@ -243,3 +243,25 @@ fake clock 覆盖竞态与两种 delivery，pending browser case 覆盖真实组
 `packages/desktop/.e2e-artifacts/codex-question-native-hzVBZd`。
 B 的 `distribution-final.log` 和 `native-ci-release.log` 保存该次输出；
 本地回退版与 CI 选中版均证明空答案、模型续行和冷历史，不依据版本号推定兼容。
+
+### CI 原生 discovery fixture 的 provider 前置条件
+
+`b6d2e127` 的 remote-assets 和提问验收通过，六平台烟测中 Linux 两个目标
+在既有 `project-discovery-native.test.ts` 失败：对 `cross-provider` 会话输入及冷恢复
+的前置配置仍选择 `fixture`，Native 0.166.0 返回明确的 provider mismatch。
+本地相同 release 已复现；用户提供的 Codex app-server README 与
+`config_manager.rs::load_for_resume` 确认保存的 provider 和当前配置必须匹配。
+fixture 在各 provider 的输入/恢复前显式选择对应配置，并校验冷恢复的实际配置，
+保留全 provider 可见性、外部历史续跑、会话 provider/cwd 与项目 roots 断言；
+不改提问实现或 Native provider 门禁。
+
+```text
+fixture：外部 exec → cross-provider：桌面输入、全 provider 发现
+                  → fixture：外部历史恢复、续跑
+                  → cross-provider：冷恢复桌面历史、校验 A+C roots
+```
+
+修正后以 CI 选中 0.166.0 执行完整五文件原生烟测组合，9/9 通过；
+回退 0.163.0 的项目发现/恢复回归也为 1/1。类型、Lint 和架构检查通过，
+输出在 B 的 `native-smoke-suite.log`、`project-discovery-fallback.log` 与
+`discovery-repair-*.log`。这些测试修正不替代 #34 的提问专用 Native/浏览器证据。
