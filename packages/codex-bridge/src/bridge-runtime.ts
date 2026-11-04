@@ -10,6 +10,10 @@ import {
 import type { BridgeControlContext, CodexProcess } from "./contract.js";
 import { DeletedThreadError, ThreadStateStore } from "./thread-state.js";
 import { InteractionBroker } from "./interactions.js";
+import {
+  resolveQuestionAutoResolutionOptionsFromEnv,
+  type QuestionAutoResolutionOptions,
+} from "./interaction-auto-resolution.js";
 import { CommandLedger } from "./command-ledger.js";
 import { CommandRouter } from "./commands.js";
 import { RewindNoticeStore, relativizeRewindNoticePath } from "./rewind-notice.js";
@@ -61,6 +65,7 @@ export interface BridgeRuntimeOptions {
   logStateDiagnostic?: (diagnostic: BridgeStateDiagnostic) => void;
   fatal(error: Error, origin?: BridgeFailureOrigin): void;
   nativeBrowserCua?: BridgeControlContext["nativeBrowserCua"];
+  questionAutoResolution?: QuestionAutoResolutionOptions;
   providerKeyGate?: import("./provider-key-gate.js").CodexProviderKeyGate;
 }
 
@@ -106,8 +111,34 @@ export class BridgeRuntime {
       : undefined;
     this.interactions = new InteractionBroker(
       rpc,
-      (id) => this.store.touch(id),
+      (id) => {
+        this.store.touch(id);
+        this.refreshSidebar("sessions-index");
+      },
       (request, phase, decision) => this.observations.permission(request, phase, decision),
+      {
+        ...resolveQuestionAutoResolutionOptionsFromEnv(process.env),
+        ...options.questionAutoResolution,
+        onQuestion: (request, response) => {
+          // 历史只读观察等待既有 turn 锚点，不能反向阻塞 broker 的注册、清理或单次写回。
+          this.eventTail = this.eventTail
+            .then(() => {
+              if (this.closed) return;
+              const params = object(request.params);
+              this.store.observeQuestion(string(params.threadId), params, response);
+            })
+            .catch((error: Error) => {
+              if (!this.closed) options.fatal(error, "native-interaction");
+            });
+        },
+        onError: (error) => {
+          if (!this.closed)
+            options.fatal(
+              error instanceof Error ? error : new Error("Native question resolution failed"),
+              "native-interaction",
+            );
+        },
+      },
     );
     this.ledger = new CommandLedger(join(stateRoot, "commands"));
     this.attachments = new AttachmentStore({
@@ -193,7 +224,29 @@ export class BridgeRuntime {
     );
     this.unsubscribe.push(
       rpc.onNotification((event) => {
+        if (this.closed) return;
         const receivedAt = localTtftNow();
+        // 原生 resolved 到达时 transport 已撤销回复权；若等待其他 thread 的历史 I/O，
+        // deadline 会误回已失效请求。注册与终结按消息到达顺序进入同一个 broker。
+        try {
+          let cleanup: Promise<void> | undefined;
+          if (event.method === "serverRequest/resolved") {
+            const params = object(event.params);
+            cleanup = this.interactions.resolved(string(params.threadId), params.requestId);
+          } else if (event.method === "turn/completed") {
+            const params = object(event.params);
+            cleanup = this.interactions.expireTurn(
+              string(params.threadId),
+              string(object(params.turn).id),
+            );
+          }
+          void cleanup?.catch((error: Error) => {
+            if (!this.closed) options.fatal(error, "native-event");
+          });
+        } catch (error) {
+          options.fatal(error as Error, "native-event");
+          return;
+        }
         this.eventTail = this.eventTail
           .then(async () => {
             if (this.closed) return;
@@ -208,17 +261,8 @@ export class BridgeRuntime {
             if (!noticeMethod)
               observeConversationSafely(() => this.observations.observe(event, receivedAt));
             void this.title.onNotification(event).catch(() => {});
-            if (event.method === "serverRequest/resolved") {
-              await this.interactions.resolved(string(params.threadId), params.requestId);
-            }
             if (event.method === "thread/queue/changed" && typeof params.threadId === "string") {
               await this.store.refreshQueue(params.threadId);
-            }
-            if (event.method === "turn/completed") {
-              await this.interactions.expireTurn(
-                string(params.threadId),
-                string(object(params.turn).id),
-              );
             }
             if (
               [
@@ -250,13 +294,15 @@ export class BridgeRuntime {
     );
     this.unsubscribe.push(
       rpc.onRequest((request) => {
+        if (this.closed) return;
         void this.interactions
           .accept(request)
           .catch(async () => {
-            await rpc.respondError(request.id, {
-              code: -32602,
-              message: "Invalid native interaction",
-            });
+            if (!this.closed)
+              await rpc.respondError(request.id, {
+                code: -32602,
+                message: "Invalid native interaction",
+              });
           })
           .catch((error: Error) => {
             if (!this.closed) options.fatal(error, "native-interaction");
@@ -275,6 +321,7 @@ export class BridgeRuntime {
       officialPlugins: this.officialPlugins,
       auxiliary: this.auxiliary,
       nativeBrowserCua: this.options.nativeBrowserCua,
+      interactionPreferences: this.interactions,
     };
   }
 
@@ -554,6 +601,7 @@ export class BridgeRuntime {
 
   async close(): Promise<void> {
     this.closed = true;
+    this.interactions.close();
     this.observations.close();
     this.title.close();
     for (const dispose of this.unsubscribe) dispose();

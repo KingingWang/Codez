@@ -4,18 +4,32 @@ import { Input } from "@/components/ui/input.js";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog.js";
 import { useCodexMessages } from "./messages.js";
 import { codexQuestionAnswer, type CodexQuestion } from "./codexQuestions.js";
+import type { InteractionAutoResolution } from "@codez/shared/codez-protocol-v4";
+import {
+  useElicitationCountdownSeconds,
+  type ElicitationAutoResolutionSnoozeSource,
+} from "@/ElicitationDialog.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 
 export function CodexQuestionDialog({
   questions,
   onRespond,
+  autoResolution,
+  onFirstInteraction,
 }: {
   questions: CodexQuestion[];
+  autoResolution?: InteractionAutoResolution;
+  onFirstInteraction?: (
+    source: ElicitationAutoResolutionSnoozeSource,
+  ) => boolean | void | Promise<boolean | void>;
   onRespond(answer: {
     action: "accept" | "cancel";
     content?: Record<string, string[]>;
   }): Promise<boolean>;
 }) {
   const text = useCodexMessages();
+  const { intl } = useCodezIntl();
+  const countdownSeconds = useElicitationCountdownSeconds(autoResolution);
   // 原生 secret 问答只驻留当前组件，不进入持久化的旧 elicitation draft store。
   const [values, setValues] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
@@ -49,9 +63,30 @@ export function CodexQuestionDialog({
         if (!open) void respond(true);
       }}
     >
-      <DialogContent showCloseButton={false} className="max-h-[80vh] max-w-lg overflow-y-auto">
+      <DialogContent
+        showCloseButton={false}
+        className="max-h-[80dvh] max-w-lg overflow-y-auto"
+        onMouseEnter={() => void onFirstInteraction?.("panelHover")}
+      >
         <DialogTitle>{text.questions}</DialogTitle>
         <DialogDescription>{text.questionsHelp}</DialogDescription>
+        {countdownSeconds !== null && (
+          <Button
+            type="button"
+            size="xs"
+            variant="secondary"
+            data-testid="codex-question-countdown"
+            data-elicitation-countdown-seconds={countdownSeconds}
+            aria-label={intl.formatMessage({ id: "taskList.stopCountdown" })}
+            className="w-fit min-w-10 tabular-nums text-foreground-subtle"
+            onClick={() => void onFirstInteraction?.("countdown")}
+          >
+            {intl.formatMessage(
+              { id: "chat.elicitation.countdownSeconds" },
+              { seconds: String(countdownSeconds) },
+            )}
+          </Button>
+        )}
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -70,7 +105,10 @@ export function CodexQuestionDialog({
                   key={option.label}
                   variant={values[String(index)] === option.label ? "secondary" : "outline"}
                   className="mr-2 h-auto whitespace-normal text-left"
-                  onClick={() => setValues((current) => ({ ...current, [index]: option.label }))}
+                  onClick={() => {
+                    void onFirstInteraction?.("answer");
+                    setValues((current) => ({ ...current, [index]: option.label }));
+                  }}
                 >
                   {option.label}
                   {option.description ? ` — ${option.description}` : ""}
@@ -81,9 +119,11 @@ export function CodexQuestionDialog({
                 type={question.isSecret ? "password" : "text"}
                 autoComplete="off"
                 value={values[String(index)] ?? ""}
-                onChange={(event) =>
-                  setValues((current) => ({ ...current, [index]: event.target.value }))
-                }
+                onChange={(event) => {
+                  // 程序 focus 不代表用户回答意图；只在真实输入后暂停，metadata 更新不重建草稿。
+                  void onFirstInteraction?.("answer");
+                  setValues((current) => ({ ...current, [index]: event.target.value }));
+                }}
               />
             </fieldset>
           ))}

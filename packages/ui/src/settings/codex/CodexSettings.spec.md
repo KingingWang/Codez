@@ -199,9 +199,14 @@ the selected native provider/model and omits unconfigured reasoning, never displ
 placeholders such as empty provider or empty effort. This also applies after draft
 rehydration and must not depend on whether prewarm wins the initial render race.
 Desktop runtime preference synchronization (including cross-window broadcasts)
-always disables legacy auto-answer and full model-I/O retention. General settings
-show an explicit capability notice instead of those unsupported controls. This
-does not rewrite stored Web preferences or native account settings.
+preserves the ordinary-question auto-resolution setting; native questions use the
+same bridge-owned five-minute deadline and first-interaction snooze as other Ask
+questions. The native form reuses the existing final-minute display hook and V4
+snooze command, keeps drafts across metadata-only updates, and never persists
+secret answers. Full model-I/O retention and legacy follow-up preferences remain
+unsupported; the capability notice must not claim native question auto-resolution
+is unsupported. This does not rewrite stored Web preferences or native accounts.
+See `specs/codex-question-auto-resolution.md` for ownership and acceptance.
 
 ```text
 snapshot control → disabled configuration controls (no duplicate busy store)

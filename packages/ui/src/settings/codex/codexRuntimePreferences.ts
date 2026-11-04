@@ -1,4 +1,4 @@
-// Pure adapter boundary: old app preferences must not block native conversation subscriptions.
+// Pure adapter boundary: unsupported retention must not block native conversation subscriptions.
 export function resolveDesktopRuntimePreferences<
   T extends {
     askUserQuestionAutoResolutionEnabled: boolean;
@@ -8,7 +8,7 @@ export function resolveDesktopRuntimePreferences<
   return nativeCodex
     ? {
         ...preferences,
-        askUserQuestionAutoResolutionEnabled: false,
+        // 原生普通提问由 broker 实现同一自动继续契约，不能在适配边界强制关闭。
         modelIoFullRetentionEnabled: false,
       }
     : preferences;

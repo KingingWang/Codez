@@ -35,6 +35,11 @@ import { listNativeQueue, listWorkspaceThreads } from "./thread-queries.js";
 import { upsertTurnPlanUpdate } from "./turn-plan-update.js";
 import { SubagentActivityTracker } from "./subagent-activity.js";
 import {
+  applyNativeQuestionHistory,
+  observeNativeQuestion,
+  readNativeQuestionHistory,
+} from "./question-history.js";
+import {
   nativeActivityBaseline,
   nativeHistoryActivity,
   nativeLiveActivity,
@@ -370,6 +375,11 @@ export class ThreadStateStore {
 
     this.assertAvailable(id);
     const state = this.put(thread);
+    const questions = await readNativeQuestionHistory(state.thread);
+    this.assertAvailable(id);
+    // 冷读取不生成 pending/timer；await 之后只合入已证明的历史，保留加载期间的 live 事实。
+    applyNativeQuestionHistory(state.thread, questions);
+    if (questions.length) this.touch(id);
     // 辅助对话 child 重建继承裁剪边界；父读取失败 fail-open 不裁剪（spec: codex-selection-side-chat）。
     const cachedParentId =
       typeof thread.forkedFromId === "string" ? thread.forkedFromId : undefined;
@@ -454,6 +464,11 @@ export class ThreadStateStore {
     if (!state) return;
     state.queue = await listNativeQueue(this.rpc, id);
     this.touch(id);
+  }
+
+  observeQuestion(id: string, params: JsonObject, response?: unknown): void {
+    const state = this.states.get(id);
+    if (state && observeNativeQuestion(state.thread, params, response)) this.touch(id);
   }
 
   /** 归属判定需要解析物理路径，所以事件投影是异步的；调用方必须保持事件串行。 */

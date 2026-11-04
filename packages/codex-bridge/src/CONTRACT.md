@@ -13,6 +13,15 @@ allows fake transports in tests. Unknown mutations fail closed, and mutations
 with an unknown outcome are never blindly retried. No real user credentials are
 used by tests. See specs/codex-desktop-adapter.md for recovery and delivery rules.
 
+`InteractionBroker` owns ordinary native question registration eligibility,
+head-only absolute auto-resolution deadlines and snoozes. Preference updates,
+answers, lifecycle cleanup and timer callbacks serialize at the same owner.
+Only `item/tool/requestUserInput` can auto-complete with native `{answers:{}}`;
+permissions and MCP/Plan remain explicit. The control context delegates preference
+updates to the broker rather than acknowledging a hard-coded value. Both delivery
+profiles and sessions-index read that same state; renderer drafts and native
+reverse-RPC lifetime are unchanged. See specs/codex-question-auto-resolution.md.
+
 The local native-control MCP carrier has independent Browser and Computer Use
 enablement gates. Browser broker readiness never authorizes or hides CUA tools.
 The Local Host owns the authenticated Helper grant; the MCP reads its private,

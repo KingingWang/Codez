@@ -79,6 +79,13 @@ export interface CodexProcess extends CodexRpcPort {
 export interface BridgeControlContext {
   rpc: CodexRpcPort;
   cwd: string;
+  /** 当前原生连接的唯一 pending/timer owner；独立只读 control context 可不提供。 */
+  interactionPreferences?: {
+    updatePreferences(enabled: boolean): Promise<{
+      askUserQuestionAutoResolutionEnabled: boolean;
+      snoozedInteractionCount: number;
+    }>;
+  };
   officialPlugins?: OfficialPluginMarketplace;
   auxiliary?: { supports(method: string): boolean };
   nativeBrowserCua?: {

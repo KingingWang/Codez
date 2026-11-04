@@ -384,7 +384,7 @@ function itemRow(
     case "collabAgentToolCall":
       return collabAgentToolCallRow(item, base);
     case "dynamicToolCall":
-      return dynamicToolCallRow(item, base);
+      return dynamicToolCallRow(item, base, turn.status);
     case "functionCallOutput":
       return functionCallOutputRow(item, base);
     case "contextCompaction":

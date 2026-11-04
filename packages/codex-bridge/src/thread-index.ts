@@ -69,6 +69,12 @@ function idOf(value: JsonObject): string | undefined {
   return typeof value.id === "string" ? value.id : undefined;
 }
 
+/** 快照与索引共用同一弱读取，不把未知 turn 的正文解析混进只取 ID 的热路径。 */
+export function nativeTurnIdOf(value: unknown): string | undefined {
+  const turn = record(value);
+  return turn ? idOf(turn) : undefined;
+}
+
 function itemsArray(turn: JsonObject): unknown[] | undefined {
   return Array.isArray(turn.items) ? turn.items : undefined;
 }

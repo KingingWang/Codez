@@ -69,7 +69,9 @@ function getElicitationCountdownRefreshDelay(
   return Math.max(1, remainingMs - (seconds * 1_000 - 1));
 }
 
-function useElicitationCountdownSeconds(autoResolution: InteractionAutoResolution | undefined) {
+export function useElicitationCountdownSeconds(
+  autoResolution: InteractionAutoResolution | undefined,
+) {
   const [clockNow, setClockNow] = useState(Date.now);
 
   useEffect(() => {
