@@ -2074,25 +2074,26 @@ export function createCodezAgentService(
         // 前一次失败不能打乱之后开关提交的顺序；当前快照仍需继续尝试。
       })
       .then(async () => {
-        await params.client.request(
-          codezProtocolMethods.workspaceUpdateInteractionPreferences,
-          {
-            workspace: buildWorkspaceRef(params.workspace),
-            preferences: {
-              // Codex bridge 对该标志 fail-closed（"Codex questions require explicit
-              // user answers"），而远端 Bot/手机链路把 preferences 同步失败当成整个
-              // runtime 初始化失败（botRemoteWorkspaceBridge 会 await 它）。codex
-              // 模式下该偏好本就无效：免交互由 yolo 的 approvalPolicy=never 表达，
-              // 不存在可自动应答的 AskUserQuestion 面。在发送边界归一为 false，
-              // 保持 bridge 的严格语义，同时不再打挂远端 attachment 初始化
-              // （2026-09-24 实测：远程 workspace 的 Bot 消息全部因此失败）。
-              askUserQuestionAutoResolutionEnabled: usesDefaultCodexBridge
-                ? false
-                : params.preferences.askUserQuestionAutoResolutionEnabled,
+        try {
+          await params.client.request(
+            codezProtocolMethods.workspaceUpdateInteractionPreferences,
+            {
+              workspace: buildWorkspaceRef(params.workspace),
+              preferences: {
+                // Codex 普通问答也由同一偏好控制；权限的 yolo 策略与自动空答案无关。
+                // 保留此连接级串行链，桌面与远端 attachment 才会读取同一 broker deadline。
+                askUserQuestionAutoResolutionEnabled:
+                  params.preferences.askUserQuestionAutoResolutionEnabled,
+              },
             },
-          },
-          codezWorkspaceUpdateInteractionPreferencesResultSchema,
-        );
+            codezWorkspaceUpdateInteractionPreferencesResultSchema,
+          );
+        } catch (error) {
+          // 旧 Codex bridge 会在接受设置前以 -32601 拒绝；移除强制 false 后不能让
+          // 这一可选能力再次打挂整个远端 attachment。只降级明确的不支持，不伪造 ACK、
+          // 不改 flag 重试；未知结果/其他错误与自定义 CLI 仍保持失败。
+          if (!usesDefaultCodexBridge || !isProtocolMethodNotFoundError(error)) throw error;
+        }
         try {
           await params.client.request(
             codezProtocolMethods.workspaceUpdateModelIoPreferences,

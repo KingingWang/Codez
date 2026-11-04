@@ -69,6 +69,8 @@ export interface CommandContext {
   observations?: CommandObservations;
 }
 
+const NOOP = Symbol("interaction-noop");
+
 /** Per-thread serialization covers admission decisions, not native execution. */
 export class CommandRouter {
   private readonly serial = new Map<string, Promise<unknown>>();
@@ -149,9 +151,9 @@ export class CommandRouter {
         const result = await this.dispatch(command);
         ack = {
           commandId: command.commandId,
-          status: "accepted",
+          status: result === NOOP ? "noop" : "accepted",
           revisionAtDecision: state?.revision ?? 0,
-          ...(result ? { result } : {}),
+          ...(result && result !== NOOP ? { result } : {}),
         };
       }
     } catch (error) {
@@ -184,7 +186,9 @@ export class CommandRouter {
     return commandAckSchema.parse(ack);
   }
 
-  private async dispatch(command: CommandEnvelope): Promise<CommandResult | undefined> {
+  private async dispatch(
+    command: CommandEnvelope,
+  ): Promise<CommandResult | typeof NOOP | undefined> {
     const { rpc, store, attachments, interactions } = this.context;
     if (command.type === "createSession") return createNativeSession(command, this.context);
     const sessionId = string(command.sessionId, "sessionId");
@@ -346,6 +350,12 @@ export class CommandRouter {
       case "resolveInteraction": {
         const p = commandPayloadSchemas.resolveInteraction.parse(command.payload);
         await interactions.resolve(sessionId, p.interactionId, p.answer);
+        break;
+      }
+      case "snoozeInteractionAutoResolution": {
+        const p = commandPayloadSchemas.snoozeInteractionAutoResolution.parse(command.payload);
+        // 暂停可能迟于 Native 收口或来自另一端；重复/迟到命令必须幂等且不生成第二次响应。
+        if (!(await interactions.snooze(sessionId, p.interactionId))) return NOOP;
         break;
       }
       case "switchModelConfig": {

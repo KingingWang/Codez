@@ -379,6 +379,11 @@ export function V4InteractionDialogs({
       <CodexQuestionDialog
         key={`${sessionId}:${pending.interactionId}`}
         questions={codexQuestions}
+        autoResolution={pending.autoResolution}
+        onFirstInteraction={() => {
+          autoResolutionIntentRef.current.markInteracted(pending.interactionId);
+          return sendSnoozeOnce(pending.interactionId, Boolean(pending.autoResolution));
+        }}
         onRespond={(answer) => resolveInteraction(pending.interactionId, answer)}
       />
     );

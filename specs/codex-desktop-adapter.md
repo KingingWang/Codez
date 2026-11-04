@@ -324,8 +324,12 @@ dev, ino, ctimeMs, mtimeMs, size, checksum)` tuple is verified, subsequent
   do not cause a new command/session or duplicate first input.
 - Pending approvals are scoped to connection generation/thread/turn/request ID;
   late replies cannot approve another run. Unknown request kinds fail closed.
-  Human approvals/questions have no default RPC deadline; an explicit interaction
-  deadline is independent of the bounded ordinary RPC/write deadline.
+  Human approvals/questions have no default transport RPC deadline; an explicit
+  interaction deadline is independent of the bounded ordinary RPC/write deadline.
+  Ordinary `item/tool/requestUserInput` additionally follows the AppSettings-controlled,
+  bridge-owned five-minute product window, snooze and empty-answer continuation
+  in [Codex question auto-resolution](codex-question-auto-resolution.md).
+  Permissions, MCP elicitation and plan approvals never join that product timer.
 - Command-execution approvals preserve Codex's `availableDecisions` order and
   recognize both string decisions and object decisions. The bridge assigns each
   offered item a stable unique V4 `optionId` (using an index for repeated
