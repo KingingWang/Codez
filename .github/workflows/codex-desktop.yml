@@ -79,10 +79,10 @@ jobs:
           install_dependencies
       - run: node --test scripts/test-codex-distribution*.mjs
       - name: Codex bridge native contract regressions (Linux once)
-        run: |
-          pnpm --filter @codez/codex-bridge test
-          # #34：fake clock 不能证明原生空答案续行与冷历史；用本次 release 运行隔离 loopback 回归。
-          node --test scripts/test-codex-question-auto-resolution.mjs
+        run: pnpm --filter @codez/codex-bridge test
+      # #34：fake clock 不能证明原生空答案续行与冷历史；用本次 release 运行隔离 loopback 回归。
+      - name: Codex question auto-resolution native regression (Linux once)
+        run: node --test scripts/test-codex-question-auto-resolution.mjs
       - name: Codex service, desktop and remote deployment regressions (Linux once)
         run: |
           # 原因：上游根 Vitest 只发现 engineering；按根准入名单的框架和包精确分流，避免空选中。

@@ -180,8 +180,12 @@ answer / snooze / disable ─────────────────┤
 规格先于实现；catalog 与 matrix 登记 CSAQ34，运行后补真实 artifact，不自动晋级。
 固定原生 Codex + loopback synthetic Responses fixture 证明自动空答案和续行，
 fake clock 覆盖竞态与两种 delivery，pending browser case 覆盖真实组件和 V4 command。
-原生 loopback 回归在 `Codez desktop` 的 Linux contract 步骤执行，使用本次 workflow
+原生 loopback 回归在 `Codez desktop` 的 Linux 独立提问验收步骤执行，使用本次 workflow
 解析出的同一份 Native release manifest，不能让打包版本与验收版本分叉。
+既有 bridge 单命令步骤仍保持精确命令和单次执行；新增提问验收也必须由
+`scripts/test-codex-distribution-runtime.mjs` 精确断言，仅在 remote-assets 执行一次。
+修改 workflow 后独立执行 `node --test scripts/test-codex-distribution*.mjs`，
+不能用 pre-push 的零选中工程测试代替此 Node 门禁。
 只把外部模型回复替换成 case-local fixture，不使用真实账号、地址或凭据；
 浏览器覆盖不冒充实体手机、SSH 网络或原生 Electron 全链路 E2E。
 
@@ -223,3 +227,19 @@ fake clock 覆盖竞态与两种 delivery，pending browser case 覆盖真实组
 未执行实体手机、真实 SSH 网络、全链路 Electron 或既有 `ExitPlanMode` GUI；
 权限/MCP 的跨 deadline 对照与 Native 方法资格已由 B 验证，Plan 既有分支为源码隔离核查。
 这些证据不改变正式 E2E 晋级/人工审核要求。
+
+### 首次推送的 CI 门禁修正
+
+`7c4e896d` 的 Android 与手机远控页面构建通过；桌面
+`41840860430` 在 distribution 回归失败 1/97。确认原因是新增提问验收时把
+既有 bridge 单命令改成多行，未同步 `test-codex-distribution-runtime.mjs:43`
+的精确命令断言（0 !== 1）；此时提问 Native 回归尚未开始执行。
+修正将新回归拆为独立 Linux 步骤，保留原 bridge 精确门禁，并明确检查新回归仅
+执行一次、不复制到六平台 build job。此修正不改变提问实现、计时窗口或测试预算。
+
+修正后 distribution 全套 97/97、`pnpm typecheck`、`pnpm lint` 与架构检查通过。
+另用 CI 相同的 release resolver 选出完整 `codex-20261103-233208`
+（`codex-cli 0.166.0`），再次执行真实提问验收 1/1：
+`packages/desktop/.e2e-artifacts/codex-question-native-hzVBZd`。
+B 的 `distribution-final.log` 和 `native-ci-release.log` 保存该次输出；
+本地回退版与 CI 选中版均证明空答案、模型续行和冷历史，不依据版本号推定兼容。
