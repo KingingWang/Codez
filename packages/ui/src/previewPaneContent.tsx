@@ -13,7 +13,7 @@ import { CodeContent } from "@/previewPaneCodeContent.js";
 import { ImagePreviewContent, SvgPreviewContent } from "@/previewPaneImageContent.js";
 import type { WorkspaceFileDragPayload } from "@/lib/workspaceFileDrag.js";
 import { PreviewPaneMediaContent } from "@/previewPaneMediaContent.js";
-import { PdfPreviewContent } from "@/previewPanePdfContent.js";
+import { MarkdownScrollRestore, PdfScrollRestore } from "@/preview-scroll-restore/index.js";
 import { PptxPreviewContent } from "@/previewPanePptxContent.js";
 import { PatchFallbackContent } from "@/previewPanePatchFallbackContent.js";
 import { DiffViewer } from "@/components/ui/diff-viewer.js";
@@ -202,20 +202,22 @@ export function PreviewPaneContent({
     const isSvgSource = isSvgPath(source.path);
     if (isMarkdownSource && markdownViewMode === "preview") {
       return (
-        <MarkdownPreviewContent
-          selectionTarget={markdownSelectionTarget}
-          sourceKey={
-            source.path ??
-            JSON.stringify([source.title, source.type === "text" ? source.content : ""])
-          }
-          sourceTitle={source.path ?? source.title}
-          sourcePath={source.path}
-          content={source.content}
-          workspacePath={workspacePath}
-          theme={theme}
-          codePreviewSettings={codePreviewSettings}
-          onOpenBrowserUrl={onOpenBrowserUrl}
-        />
+        <MarkdownScrollRestore>
+          <MarkdownPreviewContent
+            selectionTarget={markdownSelectionTarget}
+            sourceKey={
+              source.path ??
+              JSON.stringify([source.title, source.type === "text" ? source.content : ""])
+            }
+            sourceTitle={source.path ?? source.title}
+            sourcePath={source.path}
+            content={source.content}
+            workspacePath={workspacePath}
+            theme={theme}
+            codePreviewSettings={codePreviewSettings}
+            onOpenBrowserUrl={onOpenBrowserUrl}
+          />
+        </MarkdownScrollRestore>
       );
     }
 
@@ -319,7 +321,7 @@ export function PreviewPaneContent({
       );
     }
 
-    return <PdfPreviewContent source={pdfViewerSource} labels={pdfViewerLabels} />;
+    return <PdfScrollRestore source={pdfViewerSource} labels={pdfViewerLabels} />;
   }
 
   if (source.type === "file" && officePreviewKind) {
@@ -426,15 +428,17 @@ export function PreviewPaneContent({
   const isSvgFile = isSvgPath(source.path);
   if (source.type !== "code-review" && isMarkdownFile && markdownViewMode === "preview") {
     return (
-      <MarkdownPreviewContent
-        selectionTarget={markdownSelectionTarget}
-        sourceKey={source.path ?? source.title}
-        sourceTitle={source.path ?? source.title}
-        sourcePath={source.path}
-        content={filePreview.content}
-        workspacePath={workspacePath}
-        onOpenBrowserUrl={onOpenBrowserUrl}
-      />
+      <MarkdownScrollRestore>
+        <MarkdownPreviewContent
+          selectionTarget={markdownSelectionTarget}
+          sourceKey={source.path ?? source.title}
+          sourceTitle={source.path ?? source.title}
+          sourcePath={source.path}
+          content={filePreview.content}
+          workspacePath={workspacePath}
+          onOpenBrowserUrl={onOpenBrowserUrl}
+        />
+      </MarkdownScrollRestore>
     );
   }
 
