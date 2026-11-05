@@ -1,4 +1,4 @@
-import { Suspense, lazy, type Ref } from "react";
+import { Suspense, lazy } from "react";
 import type { PdfViewerLabels, PdfViewerSource } from "@/components/ui/pdf-viewer.js";
 
 // react-pdf（含 pdf.js 与 worker）体积较大，懒加载让它只在首次打开 PDF 预览时进入 bundle，
@@ -14,7 +14,6 @@ interface PdfPreviewContentProps {
   labels: PdfViewerLabels;
   initialPageNumber?: number;
   initialScrollTop?: number;
-  scrollContainerRef?: Ref<HTMLDivElement>;
 }
 
 export function PdfPreviewContent({
@@ -22,7 +21,6 @@ export function PdfPreviewContent({
   labels,
   initialPageNumber,
   initialScrollTop,
-  scrollContainerRef,
 }: PdfPreviewContentProps) {
   return (
     <Suspense
@@ -34,7 +32,6 @@ export function PdfPreviewContent({
         className="h-full"
         initialPageNumber={initialPageNumber}
         initialScrollTop={initialScrollTop}
-        scrollContainerRef={scrollContainerRef}
       />
     </Suspense>
   );

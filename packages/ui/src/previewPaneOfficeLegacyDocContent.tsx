@@ -201,6 +201,7 @@ export function PreviewPaneOfficeLegacyDocContent({
     <div
       className="h-full min-h-0 w-full min-w-0 overflow-auto bg-background p-4 max-sm:p-2"
       data-office-preview-kind="doc"
+      data-office-preview-scroll-container="true"
     >
       <ResponsiveDocxEditorViewer
         key={getDocxModelRenderKey(model)}
