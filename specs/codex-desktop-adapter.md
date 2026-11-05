@@ -1301,6 +1301,12 @@ before input or cold resume, explicitly select the thread's configured provider
 and verify the cold selection. Preserve the saved provider, cwd and current roots;
 do not rewrite thread metadata or use a resume override to bypass Native's
 provider validation. Listing other providers remains part of the discovery gate.
+Native releases since upstream #57840 reject input and cold resume whenever the saved
+provider differs from the configured default provider; the fork relaxes that gate so a
+retained thread route stays authoritative and a missing definition or managed policy
+conflict is still rejected (`specs/codex-model-provider-grouping.md`). The fixture keeps
+the explicit selection step because it holds under both semantics while the release
+matrix may still resolve an unrelaxed Native build.
 
 The remote deployment owner remains `packages/server/src/remote`: reuse its pinned
 per-platform release manifest, verified component installer and install-root lock.
