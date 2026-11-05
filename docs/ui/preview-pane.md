@@ -17,10 +17,17 @@
 
 ## 阅读位置恢复
 
-- Markdown 与 PDF 预览在 side pane tab 存续期间保留阅读位置；切换会话或临时卸载重内容后切回，应恢复滚动位置，PDF 同时恢复页码。
-- 切换到不同 `CodeViewerSource` 时恢复缓存重置，不把旧文件的滚动位置或页码套用到新文件。
-- 该状态仅存在于 renderer 的 `preview-scroll-restore` boundary，不写入 task、session、Host、relay 或持久化存储。
-- 关闭 tab、重启应用或更换 source 后不保证恢复。
+- 代码、Markdown、PDF、DOCX、旧版 DOC 与 PPTX 预览按「工作区身份 key + 预览源」保留阅读位置；切换会话、切换项目、关闭再打开同一预览后切回，都应恢复滚动位置，PDF 与 PPTX 同时恢复页码/幻灯片序号。
+- 切换项目会按 `workspaceKey` 过滤侧栏 tab，整棵 `FileManagerPane` 子树被卸载，因此读位缓存必须由 `preview-scroll-restore` 模块持有，不能放在组件 ref 里。
+- 同一 tab 内显式切换到不同 `CodeViewerSource` 时恢复缓存重置，不把旧文件的滚动位置或页码套用到新文件，保持「打开新文件从头开始」。
+- 不同项目预览同一路径时读位互相独立；缓存超上限按最早写入淘汰，淘汰只会退化为从头开始。
+- Excel 不参与读位恢复：`@extend-ai/react-xlsx` 用 WASM 把单元格画到 canvas，没有 DOM 滚动位置，controller 只暴露 `activeTabIndex` / `activeCell`，借它恢复会顺带改变可见选中态。
+- `code-review` 预览与带引用跳转（`referenceNavigation`）的 PPTX 预览也不参与恢复，落点分别归 `focusRequestId` 和 `goToPage`。
+- Office / PPTX 正文是 lazy 且异步解析的，恢复包装会观察到滚动容器标记出现为止；观察时限必须明显长于最坏解析耗时，否则绑定建立不起来、读位会静默丢失。标记只允许是本仓库自有属性，不得依赖第三方渲染器的私有 DOM。
+- Excel 不挂恢复包装：canvas 网格没有 DOM 读位，挂了只会白观察一棵高频变化的子树。
+- 写入只由真实事件驱动（滚动事件、页码属性变化），不做卸载补写：换 source 后容器里可能还残留上一个文件的内容一帧，卸载补写会把旧读位写进新文件的条目。
+- 该状态仅存在于当前 renderer 内存，不写入 task、session、Host、relay 或持久化存储；重启应用或刷新 renderer 后不保证恢复。
+- 规则细节见 [预览读位恢复规格](../../specs/preview-scroll-restore.md)。
 
 ## 文件与文本渲染规则
 
