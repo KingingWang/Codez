@@ -80,6 +80,40 @@ catalog/read ──→ 新增 bridge 控制面方法：host 本地读 catalog �
 - queue/steer 的 `assertUnchangedInputSettings` 守卫不变：per-input 换模型
   （含跨 provider）依然拒绝——原生 turn/steer 不接受模型参数。
 
+## 原生准入门禁与 fork 放宽（Codex ≥ 0.166）
+
+上游 `7ce5fa7bdc`（#57840，首个包含它的 fork release `codex-20261103-164120`）给
+app-server 加了准入门禁：`turn/start`、`turn/steer`、`review/start`、
+`thread/compact/start`、queue start、goal 更新与 `thread/resume` 都要求线程保存的
+provider 等于当前配置的默认 provider，否则返回结构化
+`ModelProviderError.modelProviderMismatch`。Codez 只把它当普通发送失败展示，用户看到
+「发送失败，请稍后重试」+ `This chat uses <模型 provider>, but your current provider
+is <默认 provider>`，而 `thread/start` 不校验，所以现象是新会话能建出来、首发即失败。
+
+这与本 spec 的多 provider 目录冲突：默认 `model_provider` 只是**没有声明 provider 的
+模型的兜底**；catalog 里声明了 provider 的模型由 codex core 按 `model_info.provider`
+路由（`codex-rs/core/src/session/turn_context.rs`：_If the model catalog entry
+specifies a provider, use it instead of the session-level provider_），线程身份
+provider 并不决定实际走谁。
+
+fork 侧因此放宽该门禁（`codex-rs/app-server/src/config_manager.rs`）：
+
+- 线程保留自己的 provider 路由；默认 provider 变更不再阻断输入与冷恢复。
+- 仍然拒绝：托管策略冲突（`modelProviderPolicyConflict`）、线程 provider 定义已从
+  当前配置消失（`modelProviderNotConfigured`）、当前配置无法加载。
+- `modelProviderMismatch` 变体保留在协议 schema 里（fork 不再发出），避免 Codez 侧
+  生成的类型与上游漂移。
+
+Codez 侧不变量：
+
+- `thread/start` 继续把 selection 的 catalog provider 钉为线程身份，不改。
+- 不得为了让原生准入通过而改写用户 `~/.codex/config.toml` 的 `model_provider`：该文件
+  与用户自己的 CLI codex 共用，且并发会话/多窗口会互相翻动默认值。
+- 不得用 resume override 绕过校验，也不得重写线程元数据。
+- 未放宽的原生 release 仍会拒绝跨 provider 输入，因此
+  `packages/codex-bridge/test/project-discovery-native.test.ts` 保留「输入/冷恢复前显式
+  选择线程所属 provider」的前置步骤；它对两种原生语义都成立。
+
 ## 失败语义
 
 - catalog/read 失败（RPC/文件/解析）：消费方降级为空映射 → 单 provider 组，
