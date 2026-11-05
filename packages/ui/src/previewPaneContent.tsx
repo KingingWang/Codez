@@ -13,8 +13,13 @@ import { CodeContent } from "@/previewPaneCodeContent.js";
 import { ImagePreviewContent, SvgPreviewContent } from "@/previewPaneImageContent.js";
 import type { WorkspaceFileDragPayload } from "@/lib/workspaceFileDrag.js";
 import { PreviewPaneMediaContent } from "@/previewPaneMediaContent.js";
-import { MarkdownScrollRestore, PdfScrollRestore } from "@/preview-scroll-restore/index.js";
-import { PptxPreviewContent } from "@/previewPanePptxContent.js";
+import {
+  MarkdownScrollRestore,
+  OfficeScrollRestore,
+  PdfScrollRestore,
+  PptxScrollRestore,
+  useCodeScrollRestore,
+} from "@/preview-scroll-restore/index.js";
 import { PatchFallbackContent } from "@/previewPanePatchFallbackContent.js";
 import { DiffViewer } from "@/components/ui/diff-viewer.js";
 import type { PdfViewerLabels, PdfViewerSource } from "@/components/ui/pdf-viewer.js";
@@ -137,6 +142,14 @@ export function PreviewPaneContent({
   scrollContainerRef,
 }: PreviewPaneContentProps) {
   const { intl } = useCodezIntl();
+  // 代码预览的读位恢复接线：上游 onScroll / scrollContainerRef 原样保留，
+  // 额外补一层跨卸载缓存，覆盖切换项目时整棵预览子树被卸载的场景。
+  // code-review 的落点由 focusRequestId 决定，不参与读位恢复。
+  const codeScrollRestore = useCodeScrollRestore({
+    onScroll,
+    scrollContainerRef,
+    restoreEnabled: source.type !== "code-review",
+  });
   const fileMissingMessage = intl.formatMessage({ id: "codeViewer.fileMissing" });
   const mediaLabels = {
     loading: intl.formatMessage({ id: "codeViewer.loadingMedia" }),
@@ -247,8 +260,8 @@ export function PreviewPaneContent({
         labels={codeCommentLabels}
         onSubmitCodeComment={onSubmitCodeComment}
         onDeleteCodeComment={onDeleteCodeComment}
-        onScroll={onScroll}
-        scrollContainerRef={scrollContainerRef}
+        onScroll={codeScrollRestore.onScroll}
+        scrollContainerRef={codeScrollRestore.scrollContainerRef}
       />
     );
   }
@@ -325,7 +338,7 @@ export function PreviewPaneContent({
   }
 
   if (source.type === "file" && officePreviewKind) {
-    return (
+    const officeContent = (
       <PreviewPaneOfficeContent
         error={error}
         kind={officePreviewKind}
@@ -335,6 +348,12 @@ export function PreviewPaneContent({
         resolvedTheme={resolvedTheme}
         sourcePath={source.path}
       />
+    );
+    // Excel 由 WASM 把单元格画到 canvas，没有 DOM 读位可恢复，不挂恢复包装。
+    return officePreviewKind === "excel" ? (
+      officeContent
+    ) : (
+      <OfficeScrollRestore>{officeContent}</OfficeScrollRestore>
     );
   }
 
@@ -361,7 +380,7 @@ export function PreviewPaneContent({
     }
 
     return (
-      <PptxPreviewContent
+      <PptxScrollRestore
         data={pptxPreviewData}
         labels={pptxViewerLabels}
         fileName={source.path}
@@ -477,8 +496,8 @@ export function PreviewPaneContent({
       labels={codeCommentLabels}
       onSubmitCodeComment={source.type === "code-review" ? undefined : onSubmitCodeComment}
       onDeleteCodeComment={source.type === "code-review" ? undefined : onDeleteCodeComment}
-      onScroll={onScroll}
-      scrollContainerRef={scrollContainerRef}
+      onScroll={codeScrollRestore.onScroll}
+      scrollContainerRef={codeScrollRestore.scrollContainerRef}
     />
   );
 }

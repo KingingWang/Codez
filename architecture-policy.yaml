@@ -113,30 +113,30 @@ modules:
     layers: {adapters: .}
     owner: conversation
   - id: codex-bridge
-    roots: [packages/codex-bridge/src]
+    roots: [ packages/codex-bridge/src ]
     managed: true
-    requires: [shared]
-    publicEntrypoints: [packages/codex-bridge/src/contract.ts]
+    requires: [ shared ]
+    publicEntrypoints: [ packages/codex-bridge/src/contract.ts ]
     owner: codex-runtime-adaptation
   - id: rpc
-    roots: [packages/rpc/src]
+    roots: [ packages/rpc/src ]
     managed: false
   - id: shared
-    roots: [packages/shared/src]
+    roots: [ packages/shared/src ]
     managed: false
   - id: provider
-    roots: [packages/provider/src]
+    roots: [ packages/provider/src ]
     managed: false
   - id: provider-node
-    roots: [packages/provider-node/src]
+    roots: [ packages/provider-node/src ]
     managed: false
   - id: services
-    roots: [packages/services/src]
+    roots: [ packages/services/src ]
     managed: false
   - id: session
-    roots: [packages/services/src/session]
+    roots: [ packages/services/src/session ]
     managed: false
-    requires: [shared]
+    requires: [ shared ]
     publicEntrypoints:
       - packages/services/src/session/contract.ts
       - packages/services/src/session/codezTaskService.ts
@@ -147,39 +147,39 @@ modules:
       - packages/services/src/session/tasksDatabase/prepared.ts
     owner: conversation
   - id: storage
-    roots: [packages/services/src/storage]
+    roots: [ packages/services/src/storage ]
     managed: true
-    requires: [shared, rpc, services]
-    publicEntrypoints: [packages/services/src/storage/contract.ts]
+    requires: [ shared, rpc, services ]
+    publicEntrypoints: [ packages/services/src/storage/contract.ts ]
     layers: { domain: domain, app: app, adapters: adapters }
-    layerOrder: [domain, app, adapters]
+    layerOrder: [ domain, app, adapters ]
     owner: desktop-settings
   - id: client
-    roots: [packages/client/src]
+    roots: [ packages/client/src ]
     managed: false
   - id: server
-    roots: [packages/server/src]
+    roots: [ packages/server/src ]
     managed: false
   - id: codez-server-cli
-    roots: [packages/codez-server-cli/src]
+    roots: [ packages/codez-server-cli/src ]
     managed: false
   - id: ui
-    roots: [packages/ui/src]
+    roots: [ packages/ui/src ]
     managed: false
   - id: web
-    roots: [packages/web/src]
+    roots: [ packages/web/src ]
     managed: false
   - id: desktop
-    roots: [packages/desktop/src]
+    roots: [ packages/desktop/src ]
     managed: false
   - id: formal-proof
-    roots: [packages/formal-proof/src]
+    roots: [ packages/formal-proof/src ]
     managed: false
   - id: stream-animate
-    roots: [packages/stream-animate/src]
+    roots: [ packages/stream-animate/src ]
     managed: false
   - id: e2e-report
-    roots: [packages/e2e-report/src]
+    roots: [ packages/e2e-report/src ]
     managed: false
   # design-runtime：内置浏览器设计模式注入页面的运行时（docs/browser-use/2026-11-03-browser-design-mode-spec.md）
   - id: design-runtime
@@ -192,7 +192,7 @@ modules:
     layers: {app: "."}
     owner: browser
   - id: codez-cli
-    roots: [apps/codez-cli]
+    roots: [ apps/codez-cli ]
     managed: false
   # sqlite-migrations：由 architecture:adopt 登记
   # Agent runtime 退出诊断：desktop 稳定性上报与 Host 退出提示共用的纯函数判定。
@@ -206,9 +206,9 @@ modules:
     layers: {app: "."}
     owner: desktop
   - id: conversation-telemetry-engine
-    roots: [packages/shared/src/conversation-telemetry]
+    roots: [ packages/shared/src/conversation-telemetry ]
     managed: true
-    requires: [shared]
+    requires: [ shared ]
     publicEntrypoints:
       - packages/shared/src/conversation-telemetry/index.ts
       - packages/shared/src/conversation-telemetry/contract.ts
@@ -218,9 +218,9 @@ modules:
     layers: { app: "." }
     owner: conversation
   - id: conversation-telemetry-service
-    roots: [packages/services/src/conversation-telemetry]
+    roots: [ packages/services/src/conversation-telemetry ]
     managed: true
-    requires: [shared, services, rpc, conversation-telemetry-engine]
+    requires: [ shared, services, rpc, conversation-telemetry-engine ]
     publicEntrypoints:
       - packages/services/src/conversation-telemetry/remoteConversationTelemetry.ts
       - packages/services/src/conversation-telemetry/contract.ts
@@ -264,7 +264,7 @@ modules:
     roots:
       - packages/services/src/project
     managed: true
-    requires: [project-storage, services, shared]
+    requires: [ project-storage, services, shared ]
     publicEntrypoints:
       - packages/services/src/project/index.ts
       - packages/services/src/project/contract.ts
@@ -329,7 +329,7 @@ modules:
     roots:
       - packages/services/src/remote-projects
     managed: true
-    requires: [services, shared, project-storage]
+    requires: [ services, shared, project-storage ]
     publicEntrypoints:
       - packages/services/src/remote-projects/index.ts
       - packages/services/src/remote-projects/contract.ts
@@ -354,7 +354,7 @@ modules:
     roots:
       - packages/ui/src/workspace-config-catalog
     managed: true
-    requires: [services, shared, ui]
+    requires: [ services, shared, ui ]
     publicEntrypoints:
       - packages/ui/src/workspace-config-catalog/index.ts
       - packages/ui/src/workspace-config-catalog/contract.ts
@@ -368,7 +368,7 @@ modules:
     roots:
       - packages/services/src/project-catalog
     managed: true
-    requires: [project, remote-projects]
+    requires: [ project, remote-projects ]
     publicEntrypoints:
       - packages/services/src/project-catalog/index.ts
       - packages/services/src/project-catalog/contract.ts
@@ -382,7 +382,7 @@ modules:
     roots:
       - packages/services/src/bot-project-runtime
     managed: true
-    requires: [services, shared, remote-projects]
+    requires: [ services, shared, remote-projects ]
     publicEntrypoints:
       - packages/services/src/bot-project-runtime/index.ts
       - packages/services/src/bot-project-runtime/contract.ts
@@ -395,7 +395,7 @@ modules:
     roots:
       - packages/services/src/project-workspace-navigation
     managed: true
-    requires: [project, project-catalog, remote-projects, shared]
+    requires: [ project, project-catalog, remote-projects, shared ]
     publicEntrypoints:
       - packages/services/src/project-workspace-navigation/index.ts
       - packages/services/src/project-workspace-navigation/contract.ts
@@ -411,7 +411,7 @@ modules:
       - packages/ui/src/lib/workspaceRuntimeRelease.ts
       - packages/ui/src/settings/pluginCreatorPrefill.ts
     managed: true
-    requires: [shared, ui, services]
+    requires: [ shared, ui, services ]
     publicEntrypoints:
       - packages/ui/src/conversation-workspace-target/index.ts
       - packages/ui/src/conversation-workspace-target/contract.ts
@@ -429,33 +429,33 @@ modules:
     owner: conversation
 
   - id: gen-ui-protocol
-    roots: [packages/shared/src/gen-ui]
+    roots: [ packages/shared/src/gen-ui ]
     managed: true
     requires: []
-    publicEntrypoints: [packages/shared/src/gen-ui/index.ts, packages/shared/src/gen-ui/contract.ts]
+    publicEntrypoints: [ packages/shared/src/gen-ui/index.ts, packages/shared/src/gen-ui/contract.ts ]
     layers: { domain: "." }
     owner: conversation
   - id: gen-ui-service
-    roots: [packages/services/src/gen-ui]
+    roots: [ packages/services/src/gen-ui ]
     managed: true
-    requires: [services, shared, rpc, gen-ui-protocol, mcp-apps-protocol]
+    requires: [ services, shared, rpc, gen-ui-protocol, mcp-apps-protocol ]
     publicEntrypoints: [ packages/services/src/gen-ui/index.ts, packages/services/src/gen-ui/contract.ts, packages/services/src/gen-ui/node.ts ]
     layers: { domain: domain, app: app, adapters: adapters }
-    layerOrder: [domain, app, adapters]
+    layerOrder: [ domain, app, adapters ]
     owner: conversation
 
   - id: gen-ui
-    roots: [packages/ui/src/gen-ui]
+    roots: [ packages/ui/src/gen-ui ]
     managed: true
-    requires: [ui, services, gen-ui-service, gen-ui-protocol, mcp-apps-protocol, plugin-ui]
+    requires: [ ui, services, gen-ui-service, gen-ui-protocol, mcp-apps-protocol, plugin-ui ]
     publicEntrypoints: [ packages/ui/src/gen-ui/index.ts, packages/ui/src/gen-ui/contract.ts, packages/ui/src/gen-ui/host.ts ]
     layers: { domain: domain, app: app, adapters: adapters, ui: components }
-    layerOrder: [domain, app, adapters, ui]
+    layerOrder: [ domain, app, adapters, ui ]
     owner: conversation
 
   # 插件 UI（MCP Apps 沙箱）：模块边界见各模块 CONTRACT.md。
   - id: mcp-apps-protocol
-    roots: [packages/shared/src/mcp-apps]
+    roots: [ packages/shared/src/mcp-apps ]
     managed: true
     requires: []
     publicEntrypoints: [ packages/shared/src/mcp-apps/index.ts, packages/shared/src/mcp-apps/contract.ts, packages/shared/src/mcp-apps/hostContract.ts ]
@@ -478,9 +478,9 @@ modules:
       app: "."
     owner: plugin
   - id: plugin-ui-bridge
-    roots: [packages/services/src/plugin-ui-bridge]
+    roots: [ packages/services/src/plugin-ui-bridge ]
     managed: true
-    requires: [services, shared, mcp-apps-protocol]
+    requires: [ services, shared, mcp-apps-protocol ]
     publicEntrypoints: [ packages/services/src/plugin-ui-bridge/index.ts, packages/services/src/plugin-ui-bridge/contract.ts, packages/services/src/plugin-ui-bridge/appToolsContract.ts, packages/services/src/plugin-ui-bridge/samplingContract.ts ]
     layers:
       app: "."
@@ -492,7 +492,7 @@ modules:
       - packages/desktop/src/preload/pluginSandbox
       - packages/desktop/src/renderer/src/plugin-sandbox
     managed: true
-    requires: [desktop, shared, mcp-apps-protocol, gen-ui-protocol]
+    requires: [ desktop, shared, mcp-apps-protocol, gen-ui-protocol ]
     publicEntrypoints:
       [
         packages/desktop/src/host/pluginSandbox/index.ts,
@@ -508,16 +508,16 @@ modules:
       adapters: "."
     owner: plugin
   - id: plugin-ui
-    roots: [packages/ui/src/plugin-ui]
+    roots: [ packages/ui/src/plugin-ui ]
     managed: true
-    requires: [ui, shared, services, mcp-apps-protocol, plugin-ui-bridge, plugin-sandbox]
+    requires: [ ui, shared, services, mcp-apps-protocol, plugin-ui-bridge, plugin-sandbox ]
     publicEntrypoints: [ packages/ui/src/plugin-ui/index.ts, packages/ui/src/plugin-ui/contract.ts, packages/ui/src/plugin-ui/hostPrimitives.ts ]
     layers:
       domain: domain
       app: app
       adapters: adapters
       ui: components
-    layerOrder: [domain, app, adapters, ui]
+    layerOrder: [ domain, app, adapters, ui ]
     owner: plugin
   # remote-connection-flow：由 architecture:adopt 登记
   - id: remote-connection-flow
@@ -534,7 +534,7 @@ modules:
     layers:
       app: .
       ui: ui
-    layerOrder: [app, ui]
+    layerOrder: [ app, ui ]
     owner: remote
   # project-workflow：由 architecture:adopt 登记
   - id: project-workflow
@@ -753,7 +753,7 @@ modules:
       - apps/codez-cli/packages/core/src/tool/handlers/fill-workflow-hole.ts
       - apps/codez-cli/packages/core/tests/workflow-entrypoints
     managed: true
-    requires: [codez-cli]
+    requires: [ codez-cli ]
     publicEntrypoints:
       - apps/codez-cli/packages/core/src/tool/handlers/amend-workflow.ts
       - apps/codez-cli/packages/core/src/tool/handlers/list-models.ts
@@ -768,7 +768,7 @@ modules:
       - apps/codez-cli/packages/core/src/runtime/methods/tool-result-settlement.ts
       - apps/codez-cli/packages/core/tests/tool-result-settlement
     managed: true
-    requires: [codez-cli, session-features]
+    requires: [ codez-cli, session-features ]
     publicEntrypoints:
       - apps/codez-cli/packages/core/src/runtime/methods/tool-result-settlement.ts
       - apps/codez-cli/packages/core/src/runtime/tool-result-settlement/contract.ts
@@ -784,7 +784,7 @@ modules:
       - apps/codez-cli/packages/bootstrap/src/codez-protocol/input-prediction-handler.ts
       - apps/codez-cli/packages/core/src/runtime/methods/input-prediction-sidecar.ts
     managed: true
-    requires: [shared, codez-cli]
+    requires: [ shared, codez-cli ]
     publicEntrypoints:
       - packages/shared/src/codez-protocol-v4/input-prediction/contract.ts
       - packages/services/src/codez-agent/inputPredictionSwitch.ts
@@ -845,7 +845,7 @@ modules:
     roots:
       - packages/services/src/codez-agent/resident-rows-range
     managed: true
-    requires: [shared, services]
+    requires: [ shared, services ]
     publicEntrypoints:
       - packages/services/src/codez-agent/resident-rows-range/contract.ts
     layers: { app: . }
@@ -896,7 +896,7 @@ modules:
       - apps/codez-cli/packages/contracts/src/tools/tool-search.ts
       - apps/codez-cli/packages/core/tests/tool-discovery
     managed: true
-    requires: [codez-cli]
+    requires: [ codez-cli ]
     publicEntrypoints:
       - apps/codez-cli/packages/core/src/tool/search/contract.ts
       - apps/codez-cli/packages/core/src/tool/search/exposure.ts
@@ -915,7 +915,7 @@ modules:
       - apps/codez-cli/packages/node-repl-host/src/call-ledger
       - apps/codez-cli/packages/node-repl-host/test/call-ledger
     managed: true
-    requires: [codez-cli]
+    requires: [ codez-cli ]
     publicEntrypoints:
       - apps/codez-cli/packages/node-repl-host/src/call-ledger/contract.ts
     layers: { adapters: . }
@@ -925,7 +925,7 @@ modules:
       - apps/codez-cli/packages/core/src/runtime/session-features
       - apps/codez-cli/packages/core/tests/session-features
     managed: true
-    requires: [codez-cli]
+    requires: [ codez-cli ]
     publicEntrypoints:
       - apps/codez-cli/packages/core/src/runtime/session-features/contract.ts
     layers: { app: . }
@@ -935,7 +935,7 @@ modules:
       - apps/codez-cli/packages/core/src/runtime/provider-tool-rounds
       - apps/codez-cli/packages/core/tests/provider-tool-rounds
     managed: true
-    requires: [codez-cli]
+    requires: [ codez-cli ]
     publicEntrypoints:
       - apps/codez-cli/packages/core/src/runtime/provider-tool-rounds/contract.ts
     layers: { app: . }
@@ -956,7 +956,7 @@ modules:
       - apps/codez-cli/packages/core/src/runtime/helpers/conversation-quotes.ts
       - apps/codez-cli/packages/core/tests/conversation-quote-context
     managed: true
-    requires: [codez-cli]
+    requires: [ codez-cli ]
     publicEntrypoints:
       - apps/codez-cli/packages/core/src/runtime/conversation-quote-context/contract.ts
       - apps/codez-cli/packages/core/src/runtime/helpers/conversation-quotes.ts
@@ -968,7 +968,7 @@ modules:
       - apps/codez-cli/tools/prompt-trajectory/src/tool-search-comparison.ts
       - apps/codez-cli/tools/prompt-trajectory/tests/tool-search-comparison
     managed: true
-    requires: [codez-cli]
+    requires: [ codez-cli ]
     publicEntrypoints:
       - apps/codez-cli/tools/prompt-trajectory/src/tool-search-comparison-contract/contract.ts
       - apps/codez-cli/tools/prompt-trajectory/src/tool-search-comparison.ts
@@ -980,7 +980,7 @@ modules:
       - packages/desktop/src/host/windowTopicResourceRelay.ts
       - packages/desktop/test/topic-resource-relay
     managed: true
-    requires: [services, shared]
+    requires: [ services, shared ]
     publicEntrypoints:
       - packages/desktop/src/host/topic-resource-relay/contract.ts
       - packages/desktop/src/host/windowTopicResourceRelay.ts
@@ -992,7 +992,7 @@ modules:
       - apps/codez-cli/packages/core/src/tool/handlers/reply-to-channel.ts
       - apps/codez-cli/packages/core/tests/channel-reply
     managed: true
-    requires: [shared, codez-cli]
+    requires: [ shared, codez-cli ]
     publicEntrypoints:
       - apps/codez-cli/packages/core/src/tool/handlers/reply-to-channel.ts
       - apps/codez-cli/packages/core/src/tool/channel-reply/contract.ts
@@ -1222,7 +1222,7 @@ modules:
       domain: domain
       app: app
       ui: .
-    layerOrder: [contract, domain, app, ui]
+    layerOrder: [ contract, domain, app, ui ]
     owner: remote
   # voice-input：Composer 语音输入按钮、状态机与麦克风采集（docs/chat/composer-voice-input.md）
   - id: voice-input
@@ -1262,7 +1262,7 @@ modules:
       domain: domain
       app: app
       ui: .
-    layerOrder: [contract, domain, app, ui]
+    layerOrder: [ contract, domain, app, ui ]
     owner: remote
   # side-pane-full-view：由 architecture:adopt 登记
   - id: side-pane-full-view
@@ -1281,9 +1281,9 @@ modules:
 
   # 发行策略使用独立目录；修改后的文件由本模块承担边界检查。
   - id: request-security-edition
-    roots: [packages/shared/src/request-security-edition]
+    roots: [ packages/shared/src/request-security-edition ]
     managed: true
-    requires: [shared]
+    requires: [ shared ]
     publicEntrypoints:
       - packages/shared/src/request-security-edition/index.ts
       - packages/shared/src/request-security-edition/policy.ts
@@ -1372,7 +1372,7 @@ modules:
     roots:
       - packages/desktop/src/main/file-open-apps
     managed: true
-    requires: [shared]
+    requires: [ shared ]
     publicEntrypoints:
       - packages/desktop/src/main/file-open-apps/index.ts
       - packages/desktop/src/main/file-open-apps/contract.ts
@@ -1399,7 +1399,7 @@ modules:
     roots:
       - packages/ui/src/preview-scroll-restore
     managed: true
-    requires: [ui]
+    requires: [ ui ]
     publicEntrypoints:
       - packages/ui/src/preview-scroll-restore/index.ts
       - packages/ui/src/preview-scroll-restore/contract.ts
@@ -1505,9 +1505,9 @@ modules:
       app: .
     owner: plugin
   - id: provider-regression
-    roots: [apps/codez-cli/tools/provider-regression]
+    roots: [ apps/codez-cli/tools/provider-regression ]
     managed: true
-    requires: [codez-cli, provider, provider-node, shared]
+    requires: [ codez-cli, provider, provider-node, shared ]
     publicEntrypoints:
       - apps/codez-cli/tools/provider-regression/index.ts
       - apps/codez-cli/tools/provider-regression/contract.ts
@@ -1519,7 +1519,7 @@ modules:
       - apps/codez-cli/packages/bootstrap/src/session-lifecycle
       - apps/codez-cli/packages/bootstrap/tests/session-lifecycle
     managed: true
-    requires: [shared]
+    requires: [ shared ]
     publicEntrypoints:
       - apps/codez-cli/packages/bootstrap/src/session-lifecycle/index.ts
       - apps/codez-cli/packages/bootstrap/src/session-lifecycle/contract.ts
@@ -1531,7 +1531,7 @@ modules:
     roots:
       - apps/codez-cli/packages/bootstrap/src/workspace-mcp-trust
     managed: true
-    requires: [codez-cli, shared]
+    requires: [ codez-cli, shared ]
     publicEntrypoints:
       - apps/codez-cli/packages/bootstrap/src/workspace-mcp-trust/index.ts
       - apps/codez-cli/packages/bootstrap/src/workspace-mcp-trust/contract.ts
@@ -1880,7 +1880,7 @@ modules:
       - packages/services/src/conversation-share/conversationShareConnectionScope.ts
       - packages/services/src/conversation-share/codexSharedContextContentCopy.ts
     managed: true
-    requires: [services, shared, rpc]
+    requires: [ services, shared, rpc ]
     publicEntrypoints:
       - packages/services/src/conversation-share-attachment/contract.ts
       - packages/services/src/conversation-share/conversationShareConnectionScope.ts
@@ -1892,7 +1892,7 @@ modules:
       - packages/shared/src/plugin-store-ordering
       - packages/shared/src/pluginStoreOrdering.ts
     managed: true
-    requires: [shared]
+    requires: [ shared ]
     publicEntrypoints:
       - packages/shared/src/plugin-store-ordering/contract.ts
       - packages/shared/src/pluginStoreOrdering.ts
@@ -1903,7 +1903,7 @@ modules:
       - packages/ui/src/dynamic-workflow-availability
       - packages/ui/src/hooks/useDynamicWorkflowAvailability.ts
     managed: true
-    requires: [services, shared, ui]
+    requires: [ services, shared, ui ]
     publicEntrypoints:
       - packages/ui/src/dynamic-workflow-availability/contract.ts
       - packages/ui/src/hooks/useDynamicWorkflowAvailability.ts
@@ -1914,7 +1914,7 @@ modules:
       - packages/ui/src/desktop-update-presentation
       - packages/ui/src/lib/desktopUpdateMenu.ts
     managed: true
-    requires: [shared]
+    requires: [ shared ]
     publicEntrypoints:
       - packages/ui/src/desktop-update-presentation/contract.ts
       - packages/ui/src/lib/desktopUpdateMenu.ts
@@ -1926,7 +1926,7 @@ modules:
       - packages/ui/src/v4/featureSuggestedPrompts.ts
       - packages/ui/src/v4/officeSuggestedPrompts.ts
     managed: true
-    requires: [ui]
+    requires: [ ui ]
     publicEntrypoints:
       - packages/ui/src/draft-suggested-prompts/contract.ts
       - packages/ui/src/v4/featureSuggestedPrompts.ts
@@ -1939,7 +1939,7 @@ modules:
     roots:
       - packages/services/src/codez-agent/model-trajectory
     managed: true
-    requires: [services, session]
+    requires: [ services, session ]
     publicEntrypoints:
       - packages/services/src/codez-agent/model-trajectory/index.ts
       - packages/services/src/codez-agent/model-trajectory/contract.ts
@@ -2884,27 +2884,27 @@ exceptions:
     reason: 已准入的调试工具比较回复前折叠多个文字块，适配每个文字块单独回放（apps/codez-cli/docs/design/v2/model/assistant-block-order.md）；只读比较逻辑，不改变模块边界。
   - id: session-features-attribution-header-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/adapters/src/model/runner-attribution.ts]
+    paths: [ apps/codez-cli/packages/adapters/src/model/runner-attribution.ts ]
     reason: 已准入的归因头构造器只追加 x-codez-session-features（docs/design/v2/model/session-features-header.md）；它仍是全部归因头的唯一写入点，签名与模块边界不变，接管整个 adapters 包不在本次范围内。
   - id: session-features-workflow-command-pattern-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/core/src/runtime/methods/dynamic-workflow-activation.ts]
+    paths: [ apps/codez-cli/packages/core/src/runtime/methods/dynamic-workflow-activation.ts ]
     reason: 已准入的动态工作流激活只导出既有 `/workflow` 历史判据常量，供 session-features 的历史推导复用同一判据；激活行为、owner 与模块边界不变。
   - id: node-repl-call-ledger-cua-bridge-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/node-repl-host/src/cua-bridge.ts]
+    paths: [ apps/codez-cli/packages/node-repl-host/src/cua-bridge.ts ]
     reason: 已准入的 node_repl CUA bridge 只删去 Worker 侧的会话信息构造与目标应用身份记录，二者移到主线程 CUA broker（apps/codez-cli/docs/design/v2/tool/20-node-repl-call-ledger.md）；subagent 拒绝与对模型的行为不变，接管整个 node-repl-host 包不在本次范围内。
   - id: node-repl-call-ledger-cua-broker-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/node-repl-host/src/cua-broker.ts]
+    paths: [ apps/codez-cli/packages/node-repl-host/src/cua-broker.ts ]
     reason: 已准入的 node_repl CUA broker 改为只认 node-repl-call-ledger 签发的本次调用 token，按账本条目构造会话信息并把目标应用身份记进账本（20-node-repl-call-ledger.md「CUA broker」）；MR !3207 再在 token 校验之后把会话能力标签用的 computerUse 记进账本（docs/design/v2/model/session-features-header.md）；runtime 调用与响应格式不变。
   - id: node-repl-call-ledger-result-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/node-repl-host/src/result.ts]
+    paths: [ apps/codez-cli/packages/node-repl-host/src/result.ts ]
     reason: 已准入的 node_repl 结果组装改为只从账本 facts 取可信 key，忽略 Worker 结果消息里的同名字段（20-node-repl-call-ledger.md「结果组装」）；MR !3207 按同样处置追加 codez/nodeReplBrowserUse、codez/nodeReplComputerUse 两个 key（docs/design/v2/model/session-features-header.md）；结果内容与其他 meta 处置不变。
   - id: offpeak-expiration-codes-existing-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/core/src/runtime/off-peak/model-binding.ts]
+    paths: [ apps/codez-cli/packages/core/src/runtime/off-peak/model-binding.ts ]
     reason: 已准入的闲时请求包装器仅复用共享错误码判断，补齐 3106 运行超时的既有生命周期通知；不改变 owner、控制协议或模块边界，不扩展为整个 CLI runtime 目录接管。
   - id: multi-cursor-badge-title-passthrough-edit
     rule: unmanaged-new-file
@@ -2925,7 +2925,7 @@ exceptions:
     reason: 已准入的引用模型材料拼装只在引用带批注时追加一句说明（docs/ui/conversation-selection-side-chat.md「选区批注」）；仍是 withConversationQuotes 的唯一实现，canonical 正文与 Bot 投递边界不变，接管整个 core 包不在本次范围内。
   - id: side-pane-full-view-shortcut-command-edit
     rule: unmanaged-new-file
-    paths: [packages/shared/src/shortcutCommands.ts]
+    paths: [ packages/shared/src/shortcutCommands.ts ]
     reason: 已准入的快捷键命令表只追加一条 toggleSidePaneFullView 命令（Side Pane 完整视图，docs/ui/side-pane-full-view.md）；命令表仍是唯一数据源，签名与模块边界不变，接管整个 shared 包不在本次范围内。
   - id: browser-session-recent-visits-ui
     rule: unmanaged-new-file
@@ -2938,7 +2938,7 @@ exceptions:
     reason: site-deploy 技能复制进用户部署包的静态站服务器模板，只在 Sites runner 的容器里由 start.sh 执行；仓库代码不 import 它，也不属于任何运行时模块。同目录的 start.sh 模板是 shell，不受本规则约束。
   - id: opensource-cua-test-project-config
     rule: unmanaged-new-file
-    paths: [packages/codez-cua/vitest.config.ts]
+    paths: [ packages/codez-cua/vitest.config.ts ]
     reason: 该文件只装配测试项目，开源占位版本用于保持根单测入口可运行；不包含 producer 运行逻辑，不为同目录实现文件开放例外。
   - id: project-location-cache-recovery-existing-edit
     rule: unmanaged-new-file
@@ -2963,39 +2963,39 @@ exceptions:
     reason: 已准入的存量文件只把 TID 导入从 @codez/shared 根入口改为 @codez/shared/test-ids 子路径（根入口不再导出 test-ids，以收窄受影响单测范围）；行为与模块边界不变，接管 ui 目录不在本次范围内。
   - id: settings-personalization-section-new-file
     rule: unmanaged-new-file
-    paths: [packages/ui/src/settings/PersonalizationSection.tsx]
+    paths: [ packages/ui/src/settings/PersonalizationSection.tsx ]
     reason: 个性化设置分区组件只编排 ISettingService 的 getUserInstructions/saveUserInstructions 与既有设置页 UI 原语（spec：docs/ui/settings-personalization.md）；读写唯一事实源在服务层，不新增平行状态，接管整个 ui 目录不在本次范围内。
   - id: settings-personalization-size-constant-new-file
     rule: unmanaged-new-file
-    paths: [packages/shared/src/userInstructions.ts]
+    paths: [ packages/shared/src/userInstructions.ts ]
     reason: 用户自定义指令字节上限共享常量（与 CLI 读取截断对齐，spec：docs/ui/settings-personalization.md），服务层校验与 UI 计数共用同一数值；仅两个常量导出，接管整个 shared 目录不在本次范围内。
   - id: remote-workspace-admission-deadline-existing-edit
     rule: unmanaged-new-file
-    paths: [packages/desktop/src/host/remoteWorkspacePreparation.ts]
+    paths: [ packages/desktop/src/host/remoteWorkspacePreparation.ts ]
     reason: 已准入的远程项目目录 admission 只增加 30 秒截止时间和可重试的无响应错误码（3.16.2 远端回归 R8，docs/remote/project-first-remote-navigation-spec.md §2.4）；owner、调用方与模块边界不变，接管 desktop host 目录不在本次修复范围内。
   - id: gen-ui-existing-capability-check
     rule: unmanaged-new-file
-    paths: [packages/services/src/codez-agent/independentPlanSupport.ts]
+    paths: [ packages/services/src/codez-agent/independentPlanSupport.ts ]
     reason: 在已存在的 CLI 能力查询入口补充 GenUI 上下文能力检查，防止旧 CLI 静默丢弃状态；保持既有 services/agent 边界，不扩展本次修复为整个 codez-agent 模块接管。
   - id: connection-log-secret-token-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [packages/shared/src/source-server/connectionLog.ts]
+    paths: [ packages/shared/src/source-server/connectionLog.ts ]
     reason: 已存在的连接日志过滤函数只把已知秘密从子串替换改为完整 token 匹配，修复短密码反推泄露；签名与模块边界不变，接管整个 shared 包不在本次修复范围内。
   - id: connection-errors-econnreset-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [packages/shared/src/source-server/connectionErrors.ts]
+    paths: [ packages/shared/src/source-server/connectionErrors.ts ]
     reason: 已存在的连接错误归一化码表补一项 ECONNRESET → remote-host-unreachable，修复在线断连恢复失败被误报为预检失败；签名与模块边界不变，接管整个 shared 包不在本次修复范围内。
   - id: remote-authentication-unsupported-presentation-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [packages/ui/src/lib/remoteConnectionPresentationErrors.ts]
+    paths: [ packages/ui/src/lib/remoteConnectionPresentationErrors.ts ]
     reason: 已存在的远程连接错误展示映射为新增公开码 remote-authentication-unsupported 补一项标题与“查看详情”操作，修复 SSH 二次验证失败被提示为检查密码；签名与模块边界不变，接管 ui 目录不在本次修复范围内。
   - id: source-server-operation-log-level-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [packages/desktop/src/host/sourceServerOperationLogs.ts]
+    paths: [ packages/desktop/src/host/sourceServerOperationLogs.ts ]
     reason: 已有连接日志封装透传 TransportContext 已定义的 level，使低版本 glibc 提示保留 warn；Host 仍是唯一日志 owner，签名与模块边界不变，接管整个 desktop 包不在本次范围内。
   - id: client-config-public-field-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [packages/shared/src/clientConfig.ts]
+    paths: [ packages/shared/src/clientConfig.ts ]
     reason: Existing upstream public config parser gains one validated recommendation field; ownership and module boundaries remain unchanged, and adopting the shared package is outside this change.
   - id: highspeed-transcript-owner-existing-edit
     rule: unmanaged-new-file
@@ -3009,7 +3009,7 @@ exceptions:
     reason: 现有配置读取器新增宿主注入的可选 JWT，并隔离身份缓存和 CDN 请求头；不新增源码文件或改变服务与下载器的 owner，整包架构接管不属于本次请求头修复。
   - id: highspeed-fallback-snapshot-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/core/src/runtime/methods/turn-execution-fallback.ts]
+    paths: [ apps/codez-cli/packages/core/src/runtime/methods/turn-execution-fallback.ts ]
     reason: 合并已存在于 staging 的加速卡回退模块，仅将可变 Session 读取替换为本轮固定候选；保持现有 Core 模块边界，不在同步分支时机械拆分整个 runtime。
   - id: session-owned-workflow-shutdown-existing-files
     rule: unmanaged-new-file
@@ -3019,7 +3019,7 @@ exceptions:
     reason: 两个文件已存在于集成基线；本次在既有 bootstrap owner 内补启动关闭互斥和 actor 清理等待，不新增模块或跨层依赖。整个 bootstrap/app 的接管另行治理，生命周期公开模块边界保持不变。
   - id: workflow-quota-auto-resume-unmanaged-file
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/bootstrap/src/app/dynamic-workflow-quota-resume.ts]
+    paths: [ apps/codez-cli/packages/bootstrap/src/app/dynamic-workflow-quota-resume.ts ]
     reason: 额度停止的 run 到点自动续跑，是 run service 旁的一个宿主模块（只读 journal 行、订阅结算、经注入的 resume 续跑）；与同目录的 run service 文件同属未受管的 codez-cli bootstrap，接管该目录需要单独的模块边界整理。
   - id: mcp-node-fallback-unmanaged-file
     rule: unmanaged-new-file
@@ -3029,7 +3029,7 @@ exceptions:
     reason: 桌面 Electron Node 下 stdio MCP 的 node/npm/npx 回退（apps/codez-cli/docs/design/v2/mcp-node-fallback.md）。adapters 文件只负责 shim 目录与子进程 env 合并，经 CreateMcpAdapterOptions.nodeFallback 注入；bootstrap 文件只判定 Electron 并给出随包 npm 候选目录。两者同属未受管的 codez-cli，接管 adapters/mcp 或 bootstrap/app 需要单独的模块边界整理。
   - id: workflow-unrecognized-code-cap-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/adapters/src/model/workflow-model-failure-policy.ts]
+    paths: [ apps/codez-cli/packages/adapters/src/model/workflow-model-failure-policy.ts ]
     reason: 已准入的 workflow 模型错误策略表只增加一行（分类器不认识的业务码在同一次请求里连续出现 10 次时停 run）、一个连续计数入参与两个计数纯函数；runner 与 driver 读同一函数的约束与模块边界不变，接管 adapters/model 目录不在本次范围内。
   - id: plugin-async-discovery-existing-callers
     rule: unmanaged-new-file
@@ -3042,15 +3042,15 @@ exceptions:
     reason: 已有插件发现调用方迁移为 await；runtime-cleanup 在原进程关闭编排中释放注入的准备 owner，没有新增文件。对应契约见 docs/workspace-capability-discovery-cache.md，不为此次异步化与预热接管整个 CLI 或协议目录。
   - id: automation-self-pause-turn-visibility-existing-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/core/src/runtime/methods/turn-tool-visibility.ts]
+    paths: [ apps/codez-cli/packages/core/src/runtime/methods/turn-tool-visibility.ts ]
     reason: 已有 turn 工具可见性 owner 仅增加当前 automation 自暂停的反向可见性规则；不新增跨模块依赖或 owner，接管整个 codez-cli runtime 超出本次缺陷修复范围。
   - id: compact-bundle-reminder-builder-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/core/src/runtime/methods/runtime-reminder-persistence.ts]
+    paths: [ apps/codez-cli/packages/core/src/runtime/methods/runtime-reminder-persistence.ts ]
     reason: 已入库的隐藏提醒落盘函数拆出只构建记录的函数，供 compaction 把公告、summary 与附件交给同一个 store 事务；记录不再写 tools 字段，中断标记按普通 user 文本取正文；Core 模块边界不变，接管整个 runtime 目录不在本次范围内。
   - id: tool-search-schema-key-order-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/contracts/src/tools/tool-search.ts]
+    paths: [ apps/codez-cli/packages/contracts/src/tools/tool-search.ts ]
     reason: 已入库的 ToolSearch 输入 schema 改走统一的 toToolJsonSchema，使 key 顺序与其他工具一致，$schema 随之从 draft-07 改为 2020-12；contracts 模块边界不变，接管整个 tools 目录不在本次范围内。
   - id: tool-search-removal-reason-unmanaged-edit
     rule: unmanaged-new-file
@@ -3061,7 +3061,7 @@ exceptions:
     reason: 已入库的 ToolSearch 能力解析、公告渲染与离线轨迹识别按删除原因分段，并由 adapter 声明 Anthropic 协议的提醒折叠能力；增量事实、持久化与模块边界不变，接管整个 codez-cli 目录不在本次范围内。
   - id: interrupt-marker-unmanaged-new-file
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/core/src/runtime/methods/interrupt-marker.ts]
+    paths: [ apps/codez-cli/packages/core/src/runtime/methods/interrupt-marker.ts ]
     reason: 停止轮次后给模型的中断标记放在 runtime/methods 的独立小文件，避免继续增大已超行数的 turn.ts；复用隐藏提醒的落盘函数（persistRuntimeReminderMessage）与历史提交，Core 模块边界不变，接管整个 codez-cli 目录不在本次范围内。
   - id: instruction-files-delta-unmanaged-new-file
     rule: unmanaged-new-file
@@ -3077,11 +3077,11 @@ exceptions:
     reason: 已入库的 Gen UI 输出目录解析加一个可选 session id 参数，fork 时取子会话自己的目录写入环境更新（docs/specs/gen-ui-output-directory.md）；默认仍取当前会话，调用方与 Core 模块边界不变，接管整个 codez-cli 目录不在本次范围内。
   - id: off-peak-takeover-context-prefix-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/core/src/runtime/off-peak/turn.ts]
+    paths: [ apps/codez-cli/packages/core/src/runtime/off-peak/turn.ts ]
     reason: 已入库的闲时接管函数换成用户模型后，按新模型重建 Context Prefix，与 guide 换模型共用 rebuildContextPrefix；接管时机、归属与 Core 模块边界不变，接管整个 codez-cli 目录不在本次范围内。
   - id: turn-work-segment-comment-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [packages/ui/src/v4/conversationTurnRenderUnitTypes.ts]
+    paths: [ packages/ui/src/v4/conversationTurnRenderUnitTypes.ts ]
     reason: 已入库的渲染单元类型只更新 workSegments 字段注释，使其与同一 drain 边界的 guide 共用一段的行为一致；类型与 ui 模块边界不变，接管整个 v4 目录不在本次范围内。
   - id: shortcut-settings-existing-ui-edit
     rule: unmanaged-new-file
@@ -3092,7 +3092,7 @@ exceptions:
     reason: Existing upstream shortcut components and keycap primitive edited for shared controls, responsive layout and save admission; adopting the entire settings directory requires a separate boundary refactor.
   - id: sidebar-workflow-tooltip-existing-ui-edit
     rule: unmanaged-new-file
-    paths: [packages/ui/src/components/workflow-run-line/WorkflowRunRail.tsx]
+    paths: [ packages/ui/src/components/workflow-run-line/WorkflowRunRail.tsx ]
     reason: Existing upstream workflow rail edited only to adapt native titles within the sidebar tooltip scope; workflow ownership and imports remain unchanged except for the shared UI tooltip adapter.
   - id: onboarding-existing-module-edit
     rule: unmanaged-new-file
@@ -3106,15 +3106,15 @@ exceptions:
     reason: 已有的主动任务推荐设置行只增加 SettingsRow 的稳定定位 id，不改变引导记录读写和模块依赖；搜索实现独立登记在 settings-search 模块，不把现有引导设置迁入搜索模块。
   - id: remote-connection-flow-existing-size
     rule: max-file-lines
-    paths: [packages/ui/src/remote-connection-flow/index.ts]
+    paths: [ packages/ui/src/remote-connection-flow/index.ts ]
     reason: Preserve the existing single hook owner and closure; module adoption must not mechanically split state to satisfy line counts.
   - id: gen-ui-tweak-runtime-size
     rule: max-file-lines
-    paths: [packages/desktop/src/renderer/src/plugin-sandbox/genUiTweakRuntime.js]
+    paths: [ packages/desktop/src/renderer/src/plugin-sandbox/genUiTweakRuntime.js ]
     reason: Keep parameter binding and registration lifecycle together; runtime-manifest.json and tests verify file integrity.
   - id: gen-ui-tweak-runtime-lint
     rule: disable-count
-    paths: [packages/desktop/src/renderer/src/plugin-sandbox/genUiTweakRuntime.js]
+    paths: [ packages/desktop/src/renderer/src/plugin-sandbox/genUiTweakRuntime.js ]
     reason: Allow the control-character validation regex and the single-file parameter-control runtime.
   - id: workflow-amend-provider-boundary-unmanaged-edit
     rule: unmanaged-new-file
@@ -3213,15 +3213,15 @@ exceptions:
     reason: Admitted upstream analyzer files edited only to stop the workflow analysis from growing much faster than the script (callback bindings, loop regions, join control, flow strands); adopting apps/codez-cli/packages/dynamic-workflow needs a separate module boundary refactor that first breaks its 24 internal import cycles.
   - id: off-peak-model-descriptor-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/core/src/runtime/off-peak/model-binding.ts]
+    paths: [ apps/codez-cli/packages/core/src/runtime/off-peak/model-binding.ts ]
     reason: 已入库的闲时 Model 包装改用 contracts 的 modelDescriptorOf 复制全部数据字段，修复逐字段手抄漏掉 requestCapabilities；包装行为与 Core 模块边界不变，接管整个 runtime 目录不在本次范围内。
   - id: workflow-draft-read-state-per-path-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/core/src/tool/handlers/workflow-draft-read-state.ts]
+    paths: [ apps/codez-cli/packages/core/src/tool/handlers/workflow-draft-read-state.ts ]
     reason: 已入库的工作流草稿读状态登记改走 setReadFileStateEntry，跟随读状态改为每个路径一条；草稿流程与 Core 模块边界不变，接管整个 tool 目录不在本次范围内。
   - id: workflow-skill-gate-compact-read-state-comment-unmanaged-edit
     rule: unmanaged-new-file
-    paths: [apps/codez-cli/packages/core/src/tool/handlers/workflow-skill-gate.ts]
+    paths: [ apps/codez-cli/packages/core/src/tool/handlers/workflow-skill-gate.ts ]
     reason: 已入库的工作流技能门只更新一句注释，跟随 compaction 后读取状态改为只留补回的文件；门的判据、代码与 Core 模块边界不变，接管整个 tool 目录不在本次范围内。
   - id: conversation-telemetry-existing-state-machine-size
     rule: max-file-lines
@@ -3237,7 +3237,7 @@ exceptions:
     reason: Preserve the two original file-length annotations while relocating the existing implementation.
   - id: host-service-telemetry-existing-file
     rule: unmanaged-new-file
-    paths: [packages/desktop/src/host/hostServiceResourceTelemetry.ts]
+    paths: [ packages/desktop/src/host/hostServiceResourceTelemetry.ts ]
     reason: Existing main-branch registration point gains a Host-only event and capability gate; adopting the whole Host runtime is outside this telemetry change.
   - id: browser-device-presets-export-unmanaged-new-files
     rule: unmanaged-new-file

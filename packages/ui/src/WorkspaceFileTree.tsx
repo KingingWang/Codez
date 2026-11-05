@@ -196,7 +196,7 @@ export function FileManagerPane({
           className="min-h-0 min-w-0"
         >
           {source ? (
-            <PreviewScrollRestoreBoundary source={source}>
+            <PreviewScrollRestoreBoundary source={source} workspaceKey={workspaceKey}>
               <PreviewPane {...previewProps} source={source} headerContainer={headerContainer} />
             </PreviewScrollRestoreBoundary>
           ) : (
