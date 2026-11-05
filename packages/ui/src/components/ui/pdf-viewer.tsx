@@ -1,6 +1,6 @@
 "use client";
 
-import type { HTMLAttributes, KeyboardEvent as ReactKeyboardEvent, Ref } from "react";
+import type { HTMLAttributes, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeftIcon, ChevronRightIcon, ZoomInIcon, ZoomOutIcon } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
@@ -102,7 +102,6 @@ export interface PdfViewerProps extends HTMLAttributes<HTMLDivElement> {
   onLoadError?: (error: Error) => void;
   initialPageNumber?: number;
   initialScrollTop?: number;
-  scrollContainerRef?: Ref<HTMLDivElement>;
 }
 
 type PdfDocumentFile = string | Blob | { data: Uint8Array } | { range: PdfViewerRangeTransport };
@@ -122,22 +121,12 @@ function normalizePdfSource(
   return { data: new Uint8Array(source) };
 }
 
-function setOptionalRefValue<T>(ref: Ref<T> | undefined, value: T | null) {
-  if (!ref) return;
-  if (typeof ref === "function") {
-    ref(value);
-    return;
-  }
-  (ref as { current: T | null }).current = value;
-}
-
 export function PdfViewer({
   source,
   labels,
   onLoadError,
   initialPageNumber,
   initialScrollTop,
-  scrollContainerRef,
   className,
   ...props
 }: PdfViewerProps) {
@@ -151,7 +140,7 @@ export function PdfViewer({
   const [displayScale, setDisplayScale] = useState(pdfZoom.DEFAULT_SCALE);
   const [pageIntrinsicSize, setPageIntrinsicSize] = useState<pdfZoom.PdfPageSize | null>(null);
   const [rangeError, setRangeError] = useState(false);
-  const internalScrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const pendingScrollToTopRef = useRef(false);
   const pendingInitialScrollTopRef = useRef(initialScrollTop ?? 0);
   const displayScaleRef = useRef(pdfZoom.DEFAULT_SCALE);
@@ -177,14 +166,6 @@ export function PdfViewer({
     }
     return normalizePdfSource(source as Exclude<PdfViewerSource, PdfViewerRangeSource>);
   }, [rangeTransport, source]);
-
-  const assignScrollContainerRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      internalScrollContainerRef.current = node;
-      setOptionalRefValue(scrollContainerRef, node);
-    },
-    [scrollContainerRef],
-  );
 
   useEffect(() => {
     return () => {
@@ -239,7 +220,7 @@ export function PdfViewer({
         pdfZoom.resolvePdfPageSize(current, originalWidth, originalHeight),
       );
       clearZoomOverlay();
-      const container = internalScrollContainerRef.current;
+      const container = scrollContainerRef.current;
       const pendingScrollToTop = pendingScrollToTopRef.current;
       pendingScrollToTopRef.current = false;
       if (!container) {
@@ -294,7 +275,7 @@ export function PdfViewer({
       if (next === current) {
         return;
       }
-      const container = internalScrollContainerRef.current;
+      const container = scrollContainerRef.current;
       const pageViewport = pageViewportRef.current;
       pendingZoomAnchorRef.current =
         container && pageViewport
@@ -308,7 +289,7 @@ export function PdfViewer({
 
   useLayoutEffect(() => {
     const anchor = pendingZoomAnchorRef.current;
-    const container = internalScrollContainerRef.current;
+    const container = scrollContainerRef.current;
     const pageViewport = pageViewportRef.current;
     pendingZoomAnchorRef.current = null;
     if (anchor && container && pageViewport) {
@@ -338,7 +319,7 @@ export function PdfViewer({
   }, [displayScale, renderScale, stageZoomOverlay]);
 
   useEffect(() => {
-    const container = internalScrollContainerRef.current;
+    const container = scrollContainerRef.current;
     if (!container || !documentLoaded) {
       return;
     }
@@ -386,7 +367,7 @@ export function PdfViewer({
       {...props}
     >
       <div
-        ref={assignScrollContainerRef}
+        ref={scrollContainerRef}
         className="min-h-0 flex-1 overflow-auto"
         data-preview-scroll-container="true"
         data-preview-page-number={pageNumber}

@@ -11,4 +11,9 @@ export function usePreviewScrollRestore(): PreviewScrollRestoreApi {
   return api;
 }
 
+/** 接线点在 boundary 之外时退化为透传，不让预览组件因为缺少缓存而崩溃。 */
+export function usePreviewScrollRestoreOrNull(): PreviewScrollRestoreApi | null {
+  return useContext(PreviewScrollRestoreContext);
+}
+
 export { PreviewScrollRestoreContext };

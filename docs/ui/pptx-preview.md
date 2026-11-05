@@ -216,6 +216,13 @@ PresentationCapabilities
 调用方不得读取第三方生成 DOM 的 class、子节点顺序或内联样式来实现业务逻辑。后续编辑通过独立
 `PresentationEditEngine` 和稳定 element ID 建模；导出通过独立 Export DOM 完成。
 
+`PptxPreviewViewer` 另外向 Preview Pane 的读位恢复提供两类自有接口：`initialPageNumber` 是一次性初始
+页码入口，按 document generation 只消费一次，且刻意不进入 `[data]` 解析 effect 的依赖，因此恢复页码
+不会触发整份 PPTX 重新解析；主视口容器带 `data-pptx-preview-viewport` 与 `data-pptx-page-number`，
+供恢复模块定位滚动容器并回读当前页。两者都挂在本仓库自有节点上，不读取 `pptx-renderer` 的私有 DOM。
+带 `referenceNavigation` 的预览落点归引用跳转，读位恢复让位。详见
+[预览读位恢复规格](../../specs/preview-scroll-restore.md)。
+
 `renderPage` 的 `container` 必须是没有 React 子节点的独立 leaf mount。第三方 renderer 及其
 `dispose`/cleanup 只能增删该节点内部的 DOM；selection overlay、悬浮操作条等 React 管理节点必须作为
 leaf mount 的兄弟节点存在，禁止与 renderer 共用容器或 ref，避免命令式清理破坏 React DOM 所有权。

@@ -12,6 +12,7 @@ const PptxPreviewViewer = lazy(() =>
 export function PptxPreviewContent({
   data,
   fileName,
+  initialPageNumber,
   labels,
   onOpenBrowserUrl,
   referenceSource,
@@ -21,6 +22,8 @@ export function PptxPreviewContent({
   data: ArrayBuffer;
   labels: PptxPreviewViewerLabels;
   fileName?: string;
+  /** 读位恢复用的一次性初始页码；不影响后续翻页的运行时归属。 */
+  initialPageNumber?: number;
   referenceSource?: PptxElementReferenceSource;
   referenceNavigation?: PptxReferencePreviewNavigation;
   referenceNavigationReady?: boolean;
@@ -33,6 +36,7 @@ export function PptxPreviewContent({
       <PptxPreviewViewer
         data={data}
         fileName={fileName}
+        initialPageNumber={initialPageNumber}
         labels={labels}
         onOpenBrowserUrl={onOpenBrowserUrl}
         {...(referenceSource ? { referenceSource } : {})}

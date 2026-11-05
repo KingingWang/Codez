@@ -11,7 +11,7 @@ export interface PreviewScrollRestoreSnapshot {
   readonly pageNumber?: number;
 }
 
-/** Boundary 是恢复缓存 owner；真实滚动/页码运行态仍由具体预览组件持有。 */
+/** 恢复缓存 owner 是 preview-scroll-restore 的持久快照表；真实滚动/页码运行态仍由具体预览组件持有。 */
 export interface PreviewScrollRestoreApi {
   getSnapshot(): PreviewScrollRestoreSnapshot | null;
   saveSnapshot(snapshot: PreviewScrollRestoreSnapshot): void;

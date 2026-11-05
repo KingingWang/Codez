@@ -140,6 +140,7 @@ HTTP、HTTPS 和工作表内跳转正常；PPTX browser 入口与打印渲染也
 | 预览不读取本机同路径替代 remote workspace 文件                         | SSH / WSL / Docker / Web                   | 继续复用既有 workspace service wiring                  |
 | 预览 state 不进入 task/session snapshot 或消息流                       | desktop continuous / web remote replayable | 无协议、store、main、relay 变更                        |
 | 文档内容保持白纸和自身颜色，外层只使用语义主题 token                   | light / dark                               | runtime screenshot + `DESIGN.md` 检查                  |
+| DOCX / DOC 的真实滚动容器必须带 `data-office-preview-scroll-container`  | Preview Pane 读位恢复                      | `preview-scroll-restore` 浏览器验收                    |
 
 ### Codegraph Evidence
 

@@ -439,6 +439,7 @@ export function PptxPreviewViewer({
   onOpenBrowserUrl,
   className,
   fileName,
+  initialPageNumber,
   referenceSource,
   referenceNavigation,
   referenceNavigationReady = true,
@@ -448,6 +449,8 @@ export function PptxPreviewViewer({
   onOpenBrowserUrl?: (url: string) => void;
   className?: string;
   fileName?: string;
+  /** 读位恢复用的一次性初始页码；翻页运行态仍由本组件持有。 */
+  initialPageNumber?: number;
   referenceSource?: PptxElementReferenceSource;
   referenceNavigation?: PptxReferencePreviewNavigation;
   referenceNavigationReady?: boolean;
@@ -475,6 +478,7 @@ export function PptxPreviewViewer({
   const platform = useOptionalPlatform();
   const canExportPdf = Boolean(platform?.printPageToPdf && platform?.saveFile);
   const appliedReferenceNavigationRequestIdRef = useRef<string | null>(null);
+  const appliedInitialPageGenerationRef = useRef(-1);
   const mainRenderSurfaceRef = useRef<HTMLDivElement | null>(null);
   const document = presentation?.document ?? null;
   const documentGeneration = presentation?.generation ?? 0;
@@ -607,6 +611,22 @@ export function PptxPreviewViewer({
     (targetPageIndex: number) => goToPage(targetPageIndex + 1),
     [goToPage],
   );
+  // 读位恢复：文档解析完成后一次性落到缓存页码。不能把 initialPageNumber 放进
+  // 上面那个 [data] effect 的依赖里，否则页码变化会触发整份 PPTX 重新解析。
+  useEffect(() => {
+    // 引用跳转自己负责 goToPage 落点，恢复必须让位，否则两条路径会互相覆盖页码。
+    if (referenceNavigation || !document) {
+      return;
+    }
+    if (appliedInitialPageGenerationRef.current === documentGeneration) {
+      return;
+    }
+    appliedInitialPageGenerationRef.current = documentGeneration;
+    const targetPageNumber = initialPageNumber ?? 1;
+    if (targetPageNumber > 1) {
+      goToPage(targetPageNumber);
+    }
+  }, [document, documentGeneration, goToPage, initialPageNumber, referenceNavigation]);
   useEffect(() => {
     if (!referenceNavigation) {
       return;
@@ -805,7 +825,12 @@ export function PptxPreviewViewer({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col bg-background">
-        <div ref={setPreviewViewport} className="min-h-0 flex-1 overflow-auto">
+        <div
+          ref={setPreviewViewport}
+          className="min-h-0 flex-1 overflow-auto"
+          data-pptx-page-number={pageNumber}
+          data-pptx-preview-viewport="true"
+        >
           <div className="grid min-h-full min-w-full place-items-center p-4">
             <PptxSelectionActionBar
               open={selectionMode && selectedElement !== null}

@@ -212,6 +212,7 @@ export function PreviewPaneOfficeDocxContent({
             ? "hidden"
             : "h-full min-h-0 w-full min-w-0 overflow-auto p-4 max-sm:p-2"
         }
+        data-office-preview-scroll-container="true"
       >
         <div ref={viewportRef} className="w-full min-w-0" data-docx-fit-viewport>
           <div
