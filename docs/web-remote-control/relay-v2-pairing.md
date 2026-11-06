@@ -205,6 +205,37 @@ Renderer 可达依赖面仅 `authorizeStart/startAuthorized/stop/getStatus`；�
 
 以上为本票实现及视觉验收文案。主进程 manager 是远控运行态与恢复 admission 的唯一 owner；OAuth credential 仍是登录事实来源。OAuthService 在会话串行队列中完成登录凭据写入或登出清理后，通过 `onDidChangeSession` 发布 `signed-in | signed-out`，早于派生 provider 清理、设置刷新和 UI 用户投影更新。取消或回滚的登录、未成功清理的登出不发布完成事件；同账号重新认证也发布。renderer 订阅该事件，经既有单向 IPC 发送严格 `{state: "signed-in" | "signed-out"}`，不携带 JWT、用户或 workspace；本地会话恢复完成时仍同步一次初始状态。main 校验 payload 和发送窗口，登录通知只触发重新读取 credential，不能授权设备注册。
 
+### Codex 模式的新用户显式登录
+
+2026-11-06 的 Windows 反馈中，授权初始化成功三次，但没有 `pollPendingOAuth`
+或登录完成事件。Root 将应用账号登录与 legacy 模型供应商启动共用运行时开关：
+Codex 模式关闭了轮询并忽略回调，新用户没有缓存可恢复，因此网页登录后客户端仍等待。
+
+应用账号认证与推理 Provider 初始化分开：Codex 模式不自动恢复 root 用户、不迁移
+旧 Provider、不刷新旧套餐；用户从远控登录入口显式发起的当前 OAuth flow 仍通过
+原 `OAuthService` 完成轮询或回调、凭据写入及 `signed-in` 事件。Root 同步完成该次
+用户投影、成功信号和等待态收尾，不因这次成功引起的 user 更新撤销自己的完成。
+`startupMode=pending` 不启动轮询；模式/Host/账号意图换代及卸载使旧结果失效，
+旧轮询不能在新 Host 上自动续跑。没有当前登录的旧 deep link 只回 transport receipt。
+取消、重启登录、重复回调仍由原 pending state 与会话串行 owner 去重，不新建轮询器、
+认证缓存或凭据写入路径；不改原生 Codex 登录、relay 鉴权和移动端恢复链路。
+
+```text
+远控 auth-required → 统一登录入口（当前尝试）→ 原 OAuthService pending flow
+                         ↓ Root 轮询 / 当前 deep link（检查原 scope）
+OAuthService 保存凭据 → signed-in → 原 auth hook / IPC → Main 重读凭据、恢复远控
+                         └→ Root 用户 + 成功信号 + 等待态收尾（不初始化 legacy Provider）
+取消 / Host 或模式换代 → 旧 flow 结果不得发布到新 scope；无当前尝试的旧链接只 ACK
+```
+
+验收：空缓存的 Codex 新用户分别通过 BigModel/Z.AI 轮询完成登录，等待页关闭，
+用户和成功序号一致，远控收到凭据完成事件，旧 Provider/套餐读取与写入为零；
+无浏览器回跳也能完成；当前回调可完成且重复回调不重复成功；取消后的迟到结果
+不登录，随后可重试；legacy→Codex 及 Codex→legacy 的旧 IO 不发布到新 scope。
+轮询失败显示统一可重试错误，不发布登录成功；取消后新尝试可正常完成。
+Browser 夹具使用真实 LoginPanel、Root hook、Zustand store 与 auth event hook，
+合成 OAuth owner，无真实账号和公网请求；不将其标记为 Windows 真机或线上 OAuth 验证。
+
 ```text
 修复前：凭据清除 → provider/设置更新失败 → UI 用户未清空 → 漏发登出 → 旧远控仍连接
 修复后：OAuthService 凭据清除 → 会话事件 → renderer IPC → Main 撤销连接/attachment
