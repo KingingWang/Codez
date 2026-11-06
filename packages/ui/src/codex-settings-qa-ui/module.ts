@@ -11,6 +11,7 @@ export const module = {
     "services",
     "shared",
     "ui",
+    "web-remote-control-ui",
   ],
   owner: "qa",
 } as const;

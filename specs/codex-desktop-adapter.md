@@ -1051,10 +1051,12 @@ Settings View. When the Host reports Codex, Root skips the old provider-family
 migration, Provider Settings subscription, legacy OAuth restoration and
 account-connection-loss subscription/refresh entirely. Its renderer-ready
 notification must still be sent once so Main can deliver unrelated deep links.
-Before notifying Main, it installs a transport-only callback for obsolete Codez
-OAuth links: the preload sends its existing handled receipt after the callback
-returns, but the native branch never calls the legacy OAuth service, logs URL
-content or applies a legacy account. Without this receipt, Main would consume a
+Before notifying Main, it installs a callback for Codez OAuth links: an obsolete
+link without a current interactive login is transport-only, and the preload
+sends its existing handled receipt after the callback returns. A current explicit
+application login remains available on Codex for mobile remote control; its
+OAuth session is separate from native Codex inference authentication. Neither path
+logs URL content or initializes legacy Provider state. Without this receipt, Main would consume a
 pending deep link and keep its launch gate waiting indefinitely. The explicit
 legacy path continues to register its full existing OAuth callback before ready.
 Re-rendering/re-subscribing a callback due to locale or other UI dependencies

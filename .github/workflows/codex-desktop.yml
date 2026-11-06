@@ -194,6 +194,8 @@ jobs:
           packages/ui/test/automationEditSessionCreatedDirtyState.test.ts
       - name: Automation model loading, workspace switching and sparse-default submission browser regression
         run: node packages/ui/src/settings/codex/qa/automation-model-read-e2e.mjs
+      - name: Native application OAuth login and stale-scope browser regression
+        run: node packages/ui/src/settings/codex/qa/native-login-e2e.mjs
       - name: Assemble four remote targets without compiling Codex
         run: node scripts/codex-runtime-remote-assets.mjs
       - name: Assemble Source Server release

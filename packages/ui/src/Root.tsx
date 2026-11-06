@@ -303,7 +303,7 @@ function RootInner({
   const theme = useCodezStore((state) => state.theme);
   const user = useCodezStore((state) => state.user);
   const isRestoringOAuthSession = useCodezStore((state) => state.isRestoringOAuthSession);
-  // 原生 Codex 启动模式不恢复旧 OAuth 为应用账号（root user 恒为 null），但 Web 远控以
+  // 原生 Codex 启动模式不自动恢复旧 OAuth 为应用账号，但显式远控登录仍可更新 user；远控以
   // OAuth 服务凭据为唯一事实源；初始投影改为静默读取缓存会话，否则每次重启远控都会
   // 被误投影成 signed-out，Main 将窗口置为 auth-required，表现为“重启后又要扫码登录”。
   const resolveCodexRemoteControlAuthUserId = useCallback(async () => {

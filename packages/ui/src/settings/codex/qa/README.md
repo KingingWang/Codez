@@ -6,6 +6,21 @@ to use them. Never use a real user profile, API key, or Codex home.
 
 ## Real desktop
 
+To verify Codex-mode application login for remote control in an isolated browser:
+
+```sh
+node packages/ui/src/settings/codex/qa/native-login-e2e.mjs
+```
+
+This uses the real LoginPanel, Root OAuth hook, Zustand and remote auth event hook
+with synthetic OAuth/credential IO. It checks new-user BigModel/Z.AI polling,
+current/duplicate deep links, same-user reauthentication, cancellation, failure/retry,
+and stale scope rejection in both mode directions. Non-loopback requests are blocked.
+Screenshots and `result.json` are retained in the printed temporary evidence directory.
+It does not verify actual provider authorization, Main/relay or Windows.
+Before committing a fix, `--baseline` replays the same fixture with the current
+HEAD's OAuth hook loaded in memory, without modifying source or user configuration.
+
 The checked build must already provide `packages/desktop/out/{main,preload,host,renderer}`
 and the pinned Linux native binary referenced by `scripts/codex-runtime-manifest.json`.
 Start only the renderer dev server for current unbuilt UI edits:
