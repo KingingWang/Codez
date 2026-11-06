@@ -38,11 +38,19 @@ export async function handleOAuthCallbackSuccess(params: {
   setUser: (user: UserInfo | null) => void;
   setOAuthError: (error: string | null) => void;
   isCurrent?: () => boolean;
+  initializeLegacyProvider?: boolean;
+  onCompleted?: () => void;
 }) {
   if (params.isCurrent?.() === false) return;
-  const loginProvider = resolveProviderTelemetryLabel(params.result.provider);
   params.setUser(params.result.userInfo);
   params.setOAuthError(null);
+  // 修复原因：远控应用账号与推理 Provider 是两种身份。Codex 显式登录也要完成
+  // 用户/等待态投影，但不得启动旧套餐或配置写入；同一同步收尾避免 user 更新撤销自己的成功。
+  if (params.initializeLegacyProvider === false) {
+    params.onCompleted?.();
+    reportOAuthLoginSuccess(params.result, params.platform);
+    return;
+  }
   let connectionInitialized = true;
   try {
     await params.setProviderFamilyDomain(params.result.provider);
@@ -90,9 +98,18 @@ export async function handleOAuthCallbackSuccess(params: {
   // selectedKey 与账号状态收敛后统一刷新 Account Source 与 Registry。
   await params.refreshProviderState();
   if (params.isCurrent?.() === false) return;
+  params.onCompleted?.();
+  reportOAuthLoginSuccess(params.result, params.platform);
+}
+
+function reportOAuthLoginSuccess(
+  result: OAuthSessionCallbackResult,
+  platform: Pick<IPlatformService, "reportTelemetryEvent">,
+) {
+  const loginProvider = resolveProviderTelemetryLabel(result.provider);
   if (loginProvider) {
     void reportAppTelemetryEvent(
-      params.platform,
+      platform,
       {
         elementName: "app_login_success",
         eventRegion: "app_profile",
@@ -104,7 +121,7 @@ export async function handleOAuthCallbackSuccess(params: {
       "Root",
     );
   }
-  logger.info("[Root] OAuth 登录成功:", params.result.userInfo.username);
+  logger.info("[Root] OAuth 登录成功");
 }
 
 export function useRootOAuthEffects({
@@ -137,11 +154,9 @@ export function useRootOAuthEffects({
   onReauthenticationRequired: () => void;
 }) {
   const legacyOAuthEnabled = startupMode === "legacy";
+  const interactiveOAuthEnabled = startupMode !== "pending";
   // 登录效果只归当前 Host/身份/runtime；任意旧 IO 返回后必须验证原 scope，不能靠新回调刷新续命。
-  const loginScope = useMemo(
-    () => ({}),
-    [accountIntentKey, legacyOAuthEnabled, platform, services],
-  );
+  const loginScope = useMemo(() => ({}), [accountIntentKey, startupMode, platform, services]);
   const loginScopeRef = useRef(loginScope);
   loginScopeRef.current = loginScope;
   const mountedRef = useRef(false);
@@ -152,7 +167,7 @@ export function useRootOAuthEffects({
     };
   }, []);
   const isCurrentLogin = () =>
-    mountedRef.current && legacyOAuthEnabled && loginScopeRef.current === loginScope;
+    mountedRef.current && interactiveOAuthEnabled && loginScopeRef.current === loginScope;
   useAccountConnectionLossNotification(
     services,
     accountIntentKey,
@@ -164,6 +179,14 @@ export function useRootOAuthEffects({
   const oauthLoginSucceededRef = useRef(false);
   const oauthLoginSuccessInFlightRef = useRef(false);
   const oauthLoginSuccessOwnerRef = useRef<"polling" | "deep-link" | null>(null);
+  const pollingScopeRef = useRef<object | null>(null);
+  const completeLogin = (provider: OAuthProviderId) => {
+    oauthLoginSucceededRef.current = true;
+    oauthLoginSuccessOwnerRef.current = null;
+    oauthLoginSuccessInFlightRef.current = false;
+    markOAuthSuccess(provider);
+    setOAuthPollingActive(false);
+  };
   useEffect(() => {
     oauthLoginSucceededRef.current = false;
     oauthLoginSuccessInFlightRef.current = false;
@@ -318,10 +341,18 @@ export function useRootOAuthEffects({
   ]);
 
   useEffect(() => {
-    if (!legacyOAuthEnabled || !oauthPollingActive) {
-      if (!legacyOAuthEnabled && oauthPollingActive) setOAuthPollingActive(false);
+    if (!oauthPollingActive) {
+      pollingScopeRef.current = null;
       return;
     }
+    if (!interactiveOAuthEnabled) return;
+    // 修复依据：显式应用登录在 Codex 仍需查询结果；但旧 Host/账号/运行时的 active
+    // 标记不能在新 scope 自动续跑。复用原轮询 owner，换代仅撤销旧意图，不新增后台循环。
+    if (pollingScopeRef.current && pollingScopeRef.current !== loginScope) {
+      setOAuthPollingActive(false);
+      return;
+    }
+    pollingScopeRef.current = loginScope;
     let disposed = false;
     const isCurrent = () => !disposed && isCurrentLogin();
     oauthLoginSucceededRef.current = false;
@@ -343,6 +374,8 @@ export function useRootOAuthEffects({
           oauthLoginSuccessInFlightRef.current = true;
           await handleOAuthCallbackSuccess({
             result,
+            initializeLegacyProvider: legacyOAuthEnabled,
+            onCompleted: () => completeLogin(result.provider),
             platform,
             refreshLatestModelProviderFamilySelection: (provider) =>
               refreshLatestModelProviderFamilySelectionAfterLogin({
@@ -362,12 +395,6 @@ export function useRootOAuthEffects({
             setOAuthError,
             isCurrent,
           });
-          if (!isCurrent()) return;
-          oauthLoginSucceededRef.current = true;
-          oauthLoginSuccessOwnerRef.current = null;
-          oauthLoginSuccessInFlightRef.current = false;
-          markOAuthSuccess(result.provider);
-          setOAuthPollingActive(false);
         })
         .catch((error) => {
           if (!isCurrent()) return;
@@ -412,6 +439,7 @@ export function useRootOAuthEffects({
     setOAuthPollingActive,
     setUser,
     legacyOAuthEnabled,
+    interactiveOAuthEnabled,
     loginScope,
   ]);
 
@@ -419,9 +447,9 @@ export function useRootOAuthEffects({
     async () => {},
   );
   callbackRef.current = async (url, isAttached) => {
-    // pending/Codex 只完成 transport 确认；不能为旧链接调用 legacy 鉴权或把账号写回。
+    // Codex 只消费当前显式登录的回调；没有 pending 意图的旧链接仍只完成 transport ACK。
     const isCurrent = () => isAttached() && isCurrentLogin();
-    if (!isCurrent()) return;
+    if (!isCurrent() || (!legacyOAuthEnabled && !oauthPollingActive)) return;
     try {
       const result = await services.oauthService.handleCallback(url);
       if (!isCurrent()) return;
@@ -443,6 +471,8 @@ export function useRootOAuthEffects({
       oauthLoginSuccessInFlightRef.current = true;
       await handleOAuthCallbackSuccess({
         result,
+        initializeLegacyProvider: legacyOAuthEnabled,
+        onCompleted: () => completeLogin(result.provider),
         platform,
         refreshLatestModelProviderFamilySelection: (provider) =>
           refreshLatestModelProviderFamilySelectionAfterLogin({
@@ -463,12 +493,6 @@ export function useRootOAuthEffects({
         setOAuthError,
         isCurrent,
       });
-      if (!isCurrent()) return;
-      oauthLoginSucceededRef.current = true;
-      oauthLoginSuccessOwnerRef.current = null;
-      oauthLoginSuccessInFlightRef.current = false;
-      setOAuthPollingActive(false);
-      markOAuthSuccess(result.provider);
     } catch (err) {
       if (!isCurrent()) return;
       // 之前把底层 OAuth 错误原文写入 UI，用户会看到 provider/token 等具体失败原因。
