@@ -37,6 +37,7 @@ import { MessageFeedbackFixture } from "./message-feedback-fixture.js";
 import { createCatalogModelsFixture } from "./catalog-models-fixture.js";
 import { config, model, otherWorkspaceConfig, platform, questions } from "./harnessConfig.js";
 import { AdditionalFixtures } from "./additional-fixtures.js";
+import { NativeLoginFixture } from "./native-login-fixture.js";
 import { MappedProviderFixture, mappedProviderScenario } from "./mapped-provider-fixture.js";
 import {
   createProjectDiscoveryLocalServices,
@@ -474,7 +475,13 @@ createRoot(document.getElementById("root")!).render(
           <ProjectDiscoveryTabSeeder />
           <CodezIntlProvider initialLocale="en-US">
             <TooltipProvider>
-              {mappedProviderScenario ? <MappedProviderFixture services={services} /> : <Harness />}
+              {new URLSearchParams(location.search).has("native-login") ? (
+                <NativeLoginFixture />
+              ) : mappedProviderScenario ? (
+                <MappedProviderFixture services={services} />
+              ) : (
+                <Harness />
+              )}
             </TooltipProvider>
           </CodezIntlProvider>
         </TabStoreProvider>

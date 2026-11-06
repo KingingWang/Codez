@@ -9,7 +9,7 @@ import { logger } from "@/logger.js";
  * 初始恢复同步一次投影；运行中的认证变更只消费 OAuth owner 的凭据完成事件。
  *
  * resolveInitialAuthUserId：原生 Codex 启动模式故意不把旧 OAuth 会话恢复成应用账号，
- * root user 在启动后恒为 null；但模块契约规定 OAuth 服务是认证唯一事实源，
+ * root user 在冷启动时为空（显式登录可更新）；但模块契约规定 OAuth 服务是认证唯一事实源，
  * Web 远控的初始投影必须改为静默读取缓存会话，否则每次重启都会把已登录的远控
  * 误投影成 signed-out，Main 随即把窗口置为 auth-required，表现为“重启后又要扫码登录”。
  */

@@ -530,6 +530,25 @@ Todo103 本轮运行证据记录在 staging-integration ledger。
 
 ## AUTH-08: 桌面远控登录门禁（pending）
 
+### Codex 新用户显式登录回归（2026-11-06）
+
+- accepted：空缓存 Codex 用户打开远控登录入口，在真实 LoginPanel 发起 BigModel/Z.AI
+  登录；Root 消费原 owner 的轮询/回调结果，用户、成功信号及等待态同步收尾，
+  auth hook 收到 `signed-in`，旧 Provider 初始化/读取/刷新/设置写入为零。
+- Browser 入口：`packages/ui/src/settings/codex/qa/native-login-e2e.mjs`，
+  fixture：`native-login-fixture.tsx`；合成 OAuth 与内存凭据，阻断非 loopback 请求。
+- 覆盖无浏览器回跳、当前 deep link、重复回调、取消与迟到结果、失败后重试、重新登录，
+  以及真实 Zustand user 更新触发的 Root 重新渲染。原 startup fixture 保留跨模式迟到
+  IO 和旧缓存恢复保护，并补 Codex→legacy 的失效场景。
+- Browser 子场景已验证：2026-11-06 最终源码运行 15 项检查通过，
+  `/tmp/codez-native-login-e2e-CzZIct/result.json`；含两渠道等待/成功截图、零 page errors。
+  BigModel/Z.AI 均一次凭据写入、一次 `signed-in`，旧 Provider 读取/写入为零。
+- 修复前对照：`--baseline` 在内存加载 `58d9db0b` 的 OAuth hook，
+  `/tmp/codez-native-login-e2e-plHcoe/result.json`；合成网页登录完成后仍停留等待，
+  `polls=0`、`successSeq=0`、`userId=null`，在成功断言失败，与反馈症状一致。
+- 原 AUTH-08 Electron case 仍保持 pending；上述证据不代表真实 OAuth 服务、
+  Main/relay 或 Windows 真机验证。新增 Browser 回归已接入 Codez desktop 的 Linux 构建门禁。
+
 - 设备身份保存失败回归（CR-02）：`web-remote-control-session-events.test.ts` 在已有首次注册完成后，通过真实弹窗停止远控，在 loopback relay 删除旧 SID，再将隔离 HOME 的 setting.json 与父目录设为只读，保留文件读取与 endpoint，仅阻止原子写入。重新打开弹窗触发 `AUTH_FAILED` 恢复注册，断言启动立即进入 `error`、没有二维码，新设备已被补偿删除，超过首个退避窗口后设备数不再增长；恢复原权限后，用户再次打开弹窗可正常启动。复用 loopback V2 relay，不产生模型请求；不冒充真实磁盘满、线上 relay 或 Windows/Linux 验证。用例保留 pending，待人工审阅。
 
 - 凭据完成事件回归：`web-remote-control-session-events.test.ts` 使用单窗口、真实 Host OAuth 与 loopback V2 relay。已配对后持有隔离 HOME 的 setting.json 写锁，保留有效设置读取与独立凭据写入，再从真实用户菜单登出；断言凭据清空、Main 为 `auth-required`、旧 terminal WS 关闭且未靠重启关闭。额外断言凭据清除之后出现 `setting.update FAIL`，清理阶段释放写锁。该候选不覆盖多窗口，也不代表真实 OAuth 或线上 relay 验收。

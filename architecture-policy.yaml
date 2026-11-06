@@ -2100,6 +2100,7 @@ modules:
       - packages/ui/src/settings/codex/qa/harnessConfig.ts
       - packages/ui/src/settings/codex/qa/mapped-provider-fixture.tsx
       - packages/ui/src/settings/codex/qa/message-feedback-fixture.tsx
+      - packages/ui/src/settings/codex/qa/native-login-fixture.tsx
       - packages/ui/src/settings/codex/qa/project-discovery-fixture.tsx
       - packages/ui/src/settings/codex/qa/root-provider-startup-fixture.tsx
       - packages/ui/src/settings/codex/qa/subagent-mention-fixture.tsx
@@ -2117,6 +2118,7 @@ modules:
       - services
       - shared
       - ui
+      - web-remote-control-ui
     publicEntrypoints:
       - packages/ui/src/codex-settings-qa-ui/contract.ts
       - packages/ui/src/settings/codex/qa/harness.tsx
@@ -2152,6 +2154,7 @@ modules:
       - packages/ui/src/settings/codex/qa/mapped-provider-e2e.mjs
       - packages/ui/src/settings/codex/qa/mapped-provider-runner.mjs
       - packages/ui/src/settings/codex/qa/memory-locale-e2e.mjs
+      - packages/ui/src/settings/codex/qa/native-login-e2e.mjs
       - packages/ui/src/settings/codex/qa/project-discovery-e2e.mjs
       - packages/ui/src/settings/codex/qa/provider-model-slug-e2e.mjs
       - packages/ui/src/settings/codex/qa/settings-regressions-e2e.mjs
