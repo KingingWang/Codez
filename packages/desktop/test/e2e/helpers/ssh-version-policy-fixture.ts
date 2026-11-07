@@ -6,6 +6,7 @@ import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
 import { Client } from "ssh2";
 import { sourceServerReleaseDescriptorSchema } from "@codez/shared";
+import type { SourceServerBuildIdentity } from "@codez/shared";
 import type { SSHConnectionConfig } from "#e2e/helpers/ssh-remote-p0";
 
 const run = promisify(execFile);
@@ -15,6 +16,7 @@ export async function prepareVersionPolicyArchive(options: {
   installedSha: string;
   version: string;
   minimum: string;
+  build?: SourceServerBuildIdentity;
 }) {
   const runId = process.env.CODEZ_E2E_RUN_ID;
   const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR;
@@ -39,6 +41,8 @@ export async function prepareVersionPolicyArchive(options: {
   const manifestPath = join(work, top, "manifest.json");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   manifest.appVersion = options.version;
+  // 同版本方向用例只改变构建身份，仍使用本轮真实 runtime，避免伪造协议实现。
+  if (options.build) manifest.build = options.build;
   // 元数据变体必须重新走完整包安装，不能复用原 server-runtime 组件摘要。
   delete manifest.components;
   await writeFile(manifestPath, JSON.stringify(manifest, null, 2));

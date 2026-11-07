@@ -12,12 +12,15 @@ import {
   resolveProductionPackageClosure,
 } from "./stageDependencies.js";
 import { createComponentArchive, hashPaths, runPackagingCommand } from "./stageArchives.js";
+import type { SourceServerBuildIdentity } from "@codez/shared";
 
 export { collectBareModuleSpecifiers, isNodePtyRuntimePath, resolveProductionPackageClosure };
 
 export interface StageOptions {
   target: ServerTarget;
   appVersion: string;
+  /** 同一 commit 的 descriptor 与 archive 共用身份，供同版本更新定序。 */
+  build?: SourceServerBuildIdentity;
   /** tsup 产物目录（server-cli.js / server-core.js） */
   distDir: string;
   /** 既有 CLI/Agent bundle（codez.cjs，自包含 CJS） */
@@ -437,6 +440,7 @@ export async function stageRelease(options: StageOptions): Promise<StagedRelease
     componentMeta.push({ ...component, ...info });
   }
   const manifest = createRuntimeManifest(options.target, options.appVersion, {
+    build: options.build,
     tools,
     plugins,
     components: componentMeta,

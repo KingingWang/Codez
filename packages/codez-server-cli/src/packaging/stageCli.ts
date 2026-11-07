@@ -15,6 +15,7 @@ import {
 } from "../runtime/manifest.js";
 import { stageRelease } from "./stage.js";
 import { resolveNodeDistBase } from "./nodeDistMirror.js";
+import { resolveSourceServerBuildIdentity } from "./remoteAssetRelease.js";
 
 const log = (...args: unknown[]): void => console.log("[stage]", ...args);
 
@@ -281,6 +282,7 @@ async function main(): Promise<void> {
   const appVersion = (
     JSON.parse(await readFile(join(repoRoot, "package.json"), "utf8")) as { version: string }
   ).version;
+  const build = resolveSourceServerBuildIdentity(repoRoot);
   const [agentBundlePath, nodeBinaryPath, codexRuntimeDir] = await Promise.all([
     ensureAgentBundle(repoRoot, argv.includes("--skip-agent-build")),
     ensureNodeBinary(repoRoot, target),
@@ -295,6 +297,7 @@ async function main(): Promise<void> {
   const staged = await stageRelease({
     target,
     appVersion,
+    build,
     distDir,
     agentBundlePath,
     bundledSkillsDir: join(repoRoot, "apps/codez-cli/packages/bundled-skills"),

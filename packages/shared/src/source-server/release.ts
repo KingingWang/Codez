@@ -14,6 +14,32 @@ export const sourceServerArtifactPolicySchema = z.enum([
 ]);
 export type SourceServerArtifactPolicy = z.infer<typeof sourceServerArtifactPolicySchema>;
 
+export const sourceServerBuildIdentitySchema = z
+  .object({
+    commitSha: z
+      .string()
+      .trim()
+      .regex(/^[0-9a-f]{40}$/iu),
+    /** Git commit 的秒级 Unix 时间戳；不使用随 CI job 变化的打包时间。 */
+    commitTimestamp: z.number().int().positive(),
+  })
+  .strict();
+export type SourceServerBuildIdentity = z.infer<typeof sourceServerBuildIdentitySchema>;
+
+export type SourceServerBuildDirection = "newer" | "older" | "same" | "unknown";
+
+/** 只比较可证明的 commit 方向；同时间戳的不同 commit 不用 SHA 字典序猜新旧。 */
+export function compareSourceServerBuildDirection(
+  candidate: SourceServerBuildIdentity | undefined,
+  current: SourceServerBuildIdentity | undefined,
+): SourceServerBuildDirection {
+  if (!candidate || !current) return "unknown";
+  if (candidate.commitSha === current.commitSha) return "same";
+  if (candidate.commitTimestamp > current.commitTimestamp) return "newer";
+  if (candidate.commitTimestamp < current.commitTimestamp) return "older";
+  return "unknown";
+}
+
 export const sourceServerReleaseTargetSchema = z.enum(SOURCE_SERVER_RELEASE_TARGETS);
 export type SourceServerReleaseTarget = z.infer<typeof sourceServerReleaseTargetSchema>;
 
@@ -57,6 +83,8 @@ export const sourceServerReleaseDescriptorSchema = z
   .object({
     schemaVersion: z.literal(1),
     version: z.string().trim().min(1),
+    /** 旧 descriptor 可以没有身份；此时调用方不得自动推断同版本更新方向。 */
+    build: sourceServerBuildIdentitySchema.optional(),
     archives: z.array(sourceServerReleaseArchiveSchema).min(1),
   })
   .strict()
