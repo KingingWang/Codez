@@ -6,6 +6,7 @@ import {
   isSameSourceServerUpdateTarget,
   compatibilityManifestSchema,
   connectionProfileSchema,
+  compareSourceServerBuildDirection,
   evaluateSourceServerCompatibility,
   serverRemoteInfoSchema,
   serverRemoteInfoOutputSchema,
@@ -360,6 +361,18 @@ describe("R3 Source Server contracts", () => {
         archives: [descriptor.archives[0], descriptor.archives[0]],
       }),
     ).toThrow(/duplicate Source Server release target/i);
+  });
+
+  it("compares same-version build direction without inferring order from archive SHA", () => {
+    const older = { commitSha: "1".repeat(40), commitTimestamp: 100 };
+    const newer = { commitSha: "2".repeat(40), commitTimestamp: 200 };
+    expect(compareSourceServerBuildDirection(newer, older)).toBe("newer");
+    expect(compareSourceServerBuildDirection(older, newer)).toBe("older");
+    expect(compareSourceServerBuildDirection(older, older)).toBe("same");
+    expect(compareSourceServerBuildDirection(undefined, older)).toBe("unknown");
+    expect(
+      compareSourceServerBuildDirection({ commitSha: "3".repeat(40), commitTimestamp: 100 }, older),
+    ).toBe("unknown");
   });
 
   it("keeps client server-info parsing forward compatible while server output stays strict", () => {

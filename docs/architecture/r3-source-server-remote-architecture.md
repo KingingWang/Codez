@@ -440,7 +440,9 @@ probe ──已安装且 daemon ready──────────────�
 - `assetInstallMode` 只决定 archive 在哪一侧获取：`local-download-upload` 由 Desktop 下载、校验后经 Backend 上传，`remote-download` 由 SSH 目标使用 descriptor URL 下载并校验；两条路径从远端临时 archive 开始必须汇合到同一个 `codez update --from-archive`，禁止恢复旧散组件安装器。
 - 远端应用入口：`codez update --from-archive <path> --json`（R2 update 增加本地 archive 源；首装时先解包出 `bin/codez` 引导）。安装、升级、组件缓存、原子切换、失败回滚全部复用 R2 已验证的 release 语义，Adapter 不自造第二套安装逻辑。
 - 首次安装即执行 `serve --daemon`：能访问 OS 用户服务管理器时返回 `serviceRegistered=true`；否则自动 detached fallback 并返回 `false`，连接日志明确说明“当前远端环境存活期间常驻、重启后由连接自动拉起”。
-- Source Server 部署策略必须显式区分 `release-versioned` 与 `development-content-addressed`。两者只在「是否需要更新」的判定上不同：打包态 Desktop 固定使用前者，只按版本兼容性判定；未打包开发态 SSH 使用后者，在 Server version 与当前 archive version 相同但 `archiveSha256` 不同或远端身份缺失时判定为需要更新。SHA 相同继续复用；不得把该判定扩散到生产态或 WSL/Docker。
+- Source Server 部署策略必须显式区分 `release-versioned` 与 `development-content-addressed`。每次 staging 从同一个 Git commit 生成 `{ commitSha, commitTimestamp }`，同时写入 archive 内 `manifest.json` 与 `source-server-release.json`；安装器把它持久化到 `current.json`，probe 原样读回。commit timestamp 不使用本机打包时间，保证 CI 的 remote-assets 与各 Desktop matrix job 对同一 commit 得到同一身份。Desktop 下载缓存按 `productVersion + commitSha` 隔离，离线 descriptor 不得跨 commit 复用。
+- 打包态使用 `release-versioned`：SHA 相同直接复用；同版本 SHA 不同且本地 commit 较新时判定为 `needs-upgrade + upgradeTarget:server`，走统一受保护更新；本地 commit 较旧时，在版本与 RPC 合同兼容的前提下直接复用较新远端，连接后只投影 `updateAvailability:available + upgradeTarget:controller`，不得自动覆盖远端或重启其他客户端正在使用的 daemon。构建身份缺失、同 commit 但 SHA 不同、或不同 commit 时间戳相同而无法定序时，同样不自动更新，只投影可选更新；需要更新时由用户显式发起。旧远端缺少构建身份不表示它必然更旧。
+- 未打包开发态 SSH 使用 `development-content-addressed`：Server version 与当前 archive version 相同但 `archiveSha256` 不同或远端身份缺失时仍判定为需要更新，确保远端执行当前 worktree 内容；SHA 相同继续复用。该严格刷新语义不得扩散到生产态或 WSL/Docker。
 - 判定为需要更新之后，两种策略的更新逻辑必须完全一致：连接流程只把 Profile 置为 `needs-upgrade + updateAvailability: required` 并以 `source-server-upgrade-required` 拒绝连接，不得在连接流程内直接执行 archive update；更新本身统一由 §6.3 的 `updateSource → Manager.updateServer` 执行（`updating` 状态、操作日志、`force:false` 先行、running-task guard 后由用户显式确认再 `force:true`）。因此连接向导内的自动更新、启动重连/断线恢复的「立即更新」入口和强制更新确认对开发态同样生效。（R3A-B-06 修正：此前开发态在连接流程内直接 `installOrUpdate`，guard 只能表现为普通连接失败，UI 没有强制更新入口。）
 - 开发态内容刷新只接受本轮本地 staging 的 descriptor/archive，并统一走 Desktop 上传；即使 SSH Profile 保存的是 `remote-download` 也不得改从 CDN 获取同版本产物。若本地产物缺失、校验失败或更新被 running-task guard 阻断，连接必须 fail-closed，禁止回退 CDN 或继续运行旧 release。
 - 开发态 `bootstrap:with-remote` 必须调用与 CI 相同的 Source Server staging 入口并刷新 descriptor/archive；普通 `bootstrap` 继续跳过远端资源。成功返回表示所有仓库源码派生的 runtime、插件与 archive 都在本轮构建，只有固定版本且经校验的外部二进制允许复用缓存。staging 开始先使旧 descriptor 失效，四个平台 archive 全部原子落盘并校验后再原子发布新 descriptor；失败不得留下可被开发连接消费的旧 generation。Linux 开发专用入口 `prepare:remote-assets:linux` 复用同一路径，只构建并发布 `linux-x64` / `linux-arm64`，descriptor 只列本轮目标，不混入历史 macOS 条目；环境与使用约定见 [Bootstrap 命令](../bootstrap.md)。
@@ -566,6 +568,7 @@ Host 已固定 A → 后续 Profile 编辑 B → 在途操作仍只使用 A
   安装时允许从旧文本输出提取唯一合法 semver；无法证明兼容时保守进入 `needs-upgrade`。
 - Desktop 较旧：主动作是升级 Desktop；不得自动降级 Server。用户回退 Desktop 后仍要使用该远端时，
   按下方「Desktop 较旧时显式切换远端」由用户确认切换。
+- 同产品版本的不同 commit 也适用方向保护：CLI 在持有 update lock 后比较 target/current 的 build identity；target commit 较旧即视为降级，必须显式 `--allow-downgrade`。Host 的旧构建复用策略不绕过这道远端裁决，也不能用连接前 probe 代替持锁后的真实 current。
 - R2 存量 server（无 compatibility 字段）判为过旧，走同一升级链；R3 Desktop 的 `minCompatibleVersion` 设为首个携带 R3 握手合同的 Server 版本。
 - 当前发布默认不在根 `package.json` 中声明 `codezCompatibility` 覆盖；Desktop 与 Server CLI 构建都将缺失的 `minCompatibleVersion` 回退为当前 `productVersion`，因此默认只承诺同版本兼容。只有在完成跨版本合同与发布验证后，才可重新显式声明更低的 `codezCompatibility.minCompatibleVersion`。
 - Server 较旧且必须升级时，启动重连提示、连接向导失败面板和连接管理页都必须提供就地「立即更新」，并统一提交到 `SourceServerManagementService.updateSource`；不得要求用户记住或寻找 Settings 中的唯一入口。Desktop 较旧时主动作仍导向 Desktop 升级，不显示 Server 更新动作；只在连接向导失败面板与设备卡提供次级的「将远端切换到 <版本>」。
@@ -636,7 +639,7 @@ Desktop 3.17 再连接 → probe：版本较旧 + downgrade.json 有效
    → 向导不自动更新 → 用户点击「立即更新」→ 正常升级 → downgrade.json 失效
 ```
 
-- 更新失败：更新操作状态与兼容状态分栏。若更新前 Source 在线且版本兼容，running-task guard、下载/上传或安装失败后必须恢复原 `online + updateAvailability` 事实，只附加本次更新错误与重试/强制更新入口；不得把可用 Source 改判为 `needs-upgrade + required`。只有握手 compatibility 明确不兼容，或开发态内容寻址判定 archive SHA 不一致（连接前必须先更新）时才进入阻塞式 `needs-upgrade`。一期不在控制端追加额外 release 回滚编排。
+- 更新失败：更新操作状态与兼容状态分栏。若更新前 Source 在线且版本兼容，running-task guard、下载/上传或安装失败后必须恢复原 `online + updateAvailability` 事实，只附加本次更新错误与重试/强制更新入口；不得把可用 Source 改判为 `needs-upgrade + required`。只有握手 compatibility 明确不兼容、开发态内容寻址判定 archive SHA 不一致，或生产态已证明本地 commit 较新的同版本漂移（后两者连接前必须先更新）时才进入阻塞式 `needs-upgrade`。旧 commit 与方向未知的生产漂移只保持可选更新。一期不在控制端追加额外 release 回滚编排。
 - 显式断开、删除更新中的 Profile 或 Host 释放必须取消 Manager 持有的在途更新，覆盖 probe、release 解析、安装、running-task 清单读取和重新握手。Profile 尚未取得 `sourceServerId` 时也按 Profile 取消；Source 断开取消该 Source 的全部更新。迟到成功、失败及清理不得重新拨号、发布 online、恢复旧状态、安排重试或覆盖后续手动连接。取消只终止本机连接意图，不承诺回滚远端已应用的 release；正常更新及意外断线恢复沿用既有合同。
 - 删除非当前更新线路时，若更新已使旧物理连接失效，且该 Source 没有其他在途更新，Manager 必须在删除操作中把恢复交回仍保留的原恢复线路，复用既有重试；不得等待被取消更新的迟到结果。仍在线、后续已连接或其他更新尚在进行时不另启恢复。删除当前恢复线路、显式断开或 Host 释放仍是终态，不选择替代线路；桌面与手机继续消费同一 Source 恢复 owner。
 - Host 释放还必须清除离线 Source 的恢复输入，覆盖正在 retry 或 offline probe 的连接；中止 flight 后的迟到 catch 不得重新安排定时器或发布无 owner 的连接。
@@ -677,7 +680,7 @@ A 在线 → B 更新 → 旧物理连接失效 → 删除 B
                           └────────► bootstrapping（无交互路径：不弹凭据、不装新版本）
 ```
 
-- **静默前提**：自动路径（启动重连/断连重试/离线探测）只允许无交互步骤——凭据必须能从 credential store 静默取得（私钥无口令、或密码/口令已保存）。首次连接或没有已绑定 Source 身份的 Profile 仍需安装确认；已绑定 Source 的启动重连若缺少远端运行资产或命中远端 Server 必选更新（含同版本 archive 漂移），可复用原 Profile/Source 身份和当前 release 自动补装或执行一次 `force:false` 受保护更新。命中 running-task guard、Desktop 过旧、身份变化、安装资产不可解析或需要输入凭据时，仍停在对应状态等待用户。
+- **静默前提**：自动路径（启动重连/断连重试/离线探测）只允许无交互步骤——凭据必须能从 credential store 静默取得（私钥无口令、或密码/口令已保存）。首次连接或没有已绑定 Source 身份的 Profile 仍需安装确认；已绑定 Source 的启动重连若缺少远端运行资产或命中远端 Server 必选更新（仅含开发态内容漂移，或生产态已证明本地 commit 较新的同版本漂移），可复用原 Profile/Source 身份和当前 release 自动补装或执行一次 `force:false` 受保护更新。旧 commit Desktop 与方向未知的生产构建不得因此自动覆盖远端。命中 running-task guard、Desktop 过旧、身份变化、安装资产不可解析或需要输入凭据时，仍停在对应状态等待用户。
 - **终态后的新恢复周期**：同一 Source 重新发布物理连接时，Registry 先为旧 terminal owner 建立新的恢复屏障并清除旧失败，再开始异步挂回。其他线路此时 join 同一 Source 必须等待新周期，不得读到旧安装/升级等待错误；恢复预算和 Manager 的连接单飞语义保持不变。
 - **断连期间**：沿用 R1 语义——保留最后可信 task 投影并标记 `sourceAvailability=offline`，所有写与 IO fail-closed，不回落本地；重连成功后由新 source snapshot 原子替换（`replaceDisconnectedSource` 既有路径）。
 - **恢复完成**：补齐 Task/Session/待确认请求（复用现有断连数据恢复：权威状态查询 + 增量收敛）；存在待确认请求时，由底部阻塞卡片消费 `pendingInteractions` 投影，不再显示顶部 warning 提示及“去处理”入口，不新增第二事实源。该展示规则适用于本地桌面、远端桌面和手机 Web。远端在断连期间继续运行是 daemon 的自然行为，恢复只是重新读取权威状态，不重放输入。

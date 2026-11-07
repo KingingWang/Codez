@@ -1,6 +1,7 @@
 import { platform, arch } from "node:process";
 import { SERVER_RUNTIME_NODE_VERSION } from "../contracts.js";
 import { z } from "zod";
+import { sourceServerBuildIdentitySchema, type SourceServerBuildIdentity } from "@codez/shared";
 
 export const supportedServerTargets = [
   "darwin-x64",
@@ -17,6 +18,7 @@ export interface ServerRuntimeManifest {
   product: "codez-server";
   target: ServerTarget;
   appVersion: string;
+  build?: SourceServerBuildIdentity;
   nodeVersion: string;
   entrypoints: { cli: string; core: string; agent: string };
   native: string[];
@@ -36,6 +38,7 @@ export const serverRuntimeManifestSchema = z
     product: z.literal("codez-server"),
     target: z.enum(supportedServerTargets),
     appVersion: z.string().min(1),
+    build: sourceServerBuildIdentitySchema.optional(),
     nodeVersion: z.string().min(1),
     entrypoints: z.object({ cli: z.string(), core: z.string(), agent: z.string() }).strict(),
     native: z.array(z.string()),
@@ -68,7 +71,7 @@ export function currentServerTarget(): ServerTarget {
 export function createRuntimeManifest(
   target = currentServerTarget(),
   appVersion = "0.0.0-dev",
-  extras: Pick<ServerRuntimeManifest, "tools" | "plugins" | "components"> = {},
+  extras: Pick<ServerRuntimeManifest, "tools" | "plugins" | "components" | "build"> = {},
 ): ServerRuntimeManifest {
   return {
     product: "codez-server",

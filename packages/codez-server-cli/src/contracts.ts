@@ -1,4 +1,8 @@
-import { sourceServerRunningTasksSchema, type SourceServerRunningTask } from "@codez/shared";
+import {
+  sourceServerBuildIdentitySchema,
+  sourceServerRunningTasksSchema,
+  type SourceServerRunningTask,
+} from "@codez/shared";
 import { z } from "zod";
 
 export const SERVER_CLI_PROTOCOL_VERSION = 1;
@@ -189,6 +193,7 @@ export const releaseManifestSchema = z
     releaseDir: z.string().trim().min(1),
     nodeVersion: z.string().trim().min(1).optional(),
     releaseId: z.string().trim().min(1).optional(),
+    build: sourceServerBuildIdentitySchema.optional(),
     appVersion: z.string().trim().min(1).optional(),
     target: z.string().trim().min(1).optional(),
     archiveSha256: z

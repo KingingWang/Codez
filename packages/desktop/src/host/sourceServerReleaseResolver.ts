@@ -7,6 +7,7 @@ import { pipeline } from "node:stream/promises";
 import { dirname, join } from "node:path";
 import {
   SOURCE_SERVER_RELEASE_DESCRIPTOR_FILE_NAME,
+  CODEZ_COMMIT,
   CODEZ_VERSION,
   normalizeRemoteAssetInstallMode,
   sourceServerReleaseDescriptorSchema,
@@ -61,6 +62,15 @@ function readDescriptor(text: string): SourceServerReleaseDescriptor {
       `Source Server descriptor version mismatch: expected ${CODEZ_VERSION}, received ${descriptor.version}`,
     );
   }
+  if (
+    CODEZ_COMMIT !== "unknown" &&
+    descriptor.build &&
+    !descriptor.build.commitSha.startsWith(CODEZ_COMMIT)
+  ) {
+    throw new Error(
+      `Source Server descriptor commit mismatch: expected ${CODEZ_COMMIT}, received ${descriptor.build.commitSha}`,
+    );
+  }
   return descriptor;
 }
 
@@ -95,7 +105,11 @@ async function writeTextAtomic(path: string, text: string): Promise<void> {
 async function resolveLocalDescriptor(
   releaseDir: string,
   target: string,
-): Promise<{ archive: SourceServerReleaseArchive; archivePath: string } | null> {
+): Promise<{
+  archive: SourceServerReleaseArchive;
+  archivePath: string;
+  build?: SourceServerReleaseDescriptor["build"];
+} | null> {
   const descriptorPath = join(releaseDir, SOURCE_SERVER_RELEASE_DESCRIPTOR_FILE_NAME);
   if (!(await pathExists(descriptorPath))) return null;
   const descriptor = readDescriptor(await readFile(descriptorPath, "utf8"));
@@ -104,7 +118,7 @@ async function resolveLocalDescriptor(
   if (!(await verifyArchive(archivePath, archive))) {
     throw new Error(`Source Server local archive failed descriptor verification: ${archivePath}`);
   }
-  return { archive, archivePath };
+  return { archive, archivePath, build: descriptor.build };
 }
 
 async function resolveRemoteDescriptor(
@@ -171,9 +185,7 @@ async function resolveCodexPackagedReleaseBases(
   const packagedDir = remoteAssets.packagedRemoteAssetsDir?.trim();
   if (!packagedDir) return [];
   try {
-    const index: unknown = JSON.parse(
-      await readFile(join(packagedDir, "index.json"), "utf8"),
-    );
+    const index: unknown = JSON.parse(await readFile(join(packagedDir, "index.json"), "utf8"));
     const releaseTag = (index as { releaseTag?: unknown } | null)?.releaseTag;
     if (!isCodexReleaseTag(releaseTag)) return [];
     return [buildCodexGitHubReleaseDownloadRoot(releaseTag)];
@@ -254,7 +266,12 @@ async function resolveReleaseAsset(
       ? normalizeRemoteAssetInstallMode(remoteTarget.assetInstallMode)
       : "local-download-upload";
   const cacheRoot = remoteAssets.remoteCacheDir
-    ? join(remoteAssets.remoteCacheDir, "source-server", CODEZ_VERSION)
+    ? join(
+        remoteAssets.remoteCacheDir,
+        "source-server",
+        CODEZ_VERSION,
+        CODEZ_COMMIT.replace(/[^0-9A-Za-z._-]+/gu, "_") || "unknown",
+      )
     : null;
 
   if (
@@ -282,6 +299,7 @@ async function resolveReleaseAsset(
       sha256: local.archive.sha256,
       sizeBytes: local.archive.sizeBytes,
       urls: local.archive.urls,
+      build: local.build,
     };
   }
 
@@ -301,6 +319,7 @@ async function resolveReleaseAsset(
         sha256: local.archive.sha256,
         sizeBytes: local.archive.sizeBytes,
         urls: local.archive.urls,
+        build: local.build,
       };
     }
   }
@@ -319,6 +338,7 @@ async function resolveReleaseAsset(
       sha256: archive.sha256,
       sizeBytes: archive.sizeBytes,
       urls,
+      build: resolvedDescriptor.descriptor.build,
     };
   }
   if (!cacheRoot)
@@ -330,5 +350,6 @@ async function resolveReleaseAsset(
     sha256: archive.sha256,
     sizeBytes: archive.sizeBytes,
     urls,
+    build: resolvedDescriptor.descriptor.build,
   };
 }

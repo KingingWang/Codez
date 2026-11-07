@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CODEZ_VERSION } from "@codez/shared";
+import { CODEZ_COMMIT, CODEZ_VERSION, type SourceServerBuildIdentity } from "@codez/shared";
 import { resolveSourceServerReleaseAsset } from "../src/host/sourceServerReleaseResolver.js";
 
 const target = { kind: "ssh", host: "example.com", username: "alice" } as const;
@@ -14,10 +14,16 @@ function sha256(contents: string): string {
   return createHash("sha256").update(contents).digest("hex");
 }
 
-function descriptor(contents: string) {
+const build: SourceServerBuildIdentity = {
+  commitSha: "a".repeat(40),
+  commitTimestamp: 1_700_000_000,
+};
+
+function descriptor(contents: string, buildIdentity?: SourceServerBuildIdentity) {
   return {
     schemaVersion: 1,
     version: CODEZ_VERSION,
+    ...(buildIdentity ? { build: buildIdentity } : {}),
     archives: [
       {
         target: "linux-x64",
@@ -52,6 +58,20 @@ describe("Source Server release resolver", () => {
     expect(
       fetch.mock.calls.every(([url]) => String(url).endsWith("source-server-release.json")),
     ).toBe(true);
+  });
+
+  it("propagates the commit identity from the release descriptor", async () => {
+    const fetch = vi.fn(
+      async () => new Response(JSON.stringify(descriptor("build-package", build))),
+    );
+    const release = await resolveSourceServerReleaseAsset(
+      probe,
+      { remoteCdnBaseUrl: "https://release.test" },
+      target,
+      { fetch },
+      { metadataOnly: true },
+    );
+    expect(release.build).toEqual(build);
   });
   it("uses and verifies a staged local archive for local-download-upload", async () => {
     const root = await mkdtemp(join(tmpdir(), "codez-source-release-local-"));
@@ -206,7 +226,9 @@ describe("Source Server release resolver", () => {
       target,
     );
 
-    expect(release.localArchivePath).toBe(join(root, "source-server", CODEZ_VERSION, fileName));
+    expect(release.localArchivePath).toBe(
+      join(root, "source-server", CODEZ_VERSION, CODEZ_COMMIT, fileName),
+    );
     await expect(readFile(release.localArchivePath!, "utf8")).resolves.toBe(contents);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
@@ -237,7 +259,9 @@ describe("Source Server release resolver", () => {
       { fetch: remoteAssetFetch },
     );
 
-    expect(release.localArchivePath).toBe(join(root, "source-server", CODEZ_VERSION, fileName));
+    expect(release.localArchivePath).toBe(
+      join(root, "source-server", CODEZ_VERSION, CODEZ_COMMIT, fileName),
+    );
     expect(remoteAssetFetch).toHaveBeenCalledTimes(2);
     expect(directFetch).not.toHaveBeenCalled();
   });
@@ -329,7 +353,9 @@ describe("Source Server release resolver", () => {
         { packagedRemoteAssetsDir: packagedDir },
         { ...target, assetInstallMode: "remote-download" },
       ),
-    ).rejects.toThrow(/Unable to resolve Source Server release descriptor \(no release base candidates/u);
+    ).rejects.toThrow(
+      /Unable to resolve Source Server release descriptor \(no release base candidates/u,
+    );
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

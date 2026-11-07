@@ -21,6 +21,7 @@ import {
   REMOTE_RECOVERY_BUDGET_EXHAUSTED_ERROR_CODE,
   CODEZ_COMPATIBILITY_MANIFEST,
   compareCompatibilityVersions,
+  compareSourceServerBuildDirection,
   evaluateSourceServerCompatibility,
   isPublicCodezErrorCode,
   normalizeRemoteConnectionError,
@@ -1240,6 +1241,7 @@ export class SourceServerConnectionManager {
       const probe = await adapter.probe(target, options.context ?? {}, {
         includeReleaseIdentity: true,
       });
+      let sameVersionUpdateTarget: "controller" | "server" | undefined;
       throwIfAborted();
       if (probe.installed) {
         const installedVersion = probe.installedVersion?.trim() || "unknown";
@@ -1300,29 +1302,43 @@ export class SourceServerConnectionManager {
             release.version === installedVersion &&
             release.sha256.toLowerCase() !== probe.installedArchiveSha256?.toLowerCase()
           ) {
-            // Bug 原因（R3A-B-06）：开发态同版本刷新过去在这里直接 installOrUpdate，绕开了
-            // updateServer 的 updating 状态、操作日志和 force 守卫确认；远端有运行中任务时 guard
-            // 只能表现为普通连接失败，UI 既没有“强制更新”入口也不会在任务结束后重试。
-            // 开发与生产都按 archive SHA 判定同版本漂移，判定之后必须走同一条
-            // needs-upgrade → updateSource/updateServer 链路，连接流程本身不执行更新。
-            this.setState(profile.profileId, {
-              state: "needs-upgrade",
-              ...boundSourceIdentity,
-              updateAvailability: "required",
-              currentVersion: installedVersion,
-              availableVersion: release.version,
-              minimumVersion: this.compatibilityManifest.minCompatibleVersion,
-              upgradeTarget: "server",
-              errorCode: SOURCE_SERVER_UPGRADE_REQUIRED_ERROR_CODE,
-              retryable: false,
-            });
-            throw new SourceServerUpgradeRequiredError(
-              profile.profileId,
-              "server",
-              installedVersion,
-              this.compatibilityManifest.minCompatibleVersion,
-              shouldRefreshDevelopmentArtifact ? "development-archive" : "release-archive-drift",
+            const direction = compareSourceServerBuildDirection(
+              release.build,
+              probe.installedBuild,
             );
+            if (shouldRefreshDevelopmentArtifact || direction === "newer") {
+              // 开发态以当前 worktree 为权威；生产态只有证明本地 commit 较新时才自动更新。
+              // 更新仍统一经过 needs-upgrade → updateSource/updateServer，保留 running-task guard。
+              this.setState(profile.profileId, {
+                state: "needs-upgrade",
+                ...boundSourceIdentity,
+                updateAvailability: "required",
+                currentVersion: installedVersion,
+                availableVersion: release.version,
+                minimumVersion: this.compatibilityManifest.minCompatibleVersion,
+                upgradeTarget: "server",
+                ...(probe.downgradedFrom ? { downgradedFrom: probe.downgradedFrom } : {}),
+                errorCode: SOURCE_SERVER_UPGRADE_REQUIRED_ERROR_CODE,
+                retryable: false,
+              });
+              throw new SourceServerUpgradeRequiredError(
+                profile.profileId,
+                "server",
+                installedVersion,
+                this.compatibilityManifest.minCompatibleVersion,
+                shouldRefreshDevelopmentArtifact ? "development-archive" : "release-archive-drift",
+              );
+            }
+            // Bug 原因：过去把 SHA 不同直接当成远端过旧，旧 commit Desktop 会覆盖新远端。
+            // 旧构建复用较新 daemon；身份缺失或同时间戳不同 commit 无法定序时也只给可选提示。
+            sameVersionUpdateTarget = direction === "older" ? "controller" : "server";
+            options.context?.onLog?.({
+              phase: "probe",
+              message:
+                direction === "older"
+                  ? "Remote Source Server has a newer commit build; reusing it without a downgrade"
+                  : "Source Server build direction is not automatic-update safe; reusing the installed release",
+            });
           }
         }
       }
@@ -1456,7 +1472,17 @@ export class SourceServerConnectionManager {
         this.compatibilityManifest,
         compatibility,
       );
-      const compatibilityState = buildCompatibilityState(this.compatibilityManifest, compatibility);
+      const compatibilityState = {
+        ...buildCompatibilityState(this.compatibilityManifest, compatibility),
+        ...(sameVersionUpdateTarget &&
+        compatibility.productVersion === this.compatibilityManifest.productVersion
+          ? {
+              updateAvailability: "available" as const,
+              upgradeTarget: sameVersionUpdateTarget,
+              ...(probe.downgradedFrom ? { downgradedFrom: probe.downgradedFrom } : {}),
+            }
+          : {}),
+      };
       if (!compatibilityResult.compatible && compatibilityResult.upgradeTarget) {
         this.setState(profile.profileId, {
           state: "needs-upgrade",
