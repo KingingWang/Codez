@@ -25,6 +25,7 @@ type ProxyMode = "forward" | "reset" | "close";
 
 interface ResettingSSHProxy {
   port: number;
+  rejectedConnections(): number;
   /**
    * forward：透传到真实 sshd；reset：现有连接发 RST，新连接收到客户端数据后发 RST；
    * close：对现有与新连接正常关闭（FIN），握手前断开且不带系统错误码。
@@ -42,6 +43,7 @@ async function createResettingSSHProxy(
   config: Pick<SSHConnectionConfig, "host" | "port">,
 ): Promise<ResettingSSHProxy> {
   let mode: ProxyMode = "forward";
+  let rejectedConnections = 0;
   const sockets = new Set<Socket>();
   const track = (socket: Socket) => {
     sockets.add(socket);
@@ -51,10 +53,14 @@ async function createResettingSSHProxy(
     track(client);
     if (mode === "reset") {
       // 接受后立即重置会与 SSH 首写竞争，产生 EPIPE；收到客户端标识后再复现读侧 ECONNRESET。
-      client.once("data", () => client.resetAndDestroy());
+      client.once("data", () => {
+        rejectedConnections += 1;
+        client.resetAndDestroy();
+      });
       return;
     }
     if (mode === "close") {
+      rejectedConnections += 1;
       client.end();
       return;
     }
@@ -83,6 +89,7 @@ async function createResettingSSHProxy(
   });
   return {
     port,
+    rejectedConnections: () => rejectedConnections,
     setMode(next) {
       mode = next;
       if (next === "reset") for (const socket of sockets) socket.resetAndDestroy();
@@ -95,22 +102,24 @@ async function createResettingSSHProxy(
   };
 }
 
-async function waitForBannerFailed(): Promise<{ state: string | null; text: string }> {
-  let banner = await readBannerText();
+async function waitForOfflineProbe(
+  proxy: ResettingSSHProxy,
+  expectedRejectedConnections: number,
+): Promise<{ state: string | null; text: string }> {
   await browser
-    .waitUntil(
-      async () => {
-        banner = await readBannerText();
-        return banner.state === "failed";
-      },
-      { interval: 1000, timeout: 180_000, timeoutMsg: "banner-failed" },
-    )
+    .waitUntil(async () => proxy.rejectedConnections() >= expectedRejectedConnections, {
+      interval: 250,
+      timeout: 180_000,
+      timeoutMsg: "offline-probe-not-reached",
+    })
     .catch((error: unknown) => {
-      throw new Error(
-        `${CASE_MARKER}: 恢复预算耗尽后横幅没有进入失败态: ${JSON.stringify(banner)}`,
-        { cause: error },
-      );
+      throw new Error(`${CASE_MARKER}: 三次快速重试没有全部被代理拒绝`, { cause: error });
     });
+  // 第三次 RST/FIN 后给 Host 一个事件循环窗口发布 offline probe；随后必须仍是 recovering。
+  await browser.pause(1000);
+  const banner = await readBannerText();
+  expect(banner.state).toBe("connecting");
+  expect(banner.text).toMatch(/3\s*\/\s*3/u);
   return banner;
 }
 
@@ -124,30 +133,44 @@ async function readBannerText(): Promise<{ state: string | null; text: string }>
   }, BANNER);
 }
 
-async function clickButtonByText(container: string, pattern: RegExp, label: string) {
+async function waitForAutomaticSessionRestore(options: {
+  taskId: string;
+  identity: string;
+  previousRemoteSessionId: string;
+}): Promise<string> {
+  let restored = await readRemoteTabSnapshot(options.identity);
   await browser.waitUntil(
-    () =>
-      browser.execute(
-        (selector, source, flags) => {
-          const regex = new RegExp(source, flags);
-          const button = Array.from(
-            document.querySelectorAll<HTMLButtonElement>(`${selector} button`),
-          ).find((item) => regex.test(item.innerText.trim()) && !item.disabled);
-          button?.click();
-          return Boolean(button);
-        },
-        container,
-        pattern.source,
-        pattern.flags,
-      ),
-    { timeout: 30_000, timeoutMsg: `${CASE_MARKER}: 没有可点击的 ${label}` },
+    async () => {
+      restored = await readRemoteTabSnapshot(options.identity);
+      return (
+        Boolean(restored.remoteSessionId) &&
+        restored.remoteSessionId !== options.previousRemoteSessionId
+      );
+    },
+    {
+      interval: 1000,
+      timeout: 180_000,
+      timeoutMsg: `${CASE_MARKER}: 离线探测没有自动换代远端 workspace`,
+    },
   );
+  if (!restored.remoteSessionId) {
+    throw new Error(`${CASE_MARKER}: 自动恢复后缺少 remoteSessionId`);
+  }
+  expect(await $(WIZARD).isExisting()).toBe(false);
+  await waitForV4ConversationState(
+    (snapshot) => snapshot.taskId === options.taskId,
+    `${CASE_MARKER}: 自动恢复后没有回到原会话`,
+    60_000,
+  );
+  expect(await readBannerText()).toMatchObject({ state: null });
+  return restored.remoteSessionId;
 }
 
-describe(`${CASE_MARKER}: 在线断连耗尽恢复预算后的错误归类与横幅重连`, () => {
+describe(`${CASE_MARKER}: 快速恢复预算耗尽后的离线探测自动恢复`, () => {
   let provider: SSHLifecycleProvider | null = null;
   let proxy: ResettingSSHProxy | null = null;
   let reconnectedTaskId: string | null = null;
+  let activeRemoteSessionId: string | null = null;
   const facts: Record<string, unknown> = {};
 
   after(async () => {
@@ -161,7 +184,7 @@ describe(`${CASE_MARKER}: 在线断连耗尽恢复预算后的错误归类与横
     await clearAppData();
   });
 
-  it("RDUX-09-banner-wizard 链路被重置后横幅显示无法连接到主机；恢复后横幅重连→向导重试回到原会话", async function () {
+  it("RDUX-09-offline-probe-reset ECONNRESET 耗尽快速预算后，恢复链路无需手动重连即可回到原会话", async function () {
     this.timeout(20 * 60_000);
     await prepareSSHConnectionPage(CASE_MARKER);
     const prepared = await prepareSSHLifecycle(CASE_MARKER);
@@ -179,77 +202,51 @@ describe(`${CASE_MARKER}: 在线断连耗尽恢复预算后的错误归类与横
     });
     facts.task = { taskId: task.taskId, identity: task.identity, session: task.remoteSessionId };
 
-    // 故障：对端重置所有 SSH 连接，在线恢复 2/4/8s 三次重试同样被 RST，预算耗尽进入失败终态。
+    // 故障：对端重置所有 SSH 连接，在线恢复 2/4/8s 三次重试同样被 RST。
+    // 快速预算耗尽只切换到 2 分钟离线探测，不能关闭原 logical session。
+    const rejectedBeforeFailure = proxy.rejectedConnections();
     proxy.setMode("reset");
-    const banner = await waitForBannerFailed();
+    const banner = await waitForOfflineProbe(proxy, rejectedBeforeFailure + 3);
     facts.bannerAfterBudgetExhausted = banner;
     await browser
       .saveScreenshot(resolve(artifactDir, "budget-exhausted.png"))
       .catch(() => undefined);
-    // 问题 1：ECONNRESET 是传输失败，横幅原因行必须是“无法连接到主机”的处理说明，
-    // 不能冒充安装预检失败（“设备环境不满足安装要求”）。
-    expect(banner.text).toContain("检查设备地址和端口");
-    expect(banner.text).not.toContain("不满足安装要求");
-    expect(banner.text).not.toContain("环境检查失败");
-    expect((await readRemoteTabSnapshot(task.identity)).remoteSessionId).toBeNull();
+    expect((await readRemoteTabSnapshot(task.identity)).remoteSessionId).toBe(task.remoteSessionId);
 
-    // 恢复链路后由用户从会话横幅重连，再在唯一向导里点“重试”。
+    // 不点击横幅、不打开向导；恢复链路后由既有离线探测自动挂回原任务。
     proxy.setMode("forward");
-    await clickButtonByText(BANNER, /^(重新连接|Reconnect)$/iu, "横幅重连按钮");
-    await $(WIZARD).waitForDisplayed({
-      timeout: 30_000,
-      timeoutMsg: `${CASE_MARKER}: 失败态重连没有打开向导`,
+    activeRemoteSessionId = await waitForAutomaticSessionRestore({
+      taskId: task.taskId,
+      identity: task.identity,
+      previousRemoteSessionId: task.remoteSessionId,
     });
-    await clickButtonByText(WIZARD, /^(重试|Retry)$/iu, "向导重试按钮");
-
-    let restored = await readRemoteTabSnapshot(task.identity);
-    await browser.waitUntil(
-      async () => {
-        restored = await readRemoteTabSnapshot(task.identity);
-        return (
-          Boolean(restored.remoteSessionId) && restored.remoteSessionId !== task.remoteSessionId
-        );
-      },
-      {
-        interval: 1000,
-        timeout: 180_000,
-        timeoutMsg: `${CASE_MARKER}: 向导重试后远端 workspace 没有换代上线`,
-      },
-    );
-    facts.restoredSession = restored.remoteSessionId;
-    await browser.waitUntil(async () => !(await $(WIZARD).isExisting()), {
-      timeout: 30_000,
-      timeoutMsg: `${CASE_MARKER}: 向导连接成功后没有关闭`,
-    });
-    // 问题 2：挂回后必须保持原会话选择，不能把原任务覆盖成空白新任务。
-    const conversation = await waitForV4ConversationState(
-      (snapshot) => snapshot.taskId === task.taskId,
-      `${CASE_MARKER}: 向导重连完成后没有回到原会话（进入了空白新任务）`,
-      60_000,
-    );
-    facts.conversationAfterReconnect = conversation;
+    facts.restoredSession = activeRemoteSessionId;
     await browser.saveScreenshot(resolve(artifactDir, "reconnected.png")).catch(() => undefined);
-    expect(await readBannerText()).toMatchObject({ state: null });
     reconnectedTaskId = task.taskId;
   });
 
-  it("RDUX-09-banner-handshake-lost 握手前被正常关闭（无系统错误码）时横幅提示自动恢复已停止，不冒充安装预检失败", async function () {
+  it("RDUX-09-offline-probe-handshake-lost 握手前 FIN 同样由离线探测自动恢复", async function () {
     this.timeout(10 * 60_000);
-    if (!proxy || !reconnectedTaskId) {
+    if (!proxy || !reconnectedTaskId || !activeRemoteSessionId) {
       throw new Error(`${CASE_MARKER}: 依赖上一条用例把原会话重连上线`);
     }
     // 故障：代理对现有与新连接都发 FIN，ssh2 报 Connection lost before handshake，不带 ECONNRESET。
+    const previousRemoteSessionId = activeRemoteSessionId;
+    const rejectedBeforeFailure = proxy.rejectedConnections();
     proxy.setMode("close");
-    const banner = await waitForBannerFailed();
+    const banner = await waitForOfflineProbe(proxy, rejectedBeforeFailure + 3);
     facts.bannerAfterHandshakeLost = banner;
     await browser
       .saveScreenshot(resolve(artifactDir, "handshake-lost-exhausted.png"))
       .catch(() => undefined);
-    // 未识别的传输失败归入未知，预算耗尽后显示“自动恢复已停止”的处理说明；
-    // 不能借探测阶段兜底成安装预检失败。
-    expect(banner.text).toContain("请查看详细信息并按提示处理后重试");
     expect(banner.text).not.toContain("不满足安装要求");
     expect(banner.text).not.toContain("环境检查失败");
+    expect((await readRemoteTabSnapshot()).remoteSessionId).toBe(previousRemoteSessionId);
     proxy.setMode("forward");
+    activeRemoteSessionId = await waitForAutomaticSessionRestore({
+      taskId: reconnectedTaskId,
+      identity: "",
+      previousRemoteSessionId,
+    });
   });
 });

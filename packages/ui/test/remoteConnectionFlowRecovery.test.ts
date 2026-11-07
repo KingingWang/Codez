@@ -11,6 +11,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type {
+  SourceServerConnectionStateSnapshot,
   SourceServerManagementSnapshot,
   SSHConfigAliasOption,
   DockerContainerInfo,
@@ -129,6 +130,25 @@ import { RemoteConnectionConnectingStep } from "@/remote-connection/RemoteConnec
 import { requestRemoteProjectConnection } from "@/remote-connection-flow/contract.js";
 import { requestRetainedRemoteProjectConnection } from "@/project-sidebar/remote-project-connection.js";
 import { resolveRemoteConnectionPresentation } from "@/lib/remoteConnectionPresentation.js";
+
+it("快速恢复预算耗尽后的离线探测保持恢复中，不误报失败", () => {
+  const state: SourceServerConnectionStateSnapshot = {
+    profileId: "ssh-offline-probe",
+    state: "offline",
+    error: "connect ETIMEDOUT",
+    errorCode: "remote-recovery-budget-exhausted",
+    recoveryAttempt: 3,
+    recoveryLimit: 3,
+    recoveryBudgetExhausted: true,
+    retryable: true,
+    updatedAt: 1,
+  };
+  expect(resolveRemoteConnectionPresentation(state)).toMatchObject({
+    status: "connecting",
+    primaryAction: "none",
+    recovery: { values: { attempt: 3, limit: 3 } },
+  });
+});
 
 const targetA = { kind: "docker" as const, container: "a" };
 function defaults(extra: Partial<RemoteConnectionFlowOptions> = {}): RemoteConnectionFlowOptions {

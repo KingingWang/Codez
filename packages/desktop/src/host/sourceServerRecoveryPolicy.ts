@@ -25,7 +25,14 @@ export function createSourceServerRecoveryCloseEvent(
   return {
     exitCode: null,
     signal: null,
-    recoverable: state.state === "retrying",
+    // Bug 原因：快速重试预算耗尽后 Manager 仍排有 2 分钟离线探测，旧投影却提前关闭
+    // logical session，服务器随后恢复也只能手动重连。只有这组明确的探测事实可恢复；
+    // 显式断开和 retryable:false 的 sibling/用户动作状态仍必须进入终态。
+    recoverable:
+      state.state === "retrying" ||
+      (state.state === "offline" &&
+        state.recoveryBudgetExhausted === true &&
+        state.retryable === true),
     ...(state.error ? { error: state.error } : {}),
     ...(state.recoveryAttempt ? { recoveryAttempt: state.recoveryAttempt } : {}),
     ...(state.recoveryLimit ? { recoveryLimit: state.recoveryLimit } : {}),
