@@ -6,3 +6,6 @@
 每个 runner 仅为显式本地验证运行；保持原临时数据根、loopback/mock provider、权限和
 清理顺序。不得使用真实用户配置、密钥或产品持久化，不自动启动全部 QA。
 contract 只描述本次运行的入口和结果，不生成新的调度器、重试机制或测试。
+
+`manual-review/pending/native-composer-parity.mjs` 是显式启动的浏览器验收，
+仅访问 loopback Vite，保留 screenshot/result；不自动晋升正式 E2E 或 CI。

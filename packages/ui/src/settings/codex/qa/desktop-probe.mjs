@@ -41,11 +41,14 @@ const mock =
   process.env.CODEX_UI_QA_MOCK === "1"
     ? await startDesktopMockProvider({ reuseItemId: process.env.CODEX_UI_QA_REUSE_ITEM_ID === "1" })
     : null;
+const secondMock =
+  mock && process.env.CODEX_UI_QA_SPLIT_PROVIDERS === "1" ? await startDesktopMockProvider() : null;
 const mappedConfig =
   process.env.CODEX_UI_QA_MAPPED_PROVIDER === "1"
     ? createMappedProviderQaConfig(
         join(isolated, "codex/catalog.json"),
         mock?.url ?? "http://127.0.0.1:9",
+        secondMock?.url,
       )
     : null;
 if (mappedConfig)
@@ -133,7 +136,14 @@ const app = spawn(
   packaged
     ? [`--remote-debugging-port=${cdpPort}`, "--remote-debugging-address=127.0.0.1"]
     : parallelProbe
-      ? [".", `--remote-debugging-port=${cdpPort}`, "--remote-debugging-address=127.0.0.1"]
+      ? [
+          ".",
+          `--remote-debugging-port=${cdpPort}`,
+          "--remote-debugging-address=127.0.0.1",
+          // 隔离 Linux 容器仅有 64MB /dev/shm；显式 QA 开关改用私有 TMPDIR，
+          // 不改真实产品启动或安全策略。
+          ...(process.env.CODEX_UI_QA_DISABLE_DEV_SHM === "1" ? ["--disable-dev-shm-usage"] : []),
+        ]
       : ["scripts/dev.mjs"],
   {
     cwd: packaged ? join(isolated, "workspace") : resolve(root, "packages/desktop"),
@@ -152,17 +162,20 @@ console.log(
         ? join(electronPackageRoot, "dist", "electron")
         : "packages/desktop/scripts/dev.mjs",
     mockProvider: mock?.url,
+    ...(secondMock ? { secondMockProvider: secondMock.url } : {}),
   }),
 );
 const stop = () => {
   app.kill();
   display.kill();
   mock?.close();
+  secondMock?.close();
 };
 process.on("SIGTERM", stop);
 process.on("SIGINT", stop);
 app.on("exit", (code) => {
   display.kill();
   mock?.close();
+  secondMock?.close();
   process.exitCode = code ?? 1;
 });

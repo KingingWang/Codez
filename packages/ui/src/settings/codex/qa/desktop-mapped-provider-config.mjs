@@ -1,8 +1,8 @@
 // 原生目录夹具：模型实际属于 ui_qa，配置 provider 没有可见模型；全部端点只指向本机。
-export function createMappedProviderQaConfig(catalogPath, baseUrl) {
+export function createMappedProviderQaConfig(catalogPath, baseUrl, secondProviderUrl) {
   const model = (slug, priority) => ({
     slug,
-    provider: "ui_qa",
+    provider: secondProviderUrl && slug === "ui-qa-second" ? "ui_qa_second" : "ui_qa",
     display_name: slug === "glm-5.3" ? "GLM-5.3" : slug,
     description: "Isolated mapped-provider QA",
     base_instructions: "Reply briefly to the isolated QA input. Do not use tools.",
@@ -29,14 +29,16 @@ export function createMappedProviderQaConfig(catalogPath, baseUrl) {
       `model_catalog_json = ${JSON.stringify(catalogPath)}`,
       'approval_policy = "never"',
       'sandbox_mode = "read-only"',
-      ...["ui_qa_config", "ui_qa"].flatMap((provider) => [
-        `[model_providers.${provider}]`,
-        'name = "Isolated mapped-provider QA"',
-        `base_url = "${baseUrl}/v1"`,
-        'wire_api = "responses"',
-        "requires_openai_auth = false",
-        "request_max_retries = 0",
-      ]),
+      ...["ui_qa_config", "ui_qa", ...(secondProviderUrl ? ["ui_qa_second"] : [])].flatMap(
+        (provider) => [
+          `[model_providers.${provider}]`,
+          'name = "Isolated mapped-provider QA"',
+          `base_url = "${provider === "ui_qa_second" ? secondProviderUrl : baseUrl}/v1"`,
+          'wire_api = "responses"',
+          "requires_openai_auth = false",
+          "request_max_retries = 0",
+        ],
+      ),
       "[analytics]",
       "enabled = false",
       "",

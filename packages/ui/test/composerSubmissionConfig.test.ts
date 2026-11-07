@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ModelSelectionView } from "@codez/services";
 import { createComposerSubmissionConfig } from "@/v4/composer/composerSubmissionConfig.js";
+import type { CodexModelCatalog } from "@/settings/codex/codexModelCatalog.js";
 
 const view = {
   revision: 1,
@@ -77,14 +78,22 @@ describe("createComposerSubmissionConfig", () => {
     expect(createComposerSubmissionConfig({ ...draft, mode: "removed" }, view)).toBeNull();
   });
 
-  it("手机远控连接 Codex Host（无本地 catalog 但 nativeCodex=true）时保留 custom 权限模式", () => {
+  it("手机 native 共用 Host catalog；未就绪不回退 legacy View，就绪保留 custom", () => {
     const customDraft = {
       mode: "custom",
       planEnabled: false,
       modelSelection: view.preferredSelection!,
     };
-    // 手机远控通过 ModelSelectionView 校验模型，同时允许 Codex 专属 custom 模式。
-    expect(createComposerSubmissionConfig(customDraft, view, undefined, true)).toEqual({
+    const catalog: CodexModelCatalog = {
+      providerId: "provider-a",
+      models: [],
+      groups: [{ providerId: "provider-a", providerName: "A", models: [] }],
+      configuredSelection: view.preferredSelection!,
+      preferredSelection: view.preferredSelection!,
+    };
+    // 原因：native 目录缺失时不能拿 legacy View 的旧渠道绕过发送/编辑门禁。
+    expect(createComposerSubmissionConfig(customDraft, view, undefined, true)).toBeNull();
+    expect(createComposerSubmissionConfig(customDraft, null, catalog, true)).toEqual({
       mode: "custom",
       planEnabled: false,
       modelSelection: view.preferredSelection,
