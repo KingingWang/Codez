@@ -506,8 +506,8 @@ export interface ConversationComposerProps {
   modelSelectionRefresh?: () => Promise<ModelSelectionRefreshResult>;
   codexModelCatalog?: CodexModelCatalogRead;
   /**
-   * 对端 Host 是 Codex bridge（手机远控等无桌面 catalog 的链路）。
-   * 只开启排队/引导选择与 native 投递意图；模型目录控件仍走旧 Selection View。
+   * 对端 Host 是 Codex bridge；手机与桌面共用 codexModelCatalog 和 native 配置锁，
+   * 投递恢复仍分别使用 continuous / replayable。
    */
   nativeCodexSession?: boolean;
   /**

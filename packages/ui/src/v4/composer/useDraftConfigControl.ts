@@ -262,8 +262,8 @@ export function useDraftConfigControl(params: {
   codex?: boolean;
   codexCatalog?: CodexModelCatalog;
   /**
-   * 桌面端通过 codexCatalog 直接解析模型；手机远控无本地 catalog，
-   * 仍需订阅 Host 的 IModelSelectionService（createCodexModelSelectionService）。
+   * 原生桌面与手机远控均通过目标 Host 的 codexCatalog 解析模型；
+   * Host 探测 pending 时同样跳过 legacy Selection View。
    */
   codexUsesCatalog?: boolean;
   /** Approve for me 能力（autoReviewApprovals）；未确认时 codex 草稿的 edit 归一化为 custom。 */

@@ -1,5 +1,12 @@
 # Conversation Session Case Catalog
 
+## 手机原生模型选择一致性（MNCP，2026-11-08 accepted）
+
+规格与剪枝：[手机原生 Composer 一致性](../specs/mobile-native-composer-parity.md)。
+MNCP-01～07 接受 native busy 锁、跨 provider 即时选择与普通发送、完整配置编辑重发、
+未就绪 fail closed、scope 隔离、native queue 展示和消息行能力门控；新浏览器候选保持 pending，
+不自动提升为正式 E2E。实际覆盖层级见 coverage matrix。
+
 ## 会话 ID 兼容（SID，2026-10-28 accepted）
 
 规格：[Session identity compatibility](session-context-tool.md#session-identity-compatibility)。

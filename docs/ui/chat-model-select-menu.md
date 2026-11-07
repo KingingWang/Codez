@@ -2,6 +2,11 @@
 
 > **当前状态**：聊天侧已经迁移到 V4 composer。
 
+原生 Codex 会话（桌面与手机远控确认 native Host 后）共用 Host catalog、
+`CodexComposerModelControls` 和 Submission 校验；running/stopping 时模型与 effort
+锁定。Host 探测或目录未就绪时普通发送与编辑重发 fail closed。详见
+[手机原生 Composer 一致性规格](../../specs/mobile-native-composer-parity.md)。
+
 ## 目标
 
 聊天输入框复用 `ModelConfigSelect`，模型选择交互使用简单菜单承载，减少搜索型 Command 列表在小范围模型切换里的操作成本。
@@ -43,6 +48,6 @@
 - Codez Agent 的 provider 模型菜单按 runtime endpoint format 过滤，当前目录可以包含
   Anthropic-compatible、OpenAI-compatible Chat Completions 和 OpenAI Responses 模型；Bot `/model`
   入口复用同一 provider 能力边界。
-- 已有 session 的选择通过 V4 `switchModelConfig` 写 CLI；草稿选择由 `useDraftConfigControl` 写
-  `draftConfigRef`、workspace default 和预热 session。远程恢复必须保持 workspaceIdentity /
-  remoteSessionId，不经过 legacy task model write。
+- 菜单选择由 `useDraftConfigControl` 更新下一次 Submission 的 renderer intent，
+  发送与编辑重发携带冻结配置，不能因目录未就绪而静默提交旧线程设置。
+  远程恢复保持 workspaceIdentity / remoteSessionId，不经过 legacy task model write。

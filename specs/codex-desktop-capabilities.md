@@ -70,9 +70,10 @@ BridgeRuntime dispatch → runtime/capabilities.codex
   `messageFeedback` is not `supported` the renderer must not pass a feedback
   handler, so the buttons are absent instead of silently reverting after a
   doomed `setAssistantFeedback` command.
-  This Codex gate applies only to the Desktop conversation surface. Shared
-  Web/legacy conversation panes retain their existing feedback handler and do
-  not query Codex hello solely for message feedback.
+  This Codex gate applies to native Desktop and confirmed native mobile Host
+  panes (including the native detection pending window). Non-native Web/legacy
+  panes retain their handler and do not query Codex hello solely for feedback.
+  See [mobile native parity](mobile-native-composer-parity.md).
 - Capability-unavailable: show an unavailable state and issue no doomed operation.
 - General settings footers must not claim that the native Browser is available
   or degraded on every Host. The scoped Browser/MCP card alone reports the
@@ -101,6 +102,6 @@ BridgeRuntime dispatch → runtime/capabilities.codex
 5. Legacy workflow delta control is hidden/disabled and no client workflow-delta declaration is sent.
 6. Bridge projects `messageFeedback: "unsupported"`; conversation rows render no
    like/dislike actions and issue no `setAssistantFeedback` command.
-7. The same shared conversation pane on Web/legacy retains like/dislike actions
-   without a Codex capability object; unsupported or unavailable Desktop
-   capability state must not disable feedback on that non-Desktop surface.
+7. Non-native Web/legacy retains like/dislike without a Codex capability object;
+   unsupported/unavailable native state hides them on Desktop and native mobile
+   without disabling them on legacy Web.
