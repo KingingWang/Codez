@@ -13,6 +13,7 @@ import {
   SourceServerInstallRequiredError,
   SourceServerUpgradeRequiredError,
 } from "../src/host/sourceServerConnectionManager.js";
+import { createSourceServerRecoveryCloseEvent } from "../src/host/sourceServerRecoveryPolicy.js";
 
 const profileId = "17ef20b3-622d-4a53-98c1-0cdff29f3e6d";
 const sourceServerId = "3cd4f9da-cd79-426c-9d70-75f36e9f6a87";
@@ -57,6 +58,48 @@ const serverInfo: ServerRemoteInfo = {
   migration: { failedPathCount: 0 },
   capabilities: { desktopContinuous: true, websocketRpc: true },
 };
+
+describe("Source Server recovery close policy", () => {
+  it("快速预算耗尽后仍排有离线探测的 offline 保持可恢复", () => {
+    expect(
+      createSourceServerRecoveryCloseEvent({
+        profileId,
+        sourceServerId,
+        state: "offline",
+        error: "connect ETIMEDOUT",
+        errorCode: "remote-recovery-budget-exhausted",
+        recoveryAttempt: 3,
+        recoveryLimit: 3,
+        recoveryBudgetExhausted: true,
+        retryable: true,
+        updatedAt: 1,
+      }),
+    ).toMatchObject({
+      recoverable: true,
+      recoveryAttempt: 3,
+      recoveryLimit: 3,
+      recoveryBudgetExhausted: true,
+      reasonCode: "remote-recovery-budget-exhausted",
+      retryable: true,
+    });
+  });
+
+  it("显式断开与不可重试 offline 保持终态", () => {
+    expect(
+      createSourceServerRecoveryCloseEvent({ profileId, state: "offline", updatedAt: 1 }),
+    ).toMatchObject({ recoverable: false });
+    expect(
+      createSourceServerRecoveryCloseEvent({
+        profileId,
+        sourceServerId,
+        state: "offline",
+        error: "credentials require user action",
+        retryable: false,
+        updatedAt: 1,
+      }),
+    ).toMatchObject({ recoverable: false, retryable: false });
+  });
+});
 
 function createAdapter(
   installed = true,

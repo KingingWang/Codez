@@ -37,6 +37,7 @@ export interface RemoteConnectionPresentationInput {
   recoveryAttempt?: number;
   recoveryLimit?: number;
   recoveryBudgetExhausted?: boolean;
+  retryable?: boolean;
   errorCode?: string;
   error?: string;
   /** 项目错误可能已本地化，不能覆盖设备权威错误用于分类的原文。 */
@@ -119,8 +120,13 @@ export function resolveRemoteConnectionPresentation(
       ? classifyRemoteConnectionError({ ...input, error: input.error ?? input.projectError })
       : undefined;
   const canceled = reason?.category === "canceled";
+  // Bug 原因：快速预算耗尽只是切换到低频离线探测，并不代表 Manager 已停止恢复。
+  // 设备与项目展示必须复用 Host 的同一组事实，避免会话正在恢复而设置页却显示失败。
+  const offlineProbeActive =
+    input.state === "offline" && input.recoveryBudgetExhausted === true && input.retryable === true;
   const active =
     input.reconnecting ||
+    offlineProbeActive ||
     ["bootstrapping", "retrying", "connecting", "updating"].includes(input.state ?? "");
   if (input.disconnectOrigin === "user" || (!active && canceled)) {
     // 主动断开与用户取消是中性终态，保留在日志里的上次失败不再参与展示。

@@ -755,16 +755,19 @@ Source transport 断开
 - Desktop attachment 继续注入 `desktop-continuous`，手机 attachment 继续注入
   `web-remote-replayable`；换代只重建各自 connection-owned subscription，不把 replayable snapshot/gap
   语义扩散到 Desktop。
-- 手机 bridge 在 transient retry 期间只发送 recovering 状态，不发送终态 `workspace-bridge-error`；只有
-  恢复预算耗尽、凭据/版本/迁移需要用户动作或用户显式断开时才进入终态错误。
-- Renderer 必须区分自动恢复与用户手动重连：自动恢复显示当前尝试次数与固定预算（1/3、2/3、3/3），
-  手动重连不伪造自动重试计数；预算耗尽进入明确终态并展示 Host 提供的 `reasonCode/retryable` 映射。
+- 手机 bridge 在 transient retry 与后续离线探测期间只发送 recovering 状态，不发送终态
+  `workspace-bridge-error`；只有凭据/版本/迁移需要用户动作、`retryable:false` 或用户显式断开时才进入终态错误。
+- Renderer 必须区分自动恢复与用户手动重连：快速自动恢复显示当前尝试次数与固定预算（1/3、2/3、3/3），
+  手动重连不伪造自动重试计数。快速预算耗尽后进入既有 2 分钟离线探测，logical session 继续保持
+  recovering，不得仅因快速预算耗尽而要求手动重连；`reasonCode/retryable` 用于诊断，不再把仍存活的
+  离线探测误报为“自动恢复已停止”。
   recovering 期间 scoped services 已释放，sidebar 的 workspace 展开、task 点击、新建任务及写操作全部
   fail-closed，直到 replacement attachment ready。Bot 的连接状态查询只认 attachable route，不得把 closed /
   recovering route 报为 connected。
 - Manager 的每次 retry 状态必须穿过 Registry/Main 到达 Renderer；Registry 处于 recovering 时不能把后续
-  recoverable close 当作重复终态丢弃。预算耗尽使用公开 `reasonCode` 与本地化文案收口，不得用 Host 内
-  硬编码中文正文覆盖客户端 locale。
+  recoverable close 当作重复终态丢弃。快速预算耗尽的 offline 状态只要仍由 Manager 排有离线探测，
+  就必须投影为 `recoverable:true`；公开 `reasonCode` 与本地化诊断继续随事件传递，不得用 Host 内
+  硬编码中文正文覆盖客户端 locale。显式断开、用户动作状态与 `retryable:false` 的 offline 仍为终态。
 - Main 不得使用相同 `bridgeSessionId + bridgeGeneration + recoveryId` 新建 seq 从 1 开始的
   acknowledged relay protocol；新 protocol 必须具有新 identity。手机 attachment 重建失败不得
   dispose 已就绪的 Desktop logical session。

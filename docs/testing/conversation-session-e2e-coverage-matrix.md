@@ -2303,7 +2303,7 @@ v4 bottom dock 布局补充：所有 `pendingInteractions` 阻塞卡片都必须
 R3 远端恢复补充：Desktop 自动恢复、Desktop 手动重连与手机 `web-remote-replayable`
 attachment 的首次 snapshot 都必须恢复断线期间产生的 permission/elicitation。三条路径共用
 `ProductProjection.pendingInteractions`，仅显示底部阻塞卡片，不再显示顶部 warning 提示；不得主动再查一份
-pending 状态。自动恢复展示 1/3→2/3→3/3，预算耗尽进入终态；recovering 期间 workspace/task 写入口
+pending 状态。快速自动恢复展示 1/3→2/3→3/3，预算耗尽后的离线探测继续保持 recovering；recovering 期间 workspace/task 写入口
 fail-closed，Bot live status 只认 attachable route。Desktop 代表路径由 focused integration + GUI E2E
 取证，手机物理网络路径保留为正式 replayable E2E，不用 desktop refresh 代替。
 
@@ -4412,8 +4412,8 @@ CLI 全量 lint 被既有 max-lines 错误阻塞；`codez-protocol.test.ts` 的�
 | 未挂回与终态未连接 | [见目录](../conversation-session-case-catalog.md#rdux-09-恢复原项目与会话) | pending；real SSH E2E PASS                                                                                         |
 | 目标会话不存在     | [见目录](../conversation-session-case-catalog.md#rdux-09-恢复原项目与会话) | pending；real SSH E2E PASS                                                                                         |
 | 手机恢复边界       | [见目录](../conversation-session-case-catalog.md#rdux-09-恢复原项目与会话) | pending；真实 relay + SSH E2E PASS                                                                                 |
-| 横幅重连经向导恢复 | [见目录](../conversation-session-case-catalog.md#rdux-09-恢复原项目与会话) | `packages/desktop/test/e2e/conversation-session/conversation-session-ssh-remote-banner-reconnect.test.ts`，Pending |
-| 横幅：握手前断开   | [见目录](../conversation-session-case-catalog.md#rdux-09-恢复原项目与会话) | `packages/desktop/test/e2e/conversation-session/conversation-session-ssh-remote-banner-reconnect.test.ts`，Pending |
+| 离线探测自动恢复   | [见目录](../conversation-session-case-catalog.md#rdux-09-恢复原项目与会话) | `packages/desktop/test/e2e/conversation-session/conversation-session-ssh-remote-banner-reconnect.test.ts`，Pending |
+| 握手前断开自动恢复 | [见目录](../conversation-session-case-catalog.md#rdux-09-恢复原项目与会话) | `packages/desktop/test/e2e/conversation-session/conversation-session-ssh-remote-banner-reconnect.test.ts`，Pending |
 
 ### RDUX-10 三屏向导验收
 
