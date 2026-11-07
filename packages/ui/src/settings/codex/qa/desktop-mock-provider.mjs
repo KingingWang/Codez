@@ -86,6 +86,7 @@ export async function startDesktopMockProvider({ reuseItemId = false } = {}) {
       // Store only fixture diagnostics, not native system prompts or credentials.
       requests.push({
         model: input.model,
+        reasoningEffort: input.reasoning?.effort,
         imageCount: images.length,
         imageIsDataUrl: images.every((image) => image.image_url?.startsWith("data:image/")),
         desktopContextSections: desktopSections.length,
