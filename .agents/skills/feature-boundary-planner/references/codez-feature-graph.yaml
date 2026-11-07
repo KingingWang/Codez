@@ -680,6 +680,7 @@ nodes:
       - "模型选择"
       - "切换模型"
     docs:
+      - "specs/mobile-native-composer-parity.md"
       - "docs/ui/chat-model-select-menu.md"
       - "docs/chat/manual-model-switch-resolution-chain.md"
       - "docs/chat/new-task-model-resolution-chain.md"
@@ -713,6 +714,7 @@ nodes:
       - symbol: "resolveSubagentSelection"
         file: "apps/codez-cli/packages/core/src/runtime/helpers/subagent-selection.ts"
     invariants:
+      - "Confirmed native mobile and desktop share Host catalog, draft defaults, busy setting locks and complete Submission validation. Ordinary send and edit never dispatch missing configuration; Host probe pending does not enter legacy prepare. Delivery remains desktop-continuous versus web-remote-replayable."
       - "Manual compact freezes the submitted Composer ModelSelection through direct execution, FIFO queue and recovery; later menu edits cannot replace it. Both slash and context-panel entries share this contract. Auto compact retains its triggering Active Model."
       - "ModelSelectionFacade projects visible user candidates and change events only; authoritative selection validation occurs against the current process Registry when ModelFactory builds a Model. Internal products such as Off-Peak may preflight an exact hidden selection through the Registry, but that preflight never replaces final Model construction validation."
       - "User-visible model candidates, option specs, and preferredSelection come atomically from the target Workspace Host: local workspaces use Local Host and remote workspaces use Remote Host, with no Base/Local fallback while a remote target is waiting or disconnected. App Recent is isolated by workspaceKey = workspaceIdentity?.trim() || workspacePath; the Renderer may prefer a still-selectable Recent over Host preferredSelection, while final execution validation remains in the target Worker Registry and ModelFactory."
@@ -2820,6 +2822,12 @@ nodes:
     kind: "ui-surface"
     label: "Conversation composer model control"
     codeSeeds:
+      - symbol: "SessionPane"
+        file: "packages/ui/src/v4/SessionPane.tsx"
+      - symbol: "ConversationComposer"
+        file: "packages/ui/src/v4/ConversationComposer.tsx"
+      - symbol: "CodexComposerModelControls"
+        file: "packages/ui/src/settings/codex/CodexComposerModelControls.tsx"
       - symbol: "V4ComposerModelControlsImpl"
         file: "packages/ui/src/v4/composer/V4ComposerToolbar.tsx"
 
@@ -3577,11 +3585,19 @@ nodes:
   - id: "service.conversation-row-actions"
     kind: "service"
     label: "Conversation row action command authority"
+    docs:
+      - "specs/mobile-native-composer-parity.md"
     codeSeeds:
+      - symbol: "editUserQueryOrRetryTurn"
+        file: "packages/codex-bridge/src/commands-edit-retry.ts"
+      - symbol: "SessionPane"
+        file: "packages/ui/src/v4/SessionPane.tsx"
       - symbol: "resolveRowActionTarget"
         file: "apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/product-projection.ts"
       - symbol: "editUserQuery"
         file: "apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/commands/handlers/fork-edit-retry.ts"
+    invariants:
+      - "Native mobile and desktop edits freeze complete current Composer configuration and preserve files; missing configuration never dispatches an edit. Native row presentation must not offer legacy edit rewind or unsupported per-message feedback."
 
   - id: "service.selection-side-session-creation"
     kind: "service"

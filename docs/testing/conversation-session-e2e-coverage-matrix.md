@@ -4,6 +4,23 @@
 
 # Conversation Session E2E Coverage Matrix
 
+## 手机原生模型选择一致性（MNCP，2026-11-08）
+
+规格：[手机原生 Composer 一致性](../../specs/mobile-native-composer-parity.md)。
+
+Artifact：`packages/desktop/.e2e-artifacts/mncp-verification-DtJBfN`。
+
+| Case | Status | Evidence |
+| --- | --- | --- |
+| MNCP-01/04/05 | covered (browser) | browser：390px touch / 1200px，light/dark 四组通过；busy lock、未就绪无提交、正文与原始 B intent 保留、恢复、同路径不同 Host identity 隔离 |
+| MNCP-02/07 | covered (browser + native) | native-mobile / native-desktop：真实 SessionPane → Host → pinned native → 两个 loopback provider；A 只收到停止前 1 次，普通“继续”和编辑重发只请求 B/medium 共 2 次；native 编辑不露 legacy rewind，消息行无反馈按钮；browser 证明 legacy Web 仍可反馈 |
+| MNCP-03 | partial | 有效配置编辑已实跑且请求 B；缺配置 freeze 返回 null、浏览器编辑夹具无命令通过。真实 SessionPane 的缺配置 + Highspeed prepare 副作用计数未单独注入，静态 guard 不是该组合的完整 E2E |
+| MNCP-06 | partial | browser 非空 stopped 队列显示 native 文案且无 legacy resume/pause；21 项既有 native Node 回归验证 routing/availability。新 GUI 未单独重放 running 同配置跟进 |
+
+另有模型冻结既有 fork 6/6、native helpers 21/21、手机传输 fork 232/232 通过。
+所有新候选保持 pending review，不晋升 CI。native-mobile 仅覆盖手机 pane 平台输入，
+运行在隔离 Electron continuous transport；不声称真实手机 relay/replayable UI 全链路覆盖。
+
 ## CSAQ34：Codex 普通提问自动继续（2026-11-04）
 
 规格：[Codex 普通提问自动继续](../../specs/codex-question-auto-resolution.md)。

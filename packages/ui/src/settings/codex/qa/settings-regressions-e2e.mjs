@@ -234,8 +234,11 @@ export async function verifyMessageFeedback(page, checks) {
   await feedback.getByRole("button", { name: "Dislike", exact: true }).click();
   assert.equal(await feedback.getByTestId("feedback-writes").innerText(), "2");
   assert.equal(await feedback.getByTestId("feedback-hello-reads").innerText(), desktopHelloReads);
+  await feedback.getByRole("button", { name: "Use Mobile native feedback", exact: true }).click();
+  assert.equal(await feedback.getByRole("button", { name: /^(Like|Liked|Dislike)$/ }).count(), 0);
+  assert.equal(await feedback.getByTestId("feedback-writes").innerText(), "2");
   checks.push(
-    "Shared Web/legacy row actions retain working feedback without Codex hello; Desktop unsupported hides feedback and sends no command",
+    "Shared Web/legacy retains working feedback; unsupported Desktop/native mobile hides feedback with no command",
   );
 }
 export async function inspectRpcLog(page, result) {

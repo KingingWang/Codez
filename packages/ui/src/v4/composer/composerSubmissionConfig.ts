@@ -48,6 +48,9 @@ export function createComposerSubmissionConfig(
   if (!composer) {
     return null;
   }
+  // 原因：手机 native 目录尚未就绪时曾回退 legacy View，提交旧渠道配置。
+  // native 与桌面共用 Host catalog；缺目录时不能构造普通发送或编辑重发。
+  if (nativeCodex && !codexCatalog) return null;
   const selection = composer.modelSelection;
   const mode = submissionModeSchema.safeParse(composer.mode);
   const model =

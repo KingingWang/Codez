@@ -766,6 +766,18 @@ export function SessionPane({
     codezSessionService,
     codezTaskService,
   } = services;
+  // 手机以所属 Host 的 hello 确认 native；pending 也先关闭 legacy 入口。
+  // 设备类型不是运行时能力，模型配置、行内编辑与反馈必须共用 native 门禁。
+  const codexNativeRemoteHostStatus = useCodexNativeHostStatus(
+    services.codezAgentService,
+    { workspacePath, ...(workspaceIdentity ? { workspaceIdentity } : {}) },
+    !isDesktop && compactForRemoteControl,
+  );
+  const codexNativeRemoteHost = codexNativeRemoteHostStatus === "native";
+  const codexNativeRemoteHostPending =
+    !isDesktop && compactForRemoteControl && codexNativeRemoteHostStatus === "pending";
+  const nativeCodexSession = isDesktop || codexNativeRemoteHost;
+  const nativeCodexConfig = nativeCodexSession || codexNativeRemoteHostPending;
   const desktopFileRewindCapability = useCodexDesktopFileRewindCapability(
     services.codezAgentService,
     {
@@ -782,27 +794,16 @@ export function SessionPane({
       ...(workspaceIdentity ? { workspaceIdentity } : {}),
     },
     { onRuntimeRestart, onRuntimeLifecycle },
-    isDesktop,
+    nativeCodexConfig,
   );
   const messageFeedbackSupported = isCodexMessageFeedbackAvailable(
     messageFeedbackAvailability,
-    isDesktop,
+    nativeCodexConfig,
   );
   const gitAuxiliaryCapability = useGitAuxiliaryCapability(services, {
     workspacePath,
     ...(workspaceIdentity ? { workspaceIdentity } : {}),
   });
-  // 手机远控没有桌面 catalog；hello 能力投影是唯一权威的对端 Codex 事实，
-  // 命中后为 composer 开启与桌面一致的排队/引导选择（仅 UI 意图，命令仍走同一条链路）。
-  const codexNativeRemoteHostStatus = useCodexNativeHostStatus(
-    services.codezAgentService,
-    { workspacePath, ...(workspaceIdentity ? { workspaceIdentity } : {}) },
-    !isDesktop && compactForRemoteControl,
-  );
-  const codexNativeRemoteHost = codexNativeRemoteHostStatus === "native";
-  const codexNativeRemoteHostPending =
-    !isDesktop && compactForRemoteControl && codexNativeRemoteHostStatus === "pending";
-  const nativeCodexSession = isDesktop || codexNativeRemoteHost;
   const legacyWorkflowRunsCapability = useCodexLegacyWorkflowRunsCapability(
     services.codezAgentService,
     {
@@ -1960,7 +1961,7 @@ export function SessionPane({
     workspacePath,
     workspaceIdentity,
     remoteSessionId,
-    enabled: isDesktop,
+    enabled: nativeCodexSession,
   });
   const {
     agentStartupAllowed: providerAgentStartupAllowed,
@@ -1969,7 +1970,7 @@ export function SessionPane({
     ensureReadyForSend: ensureDraftModelReadyForSend,
     markProviderNotReady: markDraftProviderNotReady,
   } = useDraftModelReadinessGate({
-    codex: isDesktop,
+    codex: nativeCodexConfig,
     workspacePath,
     workspaceIdentity,
     provider,
@@ -1984,7 +1985,10 @@ export function SessionPane({
     !isRemoteWorkspaceIdentity(workspaceIdentity ?? "") ||
     Boolean(composerProjectId);
   const draftAgentStartupAllowed =
-    providerAgentStartupAllowed && remoteAvailable && draftProjectReady;
+    providerAgentStartupAllowed &&
+    remoteAvailable &&
+    draftProjectReady &&
+    !codexNativeRemoteHostPending;
 
   // composer 编辑态：草稿切到 edit scope（docs/ui/composer-edit-mode.md），原草稿留在原 scope。
   const composerEditScopeId = useComposerEditStore((store) =>
@@ -2014,8 +2018,8 @@ export function SessionPane({
     persistComposerContent,
     keepEditConfigOnExit,
   } = useDraftConfigControl({
-    codex: nativeCodexSession,
-    codexUsesCatalog: isDesktop,
+    codex: nativeCodexConfig,
+    codexUsesCatalog: nativeCodexConfig,
     codexCatalog: codexModels.catalog,
     codexAutoReviewSupported,
     workspacePath,
@@ -2154,20 +2158,26 @@ export function SessionPane({
       createComposerSubmissionConfig(
         draftConfigRef.current,
         modelSelectionView,
-        isDesktop ? codexModels.catalog : undefined,
-        nativeCodexSession,
+        nativeCodexSession ? codexModels.catalog : undefined,
+        nativeCodexConfig,
       ),
-    [draftConfigRef, modelSelectionView, isDesktop, codexModels.catalog, nativeCodexSession],
+    [
+      draftConfigRef,
+      modelSelectionView,
+      codexModels.catalog,
+      nativeCodexSession,
+      nativeCodexConfig,
+    ],
   );
   const composerSubmissionReady = useMemo(
     () =>
       createComposerSubmissionConfig(
         draftConfig,
         modelSelectionView,
-        isDesktop ? codexModels.catalog : undefined,
-        nativeCodexSession,
+        nativeCodexSession ? codexModels.catalog : undefined,
+        nativeCodexConfig,
       ) !== null,
-    [draftConfig, modelSelectionView, isDesktop, codexModels.catalog, nativeCodexSession],
+    [draftConfig, modelSelectionView, codexModels.catalog, nativeCodexSession, nativeCodexConfig],
   );
   // 会话常驻模型已不在 Registry（套餐到期 / 切账号）时，View 只给出 selectionIssue、draftConfig 没有模型，
   // 提交门禁会静默禁用发送；这里把同一个 selectionIssue 派生成一条可关闭的横幅，告诉用户去重选模型。
@@ -3460,7 +3470,7 @@ export function SessionPane({
   );
   const rowContext = useMemo<ConversationRowRenderContext>(
     () => ({
-      nativeCodex: isDesktop,
+      nativeCodex: nativeCodexConfig,
       workspacePath,
       workspaceHomePath,
       workspaceIdentity,
@@ -3545,7 +3555,7 @@ export function SessionPane({
       workspaceIdentity,
       remoteSessionId,
       modelSelectionDisplayView,
-      isDesktop,
+      nativeCodexConfig,
       snapshot?.usage,
       snapshot?.logEpoch,
       theme,
@@ -3613,7 +3623,8 @@ export function SessionPane({
       draftAgentStartupAllowed &&
       !recoveringDraft &&
       !draftWorktreeEnabled &&
-      (!isDesktop || isCodexSelectionReady(codexModels.catalog, draftConfig.modelSelection)),
+      (!nativeCodexSession ||
+        isCodexSelectionReady(codexModels.catalog, draftConfig.modelSelection)),
     workspaceKey,
     paneId,
     invalidationVersion: draftRuntimeInvalidationVersion,
@@ -4300,7 +4311,7 @@ export function SessionPane({
         const explicitProvider = slashIdx > 0 ? modelPart.slice(0, slashIdx).trim() : "";
         const targetModelName = slashIdx > 0 ? modelPart.slice(slashIdx + 1).trim() : modelPart;
 
-        if (isDesktop && codexModels.catalog) {
+        if (nativeCodexSession && codexModels.catalog) {
           const catalog = codexModels.catalog;
           const configured = catalog.configuredSelection;
           const matchedGroup = catalog.groups.find(
@@ -4379,7 +4390,7 @@ export function SessionPane({
       if (!draftProjectReady || !(await ensureDraftModelReadyForSend())) {
         return "blocked" as const;
       }
-      if (isDesktop) {
+      if (nativeCodexSession) {
         try {
           const currentCatalog = await codexModels.readCurrent();
           if (!isCodexSelectionReady(currentCatalog, submission?.modelSelection)) {
@@ -4443,7 +4454,7 @@ export function SessionPane({
       }
       const currentRoutingMode = snapshotRef.current?.inputRouting.mode;
       if (
-        !isDesktop &&
+        !nativeCodexConfig &&
         currentRoutingMode === "choice" &&
         !heldQueueDisposition &&
         (slashCommand === null || slashCommand.kind === "sendGoalCommand")
@@ -4699,6 +4710,7 @@ export function SessionPane({
       baseWorkspaceServices,
       isDesktop,
       nativeCodexSession,
+      nativeCodexConfig,
       codexModels.readCurrent,
       codexModels.reload,
       codexText,
@@ -4933,13 +4945,35 @@ export function SessionPane({
       // 修复依据：在点击编辑提交时冻结当前 Composer 配置并随 editUserQuery 上送；
       // Highspeed 加速轮仍通过 recentSubmissionOverride 保留用户原始选择。
       const submission = createSubmissionFromComposer();
+      // 原因：空配置的 edit 会让 native 沿用额度耗尽的旧线程设置。
+      // 与普通发送共用 fail-closed 校验，在任何 prepare/重写历史副作用前拒绝。
+      if (!submission) {
+        toast(intl.formatMessage({ id: "chat.error.sendFailed" }));
+        return false;
+      }
+      if (nativeCodexSession) {
+        try {
+          const catalog = await codexModels.readCurrent();
+          if (!isCodexSelectionReady(catalog, submission.modelSelection)) {
+            codexModels.reload();
+            return false;
+          }
+        } catch {
+          codexModels.reload();
+          return false;
+        }
+      }
       const highspeed = await prepareHighspeedSendContext(
         sessionId,
         prepareHighspeedTurnFrom(captureHighspeedPaneOrigin()),
-        submission?.modelSelection,
+        submission.modelSelection,
       );
       const latest = snapshotRef.current;
-      if (!latest || latest.sessionId !== sessionId) {
+      if (
+        !latest ||
+        latest.sessionId !== sessionId ||
+        composerBindingRef.current.workspaceKey !== workspaceKey
+      ) {
         logger.warn("[v4-pane] edit 跳过：Highspeed prepare 后 session 已切换");
         return false;
       }
@@ -4948,9 +4982,10 @@ export function SessionPane({
         {
           target,
           newText,
-          workspaceMode: isDesktop ? "preserve" : workspaceMode,
+          // native 编辑只重写对话；手机不能借 legacy rewind 操作改变文件。
+          workspaceMode: nativeCodexConfig ? "preserve" : workspaceMode,
           conversationQuotes,
-          ...(submission ? submission : {}),
+          ...submission,
           // editUserQuery 的 attachments 缺省表示保留 canonical 原附件；
           // 只有显式透传 []，CLI 才能区分“用户删除全部”与“调用方未修改附件”。
           ...(attachments ? { attachments: [...attachments] } : {}),
@@ -4984,10 +5019,15 @@ export function SessionPane({
     [
       captureHighspeedPaneOrigin,
       createSubmissionFromComposer,
+      codexModels.readCurrent,
+      codexModels.reload,
       dispatchCommand,
+      intl,
+      nativeCodexSession,
+      nativeCodexConfig,
       prepareHighspeedTurnFrom,
       sessionId,
-      isDesktop,
+      workspaceKey,
     ],
   );
 
@@ -5377,7 +5417,7 @@ export function SessionPane({
   );
 
   const handleResumeQueue = useCallback(async () => {
-    if (isDesktop) return;
+    if (nativeCodexConfig) return;
     const current = snapshotRef.current;
     if (!sessionId || !current || current.queue.autoDrain || current.queue.items.length === 0) {
       return;
@@ -5391,7 +5431,7 @@ export function SessionPane({
     if (ack.status !== "accepted" && ack.status !== "noop") {
       logger.warn(`[v4-pane] 恢复暂停队列被拒绝: ${ack.status} ${ack.reasonCode ?? ""}`);
     }
-  }, [dispatchCommand, sessionId, isDesktop]);
+  }, [dispatchCommand, sessionId, nativeCodexConfig]);
 
   // 配置面 CAS 命令的 stale 重试。模型→思考深度→模式连续操作时，前一条命令的
   // revision bump 可能尚未回流到本地投影，直接用本地 revision 会被 CAS 判 stale。
@@ -6907,6 +6947,7 @@ export function SessionPane({
       autoFocusEnabled={focused}
       disabled={
         connecting ||
+        codexNativeRemoteHostPending ||
         draftRuntimeRebuilding ||
         composerEdit.pendingLockQueueItemId !== null ||
         quotaBanner.state.blocksSubmit
@@ -6919,7 +6960,7 @@ export function SessionPane({
       modelSelectionState={modelSelectionRead.state}
       modelSelectionReload={modelSelectionRead.reload}
       modelSelectionRefresh={modelSelectionRead.refresh}
-      codexModelCatalog={isDesktop ? codexModels : undefined}
+      codexModelCatalog={nativeCodexConfig ? codexModels : undefined}
       nativeCodexSession={nativeCodexSession}
       defaultFollowupIntent={appFollowupMode}
       codexAutoReviewSupported={codexAutoReviewSupported}
@@ -7126,7 +7167,7 @@ export function SessionPane({
       {sessionId && snapshot ? (
         <ConversationQueuePanel
           key="conversation-queue"
-          nativeCodex={isDesktop}
+          nativeCodex={nativeCodexConfig}
           queue={pendingGuideProjection?.visibleQueue ?? snapshot.queue}
           onDeleteItem={handleDeleteQueueItem}
           onEditItem={composerEdit.beginQueueItemEdit}
@@ -7141,12 +7182,12 @@ export function SessionPane({
           onReleaseEditLock={composerEdit.releaseQueueItemEditLock}
           onFocusEditInComposer={composerEdit.requestEditFocus}
           onSendNow={
-            isQueueSendNowAvailable(isDesktop, snapshot.availability.sendQueuedNow)
+            isQueueSendNowAvailable(nativeCodexConfig, snapshot.availability.sendQueuedNow)
               ? handleSendQueuedNow
               : undefined
           }
           onMoveItem={handleReorderQueueItem}
-          onResume={isDesktop ? undefined : handleResumeQueue}
+          onResume={nativeCodexConfig ? undefined : handleResumeQueue}
         />
       ) : null}
       {/* Bugfix: v4 权限/问答等待态只是 runtime 的阻塞交互，必须和 composer

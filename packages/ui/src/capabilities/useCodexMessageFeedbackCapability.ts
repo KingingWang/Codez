@@ -22,7 +22,7 @@ export function useCodexMessageFeedbackCapability(
   agentService: Pick<ICodezAgentService, "helloConversationV4"> | undefined,
   workspace: { workspacePath: string; workspaceIdentity?: string },
   runtime?: RuntimeRefreshSource,
-  isDesktop = true,
+  nativeCodex = true,
 ): CodexFeatureAvailability {
   const identity = workspace.workspaceIdentity?.trim() || workspace.workspacePath;
   const [revision, setRevision] = useState(0);
@@ -32,7 +32,7 @@ export function useCodexMessageFeedbackCapability(
   const refresh = useCallback(() => setRevision((value) => value + 1), []);
 
   useEffect(() => {
-    if (!isDesktop || !agentService?.helloConversationV4) {
+    if (!nativeCodex || !agentService?.helloConversationV4) {
       setState({ available: false });
       return undefined;
     }
@@ -49,17 +49,17 @@ export function useCodexMessageFeedbackCapability(
     return () => {
       cancelled = true;
     };
-  }, [agentService, identity, revision, isDesktop]);
+  }, [agentService, identity, revision, nativeCodex]);
 
   const availability = useMemo(() => projectCodexCapabilities(source).messageFeedback, [source]);
   const onRuntimeRestart = runtime?.onRuntimeRestart;
   const onRuntimeLifecycle = runtime?.onRuntimeLifecycle;
   useEffect(
     () =>
-      isDesktop
+      nativeCodex
         ? bindRuntimeCapabilityRefresh({ onRuntimeRestart, onRuntimeLifecycle }, refresh)
         : undefined,
-    [onRuntimeRestart, onRuntimeLifecycle, refresh, isDesktop],
+    [onRuntimeRestart, onRuntimeLifecycle, refresh, nativeCodex],
   );
 
   return availability;
@@ -67,9 +67,9 @@ export function useCodexMessageFeedbackCapability(
 
 export function isCodexMessageFeedbackAvailable(
   availability: CodexFeatureAvailability,
-  isDesktop = true,
+  nativeCodex = true,
 ): boolean {
-  // 根因：共享 SessionPane 曾把 legacy/Web hello 缺少 Codex authority 误判为
-  // 不支持反馈。仅桌面应用 Codex gate，其他 surface 保留既有反馈命令。
-  return !isDesktop || availability.status === "supported";
+  // 根因：设备类型不能代替 Host 事实，native 手机同样没有逐条反馈 API。
+  // native 应用能力门禁；真正的 legacy/Web 仍保留其反馈命令。
+  return !nativeCodex || availability.status === "supported";
 }

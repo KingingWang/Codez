@@ -1,5 +1,25 @@
 # Codex UI interaction verification
 
+## Native phone / desktop model switch (pending acceptance)
+
+From the repository root:
+
+```sh
+CODEZ_REACT_SCAN=0 CHOKIDAR_USEPOLLING=1 node packages/ui/src/settings/codex/qa/manual-review/pending/native-composer-parity.mjs
+CODEZ_REACT_SCAN=0 CODEZ_ENV=production CODEZ_DESKTOP_RUNTIME=codex CHOKIDAR_USEPOLLING=1 node packages/ui/src/settings/codex/qa/manual-review/pending/native-model-switch.mjs --mobile
+CODEZ_REACT_SCAN=0 CODEZ_ENV=production CODEZ_DESKTOP_RUNTIME=codex CHOKIDAR_USEPOLLING=1 node packages/ui/src/settings/codex/qa/manual-review/pending/native-model-switch.mjs
+```
+
+Run the two native checks serially. They need current Main/preload/Host output and
+the pinned native binary described below. Each launches its own Vite/probe/Xvfb
+and two loopback providers, verifies stop A → select B → ordinary send → edit,
+and cleans up its processes. Linux probes explicitly use their private TMPDIR
+instead of the container's small `/dev/shm`. The mobile check overrides only
+SessionPane platform inputs; it does not verify a real mobile relay/replayable
+connection. Browser checks mount the real Composer/hooks with synthetic Host
+facts and exercise touch-width/desktop-width, light/dark, busy and unready states.
+Printed artifact paths are pending review evidence, not automatic CI promotion.
+
 These runners use existing repository dependencies. Run from the repository root
 with Node 24.14.0 on PATH. Do not run legacy `pre-dev` or rebuild distribution assets
 to use them. Never use a real user profile, API key, or Codex home.

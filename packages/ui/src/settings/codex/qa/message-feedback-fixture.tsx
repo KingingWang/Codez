@@ -10,6 +10,7 @@ import { ConversationAssistantTextActions } from "@/v4/ConversationRowView.js";
 /** Exercise the shared row actions with the same surface gate as SessionPane. */
 export function MessageFeedbackFixture() {
   const [isDesktop, setIsDesktop] = useState(false);
+  const [nativeMobile, setNativeMobile] = useState(false);
   const [helloReads, setHelloReads] = useState(0);
   const [feedbackWrites, setFeedbackWrites] = useState(0);
   const agent = useMemo(
@@ -27,12 +28,34 @@ export function MessageFeedbackFixture() {
     agent,
     { workspacePath: "/isolated/workspace" },
     undefined,
-    isDesktop,
+    isDesktop || nativeMobile,
   );
   return (
     <section data-testid="message-feedback-fixture">
-      <Button onClick={() => setIsDesktop(true)}>Use Desktop feedback</Button>
-      <Button onClick={() => setIsDesktop(false)}>Use Web feedback</Button>
+      <Button
+        onClick={() => {
+          setNativeMobile(false);
+          setIsDesktop(true);
+        }}
+      >
+        Use Desktop feedback
+      </Button>
+      <Button
+        onClick={() => {
+          setNativeMobile(false);
+          setIsDesktop(false);
+        }}
+      >
+        Use Web feedback
+      </Button>
+      <Button
+        onClick={() => {
+          setIsDesktop(false);
+          setNativeMobile(true);
+        }}
+      >
+        Use Mobile native feedback
+      </Button>
       <output data-testid="feedback-hello-reads">{helloReads}</output>
       <output data-testid="feedback-writes">{feedbackWrites}</output>
       <ConversationAssistantTextActions
@@ -41,7 +64,7 @@ export function MessageFeedbackFixture() {
         text="Fixture assistant response"
         createdAt={0}
         onFeedbackChange={
-          isCodexMessageFeedbackAvailable(availability, isDesktop)
+          isCodexMessageFeedbackAvailable(availability, isDesktop || nativeMobile)
             ? () => {
                 setFeedbackWrites((value) => value + 1);
                 return true;
