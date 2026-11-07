@@ -1,5 +1,10 @@
 # Issue 23：远端需更新时的恢复入口
 
+> 2026-11-07 后续：本文「同版本 SHA 漂移一律 required」的决策已由
+> [同版本构建方向与多 Desktop 共存](same-version-build-direction-impact-brief.md)取代。
+> 现在仅开发态内容漂移和已证明本地 commit 较新的生产漂移自动进入必选更新；旧构建与未知方向复用远端。
+> 下文保留 Issue 23 当时的恢复入口设计与历史决策，不再作为同版本方向判定的现行依据。
+
 ## Feature Summary
 
 | Field            | Value                                                                                                                                          |

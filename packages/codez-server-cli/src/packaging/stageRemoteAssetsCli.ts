@@ -6,6 +6,7 @@ import {
   SOURCE_SERVER_REMOTE_RELEASE_TARGETS,
   beginSourceServerRemoteReleaseGeneration,
   collectSourceServerRemoteReleaseArchives,
+  resolveSourceServerBuildIdentity,
 } from "./remoteAssetRelease.js";
 
 async function run(
@@ -55,6 +56,8 @@ async function main(): Promise<void> {
   };
   const versionReleaseDir = join(repoRoot, "packages/desktop/mock-cdn/releases", version);
   await beginSourceServerRemoteReleaseGeneration({ versionReleaseDir });
+  const build = resolveSourceServerBuildIdentity(repoRoot);
+  env.CODEZ_SOURCE_SERVER_BUILD = JSON.stringify(build);
   await run("pnpm", ["--filter", "@codez/server-cli", "build"], repoRoot, env);
   for (const [index, target] of targets.entries()) {
     await run(
@@ -78,6 +81,7 @@ async function main(): Promise<void> {
     distReleaseDir: join(packageRoot, "dist-release"),
     versionReleaseDir,
     version,
+    build,
     targets,
   });
   for (const path of collected) console.log(`[source-server-release] ${path}`);

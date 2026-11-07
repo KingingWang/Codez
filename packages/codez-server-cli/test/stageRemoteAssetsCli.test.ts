@@ -3,12 +3,13 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { spawn, begin, collect } = vi.hoisted(() => ({
+const { spawn, execFileSync, begin, collect } = vi.hoisted(() => ({
   spawn: vi.fn(),
+  execFileSync: vi.fn(),
   begin: vi.fn(),
   collect: vi.fn(),
 }));
-vi.mock("node:child_process", () => ({ spawn }));
+vi.mock("node:child_process", () => ({ spawn, execFileSync }));
 
 const releaseModulePath = fileURLToPath(
   new URL("../src/packaging/remoteAssetRelease.ts", import.meta.url),
@@ -21,6 +22,7 @@ const allTargets = ["linux-x64", "linux-arm64", "darwin-x64", "darwin-arm64"];
 beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
+  execFileSync.mockReturnValue(`${"a".repeat(40)} 1700000000\n`);
   begin.mockResolvedValue(undefined);
   collect.mockResolvedValue([]);
   spawn.mockImplementation(() => {
@@ -28,7 +30,8 @@ beforeEach(() => {
     queueMicrotask(() => child.emit("exit", 0));
     return child;
   });
-  vi.doMock(releaseModulePath, () => ({
+  vi.doMock(releaseModulePath, async (importOriginal) => ({
+    ...(await importOriginal<typeof import("../src/packaging/remoteAssetRelease.js")>()),
     SOURCE_SERVER_REMOTE_RELEASE_TARGETS: allTargets,
     beginSourceServerRemoteReleaseGeneration: begin,
     collectSourceServerRemoteReleaseArchives: collect,
@@ -92,7 +95,13 @@ describe("remote asset staging CLI", () => {
       expect(call[2].env.CODEZ_ENV).toBe(expected);
     }
     expect(collect).toHaveBeenCalledWith(
-      expect.objectContaining({ targets: ["linux-x64", "linux-arm64"] }),
+      expect.objectContaining({
+        targets: ["linux-x64", "linux-arm64"],
+        build: { commitSha: "a".repeat(40), commitTimestamp: 1_700_000_000 },
+      }),
+    );
+    expect(spawn.mock.calls[1]![2].env.CODEZ_SOURCE_SERVER_BUILD).toBe(
+      JSON.stringify({ commitSha: "a".repeat(40), commitTimestamp: 1_700_000_000 }),
     );
     expect(begin.mock.invocationCallOrder[0]).toBeLessThan(spawn.mock.invocationCallOrder[0]!);
     expect(collect.mock.invocationCallOrder[0]).toBeGreaterThan(

@@ -20,6 +20,7 @@ import type {
   SourceServerProbeResult,
   TransportContext,
 } from "@codez/server/source-server/transportAdapter.js";
+import { sourceServerBuildIdentitySchema } from "@codez/shared";
 
 const SERVER_ROOT_SHELL = '"$HOME/.codez/server"';
 const SERVER_BIN_SHELL = '"$HOME/.codez/server/bin/codez"';
@@ -196,16 +197,22 @@ export async function probeSourceServer(
   if (!installed) return { ...environment, installed: false };
 
   let installedArchiveSha256: string | undefined;
+  let installedBuild: SourceServerProbeResult["installedBuild"];
   const releaseText = sections.get("RELEASE");
   if (releaseText) {
     try {
-      const current = JSON.parse(releaseText) as { archiveSha256?: unknown };
+      const current = JSON.parse(releaseText) as {
+        archiveSha256?: unknown;
+        build?: unknown;
+      };
       if (
         typeof current.archiveSha256 === "string" &&
         /^[a-f0-9]{64}$/iu.test(current.archiveSha256)
       ) {
         installedArchiveSha256 = current.archiveSha256.toLowerCase();
       }
+      const build = sourceServerBuildIdentitySchema.safeParse(current.build);
+      if (build.success) installedBuild = build.data;
     } catch (error) {
       // Bug 原因：同 version 的旧开发安装可能没有 archive 身份；缺失必须投影为未知，
       // 由开发态内容寻址策略触发刷新，不能让旧 Server 的元数据格式阻断 probe。
@@ -238,6 +245,7 @@ export async function probeSourceServer(
     ...environment,
     installed: true,
     ...(installedArchiveSha256 ? { installedArchiveSha256 } : {}),
+    ...(installedBuild ? { installedBuild } : {}),
     ...(installedVersion ? { installedVersion } : {}),
     ...(downgradedFrom ? { downgradedFrom } : {}),
     ...(daemonStatus ? { daemonStatus } : {}),

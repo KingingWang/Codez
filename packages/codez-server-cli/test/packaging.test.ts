@@ -18,6 +18,7 @@ import {
   isTargetSpecificPackage,
 } from "../src/packaging/stageDependencies.js";
 import { resolveHostTarCommand } from "../src/packaging/tarCommand.js";
+import { collectSourceServerRemoteReleaseArchives } from "../src/packaging/remoteAssetRelease.js";
 
 const execFileAsync = promisify(execFile);
 async function runTar(args: string[]): Promise<void> {
@@ -364,6 +365,31 @@ describe("stageRelease", () => {
     expect(staged.archivePath).toBeNull();
   });
 
+  it("publishes the commit identity in the Source Server release descriptor", async () => {
+    const root = await makeTempDir();
+    const distReleaseDir = join(root, "dist-release");
+    const versionReleaseDir = join(root, "releases", "3.17.2");
+    await mkdir(distReleaseDir, { recursive: true });
+    await writeFile(join(distReleaseDir, "codez-server-linux-x64.tar.gz"), "archive");
+    const build = { commitSha: "a".repeat(40), commitTimestamp: 1_700_000_000 };
+
+    await collectSourceServerRemoteReleaseArchives({
+      distReleaseDir,
+      versionReleaseDir,
+      version: "3.17.2",
+      build,
+      targets: ["linux-x64"],
+    });
+
+    const descriptor = JSON.parse(
+      await readFile(join(versionReleaseDir, "source-server-release.json"), "utf8"),
+    );
+    expect(descriptor.build).toEqual(build);
+    expect(descriptor.archives[0].sha256).toBe(
+      createHash("sha256").update("archive").digest("hex"),
+    );
+  });
+
   it("fails closed when the linux platform package cannot supply matching node-pty JS", async () => {
     const fixture = await makeStageFixture();
     // 只有 pty.node、没有 lib 的平台包无法提供同版本 JS；不能退回“官方 JS + 平台 native”混装。
@@ -445,9 +471,7 @@ describe("stageRelease", () => {
       "runtime/codex/codex-path/rg",
       "runtime/codex/codex-resources/marker.txt",
     ]) {
-      await expect(
-        stat(join(staged.releaseDir, ...relativePath.split("/"))),
-      ).resolves.toBeTruthy();
+      await expect(stat(join(staged.releaseDir, ...relativePath.split("/")))).resolves.toBeTruthy();
     }
 
     const manifest = JSON.parse(
@@ -991,7 +1015,8 @@ describe("stageRelease", () => {
           "prebuilds/linux-arm64/pty.node": "linux-arm64-binary",
         },
       });
-      const options = { ...fixture, target, appVersion: "9.9.9-test" };
+      const build = { commitSha: "b".repeat(40), commitTimestamp: 1_700_000_001 };
+      const options = { ...fixture, target, appVersion: "9.9.9-test", build };
       const original = await stageRelease(options);
       expect(original.componentArchivePaths.length).toBeGreaterThan(0);
       const expected = JSON.parse(
@@ -1031,6 +1056,7 @@ describe("stageRelease", () => {
         installer.installArchive({ archivePath, target, archiveSha256: "0".repeat(64) }),
       ).rejects.toThrow(/checksum mismatch/);
       const installed = await installer.installArchive({ archivePath, target, archiveSha256 });
+      expect(installed.build).toEqual(build);
       expect(
         JSON.parse(await readFile(join(installed.releaseDir, "manifest.json"), "utf8")),
       ).toEqual(expected);
