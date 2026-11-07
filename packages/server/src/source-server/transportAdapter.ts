@@ -8,6 +8,7 @@ import {
   type SourceServerInstallProgress,
   type PublicCodezErrorCode,
   type RemoteTarget,
+  type SourceServerBuildIdentity,
 } from "@codez/shared";
 import type { IRemoteBackend } from "@codez/server/remote/backend.js";
 import { createRemoteBackend } from "@codez/server/remote/create-backend.js";
@@ -37,6 +38,7 @@ export interface SourceServerProbeResult {
   installPath?: string;
   installedVersion?: string;
   installedArchiveSha256?: string;
+  installedBuild?: SourceServerBuildIdentity;
   /** 当前 release 由显式降级安装时，被替换的版本。 */
   downgradedFrom?: string;
   daemonStatus?: Record<string, unknown> & { state: string; port?: number };
@@ -60,6 +62,7 @@ export interface ServerReleaseAsset {
   sha256: string;
   sizeBytes: number;
   urls: string[];
+  build?: SourceServerBuildIdentity;
 }
 
 export interface TransportContext {

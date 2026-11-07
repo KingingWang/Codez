@@ -4,7 +4,12 @@ import { connectSourceServerTarget } from "../src/host/connectSourceServerTarget
 import { appSettingsSchema } from "@codez/shared";
 import { PassThrough } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
-import type { ConnectionProfile, RemoteTarget, ServerRemoteInfo } from "@codez/shared";
+import type {
+  ConnectionProfile,
+  RemoteTarget,
+  ServerRemoteInfo,
+  SourceServerBuildIdentity,
+} from "@codez/shared";
 import type { IServiceAccessor } from "@codez/services";
 import type { ServerReleaseAsset, SourceServerTransportAdapter } from "@codez/server/source-server";
 import {
@@ -33,6 +38,7 @@ const sshTarget: RemoteTarget = sshProfile.target;
 function createRelease(
   version: string,
   localArchivePath = "/tmp/codez-server-linux-x64.tar.gz",
+  build?: SourceServerBuildIdentity,
 ): ServerReleaseAsset {
   return {
     localArchivePath,
@@ -41,8 +47,17 @@ function createRelease(
     sha256: "a".repeat(64),
     sizeBytes: 1024,
     urls: ["https://cdn.example.test/codez-server-linux-x64.tar.gz"],
+    ...(build ? { build } : {}),
   };
 }
+const olderBuild: SourceServerBuildIdentity = {
+  commitSha: "1".repeat(40),
+  commitTimestamp: 100,
+};
+const newerBuild: SourceServerBuildIdentity = {
+  commitSha: "2".repeat(40),
+  commitTimestamp: 200,
+};
 const serverInfo: ServerRemoteInfo = {
   serverId: sourceServerId,
   version: "3.8.0",
@@ -1180,7 +1195,7 @@ describe("SourceServerConnectionManager", () => {
     expect(adapter.ensureDaemon).toHaveBeenCalledOnce();
   });
 
-  it("requires an update when the production release archive SHA drifts at the same version", async () => {
+  it("requires an update only when the production build is newer than the same-version remote", async () => {
     // 回归：fork 每次推送发布同一 app 版本的新 archive，仅按版本兼容判定曾让远端
     // 停在旧构建（缺 Codex 运行时），连接成功但 codex/request 全部 Method not found。
     const adapter = createAdapter(true, "ssh");
@@ -1190,8 +1205,11 @@ describe("SourceServerConnectionManager", () => {
       installed: true,
       installedVersion: "3.8.0",
       installedArchiveSha256: "b".repeat(64),
+      installedBuild: olderBuild,
     });
-    const resolveRelease = vi.fn(async () => createRelease("3.8.0"));
+    const resolveRelease = vi.fn(async () =>
+      createRelease("3.8.0", "/tmp/codez-server-linux-x64.tar.gz", newerBuild),
+    );
     const manager = new SourceServerConnectionManager({
       directory: { recordHandshake: vi.fn().mockResolvedValue({ identityChanged: false }) },
       createAdapter: () => adapter,
@@ -1216,6 +1234,76 @@ describe("SourceServerConnectionManager", () => {
       availableVersion: "3.8.0",
       upgradeTarget: "server",
       errorCode: "source-server-upgrade-required",
+    });
+  });
+
+  it("reuses a newer same-version remote instead of overwriting it from an older Desktop build", async () => {
+    const adapter = createAdapter(true, "ssh");
+    vi.mocked(adapter.probe).mockResolvedValue({
+      platform: "linux",
+      arch: "x64",
+      installed: true,
+      installedVersion: "3.8.0",
+      installedArchiveSha256: "b".repeat(64),
+      installedBuild: newerBuild,
+    });
+    const manager = new SourceServerConnectionManager({
+      directory: { recordHandshake: vi.fn().mockResolvedValue({ identityChanged: false }) },
+      createAdapter: () => adapter,
+      connectServer: vi.fn(async () => ({
+        serverInfo,
+        services: {} as IServiceAccessor,
+        dispose: vi.fn(),
+      })),
+      compatibilityManifest: serverInfo.compatibility!,
+      sourceServerArtifactPolicy: "release-versioned",
+      resolveRelease: vi.fn(async () =>
+        createRelease("3.8.0", "/tmp/codez-server-linux-x64.tar.gz", olderBuild),
+      ),
+    });
+
+    await manager.connect({ profile: sshProfile, target: sshTarget });
+
+    expect(adapter.installOrUpdate).not.toHaveBeenCalled();
+    expect(adapter.ensureDaemon).toHaveBeenCalledOnce();
+    expect(manager.getStateByProfile(profileId)).toMatchObject({
+      state: "online",
+      updateAvailability: "available",
+      upgradeTarget: "controller",
+    });
+  });
+
+  it("does not automatically overwrite a same-version remote when build direction is unknown", async () => {
+    const adapter = createAdapter(true, "ssh");
+    vi.mocked(adapter.probe).mockResolvedValue({
+      platform: "linux",
+      arch: "x64",
+      installed: true,
+      installedVersion: "3.8.0",
+      installedArchiveSha256: "b".repeat(64),
+      installedBuild: olderBuild,
+    });
+    const manager = new SourceServerConnectionManager({
+      directory: { recordHandshake: vi.fn().mockResolvedValue({ identityChanged: false }) },
+      createAdapter: () => adapter,
+      connectServer: vi.fn(async () => ({
+        serverInfo,
+        services: {} as IServiceAccessor,
+        dispose: vi.fn(),
+      })),
+      compatibilityManifest: serverInfo.compatibility!,
+      sourceServerArtifactPolicy: "release-versioned",
+      resolveRelease: vi.fn(async () => createRelease("3.8.0")),
+    });
+
+    await manager.connect({ profile: sshProfile, target: sshTarget });
+
+    expect(adapter.installOrUpdate).not.toHaveBeenCalled();
+    expect(adapter.ensureDaemon).toHaveBeenCalledOnce();
+    expect(manager.getStateByProfile(profileId)).toMatchObject({
+      state: "online",
+      updateAvailability: "available",
+      upgradeTarget: "server",
     });
   });
 
@@ -1695,6 +1783,7 @@ describe("SourceServerConnectionManager", () => {
       installed: true,
       installedVersion: "3.8.0",
       installedArchiveSha256: "b".repeat(64),
+      installedBuild: olderBuild,
     });
     const guard = Object.assign(new Error("Running tasks require --force for update"), {
       code: "source-server-update-running-tasks" as const,
@@ -1712,7 +1801,9 @@ describe("SourceServerConnectionManager", () => {
       createAdapter: () => adapter,
       connectServer: vi.fn(),
       compatibilityManifest: serverInfo.compatibility!,
-      resolveRelease: vi.fn(async () => createRelease("3.8.0")),
+      resolveRelease: vi.fn(async () =>
+        createRelease("3.8.0", "/tmp/codez-server-linux-x64.tar.gz", newerBuild),
+      ),
     });
 
     const results = await manager.reconnectOnStartup([

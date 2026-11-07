@@ -89,6 +89,8 @@ describe(`${MARKER}: 版本兼容策略`, () => {
         "controller-required",
         "controller-downgrade",
         "downgraded-confirm",
+        "same-version-older-local",
+        "same-version-newer-local",
       ].includes(scenario)
     )
       throw new Error("未知兼容场景");
@@ -115,18 +117,42 @@ describe(`${MARKER}: 版本兼容策略`, () => {
     // 远端比 Desktop 新：只提示升级 Desktop，或由用户显式切回 Desktop 版本。
     const controllerNewer =
       scenario === "controller-required" || scenario === "controller-downgrade";
+    const sameVersionBuild =
+      scenario === "same-version-older-local" || scenario === "same-version-newer-local";
     const requiredOld =
       (scenario.endsWith("required") && !controllerNewer) || scenario === "downgraded-confirm";
     // 固定的“新版本”随仓库升级变成同版本，根本不会出现 optional 提示；从实际首装版本构造关系。
     const installedVersion = String(before.version).match(/^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/u);
     if (!installedVersion) throw new Error(`无法构造版本边界: ${String(before.version)}`);
     const nextVersion = `${installedVersion[1]}.${Number(installedVersion[2]) + 1}.0`;
-    const version = requiredOld ? "3.14.0" : nextVersion;
-    const minimum = controllerNewer ? nextVersion : requiredOld ? "3.14.0" : String(before.version);
+    const version = sameVersionBuild
+      ? String(before.version)
+      : requiredOld
+        ? "3.14.0"
+        : nextVersion;
+    const minimum = sameVersionBuild
+      ? String(before.version)
+      : controllerNewer
+        ? nextVersion
+        : requiredOld
+          ? "3.14.0"
+          : String(before.version);
+    const build = sameVersionBuild
+      ? (before.build as { commitSha: string; commitTimestamp: number } | undefined)
+      : undefined;
+    if (sameVersionBuild && !build) throw new Error("本轮首装缺少 Source Server build identity");
+    const syntheticBuild = build
+      ? {
+          commitSha: (scenario === "same-version-older-local" ? "f" : "1").repeat(40),
+          commitTimestamp:
+            build.commitTimestamp + (scenario === "same-version-older-local" ? 60 : -60),
+        }
+      : undefined;
     const archive = await prepareVersionPolicyArchive({
       installedSha: before.archiveSha256,
       version,
       minimum,
+      build: syntheticBuild,
     });
     const fixtureRoot = `${config.workspacePaths[0]}/.codez-e2e/version-policy`;
     const remoteArchive = `${fixtureRoot}/version.tar.gz`;
@@ -135,7 +161,7 @@ describe(`${MARKER}: 版本兼容策略`, () => {
     // 构造旧远端属于降级，CLI 要求显式授权；授权后会写降级标记。
     const installed = await runSSHCommand(
       config,
-      `"$HOME/.codez/server/bin/codez" update --from-archive '${remoteArchive}' --force${requiredOld ? " --allow-downgrade" : ""} --json`,
+      `"$HOME/.codez/server/bin/codez" update --from-archive '${remoteArchive}' --force${requiredOld || scenario === "same-version-newer-local" ? " --allow-downgrade" : ""} --json`,
       { timeoutMs: 120_000 },
     );
     facts.syntheticInstallResult = {
@@ -150,7 +176,15 @@ describe(`${MARKER}: 版本兼容策略`, () => {
       (await runSSHCommand(config, 'cat "$HOME/.codez/server/current.json"')).stdout,
     );
     expect(synthetic.version).toBe(version);
-    facts.syntheticVersion = { version, minimum, archiveSha256: synthetic.archiveSha256 };
+    facts.syntheticVersion = {
+      version,
+      minimum,
+      archiveSha256: synthetic.archiveSha256,
+      build: synthetic.build,
+    };
+    const syntheticStatus = JSON.parse(
+      (await runSSHCommand(config, 'cat "$HOME/.codez/server/run/status.json"')).stdout,
+    );
     const readDowngradeMarker = async () => {
       const marker = await runSSHCommand(config, 'cat "$HOME/.codez/server/downgrade.json"');
       return marker.code === 0
@@ -163,7 +197,7 @@ describe(`${MARKER}: 版本兼容策略`, () => {
         releaseId: synthetic.releaseId,
         fromVersion: before.version,
       });
-    } else if (requiredOld) {
+    } else if (requiredOld || scenario === "same-version-newer-local") {
       // 其他旧版本场景代表从未升级过的远端，不能带降级标记，否则向导不会自动更新。
       expect((await runSSHCommand(config, 'rm -f "$HOME/.codez/server/downgrade.json"')).code).toBe(
         0,
@@ -335,6 +369,24 @@ describe(`${MARKER}: 版本兼容策略`, () => {
       );
       // 当前构建已是 3.15.1；升级目标应回到本轮真实首装版本，不能硬编码历史补丁号。
       expect(current.version).toBe(scenario === "optional" ? version : before.version);
+      if (scenario === "same-version-older-local") {
+        // 旧 Desktop 复用新远端：release 与 Core PID 都必须不变，证明没有倒刷和重启。
+        expect(current.archiveSha256).toBe(synthetic.archiveSha256);
+        expect(current.build).toEqual(synthetic.build);
+        const status = JSON.parse(
+          (await runSSHCommand(config, 'cat "$HOME/.codez/server/run/status.json"')).stdout,
+        );
+        expect(status.pid).toBe(syntheticStatus.pid);
+        expect(await $('[data-testid="ssh-dialog"]').isExisting()).toBe(false);
+        facts.reusedNewerRemote = {
+          archiveSha256: current.archiveSha256,
+          corePid: status.pid,
+        };
+      } else if (scenario === "same-version-newer-local") {
+        expect(current.archiveSha256).toBe(before.archiveSha256);
+        expect(current.build).toEqual(before.build);
+        facts.updatedOlderRemote = { archiveSha256: current.archiveSha256, build: current.build };
+      }
       const marker = await readDowngradeMarker();
       if (scenario === "controller-downgrade") {
         // 切回本机版本后标记指向当前 release，并记录被替换的新版本。

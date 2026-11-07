@@ -9,6 +9,7 @@ import { ReleaseManager } from "./releaseManager.js";
 import { prepareOnlineUpdate } from "./updatePreparation.js";
 import {
   compareCompatibilityVersions,
+  compareSourceServerBuildDirection,
   SOURCE_SERVER_DOWNGRADE_UNCONFIRMED_ERROR_CODE,
   SOURCE_SERVER_UPDATE_RUNNING_TASKS_ERROR_CODE,
   type SourceServerInstallProgress,
@@ -65,9 +66,17 @@ function readDowngradedFromVersion(
 ): string | undefined {
   if (!previous) return undefined;
   try {
-    return compareCompatibilityVersions(target.version, previous.version) < 0
-      ? previous.version
-      : undefined;
+    if (compareCompatibilityVersions(target.version, previous.version) < 0) return previous.version;
+    // fork 的版本号可跨多个 commit 保持不变。相同版本但目标 commit 较旧同样是降级，
+    // 不能因 semver 相等就绕过确认；方向未知时由 Host 禁止自动更新，CLI 不猜新旧。
+    if (
+      target.version === previous.version &&
+      target.archiveSha256 !== previous.archiveSha256 &&
+      compareSourceServerBuildDirection(target.build, previous.build) === "older"
+    ) {
+      return previous.version;
+    }
+    return undefined;
   } catch {
     return undefined;
   }

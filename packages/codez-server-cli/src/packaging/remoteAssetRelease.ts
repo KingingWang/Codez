@@ -1,16 +1,36 @@
 import { createHash, randomUUID } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { createReadStream } from "node:fs";
 import { access, copyFile, mkdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   SOURCE_SERVER_RELEASE_DESCRIPTOR_FILE_NAME,
   SOURCE_SERVER_RELEASE_TARGETS,
+  type SourceServerBuildIdentity,
+  sourceServerBuildIdentitySchema,
   sourceServerReleaseDescriptorSchema,
   type SourceServerReleaseTarget,
 } from "@codez/shared";
 
 export { SOURCE_SERVER_RELEASE_DESCRIPTOR_FILE_NAME };
 export const SOURCE_SERVER_REMOTE_RELEASE_TARGETS = SOURCE_SERVER_RELEASE_TARGETS;
+
+/** CI 各 job 共用 commit 身份；显式 env 用于一次 staging 内把同一身份传给多个 target。 */
+export function resolveSourceServerBuildIdentity(repoRoot: string): SourceServerBuildIdentity {
+  const embedded = process.env.CODEZ_SOURCE_SERVER_BUILD?.trim();
+  if (embedded) return sourceServerBuildIdentitySchema.parse(JSON.parse(embedded));
+  const output = execFileSync("git", ["show", "-s", "--format=%H %ct", "HEAD"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const match = output.trim().match(/^([0-9a-f]{40}) ([1-9][0-9]*)$/iu);
+  if (!match) throw new Error("Unable to resolve Source Server commit identity");
+  return sourceServerBuildIdentitySchema.parse({
+    commitSha: match[1],
+    commitTimestamp: Number(match[2]),
+  });
+}
 
 export async function beginSourceServerRemoteReleaseGeneration(options: {
   versionReleaseDir: string;
@@ -46,6 +66,7 @@ export async function collectSourceServerRemoteReleaseArchives(options: {
   distReleaseDir: string;
   versionReleaseDir: string;
   version: string;
+  build: SourceServerBuildIdentity;
   targets?: readonly SourceServerReleaseTarget[];
 }): Promise<string[]> {
   await beginSourceServerRemoteReleaseGeneration({
@@ -84,6 +105,7 @@ export async function collectSourceServerRemoteReleaseArchives(options: {
   const descriptor = sourceServerReleaseDescriptorSchema.parse({
     schemaVersion: 1,
     version: options.version,
+    build: options.build,
     archives,
   });
   // Bug 原因：只按 version/fileName 发布 archive 时，同版本多次构建无法区分内容，
