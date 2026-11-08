@@ -1,5 +1,4 @@
 import { codexRequestSchema, type CodexRequest } from "@codez/shared";
-import { resolve } from "node:path";
 import type { BridgeControlContext, CodexRpcPort } from "./contract.js";
 import { requestCoalescedRead } from "./control-common.js";
 import { sameExecutionPath } from "./execution-path.js";
@@ -7,6 +6,7 @@ import { array, object } from "./json.js";
 import {
   OFFICIAL,
   ensureOfficialRegistered,
+  refreshOfficialPlugins,
   trustOfficialPluginHooks,
 } from "./control-official-plugins.js";
 
@@ -84,9 +84,20 @@ export async function scopedNativeRequest(
     ["plugin/read", "plugin/install"].includes(request.method) &&
     typeof params.marketplacePath === "string"
   ) {
+    const requestedMarketplacePath = params.marketplacePath;
     const response = object(await rpc.request("plugin/list", { cwds: [cwd] }));
     if (
-      !array(response.marketplaces).some((entry) => object(entry).path === params.marketplacePath)
+      !(
+        await Promise.all(
+          array(response.marketplaces).map(async (entry) => {
+            const marketplacePath = object(entry).path;
+            return (
+              typeof marketplacePath === "string" &&
+              (await sameExecutionPath(marketplacePath, requestedMarketplacePath))
+            );
+          }),
+        )
+      ).some((same) => same)
     )
       mismatch();
   }
@@ -133,7 +144,7 @@ export async function handleCodexNativeRequest(
     if (!context.officialPlugins)
       throw Object.assign(new Error("Official catalog is not available"), { code: -32000 });
     try {
-      await context.officialPlugins.refresh();
+      await refreshOfficialPlugins(context);
     } catch {
       throw Object.assign(
         new Error("Official ZCode catalog refresh failed verification; old catalog retained"),
@@ -150,7 +161,7 @@ export async function handleCodexNativeRequest(
     request.method === "plugin/install" &&
     context.officialPlugins &&
     typeof requestParams.marketplacePath === "string" &&
-    resolve(requestParams.marketplacePath) === resolve(context.officialPlugins.path)
+    (await sameExecutionPath(requestParams.marketplacePath, context.officialPlugins.path))
   ) {
     // 与商店安装路径一致：官方插件原生安装后补齐钩子信任；失败保持未信任，不回滚安装。
     await trustOfficialPluginHooks(context, `${String(requestParams.pluginName)}@${OFFICIAL}`);
