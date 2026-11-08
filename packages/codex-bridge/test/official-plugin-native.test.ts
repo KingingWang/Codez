@@ -249,6 +249,11 @@ async function runScenario(options: {
     env: childEnv(options.codexHome),
     requestTimeoutMs: 20_000,
   });
+  const hookEvents: unknown[] = [];
+  const unsubscribeHookEvents = rpc.onNotification((event) => {
+    if (event.method === "hook/started" || event.method === "hook/completed")
+      hookEvents.push(event);
+  });
   try {
     await rpc.initialize();
     const started = await rpc.request<{ thread: { id: string } }>("thread/start", {
@@ -312,12 +317,20 @@ async function runScenario(options: {
       unsubscribe();
     }
     for (const event of ["session-start", "user-prompt-submit"]) {
-      const value = JSON.parse(await waitFile(join(options.dataRoot, "hooks", `${event}.json`)));
-      assert.equal(value.cwd, options.cwd);
-      assert.equal(value.projectArgument, ".");
-      assert.equal(value.pluginData, options.dataRoot);
+      try {
+        const value = JSON.parse(await waitFile(join(options.dataRoot, "hooks", `${event}.json`)));
+        assert.equal(value.cwd, options.cwd);
+        assert.equal(value.projectArgument, ".");
+        assert.equal(value.pluginData, options.dataRoot);
+      } catch (error) {
+        throw new Error(
+          `Native hook output missing in ${options.label}: ${JSON.stringify(hookEvents)}`,
+          { cause: error },
+        );
+      }
     }
   } finally {
+    unsubscribeHookEvents();
     await rpc.close();
   }
 }
