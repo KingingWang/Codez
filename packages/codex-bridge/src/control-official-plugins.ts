@@ -7,6 +7,7 @@ import type { BridgeControlContext } from "./contract.js";
 import type { OfficialPluginMarketplace } from "./official-plugin-marketplace.js";
 import { ControlError, checkWorkspace, input, unsupported } from "./control-common.js";
 import { marketplaceSummary, readPluginCatalog } from "./control-plugin-data.js";
+import { sameExecutionPath } from "./execution-path.js";
 
 export const OFFICIAL = CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID;
 export type OfficialSnapshot = Awaited<ReturnType<OfficialPluginMarketplace["refresh"]>>;
@@ -72,7 +73,8 @@ export async function registerOfficial(
   const catalog = await readPluginCatalog(context);
   const existing = catalog.marketplaces.find((market) => market.name === OFFICIAL);
   if (existing) {
-    if (!existing.path || resolve(existing.path) !== resolve(snapshot.path))
+    // Codex 在 macOS/Windows 可能返回同一文件的物理路径别名，不能按字符串判断市场来源。
+    if (!existing.path || !(await sameExecutionPath(existing.path, snapshot.path)))
       failure(method, "Official marketplace name is already owned by another source");
     return;
   }
@@ -91,7 +93,7 @@ export async function registerOfficial(
     failure(method, "Codex registered a different marketplace");
   const after = await readPluginCatalog(context);
   const registered = after.marketplaces.find((market) => market.name === OFFICIAL);
-  if (!registered?.path || resolve(registered.path) !== resolve(snapshot.path))
+  if (!registered?.path || !(await sameExecutionPath(registered.path, snapshot.path)))
     failure(method, "Codex did not confirm the official marketplace source");
 }
 
