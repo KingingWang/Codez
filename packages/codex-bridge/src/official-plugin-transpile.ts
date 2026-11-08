@@ -425,7 +425,12 @@ function adaptMcpServers(
       delete container[name];
       continue;
     }
-    const transport = server.type ?? (server.command ? "stdio" : "http");
+    let transport = server.type ?? (server.command ? "stdio" : "http");
+    if (transport === "streamable-http") {
+      // ZCode 发布 streamable-http；当前 Codex canonical HTTP schema 仍写作 http。
+      transport = "http";
+      server.type = "http";
+    }
     // Bug 根因：此前除 SSE/stdio 外都会落入 HTTP 分支，未知 transport 只要带 url 就被保留。
     // 修复依据：spec 要求封闭支持集，未知 transport 必须 drop + warning，不能被误判为 HTTP。
     if (!SUPPORTED_TRANSPORTS.has(transport)) {
