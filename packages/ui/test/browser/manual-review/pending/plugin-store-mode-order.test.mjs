@@ -165,6 +165,76 @@ for (const [width, locale, theme] of [
   [1200, "en-US", "light"],
   [390, "zh-CN", "dark"],
 ]) {
+  test(`PLUGIN-COMPATIBILITY ${width}/${locale}/${theme}`, async () => {
+    const page = await browser.newPage({ viewport: { width, height: 900 } });
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    try {
+      await page.goto(`${origin}fixture?compatibility=1&locale=${locale}&theme=${theme}`);
+      const incompatible = page.locator(
+        `[data-testid="plugin-store-card"][data-plugin-id="official-incompatible@${official}"]`,
+      );
+      await incompatible.waitFor();
+      assert.equal(
+        await incompatible
+          .getByText(
+            /This official plugin is not yet available in Codex|这个官方插件暂不支持 Codex/,
+          )
+          .count(),
+        1,
+      );
+      assert.equal(await incompatible.getByTestId("plugin-store-install").isDisabled(), true);
+
+      const warning = page.locator(
+        `[data-testid="plugin-store-card"][data-plugin-id="official-warning@${official}"]`,
+      );
+      await warning.waitFor();
+      assert.equal(
+        await warning
+          .getByText(/Some features are unavailable in Codex|部分功能在 Codex 中不可用/)
+          .count(),
+        1,
+      );
+      assert.equal(await warning.getByTestId("plugin-store-install").isDisabled(), false);
+
+      await incompatible.click();
+      const incompatibleDetail = page.getByTestId("plugin-store-detail");
+      await incompatibleDetail.waitFor();
+      assert.equal(await incompatibleDetail.getByTestId("plugin-store-install").isDisabled(), true);
+      const prompt = incompatibleDetail.getByTestId("plugin-store-example-prompt");
+      await prompt.click({ force: true });
+      assert.equal(await page.getByTestId("plugin-store-detail").count(), 1);
+      assert.match(await page.getByTestId("last-action").textContent(), /^detail$/);
+      await page.getByTestId("back-to-list").click();
+      assert.match(await page.getByTestId("last-action").textContent(), /^detail$/);
+
+      await warning.click();
+      const warningDetail = page.getByTestId("plugin-store-detail");
+      await warningDetail.waitFor();
+      assert.equal(
+        await warningDetail
+          .getByText(/Some features are unavailable in Codex|部分功能在 Codex 中不可用/)
+          .count(),
+        1,
+      );
+      assert.equal(await warningDetail.getByTestId("plugin-store-install").isDisabled(), false);
+      await warningDetail.getByTestId("plugin-store-install").click();
+      assert.equal(await page.getByTestId("last-action").textContent(), "install");
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+        true,
+      );
+      assert.deepEqual(errors, []);
+    } finally {
+      await page.close();
+    }
+  });
+}
+
+for (const [width, locale, theme] of [
+  [1200, "en-US", "light"],
+  [390, "zh-CN", "dark"],
+]) {
   test(`PSO-01/04/06/07/09 ${width}/${locale}/${theme}`, async () => {
     const page = await browser.newPage({ viewport: { width, height: 900 } });
     const errors = [];
@@ -178,7 +248,7 @@ for (const [width, locale, theme] of [
     });
     await page.route("**/order", async (route) => {
       requests += 1;
-      if (requests === 1) await gate;
+      await gate;
       await route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
     });
     const cards = (scope) =>

@@ -20,7 +20,10 @@ export interface CodexServerRequest extends CodexNotification {
 
 export interface CodexProcessOptions {
   executable: string;
+  /** Physical process cwd; `main.ts` is the sole owner of realpath resolution. */
   cwd: string;
+  /** Host routing identity; blank or omitted falls back to the physical cwd. */
+  workspaceIdentity?: string;
   env?: NodeJS.ProcessEnv;
   /**
    * 开启时给 app-server argv 追加 `-c tools.update_plan.enabled=true`。

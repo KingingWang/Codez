@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -20,6 +20,23 @@ function skillsPluginFiles(name: string, version: string): Record<string, string
   return {
     [`${name}/.claude-plugin/plugin.json`]: JSON.stringify({ name, version }),
     [`${name}/skills/demo/SKILL.md`]: "---\nname: demo\ndescription: demo\n---\n",
+  };
+}
+
+function stdioPluginFiles(name: string, version: string): Record<string, string> {
+  return {
+    [`${name}/.claude-plugin/plugin.json`]: JSON.stringify({ name, version }),
+    [`${name}/skills/demo/SKILL.md`]: "---\nname: demo\ndescription: demo\n---\n",
+    [`${name}/.mcp.json`]: JSON.stringify({
+      mcpServers: {
+        [name]: {
+          type: "stdio",
+          command: "node",
+          args: ["server.js"],
+          env: { ZCODE_WORKSPACE_ROOT: "${ZCODE_PROJECT_DIR}" },
+        },
+      },
+    }),
   };
 }
 
@@ -52,7 +69,12 @@ function fakeFetcher(
     new Map(
       plugins.map((plugin) => [
         plugin.name,
-        buildZip(Object.entries(plugin.files).map(([name, content]) => ({ name, content }))),
+        buildZip(
+          Object.entries(plugin.files).map(([name, content]) => ({
+            name,
+            content,
+          })),
+        ),
       ]),
     );
   const catalog = {
@@ -91,6 +113,15 @@ async function baseDir(): Promise<string> {
   return await mkdtemp(join(tmpdir(), "official-marketplace-test-"));
 }
 
+async function marketplaceBase(): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), "official-marketplace-data-"));
+  const base = join(root, "generated");
+  const codexHome = join(root, "codex-home");
+  await mkdir(base, { recursive: true });
+  await mkdir(codexHome, { recursive: true });
+  return root;
+}
+
 test("refresh materializes, transpiles and loads the official catalog", async () => {
   const dir = await baseDir();
   try {
@@ -98,7 +129,7 @@ test("refresh materializes, transpiles and loads the official catalog", async ()
       {
         name: "github",
         version: "0.1.2",
-        files: skillsPluginFiles("github", "0.1.2"),
+        files: stdioPluginFiles("github", "0.1.2"),
         displayName: "GitHub",
       },
       {
@@ -151,7 +182,11 @@ test("a plugin that cannot be adapted degrades to NOT_AVAILABLE without failing 
   const dir = await baseDir();
   try {
     const plugins: FixturePlugin[] = [
-      { name: "github", version: "0.1.2", files: skillsPluginFiles("github", "0.1.2") },
+      {
+        name: "github",
+        version: "0.1.2",
+        files: stdioPluginFiles("github", "0.1.2"),
+      },
       {
         name: "broken",
         version: "1.0.0",
@@ -170,11 +205,170 @@ test("a plugin that cannot be adapted degrades to NOT_AVAILABLE without failing 
   }
 });
 
+test("stdio MCP 使用稳定 native data root 且同插件跨版本与不同插件隔离", async () => {
+  const root = await marketplaceBase();
+  try {
+    const v1: FixturePlugin[] = [
+      {
+        name: "github",
+        version: "0.1.2",
+        files: stdioPluginFiles("github", "0.1.2"),
+      },
+      {
+        name: "mimosa",
+        version: "1.0.0",
+        files: stdioPluginFiles("mimosa", "1.0.0"),
+      },
+    ];
+    const savedHome = process.env.CODEX_HOME;
+    process.env.CODEX_HOME = join(root, "codex-home");
+    try {
+      const market = new OfficialPluginMarketplace(join(root, "generated"), {
+        fetcher: fakeFetcher(v1).fetcher,
+      });
+      await market.refresh();
+      const githubV1 = JSON.parse(
+        await readFile(join(root, "generated/plugins/github/0.1.2/.mcp.json"), "utf8"),
+      ).mcpServers.github;
+      const mimosa = JSON.parse(
+        await readFile(join(root, "generated/plugins/mimosa/1.0.0/.mcp.json"), "utf8"),
+      ).mcpServers.mimosa;
+      const nativeRoot = join(
+        root,
+        "codex-home",
+        "plugins",
+        "data",
+        "github-codez-plugins-official",
+      );
+      assert.equal(githubV1.env.ZCODE_PLUGIN_DATA, nativeRoot);
+      assert.equal(githubV1.env.CLAUDE_PLUGIN_DATA, nativeRoot);
+      assert.equal(
+        mimosa.env.ZCODE_PLUGIN_DATA,
+        join(root, "codex-home", "plugins", "data", "mimosa-codez-plugins-official"),
+      );
+      assert.equal(
+        mimosa.env.CLAUDE_PLUGIN_DATA,
+        join(root, "codex-home", "plugins", "data", "mimosa-codez-plugins-official"),
+      );
+
+      const v2: FixturePlugin[] = [
+        {
+          name: "github",
+          version: "0.1.3",
+          files: stdioPluginFiles("github", "0.1.3"),
+        },
+      ];
+      const market2 = new OfficialPluginMarketplace(join(root, "generated"), {
+        fetcher: fakeFetcher(v2).fetcher,
+      });
+      await market2.refresh({ installedVersions: async () => [] });
+      const githubV2 = JSON.parse(
+        await readFile(join(root, "generated/plugins/github/0.1.3/.mcp.json"), "utf8"),
+      ).mcpServers.github;
+      assert.equal(githubV2.env.ZCODE_PLUGIN_DATA, githubV1.env.ZCODE_PLUGIN_DATA);
+    } finally {
+      if (savedHome === undefined) delete process.env.CODEX_HOME;
+      else process.env.CODEX_HOME = savedHome;
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("纯 Skill 插件不创建 native data root 且数据目录不可创建时仍可用", async () => {
+  const root = await marketplaceBase();
+  try {
+    const savedHome = process.env.CODEX_HOME;
+    process.env.CODEX_HOME = join(root, "codex-home");
+    try {
+      await mkdir(join(root, "codex-home", "plugins"), { recursive: true });
+      await writeFile(join(root, "codex-home", "plugins", "data"), "not a directory", "utf8");
+      const market = new OfficialPluginMarketplace(join(root, "generated"), {
+        fetcher: fakeFetcher([
+          {
+            name: "github",
+            version: "0.1.2",
+            files: skillsPluginFiles("github", "0.1.2"),
+          },
+        ]).fetcher,
+      });
+      const snapshot = await market.refresh();
+      assert.equal(snapshot.catalog.plugins[0]?.policy.installation, "AVAILABLE");
+      assert.equal(snapshot.catalog.plugins[0]?.warnings.length, 0);
+      const nativeRoot = join(
+        root,
+        "codex-home",
+        "plugins",
+        "data",
+        "github-codez-plugins-official",
+      );
+      await assert.rejects(stat(nativeRoot), /ENOTDIR|ENOENT/);
+    } finally {
+      if (savedHome === undefined) delete process.env.CODEX_HOME;
+      else process.env.CODEX_HOME = savedHome;
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("refresh 不创建任何 native data root，父路径不可创建也不影响 availability", async () => {
+  const root = await marketplaceBase();
+  try {
+    const plugins: FixturePlugin[] = [
+      {
+        name: "github",
+        version: "0.1.2",
+        files: stdioPluginFiles("github", "0.1.2"),
+      },
+      {
+        name: "mimosa",
+        version: "1.0.0",
+        files: skillsPluginFiles("mimosa", "1.0.0"),
+      },
+    ];
+    const savedHome = process.env.CODEX_HOME;
+    process.env.CODEX_HOME = join(root, "blocked-home", "codex-home");
+    try {
+      await writeFile(join(root, "blocked-home"), "not a directory", "utf8");
+      const market = new OfficialPluginMarketplace(join(root, "generated"), {
+        fetcher: fakeFetcher(plugins).fetcher,
+      });
+      const snapshot = await market.refresh();
+      assert.equal(
+        snapshot.catalog.plugins.find((plugin) => plugin.name === "github")?.policy.installation,
+        "AVAILABLE",
+      );
+      assert.equal(
+        snapshot.catalog.plugins.find((plugin) => plugin.name === "mimosa")?.policy.installation,
+        "AVAILABLE",
+      );
+      assert.equal(
+        snapshot.catalog.plugins.every((plugin) => plugin.warnings.length === 0),
+        true,
+      );
+      const codexHome = join(root, "blocked-home", "codex-home");
+      await assert.rejects(stat(codexHome), /ENOENT|ENOTDIR/);
+      await assert.rejects(stat(join(codexHome, "plugins")), /ENOENT|ENOTDIR/);
+      await assert.rejects(stat(join(codexHome, "plugins", "data")), /ENOENT|ENOTDIR/);
+    } finally {
+      if (savedHome === undefined) delete process.env.CODEX_HOME;
+      else process.env.CODEX_HOME = savedHome;
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("integrity failures reject the whole refresh and preserve the last snapshot", async () => {
   const dir = await baseDir();
   try {
     const plugins: FixturePlugin[] = [
-      { name: "github", version: "0.1.2", files: skillsPluginFiles("github", "0.1.2") },
+      {
+        name: "github",
+        version: "0.1.2",
+        files: skillsPluginFiles("github", "0.1.2"),
+      },
     ];
     const { fetcher } = fakeFetcher(plugins);
     const market = new OfficialPluginMarketplace(dir, { fetcher });
@@ -206,7 +400,9 @@ test("integrity failures reject the whole refresh and preserve the last snapshot
         return buildZip([{ name: "github/.claude-plugin/plugin.json", content: "{}" }]);
       },
     };
-    const tampered = new OfficialPluginMarketplace(dir, { fetcher: tamperedFetcher });
+    const tampered = new OfficialPluginMarketplace(dir, {
+      fetcher: tamperedFetcher,
+    });
     await assert.rejects(tampered.refresh(), /SHA-256/);
     const loaded = await tampered.load();
     assert.equal(loaded?.catalog.plugins[0]?.version, "0.1.2");
@@ -258,9 +454,15 @@ test("untrusted catalog identity and duplicate names are rejected", async () => 
   const dir = await baseDir();
   try {
     const plugins: FixturePlugin[] = [
-      { name: "github", version: "0.1.2", files: skillsPluginFiles("github", "0.1.2") },
+      {
+        name: "github",
+        version: "0.1.2",
+        files: skillsPluginFiles("github", "0.1.2"),
+      },
     ];
-    const { fetcher } = fakeFetcher(plugins, { catalogName: "personal-market" });
+    const { fetcher } = fakeFetcher(plugins, {
+      catalogName: "personal-market",
+    });
     const market = new OfficialPluginMarketplace(dir, { fetcher });
     await assert.rejects(market.refresh(), /identity/);
   } finally {
@@ -272,16 +474,28 @@ test("refresh prunes old materialized versions but keeps installed ones", async 
   const dir = await baseDir();
   try {
     const v1: FixturePlugin[] = [
-      { name: "github", version: "0.1.2", files: skillsPluginFiles("github", "0.1.2") },
+      {
+        name: "github",
+        version: "0.1.2",
+        files: skillsPluginFiles("github", "0.1.2"),
+      },
     ];
-    const market = new OfficialPluginMarketplace(dir, { fetcher: fakeFetcher(v1).fetcher });
+    const market = new OfficialPluginMarketplace(dir, {
+      fetcher: fakeFetcher(v1).fetcher,
+    });
     await market.refresh();
     await stat(join(dir, "plugins/github/0.1.2"));
 
     const v2: FixturePlugin[] = [
-      { name: "github", version: "0.1.3", files: skillsPluginFiles("github", "0.1.3") },
+      {
+        name: "github",
+        version: "0.1.3",
+        files: skillsPluginFiles("github", "0.1.3"),
+      },
     ];
-    const market2 = new OfficialPluginMarketplace(dir, { fetcher: fakeFetcher(v2).fetcher });
+    const market2 = new OfficialPluginMarketplace(dir, {
+      fetcher: fakeFetcher(v2).fetcher,
+    });
     // 已安装 0.1.2 → 保留；未安装 → 回收。
     await market2.refresh({
       installedVersions: async () => [{ name: "github", version: "0.1.2" }],
@@ -289,7 +503,9 @@ test("refresh prunes old materialized versions but keeps installed ones", async 
     await stat(join(dir, "plugins/github/0.1.2"));
     await stat(join(dir, "plugins/github/0.1.3"));
 
-    const market3 = new OfficialPluginMarketplace(dir, { fetcher: fakeFetcher(v2).fetcher });
+    const market3 = new OfficialPluginMarketplace(dir, {
+      fetcher: fakeFetcher(v2).fetcher,
+    });
     await market3.refresh({ installedVersions: async () => [] });
     await assert.rejects(stat(join(dir, "plugins/github/0.1.2")), /ENOENT/);
     await stat(join(dir, "plugins/github/0.1.3"));

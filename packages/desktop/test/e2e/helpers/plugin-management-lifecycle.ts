@@ -22,7 +22,6 @@ import {
   getE2EAppDataPaths,
   setCurrentElectronRendererContentSize,
   setInputValueByTestIdDom,
-  waitForDefaultWorkspaceReady,
   waitForTestIdByDom,
   waitForWorkspaceApp,
 } from "./desktop-app.js";
@@ -45,6 +44,12 @@ export const PLUGIN_LIFECYCLE_EXTRA_ID = `${PLUGIN_LIFECYCLE_EXTRA_NAME}@${PLUGI
 export const PLUGIN_INLINE_NAME = "e2e-inline-lifecycle";
 export const PLUGIN_INLINE_ID = `${PLUGIN_INLINE_NAME}@inline`;
 export const PLUGIN_INLINE_SUBAGENT_NAME = `${PLUGIN_INLINE_NAME}:inline-reviewer`;
+export const PLUGIN_OFFICIAL_MARKETPLACE_ID = "codez-plugins-official";
+export const PLUGIN_OFFICIAL_INCOMPATIBLE_ID = `e2e-official-incompatible@${PLUGIN_OFFICIAL_MARKETPLACE_ID}`;
+export const PLUGIN_OFFICIAL_WARNING_ID = `e2e-official-warning@${PLUGIN_OFFICIAL_MARKETPLACE_ID}`;
+const PLUGIN_OFFICIAL_INCOMPATIBLE_REASON =
+  "E2E official plugin requires components unsupported by Codex";
+const PLUGIN_OFFICIAL_WARNING = "E2E official plugin capability warning";
 
 export interface PluginLifecycleFixture {
   marketplaceRoot: string;
@@ -116,6 +121,101 @@ export async function createPluginLifecycleFixture(
   return { marketplaceRoot, pluginRoot, version };
 }
 
+/**
+ * Seed a verified-shape official marketplace cache without network access.
+ * The incompatible entry deliberately has no payload: it stays visible through
+ * the bridge projection but the control plane rejects installation. The warning
+ * entry carries a valid skill plugin so the E2E can prove warnings are non-blocking.
+ */
+export async function seedOfficialCompatibilityCache(): Promise<void> {
+  const marketplaceRoot = join(
+    getE2EAppDataPaths().homeDir,
+    // Codex 桌面产品运行时会把数据根隔离为 .codez-codex；bridge 官方市场
+    // 缓存也由 desktopRuntimeEnv 注入到该目录下，而不是旧 storage 的 .codez。
+    ".codez-codex",
+    "bridge",
+    "official-codex-marketplace",
+  );
+  const warningPluginRoot = join(marketplaceRoot, "plugins", "e2e-official-warning", "1.0.0");
+  await writeJson(join(warningPluginRoot, ".claude-plugin", "plugin.json"), {
+    name: "e2e-official-warning",
+    version: "1.0.0",
+    skills: "./skills",
+  });
+  await writeText(
+    join(warningPluginRoot, "skills", "official-compatibility", "SKILL.md"),
+    [
+      "---",
+      "name: official-compatibility",
+      "description: E2E official compatibility warning marker",
+      "---",
+      "",
+      "# Official compatibility",
+      "",
+      "E2E_OFFICIAL_COMPATIBILITY_WARNING",
+    ].join("\n"),
+  );
+  await writeJson(join(marketplaceRoot, ".agents", "plugins", "marketplace.json"), {
+    name: "codez-plugins-official",
+    plugins: [
+      {
+        name: "e2e-official-incompatible",
+        source: { source: "local", path: "./plugins/e2e-official-incompatible/1.0.0" },
+        policy: { installation: "NOT_AVAILABLE" },
+        description: "E2E official incompatible fixture",
+      },
+      {
+        name: "e2e-official-warning",
+        source: { source: "local", path: "./plugins/e2e-official-warning/1.0.0" },
+        policy: { installation: "AVAILABLE" },
+        description: "E2E official warning fixture",
+      },
+    ],
+  });
+  await writeJson(join(marketplaceRoot, ".agents", "plugins", "marketplace.codez.json"), {
+    catalogUpdatedAt: "2026-01-01T00:00:00.000Z",
+    plugins: {
+      "e2e-official-incompatible": {
+        version: "1.0.0",
+        installation: "NOT_AVAILABLE",
+        unavailableReason: PLUGIN_OFFICIAL_INCOMPATIBLE_REASON,
+        warnings: [],
+        requiresOfficialAuth: false,
+        requiresPaidPlan: false,
+        hasHooks: false,
+      },
+      "e2e-official-warning": {
+        version: "1.0.0",
+        installation: "AVAILABLE",
+        warnings: [PLUGIN_OFFICIAL_WARNING],
+        requiresOfficialAuth: false,
+        requiresPaidPlan: false,
+        hasHooks: false,
+      },
+    },
+  });
+}
+
+export async function attemptOfficialIncompatibleInstall(): Promise<{
+  ok: boolean;
+  error?: string;
+}> {
+  const workspacePath = await getCurrentRendererWorkspacePath();
+  // 官方目录投影当前不携带 example prompt；负断言直接走同一个受控安装入口，
+  // 证明 NOT_AVAILABLE 不是仅由 UI disabled 造成的表象。
+  return await callPluginTestAction("installPlugin", {
+    marketplace: PLUGIN_OFFICIAL_MARKETPLACE_ID,
+    pluginName: "e2e-official-incompatible",
+    scope: "user",
+    workspacePath,
+  })
+    .then(() => ({ ok: true }))
+    .catch((error: unknown) => ({
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    }));
+}
+
 export async function updatePluginLifecycleFixture(
   fixture: PluginLifecycleFixture,
   version: string,
@@ -154,6 +254,14 @@ export async function removeLifecyclePluginSource(fixture: PluginLifecycleFixtur
     force: true,
     recursive: true,
   });
+}
+
+export async function getCurrentRendererWorkspacePath(): Promise<string> {
+  const workspacePath = new URL(await browser.getUrl()).searchParams.get("initialWorkspacePath");
+  if (!workspacePath) {
+    throw new Error("Renderer URL did not carry the actual initialWorkspacePath");
+  }
+  return workspacePath;
 }
 
 export async function removeLifecyclePluginPayload(fixture: PluginLifecycleFixture): Promise<void> {
@@ -478,6 +586,7 @@ export async function addLifecycleMarketplaceThroughUi(
   fixture: PluginLifecycleFixture,
 ): Promise<void> {
   await addMarketplaceSourceThroughUi(fixture.marketplaceRoot);
+  const workspacePath = await getCurrentRendererWorkspacePath();
   await waitUntilPluginOverview(
     (overview) =>
       overview.marketplaces.some(
@@ -485,11 +594,18 @@ export async function addLifecycleMarketplaceThroughUi(
       ),
     "Lifecycle marketplace was not persisted after the UI submission",
     60000,
+    workspacePath,
   );
-  await browser.waitUntil(async () => !(await hasPluginControl("plugin-store-add-source-dialog")), {
-    timeout: 60000,
-    timeoutMsg: "Lifecycle marketplace completed but the source dialog remained open",
-  });
+  await browser.waitUntil(
+    async () => {
+      const dialog = await browser.$('[data-testid="plugin-store-add-source-dialog"]');
+      return !(await dialog.isExisting()) || (await dialog.getAttribute("data-state")) === "closed";
+    },
+    {
+      timeout: 60000,
+      timeoutMsg: "Lifecycle marketplace completed but the source dialog remained open",
+    },
+  );
 }
 
 export async function waitForPluginCard(pluginId: string, timeout = 30000): Promise<void> {
@@ -499,15 +615,20 @@ export async function waitForPluginCard(pluginId: string, timeout = 30000): Prom
       marketplaceSeparator >= 0 ? pluginId.slice(marketplaceSeparator + 1) : undefined;
     const groupKey = marketplaceId ? `marketplace:${marketplaceId}` : undefined;
     if (groupKey) {
-      await browser.waitUntil(
-        async () =>
-          (await hasPluginControl("plugin-store-card", { pluginId })) ||
-          (await hasPluginControl("plugin-store-group-toggle", { groupKey })),
-        {
-          timeout,
-          timeoutMsg: `Plugin marketplace group did not render: ${groupKey}`,
-        },
-      );
+      try {
+        await browser.waitUntil(
+          async () =>
+            (await hasPluginControl("plugin-store-card", { pluginId })) ||
+            (await hasPluginControl("plugin-store-group-toggle", { groupKey })),
+          {
+            timeout,
+            timeoutMsg: `Plugin marketplace group did not render: ${groupKey}`,
+          },
+        );
+      } catch (error) {
+        if (await hasPluginControl("plugin-store-card", { pluginId })) return;
+        await throwPluginCardEvidence(pluginId, error);
+      }
       if (
         !(await hasPluginControl("plugin-store-card", { pluginId })) &&
         (await hasPluginControl("plugin-store-group-toggle", { groupKey }))
@@ -517,7 +638,132 @@ export async function waitForPluginCard(pluginId: string, timeout = 30000): Prom
       }
     }
   }
-  await waitForPluginControl("plugin-store-card", { pluginId }, timeout);
+  try {
+    await waitForPluginControl("plugin-store-card", { pluginId }, timeout);
+  } catch (error) {
+    await throwPluginCardEvidence(pluginId, error);
+  }
+}
+
+async function throwPluginCardEvidence(pluginId: string, cause: unknown): Promise<never> {
+  const workspacePath = await getCurrentRendererWorkspacePath().catch(() => null);
+  const overview = workspacePath
+    ? await getPluginOverview(workspacePath).catch((overviewError: unknown) =>
+        String(overviewError),
+      )
+    : null;
+  const evidence = await browser.execute(
+    (targetPluginId: string, currentUrl: string, directOverview: unknown) => {
+      const root = document.querySelector<HTMLElement>('[data-testid="plugin-store-root"]');
+      const fiberKey = root
+        ? Object.keys(root).find((key) => key.startsWith("__reactFiber$"))
+        : undefined;
+      const pageFiber = root?.[fiberKey as keyof HTMLElement & string] as unknown as
+        | {
+            return?: unknown;
+          }
+        | undefined;
+      const stores: unknown[] = [];
+      const pluginMatches: unknown[] = [];
+      const seen = new Set<object>();
+      const queue: Array<{ value: unknown; depth: number }> = [{ value: pageFiber, depth: 0 }];
+      while (queue.length > 0 && seen.size < 12000) {
+        const entry = queue.shift();
+        const value = entry?.value;
+        const depth = entry?.depth ?? 0;
+        if (!value || typeof value !== "object" || seen.has(value)) continue;
+        if (value instanceof Node) continue;
+        seen.add(value);
+        const record = value as Record<string, unknown>;
+        if (Array.isArray(record.availablePlugins)) {
+          stores.push({
+            authorityKey: record.authorityKey ?? null,
+            availablePluginIds: (record.availablePlugins as Array<{ id?: string }>).map(
+              (plugin) => plugin?.id,
+            ),
+            configScope: record.configScope ?? null,
+            diagnostics: record.diagnostics ?? [],
+            error: record.error ?? null,
+            installedPluginIds: (
+              record.installedPlugins as Array<{ id?: string }> | undefined
+            )?.map((plugin) => plugin?.id),
+            loading: record.loading ?? null,
+            marketplaceIds: (record.marketplaces as Array<{ id?: string }> | undefined)?.map(
+              (marketplace) => marketplace?.id,
+            ),
+            pluginIds: (record.plugins as Array<{ id?: string }> | undefined)?.map(
+              (plugin) => plugin?.id,
+            ),
+            workspaceIdentity: record.workspaceIdentity ?? null,
+            workspacePath: record.workspacePath ?? null,
+          });
+        }
+        if (
+          (typeof record.id === "string" && record.id === targetPluginId) ||
+          (Array.isArray(value) && value.some((item) => item?.id === targetPluginId))
+        ) {
+          pluginMatches.push({
+            id: record.id,
+            installationUnavailableReason: record.installationUnavailableReason ?? null,
+            installed: record.installed ?? null,
+            marketplace: record.marketplace ?? null,
+          });
+        }
+        if (depth >= 10) continue;
+        const enqueue = (child: unknown) => {
+          if (child && typeof child === "object") queue.push({ value: child, depth: depth + 1 });
+        };
+        if (Array.isArray(value)) {
+          for (const child of value.slice(0, 500)) enqueue(child);
+        } else {
+          for (const child of Object.values(record).slice(0, 200)) enqueue(child);
+        }
+      }
+      const input = document.querySelector<HTMLInputElement>('[data-testid="plugin-store-search"]');
+      return {
+        currentUrl,
+        directOverview:
+          directOverview && typeof directOverview === "object"
+            ? {
+                availablePluginIds: (
+                  directOverview as { availablePlugins?: Array<{ id?: string }> }
+                ).availablePlugins?.map((plugin) => plugin?.id),
+                marketplaceIds: (
+                  directOverview as { marketplaces?: Array<{ id?: string }> }
+                ).marketplaces?.map((marketplace) => marketplace?.id),
+              }
+            : String(directOverview),
+        dom: {
+          groupToggles: Array.from(
+            document.querySelectorAll('[data-testid="plugin-store-group-toggle"]'),
+          ).map((element) => ({
+            groupKey: (element as HTMLElement).dataset.groupKey,
+            text: element.textContent,
+          })),
+          listText: document.querySelector('[data-testid="plugin-store-list"]')?.textContent,
+          personalPressed: document
+            .querySelector('[data-testid="plugin-store-segment-personal"]')
+            ?.getAttribute("aria-pressed"),
+          query: input?.value ?? null,
+          rootViews: Array.from(document.querySelectorAll('[data-testid="plugin-store-root"]')).map(
+            (element) => ({
+              hidden: element.parentElement?.hidden === true,
+              view: (element as HTMLElement).dataset.view,
+            }),
+          ),
+        },
+        pluginMatches,
+        stores,
+      };
+    },
+    pluginId,
+    await browser.getUrl(),
+    overview,
+  );
+  throw new Error(
+    `Plugin card did not render: ${pluginId}; store/DOM evidence=${JSON.stringify(evidence)}`,
+    { cause },
+  );
 }
 
 export async function openPluginCard(pluginId: string): Promise<void> {
@@ -650,6 +896,11 @@ export async function clickPluginControl(
   try {
     await browser.waitUntil(
       async () => {
+        await browser.execute(() => {
+          for (const animation of document.getAnimations()) {
+            if (animation.effect?.getTiming().iterations !== Infinity) animation.finish();
+          }
+        });
         const elements = await browser.$$(selector);
         if ((await elements.length) === 0) {
           latest = "missing";
@@ -673,6 +924,18 @@ export async function clickPluginControl(
             return true;
           } catch (error) {
             latest = error instanceof Error ? error.message : String(error);
+            if (latest.includes("element click intercepted")) {
+              const closedOverlay = await browser.execute(
+                () =>
+                  document.querySelector('[data-state="closed"][data-slot="dialog-overlay"]') !==
+                  null,
+              );
+              if (closedOverlay) {
+                await browser.execute((target) => target.click(), element);
+                latest = "clicked";
+                return true;
+              }
+            }
           }
         }
         latest = sawDisabled ? "disabled" : sawHidden ? "hidden" : latest;
@@ -789,7 +1052,22 @@ export async function setPluginPresentation(input: {
   width: number;
   height: number;
 }): Promise<void> {
-  await setCurrentElectronRendererContentSize(input.width, input.height);
+  const size = await browser.electron.execute((electron, requested) => {
+    const target = electron.BrowserWindow.getAllWindows().find((window) =>
+      window.webContents.getURL().includes("/renderer/index.html"),
+    );
+    if (!target) throw new Error("Plugin presentation E2E could not find the renderer window");
+    // XWayland 不会把 maximized 窗口的 setContentSize 应用到 viewport；不同本机
+    // 显示器还会钳制窗口尺寸。先退出 maximized，再按 workArea 保留宽/窄两档语义。
+    if (target.isMaximized()) target.unmaximize();
+    if (target.isFullScreen()) target.setFullScreen(false);
+    const workArea = electron.screen.getDisplayMatching(target.getBounds()).workAreaSize;
+    return {
+      height: Math.min(requested.height, workArea.height),
+      width: Math.min(requested.width, workArea.width),
+    };
+  }, input);
+  await setCurrentElectronRendererContentSize(size.width, size.height);
   await browser.executeAsync((next, done: (result?: string) => void) => {
     const actions = (
       window as typeof window & {
@@ -804,7 +1082,12 @@ export async function setPluginPresentation(input: {
     }
     (setLocale as (value: string) => void)(next.locale);
     (setTheme as (value: string) => void)(next.theme);
-    requestAnimationFrame(() => done());
+    // Electron 隐藏窗口可能冻结 rAF/过渡帧。本用例不验证动画，
+    // 直接让有限过渡落到最终状态，避免卡片一直停在透明中间态。
+    for (const animation of document.getAnimations()) {
+      if (animation.effect?.getTiming().iterations !== Infinity) animation.finish();
+    }
+    done();
   }, input);
 }
 
@@ -960,8 +1243,9 @@ export async function waitUntilPluginOverview(
   predicate: (overview: CodezPluginsOverviewResult) => boolean,
   timeoutMsg: string,
   timeout = 30000,
+  workspacePath = DEFAULT_WORKSPACE,
 ): Promise<void> {
-  await browser.waitUntil(async () => predicate(await getPluginOverview()), {
+  await browser.waitUntil(async () => predicate(await getPluginOverview(workspacePath)), {
     timeout,
     timeoutMsg,
   });

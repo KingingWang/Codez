@@ -75,7 +75,24 @@ input.on("line", (line) => {
       setTimeout(() => send({ id, result: params }), params?.delay ?? 0);
       break;
     case "status":
-      send({ id, result: { initializeCount, mutationCount, replies, pid: process.pid } });
+      send({
+        id,
+        result: { initializeCount, mutationCount, replies, pid: process.pid },
+      });
+      break;
+    case "project-env":
+      send({
+        id,
+        result: {
+          cwd: process.cwd(),
+          ZCODE_PROJECT_DIR: process.env.ZCODE_PROJECT_DIR,
+          CLAUDE_PROJECT_DIR: process.env.CLAUDE_PROJECT_DIR,
+          ZCODE_WORKSPACE_ROOT: process.env.ZCODE_WORKSPACE_ROOT,
+          ZCODE_WORKSPACE_IDENTITY: process.env.ZCODE_WORKSPACE_IDENTITY,
+          ZCODE_PLUGIN_DATA: process.env.ZCODE_PLUGIN_DATA,
+          CLAUDE_PLUGIN_DATA: process.env.CLAUDE_PLUGIN_DATA,
+        },
+      });
       break;
     case "mutate":
       mutationCount++;
@@ -89,11 +106,22 @@ input.on("line", (line) => {
     case "hang":
       break;
     case "error":
-      send({ id, error: { code: -32602, message: "invalid params", data: { field: "x" } } });
+      send({
+        id,
+        error: {
+          code: -32602,
+          message: "invalid params",
+          data: { field: "x" },
+        },
+      });
       break;
     case "events":
       send({ method: "item/delta", params: { text: "hello" } });
-      send({ id: "approval-1", method: "item/approval", params: { turnId: "t1" } });
+      send({
+        id: "approval-1",
+        method: "item/approval",
+        params: { turnId: "t1" },
+      });
       send({ id: 42, method: "item/question", params: {} });
       send({ id, result: null });
       break;
