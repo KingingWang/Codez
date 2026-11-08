@@ -13,6 +13,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { z } from "zod";
+import { resolveCodexHomeDir } from "./default-codex-config.js";
 import type { OfficialCatalogFetcher } from "./official-plugin-package.js";
 import {
   DefaultOfficialCatalogFetcher,
@@ -74,6 +75,7 @@ export class OfficialPluginMarketplace {
   readonly #baseDir: string;
   readonly #fetcher: OfficialCatalogFetcher;
   readonly #zcodeBaseUrl: string;
+  readonly #codexHome: string;
   #refreshTail: Promise<unknown> = Promise.resolve();
 
   constructor(
@@ -85,6 +87,9 @@ export class OfficialPluginMarketplace {
     this.#fetcher = options?.fetcher ?? new DefaultOfficialCatalogFetcher();
     // 默认跟随桥进程环境（CODEZ_BASE_URL/CODEZ_ENDPOINT_ORIGIN），与桌面端点解析一致；测试可注入。
     this.#zcodeBaseUrl = options?.zcodeBaseUrl?.trim() || resolveRuntimeCodezEndpointOrigin();
+    // Marketplace 转译必须与当前 app-server 使用同一个实际 Codex home，否则原生安装
+    // 后会按另一个 home 展开插件数据变量。
+    this.#codexHome = resolveCodexHomeDir();
   }
 
   get path() {
@@ -189,6 +194,14 @@ export class OfficialPluginMarketplace {
       const outcomes = await mapBounded(source.plugins, PLUGIN_CONCURRENCY, async (plugin) => {
         const bakedRoot = join(this.#baseDir, "plugins", plugin.name, plugin.version);
         let outcome: Awaited<ReturnType<typeof transpileOfficialPlugin>>;
+        // 只推导路径；实际创建延迟到插件声明 stdio MCP 并被处理时，纯 Skill/HTTP
+        // 不发生 native data 目录 IO。
+        const nativeDataRoot = join(
+          this.#codexHome,
+          "plugins",
+          "data",
+          `${plugin.name}-${OFFICIAL_NATIVE_NAME}`,
+        );
         const zip = await this.#fetcher.fetchBuffer(plugin.source.url);
         verifySha256(zip, plugin.source.sha256);
         const extracted = await extractOfficialPluginZip(
@@ -200,6 +213,7 @@ export class OfficialPluginMarketplace {
             pluginDir: extracted.pluginDir,
             bakedPluginRoot: bakedRoot,
             zcodeBaseUrl: this.#zcodeBaseUrl,
+            nativeDataRoot,
             expectedName: plugin.name,
             expectedVersion: plugin.version,
           });

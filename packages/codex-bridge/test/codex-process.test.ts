@@ -3,7 +3,7 @@ import { once } from "node:events";
 import { chmod, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer, type ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { test, type TestContext } from "node:test";
 import { createCodexProcess } from "../src/codex-process.js";
@@ -58,7 +58,163 @@ async function fixture(
   });
   return { process, trace };
 }
+async function projectEnv(
+  processInstance: CodexProcess,
+): Promise<Record<string, string | undefined>> {
+  await processInstance.initialize();
+  return await processInstance.request<Record<string, string | undefined>>("project-env");
+}
+
+async function startFakeCodex(
+  t: TestContext,
+  options: { cwd: string; workspaceIdentity?: string; env?: NodeJS.ProcessEnv },
+): Promise<{ process: CodexProcess; trace: string }> {
+  const directory = await mkdtemp(join(tmpdir(), "codez project env "));
+  const executable = join(directory, "fake codex");
+  const trace = join(directory, "trace");
+  await copyFile(new URL("./fixtures/fake-codex.mjs", import.meta.url), executable);
+  await chmod(executable, 0o700);
+  const processInstance = createCodexProcess({
+    executable,
+    requestTimeoutMs: 4000,
+    cwd: options.cwd,
+    ...(options.workspaceIdentity !== undefined
+      ? { workspaceIdentity: options.workspaceIdentity }
+      : {}),
+    env: {
+      ...(options.env
+        ? {
+            ...options.env,
+            ZCODE_PROJECT_DIR: options.cwd,
+            CLAUDE_PROJECT_DIR: options.cwd,
+            ZCODE_WORKSPACE_ROOT: options.cwd,
+            ...(options.workspaceIdentity !== undefined
+              ? { ZCODE_WORKSPACE_IDENTITY: options.workspaceIdentity }
+              : {}),
+          }
+        : { PATH: globalThis.process.env.PATH }),
+      PATH: globalThis.process.env.PATH,
+      HOME: directory,
+      CODEX_HOME: directory,
+      FAKE_CODEX_MODE: "normal",
+      FAKE_CODEX_TRACE: trace,
+    },
+  });
+  t.after(async () => {
+    await processInstance.close();
+    await rm(directory, { recursive: true, force: true });
+  });
+  return { process: processInstance, trace };
+}
 const closed = (process: CodexProcess) => new Promise<Error>((resolve) => process.onClose(resolve));
+test("每个 app-server 子进程获得互不污染的 workspace cwd/identity 环境", options, async (t) => {
+  const first = await fixture(t);
+  const sharedCwd = await mkdtemp(join(tmpdir(), "codez shared cwd "));
+  t.after(() => rm(sharedCwd, { recursive: true, force: true }));
+  const stale = {
+    ZCODE_PROJECT_DIR: "/definitely/stale/project",
+    CLAUDE_PROJECT_DIR: "/definitely/stale/project",
+    ZCODE_WORKSPACE_ROOT: "/definitely/stale/project",
+    ZCODE_WORKSPACE_IDENTITY: "stale-identity",
+    ZCODE_PLUGIN_DATA: "/definitely/stale/plugin-data",
+    CLAUDE_PLUGIN_DATA: "/definitely/stale/plugin-data",
+  };
+  // 先把 stale 值放进父环境，证明继承值会被当前连接计算值覆盖。
+  const saved = Object.fromEntries(
+    Object.keys(stale).map((name) => [name, globalThis.process.env[name]]),
+  ) as Record<string, string | undefined>;
+  Object.assign(globalThis.process.env, stale);
+  let parentRestored = false;
+  try {
+    const firstEnv = await projectEnv(first.process);
+    const second = await startFakeCodex(t, {
+      cwd: sharedCwd,
+      workspaceIdentity: "  remote-identity-2  ",
+    });
+    const secondEnv = await projectEnv(second.process);
+    const identityA = await startFakeCodex(t, { cwd: sharedCwd });
+    const identityB = await startFakeCodex(t, {
+      cwd: sharedCwd,
+      workspaceIdentity: "identity-b",
+    });
+    const sameCwdIdentityA = await projectEnv(identityA.process);
+    const sameCwdIdentityB = await projectEnv(identityB.process);
+
+    const savedAfter = Object.fromEntries(
+      Object.keys(stale).map((name) => [name, globalThis.process.env[name]]),
+    );
+    assert.deepEqual(
+      savedAfter,
+      stale,
+      "child env injection must not mutate the parent process environment",
+    );
+    parentRestored = true;
+
+    assert.equal(firstEnv.cwd, dirname(first.trace));
+    assert.equal(firstEnv.ZCODE_PROJECT_DIR, firstEnv.cwd);
+    assert.equal(firstEnv.CLAUDE_PROJECT_DIR, firstEnv.cwd);
+    assert.equal(firstEnv.ZCODE_WORKSPACE_ROOT, firstEnv.cwd);
+    assert.equal(firstEnv.ZCODE_WORKSPACE_IDENTITY, firstEnv.cwd);
+    assert.equal(firstEnv.ZCODE_PLUGIN_DATA, undefined);
+    assert.equal(firstEnv.CLAUDE_PLUGIN_DATA, undefined);
+    assert.equal(secondEnv.cwd, sharedCwd);
+    assert.equal(secondEnv.ZCODE_PROJECT_DIR, sharedCwd);
+    assert.equal(secondEnv.ZCODE_WORKSPACE_IDENTITY, "remote-identity-2");
+    assert.equal(secondEnv.ZCODE_PLUGIN_DATA, undefined);
+    assert.equal(secondEnv.CLAUDE_PLUGIN_DATA, undefined);
+    assert.notEqual(firstEnv.cwd, secondEnv.cwd);
+    assert.equal(sameCwdIdentityA.cwd, sharedCwd);
+    assert.equal(sameCwdIdentityB.cwd, sharedCwd);
+    assert.equal(sameCwdIdentityA.ZCODE_PROJECT_DIR, sharedCwd);
+    assert.equal(sameCwdIdentityB.ZCODE_PROJECT_DIR, sharedCwd);
+    assert.equal(sameCwdIdentityA.ZCODE_WORKSPACE_IDENTITY, sharedCwd);
+    assert.equal(sameCwdIdentityB.ZCODE_WORKSPACE_IDENTITY, "identity-b");
+    assert.notEqual(
+      sameCwdIdentityA.ZCODE_WORKSPACE_IDENTITY,
+      sameCwdIdentityB.ZCODE_WORKSPACE_IDENTITY,
+    );
+  } finally {
+    if (!parentRestored) {
+      for (const [name, value] of Object.entries(saved)) {
+        if (value === undefined) delete globalThis.process.env[name];
+        else globalThis.process.env[name] = value;
+      }
+    }
+  }
+});
+
+test("显式 workspace 环境同值幂等、冲突在启动前失败且 stale 继承被覆盖", options, async (t) => {
+  const cwd = await mkdtemp(join(tmpdir(), "codez reserved env "));
+  t.after(() => rm(cwd, { recursive: true, force: true }));
+  const same = await startFakeCodex(t, {
+    cwd,
+    workspaceIdentity: "identity",
+    env: { ZCODE_WORKSPACE_IDENTITY: "identity" },
+  });
+  await same.process.initialize();
+  await same.process.close();
+
+  assert.throws(
+    () =>
+      createCodexProcess({
+        executable: "/nonexistent/codez-codex-test",
+        cwd,
+        workspaceIdentity: "identity",
+        env: { ZCODE_WORKSPACE_IDENTITY: "different" },
+      }),
+    /workspace identity|reserved/i,
+  );
+  assert.throws(
+    () =>
+      createCodexProcess({
+        executable: "/nonexistent/codez-codex-test",
+        cwd,
+        env: { ZCODE_PLUGIN_DATA: "/explicit/data" },
+      }),
+    /plugin data|reserved/i,
+  );
+});
+
 test("native resolved-request notifications revoke pending reply authority", options, async (t) => {
   const { process } = await fixture(t);
   process.onRequest(() => {});
@@ -112,7 +268,10 @@ test(
 test("RPC errors reject only their request and preserve the error code", options, async (t) => {
   const { process } = await fixture(t);
   await process.initialize();
-  await assert.rejects(process.request("error"), { code: -32602, message: "invalid params" });
+  await assert.rejects(process.request("error"), {
+    code: -32602,
+    message: "invalid params",
+  });
   assert.equal(await process.request("echo", "alive"), "alive");
 });
 
@@ -158,7 +317,9 @@ test("unhandled server requests fail closed", options, async (t) => {
   const { process } = await fixture(t);
   await process.initialize();
   await process.request("events");
-  const status = await process.request<{ replies: { error: { code: number } }[] }>("status");
+  const status = await process.request<{
+    replies: { error: { code: number } }[];
+  }>("status");
   assert.deepEqual(
     status.replies.map((reply) => reply.error.code),
     [-32601, -32601],
@@ -194,7 +355,10 @@ test(
     assert.deepEqual((await process.request<{ replies: unknown[] }>("status")).replies, []);
     const received = nextNotification(process);
     await process.respond("approval-1", { decision: "accept" });
-    assert.deepEqual((await received).params, { id: "approval-1", result: { decision: "accept" } });
+    assert.deepEqual((await received).params, {
+      id: "approval-1",
+      result: { decision: "accept" },
+    });
     await process.close();
     await assert.rejects(process.respond(42, { answers: {} }), /closed/i);
   },
@@ -219,7 +383,11 @@ test(
   options,
   async (t) => {
     // macOS CI 冷启动可能超过 100ms；握手用常规预算，迟到响应由显式 barrier 控制。
-    const timeouts: Array<{ method: string; durationMs: number; pendingCount: number }> = [];
+    const timeouts: Array<{
+      method: string;
+      durationMs: number;
+      pendingCount: number;
+    }> = [];
     const { process } = await fixture(
       t,
       "normal",
@@ -400,7 +568,11 @@ test("native stderr recognizes bounded Rust tracing prefixes", options, async (t
       target: summaries[0]!.target,
       categories: summaries[0]!.categories,
     },
-    { level: "info", target: "codex_native::session", categories: ["timeout"] },
+    {
+      level: "info",
+      target: "codex_native::session",
+      categories: ["timeout"],
+    },
   );
   assert.doesNotMatch(JSON.stringify(summaries), /\/secret/);
 });
@@ -432,7 +604,11 @@ test("unbounded native stderr lines keep classification and memory bounded", opt
       target: summaries[0]!.target,
       categories: summaries[0]!.categories,
     },
-    { level: "error", target: "codex_core::transport", categories: ["timeout", "error"] },
+    {
+      level: "error",
+      target: "codex_core::transport",
+      categories: ["timeout", "error"],
+    },
   );
   assert.doesNotMatch(JSON.stringify(summaries), /secret-token|a{100}|b{100}/);
 });
@@ -588,7 +764,10 @@ test(
     await assert.rejects(process.respondError(42, { code: NaN, message: "invalid" }), /invalid/i);
     const received = nextNotification(process);
     await process.respond("approval-1", undefined);
-    assert.deepEqual((await received).params, { id: "approval-1", result: null });
+    assert.deepEqual((await received).params, {
+      id: "approval-1",
+      result: null,
+    });
     await process.respondError(42, { code: -32601, message: "Unsupported" });
   },
 );
@@ -631,7 +810,10 @@ test("桌面专属 MCP 只通过进程级覆盖传入，字符串与数组按 TO
       name: "codez-desktop-browser-cua",
       command: '/tmp/my "bridge"',
       args: ["/tmp/bridge.cjs", "native-browser-cua-mcp"],
-      env: { CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: "/tmp/token file", ELECTRON_RUN_AS_NODE: "1" },
+      env: {
+        CODEZ_NATIVE_BROWSER_CUA_TOKEN_FILE: "/tmp/token file",
+        ELECTRON_RUN_AS_NODE: "1",
+      },
     },
   ]);
   await process.initialize();
@@ -730,7 +912,13 @@ test(
           id: `msg-${requestIndex}`,
           role: "assistant",
           status: "completed",
-          content: [{ type: "output_text", text: "Guided step completed", annotations: [] }],
+          content: [
+            {
+              type: "output_text",
+              text: "Guided step completed",
+              annotations: [],
+            },
+          ],
         };
         const completed = {
           id: `resp-${requestIndex}`,
@@ -748,7 +936,11 @@ test(
           output_index: 0,
           item: { ...item, status: "in_progress", content: [] },
         });
-        sendSse(response, { type: "response.output_item.done", output_index: 0, item });
+        sendSse(response, {
+          type: "response.output_item.done",
+          output_index: 0,
+          item,
+        });
         sendSse(response, { type: "response.completed", response: completed });
         response.end();
       });

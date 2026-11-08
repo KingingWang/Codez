@@ -52,6 +52,7 @@ async function main(): Promise<void> {
   const rpc = createCodexProcess({
     executable: process.env.CODEZ_CODEX_COMMAND?.trim() || "codex",
     cwd,
+    workspaceIdentity: workspaceId,
     // Host 按设置页“显示待办”开关注入；update_plan 注册于原生配置加载期，进程内不可热切换。
     updatePlanToolEnabled: process.env[CODEZ_CODEX_UPDATE_PLAN_ENABLED_ENV_KEY]?.trim() === "1",
     desktopContextPromptEnabled:

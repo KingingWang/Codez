@@ -6,7 +6,8 @@
  * - 变量烘焙分两类：插件根路径烘焙为绝对物化路径（Codex 不展开 legacy MCP 配置里的
  *   `${CLAUDE_PLUGIN_ROOT}`，且安装后读取的是缓存副本）；钩子命令保留 `${CLAUDE_PLUGIN_ROOT}`
  *   由 Codex 发现期展开；项目目录（`${ZCODE_PROJECT_DIR}`）不可烘焙，删除 cwd 让
- *   服务器继承 per-workspace 的 app-server cwd。
+ *   服务器继承 per-workspace 的 app-server cwd，项目/identity/data 变量走 Codex 原生
+ *   `env_vars`/literal env 语义。
  * - 任何不认识的组件/变量/传输类型都只降级该组件并产生可见 warning；
  *   仅当插件再无可用组件时才判 NOT_AVAILABLE，绝不静默报成功。
  */
@@ -22,6 +23,8 @@ export interface OfficialPluginTranspileOptions {
   pluginDir: string;
   /** 物化后的最终绝对路径（用于烘焙进 MCP 配置）。 */
   bakedPluginRoot: string;
+  /** Codex 原生插件数据根，由 marketplace 按当前 CODEX_HOME 推导。 */
+  nativeDataRoot: string;
   /** `${ZCODE_BASE_URL}` 的解析结果（Codez 端点 origin）。 */
   zcodeBaseUrl: string;
   expectedName: string;
@@ -45,6 +48,20 @@ export interface OfficialPluginTranspileResult {
 
 /** Codex 无法执行的 manifest 组件字段 → 整个插件不可用。 */
 const UNSUPPORTED_MANIFEST_FIELDS = ["channels", "lspServers", "outputStyles", "settings"] as const;
+const PROJECT_ENV_KEYS = [
+  "ZCODE_PROJECT_DIR",
+  "CLAUDE_PROJECT_DIR",
+  "ZCODE_WORKSPACE_ROOT",
+] as const;
+const IDENTITY_ENV_KEY = "ZCODE_WORKSPACE_IDENTITY";
+const DATA_ENV_KEYS = ["ZCODE_PLUGIN_DATA", "CLAUDE_PLUGIN_DATA"] as const;
+const PROJECT_PLACEHOLDERS = new Set(["${ZCODE_PROJECT_DIR}", "${CLAUDE_PROJECT_DIR}"]);
+const RESERVED_LITERAL_KEYS = new Set<string>([
+  ...PROJECT_ENV_KEYS,
+  IDENTITY_ENV_KEY,
+  ...DATA_ENV_KEYS,
+]);
+const SUPPORTED_TRANSPORTS = new Set(["stdio", "http"]);
 
 const VARIABLE_PROBE = /\$\{[^}]+\}/u;
 interface UserConfigDefault {
@@ -58,6 +75,119 @@ async function readJsonFile(path: string): Promise<JsonObject | null> {
   } catch {
     return null;
   }
+}
+
+function isEnvVarEntry(value: unknown): value is string | { name: string; source: "local" } {
+  if (typeof value === "string") return value !== "";
+  return (
+    isObject(value) &&
+    typeof value.name === "string" &&
+    value.name !== "" &&
+    value.source === "local"
+  );
+}
+
+function sameEnvVarSemantics(left: unknown, right: unknown): boolean {
+  if (typeof left === "string") {
+    return isObject(right) && right.name === left && right.source === "local";
+  }
+  if (!isObject(left) || !isObject(right)) return false;
+  return left.name === right.name && left.source === right.source;
+}
+
+function mergeEnvVar(server: JsonObject, name: string, warnings: Set<string>): boolean {
+  const existing = server.env_vars === undefined ? [] : server.env_vars;
+  if (!Array.isArray(existing) || existing.some((entry) => !isEnvVarEntry(entry))) {
+    warnings.add(`MCP server has an invalid \`env_vars\` entry`);
+    return false;
+  }
+  const index = existing.findIndex((entry) =>
+    typeof entry === "string" ? entry === name : entry.name === name,
+  );
+  if (index === -1) {
+    existing.push({ name, source: "local" });
+    server.env_vars = existing;
+    return true;
+  }
+  if (sameEnvVarSemantics(existing[index], { name, source: "local" })) return true;
+  warnings.add(`MCP server has conflicting \`env_vars\` semantics for \`${name}\``);
+  return false;
+}
+
+/**
+ * 处理 stdio 专属运行时合同：项目变量精确继承、identity 继承、原生数据根、
+ * 毫秒超时转换。任何保留名 literal 覆盖都丢弃该 server，避免 workspace 串值。
+ */
+function adaptRuntimeConfig(
+  name: string,
+  server: JsonObject,
+  transport: string,
+  nativeDataRoot: string,
+  warnings: Set<string>,
+): boolean {
+  for (const key of RESERVED_LITERAL_KEYS) {
+    if (server[key] !== undefined) {
+      warnings.add(`MCP server \`${name}\` sets reserved top-level key \`${key}\``);
+      return false;
+    }
+  }
+  if (server.env !== undefined && !isObject(server.env)) {
+    warnings.add(`MCP server \`${name}\` has an invalid \`env\` object`);
+    return false;
+  }
+  const env = isObject(server.env) ? server.env : undefined;
+
+  for (const key of PROJECT_ENV_KEYS) {
+    const value = env?.[key];
+    if (value === undefined) continue;
+    if (transport === "stdio" && typeof value === "string" && PROJECT_PLACEHOLDERS.has(value)) {
+      delete env![key];
+      if (!mergeEnvVar(server, key, warnings)) return false;
+      continue;
+    }
+    warnings.add(`MCP server \`${name}\` sets reserved environment key \`${key}\``);
+    return false;
+  }
+  for (const key of [IDENTITY_ENV_KEY, ...DATA_ENV_KEYS]) {
+    if (env?.[key] !== undefined) {
+      warnings.add(`MCP server \`${name}\` sets reserved environment key \`${key}\``);
+      return false;
+    }
+  }
+  if (transport === "stdio") {
+    if (!mergeEnvVar(server, IDENTITY_ENV_KEY, warnings)) return false;
+    const serverEnv = isObject(server.env) ? server.env : {};
+    serverEnv.ZCODE_PLUGIN_DATA = nativeDataRoot;
+    serverEnv.CLAUDE_PLUGIN_DATA = nativeDataRoot;
+    server.env = serverEnv;
+  } else {
+    if (server.env_vars !== undefined) {
+      warnings.add(`MCP server \`${name}\` cannot use stdio-only \`env_vars\``);
+      return false;
+    }
+  }
+
+  if (isObject(server.env) && Object.keys(server.env).length === 0) delete server.env;
+
+  const timeoutMs = server.timeoutMs;
+  if (timeoutMs !== undefined) {
+    if (typeof timeoutMs !== "number" || !Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) {
+      warnings.add(`MCP server \`${name}\` has invalid \`timeoutMs\``);
+      return false;
+    }
+    const seconds = timeoutMs / 1000;
+    const existing = server.tool_timeout_sec;
+    if (existing !== undefined) {
+      if (typeof existing !== "number" || !Number.isFinite(existing) || existing !== seconds) {
+        warnings.add(`MCP server \`${name}\` has conflicting timeout fields`);
+        return false;
+      }
+    } else {
+      server.tool_timeout_sec = seconds;
+    }
+    delete server.timeoutMs;
+  }
+  return true;
 }
 
 export async function transpileOfficialPlugin(
@@ -108,6 +238,10 @@ export async function transpileOfficialPlugin(
   const userConfigDefaults = collectUserConfigDefaults(manifest.userConfig);
   // userConfig 是 ZCode 交互式配置；Codex 不认识，烘焙默认值后从 manifest 移除以免误导。
   delete manifest.userConfig;
+  if (manifest.ui !== undefined || zcodeManifest?.ui !== undefined) {
+    warnings.add("ZCode UI surfaces are unavailable in Codex");
+    delete manifest.ui;
+  }
 
   // ── 变量烘焙（MCP 配置用绝对路径；钩子命令保留 Codex 可展开变量） ──────────
   const bakeValue = (value: string): string | null => {
@@ -131,7 +265,7 @@ export async function transpileOfficialPlugin(
   };
 
   // manifest 路径字段必须带 ./ 前缀，否则 Codex 静默忽略。
-  normalizeManifestPaths(manifest, warnings);
+  normalizeManifestPaths(manifest);
 
   // ── 2. MCP servers ─────────────────────────────────────────────────────────
   const mcpServerNames: string[] = [];
@@ -143,11 +277,17 @@ export async function transpileOfficialPlugin(
     manifestMcp,
   ]) {
     if (!container) continue;
-    const { kept, droppedAll } = adaptMcpServers(container, bakeValue, warnings, (auth) => {
-      if (auth) requiresOfficialAuth = true;
-    });
+    const { kept, droppedAll } = adaptMcpServers(
+      container,
+      bakeValue,
+      warnings,
+      (auth) => {
+        if (auth) requiresOfficialAuth = true;
+      },
+      options.nativeDataRoot,
+    );
     mcpServerNames.push(...kept);
-    if (droppedAll) mcpDroppedAll = true;
+    if (droppedAll && mcpServerNames.length === 0) mcpDroppedAll = true;
   }
   // 先回写再判定可用性：即使插件整体降级，物化目录也保持自洽。
   if (mcpFile) {
@@ -212,7 +352,12 @@ export async function transpileOfficialPlugin(
       requiresOfficialAuth,
       requiresPaidPlan,
       hasHooks: false,
-      components: { skills: false, commands: false, hooks: false, mcpServers: [] },
+      components: {
+        skills: false,
+        commands: false,
+        hooks: false,
+        mcpServers: [],
+      },
     };
   }
 }
@@ -234,7 +379,7 @@ function collectUserConfigDefaults(userConfig: unknown): Map<string, string> {
   return defaults;
 }
 
-function normalizeManifestPaths(manifest: JsonObject, warnings: Set<string>): void {
+function normalizeManifestPaths(manifest: JsonObject): void {
   const normalize = (value: unknown): unknown => {
     if (typeof value === "string") {
       if (value.startsWith("./") || value.startsWith(".codex-plugin/")) return value;
@@ -254,7 +399,6 @@ function normalizeManifestPaths(manifest: JsonObject, warnings: Set<string>): vo
   if (typeof manifest.mcpServers === "string" || Array.isArray(manifest.mcpServers)) {
     manifest.mcpServers = normalize(manifest.mcpServers);
   }
-  void warnings;
 }
 
 /**
@@ -265,6 +409,7 @@ function adaptMcpServers(
   bakeValue: (value: string) => string | null,
   warnings: Set<string>,
   markOfficialAuth: (needed: boolean) => void,
+  nativeDataRoot: string,
 ): { kept: string[]; droppedAll: boolean } {
   const kept: string[] = [];
   let declared = 0;
@@ -275,15 +420,30 @@ function adaptMcpServers(
     }
     declared += 1;
     const server = serverValue;
-    const transport =
-      typeof server.type === "string" ? server.type : server.command ? "stdio" : "http";
-    if (transport === "sse") {
-      warnings.add(`MCP server \`${name}\` uses legacy SSE transport, unsupported by Codex`);
+    if (server.type !== undefined && typeof server.type !== "string") {
+      warnings.add(`MCP server \`${name}\` has a malformed transport type`);
+      delete container[name];
+      continue;
+    }
+    const transport = server.type ?? (server.command ? "stdio" : "http");
+    // Bug 根因：此前除 SSE/stdio 外都会落入 HTTP 分支，未知 transport 只要带 url 就被保留。
+    // 修复依据：spec 要求封闭支持集，未知 transport 必须 drop + warning，不能被误判为 HTTP。
+    if (!SUPPORTED_TRANSPORTS.has(transport)) {
+      if (transport === "sse") {
+        warnings.add(`MCP server \`${name}\` uses legacy SSE transport, unsupported by Codex`);
+      } else {
+        warnings.add(`MCP server \`${name}\` uses unsupported transport \`${transport}\``);
+      }
       delete container[name];
       continue;
     }
     // ZCode 专有 auth 对象 → Codex bearer_token_env_var；token 由宿主进程环境注入。
-    if (isObject(server.auth)) {
+    if (server.auth !== undefined) {
+      if (!isObject(server.auth)) {
+        warnings.add(`MCP server \`${name}\` has a malformed auth object`);
+        delete container[name];
+        continue;
+      }
       if (server.auth.type === "zcode_official" && transport !== "stdio") {
         delete server.auth;
         server.bearer_token_env_var = "CODEZ_ZAI_OFFICIAL_MCP_TOKEN";
@@ -312,6 +472,10 @@ function adaptMcpServers(
       warnings.add(
         `MCP server \`${name}\` is missing its ${transport === "stdio" ? "command" : "url"}`,
       );
+      delete container[name];
+      continue;
+    }
+    if (!adaptRuntimeConfig(name, server, transport, nativeDataRoot, warnings)) {
       delete container[name];
       continue;
     }
