@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, realpath, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -93,7 +93,20 @@ if (root) await writeFile(join(root, "unsafe-ran.json"), JSON.stringify({ cwd: p
 
 function childEnv(codexHome: string): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { CODEX_HOME: codexHome };
-  for (const key of ["PATH", "Path", "TEMP", "TMP", "TMPDIR", "LANG", "LC_ALL"]) {
+  for (const key of [
+    "PATH",
+    "Path",
+    "SystemRoot",
+    "SYSTEMROOT",
+    "WINDIR",
+    "COMSPEC",
+    "PATHEXT",
+    "TEMP",
+    "TMP",
+    "TMPDIR",
+    "LANG",
+    "LC_ALL",
+  ]) {
     if (process.env[key]) env[key] = process.env[key];
   }
   return env;
@@ -356,7 +369,8 @@ test(
   "pinned official plugin native MCP and hooks preserve workspace/data scope through the real bridge install",
   { timeout: 180_000 },
   async (t) => {
-    const root = await mkdtemp(join(tmpdir(), "official-plugin-native-"));
+    // macOS 的 /var 与 /private/var 是同一目录；后续断言统一使用真实物理路径。
+    const root = await realpath(await mkdtemp(join(tmpdir(), "official-plugin-native-")));
     const codexHome = join(root, "codex-home");
     const bridgeHome = join(root, "bridge-home");
     const workspaceA = join(root, "workspace-a");
