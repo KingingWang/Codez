@@ -172,6 +172,7 @@ export function PluginStoreInstallButton({
     actions.activeOperations.some(
       (operation) => operation.id === `plugin:install:${item.name}@${item.marketplace}`,
     ) || actions.activeOperations.some((operation) => operation.id === `plugin:restore:${item.id}`);
+  const unavailableReason = item.installationUnavailableReason;
   return (
     <Button
       type="button"
@@ -180,9 +181,10 @@ export function PluginStoreInstallButton({
       variant="secondary"
       size={size}
       className="rounded-full"
-      disabled={installing}
+      disabled={installing || Boolean(unavailableReason)}
       onClick={(event) => {
         event.stopPropagation();
+        if (unavailableReason) return;
         runUserAction({
           input: { featureId: "extension.plugin", action: "install", trigger: "button" },
           operation: () => actions.onInstall(item),
@@ -196,6 +198,90 @@ export function PluginStoreInstallButton({
         ? intl.formatMessage({ id: "settings.plugins.marketplace.installing" })
         : intl.formatMessage({ id: "settings.plugins.store.install" })}
     </Button>
+  );
+}
+
+export function PluginStoreInstallUnavailableNote({
+  item,
+  className,
+}: {
+  item: Pick<StorePluginItem, "id" | "installationUnavailableReason">;
+  className?: string;
+}) {
+  const { intl } = useCodezIntl();
+  const reason = item.installationUnavailableReason;
+  if (!reason) return null;
+  return (
+    <ControlHintTooltip title={reason}>
+      <p
+        data-testid="plugin-store-install-unavailable"
+        data-plugin-id={item.id}
+        className={className ?? "flex min-w-0 items-center gap-1 truncate text-ui-sm text-warning"}
+      >
+        <TriangleAlert className="size-3 shrink-0" aria-hidden="true" />
+        <span className="truncate">
+          {intl.formatMessage({ id: "settings.plugins.store.installUnavailable" })}
+        </span>
+      </p>
+    </ControlHintTooltip>
+  );
+}
+
+/** 官方目录已判定的兼容性信息只做展示；安装门禁以 summary 投影字段为准。 */
+export function PluginStoreCompatibilityNotes({
+  item,
+  compact = false,
+}: {
+  item: StorePluginItem;
+  compact?: boolean;
+}) {
+  const { intl } = useCodezIntl();
+  const warnings = item.summary?.officialWarnings ?? [];
+  const authRequired = item.summary?.officialAuthRequired === true;
+  if (!warnings.length && !authRequired) return null;
+  const notes = [
+    ...warnings.map((warning) => ({ key: warning, text: warning })),
+    ...(authRequired
+      ? [
+          {
+            key: "auth",
+            text: intl.formatMessage({ id: "settings.plugins.store.authRequired" }),
+          },
+        ]
+      : []),
+  ];
+  return (
+    <div
+      data-testid="plugin-store-capability-notes"
+      data-plugin-id={item.id}
+      className={
+        compact
+          ? "flex min-w-0 flex-col gap-0.5"
+          : "space-y-1.5 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2"
+      }
+    >
+      {notes.map((note) => (
+        <p
+          key={note.key}
+          data-testid="plugin-store-capability-note"
+          data-plugin-id={item.id}
+          className={
+            compact
+              ? "flex min-w-0 items-center gap-1 truncate text-ui-sm text-warning"
+              : "flex min-w-0 items-start gap-1.5 text-ui-base text-foreground-subtle"
+          }
+        >
+          <TriangleAlert
+            className={compact ? "size-3 shrink-0" : "size-3.5 shrink-0"}
+            aria-hidden="true"
+          />
+          <span className={compact ? "truncate" : "min-w-0"}>
+            {intl.formatMessage({ id: "settings.plugins.store.capabilityWarning" })}
+            <span className="sr-only">{`: ${note.text}`}</span>
+          </span>
+        </p>
+      ))}
+    </div>
   );
 }
 
@@ -357,6 +443,8 @@ export function PluginStoreCard({
             </span>
           </div>
         ) : null}
+        <PluginStoreInstallUnavailableNote item={item} />
+        <PluginStoreCompatibilityNotes item={item} compact />
         <div className="mt-0.5 min-h-5 truncate text-ui-caption leading-5 text-foreground-subtle">
           {description}
         </div>

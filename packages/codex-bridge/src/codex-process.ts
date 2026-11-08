@@ -28,6 +28,44 @@ type Pending = {
   timer: ReturnType<typeof setTimeout>;
 };
 const MAX_PENDING = 1024;
+const PROJECT_ENV_KEYS = [
+  "ZCODE_PROJECT_DIR",
+  "CLAUDE_PROJECT_DIR",
+  "ZCODE_WORKSPACE_ROOT",
+  "ZCODE_WORKSPACE_IDENTITY",
+] as const;
+const PLUGIN_DATA_ENV_KEYS = ["ZCODE_PLUGIN_DATA", "CLAUDE_PLUGIN_DATA"] as const;
+
+function childEnv(options: CodexProcessOptions): NodeJS.ProcessEnv {
+  const identity = options.workspaceIdentity?.trim() || options.cwd;
+  const values: Record<(typeof PROJECT_ENV_KEYS)[number], string> = {
+    ZCODE_PROJECT_DIR: options.cwd,
+    CLAUDE_PROJECT_DIR: options.cwd,
+    ZCODE_WORKSPACE_ROOT: options.cwd,
+    ZCODE_WORKSPACE_IDENTITY: identity,
+  };
+  const inherited = options.env ?? process.env;
+  const explicit = options.env !== undefined;
+  for (const key of PROJECT_ENV_KEYS) {
+    if (explicit && inherited[key] !== undefined && inherited[key] !== values[key]) {
+      throw new CodexTransportError(
+        "INVALID",
+        `Explicit env conflicts with reserved workspace key ${key}`,
+      );
+    }
+  }
+  const child: NodeJS.ProcessEnv = { ...inherited, ...values };
+  for (const key of PLUGIN_DATA_ENV_KEYS) {
+    if (explicit && inherited[key] !== undefined) {
+      throw new CodexTransportError(
+        "INVALID",
+        `Explicit env conflicts with reserved plugin data key ${key}`,
+      );
+    }
+    delete child[key];
+  }
+  return child;
+}
 
 /** Sole owner of one connection, its handshake, request correlation and process lifetime. */
 export function createCodexProcess(options: CodexProcessOptions): CodexProcess {
@@ -44,9 +82,10 @@ export function createCodexProcess(options: CodexProcessOptions): CodexProcess {
   ) {
     throw new CodexTransportError("INVALID", "Invalid Codex interaction timeout");
   }
+  const childEnvForProcess = childEnv(options);
   const child = spawn(options.executable, codexServerArgv(options), {
     cwd: options.cwd,
-    env: options.env ?? process.env,
+    env: childEnvForProcess,
     shell: false,
     windowsHide: true,
     stdio: "pipe",

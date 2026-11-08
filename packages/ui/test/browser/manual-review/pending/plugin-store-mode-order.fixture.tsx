@@ -8,6 +8,7 @@ import { usePluginStoreOrder } from "@/hooks/usePluginStoreOrder.js";
 import { StoreContext } from "@/store/StoreProvider.js";
 import { createCodezStore } from "@/store/index.js";
 import { PluginStoreListView, type PluginStoreSegment } from "@/settings/PluginStoreListView.js";
+import { PluginStoreDetailView } from "@/settings/PluginStoreDetailView.js";
 import { buildStoreItems, type StorePluginItem } from "@/settings/pluginStoreListing.js";
 import "@/styles.css";
 
@@ -138,6 +139,7 @@ function Fixture() {
   const [segment, setSegment] = useState<PluginStoreSegment>("public");
   const [enabled, setEnabled] = useState(true);
   const [action, setAction] = useState("");
+  const [detailId, setDetailId] = useState<string | null>(null);
   const visibleItems =
     params.get("installedActions") === "1"
       ? [
@@ -148,7 +150,41 @@ function Fixture() {
           } as StorePluginItem,
           item("new-example", "productivity"),
         ]
-      : items;
+      : params.get("compatibility") === "1"
+        ? [
+            {
+              ...item("official-incompatible", "productivity"),
+              installationUnavailableReason: "backend incompatible reason",
+              listing: {
+                category: "productivity",
+                examplePrompts: ["Install me from the incompatible detail"],
+              },
+            },
+            {
+              ...item("official-warning", "productivity"),
+              summary: {
+                id: `official-warning@${official}`,
+                name: "official-warning",
+                marketplace: official,
+                installed: false,
+                officialWarnings: ["backend capability warning"],
+              },
+            },
+          ]
+        : items;
+  const detail = visibleItems.find((entry) => entry.id === detailId);
+  const actions = {
+    onOpenDetail: (id: string) => {
+      setAction("detail");
+      setDetailId(id);
+    },
+    onUpdate: () => {},
+    onInstall: () => setAction("install"),
+    onUninstall: () => setAction("uninstall"),
+    onSetEnabled: (_id: string, next: boolean) => setEnabled(next),
+    activeOperations: [],
+    togglingPluginId: null,
+  };
   return (
     <main className="@container/plugin-store min-h-screen bg-background p-4 text-foreground">
       <button data-testid="code" onClick={() => store.getState().setInterfaceMode("coding")}>
@@ -162,33 +198,37 @@ function Fixture() {
       </button>
       <output data-testid="requests">{requests}</output>
       <output data-testid="last-action">{action}</output>
-      <PluginStoreListView
-        items={visibleItems}
-        order={order}
-        marketplaces={[
-          {
-            id: official,
-            name: official,
-            source: {},
-            pluginCount: 10,
-            featured: ["p1", "restore-legacy-sessions", "p0"],
-          },
-        ]}
-        loading={false}
-        query={query}
-        onQueryChange={setQuery}
-        segment={segment}
-        onSegmentChange={setSegment}
-        actions={{
-          onOpenDetail: () => setAction("detail"),
-          onUpdate: () => {},
-          onInstall: () => {},
-          onUninstall: () => setAction("uninstall"),
-          onSetEnabled: (_id, next) => setEnabled(next),
-          activeOperations: [],
-          togglingPluginId: null,
-        }}
-      />
+      <button data-testid="back-to-list" onClick={() => setDetailId(null)}>
+        Back
+      </button>
+      {detail ? (
+        <PluginStoreDetailView
+          item={detail}
+          actions={actions}
+          onRetryDescribe={() => {}}
+          onUsePrompt={(entry) => setAction(entry.installed ? "prompt" : "install")}
+        />
+      ) : (
+        <PluginStoreListView
+          items={visibleItems}
+          order={order}
+          marketplaces={[
+            {
+              id: official,
+              name: official,
+              source: {},
+              pluginCount: 10,
+              featured: ["p1", "restore-legacy-sessions", "p0"],
+            },
+          ]}
+          loading={false}
+          query={query}
+          onQueryChange={setQuery}
+          segment={segment}
+          onSegmentChange={setSegment}
+          actions={actions}
+        />
+      )}
     </main>
   );
 }
