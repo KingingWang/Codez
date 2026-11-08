@@ -163,9 +163,11 @@
   "packages/server/test/tsupConfig.test.ts",
   "packages/web/test/viteConfigLoad.test.ts",
   "packages/codez-server-cli/test/packaging.test.ts",
+  "packages/codez-server-cli/test/releaseManagerCompatibility.test.ts",
   "packages/codez-server-cli/test/sourceServerUpdateDirection.test.ts",
   "packages/codez-server-cli/test/stageRemoteAssetsCli.test.ts",
   "packages/codez-server-cli/test/tsupConfig.test.ts",
+  "packages/codez-server-cli/test/updateHandoff.test.ts",
   "packages/codez-server-cli/test/verifyRemoteSshTarget.test.ts",
   "packages/desktop/test/credential-keyring-assets.test.ts",
   "packages/desktop/test/stdioTapCredentialRedaction.test.ts"
