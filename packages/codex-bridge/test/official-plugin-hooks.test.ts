@@ -79,7 +79,9 @@ test("process hook 项目参数转换成安全相对路径且不烘焙 workspace
   });
   try {
     await transpileOfficialPlugin({ ...BASE, pluginDir: windows });
-    assert.deepEqual(commands(await adaptedHooks(windows)), ['node ".\\\\data\\\\file"']);
+    assert.deepEqual(commands(await adaptedHooks(windows)), [
+      process.platform === "win32" ? 'node ".\\data\\file"' : 'node ".\\\\data\\\\file"',
+    ]);
   } finally {
     await rm(windows, { recursive: true, force: true });
   }
@@ -103,7 +105,9 @@ test("process hook 普通参数保留完整 shell quoting", async () => {
     const result = await transpileOfficialPlugin({ ...BASE, pluginDir: dir });
     assert.equal(result.installation, "AVAILABLE");
     assert.deepEqual(commands(await adaptedHooks(dir)), [
-      '"my runner" "argument with space" "semi;colon" "\\`backtick\\`" "\\"quoted\\"" safe',
+      process.platform === "win32"
+        ? '"my runner" "argument with space" "semi;colon" "`backtick`" "\\"quoted\\"" safe'
+        : '"my runner" "argument with space" "semi;colon" "\\`backtick\\`" "\\"quoted\\"" safe',
     ]);
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -127,7 +131,7 @@ test("Windows process hook 使用 cmd 路径 quoting 且不重复反斜杠", () 
   const warnings = new Set<string>();
   assert.equal(adaptHooks(hooks, warnings, "win32"), true);
   assert.deepEqual(commands(hooks), [
-    '"C:\\Program Files\\nodejs\\node.exe" "C:\\tmp\\native-hook.mjs" "C:\\plugin root\\\\" session-start',
+    '"C:\\Program Files\\nodejs\\node.exe" C:\\tmp\\native-hook.mjs "C:\\plugin root\\\\" session-start',
   ]);
   assert.deepEqual(warnings, new Set());
 });

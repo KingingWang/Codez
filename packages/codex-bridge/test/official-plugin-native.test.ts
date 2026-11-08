@@ -75,10 +75,12 @@ lines.on("line", (line) => {
 
 const hookScript = `
 import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 const mode = process.argv[2];
 const projectArgument = process.argv[3];
 const root = process.env.CLAUDE_PLUGIN_DATA;
+await writeFile(join(dirname(fileURLToPath(import.meta.url)), "native-hook-" + (mode ?? "missing") + ".json"), JSON.stringify({ cwd: process.cwd(), argv: process.argv, pluginData: root }) + "\\n");
 if (!root || !mode) throw new Error("native hook fixture inputs missing");
 await mkdir(join(root, "hooks"), { recursive: true });
 await writeFile(join(root, "hooks", mode + ".json"), JSON.stringify({ cwd: process.cwd(), projectArgument, pluginData: root }) + "\\n");
@@ -241,6 +243,7 @@ async function runScenario(options: {
   binary: string;
   port: number;
   dataRoot: string;
+  hookDebugRoot: string;
 }) {
   const rpc = createCodexProcess({
     executable: options.binary,
@@ -323,8 +326,21 @@ async function runScenario(options: {
         assert.equal(value.projectArgument, ".");
         assert.equal(value.pluginData, options.dataRoot);
       } catch (error) {
+        const sourcePath = hookEvents
+          .map(
+            (event) =>
+              (event as { params?: { run?: { sourcePath?: unknown } } }).params?.run?.sourcePath,
+          )
+          .find((value): value is string => typeof value === "string");
+        const hookDefinition = sourcePath
+          ? await readFile(sourcePath, "utf8").catch(() => "<unavailable>")
+          : "<missing source path>";
+        const hookDebug = await readFile(
+          join(options.hookDebugRoot, `native-hook-${event}.json`),
+          "utf8",
+        ).catch(() => "<script did not write diagnostics>");
         throw new Error(
-          `Native hook output missing in ${options.label}: ${JSON.stringify(hookEvents)}`,
+          `Native hook output missing in ${options.label}: ${JSON.stringify({ hookEvents, hookDefinition, hookDebug })}`,
           { cause: error },
         );
       }
@@ -635,6 +651,7 @@ test(
       binary,
       port: address.port,
       dataRoot,
+      hookDebugRoot: root,
     });
     await runScenario({
       label: "workspace-b",
@@ -644,6 +661,7 @@ test(
       binary,
       port: address.port,
       dataRoot,
+      hookDebugRoot: root,
     });
     await runScenario({
       label: "same-cwd-identity-b",
@@ -653,6 +671,7 @@ test(
       binary,
       port: address.port,
       dataRoot,
+      hookDebugRoot: root,
     });
     await assertNativeToolTimeout({
       cwd: workspaceA,

@@ -32,6 +32,8 @@ const CODEX_HOOK_EVENTS = new Set([
  * Windows cmd 不使用通用反斜杠转义，必须保留路径的原始单反斜杠。 */
 function quoteShellPart(value: string, platform: NodeJS.Platform): string {
   if (/^[a-zA-Z0-9._-]+$/u.test(value)) return value;
+  // 无空格的 Windows 绝对路径无需进入 cmd 的嵌套引号解析，直接作为独立参数传递。
+  if (platform === "win32" && /^[a-zA-Z]:[\\/][a-zA-Z0-9._:\\/-]+$/u.test(value)) return value;
   if (platform === "win32") {
     // Windows CRT 只把引号前和结尾的反斜杠视为特殊字符；路径主体的单反斜杠必须保留。
     const escaped = value
