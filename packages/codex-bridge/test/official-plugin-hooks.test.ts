@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { adaptHooks } from "../src/official-plugin-hooks.js";
 import { transpileOfficialPlugin } from "../src/official-plugin-transpile.js";
 
 const BASE = {
@@ -107,6 +108,28 @@ test("process hook 普通参数保留完整 shell quoting", async () => {
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test("Windows process hook 使用 cmd 路径 quoting 且不重复反斜杠", () => {
+  const hooks = {
+    SessionStart: [
+      {
+        hooks: [
+          {
+            type: "process",
+            command: "C:\\Program Files\\nodejs\\node.exe",
+            args: ["C:\\tmp\\native-hook.mjs", "C:\\plugin root\\", "session-start"],
+          },
+        ],
+      },
+    ],
+  };
+  const warnings = new Set<string>();
+  assert.equal(adaptHooks(hooks, warnings, "win32"), true);
+  assert.deepEqual(commands(hooks), [
+    '"C:\\Program Files\\nodejs\\node.exe" "C:\\tmp\\native-hook.mjs" "C:\\plugin root\\\\" session-start',
+  ]);
+  assert.deepEqual(warnings, new Set());
 });
 
 test("command string 独立项目参数支持安全相对前缀，其他拼接与未知变量丢弃", async () => {
