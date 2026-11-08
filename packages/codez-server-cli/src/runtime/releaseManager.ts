@@ -8,6 +8,7 @@ import {
   SERVER_CREDENTIAL_FORMAT,
   type ReleaseManifest,
 } from "../contracts.js";
+import { serverRuntimeManifestSchema } from "./manifest.js";
 import type { ServerLayout } from "./paths.js";
 import { ensureServerInstallOwnership } from "./installationOwnership.js";
 
@@ -140,10 +141,14 @@ export class ReleaseManager {
   }
 
   public async writePending(manifest: ReleaseManifest): Promise<void> {
-    const parsed = releaseManifestSchema.parse({
+    const pending = {
       ...manifest,
       releaseDir: resolve(manifest.releaseDir),
-    });
+    };
+    // Bug 原因：pending 会由更新前的旧 Supervisor 用 strict schema 读取。新增 build 后仍原样
+    // 写入会让旧进程在候选 Core 启动前拒绝更新；交接文件保持旧格式，身份由 immutable manifest 补全。
+    delete pending.build;
+    const parsed = releaseManifestSchema.parse(pending);
     await this.assertReleaseDir(parsed);
     await atomicWriteJson(this.layout.pendingFile, parsed);
   }
@@ -251,7 +256,17 @@ export class ReleaseManager {
   private async readManifest(path: string): Promise<ReleaseManifest | null> {
     try {
       const raw = await readFile(path, "utf8");
-      return releaseManifestSchema.parse(JSON.parse(raw));
+      const manifest = releaseManifestSchema.parse(JSON.parse(raw));
+      if (manifest.build) return manifest;
+      try {
+        const runtimeManifest = serverRuntimeManifestSchema.parse(
+          JSON.parse(await readFile(join(manifest.releaseDir, "manifest.json"), "utf8")),
+        );
+        // 旧 Supervisor 写回 current 时不认识 build；缺失身份只表示方向未知，不能阻断 release 执行。
+        return runtimeManifest.build ? { ...manifest, build: runtimeManifest.build } : manifest;
+      } catch {
+        return manifest;
+      }
     } catch (error: unknown) {
       if (error instanceof Error && "code" in error && error.code === "ENOENT") return null;
       throw error;
