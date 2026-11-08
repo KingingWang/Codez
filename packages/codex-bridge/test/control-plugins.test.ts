@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import test from "node:test";
 import { join, resolve } from "node:path";
 import * as s from "@codez/shared";
@@ -674,10 +676,15 @@ test("official install trusts the plugin's own hooks and reports missing officia
 });
 
 /** 设置 → Codex 面板的原生透传线束：官方市场存根 + 状态化原生 plugin/list。 */
-function officialNativeFixture(options?: { registered?: boolean }) {
+function officialNativeFixture(options?: {
+  registered?: boolean;
+  source?: string;
+  readbackPath?: string;
+}) {
   const OFFICIAL = s.CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID;
-  const source = resolve("/isolated/official");
+  const source = options?.source ?? resolve("/isolated/official");
   const path = join(source, ".agents", "plugins", "marketplace.json");
+  const readbackPath = options?.readbackPath ?? path;
   const snapshot = {
     path,
     catalog: {
@@ -729,7 +736,7 @@ function officialNativeFixture(options?: { registered?: boolean }) {
       ? [
           {
             name: OFFICIAL,
-            path,
+            path: readbackPath,
             plugins: [
               {
                 id: `mimosa@${OFFICIAL}`,
@@ -817,6 +824,25 @@ test("native plugin/list registers the built-in official marketplace exactly onc
     (await listed()).some((market) => market.name === s.CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID),
   );
   assert.equal(h.calls.filter((call) => call.method === "marketplace/add").length, 1);
+});
+
+test("official registration accepts a physical-path alias returned by Codex", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "codez-official-source-alias-"));
+  const physical = join(root, "physical");
+  const alias = join(root, "alias");
+  await mkdir(join(physical, ".agents", "plugins"), { recursive: true });
+  await writeFile(join(physical, ".agents", "plugins", "marketplace.json"), "{}\n", "utf8");
+  await symlink(physical, alias, process.platform === "win32" ? "junction" : "dir");
+  t.after(() => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }));
+
+  const readbackPath = join(alias, ".agents", "plugins", "marketplace.json");
+  const added = officialNativeFixture({ source: physical, readbackPath });
+  assert.equal(await ensureOfficialRegistered(added.context), true);
+  assert.equal(added.calls.filter((call) => call.method === "marketplace/add").length, 1);
+
+  const existing = officialNativeFixture({ registered: true, source: physical, readbackPath });
+  assert.equal(await ensureOfficialRegistered(existing.context), true);
+  assert.equal(existing.calls.filter((call) => call.method === "marketplace/add").length, 0);
 });
 
 test("cached-only warm-up registers from the disk snapshot and never refreshes", async () => {

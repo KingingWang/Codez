@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import { once } from "node:events";
-import { chmod, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  copyFile,
+  mkdir,
+  mkdtemp,
+  readFile,
+  realpath,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { createServer, type ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -28,7 +37,7 @@ async function fixture(
   onFrameDropped?: CodexProcessOptions["onFrameDropped"],
   onStderrSummary?: CodexProcessOptions["onStderrSummary"],
 ) {
-  const directory = await mkdtemp(join(tmpdir(), "codez transport 中文 "));
+  const directory = await realpath(await mkdtemp(join(tmpdir(), "codez transport 中文 ")));
   const executable = join(directory, "fake codex");
   const trace = join(directory, "trace");
   await copyFile(new URL("./fixtures/fake-codex.mjs", import.meta.url), executable);
@@ -109,7 +118,7 @@ async function startFakeCodex(
 const closed = (process: CodexProcess) => new Promise<Error>((resolve) => process.onClose(resolve));
 test("每个 app-server 子进程获得互不污染的 workspace cwd/identity 环境", options, async (t) => {
   const first = await fixture(t);
-  const sharedCwd = await mkdtemp(join(tmpdir(), "codez shared cwd "));
+  const sharedCwd = await realpath(await mkdtemp(join(tmpdir(), "codez shared cwd ")));
   t.after(() => rm(sharedCwd, { recursive: true, force: true }));
   const stale = {
     ZCODE_PROJECT_DIR: "/definitely/stale/project",
@@ -184,7 +193,7 @@ test("每个 app-server 子进程获得互不污染的 workspace cwd/identity �
 });
 
 test("显式 workspace 环境同值幂等、冲突在启动前失败且 stale 继承被覆盖", options, async (t) => {
-  const cwd = await mkdtemp(join(tmpdir(), "codez reserved env "));
+  const cwd = await realpath(await mkdtemp(join(tmpdir(), "codez reserved env ")));
   t.after(() => rm(cwd, { recursive: true, force: true }));
   const same = await startFakeCodex(t, {
     cwd,
