@@ -28,9 +28,17 @@ const CODEX_HOOK_EVENTS = new Set([
 ]);
 
 /** shell 参数转义：裸标识符保持原样；含变量/空格/路径分隔符的参数用双引号包裹，
- * 保留 `$` 供 `${CLAUDE_PLUGIN_ROOT}` 展开，转义反斜杠/引号/反引号。 */
-function quoteShellPart(value: string): string {
+ * 保留 `$` 供 `${CLAUDE_PLUGIN_ROOT}` 展开。POSIX 转义反斜杠/引号/反引号；
+ * Windows cmd 不使用通用反斜杠转义，必须保留路径的原始单反斜杠。 */
+function quoteShellPart(value: string, platform: NodeJS.Platform): string {
   if (/^[a-zA-Z0-9._-]+$/u.test(value)) return value;
+  if (platform === "win32") {
+    // Windows CRT 只把引号前和结尾的反斜杠视为特殊字符；路径主体的单反斜杠必须保留。
+    const escaped = value
+      .replace(/(\\*)"/gu, (_, slashes: string) => `${slashes}${slashes}\\"`)
+      .replace(/\\+$/gu, (slashes) => slashes.repeat(2));
+    return `"${escaped}"`;
+  }
   return `"${value.replace(/\\/gu, "\\\\").replace(/"/gu, '\\"').replace(/`/gu, "\\`")}"`;
 }
 
@@ -70,7 +78,11 @@ function hasUnquotedShellSyntax(command: string, substitutionOnly = false): bool
 }
 
 /** 适配 hooks 容器（原地修改）。返回是否仍有可用钩子。 */
-export function adaptHooks(hooks: JsonObject, warnings: Set<string>): boolean {
+export function adaptHooks(
+  hooks: JsonObject,
+  warnings: Set<string>,
+  platform: NodeJS.Platform = process.platform,
+): boolean {
   let surviving = false;
   for (const [event, groupsValue] of Object.entries(hooks)) {
     if (!CODEX_HOOK_EVENTS.has(event)) {
@@ -90,7 +102,7 @@ export function adaptHooks(hooks: JsonObject, warnings: Set<string>): boolean {
       }
       const handlers = group.hooks as unknown[];
       const adaptedHandlers = handlers.flatMap((handler) => {
-        const adapted = adaptHookHandler(handler, warnings);
+        const adapted = adaptHookHandler(handler, warnings, platform);
         return adapted ? [adapted] : [];
       });
       group.hooks = adaptedHandlers;
@@ -102,14 +114,18 @@ export function adaptHooks(hooks: JsonObject, warnings: Set<string>): boolean {
   return surviving;
 }
 
-function adaptHookHandler(handler: unknown, warnings: Set<string>): JsonObject | null {
+function adaptHookHandler(
+  handler: unknown,
+  warnings: Set<string>,
+  platform: NodeJS.Platform,
+): JsonObject | null {
   if (!isObject(handler)) return null;
   if (handler.type === "command" && typeof handler.command === "string") {
     if (hasUnquotedShellSyntax(handler.command)) {
       warnings.add("A command hook uses unquoted shell syntax Codex cannot adapt safely");
       return null;
     }
-    const command = rewriteKnownArgument(handler.command);
+    const command = rewriteKnownArgument(handler.command, platform);
     if (command === null) {
       warnings.add(
         replaceProjectArgument(handler.command) === null
@@ -148,7 +164,7 @@ function adaptHookHandler(handler: unknown, warnings: Set<string>): JsonObject |
       );
       return null;
     }
-    const command = (rewritten as string[]).map(quoteShellPart).join(" ");
+    const command = (rewritten as string[]).map((part) => quoteShellPart(part, platform)).join(" ");
     const result: JsonObject = { type: "command", command };
     if (typeof handler.timeoutMs === "number") {
       result.timeout = Math.max(1, Math.ceil(handler.timeoutMs / 1000));
@@ -184,16 +200,16 @@ function unknownVariableName(command: string): string | undefined {
     );
 }
 
-function rewriteKnownArgument(argument: string): string | null {
+function rewriteKnownArgument(argument: string, platform: NodeJS.Platform): string | null {
   const projectFree = replaceProjectArgument(argument);
   const rewritten = projectFree === null ? null : rewriteHookCommand(projectFree);
-  return rewritten === null ? null : quoteDataVariables(rewritten);
+  return rewritten === null ? null : quoteDataVariables(rewritten, platform);
 }
 
-function quoteDataVariables(command: string): string {
+function quoteDataVariables(command: string, platform: NodeJS.Platform): string {
   return command.replace(
     /(?:^|\s)([^\s]*\$\{(?:PLUGIN_DATA|CLAUDE_PLUGIN_DATA)\}[^\s]*)/gu,
-    (match, argument: string) => match.replace(argument, quoteShellPart(argument)),
+    (match, argument: string) => match.replace(argument, quoteShellPart(argument, platform)),
   );
 }
 
