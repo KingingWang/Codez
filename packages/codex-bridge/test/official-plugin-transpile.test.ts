@@ -126,9 +126,6 @@ test("官方 stdio MCP 继承项目变量与原生数据根，并保留精确秒
         },
       },
     });
-    await mkdir(join(dir, "skills/demo"), { recursive: true });
-    await writeFile(join(dir, "skills/demo/SKILL.md"), "x", "utf8");
-
     const result = await transpileFixture(dir);
     assert.equal(result.installation, "AVAILABLE");
     const server = JSON.parse(await readFile(join(dir, ".mcp.json"), "utf8")).mcpServers.demo;
@@ -214,6 +211,42 @@ test("官方 HTTP MCP 不注入 stdio 专属项目、identity 与数据字段", 
     assert.equal(server.ZCODE_WORKSPACE_IDENTITY, undefined);
     assert.equal(server.ZCODE_PLUGIN_DATA, undefined);
     assert.equal(server.CLAUDE_PLUGIN_DATA, undefined);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("exact streamable-http MCP 规范化为当前 Codex canonical HTTP 表示", async () => {
+  const dir = await fixtureDir();
+  try {
+    await writeJson(dir, ".claude-plugin/plugin.json", {
+      name: "demo",
+      version: "1.0.0",
+    });
+    await writeJson(dir, ".mcp.json", {
+      mcpServers: {
+        demo: {
+          type: "streamable-http",
+          url: "https://example.invalid/mcp",
+          timeoutMs: 1000,
+        },
+      },
+    });
+    await mkdir(join(dir, "skills/demo"), { recursive: true });
+    await writeFile(join(dir, "skills/demo/SKILL.md"), "x", "utf8");
+
+    const result = await transpileFixture(dir);
+    assert.equal(result.installation, "AVAILABLE");
+    assert.equal(result.warnings.length, 0);
+    const server = JSON.parse(await readFile(join(dir, ".mcp.json"), "utf8")).mcpServers.demo;
+    assert.equal(server.type, "http");
+    assert.equal(server.env_vars, undefined);
+    assert.equal(server.env, undefined);
+    assert.equal(server.ZCODE_WORKSPACE_IDENTITY, undefined);
+    assert.equal(server.ZCODE_PLUGIN_DATA, undefined);
+    assert.equal(server.CLAUDE_PLUGIN_DATA, undefined);
+    assert.equal(server.timeoutMs, undefined);
+    assert.equal(server.tool_timeout_sec, 1);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

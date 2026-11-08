@@ -4,7 +4,10 @@ import * as s from "@codez/shared";
 import { CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID } from "@codez/shared";
 import type { CodezPluginDiagnostic } from "@codez/shared";
 import type { BridgeControlContext } from "./contract.js";
-import type { OfficialPluginMarketplace } from "./official-plugin-marketplace.js";
+import type {
+  OfficialInstalledVersionsProvider,
+  OfficialPluginMarketplace,
+} from "./official-plugin-marketplace.js";
 import { ControlError, checkWorkspace, input, unsupported } from "./control-common.js";
 import { marketplaceSummary, readPluginCatalog } from "./control-plugin-data.js";
 import { sameExecutionPath } from "./execution-path.js";
@@ -36,6 +39,32 @@ export async function officialSnapshot(
       ],
     };
   }
+}
+
+export async function refreshOfficialPlugins(context: BridgeControlContext) {
+  if (!context.officialPlugins) throw new Error("Official catalog is not available");
+  // 刷新 GC 必须以原生 installed catalog 为准；provider 异常向上传播，让既有
+  // fail-safe 保留旧物化版本，而不是伪装成空集合。
+  const installedVersions: OfficialInstalledVersionsProvider = async () => {
+    const installedCatalog = await readPluginCatalog(context, true);
+    if (installedCatalog.diagnostics.length > 0) {
+      throw new Error("Codex installed plugin catalog has load errors");
+    }
+    const installedRows = installedCatalog.rows.filter(
+      ({ market, plugin }) => market.name === OFFICIAL && plugin.installed,
+    );
+    for (const { plugin } of installedRows) {
+      const version = plugin.localVersion ?? plugin.version;
+      if (typeof version !== "string") {
+        throw new Error(`Installed official plugin ${plugin.name} has no version`);
+      }
+    }
+    return installedRows.map(({ plugin }) => ({
+      name: plugin.name,
+      version: plugin.localVersion ?? plugin.version!,
+    }));
+  };
+  return await context.officialPlugins.refresh({ installedVersions });
 }
 
 export function officialEntry(snapshot: OfficialSnapshot | null, name: string) {
@@ -210,7 +239,7 @@ export async function handleMarketplaceRequest(
     checkWorkspace(p.workspace, context, method);
     if (context.officialPlugins && (!p.marketplace || p.marketplace === OFFICIAL)) {
       try {
-        await context.officialPlugins.refresh();
+        await refreshOfficialPlugins(context);
       } catch {
         failure(method, "Official ZCode catalog refresh failed verification; old catalog retained");
       }

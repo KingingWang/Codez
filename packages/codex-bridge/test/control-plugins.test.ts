@@ -7,7 +7,10 @@ import * as s from "@codez/shared";
 import type { CodexRpcPort } from "../src/contract.js";
 import type { OfficialPluginMarketplace } from "../src/official-plugin-marketplace.js";
 import { handleControlRequest } from "../src/control-plane.js";
-import { ensureOfficialRegistered } from "../src/control-official-plugins.js";
+import {
+  ensureOfficialRegistered,
+  refreshOfficialPlugins,
+} from "../src/control-official-plugins.js";
 import { handleCodexNativeRequest } from "../src/request-scope.js";
 
 const workspace = { workspacePath: "/workspace", workspaceKey: "/workspace" };
@@ -680,6 +683,9 @@ function officialNativeFixture(options?: {
   registered?: boolean;
   source?: string;
   readbackPath?: string;
+  installed?: boolean;
+  installedVersion?: string | null;
+  installedLoadErrors?: Array<{ marketplacePath: string; message: string }>;
 }) {
   const OFFICIAL = s.CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID;
   const source = options?.source ?? resolve("/isolated/official");
@@ -721,13 +727,15 @@ function officialNativeFixture(options?: {
   const state = { registered: options?.registered ?? false };
   const calls: { method: string; params: Record<string, unknown> }[] = [];
   let refreshCount = 0;
+  let refreshOptions: { installedVersions?: unknown }[] = [];
   const officialPlugins = {
     path,
     async load() {
       return snapshot;
     },
-    async refresh() {
+    async refresh(options?: { installedVersions?: unknown }) {
       refreshCount++;
+      refreshOptions.push(options ?? {});
       return snapshot;
     },
   } as unknown as OfficialPluginMarketplace;
@@ -741,10 +749,12 @@ function officialNativeFixture(options?: {
               {
                 id: `mimosa@${OFFICIAL}`,
                 name: "mimosa",
-                installed: false,
+                installed: options?.installed ?? false,
                 enabled: true,
-                version: "1.0.3",
-                localVersion: "1.0.3",
+                version:
+                  options?.installedVersion === undefined ? "1.0.3" : options.installedVersion,
+                localVersion:
+                  options?.installedVersion === undefined ? "1.0.3" : options.installedVersion,
                 installedAt: 1000,
                 source: { type: "local", path },
                 interface: null,
@@ -760,6 +770,16 @@ function officialNativeFixture(options?: {
       calls.push({ method, params: params as Record<string, unknown> });
       if (method === "plugin/list")
         return { marketplaces: marketplaces(), marketplaceLoadErrors: [] } as T;
+      if (method === "plugin/installed")
+        return {
+          marketplaces: structuredClone(
+            marketplaces().map((market) => ({
+              ...market,
+              plugins: market.plugins.filter((plugin) => plugin.installed),
+            })),
+          ),
+          marketplaceLoadErrors: options?.installedLoadErrors ?? [],
+        } as T;
       if (method === "marketplace/add") {
         state.registered = true;
         return { marketplaceName: OFFICIAL, installedRoot: source, alreadyAdded: false } as T;
@@ -803,6 +823,7 @@ function officialNativeFixture(options?: {
     path,
     source,
     publish,
+    refreshCalls: () => refreshOptions,
     refreshCount: () => refreshCount,
   };
 }
@@ -949,6 +970,142 @@ test("native install from the official marketplace path trusts only the plugin's
     value: "sha256:abc",
     mergeStrategy: "replace",
   });
+});
+
+test("official alias readback admits native install and still trusts plugin hooks", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "codez-official-install-alias-"));
+  const physical = join(root, "physical");
+  const alias = join(root, "alias");
+  await mkdir(join(physical, ".agents", "plugins"), { recursive: true });
+  await writeFile(join(physical, ".agents", "plugins", "marketplace.json"), "{}\n", "utf8");
+  await symlink(physical, alias, process.platform === "win32" ? "junction" : "dir");
+  t.after(() => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }));
+
+  // plugin/list 返回 alias，请求使用 canonical physical path，两条判断都必须承认同一文件。
+  const h = officialNativeFixture({
+    registered: true,
+    source: physical,
+    readbackPath: join(alias, ".agents", "plugins", "marketplace.json"),
+  });
+  const result = await handleCodexNativeRequest(
+    { method: "plugin/install", params: { pluginName: "mimosa", marketplacePath: h.path } },
+    h.context,
+    h.publish,
+  );
+  assert.equal((result.result as { authPolicy: string }).authPolicy, "ON_INSTALL");
+  const trustWrites = h.calls.filter((call) => call.method === "config/value/write");
+  assert.equal(trustWrites.length, 1);
+  assert.deepEqual(trustWrites[0]?.params, {
+    keyPath: `hooks.state."mimosa@${s.CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID}:hooks/hooks.json:session_start:0:0".trusted_hash`,
+    value: "sha256:abc",
+    mergeStrategy: "replace",
+  });
+});
+
+test("生产官方刷新路径传入原生已安装版本且 provider 失败时保留刷新失败语义", async () => {
+  const native = officialNativeFixture({ registered: true, installed: true });
+  await handleCodexNativeRequest(
+    {
+      method: "marketplace/upgrade",
+      params: { marketplaceName: s.CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID },
+    },
+    native.context,
+    native.publish,
+  );
+  assert.equal(native.refreshCount(), 1);
+  const nativeOptions = native.refreshCalls()[0] as {
+    installedVersions?: () => Promise<Array<{ name: string; version: string }>>;
+  };
+  assert.equal(typeof nativeOptions.installedVersions, "function");
+  assert.deepEqual(await nativeOptions.installedVersions?.(), [
+    { name: "mimosa", version: "1.0.3" },
+  ]);
+
+  const control = officialNativeFixture({ registered: true, installed: true });
+  await handleControlRequest(
+    "plugins/marketplace/update",
+    { workspace, marketplace: s.CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID },
+    control.context,
+  );
+  assert.equal(control.refreshCount(), 1);
+  const controlOptions = control.refreshCalls()[0] as {
+    installedVersions?: () => Promise<Array<{ name: string; version: string }>>;
+  };
+  assert.deepEqual(await controlOptions.installedVersions?.(), [
+    { name: "mimosa", version: "1.0.3" },
+  ]);
+
+  const failing = officialNativeFixture({ registered: true, installed: true });
+  let failingRefreshCount = 0;
+  (
+    failing.officialPlugins as unknown as {
+      refresh: (options?: {
+        installedVersions?: () => Promise<Array<{ name: string; version: string }>>;
+      }) => Promise<unknown>;
+    }
+  ).refresh = async (options) => {
+    failingRefreshCount++;
+    await options?.installedVersions?.();
+    return {};
+  };
+  const originalRequest = failing.context.rpc.request.bind(failing.context.rpc);
+  failing.context.rpc.request = async <T>(method: string, params: unknown): Promise<T> => {
+    if (method === "plugin/installed") throw new Error("native catalog unavailable");
+    return await originalRequest<T>(method, params);
+  };
+  await assert.rejects(
+    handleCodexNativeRequest(
+      {
+        method: "marketplace/upgrade",
+        params: { marketplaceName: s.CODEZ_OFFICIAL_PLUGIN_MARKETPLACE_ID },
+      },
+      failing.context,
+      failing.publish,
+    ),
+    /refresh failed verification/,
+  );
+  assert.equal(failingRefreshCount, 1);
+
+  await assert.rejects(refreshOfficialPlugins(failing.context), /native catalog unavailable/);
+  assert.equal(failingRefreshCount, 2);
+
+  const loadError = officialNativeFixture({
+    registered: true,
+    installed: true,
+    installedLoadErrors: [
+      {
+        marketplacePath: "/missing/.agents/plugins/marketplace.json",
+        message: "installed marketplace failed to load",
+      },
+    ],
+  });
+  const loadErrorOptions = {
+    installedVersions: () => Promise.reject(new Error("ignored")),
+  };
+  (
+    loadError.officialPlugins as unknown as {
+      refresh: (options?: typeof loadErrorOptions) => Promise<unknown>;
+    }
+  ).refresh = async (options) => options?.installedVersions?.() ?? {};
+  await assert.rejects(
+    refreshOfficialPlugins(loadError.context),
+    /installed plugin catalog has load errors/,
+  );
+
+  const missingVersion = officialNativeFixture({
+    registered: true,
+    installed: true,
+    installedVersion: null,
+  });
+  const missingVersionOptions = {
+    installedVersions: () => Promise.reject(new Error("ignored")),
+  };
+  (
+    missingVersion.officialPlugins as unknown as {
+      refresh: (options?: typeof missingVersionOptions) => Promise<unknown>;
+    }
+  ).refresh = async (options) => options?.installedVersions?.() ?? {};
+  await assert.rejects(refreshOfficialPlugins(missingVersion.context), /has no version/);
 });
 
 test("native installs from personal marketplaces never receive official hook trust", async () => {
