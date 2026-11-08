@@ -158,7 +158,10 @@ warning. The generated marketplace is independent of workspace cwd/identity.
    existing `tool_timeout_sec` without `timeoutMs` is preserved.
 5. Hooks (`hooks/hooks.json` or inline `hooks`): command hooks pass through;
    ZCode `type: "process"` handlers (command + args) are rewritten to
-   shell-quoted `type: "command"` strings. `${ZCODE_PLUGIN_ROOT}` rewrites to
+   shell-quoted `type: "command"` strings. POSIX quoting escapes backslashes,
+   quotes and backticks; Windows `cmd /C` quoting preserves single backslashes
+   in executable and argument paths instead of applying POSIX escaping.
+   `${ZCODE_PLUGIN_ROOT}` rewrites to
    `${CLAUDE_PLUGIN_ROOT}`, which Codex expands for plugin hooks at discovery.
    Exact project-directory arguments become `.`; a project placeholder
    followed by `/` or `\\` becomes the corresponding safe `./` or `.\\`
