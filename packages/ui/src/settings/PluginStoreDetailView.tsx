@@ -34,7 +34,9 @@ import documentsIconUrl from "@/assets/document-skill-icons/documents@2x.png";
 import pdfIconUrl from "@/assets/document-skill-icons/pdf@2x.png";
 import spreadsheetsIconUrl from "@/assets/document-skill-icons/spreadsheets@2x.png";
 import {
+  PluginStoreCompatibilityNotes,
   PluginStoreInstallButton,
+  PluginStoreInstallUnavailableNote,
   PluginStoreItemMenu,
   PluginStorePaidPlanBadge,
   PluginStoreOpenUiButton,
@@ -43,7 +45,6 @@ import {
 } from "@/settings/PluginStoreCard.js";
 import {
   isItemBusy,
-  isStoreItemInstallBlocked,
   isTrustedImageUrl,
   isUiPluginItem,
   KNOWN_CATEGORY_LABEL_IDS,
@@ -172,6 +173,7 @@ export function PluginStoreDetailView({
                     size="lg"
                     data-testid="plugin-store-try-now"
                     data-plugin-id={item.id}
+                    disabled={Boolean(item.installationUnavailableReason)}
                     onClick={() => onUsePrompt(item, "")}
                   >
                     <MessagesSquare className="size-3.5" aria-hidden="true" />
@@ -201,16 +203,11 @@ export function PluginStoreDetailView({
             {intl.formatMessage({ id: "settings.plugins.store.sourceMissing" })}
           </p>
         ) : null}
-        {isStoreItemInstallBlocked(item) ? (
-          <p
-            data-testid="plugin-store-extension-incompatible"
-            data-plugin-id={item.id}
-            className="flex items-center gap-1.5 text-ui-base text-warning"
-          >
-            <TriangleAlert className="size-3.5 shrink-0" aria-hidden="true" />
-            {intl.formatMessage({ id: "settings.plugins.store.extension.incompatibleHint" })}
-          </p>
-        ) : null}
+        <PluginStoreCompatibilityNotes item={item} />
+        <PluginStoreInstallUnavailableNote
+          item={item}
+          className="flex min-w-0 items-center gap-1 text-ui-base text-warning"
+        />
       </div>
 
       {/* Hero 区：横幅图上垂直堆叠示例提示词胶囊；无图但有提示词 → 纯胶囊列表；两者皆无 → 不渲染。 */}
@@ -323,6 +320,7 @@ function HeroSection({
         data-plugin-id={item.id}
         // 彩色 Hero 上统一使用参考图的深色半透明胶囊，不随底图有无切换为普通卡片。
         className="group/prompt flex w-fit max-w-2xl items-center gap-2.5 rounded-3xl bg-black/75 px-3.5 py-2.5 text-left text-ui-base text-white shadow-lg backdrop-blur-md transition-colors hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+        disabled={Boolean(item.installationUnavailableReason)}
         onClick={() => onUsePrompt(item, prompt)}
       >
         <img

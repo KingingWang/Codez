@@ -31,6 +31,13 @@ snapshot; it must not keep an independent installed/enabled truth. Codex owns
 the native marketplace registration, installed files, effective enablement and
 the associated user configuration. The generated local marketplace stays on
 the same execution host as Codex, and must outlive the native registration.
+Each `createCodexProcess(options)` connection owns only that child process's
+workspace environment. The bridge entrypoint in `main.ts` is the sole owner of
+physical cwd resolution and passes that resolved path as `options.cwd`;
+`createCodexProcess` derives the routing identity from
+`options.workspaceIdentity?.trim() || options.cwd` and applies both values to
+the app-server child without changing the caller's `options.env`. The generated
+marketplace remains workspace-agnostic and never contains a workspace cwd.
 For Codex runtime, plugin requests use the target workspace's existing
 read-only Host attachment; only legacy ZCode uses the synthetic local
 plugin-management workspace. Otherwise remote installs could target the
@@ -78,6 +85,28 @@ The transpiler applies data-driven component rules instead of per-plugin
 special cases, so new official plugins and new versions flow through the same
 pipeline without code changes:
 
+### Per-workspace runtime environment
+
+`createCodexProcess` injects these bridge/runtime reserved names into every
+app-server child:
+
+- `ZCODE_PROJECT_DIR`, `CLAUDE_PROJECT_DIR`, and `ZCODE_WORKSPACE_ROOT` equal
+  the physical `options.cwd`;
+- `ZCODE_WORKSPACE_IDENTITY` equals the explicit nonblank
+  `options.workspaceIdentity`, or `options.cwd` when omitted.
+
+Providing a different value for one of these names in explicit `options.env`
+is an immediate startup error; the identical value is idempotent. Stale values
+inherited from the bridge environment are always overwritten by the values for
+the current cwd/identity. Two processes with the same cwd but different
+workspace identities must keep their identity values separate, and neither
+process may mutate its parent environment.
+
+Official plugin materialization also reserves `ZCODE_PLUGIN_DATA` and
+`CLAUDE_PLUGIN_DATA`. A stdio server may not override any project, identity,
+or data reserved name with a literal value: such a server is dropped with a
+warning. The generated marketplace is independent of workspace cwd/identity.
+
 1. Manifest: `.claude-plugin/plugin.json` is used when present; otherwise a
    Claude-compatible manifest is synthesized from `.zcode-plugin/plugin.json`.
    Manifest path fields (`skills`, `commands`, `hooks`, `mcpServers`) are
@@ -91,28 +120,66 @@ pipeline without code changes:
    (Codex copies local installs into its own cache, so baked paths must point
    at the stable materialized directory). A `cwd` of `${ZCODE_PROJECT_DIR}` /
    `${CLAUDE_PROJECT_DIR}` is dropped so the server inherits the per-workspace
-   app-server cwd. `${user_config.<key>}` bakes the declared default; a use
-   without a declared default drops that server with a warning.
-   `${ZCODE_BASE_URL}` resolves to the configured Codez endpoint origin.
+   app-server cwd. For the three project variable names above, an exact
+   `${ZCODE_PROJECT_DIR}` or `${CLAUDE_PROJECT_DIR}` env value is moved from
+   literal `env` to Codex `env_vars`, including the matching alias, while
+   existing string and `{name, source: "local"}` entries are deduplicated by
+   variable name. Every official stdio server also inherits
+   `ZCODE_WORKSPACE_IDENTITY` through `env_vars`. Non-standard keys, partial
+   concatenation, defaults, nested references, unknown variables, and literal
+   reserved values drop that server with a warning. HTTP servers never receive
+   stdio-only `env_vars`, project env, identity, or plugin-data fields.
+   `${user_config.<key>}` bakes the declared default; a use without a declared
+   default drops that server with a warning. `${ZCODE_BASE_URL}` resolves to
+   the configured Codez endpoint origin.
    `auth: {type: "zcode_official"}` on an HTTP server becomes
    `bearer_token_env_var: "CODEZ_ZAI_OFFICIAL_MCP_TOKEN"` and marks the plugin
    as requiring z.ai account auth; any other unrecognized `${...}` variable,
    transport, or auth shape drops that server with a warning. When a plugin
    declares MCP servers and every server is dropped, the entry is
    unavailable. Legacy SSE transports are unsupported.
-3. Hooks (`hooks/hooks.json` or inline `hooks`): command hooks pass through;
+3. Plugin data: the native root is
+   `<CODEX_HOME>/plugins/data/<pluginName>-<marketplaceName>` (using the
+   generated official marketplace identity). `OfficialPluginMarketplace`
+   derives it from the current isolated/actual Codex home and supplies it to
+   the transpiler; every official stdio MCP server receives the same value in
+   both `ZCODE_PLUGIN_DATA` and `CLAUDE_PLUGIN_DATA`. The path is keyed by the
+   stable plugin/marketplace compound id, not by version, so updates reuse it,
+   different plugins stay isolated, and generated version GC never deletes it.
+   Marketplace refresh only derives and bakes that stable path; it never creates
+   `CODEX_HOME` or any plugin data directory. Native plugin execution owns later
+   data creation, so a runtime creation error is visible from that MCP execution
+   rather than degrading catalog availability during refresh.
+4. Timeout: a positive safe-integer `timeoutMs` becomes
+   `tool_timeout_sec = timeoutMs / 1000`, preserving fractional seconds.
+   Missing `timeoutMs` generates no timeout field. Zero, negative, non-finite,
+   non-safe-integer, or non-integer values, or a `timeoutMs` that conflicts
+   with an existing `tool_timeout_sec`, drop that server with a warning; an
+   existing `tool_timeout_sec` without `timeoutMs` is preserved.
+5. Hooks (`hooks/hooks.json` or inline `hooks`): command hooks pass through;
    ZCode `type: "process"` handlers (command + args) are rewritten to
    shell-quoted `type: "command"` strings. `${ZCODE_PLUGIN_ROOT}` rewrites to
    `${CLAUDE_PLUGIN_ROOT}`, which Codex expands for plugin hooks at discovery.
+   Exact project-directory arguments become `.`; a project placeholder
+   followed by `/` or `\\` becomes the corresponding safe `./` or `.\\`
+   relative path. Other concatenations, nested references, URLs, defaults, and
+   unknown variables are not provably independent path arguments and drop that
+   handler with a warning. `${ZCODE_PLUGIN_DATA}` rewrites to
+   `${CLAUDE_PLUGIN_DATA}`; existing `${PLUGIN_DATA}` and
+   `${CLAUDE_PLUGIN_DATA}` forms remain unchanged so hooks and MCP servers can
+   share one native root without rewriting legacy semantics.
    Events outside the Codex hook model are dropped with a warning.
-4. Skills and commands are copied unchanged; Codex resolves matcher aliases
+6. A ZCode/Claude manifest `ui` declaration is removed from the Codex-clean
+   manifest and produces an explicit warning: ZCode UI surfaces are
+   unavailable in Codex. Compatible non-UI components may still install.
+7. Skills and commands are copied unchanged; Codex resolves matcher aliases
    (`Edit`/`Write` → `apply_patch`, `Agent` → `spawn_agent`) itself.
-5. Content scan: plugin text assets are scanned for markers of ZCode-only
+8. Content scan: plugin text assets are scanned for markers of ZCode-only
    runtime coupling (`node_repl`, `control-browser`, `BrowserRecordingAPI`,
    `browser_use`, `computer_use`). Matches do not block installation but
    surface as per-plugin capability warnings, because instruction-level
    coupling degrades gracefully while tool-level coupling does not.
-6. Anything not recognized by these rules never produces a silent partial
+9. Anything not recognized by these rules never produces a silent partial
    success: the entry is either available with enumerated warnings or
    unavailable with a concrete reason.
 
@@ -158,6 +225,12 @@ retains the backend reason as detail tooltip content. Available entries may
 carry `officialWarnings` and `officialAuthRequired`; the UI shows them as
 capability notes without disabling installation. Entries without these fields
 keep the existing Codez store behavior.
+The unavailable reason and `officialWarnings` must be visible before install
+in both candidate and detail surfaces. A declared ZCode UI is therefore
+installable only when its compatible non-UI components survive: the button is
+disabled by `installationUnavailableReason`, never merely because a warning is
+present. These diagnostics do not change Codex's installed/enabled state or
+default enablement semantics.
 
 ## State and failure cases
 
@@ -189,7 +262,9 @@ keep the existing Codez store behavior.
 
 - Unit: official identity alias only for trusted source, schema/manifest
   validation, zip SHA-256 verification, zip-slip rejection, transpiler rules
-  (manifest synthesis, path normalization, variable baking, userConfig
+  (manifest synthesis, path normalization, variable baking, project env and
+  reserved-name conflicts, native data-root isolation/stability, fractional
+  timeout conversion, safe hook project paths, UI unavailability, userConfig
   defaults, official-auth rewrite, process-hook conversion, content scan),
   missing or unsupported assets, unavailable CDN, version mismatch, idempotent
   native registration, failure receipt and rollback, startup warm-up from a
