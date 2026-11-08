@@ -443,6 +443,7 @@ probe ──已安装且 daemon ready──────────────�
 - 远端应用入口：`codez update --from-archive <path> --json`（R2 update 增加本地 archive 源；首装时先解包出 `bin/codez` 引导）。安装、升级、组件缓存、原子切换、失败回滚全部复用 R2 已验证的 release 语义，Adapter 不自造第二套安装逻辑。
 - 首次安装即执行 `serve --daemon`：能访问 OS 用户服务管理器时返回 `serviceRegistered=true`；否则自动 detached fallback 并返回 `false`，连接日志明确说明“当前远端环境存活期间常驻、重启后由连接自动拉起”。
 - Source Server 部署策略必须显式区分 `release-versioned` 与 `development-content-addressed`。每次 staging 从同一个 Git commit 生成 `{ commitSha, commitTimestamp }`，同时写入 archive 内 `manifest.json` 与 `source-server-release.json`；安装器把它持久化到 `current.json`，probe 原样读回。commit timestamp 不使用本机打包时间，保证 CI 的 remote-assets 与各 Desktop matrix job 对同一 commit 得到同一身份。Desktop 下载缓存按 `productVersion + commitSha` 隔离，离线 descriptor 不得跨 commit 复用。
+- `pending.json` 是新 bootstrap CLI 与当前 Supervisor 之间的跨版本交接格式，必须保持旧 Supervisor 可解析：不得在其中写入旧 `releaseManifestSchema.strict()` 不认识的 `build`。新 CLI 仍在内存中的 prepared manifest 与 immutable release 的 `manifest.json` 保留构建身份；ReleaseManager 读取缺少 `build` 的 current/pending 时从对应 immutable manifest 补全，候选 Core ready 后、目标 CLI 停止旧 Supervisor 前必须把完整 target（含 `build`）原子写回 `current.json`。因此旧 Supervisor 可以继续负责 running-task guard、Core 切换与回滚，最终 current/probe 的同版本方向判定也不会丢失。
 - 打包态使用 `release-versioned`：SHA 相同直接复用；同版本 SHA 不同且本地 commit 较新时判定为 `needs-upgrade + upgradeTarget:server`，走统一受保护更新；本地 commit 较旧时，在版本与 RPC 合同兼容的前提下直接复用较新远端，连接后只投影 `updateAvailability:available + upgradeTarget:controller`，不得自动覆盖远端或重启其他客户端正在使用的 daemon。构建身份缺失、同 commit 但 SHA 不同、或不同 commit 时间戳相同而无法定序时，同样不自动更新，只投影可选更新；需要更新时由用户显式发起。旧远端缺少构建身份不表示它必然更旧。
 - 未打包开发态 SSH 使用 `development-content-addressed`：Server version 与当前 archive version 相同但 `archiveSha256` 不同或远端身份缺失时仍判定为需要更新，确保远端执行当前 worktree 内容；SHA 相同继续复用。该严格刷新语义不得扩散到生产态或 WSL/Docker。
 - 判定为需要更新之后，两种策略的更新逻辑必须完全一致：连接流程只把 Profile 置为 `needs-upgrade + updateAvailability: required` 并以 `source-server-upgrade-required` 拒绝连接，不得在连接流程内直接执行 archive update；更新本身统一由 §6.3 的 `updateSource → Manager.updateServer` 执行（`updating` 状态、操作日志、`force:false` 先行、running-task guard 后由用户显式确认再 `force:true`）。因此连接向导内的自动更新、启动重连/断线恢复的「立即更新」入口和强制更新确认对开发态同样生效。（R3A-B-06 修正：此前开发态在连接流程内直接 `installOrUpdate`，guard 只能表现为普通连接失败，UI 没有强制更新入口。）
@@ -632,6 +633,17 @@ Host 已固定 A → 后续 Profile 编辑 B → 在途操作仍只使用 A
   旧 Supervisor，从目标 immutable release 重新执行 `serve --daemon`，并经 control runtime identity 校验后
   才允许成功；不得把 `status.version` 或新 Core ready 当作整个 daemon 已换代。更新中的短暂离线属于
   `updating`，不能发布新的 online attachment。
+
+```text
+新 CLI / ReleaseManager ──写 legacy-compatible pending（无 build）──► 当前 Supervisor
+                                                                      │
+                                                                      ├─ running-task guard / 回滚所有权不变
+                                                                      └─ 候选 Core ready
+目标 CLI / ReleaseManager ──补全并原子写回 current（含 build）──► 停止旧 Supervisor
+                                                                      │
+                                                                      └─ 启动目标 Supervisor ─► runtime identity 校验
+```
+
 - 已识别 Source 的显式更新必须复用 §7.1 的 physical → logical 换代 seam：只有旧物理连接实际从 Manager online owner 中移除时，才把该 Source 的既有 logical workspace 标为 recoverable offline；新物理连接握手成功后，必须发布同一 Source 的 reconnect handle，由 `WindowRemoteConnectionRegistry` 换代 `remoteSessionId`、generation、scoped services 与 Desktop/Mobile attachment。running-task guard 或更新准备失败且旧物理连接仍存活时，禁止失效或换代 logical workspace。
 
 ```text

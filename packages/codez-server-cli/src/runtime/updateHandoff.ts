@@ -173,6 +173,10 @@ export function createUpdateDaemonHandoff(
         previousReleaseId: input.previous?.releaseId,
         targetReleaseId: input.target.releaseId,
       });
+      // Bug 原因：旧 Supervisor 能应用 legacy-compatible pending，却会把不含 build 的 pending
+      // 原样写成 current。目标 CLI 在接管 Supervisor 前恢复完整 target，保证 probe 与同版本
+      // 降级裁决仍能读取构建身份；restoreCurrent 复用既有原子写入和 release 边界校验。
+      await new ReleaseManager(input.layout).restoreCurrent(input.target);
       await boundary.stopDaemon(input.layout);
       try {
         await boundary.startDaemon(input.layout, input.target);
