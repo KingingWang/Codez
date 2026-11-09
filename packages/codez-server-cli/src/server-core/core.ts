@@ -1,6 +1,7 @@
 import { hostname } from "node:os";
 import { join } from "node:path";
 import { createLegacyServerCredentialCipher } from "@codez/shared/credential-security";
+import { monitorEventLoopDelay } from "node:perf_hooks";
 import {
   createServerHostServices,
   disposeServiceResourcesAndWait,
@@ -121,8 +122,21 @@ export async function runServerCore(generation: number): Promise<void> {
     },
   );
   let heartbeatInFlight: Promise<void> | undefined;
+  const eventLoopDelay = monitorEventLoopDelay({ resolution: 20 });
+  eventLoopDelay.enable();
+  const readEventLoopLag = () => {
+    const milliseconds = (nanoseconds: number) =>
+      Number.isFinite(nanoseconds) ? Math.max(0, Math.round(nanoseconds / 1_000_000)) : 0;
+    const lag = {
+      maxMs: milliseconds(eventLoopDelay.max),
+      p99Ms: milliseconds(eventLoopDelay.percentile(99)),
+    };
+    eventLoopDelay.reset();
+    return lag;
+  };
   const heartbeat = setInterval(() => {
     if (heartbeatInFlight) return;
+    const eventLoopLag = readEventLoopLag();
     heartbeatInFlight = Promise.resolve(taskActivityTracker.readRunningTaskCount())
       .then((runningTaskCount) => {
         if (runningTaskCount !== lastRunningTaskCount) {
@@ -138,6 +152,7 @@ export async function runServerCore(generation: number): Promise<void> {
           runningTasks: taskActivityTracker.readRunningTasks(),
           at: Date.now(),
           runningTaskCount,
+          eventLoopLag,
         });
       })
       .catch(() => {
@@ -146,6 +161,7 @@ export async function runServerCore(generation: number): Promise<void> {
           runningTasks: taskActivityTracker.readRunningTasks(),
           at: Date.now(),
           runningTaskCount: lastRunningTaskCount,
+          eventLoopLag,
         });
       })
       .finally(() => {
@@ -157,6 +173,7 @@ export async function runServerCore(generation: number): Promise<void> {
     shutdownStarted = true;
     disposeParentDisconnectHandler();
     clearInterval(heartbeat);
+    eventLoopDelay.disable();
     activitySubscription.dispose();
     taskActivityTracker.dispose();
     await http.close().catch(() => undefined);

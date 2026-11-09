@@ -236,6 +236,41 @@ task-index syncer ◀── 同结构 snapshot（几十 KB~数百 KB，而非 15
   忽略 `contentProfile` 导致长会话的桥接→Host 整帧超限时，不得改为裁掉历史开头、
   让 task sqlite 存完整正文或在 Host 新建一条会话内容写入路径。
 
+### Native task-index read（2026-11-09）
+
+旧 `index` 仍要先构造并通过完整 legacy snapshot schema，再剥离大字段；长会话的全历史
+projection、Zod 校验和消息分配仍发生在裁剪之前。Codex native 新增独立
+`session/index/read`，不再复用 full snapshot 作为传输或校验合同：
+
+```text
+sessions-index terminal/title event
+  → CodezTaskIndexSyncer（每 workspaceKey+sessionId 一个 in-flight，至多一个 trailing）
+  → session/index/read { sessionId }
+  → 已加载 ThreadProjectionState 的同一 thread/epoch/revision/seq 捕获点
+  → 轻量 session + presentation + target 三态 + visible/search text + watermark
+  → taskFacts.refresh（CLI 行事实与缺失行 applyCliFacts 的唯一 owner）
+  → updateTaskPresentation（展示字段与 bounded searchableText）
+```
+
+- wire 参数 strict，只含 `sessionId`。结果使用独立 strict schema，包含 task-index 所需
+  session 子集、`presentation`、`hasUserVisibleContent`、`searchableText{text,truncated}`
+  与 `watermark{logEpoch,revision,seq}`；搜索正文仍按既有 200K 字符规则截断。
+- `target` 是显式判别联合：`absent` 不覆盖、`null` 清空、`value` 更新，禁止把字段缺席
+  误当成清空。可见性、正文、模型、错误与 goal 的派生由 shared 纯 reducer 与 full 路径共用。
+- 新读取只能使用已 loaded 的线程缓存；not-resident 不得触发 `thread/read`、attach、历史分页
+  或恢复 runtime。不得先调用 `projectLegacySnapshot`、完整 snapshot schema、`projectRows`
+  或 `elideSessionSnapshotForIndex`。仅当线程模型或档位缺席时，可复用既有小配置读取补齐
+  full 的全局默认视图；等待前后 epoch/revision/seq 必须一致，且不得读取会话历史。
+- Host 以 `workspaceIdentity?.trim() || workspacePath` + `sessionId` 合并回读。在途期间只保留
+  最新 trailing 事件；旧代际、删除、重启、dispose、低水位和超时结果不得写库或广播。
+  未消费的原始 terminal unread signal 随 trailing 传递，只在最终应用时消费一次。
+- 新接口是 10 秒 observation 请求，超时只废弃本次 flight。仅 `-32601` 回退旧
+  `session/read(index)`，负能力按 runtime/client generation 缓存；其它错误不得 fallback
+  或自动重试。旧远端回退只保证兼容，根治需要 Host 与 Source Server/Bridge 同时升级。
+- task-index DTO 不是第二条任务事实写入路径，也不得回写 conversation UI。desktop
+  continuous 与 mobile replayable 继续共享同一 CLI owner，但传输和恢复语义不合并；
+  Desktop 断连只释放 attachment，daemon/task 继续，真实 Core/Agent 崩溃不自动续跑。
+
 ## Task Status Projection
 
 `task_status` is a product task state, not a direct mirror of `session.status`.

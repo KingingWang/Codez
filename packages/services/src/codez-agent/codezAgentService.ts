@@ -189,6 +189,8 @@ import {
   codezSessionRequestRuntimePreferencesParamsSchema,
   codezSessionRuntimePreferencesResultSchema,
   codezSessionStateSnapshotSchema,
+  codezSessionIndexReadResultSchema,
+  projectSessionIndexContent,
   codezSessionSubscribeResultSchema,
   codezStateUpdatedNotificationSchema,
   codezUserInputRequestParamsSchema,
@@ -200,7 +202,6 @@ import {
   codezWorkspaceUpdateMemoryPreferencesResultSchema,
   codezWorkspaceUpdateModelIoPreferencesResultSchema,
   codezProviderUpdateAccountConfigResultSchema,
-  type CodezSessionStateSnapshot,
   type CodezAutomation,
   type CodezAutomationRun,
   codezWorkspaceUpdateOffPeakToolPolicyResultSchema,
@@ -498,6 +499,7 @@ const MCP_STATUS_LANE_IDLE_TIMEOUT_MS = 5 * 60_000;
 const PLUGIN_MANAGEMENT_REQUEST_TIMEOUT_MS = 5 * 60_000;
 /** 资源管理器每秒刷新；子进程映射是纯内存请求，超时就当本轮无映射，不能拖慢采样节拍。 */
 const CHILD_PROCESSES_REQUEST_TIMEOUT_MS = 800;
+const SESSION_INDEX_READ_TIMEOUT_MS = 10_000;
 const PLUGIN_OPERATION_CANCEL_REQUEST_TIMEOUT_MS = 5_000;
 const SESSION_COMPACT_REQUEST_TIMEOUT_MS = 5 * 60_000;
 /**
@@ -1664,6 +1666,8 @@ export function createCodezAgentService(
   });
   const sessionEventSequenceStates = new Map<string, SessionEventSequenceState>();
   const wiredClients = new WeakSet<CodezProtocolClient>();
+  // 仅记录当前物理 client 的协议负能力；进程换代后自动重新探测。
+  const sessionIndexReadUnsupportedClients = new WeakSet<CodezProtocolClient>();
   const clientWorkspaces = new WeakMap<
     CodezProtocolClient,
     Map<string, CodezAgentWorkspaceTarget>
@@ -4318,7 +4322,7 @@ export function createCodezAgentService(
 
   function rememberSessionTrace(
     target: CodezAgentSessionTarget,
-    snapshot: CodezSessionStateSnapshot,
+    snapshot: { session: { traceId?: string } },
   ): TraceId | undefined {
     const traceId = snapshot.session.traceId as TraceId | undefined;
     if (traceId) {
@@ -5741,6 +5745,47 @@ export function createCodezAgentService(
       );
       rememberSessionTrace(params, snapshot);
       return snapshot;
+    },
+
+    async readSessionIndex(params) {
+      const client = await getReadOnlyClient(params, "existing-only");
+      const requestOptions = {
+        timeoutMs: SESSION_INDEX_READ_TIMEOUT_MS,
+        lifecycle: "observation" as const,
+      };
+      if (!sessionIndexReadUnsupportedClients.has(client)) {
+        try {
+          const result = await client.request(
+            codezProtocolMethods.sessionIndexRead,
+            { sessionId: params.sessionId },
+            codezSessionIndexReadResultSchema,
+            requestOptions,
+          );
+          rememberSessionTrace(params, result);
+          return result;
+        } catch (error) {
+          // 只有 method-not-found 能证明旧远端不支持；超时、断线和 schema 错误不得触发重活回退。
+          if (!isProtocolMethodNotFoundError(error)) throw error;
+          sessionIndexReadUnsupportedClients.add(client);
+        }
+      }
+      // 兼容旧远端：沿用旧 index 读取，再在 Host 复用同一 shared reducer 收敛成轻量 DTO。
+      const snapshot = await client.request(
+        codezProtocolMethods.sessionRead,
+        {
+          sessionId: params.sessionId,
+          deliveryKind: params.deliveryKind,
+          contentProfile: "index",
+        },
+        codezSessionStateSnapshotSchema,
+        requestOptions,
+      );
+      rememberSessionTrace(params, snapshot);
+      return {
+        ...projectSessionIndexContent(snapshot),
+        // 旧协议没有可信水位；Syncer 仍以 runtime/subscription generation 淘汰迟到结果。
+        watermark: { logEpoch: "legacy-session-index", revision: 0, seq: 0 },
+      };
     },
 
     async readSessionMessages(params: CodezAgentReadSessionMessagesParams) {
