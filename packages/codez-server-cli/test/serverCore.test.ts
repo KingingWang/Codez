@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveServerLayout } from "../src/runtime/paths.js";
+import { CORE_HEARTBEAT_INTERVAL_MS, coreMessageSchema } from "../src/contracts.js";
 
 const createServerHostServices = vi.fn();
 const materializeCodezBuiltinProviderConfig = vi.fn();
@@ -77,6 +78,7 @@ describe("runServerCore startup wiring", () => {
     installParentDisconnectHandler.mockReturnValue(() => undefined);
     createTaskActivityTracker.mockReturnValue({
       readRunningTaskCount: () => 0,
+      readRunningTasks: () => [],
       onDidChangeRunningTaskCount: () => ({ dispose: () => undefined }),
       dispose: () => undefined,
     });
@@ -179,5 +181,40 @@ describe("runServerCore startup wiring", () => {
       /Codez Built-in Provider Config.*CODEZ_BUILTIN_PROVIDER_CONFIG_FILE/u,
     );
     expect(createServerHostServices).not.toHaveBeenCalled();
+  });
+
+  it("includes bounded event-loop lag diagnostics in the existing heartbeat contract", async () => {
+    const messages: unknown[] = [];
+    const originalSend = process.send;
+    const originalConnected = Object.getOwnPropertyDescriptor(process, "connected");
+    Object.defineProperty(process, "connected", { configurable: true, value: true });
+    Object.defineProperty(process, "send", {
+      configurable: true,
+      value: vi.fn((message: unknown, callback?: () => void) => {
+        messages.push(message);
+        callback?.();
+        return true;
+      }),
+    });
+    try {
+      await runServerCore(1);
+      await vi.advanceTimersByTimeAsync(CORE_HEARTBEAT_INTERVAL_MS);
+      const heartbeat = messages.find(
+        (message): message is { type: string } =>
+          typeof message === "object" &&
+          message !== null &&
+          (message as { type?: unknown }).type === "heartbeat",
+      );
+      expect(heartbeat).toMatchObject({
+        eventLoopLag: { maxMs: expect.any(Number), p99Ms: expect.any(Number) },
+      });
+      expect(() => coreMessageSchema.parse(heartbeat)).not.toThrow();
+    } finally {
+      if (originalSend)
+        Object.defineProperty(process, "send", { configurable: true, value: originalSend });
+      else delete (process as { send?: unknown }).send;
+      if (originalConnected) Object.defineProperty(process, "connected", originalConnected);
+      else delete (process as { connected?: boolean }).connected;
+    }
   });
 });

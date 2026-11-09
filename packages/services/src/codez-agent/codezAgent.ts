@@ -19,6 +19,7 @@ import type {
   BackgroundBashOutputResult,
   SessionDebugSnapshot,
   CodezSessionContentProfile,
+  CodezSessionIndexReadResult,
   DesktopBrowserCommandRelayRequest,
   DesktopBrowserCommandRelayResponse,
   DesktopBrowserControlUpdate,
@@ -335,6 +336,10 @@ export interface CodezAgentReadSessionParams extends CodezAgentSessionTarget {
   runtimePolicy?: CodezAgentRuntimePolicy;
   /** "index" 仅供 task index：返回剥离大载荷的同结构 snapshot，禁止回写 UI 状态。 */
   contentProfile?: CodezSessionContentProfile;
+}
+
+export interface CodezAgentReadSessionIndexParams extends CodezAgentSessionTarget {
+  deliveryKind?: CodezDeliveryKind;
 }
 
 export interface CodezAgentReadSessionMessagesParams extends CodezAgentSessionTarget {
@@ -840,6 +845,8 @@ export interface ICodezAgentService {
   getCodexUsageObservations(params: CodezAgentWorkspaceTarget): Promise<CodexUsageCacheSnapshot>;
   getTaskTokenUsage(params: CodezAgentTaskTokenUsageParams): Promise<CodezTaskTokenUsageResult>;
   readSession(params: CodezAgentReadSessionParams): Promise<CodezSessionStateSnapshot>;
+  /** 被动任务索引读取；实现固定 existing-only，不得为索引冷加载 session。 */
+  readSessionIndex?(params: CodezAgentReadSessionIndexParams): Promise<CodezSessionIndexReadResult>;
   readSessionMessages(
     params: CodezAgentReadSessionMessagesParams,
   ): Promise<CodezMessageWithParts[]>;

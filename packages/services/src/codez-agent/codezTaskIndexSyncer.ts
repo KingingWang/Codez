@@ -4,16 +4,12 @@ import { repairSubagentTaskIndex } from "#src/task-facts/repairSubagentTaskIndex
 import { repairSelectionSideChatTaskIndex } from "#src/codez-agent/repairSelectionSideChatTaskIndex.js";
 import {
   generateTraceId,
-  getCodezUserVisibleMessages,
-  isCodezGoalContinuationReminderText,
-  isCodezModelOnlySyntheticUserMessage,
+  projectSessionIndexContent,
   resolveWorkspaceKey,
   CODEZ_AGENT_PROVIDER_NOT_READY_CODE,
   type CodezTaskGoal,
-  type CodezTaskMode,
   type CodezTaskMeta,
-  type CodezMessagePart,
-  type CodezSessionMode,
+  type CodezSessionIndexReadResult,
   type CodezSessionStateSnapshot,
   type CodezWorkspaceEvent,
   type CodezWorkspaceTaskListChanged,
@@ -44,8 +40,6 @@ import type {
   CodezAgentWorkspaceTarget,
 } from "./codezAgent.js";
 import { CODEZ_AGENT_RUNTIME_UNAVAILABLE_CODE } from "./codezAgent.js";
-import { formatTaskMetaModelSelectionFromSnapshot } from "./codezConfigOptions.js";
-
 import { createTaskFacts, type TaskFactMutation } from "#src/task-facts/index.js";
 import {
   assertV4CommandAckOk,
@@ -61,6 +55,7 @@ const MAX_PENDING_TOPIC_BYTES = 32 * 1024 * 1024;
 const DISCOVERED_TASK_SEED_BATCH_SIZE = 64;
 const PROVIDER_NOT_READY_RETRY_MS = 5_000;
 const TOPIC_SUBSCRIBE_WARN_INTERVAL_MS = 60_000;
+const SESSION_INDEX_WATERMARK_LIMIT = 256;
 
 type TopicSubscribeReason =
   | "initial"
@@ -261,6 +256,20 @@ interface WorkspaceIngestState {
   assemblyTimer: ReturnType<typeof setTimeout> | null;
 }
 
+interface SessionIndexResyncRequest {
+  target: CodezAgentSessionTarget;
+  reason: string;
+  unreadSignal?: CodezWorkspaceTaskListChanged["unreadSignal"];
+  workspaceState: WorkspaceIngestState | undefined;
+  runtimeGeneration: number | null;
+  indexSubscriptionGeneration: number;
+}
+
+interface SessionIndexResyncEntry {
+  running?: SessionIndexResyncRequest;
+  pending?: SessionIndexResyncRequest;
+}
+
 type TopicDeliveryKind = "initial" | "online" | "recovery";
 
 interface TopicRecoveryState {
@@ -290,7 +299,7 @@ export function createCodezTaskIndexSyncer(
   // session/event + state.updated）整体迁到 v4 帧——sessions-index topic 提供
   // status(phase)/title/lastActivity 的 workspace 级 conflated 最新态，
   // workspace-config topic 提供配置目录热更新；正文搜索索引在 phase 终态迁移时
-  // 回源完整 snapshot 收敛（v4 命令路径不再有 op 驱动的 snapshot 同步兜底）。
+  // 通过轻量 session/index/read 收敛，避免完整历史 projection 阻塞 Core。
   const workspaceIngests = new Map<string, WorkspaceIngestState>();
   // 之前 workspaceEmitters 私有在 adapter 里，syncer 写完 sqlite 没有广播渠道，
   // UI 永远收不到 workspace_task_list_changed。把 emitter 上提到 syncer，adapter 改为转发，
@@ -298,6 +307,8 @@ export function createCodezTaskIndexSyncer(
   const workspaceEmitters = new Map<string, Emitter<CodezWorkspaceEvent>>();
   const terminalEventEmitter = new Emitter<CodezTaskIndexTerminalEvent>();
   const readyEventEmitter = new Emitter<CodezTaskIndexReadyEvent>();
+  const sessionIndexResyncs = new Map<string, SessionIndexResyncEntry>();
+  const sessionIndexLastApplied = new Map<string, CodezSessionIndexReadResult["watermark"]>();
   let disposed = false;
 
   const indexTopicFor = (state: WorkspaceIngestState) =>
@@ -486,39 +497,135 @@ export function createCodezTaskIndexSyncer(
     }
   }
 
-  async function resyncTaskIndexRowFromAgent(
+  function resyncTaskIndexRowFromAgent(
     target: CodezAgentSessionTarget,
     reason: string,
     options?: {
       unreadSignal?: CodezWorkspaceTaskListChanged["unreadSignal"];
     },
-  ): Promise<void> {
-    try {
-      // task-index 是被动观察者，只能读取现有 runtime。调用 resumeSession
-      // 会在用户下一轮 prompt 已被 Core 接受后重新 materialize/resume 同一 session，
-      // 形成第二个生命周期 writer；readSession(existing-only) 保留完整 snapshot
-      // 的索引能力，同时不会拉起或修改 runtime。
-      // 性能根因：每轮 turn 完成/改标题/变可见都会走这里，完整历史单行可达 ~15MB，
-      // host stdio 帧解析与 JSON.parse 被打满；index 只读标题/正文/可见性/状态，
-      // 故请求 contentProfile "index"（剥离 tool/reasoning/data URL 大载荷，结构不变）。
-      // 不能用 messageLimit：searchableText 与标题回退依赖历史开头。
-      const snapshot = await agentService.readSession({
-        ...target,
-        runtimePolicy: "existing-only",
-        contentProfile: "index",
-      });
-      // 回源收敛是状态/正文同步，不涉及 pin/archive/unread 归属（task_status_changed）。
-      await syncSnapshotAndBroadcast(snapshot, {
-        ...(options?.unreadSignal ? { unreadSignal: options.unreadSignal } : {}),
-        broadcastReason: "task_status_changed",
-      });
-    } catch (error) {
-      logger.warn(
-        undefined,
-        `回源同步 task index 行失败 reason=${reason} taskId=${target.sessionId}`,
-        error,
-      );
+  ): void {
+    const key = sessionIndexResyncKey(target);
+    const workspaceState = workspaceIngests.get(resolveWorkspaceKey(target));
+    const request: SessionIndexResyncRequest = {
+      target,
+      reason,
+      ...(options?.unreadSignal ? { unreadSignal: options.unreadSignal } : {}),
+      workspaceState,
+      runtimeGeneration: workspaceState?.runtimeGeneration ?? null,
+      indexSubscriptionGeneration: workspaceState?.indexSubscriptionGeneration ?? 0,
+    };
+    const entry = sessionIndexResyncs.get(key) ?? {};
+    sessionIndexResyncs.set(key, entry);
+    if (entry.running) {
+      // latest wins，但未消费的原始 terminal unread 必须随 trailing 保留一次。
+      entry.pending = {
+        ...request,
+        ...((request.unreadSignal ?? entry.pending?.unreadSignal)
+          ? { unreadSignal: request.unreadSignal ?? entry.pending?.unreadSignal }
+          : {}),
+      };
+      return;
     }
+    entry.running = request;
+    void drainSessionIndexResync(key, entry);
+  }
+
+  async function drainSessionIndexResync(
+    key: string,
+    entry: SessionIndexResyncEntry,
+  ): Promise<void> {
+    while (entry.running && sessionIndexResyncs.get(key) === entry && !disposed) {
+      const request = entry.running;
+      try {
+        const indexed = agentService.readSessionIndex
+          ? await agentService.readSessionIndex(request.target)
+          : await agentService
+              .readSession({
+                ...request.target,
+                runtimePolicy: "existing-only",
+                contentProfile: "index",
+              })
+              .then((snapshot) => ({
+                ...projectSessionIndexContent(snapshot),
+                watermark: { logEpoch: "legacy-session-index", revision: 0, seq: 0 },
+              }));
+        // 在途期间来了更新事件：旧 DTO 不写库、不广播，直接进入 trailing。
+        if (!entry.pending && isSessionIndexRequestCurrent(key, entry, request)) {
+          const previous = sessionIndexLastApplied.get(key);
+          const current = indexed.watermark;
+          const newer =
+            !previous ||
+            current.logEpoch === "legacy-session-index" ||
+            previous.logEpoch !== current.logEpoch ||
+            current.revision > previous.revision ||
+            (current.revision === previous.revision && current.seq > previous.seq);
+          if (newer) {
+            await syncSessionIndexAndBroadcast(indexed, {
+              ...(request.unreadSignal ? { unreadSignal: request.unreadSignal } : {}),
+              broadcastReason: "task_status_changed",
+              stillCurrent: () =>
+                !entry.pending && isSessionIndexRequestCurrent(key, entry, request),
+            });
+            if (!entry.pending && isSessionIndexRequestCurrent(key, entry, request)) {
+              sessionIndexLastApplied.delete(key);
+              sessionIndexLastApplied.set(key, current);
+              if (sessionIndexLastApplied.size > SESSION_INDEX_WATERMARK_LIMIT) {
+                const oldest = sessionIndexLastApplied.keys().next().value;
+                if (oldest) sessionIndexLastApplied.delete(oldest);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        logger.warn(
+          undefined,
+          `回源同步 task index 行失败 reason=${request.reason} taskId=${request.target.sessionId}`,
+          error,
+        );
+      } finally {
+        if (entry.pending) {
+          const pending = entry.pending;
+          entry.pending = undefined;
+          entry.running = {
+            ...pending,
+            ...((pending.unreadSignal ?? request.unreadSignal)
+              ? { unreadSignal: pending.unreadSignal ?? request.unreadSignal }
+              : {}),
+          };
+        } else if (entry.running === request) {
+          entry.running = undefined;
+        }
+      }
+    }
+    if (!entry.running && !entry.pending && sessionIndexResyncs.get(key) === entry) {
+      sessionIndexResyncs.delete(key);
+    }
+  }
+
+  function isSessionIndexRequestCurrent(
+    key: string,
+    entry: SessionIndexResyncEntry,
+    request: SessionIndexResyncRequest,
+  ): boolean {
+    if (disposed || sessionIndexResyncs.get(key) !== entry) return false;
+    const state = workspaceIngests.get(resolveWorkspaceKey(request.target));
+    if (state !== request.workspaceState) return false;
+    if (!state) return true;
+    return (
+      state.runtimeGeneration === request.runtimeGeneration &&
+      state.indexSubscriptionGeneration === request.indexSubscriptionGeneration &&
+      state.summaries.has(request.target.sessionId)
+    );
+  }
+
+  function sessionIndexResyncKey(target: CodezAgentSessionTarget): string {
+    return JSON.stringify([resolveWorkspaceKey(target), target.sessionId]);
+  }
+
+  function discardSessionIndexResync(target: CodezAgentSessionTarget): void {
+    // 删除是 tombstone 边界；旧 flight 无法取消，但 map 身份变化使其迟到结果失去写入资格。
+    sessionIndexResyncs.delete(sessionIndexResyncKey(target));
+    sessionIndexLastApplied.delete(sessionIndexResyncKey(target));
   }
 
   function sessionTargetFrom(
@@ -1236,6 +1343,7 @@ export function createCodezTaskIndexSyncer(
       // 只有 CLI 明确删除事件才写删除事实；snapshot 缺席不能据此删除任务。
       state.summaries.delete(delta.sessionId);
       const target = sessionTargetFrom(state.target, delta.sessionId);
+      discardSessionIndexResync(target);
       void taskFacts
         .removed({
           workspacePath: target.workspacePath,
@@ -1837,46 +1945,51 @@ export function createCodezTaskIndexSyncer(
       thoughtLevelOverride?: string;
       unreadSignal?: CodezWorkspaceTaskListChanged["unreadSignal"];
       broadcastReason: CodezWorkspaceTaskListChanged["reason"] | null;
+      stillCurrent?: () => boolean;
     },
   ): Promise<CodezTaskMeta> {
-    if (isAuxiliarySessionKind(snapshot.session.sessionKind))
-      return {
-        ...snapshot.session.workspace,
-        taskId: snapshot.session.sessionId,
-        traceId: snapshot.session.traceId ?? generateTraceId(snapshot.session.sessionId),
-        title: snapshot.session.title,
-        createdAt: snapshot.session.createdAt,
-        updatedAt: snapshot.session.updatedAt,
-        ...buildPresentationFromSnapshot(snapshot, options),
-      };
-    const target = { ...snapshot.session.workspace, taskId: snapshot.session.sessionId };
-    if (hasUserVisibleContent(snapshot)) {
+    return syncSessionIndexAndBroadcast(projectSessionIndexContent(snapshot), options);
+  }
+
+  async function syncSessionIndexAndBroadcast(
+    indexed: Omit<CodezSessionIndexReadResult, "watermark">,
+    options: {
+      modelOverride?: string;
+      thoughtLevelOverride?: string;
+      unreadSignal?: CodezWorkspaceTaskListChanged["unreadSignal"];
+      broadcastReason: CodezWorkspaceTaskListChanged["reason"] | null;
+      /** 回源队列在 await 边界复核代际；过期结果不得继续写库或广播。 */
+      stillCurrent?: () => boolean;
+    },
+  ): Promise<CodezTaskMeta> {
+    const isCurrent = () => options.stillCurrent?.() ?? true;
+    const presentation = presentationFromSessionIndex(indexed, options);
+    const ephemeral = (): CodezTaskMeta => ({
+      ...indexed.session.workspace,
+      taskId: indexed.session.sessionId,
+      traceId: indexed.session.traceId ?? generateTraceId(indexed.session.sessionId),
+      title: indexed.session.title,
+      createdAt: indexed.session.createdAt,
+      updatedAt: indexed.session.updatedAt,
+      ...presentation,
+    });
+    if (isAuxiliarySessionKind(indexed.session.sessionKind) || !isCurrent()) return ephemeral();
+    const target = { ...indexed.session.workspace, taskId: indexed.session.sessionId };
+    if (indexed.hasUserVisibleContent) {
       await refreshSessionFacts({
-        ...snapshot.session.workspace,
-        sessionId: snapshot.session.sessionId,
+        ...indexed.session.workspace,
+        sessionId: indexed.session.sessionId,
       });
     }
-    const presentation = buildPresentationFromSnapshot(snapshot, options);
-    // Bugfix: 同时把 snapshot.messages 里可见的聊天正文索引下去，
-    // 让 TaskSearchDialog 正文搜索能命中；旧 sqlite 行下次到这里时自然回填。
-    const searchableText = buildSearchableTextFromSnapshot(snapshot);
+    if (!isCurrent()) return ephemeral();
     const persisted = await taskIndexRepo.updateTaskPresentation({
       ...target,
       presentation,
-      searchableText,
+      searchableText: indexed.searchableText.text,
     });
-    // 延迟持久化的草稿没有 CLI 行；只返回本次调用的展示值，不制造索引事实。
-    if (!persisted)
-      return {
-        ...target,
-        traceId: snapshot.session.traceId ?? generateTraceId(target.taskId),
-        title: snapshot.session.title,
-        createdAt: snapshot.session.createdAt,
-        updatedAt: snapshot.session.updatedAt,
-        ...presentation,
-      };
+    if (!persisted || !isCurrent()) return persisted ?? ephemeral();
     // 空草稿不是持久会话，不能提前制造列表行或任务变更广播。
-    if (!hasUserVisibleContent(snapshot) || options.broadcastReason === null) return persisted;
+    if (!indexed.hasUserVisibleContent || options.broadcastReason === null) return persisted;
     emitWorkspaceTaskListChanged(
       {
         workspacePath: persisted.workspacePath,
@@ -1983,12 +2096,14 @@ export function createCodezTaskIndexSyncer(
       runtimeLifecycleDisposable?.dispose();
       runtimeRestartedDisposable?.dispose();
       availableRuntimeGenerationByWorkspaceKey.clear();
+      sessionIndexResyncs.clear();
+      sessionIndexLastApplied.clear();
     },
   };
 }
 
-function buildPresentationFromSnapshot(
-  snapshot: CodezSessionStateSnapshot,
+function presentationFromSessionIndex(
+  indexed: Omit<CodezSessionIndexReadResult, "watermark">,
   options?: {
     modelOverride?: string;
     thoughtLevelOverride?: string;
@@ -1997,104 +2112,15 @@ function buildPresentationFromSnapshot(
   const modelOverride = options?.modelOverride?.trim();
   const thoughtLevelOverride = options?.thoughtLevelOverride?.trim();
   const meta: Pick<CodezTaskMeta, "mode" | "model" | "thoughtLevel" | "lastError" | "target"> = {
-    mode: fromCodezMode(snapshot.session.mode),
-    // 用户显式切模型或历史模型不可用时，session 操作已经带了新的可用模型。
-    // 这类场景要同步覆盖 sqlite 的 task model，否则下次恢复仍会从已删除的历史模型起跳；
-    // 普通历史快照仍走最近消息模型优先，避免被误污染的 settings.current 反向污染索引。
-    model: modelOverride || formatTaskMetaModelSelectionFromSnapshot(snapshot),
-    // 历史 task 恢复时 snapshot.settings.thoughtLevel 可能仍是同 workspace 草稿态的最新值。
-    // 当恢复入口已经带上 task-local thoughtLevel 时，sqlite 必须写入入口值，避免下次打开继续被污染。
-    thoughtLevel: thoughtLevelOverride || snapshot.settings.thoughtLevel.current,
-    lastError: snapshot.projection.lastError
-      ? {
-          code: snapshot.projection.lastError.code ?? snapshot.projection.lastError.type,
-          ...(snapshot.projection.lastError.detail
-            ? { detail: snapshot.projection.lastError.detail }
-            : {}),
-          // sessions-index terminal resync 与 task service snapshot 必须共享同一份
-          // lastError 归因，否则冷热两条读取路径的错误归因会漂移。
-          ...(snapshot.projection.lastError.attribution
-            ? { attribution: snapshot.projection.lastError.attribution }
-            : {}),
-          message: snapshot.projection.lastError.message,
-        }
-      : undefined,
+    mode: indexed.presentation.mode,
+    model: modelOverride || indexed.presentation.model,
+    thoughtLevel: thoughtLevelOverride || indexed.presentation.thoughtLevel,
+    lastError: indexed.presentation.lastError,
   };
-  if (Object.prototype.hasOwnProperty.call(snapshot.projection, "target")) {
-    // target 字段缺席表示本次 snapshot 未提供 goal 信息，不能覆盖旧索引；
-    // null 才表示 DB 明确没有 goal，需要清空 task-index 中的目标。
-    meta.target = snapshot.projection.target
-      ? fromCodezGoal(snapshot.projection.target)
-      : snapshot.projection.target;
+  if (indexed.target.kind !== "absent") {
+    meta.target = indexed.target.kind === "null" ? null : fromCodezGoal(indexed.target.value);
   }
   return meta;
-}
-
-// Bugfix: createSession 刚返回时 snapshot 既没有真实 title 也没有 user message，
-// 把这种"空白会话"广播出去会让侧边栏先闪一个 "New session" 占位符。
-// 这里判断"是否已有用户可见内容"，没有就只写 sqlite 不广播，等真实 title 到了再广播。
-function hasUserVisibleContent(snapshot: CodezSessionStateSnapshot): boolean {
-  const title = snapshot.session.title?.trim() ?? "";
-  if (title && !isCodezGoalContinuationReminderText(title)) {
-    return true;
-  }
-  if (snapshot.projection.target?.objective.trim()) {
-    return true;
-  }
-  return snapshot.messages.some((message) => {
-    if (message.info.role !== "user") return false;
-    if (isCodezModelOnlySyntheticUserMessage(message)) return false;
-    return message.parts.some((part) => part.type === "text" && part.text.trim().length > 0);
-  });
-}
-
-const TASK_SEARCH_TEXT_MAX_CHARS = 200_000;
-
-// 全局会话搜索只索引默认可见的聊天正文，不包含思考过程、tool 调用和 compaction 折叠区。
-// assistant 改为一个文字块存一个 text part（apps/codez-cli/docs/design/v2/model/assistant-block-order.md）。
-// 先把它们按顺序直接拼接，还原成改动前那一个 text part 的内容，再按原规则处理；
-// 只取最后一个 part 会漏掉工具调用之前的正文。
-function buildSearchableTextFromSnapshot(snapshot: CodezSessionStateSnapshot): string {
-  const parts: string[] = [];
-  let total = 0;
-  // /goal 自动续跑会把内部 system-reminder 作为 runtime user turn 持久化；
-  // 这条内容是 model-only 输入，不是用户可见 query，不能写进侧边栏搜索正文。
-  for (const message of getCodezUserVisibleMessages(snapshot.messages, {
-    target: snapshot.projection.target,
-  })) {
-    const textParts = message.parts.filter(
-      (part): part is Extract<CodezMessagePart, { type: "text" }> => part.type === "text",
-    );
-    if (textParts.length === 0) {
-      continue;
-    }
-    const texts =
-      message.info.role === "assistant"
-        ? [textParts.map((part) => part.text).join("")]
-        : textParts.map((part) => part.text);
-    for (const text of texts) {
-      const content = text.trim();
-      if (!content) {
-        continue;
-      }
-      parts.push(content);
-      total += content.length;
-      if (total >= TASK_SEARCH_TEXT_MAX_CHARS) {
-        break;
-      }
-    }
-    if (total >= TASK_SEARCH_TEXT_MAX_CHARS) {
-      break;
-    }
-  }
-  // 关键业务逻辑：上限截断，避免长任务把 tasks-index.sqlite 放大到影响启动和列表查询。
-  return parts.join("\n").slice(0, TASK_SEARCH_TEXT_MAX_CHARS);
-}
-
-function fromCodezMode(mode: CodezSessionMode): CodezTaskMode {
-  // custom 只属于 Codex 链路（跟随 config.toml 权限）；旧任务索引/持久化投影
-  // 不会出现该值，防御性按默认 build 归一，避免类型收窄失败。
-  return mode === "build" || mode === "custom" ? "build" : mode;
 }
 
 function fromCodezGoal(
