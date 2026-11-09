@@ -87,6 +87,11 @@ export class ThreadStateStore {
     return this.states.get(id);
   }
 
+  /** 只读取本进程已完整加载的缓存投影；绝不 ensure、thread/read、attach 或触发分页。 */
+  getLoaded(id: string): ThreadProjectionState | undefined {
+    return this.loaded.has(id) ? this.states.get(id) : undefined;
+  }
+
   isDeleted(id: string): boolean {
     return this.deleted.has(id);
   }

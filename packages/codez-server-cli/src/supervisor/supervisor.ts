@@ -526,6 +526,14 @@ export class Supervisor {
     } else if (message.type === "heartbeat" || message.type === "task-activity") {
       this.runningTaskCount = message.runningTaskCount;
       this.runningTasks = message.runningTasks;
+      // 只读诊断不能放宽 60 秒 watchdog；5 秒 lag 已足够定位下一次大同步阻塞。
+      if (message.type === "heartbeat" && (message.eventLoopLag?.maxMs ?? 0) >= 5_000) {
+        log.warn("server core event loop lag detected", {
+          generation: this.generation,
+          maxMs: message.eventLoopLag?.maxMs,
+          p99Ms: message.eventLoopLag?.p99Ms,
+        });
+      }
       log.debug("core activity snapshot", {
         type: message.type,
         runningTaskCount: message.runningTaskCount,

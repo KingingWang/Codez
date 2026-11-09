@@ -1197,6 +1197,147 @@ process.stdin.on("data", (chunk) => {
 `;
 
 describe("createCodezAgentService", () => {
+  function existingClientFor(request: ReturnType<typeof vi.fn>): CodezProtocolClient {
+    return {
+      request,
+      onNotification: () => () => undefined,
+      onRequest: () => () => undefined,
+      onClose: () => () => undefined,
+      respondError: vi.fn(async () => undefined),
+      isDisposed: false,
+      storageStartup: { isWaiting: false },
+    } as unknown as CodezProtocolClient;
+  }
+
+  function legacySnapshotForRead(workspacePath: string, sessionId: string) {
+    return {
+      protocol: { name: "Codez Protocol", version: 1 },
+      session: {
+        sessionId,
+        workspace: { workspacePath, workspaceKey: workspacePath },
+        sessionKind: "interactive",
+        title: "legacy",
+        mode: "build",
+        status: "completed",
+        createdAt: 1,
+        updatedAt: 2,
+      },
+      settings: {
+        model: { available: [] },
+        thoughtLevel: { enabled: false, available: [] },
+        mode: { current: "build" },
+      },
+      projection: {
+        sessionId,
+        status: "completed",
+        mode: "build",
+        turnCount: 0,
+        totalTokenCount: 0,
+        contextUsed: 0,
+        contextWindow: 0,
+        pendingPermissions: [],
+        activeToolCalls: [],
+        backgroundJobs: [],
+      },
+      runtime: { eventSeq: 0, stateRevision: 0, pendingRequestIds: [] },
+      messages: [],
+    };
+  }
+
+  it("uses the light session index read and only caches method-not-found fallback", async () => {
+    const workspacePath = "/repo";
+    const sessionId = "session-index";
+    const lightResult = {
+      session: legacySnapshotForRead(workspacePath, sessionId).session,
+      presentation: { mode: "build", model: "" },
+      target: { kind: "absent" },
+      hasUserVisibleContent: true,
+      searchableText: { text: "", truncated: false },
+      watermark: { logEpoch: "epoch-1", revision: 1, seq: 1 },
+    };
+    const request = vi.fn(async (method: string) => {
+      if (method === "runtime/capabilities") return { sessionDirectorySource: true };
+      if (method === "session/index/read") return lightResult;
+      throw new Error(`unexpected ${method}`);
+    });
+    const client = existingClientFor(request);
+    const existing = vi
+      .spyOn(CodezAgentProcessManager.prototype, "getExistingClient")
+      .mockReturnValue(client);
+    const service = createCodezAgentService({ presentationSurface: "desktop" });
+    try {
+      await expect(service.readSessionIndex!({ workspacePath, sessionId })).resolves.toMatchObject({
+        watermark: { logEpoch: "epoch-1" },
+      });
+      expect(request).toHaveBeenCalledWith("session/index/read", { sessionId }, expect.anything(), {
+        timeoutMs: 10_000,
+        lifecycle: "observation",
+      });
+      request.mockClear();
+      request.mockImplementation(async () => {
+        throw Object.assign(new Error("transport failed"), { code: -32000 });
+      });
+      await expect(service.readSessionIndex!({ workspacePath, sessionId })).rejects.toThrow(
+        "transport failed",
+      );
+      expect(request).toHaveBeenCalledTimes(1);
+      expect(request).toHaveBeenCalledWith(
+        "session/index/read",
+        expect.anything(),
+        expect.anything(),
+        {
+          timeoutMs: 10_000,
+          lifecycle: "observation",
+        },
+      );
+    } finally {
+      await service.disposeAllAndWait();
+      existing.mockRestore();
+    }
+  });
+
+  it("caches the legacy index fallback after -32601", async () => {
+    const workspacePath = "/repo";
+    const sessionId = "session-index";
+    const request = vi.fn(async (method: string) => {
+      if (method === "runtime/capabilities") return { sessionDirectorySource: true };
+      if (method === "session/index/read")
+        throw Object.assign(new Error("method not found"), { code: -32601 });
+      if (method === "session/read") return legacySnapshotForRead(workspacePath, sessionId);
+      throw new Error(`unexpected ${method}`);
+    });
+    const client = existingClientFor(request);
+    const existing = vi
+      .spyOn(CodezAgentProcessManager.prototype, "getExistingClient")
+      .mockReturnValue(client);
+    const service = createCodezAgentService({ presentationSurface: "desktop" });
+    try {
+      await service.readSessionIndex!({ workspacePath, sessionId });
+      await service.readSessionIndex!({ workspacePath, sessionId });
+      expect(
+        request.mock.calls
+          .map(([method]) => method)
+          .filter((method) => method.startsWith("session/")),
+      ).toEqual(["session/index/read", "session/read", "session/read"]);
+
+      request.mockClear();
+      request.mockImplementation(async () => {
+        throw Object.assign(new Error("transport failed"), { code: -32000 });
+      });
+      await expect(service.readSessionIndex!({ workspacePath, sessionId })).rejects.toThrow(
+        "transport failed",
+      );
+      expect(request).toHaveBeenCalledTimes(1);
+      expect(request).toHaveBeenCalledWith("session/read", expect.anything(), expect.anything(), {
+        timeoutMs: 10_000,
+        lifecycle: "observation",
+      });
+    } finally {
+      await service.disposeAllAndWait();
+      existing.mockRestore();
+    }
+  });
+
   it("资源查询仅观察就绪的现存 runtime，透传取消且不启动或等待迁移", async () => {
     const request = vi.fn(async () => ({ processes: [] }));
     const migratingRequest = vi.fn();

@@ -6,17 +6,18 @@ import { resolve } from "node:path";
 import { promisify } from "node:util";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import {
+  countUpstreamRequests,
   getUpstreamRequestRecordCount,
   waitForUpstreamRequest,
 } from "#e2e/helpers/conversation-session-network";
 import {
   connectSSHWorkspaceAndSendFirstTurn,
   prepareSSHLifecycle,
-  readRemoteCoreIdentity,
   readTaskRowInProject,
   sendSSHFollowTurn,
   type SSHLifecycleProvider,
   type SSHLifecycleTask,
+  terminateRemoteProcess,
 } from "#e2e/helpers/ssh-remote-lifecycle";
 import {
   readHostProcesses,
@@ -32,6 +33,7 @@ import {
   selectV4TaskById,
   sendV4Prompt,
   waitForV4ConversationState,
+  waitForV4QueueCount,
   waitForV4Pane,
   waitForV4PermissionDialogInComposerDock,
   waitForV4TimelineContaining,
@@ -45,6 +47,51 @@ const REMOTE_PERMISSION_DIR = "/home/dev/r3-workspace-a/.codez-e2e/r3-transport-
 const REMOTE_PERMISSION_FILE = `${REMOTE_PERMISSION_DIR}/permission-output.txt`;
 const PERMISSION_EXECUTION = { toolCallId: "toolu_r3_task_permission", toolName: "Write" };
 const run = promisify(execFile);
+const runtimeVariant = process.env.CODEZ_DESKTOP_RUNTIME?.trim() === "legacy" ? "legacy" : "codex";
+
+/**
+ * Runtime 变体由外层 WDIO 启动选择：默认是 Codex native bridge，显式
+ * CODEZ_DESKTOP_RUNTIME=legacy 时才运行旧 app-server --stdio。同一 Electron 进程内不能
+ * 热切换 Desktop runtime，因此两种 flavor 必须由远程队列作为独立执行项覆盖。
+ */
+function requireRuntimeVariant(): "legacy" | "codex" {
+  const value = process.env.CODEZ_DESKTOP_RUNTIME?.trim() || "codex";
+  if (value !== runtimeVariant) {
+    throw new Error(`${CASE_MARKER}: CODEZ_DESKTOP_RUNTIME 在测试启动后发生变化`);
+  }
+  return value as "legacy" | "codex";
+}
+
+function remoteServerRoot(runtime: "legacy" | "codex"): string {
+  return runtime === "legacy" ? "$HOME/.codez/server" : "$HOME/.codez-codex/server";
+}
+
+async function readCoreIdentity(
+  config: SSHConnectionConfig,
+  runtime: "legacy" | "codex",
+): Promise<{ pid: number; startTicks: number }> {
+  const statusResult = await runSSHCommand(
+    config,
+    `cat "${remoteServerRoot(runtime)}/run/status.json"`,
+  );
+  if (statusResult.code !== 0) {
+    throw new Error(`${CASE_MARKER}: 读取远端 Core status 失败: ${statusResult.stderr}`);
+  }
+  const status = JSON.parse(statusResult.stdout) as { pid?: unknown };
+  const pid = status.pid;
+  if (typeof pid !== "number" || !Number.isSafeInteger(pid) || pid <= 0) {
+    throw new Error(`${CASE_MARKER}: Core status 缺少有效 pid`);
+  }
+  const proc = await runSSHCommand(
+    config,
+    `test -r /proc/${pid}/stat && awk '{print $22}' /proc/${pid}/stat`,
+  );
+  const startTicks = Number.parseInt(proc.stdout.trim(), 10);
+  if (!Number.isSafeInteger(startTicks)) {
+    throw new Error(`${CASE_MARKER}: Core /proc identity 不完整: ${proc.stdout.trim()}`);
+  }
+  return { pid, startTicks };
+}
 
 /**
  * 只切断 Desktop（用户 dev）的 SSH 会话：模型回放反向隧道由独立用户 tunnel 承载，必须保留，
@@ -88,21 +135,31 @@ async function waitForSessionRegeneration(
   return latest!;
 }
 
-async function remoteAgentAlive(config: SSHConnectionConfig, workspacePath: string) {
+async function remoteAgentProcess(
+  config: SSHConnectionConfig,
+  workspacePath: string,
+  runtime: "legacy" | "codex",
+): Promise<{ pid: number; startTicks: number } | null> {
   // 模板字符串里不能直接写 ${d#/proc/}；用 basename 取 PID。
   const script = [
-    "r=none",
+    "r=",
     'for d in /proc/[0-9]*; do c=$(tr "\\0" " " < "$d/cmdline" 2>/dev/null) || continue',
-    // agent spawnArgs 恒为 "app-server --stdio"(3.12+ release 优先 glm 原生二进制,
-    // 旧 dev 态才是 node codez.cjs);按 args 匹配与实现形态无关。
-    `case "$c" in *"app-server --stdi"[o]*) [ "$(readlink $d/cwd)" = "${workspacePath}" ] && r=$(basename "$d");; esac; done`,
+    // 两种 runtime 的 Agent 都按实际 argv 匹配：legacy 是 app-server --stdio；
+    // Codex native 由 bridge 拉起 app-server --listen stdio://。
+    runtime === "legacy"
+      ? `case "$c" in *"app-server --stdio"*) [ "$(readlink $d/cwd)" = "${workspacePath}" ] && r="$(basename "$d") $(awk '{print $22}' "$d/stat")";; esac`
+      : `case "$c" in *"app-server --listen stdio://"*) [ "$(readlink $d/cwd)" = "${workspacePath}" ] && r="$(basename "$d") $(awk '{print $22}' "$d/stat")";; esac`,
+    "done",
     "echo $r",
   ].join("; ");
   const result = await runSSHCommand(config, script);
-  return result.stdout.trim();
+  const fields = result.stdout.trim().split(/\s+/u);
+  const pid = Number.parseInt(fields[0] ?? "", 10);
+  const startTicks = Number.parseInt(fields[1] ?? "", 10);
+  return Number.isSafeInteger(pid) && Number.isSafeInteger(startTicks) ? { pid, startTicks } : null;
 }
 
-describe(`${CASE_MARKER}: 产品 SSH 连接中断期间远端任务继续，恢复后同组换代且阻塞权限保留`, () => {
+describe(`${CASE_MARKER} (${runtimeVariant}): 产品 SSH 连接中断期间远端任务继续，恢复后同组换代且阻塞权限保留`, () => {
   let provider: SSHLifecycleProvider | null = null;
   const facts: Record<string, unknown> = {};
 
@@ -117,6 +174,8 @@ describe(`${CASE_MARKER}: 产品 SSH 连接中断期间远端任务继续，恢�
 
   it("R3A-REC-01/03/09 running 中断连→daemon 与任务继续、A/B 自动换代；permission 阻塞跨断连恢复同 ID 并只响应一次", async function () {
     this.timeout(35 * 60_000);
+    const runtime = requireRuntimeVariant();
+    facts.runtime = runtime;
     const container = process.env.CODEZ_E2E_SSH_CONTAINER?.trim();
     if (!container) throw new Error(`${CASE_MARKER}: 缺少 CODEZ_E2E_SSH_CONTAINER`);
     const prepared = await prepareSSHLifecycle(CASE_MARKER, {
@@ -141,8 +200,9 @@ describe(`${CASE_MARKER}: 产品 SSH 连接中断期间远端任务继续，恢�
       workspacePath: workspaceB,
     });
     const hosts = await readHostProcesses();
-    const core0 = await readRemoteCoreIdentity(prepared.config, CASE_MARKER);
-    const agentB0 = await remoteAgentAlive(prepared.config, workspaceB);
+    const core0 = await readCoreIdentity(prepared.config, runtime);
+    const agentB0 = await remoteAgentProcess(prepared.config, workspaceB, runtime);
+    expect(agentB0).not.toBeNull();
 
     // REC-01：切回 A（当前 active 是后连接的 B），A 进入 45s controlled-stream running，随后切断 Desktop 的 SSH 会话。
     await selectV4TaskById(taskA.taskId, 30_000);
@@ -159,7 +219,8 @@ describe(`${CASE_MARKER}: 产品 SSH 连接中断期间远端任务继续，恢�
       "A 没有进入 running",
       45_000,
     );
-    const agentA0 = await remoteAgentAlive(prepared.config, workspaceA);
+    const agentA0 = await remoteAgentProcess(prepared.config, workspaceA, runtime);
+    expect(agentA0).not.toBeNull();
     facts.severedSessions = await severDesktopSshSessions(container);
     const regeneratedA = await waitForSessionRegeneration(
       taskA.identity,
@@ -173,11 +234,11 @@ describe(`${CASE_MARKER}: 产品 SSH 连接中断期间远端任务继续，恢�
     );
     facts.regenerated = { A: regeneratedA, B: regeneratedB };
     // daemon/Agent 不受传输中断影响：Core 与两个 Agent 身份不变；任务未被判 failed，流在恢复后收口。
-    const core1 = await readRemoteCoreIdentity(prepared.config, CASE_MARKER);
+    const core1 = await readCoreIdentity(prepared.config, runtime);
     expect(core1.pid).toBe(core0.pid);
     expect(core1.startTicks).toBe(core0.startTicks);
-    expect(await remoteAgentAlive(prepared.config, workspaceA)).toBe(agentA0);
-    expect(await remoteAgentAlive(prepared.config, workspaceB)).toBe(agentB0);
+    expect(await remoteAgentProcess(prepared.config, workspaceA, runtime)).toEqual(agentA0);
+    expect(await remoteAgentProcess(prepared.config, workspaceB, runtime)).toEqual(agentB0);
     expect(await readHostProcesses()).toEqual(hosts);
     await waitForV4ConversationState(
       (s) => s.taskId === taskA.taskId && s.state === "idle",
@@ -271,5 +332,87 @@ describe(`${CASE_MARKER}: 产品 SSH 连接中断期间远端任务继续，恢�
     );
     expect((await getV4PaneSnapshot()).canStop).toBe(false);
     expect(await readHostProcesses()).toEqual(hosts);
+  });
+
+  it("R3A-REC-07 running Agent 真崩溃后不自动续跑，遗留 admitted 输入不发起模型请求且历史保留", async function () {
+    this.timeout(20 * 60_000);
+    const runtime = requireRuntimeVariant();
+    const crashRunningMarker = `${CASE_MARKER}_SLOW`;
+    const crashQueuedMarker = `${CASE_MARKER}_CRASH_QUEUE`;
+    const prepared = await prepareSSHLifecycle(CASE_MARKER, {
+      apiType: "anthropic-messages",
+      tunnelUsername: "tunnel",
+    });
+    provider = prepared.provider;
+    const workspacePath = prepared.config.workspacePaths[0];
+    await runSSHCommand(prepared.config, `rm -rf "${REMOTE_PERMISSION_DIR}"`);
+    const task = await connectSSHWorkspaceAndSendFirstTurn({
+      caseMarker: CASE_MARKER,
+      config: prepared.config,
+      label: "A",
+      provider,
+      workspacePath,
+    });
+
+    const requestStart = await getUpstreamRequestRecordCount();
+    await sendV4Prompt(`${crashRunningMarker} 慢慢回答`);
+    await waitForV4TimelineContaining("R3_TLOSS_STREAMING", 60_000);
+    await waitForUpstreamRequest(
+      { lastUserMessageIncludes: [crashRunningMarker] },
+      `${CASE_MARKER}: 崩溃前 running turn 没有到达回放`,
+      60_000,
+      { afterIndex: requestStart - 1 },
+    );
+    await waitForV4Pane(
+      (snapshot) => snapshot.canStop && snapshot.sessionId === task.taskId,
+      `${CASE_MARKER}: 崩溃前任务没有进入 running`,
+      60_000,
+    );
+    await sendV4Prompt(`${crashQueuedMarker}: 崩溃后不得自动执行`);
+    await waitForV4QueueCount(1, 30_000);
+
+    const agent = await remoteAgentProcess(prepared.config, workspacePath, runtime);
+    expect(agent).not.toBeNull();
+    await terminateRemoteProcess(prepared.config, agent!, CASE_MARKER);
+    const crashFacts: Record<string, unknown> = {
+      runtime,
+      agent,
+      queuedMarker: crashQueuedMarker,
+    };
+    facts.crash = crashFacts;
+
+    await browser.waitUntil(
+      async () => {
+        const current = await remoteAgentProcess(prepared.config, workspacePath, runtime);
+        return Boolean(current && current.pid !== agent!.pid);
+      },
+      {
+        timeout: 120_000,
+        interval: 1000,
+        timeoutMsg: `${CASE_MARKER}: Agent 崩溃后没有拉起可打开历史的新 runtime`,
+      },
+    );
+    await selectV4TaskById(task.taskId, 60_000);
+    await waitForV4TimelineContaining(task.firstPrompt, 60_000);
+    await browser.pause(3000);
+    expect(
+      await countUpstreamRequests(
+        {
+          includes: [crashQueuedMarker],
+          excludes: ["Generate a concise title"],
+        },
+        { afterIndex: requestStart - 1 },
+      ),
+    ).toBe(0);
+    expect(
+      await countUpstreamRequests(
+        {
+          includes: [crashRunningMarker],
+          excludes: ["Generate a concise title"],
+        },
+        { afterIndex: requestStart - 1 },
+      ),
+    ).toBe(1);
+    crashFacts.noAutomaticContinuation = true;
   });
 });

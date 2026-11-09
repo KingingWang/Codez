@@ -4,11 +4,6 @@ import { createServer, type Server } from "node:http";
 import { mkdir, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { TID_TASK_ITEM, testId } from "@codez/shared/test-ids";
-<<<<<<< HEAD:packages/desktop/test/e2e/conversation-session/remote/installation/manual-review/pending/conversation-session-codex-project-history.test.ts
-import { selectNativeProjectDirectories } from "#e2e/helpers/project-sidebar";
-import { waitForWorkspaceApp } from "#e2e/helpers/desktop-app";
-import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
-=======
 import { ServiceChannels } from "@codez/shared";
 import type { ProjectTree } from "@codez/services";
 import {
@@ -24,7 +19,6 @@ import {
   waitForV4ConversationState,
   waitForV4TimelineContaining,
 } from "#e2e/helpers/v4-conversation";
->>>>>>> 248abcf (fix(codex): preserve real activity when reopening history):packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-codex-project-history.test.ts
 
 const marker = "E2E_CODEX_PROJECT_HISTORY";
 

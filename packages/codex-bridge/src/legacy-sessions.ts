@@ -6,6 +6,7 @@ import { turnPermissionIntent } from "./control-common.js";
 import { isSelectionSideChatThread } from "./selection-side-chat.js";
 import { object, string, unsupported, type JsonObject } from "./json.js";
 import { projectLegacySnapshot } from "./projection.js";
+import { projectLegacySessionIndexInput } from "./projection-legacy.js";
 import { listSessionSubagents } from "./session-subagents.js";
 import { listTargetedThreads } from "./thread-queries.js";
 import {
@@ -101,6 +102,36 @@ export async function handleLegacySession(
   }
   // 子代理目录：子线程被 sourceKinds 挡在任务列表外，这是唯一按父查询子线程的入口。
   if (method === "session/subagents") return listSessionSubagents(p, rpc, store);
+  if (method === "session/index/read") {
+    // 根因：task-index existing-only 重读不该拉起/恢复整段原生历史，也不该把 15MB 级
+    // tool output 重新投影并穿越 stdio。历史只命中缓存；缺省模型另行走既有小配置读取。
+    // Bridge 内部 scope 会附加 workspace；wire strict 合同仍只接受 sessionId。
+    const parsed = shared.codezSessionIndexReadParamsSchema.parse({ sessionId: p.sessionId });
+    const state = store.getLoaded(parsed.sessionId);
+    if (!state) throw new Error("session-not-resident");
+    const watermark = { logEpoch: state.epoch, revision: state.revision, seq: state.seq };
+    const input = projectLegacySessionIndexInput(state.thread, responseWorkspacePath);
+    input.session.workspace = workspace;
+    if (!input.settings.model.current || !input.settings.thoughtLevel.current) {
+      // 仅在线程模型/档位缺失时补小配置视图，与 full 的全局默认回退保持一致。
+      // 等待期间若原生线程换代，旧捕获点不得带着新水位或旧模型落库。
+      input.settings = await readControlModelSettings(
+        { rpc, cwd: store.cwd, auxiliary: { supports: () => false } },
+        threadModelOverride(state.thread),
+      );
+      if (
+        state.epoch !== watermark.logEpoch ||
+        state.revision !== watermark.revision ||
+        state.seq !== watermark.seq
+      ) {
+        throw new Error("session-index-stale");
+      }
+    }
+    return shared.codezSessionIndexReadResultSchema.parse({
+      ...shared.projectSessionIndexContent(input),
+      watermark,
+    });
+  }
   let sessionId: string;
   if (method === "session/create") {
     const parsed = shared.codezSessionCreateParamsSchema.parse(p);

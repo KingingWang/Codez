@@ -4,9 +4,11 @@ import { join } from "node:path";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  codezSessionIndexReadResultSchema,
   codezSessionCloseResultSchema,
   codezSessionStateSnapshotSchema,
   codezSessionListResultSchema,
+  projectSessionIndexContent,
   elideSessionSnapshotForIndex,
 } from "@codez/shared";
 import { handleLegacySession } from "../src/legacy-sessions.js";
@@ -69,6 +71,19 @@ test("remote read/resume/list retain identity consumed by the task-index writer"
         workspaceKey: workspaceIdentity,
       });
     }
+    const indexed = codezSessionIndexReadResultSchema.parse(
+      await handleLegacySession(
+        "session/index/read",
+        { workspace, sessionId: thread.id },
+        rpc,
+        store,
+        workspaceIdentity,
+      ),
+    );
+    assert.deepEqual(indexed.session.workspace, {
+      ...workspace,
+      workspaceKey: workspaceIdentity,
+    });
     const listed = codezSessionListResultSchema.parse(
       await handleLegacySession("session/list", { workspace }, rpc, store, workspaceIdentity),
     );
@@ -130,6 +145,144 @@ test("native session/read index profile omits heavy parts without changing index
       thread.cwd,
     ),
   );
+});
+
+test("session/index/read is cache-only and equals full snapshot task-index projection", async () => {
+  const thread = threadFixture();
+  const huge = "index-tool-output-heavy".repeat(750_000); // ~15MB raw tool payload
+  thread.turns[0]!.items.push(
+    {
+      id: "tool-1",
+      type: "commandExecution",
+      command: "synthetic",
+      cwd: thread.cwd,
+      status: "completed",
+      aggregatedOutput: huge,
+    },
+    {
+      type: "agentMessage",
+      id: "answer-heavy",
+      text: "Final lightweight answer",
+      status: "completed",
+    },
+  );
+  const calls: string[] = [];
+  const rpc = {
+    async request(method: string) {
+      calls.push(method);
+      if (method === "config/read") return { config: {} };
+      if (method === "model/list") return { data: [], nextCursor: null };
+      throw new Error(`unexpected ${method}`);
+    },
+  } as unknown as CodexRpcPort;
+  const store = new ThreadStateStore(rpc, thread.cwd);
+  const state = store.markStarted(thread);
+  state.epoch = "index-epoch";
+  state.revision = 317;
+  state.seq = 729;
+
+  // 未驻留缓存必须显式拒绝，且不能退化为 thread/read/ensure/attach/pagination。
+  await assert.rejects(
+    handleLegacySession(
+      "session/index/read",
+      { sessionId: "not-resident" },
+      rpc,
+      store,
+      thread.cwd,
+    ),
+    /session-not-resident/,
+  );
+
+  const full = codezSessionStateSnapshotSchema.parse(
+    await handleLegacySession("session/read", { sessionId: thread.id }, rpc, store, thread.cwd),
+  );
+  const wire = JSON.stringify(
+    await handleLegacySession(
+      "session/index/read",
+      { sessionId: thread.id },
+      rpc,
+      store,
+      thread.cwd,
+    ),
+  );
+  const native = codezSessionIndexReadResultSchema.parse(JSON.parse(wire));
+  const expected = projectSessionIndexContent(full);
+  const expectedWire = JSON.stringify({ ...expected, watermark: native.watermark });
+  assert.equal(wire, expectedWire);
+  assert.deepEqual(native.watermark, {
+    logEpoch: "index-epoch",
+    revision: 317,
+    seq: 729,
+  });
+  assert.ok(wire.length < 1_048_576);
+  assert.equal(wire.includes("index-tool-output-heavy"), false);
+  assert.deepEqual(calls, ["config/read", "model/list"]);
+  assert.deepEqual(expected.target, { kind: "absent" });
+  assert.deepEqual(
+    projectSessionIndexContent({
+      ...full,
+      projection: { ...full.projection, target: null },
+    }).target,
+    { kind: "null" },
+  );
+  const goal = {
+    sessionId: full.session.sessionId,
+    targetId: "goal-1",
+    objective: "finish",
+    summaryTitle: null,
+    status: "active" as const,
+    tokenBudget: null,
+    tokensUsed: 0,
+    timeUsedSeconds: 0,
+    createdAt: 1,
+    updatedAt: 2,
+  };
+  assert.deepEqual(
+    projectSessionIndexContent({
+      ...full,
+      projection: { ...full.projection, target: goal },
+    }).target,
+    { kind: "value", value: goal },
+  );
+
+  // 严格性能 runner 固定 100 次读取；普通 PR 只收集样本，避免不同平台绝对耗时造成 flake。
+  const durations: number[] = [];
+  let maxEventLoopLagMs = 0;
+  let previousTick = performance.now();
+  const lagTimer = setInterval(() => {
+    const now = performance.now();
+    maxEventLoopLagMs = Math.max(maxEventLoopLagMs, now - previousTick - 1);
+    previousTick = now;
+  }, 1);
+  for (let index = 0; index < 100; index += 1) {
+    const started = performance.now();
+    await handleLegacySession(
+      "session/index/read",
+      { sessionId: thread.id },
+      rpc,
+      store,
+      thread.cwd,
+    );
+    durations.push(performance.now() - started);
+  }
+  clearInterval(lagTimer);
+  durations.sort((left, right) => left - right);
+  const p99Ms = durations[Math.floor((durations.length - 1) * 0.99)]!;
+  const strictBudgetMs =
+    process.env.CODEZ_STRICT_PERF !== "1"
+      ? undefined
+      : process.platform === "linux" && process.arch === "x64"
+        ? 100
+        : process.platform === "darwin" && process.arch === "x64"
+          ? 250
+          : undefined;
+  if (strictBudgetMs !== undefined) {
+    assert.ok(p99Ms <= strictBudgetMs, `session/index/read p99 ${p99Ms}ms`);
+    assert.ok(
+      maxEventLoopLagMs <= strictBudgetMs,
+      `session/index/read max event-loop lag ${maxEventLoopLagMs}ms`,
+    );
+  }
 });
 
 test("legacy setModel 回包与后续 read 的 current 以线程级设置为准（不回落全局 config）", async () => {
@@ -255,6 +408,13 @@ test("legacy 线程尚无模型事实时 settings 保持全局 config 视图", a
     modelId: "deepseek-v4-flash",
     options: { reasoningLevel: "high" },
   });
+  const indexed = codezSessionIndexReadResultSchema.parse(
+    await handleLegacySession("session/index/read", { sessionId: thread.id }, rpc, store, cwd),
+  );
+  assert.deepEqual(
+    { ...indexed, watermark: undefined },
+    { ...projectSessionIndexContent(snapshot), watermark: undefined },
+  );
 });
 
 test("targeted session/list reads cached or lock-free thread/read metadata without scanning thread/list", async () => {

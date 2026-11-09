@@ -128,6 +128,9 @@ jobs:
             test/codexRemoteDeployment.test.ts
           pnpm test:fork \
             packages/client/test/remoteServiceAccess.test.ts \
+            packages/codez-server-cli/test/serverCore.test.ts \
+            packages/services/test/codezAgentService.test.ts \
+            packages/services/test/codezTaskIndexSyncer.test.ts \
             packages/services/test/codexGlobalRolloutSyncer.test.ts \
             packages/services/test/codexModelTrajectory.test.ts \
             packages/services/test/codexNativeProviderKey.test.ts
