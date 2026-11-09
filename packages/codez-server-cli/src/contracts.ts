@@ -166,6 +166,13 @@ export const coreMessageSchema = z.discriminatedUnion("type", [
     runningTasks: runningTasksSchema.optional(),
     at: z.number().int().nonnegative(),
     runningTaskCount: z.number().int().nonnegative(),
+    eventLoopLag: z
+      .object({
+        maxMs: z.number().int().nonnegative(),
+        p99Ms: z.number().int().nonnegative(),
+      })
+      .strict()
+      .optional(),
   }),
   z.object({
     type: z.literal("task-activity"),

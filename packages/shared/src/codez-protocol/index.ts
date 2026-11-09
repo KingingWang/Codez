@@ -2120,6 +2120,68 @@ export const codezSessionReadParamsSchema = z
   .strict();
 export type CodezSessionReadParams = z.infer<typeof codezSessionReadParamsSchema>;
 
+/** Codex native 的 task-index 专用轻量读取；协议命名不泄露 UI task 概念。 */
+export const codezSessionIndexReadParamsSchema = codezSessionReadParamsSchema
+  .pick({ sessionId: true })
+  .strict();
+export type CodezSessionIndexReadParams = z.infer<typeof codezSessionIndexReadParamsSchema>;
+
+export const codezSessionIndexTargetSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("absent") }).strict(),
+  z.object({ kind: z.literal("null") }).strict(),
+  z.object({ kind: z.literal("value"), value: codezSessionGoalSchema }).strict(),
+]);
+export type CodezSessionIndexTarget = z.infer<typeof codezSessionIndexTargetSchema>;
+
+export const codezSessionIndexPresentationSchema = z
+  .object({
+    mode: z.enum([
+      "default",
+      "yolo",
+      "guarded",
+      "plan",
+      "edit",
+      "acceptEdits",
+      "auto",
+      "dontAsk",
+      "bypassPermissions",
+      "autoEdit",
+      "build",
+    ]),
+    model: z.string(),
+    thoughtLevel: nonEmptyString.optional(),
+    lastError: z
+      .object({
+        code: nonEmptyString,
+        message: nonEmptyString,
+        detail: z.string().optional(),
+        attribution: errorAttributionSchema.optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+export type CodezSessionIndexPresentation = z.infer<typeof codezSessionIndexPresentationSchema>;
+
+export const codezSessionIndexReadResultSchema = z
+  .object({
+    // target 的三态由独立字段承载，避免 CodezSessionInfo optional/nullable 混淆。
+    session: codezSessionInfoSchema.omit({ target: true }),
+    presentation: codezSessionIndexPresentationSchema,
+    target: codezSessionIndexTargetSchema,
+    hasUserVisibleContent: z.boolean(),
+    searchableText: z.object({ text: z.string().max(200_000), truncated: z.boolean() }).strict(),
+    watermark: z
+      .object({
+        logEpoch: nonEmptyString,
+        revision: z.number().int().nonnegative(),
+        seq: z.number().int().nonnegative(),
+      })
+      .strict(),
+  })
+  .strict();
+export type CodezSessionIndexReadResult = z.infer<typeof codezSessionIndexReadResultSchema>;
+
 export const codezSessionMessagesParamsSchema = z
   .object({
     sessionId: nonEmptyString,
@@ -4567,6 +4629,7 @@ export const codezProtocolMethods = {
   sessionRequestRuntimePreferences: "session/requestRuntimePreferences",
   subagentsReadRuntimeConfig: "subagents/readRuntimeConfig",
   sessionRead: "session/read",
+  sessionIndexRead: "session/index/read",
   sessionMessages: "session/messages",
   sessionEvents: "session/events",
   sessionDebug: "session/debug",

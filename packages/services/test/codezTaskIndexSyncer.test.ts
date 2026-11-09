@@ -19,7 +19,12 @@ import type {
   CodezTaskMeta,
   CodezWorkspaceEvent,
 } from "@codez/shared";
-import { elideSessionSnapshotForIndex, CODEZ_AGENT_PROVIDER_NOT_READY_CODE } from "@codez/shared";
+import {
+  elideSessionSnapshotForIndex,
+  projectSessionIndexContent,
+  CODEZ_AGENT_PROVIDER_NOT_READY_CODE,
+  type CodezSessionIndexReadResult,
+} from "@codez/shared";
 import type {
   SessionSummary,
   ErrorAttribution,
@@ -426,6 +431,17 @@ function snapshotWith(
     runtime: { stream: { recovering: false } },
     messages: messages as unknown as CodezSessionStateSnapshot["messages"],
   } as unknown as CodezSessionStateSnapshot;
+}
+
+function sessionIndexWith(
+  snapshot: CodezSessionStateSnapshot,
+  revision: number,
+  logEpoch = "native-epoch",
+): CodezSessionIndexReadResult {
+  return {
+    ...projectSessionIndexContent(snapshot),
+    watermark: { logEpoch, revision, seq: revision },
+  };
 }
 
 describe("createCodezTaskIndexSyncer", () => {
@@ -3403,5 +3419,188 @@ describe("createCodezTaskIndexSyncer", () => {
 
     subscription.dispose();
     syncer.disposeAll();
+  });
+
+  it("coalesces a terminal/title burst into one in-flight read and one trailing read", async () => {
+    const env = setupEnv({
+      initialSessions: [summaryOf(seedTarget.sessionId, "running")],
+    });
+    await seedRunningTask(env.repo);
+    const resolvers: Array<(result: CodezSessionIndexReadResult) => void> = [];
+    env.agent.readSessionIndex = vi.fn(
+      () =>
+        new Promise<CodezSessionIndexReadResult>((resolve) => {
+          resolvers.push(resolve);
+        }),
+    );
+    const syncer = createCodezTaskIndexSyncer({
+      agentService: env.agent,
+      taskIndexRepo: env.repo,
+    });
+    syncer.ensureSessionSubscription(seedTarget);
+    await subscribed(env);
+
+    for (let index = 1; index <= 100; index += 1) {
+      env.indexEmitter.fire(
+        indexUpsertFrame(
+          summaryOf(seedTarget.sessionId, index % 2 === 1 ? "completedSuccess" : "running", {
+            title: `title-${index}`,
+            lastActivityAt: 100 + index,
+          }),
+          index + 1,
+        ),
+      );
+    }
+    await vi.waitFor(() => expect(resolvers).toHaveLength(1));
+    resolvers[0]!(
+      sessionIndexWith(
+        snapshotWith(seedTarget.sessionId, "/repo", {
+          title: "title-1",
+          userMessageText: "stale-1",
+        }),
+        1,
+      ),
+    );
+    await vi.waitFor(() => expect(resolvers).toHaveLength(2));
+    resolvers[1]!(
+      sessionIndexWith(
+        snapshotWith(seedTarget.sessionId, "/repo", {
+          title: "title-100",
+          userMessageText: "latest-100",
+        }),
+        2,
+      ),
+    );
+    await vi.waitFor(async () => {
+      const result = await env.repo.queryTaskList({
+        workspaceScopes: [{ workspacePath: "/repo" }],
+        search: "latest-100",
+      });
+      expect(result.total).toBe(1);
+    });
+    expect(env.agent.readSessionIndex).toHaveBeenCalledTimes(2);
+    expect(env.agent.readSession).not.toHaveBeenCalled();
+
+    syncer.disposeAll();
+    env.indexEmitter.dispose();
+    env.configEmitter.dispose();
+  });
+
+  it("drops a late read after explicit session deletion", async () => {
+    const env = setupEnv({
+      initialSessions: [summaryOf(seedTarget.sessionId, "running")],
+    });
+    await seedRunningTask(env.repo);
+    let resolveRead!: (result: CodezSessionIndexReadResult) => void;
+    env.agent.readSessionIndex = vi.fn(
+      () =>
+        new Promise<CodezSessionIndexReadResult>((resolve) => {
+          resolveRead = resolve;
+        }),
+    );
+    const syncer = createCodezTaskIndexSyncer({
+      agentService: env.agent,
+      taskIndexRepo: env.repo,
+    });
+    syncer.ensureSessionSubscription(seedTarget);
+    await subscribed(env);
+    env.indexEmitter.fire(indexUpsertFrame(summaryOf(seedTarget.sessionId, "completedSuccess")));
+    await vi.waitFor(() => expect(env.agent.readSessionIndex).toHaveBeenCalledTimes(1));
+
+    env.indexEmitter.fire({
+      ...indexUpsertFrame(summaryOf(seedTarget.sessionId, "completedSuccess"), 3),
+      payload: {
+        kind: "deltas",
+        deltas: [{ op: "session.removed", sessionId: seedTarget.sessionId }],
+      },
+    });
+    resolveRead(
+      sessionIndexWith(
+        snapshotWith(seedTarget.sessionId, "/repo", {
+          title: "must-not-resurrect",
+          userMessageText: "must-not-resurrect",
+        }),
+        1,
+      ),
+    );
+    await vi.waitFor(async () => {
+      expect(
+        await env.repo.getTaskMeta({
+          workspacePath: "/repo",
+          taskId: seedTarget.sessionId,
+        }),
+      ).toBeNull();
+    });
+    expect(env.agent.readSessionIndex).toHaveBeenCalledTimes(1);
+
+    syncer.disposeAll();
+    env.indexEmitter.dispose();
+    env.configEmitter.dispose();
+  });
+
+  it("does not retry a failed index read until a new session event arrives", async () => {
+    const env = setupEnv({
+      initialSessions: [summaryOf(seedTarget.sessionId, "running")],
+    });
+    await seedRunningTask(env.repo);
+    env.agent.readSessionIndex = vi.fn().mockRejectedValue(new Error("observation-timeout"));
+    const syncer = createCodezTaskIndexSyncer({
+      agentService: env.agent,
+      taskIndexRepo: env.repo,
+    });
+    syncer.ensureSessionSubscription(seedTarget);
+    await subscribed(env);
+
+    env.indexEmitter.fire(indexUpsertFrame(summaryOf(seedTarget.sessionId, "completedSuccess")));
+    await vi.waitFor(() => expect(env.agent.readSessionIndex).toHaveBeenCalledTimes(1));
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    expect(env.agent.readSessionIndex).toHaveBeenCalledTimes(1);
+
+    syncer.disposeAll();
+    env.indexEmitter.dispose();
+    env.configEmitter.dispose();
+  });
+
+  it("keeps applying new events through the legacy zero-watermark fallback", async () => {
+    const env = setupEnv({
+      initialSessions: [summaryOf(seedTarget.sessionId, "running")],
+    });
+    await seedRunningTask(env.repo);
+    vi.mocked(env.agent.readSession)
+      .mockResolvedValueOnce(
+        snapshotWith(seedTarget.sessionId, "/repo", {
+          title: "first",
+          userMessageText: "legacy-first",
+        }),
+      )
+      .mockResolvedValueOnce(
+        snapshotWith(seedTarget.sessionId, "/repo", {
+          title: "second",
+          userMessageText: "legacy-second",
+        }),
+      );
+    const syncer = createCodezTaskIndexSyncer({
+      agentService: env.agent,
+      taskIndexRepo: env.repo,
+    });
+    syncer.ensureSessionSubscription(seedTarget);
+    await subscribed(env);
+
+    env.indexEmitter.fire(indexUpsertFrame(summaryOf(seedTarget.sessionId, "completedSuccess"), 2));
+    await vi.waitFor(() => expect(env.agent.readSession).toHaveBeenCalledTimes(1));
+    env.indexEmitter.fire(indexUpsertFrame(summaryOf(seedTarget.sessionId, "running"), 3));
+    env.indexEmitter.fire(indexUpsertFrame(summaryOf(seedTarget.sessionId, "completedSuccess"), 4));
+    await vi.waitFor(async () => {
+      expect(env.agent.readSession).toHaveBeenCalledTimes(2);
+      const result = await env.repo.queryTaskList({
+        workspaceScopes: [{ workspacePath: "/repo" }],
+        search: "legacy-second",
+      });
+      expect(result.total).toBe(1);
+    });
+
+    syncer.disposeAll();
+    env.indexEmitter.dispose();
+    env.configEmitter.dispose();
   });
 });
