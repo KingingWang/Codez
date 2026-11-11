@@ -15,6 +15,10 @@ function setup(
 ) {
   const auth = {
     getCodezJwtToken: () => jwt,
+    // 上游 3.18 的入口用 session revision + 变更订阅判断登录态是否换代：
+    // revision 变了才重启连接，避免同一 JWT 的重复订阅触发重连。
+    getSessionRevision: () => (jwt ? `revision:${jwt}` : null),
+    subscribeSessionChange: () => () => undefined,
     getActiveAccount: vi.fn(() => (jwt ? account : null)),
     startLogin: vi.fn(),
     logout: vi.fn(async () => {

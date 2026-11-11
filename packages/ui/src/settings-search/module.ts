@@ -4,7 +4,8 @@
  */
 export const settingsSearchModule = {
   id: "settings-search",
-  requires: ["ui"],
+  // dynamic-workflow-availability：上游 3.18 的搜索面按动态 workflow 可用性决定 workflow 设置可见性。
+  requires: ["dynamic-workflow-availability", "ui"],
   provides: ["settings-search"],
   publicEntrypoints: ["index.ts", "contract.ts"],
 } as const;

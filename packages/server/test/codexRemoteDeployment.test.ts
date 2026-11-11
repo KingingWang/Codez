@@ -134,9 +134,10 @@ test("startup expands remote home, preserves network authority, and never forwar
   assert.match(command, /desktop-attached-remote/);
   assert.match(command, /http:\/\/127.0.0.1:18080/);
   assert.match(command, /CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED='0'/);
+  // 上游 3.18 在启动命令尾部追加 --prepare-credentials 预置阶段；fork 只负责把路径引用化。
   assert.ok(
     command.endsWith(
-      `"$HOME"'/.codez-codex/server/node' "$HOME"'/.codez-codex/server/codez-server.cjs'`,
+      `"$HOME"'/.codez-codex/server/node' "$HOME"'/.codez-codex/server/codez-server.cjs' --prepare-credentials`,
     ),
   );
   assert.doesNotMatch(command, /\/desktop\/|app-server|--surface|--prepare-storage|glm/);
