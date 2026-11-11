@@ -3124,6 +3124,14 @@ exceptions:
     rule: max-file-lines
     paths: [ packages/services/src/project-storage/project-repository.ts ]
     reason: 上游 3.18 的 worktree placement 继承与 fork 的物理根目录归属共用同一份 tasks/project_roots 写事务与同一个 Repo 边界；机械拆分会让归属判定出现第二个事实源。
+  - id: codex-provider-key-env-unmanaged-edit
+    rule: unmanaged-new-file
+    paths: [ packages/provider/src/config/provider-data-schema.ts ]
+    reason: Codex 临时 API Key 以 apiKeyEnv 引用表达（明文 Key 与环境变量引用互斥、二者不得同时为空），只在上游既有的 provider 配置 schema 上加约束；把 provider 配置整体收编为 managed 模块属于独立边界重构。
+  - id: codex-new-task-draft-default-mode-unmanaged-edit
+    rule: unmanaged-new-file
+    paths: [ packages/ui/src/v4/composer/newTaskDraft.ts ]
+    reason: Codex 新任务草稿的默认权限档是 custom（跟随 config.toml）而不是 build，只改上游既有初始化函数的默认值；composer 草稿目录尚未登记 managed 模块。
   - id: project-repository-upstream-318-worktree-placement-lint
     rule: disable-count
     paths: [ packages/services/src/project-storage/project-repository.ts ]
