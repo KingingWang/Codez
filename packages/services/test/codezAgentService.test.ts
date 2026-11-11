@@ -2258,6 +2258,8 @@ describe("createCodezAgentService", () => {
           nativeSearchEnhancementsEnabled: false,
           subagentRuntimeConfigEnabled: false,
           memoryEnabled: false,
+          // 上游 3.18 无条件投影 appControlEnabled（未注入 App Control 服务时为 false）。
+          appControlEnabled: false,
           modelContextBudgetStrategy: "preflight-v1" as const,
         },
         expectedResolverCalls: 1,
@@ -2270,6 +2272,8 @@ describe("createCodezAgentService", () => {
           nativeSearchEnhancementsEnabled: true,
           subagentRuntimeConfigEnabled: false,
           memoryEnabled: false,
+          // 上游 3.18 无条件投影 appControlEnabled（未注入 App Control 服务时为 false）。
+          appControlEnabled: false,
           modelContextBudgetStrategy: "preflight-v1" as const,
         },
         expectedResolverCalls: 0,
@@ -2326,6 +2330,7 @@ describe("createCodezAgentService", () => {
                   nativeSearchEnhancementsEnabled: boolean;
                   subagentRuntimeConfigEnabled: boolean;
                   memoryEnabled: boolean;
+                  appControlEnabled?: boolean;
                   toolSearchMode?: "auto" | "local" | "off";
                   modelContextBudgetStrategy: "legacy" | "preflight-v1";
                 };

@@ -14,9 +14,16 @@ import {
 import { createRemoteProviderProvisioningExecutor } from "../src/host/remoteProviderProvisioningService.js";
 
 const tempDirs: string[] = [];
+// 上游 3.18 的 credentialService 走系统凭据密匙（OS keystore / 受管 secret）。
+// CI 与容器都是无 Secret Service 的 headless 环境，必须显式提供受管 secret，
+// 否则用例会因 CREDENTIAL_SECURE_STORAGE_UNAVAILABLE 失败，而不是验证 Key 生命周期。
+const TEST_CREDENTIAL_SECRET = "codez-test-credential-secret-0123456789abcdef";
+const previousCredentialSecret = process.env.CODEZ_CREDENTIAL_SECRET;
 
 afterEach(() => {
   setDataBaseDir(null);
+  if (previousCredentialSecret === undefined) delete process.env.CODEZ_CREDENTIAL_SECRET;
+  else process.env.CODEZ_CREDENTIAL_SECRET = previousCredentialSecret;
   while (tempDirs.length > 0) {
     const dir = tempDirs.pop();
     if (dir) rmSync(dir, { recursive: true, force: true });
@@ -27,6 +34,7 @@ function setup(environmentKey = "ssh:acct@host:22") {
   const dir = mkdtempSync(join(tmpdir(), "codex-key-executor-"));
   tempDirs.push(dir);
   setDataBaseDir(dir);
+  process.env.CODEZ_CREDENTIAL_SECRET = TEST_CREDENTIAL_SECRET;
   const credentialService = createCredentialService();
   return { environmentKey, credentialService };
 }

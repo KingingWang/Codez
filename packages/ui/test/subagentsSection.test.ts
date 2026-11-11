@@ -205,6 +205,8 @@ vi.mock("lucide-react", () => ({
   Import: (props: Record<string, unknown>) => createElement("svg", props),
   SquareArrowRightEnter: (props: Record<string, unknown>) => createElement("svg", props),
   Loader2: (props: Record<string, unknown>) => createElement("svg", props),
+  // 上游 3.18 把加载图标统一到 LoaderCircle（lucide 新命名）。
+  LoaderCircle: (props: Record<string, unknown>) => createElement("svg", props),
   MoreHorizontal: (props: Record<string, unknown>) => createElement("svg", props),
   Pencil: (props: Record<string, unknown>) => createElement("svg", props),
   Plus: (props: Record<string, unknown>) => createElement("svg", props),

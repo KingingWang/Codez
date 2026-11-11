@@ -127,7 +127,13 @@ export class WebAuthService {
 
   async startLogin(options: WebAuthLoginOptions = {}): Promise<void> {
     this.loginController?.abort();
-    if (options.provider === BIGMODEL_PROVIDER_ID) {
+    // fork 定制：手机浏览器与开启弹窗拦截的桌面浏览器拿不到授权弹窗（window.open 返回 null），
+    // 上游在这里直接抛 "Authorization popup was blocked"，远控登录页只能停在错误态。
+    // 探测不到弹窗能力时退回整页重定向的 legacy 流（与 BigModel 同一条路径），
+    // 保留 QR 参数、dev return_to 与 #e2ee hash 的既有契约；能弹窗时仍走上游区域轮询流。
+    const popup =
+      options.provider === BIGMODEL_PROVIDER_ID ? null : this.runtime.openAuthorization?.();
+    if (!popup) {
       await this.startLegacyLogin(options);
       return;
     }
@@ -136,11 +142,9 @@ export class WebAuthService {
     const abort = () => controller.abort();
     options.signal?.addEventListener("abort", abort, { once: true });
     if (options.signal?.aborted) controller.abort();
-    const popup = this.runtime.openAuthorization?.();
     const nonce = this.runtime.createNonce();
     let expiryTimer: ReturnType<typeof setTimeout> | undefined;
     try {
-      if (!popup) throw new Error("Authorization popup was blocked");
       controller.signal.throwIfAborted();
       const expected = await this.repo.beginLoginAttempt(nonce);
       const token = Array.from(crypto.getRandomValues(new Uint8Array(32)), (value) =>
@@ -175,7 +179,26 @@ export class WebAuthService {
             options.appReturnTo ?? this.runtime.getCurrentHref(),
             { currentOrigin: this.runtime.getCurrentOrigin() },
           );
-          this.runtime.replace(destination ?? "/remote/v4");
+          // fork 定制：扫码进入的远控页面把端到端密钥放在 URL hash 里。上游弹窗流只回跳
+          // app_return_to，会连同 hash 一起丢掉，配对页面因此拿不到 #e2ee=v1&k=...。
+          // 与 startPollingLogin 同一规则：只在确认是远控 QR 片段时把 hash 追加回去。
+          const popupReturnTo = options.appReturnTo ?? this.runtime.getCurrentHref();
+          const popupSourceUrl = parseOptionalUrl(popupReturnTo);
+          const popupE2eeHash =
+            popupSourceUrl?.hash && parseWebRemoteControlE2eeQrFragment(popupSourceUrl.hash)
+              ? popupSourceUrl.hash.trim()
+              : "";
+          const normalizedPopupHash = popupE2eeHash
+            ? popupE2eeHash.startsWith("#")
+              ? popupE2eeHash
+              : `#${popupE2eeHash}`
+            : "";
+          const resolvedDestination = destination ?? "/remote/v4";
+          this.runtime.replace(
+            normalizedPopupHash && !resolvedDestination.includes("#")
+              ? `${resolvedDestination}${normalizedPopupHash}`
+              : resolvedDestination,
+          );
           return;
         }
         if (popup.isClosed()) throw new Error("Authorization window was closed");
@@ -185,7 +208,7 @@ export class WebAuthService {
       clearTimeout(expiryTimer);
       options.signal?.removeEventListener("abort", abort);
       if (this.loginController === controller) this.loginController = null;
-      popup?.close();
+      popup.close();
       await this.repo.finishLoginAttempt(nonce);
     }
   }
