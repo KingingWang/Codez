@@ -67,11 +67,26 @@ try {
     await button("Remote sign in").waitFor();
     assert.equal((await inspect()).userId, null);
   };
+  // 上游 3.18 的统一登录页只保留一个登录按钮，provider 由区域决定
+  // （domestic=zai_cn / global=zai），BigModel 不再是欢迎页登录入口。
+  // 因此“选 provider”等于“切到对应区域再点唯一入口”。
+  const REGION_BY_PROVIDER = { zai_cn: "domestic", zai: "global" };
+  const regionSwitch = () => page.getByTestId("login-region-switch");
+  const pickRegion = async (provider) => {
+    const wanted = REGION_BY_PROVIDER[provider];
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      if ((await regionSwitch().getAttribute("data-login-region")) === wanted) return;
+      await regionSwitch().click();
+    }
+    throw new Error(`无法把登录区域切到 ${wanted}`);
+  };
+  const clickLogin = async () => {
+    await page.getByTestId("oauth-login-button").click();
+  };
   const start = async (provider) => {
     await button("Remote sign in").click();
-    await page
-      .getByTestId(provider === "bigmodel" ? "oauth-login-button" : "oauth-login-button-zai")
-      .click();
+    await pickRegion(provider);
+    await clickLogin();
     await page.getByTestId("oauth-copy-login-link").waitFor();
     assert.equal((await inspect()).opened, 1);
   };
@@ -92,7 +107,7 @@ try {
     assert.equal(state.legacyReads, 0);
     assert.equal(state.legacyWrites, 0);
   };
-  for (const provider of ["bigmodel", "zai"]) {
+  for (const provider of ["zai_cn", "zai"]) {
     await openFresh();
     await start(provider);
     await page.screenshot({ path: join(evidence, `${provider}-waiting.png`) });
@@ -112,7 +127,7 @@ try {
     );
   }
   await openFresh();
-  await start("bigmodel");
+  await start("zai_cn");
   await button("Deliver current auth link").click();
   await waitSuccess(1);
   await button("Deliver current auth link").click();
@@ -156,14 +171,14 @@ try {
   assert.equal(cancelled.userId, null);
   assert.equal(cancelled.successSeq, 0);
   assert.equal(cancelled.credentialWrites, 0);
-  await page.getByTestId("oauth-login-button").click();
+  await clickLogin();
   await button("Complete browser authorization").click();
   await waitSuccess(1);
   assertNoLegacy(await inspect());
   checks.push("Cancel rejects a late held poll; a later attempt remains usable");
   await openFresh();
   await button("Fail next auth poll").click();
-  await start("bigmodel");
+  await start("zai_cn");
   await page.waitForFunction(() => {
     const state = JSON.parse(
       document.querySelector('[data-testid="qa-native-login-state"]').textContent,
@@ -176,7 +191,8 @@ try {
   assert.equal(failed.credentialWrites, 0);
   assertNoLegacy(failed);
   await page.getByTestId("oauth-cancel").click();
-  await page.getByTestId("oauth-login-button-zai").click();
+  await pickRegion("zai");
+  await clickLogin();
   await button("Complete browser authorization").click();
   await waitSuccess(1);
   checks.push("Polling failure reports a retryable error; cancellation and a new login recover");

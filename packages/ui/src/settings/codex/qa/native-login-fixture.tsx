@@ -52,8 +52,10 @@ function createLoginFixture() {
   const services = {
     broadcastService,
     oauthService: {
+      // 上游 3.18 的统一登录页只提供区域化的 Z.ai 入口（domestic=zai_cn / global=zai），
+      // BigModel 不再是欢迎页登录 provider；夹具跟随当前可选集合。
       getProviders: async () => [
-        { id: "bigmodel", displayName: "BigModel", enabled: true, order: 0 },
+        { id: "zai_cn", displayName: "Z.ai CN", enabled: true, order: 0 },
         { id: "zai", displayName: "Z.ai", enabled: true, order: 1 },
       ],
       getActiveProvider: async () => completed?.provider ?? null,
