@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { BIGMODEL_PROVIDER_ID, ZAI_PROVIDER_ID } from "@codez/shared";
 import { CodezAppLogo } from "@codez/ui/app-logo";
+import { renderOAuthProviderIcon } from "@codez/ui/oauth-provider-icon";
+import type { WebOAuthProviderId } from "./browserOAuthCredentialRepo.js";
+import { Button } from "@codez/ui";
 import {
   WebRegionalLoginActions,
   type WebRegionalLoginActionsProps,

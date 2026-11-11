@@ -5,10 +5,21 @@ import {
   remoteHostIdFromWorkspaceIdentity,
   type CodezTaskMeta,
 } from "@codez/shared";
+import type { CodezTaskChangeSummary } from "@codez/shared";
 import type { RemoteProjectHost } from "@/project-sidebar/contract.js";
 import { useOptionalProjectDirectory } from "@/project-sidebar/ProjectDirectoryProvider.js";
 import { remoteHostLabel } from "@/project-sidebar/RemoteHostSection.js";
-import { formatGroupedTaskHoverChangeParts } from "@/project-sidebar/grouped/task-row-tooltip.js";
+
+/** 变更统计只展示非零项；上游已删除 grouped/task-row-tooltip.ts，fork 悬浮卡就地保留该纯函数。 */
+function formatGroupedTaskHoverChangeParts(
+  summary: CodezTaskChangeSummary | null,
+): string[] {
+  if (!summary) return [];
+  const parts: string[] = [];
+  if (summary.added > 0) parts.push(`+${summary.added}`);
+  if (summary.removed > 0) parts.push(`-${summary.removed}`);
+  return parts;
+}
 import {
   Tooltip,
   TooltipContent,

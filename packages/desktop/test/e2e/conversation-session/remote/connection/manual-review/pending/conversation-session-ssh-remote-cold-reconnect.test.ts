@@ -5,9 +5,9 @@ import {
 } from "#e2e/helpers/remote-project-actions";
 import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 import { TID_TASK_ITEM, testId } from "@codez/shared/test-ids";
-import { releaseControlledReplay } from "../../../helpers/controlled-replay.js";
-import { clearAppData, readSettings, seedSettings } from "../../../helpers/desktop-app.js";
-import { selectUpstreamProviderModelById } from "../../../helpers/upstream-provider.js";
+import { releaseControlledReplay } from "#e2e/helpers/controlled-replay";
+import { clearAppData, readSettings, seedSettings } from "#e2e/helpers/desktop-app";
+import { selectUpstreamProviderModelById } from "#e2e/helpers/upstream-provider";
 import {
   connectSSHWorkspaceAndSendFirstTurn,
   prepareSSHLifecycle,
@@ -39,7 +39,7 @@ import {
   waitForV4Pane,
   sendV4Prompt,
   waitForV4TimelineContaining,
-} from "../../../helpers/v4-conversation.js";
+} from "#e2e/helpers/v4-conversation";
 
 const CASE_MARKER = "E2E_SSH_P0_COLD_RECONNECT";
 

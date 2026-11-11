@@ -376,9 +376,6 @@ importers:
 
   apps/codez-cli/packages/cli:
     dependencies:
-      '@napi-rs/keyring':
-        specifier: 2.1.2
-        version: 2.1.2
       '@codez/adapters':
         specifier: workspace:*
         version: link:../adapters
@@ -409,6 +406,9 @@ importers:
       '@codez/tui':
         specifier: workspace:*
         version: link:../tui
+      '@napi-rs/keyring':
+        specifier: 2.1.2
+        version: 2.1.2
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
@@ -1082,6 +1082,9 @@ importers:
       '@hono/node-ws':
         specifier: ^1.3.0
         version: 1.3.0(@hono/node-server@1.19.14(hono@4.12.12))(hono@4.12.12)
+      '@napi-rs/keyring':
+        specifier: 2.1.2
+        version: 2.1.2
       hono:
         specifier: ^4.12.9
         version: 4.12.12
@@ -1110,6 +1113,16 @@ importers:
       tsx:
         specifier: ^4.19.4
         version: 4.21.0
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+
+  packages/design-runtime:
+    dependencies:
+      parse5:
+        specifier: 7.3.0
+        version: 7.3.0
+    devDependencies:
       typescript:
         specifier: ^6.0.2
         version: 6.0.2
@@ -1500,6 +1513,9 @@ importers:
       '@lydell/node-pty-linux-x64':
         specifier: 1.2.0-beta.10
         version: 1.2.0-beta.10
+      '@napi-rs/keyring':
+        specifier: 2.1.2
+        version: 2.1.2
       axios:
         specifier: ^1.13.6
         version: 1.13.6
@@ -1849,15 +1865,15 @@ importers:
 
   packages/shared:
     dependencies:
-      '@napi-rs/keyring':
-        specifier: 2.1.2
-        version: 2.1.2
       '@codez/model-option-map':
         specifier: workspace:*
         version: link:../model-option-map
       '@codez/session-control':
         specifier: workspace:*
         version: link:../session-control
+      '@napi-rs/keyring':
+        specifier: 2.1.2
+        version: 2.1.2
       zod:
         specifier: 4.6.5
         version: 4.6.5
@@ -1914,6 +1930,9 @@ importers:
       '@aiden0z/pptx-renderer':
         specifier: 1.2.4
         version: 1.2.4(patch_hash=e1a90a724324c45a2cc90cf84d1ae1f35755b8fc9438a208d610960bd0d5f65a)(pdfjs-dist@5.4.296)
+      '@codez/design-runtime':
+        specifier: workspace:*
+        version: link:../design-runtime
       '@codez/provider':
         specifier: workspace:*
         version: link:../provider

@@ -6,7 +6,11 @@ import type {
   OAuthSessionCallbackResult,
   UserInfo,
 } from "@codez/shared";
-import { CODEZ_JWT_INVALID_BROADCAST_CHANNEL } from "@codez/shared";
+import {
+  CODEZ_JWT_INVALID_BROADCAST_CHANNEL,
+  resolveProviderFamilyDomainFromOAuthProvider,
+} from "@codez/shared";
+import { setProviderFamilyDomain } from "@/lib/providerFamilyDomainSettings.js";
 import type { IServiceAccessor } from "@codez/services";
 import { useAlertDialog } from "@/hooks/useAlertDialog.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
@@ -35,6 +39,8 @@ export async function handleOAuthCallbackSuccess(params: {
   ) => Promise<ModelProviderFamilyConnectionSelection | null>;
   refreshAppSettings?: () => Promise<void>;
   refreshProviderState: () => Promise<void>;
+  /** 登录成功后写入连接域；CAS 冲突由调用方吞掉并单独报告，不否定登录结果。 */
+  setProviderFamilyDomain: (provider: OAuthProviderId) => Promise<void>;
   setUser: (user: UserInfo | null) => void;
   setOAuthError: (error: string | null) => void;
   isCurrent?: () => boolean;
@@ -67,9 +73,9 @@ export async function handleOAuthCallbackSuccess(params: {
   if (params.refreshLatestModelProviderFamilySelection || !connectionInitialized) {
     let selection: ModelProviderFamilyConnectionSelection | null = null;
     try {
-      const selection = await params.refreshLatestModelProviderFamilySelection(
-        params.result.provider,
-      );
+      // 连接域初始化失败时也要走一次刷新，否则 UI 会停在旧套餐快照上。
+      selection =
+        (await params.refreshLatestModelProviderFamilySelection?.(params.result.provider)) ?? null;
       if (selection) await params.refreshAppSettings?.();
     } catch (error) {
       // 账号已完成登录；自动初始化冲突或权益查询失败不能回滚主身份。

@@ -1,3 +1,4 @@
+/* oxlint-disable eslint(max-lines) -- 上游 3.18 的 worktree placement 继承与 fork 的物理根目录归属共用同一份 tasks/project_roots 写路径，拆分会让归属判定出现第二个事实源。 */
 import { z } from "zod";
 import { createHash, randomUUID } from "node:crypto";
 import { basename, isAbsolute, relative } from "node:path";
@@ -36,6 +37,26 @@ import {
 } from "#src/project-storage/remote-policy.js";
 
 const executionDirectoriesSchema = z.array(z.string().min(1)).max(256);
+
+/**
+ * 受管 worktree 的创建落点：只允许本地、有项目归属、cwd 在 worktree 根内的组合；
+ * 其他组合说明调用方装配错误，直接拒绝（docs/git/worktree.md §3.6）。
+ */
+function resolveWorktreePlacement(input: {
+  task: { workspaceIdentity?: string };
+  projectId: string | null;
+  cwd?: string;
+  worktreeRoot?: string;
+}): { cwd: string; worktreeRoot: string } | null {
+  if (input.cwd === undefined && input.worktreeRoot === undefined) return null;
+  if (!input.cwd || !input.worktreeRoot) throw new Error("project.worktree-placement-incomplete");
+  if (input.task.workspaceIdentity?.trim()) throw new Error("project.worktree-local-only");
+  if (!input.projectId) throw new Error("project.worktree-requires-project");
+  const relativeCwd = relative(input.worktreeRoot, input.cwd);
+  if (relativeCwd.startsWith("..") || isAbsolute(relativeCwd))
+    throw new Error("project.worktree-cwd-outside-root");
+  return { cwd: input.cwd, worktreeRoot: input.worktreeRoot };
+}
 
 function transaction<T>(db: DatabaseSync, body: () => T, write = true): T {
   db.exec(write ? "BEGIN IMMEDIATE" : "BEGIN");

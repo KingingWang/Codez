@@ -825,6 +825,7 @@ export function SettingsPage({
   );
   const selectDirectory = useSelectDirectory();
   const services = useServices();
+  const onboardingRecordService = services.onboardingRecordService;
   const localHostServices = useBaseWorkspaceServices();
   const projectDirectory = useOptionalProjectDirectory();
   // SettingsPage 可能挂在远端 workspace 的 ServiceProvider 下；共享设置属于本机 Host，
@@ -2034,6 +2035,7 @@ export function SettingsPage({
                             isDesktop ? (
                               <DataSyncSection
                                 snapshot={sourceManagementSnapshot}
+                                sourceServices={localHostServices}
                                 deviceSyncStateService={localHostServices.deviceSyncStateService}
                                 onOpenRemoteConnection={onOpenRemoteWorkspace}
                                 onOpenMigration={requestMigrationDialog}

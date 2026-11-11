@@ -528,7 +528,11 @@ export function projectSessionsIndex(
       const session = projectSessionSummary(thread, workspaceId);
       const pending = options.interactions?.(session.sessionId) ?? [];
       const first = pending[0];
-      if (!first || first.payload.kind === "workspaceHookReview") return session;
+      // 侧栏活性摘要只承载 permission/userInput：软审核（workspaceHookReview）不是阻塞
+      // 交互，上游 3.18 新增的插件安装确认（pluginInstall）也不属于会话阻塞态。
+      // 两者都不能写进 sessionPendingInteractionSummary（其 kind 是闭集），否则整帧 parse 失败。
+      if (!first || (first.payload.kind !== "permission" && first.payload.kind !== "userInput"))
+        return session;
       // 只读同一 broker 的轻量摘要；不复制问题内容、计时状态或 Host 任务组织态。
       return {
         ...session,

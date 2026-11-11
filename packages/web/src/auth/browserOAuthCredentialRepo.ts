@@ -74,7 +74,7 @@ function isPendingOAuthLogin(value: unknown): value is PendingOAuthLogin {
     typeof login.redirectUri === "string" &&
     hasText(login.redirectUri) &&
     typeof login.expectedSession === "string" &&
-    hasText(login.expectedSession)
+    hasText(login.expectedSession) &&
     (login.hash === undefined || typeof login.hash === "string")
   );
 }
@@ -163,6 +163,15 @@ export class BrowserOAuthCredentialRepo {
     );
   }
 
+  /**
+   * fork 定制：浏览器扩展的隔离存储下 pending login 可能只能从 OAuth state 复原，
+   * 拿不到发起时的 session 快照，此时仍要求 nonce 与当前登录尝试一致，
+   * 保留 CSRF/接管防护，只放宽无法比对的快照维度。
+   */
+  ownsLoginNonce(nonce: string): boolean {
+    return this.localStorage.getItem(LOGIN_ATTEMPT_KEY) === nonce;
+  }
+
   finishLoginAttempt(nonce: string): Promise<void> {
     if (this.localStorage.getItem(LOGIN_ATTEMPT_KEY) !== nonce) return Promise.resolve();
     // 无锁浏览器不会创建新attempt；清理旧attempt不能覆盖原始登录错误。
@@ -175,7 +184,9 @@ export class BrowserOAuthCredentialRepo {
 
   commitPrimarySession(
     session: Omit<BrowserOAuthSession, "version">,
-    expected: string,
+    // fork 定制：扩展隔离存储下 pending login 只能由 OAuth state 复原，拿不到发起时的
+    // session 快照；传 null 表示跳过快照比对，仅保留 nonce 归属这一道防接管检查。
+    expected: string | null,
     nonce: string,
     signal?: AbortSignal,
   ): Promise<boolean> {
@@ -183,7 +194,7 @@ export class BrowserOAuthCredentialRepo {
       // 跨标签页的旧ready/旧callback不能覆盖新登录或退出；检查和单记录提交共用一把锁。
       if (
         signal?.aborted ||
-        this.sessionSnapshot() !== expected ||
+        (expected !== null && this.sessionSnapshot() !== expected) ||
         this.localStorage.getItem(LOGIN_ATTEMPT_KEY) !== nonce
       )
         return false;
