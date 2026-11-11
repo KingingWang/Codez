@@ -101,7 +101,7 @@ test("local sidecar tag changes when a manifest changes at the same app version"
   const root = await fixture(t);
   const localEnv = {};
   const first = await createCodexRemoteIndex({ root, version: "3.18.0", env: localEnv });
-  assert.match(first.releaseTag, /^codez-local-3\.17\.2-[a-f0-9]{12}$/);
+  assert.match(first.releaseTag, /^codez-local-3\.18\.0-[a-f0-9]{12}$/);
   const path = join(root, "releases", "3.18.0", "manifest-linux-x64.json");
   const manifest = JSON.parse(await readFile(path, "utf8"));
   manifest.components[0].version = "test-2";
