@@ -164,12 +164,14 @@ export class BrowserOAuthCredentialRepo {
   }
 
   /**
-   * fork 定制：浏览器扩展的隔离存储下 pending login 可能只能从 OAuth state 复原，
-   * 拿不到发起时的 session 快照，此时仍要求 nonce 与当前登录尝试一致，
-   * 保留 CSRF/接管防护，只放宽无法比对的快照维度。
+   * fork 定制：浏览器扩展的隔离存储下 pending login 只能从 OAuth state 复原，
+   * 拿不到发起时的 session 快照，登录尝试记录本身也可能随存储隔离一起丢失。
+   * 因此这里只在该记录仍存在时要求 nonce 一致（正常浏览器的 CSRF/接管防护不降级），
+   * 记录缺席时按“存储被隔离”放行，恢复 fork 既有的扩展登录能力。
    */
   ownsLoginNonce(nonce: string): boolean {
-    return this.localStorage.getItem(LOGIN_ATTEMPT_KEY) === nonce;
+    const attempt = this.localStorage.getItem(LOGIN_ATTEMPT_KEY);
+    return attempt === null || attempt === nonce;
   }
 
   finishLoginAttempt(nonce: string): Promise<void> {
@@ -192,10 +194,13 @@ export class BrowserOAuthCredentialRepo {
   ): Promise<boolean> {
     return this.withSessionLock(() => {
       // 跨标签页的旧ready/旧callback不能覆盖新登录或退出；检查和单记录提交共用一把锁。
+      // fork 定制：expected=null 表示扩展隔离存储下拿不到发起时快照；此时登录尝试记录
+      // 也可能随存储隔离一起丢失，只在记录仍存在时才要求 nonce 一致（与 ownsLoginNonce 同语义）。
+      const attempt = this.localStorage.getItem(LOGIN_ATTEMPT_KEY);
       if (
         signal?.aborted ||
         (expected !== null && this.sessionSnapshot() !== expected) ||
-        this.localStorage.getItem(LOGIN_ATTEMPT_KEY) !== nonce
+        (attempt !== null && attempt !== nonce)
       )
         return false;
       this.localStorage.setItem(BROWSER_SESSION_KEY, JSON.stringify({ version: 1, ...session }));

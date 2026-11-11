@@ -1,9 +1,35 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BrowserOAuthCredentialRepo } from "../src/auth/browserOAuthCredentialRepo.js";
 import { buildOAuthState, parseOAuthState } from "../src/auth/oauthStateCodec.js";
 import { createWebZaiOAuthConfig } from "../src/auth/webZaiOAuthConfig.js";
 import { WebAuthService } from "../src/auth/webAuthService.js";
 import { ZaiWebOAuthProvider } from "../src/auth/zaiWebOAuthProvider.js";
+
+/**
+ * jsdom 不实现 Web Locks，而上游 3.18 的凭据仓储用 navigator.locks 串行化
+ * beginLoginAttempt / commitPrimarySession。这里给出最小串行实现，让 fork 的
+ * OAuth 回归继续验证契约本身，而不是被环境能力挡住。
+ */
+class SerialLockManager {
+  private tail: Promise<unknown> = Promise.resolve();
+  request<T>(_name: string, run: () => T | Promise<T>): Promise<T> {
+    const next = this.tail.then(run, run) as Promise<T>;
+    this.tail = next.then(
+      () => undefined,
+      () => undefined,
+    );
+    return next;
+  }
+}
+
+beforeEach(() => {
+  Object.defineProperty(navigator, "locks", {
+    configurable: true,
+    writable: true,
+    value: new SerialLockManager(),
+  });
+});
 
 class MemoryStorage implements Storage {
   private readonly values = new Map<string, string>();
@@ -43,11 +69,17 @@ function createProductionWebZaiOAuthConfig() {
 
 const PENDING_LOGINS_KEY = "oauth_pending_logins";
 
-function seedPendingLogin(
-  localStorage: Storage,
-  login: { nonce: string; provider: "zai" | "bigmodel"; redirectUri: string },
-): void {
-  localStorage.setItem(PENDING_LOGINS_KEY, JSON.stringify([login]));
+/**
+ * 上游 3.18 的 pending login 必须携带发起时的 session 快照（expectedSession），
+ * 回调侧用 ownsLoginAttempt 拒绝迟到 callback 重新领取写入资格。直接往 localStorage
+ * 塞裸记录会被 isPendingOAuthLogin 判为非法并当成 CSRF，所以走仓储公开 API 播种。
+ */
+async function seedPendingLogin(
+  repo: BrowserOAuthCredentialRepo,
+  login: { nonce: string; provider: "zai" | "zai_cn" | "bigmodel"; redirectUri: string },
+): Promise<void> {
+  const expectedSession = await repo.beginLoginAttempt(login.nonce);
+  repo.savePendingLogin({ ...login, expectedSession });
 }
 
 function createService(options?: {
@@ -91,6 +123,8 @@ function createService(options?: {
     replaced,
     service: openPage(),
     openPage,
+    // 与所有 page 实例共享同一份 localStorage，用于按仓储契约播种 pending login。
+    seedRepo: new BrowserOAuthCredentialRepo({ localStorage }),
   };
 }
 
@@ -240,7 +274,7 @@ describe("WebAuthService", () => {
       },
     });
 
-    service.startLogin();
+    await service.startLogin();
 
     const authorizeUrl = new URL(assigned[0]!);
     expect(authorizeUrl.origin + authorizeUrl.pathname).toBe(
@@ -250,22 +284,25 @@ describe("WebAuthService", () => {
     expect(authorizeUrl.searchParams.get("client_id")).toBe("client_P8X5CMWmlaRO9gyO-KSqtg");
   });
 
-  it("starts ZAI login with nonce, dev return_to, and original app_return_to", () => {
+  it("starts ZAI login with nonce, dev return_to, and original app_return_to", async () => {
     const { assigned, localStorage, service } = createService();
 
-    service.startLogin({
+    await service.startLogin({
       devReturnTo: "http://192.168.1.8:5173/remote/v4",
     });
 
     const authorizeUrl = new URL(assigned[0]!);
     const state = parseOAuthState(authorizeUrl.searchParams.get("state")!);
+    // expectedSession 是发起时的存储快照（上游 3.18 用于拒绝迟到 callback 抢写入资格），
+    // 值由运行时派生，这里只断言它确实被记下来。
     expect(JSON.parse(localStorage.getItem(PENDING_LOGINS_KEY)!)).toEqual([
-      {
+      expect.objectContaining({
         nonce: "nonce-1",
         provider: "zai",
         redirectUri:
           "https://zcode.z.ai/remote/v4?app_version=3.13.0&sid=device-1&mid=mid-1&name=Desktop",
-      },
+        expectedSession: expect.any(String),
+      }),
     ]);
     expect(authorizeUrl.origin + authorizeUrl.pathname).toBe(
       "https://chat.z.ai/api/oauth/authorize",
@@ -282,11 +319,11 @@ describe("WebAuthService", () => {
     });
   });
 
-  it("uses the independent share callback when starting share login", () => {
+  it("uses the independent share callback when starting share login", async () => {
     const { assigned, service } = createService({
       currentHref: "https://zcode.z.ai/cn/share/share-1",
     });
-    service.startLogin({
+    await service.startLogin({
       appReturnTo: "https://zcode.z.ai/cn/share/share-1",
       redirectUri: "https://zcode.z.ai/cn/share/callback",
     });
@@ -313,7 +350,7 @@ describe("WebAuthService", () => {
         currentOrigin: origin,
         currentHref: `${origin}${path}?${query}&ignored=1&hash=old&t=1&token=secret&code=old&authCode=old&state=old&error=old#fragment`,
       });
-      h.service.startLogin({ provider });
+      await h.service.startLogin({ provider });
       const authorize = new URL(h.assigned[0]!);
       const redirectUri = authorize.searchParams.get(
         provider === "bigmodel" ? "redirect" : "redirect_uri",
@@ -343,7 +380,10 @@ describe("WebAuthService", () => {
         redirect_uri: redirectUri,
       });
       expect(result?.appReturnTo).toBe(`${path}?${query}`);
-      expect(h.localStorage.getItem("oauth:active_provider")).toBe(provider);
+      // 上游 3.18 把登录态收敛成单条主会话记录，不再逐键写 active_provider/token。
+      expect(JSON.parse(h.localStorage.getItem("oauth:browser_session")!)).toEqual(
+        expect.objectContaining({ version: 1, provider }),
+      );
       expect(h.localStorage.getItem(PENDING_LOGINS_KEY)).toBeNull();
     },
   );
@@ -355,7 +395,7 @@ describe("WebAuthService", () => {
       currentOrigin: devOrigin,
       currentHref: `${devOrigin}/remote/v4?${query}`,
     });
-    h.service.startLogin({ provider: "bigmodel", devReturnTo: `${devOrigin}/remote/v4` });
+    await h.service.startLogin({ provider: "bigmodel", devReturnTo: `${devOrigin}/remote/v4` });
     const authorize = new URL(h.assigned[0]!);
     const callback = new URL(authorize.searchParams.get("redirect")!);
     callback.searchParams.set("authCode", "code-1");
@@ -392,7 +432,7 @@ describe("WebAuthService", () => {
 
   it("rejects an unknown nonce without exchanging token or consuming pending logins", async () => {
     const h = createService();
-    h.service.startLogin({ provider: "bigmodel" });
+    await h.service.startLogin({ provider: "bigmodel" });
     const pendingLogins = h.localStorage.getItem(PENDING_LOGINS_KEY);
     expect(pendingLogins).toContain("app_version=3.13.0");
     const fetchMock = vi.fn();
@@ -411,7 +451,7 @@ describe("WebAuthService", () => {
       currentOrigin: extOrigin,
       currentHref: `${extOrigin}/index.html?sid=device-1&mid=mid-1&name=MyMac#e2ee=v1&k=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA`,
     });
-    h.service.startLogin({ provider: "bigmodel" });
+    await h.service.startLogin({ provider: "bigmodel" });
     const authorize = new URL(h.assigned[0]!);
     const stateParam = authorize.searchParams.get("state")!;
     const parsedState = parseOAuthState(stateParam);
@@ -434,24 +474,26 @@ describe("WebAuthService", () => {
     );
   });
 
-  it("keeps parallel logins from two tabs independent", async () => {
+  it("后发起的登录尝试取代旧标签页，迟到 callback 不能覆盖新登录", async () => {
     const h = createService();
     const tabA = h.service;
     const tabB = h.openPage();
-    tabA.startLogin({ provider: "zai" });
-    tabB.startLogin({ provider: "bigmodel" });
+    await tabA.startLogin({ provider: "zai" });
+    await tabB.startLogin({ provider: "bigmodel" });
     const [authorizeA, authorizeB] = h.assigned.map((url) => new URL(url));
 
-    const fetchMock = mockTokenExchange("zai");
-    await h
-      .openPage()
-      .handleCallback(
-        `https://zcode.z.ai/remote/v4?code=code-a&state=${authorizeA!.searchParams.get("state")}`,
-      );
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({
-      provider: "zai",
-      code: "code-a",
-    });
+    // 上游 3.18 的登录尝试是单条记录（oauth:browser_login_attempt）：同一浏览器只承认
+    // 最后一次 beginLoginAttempt。旧标签页的迟到 callback 必须被拒并且不换 token，
+    // 否则会把用户切回他已经放弃的账号。
+    const zaiFetch = mockTokenExchange("zai");
+    await expect(
+      h
+        .openPage()
+        .handleCallback(
+          `https://zcode.z.ai/remote/v4?code=code-a&state=${authorizeA!.searchParams.get("state")}`,
+        ),
+    ).rejects.toThrow(/superseded/);
+    expect(zaiFetch).not.toHaveBeenCalled();
 
     const bigmodelFetch = mockTokenExchange("bigmodel");
     await h
@@ -463,15 +505,17 @@ describe("WebAuthService", () => {
       provider: "bigmodel",
       code: "code-b",
     });
-    expect(h.localStorage.getItem("oauth:active_provider")).toBe("bigmodel");
+    expect(JSON.parse(h.localStorage.getItem("oauth:browser_session")!)).toEqual(
+      expect.objectContaining({ version: 1, provider: "bigmodel" }),
+    );
     expect(h.localStorage.getItem(PENDING_LOGINS_KEY)).toBeNull();
   });
 
-  it("preserves the canonical share page as the whole-Web OAuth return target", () => {
+  it("preserves the canonical share page as the whole-Web OAuth return target", async () => {
     const { assigned, service } = createService({
       currentHref: "https://zcode.z.ai/cn/share/share-1",
     });
-    service.startLogin({ appReturnTo: "https://zcode.z.ai/cn/share/share-1" });
+    await service.startLogin({ appReturnTo: "https://zcode.z.ai/cn/share/share-1" });
     const authorizeUrl = new URL(assigned[0]!);
     expect(parseOAuthState(authorizeUrl.searchParams.get("state")!)).toMatchObject({
       app_return_to: "https://zcode.z.ai/cn/share/share-1",
@@ -505,8 +549,8 @@ describe("WebAuthService", () => {
   });
 
   it("exchanges token, persists complete session, and returns sanitized app_return_to", async () => {
-    const { localStorage, service } = createService();
-    seedPendingLogin(localStorage, {
+    const { localStorage, seedRepo, service } = createService();
+    await seedPendingLogin(seedRepo, {
       nonce: "nonce-1",
       provider: "zai",
       redirectUri: "https://zcode.z.ai/remote/v4",
@@ -543,9 +587,14 @@ describe("WebAuthService", () => {
         displayName: "Ada",
       },
     });
-    expect(localStorage.getItem("codezjwttoken")).toBe("jwt-token");
-    expect(localStorage.getItem("oauth:zai:access_token")).toBe("zai-token");
-    expect(localStorage.getItem("oauth:active_provider")).toBe("zai");
+    expect(JSON.parse(localStorage.getItem("oauth:browser_session")!)).toEqual(
+      expect.objectContaining({
+        version: 1,
+        provider: "zai",
+        codezJwtToken: "jwt-token",
+        businessAccessToken: "zai-token",
+      }),
+    );
     expect(localStorage.getItem(PENDING_LOGINS_KEY)).toBeNull();
     expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0]?.[1]?.body)).redirect_uri).toBe(
       "https://zcode.z.ai/remote/v4",
@@ -553,8 +602,8 @@ describe("WebAuthService", () => {
   });
 
   it("does not persist a half-login state when token response is incomplete", async () => {
-    const { localStorage, service } = createService();
-    seedPendingLogin(localStorage, {
+    const { localStorage, seedRepo, service } = createService();
+    await seedPendingLogin(seedRepo, {
       nonce: "nonce-1",
       provider: "zai",
       redirectUri: "https://zcode.z.ai/remote/v4",
@@ -597,10 +646,10 @@ describe("WebAuthService BigModel provider", () => {
     vi.unstubAllGlobals();
   });
 
-  it("授权 URL 用 BigModel 的参数名（redirect/appId），不是 ZAI 的那套", () => {
+  it("授权 URL 用 BigModel 的参数名（redirect/appId），不是 ZAI 的那套", async () => {
     const { assigned, localStorage, service } = createService();
 
-    service.startLogin({
+    await service.startLogin({
       provider: "bigmodel",
       redirectUri: "https://zcode.z.ai/cn/share/callback",
     });
@@ -625,7 +674,7 @@ describe("WebAuthService BigModel provider", () => {
       currentHref: `https://kingingwang.github.io/Codez/remote/v4/?sid=device-1&mid=mid-1${e2eeFragment}`,
       currentOrigin: "https://kingingwang.github.io",
     });
-    h.service.startLogin({ provider: "bigmodel" });
+    await h.service.startLogin({ provider: "bigmodel" });
     const authorizeUrl = new URL(h.assigned[0]!);
     const state = authorizeUrl.searchParams.get("state")!;
     expect(authorizeUrl.searchParams.get("appId")).toBe("zcode");
@@ -655,8 +704,8 @@ describe("WebAuthService BigModel provider", () => {
   });
 
   it("换 token 时带 provider，并从 data.bigmodel.access_token 取值", async () => {
-    const { localStorage, service } = createService();
-    seedPendingLogin(localStorage, {
+    const { localStorage, seedRepo, service } = createService();
+    await seedPendingLogin(seedRepo, {
       nonce: "nonce-1",
       provider: "bigmodel",
       redirectUri: "https://zcode.z.ai/cn/share/callback",
@@ -681,16 +730,21 @@ describe("WebAuthService BigModel provider", () => {
 
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)).provider).toBe("bigmodel");
     expect(result?.userInfo.id).toBe("53291785835589288");
-    expect(localStorage.getItem("oauth:active_provider")).toBe("bigmodel");
-    expect(localStorage.getItem("oauth:bigmodel:access_token")).toBe("bigmodel-token");
-    expect(localStorage.getItem("codezjwttoken")).toBe("jwt-token");
+    expect(JSON.parse(localStorage.getItem("oauth:browser_session")!)).toEqual(
+      expect.objectContaining({
+        version: 1,
+        provider: "bigmodel",
+        codezJwtToken: "jwt-token",
+        businessAccessToken: "bigmodel-token",
+      }),
+    );
     // 登录记录用完即清，避免污染下一次登录
     expect(localStorage.getItem(PENDING_LOGINS_KEY)).toBeNull();
   });
 
   it("BigModel 响应缺 access_token 时不落半个登录态", async () => {
-    const { localStorage, service } = createService();
-    seedPendingLogin(localStorage, {
+    const { localStorage, seedRepo, service } = createService();
+    await seedPendingLogin(seedRepo, {
       nonce: "nonce-1",
       provider: "bigmodel",
       redirectUri: "https://zcode.z.ai/cn/share/callback",

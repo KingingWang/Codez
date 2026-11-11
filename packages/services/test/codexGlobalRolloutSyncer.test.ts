@@ -739,6 +739,9 @@ describe("createCodexGlobalRolloutSyncer", () => {
       ).toEqual({
         workspacePath: physicalCwd,
         projectId: savedProject.id,
+        // 上游 3.18 的 ProjectDirectories 增加已登记 attachment 身份回显；
+        // 软链接项目根与 rollout 物理 cwd 收敛后，身份仍按物理路径构造。
+        workspaceIdentity: `remote:ssh:moga:22:jingjin:${physicalCwd}`,
         additionalDirectories: [],
       });
     } finally {

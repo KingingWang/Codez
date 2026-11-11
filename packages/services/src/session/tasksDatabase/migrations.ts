@@ -147,15 +147,18 @@ const definitions = [
     checksumInput: ["task-permanent-deletion-v1"],
     apply: (db: DatabaseSync) =>
       db.exec(`
-      CREATE TABLE task_purge (
+      -- 与本库其余 schema 一致使用 IF NOT EXISTS：账本被清空后重跑、或两个线程同时
+      -- 打开同一份旧库时，DDL 不能因对象已存在而整笔迁移失败（DB109-02/05/06）。
+      -- checksumInput 是固定字面量，DDL 幂等化不改变已发布的 checksum。
+      CREATE TABLE IF NOT EXISTS task_purge (
         workspace_key TEXT NOT NULL, task_id TEXT NOT NULL,
         state TEXT NOT NULL CHECK(state IN ('pending','deleted')),
         PRIMARY KEY(workspace_key,task_id)
       );
-      CREATE TRIGGER task_purge_restore_guard BEFORE UPDATE OF archived ON tasks
+      CREATE TRIGGER IF NOT EXISTS task_purge_restore_guard BEFORE UPDATE OF archived ON tasks
       WHEN new.archived=0 AND EXISTS(SELECT 1 FROM task_purge WHERE workspace_key=new.workspace_key AND task_id=new.task_id)
       BEGIN SELECT RAISE(ABORT, 'task.permanent-deletion-pending'); END;
-      CREATE TRIGGER task_purge_insert_guard BEFORE INSERT ON tasks
+      CREATE TRIGGER IF NOT EXISTS task_purge_insert_guard BEFORE INSERT ON tasks
       WHEN EXISTS(SELECT 1 FROM task_purge WHERE workspace_key=new.workspace_key AND task_id=new.task_id AND state='deleted')
       BEGIN SELECT RAISE(ABORT, 'task.permanently-deleted'); END;
     `),
