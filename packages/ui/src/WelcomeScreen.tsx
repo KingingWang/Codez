@@ -545,6 +545,9 @@ export function LoginPanel({ active, onComplete }: LoginPanelProps) {
                     type="button"
                     className="rounded-md px-2 text-ui-sm text-foreground-subtle underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     data-testid={TID_LOGIN_REGION_SWITCH}
+                    // fork 定制：单一登录入口下 provider 完全由区域决定，QA/E2E 需要
+                    // 读到当前区域才能确定性地选中目标 provider，不靠本地化文案反推。
+                    data-login-region={loginRegion}
                     onClick={() => {
                       const nextRegion = loginRegion === "domestic" ? "global" : "domestic";
                       // 用户手动切换后，区域不再跟随后续语言变化。

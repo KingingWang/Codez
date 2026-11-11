@@ -62,6 +62,9 @@ const emptyEvent = () => ({ dispose() {} });
 const services = {
   codezAgentService: {
     onAgentRuntimeRestarted: emptyEvent,
+    // 上游 3.18 的 composer 草稿控制会订阅「动态插件启动降级」；夹具不模拟插件启动，
+    // 缺这个方法会让整个 Harness 抛错，同页其余 QA 夹具一起无法渲染。
+    onDynamicPluginStartupDegraded: () => emptyEvent,
     async readCodexCatalog() {
       // composer 依赖 Host 目录边界；未配置目录时返回空映射，模型回退到激活 provider 组。
       catalogReads++;
