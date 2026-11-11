@@ -87,6 +87,11 @@ describe("desktop relay V2 transport", () => {
     expect(relay.httpCalls.filter((call) => call.path.endsWith("/token"))).toHaveLength(1);
   });
   it("每轮4~6秒心跳不带SID，15秒无ACK独立重连并重新申请token", async () => {
+    // 上游 3.18 给重连加了「首连 1.5s 打散窗口 + ±20% jitter」，随机数会让 1200ms 的
+    // 等待窗口偶发不够（打散最大 1500ms）。这里与同文件的退避用例一致，把 Math.random
+    // 固定为 0.5：打散落在 750ms、jitter 因子为 1，心跳仍是 5s，断言窗口重新确定。
+    // 必须在 fixture() 之前打桩：transport 在构造时就捕获了 Math.random 引用。
+    const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0.5);
     const { relay, transport, states, waitForState } = await fixture({
       users: { jwt: "user" },
       onMessage: ({ message }) =>
@@ -115,6 +120,7 @@ describe("desktop relay V2 transport", () => {
     await waitForState("waiting_terminal");
     expect(relay.httpCalls.filter((call) => call.path.endsWith("/token"))).toHaveLength(3);
     expect(states.at(-1)).toBe("waiting_terminal");
+    randomSpy.mockRestore();
   });
 
   it("KICKED首次2~5秒恢复，60秒内再次停止", async () => {
