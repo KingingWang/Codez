@@ -1790,6 +1790,9 @@ modules:
       - mobile-ui
       - shared
       - ui
+      # fork 的 OAuth 需要判断是否运行在浏览器扩展壳内（隔离存储下改走 state 复原与
+      # extensionPath 回调），该事实由 web-remote-native-io 的公开入口提供。
+      - web-remote-native-io
     publicEntrypoints:
       - packages/web/src/auth/index.ts
       - packages/web/src/auth/contract.ts
@@ -1832,6 +1835,9 @@ modules:
       - packages/ui/src/settings-search
     managed: true
     requires:
+      # 上游 3.18 的 SettingsSearch 用动态 workflow 可用性决定 workflow 设置是否可搜；
+      # 该 hook 在 fork 的策略里登记为独立模块，因此这条上游边必须显式声明。
+      - dynamic-workflow-availability
       - ui
     publicEntrypoints:
       - packages/ui/src/settings-search/index.ts
@@ -3114,6 +3120,14 @@ exceptions:
     rule: max-file-lines
     paths: [ packages/ui/src/remote-connection-flow/index.ts ]
     reason: Preserve the existing single hook owner and closure; module adoption must not mechanically split state to satisfy line counts.
+  - id: project-repository-upstream-318-worktree-placement-size
+    rule: max-file-lines
+    paths: [ packages/services/src/project-storage/project-repository.ts ]
+    reason: 上游 3.18 的 worktree placement 继承与 fork 的物理根目录归属共用同一份 tasks/project_roots 写事务与同一个 Repo 边界；机械拆分会让归属判定出现第二个事实源。
+  - id: project-repository-upstream-318-worktree-placement-lint
+    rule: disable-count
+    paths: [ packages/services/src/project-storage/project-repository.ts ]
+    reason: 与上一条同一边界，保留文件内唯一的 max-lines 说明，避免 oxlint 与架构检查对同一文件给出矛盾结论。
   - id: gen-ui-tweak-runtime-size
     rule: max-file-lines
     paths: [ packages/desktop/src/renderer/src/plugin-sandbox/genUiTweakRuntime.js ]
