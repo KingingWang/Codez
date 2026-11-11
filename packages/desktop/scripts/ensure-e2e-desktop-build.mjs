@@ -99,6 +99,9 @@ export const E2E_DESKTOP_BUILD_ENV_NAMES = [
   "CODEZ_PACKAGED_AGENT_OTEL_HEADERS",
   "CODEZ_PACKAGED_AGENT_OTEL_SERVICE_NAME",
   "CODEZ_PRODUCTION_BASE_URL",
+  // fork 定制：Source Server / 桌面资产从 GitHub Releases 下载，根地址被编译进产物，
+  // 变化时必须让 E2E 构建缓存失效，否则会复用到指向旧 release 的构建。
+  "CODEZ_SOURCE_SERVER_GITHUB_RELEASE_ROOT",
   "CODEZ_TEST_BASE_URL",
 ];
 
