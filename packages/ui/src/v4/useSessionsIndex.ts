@@ -2,7 +2,7 @@
 // 侧栏/任务列表消费本 hook 拿会话摘要列表，替代 zustand 任务态（08-phasing M5 步骤 2）；
 // 多个列表消费者共享同一 workspace 订阅时改走 sessionsIndexRegistry（引用计数复用 store）。
 import { useEffect, useMemo, useSyncExternalStore } from "react";
-import type { SessionSummary } from "@zcode/shared/zcode-protocol-v4";
+import type { SessionSummary } from "@codez/shared/codez-protocol-v4";
 import { useServices } from "@/hooks/useServices.js";
 import { createAgentSessionsIndexTransport } from "@/v4/agentSessionsIndexTransport.js";
 import {
@@ -23,22 +23,22 @@ export function useSessionsIndex(
   workspacePath: string,
   workspaceIdentity?: string,
 ): UseSessionsIndexResult {
-  const { zcodeAgentService } = useServices();
+  const { codezAgentService } = useServices();
 
   const store = useMemo(
     () => new SessionsIndexStore(),
     // 每个 workspace 一个 store 实例（依赖变化 → 全新 store 冷启动）。
-    [workspacePath, workspaceIdentity, zcodeAgentService],
+    [workspacePath, workspaceIdentity, codezAgentService],
   );
 
   useEffect(() => {
-    const transport = createAgentSessionsIndexTransport(zcodeAgentService, {
+    const transport = createAgentSessionsIndexTransport(codezAgentService, {
       workspacePath,
       ...(workspaceIdentity ? { workspaceIdentity } : {}),
     });
     void store.connect(transport, { forceSnapshot: true });
     return () => store.close();
-  }, [store, workspacePath, workspaceIdentity, zcodeAgentService]);
+  }, [store, workspacePath, workspaceIdentity, codezAgentService]);
 
   // useSyncExternalStore：store.subscribe/getState 是类字段箭头函数，引用稳定。
   const state = useSyncExternalStore(store.subscribe, store.getState);

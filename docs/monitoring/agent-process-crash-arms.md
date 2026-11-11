@@ -2,7 +2,7 @@
 
 ## 目标
 
-桌面端 Host 拉起的 ZCode Agent 是普通 Node 子进程，不属于 Electron
+桌面端 Host 拉起的 Codez Agent 是普通 Node 子进程，不属于 Electron
 `child-process-gone` 自动采集范围。Agent 非预期退出时需要由现有
 `RuntimeProcessLifecycleReporter` 主动把崩溃事实送到 desktop main，再由 main
 调用 ARMS `sendCustom`。
@@ -142,7 +142,7 @@ util.inspect 打印的对象属性行（例如 HTTP 响应头 `server: 'ESA',`�
   `Agent process exited unexpectedly (code=…, signal=…)`，指纹因此随退出码区分。
 - 实现：`packages/shared/src/agent-crash-diagnostic/agentCrashDiagnostic.ts`。回归样本（含 0xE0000008 + 429 响应头
   转储）见 `packages/desktop/test/agent-crash-diagnostic.node.test.ts`，
-  `pnpm --filter @zcode/desktop test:agent-crash-diagnostic` 运行；MR 改到诊断规则、services 的 stderr 收集、
+  `pnpm --filter @codez/desktop test:agent-crash-diagnostic` 运行；MR 改到诊断规则、services 的 stderr 收集、
   `desktopStabilityTelemetry.ts` 或测试本身时，CI job `test:agent-crash-diagnostic` 自动执行，失败即 job 失败。
 
 ### `perf_agent_spawn_error`
@@ -172,8 +172,8 @@ util.inspect 打印的对象属性行（例如 HTTP 响应头 `server: 'ESA',`�
 
 - 禁止上传 `workspacePath`、`workspaceIdentity`、command、args、环境变量、
   session/task id 或模型输入输出。
-- 凭据遮盖规则只有一份：`redactAgentDiagnosticSecrets`（`@zcode/shared/agent-crash-diagnostic`）。
-  services 逐行收集 stderr 时（`zcodeAgentProcessManager.ts` 的 `redactAgentDiagnostic`）和
+- 凭据遮盖规则只有一份：`redactAgentDiagnosticSecrets`（`@codez/shared/agent-crash-diagnostic`）。
+  services 逐行收集 stderr 时（`codezAgentProcessManager.ts` 的 `redactAgentDiagnostic`）和
   desktop main 上报前（`sanitizeAgentCrashDetail`）都调用它，不各自维护正则。曾经两层各一套、
   services 先做赋值替换，把 `Authorization: Bearer <token>` 的 `Bearer` 换掉后，main 认不出 token，
   token 随 `error_stack` 上报。规则对已处理过的文本幂等，两层串联与只跑一层结果相同。
@@ -197,7 +197,7 @@ util.inspect 打印的对象属性行（例如 HTTP 响应头 `server: 'ESA',`�
 - `unhandledRejection`
 - `uncaughtExceptionMonitor`
 
-该边界把诊断信息写入 `stderr`，不向 stdout 写普通文本，避免破坏 ZCode Protocol
+该边界把诊断信息写入 `stderr`，不向 stdout 写普通文本，避免破坏 Codez Protocol
 NDJSON 通道。到达这里的未知异常意味着业务层未能恢复：首次异常报告后交给 CLI
 生命周期 owner 有界退出，不再接受新的业务。普通请求/模型/工具错误仍在原业务边界处理。
 
@@ -229,7 +229,7 @@ stderr 的异步 EPIPE 会再次触发边界并循环写坏管道。现在 stder
 
 ```text
 CLI 异常边界（errorId 唯一事实源）
-  → stderr 单行 [zcode-process-exception] JSON v1
+  → stderr 单行 [codez-process-exception] JSON v1
   → ProcessManager 校验 / 脱敏 / 绑定当前 runtime_instance_id
   → RuntimeProcessLifecycleReporter.onException
   → Host IPC agent-process-exception（运行时 schema 校验）
@@ -237,7 +237,7 @@ CLI 异常边界（errorId 唯一事实源）
   → RUM JS 错误
 ```
 
-- 共享公开契约为 `@zcode/shared/process-diagnostic`，并从 ZCode Protocol 入口导出。
+- 共享公开契约为 `@codez/shared/process-diagnostic`，并从 Codez Protocol 入口导出。
   CLI / SEA 构建 alias 必须精确声明该子路径，避免被通用 shared alias 拼到 index.ts 后。
   字段为 `version/errorId/kind/origin/name/message/stack/occurredAt`；kind/origin 只接受
   uncaughtException / unhandledRejection。名称最多 128 字符，消息 4000，栈 16000，

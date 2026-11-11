@@ -1,7 +1,7 @@
 /* eslint-disable max-lines -- Source/Profile/Workspace 三实体迁移与凭据重定向需要保持同一事务编排。 */
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import { Emitter, type Event } from "@zcode/rpc";
+import { Emitter, type Event } from "@codez/rpc";
 import {
   buildServerRemoteWorkspaceIdentity,
   isCredentialDecryptError,
@@ -17,17 +17,17 @@ import {
   type RemoteWorkspaceSessionEntry,
   type RemoteTarget,
   type SourceServerDeclaredWorkspaceWire,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type {
   ICredentialService,
   ISettingService,
   UpdateConnectionProfileInput,
-} from "@zcode/services";
+} from "@codez/services";
 import {
   getDataBaseDir,
   migrateControllerRemoteWorkspaceIdentity,
   type ControllerRemoteIdentityMigrationReport,
-} from "@zcode/services/node";
+} from "@codez/services/node";
 
 export interface SourceServerDirectoryOptions {
   settingService: ISettingService;
@@ -170,7 +170,7 @@ export class SourceServerDirectory {
       options.migrateControllerIdentity ??
       (async (input) =>
         await migrateControllerRemoteWorkspaceIdentity({
-          dbPath: join(getDataBaseDir(), ".zcode", "v2", "tasks-index.sqlite"),
+          dbPath: join(getDataBaseDir(), ".codez", "v2", "tasks-index.sqlite"),
           ...input,
         }));
   }
@@ -1315,7 +1315,7 @@ export class SourceServerDirectory {
       // 一路上抛，legacy 迁移回滚且版本号不落盘，每次启动重败，Source Directory 整体不可用，
       // 侧栏连同本地项目一起为空。不可解密与缺失对连接的含义相同：都需要交互凭据。
       // 所以只跳过该来源，原记录不删除；文件损坏、IO 等其他错误仍让迁移失败回滚。
-      // Bug 原因：~/.zcode 换机/换用户后，已有 Profile 的密码同样解不开；连接、启动重连、
+      // Bug 原因：~/.codez 换机/换用户后，已有 Profile 的密码同样解不开；连接、启动重连、
       // 补充凭据、编辑和删除曾直接读取并上抛，一个坏 Profile 卡住整批启动重连，用户也无法
       // 自助修复。所以这些读取也走这里：连接得到 credentials-required；回滚快照记为无值，
       // 回滚时删除本机无法解密的密文而不是恢复它。

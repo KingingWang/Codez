@@ -16,24 +16,24 @@ v0 能力不提供远程配置管理 UI；本地 Environment 是编辑权威，�
 ## 不变量
 
 独立 Server 发布 ready 前验证凭据安全存储。Linux 无 Secret Service 时，管理员须在
-目标服务环境配置 `ZCODE_CREDENTIAL_SECRET_FILE`（目标机的受管 secret 文件，32–4096
-字节、原字节读取）或既有 `ZCODE_CREDENTIAL_SECRET`，不可同时配置。systemd/launchd
+目标服务环境配置 `CODEZ_CREDENTIAL_SECRET_FILE`（目标机的受管 secret 文件，32–4096
+字节、原字节读取）或既有 `CODEZ_CREDENTIAL_SECRET`，不可同时配置。systemd/launchd
 应在服务环境持久配置文件位置，而非只在临时 shell 设置。重启时必须保留同一密钥；
 不能从 Desktop 复制系统主密钥，也不能自动降级到可推导密钥。
 Docker Web App 的 `scripts/docker-run-web-app.sh` 将显式文件只读挂载到容器；可以用
-`ZCODE_CREDENTIAL_SECRET_FILE=/path/to/managed-secret scripts/docker-run-web-app.sh` 启动。
+`CODEZ_CREDENTIAL_SECRET_FILE=/path/to/managed-secret scripts/docker-run-web-app.sh` 启动。
 文件应由管理员以 0600 或受控只读 secret mount 提供，并保证容器运行用户 UID 10001
 可读取；只读挂载不会自动改变宿主文件的属主权限。程序不生成、不打印密钥；没有
 安全后端时启动失败，不接受可能写入失败的 Provisioning。
 
 SSH/WSL 的 Server 由 Desktop 按需启动，不能假设会读取 `.bashrc` 中的 export。
-Desktop 对 SSH/WSL/Docker 按需启动显式传入 `--prepare-credentials`，在远端的 ZCode
+Desktop 对 SSH/WSL/Docker 按需启动显式传入 `--prepare-credentials`，在远端的 Codez
 配置目录准备私有 `credential-secret`（默认
-`~/.zcode/v2/credential-secret`，32–4096 字节、0400/0600）。Server 会在没有显式环境配置时
+`~/.codez/v2/credential-secret`，32–4096 字节、0400/0600）。Server 会在没有显式环境配置时
 读取这个文件，重新连接和进程重启均沿用它，不依赖 shell 类型。仅在没有显式配置、
 已有文件和 v2 密文时创建随机密钥；在凭据锁和密钥锁内排他发布，不覆盖已有文件。
 已有 v2 数据不换密钥；旧 v1 数据先用历史规则认证解密，再迁移到随机文件密钥。
-显式 `ZCODE_CREDENTIAL_SECRET` / `ZCODE_CREDENTIAL_SECRET_FILE` 优先，错误的显式配置
+显式 `CODEZ_CREDENTIAL_SECRET` / `CODEZ_CREDENTIAL_SECRET_FILE` 优先，错误的显式配置
 不能回退到约定文件。不同数据根用各自配置目录，不能复制 Desktop 的系统密钥。
 文件内容按原字节读取，包括换行；从环境变量迁移时须保证字节完全相同，不能用
 自动追加换行的写法改变密钥。密钥丢失或被替换后不能恢复原密文，应独立备份管理。
@@ -176,7 +176,7 @@ snapshot、queue、owner/lease 和 `workspaceIdentity` 边界不变。
 - `providerOrder`；
 - `model-selection.json` 中的 Configured Default。
 
-不复制 ZCode Built-in Provider/Model Release。远端继续使用自己的 Built-in Release；两端
+不复制 Codez Built-in Provider/Model Release。远端继续使用自己的 Built-in Release；两端
 候选集差异可能使默认偏好不可用，按上面的 Host 推荐规则处理，不把它当成配置复制失败。
 
 ### 账号连接状态
@@ -195,7 +195,7 @@ snapshot、queue、owner/lease 和 `workspaceIdentity` 边界不变。
 - `oauth:active_provider`、`oauth:session_revision`；
 - `oauth:zai:*`、`oauth:zai_cn:*`、`oauth:bigmodel:*` 的 access token、refresh token、user info；
 - 同主会话绑定的 `oauth:linked_bigmodel`；
-- `zcodejwttoken`。
+- `codezjwttoken`。
 
 新 Source 固定输出 `schemaVersion=3`。v3 表示上述完整 OAuth 会话组；旧 Target 在解析阶段拒绝，任何 Store 写入之前终止，不能降级信封。新 Target 接受 v1/v2/v3：v1 历史账号 Key 只校验不应用，v1/v2 只允许旧 OAuth 字段；应用旧信封时清除新字段，不能拼接目标原有关联。每次实际应用和成功回滚均生成新的目标会话 revision，不复用 Source 或回滚前的 revision；同 syncId 重放仍零写入。
 
@@ -252,7 +252,7 @@ Window Host
   ├─ 重新读取 Local Provider Provisioning Source
   └─ Remote Target RPC（SSH/WSL/Docker/Server）
        ↓
-Remote zcode-server
+Remote codez-server
   ├─ Target Store 写入与回滚
   ├─ Remote ProviderRuntime refresh
   └─ Remote Host → Worker Account Config sync
@@ -298,25 +298,25 @@ Host execution admission
   `error` 不直接转抄到 Main 日志或 Renderer。
 
 - 首次连接的旧远端不支持 Provisioning capability 时返回 `unsupported`，不发送 Secret，也不发布 Remote Workspace ready。
-- HTTP `zcode-server` 只有在配置 `ZCODE_SERVER_AUTH_TOKEN` 后才开放受信 Desktop Host 的
+- HTTP `codez-server` 只有在配置 `CODEZ_SERVER_AUTH_TOKEN` 后才开放受信 Desktop Host 的
   Provisioning target；未配置认证时保持“不支持”，避免把跨 Environment 凭据写入口暴露给匿名连接。
-- R3 Source Server Core（`packages/zcode-server-cli`，`serviceAuthorityMode: "standalone-server"`）
+- R3 Source Server Core（`packages/codez-server-cli`，`serviceAuthorityMode: "standalone-server"`）
   **始终**注册 Provisioning target：R3 ingress token（`<serverRoot>/run/ingress-token`，0600）常在，
   不存在上一条那种“未配置鉴权则不支持”的分支。隔离在 `clientMode` 层完成：`/ws/host` 的
   `desktop-continuous` 连接（capability ticket + ingress token）拿到真实 `IProviderProvisioningTargetService`；
   `/ws` 的 `web-remote-replayable` 连接在 `exposeWebSocket` 中被 override 为抛错 stub
   （“Provider Provisioning 仅支持受信 Desktop Host”），Window Host 的手机 allowlist 也不含该 channel。
-  旧版 daemon（无 target）不会在 R3 主链上收到 Envelope：`ZCODE_MIN_COMPATIBLE_VERSION` 默认等于
+  旧版 daemon（无 target）不会在 R3 主链上收到 Envelope：`CODEZ_MIN_COMPATIBLE_VERSION` 默认等于
   产品版本，R3 兼容门在握手阶段就判定“需升级”并先执行远端更新，更新后的 Core 才进入首连 Provisioning。
-  Core 使用的 ZCode Built-in Provider Config 由构建期 define 在 Core 启动时物化到 Environment 配置根
-  `~/.zcode/v2/runtime/provider/bundled/zcode-builtin.json`（不写进不可变 release 目录）。运行中该文件与
+  Core 使用的 Codez Built-in Provider Config 由构建期 define 在 Core 启动时物化到 Environment 配置根
+  `~/.codez/v2/runtime/provider/bundled/codez-builtin.json`（不写进不可变 release 目录）。运行中该文件与
   Endpoint Active 同时被删除时，Source 使用本进程已解析的 Bundled 基线继续服务并重建 Active，
   Provisioning 同步不再持续失败到 Core 重启（规则见
   [Built-in Release 与活动缓存](../working-memory/provider-refactor/design/registry/configuration.md)）。
   R3 侧接线见 [r3-source-server-remote-architecture.md §8.3](../architecture/r3-source-server-remote-architecture.md)。
 
   ```text
-  zcode-server-cli Core（standalone-server，target 常驻）
+  codez-server-cli Core（standalone-server，target 常驻）
     ├─ /ws/host  desktop-continuous ──► IProviderProvisioningTargetService（真实实现）
     └─ /ws       web-remote-replayable ─► { apply: () => throw }（stub；手机 allowlist 亦不含该 channel）
   ```

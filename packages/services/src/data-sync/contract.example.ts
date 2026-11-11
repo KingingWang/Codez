@@ -1,7 +1,7 @@
 /**
  * data-sync-service 标准调用示例：source 导出、target 预检后按每项 mode 导入。
  */
-import type { DataSyncImportItem } from "@zcode/shared";
+import type { DataSyncImportItem } from "@codez/shared";
 import type { IDataSyncCategoryService, IDeviceSyncStateService } from "./contract.js";
 
 export async function examplePushCategory<TPayload>(params: {

@@ -2,9 +2,9 @@ import { join, posix, resolve } from "node:path";
 import { readdir, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 
-export const E2E_RUNTIME_RELATIVE_ROOT = ".zcode-e2e";
+export const E2E_RUNTIME_RELATIVE_ROOT = ".codez-e2e";
 export const E2E_RUNTIME_ROOT_REPLAY_TOKEN = "{{e2eRuntimeRoot}}";
-const E2E_AGENT_WORKSPACE_NAME = "ZCodeProject";
+const E2E_AGENT_WORKSPACE_NAME = "CodezProject";
 
 interface ResolveE2EHomeDirOptions {
   cwd?: string;
@@ -16,9 +16,9 @@ export function resolveE2EHomeDir({
   env = process.env,
 }: ResolveE2EHomeDirOptions = {}): string {
   const configuredHome =
-    env.ZCODE_E2E_HOME_DIR?.trim() ||
-    env.ZCODE_DATA_BASE_DIR?.trim() ||
-    env.ZCODE_DESKTOP_HOME_DIR?.trim();
+    env.CODEZ_E2E_HOME_DIR?.trim() ||
+    env.CODEZ_DATA_BASE_DIR?.trim() ||
+    env.CODEZ_DESKTOP_HOME_DIR?.trim();
   return resolve(cwd, configuredHome || ".e2e-home");
 }
 
@@ -26,7 +26,7 @@ export function resolveE2EHomeDir({
  * 判断 HOME 是否为 runner 分配的隔离 E2E HOME，供直接改写磁盘夹具的 case 做安全守卫。
  * Bug 根因：旧守卫只看 basename 是否以 `.e2e-home-` 开头；直接运行 wdio 的默认 `.e2e-home`
  * 被误拒。改为任一路径段以 `.e2e-home` 开头即可：覆盖 `.e2e-home`、`.e2e-home-<runId>[-shard-N]`，
- * 以及根目录名带 `.e2e-home` 的显式 ZCODE_E2E_HOME_DIR 分片子目录。
+ * 以及根目录名带 `.e2e-home` 的显式 CODEZ_E2E_HOME_DIR 分片子目录。
  * 根目录名不带 `.e2e-home` 的显式 HOME 无法与真实目录区分，保守拒绝；需要改写夹具的 case 应使用带该前缀的根。
  */
 export function isIsolatedE2EHomeDir(home: string | undefined): home is string {
@@ -38,13 +38,13 @@ export function isIsolatedE2EHomeDir(home: string | undefined): home is string {
 
 export function resolveE2EStorageRoot(e2eHomeDir = resolveE2EHomeDir()): string {
   // Bug 根因：回滚 storage profile 时删除了仍被 E2E 用例依赖的路径 helper。
-  // E2E 继续隔离 HOME，但 CLI 根固定使用历史目录 .zcode，不再区分 dev/stable profile。
-  return join(e2eHomeDir, ".zcode");
+  // E2E 继续隔离 HOME，但 CLI 根固定使用历史目录 .codez，不再区分 dev/stable profile。
+  return join(e2eHomeDir, ".codez");
 }
 
 export function resolveE2ERuntimeRoot(e2eHomeDir = resolveE2EHomeDir()): string {
   // Bug 根因：conversation E2E 的 Agent 实际 cwd 是隔离 HOME 下的
-  // ZCodeProject，而不是 conversation backing workspace。Node 若写到后者，
+  // CodezProject，而不是 conversation backing workspace。Node 若写到后者，
   // Bash 的相对路径就会永远等不到同一个文件，Windows 上还会叠加 shell 路径差异。
   return join(e2eHomeDir, E2E_AGENT_WORKSPACE_NAME, E2E_RUNTIME_RELATIVE_ROOT);
 }
@@ -82,7 +82,7 @@ export async function findE2EBashOutputPath(
   }: { tempRoot?: string; storageRoot?: string } = {},
 ): Promise<string | null> {
   const directories = (await readdir(tempRoot, { withFileTypes: true }))
-    .filter((entry) => entry.isDirectory() && entry.name.startsWith("zcode-bash-"))
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith("codez-bash-"))
     .map((entry) => join(tempRoot, entry.name));
   const candidates = [...directories, join(storageRoot, "cli", "exec")].map((root) =>
     join(root, sessionId, `${toolCallId}-stdout.log`),

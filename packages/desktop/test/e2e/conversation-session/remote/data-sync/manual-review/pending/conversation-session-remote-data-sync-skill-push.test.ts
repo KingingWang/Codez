@@ -6,7 +6,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -27,11 +27,11 @@ import {
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
 // DSYNC-04：设置 → 数据同步 → 设备 → 推送技能（docs/remote/data-sync.md）。
-// 远端为本机 Docker runner（或服务器队列）提供的真实 Linux 容器；远端断言用 docker exec 读容器内 ~/.zcode。
+// 远端为本机 Docker runner（或服务器队列）提供的真实 Linux 容器；远端断言用 docker exec 读容器内 ~/.codez。
 const CASE_MARKER = "E2E_DSYNC_04_SKILL_PUSH";
 const NEW_SKILL = "e2e-dsync-new";
 const DIFF_SKILL = "e2e-dsync-diff";
-const REMOTE_SKILLS = "/home/dev/.zcode/skills";
+const REMOTE_SKILLS = "/home/dev/.codez/skills";
 const BATCH_OK_SKILL = "e2e-dsync-batch-a";
 const BATCH_FAIL_SKILL = "e2e-dsync-batch-b";
 // 技能每批不超过 20MB：小技能 + 接近 20MB 的技能超过上限，分成两批。第二批含不可读文件，在本机导出时
@@ -53,7 +53,7 @@ function skillMarkdown(name: string, body: string): string {
 }
 
 async function writeLocalSkill(name: string, body: string): Promise<void> {
-  const dir = join(getE2EAppDataPaths().homeDir, ".zcode", "skills", name);
+  const dir = join(getE2EAppDataPaths().homeDir, ".codez", "skills", name);
   await mkdir(join(dir, "references"), { recursive: true });
   await writeFile(join(dir, "SKILL.md"), skillMarkdown(name, body));
   await writeFile(join(dir, "references", "note.md"), `${body} reference\n`);
@@ -61,7 +61,7 @@ async function writeLocalSkill(name: string, body: string): Promise<void> {
 
 /** 在本机技能根下按相对目录写技能（目录名可以与 name 不同，例如嵌套技能）。 */
 async function writeLocalSkillAt(directoryName: string, name: string, body: string) {
-  const dir = join(getE2EAppDataPaths().homeDir, ".zcode", "skills", ...directoryName.split("/"));
+  const dir = join(getE2EAppDataPaths().homeDir, ".codez", "skills", ...directoryName.split("/"));
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, "SKILL.md"), skillMarkdown(name, body));
 }
@@ -139,7 +139,7 @@ async function pushSkillsAndWait(): Promise<void> {
 
 /** 深浅主题 × 中英文 × 宽 / 窄窗口截图，供人工复核标签可读性和窄窗口横向标签。 */
 async function captureDialogScreenshots(): Promise<void> {
-  const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR?.trim();
+  const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR?.trim();
   if (!artifactDir) return;
   const dir = resolve(artifactDir, "dsync-04");
   await mkdir(dir, { recursive: true });
@@ -364,7 +364,7 @@ describe(`${CASE_MARKER}: 数据同步页推送技能`, () => {
     // 接续 DSYNC-04-01/02：仍在数据同步页，设备在线。第二个技能含一个不可读文件，导出时本机读取失败。
     await writeLocalSkill(BATCH_OK_SKILL, LOCAL_MARKER);
     await writeLocalSkill(BATCH_FAIL_SKILL, LOCAL_MARKER);
-    const skillsRoot = join(getE2EAppDataPaths().homeDir, ".zcode", "skills");
+    const skillsRoot = join(getE2EAppDataPaths().homeDir, ".codez", "skills");
     await writeFile(join(skillsRoot, BATCH_OK_SKILL, "payload.bin"), randomBytes(4096));
     const unreadable = join(skillsRoot, BATCH_FAIL_SKILL, "payload.bin");
     await writeFile(unreadable, Buffer.alloc(BATCH_FAIL_PAYLOAD_BYTES));

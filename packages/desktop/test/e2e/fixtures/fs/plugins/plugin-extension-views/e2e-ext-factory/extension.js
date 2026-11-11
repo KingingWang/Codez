@@ -12,7 +12,7 @@ const PAGE = `<!doctype html>
     <h1 style="font-size:15px;margin:0 0 8px">E2E factory view</h1>
     <div id="out">waiting</div>
     <script>
-      window.zcode.callTool("ping", {}).then((result) => {
+      window.codez.callTool("ping", {}).then((result) => {
         const data = result.structuredContent ?? {};
         document.body.dataset.pong = data.instance ?? "";
         document.body.dataset.scope = data.scope ?? "";

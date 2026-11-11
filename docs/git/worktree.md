@@ -11,7 +11,7 @@
 
 1. 新建任务时，选择在一个新的 worktree 中运行。
 2. fork 任务时，选择把子任务放到一个新的 worktree 中。
-3. 管理 ZCode 创建的 worktree：查看、打开、删除。
+3. 管理 Codez 创建的 worktree：查看、打开、删除。
 
 ### 1.1 核心模型
 
@@ -44,7 +44,7 @@
 
 | 术语          | 含义                                                                      |
 | ------------- | ------------------------------------------------------------------------- |
-| worktree      | ZCode 在受管根目录下创建的 Git linked worktree                            |
+| worktree      | Codez 在受管根目录下创建的 Git linked worktree                            |
 | 源仓库        | 创建 worktree 时所在的主 checkout，即项目 root 对应的 Git 仓库            |
 | bucket        | 受管根目录下的一级随机目录，一个 bucket 只放一个 worktree                 |
 | worktree 任务 | `root_path`（cwd）位于某个 worktree 内的任务；它的 workspace key 是项目的 |
@@ -67,7 +67,7 @@
 - 真实目录只有 `cwd`（一个）和附加目录（0..n）。Host 与 renderer 中表示执行目录的字段统一叫 `cwd`。
 - 两者的对应只能经 tasks-index 的同一行得到，不能从一方推算另一方。
 - 按会话发给 CLI 的操作（发命令、关闭会话、彻底删除会话数据）按归属 workspace 选进程，不能按 cwd 选。
-- 例外：CLI 内部的 `ZCodeWorkspaceRef` 沿用既有语义：`workspaceKey` 是身份，`workspacePath` 是该会话的执行目录（远程会话本来就是 key ≠ path）。CLI 中 100 多处把它当工作目录读取，不改名；跨进程时身份一律取 `workspaceKey`，不能用 `workspaceIdentity || workspacePath` 重新计算（§9.3）。
+- 例外：CLI 内部的 `CodezWorkspaceRef` 沿用既有语义：`workspaceKey` 是身份，`workspacePath` 是该会话的执行目录（远程会话本来就是 key ≠ path）。CLI 中 100 多处把它当工作目录读取，不改名；跨进程时身份一律取 `workspaceKey`，不能用 `workspaceIdentity || workspacePath` 重新计算（§9.3）。
 
 多目录：项目的其他 root 位于源仓库内时（例如 `/repo/packages/ui`），worktree 任务的附加目录映射为 worktree 中对应的路径（`<wt>/packages/ui`）；起点中没有该目录时不加入。位于其他仓库或非仓库目录的 root 原样保留，写入这些目录不隔离（§4）。
 
@@ -133,7 +133,7 @@
 
 `git worktree add` 只检出已跟踪的文件。`.env` 这类被 git 忽略的文件不会出现在新 worktree 中，很多项目因此跑不起来。第一版支持按仓库声明的清单拷贝：
 
-- **触发条件：** 源仓库根目录存在 `.worktreeinclude` 文件（gitignore 语法，一行一个模式）。没有这个文件时不拷贝任何东西。ZCode 没有类似"本地覆盖说明"的约定文件，所以没有默认拷贝清单。
+- **触发条件：** 源仓库根目录存在 `.worktreeinclude` 文件（gitignore 语法，一行一个模式）。没有这个文件时不拷贝任何东西。Codez 没有类似"本地覆盖说明"的约定文件，所以没有默认拷贝清单。
 - **拷贝范围：** 同时满足两个条件的文件：被 git 忽略（`git ls-files --others --ignored --exclude-standard`），并且匹配 `.worktreeinclude`（`git ls-files --others --ignored --exclude-from=.worktreeinclude`）。已跟踪的文件由检出提供，不在拷贝范围内。
 - **来源：** 始终是源仓库的主 checkout，不是父任务所在的 worktree（fork 时也一样）。
 - **拷贝规则：**
@@ -231,7 +231,7 @@ worktree 创建时处于 detached HEAD。要提交或推送时，用户在会话
 
 ### 3.10 管理 worktree
 
-入口：项目菜单 → "Worktrees"，打开一个弹窗。弹窗按项目中每个 Git root 分组，列出这个 root 下由 ZCode 管理的 worktree。
+入口：项目菜单 → "Worktrees"，打开一个弹窗。弹窗按项目中每个 Git root 分组，列出这个 root 下由 Codez 管理的 worktree。
 
 | 列                           | 来源                                                |
 | ---------------------------- | --------------------------------------------------- |
@@ -299,8 +299,8 @@ worktree 是应用级资源：它比会话活得久，有管理界面，并和�
 
 | 参照                         | 做法                                                                                                      |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------- |
-| ZCode 定时任务、闲时任务     | Host 拥有。UI 直接调用 Host 服务；agent 工具经 CLI 端口（`automation-port`、`offpeak-port`）反向请求 Host |
-| ZCode 会话、消息、checkpoint | CLI 拥有。它们是会话内部的事实                                                                            |
+| Codez 定时任务、闲时任务     | Host 拥有。UI 直接调用 Host 服务；agent 工具经 CLI 端口（`automation-port`、`offpeak-port`）反向请求 Host |
+| Codez 会话、消息、checkpoint | CLI 拥有。它们是会话内部的事实                                                                            |
 | 业界同类桌面应用             | 由应用进程（不经过 agent）预留 bucket、执行 `git worktree add`；agent 侧的 worktree 工具由客户端提供      |
 
 | 职责                                                       | 归属                                                             |
@@ -312,7 +312,7 @@ worktree 是应用级资源：它比会话活得久，有管理界面，并和�
 | 任务归属（`workspace_key` = 项目，`root_path` = wt）       | Host tasks-index                                                 |
 | 列出、删除、清理                                           | Host + 管理弹窗                                                  |
 | 阻止退出的事项                                             | Host 上报，main 汇总并弹确认                                     |
-| Trust identity（worktree → 源仓库）                        | 共享 resolver `@zcode/shared/managed-worktree`，Host 和 CLI 共用 |
+| Trust identity（worktree → 源仓库）                        | 共享 resolver `@codez/shared/managed-worktree`，Host 和 CLI 共用 |
 
 ### 5.2 入口与扩展
 
@@ -347,14 +347,14 @@ workflow isolation（后续版本）  ─┴─▶ CLI 端口 ─▶ 反向请�
 │ IManagedWorktreeService：创建记录、创建、重试、放弃、不使用 worktree、          │
 │   列出、删除、prune、fork 到 worktree                                         │
 │ IGitService（managed-worktree-repo adapter）                  ──spawn git──▶ 源仓库、受管根目录
-│ ZCodeAgentService：sendCommand 到项目 CLI；删除期间拒绝 cwd 位于 wt 内的命令    │
+│ CodezAgentService：sendCommand 到项目 CLI；删除期间拒绝 cwd 位于 wt 内的命令    │
 │ tasks-index：reserveCreatedTask(workspace_key = 项目, root_path = wt)    ──▶ tasks-index.sqlite
 │ 阻止退出事项上报 ──▶ main                                                     │
 └──────────────┬──────────────────────────────────────────────────────────┘
-               │ stdio，@zcode/protocol v4
+               │ stdio，@codez/protocol v4
 ┌─ 项目 CLI（每个项目 workspace 一个进程）────────────────────────────────────┐
 │ createSession(workspaceId = 项目, cwd = wt, worktreeCreation)              │
-│ 会话历史第一项写入"已创建 worktree"                                          │──▶ ~/.zcode/cli/db/db.sqlite
+│ 会话历史第一项写入"已创建 worktree"                                          │──▶ ~/.codez/cli/db/db.sqlite
 │ 按会话 cwd 读取目录树配置；按 workspace key 共享工作区级状态（§7.2）          │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
@@ -365,7 +365,7 @@ workflow isolation（后续版本）  ─┴─▶ CLI 端口 ─▶ 反向请�
 
 | 事实                                 | 唯一数据源                                                     |
 | ------------------------------------ | -------------------------------------------------------------- |
-| worktree 是否存在、是否由 ZCode 管理 | `git worktree list --porcelain` 加目录布局校验（§6.3）         |
+| worktree 是否存在、是否由 Codez 管理 | `git worktree list --porcelain` 加目录布局校验（§6.3）         |
 | worktree 的分支、HEAD、改动          | 该 worktree 的 git 状态                                        |
 | 正在进行的创建                       | Host 内存中的创建记录                                          |
 | worktree 是否正在删除                | Host 内存中的删除租约（与创建记录同属 worktree 服务）          |
@@ -399,13 +399,13 @@ interface ManagedWorktreeCreation {
 ### 6.3 目录布局与受管判定
 
 ```text
-<受管根目录>/                    = <数据根目录>/.zcode/worktrees
+<受管根目录>/                    = <数据根目录>/.codez/worktrees
   .metadata_never_index         仅 macOS：阻止 Spotlight 索引
   <bucket>/                     4 位小写十六进制，用非递归 mkdir 原子占用；冲突时重新随机
     <仓库名>/                    linked worktree，`.git` 是一个文件
 ```
 
-- 数据根目录与 Host、CLI 一致：`ZCODE_DATA_BASE_DIR` 优先，否则 homedir。bucket 只有 4 位，用来控制 Windows 路径长度。
+- 数据根目录与 Host、CLI 一致：`CODEZ_DATA_BASE_DIR` 优先，否则 homedir。bucket 只有 4 位，用来控制 Windows 路径长度。
 - 受管判定：路径符合两级布局；出现在源仓库的 `git worktree list --porcelain` 中；`.git` 是文件且 `git rev-parse --git-common-dir` 指向源仓库。不满足的条目不显示，也不允许删除。
 - 项目主目录可能是仓库的子目录（monorepo）。worktree 总是检出整个仓库，任务 cwd 取 `<worktree 根>/<主目录相对仓库 toplevel 的路径>`。起点中没有这个子目录时，创建失败（`start-ref-missing-subdir`）。
 
@@ -500,7 +500,7 @@ V4 投影：timelineMarker { type: "worktreeCreated", path, sha, ref, output }
 | -------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | CLI 存储读取               | 不严格   | `decodePartRow` 只做 `JSON.parse` 加类型断言                                                                                             |
 | CLI 恢复历史并投影成 V4 行 | 不严格   | `transcript-hydration.ts` 按 `timelineType` 逐个匹配，不认识的类型跳过；降级时旧 CLI 不产生这一行                                        |
-| 协议 schema                | 严格     | 旧版协议 `zcodeTimelinePartSchema` 的 `timelineType` 是固定枚举；V4 `timelineMarkerPayloadSchema` 是固定联合类型。新增类型时两侧同时修改 |
+| 协议 schema                | 严格     | 旧版协议 `codezTimelinePartSchema` 的 `timelineType` 是固定枚举；V4 `timelineMarkerPayloadSchema` 是固定联合类型。新增类型时两侧同时修改 |
 
 待验证：旧版协议 schema 是否仍在某条现役路径上校验 CLI 发出的历史 part。用降级 E2E 验证（§12 WT-24）。
 
@@ -541,7 +541,7 @@ CLI 现在用 workspace key 分组了 MCP 配置池、workspace 配置与展示�
 
 | 状态                                                                     | 跟随                       | 说明                                                  |
 | ------------------------------------------------------------------------ | -------------------------- | ----------------------------------------------------- |
-| 工作目录、AGENTS.md、`.zcode` 下的 settings、hook 声明、skills、commands | 会话 cwd（worktree）       | 这些文件随所选分支的版本变化                          |
+| 工作目录、AGENTS.md、`.codez` 下的 settings、hook 声明、skills、commands | 会话 cwd（worktree）       | 这些文件随所选分支的版本变化                          |
 | Hook Trust 记录、权限记录、记忆                                          | 源仓库（经 resolver 映射） | 不必在每个 worktree 中重新授权或重建，见 §6.6.3、§7.3 |
 | MCP 连接池（含 `isolation: "workspace"` 的共享连接）                     | 会话 cwd（worktree）       | stdio MCP 进程的工作目录就是会话 cwd，见下文          |
 | 模型选择、运行时偏好、sessions-index、Settings 的 workspace 行           | workspace key（项目）      | 工作区级状态                                          |
@@ -633,7 +633,7 @@ renderer 管理弹窗 → managedWorktreeService.removeWorktree({ projectId, pat
 - 卸载哪些会话、它们是否忙，都只由 CLI 判断。Host 不用 sessions-index 镜像选会话或判断忙闲：镜像可能滞后（同目录 fork 的子会话在 CLI 事实同步前不在镜像中），且普通 `session/close` 会直接关闭运行中的会话。
 - 第 7 步已卸载、但后续步骤失败时，这些会话保持未加载，下次打开时冷恢复，没有副作用。
 - 项目 CLI 中的其他会话不受影响。
-- 租约与闸门只在本 Host 内生效。这依赖"一台机器只有一个本地 Host"：应用持有单实例锁（`requestSingleInstanceLock`），主窗口只经 `primaryWindowCoordinator` 创建并复用已有窗口；renderer 刷新复用原 Host，退回重建时先结束旧 Host；手机远控挂在同一个 Host 上。以后如果支持多个主窗口，删除需要由 main 跨 Host 协调。用户在 ZCode 之外运行的进程（独立 CLI、编辑器、shell）不在检查范围内。
+- 租约与闸门只在本 Host 内生效。这依赖"一台机器只有一个本地 Host"：应用持有单实例锁（`requestSingleInstanceLock`），主窗口只经 `primaryWindowCoordinator` 创建并复用已有窗口；renderer 刷新复用原 Host，退回重建时先结束旧 Host；手机远控挂在同一个 Host 上。以后如果支持多个主窗口，删除需要由 main 跨 Host 协调。用户在 Codez 之外运行的进程（独立 CLI、编辑器、shell）不在检查范围内。
 
 ## 9. 契约变更
 
@@ -651,7 +651,7 @@ renderer 管理弹窗 → managedWorktreeService.removeWorktree({ projectId, pat
 | Host → main                                  | 阻止退出事项（§6.4）                                                                                                                                                                                                                                                                                                                                                            |
 | `ITerminalService`                           | `listTerminalIdsUnderPath({ path })`（已有）                                                                                                                                                                                                                                                                                                                                    |
 
-### 9.3 协议（`@zcode/protocol` v4）
+### 9.3 协议（`@codez/protocol` v4）
 
 ```ts
 createSession: {
@@ -667,13 +667,13 @@ forkAssistant: {
 
 - 不带新字段时行为不变。
 - CLI 持久化会话时，`directory` = cwd，`workspace_id` 仍为 NULL，不新增列（§6.6.2）。worktree 会话的 workspace 归属由 Host 在 create / resume / subscribe 和冷列表白名单中提供。
-- `worktreeCreation` 由 CLI 写成 timeline part，V4 投影为 `timelineMarker { type: "worktreeCreated" }`（§6.6.4）。旧版协议的 `zcodeTimelinePartSchema` 枚举与 V4 `timelineMarkerPayloadSchema` 同时增加新类型。
+- `worktreeCreation` 由 CLI 写成 timeline part，V4 投影为 `timelineMarker { type: "worktreeCreated" }`（§6.6.4）。旧版协议的 `codezTimelinePartSchema` 枚举与 V4 `timelineMarkerPayloadSchema` 同时增加新类型。
 - **能力探测**：`runtime/capabilities` 返回 `worktreeCwd: true`。旧 CLI 不支持时，Host 拒绝 worktree 创建，UI 禁用入口。
 - **新增 `session/releaseUnderDirectory { directory }` → `{ released: string[], busy: string[] }`**：CLI 选出 cwd 位于该目录内的全部驻留会话；任一会话忙（在途 turn、排队命令、待处理交互）时全部不卸载，返回 busy；否则全部做驻留去激活（不删除持久会话），返回 released。判断与开始卸载之间没有 await。随 `worktreeCwd` 能力一同提供，Host 只对声明了该能力的 CLI 使用。
 - **身份字段**：worktree 会话的 workspace ref 中 `workspacePath` 是 cwd，`workspaceKey` 是项目（与远程会话 key ≠ path 的既有语义相同，§2.1）。Host 路由 CLI 的反向请求、Host 读取任务元数据时，一律以 `workspaceKey` / `workspace_key` 为身份，不能用 `workspaceIdentity || workspacePath` 重新计算。冷恢复与订阅时 Host 传入项目的 workspace ref，CLI 保留存储中的 cwd。
 - **会触发冷恢复的入口都带 workspace**：除 `conversation/subscribe` 外，`rowsRange`、`plans`、`fileChanges`、`fileRewindPreview`、`attachmentRead`、`conversationAttachmentRead`、`conversationAttachmentStat`、`attachmentPreviewSource`、`attachmentBegin` 的参数，以及命令信封，都有可选的 `workspace`，由 Host 按当前 attachment 可信注入，renderer 不传。CLI 冷恢复只用它确定身份；不带时按存储的 cwd 重建，worktree 会话的 key 会变成 worktree 路径，反向请求被 Host 拒绝。Host 只对本地 workspace 注入：远程 Source Server 可能是不认识新字段的旧版本，worktree 也只支持本地。
 - **归属判定**（冷恢复 / 激活 / 本地冷列表共用一个函数）：会话 cwd 与 workspace 是同一个真实目录；或 cwd 是受管 worktree，经 resolver 映射回该真实目录；或 cwd 位于受管 worktree 布局内但目录已删除（文件系统无法证明），此时才用持久化的 projectID（§6.6.3）兜底。目录比较按 realpath，不按字符串：Host 的 key 保留用户添加项目时的大小写，resolver 返回磁盘真实大小写。projectID 是有损 slug（转小写、替换字符、截断到 80 字符），`my project` 与 `my-project` 相同，所以不能作为一般的归属证明。请求中的执行路径同样要属于该 workspace。
-- 协议文档同步更新 `docs/conversation-product-protocol.md`；CLI 设计同步更新 `apps/zcode-cli/docs/design/v2/session-persistence.md`。
+- 协议文档同步更新 `docs/conversation-product-protocol.md`；CLI 设计同步更新 `apps/codez-cli/docs/design/v2/session-persistence.md`。
 
 ## 10. 失败与并发
 
@@ -689,7 +689,7 @@ forkAssistant: {
 | fork 带入改动时父任务仍在运行              | 以开始创建时的快照为准，之后的改动不带入                                                                                                    |
 | 创建中关闭窗口                             | 见 §3.9                                                                                                                                     |
 | Windows 上文件被占用，导致删除失败         | 返回 git 的结构化原因；worktree 保留，可以重试                                                                                              |
-| 用户在 ZCode 之外手动删除了目录            | 列表显示 `missing`，可以"移除记录"；使用它的任务按 §3.12 变为只读                                                                           |
+| 用户在 Codez 之外手动删除了目录            | 列表显示 `missing`，可以"移除记录"；使用它的任务按 §3.12 变为只读                                                                           |
 
 日志：创建、删除、回滚等生命周期事件用 `info`；git 输出逐行用 `debug`。
 
@@ -701,7 +701,7 @@ forkAssistant: {
 
 ## 12. 验收场景
 
-桌面 E2E：`packages/desktop/test/e2e/git/worktrees/manual-review/pending/git-managed-worktree.test.ts` 覆盖 WT-01、WT-05、WT-08、WT-09、WT-29、WT-30、WT-34、WT-35，状态为 manual-review 待人工评审，评审后按 `e2e-case-lifecycle` 转正。回放命令：`ZCODE_E2E_MANUAL_REVIEW=1 E2E_PROVIDER_HTTP_MODE=replay E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/git/managed-worktree.json pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/git/worktrees/manual-review/pending/git-managed-worktree.test.ts'`；fixture 是合成的固定回复，用例不依赖模型内容。2026-11-04 macOS 回放 4/4 通过。其余场景尚无桌面 E2E；WT-31 / WT-32 的竞态只有 CLI 侧 `session/releaseUnderDirectory` 的独立测试，Host 租约未做并发 E2E。CLI 侧另有独立测试（会话 cwd、历史标记、fork 到 cwd、冷恢复、sessions-index、权限与记忆派生）。WT-36 / WT-37 / WT-38 由 CLI 集成测试 `apps/zcode-cli/packages/bootstrap/tests/v4-worktree-cwd.test.ts` 覆盖（WT-36 只在大小写不敏感的文件系统上执行）；WT-39 由 CLI 的 `official-mcp-auth-port`、`mcp-connection-pool`、`mcp-tool-bridge` 测试覆盖会话 key 的传递，Host 注入 workspace 的一侧没有自动化测试；这四项都没有桌面 E2E。未实跑 Windows / Linux，未做深浅主题视觉验收。
+桌面 E2E：`packages/desktop/test/e2e/git/worktrees/manual-review/pending/git-managed-worktree.test.ts` 覆盖 WT-01、WT-05、WT-08、WT-09、WT-29、WT-30、WT-34、WT-35，状态为 manual-review 待人工评审，评审后按 `e2e-case-lifecycle` 转正。回放命令：`CODEZ_E2E_MANUAL_REVIEW=1 E2E_PROVIDER_HTTP_MODE=replay E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/git/managed-worktree.json pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/git/worktrees/manual-review/pending/git-managed-worktree.test.ts'`；fixture 是合成的固定回复，用例不依赖模型内容。2026-11-04 macOS 回放 4/4 通过。其余场景尚无桌面 E2E；WT-31 / WT-32 的竞态只有 CLI 侧 `session/releaseUnderDirectory` 的独立测试，Host 租约未做并发 E2E。CLI 侧另有独立测试（会话 cwd、历史标记、fork 到 cwd、冷恢复、sessions-index、权限与记忆派生）。WT-36 / WT-37 / WT-38 由 CLI 集成测试 `apps/codez-cli/packages/bootstrap/tests/v4-worktree-cwd.test.ts` 覆盖（WT-36 只在大小写不敏感的文件系统上执行）；WT-39 由 CLI 的 `official-mcp-auth-port`、`mcp-connection-pool`、`mcp-tool-bridge` 测试覆盖会话 key 的传递，Host 注入 workspace 的一侧没有自动化测试；这四项都没有桌面 E2E。未实跑 Windows / Linux，未做深浅主题视觉验收。
 
 | ID    | 场景                                                                | 预期                                                                                                              |
 | ----- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
@@ -715,7 +715,7 @@ forkAssistant: {
 | WT-08 | 删除一个干净、空闲的 worktree                                       | 目录和 bucket 被删除；相关任务变为只读                                                                            |
 | WT-09 | 删除有任务使用、且有未提交改动的 worktree                           | 被拒绝；目录保留                                                                                                  |
 | WT-10 | 任务运行中或有终端时删除                                            | 被拒绝；运行不受影响                                                                                              |
-| WT-11 | 重启 ZCode 后打开 worktree 任务                                     | 冷恢复；第一轮仍显示"已创建 worktree"，可展开                                                                     |
+| WT-11 | 重启 Codez 后打开 worktree 任务                                     | 冷恢复；第一轮仍显示"已创建 worktree"，可展开                                                                     |
 | WT-12 | 手机远控查看 worktree 任务                                          | 可以查看和对话，能看到"已创建 worktree"；不显示创建入口                                                           |
 | WT-13 | 并发创建两个 worktree                                               | 得到两个不同的 bucket，互不影响                                                                                   |
 | WT-14 | 起点无效或 `git worktree add` 失败                                  | 卡片显示失败与 git 输出；"放弃"后不留 worktree 和任务行，草稿恢复                                                 |
@@ -757,13 +757,13 @@ forkAssistant: {
 | 3   | 草稿设置随首发提交        | 模型、模式、plan 存在 composer 草稿中，随首条 `sendText` 原子提交，不依赖预热会话                                                                                                         |
 | 4   | 终端初始 cwd              | 终端服务已记录初始 cwd，并提供 `listTerminalIdsUnderPath`                                                                                                                                 |
 | 5   | 退出确认链路              | Host 已向 main 上报 `runningTaskCount`，main 只在 production 且计数 > 0 时弹确认。macOS 上关闭窗口不弹确认，但会结束该窗口的 Host                                                         |
-| 6   | Host 进程分配             | `ZCodeAgentProcessManager.bind()` 已把 workspace key 与进程 key 分开，可以让多个 workspace 共用进程                                                                                       |
+| 6   | Host 进程分配             | `CodezAgentProcessManager.bind()` 已把 workspace key 与进程 key 分开，可以让多个 workspace 共用进程                                                                                       |
 | 7   | CLI 按 workspace key 分组 | MCP 配置池（`mcp.ts`）、workspace 配置（`v4-workspace-config.ts`）、模型运行时（`workspace-model-runtime.ts`）按 workspace key 分组；本地 sessions-index 目前按 `directory` 列出          |
 | 8   | 同类应用的创建记录        | 创建记录只在应用进程内存中；会话在 worktree 建好后才创建，cwd 一次确定；创建期间退出会提示可能丢失                                                                                        |
 | 9   | CLI 派生 key              | `project_id` 由目录路径生成 slug（`projectIdFromDirectory`），`permission` 表按它存储；记忆目录按工作目录派生                                                                             |
-| 10  | timeline part 的校验      | 存储读取只做 `JSON.parse`；历史投影按 `timelineType` 匹配并跳过未知类型；协议 schema（旧版 `zcodeTimelinePartSchema`、V4 `timelineMarkerPayloadSchema`）为固定枚举                        |
+| 10  | timeline part 的校验      | 存储读取只做 `JSON.parse`；历史投影按 `timelineType` 匹配并跳过未知类型；协议 schema（旧版 `codezTimelinePartSchema`、V4 `timelineMarkerPayloadSchema`）为固定枚举                        |
 | 12  | renderer 任务列表缓存     | session store 的 `taskListCache` / 乐观层不包含新建的 worktree 会话与 fork 子任务（2026-11-04 E2E 运行时读取为空）；按 cwd 工作的界面改读 Host tasks-index 的任务元数据（与会话头部同源） |
-| 11  | 本地覆盖文件约定          | ZCode CLI 中没有 `*.local.*` 或 override 一类的本地说明 / 设置文件约定，所以拷贝没有默认清单，只认 `.worktreeinclude`                                                                     |
+| 11  | 本地覆盖文件约定          | Codez CLI 中没有 `*.local.*` 或 override 一类的本地说明 / 设置文件约定，所以拷贝没有默认清单，只认 `.worktreeinclude`                                                                     |
 
 ## 14. 返工清单（相对 `feat/managed-worktree` 现有提交）
 

@@ -13,7 +13,7 @@ import {
   TID_V4_COMPOSER_INPUT,
   TID_V4_COMPOSER_SEND,
   TID_WORKSPACE_HEADER,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import {
   prepareV4ConversationE2E,
@@ -210,7 +210,7 @@ async function waitForAnswerBubble(text: string) {
 }
 
 async function saveThemeScreenshots(name: string) {
-  const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR;
+  const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR;
   if (!artifactDir) return;
   for (const theme of ["zai-light", "zai-dark"]) {
     await browser.execute((value) => {

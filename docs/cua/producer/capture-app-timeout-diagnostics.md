@@ -32,6 +32,6 @@ macOS `capture_app` 会在 Helper 的异步 worker 中遍历目标窗口的 Acce
 
 ## 日志位置
 
-ZCode 产品和 standalone 启动 Helper 时都传 `--exit-log <socket>.exit.log`。Helper 对超时追加一行
+Codez 产品和 standalone 启动 Helper 时都传 `--exit-log <socket>.exit.log`。Helper 对超时追加一行
 `[capture-app-timeout] ...`；同时原错误文本附加同一组字段摘要，因此即使日志文件被系统清理，模型
 trace 仍保留诊断。

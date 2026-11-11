@@ -9,13 +9,13 @@
   "fileFixtures": [
     {
       "kind": "app-config",
-      "path": "~/.zcode/v2/agents-state.json",
+      "path": "~/.codez/v2/agents-state.json",
       "description": "冷启动前写入 builtin model/effort 初始值，验证 Settings 修正、组合落盘、bootstrap 注入与 child provider-visible request。",
       "source": "created-by-helper"
     },
     {
       "kind": "app-config",
-      "path": "~/.zcode/agents/e2e-reasoning-reviewer.md",
+      "path": "~/.codez/agents/e2e-reasoning-reviewer.md",
       "description": "写入带非法 thoughtLevel 的 custom agent，验证阻止保存、切模清除、合法值落盘与冷启动 child request。",
       "source": "created-by-helper"
     }

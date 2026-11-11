@@ -2,7 +2,7 @@ import type {
   ConversationSharePreflightResult,
   ConversationShareTurnPreflightResult,
 } from "@/conversation-share-interaction/contract.js";
-import type { ConversationRow } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationRow } from "@codez/shared/codez-protocol-v4";
 import { logger } from "@/logger.js";
 import {
   getConversationShareErrorDetails,

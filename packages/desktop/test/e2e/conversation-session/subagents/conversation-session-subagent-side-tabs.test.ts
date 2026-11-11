@@ -2,7 +2,7 @@ import {
   TID_CHAT_SUMMARY_PANEL,
   TID_V4_PANE_SHELL,
   TID_V4_SUBAGENT_OPEN_SIDE_PANE,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { releaseControlledReplay } from "#e2e/helpers/controlled-replay";
 import { ensureReadonlyToolFixtureFile } from "#e2e/helpers/conversation-session-readonly-tool";
 import { clearAppData } from "#e2e/helpers/desktop-app";

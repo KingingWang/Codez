@@ -28,7 +28,7 @@ truthful capability behavior established here.
 
 ## File Map
 
-`C:\Users\dev\zcode-cua`:
+`C:\Users\dev\codez-cua`:
 
 - Modify `test/broker/windowsSystemSurface.test.ts`: require explicit clipboard refusal.
 - Create `test/windows-capability-truthfulness.test.ts`: pin Windows `request_access`, screenshot, and clipboard broker behavior.
@@ -47,11 +47,11 @@ truthful capability behavior established here.
 
 **Files:**
 
-- Modify: `C:\Users\dev\zcode-cua\test\broker\windowsSystemSurface.test.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\windowsSystemSurface.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\nodeSystemSurface.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\nodeAutomationAdapter.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\electronNativeBackendTypes.ts`
+- Modify: `C:\Users\dev\codez-cua\test\broker\windowsSystemSurface.test.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\windowsSystemSurface.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\nodeSystemSurface.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\nodeAutomationAdapter.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\electronNativeBackendTypes.ts`
 
 **Interfaces:**
 
@@ -88,7 +88,7 @@ for (const operation of [
 Run:
 
 ```powershell
-cd C:\Users\dev\zcode-cua
+cd C:\Users\dev\codez-cua
 pnpm exec vitest run test/broker/windowsSystemSurface.test.ts
 ```
 
@@ -189,8 +189,8 @@ git commit -m "fix(windows): reject unavailable clipboard operations"
 
 **Files:**
 
-- Create: `C:\Users\dev\zcode-cua\test\native\windows-capability-truthfulness.test.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\native\ax_win.cc`
+- Create: `C:\Users\dev\codez-cua\test\native\windows-capability-truthfulness.test.ts`
+- Modify: `C:\Users\dev\codez-cua\src\native\ax_win.cc`
 
 **Interfaces:**
 
@@ -287,9 +287,9 @@ git commit -m "fix(windows): report capture capability truthfully"
 
 **Files:**
 
-- Create: `C:\Users\dev\zcode-cua\test\windows-capability-truthfulness.test.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\electronNativeBackend.ts`
-- Modify: `C:\Users\dev\zcode-cua\docs\platforms.md`
+- Create: `C:\Users\dev\codez-cua\test\windows-capability-truthfulness.test.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\electronNativeBackend.ts`
+- Modify: `C:\Users\dev\codez-cua\docs\platforms.md`
 
 **Interfaces:**
 
@@ -354,8 +354,8 @@ const backend = createElectronNativeBackend({
   adapter,
   axSource,
   brokerInfo: {
-    bundle_id: "dev.zcode.cua.helper",
-    display_name: "ZCode Computer Use",
+    bundle_id: "dev.codez.cua.helper",
+    display_name: "Codez Computer Use",
     permission_mode: "product",
     version: "0.0.0-test",
     platform: "win32",
@@ -447,7 +447,7 @@ pnpm exec vitest run test/windows-capability-truthfulness.test.ts
 
 Expected: all cases pass and `captureScreenPng` has zero calls.
 
-- [ ] **Step 5: Run all zcode-cua gates**
+- [ ] **Step 5: Run all codez-cua gates**
 
 Run:
 

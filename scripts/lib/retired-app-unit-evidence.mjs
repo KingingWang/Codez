@@ -23,7 +23,7 @@ export function inspectRetiredAppUnitEvidence(markdown, { engineeringTests = new
   const aliases = new Map();
   const isAppUnit = (path) =>
     path.startsWith("packages/") &&
-    !path.startsWith("packages/zcode-cua/") &&
+    !path.startsWith("packages/codez-cua/") &&
     !/\/test\/(?:e2e|browser)\//u.test(path) &&
     !engineeringTests.has(path);
   for (const line of rows) {

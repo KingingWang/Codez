@@ -19,7 +19,7 @@ import {
   TID_V4_TIMELINE,
   TID_WORKSPACE_HEADER,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
@@ -73,7 +73,7 @@ describe("Side Pane 完整视图（SPFV）", () => {
       { timeout: 30_000, timeoutMsg: "完整视图用例的草稿投影尚未就绪" },
     );
     await browser.execute(() =>
-      window.localStorage.removeItem("zcode:side-pane-full-view:floating-anchor"),
+      window.localStorage.removeItem("codez:side-pane-full-view:floating-anchor"),
     );
   });
 
@@ -357,7 +357,7 @@ describe("Side Pane 完整视图（SPFV）", () => {
     );
     expect(
       await browser.execute(() =>
-        window.localStorage.getItem("zcode:side-pane-full-view:floating-anchor"),
+        window.localStorage.getItem("codez:side-pane-full-view:floating-anchor"),
       ),
     ).toBe("top-left");
 
@@ -485,7 +485,7 @@ describe("Side Pane 完整视图（SPFV）", () => {
 
 /** 视觉验收：深浅两套主题各存一张整窗截图到 artifact 目录。 */
 async function saveThemeScreenshots(name: string) {
-  const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR;
+  const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR;
   if (!artifactDir) return;
   for (const theme of ["zai-light", "zai-dark"]) {
     await browser.execute((value) => {

@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
-import { ServiceChannels } from "@zcode/shared";
-import type { ProjectTask, ProjectTree, VirtualProject } from "@zcode/services";
+import { ServiceChannels } from "@codez/shared";
+import type { ProjectTask, ProjectTree, VirtualProject } from "@codez/services";
 import { clearAppData, DEFAULT_WORKSPACE } from "#e2e/helpers/desktop-app";
 import {
   buildReadonlyToolPrompt,
@@ -33,13 +33,13 @@ import {
 // 目标会话一轮 70 个工具调用，超过快照尾窗 60 行，turnHeader 只在 owner 全量投影里。
 const CASE = "E2E_SCT06";
 const LONG_TURN_TOOL_CALLS = 70;
-const SECOND_ROOT = join(dirname(DEFAULT_WORKSPACE), "ZCodeProjectSCT06Second");
+const SECOND_ROOT = join(dirname(DEFAULT_WORKSPACE), "CodezProjectSCT06Second");
 // 冷会话：只写两个库，不启动运行态；读取前它从未被打开，CLI 侧没有 record。
 const COLD_SESSION = "session_e2e_sct06_cold";
 const COLD_TITLE = "E2E_SCT06_COLD_TITLE";
 const COLD_USER_TEXT = "E2E_SCT06_COLD_USER";
 const COLD_ASSISTANT_TEXT = "E2E_SCT06_COLD_ASSISTANT";
-const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR!;
+const artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR!;
 const tools: AppControlToolEvidence = {};
 const assertions: Record<string, unknown> = {};
 const evidence = { tools, assertions };
@@ -94,12 +94,12 @@ async function readTree(): Promise<ProjectTree> {
 describe(`${CASE}: App session tools on a long turn and a retried creation`, () => {
   // 冷会话必须在 Host 启动前落盘，否则 Host 的 source snapshot 不含这一行。
   before(async () => {
-    const home = process.env.ZCODE_E2E_HOME_DIR ?? "";
+    const home = process.env.CODEZ_E2E_HOME_DIR ?? "";
     if (!basename(home).startsWith(".e2e-home-")) throw new Error("需要隔离 E2E HOME");
     await restartIntoWorkspacePreservingProfile(DEFAULT_WORKSPACE, {
       afterElectronProcessExit: async () => {
         await seedProviderReadinessHistoryFixture({
-          cliEntryPoint: resolve("../../apps/zcode-cli/packages/cli/dist/zcode.cjs"),
+          cliEntryPoint: resolve("../../apps/codez-cli/packages/cli/dist/codez.cjs"),
           e2eHomeDir: home,
           workspacePath: DEFAULT_WORKSPACE,
           history: {
@@ -147,7 +147,7 @@ describe(`${CASE}: App session tools on a long turn and a retried creation`, () 
 
     const projects = await action<{
       projects: Array<{ project: NonNullable<SessionRef["project"]> }>;
-    }>("projects", "Call ListProjects with query=ZCodeProject.");
+    }>("projects", "Call ListProjects with query=CodezProject.");
     expect(projects.projects).toHaveLength(1);
     const project = projects.projects[0]!.project;
 

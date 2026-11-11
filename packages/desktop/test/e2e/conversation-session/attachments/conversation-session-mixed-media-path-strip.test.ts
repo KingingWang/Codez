@@ -1,6 +1,6 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
-import { TID_V4_ROW_ATTACHMENTS } from "@zcode/shared/test-ids";
+import { TID_V4_ROW_ATTACHMENTS } from "@codez/shared/test-ids";
 import { clearAppData, DEFAULT_WORKSPACE } from "#e2e/helpers/desktop-app";
 import {
   assertUpstreamRequestCapture,
@@ -40,7 +40,7 @@ const IMAGE_SOURCE_PREFIX = "[Image: source: ";
 const VIDEO_SOURCE_PREFIX = "[Video: source: ";
 const VALID_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4AWMAAQAABQABNtCI3QAAAABJRU5ErkJggg==";
-const CASE_ROOT = join(DEFAULT_WORKSPACE, ".zcode-e2e", CASE_NAME);
+const CASE_ROOT = join(DEFAULT_WORKSPACE, ".codez-e2e", CASE_NAME);
 
 let modelProviderReplayServer: Awaited<
   ReturnType<typeof startConversationModelProviderReplayServer>

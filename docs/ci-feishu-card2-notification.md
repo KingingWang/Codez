@@ -43,14 +43,14 @@ CLI build/upload → 成功时 notifyCiResult；失败时 after_script ──┘
 
 ## 消息契约
 
-通知由 CI 脚本组装 Feishu Card 2.0，交给 zcode-internal 的通用飞书通知服务发送：
+通知由 CI 脚本组装 Feishu Card 2.0，交给 codez-internal 的通用飞书通知服务发送：
 
 ```
-POST <ZCODE_FEISHU_NOTIFY_BASE_URL>/api/v1/feishu/messages
-Authorization: Bearer $ZCODE_FEISHU_NOTIFY_TOKEN
+POST <CODEZ_FEISHU_NOTIFY_BASE_URL>/api/v1/feishu/messages
+Authorization: Bearer $CODEZ_FEISHU_NOTIFY_TOKEN
 ```
 
-服务用 ZCode Infra 应用投递，CI 侧不再持有飞书应用凭证。`scene` 为
+服务用 Codez Infra 应用投递，CI 侧不再持有飞书应用凭证。`scene` 为
 `ci.build.completed` / `ci.build.failed`；收件人优先用 CI 自己的 `FEISHU_RECEIVE_ID`
 （显式传给服务），未配置时回落到服务端的场景默认收件人。原 Template 所使用的字段保持不变：
 
@@ -60,7 +60,7 @@ Authorization: Bearer $ZCODE_FEISHU_NOTIFY_TOKEN
 - 提交信息：`CI_COMMIT_MESSAGE`
 
 相关人员优先 @触发打包的人。控制台从服务端登录会话（任务队列从已保存的任务所属用户）
-取得飞书 `open_id`，通过流水线变量 `ZCODE_BUILD_TRIGGER_OPEN_ID` 传入，不能由浏览器请求体指定。
+取得飞书 `open_id`，通过流水线变量 `CODEZ_BUILD_TRIGGER_OPEN_ID` 传入，不能由浏览器请求体指定。
 该变量去除首尾空白后符合 `^ou_[A-Za-z0-9_-]+$` 时，直接生成 `<at id=ou_xxx></at>`，
 不再自动 @提交作者；变量缺失、为空或格式无效时，沿用 `{{mention:<CI_COMMIT_AUTHOR>}}`
 占位符，由通知服务用统一的「人员配置」目录解析。提交人和提交信息仍分别显示
@@ -71,7 +71,7 @@ Authorization: Bearer $ZCODE_FEISHU_NOTIFY_TOKEN
 没有传入触发人变量的旧调用方保持原逻辑；被打包分支需要包含新版通知脚本才支持此优先级。
 
 ```text
-服务端会话 / 已保存的任务用户 → ZCODE_BUILD_TRIGGER_OPEN_ID → 优先 @触发人
+服务端会话 / 已保存的任务用户 → CODEZ_BUILD_TRIGGER_OPEN_ID → 优先 @触发人
                                                           └─ 无有效值：@commit 作者
 CI_COMMIT_AUTHOR / CI_COMMIT_MESSAGE → 提交人 / 提交信息（保持原值）
 ```
@@ -91,20 +91,20 @@ CI_COMMIT_AUTHOR / CI_COMMIT_MESSAGE → 提交人 / 提交信息（保持原值
 成功卡片使用蓝色 Header 与 `success_colorful` 图标，失败卡片使用红色 Header 与
 `fail_colorful` 图标，确保两种状态在通知列表中可以快速区分。
 
-配置 `FEISHU_HEADER_ICON_IMAGE_KEY` 后，Header 改用飞书 `custom_icon` 展示 ZCode
+配置 `FEISHU_HEADER_ICON_IMAGE_KEY` 后，Header 改用飞书 `custom_icon` 展示 Codez
 Logo；该 key 必须由同一个飞书应用在具备 `im:resource:upload` 或 `im:resource` 权限后
 上传 `public/icon_512@2x.png` 获得。未配置时回退上述成功/失败标准图标。
 
 ## 配置与测试
 
-需要新增 GitLab CI/CD 变量 `ZCODE_FEISHU_NOTIFY_TOKEN`（与服务端同值），可选
-`ZCODE_FEISHU_NOTIFY_BASE_URL`（默认 `http://intranet.example.invalid:3011`）。生产接收方仍由
+需要新增 GitLab CI/CD 变量 `CODEZ_FEISHU_NOTIFY_TOKEN`（与服务端同值），可选
+`CODEZ_FEISHU_NOTIFY_BASE_URL`（默认 `http://intranet.example.invalid:3011`）。生产接收方仍由
 GitLab 的 `FEISHU_RECEIVE_ID` 提供。构建通知单元测试和后续手动验证统一使用临时测试群
 `oc_5725795450da6920872fdb25412848bf`，不得把该测试群写入生产 CI 默认配置。
 
 构建通知只有这一条发送链路：CI 侧不持有任何飞书应用凭证，`FEISHU_APP_ID` /
-`FEISHU_APP_SECRET` 与该脚本无关。缺少 `ZCODE_FEISHU_NOTIFY_TOKEN` 时记录配置错误并跳过投递，
-不会静默降级到别的发送身份——否则群里会混入非 ZCode Infra 的机器人。
+`FEISHU_APP_SECRET` 与该脚本无关。缺少 `CODEZ_FEISHU_NOTIFY_TOKEN` 时记录配置错误并跳过投递，
+不会静默降级到别的发送身份——否则群里会混入非 Codez Infra 的机器人。
 
 ## 失败边界
 

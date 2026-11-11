@@ -1,15 +1,15 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TID_WORKSPACE_ITEM } from "@zcode/shared";
+import { TID_WORKSPACE_ITEM } from "@codez/shared";
 import {
   TID_COMPOSER_WORKSPACE_TRIGGER,
   TID_V4_SESSION_PANE,
   TID_WORKSPACE_PATH,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { probeWorkspaceAppState } from "./e2e/helpers/desktop-app.js";
 
-const PROJECT_PATH = "/Users/dev/Code/z-code/.e2e-home/ZCodeProject";
+const PROJECT_PATH = "/Users/dev/Code/z-code/.e2e-home/CodezProject";
 
 function probe(expectedPath = PROJECT_PATH) {
   return probeWorkspaceAppState({
@@ -57,7 +57,7 @@ describe("desktop e2e workspace readiness probe", () => {
   it("is ready when the active workspace and a v4 session pane both exist", () => {
     appendTestId(testId(TID_WORKSPACE_ITEM, PROJECT_PATH));
     appendTestId(`${TID_V4_SESSION_PANE}-pane-1`);
-    vi.stubGlobal("__zcodeTabStoreE2E", {
+    vi.stubGlobal("__codezTabStoreE2E", {
       getState: () => ({ activeWorkspacePath: PROJECT_PATH }),
     });
 
@@ -65,11 +65,11 @@ describe("desktop e2e workspace readiness probe", () => {
   });
 
   it("matches a Windows active workspace path", () => {
-    const windowsPath = String.raw`C:\gitlab-runner\builds\project\packages\desktop\.e2e-home\ZCodeProject`;
+    const windowsPath = String.raw`C:\gitlab-runner\builds\project\packages\desktop\.e2e-home\CodezProject`;
     appendTestId(testId(TID_WORKSPACE_ITEM, windowsPath));
     appendTestId(`${TID_V4_SESSION_PANE}-pane-1`);
 
-    vi.stubGlobal("__zcodeTabStoreE2E", { getState: () => ({ activeWorkspacePath: windowsPath }) });
+    vi.stubGlobal("__codezTabStoreE2E", { getState: () => ({ activeWorkspacePath: windowsPath }) });
     expect(probe(windowsPath)).toBe("ready");
   });
 
@@ -77,7 +77,7 @@ describe("desktop e2e workspace readiness probe", () => {
     appendTestId(TID_COMPOSER_WORKSPACE_TRIGGER);
     appendTestId(`${TID_V4_SESSION_PANE}-pane-1`);
 
-    expect(probe("/Users/dev/.zcode/workspace/default")).toBe("ready");
+    expect(probe("/Users/dev/.codez/workspace/default")).toBe("ready");
   });
 
   it("keeps waiting while neither the workspace nor onboarding is rendered", () => {

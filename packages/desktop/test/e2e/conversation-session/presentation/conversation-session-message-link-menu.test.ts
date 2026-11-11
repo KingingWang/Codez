@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { TID_BROWSER_ADDRESS_INPUT } from "@zcode/shared/test-ids";
+import { TID_BROWSER_ADDRESS_INPUT } from "@codez/shared/test-ids";
 import { clearAppData, setCurrentElectronRendererContentSize } from "#e2e/helpers/desktop-app";
 import {
   prepareV4ConversationE2E,
@@ -86,8 +86,8 @@ describe("消息正文链接菜单", () => {
         await openMenu();
         const expected =
           locale === "zh-CN"
-            ? ["在 ZCode 中打开", "在浏览器中打开", "复制链接"]
-            : ["Open in ZCode", "Open in browser", "Copy link"];
+            ? ["在 Codez 中打开", "在浏览器中打开", "复制链接"]
+            : ["Open in Codez", "Open in browser", "Copy link"];
         await browser.waitUntil(
           async () =>
             JSON.stringify(
@@ -116,9 +116,9 @@ describe("消息正文链接菜单", () => {
         expect(layout.icons[0]).toContain("lucide-panel-right");
         expect(layout.icons[1]).toContain("lucide-external-link");
         expect(layout.icons[2]).toContain("lucide-copy");
-        if (process.env.ZCODE_E2E_ARTIFACT_DIR) {
+        if (process.env.CODEZ_E2E_ARTIFACT_DIR) {
           await browser.saveScreenshot(
-            join(process.env.ZCODE_E2E_ARTIFACT_DIR, `message-link-menu-${width}-${theme}.png`),
+            join(process.env.CODEZ_E2E_ARTIFACT_DIR, `message-link-menu-${width}-${theme}.png`),
           );
         }
         await browser.electron.execute((electron) => electron.clipboard.clear());

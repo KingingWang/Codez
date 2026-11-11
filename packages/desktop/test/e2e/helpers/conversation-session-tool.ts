@@ -4,7 +4,7 @@ import {
   TID_CHAT_ASSISTANT_MESSAGE,
   TID_CHAT_TOOL_CALL_BLOCK,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   getLatestUpstreamToolResultByToolCallId,
   type UpstreamToolResultSnapshot,

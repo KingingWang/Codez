@@ -1,7 +1,7 @@
 import {
   createSystemCredentialCipher,
   migrateCredentialRecord,
-} from "@zcode/shared/credential-security";
+} from "@codez/shared/credential-security";
 import { readFile, writeFile } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
 import { join } from "node:path";
@@ -13,13 +13,13 @@ import {
   withCredentialFileMutation,
   captureCredentialFileGuard,
   type CredentialFileGuard,
-} from "@zcode/shared/node";
+} from "@codez/shared/node";
 import {
   credentialKeySchema,
   credentialRecordSchema,
   credentialValueSchema,
   isCredentialDecryptError,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { ICredentialService } from "./credential.js";
 import { type CredentialCipherProvider } from "./providers/credentialCipherProvider.js";
 import { createServiceLogger } from "../logger/serviceLogger.js";
@@ -78,7 +78,7 @@ async function readAllUnchecked(credentialsFile: string): Promise<Record<string,
     if (getErrorCode(error) === "ENOENT") {
       return {};
     }
-    throw new Error(`Unable to read ZCode credentials: ${credentialsFile}`, { cause: error });
+    throw new Error(`Unable to read Codez credentials: ${credentialsFile}`, { cause: error });
   }
 
   try {
@@ -93,7 +93,7 @@ async function readAllUnchecked(credentialsFile: string): Promise<Record<string,
       backupPath,
       credentialsFile,
     });
-    throw new Error(`ZCode credentials are corrupt: ${credentialsFile}`, { cause: error });
+    throw new Error(`Codez credentials are corrupt: ${credentialsFile}`, { cause: error });
   }
 }
 

@@ -1,9 +1,9 @@
 # On-Demand Session Context
 
-The agent reads another persisted ZCode session only when the current turn needs it.
+The agent reads another persisted Codez session only when the current turn needs it.
 
 The `ReadSessionContext` tool was deleted on 2026-11-03. Its uses moved to other entries.
-See `docs/architecture/zcode-app-control-design.md` section 0.8.
+See `docs/architecture/codez-app-control-design.md` section 0.8.
 
 - Read another session's history: the model calls `ReadSession` with its `sessionId` parameter.
   The model reads the messages itself. No lite model extracts or summarizes them.

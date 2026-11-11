@@ -11,7 +11,7 @@ import type {
 } from "react";
 import type { PanelImperativeHandle } from "react-resizable-panels";
 import { GripHorizontal, LoaderCircle } from "lucide-react";
-import { TID_APP_HEADER } from "@zcode/shared/test-ids";
+import { TID_APP_HEADER } from "@codez/shared/test-ids";
 // 保活：workspace tab 真正关闭时，按 workspaceKey 回收 side pane terminal 的常驻 PTY/xterm。
 // 对称下侧 Terminal.tsx 的 openWorkspaceKeys 回收。
 import { sidePaneTerminalSessionRegistry } from "@/terminal/sidePaneTerminalSessionRegistry.js";
@@ -59,7 +59,7 @@ import {
   useManagedWorktreeSettlements,
   useWorktreeSupport,
 } from "@/managed-worktrees/index.js";
-import type { ManagedWorktreeCreationSettlement } from "@zcode/shared";
+import type { ManagedWorktreeCreationSettlement } from "@codez/shared";
 import { ScopedErrorBoundary } from "@/ErrorBoundary.js";
 
 import { AUTOMATIONS_TOAST_ANCHOR_ID, AutomationsSection } from "@/settings/AutomationsSection.js";
@@ -104,7 +104,7 @@ import {
   getGitDirtyFileCount,
   resolveGitBranchTriggerLabel,
 } from "@/git-branch-switcher/display.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { getPathLeaf, toFileUrl } from "@/lib/path.js";
 import { shouldOpenAssistantHtmlInBrowser } from "@/lib/assistantPreviewCards.js";
@@ -130,21 +130,21 @@ import type { WorkspaceShellLayoutProps } from "@/app-shell/types.js";
 import { isWorkspaceTab } from "@/store/tabStore.js";
 import { isSameWorkspaceTab } from "@/store/tabWorkspaceIdentity.js";
 import { useTabStore, useTabStoreApi } from "@/store/TabStoreProvider.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 import type {
   ComposerMentionPrefill,
-  ZCodeSessionStoreState,
-} from "@/store/zcodeSessionStoreTypes.js";
+  CodezSessionStoreState,
+} from "@/store/codezSessionStoreTypes.js";
 
 const WEB_REMOTE_CONTROL_MOBILE_QUERY = "(max-width: 767px)";
 const WEB_REMOTE_CONTROL_COLLAPSE_ONCE_SESSION_KEY =
-  "zcode:web-remote-control:collapse-navigation-once";
+  "codez:web-remote-control:collapse-navigation-once";
 const WEB_REMOTE_CONTROL_VIEWPORT_HEIGHT_FALLBACK_PX = 800;
 const WEB_REMOTE_CONTROL_DRAG_CLICK_THRESHOLD_PX = 4;
 const WORKSPACE_SIDEBAR_DEFAULT_WIDTH_PX = 264;
 const WORKSPACE_SIDEBAR_MIN_WIDTH_PX = 264;
 const WORKSPACE_SIDEBAR_MAX_WIDTH_RATIO = 0.5;
-const WORKSPACE_SIDEBAR_WIDTH_STORAGE_KEY = "zcode:workspace-shell:sidebar-width-px";
+const WORKSPACE_SIDEBAR_WIDTH_STORAGE_KEY = "codez:workspace-shell:sidebar-width-px";
 const LEGACY_WORKSPACE_SHELL_LAYOUT_STORAGE_KEY =
   "react-resizable-panels:workspace-shell-layout:sidebar:content";
 const WORKSPACE_SIDEBAR_RESIZE_KEYBOARD_STEP_PX = 16;
@@ -180,7 +180,7 @@ type WorkspaceSidebarResizeSession = {
 // Bug 原因：头部 JSX 的内联回调共享 Shell render 环境，旧头部会串起历次文件链接回调。
 // 在独立作用域创建操作，只保留原 store action 与工作区身份，不改变工作树选择语义。
 function createDraftWorktreeCallbacks(
-  setDraftWorktree: ZCodeSessionStoreState["setDraftWorktree"],
+  setDraftWorktree: CodezSessionStoreState["setDraftWorktree"],
   workspacePath: string,
   workspaceIdentity: string | undefined,
 ) {
@@ -350,7 +350,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
   isDesktop,
   isMacDesktop,
   isWindowsDesktop,
-  workspaceShellZCodeState,
+  workspaceShellCodezState,
   theme,
   isMacFullscreen,
   desktopWindowChromeState,
@@ -464,7 +464,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
   setGitSelectedSourceId,
   taskFindDialogProps,
 }: WorkspaceShellLayoutProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const isOfficeMode = useIsOfficeMode();
   const baseServices = useBaseWorkspaceServices();
   const tabStoreApi = useTabStoreApi();
@@ -479,7 +479,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
           return;
         // 切工作区不会触发原工作区的 startDraft；在导航提交时取消请求，避免返回后误开新草稿。
         if (!previous.activeWorkspacePath) return;
-        const store = useZCodeSessionStore.getState();
+        const store = useCodezSessionStore.getState();
         const identity = previous.activeWorkspaceIdentity ?? undefined;
         const request = store.getWorkspaceState(
           previous.activeWorkspacePath,
@@ -574,7 +574,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
   usePaneSessionPersistence({
     workspaceKey,
     activeSessionId: activeTaskId,
-    draftFocusVersion: workspaceShellZCodeState.draftFocusVersion,
+    draftFocusVersion: workspaceShellCodezState.draftFocusVersion,
     enabled: !isWebRemoteControlShell,
     restoreOnStartup: Boolean(isDesktop && restorePaneSession),
     selectSession: (sessionId) => handleSelectTask(workspaceAbsPath, sessionId, workspaceIdentity),
@@ -593,7 +593,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
     const animations = new Map<HTMLElement, Animation>();
     const setVisible = (element: HTMLElement, visible: boolean) => {
       if (element.hasAttribute("data-scrollbar-active") === visible) return;
-      const current = getComputedStyle(element).getPropertyValue("--zcode-scrollbar-thumb");
+      const current = getComputedStyle(element).getPropertyValue("--codez-scrollbar-thumb");
       animations.get(element)?.cancel();
       element.toggleAttribute("data-scrollbar-active", visible);
       const target = visible
@@ -601,7 +601,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
         : "transparent";
       if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
         const animation = element.animate(
-          [{ "--zcode-scrollbar-thumb": current }, { "--zcode-scrollbar-thumb": target }],
+          [{ "--codez-scrollbar-thumb": current }, { "--codez-scrollbar-thumb": target }],
           { duration: 200, easing: "ease" },
         );
         animations.set(element, animation);
@@ -1446,7 +1446,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
   const handleOpenDraftPluginUi = useCallback(
     (request: DraftPluginUiOpenRequest) => {
       if (!isDesktop || workspaceReadOnlyReason || workspaceRemoteSessionId) return;
-      const store = useZCodeSessionStore.getState();
+      const store = useCodezSessionStore.getState();
       const draft = store.getWorkspaceState(workspaceAbsPath, workspaceIdentity);
       useWorkbenchGroupStore.getState().deactivateActiveGroup();
       usePaneLayoutStore.getState().resetToPrimaryPane();
@@ -1753,8 +1753,8 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
     (
       targetWorkspacePath: string,
       targetWorkspaceIdentity?: string,
-      targetWorkspacePurpose?: import("@zcode/shared").WorkspacePurpose,
-      createSource?: import("@zcode/shared").SessionCreateSource,
+      targetWorkspacePurpose?: import("@codez/shared").WorkspacePurpose,
+      createSource?: import("@codez/shared").SessionCreateSource,
     ) => {
       showChatMainView();
       handleStartDraftInWorkspace(
@@ -1810,7 +1810,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
   ]);
   const handleSelectComposerPlugin = useCallback(
     (mention: ComposerMentionPrefill) => {
-      useZCodeSessionStore
+      useCodezSessionStore
         .getState()
         .requestComposerTextInsert(
           workspaceAbsPath,
@@ -1833,7 +1833,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
   );
   // 草稿头部保留项目菜单与 Git 分支；项目目录由共享 Provider 提供。
   // Shell 只连接既有导航回调，pane 不持有另一份项目列表或 cwd 归属推断。
-  const draftProjectId = useZCodeSessionStore(
+  const draftProjectId = useCodezSessionStore(
     (state) => state.getWorkspaceState(workspaceAbsPath, workspaceIdentity).draftProjectId ?? null,
   );
   // worktree 复选框只对本地桌面的 Git 项目草稿开放（docs/git/worktree.md §3.1）。
@@ -1846,16 +1846,16 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
     gitState.summary.isRepository &&
     Boolean(draftProjectId);
   const worktreeSupport = useWorktreeSupport(workspaceAbsPath, workspaceIdentity, worktreeEligible);
-  const draftWorktree = useZCodeSessionStore(
+  const draftWorktree = useCodezSessionStore(
     (state) => state.getWorkspaceState(workspaceAbsPath, workspaceIdentity).draftWorktree ?? null,
   );
-  const setDraftWorktree = useZCodeSessionStore((state) => state.setDraftWorktree);
+  const setDraftWorktree = useCodezSessionStore((state) => state.setDraftWorktree);
   const draftWorktreeCallbacks = useMemo(
     () => createDraftWorktreeCallbacks(setDraftWorktree, workspaceAbsPath, workspaceIdentity),
     [setDraftWorktree, workspaceAbsPath, workspaceIdentity],
   );
-  const viewWorktreeCreation = useZCodeSessionStore((state) => state.viewWorktreeCreation);
-  const viewedCreationId = useZCodeSessionStore(
+  const viewWorktreeCreation = useCodezSessionStore((state) => state.viewWorktreeCreation);
+  const viewedCreationId = useCodezSessionStore(
     (state) =>
       state.getWorkspaceState(workspaceAbsPath, workspaceIdentity).draftWorktreeCreationId ?? null,
   );
@@ -1863,8 +1863,8 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
   // 结束事件先于记录列表推送到达（§3.3），此时列表里仍有这条记录；用 ref 在回调中读取最新列表。
   const worktreeCreationsRef = useRef(worktreeCreations);
   worktreeCreationsRef.current = worktreeCreations;
-  const beginWorktreeHandoff = useZCodeSessionStore((state) => state.beginWorktreeHandoff);
-  const worktreeHandoff = useZCodeSessionStore(
+  const beginWorktreeHandoff = useCodezSessionStore((state) => state.beginWorktreeHandoff);
+  const worktreeHandoff = useCodezSessionStore(
     (state) => state.getWorkspaceState(workspaceAbsPath, workspaceIdentity).worktreeHandoff ?? null,
   );
   const viewedCreation =
@@ -1877,7 +1877,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
   // 创建结束：会话已启动则打开它；放弃则把首条消息放回新草稿（§3.5）。只处理当前展示的记录。
   const handleWorktreeSettlement = useCallback(
     (settlement: ManagedWorktreeCreationSettlement) => {
-      const state = useZCodeSessionStore
+      const state = useCodezSessionStore
         .getState()
         .getWorkspaceState(settlement.workspacePath, workspaceIdentity);
       if (state.draftWorktreeCreationId !== settlement.creationId) return;
@@ -2461,7 +2461,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
                 providerWorkspaceConfigPath={providerConfigFile.path}
                 providerWorkspaceConfigExists={providerConfigFile.exists}
                 providerWorkspaceConfigLoading={providerConfigFile.loading}
-                workspaceHeaderState={workspaceShellZCodeState}
+                workspaceHeaderState={workspaceShellCodezState}
                 gitSummary={gitState.summary}
                 gitDirtyFileCount={gitDirtyFileCount}
                 isMacDesktop={isMacDesktop}
@@ -2870,7 +2870,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
                             providerWorkspaceConfigPath={providerConfigFile.path}
                             providerWorkspaceConfigExists={providerConfigFile.exists}
                             providerWorkspaceConfigLoading={providerConfigFile.loading}
-                            workspaceHeaderState={workspaceShellZCodeState}
+                            workspaceHeaderState={workspaceShellCodezState}
                             gitSummary={gitState.summary}
                             gitDirtyFileCount={gitDirtyFileCount}
                             isMacDesktop={isMacDesktop}
@@ -3205,7 +3205,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
   );
   return (
     <DesktopWindowFrame
-      title={`ZCode / ${getPathLeaf(workspaceAbsPath)}`}
+      title={`Codez / ${getPathLeaf(workspaceAbsPath)}`}
       showHeader
       isDesktop={isDesktop}
       isMacDesktop={isMacDesktop}

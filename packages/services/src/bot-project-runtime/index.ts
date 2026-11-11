@@ -1,11 +1,11 @@
-import { parseRemoteWorkspaceIdentity, remoteHostIdFromWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity, remoteHostIdFromWorkspaceIdentity } from "@codez/shared";
 import type {
   BotProjectConnection,
   BotProjectRuntimePort,
   BotRemoteRuntimeService,
   BotRemoteTarget,
   BotRuntimeSubscription,
-  IZCodeTaskService,
+  ICodezTaskService,
 } from "#src/bot-project-runtime/contract.js";
 export type {
   BotRemoteRuntimeService,
@@ -57,8 +57,8 @@ export function createBotProjectRuntime(port: BotProjectRuntimePort): BotRemoteR
   function subscribe(
     target: BotRemoteTarget,
     initial: Lease,
-    params: Parameters<IZCodeTaskService["onDynamicTaskEvent"]>[0],
-    receive: Parameters<ReturnType<IZCodeTaskService["onDynamicTaskEvent"]>>[0],
+    params: Parameters<ICodezTaskService["onDynamicTaskEvent"]>[0],
+    receive: Parameters<ReturnType<ICodezTaskService["onDynamicTaskEvent"]>>[0],
   ): BotRuntimeSubscription {
     if (
       params.workspacePath !== target.workspacePath ||
@@ -130,7 +130,7 @@ export function createBotProjectRuntime(port: BotProjectRuntimePort): BotRemoteR
         return { ok: false, message: error instanceof Error ? error.message : String(error) };
       }
     },
-    async getZCodeTaskService(target) {
+    async getCodezTaskService(target) {
       const lease = await admit(target);
       await lease.connection.agentService.syncAppRuntimePreferences(
         await port.readRuntimePreferences(),
@@ -139,8 +139,8 @@ export function createBotProjectRuntime(port: BotProjectRuntimePort): BotRemoteR
       return new Proxy(lease.connection.taskService, {
         get(base, property, receiver) {
           if (property === "onDynamicTaskEvent")
-            return (params: Parameters<IZCodeTaskService["onDynamicTaskEvent"]>[0]) =>
-              (receive: Parameters<ReturnType<IZCodeTaskService["onDynamicTaskEvent"]>>[0]) =>
+            return (params: Parameters<ICodezTaskService["onDynamicTaskEvent"]>[0]) =>
+              (receive: Parameters<ReturnType<ICodezTaskService["onDynamicTaskEvent"]>>[0]) =>
                 subscribe(target, lease, params, receive);
           const value: unknown = Reflect.get(base, property, receiver);
           if (typeof value !== "function") return value;

@@ -28,7 +28,7 @@
 - 不在本设置功能中新增 Audio 附件发送、编码或 provider request 转换能力；Video 附件能力由独立的视频输入功能提供。
 - 不新增图片、音频或视频输出的渲染链路。
 - 不改变模型候选分组、当前模型选择、任务恢复和手机 replayable 语义。
-- 不让远端 workspace 的 `~/.zcode/v2` 成为模型设置权威源。
+- 不让远端 workspace 的 `~/.codez/v2` 成为模型设置权威源。
 - 不把 provider registry 或能力状态下沉到 relay、desktop main 或 renderer 队列。
 
 ## 当前事实与设计缺口
@@ -42,7 +42,7 @@
 }
 ```
 
-但对 legacy/custom provider，这个 text-only 缺省并不代表“明确不支持图片”。`convertModelProviderConfigToZCodeProviderInput` 会保留媒体能力未知态，防止第三方 vision 模型因为历史默认值被误判为 text-only。
+但对 legacy/custom provider，这个 text-only 缺省并不代表“明确不支持图片”。`convertModelProviderConfigToCodezProviderInput` 会保留媒体能力未知态，防止第三方 vision 模型因为历史默认值被误判为 text-only。
 
 因此下面两种状态当前在内存配置中不可区分：
 
@@ -107,7 +107,7 @@ modalitiesConfigured?: boolean;
 - `undefined`：历史 custom/legacy 配置没有可靠模态事实；即使归一化数组是 text-only，也继续保持媒体能力未知。
 - catalog-backed/远端权威模型不依赖用户标记，仍按现有权威来源规则投影。
 
-字段需要通过 `zcode` 扩展保存，避免污染 OpenCode 公共字段；顶层 `modalities` 继续保存真实 input/output 数组。命名可在实现前调整，但必须保留同等的来源区分，不能复用粗粒度的 `modified`：用户只修改 context window 时不应被误判为显式 text-only。
+字段需要通过 `codez` 扩展保存，避免污染 OpenCode 公共字段；顶层 `modalities` 继续保存真实 input/output 数组。命名可在实现前调整，但必须保留同等的来源区分，不能复用粗粒度的 `modified`：用户只修改 context window 时不应被误判为显式 text-only。
 
 草稿需要单独跟踪模态是否被用户触碰。打开旧模型后只修改 context window，不得自动写入 `modalitiesConfigured=true`；只有用户改变模态，或新增模型时主动确认模态选择，才写入显式来源。
 
@@ -135,9 +135,9 @@ modalitiesConfigured?: boolean;
           | 保存 + 校验
           v
 本地 modelProviderService（唯一权威）
-  ~/.zcode/v2/config.json
+  ~/.codez/v2/config.json
   ├─ model.modalities.input/output
-  └─ model.zcode.modalitiesConfigured
+  └─ model.codez.modalitiesConfigured
           |
           | provider registry revision
           +-------------------------------+
@@ -195,7 +195,7 @@ provider-visible request 媒体保留或文本化
 - 模态变更与现有 ID、API format、context window、max output tokens 一次原子提交。
 - 编辑其他 metadata 时必须保留已有 input modalities 和显式来源；output 按已确认边界归一化为固定 Text。
 - Video 必须只映射到 `supportsVideo`；Audio/输出类型不得被错误映射到 `supportsImages` / `supportsPdf` / `supportsVideo`。
-- 不新增 ZCode Protocol 字段；当前协议已有 optional `supportsImages`、`supportsPdf`、`supportsVideo`。Audio 若要立即生效，必须先扩展协议 schema 和 runtime 能力，该要求不属于本 spec。
+- 不新增 Codez Protocol 字段；当前协议已有 optional `supportsImages`、`supportsPdf`、`supportsVideo`。Audio 若要立即生效，必须先扩展协议 schema 和 runtime 能力，该要求不属于本 spec。
 
 ## 必须保持的不变量
 
@@ -223,7 +223,7 @@ feature graph 已补充 `capability.model-capabilities` 到共享模型候选和
 - UI 单测：添加/编辑、默认值、回显、多选、键盘、取消、校验、i18n。
 - 展示单测：text-only 与任意非 Text 输入类型判定、模型菜单左侧徽标/行尾对号布局、设置行容量徽标并列、中英文文案、含多段 `/` 的模型 ID round-trip。
 - draft 单测：排序去重、原子提交、保留未修改字段、旧模型未触碰模态保持 unknown。
-- shared/services 单测：schema、OpenCode config 读写、`zcode` 来源标记 round-trip、legacy migration。
+- shared/services 单测：schema、OpenCode config 读写、`codez` 来源标记 round-trip、legacy migration。
 - protocol/bootstrap 单测：正向/负向 image/pdf/video 投影、active session 热更新、未知态保留。
 - 桌面 E2E：真实设置页保存、配置落盘、provider registry revision、最终 provider request。
 - 远端 E2E/集成：本地 provider snapshot 下发远端 runtime，远端配置文件不成为权威源。

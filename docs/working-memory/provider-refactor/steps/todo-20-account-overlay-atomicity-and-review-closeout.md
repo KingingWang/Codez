@@ -8,7 +8,7 @@
 >
 > 相关任务：[`07`](./todo-07-account-connection-selection-and-access-context-cutover.md)、
 > [`17`](./todo-17-provider-registry-settings-authority-boundary-closure.md)、
-> [`18`](./todo-18-zcode-builtin-client-config-sync-and-lkg.md)
+> [`18`](./todo-18-codez-builtin-client-config-sync-and-lkg.md)
 >
 > 相关设计：[`configuration.md`](../design/registry/configuration.md)、
 > [`registry.md`](../design/registry/registry.md)、
@@ -22,8 +22,8 @@
 
 1. 保留 Account Built-in Provider Config 作为正式 Overlay，并用 `enabled`、账号级 Start Plan
    `builtinModelIds` 与结构化 Account Access 表达当前账号动态事实；
-2. 阻止 Registry 发布“新 ZCode Built-in + 旧 Account Overlay”的中间组合；
-3. 将 ZCode Built-in Environment Active/LKG 按 ZCode Endpoint 物理隔离；
+2. 阻止 Registry 发布“新 Codez Built-in + 旧 Account Overlay”的中间组合；
+3. 将 Codez Built-in Environment Active/LKG 按 Codez Endpoint 物理隔离；
 4. 修正 CLI `--help` / `--version` 不必要启动 Provider Runtime，以及 Bootstrap 漏声明 `zod`；
 5. 删除审查确认的孤儿 ZIP 实现与专属依赖。
 
@@ -37,7 +37,7 @@ Built-in Release 业务完整性发布门禁。
 Account Overlay 不是为了形式统一而存在。当前账号会真实改变账号型 Built-in Provider 的有效配置：
 
 ```text
-ZCode Built-in Provider Config
+Codez Built-in Provider Config
               |
               v
 Account Built-in Provider Config
@@ -55,12 +55,12 @@ Effective Provider Config
 顺序保持：
 
 ```ts
-const effectiveBuiltinProviders = zcodeBuiltinProviders.overlay(accountBuiltinProviders);
+const effectiveBuiltinProviders = codezBuiltinProviders.overlay(accountBuiltinProviders);
 
 const effectiveProviders = effectiveBuiltinProviders.overlay(personalProviders);
 ```
 
-Account 只读取和约束 ZCode Built-in 中 `access.type = "zhipu-account"` 的 Provider，不读取、不约束 Personal-only
+Account 只读取和约束 Codez Built-in 中 `access.type = "zhipu-account"` 的 Provider，不读取、不约束 Personal-only
 Provider。Personal 继续作为最后一层用户覆盖。
 
 ### 1.2 账号可用性统一使用 `enabled`
@@ -97,7 +97,7 @@ Start Plan balance
 Account Provider Config.builtinModelIds
               |
               v
-ZCode Built-in Model Config Rules resolve
+Codez Built-in Model Config Rules resolve
 ```
 
 规则如下：
@@ -108,7 +108,7 @@ ZCode Built-in Model Config Rules resolve
   宽泛 Built-in 默认集合；
 - `show_name` 只作为当前服务端兼容输入暂时保留；服务端保证稳定提供 `model:<id>` 后另行删除；
 - Account 只改变成员资格，不提供 Properties、Reasoning、context 或 max output；模型静态事实仍
-  由 ZCode Built-in + Personal Model Config Rules 解析；
+  由 Codez Built-in + Personal Model Config Rules 解析；
 - Personal `modelIds` 继续在账号约束后的 Built-in Inventory 之后加入，真实请求仍由服务端最终授权。
 
 ### 1.4 Account Access 继续进入 Overlay，但不包含真实凭据
@@ -161,14 +161,14 @@ B1 + A1  <- 唯一允许的新 Snapshot
 ```ts
 interface ProviderConfigSnapshot {
   readonly revision: string;
-  readonly zcodeBuiltinRevision: string;
+  readonly codezBuiltinRevision: string;
   readonly personalRevision: string;
   // existing config fields
 }
 
 interface AccountProviderConfigSnapshot {
   readonly revision: string;
-  readonly basedOnZCodeBuiltinRevision: string;
+  readonly basedOnCodezBuiltinRevision: string;
   readonly providers: ProviderConfigMap;
 }
 ```
@@ -176,23 +176,23 @@ interface AccountProviderConfigSnapshot {
 Registry 只在两者匹配时发布：
 
 ```ts
-account.basedOnZCodeBuiltinRevision === config.zcodeBuiltinRevision;
+account.basedOnCodezBuiltinRevision === config.codezBuiltinRevision;
 ```
 
 不匹配时保留当前完整 Registry Snapshot，等待 Account Source 完成对新 Built-in 的投影。Account 即使得到与上一轮内容相同的
-Provider Map，只要 `basedOnZCodeBuiltinRevision` 改变，也必须发布新的 Account Source revision/change event，使 Registry
-能够应用新 Built-in。Personal 更新不改变 `zcodeBuiltinRevision`，不得被 Account 网络刷新阻塞。
+Provider Map，只要 `basedOnCodezBuiltinRevision` 改变，也必须发布新的 Account Source revision/change event，使 Registry
+能够应用新 Built-in。Personal 更新不改变 `codezBuiltinRevision`，不得被 Account 网络刷新阻塞。
 
-### 1.6 Active/LKG 按 ZCode Endpoint 隔离
+### 1.6 Active/LKG 按 Codez Endpoint 隔离
 
-这里的 Endpoint 指 ZCode 平台控制面 `zcodeEndpointOrigin`（生产、测试或开发/mock Origin），不是 Provider Config 中的
+这里的 Endpoint 指 Codez 平台控制面 `codezEndpointOrigin`（生产、测试或开发/mock Origin），不是 Provider Config 中的
 模型 API Endpoint。Todo 18 当前只让 `refresh-control.json.endpointKey` 隔离刷新 TTL，但不同 Endpoint 仍共享
 `active.json`，导致互不相关的 revision 被比较。
 
 Remote Active 与刷新控制文件必须按规范化 Endpoint 的稳定、碰撞安全路径段物理隔离：
 
 ```text
-<environmentConfigRoot>/provider/zcode-builtin/
+<environmentConfigRoot>/provider/codez-builtin/
 └─ <platform>/
    └─ <appVersion>/
       └─ <endpointKey>/
@@ -229,7 +229,7 @@ Bootstrap 生产代码直接导入 `zod`，必须在自己的 `dependencies` 中
 
 删除零引用的：
 
-- `packages/zcode-server-cli/src/packaging/zipArchive.ts`；
+- `packages/codez-server-cli/src/packaging/zipArchive.ts`；
 - 仅由它使用的 `yazl`；
 - 仅由它使用的 `@types/yazl`。
 
@@ -245,7 +245,7 @@ Bootstrap 生产代码直接导入 `zod`，必须在自己的 `dependencies` 中
 Bundled / Endpoint-scoped Active / Remote
                     |
                     v
-          ZCode Built-in Source Bn
+          Codez Built-in Source Bn
                     |
                     +----------------------+
                     |                      |
@@ -293,8 +293,8 @@ already-created Active Model
 
 ### Step 2：补齐分层 revision
 
-- `ProviderConfigSnapshot` 暴露 `zcodeBuiltinRevision` 与 `personalRevision`，保留现有组合 `revision`；
-- `AccountProviderConfigSnapshot` 增加 `basedOnZCodeBuiltinRevision`；
+- `ProviderConfigSnapshot` 暴露 `codezBuiltinRevision` 与 `personalRevision`，保留现有组合 `revision`；
+- `AccountProviderConfigSnapshot` 增加 `basedOnCodezBuiltinRevision`；
 - Mutable/Empty/Test Sources 使用同一契约，不增加字符串解析或 wildcard revision；
 - Account Source revision 同时包含来源 Built-in revision 与 Overlay 内容身份，保证同内容新来源仍触发变化。
 
@@ -412,14 +412,14 @@ already-created Active Model
 | Capability       | Provider Registry、Account Overlay、Built-in Remote/LKG、CLI Bootstrap                                          |
 | Change layer     | option-source / validation / persistence / commit-effect                                                        |
 | Operating mode   | planning                                                                                                        |
-| Primary seeds    | `AccountProviderService`、`ProviderRegistryService`、`resolveZCodeBuiltinCachePaths`、`requiresProviderRuntime` |
+| Primary seeds    | `AccountProviderService`、`ProviderRegistryService`、`resolveCodezBuiltinCachePaths`、`requiresProviderRuntime` |
 | Out of scope     | staging merge、真实环境统一验证、Release 业务完整性门禁                                                         |
 
 ### State Owners And Commit Sinks
 
 | State/fact                    | Authoritative owner        | Persistence/cache             | Publish sink     |
 | ----------------------------- | -------------------------- | ----------------------------- | ---------------- |
-| Built-in revision/content     | ZCode Built-in Source      | Endpoint-scoped `active.json` | Config Service   |
+| Built-in revision/content     | Codez Built-in Source      | Endpoint-scoped `active.json` | Config Service   |
 | Account enabled/models/access | AccountProviderService     | 进程内 LKG Snapshot           | Account Source   |
 | Personal Config               | Personal Repository        | `config.json`                 | Config Service   |
 | Effective Provider/Model      | ProviderRegistryService    | 进程内 immutable Snapshot     | Registry/Facades |
@@ -437,7 +437,7 @@ already-created Active Model
 ### Graph Delta
 
 实施 Step 0 将更新 `capability.provider-registry`：补充 Account `enabled`、Start 账号模型成员、Account Access 与
-`basedOnZCodeBuiltinRevision` 原子发布不变量；补充 Built-in Active/LKG 的 Endpoint-scoped persistence 节点。当前 Todo
+`basedOnCodezBuiltinRevision` 原子发布不变量；补充 Built-in Active/LKG 的 Endpoint-scoped persistence 节点。当前 Todo
 是已确认语义的实施入口，不新增 UI Surface。
 
 ### Unresolved Questions
@@ -448,13 +448,13 @@ already-created Active Model
 
 ### 8.1 已落地
 
-- `ProviderConfigSnapshot` 已拆分组合 revision、ZCode Built-in revision 与 Personal revision；
-  `AccountProviderConfigSnapshot` 已携带 `basedOnZCodeBuiltinRevision`，且 Account revision 同时包含来源与 Overlay 内容；
+- `ProviderConfigSnapshot` 已拆分组合 revision、Codez Built-in revision 与 Personal revision；
+  `AccountProviderConfigSnapshot` 已携带 `basedOnCodezBuiltinRevision`，且 Account revision 同时包含来源与 Overlay 内容；
 - Account Resolver 已统一投影 `enabled`：available 显式启用，unavailable 显式禁用，unknown 首次 fail-closed；
   Start Plan 精确采用账号模型集合，空集合执行 LKG/fail-closed；Individual/Team 继承 Built-in 成员；
 - Registry 已增加 Built-in/Account revision barrier：不匹配时保留上一份完整 Snapshot，匹配后再发布；Personal-only
   revision 变化不等待 Account 重算；
-- Environment Source 已按规范化 ZCode 控制面 Origin 的 SHA-256 路径段隔离 `active.json` 与
+- Environment Source 已按规范化 Codez 控制面 Origin 的 SHA-256 路径段隔离 `active.json` 与
   `refresh-control.json`；Endpoint 切换使用各自 Bundled/LKG，晚到的旧 Endpoint 响应不会落盘；
 - Desktop Services 在读取 Settings 时动态解析当前 Endpoint；Bootstrap、Protocol 与 Agent stdio payload 已贯穿
   Account 来源 revision；首次 Account 事实尚未到达时使用与当前 Built-in 匹配的 fail-closed Snapshot；
@@ -463,8 +463,8 @@ already-created Active Model
 
 ### 8.2 自动化证据
 
-- `@zcode/provider`：14 个测试文件、130 条测试通过，package typecheck 通过；
-- `@zcode/provider-node`：5 个测试文件、36 条测试通过，package typecheck 通过；
+- `@codez/provider`：14 个测试文件、130 条测试通过，package typecheck 通过；
+- `@codez/provider-node`：5 个测试文件、36 条测试通过，package typecheck 通过；
 - Services Account/Registry/Request Auth 定向测试：3 个测试文件、24 条测试通过；
 - CLI Bootstrap process/protocol 定向测试：114 条测试通过，package typecheck 通过；
 - CLI Provider Runtime Env 的 development、SEA 与元信息入口 3 条定向测试通过；
@@ -478,7 +478,7 @@ already-created Active Model
   当前生产打包路径原本就直接使用该系统命令，被删除的孤儿 helper 没有任何调用方，因此这不是本 Todo 引入的回归；
 - CUA Permission Broker 的 socket close 时序用例在全量并发运行时失败一次；同一条用例随后独立复跑通过，属于与 Provider
   无关的既有时序波动；
-- `@zcode/cli` 独立 typecheck 仍被既有 `AgentRuntimeConfig.modelSelection` 缺失挡住，报错位于
+- `@codez/cli` 独立 typecheck 仍被既有 `AgentRuntimeConfig.modelSelection` 缺失挡住，报错位于
   `prompt-command.ts` 与 `tui-prompt-handler.ts`，不在本 Todo 改动面；
 - 全仓 `fmt:check` 仍会扫描 Electron vendor fiddle 的既有非法 HTML 与二进制 `gb2312.js`，因此本次以修改文件格式检查
   和 `git diff --check` 作为提交证据；

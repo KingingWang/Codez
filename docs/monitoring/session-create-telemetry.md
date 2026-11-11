@@ -91,7 +91,7 @@ workspaceIdentity/remoteSessionId 继续沿原 attachment 传递。
 - 单测：草稿来源的设置/重定位；手机 schema 拒绝其他事件/多余字段；宿主转发。
 - Pending E2E：预热零事件、首发一条带 talk_id、续发和历史重开不增加事件；
   Group/Project 来源由真实 UI 创建入口验证。
-- `pnpm typecheck`、`pnpm lint`、`pnpm --filter @zcode/desktop typecheck:e2e`。
+- `pnpm typecheck`、`pnpm lint`、`pnpm --filter @codez/desktop typecheck:e2e`。
 
 ### 2026-09-15 验证记录
 

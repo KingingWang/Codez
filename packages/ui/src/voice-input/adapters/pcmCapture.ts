@@ -9,7 +9,7 @@ const CHUNK_SAMPLES = 1600;
 
 // worklet 必须是独立脚本；用 Blob URL 加载，桌面 file:// 与开发服务器下行为一致。
 const WORKLET_SOURCE = `
-class ZCodePcmCapture extends AudioWorkletProcessor {
+class CodezPcmCapture extends AudioWorkletProcessor {
   constructor() {
     super();
     this.buffer = new Int16Array(${CHUNK_SAMPLES});
@@ -50,7 +50,7 @@ class ZCodePcmCapture extends AudioWorkletProcessor {
     return true;
   }
 }
-registerProcessor("zcode-pcm-capture", ZCodePcmCapture);
+registerProcessor("codez-pcm-capture", CodezPcmCapture);
 `;
 
 export interface PcmCaptureStats {
@@ -100,7 +100,7 @@ export async function startPcmCapture(handlers: {
     throw error;
   }
   const source = context.createMediaStreamSource(stream);
-  const node = new AudioWorkletNode(context, "zcode-pcm-capture", {
+  const node = new AudioWorkletNode(context, "codez-pcm-capture", {
     numberOfInputs: 1,
     numberOfOutputs: 0,
   });

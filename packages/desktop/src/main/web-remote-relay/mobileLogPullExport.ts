@@ -1,15 +1,15 @@
 // 「拉取手机日志」：向已配对手机发 mobile-log-pull-request，分片逐片写入
-// ~/.zcode/export-log/mobile-logs-<设备>-<时间>.jsonl，结束后弹框给出路径。
+// ~/.codez/export-log/mobile-logs-<设备>-<时间>.jsonl，结束后弹框给出路径。
 // 入口：帮助菜单、远控面板连接卡片。
 // 文件结构：首行 header（kind=mobile-log-pull）、中间每行一条日志、末行 summary。
 // 文件在首片到达（或成功结束）时才创建，并以 wx 独占打开：busy 等「还没开始就失败」的情况
 // 不会碰到磁盘，也不会截断或删除另一次导出的同名文件。
 // 失败时：已写入条目 > 0 保留部分文件；否则删除文件。
-// 日志统一 `[web-remote-control] zcode_rc_log_pull_start/_result`，result 带 outcome、耗时、字节数、错误码。
+// 日志统一 `[web-remote-control] codez_rc_log_pull_start/_result`，result 带 outcome、耗时、字节数、错误码。
 
 import { mkdir, open, rm, type FileHandle } from "node:fs/promises";
 import { basename, join } from "node:path";
-import { toZhOrEnLocale, type Locale } from "@zcode/shared";
+import { toZhOrEnLocale, type Locale } from "@codez/shared";
 import {
   MobileLogPullError,
   type MobileLogPullErrorCode,
@@ -116,7 +116,7 @@ type MobileLogExportOutcome =
   | { ok: true; path: string; summary: MobileLogPullSummary; bytes: number }
   | { ok: false; error: MobileLogPullError; path?: string; bytes: number };
 
-/** 拉取结果日志：成功与失败共用一行格式，便于 grep zcode_rc_log_pull。 */
+/** 拉取结果日志：成功与失败共用一行格式，便于 grep codez_rc_log_pull。 */
 function logPullResult(
   dependencies: MobileLogPullExportDependencies,
   input: {
@@ -142,9 +142,9 @@ function logPullResult(
     ...(outcome.path ? { file: basename(outcome.path) } : {}),
   };
   if (outcome.ok) {
-    dependencies.logger.info("[web-remote-control] zcode_rc_log_pull_result", fields);
+    dependencies.logger.info("[web-remote-control] codez_rc_log_pull_result", fields);
   } else {
-    dependencies.logger.warn("[web-remote-control] zcode_rc_log_pull_result", fields);
+    dependencies.logger.warn("[web-remote-control] codez_rc_log_pull_result", fields);
   }
 }
 
@@ -163,7 +163,7 @@ async function exportMobileLogsToFile(
     dependencies.exportDir,
     `mobile-logs-${deviceSegment}-${formatFileTimestamp(startedAt)}.jsonl`,
   );
-  dependencies.logger.info("[web-remote-control] zcode_rc_log_pull_start", {
+  dependencies.logger.info("[web-remote-control] codez_rc_log_pull_start", {
     window: input.target.windowId,
     since_ts: input.query.sinceTs,
     until_ts: input.query.untilTs,

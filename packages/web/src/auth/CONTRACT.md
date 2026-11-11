@@ -6,4 +6,4 @@
 - 主身份只接受服务端canonical user_id；业务token不保存，资料字段不推导身份。
 - 同源认证变更发出事件，消费者通过当前JWT与revision判断是否需要丢弃请求和连接。
 - 历史有效凭据保持只读兼容；无Web Locks仍可读取和退出，不能不安全降级为多标签非原子提交。
-- 服务端协议、spec与验收范围见docs/zcode-login-rework.md；真实法律授权由用户完成。
+- 服务端协议、spec与验收范围见docs/codez-login-rework.md；真实法律授权由用户完成。

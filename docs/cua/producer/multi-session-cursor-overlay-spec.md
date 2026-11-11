@@ -1,7 +1,7 @@
 # 多 Session 光标 Overlay 与视觉升级 Spec
 
 状态：已实施（2026-10-24，落地事实与偏差见 §12 实施记录；Windows 真机验收待做）
-范围：`packages/zcode-cua`（macOS + Windows 双平台的 ghost cursor 多实例化 +
+范围：`packages/codez-cua`（macOS + Windows 双平台的 ghost cursor 多实例化 +
 运动曲线 + 朝向 + 多颜色）
 关联分支：`feat/cua-multi-color-cursor`
 
@@ -42,27 +42,27 @@ MCP 光标工具面。
 
 | 能力 | 现状 | 差距 |
 | --- | --- | --- |
-| 多 session 事件 | 已有且**平台无关**：宿主 `cuaOperationTurnTracker`（`packages/services/src/zcode-agent/`）→ `pip_session_event`（协议 v2，`turn-started/turn-ended/session-closed/focus-changed`，带 `sessionId/turnId`，幂等去重、sequence 仲裁）→ Helper `pip-session/coordinator.ts` 多 session 状态机。Windows 端到端可用（coordinator 不门控平台，只有 native PiP 消费端是 mac-only） | 事件通道可直接复用；但 turn lifecycle 对光标只有 `anyTurnRunning()` 一个布尔（`broker/server/ghostCursorTurnLifecycle.ts`，Windows 上因 native 方法不存在而是 no-op） |
+| 多 session 事件 | 已有且**平台无关**：宿主 `cuaOperationTurnTracker`（`packages/services/src/codez-agent/`）→ `pip_session_event`（协议 v2，`turn-started/turn-ended/session-closed/focus-changed`，带 `sessionId/turnId`，幂等去重、sequence 仲裁）→ Helper `pip-session/coordinator.ts` 多 session 状态机。Windows 端到端可用（coordinator 不门控平台，只有 native PiP 消费端是 mac-only） | 事件通道可直接复用；但 turn lifecycle 对光标只有 `anyTurnRunning()` 一个布尔（`broker/server/ghostCursorTurnLifecycle.ts`，Windows 上因 native 方法不存在而是 no-op） |
 | macOS 光标 | `src/native/ghost_cursor.mm`（1347 行）：进程级全局单例 `g_window/g_dot/g_bloom`，NAPI 面 `ghostInit/Show/Move/ClickRipple/Hide/State/...` 全部无 session 参数 | 需多实例化 + session 路由 |
 | Windows 光标 | **无**。native 侧无任何可见窗口能力（`ax_win.cc` 唯一 `CreateWindowExW` 是剪贴板隐藏消息窗口）；ghost\* 13 个 NAPI 导出与 pip\* 系列全缺；用户反馈只有 desktop Electron 指示条（`packages/desktop/src/main/windowsCuaOperationIndicator.ts`，多 turn 聚合计数但无 per-session 光标） | 需新建 `ghost_cursor_win.cc` 全套 |
 | 视觉 | 箭头 + 热点环 + 点击涟漪 + keyPulse + focus-rect + 180ms idle 淡出 + 20s 活动租约；`MoveGhostTo` 瞬移；`GhostBlueColor` 硬编码 | 加曲线/朝向/多色 |
 | 遮挡抑制（macOS） | 已有：overlay 在 `NSScreenSaverWindowLevel` 且可见时 `orderFrontRegardless`（恒在用户窗口之上）+ **光标点位 owner-walk 探测**兜底（租约活跃且有 target 时每 100ms 一次）：确定性遮挡（owner ≠ target）→ 立即 alpha=0 + 丢弃 pending 涟漪；不确定态（探测无结果/竞态）→ 连续 3 次（300ms 宽限）才降 alpha 且不吞涟漪；确认可见 → 恢复 + 补播涟漪（`ghost_cursor.mm` 统一可见性模型：`alpha = idle_alpha × occlusion_alpha`） | per-group 化 + 整窗 opacity 下沉为组 opacity（§4.4） |
 | 会话结束隐藏 | 已有（`docs/cua/producer/ghost-cursor-turn-end-hide.md`）：`turn-ended/session-closed` → `withGhostCursorTurnEndHide`（仅当无其他 running session 才 `ghostHide`）→ **立即**隐藏（清 target、停探测、orderOut），非淡出；`turn-started` 刻意不主动显示（无动作显示光标无意义）；20s 租约 + 180ms 淡出仅是轮内兜底，不缩短 | per-session 化后 `anyTurnRunning` 守卫自然消解（§4.7） |
-| 工具调用标题（badge 数据源） | **生产链路是 SDK 而非 MCP 工具**（`docs/cua/2026-08-24-cua-node-repl-sdk-migration-spec.md`）：模型只调 `node_repl` 的 `js`，cell 内 bootstrap CUA SDK 经 bridge `{method, input, context}` 进 `ComputerUseRuntime.execute`。`js` 契约**必填 `title`**（用户语言简短标题，`apps/zcode-cli/packages/contracts/src/tools/node-repl.ts:24`），host 已把它放进 `callMeta`（`node-repl-host/src/server.ts:217`）→ `executeJs({requestMeta})` → bridge context 由 requestMeta 构造（`cua-bridge.ts:66`）——**title 已在进程内链路上流转，一个代码块一个 title** | context 透传到 `ComputerUseRuntimeContext` → broker 消息（§4.8），零协议新增 |
+| 工具调用标题（badge 数据源） | **生产链路是 SDK 而非 MCP 工具**（`docs/cua/2026-08-24-cua-node-repl-sdk-migration-spec.md`）：模型只调 `node_repl` 的 `js`，cell 内 bootstrap CUA SDK 经 bridge `{method, input, context}` 进 `ComputerUseRuntime.execute`。`js` 契约**必填 `title`**（用户语言简短标题，`apps/codez-cli/packages/contracts/src/tools/node-repl.ts:24`），host 已把它放进 `callMeta`（`node-repl-host/src/server.ts:217`）→ `executeJs({requestMeta})` → bridge context 由 requestMeta 构造（`cua-bridge.ts:66`）——**title 已在进程内链路上流转，一个代码块一个 title** | context 透传到 `ComputerUseRuntimeContext` → broker 消息（§4.8），零协议新增 |
 | 多显示器（macOS） | 已修过两个根因（`docs/cua/producer/ghost-cursor-multi-display-spaces.md`）：①并集窗口在默认 Spaces 下只上「面积最大的屏」→ 改为**单窗跟随反馈点所在屏**；②CG→NS 坐标翻转基准误用 `mainScreen`（key window 的屏）→ 一律 `PrimaryScreenFrame()`。已知代价：跨屏 glide 边界跳变 | **单窗跟随在多光标下失效**（两 session 分居两屏时窗口只能跟一个）→ macOS 改每屏一窗（§4.10） |
 | Gate/开关 | ghost overlay 走 argv `--ghost-cursor-overlay`（产品链两处硬编码 true，无设置项）；kill-switch 先例 `--disable-cps-activation`（默认开，argv=关）+ env 翻译函数 `cpsActivationDisableRequested`；argv 唯一构造点 `buildHelperOpenArgs` + `HelperLaunchSpec`（五次漏传教训注释）；旧 Helper 白名单式解析、未知 argv 安全忽略 | 新 gate 照 kill-switch 范式（§4.9），默认开 |
 | session 身份到 fire 点 | **比早期认知好得多（已核实）**：SDK 主链路的产品 sessionId（裸 `sess_*`）每请求流入 Helper——`trace.sessionId → request-context.session_id → context.sessionId`（cua-bridge 必填校验），`capture_app` 已带 `pip_session_context.session_id`；普通动作带复合 `session_key`（input-hold 域）。缺的只是：ghost fire 点（`ax_macos.mm:71-76`）与 Windows fire 点（`ax_win.cc` 经 `windowsInputDispatch.ts`）无 session 参数、native API 单例 | fire 点/seam 消费既有 `context.sessionId`（P0 最后一公里），光标 key 统一用裸 sessionId（§4.1） |
 | Windows 输入并行 | S4 并行实验 P6「同 Helper 双 MCP session 并行元素点击」已 pass（`2026-10-19-windows-input-s4-parallel-baseline.md`） | 多 agent 输入并行有实证，光标可视化跟得上语义 |
 | 单写者约束 | `ControllerLease` 全局唯一 controller（文件锁，Windows 分支就绪：`controllerLease.ts:122`） | 保持不变：多光标仅展示层，输入仍单写者 |
-| 测试基建 | `test/matrix/` 三层门控（平台不匹配 skip → `ZCODE_CUA_HARNESS_E2E=1` opt-in → fixture 缺失 fail-fast）；`scripts/windows-harness-parallel-experiments.mjs` 双 MCP session runner | 直接复用为 Windows 多光标真机验收 |
+| 测试基建 | `test/matrix/` 三层门控（平台不匹配 skip → `CODEZ_CUA_HARNESS_E2E=1` opt-in → fixture 缺失 fail-fast）；`scripts/windows-harness-parallel-experiments.mjs` 双 MCP session runner | 直接复用为 Windows 多光标真机验收 |
 
 其他 Windows 事实（实施时注意）：
 
-- **binding.gyp 有两份**：根目录 `packages/zcode-cua/binding.gyp` 是权威
+- **binding.gyp 有两份**：根目录 `packages/codez-cua/binding.gyp` 是权威
   （Windows 编 4 个源文件），`src/native/binding.gyp` 是旧拷贝（缺 2 个源）——
   新增 Windows 源只改根目录那份。
 - Helper 传输 Windows 走 named pipe（`src/broker/socketPath.ts`，
-  `\\.\pipe\zcode-cua-helper-` 前缀），协议与 unix socket 同构。
+  `\\.\pipe\codez-cua-helper-` 前缀），协议与 unix socket 同构。
 - Helper peer 身份门在 Windows 有暂态（`helperMain.ts:1054-1070`，
   `WINDOWS_PEER_IDENTITY_GATE_TEMPORARILY_OPEN`）——overlay 是用户可见反馈面，
   其安全语义随这道门一起收口，本 spec 不单独引入新门。
@@ -90,7 +90,7 @@ turn 事件天然同源，不引入第二套身份。
 
 **关键调研结论（已核实，修正早期认知）**：SDK 主链路（生产链，node_repl）
 的产品 sessionId **现在就已 per-request 流到 Helper**，不存在「缺一整条
-路由」——`trace.sessionId → MCP request-context（com.zcode/request-context
+路由」——`trace.sessionId → MCP request-context（com.codez/request-context
 .session_id，cua-bridge 构造 context 时必填缺失抛错）→ runtime.execute
 ({context})`；`capture_app` 已带 `pip_session_context.session_id`（同为裸
 产品 sessionId）。真正缺的只有最后一公里：**ghost fire 点与 native API 不
@@ -444,7 +444,7 @@ Helper native：addon Proxy 在指针类调用边界推
 ```text
 L0 契约   helperConstants.ts: HELPER_DISABLE_MULTI_CURSOR_OVERLAY_ARG
           = "--disable-multi-cursor-overlay"（缺省 = 开）
-          + env 翻译 ZCODE_CUA_DISABLE_MULTI_CURSOR_OVERLAY →
+          + env 翻译 CODEZ_CUA_DISABLE_MULTI_CURSOR_OVERLAY →
           multiCursorOverlayDisableRequested(env)（只认显式 1/true/on/yes，
           唯一判定点，模式抄 cpsActivationDisableRequested）
 L1 构造   helperLauncher.ts: HelperLaunchSpec.disableMultiCursorOverlay?:
@@ -532,7 +532,7 @@ live 用例沿用本仓多屏 spec 先例（每块活动显示器中心点移动
 | macOS `ghost_cursor.mm` NAPI/C ABI | 现有 13 个导出增可选 sessionId 变体（NAPI 可选属性；C 接口新增 `ghost_cursor_move_to_session(...)` 系列，旧签名保留为 default 转发） | 二进制面只增不改 |
 | Windows `ghost_cursor_win.cc`（新） | 导出与 macOS 对齐的 ghost\* NAPI 面（带 sessionId；无 mac-only 的 focusRect/RenderPng 可后置）；`ax_win.cc` fire 点（SendClickAt / postMessage\* / hitTest 确定投递处）带 session 触发 | 新增导出，无兼容负担 |
 | 根目录 `binding.gyp` | Windows 分支 sources 加 `ghost_cursor_win.cc`、`motion_math.cc`，补 `gdi32/user32/dwmapi` 链接；macOS 分支加 `motion_math.cc` | 只加源与库；**不改 `src/native/binding.gyp`（旧拷贝）** |
-| argv（`helperConstants.ts` / `helperLauncher.ts` / Windows launcher 路径） | 现有 `--ghost-cursor-overlay/--ghost-cursor-capture` 不动；新增 kill-switch `--disable-multi-cursor-overlay`（默认开）+ env 翻译 `ZCODE_CUA_DISABLE_MULTI_CURSOR_OVERLAY`；`HelperLaunchSpec` 加 `disableMultiCursorOverlay?: boolean`，**产品链与懒启动链都传**（§4.9） | 旧 Helper 未知 argv 安全忽略 = 现状单光标；不 bump IPC 版本 |
+| argv（`helperConstants.ts` / `helperLauncher.ts` / Windows launcher 路径） | 现有 `--ghost-cursor-overlay/--ghost-cursor-capture` 不动；新增 kill-switch `--disable-multi-cursor-overlay`（默认开）+ env 翻译 `CODEZ_CUA_DISABLE_MULTI_CURSOR_OVERLAY`；`HelperLaunchSpec` 加 `disableMultiCursorOverlay?: boolean`，**产品链与懒启动链都传**（§4.9） | 旧 Helper 未知 argv 安全忽略 = 现状单光标；不 bump IPC 版本 |
 
 ## 6. 时序与状态图
 
@@ -694,7 +694,7 @@ MCP 工具面直调（无 title）全程无 badge，光标/动画/遮挡/生命�
    展示层并发，输入投递仍经现有仲裁。
 4. **Linux 不在本 spec 范围**：无 overlay，跨平台移植另立 spec。
 5. **不做 arrival waiter**：工具返回不等待光标滑行完成。
-6. **不替换 Windows 指示条**：指示条（全局「ZCode 在操作」状态）与光标
+6. **不替换 Windows 指示条**：指示条（全局「Codez 在操作」状态）与光标
    （per-session 位置可视化）语义互补，并存；后续产品若要合并另议。
 7. **不做相对 z 槽 pin**（`orderWindow:relativeTo:` / SetWindowPos 相对
    插入）：保留本仓「恒置顶 + 点位遮挡探测」模型——探测天然 per-cursor，
@@ -754,7 +754,7 @@ MCP 工具面直调（无 title）全程无 badge，光标/动画/遮挡/生命�
 
 ## 11. 关键落点文件
 
-- 共享：`packages/zcode-cua/src/native/motion_math.h/.cc`（运动学 + 颜色派生 +
+- 共享：`packages/codez-cua/src/native/motion_math.h/.cc`（运动学 + 颜色派生 +
   美术顶点，纯 C++ 双平台编译）、`display_geometry.h/.cc`（屏枚举/点→屏路由/
   seed clamp/per-display scale，纯几何）、根目录 `binding.gyp`（两平台 sources）
 - gate：`src/broker/helperConstants.ts`（argv 常量 + env 翻译）、
@@ -770,7 +770,7 @@ MCP 工具面直调（无 title）全程无 badge，光标/动画/遮挡/生命�
   context.sessionId）
 - 生命周期：`src/broker/server/ghostCursorTurnLifecycle.ts`（per-session 化）、
   `src/pip-session/coordinator.ts`（closed→remove）、`helperMain.ts`
-- 宿主：`packages/services/src/zcode-agent/cuaOperationTurnTracker.ts`
+- 宿主：`packages/services/src/codez-agent/cuaOperationTurnTracker.ts`
   （turn 事件 sessionId 同源参照，无需改动）
 - 测试：`test/native/ghost-cursor.test.ts`、`test/ghost-cursor-turn-lifecycle.test.ts`、
   `test/multi-cursor-overlay-gate.test.ts`、`test/multi-cursor-routing.test.ts`

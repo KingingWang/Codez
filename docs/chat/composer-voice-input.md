@@ -1,6 +1,6 @@
 # Composer 语音输入
 
-在 Composer 中点击麦克风说话，识别出的文字直接写入输入框。识别由 zcode-server 的 ASR 接口完成，协议见 zcode-server 仓库 `docs/asr.md`。本功能不修改 zcode-server 代码，只依赖其现有能力。
+在 Composer 中点击麦克风说话，识别出的文字直接写入输入框。识别由 codez-server 的 ASR 接口完成，协议见 codez-server 仓库 `docs/asr.md`。本功能不修改 codez-server 代码，只依赖其现有能力。
 
 ## 范围
 
@@ -129,7 +129,7 @@ renderer 在采集时统计本次录音的峰值电平。结束录音时按以�
 | 阶段                        | 原因                                            | 提示                                                                                                                                                                                     |
 | --------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 申请 ticket                 | 网络错误、超时                                  | 无法连接语音识别服务，请检查网络                                                                                                                                                         |
-| 申请 ticket                 | HTTP 401 `unauthorized`                         | 不单独提示。ticket 请求经 `NodeApiClient` 携带当前 `zcodejwttoken`，401 会进入全局登录失效流程：清理登录态并弹出「登录已过期」对话框，对话框中有登录按钮。登录态清空后麦克风按钮随之隐藏 |
+| 申请 ticket                 | HTTP 401 `unauthorized`                         | 不单独提示。ticket 请求经 `NodeApiClient` 携带当前 `codezjwttoken`，401 会进入全局登录失效流程：清理登录态并弹出「登录已过期」对话框，对话框中有登录按钮。登录态清空后麦克风按钮随之隐藏 |
 | 申请 ticket / WS 事件       | `rate_limited`、无响应体的 429                  | 语音识别繁忙，请稍后再试                                                                                                                                                                 |
 | 申请 ticket / WS 事件       | `unavailable`、`upstream_unavailable`、HTTP 503 | 语音识别服务暂不可用，请稍后再试                                                                                                                                                         |
 | WS 事件                     | `upstream_timeout`                              | 语音识别超时，请重试                                                                                                                                                                     |
@@ -172,10 +172,10 @@ idle ──点击──▶ requesting ──started──▶ recording ──点
 ## 链路
 
 ```text
-Renderer（packages/ui）                       Window Host（packages/services）           zcode-server
+Renderer（packages/ui）                       Window Host（packages/services）           codez-server
   getUserMedia → AudioWorklet
   → 16kHz 单声道 PCM16，每 100ms 一块（3200B）
-  start(attemptId, language) ───RPC───▶ POST /api/v1/asr/tickets {mode:"realtime"} ─────▶ (Bearer zcodejwttoken)
+  start(attemptId, language) ───RPC───▶ POST /api/v1/asr/tickets {mode:"realtime"} ─────▶ (Bearer codezjwttoken)
                                          WS /api/v1/asr/realtime?ticket=… ────────────────▶
                                          send start{pcm_s16le,16000,1,language}
   ◀──────── onEvent(started) ──────────── ◀ started
@@ -199,7 +199,7 @@ Renderer（packages/ui）                       Window Host（packages/services�
 
 ## 验收
 
-E2E：`packages/desktop/test/e2e/ui-shell/composer/composer-voice-input.test.ts`。麦克风使用 Chromium 假设备（wdio `--use-fake-device-for-media-stream`），zcode-server 由 `test/e2e/helpers/asr-mock-server.ts` 替身在 Electron 启动前接管。
+E2E：`packages/desktop/test/e2e/ui-shell/composer/composer-voice-input.test.ts`。麦克风使用 Chromium 假设备（wdio `--use-fake-device-for-media-stream`），codez-server 由 `test/e2e/helpers/asr-mock-server.ts` 替身在 Electron 启动前接管。
 
 | 用例  | 覆盖                                                                                                            |
 | ----- | --------------------------------------------------------------------------------------------------------------- |

@@ -3,11 +3,11 @@ import { MicIcon } from "lucide-react";
 import {
   TID_V4_COMPOSER_VOICE_INPUT,
   TID_V4_COMPOSER_VOICE_WAVEFORM,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { Button } from "@/components/ui/button.js";
 import { Spinner } from "@/components/ui/spinner.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import type { ComposerVoiceInput, VoiceInputState } from "@/voice-input/contract.js";
 
 const TITLE_IDS: Record<VoiceInputState, string> = {
@@ -78,7 +78,7 @@ export const VoiceInputButton = memo(function VoiceInputButton(props: {
   onToggle: () => void;
   subscribeLevel: ComposerVoiceInput["subscribeLevel"];
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const title = intl.formatMessage({ id: TITLE_IDS[props.state] });
   const active = props.state !== "idle";
   return (

@@ -1,4 +1,4 @@
-import { TID_V4_SESSION_PANE, testId } from "@zcode/shared/test-ids";
+import { TID_V4_SESSION_PANE, testId } from "@codez/shared/test-ids";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import {
   clickV4Stop,

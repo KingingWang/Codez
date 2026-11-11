@@ -1,6 +1,6 @@
 // PLM-EXT-P2B：插件入口——主导航 nav.primary 与文件查看器 file.viewer（docs/plugins/extension-host.md §16.3–§16.5）。
 // 隔离 HOME：两个纯 JS fixture 插件（test/e2e/fixtures/fs/plugins/plugin-extension-entries/）复制到 E2E HOME，
-// 经 ~/.zcode/cli/config.json 的 plugins.dirs 加载：
+// 经 ~/.codez/cli/config.json 的 plugins.dirs 加载：
 // - e2e-ext-entries（扩展）：nav.primary 的 view 条目，file.viewer 为 .E2EVIEW（大写，验证大小写不敏感）打开视图。
 // - e2e-mcp-viewer（只有 MCP App）：nav.primary 的 surface 条目，file.viewer 为 .e2edoc 打开页面并调 open_document。
 // 正式会话用 replay 创建：提示词带 upstream-e2e-ok，命中 plugin-extension-entries.json 的 plugin-extension-entries-1。
@@ -8,7 +8,7 @@
 // 视图与 MCP App 页面的 DOM、MCP server 写的调用记录。
 import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { TID_NAV_PRIMARY_ITEM, TID_WORKSPACE_FILE_TREE_ROW, testId } from "@zcode/shared/test-ids";
+import { TID_NAV_PRIMARY_ITEM, TID_WORKSPACE_FILE_TREE_ROW, testId } from "@codez/shared/test-ids";
 import { DEFAULT_WORKSPACE, clearAppData, getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
 import { restartIntoWorkspacePreservingProfile } from "#e2e/helpers/model-provider-restart-runtime";
 import {
@@ -176,9 +176,9 @@ async function readMcpPanelPages(): Promise<Array<Record<string, string>>> {
   return (await browser.electron.execute(async (electron) => {
     const pages: Array<Record<string, string>> = [];
     for (const guest of electron.webContents.getAllWebContents()) {
-      if (guest.isDestroyed() || !guest.getURL().startsWith("zcode-sandbox://")) continue;
+      if (guest.isDestroyed() || !guest.getURL().startsWith("codez-sandbox://")) continue;
       for (const frame of guest.mainFrame.framesInSubtree) {
-        if (!frame.url.startsWith("zcode-sandbox://plugin-")) continue;
+        if (!frame.url.startsWith("codez-sandbox://plugin-")) continue;
         const dataset = (await frame
           .executeJavaScript(
             `document.querySelector("h1")?.textContent === "E2E MCP panel" ? { ...document.body.dataset } : null`,
@@ -315,7 +315,7 @@ async function stopExtensionHost(): Promise<string> {
 describe("PLM-EXT-P2B 插件入口：主导航与文件查看器", () => {
   after(async () => {
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR ?? process.cwd(), "plm-ext-p2b-evidence.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR ?? process.cwd(), "plm-ext-p2b-evidence.json"),
       JSON.stringify(evidence, null, 2),
     ).catch(() => undefined);
     await clearAppData();
@@ -573,14 +573,14 @@ describe("PLM-EXT-P2B 插件入口：主导航与文件查看器", () => {
 
     // (g) .xlsx 仍先走内置的官方路由：官方 spreadsheets 插件接管，插件声明的查看器不接管。
     // 修复原因：这条断言最初写成「没有官方插件、走回退」，是因为开发机仓库根目录的本地
-    // .zcode/config.json 禁用了官方插件，并经项目配置发现进入了 E2E
+    // .codez/config.json 禁用了官方插件，并经项目配置发现进入了 E2E
     // （docs/testing/conversation-session-e2e-development-workflow.md「已知问题」）。干净环境里官方插件
     // 默认启用，正确行为是官方路由打开 spreadsheets 页面。
     await activateFileManagerTab();
     const linesBeforeXlsx = (await log.lines()).length;
     await clickFileTreeRow(XLSX_FILE);
     await browser.waitUntil(
-      async () => String((await readActiveSidePaneTab()) ?? "").includes("spreadsheets%40zcode"),
+      async () => String((await readActiveSidePaneTab()) ?? "").includes("spreadsheets%40codez"),
       { timeout: 30000, timeoutMsg: ".xlsx should open in the official spreadsheets page" },
     );
     evidence.xlsxActiveTab = await readActiveSidePaneTab();

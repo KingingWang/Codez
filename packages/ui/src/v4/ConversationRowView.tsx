@@ -27,7 +27,7 @@ import {
   TrendingUpDownIcon,
   XIcon,
 } from "lucide-react";
-import { parseAutomationRunId } from "@zcode/shared";
+import { parseAutomationRunId } from "@codez/shared";
 import {
   TID_V4_EDIT,
   TID_V4_EDIT_ATTACHMENT_REMOVE,
@@ -38,7 +38,7 @@ import {
   TID_V4_ROW,
   TID_V4_ROW_ATTACHMENTS,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import type {
   AttachmentRef,
   ArtifactRow,
@@ -54,7 +54,7 @@ import type {
   TurnHeaderRow,
   UnreadableConversationRow,
   UserInputRow,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { AssistantPreviewCards } from "@/AssistantPreviewCards.js";
 import { AssistantCodeCommentCards } from "@/AssistantCodeCommentCards.js";
 import { useAssistantCodeCommentFeatureEnabled } from "@/AssistantCodeCommentFeatureProvider.js";
@@ -92,8 +92,8 @@ import {
 } from "@/ToolCallBlocks/renderers/createWorkflowHoleInput.js";
 import { ToolCallBlock } from "@/ToolCallBlocks.js";
 import { resolveWorkflowRunOpenToolCallId } from "@/v4/workflowRunCardJoin.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { requestTaskNavigation } from "@/store/zcodeSessionStoreNavigation.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
+import { requestTaskNavigation } from "@/store/codezSessionStoreNavigation.js";
 import { useOptionalProjectDirectory } from "@/project-sidebar/ProjectDirectoryProvider.js";
 import type { ProjectTask } from "@/project-sidebar/contract.js";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
@@ -204,7 +204,7 @@ function findTaskById(tasks: readonly ProjectTask[], taskId: string): ProjectTas
  * 跳转需要的 workspacePath 与标题同源，猜路径会把「打不开」变成「打开了别的会话」。
  */
 const SessionSourceHint = memo(function SessionSourceHint({ source }: { source: SessionSource }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const directory = useOptionalProjectDirectory();
   const task = directory ? findTaskById(directory.tree.tasks, source.sessionId) : undefined;
   const workspacePath = task?.workspacePath;
@@ -251,14 +251,14 @@ const SessionSourceHint = memo(function SessionSourceHint({ source }: { source: 
  * rowId 与 turnId 都保留，所以它就停在原来那条消息的位置上，前后文不会错位。
  *
  * 用中性信息语义而不是 warning 色：会话本身没出错，只是这个 build 认不出其中一行——与
- * ConversationShareReadonlyTimeline 的「部分内容需要更新 ZCode 查看」是同一视觉语言。
+ * ConversationShareReadonlyTimeline 的「部分内容需要更新 Codez 查看」是同一视觉语言。
  */
 const UnreadableRowView = memo(function UnreadableRowView({
   row,
 }: {
   row: UnreadableConversationRow;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   return (
     <RowShell rowId={row.rowId} className="px-4 py-1">
       <div
@@ -412,7 +412,7 @@ const UserInputAttachmentList = memo(function UserInputAttachmentList({
   readAttachment?: NonNullable<ConversationRowRenderContext["readAttachment"]>;
   readAttachmentRange?: NonNullable<ConversationRowRenderContext["readAttachmentRange"]>;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [previewIndex, setPreviewIndex] = useState(0);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [failedRefs, setFailedRefs] = useState<ReadonlySet<string>>(() => new Set());
@@ -1030,7 +1030,7 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
   editWorkspaceRewindAvailability?: EditWorkspaceRewindAvailability;
   status?: string;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   // 引擎尾注折叠：正文只到 epilogueStart，
   // 之后的引擎文本折进气泡底部的披露。提示词上下文解析也只看正文——尾注里没有用户引用。
   const { body: bodyText, epilogue } = splitUserInputEpilogue(row.text, row.epilogueStart);
@@ -1352,7 +1352,7 @@ export const ConversationAssistantTextActions = memo(function ConversationAssist
   onFeedbackChange?: AssistantFeedbackHandler;
   className?: string;
 }) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const platform = useOptionalPlatform();
   const [localFeedback, setLocalFeedback] = useState<AssistantMessageFeedback | null>(feedback);
   const copyLabel = intl.formatMessage({ id: "chat.message.copy" });
@@ -1450,7 +1450,7 @@ export const ConversationAssistantTextActions = memo(function ConversationAssist
             <span
               className={cn(
                 "relative inline-flex",
-                localFeedback === "like" && "zcode-reaction-burst",
+                localFeedback === "like" && "codez-reaction-burst",
               )}
             >
               <ThumbsUpIcon className="size-3.5" />
@@ -1468,7 +1468,7 @@ export const ConversationAssistantTextActions = memo(function ConversationAssist
             <span
               className={cn(
                 "relative inline-flex",
-                localFeedback === "dislike" && "zcode-reaction-burst",
+                localFeedback === "dislike" && "codez-reaction-burst",
               )}
             >
               <ThumbsDownIcon className="size-3.5" />
@@ -1614,7 +1614,7 @@ const AssistantTextRowView = memo(function AssistantTextRowView({
         <GenUiMessageResponse
           completed={row.state === "complete"}
           messageKey={`${row.rowId}:${row.entityId ?? ""}`}
-          renderZCodeFileCitations
+          renderCodezFileCitations
           streaming={streaming}
           workspacePath={context.workspacePath}
           workspaceIdentity={context.workspaceIdentity}

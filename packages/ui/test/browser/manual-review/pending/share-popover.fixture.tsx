@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { ZCodeIntlProvider, useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider, useCodezIntl } from "@/i18n/IntlProvider.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import { ConversationShareMenu } from "@/ConversationShareMenu.js";
 import { ConversationSharePopover } from "@/conversation-share-interaction/ConversationSharePopover.js";
@@ -24,11 +24,11 @@ const items = Array.from({ length: Number(params.get("items") ?? 9) }, (_, i) =>
   unitIndex: i,
   userPreview: i === 0 ? "hello" : `你好，第 ${i + 1} 轮`,
   assistantPreview:
-    "Hello! I'm ZCode, your coding assistant. I can help you explore the repository, understand the implementation, and improve the sharing experience.",
+    "Hello! I'm Codez, your coding assistant. I can help you explore the repository, understand the implementation, and improve the sharing experience.",
   isRunning: params.has("running") || i === 8,
 }));
 function Fixture() {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [sessionId, setSessionId] = useState("a");
   const [inspected, setInspected] = useState(0);
   const [checking, setChecking] = useState(false);
@@ -283,9 +283,9 @@ function Fixture() {
   );
 }
 createRoot(document.getElementById("root")!).render(
-  <ZCodeIntlProvider initialLocale={params.get("locale") === "en-US" ? "en-US" : "zh-CN"}>
+  <CodezIntlProvider initialLocale={params.get("locale") === "en-US" ? "en-US" : "zh-CN"}>
     <TooltipProvider>
       <Fixture />
     </TooltipProvider>
-  </ZCodeIntlProvider>,
+  </CodezIntlProvider>,
 );

@@ -7,10 +7,10 @@
     "project": "arms-project-placeholder",
     "traceStore": "logstore-tracing",
     "metricStore": "metricstore-apm-metrics-custom",
-    "serviceName": "zcode-local-ttft"
+    "serviceName": "codez-local-ttft"
   },
   "endpointProbe": {
-    "note": "接入值取自 CI 变量 ZCODE_PACKAGED_AGENT_OTEL_ENDPOINT/_HEADERS，密钥不入库；下表只记录路径形态与状态码",
+    "note": "接入值取自 CI 变量 CODEZ_PACKAGED_AGENT_OTEL_ENDPOINT/_HEADERS，密钥不入库；下表只记录路径形态与状态码",
     "basePath": "/apm/trace/opentelemetry",
     "headerKeys": ["x-arms-license-key", "x-arms-project", "x-cms-workspace"],
     "results": [
@@ -126,7 +126,7 @@
     }
   },
   "metricAcceptance": {
-    "nameMapping": "OTel → Prometheus 不追加单位后缀，local-ttft-queries.md 的 zcode_local_ttft_* 默认名成立",
+    "nameMapping": "OTel → Prometheus 不追加单位后缀，local-ttft-queries.md 的 codez_local_ttft_* 默认名成立",
     "deltaTemporality": "sum_over_time 累加区间样本成立；未使用 rate/increase",
     "labelSet": {
       "observed": [
@@ -153,24 +153,24 @@
     "queries": [
       {
         "name": "总样本 count",
-        "promql": "sum(sum_over_time(zcode_local_ttft_duration_count[30m]))",
+        "promql": "sum(sum_over_time(codez_local_ttft_duration_count[30m]))",
         "result": 12
       },
       {
         "name": "阶段样本 count",
-        "promql": "sum(sum_over_time(zcode_local_ttft_stage_duration_count[30m]))",
+        "promql": "sum(sum_over_time(codez_local_ttft_stage_duration_count[30m]))",
         "result": 18,
         "note": "首个 stages run 的 3 次发送 × 6 阶段，无 attempt 放大"
       },
       {
         "name": "总 P50",
-        "promql": "histogram_quantile(0.50, sum by (le) (sum_over_time(zcode_local_ttft_duration_bucket{quality=\"complete\"}[10m])))",
+        "promql": "histogram_quantile(0.50, sum by (le) (sum_over_time(codez_local_ttft_duration_bucket{quality=\"complete\"}[10m])))",
         "result": 1500.0,
         "note": "桶插值，非精确原始分位数"
       },
       {
         "name": "阶段 P95",
-        "promql": "histogram_quantile(0.95, sum by (le,stage) (sum_over_time(zcode_local_ttft_stage_duration_bucket{quality=\"complete\"}[10m])))",
+        "promql": "histogram_quantile(0.95, sum by (le,stage) (sum_over_time(codez_local_ttft_stage_duration_bucket{quality=\"complete\"}[10m])))",
         "result": {
           "command_admission": 1850.0,
           "request_prepare": 4550.0,
@@ -182,17 +182,17 @@
       },
       {
         "name": "默认体验总 P95（前台+complete）",
-        "promql": "histogram_quantile(0.95, sum by (le,send_mode) (sum_over_time(zcode_local_ttft_duration_bucket{quality=\"complete\",visibility=\"foreground\"}[30m])))",
+        "promql": "histogram_quantile(0.95, sum by (le,send_mode) (sum_over_time(codez_local_ttft_duration_bucket{quality=\"complete\",visibility=\"foreground\"}[30m])))",
         "result": { "idle": 9000.0, "queued": 4850.0 }
       },
       {
         "name": "默认体验样本数",
-        "promql": "sum by (send_mode) (sum_over_time(zcode_local_ttft_duration_count{quality=\"complete\",visibility=\"foreground\"}[30m]))",
+        "promql": "sum by (send_mode) (sum_over_time(codez_local_ttft_duration_count{quality=\"complete\",visibility=\"foreground\"}[30m]))",
         "result": { "idle": 4, "queued": 1 }
       },
       {
         "name": "准备子阶段 P95（前台+complete）",
-        "promql": "histogram_quantile(0.95, sum by (le,stage) (sum_over_time(zcode_local_ttft_preparation_duration_bucket{quality=\"complete\",visibility=\"foreground\"}[30m])))",
+        "promql": "histogram_quantile(0.95, sum by (le,stage) (sum_over_time(codez_local_ttft_preparation_duration_bucket{quality=\"complete\",visibility=\"foreground\"}[30m])))",
         "result": {
           "context": 937.5,
           "hooks": 875.0,
@@ -206,7 +206,7 @@
       },
       {
         "name": "records by kind",
-        "promql": "sum by (kind) (sum_over_time(zcode_local_ttft_records[30m]))",
+        "promql": "sum by (kind) (sum_over_time(codez_local_ttft_records[30m]))",
         "result": {
           "start": 16,
           "first_output": 12,
@@ -217,23 +217,23 @@
       },
       {
         "name": "excluded by outcome",
-        "promql": "sum by (outcome) (sum_over_time(zcode_local_ttft_records{kind=\"excluded\"}[30m]))",
+        "promql": "sum by (outcome) (sum_over_time(codez_local_ttft_records{kind=\"excluded\"}[30m]))",
         "result": { "cancelled": 2, "failed": 1, "guided": 1 }
       },
       {
         "name": "attempt by role/outcome",
-        "promql": "sum by (role,outcome) (sum_over_time(zcode_local_ttft_attempt_duration_count[30m]))",
+        "promql": "sum by (role,outcome) (sum_over_time(codez_local_ttft_attempt_duration_count[30m]))",
         "result": { "response/first_output": 12, "response/failed": 2 },
         "note": "重试的失败 attempt 与首输出 attempt 分别计数，主 TTFT 未被放大"
       },
       {
         "name": "no_output.wait by outcome",
-        "promql": "sum by (outcome) (sum_over_time(zcode_local_ttft_no_output_wait_count[30m]))",
+        "promql": "sum by (outcome) (sum_over_time(codez_local_ttft_no_output_wait_count[30m]))",
         "result": { "cancelled": 2, "failed": 1 }
       },
       {
         "name": "quality × visibility",
-        "promql": "sum by (quality,visibility) (sum_over_time(zcode_local_ttft_duration_count[30m]))",
+        "promql": "sum by (quality,visibility) (sum_over_time(codez_local_ttft_duration_count[30m]))",
         "result": {
           "complete/foreground": 5,
           "complete/background_returned": 6,
@@ -241,7 +241,7 @@
         }
       }
     ],
-    "droppedCounter": "本次未观察到 zcode.local_ttft.dropped 序列，即无容量/队列丢弃"
+    "droppedCounter": "本次未观察到 codez.local_ttft.dropped 序列，即无容量/队列丢弃"
   },
   "ingestionLatency": {
     "method": "第二次 stages run 结束瞬间开始 5 秒间隔轮询，直到新样本可查",

@@ -4,7 +4,7 @@
 
 `conversation-session-model-provider-selected-key-migration.test.ts` 的 I32～I34
 只验证本地 `modelProviderFamilySelectedKeys` 启动迁移，但 WDIO 默认 fixture 会写入
-`oauth:active_provider=zai`、Z.AI access token 与 `zcodejwttoken`。应用重载后因此进入
+`oauth:active_provider=zai`、Z.AI access token 与 `codezjwttoken`。应用重载后因此进入
 OAuth 恢复刷新，并使用假的 `e2e-oauth-token` 请求真实 Z.AI provider、API Key 与权益接口。
 
 本次修复的目标是让 I32～I34 完全不依赖外部网络，同时保持真实 App 重载和本地设置迁移
@@ -16,7 +16,7 @@ OAuth 恢复刷新，并使用假的 `e2e-oauth-token` 请求真实 Z.AI provide
 
 - 保留 fake `auth_token`，兼容仍读取 legacy token 的通用 E2E 辅助链路。
 - 不写 `oauth:active_provider`。
-- 不写 `oauth:zai:access_token`、OAuth user info 或 `zcodejwttoken`。
+- 不写 `oauth:zai:access_token`、OAuth user info 或 `codezjwttoken`。
 - 继续使用现有 fake settings、model provider 与 replay fixture。
 
 凭据选择逻辑抽成无副作用的纯函数，由 WDIO `seedE2EStartupState()` 调用。单元测试直接断言

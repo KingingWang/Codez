@@ -14,15 +14,15 @@ export function toBearerAuthorization(token: string | null | undefined): string 
   return value && /^[\x21-\x7e]+$/.test(value) ? `Bearer ${value}` : null;
 }
 
-export type ZCodeJwtTokenResolver = () =>
+export type CodezJwtTokenResolver = () =>
   | string
   | null
   | undefined
   | Promise<string | null | undefined>;
 
 /** 配置允许匿名读取；凭据不可读或格式非法时不得阻断配置，也不透出原始异常。 */
-export async function resolveOptionalZCodeAuthorization(
-  resolveToken?: ZCodeJwtTokenResolver,
+export async function resolveOptionalCodezAuthorization(
+  resolveToken?: CodezJwtTokenResolver,
 ): Promise<string | null> {
   try {
     return toBearerAuthorization(await resolveToken?.());

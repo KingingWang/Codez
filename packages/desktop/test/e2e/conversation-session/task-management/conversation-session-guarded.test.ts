@@ -7,7 +7,7 @@ import {
   TID_CHAT_MODE_SELECT_ITEM,
   TID_CHAT_MODE_SELECT_TRIGGER,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
 import { resolveE2ERuntimePath } from "#e2e/helpers/e2e-runtime-paths";
 import { skipOccupationOnboardingIfPresent } from "#e2e/helpers/occupation-onboarding";

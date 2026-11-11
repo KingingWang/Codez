@@ -22,7 +22,7 @@ Goal 相关 e2e 已覆盖一部分自动断言，但还有若干状态组合缺�
 ## 实现策略
 
 - 扩展 `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal-run-cases.test.ts`。
-- 保持 `ZCODE_E2E_MANUAL_REVIEW=1` 与 capture 模式入口，继续生成每个 step 的 screenshot、chat root、queue、messages、tool blocks、network summary。
+- 保持 `CODEZ_E2E_MANUAL_REVIEW=1` 与 capture 模式入口，继续生成每个 step 的 screenshot、chat root、queue、messages、tool blocks、network summary。
 - 对不稳定或需要真实失败注入的场景采用“observe but do not fail”策略：等待短窗口，若未观察到目标状态，则把未观察到的状态写入 artifact，case 继续运行。
 - 增强 manual review summary 的请求摘要，展示最近模型请求是否包含 `/goal`、goal marker 和 compact sentinel，辅助人工判断协议层是否把 `/goal` 当普通 user message 透传。
 

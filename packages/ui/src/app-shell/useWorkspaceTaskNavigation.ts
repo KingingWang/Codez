@@ -13,7 +13,7 @@ import {
 import { shouldBlockTaskSelectionDuringModelRestart } from "@/lib/taskSwitchGuard.js";
 import { logger } from "@/logger.js";
 import { toast } from "@/components/ui/toast.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 import { buildTaskEntityKey, buildTaskWorkspaceKey } from "@/lib/taskQueryCache.js";
 import {
   markTaskQueryCacheScopesStale,
@@ -29,7 +29,7 @@ import { bumpTaskListMembershipVersion } from "@/v4/taskListMembershipVersion.js
 import {
   onTaskNavigationCommitted,
   onTaskNavigationRequested,
-} from "@/store/zcodeSessionStoreNavigation.js";
+} from "@/store/codezSessionStoreNavigation.js";
 import { ensureTaskNavigationWorkspace } from "@/app-shell/taskNavigationWorkspace.js";
 import { selectWorkbenchSession } from "@/v4/workbenchSessionPlacement.js";
 
@@ -64,10 +64,10 @@ export function useWorkspaceTaskNavigation({
   // 发起，再由 Host Controller 路由，不能把本地路径送进旧 remote scope。
   const baseServices = useBaseWorkspaceServices();
   const tabStoreApi = useTabStoreApi();
-  const setActiveTaskId = useZCodeSessionStore((s) => s.setActiveTaskId);
-  const taskNavHistory = useZCodeSessionStore((s) => s.taskNavHistory);
-  const taskNavPushAutomations = useZCodeSessionStore((s) => s.taskNavPushAutomations);
-  const taskNavPushPluginStore = useZCodeSessionStore((s) => s.taskNavPushPluginStore);
+  const setActiveTaskId = useCodezSessionStore((s) => s.setActiveTaskId);
+  const taskNavHistory = useCodezSessionStore((s) => s.taskNavHistory);
+  const taskNavPushAutomations = useCodezSessionStore((s) => s.taskNavPushAutomations);
+  const taskNavPushPluginStore = useCodezSessionStore((s) => s.taskNavPushPluginStore);
   const navigationVersion = useRef(0);
   useEffect(() => {
     const subscription = onTaskNavigationCommitted(() => {
@@ -86,7 +86,7 @@ export function useWorkspaceTaskNavigation({
       targetWorkspaceIdentityHint?: string,
       selectedRowUnreadAt?: number,
     ) => {
-      const targetWorkspaceState = useZCodeSessionStore
+      const targetWorkspaceState = useCodezSessionStore
         .getState()
         .getWorkspaceState(targetWorkspacePath, targetWorkspaceIdentityHint);
       if (
@@ -188,7 +188,7 @@ export function useWorkspaceTaskNavigation({
             `[App] 选择 task 时跳过未读持久化，远程 workspace 未连接 workspace=${targetWorkspacePath} taskId=${taskId}`,
           );
         } else {
-          void targetServices.zcodeTaskService
+          void targetServices.codezTaskService
             .setTaskUnread({
               ...targetTask,
               unread: false,
@@ -249,7 +249,7 @@ export function useWorkspaceTaskNavigation({
 
   const navigateHistory = useCallback(
     async (direction: "back" | "forward") => {
-      const sessionStore = useZCodeSessionStore.getState();
+      const sessionStore = useCodezSessionStore.getState();
       const origin = sessionStore.getWorkspaceState(workspaceAbsPath, workspaceIdentity);
       if (
         shouldBlockTaskSelectionDuringModelRestart(
@@ -264,7 +264,7 @@ export function useWorkspaceTaskNavigation({
       const originalHistory = sessionStore.taskNavHistory;
       const originalTabId = tabStoreApi.getState().activeTabId;
       const isCurrent = () => {
-        const state = useZCodeSessionStore.getState();
+        const state = useCodezSessionStore.getState();
         const current = state.getWorkspaceState(workspaceAbsPath, workspaceIdentity);
         return (
           request === navigationVersion.current &&
@@ -281,7 +281,7 @@ export function useWorkspaceTaskNavigation({
           const { entry } = next;
           if (isAutomationsNavEntry(entry) || isPluginStoreNavEntry(entry)) {
             if (!isCurrent()) return;
-            useZCodeSessionStore.setState({ taskNavHistory: next.history });
+            useCodezSessionStore.setState({ taskNavHistory: next.history });
             activateTabByPath(entry.workspacePath, { workspaceIdentity: entry.workspaceIdentity });
             if (isAutomationsNavEntry(entry)) onNavigateToAutomations?.(entry);
             else onNavigateToPluginStore?.(entry);
@@ -309,7 +309,7 @@ export function useWorkspaceTaskNavigation({
           if (!services) throw new Error("Navigation target is disconnected");
           // 侧栏已迁到项目树，旧缓存未命中不代表删除；只信 Host 索引的明确空结果。
           // 查询期间不移动真实游标，新选择、草稿或连接换代会使迟到结果失效。
-          const meta = await services.zcodeTaskService.getTaskMeta({
+          const meta = await services.codezTaskService.getTaskMeta({
             workspacePath: entry.workspacePath,
             workspaceIdentity: entry.workspaceIdentity,
             taskId: entry.taskId,
@@ -327,7 +327,7 @@ export function useWorkspaceTaskNavigation({
             };
             continue;
           }
-          const targetState = useZCodeSessionStore
+          const targetState = useCodezSessionStore
             .getState()
             .getWorkspaceState(entry.workspacePath, entry.workspaceIdentity);
           if (
@@ -364,7 +364,7 @@ export function useWorkspaceTaskNavigation({
                 sessionId: entry.taskId,
               },
             );
-          useZCodeSessionStore.setState({ taskNavHistory: next.history });
+          useCodezSessionStore.setState({ taskNavHistory: next.history });
           handleSelectTask(
             entry.workspacePath,
             entry.taskId,
@@ -374,7 +374,7 @@ export function useWorkspaceTaskNavigation({
           return;
         }
         if (isCurrent()) {
-          useZCodeSessionStore.setState({ taskNavHistory: history });
+          useCodezSessionStore.setState({ taskNavHistory: history });
           toast(
             intl.formatMessage({
               id: direction === "back" ? "taskNav.noMoreBack" : "taskNav.noMoreForward",
@@ -425,7 +425,7 @@ export function useWorkspaceTaskNavigation({
     return () => subscription.dispose();
   }, []);
 
-  const currentWorkspaceState = useZCodeSessionStore.getState().getWorkspaceState(workspaceAbsPath);
+  const currentWorkspaceState = useCodezSessionStore.getState().getWorkspaceState(workspaceAbsPath);
   const isTaskSwitchLockedByModelRestart = shouldBlockTaskSelectionDuringModelRestart(
     currentWorkspaceState.modelSwitchPending,
     currentWorkspaceState.modelSwitchStage,

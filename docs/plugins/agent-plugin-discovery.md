@@ -89,7 +89,7 @@ Graph delta：新增 capability.agent-plugin-discovery，与官方市场来源�
 
 - PLM-LC-021（macOS Desktop）：1/1 通过，运行 `desktop-e2e-20261103124904313-p61172-59e756836ce2d8a0`。先跳过并确认未安装，再用另一个任务确认安装。该任务的 generation 只增加 1，主对话回放只有查询、推荐、安装结果三次请求；下一条用户输入调用真实 ZIP Skill，工具结果包含归档中的正文。标题生成属于后台工作，独立于主对话请求计数。本例不会自动晋升 CI。
 - P2：CLI / Core 定向回归 6 文件、150 项通过，含 SQLite 冷恢复、后续输入切换能力、同实例内两种客户端的 snapshot/delta/replay，以及旧客户端应答不能批准安装。协议测试不等同于旧客户端或手机 relay 实机验收。
-- P1：双进程真实 ZIP 安装回归覆盖两条记录、两份缓存和两个启用项。BM25 的冻结目录、标注查询和指标见[搜索评估](../../apps/zcode-cli/packages/bootstrap/tests/data/plugin-discovery-search/README.md)。固定模型回放只证明工具链路，不证明模型自主推荐质量。
+- P1：双进程真实 ZIP 安装回归覆盖两条记录、两份缓存和两个启用项。BM25 的冻结目录、标注查询和指标见[搜索评估](../../apps/codez-cli/packages/bootstrap/tests/data/plugin-discovery-search/README.md)。固定模型回放只证明工具链路，不证明模型自主推荐质量。
 
 评审修复复验：最后一位读者取消后立即重试、旧刷新晚到、用户级安装保留显式禁用，均有 CLI 回归。重新构建 CLI 后回放 PLM-LC-021，运行 `desktop-e2e-20261103131023883-p21774-062cb58fecfdf9b2`，1/1 通过。
 
@@ -111,18 +111,18 @@ Graph delta：新增 capability.agent-plugin-discovery，与官方市场来源�
 | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `pnpm architecture:check --changed`                 | 通过，0 架构违规                                                                                                       |
 | `pnpm typecheck`                                    | 通过                                                                                                                   |
-| `pnpm exec pnpm --dir apps/zcode-cli typecheck`     | 通过，24 tasks                                                                                                         |
+| `pnpm exec pnpm --dir apps/codez-cli typecheck`     | 通过，24 tasks                                                                                                         |
 | `pnpm lint`                                         | 通过，51 条既有 warning、0 error                                                                                       |
-| CLI 全量 `pnpm exec pnpm --dir apps/zcode-cli lint` | 未通过：基线已有 max-lines 违规。对本次 CLI 文件与 HEAD 用相同规则比较，6 个超限文件基线均已有，新增诊断 0；未关闭规则 |
+| CLI 全量 `pnpm exec pnpm --dir apps/codez-cli lint` | 未通过：基线已有 max-lines 违规。对本次 CLI 文件与 HEAD 用相同规则比较，6 个超限文件基线均已有，新增诊断 0；未关闭规则 |
 | CLI 受影响回归                                      | 13 files / 378 tests 通过；最后增量检查 5 files / 27 tests 通过，两者有重叠                                            |
 | Protocol adapter 定向测试                           | 4 tests 通过：恢复入口、Workspace 启用覆盖、配置缺失、activation 的 workspace identity 透传                            |
 | App 协议/连接/UI 回归                               | 10 files / 121 tests 通过                                                                                              |
-| `pnpm --filter @zcode/desktop typecheck:e2e`        | 通过                                                                                                                   |
+| `pnpm --filter @codez/desktop typecheck:e2e`        | 通过                                                                                                                   |
 | 候选 fixture check                                  | 通过；完成标记不作为请求 matcher 的 2 条 warning 保留                                                                  |
 | Desktop 候选 E2E                                    | macOS 1/1 通过，实际 ZIP 安装与状态读取；仍为 pending                                                                  |
 | `git diff --check`                                  | 通过                                                                                                                   |
 
-Desktop 最终运行 ID：`desktop-e2e-20260916115741578-p84753-08fac10243dccf5a`。使用 `ZCODE_E2E_SOURCE_EVIDENCE=1`、`ZCODE_E2E_MANUAL_REVIEW=1` 和 case-local replay fixture。报告位于 `packages/desktop/.e2e-artifacts/<run-id>/summary.md`，截图位于 `packages/desktop/.e2e-artifacts/plugin-management/plm-lc-021/`。
+Desktop 最终运行 ID：`desktop-e2e-20260916115741578-p84753-08fac10243dccf5a`。使用 `CODEZ_E2E_SOURCE_EVIDENCE=1`、`CODEZ_E2E_MANUAL_REVIEW=1` 和 case-local replay fixture。报告位于 `packages/desktop/.e2e-artifacts/<run-id>/summary.md`，截图位于 `packages/desktop/.e2e-artifacts/plugin-management/plm-lc-021/`。
 
 实测覆盖查询官方目录、卡片等待、跳过后不安装、英文深色安装确认、实际安装成功，以及工具结果保持 `refreshRequired`。390px 中文浅色截图已复核卡片与按钮的视口边界。旧轮次迟到请求不会在新轮次重新弹卡片；registry 只接受匹配 session 的首个应答，等待 10 分钟也不会自动批准。
 

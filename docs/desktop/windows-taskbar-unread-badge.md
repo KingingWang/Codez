@@ -24,7 +24,7 @@
     │  host 首次进树：mergeBaselineForHostsInTree(tree)  ← per-host 基线（进程内存）
     │  countUnreadTasksSinceBaseline(tree, baseline)        project-sidebar/view.ts
     ▼
-usePlatform().syncWindowUnreadCount(count)                 IPC: zcode:sync-window-unread-count
+usePlatform().syncWindowUnreadCount(count)                 IPC: codez:sync-window-unread-count
     │  （web 端为 no-op；树刷新时才触发，计数不变不发包）
     ▼
 [Main] desktopMainIpcPlatform.ts → handleWindowUnreadCountSync

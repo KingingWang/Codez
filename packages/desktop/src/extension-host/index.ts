@@ -4,7 +4,7 @@
 // 静态声明（plugin.json）由 Window Host 读取与校验，本进程不读清单（§16.1）。
 // 本进程只经 parentPort 与 Main 交换生命周期消息；业务数据只走 Main 牵线的 L1 端口。
 import type { MessagePortMain } from "electron";
-import { mainToExtensionHostMessageSchema } from "@zcode/shared/extension-host";
+import { mainToExtensionHostMessageSchema } from "@codez/shared/extension-host";
 import { CapabilityClient } from "#src/extension-host/capabilityClient.js";
 import { ExtensionRegistry } from "#src/extension-host/registry.js";
 import { ViewHost } from "#src/extension-host/viewHost.js";

@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/conversation-session-permission-full-access/output.txt",
+      "path": ".codez-e2e/conversation-session-permission-full-access/output.txt",
       "source": "created-by-provider-tool",
       "description": "完全访问批准后真实 Write 的输出。"
     }

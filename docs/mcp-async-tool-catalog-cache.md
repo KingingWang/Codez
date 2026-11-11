@@ -13,7 +13,7 @@ tool catalog cache 当成资源回收机制。
 
 ## 背景
 
-ZCode 当前已经在 session/runtime 创建时提前调度 MCP 初始化，但首个 provider request 之前仍会执行：
+Codez 当前已经在 session/runtime 创建时提前调度 MCP 初始化，但首个 provider request 之前仍会执行：
 
 ```text
 startMcpStartup()
@@ -40,20 +40,20 @@ live tool execution
 
 ## 设计取舍
 
-| 能力                            | 语义                                                                                         | ZCode 规划                                     |
+| 能力                            | 语义                                                                                         | Codez 规划                                     |
 | ------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------- |
 | process-scoped tool catalog LRU | 32 entries、30 分钟 TTL；只在 startup pending 时读                                           | Phase 1/2 采用                                 |
 | transport identity              | stdio command/args/env/cwd/environment/client capability；HTTP 因 auth identity 不稳定而跳过 | 采用，并补 workspace identity 边界             |
 | payload sanitization            | publish 前移除 connection instructions 和 tool annotations                                   | 采用；cache 不参与权限                         |
 | concurrent publish              | entry-local generation，较旧 fetch 不能覆盖较新 snapshot                                     | 采用                                           |
 | cold miss                       | tool listing 等 live client；不会为了快而静默隐藏 MCP                                        | 采用 aggregate complete-hit                    |
-| live execution                  | 调用前等待当前 client，并从 live inventory 重新查 tool/visibility/annotations 后再审批       | 采用，并适配 ZCode 的 schema validation 顺序   |
+| live execution                  | 调用前等待当前 client，并从 live inventory 重新查 tool/visibility/annotations 后再审批       | 采用，并适配 Codez 的 schema validation 顺序   |
 | lifecycle                       | per-server startup future、startup cancellation、manager shutdown 和 stdio cleanup           | 保留现有 session ownership 并补回归            |
 | status / auth / elicitation     | per-server startup update、auth state、ready wait、elicitation routing                       | 不由 catalog 接管                              |
 | connector 专用 cache            | 失败后长期使用 cache、后台 reconnect、hard refresh，语义不同于普通 MCP                       | 不泛化到普通 MCP                               |
-| required server                 | 把部分 server 标为 required，未就绪时阻塞                                                    | ZCode 当前无对应产品语义，本功能不顺带引入     |
+| required server                 | 把部分 server 标为 required，未就绪时阻塞                                                    | Codez 当前无对应产品语义，本功能不顺带引入     |
 | resources / templates           | 继续从 live client 查询，不走普通 tool catalog cache                                         | 不纳入本功能                                   |
-| `tools/list_changed`            | 普通 catalog cache 当前没有完整动态 invalidation                                             | ZCode Phase 3 可在识别 notification 后标 dirty |
+| `tools/list_changed`            | 普通 catalog cache 当前没有完整动态 invalidation                                             | Codez Phase 3 可在识别 notification 后标 dirty |
 
 核心取舍是只做“startup advertisement 快路径”，不引入 connector 专用的长期 stale
 fallback，也不把 cache 发展成第二套 MCP runtime。
@@ -133,7 +133,7 @@ MCP tools、下一轮再出现”的更激进策略，避免用户明确要求�
 ## 总体架构
 
 ```text
-ZCode Protocol / Agent process
+Codez Protocol / Agent process
 │
 ├─ McpToolCatalogPort                        process scoped
 │    ├─ stdio identity A -> sanitized tools
@@ -158,7 +158,7 @@ catalog port 的内存实现可以放在 adapter 层，但不塞进 `NodeMcpAdap
 ```text
 bootstrap creates one McpToolCatalogPort
   -> inject Agent protocol control-plane
-  -> inject every createZCodeApp / session runtime
+  -> inject every createCodezApp / session runtime
 
 each session still creates its own NodeMcpAdapter
   -> existing connectConfiguredServers()
@@ -438,7 +438,7 @@ headers 或 server name 共享可能把不同账号、OAuth token 或权限范�
 - snapshot：`tools + publishedAt`
 - entry：`nextFetchGeneration + lastAcceptedGeneration`
 
-除 entry 数量约束外，ZCode 额外增加 byte budget，避免少量异常大 schema 反向制造新的内存
+除 entry 数量约束外，Codez 额外增加 byte budget，避免少量异常大 schema 反向制造新的内存
 问题。成功取得但超过单 entry 上限的 catalog 标记为 `oversize` 并清除该 identity 的旧 snapshot，后续
 走 cold path；不能因为“新值放不下”继续广告旧值。
 
@@ -632,7 +632,7 @@ mobile replayable ──┘
 - desktop continuous 与 mobile replayable 只影响事件如何到达 UI，不改变 provider tool catalog 和
   live execution 事实。
 - remote workspace identity 必须进入 cache key；不能只按远端 `workspacePath` 共享。
-- 当前 `ZCodeWorkspaceRef` 只有 `workspaceIdentity` / `workspaceKey` / `workspacePath`，没有
+- 当前 `CodezWorkspaceRef` 只有 `workspaceIdentity` / `workspaceKey` / `workspacePath`，没有
   `remoteSessionId`。Phase 2 只用统一 remote identity parser 判断它是远程 workspace，不从 identity
   字符串反推或拼造 session id；一旦判定为远程，catalog context 返回 unsupported，首轮继续走 cold
   live path。
@@ -737,26 +737,26 @@ catalog。
 
 | Rank           | 区域                                                                              | 预计改动                                             |
 | -------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| invariant-only | `apps/zcode-cli/packages/contracts/src/interfaces/mcp.port.ts`                    | 现有 live port 接口保持不变                          |
-| must-inspect   | `apps/zcode-cli/packages/contracts/src/interfaces/`                               | 新增 catalog port、scope、sanitized descriptor 类型  |
-| must-inspect   | `apps/zcode-cli/packages/adapters/src/mcp-tool-catalog/`                          | 内存 LRU、identity、TTL、generation、sanitization    |
-| must-inspect   | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-entrypoint.ts`              | process-scoped cache owner                           |
-| must-inspect   | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-types.ts`            | catalog port 进入 protocol process context           |
-| must-inspect   | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts`       | 本地 scope 与远程分类；Phase 3 可选贯穿 session id   |
-| must-inspect   | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts` | 把同一个 port 传给每个 workspace session app         |
-| must-inspect   | `apps/zcode-cli/packages/bootstrap/src/app/create-app.ts`                         | catalog port dependency injection 到 session runtime |
-| must-inspect   | `apps/zcode-cli/packages/bootstrap/src/app/session-facade.ts`                     | 保持实际 MCP close ownership 与 cleanup              |
-| must-inspect   | `apps/zcode-cli/packages/core/src/runtime/agent-runtime.ts`                       | shutdown 同步关闭 coordinator、abort startup         |
-| must-inspect   | `apps/zcode-cli/packages/core/src/runtime/methods/mcp.ts`                         | cached/live startup 状态与 reconcile                 |
-| must-inspect   | `apps/zcode-cli/packages/core/src/runtime/methods/turn-loop.ts`                   | sampling 前 warm/cold 选择                           |
-| must-inspect   | `apps/zcode-cli/packages/core/src/mcp/index.ts`                                   | advertisement entry 与 live entry 构造               |
-| must-inspect   | `apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts`                   | permission 前 live preflight、waiter abort           |
-| should-inspect | `apps/zcode-cli/packages/core/src/tool/registry.ts`                               | reconcile / provider-invisible tombstone             |
-| should-inspect | `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts`                    | parent startup 与 borrowed snapshot                  |
-| should-inspect | `apps/zcode-cli/packages/core/src/subagent/borrowed-mcp-port.ts`                  | 保持 live-only、scope-filtered                       |
-| conditional    | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/mcp.ts`                     | control-plane 成功结果 seed cache                    |
-| conditional    | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace.ts`               | Phase 3 贯穿真实 remoteSessionId                     |
-| conditional    | `packages/shared/src/zcode-protocol/index.ts`                                     | 若跨进程接口需扩展，增加严格 schema                  |
+| invariant-only | `apps/codez-cli/packages/contracts/src/interfaces/mcp.port.ts`                    | 现有 live port 接口保持不变                          |
+| must-inspect   | `apps/codez-cli/packages/contracts/src/interfaces/`                               | 新增 catalog port、scope、sanitized descriptor 类型  |
+| must-inspect   | `apps/codez-cli/packages/adapters/src/mcp-tool-catalog/`                          | 内存 LRU、identity、TTL、generation、sanitization    |
+| must-inspect   | `apps/codez-cli/packages/bootstrap/src/codez-protocol-entrypoint.ts`              | process-scoped cache owner                           |
+| must-inspect   | `apps/codez-cli/packages/bootstrap/src/codez-protocol/server-types.ts`            | catalog port 进入 protocol process context           |
+| must-inspect   | `apps/codez-cli/packages/bootstrap/src/codez-protocol/server-operations.ts`       | 本地 scope 与远程分类；Phase 3 可选贯穿 session id   |
+| must-inspect   | `apps/codez-cli/packages/bootstrap/src/codez-protocol/workspace-model-catalog.ts` | 把同一个 port 传给每个 workspace session app         |
+| must-inspect   | `apps/codez-cli/packages/bootstrap/src/app/create-app.ts`                         | catalog port dependency injection 到 session runtime |
+| must-inspect   | `apps/codez-cli/packages/bootstrap/src/app/session-facade.ts`                     | 保持实际 MCP close ownership 与 cleanup              |
+| must-inspect   | `apps/codez-cli/packages/core/src/runtime/agent-runtime.ts`                       | shutdown 同步关闭 coordinator、abort startup         |
+| must-inspect   | `apps/codez-cli/packages/core/src/runtime/methods/mcp.ts`                         | cached/live startup 状态与 reconcile                 |
+| must-inspect   | `apps/codez-cli/packages/core/src/runtime/methods/turn-loop.ts`                   | sampling 前 warm/cold 选择                           |
+| must-inspect   | `apps/codez-cli/packages/core/src/mcp/index.ts`                                   | advertisement entry 与 live entry 构造               |
+| must-inspect   | `apps/codez-cli/packages/core/src/tool/executor/call-runner.ts`                   | permission 前 live preflight、waiter abort           |
+| should-inspect | `apps/codez-cli/packages/core/src/tool/registry.ts`                               | reconcile / provider-invisible tombstone             |
+| should-inspect | `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts`                    | parent startup 与 borrowed snapshot                  |
+| should-inspect | `apps/codez-cli/packages/core/src/subagent/borrowed-mcp-port.ts`                  | 保持 live-only、scope-filtered                       |
+| conditional    | `apps/codez-cli/packages/bootstrap/src/codez-protocol/mcp.ts`                     | control-plane 成功结果 seed cache                    |
+| conditional    | `apps/codez-cli/packages/bootstrap/src/codez-protocol/workspace.ts`               | Phase 3 贯穿真实 remoteSessionId                     |
+| conditional    | `packages/shared/src/codez-protocol/index.ts`                                     | 若跨进程接口需扩展，增加严格 schema                  |
 | invariant-only | `packages/ui/src/settings/McpSettingsSection.tsx`                                 | status UI 不读取 catalog                             |
 | invariant-only | web remote / relay / desktop main                                                 | 不新增 cache authority 或 runtime 状态               |
 

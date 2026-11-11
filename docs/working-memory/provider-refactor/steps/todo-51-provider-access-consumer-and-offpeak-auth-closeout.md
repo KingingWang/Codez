@@ -11,7 +11,7 @@
 本轮不再改变 Provider Config 的核心结构，而是让所有消费方真正遵守已经确定的唯一事实：
 
 ```text
-ZCode Built-in Provider Config
+Codez Built-in Provider Config
 Account Provider Config
 Personal Provider Config Overlay
               |
@@ -33,7 +33,7 @@ Settings View                  Provider Registry
 
 - Welcome 手填 API Key 只为固定 Built-in API Provider 保存稀疏 Personal Overlay，不建立自定义 Provider、不复制
   Built-in 事实，也不暗中修改 Family Connection Selection；
-- Off-Peak 继续使用 ZCode JWT、Coding Plan 项目 Key 和 Off-Peak Ticket 三份既有请求材料，但 Provider/账号选择与
+- Off-Peak 继续使用 Codez JWT、Coding Plan 项目 Key 和 Off-Peak Ticket 三份既有请求材料，但 Provider/账号选择与
   Request Auth 只解析一次，Desktop Host 不再扫描 Settings View 猜测当前 Coding Plan。
 
 ## 2. 已确认边界
@@ -85,7 +85,7 @@ Effective Config / Registry 刷新
 ### 2.3 Off-Peak 三份请求材料与单一解析来源
 
 ```text
-ZCode JWT                  当前登录身份
+Codez JWT                  当前登录身份
 Coding Plan Project Key    当前 Individual/Team 套餐的模型请求材料
 Off-Peak Ticket            本次闲时执行的调度准入
           \                   |                   /
@@ -285,7 +285,7 @@ Resolver 不一致。本 Todo 建立时先修正为：Account Built-in 固定 `e
   暴露同一份 Registry-backed Off-Peak Request Auth builder；该闭包复用正式 Account Request Auth 与三份请求材料，
   不进入 RPC、Renderer、Config 或持久化；
 - 无调用方的 `ModelProviderFamilyModeSettings`、默认 mode 与旧过滤 helper 已删除，保留仍在使用的连接选择类型；
-- `x-zcode-session-type` 的 `main/subagent/other` 来源归因继续保持请求级事实，未进入 Provider/Model Config。
+- `x-codez-session-type` 的 `main/subagent/other` 来源归因继续保持请求级事实，未进入 Provider/Model Config。
 
 验证结果：
 
@@ -294,5 +294,5 @@ Resolver 不一致。本 Todo 建立时先修正为：Account Built-in 固定 `e
   `loadProviderApiKey`；
 - 全量 unit 共 `12749 passed / 25 skipped / 2 failed`；两个失败均与本轮 Provider 改动无关且可独立复现：
   V4 模型触发器展示文案断言，以及 CUA permission broker 的 stable identity 断言；
-- 全仓 `fmt:check` 仍被 Electron 上游示例中的既有非法 HTML 和 `apps/zcode-cli/tests/gb2312.js`
+- 全仓 `fmt:check` 仍被 Electron 上游示例中的既有非法 HTML 和 `apps/codez-cli/tests/gb2312.js`
   读取失败阻断；本轮所有改动文件已单独通过 `oxfmt --check`。

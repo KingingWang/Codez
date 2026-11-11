@@ -2,7 +2,7 @@ import {
   TID_CHAT_MODEL_SELECT_GROUP,
   TID_CHAT_MODEL_SELECT_ITEM,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import type { ChainablePromiseElement } from "webdriverio";
 import { clearAppData, pinE2ELocale } from "#e2e/helpers/desktop-app";
 import {

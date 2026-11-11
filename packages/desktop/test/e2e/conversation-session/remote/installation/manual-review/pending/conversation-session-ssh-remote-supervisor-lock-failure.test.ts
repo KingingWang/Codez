@@ -32,14 +32,14 @@ import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 // 原因留在远端 journal 或被 stdio:ignore 丢掉，工单无从定位。修复后错误必须带出 Supervisor 的失败摘要；
 // OS service 启动方式（run-local-docker.mjs --systemd）还要带出 unit 状态。
 // 注入方式：结束原 daemon，残留锁改指向一个同用户存活、身份一致但不应答 control 的进程，快照指向已死 PID，
-// 新 Supervisor 取锁时报 "Another ZCode Server instance is already running"。不结束该进程。
+// 新 Supervisor 取锁时报 "Another Codez Server instance is already running"。不结束该进程。
 const MARKER = "E2E_SSH_REMOTE_SUPERVISOR_LOCK_FAILURE";
 const DEV: RemoteAccount = { user: "dev", home: "/home/dev" };
 // 远高于容器内实际分配的 PID，保证快照里的 Core PID 已不存在，probe 直接执行 serve --daemon。
 const DEAD_PID = 4_000_000;
 const desktopRoot = process.cwd();
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-remote-supervisor-lock-failure",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-remote-supervisor-lock-failure",
 );
 
 describe(`${MARKER}: Supervisor 写状态前失败时连接错误带出原因`, () => {
@@ -106,7 +106,7 @@ describe(`${MARKER}: Supervisor 写状态前失败时连接错误带出原因`, 
 
     // 锁被身份一致的存活进程持有，连接必须失败；原首句保留，括号内带出 Supervisor 的取锁失败摘要。
     expect(connectError).toBeDefined();
-    expect(rawError).toContain("supervisor: Another ZCode Server instance is already running");
+    expect(rawError).toContain("supervisor: Another Codez Server instance is already running");
     if (serviceMode) {
       // OS service：每个新 Supervisor 都在取锁时退出，systemd 按 Restart=on-failure 重启直至放弃，CLI 等满预算。
       expect(rawError).toMatch(/^Timed out waiting for Server ready \(/);
@@ -115,7 +115,7 @@ describe(`${MARKER}: Supervisor 写状态前失败时连接错误带出原因`, 
     } else {
       // detached fallback：CLI fork 的 Supervisor 早退，原来的 "; check …status.json" 由失败摘要替代。
       expect(rawError).toMatch(
-        /^ZCode Server daemon exited before ready \(code=1 signal=none\) \(/,
+        /^Codez Server daemon exited before ready \(code=1 signal=none\) \(/,
       );
       expect(rawError).not.toContain("service:");
       expect(failure?.code).toBe("remote-connection-unknown");

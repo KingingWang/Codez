@@ -1,13 +1,13 @@
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 import { clearBrowserRecentVisitsForTask } from "@/store/browserRecentVisitsStore.js";
 
 import { forgetWorkspaceConversation } from "@/v4/workspaceConnectionRegistry.js";
-import type { IDisposable } from "@zcode/rpc";
+import type { IDisposable } from "@codez/rpc";
 import type {
   IWindowControllerService,
-  IZCodeTaskService,
+  ICodezTaskService,
   WindowHostTasksRemovedSignal,
-} from "@zcode/services";
+} from "@codez/services";
 import { useOptionalTabStore } from "@/store/TabStoreProvider.js";
 import {
   openFileManagerSidePane,
@@ -16,8 +16,8 @@ import {
 } from "@/lib/workspaceSidePane.js";
 /* eslint-disable max-lines */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { BROWSER_VIEW_DRAFT_SESSION_ID, createUuid } from "@zcode/shared";
-import type { EmbeddedBrowserOpenUrlRequest, IPlatformService } from "@zcode/shared";
+import { BROWSER_VIEW_DRAFT_SESSION_ID, createUuid } from "@codez/shared";
+import type { EmbeddedBrowserOpenUrlRequest, IPlatformService } from "@codez/shared";
 import type { CodeViewerSource } from "@/lib/codeViewer.js";
 // 保活：side pane terminal 跨 workspace 会话上移到模块级 registry。
 // 关闭 terminal tab 时必须显式 release，杀掉 PTY，避免常驻 registry 造成孤儿进程。
@@ -111,7 +111,7 @@ import {
   queueOfficeViewerPendingOpen,
   resolveOfficeViewerDocumentPath,
 } from "@/plugin-ui/officeViewerOpen.js";
-import { isRemoteWorkspaceIdentity } from "@zcode/shared";
+import { isRemoteWorkspaceIdentity } from "@codez/shared";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
 import { areWorkspaceFilePathsEqual } from "@/workspace-file-tree/model.js";
 import { logger } from "@/logger.js";
@@ -137,7 +137,7 @@ import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionSt
 function subscribeTasksRemoved(
   params: {
     windowControllerService?: IWindowControllerService;
-    zcodeTaskService?: IZCodeTaskService;
+    codezTaskService?: ICodezTaskService;
     workspacePath: string;
     workspaceIdentity?: string;
   },
@@ -146,7 +146,7 @@ function subscribeTasksRemoved(
   if (params.windowControllerService) {
     return params.windowControllerService.onDynamicTasksRemovedSignal()(listener);
   }
-  return params.zcodeTaskService?.onDynamicWorkspaceEvent({
+  return params.codezTaskService?.onDynamicWorkspaceEvent({
     workspacePath: params.workspacePath,
     ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
   })((event) => {
@@ -268,14 +268,14 @@ export function useAppPanels(options: {
   });
   pluginUiScopeRef.current = { pluginUiSessionId: pluginUiTarget.sessionId, pluginUiWorkspaceKey };
   const services = useServices();
-  const { zcodeAgentService, zcodeSessionService } = services;
+  const { codezAgentService, codezSessionService } = services;
   // 插件声明的文件查看器（file.viewer）：只在调用时读静态表，不随贡献表增量重渲染。
   const routeFileViewer = useFileViewerRouter({
     workspacePath: workspaceAbsPath,
     ...(workspaceIdentity ? { workspaceIdentity } : {}),
   });
   const optionalPlatform = useOptionalPlatform();
-  const { windowControllerService, zcodeTaskService } = useBaseWorkspaceServices();
+  const { windowControllerService, codezTaskService } = useBaseWorkspaceServices();
   const isOfficeMode = useIsOfficeMode();
   const sidePaneMemoryKey = useMemo(
     () =>
@@ -1636,7 +1636,7 @@ export function useAppPanels(options: {
         try {
           // 判据已经保证是本地 workspace（无 workspaceIdentity / remoteSessionId），
           // 这里只带 workspacePath。
-          const result = await zcodeAgentService.conversationWorkflowRunArtifactsV4({
+          const result = await codezAgentService.conversationWorkflowRunArtifactsV4({
             workspacePath: request.workspacePath,
             sessionId: request.parentSessionId,
             runId: request.runId,
@@ -1667,14 +1667,14 @@ export function useAppPanels(options: {
       commitOpenedSidePaneState,
       openFileUrlInBrowserSidePane,
       supportsEmbeddedBrowser,
-      zcodeAgentService,
+      codezAgentService,
     ],
   );
 
   const closeSelectionSideChatRuntime = useCallback(
     (
       tab: Extract<WorkspaceSidePaneTab, { type: "selection-side-chat" }>,
-      sessionService = zcodeSessionService,
+      sessionService = codezSessionService,
     ) => {
       clearSelectionSideChat(tab.childSessionId);
       clearConversationSelectionReferenceScope(tab.childSessionId, tab.workspaceKey);
@@ -1692,14 +1692,14 @@ export function useAppPanels(options: {
           });
         });
     },
-    [zcodeSessionService],
+    [codezSessionService],
   );
 
   useEffect(() => {
     const subscription = subscribeTasksRemoved(
       {
         windowControllerService,
-        zcodeTaskService,
+        codezTaskService,
         workspacePath: workspaceAbsPath,
         workspaceIdentity,
       },
@@ -1716,7 +1716,7 @@ export function useAppPanels(options: {
                 taskId,
               );
             }
-            useZCodeSessionStore
+            useCodezSessionStore
               .getState()
               .removeTaskState(signal.workspacePath, taskId, signal.workspaceIdentity);
             forgetWorkspaceConversation(signal, taskId);
@@ -1738,7 +1738,7 @@ export function useAppPanels(options: {
           baseServices,
           sessionsById,
           isRemoteTarget: Boolean(signal.remoteSessionId),
-        }).zcodeSessionService;
+        }).codezSessionService;
         const releaseRuntimes = (tabs: WorkspaceSidePaneTab[]) => {
           for (const tab of tabs) {
             if (tab.type === "selection-side-chat") {
@@ -1788,7 +1788,7 @@ export function useAppPanels(options: {
     windowControllerService,
     workspaceAbsPath,
     workspaceIdentity,
-    zcodeTaskService,
+    codezTaskService,
   ]);
 
   // 订阅“打开模型调用轨迹”请求：菜单深处通过单例 store 发起，这里按 workspaceKey 匹配后消费。

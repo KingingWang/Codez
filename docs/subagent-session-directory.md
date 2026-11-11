@@ -50,7 +50,7 @@ CLI ProductProjection V4 snapshot.subagents
   统一属于 `ended`，每项继续保留具体状态。
 - 上一代 runtime 进程退出时仍在运行的 child（启动早于本进程、本进程无活事实、child 在本进程启动后
   没有落盘）不再算 running；旧进程写在输出目录 `metadata.json` 里的终态（正常关闭时的停止、失败、完成）照常显示为 cancelled / failed / success，没有终态的标 `lost`。判据与给模型的中断提醒见
-  [Subagent 工具「上一代 runtime 遗留的 Agent」](../apps/zcode-cli/docs/design/v2/tool/07-subagent.md)。
+  [Subagent 工具「上一代 runtime 遗留的 Agent」](../apps/codez-cli/docs/design/v2/tool/07-subagent.md)。
 - 冷恢复先从持久 transcript 重建 row，再以 session store 中已验证的
   `taskType=subagent_child` 事实校验成员；旧历史里模糊、未持久或已被 branch cut 移除的引用不能进入
   `snapshot.subagents`。运行中的恢复态由 runtime overlay 补齐，不能仅凭历史标题或时间猜测。

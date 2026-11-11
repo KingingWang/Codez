@@ -13,15 +13,15 @@ Status: ready-for-human
 ```text
 远端（systemd 主机，SSH 走 service 模式）
 sshd → logind 会话 → user@UID.service
-  └─ com.zhipu.zcode.server.<hash>.service（Restart=on-failure，WantedBy=default.target）
+  └─ com.zhipu.codez.server.<hash>.service（Restart=on-failure，WantedBy=default.target）
        └─ Supervisor → Core → Agent CLI → bash → nohup gradle（同一 cgroup）
-断线：ZCode 的 SSH 会话是该用户唯一会话 → 会话结束
+断线：Codez 的 SSH 会话是该用户唯一会话 → 会话结束
   └─ 未开启 linger：10s 后 systemd 停止 user manager → 整个服务 cgroup 被终止（nohup 也保不住）
 重连：新 SSH 会话 → user manager 重新拉起 → 全新 Core（新端口）→ 原轮次已中断，只能手动继续
 ```
 
-- 单元定义：`packages/zcode-server-cli/src/platform/serviceManager.ts:66-71`；探测与注册：`:166-196`、`:212-214`。产品代码不处理 linger；唯一的 `enable-linger` 调用在验证脚本 `packages/zcode-server-cli/scripts/verify-remote-ssh.mjs:164`。
-- 复现（Docker：Ubuntu 22.04 + systemd 249 + sshd，真实 3.16.2 包）：会话结束后 10.07s `Stopping User Manager`，随即 `Stopped ZCode Server`；注入服务 cgroup 的 `nohup sleep` 也被杀；停止后 status.json 仍写着 ready 与已死的 pid/port。
+- 单元定义：`packages/codez-server-cli/src/platform/serviceManager.ts:66-71`；探测与注册：`:166-196`、`:212-214`。产品代码不处理 linger；唯一的 `enable-linger` 调用在验证脚本 `packages/codez-server-cli/scripts/verify-remote-ssh.mjs:164`。
+- 复现（Docker：Ubuntu 22.04 + systemd 249 + sshd，真实 3.16.2 包）：会话结束后 10.07s `Stopping User Manager`，随即 `Stopped Codez Server`；注入服务 cgroup 的 `nohup sleep` 也被杀；停止后 status.json 仍写着 ready 与已死的 pid/port。
 
 | 实验                    | 断开间隔 | 结果                        |
 | ----------------------- | -------- | --------------------------- |
@@ -52,7 +52,7 @@ keepalive 为 15s × 3（`packages/server/src/remote/sshAuth.ts:4-6`），约 60
 
 ## 待补
 
-断线当天导出日志；远端 `loginctl show-user $USER -p Linger -p Sessions`、`journalctl --user -u 'com.zhipu.zcode.server.*'`、`sudo journalctl | grep -E 'Removed session|Stopping User Manager|Out of memory'`、`free -h`；是否还开着其他 SSH/tmux 会话。判别实验：`sudo loginctl enable-linger $USER` 后重跑长任务并断网超过 30s，任务存活即证实。
+断线当天导出日志；远端 `loginctl show-user $USER -p Linger -p Sessions`、`journalctl --user -u 'com.zhipu.codez.server.*'`、`sudo journalctl | grep -E 'Removed session|Stopping User Manager|Out of memory'`、`free -h`；是否还开着其他 SSH/tmux 会话。判别实验：`sudo loginctl enable-linger $USER` 后重跑长任务并断网超过 30s，任务存活即证实。
 
 ## 验证要求
 

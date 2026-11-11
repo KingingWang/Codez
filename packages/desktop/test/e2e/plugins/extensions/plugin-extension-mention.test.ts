@@ -1,6 +1,6 @@
 // PLM-EXT-P2C：输入框 `@` 面板的插件分组 composer.mention（docs/plugins/extension-host.md §16.6）。
 // 隔离 HOME：两个纯 JS fixture 插件（test/e2e/fixtures/fs/plugins/plugin-extension-mention/）复制到 E2E HOME，
-// 经 ~/.zcode/cli/config.json 的 plugins.dirs 加载：
+// 经 ~/.codez/cli/config.json 的 plugins.dirs 加载：
 // - e2e-ext-mention（扩展）：条目 items 指向扩展命令 search。query 越短命令返回越慢（每少一个字多 1.5 秒），
 //   快速输入时旧结果晚到，验证只采用最新一次。
 // - e2e-mcp-mention（只有 MCP）：条目 docs 指向 app 可见的工具 mention_search，CLI plugins/mentionItems 调它。
@@ -11,7 +11,7 @@
 // 输入框的 canonical markdown（Lexical E2E bridge）、MCP server 的调用记录、provider 请求捕获。
 import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { TID_PROMPT_SUGGESTION_PANEL, TID_V4_COMPOSER_INPUT } from "@zcode/shared/test-ids";
+import { TID_PROMPT_SUGGESTION_PANEL, TID_V4_COMPOSER_INPUT } from "@codez/shared/test-ids";
 import { DEFAULT_WORKSPACE, clearAppData, getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
 import { restartIntoWorkspacePreservingProfile } from "#e2e/helpers/model-provider-restart-runtime";
 import { createExtensionLog, writePluginDirsConfig } from "#e2e/helpers/extension-host-views";
@@ -154,8 +154,8 @@ async function waitForMentionGroup(
 async function readComposer(): Promise<{ markdown: string; chips: string[] }> {
   return browser.execute((inputTestId) => {
     const input = document.querySelector<HTMLElement>(`[data-testid="${inputTestId}"]`);
-    const bridge = (input as HTMLElement & { __zcodeLexicalInputE2E?: { getText: () => string } })
-      ?.__zcodeLexicalInputE2E;
+    const bridge = (input as HTMLElement & { __codezLexicalInputE2E?: { getText: () => string } })
+      ?.__codezLexicalInputE2E;
     return {
       markdown: bridge?.getText() ?? "",
       chips: Array.from(
@@ -170,9 +170,9 @@ async function typeAtComposerEnd(text: string): Promise<void> {
   await focusAppWindow();
   await browser.execute((inputTestId) => {
     const input = document.querySelector<
-      HTMLElement & { __zcodeLexicalInputE2E?: { focus: () => void } }
+      HTMLElement & { __codezLexicalInputE2E?: { focus: () => void } }
     >(`[data-testid="${inputTestId}"]`);
-    input?.__zcodeLexicalInputE2E?.focus();
+    input?.__codezLexicalInputE2E?.focus();
   }, TID_V4_COMPOSER_INPUT);
   await browser.keys(text.split(""));
 }
@@ -224,10 +224,10 @@ async function writeMentionQuery(query: string): Promise<void> {
     (inputTestId, text, done: (result?: string) => void) => {
       const input = document.querySelector<
         HTMLElement & {
-          __zcodeLexicalInputE2E?: { focus: () => void; setText: (value: string) => void };
+          __codezLexicalInputE2E?: { focus: () => void; setText: (value: string) => void };
         }
       >(`[data-testid="${inputTestId}"]`);
-      const bridge = input?.__zcodeLexicalInputE2E;
+      const bridge = input?.__codezLexicalInputE2E;
       if (!input?.isContentEditable || !bridge) {
         done("not-editable");
         return;
@@ -292,7 +292,7 @@ async function capture(label: string): Promise<string> {
 describe("PLM-EXT-P2C 输入框 @ 面板的插件分组", () => {
   after(async () => {
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR ?? process.cwd(), "plm-ext-p2c-evidence.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR ?? process.cwd(), "plm-ext-p2c-evidence.json"),
       JSON.stringify(evidence, null, 2),
     ).catch(() => undefined);
     await clearAppData();

@@ -6,7 +6,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { seedCustomOpenAIChatCompletionsProvider } from "#e2e/helpers/custom-openai-provider-store";
 import { refreshSeededOpenAIProvidersThroughSettings } from "#e2e/helpers/custom-openai-provider";
 import {
@@ -46,7 +46,7 @@ import {
 // 子请求的 model 字段就是远端 Agent 实际选用的模型。
 const CASE_MARKER = "E2E_DSYNC_09_BUILTIN_RUNTIME";
 const ALT_MODEL_ID = "e2e-dsync-09-alt-model";
-const REMOTE_STATE_FILE = "/home/dev/.zcode/v2/agents-state.json";
+const REMOTE_STATE_FILE = "/home/dev/.codez/v2/agents-state.json";
 const EXPLORE_KEY = "built-in:built-in:explore";
 // 远端 Core 的子智能体监听在文件稳定 1000ms 后读取、再合并 300ms 才发布快照（docs/subagent-runtime-refresh.md）。
 const SUBAGENT_PUBLISH_WINDOW_MS = 3_000;
@@ -171,7 +171,7 @@ describe(`${CASE_MARKER}: 推送内置子智能体模型覆盖后远端生效`, 
       modelId: ALT_MODEL_ID,
       options: { reasoningLevel: "disabled" },
     };
-    const localStateDir = join(getE2EAppDataPaths().homeDir, ".zcode", "v2");
+    const localStateDir = join(getE2EAppDataPaths().homeDir, ".codez", "v2");
     await mkdir(localStateDir, { recursive: true });
     await writeFile(
       join(localStateDir, "agents-state.json"),

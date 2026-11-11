@@ -69,6 +69,6 @@ ACK 返回前切换 task/workspace 时，不得把旧 payload 写进新 composer
 
 ## 当前入口
 
-- Schema：`packages/shared/src/zcode-protocol-v4/command.ts`、`snapshot.ts`
-- CLI handlers：`apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/queue.ts`
+- Schema：`packages/shared/src/codez-protocol-v4/command.ts`、`snapshot.ts`
+- CLI handlers：`apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/commands/handlers/queue.ts`
 - UI：`packages/ui/src/v4/SessionPane.tsx`

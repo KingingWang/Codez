@@ -2,8 +2,8 @@
 // 开关与所选分支存放在 session store 的草稿状态，每次新建草稿重置为关闭；这里不持有第二份状态。
 import { CheckIcon, ChevronDownIcon, GitBranchIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { ManagedWorktreeStartRefs } from "@zcode/shared";
-import { TID_WORKTREE_TOGGLE } from "@zcode/shared/test-ids";
+import type { ManagedWorktreeStartRefs } from "@codez/shared";
+import { TID_WORKTREE_TOGGLE } from "@codez/shared/test-ids";
 import { Button } from "@/components/ui/button.js";
 import { Checkbox } from "@/components/ui/checkbox.js";
 import {
@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.js";
 import { useServices } from "@/hooks/useServices.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import { cn } from "@/components/lib/utils.js";
 
@@ -35,7 +35,7 @@ export function WorktreeToggle({
   /** 允许调用方做位置对齐；高度固定 `h-7`，与项目/分支胶囊的 Button `size="default"` 一致。 */
   className?: string;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   return (
     <label
       title={intl.formatMessage({ id: "git.managedWorktree.toggle.tooltip" })}
@@ -76,7 +76,7 @@ export function WorktreeBranchPicker({
   /** 与 GitBranchSwitcher 的外层 className 一致，切换复选框时头部布局不变（§3.3）。 */
   className?: string;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const { managedWorktreeService } = useServices();
   const [open, setOpen] = useState(false);
   const [refs, setRefs] = useState<ManagedWorktreeStartRefs | null>(null);

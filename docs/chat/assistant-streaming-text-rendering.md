@@ -29,7 +29,7 @@ row delta → 权威 projection → timeline / 当前文本
 
 ## 每帧派生成本的不变量
 
-桌面 continuous profile 的 `flushWindowMs` 是 30ms（`packages/shared/src/zcode-protocol-v4/core.ts`），
+桌面 continuous profile 的 `flushWindowMs` 是 30ms（`packages/shared/src/codez-protocol-v4/core.ts`），
 相邻同 `(rowId, path)` 的 delta 在服务端已由 `coalesceConversationDeltas` 合并。
 渲染端因此约 33 帧/秒收到一条追加，**渲染端不再二次节流**。
 

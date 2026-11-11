@@ -1,5 +1,5 @@
-import type { MicrophoneAccessResult, MicrophoneSettingsTarget } from "@zcode/shared";
-import { PlatformChannels } from "@zcode/shared";
+import type { MicrophoneAccessResult, MicrophoneSettingsTarget } from "@codez/shared";
+import { PlatformChannels } from "@codez/shared";
 import { ipcMain, shell, systemPreferences } from "electron";
 
 // 只允许打开这里列出的固定地址，renderer 只能选 target，不能传任意 URL。

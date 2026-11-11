@@ -8,7 +8,7 @@ import type {
   ReactNode,
 } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { TID_CHAT_SEND_BUTTON } from "@zcode/shared/test-ids";
+import { TID_CHAT_SEND_BUTTON } from "@codez/shared/test-ids";
 import { ArrowUpIcon, Hand, XIcon } from "lucide-react";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { Button } from "@/components/ui/button.js";
@@ -20,7 +20,7 @@ import {
   type LexicalChatInputHandle,
   type UserInputPresence,
 } from "@/LexicalChatInput.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import type { AppSlashCommand } from "@/slashCommandHelpers.js";
 import {
   hasWorkspaceFileDragPayload,
@@ -171,7 +171,7 @@ export function ChatPromptEditor({
   /** 额外挂进编辑器的 Lexical 插件（透传 LexicalChatInput）。 */
   extraPlugins?: ReactNode;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const isInline = layout === "inline";
   const toolbarRef = useComposerToolbarFit({ iconOnly: isInline });
   const internalInputApiRef = useRef<LexicalChatInputHandle | null>(null);

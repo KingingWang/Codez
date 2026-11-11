@@ -1,19 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import type { ZCodeProvider, ZCodeTaskMeta } from "@zcode/shared";
-import { useZCodeTaskService } from "@/hooks/useZCodeTaskService.js";
+import type { CodezProvider, CodezTaskMeta } from "@codez/shared";
+import { useCodezTaskService } from "@/hooks/useCodezTaskService.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { useTaskNativeSessionLogFile } from "@/hooks/useTaskNativeSessionLogFile.js";
 import { useTaskSessionFilePath } from "@/hooks/useTaskSessionFilePath.js";
 import { logger } from "@/logger.js";
 import { resolveWorkspaceHeaderProvider } from "@/lib/workspaceHeaderProvider.js";
-import { selectWorkspaceZCodeState, useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { selectWorkspaceCodezState, useCodezSessionStore } from "@/store/codezSessionStore.js";
 
 interface UseWorkspaceActiveTaskStateParams {
   workspaceAbsPath: string;
   activeTaskId: string | null;
   workspaceRemoteSessionId?: string | null;
   workspaceIdentity?: string;
-  selectedProvider: ZCodeProvider;
+  selectedProvider: CodezProvider;
   intl: {
     formatMessage(descriptor: { id: string }): string;
   };
@@ -23,7 +23,7 @@ function areTaskMetaJsonFieldsEqual(left: unknown, right: unknown) {
   return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
 }
 
-function areResolvedTaskMetasEqual(left: ZCodeTaskMeta | null, right: ZCodeTaskMeta | null) {
+function areResolvedTaskMetasEqual(left: CodezTaskMeta | null, right: CodezTaskMeta | null) {
   if (left === right) {
     return true;
   }
@@ -71,16 +71,16 @@ export function useIndexedTaskMeta({
   workspaceIdentity?: string;
   remoteSessionId?: string | null;
   taskId: string | null;
-}): ZCodeTaskMeta | null {
-  const service = useZCodeTaskService(
+}): CodezTaskMeta | null {
+  const service = useCodezTaskService(
     workspaceAbsPath,
     workspaceRemoteSessionId,
     workspaceIdentity,
   );
   const { broadcastService } = useBaseWorkspaceServices();
-  const version = useZCodeSessionStore(
+  const version = useCodezSessionStore(
     (state) =>
-      selectWorkspaceZCodeState(state, workspaceAbsPath, workspaceIdentity).taskListVersion,
+      selectWorkspaceCodezState(state, workspaceAbsPath, workspaceIdentity).taskListVersion,
   );
   const targetKey = JSON.stringify([
     workspaceIdentity?.trim() || workspaceAbsPath,
@@ -90,7 +90,7 @@ export function useIndexedTaskMeta({
   const [indexed, setIndexed] = useState<{
     service: typeof service;
     targetKey: string;
-    meta: ZCodeTaskMeta | null;
+    meta: CodezTaskMeta | null;
   } | null>(null);
   useEffect(() => {
     if (!activeTaskId) return;
@@ -137,8 +137,8 @@ export function useIndexedTaskMeta({
   return indexedMeta;
 }
 
-export function useStableResolvedActiveTaskMeta(taskMeta: ZCodeTaskMeta | null) {
-  const stableTaskMetaRef = useRef<ZCodeTaskMeta | null>(null);
+export function useStableResolvedActiveTaskMeta(taskMeta: CodezTaskMeta | null) {
+  const stableTaskMetaRef = useRef<CodezTaskMeta | null>(null);
   const stableTaskMeta = stableTaskMetaRef.current;
   // stream chunk 只更新消息流时，active task meta 经列表/乐观层重新合成后可能字段相同但引用变了。
   // Header/Shell 依赖 memo props；这里复用等价 meta 的旧引用，避免连续流式更新拖动标题栏重渲。
@@ -156,8 +156,8 @@ export function useWorkspaceActiveTaskState({
   selectedProvider,
   intl,
 }: UseWorkspaceActiveTaskStateParams) {
-  const optimisticMeta = useZCodeSessionStore((state) => {
-    const workspace = selectWorkspaceZCodeState(state, workspaceAbsPath, workspaceIdentity);
+  const optimisticMeta = useCodezSessionStore((state) => {
+    const workspace = selectWorkspaceCodezState(state, workspaceAbsPath, workspaceIdentity);
     return activeTaskId ? (workspace.optimisticTaskListByTaskId[activeTaskId] ?? null) : null;
   });
   const indexedMeta = useIndexedTaskMeta({

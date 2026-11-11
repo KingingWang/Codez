@@ -54,8 +54,8 @@ describe("手机置顶/归档/新建项目 payload", () => {
       zcode_type: "workspace-create-response",
       requestId: "r3",
       success: true,
-      workspacePath: "/Users/u/ZCodeProject/demo",
-      workspaceKey: "/Users/u/ZCodeProject/demo",
+      workspacePath: "/Users/u/CodezProject/demo",
+      workspaceKey: "/Users/u/CodezProject/demo",
       projectId: "p1",
       hostId: "local",
     },
@@ -115,7 +115,7 @@ describe("resolveUnrecognizedWebRemoteControlRequest", () => {
   it("只对带 requestId 的 -request 类型回错", () => {
     expect(
       resolveUnrecognizedWebRemoteControlRequest({ zcode_type: "future-request", requestId: "r" }),
-    ).toEqual({ requestId: "r", zcodeType: "future-request" });
+    ).toEqual({ requestId: "r", codezType: "future-request" });
   });
 
   it.each([

@@ -46,7 +46,7 @@ export async function seedSidebarRichContentFixture(options: {
       assistantOutputTokens: 100,
     },
   });
-  const source = process.env.ZCODE_SIDEBAR_HISTORY_SNAPSHOT;
+  const source = process.env.CODEZ_SIDEBAR_HISTORY_SNAPSHOT;
   let metadata = { source: "synthetic", sha256: "", messages: 2, parts: 2 };
   if (source) {
     const bytes = await readFile(source);
@@ -59,7 +59,7 @@ export async function seedSidebarRichContentFixture(options: {
       throw new Error("会话副本缺少完整消息或 part 所属消息");
     }
     // node:sqlite 只有同步 API；仅在测试进程、Host 启动前写入离线副本。
-    const db = new DatabaseSync(join(options.e2eHomeDir, ".zcode/cli/db/db.sqlite"));
+    const db = new DatabaseSync(join(options.e2eHomeDir, ".codez/cli/db/db.sqlite"));
     try {
       db.exec("BEGIN IMMEDIATE");
       db.prepare("DELETE FROM part WHERE session_id = ?").run(SIDEBAR_RICH_SESSION_ID);

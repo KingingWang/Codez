@@ -1,4 +1,4 @@
-import { createAppSessionControl } from "@zcode/session-control/app";
+import { createAppSessionControl } from "@codez/session-control/app";
 import {
   SessionControlError,
   type AccessGrant,
@@ -6,7 +6,7 @@ import {
   type AppSessionRef,
   type AppTrustedContext,
   type SessionSummary,
-} from "@zcode/session-control/contracts";
+} from "@codez/session-control/contracts";
 import type { ProjectTask } from "#src/project/contract.js";
 import type {
   AppControlBinding,
@@ -19,8 +19,8 @@ import {
   bindAppDiscoverySources,
   createAppDiscoveryPorts,
 } from "#src/app-control/discovery.js";
-import { zcodeProtocolErrorCodes } from "@zcode/shared";
-import { ZCODE_AGENT_RUNTIME_UNAVAILABLE_CODE } from "#src/zcode-agent/zcodeAgent.js";
+import { codezProtocolErrorCodes } from "@codez/shared";
+import { CODEZ_AGENT_RUNTIME_UNAVAILABLE_CODE } from "#src/codez-agent/codezAgent.js";
 import { observeAppOperation, readAppLiveSummary } from "#src/app-control/observation.js";
 export type {
   AppControlBinding,
@@ -56,8 +56,8 @@ async function readOwnerMessages<T>(read: () => Promise<T>): Promise<T> {
   } catch (error) {
     const code = (error as { code?: unknown } | null)?.code;
     if (
-      code === ZCODE_AGENT_RUNTIME_UNAVAILABLE_CODE ||
-      code === zcodeProtocolErrorCodes.sessionUnavailable
+      code === CODEZ_AGENT_RUNTIME_UNAVAILABLE_CODE ||
+      code === codezProtocolErrorCodes.sessionUnavailable
     )
       throw new SessionControlError("unavailable", "Session transcript is not available to read");
     throw error;

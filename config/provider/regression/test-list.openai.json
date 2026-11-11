@@ -32,7 +32,7 @@
       "path": "fixtures/marker.pdf",
       "mediaType": "application/pdf",
       "prompt": "读取附件 PDF，回答文档中的验证标记。",
-      "expected": "ZCODE-PDF-42"
+      "expected": "CODEZ-PDF-42"
     }
   }
 }

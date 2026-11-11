@@ -3,7 +3,7 @@ import {
   disconnectRemoteSource,
   requestRemoteProjectConnection,
 } from "#e2e/helpers/remote-project-actions";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 import { clearAppData, readSettings, seedSettings } from "#e2e/helpers/desktop-app";
 import { selectUpstreamProviderModelById } from "#e2e/helpers/upstream-provider";
 import {
@@ -172,7 +172,7 @@ describe(`${CASE_MARKER}: SSH cold restart and automatic reconnect`, () => {
     );
     expect(await getV4PaneSnapshot()).toMatchObject({ sessionId: null, rowCount: 0 });
     expect(await $('[data-testid="remote-conversation-banner"]').isDisplayed()).toBe(true);
-    await browser.saveScreenshot(`${process.env.ZCODE_E2E_ARTIFACT_DIR}/rdux09-cold-offline.png`);
+    await browser.saveScreenshot(`${process.env.CODEZ_E2E_ARTIFACT_DIR}/rdux09-cold-offline.png`);
 
     await requestRemoteProjectConnection(taskB.identity, CASE_MARKER);
     await waitForRemoteTab({

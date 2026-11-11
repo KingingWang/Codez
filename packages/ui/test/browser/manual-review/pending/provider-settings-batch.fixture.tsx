@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
-import { parseZCodeBuiltinModelConfigRules } from "@zcode/provider";
-import type { IServiceAccessor, ProviderSettingsView } from "@zcode/services";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { parseCodezBuiltinModelConfigRules } from "@codez/provider";
+import type { IServiceAccessor, ProviderSettingsView } from "@codez/services";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import { ProviderTemplatePicker } from "@/settings/model-provider-section/ProviderTemplatePicker.js";
@@ -22,7 +22,7 @@ import {
   getProviderFormApiKeyManagementUrl,
   type ProviderSettingsFormProvider,
 } from "@/lib/providerSettingsFormTypes.js";
-import release from "../../../../../../config/provider/zcode-builtin.json";
+import release from "../../../../../../config/provider/codez-builtin.json";
 import { ProviderModelEditorFixture } from "./provider-model-editor.fixture.js";
 import { OffPeakEligibilityFixture } from "./offpeak-eligibility.fixture.js";
 import { OffPeakTeamEntryFixture } from "./offpeak-team-entry.fixture.js";
@@ -32,7 +32,7 @@ import { Checkbox } from "@/components/ui/checkbox.js";
 const params = new URLSearchParams(location.search);
 document.documentElement.className =
   params.get("theme") === "light" ? "light theme-zai-light" : "dark theme-zai-dark";
-const rules = parseZCodeBuiltinModelConfigRules(release.config.modelConfigRules);
+const rules = parseCodezBuiltinModelConfigRules(release.config.modelConfigRules);
 const templates = release.config.providerConfigRules
   .templateRules as ProviderSettingsView["providerTemplates"];
 function createProvider(templateId: string): ProviderSettingsFormProvider {
@@ -262,7 +262,7 @@ createRoot(document.getElementById("root")!).render(
     }
   >
     <TooltipProvider>
-      <ZCodeIntlProvider initialLocale={params.get("locale") === "zh-CN" ? "zh-CN" : "en-US"}>
+      <CodezIntlProvider initialLocale={params.get("locale") === "zh-CN" ? "zh-CN" : "en-US"}>
         {params.has("teamEntry") ? (
           <OffPeakTeamEntryFixture />
         ) : params.has("offpeak") ? (
@@ -272,7 +272,7 @@ createRoot(document.getElementById("root")!).render(
         ) : (
           <Fixture />
         )}
-      </ZCodeIntlProvider>
+      </CodezIntlProvider>
     </TooltipProvider>
   </ServiceProvider>,
 );

@@ -15,7 +15,7 @@ import {
   TID_V4_SESSION_PANE,
   TID_V4_TURN_NAVIGATOR_ITEM,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { releaseControlledReplay } from "#e2e/helpers/controlled-replay";
 import { clearAppData, seedSettings } from "#e2e/helpers/desktop-app";
 import {
@@ -1085,9 +1085,9 @@ describe("会话区 Background Runtime Task E2E", () => {
           "Successfully stopped task:",
           "<task-notification>",
           "<tool-use-id>toolu_e2e_background_taskstop_agent</tool-use-id>",
-          // 模型用 TaskStop 停止：summary 写明是 ZCode 停止的。
+          // 模型用 TaskStop 停止：summary 写明是 Codez 停止的。
           "<status>killed</status>",
-          "was stopped by ZCode</summary>",
+          "was stopped by Codez</summary>",
         ],
         lastUserMessageIncludes: ["<task-notification>"],
       },
@@ -2541,10 +2541,10 @@ async function startVisibleUserMessageSampler() {
         samples: VisibleUserMessageSample[];
       };
       const sampleWindow = window as typeof window & {
-        __zcodeBg17UserMessageSampler?: SamplerState;
+        __codezBg17UserMessageSampler?: SamplerState;
       };
-      if (sampleWindow.__zcodeBg17UserMessageSampler) {
-        clearInterval(sampleWindow.__zcodeBg17UserMessageSampler.intervalId);
+      if (sampleWindow.__codezBg17UserMessageSampler) {
+        clearInterval(sampleWindow.__codezBg17UserMessageSampler.intervalId);
       }
       const collect = () => {
         const root = document.querySelector<HTMLElement>(`[data-testid="${messagesTestId}"]`);
@@ -2554,12 +2554,12 @@ async function startVisibleUserMessageSampler() {
           id: element.getAttribute("data-message-id"),
           text: element.innerText.replace(/\u00a0/g, " ").trim(),
         }));
-        sampleWindow.__zcodeBg17UserMessageSampler?.samples.push({
+        sampleWindow.__codezBg17UserMessageSampler?.samples.push({
           at: Date.now(),
           messages,
         });
       };
-      sampleWindow.__zcodeBg17UserMessageSampler = {
+      sampleWindow.__codezBg17UserMessageSampler = {
         intervalId: setInterval(collect, 50),
         samples: [],
       };
@@ -2573,17 +2573,17 @@ async function startVisibleUserMessageSampler() {
 async function stopVisibleUserMessageSampler() {
   return await browser.execute(() => {
     const sampleWindow = window as typeof window & {
-      __zcodeBg17UserMessageSampler?: {
+      __codezBg17UserMessageSampler?: {
         intervalId: ReturnType<typeof setInterval>;
         samples: VisibleUserMessageSample[];
       };
     };
-    const sampler = sampleWindow.__zcodeBg17UserMessageSampler;
+    const sampler = sampleWindow.__codezBg17UserMessageSampler;
     if (!sampler) {
       return [] satisfies VisibleUserMessageSample[];
     }
     clearInterval(sampler.intervalId);
-    delete sampleWindow.__zcodeBg17UserMessageSampler;
+    delete sampleWindow.__codezBg17UserMessageSampler;
     return sampler.samples;
   });
 }
@@ -2819,9 +2819,9 @@ async function startBackgroundTaskControlPresenceProbe(
   await openV4ComposerRunningBackgroundWorks();
   await browser.execute(
     (expectedKind, expectedText, expectedTaskId, v4SessionPanePrefix) => {
-      const probeKey = "__zcodeBackgroundTaskControlPresenceProbe";
+      const probeKey = "__codezBackgroundTaskControlPresenceProbe";
       const probeWindow = window as typeof window & {
-        __zcodeBackgroundTaskControlPresenceProbe?: {
+        __codezBackgroundTaskControlPresenceProbe?: {
           intervalId: number;
           missingTransitions: Array<{
             atMs: number;
@@ -2884,7 +2884,7 @@ async function startBackgroundTaskControlPresenceProbe(
         if (state.hasReturnedToTask && state.wasPresent === true && !present) {
           const store = (
             window as typeof window & {
-              __zcodeSessionStoreE2E?: {
+              __codezSessionStoreE2E?: {
                 getState: () => {
                   workspaces: Record<
                     string,
@@ -2904,7 +2904,7 @@ async function startBackgroundTaskControlPresenceProbe(
                 };
               };
             }
-          ).__zcodeSessionStoreE2E;
+          ).__codezSessionStoreE2E;
           const taskRuntime = Object.values(store?.getState().workspaces ?? {})
             .map((workspace) => workspace.taskRuntimeByTaskId?.[expectedTaskId])
             .find(Boolean);
@@ -2935,9 +2935,9 @@ async function startBackgroundTaskControlPresenceProbe(
 
 async function stopBackgroundTaskControlPresenceProbe(): Promise<BackgroundTaskControlPresenceProbeResult> {
   return browser.execute(() => {
-    const probeKey = "__zcodeBackgroundTaskControlPresenceProbe";
+    const probeKey = "__codezBackgroundTaskControlPresenceProbe";
     const probeWindow = window as typeof window & {
-      __zcodeBackgroundTaskControlPresenceProbe?: {
+      __codezBackgroundTaskControlPresenceProbe?: {
         intervalId: number;
         missingTransitions: BackgroundTaskControlPresenceProbeResult["missingTransitions"];
         observedPresent: boolean;

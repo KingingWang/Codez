@@ -4,7 +4,7 @@
 
 **Goal:** Make merge-request pipelines default to macOS ARM64 and Windows x64 while preserving all-platform defaults for manually created pipelines.
 
-**Architecture:** Keep platform selection centralized in the existing `ZCODE_BUILD_PLATFORMS` rules. Add the MR-specific default at the workflow boundary so both MR environment branches produce the same job graph, without changing web, API, trigger, tag, `ci/*`, or sandbox behavior.
+**Architecture:** Keep platform selection centralized in the existing `CODEZ_BUILD_PLATFORMS` rules. Add the MR-specific default at the workflow boundary so both MR environment branches produce the same job graph, without changing web, API, trigger, tag, `ci/*`, or sandbox behavior.
 
 **Tech Stack:** GitLab CI YAML, Vitest text-contract tests, pnpm.
 
@@ -22,10 +22,10 @@
 Add a test that reads both MR workflow rule blocks and asserts each contains:
 
 ```ts
-expect(ruleBlock).toContain('ZCODE_BUILD_PLATFORMS: "macos-arm64,windows-x64"');
+expect(ruleBlock).toContain('CODEZ_BUILD_PLATFORMS: "macos-arm64,windows-x64"');
 ```
 
-Also assert the manual test and production workflow rule blocks do not define `ZCODE_BUILD_PLATFORMS`, preserving the empty-variable all-platform default for `web`, `api`, and `trigger` sources.
+Also assert the manual test and production workflow rule blocks do not define `CODEZ_BUILD_PLATFORMS`, preserving the empty-variable all-platform default for `web`, `api`, and `trigger` sources.
 
 - [x] **Step 2: Run the focused test to verify RED**
 
@@ -35,14 +35,14 @@ Run:
 pnpm exec vitest run packages/desktop/test/ciNodeVersionConfig.test.ts
 ```
 
-Expected: FAIL because the MR workflow rules do not yet inject `ZCODE_BUILD_PLATFORMS`.
+Expected: FAIL because the MR workflow rules do not yet inject `CODEZ_BUILD_PLATFORMS`.
 
 - [x] **Step 3: Implement the minimal workflow change**
 
 Add the following variable to both MR workflow `variables` blocks in `.gitlab/ci/00-workflow.yml`:
 
 ```yaml
-ZCODE_BUILD_PLATFORMS: "macos-arm64,windows-x64"
+CODEZ_BUILD_PLATFORMS: "macos-arm64,windows-x64"
 ```
 
 Do not add the variable to web, Pipeline API, or Trigger API workflow rules.

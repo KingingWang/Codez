@@ -16,15 +16,15 @@
 {
   "data": {
     "configs": {
-      "builtin_provider_config_json": "https://cdn-zcode.z.ai/zcode/config/zcode-builtin.json"
+      "builtin_provider_config_json": "https://cdn-zcode.z.ai/codez/config/codez-builtin.json"
     }
   }
 }
 ```
 
-省略了无关字段。未返回旧的 `configs.zcodeBuiltin`。将真实响应交给当前 `decodeZCodeBuiltinClientConfigEnvelope`，得到 `null`。
+省略了无关字段。未返回旧的 `configs.codezBuiltin`。将真实响应交给当前 `decodeCodezBuiltinClientConfigEnvelope`，得到 `null`。
 
-CDN 下载 HTTP 200、`Content-Type: application/json`，`schemaVersion: 1`、`revision: 19`；当前正式 `decodeZCodeBuiltinRelease` 成功，17 个模板、8 个内置 Provider，规范化后与仓库文件一致。`Cache-Control: max-age=31104000`，即 360 天。用户确认以后每次发布新 URL，不覆盖同 URL；长缓存本身不是要修的错误。
+CDN 下载 HTTP 200、`Content-Type: application/json`，`schemaVersion: 1`、`revision: 19`；当前正式 `decodeCodezBuiltinRelease` 成功，17 个模板、8 个内置 Provider，规范化后与仓库文件一致。`Cache-Control: max-age=31104000`，即 360 天。用户确认以后每次发布新 URL，不覆盖同 URL；长缓存本身不是要修的错误。
 
 本次只证明生产环境该版本／平台组合返回正确 URL；测试环境请求失败，未证明其配置。未验证服务端所有版本／平台分流，也未更改线上字段、上传或发布文件。
 
@@ -32,9 +32,9 @@ CDN 下载 HTTP 200、`Content-Type: application/json`，`schemaVersion: 1`、`r
 
 ```text
 App / Server Environment Host                 Standalone CLI 入口
-  Services.fetchZCodeBuiltinRemoteRelease       fetchCliZCodeBuiltinRelease
+  Services.fetchCodezBuiltinRemoteRelease       fetchCliCodezBuiltinRelease
                     \                         /
-                 旧 configs.zcodeBuiltin 解码
+                 旧 configs.codezBuiltin 解码
                               |
                    RemoteSynchronizer
             共享控制文件 lease / TTL / 失败退避
@@ -58,16 +58,16 @@ Host 管理的 Worker 通过环境变量接收同一 Active 文件路径，自�
 
 ### R1：新字段未接入，生产响应被当成 missing
 
-- `packages/provider-node/src/zcode-builtin-release.ts` 的 Envelope 解码器只取 `zcodeBuiltin`。
-- `packages/services/src/model-provider/zcodeBuiltinRemoteConfig.ts` 与 `apps/zcode-cli/packages/cli/src/provider-runtime-env.ts` 都只请求一次 client/configs 后调用该解码器，没有 URL 下载。
+- `packages/provider-node/src/codez-builtin-release.ts` 的 Envelope 解码器只取 `codezBuiltin`。
+- `packages/services/src/model-provider/codezBuiltinRemoteConfig.ts` 与 `apps/codez-cli/packages/cli/src/provider-runtime-env.ts` 都只请求一次 client/configs 后调用该解码器，没有 URL 下载。
 - 实测真实生产响应解码为 `null`；Synchronizer 将 missing 当正常结果，写下一次允许刷新时间，不报告网络错误。
 - 必修：两端共用新字段解析、下载与 Release 校验。缺字段可保持本地；字段存在但类型错误／URL 非法／下载或解码失败必须与正常缺省区分。
 
 ### R2：Standalone 的 Built-in 已变，Account 版本未跟随，Registry 保留旧版
 
-- `apps/zcode-cli/packages/bootstrap/src/app/process-provider-registry-runtime.ts:80` 订阅凭据变化重建 Account，没有对应的 Built-in 变化订阅。
+- `apps/codez-cli/packages/bootstrap/src/app/process-provider-registry-runtime.ts:80` 订阅凭据变化重建 Account，没有对应的 Built-in 变化订阅。
 - `packages/provider-node/src/provider-registry-runtime.ts:40` 只在启动时建立未初始化 Account 的 fail-closed 快照。
-- `packages/provider/src/registry-service.ts:204` 明确要求 Account 的 `basedOnZCodeBuiltinRevision` 与 Config 一致；不一致时保留上一份完整 Registry。这项一致性检查正确，不应为了更新生效而删掉。
+- `packages/provider/src/registry-service.ts:204` 明确要求 Account 的 `basedOnCodezBuiltinRevision` 与 Config 一致；不一致时保留上一份完整 Registry。这项一致性检查正确，不应为了更新生效而删掉。
 - 运行复现：临时文件装载真实 revision 19，启动 `NodeProviderRegistryRuntime`；只将文件 revision 更新为 20，读取 Config 后显式刷新 Registry。Config 为 20，Account 和 Registry 仍为 19，刷新返回旧快照。测试不依赖定时等待或真实账号，已证明底层停滞；Standalone 生产装配的订阅缺口另由代码确认。
 - 同类启动竞态：凭据初始化与后台下载之间发生 Built-in 更新时，启动对齐也需覆盖，不能只测启动后更新。
 - 修复方向：Standalone 在同一生命周期中针对 Built-in 和凭据变化串行重建 Account，以真实当前凭据派生；结果过期则重算。无账号时也需生成基于新 Built-in 的 fail-closed 快照。不得把旧 Account 仅改 revision 冒充新解析，不重做登录协议。
@@ -104,9 +104,9 @@ Host 管理的 Worker 通过环境变量接收同一 Active 文件路径，自�
 
 ### 校验能力的限制：不是新发现的“违背设计”
 
-运行复现：从真实 release 删除通用 Model／Model+API／Site 三组规则，保留模板名单和精确启停，使用更高 revision。`decodeZCodeBuiltinRelease` 仍成功，`applyRemoteRelease` 返回 updated 并写盘；解析 GPT-6 后 `validateComplete()` 报 2 项缺失。故**可解析不等于模型可用**，这种内容会替换 Active，而不是自动恢复上一版。
+运行复现：从真实 release 删除通用 Model／Model+API／Site 三组规则，保留模板名单和精确启停，使用更高 revision。`decodeCodezBuiltinRelease` 仍成功，`applyRemoteRelease` 返回 updated 并写盘；解析 GPT-6 后 `validateComplete()` 报 2 项缺失。故**可解析不等于模型可用**，这种内容会替换 Active，而不是自动恢复上一版。
 
-这符合 [Todo19 历史裁决](../steps/todo-19-zcode-builtin-release-integrity-validation.md)：远端同步首版不增加客户端业务完整性校验器，不注入假账号或 API Key 验证整份 Registry。本轮不悄悄恢复被废弃 Todo19，也不按当前 Personal／账号拒绝公共配置。
+这符合 [Todo19 历史裁决](../steps/todo-19-codez-builtin-release-integrity-validation.md)：远端同步首版不增加客户端业务完整性校验器，不注入假账号或 API Key 验证整份 Registry。本轮不悄悄恢复被废弃 Todo19，也不按当前 Personal／账号拒绝公共配置。
 
 本次发布必须在上传前对最终文件运行现有真实 Built-in 完整性／规则／请求测试，补本功能所需的两阶段下载验收；不要把测试写死只验证仓库文件而实际上传另一份内容。是否未来增加独立发布工具、全自动流水线或客户端业务门禁仍需另行裁决。配置业务错误不能承诺自动回滚，当前恢复方式是更高 revision 的纠正发布。
 

@@ -4,7 +4,7 @@ const { join } = require("node:path");
 const { syncBuiltinESMExports } = require("node:module");
 const { StringDecoder } = require("node:string_decoder");
 const childProcess = require("node:child_process");
-const logPath = join(process.env.ZCODE_E2E_HOST_FAULT_ROOT, `host-boundary-${process.pid}.jsonl`);
+const logPath = join(process.env.CODEZ_E2E_HOST_FAULT_ROOT, `host-boundary-${process.pid}.jsonl`);
 let logWrites = Promise.resolve();
 const log = (kind, id) => {
   logWrites = logWrites.then(() => appendFile(logPath, JSON.stringify({ kind, id }) + "\n"));

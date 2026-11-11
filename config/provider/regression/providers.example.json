@@ -1,5 +1,5 @@
 {
-  "builtinFile": "../zcode-builtin.json",
+  "builtinFile": "../codez-builtin.json",
   "providerRules": [
     {
       "providerId": "test-minimax-api",

@@ -31,7 +31,7 @@
   用户完成认证（手机号验证码等）
         │
         ▼
-  BigModel 重定向 zcode://bigmodel-auth/callback?code=xxx&state=xxx
+  BigModel 重定向 codez://bigmodel-auth/callback?code=xxx&state=xxx
         │
         ▼
   Main Process 捕获 deep link（仅提取 URL）
@@ -62,7 +62,7 @@
 
 ```ts
 // 在 app.whenReady() 之前注册协议
-app.setAsDefaultProtocolClient('zcode')
+app.setAsDefaultProtocolClient('codez')
 
 // 单实例锁（新增）
 const gotTheLock = app.requestSingleInstanceLock()
@@ -96,8 +96,8 @@ app.on('open-url', (event, url) => {
 {
   protocols: [
     {
-      name: 'zcode',
-      schemes: ['zcode'],
+      name: 'codez',
+      schemes: ['codez'],
     },
   ],
 }
@@ -110,7 +110,7 @@ app.on('open-url', (event, url) => {
 ```ts
 app.on('second-instance', (event, argv) => {
   // Windows/Linux: 协议 URL 通过命令行参数传入
-  const url = argv.find(arg => arg.startsWith('zcode://'))
+  const url = argv.find(arg => arg.startsWith('codez://'))
   if (url) handleDeepLink(url)
 
   // 聚焦已有窗口
@@ -126,7 +126,7 @@ app.on('second-instance', (event, argv) => {
 
 ```ts
 // app.whenReady() 内，窗口创建后检查
-const protocolUrl = process.argv.find(arg => arg.startsWith('zcode://'))
+const protocolUrl = process.argv.find(arg => arg.startsWith('codez://'))
 if (protocolUrl) handleDeepLink(protocolUrl)
 ```
 
@@ -136,7 +136,7 @@ if (protocolUrl) handleDeepLink(protocolUrl)
 let pendingDeepLinkUrl: string | null = null
 
 function handleDeepLink(url: string) {
-  if (!url.startsWith('zcode://bigmodel-auth/callback')) return
+  if (!url.startsWith('codez://bigmodel-auth/callback')) return
 
   const state = new URL(url).searchParams.get('state')
   if (!state) return
@@ -186,8 +186,8 @@ OAuth 业务逻辑放在 host process，遵循 AGENTS.md 规范。按照「新�
 
 ```ts
 // packages/services/src/oauth/oauth.ts（新建）
-import { createServiceDescriptor } from '@zcode/rpc'
-import { ServiceChannels } from '@zcode/shared'
+import { createServiceDescriptor } from '@codez/rpc'
+import { ServiceChannels } from '@codez/shared'
 
 export interface IOAuthService {
   // 发起 OAuth：生成 state + PKCE，返回完整的 authorize URL 和 state
@@ -270,10 +270,10 @@ export const ServiceChannels = {
 // Deep link 相关的平台 channel
 export const PlatformChannels = {
   ...existing,
-  OpenExternal: 'zcode:open-external',          // Renderer → Main：打开外部 URL
-  OAuthRegisterState: 'zcode:oauth-register-state', // Renderer → Main：上报 state 用于路由
-  OAuthCallback: 'zcode:oauth-callback',         // Main → Renderer：转发 deep link URL
-  RendererReady: 'zcode:renderer-ready',         // Renderer → Main：renderer 已就绪
+  OpenExternal: 'codez:open-external',          // Renderer → Main：打开外部 URL
+  OAuthRegisterState: 'codez:oauth-register-state', // Renderer → Main：上报 state 用于路由
+  OAuthCallback: 'codez:oauth-callback',         // Main → Renderer：转发 deep link URL
+  RendererReady: 'codez:renderer-ready',         // Renderer → Main：renderer 已就绪
 }
 ```
 
@@ -342,10 +342,10 @@ export interface IPlatformService {
 
 Desktop 实现（`packages/desktop/src/renderer/src/main.tsx`）：
 ```ts
-openExternal: (url) => window.zcode.openExternal(url),
-registerOAuthState: (state) => window.zcode.registerOAuthState(state),
-onOAuthCallback: (cb) => window.zcode.onOAuthCallback(cb),
-notifyRendererReady: () => window.zcode.notifyRendererReady(),
+openExternal: (url) => window.codez.openExternal(url),
+registerOAuthState: (state) => window.codez.registerOAuthState(state),
+onOAuthCallback: (cb) => window.codez.onOAuthCallback(cb),
+notifyRendererReady: () => window.codez.notifyRendererReady(),
 ```
 
 Web 实现（`packages/web/src/main.tsx`）：
@@ -356,7 +356,7 @@ onOAuthCallback: () => () => {},  // 返回空 disposer
 notifyRendererReady: () => {},
 ```
 
-### window.zcode 更新
+### window.codez 更新
 
 Preload bridge（`packages/desktop/src/preload/index.ts`）：
 ```ts
@@ -373,7 +373,7 @@ notifyRendererReady: () => ipcRenderer.send(PlatformChannels.RendererReady),
 
 类型声明（`packages/client/src/globals.d.ts`）同步更新。
 
-同步更新 AGENTS.md 中 `window.zcode` 允许列表，新增 `openExternal`、`registerOAuthState`、`onOAuthCallback`、`notifyRendererReady`。
+同步更新 AGENTS.md 中 `window.codez` 允许列表，新增 `openExternal`、`registerOAuthState`、`onOAuthCallback`、`notifyRendererReady`。
 
 ## UI 层改造
 
@@ -470,8 +470,8 @@ LoginDialog({
 修正：统一为 Zustand store 作为唯一数据源。
 
 - 删除 Root.tsx 中的 `const [user, setUser] = useState<UserInfo | null>(...)`
-- Root.tsx 改为 `const user = useZCodeStore(s => s.user)`
-- 所有登录/登出操作通过 `useZCodeStore(s => s.setUser)` 更新
+- Root.tsx 改为 `const user = useCodezStore(s => s.user)`
+- 所有登录/登出操作通过 `useCodezStore(s => s.setUser)` 更新
 - 启动时 Root 通过 `useAuthToken().getToken()` 读取 token，有则调用 `setUser`
 
 ## 启动流程调整
@@ -481,7 +481,7 @@ LoginDialog({
 // 删除 hasAuthToken() 函数及其分支判断
 // 删除 createLoginWindow()
 // 始终 createWindow()
-// 新增：setAsDefaultProtocolClient('zcode')
+// 新增：setAsDefaultProtocolClient('codez')
 // 新增：requestSingleInstanceLock()
 // 新增：open-url / second-instance 监听
 ```
@@ -497,7 +497,7 @@ Root 组件启动时：
 
 ### 存储
 
-使用现有 `credentialService`（`~/.zcode/v2/credentials.json`）：
+使用现有 `credentialService`（`~/.codez/v2/credentials.json`）：
 
 | Key | 用途 |
 |---|---|
@@ -531,8 +531,8 @@ Token 刷新逻辑**不放在 `useOAuth` hook 中**（因为 LoginDialog 大多�
 
 | 方法 | 当前语义 | 新方案 |
 |---|---|---|
-| `window.zcode.loginSuccess` | 关闭登录窗口，打开主窗口 | **删除**。不再有登录窗口切换，登录成功由 Root 常驻的回调监听通过 Zustand store 更新 UI |
-| `window.zcode.logout` | 关闭主窗口，打开登录窗口 | **删除**。logout 不再是平台操作，完全在 UI/Hook 层处理 |
+| `window.codez.loginSuccess` | 关闭登录窗口，打开主窗口 | **删除**。不再有登录窗口切换，登录成功由 Root 常驻的回调监听通过 Zustand store 更新 UI |
+| `window.codez.logout` | 关闭主窗口，打开登录窗口 | **删除**。logout 不再是平台操作，完全在 UI/Hook 层处理 |
 | `IPlatformService.loginSuccess` | 同上 | **删除** |
 | `IPlatformService.logout` | 同上 | **删除**。logout 业务逻辑由 UI/Hook 层通过 credentialService + Zustand 处理 |
 | `PlatformChannels.LoginSuccess` | IPC 通知 main 切换窗口 | **删除** |
@@ -556,7 +556,7 @@ async function handleLogout() {
 - `packages/desktop/src/main/index.ts` — 删除 `LoginSuccess` / `Logout` 的 IPC 监听及窗口切换逻辑
 - `packages/desktop/src/preload/index.ts` — 删除 `loginSuccess`、`logout`
 - `packages/client/src/globals.d.ts` — 同步更新类型
-- `AGENTS.md` — 从 `window.zcode` 允许列表中删除 `loginSuccess`
+- `AGENTS.md` — 从 `window.codez` 允许列表中删除 `loginSuccess`
 
 ## OAuth 配置
 
@@ -566,8 +566,8 @@ export const BIGMODEL_OAUTH_CONFIG = {
   authorizeUrl: 'https://bigmodel.cn/login',
   tokenUrl: 'https://bigmodel.cn/api/oauth/token',      // 待确认
   userinfoUrl: 'https://bigmodel.cn/api/oauth/userinfo',  // 待确认，可选
-  appId: 'zcode-bigmodel-app',                            // 待确认
-  redirectUri: 'zcode://bigmodel-auth/callback',
+  appId: 'codez-bigmodel-app',                            // 待确认
+  redirectUri: 'codez://bigmodel-auth/callback',
 }
 // Desktop 是 public client，不使用 clientSecret，通过 PKCE 保障安全
 ```
@@ -602,7 +602,7 @@ export const BIGMODEL_OAUTH_CONFIG = {
 | `packages/services/src/index.ts` | 导出 oauth 模块 |
 | `packages/services/src/node.ts` | createLocalServices() 注册 OAuthService |
 | `packages/client/src/remoteServiceAccess.ts` | ProxyChannel 新增 oauth |
-| `packages/client/src/globals.d.ts` | window.zcode 类型新增 openExternal、registerOAuthState、onOAuthCallback、notifyRendererReady；删除 loginSuccess、logout |
+| `packages/client/src/globals.d.ts` | window.codez 类型新增 openExternal、registerOAuthState、onOAuthCallback、notifyRendererReady；删除 loginSuccess、logout |
 | `packages/desktop/electron-builder.config.js` | 新增 protocols 配置（macOS plist 协议声明） |
 | `packages/desktop/src/main/index.ts` | 注册 custom protocol、requestSingleInstanceLock、open-url/second-instance 监听、state→window 映射、冷启动缓存、删除 createLoginWindow、删除 hasAuthToken 分支、删除 LoginSuccess/Logout IPC 窗口切换逻辑 |
 | `packages/desktop/src/preload/index.ts` | 暴露 openExternal、registerOAuthState、onOAuthCallback、notifyRendererReady；删除 loginSuccess、logout |
@@ -610,7 +610,7 @@ export const BIGMODEL_OAUTH_CONFIG = {
 | `packages/ui/src/WelcomeScreen.tsx` | 改造为 LoginDialog |
 | `packages/ui/src/Root.tsx` | 删除 mock 登录逻辑和 useState user，改用 Zustand store；新增常驻的 OAuth 回调监听 + notifyRendererReady |
 | `packages/ui/src/store/index.ts` | 删除 MOCK_USER |
-| `AGENTS.md` | 更新 window.zcode 允许列表（新增 OAuth 方法，删除 loginSuccess），更新"包括登录窗口"描述 |
+| `AGENTS.md` | 更新 window.codez 允许列表（新增 OAuth 方法，删除 loginSuccess），更新"包括登录窗口"描述 |
 
 ### 删除的内容
 
@@ -683,7 +683,7 @@ export const BIGMODEL_OAUTH_CONFIG = {
 | Auth 仅通过 Providers | ✅ UI 通过 IPlatformService + usePlatform() hook + useOAuth() hook |
 | Main 进程只做调度 | ✅ OAuth 业务在 host process 的 OAuthService，main 只做 deep link 捕获、state→window 路由、冷启动缓存 |
 | 业务服务在 host process | ✅ IOAuthService 按新增服务 Checklist 注册 |
-| window.zcode 允许列表 | ✅ 新增方法并同步更新 AGENTS.md |
+| window.codez 允许列表 | ✅ 新增方法并同步更新 AGENTS.md |
 | 频道名集中 channels.ts | ✅ ServiceChannels + PlatformChannels |
 | 依赖注入解决兼容 | ✅ IPlatformService + IServiceAccessor 模式 |
 | 多 OS 兼容 | ✅ macOS open-url / Windows+Linux second-instance + process.argv |

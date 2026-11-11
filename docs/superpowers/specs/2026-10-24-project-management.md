@@ -64,7 +64,7 @@
 
 ## 彻底删除数据
 
-用户要求（2026-10-24 第二轮设计评审，方向 A「移除对话框里多一个选项」，A1–A3 为验收基准）：移除项目时可同时彻底删除这些项目在本机留下的 ZCode 数据。
+用户要求（2026-10-24 第二轮设计评审，方向 A「移除对话框里多一个选项」，A1–A3 为验收基准）：移除项目时可同时彻底删除这些项目在本机留下的 Codez 数据。
 
 ### 范围
 
@@ -78,7 +78,7 @@
 | 文件检查点                                         | `v2/checkpoints/<workspaceHash>`                                                                                              | Host（git checkpoint store） |
 | 任务索引行                                         | `tasks`、`task_group_members`、`task_group_admissions` 中这些会话的行；无引用时连同 `projects`/`project_roots` 行             | Host                         |
 
-不删除：用户的项目文件夹（包括 ZCode 自建的 `~/.zcode/workspace/<id>`）、应用与 CLI 日志（已有 14 天 / 7 天轮转）、git 仓库里的检查点引用、远程设备上的数据。
+不删除：用户的项目文件夹（包括 Codez 自建的 `~/.codez/workspace/<id>`）、应用与 CLI 日志（已有 14 天 / 7 天轮转）、git 仓库里的检查点引用、远程设备上的数据。
 
 项目的会话 = Host 树中该项目的全部任务（含已归档、已软删除）。目录集合 = 项目 roots ∪ 这些会话的 cwd，减去仍被范围外的项目作为 root（**含已软删除的项目**：它们可以恢复，2026-10-25 裁决宁可保留不删）、或被不在本次删除范围内的会话作为 cwd 使用的目录（共享目录的记忆与检查点保留）。「范围外的会话」= 本 Host 上 `tasks.deleted=0` 的任务行：移除项目只软删除项目行，其任务行保持 `deleted=0`，因此已移除项目的会话 cwd 照样受保护；`deleted=1` 只表示会话本身已删除（用户删除会话，或本流程目录失败时标记的行），已删除的会话无法恢复，其 cwd 不再保护。目录集合在删除任务索引行**之前**计算，否则已删任务曾用的 cwd（如项目 roots 变更前的旧目录）会漏删。
 
@@ -86,7 +86,7 @@
 
 ### 交互（A1–A3）
 
-- 确认对话框选中项含本机项目时，在设备拆分下方显示选项卡片「同时删除它们的 ZCode 数据」+ 总大小，说明行「这 M 个本机项目的会话、会话文件、检查点和记忆」。每次打开都**默认不勾选**，不记忆。
+- 确认对话框选中项含本机项目时，在设备拆分下方显示选项卡片「同时删除它们的 Codez 数据」+ 总大小，说明行「这 M 个本机项目的会话、会话文件、检查点和记忆」。每次打开都**默认不勾选**，不记忆。
 - 对话框打开即对本机候选调用 `measureProjectData`；结果返回前大小显示「正在计算…」。测量失败（旧 CLI 不支持、Agent 不可用）或本机候选既无会话也无文件时，不显示该选项，对话框保持原样。
 - 勾选后：卡片改为 destructive surface，逐行列出「N 个会话及其文件」「文件检查点」「记忆」的大小（检查点、记忆为 0 时省略该行），末行「不会删除：你的文件夹、应用日志，以及 <远程设备名> 上的数据」（无远程项目时省略设备部分）。标题改为「移除 N 个项目并删除其数据？」；描述改为「它们会离开侧栏和项目选择器。这 M 个本机项目的 S 个会话会连同文件一起删除。磁盘上的文件夹不受影响。」；原「可恢复」两行改为一行「这 M 个本机项目之后无法恢复。」
 - 勾选后出现「输入 delete 以确认」（中文输入「删除」），输入完全一致前主按钮禁用；主按钮文案「移除并删除 X」，带垃圾桶图标。取消勾选时清空输入。
@@ -101,7 +101,7 @@
 - 只在本机 Host 执行；路由到远程 Host 报 `project.data-local-only`，legacy 单 root 只读。
 - `deleteProjectData` 只接受**已软删除**的项目（否则 `project.data-requires-removed`），保证不会删到仍在使用的项目。
 - 会话按 cwd 分组：该 cwd 已有运行中的 Agent 进程时交给该进程执行（它持有会话运行态，能判断运行中并释放已加载的会话）；否则交给不寄居真实项目的管理面进程（与全局工作流、插件管理同一进程）。测量只读，与全局工作流同一载体选择：本机已有活跃 Agent 进程时用它，否则用管理面进程。
-- CLI 删除：运行中的会话（已加载且有在途 turn）保留并返回 `kept`（`reason: "running"`）。附件仍被本次不删除的未删除会话引用的会话树整棵保留（`reason: "referenced"`）：fork、回退与工作流转录按值复制 part，`zcode-artifact://<源会话>/…` 仍指向源会话的附件目录，删掉会让存活的 fork 读不到图片与工具产物；引用按 part 内容中的 artifact URI 判定（覆盖所有复制路径，不依赖 fork 谱系），保留一棵会让引用它的树也变成「本次不删除」，按不动点迭代。已加载的空闲会话按 `deleteSession` 的释放顺序关闭，但**不**发布 `session.removed`（只释放运行态）；随后删除文件，再在一个事务里删除会话行（`pragma foreign_keys = on`，级联 message/part/usage 等；无外键的 `input_history`、`dwf_run`、`workflow_run` 显式删除），最后才从 sessions-index 移除。文件删除失败不删行，记入 `failed`，sessions-index 与 Host 镜像保持原样，下次重试仍能找到。
+- CLI 删除：运行中的会话（已加载且有在途 turn）保留并返回 `kept`（`reason: "running"`）。附件仍被本次不删除的未删除会话引用的会话树整棵保留（`reason: "referenced"`）：fork、回退与工作流转录按值复制 part，`codez-artifact://<源会话>/…` 仍指向源会话的附件目录，删掉会让存活的 fork 读不到图片与工具产物；引用按 part 内容中的 artifact URI 判定（覆盖所有复制路径，不依赖 fork 谱系），保留一棵会让引用它的树也变成「本次不删除」，按不动点迭代。已加载的空闲会话按 `deleteSession` 的释放顺序关闭，但**不**发布 `session.removed`（只释放运行态）；随后删除文件，再在一个事务里删除会话行（`pragma foreign_keys = on`，级联 message/part/usage 等；无外键的 `input_history`、`dwf_run`、`workflow_run` 显式删除），最后才从 sessions-index 移除。文件删除失败不删行，记入 `failed`，sessions-index 与 Host 镜像保持原样，下次重试仍能找到。
 - Host 在 CLI 返回后计算目录集合（保留或失败会话的 cwd 不删记忆与检查点），删除目录，再处理已删会话的任务索引行：目录全部删除成功时删除这些行，项目不再被任何任务、自动化、闲时任务引用时删除项目行；有目录删除失败时只把这些行标为 CLI 已删除（`deleted=1, cli_deleted=1`，列表不再显示），项目保持软删除，重试时仍能按这些行找回目录。命令正常返回部分结果，不因保留而抛错（释放量要计入进度）；UI 对 `runningSessions > 0` 记原因 `project.data-session-running`、对 `referencedSessions > 0` 记 `project.data-session-referenced`、对 `failed > 0` 记 `project.data-delete-failed`。
 - 结果以 `state:projects` 广播；sessions-index 的 `session.removed` 迟到时，对已不存在的行是空操作。
 
@@ -154,7 +154,7 @@ Host readTree ─► ProjectDirectoryProvider（唯一目录 owner）─► 侧�
 
 UI 属于 managed 模块 project-sidebar/ui：`project-management-view.ts`（纯派生）、`useProjectManagement.ts`（批次、撤销、恢复）、`ProjectManagement.tsx` 及子组件，经 index 公开 `ProjectManagement`；SettingsPage 只注册分区并渲染。服务层改动：project 服务 `restoreProject`（路由、zod 校验、复用仓库恢复写路径）、legacy 单 root 只读。
 
-彻底删除数据：project 服务新增 `measureProjectData` / `deleteProjectData`，通过注入的 `ProjectDataPort`（node.ts 装配：zcode-agent 服务的会话数据测量/删除 + git checkpoint 目录）执行副作用，project 模块不依赖 Agent 实现；project-storage 仓库新增 `purgeTasks`、`purgeProjectIfUnreferenced`（只删 Host 自有行）。CLI 新增两条 V4 query、session store `purgeSessions`、adapters 会话文件端口。无 schema、migration 变化。
+彻底删除数据：project 服务新增 `measureProjectData` / `deleteProjectData`，通过注入的 `ProjectDataPort`（node.ts 装配：codez-agent 服务的会话数据测量/删除 + git checkpoint 目录）执行副作用，project 模块不依赖 Agent 实现；project-storage 仓库新增 `purgeTasks`、`purgeProjectIfUnreferenced`（只删 Host 自有行）。CLI 新增两条 V4 query、session store `purgeSessions`、adapters 会话文件端口。无 schema、migration 变化。
 
 ## 测试
 

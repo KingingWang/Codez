@@ -1,4 +1,4 @@
-# ZCode 打包平台 API 与契约 v1
+# Codez 打包平台 API 与契约 v1
 
 - 状态：Proposed
 - 版本：`release-platform.v1`
@@ -286,7 +286,7 @@ POST /v1/release-candidates/{candidateId}/retry
 ```json
 {
   "specversion": "1.0",
-  "type": "zcode.release.candidate.state_changed.v1",
+  "type": "codez.release.candidate.state_changed.v1",
   "id": "evt_01J...",
   "source": "packaging-platform",
   "subject": "cand_01J...",
@@ -302,10 +302,10 @@ POST /v1/release-candidates/{candidateId}/retry
 
 最低事件类型：
 
-- `zcode.release.candidate.created.v1`
-- `zcode.release.build.state_changed.v1`
-- `zcode.release.notes.approval_changed.v1`
-- `zcode.release.publication.state_changed.v1`
+- `codez.release.candidate.created.v1`
+- `codez.release.build.state_changed.v1`
+- `codez.release.notes.approval_changed.v1`
+- `codez.release.publication.state_changed.v1`
 
 事件消费者必须按 `id` 去重，并以查询 API 为最终事实来源。
 

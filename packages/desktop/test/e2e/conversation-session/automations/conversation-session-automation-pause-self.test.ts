@@ -14,7 +14,7 @@ import {
   TID_AUTOMATIONS_OPEN,
   TID_TASK_ITEM,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -145,7 +145,7 @@ interface AutomationRecord {
 }
 
 function automationDatabasePath(): string {
-  return join(homedir(), ".zcode", "v2", "tasks-index.sqlite");
+  return join(homedir(), ".codez", "v2", "tasks-index.sqlite");
 }
 
 function readAutomationRecordByTitle(title: string): AutomationRecord | null {

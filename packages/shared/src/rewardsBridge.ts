@@ -10,7 +10,7 @@ export function installRewardsPageBridge() {
     "oauth:zai_cn:access_token",
     "oauth:bigmodel:access_token",
     "oauth:active_provider",
-    "zcodejwttoken",
+    "codezjwttoken",
   ])
     storage.removeItem(key);
   const window = (
@@ -24,7 +24,7 @@ export function installRewardsPageBridge() {
     locale: new Set<(value: unknown) => void>(),
     auth: new Set<(value: unknown) => void>(),
   };
-  window.addEventListener("zcode-rewards-context", (event) => {
+  window.addEventListener("codez-rewards-context", (event) => {
     const next = (event as CustomEvent).detail;
     if (
       !next ||
@@ -45,7 +45,7 @@ export function installRewardsPageBridge() {
       }
     }
   });
-  Object.defineProperty(window, "zcodeBridge", {
+  Object.defineProperty(window, "codezBridge", {
     configurable: false,
     writable: false,
     value: {
@@ -85,14 +85,14 @@ export function createRewardsInjectionScript(
     snapshot.auth.status === "ready"
       ? {
           [`oauth:${snapshot.auth.provider}:access_token`]: credentials.oauth?.trim() || null,
-          zcodejwttoken: credentials.jwt?.trim() || null,
+          codezjwttoken: credentials.jwt?.trim() || null,
           "oauth:active_provider": snapshot.auth.provider,
         }
       : {};
   return `(() => {
     ${expectedUrl ? `if (window.location.href !== ${JSON.stringify(expectedUrl)}) return;` : ""}
-    for (const key of ["oauth:zai:access_token", "oauth:zai_cn:access_token", "oauth:bigmodel:access_token", "oauth:active_provider", "zcodejwttoken"]) localStorage.removeItem(key);
+    for (const key of ["oauth:zai:access_token", "oauth:zai_cn:access_token", "oauth:bigmodel:access_token", "oauth:active_provider", "codezjwttoken"]) localStorage.removeItem(key);
     for (const [key, value] of Object.entries(${JSON.stringify(values)})) if (value) localStorage.setItem(key, value);
-    window.dispatchEvent(new CustomEvent("zcode-rewards-context", { detail: ${JSON.stringify(snapshot)} }));
+    window.dispatchEvent(new CustomEvent("codez-rewards-context", { detail: ${JSON.stringify(snapshot)} }));
   })()`;
 }

@@ -11,10 +11,10 @@
 
 ```text
 不采用：
-~/.zcode/cli/plugins/assignments/workspaces/<hash>.json
+~/.codez/cli/plugins/assignments/workspaces/<hash>.json
 
 采用：
-<workspace>/.zcode/config.json
+<workspace>/.codez/config.json
 ```
 
 最终方案不是两份旧方案的折中。它以项目配置文件为权威，并按用户决策收敛为
@@ -50,7 +50,7 @@ target Host user storage
 
 ## 3. Why the project file is authoritative
 
-| Dimension | External assignment file | Project config with open ZCode policy |
+| Dimension | External assignment file | Project config with open Codez policy |
 | --- | --- | --- |
 | 团队共享 | 每个用户手工重建 | Git 可跟踪 |
 | 可发现性 | 状态藏在用户目录 hash 文件 | repo 内明确声明 |
@@ -74,19 +74,19 @@ runtime activation
 
 ## 4. Adopted configuration
 
-| Concern | ZCode |
+| Concern | Codez |
 | --- | --- |
-| Workspace 项目配置 | `.zcode/config.json` |
+| Workspace 项目配置 | `.codez/config.json` |
 | Local scope | 不采用；不做 Local 配置文件 |
 | 启用声明 | `plugins.enabledPlugins` |
 | 额外 Marketplace | `plugins.extraKnownMarketplaces`（仅 User/Host；Workspace 不支持 Marketplace） |
 | Plugin options | `plugins.options` 对 User/Workspace 全开放，含 sensitive values |
-| 项目 Plugin 目录 | `.zcode/plugins` or Workspace `plugins.dirs`，无 Workspace trust |
+| 项目 Plugin 目录 | `.codez/plugins` or Workspace `plugins.dirs`，无 Workspace trust |
 | Plugin MCP | 与 Hook/Skill/Command/Agent 一样直接进入 runtime，无独立 approval |
-| per-user Plugin install/cache | target Host `~/.zcode/cli/plugins` |
+| per-user Plugin install/cache | target Host `~/.codez/cli/plugins` |
 
-采用 ZCode 既有 config 文件名，避免 `.zcode/settings.json` 与 `.zcode/config.json` 双权威；
-安全策略按 ZCode 产品决策放开。
+采用 Codez 既有 config 文件名，避免 `.codez/settings.json` 与 `.codez/config.json` 双权威；
+安全策略按 Codez 产品决策放开。
 
 ## 5. Explicitly removed design elements
 

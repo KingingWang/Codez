@@ -1,4 +1,4 @@
-import type { IPlatformService } from "@zcode/shared";
+import type { IPlatformService } from "@codez/shared";
 import { initializeDesktopLocalTtft } from "./contract.js";
 
 /** 平台通过依赖注入提供日志和原有遥测能力。 */

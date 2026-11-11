@@ -135,7 +135,7 @@ Provider Store / Family Settings / Runtime Headers / Plan 状态
 ```
 
 代码曾位于 `packages/services/src/model-provider/modelProviderService.ts`。`getProviderRegistrySnapshot()` 缓存
-`ZCodeProviderRegistrySnapshot`；保存或删除 Provider、Plan 状态和运行时 Header 变化时，
+`CodezProviderRegistrySnapshot`；保存或删除 Provider、Plan 状态和运行时 Header 变化时，
 `emitProviderRegistryChanged()` 会使缓存失效、重新读取并在事件中携带完整 Snapshot。
 
 迁移前 Host 到 Core Worker 的链路如下：
@@ -144,7 +144,7 @@ Provider Store / Family Settings / Runtime Headers / Plan 状态
 ModelProviderService.onDidChangeProviderRegistry
                     |
                     v
-ZCodeAgentService
+CodezAgentService
 ├─ 对每个 active workspace 排队
 ├─ 用 revision / generatedAt 去重和防旧快照覆盖
 └─ workspace/updateProviderRegistry
@@ -156,8 +156,8 @@ Core Worker Workspace Catalog
 └─ 发布 workspace state / session settings 变化
 ```
 
-`packages/services/src/zcode-agent/zcodeAgentService.ts` 曾订阅 Host 侧事件并推送快照；
-`apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts` 曾在 Worker 内应用快照。
+`packages/services/src/codez-agent/codezAgentService.ts` 曾订阅 Host 侧事件并推送快照；
+`apps/codez-cli/packages/bootstrap/src/codez-protocol/workspace-model-catalog.ts` 曾在 Worker 内应用快照。
 这是一条跨进程完整快照复制链，已在本轮 M2 迁移中退出本地生产路径；desktop-attached remote 的兼容退出链路
 另行记录，不能据此恢复本地全局推送。
 

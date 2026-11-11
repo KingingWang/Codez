@@ -15,7 +15,7 @@ export function extensionViewResourceUri(pluginId: string, viewId: string): stri
 }
 
 /**
- * 页面经 MCP App 页面层（window.zcode）发起、宿主转给视图 MCP server 的请求方法。
+ * 页面经 MCP App 页面层（window.codez）发起、宿主转给视图 MCP server 的请求方法。
  * 表外的方法一律拒绝：页面不能借视图通道调别的 MCP 方法。
  */
 export const EXTENSION_VIEW_REQUEST_METHODS = [

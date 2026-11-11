@@ -4,11 +4,11 @@ import { dirname, join } from "node:path";
 import {
   BUILTIN_MODEL_PROVIDER_IDS,
   BUILTIN_PROVIDER_TEMPLATE_IDS,
-  ZCODE_AGENT_PROVIDER,
+  CODEZ_AGENT_PROVIDER,
   encodeCustomModelValue,
   type ProviderFamilyConnectionSelection,
-} from "@zcode/shared";
-import { TID_CHAT_MODEL_SELECT_TRIGGER, TID_V4_MODEL_CONFIG } from "@zcode/shared/test-ids";
+} from "@codez/shared";
+import { TID_CHAT_MODEL_SELECT_TRIGGER, TID_V4_MODEL_CONFIG } from "@codez/shared/test-ids";
 import { getE2EAppDataPaths } from "./desktop-app.js";
 import { getUpstreamApiKey } from "./upstream-provider.js";
 import { waitForSqliteTable } from "./e2e-sqlite-readiness.js";
@@ -37,13 +37,13 @@ async function currentComposerRecentKey(): Promise<string> {
     // 首次草稿可能尚无导航缓存；直接读当前草稿 owner，不能用旧 workspace 键或猜测项目。
     const state = (
       window as Window & {
-        __zcodeSessionStoreE2E?: {
+        __codezSessionStoreE2E?: {
           getState(): { workspaces: Record<string, { draftProjectId?: string | null }> };
         };
       }
-    ).__zcodeSessionStoreE2E?.getState().workspaces[workspacePath];
+    ).__codezSessionStoreE2E?.getState().workspaces[workspacePath];
     if (!state) throw new Error(`当前工作区草稿状态未就绪: ${workspacePath}`);
-    return `zcode-composer-recent:v2:${JSON.stringify(["desktop", "local", state.draftProjectId ?? null])}`;
+    return `codez-composer-recent:v2:${JSON.stringify(["desktop", "local", state.draftProjectId ?? null])}`;
   }, paths.workspace);
 }
 
@@ -129,15 +129,15 @@ async function hasOnboardingIdentityRecord(userId: string): Promise<boolean> {
 /** 为需要经过 Highspeed 网关鉴权的 E2E 补齐登录 JWT。 */
 export async function seedHighspeedLoginCredential() {
   await writeJsonPatch(CREDENTIALS_FILE, {
-    zcodejwttoken: "e2e-highspeed-zcode-jwt",
+    codezjwttoken: "e2e-highspeed-codez-jwt",
   });
 }
 
 /**
- * 为需要实际进入 BigModel Start Plan 的 E2E 补齐 zcode JWT。
+ * 为需要实际进入 BigModel Start Plan 的 E2E 补齐 codez JWT。
  *
  * Start Plan 与个人 Coding Plan 共用 OAuth 用户身份，但请求授权读取的是
- * `zcodejwttoken`；只 seed business access token 会让菜单把 Start Plan 判成未认证。
+ * `codezjwttoken`；只 seed business access token 会让菜单把 Start Plan 判成未认证。
  */
 export async function seedBigModelStartPlanCredential() {
   await writeJsonPatch(CREDENTIALS_FILE, {
@@ -148,7 +148,7 @@ export async function seedBigModelStartPlanCredential() {
       id: BIGMODEL_E2E_USER_ID,
       username: "bigmodel-e2e-user",
     }),
-    zcodejwttoken: "e2e-bigmodel-start-plan-jwt",
+    codezjwttoken: "e2e-bigmodel-start-plan-jwt",
   });
 }
 
@@ -212,11 +212,11 @@ export async function seedPersistedModelSelection(params: {
           },
         }),
       );
-      window.localStorage.setItem("zcode-last-agent-provider", appProvider);
+      window.localStorage.setItem("codez-last-agent-provider", appProvider);
     },
     key,
     params,
-    ZCODE_AGENT_PROVIDER,
+    CODEZ_AGENT_PROVIDER,
   );
 }
 
@@ -276,7 +276,7 @@ export async function waitForLastSelectedAgentConfig(params: {
   } catch {
     const storedAgentPreferences = await browser.execute(() =>
       Object.fromEntries(
-        Object.entries(window.localStorage).filter(([key]) => key.startsWith("zcode-last-agent-")),
+        Object.entries(window.localStorage).filter(([key]) => key.startsWith("codez-last-agent-")),
       ),
     );
     throw new Error(
@@ -371,7 +371,7 @@ export async function waitForV4DraftModelConfig(params: { model: string; thought
 }
 
 export async function waitForPlanModelIoRequest(expectedText: string) {
-  const debugDir = join(paths.homeDir, ".zcode", "cli", "debug");
+  const debugDir = join(paths.homeDir, ".codez", "cli", "debug");
   let matched: { model?: string; thinking?: { type?: string } } | null = null;
   await browser.waitUntil(
     async () => {

@@ -5,7 +5,7 @@
 //     全局「新建任务」进另一个工作区、再切回原会话的工作区，实例 id 仍不变，页面上只有一个这个视图的标签。
 //     新建任务会进新的虚拟工作区（另一个侧栏，标签不在那里），所以第二个会话经 Host 的 createSession（导入历史，
 //     不调模型）建在同一工作区，再从任务列表切换。
-//   b H6 ctx.extension.dataPath：等于 CLI 的插件数据目录（<E2E HOME>/.zcode/cli/plugins/data/<插件 id>），激活前已建好。
+//   b H6 ctx.extension.dataPath：等于 CLI 的插件数据目录（<E2E HOME>/.codez/cli/plugins/data/<插件 id>），激活前已建好。
 //   c H9 models.list：列出 E2E provider 的模型，标签就是模型 id。
 //   d H11 导航未读标记：激活时为 3；经视图工具改成 120（显示 99+）、"dot"、清除。
 //   e H12 grants.request：视图工具请宿主弹授权对话框；取消后返回空档位，确认后返回 sessions.read，再请求不弹。
@@ -15,7 +15,7 @@
 // 运行时证据：Main 日志（[extension-host] / [extensions] 前缀与 fixture 写的 E2E_JARVISHOST_*）、视图标签页与页面 DOM。
 import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { ServiceChannels } from "@zcode/shared";
+import { ServiceChannels } from "@codez/shared";
 import {
   TID_CONFIRM_DIALOG_CONFIRM,
   TID_EXTENSION_GRANT_DIALOG,
@@ -29,7 +29,7 @@ import {
   TID_TASK_NEW_BUTTON,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -88,9 +88,9 @@ async function readActiveWorkspacePath(): Promise<string | null> {
     () =>
       (
         window as Window & {
-          __zcodeTabStoreE2E?: { getState(): { activeWorkspacePath?: string | null } };
+          __codezTabStoreE2E?: { getState(): { activeWorkspacePath?: string | null } };
         }
-      ).__zcodeTabStoreE2E?.getState().activeWorkspacePath ?? null,
+      ).__codezTabStoreE2E?.getState().activeWorkspacePath ?? null,
   );
 }
 
@@ -186,7 +186,7 @@ async function waitForNavBadge(
 }
 
 /**
- * 在视图页面里调视图工具（页面经 window.zcode 调，与插件页面相同的路径）。
+ * 在视图页面里调视图工具（页面经 window.codez 调，与插件页面相同的路径）。
  * wait 为 false 时不等结果：grants.request 要等对话框关闭才返回。
  */
 async function callViewTool(
@@ -195,7 +195,7 @@ async function callViewTool(
   args: unknown,
   wait = true,
 ): Promise<void> {
-  const call = `window.zcode.callTool(${JSON.stringify(name)}, ${JSON.stringify(args)})`;
+  const call = `window.codez.callTool(${JSON.stringify(name)}, ${JSON.stringify(args)})`;
   await evaluateInViewPage(sandboxId, wait ? `${call}.then(() => true)` : `(void ${call}, true)`);
 }
 
@@ -393,7 +393,7 @@ async function readPermissionActions(pluginId: string): Promise<string[]> {
 describe("PLM-EXT-JARVISHOST Jarvis 要的宿主能力", () => {
   after(async () => {
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR ?? process.cwd(), "plm-ext-jarvishost-evidence.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR ?? process.cwd(), "plm-ext-jarvishost-evidence.json"),
       JSON.stringify(evidence, null, 2),
     ).catch(() => undefined);
     await restoreMainNotificationProbe();
@@ -430,7 +430,7 @@ describe("PLM-EXT-JARVISHOST Jarvis 要的宿主能力", () => {
     };
     evidence.dataPath = reported;
     expect(reported.dataPath).toBe(
-      join(getE2EAppDataPaths().homeDir, ".zcode", "cli", "plugins", "data", PLUGIN_ID),
+      join(getE2EAppDataPaths().homeDir, ".codez", "cli", "plugins", "data", PLUGIN_ID),
     );
     expect(reported.isDirectory).toBe(true);
 
@@ -502,18 +502,18 @@ describe("PLM-EXT-JARVISHOST Jarvis 要的宿主能力", () => {
     const workspace = await browser.execute(() => {
       const tabs = (
         window as Window & {
-          __zcodeTabStoreE2E?: {
+          __codezTabStoreE2E?: {
             getState(): {
               activeWorkspacePath: string | null;
               activeWorkspaceIdentity: string | null;
             };
           };
         }
-      ).__zcodeTabStoreE2E!.getState();
+      ).__codezTabStoreE2E!.getState();
       return { path: tabs.activeWorkspacePath!, identity: tabs.activeWorkspaceIdentity };
     });
     const created = await callHandoffHost<{ session: { sessionId: string } }>(
-      ServiceChannels.ZCodeAgent,
+      ServiceChannels.CodezAgent,
       "createSession",
       [
         {
@@ -533,7 +533,7 @@ describe("PLM-EXT-JARVISHOST Jarvis 要的宿主能力", () => {
     );
     const secondSessionId = created.session.sessionId;
     evidence.secondSessionId = secondSessionId;
-    await callHandoffHost(ServiceChannels.ZCodeTask, "resumeTask", [
+    await callHandoffHost(ServiceChannels.CodezTask, "resumeTask", [
       { taskId: secondSessionId, workspacePath: workspace.path },
     ]);
     await selectV4TaskById(secondSessionId, 30000);
@@ -867,7 +867,7 @@ describe("PLM-EXT-JARVISHOST Jarvis 要的宿主能力", () => {
 
     // (j) H12 + 完全访问：清单改成申请 sessions.fullAccess 并「重新加载扩展」后回到待授权；视图经
     // grants.request 请宿主弹授权对话框，正文单独写完全访问一行；确认后返回的档位含完全访问。
-    const manifestPath = join(fixtureHome(), PLUGIN, ".zcode-plugin", "plugin.json");
+    const manifestPath = join(fixtureHome(), PLUGIN, ".codez-plugin", "plugin.json");
     const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as {
       extension: { grants: string[] };
     };

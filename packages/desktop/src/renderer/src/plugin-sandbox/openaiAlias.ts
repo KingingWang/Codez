@@ -2,7 +2,7 @@ import type { OpenAiCompatApi, ZcodeAliasApi } from "./aliasApi.js";
 
 export const OPENAI_SET_GLOBALS_EVENT = "openai:set_globals";
 
-/** 全部转调同一 `window.zcode` 实例；globals 变化时由 alias.ts 派发 `openai:set_globals`（detail.globals 与本对象同源）。 */
+/** 全部转调同一 `window.codez` 实例；globals 变化时由 alias.ts 派发 `openai:set_globals`（detail.globals 与本对象同源）。 */
 export function createOpenAiCompatApi(api: ZcodeAliasApi): OpenAiCompatApi {
   return {
     get toolInput() {

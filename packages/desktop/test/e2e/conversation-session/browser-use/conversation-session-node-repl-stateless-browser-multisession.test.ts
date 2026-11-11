@@ -17,15 +17,15 @@ import { isV4TurnCompleted } from "#e2e/helpers/v4-turn-completion";
 
 const NODE_REPL_TOOL = "mcp__node_repl__js";
 const NODE_REPL_SERVER = "node_repl";
-const NODE_REPL_PROCESS_TITLE = "zcode-node-repl-mcp";
+const NODE_REPL_PROCESS_TITLE = "codez-node-repl-mcp";
 
 // 修复原因：Windows 不会把 process.title 写回 WMI 命令行，Node REPL 子进程在那里只表现为
-// `__zcode-plugin-host` 加载 node-repl-host 的 dist/mcp/server.js；只按标题匹配会得到空列表。
+// `__codez-plugin-host` 加载 node-repl-host 的 dist/mcp/server.js；只按标题匹配会得到空列表。
 function isNodeReplProcessCommand(command: string): boolean {
   const normalized = command.trim().replaceAll("\\", "/");
   return (
     normalized === NODE_REPL_PROCESS_TITLE ||
-    (normalized.includes(" __zcode-plugin-host ") &&
+    (normalized.includes(" __codez-plugin-host ") &&
       normalized.includes("/node-repl-host/") &&
       normalized.includes("/dist/mcp/server.js"))
   );
@@ -300,9 +300,9 @@ async function readMcpLogContexts(): Promise<McpLogContext[]> {
 }
 
 async function resolveMcpLogDirs(): Promise<string[]> {
-  const explicit = process.env.ZCODE_LOG_DIR?.trim();
+  const explicit = process.env.CODEZ_LOG_DIR?.trim();
   if (explicit) return [explicit];
-  const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR?.trim();
+  const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR?.trim();
   if (artifactDir) {
     const runtimeLogDir = join(artifactDir, "runtime-logs");
     const workers = await readdir(runtimeLogDir, { withFileTypes: true }).catch(() => []);

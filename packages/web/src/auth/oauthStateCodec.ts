@@ -1,6 +1,6 @@
-import { DEFAULT_ZCODE_ENDPOINT_ORIGIN } from "@zcode/shared";
+import { DEFAULT_CODEZ_ENDPOINT_ORIGIN } from "@codez/shared";
 
-const PRODUCTION_WEB_REMOTE_ORIGIN = DEFAULT_ZCODE_ENDPOINT_ORIGIN;
+const PRODUCTION_WEB_REMOTE_ORIGIN = DEFAULT_CODEZ_ENDPOINT_ORIGIN;
 const WEB_REMOTE_CALLBACK_PATHS = new Set(["/remote/v4", "/remote/v4/"]);
 // 测试入口也经过登录门禁，必须保留原路径与扫码参数；OAuth 回调仍只使用已登记的 v4。
 const WEB_REMOTE_APP_PATHS = new Set([

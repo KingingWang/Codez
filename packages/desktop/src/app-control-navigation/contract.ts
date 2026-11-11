@@ -1,7 +1,7 @@
-import type { AppControlNavigationPort } from "@zcode/services/node";
+import type { AppControlNavigationPort } from "@codez/services/node";
 import { z } from "zod";
 
-export const APP_NAVIGATION_IPC = "zcode:app-control-navigation";
+export const APP_NAVIGATION_IPC = "codez:app-control-navigation";
 const identifier = z.string().min(1).max(4096);
 const targetSchema = z.strictObject({
   workspacePath: identifier,
@@ -49,8 +49,8 @@ export const appNavigationRendererIpcSchema = z.discriminatedUnion("type", [
 
 export type AppNavigationOpenInput = Parameters<AppControlNavigationPort["openSession"]>[0];
 export type AppNavigationResult = Awaited<ReturnType<AppControlNavigationPort["openSession"]>>;
-import type { AppNavigationTarget } from "@zcode/shared";
-export type { AppNavigationTarget } from "@zcode/shared";
+import type { AppNavigationTarget } from "@codez/shared";
+export type { AppNavigationTarget } from "@codez/shared";
 export type AppNavigationHostMessage =
   | {
       type: "app-navigation-open";

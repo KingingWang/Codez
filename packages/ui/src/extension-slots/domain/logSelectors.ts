@@ -2,7 +2,7 @@ import {
   EXTENSION_LOG_BUFFER_LIMIT,
   type ExtensionLogEntry,
   type ExtensionLogLevel,
-} from "@zcode/shared/extension-host";
+} from "@codez/shared/extension-host";
 import type {
   ExtensionLogLevelFilter,
   ExtensionLogSourceFilter,

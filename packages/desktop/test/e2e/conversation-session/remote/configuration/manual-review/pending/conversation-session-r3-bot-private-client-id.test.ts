@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { isBotInputClientId, type BotInboundMessage } from "@zcode/shared";
+import { isBotInputClientId, type BotInboundMessage } from "@codez/shared";
 import { createFeishuConfig } from "#e2e/bots/helpers/bots-service-harness";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import { resolveE2EStorageRoot } from "#e2e/helpers/e2e-runtime-paths";
@@ -18,13 +18,13 @@ import { waitForV4ConversationState } from "#e2e/helpers/v4-conversation";
 
 // Bot 私聊输入的命令信封 clientId 是 `bot:<botId>:<chatId>:<userId>`（formatBotInputClientId）。私聊过去用
 // host-services-*，远端 workspace 下要确认 Source Server 侧不会按 terminal-client 的 clientId 一致性检查
-// （zcodeAgentConnectionScope fault.command.clientMismatch）拒掉它：Telegram 私聊经真实 Host Bot 服务投到
+// （codezAgentConnectionScope fault.command.clientMismatch）拒掉它：Telegram 私聊经真实 Host Bot 服务投到
 // 远端任务，远端 CLI 必须真的跑这一轮（上游回放收到请求），且远端会话账本记下的 clientId 是 bot 形状。
 
 const CASE_MARKER = "E2E_R3_BOT_PRIVATE";
 const SEND_MARKER = `${CASE_MARKER}_TELEGRAM`;
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-bot-private-client-id",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-bot-private-client-id",
 );
 
 describe(`${CASE_MARKER}: Telegram 私聊输入投到远端 workspace 不被 clientId 检查拒绝`, () => {
@@ -107,14 +107,14 @@ describe(`${CASE_MARKER}: Telegram 私聊输入投到远端 workspace 不被 cli
     const switched = await browser.execute(() => {
       const store = (
         window as Window & {
-          __zcodeTabStoreE2E?: {
+          __codezTabStoreE2E?: {
             getState?: () => {
               tabs?: Array<{ id: string; workspaceIdentity?: string }>;
               activateTab?: (tabId: string) => void;
             };
           };
         }
-      ).__zcodeTabStoreE2E;
+      ).__codezTabStoreE2E;
       const state = store?.getState?.();
       const local = state?.tabs?.find((tab) => !tab.workspaceIdentity);
       if (!local || !state?.activateTab) return false;
@@ -144,7 +144,7 @@ describe(`${CASE_MARKER}: Telegram 私聊输入投到远端 workspace 不被 cli
     // 远端 CLI 输入账本里这一轮的 clientId 是 bot 形状：证明命令以 bot: clientId 进入远端并被接纳。
     const ledger = await runSSHCommand(
       prepared.config,
-      `grep -rao '"clientId":"bot:[^"]*"' "$HOME/.zcode/cli/db" 2>/dev/null | head -n 5`,
+      `grep -rao '"clientId":"bot:[^"]*"' "$HOME/.codez/cli/db" 2>/dev/null | head -n 5`,
     );
     const clientIds = [...ledger.stdout.matchAll(/"clientId":"([^"]+)"/gu)].map((m) => m[1]!);
     facts.remoteClientIds = clientIds;

@@ -39,7 +39,7 @@ it("compiles real UAC calls when the plugin directory follows the custom include
     throw new Error("electron-builder NSIS toolset 缺少 NSISDIR");
   }
   const compiler = makeNsis.path;
-  const temp = await mkdtemp(join(tmpdir(), "zcode-nsis-compile-"));
+  const temp = await mkdtemp(join(tmpdir(), "codez-nsis-compile-"));
   try {
     for (const uninstaller of [false, true]) {
       const output = join(temp, uninstaller ? "uninstaller.exe" : "installer.exe");
@@ -52,7 +52,7 @@ it("compiles real UAC calls when the plugin directory follows the custom include
         `-DNSIS_INCLUDE_DIR=${join(nsisDir, "Include")}`,
         `-DELECTRON_BUILDER_NSIS_INCLUDE_DIR=${join(builderDir, "templates/nsis/include")}`,
         `-DNSIS_PLUGIN_DIR=${join(pluginsDir, "x86-unicode")}`,
-        `-DZCODE_INSTALLER_NSH=${join(desktopDir, "build/installer.nsh")}`,
+        `-DCODEZ_INSTALLER_NSH=${join(desktopDir, "build/installer.nsh")}`,
         `-DFIXTURE_EXE=${import.meta.filename}`,
         `-DOUTPUT_FILE=${output}`,
         `-DDEFAULT_LOG_PATH=${join(temp, "default.log")}`,
@@ -77,7 +77,7 @@ it("compiles real UAC calls when the plugin directory follows the custom include
           `-DNSIS_INCLUDE_DIR=${join(nsisDir, "Include")}`,
           `-DELECTRON_BUILDER_NSIS_INCLUDE_DIR=${join(builderDir, "templates/nsis/include")}`,
           `-DNSIS_PLUGIN_DIR=${join(pluginsDir, "x86-unicode")}`,
-          `-DZCODE_INSTALLER_NSH=${join(desktopDir, "build/installer.nsh")}`,
+          `-DCODEZ_INSTALLER_NSH=${join(desktopDir, "build/installer.nsh")}`,
           `-DFIXTURE_EXE=${import.meta.filename}`,
           `-DOUTPUT_FILE=${recoveryOutput}`,
           "-DRECOVERY_TEST",

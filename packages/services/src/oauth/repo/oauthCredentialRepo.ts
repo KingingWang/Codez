@@ -9,7 +9,7 @@ import type {
   OAuthTokenSet,
   OAuthUserProfile,
   ProviderFamilyDomain,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   BIGMODEL_PROVIDER_ID,
   isCredentialDecryptError,
@@ -19,14 +19,14 @@ import {
   OAUTH_LINKED_BIGMODEL_KEY,
   isZaiOAuthProvider,
   isBuiltinOAuthProvider,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { ICredentialService } from "../../credential/credential.js";
 import type { LocalCredentialService } from "#src/credential/credentialService.js";
 import { createServiceLogger } from "../../logger/serviceLogger.js";
 
 const ACTIVE_PROVIDER_KEY = "oauth:active_provider";
 const LOGIN_ATTRIBUTION_KEY = "oauth:login_attribution";
-const ZCODE_JWT_TOKEN_KEY = "zcodejwttoken";
+const CODEZ_JWT_TOKEN_KEY = "codezjwttoken";
 const SESSION_REVISION_KEY = OAUTH_SESSION_REVISION_KEY;
 const KNOWN_OAUTH_PROVIDER_IDS = [
   BIGMODEL_PROVIDER_ID,
@@ -152,22 +152,22 @@ function toOAuthUserProfileFromRawZaiUser(raw: Record<string, unknown>): OAuthUs
 }
 
 /** Host 私有的请求期套餐材料，不作为 App 登录或 Renderer 返回值。 */
-/** Host 内部身份快照，不含套餐选择；仅主业务 JWT 可用于 ZCode 请求。 */
+/** Host 内部身份快照，不含套餐选择；仅主业务 JWT 可用于 Codez 请求。 */
 export interface OAuthIdentityMaterial {
   loginProvider: OAuthProviderId;
-  zcodeUserId: string;
+  codezUserId: string;
   sessionRevision: string | null;
-  zcodeJwtToken: string;
+  codezJwtToken: string;
 }
 
 export interface OAuthAccountMaterial {
   family: ProviderFamilyDomain;
   loginProvider: OAuthProviderId;
-  zcodeUserId: string;
+  codezUserId: string;
   sessionRevision: string | null;
   accountIdentity: string;
   accessToken: string;
-  zcodeJwtToken: string | null;
+  codezJwtToken: string | null;
 }
 
 export function isSameOAuthAccountMaterial(
@@ -210,7 +210,7 @@ export class OAuthCredentialRepo {
   private sessionKeys(): string[] {
     return [
       ACTIVE_PROVIDER_KEY,
-      ZCODE_JWT_TOKEN_KEY,
+      CODEZ_JWT_TOKEN_KEY,
       SESSION_REVISION_KEY,
       OAUTH_LINKED_BIGMODEL_KEY,
       ...this.knownProviderIds.flatMap((provider) => [
@@ -234,7 +234,7 @@ export class OAuthCredentialRepo {
       const provider = identity[ACTIVE_PROVIDER_KEY];
       const keys = [
         ACTIVE_PROVIDER_KEY,
-        ZCODE_JWT_TOKEN_KEY,
+        CODEZ_JWT_TOKEN_KEY,
         SESSION_REVISION_KEY,
         ...(provider
           ? [accessTokenKey(provider), refreshTokenKey(provider), userInfoKey(provider)]
@@ -280,7 +280,7 @@ export class OAuthCredentialRepo {
     const accessToken = snapshot[accessTokenKey(provider)];
     if (!accessToken) return null;
     const refreshToken = snapshot[refreshTokenKey(provider)];
-    const zcodeJwtToken = snapshot[ZCODE_JWT_TOKEN_KEY];
+    const codezJwtToken = snapshot[CODEZ_JWT_TOKEN_KEY];
     let linkedBigModel: OAuthTokenSet["linkedBigModel"];
     try {
       const raw = JSON.parse(snapshot[OAUTH_LINKED_BIGMODEL_KEY] ?? "null");
@@ -300,7 +300,7 @@ export class OAuthCredentialRepo {
       accessToken,
       ...(linkedBigModel ? { linkedBigModel } : {}),
       ...(refreshToken ? { refreshToken } : {}),
-      ...(zcodeJwtToken ? { zcodeJwtToken } : {}),
+      ...(codezJwtToken ? { codezJwtToken } : {}),
     };
   }
 
@@ -315,13 +315,13 @@ export class OAuthCredentialRepo {
     const snapshot = await this.loadSessionSnapshot();
     const provider = snapshot[ACTIVE_PROVIDER_KEY];
     const profile = provider ? this.profileFromSnapshot(snapshot, provider) : null;
-    const jwt = snapshot[ZCODE_JWT_TOKEN_KEY]?.trim();
+    const jwt = snapshot[CODEZ_JWT_TOKEN_KEY]?.trim();
     if (!provider || !profile || !jwt) return null;
     return {
       loginProvider: provider,
-      zcodeUserId: profile.id,
+      codezUserId: profile.id,
       sessionRevision: snapshot[SESSION_REVISION_KEY] ?? null,
-      zcodeJwtToken: jwt,
+      codezJwtToken: jwt,
     };
   }
 
@@ -339,7 +339,7 @@ export class OAuthCredentialRepo {
       loginProvider: provider,
       userId: profile.id,
       sessionRevision: snapshot[SESSION_REVISION_KEY] ?? null,
-      zcodeJwtToken: tokens.zcodeJwtToken ?? null,
+      codezJwtToken: tokens.codezJwtToken ?? null,
       // 中国区 OAuth 仅用于上游授权；网页通过主 JWT 的 profile 取得关联，不能误投全球接口。
       legacyOAuthToken:
         provider === ZAI_PROVIDER_ID || provider === BIGMODEL_PROVIDER_ID
@@ -374,15 +374,15 @@ export class OAuthCredentialRepo {
     const direct = loginProvider === family;
     const linked = family === "bigmodel" ? tokens.linkedBigModel : undefined;
     if (!direct && !linked) return null;
-    // 中国区 OAuth 不能被当成全球区业务凭据；关联也必须已经绑定当前 ZCode 主体。
+    // 中国区 OAuth 不能被当成全球区业务凭据；关联也必须已经绑定当前 Codez 主体。
     return {
       family,
       loginProvider,
-      zcodeUserId: profile.id,
+      codezUserId: profile.id,
       sessionRevision: snapshot[SESSION_REVISION_KEY] ?? null,
       accountIdentity: linked?.customerId ?? profile.id,
       accessToken: linked?.accessToken ?? tokens.accessToken,
-      zcodeJwtToken: tokens.zcodeJwtToken ?? null,
+      codezJwtToken: tokens.codezJwtToken ?? null,
     };
   }
 
@@ -399,7 +399,7 @@ export class OAuthCredentialRepo {
     Object.assign(changes, {
       [ACTIVE_PROVIDER_KEY]: provider,
       [SESSION_REVISION_KEY]: randomUUID(),
-      [ZCODE_JWT_TOKEN_KEY]: tokenSet.zcodeJwtToken ?? null,
+      [CODEZ_JWT_TOKEN_KEY]: tokenSet.codezJwtToken ?? null,
       [OAUTH_LINKED_BIGMODEL_KEY]: tokenSet.linkedBigModel
         ? JSON.stringify({ userId: profile.id, ...tokenSet.linkedBigModel })
         : null,
@@ -561,7 +561,7 @@ export class OAuthCredentialRepo {
   ): Promise<{ key: string; value: string }[] | null> {
     const snapshot = await this.loadSessionSnapshot();
     if (snapshot[ACTIVE_PROVIDER_KEY] !== provider) return null;
-    return [ZCODE_JWT_TOKEN_KEY, accessTokenKey(provider)].map((key) => ({
+    return [CODEZ_JWT_TOKEN_KEY, accessTokenKey(provider)].map((key) => ({
       key,
       value: snapshot[key]?.trim() ?? "",
     }));
@@ -576,7 +576,7 @@ export class OAuthCredentialRepo {
       {
         [accessTokenKey(provider)]: tokenSet.accessToken,
         [refreshTokenKey(provider)]: tokenSet.refreshToken ?? null,
-        [ZCODE_JWT_TOKEN_KEY]: tokenSet.zcodeJwtToken ?? null,
+        [CODEZ_JWT_TOKEN_KEY]: tokenSet.codezJwtToken ?? null,
         [SESSION_REVISION_KEY]: randomUUID(),
       },
       { expected: expected ?? (await this.loadSessionSnapshot()) },

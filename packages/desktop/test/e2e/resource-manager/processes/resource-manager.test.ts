@@ -42,7 +42,7 @@ describe("资源管理器", () => {
     await switchToElectronRendererTarget(isResourceManagerUrl);
     await waitForResourceManagerReady();
 
-    // 默认 CPU tab：四类分组固定存在（空组也要显示），CPU 指标卡带 ZCode / 整机两个读数。
+    // 默认 CPU tab：四类分组固定存在（空组也要显示），CPU 指标卡带 Codez / 整机两个读数。
     for (const category of ["base", "task", "builtin-plugin", "community-plugin"]) {
       await expect($(`[data-testid="resource-manager-group-${category}"]`)).toBeDisplayed();
     }
@@ -85,7 +85,7 @@ describe("资源管理器", () => {
       async () => {
         const snapshot = await readResourceUsageSnapshot();
         const agent = snapshot?.processes.find((process) =>
-          process.name.startsWith("zcode-agent-"),
+          process.name.startsWith("codez-agent-"),
         );
         return Boolean(agent && agent.sampled && agent.memoryBytes > 0);
       },
@@ -98,8 +98,8 @@ describe("资源管理器", () => {
 
     const snapshot = await readResourceUsageSnapshot();
     expect(snapshot).not.toBeNull();
-    expect(snapshot!.processes.some((process) => process.name === "zcode-main")).toBe(true);
-    expect(snapshot!.processes.some((process) => process.name.startsWith("zcode-host-"))).toBe(
+    expect(snapshot!.processes.some((process) => process.name === "codez-main")).toBe(true);
+    expect(snapshot!.processes.some((process) => process.name.startsWith("codez-host-"))).toBe(
       true,
     );
     // 所有进程行的 CPU 都是整机口径，总和不能超过 100%。
@@ -112,11 +112,11 @@ describe("资源管理器", () => {
         document.querySelectorAll<HTMLElement>('[data-testid="resource-manager-process-row"]'),
       ).map((element) => element.dataset.processName ?? ""),
     );
-    expect(rowNames.some((name) => name.startsWith("zcode-agent-"))).toBe(true);
+    expect(rowNames.some((name) => name.startsWith("codez-agent-"))).toBe(true);
 
     const preferences = await browser.execute(() => ({
-      theme: localStorage.getItem("zcode-theme"),
-      locale: localStorage.getItem("zcode-locale-preference"),
+      theme: localStorage.getItem("codez-theme"),
+      locale: localStorage.getItem("codez-locale-preference"),
     }));
     try {
       for (const theme of ["zai-light", "zai-dark"]) {
@@ -132,8 +132,8 @@ describe("资源管理器", () => {
           }, width);
           await browser.execute(
             (nextTheme, nextLocale) => {
-              localStorage.setItem("zcode-theme", nextTheme);
-              localStorage.setItem("zcode-locale-preference", nextLocale);
+              localStorage.setItem("codez-theme", nextTheme);
+              localStorage.setItem("codez-locale-preference", nextLocale);
             },
             theme,
             locale,
@@ -142,7 +142,7 @@ describe("资源管理器", () => {
           await waitForResourceManagerReady();
           const taskGroup = $('[data-testid="resource-manager-group-task"]');
           await expect(taskGroup).toHaveText(expect.stringContaining(title));
-          await $('[data-process-name="zcode-main"]').waitForExist({ timeout: 10_000 });
+          await $('[data-process-name="codez-main"]').waitForExist({ timeout: 10_000 });
           await browser.execute(() => {
             document
               .querySelector('[data-testid="resource-manager-group-task"]')
@@ -155,7 +155,7 @@ describe("资源管理器", () => {
           ).toBe(true);
           await browser.saveScreenshot(
             join(
-              process.env.ZCODE_E2E_ARTIFACT_DIR!,
+              process.env.CODEZ_E2E_ARTIFACT_DIR!,
               `resource-manager-${theme}-${locale}-${width}.png`,
             ),
           );
@@ -164,8 +164,8 @@ describe("资源管理器", () => {
     } finally {
       await browser.execute((previous) => {
         for (const [key, value] of Object.entries({
-          "zcode-theme": previous.theme,
-          "zcode-locale-preference": previous.locale,
+          "codez-theme": previous.theme,
+          "codez-locale-preference": previous.locale,
         })) {
           if (value === null) localStorage.removeItem(key);
           else localStorage.setItem(key, value);

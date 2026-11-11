@@ -1,13 +1,13 @@
 // V4 已提交命令的 renderer 持久账本。
 // 它只保存客户端恢复线索，不参与 conversation projection，也绝不能据此自动重放。
-import { permissionGrantMode } from "@zcode/shared/zcode-protocol-v4";
+import { permissionGrantMode } from "@codez/shared/codez-protocol-v4";
 import type {
   CommandAck,
   CommandEnvelope,
   CommandsQueryParams,
   CommandsQueryResult,
   ConversationSnapshot,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import {
   resolvePendingCommandWorkspaceKey,
   type PendingCommandClientContext,
@@ -35,7 +35,7 @@ export type PendingCommandResolution =
   | "discarded";
 
 export const PENDING_COMMAND_TTL_MS = 24 * 60 * 60 * 1_000;
-const STORAGE_KEY = "zcode-v4-pending-commands:v1";
+const STORAGE_KEY = "codez-v4-pending-commands:v1";
 
 interface StorageLike {
   getItem(key: string): string | null;

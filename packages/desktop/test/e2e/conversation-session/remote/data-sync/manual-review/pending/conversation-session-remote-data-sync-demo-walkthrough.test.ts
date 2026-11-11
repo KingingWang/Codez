@@ -3,7 +3,7 @@ import { execFile } from "node:child_process";
 import { mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 import {
   TID_PROMPT_SUGGESTION_PANEL,
   TID_SETTINGS_BACK_BUTTON,
@@ -14,7 +14,7 @@ import {
   TID_VIRTUAL_PROJECT_MENU,
   testId,
   virtualProjectActionTestId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   getE2EAppDataPaths,
@@ -59,12 +59,12 @@ import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
  */
 const MARKER = "E2E_DSYNC_DEMO_WALKTHROUGH";
 const artifact = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/data-sync-demo",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/data-sync-demo",
   "data-sync-demo",
 );
 const run = promisify(execFile);
-const FFMPEG = process.env.ZCODE_E2E_FFMPEG_PATH?.trim() || "ffmpeg";
-const FFPROBE = process.env.ZCODE_E2E_FFPROBE_PATH?.trim() || "ffprobe";
+const FFMPEG = process.env.CODEZ_E2E_FFMPEG_PATH?.trim() || "ffmpeg";
+const FFPROBE = process.env.CODEZ_E2E_FFPROBE_PATH?.trim() || "ffprobe";
 const WINDOW = { width: 1440, height: 900 };
 const NARROW_WIDTH = 720;
 const FRAME_INTERVAL_MS = 200;
@@ -72,7 +72,7 @@ const BEAT_MS = 2_200;
 const LONG_BEAT_MS = 3_200;
 const CLICK_LEAD_MS = 700;
 const REMOTE_HOME = "/home/dev";
-const REMOTE_CLI_CONFIG = `${REMOTE_HOME}/.zcode/cli/config.json`;
+const REMOTE_CLI_CONFIG = `${REMOTE_HOME}/.codez/cli/config.json`;
 const SCOPE_TRIGGER = '[data-plugin-scope-trigger="true"]';
 const DIALOG = '[data-testid="remote-sync-dialog"]';
 const DIALOG_CLOSE = `${DIALOG} [data-slot="dialog-close"]`;
@@ -194,7 +194,7 @@ async function offCamera<T>(fn: () => Promise<T>): Promise<T> {
 
 async function caption(text: string | null): Promise<void> {
   await browser.execute((value) => {
-    const id = "zcode-demo-caption";
+    const id = "codez-demo-caption";
     let node = document.getElementById(id);
     if (!value) {
       node?.remove();
@@ -229,9 +229,9 @@ async function caption(text: string | null): Promise<void> {
 async function titleCard(title: string, bullets: readonly string[], ms = 4_200): Promise<void> {
   await browser.execute(
     (heading, items) => {
-      document.getElementById("zcode-demo-title")?.remove();
+      document.getElementById("codez-demo-title")?.remove();
       const node = document.createElement("div");
-      node.id = "zcode-demo-title";
+      node.id = "codez-demo-title";
       Object.assign(node.style, {
         position: "fixed",
         inset: "0",
@@ -273,7 +273,7 @@ async function titleCard(title: string, bullets: readonly string[], ms = 4_200):
     [...bullets],
   );
   await browser.pause(ms);
-  await browser.execute(() => document.getElementById("zcode-demo-title")?.remove());
+  await browser.execute(() => document.getElementById("codez-demo-title")?.remove());
 }
 
 type LocateAction = "ring" | "ring-enabled" | "click";
@@ -286,7 +286,7 @@ type LocateAction = "ring" | "ring-enabled" | "click";
 async function locate(selector: string, match: string | undefined, action: LocateAction) {
   return await browser.execute(
     (query, text, mode) => {
-      const overlays = ["zcode-demo-caption", "zcode-demo-title", "zcode-demo-spotlight"]
+      const overlays = ["codez-demo-caption", "codez-demo-title", "codez-demo-spotlight"]
         .map((id) => document.getElementById(id))
         .filter((node): node is HTMLElement => Boolean(node));
       const area = (element: Element) => {
@@ -317,7 +317,7 @@ async function locate(selector: string, match: string | undefined, action: Locat
         );
         if (row && area(row) < (window.innerWidth * window.innerHeight) / 6) target = row;
       }
-      document.getElementById("zcode-demo-spotlight")?.remove();
+      document.getElementById("codez-demo-spotlight")?.remove();
       if (mode === "click") {
         target.click();
         return true;
@@ -325,7 +325,7 @@ async function locate(selector: string, match: string | undefined, action: Locat
       target.scrollIntoView({ block: "nearest", inline: "nearest" });
       const rect = target.getBoundingClientRect();
       const ring = document.createElement("div");
-      ring.id = "zcode-demo-spotlight";
+      ring.id = "codez-demo-spotlight";
       Object.assign(ring.style, {
         position: "fixed",
         left: `${rect.left - 5}px`,
@@ -352,7 +352,7 @@ async function spotlight(selector: string, match?: string): Promise<boolean> {
 }
 
 async function clearSpotlight(): Promise<void> {
-  await browser.execute(() => document.getElementById("zcode-demo-spotlight")?.remove());
+  await browser.execute(() => document.getElementById("codez-demo-spotlight")?.remove());
 }
 
 async function beat(ms = BEAT_MS): Promise<void> {
@@ -768,8 +768,8 @@ async function readJson(path: string): Promise<Record<string, unknown>> {
 
 /** 本机六类内容：每类都有「推送」项，另配「更新 / 差异 / 已同步 / 不能同步」所需的对照项。 */
 async function writeLocalContent(home: string): Promise<void> {
-  const zcode = join(home, ".zcode");
-  const skills = join(zcode, "skills");
+  const codez = join(home, ".codez");
+  const skills = join(codez, "skills");
   await writeText(
     join(skills, SKILL.push, "SKILL.md"),
     skillMarkdown(
@@ -805,20 +805,20 @@ async function writeLocalContent(home: string): Promise<void> {
   await symlink("SKILL.md", join(blocked, "linked.md"));
 
   await writeText(
-    join(zcode, "agents", `${AGENT.push}.md`),
+    join(codez, "agents", `${AGENT.push}.md`),
     agentMarkdown(
       AGENT.push,
       ["tools: [Read, Grep, Glob]", `skills: [${SKILL.push}]`, `mcpServers: [${MCP.push}]`],
       "Review the change against the team checklist.",
     ),
   );
-  await writeText(join(zcode, "agents", `${AGENT.synced}.md`), PLANNER);
+  await writeText(join(codez, "agents", `${AGENT.synced}.md`), PLANNER);
 
   await writeText(
-    join(zcode, "commands", "demo", "commit.md"),
+    join(codez, "commands", "demo", "commit.md"),
     "---\ndescription: Write a commit message\n---\nWrite a commit message for the staged diff.\n",
   );
-  await writeText(join(zcode, "commands", "demo-standup.md"), STANDUP);
+  await writeText(join(codez, "commands", "demo-standup.md"), STANDUP);
   await writeText(
     join(home, ".agents", "commands", "demo-review.md"),
     "---\ndescription: Review the diff (compat directory)\n---\nReview the diff.\n",
@@ -829,13 +829,13 @@ async function writeLocalContent(home: string): Promise<void> {
     [PLUGIN.update, "1.1.0"],
     [PLUGIN.older, "1.0.0"],
   ] as const) {
-    const dir = join(zcode, "plugins", name);
-    await writeText(join(dir, ".zcode-plugin", "plugin.json"), pluginManifest(name, version));
+    const dir = join(codez, "plugins", name);
+    await writeText(join(dir, ".codez-plugin", "plugin.json"), pluginManifest(name, version));
     await writeText(join(dir, "README.md"), `${name} ${version}\n`);
     pluginDirs.push(dir);
   }
 
-  const configPath = join(zcode, "cli", "config.json");
+  const configPath = join(codez, "cli", "config.json");
   const config = await readJson(configPath);
   const plugins = (config.plugins ?? {}) as Record<string, unknown>;
   const mcp = (config.mcp ?? {}) as Record<string, unknown>;
@@ -885,35 +885,35 @@ async function seedRemote(container: string): Promise<void> {
   const write = (path: string, content: string) =>
     writeRemoteContainerFile(container, `${REMOTE_HOME}/${path}`, content);
   await write(
-    `.zcode/skills/${SKILL.update}/SKILL.md`,
+    `.codez/skills/${SKILL.update}/SKILL.md`,
     skillMarkdown(SKILL.update, "API design rules", "Use nouns for resources. v1.1"),
   );
-  await write(`.zcode/skills/${SKILL.update}/_meta.json`, '{ "version": "1.1.0" }\n');
+  await write(`.codez/skills/${SKILL.update}/_meta.json`, '{ "version": "1.1.0" }\n');
   await write(
-    `.zcode/skills/${SKILL.older}/SKILL.md`,
+    `.codez/skills/${SKILL.older}/SKILL.md`,
     skillMarkdown(SKILL.older, "Legacy migration tips", "Newer tips on the remote."),
   );
-  await write(`.zcode/skills/${SKILL.older}/_meta.json`, '{ "version": "2.0.0" }\n');
+  await write(`.codez/skills/${SKILL.older}/_meta.json`, '{ "version": "2.0.0" }\n');
   await write(
-    `.zcode/skills/${SKILL.differs}/SKILL.md`,
+    `.codez/skills/${SKILL.differs}/SKILL.md`,
     skillMarkdown(SKILL.differs, "Release notes format", "Remote release notes format."),
   );
-  await write(`.zcode/skills/${SKILL.synced}/SKILL.md`, STYLE_GUIDE);
+  await write(`.codez/skills/${SKILL.synced}/SKILL.md`, STYLE_GUIDE);
   await write(
-    `.zcode/skills/${SKILL.remoteOnly}/SKILL.md`,
+    `.codez/skills/${SKILL.remoteOnly}/SKILL.md`,
     skillMarkdown(SKILL.remoteOnly, "Notes that only exist on the remote", "Remote only."),
   );
-  await write(`.zcode/agents/${AGENT.synced}.md`, PLANNER);
-  await write(".zcode/commands/demo-standup.md", STANDUP);
+  await write(`.codez/agents/${AGENT.synced}.md`, PLANNER);
+  await write(".codez/commands/demo-standup.md", STANDUP);
   const remotePluginDirs: string[] = [];
   for (const [name, version] of [
     [PLUGIN.update, "1.0.0"],
     [PLUGIN.older, "2.0.0"],
   ] as const) {
-    await write(`.zcode/plugins/${name}/.zcode-plugin/plugin.json`, pluginManifest(name, version));
-    await write(`.zcode/plugins/${name}/README.md`, `${name} ${version}\n`);
-    await write(`.zcode/plugins/${name}/data/state.json`, '{ "remote": true }\n');
-    remotePluginDirs.push(`${REMOTE_HOME}/.zcode/plugins/${name}`);
+    await write(`.codez/plugins/${name}/.codez-plugin/plugin.json`, pluginManifest(name, version));
+    await write(`.codez/plugins/${name}/README.md`, `${name} ${version}\n`);
+    await write(`.codez/plugins/${name}/data/state.json`, '{ "remote": true }\n');
+    remotePluginDirs.push(`${REMOTE_HOME}/.codez/plugins/${name}`);
   }
   const config = (await remoteContainerPathExists(container, REMOTE_CLI_CONFIG))
     ? (JSON.parse(await readRemoteContainerFile(container, REMOTE_CLI_CONFIG)) as Record<
@@ -1044,7 +1044,7 @@ describe(`${MARKER}: 数据同步功能演示走查`, () => {
     if (offlineTarget)
       await bringRemoteDeviceOnline(container, offlineTarget).catch(() => undefined);
     if (providerDirLocked)
-      await chmodRemoteContainerPath(container, "u+w", `${REMOTE_HOME}/.zcode/v2`).catch(
+      await chmodRemoteContainerPath(container, "u+w", `${REMOTE_HOME}/.codez/v2`).catch(
         () => undefined,
       );
     await browser.electron.restoreAllMocks();
@@ -1078,7 +1078,7 @@ describe(`${MARKER}: 数据同步功能演示走查`, () => {
 
     await chapter({
       key: "intro",
-      title: "ZCode 数据同步 · 功能演示",
+      title: "Codez 数据同步 · 功能演示",
       bullets: [
         "把本机的用户级配置推送到远端设备（SSH / WSL / Docker）",
         "六类内容：子智能体、插件、MCP 服务器、技能、命令、钩子；模型提供商只读",
@@ -1208,7 +1208,7 @@ describe(`${MARKER}: 数据同步功能演示走查`, () => {
         await point(rowSelector(SKILL.push), "绿色「推送」：只在本机，默认勾选");
         await point(
           rowSelector(SKILL.agentsDir),
-          "兼容目录 ~/.agents/skills 的技能也会同步，统一写入远端 ~/.zcode/skills",
+          "兼容目录 ~/.agents/skills 的技能也会同步，统一写入远端 ~/.codez/skills",
         );
         await point(
           rowSelector(SKILL.update),
@@ -1299,7 +1299,7 @@ describe(`${MARKER}: 数据同步功能演示走查`, () => {
         await point(rowSelector(COMMAND.nested), "命令按相对路径对齐，子目录结构保持不变");
         await point(
           rowSelector(COMMAND.agentsDir),
-          "兼容目录 ~/.agents/commands 的命令统一写入远端 ~/.zcode/commands",
+          "兼容目录 ~/.agents/commands 的命令统一写入远端 ~/.codez/commands",
         );
         await openTab("hooks", "切到「钩子」");
         await browser.waitUntil(async () => await spotlight(ANY_ROW, HOOK.push), {
@@ -1385,7 +1385,7 @@ describe(`${MARKER}: 数据同步功能演示走查`, () => {
       ],
       setup: async () => {
         await writeText(
-          join(homeDir, ".zcode", "skills", SKILL.conflict, "SKILL.md"),
+          join(homeDir, ".codez", "skills", SKILL.conflict, "SKILL.md"),
           skillMarkdown(SKILL.conflict, "Skill created on this machine", "Local version."),
         );
         await closeDataSyncDialog();
@@ -1399,7 +1399,7 @@ describe(`${MARKER}: 数据同步功能演示走查`, () => {
         await caption("列表加载之后，远端另一处也写入了同名技能");
         await writeRemoteContainerFile(
           container,
-          `${REMOTE_HOME}/.zcode/skills/${SKILL.conflict}/SKILL.md`,
+          `${REMOTE_HOME}/.codez/skills/${SKILL.conflict}/SKILL.md`,
           skillMarkdown(SKILL.conflict, "Skill created on the remote", "Remote version."),
         );
         await beat();
@@ -1452,7 +1452,7 @@ describe(`${MARKER}: 数据同步功能演示走查`, () => {
       ],
       setup: async () => {
         // 远端模型配置目录只读：本机新增提供商后自动下发失败（与 DSYNC-13 相同的故障注入）。
-        await chmodRemoteContainerPath(container, "a-w", `${REMOTE_HOME}/.zcode/v2`);
+        await chmodRemoteContainerPath(container, "a-w", `${REMOTE_HOME}/.codez/v2`);
         providerDirLocked = true;
         await openSettingsSection("modelProvider");
         await createAndConfigurePersonalProvider(SECOND_PROVIDER);
@@ -1487,7 +1487,7 @@ describe(`${MARKER}: 数据同步功能演示走查`, () => {
           "显示上次自动同步的时间和失败原因，并提供「重试」",
           { ms: LONG_BEAT_MS },
         );
-        await chmodRemoteContainerPath(container, "u+w", `${REMOTE_HOME}/.zcode/v2`);
+        await chmodRemoteContainerPath(container, "u+w", `${REMOTE_HOME}/.codez/v2`);
         providerDirLocked = false;
         await caption("远端恢复可写后点「重试」");
         await demoClick(tid("remote-sync-providers-retry"));
@@ -1506,7 +1506,7 @@ describe(`${MARKER}: 数据同步功能演示走查`, () => {
       },
       cleanup: async () => {
         if (providerDirLocked) {
-          await chmodRemoteContainerPath(container, "u+w", `${REMOTE_HOME}/.zcode/v2`);
+          await chmodRemoteContainerPath(container, "u+w", `${REMOTE_HOME}/.codez/v2`);
           providerDirLocked = false;
         }
       },
@@ -1602,7 +1602,7 @@ describe(`${MARKER}: 数据同步功能演示走查`, () => {
       bullets: [
         "「本机」下是用户和本机项目；每台在线远端设备下是用户和该设备的项目",
         "触发器显示「设备 · 用户」或「设备 · 项目」",
-        "不打开远程项目也能直接编辑远端 ~/.zcode；插件、MCP、技能、子智能体、命令、钩子同一规则",
+        "不打开远程项目也能直接编辑远端 ~/.codez；插件、MCP、技能、子智能体、命令、钩子同一规则",
       ],
       setup: async () => {
         await openSettingsSection("skill");
@@ -1624,7 +1624,7 @@ describe(`${MARKER}: 数据同步功能演示走查`, () => {
         await browser.keys("Escape");
         await point(
           "*",
-          "列表就是远端 ~/.zcode/skills：远端独有的 remote-only-notes 仍在，推送从不删除远端条目",
+          "列表就是远端 ~/.codez/skills：远端独有的 remote-only-notes 仍在，推送从不删除远端条目",
           { match: SKILL.remoteOnly, ms: LONG_BEAT_MS },
         );
         await caption("切到「本机 · 用户」");

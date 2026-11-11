@@ -29,7 +29,7 @@
 Pro 机器保留的迁移前备份与清理前备份证明：
 
 ```text
-旧 ~/.zcode/v2/config.json.provider
+旧 ~/.codez/v2/config.json.provider
         |
         | Provider V1 importer
         v
@@ -44,14 +44,14 @@ Pro 机器保留的迁移前备份与清理前备份证明：
 - 用户对标准 Provider 顺序、模型成员和模型属性的 Personal 覆盖。
 
 因此截图中的旧 Coding Plan 重名属于迁移遗留，不是当前 Official Config 又创建了一份同名 Provider。当前
-`config/provider/zcode-builtin.json` 的 Provider label 已核对为唯一；Z.ai / BigModel 的 API、Individual、Team、Start、
+`config/provider/codez-builtin.json` 的 Provider label 已核对为唯一；Z.ai / BigModel 的 API、Individual、Team、Start、
 Idle Plan 使用不同名称。为继续体验而执行的 Personal Config 清理保留了带时间戳备份，可恢复。
 
 ## 4. 待裁决：Team Plan 有效但 Account Provider / 权益展示不可用
 
 ### 4.1 运行时事实
 
-Pro 的 `~/.zcode/v2/logs/2026-08-27.log` 在同一次 Team Plan 选择之后同时出现：
+Pro 的 `~/.codez/v2/logs/2026-08-27.log` 在同一次 Team Plan 选择之后同时出现：
 
 - Settings 已持久化 `bigmodel -> team-coding-plan`，并包含 product、organization、project；
 - Team Plan 项目校验命中所选项目，机构列表非空；

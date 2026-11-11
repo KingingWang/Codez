@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { appSessionRefSchema, sessionSummarySchema } from "@zcode/session-control/contracts";
-import { displayConversationRowSchema } from "#src/zcode-protocol-v4/rows.js";
-import { sessionPhaseSchema } from "#src/zcode-protocol-v4/snapshot.js";
+import { appSessionRefSchema, sessionSummarySchema } from "@codez/session-control/contracts";
+import { displayConversationRowSchema } from "#src/codez-protocol-v4/rows.js";
+import { sessionPhaseSchema } from "#src/codez-protocol-v4/snapshot.js";
 
 // 会话读连接的投影（docs/plugins/extension-host.md §17.3、§17.5、§17.6，P3b）：
 // 列表行 v1、会话状态、完整行与 readRows。只加字段不升版；删字段或改含义才升版（§17.6）。

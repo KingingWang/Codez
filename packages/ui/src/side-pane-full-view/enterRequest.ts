@@ -4,7 +4,7 @@
 // - 当前是否在完整视图：App 写入、内容侧订阅（设计面板只在完整视图里出，退出时收起）。
 import { useSyncExternalStore } from "react";
 
-export const SIDE_PANE_FULL_VIEW_ENTER_REQUEST_EVENT = "zcode:side-pane-full-view-enter-request";
+export const SIDE_PANE_FULL_VIEW_ENTER_REQUEST_EVENT = "codez:side-pane-full-view-enter-request";
 
 export function requestSidePaneFullView(): void {
   window.dispatchEvent(new Event(SIDE_PANE_FULL_VIEW_ENTER_REQUEST_EVENT));

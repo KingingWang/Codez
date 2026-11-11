@@ -6,7 +6,7 @@
 
 **Architecture:** Keep file-name/version fallback in the repo layer, keep provider/model matching in pure migration helpers, and let `createBotsService` run one lazy storage migration before state/cache reads are trusted. Old files are never written by the new code path.
 
-**Tech Stack:** TypeScript, Zod schemas, Vitest, existing `@zcode/shared` bot/model-provider types, service logger via `createServiceLogger`.
+**Tech Stack:** TypeScript, Zod schemas, Vitest, existing `@codez/shared` bot/model-provider types, service logger via `createServiceLogger`.
 
 ---
 
@@ -35,7 +35,7 @@ describe("BotsRepo", () => {
   let tempDir: string | null = null;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), "zcode-bots-repo-"));
+    tempDir = mkdtempSync(join(tmpdir(), "codez-bots-repo-"));
     setDataBaseDir(tempDir);
   });
 
@@ -48,7 +48,7 @@ describe("BotsRepo", () => {
   });
 
   it("reads legacy bot-state.json but writes bot-state.v2.json", async () => {
-    const dataDir = join(tempDir!, ".zcode", "v2");
+    const dataDir = join(tempDir!, ".codez", "v2");
     writeFileSync(
       join(dataDir, "bot-state.json"),
       `${JSON.stringify({
@@ -101,7 +101,7 @@ Extend `packages/services/test/botsModelCacheRepo.test.ts` with a failing test:
 
 ```ts
   it("reads legacy bots-model-cache.json but writes bots-model-cache.v2.json", async () => {
-    const dataDir = join(tempDir!, ".zcode", "v2");
+    const dataDir = join(tempDir!, ".codez", "v2");
     writeFileSync(
       join(dataDir, "bots-model-cache.json"),
       `${JSON.stringify({
@@ -229,7 +229,7 @@ Create `packages/services/test/botsStorageMigration.test.ts` with cases for dire
 
 ```ts
 import { describe, expect, it } from "vitest";
-import { createModelProviderModelConfig, encodeCustomModelValue, type BotsStateFile, type ModelProviderConfig } from "@zcode/shared";
+import { createModelProviderModelConfig, encodeCustomModelValue, type BotsStateFile, type ModelProviderConfig } from "@codez/shared";
 import { createDefaultBotsModelCache } from "../src/bots/modelCacheRepo.js";
 import { migrateBotsModelCacheToV2, migrateBotsStateToV2 } from "../src/bots/storageMigration.js";
 
@@ -331,7 +331,7 @@ describe("bot storage migration", () => {
       providers: [
         {
           id: "new-provider",
-          apiKey: "__zcode_cached_api_key_present__",
+          apiKey: "__codez_cached_api_key_present__",
         },
       ],
     });
@@ -357,16 +357,16 @@ Create `packages/services/src/bots/storageMigration.ts` with:
 import {
   decodeCustomModelValue,
   encodeCustomModelValue,
-  normalizeAgentProviderToZCodeAgent,
+  normalizeAgentProviderToCodezAgent,
   type BotsStateFile,
   type BotDraftOptions,
   type ModelProviderConfig,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   type BotsModelCacheFile,
 } from "./modelCacheRepo.js";
 
-const BOT_MODEL_CACHE_API_KEY_PLACEHOLDER = "__zcode_cached_api_key_present__";
+const BOT_MODEL_CACHE_API_KEY_PLACEHOLDER = "__codez_cached_api_key_present__";
 
 export function migrateBotsModelCacheToV2(params: {
   legacyCache: BotsModelCacheFile;
@@ -600,7 +600,7 @@ await repo.write({
         gemini: "",
       },
       apiFormat: "openai-responses",
-      apiKey: "__zcode_cached_api_key_present__",
+      apiKey: "__codez_cached_api_key_present__",
       models: [
         createModelProviderModelConfig({
           id: "gpt-example",

@@ -16,7 +16,7 @@ Windows 桌面端 3.16.2 经 SSH 连接，`Starting Source Server` 后报 `node:
 
 ```text
 （来源未知）releases/<id>/runtime/package.json 变成非法 JSON
-  → probe：bin/zcode 存在 + current.json 版本兼容 → 判为已安装（不读 release 内容）
+  → probe：bin/codez 存在 + current.json 版本兼容 → 判为已安装（不读 release 内容）
   → serve --daemon：Node 判断入口格式时读到非法 package.json，Server CLI 未执行即 exit 1
   → 通用“连接失败” → 重试回到同一路径                     ① 没有“已安装但不可执行”的出口
   → 即使同版本重装：promote 发现目标已存在且整树 hash 偏离记录

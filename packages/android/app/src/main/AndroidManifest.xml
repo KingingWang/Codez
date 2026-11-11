@@ -45,7 +45,7 @@
 
                 <data
                     android:host="remote"
-                    android:scheme="zcode" />
+                    android:scheme="codez" />
             </intent-filter>
             <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />

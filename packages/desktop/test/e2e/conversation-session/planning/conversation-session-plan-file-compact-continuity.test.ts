@@ -23,7 +23,7 @@ const PROMPT_MARKER = "E2E_PLAN_FILE_COMPACT_CONTINUITY";
 const ENTER_MARKER = "E2E_PLAN_FILE_COMPACT_ENTER_PLAN";
 const EXIT_MARKER = "E2E_PLAN_FILE_COMPACT_EXIT_PLAN";
 const PLAN_MARKER = "E2E_PLAN_FILE_COMPACT_PLAN_BODY";
-const APPROVED_PLAN_TEXT = `${PLAN_MARKER}: 1. Persist the approved plan under .zcode/plans. 2. Preserve the plan through manual compact via plan_file_reference.`;
+const APPROVED_PLAN_TEXT = `${PLAN_MARKER}: 1. Persist the approved plan under .codez/plans. 2. Preserve the plan through manual compact via plan_file_reference.`;
 const CHECKPOINT_MARKER = "E2E_PLAN_FILE_COMPACT_CHECKPOINT";
 const AFTER_COMPACT_MARKER = "E2E_PLAN_FILE_COMPACT_AFTER";
 const EXIT_TOOL_CALL_ID = "toolu_e2e_plan_file_compact_exit_plan_mode";
@@ -42,7 +42,7 @@ describe("conversation session plan file compact continuity", () => {
   it("keeps the approved ExitPlanMode plan visible after manual compact", async function () {
     this.timeout(180000);
 
-    await rm(join(DEFAULT_WORKSPACE, ".zcode", "plans"), {
+    await rm(join(DEFAULT_WORKSPACE, ".codez", "plans"), {
       force: true,
       recursive: true,
     });
@@ -67,7 +67,7 @@ describe("conversation session plan file compact continuity", () => {
     if (!sessionId) {
       throw new Error("plan file compact case sessionId 为空");
     }
-    const planFilePath = join(DEFAULT_WORKSPACE, ".zcode", "plans", `plan-${sessionId}.md`);
+    const planFilePath = join(DEFAULT_WORKSPACE, ".codez", "plans", `plan-${sessionId}.md`);
 
     await waitForUpstreamRequest(
       {

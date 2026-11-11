@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import type { FileApplicationInfo } from "@zcode/shared";
+import type { FileApplicationInfo } from "@codez/shared";
 import { ChevronDown, Copy, Download, Ellipsis, FolderOpen, MessageSquarePlus } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import {
@@ -17,7 +17,7 @@ import {
 import { downloadImagePreview, readBoundedImageBlob } from "@/lib/imagePreviewDownload.js";
 import { DefaultFileApplicationLabel, FileApplicationChoices } from "@/file-menu/index.js";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { captureImageComposerTarget } from "@/image-preview-editor/composerTarget.js";
 import { copyPreviewImage } from "@/lib/copyPreviewImage.js";
 import { getContainingDirectoryPath } from "@/lib/path.js";
@@ -55,7 +55,7 @@ export function ImagePreviewActions({
   onDownload: () => Promise<string | null>;
   downloading: boolean;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const platform = useOptionalPlatform();
   const [busy, setBusy] = useState(false);
   const pending = useRef(false),

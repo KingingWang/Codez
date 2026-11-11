@@ -18,11 +18,11 @@
 
 规则结构、Personal 同文件读写/分发、运行路径和来源标识已实现并提交。B5 整批代码复审和核心回归已完成，剩余制品验收限制见专节；以下早期实施段落仅为历史轨迹，不能继续把其中“尚未接完／尚未测试”当作当前状态。
 
-- B4：下载及刷新文件位于环境 `runtime/provider/<platform>/<version>/<endpoint-key>/`；分发记录为 `runtime/provider/provisioning.json`；Desktop/CLI/Server 共用 materializer，在环境 `runtime/provider/bundled/zcode-builtin.json` 固定释放随包资源。复用文件锁与公共原子写入，不另建 IO 或同步系统。
+- B4：下载及刷新文件位于环境 `runtime/provider/<platform>/<version>/<endpoint-key>/`；分发记录为 `runtime/provider/provisioning.json`；Desktop/CLI/Server 共用 materializer，在环境 `runtime/provider/bundled/codez-builtin.json` 固定释放随包资源。复用文件锁与公共原子写入，不另建 IO 或同步系统。
 - Source revision 包含 active 文件绝对路径身份；active 路径本身包含规范化 Endpoint。Host 将同一 active 路径注入 Worker，二者得到同一 revision。真实临时文件上的 Endpoint A/B 同 publication revision、Source/Config/Registry 切换及 Worker 直接 Source 已验证；没有增加协议字段。
 - 同文件更新已补真正两个 OS 进程写 Provider/默认选择的屏障测试；分发已补真实文件 CAS/故障回滚，期间写入的 C 不被回滚覆盖。Repository 写后返回 codec 规范化快照，修正写后下一次读 revision 无故变化；undefined providerOrder 不再凭空写成空数组。
 - 核心配置/存储/设置批次：50 文件 488 测试通过；CLI 4 文件 25 测试、入口 Node 测试 4 条通过。更广消费面 155 文件 1296 测试初跑 1286 通过、10 条旧 fixture 失败；七个文件按最终外层名称、规则数组及 Account 字典协议更新后，合并重跑 244 条全部通过。未为这 10 条失败增加产品兼容代码。
-- 根 typecheck、lint 通过（43 条既有 warning，0 error）。Pro 用隔离副本重建最新 Agent/Desktop，SC90-01、F98-03、W89-05/W89-08 共两 spec 三 case 全部通过；不为微小类型/fixture 调整重复 Pro。报告：`/Users/dev/zcode-todo99-e2e.1lO3PN/packages/desktop/.e2e-artifacts/desktop-e2e-20260910-052901-362/summary.md`。
+- 根 typecheck、lint 通过（43 条既有 warning，0 error）。Pro 用隔离副本重建最新 Agent/Desktop，SC90-01、F98-03、W89-05/W89-08 共两 spec 三 case 全部通过；不为微小类型/fixture 调整重复 Pro。报告：`/Users/dev/codez-todo99-e2e.1lO3PN/packages/desktop/.e2e-artifacts/desktop-e2e-20260910-052901-362/summary.md`。
 - 整批复审补齐账号连接类型从现有 schema 推导；dep-refs 确认独立默认选择文件 codec 及分发旧默认 DTO 无生产引用后移除。没有更改账号连接行为、Session 提交时机或 Off-Peak Ticket。
 - 证据：`/tmp/todo104-b234-{final-tests,cli-final-tests,cli-entry-tests,typecheck-final,lint,pro-e2e}.log`；`/tmp/todo104-{provider-cross-surface-tests,cross-surface-fixed-tests}.log`。最终构建产物启动、B1 跨组回归和全项复审仍在进行；不据这三条桌面用例宣告 Todo104 完成。
 
@@ -159,7 +159,7 @@ Pro 隔离副本核对 Built-in/Facade hash 后同步 Registry 与 I13 spec，�
 
 - B1c：当前 `model-selection-migration.ts` 把 selection 平铺写入entry.data；`session-entries.ts` 的普通UPSERT替换整份data；所以不仅迁移要加新成员，后续保存也必须保留旧快照。正式写入口为 core `turn-model.ts`、`session-fork.ts` 和 bootstrap `session-facade.ts`；恢复入口为 bootstrap `session-store.ts`，codec位于 adapters `session-store/codecs.ts`。不能只改迁移而让下一次发送删掉旧值，也不能只包装磁盘而忘记测试真实恢复/fork。
 - B1c现有测试：adapters `session-model-selection-migration.test.ts` / `session-store-model-selection-codec.test.ts` / `session-store.test.ts`，core `runtime-persistence.test.ts` / `session-fork.test.ts`，bootstrap `app-unbound-resume.test.ts` / `protocol-unbound-resume.test.ts` / `provider-registry-app-runtime.test.ts`。其中旧未发布平铺格式fixture不能被当成继续兼容的产品要求；真正staging原记录应以原始SQL fixture注入。
-- B4来源revision：已核实 NodeZCodeBuiltinProviderConfigSource.snapshotFromRelease 只有数值revision。EndpointScopedSource的规范化Endpoint已进入active文件路径；Host通过 `resolveZCodeBuiltinActiveFilePath` 把文件路径交给Worker的直接NodeSource。修复必须保证二者得到相同来源标识，不能只在Endpoint包装层加前缀、导致Worker与Account依据永远不匹配。当前只调查，未选择未验证的实现。
+- B4来源revision：已核实 NodeCodezBuiltinProviderConfigSource.snapshotFromRelease 只有数值revision。EndpointScopedSource的规范化Endpoint已进入active文件路径；Host通过 `resolveCodezBuiltinActiveFilePath` 把文件路径交给Worker的直接NodeSource。修复必须保证二者得到相同来源标识，不能只在Endpoint包装层加前缀、导致Worker与Account依据永远不匹配。当前只调查，未选择未验证的实现。
 - 当前已提交：m2合并 `1e4953e300`；B1a `ffb871b9db`；B1b `480441ca7e`。其余B1c/B2/B3/B4/B5仍未完成，Goal保持active，不以局部测试通过宣告整个Todo完成。
 
 ### B1c 实施与复审（2026-09-10）
@@ -187,7 +187,7 @@ Pro 隔离副本核对 Built-in/Facade hash 后同步 Registry 与 I13 spec，�
 - 新增纯数据 Model schema；完整字段单点定义、逐层派生稀疏 nullish schema。Model 构造输入、JSON类型及 Registry 完整类型由 schema 推导；行为类继续负责不可变 overlay/freeze，不把 IO 或运行时逻辑放入 schema。完整性检查仅翻译 schema 的问题协议，不维护另一份字段表。
 - 每个嵌套字段/对象逐项缺省与null测试：稀疏存储合法，但 Registry 不完整；同一值经 parse/class/JSON 保持一致。测试发现 literal 缺失的Zod错误码不同，已在公共问题翻译中保留原required-field-missing分类。
 - Provider + ProviderNode 25文件361测试通过；CLI模型创建、运行时选择、bootstrap恢复三个文件22测试通过（附加runner文件自身8通过，不混入这三个文件的计数）。root typecheck通过；lint43既有warning/0error。
-- 附加CLI runner-options测试54条中46失败：测试工厂把不完整partial强转为ResolvedAiSdkModel、缺properties，实际实现直接读supportsNativeWebSearch；另两条仍假设已删除ZCODE_PLAN_OPENAI_BASE_URL导出/按baseURL识别Start。相关测试、实现与本批HEAD无差异，失败现场未经过新schema；记录为已有过时测试，未通过增加执行层兜底绕过严格配置合同。未声称该文件已绿，也未运行旧App验证。
+- 附加CLI runner-options测试54条中46失败：测试工厂把不完整partial强转为ResolvedAiSdkModel、缺properties，实际实现直接读supportsNativeWebSearch；另两条仍假设已删除CODEZ_PLAN_OPENAI_BASE_URL导出/按baseURL识别Start。相关测试、实现与本批HEAD无差异，失败现场未经过新schema；记录为已有过时测试，未通过增加执行层兜底绕过严格配置合同。未声称该文件已绿，也未运行旧App验证。
 - 本批不改持久化名字或发布格式，不创建临时格式兼容；仍保留旧type、input_format等名字，待B2最终全链路一次改名。Provider/rule的单一schema、最终分组、手动完整配置及B3/B4/B5未完成。
 - 证据：`/tmp/todo104-b2a-{red,all-tests,typecheck-final,lint-final,architecture,cli-tests}.log`。
 
@@ -206,7 +206,7 @@ Pro 隔离副本核对 Built-in/Facade hash 后同步 Registry 与 I13 spec，�
 - schema、构造/overlay/toJSON、CLI Model合同及设置提交删除冗余字段。Builtin仅删除104处OptionSpec type，内容revision从13到14；不改任何map字符串、值域、上限或请求字段。Provider API/Access及外层规则type未动。
 - 用TypeScript AST定向删除对象中的enum/limit属性（73文件237处，主要是已有测试当前配置fixture），未改已发布迁移输入或字符串内容；两个mjs E2E/helper同样更新。新拒绝用例仍保留旧type作为负例，不新增兼容路径。
 - 32文件500条配置/节点/设置/服务回归初跑499通过，唯一失败是旧硬编码revision13；更新期望14后Built-in14条及设置/节点4文件94条复跑通过。CLI请求/compact/memory/恢复等8文件205测试通过。root及CLI四包类型检查通过，E2E类型检查通过；CLI初次类型检查受contracts旧dist声明影响，重新执行正式contracts build后通过，没有放宽源码类型。
-- Pro从本工作树同步源码和新Builtin，WDIO正常重建desktop与Agent；隔离运行 `desktop-e2e-20260910-023030-912`，SC90-01 / F98-03 两条通过（14.3s），含手动保存/失败保留/重开/转智能、Map原文、1200/390宽度。测试自行清理隔离app数据，没有操作用户真实.zcode。Pro目录无.git，所以build-meta commit=unknown；来源由同步路径和源码校验确认，不冒充commit版本打包发布验收。
+- Pro从本工作树同步源码和新Builtin，WDIO正常重建desktop与Agent；隔离运行 `desktop-e2e-20260910-023030-912`，SC90-01 / F98-03 两条通过（14.3s），含手动保存/失败保留/重开/转智能、Map原文、1200/390宽度。测试自行清理隔离app数据，没有操作用户真实.codez。Pro目录无.git，所以build-meta commit=unknown；来源由同步路径和源码校验确认，不冒充commit版本打包发布验收。
 - settings域fixture checker返回不支持该目录，与102既有记录一致；none-provider manifest仍保留，不扩修checker、不自动转正。WDIO出现已有Browser.getWindowForTarget滚动降级警告，两个行为用例实际通过。
 - 日志：`/tmp/todo104-b2c-{red,all-tests,builtin-final,final-focused,cli-tests,typecheck,cli-typecheck-final,e2e-types,fixture,pro-e2e,lint,architecture}.log`。其他B2字段/分组、B3/B4/B5仍未完成；Pro本批通过不代表最终全量Schema验收。
 - 提交前扩大到本批全部非CLI/非E2E修改用例：39文件853测试通过；JSDOM有已有canvas未实现提示，不影响断言。CLI changed-file lint通过，仅有既有未使用变量/参数warning；root lint仍43warning/0error，架构0违规。
@@ -215,14 +215,14 @@ Pro 隔离副本核对 Built-in/Facade hash 后同步 Registry 与 I13 spec，�
 ### 后续实施接点（B2c 后）
 
 - B2剩余：Model格式字段驼峰化/MFJS移入properties；Provider个人成员/baseUrl/名称和template身份外移；规则分组、来源限制、providerMatch→明确站点、手动完整配置；最终所有类型从schema推导。当前CLI `contracts/src/model/model.ts` 仍有独立ModelProperties/OptionSpec数据接口，不能以Provider内已收口宣告全域唯一来源完成。
-- 公共协议 `packages/shared/src/zcode-protocol/index.ts` 的Model格式字段还有独立schema；后续应明确共享纯数据合同，禁止 Shared 反向依赖 Provider 行为实现形成循环。现有Provider只通过类型引用shared/model-selection；不可为改名增加任意运行时跨域依赖。
+- 公共协议 `packages/shared/src/codez-protocol/index.ts` 的Model格式字段还有独立schema；后续应明确共享纯数据合同，禁止 Shared 反向依赖 Provider 行为实现形成循环。现有Provider只通过类型引用shared/model-selection；不可为改名增加任意运行时跨域依赖。
 - 剩余32个生产源文件涉及Model格式/MFJS（已定向查到UI草稿/设置、Provider、CLI合同/adapter/core、公共协议）。其中SDK真实请求字段、日志/生成脚本里的同名字符串需按语义区分，不全仓机械替换。Provider API的baseUrl裁决同样不涉及SDK baseURL。
 - Pro隔离目录已包含B1/B2a/B2b/B2c代码和新Agent构建，可继续复用；最终规则/envelope调整后仍须按新代码重建。当前spec/Builtin revision已变，不发布、不推送、不合回recovery。
 
 ### B2d-合同：跨层唯一 Model 数据定义（2026-09-10）
 
 - 从 `5032dd2019` 继续。B2d分合同/字段两个步骤，本批只完成合同归属，最终驼峰字段/MFJS位置尚未改，不宣称整个B2d完成。
-- 按 spec 将纯Model schema移到 `@zcode/shared/model-config`；Provider/codec/Registry引用公共入口。CLI六个数据类型从共享schema的推导类型别名导出；协议媒体格式用 `.pick()` 复用字段对象，传输字段和值不变。null/optional、完整校验、expression编译、overlay/freeze仍是原逻辑。共用sparseShape移动到shared/config-schema，旧内部文件删除而非保留兼容壳；静态引用扫描已覆盖两个消费文件。
+- 按 spec 将纯Model schema移到 `@codez/shared/model-config`；Provider/codec/Registry引用公共入口。CLI六个数据类型从共享schema的推导类型别名导出；协议媒体格式用 `.pick()` 复用字段对象，传输字段和值不变。null/optional、完整校验、expression编译、overlay/freeze仍是原逻辑。共用sparseShape移动到shared/config-schema，旧内部文件删除而非保留兼容壳；静态引用扫描已覆盖两个消费文件。
 - 先新增公共入口/协议字段复用测试和CLI类型相等断言。初跑因公共子路径未提供而失败，属于缺合同的红灯，不作为已复现产品Bug证据。实现后发现真实跨包Zod 4.3/4.4类型不兼容：仅将shared/provider/provider-node固定在现有shared的4.3.6，CLI Zod3与其他包不变，不靠强转绕过。
 - 最终锁文件离线冻结安装成功（无新下载）；28文件442测试通过，包含Model每字段缺省/null、严格来源、序列化、完整性、Builtin以及协议；CLI五文件22条通过，涵盖媒体策略、模型创建与运行时/恢复。CLI首次从根目录启动未匹配到用例，改为CLI真实root后执行，不记作产品失败。新增 `expectTypeOf` 另用真实tsc核验，不把Vitest运行时无操作的类型断言误算成类型证明。
 - root typecheck最终通过；改动依赖版本后旧增量声明曾留下错误推导，重新构建三个合同包后全仓通过，没有修改Service代码。CLI四包typecheck通过、contracts build通过。root lint43既有warning/0error；architecture0违规。Linux桌面生产构建成功，既有chunk-size警告保留。
@@ -238,7 +238,7 @@ Pro 隔离副本核对 Built-in/Facade hash 后同步 Registry 与 I13 spec，�
 - Pro新建构建首次在Agent打包失败：B2d-合同漏了esbuild两个精确shared子路径alias，通用alias误拼index.ts/model-config。补测试先红再修当前build入口，10条Node构建测试通过。旧bundle内容测试只证明本地现有包，其新代码实构建证据取后面的Pro运行；没有以本地旧bundle通过掩盖新Agent打包失败。
 - 同时审查裁剪构建：v4已携带纯表达式库，Share及三个旧remote模板缺新增shared依赖的manifest/源码；仅补这两条COPY，不修旧模板其他既有缺项。新增5项闭包检查4红/1绿，修复后和Share边界共7测试通过，实际Share静态构建成功。不声称Docker镜像已实构建，也不部署Web。Share没有消费新的@shared子路径，未擅改其alias。
 - Pro以冻结锁文件离线安装配套依赖，重新构建Desktop和Agent；隔离运行 `desktop-e2e-20260910-030213-463` 的SC90-01/F98-03两条通过（14.7s）。SC90新增真实图片/视频/PDF切换，确认最终字段落盘及重开状态，原取消、失败草稿、固定转智能、禁用保持断言不减。Map和1200/390布局用例继续通过。既有WebDriver Browser.getWindowForTarget滚动降级仍有日志，行为断言实际通过。
-- Pro只同步隔离工作目录；两份已被共享合同替代的旧schema副本加.todo104-retired后缀，避免被tsc收集，可恢复，不涉及用户.zcode。新增shared依赖给Docker/Agent带来的漏接在本批修掉，不转交102绕过。
+- Pro只同步隔离工作目录；两份已被共享合同替代的旧schema副本加.todo104-retired后缀，避免被tsc收集，可恢复，不涉及用户.codez。新增shared依赖给Docker/Agent带来的漏接在本批修掉，不转交102绕过。
 - 日志：`/tmp/todo104-b2d-format-{red,builtin-equivalence,tests,changed-tests,cli-tests,typecheck-final,cli-typecheck,lint-final,cli-lint,build-alias-red,build-alias-tests,docker-red,docker-tests,share-build,pro-e2e,pro-e2e-final}.log`。
 - 复审：七项改名的所有生产代码引用已收口，旧拼写只剩明确负例/历史说明；UI字段来源与高亮keys同步；工具媒体过滤仍读取同一执行Model，不重新选择Provider或改写历史。Prompt trajectory现有fixture工厂另有models/enabled/不完整OptionSpec等旧接口问题，未借改名扩修，不作为本批通过证据。B2剩余、B3/B4/B5继续推进，不合回recovery，不推送。
 

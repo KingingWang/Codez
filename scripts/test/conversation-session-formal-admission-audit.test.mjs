@@ -105,7 +105,7 @@ test("projects pending fixture metadata rejection into audit errors", async () =
 });
 
 test("actual audit CLI reports overridden formal rejection in JSON and text", async () => {
-  const root = await mkdtemp(join(tmpdir(), "zcode-formal-cli-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-formal-cli-"));
   const specPath = join(
     root,
     "packages/desktop/test/e2e/conversation-session/cli-rejected.test.ts",
@@ -114,7 +114,7 @@ test("actual audit CLI reports overridden formal rejection in JSON and text", as
   await writeFile(specPath, "it('has no fixture contract', async () => {});\n", "utf8");
   const env = {
     ...process.env,
-    ZCODE_CONVERSATION_SESSION_FORMAL_ADMISSION_ROOT: root,
+    CODEZ_CONVERSATION_SESSION_FORMAL_ADMISSION_ROOT: root,
   };
 
   try {
@@ -135,18 +135,18 @@ test("actual audit CLI reports overridden formal rejection in JSON and text", as
 });
 
 test("ordinary audit CLI rejects the formal root override as test-only", async () => {
-  const root = await mkdtemp(join(tmpdir(), "zcode-formal-cli-untrusted-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-formal-cli-untrusted-"));
   const env = {
     ...process.env,
     NODE_ENV: "test",
-    ZCODE_CONVERSATION_SESSION_FORMAL_ADMISSION_ROOT: root,
+    CODEZ_CONVERSATION_SESSION_FORMAL_ADMISSION_ROOT: root,
   };
   delete env.NODE_TEST_CONTEXT;
 
   try {
     const run = await runAudit(["--check"], env);
     assert.notEqual(run.exitCode, 0);
-    assert.match(run.stderr, /ZCODE_CONVERSATION_SESSION_FORMAL_ADMISSION_ROOT is test-only/);
+    assert.match(run.stderr, /CODEZ_CONVERSATION_SESSION_FORMAL_ADMISSION_ROOT is test-only/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -154,7 +154,7 @@ test("ordinary audit CLI rejects the formal root override as test-only", async (
 
 test("current coverage audit stays consistent after App unit evidence retirement", async () => {
   const env = { ...process.env };
-  delete env.ZCODE_CONVERSATION_SESSION_FORMAL_ADMISSION_ROOT;
+  delete env.CODEZ_CONVERSATION_SESSION_FORMAL_ADMISSION_ROOT;
   const run = await runAudit(["--check", "--json"], env);
   assert.equal(run.exitCode, 0, run.stderr);
   const report = JSON.parse(run.stdout);
@@ -173,7 +173,7 @@ test("current coverage audit stays consistent after App unit evidence retirement
   assert.ok(indexedSpecs.length > 0);
   for (const spec of indexedSpecs) {
     assert.ok(
-      spec.startsWith("packages/desktop/test/e2e/") || spec.startsWith("apps/zcode-cli/"),
+      spec.startsWith("packages/desktop/test/e2e/") || spec.startsWith("apps/codez-cli/"),
       `retired App unit evidence remains in the automation index: ${spec}`,
     );
     await readFile(join(REPO_ROOT, spec));
@@ -189,8 +189,8 @@ test("VI03 keeps its retained CLI unit evidence with unambiguous full paths", as
   assert.ok(row, "VI03 is missing from the coverage matrix");
   assert.equal(row.split("|")[2].trim(), "covered-unit");
   for (const spec of [
-    "apps/zcode-cli/packages/core/tests/read-tool-contract.test.ts",
-    "apps/zcode-cli/packages/adapters/tests/fs-context.test.ts",
+    "apps/codez-cli/packages/core/tests/read-tool-contract.test.ts",
+    "apps/codez-cli/packages/adapters/tests/fs-context.test.ts",
   ]) {
     assert.ok(row.includes(`\`${spec}\``), `VI03 must identify its CLI evidence: ${spec}`);
     await readFile(join(REPO_ROOT, spec));

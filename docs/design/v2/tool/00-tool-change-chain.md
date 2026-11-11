@@ -90,7 +90,7 @@ hydration 在同一 assistant 内按 callID 选最后新建的 part，再按 `bl
 另带执行器在工具记录快照时取的可选 `snapshotIndex`，同一 assistant 内按它重放快照，模型 history
 不使用它。模型流回调和落盘时机保持不变；live 调度、执行和提交结果按 `blockIndex` 排序，和冷恢复同序。
 详细契约见 [工具历史顺序修复方案](./tool-history-order-repair-proposal.md) 与
-[Assistant 内容块顺序](../../../../apps/zcode-cli/docs/design/v2/model/assistant-block-order.md)。
+[Assistant 内容块顺序](../../../../apps/codez-cli/docs/design/v2/model/assistant-block-order.md)。
 
 ```text
 声明 Bash(0) -> Read(1) -> 原有落盘 Read(1), Bash(0)
@@ -123,7 +123,7 @@ continuous/replayable 交付链路。跨平台路径与 PDF 外部命令仍由�
 ## 话题历史附件按需读取（本地／stdio／WebSocket 接入验证中）
 
 2026-11-03 起，话题资源由 `ReadTopicResource` 读取。`ReadSessionContext` 已删除，见
-`docs/architecture/zcode-app-control-design.md` 0.8。模型传入已归档的 `messageId` 与资源序号。
+`docs/architecture/codez-app-control-design.md` 0.8。模型传入已归档的 `messageId` 与资源序号。
 模型输入不包含 botId、chatId、workspace、授权版本或下载地址。
 当前 session 必须与工具上下文一致；输入来源和授权版本从当前任务的可信入站记录解析。
 
@@ -147,7 +147,7 @@ ReadTopicResource({ inputId?, messageId, index? })
   -> bounded tool result (status/path/fileName/mime/bytes/messageId/index)
 ```
 
-App/Agent 方法及双向参数使用 `packages/shared/src/zcode-protocol/index.ts` 的运行时
+App/Agent 方法及双向参数使用 `packages/shared/src/codez-protocol/index.ts` 的运行时
 schema；旧 Host 能力缺失须明确失败，独立 CLI 不注册该工具，不回退到任意 URL 下载。Host 连接边界
 注入 workspaceIdentity 与 remoteSessionId，不接受模型覆盖；远程 runtime 的请求必须经现有
 连接回到拥有机器人凭据的 Host，不能另建运行时或在远端读取本地凭据。
@@ -171,7 +171,7 @@ artifact 落地、真实模型按文件内部值回答及原话题投递。Host 
 13:57 实测调用已选中正确历史附件，但 Host 立即关闭协议并终止 CLI。新增附件 port 将
 Core TraceContext 原样放入严格的协议 trace，携带 sessionId、turnId、attributes 等非协议字段。
 跨端反向读取和取消必须复用 protocolTraceFromTraceContext 映射，只传 traceId、spanId 和 parentId；
-任务／输入身份继续放在严格请求参数中。测试必须用实际 zcodeProtocolMessageSchema 校验完整
+任务／输入身份继续放在严格请求参数中。测试必须用实际 codezProtocolMessageSchema 校验完整
 读／取消帧，不能仅断言 requestClient 被调用。
 
 取消与断连同时发生时，requestClient 可能在返回 Promise 前同步抛错。取消通知属于尽力通知，

@@ -5,21 +5,21 @@ import { CodingPlanEntryButton } from "@/settings/CodingPlanEntryButton.js";
 /**
  * ChatErrorBanner — 错误提示组件
  *
- * 显示 ZCode Agent 链路中的错误，带 traceId 方便排查。
+ * 显示 Codez Agent 链路中的错误，带 traceId 方便排查。
  */
 import { useState } from "react";
 import {
   MEDIA_BUDGET_CURRENT_ATTACHMENT_TOO_LARGE_ERROR_CODE,
   MEDIA_BUDGET_CURRENT_IMAGE_TOO_LARGE_ERROR_CODE,
   MEDIA_BUDGET_CURRENT_VIDEO_TOO_LARGE_ERROR_CODE,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   TID_CHAT_ERROR_DETAILS_BUTTON,
   TID_CHAT_ERROR_BANNER,
   TID_CHAT_ERROR_HOOK_ICON,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { AnchorIcon, CopyIcon, InfoIcon, RocketIcon, SettingsIcon, X } from "lucide-react";
-import { useZCodeIntl } from "./i18n/IntlProvider.js";
+import { useCodezIntl } from "./i18n/IntlProvider.js";
 import type { IntlInstance } from "./i18n/IntlProvider.js";
 import { Button } from "./components/ui/button.js";
 import {
@@ -39,7 +39,7 @@ import {
   resolveOffPeakTicketExpiredBusinessCode,
   resolveRequestVerificationBusinessCode,
 } from "@/lib/providerBusinessError.js";
-import type { ZCodeUiError } from "@/lib/zcodeUiError.js";
+import type { CodezUiError } from "@/lib/codezUiError.js";
 
 const HISTORICAL_MODEL_UNAVAILABLE_MESSAGES = [
   "历史任务使用的模型已不可用",
@@ -56,8 +56,8 @@ const LOCALIZED_ERROR_CODES = new Set([
   MEDIA_BUDGET_CURRENT_VIDEO_TOO_LARGE_ERROR_CODE,
   // 服务层错误 message 是跨进程兜底，不能作为最终 UI 语言来源。
   // 历史任务模型不可用要按稳定 code 本地化，避免英文界面显示中文提示。
-  "ZCODE_RUNTIME_MODEL_UNAVAILABLE",
-  "ZCODE_BIGMODEL_TEAM_PLAN_MEMBER_REQUIRED",
+  "CODEZ_RUNTIME_MODEL_UNAVAILABLE",
+  "CODEZ_BIGMODEL_TEAM_PLAN_MEMBER_REQUIRED",
 ]);
 
 const MODEL_CONFIG_MISSING_CODES = new Set([
@@ -73,11 +73,11 @@ const MODEL_CONFIG_MISSING_CODES = new Set([
 const MODEL_NOT_IN_REGISTRY_CODES = new Set(["provider_not_found", "model_not_found"]);
 
 /** 投影错误是否只是「会话模型不在 Registry」这一事实的 Core 侧表达。 */
-export function isModelNotInRegistryError(error: Pick<ZCodeUiError, "code">): boolean {
+export function isModelNotInRegistryError(error: Pick<CodezUiError, "code">): boolean {
   return Boolean(error.code && MODEL_NOT_IN_REGISTRY_CODES.has(error.code));
 }
 
-function isModelConfigMissingError(error: Pick<ZCodeUiError, "code" | "message">): boolean {
+function isModelConfigMissingError(error: Pick<CodezUiError, "code" | "message">): boolean {
   // Bugfix: 桌面端发送前 registry 为空时，agent 会退回 CLI config 并抛 Model config is missing。
   // 真实原因是“当前没有可用模型”，不能把 CLI 配置路径直接暴露给桌面用户。
   // 这里只按结构化 code 识别，避免 UNKNOWN/SEND_FAILED 等包装错误的可读 message
@@ -107,7 +107,7 @@ function parseClaudeUnknownCommandMessage(message: string): {
 export type ChatErrorBannerModelConfigTarget = "local" | "remote";
 
 export function resolveChatErrorBannerDisplayMessage(
-  error: ZCodeUiError,
+  error: CodezUiError,
   intl: IntlInstance,
   modelConfigTarget: ChatErrorBannerModelConfigTarget = "local",
 ): string {
@@ -137,11 +137,11 @@ export function resolveChatErrorBannerDisplayMessage(
     // 重新本地化，否则英文界面会混入中文错误提示。
     return parsed.args
       ? intl.formatMessage(
-          { id: "zcode.error.CLAUDE_UNKNOWN_COMMAND_WITH_ARGS" },
+          { id: "codez.error.CLAUDE_UNKNOWN_COMMAND_WITH_ARGS" },
           { command: parsed.command, args: parsed.args },
         )
       : intl.formatMessage(
-          { id: "zcode.error.CLAUDE_UNKNOWN_COMMAND" },
+          { id: "codez.error.CLAUDE_UNKNOWN_COMMAND" },
           { command: parsed.command },
         );
   }
@@ -159,25 +159,25 @@ export function resolveChatErrorBannerDisplayMessage(
   }
 
   if (isSuspiciousEmptyModelResultMessage(error.message)) {
-    return intl.formatMessage({ id: "zcode.error.modelSuspiciousEmpty" });
+    return intl.formatMessage({ id: "codez.error.modelSuspiciousEmpty" });
   }
 
   if (isModelNotInRegistryError(error)) {
-    return intl.formatMessage({ id: "zcode.error.ZCODE_RUNTIME_MODEL_UNAVAILABLE" });
+    return intl.formatMessage({ id: "codez.error.CODEZ_RUNTIME_MODEL_UNAVAILABLE" });
   }
 
   return error.code && LOCALIZED_ERROR_CODES.has(error.code)
-    ? intl.formatMessage({ id: `zcode.error.${error.code}` })
+    ? intl.formatMessage({ id: `codez.error.${error.code}` })
     : error.message;
 }
 
 export function shouldSuppressChatErrorBanner(
-  error: Pick<ZCodeUiError, "code" | "message">,
+  error: Pick<CodezUiError, "code" | "message">,
 ): boolean {
   // 只有历史恢复残留的模型不可用提示才隐藏；当前发送/草稿报错需要展示，
   // 否则 registry 移除模型后用户会看到“请求没返回”而没有任何可操作反馈。
   return Boolean(
-    error.code === "ZCODE_RUNTIME_MODEL_UNAVAILABLE" &&
+    error.code === "CODEZ_RUNTIME_MODEL_UNAVAILABLE" &&
     HISTORICAL_MODEL_UNAVAILABLE_MESSAGES.some((message) => error.message.includes(message)),
   );
 }
@@ -194,7 +194,7 @@ export function ChatErrorBanner({
   onReconnect,
   remoteKind,
 }: {
-  error: ZCodeUiError;
+  error: CodezUiError;
   onReconnect?: () => void;
   remoteKind?: string;
   onRetry?: () => void;
@@ -205,7 +205,7 @@ export function ChatErrorBanner({
   onOpenUpgrade?: () => void;
   modelConfigTarget?: ChatErrorBannerModelConfigTarget;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const openFeedbackSubmit = useFeedbackStore((state) => state.openSubmit);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const actionButtonClassName = "shrink-0";

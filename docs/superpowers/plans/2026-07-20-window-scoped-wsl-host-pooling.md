@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make WSL workspaces in the same Electron window, distro, and Linux user share one Remote Host and `zcode-server`, while releasing unused workspace runtimes and deterministically disposing the pool after a 60-second idle TTL or immediately during owner teardown.
+**Goal:** Make WSL workspaces in the same Electron window, distro, and Linux user share one Remote Host and `codez-server`, while releasing unused workspace runtimes and deterministically disposing the pool after a 60-second idle TTL or immediately during owner teardown.
 
 **Architecture:** Desktop Main owns a window-scoped WSL pool and keeps logical `remoteSessionId` attachments separate from the shared Host process. The Host exposes its existing remote service collection on multiple ports, accepts workspace-release control messages, and reports workspace task activity so Main never expires a pool with a running task. WSL remains `desktop-continuous`; Docker remains dedicated and SSH keeps its existing pool policy.
 
@@ -42,7 +42,7 @@ Add assertions that `hostMessageSchema` accepts:
 ```ts
 {
   type: HostMessageTypes.InitRemoteWslHost,
-  target: { kind: "wsl", distro: "Ubuntu", user: "zcode" },
+  target: { kind: "wsl", distro: "Ubuntu", user: "codez" },
   remoteAssets,
 }
 ```
@@ -106,26 +106,26 @@ git commit -m "feat(remote): define shared WSL host lifecycle messages"
 ### Task 2: Implement real workspace runtime release and task activity reporting
 
 **Files:**
-- Modify: `packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts`
+- Modify: `packages/services/src/codez-agent/codezTaskServiceAdapter.ts`
 - Modify: `packages/desktop/src/host/index.ts`
 - Modify: `packages/desktop/src/main/desktopHostProcess.ts`
-- Test: `packages/services/test/zcodeLegacyTaskCompatTaskIndex.test.ts`
+- Test: `packages/services/test/codezLegacyTaskCompatTaskIndex.test.ts`
 - Test: `packages/desktop/test/desktopHostProcess.test.ts`
 
 **Interfaces:**
 - Consumes: `ReleaseRemoteWorkspace` and `WorkspaceRunningTaskCountChanged` from Task 1.
-- Produces: `releaseWorkspacePreparation(params): Promise<void>` delegating to `IZCodeAgentService.disposeWorkspace()`.
+- Produces: `releaseWorkspacePreparation(params): Promise<void>` delegating to `ICodezAgentService.disposeWorkspace()`.
 - Produces: optional `onWorkspaceRunningTaskCountChanged(process, event)` callback from `spawnHostProcess` dependencies.
 
 - [ ] **Step 1: Write a failing adapter test**
 
-Construct the adapter with a mocked `zcodeAgentService.disposeWorkspace` and call:
+Construct the adapter with a mocked `codezAgentService.disposeWorkspace` and call:
 
 ```ts
 await service.releaseWorkspacePreparation({
   workspacePath: "/work/a",
   workspaceIdentity: "remote:wsl:a",
-  provider: "zcode",
+  provider: "codez",
 });
 ```
 
@@ -135,7 +135,7 @@ Assert one call with normalized workspace path/identity and no provider field.
 
 Run the narrow existing adapter test file that contains `releaseWorkspacePreparation`; if no focused file exists, run:
 
-`pnpm vitest run packages/services/test/zcodeLegacyTaskCompatTaskIndex.test.ts -t "releases workspace preparation"`
+`pnpm vitest run packages/services/test/codezLegacyTaskCompatTaskIndex.test.ts -t "releases workspace preparation"`
 
 Expected: FAIL because the current method is an empty operation.
 
@@ -146,13 +146,13 @@ Implement:
 ```ts
 async releaseWorkspacePreparation(params): Promise<void> {
   // 修复原因：只关闭 workspace UI 不会自动释放预热 Agent；共享 WSL Host 下 Host 仍会继续存活。
-  await options.zcodeAgentService.disposeWorkspace(normalizeWorkspaceParams(params));
+  await options.codezAgentService.disposeWorkspace(normalizeWorkspaceParams(params));
 }
 ```
 
 - [ ] **Step 4: Add failing Host control/report tests**
 
-Test that `ReleaseRemoteWorkspace` calls the active `IZCodeTaskService.releaseWorkspacePreparation` and that a workspace activity response is forwarded through the optional Main callback with the originating process.
+Test that `ReleaseRemoteWorkspace` calls the active `ICodezTaskService.releaseWorkspacePreparation` and that a workspace activity response is forwarded through the optional Main callback with the originating process.
 
 - [ ] **Step 5: Implement Host release and Main callback wiring**
 
@@ -171,7 +171,7 @@ onWorkspaceRunningTaskCountChanged?.(child, {
 Run:
 
 ```sh
-pnpm vitest run packages/services/test/zcodeLegacyTaskCompatTaskIndex.test.ts -t "releases workspace preparation"
+pnpm vitest run packages/services/test/codezLegacyTaskCompatTaskIndex.test.ts -t "releases workspace preparation"
 pnpm vitest run packages/desktop/test/desktopHostProcess.test.ts
 ```
 
@@ -180,7 +180,7 @@ Expected: PASS.
 - [ ] **Step 7: Commit**
 
 ```sh
-git add packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts packages/desktop/src/host/index.ts packages/desktop/src/main/desktopHostProcess.ts packages/services/test/zcodeLegacyTaskCompatTaskIndex.test.ts packages/desktop/test/desktopHostProcess.test.ts
+git add packages/services/src/codez-agent/codezTaskServiceAdapter.ts packages/desktop/src/host/index.ts packages/desktop/src/main/desktopHostProcess.ts packages/services/test/codezLegacyTaskCompatTaskIndex.test.ts packages/desktop/test/desktopHostProcess.test.ts
 git commit -m "fix(remote): release inactive workspace runtimes"
 ```
 
@@ -363,7 +363,7 @@ git commit -m "perf(remote): deduplicate WSL discovery and deployment"
 
 ```sh
 pnpm vitest run packages/shared/test/validation.test.ts
-pnpm vitest run packages/services/test/zcodeLegacyTaskCompatTaskIndex.test.ts -t "releases workspace preparation"
+pnpm vitest run packages/services/test/codezLegacyTaskCompatTaskIndex.test.ts -t "releases workspace preparation"
 pnpm vitest run packages/desktop/test/remoteWslHostPool.test.ts packages/desktop/test/desktopRemoteSessions.test.ts packages/desktop/test/desktopHostProcess.test.ts packages/desktop/test/taskRealtimeBridge.test.ts
 pnpm vitest run packages/server/test/wslDetect.test.ts packages/server/test/remoteAssetInstaller.test.ts packages/server/test/wslBackend.test.ts packages/server/test/remoteConnect.test.ts
 ```
@@ -381,7 +381,7 @@ Expected: both commands exit 0; existing warnings are recorded separately from n
 
 - [ ] **Step 3: Run real Windows + WSL checks**
 
-Open 1, then 3, then 5 same-distro/user workspaces. Record timestamp, Windows Host PID, `wsl.exe` PID, WSL `zcode-server` PID, Agent PIDs, RSS, first-connect time, and later-attach times. Verify one Host/server, per-workspace Agents only as needed, individual workspace release, 60-second idle expiry, TTL reuse, App-exit override, and no effect on a control user process.
+Open 1, then 3, then 5 same-distro/user workspaces. Record timestamp, Windows Host PID, `wsl.exe` PID, WSL `codez-server` PID, Agent PIDs, RSS, first-connect time, and later-attach times. Verify one Host/server, per-workspace Agents only as needed, individual workspace release, 60-second idle expiry, TTL reuse, App-exit override, and no effect on a control user process.
 
 - [ ] **Step 4: Record evidence and update spec status**
 

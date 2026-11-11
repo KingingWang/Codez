@@ -1,9 +1,9 @@
 # voice-input-service
 
-Composer 语音输入（`docs/chat/composer-voice-input.md`）的本机 Host 服务：向 zcode-server 申请 realtime ASR ticket，用 WebSocket 转发 renderer 采集的 PCM16 音频，把识别事件转成 `VoiceInputEvent`。
+Composer 语音输入（`docs/chat/composer-voice-input.md`）的本机 Host 服务：向 codez-server 申请 realtime ASR ticket，用 WebSocket 转发 renderer 采集的 PCM16 音频，把识别事件转成 `VoiceInputEvent`。
 
 - `IVoiceInputService`（通道 `voice-input`）：`start`、`sendAudio`、`finish`、`cancel`，结果经 `onEvent` 发出 `started` / `result` / `completed` / `error`。
-- `createVoiceInputService({ apiClient, getToken, resolveOrigin })`（`node.ts`）：ticket 请求走 `NodeApiClient`（带 `zcodejwttoken`，401 由全局登录失效流程处理）；WebSocket 用 Node 原生实现，不带 `Origin` 头。
+- `createVoiceInputService({ apiClient, getToken, resolveOrigin })`（`node.ts`）：ticket 请求走 `NodeApiClient`（带 `codezjwttoken`，401 由全局登录失效流程处理）；WebSocket 用 Node 原生实现，不带 `Origin` 头。
 
 不变量：
 

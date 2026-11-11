@@ -10,8 +10,8 @@ import type {
   StaticSlotItem,
   StaticView,
   WorkspaceRef,
-} from "@zcode/shared/extension-host";
-import type { ModelSelection, ZCodePluginMentionItem } from "@zcode/shared";
+} from "@codez/shared/extension-host";
+import type { ModelSelection, CodezPluginMentionItem } from "@codez/shared";
 import type { DraftPluginUiOpenRequest } from "@/plugin-ui/contract.js";
 
 // extension-slots 的公开契约（docs/plugins/extension-host.md §4、§6、§16.1）。
@@ -54,7 +54,7 @@ export interface ComposerMentionGroup {
    * error：组内一行错误（errorCode）；stopped：扩展进程已停止，command 条目不可用。
    */
   state: "loading" | "ready" | "error" | "stopped";
-  items: ZCodePluginMentionItem[];
+  items: CodezPluginMentionItem[];
   errorCode?: string;
 }
 

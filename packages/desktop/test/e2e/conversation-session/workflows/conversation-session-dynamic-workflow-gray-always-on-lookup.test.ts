@@ -1,6 +1,6 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import { TID_CHAT_TOOL_CALL_BLOCK, testId } from "@zcode/shared/test-ids";
+import { TID_CHAT_TOOL_CALL_BLOCK, testId } from "@codez/shared/test-ids";
 import { reloadElectronSessionSafely } from "#e2e/helpers/e2e-electron-reload";
 import {
   getLatestUpstreamToolResultByToolCallId,

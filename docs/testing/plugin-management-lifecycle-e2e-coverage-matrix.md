@@ -45,7 +45,7 @@
 ### 非官方市场风险确认（2026-10-29）
 
 - 浏览器候选：`packages/ui/test/browser/manual-review/pending/plugin-marketplace-risk.test.mjs`，8/8 通过。覆盖未勾选/撤销勾选、按钮/Enter、关闭重开、失败重试、提交中防重、中英文及深浅主题。日志与截图：`packages/desktop/.e2e-artifacts/marketplace-risk-20261029/browser/`。受控提交回调验证共享弹框，不代表真实手机 Host。
-- 桌面独立风险用例：`plugins/marketplace/plugin-localization-creator.test.ts` 的“非官方市场必须确认风险才能添加，关闭后重新确认”，1/1 通过；共享添加 helper 显式勾选。运行产物：`packages/desktop/.e2e-artifacts/desktop-e2e-20261029122013512-p41331-196fa3432633342b/`。通过 `ZCODE_E2E_MOCHA_GREP='非官方市场必须确认风险'` 选择此场景。
+- 桌面独立风险用例：`plugins/marketplace/plugin-localization-creator.test.ts` 的“非官方市场必须确认风险才能添加，关闭后重新确认”，1/1 通过；共享添加 helper 显式勾选。运行产物：`packages/desktop/.e2e-artifacts/desktop-e2e-20261029122013512-p41331-196fa3432633342b/`。通过 `CODEZ_E2E_MOCHA_GREP='非官方市场必须确认风险'` 选择此场景。
 - 同文件原有完整本地化用例仍在最后的窄屏商店布局断言失败：`clientWidth=269, scrollWidth=306, viewportWidth=390`。恢复基线 `024fde56b5` 的原始弹框、用例和 helper 后结果相同，基线产物：`packages/desktop/.e2e-artifacts/desktop-e2e-20261029121823423-p33643-11909677e38e9a71/`。该失败不计为通过，未修改商店布局或放宽断言。
 - 本次不新增人工晋级或 Docker/CI 准入；实际手机远控及 Windows/Linux 待验。
 
@@ -65,7 +65,7 @@
   新增候选未人工晋级，也未新增 Docker/CI admission。Windows/Linux 和真实手机远控未验证。
 
 浏览器入口：`node --test packages/ui/test/browser/manual-review/pending/plugin-update-all.test.mjs`。
-桌面候选按 E2E 工作流设置 `ZCODE_E2E_MANUAL_REVIEW=1`，显式使用
+桌面候选按 E2E 工作流设置 `CODEZ_E2E_MANUAL_REVIEW=1`，显式使用
 `fixtures/upstream/common.json` 与 `fixtures/upstream/plugin-management/plugin-update-all-failure.json`
 作为 replay fixture，再运行该 spec。
 
@@ -161,7 +161,7 @@ Anthropic Claude Marketplace，并按目录中的固定 SHA 安装 `aikido`。Ma
 
 - 用例：`packages/ui/test/browser/manual-review/pending/plugin-installed-strip.test.mjs`，真实 `PluginStoreListView` + 测试动作回调。
 - Chrome/macOS 浏览器 8/8 通过：390/1200px × 中英文 × 明暗主题，验证首末项角标和焦点空间、hover 后命中区域、滚动末尾更新点击、无误开详情及页面横向溢出。原样式复现 top=false / hit=false。
-- 截图：系统临时目录 `zcode-plugin-strip-clipping/`。根 typecheck、desktop typecheck:e2e、lint、architecture 检查通过，已有更新入口单测 5/5。
+- 截图：系统临时目录 `codez-plugin-strip-clipping/`。根 typecheck、desktop typecheck:e2e、lint、architecture 检查通过，已有更新入口单测 5/5。
 - Pending，未晋升；浏览器渲染与点击验证不代表完整 Electron 插件更新、手机真机或 Windows/Linux 验证。
 
 ## Plugin Creator 与本地化
@@ -247,7 +247,7 @@ case-local replay 验证 Agent 工具执行 -> 官方目录 -> 确认卡片 -> �
 
 - `side-pane-plugin-menu.test.mjs` 不再替换静态名单模块，改为请求配置响应并通过真实公开配置解析器。
 - 1200px / 英文 / Zai Light 和 390px / 中文 / Zai Dark 两组通过：推荐交集、重复项去重、未收录开发插件与未知面板排除、启动页/菜单、键盘打开，以及空配置/请求失败回归。
-- 可选 `ZCODE_UI_RECOMMENDATIONS_LIVE_CONFIG_URL` 接入真实测试环境配置；本次接口返回 5 条推荐并完成展示和打开参数断言。工作区面板仍由 fixture 提供，不代表真实安装或沙箱运行验收。
+- 可选 `CODEZ_UI_RECOMMENDATIONS_LIVE_CONFIG_URL` 接入真实测试环境配置；本次接口返回 5 条推荐并完成展示和打开参数断言。工作区面板仍由 fixture 提供，不代表真实安装或沙箱运行验收。
 - 真实 Host 配置服务连接测试接口：并行读取仅发一次请求，后续读取命中缓存，5 条插件/面板身份与已校验发布包一致。
 - Nacos 测试配置保留原有 16 项，只追加 `uiPluginRecommendations`；使用原 MD5 发布、精确回读，并核对公共接口返回。生产配置未修改。
 - 未重跑各插件的真实安装与沙箱运行，也未做 Windows/Linux 或真实手机远控实机验证。用例保留 pending，不晋级。
@@ -287,7 +287,7 @@ case-local replay 验证 Agent 工具执行 -> 官方目录 -> 确认卡片 -> �
 | PLM-UI-BACKGROUND           | 无锚点/隐藏 tab 冷启动、最小化后首次创建与执行、session 空闲时仍执行且不销毁、删除释放                                              | `mcp-apps-host-e2e.mjs --background-only`                                            | 真实 Electron、生产 owner/Agent/沙箱；受控页面，未晋升 CI                                        |
 | PLM-UI-BACKGROUND-ADMISSION | 无卡片挂载和 conversation 订阅的真实工具结果首次创建、后台运行、返回复用；双窗口不同会话的同插件实例保留与释放                      | `mcp-apps-host-e2e.mjs --background-only`                                            | macOS Electron 通过；同窗口并发准入和不同会话键隔离另以单测覆盖，未晋升 CI                       |
 | PLM-UI-VISIBILITY           | 保活侧栏收起、切标签、离开聊天/工作区时不可见且不拦点击；后台工作、编辑状态及实例保留，恢复交互                                     | `mcp-apps-host-e2e.mjs --managed-only`                                               | macOS Electron 深浅主题通过；生产组件集成，宿主页面投影另以桌面/手机壳 UT 覆盖，未晋升 CI        |
-| PLM-UI-BACKGROUND-CRAFT     | 最小化窗口且无卡片时，真实工具结果触发 WASM 首次初始化；后台图层操作、编辑状态保留与恢复展示截图；切主页面后隐藏 UI、后台编辑并返回 | `mcp-apps-host-e2e.mjs --photocraft-background-only`，设置 `ZCODE_PHOTOCRAFT_SERVER` | macOS Electron 通过；未修改的 PhotoCraft 0.2.2，恢复截图包含后台新增图层，不替代商店安装路径验证 |
+| PLM-UI-BACKGROUND-CRAFT     | 最小化窗口且无卡片时，真实工具结果触发 WASM 首次初始化；后台图层操作、编辑状态保留与恢复展示截图；切主页面后隐藏 UI、后台编辑并返回 | `mcp-apps-host-e2e.mjs --photocraft-background-only`，设置 `CODEZ_PHOTOCRAFT_SERVER` | macOS Electron 通过；未修改的 PhotoCraft 0.2.2，恢复截图包含后台新增图层，不替代商店安装路径验证 |
 
 Web/remote 不支持回退、runtime 失效、内联滚动与页面保留沿用 `--managed-only`。
 Windows/Linux、真实手机和其它第三方插件需独立验证。
@@ -319,14 +319,14 @@ Linux Docker 断网单例 1/1 通过，证据
 `PLM-UI-CONNECTION-READY`：`--managed-only` 控制真实 MCP initialize 完成顺序，验证生产
 React 面板等待连接后自动运行、无错误闪现和重复实例。2026-10-16 macOS Electron 专项通过；未晋升 CI。
 独立 worktree 使用标准命令整组回归，`managed` 27 项、`managed-empty` 1 项、`interaction` 1 项全部通过，
-证据批次 `zcode-mcp-host-e2e-f1vN0y`。此前整组运行出现过 guest 崩溃重建超时和锚点切换后
+证据批次 `codez-mcp-host-e2e-f1vN0y`。此前整组运行出现过 guest 崩溃重建超时和锚点切换后
 点击断言失败，独立复跑均通过；保留原失败证据，不据此认定稳定性问题已解决。
 
 ## PLM-CONCURRENT-INSTALL：并发安装忙碌态
 
-- 浏览器候选：`packages/ui/test/browser/manual-review/pending/plugin-concurrent-install.test.mjs`。真实 store 和安装按钮，390/1200px × 中英文 × 深浅主题共 8 组通过；旧实现 8 组均在第二次安装清掉第一次忙碌态处失败。日志和截图写入系统临时目录的 `zcode-plugin-concurrent-install/`。
+- 浏览器候选：`packages/ui/test/browser/manual-review/pending/plugin-concurrent-install.test.mjs`。真实 store 和安装按钮，390/1200px × 中英文 × 深浅主题共 8 组通过；旧实现 8 组均在第二次安装清掉第一次忙碌态处失败。日志和截图写入系统临时目录的 `codez-plugin-concurrent-install/`。
 - 桌面正式用例：`plugins/installation/plugin-concurrent-install.test.ts`。macOS Electron + 真实 CLI，个人来源本地 HTTP 下载响应门验证两项同时安装中、第一项失败不清理第二项、两项失败后均可重试；运行 `desktop-e2e-20261015143344848-p62610-27dafbf8f737df99` 通过。截图位于 `.e2e-artifacts/plugin-management/plm-concurrent-install/both-pending.png`。
-- 离线执行：`ZCODE_E2E_MANUAL_REVIEW=1 E2E_PROVIDER_HTTP_MODE=replay E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/plugins/installation/plugin-concurrent-install.test.ts'`。
+- 离线执行：`CODEZ_E2E_MANUAL_REVIEW=1 E2E_PROVIDER_HTTP_MODE=replay E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/plugins/installation/plugin-concurrent-install.test.ts'`。
 - PLM-DETAIL-DURING-INSTALL：同一桌面用例中，A 下载被响应门挂起、B 排在 A 后面时打开本地插件详情，组件区 30 秒内渲染技能，返回后两项仍为安装中。修复后运行 `desktop-e2e-20261019044431890-p93406-b0458048236a975f` 通过，截图 `.e2e-artifacts/plugin-management/plm-detail-during-install/detail-loaded.png`；还原 CLI 修复后运行 `desktop-e2e-20261019044633752-p3203-b44c097feed8ea0d` 在组件区等待处失败。
 - 新建右侧标签页骨架屏（list/overview 排队）：同一桌面用例在 A 下载挂起、B 排队时经桌面服务链路请求 `listPlugins` 与 `getPluginsOverview`，要求 10 秒内返回。修复后运行 `desktop-e2e-20261019062945458-p57938-d3a0c643c27817e2` 通过；只还原 transport 的 list/overview 立即派发后，运行 `desktop-e2e-20261019063058281-p64564-98a2c55f0e022488` 在该步失败（`plugins/list and plugins/overview waited for the install`）。现场证据：dev 日志 `listPlugins`/`getPluginsOverview` 耗时 14569 ms，在第二次安装结束 1.4 秒后才返回。
 - store 回归覆盖成功乱序、失败、同名操作及上下文切换隔离、来源校验与安装交叠。浏览器成功路径使用受控服务，不等于真实下载成功验证。手机真机/远控、Windows/Linux 未执行。浏览器用例 pending；桌面用例已转正，PLM-DETAIL-DURING-INSTALL 与 list/overview 两步经作者确认随之转正。
@@ -350,20 +350,20 @@ WPL-009 与 PGA 的 Agent bridge setup 先通过侧栏进入指定项目草稿�
 
 `PLM-UI-RETENTION`：2026-10-22 macOS arm64 / Electron 44.7.0 通过。`mcp-apps-host-e2e.mjs --managed-only`
 验证资源声明、默认页隐藏后五分钟销毁、widgetState 重建与五页三十分钟后回收到四页；
-批次 `zcode-mcp-host-e2e-Hlpooh`，包含既有生命周期/Web/remote 回退回归。补充回收期间重新打开
-用例：修改前 `zcode-mcp-host-e2e-YMaWa1` 卡在加载，改为读取展示锚点后
-`zcode-mcp-host-e2e-oLrXdc` 通过。时钟单测覆盖
+批次 `codez-mcp-host-e2e-Hlpooh`，包含既有生命周期/Web/remote 回退回归。补充回收期间重新打开
+用例：修改前 `codez-mcp-host-e2e-YMaWa1` 卡在加载，改为读取展示锚点后
+`codez-mcp-host-e2e-oLrXdc` 通过。时钟单测覆盖
 4/30 边界、活动、忙碌与竞态；既有后台夹具改为显式声明保留。首次未声明页运行暴露握手前
 `display:none` 阻止 guest 挂载，现仅在握手前提供承载面，握手后恢复普通隐藏策略。
 真实 PhotoCraft `0.2.4` 最小化初始化、文档/图层操作、同 guest 恢复和删除释放通过，
-批次 `zcode-mcp-host-e2e-zv1BoS`；不替代商店安装路径。Windows/Linux 未执行，未晋升 CI。
+批次 `codez-mcp-host-e2e-zv1BoS`；不替代商店安装路径。Windows/Linux 未执行，未晋升 CI。
 显式保留页面的无锚点冷启动、最小化执行、普通 guest 隔离、闲置后同实例恢复和删除释放
-由 `--background-only` 批次 `zcode-mcp-host-e2e-ulYszp` 验证通过。
+由 `--background-only` 批次 `codez-mcp-host-e2e-ulYszp` 验证通过。
 
 迁移到 `hotfix/3.16.3` 后，macOS arm64 / Electron 41.0.3 重新验证：`--managed-only`
-批次 `zcode-mcp-host-e2e-TXkv1P` 通过默认回收、五页预算、回收中重开及既有生命周期回归；
-真实 PhotoCraft `0.2.4` 批次 `zcode-mcp-host-e2e-mVIb8h` 通过最小化首次启动、后台编辑、恢复和删除。
-`--background-only` 批次 `zcode-mcp-host-e2e-MDAfE9` 通过无锚点冷启动、最小化执行、闲置恢复与删除释放。
+批次 `codez-mcp-host-e2e-TXkv1P` 通过默认回收、五页预算、回收中重开及既有生命周期回归；
+真实 PhotoCraft `0.2.4` 批次 `codez-mcp-host-e2e-mVIb8h` 通过最小化首次启动、后台编辑、恢复和删除。
+`--background-only` 批次 `codez-mcp-host-e2e-MDAfE9` 通过无锚点冷启动、最小化执行、闲置恢复与删除释放。
 沿用该分支的展示模式与子 frame 导航行为，启动承载面由握手 phase 收束，不依赖可选 App capabilities。
 
 ### 草稿 MCP UI 增补
@@ -458,7 +458,7 @@ PLM-LC-021 新断言：安装后保留任务、自动换代、没有额外用户
 
 ## PLM-EXT-2C：示例插件 context-inspector（2026-11-05）
 
-> 已删除（2026-11-07）：示例迁到市场仓库 `zcode-plugins` 的 `ui-plugins/context-inspector`，用例、helper 与夹具从 z-code 删除。下面是删除前的运行证据，保留作历史。宿主断言的去向见「示例插件迁出（2026-11-07）」。
+> 已删除（2026-11-07）：示例迁到市场仓库 `codez-plugins` 的 `ui-plugins/context-inspector`，用例、helper 与夹具从 z-code 删除。下面是删除前的运行证据，保留作历史。宿主断言的去向见「示例插件迁出（2026-11-07）」。
 
 候选桌面入口：`packages/desktop/test/e2e/plugins/manual-review/pending/plugin-context-inspector.test.ts`，场景见 [case catalog](../plugin-management-lifecycle-case-catalog.md) 的 PLM-EXT-2C。用例先运行 `examples/plugins/context-inspector/build.mjs`，再把清单与 `dist/` 复制进隔离 HOME。replay 同 PLM-EXT-2B。
 
@@ -490,7 +490,7 @@ PLM-LC-021 新断言：安装后保留任务、自动换代、没有额外用户
 | h 扩展进程停止                    | covered | 连杀 4 次后 `gen=4 status=stopped`；view 条目文字「E2E 导航视图 已停止 重新加载」，无障碍名称含「扩展已停止」；MCP App 条目 `stopped=false`，仍打开页面；点 view 条目后 `reload requested; crash budget reset`，条目恢复                                                                                                                                     |
 | e `.e2eview` → 扩展视图查看器     | covered | 清单写 `.E2EVIEW`；`[extension-slots] file viewer routed {"target":"view","path":"e2e-entries/notes.e2eview"}`；标签 `extension-view:<视图>:file:e2e-entries/notes.e2eview`，标题 `notes.e2eview`；页面与 `E2E_ENTRY_VIEW_OPEN` 都读到 `view.input = { kind: "file", path, workspace }`；之后扩展进程换代时标签按新 gen 重建，`view prepared ... input=file` |
 | f `.e2edoc` → MCP App 查看器      | covered | `file viewer routed {"target":"surface"}`；每文件一个 `plugin-ui` 标签；批准 1 次权限后 MCP server 收到 `open_document({ path: "e2e-entries/report.e2edoc" })`，页面 `openedPath` 是该路径                                                                                                                                                                   |
-| g `.xlsx`                         | covered | 官方 spreadsheets 插件接管：激活的是它的 `plugin-ui` 页面标签，没有 `file viewer routed`（插件声明的查看器不接管）。在干净 worktree 里验证；开发机仓库根目录的本地 `.zcode/config.json` 若禁用了官方插件，会经项目配置发现进入 E2E 并让这一步失败（见 `conversation-session-e2e-development-workflow.md`「已知问题」）                                       |
+| g `.xlsx`                         | covered | 官方 spreadsheets 插件接管：激活的是它的 `plugin-ui` 页面标签，没有 `file viewer routed`（插件声明的查看器不接管）。在干净 worktree 里验证；开发机仓库根目录的本地 `.codez/config.json` 若禁用了官方插件，会经项目配置发现进入 E2E 并让这一步失败（见 `conversation-session-e2e-development-workflow.md`「已知问题」）                                       |
 | i 扩展进程停止时打开文件          | covered | 再次连杀到 `gen=8 status=stopped`；`.e2eview` 留在文件管理标签内预览，没有 `file viewer routed`；点 view 条目重新加载后恢复                                                                                                                                                                                                                                  |
 
 运行产物：主导航部分 `packages/desktop/.e2e-artifacts/desktop-e2e-20261105054245441-p64585-a91485cc218636c4`（只有导航代码时，1/1 通过）；完整用例 `desktop-e2e-20261105055042354-p96810-201d80dc16f283f2`（macOS，2/2 通过，`plm-ext-p2b-evidence.json`）。截图：`.e2e-artifacts/plugin-management/plm-ext-p2b/` 下 nav（4 张）、nav-view、nav-surface-draft、nav-stopped（2 张）、file-view、file-surface。
@@ -551,7 +551,7 @@ P3c-1 之后复跑（macOS，replay）：PLM-EXT-P3A `desktop-e2e-20261105161238
 
 ## PLM-JARVIS-1：示例插件 Jarvis 的核心（2026-11-06）
 
-> 已删除（2026-11-07）：示例迁到市场仓库 `zcode-plugins` 的 `ui-plugins/jarvis`，用例、helper 与夹具从 z-code 删除。下面是删除前的运行证据，保留作历史。宿主断言的去向见「示例插件迁出（2026-11-07）」。
+> 已删除（2026-11-07）：示例迁到市场仓库 `codez-plugins` 的 `ui-plugins/jarvis`，用例、helper 与夹具从 z-code 删除。下面是删除前的运行证据，保留作历史。宿主断言的去向见「示例插件迁出（2026-11-07）」。
 
 候选桌面入口：`packages/desktop/test/e2e/plugins/manual-review/pending/plugin-jarvis-core.test.ts`，场景见 [case catalog](../plugin-management-lifecycle-case-catalog.md) 的 PLM-JARVIS-1。replay：`E2E_PROVIDER_REPLAY_FIXTURE_PATH=<upstream>/common.json,<upstream>/provider-basic.json,<upstream>/plugin-management/plugin-jarvis-core.json`。
 
@@ -572,7 +572,7 @@ P3c-1 之后复跑（macOS，replay）：PLM-EXT-P3A `desktop-e2e-20261105161238
 
 ## PLM-JARVIS-2：示例插件 Jarvis 的工具、审批与提问、权限模式、停止、重试、小结与设置（2026-11-06）
 
-> 已删除（2026-11-07）：示例迁到市场仓库 `zcode-plugins` 的 `ui-plugins/jarvis`，用例、helper 与夹具从 z-code 删除。下面是删除前的运行证据，保留作历史。宿主断言的去向见「示例插件迁出（2026-11-07）」。
+> 已删除（2026-11-07）：示例迁到市场仓库 `codez-plugins` 的 `ui-plugins/jarvis`，用例、helper 与夹具从 z-code 删除。下面是删除前的运行证据，保留作历史。宿主断言的去向见「示例插件迁出（2026-11-07）」。
 
 候选桌面入口：`packages/desktop/test/e2e/plugins/manual-review/pending/plugin-jarvis-tools.test.ts`，场景见 [case catalog](../plugin-management-lifecycle-case-catalog.md) 的 PLM-JARVIS-2。replay：`E2E_PROVIDER_REPLAY_FIXTURE_PATH=<upstream>/common.json,<upstream>/provider-basic.json,<upstream>/plugin-management/plugin-jarvis-tools.json`。
 
@@ -637,7 +637,7 @@ f 的时机：首跑（`desktop-e2e-20261106091604741-p7841-a9d94834325c4557`）
 
 ### 2026-11-06 插件 E2E 整轮复跑
 
-改动：已有 `sessions.write` 授权要重新确认（§17.12）、context-inspector 总量用服务商数字（§11 方案 A）、Jarvis 顶栏权限模式下拉不截断、dot 改名 Jarvis。分支 `feat/extension-session-approvals`，macOS，逐个用例顺序运行（`ZCODE_E2E_MANUAL_REVIEW=1`）。产物都在 `packages/desktop/.e2e-artifacts/` 下。
+改动：已有 `sessions.write` 授权要重新确认（§17.12）、context-inspector 总量用服务商数字（§11 方案 A）、Jarvis 顶栏权限模式下拉不截断、dot 改名 Jarvis。分支 `feat/extension-session-approvals`，macOS，逐个用例顺序运行（`CODEZ_E2E_MANUAL_REVIEW=1`）。产物都在 `packages/desktop/.e2e-artifacts/` 下。
 
 | 用例               | 入口                                         | 模型（replay 夹具或 dummy provider）                       | 结果     | 运行产物                                                                  |
 | ------------------ | -------------------------------------------- | ---------------------------------------------------------- | -------- | ------------------------------------------------------------------------- |
@@ -666,7 +666,7 @@ f 的时机：首跑（`desktop-e2e-20261106091604741-p7841-a9d94834325c4557`）
 | 子项                                    | 状态    | 证据                                                                                                                                                                                                                                             |
 | --------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | a H5 App 作用域视图                     | covered | 切会话、进另一个工作区再回来，实例 id 都是同一个；回来后这个视图的标签只有 1 个；`E2E_JARVISHOST_VIEW_OPEN` 只有一行。去掉移动逻辑时用例在「切到另一个工作区」失败（反向验证）                                                                   |
-| b H6 `ctx.extension.dataPath`           | covered | `<E2E HOME>/.zcode/cli/plugins/data/e2e-ext-jarvis-host@inline`，`isDirectory: true`                                                                                                                                                             |
+| b H6 `ctx.extension.dataPath`           | covered | `<E2E HOME>/.codez/cli/plugins/data/e2e-ext-jarvis-host@inline`，`isDirectory: true`                                                                                                                                                             |
 | c H9 `models.list`                      | covered | 两项 `e2e-upstream/deepseek-v4-flash`、`e2e-upstream/deepseek-v4-pro`，`providerName: Upstream E2E`；2026-11-07 起第二个模型也断言（这次列表还有 `e2e-upstream-alt/deepseek-v4-pro`）                                                            |
 | d H11 导航未读标记                      | covered | 3 → 99+ → 圆点 → 清除；标签「E2E 宿主能力 · 3 条未读」「· 有新内容」，英文「· 5 unread」                                                                                                                                                         |
 | e H12 `grants.request`                  | covered | 对话框列出读取会话与系统通知；取消返回 `granted=`（空），确认后 `granted=sessions.read,notifications`                                                                                                                                            |
@@ -712,18 +712,18 @@ P3b 之后复跑（macOS）：PLM-EXT-P3A（replay）`desktop-e2e-20261105144638
 
 | 子项                 | 状态    | 证据                                                                                                                                                                                                                     |
 | -------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| a 能力位与透传       | covered | 测试动作 `getPluginsOverview`（经 services）：ok 的 `listing.extensionSummary` 为 `{ engines: { zcode: "^1.4.0" }, grants: ["sessions.fullAccess", "notifications"] }`，`componentTypes` 含 `extension`；plain 没有      |
-| b 列表挡不兼容       | covered | future 按钮 `disabled`、`data-install-blocked="requires-update"`、文字「需要更新 ZCode」；ok、plain 为可点的「安装」                                                                                                     |
-| c 不兼容的详情页     | covered | `plugin-store-extension-incompatible` 含「更新 ZCode」；扩展说明含「含常驻代码」，档位只有「读取会话」，没有完全访问一行                                                                                                 |
+| a 能力位与透传       | covered | 测试动作 `getPluginsOverview`（经 services）：ok 的 `listing.extensionSummary` 为 `{ engines: { codez: "^1.4.0" }, grants: ["sessions.fullAccess", "notifications"] }`，`componentTypes` 含 `extension`；plain 没有      |
+| b 列表挡不兼容       | covered | future 按钮 `disabled`、`data-install-blocked="requires-update"`、文字「需要更新 Codez」；ok、plain 为可点的「安装」                                                                                                     |
+| c 不兼容的详情页     | covered | `plugin-store-extension-incompatible` 含「更新 Codez」；扩展说明含「含常驻代码」，档位只有「读取会话」，没有完全访问一行                                                                                                 |
 | d 兼容的详情页       | covered | 档位「读写会话（含完全访问）」「发送系统通知」；`plugin-store-extension-full-access` 以「完全访问：」开头；没有不兼容说明                                                                                                |
 | e 普通插件与安装     | covered | plain 详情页没有扩展说明；ok、plain 从商店装上；ok 装上后安装前说明消失                                                                                                                                                  |
 | f 不兼容的新版不提示 | covered | 刷新后 overview 里 installed 与 plain 都是 `update-available`，installed 的摘要是 `^99.0.0`；列表只有 plain 有「可更新」与「更新」；installed 的详情页没有 `plugin-store-detail-update`；刷新提示「发现 1 个插件可更新」 |
 | g 全部更新跳过       | covered | 「全部更新（1）」；执行后 plain 为 2.0.0，按钮消失；installed 仍为 1.0.0、`enabled: true`、`update-available`                                                                                                            |
-| h 语言与主题         | covered | 截图见下；英文「Requires newer ZCode」「Includes resident code」                                                                                                                                                         |
+| h 语言与主题         | covered | 截图见下；英文「Requires newer Codez」「Includes resident code」                                                                                                                                                         |
 
 运行产物：`packages/desktop/.e2e-artifacts/desktop-e2e-20261107064956973-p98299-76b88c7f8460abc0`（macOS，1/1 通过）；updates 截图前改为先滚到本地市场的卡片，复跑 `desktop-e2e-20261107065302118-p4854-bb94d976f0d85a5d`（1/1 通过，`plm-ext-store-evidence.json`）。截图：`.e2e-artifacts/plugin-management/plm-ext-store/` 下 store-list、future-detail、compatible-detail（中文浅色、英文深色），updates、update-all（中文浅色），after-update-all（英文深色）。迁移 commit 之后再跑（2026-11-07）：`desktop-e2e-20261107074445681-p15206-d95fd261654312f4`（1/1 通过）。
 
-CLI 一侧（2026-11-07）：`apps/zcode-cli/packages/bootstrap/tests/plugins-protocol.test.ts` 的 `plugins/overview extension summary`（不要求时线上没有这个键；要求时结果过 strict schema；安装结果不带）、`v4-extension-input-source.test.ts` 的能力位、adapters 的 `parseEntryExtensionSummary` 与合成清单剔除，都通过。
+CLI 一侧（2026-11-07）：`apps/codez-cli/packages/bootstrap/tests/plugins-protocol.test.ts` 的 `plugins/overview extension summary`（不要求时线上没有这个键；要求时结果过 strict schema；安装结果不带）、`v4-extension-input-source.test.ts` 的能力位、adapters 的 `parseEntryExtensionSummary` 与合成清单剔除，都通过。
 
 未覆盖：Windows/Linux 桌面；手机 Web 没有插件商店；版本不同的 Desktop 与远端 Server、新 services 配旧 CLI 没有桌面运行时用例（§4.3 按分层分析与 CLI 协议测试）；远程设备 Scope 的商店。人工审核、正式晋升与 Docker 准入保持 pending。
 
@@ -783,7 +783,7 @@ CLI 一侧（2026-11-07）：`apps/zcode-cli/packages/bootstrap/tests/plugins-pr
 | J2 `grants.request` 申请完全访问的对话框                               | 新加：PLM-EXT-JARVISHOST j                                                         |
 | J2 摘要文案、卡片、重试、小结分隔线、设置面板、模式提示与宽度          | 删除（插件页面）                                                                   |
 
-迁移后的运行（macOS，逐个顺序，`ZCODE_E2E_MANUAL_REVIEW=1`）：
+迁移后的运行（macOS，逐个顺序，`CODEZ_E2E_MANUAL_REVIEW=1`）：
 
 | 用例        | 入口                                         | 模型                                                       | 结果     | 运行产物                                                |
 | ----------- | -------------------------------------------- | ---------------------------------------------------------- | -------- | ------------------------------------------------------- |
@@ -860,7 +860,7 @@ P3a 之后复跑（macOS）：PLM-EXT-2B、2C、P2B、P2C（replay）`desktop-e2
 | a–g、f 设置页保存与清除                    | covered | `plm-ext-p2d-evidence.json` 的 `initialProbe`、`configOptions`、`changedLog`、`probeAfterSave`、`clearedLog`；`tokenLeaks` 为空                                                                                                          |
 | h `settings.update` 写入                   | covered | 工具返回 `{"ok":true}`，不含 token；`plugin-secrets.json` 有新 token，`config.json` 只有 `region`；`[extensions] settings update plugin=e2e-ext-settings@inline keys=1 cleared=0`；`E2E_SETTINGS_CHANGED … hasToken=true tokenLength=47` |
 | i 只写自己的插件                           | covered | `E2E_SETTINGS_FOREIGN token code=invalid-input`、`E2E_SETTINGS_FOREIGN mode-type code=invalid-input`；第二个插件的 `config.json` 选项为空                                                                                                |
-| j 写入后不泄露                             | covered | `updateTokenHits` 只有隔离 HOME 的 `.zcode/cli/plugin-secrets.json`                                                                                                                                                                      |
+| j 写入后不泄露                             | covered | `updateTokenHits` 只有隔离 HOME 的 `.codez/cli/plugin-secrets.json`                                                                                                                                                                      |
 | k `settings.update` 清除                   | covered | `logout` 返回 `{"ok":true}`；`plugin-secrets.json` 里没有 token；`E2E_SETTINGS_CHANGED … hasToken=false`；`updateTokenLeaksAfterClear` 为空                                                                                              |
 | l H4 图标                                  | covered | `icons`：启动页 `lucide lucide-log-in`、导航 `lucide lucide-git-merge`、标签 `lucide lucide-git-pull-request`；截图 settings-update-account-view 中文浅色、英文深色                                                                      |
 | m `settings.update` 写普通键（2026-11-07） | covered | `setRegion` 返回 `{"ok":true}`；`config.json` 的 `plugins.options` 是 `{ region: "ap-south" }`，`plugin-secrets.json` 里没有 `region`；`E2E_SETTINGS_CHANGED … region=ap-south keys=region`                                              |

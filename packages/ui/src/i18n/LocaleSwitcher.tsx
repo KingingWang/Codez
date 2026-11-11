@@ -1,7 +1,7 @@
 import { useCallback } from "react";
-import { SUPPORTED_LOCALES, type Locale } from "@zcode/shared";
-import { TID_LOCALE_TOGGLE } from "@zcode/shared/test-ids";
-import { useZCodeIntl } from "./IntlProvider.js";
+import { SUPPORTED_LOCALES, type Locale } from "@codez/shared";
+import { TID_LOCALE_TOGGLE } from "@codez/shared/test-ids";
+import { useCodezIntl } from "./IntlProvider.js";
 
 /** 按钮上的短标签用各语言本名缩写，不随界面语言翻译。 */
 const LOCALE_LABELS: Record<Locale, string> = {
@@ -16,7 +16,7 @@ const LOCALE_LABELS: Record<Locale, string> = {
  * 语言切换按钮 —— 点击按 SUPPORTED_LOCALES 顺序循环切换语言
  */
 export function LocaleSwitcher() {
-  const { intl, locale, setLocale } = useZCodeIntl();
+  const { intl, locale, setLocale } = useCodezIntl();
 
   const cycleLocale = useCallback(() => {
     const idx = SUPPORTED_LOCALES.indexOf(locale);

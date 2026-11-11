@@ -4,7 +4,7 @@ export const PROVIDER_RESPONSIVE_TEAM_NAME = "北京智谱华章科技股份有�
 // GLM-5-Turbo 已退役，共享 Start balance 默认使用当前模型 GLM-5.3。
 export function buildProviderResponsiveStartBalance(model = "GLM-5.3") {
   const now = Math.floor(Date.now() / 1000);
-  const planId = "zcode-v3-start-plan";
+  const planId = "codez-v3-start-plan";
   const entitlementId = "E2E_PROVIDER_RESPONSIVE_START";
   return {
     code: 0,
@@ -15,7 +15,7 @@ export function buildProviderResponsiveStartBalance(model = "GLM-5.3") {
       plans: [
         {
           plan_id: planId,
-          name: "ZCode V3 Start Plan",
+          name: "Codez V3 Start Plan",
           status: "active",
           starts_at: now - 86400,
           ends_at: now + 86400,

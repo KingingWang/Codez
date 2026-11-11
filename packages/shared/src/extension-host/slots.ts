@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { zcodePluginMentionItemsSchema } from "#src/zcode-protocol/plugin-host-queries/contract.js";
+import { codezPluginMentionItemsSchema } from "#src/codez-protocol/plugin-host-queries/contract.js";
 
 // 插槽目录与动态值（docs/plugins/extension-host.md §6、§16.2、§16.3）。
 // EXTENSION_SLOTS 是插槽 id 的唯一定义：清单校验、渲染、文档都读它，不在别处写死插槽 id。
@@ -61,7 +61,7 @@ export const EXTENSION_SLOTS = {
     targets: ["command", "tool"],
     scope: "session",
     maxItemsPerPlugin: 3,
-    commandResult: zcodePluginMentionItemsSchema,
+    commandResult: codezPluginMentionItemsSchema,
   },
 } as const satisfies Record<string, ExtensionSlotDef>;
 

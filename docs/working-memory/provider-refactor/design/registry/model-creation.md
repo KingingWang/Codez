@@ -126,7 +126,7 @@ API Key 是静态 Config 字段。缺少 Key 的 Effective Provider 不完整，
 ### zhipu-account
 
 ```text
-ZCode Built-in Provider Config
+Codez Built-in Provider Config
 └─ access.type = zhipu-account
    └─ family + mode
         |
@@ -153,7 +153,7 @@ Start Plan、Individual Coding Plan 和 Team Plan 可以共享 Account Provider 
 
 Provider 顶层不存在 `enabled`；账号套餐资格通过 `zhipu-account.entitled` 表达。Start Plan 还可以用账号接口返回的
 非空 `builtinModelIds` 约束成员；Individual/Team 继承 Built-in 成员。任何这类
-Account Overlay 必须与产生它的 ZCode Built-in revision 匹配后，才允许 Registry 创建后续 Model。
+Account Overlay 必须与产生它的 Codez Built-in revision 匹配后，才允许 Registry 创建后续 Model。
 
 ### Off-Peak 请求期材料
 
@@ -199,7 +199,7 @@ Adapter 按固定优先级合并并保护鉴权字段。Renderer、Core 业务�
 
 ## 闲时任务
 
-`account:zai-offpeak-idle-plan` 与 `account:bigmodel-offpeak-idle-plan` 是两个完整的 ZCode Built-in Provider；
+`account:zai-offpeak-idle-plan` 与 `account:bigmodel-offpeak-idle-plan` 是两个完整的 Codez Built-in Provider；
 Scheduler 按当前账号 Family 精确选择其中一个，Provider 本身不在执行期切换 Family：
 
 ```text

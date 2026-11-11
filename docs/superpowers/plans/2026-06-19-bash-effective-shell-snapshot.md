@@ -9,7 +9,7 @@
 
 **Architecture:** Introduce a session-scoped Effective Bash Shell descriptor that is resolved once at session create/resume and reused by context assembly, Bash execution, and Explore subagents. Runtime shell changes update the execution descriptor immediately and append a provider-visible mid-conversation system notice instead of rewriting the initial `# Environment` system context.
 
-**Tech Stack:** TypeScript, Vitest, `@zcode/contracts`, `@zcode/core`, `@zcode/adapters`, ZCode Protocol session runtime.
+**Tech Stack:** TypeScript, Vitest, `@codez/contracts`, `@codez/core`, `@codez/adapters`, Codez Protocol session runtime.
 
 ## Global Constraints
 
@@ -29,8 +29,8 @@
 
 Current Bash shell state has multiple sources of truth:
 
-- Prompt-visible `EnvInfo.shell` is detected from `SHELL ?? ComSpec ?? COMSPEC` in `apps/zcode-cli/packages/adapters/src/context/index.ts`.
-- Bash execution resolves shell later in `apps/zcode-cli/packages/adapters/src/exec/index.ts` via `shellProfile: "posix-bash"` and optional `bashShellOverride`.
+- Prompt-visible `EnvInfo.shell` is detected from `SHELL ?? ComSpec ?? COMSPEC` in `apps/codez-cli/packages/adapters/src/context/index.ts`.
+- Bash execution resolves shell later in `apps/codez-cli/packages/adapters/src/exec/index.ts` via `shellProfile: "posix-bash"` and optional `bashShellOverride`.
 - Explore child runtime inherits parent `envInfo` but does not explicitly inherit `bashShellOverride`.
 - Runtime `updateConfig({ bashShellOverride })` changes future execution without notifying the model.
 - Refreshing `# Environment` on shell change would cause a provider-visible system prompt mutation and likely prompt-cache loss.
@@ -43,49 +43,49 @@ The intended end state is:
 
 ## File Structure
 
-- Modify: `apps/zcode-cli/packages/contracts/src/interfaces/execution.port.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/interfaces/execution.port.ts`
   - Owns the cross-layer type for effective Bash shell selection.
-- Modify: `apps/zcode-cli/packages/contracts/src/interfaces/context-source.port.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/interfaces/context-source.port.ts`
   - Allows context source resolution to receive a shell display override without asking the context adapter to duplicate shell resolver logic.
-- Modify: `apps/zcode-cli/packages/adapters/src/exec/bash-shell-provider.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/exec/bash-shell-provider.ts`
   - Becomes the single shell resolver and provider factory for Bash shell execution and display metadata.
-- Modify: `apps/zcode-cli/packages/adapters/src/exec/index.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/exec/index.ts`
   - Consumes the effective descriptor instead of independently resolving display/execution state.
-- Modify: `apps/zcode-cli/packages/adapters/src/context/index.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/context/index.ts`
   - Uses request-provided effective shell display when present; otherwise keeps legacy env detection fallback.
-- Modify: `apps/zcode-cli/packages/core/src/system-reminder/source.ts`
+- Modify: `apps/codez-cli/packages/core/src/system-reminder/source.ts`
   - Adds the shell-change source for provider-visible mid-conversation system projection.
-- Modify: `apps/zcode-cli/packages/core/src/runtime/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/types.ts`
   - Stores the session effective Bash shell descriptor in runtime config.
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/context.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/context.ts`
   - Resolves the initial effective shell snapshot before building the initial context.
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/config.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/config.ts`
   - Replaces silent shell override updates with an explicit runtime shell update path.
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts`
   - Passes the effective Bash shell descriptor into Explore child runtime.
-- Modify: `apps/zcode-cli/packages/core/src/tool/handlers/bash.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/handlers/bash.ts`
   - Passes the effective shell descriptor to Bash execution.
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/types.ts`, `apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts`, `apps/zcode-cli/packages/core/src/tool/executor/impl.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/types.ts`, `apps/codez-cli/packages/core/src/tool/executor/call-runner.ts`, `apps/codez-cli/packages/core/src/tool/executor/impl.ts`
   - Thread the descriptor through the execution boundary.
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/server-operations.ts`
   - Converts protocol shell selection changes into runtime shell selection updates and model notices.
 - Tests:
-  - `apps/zcode-cli/packages/adapters/tests/exec.test.ts`
-  - `apps/zcode-cli/packages/adapters/tests/fs-context.test.ts`
-  - `apps/zcode-cli/packages/core/tests/system-reminder-source.test.ts`
-  - `apps/zcode-cli/packages/core/tests/context-builder.test.ts`
-  - `apps/zcode-cli/packages/core/tests/runtime-trace.test.ts`
-  - `apps/zcode-cli/packages/core/tests/subagent-explore.test.ts`
-  - `apps/zcode-cli/packages/core/tests/bash-handler.test.ts`
-  - `apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts`
-  - `apps/zcode-cli/packages/bootstrap/tests/session-persistence.test.ts`
+  - `apps/codez-cli/packages/adapters/tests/exec.test.ts`
+  - `apps/codez-cli/packages/adapters/tests/fs-context.test.ts`
+  - `apps/codez-cli/packages/core/tests/system-reminder-source.test.ts`
+  - `apps/codez-cli/packages/core/tests/context-builder.test.ts`
+  - `apps/codez-cli/packages/core/tests/runtime-trace.test.ts`
+  - `apps/codez-cli/packages/core/tests/subagent-explore.test.ts`
+  - `apps/codez-cli/packages/core/tests/bash-handler.test.ts`
+  - `apps/codez-cli/packages/bootstrap/tests/codez-protocol.test.ts`
+  - `apps/codez-cli/packages/bootstrap/tests/session-persistence.test.ts`
 
 ---
 
 ### Task 1: Define Effective Bash Shell Descriptor
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/contracts/src/interfaces/execution.port.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/interfaces/execution.port.ts`
 
 **Interfaces:**
 - Produces: `ExecutionShellSelection`, `ExecutionShellSource`, `ExecutionShellDisplay`
@@ -111,7 +111,7 @@ export interface ExecutionShellSelection {
   id?: string;
   /** Human-readable diagnostic label. This can include more detail than display.name. */
   label?: string;
-  /** Executable path when ZCode resolved a concrete shell. Omitted for legacy shell fallback. */
+  /** Executable path when Codez resolved a concrete shell. Omitted for legacy shell fallback. */
   path?: string;
   /** Shell syntax and cwd capture wrapper semantics. */
   dialect: ExecutionShellDialect | "legacy-shell";
@@ -134,7 +134,7 @@ Then update the comment above `ExecutionCommand.shellOverride` so it reads:
 
 ```ts
 /**
- * ZCode runtime-provided Bash shell selection. Current consumers must only use
+ * Codez runtime-provided Bash shell selection. Current consumers must only use
  * this when shellProfile === "posix-bash"; generic shell execution must ignore it.
  */
 shellOverride?: ExecutionShellSelection;
@@ -145,7 +145,7 @@ shellOverride?: ExecutionShellSelection;
 Run:
 
 ```bash
-pnpm --filter @zcode/contracts typecheck
+pnpm --filter @codez/contracts typecheck
 ```
 
 Expected: typecheck passes or fails only at downstream call sites that still expect `source: "user-config"` only. Those downstream failures are addressed in later tasks.
@@ -155,9 +155,9 @@ Expected: typecheck passes or fails only at downstream call sites that still exp
 ### Task 2: Refactor Bash Shell Resolver Into One Data Source
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/adapters/src/exec/bash-shell-provider.ts`
-- Modify: `apps/zcode-cli/packages/adapters/src/exec/index.ts`
-- Test: `apps/zcode-cli/packages/adapters/tests/exec.test.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/exec/bash-shell-provider.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/exec/index.ts`
+- Test: `apps/codez-cli/packages/adapters/tests/exec.test.ts`
 
 **Interfaces:**
 - Consumes: `ExecutionShellSelection`
@@ -203,7 +203,7 @@ Implementation rules:
 
 - [ ] **Step 3: Make execution consume the descriptor**
 
-In `apps/zcode-cli/packages/adapters/src/exec/index.ts`, replace the separate Windows/POSIX resolver branches with:
+In `apps/codez-cli/packages/adapters/src/exec/index.ts`, replace the separate Windows/POSIX resolver branches with:
 
 ```ts
 if (command.shellProfile === "posix-bash") {
@@ -223,7 +223,7 @@ Leave the existing generic shell fallback unchanged after this block.
 
 - [ ] **Step 4: Add resolver tests**
 
-In `apps/zcode-cli/packages/adapters/tests/exec.test.ts`, add tests for:
+In `apps/codez-cli/packages/adapters/tests/exec.test.ts`, add tests for:
 
 - POSIX `SHELL=/bin/fish` with `/usr/bin/zsh` executable resolves `display.name === "zsh"` and uses `/usr/bin/zsh`.
 - POSIX no bash/zsh resolves `legacy-fallback` and execution still falls through to generic shell.
@@ -235,7 +235,7 @@ In `apps/zcode-cli/packages/adapters/tests/exec.test.ts`, add tests for:
 Run:
 
 ```bash
-pnpm --filter @zcode/adapters exec vitest run tests/exec.test.ts
+pnpm --filter @codez/adapters exec vitest run tests/exec.test.ts
 ```
 
 Expected: all adapter exec tests pass.
@@ -245,12 +245,12 @@ Expected: all adapter exec tests pass.
 ### Task 3: Feed Session Shell Snapshot Into Context
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/contracts/src/interfaces/context-source.port.ts`
-- Modify: `apps/zcode-cli/packages/adapters/src/context/index.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/types.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/context.ts`
-- Test: `apps/zcode-cli/packages/adapters/tests/fs-context.test.ts`
-- Test: `apps/zcode-cli/packages/core/tests/runtime-trace.test.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/interfaces/context-source.port.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/context/index.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/context.ts`
+- Test: `apps/codez-cli/packages/adapters/tests/fs-context.test.ts`
+- Test: `apps/codez-cli/packages/core/tests/runtime-trace.test.ts`
 
 **Interfaces:**
 - Consumes: `ExecutionShellSelection.display.name`
@@ -322,8 +322,8 @@ Add an adapter context test where no `effectiveShellDisplayName` is provided and
 Run:
 
 ```bash
-pnpm --filter @zcode/adapters exec vitest run tests/fs-context.test.ts
-pnpm --filter @zcode/core exec vitest run tests/runtime-trace.test.ts
+pnpm --filter @codez/adapters exec vitest run tests/fs-context.test.ts
+pnpm --filter @codez/core exec vitest run tests/runtime-trace.test.ts
 ```
 
 Expected: new tests pass and existing context behavior remains covered.
@@ -333,9 +333,9 @@ Expected: new tests pass and existing context behavior remains covered.
 ### Task 4: Add Shell Change Mid-Conversation System Source
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/system-reminder/source.ts`
-- Test: `apps/zcode-cli/packages/core/tests/system-reminder-source.test.ts`
-- Test: `apps/zcode-cli/packages/core/src/runtime/helpers/provider-request-messages.ts` existing tests or nearest provider-request helper test file
+- Modify: `apps/codez-cli/packages/core/src/system-reminder/source.ts`
+- Test: `apps/codez-cli/packages/core/tests/system-reminder-source.test.ts`
+- Test: `apps/codez-cli/packages/core/src/runtime/helpers/provider-request-messages.ts` existing tests or nearest provider-request helper test file
 
 **Interfaces:**
 - Produces: `shell_environment_change` source
@@ -381,7 +381,7 @@ expect(getSystemReminderDescriptor("shell_environment_change")).toMatchObject({
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/system-reminder-source.test.ts
+pnpm --filter @codez/core exec vitest run tests/system-reminder-source.test.ts
 ```
 
 Expected: source classification passes.
@@ -391,12 +391,12 @@ Expected: source classification passes.
 ### Task 5: Replace Silent Shell Updates With Explicit Runtime Shell Updates
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/runtime/types.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/internal-methods.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/config.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts`
-- Test: `apps/zcode-cli/packages/core/tests/runtime-trace.test.ts`
-- Test: `apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/internal-methods.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/config.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/server-operations.ts`
+- Test: `apps/codez-cli/packages/core/tests/runtime-trace.test.ts`
+- Test: `apps/codez-cli/packages/bootstrap/tests/codez-protocol.test.ts`
 
 **Interfaces:**
 - Consumes: `ExecutionShellSelection`
@@ -486,8 +486,8 @@ Add tests that prove:
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/runtime-trace.test.ts
-pnpm --filter @zcode/bootstrap exec vitest run tests/zcode-protocol.test.ts
+pnpm --filter @codez/core exec vitest run tests/runtime-trace.test.ts
+pnpm --filter @codez/bootstrap exec vitest run tests/codez-protocol.test.ts
 ```
 
 Expected: shell update is model-visible through an added mid-conversation system notice and does not refresh the context prefix.
@@ -497,13 +497,13 @@ Expected: shell update is model-visible through an added mid-conversation system
 ### Task 6: Thread Effective Shell Selection Through Bash Execution
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/tool/types.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/handlers/bash.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/types.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/impl.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/agent-runtime.ts`
-- Test: `apps/zcode-cli/packages/core/tests/bash-handler.test.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/handlers/bash.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/call-runner.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/impl.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/agent-runtime.ts`
+- Test: `apps/codez-cli/packages/core/tests/bash-handler.test.ts`
 
 **Interfaces:**
 - Consumes: runtime `bashShellSelection`
@@ -550,7 +550,7 @@ Add a test that missing `bashShellSelection` keeps current auto-resolution behav
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/bash-handler.test.ts
+pnpm --filter @codez/core exec vitest run tests/bash-handler.test.ts
 ```
 
 Expected: Bash handler passes the effective shell selection when present and preserves fallback behavior when absent.
@@ -560,8 +560,8 @@ Expected: Bash handler passes the effective shell selection when present and pre
 ### Task 7: Make Explore Inherit Shell Snapshot and Execution Selection
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts`
-- Test: `apps/zcode-cli/packages/core/tests/subagent-explore.test.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts`
+- Test: `apps/codez-cli/packages/core/tests/subagent-explore.test.ts`
 
 **Interfaces:**
 - Consumes: parent runtime `bashShellSelection`
@@ -604,7 +604,7 @@ Add a test that child runtime Bash execution receives the same selection.
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/subagent-explore.test.ts
+pnpm --filter @codez/core exec vitest run tests/subagent-explore.test.ts
 ```
 
 Expected: Explore prompt and child Bash execution no longer diverge from the parent session.
@@ -614,10 +614,10 @@ Expected: Explore prompt and child Bash execution no longer diverge from the par
 ### Task 8: Preserve Session Resume and History Semantics
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/resume.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/message-persistence.ts`
-- Modify: `apps/zcode-cli/packages/core/src/agent/session-history-hydrator.ts`
-- Test: `apps/zcode-cli/packages/bootstrap/tests/session-persistence.test.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/resume.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/message-persistence.ts`
+- Modify: `apps/codez-cli/packages/core/src/agent/session-history-hydrator.ts`
+- Test: `apps/codez-cli/packages/bootstrap/tests/session-persistence.test.ts`
 
 **Interfaces:**
 - Consumes: persisted `EnvInfo.shell` and `shell_environment_change` attachments
@@ -646,7 +646,7 @@ Test this timeline:
 Run:
 
 ```bash
-pnpm --filter @zcode/bootstrap exec vitest run tests/session-persistence.test.ts
+pnpm --filter @codez/bootstrap exec vitest run tests/session-persistence.test.ts
 ```
 
 Expected: resume keeps chronological truth instead of rewriting the initial environment.
@@ -656,9 +656,9 @@ Expected: resume keeps chronological truth instead of rewriting the initial envi
 ### Task 9: Keep Windows Detection Changes Separate and Conservative
 
 **Files:**
-- Modify only if product wants this in the same change: `apps/zcode-cli/packages/adapters/src/exec/bash-shell-provider.ts`
+- Modify only if product wants this in the same change: `apps/codez-cli/packages/adapters/src/exec/bash-shell-provider.ts`
 - Modify only if product wants this in the same change: `packages/services/src/system/integratedTerminalShells.ts`
-- Test only if product wants this in the same change: `apps/zcode-cli/packages/adapters/tests/exec.test.ts`
+- Test only if product wants this in the same change: `apps/codez-cli/packages/adapters/tests/exec.test.ts`
 
 **Interfaces:**
 - Consumes: existing Windows Git Bash candidate resolver
@@ -679,7 +679,7 @@ Assert explicit user selection still wins, then fixed Program Files candidates, 
 Run:
 
 ```bash
-pnpm --filter @zcode/adapters exec vitest run tests/exec.test.ts
+pnpm --filter @codez/adapters exec vitest run tests/exec.test.ts
 ```
 
 Expected: existing Git Bash and CMD behavior remains unchanged except the new per-user install path is detectable when present.
@@ -711,9 +711,9 @@ Document these rules:
 Run:
 
 ```bash
-pnpm --filter @zcode/adapters exec vitest run tests/exec.test.ts tests/fs-context.test.ts
-pnpm --filter @zcode/core exec vitest run tests/system-reminder-source.test.ts tests/context-builder.test.ts tests/runtime-trace.test.ts tests/subagent-explore.test.ts tests/bash-handler.test.ts
-pnpm --filter @zcode/bootstrap exec vitest run tests/zcode-protocol.test.ts tests/session-persistence.test.ts
+pnpm --filter @codez/adapters exec vitest run tests/exec.test.ts tests/fs-context.test.ts
+pnpm --filter @codez/core exec vitest run tests/system-reminder-source.test.ts tests/context-builder.test.ts tests/runtime-trace.test.ts tests/subagent-explore.test.ts tests/bash-handler.test.ts
+pnpm --filter @codez/bootstrap exec vitest run tests/codez-protocol.test.ts tests/session-persistence.test.ts
 ```
 
 Expected: all focused tests pass.

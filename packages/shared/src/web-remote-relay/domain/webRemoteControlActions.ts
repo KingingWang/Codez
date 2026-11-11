@@ -10,7 +10,7 @@
 export const WEB_REMOTE_CONTROL_RENDERER_ACTION_TIMEOUT_MS = 30_000;
 
 /** 手机新建本地项目的固定根目录（相对用户主目录），与桌面 scratch workspace 一致。 */
-export const WEB_REMOTE_CONTROL_LOCAL_PROJECT_ROOT_DIR = "ZCodeProject";
+export const WEB_REMOTE_CONTROL_LOCAL_PROJECT_ROOT_DIR = "CodezProject";
 
 export interface WebRemoteControlWorkspaceCreateRequestPayload {
   zcode_type: "workspace-create-request";
@@ -152,12 +152,12 @@ export function normalizeWebRemoteControlWorkspaceName(name: string): string {
  */
 export function resolveUnrecognizedWebRemoteControlRequest(
   value: unknown,
-): { requestId: string; zcodeType: string } | null {
+): { requestId: string; codezType: string } | null {
   if (!value || typeof value !== "object") return null;
   const record = value as Record<string, unknown>;
-  const zcodeType = record.zcode_type;
+  const codezType = record.zcode_type;
   const requestId = record.requestId;
-  if (typeof zcodeType !== "string" || !zcodeType.endsWith("-request")) return null;
+  if (typeof codezType !== "string" || !codezType.endsWith("-request")) return null;
   if (typeof requestId !== "string" || !requestId.trim()) return null;
-  return { requestId, zcodeType };
+  return { requestId, codezType };
 }

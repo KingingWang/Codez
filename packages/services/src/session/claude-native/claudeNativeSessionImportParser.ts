@@ -163,7 +163,7 @@ function extractClaudeUserText(entry: JsonLineRecord): string | null {
 
   // 关键业务逻辑：这里只提取“用户真正可见的问题文本”。
   // tool_result / local-command / ide_opened_file 这些内容虽然也会混在 Claude 原生日志里，
-  // 但它们属于协议噪音或 IDE 注入信息，直接写进 zcode task 会让导入后的聊天记录失真。
+  // 但它们属于协议噪音或 IDE 注入信息，直接写进 codez task 会让导入后的聊天记录失真。
   const content =
     message?.content ?? (isObjectRecord(entry.request) ? entry.request.prompt : undefined);
   if (typeof content === "string") {
@@ -359,7 +359,7 @@ export function parseClaudeNativeSessionRecords(params: {
     updatedAt: updatedAt ?? firstVisibleUserTimestamp ?? params.fallbackCreatedAt ?? Date.now(),
     title: deriveSessionTitle(messages.find((item) => item.role === "user")?.content ?? "", []),
     // 关键业务逻辑：provider=claude 只能说明任务最终由 Claude 续接，
-    // 不能区分它是 zcode 内新建的 Claude 任务，还是从 Claude Code 原生历史迁移来的任务。
+    // 不能区分它是 codez 内新建的 Claude 任务，还是从 Claude Code 原生历史迁移来的任务。
     // 这里单独写 migrationSource，后续任务列表/统计才能稳定识别迁移来源。
     migrationSource: "claudeCode",
     ...(model ? { model } : {}),
@@ -413,7 +413,7 @@ export function selectClaudeNativeVisibleAssistantTurnAfter(
     (turn) => turn.timestamp === undefined || turn.timestamp >= lowerBoundMs,
   );
 
-  // Bugfix: Claude 原生日志 turnIndex 与 ZCode turnIndex 在 session/load、旧错误合成消息、
+  // Bugfix: Claude 原生日志 turnIndex 与 Codez turnIndex 在 session/load、旧错误合成消息、
   // 跨 provider 续接后可能发生漂移。恢复正文时必须优先用 userTimestamp 判断 assistant
   // 归属的用户轮次，否则 session/load 追加的临近 assistant（如 No response requested）
   // 会凭较新的 assistant timestamp 混入本轮，把旧轮次 API Error 当成当前成功回复覆盖掉。
@@ -546,7 +546,7 @@ export function parseClaudeNativeUnknownCommandWarnings(
       Math.abs(timestamp - latestTimestamp) <= CLAUDE_NATIVE_UNKNOWN_COMMAND_ARGS_MAX_GAP_MS;
     if (isSameWarningGroup) {
       // Bugfix: Claude Code 对未知 slash command 会拆成两条 system warning：
-      // 一条写命令名，一条写参数。这里合并后才能给 ZCode 用户展示可操作的失败原因。
+      // 一条写命令名，一条写参数。这里合并后才能给 Codez 用户展示可操作的失败原因。
       latest.args = argsMatch[1].trim();
     }
   }

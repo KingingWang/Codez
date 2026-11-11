@@ -1,5 +1,5 @@
 import { remoteHostLabel } from "@/project-sidebar/RemoteHostSection.js";
-import type { V4SessionDeletionPreview } from "@zcode/shared/zcode-protocol-v4";
+import type { V4SessionDeletionPreview } from "@codez/shared/codez-protocol-v4";
 import { useEffect, useRef, useState } from "react";
 import type { ProjectTask } from "@/project-sidebar/contract.js";
 import { useProjectDirectory } from "@/project-sidebar/ProjectDirectoryProvider.js";
@@ -12,20 +12,20 @@ import { archiveTaskKey } from "@/project-sidebar/archive-view.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { resolveRemoteWorkspaceSessionIdForTarget } from "@/hooks/useResolvedRemoteWorkspaceSessionId.js";
 import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 import { clearBrowserRecentVisitsForTask } from "@/store/browserRecentVisitsStore.js";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 
 export type ArchiveOperation = "unarchive" | "delete";
 export function useArchiveManagement() {
   const directory = useProjectDirectory();
-  const { zcodeTaskService: service, windowControllerService: controller } =
+  const { codezTaskService: service, windowControllerService: controller } =
     useBaseWorkspaceServices();
-  const removeTaskState = useZCodeSessionStore((s) => s.removeTaskState);
+  const removeTaskState = useCodezSessionStore((s) => s.removeTaskState);
   const confirm = useConfirmDialog();
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{
     succeeded: number;

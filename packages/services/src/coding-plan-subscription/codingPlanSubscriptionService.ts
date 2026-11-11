@@ -1,9 +1,9 @@
 import type { OAuthAccountMaterial } from "#src/oauth/repo/oauthCredentialRepo.js";
-import { applyDynamicWorkflowUserMode, type ApiClient } from "@zcode/shared";
+import { applyDynamicWorkflowUserMode, type ApiClient } from "@codez/shared";
 import type { ICredentialService } from "../credential/credential.js";
 import type { ICodingPlanSubscriptionService } from "./codingPlanSubscription.js";
 import { BigModelCodingPlanSubscriptionProvider } from "./bigmodelCodingPlanSubscriptionProvider.js";
-import type { ModelSelectionView } from "@zcode/provider";
+import type { ModelSelectionView } from "@codez/provider";
 import { ZaiCodingPlanSubscriptionProvider } from "./zaiCodingPlanSubscriptionProvider.js";
 
 interface CodingPlanSubscriptionServiceDependencies {

@@ -1,4 +1,4 @@
-import { TID_CHAT_TOOL_CALL_BLOCK, TID_TOOL_SUMMARY_TRIGGER } from "@zcode/shared/test-ids";
+import { TID_CHAT_TOOL_CALL_BLOCK, TID_TOOL_SUMMARY_TRIGGER } from "@codez/shared/test-ids";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import {
   expectNoUpstreamRequestForTextWithin,

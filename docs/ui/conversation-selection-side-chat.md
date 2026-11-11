@@ -146,7 +146,7 @@ Side Pane 启动页 / 顶部 + 菜单 / 主 composer `/side`、`/btw`
   `{ text }` 数组追加到 `# userselect:`、语言标签为 `userselect` 的结构块，避免把 session、row、content type
   和内部 id 暴露给模型。timeline 解析后仅显示正文与引用 chips，已发送 chip 的 hover 只展示已持久化
   的选中文字。
-- 旧 `# Conversation selections:`、语言标签为 `zcode-conversation-selections` 的完整结构块继续只读解析，保证
+- 旧 `# Conversation selections:`、语言标签为 `codez-conversation-selections` 的完整结构块继续只读解析，保证
   既有历史 chip 可见；新消息不再写旧格式，也不迁移已落盘消息。与 Web element context 同时存在时，
   先解析末尾 Web element block，再解析 selection block。
 
@@ -165,7 +165,7 @@ Side Pane 启动页 / 顶部 + 菜单 / 主 composer `/side`、`/btw`
 问题，模型同时收到被引原文与针对它的评论，不需要在输入框里手工复述上下文。注释复用上面的选区引用
 合同，不另建一套附件或 prompt 格式。
 
-2026-11-09 交互定稿（ZCode 3.0 群 11-06 话题）：原“批注”与“添加到当前任务”统一为 **注释**——
+2026-11-09 交互定稿（Codez 3.0 群 11-06 话题）：原“批注”与“添加到当前任务”统一为 **注释**——
 选区内容无论是否附带评论，都作为一条注释提交。
 
 - **入口**：选区浮层动作为“注释”“在辅助对话中提问”。点“注释”后浮层换成输入卡片（编号、原文、多行评论、
@@ -176,7 +176,7 @@ Side Pane 启动页 / 顶部 + 菜单 / 主 composer `/side`、`/btw`
 - **能力协商**：`conversationQuoteSchema` 与 `sendText` payload 都不是 strict，旧 CLI 会静默剥掉
   `comment` / `agent`，用户看得到评论而模型收不到。新 CLI 在 `runtime/capabilities` 声明
   `conversationQuoteComment: true`；Host 在启动屏障里记录声明者，renderer 经
-  `zcodeAgentService.supportsConversationQuoteComment` 查询当前 workspace 的 CLI，未声明、查询失败、
+  `codezAgentService.supportsConversationQuoteComment` 查询当前 workspace 的 CLI，未声明、查询失败、
   旧 Host 或远端未实现时不提供“注释”与编辑入口（不降级拼进正文），菜单回退为“添加到当前任务”。
 - **超限**：注释已满 8 条或原文总长超限时，保存会被原子拒绝；浮层保持打开、保留输入，并在浮层内
   显示与 composer 相同的本地化上限提示。对已注释的同一段再次写评论属于更新，不受条数上限限制。
@@ -269,7 +269,7 @@ wire (MCS / non-MCS): user [<system-reminder>boundary</system-reminder>, questio
 ```
 
 ```bash
-pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/conversation-session/branching/conversation-session-side-chat-reminder.test.ts'
+pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/conversation-session/branching/conversation-session-side-chat-reminder.test.ts'
 ```
 
 正式回归仅保留 UI、持久化和 provider 请求断言；运行报告与网络证据由共享 E2E runner

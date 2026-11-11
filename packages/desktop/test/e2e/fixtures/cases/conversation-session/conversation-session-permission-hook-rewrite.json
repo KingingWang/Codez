@@ -8,12 +8,12 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/conversation-session-permission-hook-rewrite/hook.mjs",
+      "path": ".codez-e2e/conversation-session-permission-hook-rewrite/hook.mjs",
       "source": "created-by-spec",
       "description": "从 case-local fs fixture 复制真实 Hook；配置仅写入隔离 E2E HOME，测试后恢复。"
     },
     {
-      "path": ".zcode-e2e/conversation-session-permission-hook-rewrite/B-after-hook.txt",
+      "path": ".codez-e2e/conversation-session-permission-hook-rewrite/B-after-hook.txt",
       "source": "created-by-provider-tool",
       "description": "仅批准 B 后由真实 Write handler 创建，A 不得存在；PostToolUse trace 验证执行一次。"
     }

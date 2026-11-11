@@ -879,7 +879,7 @@
           "id": "toolu_e2e_bg38_parent_abort",
           "name": "Bash",
           "input": {
-            "command": "printf 'E2E_BG38_STARTED\\n' > .zcode-e2e/conversation-session-background/bg38-bash-started; printf 'E2E_BG38_STARTED\\n'; sleep 4; printf 'E2E_BG38_DONE\\n'",
+            "command": "printf 'E2E_BG38_STARTED\\n' > .codez-e2e/conversation-session-background/bg38-bash-started; printf 'E2E_BG38_STARTED\\n'; sleep 4; printf 'E2E_BG38_DONE\\n'",
             "description": "BG38 parent abort bash",
             "run_in_background": true,
             "timeout": 10
@@ -1053,7 +1053,7 @@
           "id": "toolu_e2e_background_cancel_bash",
           "name": "Bash",
           "input": {
-            "command": "bash -c 'printf \"%s\\n\" \"$$\" > .zcode-e2e/conversation-session-background/bg08-root.pid; set -m; node .zcode-e2e/conversation-session-background/bg08-launcher.cjs .zcode-e2e/conversation-session-background/bg08-launcher.pid .zcode-e2e/conversation-session-background/bg08-worker.pid & wait'",
+            "command": "bash -c 'printf \"%s\\n\" \"$$\" > .codez-e2e/conversation-session-background/bg08-root.pid; set -m; node .codez-e2e/conversation-session-background/bg08-launcher.cjs .codez-e2e/conversation-session-background/bg08-launcher.pid .codez-e2e/conversation-session-background/bg08-worker.pid & wait'",
             "description": "background cancel bash process tree",
             "run_in_background": true
           }
@@ -1941,7 +1941,7 @@
           "id": "toolu_e2e_foreground_long_bash_loading",
           "name": "Bash",
           "input": {
-            "command": "sh -c 'i=1; while [ \"$i\" -le 120 ]; do printf \"progress-line-%s\\n\" \"$i\"; i=$((i+1)); done; i=0; while [ ! -f .zcode-e2e/conversation-session-background/bg14-preview-release ] && [ \"$i\" -lt 400 ]; do sleep 0.1; i=$((i+1)); done; i=0; while [ \"$i\" -lt 4000 ]; do printf \"padding-%s\\n\" \"$i\"; i=$((i+1)); done; printf \"E2E_FOREGROUND_LONG_BASH_DONE\\n\"'",
+            "command": "sh -c 'i=1; while [ \"$i\" -le 120 ]; do printf \"progress-line-%s\\n\" \"$i\"; i=$((i+1)); done; i=0; while [ ! -f .codez-e2e/conversation-session-background/bg14-preview-release ] && [ \"$i\" -lt 400 ]; do sleep 0.1; i=$((i+1)); done; i=0; while [ \"$i\" -lt 4000 ]; do printf \"padding-%s\\n\" \"$i\"; i=$((i+1)); done; printf \"E2E_FOREGROUND_LONG_BASH_DONE\\n\"'",
             "description": "foreground long bash loading sleep"
           }
         }
@@ -2210,7 +2210,7 @@
           "id": "toolu_e2e_background_idle_child_tool_bash",
           "name": "Bash",
           "input": {
-            "command": "sh -c 'while [ ! -f \".zcode-e2e/conversation-session-background/background-child-tool-idle-release\" ]; do sleep 0.1; done; printf \"E2E_BACKGROUND_AGENT_CHILD_TOOL_IDLE_BASH_DONE\\n\"'",
+            "command": "sh -c 'while [ ! -f \".codez-e2e/conversation-session-background/background-child-tool-idle-release\" ]; do sleep 0.1; done; printf \"E2E_BACKGROUND_AGENT_CHILD_TOOL_IDLE_BASH_DONE\\n\"'",
             "description": "background idle child visible bash sleep"
           }
         }
@@ -2412,7 +2412,7 @@
           "id": "toolu_e2e_background_parent_anchor_child_bash",
           "name": "Bash",
           "input": {
-            "command": "sh -c 'while [ ! -f \".zcode-e2e/conversation-session-background/background-parent-anchor-release\" ]; do sleep 0.1; done; printf \"E2E_BACKGROUND_CHILD_TOOL_PARENT_ANCHOR_BASH_DONE\\n\"'",
+            "command": "sh -c 'while [ ! -f \".codez-e2e/conversation-session-background/background-parent-anchor-release\" ]; do sleep 0.1; done; printf \"E2E_BACKGROUND_CHILD_TOOL_PARENT_ANCHOR_BASH_DONE\\n\"'",
             "description": "background parent anchor child visible bash sleep"
           }
         }
@@ -2587,7 +2587,7 @@
           "id": "toolu_e2e_background_session_switch_child_bash",
           "name": "Bash",
           "input": {
-            "command": "sh -c 'while [ ! -f .zcode-e2e/conversation-session-background/bg21-child-tool-release ]; do sleep 0.1; done; printf \"E2E_BACKGROUND_CHILD_TOOL_SESSION_SWITCH_BASH_DONE\\n\"'",
+            "command": "sh -c 'while [ ! -f .codez-e2e/conversation-session-background/bg21-child-tool-release ]; do sleep 0.1; done; printf \"E2E_BACKGROUND_CHILD_TOOL_SESSION_SWITCH_BASH_DONE\\n\"'",
             "description": "background session switch child visible bash"
           }
         }
@@ -2762,7 +2762,7 @@
           "id": "toolu_e2e_background_switch_back_running_child_bash",
           "name": "Bash",
           "input": {
-            "command": "sh -c 'while [ ! -f \".zcode-e2e/conversation-session-background/background-switch-back-release\" ]; do sleep 0.1; done; printf \"E2E_BACKGROUND_CHILD_TOOL_SWITCH_BACK_RUNNING_BASH_DONE\\n\"'",
+            "command": "sh -c 'while [ ! -f \".codez-e2e/conversation-session-background/background-switch-back-release\" ]; do sleep 0.1; done; printf \"E2E_BACKGROUND_CHILD_TOOL_SWITCH_BACK_RUNNING_BASH_DONE\\n\"'",
             "description": "background switch back running child visible bash"
           }
         }
@@ -2933,7 +2933,7 @@
           "id": "toolu_e2e_background_send_now_queue_child_bash",
           "name": "Bash",
           "input": {
-            "command": "sh -c 'while [ ! -f \".zcode-e2e/conversation-session-background/background-send-now-queue-release\" ]; do sleep 0.1; done; printf \"E2E_BACKGROUND_SEND_NOW_QUEUE_CHILD_BASH_DONE\\n\"'",
+            "command": "sh -c 'while [ ! -f \".codez-e2e/conversation-session-background/background-send-now-queue-release\" ]; do sleep 0.1; done; printf \"E2E_BACKGROUND_SEND_NOW_QUEUE_CHILD_BASH_DONE\\n\"'",
             "description": "background send now queue child bash sleep"
           }
         }
@@ -3756,7 +3756,7 @@
         "statusCode": 200,
         "delayMs": 4000,
         "text": {
-          "id": "upstream-e2e-bg24-zcode-one-child-done",
+          "id": "upstream-e2e-bg24-codez-one-child-done",
           "text": "E2E_BG24_SHORT_LIVED_ONE_CHILD_DONE"
         }
       }
@@ -3781,7 +3781,7 @@
         "statusCode": 200,
         "delayMs": 14000,
         "text": {
-          "id": "upstream-e2e-bg24-zcode-two-child-done",
+          "id": "upstream-e2e-bg24-codez-two-child-done",
           "text": "E2E_BG24_SHORT_LIVED_TWO_CHILD_DONE"
         }
       }
@@ -3806,7 +3806,7 @@
         "statusCode": 200,
         "delayMs": 24000,
         "text": {
-          "id": "upstream-e2e-bg24-zcode-three-child-done",
+          "id": "upstream-e2e-bg24-codez-three-child-done",
           "text": "E2E_BG24_SHORT_LIVED_THREE_CHILD_DONE"
         }
       }
@@ -4118,7 +4118,7 @@
           "id": "toolu_e2e_composition_mixed_foreground_bash",
           "name": "Bash",
           "input": {
-            "command": "sh -c 'while [ ! -f .zcode-e2e/conversation-session-background/agent-composition-mixed-foreground-release ]; do sleep 0.1; done; printf \"E2E_AGENT_COMPOSITION_MIXED_FOREGROUND_BARRIER_DONE\\n\"'",
+            "command": "sh -c 'while [ ! -f .codez-e2e/conversation-session-background/agent-composition-mixed-foreground-release ]; do sleep 0.1; done; printf \"E2E_AGENT_COMPOSITION_MIXED_FOREGROUND_BARRIER_DONE\\n\"'",
             "description": "E2E mixed foreground child barrier"
           }
         }

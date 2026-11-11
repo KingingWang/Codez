@@ -6,8 +6,8 @@ import type {
   TurnHeaderRow,
   V4ConversationFileChangesResult,
   V4ConversationFileRewindPreviewResult,
-} from "@zcode/shared/zcode-protocol-v4";
-import { TID_V4_FILE_SUMMARY_UNDO_LOCKED } from "@zcode/shared/test-ids";
+} from "@codez/shared/codez-protocol-v4";
+import { TID_V4_FILE_SUMMARY_UNDO_LOCKED } from "@codez/shared/test-ids";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import {
@@ -15,7 +15,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { FileDisplayInline } from "@/lib/fileDisplay.js";
 import { toWorkspaceRelativePath } from "@/lib/taskChangeSummary.js";
 import { buildChangeSummaryFilePreviewSource } from "@/messageChangeSummaryPreview.js";
@@ -78,7 +78,7 @@ export function ConversationFileSummaryPanel({
   context,
   assistantText = "",
 }: ConversationFileSummaryPanelProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const genUiSources = useMemo(() => collectGenUiSourcePaths(assistantText), [assistantText]);
   const filtersSources = genUiSources.length > 0;
   const [open, setOpen] = useState(false);

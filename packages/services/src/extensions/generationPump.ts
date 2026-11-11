@@ -1,15 +1,15 @@
-import { Emitter, type Event } from "@zcode/rpc";
-import { ESTIMATED_TOKEN_CHAR_DIVISOR, calculateOutputTps } from "@zcode/shared";
+import { Emitter, type Event } from "@codez/rpc";
+import { ESTIMATED_TOKEN_CHAR_DIVISOR, calculateOutputTps } from "@codez/shared";
 import {
   GENERATION_STREAMING_PUSH_INTERVAL_MS,
   type GenerationMetrics,
   type WorkspaceRef,
-} from "@zcode/shared/extension-host";
+} from "@codez/shared/extension-host";
 import type {
   ConversationTelemetryFact,
   ModelRequestMetricsFact,
-} from "@zcode/shared/zcode-protocol-v4";
-import type { IZCodeAgentService } from "#src/zcode-agent/zcodeAgent.js";
+} from "@codez/shared/codez-protocol-v4";
+import type { ICodezAgentService } from "#src/codez-agent/codezAgent.js";
 import type { ServiceLogger } from "#src/logger/serviceLogger.js";
 import {
   createWorkspaceSubscriptions,
@@ -42,7 +42,7 @@ export interface GenerationPump {
 
 export function createGenerationPump(deps: {
   agent: Pick<
-    IZCodeAgentService,
+    ICodezAgentService,
     "onDynamicConversationTelemetryFact" | "onDynamicModelRequestMetrics"
   >;
   workbench: WorkbenchState;

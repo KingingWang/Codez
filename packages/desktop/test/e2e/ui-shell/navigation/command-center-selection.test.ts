@@ -17,28 +17,28 @@ describe("Command Center 重名任务选中", () => {
         (row) => row.textContent,
       ),
       tabs: (
-        window as typeof window & { __zcodeTabStoreE2E?: { getState(): unknown } }
-      ).__zcodeTabStoreE2E?.getState(),
+        window as typeof window & { __codezTabStoreE2E?: { getState(): unknown } }
+      ).__codezTabStoreE2E?.getState(),
     }));
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "command-center-state.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "command-center-state.json"),
       JSON.stringify(state, null, 2),
     );
   });
 
   before(async () => {
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 45_000);
-    const home = process.env.ZCODE_E2E_HOME_DIR;
+    const home = process.env.CODEZ_E2E_HOME_DIR;
     // 同时接受统一 runner 与旧手工入口的隔离 HOME，禁止写入日常用户目录。
     if (
       !home ||
-      ![".e2e-home-", "zcode-command-center-"].some((prefix) => basename(home).startsWith(prefix))
+      ![".e2e-home-", "codez-command-center-"].some((prefix) => basename(home).startsWith(prefix))
     ) {
       throw new Error("需要隔离 E2E HOME");
     }
     // 纯列表 fixture：在隔离索引准备重名任务，不恢复合成会话或发送模型请求。
     // node:sqlite 仅提供同步接口，短事务结束后立即关闭连接。
-    const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
+    const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"));
     try {
       const now = Date.now();
       const insert = db.prepare(`
@@ -134,7 +134,7 @@ describe("Command Center 重名任务选中", () => {
       await browser.keys("Escape");
     }
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "command-center-selection.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "command-center-selection.json"),
       JSON.stringify(evidence, null, 2),
     );
   });

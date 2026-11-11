@@ -4,7 +4,7 @@ interface StorageLike {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
 }
-const STORAGE_KEY = "zcode-source-update-notifications-v1";
+const STORAGE_KEY = "codez-source-update-notifications-v1";
 
 function browserStorage(): StorageLike | null {
   try {

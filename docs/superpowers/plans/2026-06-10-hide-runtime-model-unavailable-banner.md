@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Hide the chat error banner for `ZCODE_RUNTIME_MODEL_UNAVAILABLE` while preserving internal guard state and diagnostics.
+**Goal:** Hide the chat error banner for `CODEZ_RUNTIME_MODEL_UNAVAILABLE` while preserving internal guard state and diagnostics.
 
 **Architecture:** Keep service and restore behavior unchanged. Add a presentation-layer guard in `ChatErrorBanner` so this specific error code renders no banner, while other error codes continue through the existing localized error banner path.
 
@@ -22,7 +22,7 @@ Add a test that renders `ChatErrorBanner` with:
 
 ```ts
 {
-  code: "ZCODE_RUNTIME_MODEL_UNAVAILABLE",
+  code: "CODEZ_RUNTIME_MODEL_UNAVAILABLE",
   message: "历史任务使用的模型已不可用，请从当前模型列表中选择一个可用模型后继续。",
 }
 ```
@@ -41,7 +41,7 @@ Expected before implementation: the new assertion fails because `ChatErrorBanner
 
 - [ ] **Step 3: Implement the minimal presentation-layer guard**
 
-In `packages/ui/src/ChatErrorBanner.tsx`, return `null` when `error.code === "ZCODE_RUNTIME_MODEL_UNAVAILABLE"`. Leave localization, feedback, copy, and detail behavior unchanged for all other errors.
+In `packages/ui/src/ChatErrorBanner.tsx`, return `null` when `error.code === "CODEZ_RUNTIME_MODEL_UNAVAILABLE"`. Leave localization, feedback, copy, and detail behavior unchanged for all other errors.
 
 - [ ] **Step 4: Run targeted tests and verify they pass**
 

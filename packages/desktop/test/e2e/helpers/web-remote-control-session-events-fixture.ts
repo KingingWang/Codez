@@ -2,18 +2,18 @@ import { resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { readFile, writeFile } from "node:fs/promises";
-import { createFakeRelayV2 } from "@zcode/shared/testing/fake-relay-v2";
+import { createFakeRelayV2 } from "@codez/shared/testing/fake-relay-v2";
 import { CODING_PLAN_TEAM_MOCK_BASE_URL_ENV } from "#e2e/helpers/coding-plan-mock-env";
 
 export const WEB_REMOTE_CONTROL_FIXTURE_CREDENTIALS = {
   "oauth:active_provider": "zai",
   "oauth:zai:access_token": "mock-token",
   "oauth:zai:user_info": JSON.stringify({
-    id: "zcode-e2e-user",
-    username: "ZCode E2E",
-    displayName: "ZCode E2E",
+    id: "codez-e2e-user",
+    username: "Codez E2E",
+    displayName: "Codez E2E",
   }),
-  zcodejwttoken: "mock-token",
+  codezjwttoken: "mock-token",
 };
 
 /** 单窗口真实 OAuth owner → RPC → renderer → Main 回归，只替换外部 relay。 */
@@ -31,8 +31,8 @@ export async function prepareWebRemoteControlSessionEventsFixture(options: {
   let linkedProfileEnabled = false;
   const relay = await createFakeRelayV2({
     users: {
-      "mock-token": "zcode-e2e-user",
-      ...(options.regionalDesktop ? { "mobile-own-token": "zcode-e2e-user" } : {}),
+      "mock-token": "codez-e2e-user",
+      ...(options.regionalDesktop ? { "mobile-own-token": "codez-e2e-user" } : {}),
       ...options.additionalRelayUsers,
     },
     onHttp: (call) => {
@@ -46,7 +46,7 @@ export async function prepareWebRemoteControlSessionEventsFixture(options: {
           body: {
             code: 0,
             data: {
-              user: { user_id: "zcode-e2e-user", name: "ZCode E2E" },
+              user: { user_id: "codez-e2e-user", name: "Codez E2E" },
               bigmodel: { customer_id: "associated-customer", access_token: "linked-refreshed" },
             },
           },
@@ -105,19 +105,19 @@ export async function prepareWebRemoteControlSessionEventsFixture(options: {
   });
   const envPatch = {
     // 账号后台请求也必须走 loopback；合成凭据发到默认业务 API 会触发401并提前登出。
-    ...(options.webUrl ? { VITE_ZCODE_E2E_STORE_BRIDGE: "1" } : {}),
+    ...(options.webUrl ? { VITE_CODEZ_E2E_STORE_BRIDGE: "1" } : {}),
     ZAI_BUSINESS_BASE_URL: relay.httpUrl,
     // Bug 原因：Highspeed 等团队套餐用例也复用此手机夹具，团队 mock 已接管 BigModel 业务 API；
     // 无条件改指 relay 会让团队入口校验收到 503，模型菜单没有团队行。两者都是本地 loopback。
     ...(process.env[CODING_PLAN_TEAM_MOCK_BASE_URL_ENV]
       ? {}
       : { BIGMODEL_API_BASE_URL: relay.httpUrl }),
-    ZCODE_E2E_REMOTE_AUTH_GATE_URL: relay.httpUrl,
-    ZCODE_BASE_URL: relay.httpUrl,
-    ZCODE_ENDPOINT_ORIGIN: relay.httpUrl,
-    ZCODE_TEST_BASE_URL: relay.httpUrl,
-    ZCODE_WEB_REMOTE_CONTROL_RELAY_WS_URL: relay.wsUrl,
-    ZCODE_WEB_REMOTE_CONTROL_URL: options.webUrl ?? `${relay.httpUrl}/remote/v4`,
+    CODEZ_E2E_REMOTE_AUTH_GATE_URL: relay.httpUrl,
+    CODEZ_BASE_URL: relay.httpUrl,
+    CODEZ_ENDPOINT_ORIGIN: relay.httpUrl,
+    CODEZ_TEST_BASE_URL: relay.httpUrl,
+    CODEZ_WEB_REMOTE_CONTROL_RELAY_WS_URL: relay.wsUrl,
+    CODEZ_WEB_REMOTE_CONTROL_URL: options.webUrl ?? `${relay.httpUrl}/remote/v4`,
   };
   const previous = Object.fromEntries(Object.keys(envPatch).map((key) => [key, process.env[key]]));
   Object.assign(process.env, envPatch);
@@ -156,7 +156,7 @@ export async function prepareWebRemoteControlSessionEventsFixture(options: {
         }
         if (!origin) return;
         // 独立夹具可能避开已占用端口，手机配对必须使用 Vite 实际监听的端口。
-        process.env.ZCODE_WEB_REMOTE_CONTROL_URL = new URL(
+        process.env.CODEZ_WEB_REMOTE_CONTROL_URL = new URL(
           new URL(options.webUrl!).pathname,
           origin,
         ).href;
@@ -170,13 +170,13 @@ export async function prepareWebRemoteControlSessionEventsFixture(options: {
         "oauth:active_provider": "zai_cn",
         "oauth:session_revision": "cn-mobile-initial",
         "oauth:zai_cn:access_token": "cn-upstream-not-relay",
-        "oauth:zai_cn:user_info": JSON.stringify({ user_id: "zcode-e2e-user", name: "ZCode E2E" }),
+        "oauth:zai_cn:user_info": JSON.stringify({ user_id: "codez-e2e-user", name: "Codez E2E" }),
         "oauth:linked_bigmodel": JSON.stringify({
-          userId: "zcode-e2e-user",
+          userId: "codez-e2e-user",
           customerId: "associated-customer",
           accessToken: "linked-before",
         }),
-        zcodejwttoken: "mock-token",
+        codezjwttoken: "mock-token",
       }
     : WEB_REMOTE_CONTROL_FIXTURE_CREDENTIALS;
   await writeFile(options.credentialsFile, JSON.stringify(desktopCredentials), { mode: 0o600 });
@@ -185,7 +185,7 @@ export async function prepareWebRemoteControlSessionEventsFixture(options: {
     options.settingsFile,
     JSON.stringify({
       ...settings,
-      zcodeEndpointOrigin: relay.httpUrl,
+      codezEndpointOrigin: relay.httpUrl,
       webRemoteControlLastEnabledContext: options.mobilePush
         ? undefined
         : { workspacePath: options.lastEnabledWorkspacePath ?? options.workspacePath },

@@ -1,5 +1,5 @@
-import type { Locale } from "@zcode/shared";
-import type { McpAppsResourcePermission } from "@zcode/shared/mcp-apps";
+import type { Locale } from "@codez/shared";
+import type { McpAppsResourcePermission } from "@codez/shared/mcp-apps";
 import { PLUGIN_SANDBOX_SCHEME } from "./contract.js";
 
 /**
@@ -75,7 +75,7 @@ export function isPluginSandboxPermissionGranted(input: {
   return !PROMPTED.has(input.permission) || input.consented.has(input.permission);
 }
 
-/** 发起请求的 frame URL 必须是 `zcode-sandbox://plugin-<sandboxId>`；shell 或其他来源返回 null（拒绝）。 */
+/** 发起请求的 frame URL 必须是 `codez-sandbox://plugin-<sandboxId>`；shell 或其他来源返回 null（拒绝）。 */
 export function readPluginSandboxIdFromPluginUrl(url: string | undefined): string | null {
   if (!url) return null;
   let parsed: URL;
@@ -115,7 +115,7 @@ export function formatPluginSandboxPermissionDialogText(
       title: "应用权限请求",
       message: `「${input.serverName}」的应用请求使用${list}`,
       detail:
-        "该页面运行在 ZCode 的沙箱中。允许后，本次运行期间这个 MCP server 的应用可继续使用这些权限；重启桌面端后会再次询问。",
+        "该页面运行在 Codez 的沙箱中。允许后，本次运行期间这个 MCP server 的应用可继续使用这些权限；重启桌面端后会再次询问。",
       allowButton: "允许",
       denyButton: "拒绝",
     };
@@ -125,7 +125,7 @@ export function formatPluginSandboxPermissionDialogText(
     title: "App permission request",
     message: `The "${input.serverName}" app wants to use your ${list}`,
     detail:
-      "This page runs in the ZCode sandbox. If you allow it, apps from this MCP server can keep using these permissions until ZCode restarts.",
+      "This page runs in the Codez sandbox. If you allow it, apps from this MCP server can keep using these permissions until Codez restarts.",
     allowButton: "Allow",
     denyButton: "Deny",
   };

@@ -34,7 +34,7 @@ flowchart LR
   不创建远程排序配置 owner。手机经现有 attachment 使用该实例，不另建请求或 Host。
 - 普通 Web/server Host 从 createLocalServices 获取自己的实例。Web 未连接 Host 的首页
   返回空公开快照，不直接发网络请求。
-- 配置仍允许匿名读取，credentials=omit；已登录时携带当前 ZCode JWT 的 Bearer Authorization。
+- 配置仍允许匿名读取，credentials=omit；已登录时携带当前 Codez JWT 的 Bearer Authorization。
   凭据由宿主经只读回调注入，不在配置服务中创建凭据仓储。
   缓存 key 为实际请求 URL（规范 endpoint、app_version、platform）与本次可选身份；请求上下文由 Host
   装配注入。不同上下文不共用快照/在飞请求，迟到结果只写回所属 key。
@@ -93,7 +93,7 @@ invariant-only：全部旧 client/configs 读取链路、插件生命周期、Ma
 
 ## client/configs 可选登录请求头（2026-11-03）
 
-所有 `/api/v1/client/configs` 消费者遵循相同请求规则：有当前 ZCode JWT 则发送
+所有 `/api/v1/client/configs` 消费者遵循相同请求规则：有当前 Codez JWT 则发送
 `Authorization: Bearer <jwt>`，没有则省略。复用 `toBearerAuthorization` 的字符校验；
 凭据读取失败、空值、非法字符均按匿名读取处理，不记录 token 或原始凭据异常，不改变登录态。
 该规则不扩展到 client/scenes、agent/configs 或其他业务 API。

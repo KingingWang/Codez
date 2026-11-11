@@ -1,9 +1,9 @@
 import { useCallback, useRef } from "react";
-import { isRemoteWorkspaceIdentity } from "@zcode/shared";
+import { isRemoteWorkspaceIdentity } from "@codez/shared";
 import { toast } from "@/components/ui/toast.js";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
 import { useOptionalServices } from "@/hooks/useServices.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import {
   documentViewerInstance,
@@ -27,7 +27,7 @@ export function useOpenSlotSurface(
   const platform = useOptionalPlatform();
   const bridge = useOptionalServices()?.pluginUiBridgeService;
   const openPluginUi = useOpenPluginUi();
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const paneTarget = usePluginUiPaneTarget({
     workspacePath: shell.workspacePath,
     workspaceIdentity: shell.workspaceIdentity,

@@ -7,7 +7,7 @@ import {
   TID_TASK_SETTINGS_BUTTON,
   TID_V4_SESSION_PANE,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -102,7 +102,7 @@ const HOOK_COMMAND = `echo ${HOOK_MARK} >> "$HOME/${HOOK_LOG}"`;
 // Core 的标准输出被 supervisor 丢弃，测试拿不到发布事件，只能从推送完成起等足规格的发布窗口再发下一轮。
 const SUBAGENT_PUBLISH_WINDOW_MS = 3_000;
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/dsync-17-runtime-usage",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/dsync-17-runtime-usage",
   "dsync-17",
 );
 
@@ -144,29 +144,29 @@ async function writeText(path: string, content: string): Promise<void> {
 
 /** 本机准备六类内容：技能、子智能体、命令、MCP、钩子、inline 插件；config.json 读改写，保留已有字段。 */
 async function writeLocalContent(homeDir: string): Promise<void> {
-  const zcode = join(homeDir, ".zcode");
+  const codez = join(homeDir, ".codez");
   await writeText(
-    join(zcode, "skills", SKILL_NAME, "SKILL.md"),
+    join(codez, "skills", SKILL_NAME, "SKILL.md"),
     `---\nname: ${SKILL_NAME}\ndescription: ${SKILL_DESC} data sync runtime skill\n---\n\n${SKILL_BODY}\n`,
   );
   await writeText(
-    join(zcode, "agents", `${AGENT_NAME}.md`),
+    join(codez, "agents", `${AGENT_NAME}.md`),
     `---\nname: ${AGENT_NAME}\ndescription: ${AGENT_DESC} data sync runtime subagent\ntools: [Read]\n---\n${AGENT_BODY} Reply exactly as the task asks.\n`,
   );
   await writeText(
-    join(zcode, "commands", `${COMMAND_NAME}.md`),
+    join(codez, "commands", `${COMMAND_NAME}.md`),
     `---\ndescription: data sync runtime command\n---\n${COMMAND_BODY} $ARGUMENTS\n`,
   );
-  const inlineDir = join(zcode, "plugins", INLINE_PLUGIN);
+  const inlineDir = join(codez, "plugins", INLINE_PLUGIN);
   await writeText(
-    join(inlineDir, ".zcode-plugin", "plugin.json"),
+    join(inlineDir, ".codez-plugin", "plugin.json"),
     `${JSON.stringify(
       {
         name: INLINE_PLUGIN,
         version: "1.0.0",
         description: "data sync runtime inline plugin",
         mcpServers: {
-          rt: { type: "stdio", command: "node", args: ["${ZCODE_PLUGIN_ROOT}/server.cjs"] },
+          rt: { type: "stdio", command: "node", args: ["${CODEZ_PLUGIN_ROOT}/server.cjs"] },
         },
       },
       null,
@@ -178,7 +178,7 @@ async function writeLocalContent(homeDir: string): Promise<void> {
     `${mcpServerScript(INLINE_PLUGIN, INLINE_RESULT)}\n`,
   );
 
-  const configPath = join(zcode, "cli", "config.json");
+  const configPath = join(codez, "cli", "config.json");
   const config = await readFile(configPath, "utf-8")
     .then((text) => JSON.parse(text) as LocalCliConfig)
     .catch((): LocalCliConfig => ({}));
@@ -334,7 +334,7 @@ async function readRemoteAgentProcesses(container: string): Promise<string[]> {
       line
         .trim()
         .replace(/\s+/gu, " ")
-        .replace(/\/home\/dev\/\.zcode\/server\/releases\/[^ ]*\//gu, ""),
+        .replace(/\/home\/dev\/\.codez\/server\/releases\/[^ ]*\//gu, ""),
     )
     .filter(
       (line) =>
@@ -505,12 +505,12 @@ describe(`${CASE_MARKER}: 推送内容在远端会话中的可用时机`, () => 
 
   after(async () => {
     await mkdir(artifactDir, { recursive: true });
-    // 诊断：结束时容器会被删除，先把远端 ~/.zcode 下的日志尾部拷进工件。
+    // 诊断：结束时容器会被删除，先把远端 ~/.codez 下的日志尾部拷进工件。
     if (container) {
       const logs = await execInRemoteContainer(container, [
         "sh",
         "-c",
-        'find "$HOME/.zcode" -maxdepth 5 \\( -name "*.jsonl" -o -name "*.log" -o -name "*.ndjson" \\) -size -50M | while read -r f; do echo "=== $f"; tail -n 2000 "$f"; done',
+        'find "$HOME/.codez" -maxdepth 5 \\( -name "*.jsonl" -o -name "*.log" -o -name "*.ndjson" \\) -size -50M | while read -r f; do echo "=== $f"; tail -n 2000 "$f"; done',
       ]).catch((error: unknown) => ({ stdout: String(error) }));
       await writeFile(join(artifactDir, "remote-logs.txt"), logs.stdout);
     }

@@ -1,4 +1,4 @@
-import { Emitter, VSBuffer, type IMessagePassingProtocol } from "@zcode/rpc";
+import { Emitter, VSBuffer, type IMessagePassingProtocol } from "@codez/rpc";
 import {
   WebRemoteControlRpcTransportAssembler,
   WebRemoteControlRpcTransportEncodingError,
@@ -9,7 +9,7 @@ import {
   type WebRemoteControlRpcTransportFramePayload,
   type WebRemoteControlRpcTransportIdentity,
   type WebRemoteControlRpcTransportPayload,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { AcknowledgedRelayBatchQueue } from "./webRemoteControlAcknowledgedRelayBatchQueue.js";
 import { AcknowledgedRelayDeadline } from "./webRemoteControlAcknowledgedRelayDeadline.js";
 import {

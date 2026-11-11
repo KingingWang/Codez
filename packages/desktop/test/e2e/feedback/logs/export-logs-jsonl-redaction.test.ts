@@ -1,10 +1,10 @@
 // 导出日志后，JSONL（model-io 回放、CLI 日志）每行仍是合法 JSON，且密钥不出现在归档中。
 // 根因：导出脱敏曾用文本正则直接改 JSON 文本，替换结果带未转义引号或裸占位符，整行无法解析。
 // 正式用例（2026-11-09 由 manual-review/pending 转正），不发模型请求。单独运行：
-//   pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/feedback/logs/export-logs-jsonl-redaction.test.ts'
+//   pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/feedback/logs/export-logs-jsonl-redaction.test.ts'
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { TID_TASK_SETTINGS_BUTTON, TID_WORKSPACE_HELP_MENU_TRIGGER } from "@zcode/shared/test-ids";
+import { TID_TASK_SETTINGS_BUTTON, TID_WORKSPACE_HELP_MENU_TRIGGER } from "@codez/shared/test-ids";
 import yauzl from "yauzl";
 import { DEFAULT_WORKSPACE, waitForWorkspaceApp } from "#e2e/helpers/desktop-app";
 
@@ -230,12 +230,12 @@ async function exportLogsFromHelpMenu(): Promise<string> {
 }
 
 describe("导出日志 JSONL 脱敏", () => {
-  const homeDir = process.env.ZCODE_E2E_HOME_DIR;
-  const rolloutDir = homeDir ? join(homeDir, ".zcode", "cli", "rollout") : "";
-  const cliLogDir = homeDir ? join(homeDir, ".zcode", "cli", "log") : "";
+  const homeDir = process.env.CODEZ_E2E_HOME_DIR;
+  const rolloutDir = homeDir ? join(homeDir, ".codez", "cli", "rollout") : "";
+  const cliLogDir = homeDir ? join(homeDir, ".codez", "cli", "log") : "";
 
   before(async () => {
-    if (!homeDir) throw new Error("缺少 ZCODE_E2E_HOME_DIR，无法在隔离 HOME 中放置样本");
+    if (!homeDir) throw new Error("缺少 CODEZ_E2E_HOME_DIR，无法在隔离 HOME 中放置样本");
     await mkdir(rolloutDir, { recursive: true });
     await writeFile(
       join(rolloutDir, ROLLOUT_FILE),
@@ -260,7 +260,7 @@ describe("导出日志 JSONL 脱敏", () => {
   it("ELR-01 每行 JSON.parse 通过，密钥被替换，非敏感上下文保留", async function () {
     this.timeout(90_000);
     const archivePath = await exportLogsFromHelpMenu();
-    expect(archivePath).toMatch(/zcode-logs-[^/\\]+\.zip$/);
+    expect(archivePath).toMatch(/codez-logs-[^/\\]+\.zip$/);
     const entries = await readZipEntries(archivePath);
     const exported = findEntry(entries, `rollout/${ROLLOUT_FILE}`);
 

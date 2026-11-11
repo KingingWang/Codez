@@ -16,7 +16,7 @@ import {
 const roots: string[] = [];
 
 async function makeRoot(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), "zcode-bundled-npm-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-bundled-npm-"));
   roots.push(root);
   return root;
 }

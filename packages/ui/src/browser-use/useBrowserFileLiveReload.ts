@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import type { IFileService, IFileWatcherService } from "@zcode/services";
-import { browserPreviewSourceUrl, type FileWatchEvent } from "@zcode/shared";
+import type { IFileService, IFileWatcherService } from "@codez/services";
+import { browserPreviewSourceUrl, type FileWatchEvent } from "@codez/shared";
 import { getContainingDirectoryPath } from "@/lib/path.js";
 import { safeWebviewCall } from "@/embeddedBrowserHelpers.js";
 import { logger } from "@/logger.js";
@@ -69,7 +69,7 @@ function buildRestoreScrollScript(x: number, y: number): string {
 export function fileUrlToLocalPath(url: string): string | null {
   let parsed: URL;
   try {
-    // Bugfix：本机 HTML 改走 zcode-html:// 预览协议加载后（c3bb5e783a），地址栏状态与页面资源 URL 都是预览地址，
+    // Bugfix：本机 HTML 改走 codez-html:// 预览协议加载后（c3bb5e783a），地址栏状态与页面资源 URL 都是预览地址，
     // 这里只认 file:// 就一个路径都拿不到，自动刷新整个失效。先换回源 file:// 地址（file:// 原样返回）。
     parsed = new URL(browserPreviewSourceUrl(url));
   } catch {

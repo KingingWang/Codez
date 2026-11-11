@@ -4,7 +4,7 @@ import {
   TID_SETTINGS_BACK_BUTTON,
   TID_SETTINGS_PAGE,
   TID_TASK_SETTINGS_BUTTON,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom, waitForWorkspaceApp } from "#e2e/helpers/desktop-app";
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 import { selectRemoteDeviceMenuItem } from "#e2e/helpers/remote-project-actions";
@@ -91,7 +91,7 @@ describe(`${CASE_MARKER}: 远程连接展示`, () => {
       { timeout: 20_000 },
     );
     const artifactDir = resolve(
-      process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-presentation-states",
+      process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-presentation-states",
     );
     await mkdir(artifactDir, { recursive: true });
     for (const locale of ["zh-CN", "en-US"] as const) {

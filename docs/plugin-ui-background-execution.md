@@ -75,7 +75,7 @@ Web / 手机 / remote 的不支持回退与 continuous / replayable 边界不变
   执行与 sampling 刷新活跃时间；同一结果重复投影不刷新。页面自主 resources/read、
   tools/call（可能是长轮询）、心跳、绘制和大小通知不刷新活跃时间；在途调用仍按原 busy
   和 Agent 原子 `onlyIfIdle` 裁决保护。用户在页面内的交互由可见期保护覆盖。
-  长轮询实际交付业务任务时，结果可声明 `_meta["zcode/activity"]: true`；宿主在清除调用 busy
+  长轮询实际交付业务任务时，结果可声明 `_meta["codez/activity"]: true`；宿主在清除调用 busy
   之前续期。空轮询不声明。Craft 单次业务操作已有 120 秒上限，交付时续期覆盖其执行期，
   避免轮询刚结束、页面尚未开始计算的间隙被当作过期空闲。
 - 期限到达、可见性/业务活动/忙闲变化或页面增减时重新评估。使用一个最早到期定时器，
@@ -108,7 +108,7 @@ Web / 手机 / remote 的不支持回退与 continuous / replayable 边界不变
 
 入口：`node packages/desktop/scripts/mcp-apps-host-e2e.mjs --background-only`；
 既有生命周期与回退使用 `--managed-only`。真实插件验证直接使用声明后台保留的 PhotoCraft：
-`ZCODE_PHOTOCRAFT_SERVER=/path/to/photocraft/dist/server.mjs node packages/desktop/scripts/mcp-apps-host-e2e.mjs --photocraft-background-only`。
+`CODEZ_PHOTOCRAFT_SERVER=/path/to/photocraft/dist/server.mjs node packages/desktop/scripts/mcp-apps-host-e2e.mjs --photocraft-background-only`。
 macOS Electron 已验证：宿主先最小化再首次创建插件、后台初始化与编辑、跨离屏期限保留和恢复截图 `photocraft-restored.png`。
 测试外壳的白底不是插件成功证据，必须结合实际命令结果和恢复截图；该夹具不覆盖商店安装路径。
 

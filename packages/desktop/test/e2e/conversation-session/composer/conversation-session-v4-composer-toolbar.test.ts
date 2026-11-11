@@ -35,7 +35,7 @@ import {
   TID_V4_MODEL_CONFIG,
   TID_SETTINGS_PAGE,
   TID_SETTINGS_BACK_BUTTON,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clickV4SlashOption,
   getV4ComposerText,
@@ -70,7 +70,7 @@ import { waitForProviderConfigPolling } from "#e2e/helpers/provider-config-polli
 
 const CUSTOM_SLASH_COMMAND_NAME = "e2e-draft-catalog";
 const CUSTOM_SLASH_OPTION_ID = `slash:${CUSTOM_SLASH_COMMAND_NAME}`;
-const CUSTOM_SLASH_COMMAND_DIR = join(getE2EAppDataPaths().homeDir, ".zcode", "commands");
+const CUSTOM_SLASH_COMMAND_DIR = join(getE2EAppDataPaths().homeDir, ".codez", "commands");
 const CUSTOM_SLASH_COMMAND_PATH = join(CUSTOM_SLASH_COMMAND_DIR, `${CUSTOM_SLASH_COMMAND_NAME}.md`);
 const COMPOSER_PICKER_TRIGGER_IDS = {
   mode: TID_CHAT_MODE_SELECT_TRIGGER,
@@ -400,8 +400,8 @@ describe("v4 M5 门禁：composer 工具条与 slash 候选面板", () => {
         const acks = await browser
           .execute(() =>
             JSON.stringify(
-              (window as Window & { __zcodeV4CommandAcksE2E?: unknown[] })
-                .__zcodeV4CommandAcksE2E ?? [],
+              (window as Window & { __codezV4CommandAcksE2E?: unknown[] })
+                .__codezV4CommandAcksE2E ?? [],
             ),
           )
           .catch(() => "acks unavailable");
@@ -456,7 +456,7 @@ describe("v4 M5 门禁：composer 工具条与 slash 候选面板", () => {
 
     // 只点击 Provider、不发送：必须确认 Session 配置，飞书才会立即读到新选择。
     await browser.execute(() => {
-      (window as Window & { __zcodeV4CommandAcksE2E?: unknown[] }).__zcodeV4CommandAcksE2E = [];
+      (window as Window & { __codezV4CommandAcksE2E?: unknown[] }).__codezV4CommandAcksE2E = [];
     });
     await openComposerPicker("model");
     await $('[data-testid="composer-provider-trigger"]').click();
@@ -1375,7 +1375,7 @@ describe("v4 M5 门禁：composer 工具条与 slash 候选面板", () => {
       await send.waitForClickable({ timeout: 10000 });
       await send.click();
       const capture = await waitForUpstreamNetworkCapture(marker);
-      const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR;
+      const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR;
       if (artifactDir)
         await writeFile(
           join(artifactDir, "cross-session-ack-request.json"),
@@ -1413,13 +1413,13 @@ describe("v4 M5 门禁：composer 工具条与 slash 候选面板", () => {
       await waitForV4Pane((p) => !p.canStop && Boolean(p.sessionId), "手机 A 未完成", 45000)
     ).sessionId!;
     await switchV4Model(UPSTREAM_PROVIDER_ID, UPSTREAM_ALTERNATE_MODEL, "high");
-    const endpoint = process.env.ZCODE_WEB_REMOTE_CONTROL_URL;
+    const endpoint = process.env.CODEZ_WEB_REMOTE_CONTROL_URL;
     if (!endpoint) throw new Error("CPG01 缺少手机 fixture");
     await $(
       'button[aria-label="移动端远程控制"], button[aria-label="Mobile remote control"]',
     ).waitForClickable({ timeout: 10000 });
     const pairingUrl = await obtainUnreadPairingUrl(new URL(endpoint).origin);
-    const executablePath = process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE;
+    const executablePath = process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE;
     const chrome = await chromium.launch({
       ...(executablePath ? { executablePath } : { channel: "chrome" }),
       headless: true,
@@ -1477,7 +1477,7 @@ describe("v4 M5 门禁：composer 工具条与 slash 候选面板", () => {
         });
       });
       await openMobilePairingPage(page, pairingUrl, {
-        artifactDir: process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/provider-gate",
+        artifactDir: process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/provider-gate",
         caseMarker: "CPG01",
         phase: "pairing",
         readySelector: '[data-testid="sidebar"], [data-mobile-page="chat"]',
@@ -1623,7 +1623,7 @@ describe("v4 M5 门禁：composer 工具条与 slash 候选面板", () => {
         try {
           await input.waitFor({ timeout: 15000 });
         } catch (error) {
-          const dir = process.env.ZCODE_E2E_ARTIFACT_DIR;
+          const dir = process.env.CODEZ_E2E_ARTIFACT_DIR;
           if (dir)
             await writeFile(
               join(dir, "cross-session-mobile-navigation.txt"),
@@ -1642,7 +1642,7 @@ describe("v4 M5 门禁：composer 工具条与 slash 候选面板", () => {
       });
       await send.click();
       const capture = await waitForUpstreamNetworkCapture(marker);
-      const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR;
+      const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR;
       if (artifactDir)
         await writeFile(
           join(artifactDir, "cross-session-ack-mobile-request.json"),

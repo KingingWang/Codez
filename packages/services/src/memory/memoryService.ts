@@ -1,4 +1,4 @@
-import type { Memory, MemoryConfig } from "@zcode/shared";
+import type { Memory, MemoryConfig } from "@codez/shared";
 import {
   type IMemoryService,
   type ProjectMemoryFileSummary,
@@ -15,7 +15,7 @@ import {
 import { homedir } from "node:os";
 import { basename, isAbsolute, join, relative, sep } from "node:path";
 import { readProjectMemoryFileFromStableHandle } from "#src/memory/projectMemoryStableRead.js";
-import { getZCodeDataRootDir } from "#src/paths.js";
+import { getCodezDataRootDir } from "#src/paths.js";
 
 const PROJECT_MEMORY_INDEX_FILE_NAME = "MEMORY.md";
 const PROJECT_MEMORY_DIRECTORY_NAME = "memory";
@@ -31,7 +31,7 @@ function isNotFoundError(error: unknown): boolean {
 }
 
 function getProjectMemoriesRoot(): string {
-  return join(getZCodeDataRootDir(), "cli", "memories", "projects");
+  return join(getCodezDataRootDir(), "cli", "memories", "projects");
 }
 
 function isValidPathSegment(value: string): boolean {

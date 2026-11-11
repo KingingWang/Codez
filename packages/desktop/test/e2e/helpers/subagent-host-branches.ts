@@ -221,7 +221,7 @@ export async function exerciseSubagentHostBranches(
     profilePath,
     join(getE2EAppDataPaths().storageRoot, "agents"),
     join(getE2EAppDataPaths().storageRoot, "v2", "agents-state.json"),
-    join(getE2EAppDataPaths().workspace, ".zcode", "agents"),
+    join(getE2EAppDataPaths().workspace, ".codez", "agents"),
   ];
   await setHostFaults({ tracePaths });
   current = { ...current, prompt: "E2E_SHB_VALIDATED_PROFILE" };

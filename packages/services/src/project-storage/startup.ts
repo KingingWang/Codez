@@ -1,4 +1,4 @@
-import type { AppSettings, DatabaseMigrationFacts } from "@zcode/shared";
+import type { AppSettings, DatabaseMigrationFacts } from "@codez/shared";
 import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { createRequire } from "node:module";

@@ -1,12 +1,12 @@
 import { app, BrowserWindow, Notification } from "electron";
 import type { IpcMainEvent, IpcMainInvokeEvent } from "electron";
-import type { TaskNotificationPayload } from "@zcode/shared";
+import type { TaskNotificationPayload } from "@codez/shared";
 import {
   extensionNotificationPayloadSchema,
   type ExtensionNotificationClick,
   type NotificationsShowResult,
-} from "@zcode/shared/extension-host";
-import { formatZodError, PlatformChannels, taskNotificationPayloadSchema } from "@zcode/shared";
+} from "@codez/shared/extension-host";
+import { formatZodError, PlatformChannels, taskNotificationPayloadSchema } from "@codez/shared";
 
 const TASK_NOTIFICATION_DEDUPE_WINDOW_MS = 3000;
 const MAX_ACTIVE_TASK_NOTIFICATIONS = 100;

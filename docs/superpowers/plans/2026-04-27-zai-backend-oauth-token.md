@@ -60,7 +60,7 @@ fetchMock.mockResolvedValueOnce(
       code: 0,
       msg: "",
       data: {
-        token: "zcode_backend_jwt",
+        token: "codez_backend_jwt",
         expires_in: 86400,
         user: {
           user_id: "zai-u-001",
@@ -74,7 +74,7 @@ fetchMock.mockResolvedValueOnce(
   ),
 );
 const result = await service.handleCallback(
-  `zcode://zai-auth/callback?code=zai-code-001&state=${state}`,
+  `codez://zai-auth/callback?code=zai-code-001&state=${state}`,
 );
 
 expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -109,7 +109,7 @@ expect(result).toEqual({
   },
 });
 
-expect(await credentialServiceStub.load("oauth:zai:access_token")).toBe("zcode_backend_jwt");
+expect(await credentialServiceStub.load("oauth:zai:access_token")).toBe("codez_backend_jwt");
 expect(await credentialServiceStub.load("oauth:zai:refresh_token")).toBeNull();
 expect(await credentialServiceStub.load("oauth:zai:user_info")).toBe(
   JSON.stringify(result.userInfo),
@@ -141,7 +141,7 @@ it("fails zai backend token exchange when business code is not zero", async () =
   );
 
   await expect(
-    service.handleCallback(`zcode://zai-auth/callback?code=bad-code&state=${state}`),
+    service.handleCallback(`codez://zai-auth/callback?code=bad-code&state=${state}`),
   ).rejects.toThrow(/invalid oauth code/);
 
   expect(await credentialServiceStub.load("oauth:zai:access_token")).toBeNull();
@@ -179,7 +179,7 @@ it("fails zai backend token exchange when response misses data token", async () 
   );
 
   await expect(
-    service.handleCallback(`zcode://zai-auth/callback?code=zai-code-001&state=${state}`),
+    service.handleCallback(`codez://zai-auth/callback?code=zai-code-001&state=${state}`),
   ).rejects.toThrow(/data.token/);
 
   expect(await credentialServiceStub.load("oauth:zai:access_token")).toBeNull();
@@ -215,7 +215,7 @@ it("maps zai backend expires_in into OAuthTokenSet expiresAt", async () => {
         code: 0,
         msg: "",
         data: {
-          token: "zcode_backend_jwt",
+          token: "codez_backend_jwt",
           expires_in: 86400,
         },
       }),
@@ -234,7 +234,7 @@ it("maps zai backend expires_in into OAuthTokenSet expiresAt", async () => {
       },
     ),
   ).resolves.toEqual({
-    accessToken: "zcode_backend_jwt",
+    accessToken: "codez_backend_jwt",
     expiresAt: now + 86400 * 1000,
   });
 });
@@ -271,8 +271,8 @@ export const ZAI_OAUTH_PROVIDER_CONFIG: Omit<OAuthProviderRuntimeConfig, "appSec
   tokenUrl: "https://zcode.z.ai/api/v1/oauth/token",
   userinfoUrl: "https://chat.z.ai/api/oauth/userinfo",
   appId: "client_P8X5CMWmlaRO9gyO-KSqtg",
-  redirectUri: "zcode://zai-auth/callback",
-  legacyRedirectUri: "zcode://oauth/callback",
+  redirectUri: "codez://zai-auth/callback",
+  legacyRedirectUri: "codez://oauth/callback",
 };
 ```
 
@@ -434,7 +434,7 @@ Before the current `## 4. 验证结果`, add:
 ```md
 ## 4. ZAI 后端 JWT 登录链路（增量）
 
-ZAI OAuth 登录不再由桌面端直接请求三方 ZAI token 接口。桌面端只负责打开授权页、接收 `zcode://zai-auth/callback` deep link，并把 `code`、`redirect_uri`、`state` 传给后端 `https://zcode.z.ai/api/v1/oauth/token`。
+ZAI OAuth 登录不再由桌面端直接请求三方 ZAI token 接口。桌面端只负责打开授权页、接收 `codez://zai-auth/callback` deep link，并把 `code`、`redirect_uri`、`state` 传给后端 `https://zcode.z.ai/api/v1/oauth/token`。
 
 后端完成 z.ai token 交换、userinfo 拉取、用户创建与 JWT 签发。客户端把响应中的 `data.token` 保存为 `oauth:zai:access_token`，把 `data.user` 映射为 `oauth:zai:user_info`，并把 `oauth:active_provider` 设置为 `zai`。
 ```

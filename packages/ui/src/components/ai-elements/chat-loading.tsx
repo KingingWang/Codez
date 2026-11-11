@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ComponentPropsWithoutRef } from "react";
 import { cn } from "@/components/lib/utils.js";
 import { formatRunningWorkDuration } from "@/lib/workDuration.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 
 export interface ChatLoadingProps extends ComponentPropsWithoutRef<"div"> {
   loading: boolean;
@@ -171,7 +171,7 @@ export function ChatLoading({
   size: _size,
   ...props
 }: ChatLoadingProps) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const [elapsedMs, setElapsedMs] = useState(initialElapsedMs);
   const baselineRef = useRef<{ elapsedMs: number; startedAt: number } | null>(null);
   useEffect(() => {
@@ -205,7 +205,7 @@ export function ChatLoading({
     <div
       role="status"
       aria-label={intl.formatMessage({ id: "common.loading" })}
-      data-zcode-chat-loading-animate="true"
+      data-codez-chat-loading-animate="true"
       {...props}
       className={cn("inline-flex w-fit items-center gap-2", className)}
     >

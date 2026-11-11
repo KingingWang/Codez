@@ -1,4 +1,4 @@
-import type { IPlatformService } from "@zcode/shared";
+import type { IPlatformService } from "@codez/shared";
 
 type DesktopBrowserPlatformBridge = Pick<
   IPlatformService,
@@ -32,55 +32,55 @@ type DesktopBrowserPlatformBridge = Pick<
 // Rebase 集成：browser bridge 若继续内联在 renderer 入口，会让入口越过 max-lines 门禁。
 // 独立对象只做 preload 委托与旧 bridge 兼容兜底，不持有 Browser 业务状态。
 export const desktopBrowserPlatformBridge = {
-  getPathForFile: (file) => window.zcode.getPathForFile?.(file) ?? null,
+  getPathForFile: (file) => window.codez.getPathForFile?.(file) ?? null,
   saveFile: (payload) =>
-    window.zcode.saveFile?.(payload) ?? Promise.resolve({ success: false, error: "not_supported" }),
+    window.codez.saveFile?.(payload) ?? Promise.resolve({ success: false, error: "not_supported" }),
   // 条件定义而非兜底返回失败：UI 靠方法是否存在做能力检测，旧 preload 下必须保持 undefined
-  printPageToPdf: window.zcode.printPageToPdf ? () => window.zcode.printPageToPdf!() : undefined,
+  printPageToPdf: window.codez.printPageToPdf ? () => window.codez.printPageToPdf!() : undefined,
   // 与 printPageToPdf 一样按 preload 是否提供决定能力是否存在，UI 据此决定是否显示语音输入。
   microphone:
-    window.zcode.ensureMicrophoneAccess && window.zcode.openMicrophoneSettings
+    window.codez.ensureMicrophoneAccess && window.codez.openMicrophoneSettings
       ? {
-          ensureAccess: () => window.zcode.ensureMicrophoneAccess!(),
-          openSettings: (target) => window.zcode.openMicrophoneSettings!(target),
+          ensureAccess: () => window.codez.ensureMicrophoneAccess!(),
+          openSettings: (target) => window.codez.openMicrophoneSettings!(target),
         }
       : undefined,
   onBrowserViewDownloadStarted: (handler) =>
-    window.zcode.onBrowserViewDownloadStarted?.(handler) ?? (() => {}),
-  captureBrowserGuestPage: window.zcode.captureBrowserGuestPage
-    ? (payload) => window.zcode.captureBrowserGuestPage!(payload)
+    window.codez.onBrowserViewDownloadStarted?.(handler) ?? (() => {}),
+  captureBrowserGuestPage: window.codez.captureBrowserGuestPage
+    ? (payload) => window.codez.captureBrowserGuestPage!(payload)
     : undefined,
-  onBrowserViewReady: (handler) => window.zcode.onBrowserViewReady?.(handler) ?? (() => {}),
-  onBrowserViewOperation: (handler) => window.zcode.onBrowserViewOperation?.(handler) ?? (() => {}),
+  onBrowserViewReady: (handler) => window.codez.onBrowserViewReady?.(handler) ?? (() => {}),
+  onBrowserViewOperation: (handler) => window.codez.onBrowserViewOperation?.(handler) ?? (() => {}),
   onBrowserViewViewportChanged: (handler) =>
-    window.zcode.onBrowserViewViewportChanged?.(handler) ?? (() => {}),
+    window.codez.onBrowserViewViewportChanged?.(handler) ?? (() => {}),
   onBrowserViewVisibility: (handler) =>
-    window.zcode.onBrowserViewVisibility?.(handler) ?? (() => {}),
-  onBrowserViewCloseTab: (handler) => window.zcode.onBrowserViewCloseTab?.(handler) ?? (() => {}),
-  onBrowserViewSuspend: (handler) => window.zcode.onBrowserViewSuspend?.(handler) ?? (() => {}),
-  onBrowserViewRestore: (handler) => window.zcode.onBrowserViewRestore?.(handler) ?? (() => {}),
-  browserViewLoadUrl: (payload) => window.zcode.browserViewLoadUrl!(payload),
+    window.codez.onBrowserViewVisibility?.(handler) ?? (() => {}),
+  onBrowserViewCloseTab: (handler) => window.codez.onBrowserViewCloseTab?.(handler) ?? (() => {}),
+  onBrowserViewSuspend: (handler) => window.codez.onBrowserViewSuspend?.(handler) ?? (() => {}),
+  onBrowserViewRestore: (handler) => window.codez.onBrowserViewRestore?.(handler) ?? (() => {}),
+  browserViewLoadUrl: (payload) => window.codez.browserViewLoadUrl!(payload),
   browserViewAttachGuest: (payload) =>
-    window.zcode.browserViewAttachGuest?.(payload) ??
+    window.codez.browserViewAttachGuest?.(payload) ??
     Promise.resolve({ ok: false, reason: "not-found", recoveryRequested: false }),
   browserViewDetachGuest: (payload) =>
-    window.zcode.browserViewDetachGuest?.(payload) ?? Promise.resolve(false),
+    window.codez.browserViewDetachGuest?.(payload) ?? Promise.resolve(false),
   browserViewCloseTab: (payload) =>
-    window.zcode.browserViewCloseTab?.(payload) ?? Promise.resolve(),
+    window.codez.browserViewCloseTab?.(payload) ?? Promise.resolve(),
   browserViewReportResidency: (payload) =>
-    window.zcode.browserViewReportResidency?.(payload) ?? Promise.resolve(),
+    window.codez.browserViewReportResidency?.(payload) ?? Promise.resolve(),
   browserViewPromoteDraftTabs: (payload) =>
-    window.zcode.browserViewPromoteDraftTabs?.(payload) ?? Promise.resolve([]),
+    window.codez.browserViewPromoteDraftTabs?.(payload) ?? Promise.resolve([]),
   browserViewSuspendReady: (payload) =>
-    window.zcode.browserViewSuspendReady?.(payload) ?? Promise.resolve(),
+    window.codez.browserViewSuspendReady?.(payload) ?? Promise.resolve(),
   browserViewEnsureResident: (payload) =>
-    window.zcode.browserViewEnsureResident?.(payload) ?? Promise.resolve(),
+    window.codez.browserViewEnsureResident?.(payload) ?? Promise.resolve(),
   browserViewRestoreTabs: (payload) =>
-    window.zcode.browserViewRestoreTabs?.(payload) ?? Promise.resolve([]),
+    window.codez.browserViewRestoreTabs?.(payload) ?? Promise.resolve([]),
   browserViewUpdateViewport: (payload) =>
-    window.zcode.browserViewUpdateViewport?.(payload) ?? Promise.resolve(),
+    window.codez.browserViewUpdateViewport?.(payload) ?? Promise.resolve(),
   importChromeBrowserData: (options) =>
-    window.zcode.importChromeBrowserData?.(options) ??
+    window.codez.importChromeBrowserData?.(options) ??
     Promise.resolve({
       success: false,
       cookies: { imported: 0, skipped: 0, failed: 0 },
@@ -93,6 +93,6 @@ export const desktopBrowserPlatformBridge = {
       error: "unsupported",
     }),
   clearEmbeddedBrowserData: (mode) =>
-    window.zcode.clearEmbeddedBrowserData?.(mode) ??
+    window.codez.clearEmbeddedBrowserData?.(mode) ??
     Promise.resolve({ success: false, error: "unsupported" }),
 } satisfies DesktopBrowserPlatformBridge;

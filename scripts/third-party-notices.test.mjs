@@ -10,7 +10,7 @@ const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const noticeText = "Copyright Example Authors\nMIT license text\n";
 
 async function fixture(t) {
-  const root = await mkdtemp(join(tmpdir(), "zcode-notices-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-notices-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   await writeFile(join(root, notices.noticesFileName), noticeText);
   return root;

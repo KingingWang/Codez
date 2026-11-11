@@ -1,11 +1,11 @@
 // PLM-EXT-2B：扩展视图、context 组成与生成速率（docs/plugins/extension-host.md §7.2、§8、§9、§10、§15、§16.11）。
-// 隔离 HOME：fixture 插件复制到 E2E HOME，经 ~/.zcode/cli/config.json 的 plugins.dirs 加载。
+// 隔离 HOME：fixture 插件复制到 E2E HOME，经 ~/.codez/cli/config.json 的 plugins.dirs 加载。
 // 发送消息走 replay：E2E_PROVIDER_REPLAY_FIXTURE_PATH 指向 common.json 与 plugin-extension-views.json，
 // 提示词带 E2E_SLOW_STREAM，命中既有受控慢流（8s / 16s / 24s 各一段文字，90s 结束）。
 // 运行时证据取自 Main 日志（[extension-host] / [extensions] 前缀与 fixture 写的 E2E_VIEW_*）与视图页面的 DOM。
 import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { TID_CHAT_CONTEXT_USAGE_TRIGGER, TID_TASK_ITEM, testId } from "@zcode/shared/test-ids";
+import { TID_CHAT_CONTEXT_USAGE_TRIGGER, TID_TASK_ITEM, testId } from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -108,7 +108,7 @@ async function readRenderedReports(): Promise<Array<Record<string, unknown>>> {
 describe("PLM-EXT-2B 扩展视图、context 组成与生成速率", () => {
   after(async () => {
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR ?? process.cwd(), "plm-ext-2b-evidence.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR ?? process.cwd(), "plm-ext-2b-evidence.json"),
       JSON.stringify(evidence, null, 2),
     ).catch(() => undefined);
     await clearAppData();

@@ -30,7 +30,7 @@ describe("PLM-MANIFEST-ISOLATION 插件清单兼容候选 E2E", () => {
     this.timeout(180000);
     requirePluginManualReview();
     const fixture = await createPluginLifecycleFixture("1.0.0");
-    const path = join(fixture.pluginRoot, ".zcode-plugin", "plugin.json");
+    const path = join(fixture.pluginRoot, ".codez-plugin", "plugin.json");
     const manifest = JSON.parse(await readFile(path, "utf8"));
     manifest.userConfig.track = { type: "string", default: "auto", options: ["auto", "transform"] };
     manifest.userConfig.panel = { type: "string", default: "auto", options: ["auto", "off"] };
@@ -47,7 +47,7 @@ describe("PLM-MANIFEST-ISOLATION 插件清单兼容候选 E2E", () => {
     expect(plugin.userConfig?.panel).toEqual({ type: "string", default: "auto" });
     expect(plugin.skillRootCount).toBeGreaterThan(0);
     expect(
-      JSON.parse(await readFile(join(plugin.rootPath, ".zcode-plugin", "plugin.json"), "utf8"))
+      JSON.parse(await readFile(join(plugin.rootPath, ".codez-plugin", "plugin.json"), "utf8"))
         .userConfig.track.options,
     ).toEqual(["auto", "transform"]);
     await installPluginThroughUi(PLUGIN_LIFECYCLE_EXTRA_ID);
@@ -68,7 +68,7 @@ describe("PLM-MANIFEST-ISOLATION 插件清单兼容候选 E2E", () => {
       });
       await capturePluginManualReview("PLM-MANIFEST-ISOLATION", `compatible-${theme}`);
     }
-    const installedPath = join(plugin.rootPath, ".zcode-plugin", "plugin.json");
+    const installedPath = join(plugin.rootPath, ".codez-plugin", "plugin.json");
     manifest.userConfig.track.type = "invalid";
     await writeFile(installedPath, JSON.stringify(manifest));
     const invalid = await getPluginList();

@@ -1,17 +1,17 @@
 // 发送后、会话创建前的展示（docs/git/worktree.md §3.3、§3.5）：用户消息 + 进度卡片 + 失败操作。
 // 数据全部来自 Host 的创建记录；renderer 只发出操作，不推算阶段。
 import { useCallback, useState } from "react";
-import type { ManagedWorktreeCreation } from "@zcode/shared";
+import type { ManagedWorktreeCreation } from "@codez/shared";
 import {
   TID_WORKTREE_CREATION_CARD,
   TID_WORKTREE_CREATION_CONTINUE_LOCAL,
   TID_WORKTREE_CREATION_DISMISS,
   TID_WORKTREE_CREATION_RETRY,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { Button } from "@/components/ui/button.js";
 import { toast } from "@/components/ui/toast.js";
 import { useServices } from "@/hooks/useServices.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import { ConversationUserInputBubble } from "@/v4/ConversationUserInputBubble.js";
 import { formatManagedWorktreeError } from "./managedWorktreeErrors.js";
@@ -20,7 +20,7 @@ import { WorktreeOutputBlock } from "./WorktreeOutputBlock.js";
 type CreationAction = "retryCreation" | "continueWithoutWorktree" | "dismissCreation";
 
 export function ManagedWorktreeCreationView({ creation }: { creation: ManagedWorktreeCreation }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const { managedWorktreeService } = useServices();
   const [pendingAction, setPendingAction] = useState<CreationAction | null>(null);
 

@@ -1,19 +1,19 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { BufferReader, BufferWriter, deserialize, serialize, VSBuffer } from "@zcode/rpc";
+import { BufferReader, BufferWriter, deserialize, serialize, VSBuffer } from "@codez/rpc";
 import {
   PlatformChannels,
   ServiceChannels,
   sourceServerManagementSnapshotSchema,
   type RemoteTarget,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   TID_TASK_SETTINGS_BUTTON,
   TID_WSL_DISTRO_SELECT,
   TID_WSL_USER_INPUT,
   TID_SETTINGS_SECTION_NAV,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clickTestIdByDom,
   clearAppData,
@@ -194,7 +194,7 @@ function createPump(scenario: WslScenario, input: RemoteTarget, editedTarget?: R
                     installPreview: {
                       version: "3.15.1",
                       sizeBytes: 1048576,
-                      installPath: "/home/dev/.zcode/server",
+                      installPath: "/home/dev/.codez/server",
                     },
                   }
                 : {}),
@@ -379,7 +379,7 @@ describe(`${marker}: WSL 默认参数与连接目标`, () => {
       () => globalThis.__wslUpdateMainFixture!.targets,
     );
     expect(targets).toEqual([{ kind: "wsl", distro: "Ubuntu" }, target, target]);
-    const artifacts = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR!);
+    const artifacts = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR!);
     await mkdir(artifacts, { recursive: true });
     await browser.saveScreenshot(resolve(artifacts, "wsl-required-update.png"));
     await writeFile(
@@ -427,7 +427,7 @@ describe(`${marker}: WSL 默认参数与连接目标`, () => {
       );
       expect(targets).toHaveLength(1);
       expect(targets[0]).toMatchObject(input);
-      const artifacts = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR!);
+      const artifacts = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR!);
       await browser.saveScreenshot(resolve(artifacts, `upgrade-target-changed-${input.kind}.png`));
       await writeFile(
         resolve(artifacts, `upgrade-target-changed-${input.kind}.json`),
@@ -447,7 +447,7 @@ describe(`${marker}: WSL 默认参数与连接目标`, () => {
           return browser.execute(
             () =>
               document.querySelector('[data-testid="remote-install-path"]')?.textContent ===
-              "/home/dev/.zcode/server",
+              "/home/dev/.codez/server",
           );
         },
         { timeout: 30_000, timeoutMsg: "实际安装预览未出现" },
@@ -470,7 +470,7 @@ describe(`${marker}: WSL 默认参数与连接目标`, () => {
       expect(facts.targets).toEqual([input, target]);
       expect(facts.resolvedTargets).toEqual([target, target]);
       expect(facts.confirmed).toEqual([false, true]);
-      const artifacts = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR!);
+      const artifacts = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR!);
       await browser.saveScreenshot(resolve(artifacts, `wsl-install-${index}.png`));
       await writeFile(
         resolve(artifacts, `wsl-install-${index}.json`),
@@ -507,7 +507,7 @@ describe(`${marker}: WSL 默认参数与连接目标`, () => {
       );
       expect(targets).toEqual([input, input]);
       await writeFile(
-        resolve(process.env.ZCODE_E2E_ARTIFACT_DIR!, `wsl-form-${index}.json`),
+        resolve(process.env.CODEZ_E2E_ARTIFACT_DIR!, `wsl-form-${index}.json`),
         JSON.stringify({ targets }, null, 2),
       );
     });

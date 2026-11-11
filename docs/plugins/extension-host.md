@@ -1,6 +1,6 @@
 # 扩展进程（Extension Host）
 
-> 状态：P1 与 P2 已实现。P1：阶段 2a（进程基础设施、贡献表、两个插槽、重新加载）、2b（六个能力、数据泵、Renderer 报告、扩展视图）、2c（示例插件 context-inspector，§11）。P2：P2a（静态声明移到 Window Host、清单顶层 `slots`、§16.11 的三处 API 修正）、P2b（视图门面拆分、`nav.primary`、`file.viewer`）、P2c（`composer.mention`）、P2d（插件设置与能力 `settings.*`）、P2e（日志控制台）。P3 已实现（§17）：P3a（授权骨架与 facade 读，§17.10 第 1 步）、P3b（读连接与商店安装后的激活确认，第 2 步）、P3c-1（八个写动作、来源标识、写审计）与 P3c-2（插件项目，第 3 步）、P3d（类型包 `@zcode-dev/plugin-api`，第 4 步）；P4 的宿主能力 H1–H12（§18.1）已实现，H13 不做；示例插件 Jarvis（§18.3，§18.4 Jarvis 第 1–8 步）已实现；GitLab 插件本体（§18.4 GitLab 第 4–9 步）与开发者文档未做；P5 只列要点，动工前补全对应章节。
+> 状态：P1 与 P2 已实现。P1：阶段 2a（进程基础设施、贡献表、两个插槽、重新加载）、2b（六个能力、数据泵、Renderer 报告、扩展视图）、2c（示例插件 context-inspector，§11）。P2：P2a（静态声明移到 Window Host、清单顶层 `slots`、§16.11 的三处 API 修正）、P2b（视图门面拆分、`nav.primary`、`file.viewer`）、P2c（`composer.mention`）、P2d（插件设置与能力 `settings.*`）、P2e（日志控制台）。P3 已实现（§17）：P3a（授权骨架与 facade 读，§17.10 第 1 步）、P3b（读连接与商店安装后的激活确认，第 2 步）、P3c-1（八个写动作、来源标识、写审计）与 P3c-2（插件项目，第 3 步）、P3d（类型包 `@codez-dev/plugin-api`，第 4 步）；P4 的宿主能力 H1–H12（§18.1）已实现，H13 不做；示例插件 Jarvis（§18.3，§18.4 Jarvis 第 1–8 步）已实现；GitLab 插件本体（§18.4 GitLab 第 4–9 步）与开发者文档未做；P5 只列要点，动工前补全对应章节。
 > 基线：staging `2015563fc3`。文中代码位置按该基线核对。
 
 ## 1. 背景与目标
@@ -17,7 +17,7 @@
 | D 插件日志控制台                                   | §14       | P2   |
 | E 插件操作会话                                     | §3.5、§14 | P3   |
 | F 其他能力暴露                                     | §3.5、§14 | P5   |
-| G 类型包 `@zcode-dev/plugin-api`                   | §7.4、§14 | P3   |
+| G 类型包 `@codez-dev/plugin-api`                   | §7.4、§14 | P3   |
 | H 开发者文档                                       | §14       | P4   |
 | I 示例插件 Jarvis、GitLab                          | §14       | P4   |
 
@@ -69,14 +69,14 @@ Electron Main
      Window Host ◄────┘ MessageChannelMain ──► 扩展进程
           ▲             一对，之后直连           ▲
           │                                      │
-          └──────── @zcode/rpc 双向 ─────────────┘
+          └──────── @codez/rpc 双向 ─────────────┘
           ▲
-          │ @zcode/rpc（现有服务通道）
+          │ @codez/rpc（现有服务通道）
        Renderer
 ```
 
 - **L0 控制面**：Main ⇄ 扩展进程、Main ⇄ Window Host 走 parentPort 普通消息，只管生命周期（初始化、牵线、退出、日志、存活探测、扩展进程状态、重新加载）。
-- **L1 业务面**：Main 创建一对 `MessageChannelMain`，两端分别发给 Window Host 和扩展进程。之后两者直连，Main 不在数据路径上。端口上跑双向 `@zcode/rpc`，两个频道：
+- **L1 业务面**：Main 创建一对 `MessageChannelMain`，两端分别发给 Window Host 和扩展进程。之后两者直连，Main 不在数据路径上。端口上跑双向 `@codez/rpc`，两个频道：
   - `extension-host`：Window Host 调扩展进程（清单、命令、视图、贡献表订阅）。
   - `extension-window`：扩展进程调 Window Host。只有能力表的两个通用入口 `call`、`subscribe`（§7.2），外加生命周期方法。**不为单个能力加方法。**
 - Main 同一时刻只给一个 Window Host 牵线。当前没有已连接的 Window Host 时，给下一个就绪的 Window Host 牵线。Window Host 重启、窗口关闭后重开，都走这一条。
@@ -84,7 +84,7 @@ Electron Main
 
 ### 3.3 跨进程约束（事实）
 
-- `@zcode/rpc` 不是 JSON-RPC，是自有二进制格式，支持事件订阅（`packages/rpc/src/proxy-channel.ts:41-44`）。
+- `@codez/rpc` 不是 JSON-RPC，是自有二进制格式，支持事件订阅（`packages/rpc/src/proxy-channel.ts:41-44`）。
 - 函数、`AbortSignal`、类实例不能跨进程（走 JSON 序列化，`serialization.ts:152-186`）。
 - ProxyChannel 不传取消 token（`proxy-channel.ts:85-95`）。**需要取消的调用一律设计显式的 cancel 方法**，照现有 `voice-input/contract.ts:38-39`。契约上不出现 `AbortSignal` 参数。
 
@@ -92,7 +92,7 @@ Electron Main
 
 | 数据                                                             | 唯一 owner                                                                          | 其他方怎么拿                                                                                    |
 | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| 插件清单、启用状态、`userConfig` 值                              | CLI（`plugins/list`；普通值在 `~/.zcode/cli/config.json`，敏感值在私有文件，§16.7） | 清单与启用状态：Window Host 读出后推给扩展进程；设置值：扩展经能力 `settings.*` 按需读（§16.7） |
+| 插件清单、启用状态、`userConfig` 值                              | CLI（`plugins/list`；普通值在 `~/.codez/cli/config.json`，敏感值在私有文件，§16.7） | 清单与启用状态：Window Host 读出后推给扩展进程；设置值：扩展经能力 `settings.*` 按需读（§16.7） |
 | 插件清单「变了」                                                 | Window Host 的插件管理服务（安装、卸载、启停、配置都经过它）                        | Window Host 操作成功后重推                                                                      |
 | 静态声明：`slots`、命令、视图、清单状态（invalid、incompatible） | Window Host 的 `extensions-service`（§16.1）                                        | 带 `rev` 的整份静态表，推给 Renderer；合法兼容的扩展声明推给扩展进程                            |
 | 扩展运行状态（activating、active、failed）                       | 扩展进程                                                                            | 带 `gen`/`rev` 的整份快照，推给 Window Host，再推给 Renderer                                    |
@@ -120,14 +120,14 @@ App 的能力几乎都在 Window Host。例外只有两类：Renderer 独有的�
 
 | 能力                  | 现在的 owner                                                                          | 插件后端                                   | 阶段  |
 | --------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------ | ----- |
-| context 组成          | CLI                                                                                   | ② zcode-agent 服务 `getContextComposition` | P1    |
+| context 组成          | CLI                                                                                   | ② codez-agent 服务 `getContextComposition` | P1    |
 | 生成速率              | CLI 遥测 → Window Host                                                                | ② Window Host 聚合                         | P1    |
 | 屏幕上的会话          | Renderer                                                                              | ③ Renderer 报告                            | P1    |
 | 打开扩展视图          | Renderer（`useAppPanels.ts:285`）                                                     | ③ Renderer 执行                            | P1    |
 | 开预填草稿            | Renderer（Root 的新建任务，插件市场「试用」同一路径）                                 | ③ Renderer 执行                            | P4    |
 | 日志                  | Main 写盘（`main/logger.ts:93-117`）                                                  | 扩展进程经 parentPort 直接发给 Main        | P1/P2 |
 | 插件设置 `userConfig` | CLI 配置 `plugins.options[pluginId]`                                                  | ① `IPluginManagementService`               | P2/P4 |
-| 会话列表              | Window Host `TaskIndexRepo` + 同步器（`zcode-agent/zcodeTaskIndexSyncer.ts:445-459`） | ② 插件自己的连接作用域                     | P3    |
+| 会话列表              | Window Host `TaskIndexRepo` + 同步器（`codez-agent/codezTaskIndexSyncer.ts:445-459`） | ② 插件自己的连接作用域                     | P3    |
 | 会话正文              | CLI                                                                                   | ② 插件自己的连接作用域                     | P3    |
 | 会话写                | Window Host `AppControlService` → CLI（`app-control/execution.ts:131-145`）           | ① `AppControlService` 加插件绑定           | P3    |
 | 打开某个会话          | Window Host → Main → Renderer（`packages/desktop/src/app-control-navigation/`）       | ① 现有导航端口（`open_session` 已在用）    | P3    |
@@ -168,8 +168,8 @@ Window Host ──静态表───► Renderer    插槽条目、命令、视�
 | `extension-host`          | `packages/desktop/src/extension-host/`、`packages/desktop/src/main/extensionHostSupervisor.ts`                                                                                                                                       | 扩展进程入口、注册表、`ctx` 运行时；Main 侧监管（崩溃预算、存活探测、环境变量白名单、重新加载）                                                                        | adapters                     |
 | `extensions-service`      | `packages/services/src/extensions/`                                                                                                                                                                                                  | Window Host 门面 `IExtensionsService` 与 `IExtensionViewsService`（§8）；插件访问 App 的唯一适配层：能力网关与三块后端（§3.5）；按代际连接扩展进程；扩展视图的沙箱登记 | app                          |
 | `extension-slots`         | `packages/ui/src/extension-slots/`                                                                                                                                                                                                   | Renderer：贡献表快照、插槽组件、扩展视图标签页、`workbench` 报告、执行 `views.open`                                                                                    | domain / app / adapters / ui |
-| `context-composition`     | `packages/shared/src/zcode-protocol-v4/context-composition/`、CLI 的 `core/src/runtime/context-composition/` 与 `bootstrap/src/zcode-protocol/context-composition/`、`packages/services/src/zcode-agent/contextCompositionClient.ts` | context 组成的线格式、CLI 生成与预演、修订号与协议处理、App 侧查询与通知。见 CLI spec                                                                                  | app                          |
-| `plugin-api`              | `packages/plugin-api/src/`、`packages/plugin-api/tsup.config.ts`                                                                                                                                                                     | 插件作者用的类型包 `@zcode-dev/plugin-api`：只转出 extension-host-protocol 与 v4 协议的类型，不含运行时代码（§17.9）                                                   | contract                     |
+| `context-composition`     | `packages/shared/src/codez-protocol-v4/context-composition/`、CLI 的 `core/src/runtime/context-composition/` 与 `bootstrap/src/codez-protocol/context-composition/`、`packages/services/src/codez-agent/contextCompositionClient.ts` | context 组成的线格式、CLI 生成与预演、修订号与协议处理、App 侧查询与通知。见 CLI spec                                                                                  | app                          |
+| `plugin-api`              | `packages/plugin-api/src/`、`packages/plugin-api/tsup.config.ts`                                                                                                                                                                     | 插件作者用的类型包 `@codez-dev/plugin-api`：只转出 extension-host-protocol 与 v4 协议的类型，不含运行时代码（§17.9）                                                   | contract                     |
 
 为什么这样分：
 
@@ -197,14 +197,14 @@ Window Host ──静态表───► Renderer    插槽条目、命令、视�
 
 插件在 `plugin.json` 顶层加 `extension` 键。入口条目写在清单顶层 `slots`，条目用 `target` 指向打开对象，带扩展的插件与只有 MCP App 的插件写法相同（§16.2）。P1 的 `extension.contributes.slots` 已删除。
 
-事实：CLI 解析清单时用 `{...parsed}` 展开（`apps/zcode-cli/packages/adapters/src/plugins/index.ts:826-833`），未知顶层键原样保留，不报错。所以加 `extension` 不影响插件的其他组件，旧 CLI 也不会拒绝这个插件。
+事实：CLI 解析清单时用 `{...parsed}` 展开（`apps/codez-cli/packages/adapters/src/plugins/index.ts:826-833`），未知顶层键原样保留，不报错。所以加 `extension` 不影响插件的其他组件，旧 CLI 也不会拒绝这个插件。
 
 ```jsonc
 {
   "name": "context-inspector",
   "version": "0.1.0",
   "extension": {
-    "engines": { "zcode": "^1.0.0" },
+    "engines": { "codez": "^1.0.0" },
     "main": "./dist/extension.js",
     "activationEvents": ["onAvailable"],
     "contributes": {
@@ -232,7 +232,7 @@ Window Host ──静态表───► Renderer    插槽条目、命令、视�
 
 | 字段                   | 必填 | 规则                                                                                           |
 | ---------------------- | ---- | ---------------------------------------------------------------------------------------------- |
-| `engines.zcode`        | 是   | 扩展 API 版本范围。只支持 `^x.y.z` 与精确版本；主版本必须与宿主的 `EXTENSION_API_VERSION` 一致 |
+| `engines.codez`        | 是   | 扩展 API 版本范围。只支持 `^x.y.z` 与精确版本；主版本必须与宿主的 `EXTENSION_API_VERSION` 一致 |
 | `main`                 | 否   | 相对插件根目录，不能用 `../` 跳出。没有时只有静态声明                                          |
 | `activationEvents`     | 否   | `onAvailable`、`onCommand:<id>`、`onView:<id>`；后两种由清单自动推导                           |
 | `contributes.commands` | 否   | `{ id, title }`                                                                                |
@@ -244,7 +244,7 @@ Window Host ──静态表───► Renderer    插槽条目、命令、视�
 - `title` 是字符串，或按语言的映射。
 - `icon` 是 Lucide 图标名。壳层只渲染白名单里的图标，其余显示通用插件图标。
 - **校验在 Window Host**（§16.1），都用 `extension-host-protocol` 的 zod schema。`extension` 键分两步：
-  1. 只读 `engines.zcode`。缺失或格式错误判 `invalid`；版本不兼容判 `incompatible`，不再看其余字段。新版本插件装在旧宿主上，得到的是「版本不兼容」，不是「清单非法」。
+  1. 只读 `engines.codez`。缺失或格式错误判 `invalid`；版本不兼容判 `incompatible`，不再看其余字段。新版本插件装在旧宿主上，得到的是「版本不兼容」，不是「清单非法」。
   2. 版本兼容后，按严格对象校验整个 `extension`。未知字段判 `invalid`，并给出字段路径。
 - 两种状态都只影响扩展，不影响插件的其他组件。引用这个扩展的视图、命令的插槽条目不可用（§16.2）。
 
@@ -412,7 +412,7 @@ P1 的能力（P2a 加了 `env.*` 两行，P2d 加了 `settings.*` 两行，P4 �
 | `settings.update`           | call      | service  | `{values?, clear?}`  | 无（P4 H1，§18.1）                 |
 
 - 能力表 `EXTENSION_CAPABILITIES` 以能力 id 为键，所以行里不再重复 `id` 字段。`ctx` 能力部分的类型由表推导（`CapabilityContext`），表为空时为空对象。
-- `extension-window` 频道在 `@zcode/rpc` 的 ProxyChannel 上暴露为 `call` 与 `onDynamicSubscribe`（ProxyChannel 的动态事件命名约定），语义就是表里的 `call` / `subscribe`。
+- `extension-window` 频道在 `@codez/rpc` 的 ProxyChannel 上暴露为 `call` 与 `onDynamicSubscribe`（ProxyChannel 的动态事件命名约定），语义就是表里的 `call` / `subscribe`。
 - **扩展进程侧**：`ctx` 的能力部分按 `kind` 由同一组通用包装生成。`call` 包成 `(input) => Promise<output>`；`subscribe` 包成 `(listener) => Disposable`。第一个监听注册时向 Window Host 订阅，最后一个回收时退订。每个 `ctx` 按插件创建，调用自动带上插件 id。
 - **Window Host 侧**：能力网关收到 `call` / `subscribe` 后，依次查表、按 `input` 校验、查授权、写审计，再分派给处理函数。处理函数表写成 `satisfies CapabilityHandlerMap`（即 `{ [K in CapabilityId]: CapabilityHandler<K> }`），少写一个就编译失败。审计按 debug 级别记日志。
 - Window Host 重新连上后，扩展进程侧自动重新订阅仍在监听的能力。`workbench.onDidChange` 重新订阅后的第一个事件是整份列表。
@@ -435,7 +435,7 @@ P1 的能力（P2a 加了 `env.*` 两行，P2d 加了 `settings.*` 两行，P4 �
 `ExtensionContext` 接口、能力表、作用域、错误码都在 `extension-host-protocol` 里定义。
 
 - 扩展进程的运行时用 `satisfies ExtensionContext` 钉住，接口与实现不会漂移。
-- P3 的类型包 `@zcode-dev/plugin-api` 从这里导出，不手写第二份。
+- P3 的类型包 `@codez-dev/plugin-api` 从这里导出，不手写第二份。
 
 ## 8. 扩展视图
 
@@ -522,7 +522,7 @@ Renderer                Window Host                 扩展进程
   - 同一视图在一个窗格只开一个标签。
 - **`views.open`**：Window Host 经 `IExtensionViewsService` 的事件请 Renderer 打开，Renderer 打开后回执。作用域是会话时，在显示该会话的窗格打开；不在屏幕上时，在焦点窗格打开。
 - **实例生命周期**：标签页组件挂载时创建实例，卸载时关闭。扩展进程换代（`gen` 变化）后旧实例全部失效，标签页按新代际重建。
-- **页面 API**：页面经现有的 MCP App 页面层（`window.zcode`）读写，与 MCP App 页面一致。页面不能直接调用 `ctx`。
+- **页面 API**：页面经现有的 MCP App 页面层（`window.codez`）读写，与 MCP App 页面一致。页面不能直接调用 `ctx`。
 
 实现（2b）：
 
@@ -530,7 +530,7 @@ Renderer                Window Host                 扩展进程
 - **实例**：Renderer 的标签页挂载时调 `IExtensionViewsService.prepareView({ viewId, scope, ownerWebContentsId })`。Window Host 生成实例 id，调扩展进程 `openView`（必要时按 `onView` 激活），扩展进程建 server 与进程内 Client、读 `ui://<pluginId>/<viewId>` 返回原始 contents；Window Host 用 MCP App 的同一套 HTML 挑选与限额（`pickHtmlResource`）取 HTML 与资源 `_meta`，再登记沙箱。返回 `{ instanceId, gen, sandbox }`。
 - **请求与通知**：页面的 `tools/list`、`tools/call`、`resources/list`、`resources/templates/list`、`resources/read`、`resources/subscribe`、`resources/unsubscribe`（`EXTENSION_VIEW_REQUEST_METHODS`，表外拒绝）经 `viewRequest` 按实例 id 转给该实例的 Client。server 的 `resources/updated`、`resources/list_changed`、`tools/list_changed` 经 `onDynamicViewNotifications({ instanceId })` 回页面。订阅在请求层记账，两种写法共用：`view.notify(uri)` 只在该实例订阅了 uri 时发出，Renderer 侧也只把 `resources/updated` 投给订阅了它的页面。
 - **取消**：不为单个请求设计取消方法。关闭实例（`closeView`）时 Client 关闭，在途请求随之失败。
-- **凭证与沙箱**：Window Host 签发实例凭证 `{ runtimeId: "extension-host:<gen>", generation: gen, appIdentity: sha256(["extension-view", pluginId]), token: 实例 id }`，登记 `contentKind: "extension"`，带 `pluginId`，不带 `sessionId` 与 `serverName`，也不能声明原生权限（camera 等）。`scopeId` 为 `extension-view:<实例 id>`。沙箱注入的 `window.zcode` 兼容层与 MCP App 相同。
+- **凭证与沙箱**：Window Host 签发实例凭证 `{ runtimeId: "extension-host:<gen>", generation: gen, appIdentity: sha256(["extension-view", pluginId]), token: 实例 id }`，登记 `contentKind: "extension"`，带 `pluginId`，不带 `sessionId` 与 `serverName`，也不能声明原生权限（camera 等）。`scopeId` 为 `extension-view:<实例 id>`。沙箱注入的 `window.codez` 兼容层与 MCP App 相同。
 - **SDK**：扩展进程用 `@modelcontextprotocol/client` 的 `Client` 与 `InMemoryTransport`，写法一用 `@modelcontextprotocol/server` 的低层 `Server`。Client 的读与列表一律不走 SDK 缓存（`cacheMode: "bypass"`），页面每次读到最新值。SDK 内联进扩展进程产物，不依赖安装包的 node_modules 布局。
 - **作用域**：产品只有一个侧栏。实例作用域跟随侧栏当前目标：焦点窗格的会话（草稿为预热会话），没有会话时为工作区。目标换到别的会话或别的工作区时，标签页按新作用域重建实例；草稿发送首条消息时会话 id 不变，实例保留。
   - 草稿首发交接期间窗格的会话不消失（§16.11 修复），标签页按目标直接派生作用域，不需要「沿用上一个会话」。
@@ -540,13 +540,13 @@ Renderer                Window Host                 扩展进程
 
 ## 9. context 组成
 
-详细设计见 CLI spec：`apps/zcode-cli/docs/design/v2/model/context-composition.md`。要点：
+详细设计见 CLI spec：`apps/codez-cli/docs/design/v2/model/context-composition.md`。要点：
 
-- 扩展现有的 `buildContextUsageSnapshot`（`apps/zcode-cli/packages/core/src/runtime/methods/context-usage.ts:119-253`），修掉它的漏算，不另建第二套分解。
-- 输入框用量圆环的线格式（`zcode-protocol-legacy-types.ts:499-514` 的 7 个类别枚举）**一字不改**。新增的细类别只出现在新的查询方法里。
+- 扩展现有的 `buildContextUsageSnapshot`（`apps/codez-cli/packages/core/src/runtime/methods/context-usage.ts:119-253`），修掉它的漏算，不另建第二套分解。
+- 输入框用量圆环的线格式（`codez-protocol-legacy-types.ts:499-514` 的 7 个类别枚举）**一字不改**。新增的细类别只出现在新的查询方法里。
 - 新增 v4 查询方法与变更通知（只带修订号）。修订号的唯一 owner 是 CLI 协议层的 tracker。
 - 草稿态返回首个请求的预演，没有副作用：不写历史、不让草稿变成持久会话、不发请求。
-- App 侧接口：`IZCodeAgentService.getContextComposition`（existing-only，旧 CLI 返回 `null`）与 `onDynamicContextCompositionChanged`。类型 `ContextComposition` 从 `@zcode/shared/zcode-protocol-v4` 导入。
+- App 侧接口：`ICodezAgentService.getContextComposition`（existing-only，旧 CLI 返回 `null`）与 `onDynamicContextCompositionChanged`。类型 `ContextComposition` 从 `@codez/shared/codez-protocol-v4` 导入。
 
 **模型只有一个来源。** Window Host 查询时：
 
@@ -572,7 +572,7 @@ CLI                         Window Host                扩展进程
 ## 10. 生成速率（TPS）
 
 - **流式估算**：Window Host 订阅 `stream.chunk` 遥测事实，按字符数估算 token（复用 `packages/shared/src/usage-stats.ts:9` 的除数常量），除以距本请求首个 chunk 的时间。最多每 500ms 推一次。
-- **准确值**：请求结束后，用服务商返回的 output tokens 与首 token 时间算，复用现有的 `calculateOutputTps`（`packages/shared/src/session-debug.ts:86-101`），与开发者工具面板同一定义：生成时长 = `durationMs - timeToFirstContentMs`（两者都有且前者更大时），否则不出准确值（`bootstrap/src/zcode-protocol/session-debug.ts:103-106`）。数据来自 `model.request.metrics` 事实（见下）。
+- **准确值**：请求结束后，用服务商返回的 output tokens 与首 token 时间算，复用现有的 `calculateOutputTps`（`packages/shared/src/session-debug.ts:86-101`），与开发者工具面板同一定义：生成时长 = `durationMs - timeToFirstContentMs`（两者都有且前者更大时），否则不出准确值（`bootstrap/src/codez-protocol/session-debug.ts:103-106`）。数据来自 `model.request.metrics` 事实（见下）。
 - 只统计主轮请求（`querySource === "main_turn"`）。标题生成、compact 等旁路请求不计入。
 - 没有扩展订阅 `models.onDidGenerate` 时，Window Host 不做聚合。有订阅时订阅 Renderer 报告里出现过的工作区，规则同 §9（只增不减）。
 
@@ -597,22 +597,22 @@ interface GenerationMetrics {
 
 事实：
 
-- 遥测事实全部 live-only（`zcode-protocol-v4/transport.ts:434-435`），App 经 `onDynamicConversationTelemetryFact` 收（`services/src/zcode-agent/zcodeAgent.ts:1061`）。
-- `stream.chunk` 的 `firstChunk` 按 part 判定，不是按请求（`bootstrap/src/zcode-protocol-v4/conversation-telemetry-facts.ts:424-447`）。Window Host 自己按 `requestId` 记首个 chunk 的时间。
+- 遥测事实全部 live-only（`codez-protocol-v4/transport.ts:434-435`），App 经 `onDynamicConversationTelemetryFact` 收（`services/src/codez-agent/codezAgent.ts:1061`）。
+- `stream.chunk` 的 `firstChunk` 按 part 判定，不是按请求（`bootstrap/src/codez-protocol-v4/conversation-telemetry-facts.ts:424-447`）。Window Host 自己按 `requestId` 记首个 chunk 的时间。
 - 模型 completed 事件有 usage 和 `timeToFirstContentMs`（`contracts/src/model/index.ts:217-229`），旧的 telemetry fact 丢掉了它们。
 - 请求用途能区分：`model.request.status` 带 `querySource`（主轮 `main_turn`，标题 `session_title`，compact `compact`，子代理 `subagent` 等，来自请求 trace 属性）。`usage.delta` 不带 `querySource`，不用它算 TPS。
 
 **P1 的处理（兼容性决定）**：精确数据不加进现有的 `model.request.status`，改为一条独立的 live 事实 `model.request.metrics`，走新通知 `v4/telemetry/model-request-metrics`。
 
-- 原因：`conversationTelemetryFactSchema` 每个分支都是 `.strict()`。旧 App 解析到未知字段时整条事实 `safeParse` 失败，记一条 warn 并**丢弃整条事实**（`services/src/zcode-agent/zcodeAgentService.ts:2730-2745`）。远程工作区的 CLI 可以比 App 新；往 completed fact 加字段会让旧 App 丢掉全部 `model.request.status`，埋点断掉。往同一通知加新的 `kind` 也会让旧 App 每个请求记一条 warn。
+- 原因：`conversationTelemetryFactSchema` 每个分支都是 `.strict()`。旧 App 解析到未知字段时整条事实 `safeParse` 失败，记一条 warn 并**丢弃整条事实**（`services/src/codez-agent/codezAgentService.ts:2730-2745`）。远程工作区的 CLI 可以比 App 新；往 completed fact 加字段会让旧 App 丢掉全部 `model.request.status`，埋点断掉。往同一通知加新的 `kind` 也会让旧 App 每个请求记一条 warn。
 - 旧 App 遇到不认识的通知方法时，通知处理链没有匹配分支，直接忽略，不记日志。所以新通知对旧 App 无影响；新 App 对旧 CLI 收不到这条通知，Window Host 只有流式估算。
-- 形状与触发规则见 [V4 对话埋点兼容规范](../monitoring/conversation-telemetry-v4.md) 的「模型请求指标」。App 侧经 `IZCodeAgentService.onDynamicModelRequestMetrics` 订阅。
+- 形状与触发规则见 [V4 对话埋点兼容规范](../monitoring/conversation-telemetry-v4.md) 的「模型请求指标」。App 侧经 `ICodezAgentService.onDynamicModelRequestMetrics` 订阅。
 
 ## 11. 示例插件 context-inspector
 
-> 迁移（2026-11-07，[插件发布](./plugin-publishing.md) §6）：源码在市场仓库 `zcode-plugins` 的 `ui-plugins/context-inspector`，从插件商店安装，插件 id 带市场 id。z-code 里的示例与用例 PLM-EXT-2C 已删除；它断言的宿主能力移到 fixture 用例 PLM-EXT-2B（对照表见 [覆盖矩阵](../testing/plugin-management-lifecycle-e2e-coverage-matrix.md) 的「示例插件迁出」）。插件自己的页面只做构建、清单校验与人工验收（[插件发布](./plugin-publishing.md) §6.1）。下文是它的设计，记录宿主能力怎么用。
+> 迁移（2026-11-07，[插件发布](./plugin-publishing.md) §6）：源码在市场仓库 `codez-plugins` 的 `ui-plugins/context-inspector`，从插件商店安装，插件 id 带市场 id。z-code 里的示例与用例 PLM-EXT-2C 已删除；它断言的宿主能力移到 fixture 用例 PLM-EXT-2B（对照表见 [覆盖矩阵](../testing/plugin-management-lifecycle-e2e-coverage-matrix.md) 的「示例插件迁出」）。插件自己的页面只做构建、清单校验与人工验收（[插件发布](./plugin-publishing.md) §6.1）。下文是它的设计，记录宿主能力怎么用。
 
-以前放 `examples/plugins/context-inspector/`，经 `~/.zcode/cli/config.json` 的 `plugins.dirs` 加载（用户决策：仓库内本地插件，不做内置），插件 id 是 `context-inspector@inline`。
+以前放 `examples/plugins/context-inspector/`，经 `~/.codez/cli/config.json` 的 `plugins.dirs` 加载（用户决策：仓库内本地插件，不做内置），插件 id 是 `context-inspector@inline`。
 
 - 输入框圆环左边显示当前会话主轮请求的 `tok/s`（`composer.status`，按会话作用域设置）。只显示请求结束后的准确值（`phase: "final"`，服务商报告的 output tokens ÷ 生成时长）；流式阶段的估算不显示，插槽保持上一次请求的准确值（用户决策，2026-11-06：输出过程中不用估算）。宿主的 `models.onDidGenerate` 仍推流式估算（§10），这是插件的选择。悬停说明是模型 id、速率、输出 token 数与首 token 时间，按 App 语言本地化（`ctx.env`：中文「输出 N tok · 首 token 用时 X 秒」，英文「N output tok · TTFT X s」）；语言变化时扩展按 `env.onDidChange` 重写每个会话最近一次的说明。点击执行命令，经 `ctx.views.open` 打开 context 视图。会话还没有生成过时不设置文字，插槽不显示（§6「只在设置了 `text` 时显示」）。
 - 启动页「扩展」分区打开「上下文组成」视图：模型、阶段（预演 / 最近请求）、估算总量与上下文窗口、剩余 token、按类别的比例条，以及类别列表（中英文名称、token、占比）。展开类别显示占用最多的条目（工具名、技能名、指令文件），默认 8 条，其余点「再显示 N 项」。草稿态显示首个请求的预演；正式会话换模型后显示下一个请求的预演；请求后显示该请求的组成。
@@ -633,8 +633,8 @@ interface GenerationMetrics {
   - 刷新只靠事件：`context.onDidChange` 命中视图的会话，或 `workbench.onDidChange` 里视图目标（会话、是否在报告里、是否草稿）变了，扩展调 `view.notify`；页面收到 `resources/updated` 后重新调 `snapshot`，同一时刻只有一次在途，期间的通知合并成结束后的一次。不轮询。
   - 状态：`ready`；`unsupported`（会话在 workbench 报告里但 `context.get` 返回 `null`：旧 App 或旧 CLI，或会话还没有可用模型），页面显示「当前版本不支持上下文组成」；`unavailable`（会话不在报告里，如远程工作区）；`no-session`。草稿首发时会话一直在报告里（§16.11），页面不需要保留上一份组成。
 - 页面样式：语言取 hostContext 的 `locale`（`zh` 开头用简体中文，其余英文）；颜色、字号、圆角都取 hostContext 的样式变量，主题切换时随 `host-context-changed` 更新。比例条与类别按 token 降序，色阶由宿主前景色在背景色里的占比生成（占比越高越深，与圆环同一排序规则），不写死品牌色。页面状态写在 `body` 与类别行的 `data-*` 属性上，排查与 E2E 读 DOM。
-- 构建（迁移前，在 z-code 里）：`node examples/plugins/context-inspector/build.mjs` 用仓库根目录的 esbuild 把 `src/extension.ts` 打成 ESM 的 `dist/extension.js`，把页面脚本 `src/view/main.ts` 打成 IIFE 内联进 `dist/view.html`（沙箱页面不能加载插件目录里的其他文件）。每次构建先清空 `dist/`。源码只有类型导入（`@zcode/shared/extension-host`、`@zcode/shared/zcode-protocol-v4`），产物自包含，插件目录里不需要 `node_modules`。插件根目录的 `package.json` 声明 `"type": "module"`（扩展进程按 ESM 加载 `main`）。`dist/` 不入 git。
-- 类型检查（迁移前）：示例的 `tsconfig.json` 引用 `packages/shared`，按真实的 `ExtensionContext` 与 `ContextComposition` 编译；根目录 `pnpm typecheck` 的 `tsc -b` 列表包含它。迁移后从 npm 安装 `@zcode-dev/plugin-api`，在市场仓库里构建，根目录 typecheck 不再包含它。
+- 构建（迁移前，在 z-code 里）：`node examples/plugins/context-inspector/build.mjs` 用仓库根目录的 esbuild 把 `src/extension.ts` 打成 ESM 的 `dist/extension.js`，把页面脚本 `src/view/main.ts` 打成 IIFE 内联进 `dist/view.html`（沙箱页面不能加载插件目录里的其他文件）。每次构建先清空 `dist/`。源码只有类型导入（`@codez/shared/extension-host`、`@codez/shared/codez-protocol-v4`），产物自包含，插件目录里不需要 `node_modules`。插件根目录的 `package.json` 声明 `"type": "module"`（扩展进程按 ESM 加载 `main`）。`dist/` 不入 git。
+- 类型检查（迁移前）：示例的 `tsconfig.json` 引用 `packages/shared`，按真实的 `ExtensionContext` 与 `ContextComposition` 编译；根目录 `pnpm typecheck` 的 `tsc -b` 列表包含它。迁移后从 npm 安装 `@codez-dev/plugin-api`，在市场仓库里构建，根目录 typecheck 不再包含它。
 - 插槽文字只有数字与单位，中英文通用；悬停说明经 `ctx.env` 本地化（P2a，§16.11）。
 
 ## 12. 生命周期
@@ -661,9 +661,9 @@ interface GenerationMetrics {
 - Main 推给 Window Host 的状态：`starting`（正在启动：读网络设置、fork，还未就绪）、`running`、`restarting`（退避中）、`stopped`（预算耗尽）。
 - **崩溃预算**：5 分钟内最多自动重启 3 次，退避 1s、2s、4s；第 4 次崩溃时停止，不再自动重启。上限从退避表的长度推出，两者只有一个来源。
 - **存活探测**：Main 每 5 秒经 parentPort 发一次探测。连续 3 次（15 秒）没有回应，判为卡死：杀掉进程，计入崩溃预算。探测由扩展进程的事件循环回应，所以一个扩展写了死循环也能发现。所有构建行为相同（P1 不支持给扩展进程挂断点调试）。
-- **环境变量白名单**：扩展进程不继承 Window Host 的环境（里面有遥测凭据与 OAuth 配置，`main/desktopRuntimeEnv.ts:160-172`）。只传：`PATH`、`HOME`、`USERPROFILE`、`TMPDIR`、`TEMP`、`TMP`、`LANG`、`LC_ALL`、`LC_CTYPE`、`SystemRoot`、`windir`、`APPDATA`、`LOCALAPPDATA`、`NODE_ENV`，以及 `ZCODE_PROCESS_LABEL=extension-host`。白名单在监管器里一处定义。代理、No Proxy 与 `NODE_EXTRA_CA_CERTS` 不在白名单里，只由设置页注入（见下一条）。
+- **环境变量白名单**：扩展进程不继承 Window Host 的环境（里面有遥测凭据与 OAuth 配置，`main/desktopRuntimeEnv.ts:160-172`）。只传：`PATH`、`HOME`、`USERPROFILE`、`TMPDIR`、`TEMP`、`TMP`、`LANG`、`LC_ALL`、`LC_CTYPE`、`SystemRoot`、`windir`、`APPDATA`、`LOCALAPPDATA`、`NODE_ENV`，以及 `CODEZ_PROCESS_LABEL=extension-host`。白名单在监管器里一处定义。代理、No Proxy 与 `NODE_EXTRA_CA_CERTS` 不在白名单里，只由设置页注入（见下一条）。
   - 事实：系统在子进程启动时还会注入少量键，不来自 Window Host 的环境，也不含凭据。macOS 上实测为 `MACH_PORT_RENDEZVOUS_PEER_VALDATION`（Chromium 子进程启动器）与 `__CF_USER_TEXT_ENCODING`（CoreFoundation）。白名单约束的是 Main 传给扩展进程的环境，不清理这些系统键。
-- **网络跟随设置页**（P4 H3，§18.1）：监管器每次启动扩展进程前，经 Main 的设置服务读一次设置页的 HTTP 代理、No Proxy 与自定义证书（与 Window Host 读的是同一个 `~/.zcode/v2/setting.json`）。翻译方式与 CLI 给工具子进程的相同（`apps/zcode-cli/packages/adapters/src/network/subprocess-env.ts`）：
+- **网络跟随设置页**（P4 H3，§18.1）：监管器每次启动扩展进程前，经 Main 的设置服务读一次设置页的 HTTP 代理、No Proxy 与自定义证书（与 Window Host 读的是同一个 `~/.codez/v2/setting.json`）。翻译方式与 CLI 给工具子进程的相同（`apps/codez-cli/packages/adapters/src/network/subprocess-env.ts`）：
   - 代理：裸 `host:port` 补 `http://`，写 `HTTP_PROXY`、`HTTPS_PROXY` 与两个小写形式。No Proxy：按逗号拆开、去掉空项，写 `NO_PROXY`、`no_proxy`。证书路径写 `NODE_EXTRA_CA_CERTS`。
   - 只认设置页（用户决策，2026-11-05）：和 CLI 一样，代理、No Proxy 与证书只来自设置页；设置页留空就直连，不读 shell 环境里的同名变量。两种大小写都写（Node 的环境代理小写优先）；Windows 的变量名不分大小写，只写一份。读设置失败时记一条 warn，按留空处理（直连）。日志只记每项是否由设置页配置，不记地址与路径。
   - 扩展进程启动时、加载任何扩展之前调一次 `http.setGlobalProxyFromEnv()`（Electron 44 的 Node 24.21 提供，无需替代方案），全局 `fetch` 与 `http(s).request` 从此走环境代理并遵守 No Proxy。这是全局状态，只由宿主调。代理地址不合法时只记错误码，扩展照常加载，请求直连。`NODE_EXTRA_CA_CERTS` 由 Node 在进程启动时读取，utilityProcess 实测生效（Electron 44.7.0：自签 CA 的 https 请求在设置后成功，未设置时报 `UNABLE_TO_VERIFY_LEAF_SIGNATURE`；PLM-EXT-H3 里经 MITM 代理、环境里是另一个 CA 时报 `CERT_SIGNATURE_FAILURE`）。
@@ -674,7 +674,7 @@ interface GenerationMetrics {
 - **重新加载**：命令中心 `app` 分区加「重新加载扩展」（`packages/ui/src/quickpick/quickPickCommands.ts`），启动页「扩展已停止」一行也有这个操作。链路：Renderer → `IExtensionsService.reload()` → Window Host 经 parentPort 发给 Main → Main 做计划重启，并清零崩溃预算。不经过扩展进程，所以扩展进程卡死或已停止时也能用。开发插件时改完代码，用它代替重启整个 App。
 - **Window Host 断开**：能力调用返回 `host-unavailable`，订阅暂停。扩展代码照常运行，动态值保留在扩展进程内存里。Window Host 重新就绪后 Main 重新牵线，扩展进程推一份完整快照，并重新订阅仍在监听的能力。
 - **退出**：接入 `prepareAppQuit` 的并行收口（`main/index.ts:1287-1332`）。Main 发 dispose，扩展的 `deactivate` 共用 1 秒预算，Main 在 1.5 秒后强杀。
-- **日志**：扩展进程经 parentPort 发日志，Main 以 `[extension-host]` 前缀写进 `~/.zcode/v2/logs/<日期>.log`，照 `hostLogRelay.ts`。同一行同时进监管器的环形缓冲，供日志控制台使用（§16.8）。
+- **日志**：扩展进程经 parentPort 发日志，Main 以 `[extension-host]` 前缀写进 `~/.codez/v2/logs/<日期>.log`，照 `hostLogRelay.ts`。同一行同时进监管器的环形缓冲，供日志控制台使用（§16.8）。
 - **构建**：照 scheduler 加 tsup 目标（`tsup.config.ts:378-406`）、`tsconfig.extension-host.json`、dev ready 标记、E2E 产物清单（`scripts/ensure-e2e-desktop-build.mjs:30-66`）、`desktopRuntimeEnv.ts` 的模块路径。
   - `resourceManagerWindow.ts` 的资源角色登记推迟：新增角色要改共享的 `PROCESS_RESOURCE_ROLES`（`shared/src/processResourceTelemetry.ts`），即资源埋点的 `process_role` 取值，属于埋点变更，需单独按埋点流程验收。在此之前扩展进程的资源计入 `chromium_other`。
   - 事实：scheduler 现在有几处不一致——dev ready 标记的类型不含它（`tsup.config.ts:238`），`scripts/dev.mjs:14-16` 只等三个标记，生产构建清理列表没有它（`run-production-build.mjs:14-25`）。扩展进程不复制这些遗漏。
@@ -682,7 +682,7 @@ interface GenerationMetrics {
 ### 12.2 单个扩展
 
 - **激活是事务**：`activate` 期间的注册先缓存，成功返回后一起生效。抛错或超过 10 秒，全部丢弃，扩展进入 `failed`，本次扩展进程内不再激活。原因写进快照，启动页可见（§6）。
-- 状态：`resolved` → `activating` → `active`；或 `failed`、`invalid`（清单不合法）、`incompatible`（`engines.zcode` 不兼容）。
+- 状态：`resolved` → `activating` → `active`；或 `failed`、`invalid`（清单不合法）、`incompatible`（`engines.codez` 不兼容）。
 - 激活时机：
   - `onAvailable`：扩展在本扩展进程里第一次出现在插件清单中时激活。App 启动、运行中安装或启用、计划重启或重新加载之后，都满足这一条。
   - `onCommand`：首次执行命令时激活。
@@ -690,7 +690,7 @@ interface GenerationMetrics {
 
 ## 13. 插件清单与变更
 
-- Window Host 用 `IPluginManagementService.listPlugins({ configScope: "user" })` 读已启用插件，交给扩展进程：插件 id、名称、版本、根目录。设置值不随声明下发，扩展经能力 `settings.*` 读（§16.7）。过滤条件：`enabled`、`enabledSource` 不是 `workspace`、包已物化（没有 `packageStatus: "missing"`）。Window Host 读各插件的 `plugin.json` 并校验，扩展进程只收合法兼容的扩展声明（§16.1）；P1 时由扩展进程自己读。清单目录优先级与 CLI 相同（`.zcode-plugin`、`.claude-plugin`、`.codex-plugin`）。
+- Window Host 用 `IPluginManagementService.listPlugins({ configScope: "user" })` 读已启用插件，交给扩展进程：插件 id、名称、版本、根目录。设置值不随声明下发，扩展经能力 `settings.*` 读（§16.7）。过滤条件：`enabled`、`enabledSource` 不是 `workspace`、包已物化（没有 `packageStatus: "missing"`）。Window Host 读各插件的 `plugin.json` 并校验，扩展进程只收合法兼容的扩展声明（§16.1）；P1 时由扩展进程自己读。清单目录优先级与 CLI 相同（`.codez-plugin`、`.claude-plugin`、`.codex-plugin`）。
 - 每次 Main 牵线（新代际或 Window Host 重连）后 Window Host 推一次整份扩展声明。
 - 变更信号来自 Window Host 插件管理服务的成功返回（§3.4）。Window Host 重读静态表并重推整份扩展声明，扩展进程对比后激活新出现的扩展，停用消失的扩展；已激活扩展的声明变了就请求计划重启（§12.1）。
 
@@ -828,7 +828,7 @@ Renderer：selectSlotEntries(静态表, 快照, 扩展进程状态) → 插槽�
     ],
   },
   "extension": {
-    "engines": { "zcode": "^1.0.0" },
+    "engines": { "codez": "^1.0.0" },
     "main": "./dist/extension.js",
     "contributes": {
       "commands": [
@@ -969,9 +969,9 @@ Renderer：selectSlotEntries(静态表, 快照, 扩展进程状态) → 插槽�
 
 实现（P2c）：
 
-- **插槽目录**：`composer.mention` 接受 `command`、`tool`，会话作用域，每插件 3 项。目录项多一个 `commandResult`：command target 返回值的 schema。这里是 `zcodePluginMentionItemsSchema`，与 CLI 校验工具结果的是同一份（`plugin-host-queries` 模块）。没有 `commandResult` 的插槽忽略命令的返回值（`composer.status` 的点击照旧）。
+- **插槽目录**：`composer.mention` 接受 `command`、`tool`，会话作用域，每插件 3 项。目录项多一个 `commandResult`：command target 返回值的 schema。这里是 `codezPluginMentionItemsSchema`，与 CLI 校验工具结果的是同一份（`plugin-host-queries` 模块）。没有 `commandResult` 的插槽忽略命令的返回值（`composer.status` 的点击照旧）。
 - **命令参数与返回值**：`CommandCall` 加 `args?`，`composer.mention` 传 `{ query }`。命令返回候选项数组。`extension-host` 频道的 `executeCommand` 改为返回命令的返回值（入参 `commandInvocationSchema` = Renderer 的 `{ commandId, scope }` 加 `args`）。返回值按 JSON 带回；不能序列化时按 `undefined` 处理并记一条 warn，否则 RPC 回包失败，连点击都会报错。带参数的调用是按键级查询，扩展进程不再为它记 `run command` 的 info。
-- **门面**：`IExtensionsService.provideMentionItems({ entry, query, scope, seq })` 返回 `{ seq, status: "ok", items } | { seq, status: "unsupported" } | { seq, status: "error", code }`。入参与结果的 schema 在协议模块 `mention.ts`。错误不抛给 Renderer：`@zcode/rpc` 跨进程只带错误文本，Renderer 要按码分支。Window Host 只认静态表里 `composer.mention` 的可用条目（否则 `not-declared`）：
+- **门面**：`IExtensionsService.provideMentionItems({ entry, query, scope, seq })` 返回 `{ seq, status: "ok", items } | { seq, status: "unsupported" } | { seq, status: "error", code }`。入参与结果的 schema 在协议模块 `mention.ts`。错误不抛给 Renderer：`@codez/rpc` 跨进程只带错误文本，Renderer 要按码分支。Window Host 只认静态表里 `composer.mention` 的可用条目（否则 `not-declared`）：
   - `command`：扩展进程没连上 → `host-unavailable`；命令抛错 → `command-failed`（原因在扩展日志）；返回值不合 schema → `invalid-result`（warn 只记 schema 路径）。
   - `tool`：请求带 `invalidateConnectionOnTimeout: false`：首次调用可能在会话里等用户审批，等得久不说明 CLI 卡死，协议 client 的默认超时（3 分钟）只让这次查询失败，不回收工作区的 CLI。作用域不是会话 → `no-session`；`getPluginMentionItems` 返回 `supported: false`（旧 CLI）→ `unsupported`；CLI 错误的 `data.code` 原样带回（如 `plugin_mention_tool_denied`）；会话不在 CLI 内存（`-32004`）或没有运行中的 CLI → `session-unavailable`。
   - 日志：每次查询一条 debug（条目、target 种类、seq、项数或错误码、耗时）；错误另记一条 warn（条目与错误码）。都不记 query 与候选内容。
@@ -991,7 +991,7 @@ Renderer：selectSlotEntries(静态表, 快照, 扩展进程状态) → 插槽�
             Window Host：查静态表里 composer.mention 的条目
               ├─ command ─► 扩展进程 executeCommand({ commandId, scope, args: { query } })
               │               └─ 返回值 ─► EXTENSION_SLOTS["composer.mention"].commandResult 校验
-              └─ tool ────► IZCodeAgentService.getPluginMentionItems（CLI plugins/mentionItems，
+              └─ tool ────► ICodezAgentService.getPluginMentionItems（CLI plugins/mentionItems，
                             会话的授权链；首次可能在会话里弹审批，请求一直等）
             ◄─ { seq, status: ok | unsupported | error }
   Renderer：seq 仍是该条目最近一次 → 采用；否则丢弃
@@ -1007,7 +1007,7 @@ Renderer：selectSlotEntries(静态表, 快照, 扩展进程状态) → 插槽�
 ### 16.7 插件设置
 
 - 设置界面沿用现有的 `settings/PluginConfigControls.tsx`，不需要会话。
-- 敏感值的存储见 CLI spec「Sensitive Option Storage」（`apps/zcode-cli/docs/design/v2/plugin-compat.md`）。
+- 敏感值的存储见 CLI spec「Sensitive Option Storage」（`apps/codez-cli/docs/design/v2/plugin-compat.md`）。
 - 能力表新增两行，都只作用于调用方自己的插件（网关注入插件 id，入参里没有插件 id）：
 
 | id                     | kind      | 后端    | 返回 / 事件                                         |
@@ -1030,7 +1030,7 @@ Renderer：selectSlotEntries(静态表, 快照, 扩展进程状态) → 插槽�
   - `onDidChange(pluginId)`：只推给该插件的订阅者；没有订阅者时不读值。订阅后不推初始值，扩展先调 `get`。
   - 不记任何值。日志只有插件 id 与键数。
 - **信号**：插件管理服务的成功信号带上动作、插件 id 与 scope：`onMutationSucceeded({ action, pluginId?, scope? })`（`action` 与遥测的动作名相同）。Window Host 收到后照旧重读静态表；动作是 `configure` 或 `reset_config`，且 scope 不是 `workspace`（扩展只认 user 层）时，再通知该插件的设置订阅者。通知串行执行（先读值再推），后一次排在前一次之后，订阅者最后收到的总是最新的值。
-- 不监听文件变化：直接改 `~/.zcode/cli/config.json`、`plugin-secrets.json`，或用 CLI 改设置，不触发 `onDidChange`（与静态表的重读时机一致）。
+- 不监听文件变化：直接改 `~/.codez/cli/config.json`、`plugin-secrets.json`，或用 CLI 改设置，不触发 `onDidChange`（与静态表的重读时机一致）。
 
 ```text
 设置页保存（PluginConfigControls → IPluginManagementService.configurePlugin，scope user）
@@ -1202,7 +1202,7 @@ interface AppControlClientBinding {
 
 实现（P3a）：
 
-- 能力表加四行 `sessions.listProjects`、`sessions.listSessions`、`sessions.readSession`、`sessions.waitSessions`：kind call，后端 service，档位 `sessions.read`，`protocol: "sessions"`；入参与返回 import 自 `@zcode/session-control/contracts` 的端口 schema（`appListProjectsInputSchema` 等），不另写一份。`extension-host-protocol` 因此依赖 `session-control`。
+- 能力表加四行 `sessions.listProjects`、`sessions.listSessions`、`sessions.readSession`、`sessions.waitSessions`：kind call，后端 service，档位 `sessions.read`，`protocol: "sessions"`；入参与返回 import 自 `@codez/session-control/contracts` 的端口 schema（`appListProjectsInputSchema` 等），不另写一份。`extension-host-protocol` 因此依赖 `session-control`。
 - 网关顺序：查表 → 校验入参 → 清单声明的档位覆盖吗（否则 `not-declared`）→ 清单声明的协议版本对得上吗（声明了且不等于宿主的版本时 `incompatible`；没有声明按当前版本）→ 用户授权覆盖吗（否则 `not-granted`）→ 审计（调用按 debug 记一行，订阅记开始与结束）→ 分派。清单声明来自静态表（`extension.grants` 去掉被覆盖的档位、`extension.protocols`）。网关按连接创建，调用上下文带这条连接的 `gen`。
 - 会话后端 `sessionsBackend.ts`：每次调用 `bindClient({ clientId: "extension:<pluginId>", connectionId: "extension-host:<gen>:<pluginId>" })`，`assertCurrent` 检查代际与授权；结束时再查一次，换代报 `cancelled`、撤销报 `not-granted`。在途调用按插件登记：换代或断开时全部中止，撤销授权时中止该插件的。每个插件同时在途的 wait 最多 4 个，超出 `limit-exceeded`。原始错误文本不进日志，只记错误类型或 session-control 码。
 - `EXTENSION_API_VERSION` 为 `1.1.0`。
@@ -1221,10 +1221,10 @@ interface AppControlClientBinding {
 
 实现（P3c-1，写动作）：
 
-- 能力表再加八行写档动作，档位都是 `sessions.write`，`protocol: "sessions"`，kind call，后端 ①：`sessions.createSession`、`forkSession`、`sendToSession`、`interruptSession`、`renameSession`、`openSession`、`setSessionArchived`、`setSessionPinned`。入参与返回 import 自 `@zcode/session-control/contracts` 的端口 schema（`appCreateSessionInputSchema` 等，与 `createSessionResultSchema`、`sendToSessionResultSchema`、`forkSessionResultSchema`、`mutationResultSchema`、`openSessionResultSchema`），不另写一份。`EXTENSION_API_VERSION` 为 `1.3.0`：在 `1.2.0`（P3b 的读与 P4 的宿主能力）之上加这八个写动作与 H10 的 `model`。
+- 能力表再加八行写档动作，档位都是 `sessions.write`，`protocol: "sessions"`，kind call，后端 ①：`sessions.createSession`、`forkSession`、`sendToSession`、`interruptSession`、`renameSession`、`openSession`、`setSessionArchived`、`setSessionPinned`。入参与返回 import 自 `@codez/session-control/contracts` 的端口 schema（`appCreateSessionInputSchema` 等，与 `createSessionResultSchema`、`sendToSessionResultSchema`、`forkSessionResultSchema`、`mutationResultSchema`、`openSessionResultSchema`），不另写一份。`EXTENSION_API_VERSION` 为 `1.3.0`：在 `1.2.0`（P3b 的读与 P4 的宿主能力）之上加这八个写动作与 H10 的 `model`。
 - **请求身份**：端口 schema 的 `requestId` 必填；能力定义多一个 `requestIdentity: true` 标记（七个带 `requestId` 的动作，`openSession` 没有）。ctx 的类型对这些动作把 `requestId` 改成可选；扩展进程的通用包装在插件没传时补 `randomUUID()`，按标记处理，不按能力名分支。插件要靠幂等重试（Window Host 断开、结果不明）就自己传 `requestId`，重试时传同一个；回执里的 `requestId` 就是这次用的值。
 - **来源注入**：网关对写动作构造的客户端绑定带 `inputSource: { kind: "extension", pluginId }`（§17.2 的 `AppControlClientBinding.inputSource`）。app-control 对客户端类调用方的 `createSession` / `sendToSession`：绑定没有来源时报 `unavailable`；目标工作区的 CLI 没有 `extensionInputSource` 能力位时报 `unavailable`（不去掉来源后发送）；否则 `createSession.firstInput.source` / `sendText.source` 填这个来源。客户端类没有根会话，原先「派发前复验根会话」那一步改为复验授权 fence 与连接代际（`assertCurrent`）。
-- **拒绝伪造**：渲染进程、手机与 relay 的 V4 命令都经 `createZCodeAgentConnectionScope` 的 `sendConversationCommandV4` 进入 Host（桌面与手机的 RPC attachment 各一个作用域，Source Server 的 WebSocket 与 stdio 也是）。这里拒绝 `sendText.source` 或 `createSession.firstInput.source` 为 `extension` 的命令（`fault.command.extensionSourceUntrusted`）。app-control 直接调基础 agent 服务，不经这个入口，所以扩展网关是唯一能发出 `extension` 来源的地方。
+- **拒绝伪造**：渲染进程、手机与 relay 的 V4 命令都经 `createCodezAgentConnectionScope` 的 `sendConversationCommandV4` 进入 Host（桌面与手机的 RPC attachment 各一个作用域，Source Server 的 WebSocket 与 stdio 也是）。这里拒绝 `sendText.source` 或 `createSession.firstInput.source` 为 `extension` 的命令（`fault.command.extensionSourceUntrusted`）。app-control 直接调基础 agent 服务，不经这个入口，所以扩展网关是唯一能发出 `extension` 来源的地方。
 - **消息标识**：用户行的 `source.kind` 为 `extension` 时，与 `pluginUi` 显示同一句「来自插件 X」（`pluginUi.fromPlugin`）。X 与 `pluginUi` 相同，取插件 id 里 `@` 前的名字：手机没有扩展静态表，桌面与手机用同一条规则，显示一致。行上带 `data-v4-user-input-source-kind="extension"`。
 - `createSession` 不指定项目时放进插件项目（§17.4，实现见该节的 P3c-2 说明）；P3c-1 里插件必须传 `project`。
 - 错误码沿用 P3a 的映射（session-control 错误码按名映射，其余 `internal`）。结果里的 `status: "rejected"` / `admission: "rejected"` 是正常返回，不是错误。
@@ -1264,7 +1264,7 @@ sessionsBackend.run（客户端绑定、来源注入、审计，与带 project �
 
 ### 17.5 读：插件自己的连接
 
-- `extensions-service` 每个代际懒建一个进程内连接作用域：`createZCodeAgentConnectionScope(agent, { connectionId: "extension-host:<gen>", clientMode: "web-remote-replayable" })`，并在进程内握手（`helloConversationV4` → `initializeConversationV4`）。先例：Bot 在进程内建作用域（`zcode-agent/zcodeTaskServiceAdapter.ts:252-262`）。
+- `extensions-service` 每个代际懒建一个进程内连接作用域：`createCodezAgentConnectionScope(agent, { connectionId: "extension-host:<gen>", clientMode: "web-remote-replayable" })`，并在进程内握手（`helloConversationV4` → `initializeConversationV4`）。先例：Bot 在进程内建作用域（`codez-agent/codezTaskServiceAdapter.ts:252-262`）。
 - 复用 `web-remote-replayable`，不新增 clientMode：新取值要改 30 多处，且发给 CLI 的线格式是严格枚举，旧 CLI 会拒绝。日志靠 connectionId 前缀 `extension-host:` 区分插件与手机。
 - 会话列表来自 Window Host 控制器的投影（`packages/desktop/src/host/windowHostControllerService.ts` 的 `readTaskRows` / `subscribeTaskRows`），与桌面侧栏、手机同一份。
 - 会话正文：每个被订阅的会话在 Window Host 保留一份客户端镜像（`TopicWireFrameAssembler` + `applyConversationDeltas`），推给插件的是 apply 之后的整行。断档或 epoch 变化时强制快照重同步，对插件发 `reset`。
@@ -1281,7 +1281,7 @@ sessionReads（每个连接一份，换代或断开时整体释放）
   ├─ 解析会话：facade readSession({ sessionId, view: "summary" }) → 会话引用（与模型工具同一份授权，远端来源 forbidden）
   ├─ 上限：该插件的不同会话 ≤ 8、全局镜像 ≤ 32，否则 limit-exceeded
   └─ 镜像（按会话共享）
-       scope = createZCodeAgentConnectionScope(agent, { connectionId: "extension-host:<gen>", clientMode: "web-remote-replayable" })
+       scope = createCodezAgentConnectionScope(agent, { connectionId: "extension-host:<gen>", clientMode: "web-remote-replayable" })
        scope.service.onDynamicConversationFrame(工作区) ──► TopicWireFrameAssembler ──► 帧
        subscribeConversationV4({ visibility: "background" })
        snapshot 帧        ─► 替换镜像 ─► reset + 会话状态
@@ -1313,13 +1313,13 @@ sessionReads（每个连接一份，换代或断开时整体释放）
 
 ```jsonc
 "extension": {
-  "engines": { "zcode": "^1.2.0" },
+  "engines": { "codez": "^1.2.0" },
   "grants": ["sessions.write"],
   "protocols": { "sessions": 1, "rows": 4 }
 }
 ```
 
-- 授权记录只由 `extensions-service` 保存：`~/.zcode/v2/extensions/grants.json`（`{ version, plugins: { <pluginId>: { grants, consentedVersion, consentedAt, consentRevision? } } }`）。没有记录就拒绝。卸载删除记录，禁用不删。`consentRevision` 是会话档位含义的版本：低于当前值的记录要重新确认（§17.12「已有授权要重新确认」）。
+- 授权记录只由 `extensions-service` 保存：`~/.codez/v2/extensions/grants.json`（`{ version, plugins: { <pluginId>: { grants, consentedVersion, consentedAt, consentRevision? } } }`）。没有记录就拒绝。卸载删除记录，禁用不删。`consentRevision` 是会话档位含义的版本：低于当前值的记录要重新确认（§17.12「已有授权要重新确认」）。
 - 扩展进程没有授予自己权限的入口：`extension-window` 只有 call 与 subscribe。授予与撤销只走 `IExtensionsService.grant / revoke`，它不在手机远控的白名单里。
 - 未授权（用户决策）：扩展照常激活，调用会话能力报 `not-granted`。启动页「扩展」分区显示「需要授权」，点击弹授权对话框。
 - 启用确认（用户决策）：只要已有扩展持有会话权限，再启用任何带代码的扩展，也要确认一次，并说明它的代码同样能用这些权限。
@@ -1349,45 +1349,45 @@ sessionReads（每个连接一份，换代或断开时整体释放）
 
 ### 17.8 可见标识与审计
 
-- **插件发的消息**：`conversationInputSourceSchema` 加 `{ kind: "extension", pluginId }`（`zcode-protocol-v4/input-intent.ts`）；`createSession.firstInput` 加 `source`。CLI 在 `runtime/capabilities` 声明 `extensionInputSource: true`，App 用 `ZCodeAgent.supportsExtensionInputSource` 读取；不支持时 app-control 报 `unavailable`，不退化成不标。消息行复用「来自插件 X」的文案，桌面与手机都显示。CLI 契约见 [会话输入来源](../../apps/zcode-cli/docs/design/v2/conversation-input-source.md)。
+- **插件发的消息**：`conversationInputSourceSchema` 加 `{ kind: "extension", pluginId }`（`codez-protocol-v4/input-intent.ts`）；`createSession.firstInput` 加 `source`。CLI 在 `runtime/capabilities` 声明 `extensionInputSource: true`，App 用 `CodezAgent.supportsExtensionInputSource` 读取；不支持时 app-control 报 `unavailable`，不退化成不标。消息行复用「来自插件 X」的文案，桌面与手机都显示。CLI 契约见 [会话输入来源](../../apps/codez-cli/docs/design/v2/conversation-input-source.md)。
 - **插件建的会话**：放在插件项目里（§17.4），项目名就是标识。
 - **改名、置顶、归档、中断、打开**：进审计日志，插件详情页「最近操作」可见。
-- **审计日志**：`~/.zcode/v2/extensions/audit/<日期>.jsonl`，由 `extensions-service` 写，保留 30 天。写操作每次一行；读操作只记订阅的开始与结束（debug 级进普通日志）。字段：`v, ts, gen, pluginId, capability, grant, requestId, commandId, target{sourceServerId, sessionId, projectId}, outcome, errorCode, promptChars, durationMs`。不写提示词、标题、正文、路径、设置值、错误原文。pluginId 是扩展进程自报的，审计只用于归因（§7.3）。
+- **审计日志**：`~/.codez/v2/extensions/audit/<日期>.jsonl`，由 `extensions-service` 写，保留 30 天。写操作每次一行；读操作只记订阅的开始与结束（debug 级进普通日志）。字段：`v, ts, gen, pluginId, capability, grant, requestId, commandId, target{sourceServerId, sessionId, projectId}, outcome, errorCode, promptChars, durationMs`。不写提示词、标题、正文、路径、设置值、错误原文。pluginId 是扩展进程自报的，审计只用于归因（§7.3）。
   - 实现（P3a）：日期是本机日期；写入串行追加（0600）；日期变化后的第一次写清理 30 天以前的文件，不用定时器。授权与撤销各记一行：`capability` 为 `grants.grant` / `grants.revoke`，`grant` 为最高档位，`gen` 为当时连接的扩展进程代际（没有时为 `null`），`outcome: "ok"`。卸载删除记录也记 `grants.revoke`。四个读动作的调用只在普通日志里按 debug 记一行（不含入参）。
   - 实现（P3c-1）：八个写动作每次调用一行，在调用结束时写（成功或失败都写）。`capability` 为能力 id，`grant` 为 `sessions.write`，`gen` 为调用到达的代际。`requestId` 是这次实际用的值（插件传的或扩展进程补的）；`commandId` 只在结果带 `operation` 时记（`createSession`、`sendToSession`），其余动作的命令 id 由 app-control 派生，不复算。`target` 记 `sourceServerId`、`sessionId`（入参的 `sessionId`、入参引用或结果里的会话）、`projectId`（`createSession` 的项目或会话引用里的项目）。`promptChars` 只在 `createSession` / `sendToSession` 记提示词长度。`outcome`：调用抛错为 `error`，`errorCode` 是扩展错误码；正常返回但结果是 `rejected` / `unknown`（`status`、`creation` 或 `admission`）也记 `error`，`errorCode` 为 `result.rejected` / `result.unknown`；其余为 `ok`。结果里的 `reason` 可能是自由文本，不记。插件详情页「最近操作」把八个写动作显示成动作名（如「重命名会话」），失败加「失败」。
 
-### 17.9 类型包 `@zcode-dev/plugin-api`
+### 17.9 类型包 `@codez-dev/plugin-api`
 
 放 `packages/plugin-api/`，只有 `export type`，全部从协议模块转出，不手写第二份。P3 只在仓库内使用，发布到 npm 放到 P4。
 
-> 发布（设计，2026-11-06）：发布名改为 `@zcode-dev/plugin-api`（用户决策：`@zcode` 已被占用），由用户手动发布。版本规则、市场目录的版本门槛与示例插件迁到市场仓库，见[插件发布](./plugin-publishing.md)。
+> 发布（设计，2026-11-06）：发布名改为 `@codez-dev/plugin-api`（用户决策：`@codez` 已被占用），由用户手动发布。版本规则、市场目录的版本门槛与示例插件迁到市场仓库，见[插件发布](./plugin-publishing.md)。
 
 | 子入口                              | 内容                                                   | 来源                              |
 | ----------------------------------- | ------------------------------------------------------ | --------------------------------- |
-| `@zcode-dev/plugin-api`             | ExtensionContext、Disposable、作用域、视图类型、错误码 | `@zcode/shared/extension-host`    |
-| `@zcode-dev/plugin-api/manifest`    | 清单类型、插槽 id、target、权限档位、protocols         | 同上                              |
-| `@zcode-dev/plugin-api/sessions`    | 投影 v1、12 个动作的入参与返回                         | session-control 契约与协议模块    |
-| `@zcode-dev/plugin-api/protocol-v4` | 完整行、ContextComposition、GenerationMetrics          | `@zcode/shared/zcode-protocol-v4` |
+| `@codez-dev/plugin-api`             | ExtensionContext、Disposable、作用域、视图类型、错误码 | `@codez/shared/extension-host`    |
+| `@codez-dev/plugin-api/manifest`    | 清单类型、插槽 id、target、权限档位、protocols         | 同上                              |
+| `@codez-dev/plugin-api/sessions`    | 投影 v1、12 个动作的入参与返回                         | session-control 契约与协议模块    |
+| `@codez-dev/plugin-api/protocol-v4` | 完整行、ContextComposition、GenerationMetrics          | `@codez/shared/codez-protocol-v4` |
 
 - `package.json` 的 version 等于 `EXTENSION_API_VERSION`，工程测试钉住两者相等。
 - 按 §4 登记为 managed 模块。context-inspector 改从它导入。
 
 实现（P3d）：
 
-- **发布**（2026-11-07 起，见[插件发布](./plugin-publishing.md) §5）：包名 `@zcode-dev/plugin-api`，去掉 `private`，Apache-2.0，由用户手动发布。此前（2026-11-05）的决策是 `private: true`、暂不发布。工程测试 `packages/plugin-api/test/version.test.ts` 钉住版本与 `EXTENSION_API_VERSION` 相等。
-- **只转出**：四个入口都只有 `export type { … } from`，来源只有 `@zcode/shared/extension-host` 与 `@zcode/shared/zcode-protocol-v4`。session-control 的会话引用类型（`AppSessionRef`、`AppProjectRef`、`AppWorkspaceRef`）由 extension-host-protocol 转出，类型包不直接依赖 session-control。运行时的值（常量、类、函数）不导出：`ExtensionError` 只导出类型（按 `code` 区分错误），上限常量见本文。
+- **发布**（2026-11-07 起，见[插件发布](./plugin-publishing.md) §5）：包名 `@codez-dev/plugin-api`，去掉 `private`，Apache-2.0，由用户手动发布。此前（2026-11-05）的决策是 `private: true`、暂不发布。工程测试 `packages/plugin-api/test/version.test.ts` 钉住版本与 `EXTENSION_API_VERSION` 相等。
+- **只转出**：四个入口都只有 `export type { … } from`，来源只有 `@codez/shared/extension-host` 与 `@codez/shared/codez-protocol-v4`。session-control 的会话引用类型（`AppSessionRef`、`AppProjectRef`、`AppWorkspaceRef`）由 extension-host-protocol 转出，类型包不直接依赖 session-control。运行时的值（常量、类、函数）不导出：`ExtensionError` 只导出类型（按 `code` 区分错误），上限常量见本文。
 - **协议补的推导类型**（定义在 extension-host-protocol，仍是唯一定义）：
   - `ExtensionCapabilityInput<K>` / `ExtensionCapabilityOutput<K>`：能力 K 在 ctx 上的入参与返回（call 的返回值、subscribe 的事件），与 ctx 成员同一份推导。所以带请求身份的写动作里 `requestId` 是可选的，与 ctx 一致；session-control 的 `App*Input` 里它是必填，不能直接给插件用。
   - `SessionAction`、`SessionActionInput<A>`、`SessionActionResult<A>`：`ctx.sessions` 上的 call 动作（12 个 facade 动作与 `readRows`），如 `SessionActionInput<"createSession">`。用泛型而不是 26 个具名类型，新增动作时不用改类型包。
   - `SessionRow`（完整行，含占位行）、`ManifestSlotTarget`、`ManifestSlots`（清单顶层 `slots`）。
 - **四个入口的内容**：
-  - `@zcode-dev/plugin-api`：`ExtensionContext`、`ExtensionLocalContext`、`ExtensionModule`、`CommandCall`、`Disposable`、订阅错误监听；`CapabilityId` 与上面两个泛型；`ExtensionError`、`ExtensionErrorCode`；作用域（`ScopeInput`、`ResolvedScope`、`WorkspaceRef`）与插槽值（`SlotItemPatch`、`SlotValue`、`SlotBadge`）；视图（`ViewDefinition`、`ViewServerFactory`、`ViewInstance`、`ViewCall`、`ViewTool`、`ViewResource`、`McpServerLike`、`JsonSchemaObject`、`ExtensionViewInput`）；各能力的值类型（工作区会话、草稿、生成速率、环境、设置、模型、通知、`@` 条目）。
+  - `@codez-dev/plugin-api`：`ExtensionContext`、`ExtensionLocalContext`、`ExtensionModule`、`CommandCall`、`Disposable`、订阅错误监听；`CapabilityId` 与上面两个泛型；`ExtensionError`、`ExtensionErrorCode`；作用域（`ScopeInput`、`ResolvedScope`、`WorkspaceRef`）与插槽值（`SlotItemPatch`、`SlotValue`、`SlotBadge`）；视图（`ViewDefinition`、`ViewServerFactory`、`ViewInstance`、`ViewCall`、`ViewTool`、`ViewResource`、`McpServerLike`、`JsonSchemaObject`、`ExtensionViewInput`）；各能力的值类型（工作区会话、草稿、生成速率、环境、设置、模型、通知、`@` 条目）。
   - `/manifest`：`ExtensionManifest`（清单的 `extension` 键）、`ManifestSlots`、`ManifestSlotItem`、`ManifestSlotTarget`、`ExtensionSlotId`、`SlotTargetKind`、`ExtensionGrant`、`ExtensionProtocols`、`ExtensionProtocolName`、`ExtensionViewScope`、`LocalizedText`。
   - `/sessions`：三个会话动作泛型；列表、会话状态、行三种事件；`SessionListRow`、`SessionRow`、`SessionTargetInput`、`SessionReadRowsInput`、`SessionReadRowsResult`；三个会话引用类型。
   - `/protocol-v4`：`ConversationRow`、`WireConversationRow`、`UnreadableConversationRow`、各行类型与 `ConversationRowKind`、`ConversationInputSource`；`ContextComposition` 及其类别、条目、阶段等类型；`GenerationMetrics`（上表把它列在这里；它定义在 extension-host-protocol，根入口也导出同一个类型）。
 - **两种用法**：
   - 仓库内（2026-11-07 以前的 context-inspector、Jarvis；两个示例迁到市场仓库后，仓库内没有消费方）：`exports` 指向 `src/*.ts`，不需要先构建。示例插件不在 pnpm workspace 里，所以用 tsconfig 的 `paths` 指到类型包源码，并引用 `packages/plugin-api` 项目（与以前直接引用 shared 相同）。类型包自己也用 `paths` 解析两个协议入口：给 workspace 包写 `workspace:*` 依赖会让 `pnpm pack` 失败（shared、session-control 没有 version）。
-  - 仓库外：`pnpm --filter @zcode-dev/plugin-api build` 用仓库已有的 tsup（`dts` 内部用 rollup-plugin-dts）把协议模块与 session-control 的声明内联进 `dist/*.d.ts`，共用部分拆成 chunk，只留 `zod` 一个外部依赖（类型里有 zod schema 的推导，所以 `zod` 是 `dependencies`，版本与 shared 相同）。`publishConfig.exports` 指向 `dist`，`pnpm pack` 产出的包只含 `dist`。没有另引入 api-extractor 等工具。
+  - 仓库外：`pnpm --filter @codez-dev/plugin-api build` 用仓库已有的 tsup（`dts` 内部用 rollup-plugin-dts）把协议模块与 session-control 的声明内联进 `dist/*.d.ts`，共用部分拆成 chunk，只留 `zod` 一个外部依赖（类型里有 zod schema 的推导，所以 `zod` 是 `dependencies`，版本与 shared 相同）。`publishConfig.exports` 指向 `dist`，`pnpm pack` 产出的包只含 `dist`。没有另引入 api-extractor 等工具。
 - **开源导出**：类型包与示例插件不含官方版本的安全校验、内部地址或个人信息，按开源规则（闭源树 − 排除项）照常导出，不改导出配置。
 
 ### 17.10 分步与验收
@@ -1397,7 +1397,7 @@ sessionReads（每个连接一份，换代或断开时整体释放）
 1. **P3a 授权骨架与 facade 读**（已完成，PLM-EXT-P3A）：档位、`grants`/`protocols`、新错误码、订阅带入参、`grants.json`、授权对话框、启用确认、审计、`session-control` 的客户端调用方与 `bindClient`、四个读档动作。E2E：未授权时调用报 `not-granted`，启动页显示「需要授权」；授权后能列出会话；撤销后又报 `not-granted`；审计文件有记录且没有正文；已有授权时启用第二个扩展会弹确认。
 2. **P3b 读连接**（已完成，PLM-EXT-P3B）：进程内作用域、列表泵、会话镜像、三个订阅与 `readRows`、上限。E2E：在界面上发消息，测试插件的视图实时出现对应行；杀掉扩展进程后自动 `reset`；第 9 个订阅报 `limit-exceeded`；日志有 `extension-host:<gen>` 连接与退订。同一步补上 §17.7 从插件商店安装后、激活前的确认（P3a 只做了设置页启用时的确认）。
 3. **P3c 写、插件项目与标识**（已完成。P3c-1，PLM-EXT-P3C：八个写动作、来源注入与拒绝伪造、消息标识、写审计、H10；P3c-2，PLM-EXT-P3C2：插件项目与 H7）：CLI 先写 spec 与测试（新来源、能力位）；8 个写动作；插件项目；消息标识。E2E：插件新建会话出现在插件项目里；插件发的消息在桌面与手机上都显示「来自插件 X」；同一个 `requestId` 重试只出现一条消息；中断成功；改名、归档、置顶、打开出现在「最近操作」。
-4. **P3d 类型包**（已完成：`@zcode-dev/plugin-api`，见 §17.9 实现说明；重跑了 PLM-EXT-2A、2B、2C、P3A、P3B、P3C、JARVISHOST）：四个子入口；context-inspector 改用它；根目录 typecheck 通过；重跑 PLM-EXT 全部用例。
+4. **P3d 类型包**（已完成：`@codez-dev/plugin-api`，见 §17.9 实现说明；重跑了 PLM-EXT-2A、2B、2C、P3A、P3B、P3C、JARVISHOST）：四个子入口；context-inspector 改用它；根目录 typecheck 通过；重跑 PLM-EXT 全部用例。
 5. **P3e 回答审批、提问与切换权限模式**（§17.12）：三个能力、`createSession.mode`、`sessions.fullAccess`、授权原文、审计字段；Jarvis 的内联审批与模式切换。E2E：PLM-EXT-P3E、PLM-JARVIS-2（2026-11-07 随示例迁出删除，宿主断言移到 P3E）。
 
 ### 17.11 风险
@@ -1405,7 +1405,7 @@ sessionReads（每个连接一份，换代或断开时整体释放）
 - §7.3：任何扩展都能用已授予任一扩展的权限，归因也能被冒充。授权界面已写明。
 - facade 没有审批。目标会话开着免确认模式时，插件一条消息就能让 Agent 执行工具。授权界面已写明。
 - P3e（§17.12）之后，持有 `sessions.write` 的扩展能替用户回答插件项目里的审批；持有 `sessions.fullAccess` 的扩展能把这些会话切到完全访问。按 §7.3，任何已启用的扩展在技术上都能这样做。授权界面已写明；范围只到插件项目，用户平时工作的会话不受影响。
-- 新来源的兼容（P3c 已验证）：写入一侧靠能力位拦住（旧 CLI 对 `sendText.source` 报 `proto.invalidPayload`，对 `createSession.firstInput.source` 静默剥掉）。读取一侧默认没有运行中的版本偏斜（CLI 随包、远端默认同版本、手机页面按版本发布），只在装回旧 App 时出现：旧 CLI 退回不校验的旧种子，来源原样进入行；有逐行降级的旧 App 把这一行显示成占位行，更早的 App 整个会话 `contentRejected`。排队项不跨进程保留。没有新增协商机制。决策（用户）：不处理回退，后果与考虑过的缓解见 [会话输入来源 §8](../../apps/zcode-cli/docs/design/v2/conversation-input-source.md#8-兼容旧-app-读到新来源)。
+- 新来源的兼容（P3c 已验证）：写入一侧靠能力位拦住（旧 CLI 对 `sendText.source` 报 `proto.invalidPayload`，对 `createSession.firstInput.source` 静默剥掉）。读取一侧默认没有运行中的版本偏斜（CLI 随包、远端默认同版本、手机页面按版本发布），只在装回旧 App 时出现：旧 CLI 退回不校验的旧种子，来源原样进入行；有逐行降级的旧 App 把这一行显示成占位行，更早的 App 整个会话 `contentRejected`。排队项不跨进程保留。没有新增协商机制。决策（用户）：不处理回退，后果与考虑过的缓解见 [会话输入来源 §8](../../apps/codez-cli/docs/design/v2/conversation-input-source.md#8-兼容旧-app-读到新来源)。
 - 订阅冷会话会拉起 CLI，镜像占 Window Host 内存。靠上限控制。
 - wait 最长 300 秒，跨 RPC 不能取消，只在换代时中止。
 
@@ -1451,7 +1451,7 @@ Window Host 会话镜像 ──► onDidChangeInteractions ──► 插件     
 - `answer` 是 v4 `resolveInteraction.answer`（`optionId?`、`freeText?`、`action?`、`content?`），原样转给 CLI。网关先按镜像里的当前交互检查：交互不在当前快照里 → 不发命令，返回 `{ status: "stale" }`（已被宿主或别的客户端回答、已撤销或已结束）；`kind` 不是这两种 → `forbidden`；`permission` 的 `optionId` 必须是该交互 `options` 或 `fullAccessOption` 里的 id，否则 `invalid-input`。
 - **先到先得**：网关检查与 CLI 收到命令之间，宿主也可能回答了同一个交互。CLI 对未命中的应答幂等收下（`interaction-background.ts`），所以这时插件拿到 `accepted`，但这次应答没有生效。哪一方的应答生效，以订阅里交互消失时的会话状态为准（工具行的结果、模式），插件不要用 `accepted` 判断「是我批准的」。
 - `setPermissionMode`：当前 `mode` 已经是目标值时返回 `{ status: "unchanged" }`，不发命令；否则发 `switchCollaborationMode`，返回 `accepted`，新模式经订阅到达。宿主切到完全访问时弹的风险确认（`mode.yoloConfirmation`）由授权对话框的「完全访问」一行代替，插件切换时不弹。
-  - 用户决策（2026-11-06）：保持现有语义——每条输入按提交时的模式开跑，`switchCollaborationMode` 不改写已提交、排队中的输入，CLI 不改。证据：轮开始时 CLI 再应用一次这条输入的模式（`apps/zcode-cli/packages/core/src/runtime/methods/turn.ts:480`「session_persistence」→ `applySubmissionExecutionState`）；改写排队输入模式的只有授权路径（审批里选「允许并切到完全访问」，`SessionModeChanged.permissionGrant`）。所以在一条输入已提交、它的轮还没开始时切换，轮一开始模式就回到提交时的值，订阅随之收到回退（两次变化在同一帧时只收到最终值）。首轮要用别的模式用 `createSession.mode`；运行中或空闲时切换只影响之后发的消息。
+  - 用户决策（2026-11-06）：保持现有语义——每条输入按提交时的模式开跑，`switchCollaborationMode` 不改写已提交、排队中的输入，CLI 不改。证据：轮开始时 CLI 再应用一次这条输入的模式（`apps/codez-cli/packages/core/src/runtime/methods/turn.ts:480`「session_persistence」→ `applySubmissionExecutionState`）；改写排队输入模式的只有授权路径（审批里选「允许并切到完全访问」，`SessionModeChanged.permissionGrant`）。所以在一条输入已提交、它的轮还没开始时切换，轮一开始模式就回到提交时的值，订阅随之收到回退（两次变化在同一帧时只收到最终值）。首轮要用别的模式用 `createSession.mode`；运行中或空闲时切换只影响之后发的消息。
 - `createSession.mode`：只进端口、不进模型的工具面（与 §18.1 H10 的 `model` 相同，`withRequestIdentity` 的 port-only 字段）；会话类调用方带它报 `invalid_input`。新会话的首个提交按这个模式固定，缺省仍是 `build`。
 - **命令的路径**：回答与切换经扩展读连接作用域（§17.5）发 V4 命令，与手机同一个入口；信封的 `clientId` 是 `extension:<pluginId>`，`commandId` 由请求身份派生（插件传了 `requestId` 就用它，同一 `requestId` 重试是同一个命令）。没有订阅时，网关临时挂一个镜像取当前快照，用完释放（计入每插件 8 个会话的上限）。
 - **错误**：`forbidden`（不在插件项目、交互种类不开放）、`not-declared` / `not-granted`（完全访问）、`invalid-input`（选项不属于该交互）、`unavailable`（会话读不到、CLI 拒绝命令）、`cancelled` / `not-granted`（调用期间换代或撤销授权，同 §17.3）。CLI 的拒绝回执只记 `reasonCode` 进日志，扩展收到 `unavailable`。
@@ -1464,12 +1464,12 @@ Window Host 会话镜像 ──► onDidChangeInteractions ──► 插件     
 
 ## 18. P4：示例插件 Jarvis 与 GitLab
 
-> 迁移（2026-11-07，[插件发布](./plugin-publishing.md) §6）：Jarvis 源码在市场仓库 `zcode-plugins` 的 `ui-plugins/jarvis`，从插件商店安装。z-code 里的 `examples/plugins/jarvis` 与用例 PLM-JARVIS-1、PLM-JARVIS-2 已删除；它们断言的宿主能力由 fixture 用例覆盖（PLM-EXT-JARVISHOST、P3B、P3C、P3C2、P3E 等，对照表见 [覆盖矩阵](../testing/plugin-management-lifecycle-e2e-coverage-matrix.md) 的「示例插件迁出」），Jarvis 自己的页面人工验收（§6.1）。下文的 Jarvis 设计与 §18.4 的步骤记录当时的实现与证据。
+> 迁移（2026-11-07，[插件发布](./plugin-publishing.md) §6）：Jarvis 源码在市场仓库 `codez-plugins` 的 `ui-plugins/jarvis`，从插件商店安装。z-code 里的 `examples/plugins/jarvis` 与用例 PLM-JARVIS-1、PLM-JARVIS-2 已删除；它们断言的宿主能力由 fixture 用例覆盖（PLM-EXT-JARVISHOST、P3B、P3C、P3C2、P3E 等，对照表见 [覆盖矩阵](../testing/plugin-management-lifecycle-e2e-coverage-matrix.md) 的「示例插件迁出」），Jarvis 自己的页面人工验收（§6.1）。下文的 Jarvis 设计与 §18.4 的步骤记录当时的实现与证据。
 
 > 用户决策（2026-11-06）：示例插件 dot 改名为 Jarvis，插件 id 一起改成 `jarvis@inline`（清单名 `jarvis`，导航入口、视图标题与页面上显示「Jarvis」）。原因：避免与已有的「机器人」（Bots）功能混淆。接受的后果：旧 id `dot@inline` 下的本地数据（插件数据目录、人设文件、`state.json` 记的大脑、插件设置、授权记录）不迁移；改名后是一个新插件，要重新启用和授权，旧的大脑会话留在原来的 dot 项目里。宿主里按清单名显示插件的地方（授权对话框、插件列表、插件项目名、通知标题前缀）显示 `jarvis`。E2E 用例一起改名：PLM-DOT-1/2 → PLM-JARVIS-1/2，PLM-EXT-DOTHOST → PLM-EXT-JARVISHOST。
 
 > 用户决策（2026-11-05）：GitLab 给模型读、评论、批准、合并四类工具，写工具每次审批；plan 模式自动放行非破坏性 MCP 工具的现有行为保持不变；Jarvis 的系统通知单独授权、默认开；Jarvis 要的可选宿主能力（导航未读标记、从视图请求授权）都做，确认色变量（H13）不做。
-> 用户决策（2026-11-05，后续）：先做 Jarvis，GitLab 插件本体（§18.4 GitLab 第 4–9 步）往后放。Jarvis 用 TypeScript 写，类型从 `@zcode-dev/plugin-api` 导入，所以顺序是 P3b → P3c → P3d → Jarvis；当时 `@zcode-dev/plugin-api` 暂不发布到 npm（2026-11-07 起发布，见[插件发布](./plugin-publishing.md) §5）。
+> 用户决策（2026-11-05，后续）：先做 Jarvis，GitLab 插件本体（§18.4 GitLab 第 4–9 步）往后放。Jarvis 用 TypeScript 写，类型从 `@codez-dev/plugin-api` 导入，所以顺序是 P3b → P3c → P3d → Jarvis；当时 `@codez-dev/plugin-api` 暂不发布到 npm（2026-11-07 起发布，见[插件发布](./plugin-publishing.md) §5）。
 > 开发者文档推迟到 P3d 之后：P3 会改 `ctx`、清单的权限字段与类型的导入路径。
 
 ### 18.1 宿主要补的能力
@@ -1479,12 +1479,12 @@ Window Host 会话镜像 ──► onDidChangeInteractions ──► 插件     
 | #   | 能力                                                                                                                                                                                                                                                                                                                                                        | 后端                                                                                | 谁要                         | 依赖              |
 | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------- | ----------------- |
 | H1  | `settings.update({ values?, clear? })`：只写调用方自己的插件，user 层，`grant: none`                                                                                                                                                                                                                                                                        | ① `IPluginManagementService.configurePlugin`，成功后照常触发 `settings.onDidChange` | GitLab 面板登录、Jarvis 设置 | 无                |
-| H2  | `workbench.startDraft({ text, workspace? })`：在当前或指定工作区开一个预填文字的新草稿，不自动发送                                                                                                                                                                                                                                                          | ③ Renderer，走现有的 `onCreateTask({ initialPrompt })`（插件市场「试用」同一路径）  | GitLab「用 ZCode 审查」      | 无                |
+| H2  | `workbench.startDraft({ text, workspace? })`：在当前或指定工作区开一个预填文字的新草稿，不自动发送                                                                                                                                                                                                                                                          | ③ Renderer，走现有的 `onCreateTask({ initialPrompt })`（插件市场「试用」同一路径）  | GitLab「用 Codez 审查」      | 无                |
 | H3  | 扩展进程的网络跟随设置页：代理、No Proxy、自定义 CA 用与 CLI 相同的翻译注入扩展进程环境，只认设置页，留空直连（与 CLI 一致）；宿主在扩展进程启动时打开环境代理一次（插件不能自己调，它是全局的）。改设置后经「重新加载扩展」生效                                                                                                                            | Main 监管器                                                                         | GitLab（自建实例、自签证书） | 无                |
 | H4  | 图标白名单加 `git-pull-request` 等 GitLab 用到的图标，DESIGN.md 同步                                                                                                                                                                                                                                                                                        | `extension-slots`                                                                   | GitLab                       | 无                |
 | H5  | 视图声明 `scope: "app"`：标签不随焦点会话或工作区重建实例，跨工作区保留                                                                                                                                                                                                                                                                                     | `extension-host-protocol` + `extension-slots`                                       | Jarvis                       | 无                |
-| H6  | `ctx.extension.dataPath`：插件数据目录（CLI 已有的 `~/.zcode/cli/plugins/data/<id>/`）                                                                                                                                                                                                                                                                      | `extension-host-protocol` + `extensions-service`                                    | Jarvis                       | 无                |
-| H7  | 插件项目（§17.4）的唯一目录（主要目录）= `dataPath/workspace`，建项目时就给出，不走 0 目录项目自动建 `~/.zcode/workspace/<时间戳>` 的规则；扩展可以先在里面写好 `AGENTS.md` 再建会话                                                                                                                                                                        | `extensions-service`                                                                | Jarvis                       | P3c，已并入 §17.4 |
+| H6  | `ctx.extension.dataPath`：插件数据目录（CLI 已有的 `~/.codez/cli/plugins/data/<id>/`）                                                                                                                                                                                                                                                                      | `extension-host-protocol` + `extensions-service`                                    | Jarvis                       | 无                |
+| H7  | 插件项目（§17.4）的唯一目录（主要目录）= `dataPath/workspace`，建项目时就给出，不走 0 目录项目自动建 `~/.codez/workspace/<时间戳>` 的规则；扩展可以先在里面写好 `AGENTS.md` 再建会话                                                                                                                                                                        | `extensions-service`                                                                | Jarvis                       | P3c，已并入 §17.4 |
 | H8  | `notifications.show({ title ≤64, body ≤240, target?: { view } })` → `{ shown, reason? }`：清单申请 `grants: ["notifications"]`，授权对话框同意，详情页单独开关，全局通知开关优先；每插件每分钟 1 条、每天 20 条；窗口有焦点时不弹；标题由宿主加插件名前缀；不允许自定义图标、声音、按钮、回复框；点击只聚焦窗口并打开本插件已声明的视图；Web 与手机远控不弹 | ③ Renderer（检查偏好）→ 新的 preload 方法 → Main 弹出                               | Jarvis                       | P3a 的授权        |
 | H9  | `models.list()` → `[{ id: "provider/model", label, providerName }]`，过滤隐藏的 provider，`grant: none`（从 P5 提前）                                                                                                                                                                                                                                       | ① `IModelSelectionService.getView`                                                  | Jarvis 设置                  | 无                |
 | H10 | client 类调用方的 `sessions.sendToSession` 可带 `model`（模型看到的工具 schema 不变）                                                                                                                                                                                                                                                                       | session-control + app-control                                                       | Jarvis 给大脑换模型          | P3c               |
@@ -1520,7 +1520,7 @@ Window Host 会话镜像 ──► onDidChangeInteractions ──► 插件     
   - 插件被禁用：静态表里没有这个视图，标签显示「不可用」，实例释放（与其他扩展视图相同）；标签照样跟着切换工作区，直到用户关掉。
   - 标签页的 `data-extension-view-scope` 为 `app`。E2E：打开 app 视图，切换焦点会话、切换工作区再切回，实例 id 都不变。
 - **H6 `ctx.extension.dataPath`**：
-  - 路径只有一个定义：CLI 发现插件时算出的 `PluginMetadata.dataPath`（`<CLI 插件存储根>/data/<净化后的插件 id>`，与 MCP server 的 `${ZCODE_PLUGIN_DATA}` 同一个值）。CLI 的 `plugins/list` 每项多一个可选字段 `dataPath`（CLI 规格见 [插件兼容 · Storage Layout](../../apps/zcode-cli/docs/design/v2/plugin-compat.md#storage-layout)）；App 不自己拼路径。
+  - 路径只有一个定义：CLI 发现插件时算出的 `PluginMetadata.dataPath`（`<CLI 插件存储根>/data/<净化后的插件 id>`，与 MCP server 的 `${CODEZ_PLUGIN_DATA}` 同一个值）。CLI 的 `plugins/list` 每项多一个可选字段 `dataPath`（CLI 规格见 [插件兼容 · Storage Layout](../../apps/codez-cli/docs/design/v2/plugin-compat.md#storage-layout)）；App 不自己拼路径。
   - Window Host 读静态表时把它放进扩展声明（`extensionDeclarationSchema.dataPath`，只给扩展进程，不进推给 Renderer 的静态表）。
   - 扩展进程在调 `activate` 前 `mkdir -p` 这个目录，所以扩展拿到时目录已存在。声明里没有 `dataPath`（`plugins/list` 来自不报告它的旧 CLI）时激活失败，原因写明；建目录失败同样激活失败，日志只记错误码。
   - 插件卸载后由 CLI 按现有规则删除 `data` 目录（Storage Layout）；扩展进程不删。
@@ -1569,7 +1569,7 @@ Window Host 会话镜像 ──► onDidChangeInteractions ──► 插件     
 - **面板**：扩展视图（写法一），从 `nav.primary` 进入，不需要会话，远程工作区也能用。
   - 登录：页面调视图工具 `login({ baseUrl, token })`，扩展先用候选 token 调 `GET /user`，成功才 `settings.update`（H1），失败什么都不存。token 不回到页面。退出登录：`settings.update({ clear: ["token"] })`。
   - 内容：待我审查、指派给我、我建的三个列表（只看打开的 MR，每个最多 50 条）；详情（流水线、批准、可合并状态、未解决讨论数）；在浏览器打开；批准与撤销批准；发总评论；合并（只在可合并且 token 有 `api` 时可用，页面里确认 squash 与删除源分支）。描述按纯文本显示。刷新只在打开、切换、点刷新、操作完成后，不轮询。
-  - 「用 ZCode 审查」：`workbench.startDraft`（H2）开一个预填「用 gitlab-review 技能审查 <MR 链接>」的新草稿，用户自己点发送。
+  - 「用 Codez 审查」：`workbench.startDraft`（H2）开一个预填「用 gitlab-review 技能审查 <MR 链接>」的新草稿，用户自己点发送。
 - **`@` 条目**：`composer.mention`，command target，从扩展缓存的列表按 query 本地过滤，每次按键不发 API 请求。`insertText` 带 MR 编号、项目、标题与链接。
 - **网络**：MCP 服务的环境由 CLI 注入设置页的代理与 CA；扩展进程靠 H3。不提供「跳过证书校验」。
 - **打包**：照 context-inspector：TypeScript 源码、`build.mjs` 产出自包含的 `dist/extension.js`、`dist/mcp.mjs`、`dist/view.html`，`dist/` 不入 git。插件名 `gitlab`。
@@ -1577,7 +1577,7 @@ Window Host 会话镜像 ──► onDidChangeInteractions ──► 插件     
 
 ### 18.3 Jarvis
 
-**体验**：左侧导航入口（带未读标记，H11）打开右侧面板里的 Jarvis 视图（`scope: "app"`，H5，不随会话重建）。像朋友聊天，主界面只有对话与输入框；设置在 ⚙ 打开的次级面板里（聊天模型、默认权限模式、小结频率、安静时段、在 ZCode 里打开 Jarvis 的会话，以及一行说明系统通知在哪里开关）。
+**体验**：左侧导航入口（带未读标记，H11）打开右侧面板里的 Jarvis 视图（`scope: "app"`，H5，不随会话重建）。像朋友聊天，主界面只有对话与输入框；设置在 ⚙ 打开的次级面板里（聊天模型、默认权限模式、小结频率、安静时段、在 Codez 里打开 Jarvis 的会话，以及一行说明系统通知在哪里开关）。
 
 > 用户决策（2026-11-06）：
 >
@@ -1595,19 +1595,19 @@ Window Host 会话镜像 ──► onDidChangeInteractions ──► 插件     
 
 **大脑会话**：Jarvis 项目（§17.4）里一个长期会话，对话历史就是它，在宿主任务列表里可见（审批在那里确认）。
 
-- 人设写在 `dataPath/workspace/AGENTS.md`（H6、H7），扩展在建会话前写好。指令文件在上下文前缀里，压缩不会把它压掉；用户可以自己改。要点：像朋友一样短句回答；用会话工具看会话、帮用户做事；不改文件、不跑命令；不用提问工具、不进计划模式；提到会话时写 `[标题](zcode-session:sess_…)`，页面渲染成可点的标签。
+- 人设写在 `dataPath/workspace/AGENTS.md`（H6、H7），扩展在建会话前写好。指令文件在上下文前缀里，压缩不会把它压掉；用户可以自己改。要点：像朋友一样短句回答；用会话工具看会话、帮用户做事；不改文件、不跑命令；不用提问工具、不进计划模式；提到会话时写 `[标题](codez-session:sess_…)`，页面渲染成可点的标签。
 - 事实：`createSession` 不能选 agent 或传系统提示（`packages/session-control/src/contract/app.ts:62-69`），所以人设不走这两条路。
 
-**创建并管理会话**：大脑是普通 ZCode 会话，模型自带 12 个会话控制工具，只读的四个不需要审批（`needsApproval: !readOnly`）。所以扩展只做六件事：`createSession`（建大脑）、`sendToSession`（发消息，可带模型，H10）、`readRows` / `onDidChangeRows`（读回复）、`readSession(view:"summary")`（取 `executionId`）、`interruptSession`、`openSession`（带用户去宿主确认审批）；P3e 之后再加 `onDidChangeInteractions`、`resolveInteraction`、`setPermissionMode`（见下面「审批」）。需要会话写权限（清单声明 `sessions.fullAccess`，包含读写）；没授权时用 `grants.request`（H12）请宿主弹对话框。
+**创建并管理会话**：大脑是普通 Codez 会话，模型自带 12 个会话控制工具，只读的四个不需要审批（`needsApproval: !readOnly`）。所以扩展只做六件事：`createSession`（建大脑）、`sendToSession`（发消息，可带模型，H10）、`readRows` / `onDidChangeRows`（读回复）、`readSession(view:"summary")`（取 `executionId`）、`interruptSession`、`openSession`（带用户去宿主确认审批）；P3e 之后再加 `onDidChangeInteractions`、`resolveInteraction`、`setPermissionMode`（见下面「审批」）。需要会话写权限（清单声明 `sessions.fullAccess`，包含读写）；没授权时用 `grants.request`（H12）请宿主弹对话框。
 
-**审批**（P3e 之后，§17.12）：大脑会话在 Jarvis 的插件项目里，Jarvis 用 `onDidChangeInteractions` 拿到待处理的审批与提问，在 Jarvis 里直接回答；「去 ZCode 里确认」（`openSession(大脑)`）保留为次要入口。卡片随交互消失而消失，不轮询。
+**审批**（P3e 之后，§17.12）：大脑会话在 Jarvis 的插件项目里，Jarvis 用 `onDidChangeInteractions` 拿到待处理的审批与提问，在 Jarvis 里直接回答；「去 Codez 里确认」（`openSession(大脑)`）保留为次要入口。卡片随交互消失而消失，不轮询。
 
 - 审批卡片：工具摘要与该交互的选项（允许一次、始终允许本项目、拒绝；CLI 给了 `fullAccessOption` 时再显示「允许并切到完全访问」）。选项按 `kind` 用 Jarvis 自己的文字，`custom` 用 CLI 给的文字。回执回来前按钮不可用；`stale`（已在宿主里回答）不提示，卡片随快照消失。
 - 提问卡片：AskUserQuestion 的每道题（单选、多选）与一个「其他回答」输入框（与宿主的提问面板相同，总是有）；「回答」走 `answer.action: "accept"` 与 `content`（形状与宿主相同：`answers` 按问题原文，`answer_<序号>`，只有一道题时另给 `answer`；没答的题不写），「跳过」走 `decline`。别的提问（例如 MCP 要的表单）只给「去确认」。有待回答的审批或提问时，这一轮显示「等你确认」。
 - 权限模式：Jarvis 头部显示大脑会话的当前模式（变更前确认、自主模式、完全访问），可以切换；悬停提示与切换后输入框上方的一句都写明「从下一条消息起生效」（§17.12 用户决策：每条输入按提交时的模式开跑）。授权按插件整体生效：Jarvis 能读写会话时，清单里的 `sessions.fullAccess` 一定也已授予，所以完全访问一直可选。设置面板的「默认权限模式」（`default_mode`）在新建大脑时用（`createSession.mode`），已有的大脑不改。
 - 清单 `extension.grants` 为 `["sessions.fullAccess", "notifications"]`（`sessions.fullAccess` 包含读写）。
 
-**流式**：replayable 投递会推助手正文的流式文本（`zcode-protocol-v4/core.ts:47-58`），Jarvis 大约每 150ms 收到一份完整的回复行，能做出打字效果，不改宿主。页面照 context-inspector：同一时刻只有一次在途请求，期间的通知合并。
+**流式**：replayable 投递会推助手正文的流式文本（`codez-protocol-v4/core.ts:47-58`），Jarvis 大约每 150ms 收到一份完整的回复行，能做出打字效果，不改宿主。页面照 context-inspector：同一时刻只有一次在途请求，期间的通知合并。
 
 **定时小结**：扩展自己计时，只在 App 运行时生效。上次小结的时间从历史里找带 `[jarvis:digest]` 标记的行，不另存。App 启动时超期只补发一次。只把上次小结后有变化的会话写进提示词；没有变化不发，不花模型费用。页面把带标记的行画成分隔线加小结。小结到达且窗口没有焦点时，经 `notifications.show`（H8）弹系统通知，并在导航入口打未读标记。
 
@@ -1626,7 +1626,7 @@ streaming/tool ─pendingApproval─► approval［允许 / 拒绝 / 去确认�
 实现（Jarvis，当时在 `examples/plugins/jarvis/`，现在在市场仓库 `ui-plugins/jarvis`）：
 
 - **清单**：插件名 `jarvis`。`extension.grants` 为 `["sessions.write", "notifications"]`，第一版就声明通知档位，以后加小结通知时不用让用户重新授权（档位变多会回到待授权，§17.7）；`protocols` 为 `{ sessions: 1, rows: 4 }`。一个视图 `home`（`scope: "app"`，图标 `sparkles`，白名单里已有；导航入口用视图的图标），从 `nav.primary` 的一项 `home` 打开（`target: { view: "home" }`），不放启动页。`userConfig` 随 Jarvis 第 4–8 步加入（见下面「设置」），第一版没有设置面板。
-- **代码结构**：照 context-inspector（TypeScript 源码，`build.mjs` 产出自包含的 `dist/extension.js` 与 `dist/view.html`，`dist/` 不入 git；类型全部从 `@zcode-dev/plugin-api` 导入）。扩展是状态的唯一 owner：大脑会话、行窗口、本轮状态都在扩展里，页面只渲染扩展给的快照。
+- **代码结构**：照 context-inspector（TypeScript 源码，`build.mjs` 产出自包含的 `dist/extension.js` 与 `dist/view.html`，`dist/` 不入 git；类型全部从 `@codez-dev/plugin-api` 导入）。扩展是状态的唯一 owner：大脑会话、行窗口、本轮状态都在扩展里，页面只渲染扩展给的快照。
 - **页面与扩展的通信**（写法一，宿主帮手，与 context-inspector 相同）：页面订阅状态资源 `ui://<插件 id>/home#state`；扩展状态变了就 `view.notify`，页面收到 `resources/updated` 后调工具 `snapshot` 读整份快照。同一时刻只有一次在途读取，期间的通知合并成读完后的一次。页面的动作都是视图工具：`send({ text })`、`loadOlder()`、`openSession({ sessionId })`、`requestGrants()`、`retry()`。快照只带渲染要的投影（消息、工具摘要、本轮状态），不带原始行。
 - **授权**：激活时调一次 `sessions.listProjects` 探测档位，报 `not-granted` 时快照状态为 `needs-grant`，页面显示说明与「授权」按钮，点击调 `grants.request`（H12）。宿主没有授权状态事件：用户在启动页授了权，Jarvis 不会知道；但页面的「授权」按钮在已授予时不弹框、直接返回生效档位，Jarvis 随即继续。订阅以 `not-granted` 结束（授权被撤销）时同样回到 `needs-grant`。
 - **找回大脑**：大脑的会话 id 存在 `dataPath/state.json`（`{ version: 1, brainSessionId }`，原子写，只由扩展写）。不从插件项目里推断：用户可以在 Jarvis 项目里自己建任务，项目里的会话不都是大脑。会话本身仍是对话内容的唯一来源，文件只记「哪一个是大脑」。启动时有记录就订阅它的行（订阅经 facade 解析会话，与 `readSession` 同一份授权）。订阅或发送以 `forbidden` 结束（会话不再属于本机，例如已删除，见「实现（Jarvis 第 4–8 步）」的「大脑被删的信号」）时清掉记录，显示欢迎页，下一条消息建新的大脑；其余错误（`unavailable` 等）显示错误与「重试」，不清记录。
@@ -1636,7 +1636,7 @@ streaming/tool ─pendingApproval─► approval［允许 / 拒绝 / 去确认�
   ```markdown
   # Jarvis
 
-  你是 Jarvis，住在 ZCode 里的一位朋友。用户会随时来找你聊天，问问工作进展，或者请你帮忙打理 ZCode 里的会话。
+  你是 Jarvis，住在 Codez 里的一位朋友。用户会随时来找你聊天，问问工作进展，或者请你帮忙打理 Codez 里的会话。
 
   ## 说话方式
 
@@ -1647,7 +1647,7 @@ streaming/tool ─pendingApproval─► approval［允许 / 拒绝 / 去确认�
 
   - 用会话工具查看用户的会话：列出会话、读会话内容、等会话完成。
   - 帮用户在别的会话里做事：新建、分叉、发消息、中断、改名、归档、置顶、打开会话。这些操作会先请用户确认。
-  - 提到某个会话时，写成 `[会话标题](zcode-session:会话 id)`，例如 `[修复登录](zcode-session:sess_…)`，用户点一下就能打开。
+  - 提到某个会话时，写成 `[会话标题](codez-session:会话 id)`，例如 `[修复登录](codez-session:sess_…)`，用户点一下就能打开。
 
   ## 不要做的事
 
@@ -1669,7 +1669,7 @@ streaming/tool ─pendingApproval─► approval［允许 / 拒绝 / 去确认�
   - 有了这一轮的 `turnHeader` 后：`state` 为 `running` 时，有 `pendingApproval` 的 `toolCall` → `approval`；这一轮最后一行是 `inputStreaming` 或 `running` 的 `toolCall` → `tool`；有非空 `assistantText` → `streaming`；否则 `waiting`。`completedSuccess` → `idle`（done 不单独显示）；`completedInterrupted` → `interrupted`；`failed` → `error`。
   - 没有在途调用、也没有回执时（例如 App 重启后），取最后一个 `turnHeader` 套同样的规则，所以正在进行的一轮照样显示。
   - 运行中（`admitting` 到 `approval`）输入框不能发送。
-- **会话链接**：助手正文是受限的 Markdown（段落、换行、粗体、斜体、行内代码、代码块、列表、链接），不渲染 HTML，文本只经 `textContent` 写入。`zcode-session:<会话 id>` 的链接画成可点的标签，点击调视图工具 `openSession`，扩展调 `sessions.openSession({ sessionId })`。`http:` 与 `https:` 链接经页面层的 `openExternal` 在浏览器打开；其他协议的链接只显示文字。
+- **会话链接**：助手正文是受限的 Markdown（段落、换行、粗体、斜体、行内代码、代码块、列表、链接），不渲染 HTML，文本只经 `textContent` 写入。`codez-session:<会话 id>` 的链接画成可点的标签，点击调视图工具 `openSession`，扩展调 `sessions.openSession({ sessionId })`。`http:` 与 `https:` 链接经页面层的 `openExternal` 在浏览器打开；其他协议的链接只显示文字。
 - **页面文字**：中英文两套（zh-CN、en-US），按宿主下发的 `locale` 选；其他语言用英文。
 - **上限**：一条消息最长 4000 字符（与 `workbench.startDraft` 相同）；同一时刻只有一个发送在途；「更早的消息」每页 50 行。
 - **设置**（第 4–8 步）：`chat_model`（聊天模型，`providerId/modelId`，空表示用会话当前的模型；每一轮经 `sendToSession` 的 `model` 带上，H10）、`digest_interval`（小结频率）、`quiet_hours`（安静时段）。没有「新会话模型」与「系统通知」两项（用户决策，见 §18.3 开头）。
@@ -1678,19 +1678,19 @@ streaming/tool ─pendingApproval─► approval［允许 / 拒绝 / 去确认�
 
 - **快照按修订号增量读**（第一版的风险：每份快照带全部消息，流式期间每次变化都整份重读）：扩展给每条投影消息记一个版本（内容变了就记成当时的修订号），快照带 `epoch`（每次激活随机生成）、`revision`、全部消息的 id 顺序 `order` 与 `changed`。页面调 `snapshot({ since: { epoch, revision } })`：`epoch` 对得上时 `changed` 只有版本大于 `since.revision` 的消息，否则（第一次读、扩展换代）`full: true`，`changed` 是全部消息。页面按 id 保留消息，按 `order` 排列。读取仍是同一时刻只有一次在途，期间的通知合并。
 - **工具摘要**：12 个会话控制工具用中英文的一句话（如「看了看会话列表」「给会话发消息」），其他工具显示工具名；后面跟状态。
-- **审批**（第 4 步）：`toolCall` 的 `status` 为 `pendingApproval` 时，在这一行的位置画「等你确认」卡片：工具摘要、说明「去 ZCode 里确认」、按钮「去确认」。按钮调视图工具 `openSession({ sessionId: 大脑 })`，宿主打开大脑会话，用户在那里批准或拒绝。卡片只由行状态决定，行变成别的状态卡片就没了，不轮询。
+- **审批**（第 4 步）：`toolCall` 的 `status` 为 `pendingApproval` 时，在这一行的位置画「等你确认」卡片：工具摘要、说明「去 Codez 里确认」、按钮「去确认」。按钮调视图工具 `openSession({ sessionId: 大脑 })`，宿主打开大脑会话，用户在那里批准或拒绝。卡片只由行状态决定，行变成别的状态卡片就没了，不轮询。
 - **停止**（第 5 步）：运行中（`queued` 到 `approval`）发送按钮换成「停止」。视图工具 `stop` 先 `readSession({ sessionId: 大脑, view: "summary" })` 取 `executionId`，再 `interruptSession({ sessionId, expectedExecutionId })`。读不到 `executionId` 时什么都不做，返回 `not-running`。本轮的 `turnHeader` 变成 `completedInterrupted` 时显示「已停止」。
 - **错误与重试**（第 5 步）：本轮 `error` 时显示错误卡片：原因与「重试」。视图工具 `retryRound`：发送被拒（`facts.error`）时重发那次的文字（只在扩展内存里，App 重启后没有这张卡片）；本轮失败（`turnHeader` 为 `failed`）时重发这一轮用户那条输入的文字（取自行，App 重启后照样能重试）。重发走普通发送，带同样的模型。
 - **大脑被删的信号**（运行时观察，PLM-JARVIS-2 g）：用户删掉大脑任务（侧栏「删除」，Host `deleteTask`）后，已开着的行订阅不结束（会话仍在 CLI 里）；下一次 `sendToSession` 报 `forbidden`（app-control 在项目树里找不到这个任务），新的订阅走同一个解析，同样是 `forbidden`。Jarvis 只在 `forbidden` 时忘掉大脑（清 `state.json`），页面回到欢迎页，这次的文字留在输入框，提示「之前的对话已经不在了，再发一次，就从头开始新的对话」，用户再发一次就建新的大脑。`unavailable` 等其他错误只显示错误与「重试」，不清记录。
 - **小结**（第 6 步）：
-  - 提示词第一行是标记 `[jarvis:digest]`，之后是说明与变化的会话列表（每行 `[标题](zcode-session:id)`、状态、更新时间）。语言跟宿主的 `locale`（`env.get`）。只经 `sendToSession` 发给大脑，带聊天模型。
+  - 提示词第一行是标记 `[jarvis:digest]`，之后是说明与变化的会话列表（每行 `[标题](codez-session:id)`、状态、更新时间）。语言跟宿主的 `locale`（`env.get`）。只经 `sendToSession` 发给大脑，带聊天模型。
   - 投影：`origin` 为 `realUser` 且文字以标记开头的 `userInput` 画成分隔线「小结 · 时间」，不画用户气泡；同一轮的 Jarvis 回复带小结样式。
   - 上次小结的时间：窗口里最后一条标记行的 `createdAt`。窗口里没有、上面还有更早的行时，向上用 `readRows`（每页 200 行，最多 10 页）只找标记行，不并进窗口；都没有就当作从没小结过。这是从历史现算的，不另存。
   - 变化的会话：`listSessions({ limit: 200 })`（不含归档）里 `updatedAt` 晚于上次小结的会话，去掉大脑自己，最多 30 个。从没小结过时取最近一个小结周期内（`digest_interval`，为 0 时取 24 小时）更新过的。一个都没有就不发，不花模型费用；手动触发时页面提示「没有新变化」。
   - 定时：扩展自己的定时器，只在 App 运行时生效。下次时间 = max(上次小结, 上次检查) + `digest_interval` 小时；两者都没有时从读到过的大脑最早一行算，所以新建的大脑不会马上发小结，很久以前就有、从没小结过的大脑已经超期。`digest_interval` 为 0 时不定时。到点时在安静时段里就推到安静时段结束；大脑正在运行就等这一轮结束再发。App 启动时已经超期，就只补发一次（发完或检查过后按新的时间算）。上次检查的时间只在内存里，扩展换代后从上次小结重新算。扩展停用时清掉定时器。
   - 手动：大脑存在、本轮空闲时，输入框上方有「现在总结一下」按钮，调视图工具 `digestNow`，与定时走同一条路径（不受安静时段限制）。
 - **通知与未读**（第 7 步）：小结这一轮完成（这次发送回执的 `commandId` 对应的 `turnHeader` 变成 `completedSuccess`）时，不在安静时段就调 `notifications.show({ title: "小结" / "Digest", body: 小结正文的纯文字前 240 字, target: { view: "home" } })`，宿主决定弹不弹（窗口在前台、开关关闭、限流都由宿主判断，Jarvis 只记 `reason`）。这时没有打开的 Jarvis 视图，就 `slots.update("home", { badge: "dot" })`；打开视图时清除。只认在途的那次小结：扩展换代或 App 重启后，之前在途的小结不再通知。
-- **设置面板**（第 8 步）：页面右上的 ⚙ 打开次级面板：聊天模型（`models.list` 的列表，加「跟随会话」，即空值）、小结频率（关闭、1、2、4、8、24 小时）、安静时段（开始与结束时间，可以都不填）、按钮「在 ZCode 里打开 Jarvis 的会话」（大脑存在时）。保存调视图工具 `saveSettings`，扩展调 `settings.update`，值来自 `settings.get` 与 `settings.onDidChange`（唯一来源是插件设置，宿主的插件设置页也能改同样三个键）。之后每一轮的 `sendToSession` 都带 `chat_model`（H10 只作用于这一条输入）。
+- **设置面板**（第 8 步）：页面右上的 ⚙ 打开次级面板：聊天模型（`models.list` 的列表，加「跟随会话」，即空值）、小结频率（关闭、1、2、4、8、24 小时）、安静时段（开始与结束时间，可以都不填）、按钮「在 Codez 里打开 Jarvis 的会话」（大脑存在时）。保存调视图工具 `saveSettings`，扩展调 `settings.update`，值来自 `settings.get` 与 `settings.onDidChange`（唯一来源是插件设置，宿主的插件设置页也能改同样三个键）。之后每一轮的 `sendToSession` 都带 `chat_model`（H10 只作用于这一条输入）。
   - `userConfig`：`chat_model`（string，默认空）、`digest_interval`（number，小时，默认 4，0 表示关闭，0–24）、`quiet_hours`（string，`HH:MM-HH:MM`，默认空，可以跨午夜）。
   - 面板最后一行文字：系统通知在宿主插件详情页的「权限」里开关，总开关是设置里的「任务通知」。没有开关控件，Jarvis 不保存通知开关（用户决策）。没有「新会话模型」（用户决策）。
 
@@ -1706,7 +1706,7 @@ streaming/tool ─pendingApproval─► approval［允许 / 拒绝 / 去确认�
 4. 插件骨架、客户端、模拟服务、面板登录与退出：错误 token 显示 401 且什么都不存；正确 token 显示列表；退出后清空。
 5. 面板列表、详情与操作：批准、评论、合并（带 sha 与确认）；只读 token 时写按钮禁用；409 提示刷新。
 6. MCP 工具与 skill：没登录时没有工具；登录后新会话里模型读 MR 写出审查；同意后调评论工具，弹审批，批准后模拟服务收到评论，拒绝后没有任何写请求；合并工具在 plan 模式下也询问。
-7. 「用 ZCode 审查」按钮：草稿已预填，发送后走回放完成审查。
+7. 「用 Codez 审查」按钮：草稿已预填，发送后走回放完成审查。
 8. `@` 条目：分组出现，选中后发出的文本就是 `insertText`。
 9. 自建实例自签证书、README、截图（深浅主题、中英文）。
 

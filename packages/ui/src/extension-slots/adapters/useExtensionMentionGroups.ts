@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { ZCODE_PLUGIN_MENTION_ERROR_CODES } from "@zcode/shared";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { CODEZ_PLUGIN_MENTION_ERROR_CODES } from "@codez/shared";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { resolveLocalizedText } from "@/extension-slots/domain/slotSelectors.js";
 import { useComposerMentionSlot } from "@/extension-slots/adapters/useComposerMentionSlot.js";
 import type { ComposerMentionSlotProps } from "@/extension-slots/contract.js";
@@ -16,7 +16,7 @@ import type { MentionItem } from "@/mentions/mentionTypes.js";
 export function useExtensionMentionGroups(
   props: ComposerMentionSlotProps,
 ): MentionResultGroup<MentionItem>[] {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const groups = useComposerMentionSlot(props);
   return useMemo(
     () =>
@@ -51,7 +51,7 @@ export function useExtensionMentionGroups(
               : group.state === "error"
                 ? intl.formatMessage({
                     id:
-                      group.errorCode === ZCODE_PLUGIN_MENTION_ERROR_CODES.toolDenied
+                      group.errorCode === CODEZ_PLUGIN_MENTION_ERROR_CODES.toolDenied
                         ? "extensions.mention.denied"
                         : "extensions.mention.failed",
                   })

@@ -1,11 +1,11 @@
-import { NodePersonalProviderConfigRepository } from "@zcode/provider-node";
+import { NodePersonalProviderConfigRepository } from "@codez/provider-node";
 import { getE2EAppDataPaths, waitForWorkspaceApp } from "./desktop-app.js";
 import { reloadElectronSessionSafely } from "./e2e-electron-reload.js";
 import { flushElectronStorageData } from "./e2e-electron-storage.js";
 import { skipOccupationOnboardingIfPresent } from "./occupation-onboarding.js";
 
 const paths = getE2EAppDataPaths();
-const MODEL_SELECTION_RECENT_KEY_PREFIX = "zcode-composer-recent:v2:";
+const MODEL_SELECTION_RECENT_KEY_PREFIX = "codez-composer-recent:v2:";
 let retainedRestartUserDataDir: string | null = null;
 
 export interface ModelProviderRestartOptions {
@@ -76,10 +76,10 @@ export async function restartIntoWorkspaceRestoringPreferences(
       Object.fromEntries(
         Object.entries(window.localStorage).filter(
           ([key]) =>
-            key.startsWith("zcode-last-agent-") ||
+            key.startsWith("codez-last-agent-") ||
             // 旧 helper 遗漏项目 Recent 与导航映射，重启后播种值不再属于当前作用域。
             key.startsWith(modelSelectionRecentKeyPrefix) ||
-            key.startsWith("zcode-composer-workspace-scope:v1:"),
+            key.startsWith("codez-composer-workspace-scope:v1:"),
         ),
       ),
     MODEL_SELECTION_RECENT_KEY_PREFIX,

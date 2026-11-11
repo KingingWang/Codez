@@ -3,8 +3,8 @@
 ## 目标
 
 Share 落地页单独构建并发布为 nginx 静态镜像，不和手机远控 `/remote` 镜像或
-Deployment 共用。Jenkins Job 通过 `ZCODE_ENV=test|production` 选择构建时注入的
-ZCode API/OAuth endpoint；页面入口为 `/cn/share`（中文）或 `/share`（英文）。
+Deployment 共用。Jenkins Job 通过 `CODEZ_ENV=test|production` 选择构建时注入的
+Codez API/OAuth endpoint；页面入口为 `/cn/share`（中文）或 `/share`（英文）。
 
 ## 发布链路
 
@@ -19,7 +19,7 @@ Jenkins checkout z-code
 ```
 
 Jenkins 不把 API token 或 Docker 密码放入 Docker ARG、镜像标签、构建上下文或日志。
-Share 构建只安装 `@zcode/web-share` 的轻量依赖，并使用仓库锁文件保证渲染依赖可复现；
+Share 构建只安装 `@codez/web-share` 的轻量依赖，并使用仓库锁文件保证渲染依赖可复现；
 过滤安装不会把完整 Web/Remote 的 CUA 依赖带入闭包，也不需要 CUA Git token。运行时镜像只有
 nginx 和静态产物，material-icons 从 `packages/web/public` 一并复制。
 
@@ -29,10 +29,10 @@ nginx 和静态产物，material-icons 从 `packages/web/public` 一并复制。
 该模板包含 `buildkit` 和 `kubectl` 容器。Pipeline 默认配置面向 staging：
 
 - registry：`openwebui-hk-registry-vpc.cn-hongkong.cr.aliyuncs.com/glm-chat`
-- 镜像：`staging-zcode-conversation-share`
-- Deployment 与容器：`staging-zcode-conversation-share`
-- namespace/context：`zcode` / `openwebui`
-- `ZCODE_ENV=test`，构建 endpoint 为 `https://zcode.z.ai`
+- 镜像：`staging-codez-conversation-share`
+- Deployment 与容器：`staging-codez-conversation-share`
+- namespace/context：`codez` / `openwebui`
+- `CODEZ_ENV=test`，构建 endpoint 为 `https://zcode.z.ai`
 
 可通过 Pipeline 参数切换 `production`，并覆盖镜像名、Deployment 名和容器名。Git 仓库
 credential 沿用 remote Pipeline 的值；Share 不需要 CUA credential。share 专属的镜像和
@@ -44,8 +44,8 @@ Pipeline 会浅克隆 `BRANCH_TO_BUILD`，以 `<clean-branch>-<commit sha 前 8 
 
 ```text
 kubectl set image deployment/<DEPLOYMENT_NAME>
-  <CONTAINER_NAME>=<REGISTRY>/<IMAGE_NAME>:<tag> -n zcode --context openwebui
-kubectl rollout status deployment/<DEPLOYMENT_NAME> -n zcode --context openwebui --timeout=4m
+  <CONTAINER_NAME>=<REGISTRY>/<IMAGE_NAME>:<tag> -n codez --context openwebui
+kubectl rollout status deployment/<DEPLOYMENT_NAME> -n codez --context openwebui --timeout=4m
 ```
 
 ## 验收路径

@@ -1,4 +1,4 @@
-import { createSystemCredentialCipher } from "@zcode/shared/credential-security";
+import { createSystemCredentialCipher } from "@codez/shared/credential-security";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -8,12 +8,12 @@ import {
   OAUTH_SESSION_REVISION_KEY,
   type ProviderProvisioningCredentialEntry,
   type ProviderProvisioningEnvelope,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type {
   PersonalProviderConfigRepository,
   ProviderConfigLayerSnapshot,
-} from "@zcode/provider";
-import { decodeProviderConfigFile, encodeProviderConfigFile } from "@zcode/provider-node";
+} from "@codez/provider";
+import { decodeProviderConfigFile, encodeProviderConfigFile } from "@codez/provider-node";
 import { type CredentialCipherProvider } from "../credential/providers/credentialCipherProvider.js";
 import type { ISettingService } from "../setting/setting.js";
 
@@ -26,7 +26,7 @@ export const PROVIDER_PROVISIONING_LEGACY_OAUTH_CREDENTIAL_KEYS = [
   "oauth:bigmodel:access_token",
   "oauth:bigmodel:refresh_token",
   "oauth:bigmodel:user_info",
-  "zcodejwttoken",
+  "codezjwttoken",
 ] as const;
 
 /** v3 的 OAuth 会话组；旧信封不允许声明新增字段。 */

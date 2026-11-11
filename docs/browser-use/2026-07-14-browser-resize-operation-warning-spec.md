@@ -19,7 +19,7 @@
 | 1     | 提示形式         | 接受面板顶部、自动消失、不中断操作           | 使用弱提示，不要求确认                                    | no               |
 | 1     | 连续 resize 去重 | 接受每次 active 周期最多一次                 | 连续拖拽不会刷新或堆叠提示                                | no               |
 | 2     | 提示不够明显     | 确认提示期间让浏览器页面整体变暗             | 仅网页内容降低亮度，提示使用 warning 语义；地址栏不变暗   | no               |
-| 3     | 全块 warning 样式与 ZCode 不搭 | 保持明显，但回归 ZCode 视觉系统 | 使用中性 popover、warning 局部强调和 `shadow-md`；网页亮度为 0.88 | no |
+| 3     | 全块 warning 样式与 Codez 不搭 | 保持明显，但回归 Codez 视觉系统 | 使用中性 popover、warning 局部强调和 `shadow-md`；网页亮度为 0.88 | no |
 | 4     | 模型主动打开或改变浏览器尺寸是否提示 | 不应该提示“浏览器尺寸发生变化，可能影响当前自动操作” | Agent new/show/activate 与 viewport set/reset 静默；用户及外部布局 resize 仍提示 | no |
 | 5     | Browser pane 已可见时，模型 `newTab` 完成后初始化布局继续收敛是否提示 | 仍属于模型主动打开 Browser，不应提示 | main 在真实 tab identity 解析后随 operation 事件显式标记布局基线重建；不能只依赖 `isVisible` 变化 | no |
 | 6     | operation marker 后多帧异步布局是否只忽略第一帧 | 仍然不应提示 | marker 开启有界布局稳定期；稳定期内每次有效 observation 都更新 baseline 并延长短暂 quiet window，稳定后再恢复用户/外部 resize 告警 | no |

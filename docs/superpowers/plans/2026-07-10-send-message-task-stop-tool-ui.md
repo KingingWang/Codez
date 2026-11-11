@@ -4,7 +4,7 @@
 
 **Goal:** 为 `SendMessage` 和 `TaskStop` 增加与现有 ToolCall 体系一致的紧凑摘要和结构化详情，彻底避免 fallback raw JSON 展示。
 
-**Architecture:** 在 `@zcode/shared` 固定 canonical tool name 到 presentation family 的映射，UI 的 `resolveToolCallRenderer` 只按 family 路由。Core 复用 `ToolResultDisplayPayload`，从 hook/model serialization 之前的原始 output 生成 `local_agent_message` / `task_stop` display；UI 用集中 reader 统一读取实时 event、持久化 metadata 和 provider 兼容形态，renderer 只消费已校验字段并保留明确的旧数据 fallback。
+**Architecture:** 在 `@codez/shared` 固定 canonical tool name 到 presentation family 的映射，UI 的 `resolveToolCallRenderer` 只按 family 路由。Core 复用 `ToolResultDisplayPayload`，从 hook/model serialization 之前的原始 output 生成 `local_agent_message` / `task_stop` display；UI 用集中 reader 统一读取实时 event、持久化 metadata 和 provider 兼容形态，renderer 只消费已校验字段并保留明确的旧数据 fallback。
 
 **Tech Stack:** TypeScript 6、React 19、Vitest 4、react-dom/server、Tailwind semantic tokens、lucide-react、FormatJS i18n。
 
@@ -29,7 +29,7 @@
 
 **Interfaces:**
 
-- Consumes: `resolveToolCallIdentity(toolCall)` and `getZCodeToolFamilyForName(name)`.
+- Consumes: `resolveToolCallIdentity(toolCall)` and `getCodezToolFamilyForName(name)`.
 - Produces: canonical `TaskStop` identity with family `task-control`.
 
 - [x] **Step 1: Write the failing identity test**
@@ -48,24 +48,24 @@ it("recognizes current TaskStop as task control", () => {
 
 Run: `pnpm exec vitest run packages/ui/test/toolIdentity.test.ts`
 
-Expected: FAIL because `TaskStop` is not in `ZCODE_KNOWN_TOOL_NAMES` and resolves to `unknown`.
+Expected: FAIL because `TaskStop` is not in `CODEZ_KNOWN_TOOL_NAMES` and resolves to `unknown`.
 
 - [x] **Step 3: Add the canonical name and family**
 
 ```ts
-export const ZCODE_KNOWN_TOOL_NAMES = [
+export const CODEZ_KNOWN_TOOL_NAMES = [
   // existing names
   "TaskStop",
 ] as const;
 
-export type ZCodeToolFamily =
+export type CodezToolFamily =
   // existing families
   "task-control";
 
 const TOOL_FAMILY_BY_NAME = {
   // existing mappings
   TaskStop: "task-control",
-} satisfies Record<ZCodeKnownToolName, ZCodeToolFamily>;
+} satisfies Record<CodezKnownToolName, CodezToolFamily>;
 ```
 
 - [x] **Step 4: Run the identity test and verify GREEN**
@@ -89,7 +89,7 @@ Expected: all tests pass, including the existing assertion that lowercase `send_
 
 **Interfaces:**
 
-- Consumes: `ToolCallBlockRenderContext`, `ToolLayout`, `useZCodeIntl`.
+- Consumes: `ToolCallBlockRenderContext`, `ToolLayout`, `useCodezIntl`.
 - Produces: `SendMessageToolCallBlock(context)` and `TaskStopToolCallBlock(context)`.
 
 - [x] **Step 1: Write failing route/summary tests through ToolCallBlock**
@@ -298,10 +298,10 @@ Expected: all commands exit 0; lint may report only pre-existing warnings outsid
 
 **Files:**
 
-- Modify: `apps/zcode-cli/packages/contracts/src/tools/tool-result-metadata.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/result-display.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts`
-- Create: `apps/zcode-cli/packages/core/tests/tool-result-display.test.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/tools/tool-result-metadata.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/result-display.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/call-runner.ts`
+- Create: `apps/codez-cli/packages/core/tests/tool-result-display.test.ts`
 - Create: `packages/ui/src/ToolCallBlocks/toolResultDisplay.ts`
 - Modify: `packages/ui/src/ToolCallBlocks/renderers/send-message.tsx`
 - Modify: `packages/ui/src/ToolCallBlocks/renderers/task-stop.tsx`
@@ -319,7 +319,7 @@ Expected: all commands exit 0; lint may report only pre-existing warnings outsid
 
 Add focused tests that require `createToolResultDisplay("SendMessage", output)` to return only business status/error/message, require `createToolResultDisplay("TaskStop", output)` to return task id/type/command/message, and require lowercase `send_message` not to produce the local-agent display.
 
-Run: `apps/zcode-cli/node_modules/.bin/vitest run packages/core/tests/tool-result-display.test.ts`
+Run: `apps/codez-cli/node_modules/.bin/vitest run packages/core/tests/tool-result-display.test.ts`
 
 Expected: FAIL because only `file_diff` display exists and `createToolResultDisplay` does not accept a tool name.
 
@@ -329,7 +329,7 @@ Extend the discriminated union with `local_agent_message` and `task_stop`. Chang
 
 - [x] **Step 3: Verify Core GREEN and unchanged file diff behavior**
 
-Run: `apps/zcode-cli/node_modules/.bin/vitest run packages/core/tests/tool-result-display.test.ts packages/core/tests/tool-executor-trace.test.ts`
+Run: `apps/codez-cli/node_modules/.bin/vitest run packages/core/tests/tool-result-display.test.ts packages/core/tests/tool-executor-trace.test.ts`
 
 Expected: all selected Core tests pass, including the existing `file_diff` event assertion.
 
@@ -364,9 +364,9 @@ Verification result: full UI tests passed (3810), relevant CLI tests passed (101
 **Files:**
 
 - Modify: `docs/ui/tool-display-rendering.md`
-- Modify: `apps/zcode-cli/packages/contracts/src/tools/tool-result-metadata.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/result-display.ts`
-- Modify: `apps/zcode-cli/packages/core/tests/tool-result-display.test.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/tools/tool-result-metadata.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/result-display.ts`
+- Modify: `apps/codez-cli/packages/core/tests/tool-result-display.test.ts`
 - Modify: `packages/ui/src/ToolCallBlocks/toolResultDisplay.ts`
 - Modify: `packages/ui/src/ToolCallBlocks/renderers/task-stop.tsx`
 - Modify: `packages/ui/src/i18n/locales/en-US.ts`
@@ -400,8 +400,8 @@ Run Core/UI focused tests, typechecks, lint, `git diff --check`, and review the 
 **Files:**
 
 - Modify: `docs/ui/tool-display-rendering.md`
-- Modify: `apps/zcode-cli/packages/core/tests/tool-result-display.test.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/result-display.ts`
+- Modify: `apps/codez-cli/packages/core/tests/tool-result-display.test.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/result-display.ts`
 - Modify: `packages/ui/test/messageTaskControlToolCallBlock.test.ts`
 - Modify: `packages/ui/src/ToolCallBlocks/renderers/task-stop.tsx`
 

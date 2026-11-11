@@ -2,7 +2,7 @@
 
 ## 背景
 
-ZCode Protocol 已经把工具参数流拆成 `tool_input_start` / `tool_input_delta` / `tool_input_end`，这是流式 function call 的基础能力。2026-06-13 的双任务现场显示，renderer CPU 被打满并不是 agent 计算过载，而是 UI 在每个 `tool_input_delta` 上把累计 `rawInput` 重新解析成完整预览，再写入 task message store 并触发 React render。
+Codez Protocol 已经把工具参数流拆成 `tool_input_start` / `tool_input_delta` / `tool_input_end`，这是流式 function call 的基础能力。2026-06-13 的双任务现场显示，renderer CPU 被打满并不是 agent 计算过载，而是 UI 在每个 `tool_input_delta` 上把累计 `rawInput` 重新解析成完整预览，再写入 task message store 并触发 React render。
 
 典型 case 是一个约 36KB 的 `Write` 输入被拆成 785 个 delta。真实网络 delta 内容不大，但 UI 每个 delta 都扫描越来越长的累计字符串，形成近似 O(n²) 的解析和渲染成本。后台任务也同频写 store，两个任务并发时会叠加到主 renderer。
 
@@ -48,7 +48,7 @@ active 任务继续消费完整 continuous stream，但工具参数预览需要�
 
 ### Protocol Payload Backpressure
 
-ZCode Protocol 边界也需要避免重复全量：
+Codez Protocol 边界也需要避免重复全量：
 
 - 连续的 `model.streaming:tool_input_delta` 在 protocol server 边界合并成较大的 diff 包；首个 delta 立即 flush，后续按既有事件时间戳预算或确定性字节预算 flush，任何非 delta 控制事件到达前也必须先 flush。`Write` / `Edit` 的 UI 可见投影在 ProductProjection / 兼容 projection 再收敛到 1000ms，不能由 protocol 字节阈值绕过。
 - 连续的 `model.streaming:text_delta` / `reasoning_delta` 也在同一协议边界合并。第一个 delta 立即 flush 保留“模型已经开始输出”的体感，后续按事件时间戳预算和确定性字节预算 flush，避免 provider 把思考流按 1-5 字符切包时唤醒 renderer 上万次，同时不能让用户感觉正文不再流式输出。
@@ -59,7 +59,7 @@ ZCode Protocol 边界也需要避免重复全量：
 
 ## 边界
 
-- renderer projection/store、services 兼容 task projection 与 ZCode Protocol payload 都参与降频/去重；runtime 内部 eventStore 仍保留完整账本。
+- renderer projection/store、services 兼容 task projection 与 Codez Protocol payload 都参与降频/去重；runtime 内部 eventStore 仍保留完整账本。
 - desktop continuous 仍订阅 `deliveryKind: "desktop-continuous"`，只是确定性 projection 对 `Write` / `Edit` 的 UI 可见输入更新降频。
 - protocol coalescing 仍保持 diff 语义，只合并相邻 `tool_input_delta` / `text_delta` / `reasoning_delta` 的 `delta` 字段，不把累计 full input 放回 delta 事件；batch 边界只由首包 eager、事件时间戳预算、字节预算和事件顺序决定。时间预算必须基于 `SessionEvent.timestamp` 而不是 live 定时器，保证 live 与 replay 的 `afterSeq` 恢复边界一致。
 - web remote replayable 的 snapshot/gap recovery 语义不变；如果未来把 background summary 下沉到服务层，必须显式带上 `clientMode` / `deliveryKind`。

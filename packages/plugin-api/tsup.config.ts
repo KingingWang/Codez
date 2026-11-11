@@ -16,7 +16,7 @@ export default defineConfig({
   clean: true,
   dts: {
     only: true,
-    resolve: [/^@zcode\//, /^#/],
+    resolve: [/^@codez\//, /^#/],
     compilerOptions: {
       // tsup 内部会设 baseUrl，TypeScript 6 对它报弃用。
       ignoreDeprecations: "6.0",
@@ -28,9 +28,9 @@ export default defineConfig({
       lib: ["es2024", "dom"],
       types: ["node"],
       paths: {
-        "@zcode/shared/extension-host": ["../shared/src/extension-host/index.ts"],
-        "@zcode/shared/zcode-protocol-v4": ["../shared/src/zcode-protocol-v4/index.ts"],
-        "@zcode/session-control/contracts": ["../session-control/src/contract.ts"],
+        "@codez/shared/extension-host": ["../shared/src/extension-host/index.ts"],
+        "@codez/shared/codez-protocol-v4": ["../shared/src/codez-protocol-v4/index.ts"],
+        "@codez/session-control/contracts": ["../session-control/src/contract.ts"],
         "#src/*": ["../shared/src/*"],
         "#session-control/*": ["../session-control/src/*"],
       },

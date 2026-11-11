@@ -4,8 +4,8 @@ import { writeFile } from "node:fs/promises";
 const VIEWPORT = { width: 1280, height: 720 };
 const INITIAL_SURFACE = { width: 800, height: 450 };
 const SENTINEL_SIZE = 96;
-const RESULT_PATH = process.env.ZCODE_SCREENSHOT_SMOKE_RESULT_PATH;
-const SCALE_FACTOR = process.env.ZCODE_SCREENSHOT_SMOKE_SCALE_FACTOR;
+const RESULT_PATH = process.env.CODEZ_SCREENSHOT_SMOKE_RESULT_PATH;
+const SCALE_FACTOR = process.env.CODEZ_SCREENSHOT_SMOKE_SCALE_FACTOR;
 const SUCCESS_RESULT =
   '{"width":1280,"height":720,"periodicRepeat":false,"corners":"distinct"}';
 
@@ -14,7 +14,7 @@ if (SCALE_FACTOR) {
   const parsedScaleFactor = Number(SCALE_FACTOR);
   if (!Number.isFinite(parsedScaleFactor) || parsedScaleFactor <= 0) {
     scaleFactorError = new Error(
-      `ZCODE_SCREENSHOT_SMOKE_SCALE_FACTOR must be a positive number, received ${SCALE_FACTOR}`,
+      `CODEZ_SCREENSHOT_SMOKE_SCALE_FACTOR must be a positive number, received ${SCALE_FACTOR}`,
     );
   } else {
     app.commandLine.appendSwitch("force-device-scale-factor", SCALE_FACTOR);

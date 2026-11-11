@@ -23,7 +23,7 @@ import { readDesignPageSignals } from "./pageSignals.js";
 // 页面可以伪造返回值和事件，所以这里做形状校验并给每个字符串、数组设上限；内容最终只会变成
 // 用户看得见、能删的上下文。
 
-const RUNTIME_GLOBAL = "window.__zcodeDesignRuntime";
+const RUNTIME_GLOBAL = "window.__codezDesignRuntime";
 const MISSING_REPLY = JSON.stringify({ ok: false, reason: "missing" });
 
 /** 安装（或复用同版本）运行时；结果是 DesignRuntimeReply<DesignPageInfo>。bridgeKey 见 pageRuntime。 */

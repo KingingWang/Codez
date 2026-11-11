@@ -1,7 +1,7 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import { TID_CHAT_WORKFLOW_RUN_DIGEST } from "@zcode/shared";
-import { TID_CHAT_TOOL_CALL_BLOCK, testId } from "@zcode/shared/test-ids";
+import { TID_CHAT_WORKFLOW_RUN_DIGEST } from "@codez/shared";
+import { TID_CHAT_TOOL_CALL_BLOCK, testId } from "@codez/shared/test-ids";
 import { clearAppData, pinE2ELocale } from "#e2e/helpers/desktop-app";
 import { resolveE2ERuntimePath } from "#e2e/helpers/e2e-runtime-paths";
 import {

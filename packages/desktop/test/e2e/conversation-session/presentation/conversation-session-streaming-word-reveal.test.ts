@@ -26,7 +26,7 @@ interface RevealMount {
   text: string;
   tag: string;
   state: string;
-  /** 排期写在 --zcode-reveal-delay 上的延迟。 */
+  /** 排期写在 --codez-reveal-delay 上的延迟。 */
   delay: number;
   /** 挂载时 opacity 过渡的实际时长；没有过渡时为 -1。 */
   duration: number;
@@ -147,8 +147,8 @@ describe("SWR01 streaming word reveal", () => {
           return typeof duration === "number" ? duration : -1;
         };
         const inspectUnit = (el: HTMLElement) => {
-          const state = el.getAttribute("data-zcode-reveal") ?? "";
-          const delay = Number.parseFloat(el.style.getPropertyValue("--zcode-reveal-delay"));
+          const state = el.getAttribute("data-codez-reveal") ?? "";
+          const delay = Number.parseFloat(el.style.getPropertyValue("--codez-reveal-delay"));
           const transition = state === "new" ? opacityTransition(el) : undefined;
           const mount: RevealMount = {
             text: el.textContent ?? "",
@@ -164,7 +164,7 @@ describe("SWR01 streaming word reveal", () => {
           byElement.set(el, mount);
         };
         const inspectMarker = (el: HTMLElement) => {
-          const state = el.getAttribute("data-zcode-reveal-marker") ?? "";
+          const state = el.getAttribute("data-codez-reveal-marker") ?? "";
           const transition = state === "new" ? markerTransition(el) : undefined;
           markerMounts.push({
             state,
@@ -178,7 +178,7 @@ describe("SWR01 streaming word reveal", () => {
             if (record.type === "attributes") {
               const target = record.target as HTMLElement;
               if (record.oldValue !== "new") continue;
-              if (target.getAttribute("data-zcode-reveal") !== "settled") continue;
+              if (target.getAttribute("data-codez-reveal") !== "settled") continue;
               const mount = byElement.get(target);
               if (!mount) continue;
               settle.changed += 1;
@@ -194,11 +194,11 @@ describe("SWR01 streaming word reveal", () => {
             }
             for (const node of record.addedNodes) {
               if (!(node instanceof HTMLElement)) continue;
-              if (node.hasAttribute("data-zcode-reveal")) inspectUnit(node);
-              if (node.hasAttribute("data-zcode-reveal-marker")) inspectMarker(node);
-              node.querySelectorAll<HTMLElement>("[data-zcode-reveal]").forEach(inspectUnit);
+              if (node.hasAttribute("data-codez-reveal")) inspectUnit(node);
+              if (node.hasAttribute("data-codez-reveal-marker")) inspectMarker(node);
+              node.querySelectorAll<HTMLElement>("[data-codez-reveal]").forEach(inspectUnit);
               node
-                .querySelectorAll<HTMLElement>("[data-zcode-reveal-marker]")
+                .querySelectorAll<HTMLElement>("[data-codez-reveal-marker]")
                 .forEach(inspectMarker);
             }
           }
@@ -207,7 +207,7 @@ describe("SWR01 streaming word reveal", () => {
           childList: true,
           subtree: true,
           attributes: true,
-          attributeFilter: ["data-zcode-reveal"],
+          attributeFilter: ["data-codez-reveal"],
           attributeOldValue: true,
         });
         const probe: StoredRevealProbe = { mounts, markerMounts, settle, observer, markers };
@@ -223,7 +223,7 @@ describe("SWR01 streaming word reveal", () => {
       () =>
         browser.execute(
           () =>
-            document.querySelectorAll("[data-zcode-reveal], [data-zcode-reveal-marker]").length ===
+            document.querySelectorAll("[data-codez-reveal], [data-codez-reveal-marker]").length ===
             0,
         ),
       { timeout: 30000, timeoutMsg: "完成态仍残留逐字浮现单元" },
@@ -355,7 +355,7 @@ describe("SWR01 streaming word reveal", () => {
       // settledLater：已挂载的单元在后续帧由 new 变成 settled 的次数，代表本条消息的进度在推进。
       const counts = { fresh: 0, fading: 0, settled: 0, settledLater: 0 };
       const inspect = (el: HTMLElement) => {
-        const state = el.getAttribute("data-zcode-reveal");
+        const state = el.getAttribute("data-codez-reveal");
         if (state === "settled") {
           counts.settled += 1;
           return;
@@ -374,14 +374,14 @@ describe("SWR01 streaming word reveal", () => {
         for (const record of records) {
           if (record.type === "attributes") {
             const target = record.target as HTMLElement;
-            if (record.oldValue === "new" && target.getAttribute("data-zcode-reveal") === "settled")
+            if (record.oldValue === "new" && target.getAttribute("data-codez-reveal") === "settled")
               counts.settledLater += 1;
             continue;
           }
           for (const node of record.addedNodes) {
             if (!(node instanceof HTMLElement)) continue;
-            if (node.hasAttribute("data-zcode-reveal")) inspect(node);
-            node.querySelectorAll<HTMLElement>("[data-zcode-reveal]").forEach(inspect);
+            if (node.hasAttribute("data-codez-reveal")) inspect(node);
+            node.querySelectorAll<HTMLElement>("[data-codez-reveal]").forEach(inspect);
           }
         }
       });
@@ -389,7 +389,7 @@ describe("SWR01 streaming word reveal", () => {
         childList: true,
         subtree: true,
         attributes: true,
-        attributeFilter: ["data-zcode-reveal"],
+        attributeFilter: ["data-codez-reveal"],
         attributeOldValue: true,
       });
       (
@@ -402,7 +402,7 @@ describe("SWR01 streaming word reveal", () => {
     await sendV4Prompt("E2E_SECOND_ROUND_REVEAL: 再输出一段正文，验证第二轮也逐字淡入。");
     await waitForV4AssistantMessageContaining(SECOND_ROUND_FRAGMENT);
     await browser.waitUntil(
-      () => browser.execute(() => document.querySelectorAll("[data-zcode-reveal]").length === 0),
+      () => browser.execute(() => document.querySelectorAll("[data-codez-reveal]").length === 0),
       { timeout: 30000, timeoutMsg: "第二轮完成态仍残留逐字浮现单元" },
     );
 

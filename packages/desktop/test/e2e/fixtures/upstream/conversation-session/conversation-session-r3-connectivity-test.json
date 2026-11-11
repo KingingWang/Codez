@@ -16,7 +16,7 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["You are ZCode connectivity probe."]
+        "bodyIncludes": ["You are Codez connectivity probe."]
       },
       "response": {
         "statusCode": 200,

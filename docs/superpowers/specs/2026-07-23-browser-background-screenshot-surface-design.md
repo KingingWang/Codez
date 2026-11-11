@@ -51,7 +51,7 @@ hidden owner window
   -> 下一份又立即 resolve，continuous 分支没有 macrotask yield
   -> Promise microtask 永不清空
   -> renderer Ready IPC / 1500ms timeout / 35s watchdog / second-instance 事件都无法调度
-  -> 已隐藏的单实例进程仍占锁，新窗口无法打开，用户感知为 “ZCode 崩溃打不开”
+  -> 已隐藏的单实例进程仍占锁，新窗口无法打开，用户感知为 “Codez 崩溃打不开”
 ```
 
 这不是 native crash，也不是关闭窗口清理失败；根因是 activity pump 的调度设计允许
@@ -68,7 +68,7 @@ hidden owner window
 20:36:31.363  screenshot request
 20:36:31.541  guest activity capture failed
 20:36:38.103  重试 screenshot，capture 一直 pending
-20:36:52.930  用户重新激活 ZCode
+20:36:52.930  用户重新激活 Codez
 20:36:53.533  同一份 screenshot 成功
 ```
 
@@ -117,7 +117,7 @@ hidden owner window
 - 不通过裁掉重复区域、图像相关性检测或截图后重采样掩盖 compositor 错误。
 - 不把 browser-use tab 强制切为用户当前活动 tab。
 - 不在 relay、desktop main 或手机端新增 task/stream/snapshot 业务状态。
-- 不修改 `@zcode/protocol`；本设计只新增 desktop main 与 owner renderer 之间的瞬时平台协调。
+- 不修改 `@codez/protocol`；本设计只新增 desktop main 与 owner renderer 之间的瞬时平台协调。
 - 不在本修复中解决“显式 responsive viewport 大于窗口可合成区域”的独立 Electron 限制。
   如果该场景无法准备同尺寸 surface，必须失败而不是输出平铺图片；BCP-199 的大视口真实
   Electron 覆盖继续作为单独工作项。
@@ -533,7 +533,7 @@ Windows close-to-tray 后临时建立透明窗口 presentation opportunity；不
 | BAS-008 | 手机 replayable 恢复             | 读取已持久化截图               | 不传播 activity lease 或新增手机 runtime                    | pruned；desktop-local 不变量 |
 | BAS-009 | hidden owner；capture 立即完成   | preparing continuous pump 续泵 | 每轮让出 macrotask；IPC/timer 可运行且 capture 数量保持有界 | accepted；本次根因回归       |
 | BAS-010 | macOS owner 已 hidden            | 此后 attach guest 并请求截图   | 透明 bootstrap 首帧；截图成功且窗口保持 hidden/unfocused    | accepted；本次根因回归       |
-| BAS-011 | 透明 bootstrap 进行中            | 用户主动 focus ZCode           | 立即恢复 opacity；Ready/release 不得再次 hide 用户窗口      | accepted；窗口状态竞争       |
+| BAS-011 | 透明 bootstrap 进行中            | 用户主动 focus Codez           | 立即恢复 opacity；Ready/release 不得再次 hide 用户窗口      | accepted；窗口状态竞争       |
 | BAS-012 | Windows owner 已隐藏到托盘       | 此后 attach guest 并请求截图   | 透明 bootstrap；taskbar 不重现；截图后仍隐藏到托盘          | accepted；Windows 对等路径   |
 | BAS-013 | Linux 或 visible/minimized owner | 请求截图                       | 不启动透明 bootstrap；沿用现有 activity/close 生命周期      | accepted；平台边界           |
 

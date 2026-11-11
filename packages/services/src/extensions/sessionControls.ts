@@ -6,21 +6,21 @@ import {
   type SessionResolveInteractionResult,
   type SessionSetPermissionModeInput,
   type SessionSetPermissionModeResult,
-} from "@zcode/shared/extension-host";
+} from "@codez/shared/extension-host";
 import {
   PERMISSION_FULL_ACCESS_OPTION_ID,
   type CommandAck,
   type PendingInteraction,
-} from "@zcode/shared/zcode-protocol-v4";
-import type { AppSessionRef } from "@zcode/session-control/contracts";
+} from "@codez/shared/codez-protocol-v4";
+import type { AppSessionRef } from "@codez/session-control/contracts";
 import type { ServiceLogger } from "#src/logger/serviceLogger.js";
-import type { IZCodeAgentService } from "#src/zcode-agent/zcodeAgent.js";
-import { withTrustedZCodeAgentV4Connection } from "#src/zcode-agent/zcodeAgentConnectionScope.js";
+import type { ICodezAgentService } from "#src/codez-agent/codezAgent.js";
+import { withTrustedCodezAgentV4Connection } from "#src/codez-agent/codezAgentConnectionScope.js";
 import {
   assertV4CommandAckOk,
   createHostCommandEnvelope,
   sendHostCasCommandV4,
-} from "#src/zcode-agent/zcodeV4HostCommand.js";
+} from "#src/codez-agent/codezV4HostCommand.js";
 import type { CapabilityCallContext } from "#src/extensions/capabilityTypes.js";
 import type { PluginProjects } from "#src/extensions/pluginProjects.js";
 import type { SessionInteractionsRead, SessionReads } from "#src/extensions/sessionReads.js";
@@ -40,7 +40,7 @@ import type { SessionAuditDetails, SessionsBackend } from "#src/extensions/sessi
 export type FullAccessState = "granted" | "not-declared" | "not-granted";
 
 export interface SessionControlsDeps {
-  agent: IZCodeAgentService | undefined;
+  agent: ICodezAgentService | undefined;
   reads: SessionReads;
   sessions: SessionsBackend;
   pluginProjects: Pick<PluginProjects, "projectIds">;
@@ -163,7 +163,7 @@ export function createSessionControls(deps: SessionControlsDeps): SessionControl
           }
           details.choice = choiceOf(interaction, input.answer);
           const ack = await agentOf().sendConversationCommandV4(
-            withTrustedZCodeAgentV4Connection(
+            withTrustedCodezAgentV4Connection(
               {
                 workspacePath: target.workspacePath,
                 ...(target.workspaceIdentity
@@ -216,7 +216,7 @@ export function createSessionControls(deps: SessionControlsDeps): SessionControl
             await sendHostCasCommandV4({
               send: (envelope) =>
                 agent.sendConversationCommandV4(
-                  withTrustedZCodeAgentV4Connection(
+                  withTrustedCodezAgentV4Connection(
                     {
                       workspacePath: target.workspacePath,
                       ...(target.workspaceIdentity

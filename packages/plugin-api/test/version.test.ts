@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 // 示例插件与类型包都不在 shared 的依赖链上，这里按相对路径读协议源码，只取这一个常量。
 import { EXTENSION_API_VERSION } from "../../shared/src/extension-host/manifest.js";
 
-describe("@zcode-dev/plugin-api version", () => {
+describe("@codez-dev/plugin-api version", () => {
   it("equals EXTENSION_API_VERSION", async () => {
     const manifest = JSON.parse(
       await readFile(new URL("../package.json", import.meta.url), "utf8"),

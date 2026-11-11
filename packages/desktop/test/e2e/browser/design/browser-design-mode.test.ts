@@ -16,7 +16,7 @@ import {
   TID_SIDE_PANE_FULL_VIEW_HOST,
   TID_SIDE_PANE_FULL_VIEW_TOGGLE,
   TID_WEB_ELEMENT_CONTEXT_CHIP,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom } from "#e2e/helpers/desktop-app";
 import {
   clickCloseButton,
@@ -55,14 +55,14 @@ import { clickV4Send, prepareV4ConversationE2E } from "#e2e/helpers/v4-conversat
 // 页面里的点击用 main 侧 sendInputEvent 发真实鼠标事件，与用户在 guest 里点击同一条路径。
 
 const MOD = process.platform === "darwin" ? Key.Command : Key.Control;
-/** 本机 HTML 经 zcode-html:// 预览协议加载 */
-const LOCAL_GUEST_PREFIX = "zcode-html://";
+/** 本机 HTML 经 codez-html:// 预览协议加载 */
+const LOCAL_GUEST_PREFIX = "codez-html://";
 
 const PLAIN_HTML = `<!doctype html><html><head><title>E2E plain page</title></head>
 <body><p id="plain">E2E_PLAIN</p></body></html>`;
 
 const FIXTURE_HTML = `<!doctype html>
-<html data-zcode-design><head><title>E2E design mode</title>
+<html data-codez-design><head><title>E2E design mode</title>
 <style>
   :root { --brand: #ff6b35; --title-size: 40px; --veil: rgba(34, 85, 238, 0.5); }
   body { margin: 0; font-family: sans-serif; }
@@ -126,7 +126,7 @@ describe("BU-E2E-021：内置浏览器设计工具", () => {
       },
     ));
     fixtureUrl = `${fixtureOrigin}/design`;
-    localDir = await mkdtemp(join(tmpdir(), "zcode-e2e-design-"));
+    localDir = await mkdtemp(join(tmpdir(), "codez-e2e-design-"));
     localFile = join(localDir, "design.html");
   });
 
@@ -157,7 +157,7 @@ describe("BU-E2E-021：内置浏览器设计工具", () => {
       throw new Error("普通页面不应出现设计工具行");
     }
 
-    // 本机 HTML 没有 data-zcode-design、只有 :root 变量：经 zcode-html:// 预览打开也算本机页面，自动出现设计工具（!3450 CR-01）
+    // 本机 HTML 没有 data-codez-design、只有 :root 变量：经 codez-html:// 预览打开也算本机页面，自动出现设计工具（!3450 CR-01）
     const variablesFile = join(localDir, "variables.html");
     await writeFile(
       variablesFile,
@@ -243,7 +243,7 @@ describe("BU-E2E-021：内置浏览器设计工具", () => {
           "E2E_DESIGN_SEND",
           "# Web page elements:",
           "E2E_DESIGN_CTA",
-          "](zcode-element://",
+          "](codez-element://",
           "[Attached image/png: element-1.png]",
         ],
       },
@@ -676,7 +676,7 @@ describe("BU-E2E-021：内置浏览器设计工具", () => {
     const gbkFile = join(localDir, "gbk.html");
     const gbkBytes = Buffer.concat([
       Buffer.from(
-        '<!doctype html><html data-zcode-design><head><meta charset="gbk"><title>E2E gbk</title></head><body><h1 id="gbk">',
+        '<!doctype html><html data-codez-design><head><meta charset="gbk"><title>E2E gbk</title></head><body><h1 id="gbk">',
       ),
       Buffer.from([0xd6, 0xd0, 0xce, 0xc4]), // 「中文」的 GBK 编码
       Buffer.from("</h1></body></html>"),
@@ -694,7 +694,7 @@ describe("BU-E2E-021：内置浏览器设计工具", () => {
     const richFile = join(localDir, "rich.html");
     await writeFile(
       richFile,
-      '<!doctype html><html data-zcode-design><head><title>E2E rich</title></head><body><p id="rich">E2E <strong>RICH</strong></p><p id="plaintext">E2E_PLAIN_TEXT</p></body></html>',
+      '<!doctype html><html data-codez-design><head><title>E2E rich</title></head><body><p id="rich">E2E <strong>RICH</strong></p><p id="plaintext">E2E_PLAIN_TEXT</p></body></html>',
       "utf-8",
     );
     await navigateBrowser(pathToFileURL(richFile).href, "E2E rich", LOCAL_GUEST_PREFIX);
@@ -717,7 +717,7 @@ describe("BU-E2E-021：内置浏览器设计工具", () => {
     const beforeForge = await readFile(richFile, "utf-8");
     await guestEval(
       LOCAL_GUEST_PREFIX,
-      `(() => { for (const events of [[{ type: "edit-commit", property: "text", value: "E2E_FORGED" }], [{ type: "history", redo: false }]]) window.postMessage({ __zcodeDesign: 1, events }, "*"); return true; })()`,
+      `(() => { for (const events of [[{ type: "edit-commit", property: "text", value: "E2E_FORGED" }], [{ type: "history", redo: false }]]) window.postMessage({ __codezDesign: 1, events }, "*"); return true; })()`,
     );
     await browser.pause(2_000);
     if ((await readFile(richFile, "utf-8")) !== beforeForge) {
@@ -754,7 +754,7 @@ describe("BU-E2E-021：内置浏览器设计工具", () => {
     await writeFile(cssFile, "#box { color: rgb(0, 0, 255); }", "utf-8");
     await writeFile(
       styledFile,
-      '<!doctype html><html data-zcode-design><head><title>E2E styled</title><link rel="stylesheet" href="styled.css"></head><body><h1 id="box">E2E_BOX</h1><button id="cta" style="text-transform: uppercase">Submit order</button></body></html>',
+      '<!doctype html><html data-codez-design><head><title>E2E styled</title><link rel="stylesheet" href="styled.css"></head><body><h1 id="box">E2E_BOX</h1><button id="cta" style="text-transform: uppercase">Submit order</button></body></html>',
       "utf-8",
     );
     await navigateBrowser(pathToFileURL(styledFile).href, "E2E styled", LOCAL_GUEST_PREFIX);
@@ -791,7 +791,7 @@ describe("BU-E2E-021：内置浏览器设计工具", () => {
     const noticeFile = join(localDir, "notice.html");
     await writeFile(
       noticeFile,
-      '<!doctype html><html data-zcode-design><head><title>E2E notice</title></head><body><h1 id="a" style="font-size: 30px">E2E_A</h1><h2 id="b">E2E_B</h2></body></html>',
+      '<!doctype html><html data-codez-design><head><title>E2E notice</title></head><body><h1 id="a" style="font-size: 30px">E2E_A</h1><h2 id="b">E2E_B</h2></body></html>',
       "utf-8",
     );
     await navigateBrowser(pathToFileURL(noticeFile).href, "E2E notice", LOCAL_GUEST_PREFIX);
@@ -805,7 +805,7 @@ describe("BU-E2E-021：内置浏览器设计工具", () => {
       w.__e2eDispatch = window.dispatchEvent.bind(window);
       // 「加引用」事件不派发、按没人收下返回（dispatchEvent 未被 preventDefault 时返回 true）
       window.dispatchEvent = (event: Event) =>
-        event.type === "zcode:web-element-context-add-to-chat" ? true : w.__e2eDispatch(event);
+        event.type === "codez:web-element-context-add-to-chat" ? true : w.__e2eDispatch(event);
       new MutationObserver((records) => {
         for (const record of records) {
           for (const node of record.addedNodes) {
@@ -848,7 +848,7 @@ describe("BU-E2E-021：内置浏览器设计工具", () => {
     await browser.execute(() => {
       const w = window as unknown as { __e2eDispatch: typeof window.dispatchEvent };
       window.dispatchEvent = (event: Event) =>
-        event.type === "zcode:web-element-context-add-to-chat" &&
+        event.type === "codez:web-element-context-add-to-chat" &&
         JSON.stringify((event as CustomEvent).detail ?? {}).includes("E2E_B")
           ? true
           : w.__e2eDispatch(event);

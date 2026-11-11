@@ -2,18 +2,18 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 把已验证的 Windows CUA runtime 正向迁移到 `zcode-cua` 最新上游 main，并让 `z-code` 当前分支在 clean consumer tree 中通过显式本地 producer 路径生成、校验和打包该 runtime；远端 Git pin 留到 producer commit push 后闭环。
+**Goal:** 把已验证的 Windows CUA runtime 正向迁移到 `codez-cua` 最新上游 main，并让 `z-code` 当前分支在 clean consumer tree 中通过显式本地 producer 路径生成、校验和打包该 runtime；远端 Git pin 留到 producer commit push 后闭环。
 
-**Architecture:** `zcode-cua` 是 Windows Helper entry、native addon 和 package runtime contract 的 producer；`z-code` 只固定 producer Git SHA、读取 producer contract、生成 digest manifest，并由 desktop-local Host 按需启动。迁移按当前上游 broker/incremental/input-cleanup 语义重新接线，不覆盖其提交或恢复旧实现。
+**Architecture:** `codez-cua` 是 Windows Helper entry、native addon 和 package runtime contract 的 producer；`z-code` 只固定 producer Git SHA、读取 producer contract、生成 digest manifest，并由 desktop-local Host 按需启动。迁移按当前上游 broker/incremental/input-cleanup 语义重新接线，不覆盖其提交或恢复旧实现。
 
 **Tech Stack:** TypeScript 5/6、Vitest、Node 24、N-API/node-gyp、C++/Win32 UIA/WGC/D3D11、Electron 41、pnpm 10。
 
 ## Global Constraints
 
 - `z-code` 在当前 `feat/cua-helper-app` 分支原地开发。
-- `zcode-cua` 在本地 `main` 上开发；先保留安全分支，再把 `main` 指向最新 `origin/main`。
-- Windows 移植变更在 `zcode-cua/main` 最终只有一个新 commit；不改写上游 commit，不 push。
-- producer contract schema 固定为 `1`，package name 固定为 `@zcode/zcode-cua`。
+- `codez-cua` 在本地 `main` 上开发；先保留安全分支，再把 `main` 指向最新 `origin/main`。
+- Windows 移植变更在 `codez-cua/main` 最终只有一个新 commit；不改写上游 commit，不 push。
+- producer contract schema 固定为 `1`，package name 固定为 `@codez/codez-cua`。
 - consumer 固定完整 Git SHA，不再重复硬编码 package version。
 - Windows raw input 必须验证唯一前台 PID；不能用 UIA、标题、basename 或枚举第一项猜测身份。
 - Windows Helper 只服务本地 desktop continuous；SSH、WSL、Docker、remote workspace 和手机 `/remote` 不创建独立 runtime。
@@ -24,7 +24,7 @@
 
 ---
 
-### Task 1: 准备 zcode-cua 最新 main 与可恢复引用
+### Task 1: 准备 codez-cua 最新 main 与可恢复引用
 
 **Files:**
 
@@ -39,7 +39,7 @@
 
 ```powershell
 git -C C:\Users\dev\z-code status --short
-git -C C:\Users\dev\zcode-cua status --short
+git -C C:\Users\dev\codez-cua status --short
 ```
 
 Expected: 两个命令都不输出文件；`z-code` 只允许 branch ahead 状态。
@@ -47,8 +47,8 @@ Expected: 两个命令都不输出文件；`z-code` 只允许 branch ahead 状�
 - [ ] **Step 2: 刷新并记录 producer 基线**
 
 ```powershell
-git -C C:\Users\dev\zcode-cua fetch origin --prune
-git -C C:\Users\dev\zcode-cua show -s --format="%H %an %s" origin/main
+git -C C:\Users\dev\codez-cua fetch origin --prune
+git -C C:\Users\dev\codez-cua show -s --format="%H %an %s" origin/main
 ```
 
 Expected: `origin/main` 可解析，author/merge history 属于上游当前主线。
@@ -56,8 +56,8 @@ Expected: `origin/main` 可解析，author/merge history 属于上游当前主�
 - [ ] **Step 3: 创建不会覆盖的安全引用**
 
 ```powershell
-git -C C:\Users\dev\zcode-cua branch backup/windows-cua-before-forward-port-20260804 codex/windows-cua-pointer-foundation
-git -C C:\Users\dev\zcode-cua branch backup/local-main-before-forward-port-20260804 main
+git -C C:\Users\dev\codez-cua branch backup/windows-cua-before-forward-port-20260804 codex/windows-cua-pointer-foundation
+git -C C:\Users\dev\codez-cua branch backup/local-main-before-forward-port-20260804 main
 ```
 
 Expected: 两个 backup branch 指向原有 commit；若名称已存在，验证它们指向预期 commit 后复用。
@@ -65,9 +65,9 @@ Expected: 两个 backup branch 指向原有 commit；若名称已存在，验证
 - [ ] **Step 4: 原地对齐本地 main，不使用 hard reset**
 
 ```powershell
-git -C C:\Users\dev\zcode-cua switch codex/windows-cua-pointer-foundation
-git -C C:\Users\dev\zcode-cua branch -f main origin/main
-git -C C:\Users\dev\zcode-cua switch main
+git -C C:\Users\dev\codez-cua switch codex/windows-cua-pointer-foundation
+git -C C:\Users\dev\codez-cua branch -f main origin/main
+git -C C:\Users\dev\codez-cua switch main
 ```
 
 Expected: `git status --short --branch` 显示 `main...origin/main`，无 ahead/behind、无文件修改。
@@ -89,14 +89,14 @@ Expected: 所有命令 exit 0。若 baseline 失败，停止并记录失败，�
 
 **Files:**
 
-- Create: `C:\Users\dev\zcode-cua\test\windows-package-artifacts.test.ts`
-- Create: `C:\Users\dev\zcode-cua\src\windows-helper.ts`
-- Modify: `C:\Users\dev\zcode-cua\package.json`
-- Modify: `C:\Users\dev\zcode-cua\scripts\build.mjs`
+- Create: `C:\Users\dev\codez-cua\test\windows-package-artifacts.test.ts`
+- Create: `C:\Users\dev\codez-cua\src\windows-helper.ts`
+- Modify: `C:\Users\dev\codez-cua\package.json`
+- Modify: `C:\Users\dev\codez-cua\scripts\build.mjs`
 
 **Interfaces:**
 
-- Produces: `packageJson.zcodeCuaRuntime.windows.entry === "dist/windows-helper.js"`。
+- Produces: `packageJson.codezCuaRuntime.windows.entry === "dist/windows-helper.js"`。
 - Produces: export `./windows-helper` 指向 `./dist/windows-helper.js`。
 - Consumes later: z-code staging/runtime resolver。
 
@@ -105,8 +105,8 @@ Expected: 所有命令 exit 0。若 baseline 失败，停止并记录失败，�
 ```ts
 it("publishes the current Windows helper runtime contract", () => {
   const packageJson = JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8"));
-  expect(packageJson.name).toBe("@zcode/zcode-cua");
-  expect(packageJson.zcodeCuaRuntime).toEqual({
+  expect(packageJson.name).toBe("@codez/codez-cua");
+  expect(packageJson.codezCuaRuntime).toEqual({
     schema: 1,
     windows: {
       entry: "dist/windows-helper.js",
@@ -136,7 +136,7 @@ for (const path of [
 pnpm exec vitest run test/windows-package-artifacts.test.ts
 ```
 
-Expected: FAIL，原因是 `zcodeCuaRuntime`/`./windows-helper`/entry 不存在，而不是测试加载错误。
+Expected: FAIL，原因是 `codezCuaRuntime`/`./windows-helper`/entry 不存在，而不是测试加载错误。
 
 - [ ] **Step 3: 添加最小 package contract 与 build entry**
 
@@ -147,7 +147,7 @@ Expected: FAIL，原因是 `zcodeCuaRuntime`/`./windows-helper`/entry 不存在�
   "types": "./dist/windows-helper.d.ts",
   "import": "./dist/windows-helper.js"
 },
-"zcodeCuaRuntime": {
+"codezCuaRuntime": {
   "schema": 1,
   "windows": {
     "entry": "dist/windows-helper.js",
@@ -174,13 +174,13 @@ Expected: build 和测试 exit 0；pack 内容来自当前源码生成物。
 
 **Files:**
 
-- Create: `C:\Users\dev\zcode-cua\src\broker\server\windowsDevHelperMain.ts`
-- Create: `C:\Users\dev\zcode-cua\src\broker\server\windowsSystemSurface.ts`
-- Create: `C:\Users\dev\zcode-cua\test\windowsDevHelperMain.test.ts`
-- Create: `C:\Users\dev\zcode-cua\test\broker\windowsSystemSurface.test.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\index.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\helperMain.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\nodeSystemSurface.ts`
+- Create: `C:\Users\dev\codez-cua\src\broker\server\windowsDevHelperMain.ts`
+- Create: `C:\Users\dev\codez-cua\src\broker\server\windowsSystemSurface.ts`
+- Create: `C:\Users\dev\codez-cua\test\windowsDevHelperMain.test.ts`
+- Create: `C:\Users\dev\codez-cua\test\broker\windowsSystemSurface.test.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\index.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\helperMain.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\nodeSystemSurface.ts`
 
 **Interfaces:**
 
@@ -195,7 +195,7 @@ Expected: build 和测试 exit 0；pack 内容来自当前源码生成物。
 expect(
   parseWindowsDevHelperConfig({
     argv: ["node", "entry", "--socket", SOCKET, "--parent-pid", "12"],
-    env: { ZCODE_CUA_PERMISSION_BROKER_TOKEN: TOKEN },
+    env: { CODEZ_CUA_PERMISSION_BROKER_TOKEN: TOKEN },
     platform: "win32",
   }),
 ).toEqual({ socketPath: SOCKET, parentPid: 12, token: TOKEN });
@@ -233,15 +233,15 @@ Expected: 所有非 native tests 通过；native smoke 在 addon 未构建时明
 
 **Files:**
 
-- Modify: `C:\Users\dev\zcode-cua\src\native\ax_win.cc`
-- Modify: `C:\Users\dev\zcode-cua\src\native\win.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\native\types.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\electronNativeBackend.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\electronNativeBackendTypes.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\nodeAutomationAdapter.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\electronInputHandlers.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\broker\server\electronAppHelpers.ts`
-- Modify: `C:\Users\dev\zcode-cua\src\tools\pointer.ts`
+- Modify: `C:\Users\dev\codez-cua\src\native\ax_win.cc`
+- Modify: `C:\Users\dev\codez-cua\src\native\win.ts`
+- Modify: `C:\Users\dev\codez-cua\src\native\types.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\electronNativeBackend.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\electronNativeBackendTypes.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\nodeAutomationAdapter.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\electronInputHandlers.ts`
+- Modify: `C:\Users\dev\codez-cua\src\broker\server\electronAppHelpers.ts`
+- Modify: `C:\Users\dev\codez-cua\src\tools\pointer.ts`
 - Create: Windows pointer/clipboard/AUMID tests listed in the design WCFR-06/07/08.
 
 **Interfaces:**
@@ -306,12 +306,12 @@ Expected: focused tests exit 0；需要交互桌面的测试明确 skip，而不
 
 **Files:**
 
-- Create: `C:\Users\dev\zcode-cua\src\native\screen_capture_win.h`
-- Create: `C:\Users\dev\zcode-cua\src\native\screen_capture_win.cc`
-- Create: `C:\Users\dev\zcode-cua\src\native\windowsScreenCapture.ts`
-- Modify: `C:\Users\dev\zcode-cua\binding.gyp`
-- Modify: `C:\Users\dev\zcode-cua\src\native\ax_win.cc`
-- Modify: `C:\Users\dev\zcode-cua\src\native\win.ts`
+- Create: `C:\Users\dev\codez-cua\src\native\screen_capture_win.h`
+- Create: `C:\Users\dev\codez-cua\src\native\screen_capture_win.cc`
+- Create: `C:\Users\dev\codez-cua\src\native\windowsScreenCapture.ts`
+- Modify: `C:\Users\dev\codez-cua\binding.gyp`
+- Modify: `C:\Users\dev\codez-cua\src\native\ax_win.cc`
+- Modify: `C:\Users\dev\codez-cua\src\native\win.ts`
 - Modify: current broker observation/capture adapters without replacing upstream incremental state logic.
 - Create: WGC capability/adapter/app-state tests listed in WCFR-04/05。
 
@@ -364,7 +364,7 @@ Expected: focused tests exit 0，current-main incremental observation tests 继�
 
 **Files:**
 
-- Modify generated: `C:\Users\dev\zcode-cua\dist\**`
+- Modify generated: `C:\Users\dev\codez-cua\dist\**`
 - Create/update: Windows live smoke scripts and `docs/platforms.md` only when current behavior needs记录。
 
 **Interfaces:**
@@ -427,7 +427,7 @@ Expected: `origin/main..main` 只有一个新 commit，且未 push。
 
 **Interfaces:**
 
-- Consumes: Task 6 本地 producer commit 和 `zcodeCuaRuntime` contract。
+- Consumes: Task 6 本地 producer commit 和 `codezCuaRuntime` contract。
 - Produces: RED evidence that hardcoded `0.3.28` consumer cannot consume current producer。
 
 - [ ] **Step 1: 记录本地 producer SHA，保持远端 dependency pin 不变**
@@ -435,12 +435,12 @@ Expected: `origin/main..main` 只有一个新 commit，且未 push。
 运行：
 
 ```powershell
-$producerCommit = git -C C:\Users\dev\zcode-cua rev-parse HEAD
+$producerCommit = git -C C:\Users\dev\codez-cua rev-parse HEAD
 Write-Output $producerCommit
 ```
 
 用户明确要求不 push，因此该 SHA 暂时不能被 Git URL clean checkout 获取。实现和本地产品
-验证使用显式 `ZCODE_CUA_HELPER_RUNTIME_PACKAGE_DIR=C:\Users\dev\zcode-cua`；
+验证使用显式 `CODEZ_CUA_HELPER_RUNTIME_PACKAGE_DIR=C:\Users\dev\codez-cua`；
 `pnpm-workspace.yaml` 和 `pnpm-lock.yaml` 在 producer commit 可从 remote 获取前保持当前
 上游 pin，禁止提交不可获取的 SHA 或 `file:` 本地路径。最终 Git URL pin/clean-install gate
 标记为待用户 push 后执行，不能伪造成功。
@@ -451,9 +451,9 @@ Write-Output $producerCommit
 
 ```ts
 {
-  name: "@zcode/zcode-cua",
+  name: "@codez/codez-cua",
   version: "0.5.2",
-  zcodeCuaRuntime: {
+  codezCuaRuntime: {
     schema: 1,
     windows: {
       entry: "dist/windows-helper.js",
@@ -546,7 +546,7 @@ Expected: 全部 exit 0。
 - [ ] **Step 1: 在独立临时目录验证无 ignored 资源依赖**
 
 从当前 tracked tree 创建临时 checkout，确认 `packages/desktop/bundled-tools` 初始不存在；
-显式把 `ZCODE_CUA_HELPER_RUNTIME_PACKAGE_DIR` 指向 Task 6 本地 producer，执行 staging，
+显式把 `CODEZ_CUA_HELPER_RUNTIME_PACKAGE_DIR` 指向 Task 6 本地 producer，执行 staging，
 然后检查 manifest/entry/native digests。
 
 Expected: 不复制当前工作区历史 `bundled-tools` 也能生成资源。由于 producer commit 未 push，
@@ -557,7 +557,7 @@ Expected: 不复制当前工作区历史 `bundled-tools` 也能生成资源。�
 ```powershell
 pnpm exec vitest run packages/services/test/windowsCuaDevHelperHost.test.ts
 pnpm exec vitest run packages/services/test/windowsCuaProductHelper.integration.test.ts
-pnpm --filter @zcode/zcode-cua-plugin test
+pnpm --filter @codez/codez-cua-plugin test
 ```
 
 Expected: exit 0；真实 child integration 在 prerequisites 缺失时明确 skip。
@@ -601,16 +601,16 @@ Expected: commit 成功，工作区 clean，未 push。
 - [ ] **Step 1: 核对提交拓扑**
 
 ```powershell
-git -C C:\Users\dev\zcode-cua log --oneline origin/main..main
+git -C C:\Users\dev\codez-cua log --oneline origin/main..main
 git -C C:\Users\dev\z-code log --oneline origin/feat/cua-helper-app..HEAD
 ```
 
-Expected: zcode-cua 只有一个新 Windows commit；z-code 包含既有 Windows integration、spec 和本次 consumer fix。
+Expected: codez-cua 只有一个新 Windows commit；z-code 包含既有 Windows integration、spec 和本次 consumer fix。
 
 - [ ] **Step 2: 核对工作区与 push 状态**
 
 ```powershell
-git -C C:\Users\dev\zcode-cua status --short --branch
+git -C C:\Users\dev\codez-cua status --short --branch
 git -C C:\Users\dev\z-code status --short --branch
 ```
 

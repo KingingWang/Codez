@@ -46,7 +46,7 @@ live         calls [Bash, Read] -> results [Bash, Read]
 part 在工具开始前就按声明顺序落盘，完成时原地更新、位置不变，所以 part 顺序和 `declarationIndex`
 都不是 live 写入文件读取状态的顺序；工具结果返回的先后也不是（handler 写入之后还有序列化、
 PostToolUse hook、结果事件等异步步骤）。冷恢复需要 live 的写入顺序（见
-[Read File State Resume](../../../../apps/zcode-cli/docs/design/v2/tool/17-read-file-state-resume.md)）。
+[Read File State Resume](../../../../apps/codez-cli/docs/design/v2/tool/17-read-file-state-resume.md)）。
 
 ```text
 声明         完整 Read A(0) ──┐ 并行
@@ -93,12 +93,12 @@ PostToolUse hook、结果事件等异步步骤）。冷恢复需要 live 的写�
   未配置的 compact 而失败；下列命令修正准备条件后通过，不涉及产品代码调整。
 
 ```sh
-ZCODE_E2E_MANUAL_REVIEW=1 \
-ZCODE_E2E_DEEPSEEK_CONTEXT_WINDOW=128000 \
-ZCODE_E2E_DEEPSEEK_MAX_OUTPUT_TOKENS=32768 \
+CODEZ_E2E_MANUAL_REVIEW=1 \
+CODEZ_E2E_DEEPSEEK_CONTEXT_WINDOW=128000 \
+CODEZ_E2E_DEEPSEEK_MAX_OUTPUT_TOKENS=32768 \
 E2E_PROVIDER_HTTP_MODE=replay \
 E2E_PROVIDER_REPLAY_FIXTURE_PATH="$PWD/packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-tool-history-order.json" \
-pnpm --filter @zcode/desktop test:e2e -- --spec ./test/e2e/conversation-session/tools/conversation-session-tool-history-order.test.ts
+pnpm --filter @codez/desktop test:e2e -- --spec ./test/e2e/conversation-session/tools/conversation-session-tool-history-order.test.ts
 ```
 
 ### 2026-09-11：按调用选择最新尝试
@@ -122,11 +122,11 @@ pnpm --filter @zcode/desktop test:e2e -- --spec ./test/e2e/conversation-session/
 消失。同 callID 的多份 part 只在模型 hydration 中合并，不删除/迁移数据库记录，不改变
 Stop 时原来未落库调用的集合。文件读取状态和 UI 继续消费原始 parts。
 回退与断流恢复契约见
-[流式工具执行与恢复](../../../../apps/zcode-cli/docs/design/v2/model/streaming-tool-execution-and-recovery.md)。
+[流式工具执行与恢复](../../../../apps/codez-cli/docs/design/v2/model/streaming-tool-execution-and-recovery.md)。
 
 ### 2026-11-02：`blockIndex` 接替 `declarationIndex` 的写入
 
-[Assistant 内容块顺序](../../../../apps/zcode-cli/docs/design/v2/model/assistant-block-order.md)
+[Assistant 内容块顺序](../../../../apps/codez-cli/docs/design/v2/model/assistant-block-order.md)
 引入 `blockIndex`：一次响应里所有块（reasoning、text、tool，包括服务端执行的工具）共用的到达序号。
 工具之间的先后由它表达，所以：
 

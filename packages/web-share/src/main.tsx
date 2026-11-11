@@ -46,7 +46,7 @@ const root = {
 const webAuthService = createWebAuthService();
 
 function resolveThemePreference(): Theme {
-  const saved = localStorage.getItem("zcode-theme");
+  const saved = localStorage.getItem("codez-theme");
   return resolveWebRemoteControlInitialTheme({ storedTheme: saved, defaultTheme: "zai-light" });
 }
 
@@ -76,18 +76,18 @@ function renderCallback(): void {
 }
 
 const endpointOrigin =
-  import.meta.env.VITE_ZCODE_BASE_URL?.trim().replace(/\/+$/u, "") || window.location.origin;
+  import.meta.env.VITE_CODEZ_BASE_URL?.trim().replace(/\/+$/u, "") || window.location.origin;
 const mockMode =
   import.meta.env.DEV && import.meta.env.VITE_CONVERSATION_SHARE_PREVIEW_MOCK === "true";
 const getMockToken = () =>
-  mockMode && window.sessionStorage.getItem("zcode:share:mock-auth") === "owner"
+  mockMode && window.sessionStorage.getItem("codez:share:mock-auth") === "owner"
     ? "mock-owner-token"
     : null;
-const getAccessToken = () => getMockToken() ?? webAuthService.getZCodeJwtToken();
+const getAccessToken = () => getMockToken() ?? webAuthService.getCodezJwtToken();
 
 function startLogin(provider: WebOAuthProviderId): void {
   if (mockMode) {
-    window.sessionStorage.setItem("zcode:share:mock-auth", "owner");
+    window.sessionStorage.setItem("codez:share:mock-auth", "owner");
     window.location.reload();
     return;
   }
@@ -100,13 +100,13 @@ function startLogin(provider: WebOAuthProviderId): void {
 }
 
 function logout(): void {
-  if (mockMode) window.sessionStorage.removeItem("zcode:share:mock-auth");
+  if (mockMode) window.sessionStorage.removeItem("codez:share:mock-auth");
   void webAuthService.logout();
 }
 
 async function renderManage(locale: "zh-CN" | "en-US"): Promise<void> {
   document.documentElement.lang = locale;
-  document.title = locale === "zh-CN" ? "我的分享 · ZCode" : "My shares · ZCode";
+  document.title = locale === "zh-CN" ? "我的分享 · Codez" : "My shares · Codez";
   const client = mockMode
     ? new (
         await import("../../web/src/share-manage/mockConversationShareManageClient.js")
@@ -127,7 +127,7 @@ async function renderManage(locale: "zh-CN" | "en-US"): Promise<void> {
 async function renderShare(): Promise<void> {
   const locale = resolveConversationShareRouteLocale(window.location.pathname);
   document.documentElement.lang = locale;
-  document.title = locale === "zh-CN" ? "ZCode 会话分享" : "ZCode Conversation Share";
+  document.title = locale === "zh-CN" ? "Codez 会话分享" : "Codez Conversation Share";
 
   const shareCode = resolveConversationShareCodeFromPath(window.location.pathname);
   if (!shareCode) {

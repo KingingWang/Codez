@@ -1,4 +1,4 @@
-import type { IProjectService, ServiceDescriptor } from "@zcode/services";
+import type { IProjectService, ServiceDescriptor } from "@codez/services";
 
 /** 只读发现的连接证明；读取后由调用者复验，不能用于正文或写操作授权。 */
 export interface AppControlDiscoverySource {

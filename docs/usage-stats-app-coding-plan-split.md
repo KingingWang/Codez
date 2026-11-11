@@ -5,7 +5,7 @@
 应用用量的 `model_usage`、`turn_usage`、`tool_usage` 永久保留，不再按 30 天自动清理。
 写入、更新、启动和查询都不按记录年龄删除数据。全量概览读取全部留存数据；7 天 / 30 天
 仅限制查询范围。既有主动删除会话或清空数据行为不变。无需数据库迁移，已被旧版本清理的数据无法恢复。
-CLI 契约与验收见 [Usage Observability](../apps/zcode-cli/docs/design/v2/usage-observability.md)。
+CLI 契约与验收见 [Usage Observability](../apps/codez-cli/docs/design/v2/usage-observability.md)。
 
 ## 目标
 
@@ -73,7 +73,7 @@ Coding Plan:                         [ today / 7d / 30d ]
 - 5 小时额度：`--color-usage-chart-1`
 - 每周额度：`--color-usage-chart-2`
 - 工具调用（月度）：`--color-usage-chart-3`
-- ZCode MCP 每日额度：`--color-usage-chart-5`（图表色板暖黄色）
+- Codez MCP 每日额度：`--color-usage-chart-5`（图表色板暖黄色）
 
 Start Plan 余额卡保持成功态绿色，不跟随 Coding Plan 多色 quota 色板。
 

@@ -1,7 +1,7 @@
 import { startDraftFromProject } from "#e2e/helpers/project-sidebar";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { ZCodePluginInfo } from "@zcode/shared";
+import type { CodezPluginInfo } from "@codez/shared";
 import { clearAppData, getE2EAppDataPaths, waitForWorkspaceApp } from "#e2e/helpers/desktop-app";
 import {
   addMarketplaceSourceThroughAgent,
@@ -34,7 +34,7 @@ describe("PLM-LC-011 Desktop real Claude plugin HTTP install without Git", () =>
     // 全局空草稿不挂载 workspace App，旧测试 action 因此不存在；先进入项目草稿。
     await waitForWorkspaceApp(getE2EAppDataPaths().workspace, 45000);
     await startDraftFromProject(getE2EAppDataPaths().workspace);
-    const gitBinary = await browser.electron.execute(() => process.env.ZCODE_GIT_BINARY ?? "");
+    const gitBinary = await browser.electron.execute(() => process.env.CODEZ_GIT_BINARY ?? "");
     expect(gitBinary).toContain("missing-bin");
     expect(existsSync(gitBinary)).toBe(false);
 
@@ -132,7 +132,7 @@ function readInstalledRecord(pluginStorageRoot: string): {
   };
 }
 
-function componentNames(plugin: ZCodePluginInfo | undefined, kind: "mcp"): string[] {
+function componentNames(plugin: CodezPluginInfo | undefined, kind: "mcp"): string[] {
   return (
     plugin?.components?.find((group) => group.kind === kind)?.items.map((item) => item.name) ?? []
   );

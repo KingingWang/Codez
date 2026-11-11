@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { createSystemCredentialCipher } from "@zcode/shared/credential-security";
+import { createSystemCredentialCipher } from "@codez/shared/credential-security";
 import { watch } from "node:fs";
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { PlatformChannels } from "@zcode/shared";
+import { PlatformChannels } from "@codez/shared";
 import {
   TID_OAUTH_LOGIN_BUTTON,
   TID_OAUTH_ERROR,
@@ -13,7 +13,7 @@ import {
   TID_LOGIN_TRIGGER,
   TID_LOGIN_MENU_ITEM,
   TID_LOGIN_REGION_SWITCH,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -52,10 +52,10 @@ describe("OAuth 双路径完成竞态", () => {
       { timeout: 60_000 },
     );
     await browser.keys("Escape");
-    const baseUrl = process.env.ZCODE_E2E_OAUTH_RACE_URL!;
+    const baseUrl = process.env.CODEZ_E2E_OAUTH_RACE_URL!;
     await fetch(`${baseUrl}/__e2e/disable-poll`, { method: "POST" });
     const before = await readCredentials();
-    const logDir = await browser.electron.execute(() => process.env.ZCODE_E2E_RUNTIME_LOG_DIR);
+    const logDir = await browser.electron.execute(() => process.env.CODEZ_E2E_RUNTIME_LOG_DIR);
     if (!logDir) throw new Error("缺少 E2E 日志目录");
     const readCompletions = async () => {
       const logs = await Promise.all(
@@ -82,7 +82,7 @@ describe("OAuth 双路径完成竞态", () => {
     await browser.electron.execute((electron, channel) => {
       electron.BrowserWindow.getAllWindows()[0]!.webContents.send(
         channel,
-        "zcode://oauth/callback?state=e2e-race&authCode=cancelled-failure",
+        "codez://oauth/callback?state=e2e-race&authCode=cancelled-failure",
       );
     }, PlatformChannels.OAuthCallback);
     await browser.waitUntil(
@@ -103,14 +103,14 @@ describe("OAuth 双路径完成竞态", () => {
     const authState = (values: Record<string, string>) =>
       Object.fromEntries(
         Object.entries(values).filter(
-          ([key]) => key.startsWith("oauth:") || key === "zcodejwttoken",
+          ([key]) => key.startsWith("oauth:") || key === "codezjwttoken",
         ),
       );
     expect(authState(await readCredentials())).toEqual(authState(before));
   });
 
   it("区域切换选择实际登录渠道，并保留中国区服务端授权 URL", async () => {
-    const baseUrl = process.env.ZCODE_E2E_OAUTH_RACE_URL!;
+    const baseUrl = process.env.CODEZ_E2E_OAUTH_RACE_URL!;
     const openExternal = await browser.electron.mock("shell", "openExternal");
     await openExternal.mockClear();
     await openExternal.mockResolvedValue(undefined);
@@ -146,7 +146,7 @@ describe("OAuth 双路径完成竞态", () => {
   });
 
   it("本地期限先清除 flow 后进入可重试失败态，重新登录后继续等待", async () => {
-    const baseUrl = process.env.ZCODE_E2E_OAUTH_RACE_URL!;
+    const baseUrl = process.env.CODEZ_E2E_OAUTH_RACE_URL!;
     const openExternal = await browser.electron.mock("shell", "openExternal");
     await openExternal.mockClear();
     await openExternal.mockResolvedValue(undefined);
@@ -156,7 +156,7 @@ describe("OAuth 双路径完成竞态", () => {
     const authState = (values: Record<string, string>) =>
       Object.fromEntries(
         Object.entries(values).filter(
-          ([key]) => key.startsWith("oauth:") || key === "zcodejwttoken",
+          ([key]) => key.startsWith("oauth:") || key === "codezjwttoken",
         ),
       );
     await waitForTestIdByDom(TID_OAUTH_LOGIN_BUTTON);
@@ -185,7 +185,7 @@ describe("OAuth 双路径完成竞态", () => {
 
   it("AUTH-07: 浏览器唤起兑换失败后使用已到达的 polling 结果，保留归因", async function () {
     this.timeout(120_000);
-    const baseUrl = process.env.ZCODE_E2E_OAUTH_RACE_URL;
+    const baseUrl = process.env.CODEZ_E2E_OAUTH_RACE_URL;
     if (!baseUrl) throw new Error("缺少 OAuth race HTTP fixture");
     const openExternal = await browser.electron.mock("shell", "openExternal");
     await openExternal.mockClear();
@@ -286,7 +286,7 @@ describe("OAuth 双路径完成竞态", () => {
     await browser.electron.execute((electron, channel) => {
       electron.BrowserWindow.getAllWindows()[0]!.webContents.send(
         channel,
-        "zcode://oauth/callback?state=e2e-race&authCode=cancelled",
+        "codez://oauth/callback?state=e2e-race&authCode=cancelled",
       );
     }, PlatformChannels.OAuthCallback);
     await browser.waitUntil(
@@ -302,7 +302,7 @@ describe("OAuth 双路径完成竞态", () => {
     await waitForTestIdByDom(TID_OAUTH_LOGIN_BUTTON);
     await fetch(`${baseUrl}/__e2e/complete-token`, { method: "POST" });
     // 等待真实 RPC 回调完成后再发起下一次登录，避免新登录掩盖取消的 UI 结果。
-    const logDir = await browser.electron.execute(() => process.env.ZCODE_E2E_RUNTIME_LOG_DIR);
+    const logDir = await browser.electron.execute(() => process.env.CODEZ_E2E_RUNTIME_LOG_DIR);
     if (!logDir) throw new Error("缺少 E2E 日志目录");
     await browser.waitUntil(
       async () => {
@@ -341,7 +341,7 @@ describe("OAuth 双路径完成竞态", () => {
     await browser.electron.execute((electron, channel) => {
       electron.BrowserWindow.getAllWindows()[0]!.webContents.send(
         channel,
-        "zcode://oauth/callback?state=e2e-race&authCode=e2e-code&channel_id=desktop&utm_source=website&utm_campaign=race",
+        "codez://oauth/callback?state=e2e-race&authCode=e2e-code&channel_id=desktop&utm_source=website&utm_campaign=race",
       );
     }, PlatformChannels.OAuthCallback);
     await browser.waitUntil(
@@ -384,7 +384,7 @@ describe("OAuth 双路径完成竞态", () => {
     await browser.electron.execute((electron, channel) => {
       electron.BrowserWindow.getAllWindows()[0]!.webContents.send(
         channel,
-        "zcode://oauth/callback?state=e2e-race&authCode=late&channel_id=desktop&utm_source=website&utm_campaign=late",
+        "codez://oauth/callback?state=e2e-race&authCode=late&channel_id=desktop&utm_source=website&utm_campaign=late",
       );
     }, PlatformChannels.OAuthCallback);
     await browser.waitUntil(
@@ -405,15 +405,15 @@ describe("OAuth 双路径完成竞态", () => {
     for (const snapshot of credentialSnapshots) {
       if (!snapshot["oauth:zai:access_token"]) continue;
       expect(snapshot["oauth:active_provider"]).toBe("zai");
-      expect(snapshot["zcodejwttoken"]).toBe("e2e-race-jwt");
+      expect(snapshot["codezjwttoken"]).toBe("e2e-race-jwt");
       expect(snapshot["oauth:zai:user_info"]).toBeTruthy();
       expect(snapshot["oauth:bigmodel:access_token"]).toBeUndefined();
     }
   });
 
   it("先到兑换慢成功不被后到轮询快失败取消", async () => {
-    const baseUrl = process.env.ZCODE_E2E_OAUTH_RACE_URL!;
-    const logDir = await browser.electron.execute(() => process.env.ZCODE_E2E_RUNTIME_LOG_DIR);
+    const baseUrl = process.env.CODEZ_E2E_OAUTH_RACE_URL!;
+    const logDir = await browser.electron.execute(() => process.env.CODEZ_E2E_RUNTIME_LOG_DIR);
     if (!logDir) throw new Error("缺少 E2E 日志目录");
     const failureCount = async () => {
       const logs = await Promise.all(
@@ -440,7 +440,7 @@ describe("OAuth 双路径完成竞态", () => {
           const state = window as any;
           state.__oauthRaceService = service;
           state.__oauthRaceExchange = service.handleCallback(
-            "zcode://oauth/callback?state=e2e-race&authCode=slow-success",
+            "codez://oauth/callback?state=e2e-race&authCode=slow-success",
           );
           return;
         }
@@ -479,11 +479,11 @@ describe("OAuth 双路径完成竞态", () => {
       }
     });
     expect(results).toEqual(["session", "duplicate"]);
-    expect((await readCredentials())["zcodejwttoken"]).toBe("cancelled-jwt");
+    expect((await readCredentials())["codezjwttoken"]).toBe("cancelled-jwt");
   });
 
   it("旧 flow 本地期限过期后，新 flow 由回调完成，后续查询不按旧期限报过期", async () => {
-    const baseUrl = process.env.ZCODE_E2E_OAUTH_RACE_URL!;
+    const baseUrl = process.env.CODEZ_E2E_OAUTH_RACE_URL!;
     await fetch(`${baseUrl}/__e2e/short-expiry?enabled=true`, { method: "POST" });
     try {
       // 真实 Renderer→Host RPC 固定顺序：首个查询挂起到期限之后，Host 定时器先清除旧 flow。
@@ -520,7 +520,7 @@ describe("OAuth 双路径完成竞态", () => {
         const state = window as any;
         await state.__oauthExpiryService.startOAuthWithPolling("zai");
         state.__oauthExpiryExchange = state.__oauthExpiryService.handleCallback(
-          "zcode://oauth/callback?state=e2e-race&authCode=after-expiry",
+          "codez://oauth/callback?state=e2e-race&authCode=after-expiry",
         );
       });
       await browser.waitUntil(
@@ -555,7 +555,7 @@ describe("OAuth 双路径完成竞态", () => {
     ["expired-init", "已过期的初始化响应仍拒绝启动"],
   ] as const) {
     it(title, async () => {
-      const baseUrl = process.env.ZCODE_E2E_OAUTH_RACE_URL!;
+      const baseUrl = process.env.CODEZ_E2E_OAUTH_RACE_URL!;
       const originalHandle = await browser.getWindowHandle();
       const credentialsFile = getE2EAppDataPaths().credentialsFile;
       const originalCredentials = await readFile(credentialsFile, "utf8");
@@ -573,7 +573,7 @@ describe("OAuth 双路径完成竞态", () => {
         await writeFile(credentialsFile, "{}", "utf8");
         await openFaultInjectedHostWindow(
           fileURLToPath(new URL("../../helpers/oauth-polling-clock-faults.cjs", import.meta.url)),
-          { ZCODE_E2E_OAUTH_CLOCK_CASE: clockCaseId },
+          { CODEZ_E2E_OAUTH_CLOCK_CASE: clockCaseId },
         );
         await browser.waitUntil(
           async () => {
@@ -621,7 +621,7 @@ describe("OAuth 双路径完成竞态", () => {
               // 单入口已使用全球区渠道；验证主会话完成，不能继续等待旧 BigModel 专属槽位。
               const credentials = await readCredentials();
               return (
-                credentials["zcodejwttoken"] === "e2e-clock-jwt" &&
+                credentials["codezjwttoken"] === "e2e-clock-jwt" &&
                 credentials["oauth:active_provider"] === "zai"
               );
             },
@@ -680,7 +680,7 @@ describe("OAuth 双路径完成竞态", () => {
         await attempt(() => openExternal.mockRestore());
         await attempt(() =>
           writeFile(
-            join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `oauth-clock-${mode}.json`),
+            join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `oauth-clock-${mode}.json`),
             JSON.stringify({ status, cleanupErrors: cleanupErrors.map(String) }),
           ),
         );
@@ -689,7 +689,7 @@ describe("OAuth 双路径完成竞态", () => {
     });
   }
   it("中国区保存一个主体及关联 BigModel，不使用全球区业务换证", async () => {
-    const baseUrl = process.env.ZCODE_E2E_OAUTH_RACE_URL!;
+    const baseUrl = process.env.CODEZ_E2E_OAUTH_RACE_URL!;
     const before = await (await fetch(`${baseUrl}/__e2e/status`)).json();
     await fetch(`${baseUrl}/__e2e/cn-ready`, { method: "POST" });
     const result = await browser.execute(async (id) => {
@@ -712,7 +712,7 @@ describe("OAuth 双路径完成竞态", () => {
     expect(result).toMatchObject({
       kind: "session",
       provider: "zai_cn",
-      userInfo: { id: "e2e-cn-zcode-user" },
+      userInfo: { id: "e2e-cn-codez-user" },
     });
     const credentials = await readCredentials();
     expect(credentials["oauth:active_provider"]).toBe("zai_cn");
@@ -720,7 +720,7 @@ describe("OAuth 双路径完成竞态", () => {
     expect(credentials["oauth:zai:access_token"]).toBeUndefined();
     expect(credentials["oauth:bigmodel:access_token"]).toBeUndefined();
     expect(JSON.parse(credentials["oauth:linked_bigmodel"]!)).toEqual({
-      userId: "e2e-cn-zcode-user",
+      userId: "e2e-cn-codez-user",
       customerId: "e2e-linked-customer",
       accessToken: "e2e-linked-jwt-secret",
     });
@@ -745,7 +745,7 @@ describe("OAuth 双路径完成竞态", () => {
       expect(failed).toBe(true);
       expect(await readCredentials()).toEqual(credentials);
     }
-    // 只损坏附属凭据。恢复应清理该键，不得丢弃仍有效的 ZCode 身份。
+    // 只损坏附属凭据。恢复应清理该键，不得丢弃仍有效的 Codez 身份。
     const stored = JSON.parse(await readFile(getE2EAppDataPaths().credentialsFile, "utf8"));
     stored["oauth:linked_bigmodel"] = "enc:v1:broken-associated-token";
     await writeFile(getE2EAppDataPaths().credentialsFile, JSON.stringify(stored));
@@ -756,13 +756,13 @@ describe("OAuth 双路径完成竞态", () => {
     ).toBe("authenticated");
     const recovered = await readCredentials();
     expect(recovered["oauth:linked_bigmodel"]).toBeUndefined();
-    expect(recovered["zcodejwttoken"]).toBe(credentials["zcodejwttoken"]);
+    expect(recovered["codezjwttoken"]).toBe(credentials["codezjwttoken"]);
     await browser.execute(() => {
       delete (window as any).__cnOAuth;
     });
   });
   it("补关联只更新同一主体，缺失/失败保留旧状态，退出丢弃在途结果", async () => {
-    const baseUrl = process.env.ZCODE_E2E_OAUTH_RACE_URL!;
+    const baseUrl = process.env.CODEZ_E2E_OAUTH_RACE_URL!;
     await fetch(`${baseUrl}/__e2e/profile-mode?mode=linked`, { method: "POST" });
     const projected = await browser.execute(async (id) => {
       const element = document.querySelector(`[data-testid="${id}"]`)!;
@@ -782,7 +782,7 @@ describe("OAuth 双路径完成竞态", () => {
     }, TID_LOGIN_TRIGGER);
     expect(projected).toMatchObject({
       loginProvider: "zai_cn",
-      userId: "e2e-cn-zcode-user",
+      userId: "e2e-cn-codez-user",
       families: ["bigmodel"],
     });
     expect(JSON.stringify(projected)).not.toContain("secret");
@@ -841,9 +841,9 @@ describe("OAuth 双路径完成竞态", () => {
 });
 
 describe("Global 主体恢复边界", () => {
-  it("Global显式恢复只补展示，不把上游sub写成ZCode主ID", async function () {
+  it("Global显式恢复只补展示，不把上游sub写成Codez主ID", async function () {
     this.timeout(90_000);
-    const baseUrl = process.env.ZCODE_E2E_OAUTH_RACE_URL!;
+    const baseUrl = process.env.CODEZ_E2E_OAUTH_RACE_URL!;
     await fetch(`${baseUrl}/__e2e/global-subject-probe?enabled=true`, { method: "POST" });
     const file = getE2EAppDataPaths().credentialsFile;
     await writeFile(
@@ -852,7 +852,7 @@ describe("Global 主体恢复边界", () => {
         "oauth:active_provider": "zai",
         "oauth:session_revision": "global-subject-original",
         "oauth:zai:access_token": "global-business-token",
-        zcodejwttoken: "global-primary-token",
+        codezjwttoken: "global-primary-token",
         "oauth:zai:user_info": JSON.stringify({
           user_id: "canonical-global-user",
           name: "Original Global Display",
@@ -910,7 +910,7 @@ async function readCredentials(): Promise<Record<string, string>> {
   >;
   const cipher = createSystemCredentialCipher({
     filePath: getE2EAppDataPaths().credentialsFile,
-    env: { ZCODE_CREDENTIAL_SECRET: "oauth-completion-race-fixture" },
+    env: { CODEZ_CREDENTIAL_SECRET: "oauth-completion-race-fixture" },
   });
   return Object.fromEntries(
     await Promise.all(

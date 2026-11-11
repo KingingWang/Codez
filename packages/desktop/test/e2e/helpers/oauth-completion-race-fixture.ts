@@ -74,7 +74,7 @@ export async function prepareOAuthCompletionRaceFixture(
                   }
                 : {}),
               user: {
-                user_id: profileMode === "mismatch" ? "different-user" : "e2e-cn-zcode-user",
+                user_id: profileMode === "mismatch" ? "different-user" : "e2e-cn-codez-user",
                 name: "CN User",
               },
             },
@@ -212,8 +212,8 @@ export async function prepareOAuthCompletionRaceFixture(
             data: cnReady
               ? {
                   status: "ready",
-                  token: "e2e-cn-zcode-jwt",
-                  user: { user_id: "e2e-cn-zcode-user", name: "CN User" },
+                  token: "e2e-cn-codez-jwt",
+                  user: { user_id: "e2e-cn-codez-user", name: "CN User" },
                   zai: { user_id: "e2e-zai-user", access_token: "e30.eyJleHAiOjF9.signature" },
                   bigmodel: {
                     customer_id: "e2e-linked-customer",
@@ -257,11 +257,11 @@ export async function prepareOAuthCompletionRaceFixture(
   if (!address || typeof address === "string") throw new Error("OAuth race fixture 缺少端口");
   const baseUrl = `http://127.0.0.1:${address.port}`;
   const envPatch = {
-    ZCODE_E2E_OAUTH_RACE_URL: baseUrl,
-    ZCODE_CREDENTIAL_SECRET: "oauth-completion-race-fixture",
-    ZCODE_BASE_URL: baseUrl,
-    ZCODE_TEST_BASE_URL: baseUrl,
-    ZCODE_ENDPOINT_ORIGIN: baseUrl,
+    CODEZ_E2E_OAUTH_RACE_URL: baseUrl,
+    CODEZ_CREDENTIAL_SECRET: "oauth-completion-race-fixture",
+    CODEZ_BASE_URL: baseUrl,
+    CODEZ_TEST_BASE_URL: baseUrl,
+    CODEZ_ENDPOINT_ORIGIN: baseUrl,
     BIGMODEL_API_BASE_URL: baseUrl,
     BIGMODEL_OAUTH_USERINFO_URL: `${baseUrl}/api/biz/customer/getCustomerInfo`,
     // 登录成功会触发套餐刷新；只覆盖换证 URL 仍会把合成 token 发往真实业务域。

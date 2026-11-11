@@ -1,7 +1,7 @@
 /**
  * web-share-manage 标准调用示例：撤销一个分享，并以服务端返回的视图替换本地行。
  */
-import type { ConversationShareManagedItem } from "@zcode/shared";
+import type { ConversationShareManagedItem } from "@codez/shared";
 import type { ConversationShareManageApi } from "./contract.js";
 
 export async function exampleRevokeShare(

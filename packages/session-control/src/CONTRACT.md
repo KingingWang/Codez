@@ -1,8 +1,8 @@
 # Session control
 
-实现规格：[会话工具设计第 7 节](../../../docs/architecture/zcode-app-control-design.md#7-解耦架构与独立测试设计)。
+实现规格：[会话工具设计第 7 节](../../../docs/architecture/codez-app-control-design.md#7-解耦架构与独立测试设计)。
 
-公开入口为 `@zcode/session-control/contracts`、`/cli`、`/app` 和仅测试的 `/testing`。工厂分别返回 CLI 8 个、App 12 个方法。调用形态始终为 `(trustedContext, input)`；模型输入不能提供身份、权限或 trace。CLI/App 用例不相互导入。
+公开入口为 `@codez/session-control/contracts`、`/cli`、`/app` 和仅测试的 `/testing`。工厂分别返回 CLI 8 个、App 12 个方法。调用形态始终为 `(trustedContext, input)`；模型输入不能提供身份、权限或 trace。CLI/App 用例不相互导入。
 
 - 调用方两类（[扩展进程设计 §17.2](../../../docs/plugins/extension-host.md#172-调用方会话类与客户端类)）：App 可信上下文用判别字段 `caller` 区分 `session`（模型的会话控制工具，带 `rootSession`；字段缺省即会话类，既有构造方与 CLI 不写它）与 `client`（Host 为可信的非会话客户端构造，没有 `rootSession`）。`TrustedContext` 只在 App 范围包含客户端类，CLI 上下文与 CLI 端口的类型不变。`boundary.ts` 按判别字段决定 facade（客户端类恒为 App）；self_wait 只对会话类检查；重复 operation、授权、输出复验对两类相同。
 

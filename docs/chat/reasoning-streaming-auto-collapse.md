@@ -24,4 +24,4 @@ Assistant thought / reasoning 块本身已经表达“模型正在思考”。�
 
 ## 兼容性
 
-该变更只影响 UI 层 thought / reasoning 展示，不修改 ZCode Protocol、消息快照、desktop continuous 或 mobile replayable 语义。移动 Web 与桌面端消费同一 message parts，共用默认收起和单行原位流式摘要规则。
+该变更只影响 UI 层 thought / reasoning 展示，不修改 Codez Protocol、消息快照、desktop continuous 或 mobile replayable 语义。移动 Web 与桌面端消费同一 message parts，共用默认收起和单行原位流式摘要规则。

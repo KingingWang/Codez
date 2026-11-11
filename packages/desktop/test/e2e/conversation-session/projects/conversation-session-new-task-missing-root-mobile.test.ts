@@ -15,8 +15,8 @@ import { selectNativeProjectDirectories } from "#e2e/helpers/project-sidebar";
 type TestWindow = Window & {
   __testActions?: { setLocale(locale: "zh-CN" | "en-US"): void; setTheme(theme: string): void };
   __restoreRoot03Clipboard?: () => void;
-  __zcodeTabStoreE2E?: { getState(): { activeWorkspacePath: string | null; tabs: unknown[] } };
-  __zcodeSessionStoreE2E?: {
+  __codezTabStoreE2E?: { getState(): { activeWorkspacePath: string | null; tabs: unknown[] } };
+  __codezSessionStoreE2E?: {
     getState(): {
       getWorkspaceState(path: string): {
         activeTaskId: string | null;
@@ -33,9 +33,9 @@ describe("手机新建任务的目录失效反馈", () => {
   it("VP-ROOT-03：目录移走后提示原因并保留项目草稿，恢复后可重试", async function () {
     this.timeout(120_000);
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 45_000);
-    const cwd = join(process.env.ZCODE_E2E_HOME_DIR!, "E2E_MISSING_ROOT_MOBILE");
+    const cwd = join(process.env.CODEZ_E2E_HOME_DIR!, "E2E_MISSING_ROOT_MOBILE");
     const moved = `${cwd}-moved`;
-    const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR!;
+    const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR!;
     await mkdir(cwd, { recursive: true });
     await $('[data-testid="project-section"]').moveTo();
     await $('[data-testid="virtual-project-add"]').click();
@@ -48,7 +48,7 @@ describe("手机新建任务的目录失效反馈", () => {
     await $(selector).waitForDisplayed();
     const projectId = await $(selector).getAttribute("data-project-id");
     const desktopTabs = await browser.execute(
-      () => (window as TestWindow).__zcodeTabStoreE2E!.getState().tabs.length,
+      () => (window as TestWindow).__codezTabStoreE2E!.getState().tabs.length,
     );
 
     // 配对材料只经内存与 loopback 传递，不写 WebDriver 日志。
@@ -103,11 +103,11 @@ describe("手机新建任务的目录失效反馈", () => {
       const pairUrl = await pairing;
       if (new URL(pairUrl).hostname !== "127.0.0.1") throw new Error("Local Web fixture required");
       mobile = await chromium.launch({
-        ...(process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE
-          ? { executablePath: process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE }
+        ...(process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE
+          ? { executablePath: process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE }
           : { channel: "chrome" }),
         headless: true,
-        args: process.env.ZCODE_E2E_BROWSER_NO_PROXY === "1" ? ["--no-proxy-server"] : [],
+        args: process.env.CODEZ_E2E_BROWSER_NO_PROXY === "1" ? ["--no-proxy-server"] : [],
       });
       const context = await mobile.newContext({
         viewport: { width: 390, height: 844 },
@@ -128,8 +128,8 @@ describe("手机新建任务的目录失效反馈", () => {
       const readDraft = () =>
         page!.evaluate(() => {
           const target = window as TestWindow;
-          const path = target.__zcodeTabStoreE2E!.getState().activeWorkspacePath!;
-          const state = target.__zcodeSessionStoreE2E!.getState().getWorkspaceState(path);
+          const path = target.__codezTabStoreE2E!.getState().activeWorkspacePath!;
+          const state = target.__codezSessionStoreE2E!.getState().getWorkspaceState(path);
           return {
             path,
             projectId: state.draftProjectId,
@@ -206,13 +206,13 @@ describe("手机新建任务的目录失效反馈", () => {
             theme,
           );
           await page.waitForFunction(
-            () => !document.getElementById("zcode-toast-host")?.textContent?.trim(),
+            () => !document.getElementById("codez-toast-host")?.textContent?.trim(),
           );
           await page.getByTestId("task-new-button").tap();
-          const toast = page.locator("#zcode-toast-host").getByText(reason, { exact: true });
+          const toast = page.locator("#codez-toast-host").getByText(reason, { exact: true });
           await toast.waitFor();
           await page.waitForFunction(() => {
-            const toast = document.querySelector("#zcode-toast-host .opacity-100");
+            const toast = document.querySelector("#codez-toast-host .opacity-100");
             return toast && getComputedStyle(toast).opacity === "1";
           });
           expect(await readDraft()).toEqual(before);
@@ -233,7 +233,7 @@ describe("手机新建任务的目录失效反馈", () => {
       expect(restored.taskId).toBeNull();
       expect(
         await browser.execute(
-          () => (window as TestWindow).__zcodeTabStoreE2E!.getState().tabs.length,
+          () => (window as TestWindow).__codezTabStoreE2E!.getState().tabs.length,
         ),
       ).toBe(desktopTabs);
       await page.screenshot({

@@ -52,7 +52,7 @@ interface WSLBackendOptions {
 
 ```typescript
 // Linux 路径 → Windows UNC 路径
-// ~/.zcode/server/node → \\wsl$\Ubuntu\home\user\.zcode\server\node
+// ~/.codez/server/node → \\wsl$\Ubuntu\home\user\.codez\server\node
 function wslToWindowsPath(linuxPath: string, distro: string): string
 ```
 
@@ -150,9 +150,9 @@ export const HostMessageTypes = {
 ```typescript
 export const PlatformChannels = {
   ...
-  ConnectRemote: "zcode:connect-remote",
-  ConnectWSL: "zcode:connect-wsl",    // 新增
-  ListWSLDistros: "zcode:list-wsl-distros", // 新增
+  ConnectRemote: "codez:connect-remote",
+  ConnectWSL: "codez:connect-wsl",    // 新增
+  ListWSLDistros: "codez:list-wsl-distros", // 新增
   ...
 };
 ```
@@ -173,7 +173,7 @@ export const PlatformChannels = {
   try {
     const connection = await setupWSLConnection(msg.wslOptions, msg.remoteAssets);
     // 后续注册服务的逻辑与 InitRemote 完全一致
-    // file/system/terminal/zcode task/session → 来自 WSL（远端）
+    // file/system/terminal/codez task/session → 来自 WSL（远端）
     // setting/credential/broadcast → 本地
     ...
     parentPort.postMessage({ type: HostResponseTypes.Connected });
@@ -190,7 +190,7 @@ async function setupWSLConnection(
   options: WSLConnectOptions,
   remoteAssets: RemoteAssetDirs,
 ): Promise<RemoteConnection> {
-  const { WSLBackend } = await import("@zcode/server/remote");
+  const { WSLBackend } = await import("@codez/server/remote");
   const backend = new WSLBackend(options);
   return connectRemote(backend, remoteAssets);
   // connectRemote() 完全复用 —— 它只依赖 IRemoteBackend 接口
@@ -211,7 +211,7 @@ async function setupWSLConnection(
 async function createWSLWindow(options: WSLConnectOptions) {
   // 与 createRemoteWindow 结构相同
   // 区别：
-  // 1. 窗口标题: `ZCode - WSL (${options.distro ?? "default"})`
+  // 1. 窗口标题: `Codez - WSL (${options.distro ?? "default"})`
   // 2. 发送 InitWSL 消息而非 InitRemote
   // 3. remoteAssets 解析逻辑相同
 }
@@ -232,7 +232,7 @@ ipcMain.handle(PlatformChannels.ConnectWSL, async (_event, rawOptions) => {
 });
 
 ipcMain.handle(PlatformChannels.ListWSLDistros, async () => {
-  const { listWSLDistros } = await import("@zcode/server/remote");
+  const { listWSLDistros } = await import("@codez/server/remote");
   return listWSLDistros();
 });
 ```
@@ -243,7 +243,7 @@ ipcMain.handle(PlatformChannels.ListWSLDistros, async () => {
 
 **文件**: `packages/desktop/src/preload/index.ts`
 
-在 `window.zcode` 上新增：
+在 `window.codez` 上新增：
 
 ```typescript
 connectWSL: (options: WSLConnectOptions) =>
@@ -267,7 +267,7 @@ listWSLDistros(): Promise<WSLDistro[]>;
 
 **文件**: `packages/desktop/src/renderer/src/main.tsx`
 
-Desktop 实现接入 `window.zcode.connectWSL` / `window.zcode.listWSLDistros`。
+Desktop 实现接入 `window.codez.connectWSL` / `window.codez.listWSLDistros`。
 
 **文件**: `web/src/main.tsx`
 

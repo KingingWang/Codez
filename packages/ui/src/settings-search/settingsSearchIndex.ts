@@ -144,9 +144,9 @@ export const SETTINGS_SEARCH_ITEMS = [
     visibility: "all",
   },
   {
-    id: "settings.zcodeInteractionBehavior",
+    id: "settings.codezInteractionBehavior",
     section: "agentBehavior",
-    description: "settings.zcodeInteractionBehaviorDescription",
+    description: "settings.codezInteractionBehaviorDescription",
     visibility: "all",
   },
   {

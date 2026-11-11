@@ -1,6 +1,6 @@
 import type { DesignPageSignals } from "./contract.js";
 
-// 读设计稿信号：data-zcode-design 标记、:root / html 规则里声明的 CSS 变量名、data-variant 方案、section.slide。
+// 读设计稿信号：data-codez-design 标记、:root / html 规则里声明的 CSS 变量名、data-variant 方案、section.slide。
 // 宿主据此决定设计工具要不要自动出现；运行时的 read-info 也用它，两边口径一致。
 // 经 `.toString()` 注入页面，函数体只能用参数和页面全局对象。
 
@@ -35,7 +35,7 @@ export function readDesignPageSignals(maxCount: number): DesignPageSignals {
     if (variants.length >= maxCount) break;
   }
   return {
-    isDesignDocument: document.documentElement.hasAttribute("data-zcode-design"),
+    isDesignDocument: document.documentElement.hasAttribute("data-codez-design"),
     cssVariableNames,
     variants,
     slideCount: document.querySelectorAll("section.slide").length,

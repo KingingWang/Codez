@@ -4,7 +4,7 @@
 
 `ConversationProductProjection` 是 CLI 面向 App/Web 的会话读模型。产品语义以
 [conversation-product-protocol.md](../conversation-product-protocol.md) 为准，wire schema 以
-`packages/shared/src/zcode-protocol-v4/` 为准；本文说明当前代码如何从 runtime 事实生成并恢复该投影。
+`packages/shared/src/codez-protocol-v4/` 为准；本文说明当前代码如何从 runtime 事实生成并恢复该投影。
 
 ## 权威链路
 
@@ -20,10 +20,10 @@ runtime SessionEvent / persisted transcript
 
 当前实现入口：
 
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/event-normalizer.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/product-projection.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/conversation-topic-publisher.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/transcript-hydration.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/event-normalizer.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/product-projection.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/conversation-topic-publisher.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/transcript-hydration.ts`
 - `packages/ui/src/v4/conversationProjectionStore.ts`
 - `packages/ui/src/v4/sessionDataLayer.ts`
 
@@ -106,7 +106,7 @@ live 日志只覆盖部分 transcript，gateway 会按 footprint 检查选择完
   每种行的 action 分组（`*_ACTION_GROUPS`）只定义一次，快速判等与慢路径共用，分组与键的顺序决定 JSON 键序。
   给已有 action 增加写入的键只改分组常量；新增 action 还要在物化里算出开关，按分组位置传入。Node 合成回放
   10800 行、运行中时，同一进程交替测量单次物化约 4.6ms → 1.25ms（绝对值随机器负载变化，倍数约 3.7）。
-- 回归：`apps/zcode-cli/packages/bootstrap/tests/product-projection-streaming-actions.test.ts`。
+- 回归：`apps/codez-cli/packages/bootstrap/tests/product-projection-streaming-actions.test.ts`。
   逐事件断言哪些事件不调用物化，以锁定判据；同时与总是物化的参考投影比较 delta、snapshot 与 edit
   target，防止输出回归。参考比较能抓到“只产 `row.delta` 却改写侧表”而让 `canEdit` 或历史轮 `canFork`
   变化的回归；运行中的轮次里 `canRetry` 和本轮 `canFork`、`canRewindFiles` 本来就关闭，参考比较分辨
@@ -136,7 +136,7 @@ publisher 对不能用字节上界放行的事件走 `applyEventAtomically`：�
   `accept` 只能读传入的 snapshot 与 deltas，不能调用投影的查询方法：它执行时共享大侧表已带候选写入，当前
   snapshot 仍是旧的，读投影得到的是新旧混合的状态，不论最终接受还是拒绝都可能判错。
 - 原因：此前每个原子事件把所有侧表各复制一份，10800 行时一个工具事件约 1.7ms 花在复制上，随历史线性增长。
-- 回归：`apps/zcode-cli/packages/bootstrap/tests/product-projection-atomic-transaction.test.ts` 对每个事件
+- 回归：`apps/codez-cli/packages/bootstrap/tests/product-projection-atomic-transaction.test.ts` 对每个事件
   依次拒绝、让 accept 抛错、在归约写完侧表后注入异常、让第一张共享表回滚后抛错，断言投影全部字段（含 Map /
   Set 顺序）不变，再接受并与直接 `applyEvent` 比较；每一步之后断言八个字段都是 `TransactionalMap` 且没有残留
   事务；另有一组用例先冷恢复前两轮，再对其余事件做同样检查。`tests/transactional-map.test.ts` 覆盖新增、改写、
@@ -163,7 +163,7 @@ fork 与文件撤销各有两层条件：行级资格写在行 `actions`，sessi
 - 兼容：`availability.rewindFiles` 在 schema 中可选。旧 CLI 不下发，客户端按允许处理；旧 CLI 的
   `canRewindFiles` 本来就包含 session 锁，结果不变。新 CLI 搭配旧客户端时，旧客户端只看行级资格，锁定期间
   入口可能可点，命令由 CLI 拒绝（`guard.actionUnavailable`）。
-- 回归：`apps/zcode-cli/packages/bootstrap/tests/product-projection-session-locks.test.ts`。
+- 回归：`apps/codez-cli/packages/bootstrap/tests/product-projection-session-locks.test.ts`。
 
 ## 订阅与投递边界
 

@@ -151,7 +151,7 @@
           "name": "CreateWorkflow",
           "input": {
             "name": "E2E 产物交付",
-            "script": "phase(\"起草\");\nawait artifact.markdown(\"dwk-notes\", \"# E2E 笔记 v1\\n\\nE2E_DWK_NOTES_V1 初稿。\\n\", { title: \"E2E 笔记\", description: \"E2E 两版笔记的说明\", primary: true });\n// 闸：第一版发布后停住，让用例先看到只有一版的产物条。\nawait world.run(\"node\", [\"-e\", \"const fs = require(\\\"node:fs\\\"); const timer = setInterval(() => { if (fs.existsSync(\\\"{{e2eRuntimeRoot}}/dwk-gate-a\\\")) clearInterval(timer); }, 100);\"], { output: \"discard\", timeoutMs: 600000 });\nphase(\"定稿\");\n// 同一个 id 再发布一次：第二版。标题与说明是每一版自己的，primary 跟着 id 走、不必重复。\nawait artifact.markdown(\"dwk-notes\", \"# E2E 笔记 v2\\n\\nE2E_DWK_NOTES_V2 定稿。\\n\", { title: \"E2E 笔记\", description: \"E2E 两版笔记的说明\" });\nawait artifact.file(\"dwk-scores\", \".zcode-e2e/dwk-scores.csv\", { title: \"E2E 分数表\" });\nreturn \"E2E_DWK_A_RESULT 笔记与分数表已交付。\";"
+            "script": "phase(\"起草\");\nawait artifact.markdown(\"dwk-notes\", \"# E2E 笔记 v1\\n\\nE2E_DWK_NOTES_V1 初稿。\\n\", { title: \"E2E 笔记\", description: \"E2E 两版笔记的说明\", primary: true });\n// 闸：第一版发布后停住，让用例先看到只有一版的产物条。\nawait world.run(\"node\", [\"-e\", \"const fs = require(\\\"node:fs\\\"); const timer = setInterval(() => { if (fs.existsSync(\\\"{{e2eRuntimeRoot}}/dwk-gate-a\\\")) clearInterval(timer); }, 100);\"], { output: \"discard\", timeoutMs: 600000 });\nphase(\"定稿\");\n// 同一个 id 再发布一次：第二版。标题与说明是每一版自己的，primary 跟着 id 走、不必重复。\nawait artifact.markdown(\"dwk-notes\", \"# E2E 笔记 v2\\n\\nE2E_DWK_NOTES_V2 定稿。\\n\", { title: \"E2E 笔记\", description: \"E2E 两版笔记的说明\" });\nawait artifact.file(\"dwk-scores\", \".codez-e2e/dwk-scores.csv\", { title: \"E2E 分数表\" });\nreturn \"E2E_DWK_A_RESULT 笔记与分数表已交付。\";"
           }
         }
       },

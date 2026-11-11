@@ -2,11 +2,11 @@
 
 ## 背景
 
-系统临时目录可能被宿主环境、沙箱或企业安全策略限制权限。ZCode 产品主路径如果依赖 `TMPDIR` / `os.tmpdir()` 写入，会导致日志导出、反馈上传、剪贴板图片读取、checkpoint 构建或命令输出持久化在部分环境中失败。
+系统临时目录可能被宿主环境、沙箱或企业安全策略限制权限。Codez 产品主路径如果依赖 `TMPDIR` / `os.tmpdir()` 写入，会导致日志导出、反馈上传、剪贴板图片读取、checkpoint 构建或命令输出持久化在部分环境中失败。
 
 ## 目标
 
-- 除下述 Bash 输出例外外，可控的 ZCode 临时/持久化文件落在数据根目录下，默认是 `~/.zcode`。
+- 除下述 Bash 输出例外外，可控的 Codez 临时/持久化文件落在数据根目录下，默认是 `~/.codez`。
 - Bash 输出优先使用系统临时目录，目录不可用时复用数据根下的原有输出实现。
 - 不迁移历史文件，不额外扫描旧 `TMPDIR` 布局；已有输出引用仍沿用实际路径读取。
 - 本次不修改 remote asset fallback，也不修改官方 iOS / Android 模拟器插件路径。
@@ -15,21 +15,21 @@
 
 | 场景                      | 新路径                                                                                             | 生命周期                                       |
 | ------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| zcode-cli Bash 持久化输出 | `<os.tmpdir()>/zcode-bash-<随机标识>/<session>/<tool>-stdout.log`；降级到 `<storageRoot>/cli/exec` | 具名临时文件，沿用前后台保留规则，接受系统清理 |
-| zcode-cli 剪贴板图片      | `~/.zcode/clipboard`                                                                               | 单次读取后删除                                 |
-| 日志导出 staging          | `~/.zcode/export-log-stage`                                                                        | 打包完成后删除，异常退出允许残留               |
-| 日志导出结果              | `~/.zcode/export-log`                                                                              | 用户可见导出结果，默认保留                     |
-| feedback 附件和日志包     | `~/.zcode/feedback`                                                                                | 上传完成后删除                                 |
-| Git checkpoint 临时 index | `~/.zcode/git-checkpoint-index`                                                                    | checkpoint 构建完成后删除                      |
-| Desktop 编辑器图标转换    | `~/.zcode/editor-icon`                                                                             | 单次转换后删除                                 |
+| codez-cli Bash 持久化输出 | `<os.tmpdir()>/codez-bash-<随机标识>/<session>/<tool>-stdout.log`；降级到 `<storageRoot>/cli/exec` | 具名临时文件，沿用前后台保留规则，接受系统清理 |
+| codez-cli 剪贴板图片      | `~/.codez/clipboard`                                                                               | 单次读取后删除                                 |
+| 日志导出 staging          | `~/.codez/export-log-stage`                                                                        | 打包完成后删除，异常退出允许残留               |
+| 日志导出结果              | `~/.codez/export-log`                                                                              | 用户可见导出结果，默认保留                     |
+| feedback 附件和日志包     | `~/.codez/feedback`                                                                                | 上传完成后删除                                 |
+| Git checkpoint 临时 index | `~/.codez/git-checkpoint-index`                                                                    | checkpoint 构建完成后删除                      |
+| Desktop 编辑器图标转换    | `~/.codez/editor-icon`                                                                             | 单次转换后删除                                 |
 
 ## 约束
 
 - 写入前须准备业务子目录，不能依赖 `mkdtemp` 自动创建父目录。Bash 的系统 tmp 父目录不存在时按 `ENOENT` 降级，不自行创建系统 tmp 根。
 - 短生命周期目录必须使用单次唯一子目录，结束后在 `finally` 中清理；Bash retained 输出不随 adapter 关闭删除。
 - 失败清理不能影响主流程结果。Bash tmp 输出暂不纳入 App 存储占用统计或清理，其余目录沿用现有管理范围。
-- Bash 的自定义 `ZCODE_STORAGE_DIR` / `storageRoot` 也仅作为降级位置；其他文件仍优先使用解析后的 `storageRoot`。
-- service / desktop 侧使用现有 data base dir 语义，默认落到 `~/.zcode`，配置了 `ZCODE_DATA_BASE_DIR` 时落到 `{dataBaseDir}/.zcode`。
+- Bash 的自定义 `CODEZ_STORAGE_DIR` / `storageRoot` 也仅作为降级位置；其他文件仍优先使用解析后的 `storageRoot`。
+- service / desktop 侧使用现有 data base dir 语义，默认落到 `~/.codez`，配置了 `CODEZ_DATA_BASE_DIR` 时落到 `{dataBaseDir}/.codez`。
 
 ## Bash 输出例外
 
@@ -50,6 +50,6 @@ stdout/stderr 继续直接写同一文件，输出编码只解析一次。准备
 
 ## 非目标
 
-- 不清理已有 `$TMPDIR/zcode-*` 残留。
+- 不清理已有 `$TMPDIR/codez-*` 残留。
 - 不修改 remote asset cache fallback。
-- 不修改 `apps/zcode-cli/packages/ios-simulator-plugin` 与 `apps/zcode-cli/packages/android-emulator-plugin` 的数据目录。
+- 不修改 `apps/codez-cli/packages/ios-simulator-plugin` 与 `apps/codez-cli/packages/android-emulator-plugin` 的数据目录。

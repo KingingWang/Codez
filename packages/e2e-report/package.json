@@ -1,5 +1,5 @@
 {
-  "name": "@zcode/e2e-report",
+  "name": "@codez/e2e-report",
   "private": true,
   "type": "module",
   "main": "./dist-node/node/index.js",

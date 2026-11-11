@@ -2,8 +2,8 @@ import type {
   CaptureBrowserGuestPageClip,
   CaptureBrowserGuestPageRequest,
   CaptureBrowserGuestPageResult,
-} from "@zcode/shared";
-import { PlatformChannels } from "@zcode/shared";
+} from "@codez/shared";
+import { PlatformChannels } from "@codez/shared";
 import { ipcMain, webContents } from "electron";
 
 /**

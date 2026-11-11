@@ -17,12 +17,12 @@ import type {
 } from "#src/extension-host/views.js";
 
 // L1 业务面（docs/plugins/extension-host.md §3.2）：Window Host 与扩展进程经 Main 牵线的
-// MessageChannelMain 直连，端口上跑双向 @zcode/rpc。两端都用 ProxyChannel 暴露/代理这两个接口。
+// MessageChannelMain 直连，端口上跑双向 @codez/rpc。两端都用 ProxyChannel 暴露/代理这两个接口。
 
 export const EXTENSION_HOST_CHANNEL = "extension-host";
 export const EXTENSION_WINDOW_CHANNEL = "extension-window";
 
-/** 与 @zcode/rpc 的 Event 结构兼容；shared 不依赖 rpc，这里只声明调用形状。 */
+/** 与 @codez/rpc 的 Event 结构兼容；shared 不依赖 rpc，这里只声明调用形状。 */
 export type ExtensionEvent<T> = (listener: (event: T) => void) => CapabilityDisposable;
 
 export const executeCommandInputSchema = z.strictObject({

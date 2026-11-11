@@ -214,7 +214,7 @@ runtime-only issues 追加在后”的策略，否则会把更早字段的 regex
 
 本契约仅对应模型原始 arguments 的首次 schema failure。schema 成功后可选执行的
 工具级 `validateInput` 属于语义/环境校验，失败内容不经过参数错误 formatter；PreToolUse hook 修改后的
-输入和 REPL inner tool call 也是独立调用点。ZCode 当前没有 deferred/discovered-tool
+输入和 REPL inner tool call 也是独立调用点。Codez 当前没有 deferred/discovered-tool
 surface，因此不生成延迟工具发现的 schema 提示。本修复不为这些分支新增接口或行为。
 
 该逻辑没有 provider/model gate；所有支持工具调用的模型共用同一分支，不增加模型专属判断。
@@ -238,7 +238,7 @@ live ToolExecutionResult.modelContent
 - hydration 优先使用 string 类型的 `metadata.modelContent`，旧数据、缺失值或非 string 值继续
   fallback 到 `state.error`，无需迁移。
 - `metadata.modelContent` 仅供 Agent 冷恢复使用，映射 App / remote 消息时必须移除，不改变
-  ZCode protocol 或 UI 可见 tool metadata。
+  Codez protocol 或 UI 可见 tool metadata。
 - hydration 不根据当前工具 schema 重新格式化历史错误，避免 schema 或 formatter 版本变化改写
   模型当时实际看到的内容。
 

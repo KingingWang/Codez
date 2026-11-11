@@ -11,7 +11,7 @@
 
 - command prefix registry：由 `@withfig/autocomplete` specs 和内置 override 提供命令、
   subcommand、option 参数形状，用于寻找稳定 action prefix；
-- Bash readonly policy：判断 invocation 是否可自动只读放行，继续由 ZCode 现有
+- Bash readonly policy：判断 invocation 是否可自动只读放行，继续由 Codez 现有
   data-driven Bash policy 负责。
 
 prefix registry 不能把命令变成只读；readonly registry 也不能决定持久化授权范围。
@@ -41,7 +41,7 @@ build/dev only
 @withfig/autocomplete@2.692.3
         |
         v
-deterministic generator ---> compact generated registry ---> zcode.cjs / SEA
+deterministic generator ---> compact generated registry ---> codez.cjs / SEA
                                   |
 runtime                           v
 Bash input ---> unbash AST ---> permission rule policy

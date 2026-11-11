@@ -64,7 +64,7 @@ const hero = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("interactive_bundle"),
-    runtime: z.literal("zcode-hero-sandbox-v1"),
+    runtime: z.literal("codez-hero-sandbox-v1"),
     bundle: contentBundleSchema,
     viewport: z.object({ aspectRatio: z.literal("4:3") }),
     data: z

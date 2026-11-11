@@ -1,4 +1,4 @@
-import type { BotTopicHistoryBatch, ZCodePromptFileAttachment } from "@zcode/shared";
+import type { BotTopicHistoryBatch, CodezPromptFileAttachment } from "@codez/shared";
 
 /**
  * 把一次话题增量写成随用户消息发送的 text/plain 附件；没有消息且没有缺口时返回 undefined。
@@ -8,4 +8,4 @@ export type CreateTopicHistoryAttachment = (
   batch: BotTopicHistoryBatch,
   inputId: string,
   title: string,
-) => ZCodePromptFileAttachment | undefined;
+) => CodezPromptFileAttachment | undefined;

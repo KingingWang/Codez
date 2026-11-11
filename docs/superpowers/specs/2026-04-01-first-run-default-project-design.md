@@ -2,7 +2,7 @@
 
 ## 概述
 
-app 启动时优先恢复 `lastWorkspaceSession`；如果没有任何可恢复的工作区，则确保存在 `<dataBaseDir>/.zcode/workspace/default`，以 `workspacePurpose=conversation` 激活并预热。UI 保持“未选择项目”，用户可以直接对话。
+app 启动时优先恢复 `lastWorkspaceSession`；如果没有任何可恢复的工作区，则确保存在 `<dataBaseDir>/.codez/workspace/default`，以 `workspacePurpose=conversation` 激活并预热。UI 保持“未选择项目”，用户可以直接对话。
 
 ## 判断标准
 
@@ -31,7 +31,7 @@ interface IFileService {
 
 #### `ensureConversationWorkspace()`
 
-- 检查 `<dataBaseDir>/.zcode/workspace/default` 是否存在
+- 检查 `<dataBaseDir>/.codez/workspace/default` 是否存在
 - 不存在：`mkdir` 创建，返回 `{ path, created: true }`
 - 存在：返回 `{ path, created: false }`
 

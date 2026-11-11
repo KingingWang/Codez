@@ -10,8 +10,8 @@ import { chromium } from "playwright-core";
 import {
   createAcknowledgedWebRemoteControlRelayProtocol,
   WebRemoteControlRelayPayloadSerializer,
-} from "@zcode/client";
-import { ServiceChannels } from "@zcode/shared";
+} from "@codez/client";
+import { ServiceChannels } from "@codez/shared";
 import { createDeviceSwitchDesktopBridge } from "../../../projects/manual-review/pending/remote-device-switch.helpers.mjs";
 import { setup } from "../../../authentication/manual-review/pending/remote-login-v2.helpers.mjs";
 

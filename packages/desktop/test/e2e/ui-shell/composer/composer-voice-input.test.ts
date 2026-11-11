@@ -5,7 +5,7 @@ import {
   TID_V4_COMPOSER_SEND,
   TID_V4_COMPOSER_VOICE_INPUT,
   TID_V4_COMPOSER_VOICE_WAVEFORM,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { readSettings, seedSettings, waitForDefaultWorkspaceReady } from "#e2e/helpers/desktop-app";
 import {
   startAsrFrameDroppingProxy,
@@ -29,7 +29,7 @@ import { getToastMessages, waitForToastContaining } from "#e2e/helpers/conversat
 // 规格：docs/chat/composer-voice-input.md。麦克风由 wdio appArgs 的 Chromium 假设备提供（持续正弦音）。
 
 type LexicalInputE2EElement = HTMLElement & {
-  __zcodeLexicalInputE2E?: {
+  __codezLexicalInputE2E?: {
     getText: () => string;
     focus: () => void;
     setText: (text: string) => void;
@@ -42,7 +42,7 @@ const byId = (id: string) => $(`[data-testid="${id}"]`);
 
 // 替身由 wdio beforeSession 在 Electron 启动前启动（prepareVoiceInputFixture）。
 function mockOrigin(): string {
-  const value = process.env.ZCODE_E2E_ASR_MOCK_URL;
+  const value = process.env.CODEZ_E2E_ASR_MOCK_URL;
   if (!value) throw new Error("缺少语音输入 ASR 替身");
   return value;
 }
@@ -76,7 +76,7 @@ async function waitForVoiceState(state: string, timeoutMsg: string) {
 async function editorText(): Promise<string> {
   return browser.execute((id) => {
     const root = document.querySelector<LexicalInputE2EElement>(`[data-testid="${id}"]`);
-    return root?.__zcodeLexicalInputE2E?.getText() ?? "";
+    return root?.__codezLexicalInputE2E?.getText() ?? "";
   }, TID_V4_COMPOSER_INPUT);
 }
 
@@ -86,7 +86,7 @@ async function resetEditor() {
     (id, text) => {
       const bridge = document.querySelector<LexicalInputE2EElement>(
         `[data-testid="${id}"]`,
-      )?.__zcodeLexicalInputE2E;
+      )?.__codezLexicalInputE2E;
       bridge?.setText(text);
       bridge?.focus();
     },
@@ -107,7 +107,7 @@ async function waitForEditorText(expected: string, timeoutMsg: string) {
 }
 
 async function runtimeLogText(): Promise<string> {
-  const logs = await browser.electron.execute(() => process.env.ZCODE_E2E_RUNTIME_LOG_DIR);
+  const logs = await browser.electron.execute(() => process.env.CODEZ_E2E_RUNTIME_LOG_DIR);
   if (!logs) throw new Error("缺少 worker 运行时日志目录");
   const names = (await readdir(logs)).filter((name) => name.endsWith(".log")).sort();
   return (await Promise.all(names.map((name) => readFile(join(logs, name), "utf8")))).join("\n");
@@ -496,7 +496,7 @@ describe("Composer 语音输入", () => {
     // 系统权限被拒时不申请 ticket。
     expect((await mockState()).ticketRequests).toHaveLength(0);
     await browser.execute(() => {
-      const host = document.querySelector("#zcode-toast-host");
+      const host = document.querySelector("#codez-toast-host");
       const button = Array.from(host?.querySelectorAll("button") ?? []).find((element) =>
         element.textContent?.includes("打开系统设置"),
       );

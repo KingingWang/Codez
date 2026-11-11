@@ -57,7 +57,7 @@ after(async () => {
   await server?.close();
 });
 
-const artifacts = join(tmpdir(), "zcode-plugin-concurrent-install");
+const artifacts = join(tmpdir(), "codez-plugin-concurrent-install");
 for (const width of [390, 1200])
   for (const locale of ["en-US", "zh-CN"])
     for (const theme of ["light", "dark"]) {

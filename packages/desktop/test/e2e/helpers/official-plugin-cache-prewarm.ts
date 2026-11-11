@@ -15,7 +15,7 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 const OFFICIAL_PLUGIN_CACHE_SEGMENTS = [
-  ".zcode",
+  ".codez",
   "cli",
   "plugins",
   "cache",
@@ -39,8 +39,8 @@ export async function prepareOfficialPluginCacheTemplate(input: {
       ...process.env,
       HOME: input.templateHome,
       USERPROFILE: input.templateHome,
-      ZCODE_DATA_BASE_DIR: input.templateHome,
-      ZCODE_DESKTOP_HOME_DIR: input.templateHome,
+      CODEZ_DATA_BASE_DIR: input.templateHome,
+      CODEZ_DESKTOP_HOME_DIR: input.templateHome,
     },
     timeout: SEED_TIMEOUT_MS,
     windowsHide: true,

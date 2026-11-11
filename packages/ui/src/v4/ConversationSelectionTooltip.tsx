@@ -18,8 +18,8 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import type { ConversationRow } from "@zcode/shared/zcode-protocol-v4";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import type { ConversationRow } from "@codez/shared/codez-protocol-v4";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import {
   createConversationSelectionReference,
   setHoveredConversationAnnotation,
@@ -118,7 +118,7 @@ export function ConversationSelectionTooltip({
   ) => ConversationSelectionAppendResult | undefined;
   onAskInSideChat: (reference: ConversationSelectionReference) => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
   const inspectSelection = useCallback((): TooltipState | null => {

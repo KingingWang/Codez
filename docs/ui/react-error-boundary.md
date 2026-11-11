@@ -1,6 +1,6 @@
 # React Error Boundary
 
-`packages/ui/src/ErrorBoundary.tsx` 现在提供共享的 `AppErrorBoundary`，由 desktop / web 两个 renderer 入口统一包裹 `ZCodeIntlProvider` 和 `Root`。
+`packages/ui/src/ErrorBoundary.tsx` 现在提供共享的 `AppErrorBoundary`，由 desktop / web 两个 renderer 入口统一包裹 `CodezIntlProvider` 和 `Root`。
 
 这样做的目的很简单：
 

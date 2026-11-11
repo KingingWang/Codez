@@ -21,7 +21,7 @@
       "componentTypes": ["extension"],
       "extensionSummary": {
         "engines": {
-          "zcode": "^1.4.0"
+          "codez": "^1.4.0"
         },
         "grants": ["sessions.fullAccess", "notifications"]
       }
@@ -45,7 +45,7 @@
       "componentTypes": ["extension"],
       "extensionSummary": {
         "engines": {
-          "zcode": "^99.0.0"
+          "codez": "^99.0.0"
         },
         "grants": ["sessions.read"]
       }
@@ -69,7 +69,7 @@
       "componentTypes": ["extension"],
       "extensionSummary": {
         "engines": {
-          "zcode": "^1.4.0"
+          "codez": "^1.4.0"
         },
         "grants": []
       }

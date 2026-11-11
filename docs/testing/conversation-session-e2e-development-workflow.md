@@ -25,7 +25,7 @@ SCT07 的显式项目过滤使用 `{{appControlTargetProjectRef}}`，只能取�
 独立 CLI 的进程 E2E 由 bootstrap 现有 Vitest 入口收集，定向执行：
 
 ```bash
-pnpm --dir apps/zcode-cli/packages/bootstrap exec vitest run tests/session-control/standalone-process.e2e.test.ts
+pnpm --dir apps/codez-cli/packages/bootstrap exec vitest run tests/session-control/standalone-process.e2e.test.ts
 ```
 
 该用例启动生产 `packages/cli/src/main.ts` 子进程，本地受控 Provider 编排 ToolSearch 与实际工具调用；
@@ -35,11 +35,11 @@ pnpm --dir apps/zcode-cli/packages/bootstrap exec vitest run tests/session-contr
 SCT08 的独立 TUI 审批用例同样由 bootstrap Vitest 收集：
 
 ```bash
-pnpm --dir apps/zcode-cli/packages/bootstrap exec vitest run tests/session-control/standalone-tui-approval.e2e.test.ts
+pnpm --dir apps/codez-cli/packages/bootstrap exec vitest run tests/session-control/standalone-tui-approval.e2e.test.ts
 ```
 
-它在伪终端中启动生产 `zcode tui`，用终端模拟器还原画面后再断言，按键经伪终端写入。
-TUI 走 `@zcode/tui` 的 dist，改动 TUI 或 i18n 后先重建这两个包。失败时保留 screen.txt、pty.txt 和 Provider capture。
+它在伪终端中启动生产 `codez tui`，用终端模拟器还原画面后再断言，按键经伪终端写入。
+TUI 走 `@codez/tui` 的 dist，改动 TUI 或 i18n 后先重建这两个包。失败时保留 screen.txt、pty.txt 和 Provider capture。
 
 ## 两条流水线
 
@@ -66,7 +66,7 @@ E2E 落地回答“怎么稳定测”：
 6. 跑本地 default replay。
 7. 需要进入 Docker suite 时，先单 spec 跑 `replay-isolated`，通过后再登记进 Docker preset。
 8. 常规 Docker 回归按 suite 批量运行，复用同一个镜像、容器和 WDIO 构建入口。
-9. MR 与 GitLab Web pipeline 通过手动 optional job 跑正式目录下的 default replay。入口复用 `ZCODE_E2E_SPEC=./test/e2e/conversation-session/**/*.test.ts` 等递归 glob，配合 `ZCODE_E2E_EXCLUDE_SPEC=./test/e2e/**/manual-review/**/*.test.ts` 排除候选。分片与 MR 增量选择在展开后同样排除候选，场景目录不改变准入状态。
+9. MR 与 GitLab Web pipeline 通过手动 optional job 跑正式目录下的 default replay。入口复用 `CODEZ_E2E_SPEC=./test/e2e/conversation-session/**/*.test.ts` 等递归 glob，配合 `CODEZ_E2E_EXCLUDE_SPEC=./test/e2e/**/manual-review/**/*.test.ts` 排除候选。分片与 MR 增量选择在展开后同样排除候选，场景目录不改变准入状态。
 10. Docker CI 只收已经自动化稳定的 suite。
 
 默认 Desktop 全量入口按任意层级的 `manual-review` 目录统一排除候选，不能只枚举已知领域，
@@ -103,8 +103,8 @@ Start Plan 诊断已证明 `max-width` 仍在过渡时按钮会移动，点击�
 ### 正式回放契约维护（2026-10-15）
 
 正式回放修复遵循当前可观察合同：模型 Recent 夹具按当前项目的 Composer scope 读写
-`zcode-composer-recent:v2`，重启同时保留 scope 映射，不再播种旧 workspace 键。
-项目新建草稿的持久化检查使用 `zcode-v4-composer-project-drafts:v1`，核对 client/host/project
+`codez-composer-recent:v2`，重启同时保留 scope 映射，不再播种旧 workspace 键。
+项目新建草稿的持久化检查使用 `codez-v4-composer-project-drafts:v1`，核对 client/host/project
 及 `__draft__` 正文；不能继续只查正式 session 使用的 workspace 草稿 key。
 需要验证新草稿继承模型时，首轮和后续草稿必须显式从同一个项目创建；模型断言读取当前
 Composer，不读取 legacy 初始化诊断。非流式标题请求必须有对应 JSON fixture，不能以
@@ -204,7 +204,7 @@ worker 收到具体 spec → 按需使用 / 清理 mock 环境 → 执行用例
 
 `automations-create-manage` 的项目操作使用当前 `automation-project-select` 和
 `role=option`。按 [虚拟项目规格 B18](../superpowers/specs/2026-09-09-virtual-project-design.md)，
-候选来自本地虚拟项目，不再使用会话草稿菜单；隔离 fixture 只应列出 `ZCodeProject`。
+候选来自本地虚拟项目，不再使用会话草稿菜单；隔离 fixture 只应列出 `CodezProject`。
 保留创建、编辑、暂停、恢复与删除断言，不把旧「不在项目中工作」入口作为当前表单前置条件。
 
 正式目录下的 spec 使用 `prepareV4ConversationE2E` 把测试带到“可发送的空草稿”；`manual-review/pending` 迁移期候选仍可使用 `prepareConversationE2E`。已转正 spec 不得导入 legacy `helpers/conversation-session.js`：V4 pane/composer/timeline 操作来自 `v4-conversation.ts`，tool block 断言来自 `conversation-session-tool.ts`，provider request 断言来自 `conversation-session-network.ts`。这条边界只收敛 formal 证据实现，不改变 catalog 的产品状态组合。
@@ -222,7 +222,7 @@ admission 规则让 legacy helper 或 ledger mismatch 进入 formal scenario sui
 composer 可见，provider 配置完成后直接复用该草稿；只有当前仍绑定已有 session、处于非 draft
 页面或 composer 不存在时，才点击新建任务。
 
-固定文件夹具的准备还必须确认导航 owner 的 cwd 为 `ZCodeProject` 主要目录，并先于 Provider
+固定文件夹具的准备还必须确认导航 owner 的 cwd 为 `CodezProject` 主要目录，并先于 Provider
 初始化完成。该目录上的初始空草稿即使没有项目标签也可复用；不能为补标签重复新建，触发预热
 owner 换代。全局新建按虚拟项目规格 D3 创建独立目录，不能用它初始化固定目录夹具；已有会话、
 其他 cwd 或非空草稿应通过现有项目行的新建入口返回夹具目录。`skipShellReady` 保留调用方
@@ -331,36 +331,36 @@ packages/desktop/test/e2e/fixtures/cases/conversation-session/<case-name>.json
 
 ### 跨平台运行时路径合同
 
-`.e2e-home` 是 Desktop E2E 的隔离用户目录，不应把 case 文件散落到系统 `/tmp`。spec 在运行时创建、读取、修改或等待的文件统一放到 Agent 实际执行 workspace `ZCodeProject` 下的 `.zcode-e2e/<case>`：
+`.e2e-home` 是 Desktop E2E 的隔离用户目录，不应把 case 文件散落到系统 `/tmp`。spec 在运行时创建、读取、修改或等待的文件统一放到 Agent 实际执行 workspace `CodezProject` 下的 `.codez-e2e/<case>`：
 
 ```text
-.e2e-home/ZCodeProject/               Agent workspace cwd
-└── .zcode-e2e/<case>/                case-owned runtime files
+.e2e-home/CodezProject/               Agent workspace cwd
+└── .codez-e2e/<case>/                case-owned runtime files
 ```
 
 - Node 文件操作使用共享 helper 生成的原生绝对路径。
 - provider fixture 的 Read/Write/Edit/Glob/Grep 等绝对路径使用 `{{e2eRuntimeRoot}}/<case>/...`；replay server 在请求匹配前展开变量。
-- Bash command 使用 `.zcode-e2e/<case>/...` workspace-relative POSIX 路径，禁止依赖 `/tmp`、Windows drive 到 Git Bash mount 的隐式转换或用户 TEMP 目录。
+- Bash command 使用 `.codez-e2e/<case>/...` workspace-relative POSIX 路径，禁止依赖 `/tmp`、Windows drive 到 Git Bash mount 的隐式转换或用户 TEMP 目录。
 - case manifest 的 `fileFixtures[].path` 使用 workspace-relative 路径。
 
 ```text
 spec native path ─────────────┐
-fixture absolute tool path ───┼─> ZCodeProject/.zcode-e2e/<case>/file
+fixture absolute tool path ───┼─> CodezProject/.codez-e2e/<case>/file
 Bash relative path ───────────┘
 ```
 
 该合同保证 macOS、Linux 和 Windows Git Bash 下的 Node/spec、工具执行与 shell barrier 指向同一文件。新增或修改 conversation E2E 时，fixture contract check 之外还必须通过裸 `/tmp` 审计。
 
-**已知问题（2026-11-05）：隔离 HOME 挡不住仓库根目录的项目配置。** `.e2e-home-<runId>` 在 `packages/desktop/` 下，CLI 读项目配置时从 workspace 一直向上读到仓库根目录，所以开发者本地未提交的 `<repo>/.zcode/config.json` 会进入 E2E。
+**已知问题（2026-11-05）：隔离 HOME 挡不住仓库根目录的项目配置。** `.e2e-home-<runId>` 在 `packages/desktop/` 下，CLI 读项目配置时从 workspace 一直向上读到仓库根目录，所以开发者本地未提交的 `<repo>/.codez/config.json` 会进入 E2E。
 
 ```text
-packages/desktop/.e2e-home-<runId>/ZCodeProject   E2E workspace
+packages/desktop/.e2e-home-<runId>/CodezProject   E2E workspace
         ↑ 项目配置向上发现
-<repo>/.zcode/config.json                         开发者本地修改也会生效
+<repo>/.codez/config.json                         开发者本地修改也会生效
 ```
 
-- 实例：本地把官方插件设为禁用后，`conversation-session-composer-prefix-routing` 第 109 行的 `@` 插件分组不出现，看起来像代码回归。证据是 Agent 日志的 `"configPath":"<repo>/.zcode/config.json","configScope":"project"`，以及插件目录的 `enabled` 数量（干净配置 12/16，本地配置 6/16）。
-- 判断失败前，先确认运行目录里的 `.zcode/config.json` 与 git 版本一致；不一致时，在干净的临时 worktree 里重跑。
+- 实例：本地把官方插件设为禁用后，`conversation-session-composer-prefix-routing` 第 109 行的 `@` 插件分组不出现，看起来像代码回归。证据是 Agent 日志的 `"configPath":"<repo>/.codez/config.json","configScope":"project"`，以及插件目录的 `enabled` 数量（干净配置 12/16，本地配置 6/16）。
+- 判断失败前，先确认运行目录里的 `.codez/config.json` 与 git 版本一致；不一致时，在干净的临时 worktree 里重跑。
 - 本次不改隔离方式（用户决策）。根治的两个方向：把隔离 HOME 移到仓库外，或让 E2E workspace 的项目配置发现停在 workspace 边界。
 
 case manifest 与 case-local provider fixture 中的 `spec` 统一表示 **canonical formal target**，始终写成
@@ -438,18 +438,18 @@ pending case 已有 case-local fixture 时，可以在转正前直接检查合�
 同时要求两个 fixture JSON 的 `spec` 指向 canonical formal target：
 
 ```bash
-pnpm --filter @zcode/desktop e2e:fixture:check -- \
+pnpm --filter @codez/desktop e2e:fixture:check -- \
   --spec ./test/e2e/conversation-session/<scenario>/manual-review/pending/<case>.test.ts
 ```
 
 pending manual-review 会按 case 是否已有 case-local fixture 自动隔离模式：已有 fixture 时使用 replay，
 缺 fixture 时使用 live/capture。需要临时覆盖 fixture 集合时仍可显式传入 fixture 路径；该变量同时把
-provider transport 切到 replay，但仍保留 `ZCODE_E2E_MANUAL_REVIEW=1` 的 pending spec 运行边界，
+provider transport 切到 replay，但仍保留 `CODEZ_E2E_MANUAL_REVIEW=1` 的 pending spec 运行边界，
 避免把回放证据误当成真实 provider capture：
 
 ```bash
 E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/conversation-session/<case>.json \
-  pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec \
+  pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec \
   './test/e2e/conversation-session/<scenario>/manual-review/pending/<case>.test.ts'
 ```
 
@@ -475,7 +475,7 @@ E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/com
 review 已确认的 pending case 使用 promotion 工具做机械转正：
 
 ```bash
-pnpm --filter @zcode/desktop e2e:promote -- --spec ./test/e2e/conversation-session/<scenario>/manual-review/pending/<case>.test.ts --reviewed --apply
+pnpm --filter @codez/desktop e2e:promote -- --spec ./test/e2e/conversation-session/<scenario>/manual-review/pending/<case>.test.ts --reviewed --apply
 ```
 
 promotion 工具只做确定性脚手架：
@@ -495,12 +495,12 @@ formal audit，开发者必须在 pending 阶段根据人工 review 和请求分
 manifest 与 provider fixture 的 `spec` 都指向 canonical formal target；audit 未通过时不会完成转正。转正后再运行：
 
 ```bash
-pnpm --filter @zcode/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/<scenario>/<case>.test.ts
+pnpm --filter @codez/desktop e2e:fixture:check -- --spec ./test/e2e/conversation-session/<scenario>/<case>.test.ts
 
 E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/conversation-session/<case>.json \
-  pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/<scenario>/<case>.test.ts'
+  pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/<scenario>/<case>.test.ts'
 
-pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/<scenario>/<case>.test.ts'
+pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec './test/e2e/conversation-session/<scenario>/<case>.test.ts'
 ```
 
 第一条 replay 命令显式只加载 common + case-local fixture，用来证明正式 case 不依赖 legacy `provider-basic.json` 的专用兜底。
@@ -515,7 +515,7 @@ E2E_SPEC=./test/e2e/conversation-session/<scenario>/<case>.test.ts \
 通过后再登记进 `conversation-session-verified`：
 
 ```bash
-pnpm --filter @zcode/desktop e2e:docker:admit -- \
+pnpm --filter @codez/desktop e2e:docker:admit -- \
   --spec ./test/e2e/conversation-session/<scenario>/<case>.test.ts \
   --verified \
   --artifact packages/desktop/.e2e-artifacts/<run-id> \

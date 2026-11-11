@@ -1,6 +1,6 @@
 # OAuth 多提供方最终改造方案（Final）
 
-文档状态：已按 2026-07-16 OAuth callback 收敛决策更新。当前 Desktop OAuth 只支持统一回调 `zcode://oauth/callback`，不再支持 provider-specific callback host。
+文档状态：已按 2026-07-16 OAuth callback 收敛决策更新。当前 Desktop OAuth 只支持统一回调 `codez://oauth/callback`，不再支持 provider-specific callback host。
 
 关联文档：
 
@@ -21,7 +21,7 @@
 ## 2. 现状问题（基于当前代码）
 
 1. OAuth 配置与实现强绑定 BigModel 协议细节：`authCode` 参数、`tokenByAuthCode` 交换契约、特定用户信息字段。
-2. 历史 BigModel 单提供方阶段曾使用 provider-specific deep link；当前已收敛为统一 `zcode://oauth/callback`。
+2. 历史 BigModel 单提供方阶段曾使用 provider-specific deep link；当前已收敛为统一 `codez://oauth/callback`。
 3. `IOAuthService` 无 provider 维度，调用方无法表达“我要发起哪个提供方登录”。
 4. 凭据 key 未分 provider 命名空间，未来多提供方会互相覆盖 token 与用户信息。
 5. UI 文案与交互模型是“单按钮 BigModel 登录”，没有 provider 列表/策略扩展点。
@@ -161,13 +161,13 @@ interface IOAuthService {
 
 Desktop main deep link 路由统一为单一入口：
 
-- 当前路径：`zcode://oauth/callback?...`
-- 已移除旧路径：`zcode://bigmodel-auth/callback?...`
-- 已移除旧路径：`zcode://zai-auth/callback?...`
+- 当前路径：`codez://oauth/callback?...`
+- 已移除旧路径：`codez://bigmodel-auth/callback?...`
+- 已移除旧路径：`codez://zai-auth/callback?...`
 
 收敛策略：
 
-1. 新客户端发起 OAuth 时，无论 provider，均使用 `zcode://oauth/callback` 作为 `redirect_uri`。
+1. 新客户端发起 OAuth 时，无论 provider，均使用 `codez://oauth/callback` 作为 `redirect_uri`。
 2. Desktop main 进程只识别 `oauth` host，provider 归属不从 callback host 推断。
 3. 回调路由仍以 `state` 为权威索引；renderer 侧 `OAuthService` 根据 pending state 找回发起登录的 provider。
 4. 不再提供 `ZAI_OAUTH_REDIRECT_URI` / `BIGMODEL_OAUTH_REDIRECT_URI` 及 legacy redirect URI 环境变量覆盖能力，避免发布环境重新产出旧 callback。

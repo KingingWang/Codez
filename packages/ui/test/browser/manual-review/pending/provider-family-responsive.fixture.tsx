@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import {
   ProviderFamilyHeader,
   ProviderFamilyPlanModeSwitch,
@@ -41,7 +41,7 @@ document.documentElement.className =
 function Fixture() {
   const [selected, setSelected] = useState(items[0]!);
   return (
-    <ZCodeIntlProvider initialLocale={params.get("locale") === "zh-CN" ? "zh-CN" : "en-US"}>
+    <CodezIntlProvider initialLocale={params.get("locale") === "zh-CN" ? "zh-CN" : "en-US"}>
       <main
         style={{
           padding: 16,
@@ -67,7 +67,7 @@ function Fixture() {
         </section>
         <output data-testid="selected">{selected.key}</output>
       </main>
-    </ZCodeIntlProvider>
+    </CodezIntlProvider>
   );
 }
 

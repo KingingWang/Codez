@@ -24,29 +24,29 @@ import {
   getExportLogDir as getDefaultExportLogDir,
   getExportLogStageDir as getDefaultExportLogStageDir,
   getFeedbackLogArchiveDir as getDefaultFeedbackLogArchiveDir,
-} from "@zcode/services/node";
+} from "@codez/services/node";
 import { createAboutSnapshot, formatAboutDetail, readBuildMetadata } from "./about.js";
 import { logger } from "./logger.js";
 
-function getZCodeDataDir() {
+function getCodezDataDir() {
   return getAppConfigDir();
 }
 
-function getZCodeCliDir() {
-  return join(homedir(), ".zcode", "cli");
+function getCodezCliDir() {
+  return join(homedir(), ".codez", "cli");
 }
 
-function getZCodeCliLogDir() {
-  return join(getZCodeCliDir(), "log");
+function getCodezCliLogDir() {
+  return join(getCodezCliDir(), "log");
 }
 
 /**
  * Computer Use Helper 的运行目录。macOS 上 Helper 由 LaunchServices 启动，stderr 被系统丢弃，
- * 所以它把生命周期与后台输入诊断 tee 到 `<socket>.exit.log`（见 zcode-cua
+ * 所以它把生命周期与后台输入诊断 tee 到 `<socket>.exit.log`（见 codez-cua
  * helperExitLogPathFor）。同目录下还有 `.tokens` broker 凭据，收集时必须按文件名白名单。
  */
 function getCuaHelperRunDir() {
-  return join(homedir(), ".zcode", "computer-use", "run");
+  return join(homedir(), ".codez", "computer-use", "run");
 }
 
 function isCuaHelperDiagnosticFileName(fileName: string): boolean {
@@ -76,7 +76,7 @@ interface LogArchiveSkippedFileEntry {
 
 interface ExportLogsDependencies {
   now?: () => Date;
-  getZCodeDataDir?: () => string;
+  getCodezDataDir?: () => string;
   getExportLogStageDir?: () => string;
   getExportLogDir?: () => string;
   createLogArchiveArtifacts?: (
@@ -178,7 +178,7 @@ const SENSITIVE_KEY_NAME_REGEX = new RegExp(`(?:${SENSITIVE_KEY_SUBSTRING_PATTER
 // 因此这里只放行明确的 LLM token 计数/预算字段，以及 author/authority 这类含 "auth" 的普通词。
 // 敏感键下的数字也会被脱敏，计数键必须逐个列进来：前缀只由“计数用词”组成（不含 access/session/
 // refresh/id/read/write 单独出现），覆盖各家 provider 的用量字段（cache_read_input_tokens、
-// ephemeral_5m_input_tokens、*_tokens_details、max_completion_tokens、*TokenCount）和 ZCode 内部的
+// ephemeral_5m_input_tokens、*_tokens_details、max_completion_tokens、*TokenCount）和 Codez 内部的
 // camelCase 计数（cacheReadTokens、maxOutputTokens）。buildSnapshot 是快照耗时，误中了 "dsn" 子串。
 // 下面的 "_" 是键名分隔符占位，组装完整个正则后统一换成“可选的 _ 或 -”（兼容 camelCase）。
 const TOKEN_COUNT_KEY_PREFIX_PATTERN = [
@@ -1023,14 +1023,14 @@ function isExcludedRelativePath(relativePath: string): boolean {
     return true;
   }
   // debug 目录通常是模型/运行时高频轨迹，不是用户要交付的日志包材料。
-  // 过去显式收集 ~/.zcode/cli/debug 会把这类上下文带进手动导出和反馈完整日志，这里按目录段统一跳过。
+  // 过去显式收集 ~/.codez/cli/debug 会把这类上下文带进手动导出和反馈完整日志，这里按目录段统一跳过。
   if (isExcludedDirectoryArchivePath(normalizedRelativePath)) {
     return true;
   }
   if (isNonLogStateArchivePath(normalizedRelativePath)) {
     return true;
   }
-  // ~/.zcode/v2/dev 保存 stdio-traffic 等高频协议流，真实机器上会累计到 GB 级。
+  // ~/.codez/v2/dev 保存 stdio-traffic 等高频协议流，真实机器上会累计到 GB 级。
   // 远超反馈附件的大小上限，不应随诊断包带出。
   if (isHighVolumeRuntimeArchivePath(normalizedRelativePath)) {
     return true;
@@ -1057,7 +1057,7 @@ function shouldApplyLogExportRetention(archivePath: string): boolean {
   const normalizedArchivePath = normalizeArchivePath(archivePath);
   if (
     normalizedArchivePath.startsWith("logs/") ||
-    normalizedArchivePath.startsWith(".zcode/cli/log/")
+    normalizedArchivePath.startsWith(".codez/cli/log/")
   ) {
     return true;
   }
@@ -1253,28 +1253,28 @@ export async function createLogArchiveArtifacts(
 
   await collectLogArchiveFilesFromDirectory(sourceDir, "", visitedDirs, files);
 
-  const zcodeCliLogDir = getZCodeCliLogDir();
-  // GLM / zcode-cli 的运行日志写在 ~/.zcode/cli/log，不在应用主数据目录 ~/.zcode/v2 下。
+  const codezCliLogDir = getCodezCliLogDir();
+  // GLM / codez-cli 的运行日志写在 ~/.codez/cli/log，不在应用主数据目录 ~/.codez/v2 下。
   // 如果导出日志只扫描 v2，定位 agent CLI 启动、协议或崩溃问题时会缺少最关键的原生侧日志。
   await collectLogArchiveFilesFromDirectory(
-    zcodeCliLogDir,
-    posix.join(".zcode", "cli", "log"),
+    codezCliLogDir,
+    posix.join(".codez", "cli", "log"),
     visitedDirs,
     files,
   );
 
-  const zcodeCliDir = getZCodeCliDir();
+  const codezCliDir = getCodezCliDir();
   // 排查 agent CLI 问题还需要它的运行配置与模型 IO 轨迹。
   // config.json 是当前生效配置；rollout 是 model-io 调用轨迹，
-  // 二者都不在 ~/.zcode/cli/log 下，需要额外收集才能完整还原现场。
+  // 二者都不在 ~/.codez/cli/log 下，需要额外收集才能完整还原现场。
   await collectLogArchiveFile(
-    join(zcodeCliDir, "config.json"),
-    posix.join(".zcode", "cli", "config.json"),
+    join(codezCliDir, "config.json"),
+    posix.join(".codez", "cli", "config.json"),
     files,
   );
   await collectLogArchiveFilesFromDirectory(
-    join(zcodeCliDir, "rollout"),
-    posix.join(".zcode", "cli", "rollout"),
+    join(codezCliDir, "rollout"),
+    posix.join(".codez", "cli", "rollout"),
     visitedDirs,
     files,
   );
@@ -1282,11 +1282,11 @@ export async function createLogArchiveArtifacts(
   // Computer Use Helper 的结构化诊断必须进日志包：否则反馈包里
   // grep "background keyboard begin rejected" 命中 0，
   // 因为 Helper 由 LaunchServices 启动、stderr 被系统丢弃，它把诊断 tee 到
-  // ~/.zcode/computer-use/run/<socket>.exit.log，既不在 app data 也不在 ~/.zcode/cli 下。
+  // ~/.codez/computer-use/run/<socket>.exit.log，既不在 app data 也不在 ~/.codez/cli 下。
   // 同目录下有 .tokens broker 凭据，因此按文件名白名单只收 *.exit.log，不递归该目录。
   await collectLogArchiveFilesByName(
     getCuaHelperRunDir(),
-    posix.join(".zcode", "computer-use", "run"),
+    posix.join(".codez", "computer-use", "run"),
     isCuaHelperDiagnosticFileName,
     files,
   );
@@ -1437,21 +1437,21 @@ export async function createFeedbackLogArchiveFromExportLogs(
   return createFeedbackDiagnosticArchive({
     sources: [
       { directory: join(sourceDir, "logs"), archivePrefix: "logs" },
-      { directory: getZCodeCliLogDir(), archivePrefix: ".zcode/cli/log" },
+      { directory: getCodezCliLogDir(), archivePrefix: ".codez/cli/log" },
       {
-        directory: getZCodeCliDir(),
-        archivePrefix: ".zcode/cli",
+        directory: getCodezCliDir(),
+        archivePrefix: ".codez/cli",
         includeFileNames: ["config.json"],
         onlyCurrentDay: false,
         contentPolicy: "cli-config",
       },
       {
-        directory: join(getZCodeCliDir(), "rollout"),
-        archivePrefix: ".zcode/cli/rollout",
+        directory: join(getCodezCliDir(), "rollout"),
+        archivePrefix: ".codez/cli/rollout",
       },
       {
         directory: getCuaHelperRunDir(),
-        archivePrefix: ".zcode/computer-use/run",
+        archivePrefix: ".codez/computer-use/run",
         exitLogsOnly: true,
       },
     ],
@@ -1466,7 +1466,7 @@ export async function exportLogs(
 ): Promise<{ success: boolean; path?: string; error?: string }> {
   try {
     const now = dependencies.now ?? (() => new Date());
-    const getSourceDir = dependencies.getZCodeDataDir ?? getZCodeDataDir;
+    const getSourceDir = dependencies.getCodezDataDir ?? getCodezDataDir;
     const buildArtifacts = dependencies.createLogArchiveArtifacts ?? createLogArchiveArtifacts;
     const writeZip = dependencies.writeLogArchiveZip ?? writeLogArchiveZip;
     const writeDirectory = dependencies.writeLogArchiveDirectory ?? writeLogArchiveDirectory;
@@ -1481,7 +1481,7 @@ export async function exportLogs(
 
     const sourceDir = getSourceDir();
     const timestamp = formatTimestamp(now());
-    const exportBaseName = `zcode-logs-${timestamp}`;
+    const exportBaseName = `codez-logs-${timestamp}`;
     const outputRootDir = getOutputRootDir();
     await mkdir(outputRootDir, { recursive: true });
     const outputDir = await mkdtemp(join(outputRootDir, `${exportBaseName}-`));

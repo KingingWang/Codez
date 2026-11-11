@@ -28,13 +28,13 @@ browser-use newTab
 
 ## 2. 当前迭代范围与用户确认的产品边界
 
-- 当前迭代只保证 ZCode 窗口存在且未最小化时，chat、自动化、插件、Repo Wiki 等主视图都能操作 Browser Use。
+- 当前迭代只保证 Codez 窗口存在且未最小化时，chat、自动化、插件、Repo Wiki 等主视图都能操作 Browser Use。
 - 主窗口最小化到 macOS Dock 后的已有 Guest/冷启动行为不在当前迭代验收范围，后续单独处理。
 - 在自动化页点“立即运行”或由定时器触发时，不要求用户先进入执行会话的对话页。
 - 本次不新增“不可缩小透明窗口”或任何独立后台 BrowserWindow。
 - 自动化页、插件页、Repo Wiki 等非对话主视图不展示 Side Pane；后台 Guest 不抢焦点、不改变主视图。
 - 截图 prepare 期间不展开物理 Side Pane；由 Browser Use tab 在现有窗口内创建固定尺寸的低透明合成层，保持 Guest 有 compositor surface，同时不参与右侧布局，用户不应看到 tab 栏闪现。
-- 完整退出 ZCode 仍结束所有 Guest；本次不新增跨进程持久化或重启恢复。
+- 完整退出 Codez 仍结束所有 Guest；本次不新增跨进程持久化或重启恢复。
 
 ## 3. 目标与非目标
 
@@ -49,7 +49,7 @@ browser-use newTab
 ### 3.2 非目标
 
 - 不创建透明窗口、离屏窗口或第二套 Browser runtime。
-- 不修改 BrowserCommand / ZCode Protocol，不新增 task snapshot、queue 或 replay 字段。
+- 不修改 BrowserCommand / Codez Protocol，不新增 task snapshot、queue 或 replay 字段。
 - 不让自动化页显示 Side Pane，也不把后台任务自动切到前台。
 - 不绕过 32-tab residency 预算、session/workspace ownership 或 CDP teardown handshake。
 - 不承诺应用完整退出后恢复 Browser tab、URL、history 或 page state。
@@ -141,7 +141,7 @@ BrowserViewReady --------------------> <webview> -> attachGuest -> CDP ready
 ### 5.4 图谱漂移
 
 现有功能图已声明 Browser tab 在面板折叠、切换对话后保持挂载，但没有声明自动化主视图可以在不展示
-Side Pane 时触发后台 Browser Use。实现前把该已确认关系补到 `zcode-feature-graph.yaml`。
+Side Pane 时触发后台 Browser Use。实现前把该已确认关系补到 `codez-feature-graph.yaml`。
 
 ## 6. 实现合同
 

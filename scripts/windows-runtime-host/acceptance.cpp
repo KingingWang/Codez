@@ -87,7 +87,7 @@ int wmain(int argc, wchar_t** argv) {
       ~UnrelatedProcess() { TerminateProcess(handle, 0); WaitForSingleObject(handle, 1000); CloseHandle(handle); }
     } unrelated{launch(L"\"" + self() + L"\" fixture descendant").hProcess};
     for (const auto mode : {L"graceful", L"tree", L"root-exit", L"control-loss", L"helper-loss", L"cancel", L"ownership-failure"}) {
-      const auto name = L"\\\\.\\pipe\\zcode-job-acceptance-" + std::to_wstring(GetCurrentProcessId()) + L"-" + mode;
+      const auto name = L"\\\\.\\pipe\\codez-job-acceptance-" + std::to_wstring(GetCurrentProcessId()) + L"-" + mode;
       HANDLE control = CreateNamedPipeW(name.c_str(), PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE | PIPE_WAIT, 1, 4096, 4096, 0, nullptr);
       check(control != INVALID_HANDLE_VALUE, "create control");
       SECURITY_ATTRIBUTES sa{sizeof(sa), nullptr, TRUE};
@@ -97,7 +97,7 @@ int wmain(int argc, wchar_t** argv) {
       check(CreatePipe(&input, &writer, &sa, 0), "stdin pipe");
       SetHandleInformation(writer, HANDLE_FLAG_INHERIT, 0);
       const std::wstring fixture = std::wstring(mode) == L"graceful" ? L"graceful" : std::wstring(mode) == L"root-exit" ? L"root-exit" : L"tree";
-      const auto jobName = L"Local\\zcode-job-test-" + std::to_wstring(GetCurrentProcessId()) + L"-" + mode;
+      const auto jobName = L"Local\\codez-job-test-" + std::to_wstring(GetCurrentProcessId()) + L"-" + mode;
       HANDLE conflictingJob = std::wstring(mode) == L"ownership-failure" ? CreateJobObjectW(nullptr, jobName.c_str()) : nullptr;
       auto pi = launch(L"\"" + std::wstring(argv[1]) + L"\" " + name + L" " + std::to_wstring(GetCurrentProcessId()) + L" " + jobName + L" \"" + self() + L"\" fixture " + fixture, input, output);
       CloseHandle(input);

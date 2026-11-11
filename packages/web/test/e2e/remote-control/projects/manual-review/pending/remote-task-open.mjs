@@ -1,12 +1,12 @@
 // MRO01：真实 Web 入口与 RPC 帧；受控桌面 bridge 成功/失败，不发送模型请求。
-// 启动：pnpm --filter @zcode/web exec vite --host 127.0.0.1 --port 5178 --strictPort
+// 启动：pnpm --filter @codez/web exec vite --host 127.0.0.1 --port 5178 --strictPort
 // 运行：pnpm exec tsx packages/web/test/e2e/remote-control/projects/manual-review/pending/remote-task-open.mjs
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium } from "playwright-core";
-import { ServiceChannels } from "@zcode/shared";
-import { V4_WIRE_PROTOCOL_VERSION } from "@zcode/shared/zcode-protocol-v4";
+import { ServiceChannels } from "@codez/shared";
+import { V4_WIRE_PROTOCOL_VERSION } from "@codez/shared/codez-protocol-v4";
 import { Emitter } from "../../../../../../../rpc/src/index.ts";
 import { taskSnapshotFrame } from "./remote-task-open.fixture.mjs";
 import { createDeviceSwitchDesktopBridge } from "./remote-device-switch.helpers.mjs";
@@ -134,11 +134,11 @@ try {
               locale,
               theme,
               events: {
-                [`${ServiceChannels.ZCodeAgent}:onDynamicConversationFrame`]: frames.event,
+                [`${ServiceChannels.CodezAgent}:onDynamicConversationFrame`]: frames.event,
               },
               responses: {
                 [`${ServiceChannels.SettingsSync}:getFirstRunPromptState`]: { handled: true },
-                [`${ServiceChannels.ZCodeAgent}:helloConversationV4`]: {
+                [`${ServiceChannels.CodezAgent}:helloConversationV4`]: {
                   kind: "hello",
                   protocolVersion: V4_WIRE_PROTOCOL_VERSION,
                   connectionId: bridge.bridgeSessionId,
@@ -153,16 +153,16 @@ try {
                     compression: "none",
                   },
                 },
-                [`${ServiceChannels.ZCodeAgent}:initializeConversationV4`]: null,
+                [`${ServiceChannels.CodezAgent}:initializeConversationV4`]: null,
                 [`${ServiceChannels.Project}:readTree`]: (params) => ({
                   projects: projects.filter((p) => p.hostId === (params?.hostId || "local")),
                   tasks: tasks.filter((t) => t.hostId === (params?.hostId || "local")),
                 }),
                 [`${ServiceChannels.RemoteProjects}:readDirectory`]: directory,
                 [`${ServiceChannels.RemoteProjects}:refreshEntry`]: null,
-                [`${ServiceChannels.ZCodeTask}:getTaskMeta`]: (input) =>
+                [`${ServiceChannels.CodezTask}:getTaskMeta`]: (input) =>
                   tasks.find((t) => t.taskId === input.taskId) ?? null,
-                [`${ServiceChannels.ZCodeAgent}:subscribeConversationV4`]: (input) => {
+                [`${ServiceChannels.CodezAgent}:subscribeConversationV4`]: (input) => {
                   traffic.subscriptions.push({
                     workspacePath: input.workspacePath,
                     workspaceIdentity: input.workspaceIdentity,
@@ -180,9 +180,9 @@ try {
                     },
                   };
                 },
-                [`${ServiceChannels.ZCodeAgent}:unsubscribeConversationV4`]: null,
-                [`${ServiceChannels.ZCodeAgent}:conversationWorkflowRunsV4`]: { runs: [] },
-                [`${ServiceChannels.ZCodeAgent}:conversationPlansV4`]: { plans: [] },
+                [`${ServiceChannels.CodezAgent}:unsubscribeConversationV4`]: null,
+                [`${ServiceChannels.CodezAgent}:conversationWorkflowRunsV4`]: { runs: [] },
+                [`${ServiceChannels.CodezAgent}:conversationPlansV4`]: { plans: [] },
               },
             }),
           );
@@ -261,7 +261,7 @@ try {
         const local = page.locator('[data-project-name="E2E_MRO01_LOCAL"]');
         const remote = page.locator('[data-project-name="E2E_MRO01_REMOTE"]');
         const onboarding = page.getByTestId("onboarding-page");
-        const welcome = page.getByRole("dialog", { name: /欢迎使用 ZCode|Welcome to ZCode/ });
+        const welcome = page.getByRole("dialog", { name: /欢迎使用 Codez|Welcome to Codez/ });
         await local.or(onboarding).or(welcome).first().waitFor();
         if (await onboarding.isVisible())
           await onboarding.getByRole("button", { name: /退出引导|Exit onboarding/ }).click();

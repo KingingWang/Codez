@@ -17,12 +17,12 @@
 - 锚点缺失（`getCreationTime()` 返回 null / query 未解析出 marks）整批跳过。
 - 未登录（WelcomeScreen）的启动不上报总链路（前提「能输入」不成立）。
 - 每个 renderer 进程冷启动仅上报一次。
-- loadURL query 参数名前缀常量 `LAUNCH_MARKS_QUERY_KEY = "zcodeLaunchMarks"`。
+- loadURL query 参数名前缀常量 `LAUNCH_MARKS_QUERY_KEY = "codezLaunchMarks"`。
 - 测试运行：单测用 `pnpm exec vitest run <file>`；类型检查 `pnpm typecheck`。
 
 ---
 
-### Task 1: 共享 launch marks 序列化/解析（`@zcode/shared`）
+### Task 1: 共享 launch marks 序列化/解析（`@codez/shared`）
 
 **Files:**
 - Create: `packages/shared/src/launchMarks.ts`
@@ -32,7 +32,7 @@
 **Interfaces:**
 - Produces:
   - `interface LaunchMarks { createdAt: number; mainStart: number; appReady: number; loadUrl: number }`
-  - `const LAUNCH_MARKS_QUERY_KEY = "zcodeLaunchMarks"`
+  - `const LAUNCH_MARKS_QUERY_KEY = "codezLaunchMarks"`
   - `serializeLaunchMarks(marks: LaunchMarks): string` — 返回 URL-safe 字符串（JSON）
   - `parseLaunchMarks(raw: string | null | undefined): LaunchMarks | null` — 非法/缺字段返回 null
 
@@ -55,7 +55,7 @@ describe("launchMarks", () => {
   });
 
   it("query key 常量稳定", () => {
-    expect(LAUNCH_MARKS_QUERY_KEY).toBe("zcodeLaunchMarks");
+    expect(LAUNCH_MARKS_QUERY_KEY).toBe("codezLaunchMarks");
   });
 
   it("非法输入返回 null", () => {
@@ -96,7 +96,7 @@ export interface LaunchMarks {
 }
 
 /** 主窗口 loadURL query string 中携带 launch marks 的参数名 */
-export const LAUNCH_MARKS_QUERY_KEY = "zcodeLaunchMarks";
+export const LAUNCH_MARKS_QUERY_KEY = "codezLaunchMarks";
 
 export function serializeLaunchMarks(marks: LaunchMarks): string {
   return JSON.stringify(marks);
@@ -164,7 +164,7 @@ git commit -m "feat(shared): launch marks 序列化/解析"
 - Test: `packages/ui/test/uiPerfArmsTelemetry.test.ts`
 
 **Interfaces:**
-- Consumes: `LaunchMarks` from `@zcode/shared`（Task 1）
+- Consumes: `LaunchMarks` from `@codez/shared`（Task 1）
 - Produces:
   - 常量 `LAUNCH_TO_INPUT_SANITY_MAX_MS = 300000`
   - 事件名常量：`UI_PERF_EVENT_LAUNCH_TO_INPUT="perf_ui_launch_to_input"`、`UI_PERF_EVENT_LAUNCH_ELECTRON_INIT="perf_ui_launch_electron_init_ms"`、`UI_PERF_EVENT_LAUNCH_APP_READY="perf_ui_launch_app_ready_ms"`、`UI_PERF_EVENT_LAUNCH_WINDOW="perf_ui_launch_window_ms"`、`UI_PERF_EVENT_LAUNCH_RENDERER_LOAD="perf_ui_launch_renderer_load_ms"`、`UI_PERF_EVENT_LAUNCH_REACT_COMMIT="perf_ui_launch_react_commit_ms"`、`UI_PERF_EVENT_LAUNCH_STARTUP_GATE="perf_ui_launch_startup_gate_ms"`
@@ -178,7 +178,7 @@ git commit -m "feat(shared): launch marks 序列化/解析"
 
 ```ts
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ArmsCustomEventPayload } from "@zcode/shared";
+import type { ArmsCustomEventPayload } from "@codez/shared";
 import {
   LAUNCH_TO_INPUT_SANITY_MAX_MS,
   STREAM_STALL_REPORT_THRESHOLD_MS,
@@ -363,7 +363,7 @@ Expected: FAIL（`reportUiLaunchToInput` / 新常量未导出）
 3a. 顶部 import 增加 `LaunchMarks` 类型：
 
 ```ts
-import type { ArmsCustomEventPayload, IPlatformService, LaunchMarks } from "@zcode/shared";
+import type { ArmsCustomEventPayload, IPlatformService, LaunchMarks } from "@codez/shared";
 ```
 
 3b. 删除第 6 行 `export const UI_PERF_EVENT_FIRST_SCREEN = "perf_ui_first_screen";`，替换为新事件名 + 哨兵常量：
@@ -398,7 +398,7 @@ interface LaunchToInputTimings {
   marks: LaunchMarks;
   /** renderer/src/main.tsx 模块顶部 Date.now()（T4） */
   rendererStart: number;
-  /** zcode-react-startup-ready 触发时 Date.now()（T5） */
+  /** codez-react-startup-ready 触发时 Date.now()（T5） */
   reactCommit: number;
   /** 启动门禁清除、输入框可用时 Date.now()（T6） */
   inputReady: number;
@@ -466,7 +466,7 @@ git commit -m "feat(ui): 启动到能输入 7 段上报,废弃 perf_ui_first_scr
 - Modify: `packages/desktop/src/main/desktopHostProcess.ts:86-112`（loadWindow 内记 T3、拼 query）
 
 **Interfaces:**
-- Consumes: `serializeLaunchMarks`, `LAUNCH_MARKS_QUERY_KEY`, `LaunchMarks` from `@zcode/shared`（Task 1）
+- Consumes: `serializeLaunchMarks`, `LAUNCH_MARKS_QUERY_KEY`, `LaunchMarks` from `@codez/shared`（Task 1）
 - Produces: `getMainLaunchPartialMarks(): { createdAt: number; mainStart: number; appReady: number }`（供 loadWindow 调用）
 
 > 说明：`additionalArguments` 在 `BrowserWindow` 构造时固定，而 T3 在更晚的 `loadWindow` 才产生，故四个 marks 统一走 loadURL query（renderer 单点读取）。此任务无独立单测（Electron 主进程时序难纯函数化），靠 Task 1 的序列化单测 + Task 6 本地验证覆盖。
@@ -476,7 +476,7 @@ git commit -m "feat(ui): 启动到能输入 7 段上报,废弃 perf_ui_first_scr
 在 `packages/desktop/src/main/index.ts` 模块顶部 import 区之后、其它初始化之前，加入：
 
 ```ts
-import { serializeLaunchMarks, type LaunchMarks } from "@zcode/shared";
+import { serializeLaunchMarks, type LaunchMarks } from "@codez/shared";
 
 // 启动计时(epoch ms):T0 进程创建 / T1 main JS / T2 whenReady。T3 在 loadWindow 记。
 const launchCreatedAt = process.getCreationTime() ?? Date.now();
@@ -488,7 +488,7 @@ export function getMainLaunchPartialMarks(): Omit<LaunchMarks, "loadUrl"> {
 }
 ```
 
-（若文件已 import `@zcode/shared` 的其它符号，合并到同一 import；`serializeLaunchMarks` 实际在 desktopHostProcess 用，这里仅需 `LaunchMarks` 类型——按需保留类型导入。）
+（若文件已 import `@codez/shared` 的其它符号，合并到同一 import；`serializeLaunchMarks` 实际在 desktopHostProcess 用，这里仅需 `LaunchMarks` 类型——按需保留类型导入。）
 
 - [ ] **Step 2: whenReady 回调入口记 T2**
 
@@ -506,7 +506,7 @@ export function getMainLaunchPartialMarks(): Omit<LaunchMarks, "loadUrl"> {
 import {
   LAUNCH_MARKS_QUERY_KEY,
   serializeLaunchMarks,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { getMainLaunchPartialMarks } from "./index.js";
 ```
 
@@ -544,15 +544,15 @@ git commit -m "feat(desktop): main 采集 T0-T3 经 loadURL query 注入"
 - Modify: `packages/desktop/src/renderer/src/main.tsx`
 
 **Interfaces:**
-- Consumes: `parseLaunchMarks`, `LAUNCH_MARKS_QUERY_KEY`, `LaunchMarks` from `@zcode/shared`
+- Consumes: `parseLaunchMarks`, `LAUNCH_MARKS_QUERY_KEY`, `LaunchMarks` from `@codez/shared`
 - Produces:
-  - `window.__ZCODE_LAUNCH_MARKS__: LaunchMarks | null`（从 location query 解析，模块层一次）
-  - `window.__ZCODE_RENDERER_START__: number`（T4，模块顶部 Date.now()）
-  - `window.__ZCODE_REACT_COMMIT_AT__: number`（T5，startup-ready 时写入）
+  - `window.__CODEZ_LAUNCH_MARKS__: LaunchMarks | null`（从 location query 解析，模块层一次）
+  - `window.__CODEZ_RENDERER_START__: number`（T4，模块顶部 Date.now()）
+  - `window.__CODEZ_REACT_COMMIT_AT__: number`（T5，startup-ready 时写入）
 
 - [ ] **Step 1: 模块顶部记 T4、解析 marks**
 
-`packages/desktop/src/renderer/src/main.tsx`，import 区把 `reportUiFirstScreen` 从 `@zcode/ui` 移除；从 `@zcode/shared` 增加 `parseLaunchMarks, LAUNCH_MARKS_QUERY_KEY, type LaunchMarks`。在 `startPerformanceTimelineCleanup();`（第 26 行）之前加入：
+`packages/desktop/src/renderer/src/main.tsx`，import 区把 `reportUiFirstScreen` 从 `@codez/ui` 移除；从 `@codez/shared` 增加 `parseLaunchMarks, LAUNCH_MARKS_QUERY_KEY, type LaunchMarks`。在 `startPerformanceTimelineCleanup();`（第 26 行）之前加入：
 
 ```ts
 // T4:renderer bundle 开始执行。同时从 loadURL query 解析 main 注入的 T0-T3。
@@ -561,16 +561,16 @@ const launchMarks: LaunchMarks | null = parseLaunchMarks(
   new URLSearchParams(window.location.search).get(LAUNCH_MARKS_QUERY_KEY),
 );
 (window as Window & {
-  __ZCODE_RENDERER_START__?: number;
-  __ZCODE_LAUNCH_MARKS__?: LaunchMarks | null;
-}).__ZCODE_RENDERER_START__ = rendererStartedAt;
-(window as Window & { __ZCODE_LAUNCH_MARKS__?: LaunchMarks | null }).__ZCODE_LAUNCH_MARKS__ =
+  __CODEZ_RENDERER_START__?: number;
+  __CODEZ_LAUNCH_MARKS__?: LaunchMarks | null;
+}).__CODEZ_RENDERER_START__ = rendererStartedAt;
+(window as Window & { __CODEZ_LAUNCH_MARKS__?: LaunchMarks | null }).__CODEZ_LAUNCH_MARKS__ =
   launchMarks;
 ```
 
 - [ ] **Step 2: 删除旧 first_screen 计时块**
 
-删除第 28-40 行整块（`uiFirstScreenStartedAt` 声明 + `window.addEventListener("zcode-react-startup-ready", ... reportUiFirstScreen ...)`）。
+删除第 28-40 行整块（`uiFirstScreenStartedAt` 声明 + `window.addEventListener("codez-react-startup-ready", ... reportUiFirstScreen ...)`）。
 
 - [ ] **Step 3: `StartupReadyNotifier` 内记 T5**
 
@@ -580,10 +580,10 @@ const launchMarks: LaunchMarks | null = parseLaunchMarks(
 function StartupReadyNotifier() {
   useEffect(() => {
     // T5:React 首次 commit。供启动分阶段耗时计算 react_commit 段。
-    (window as Window & { __ZCODE_REACT_COMMIT_AT__?: number }).__ZCODE_REACT_COMMIT_AT__ =
+    (window as Window & { __CODEZ_REACT_COMMIT_AT__?: number }).__CODEZ_REACT_COMMIT_AT__ =
       Date.now();
     // Bugfix: HTML 启动壳的弹出动画结束时，React 首屏可能还没 commit，直接移除壳会露出空白。
-    window.dispatchEvent(new Event("zcode-react-startup-ready"));
+    window.dispatchEvent(new Event("codez-react-startup-ready"));
   }, []);
 
   return null;
@@ -676,7 +676,7 @@ Expected: FAIL（`Cannot find module .../launchToInputReport.js`）
 
 ```ts
 // packages/ui/src/lib/launchToInputReport.ts
-import type { LaunchMarks } from "@zcode/shared";
+import type { LaunchMarks } from "@codez/shared";
 
 export function shouldReportLaunchToInput(state: {
   isStartupRenderBlocked: boolean;
@@ -695,16 +695,16 @@ export function readRendererLaunchTimings(): {
   reactCommit: number;
 } | null {
   const w = window as Window & {
-    __ZCODE_LAUNCH_MARKS__?: LaunchMarks | null;
-    __ZCODE_RENDERER_START__?: number;
-    __ZCODE_REACT_COMMIT_AT__?: number;
+    __CODEZ_LAUNCH_MARKS__?: LaunchMarks | null;
+    __CODEZ_RENDERER_START__?: number;
+    __CODEZ_REACT_COMMIT_AT__?: number;
   };
-  const rendererStart = w.__ZCODE_RENDERER_START__;
-  const reactCommit = w.__ZCODE_REACT_COMMIT_AT__;
+  const rendererStart = w.__CODEZ_RENDERER_START__;
+  const reactCommit = w.__CODEZ_REACT_COMMIT_AT__;
   if (typeof rendererStart !== "number" || typeof reactCommit !== "number") {
     return null;
   }
-  return { marks: w.__ZCODE_LAUNCH_MARKS__ ?? null, rendererStart, reactCommit };
+  return { marks: w.__CODEZ_LAUNCH_MARKS__ ?? null, rendererStart, reactCommit };
 }
 ```
 
@@ -796,7 +796,7 @@ git commit -m "feat(ui): 启动门禁清除时上报 launch_to_input"
 在第 176 行附近补一条：
 
 ```markdown
-- **启动分阶段**:7 段每进程冷启动各上报一次,`value` 为各段 ms(`Math.max(0,...)` 钳非负)。锚点 `process.getCreationTime()`,main 的 T0-T3 经主窗口 loadURL query(`zcodeLaunchMarks`)注入 renderer,在启动门禁清除(`isStartupRenderBlocked` 翻 false)时统一计算上报。未登录(WelcomeScreen)不上报;总时长 >300000ms 哨兵丢弃。`session_id` 关联同次启动各段。旧 `perf_ui_first_screen` 已废弃,语义并入 `perf_ui_launch_react_commit_ms`。
+- **启动分阶段**:7 段每进程冷启动各上报一次,`value` 为各段 ms(`Math.max(0,...)` 钳非负)。锚点 `process.getCreationTime()`,main 的 T0-T3 经主窗口 loadURL query(`codezLaunchMarks`)注入 renderer,在启动门禁清除(`isStartupRenderBlocked` 翻 false)时统一计算上报。未登录(WelcomeScreen)不上报;总时长 >300000ms 哨兵丢弃。`session_id` 关联同次启动各段。旧 `perf_ui_first_screen` 已废弃,语义并入 `perf_ui_launch_react_commit_ms`。
 ```
 
 - [ ] **Step 3: 全量单测回归**

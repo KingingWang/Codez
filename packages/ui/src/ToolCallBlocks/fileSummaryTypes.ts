@@ -1,6 +1,6 @@
 import type { PluginUiToolBinding } from "@/plugin-ui/contract.js";
 import type { ComponentType, ReactNode } from "react";
-import type { WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import type { MessageFileLinkTarget } from "@/components/ai-elements/message.js";
 import type { CodePreviewSettings } from "@/lib/codePreviewSettings.js";
 import type { CodeViewerSource } from "@/lib/codeViewer.js";
@@ -95,7 +95,7 @@ export function readRawToolCallInput(raw: unknown): unknown {
     return raw.rawInput;
   }
 
-  // ZCode protocol 的 permission/request payload 按 schema 把工具参数放在 input，
+  // Codez protocol 的 permission/request payload 按 schema 把工具参数放在 input，
   // 旧 UI 只读兼容输入字段 rawInput，Write/Edit 会退化成整段 JSON 展示而不是文件 diff。
   return "input" in raw ? raw.input : null;
 }
@@ -173,7 +173,7 @@ export interface WorkflowRunCardSummary {
    * 已排程（observed）节点数，**不是**全程总数——动态工作流的节点数由脚本在运行时决定，
    * 静态总数不存在。所以进度读作「已排程的里结算了几个」，绝不冒充完成百分比。
    *
-   * 两个数都出自 `workflowRunStepCounts`（@zcode/shared）：`nodes` 表内 + `usage.nodesUnlisted`
+   * 两个数都出自 `workflowRunStepCounts`（@codez/shared）：`nodes` 表内 + `usage.nodesUnlisted`
    * 表外。撞过 1024 界的 run 在这里仍报真实步数，少的是**每一步的详情**，卡与详情页各有一句
    * 「仅展示 n/m 步的详情」说这件事。
    */

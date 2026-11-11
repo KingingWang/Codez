@@ -21,7 +21,7 @@ export async function startConversationModelProviderReplayServer(
   caseName: string,
 ): Promise<UpstreamReplayServer> {
   const captureDir = resolve(
-    process.env.ZCODE_E2E_NETWORK_CAPTURE_DIR?.trim() ||
+    process.env.CODEZ_E2E_NETWORK_CAPTURE_DIR?.trim() ||
       resolve(homedir(), "..", ".e2e-network-capture"),
   );
   const server = await startUpstreamReplayServer({

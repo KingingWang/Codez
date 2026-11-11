@@ -3,13 +3,13 @@ import fs, { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { syncBuiltinESMExports } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { acquireFileLock, atomicWritePrivateTextFile } from "@zcode/shared/node";
+import { acquireFileLock, atomicWritePrivateTextFile } from "@codez/shared/node";
 
 const home = await mkdtemp(join(tmpdir(), "credential-conditional-recovery-"));
-process.env.ZCODE_DATA_BASE_DIR = home;
-const { createCredentialService } = await import("@zcode/services/node");
-const file = join(home, ".zcode", "v2", "credentials.json");
-await mkdir(join(home, ".zcode", "v2"), { recursive: true });
+process.env.CODEZ_DATA_BASE_DIR = home;
+const { createCredentialService } = await import("@codez/services/node");
+const file = join(home, ".codez", "v2", "credentials.json");
+await mkdir(join(home, ".codez", "v2"), { recursive: true });
 const events: string[] = [];
 const service = createCredentialService({
   cipherProvider: { encrypt: (value) => value, decrypt: (value) => value },
@@ -46,7 +46,7 @@ try {
     unlock = undefined;
     const result = await pending;
     assert.ok("error" in result && typeof result.error === "object" && result.error !== null);
-    assert.equal((result.error as { code?: string }).code, "ZCODE_CREDENTIAL_STORE_CHANGED");
+    assert.equal((result.error as { code?: string }).code, "CODEZ_CREDENTIAL_STORE_CHANGED");
     assert.equal(await readFile(file, "utf8"), "{}");
     assert.equal(events.length, 0);
     assert.equal(await service.saveIfAbsent("synthetic", "new"), "new");

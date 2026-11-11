@@ -90,7 +90,7 @@ export function normalizeFeatureBoundaryGraph(value: unknown): FeatureBoundaryGr
 
   return {
     schemaVersion: typeof value.schemaVersion === "number" ? value.schemaVersion : 1,
-    graphId: readString(value.graphId, "zcode-feature-relationships"),
+    graphId: readString(value.graphId, "codez-feature-relationships"),
     purpose: readString(value.purpose),
     nodes,
     edges,

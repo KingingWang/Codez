@@ -10,7 +10,7 @@ export {
 } from "@/lib/remoteConnectionPresentationErrors.js";
 export type { RemoteConnectionErrorPresentation } from "@/lib/remoteConnectionPresentationErrors.js";
 export type { RemoteConnectionAction } from "@/lib/remoteConnectionPresentationTypes.js";
-import { SOURCE_SERVER_UPDATE_IN_PROGRESS_ERROR_CODE } from "@zcode/shared";
+import { SOURCE_SERVER_UPDATE_IN_PROGRESS_ERROR_CODE } from "@codez/shared";
 import type {
   ConnectionProfile,
   RemoteTarget,
@@ -18,7 +18,7 @@ import type {
   SourceServerConnectionStateSnapshot,
   SourceServerManagementSnapshot,
   SourceServerRecord,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 export type RemoteConnectionStatus = "online" | "connecting" | "offline" | "pending" | "failed";
 export type AggregatedSourceStatus = RemoteConnectionStatus;
