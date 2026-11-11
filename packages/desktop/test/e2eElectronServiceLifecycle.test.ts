@@ -92,6 +92,16 @@ describe("desktop e2e Electron service lifecycle", () => {
     ) as {
       pnpm?: { patchedDependencies?: Record<string, string> };
     };
+    // fork 把 pnpm.patchedDependencies 从根 package.json 迁到 pnpm-workspace.yaml
+    // （pnpm 10 的推荐位置）。守卫必须读实际生效的那份声明，否则恒为 undefined，
+    // 补丁被摘掉时这条用例会静默失效。
+    const workspaceManifest = readFileSync(
+      new URL("../../../pnpm-workspace.yaml", import.meta.url),
+      "utf8",
+    );
+    const workspacePatched = workspaceManifest.match(
+      /^\s*"?wdio-electron-service@9\.2\.1"?\s*:\s*(\S+)\s*$/m,
+    )?.[1];
     const electronServiceSource = readFileSync(
       new URL(
         "../../../node_modules/wdio-electron-service/dist/esm/index.js",
@@ -111,7 +121,7 @@ describe("desktop e2e Electron service lifecycle", () => {
     expect(
       rootPackageJson.pnpm?.patchedDependencies?.[
         "wdio-electron-service@9.2.1"
-      ],
+      ] ?? workspacePatched,
     ).toBe("patches/wdio-electron-service@9.2.1.patch");
     expect(contextIdHandler).toContain("clearTimeout(timeout)");
     expect(contextIdHandler).toContain(
