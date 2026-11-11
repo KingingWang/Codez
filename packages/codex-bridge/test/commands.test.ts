@@ -474,7 +474,10 @@ test("CAS rejects stale revision/epoch and invalid envelopes without side effect
   }
   await assert.rejects(
     h.router.execute({
-      ...h.command("editQueueItem", { queueItemId: "q1", newText: "x" }),
+      // 上游 3.18 把 editQueueItem 移出 CAS 集合（运行中 revision 频繁递增会误拒用户编辑，
+      // 并发保护改由 queue 刷新 + 编辑锁承担），因此这里用仍要求 baseRevision 的
+      // deleteQueueItem 验证「非法信封在派发前就被拒且无副作用」。
+      ...h.command("deleteQueueItem", { queueItemId: "q1" }),
       baseRevision: undefined,
     }),
     /Invalid/,
