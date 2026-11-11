@@ -202,7 +202,7 @@ CREATE TABLE tasks (
         archived INTEGER NOT NULL DEFAULT 0,
         deleted INTEGER NOT NULL DEFAULT 0,
         title_overridden INTEGER NOT NULL DEFAULT 0,
-        meta_json TEXT NOT NULL DEFAULT '{}', searchable_text TEXT NOT NULL DEFAULT '', cron_automation_id TEXT, off_peak_task_id TEXT, host_id TEXT, root_path TEXT, project_id TEXT, execution_directories TEXT, sort_order INTEGER, cli_title TEXT, handoff_pending INTEGER NOT NULL DEFAULT 0, cli_title_source TEXT, cli_created_at INTEGER, cli_updated_at INTEGER, cli_last_outcome TEXT, cli_deleted INTEGER, worktree_root TEXT, physical_root_path TEXT,
+        meta_json TEXT NOT NULL DEFAULT '{}', searchable_text TEXT NOT NULL DEFAULT '', cron_automation_id TEXT, off_peak_task_id TEXT, host_id TEXT, root_path TEXT, project_id TEXT, execution_directories TEXT, sort_order INTEGER, cli_title TEXT, handoff_pending INTEGER NOT NULL DEFAULT 0, cli_title_source TEXT, cli_created_at INTEGER, cli_updated_at INTEGER, cli_last_outcome TEXT, cli_deleted INTEGER, physical_root_path TEXT, worktree_root TEXT,
         PRIMARY KEY (workspace_key, task_id)
       );
 
