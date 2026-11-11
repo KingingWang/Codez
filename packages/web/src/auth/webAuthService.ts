@@ -58,20 +58,6 @@ export interface WebAuthCallbackResult {
   appReturnTo: string | null;
 }
 
-function createBrowserNonce(): string {
-  if (globalThis.crypto?.randomUUID) {
-    return globalThis.crypto.randomUUID();
-  }
-
-  if (!globalThis.crypto?.getRandomValues) {
-    throw new Error("Secure random generator is unavailable");
-  }
-
-  const bytes = new Uint8Array(16);
-  globalThis.crypto.getRandomValues(bytes);
-  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
 function createBrowserPollToken(): string {
   if (!globalThis.crypto?.getRandomValues) {
     return `${createBrowserNonce().replaceAll("-", "")}${createBrowserNonce().replaceAll("-", "")}`;
@@ -363,11 +349,10 @@ export class WebAuthService {
       stateReturnToUrl?.hash && parseWebRemoteControlE2eeQrFragment(stateReturnToUrl.hash)
         ? stateReturnToUrl.hash.trim()
         : undefined;
+    const storedPendingLogin = this.repo.takePendingLogin(statePayload.nonce);
     const pendingLogin =
-      this.repo.takePendingLogin(statePayload.nonce) ??
-      (isExtensionRuntimeOrigin(currentOrigin) &&
-      statePayload.provider &&
-      statePayload.redirect_uri
+      storedPendingLogin ??
+      (isExtensionRuntimeOrigin(currentOrigin) && statePayload.provider && statePayload.redirect_uri
         ? {
             nonce: statePayload.nonce,
             provider: statePayload.provider,
@@ -378,10 +363,14 @@ export class WebAuthService {
     if (!pendingLogin) {
       throw new Error("OAuth CSRF 检测失败");
     }
-    const { provider, redirectUri, expectedSession, hash: pendingHash } = pendingLogin;
+    const { provider, redirectUri, hash: pendingHash } = pendingLogin;
     // 起点快照来自发起时；迟到callback不能重新领取当前会话的写入资格。
-    if (!this.repo.ownsLoginAttempt(pendingLogin.nonce, expectedSession))
-      throw new Error("OAuth session was superseded");
+    // 扩展隔离存储下 pending login 只能由 state 复原，没有发起时快照可比对，
+    // 退回只校验 nonce 归属（同一扩展存储写入的 LOGIN_ATTEMPT_KEY）。
+    const ownsAttempt = storedPendingLogin
+      ? this.repo.ownsLoginAttempt(storedPendingLogin.nonce, storedPendingLogin.expectedSession)
+      : this.repo.ownsLoginNonce(pendingLogin.nonce);
+    if (!ownsAttempt) throw new Error("OAuth session was superseded");
     const exchange = await this.provider.exchangeToken({
       code: callback.code,
       state: callback.state,
@@ -402,7 +391,8 @@ export class WebAuthService {
             ? { businessAccessToken: exchange.tokenSet.accessToken }
             : {}),
         },
-        expectedSession,
+        // 扩展隔离存储下没有发起时快照，传 null 让仓储只校验 nonce 归属。
+        storedPendingLogin ? storedPendingLogin.expectedSession : null,
         pendingLogin.nonce,
       ))
     )

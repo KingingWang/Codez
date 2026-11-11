@@ -14,8 +14,6 @@ import {
   resolveRemoteConnectionPresentation,
 } from "@/lib/remoteConnectionPresentation.js";
 import { logger } from "@/logger.js";
-import type { DataSyncDeviceSummary, IDeviceSyncStateService } from "@/data-sync/contract.js";
-import { toDataSyncDeviceSummary } from "@/data-sync/ui/DataSyncDialogContainer.js";
 import { useDataSyncEntry } from "@/data-sync/ui/DataSyncEntry.js";
 import { useDataSyncResultVersion } from "@/data-sync/ui/DataSyncDialogProvider.js";
 import type {
@@ -26,13 +24,14 @@ import type {
 import { useDataSyncRuntimeModes } from "@/data-sync/app/useDataSyncRuntimeModes.js";
 import {
   DataSyncDialogContainer,
-  recordDataSyncResult,
   toDataSyncDeviceSummary,
 } from "@/data-sync/ui/DataSyncDialogContainer.js";
 import { DataSyncCodexSectionNotice } from "@/data-sync/ui/DataSyncCodexNotices.js";
 
 export interface DataSyncSectionProps {
   snapshot: SourceServerManagementSnapshot | null;
+  /** 本机 base services：作为推送的 source。 */
+  sourceServices: IServiceAccessor;
   deviceSyncStateService?: IDeviceSyncStateService;
   /** 打开已有的全局连接向导（Root 注入）；返回 false 表示向导正忙、未接受本次意图。 */
   onOpenRemoteConnection?: (preference: RemoteConnectionOpenPreference) => boolean | void;

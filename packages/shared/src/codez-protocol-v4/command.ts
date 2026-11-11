@@ -256,9 +256,6 @@ export const commandPayloadSchemas = {
       highspeedMeta: highspeedMessageMetaSchema.optional(),
       // 缺省 preserve：仅切 conversation branch；rewind 会先安全恢复该轮文件。
       workspaceMode: z.enum(["preserve", "rewind"]).optional(),
-      // composer 编辑态复用普通发送的工具栏：与 sendText 同语义，缺省沿用原 intent。
-      mode: submissionModeSchema.optional(),
-      planEnabled: z.boolean().optional(),
     })
     .superRefine(requireModelSelectionForExecution),
   retryTurn: z.object({ target: conversationRowTargetSchema }),

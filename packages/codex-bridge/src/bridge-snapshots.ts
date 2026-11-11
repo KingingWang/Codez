@@ -615,10 +615,14 @@ export class BridgeSnapshots {
     let next: ConversationRow | undefined;
     const ensureMutable = (): ConversationRow => (next ??= { ...row });
     if (context.idle && row.kind === "assistantText") {
-      ensureMutable().actions = { canFork: true };
+      // 上游 3.18 的 ConversationRow 多了消费端合成的 unreadable 占位行（actions?: undefined），
+      // 直接对联合写 actions 会丢掉字面量类型；这里按已判定的 kind 收窄后再写。
+      const mutable = ensureMutable() as Extract<ConversationRow, { kind: "assistantText" }>;
+      mutable.actions = { canFork: true };
     }
     if (context.idle && !context.writerConflict && row.kind === "userInput") {
-      ensureMutable().actions = { canEdit: true, canRetry: true, editDisposition: "rewind" };
+      const mutable = ensureMutable() as Extract<ConversationRow, { kind: "userInput" }>;
+      mutable.actions = { canEdit: true, canRetry: true, editDisposition: "rewind" };
     }
     if (row.kind === "turnHeader") {
       const turnUsage = sparseNativeTurnUsage(usageRef);

@@ -15,17 +15,11 @@ import {
   useRef,
   useState,
 } from "react";
-import { useCodexMessages } from "@/settings/codex/messages.js";
 import {
-  ArchiveIcon,
-  ArrowRightLeftIcon,
   CheckIcon,
   Clock,
   CopyIcon,
-  FileClockIcon,
   FileIcon,
-  GitBranchIcon,
-  GoalIcon,
   InfoIcon,
   PencilIcon,
   PlayIcon,
@@ -38,6 +32,7 @@ import { parseAutomationRunId } from "@codez/shared";
 import {
   TID_V4_EDIT,
   TID_V4_EDIT_ATTACHMENT_REMOVE,
+  TID_V4_EDIT_IN_COMPOSER_HINT,
   TID_V4_FEEDBACK_DISLIKE,
   TID_V4_FEEDBACK_LIKE,
   TID_V4_FORK,
@@ -85,6 +80,7 @@ import {
   ReasoningTrigger,
 } from "@/components/ai-elements/reasoning.js";
 import { cn } from "@/components/lib/utils.js";
+import { composerEditSessionKey, useComposerEditStore } from "@/composer-edit-mode/index.js";
 import { WorkflowToolSummary } from "@/v4/WorkflowToolSummary.js";
 import {
   readWorkflowName,
@@ -98,10 +94,10 @@ import {
   workflowFillCounts,
 } from "@/ToolCallBlocks/renderers/createWorkflowHoleInput.js";
 import { ToolCallBlock } from "@/ToolCallBlocks.js";
-import {
-  formatAutoApprovalMarkerDetail,
-  formatAutoApprovalStatusLabel,
-} from "@/ToolCallBlocks/shared.js";
+// fork 定制：轮尾「继续」入口与子代理侧栏入口仍使用通用 Button/Tooltip；
+// 上游 3.18 把行内编辑移入 composer 后不再需要它们，导入随 fork 组件保留。
+import { Button } from "@/components/ui/button.js";
+import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { resolveWorkflowRunOpenToolCallId } from "@/v4/workflowRunCardJoin.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { requestTaskNavigation } from "@/store/codezSessionStoreNavigation.js";
@@ -1043,7 +1039,6 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
   status?: string;
 }) {
   const { intl, locale } = useCodezIntl();
-  const codexText = useCodexMessages();
   // 引擎尾注折叠：正文只到 epilogueStart，
   // 之后的引擎文本折进气泡底部的披露。提示词上下文解析也只看正文——尾注里没有用户引用。
   const { body: bodyText, epilogue } = splitUserInputEpilogue(row.text, row.epilogueStart);
@@ -1064,41 +1059,31 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
     () => parseConversationShareContext(parsedPrompt.visibleContent),
     [parsedPrompt.visibleContent],
   );
-  const [editing, setEditing] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [draft, setDraft] = useState(row.text);
-  const [editAttachments, setEditAttachments] = useState<AttachmentRef[]>(() => [
-    ...(row.attachments ?? []),
-  ]);
-  // 编辑态删除附件后，持久 FilePart 列表仍保留全部附件；序号数组把可见列表
-  // 映射回原 index，避免 video 预览等按 attachmentIndex 的读取指错分块。
-  const [editAttachmentIndices, setEditAttachmentIndices] = useState<number[]>(() =>
-    (row.attachments ?? []).map((_, index) => index),
-  );
-  const [editPromptContexts, setEditPromptContexts] = useState(() => parsedPrompt);
-  const [conflictPreview, setConflictPreview] =
-    useState<V4ConversationFileRewindPreviewResult | null>(null);
-  const [conflictOpen, setConflictOpen] = useState(false);
-  const inputApiRef = useRef<LexicalChatInputHandle | null>(null);
-  const editContextCount = countComposerPromptContexts(editPromptContexts);
-  const canSubmit = draft.trim().length > 0 || editAttachments.length > 0 || editContextCount > 0;
-  const submitLabel = context.nativeCodex
-    ? codexText.historyEdit
-    : intl.formatMessage({ id: "chat.send" });
-  const cancelLabel = intl.formatMessage({ id: "common.cancel" });
-  const rewindWorkspaceLabel = intl.formatMessage({
-    id: "chat.edit.resetConversationAndFiles",
-  });
-  const rewindWorkspaceTooltipTitle = intl.formatMessage({
-    id: "chat.edit.resetConversationAndFiles.tooltip",
+  const editSessionKey = context.sessionId
+    ? composerEditSessionKey(
+        context.workspaceIdentity?.trim() || context.workspacePath,
+        context.sessionId,
+      )
+    : null;
+  // 只订阅本行是否为编辑目标，避免编辑态变化让整条时间线重渲染。
+  const editingInComposer = useComposerEditStore((state) => {
+    const target = editSessionKey ? state.sessions[editSessionKey]?.target : undefined;
+    return target?.kind === "userQuery" && target.rowId === row.rowId;
   });
   const timeLabel = formatMessageTimeLabel(row.createdAt, locale, intl);
-  const rewindWorkspaceTooltipDescription =
-    editWorkspaceRewindAvailability?.reason === "available"
-      ? undefined
-      : intl.formatMessage({
-          id: `chat.edit.resetConversationAndFiles.${editWorkspaceRewindAvailability?.reason ?? "noFiles"}`,
-        });
+  useEffect(() => {
+    if (!editingInComposer || !editSessionKey || !editWorkspaceRewindAvailability) return;
+    // 「对话 + 文件重置」的可用性只有本行知道；编辑期间同步给 composer 状态条。
+    useComposerEditStore.getState().update(editSessionKey, {
+      workspaceRewind: {
+        enabled: editWorkspaceRewindAvailability.enabled,
+        reason: editWorkspaceRewindAvailability.reason,
+      },
+    });
+  }, [editSessionKey, editWorkspaceRewindAvailability, editingInComposer]);
+  const handleFocusComposerEdit = useCallback(() => {
+    if (editSessionKey) useComposerEditStore.getState().requestFocus(editSessionKey);
+  }, [editSessionKey]);
   const visibleText = parsedShareContext.visibleContent;
   const codeCommentContexts = parsedPrompt.codeComments;
   // 设计稿元素在正文里已经画成 token，卡片只给普通网页「选择元素」的引用
@@ -1146,247 +1131,9 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
   });
 
   const handleOpenEdit = useCallback(() => {
-    // v4 迁移时把 user query 编辑误接成“直接读取主 composer 提交”，
-    // 主 composer 为空时点击只会 warn。这里恢复旧行内编辑态。
-    setDraft(parsedShareContext.visibleContent);
-    setEditAttachments([...(row.attachments ?? [])]);
-    setEditAttachmentIndices((row.attachments ?? []).map((_, index) => index));
-    setEditPromptContexts(parsedPrompt);
-    setEditing(true);
-  }, [parsedPrompt, parsedShareContext, row.attachments]);
-
-  const handleCancelEdit = useCallback(() => {
-    setDraft(parsedShareContext.visibleContent);
-    setEditAttachments([...(row.attachments ?? [])]);
-    setEditAttachmentIndices((row.attachments ?? []).map((_, index) => index));
-    setEditPromptContexts(parsedPrompt);
-    setEditing(false);
-  }, [parsedPrompt, parsedShareContext, row.attachments]);
-
-  const handleRemoveEditAttachment = useCallback((index: number) => {
-    setEditAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index));
-    setEditAttachmentIndices((current) => current.filter((_, itemIndex) => itemIndex !== index));
-  }, []);
-
-  const handleSubmitEdit = useCallback(
-    async (nextText: string, workspaceMode: "preserve" | "rewind" = "preserve") => {
-      if (!onEdit) return;
-      if (!nextText.trim() && editAttachments.length === 0 && editContextCount === 0) return;
-      setSubmitting(true);
-      try {
-        const result = await onEdit(
-          { rowId: row.rowId, entityId: row.entityId! },
-          serializeComposerPromptContexts(nextText, {
-            ...editPromptContexts,
-            conversationSelections: [],
-          }),
-          // 省略空数组会让 CLI 按 attachments 缺省语义恢复 canonical 原附件，
-          // 因此 edit 必须始终提交当前完整列表，显式 [] 才能表达“删除全部”。
-          editAttachments,
-          workspaceMode,
-          ...(parsedPrompt.conversationSelections.length || row.conversationQuotes
-            ? [[...editPromptContexts.conversationSelections]]
-            : []),
-        );
-        if (
-          typeof result === "object" &&
-          result !== null &&
-          result.result?.type === "editUserQuery" &&
-          result.result.disposition === "blocked" &&
-          result.result.preview
-        ) {
-          setConflictPreview(result.result.preview);
-          setConflictOpen(true);
-          return;
-        }
-        if (result !== false) {
-          setEditing(false);
-          setConflictOpen(false);
-        }
-      } finally {
-        setSubmitting(false);
-      }
-    },
-    [
-      editAttachments,
-      editContextCount,
-      editPromptContexts,
-      onEdit,
-      row.entityId,
-      row.rowId,
-      row.conversationQuotes,
-      parsedPrompt.conversationSelections.length,
-    ],
-  );
-  const rewindWorkspaceDisabled = submitting || editWorkspaceRewindAvailability?.enabled !== true;
-  const rewindWorkspaceButton = (
-    <Button
-      type="button"
-      variant="outline"
-      size="icon-md"
-      disabled={rewindWorkspaceDisabled}
-      data-testid={testId(TID_V4_EDIT_REWIND_WORKSPACE, String(row.rowId))}
-      aria-label={rewindWorkspaceLabel}
-      onClick={() => {
-        void handleSubmitEdit(draft, "rewind");
-      }}
-    >
-      <FileClockIcon className="size-4" />
-    </Button>
-  );
-
-  if (editing) {
-    return (
-      <RowShell rowId={row.rowId} className="flex flex-col items-end">
-        <ChatPromptEditor
-          nativeCodex={Boolean(context.nativeCodex)}
-          workspacePath={context.workspacePath}
-          taskId={context.sessionId ?? null}
-          initialValue={parsedPrompt.visibleContent}
-          submitting={submitting}
-          submitDisabled={!canSubmit || submitting}
-          allowSubmitWhenEmpty={editAttachments.length > 0 || editContextCount > 0}
-          submitLabel={submitLabel}
-          cancelLabel={cancelLabel}
-          showMentionButton
-          showSlashButton
-          enableWorkspaceFileDrop
-          topContent={
-            editAttachments.length > 0 || editContextCount > 0 ? (
-              <div className="flex max-w-full flex-col items-start gap-2">
-                {editAttachments.length > 0 ? (
-                  <UserInputAttachmentList
-                    attachments={editAttachments}
-                    attachmentIndices={editAttachmentIndices}
-                    entityId={row.entityId}
-                    rowId={row.rowId}
-                    onRemove={handleRemoveEditAttachment}
-                    sessionId={context.sessionId ?? undefined}
-                    readAttachment={context.readAttachment}
-                    readAttachmentRange={context.readAttachmentRange}
-                  />
-                ) : null}
-                {editContextCount > 0 ? (
-                  <div
-                    className="flex max-w-full flex-wrap items-center gap-2"
-                    data-v4-user-edit-context-attachments-row="true"
-                  >
-                    <CodeCommentAttachmentChip
-                      comments={editPromptContexts.codeComments}
-                      onRemove={(comment) =>
-                        setEditPromptContexts((current) => ({
-                          ...current,
-                          codeComments: current.codeComments.filter((item) => item !== comment),
-                        }))
-                      }
-                      onRemoveAll={() =>
-                        setEditPromptContexts((current) => ({
-                          ...current,
-                          codeComments: [],
-                        }))
-                      }
-                    />
-                    <WebElementContextAttachmentChip
-                      contexts={editPromptContexts.webElements}
-                      onRemove={(id) =>
-                        setEditPromptContexts((current) => ({
-                          ...current,
-                          webElements: current.webElements.filter((item) => item.id !== id),
-                        }))
-                      }
-                      onRemoveAll={() =>
-                        setEditPromptContexts((current) => ({
-                          ...current,
-                          webElements: [],
-                        }))
-                      }
-                    />
-                    <PptxElementReferenceChip
-                      references={editPromptContexts.pptxElements}
-                      onOpen={context.onOpenCodeViewer ? openPptxElementReference : undefined}
-                      onRemove={(id) =>
-                        setEditPromptContexts((current) => ({
-                          ...current,
-                          pptxElements: current.pptxElements.filter((item) => item.id !== id),
-                        }))
-                      }
-                      onRemoveAll={() =>
-                        setEditPromptContexts((current) => ({
-                          ...current,
-                          pptxElements: [],
-                        }))
-                      }
-                    />
-                    <ConversationSelectionReferenceChip
-                      references={editPromptContexts.conversationSelections}
-                      onRemove={(id) =>
-                        setEditPromptContexts((current) => ({
-                          ...current,
-                          conversationSelections: current.conversationSelections.filter(
-                            (item) => !("id" in item) || item.id !== id,
-                          ),
-                        }))
-                      }
-                      onRemoveAll={() =>
-                        setEditPromptContexts((current) => ({
-                          ...current,
-                          conversationSelections: [],
-                        }))
-                      }
-                    />
-                  </div>
-                ) : null}
-              </div>
-            ) : null
-          }
-          inputApiRef={inputApiRef}
-          inputTestId={testId(TID_V4_EDIT_INPUT, String(row.rowId))}
-          submitTestId={testId(TID_V4_EDIT_SUBMIT, String(row.rowId))}
-          cancelTestId={testId(TID_V4_EDIT_CANCEL, String(row.rowId))}
-          betweenCancelAndSubmitAction={
-            context.nativeCodex ? (
-              <span className="text-ui-xs text-foreground-muted">{codexText.preserveFiles}</span>
-            ) : (
-              <ControlHintTooltip
-                title={rewindWorkspaceTooltipTitle}
-                description={rewindWorkspaceTooltipDescription}
-              >
-                {rewindWorkspaceDisabled ? (
-                  // Button disabled 会应用 pointer-events-none，TooltipTrigger 直接落在
-                  // 按钮上时收不到 hover。禁用态用外层 span 承接 hover，实际按钮仍保持 disabled。
-                  <span className="inline-flex" data-disabled-tooltip-trigger="true">
-                    {rewindWorkspaceButton}
-                  </span>
-                ) : (
-                  rewindWorkspaceButton
-                )}
-              </ControlHintTooltip>
-            )
-          }
-          className="w-full max-w-xl"
-          shellClassName="min-h-32"
-          onChange={setDraft}
-          onSubmit={(nextText) => {
-            void handleSubmitEdit(nextText, "preserve");
-          }}
-          onCancel={handleCancelEdit}
-        />
-        <ConversationFileRewindDialog
-          variant="editConflict"
-          open={conflictOpen}
-          onOpenChange={setConflictOpen}
-          preview={conflictPreview}
-          previewLoading={false}
-          applying={submitting}
-          error={null}
-          onApply={() => {}}
-          onConversationOnly={() => {
-            void handleSubmitEdit(draft, "preserve");
-          }}
-        />
-      </RowShell>
-    );
-  }
+    if (!onEdit || !row.entityId) return;
+    void onEdit({ rowId: row.rowId, entityId: row.entityId });
+  }, [onEdit, row.entityId, row.rowId]);
 
   return (
     <RowShell rowId={row.rowId} className="group/user-row flex flex-col items-end">
@@ -1535,7 +1282,7 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
           rowId={row.rowId}
           label={intl.formatMessage({ id: "chat.message.copy" })}
         />
-        {onEdit && row.entityId ? (
+        {onEdit && row.entityId && !editingInComposer ? (
           <MessageAction
             label={intl.formatMessage({ id: "chat.message.edit" })}
             tooltip={intl.formatMessage({ id: "chat.message.edit" })}
@@ -1551,6 +1298,17 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
           <span className="select-none text-ui-sm text-foreground-subtlest">{timeLabel}</span>
         ) : null}
       </MessageActions>
+      {editingInComposer ? (
+        <button
+          type="button"
+          data-testid={testId(TID_V4_EDIT_IN_COMPOSER_HINT, String(row.rowId))}
+          className="mt-1 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-ui-sm text-foreground-subtle hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-input-border-focused"
+          onClick={handleFocusComposerEdit}
+        >
+          <PencilIcon className="size-3.5" aria-hidden />
+          {intl.formatMessage({ id: "chat.composerEdit.inComposerHint" })}
+        </button>
+      ) : null}
     </RowShell>
   );
 });
@@ -2044,123 +1802,7 @@ const TurnHeaderRowView = memo(function TurnHeaderRowView({ row }: { row: TurnHe
   );
 });
 
-/** 分隔线图标（对齐旧版 synthetic-timeline dividers：size-3.5 subtle）。 */
-const MARKER_ARCHIVE_ICON = (
-  <ArchiveIcon
-    aria-hidden="true"
-    className="size-3.5 shrink-0 text-[var(--color-foreground-subtle)]"
-  />
-);
-const MARKER_FORK_ICON = (
-  <GitBranchIcon
-    aria-hidden="true"
-    className="size-3.5 shrink-0 text-[var(--color-foreground-subtle)]"
-  />
-);
-const MARKER_GOAL_ICON = (
-  <GoalIcon
-    aria-hidden="true"
-    className="size-3.5 shrink-0 text-[var(--color-foreground-subtle)]"
-  />
-);
-const MARKER_MODEL_ICON = (
-  <ArrowRightLeftIcon
-    aria-hidden="true"
-    className="size-3.5 shrink-0 text-[var(--color-foreground-subtle)]"
-  />
-);
-const MARKER_EVENT_ICON = (
-  <InfoIcon
-    aria-hidden="true"
-    className="size-3.5 shrink-0 text-[var(--color-foreground-subtle)]"
-  />
-);
-
-/**
- * 系统标记分隔线壳：两侧细横线 + 居中「图标 + 文案」pill，视觉对齐旧版
- * ChatMessage synthetic-timeline dividers（fork / compaction / goal 同款）。
- * running（压缩/校验进行中）隐藏图标、文案走 animated-gradient-text 流光（同旧版）。
- */
-function MarkerDividerRow({
-  rowId,
-  markerType,
-  markerStatus,
-  markerOrigin,
-  markerSourceCommandId,
-  icon,
-  label,
-  running = false,
-  onClick,
-}: {
-  rowId: number;
-  markerType: TimelineMarkerRow["marker"]["type"];
-  markerStatus: string;
-  markerOrigin?: string;
-  markerSourceCommandId?: string;
-  icon: React.ReactNode;
-  label: React.ReactNode;
-  running?: boolean;
-  /** 传入即整行可点（fork→跳父会话）；不传为静态分隔线。 */
-  onClick?: () => void;
-}) {
-  const clickable = Boolean(onClick);
-  const rowClassName =
-    "flex w-full items-center gap-3 px-4 py-2 text-ui-base text-[var(--color-foreground-subtle)]";
-  const inner = (
-    <>
-      <div aria-hidden="true" className="h-px min-w-8 flex-1 bg-border/50" />
-      <span className="inline-flex min-w-0 shrink items-center justify-center gap-1.5 text-center leading-5">
-        {running ? null : icon}
-        <span
-          className={`min-w-0 break-words${running ? " animated-gradient-text font-medium" : ""}${clickable ? " underline-offset-4 group-hover/marker:underline" : ""}`}
-        >
-          {label}
-        </span>
-      </span>
-      <div aria-hidden="true" className="h-px min-w-8 flex-1 bg-border/50" />
-    </>
-  );
-  if (onClick) {
-    // 整行 <button>（对齐旧版 fork divider）：hover 变亮 + 文案下划线示意可点。
-    return (
-      <button
-        type="button"
-        data-row-id={rowId}
-        data-row-kind="timelineMarker"
-        data-marker-type={markerType}
-        data-status={markerStatus}
-        data-origin={markerOrigin}
-        data-source-command-id={markerSourceCommandId}
-        data-testid={testId(TID_V4_ROW, String(rowId))}
-        onClick={onClick}
-        className={`group/marker ${rowClassName} text-left transition-colors hover:text-[var(--color-foreground)]`}
-      >
-        {inner}
-      </button>
-    );
-  }
-  return (
-    <div
-      data-row-id={rowId}
-      data-row-kind="timelineMarker"
-      data-marker-type={markerType}
-      data-status={markerStatus}
-      data-origin={markerOrigin}
-      data-source-command-id={markerSourceCommandId}
-      data-testid={testId(TID_V4_ROW, String(rowId))}
-      className={rowClassName}
-    >
-      {inner}
-    </div>
-  );
-}
-
-/**
- * timelineMarker 行渲染：compact / forkNotice / goalVerify / modelChange 画成分隔线。
- * modelChange 可见化 = 裁决（切换后实际发送出去的轮才落分隔，含
- * model-only 续跑轮）；goalSet/forkCreated 已在投影层停产（隐形行清零），
- * retryNotice·checkpointRestored 无 UI，default 分支兜底不渲染。
- */
+/** timelineMarker 分隔线与分享只读页共用；这里只注入 App 宿主能力。 */
 const TimelineMarkerRowView = memo(function TimelineMarkerRowView({
   row,
   context,
@@ -2169,191 +1811,17 @@ const TimelineMarkerRowView = memo(function TimelineMarkerRowView({
   context: ConversationRowRenderContext;
 }) {
   const isOfficeMode = useIsOfficeMode();
-  const marker = row.marker;
-  const modelSelectionView = context.modelSelectionView ?? null;
-  const view = useMemo((): {
-    icon: React.ReactNode;
-    label: React.ReactNode;
-    running: boolean;
-  } | null => {
-    switch (marker.type) {
-      case "compact": {
-        const running = marker.status === "running";
-        const automaticOptimization = isOfficeMode && marker.origin === "auto";
-        const scope = automaticOptimization ? "chat.contextOptimization" : "chat.contextCompaction";
-        const statusMessage =
-          marker.status === "running"
-            ? "started"
-            : marker.status === "noop"
-              ? "skipped"
-              : marker.status === "cancelled"
-                ? "interrupted"
-                : marker.status === "failed"
-                  ? "failed"
-                  : marker.origin === "auto" && !automaticOptimization
-                    ? "completedAuto"
-                    : "completed";
-        return {
-          icon: MARKER_ARCHIVE_ICON,
-          label: intl.formatMessage({ id: `${scope}.${statusMessage}` }),
-          running,
-        };
-      }
-      case "forkNotice":
-        return {
-          icon: MARKER_FORK_ICON,
-          label: intl.formatMessage({ id: "chat.message.fork.derivedFrom" }),
-          running: false,
-        };
-      case "modelChange": {
-        // marker 已携带完整 provider/model 元组，旧渲染却只读取 model，
-        // 且没有订阅 provider snapshot，导致同名模型无差异、目录水合后名称不刷新。
-        // 这里保留 provider ID fallback，并让现有 marker 随目录更新。
-        const fromProvider = resolveProviderLabel(marker.fromProvider, modelSelectionView);
-        const toProvider = resolveProviderLabel(marker.toProvider, modelSelectionView);
-        const to = formatModelChangeLabel(marker.toProvider, toProvider, marker.toModel, intl);
-        if (marker.fromProvider === undefined || marker.fromModel === undefined) {
-          return {
-            // source-less 表示首次使用的模型事实，不是模型切换，因此不显示切换箭头。
-            icon: null,
-            label: intl.formatMessage({ id: "chat.modelChange.using" }, { model: to }),
-            running: false,
-          };
-        }
-        return {
-          icon: MARKER_MODEL_ICON,
-          label: intl.formatMessage(
-            { id: "chat.modelChange.switched" },
-            {
-              from: formatModelChangeLabel(
-                marker.fromProvider,
-                fromProvider,
-                marker.fromModel,
-                intl,
-              ),
-              to,
-            },
-          ),
-          running: false,
-        };
-      }
-      case "goalVerify": {
-        const running = marker.outcome === "running";
-        // pass→完成；notSatisfied/failed→未完成（沿用旧版 failed_closed 归「未完成」的处理）。
-        const statusId =
-          marker.outcome === "running"
-            ? "chat.goalVerification.checking"
-            : marker.outcome === "pass"
-              ? "chat.goalVerification.complete"
-              : "chat.goalVerification.incomplete";
-        return {
-          icon: MARKER_GOAL_ICON,
-          running,
-          // innerText 形如「第 1 次迭代 · 目标校验中」，对齐 goal-timeline 待命 e2e 断言。
-          label: (
-            <>
-              <span>
-                {intl.formatMessage(
-                  { id: "chat.summaryPanel.goalIterationValue" },
-                  { count: String(marker.iteration) },
-                )}
-              </span>
-              <span aria-hidden="true"> · </span>
-              {intl.formatMessage({ id: statusId })}
-            </>
-          ),
-        };
-      }
-      case "codexEvent": {
-        // codex 原生事件分隔线（specs/codex-desktop-thread-items.md）：
-        // label 走本地化，detail（review 描述 / hook 文本 / agentPath / 时长）追加在后。
-        // contextCompaction 在 item/started ~ item/completed 之间携带 status: "running"，
-        // 需显示“正在压缩上下文”及流光动画，完成后才显示“上下文已压缩”。
-        const running =
-          (marker.event === "contextCompaction" || marker.event === "autoApprovalReview") &&
-          marker.status === "running";
-        if (marker.event === "autoApprovalReview") {
-          const review = marker.autoApprovalReview;
-          const statusText = review
-            ? formatAutoApprovalStatusLabel(review, intl)
-            : intl.formatMessage({
-                id: running ? "chat.autoApproval.inProgress" : "chat.codexEvent.autoApprovalReview",
-              });
-          const detailText = formatAutoApprovalMarkerDetail(review, marker.detail, intl);
-          return {
-            icon: MARKER_EVENT_ICON,
-            running,
-            label: (
-              <>
-                <span>{statusText}</span>
-                {detailText ? (
-                  <>
-                    <span aria-hidden="true"> · </span>
-                    <span>{detailText}</span>
-                  </>
-                ) : null}
-              </>
-            ),
-          };
-        }
-        const labelId = running
-          ? "chat.contextCompaction.started"
-          : `chat.codexEvent.${marker.event}`;
-        return {
-          icon: marker.event === "contextCompaction" ? MARKER_ARCHIVE_ICON : MARKER_EVENT_ICON,
-          running,
-          label: (
-            <>
-              <span>{intl.formatMessage({ id: labelId })}</span>
-              {marker.detail ? (
-                <>
-                  <span aria-hidden="true"> · </span>
-                  <span>{marker.detail}</span>
-                </>
-              ) : null}
-            </>
-          ),
-        };
-      }
-      default:
-        return null;
-    }
-  }, [intl, isOfficeMode, marker, modelSelectionView]);
-
-  // fork 跳父会话（Tier 1）：仅 forkNotice 且宿主提供 onNavigateToRow 时可点，
-  // 切到 marker.parentSessionId（rowId 预留 Tier 2 精确滚动，当前恒 0 占位）。
-  const onNavigate = context.onNavigateToRow;
-  const handleClick = useMemo(() => {
-    if (marker.type !== "forkNotice" || !onNavigate) {
-      return undefined;
-    }
-    return () => onNavigate(marker.parentSessionId, marker.parentRowId);
-  }, [marker, onNavigate]);
-
-  if (!view) {
-    return null;
+  // "已创建 worktree"是可展开的输出块，不是分隔线（docs/git/worktree.md §3.3）。
+  // 它依赖 App 侧 managed-worktrees 能力，留在宿主这里，不进分享只读页共用的分隔线组件。
+  if (row.marker.type === "worktreeCreated") {
+    return <WorktreeCreatedMarker rowId={row.rowId} output={row.marker.output} />;
   }
   return (
-    <MarkerDividerRow
-      rowId={row.rowId}
-      markerType={marker.type}
-      markerStatus={
-        marker.type === "compact"
-          ? marker.status
-          : marker.type === "goalVerify"
-            ? marker.outcome
-            : marker.type === "codexEvent" && marker.status
-              ? marker.status
-              : marker.type === "forkNotice"
-                ? "created"
-                : "applied"
-      }
-      markerOrigin={marker.type === "compact" ? marker.origin : undefined}
-      markerSourceCommandId={row.sourceCommandId}
-      icon={view.icon}
-      label={view.label}
-      running={view.running}
-      onClick={handleClick}
+    <ConversationTimelineMarkerDivider
+      row={row}
+      isOfficeMode={isOfficeMode}
+      modelSelectionView={context.modelSelectionView ?? null}
+      onNavigateToRow={context.onNavigateToRow}
     />
   );
 });

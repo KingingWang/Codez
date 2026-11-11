@@ -112,7 +112,7 @@ export function WebRemoteControlLoadingScreen({
           className="flex flex-1 flex-col items-center justify-center pb-24 text-center"
         >
           <p className="flex items-center gap-2 text-ui-sm text-foreground-subtle">
-            <LoaderCircleIcon aria-hidden="true" className="size-3.5 shrink-0 animate-spin" />
+            <LoaderCircle aria-hidden="true" className="size-3.5 shrink-0 animate-spin" />
             {copy.loadingWorkspace}
           </p>
         </div>

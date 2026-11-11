@@ -434,7 +434,11 @@ export function V4InteractionDialogs({
           autoResolutionIntentRef.current.markInteracted(pending.interactionId);
           return sendSnoozeOnce(pending.interactionId, Boolean(pending.autoResolution));
         }}
-        onRespond={(answer) => resolveInteraction(pending.interactionId, answer)}
+        // 上游 3.18 的 resolveInteraction 回执带 committedMode；Codex 问答弹窗只需要
+        // 是否被接受，这里显式投影成布尔，避免把权限语义泄漏进原生问答契约。
+        onRespond={async (answer) =>
+          (await resolveInteraction(pending.interactionId, answer)).accepted
+        }
       />
     );
   }

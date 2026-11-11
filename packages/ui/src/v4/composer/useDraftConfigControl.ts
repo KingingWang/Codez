@@ -144,7 +144,7 @@ function buildCodexSessionConfigSyncKey(
 
 function applyCodexSessionConfigSync(params: {
   draft: V4ComposerDraft;
-  initialization: "new-task" | "session" | "promotion";
+  initialization: "new-task" | "session" | "promotion" | "edit";
   sessionId: string | null;
   sessionConfig: Partial<SessionConfigState> | null | undefined;
   codex: boolean;
@@ -153,7 +153,16 @@ function applyCodexSessionConfigSync(params: {
 }): V4ComposerDraft {
   const { draft, initialization, sessionId, sessionConfig, codex, codexUsesCatalog, codexCatalog } =
     params;
-  if (!codex || !sessionId || initialization === "new-task" || !draft.mode || !sessionConfig) {
+  // edit scope 的模式/Plan/模型是本次编辑的提交配置，不能被 Session 快照回写覆盖
+  // （与下方 observedConfig 的 `!== "edit"` 门禁同源）。
+  if (
+    !codex ||
+    !sessionId ||
+    initialization === "new-task" ||
+    initialization === "edit" ||
+    !draft.mode ||
+    !sessionConfig
+  ) {
     return draft;
   }
   if (codexUsesCatalog && !codexCatalog) return draft;

@@ -47,6 +47,9 @@ export class WebRemoteControlTerminalTransport {
   private intentionallyClosed = false;
   private wasPaired = false;
   private hadPairedSession = false;
+  // fork 定制（#30）：仍在等待首帧 renderer attachment 的 join 数量；
+  // 非零时链路不能被判定为 stale，否则配对中的等待者会被提前踢掉。
+  private staleWaitingCount = 0;
   // 打散窗口与电脑共用，受桌面 3 秒手机断连宽限约束；规则见 WebRemoteControlV2RetryPolicy.nextDelay。
   private readonly retry = new WebRemoteControlV2RetryPolicy(Math.random, {
     initialMs: 500,

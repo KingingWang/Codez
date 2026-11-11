@@ -762,7 +762,6 @@ export function SessionPane({
     oauthService,
     modelSelectionService,
     usageStatsService,
-    modelSelectionService,
     codezSessionService,
     codezTaskService,
   } = services;
@@ -827,8 +826,6 @@ export function SessionPane({
     isDesktop &&
     isCodexDesktopFileRewindAvailable(desktopFileRewindCapability.availability) &&
     Boolean(services.codexDesktopFileRewindService);
-  const workspaceFileRewindEnabled =
-    desktopFileRewindSupported || (!isDesktop && (!readOnly || allowWorkspaceFileRewind));
   const desktopFileRewindService = desktopFileRewindSupported
     ? services.codexDesktopFileRewindService
     : undefined;
@@ -1497,6 +1494,10 @@ export function SessionPane({
       generation: paneBindingRef.current.generation + 1,
     };
   }
+  // fork 定制：editUserQuery 前的 Highspeed prepare 是异步的，返回后除了 sessionId
+  // 还必须确认 composer 仍绑定同一 workspace，否则编辑结果会落到已切换的会话。
+  const composerBindingRef = useRef({ sessionId, workspaceKey });
+  composerBindingRef.current = { sessionId, workspaceKey };
   useEffect(() => {
     let disposed = false;
     if (!sessionId) {
@@ -3324,7 +3325,10 @@ export function SessionPane({
   // 锁仍写在行上，所以缺失按允许处理。
   const fileRewindLocked = snapshot?.availability.rewindFiles?.allowed === false;
   const fileRewindAllowedByPane = !readOnly || allowWorkspaceFileRewind;
-  const workspaceFileRewindEnabled = fileRewindAllowedByPane && !fileRewindLocked;
+  // 合并上游 3.18 的 session 锁与 fork 的 Desktop 文件撤销事务通道：Desktop 走独立
+  // 事务服务（不受 pane 只读限制），非 Desktop 仍由 pane 只读 + session 锁共同决定。
+  const workspaceFileRewindEnabled =
+    desktopFileRewindSupported || (!isDesktop && fileRewindAllowedByPane && !fileRewindLocked);
   // 锁定提示只给“锁一解除就能撤销”的场景；只读 pane、运行时未就绪时不提示
   // （docs/ui/task-file-change-summary.md）。
   const fileRewindLockedHint = runtimeReady && fileRewindAllowedByPane && fileRewindLocked;
@@ -4928,6 +4932,8 @@ export function SessionPane({
       attachments?: readonly AttachmentRef[],
       workspaceMode: "preserve" | "rewind" = "preserve",
       conversationQuotes?: import("@codez/shared").ConversationSelectionText[],
+      // 上游 3.18 的 composer 编辑态把冻结配置随调用下传；行内编辑路径不传，
+      // 此时仍按 fork 原语义就地冻结当前 Composer 配置。
       submission?: ComposerSubmissionConfig | null,
     ) => {
       const current = snapshotRef.current;
@@ -4944,17 +4950,18 @@ export function SessionPane({
       // 旧实现未携带当前 Composer 冻结配置，导致重发沿用原轮 pin 的旧模型与旧模式。
       // 修复依据：在点击编辑提交时冻结当前 Composer 配置并随 editUserQuery 上送；
       // Highspeed 加速轮仍通过 recentSubmissionOverride 保留用户原始选择。
-      const submission = createSubmissionFromComposer();
+      const resolvedSubmission =
+        submission === undefined ? createSubmissionFromComposer() : submission;
       // 原因：空配置的 edit 会让 native 沿用额度耗尽的旧线程设置。
       // 与普通发送共用 fail-closed 校验，在任何 prepare/重写历史副作用前拒绝。
-      if (!submission) {
+      if (!resolvedSubmission) {
         toast(intl.formatMessage({ id: "chat.error.sendFailed" }));
         return false;
       }
       if (nativeCodexSession) {
         try {
           const catalog = await codexModels.readCurrent();
-          if (!isCodexSelectionReady(catalog, submission.modelSelection)) {
+          if (!isCodexSelectionReady(catalog, resolvedSubmission.modelSelection)) {
             codexModels.reload();
             return false;
           }
@@ -4966,7 +4973,7 @@ export function SessionPane({
       const highspeed = await prepareHighspeedSendContext(
         sessionId,
         prepareHighspeedTurnFrom(captureHighspeedPaneOrigin()),
-        submission.modelSelection,
+        resolvedSubmission.modelSelection,
       );
       const latest = snapshotRef.current;
       if (
@@ -4985,18 +4992,11 @@ export function SessionPane({
           // native 编辑只重写对话；手机不能借 legacy rewind 操作改变文件。
           workspaceMode: nativeCodexConfig ? "preserve" : workspaceMode,
           conversationQuotes,
-          ...submission,
+          // 编辑态复用普通发送的工具栏：本次重跑使用编辑时冻结的模型/模式/Plan。
+          ...resolvedSubmission,
           // editUserQuery 的 attachments 缺省表示保留 canonical 原附件；
           // 只有显式透传 []，CLI 才能区分“用户删除全部”与“调用方未修改附件”。
           ...(attachments ? { attachments: [...attachments] } : {}),
-          // composer 编辑态复用普通发送的工具栏：本次重跑使用编辑时的模型/模式/Plan。
-          ...(submission
-            ? {
-                modelSelection: submission.modelSelection,
-                mode: submission.mode,
-                planEnabled: submission.planEnabled,
-              }
-            : {}),
           ...highspeed.override,
         },
         sessionId,
