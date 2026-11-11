@@ -3518,7 +3518,10 @@ export class ProductProjection {
       const compacted = compactConversationRowForWire(row);
       if (compacted !== row) {
         this.fullRowPayloadByRowId.set(row.rowId, row);
-        return { ...delta, row: compacted };
+        // 上游 3.18 把消费端合成的 unreadable 占位行并入 ConversationRow，
+        // compactConversationRowForWire 的返回类型随之变宽。发送端永不产出占位行，
+        // 且这里已按 kind 收窄到 toolCall/reasoning，回到 wire 行类型是安全的。
+        return { ...delta, row: compacted as typeof row };
       }
       return delta;
     });
