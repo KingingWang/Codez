@@ -36,7 +36,9 @@ const localRuntimeScripts = [
   // Codex 发行包不内置 Codez Agent bundle，运行时改由 codex-remote/runtime/codex 提供。
   ...(!isCodexBuild ? ["prepare:agent-bundle"] : []),
   ...(target.os === "win32" ? ["prepare:windows-runtime-host"] : []),
-  ...(shouldPrepareWindowsCuaHelper ? ["prepare:windows-cua-helper"] : []),
+  // fork 不再准备上游的 Windows Computer Use Helper：该 Helper 由上游闭源 producer 提供，
+  // 开源树里 isRealComputerUseProducerInstalled 恒为 false；Codez 的计算机控制走自研
+  // packages/codez-cua（根 prepare 的 build:cua），因此这条分支在 fork 里是死代码。
   ...(nativeSearchReleasePlan.enabled ? ["prepare:native-search"] : []),
   ...(shouldPrepareWindowsBrowserImportHelper ? ["prepare:browser-import-helper"] : []),
   ...(shouldPrepareMacosWindowBounds ? ["prepare:macos-window-bounds"] : []),
