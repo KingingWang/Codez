@@ -177,11 +177,17 @@ E2E 构建走 `build:no-runtime-assets`，不会产出它。缺失时每个 case
 `node scripts/build-windows-runtime-host.mjs --if-windows --ensure`：
 
 - 非 Windows：直接跳过。
-- Windows：`bundled-tools/win32-<arch>/runtime-host/` 下 exe 与 `build.json` 的源码摘要一致就复用，否则用 CMake + VS 2022 重新构建；构建失败则 onPrepare fail-closed。
+- Windows：`bundled-tools/win32-<arch>/runtime-host/` 下 exe 与 `build.json` 的源码摘要一致就复用，否则用 CMake 重新构建；构建失败则 onPrepare fail-closed。
+  生成器不再写死版本：脚本读 `cmake --help` 的 Generators 段，按 CMake 自己报告的顺序
+  （Visual Studio 新到旧优先，非 Visual Studio 默认生成器兜底）逐个尝试，第一个 configure
+  成功的即为本机工具链；configure 之后的编译或架构校验失败立即抛出，不换生成器掩盖。
+  `CODEZ_CMAKE_GENERATOR` 可显式固定生成器，绕过探测。
 - `CODEZ_E2E_SKIP_BUILD=1`（分片子 runner）同样执行该检查，命中时只做摘要校验。
 - 正式包（`E2E_PACKAGED_APP_BINARY_PATH`）使用随包 exe，不执行。
 
-Windows E2E runner 因此必须安装 CMake 与 Visual Studio 2022 C++ Build Tools。
+Windows E2E runner 因此必须安装 CMake 与任一受支持的 Visual Studio C++ Build Tools
+（2022 或更新版本；GitHub runner 镜像已升级到 Visual Studio 18 Enterprise，写死
+`Visual Studio 17 2022` 会让 CMake 报 "could not find any instance of Visual Studio"）。
 
 ## SSH remote assets 自动准备
 

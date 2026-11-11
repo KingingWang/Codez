@@ -28,7 +28,6 @@ import {
   isSharpRequiredByComputerUse,
   verifyStagedSharp,
 } from "./scripts/sharp-package-assets.mjs";
-import { isRealComputerUseProducerInstalled } from "./scripts/computer-use-producer.mjs";
 import {
   MAC_ELECTRON_LANGUAGES,
   findMissingMacElectronLocales,
@@ -316,20 +315,6 @@ function assertPackagedMacElectronLocales(context) {
   }
 }
 
-function assertPackagedCuaHelper(context) {
-  if (targetPlatform.os !== "darwin" || !shouldPackageComputerUseHelper) return;
-  const appPath = join(
-    context.appOutDir,
-    `${desktopProductIdentity.productName}.app`,
-    "Contents",
-    "Resources",
-    "cua-helper",
-    HELPER_APP_NAME,
-  );
-  if (!existsSync(appPath)) {
-    throw new Error(`Packaged Codez is missing bundled Computer Use Helper: ${appPath}`);
-  }
-}
 const shouldEnableWindowsVsign =
   process.platform === "win32" && process.env.CODEZ_ENABLE_WINDOWS_SIGN === "1";
 const commandStdoutMaxBuffer = 64 * 1024 * 1024;
@@ -935,18 +920,13 @@ export default {
     );
     runTimedSync("afterPack:assertPackagedCuaSharp", () => assertPackagedCuaSharp(context));
     runTimedSync("afterPack:assertPackagedCuaKoffi", () => assertPackagedCuaKoffi(context));
-    runTimedSync("afterPack:assertPackagedCuaHelper", () => assertPackagedCuaHelper(context));
     runTimedSync("afterPack:assertPackagedMacElectronLocales", () =>
       assertPackagedMacElectronLocales(context),
     );
-    if (actualWindowsTarget && shouldPackageComputerUseHelper) {
-      await runTimedAsync("afterPack:finalizePackagedWindowsCuaHelper", () =>
-        finalizePackagedWindowsCuaHelper({
-          resourcesDir: resolvePackagedResourcesDir(context),
-          targetPlatform: actualWindowsTarget,
-          electronVersion: desktopElectronVersion,
-        }),
-      );
+    // Codez 自维护 packages/codez-cua，不打包上游闭源 Computer Use Helper producer，
+    // 因此 Windows 安装清单跟着 CUA 目标平台走（fork 原有门禁），而不是上游的
+    // actualWindowsTarget && shouldPackageComputerUseHelper 分支。
+    if (actualCuaTarget.os === "win32") {
       await runTimedAsync("afterPack:writeWindowsInstallManifest", () =>
         writeWindowsInstallManifest(context),
       );
