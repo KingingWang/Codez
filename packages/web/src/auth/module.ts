@@ -4,7 +4,8 @@
  */
 export const webAuthModule = {
   id: "web-auth",
-  requires: ["mobile-ui", "shared", "ui"],
+  // web-remote-native-io：fork 的 OAuth 需要 isCodezBrowserExtension 判断扩展壳运行时。
+  requires: ["mobile-ui", "shared", "ui", "web-remote-native-io"],
   provides: ["web-auth"],
   publicEntrypoints: ["index.ts", "contract.ts"],
 } as const;
