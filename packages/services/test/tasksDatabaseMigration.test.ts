@@ -42,11 +42,14 @@ describe("DB109 App 库统一迁移", () => {
       "task_group_view_node_orders",
       "task_group_workspace_bootstraps",
       "task_groups",
+      // 上游 3.18 的永久删除账本；与其余表同批创建，重开不得改账本。
+      "task_purge",
       "tasks",
       "tasks_schema_migration",
     ]);
     const ledger = db.prepare("SELECT * FROM tasks_schema_migration").all();
-    expect(ledger).toHaveLength(7);
+    // 上游 3.18 新增 0007_task_permanent_deletion，账本条目随之 +1。
+    expect(ledger).toHaveLength(8);
     await migrate(db);
     expect(db.prepare("SELECT * FROM tasks_schema_migration").all()).toEqual(ledger);
   });
@@ -265,7 +268,7 @@ describe("DB109 App 库统一迁移", () => {
       Atomics.store(new Int32Array(gate), 0, 1);
       Atomics.notify(new Int32Array(gate), 0);
       expect(await Promise.all(exits)).toEqual([[0], [0]]);
-      expect(db.prepare("SELECT * FROM tasks_schema_migration").all()).toHaveLength(7);
+      expect(db.prepare("SELECT * FROM tasks_schema_migration").all()).toHaveLength(8);
       expect(db.prepare("SELECT * FROM migration_probe").all()).toHaveLength(1);
       expect(db.prepare("PRAGMA integrity_check").get()?.integrity_check).toBe("ok");
     } finally {

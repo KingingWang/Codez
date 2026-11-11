@@ -24,8 +24,16 @@ function makeTempDir(): string {
   return dir;
 }
 
+// 上游 3.18 的 credentialService 走系统凭据密匙（OS keystore / 受管 secret）。
+// CI 与容器都是无 Secret Service 的 headless 环境，必须显式提供受管 secret，
+// 否则用例会因 CREDENTIAL_SECURE_STORAGE_UNAVAILABLE 失败，而不是验证 Key 生命周期。
+const TEST_CREDENTIAL_SECRET = "codez-test-credential-secret-0123456789abcdef";
+const previousCredentialSecret = process.env.CODEZ_CREDENTIAL_SECRET;
+
 afterEach(() => {
   setDataBaseDir(null);
+  if (previousCredentialSecret === undefined) delete process.env.CODEZ_CREDENTIAL_SECRET;
+  else process.env.CODEZ_CREDENTIAL_SECRET = previousCredentialSecret;
   while (tempDirs.length > 0) {
     const dir = tempDirs.pop();
     if (dir) rmSync(dir, { recursive: true, force: true });
@@ -34,6 +42,7 @@ afterEach(() => {
 
 function createIsolatedCredentialService(): ICredentialService {
   setDataBaseDir(makeTempDir());
+  process.env.CODEZ_CREDENTIAL_SECRET = TEST_CREDENTIAL_SECRET;
   return createCredentialService();
 }
 
@@ -50,10 +59,7 @@ describe("codexNativeProviderKey env/credential naming", () => {
       CODEX_NATIVE_PROVIDER_LOCAL_ENVIRONMENT_KEY,
       "p1",
     );
-    const remote = codexNativeProviderKeyCredentialKey(
-      "ssh:user@host:22",
-      "p1",
-    );
+    const remote = codexNativeProviderKeyCredentialKey("ssh:user@host:22", "p1");
     expect(local).not.toBe(remote);
     expect(local).toContain("codex-native-provider-key:");
   });
@@ -75,9 +81,7 @@ describe("createCodexNativeProviderKeyService", () => {
       apiKey: "sk-test",
     });
     expect(prepared.envName).toBe(codexNativeProviderKeyEnvName("acme"));
-    expect((await service.getKeyState({ providerId: "acme" })).configured).toBe(
-      true,
-    );
+    expect((await service.getKeyState({ providerId: "acme" })).configured).toBe(true);
 
     await service.finishKeySource({ providerId: "acme", commit: true });
     expect(disposeLocalRuntimes).toHaveBeenCalledTimes(1);
@@ -86,9 +90,7 @@ describe("createCodexNativeProviderKeyService", () => {
       environmentKey: "local",
       credentialService: credentials,
     });
-    expect((await reread.getKeyState({ providerId: "acme" })).configured).toBe(
-      true,
-    );
+    expect((await reread.getKeyState({ providerId: "acme" })).configured).toBe(true);
   });
 
   it("rejects runtime-env prepare without any key before starting rotation", async () => {
@@ -149,9 +151,7 @@ describe("createCodexNativeProviderKeyService", () => {
     // 回滚路径：凭据与注册表保持。
     await service.prepareKeySource({ providerId: "acme", mode: "delete" });
     await service.finishKeySource({ providerId: "acme", commit: false });
-    expect((await service.getKeyState({ providerId: "acme" })).configured).toBe(
-      true,
-    );
+    expect((await service.getKeyState({ providerId: "acme" })).configured).toBe(true);
 
     await service.prepareKeySource({ providerId: "acme", mode: "delete" });
     await service.finishKeySource({ providerId: "acme", commit: true });
@@ -177,9 +177,7 @@ describe("createCodexNativeProviderKeyService", () => {
     });
     await service.finishKeySource({ providerId: "acme", commit: true });
     // 删除凭据模拟「配置在、Key 不在」；注册表条目仍在。
-    await credentials.delete(
-      codexNativeProviderKeyCredentialKey("local", "acme"),
-    );
+    await credentials.delete(codexNativeProviderKeyCredentialKey("local", "acme"));
     const spawn = await resolveCodexNativeProviderSpawnEnv({
       credentialService: credentials,
       environmentKey: "local",
@@ -223,9 +221,7 @@ describe("createCodexNativeProviderKeyService", () => {
       console.log = originalLog;
     }
 
-    const finish = logged.filter(
-      (entry) => entry === "codex provider key finish",
-    );
+    const finish = logged.filter((entry) => entry === "codex provider key finish");
     expect(finish).toHaveLength(2);
     const payloads = logged.filter(
       (entry): entry is Record<string, unknown> =>
@@ -300,25 +296,15 @@ describe("createCodexNativeProviderKeyService", () => {
       }),
     ).rejects.toThrow();
     expect(calls).toEqual(["begin", "install"]);
-    expect(
-      await credentials.load(
-        codexNativeProviderKeyCredentialKey("ssh:x", "acme"),
-      ),
-    ).toBeNull();
+    expect(await credentials.load(codexNativeProviderKeyCredentialKey("ssh:x", "acme"))).toBeNull();
   });
 });
 
 describe("codexNativeProviderSpawnEnvFromInstalled", () => {
   it("blocks every managed provider during rotation", () => {
     const installed = new Map([
-      [
-        "CODEZ_CODEX_API_KEY_AAAA0000BBBB1111",
-        { providerId: "a", value: "k1" },
-      ],
-      [
-        "CODEZ_CODEX_API_KEY_CCCC2222DDDD3333",
-        { providerId: "b", value: null },
-      ],
+      ["CODEZ_CODEX_API_KEY_AAAA0000BBBB1111", { providerId: "a", value: "k1" }],
+      ["CODEZ_CODEX_API_KEY_CCCC2222DDDD3333", { providerId: "b", value: null }],
     ]);
     const rotating = codexNativeProviderSpawnEnvFromInstalled(installed, true);
     expect(rotating.blockedProviderIds.sort()).toEqual(["a", "b"]);

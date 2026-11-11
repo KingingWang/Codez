@@ -242,6 +242,11 @@ describe("terminal 与 V2 假 relay 的线级契约", () => {
   });
 
   it("网络和5xx保持500ms指数退避，上限10秒", async () => {
+    // 上游 3.18 给重连退避加了 ±20% jitter 与首连 1.5s 打散窗口。曲线形状才是契约，
+    // 随机数会让精确毫秒断言变成 flaky；这里把 Math.random 固定成 0.5，
+    // jitter 因子恰好为 1，退避回到 500ms 起的精确指数曲线。
+    // 必须在 fixture() 之前打桩：transport 在构造时就捕获了 Math.random 引用。
+    const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0.5);
     let fail: "server" | "network" | undefined = "server";
     const h = await fixture({
       users: { jwt: "user-1" },
@@ -258,20 +263,27 @@ describe("terminal 与 V2 假 relay 的线级契约", () => {
     const tokens = () =>
       h.relay.httpCalls.filter((r) => (r.body as { role?: string }).role === "terminal").length;
     let count = 1;
-    for (const ms of [500, 1000, 2000, 4000, 8000, 10000, 10000]) {
-      await vi.advanceTimersByTimeAsync(ms - 1);
-      await delay(30);
-      expect(tokens()).toBe(count);
-      await vi.advanceTimersByTimeAsync(1);
-      await delay(60);
-      expect(tokens()).toBe(++count);
-      fail = "network";
+    try {
+      // 上游 3.18：start() 内部会 retry.acknowledged()，因此第一次重连落在
+      // WEB_REMOTE_CONTROL_V2_RECONNECT_SPREAD_MS（1.5s）打散窗口内——random 固定 0.5 时为 750ms，
+      // 之后才回到 500ms 起的指数曲线并以 10s 收尾。
+      for (const ms of [750, 500, 1000, 2000, 4000, 8000, 10000, 10000]) {
+        await vi.advanceTimersByTimeAsync(ms - 1);
+        await delay(30);
+        expect(tokens()).toBe(count);
+        await vi.advanceTimersByTimeAsync(1);
+        await delay(60);
+        expect(tokens()).toBe(++count);
+        fail = "network";
+      }
+      fail = undefined;
+      await vi.advanceTimersByTimeAsync(10000);
+      await delay(100);
+      expect(h.states.at(-1)).toBe("paired");
+      expect(h.failures).toEqual([]);
+    } finally {
+      randomSpy.mockRestore();
     }
-    fail = undefined;
-    await vi.advanceTimersByTimeAsync(10000);
-    await delay(100);
-    expect(h.states.at(-1)).toBe("paired");
-    expect(h.failures).toEqual([]);
   });
 
   it.each([401, 403])("token HTTP %s 停止重试，回前台不能复活终态", async (status) => {

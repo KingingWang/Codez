@@ -574,7 +574,7 @@ describe("createWebRemoteControlManager external relay", () => {
     expect(disposeWorkspaceHostAttachmentsForWindow).toHaveBeenCalledWith(1, "manual-stop");
   });
 
-  it("restores the previous target only after its current workspace context is available", async () => {
+  it("restores the previously enabled target with its saved task when the window has it", async () => {
     const { getStartupRestoreContext, getLatestTransportOptions, manager } = createManagerHarness({
       startupRestoreContext: {
         workspacePath: "/workspace/demo",
@@ -582,11 +582,6 @@ describe("createWebRemoteControlManager external relay", () => {
         initialTaskId: "task-1",
       },
     });
-
-    await expect(
-      manager.restorePreviouslyEnabled(1, [{ workspacePath: "/workspace/other" }]),
-    ).resolves.toBe(false);
-    expect(manager.getStatus(1)).toEqual({ status: "idle" });
 
     await expect(
       manager.restorePreviouslyEnabled(1, [
@@ -612,6 +607,42 @@ describe("createWebRemoteControlManager external relay", () => {
       workspaceIdentity: "remote:ssh:host:/workspace/demo",
       initialTaskId: "task-1",
     });
+  });
+
+  // 上游 3.18 改了启动恢复语义：上次启用目标不在本窗口时不再静默跳过（那会让手机一直离线），
+  // 而是退回本窗口首个可 bridge 的工作区；initialTaskId 只属于上次启用目标，不能带过去。
+  it("falls back to the window's first bridgeable workspace without the saved task", async () => {
+    const { manager } = createManagerHarness({
+      startupRestoreContext: {
+        workspacePath: "/workspace/demo",
+        workspaceIdentity: "remote:ssh:host:/workspace/demo",
+        initialTaskId: "task-1",
+      },
+    });
+
+    await expect(
+      manager.restorePreviouslyEnabled(1, [{ workspacePath: "/workspace/other" }]),
+    ).resolves.toBe(true);
+    expect(manager.getStatus(1)).toEqual(
+      expect.objectContaining({
+        status: "running",
+        workspacePath: "/workspace/other",
+        initialTaskId: undefined,
+      }),
+    );
+  });
+
+  it("waits for the next workspace sync when the window snapshot is empty", async () => {
+    const { manager } = createManagerHarness({
+      startupRestoreContext: {
+        workspacePath: "/workspace/demo",
+        workspaceIdentity: "remote:ssh:host:/workspace/demo",
+        initialTaskId: "task-1",
+      },
+    });
+
+    await expect(manager.restorePreviouslyEnabled(1, [])).resolves.toBe(false);
+    expect(manager.getStatus(1)).toEqual({ status: "idle" });
   });
 
   it("releases only the previous attachment when mobile reconnects to the same workspace", async () => {

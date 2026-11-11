@@ -123,6 +123,11 @@ describe("runServerCore startup wiring", () => {
       providerProvisioningTargetEnabled: true,
       ephemeralRuntimeKeysEnabled: true,
       topicResourceRelayChannel: expect.any(Function),
+      // 上游 3.18 由 Server Core 注入批量凭据存储的加解密端口（Provisioning schema v3）。
+      credentialCipherProvider: expect.objectContaining({
+        decrypt: expect.any(Function),
+        encrypt: expect.any(Function),
+      }),
     });
     expect(createIngressToken).toHaveBeenCalledWith(layout);
   });

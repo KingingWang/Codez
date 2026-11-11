@@ -118,7 +118,13 @@ export class WebAuthService {
 
   async startLogin(options: WebAuthLoginOptions = {}): Promise<void> {
     this.loginController?.abort();
-    if (options.provider === BIGMODEL_PROVIDER_ID) {
+    // fork 定制：手机浏览器与开启弹窗拦截的桌面浏览器拿不到授权弹窗（window.open 返回 null），
+    // 上游在这里直接抛 "Authorization popup was blocked"，远控登录页只能停在错误态。
+    // 探测不到弹窗能力时退回整页重定向的 legacy 流（与 BigModel 同一条路径），
+    // 保留 QR 参数、dev return_to 与 #e2ee hash 的既有契约；能弹窗时仍走上游区域轮询流。
+    const popup =
+      options.provider === BIGMODEL_PROVIDER_ID ? null : this.runtime.openAuthorization?.();
+    if (!popup) {
       await this.startLegacyLogin(options);
       return;
     }
@@ -128,7 +134,6 @@ export class WebAuthService {
     options.signal?.addEventListener("abort", abort, { once: true });
     if (options.signal?.aborted) controller.abort();
     const nonce = this.runtime.createNonce();
-    let navigated = false;
     try {
       controller.signal.throwIfAborted();
       const expected = await this.repo.beginLoginAttempt(nonce);
@@ -147,37 +152,56 @@ export class WebAuthService {
         appReturnTo,
         { currentOrigin },
       );
-      const safeReturnTo = resolveSafeAppReturnTo(appReturnTo, { currentOrigin });
-      // Bug 原因：3.18 用 window.open 打开授权新标签、原页内存轮询。App 内置浏览器里弹窗为 null、
-      // 替换当前页或原页后台暂停，登录失败。改为同页跳转：flow 记入同源 pending，回调页继续完成；
-      // 只改 redirect_uri，授权站、client_id、state 仍用服务端返回值。
-      this.repo.savePendingLogin({
-        nonce,
-        provider,
-        redirectUri,
-        expectedSession: expected,
-        ...(safeReturnTo ? { appReturnTo: safeReturnTo } : {}),
-        regional: {
-          flowId: flow.flowId,
-          pollToken,
-          state: flow.state,
-          intervalMs: flow.intervalMs,
-          // 剩余寿命按服务端 server_time 算出；截止时间换成本机时钟，回调页用同一时钟比较。
-          deadline: Date.now() + flow.lifetimeMs,
-        },
-      });
-      const authorizeUrl = new URL(flow.authorizeUrl);
-      authorizeUrl.searchParams.set("redirect_uri", redirectUri);
-      navigated = true;
-      this.runtime.assign(authorizeUrl.toString());
+      // 服务端callback由上游完成；原页只轮询，不改写redirect，不把flow凭据放到URL或存储。
+      popup.navigate(flow.authorizeUrl);
+      while (true) {
+        if (!this.repo.ownsLoginAttempt(nonce, expected))
+          throw new Error("OAuth session was superseded");
+        const session = await pollRegionalOAuth(flow, token, controller.signal);
+        if (session) {
+          if (
+            !(await this.repo.commitPrimarySession(
+              { ...session, provider, revision: nonce },
+              expected,
+              nonce,
+              controller.signal,
+            ))
+          )
+            throw new Error("OAuth session was superseded");
+          const destination = resolveSafeAppReturnTo(
+            options.appReturnTo ?? this.runtime.getCurrentHref(),
+            { currentOrigin: this.runtime.getCurrentOrigin() },
+          );
+          // fork 定制：扫码进入的远控页面把端到端密钥放在 URL hash 里。上游弹窗流只回跳
+          // app_return_to，会连同 hash 一起丢掉，配对页面因此拿不到 #e2ee=v1&k=...。
+          // 与 startPollingLogin 同一规则：只在确认是远控 QR 片段时把 hash 追加回去。
+          const popupReturnTo = options.appReturnTo ?? this.runtime.getCurrentHref();
+          const popupSourceUrl = parseOptionalUrl(popupReturnTo);
+          const popupE2eeHash =
+            popupSourceUrl?.hash && parseWebRemoteControlE2eeQrFragment(popupSourceUrl.hash)
+              ? popupSourceUrl.hash.trim()
+              : "";
+          const normalizedPopupHash = popupE2eeHash
+            ? popupE2eeHash.startsWith("#")
+              ? popupE2eeHash
+              : `#${popupE2eeHash}`
+            : "";
+          const resolvedDestination = destination ?? "/remote/v4";
+          this.runtime.replace(
+            normalizedPopupHash && !resolvedDestination.includes("#")
+              ? `${resolvedDestination}${normalizedPopupHash}`
+              : resolvedDestination,
+          );
+          return;
+        }
+        if (popup.isClosed()) throw new Error("Authorization window was closed");
+        await waitForRegionalPoll(flow.intervalMs, controller.signal);
+      }
     } finally {
       options.signal?.removeEventListener("abort", abort);
       if (this.loginController === controller) this.loginController = null;
-      if (!navigated) {
-        // 跳转前取消或失败：本次 pending 与 attempt 一起作废，不留给回调页。
-        this.repo.takePendingLogin(nonce);
-        await this.repo.finishLoginAttempt(nonce);
-      }
+      popup.close();
+      await this.repo.finishLoginAttempt(nonce);
     }
   }
 

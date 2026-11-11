@@ -15,7 +15,7 @@ const WORKFLOW_BUNDLE_ID = isCodexDesktop
 const WORKFLOW_VERSION = "5";
 // Finder 服务菜单只内置中英；其它界面语言用英文。
 const SERVICES_MENU_LABELS: Record<"zh-CN" | "en-US", string> = {
-  "zh-CN": "在Codez中打开",
+  "zh-CN": "在 Codez 中打开",
   "en-US": "Open in Codez",
 };
 
