@@ -33,8 +33,6 @@ import {
 } from "@codez/shared/test-ids";
 import type {
   ApiRetryState,
-  AttachmentRef,
-  CommandAck,
   ConversationRowTarget,
   SessionUsageState,
   TurnHeaderRow,
@@ -107,16 +105,14 @@ import { resolveWorkflowTurnCompletion } from "@/v4/workflowTurnCompletion.js";
 import {
   ConversationAssistantTextActions,
   ConversationTurnContinueAction,
+  type UserInputEditHandler,
 } from "@/v4/ConversationRowView.js";
 import { readAssistantFeedback } from "@/v4/ConversationRowView.js";
 import type {
   AssistantFeedbackHandler,
   EditWorkspaceRewindAvailability,
 } from "@/v4/ConversationRowView.js";
-import {
-  isConversationReasoningRowVisible,
-  type ConversationRowRenderContext,
-} from "@/v4/conversationRowContext.js";
+import { type ConversationRowRenderContext } from "@/v4/conversationRowContext.js";
 import { resolveInterruptedTurnContinueTarget } from "@/v4/conversationTurnContinue.js";
 import type {
   AssistantWorkRow,
@@ -281,156 +277,23 @@ function TurnChatLoadingSlot({
   );
 }
 
-function ConversationExploreGroupRow({
-  item,
-  context,
-}: {
-  item: Extract<ConversationAssistantWorkRenderItem, { kind: "exploreGroup" }>;
-  context: ConversationRowRenderContext;
-}) {
-  // explore 分组行已经处在 turn 容器的统一边距内，单独再加 px-4
-  // 会让同一串工具调用有的内缩、有的不内缩。
-  return (
-    <div
-      data-row-id={item.rowId}
-      data-conversation-selectable="true"
-      data-testid={testId(TID_V4_ROW, String(item.rowId))}
-    >
-      <ToolCallBlock
-        toolCallNode={item.node}
-        workspacePath={context.workspacePath}
-        theme={context.theme}
-        codePreviewSettings={context.codePreviewSettings}
-        showTodoToolCalls={context.messageStreamShowTodos === true}
-        onOpenCodeViewer={context.onOpenCodeViewer}
-        onOpenFileLink={context.onOpenFileLink}
-        onOpenBrowserUrl={context.onOpenBrowserUrl}
-        onOpenAutomationsMain={context.onOpenAutomationsMain}
-        onLoadFullToolCallFields={context.onLoadFullToolCallFields}
-      />
-    </div>
-  );
-}
-
-function ConversationToolGroupRow({
-  item,
-  context,
-}: {
-  item: Extract<
-    ConversationAssistantWorkRenderItem,
-    { kind: "cuaGroup" | "executeGroup" | "changesGroup" }
-  >;
-  context: ConversationRowRenderContext;
-}) {
-  const renderAssistantMessage = useCallback(
-    (event: Extract<ConversationCuaGroupEvent, { kind: "assistantMessage" }>) => (
-      <ConversationTurnRow
-        row={event.row}
-        context={context}
-        hideAssistantActions
-        assistantCodeCommentProjectionEnabled={false}
-      />
-    ),
-    [context],
-  );
-  const renderReasoning = useCallback(
-    (event: Extract<ConversationCuaGroupEvent, { kind: "reasoning" }>) => (
-      <ConversationTurnRow row={event.row} context={context} reasoningContentVariant="nested" />
-    ),
-    [context],
-  );
-  const visibleCuaEvents = useMemo(
+function useConversationAssistantWorkItems(
+  rows: readonly AssistantWorkRow[],
+  context: ConversationRowRenderContext,
+  stageTailIsRunning = false,
+) {
+  const showReasoning = context.messageStreamShowReasoning === true;
+  const firstReasoningRowId = context.messageStreamFirstReasoningRowId;
+  return useMemo(
     () =>
-      item.kind === "cuaGroup"
-        ? item.events.filter(
-            (event) =>
-              event.kind !== "reasoning" ||
-              isConversationReasoningRowVisible(event.row.rowId, context),
-          )
-        : undefined,
-    [context, item],
-  );
-  return (
-    <div
-      data-row-id={item.rowId}
-      data-conversation-selectable="true"
-      data-testid={testId(TID_V4_ROW, String(item.rowId))}
-    >
-      <ToolCallBlock
-        toolCallNode={item.node}
-        workspacePath={context.workspacePath}
-        theme={context.theme}
-        codePreviewSettings={context.codePreviewSettings}
-        showTodoToolCalls={context.messageStreamShowTodos === true}
-        onOpenCodeViewer={context.onOpenCodeViewer}
-        onOpenFileLink={context.onOpenFileLink}
-        onOpenBrowserUrl={context.onOpenBrowserUrl}
-        onOpenAutomationsMain={context.onOpenAutomationsMain}
-        onLoadFullToolCallFields={context.onLoadFullToolCallFields}
-        // history/background 兼容路径只传虚拟父节点时，已被分组投影消费的
-        // Assistant message / reasoning 没有交给 renderer，展开后会永久丢失。
-        cuaGroupEvents={visibleCuaEvents}
-        renderCuaAssistantMessage={item.kind === "cuaGroup" ? renderAssistantMessage : undefined}
-        renderCuaReasoning={item.kind === "cuaGroup" ? renderReasoning : undefined}
-      />
-    </div>
-  );
-}
-
-function ConversationCuaGroupRow({
-  item,
-  context,
-}: {
-  item: Extract<ConversationTurnFlowItem, { kind: "cuaGroup" }>;
-  context: ConversationRowRenderContext;
-}) {
-  const renderAssistantMessage = useCallback(
-    (event: Extract<(typeof item.events)[number], { kind: "assistantMessage" }>) => (
-      <ConversationTurnRow
-        row={event.row}
-        context={context}
-        hideAssistantActions
-        assistantCodeCommentProjectionEnabled={false}
-      />
-    ),
-    [context],
-  );
-  const renderReasoning = useCallback(
-    (event: Extract<(typeof item.events)[number], { kind: "reasoning" }>) => (
-      <ConversationTurnRow row={event.row} context={context} reasoningContentVariant="nested" />
-    ),
-    [context],
-  );
-  const visibleCuaEvents = useMemo(
-    () =>
-      item.events.filter(
-        (event) =>
-          event.kind !== "reasoning" || isConversationReasoningRowVisible(event.row.rowId, context),
-      ),
-    [context, item.events],
-  );
-  return (
-    <div
-      data-row-id={item.rowId}
-      data-conversation-selectable="true"
-      data-testid={testId(TID_V4_ROW, String(item.rowId))}
-    >
-      <ToolCallBlock
-        toolCallNode={item.node}
-        workspacePath={context.workspacePath}
-        theme={context.theme}
-        codePreviewSettings={context.codePreviewSettings}
-        showTodoToolCalls={context.messageStreamShowTodos === true}
-        onOpenCodeViewer={context.onOpenCodeViewer}
-        onOpenFileLink={context.onOpenFileLink}
-        onOpenBrowserUrl={context.onOpenBrowserUrl}
-        onOpenAutomationsMain={context.onOpenAutomationsMain}
-        onLoadFullToolCallFields={context.onLoadFullToolCallFields}
-        cuaGroupEvents={visibleCuaEvents}
-        renderCuaAssistantMessage={renderAssistantMessage}
-        renderCuaReasoning={renderReasoning}
-      />
-    </div>
+      buildAssistantWorkRenderItems(rows, {
+        messageStreamShowReasoning: showReasoning,
+        messageStreamShowTodos: context.messageStreamShowTodos,
+        ...(firstReasoningRowId !== undefined
+          ? { messageStreamFirstReasoningRowId: firstReasoningRowId }
+          : {}),
+      }),
+    [firstReasoningRowId, rows, showReasoning, context.messageStreamShowTodos],
   );
 }
 
@@ -482,12 +345,8 @@ function ConversationAssistantWorkContent({
         hideAssistantActions={item.row.kind === "assistantText"}
         assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
       />
-    ) : item.kind === "agentToolCall" ? (
-      <ConversationAgentToolCallRow key={item.key} item={item} context={context} />
-    ) : item.kind === "exploreGroup" ? (
-      <ConversationExploreGroupRow key={item.key} item={item} context={context} />
     ) : (
-      <ConversationToolGroupRow key={item.key} item={item} context={context} />
+      <ConversationAgentToolCallRow key={item.key} item={item} context={context} />
     );
   const content = (
     <div className="flex flex-col gap-1" data-conversation-work-items>
@@ -754,6 +613,7 @@ function AssistantHistoryStatus({
   highspeed,
   highspeedMeta,
   sourceCommandIds,
+  collapsible = true,
   header,
   sessionUsage,
   runningHighspeedTagOnly,
@@ -763,6 +623,7 @@ function AssistantHistoryStatus({
   highspeed: boolean;
   highspeedMeta?: HighspeedMessageMeta;
   sourceCommandIds: readonly string[];
+  collapsible?: boolean;
   header?: TurnHeaderRow;
   sessionUsage?: SessionUsageState | null;
   /** 整轮仍在生成时只输出 Highspeed 标签：不出折叠入口、不出工时、不提前显示节省时间。 */
@@ -947,7 +808,6 @@ function AssistantHistoryStatus({
     );
   }, [intl, numberFormatter, percentFormatter, sessionCumulative, turnTokenUsage]);
 
-  const Status = collapsible ? CollapsibleTrigger : "span";
   if (runningHighspeedTagOnly) {
     // 上游在整轮生成期间隐藏折叠头（运行中出现收起入口没有意义）；fork 的 Highspeed 状态标签
     // 原本挂在这个头上，生成期间必须仍然可见，且节省时间服从整轮终态，不能提前显示。
@@ -962,6 +822,8 @@ function AssistantHistoryStatus({
       </div>
     );
   }
+
+  const Status = collapsible ? CollapsibleTrigger : "span";
 
   return (
     <div
@@ -1152,10 +1014,6 @@ function ConversationWorkSegmentFlow({
       className="history-message flex flex-col [&>*+*:not([data-slot='collapsible-content'])]:mt-5"
     >
       {segment.flowItems.map((item, index) => {
-        const stageTailIsRunning =
-          segment.workStatus?.state === "running" &&
-          index === segment.flowItems.length - 1 &&
-          (item.kind === "assistantHistory" || item.kind === "assistantWork");
         const showHistoryStatus =
           (shouldShowHistoryStatus || showRunningHighspeedTag) &&
           index === firstAssistantFlowItemIndex;
@@ -1179,23 +1037,6 @@ function ConversationWorkSegmentFlow({
             ) : (
               userRow
             );
-        } else if (item.kind === "cuaGroup") {
-          const group = <ConversationCuaGroupRow item={item} context={context} />;
-          if (item.flowKind === "assistantHistory") {
-            const chunkKey =
-              historyChunkIndex === 0 ? segment.key : `${segment.key}:chunk-${historyChunkIndex}`;
-            historyChunkIndex += 1;
-            content = (
-              <CollapsibleContent
-                data-testid={testId(TID_CHAT_ASSISTANT_HISTORY_CONTENT, chunkKey)}
-                data-history-open={String(open)}
-              >
-                <div className="pt-5">{group}</div>
-              </CollapsibleContent>
-            );
-          } else {
-            content = group;
-          }
         } else if (item.kind === "assistantHistory") {
           const chunkKey =
             historyChunkIndex === 0 ? segment.key : `${segment.key}:chunk-${historyChunkIndex}`;
@@ -1494,7 +1335,10 @@ function ConversationBackgroundResultWork({
   assistantCodeCommentProjectionEnabled: boolean;
   assistantPreviewCardsAutoOpenKey?: string;
 }) {
-  const hasHistory = unit.assistantHistoryRows.length > 0;
+  // 后台通知可能有结果，但主模型没有可见过程；原来的空容器仍占外层 gap，
+  // 点击收起会在 display:none 时跳 20px。入口与内容共用同一份可见工作项投影。
+  const historyItems = useConversationAssistantWorkItems(unit.assistantHistoryRows, context);
+  const hasHistory = historyItems.length > 0;
   const hasFollowing = unit.assistantFollowingRows.length > 0;
   const showLoading = shouldShowTurnChatLoading({
     blockedByActiveWork: context.chatLoadingBlockedByActiveWork === true,
@@ -1602,8 +1446,8 @@ function ConversationBackgroundResultWork({
       )}
       {hasHistory ? (
         <div className="flex flex-col gap-2">
-          <ConversationAssistantWorkItems
-            rows={unit.assistantHistoryRows}
+          <ConversationAssistantWorkContent
+            items={historyItems}
             context={context}
             assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
           />
@@ -1749,8 +1593,7 @@ function ConversationTurnGroupImpl({
   // 判据用 latestAssistantTextRow.state 而不是 unit.isRunning：回合可能还在跑
   // （模型说完一段正在调工具），但最新文本行已经终态，那时 copyText 仍须可用。
   const assistantTextTerminal =
-    latestAssistantTextRow?.state === "complete" ||
-    latestAssistantTextRow?.state === "interrupted";
+    latestAssistantTextRow?.state === "complete" || latestAssistantTextRow?.state === "interrupted";
   const assistantRawCopyText = useMemo(
     () => (assistantTextTerminal ? resolveAssistantCopyText(unit) : undefined),
     [
@@ -1904,6 +1747,19 @@ function ConversationTurnGroupImpl({
   const startsWithoutUserBubble =
     startsWithWorkflowNotificationCard || unit.workflowLaunch !== undefined;
 
+  // 性能：context 变更会绕过下游所有 memo bailout，所以 provider 的 value 必须保持引用稳定。
+  // 之前这里是 inline 对象字面量，每个流式帧（桌面 30ms 一帧）都换新身份，
+  // 导致当前轮内每个已完成的工具卡都跟着重渲染摘要行，而它们的 props 其实一个都没变。
+  // tailRowId 是 rowId 原始值、taskRunning 是布尔，语义不变时 value 身份就不变。
+  const summaryTailRowId = useMemo(
+    () => getAssistantSummaryTailRowId(unit.renderRows, assistantRowContext),
+    [unit.renderRows, assistantRowContext],
+  );
+  const summaryGroupBoundary = useMemo(
+    () => ({ taskRunning: unit.isRunning, tailRowId: summaryTailRowId }),
+    [unit.isRunning, summaryTailRowId],
+  );
+
   const shareSelectionRows = shareSelection
     ? unit.visibleUserInputs.filter(
         (row) => row.origin === "realUser" && shareSelection.eligibleRowIds.has(row.rowId),
@@ -1965,20 +1821,6 @@ function ConversationTurnGroupImpl({
       </div>
     ) : null;
 
-  // 性能：context 变更会绕过下游所有 memo bailout，所以 provider 的 value 必须保持引用稳定。
-  // 之前这里是 inline 对象字面量，每个流式帧（桌面 30ms 一帧）都换新身份，
-  // 导致当前轮内每个已完成的工具卡都跟着重渲染摘要行，而它们的 props 其实一个都没变。
-  // tailRowId 是 rowId 原始值、taskRunning 是布尔，语义不变时 value 身份就不变。
-  const summaryTailRowId = useMemo(
-    () => getAssistantSummaryTailRowId(unit.renderRows, assistantRowContext),
-    [unit.renderRows, assistantRowContext],
-  );
-  const summaryGroupBoundary = useMemo(
-    () => ({ taskRunning: unit.isRunning, tailRowId: summaryTailRowId }),
-    [unit.isRunning, summaryTailRowId],
-  );
-
-
   return (
     <SummaryGroupBoundaryContext.Provider value={summaryGroupBoundary}>
       <section
@@ -2032,13 +1874,10 @@ function ConversationTurnGroupImpl({
                   context={assistantRowContext}
                   onFork={canForkLatestAssistant ? onFork : undefined}
                   onRetry={onRetry}
-                  onEdit={onEdit}
-                  editWorkspaceRewindAvailability={editWorkspaceRewindAvailability}
+                  title={backgroundResultTitle}
                   assistantCopyText={assistantCopyText}
                   assistantCodeCommentCards={assistantCodeCommentCards}
                   assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
-                  highspeed={isHighspeed}
-                  highspeedMeta={highspeedMeta}
                   assistantPreviewCardsAutoOpenKey={
                     assistantPreviewPptxAutoOpenTarget?.turnId === unit.turnId
                       ? assistantPreviewPptxAutoOpenTarget.key
@@ -2083,74 +1922,71 @@ function ConversationTurnGroupImpl({
               digests={workflowTurnDigests}
               turnKey={unit.key}
             />
-              {/* 修复原因：CronCreate/CronUpdate 工具本身仍按普通工具行展示；成功卡片属于整轮
-                完成后的结果摘要，必须等回复结束再跟随最终 assistant 正文收尾。 */}
-              <CronAutomationTurnCards cards={cronAutomationTurnCards} context={context} />
-              <OffPeakTurnCards cards={offPeakTurnCards} context={context} />
-              {!isOfficeMode && unit.header?.fileChanges ? (
-                <ConversationFileSummaryPanel
-                  header={unit.header}
-                  context={context}
-                  assistantText={assistantFileSummaryText}
-                />
-              ) : null}
-              {unit.browserTurnEndRows.length > 0 ? (
-                // 自动截图表达轮次结束时页面最终状态；放在 assistant work 内会
-                // 穿插到 Website 预览和 file diff 摘要之间。它应是操作栏之前的最后一个内容块。
-                <ConversationAssistantWorkItems
-                  rows={unit.browserTurnEndRows}
-                  context={assistantRowContext}
-                  assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
-                />
-              ) : null}
-              {canRenderAssistantActions && latestAssistantTextRow ? (
-                // 文件 summary 是整轮完成后的聚合结果；轮尾工具栏如果跟着
-                // assistant text 内联渲染，会插到 summary 前面，读起来像 summary 不是本轮收尾。
-                <ConversationAssistantTextActions
-                  rowId={latestAssistantTextRow.rowId}
-                  entityId={latestAssistantTextRow.entityId}
-                  text={assistantCopyText}
-                  // Bugfix：轮尾动作栏代表整轮回复完成收尾，优先使用 turnHeader.endedAt（最终完成时间），
-                  // 避免因 row.createdAt 记录流开始或轮次启动时刻而把回复结束时间显示为用户提问时间。
-                  createdAt={unit.header?.endedAt ?? latestAssistantTextRow.createdAt}
-                  compactForRemoteControl={context.compactForRemoteControl}
-                  feedback={readAssistantFeedback(latestAssistantTextRow)}
-                  sessionId={context.sessionId}
-                  onFork={canForkLatestAssistant ? onFork : undefined}
-                  onRetry={canRetryLatestAssistant ? onRetry : undefined}
-                  onFeedbackChange={onFeedbackChange}
-                  hookInvocations={unit.hookInvocations}
+            {/* 修复原因：CronCreate/CronUpdate 工具本身仍按普通工具行展示；成功卡片属于整轮
+              完成后的结果摘要，必须等回复结束再跟随最终 assistant 正文收尾。 */}
+            <CronAutomationTurnCards cards={cronAutomationTurnCards} context={context} />
+            <OffPeakTurnCards cards={offPeakTurnCards} context={context} />
+            {!isOfficeMode && unit.header?.fileChanges ? (
+              <ConversationFileSummaryPanel
+                header={unit.header}
+                context={context}
+                assistantText={assistantFileSummaryText}
+              />
+            ) : null}
+            {unit.browserTurnEndRows.length > 0 ? (
+              // 自动截图表达轮次结束时页面最终状态；放在 assistant work 内会
+              // 穿插到 Website 预览和 file diff 摘要之间。它应是操作栏之前的最后一个内容块。
+              <ConversationAssistantWorkItems
+                rows={unit.browserTurnEndRows}
+                context={assistantRowContext}
+                assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
+              />
+            ) : null}
+            {canRenderAssistantActions && latestAssistantTextRow ? (
+              // 文件 summary 是整轮完成后的聚合结果；轮尾工具栏如果跟着
+              // assistant text 内联渲染，会插到 summary 前面，读起来像 summary 不是本轮收尾。
+              // Bugfix：轮尾动作栏代表整轮回复完成收尾，优先使用 turnHeader.endedAt（最终完成时间），
+              // 避免因 row.createdAt 记录流开始或轮次启动时刻而把回复结束时间显示为用户提问时间。
+              <ConversationAssistantTextActions
+                rowId={latestAssistantTextRow.rowId}
+                entityId={latestAssistantTextRow.entityId}
+                text={assistantCopyText}
+                createdAt={unit.header?.endedAt ?? latestAssistantTextRow.createdAt}
+                compactForRemoteControl={context.compactForRemoteControl}
+                feedback={readAssistantFeedback(latestAssistantTextRow)}
+                sessionId={context.sessionId}
+                onFork={canForkLatestAssistant ? onFork : undefined}
+                onRetry={canRetryLatestAssistant ? onRetry : undefined}
+                onFeedbackChange={onFeedbackChange}
+                hookInvocations={unit.hookInvocations}
+                turnId={unit.turnId}
+                sourceCommandIds={deliverySourceCommandIds}
+                className={cn(
+                  "flex items-center gap-1",
+                  context.compactForRemoteControl
+                    ? "opacity-100"
+                    : "opacity-0 transition-opacity group-hover/assistant-turn:opacity-100 focus-within:opacity-100 has-[[data-bot-group-delivery]]:opacity-100",
+                )}
+              />
+            ) : (hasHookActions || !unit.isRunning) && !canRenderAssistantActions ? (
+              // 冲突合并曾把此兜底接到 Highspeed 页脚的 else，导致普通回复重复入口，
+              // Highspeed 无正文轮又丢失入口；它只与普通操作栏互斥，页脚独立渲染。
+              <MessageActions
+                className={cn(
+                  context.compactForRemoteControl
+                    ? "opacity-100"
+                    : "opacity-0 transition-opacity group-hover/assistant-turn:opacity-100 focus-within:opacity-100 has-[[data-bot-group-delivery]]:opacity-100",
+                )}
+              >
+                {hasHookActions ? (
+                  <ConversationHookDetailsAction rows={unit.hookInvocations} turnId={unit.turnId} />
+                ) : null}
+                <ConnectedBotGroupDeliveryAction
                   turnId={unit.turnId}
                   sourceCommandIds={deliverySourceCommandIds}
-                  className={cn(
-                    "flex items-center gap-1",
-                    context.compactForRemoteControl
-                      ? "opacity-100"
-                      : "opacity-0 transition-opacity group-hover/assistant-turn:opacity-100 focus-within:opacity-100 has-[[data-bot-group-delivery]]:opacity-100",
-                  )}
                 />
-              ) : (hasHookActions || !unit.isRunning) && !canRenderAssistantActions ? (
-                // 冲突合并曾把此兜底接到 Highspeed 页脚的 else，导致普通回复重复入口，
-                // Highspeed 无正文轮又丢失入口；它只与普通操作栏互斥，页脚独立渲染。
-                <MessageActions
-                  className={cn(
-                    context.compactForRemoteControl
-                      ? "opacity-100"
-                      : "opacity-0 transition-opacity group-hover/assistant-turn:opacity-100 focus-within:opacity-100 has-[[data-bot-group-delivery]]:opacity-100",
-                  )}
-                >
-                  {hasHookActions ? (
-                    <ConversationHookDetailsAction
-                      rows={unit.hookInvocations}
-                      turnId={unit.turnId}
-                    />
-                  ) : null}
-                  <ConnectedBotGroupDeliveryAction
-                    turnId={unit.turnId}
-                    sourceCommandIds={deliverySourceCommandIds}
-                  />
-                </MessageActions>
-              ) : null}
+              </MessageActions>
+            ) : null}
             {showHighspeedOutputFooter ? (
               <HighspeedOutputFooter
                 generatedLabel={intl.formatMessage({ id: "chat.highspeed.generatedBy" })}

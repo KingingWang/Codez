@@ -450,6 +450,13 @@ function Harness() {
         <V4InteractionDialogs
           sessionId="fixture-session"
           workspacePath="/isolated/workspace"
+          // QA 夹具不接真实 composer scope 存储；上游 3.18 起该 prop 必填，
+          // 这里给出稳定的隔离 scope，保证弹窗只走注入的 Host 事实。
+          resolveRecentScope={async () => ({
+            clientNamespace: "fixture",
+            hostId: "fixture-host",
+            projectId: null,
+          })}
           snapshot={
             {
               sessionId: "fixture-session",

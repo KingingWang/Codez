@@ -2,6 +2,11 @@ export const WEB_REMOTE_CONTROL_V2_HEARTBEAT_INTERVAL_MS = 5_000;
 export const WEB_REMOTE_CONTROL_V2_HEARTBEAT_JITTER_MS = 1_000;
 export const WEB_REMOTE_CONTROL_V2_HEARTBEAT_ACK_TIMEOUT_MS = 15_000;
 
+// fork 定制：上游 3.18 删除了重连 jitter（其 relay 客户端不再自行退避重连），
+// 但 Codez 的手机/Web 远控传输仍在 web-remote-control/adapters/relayMessage.ts 里
+// 按该 jitter 打散重连，避免多端同时重连打爆 relay。保留常量与纯函数，语义不变。
+export const WEB_REMOTE_CONTROL_RECONNECT_JITTER_MS = 2_000;
+
 function safeRandom(random: () => number): number {
   const value = random();
   if (!Number.isFinite(value)) {
@@ -43,4 +48,15 @@ export function getWebRemoteControlHeartbeatDelayMs(
   const minDelayMs = Math.max(1, normalizedBase - jitterMs);
   const maxDelayMs = normalizedBase + jitterMs;
   return minDelayMs + Math.floor(safeRandom(random) * (maxDelayMs - minDelayMs + 1));
+}
+
+export function getWebRemoteControlReconnectJitterMs(
+  configuredJitterMs = WEB_REMOTE_CONTROL_RECONNECT_JITTER_MS,
+  random: () => number = Math.random,
+): number {
+  if (!Number.isFinite(configuredJitterMs) || configuredJitterMs <= 0) {
+    return 0;
+  }
+  const maxJitterMs = Math.floor(configuredJitterMs);
+  return Math.floor(safeRandom(random) * (maxJitterMs + 1));
 }

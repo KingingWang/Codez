@@ -543,7 +543,9 @@ function renderWebLoginPage(): void {
               throw error;
             });
         }
-        remoteEntry.startLogin(provider, signal);
+        // fork 的登录页第二参数是 showAuthorizeQr（扫码链接回调），不是上游的 AbortSignal；
+        // 非扩展运行时仍走 remoteEntry 自己的登录生命周期，不透传信号。
+        remoteEntry.startLogin(provider);
       }}
     />,
   );

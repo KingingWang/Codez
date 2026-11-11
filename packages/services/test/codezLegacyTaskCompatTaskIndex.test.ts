@@ -80,7 +80,9 @@ afterEach(async () => {
   }
 });
 
-function useTempDataBaseDir(): string {
+// 不是 React Hook：只是建立临时 dataBaseDir 的测试夹具。
+// 以 use 前缀命名会被 rules-of-hooks 判成在非组件函数里调用 Hook（createService）。
+function withTempDataBaseDir(): string {
   const dir = mkdtempSync(join(tmpdir(), "codez-task-index-"));
   tempDirs.push(dir);
   setDataBaseDir(dir);
@@ -450,7 +452,7 @@ function createService(options?: {
   settings?: Partial<AppSettings>;
   cuaProductMcpServerResolver?: CuaProductMcpServerResolver;
 }) {
-  useTempDataBaseDir();
+  withTempDataBaseDir();
   const { agent, eventEmitter, indexFrameEmitter } = createAgentMock();
   const settingService = options?.settings
     ? {

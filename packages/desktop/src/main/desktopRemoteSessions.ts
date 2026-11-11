@@ -701,12 +701,7 @@ export function createRemoteWorkspaceSessionManager(options: {
       environmentKey,
       descriptor.remoteSessionId,
       (trigger) =>
-        executeProviderProvisioning(
-          child,
-          descriptor.remoteSessionId,
-          environmentKey,
-          trigger,
-        ),
+        executeProviderProvisioning(child, descriptor.remoteSessionId, environmentKey, trigger),
       descriptor.sourceServerId,
     );
     route.providerProvisioningDispose = registration.dispose;
@@ -1105,42 +1100,6 @@ export function createRemoteWorkspaceSessionManager(options: {
     win: BrowserWindow | undefined,
     event: RemoteSessionClosedNotice,
   ): void {
-    const route = routesBySessionId.get(event.remoteSessionId);
-    if (!route || route.webContentsId !== webContentsId) return;
-    const closedChild = options.windowHostProcessMap.get(webContentsId);
-    for (const [requestId, execution] of pendingProviderProvisioningExecutions) {
-      if (execution.child !== closedChild || execution.remoteSessionId !== event.remoteSessionId) {
-        continue;
-      }
-      pendingProviderProvisioningExecutions.delete(requestId);
-      execution.reject(new Error("远程 workspace 已断开，Provider Provisioning 结果已失效"));
-    }
-    if (event.reason !== "connection-closed") {
-      route.providerProvisioningDispose?.();
-      retireActiveRoute(route, "disposed", () => {
-        routesBySessionId.delete(event.remoteSessionId);
-      });
-      detachRouteAttachments(
-        route,
-        "session-released",
-        new Error(`远程 workspace 已释放，sessionId=${event.remoteSessionId}`),
-      );
-      return;
-    }
-    retireActiveRoute(route, "connection-closed", () => {
-      route.attachmentState = "closed";
-    });
-    route.providerProvisioningDispose?.();
-    // 连接断开只把 route 标成 closed，已暴露的 desktop attachment 仍留在窗口 Host；
-    // sessionId 换代后 Main 又会删除 route，导致旧 ChannelServer 永久失去回收入口。
-    detachRouteAttachments(
-      route,
-      "session-connection-closed",
-      new Error(`远程 workspace 已关闭，sessionId=${event.remoteSessionId}`),
-    );
-    const win = BrowserWindow.getAllWindows().find(
-      (candidate) => candidate.webContents.id === webContentsId,
-    );
     if (event.recoverable !== true) {
       options.webRemoteControlManagerRef.current?.failRemoteSession(
         event.remoteSessionId,
@@ -1183,6 +1142,16 @@ export function createRemoteWorkspaceSessionManager(options: {
   ): void {
     const route = routesBySessionId.get(event.remoteSessionId);
     if (!route || route.webContentsId !== webContentsId) return;
+    // fork 定制：session 断连时必须立刻结算仍在飞的 Provider Provisioning，
+    // 否则 caller 会一直等到窗口关闭才失败（retireActiveRoute 只覆盖 route 维度）。
+    const closedChild = options.windowHostProcessMap.get(webContentsId);
+    for (const [requestId, execution] of pendingProviderProvisioningExecutions) {
+      if (execution.child !== closedChild || execution.remoteSessionId !== event.remoteSessionId) {
+        continue;
+      }
+      pendingProviderProvisioningExecutions.delete(requestId);
+      execution.reject(new Error("远程 workspace 已断开，Provider Provisioning 结果已失效"));
+    }
     if (event.reason !== "connection-closed") {
       route.providerProvisioningDispose?.();
       retireActiveRoute(route, "disposed", () => {

@@ -52,7 +52,6 @@ type SQLInputValue = import("node:sqlite").SQLInputValue;
 
 interface TaskIndexRow {
   host_id?: string | null;
-  root_path?: string | null;
   physical_root_path?: string | null;
   cli_title?: string | null;
   cli_title_source?: string | null;

@@ -1,6 +1,10 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import { FileDisplayIcon, resolveFileDisplayDescriptor } from "@/lib/fileDisplay.js";
+import {
+  FileDisplayIcon,
+  getFileDisplayPath,
+  resolveFileDisplayDescriptor,
+} from "@/lib/fileDisplay.js";
 import { FlipMetricValue } from "@/components/ui/flip-metric-value.js";
 import { getPathLeaf } from "@/lib/path.js";
 import { inferEditOperation } from "@/ToolCallBlocks/fileSummaries.js";

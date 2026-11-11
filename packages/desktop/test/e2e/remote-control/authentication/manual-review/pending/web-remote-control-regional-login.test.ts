@@ -52,7 +52,9 @@ describe("中国区桌面与手机 Web 共享身份", () => {
           const frame = JSON.parse(String(raw)) as { type?: string; payload?: unknown };
           const payload =
             frame.type === "data" ? parseWebRemoteControlAppPayload(frame.payload) : null;
-          if (payload?.zcode_type === "bootstrap-response" && payload.success)
+          // parseWebRemoteControlAppPayload 已把 wire 上的 zcode_type 归一为内部 codez_type，
+          // 断言必须跟内部判别字段一致（wire 形态仍固定为 zcode_type）。
+          if (payload?.codez_type === "bootstrap-response" && payload.success)
             state.loadedWorkspace = payload.result.workspaces.some(
               (workspace) => workspace.workspacePath === DEFAULT_WORKSPACE,
             );

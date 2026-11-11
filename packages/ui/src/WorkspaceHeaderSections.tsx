@@ -39,6 +39,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.js";
 import { useCodezIntl } from "@/i18n/IntlProvider.js";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
 import {
   formatRemoteWorkspaceDisplayLabel,
   formatRemoteWorkspaceHeaderHostLabel,
@@ -109,7 +110,6 @@ export function WorkspaceHeaderTitleSection({
   compact = false,
 }: WorkspaceHeaderTitleSectionProps) {
   const { intl } = useCodezIntl();
-  const openFeedbackSubmit = useFeedbackStore((state) => state.openSubmit);
   const { runFeedbackEntry } = useFeedbackEntryAction();
   const confirmDialog = useConfirmDialog();
   const services = useWorkspaceServices(workspaceAbsPath, remoteSessionId, workspaceIdentity);

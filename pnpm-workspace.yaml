@@ -44,3 +44,4 @@ patchedDependencies:
   "@ai-sdk/anthropic@3.0.81": patches/@ai-sdk__anthropic@3.0.81.patch
   "@aiden0z/pptx-renderer@1.2.4": patches/@aiden0z__pptx-renderer@1.2.4.patch
   "@extend-ai/react-xlsx@0.16.0": patches/@extend-ai__react-xlsx@0.16.0.patch
+  "@radix-ui/react-menu@2.1.16": patches/@radix-ui__react-menu@2.1.16.patch

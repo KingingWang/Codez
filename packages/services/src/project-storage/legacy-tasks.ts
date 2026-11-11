@@ -347,11 +347,18 @@ export function admitTaskIdentity(
   const key = resolveWorkspaceKey(task);
   const hostId = ensureHost(db, key, ownerHostId);
   // 已接纳的归属（含 NULL）只由用户组织操作改变；重复事实不能重新继承父项目。
-  const existing = db
+  const row = db
     .prepare(
       "SELECT host_id,project_id,handoff_pending,forked_from_task_id FROM tasks WHERE workspace_key=? AND task_id=?",
     )
-    .get(key, task.taskId);
+    .get(key, task.taskId) as
+    | {
+        host_id: string | null;
+        project_id: string | null;
+        handoff_pending: number;
+        forked_from_task_id: string | null;
+      }
+    | undefined;
   if (!row) return;
   const physicalRootPath =
     hostId === (ownerHostId ?? "local")
@@ -406,13 +413,17 @@ export function admitTaskIdentity(
     key,
     task.taskId,
   );
-  if (row.forked_from_task_id) {
+  // 父任务 ID 以调用方事实优先，缺失时回落已固化列；两者都没有就不做目录继承。
+  const inheritedFromTaskId =
+    task.forkedFromTaskId ??
+    (typeof row.forked_from_task_id === "string" ? row.forked_from_task_id : null);
+  if (inheritedFromTaskId) {
     // 首条 fork 事实先到时也继承固化目录，不能因 ACK/通知顺序改变恢复后的执行范围。
     db.prepare(`UPDATE tasks SET execution_directories=(SELECT execution_directories FROM tasks
       WHERE workspace_key=? AND task_id=? AND host_id=? AND root_path=?)
       WHERE workspace_key=? AND task_id=? AND execution_directories IS NULL`).run(
       key,
-      task.forkedFromTaskId,
+      inheritedFromTaskId,
       hostId,
       task.workspacePath,
       key,

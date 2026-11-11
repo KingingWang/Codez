@@ -1,9 +1,4 @@
-import { setInputValueByTestIdDom, clearAppData } from "#e2e/helpers/desktop-app";
-import {
-  clearAppData,
-  clickTestIdByDom,
-  setInputValueByTestIdDom,
-} from "../helpers/desktop-app.js";
+import { clearAppData, clickTestIdByDom, setInputValueByTestIdDom } from "#e2e/helpers/desktop-app";
 import {
   PLUGIN_LIFECYCLE_NAME,
   PLUGIN_LIFECYCLE_ID,

@@ -1,4 +1,5 @@
-import { DEFAULT_CODEZ_ENDPOINT_ORIGIN } from "@codez/shared";
+import { DEFAULT_CODEZ_ENDPOINT_ORIGIN, isBuiltinOAuthProvider } from "@codez/shared";
+import type { WebOAuthProviderId } from "#src/auth/contract.js";
 
 const PRODUCTION_WEB_REMOTE_ORIGIN = DEFAULT_CODEZ_ENDPOINT_ORIGIN;
 const WEB_REMOTE_CALLBACK_PATHS = new Set([
@@ -54,7 +55,9 @@ function isAllowedWebRemoteAppUrl(url: URL): boolean {
 
 interface OAuthStatePayload {
   nonce: string;
-  provider?: "zai" | "bigmodel";
+  // fork 定制：扩展隔离存储下 pending login 只能由 state 复原，因此 state 需要携带
+  // provider；上游 3.18 新增的 zai_cn 也必须在同一联合里，否则区域登录会被丢掉。
+  provider?: WebOAuthProviderId;
   redirect_uri?: string;
   app_return_to?: string;
   return_to?: string;
@@ -117,7 +120,7 @@ export function parseOAuthState(state: string): OAuthStatePayload | null {
 
     return {
       nonce: parsed.nonce,
-      ...(parsed.provider === "zai" || parsed.provider === "bigmodel"
+      ...(parsed.provider !== undefined && isBuiltinOAuthProvider(parsed.provider)
         ? { provider: parsed.provider }
         : {}),
       ...(isNonEmptyString(parsed.redirect_uri) ? { redirect_uri: parsed.redirect_uri } : {}),

@@ -1,4 +1,8 @@
 import { CollapsedChangeSummary } from "@/ToolCallBlocks/renderers.js";
+import {
+  formatAutoApprovalMarkerDetail,
+  formatAutoApprovalStatusLabel,
+} from "@/ToolCallBlocks/shared.js";
 import { SummaryGroupBoundaryContext } from "@/v4/conversationRowContext.js";
 import { ConsecutiveSummaryGroup } from "@/ToolCallBlocks/ToolSummaryRow.js";
 /* oxlint-disable eslint(max-lines) -- Share 与 Desktop 共用的只读 Row/turn presentation 需要保持在同一安全边界。
@@ -167,6 +171,14 @@ const MARKER_GOAL_ICON = (
 );
 const MARKER_MODEL_ICON = (
   <ArrowRightLeftIcon
+    aria-hidden="true"
+    className="size-3.5 shrink-0 text-[var(--color-foreground-subtle)]"
+  />
+);
+// fork 定制：Codex 原生事件分隔线（specs/codex-desktop-thread-items.md）复用同一套
+// subtle 图标规格，避免原生轨迹标记与上游 marker 视觉割裂。
+const MARKER_EVENT_ICON = (
+  <InfoIcon
     aria-hidden="true"
     className="size-3.5 shrink-0 text-[var(--color-foreground-subtle)]"
   />
@@ -369,6 +381,57 @@ export const ConversationTimelineMarkerDivider = memo(function ConversationTimel
           ),
         };
       }
+      case "codexEvent": {
+        // codex 原生事件分隔线（specs/codex-desktop-thread-items.md）：
+        // label 走本地化，detail（review 描述 / hook 文本 / agentPath / 时长）追加在后。
+        // contextCompaction 在 item/started ~ item/completed 之间携带 status: "running"，
+        // 需显示“正在压缩上下文”及流光动画，完成后才显示“上下文已压缩”。
+        const running =
+          (marker.event === "contextCompaction" || marker.event === "autoApprovalReview") &&
+          marker.status === "running";
+        if (marker.event === "autoApprovalReview") {
+          const review = marker.autoApprovalReview;
+          const statusText = review
+            ? formatAutoApprovalStatusLabel(review, intl)
+            : intl.formatMessage({
+                id: running ? "chat.autoApproval.inProgress" : "chat.codexEvent.autoApprovalReview",
+              });
+          const detailText = formatAutoApprovalMarkerDetail(review, marker.detail, intl);
+          return {
+            icon: MARKER_EVENT_ICON,
+            running,
+            label: (
+              <>
+                <span>{statusText}</span>
+                {detailText ? (
+                  <>
+                    <span aria-hidden="true"> · </span>
+                    <span>{detailText}</span>
+                  </>
+                ) : null}
+              </>
+            ),
+          };
+        }
+        const labelId = running
+          ? "chat.contextCompaction.started"
+          : `chat.codexEvent.${marker.event}`;
+        return {
+          icon: marker.event === "contextCompaction" ? MARKER_ARCHIVE_ICON : MARKER_EVENT_ICON,
+          running,
+          label: (
+            <>
+              <span>{intl.formatMessage({ id: labelId })}</span>
+              {marker.detail ? (
+                <>
+                  <span aria-hidden="true"> · </span>
+                  <span>{marker.detail}</span>
+                </>
+              ) : null}
+            </>
+          ),
+        };
+      }
       default:
         return null;
     }
@@ -395,9 +458,11 @@ export const ConversationTimelineMarkerDivider = memo(function ConversationTimel
           ? marker.status
           : marker.type === "goalVerify"
             ? marker.outcome
-            : marker.type === "forkNotice"
-              ? "created"
-              : "applied"
+            : marker.type === "codexEvent" && marker.status
+              ? marker.status
+              : marker.type === "forkNotice"
+                ? "created"
+                : "applied"
       }
       markerOrigin={marker.type === "compact" ? marker.origin : undefined}
       markerSourceCommandId={row.sourceCommandId}

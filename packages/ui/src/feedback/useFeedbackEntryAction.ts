@@ -87,7 +87,7 @@ export function useFeedbackEntryAction(): FeedbackEntryAction {
     (context: FeedbackEntryContext): FeedbackEntryOutcome => {
       const url = buildFeedbackEntryUrl({
         context,
-        locale,
+        locale: locale === "en-US" ? "en-US" : "zh-CN",
         formatMessage: (id, values) => intl.formatMessage({ id }, values),
         runtime: diagnosticRuntime,
       });
