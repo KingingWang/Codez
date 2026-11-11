@@ -105,6 +105,11 @@ const services = {
   broadcastService: {
     onMessage: () => ({ dispose() {} }),
   },
+  // 上游 3.18 的 composer 草稿控制会订阅「动态插件启动降级」事件。QA 夹具不模拟插件启动，
+  // 给出空订阅即可；缺这个方法会让整个 Harness 抛错，Root 启动断言全部无法执行。
+  codezAgentService: {
+    onDynamicPluginStartupDegraded: () => () => ({ dispose() {} }),
+  },
   codingPlanSubscriptionService: {
     getDynamicWorkflowClientConfig: () => {
       counts.workflowReads++;
