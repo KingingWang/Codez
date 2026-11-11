@@ -33,7 +33,7 @@ import { orderProviderVisibleToolContracts } from "../../tool/provider-visible-o
 import { projectToolModelContract } from "../../tool/model-contract.js";
 import { rebuildContextPrefix } from "./context-refresh.js";
 import { supersedeContextComposition } from "../context-composition/state.js";
-import { loadProjectMemoryIndexContent } from "./context.js";
+import { loadProjectMemoryIndex } from "./context.js";
 import { ACTIVE_PROJECT_MEMORY_RETRIEVAL_BRANCH } from "../../memory/project-memory-retrieval-branch.js";
 import { filterEmbeddedSearchRuntimeVisibleTools } from "./embedded-search-branch.js";
 import {
@@ -106,11 +106,15 @@ export async function applyMemoryRuntimeConfig(
   // 修复原因：热重载路径漏传 retrievalBranch，tsc 直接报错；且缺省 undefined 会让
   // `retrievalBranch !== "default-index"` 判定为真，MEMORY.md 索引内容在设置热更后被静默清空。
   // 这里与 context.ts 首轮初始化保持同一分支常量。
-  this.memoryIndexContent = await loadProjectMemoryIndexContent(
+  // 上游 3.18 把 Memory 索引读取收敛成 loadProjectMemoryIndex（返回 index/unreadablePath
+  // 并统一写 readFileState）。热重载必须与 context.ts 首轮初始化走同一函数，
+  // 否则两套读取语义会让设置热更后的索引内容与 readFileState 不一致。
+  const memoryIndexRead = await loadProjectMemoryIndex(
     this,
     this.memoryRoot,
     ACTIVE_PROJECT_MEMORY_RETRIEVAL_BRANCH,
   );
+  this.memoryIndexContent = memoryIndexRead.index?.content;
   // 活动 Turn 的 context prefix 已冻结；turn 结束后的 rebuild 自然读取新值。
   if (!this.activeTurn) {
     rebuildContextPrefix(this);
