@@ -9,6 +9,7 @@ import {
   initializeRegionalOAuth,
   pollRegionalOAuth,
   waitForRegionalPoll,
+  type RegionalOAuthProvider,
 } from "#src/auth/webRegionalOAuth.js";
 import {
   BrowserOAuthCredentialRepo,
@@ -131,9 +132,12 @@ export class WebAuthService {
     // 上游在这里直接抛 "Authorization popup was blocked"，远控登录页只能停在错误态。
     // 探测不到弹窗能力时退回整页重定向的 legacy 流（与 BigModel 同一条路径），
     // 保留 QR 参数、dev return_to 与 #e2ee hash 的既有契约；能弹窗时仍走上游区域轮询流。
-    const popup =
-      options.provider === BIGMODEL_PROVIDER_ID ? null : this.runtime.openAuthorization?.();
-    if (!popup) {
+    const requestedProvider = options.provider ?? ZAI_PROVIDER_ID;
+    // BigModel 没有区域轮询端点，只能走 legacy 重定向；这里同时把类型收窄到区域流可用的 provider。
+    const regionalProvider: RegionalOAuthProvider | null =
+      requestedProvider === BIGMODEL_PROVIDER_ID ? null : requestedProvider;
+    const popup = regionalProvider ? this.runtime.openAuthorization?.() : null;
+    if (!regionalProvider || !popup) {
       await this.startLegacyLogin(options);
       return;
     }
@@ -150,8 +154,7 @@ export class WebAuthService {
       const token = Array.from(crypto.getRandomValues(new Uint8Array(32)), (value) =>
         value.toString(16).padStart(2, "0"),
       ).join("");
-      const provider = options.provider ?? ZAI_PROVIDER_ID;
-      const flow = await initializeRegionalOAuth(provider, token, controller.signal);
+      const flow = await initializeRegionalOAuth(regionalProvider, token, controller.signal);
       controller.signal.throwIfAborted();
       if (!this.repo.ownsLoginAttempt(nonce, expected))
         throw new Error("OAuth session was superseded");
@@ -168,7 +171,7 @@ export class WebAuthService {
         if (session) {
           if (
             !(await this.repo.commitPrimarySession(
-              { ...session, provider, revision: nonce },
+              { ...session, provider: regionalProvider, revision: nonce },
               expected,
               nonce,
               controller.signal,
