@@ -9,6 +9,7 @@ import type {
   CommandResult,
 } from "@codez/shared/codez-protocol-v4";
 import { isHighspeedProviderId } from "@codez/shared";
+import { contractIntentMode } from "@codez/contracts";
 import { createModelExecutionContext } from "../../../session-execution/index.js";
 import { mapAttachmentRefsToTurnAttachments } from "../attachment-refs.js";
 import { inputIntentMetadataFromQueueItem } from "../input-intent.js";
@@ -137,6 +138,10 @@ async function editQueueItem(
   const modelChanged =
     payload.modelSelection !== undefined &&
     JSON.stringify(payload.modelSelection) !== JSON.stringify(queueItem?.modelSelection);
+  // 协议侧 submissionModeSchema 含 Codex 专属的 custom；CLI 契约只认自己的档位。
+  // 统一走 contractIntentMode 归一（custom → undefined = 保留原 intent），与
+  // input-intent / transcript-hydration / product-projection 保持同一个归一化边界。
+  const intentMode = contractIntentMode(payload.mode);
   // core reducer 同 id 原地更新（保位）；未命中 = noop + warn（同 delete 的竞态语义）。
   const result = await record.app.editQueueItem(payload.queueItemId, payload.newText, {
     ...(payload.editorId ? { editorId: payload.editorId } : {}),
@@ -148,7 +153,7 @@ async function editQueueItem(
       : {}),
     ...(payload.conversationQuotes ? { conversationQuotes: payload.conversationQuotes } : {}),
     ...(payload.modelSelection ? { modelSelection: payload.modelSelection } : {}),
-    ...(payload.mode ? { mode: payload.mode } : {}),
+    ...(intentMode ? { mode: intentMode } : {}),
     ...(payload.planEnabled !== undefined ? { planEnabled: payload.planEnabled } : {}),
     ...(modelChanged ? { dropHighspeed: true } : {}),
   });
@@ -190,9 +195,11 @@ async function applyQueueItemsConfig(
     const modelChanged =
       payload.modelSelection !== undefined &&
       JSON.stringify(payload.modelSelection) !== JSON.stringify(queueItem.modelSelection);
+    // 同 editQueueItem：协议 mode 先过 CLI 契约归一化，Codex 的 custom 不进 Agent 运行时。
+    const intentMode = contractIntentMode(payload.mode);
     const result = await record.app.editQueueItem(queueItemId, undefined, {
       ...(payload.modelSelection ? { modelSelection: payload.modelSelection } : {}),
-      ...(payload.mode ? { mode: payload.mode } : {}),
+      ...(intentMode ? { mode: intentMode } : {}),
       ...(modelChanged ? { dropHighspeed: true } : {}),
     });
     if (result !== "edited") continue;
