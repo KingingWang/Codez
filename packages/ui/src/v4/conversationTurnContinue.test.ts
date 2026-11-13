@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import type {
   AssistantTextRow,
@@ -186,4 +187,32 @@ test("长工具链的尾窗只剩工具行时仍可继续，且点击目标属�
     ),
     true,
   );
+});
+
+// issue #36 回归：裁决函数正确并不等于入口可见。宿主必须把 handleContinue 接到
+// ConversationTimeline —— ConversationTurnGroup 只在收到 onContinue 时才计算中断续跑
+// 入口，漏传时快照进入 completedInterrupted 也永不渲染「继续」，而纯函数用例全绿。
+// 渲染级骨架（v4SessionPaneEditUserQuery/ReadOnly）当前在本地与 CI 均未生效，
+// 因此按仓库既有源码守卫惯用法（v4ConversationTurnGroup.test.ts）在 CI 入口钉住接线。
+test("SessionPane 把 handleContinue 接到 ConversationTimeline，并保持 pane 级排除场景", () => {
+  const source = readFileSync("packages/ui/src/v4/SessionPane.tsx", "utf8");
+  assert.ok(source.includes("<ConversationTimeline"), "SessionPane 必须渲染 ConversationTimeline");
+  assert.match(
+    source,
+    /onContinue=\{continueActionsEnabled \? handleContinue : undefined\}/,
+    "ConversationTimeline 必须收到 onContinue，否则中断轮「继续」入口不可达",
+  );
+  // specs/codex-desktop-interrupted-turn-continue.md：只读分享、writer-conflict、
+  // selection-side chat 不显示入口；pane 只给命令能力，行级裁决仍在 row.actions。
+  const gateStart = source.indexOf("const continueActionsEnabled =");
+  assert.ok(gateStart >= 0, "必须存在 continueActionsEnabled 门禁");
+  const gate = source.slice(gateStart, source.indexOf(";", gateStart));
+  for (const guard of [
+    "runtimeReady",
+    "!readOnly",
+    "!writerConflictReadOnly",
+    "!selectionSideChat",
+  ]) {
+    assert.ok(gate.includes(guard), `continueActionsEnabled 缺少 ${guard}`);
+  }
 });

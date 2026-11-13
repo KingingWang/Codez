@@ -5626,6 +5626,24 @@ export function SessionPane({
             })
           : undefined;
       if (!selection?.options?.reasoningLevel) {
+        // 修复原因（issue #36）：切换失败有两条 toast 路径——这里的 Selection 不完整，
+        // 以及下方 catch 里的 ACK 拒绝；此前只有 ACK 路径落日志，现场拿到「切换失败」
+        // 无法判别根因。补上可判别事实：目录是否可用、目标 provider/model 是否在目录内、
+        // 目录声明的档位候选。只记配置事实，不含凭据或用户正文。
+        // 只读 modelSelectionDisplayView（已在依赖里），不新增 hooks 依赖。
+        const catalogProvider = modelSelectionDisplayView?.providers.find(
+          (provider) => provider.providerId === resolvedProvider,
+        );
+        logger.warn("[v4-pane] 会话模型切换被拒：Selection 缺少思考档位", {
+          targetSessionId: sessionId,
+          catalogAvailable: Boolean(modelSelectionDisplayView),
+          provider: resolvedProvider,
+          model,
+          providerInCatalog: Boolean(catalogProvider),
+          reasoningLevels:
+            catalogProvider?.models.find((candidate) => candidate.modelId === model)?.config
+              .optionSpecs.reasoningLevel.values ?? [],
+        });
         toast(intl.formatMessage({ id: "chat.toolbar.connection.switchFailed" }));
         return;
       }
@@ -6075,6 +6093,20 @@ export function SessionPane({
   // editUserQuery 已由 command 层防御 latest real user query，并在 running
   // 提交时先 stop barrier 再 rewind/rerun；UI 不应再用 completed gate 把入口整轮隐藏。
   const editActionsEnabled =
+    runtimeReady &&
+    !readOnly &&
+    !writerConflictReadOnly &&
+    !selectionSideChat &&
+    Boolean(sessionId);
+  // 修复原因（issue #36）：`handleContinue` 早已实现，但渲染 `<ConversationTimeline>` 时
+  // 漏传 `onContinue`，而 ConversationTurnGroup 只在宿主注入该回调时才计算中断续跑入口
+  // （ConversationTurnGroup.tsx 的 resolveInterruptedTurnContinueTarget 门禁），于是快照
+  // 正确进入 completedInterrupted 也永不显示「继续」，违背
+  // specs/codex-desktop-interrupted-turn-continue.md 的验收 1/3/5。
+  // pane 层只负责命令能力与 spec 明列的排除场景（只读分享、writer-conflict、
+  // selection-side chat）；「是否最后一轮、是否中断、是否可写」仍由行级 row.actions
+  // 权威投影裁决，与 retry/edit 保持同一分工，不在此形成第二套 guard。
+  const continueActionsEnabled =
     runtimeReady &&
     !readOnly &&
     !writerConflictReadOnly &&
@@ -7510,6 +7542,7 @@ export function SessionPane({
                         : undefined
                     }
                     onEdit={editActionsEnabled ? composerEdit.beginUserQueryEdit : undefined}
+                    onContinue={continueActionsEnabled ? handleContinue : undefined}
                     canLoadOlder={
                       !state.editPresentation && timelineSnapshot
                         ? hasOlderRows(timelineSnapshot)
