@@ -1,15 +1,15 @@
-# 上游 main 集成合同（3.17.2）
+# 上游 main 集成合同（3.18.2）
 
 ## Feature Summary
 
 | 项       | 约束                                                                          |
 | -------- | ----------------------------------------------------------------------------- |
 | 目的     | 将 Codez 定制提交迁移到 ZCode 上游 main，保留已有产品行为                     |
-| 上游     | `a9fe401eede6e6e5e01be9048679c206fe6f02d9`，3.17.2                            |
-| 原项目   | `3705cb4e3ac3a4faf093c472957bd9e5dbaf4ca7`                                    |
-| 原基准   | `a60ba6a7` → `5645797268015d220d375aecf35781ba1034f40c`（原重命名提交）        |
-| 新基准   | `efc30ef2eaa80b2a9b7939ad6ebf38564d5b978c`，纯产品品牌及路径转换              |
-| 本地备份 | `backup/pre-rebase-20261103-3705cb4e`                                         |
+| 上游     | `fec975905a2abd4c07e35c40d51fa097a2258ec9`，3.18.2                            |
+| 原项目   | `38ef71e1cde75ba1ed8d56c8adeaa0400867e776`                                    |
+| 原基准   | `b95ebaffe` → `a35460ec6cef530293206a8a95668d92606de15d`（原重命名提交）       |
+| 新基准   | `27e6bf6207a9edaf05a4f4e0881bab9ec33afb3c`，纯产品品牌及路径转换              |
+| 本地备份 | `backup/pre-rebase-3.18.0-local`                                              |
 | 改动层   | presentation / validation / persistence / recovery 的兼容迁移，不新增产品语义 |
 | 模式     | impact-only；既有 spec 和回归证据继续定义产品行为                             |
 | 范围外   | 新执行后端、第二个运行时、用户数据修复、原生 Codex HOME 修改                  |
@@ -199,9 +199,9 @@ Node/tsx 测试独立执行，不能以 Vitest 未选中冒充通过。
 pairing、路由、OAuth、恢复等最终回放后的定向文件及扩展构建/Pages 发布流程。
 
 按顺序执行 pnpm install、typecheck、bridge test、test:codex、CLI build 与冲突相关定向验证，
-最后 `CODEZ_PRE_PUSH_BASE=efc30ef2eaa80b2a9b7939ad6ebf38564d5b978c pnpm verify:pre-push`。
+最后 `CODEZ_PRE_PUSH_BASE=27e6bf6207a9edaf05a4f4e0881bab9ec33afb3c pnpm verify:pre-push`。
 报告真实失败及允许的环境限制。
-远端原 main 先备份至 `backup/pre-rebase-3.17.2`，发布使用原远端 SHA 的显式 force-with-lease。
+远端原 main 先备份至 `backup/pre-rebase-3.18.0`，发布使用原远端 SHA 的显式 force-with-lease。
 测试完成后、最终 pre-push 与提交前再次 fetch `origin/main`；若相对备份点有新增定制提交，
 先核查并回放这些增量，不能把旧 fork 基准重新 rebase 进已迁移的新历史。
 push 成功后仅跟踪最终发布 SHA 的构建，使用 `clock.sleep` 每十分钟查询一次；
@@ -262,6 +262,63 @@ fork 保留的项目迁移回归按上游账本对齐：`schema_migration` 与 `
 E2EE 与 UI 回归依赖，不能把后续 install 同步的定制依赖变化称为纯转换；若本轮要求
 最终 lock 也完全等于上游转换，且上游仍缺这些 importer / 依赖，发布前必须确认该约束，
 不得删除依赖、伪造 frozen-install 通过或安装后恢复旧锁掩盖差异。
+
+### 3.18.2 迁移验收
+
+原工作树干净，原 rename 之后是 182 个线性定制提交，无 merge；原 HEAD 没有未提交的
+`specs/codex-cold-history-paging.md`（分页合同仍在 `specs/codex-desktop-adapter.md`）。
+
+品牌转换本轮改为可重放脚本：先对 v3.18.0 基线重算，得到与原重命名提交完全相同的 tree
+（`dcbeef44797fa9ad4d95d005a203744e711baddd`），再据此在上游最新 sync 上生成新基准。
+`pnpm-lock.yaml` 与 `scripts/architecture/upstream-snapshot.json` 因此天然是纯转换结果，
+不重生成 snapshot，不写入定制事实。例外集按源码实测收敛为 `zcode.z.ai`
+（含 `zcode\.z\.ai` / `zcode\\.z\\.ai` 转义形）、`/api/v1/zcode-plan`、
+`zcode-plugins-official`、`ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID`、`.zcode-runtime`、
+`zcode_type` 与混合大小写 `Zcode*`；`zcode-plan`、`zcode-runtime-*` 等非例外形态照常转换，
+上游文件内的 `ZCODE_PLUGIN_ROOT` 同样转换，codex-bridge 与
+`specs/codex-zcode-plugin-compatibility.md` 的例外只作用于 fork 自有文件。
+三组替换全部等长，因此 `config/provider/regression/fixtures/marker.pdf` 的 stored deflate 块
+必须在替换后重算 Adler-32，否则严格 PDF 读取器会拒绝该 fixture。
+
+本轮上游在验证期间又发布 v3.18.2，基准随之从 v3.18.1 前移到 v3.18.2：先在 v3.18.1
+新基准上完成 182 个定制提交回放与 4 处冲突解决，再把已解决的历史整体 `rebase --onto`
+到 v3.18.2 新基准。最终新基准相对原 rename 恰好是上游 v3.18.0→v3.18.2 的累积差异
+（v3.18.1：111 文件 / 3906 插入 / 528 删除；v3.18.2：46 文件 / 1971 插入 / 171 删除），
+版本事实随上游变为 3.18.2；`pnpm install` 后 lockfile 无变化。
+
+v3.18.1 回放阶段：182 个定制提交逐条回放，4 处冲突：
+
+| 提交          | 冲突文件                                             | 处理                                                                                                                                                                                                       |
+| ------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `2fddb58bd`   | `.gitignore`                                         | 并列保留上游新增的 CR-01 `packages/desktop/build/generated/` 与 fork 的本地产物忽略块；`.zcode-runtime/` 沿用 fork 形态                                                                                     |
+| `da02d6a`     | `architecture-policy.yaml`                           | 同一插入点做 union：上游 `cli-memory-diagnostics` 模块与 fork 5 个 helper 模块并存；YAML 解析、模块总数与两侧模块 id 存在性复核                                                                              |
+| `6d8def3`     | `packages/web/.../remote-task-open.mjs`              | 以 fork E2EE 版本为基，补入上游新增的 `getSessionLifecycle` handler 与任务首页返回箭头／导航历史断言，`results` 保留 `taskHomeArrow`；上游新增行逐行校验全部命中                                            |
+| `38ef71e1c`   | `scripts/build-windows-runtime-host.mjs`             | 保留 fork 的 CMake 生成器探测循环，把上游第二个目标 `codez-installer-process-helper` 并入同一次 configure 后的构建、PE 校验、拷贝与 `build.json` 的 `installerProcessHelper`；产物路径改用生成器感知的 `resolveBuiltRuntimeHostBinary`，不沿用上游写死的 `Release/` 目录 |
+
+回放后按「上游新增行与 fork 新增行都必须存在」逐文件机械校验 32 个交互文件，
+除上表刻意合并的 13 行外全部命中；`pnpm typecheck` 通过。
+
+v3.18.2 前移阶段：把已解决历史整体重放到新基准，只新增 1 处冲突
+（v3.18.1 的 4 处冲突点上游未再改动，既有解决结果直接干净应用）：
+
+| 提交        | 冲突文件                                          | 处理                                                                                                                                                                                                                       |
+| ----------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `2fddb58bd` | `packages/desktop/src/main/desktopHostProcess.ts`  | `@codez/shared` import 列表做 union：上游为「切换数据存储路径后凭据密钥共享」新增的 `CREDENTIAL_KEY_SHARE_UNAVAILABLE_ERROR_CODE` 与 fork 的 `type DesktopCodexMcpServer` 并存；上游新增的 `CredentialKeyShareRequest` 分支整体保留 |
+
+v3.18.2 阶段同样按「上游新增行与 fork 新增行都必须存在」校验 15 个交互文件，0 缺失行。
+
+上游 v3.18.1 删除 `packages/ui/src/side-pane-full-view/enterRequest.ts`，全仓无引用。
+上游 afterPack 新增 `writeInstallerProcessHelperDefine(context, actualWindowsTarget?.arch ?? …)`，
+而 `actualWindowsTarget` 属于 fork 已移除的闭源 Computer Use Helper producer 链路，
+自动合并会留下悬空引用并在 win32 打包抛 ReferenceError；改用 fork 既有的 `actualCuaTarget.arch`
+（同一套 `ELECTRON_BUILDER_ARCH` 归一化，configured target 与实际 context 不一致时同样抛错），
+不为此重新导入 `windows-cua-helper-assets.mjs`。
+
+发行版本断言按上轮范围同步到 3.18.2：`scripts/test-codex-distribution-release.mjs`、
+`scripts/test-codex-distribution-remote-index.mjs`、`packages/server/test/remoteAssetCdn.test.ts`。
+`project-storage` 迁移账本里的 `appVersion`、文档里的历史发布验收编号与上游
+memory-diagnostics 夹具版本是既成事实，不改；relay wire 断言继续为 `zcode_type`。
+README 更新段同时保留上游 3.18.2 / 3.18.1 条目与 Codez Computer Use / Codex bridge 条目。
 
 ## Unresolved Questions
 
