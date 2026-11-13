@@ -8,6 +8,7 @@ import type {
   CodezModelTrajectoryMessage,
   CodezModelTrajectoryRecord,
 } from "@codez/services";
+import { isInjectedCodexContextTitle } from "@codez/shared";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import { readTrajectoryFileTail } from "../modelTrajectoryFileTail.js";
 
@@ -17,6 +18,29 @@ const logger = createServiceLogger("codex-model-trajectory");
 const MAX_SESSION_DIRS = 512;
 const MAX_SESSION_FILES = 4096;
 const MAX_ROLLOUT_RECORDS = 200;
+
+/**
+ * Codex 以 user 角色落盘、但不是用户输入的机器生成信封：注入环境块与续跑上下文。
+ * 实测同一 `<environment_context>` 信封既有 `<cwd>` 开头也有 `<current_date>` 开头的变体，
+ * 因此这里按信封名匹配；`# AGENTS.md instructions …` 片段复用 shared 的单一谓词，
+ * 不在本模块另写一份正则。
+ */
+const CODEX_INJECTED_USER_ENVELOPE = /^<(?:environment_context|codex_internal_context)[\s>]/u;
+
+/**
+ * 判断一条 user 角色 response_item 是否真的是用户输入。
+ *
+ * 修复原因（issue #35）：旧门槛要求 `metadata.client_authored === true`，但现行 Codex build
+ * 的 user response_item 根本不写 metadata 键（实测 400 份 rollout、1277 条 user 消息全部缺失），
+ * 于是真实用户输入被全部过滤，`request.messages` 恒为空，UI 因 `hasInput=false`
+ * 整块不渲染「输入」section。metadata 存在时仍按原生事实判定；缺失时只排除已知注入信封。
+ */
+function isUserAuthoredInput(payload: Record<string, unknown>, text: string): boolean {
+  const metadata = asObject(payload.metadata);
+  if (metadata) return metadata.client_authored === true;
+  const normalized = text.trimStart();
+  return !isInjectedCodexContextTitle(normalized) && !CODEX_INJECTED_USER_ENVELOPE.test(normalized);
+}
 
 type ToolCallDraft = Extract<CodezModelTrajectoryRecord["response"], object>["toolCalls"][number] &
   Extract<CodezModelTrajectoryContentPart, { kind: "tool-call" }> & {
@@ -37,6 +61,8 @@ interface TurnDraft {
   startedAt: string;
   completedAt?: string;
   modelId?: string;
+  /** Codex 把系统指令以 developer（部分 build 为 system）角色落盘，投影成 system 行。 */
+  systemMessages: CodezModelTrajectoryMessage[];
   userMessages: CodezModelTrajectoryMessage[];
   assistantTexts: string[];
   reasoningTexts: string[];
@@ -229,6 +255,7 @@ export function parseCodexRolloutLines(
         turnId,
         startedAt: timestamp,
         modelId: asString(payload.model) ?? modelFromCollaboration(payload.collaboration_mode),
+        systemMessages: [],
         userMessages: [],
         assistantTexts: [],
         reasoningTexts: [],
@@ -247,7 +274,9 @@ export function parseCodexRolloutLines(
       line.type === "response_item" &&
       payload.type === "message" &&
       payload.role === "user" &&
-      asObject(payload.metadata)?.client_authored === true &&
+      // 与 acceptMessageItem 用同一判定：否则 metadata 缺失时既不收消息也不切记录，
+      // 长会话（只落一个 turn_context）会被合成一条巨型 record。
+      isUserAuthoredInput(payload, messageText(payload.content) ?? "") &&
       currentTurn.userMessages.length > 0
     ) {
       // Codex rollout 有时整个长会话只落一个 turn_context；新的 user message 仍是新的
@@ -261,6 +290,7 @@ export function parseCodexRolloutLines(
         modelId: currentTurn.modelId,
         usage: emptyUsage(),
         totalUsage: currentTurn.totalUsage ? { ...currentTurn.totalUsage } : undefined,
+        systemMessages: [],
         userMessages: [],
         assistantTexts: [],
         reasoningTexts: [],
@@ -315,11 +345,22 @@ function acceptMessageItem(turn: TurnDraft, payload: Record<string, unknown>): v
   if (!text) return;
   if (payload.role === "user") {
     // subagent/notification 等 internal user item 不是用户发起的模型调用边界，
-    // 不能混入 request.messages。
-    if (asObject(payload.metadata)?.client_authored === true) {
+    // 不能混入 request.messages；判定依据见 isUserAuthoredInput。
+    if (isUserAuthoredInput(payload, text)) {
       turn.userMessages.push({ role: "user", parts: [{ kind: "text", text }] });
     }
-  } else if (payload.role === "assistant") turn.assistantTexts.push(text);
+    return;
+  }
+  if (payload.role === "assistant") {
+    turn.assistantTexts.push(text);
+    return;
+  }
+  // 修复原因（issue #35）：Codex 把系统指令以 developer 角色落盘（部分 build 用 system），
+  // 旧实现只认 user/assistant，系统提示词从不投影，UI 的「系统提示词」开关在 Codex 会话下
+  // 永远为空。统一按 system 角色投影，与 Codez Agent model-io 链路的六类行对齐。
+  if (payload.role === "developer" || payload.role === "system") {
+    turn.systemMessages.push({ role: "system", parts: [{ kind: "text", text }] });
+  }
 }
 
 function messageText(value: unknown): string | undefined {
@@ -449,6 +490,36 @@ function hasTurnSignal(turn: TurnDraft): boolean {
   );
 }
 
+/**
+ * 把内部 tool-call 草稿投影成公开 part。
+ *
+ * 修复原因（issue #35）：契约里 `tool-call` 只有 `input`，没有 `output`；旧实现把
+ * `function_call_output` 挂在草稿的 output 上并原样交给 UI，而 UI 的 ContentPartView
+ * 在 tool-call 分支只渲染 input，于是 Codex 会话的工具结果永远不可见。这里改为
+ * 追加独立的 `tool-result` part，复用 UI 既有的 tool-result 分支（与 Codez Agent 链路同形），
+ * 同时不再把契约外的 output 字段泄漏到 tool-call part 上。
+ */
+function projectToolParts(calls: ToolCallDraft[]): CodezModelTrajectoryContentPart[] {
+  const parts: CodezModelTrajectoryContentPart[] = [];
+  for (const call of calls) {
+    parts.push({
+      kind: "tool-call",
+      toolCallId: call.toolCallId,
+      toolName: call.toolName,
+      input: call.input,
+    });
+    // output 缺失表示该调用没有落 function_call_output（例如轮次被中断），不伪造空结果。
+    if (call.output === undefined) continue;
+    parts.push({
+      kind: "tool-result",
+      toolCallId: call.toolCallId,
+      toolName: call.toolName,
+      output: call.output,
+    });
+  }
+  return parts;
+}
+
 function mapTurn(taskId: string, turn: TurnDraft): CodezModelTrajectoryRecord {
   const completedTime = Date.parse(turn.completedAt ?? "");
   const startedTime = Date.parse(turn.startedAt);
@@ -470,12 +541,14 @@ function mapTurn(taskId: string, turn: TurnDraft): CodezModelTrajectoryRecord {
       providerId: "codex",
       source: "codex-rollout",
     },
-    request: { messages: turn.userMessages, toolNames: [] },
+    // 系统提示词在前、用户输入在后，与模型实际收到的顺序一致。Codex record 的
+    // callSource.kind 是 sidecar，UI 不做会话 delta 裁剪，因此每条 record 完整展示。
+    request: { messages: [...turn.systemMessages, ...turn.userMessages], toolNames: [] },
     response: {
       finishReason: turn.finishReason ?? (turn.toolCalls.length > 0 ? "tool_calls" : "stop"),
       text: turn.assistantTexts.join("\n") || undefined,
       reasoningText: turn.reasoningTexts.join("\n\n") || undefined,
-      toolCalls: turn.toolCalls,
+      toolCalls: projectToolParts(turn.toolCalls),
       usage: turn.usage,
     },
     ...(turn.error ? { error: turn.error } : {}),

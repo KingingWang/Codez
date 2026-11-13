@@ -299,7 +299,14 @@ function ResponseBlock({
     rows.push({
       key: `${toolCall.kind}:${toolCallIndex}`,
       message: { role: "assistant", parts: [toolCall] },
-      roleLabel: intl.formatMessage({ id: "modelTrajectory.toolCall" }),
+      // issue #35：Codex rollout 投影现在会把工具结果作为独立 tool-result part 追加到
+      // response.toolCalls；行标签必须跟随 part kind，否则「工具结果」行会显示成「工具调用」。
+      roleLabel: intl.formatMessage({
+        id:
+          toolCall.kind === "tool-result"
+            ? "modelTrajectory.toolResult"
+            : "modelTrajectory.toolCall",
+      }),
     });
   });
 
