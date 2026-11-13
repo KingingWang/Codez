@@ -933,9 +933,14 @@ export default {
     }
     if (context.electronPlatformName === "win32") {
       // 普通打包没有 APP_DIR_* 宏；makensis 前落盘按架构的 helper define（见函数注释）。
+      // 修复原因：上游 3.18.1 这里读 `actualWindowsTarget?.arch`，而 actualWindowsTarget 来自
+      // 闭源 Computer Use Helper producer 链路（resolveElectronBuilderWindowsTarget），fork 已删除
+      // 其定义与导入，直接沿用会在 win32 afterPack 抛 ReferenceError。改用 fork 既有的
+      // actualCuaTarget：它与上游同一套 ELECTRON_BUILDER_ARCH 归一化，且在 configured target 与
+      // electron-builder 实际 context 不一致时同样抛错，arch 语义等价，不必重新引入该模块。
       await writeInstallerProcessHelperDefine(
         context,
-        actualWindowsTarget?.arch ?? targetPlatform.arch,
+        actualCuaTarget.arch,
       );
       signWindowsHelper(context, "tools/runtime-host/codez-runtime-host.exe");
       signWindowsHelper(context, "tools/runtime-host/codez-installer-process-helper.exe");
