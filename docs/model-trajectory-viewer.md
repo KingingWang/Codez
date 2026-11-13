@@ -41,12 +41,28 @@
   `rollout-*.jsonl`。文件内 `session_meta.payload.id` 必须与 taskId 匹配（先读文件头校验，
   轨迹内容仍只读有界尾部）。
 - Codex rollout 是事件日志，不保存原始 API request。服务层将其投影为「每个 turn / 用户输入近似一条记录」：
-  `request.messages` 只收集该段的用户 `response_item.message`；同一 `turn_context` 后出现的
-  `metadata.client_authored=true` 用户消息开启下一条 projected record；`response.text` 聚合
-  assistant message；`response.reasoningText` 聚合 reasoning summary；function/custom/local-shell
-  call 映射为 tool call，并按 `call_id` 关联后续 output；`event_msg.token_count`
+  `request.messages` 收集该段的系统指令与用户 `response_item.message`（system 在前、user 在后，
+  与模型实际收到的顺序一致）；同一 `turn_context` 后出现的、判定为用户输入的新 user 消息开启下一条
+  projected record；`response.text` 聚合 assistant message；`response.reasoningText` 聚合
+  reasoning summary；function/custom/local-shell call 映射为 tool call，并按 `call_id` 关联后续
+  output；`event_msg.token_count`
   优先累计 `last_token_usage`，缺失时用累计 `total_token_usage` 差值；`turn_context.payload.model`
   提供模型；错误/中止事件映射为 `record.error`。未知事件必须忽略，不能导致整个读取失败。
+- 携带 output 的 tool call 必须额外投影一条独立的 `tool-result` part（issue #35）：契约里
+  `tool-call` 只有 `input` 没有 `output`，UI 的 `ContentPartView` 在 tool-call 分支也只渲染 input，
+  把 output 挂在 tool-call 上会让 Codex 会话的工具结果永远不可见。没有 output 的调用
+  （例如轮次被中断）不伪造空结果。输出区行标签跟随 part kind，`tool-result` 显示「工具结果」。
+- Codex 的「用户输入」判定（issue #35）：现行 Codex build 的 user `response_item` 根本不写
+  `metadata` 键（实测 400 份 rollout、1277 条 user 消息全部缺失），因此不能要求
+  `client_authored=true`，否则用户消息被全部过滤、`request.messages` 恒为空，UI 因
+  `hasInput=false` 整块不渲染「输入」section，切轮条件也永不触发。`metadata` 存在时仍按原生
+  `client_authored` 事实判定（继续排除 subagent / notification 等 internal item）；缺失时改为
+  只排除已知的机器生成信封：`<environment_context>`（实测存在 `<cwd>` 与 `<current_date>`
+  两种开头变体）、`<codex_internal_context>`，以及复用 shared 单一谓词
+  `isInjectedCodexContextTitle` 识别的 `# AGENTS.md instructions …` 片段。
+- Codex 的系统指令以 `developer` 角色落盘（部分 build 用 `system`），两者都投影为
+  `role:"system"` 消息，使 UI 的「系统提示词」开关在 Codex 会话下同样有内容，
+  与 Codez Agent model-io 链路的六类行对齐。
 - Codex 记录带 `provider: "codex"`，并使用 sidecar 语义的
   `callSource={kind:"sidecar",querySource:"codex_rollout"}`，避免 UI 把 per-turn 投影误当成
   Codez Agent 的完整上下文请求再做主会话 delta。Codez Agent 记录保持无 `provider` 或

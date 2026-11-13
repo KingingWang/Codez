@@ -129,6 +129,14 @@ describe("parseCodexRolloutLines", () => {
       toolCallId: "call_read",
       toolName: "read_file",
       input: { path: "/tmp/a.ts" },
+    });
+    // issue #35：契约里 tool-call 没有 output 字段，工具结果必须是独立 tool-result part，
+    // 否则 UI 的 ContentPartView 在 tool-call 分支只渲染 input，结果永远不可见。
+    expect(record?.response?.toolCalls[0]).not.toHaveProperty("output");
+    expect(record?.response?.toolCalls[1]).toEqual({
+      kind: "tool-result",
+      toolCallId: "call_read",
+      toolName: "read_file",
       output: "file body",
     });
     expect(record?.response?.usage).toMatchObject({
@@ -216,6 +224,122 @@ describe("parseCodexRolloutLines", () => {
       { kind: "text", text: "second" },
     ]);
     expect(records[1]?.requestId).toBe("codex-long-turn-2");
+  });
+
+  it("按真实 rollout 形态投影用户输入、系统提示词与工具结果（issue #35）", () => {
+    // 实测现行 Codex build：user/developer/assistant 的 response_item 都不带 metadata 键，
+    // 系统指令走 developer 角色，注入信封却带 user 角色。
+    const item = (payload: Record<string, unknown>, at: string) =>
+      JSON.stringify({ timestamp: at, type: "response_item", payload });
+    const lines = [
+      JSON.stringify({
+        timestamp: "2026-11-13T01:00:00.000Z",
+        type: "turn_context",
+        payload: { turn_id: "turn-real", model: "gpt-test" },
+      }),
+      item(
+        {
+          type: "message",
+          role: "developer",
+          content: [
+            { type: "input_text", text: "<skills_instructions>skills</skills_instructions>" },
+          ],
+        },
+        "2026-11-13T01:00:00.100Z",
+      ),
+      item(
+        {
+          type: "message",
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: "# AGENTS.md instructions for /workspace\n\n<INSTRUCTIONS>core</INSTRUCTIONS>",
+            },
+          ],
+        },
+        "2026-11-13T01:00:00.200Z",
+      ),
+      item(
+        {
+          type: "message",
+          role: "user",
+          // `<current_date>` 开头的信封变体：shared 谓词只认 `<cwd>`，必须由信封名兜住。
+          content: [
+            {
+              type: "input_text",
+              text: "<environment_context>   <current_date>2026-11-13</current_date>\n</environment_context>",
+            },
+          ],
+        },
+        "2026-11-13T01:00:00.300Z",
+      ),
+      item(
+        {
+          type: "message",
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: '<codex_internal_context source="continue">  </codex_internal_context>',
+            },
+          ],
+        },
+        "2026-11-13T01:00:00.400Z",
+      ),
+      item(
+        {
+          type: "message",
+          role: "user",
+          content: [{ type: "input_text", text: "inspect project" }],
+        },
+        "2026-11-13T01:00:00.500Z",
+      ),
+      item(
+        {
+          type: "function_call",
+          call_id: "call_read",
+          name: "read_file",
+          arguments: '{"path":"/tmp/a.ts"}',
+        },
+        "2026-11-13T01:00:00.600Z",
+      ),
+      item(
+        { type: "function_call_output", call_id: "call_read", output: "file body" },
+        "2026-11-13T01:00:00.700Z",
+      ),
+      item(
+        {
+          type: "function_call",
+          call_id: "call_pending",
+          name: "shell",
+          arguments: '{"cmd":"ls"}',
+        },
+        "2026-11-13T01:00:00.800Z",
+      ),
+    ];
+
+    const records = parseCodexRolloutLines("task-1", lines);
+    expect(records).toHaveLength(1);
+    // 系统提示词投影为 system 行并排在用户输入之前；三条注入信封都不得混入。
+    expect(records[0]?.request.messages).toEqual([
+      {
+        role: "system",
+        parts: [{ kind: "text", text: "<skills_instructions>skills</skills_instructions>" }],
+      },
+      { role: "user", parts: [{ kind: "text", text: "inspect project" }] },
+    ]);
+    // 有 output 的调用追加 tool-result；被中断、没有 output 的调用不伪造空结果。
+    expect(records[0]?.response?.toolCalls).toEqual([
+      {
+        kind: "tool-call",
+        toolCallId: "call_read",
+        toolName: "read_file",
+        input: { path: "/tmp/a.ts" },
+      },
+      { kind: "tool-result", toolCallId: "call_read", toolName: "read_file", output: "file body" },
+      { kind: "tool-call", toolCallId: "call_pending", toolName: "shell", input: { cmd: "ls" } },
+    ]);
   });
 });
 

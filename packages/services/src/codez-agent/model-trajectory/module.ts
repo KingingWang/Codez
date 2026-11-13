@@ -4,7 +4,9 @@
  */
 export const codexModelTrajectoryModule = {
   id: "codex-model-trajectory",
-  requires: ["services", "session"],
+  // shared：Codex rollout 投影复用 isInjectedCodexContextTitle 这一单一谓词，识别以 user 角色
+  // 落盘的注入信封（`# AGENTS.md instructions …` / `<environment_context>`），不在本模块另写正则。
+  requires: ["services", "session", "shared"],
   provides: ["codex-model-trajectory"],
   publicEntrypoints: ["index.ts", "contract.ts"],
 } as const;

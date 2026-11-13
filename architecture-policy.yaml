@@ -1945,7 +1945,9 @@ modules:
     roots:
       - packages/services/src/codez-agent/model-trajectory
     managed: true
-    requires: [ services, session ]
+    # shared：Codex rollout 投影复用 isInjectedCodexContextTitle 这一单一谓词识别
+    # 以 user 角色落盘的注入信封（issue #35），不在本模块另写一份正则。
+    requires: [ services, session, shared ]
     publicEntrypoints:
       - packages/services/src/codez-agent/model-trajectory/index.ts
       - packages/services/src/codez-agent/model-trajectory/contract.ts
