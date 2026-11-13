@@ -2,7 +2,7 @@
 // （docs/v4-refactor/02-projection.md「会话锁与行级资格」）。
 // 证据层 L3：真实 Write checkpoint + controlled stream running + 受控手动 compact，桌面与
 // 手机 `/remote` 读同一 session。行级 actions 不随锁翻转、命令拒绝、Hook 审核与取消时序由
-// apps/zcode-cli/packages/bootstrap/tests/product-projection-session-locks.test.ts 证明。
+// apps/codez-cli/packages/bootstrap/tests/product-projection-session-locks.test.ts 证明。
 import { appendFile, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { chromium, type Browser, type Page } from "playwright-core";
@@ -13,7 +13,7 @@ import {
   TID_V4_COMPOSER_SEND,
   TID_V4_FILE_REWIND_CONFIRM_LOCKED,
   TID_V4_FILE_SUMMARY_UNDO_LOCKED,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { releaseControlledReplay } from "#e2e/helpers/controlled-replay";
 import { waitForCompactMarkerStatus } from "#e2e/helpers/conversation-session-compact";
 import { clearAppData } from "#e2e/helpers/desktop-app";
@@ -74,9 +74,9 @@ describe("O22 fork 与文件撤销的 session 锁", () => {
   });
 
   after(async () => {
-    if (mobile && process.env.ZCODE_E2E_ARTIFACT_DIR)
+    if (mobile && process.env.CODEZ_E2E_ARTIFACT_DIR)
       await mobile
-        .screenshot({ path: join(process.env.ZCODE_E2E_ARTIFACT_DIR, "SAL-mobile.png") })
+        .screenshot({ path: join(process.env.CODEZ_E2E_ARTIFACT_DIR, "SAL-mobile.png") })
         .catch(() => undefined);
     await mobileBrowser?.close();
     await browser.electron.restoreAllMocks();
@@ -207,7 +207,7 @@ async function recordSurfaces(entry: {
   desktop: LockSurface;
   phone: LockSurface | null;
 }) {
-  const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR;
+  const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR;
   if (!artifactDir) return;
   await appendFile(join(artifactDir, "SAL-surfaces.jsonl"), `${JSON.stringify(entry)}\n`);
 }
@@ -279,9 +279,9 @@ async function waitForFileContent(expected: string) {
 
 async function openMobileSession(taskId: string): Promise<{ browser: Browser; page: Page }> {
   const pairingUrl = await obtainUnreadPairingUrl(
-    new URL(process.env.ZCODE_WEB_REMOTE_CONTROL_URL!).origin,
+    new URL(process.env.CODEZ_WEB_REMOTE_CONTROL_URL!).origin,
   );
-  const executablePath = process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE;
+  const executablePath = process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE;
   const chrome = await chromium.launch({
     ...(executablePath ? { executablePath } : { channel: "chrome" }),
     headless: true,
@@ -297,7 +297,7 @@ async function openMobileSession(taskId: string): Promise<{ browser: Browser; pa
   const page = await context.newPage();
   const taskItem = `[data-testid="${testId(TID_TASK_ITEM, taskId)}"]`;
   await openMobilePairingPage(page, pairingUrl, {
-    artifactDir: process.env.ZCODE_E2E_ARTIFACT_DIR!,
+    artifactDir: process.env.CODEZ_E2E_ARTIFACT_DIR!,
     caseMarker: "SAL",
     phase: "session-locks",
     readySelector: taskItem,

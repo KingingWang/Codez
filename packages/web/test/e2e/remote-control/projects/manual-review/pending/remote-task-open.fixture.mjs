@@ -1,4 +1,4 @@
-import { conversationTopicWireFrameSchema } from "@zcode/shared/zcode-protocol-v4";
+import { conversationTopicWireFrameSchema } from "@codez/shared/codez-protocol-v4";
 
 // 只提供已完成历史，不产生模型请求；快照经真实协议 schema 校验后送入 renderer。
 export function taskSnapshotFrame(sessionId, subscriptionId) {

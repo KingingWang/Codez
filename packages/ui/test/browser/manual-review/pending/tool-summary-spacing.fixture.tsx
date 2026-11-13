@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ConversationRow } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationRow } from "@codez/shared/codez-protocol-v4";
 import { ConversationShareReadonlyTimeline } from "@/v4/ConversationShareReadonlyTimeline.js";
 import { WorkflowToolSummary } from "@/v4/WorkflowToolSummary.js";
 import type { WorkflowRunCardSummary } from "@/ToolCallBlocks/shared.js";
@@ -10,8 +10,8 @@ import {
   ReasoningTrigger,
   ReasoningContent,
 } from "@/components/ai-elements/reasoning.js";
-import type { IServiceAccessor } from "@zcode/services";
-import { ZCODE_AGENT_PROVIDER } from "@zcode/shared";
+import type { IServiceAccessor } from "@codez/services";
+import { CODEZ_AGENT_PROVIDER } from "@codez/shared";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { TabStoreProvider } from "@/store/TabStoreProvider.js";
 import { useToolPresentationHostCapabilities } from "@/hooks/useToolPresentationHostCapabilities.js";
@@ -24,7 +24,7 @@ import { createRoot } from "react-dom/client";
 import { ToolPresentation } from "@/ToolCallBlocks/ToolPresentation.js";
 import { ToolPresentationCapabilitiesProvider } from "@/ToolCallBlocks/presentationCapabilities.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import type { TaskChatToolCallTreeNode } from "@/lib/toolCallTree.js";
 import "@/styles.css";
 
@@ -117,7 +117,7 @@ if (params.has("hostColors")) {
   const foreignContext = {
     workspacePath: "/workspace",
     workspaceIdentity: "other-device",
-    provider: ZCODE_AGENT_PROVIDER,
+    provider: CODEZ_AGENT_PROVIDER,
     agents: [{ id: "general-purpose", name: "general-purpose", color: "green" }],
     capability: null,
     loading: false,
@@ -331,7 +331,7 @@ function CrossGroupPreview() {
   return (
     <main className="min-h-dvh bg-background text-foreground">
       {params.has("bash") && (
-        <ZCodeIntlProvider initialLocale={params.get("locale") === "en-US" ? "en-US" : "zh-CN"}>
+        <CodezIntlProvider initialLocale={params.get("locale") === "en-US" ? "en-US" : "zh-CN"}>
           <section data-bash-standalone>
             <ToolPresentation
               toolCallNode={tool(
@@ -342,7 +342,7 @@ function CrossGroupPreview() {
               )}
             />
           </section>
-        </ZCodeIntlProvider>
+        </CodezIntlProvider>
       )}
       <nav className="flex flex-wrap gap-4 p-4 text-ui-base">
         <button
@@ -408,7 +408,7 @@ function ScrollPreview() {
   const [count, setCount] = useState(20);
   const [extra, setExtra] = useState(false);
   return (
-    <ZCodeIntlProvider initialLocale="en-US">
+    <CodezIntlProvider initialLocale="en-US">
       <TooltipProvider>
         <main
           data-scroll-parent
@@ -444,7 +444,7 @@ function ScrollPreview() {
           </Reasoning>
         </main>
       </TooltipProvider>
-    </ZCodeIntlProvider>
+    </CodezIntlProvider>
   );
 }
 if (params.has("scroll")) {
@@ -457,7 +457,7 @@ if (params.has("scroll")) {
   );
 } else {
   createRoot(document.getElementById("root")!).render(
-    <ZCodeIntlProvider initialLocale={params.get("locale") === "en-US" ? "en-US" : "zh-CN"}>
+    <CodezIntlProvider initialLocale={params.get("locale") === "en-US" ? "en-US" : "zh-CN"}>
       <TooltipProvider>
         <ToolPresentationCapabilitiesProvider value={{ readonly: true }}>
           <main
@@ -497,6 +497,6 @@ if (params.has("scroll")) {
           </main>
         </ToolPresentationCapabilitiesProvider>
       </TooltipProvider>
-    </ZCodeIntlProvider>,
+    </CodezIntlProvider>,
   );
 }

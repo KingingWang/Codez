@@ -46,6 +46,6 @@ export async function resolveGenUiVendorRedirect(
   if (record?.contentKind !== "gen-ui") return undefined;
   const file = await resources.fileForUrl(url);
   return file
-    ? `${buildPluginSandboxPluginOrigin(record.instance.appIdentity)}/instance/${record.sandboxId}/__zcode__/vendor/${file}`
+    ? `${buildPluginSandboxPluginOrigin(record.instance.appIdentity)}/instance/${record.sandboxId}/__codez__/vendor/${file}`
     : undefined;
 }

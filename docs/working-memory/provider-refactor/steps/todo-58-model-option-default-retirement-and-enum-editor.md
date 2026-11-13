@@ -490,9 +490,9 @@ Dialog Feedback Slot
 - `pnpm test:unit`：1501 个 Test Files 通过、1 个既有 skipped；12803 条 Tests 通过、25 条既有 skipped；
 - `pnpm typecheck` 通过；
 - `pnpm lint` 通过，仅保留仓库既有 warning；
-- `pnpm --filter @zcode/desktop typecheck:e2e` 通过；
+- `pnpm --filter @codez/desktop typecheck:e2e` 通过；
 - 修改文件格式检查与 `git diff --check` 通过；
-- 全仓 `pnpm fmt:check` 仍被既有 `apps/zcode-cli/tests/gb2312.js` 读取问题和 Electron 文档示例 HTML 阻断；
+- 全仓 `pnpm fmt:check` 仍被既有 `apps/codez-cli/tests/gb2312.js` 读取问题和 Electron 文档示例 HTML 阻断；
 - `MP-UI-06` 已完成用例和类型校验；当前 Linux 环境缺少 `xvfb-run`，Chrome 在进入测试体前退出，因此实际 WDIO 记为 `blocked-environment`，不写成通过。
 
 ## 12. 后续裁决补充（2026-09-05）

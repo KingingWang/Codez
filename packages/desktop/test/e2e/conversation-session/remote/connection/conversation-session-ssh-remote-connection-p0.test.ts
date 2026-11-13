@@ -1,4 +1,4 @@
-import { TID_SSH_PASSWORD_INPUT } from "@zcode/shared/test-ids";
+import { TID_SSH_PASSWORD_INPUT } from "@codez/shared/test-ids";
 import {
   clearAppData,
   waitForWorkspaceApp,
@@ -27,7 +27,7 @@ async function readRemoteWorkspaceTabCount(): Promise<number> {
   return browser.execute(() => {
     const store = (
       window as Window & {
-        __zcodeTabStoreE2E?: {
+        __codezTabStoreE2E?: {
           getState: () => {
             tabs: Array<{
               remoteTarget?: unknown;
@@ -37,7 +37,7 @@ async function readRemoteWorkspaceTabCount(): Promise<number> {
           };
         };
       }
-    ).__zcodeTabStoreE2E;
+    ).__codezTabStoreE2E;
     if (!store) throw new Error("SSH P0 缺少真实 tab store 取证入口");
     return store
       .getState()
@@ -63,15 +63,15 @@ describe(`${CASE_MARKER}: SSH password 连接 P0`, () => {
     await browser.execute(() => {
       const state = window as Window & {
         __connectionLogs?: Array<{ message: string; level: string }>;
-        zcode?: {
+        codez?: {
           onRemoteConnectionLog: (
             callback: (entry: { message: string; level: string }) => void,
           ) => () => void;
         };
       };
       state.__connectionLogs = [];
-      if (!state.zcode) throw new Error("Missing desktop platform");
-      state.zcode.onRemoteConnectionLog((entry) =>
+      if (!state.codez) throw new Error("Missing desktop platform");
+      state.codez.onRemoteConnectionLog((entry) =>
         state.__connectionLogs!.push({ message: entry.message, level: entry.level }),
       );
     });

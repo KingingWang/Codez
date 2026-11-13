@@ -1,6 +1,6 @@
 // PLM-EXT-P2E：扩展日志控制台（docs/plugins/extension-host.md §16.8、§16.10 第 5 步）。
 // 隔离 HOME：两个纯 JS fixture 插件（test/e2e/fixtures/fs/plugins/plugin-extension-logs/）复制到 E2E HOME，
-// 经 ~/.zcode/cli/config.json 的 plugins.dirs 加载：
+// 经 ~/.codez/cli/config.json 的 plugins.dirs 加载：
 // - e2e-ext-logs：激活时 info / warn / error 各一行、一行超过 4KB 的长日志、console.log 与 console.warn 各一行；
 //   composer.status 条目执行命令 emit，每次再写三个级别各一行。
 // - e2e-ext-logs-peer：激活时写一行，用来验证按插件过滤。
@@ -15,7 +15,7 @@ import {
   TID_EXTENSION_LOGS_ROW,
   TID_EXTENSION_LOGS_SOURCE_FILTER,
   TID_SIDE_PANE_EXTENSION_LOGS_ITEM,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { DEFAULT_WORKSPACE, clearAppData, getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
 import { restartIntoWorkspacePreservingProfile } from "#e2e/helpers/model-provider-restart-runtime";
 import {
@@ -219,7 +219,7 @@ function utf8Length(text: string): number {
 describe("PLM-EXT-P2E 扩展日志控制台", () => {
   after(async () => {
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR ?? process.cwd(), "plm-ext-p2e-evidence.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR ?? process.cwd(), "plm-ext-p2e-evidence.json"),
       JSON.stringify(evidence, null, 2),
     ).catch(() => undefined);
     await clearAppData();

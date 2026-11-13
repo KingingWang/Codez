@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { ServiceChannels } from "@zcode/shared";
+import { ServiceChannels } from "@codez/shared";
 import { clearAppData, DEFAULT_WORKSPACE, waitForWorkspaceApp } from "#e2e/helpers/desktop-app";
 import { openProjectFileTree, startDraftFromProject } from "#e2e/helpers/project-sidebar";
 import {
@@ -110,7 +110,7 @@ async function enableProbe() {
   });
 }
 
-const out = process.env.ZCODE_E2E_ARTIFACT_DIR!;
+const out = process.env.CODEZ_E2E_ARTIFACT_DIR!;
 describe("SPT08 full App session selection rendering", () => {
   after(async () => {
     await restoreHandoffProbes();
@@ -199,7 +199,7 @@ describe("SPT08 full App session selection rendering", () => {
         }
         // 复现首次从历史会话补开 tab 后缺少分类的状态；新建入口应自行补全，不能带动全列。
         await browser.execute((path) => {
-          const store = (window as any).__zcodeTabStoreE2E;
+          const store = (window as any).__codezTabStoreE2E;
           store.setState((state: any) => ({
             tabs: state.tabs.map((tab: any) =>
               tab.workspacePath === path ? { ...tab, workspacePurpose: undefined } : tab,
@@ -213,7 +213,7 @@ describe("SPT08 full App session selection rendering", () => {
         await browser.waitUntil(
           () =>
             browser.execute((path) => {
-              const state = (window as any).__zcodeTabStoreE2E.getState();
+              const state = (window as any).__codezTabStoreE2E.getState();
               return (
                 state.tabs.find((tab: any) => tab.workspacePath === path)?.workspacePurpose ===
                 "project"

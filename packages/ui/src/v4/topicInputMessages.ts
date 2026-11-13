@@ -1,4 +1,4 @@
-import type { UserInputRow } from "@zcode/shared/zcode-protocol-v4";
+import type { UserInputRow } from "@codez/shared/codez-protocol-v4";
 
 /** 合批是执行边界，不能把多人消息展示成一个人的正文。 */
 export function expandTopicInputMessages(row: UserInputRow): UserInputRow[] {

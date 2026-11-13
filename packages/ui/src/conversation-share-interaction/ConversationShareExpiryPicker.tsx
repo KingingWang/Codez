@@ -1,4 +1,4 @@
-import { conversationShareTtlChoices, type ConversationShareTtlOptions } from "@zcode/shared";
+import { conversationShareTtlChoices, type ConversationShareTtlOptions } from "@codez/shared";
 import {
   Select,
   SelectContent,
@@ -6,7 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select.js";
-import { useZCodeIntl, type IntlInstance } from "@/i18n/IntlProvider.js";
+import { useCodezIntl, type IntlInstance } from "@/i18n/IntlProvider.js";
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
@@ -54,7 +54,7 @@ export function ConversationShareExpiryPicker({
   onChange: (ttlMs: number) => void;
   disabled?: boolean;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const choices = conversationShareTtlChoices(options);
   const selected = resolveConversationSharePublishTtlMs(ttlMs, options) ?? options.defaultMs;
   const label = intl.formatMessage({ id: "conversationShare.ttlLabel" });

@@ -21,7 +21,7 @@ Status: implemented / pending-key-validation
 ## 参数和证据边界
 
 - 原厂与 Kimi Code 支持 low/high/max，强制思考，不提供 none/disabled。普通 API Messages 复用现有 output_config.effort 映射，输出字段 max_tokens；Kimi Code Chat 使用 reasoning_effort 与 max_tokens。Messages 的响应仍是已有 thinking/text/tool_use 和 signature 合同。
-- Kimi Code 官方“不传 effort”默认 high，普通 API Chat 官方默认 max。ZCode 主动选择新模型时按现有合同选择档位列表最后一项（最高档 max），并显式发送；这不等于沿用供应商省略参数的默认值。本次不增加默认档位字段、不重排档位、不修改选择逻辑。
+- Kimi Code 官方“不传 effort”默认 high，普通 API Chat 官方默认 max。Codez 主动选择新模型时按现有合同选择档位列表最后一项（最高档 max），并显式发送；这不等于沿用供应商省略参数的默认值。本次不增加默认档位字段、不重排档位、不修改选择逻辑。
 - OpenRouter 目录列出 low/high/max/none、默认 max，但原厂禁止关闭思考。首批明确提供双方一致的 low/high/max，不把目录的 none 直接作为该 Messages 路径已验证能力；关闭思考待该入口的明确协议/真实请求证据再讨论。采用既有 Messages effort 映射。
 - Go 官方目录与接口表已列 kimi-k3.1-pro，Chat 路径可复用；首批沿既有 Go K3 的 max 档请求合同，仅发送 reasoning_effort=max，不从原厂推断聚合入口全部档位。其他档位待 Go 独立证据。继续使用原模板地址，不迁移已有端点。
 - 八条窗口均为 1,048,576。Kimi Code 的实际窗口和 Highspeed 权限依赖套餐。OpenRouter 输出上限采用本入口目录的 943,718；其余保留 131,072 请求预算，属保守配置预算，不能把普通 API Chat 最大 1,048,576 复制到 Messages、Coding Plan 或 Go。
@@ -54,7 +54,7 @@ Status: implemented / pending-key-validation
 | `e2eRuntimePaths.test.ts`                                              | 六个 E2E 源码含被禁止的系统临时路径，复跑仍失败。                                                                       |
 | `r3RemoteSpecInventory.test.ts`                                        | 队列缺少 damaged-release 用例，复跑仍失败。                                                                             |
 | `reactStableReferences.test.ts`                                        | `SettingsScopeDevice.tsx` 内联 Context 对象，复跑仍失败。                                                               |
-| `e2eDesktopBuildCache.test.ts`                                         | 开发专用变量 `ZCODE_REACT_SCAN` 被全文件扫描命中，检查与变量清单未协调，复跑仍失败。                                    |
+| `e2eDesktopBuildCache.test.ts`                                         | 开发专用变量 `CODEZ_REACT_SCAN` 被全文件扫描命中，检查与变量清单未协调，复跑仍失败。                                    |
 | `remoteFrontendOssPublish.test.ts`                                     | CI 已增加 desktop-preview include，测试精确清单未跟进，复跑仍失败。                                                     |
 | `projectPrimaryRootUnresponsive.test.ts`                               | 批量运行失败，单独复跑通过。                                                                                            |
 | `storagePreparationProtocol.test.ts`、`dev-cua-plugin-runtime.test.ts` | 缺 CLI 的 adapters/contracts 构建依赖；尝试冻结安装 CLI 依赖时，已有锁文件缺少 `@withfig/autocomplete@2.692.3` 而失败。 |

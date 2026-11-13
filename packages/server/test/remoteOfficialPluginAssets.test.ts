@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { OFFICIAL_DESIGN_REQUIRED_SEED_PATHS } from "../../../apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.js";
-import { REMOTE_AGENT_OFFICIAL_PLUGIN_REQUIRED_RELATIVE_PATHS } from "../src/remote/zcodeAgentOfficialPluginAssets.js";
+import { OFFICIAL_DESIGN_REQUIRED_SEED_PATHS } from "../../../apps/codez-cli/packages/bootstrap/src/app/official-plugin-definitions.js";
+import { REMOTE_AGENT_OFFICIAL_PLUGIN_REQUIRED_RELATIVE_PATHS } from "../src/remote/codezAgentOfficialPluginAssets.js";
 
 // design 的规则文件与脚本是会话里按需读取/执行的，远端缺一份只会在用到时失败；远端部署前的必需路径
 // 因此要覆盖本地 seed 的全部必需路径。server 运行时不依赖 bootstrap，这里机械对照两份清单。

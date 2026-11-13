@@ -1,4 +1,4 @@
-import { ZAI_CN_PROVIDER_ID, ZAI_PROVIDER_ID, type UserInfo } from "@zcode/shared";
+import { ZAI_CN_PROVIDER_ID, ZAI_PROVIDER_ID, type UserInfo } from "@codez/shared";
 import { toUserInfo } from "#src/auth/zaiWebOAuthProvider.js";
 
 export type RegionalOAuthProvider = typeof ZAI_CN_PROVIDER_ID | typeof ZAI_PROVIDER_ID;
@@ -91,7 +91,7 @@ export async function pollRegionalOAuth(
   flow: RegionalFlow,
   token: string,
   signal: AbortSignal,
-): Promise<{ zcodeJwtToken: string; userInfo: UserInfo; businessAccessToken?: string } | null> {
+): Promise<{ codezJwtToken: string; userInfo: UserInfo; businessAccessToken?: string } | null> {
   const data = await requestData(
     `/api/v1/oauth/cli/poll/${encodeURIComponent(flow.flowId)}`,
     token,
@@ -118,7 +118,7 @@ export async function pollRegionalOAuth(
       ? upstream.access_token.trim()
       : "";
   return {
-    zcodeJwtToken: data.token.trim(),
+    codezJwtToken: data.token.trim(),
     userInfo,
     ...(businessAccessToken ? { businessAccessToken } : {}),
   };

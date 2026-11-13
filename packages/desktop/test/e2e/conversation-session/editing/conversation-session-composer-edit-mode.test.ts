@@ -6,7 +6,7 @@
 // 3) 编辑态能力与普通 composer 完全一致：新增附件、工具栏配置随 editUserQuery 提交；
 // 4) 目标失效只依据投影 canEdit：队列续跑后发送走普通 sendText；
 // 5) 切换 task 保持编辑态，刷新只恢复原草稿；切换编辑目标时有改动先确认。
-import { TID_V4_EDIT, testId } from "@zcode/shared/test-ids";
+import { TID_V4_EDIT, testId } from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,

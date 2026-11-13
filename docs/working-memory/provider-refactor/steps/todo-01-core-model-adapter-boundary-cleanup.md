@@ -69,7 +69,7 @@ Option Specs 和同一 Executor 的绑定 Model。它不重新查询 Registry，
 允许：
 
 ```text
-createZCodeApp
+createCodezApp
       |
       v
 AiSdkModelAdapter

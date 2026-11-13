@@ -1,6 +1,6 @@
 import { access, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 import {
   TID_MCP_SERVER_ROW,
   TID_SETTINGS_BACK_BUTTON,
@@ -9,7 +9,7 @@ import {
   TID_SUBAGENT_ROW,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -340,7 +340,7 @@ async function readLocalMcpServers(): Promise<McpServerEntries> {
 }
 
 async function readRemoteMcpServers(container: string): Promise<McpServerEntries> {
-  const path = `${REMOTE_HOME}/.zcode/cli/config.json`;
+  const path = `${REMOTE_HOME}/.codez/cli/config.json`;
   if (!(await remoteContainerPathExists(container, path))) return {};
   return readMcpServerEntries(await readRemoteContainerFile(container, path));
 }
@@ -462,7 +462,7 @@ async function clickHookRow(marker: string): Promise<void> {
   );
 }
 
-/** 用户级钩子在 `<home>/.zcode/cli/config.json` 的 hooks 字段。 */
+/** 用户级钩子在 `<home>/.codez/cli/config.json` 的 hooks 字段。 */
 function readHooksConfig(raw: string): unknown {
   if (!raw.trim()) return null;
   return (JSON.parse(raw) as { hooks?: unknown }).hooks ?? null;
@@ -515,7 +515,7 @@ describe(`${CASE_MARKER}: 设置页 Scope 菜单按设备分组`, () => {
     remoteWorkspacePath = workspacePath;
     remoteWorkspaceIdentity = remoteTab.workspaceIdentity ?? "";
     const remoteUserKey = `source-user:${sourceServerId}`;
-    const remoteModelAgentPath = `${REMOTE_HOME}/.zcode/agents/${REMOTE_MODEL_AGENT}.md`;
+    const remoteModelAgentPath = `${REMOTE_HOME}/.codez/agents/${REMOTE_MODEL_AGENT}.md`;
     await writeRemoteContainerFile(
       container,
       remoteModelAgentPath,
@@ -554,9 +554,9 @@ describe(`${CASE_MARKER}: 设置页 Scope 菜单按设备分组`, () => {
     }, SCOPE_TRIGGER);
     expect(triggerText).toBe(`${menu.headings[1]!.replace(/\s+/gu, "")}·用户`);
 
-    // 远端「用户」：新建写入远端 ~/.zcode/agents，本机不变。
+    // 远端「用户」：新建写入远端 ~/.codez/agents，本机不变。
     await createSubagent(REMOTE_AGENT);
-    await waitForRemotePath(container, `${REMOTE_HOME}/.zcode/agents/${REMOTE_AGENT}.md`);
+    await waitForRemotePath(container, `${REMOTE_HOME}/.codez/agents/${REMOTE_AGENT}.md`);
     expect(
       await localPathExists(join(resolveE2EStorageRoot(), "agents", `${REMOTE_AGENT}.md`)),
     ).toBe(false);
@@ -614,7 +614,7 @@ describe(`${CASE_MARKER}: 设置页 Scope 菜单按设备分组`, () => {
       { timeout: 30_000, timeoutMsg: `${CASE_MARKER}: 本机没有写入 ${LOCAL_AGENT}` },
     );
     expect(
-      await remoteContainerPathExists(container, `${REMOTE_HOME}/.zcode/agents/${LOCAL_AGENT}.md`),
+      await remoteContainerPathExists(container, `${REMOTE_HOME}/.codez/agents/${LOCAL_AGENT}.md`),
     ).toBe(false);
     await clickTestIdByDom(TID_SETTINGS_BACK_BUTTON, { timeout: 15_000 });
   });
@@ -641,10 +641,10 @@ describe(`${CASE_MARKER}: 设置页 Scope 菜单按设备分组`, () => {
     await fillByPlaceholder("填写调用该命令时发送的提示词...", `${CASE_MARKER} prompt`);
     await submitFormOf("my-command");
 
-    const remotePath = `${REMOTE_HOME}/.zcode/commands/${REMOTE_COMMAND}.md`;
+    const remotePath = `${REMOTE_HOME}/.codez/commands/${REMOTE_COMMAND}.md`;
     await waitForRemotePath(container, remotePath);
     expect(await readRemoteContainerFile(container, remotePath)).toContain(`${CASE_MARKER} prompt`);
-    expect(await localPathExists(join(homeDir, ".zcode", "commands", `${REMOTE_COMMAND}.md`))).toBe(
+    expect(await localPathExists(join(homeDir, ".codez", "commands", `${REMOTE_COMMAND}.md`))).toBe(
       false,
     );
     await clickTestIdByDom(TID_SETTINGS_BACK_BUTTON, { timeout: 15_000 });
@@ -784,9 +784,9 @@ describe(`${CASE_MARKER}: 设置页 Scope 菜单按设备分组`, () => {
     expect(sourceServerId).toBeTruthy();
     const config = readSSHRuntimeConfig(CASE_MARKER);
     const remoteUserKey = `source-user:${sourceServerId}`;
-    const remoteConfigPath = `${REMOTE_HOME}/.zcode/cli/config.json`;
+    const remoteConfigPath = `${REMOTE_HOME}/.codez/cli/config.json`;
 
-    // 两台设备各有一个用户钩子：两边的 hook ID 都从 hook-zcode-user-0 编号，旧表单带到本机保存会覆盖本机这条。
+    // 两台设备各有一个用户钩子：两边的 hook ID 都从 hook-codez-user-0 编号，旧表单带到本机保存会覆盖本机这条。
     if (await $(`[data-testid="${TID_SETTINGS_PAGE}"]`).isExisting()) {
       await clickTestIdByDom(TID_SETTINGS_BACK_BUTTON, { timeout: 15_000 });
     }

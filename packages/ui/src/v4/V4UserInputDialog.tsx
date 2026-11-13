@@ -4,10 +4,10 @@ import {
   TID_V4_USER_INPUT_OPTION,
   TID_V4_USER_INPUT_TEXT,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import type { V4UserInputViewModel } from "@/v4/pendingInteractionAdapter.js";
 import { runUserAction } from "@/lib/userActionTelemetry.js";
 
@@ -18,7 +18,7 @@ export interface V4UserInputDialogProps {
 
 /** v4 userInput 交互最小弹窗（竖切）。 */
 export function V4UserInputDialog({ model, onSubmit }: V4UserInputDialogProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [freeText, setFreeText] = useState("");
 
   const handleOption = useCallback(

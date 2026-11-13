@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ZCODE_AGENT_PROVIDER } from "@zcode/shared";
+import { CODEZ_AGENT_PROVIDER } from "@codez/shared";
 import {
   UPSTREAM_MODEL,
   UPSTREAM_PROVIDER_ID,
@@ -19,7 +19,7 @@ const desktopAppMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("./e2e/helpers/desktop-app.js", () => ({
-  DEFAULT_WORKSPACE: "/tmp/zcode-e2e-workspace",
+  DEFAULT_WORKSPACE: "/tmp/codez-e2e-workspace",
   ...desktopAppMocks,
 }));
 
@@ -57,7 +57,7 @@ describe("Upstream E2E 工具栏偏好种子", () => {
 
     await ensureUpstreamProviderForE2E({ skipToolbarSelection: true });
 
-    expect(storage.getItem("zcode-model-selection-recent-v1:/tmp/zcode-e2e-workspace")).toBe(
+    expect(storage.getItem("codez-model-selection-recent-v1:/tmp/codez-e2e-workspace")).toBe(
       JSON.stringify({
         providerId: UPSTREAM_PROVIDER_ID,
         modelId: UPSTREAM_MODEL,
@@ -66,6 +66,6 @@ describe("Upstream E2E 工具栏偏好种子", () => {
           : {}),
       }),
     );
-    expect(storage.getItem("zcode-last-agent-provider")).toBe(ZCODE_AGENT_PROVIDER);
+    expect(storage.getItem("codez-last-agent-provider")).toBe(CODEZ_AGENT_PROVIDER);
   });
 });

@@ -14,7 +14,7 @@ AppControlService → Host bridge → Main window bridge → platform → 原导
 
 ## SCT07 只读来源解析
 
-按 [App 控制规格 3.1](../../../../docs/architecture/zcode-app-control-design.md#31-跨项目只读发现修正2026-10-23)，Host 入口向 `createLocalServices.resolveAppControlDiscoverySource` 注入只读解析器。项目入口过滤和正文／写操作授权仍由服务层负责；本模块只解析已有在线来源并证明本次读取的连接代际。
+按 [App 控制规格 3.1](../../../../docs/architecture/codez-app-control-design.md#31-跨项目只读发现修正2026-10-23)，Host 入口向 `createLocalServices.resolveAppControlDiscoverySource` 注入只读解析器。项目入口过滤和正文／写操作授权仍由服务层负责；本模块只解析已有在线来源并证明本次读取的连接代际。
 
 - 优先读取 `windowRemoteConnectionRegistry.getOnlineSource`；无在线注册来源时，按已有 manager 状态匹配 hostId，再调用 `getOnlineConnection`。不初始化 manager、不连接、不启动 Agent、不调用身份绑定或 `resolveWorkspace`。
 - 只允许当前 Server 显式声明 `virtualProjects: true`。注册来源即使存在兼容 `IProjectService`，也不能替代能力声明；不支持时抛出带 `code: source_unsupported` 的错误。离线、无项目代理或代际失效按来源不可用处理。

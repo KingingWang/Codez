@@ -4,8 +4,8 @@ import {
   parseRemoteWorkspaceIdentity,
   type SourceServerManagementSnapshot,
   type SourceServerOperationLog,
-} from "@zcode/shared";
-import { TID_CONFIRM_DIALOG_CONFIRM } from "@zcode/shared/test-ids";
+} from "@codez/shared";
+import { TID_CONFIRM_DIALOG_CONFIRM } from "@codez/shared/test-ids";
 import { reloadElectronSessionPreservingBrowserProfile } from "#e2e/helpers/e2e-electron-reload";
 import {
   clearAppData,
@@ -58,7 +58,7 @@ const PROXY_NO_PROXY = [
   ".z.ai",
   ".codegeex.cn",
   ".z.ai",
-  ".zcode-ai.com",
+  ".codez-ai.com",
   "js.stripe.com",
 ].join(",");
 // 约 90MB 的 archive 按 1 MiB/s 需要一分多钟，足够观察本机阶段并点击取消。
@@ -75,7 +75,7 @@ const REMOTE_STAGE_PHASES = new Set([
   "install",
 ]);
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-update-cancel",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-update-cancel",
 );
 
 /** 当前 release 的 runtime/package.json 字节数与 sha256；损坏后字节数为 0。 */
@@ -83,7 +83,7 @@ async function readRemotePackageJson(config: SSHConnectionConfig): Promise<strin
   const result = await runSSHCommand(
     config,
     [
-      'R="$HOME/.zcode/server"',
+      'R="$HOME/.codez/server"',
       'id=$(sed -n \'s/^[[:space:]]*"releaseId"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p\' "$R/current.json" | head -n 1)',
       'echo "$(wc -c < "$R/releases/$id/runtime/package.json" | tr -d " ") $(sha256sum "$R/releases/$id/runtime/package.json" | cut -d " " -f 1)"',
     ].join("; "),
@@ -96,8 +96,8 @@ async function damageCurrentRelease(config: SSHConnectionConfig): Promise<void> 
   await runSSHCommand(
     config,
     [
-      'R="$HOME/.zcode/server"',
-      '"$R/bin/zcode" stop --wait --server-root "$R" --json >/dev/null 2>&1 || true',
+      'R="$HOME/.codez/server"',
+      '"$R/bin/codez" stop --wait --server-root "$R" --json >/dev/null 2>&1 || true',
       'id=$(sed -n \'s/^[[:space:]]*"releaseId"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p\' "$R/current.json" | head -n 1)',
       ': > "$R/releases/$id/runtime/package.json"',
     ].join("; "),
@@ -110,8 +110,8 @@ async function stopRemoteService(config: SSHConnectionConfig): Promise<void> {
   await runSSHCommand(
     config,
     [
-      'R="$HOME/.zcode/server"',
-      '"$R/bin/zcode" stop --wait --server-root "$R" --json >/dev/null 2>&1 || true',
+      'R="$HOME/.codez/server"',
+      '"$R/bin/codez" stop --wait --server-root "$R" --json >/dev/null 2>&1 || true',
     ].join("; "),
     { timeoutMs: 60_000 },
   );
@@ -296,9 +296,9 @@ describe(`${CASE_MARKER}: 更新的本机阶段显示下载进度并可取消`, 
   it("R3-UPDATE-CANCEL-01/02 本机下载显示进度、可取消且不写远端；远端阶段不可取消，重试后重装完成", async function () {
     this.timeout(25 * 60_000);
     // worker 修改 process.env 无法影响已创建的 Electron；三项必须由 runner 在 WDIO 启动前注入。
-    expect(process.env.ZCODE_DEV_REMOTE_ASSET_USE_CDN).toBe("1");
-    expect(process.env.ZCODE_REMOTE_ASSET_CDN_BASE_URL).toBe(`http://${FAKE_CDN_HOST}`);
-    expect(process.env.ZCODE_REMOTE_ASSET_CACHE_DIR).toBe(cacheDir);
+    expect(process.env.CODEZ_DEV_REMOTE_ASSET_USE_CDN).toBe("1");
+    expect(process.env.CODEZ_REMOTE_ASSET_CDN_BASE_URL).toBe(`http://${FAKE_CDN_HOST}`);
+    expect(process.env.CODEZ_REMOTE_ASSET_CACHE_DIR).toBe(cacheDir);
     const config = readSSHRuntimeConfig(CASE_MARKER);
     const [workspacePath] = config.workspacePaths;
     const { version } = JSON.parse(

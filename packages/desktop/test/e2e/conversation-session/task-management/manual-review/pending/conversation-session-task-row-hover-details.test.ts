@@ -1,6 +1,6 @@
 // TSL43：会话行悬停卡片显示工作区、路径、最近活动与分支；覆盖按项目行与按分组行。
 import { execFileSync } from "node:child_process";
-import { TID_TASK_ITEM, TID_WORKSPACE_TITLE } from "@zcode/shared/test-ids";
+import { TID_TASK_ITEM, TID_WORKSPACE_TITLE } from "@codez/shared/test-ids";
 import { clearAppData, DEFAULT_WORKSPACE } from "#e2e/helpers/desktop-app";
 import {
   getV4PaneSnapshot,
@@ -32,7 +32,7 @@ function ensureGitWorkspace(): string {
       "git",
       [
         "-c",
-        "user.name=ZCode E2E",
+        "user.name=Codez E2E",
         "-c",
         "user.email=e2e@example.com",
         "commit",
@@ -70,10 +70,10 @@ async function hoverTaskRow(sessionId: string, view: "projects" | "grouped") {
 
 async function assertCardIdentity(card: Awaited<ReturnType<typeof hoverTaskRow>>, branch: string) {
   // 标签与路径都来自默认工作区；路径通过主机 home 缩写，仍保留目录名。
-  expect(await card.getText()).toContain("ZCodeProject");
+  expect(await card.getText()).toContain("CodezProject");
   const path = card.$("[data-workspace-context-path]");
   await path.waitForDisplayed({ timeout: 10_000 });
-  expect(await path.getText()).toContain("ZCodeProject");
+  expect(await path.getText()).toContain("CodezProject");
   const activity = card.$("[data-workspace-last-activity]");
   await activity.waitForDisplayed({ timeout: 10_000 });
   expect(await activity.getText()).toMatch(/Last active|最近活动/);

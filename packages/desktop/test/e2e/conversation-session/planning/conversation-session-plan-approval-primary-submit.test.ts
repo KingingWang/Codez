@@ -63,7 +63,7 @@ describe("conversation session plan approval primary submit", () => {
     if (!sessionId || sessionId === "draft") {
       throw new Error("plan approval primary submit sessionId 为空");
     }
-    createdPlanFilePath = join(DEFAULT_WORKSPACE, ".zcode", "plans", `plan-${sessionId}.md`);
+    createdPlanFilePath = join(DEFAULT_WORKSPACE, ".codez", "plans", `plan-${sessionId}.md`);
 
     await waitForUpstreamRequest(
       {

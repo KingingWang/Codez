@@ -6,9 +6,9 @@
 
 | 能力 | 配置项 | 关闭时的行为 |
 | --- | --- | --- |
-| ARMS RUM 上报 | `ZCODE_ARMS_RUM_ENDPOINT` | 主进程与渲染进程的 ARMS SDK 以 `enable: false` 初始化，不产生上报 |
-| 事件上报（数仓） | `ZCODE_TELEMETRY_REPORT_ENDPOINT` | 遥测事件在发送前直接返回 |
-| 自动更新 | `ZCODE_AUTO_UPDATE`（`1`、`true`、`yes` 为启用） | 与 Preview 形态相同，不检查、不下载更新 |
+| ARMS RUM 上报 | `CODEZ_ARMS_RUM_ENDPOINT` | 主进程与渲染进程的 ARMS SDK 以 `enable: false` 初始化，不产生上报 |
+| 事件上报（数仓） | `CODEZ_TELEMETRY_REPORT_ENDPOINT` | 遥测事件在发送前直接返回 |
+| 自动更新 | `CODEZ_AUTO_UPDATE`（`1`、`true`、`yes` 为启用） | 与 Preview 形态相同，不检查、不下载更新 |
 
 这样同一份源码可以产出“默认不上报、不自动更新”的构建，也可以产出启用这些能力的正式构建，
 不需要在源码里写死上报地址。
@@ -26,14 +26,14 @@
         │ scripts/build-time-config.mjs（唯一解析入口）
         ▼
 desktop tsup（main、host、preload）与 desktop vite（renderer）的 define
-        │ __ZCODE_ARMS_RUM_ENDPOINT__ / __ZCODE_TELEMETRY_REPORT_ENDPOINT__ / __ZCODE_AUTO_UPDATE_ENABLED__
+        │ __CODEZ_ARMS_RUM_ENDPOINT__ / __CODEZ_TELEMETRY_REPORT_ENDPOINT__ / __CODEZ_AUTO_UPDATE_ENABLED__
         ▼
-@zcode/shared env 常量 ── 运行时代码只读这些常量
+@codez/shared env 常量 ── 运行时代码只读这些常量
 ```
 
 - 未注入 define 的环境（测试、其他 bundle）得到关闭值；vitest 为测试注入固定的事件上报端点，以便验证上报链路。
-- 自动更新在 Desktop Main 启动时判定：`ZCODE_PRODUCT_FLAVOR === "production" && ZCODE_AUTO_UPDATE_ENABLED`。
-- Agent 的 OTLP 遥测沿用既有机制，由打包环境的 `ZCODE_PACKAGED_AGENT_OTEL_*` 注入，不在本文件范围内。
+- 自动更新在 Desktop Main 启动时判定：`CODEZ_PRODUCT_FLAVOR === "production" && CODEZ_AUTO_UPDATE_ENABLED`。
+- Agent 的 OTLP 遥测沿用既有机制，由打包环境的 `CODEZ_PACKAGED_AGENT_OTEL_*` 注入，不在本文件范围内。
 
 ## 验收
 

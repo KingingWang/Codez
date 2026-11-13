@@ -1,4 +1,4 @@
-import type { VoiceInputErrorCode } from "@zcode/services";
+import type { VoiceInputErrorCode } from "@codez/services";
 
 /**
  * 语音输入失败分类与提示（docs/chat/composer-voice-input.md「失败」）。纯函数，不做 IO。

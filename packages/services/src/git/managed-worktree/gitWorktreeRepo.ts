@@ -16,14 +16,14 @@ import type {
   PruneWorktreesRequest,
   RemoveManagedWorktreeRequest,
   RemoveManagedWorktreeResult,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   MANAGED_WORKTREE_SPOTLIGHT_MARKER,
   isSamePath,
   managedWorktreeDirectoryName,
   parseManagedWorktreePath,
   resolveManagedWorktreeRoot,
-} from "@zcode/shared/managed-worktree";
+} from "@codez/shared/managed-worktree";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import {
   DEFAULT_GIT_COMMAND_TIMEOUT_MS,
@@ -59,8 +59,8 @@ const COPY_CONCURRENCY = 16;
 /** 写时复制优先（APFS / btrfs / xfs），不支持时由 Node 退回普通拷贝；EXCL 保证不覆盖已有文件。 */
 const COPY_MODE = fsConstants.COPYFILE_EXCL | fsConstants.COPYFILE_FICLONE;
 /** fork 带入改动时的临时补丁文件，写在 bucket 中（worktree 之外），应用后删除。 */
-const CARRY_STAGED_PATCH = ".zcode-carry-staged.patch";
-const CARRY_UNSTAGED_PATCH = ".zcode-carry-unstaged.patch";
+const CARRY_STAGED_PATCH = ".codez-carry-staged.patch";
+const CARRY_UNSTAGED_PATCH = ".codez-carry-unstaged.patch";
 
 class WorktreeCopyError extends Error {
   constructor(
@@ -143,7 +143,7 @@ export function parseWorktreeListPorcelain(output: string): PorcelainWorktree[] 
 
 export function createGitWorktreeRepo(options: {
   commandProvider: GitCommandProvider;
-  /** 数据根目录（与 CLI 一致：ZCODE_DATA_BASE_DIR 优先，否则 homedir）。 */
+  /** 数据根目录（与 CLI 一致：CODEZ_DATA_BASE_DIR 优先，否则 homedir）。 */
   dataBaseDir: () => string;
   platform?: NodeJS.Platform;
 }): GitWorktreeRepo {

@@ -19,7 +19,7 @@
 - [OpenAI 测试 Provider 示例](../../config/provider/regression/providers.openai.example.json)：引用当前正式内置配置，Key 为空，复制到私有目录后才填入凭据。
 - [OpenAI 待执行清单](../../config/provider/regression/test-list.openai.json)：Luna、Terra 各覆盖文本、工具、图片、PDF、结构化输出、输出预算，以及同一道架构题的六个思考档位；每项 1 pass，串行执行，不设额外的全局输出上限。
 
-图片为纯红色方块，PDF 含固定标记 `ZCODE-PDF-42`；素材随清单维护，不依赖私人文件。执行器复用 ZCode 产品链；该清单不是已经执行的报告，也不自动加入当前优先回归清单。连接探测的行为没有变更，不用 OUTPUT-001 代替设置页面连接测试。
+图片为纯红色方块，PDF 含固定标记 `CODEZ-PDF-42`；素材随清单维护，不依赖私人文件。执行器复用 Codez 产品链；该清单不是已经执行的报告，也不自动加入当前优先回归清单。连接探测的行为没有变更，不用 OUTPUT-001 代替设置页面连接测试。
 
 配置交付前完成以下离线检查：
 

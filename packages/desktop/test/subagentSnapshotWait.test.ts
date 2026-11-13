@@ -20,9 +20,9 @@ async function fixture() {
   return root;
 }
 const paths = [
-  "/workspace/.zcode/agents/reviewer.md",
-  String.raw`D:\workspace\.zcode\agents\reviewer.md`,
-  String.raw`\\server\share\workspace\.zcode\agents\reviewer.md`,
+  "/workspace/.codez/agents/reviewer.md",
+  String.raw`D:\workspace\.codez\agents\reviewer.md`,
+  String.raw`\\server\share\workspace\.codez\agents\reviewer.md`,
 ];
 const message = (path: string, pid = 42) =>
   [
@@ -68,7 +68,7 @@ describe("subagent E2E log path matching", () => {
     // 在独立 Node 子进程执行真实测试 preload，避免其文件边界替换污染单测进程。
     const { stdout } = await runNode(process.execPath, [
       "-e",
-      `process.env.ZCODE_E2E_HOST_FAULT_ROOT = ${JSON.stringify(root)};
+      `process.env.CODEZ_E2E_HOST_FAULT_ROOT = ${JSON.stringify(root)};
        process.parentPort = { postMessage() {} };
        process.argv[2] = ${JSON.stringify(entry)};
        require(${JSON.stringify(preload)});

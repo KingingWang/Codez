@@ -1,4 +1,4 @@
-import type { OAuthCachedSessionRestoreResult, UserInfo } from "@zcode/shared";
+import type { OAuthCachedSessionRestoreResult, UserInfo } from "@codez/shared";
 import type { AlertDialogRequest } from "@/store/alertDialogStore.js";
 
 /** 启动过期和运行时撤销使用同一登录恢复入口，不重启进程或保留头像展示。 */

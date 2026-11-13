@@ -28,7 +28,7 @@ describe("ToolSearch MCP 与子 Agent 作用域（真实 CLI / stdio）", () => 
         },
         mcp: { servers: { catalog: server, resident_server: { ...server, alwaysLoad: true } } },
       });
-      const agentDir = join(fixture.workspace, ".zcode", "agents");
+      const agentDir = join(fixture.workspace, ".codez", "agents");
       await mkdir(agentDir, { recursive: true });
       await writeFile(
         join(agentDir, "toolsearch-scoped.md"),

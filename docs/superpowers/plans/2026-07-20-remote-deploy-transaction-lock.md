@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - 除桌面 shared SSH host 明确声明 caller-side serialization 外，锁覆盖完整 `deployServer` transaction，不能缩小到单个 asset installer。
-- workspace/distro/user install root 仍为 `~/.zcode/server`，不调用 `wsl --terminate`。
+- workspace/distro/user install root 仍为 `~/.codez/server`，不调用 `wsl --terminate`。
 - owner token 必须不可预测；释放和 stale takeover 不使用宽泛 glob。
 - 保持 WSL、Docker 以及仍使用锁的 SSH 调用的 POSIX backend 兼容，不依赖 `flock`、GNU `mv -T` 或系统 tar。
 - 完成前运行定向测试、`pnpm typecheck` 和 `pnpm lint`。
@@ -54,8 +54,8 @@
   ): Promise<RemoteDeployLockHandle>;
   ```
 
-  stdout 只在看到 `zcode-deploy-lock-acquired:<owner>` 后 resolve；stream 提前关闭则 reject。release 写入
-  `zcode-deploy-lock-release:<owner>\n` 并结束 stdin，随后等待 lock-holder close。
+  stdout 只在看到 `codez-deploy-lock-acquired:<owner>` 后 resolve；stream 提前关闭则 reject。release 写入
+  `codez-deploy-lock-release:<owner>\n` 并结束 stdin，随后等待 lock-holder close。
 
 - [x] **Step 4: 运行测试并确认 GREEN**
 
@@ -97,7 +97,7 @@
 
 **Files:**
 - Modify: `packages/server/src/remote/remoteAssetInstaller.ts`
-- Modify: `packages/server/src/remote/zcodeAgentDevDeploy.ts`
+- Modify: `packages/server/src/remote/codezAgentDevDeploy.ts`
 - Test: `packages/server/test/remoteAssetInstaller.test.ts`
 - Test: `packages/server/test/remoteDeploy.test.ts`
 

@@ -10,7 +10,7 @@ import { classifyLintDiagnostics, parseLintCommand } from "./cli-lint-admission.
 
 const exec = promisify(execFile);
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const cli = resolve(root, "apps/zcode-cli");
+const cli = resolve(root, "apps/codez-cli");
 
 async function main() {
   const policy = await loadPolicy(root);

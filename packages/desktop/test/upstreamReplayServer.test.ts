@@ -21,7 +21,7 @@ afterEach(async () => {
 
 describe("Upstream replay server", () => {
   it("SCT lifecycle resolves only structured successful tool results, including operation and fork boundary", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "zcode-app-lifecycle-replay-"));
+    const dir = await mkdtemp(join(tmpdir(), "codez-app-lifecycle-replay-"));
     tempDirs.push(dir);
     const fixture = join(dir, "fixture.json");
     await writeFile(
@@ -150,7 +150,7 @@ describe("Upstream replay server", () => {
   ])(
     "$marker binds only the complete App reference returned by a real tool result",
     async ({ marker, tool, field, token }) => {
-      const dir = await mkdtemp(join(tmpdir(), "zcode-app-navigation-replay-"));
+      const dir = await mkdtemp(join(tmpdir(), "codez-app-navigation-replay-"));
       tempDirs.push(dir);
       const fixture = join(dir, "fixture.json");
       await writeFile(
@@ -215,7 +215,7 @@ describe("Upstream replay server", () => {
   );
 
   it("分阶段工具参数必须逐次释放，第一次释放不能越过第二个观察点", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "zcode-replay-stages-"));
+    const dir = await mkdtemp(join(tmpdir(), "codez-replay-stages-"));
     tempDirs.push(dir);
     const fixture = join(dir, "fixture.json");
     await writeFile(
@@ -266,7 +266,7 @@ describe("Upstream replay server", () => {
   });
 
   it("从最新真实 workflow-hole 通知绑定 run ID，缺失通知时拒绝伪造 FillWorkflowHole", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "zcode-workflow-hole-replay-"));
+    const dir = await mkdtemp(join(tmpdir(), "codez-workflow-hole-replay-"));
     tempDirs.push(dir);
     const fixture = join(dir, "fixture.json");
     await writeFile(
@@ -317,7 +317,7 @@ describe("Upstream replay server", () => {
   });
 
   it("按请求的 stream 属性选择 SSE 或 JSON 响应格式", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "zcode-replay-response-format-"));
+    const dir = await mkdtemp(join(tmpdir(), "codez-replay-response-format-"));
     tempDirs.push(dir);
     const fixture = join(dir, "fixture.json");
     await writeFile(
@@ -384,7 +384,7 @@ describe("Upstream replay server", () => {
   });
 
   it("受控流在释放前保持 running，释放后不再等待旧的 45 秒时间轴", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "zcode-replay-gate-"));
+    const dir = await mkdtemp(join(tmpdir(), "codez-replay-gate-"));
     tempDirs.push(dir);
     const fixture = join(dir, "fixture.json");
     await writeFile(
@@ -453,7 +453,7 @@ describe("Upstream replay server", () => {
   });
 
   it("closes the listener when the initial artifact write fails", async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), "zcode-upstream-start-failure-"));
+    const tempDir = await mkdtemp(join(tmpdir(), "codez-upstream-start-failure-"));
     tempDirs.push(tempDir);
     const fixturePath = join(tempDir, "fixture.json");
     const artifactPath = join(tempDir, "artifact.json");
@@ -640,11 +640,11 @@ describe("Upstream replay server", () => {
   );
 
   it("expands static fixture variables before matching and replaying", async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), "zcode-upstream-replay-vars-"));
+    const tempDir = await mkdtemp(join(tmpdir(), "codez-upstream-replay-vars-"));
     tempDirs.push(tempDir);
     const fixturePath = join(tempDir, "fixture.json");
     const artifactPath = join(tempDir, "artifact.json");
-    const runtimeRoot = "C:/e2e-home/ZCodeProject/.zcode-e2e";
+    const runtimeRoot = "C:/e2e-home/CodezProject/.codez-e2e";
     await writeFile(
       fixturePath,
       JSON.stringify(
@@ -713,7 +713,7 @@ describe("Upstream replay server", () => {
   ])(
     "resolves Bash task IDs from actual launch results: $expected",
     async ({ output, expected }) => {
-      const tempDir = await mkdtemp(join(tmpdir(), "zcode-bash-task-replay-"));
+      const tempDir = await mkdtemp(join(tmpdir(), "codez-bash-task-replay-"));
       tempDirs.push(tempDir);
       const fixturePath = join(tempDir, "fixture.json");
       await writeFile(
@@ -1073,7 +1073,7 @@ async function startFixtureServer(
     artifactWriter?: Parameters<typeof startUpstreamReplayServer>[0]["artifactWriter"];
   } = {},
 ) {
-  const tempDir = await mkdtemp(join(tmpdir(), "zcode-upstream-replay-"));
+  const tempDir = await mkdtemp(join(tmpdir(), "codez-upstream-replay-"));
   tempDirs.push(tempDir);
   const fixturePath = join(tempDir, "fixture.json");
   const artifactPath = join(tempDir, "artifact.json");
@@ -1129,7 +1129,7 @@ async function startBrowserVariableFixtureServer(
     artifactWriter?: Parameters<typeof startUpstreamReplayServer>[0]["artifactWriter"];
   } = {},
 ) {
-  const tempDir = await mkdtemp(join(tmpdir(), "zcode-upstream-browser-variable-"));
+  const tempDir = await mkdtemp(join(tmpdir(), "codez-upstream-browser-variable-"));
   tempDirs.push(tempDir);
   const fixturePath = join(tempDir, "fixture.json");
   const artifactPath = join(tempDir, "artifact.json");
@@ -1174,7 +1174,7 @@ async function startBrowserVariableFixtureServer(
 }
 
 async function startAutomationVariableFixtureServer() {
-  const tempDir = await mkdtemp(join(tmpdir(), "zcode-upstream-automation-variable-"));
+  const tempDir = await mkdtemp(join(tmpdir(), "codez-upstream-automation-variable-"));
   tempDirs.push(tempDir);
   const fixturePath = join(tempDir, "fixture.json");
   const artifactPath = join(tempDir, "artifact.json");
@@ -1215,7 +1215,7 @@ async function startAutomationVariableFixtureServer() {
 }
 
 async function startBrowserTabVariableFixtureServer() {
-  const tempDir = await mkdtemp(join(tmpdir(), "zcode-upstream-browser-tab-variable-"));
+  const tempDir = await mkdtemp(join(tmpdir(), "codez-upstream-browser-tab-variable-"));
   tempDirs.push(tempDir);
   const fixturePath = join(tempDir, "fixture.json");
   const artifactPath = join(tempDir, "artifact.json");
@@ -1264,7 +1264,7 @@ async function startBrowserTabVariableFixtureServer() {
 }
 
 async function startLatestToolResultFixtureServer() {
-  const tempDir = await mkdtemp(join(tmpdir(), "zcode-upstream-tool-result-"));
+  const tempDir = await mkdtemp(join(tmpdir(), "codez-upstream-tool-result-"));
   tempDirs.push(tempDir);
   const fixturePath = join(tempDir, "fixture.json");
   const artifactPath = join(tempDir, "artifact.json");
@@ -1298,7 +1298,7 @@ async function startLatestToolResultFixtureServer() {
 }
 
 async function startBackgroundFixtureServer() {
-  const tempDir = await mkdtemp(join(tmpdir(), "zcode-upstream-background-fixture-"));
+  const tempDir = await mkdtemp(join(tmpdir(), "codez-upstream-background-fixture-"));
   tempDirs.push(tempDir);
   const artifactPath = join(tempDir, "artifact.json");
   const fixturePath = join(

@@ -6,7 +6,7 @@
 ## 1. 背景与目标
 
 新用户引导（OccupationOnboarding，三步向导：职业 / 模式 / 偏好）目前只在完成后把偏好写入
-`~/.zcode/v2/setting.json`（`onboardingOccupation` 等字段），没有独立的"引导完成记录"。
+`~/.codez/v2/setting.json`（`onboardingOccupation` 等字段），没有独立的"引导完成记录"。
 产品需要：
 
 1. 把三页收集的信息持久化到**独立的本地 JSON 文件**，后续开放上传给服务器；
@@ -50,7 +50,7 @@ v1 文件不做启动迁移：读取时视为 `decisions: []`，下一次业务�
 
 **跳过语义**：跳过是显式答案。某页被跳过时该字段记 `null`（职业页跳过 → `occupation: null`；模式页跳过 → `interfaceMode: null`；偏好页跳过 → 两个布尔记 `null`），与"明确选择了值"区分。settings 侧跳过仍落保守默认值（职业 `other` / 偏好关），区分度只体现在本记录文件。
 
-存储位置：`getAppConfigDir()/onboarding-record.json`（即 `getDataBaseDir()/.zcode/v2/`，默认 `~/.zcode/v2/`；用户自定义数据目录时跟随 dataBaseDir，与 telemetry-state.json 等设备级数据一致。注意与 setting.json 不同——setting.json 固定留在 home，因为启动引导需要从固定位置读取 dataBaseDir）。原子写。
+存储位置：`getAppConfigDir()/onboarding-record.json`（即 `getDataBaseDir()/.codez/v2/`，默认 `~/.codez/v2/`；用户自定义数据目录时跟随 dataBaseDir，与 telemetry-state.json 等设备级数据一致。注意与 setting.json 不同——setting.json 固定留在 home，因为启动引导需要从固定位置读取 dataBaseDir）。原子写。
 
 ## 3. 关联语义
 
@@ -116,10 +116,10 @@ v1 文件不做启动迁移：读取时视为 `decisions: []`，下一次业务�
 - **使用证据（2026-10 修订）按"任一命中"判断，三个来源按序检查**：
   1. 设备全局 tasks-index 存在任意 Task（`includeDeleted: true`，含已删除 tombstone——
      清空过任务列表的存量用户不因删除行为失去资格）；
-  2. agent 会话库（默认 `~/.zcode/cli/db/db.sqlite`，按 homedir 展开、不随
+  2. agent 会话库（默认 `~/.codez/cli/db/db.sqlite`，按 homedir 展开、不随
      dataBaseDir 迁移；env/配置覆盖与不可镜像跳过规则见下条；SQLite 只读查询
      `session` 表存在至少一行）；
-  3. 旧版任务快照目录（`{dataBaseDir}/.zcode/v2/sessions/`，含 `.deleted.json`）非空。
+  3. 旧版任务快照目录（`{dataBaseDir}/.codez/v2/sessions/`，含 `.deleted.json`）非空。
 - **为什么不能只查 tasks-index**：索引是 session 同步器的衍生投影，同步器在 agent/provider
   就绪后才开始回填；而判定恰好在登录完成、主界面挂载时执行，早于回填。索引为空 ≠ 没有历史
   （2026-10 线上案例：dev 数据目录索引重建后，登录瞬间判定看到空索引，老用户被误弹引导；
@@ -130,11 +130,11 @@ v1 文件不做启动迁移：读取时视为 `decisions: []`，下一次业务�
 - **会话库路径只镜像 host 可确定性复制的定位来源，无法确定按"未知"跳过**（评审
   三轮 CR-01：不在 host 复制完整 CLI 解析规则——相对路径按 agent 工作区 cwd、
   project 级配置按 workspace 叠加，host 均无法镜像）。可镜像来源按序：
-  1. env `ZCODE_SESSION_DB_PATH` / `ZCODE_SESSION_DB`（双别名并存按 env 键序取
+  1. env `CODEZ_SESSION_DB_PATH` / `CODEZ_SESSION_DB`（双别名并存按 env 键序取
      后者，与 CLI env adapter 覆盖顺序一致）；
-  2. `~/.zcode/cli/config.json` 的 `storage.sessionDbPath`（CLI `createConfig`
+  2. `~/.codez/cli/config.json` 的 `storage.sessionDbPath`（CLI `createConfig`
      默认 user config 位置在 home，**不随 App dataBaseDir 迁移**）；
-  3. 默认 `~/.zcode/cli/db/db.sqlite`（`~/` 按 homedir 展开）。
+  3. 默认 `~/.codez/cli/db/db.sqlite`（`~/` 按 homedir 展开）。
      值为绝对路径（含 `~/` 展开）才作为证据位置；相对路径 → 未知 → 跳过本证据源
      （继续检查旧版快照目录），不得按 host cwd 猜测。配置读取/解析失败（非 ENOENT）
      上抛：配置读不出来时会话库位置未知，猜测默认值会漏判自定义会话库的存量用户。

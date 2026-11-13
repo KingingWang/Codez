@@ -427,7 +427,7 @@ xai
 
 - Provider、Provider Node、Services、Server、UI 定向单测：22 个文件、388 项通过；
 - `pnpm typecheck`：通过；
-- `pnpm --filter @zcode/desktop typecheck:e2e`：通过；
+- `pnpm --filter @codez/desktop typecheck:e2e`：通过；
 - `pnpm lint`：通过（仅仓库既有 warning）；
 - 全量 Unit：13,071 项通过、25 项跳过；另有 2 个与本 Todo 无关的既有测试基线失败，分别是 E2E CLI seed 环境变量计数和 pre-push hook 命令断言；
 - Desktop E2E 已完成应用构建，但当前 Samantha 环境缺少 `xvfb-run`，WebdriverIO 未能创建 Chrome session，未产生用例级结果；

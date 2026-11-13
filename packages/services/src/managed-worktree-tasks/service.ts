@@ -3,25 +3,25 @@
 // 创建记录只在内存中，是创建阶段的唯一数据源；renderer 只订阅，不推算。
 import { randomUUID } from "node:crypto";
 import { stat } from "node:fs/promises";
-import { Emitter } from "@zcode/rpc";
+import { Emitter } from "@codez/rpc";
 import {
   MANAGED_WORKTREE_OUTPUT_LIMIT,
   type CreateManagedWorktreeResult,
   type ManagedWorktreeCreation,
   type ManagedWorktreeCreationSettlement,
   type ManagedWorktreeError,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   isPathInside,
   mapProjectRootsIntoWorktree,
   isSamePath,
-} from "@zcode/shared/managed-worktree";
+} from "@codez/shared/managed-worktree";
 import {
   COMMAND_QUERY_UNAVAILABLE_REASON,
   type CommandAck,
   type CommandEnvelope,
   type CommandKey,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import type { ManagedWorktreeServicePorts } from "#src/managed-worktree-tasks/ports.js";
 import { createWorktreeRemoval, errorOf } from "#src/managed-worktree-tasks/removal.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";

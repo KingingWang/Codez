@@ -1,4 +1,4 @@
-import type { OAuthCachedSessionRestoreResult, UserInfo } from "@zcode/shared";
+import type { OAuthCachedSessionRestoreResult, UserInfo } from "@codez/shared";
 
 export type WebOAuthProviderId = "zai" | "zai_cn" | "bigmodel";
 
@@ -14,7 +14,7 @@ export interface WebAuthContract {
   logout(): Promise<void>;
   restoreCachedSession(): Promise<UserInfo | null>;
   restoreCachedSessionState(): OAuthCachedSessionRestoreResult;
-  getZCodeJwtToken(): string | null;
+  getCodezJwtToken(): string | null;
   getSessionRevision(): string | null;
   getActiveAccount(): {
     displayName: string;

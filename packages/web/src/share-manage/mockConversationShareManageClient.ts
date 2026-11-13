@@ -3,7 +3,7 @@ import type {
   ConversationShareManagedList,
   ConversationShareManagedUpdateRequest,
   ConversationShareTtlOptions,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { ConversationSharePreviewClientError } from "../share/conversationSharePreviewClient.js";
 import {
   CONVERSATION_SHARE_MANAGE_PAGE_SIZE,

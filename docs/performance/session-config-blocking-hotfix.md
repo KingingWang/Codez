@@ -8,7 +8,7 @@
 | --- | --- |
 | 意图 / capability | 聊天创建与冷恢复不依赖可选远端配置；OffPeak 工具在实际调用时准入 |
 | 层级 / mode | validation、recovery、运行期默认值；implementation-handoff |
-| Primary seeds | createZCodeAgentService、getModelContextBudgetStrategy、AgentRuntime、getAutoCompactThreshold |
+| Primary seeds | createCodezAgentService、getModelContextBudgetStrategy、AgentRuntime、getAutoCompactThreshold |
 | 不包含 | draft 重复创建、MCP 启动、配置网络故障本身、页面灰度、配额/计费算法 |
 
 ## UI Surface Matrix
@@ -92,7 +92,7 @@ OffPeakCreate -> 现有审批 -> Host 灰度/套餐/模型 -> createTask -> 取�
   三个 spec 通过；Compact 94K 阈值、21K reserve、summary 20K 与逐请求上限均走真实 Runtime/HTTP。
 - root `pnpm typecheck`、Desktop `typecheck:e2e`、Core typecheck 通过；root lint 0 errors，
   Core/bootstrap/contracts 的独立 lint 0 errors；架构检查 0 新增问题。
-- `ZCODE_AFFECTED_TEST_BASE=origin/hotfix/3.12.2 pnpm verify:pre-push` 通过：
+- `CODEZ_AFFECTED_TEST_BASE=origin/hotfix/3.12.2 pnpm verify:pre-push` 通过：
   按基线 `5f7d77dac3` 到实现 commit 的真实差异运行 lint、架构、变更单测和 related 单测，
   并非未提交差异下的跳过结果。最终仅补本文记录与 D49 文档格式，生产代码和测试未再改变。
 - fixture metadata check 通过。新 case 保留 manual-review/pending，不声称人工审阅或 Docker 准入。

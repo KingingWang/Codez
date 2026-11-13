@@ -3,7 +3,7 @@
 ## 基线与已确认语义
 
 起点：5b0dbc3ee3。合入 staging：e2f0897d565907c0c2fd3d43f3681ede11bdb5c4。
-实现规范：[单任务重启](../session-task-restart.md)；CLI 接口规范：[生命周期](../../apps/zcode-cli/docs/design/v2/session-runtime-lifecycle.md)。
+实现规范：[单任务重启](../session-task-restart.md)；CLI 接口规范：[生命周期](../../apps/codez-cli/docs/design/v2/session-runtime-lifecycle.md)。
 
 本轮沿用现有恢复时 discarded 队列、不自动重放的合同；active goal 暂停；faulted 不自动重启 workspace。
 全部工作与产物在专用开发环境完成，不改其他工作副本。
@@ -38,7 +38,7 @@
 验证日期：2026-10-27。新交互 E2E 保持 pending，未经人工 review 不宣称已转正或准入 CI。
 
 - 根 `pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed` 通过；架构新增违规 0。Lint 保留上游告警。
-- CLI `pnpm --dir apps/zcode-cli typecheck` 与 `lint` 通过。最新 staging 的 model/index.ts 已有 908 有效行但漏列存量清单；本轮只在现有 max-lines 告警组补登记该精确路径，其他规则不变。
+- CLI `pnpm --dir apps/codez-cli typecheck` 与 `lint` 通过。最新 staging 的 model/index.ts 已有 908 有效行但漏列存量清单；本轮只在现有 max-lines 告警组补登记该精确路径，其他规则不变。
 - CLI bootstrap 定向 Vitest：controller、session-execution contract、resident-pool、command-inbox、v4-history-first、v4-cold-resume、session-selection-cold-resume，共 7 文件 210 条通过。覆盖初始化中重启、订阅者存在、关闭失败隔离、历史读取收尾、旧命令结算、恢复配置。
 - 根工程受影响测试以起点 `5b0dbc3ee3` 选择，由于大范围 staging 合并选中 215/215，官方 runner 按仓库规则跳过全量；这不记为测试通过。
 - E2E fixture 校验通过。QUEUED 标记故意没有模型响应 fixture，若旧队列被重放则必须失败；标题旁路使用固定响应。
@@ -50,7 +50,7 @@
 
 最终桌面/手机联合 E2E 通过：`desktop-e2e-20261027083213059-p46165-f51b74dc89ecadc4`，1 个组合用例，覆盖 3 次重启（桌面菜单、/reload、手机菜单），同一 session 从 generation 1 到 4。真实运行流被取消、待处理队列清空；后续请求不含 /reload 与被丢弃输入。桌面草稿和历史保留，两个客户端均恢复并可继续发送。深浅主题菜单与手机截图已人工视觉核对。
 
-复跑命令为 `pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/conversation-session/runtime/manual-review/pending/conversation-session-runtime-restart.test.ts'`，配置容器模式、manual-review 与 case-local provider fixture；最后一次仅修正截图步骤，复用前一次完整构建，未更换产品逻辑。结果与截图保留在该次 `.e2e-artifacts`，不入 Git。CLI 格式化仅改变排版。
+复跑命令为 `pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/conversation-session/runtime/manual-review/pending/conversation-session-runtime-restart.test.ts'`，配置容器模式、manual-review 与 case-local provider fixture；最后一次仅修正截图步骤，复用前一次完整构建，未更换产品逻辑。结果与截图保留在该次 `.e2e-artifacts`，不入 Git。CLI 格式化仅改变排版。
 
 交付采用独立的 staging 合并提交与功能提交；不推送、不创建 MR。最终规范以 `docs/session-task-restart.md` 为准。
 

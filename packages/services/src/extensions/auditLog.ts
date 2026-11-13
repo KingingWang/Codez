@@ -4,10 +4,10 @@ import {
   EXTENSION_AUDIT_RETENTION_DAYS,
   extensionAuditEntrySchema,
   type ExtensionAuditEntry,
-} from "@zcode/shared/extension-host";
+} from "@codez/shared/extension-host";
 import type { ServiceLogger } from "#src/logger/serviceLogger.js";
 
-// 审计日志（docs/plugins/extension-host.md §17.8）：`~/.zcode/v2/extensions/audit/<日期>.jsonl`，只由本服务写，
+// 审计日志（docs/plugins/extension-host.md §17.8）：`~/.codez/v2/extensions/audit/<日期>.jsonl`，只由本服务写，
 // 保留 30 天。写操作每次一行（P3c）；授权与撤销各一行。字段见 extensionAuditEntrySchema，不写提示词、标题、
 // 正文、路径、设置值、错误原文。写入串行；日期按本机时间。
 

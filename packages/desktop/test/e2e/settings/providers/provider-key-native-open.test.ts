@@ -1,5 +1,5 @@
-import { ApiKeyAccessConfig, ProviderConfig } from "@zcode/provider";
-import { NodePersonalProviderConfigRepository } from "@zcode/provider-node";
+import { ApiKeyAccessConfig, ProviderConfig } from "@codez/provider";
+import { NodePersonalProviderConfigRepository } from "@codez/provider-node";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
@@ -8,7 +8,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom, getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
 import { restartIntoWorkspace, seedReplayProvider } from "#e2e/helpers/model-provider-restart";
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
@@ -44,7 +44,7 @@ describe("Todo116 单一 Key 链接原生打开", () => {
         received.add(request.url!);
         response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
         response.end(
-          "<title>ZCode E2E</title><p>API Key link verification passed. You may close this test tab.</p>",
+          "<title>Codez E2E</title><p>API Key link verification passed. You may close this test tab.</p>",
         );
       } else {
         response.writeHead(404);

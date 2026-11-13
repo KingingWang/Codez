@@ -10,7 +10,7 @@ import {
   TID_SIDE_PANE_TOGGLE,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { readBrowserTabIds } from "#e2e/helpers/browser-side-pane";
 import {
   DEFAULT_WORKSPACE,
@@ -26,7 +26,7 @@ const RECENT_BUTTON = `${RECENT_LIST} button[data-browser-recent-url]`;
 const ACTIVE_PANEL = '[role="tabpanel"][data-state="active"]';
 const ADDRESS = `${ACTIVE_PANEL} [data-testid="${TID_BROWSER_ADDRESS_INPUT}"]`;
 type ScopeWindow = Window & {
-  __zcodeSessionStoreE2E?: {
+  __codezSessionStoreE2E?: {
     getState(): {
       setActiveTaskId(workspacePath: string, taskId: string): void;
       removeTaskState(workspacePath: string, taskId: string, workspaceIdentity?: string): void;
@@ -250,9 +250,9 @@ describe("Browser session recent visits (manual-review/pending)", () => {
     expect(await activeGuestId()).toBeNull();
     const remainingKeys = await browser.execute((owner) => {
       return Object.keys(localStorage).filter((key) => {
-        if (!key.startsWith("zcode-browser-recent-visits:")) return false;
+        if (!key.startsWith("codez-browser-recent-visits:")) return false;
         return (
-          (JSON.parse(key.slice("zcode-browser-recent-visits:".length)) as string[])[2] === owner
+          (JSON.parse(key.slice("codez-browser-recent-visits:".length)) as string[])[2] === owner
         );
       });
     }, ownerA);
@@ -293,7 +293,7 @@ describe("Browser session recent visits (manual-review/pending)", () => {
         const sessionId = `E2E_SCOPE_CAP_${index}`;
         const scopeKey = JSON.stringify(["/workspace", "", sessionId]);
         localStorage.setItem(
-          `zcode-browser-recent-visits:${scopeKey}`,
+          `codez-browser-recent-visits:${scopeKey}`,
           JSON.stringify([
             {
               url: `https://example.test/${index}`,
@@ -306,7 +306,7 @@ describe("Browser session recent visits (manual-review/pending)", () => {
       }
       const scopeKey = JSON.stringify(["/workspace", "", "E2E_SCOPE_TRIGGER"]);
       localStorage.setItem(
-        `zcode-browser-recent-visits:${scopeKey}`,
+        `codez-browser-recent-visits:${scopeKey}`,
         JSON.stringify([
           {
             url: "https://example.test/trigger",
@@ -316,7 +316,7 @@ describe("Browser session recent visits (manual-review/pending)", () => {
           },
         ]),
       );
-      return { triggerKey: `zcode-browser-recent-visits:${scopeKey}` };
+      return { triggerKey: `codez-browser-recent-visits:${scopeKey}` };
     });
     await reloadElectronSessionPreservingBrowserProfile(browser);
     await prepareV4ConversationE2E({ skipProvider: true });
@@ -324,7 +324,7 @@ describe("Browser session recent visits (manual-review/pending)", () => {
       const visits = JSON.parse(localStorage.getItem(triggerKey) ?? "[]");
       const keys = Array.from({ length: localStorage.length }, (_, index) =>
         localStorage.key(index),
-      ).filter((key): key is string => key?.startsWith("zcode-browser-recent-visits:") === true);
+      ).filter((key): key is string => key?.startsWith("codez-browser-recent-visits:") === true);
       const values = keys.map((key) => JSON.parse(localStorage.getItem(key) ?? "[]"));
       return {
         scopeCount: keys.length,
@@ -340,7 +340,7 @@ describe("Browser session recent visits (manual-review/pending)", () => {
     expect(
       await browser.execute(() =>
         localStorage.getItem(
-          `zcode-browser-recent-visits:${JSON.stringify(["/workspace", "", "E2E_SCOPE_CAP_0"])}`,
+          `codez-browser-recent-visits:${JSON.stringify(["/workspace", "", "E2E_SCOPE_CAP_0"])}`,
         ),
       ),
     ).toBeNull();
@@ -364,7 +364,7 @@ describe("Browser session recent visits (manual-review/pending)", () => {
     });
     expect(await recentFaviconUrl(page)).toContain("data:image/svg+xml,");
 
-    const persistedKey = `zcode-browser-recent-visits:${JSON.stringify([DEFAULT_WORKSPACE, "", owner])}`;
+    const persistedKey = `codez-browser-recent-visits:${JSON.stringify([DEFAULT_WORKSPACE, "", owner])}`;
     const storedDataFavicon =
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC";
     await browser.execute((key) => {
@@ -372,7 +372,7 @@ describe("Browser session recent visits (manual-review/pending)", () => {
       const originalSetItem = storage.setItem.bind(storage);
       (window as Window & { __recentVisitWrites?: number }).__recentVisitWrites = 0;
       storage.setItem = (name, value) => {
-        if (name.startsWith("zcode-browser-recent-visits:")) {
+        if (name.startsWith("codez-browser-recent-visits:")) {
           (window as Window & { __recentVisitWrites?: number }).__recentVisitWrites! += 1;
         }
         originalSetItem(name, value);
@@ -579,7 +579,7 @@ async function openFirstBrowserTab(): Promise<void> {
 async function setActiveOwner(ownerId: string): Promise<void> {
   await browser.execute(
     (workspacePath, taskId) => {
-      const store = (window as ScopeWindow).__zcodeSessionStoreE2E;
+      const store = (window as ScopeWindow).__codezSessionStoreE2E;
       if (!store) throw new Error("缺少 E2E session store bridge");
       store.getState().setActiveTaskId(workspacePath, taskId);
     },
@@ -590,7 +590,7 @@ async function setActiveOwner(ownerId: string): Promise<void> {
     () =>
       browser.execute(
         (workspacePath, taskId) =>
-          (window as ScopeWindow).__zcodeSessionStoreE2E?.getState().workspaces[workspacePath]
+          (window as ScopeWindow).__codezSessionStoreE2E?.getState().workspaces[workspacePath]
             ?.activeTaskId === taskId,
         DEFAULT_WORKSPACE,
         ownerId,

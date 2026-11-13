@@ -1,4 +1,4 @@
-import { completeNewModelSelection } from "@zcode/provider";
+import { completeNewModelSelection } from "@codez/provider";
 import { useSubagents } from "@/hooks/useSubagents.js";
 import { ToolPresentationCapabilitiesProvider } from "@/ToolCallBlocks/presentationCapabilities.js";
 import { V4_PRIMARY_PANE_ID } from "@/v4/paneLayoutStore.js";
@@ -6,7 +6,7 @@ import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
 import { useSessionRuntimeRestart } from "@/app-shell/useWorkspaceSessionReload.js";
 import { isRequestVerificationConfigNetworkError } from "@/request-security-edition/errors.js";
 import { useShallow } from "zustand/react/shallow";
-import { remoteHostIdFromWorkspaceIdentity } from "@zcode/shared";
+import { remoteHostIdFromWorkspaceIdentity } from "@codez/shared";
 import { useRemoteConversationAvailable } from "@/v4/RemoteConversationAvailability.js";
 import {
   createRemoteWorkspaceDisconnectedError,
@@ -15,7 +15,7 @@ import {
 import { buildConversationShareItems } from "@/v4/conversationShareItems.js";
 import { resolveSelectionSideInheritedModel } from "@/lib/selectionSideInheritedModel.js";
 import { useStartPlanRecommendation } from "@/hooks/useStartPlanRecommendation.js";
-import type { SessionCreateSource } from "@zcode/shared";
+import type { SessionCreateSource } from "@codez/shared";
 import { reportSessionCreate } from "@/lib/sessionCreateTelemetry.js";
 import { getLocalTtftObserver } from "@/v4/telemetry/local-ttft/contract.js";
 import { BotGroupDeliveryProvider } from "@/v4/BotGroupDeliveryAction.js";
@@ -37,9 +37,9 @@ import {
   BUILTIN_MODEL_PROVIDER_IDS,
   buildCustomSupplierKey,
   isRemoteWorkspaceIdentity,
-  ZCODE_AGENT_PROVIDER,
-} from "@zcode/shared";
-import { TID_CHAT_EMPTY, TID_V4_SESSION_PANE, testId } from "@zcode/shared/test-ids";
+  CODEZ_AGENT_PROVIDER,
+} from "@codez/shared";
+import { TID_CHAT_EMPTY, TID_V4_SESSION_PANE, testId } from "@codez/shared/test-ids";
 import type {
   ConversationShareAccessMode,
   ConversationShareTtlOptions,
@@ -48,9 +48,9 @@ import type {
   HighspeedPrepareTurnResult,
   GitRepositorySummary,
   ModelSelection,
-  ZCodeProvider,
-  ZCodeTaskChangeSummary,
-} from "@zcode/shared";
+  CodezProvider,
+  CodezTaskChangeSummary,
+} from "@codez/shared";
 import type {
   AttachmentRef,
   CommandAck,
@@ -61,8 +61,8 @@ import type {
   SessionErrorInfo,
   SessionModelTransition,
   V4ConversationFileChangesResult,
-} from "@zcode/shared/zcode-protocol-v4";
-import { submissionModeSchema } from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
+import { submissionModeSchema } from "@codez/shared/codez-protocol-v4";
 import { logger } from "@/logger.js";
 import {
   PluginUiSessionProvider,
@@ -76,17 +76,17 @@ import {
   resolveConversationSharePublishErrorMessageId,
   sanitizeConversationShareWarnings,
 } from "@/lib/conversationShareError.js";
-import { localizeConversationShareUrl } from "@zcode/shared";
+import { localizeConversationShareUrl } from "@codez/shared";
 import { resolveConversationSharePublishTtlMs } from "@/conversation-share-interaction/ConversationShareExpiryPicker.js";
 import type {
   ConversationShareAllowedArtifact,
   ConversationShareTurnPreflightResult,
   ImportedConversationShare,
-} from "@zcode/services";
+} from "@codez/services";
 import { useCodingPlanBillingDiscountFromService } from "@/CodingPlanBillingDiscount.js";
 import { toast } from "@/components/ui/toast.js";
 import { cn } from "@/components/lib/utils.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { DEFAULT_CODE_PREVIEW_SETTINGS } from "@/lib/codePreviewSettings.js";
 import type { CodeViewerSource } from "@/lib/codeViewer.js";
 import type { OpenAutomationsMain } from "@/lib/taskNavigationHistory.js";
@@ -154,15 +154,15 @@ import {
 import { useWorkflowRunJournalSummaries } from "@/hooks/useWorkflowRunJournalSummaries.js";
 import { usePlanIdentitySnapshot } from "@/hooks/usePlanIdentitySnapshot.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
-import { selectGenUiModelContext } from "@zcode/shared/gen-ui";
+import { selectGenUiModelContext } from "@codez/shared/gen-ui";
 import { useWorkspaceHomePath } from "@/hooks/useWorkspaceHomePath.js";
-import { prepareWorkspaceWithZCodeSessionService } from "@/hooks/useWorkspacePrepare.js";
+import { prepareWorkspaceWithCodezSessionService } from "@/hooks/useWorkspacePrepare.js";
 import {
   createCodingPlanFunnelContext,
   resolveCodingPlanEntryPlanState,
 } from "@/lib/codingPlanFunnelTelemetry.js";
-import { decodeCustomModelValue, encodeCustomModelValue } from "@/lib/zcodeCustomModelValue.js";
-import { parseModelPickerValue } from "@/lib/zcodeSessionProjection.js";
+import { decodeCustomModelValue, encodeCustomModelValue } from "@/lib/codezCustomModelValue.js";
+import { parseModelPickerValue } from "@/lib/codezSessionProjection.js";
 import { prepareComposerRecentReceipt } from "@/lib/composerRecent.js";
 import { useComposerClientNamespace } from "@/hooks/useServices.js";
 import {
@@ -190,8 +190,8 @@ import { projectSessionConfigToTaskConfigOptions } from "@/v4/composer/sessionCo
 import { useDraftRuntimeRebuildGate } from "@/v4/composer/useDraftRuntimeRebuildGate.js";
 import { useDraftModelReadinessGate } from "@/v4/composer/useDraftModelReadinessGate.js";
 import { useSettings } from "@/hooks/useSettingService.js";
-import { useZCodeStoreWithDefault } from "@/store/StoreProvider.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezStoreWithDefault } from "@/store/StoreProvider.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 import {
   DEFAULT_CONVERSATION_SHARE_ACCESS_MODE,
   DEFAULT_CONVERSATION_SHARE_DOCK_STATE,
@@ -345,7 +345,7 @@ import {
   hasChatLoadingBlockingActiveWork,
   hasChatLoadingBlockingInteraction,
 } from "@/v4/chatLoadingVisibility.js";
-import type { ZCodeUiError } from "@/lib/zcodeUiError.js";
+import type { CodezUiError } from "@/lib/codezUiError.js";
 import {
   isModelNotInRegistryError,
   type ChatErrorBannerModelConfigTarget,
@@ -417,7 +417,7 @@ export interface SessionPaneProps {
   /** Prompt 模板埋点当前仅覆盖 Desktop；Web / 手机远控保留 UI 行为但不触发该事件。 */
   isDesktop?: boolean;
   compactForRemoteControl?: boolean;
-  provider?: ZCodeProvider;
+  provider?: CodezProvider;
   onSessionCreated?: (sessionId: string, origin?: "draft-promotion") => void;
   /** deleteSession：删除当前会话后回到 draft（shell 起新草稿）。 */
   onSessionDeleted?: () => void;
@@ -451,7 +451,7 @@ export interface SessionPaneProps {
   gitDirtyFileCount?: number;
   gitWorktreeReviewSourceId?: GitChangeSourceId | null;
   gitWorktreeChangeSummary?: { added: number; removed: number } | null;
-  activeTaskChangeSummary?: ZCodeTaskChangeSummary | null;
+  activeTaskChangeSummary?: CodezTaskChangeSummary | null;
   summaryPanelVariantOverride?: ChatViewSummaryPanelVariant | null;
   onSummaryPanelVariantOverrideChange?: (variant: ChatViewSummaryPanelVariant | null) => void;
   onRefreshGit?: () => void;
@@ -510,7 +510,7 @@ const MAX_CONVERSATION_FILE_CHANGES_CACHE_ENTRIES = 20;
 function toComposerUiError(
   sessionId: string | null | undefined,
   error: SessionErrorInfo,
-): ZCodeUiError {
+): CodezUiError {
   return {
     code: error.code,
     message: error.message,
@@ -729,20 +729,20 @@ export function SessionPane({
     oauthService,
     modelSelectionService,
     usageStatsService,
-    zcodeSessionService,
-    zcodeTaskService,
+    codezSessionService,
+    codezTaskService,
   } = useServices();
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const slashCommands = useSlashCommands(workspacePath, workspaceIdentity);
   const baseWorkspaceServices = useBaseWorkspaceServices();
   const composerClientNamespace = useComposerClientNamespace();
-  const composerProjectId = useZCodeSessionStore(
+  const composerProjectId = useCodezSessionStore(
     (store) => store.getWorkspaceState(workspacePath, workspaceIdentity).draftProjectId,
   );
-  const draftWorktreeEnabled = useZCodeSessionStore((store) =>
+  const draftWorktreeEnabled = useCodezSessionStore((store) =>
     Boolean(store.getWorkspaceState(workspacePath, workspaceIdentity).draftWorktree),
   );
-  const viewWorktreeCreation = useZCodeSessionStore((state) => state.viewWorktreeCreation);
+  const viewWorktreeCreation = useCodezSessionStore((state) => state.viewWorktreeCreation);
   // worktree 被删除后，任务按"工作区目录失效"规则只读（docs/git/worktree.md §3.12）。
   const {
     cwd: sessionCwd,
@@ -759,7 +759,7 @@ export function SessionPane({
     () => resolveComposerScope(composerProjectId, workspaceIdentity, composerClientNamespace),
     [composerProjectId, workspaceIdentity, composerClientNamespace],
   );
-  const composerDraftGeneration = useZCodeSessionStore(
+  const composerDraftGeneration = useCodezSessionStore(
     (store) => store.getWorkspaceState(workspacePath, workspaceIdentity).draftFocusVersion,
   );
   const pendingAtEntry = useMemo(() => {
@@ -1231,7 +1231,7 @@ export function SessionPane({
     [fileChanges, sessionId, snapshot?.logEpoch],
   );
   const [dismissedErrorKeys, setDismissedErrorKeys] = useState<readonly string[]>([]);
-  const [sendSubmissionError, setSendSubmissionError] = useState<ZCodeUiError | null>(null);
+  const [sendSubmissionError, setSendSubmissionError] = useState<CodezUiError | null>(null);
   const [paneLocalSummaryPanelVariantOverride, setPaneLocalSummaryPanelVariantOverride] =
     useState<ChatViewSummaryPanelVariant | null>(null);
   const [terminalSectionOpen, setTerminalSectionOpen] = useState(false);
@@ -1694,7 +1694,7 @@ export function SessionPane({
     sessionId,
     snapshot,
   ]);
-  const workspaceConfigOptions = useZCodeSessionStore(
+  const workspaceConfigOptions = useCodezSessionStore(
     (store) => store.getWorkspaceState(workspacePath, workspaceIdentity).configOptions,
   );
   useEffect(() => {
@@ -1710,7 +1710,7 @@ export function SessionPane({
     // Bug 原因：V4 session 配置只存在 ConversationSnapshot，legacy task 配置桶一直为空；
     // 用户从 custom model 会话新建任务时，startDraft 只能继承 workspace 默认模型。
     // 这里仅把权威配置叠到完整目录并按 task 缓存，不改变 session 或 workspace 事实源。
-    useZCodeSessionStore
+    useCodezSessionStore
       .getState()
       .setTaskConfigOptions(
         workspacePath,
@@ -1757,19 +1757,19 @@ export function SessionPane({
     // 生命周期边界，避免长时间 workbench 中 Set 随会话数增长。
     autoOpenedAssistantPptxKeysRef.current.clear();
   }, [sessionId, snapshot?.logEpoch, workspaceKey]);
-  const composerTextInsertRequest = useZCodeSessionStore(
+  const composerTextInsertRequest = useCodezSessionStore(
     (store) => store.getWorkspaceState(workspacePath, workspaceIdentity).composerTextInsertRequest,
   );
-  const timelineBottomRequest = useZCodeSessionStore(
+  const timelineBottomRequest = useCodezSessionStore(
     (store) => store.getWorkspaceState(workspacePath, workspaceIdentity).timelineBottomRequest,
   );
-  const draftRuntimeInvalidationVersion = useZCodeSessionStore(
+  const draftRuntimeInvalidationVersion = useCodezSessionStore(
     (store) =>
       store.getWorkspaceState(workspacePath, workspaceIdentity).draftRuntimeInvalidationVersion,
   );
   const handleExternalTextInsertApplied = useCallback(
     (requestId: number) => {
-      useZCodeSessionStore
+      useCodezSessionStore
         .getState()
         .clearComposerTextInsertRequest(workspacePath, requestId, workspaceIdentity);
     },
@@ -2025,7 +2025,7 @@ export function SessionPane({
     // Selection View。旧预热会话冻结了早期 fallback，即使最新 View 已包含当前账号连接，
     // Renderer 也会永久停在旧模型。未发送且无显式选择的草稿不是执行事实；View 更新时
     // 回收并按最新选择事实重建，已显式选择和正式会话仍保持冻结。
-    useZCodeSessionStore.getState().invalidateDraftRuntime(workspacePath, workspaceIdentity);
+    useCodezSessionStore.getState().invalidateDraftRuntime(workspacePath, workspaceIdentity);
   }, [draftConfigRef, modelSelectionView?.revision, sessionId, workspaceIdentity, workspacePath]);
   const recommendStartPlan = useStartPlanRecommendation(modelSelectionView);
   const createSubmissionFromComposer = useMemo(
@@ -2189,8 +2189,8 @@ export function SessionPane({
 
   // 注入模式对齐 PermissionDialog：theme/codePreviewSettings 在宿主取 store，
   // 经稳定引用的 rowContext 下发给 memo 行组件（MessageResponse/ToolCallBlocks）。
-  const theme = useZCodeStoreWithDefault((state) => state.theme, "system");
-  const codePreviewSettings = useZCodeStoreWithDefault(
+  const theme = useCodezStoreWithDefault((state) => state.theme, "system");
+  const codePreviewSettings = useCodezStoreWithDefault(
     (state) => state.codePreviewSettings,
     DEFAULT_CODE_PREVIEW_SETTINGS,
   );
@@ -2289,7 +2289,7 @@ export function SessionPane({
         type === "createSession"
           ? creationProjectId !== undefined
             ? creationProjectId
-            : useZCodeSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
+            : useCodezSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
                 .draftProjectId
           : undefined;
       // 必须早于第一次上行：transport error/renderer refresh 后仍有可查询线索。
@@ -2316,12 +2316,12 @@ export function SessionPane({
               taskGroupId:
                 creationTaskGroupId !== undefined
                   ? creationTaskGroupId
-                  : useZCodeSessionStore
+                  : useCodezSessionStore
                       .getState()
                       .getWorkspaceState(workspacePath, workspaceIdentity).draftTaskGroupId,
               sessionCreateSource:
                 sessionCreateSource ??
-                useZCodeSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
+                useCodezSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
                   .draftCreateSource,
             }
           : recentReceipt
@@ -2332,12 +2332,12 @@ export function SessionPane({
                       projectId: recentScope.projectId,
                       taskGroupId:
                         creationTaskGroupId ??
-                        useZCodeSessionStore
+                        useCodezSessionStore
                           .getState()
                           .getWorkspaceState(workspacePath, workspaceIdentity).draftTaskGroupId,
                       sessionCreateSource:
                         sessionCreateSource ??
-                        useZCodeSessionStore
+                        useCodezSessionStore
                           .getState()
                           .getWorkspaceState(workspacePath, workspaceIdentity).draftCreateSource,
                     }
@@ -2844,7 +2844,7 @@ export function SessionPane({
         let replacesChildSessionId: string | undefined;
         if (targetChildSessionId) {
           try {
-            await zcodeSessionService.readSession({
+            await codezSessionService.readSession({
               workspacePath,
               ...(workspaceIdentity ? { workspaceIdentity } : {}),
               sessionId: targetChildSessionId,
@@ -2922,7 +2922,7 @@ export function SessionPane({
       workspaceIdentity,
       workspaceKey,
       workspacePath,
-      zcodeSessionService,
+      codezSessionService,
     ],
   );
 
@@ -3215,7 +3215,7 @@ export function SessionPane({
   );
 
   /**
-   * 「让 ZCode 帮我提炼保存」那条用户消息的发送口（docs/dynamic-workflow/transcript-and-notifications.md
+   * 「让 Codez 帮我提炼保存」那条用户消息的发送口（docs/dynamic-workflow/transcript-and-notifications.md
    * 「The message the lead sends」）：与中枢的「提升为全局」同一条先例——GUI 写、自动发、用户不再确认。
    *
    * 经 ref 转一手而不是直接引 `handleSendText`：后者定义在本文件更下面，而 rowContext 的 memo
@@ -3226,7 +3226,7 @@ export function SessionPane({
     const send = sendTextRef.current;
     if (send === null) throw new Error("send path not mounted");
     const result = await send(text);
-    // 被挡下（会话忙着确认别的、队列暂停待确认）就不是「已交给 ZCode」：抛回弹层，让它留在原处。
+    // 被挡下（会话忙着确认别的、队列暂停待确认）就不是「已交给 Codez」：抛回弹层，让它留在原处。
     if (result !== "sent") throw new Error(`workflow save request not sent: ${result}`);
   }, []);
 
@@ -3465,7 +3465,7 @@ export function SessionPane({
       : null,
   );
   const openPluginUi = useOpenPluginUi();
-  const pluginUiOpenRequest = useZCodeSessionStore(
+  const pluginUiOpenRequest = useCodezSessionStore(
     (store) => store.getWorkspaceState(workspacePath, workspaceIdentity).pluginUiOpenRequest,
   );
   useEffect(() => {
@@ -3477,7 +3477,7 @@ export function SessionPane({
       readOnly
     )
       return;
-    const store = useZCodeSessionStore.getState();
+    const store = useCodezSessionStore.getState();
     // 请求归属原草稿代际；StrictMode 重放与配置变化不能让旧请求打开新会话。
     if (
       store.getWorkspaceState(workspacePath, workspaceIdentity).pluginUiOpenRequest !==
@@ -3778,7 +3778,7 @@ export function SessionPane({
   const readGroupedDraftId = useCallback(
     () =>
       String(
-        useZCodeSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
+        useCodezSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
           .draftFocusVersion,
       ),
     [workspacePath, workspaceIdentity],
@@ -4032,12 +4032,12 @@ export function SessionPane({
       // （docs/git/worktree.md §8.1）。这里只交出命令，进度与结果都来自 Host 的创建记录。
       const draftWorktree =
         sessionId === null
-          ? useZCodeSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
+          ? useCodezSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
               .draftWorktree
           : null;
       if (draftWorktree) {
         const service = baseWorkspaceServices.managedWorktreeService;
-        const projectId = useZCodeSessionStore
+        const projectId = useCodezSessionStore
           .getState()
           .getWorkspaceState(workspacePath, workspaceIdentity).draftProjectId;
         if (!service || !projectId) return "blocked" as const;
@@ -4256,7 +4256,7 @@ export function SessionPane({
 
   const dispatchSendText = useCallback(
     (text: string, options?: ConversationComposerSendOptions) => {
-      const createSource = useZCodeSessionStore
+      const createSource = useCodezSessionStore
         .getState()
         .getWorkspaceState(workspacePath, workspaceIdentity).draftCreateSource;
       const submissionOptions = {
@@ -4268,7 +4268,7 @@ export function SessionPane({
       const highspeedOrigin = captureHighspeedPaneOrigin();
       const taskGroupId =
         sessionId === null
-          ? useZCodeSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
+          ? useCodezSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
               .draftTaskGroupId
           : undefined;
       // followupMode 仍通过 Session CAS 同步；模型和模式已封装进 Submission，不再
@@ -4341,7 +4341,7 @@ export function SessionPane({
         setSendSubmissionError({
           code:
             getRemoteConnectionFailureCode(error) ??
-            (runtimeModelUnavailable ? "ZCODE_RUNTIME_MODEL_UNAVAILABLE" : "SEND_FAILED"),
+            (runtimeModelUnavailable ? "CODEZ_RUNTIME_MODEL_UNAVAILABLE" : "SEND_FAILED"),
           message: runtimeModelUnavailable
             ? detail
             : intl.formatMessage({ id: "chat.error.sendFailed" }),
@@ -4436,7 +4436,7 @@ export function SessionPane({
       newText: string,
       attachments?: readonly AttachmentRef[],
       workspaceMode: "preserve" | "rewind" = "preserve",
-      conversationQuotes?: import("@zcode/shared").ConversationSelectionText[],
+      conversationQuotes?: import("@codez/shared").ConversationSelectionText[],
       submission?: ComposerSubmissionConfig | null,
     ) => {
       const current = snapshotRef.current;
@@ -5119,7 +5119,7 @@ export function SessionPane({
       if (!decoded?.providerId) {
         return;
       }
-      const displayProvider = provider ?? ZCODE_AGENT_PROVIDER;
+      const displayProvider = provider ?? CODEZ_AGENT_PROVIDER;
       let modelValue = value;
       if (!decoded.modelName) {
         const fallbackModel =
@@ -5142,7 +5142,7 @@ export function SessionPane({
         provider: modelSelection.providerId,
         model: modelSelection.modelId,
       });
-      const store = useZCodeSessionStore.getState();
+      const store = useCodezSessionStore.getState();
       store.setModelSelectionResolution(
         workspacePath,
         {
@@ -5161,18 +5161,18 @@ export function SessionPane({
       });
 
       try {
-        await zcodeTaskService.restartWorkspaceProcess({
+        await codezTaskService.restartWorkspaceProcess({
           workspacePath,
           workspaceIdentity,
           provider: displayProvider,
           bumpRuntimeEpoch: true,
         });
 
-        const prepareResult = await prepareWorkspaceWithZCodeSessionService({
+        const prepareResult = await prepareWorkspaceWithCodezSessionService({
           workspacePath,
           workspaceIdentity,
           provider: displayProvider,
-          zcodeSessionService,
+          codezSessionService,
         });
         handleDraftSelectModel(modelSelection.providerId, modelSelection.modelId);
         store.setConfigOptions(workspacePath, prepareResult.configOptions ?? [], workspaceIdentity);
@@ -5202,8 +5202,8 @@ export function SessionPane({
       showModelChangeNotice,
       workspaceIdentity,
       workspacePath,
-      zcodeSessionService,
-      zcodeTaskService,
+      codezSessionService,
+      codezTaskService,
     ],
   );
 
@@ -5331,10 +5331,10 @@ export function SessionPane({
       )
         return;
       try {
-        await zcodeTaskService.restartWorkspaceProcess({
+        await codezTaskService.restartWorkspaceProcess({
           workspacePath,
           workspaceIdentity,
-          provider: provider ?? ZCODE_AGENT_PROVIDER,
+          provider: provider ?? CODEZ_AGENT_PROVIDER,
           bumpRuntimeEpoch: true,
         });
         await lease?.store.retry();
@@ -5348,7 +5348,7 @@ export function SessionPane({
     state.lifecycle?.state,
     confirmLifecycleRecovery,
     intl,
-    zcodeTaskService,
+    codezTaskService,
     workspacePath,
     workspaceIdentity,
     provider,
@@ -5474,7 +5474,7 @@ export function SessionPane({
     ? (state.editPresentation?.rows ?? timelineSnapshot.rows)
     : null;
   // worktree 创建视图盖在本会话上，直到时间线出现内容或订阅出错（docs/git/worktree.md §3.3）。
-  const finishWorktreeHandoff = useZCodeSessionStore((store) => store.finishWorktreeHandoff);
+  const finishWorktreeHandoff = useCodezSessionStore((store) => store.finishWorktreeHandoff);
   const timelineHasRows = (timelineRows?.totalCount ?? 0) > 0;
   useEffect(() => {
     if (sessionId && (timelineHasRows || errored))
@@ -5566,7 +5566,7 @@ export function SessionPane({
       scrollToBottom();
       secondFrame = window.requestAnimationFrame(() => {
         if (!scrollToBottom()) return;
-        useZCodeSessionStore
+        useCodezSessionStore
           .getState()
           .clearTimelineBottomRequest(
             workspacePath,
@@ -5781,7 +5781,7 @@ export function SessionPane({
   // Bug 根因：当前显示哪条错误与「关闭」归谁曾在两处分别判断——渲染按「未关闭」状态取横幅，关闭处理却按
   // 原始状态分支；用户关掉模型失效横幅后，后续投影错误横幅的关闭按钮会一直落到已关闭的那条上而失效。
   // 这里把显示与关闭动作在同一处派生，两者不可能再分叉。
-  const composerBanner = useMemo<{ error: ZCodeUiError; dismiss: () => void } | null>(() => {
+  const composerBanner = useMemo<{ error: CodezUiError; dismiss: () => void } | null>(() => {
     if (draftModelReadinessError) {
       return { error: draftModelReadinessError, dismiss: dismissDraftModelReadinessError };
     }
@@ -6609,7 +6609,7 @@ export function SessionPane({
 
   const { agents: presentationAgents } = useSubagents(
     workspacePath,
-    ZCODE_AGENT_PROVIDER,
+    CODEZ_AGENT_PROVIDER,
     workspaceIdentity,
   );
   const agentPresentationCapabilities = useMemo(
@@ -6862,7 +6862,7 @@ export function SessionPane({
                     backgroundScrollLocked={false}
                     headerSlot={
                       // unsupportedRowCount 也要开这个门：整份副本的行都被本 build 跳过时
-                      // rows 为空，但只读块必须留下来显示「需要更新 ZCode」，不能整块消失。
+                      // rows 为空，但只读块必须留下来显示「需要更新 Codez」，不能整块消失。
                       importedShare &&
                       (importedShare.rows.length > 0 || importedShare.unsupportedRowCount > 0) ? (
                         <ConversationShareImportNotice

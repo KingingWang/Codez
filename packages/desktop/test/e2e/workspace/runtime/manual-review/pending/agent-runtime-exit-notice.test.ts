@@ -1,6 +1,6 @@
 // 后台 runtime（app-server）意外退出后，会话底部给出原因横幅（docs/ui/agent-runtime-exit-notice.md）。
 // 复现方式与用户现场一致：直接 SIGKILL app-server 子进程。只在 Linux 上按 /proc 定位本次 E2E 的进程。
-// 运行：ZCODE_E2E_MANUAL_REVIEW=1 pnpm --filter @zcode/desktop test:e2e -- \
+// 运行：CODEZ_E2E_MANUAL_REVIEW=1 pnpm --filter @codez/desktop test:e2e -- \
 //   --spec './test/e2e/workspace/runtime/manual-review/pending/agent-runtime-exit-notice.test.ts'
 // ARE-02 借用 v4 后台工作用例的回放夹具产出一个后台 Bash，并用 prlimit 让 Host 暂时无法创建子进程；需要另设
 //   E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json,\
@@ -8,7 +8,7 @@
 // 未设置时 ARE-02 跳过。
 import { execFileSync } from "node:child_process";
 import { readdir, readFile, readlink } from "node:fs/promises";
-import { TID_V4_BACKGROUND_WORK_ITEM, TID_V4_RETRY_SUBSCRIBE } from "@zcode/shared/test-ids";
+import { TID_V4_BACKGROUND_WORK_ITEM, TID_V4_RETRY_SUBSCRIBE } from "@codez/shared/test-ids";
 import { prepareConversationE2E, sendPrompt } from "#e2e/helpers/conversation-session";
 import {
   approveV4Permission,
@@ -20,7 +20,7 @@ import {
 } from "#e2e/helpers/v4-conversation";
 
 /**
- * 本次 E2E 工作区的 app-server 进程：命令行含 app-server（或已改名为 zcode-cli），cwd 在本次隔离
+ * 本次 E2E 工作区的 app-server 进程：命令行含 app-server（或已改名为 codez-cli），cwd 在本次隔离
  * HOME 的工作区下。
  * 不按环境变量 HOME 判断：Host 给 agent 的 HOME 不一定是 E2E HOME。plugin-workspace 泳道排除。
  */
@@ -30,10 +30,10 @@ async function findE2EAppServerPids(homeDir: string): Promise<number[]> {
     if (!/^\d+$/.test(entry)) continue;
     try {
       const cmdline = (await readFile(`/proc/${entry}/cmdline`, "utf8")).split("\0");
-      // CLI 启动后把进程标题改成 zcode-cli，会覆盖 cmdline；两种形态都要认。
-      if (!cmdline.includes("app-server") && !cmdline[0]?.startsWith("zcode-cli")) continue;
+      // CLI 启动后把进程标题改成 codez-cli，会覆盖 cmdline；两种形态都要认。
+      if (!cmdline.includes("app-server") && !cmdline[0]?.startsWith("codez-cli")) continue;
       const cwd = await readlink(`/proc/${entry}/cwd`);
-      if (cwd.startsWith(`${homeDir}/`) && !cwd.includes("/.zcode/")) pids.push(Number(entry));
+      if (cwd.startsWith(`${homeDir}/`) && !cwd.includes("/.codez/")) pids.push(Number(entry));
     } catch {
       // 进程在扫描期间退出或不可读：跳过。
     }
@@ -103,8 +103,8 @@ describe("后台 runtime 意外退出提示", () => {
 
   it("ARE-01 SIGKILL app-server 后会话底部出现通用原因横幅，可关闭", async function () {
     this.timeout(180_000);
-    const homeDir = process.env.ZCODE_E2E_HOME_DIR;
-    if (!homeDir) throw new Error("缺少 ZCODE_E2E_HOME_DIR");
+    const homeDir = process.env.CODEZ_E2E_HOME_DIR;
+    if (!homeDir) throw new Error("缺少 CODEZ_E2E_HOME_DIR");
     // 发一条消息让工作区确定拉起 runtime（provider 指向不可达的占位地址，本轮请求失败无妨）。
     await prepareConversationE2E();
     await sendPrompt("E2E_ARE01 start the runtime");
@@ -129,8 +129,8 @@ describe("后台 runtime 意外退出提示", () => {
 
     const banner = $('[data-testid="agent-runtime-exit-banner"]');
     await banner.waitForDisplayed({ timeout: 30_000, timeoutMsg: "app-server 被杀后没有出现横幅" });
-    if (process.env.ZCODE_E2E_ARE_SCREENSHOT) {
-      await browser.saveScreenshot(process.env.ZCODE_E2E_ARE_SCREENSHOT);
+    if (process.env.CODEZ_E2E_ARE_SCREENSHOT) {
+      await browser.saveScreenshot(process.env.CODEZ_E2E_ARE_SCREENSHOT);
     }
     // Linux 的 SIGKILL 不是可判定的内存不足签名，走通用文案。
     expect(await banner.getAttribute("data-exit-cause")).toBe("unknown");
@@ -155,8 +155,8 @@ describe("后台 runtime 意外退出提示", () => {
   it("ARE-02 重连失败时原因横幅随错误面板保留；胶囊里后台 Bash 的计时冻结、取消入口隐藏", async function () {
     if (!process.env.E2E_PROVIDER_REPLAY_FIXTURE_PATH?.includes("v4-background-work")) this.skip();
     this.timeout(240_000);
-    const homeDir = process.env.ZCODE_E2E_HOME_DIR;
-    if (!homeDir) throw new Error("缺少 ZCODE_E2E_HOME_DIR");
+    const homeDir = process.env.CODEZ_E2E_HOME_DIR;
+    if (!homeDir) throw new Error("缺少 CODEZ_E2E_HOME_DIR");
     await prepareV4ConversationE2E({ resetDraftBeforeProvider: true });
     await sendV4Prompt("E2E_V4_BGWORK 起一个后台任务");
     try {
@@ -200,9 +200,9 @@ describe("后台 runtime 意外退出提示", () => {
           () => false,
         );
       if (!bannerShown) problems.push("重连失败后原因横幅消失了");
-      if (process.env.ZCODE_E2E_ARE_SCREENSHOT) {
+      if (process.env.CODEZ_E2E_ARE_SCREENSHOT) {
         await browser.saveScreenshot(
-          process.env.ZCODE_E2E_ARE_SCREENSHOT.replace(/(\.png)?$/, "-errored.png"),
+          process.env.CODEZ_E2E_ARE_SCREENSHOT.replace(/(\.png)?$/, "-errored.png"),
         );
       }
       // 胶囊仍显示断开前的后台 Bash，但计时停住、取消入口隐藏（目标执行已不存在）。

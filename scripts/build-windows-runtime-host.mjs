@@ -11,7 +11,7 @@ const source = join(root, "scripts/windows-runtime-host");
 export function resolveRuntimeHostBuild(
   arch,
   hostPlatform = process.platform,
-  compiler = process.env.ZCODE_WINDOWS_CXX,
+  compiler = process.env.CODEZ_WINDOWS_CXX,
 ) {
   if (arch !== "x64" && arch !== "arm64")
     throw new Error(`Unsupported runtime host architecture: ${arch}`);
@@ -59,8 +59,8 @@ function run(args) {
 
 export async function isRuntimeHostReady(outputDir, arch) {
   try {
-    const hostBytes = await readFile(join(outputDir, "zcode-runtime-host.exe"));
-    const helperBytes = await readFile(join(outputDir, "zcode-installer-process-helper.exe"));
+    const hostBytes = await readFile(join(outputDir, "codez-runtime-host.exe"));
+    const helperBytes = await readFile(join(outputDir, "codez-installer-process-helper.exe"));
     verifyRuntimeHostPe(hostBytes, arch);
     verifyRuntimeHostPe(helperBytes, arch);
     const manifest = JSON.parse(await readFile(join(outputDir, "build.json"), "utf8"));
@@ -76,7 +76,7 @@ export async function isRuntimeHostReady(outputDir, arch) {
 
 export async function buildRuntimeHost({ arch, outputDir }) {
   const plan = resolveRuntimeHostBuild(arch);
-  const work = await mkdtemp(join(tmpdir(), "zcode-runtime-host-"));
+  const work = await mkdtemp(join(tmpdir(), "codez-runtime-host-"));
   try {
     await run(["-S", source, "-B", work, ...plan.configureArgs, "-DCMAKE_BUILD_TYPE=Release"]);
     await run([
@@ -85,22 +85,22 @@ export async function buildRuntimeHost({ arch, outputDir }) {
       "--config",
       "Release",
       "--target",
-      "zcode-runtime-host",
-      "zcode-installer-process-helper",
+      "codez-runtime-host",
+      "codez-installer-process-helper",
     ]);
     const releaseDir = join(work, ...(process.platform === "win32" ? ["Release"] : []));
-    const hostBytes = await readFile(join(releaseDir, "zcode-runtime-host.exe"));
-    const helperBytes = await readFile(join(releaseDir, "zcode-installer-process-helper.exe"));
+    const hostBytes = await readFile(join(releaseDir, "codez-runtime-host.exe"));
+    const helperBytes = await readFile(join(releaseDir, "codez-installer-process-helper.exe"));
     verifyRuntimeHostPe(hostBytes, arch);
     verifyRuntimeHostPe(helperBytes, arch);
     await mkdir(outputDir, { recursive: true });
     await copyFile(
-      join(releaseDir, "zcode-runtime-host.exe"),
-      join(outputDir, "zcode-runtime-host.exe"),
+      join(releaseDir, "codez-runtime-host.exe"),
+      join(outputDir, "codez-runtime-host.exe"),
     );
     await copyFile(
-      join(releaseDir, "zcode-installer-process-helper.exe"),
-      join(outputDir, "zcode-installer-process-helper.exe"),
+      join(releaseDir, "codez-installer-process-helper.exe"),
+      join(outputDir, "codez-installer-process-helper.exe"),
     );
     await writeFile(
       join(outputDir, "build.json"),
@@ -119,7 +119,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   const args = process.argv.slice(2);
   const arch =
     args.find((arg) => arg.startsWith("--arch="))?.slice(7) ||
-    process.env.ZCODE_TARGET_ARCH ||
+    process.env.CODEZ_TARGET_ARCH ||
     process.arch;
   const outputDir =
     args.find((arg) => arg.startsWith("--output-dir="))?.slice(13) ||

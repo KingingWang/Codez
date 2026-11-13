@@ -68,15 +68,15 @@ function resolveBootstrapWithRemoteEnv(baseEnv = process.env) {
 
   // 修复原因：默认 dev:desktop 使用生产账号；远程构建若沿用通用 test 默认值，
   // 会把生产凭据发往测试模型地址并返回 401。入口统一选择环境并传给所有构建子进程。
-  const zcodeEnv = baseEnv.ZCODE_ENV?.trim().toLowerCase() || "production";
-  if (zcodeEnv !== "test" && zcodeEnv !== "production") {
-    throw new Error(`Invalid ZCODE_ENV for bootstrap:with-remote: ${zcodeEnv}`);
+  const codezEnv = baseEnv.CODEZ_ENV?.trim().toLowerCase() || "production";
+  if (codezEnv !== "test" && codezEnv !== "production") {
+    throw new Error(`Invalid CODEZ_ENV for bootstrap:with-remote: ${codezEnv}`);
   }
 
   const pathEntries = [resolvePinnedNodeBin(), resolveUserPnpmBin()].filter(Boolean);
 
   return {
-    ZCODE_ENV: zcodeEnv,
+    CODEZ_ENV: codezEnv,
     // bootstrap:with-remote 是手动远程资源初始化入口，自动化等非 TTY 环境里
     // pnpm install 可能要求确认清理 node_modules。只在该入口禁用确认，不改变 CI/生产构建命令。
     HUSKY: "0",
@@ -85,7 +85,7 @@ function resolveBootstrapWithRemoteEnv(baseEnv = process.env) {
     // remote assets 和 bootstrap build 同一轮里会触发大量 workspace 构建。
     // 这里把降峰值限制在 bootstrap:with-remote 子进程，不修改 build/build:bootstrap 的全局语义。
     PNPM_CONFIG_WORKSPACE_CONCURRENCY: "1",
-    ZCODE_BOOTSTRAP_WITH_REMOTE: "1",
+    CODEZ_BOOTSTRAP_WITH_REMOTE: "1",
     ...(pathEntries.length > 0
       ? {
           PATH: prependPathEntries(baseEnv.PATH, pathEntries),
@@ -118,7 +118,7 @@ function runPnpm(args, options = {}) {
 function runBootstrapServerBuild() {
   const serverDir = resolve(rootDir, "packages/server");
 
-  // bootstrap:with-remote 的最终构建过去复用 build:bootstrap，导致 @zcode/server build
+  // bootstrap:with-remote 的最终构建过去复用 build:bootstrap，导致 @codez/server build
   // 内部再次嵌套 pnpm run build:remote；在本地低内存环境中 tsx/esbuild 子进程容易卡住或被停掉。
   // 同时不能按 dist 文件存在就跳过构建：开发时 version 经常不变，旧 entry-http 或 remote bundle
   // 会让本地/远端继续运行旧协议。这里仅保留直接执行等价入口的低内存优化，CI 和生产 build 脚本保持原样。
@@ -206,7 +206,7 @@ function runBootstrapDesktopBuild() {
 }
 
 function runBootstrapWithRemoteBuild() {
-  for (const filter of ["@zcode/rpc", "@zcode/web", "@zcode/formal-proof"]) {
+  for (const filter of ["@codez/rpc", "@codez/web", "@codez/formal-proof"]) {
     // pnpm -r 会在 bootstrap:with-remote 的最终构建阶段并发启动多个 Vite/esbuild/tsup。
     // remote assets 已经占过一轮内存峰值，这里显式串行包构建，且不改变 build:bootstrap/CI 命令。
     runPnpm(["--filter", filter, "build"]);
@@ -217,7 +217,7 @@ function runBootstrapWithRemoteBuild() {
   runBootstrapDesktopBuild();
 }
 
-runGit(["submodule", "update", "--init", "--recursive", "apps/zcode-cli"]);
+runGit(["submodule", "update", "--init", "--recursive", "apps/codez-cli"]);
 
 const clearedPatchedDependencies = await clearHoistedPatchedDependencyTargets({
   rootDir,
@@ -239,7 +239,7 @@ if (withRemoteAssets) {
   // Bug 原因：R3 首装只消费 Source Server archive，旧 bootstrap 只生成 legacy
   // manifest/components，导致开发态继续命中 gitignore 中的历史 dist-release。
   // 放在最终 workspace build 之后，确保 archive 收集的是本轮最新编译产物。
-  runPnpm(["--filter", "@zcode/server-cli", "stage:remote-assets"]);
+  runPnpm(["--filter", "@codez/server-cli", "stage:remote-assets"]);
 } else {
   runPnpm(["run", "build:bootstrap"]);
 }

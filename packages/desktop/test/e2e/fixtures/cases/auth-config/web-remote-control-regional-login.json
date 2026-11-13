@@ -8,8 +8,8 @@
   "fileFixtures": [
     {
       "kind": "app-config-seed",
-      "path": "~/.zcode/v2/credentials.json",
-      "purpose": "隔离中国区桌面主身份；浏览器保留同一ZCode主体的独立旧渠道登录，经本地relay验证390px页面配对、刷新和退出，不执行新授权。"
+      "path": "~/.codez/v2/credentials.json",
+      "purpose": "隔离中国区桌面主身份；浏览器保留同一Codez主体的独立旧渠道登录，经本地relay验证390px页面配对、刷新和退出，不执行新授权。"
     }
   ],
   "requests": []

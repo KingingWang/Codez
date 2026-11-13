@@ -264,7 +264,7 @@
           "id": "toolu_parent_cd",
           "name": "Bash",
           "input": {
-            "command": "mkdir -p .zcode-e2e/cd-child && cd .zcode-e2e/cd-child && printf 'R3_PARENT_CD_DONE\\n'",
+            "command": "mkdir -p .codez-e2e/cd-child && cd .codez-e2e/cd-child && printf 'R3_PARENT_CD_DONE\\n'",
             "dangerouslyDisableSandbox": true
           }
         }

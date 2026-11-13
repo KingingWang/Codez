@@ -2,7 +2,7 @@
 
 ## 背景
 
-`~/.zcode/cli/config.json` 可能来自旧版本、外部 Agent 导入或用户手写。历史配置里存在两类常见 MCP 字段：
+`~/.codez/cli/config.json` 可能来自旧版本、外部 Agent 导入或用户手写。历史配置里存在两类常见 MCP 字段：
 
 - stdio server 使用 `environment` 表示环境变量。
 - HTTP remote server 使用 `type: "remote"`。
@@ -26,7 +26,7 @@
 - `type: "remote"` 按外部导入约定归一化为 HTTP；若目标端点实际是 SSE，需要显式写成 `type: "sse"`。
 - 诊断文档与内置 diagnosing-mcp skill 必须区分两条链路：
   - CLI 直接读取配置时会经过配置入口归一化，兼容 `environment -> env`、`http_headers -> headers`、`enable -> enabled`、`type: "remote" -> "http"`。
-  - 桌面端 Settings / app-managed session 下发 MCP 时，先由 UI 读取用户目录，再转换为 ZCode Protocol `mcpServers`。这条链路不应让用户依赖 legacy 字段；排障时优先建议改成 canonical 字段：`env`、`headers`、`enabled`、`type: "http"`。
+  - 桌面端 Settings / app-managed session 下发 MCP 时，先由 UI 读取用户目录，再转换为 Codez Protocol `mcpServers`。这条链路不应让用户依赖 legacy 字段；排障时优先建议改成 canonical 字段：`env`、`headers`、`enabled`、`type: "http"`。
 - JSON 编辑器粘贴外部 MCP 配置时，需要提示 `command` 必须是字符串，OpenCode 配置格式的 `command: ["npx", "-y", "server"]` 需要拆成 `command: "npx"` 与 `args: ["-y", "server"]`，否则设置表单会把 `command` 当字符串处理并触发运行时错误。
 
 ## 验证

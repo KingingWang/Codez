@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { toolCallRowToLegacyNode } from "@/v4/toolCallRowAdapter.js";
-import type { ToolCallRow } from "@zcode/shared/zcode-protocol-v4";
+import type { ToolCallRow } from "@codez/shared/codez-protocol-v4";
 import { ToolPresentation } from "@/ToolCallBlocks/ToolPresentation.js";
 import type { TaskChatToolCallTreeNode } from "@/lib/toolCallTree.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import "@/styles.css";
 const query = new URLSearchParams(location.search);
@@ -161,9 +161,9 @@ function Fixture() {
   );
 }
 createRoot(document.getElementById("root")!).render(
-  <ZCodeIntlProvider initialLocale={locale}>
+  <CodezIntlProvider initialLocale={locale}>
     <TooltipProvider>
       <Fixture />
     </TooltipProvider>
-  </ZCodeIntlProvider>,
+  </CodezIntlProvider>,
 );

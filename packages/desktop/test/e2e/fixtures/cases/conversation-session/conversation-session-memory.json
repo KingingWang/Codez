@@ -28,12 +28,12 @@
       "description": "spec 在已选 Workspace Scope 的 viewer 打开后新增事实文件，用于验证文件不会自动出现、显式刷新会保留 Scope 并更新 catalog，且关闭开关不会删除文件。"
     },
     {
-      "path": ".zcode/agents/memory-window-curator.md",
+      "path": ".codez/agents/memory-window-curator.md",
       "source": "created-by-spec",
       "description": "spec 在默认 workspace 预置 project custom-agent profile。"
     },
     {
-      "path": ".zcode/agent-memory/memory-window-curator/MEMORY.md",
+      "path": ".codez/agent-memory/memory-window-curator/MEMORY.md",
       "source": "created-by-spec",
       "description": "spec 预置 custom-agent project Memory index。"
     }

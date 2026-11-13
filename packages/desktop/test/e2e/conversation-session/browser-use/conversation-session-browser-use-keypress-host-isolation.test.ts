@@ -1,6 +1,6 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { TID_V4_COMPOSER_INPUT } from "@zcode/shared/test-ids";
+import { TID_V4_COMPOSER_INPUT } from "@codez/shared/test-ids";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import { waitForUpstreamRequest } from "#e2e/helpers/conversation-session-network";
 import {
@@ -191,8 +191,8 @@ function readV4ComposerSnapshot(): Promise<{ focused: boolean; text: string | nu
   return browser.execute((inputTestId) => {
     const element = document.querySelector<HTMLElement>(`[data-testid="${inputTestId}"]`);
     const bridge = (
-      element as (HTMLElement & { __zcodeLexicalInputE2E?: { getText: () => string } }) | null
-    )?.__zcodeLexicalInputE2E;
+      element as (HTMLElement & { __codezLexicalInputE2E?: { getText: () => string } }) | null
+    )?.__codezLexicalInputE2E;
     return {
       focused: Boolean(
         element && document.activeElement && element.contains(document.activeElement),
@@ -209,8 +209,8 @@ async function focusEmptyV4Composer(timeout = 10000) {
       await browser.execute((inputTestId) => {
         const element = document.querySelector<HTMLElement>(`[data-testid="${inputTestId}"]`);
         (
-          element as (HTMLElement & { __zcodeLexicalInputE2E?: { focus: () => void } }) | null
-        )?.__zcodeLexicalInputE2E?.focus();
+          element as (HTMLElement & { __codezLexicalInputE2E?: { focus: () => void } }) | null
+        )?.__codezLexicalInputE2E?.focus();
       }, TID_V4_COMPOSER_INPUT);
       latest = await readV4ComposerSnapshot();
       return latest.focused && latest.text === "";

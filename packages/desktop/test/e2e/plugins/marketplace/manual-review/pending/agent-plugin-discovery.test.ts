@@ -5,7 +5,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_SETTINGS_BACK_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   getE2EAppDataPaths,
@@ -58,9 +58,9 @@ async function startWorkspaceDraft() {
 async function seedDisabledPlugin() {
   const { homeDir, workspace } = getE2EAppDataPaths();
   const paths = [
-    join(homeDir, ".zcode", "cli", "config.json"),
-    join(workspace, ".zcode", "config.json"),
-    join(homeDir, "other-workspace", ".zcode", "config.json"),
+    join(homeDir, ".codez", "cli", "config.json"),
+    join(workspace, ".codez", "config.json"),
+    join(homeDir, "other-workspace", ".codez", "config.json"),
   ];
   for (const path of paths) {
     const raw = await readFile(path, "utf8").catch((error) => {

@@ -19,7 +19,7 @@
 
 SSH/WSL 的按需进程和 R3 Core 不能依赖交互 shell 的 export。Server 入口共用一个
 初始化 adapter：显式环境配置优先；否则在当前凭据目录已存在私有
-`credential-secret` 文件时读取它（默认 `~/.zcode/v2/credential-secret`）。文件不存在
+`credential-secret` 文件时读取它（默认 `~/.codez/v2/credential-secret`）。文件不存在
 时，独立启动仍尝试系统库。Desktop 发起的远程启动先显式请求准备密钥（见下文）。无可用后端时，错误正文先说明远端文件名、
 所属配置目录、32–4096 字节和重新连接操作，沿现有连接错误详情传递。
 两条 Server 启动链使用同一 adapter；Desktop Main 不使用这个约定文件入口。
@@ -47,13 +47,13 @@ Server 与独立 CLI 复用同一默认解析器发现私有 credential-secret�
 ### Server 更新与回滚
 
 回滚不得把 v2 密文交给只能读取 v1 的旧 Core。新制品的 runtime/package.json 声明
-zcodeCredentialFormat: 2；恢复旧 current 指针、应用旧制品、崩溃后恢复更新事务均检查
+codezCredentialFormat: 2；恢复旧 current 指针、应用旧制品、崩溃后恢复更新事务均检查
 目标格式能力。已有 v2 而目标未声明支持时，保留 current、凭据和事务现场并报错，
 不启动旧版、不把数据改回弱加密。不因更新失败清登录或重放 OAuth。
 
 首次从旧 Supervisor 在线更新时，候选新 Core 由旧 owner 托管，若立刻迁移会先于
 新回滚保护生效。新 Supervisor 在 fork Core 时显式传入内部环境标记
-ZCODE_SERVER_CREDENTIAL_FORMAT=2；旧 owner 没有此标记时，候选
+CODEZ_SERVER_CREDENTIAL_FORMAT=2；旧 owner 没有此标记时，候选
 Core 暂时注入仅 v1 的兼容 cipher，不迁移且拒绝已有 v2，直到既有 handoff 重启为新
 Supervisor 后再使用 v2。标记只属于进程装配，不是用户配置，不改变外部协议。
 因此旧 owner 失败可安全回滚；新 owner 写入 v2 后只能回滚到支持 v2 的制品。
@@ -91,14 +91,14 @@ hello/ack、ready 和身份冷读取通过。更新入口在无效 archive 被�
 上一轮复评补验：约定文件、显式配置优先和非私有文件拒绝加入 CLI 回归，总计 50/50。
 两个独立 Node 进程在没有密钥环境变量时读取同一约定文件并保持凭据；真实 Server
 失败信息经过现有 R3 transport 和错误归一化后仍保留文件名和重连指引。
-本地构建的 `zcode-server.cjs` 通过真实 hello/ack：显式缺失文件时退出并保留指引；
+本地构建的 `codez-server.cjs` 通过真实 hello/ack：显式缺失文件时退出并保留指引；
 放置私有约定文件且不设置密钥环境变量时服务 ready。首轮探针误按 UTF-8 读取二进制
 RPC 帧，修正探针为字节读取后通过，两轮测试进程及临时目录均已清理。
 构建同时修复旧远端入口漏设 keyring external 的问题，避免展开各平台原生二进制；
 远端构建和相关原生依赖/Docker 工程测试 6/6 通过。未在真实 SSH/WSL/Linux 容器执行。
 
 - 独立 Server（未由 Desktop 请求准备密钥）在开放 HTTP/stdio 服务前初始化凭据后端。没有系统库时，管理员须显式
-  提供 `ZCODE_CREDENTIAL_SECRET` 或 `ZCODE_CREDENTIAL_SECRET_FILE`；二者不可同时设置。
+  提供 `CODEZ_CREDENTIAL_SECRET` 或 `CODEZ_CREDENTIAL_SECRET_FILE`；二者不可同时设置。
   文件是管理员管理的只读 secret，32–4096 字节，按原字节读取、不 trim，不自动生成或
   写入凭据目录。文件内容只留在 owner 内存，不注入子进程；子进程继承文件位置。
   Docker 启动脚本挂载该文件并传递文件位置；缺少配置时明确停止，不恢复弱密钥兜底。
@@ -132,7 +132,7 @@ CLI 类型 34 项任务、根/CLI lint 与架构检查通过。新增断言仍�
   私有文件密钥回退”改用私有文件密钥；其他平台与进程不变。
 - 同一规范化凭据路径对应一个系统凭据条目；开发、正式、测试目录相互隔离。
   创建密钥复用跨进程锁，首次并发启动不得产生互不兼容的密钥。
-- 保留既有 `ZCODE_CREDENTIAL_SECRET`，作为明确配置的无桌面/受管环境密钥来源；
+- 保留既有 `CODEZ_CREDENTIAL_SECRET`，作为明确配置的无桌面/受管环境密钥来源；
   不自动生成弱密钥、不把密钥写到普通配置/日志/环境变量。Desktop 请求的远端随机密钥
   仅保存在上述私有专用文件，不为子进程注入主密钥。
 - 读取旧明文和 `enc:v1` 使用既有解码规则；正常读取时在文件锁内迁移可读旧记录。
@@ -210,14 +210,14 @@ Secret Service 相比，对离线获取磁盘的保护较弱。Secret Service �
 ### 数据存储路径切换（2026-11-12）
 
 问题（ZCT-2120723935487688704，3.18.0 起）：系统条目按凭据文件的规范化路径区分。
-设置页「数据存储路径」只复制 `.zcode/v2`，`credentials.json` 和 `credential-source`
+设置页「数据存储路径」只复制 `.codez/v2`，`credentials.json` 和 `credential-source`
 到了新根，新路径却没有系统条目。新根启动后按“密钥丢失”处理：解不开原凭据；
 来源已固定为 os，也不能生成新密钥。用户表现为掉登录，且在新根上无法重新登录。
 托管密钥与路径无关，或随目录复制 `credential-secret`，不受影响。
 
 同一问题的另一种形态：源目录已固定为 os（`credential-source` 存在且条目存在），
 但 `credentials.json` 没有 os 密文。可达路径：只用过 API Key 等凭据、从未 OAuth 登录，
-之后删光凭据（普通删除不写 revision）；独立 CLI `zcode auth login` 授权前的写入探针
+之后删光凭据（普通删除不写 revision）；独立 CLI `codez auth login` 授权前的写入探针
 建了密钥后中止；确认“恢复凭据存储”后文件变为 `{}`。复制把 `credential-source`
 带到新根，新根没有条目，同样不能生成新密钥，重新登录失败。OAuth 登出会写入新的
 session revision 密文，不属于这种形态。
@@ -227,8 +227,8 @@ session revision 密文，不属于这种形态。
 - 切换数据根是凭据迁移的一部分。复制到目标的东西依赖哪把系统密钥，这把密钥就要
   登记到目标路径的系统条目：os 密文依赖生成它的密钥；`credential-source=os` 依赖
   目标路径存在条目，否则不能生成新密钥。登记在保存新路径之前完成。
-- 顺序：Host 复制 `.zcode/v2` → Host 经私有父子通道请求 Main 登记，只传目标数据根
-  → Main 按固定布局推导 `{目标根}/.zcode/v2/credentials.json`，用自己绑定目录的
+- 顺序：Host 复制 `.codez/v2` → Host 经私有父子通道请求 Main 登记，只传目标数据根
+  → Main 按固定布局推导 `{目标根}/.codez/v2/credentials.json`，用自己绑定目录的
   密钥登记 → 成功后 Host 才写 `setting.json.dataBaseDir`。登记失败则整个切换失败，
   路径不变，界面沿用“数据复制失败，路径未更改”。
 - 只在有证据时处理，按目标文件判断：
@@ -251,7 +251,7 @@ session revision 密文，不属于这种形态。
   没有条目的新目录时，没有可登记的密钥，仍然拒绝。
 
 ```text
-设置页保存 → Host.updateDataBaseDir → 复制 .zcode/v2
+设置页保存 → Host.updateDataBaseDir → 复制 .codez/v2
   → Host ⇢ Main：CredentialKeyShareRequest{ requestId, targetBaseDir }
      Main：读源/目标的 os 指纹与 credential-source → 判定要求（指定密钥 / 任意条目 / 不处理）
            → 目标条目已满足则成功
@@ -262,7 +262,7 @@ session revision 密文，不属于这种形态。
 
 验证（2026-11-12，macOS arm64 本机）：
 
-- CLI 回归 `apps/zcode-cli/packages/adapters/tests/credential-security.test.ts` 新增 6 项，先红后绿：
+- CLI 回归 `apps/codez-cli/packages/adapters/tests/credential-security.test.ts` 新增 6 项，先红后绿：
   登记后新根可读可写且重复登记不再写入；从未建过密钥、托管密钥、目标自有凭据三种情况
   不访问任何系统条目，且空目录之后仍能首次登录；目标已有另一把密钥时拒绝且不覆盖；
   目标写入失败时源目录仍可读写。

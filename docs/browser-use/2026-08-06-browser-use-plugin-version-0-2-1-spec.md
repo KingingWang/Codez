@@ -14,7 +14,7 @@
 以下当前版本事实源必须统一为 `0.2.1`：
 
 1. workspace package `package.json`；
-2. `.zcode-plugin/plugin.json`；
+2. `.codez-plugin/plugin.json`；
 3. Bootstrap `OFFICIAL_PLUGIN_DEFINITIONS`；
 4. SEA `officialSeaPlugins`；
 5. `node_repl` MCP `serverInfo.version`。
@@ -39,7 +39,7 @@
 
 | User scenario              | UI entry                          | Shared implementation           | Display/draft owner            | Default/inherit source                  | Validation/gating                                      | Commit action                       | Authority/persistence                                                 | Mode boundary                                         | Must remain isolated from                                               |
 | -------------------------- | --------------------------------- | ------------------------------- | ------------------------------ | --------------------------------------- | ------------------------------------------------------ | ----------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------- |
-| 启动后使用内置 Browser Use | Plugin settings / skill discovery | bundled official plugin seeding | 无草稿；UI 读取 discovery 结果 | official definition + packaged manifest | package/manifest/Bootstrap/SEA/server version 精确对齐 | 启动时 seed 到 version-scoped cache | `~/.zcode/cli/plugins/cache/zcode-plugins-official/browser-use/0.2.1` | filesystem、SEA、Desktop 与 remote 继续复用既有资产链 | Browser runtime、conversation stream、workspace identity、delivery kind |
+| 启动后使用内置 Browser Use | Plugin settings / skill discovery | bundled official plugin seeding | 无草稿；UI 读取 discovery 结果 | official definition + packaged manifest | package/manifest/Bootstrap/SEA/server version 精确对齐 | 启动时 seed 到 version-scoped cache | `~/.codez/cli/plugins/cache/zcode-plugins-official/browser-use/0.2.1` | filesystem、SEA、Desktop 与 remote 继续复用既有资产链 | Browser runtime、conversation stream、workspace identity、delivery kind |
 
 ### 2.3 Feature Relationships
 
@@ -56,7 +56,7 @@
 | State/fact               | Authoritative owner           | Commit/build sink    | Persistence/cache                      | Evidence               |
 | ------------------------ | ----------------------------- | -------------------- | -------------------------------------- | ---------------------- |
 | workspace plugin version | `package.json`                | workspace build      | package metadata                       | package file           |
-| runtime plugin identity  | `.zcode-plugin/plugin.json`   | plugin discovery     | seeded cache manifest                  | manifest               |
+| runtime plugin identity  | `.codez-plugin/plugin.json`   | plugin discovery     | seeded cache manifest                  | manifest               |
 | bundled current version  | `OFFICIAL_PLUGIN_DEFINITIONS` | filesystem seed      | official cache + marketplace partition | Bootstrap source/tests |
 | SEA embedded version     | `officialSeaPlugins`          | SEA asset collection | embedded manifest then official cache  | SEA source/tests       |
 | MCP runtime version      | `NODE_REPL_SERVER_VERSION`    | `serverInfo`         | runtime handshake                      | MCP server source/test |
@@ -147,7 +147,7 @@ package / manifest / Bootstrap / SEA / serverInfo = 0.2.1
 | SEA Browser Use version/assets test | 1/1 通过；package/manifest/SEA 均为 `0.2.1`，必需资产清单完整                                       |
 | Desktop runtime asset scripts       | 39/39 通过                                                                                          |
 | Remote official plugin assets       | 77/77 通过                                                                                          |
-| Browser Use plugin build            | 通过，构建身份为 `@zcode/browser-use-plugin@0.2.1`                                                  |
+| Browser Use plugin build            | 通过，构建身份为 `@codez/browser-use-plugin@0.2.1`                                                  |
 | CLI workspace typecheck             | 23/23 tasks 通过                                                                                    |
 | 根仓库 `pnpm typecheck`             | 通过                                                                                                |
 | 根仓库 `pnpm lint`                  | 0 errors，36 条既有 warning                                                                         |

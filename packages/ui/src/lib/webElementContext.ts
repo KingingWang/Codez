@@ -2,15 +2,15 @@ import type {
   PageElementRect,
   PageElementSnapshot,
   PageElementStyleSummary,
-} from "@zcode/design-runtime";
+} from "@codez/design-runtime";
 
-export const WEB_ELEMENT_CONTEXT_ADD_TO_CHAT_EVENT = "zcode:web-element-context-add-to-chat";
+export const WEB_ELEMENT_CONTEXT_ADD_TO_CHAT_EVENT = "codez:web-element-context-add-to-chat";
 export const WEB_ELEMENT_CONTEXT_REMOVE_FROM_CHAT_EVENT =
-  "zcode:web-element-context-remove-from-chat";
+  "codez:web-element-context-remove-from-chat";
 /** 事件 detail 上的标记键：只更新已有的同 id 引用（不新加） */
-export const WEB_ELEMENT_CONTEXT_UPDATE_ONLY = "__zcodeUpdateOnly";
+export const WEB_ELEMENT_CONTEXT_UPDATE_ONLY = "__codezUpdateOnly";
 /** 输入框里用户删掉了引用（与上面「浏览器要求撤回」方向相反）；浏览器设计工具据此取消页面上的选中 */
-export const WEB_ELEMENT_CONTEXTS_REMOVED_EVENT = "zcode:web-element-contexts-removed";
+export const WEB_ELEMENT_CONTEXTS_REMOVED_EVENT = "codez:web-element-contexts-removed";
 
 const WEB_ELEMENT_CONTEXT_BLOCK_TITLE = "# Web page elements:";
 const MAX_MARKDOWN_FIELD_LENGTH = 8_000;
@@ -170,8 +170,8 @@ function formatFont(style: WebElementStyleSummary | undefined) {
 function buildWebElementContextMarkdown(payload: WebElementContextComposerAttachment) {
   const lines = [
     `## Element ${payload.ordinal}`,
-    // 正文里的元素 token 是 [@名称](zcode-element://id)，靠这一行对到这个元素
-    ...(payload.inline ? [`Reference: zcode-element://${payload.id}`] : []),
+    // 正文里的元素 token 是 [@名称](codez-element://id)，靠这一行对到这个元素
+    ...(payload.inline ? [`Reference: codez-element://${payload.id}`] : []),
     `URL: ${payload.pageUrl}`,
     `Title: ${payload.pageTitle || "(untitled)"}`,
     `Tag: ${payload.tagName.toLowerCase()}`,
@@ -295,7 +295,7 @@ function parseElementItem(
   }
   const ordinal = Number(/^## Element\s+(\d+)/u.exec(rawItem)?.[1] ?? index + 1);
   // 设计稿元素 token 的引用块带 Reference 行：正文里已经是 token，按原 id 还原成 inline 引用
-  const referenceId = /^zcode-element:\/\/(\S+)$/u.exec(readField(rawItem, "Reference"))?.[1];
+  const referenceId = /^codez-element:\/\/(\S+)$/u.exec(readField(rawItem, "Reference"))?.[1];
 
   return {
     id: referenceId ?? `parsed-web-element-${index + 1}-${tagName}`,

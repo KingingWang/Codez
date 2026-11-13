@@ -66,7 +66,7 @@
  */
 
 /*
- * 修复原因：styles.css 是从 @zcode/ui 包里被 web/desktop 间接引入的，Tailwind v4 在这种工作区场景下
+ * 修复原因：styles.css 是从 @codez/ui 包里被 web/desktop 间接引入的，Tailwind v4 在这种工作区场景下
  * 仅靠 source(".") 不能稳定把 UI 包里的 TSX 组件都加入扫描，像 Select 这类新组件用到的
  * bg-popover、shadow-md、overflow-x-hidden 等 utility 会直接缺席，页面就只剩下一部分“碰巧命中”的通用类。
  * 这里显式补一条 @source，让 Tailwind 始终扫描 UI 包源码，避免下拉框、菜单这类组件渲染成半残状态。
@@ -153,7 +153,7 @@ body {
 
 /*
  * 中日韩汉字共用码位，字形由字体决定：--font-mono 为中文在 monospace 前写死了 SC 字体，
- * 日文/韩文界面会因此显示中文字形（如「直」「骨」）。<html lang> 由 ZCodeIntlProvider 跟随界面语言写入，
+ * 日文/韩文界面会因此显示中文字形（如「直」「骨」）。<html lang> 由 CodezIntlProvider 跟随界面语言写入，
  * 这里按 lang 把对应语言的字体排到 SC 前面；无衬线正文走 system-ui，浏览器会按 lang 自动选日/韩字形。
  */
 :root:lang(ja) {
@@ -934,11 +934,11 @@ body {
  * 会命中上面的全局滚动条样式，在幻灯片内部露出滚动条。幻灯片内容不存在用户滚动交互，
  * 这里整体隐藏渲染表面内部的原生滚动条。
  */
-[data-zcode-pptx-render-surface] * {
+[data-codez-pptx-render-surface] * {
   scrollbar-width: none;
 }
 
-[data-zcode-pptx-render-surface] *::-webkit-scrollbar {
+[data-codez-pptx-render-surface] *::-webkit-scrollbar {
   display: none;
   width: 0;
   height: 0;
@@ -1027,7 +1027,7 @@ body {
   }
 }
 
-@keyframes zcode-turn-navigator-enter {
+@keyframes codez-turn-navigator-enter {
   from {
     opacity: 0;
     transform: translateX(-6px);
@@ -1040,12 +1040,12 @@ body {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .zcode-turn-navigator-enter {
-    animation: zcode-turn-navigator-enter 180ms ease-out;
+  .codez-turn-navigator-enter {
+    animation: codez-turn-navigator-enter 180ms ease-out;
   }
 }
 
-@keyframes zcode-stream-text-in {
+@keyframes codez-stream-text-in {
   0% {
     opacity: 0;
   }
@@ -1055,7 +1055,7 @@ body {
   }
 }
 
-@keyframes zcode-draft-prompt-waterfall {
+@keyframes codez-draft-prompt-waterfall {
   from {
     opacity: 0;
     clip-path: inset(0 0 100% 0);
@@ -1069,13 +1069,13 @@ body {
   }
 }
 
-.zcode-draft-prompt-waterfall {
-  animation: zcode-draft-prompt-waterfall 260ms cubic-bezier(0.22, 1, 0.36, 1)
-    var(--zcode-draft-prompt-waterfall-delay, 0ms) both;
+.codez-draft-prompt-waterfall {
+  animation: codez-draft-prompt-waterfall 260ms cubic-bezier(0.22, 1, 0.36, 1)
+    var(--codez-draft-prompt-waterfall-delay, 0ms) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .zcode-draft-prompt-waterfall {
+  .codez-draft-prompt-waterfall {
     animation: none;
   }
 }
@@ -1115,27 +1115,27 @@ body {
    逐词浮现要靠尾部好几帧的词处在不同透明度，形成渐隐的尾巴才看得出来，所以逐词单独用
    300ms + ease-out（低于 90% 不透明的约 7 帧）；整块入场是一次性的，保留原来的急起曲线。 */
 :root {
-  --zcode-reveal-duration: 300ms;
-  --zcode-reveal-ease: ease-out;
-  --zcode-enter-duration: 260ms;
-  --zcode-enter-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --codez-reveal-duration: 300ms;
+  --codez-reveal-ease: ease-out;
+  --codez-enter-duration: 260ms;
+  --codez-enter-ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* 逐字 / 逐词浮现。只动 opacity：文本从第一帧起就占满最终位置，高度恒定，
    不触发 ResizeObserver，也就不会撞进虚拟滚动测高和底部跟随。
    刻意不加 will-change：每个单元一个 span，提升合成层反而拖垮长消息。
-   排期写在 --zcode-reveal-delay 上（跨帧的浮现时钟，见 message.tsx 的 planRevealSchedule）。
+   排期写在 --codez-reveal-delay 上（跨帧的浮现时钟，见 message.tsx 的 planRevealSchedule）。
    Bugfix：最初用 @keyframes 绑在新词上，但词在下一帧（30ms）就从 new 变成 settled，
    选择器不再命中，动画被立即移除，淡入只播了一帧。transition 只要 transition-property
    仍含 opacity 就会跑完，所以 settled 也保留同一条 transition；@starting-style 只作用于
    元素首次挂载，new 只决定挂载时是否从透明开始。 */
-[data-zcode-reveal] {
-  transition: opacity var(--zcode-reveal-duration) var(--zcode-reveal-ease)
-    var(--zcode-reveal-delay, 0ms);
+[data-codez-reveal] {
+  transition: opacity var(--codez-reveal-duration) var(--codez-reveal-ease)
+    var(--codez-reveal-delay, 0ms);
 }
 
 @starting-style {
-  [data-zcode-reveal="new"] {
+  [data-codez-reveal="new"] {
     opacity: 0;
   }
 }
@@ -1145,41 +1145,41 @@ body {
    这里沿用正文同一套 transition + @starting-style：属性从 new 变成 settled 时过渡不被取消
    （Electron 44.7 / Chrome 152 探针实测）。unlayered 的 @starting-style 能盖过 Tailwind 分层的
    marker:text-foreground-subtlest，颜色从透明插值到它，中间不会先变黑。
-   延迟用单独的变量名：li 上的值不能被里面 settled 的字继承。时长与正文共用 --zcode-reveal-duration。 */
-[data-zcode-reveal-marker]::marker {
-  transition: color var(--zcode-reveal-duration) var(--zcode-reveal-ease)
-    var(--zcode-reveal-marker-delay, 0ms);
+   延迟用单独的变量名：li 上的值不能被里面 settled 的字继承。时长与正文共用 --codez-reveal-duration。 */
+[data-codez-reveal-marker]::marker {
+  transition: color var(--codez-reveal-duration) var(--codez-reveal-ease)
+    var(--codez-reveal-marker-delay, 0ms);
 }
 
 @starting-style {
-  [data-zcode-reveal-marker="new"]::marker {
+  [data-codez-reveal-marker="new"]::marker {
     color: transparent;
   }
 }
 
-[data-zcode-stream-animate="true"] {
-  animation: zcode-stream-text-in var(--zcode-enter-duration) var(--zcode-enter-ease)
-    var(--zcode-stream-animation-delay, 0ms) both;
+[data-codez-stream-animate="true"] {
+  animation: codez-stream-text-in var(--codez-enter-duration) var(--codez-enter-ease)
+    var(--codez-stream-animation-delay, 0ms) both;
   will-change: opacity;
 }
 
-[data-zcode-chat-loading-animate="true"] {
-  animation: zcode-stream-text-in var(--zcode-enter-duration) var(--zcode-enter-ease) both;
+[data-codez-chat-loading-animate="true"] {
+  animation: codez-stream-text-in var(--codez-enter-duration) var(--codez-enter-ease) both;
   will-change: opacity;
 }
 
 /* Bugfix: Radix Collapsible 在测量 closed 高度时会写入 inline animation-name:none。
    assistant 历史区自动结束收起需要在延迟卸载期间继续播放高度动画，
    所以这里用 !important 覆盖 Radix 的 inline style，只作用于显式标记的收起窗口。 */
-[data-zcode-collapsible-animate-close="true"][data-state="closed"] {
-  animation: zcode-collapsible-up 300ms ease-in-out forwards !important;
+[data-codez-collapsible-animate-close="true"][data-state="closed"] {
+  animation: codez-collapsible-up 300ms ease-in-out forwards !important;
 }
 
-[data-zcode-collapsible-animate-close="true"][data-state="closed"] > * {
-  animation: zcode-collapsible-fade-out 300ms ease-in-out forwards !important;
+[data-codez-collapsible-animate-close="true"][data-state="closed"] > * {
+  animation: codez-collapsible-fade-out 300ms ease-in-out forwards !important;
 }
 
-@keyframes zcode-collapsible-up {
+@keyframes codez-collapsible-up {
   from {
     height: var(--radix-collapsible-content-height);
   }
@@ -1189,7 +1189,7 @@ body {
   }
 }
 
-@keyframes zcode-collapsible-fade-out {
+@keyframes codez-collapsible-fade-out {
   from {
     opacity: 1;
   }
@@ -1200,31 +1200,31 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-zcode-reveal],
-  [data-zcode-reveal-marker]::marker {
+  [data-codez-reveal],
+  [data-codez-reveal-marker]::marker {
     transition: none;
   }
 
-  [data-zcode-stream-animate="true"],
-  [data-zcode-chat-loading-animate="true"],
-  [data-zcode-collapsible-animate-close="true"][data-state="closed"],
-  [data-zcode-collapsible-animate-close="true"][data-state="closed"] > * {
+  [data-codez-stream-animate="true"],
+  [data-codez-chat-loading-animate="true"],
+  [data-codez-collapsible-animate-close="true"][data-state="closed"],
+  [data-codez-collapsible-animate-close="true"][data-state="closed"] > * {
     animation: none;
   }
 }
 
 /* 点赞/点踩选中时的反馈动画：参考微信/X 的做法，只做图标回弹 + 细小粒子飞散两段，
    粒子用 box-shadow 画在 ::after 上且跟随 currentColor，零额外 DOM、不引入新颜色。 */
-.zcode-reaction-burst {
+.codez-reaction-burst {
   position: relative;
   display: inline-flex;
 }
 
-.zcode-reaction-burst > svg {
-  animation: zcode-reaction-pop 450ms cubic-bezier(0.34, 1.56, 0.64, 1);
+.codez-reaction-burst > svg {
+  animation: codez-reaction-pop 450ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.zcode-reaction-burst::after {
+.codez-reaction-burst::after {
   content: "";
   position: absolute;
   top: 50%;
@@ -1236,14 +1236,14 @@ body {
   background: transparent;
   opacity: 0;
   pointer-events: none;
-  animation: zcode-reaction-particles 560ms cubic-bezier(0.16, 1, 0.3, 1) 60ms forwards;
+  animation: codez-reaction-particles 560ms cubic-bezier(0.16, 1, 0.3, 1) 60ms forwards;
 }
 
-.animate-zcode-alarm-ring {
-  animation: zcode-alarm-ring 600ms ease-in-out infinite;
+.animate-codez-alarm-ring {
+  animation: codez-alarm-ring 600ms ease-in-out infinite;
 }
 
-@keyframes zcode-alarm-ring {
+@keyframes codez-alarm-ring {
   0%,
   100% {
     transform: rotate(-10deg);
@@ -1254,7 +1254,7 @@ body {
   }
 }
 
-@keyframes zcode-reaction-pop {
+@keyframes codez-reaction-pop {
   0% {
     transform: scale(0);
   }
@@ -1272,7 +1272,7 @@ body {
   }
 }
 
-@keyframes zcode-reaction-particles {
+@keyframes codez-reaction-particles {
   0% {
     opacity: 0;
     box-shadow:
@@ -1301,8 +1301,8 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .zcode-reaction-burst > svg,
-  .zcode-reaction-burst::after {
+  .codez-reaction-burst > svg,
+  .codez-reaction-burst::after {
     animation: none;
   }
 }
@@ -1320,24 +1320,24 @@ body {
   }
 }
 
-@keyframes zcode-task-interaction-countdown {
+@keyframes codez-task-interaction-countdown {
   from {
-    transform: scaleX(var(--zcode-interaction-progress, 1));
+    transform: scaleX(var(--codez-interaction-progress, 1));
   }
   to {
     transform: scaleX(0);
   }
 }
 
-.zcode-task-interaction-countdown-fill {
-  animation: zcode-task-interaction-countdown var(--zcode-interaction-remaining-ms, 240000ms) linear
+.codez-task-interaction-countdown-fill {
+  animation: codez-task-interaction-countdown var(--codez-interaction-remaining-ms, 240000ms) linear
     forwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .zcode-task-interaction-countdown-fill {
+  .codez-task-interaction-countdown-fill {
     animation: none;
-    transform: scaleX(var(--zcode-interaction-progress, 1));
+    transform: scaleX(var(--codez-interaction-progress, 1));
   }
 }
 
@@ -1345,12 +1345,12 @@ body {
   animation: workspace-remote-connecting-breathe 1.8s ease-in-out infinite;
 }
 
-.zcode-update-charge-progress [data-slot="progress-indicator"] {
+.codez-update-charge-progress [data-slot="progress-indicator"] {
   position: relative;
   overflow: hidden;
 }
 
-.zcode-update-charge-progress [data-slot="progress-indicator"]::after {
+.codez-update-charge-progress [data-slot="progress-indicator"]::after {
   content: "";
   position: absolute;
   bottom: 0;
@@ -1363,11 +1363,11 @@ body {
     color-mix(in oklab, var(--color-primary-foreground) 62%, transparent),
     transparent
   );
-  animation: zcode-update-charge-sweep 1.15s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  animation: codez-update-charge-sweep 1.15s cubic-bezier(0.65, 0, 0.35, 1) infinite;
   transform: translateX(-120%);
 }
 
-@keyframes zcode-update-charge-sweep {
+@keyframes codez-update-charge-sweep {
   0% {
     opacity: 0.35;
     transform: translateX(-120%);
@@ -1384,7 +1384,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .zcode-update-charge-progress [data-slot="progress-indicator"]::after {
+  .codez-update-charge-progress [data-slot="progress-indicator"]::after {
     animation: none;
     opacity: 0.2;
     transform: none;
@@ -2369,7 +2369,7 @@ body {
 }
 
 /* thumb 伪元素需继承容器颜色；每个真实子元素重置透明，隔离嵌套滚动区。 */
-@property --zcode-scrollbar-thumb {
+@property --codez-scrollbar-thumb {
   syntax: "<color>";
   inherits: true;
   initial-value: transparent;
@@ -2377,7 +2377,7 @@ body {
 :is([data-project-sidebar-panel], [data-workspace-conversation-frame], [data-workspace-side-frame]),
 :is([data-project-sidebar-panel], [data-workspace-conversation-frame], [data-workspace-side-frame])
   * {
-  --zcode-scrollbar-thumb: transparent;
+  --codez-scrollbar-thumb: transparent;
   scrollbar-color: auto;
 }
 :is(
@@ -2387,10 +2387,10 @@ body {
 )::-webkit-scrollbar-thumb,
 :is([data-project-sidebar-panel], [data-workspace-conversation-frame], [data-workspace-side-frame])
   *::-webkit-scrollbar-thumb {
-  background-color: var(--zcode-scrollbar-thumb);
+  background-color: var(--codez-scrollbar-thumb);
 }
 [data-scrollbar-active] {
-  --zcode-scrollbar-thumb: var(--color-border);
+  --codez-scrollbar-thumb: var(--color-border);
 }
 
 /* 只在滑块本身悬停/拖动时增强反馈，不改变轨道与内容尺寸。 */
@@ -2421,10 +2421,10 @@ body {
 }
 
 [data-scrollbar-active][data-scrollbar-hover] {
-  --zcode-scrollbar-thumb: color-mix(in oklab, var(--color-foreground) 30%, transparent);
+  --codez-scrollbar-thumb: color-mix(in oklab, var(--color-foreground) 30%, transparent);
 }
 [data-scrollbar-active][data-scrollbar-dragging] {
-  --zcode-scrollbar-thumb: color-mix(in oklab, var(--color-foreground) 45%, transparent);
+  --codez-scrollbar-thumb: color-mix(in oklab, var(--color-foreground) 45%, transparent);
 }
 /* 文字填充与图标分别控制，避免箭头和身份头像随摘要文字变色；扫光保留自身透明填充。 */
 @media (hover: hover) {

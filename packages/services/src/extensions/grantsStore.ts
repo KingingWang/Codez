@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
-import { Emitter, type Event } from "@zcode/rpc";
-import { atomicWritePrivateTextFile, backupCorruptFile } from "@zcode/shared/node";
+import { Emitter, type Event } from "@codez/rpc";
+import { atomicWritePrivateTextFile, backupCorruptFile } from "@codez/shared/node";
 import {
   extensionActivationHoldSchema,
   extensionGrantSchema,
@@ -16,12 +16,12 @@ import {
   type ExtensionGrantsSnapshot,
   type ExtensionStaticTable,
   type StaticPlugin,
-} from "@zcode/shared/extension-host";
+} from "@codez/shared/extension-host";
 import { z } from "zod";
 import type { ServiceLogger } from "#src/logger/serviceLogger.js";
 
 // 授权记录（docs/plugins/extension-host.md §17.7）：唯一 owner 是本服务，文件
-// `~/.zcode/v2/extensions/grants.json`。没有记录就拒绝。卸载删除记录，禁用不删。
+// `~/.codez/v2/extensions/grants.json`。没有记录就拒绝。卸载删除记录，禁用不删。
 //
 //   grants.json（记录）⊕ 静态表（清单声明的档位与版本）──► 生效档位 + 整份授权状态（带 rev）
 //

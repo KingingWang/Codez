@@ -70,8 +70,8 @@ Go 模板创建 ─────┐
 
 ### 4. 请求头与配置交付
 
-- 复用公共 `User-Agent: ZCode/<版本>`、版本头及原生会话头；验证实际请求，不伪装其他客户端。
-  官方已说明 Go 识别 ZCode 原生会话头，`x-opencode-session` 不是本轮必需新增项。
+- 复用公共 `User-Agent: Codez/<版本>`、版本头及原生会话头；验证实际请求，不伪装其他客户端。
+  官方已说明 Go 识别 Codez 原生会话头，`x-opencode-session` 不是本轮必需新增项。
 - 普通 API Key 鉴权，不进入智谱 Sig，不增加 OAuth／套餐账号／额度查询体系。
 - 只编辑生产 Built-in，通过 `pnpm provider:config:sync-test` 同步生成测试配置；
   Go URL 两个环境相同。按既有规则更新 revision，验证最终配置含模板与站点规则。
@@ -134,8 +134,8 @@ Go 模板创建 ─────┐
 - Header 复审发现当前基线已通过 `3b67992023` 提供 Go 的 `x-opencode-session`；本次保留并实测该字段与原生 `x-session-id` 一致，不删除既有能力，不重复新增 Header 路径。版本头、UA、API Key 和无 Sig 断言通过。
 - 先红后绿：配置用例初始 13 项失败，正式 SDK 用例初始 8 项失败；分别抓到缺少模板、错误四组参数、错误公开值域、Go 容量差异与 MiniMax 混入 Claude effort。
 - 配置相关 5 个文件 **56/56** 通过；Adapter Go／新模型／公共 Header 3 个文件 **81/81** 通过；配置构建与同步脚本 **20/20** 通过。合计 157 项（不重复累计后续重跑）。Go 新增 30 项，SDK 参数按公开档位与 1/4096 Token 预算枚举，并覆盖三协议正文／工具意图／用量解码。响应是离线合成数据，不是 Go 线上成功证明。
-- `pnpm typecheck`、Adapter `tsc --noEmit`、`pnpm --filter @zcode/desktop typecheck:e2e` 通过；根 `pnpm lint` 0 error／42 个既有 warning；新增文件格式检查通过。架构门禁 0 baseline／0 new violation。
-- 生产／测试配置实际经 `stageBuiltinProviderConfig` 分别输出，均为 revision 27／3 模板／25 型号，产物 `/tmp/opencode-go-build-kYChiD/zcode-builtin.json`（后一次为 test）。环境选择与实际 tsup 嵌入由上述 20 项构建测试覆盖；没有重打整个桌面安装包。
+- `pnpm typecheck`、Adapter `tsc --noEmit`、`pnpm --filter @codez/desktop typecheck:e2e` 通过；根 `pnpm lint` 0 error／42 个既有 warning；新增文件格式检查通过。架构门禁 0 baseline／0 new violation。
+- 生产／测试配置实际经 `stageBuiltinProviderConfig` 分别输出，均为 revision 27／3 模板／25 型号，产物 `/tmp/opencode-go-build-kYChiD/codez-builtin.json`（后一次为 test）。环境选择与实际 tsup 嵌入由上述 20 项构建测试覆盖；没有重打整个桌面安装包。
 - 语义差分复审：移除本次 Go 三个模板、25 条站点规则和25条模板成员默认规则、还原 revision 后，整份配置与 HEAD 深度相等。没有修改 Zen、普通 API 或全局混合兜底。
 - G149-01 已写入 `packages/desktop/test/e2e/settings/manual-review/pending/provider-opencode-go.test.ts`，通过 E2E 类型检查。当前 Linux 无 DISPLAY、Xvfb 或 Docker，未运行原生 Electron 用例；深浅主题／窄屏、Air 真机连接／聊天／工具调用及辅助调用均保留未测，未远程部署或覆盖 Air 配置。
 - 本次不包含工作区既有 Todo144 未提交改动，不推送、不发布在线 Built-in；Air 不会因本地提交自动获得新规则。

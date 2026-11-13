@@ -3,7 +3,7 @@
 // 1) 两个 PNG 经真实 paste + eager begin/chunk/commit，正文保持空字符串；
 // 2) 首发允许仅 AttachmentRef[]，user row 保留两个有序 ref；
 // 3) composer 编辑态删除第一个并提交，UI active branch 与 provider-visible request 都仅含第二个 ref。
-import { TID_V4_ROW_ATTACHMENTS } from "@zcode/shared/test-ids";
+import { TID_V4_ROW_ATTACHMENTS } from "@codez/shared/test-ids";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import { removeV4ComposerAttachmentAt } from "#e2e/helpers/v4-composer-edit";
 import {

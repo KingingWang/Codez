@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { createRequire } from "node:module";
 import { createInterface } from "node:readline";
 import { z } from "zod";
-import { providerProvisioningEnvelopeSchema } from "@zcode/shared";
+import { providerProvisioningEnvelopeSchema } from "@codez/shared";
 
 const KEYS = [
   "oauth:active_provider",
@@ -20,7 +20,7 @@ const KEYS = [
   "oauth:bigmodel:refresh_token",
   "oauth:bigmodel:user_info",
   "oauth:linked_bigmodel",
-  "zcodejwttoken",
+  "codezjwttoken",
 ];
 const empty = Object.fromEntries(KEYS.map((key) => [key, null]));
 const primary = {
@@ -34,7 +34,7 @@ const primary = {
     customerId: "e2e-linked-customer",
     accessToken: "e2e-linked-business",
   }),
-  zcodejwttoken: "e2e-primary-jwt",
+  codezjwttoken: "e2e-primary-jwt",
 };
 class Runtime {
   child: ChildProcessWithoutNullStreams;
@@ -46,7 +46,7 @@ class Runtime {
       process.execPath,
       [require.resolve("tsx/cli"), resolve("test/e2e/fixtures/oauth-provisioning/runtime.ts")],
       {
-        env: { ...process.env, HOME: home, ZCODE_DATA_BASE_DIR: home, ZCODE_ENV: "test" },
+        env: { ...process.env, HOME: home, CODEZ_DATA_BASE_DIR: home, CODEZ_ENV: "test" },
         stdio: ["pipe", "pipe", "pipe"],
       },
     );
@@ -131,7 +131,7 @@ describe("OAuth provisioning runtime", () => {
       values: {
         ...primary,
         "oauth:session_revision": "e2e-before",
-        zcodejwttoken: "e2e-before-primary",
+        codezjwttoken: "e2e-before-primary",
       },
     });
     const before = await target.call("read", { keys: KEYS });
@@ -154,7 +154,7 @@ describe("OAuth provisioning runtime", () => {
     expect(await target.call("read", { keys: KEYS })).toEqual({
       ...primary,
       "oauth:session_revision": "e2e-concurrent-revision",
-      zcodejwttoken: "e2e-concurrent-primary",
+      codezjwttoken: "e2e-concurrent-primary",
     });
   });
   it("旧 v2 不继承目标关联和 revision，手工 Key 保留", async function () {
@@ -168,7 +168,7 @@ describe("OAuth provisioning runtime", () => {
         key: "oauth:bigmodel:user_info",
         value: JSON.stringify({ id: "e2e-legacy", username: "legacy" }),
       },
-      { scope: "oauth-session", key: "zcodejwttoken", value: "e2e-legacy-primary" },
+      { scope: "oauth-session", key: "codezjwttoken", value: "e2e-legacy-primary" },
     ];
     const result = await target.call("apply", {
       envelope: { ...sourceEnvelope, schemaVersion: 2, credentials },

@@ -1,8 +1,8 @@
-import { ProviderConfig } from "@zcode/provider";
-import { NodePersonalProviderConfigRepository } from "@zcode/provider-node";
+import { ProviderConfig } from "@codez/provider";
+import { NodePersonalProviderConfigRepository } from "@codez/provider-node";
 import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";
-import { type ModelSelection, BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+import { type ModelSelection, BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 import {
   TID_MODEL_PROVIDER_CONNECTION_MODE_ITEM,
   TID_MODEL_PROVIDER_CONNECTION_MODE_TRIGGER,
@@ -21,7 +21,7 @@ import {
   TID_AUTOMATION_CARD,
   TID_AUTOMATION_CARD_MENU,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -200,7 +200,7 @@ describe("SR87 当前有效选择与原意图", () => {
         text: document.body.innerText.slice(-5000),
         drafts: Object.fromEntries(
           Object.entries(localStorage).filter(([key]) =>
-            key.startsWith("zcode-v4-composer-drafts:v1:"),
+            key.startsWith("codez-v4-composer-drafts:v1:"),
           ),
         ),
       }));
@@ -271,7 +271,7 @@ describe("SR87 当前有效选择与原意图", () => {
     await clickTestIdByDom(TID_AUTOMATION_CREATE_MANUALLY);
     // 自动化有独立项目 Select；旧 Composer 的菜单入口已移除。
     await $('[data-testid="automation-project-select"]').click();
-    await $('[role="option"][data-project-name="ZCodeProject"]').click();
+    await $('[role="option"][data-project-name="CodezProject"]').click();
     await selectRegistryProviderModelById(E2E_PLAN_NON_DEFAULT_MODEL, {
       providerId: individual,
       includePlainModelFallback: false,
@@ -437,11 +437,11 @@ async function seedLegacyDisabledPlanModel() {
 async function currentDraftStorageKey() {
   return browser.execute((workspace) => {
     const raw = localStorage.getItem(
-      `zcode-composer-workspace-scope:v1:${JSON.stringify(["desktop", workspace])}`,
+      `codez-composer-workspace-scope:v1:${JSON.stringify(["desktop", workspace])}`,
     );
     if (!raw) throw new Error("草稿缺少 workspace 到项目 scope 的映射");
     const intent = JSON.parse(raw);
-    return `zcode-v4-composer-project-drafts:v1:${JSON.stringify([
+    return `codez-v4-composer-project-drafts:v1:${JSON.stringify([
       intent.clientNamespace,
       intent.hostId,
       intent.projectId,

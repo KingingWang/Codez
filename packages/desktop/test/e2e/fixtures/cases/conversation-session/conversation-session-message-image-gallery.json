@@ -8,12 +8,12 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/message-image-gallery/*.svg",
+      "path": ".codez-e2e/message-image-gallery/*.svg",
       "source": "created-by-spec",
       "description": "MIG01-MIG05/MIG07 在 Agent workspace 写入 4 张不同颜色的 1200x800 SVG，验证本地 fileService 加载、分组、导航和缩放。"
     },
     {
-      "path": "${TMPDIR}/zcode-e2e-message-image-gallery-*.svg",
+      "path": "${TMPDIR}/codez-e2e-message-image-gallery-*.svg",
       "source": "created-by-spec",
       "description": "MIG08 mock desktop native Save As 后校验当前预览图片的完整落盘字节，并覆盖取消不创建文件。"
     }

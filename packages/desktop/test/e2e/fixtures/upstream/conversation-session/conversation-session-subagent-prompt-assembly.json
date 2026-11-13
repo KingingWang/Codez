@@ -46,7 +46,7 @@
           "Available agent types for the Agent tool:",
           "Available agent types are listed in <system-reminder> messages in the conversation.",
           "Use SendMessage with the agent's ID to continue a previously spawned agent with its context intact; a new Agent call starts fresh.",
-          "Each agent type's model, reasoning effort, and tools come from its definition (`.zcode/agents/*.md` frontmatter)."
+          "Each agent type's model, reasoning effort, and tools come from its definition (`.codez/agents/*.md` frontmatter)."
         ],
         "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
       },
@@ -118,7 +118,7 @@
           "Available agent types for the Agent tool:",
           "Available agent types are listed in <system-reminder> messages in the conversation.",
           "Use SendMessage with the agent's ID to continue a previously spawned agent with its context intact; a new Agent call starts fresh.",
-          "Each agent type's model, reasoning effort, and tools come from its definition (`.zcode/agents/*.md` frontmatter)."
+          "Each agent type's model, reasoning effort, and tools come from its definition (`.codez/agents/*.md` frontmatter)."
         ],
         "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
       },
@@ -153,7 +153,7 @@
           "Available agent types for the Agent tool:",
           "Available agent types are listed in <system-reminder> messages in the conversation.",
           "Use SendMessage with the agent's ID to continue a previously spawned agent with its context intact; a new Agent call starts fresh.",
-          "Each agent type's model, reasoning effort, and tools come from its definition (`.zcode/agents/*.md` frontmatter)."
+          "Each agent type's model, reasoning effort, and tools come from its definition (`.codez/agents/*.md` frontmatter)."
         ],
         "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
       },
@@ -184,7 +184,7 @@
         "method": "POST",
         "pathIncludes": "/messages",
         "lastUserMessageIncludes": ["E2E_SUBAGENT_PROMPT_ASSEMBLY_EXPLORE_CHILD"],
-        "bodyIncludes": ["E2E_SUBAGENT_PROMPT_ASSEMBLY_EXPLORE_CHILD", "You are ZCode Explore"],
+        "bodyIncludes": ["E2E_SUBAGENT_PROMPT_ASSEMBLY_EXPLORE_CHILD", "You are Codez Explore"],
         "bodyExcludes": [
           "E2E_SUBAGENT_USER_AGENTS_INSTRUCTION",
           "E2E_SUBAGENT_WORKSPACE_AGENTS_INSTRUCTION",
@@ -223,7 +223,7 @@
           "Available agent types for the Agent tool:",
           "Available agent types are listed in <system-reminder> messages in the conversation.",
           "Use SendMessage with the agent's ID to continue a previously spawned agent with its context intact; a new Agent call starts fresh.",
-          "Each agent type's model, reasoning effort, and tools come from its definition (`.zcode/agents/*.md` frontmatter)."
+          "Each agent type's model, reasoning effort, and tools come from its definition (`.codez/agents/*.md` frontmatter)."
         ],
         "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
       },
@@ -258,7 +258,7 @@
           "Available agent types for the Agent tool:",
           "Available agent types are listed in <system-reminder> messages in the conversation.",
           "Use SendMessage with the agent's ID to continue a previously spawned agent with its context intact; a new Agent call starts fresh.",
-          "Each agent type's model, reasoning effort, and tools come from its definition (`.zcode/agents/*.md` frontmatter)."
+          "Each agent type's model, reasoning effort, and tools come from its definition (`.codez/agents/*.md` frontmatter)."
         ],
         "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
       },
@@ -331,7 +331,7 @@
           "Available agent types for the Agent tool:",
           "Available agent types are listed in <system-reminder> messages in the conversation.",
           "Use SendMessage with the agent's ID to continue a previously spawned agent with its context intact; a new Agent call starts fresh.",
-          "Each agent type's model, reasoning effort, and tools come from its definition (`.zcode/agents/*.md` frontmatter)."
+          "Each agent type's model, reasoning effort, and tools come from its definition (`.codez/agents/*.md` frontmatter)."
         ],
         "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
       },
@@ -366,7 +366,7 @@
           "Available agent types for the Agent tool:",
           "Available agent types are listed in <system-reminder> messages in the conversation.",
           "Use SendMessage with the agent's ID to continue a previously spawned agent with its context intact; a new Agent call starts fresh.",
-          "Each agent type's model, reasoning effort, and tools come from its definition (`.zcode/agents/*.md` frontmatter)."
+          "Each agent type's model, reasoning effort, and tools come from its definition (`.codez/agents/*.md` frontmatter)."
         ],
         "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
       },
@@ -439,7 +439,7 @@
           "Available agent types for the Agent tool:",
           "Available agent types are listed in <system-reminder> messages in the conversation.",
           "Use SendMessage with the agent's ID to continue a previously spawned agent with its context intact; a new Agent call starts fresh.",
-          "Each agent type's model, reasoning effort, and tools come from its definition (`.zcode/agents/*.md` frontmatter)."
+          "Each agent type's model, reasoning effort, and tools come from its definition (`.codez/agents/*.md` frontmatter)."
         ],
         "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
       },

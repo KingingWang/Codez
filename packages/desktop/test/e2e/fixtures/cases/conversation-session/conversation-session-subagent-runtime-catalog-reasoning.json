@@ -9,13 +9,13 @@
   "fileFixtures": [
     {
       "kind": "app-config",
-      "path": "~/.zcode/v2/agents-state.json",
+      "path": "~/.codez/v2/agents-state.json",
       "description": "写入 Claude builtin model/effort 初始值，验证 runtime catalog 展示、非法值修正、切模清除和冷启动 child 请求。",
       "source": "created-by-helper"
     },
     {
       "kind": "app-config",
-      "path": "~/.zcode/agents/e2e-claude-catalog-reviewer.md",
+      "path": "~/.codez/agents/e2e-claude-catalog-reviewer.md",
       "description": "写入带非法 thoughtLevel 的 Claude custom agent，验证阻止保存、合法修正、切模清除和冷启动 child 请求。",
       "source": "created-by-helper"
     }

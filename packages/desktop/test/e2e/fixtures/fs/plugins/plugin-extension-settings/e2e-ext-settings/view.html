@@ -22,9 +22,9 @@
     <h1>E2E account</h1>
     <p id="status">ready</p>
     <script>
-      // 页面只经 window.zcode（MCP App 页面层）调视图工具；E2E 在页面里直接调 callTool。
-      // 注意：window.zcode 是不可配置的全局属性，经典脚本顶层不能再声明同名的 const / let。
-      const host = window.zcode;
+      // 页面只经 window.codez（MCP App 页面层）调视图工具；E2E 在页面里直接调 callTool。
+      // 注意：window.codez 是不可配置的全局属性，经典脚本顶层不能再声明同名的 const / let。
+      const host = window.codez;
       host.subscribe(() => {
         const variables = host.hostContext?.styles?.variables ?? {};
         for (const [name, value] of Object.entries(variables)) {

@@ -60,7 +60,7 @@ ownership 校验和卸载启动保护，不改 canonical 历史或 App 的身份
 - 保留数据首轮已验证真实卸载保留身份，但 case 未点击原项目交接页的安装确认就调用了
   错误页等待 helper，因“需要先确认安装”失败。补上实际用户安装确认并等错误页退出后复跑，
   未修改业务逻辑或放宽身份/续聊断言；首轮失败 artifact 保留。
-- `desktop-e2e-20261010-reinstall-fix-replace-environment` **1/1 PASS**：完整封存原 `.zcode`
+- `desktop-e2e-20261010-reinstall-fix-replace-environment` **1/1 PASS**：完整封存原 `.codez`
   后在同一 SSH 入口安装空数据环境；新 UUID 触发确认，取消保持原 Profile，确认归档旧连接、
   新建独立 Profile。原任务在封存数据库可对账，新设备可见任务列表为空，当前会话与正文
   不混入旧任务。`identity-confirmation.png`、`new-environment-empty.png`、`uninstall.json`

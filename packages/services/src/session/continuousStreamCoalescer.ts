@@ -1,4 +1,4 @@
-import type { ZCodeStreamEvent } from "@zcode/shared";
+import type { CodezStreamEvent } from "@codez/shared";
 
 const CONTINUOUS_CHUNK_FLUSH_DELAY_MS = 16;
 const CONTINUOUS_CHUNK_MAX_CHARS = 4096;
@@ -6,12 +6,12 @@ const CONTINUOUS_CHUNK_MAX_EVENTS = 128;
 const CONTINUOUS_CHUNK_KEY_SEPARATOR = "\u0000";
 
 type ContinuousCoalescibleChunk =
-  | Extract<ZCodeStreamEvent, { type: "agent_message_chunk" }>
-  | Extract<ZCodeStreamEvent, { type: "agent_thought_chunk" }>;
+  | Extract<CodezStreamEvent, { type: "agent_message_chunk" }>
+  | Extract<CodezStreamEvent, { type: "agent_thought_chunk" }>;
 
 type ContinuousCoalescibleState =
-  | Extract<ZCodeStreamEvent, { type: "usage_update" }>
-  | Extract<ZCodeStreamEvent, { type: "session_info_update" }>;
+  | Extract<CodezStreamEvent, { type: "usage_update" }>
+  | Extract<CodezStreamEvent, { type: "session_info_update" }>;
 
 interface PendingContinuousChunkItem {
   kind: "chunk";
@@ -29,19 +29,19 @@ interface PendingContinuousStateItem {
 type PendingContinuousItem = PendingContinuousChunkItem | PendingContinuousStateItem;
 
 interface ContinuousStreamCoalescer {
-  accept(event: ZCodeStreamEvent): void;
+  accept(event: CodezStreamEvent): void;
   flush(): void;
   dispose(): void;
 }
 
-function isContinuousCoalescibleChunk(event: ZCodeStreamEvent): event is ContinuousCoalescibleChunk {
+function isContinuousCoalescibleChunk(event: CodezStreamEvent): event is ContinuousCoalescibleChunk {
   return (
     event.type === "agent_thought_chunk" ||
-    (event.type === "agent_message_chunk" && !event.zcodeTimeline)
+    (event.type === "agent_message_chunk" && !event.codezTimeline)
   );
 }
 
-function isContinuousCoalescibleState(event: ZCodeStreamEvent): event is ContinuousCoalescibleState {
+function isContinuousCoalescibleState(event: CodezStreamEvent): event is ContinuousCoalescibleState {
   if (event.type === "usage_update") {
     return true;
   }
@@ -89,7 +89,7 @@ function mergeContinuousChunks(
 }
 
 export function createContinuousStreamCoalescer(params: {
-  emit: (event: ZCodeStreamEvent) => void;
+  emit: (event: CodezStreamEvent) => void;
   flushDelayMs?: number;
   maxChars?: number;
   maxEvents?: number;
@@ -168,7 +168,7 @@ export function createContinuousStreamCoalescer(params: {
   }
 
   return {
-    accept(event: ZCodeStreamEvent): void {
+    accept(event: CodezStreamEvent): void {
       if (disposed) {
         return;
       }

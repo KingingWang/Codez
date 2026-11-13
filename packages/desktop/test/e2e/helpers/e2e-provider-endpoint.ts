@@ -13,11 +13,11 @@ export function getE2EProviderEndpointEnv(
   // 公共 helper 不再复制 preset 判断，避免两处规则漂移。
   if (!isProductionAccountRun(specs)) return requestSecurityEndpointEnv(providerPreset, httpMode);
   return {
-    ZCODE_BASE_URL: PRODUCTION_E2E_PROVIDER_CONFIG_ORIGIN,
-    ZCODE_ENDPOINT_ORIGIN: PRODUCTION_E2E_PROVIDER_CONFIG_ORIGIN,
-    // 账号校验独立于 ZCode 控制面。SSH 透传 ZCODE_ENV，但不透传 BigModel 地址覆盖；
+    CODEZ_BASE_URL: PRODUCTION_E2E_PROVIDER_CONFIG_ORIGIN,
+    CODEZ_ENDPOINT_ORIGIN: PRODUCTION_E2E_PROVIDER_CONFIG_ORIGIN,
+    // 账号校验独立于 Codez 控制面。SSH 透传 CODEZ_ENV，但不透传 BigModel 地址覆盖；
     // 仅覆盖本机地址会造成模型已可选、远端却向 bigmodel.cn 重试的半通状态。
-    ZCODE_ENV: "production",
+    CODEZ_ENV: "production",
     BIGMODEL_API_BASE_URL: "https://bigmodel.cn",
   };
 }

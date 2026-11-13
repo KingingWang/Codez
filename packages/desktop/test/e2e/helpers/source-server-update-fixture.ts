@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 import {
   SOURCE_SERVER_RELEASE_DESCRIPTOR_FILE_NAME,
   sourceServerReleaseDescriptorSchema,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 const run = promisify(execFile);
 
@@ -18,7 +18,7 @@ export async function prepareSourceServerUpdateArchive(
   options: { desktopRoot?: string } = {},
 ) {
   const desktopRoot = options.desktopRoot ?? resolve(import.meta.dirname, "../../..");
-  const runId = process.env.ZCODE_E2E_RUN_ID?.trim();
+  const runId = process.env.CODEZ_E2E_RUN_ID?.trim();
   if (!runId || !/^[a-zA-Z0-9-]+$/u.test(runId)) throw new Error("更新 fixture 缺少安全 runId");
   const { version } = JSON.parse(
     await readFile(resolve(desktopRoot, "../../package.json"), "utf8"),
@@ -30,7 +30,7 @@ export async function prepareSourceServerUpdateArchive(
   );
   const entry = descriptor.archives.find((item) => item.sha256 === remoteSha);
   if (!entry) throw new Error("更新 fixture 的远端 SHA 不在本轮发布清单中");
-  const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR;
+  const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR;
   if (!artifactDir) throw new Error("更新 fixture 缺少隔离产物目录");
   await mkdir(artifactDir, { recursive: true });
   const work = await mkdtemp(join(artifactDir, "release-repack-"));

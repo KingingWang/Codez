@@ -1,5 +1,5 @@
-import { normalizeRemoteConnectionError, sanitizeRemoteConnectionLog } from "@zcode/shared";
-import { createCredentialCipherBridge } from "@zcode/shared/credential-security";
+import { normalizeRemoteConnectionError, sanitizeRemoteConnectionLog } from "@codez/shared";
+import { createCredentialCipherBridge } from "@codez/shared/credential-security";
 import { join } from "node:path";
 /* eslint-disable max-lines -- Host 入口集中编排 local/remote service wiring，本次退出保护需要在同一处桥接 host 上报。 */
 /* eslint-disable max-lines -- host process 入口集中维护 local/remote 初始化和资源回收，realtime bridge 接入后先保持同文件收口。 */
@@ -17,7 +17,7 @@ import { join } from "node:path";
  * 3. 后续远端 connect / scoped attachment 都由同一 Host 处理
  */
 import { createHostDatabaseStartup } from "./database-startup/hostDatabaseStartup.js";
-import { isOffPeakTerminalStatus } from "@zcode/shared";
+import { isOffPeakTerminalStatus } from "@codez/shared";
 import { createHostNetworkCapture } from "./hostNetworkCapture.js";
 import { randomUUID } from "node:crypto";
 import { createPluginSandboxRegistrationBridge } from "./pluginSandbox/index.js";
@@ -29,7 +29,7 @@ import {
   type IChannelServer,
   LoggingChannelServer,
   NetworkTelemetryChannelServer,
-} from "@zcode/rpc";
+} from "@codez/rpc";
 import { registerHostNetworkTelemetry, stopHostNetworkTelemetry } from "./hostNetworkTelemetry.js";
 import { registerHostServiceResourceTelemetry } from "./hostServiceResourceTelemetry.js";
 import { resolveResourceTelemetryEnvironmentKey } from "./hostResourceTelemetryEnvironment.js";
@@ -41,7 +41,7 @@ import {
   appNavigationResultMessageSchema,
 } from "#src/app-control-navigation/host.js";
 import { materializeBrowserRecordingArtifact } from "./browserRecordingArtifactMaterializer.js";
-import { mainToExtensionWindowMessageSchema } from "@zcode/shared/extension-host";
+import { mainToExtensionWindowMessageSchema } from "@codez/shared/extension-host";
 import {
   ServiceCollection,
   IBotsService,
@@ -68,15 +68,15 @@ import {
   IWindowControllerService,
   IConversationShareService,
   IPromptAttachmentTransferService,
-  IZCodeAgentService,
-  IZCodeTaskService,
-  IZCodeSessionService,
+  ICodezAgentService,
+  ICodezTaskService,
+  ICodezSessionService,
   ICuaPipSessionService,
-  createZCodeAgentConnectionScope,
-  type ZCodeAgentV4ClientMode,
+  createCodezAgentConnectionScope,
+  type CodezAgentV4ClientMode,
   collectServiceMemoryDiagnostics,
   createWebRemoteProjectTreeActivityBridge,
-} from "@zcode/services";
+} from "@codez/services";
 import {
   createLocalServices,
   createProjectWorkspaceNavigation,
@@ -110,7 +110,7 @@ import {
   type BotProjectConnection,
   type HostApiNetworkTransport,
   type OffPeakRequestAuthBuilder,
-} from "@zcode/services/node";
+} from "@codez/services/node";
 import { createHostResourceUsageResponder } from "./hostResourceUsage.js";
 import {
   assertBoundSessionDispatchable,
@@ -121,7 +121,7 @@ import {
   HostMessageTypes,
   HostResponseTypes,
   formatLogPrefix,
-  formatZCodeHostProcessName,
+  formatCodezHostProcessName,
   formatZodError,
   buildRemoteWorkspaceIdentity,
   buildServerRemoteWorkspaceIdentity,
@@ -134,19 +134,19 @@ import {
   REMOTE_BIND_CANCELED_ERROR_CODE,
   REMOTE_WORKSPACE_BIND_SESSION_MISSING_ERROR_CODE,
   formatModelPickerValue,
-  type ZCodePromptAttachment,
-  type ZCodeStreamEvent,
-  type ZCodeTaskMeta,
+  type CodezPromptAttachment,
+  type CodezStreamEvent,
+  type CodezTaskMeta,
   type TaskStreamMirrorableEvent,
   type TraceId,
-  type ZCodeTaskMode,
+  type CodezTaskMode,
   type WindowHostAttachmentScope,
   type SourceServerArtifactPolicy,
-  type ZCodeAutomation,
-  type ZCodeAutomationRun,
-  type ZCodeAutomationRunOutcome,
+  type CodezAutomation,
+  type CodezAutomationRun,
+  type CodezAutomationRunOutcome,
   type ModelSelection,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   parseHostIncomingMessageEvent,
   rejectUnavailableAttachedServicePort,
@@ -154,8 +154,8 @@ import {
 // remote backend 相关模块延迟加载：ssh2 的 CJS 依赖链（asn1 等）在 asar 打包后路径断裂，
 // 静态 import 会导致 local 模式的 host process 也崩溃。
 // 改为动态 import，仅 remote 模式时才加载。
-import type { IRemoteBackend } from "@zcode/server/remote";
-import type { Locale, RemoteTarget } from "@zcode/shared";
+import type { IRemoteBackend } from "@codez/server/remote";
+import type { Locale, RemoteTarget } from "@codez/shared";
 import { wrapElectronPort } from "./electronPort.js";
 import { createTaskRealtimeBridgeForHostInit } from "./taskRealtimeBridge.js";
 import { resolveRpcLogLevel } from "./rpcLogLevel.js";
@@ -220,7 +220,7 @@ import {
 } from "./sourceServerManagementService.js";
 import { resolveSourceServerReleaseAsset } from "./sourceServerReleaseResolver.js";
 import { resolveAutomationSubmissionModelSelection } from "./automationModelSelection.js";
-import { createRemoteConnectionProgressContext } from "@zcode/server/remote/remoteConnectionProgressContext.js";
+import { createRemoteConnectionProgressContext } from "@codez/server/remote/remoteConnectionProgressContext.js";
 import {
   createRemotePromptAttachmentTransferService,
   type RemotePromptAttachmentTransferService,
@@ -245,7 +245,7 @@ interface HostRemoteConnectionCapabilities {
   recordWorkspaceOpen?: (input: {
     workspacePath: string;
     workspaceIdentity: string;
-    workspacePurpose?: import("@zcode/shared").WorkspacePurpose;
+    workspacePurpose?: import("@codez/shared").WorkspacePurpose;
     legacyWorkspaceIdentity?: string;
     signal?: AbortSignal;
   }) => Promise<void>;
@@ -270,7 +270,7 @@ const hostRemoteMediaRequestLimiter = {
   getState: () => ({ active: activeRemoteMediaRequests, limit: 4 }),
 };
 const remoteMediaRangePreviewEnabled =
-  process.env["ZCODE_REMOTE_MEDIA_RANGE_PREVIEW_ENABLED"] !== "0";
+  process.env["CODEZ_REMOTE_MEDIA_RANGE_PREVIEW_ENABLED"] !== "0";
 
 type RemoteAssetDirs = import("./windowRemoteConnectionRegistry.js").WindowRemoteAssetDirs;
 
@@ -282,8 +282,8 @@ const credentialCipherBridge = createCredentialCipherBridge((request) => {
 const hostNetworkCapture = createHostNetworkCapture(parentPort);
 
 // 进程检索体验优化：host 由 utilityProcess 拉起时外壳仍是 Electron Helper，
-// 这里根据 main 传入的窗口 label 补一层稳定的 zcode-* title，方便系统进程列表过滤。
-process.title = formatZCodeHostProcessName(process.env["ZCODE_PROCESS_LABEL"]);
+// 这里根据 main 传入的窗口 label 补一层稳定的 codez-* title，方便系统进程列表过滤。
+process.title = formatCodezHostProcessName(process.env["CODEZ_PROCESS_LABEL"]);
 
 type HostLogLevel = "info" | "warn" | "error";
 
@@ -456,7 +456,7 @@ const remoteConnectionProgressContext = createRemoteConnectionProgressContext({
 });
 
 function writeHostLog(level: HostLogLevel, ...args: unknown[]): void {
-  const prefix = formatLogPrefix("zcode-host", process.pid);
+  const prefix = formatLogPrefix("codez-host", process.pid);
   const consoleFn =
     level === "error" ? rawConsole.error : level === "warn" ? rawConsole.warn : rawConsole.log;
   consoleFn(prefix, ...args);
@@ -479,7 +479,7 @@ function createFullFeedbackLogArchiveViaMain(
       onProgress: options?.onProgress,
     });
     // 问题反馈以前在 host service 内走 compactLogArchive 的 full fallback，
-    // 收集范围和“导出日志”不一致，缺少 zcode-cli 日志、rollout/debug 以及导出链路脱敏。
+    // 收集范围和“导出日志”不一致，缺少 codez-cli 日志、rollout/debug 以及导出链路脱敏。
     // 这里把完整日志打包委托给 main process 的导出日志同源逻辑，host 只拿 zip 路径继续上传。
     try {
       parentPort.postMessage({
@@ -583,13 +583,13 @@ function disposeOffPeakRunSubscription(key: string): void {
 
 /** 终态回填 files_changed：复用现有 task diff 汇总（工具写盘型统计，Bash 改动不计入，接受）。 */
 async function resolveOffPeakFilesChanged(params: {
-  zcodeTaskService: IZCodeTaskService;
+  codezTaskService: ICodezTaskService;
   taskId: string;
   workspacePath: string;
   workspaceIdentity?: string;
 }): Promise<number | undefined> {
   try {
-    const snapshot = await params.zcodeTaskService.getTaskSnapshot({
+    const snapshot = await params.codezTaskService.getTaskSnapshot({
       taskId: params.taskId,
       workspacePath: params.workspacePath,
       ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
@@ -606,12 +606,12 @@ async function resolveOffPeakFilesChanged(params: {
 
 /** loop 终态 → off_peak_tasks 终态：succeeded→completed、stopped→cancelled（用户手动停止）、其余→failed。 */
 async function finalizeOffPeakRun(params: {
-  zcodeTaskService: IZCodeTaskService;
+  codezTaskService: ICodezTaskService;
   offPeakTaskId: string;
   taskId: string;
   workspacePath: string;
   workspaceIdentity?: string;
-  outcome: ZCodeAutomationRunOutcome;
+  outcome: CodezAutomationRunOutcome;
   error?: string;
 }): Promise<void> {
   const status =
@@ -638,7 +638,7 @@ async function finalizeOffPeakRun(params: {
     `off-peak run finished task=${params.offPeakTaskId} status=${status} filesChanged=${filesChanged ?? "n/a"}`,
   );
   // 后台完成统一置未读，打开 task 时由导航链路清除（与 cron 同款）。
-  void params.zcodeTaskService.setTaskUnread({
+  void params.codezTaskService.setTaskUnread({
     taskId: params.taskId,
     workspacePath: params.workspacePath,
     ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
@@ -647,8 +647,8 @@ async function finalizeOffPeakRun(params: {
 }
 
 function trackOffPeakRunOutcome(params: {
-  zcodeTaskService: IZCodeTaskService;
-  zcodeAgentService: IZCodeAgentService;
+  codezTaskService: ICodezTaskService;
+  codezAgentService: ICodezAgentService;
   service: OffPeakTaskService;
   ticketId: string;
   offPeakTaskId: string;
@@ -669,11 +669,11 @@ function trackOffPeakRunOutcome(params: {
     sessionId: params.taskId,
     ticketId: params.ticketId,
     control: (control) =>
-      params.zcodeAgentService.controlOffPeakExecutionV4({ ...target, control }),
+      params.codezAgentService.controlOffPeakExecutionV4({ ...target, control }),
     complete: (outcome) => finalizeOffPeakRun({ ...params, outcome }),
     disposed: () => disposeOffPeakRunSubscription(key),
   });
-  const disposable = params.zcodeAgentService.onDynamicOffPeakLifecycle(target)((event) => {
+  const disposable = params.codezAgentService.onDynamicOffPeakLifecycle(target)((event) => {
     if (event.executionId !== params.traceId || event.sessionId !== params.taskId) return;
     void params.service.residentExecutions
       .handle(event)
@@ -698,10 +698,10 @@ async function dispatchOffPeakRun(request: OffPeakRunDispatchRequest): Promise<{
   sessionId?: string;
   lifecycleManaged: true;
 }> {
-  const zcodeTaskService = activeServices?.getOptional(IZCodeTaskService);
-  const zcodeAgentService = activeServices?.getOptional(IZCodeAgentService);
-  if (!zcodeTaskService || !zcodeAgentService) {
-    throw new Error("ZCode task service is not initialized.");
+  const codezTaskService = activeServices?.getOptional(ICodezTaskService);
+  const codezAgentService = activeServices?.getOptional(ICodezAgentService);
+  if (!codezTaskService || !codezAgentService) {
+    throw new Error("Codez task service is not initialized.");
   }
   const runtime = await ensureOffPeakRuntime();
   if (!runtime) {
@@ -777,21 +777,21 @@ async function dispatchOffPeakRun(request: OffPeakRunDispatchRequest): Promise<{
       // 永远不会是 running，原来按 listTasks(...).status === "running" 的忙碌判断已失效，
       // 闲时任务会被派发到仍在运行的绑定会话上。运行中事实只能取 syncer 的活动集合。
       const [deletedIds, activeIds] = await Promise.all([
-        zcodeTaskService.listDeletedTaskIds(workspaceScope),
-        zcodeTaskService.listActiveTaskIds(workspaceScope),
+        codezTaskService.listDeletedTaskIds(workspaceScope),
+        codezTaskService.listActiveTaskIds(workspaceScope),
       ]);
       assertBoundSessionDispatchable({
         sessionId: taskId,
         deleted: deletedIds.includes(taskId),
         running: activeIds.includes(taskId),
       });
-      await zcodeTaskService.resumeTask({
+      await codezTaskService.resumeTask({
         ...workspaceScope,
         taskId,
         // 绑定会话首次盖章归属标记，侧栏归入闲时分组（机制同 cron targetTaskId）。
         offPeakTaskId: request.offPeakTaskId,
       });
-      await zcodeTaskService.setConfigOption({
+      await codezTaskService.setConfigOption({
         taskId,
         traceId,
         configId: "mode",
@@ -804,7 +804,7 @@ async function dispatchOffPeakRun(request: OffPeakRunDispatchRequest): Promise<{
       // 不能复用 task ID，也不能依赖同毫秒时间戳避免碰撞。
       traceId = `${request.offPeakTaskId}:resume:${randomUUID()}` as TraceId;
       promptContent = OFF_PEAK_RESUME_PROMPT;
-      await zcodeTaskService.resumeTask({
+      await codezTaskService.resumeTask({
         taskId,
         workspacePath: request.workspacePath,
         workspaceIdentity: request.workspaceIdentity,
@@ -813,7 +813,7 @@ async function dispatchOffPeakRun(request: OffPeakRunDispatchRequest): Promise<{
         offPeakTaskId: request.offPeakTaskId,
       });
       // 权限模式随派发下发（resume 后显式设置，幂等）。
-      await zcodeTaskService.setConfigOption({
+      await codezTaskService.setConfigOption({
         taskId,
         traceId,
         configId: "mode",
@@ -821,14 +821,14 @@ async function dispatchOffPeakRun(request: OffPeakRunDispatchRequest): Promise<{
       });
       // 档位是 idle Selection 的一部分，只在 sendPrompt 注入；单独写档位会污染用户会话。
     } else {
-      const task = await zcodeTaskService.createTask({
+      const task = await codezTaskService.createTask({
         projectId: request.projectId,
         workspacePath: request.workspacePath,
         workspaceIdentity: request.workspaceIdentity,
         additionalDirectories: request.additionalDirectories,
         // 空 Session 沿用普通初始化；idle Selection 只在下方执行中注入。
         // 在此写入会让闲时轮结束后的普通消息继续使用无票的隐藏 Provider。
-        mode: request.permissionMode as ZCodeTaskMode,
+        mode: request.permissionMode as CodezTaskMode,
         // 闲时任务是无界面的 createTask + sendPrompt 连续派发；空 session 必须在首条
         // V4 admission 内先持久化，否则 session_input 外键会先于 session 主记录写入。
         deferPersistenceUntilFirstPrompt: true,
@@ -846,8 +846,8 @@ async function dispatchOffPeakRun(request: OffPeakRunDispatchRequest): Promise<{
     }
     trackedKey = offPeakRunSubscriptionKey(taskId, traceId);
     const lifecycle = trackOffPeakRunOutcome({
-      zcodeTaskService,
-      zcodeAgentService,
+      codezTaskService,
+      codezAgentService,
       service: runtime.service,
       ticketId: request.serverTicketId,
       offPeakTaskId: request.offPeakTaskId,
@@ -856,7 +856,7 @@ async function dispatchOffPeakRun(request: OffPeakRunDispatchRequest): Promise<{
       workspacePath: request.workspacePath,
       ...(request.workspaceIdentity ? { workspaceIdentity: request.workspaceIdentity } : {}),
     });
-    await zcodeTaskService.sendPrompt({
+    await codezTaskService.sendPrompt({
       taskId,
       traceId,
       content: promptContent,
@@ -913,7 +913,7 @@ interface CronRunDispatchRequest {
   prompt: string;
   targetTaskId?: string;
   modelSelection?: ModelSelection;
-  mode?: ZCodeTaskMode;
+  mode?: CodezTaskMode;
   workspacePath: string;
   workspaceIdentity?: string;
   projectId?: string | null;
@@ -965,7 +965,7 @@ function markCronRunOutcome(params: {
   workspaceKey: string;
   scheduledAt: number | null;
   trigger: "schedule" | "manual";
-  outcome: ZCodeAutomationRunOutcome;
+  outcome: CodezAutomationRunOutcome;
   error?: string;
 }): void {
   void recordCronRunOutcomeBestEffort({
@@ -983,7 +983,7 @@ function disposeCronRunSubscription(key: string): void {
 }
 
 async function applyCronRunConfigToExistingTask(params: {
-  zcodeTaskService: IZCodeTaskService;
+  codezTaskService: ICodezTaskService;
   taskId: string;
   traceId: TraceId;
   modelSelection?: ModelSelection;
@@ -992,18 +992,18 @@ async function applyCronRunConfigToExistingTask(params: {
   let thoughtAppliedWithModel = false;
   let modeAppliedWithModel = false;
   if (params.modelSelection) {
-    await params.zcodeTaskService.setAutomationSessionConfig({
+    await params.codezTaskService.setAutomationSessionConfig({
       taskId: params.taskId,
       traceId: params.traceId,
       modelSelection: params.modelSelection,
       thoughtLevel: params.modelSelection.options?.reasoningLevel,
-      mode: params.mode?.trim() as ZCodeTaskMode | undefined,
+      mode: params.mode?.trim() as CodezTaskMode | undefined,
     });
     thoughtAppliedWithModel = true;
     modeAppliedWithModel = true;
   }
   if (!modeAppliedWithModel && params.mode?.trim()) {
-    await params.zcodeTaskService.setConfigOption({
+    await params.codezTaskService.setConfigOption({
       taskId: params.taskId,
       traceId: params.traceId,
       configId: "mode",
@@ -1011,7 +1011,7 @@ async function applyCronRunConfigToExistingTask(params: {
     });
   }
   if (!thoughtAppliedWithModel && params.modelSelection?.options?.reasoningLevel) {
-    await params.zcodeTaskService.setConfigOption({
+    await params.codezTaskService.setConfigOption({
       taskId: params.taskId,
       traceId: params.traceId,
       configId: "thought_level",
@@ -1021,7 +1021,7 @@ async function applyCronRunConfigToExistingTask(params: {
 }
 
 function trackCronRunOutcome(params: {
-  zcodeTaskService: IZCodeTaskService;
+  codezTaskService: ICodezTaskService;
   taskId: string;
   traceId: TraceId;
   workspacePath: string;
@@ -1035,7 +1035,7 @@ function trackCronRunOutcome(params: {
   const key = cronRunSubscriptionKey(params.taskId, params.traceId);
   disposeCronRunSubscription(key);
   markCronRunOutcome({ ...params, outcome: "running" });
-  const disposable = params.zcodeTaskService.onDynamicTaskTerminalOutcome(params.taskId)(
+  const disposable = params.codezTaskService.onDynamicTaskTerminalOutcome(params.taskId)(
     (result) => {
       if (result.inputId !== params.traceId) return;
       void settleCronRunTerminalOutcome({
@@ -1046,7 +1046,7 @@ function trackCronRunOutcome(params: {
         logWarn: (message, error) => logger.warn(message, error),
       });
       // 定时任务在后台完成后统一置为未读，真正打开 task 时再由导航链路清除。
-      void params.zcodeTaskService.setTaskUnread({
+      void params.codezTaskService.setTaskUnread({
         taskId: params.taskId,
         workspacePath: params.workspacePath,
         ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
@@ -1080,9 +1080,9 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
   sessionId: string;
 }> {
   const targetServices = resolveAutomationTargetServices(request);
-  const zcodeTaskService = targetServices.getOptional(IZCodeTaskService);
-  if (!zcodeTaskService) {
-    throw new Error("ZCode task service is not initialized.");
+  const codezTaskService = targetServices.getOptional(ICodezTaskService);
+  if (!codezTaskService) {
+    throw new Error("Codez task service is not initialized.");
   }
   const modelSelectionService = targetServices.getOptional(IModelSelectionService);
   if (!modelSelectionService) {
@@ -1114,7 +1114,7 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
   try {
     const task = request.targetTaskId
       ? { taskId: request.targetTaskId }
-      : await zcodeTaskService.createTask({
+      : await codezTaskService.createTask({
           projectId: request.projectId,
           workspacePath: request.workspacePath,
           workspaceIdentity: request.workspaceIdentity,
@@ -1131,7 +1131,7 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
     if (request.targetTaskId) {
       // 绑定会话在 app 重启或切换 workspace 后通常不处于 active；旧实现直接
       // setConfig/sendPrompt 会立即报 Session is not active，看起来像「立即运行」没有触发。
-      await zcodeTaskService.resumeTask({
+      await codezTaskService.resumeTask({
         taskId: task.taskId,
         workspacePath: request.workspacePath,
         workspaceIdentity: request.workspaceIdentity,
@@ -1141,7 +1141,7 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
         automationId: request.automationId,
       });
       await applyCronRunConfigToExistingTask({
-        zcodeTaskService,
+        codezTaskService,
         taskId: task.taskId,
         traceId: promptTraceId,
         modelSelection: submissionModelSelection,
@@ -1171,7 +1171,7 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
     }
     trackedKey = cronRunSubscriptionKey(task.taskId, promptTraceId);
     trackCronRunOutcome({
-      zcodeTaskService,
+      codezTaskService,
       taskId: task.taskId,
       traceId: promptTraceId,
       workspacePath: request.workspacePath,
@@ -1182,7 +1182,7 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
       scheduledAt,
       trigger,
     });
-    await zcodeTaskService.sendPrompt({
+    await codezTaskService.sendPrompt({
       taskId: task.taskId,
       traceId: promptTraceId,
       content: request.prompt,
@@ -1216,8 +1216,8 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
 }
 
 async function dispatchManualAutomationRun(params: {
-  automation: ZCodeAutomation;
-  run: ZCodeAutomationRun;
+  automation: CodezAutomation;
+  run: CodezAutomationRun;
 }): Promise<void> {
   logger.info(
     `direct manual automation dispatch started automation=${params.automation.automationId} runId=${params.run.runId}`,
@@ -1382,7 +1382,7 @@ const workspaceTaskTracker = createHostWorkspaceTaskTracker((event) => {
   reportHostRunningTaskCount();
 });
 
-function isZCodeTaskMeta(value: unknown): value is ZCodeTaskMeta {
+function isCodezTaskMeta(value: unknown): value is CodezTaskMeta {
   return (
     typeof value === "object" &&
     value !== null &&
@@ -1396,12 +1396,12 @@ function isZCodeTaskMeta(value: unknown): value is ZCodeTaskMeta {
 }
 
 function isRemoteMirrorableStreamEvent(
-  event: ZCodeStreamEvent,
+  event: CodezStreamEvent,
 ): event is TaskStreamMirrorableEvent {
   return event.type !== "task_stream_mirror_batch" && event.type !== "task_snapshot_updated";
 }
 
-function createReportingRemoteZCodeTaskService<T extends object>(
+function createReportingRemoteCodezTaskService<T extends object>(
   service: T,
   options?: {
     reportRunningPromptCount?: boolean;
@@ -1410,8 +1410,8 @@ function createReportingRemoteZCodeTaskService<T extends object>(
       taskId: string;
       traceId: TraceId;
       content: string;
-      attachments?: ZCodePromptAttachment[];
-    }) => Promise<{ content: string; attachments?: ZCodePromptAttachment[] }>;
+      attachments?: CodezPromptAttachment[];
+    }) => Promise<{ content: string; attachments?: CodezPromptAttachment[] }>;
   },
 ): T {
   const workspaceProxyState = createHostRemoteWorkspaceProxyState();
@@ -1423,7 +1423,7 @@ function createReportingRemoteZCodeTaskService<T extends object>(
     });
   }
 
-  function subscribeSessionMessageRequests(target: T, meta: ZCodeTaskMeta): void {
+  function subscribeSessionMessageRequests(target: T, meta: CodezTaskMeta): void {
     const onDynamicWorkspaceEvent = Reflect.get(target, "onDynamicWorkspaceEvent");
     if (typeof onDynamicWorkspaceEvent !== "function") {
       return;
@@ -1449,7 +1449,7 @@ function createReportingRemoteZCodeTaskService<T extends object>(
   }
 
   function rememberTaskMeta(result: unknown): void {
-    if (isZCodeTaskMeta(result)) {
+    if (isCodezTaskMeta(result)) {
       workspaceProxyState.rememberTaskMeta(result);
       subscribeSessionMessageRequests(service, result);
       parentPort?.postMessage({
@@ -1489,12 +1489,12 @@ function createReportingRemoteZCodeTaskService<T extends object>(
     taskId: string;
     traceId: TraceId;
     content: string;
-    attachments?: ZCodePromptAttachment[];
+    attachments?: CodezPromptAttachment[];
   }): Promise<{
     taskId: string;
     traceId: TraceId;
     content: string;
-    attachments?: ZCodePromptAttachment[];
+    attachments?: CodezPromptAttachment[];
   }> {
     if (!options?.materializePromptAttachments) {
       return params;
@@ -1512,7 +1512,7 @@ function createReportingRemoteZCodeTaskService<T extends object>(
       taskId: string;
       traceId: TraceId;
       content: string;
-      attachments?: ZCodePromptAttachment[];
+      attachments?: CodezPromptAttachment[];
     },
   ): Promise<unknown> {
     const taskRealtimePort = options?.taskRealtimePort;
@@ -1549,10 +1549,10 @@ function createReportingRemoteZCodeTaskService<T extends object>(
 
     // 写路径（send/stop/交互回执）已收敛 v4 命令面；本镜像属**读路径**——
     // taskRealtimePort → 手机 relay → 手机端
-    // zcodeSessionStore 的整条消费链词表都是 ZCodeStreamEvent。两个方案的评估结论：
+    // codezSessionStore 的整条消费链词表都是 CodezStreamEvent。两个方案的评估结论：
     // a) relay 直接转发 v4 帧、手机端消费 v4 store（正解）：需要重做 relay stream-op
     //    协议 + 手机端 store；
-    // b) 帧→ZCodeStreamEvent 薄映射：等价复刻 adapter mapSessionEvent，
+    // b) 帧→CodezStreamEvent 薄映射：等价复刻 adapter mapSessionEvent，
     //    否决。
     // 结论：本镜像保持 legacy 源不动。
     const dynamicStreamEvent = Reflect.get(target, "onDynamicStreamEvent");
@@ -1561,7 +1561,7 @@ function createReportingRemoteZCodeTaskService<T extends object>(
         ? dynamicStreamEvent.call(
             target,
             params.taskId,
-          )((event: ZCodeStreamEvent) => {
+          )((event: CodezStreamEvent) => {
             if (isRemoteMirrorableStreamEvent(event)) {
               taskRealtimePort.publishStreamOp(mirrorTarget, {
                 kind: "stream_event",
@@ -1574,19 +1574,19 @@ function createReportingRemoteZCodeTaskService<T extends object>(
     try {
       return await sendPrompt.call(target, params);
     } finally {
-      // 远端 zcode-server 没有 desktop realtime port；由窗口 Host 内的
+      // 远端 codez-server 没有 desktop realtime port；由窗口 Host 内的
       // remote facade 接管 lease 和 stream mirror，确保 UI 能持续收到远端会话流。
       streamDisposable?.dispose();
       taskRealtimePort.releaseTaskRunLease(mirrorTarget);
     }
   }
 
-  function finishWorkspaceTask(taskId: string, meta: ZCodeTaskMeta): void {
+  function finishWorkspaceTask(taskId: string, meta: CodezTaskMeta): void {
     workspaceProxyState.disposeTaskReadySubscription(taskId);
     workspaceTaskTracker.finish(taskId, meta);
   }
 
-  function beginWorkspaceTask(target: T, taskId: string, meta: ZCodeTaskMeta): boolean {
+  function beginWorkspaceTask(target: T, taskId: string, meta: CodezTaskMeta): boolean {
     const started = workspaceTaskTracker.begin(taskId, meta);
     if (!started) {
       return false;
@@ -1594,12 +1594,12 @@ function createReportingRemoteZCodeTaskService<T extends object>(
     const onDynamicTaskReady = Reflect.get(target, "onDynamicTaskReady");
     if (typeof onDynamicTaskReady !== "function") {
       workspaceTaskTracker.finish(taskId, meta);
-      throw new Error("remote ZCode task service does not expose onDynamicTaskReady");
+      throw new Error("remote Codez task service does not expose onDynamicTaskReady");
     }
     const subscribe = onDynamicTaskReady.call(target, taskId);
     if (typeof subscribe !== "function") {
       workspaceTaskTracker.finish(taskId, meta);
-      throw new Error("remote ZCode task ready event is not subscribable");
+      throw new Error("remote Codez task ready event is not subscribable");
     }
     workspaceProxyState.trackTaskReady(
       taskId,
@@ -1610,7 +1610,7 @@ function createReportingRemoteZCodeTaskService<T extends object>(
     return true;
   }
 
-  // remote workspace 的 ZCode Agent manager 跑在远端 server，desktop main 不能直接看到
+  // remote workspace 的 Codez Agent manager 跑在远端 server，desktop main 不能直接看到
   // `handles` 状态。sendPrompt Promise 只是远端 ACK，必须等待 task ready 才能允许回收 workspace。
   return new Proxy(service, {
     get(target, property, receiver) {
@@ -1668,7 +1668,7 @@ function createReportingRemoteZCodeTaskService<T extends object>(
       }
 
       return async (...args: unknown[]) => {
-        let trackedTask: { taskId: string; meta: ZCodeTaskMeta; started: boolean } | undefined;
+        let trackedTask: { taskId: string; meta: CodezTaskMeta; started: boolean } | undefined;
         let tracksOnlyRpcLifetime = false;
         try {
           const params = args[0];
@@ -1683,10 +1683,10 @@ function createReportingRemoteZCodeTaskService<T extends object>(
               taskId: string;
               traceId: TraceId;
               content: string;
-              attachments?: ZCodePromptAttachment[];
+              attachments?: CodezPromptAttachment[];
             };
             const taskMeta = workspaceProxyState.getTaskMeta(promptParams.taskId) as
-              | ZCodeTaskMeta
+              | CodezTaskMeta
               | undefined;
             if (taskMeta) {
               trackedTask = {
@@ -1730,7 +1730,7 @@ function createReportingRemoteZCodeTaskService<T extends object>(
   });
 }
 
-function warmUpZCodeAgent(
+function warmUpCodezAgent(
   services: ServiceCollection,
   context: { workspacePath?: string; workspaceIdentity?: string },
   reason: string,
@@ -1740,11 +1740,11 @@ function warmUpZCodeAgent(
   }
   const workspacePath = context.workspacePath;
   const workspaceIdentity = context.workspaceIdentity;
-  const zcodeSessionService = services.getOptional(IZCodeSessionService);
-  if (!zcodeSessionService) {
+  const codezSessionService = services.getOptional(ICodezSessionService);
+  if (!codezSessionService) {
     return;
   }
-  void zcodeSessionService
+  void codezSessionService
     .initializeWorkspace({
       workspacePath,
       ...(workspaceIdentity ? { workspaceIdentity } : {}),
@@ -1753,12 +1753,12 @@ function warmUpZCodeAgent(
       if (!result.available) {
         if (result.reasonCode === "provider_not_ready") {
           logger.info(
-            `ZCode agent warmup waiting for provider/model (${reason}) workspace=${workspacePath}`,
+            `Codez agent warmup waiting for provider/model (${reason}) workspace=${workspacePath}`,
           );
           return;
         }
         logger.warn(
-          `ZCode agent warmup unavailable (${reason}) workspace=${workspacePath} reason=${result.reason ?? "unknown"}`,
+          `Codez agent warmup unavailable (${reason}) workspace=${workspacePath} reason=${result.reason ?? "unknown"}`,
         );
         return;
       }
@@ -1766,11 +1766,11 @@ function warmUpZCodeAgent(
       // presentation 只剩 mode 与 slash commands。预热不能为读取 presentation 额外创建
       // Agent App，否则其 MCP close 会占住协议通道并阻塞真正的 Session 初始化。
       logger.info(
-        `ZCode agent warmup ready (${reason}) workspace=${workspacePath} transport=${result.transportKind ?? "unknown"}`,
+        `Codez agent warmup ready (${reason}) workspace=${workspacePath} transport=${result.transportKind ?? "unknown"}`,
       );
     })
     .catch((error) => {
-      logger.warn(`ZCode agent warmup failed (${reason}) workspace=${workspacePath}:`, error);
+      logger.warn(`Codez agent warmup failed (${reason}) workspace=${workspacePath}:`, error);
     });
 }
 
@@ -1829,7 +1829,7 @@ let activeServices: ServiceCollection | null = null;
 // 扩展门面（docs/plugins/extension-host.md）：InitLocal 建立服务后创建，Host 退出时断开扩展进程端口。
 let windowHostExtensions: WindowHostExtensions | null = null;
 /**
- * Main 推送的实时界面语言，供 ZCode endpoint 请求的 X-Client-Language。
+ * Main 推送的实时界面语言，供 Codez endpoint 请求的 X-Client-Language。
  * 过去 Host 用进程 Intl locale（Dock 启动无 LANG 会回退 en-US）；setting.json 写入可能滞后或失败，
  * 也不能代表当前界面，所以只认 Main 的 InitLocal 初值与 application-locale-changed 变更。
  */
@@ -1874,11 +1874,11 @@ function resolveBotProjectConnection(hostId: string): BotProjectConnection | und
     const services = registered.services;
     return {
       owner: registered.capabilities?.physicalOwner?.() ?? services,
-      taskService: createControllerRoutedTaskService(services.get(IZCodeTaskService), {
+      taskService: createControllerRoutedTaskService(services.get(ICodezTaskService), {
         kind: "local",
       }),
       modelSelectionService: services.get(IModelSelectionService),
-      agentService: services.get(IZCodeAgentService),
+      agentService: services.get(ICodezAgentService),
       bindWorkspace: async (target) => {
         await registered.capabilities?.bindWorkspaceIdentity?.({
           workspacePath: target.workspacePath,
@@ -1892,11 +1892,11 @@ function resolveBotProjectConnection(hostId: string): BotProjectConnection | und
   if (!connection) return undefined;
   return {
     owner: connection.services,
-    taskService: createControllerRoutedTaskService(connection.services.zcodeTaskService, {
+    taskService: createControllerRoutedTaskService(connection.services.codezTaskService, {
       kind: "local",
     }),
     modelSelectionService: connection.services.modelSelectionService,
-    agentService: connection.services.zcodeAgentService,
+    agentService: connection.services.codezAgentService,
     bindWorkspace: async (target) => {
       await connection.services.sourceServerWorkspaceService.resolveWorkspace({
         workspacePath: target.workspacePath,
@@ -1952,7 +1952,7 @@ async function ensureSourceServerConnectionManager(): Promise<SourceServerConnec
 let activeLocalResourceTelemetry: IDisposable | null = null;
 // 资源管理器采样只在 main 请求时执行一次，Host 不维护任何周期定时器。
 const hostResourceUsageResponder = createHostResourceUsageResponder({
-  getAgentService: () => activeServices?.getOptional(IZCodeAgentService),
+  getAgentService: () => activeServices?.getOptional(ICodezAgentService),
   postMessage: (message) => parentPort?.postMessage(message),
 });
 let activeSessionRealtimePort: ReturnType<typeof createTaskRealtimeBridgeForHostInit> = null;
@@ -1986,7 +1986,7 @@ async function createWindowRemoteConnectionHandle(params: {
     }
   };
   let connection: HostRemoteConnection;
-  let managedProfile: import("@zcode/shared").ConnectionProfile | undefined;
+  let managedProfile: import("@codez/shared").ConnectionProfile | undefined;
   let reusedConnectionTarget: RemoteTarget | undefined;
   let managerStateSubscription: { dispose(): void } | undefined;
   let managerConnectionInvalidatedSubscription: { dispose(): void } | undefined;
@@ -2033,7 +2033,7 @@ async function createWindowRemoteConnectionHandle(params: {
     });
     params.signal.throwIfAborted();
     topicResourceRelay = createWindowTopicResourceRelay({
-      getPeerAgentService: () => connection?.services.zcodeAgentService,
+      getPeerAgentService: () => connection?.services.codezAgentService,
       resolveServices: (scope) => windowRemoteConnectionRegistry.resolveScopedServices(scope),
       getBots: () => activeServices?.getOptional(IBotsService),
     });
@@ -2337,7 +2337,7 @@ const windowRemoteConnectionRegistry = createWindowRemoteConnectionRegistry<
     }
   },
   releaseWorkspace: async (services, context) => {
-    await services.get(IZCodeTaskService).releaseWorkspacePreparation({
+    await services.get(ICodezTaskService).releaseWorkspacePreparation({
       workspacePath: context.workspacePath,
       ...(context.workspaceIdentity ? { workspaceIdentity: context.workspaceIdentity } : {}),
       provider: "glm",
@@ -2422,8 +2422,8 @@ const windowRemoteConnectionRegistry = createWindowRemoteConnectionRegistry<
       previousScope,
       {
         scope: currentScope,
-        taskService: currentServices.get(IZCodeTaskService),
-        agentService: currentServices.getOptional(IZCodeAgentService),
+        taskService: currentServices.get(ICodezTaskService),
+        agentService: currentServices.getOptional(ICodezAgentService),
         sourceAvailability: "online",
       },
       {
@@ -2473,7 +2473,7 @@ const windowHostControllerRuntime = createWindowHostControllerRuntime({
   createId: randomUUID,
   readHostTaskList: (query) => {
     if (!activeServices) throw new Error("Window Host services unavailable");
-    return activeServices.get(IZCodeTaskService).listTaskList(query);
+    return activeServices.get(ICodezTaskService).listTaskList(query);
   },
   onSourceError: (scope, operation, error) => {
     logger.warn(
@@ -2534,8 +2534,8 @@ const windowHostControllerRuntime = createWindowHostControllerRuntime({
       const services = windowRemoteConnectionRegistry.resolveScopedServices(controllerScope);
       return {
         scope: controllerScope,
-        taskService: services.get(IZCodeTaskService),
-        agentService: services.getOptional(IZCodeAgentService),
+        taskService: services.get(ICodezTaskService),
+        agentService: services.getOptional(ICodezAgentService),
         sourceAvailability: "online" as const,
       };
     }
@@ -2564,15 +2564,15 @@ const windowHostControllerRuntime = createWindowHostControllerRuntime({
             workspaceIdentity: scope.workspaceIdentity,
           },
           taskService:
-            connection?.services.zcodeTaskService ?? registered!.services.get(IZCodeTaskService),
+            connection?.services.codezTaskService ?? registered!.services.get(ICodezTaskService),
           agentService:
-            connection?.services.zcodeAgentService ??
-            registered!.services.getOptional(IZCodeAgentService),
+            connection?.services.codezAgentService ??
+            registered!.services.getOptional(ICodezAgentService),
           sourceAvailability: "online" as const,
         };
       return null;
     }
-    const taskService = activeServices?.getOptional(IZCodeTaskService);
+    const taskService = activeServices?.getOptional(ICodezTaskService);
     if (!taskService) {
       return null;
     }
@@ -2583,7 +2583,7 @@ const windowHostControllerRuntime = createWindowHostControllerRuntime({
         ...(scope.workspaceIdentity ? { workspaceIdentity: scope.workspaceIdentity } : {}),
       },
       taskService,
-      agentService: activeServices?.getOptional(IZCodeAgentService),
+      agentService: activeServices?.getOptional(ICodezAgentService),
       sourceAvailability: "online" as const,
     };
   },
@@ -2622,9 +2622,9 @@ type ExposedServicePortHandle = {
 };
 
 function createControllerRoutedTaskService(
-  base: IZCodeTaskService,
+  base: ICodezTaskService,
   attachmentScope: WindowHostAttachmentScope,
-): IZCodeTaskService {
+): ICodezTaskService {
   const route = async (
     params: {
       taskId: string;
@@ -2651,7 +2651,7 @@ function createControllerRoutedTaskService(
   return new Proxy(base, {
     get(target, property, receiver) {
       if (property === "setTaskPinned") {
-        return async (params: Parameters<IZCodeTaskService["setTaskPinned"]>[0]) => {
+        return async (params: Parameters<ICodezTaskService["setTaskPinned"]>[0]) => {
           const meta = await route(params, {
             kind: "pin",
             pinned: params.pinned,
@@ -2663,8 +2663,8 @@ function createControllerRoutedTaskService(
       if (property === "archiveTask" || property === "unarchiveTask") {
         return async (
           params:
-            | Parameters<IZCodeTaskService["archiveTask"]>[0]
-            | Parameters<IZCodeTaskService["unarchiveTask"]>[0],
+            | Parameters<ICodezTaskService["archiveTask"]>[0]
+            | Parameters<ICodezTaskService["unarchiveTask"]>[0],
         ) => {
           const meta = await route(params, {
             kind: "archive",
@@ -2675,12 +2675,12 @@ function createControllerRoutedTaskService(
         };
       }
       if (property === "deleteTask") {
-        return async (params: Parameters<IZCodeTaskService["deleteTask"]>[0]) => {
+        return async (params: Parameters<ICodezTaskService["deleteTask"]>[0]) => {
           await route(params, { kind: "delete" });
         };
       }
       if (property === "deleteArchivedTasks") {
-        return async (params: Parameters<IZCodeTaskService["deleteArchivedTasks"]>[0]) => {
+        return async (params: Parameters<ICodezTaskService["deleteArchivedTasks"]>[0]) => {
           if (params.taskIds.length === 0) {
             return { deletedTaskIds: [], skippedTaskIds: [], failedTaskIds: [] };
           }
@@ -2697,7 +2697,7 @@ function createControllerRoutedTaskService(
         };
       }
       if (property === "deleteArchivedTask") {
-        return async (params: Parameters<IZCodeTaskService["deleteArchivedTask"]>[0]) =>
+        return async (params: Parameters<ICodezTaskService["deleteArchivedTask"]>[0]) =>
           windowHostControllerRuntime.service.deleteArchivedTask({
             address: await windowHostControllerRuntime.resolveTaskAddress({
               ...params,
@@ -2707,7 +2707,7 @@ function createControllerRoutedTaskService(
           });
       }
       if (property === "setTaskUnread") {
-        return async (params: Parameters<IZCodeTaskService["setTaskUnread"]>[0]) => {
+        return async (params: Parameters<ICodezTaskService["setTaskUnread"]>[0]) => {
           const meta = await route(
             params,
             params.unread
@@ -2749,7 +2749,7 @@ function exposeServicesOnMessagePort(
   port: Electron.MessagePortMain,
   services: ServiceCollection,
   deferInit: boolean,
-  clientMode: ZCodeAgentV4ClientMode = "desktop-continuous",
+  clientMode: CodezAgentV4ClientMode = "desktop-continuous",
   attachmentScope: WindowHostAttachmentScope = { kind: "local" },
   capabilities?: HostRemoteConnectionCapabilities,
   terminalOwnerId?: string,
@@ -2782,10 +2782,10 @@ function exposeServicesOnMessagePort(
   const rawServer = new ChannelServer(protocol, "host", 1000, deferInit);
   const loggedServer = new LoggingChannelServer(rawServer, logRpc);
   const server = new NetworkTelemetryChannelServer(loggedServer);
-  const agentService = services.getOptional(IZCodeAgentService);
+  const agentService = services.getOptional(ICodezAgentService);
   const connectionContext = { connectionId: `host-rpc-${randomUUID()}`, clientMode };
   const connectionScope = agentService
-    ? createZCodeAgentConnectionScope(agentService, connectionContext)
+    ? createCodezAgentConnectionScope(agentService, connectionContext)
     : undefined;
   services.register(IWindowControllerService, windowHostControllerRuntime.service);
   // 未读自动写入只归窗口 base renderer；手机和 remote facade 不能重复消费同一完成信号。
@@ -2825,15 +2825,15 @@ function exposeServicesOnMessagePort(
     // dispose 只属于 Host attachment 生命周期，不暴露为 Renderer RPC。
     overrides.set(IPromptAttachmentTransferService.channelName, promptAttachmentService);
   }
-  const taskService = services.getOptional(IZCodeTaskService);
+  const taskService = services.getOptional(ICodezTaskService);
   if (taskService) {
     overrides.set(
-      IZCodeTaskService.channelName,
+      ICodezTaskService.channelName,
       createControllerRoutedTaskService(taskService, attachmentScope),
     );
   }
   if (connectionScope) {
-    overrides.set(IZCodeAgentService.channelName, connectionScope.service);
+    overrides.set(ICodezAgentService.channelName, connectionScope.service);
   }
   const conversationShareService = services.getOptional(IConversationShareService);
   if (conversationShareService) {
@@ -3419,7 +3419,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
       try {
         const dispatchResult = await dispatchCronRun({
           ...msg,
-          mode: msg.mode as ZCodeTaskMode | undefined,
+          mode: msg.mode as CodezTaskMode | undefined,
         });
         parentPort.postMessage({
           type: HostResponseTypes.CronRunResult,
@@ -3498,12 +3498,12 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
   }
 
   if (msg.type === HostMessageTypes.SessionMessageDeliver) {
-    const zcodeTaskService = activeServices?.getOptional(IZCodeTaskService);
-    if (!zcodeTaskService) {
+    const codezTaskService = activeServices?.getOptional(ICodezTaskService);
+    if (!codezTaskService) {
       parentPort.postMessage({
         type: HostResponseTypes.SessionMessageDeliverResult,
         result: {
-          error: "ZCode task service is not initialized.",
+          error: "Codez task service is not initialized.",
           messageId: msg.request.messageId,
           requestId: msg.request.requestId,
           sessionId: msg.request.fromSessionId,
@@ -3513,7 +3513,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
       return;
     }
 
-    void zcodeTaskService
+    void codezTaskService
       .deliverSessionMessage(msg.request)
       .then((deliveryResult) => {
         parentPort.postMessage({
@@ -3537,12 +3537,12 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
   }
 
   if (msg.type === HostMessageTypes.SessionMessageDeliveryResult) {
-    const zcodeTaskService = activeServices?.getOptional(IZCodeTaskService);
-    if (!zcodeTaskService) {
-      logger.warn("session message delivery result received before ZCode task service initialized");
+    const codezTaskService = activeServices?.getOptional(ICodezTaskService);
+    if (!codezTaskService) {
+      logger.warn("session message delivery result received before Codez task service initialized");
       return;
     }
-    void zcodeTaskService.sendSessionMessageDeliveryResult(msg.result).catch((error) => {
+    void codezTaskService.sendSessionMessageDeliveryResult(msg.result).catch((error) => {
       logger.warn("failed to forward session message delivery result:", error);
     });
     return;
@@ -3656,7 +3656,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
               const services = windowRemoteConnectionRegistry.resolveScopedServices(nextScope);
               await windowHostControllerRuntime.replaceDisconnectedSource(previousScope, {
                 scope: nextScope,
-                taskService: services.get(IZCodeTaskService),
+                taskService: services.get(ICodezTaskService),
                 sourceAvailability: "online",
               });
             } catch (error) {
@@ -4274,7 +4274,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
                     .listReadyConnections()
                     .map(({ target, services: remoteServices }) => ({
                       target,
-                      zcodeAgentService: remoteServices.get(IZCodeAgentService),
+                      codezAgentService: remoteServices.get(ICodezAgentService),
                     })),
                   mode,
                   (error) => logger.warn("remote dynamic workflow user mode forward failed", error),
@@ -4287,8 +4287,8 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
                 runtimeSurface: "desktop_local_host",
               },
               serviceAuthorityMode: "desktop-local",
-              zcodeAgentSpawnFallbackCwd: msg.agentSpawnFallbackCwd,
-              zcodeBuiltinProviderConfigFilePath: msg.zcodeBuiltinProviderConfigFilePath,
+              codezAgentSpawnFallbackCwd: msg.agentSpawnFallbackCwd,
+              codezBuiltinProviderConfigFilePath: msg.codezBuiltinProviderConfigFilePath,
               processLifecycleReporter: runtimeProcessLifecycleReporter,
               taskRuntimeReporter: runtimeTaskReporter,
               quitBlockerReporter,
@@ -4312,7 +4312,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
                   trigger,
                 });
               },
-              // browser-use：agent 的 interaction/browserExecute 经 zcodeAgentService 转到这个 executor，
+              // browser-use：agent 的 interaction/browserExecute 经 codezAgentService 转到这个 executor，
               // 再经 parentPort 到 main 的 WebContentsView+CDP 执行。
               browserControlExecutor: browserControlMainBridge,
               appControlNavigation,
@@ -4325,15 +4325,15 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
             return initializedServices;
           },
         });
-        const zcodeTaskService = services.getOptional(IZCodeTaskService);
-        if (zcodeTaskService) {
-          const reportingZCodeTaskService = createReportingRemoteZCodeTaskService(
-            zcodeTaskService,
+        const codezTaskService = services.getOptional(ICodezTaskService);
+        if (codezTaskService) {
+          const reportingCodezTaskService = createReportingRemoteCodezTaskService(
+            codezTaskService,
             {
               reportRunningPromptCount: false,
             },
           );
-          services.register(IZCodeTaskService, reportingZCodeTaskService);
+          services.register(ICodezTaskService, reportingCodezTaskService);
         }
         sourceServerDirectory = new SourceServerDirectory({
           settingService: services.get(ISettingService),
@@ -4425,7 +4425,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
         windowHostExtensions = createWindowHostExtensions({
           pluginManagement: services.get(IPluginManagementService),
           // context 组成与生成速率的数据泵（docs/plugins/extension-host.md §9、§10），也是会话读连接的底座（§17.5）。
-          agent: services.get(IZCodeAgentService),
+          agent: services.get(ICodezAgentService),
           // 会话列表泵（§17.5）：与侧栏、手机同一份控制器投影，只在本进程内交给扩展门面。
           taskRows: {
             read: () => windowHostControllerRuntime.readTaskRows(),
@@ -4441,7 +4441,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
           projects: services.get(IProjectService),
           // 能力 models.list（§18.1 H9）：与输入框模型选择器同一份视图。
           modelSelection: services.get(IModelSelectionService),
-          // 授权记录与审计（§17.7、§17.8）：~/.zcode/v2/extensions，只由扩展门面读写。
+          // 授权记录与审计（§17.7、§17.8）：~/.codez/v2/extensions，只由扩展门面读写。
           dataDir: join(getAppConfigDir(), "extensions"),
           postToMain: (message) => parentPort.postMessage(message),
         });
@@ -4465,7 +4465,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
         // Main 已把启动预热限制为 active workspace 1 个；Host 必须显式消费这份固定名单，
         // 不能让后续 task-list observer 再隐式扩大，也不能因失败扫描补位。
         agentWarmupTargets.forEach((target, index) => {
-          warmUpZCodeAgent(
+          warmUpCodezAgent(
             services,
             target,
             `local host init (${index + 1}/${agentWarmupTargets.length})`,

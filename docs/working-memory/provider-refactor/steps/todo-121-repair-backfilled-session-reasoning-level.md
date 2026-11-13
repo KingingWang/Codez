@@ -72,13 +72,13 @@
 
 ## 调查起点
 
-- `apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0020-provider-model-selection.ts`
-- `apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0021-official-glm-selection.ts`
-- `apps/zcode-cli/packages/adapters/src/storage/session-store/migration-runner.ts`
-- `apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/session-entries.ts`
-- `apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/messages.ts`
-- `apps/zcode-cli/packages/bootstrap/src/app/session-store.ts`
-- `apps/zcode-cli/packages/adapters/tests/provider-database-migration.test.ts`
+- `apps/codez-cli/packages/adapters/src/storage/session-store/migrations/0020-provider-model-selection.ts`
+- `apps/codez-cli/packages/adapters/src/storage/session-store/migrations/0021-official-glm-selection.ts`
+- `apps/codez-cli/packages/adapters/src/storage/session-store/migration-runner.ts`
+- `apps/codez-cli/packages/adapters/src/storage/session-store/repositories/session-entries.ts`
+- `apps/codez-cli/packages/adapters/src/storage/session-store/repositories/messages.ts`
+- `apps/codez-cli/packages/bootstrap/src/app/session-store.ts`
+- `apps/codez-cli/packages/adapters/tests/provider-database-migration.test.ts`
 
 已有内存探针只证明问题和筛选方向：首次／已迁未动的案例入选；后续消息、后续改选、不同模型、已有档位、最后 user 无档位、user 明确空选择均跳过。这不是正式修复实现或完整回归证据。
 

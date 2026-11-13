@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 import { getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
 import { createWorkerSelectionIntegration } from "#e2e/helpers/worker-selection-integration";
 

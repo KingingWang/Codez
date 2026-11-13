@@ -120,7 +120,7 @@ export interface DesignCssVariable {
 
 /** 决定设计工具要不要自动出现的页面信号（不装运行时也能读） */
 export interface DesignPageSignals {
-  /** `<html data-zcode-design>` 标记 */
+  /** `<html data-codez-design>` 标记 */
   isDesignDocument: boolean;
   cssVariableNames: string[];
   variants: string[];
@@ -130,7 +130,7 @@ export interface DesignPageSignals {
 export interface DesignPageInfo {
   pageUrl: string;
   pageTitle: string;
-  /** `<html data-zcode-design>` 标记 */
+  /** `<html data-codez-design>` 标记 */
   isDesignDocument: boolean;
   variants: string[];
   activeVariant: string | null;

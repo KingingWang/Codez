@@ -13,10 +13,10 @@ const DESCRIPTOR_PATH = `${RELEASE_DIR}/source-server-release.json`;
 // 的实际产物一致：descriptor 最后原子写入，四个 archive 按 target 命名。
 const RELEASE_FILES = [
   "source-server-release.json",
-  "zcode-server-linux-x64.tar.gz",
-  "zcode-server-linux-arm64.tar.gz",
-  "zcode-server-darwin-x64.tar.gz",
-  "zcode-server-darwin-arm64.tar.gz",
+  "codez-server-linux-x64.tar.gz",
+  "codez-server-linux-arm64.tar.gz",
+  "codez-server-darwin-x64.tar.gz",
+  "codez-server-darwin-arm64.tar.gz",
 ];
 
 function normalize(path: string) {
@@ -35,10 +35,10 @@ function descriptor(targets: string[]) {
     archives: targets.map((target) => ({
       target,
       version: "3.12.0",
-      fileName: `zcode-server-${target}.tar.gz`,
+      fileName: `codez-server-${target}.tar.gz`,
       sha256: "a".repeat(64),
       sizeBytes: 1024,
-      urls: [`zcode-server-${target}.tar.gz`],
+      urls: [`codez-server-${target}.tar.gz`],
     })),
   });
 }
@@ -123,7 +123,7 @@ describe("ensureSshRemoteReleaseAssets（默认全平台判断）", () => {
   });
 
   it("runs the full-platform entry without env overrides when nothing is declared", async () => {
-    // 未声明「只需 Linux」时（服务器队列、CI）保持原行为：调用全平台入口，不改 ZCODE_ENV。
+    // 未声明「只需 Linux」时（服务器队列、CI）保持原行为：调用全平台入口，不改 CODEZ_ENV。
     const exists = vi.fn(async () => false);
     const prepareReleaseAssets = vi.fn((_request: SshRemoteReleasePrepareRequest) => {
       exists.mockResolvedValue(true);
@@ -144,7 +144,7 @@ describe("ensureSshRemoteReleaseAssets（默认全平台判断）", () => {
 
   it("stays fail-closed and names the missing archives when prepare does not complete", async () => {
     const prepareReleaseAssets = vi.fn();
-    const existing = new Set([DESCRIPTOR_PATH, `${RELEASE_DIR}/zcode-server-linux-x64.tar.gz`]);
+    const existing = new Set([DESCRIPTOR_PATH, `${RELEASE_DIR}/codez-server-linux-x64.tar.gz`]);
 
     await expect(
       ensureSshRemoteReleaseAssets({
@@ -153,7 +153,7 @@ describe("ensureSshRemoteReleaseAssets（默认全平台判断）", () => {
         releaseDir: RELEASE_DIR,
       }),
     ).rejects.toThrow(
-      /prepare:remote-assets.*\/releases\/3\.12\.0.*zcode-server-linux-arm64\.tar\.gz, zcode-server-darwin-x64\.tar\.gz, zcode-server-darwin-arm64\.tar\.gz/u,
+      /prepare:remote-assets.*\/releases\/3\.12\.0.*codez-server-linux-arm64\.tar\.gz, codez-server-darwin-x64\.tar\.gz, codez-server-darwin-arm64\.tar\.gz/u,
     );
     expect(prepareReleaseAssets).toHaveBeenCalledOnce();
   });
@@ -163,8 +163,8 @@ describe("ensureSshRemoteReleaseAssets（声明只需 Linux）", () => {
   it("accepts a descriptor that lists only the two Linux targets", async () => {
     const release = createFakeRelease({
       "source-server-release.json": descriptor(["linux-x64", "linux-arm64"]),
-      "zcode-server-linux-x64.tar.gz": "x64",
-      "zcode-server-linux-arm64.tar.gz": "arm64",
+      "codez-server-linux-x64.tar.gz": "x64",
+      "codez-server-linux-arm64.tar.gz": "arm64",
     });
     const prepareReleaseAssets = vi.fn();
 
@@ -179,12 +179,12 @@ describe("ensureSshRemoteReleaseAssets（声明只需 Linux）", () => {
     expect(prepareReleaseAssets).not.toHaveBeenCalled();
   });
 
-  it("rebuilds through the Linux entry with ZCODE_ENV=test, never the full-platform entry", async () => {
+  it("rebuilds through the Linux entry with CODEZ_ENV=test, never the full-platform entry", async () => {
     // 磁盘上有 Linux 包但 descriptor 只列了 linux-x64：不能凭文件存在就复用。
     const release = createFakeRelease({
       "source-server-release.json": descriptor(["linux-x64"]),
-      "zcode-server-linux-x64.tar.gz": "x64",
-      "zcode-server-linux-arm64.tar.gz": "stale",
+      "codez-server-linux-x64.tar.gz": "x64",
+      "codez-server-linux-arm64.tar.gz": "stale",
     });
     const prepareReleaseAssets = vi.fn((_request: SshRemoteReleasePrepareRequest) => {
       release.table.set(DESCRIPTOR_PATH, descriptor(["linux-x64", "linux-arm64"]));
@@ -200,14 +200,14 @@ describe("ensureSshRemoteReleaseAssets（声明只需 Linux）", () => {
     expect(prepared).toBe(true);
     expect(prepareReleaseAssets).toHaveBeenCalledExactlyOnceWith({
       script: "prepare:remote-assets:linux",
-      env: { ZCODE_ENV: "test" },
+      env: { CODEZ_ENV: "test" },
     });
   });
 
   it("does not require darwin archives and fails closed when a Linux archive is still missing", async () => {
     const release = createFakeRelease({
       "source-server-release.json": descriptor(["linux-x64", "linux-arm64"]),
-      "zcode-server-linux-x64.tar.gz": "x64",
+      "codez-server-linux-x64.tar.gz": "x64",
     });
     const prepareReleaseAssets = vi.fn();
 
@@ -218,7 +218,7 @@ describe("ensureSshRemoteReleaseAssets（声明只需 Linux）", () => {
         releaseDir: RELEASE_DIR,
         scope: "linux",
       }),
-    ).rejects.toThrow(/prepare:remote-assets:linux.*zcode-server-linux-arm64\.tar\.gz/u);
+    ).rejects.toThrow(/prepare:remote-assets:linux.*codez-server-linux-arm64\.tar\.gz/u);
     expect(prepareReleaseAssets).toHaveBeenCalledOnce();
     expect(prepareReleaseAssets.mock.calls[0]?.[0]?.script).toBe("prepare:remote-assets:linux");
   });
@@ -226,8 +226,8 @@ describe("ensureSshRemoteReleaseAssets（声明只需 Linux）", () => {
   it("treats an unreadable descriptor as incomplete", async () => {
     const release = createFakeRelease({
       "source-server-release.json": "{not json",
-      "zcode-server-linux-x64.tar.gz": "x64",
-      "zcode-server-linux-arm64.tar.gz": "arm64",
+      "codez-server-linux-x64.tar.gz": "x64",
+      "codez-server-linux-arm64.tar.gz": "arm64",
     });
     const prepareReleaseAssets = vi.fn(() => {
       release.table.set(DESCRIPTOR_PATH, descriptor(["linux-x64", "linux-arm64"]));
@@ -247,11 +247,11 @@ describe("ensureSshRemoteReleaseAssets（声明只需 Linux）", () => {
 describe("resolveSshRemoteReleaseScope", () => {
   it("defaults to all and only switches to linux on the explicit declaration", () => {
     expect(resolveSshRemoteReleaseScope({})).toBe("all");
-    expect(resolveSshRemoteReleaseScope({ ZCODE_E2E_REMOTE_RELEASE_SCOPE: " " })).toBe("all");
-    expect(resolveSshRemoteReleaseScope({ ZCODE_E2E_REMOTE_RELEASE_SCOPE: "linux" })).toBe("linux");
+    expect(resolveSshRemoteReleaseScope({ CODEZ_E2E_REMOTE_RELEASE_SCOPE: " " })).toBe("all");
+    expect(resolveSshRemoteReleaseScope({ CODEZ_E2E_REMOTE_RELEASE_SCOPE: "linux" })).toBe("linux");
     expect(() =>
-      resolveSshRemoteReleaseScope({ ZCODE_E2E_REMOTE_RELEASE_SCOPE: "darwin" }),
-    ).toThrow(/ZCODE_E2E_REMOTE_RELEASE_SCOPE/u);
+      resolveSshRemoteReleaseScope({ CODEZ_E2E_REMOTE_RELEASE_SCOPE: "darwin" }),
+    ).toThrow(/CODEZ_E2E_REMOTE_RELEASE_SCOPE/u);
   });
 });
 
@@ -270,10 +270,10 @@ describe("wdio.conf.ts SSH remote assets wiring", () => {
     // 「只需 Linux」声明来自本机 Docker runner 的环境变量；未声明时 helper 返回全平台入口。
     expect(stageDesktopE2EAppOutput).toContain("resolveSshRemoteReleaseScope(process.env)");
     // Bug 根因：packages/desktop 的 prepare:remote-assets 脚本已随 legacy asset pipeline 删除，
-    // `pnpm --filter @zcode/desktop prepare:remote-assets` 会以 ERR_PNPM_RECURSIVE_RUN_NO_SCRIPT
+    // `pnpm --filter @codez/desktop prepare:remote-assets` 会以 ERR_PNPM_RECURSIVE_RUN_NO_SCRIPT
     // 失败并让 onPrepare fatal；唯一有效入口是根 package.json 的脚本（helper 给出脚本名）。
     expect(stageDesktopE2EAppOutput).toMatch(/runPnpmWorkspaceCommand\(\[request\.script\]/u);
-    expect(stageDesktopE2EAppOutput).not.toMatch(/@zcode\/desktop",\s*"prepare:remote-assets/u);
+    expect(stageDesktopE2EAppOutput).not.toMatch(/@codez\/desktop",\s*"prepare:remote-assets/u);
     // prepare 调用点必须带 timeoutMs：CI 上下载/构建挂死时让 onPrepare 可失败退出，
     // 而不是占住专用 runner 直到 job 全局超时。（本片段内仅 prepare 一处 pnpm 调用。）
     expect(stageDesktopE2EAppOutput).toContain("timeoutMs: ");

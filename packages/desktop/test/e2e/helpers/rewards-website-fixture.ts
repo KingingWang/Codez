@@ -5,7 +5,7 @@ export const rewardsWebsiteFixture = `<!doctype html>
 </head><body><main data-embedded="app" data-app-auth="pending"><h1>Rewards bridge fixture</h1><p>Isolated protocol consumer, not production rewards data.</p></main>
 <script>
 function sync() {
-  const bridge = window.zcodeBridge;
+  const bridge = window.codezBridge;
   if (!bridge) return;
   const root = document.querySelector('main');
   const theme = bridge.getTheme() === 'zai-dark' ? 'dark' : 'light';
@@ -19,6 +19,6 @@ function sync() {
     history.replaceState(null, '', url);
   }
 }
-window.addEventListener('zcode-rewards-context', sync);
+window.addEventListener('codez-rewards-context', sync);
 sync();
 </script></body></html>`;

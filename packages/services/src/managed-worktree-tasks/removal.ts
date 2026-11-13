@@ -1,7 +1,7 @@
 // 受管 worktree 的删除（docs/git/worktree.md §8.3）：删除租约、检查顺序与 CLI 卸载会话集中在这里。
 // 由 service.ts 装配；与创建流程共用"请 CLI 卸载某目录内的驻留会话"。
-import type { ManagedWorktreeError, ManagedWorktreeErrorCode } from "@zcode/shared";
-import { isPathInside } from "@zcode/shared/managed-worktree";
+import type { ManagedWorktreeError, ManagedWorktreeErrorCode } from "@codez/shared";
+import { isPathInside } from "@codez/shared/managed-worktree";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import type { ManagedWorktreeServicePorts } from "#src/managed-worktree-tasks/ports.js";
 import type { IManagedWorktreeService, ManagedWorktreeWorkspace } from "./contract.js";

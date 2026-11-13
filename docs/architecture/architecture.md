@@ -1,8 +1,8 @@
-# ZCode 早期分层架构（历史）
+# Codez 早期分层架构（历史）
 
 本文记录项目从共享 UI + Channel RPC + service interface 起步时的分层背景。它不再描述当前 Host 数量、
 remote topology、Root props 或 conversation 数据流；当前事实请读
-[Z Code 代码架构总览](./zcode-code-architecture-overview.md)。
+[Z Code 代码架构总览](./codez-code-architecture-overview.md)。
 
 ## 仍然有效的设计原则
 
@@ -20,7 +20,7 @@ remote topology、Root props 或 conversation 数据流；当前事实请读
 
 ```text
 旧：Renderer reducer -> task state -> UI
-新：ZCode CLI ProductProjection -> V4 topic -> read-only UI store
+新：Codez CLI ProductProjection -> V4 topic -> read-only UI store
 
 旧：一个抽象 server 承载所有部署形态
 新：每个窗口的 Host/service graph + workspace-scoped CLI + remote attachment
@@ -29,7 +29,7 @@ remote topology、Root props 或 conversation 数据流；当前事实请读
 同样已经失效的内容包括：
 
 - `Root` 通过 `credentialStore` / `onConnectRemote` props 直接装配平台能力；
-- UI 使用 `window.zcode` 或 service concrete singleton；
+- UI 使用 `window.codez` 或 service concrete singleton；
 - credential 可以经 platform bridge 直接暴露给 renderer；
 - task list、conversation rows、queue、stop/fork availability 由 renderer store 统一拥有；
 - remote workspace 可以只按 `workspacePath` 识别。
@@ -43,15 +43,15 @@ packages/services<- Host service interfaces + Node implementations
 packages/client  <- typed service proxies
 packages/ui      <- hooks + V4 projection consumers
 desktop/web      <- platform composition
-apps/zcode-cli   <- Agent runtime + V4 authority
+apps/codez-cli   <- Agent runtime + V4 authority
 ```
 
 跨域代码只能依赖对方公开 Types/contract。conversation 的新增协议先改
-`packages/shared/src/zcode-protocol-v4/`，再同步 CLI、Host transport 和多端消费者。
+`packages/shared/src/codez-protocol-v4/`，再同步 CLI、Host transport 和多端消费者。
 
 ## 当前入口
 
-- [代码架构总览](./zcode-code-architecture-overview.md)
+- [代码架构总览](./codez-code-architecture-overview.md)
 - [Message Flow](./message-flow.md)
 - [RPC 架构](./rpc.md)
-- [ZCode Protocol](../zcode-protocol.md)
+- [Codez Protocol](../codez-protocol.md)

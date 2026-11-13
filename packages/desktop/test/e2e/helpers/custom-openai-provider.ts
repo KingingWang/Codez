@@ -5,7 +5,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clickTestIdByDom,
@@ -88,7 +88,7 @@ export async function refreshSeededOpenAIProvidersThroughSettings(
   providerNames: readonly string[],
   options: { workspacePath?: string | null } = {},
 ) {
-  // 根因：全局草稿可处于未分类目录，设置返回不会跳到固定 ZCodeProject；旧 helper 因此白等 30 秒。
+  // 根因：全局草稿可处于未分类目录，设置返回不会跳到固定 CodezProject；旧 helper 因此白等 30 秒。
   // 记录调用时的导航 owner，显式指定返回目标的调用仍保持原语义。
   const workspacePath =
     options.workspacePath ||
@@ -96,9 +96,9 @@ export async function refreshSeededOpenAIProvidersThroughSettings(
       () =>
         (
           window as Window & {
-            __zcodeTabStoreE2E?: { getState?: () => { activeWorkspacePath?: string | null } };
+            __codezTabStoreE2E?: { getState?: () => { activeWorkspacePath?: string | null } };
           }
-        ).__zcodeTabStoreE2E?.getState?.().activeWorkspacePath ?? null,
+        ).__codezTabStoreE2E?.getState?.().activeWorkspacePath ?? null,
     )) ||
     DEFAULT_WORKSPACE;
   await openModelProviderSettings();

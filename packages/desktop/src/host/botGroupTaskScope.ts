@@ -1,4 +1,4 @@
-import type { WindowHostAttachmentScope } from "@zcode/shared";
+import type { WindowHostAttachmentScope } from "@codez/shared";
 
 /** 群控制复用已验证 attachment，不能由 RPC 调用方声明另一条远程会话。 */
 export function bindBotGroupTaskScope<T extends object>(

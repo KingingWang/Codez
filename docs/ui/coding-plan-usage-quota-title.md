@@ -8,7 +8,7 @@ Usage 设置页的 Coding Plan 面板会展示 5 小时、每周和 MCP 额度�
 
 ## 规格
 
-- Model Provider 套餐卡中，5 小时、每周、工具调用与 ZCode MCP 的小标题行统一使用 `min-h-6`（最小 24px，大字号时随内容增高），文字、重置入口和 info 图标垂直居中；桌面和手机 Web 共用此高度。
+- Model Provider 套餐卡中，5 小时、每周、工具调用与 Codez MCP 的小标题行统一使用 `min-h-6`（最小 24px，大字号时随内容增高），文字、重置入口和 info 图标垂直居中；桌面和手机 Web 共用此高度。
 - Coding Plan 用量面板在 quota 卡片组上方展示“剩余额度”主标题，并在同一标题行展示当前 Coding Plan provider。
 - 标题文案必须走国际化，不直接硬编码到组件中。
 - `Quota Remaining` 与 `Usage Trends` 使用比 Model Usage / Tool Usage 更强的标题层级。
@@ -31,5 +31,5 @@ Usage 设置页的 Coding Plan 面板会展示 5 小时、每周和 MCP 额度�
 - 切换 `today / 7d / 30d` 的控件位于 `Usage Trends` 标题行，而不是页面顶部 provider 行。
 - 切换 `today / 7d / 30d` 不会让 `Quota Remaining` 区域清空或闪烁。
 - 进入 Coding Plan Usage 页面后，`Quota Remaining` 会绕过共享 TTL 校正一次；点击刷新按钮后，`Quota Remaining` 和趋势图一起更新。
-- 英文和中文界面都显示对应的额度文案，套餐内月度 MCP 工具额度统一展示为“工具调用 / Tool calls”，不再使用“MCP 额度 / MCP quota”；独立的官方 Server MCP 日额度继续展示品牌名“ZCode MCP”。
-- Usage stats 和 Model Provider 套餐卡中的 `ZCode MCP` 标题后都展示 info 图标；悬停或键盘聚焦时复用 `ControlHintTooltip` 与 `sidebar.usage.plan.zcodeMcpDescription`，确保和输入框 context 的额度说明一致。
+- 英文和中文界面都显示对应的额度文案，套餐内月度 MCP 工具额度统一展示为“工具调用 / Tool calls”，不再使用“MCP 额度 / MCP quota”；独立的官方 Server MCP 日额度继续展示品牌名“Codez MCP”。
+- Usage stats 和 Model Provider 套餐卡中的 `Codez MCP` 标题后都展示 info 图标；悬停或键盘聚焦时复用 `ControlHintTooltip` 与 `sidebar.usage.plan.codezMcpDescription`，确保和输入框 context 的额度说明一致。

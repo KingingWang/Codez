@@ -32,7 +32,7 @@ import {
 
 /** plugin.json 的位置，与 CLI 发现插件时同一优先级（adapters/plugins/index.ts 的 manifest 目录约定）。 */
 export const PLUGIN_MANIFEST_CANDIDATES = [
-  [".zcode-plugin", "plugin.json"],
+  [".codez-plugin", "plugin.json"],
   [".claude-plugin", "plugin.json"],
   [".codex-plugin", "plugin.json"],
 ] as const;

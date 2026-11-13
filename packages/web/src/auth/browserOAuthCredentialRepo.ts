@@ -10,11 +10,11 @@ import {
   type OAuthCachedSessionRestoreResult,
   type UserInfo,
   resolveJwtExpiration,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { toUserInfo } from "./zaiWebOAuthProvider.js";
 
 const ACTIVE_PROVIDER_KEY = "oauth:active_provider";
-const ZCODE_JWT_TOKEN_KEY = "zcodejwttoken";
+const CODEZ_JWT_TOKEN_KEY = "codezjwttoken";
 const ZAI_ACCESS_TOKEN_KEY = "oauth:zai:access_token";
 const ZAI_USER_INFO_KEY = "oauth:zai:user_info";
 const BIGMODEL_ACCESS_TOKEN_KEY = "oauth:bigmodel:access_token";
@@ -45,7 +45,7 @@ interface BrowserOAuthSession {
   version: 1;
   provider: WebOAuthProviderId;
   userInfo: UserInfo;
-  zcodeJwtToken: string;
+  codezJwtToken: string;
   revision: string;
   /** 仅当前渠道的业务材料，供同源官网使用；不是关联账号凭据。 */
   businessAccessToken?: string;
@@ -82,7 +82,7 @@ interface BrowserOAuthCredentialRepoOptions {
 }
 
 interface WebZaiTokenSet {
-  zcodeJwtToken: string;
+  codezJwtToken: string;
   zaiAccessToken: string;
   expiresAt?: number;
 }
@@ -118,7 +118,7 @@ export class BrowserOAuthCredentialRepo {
         isWebOAuthProviderId(session.provider) &&
         userInfo &&
         userInfo.id !== "unknown" &&
-        hasText(session.zcodeJwtToken) &&
+        hasText(session.codezJwtToken) &&
         hasText(session.revision)
         ? { ...session, userInfo }
         : null;
@@ -133,7 +133,7 @@ export class BrowserOAuthCredentialRepo {
         BROWSER_SESSION_KEY,
         SESSION_EPOCH_KEY,
         ACTIVE_PROVIDER_KEY,
-        ZCODE_JWT_TOKEN_KEY,
+        CODEZ_JWT_TOKEN_KEY,
         ZAI_ACCESS_TOKEN_KEY,
         ZAI_USER_INFO_KEY,
         BIGMODEL_ACCESS_TOKEN_KEY,
@@ -145,7 +145,7 @@ export class BrowserOAuthCredentialRepo {
   private withSessionLock<T>(run: () => T): Promise<T> {
     if (!navigator.locks)
       return Promise.reject(new Error("Browser session locking is unavailable"));
-    return navigator.locks.request("zcode-browser-oauth", run);
+    return navigator.locks.request("codez-browser-oauth", run);
   }
 
   beginLoginAttempt(nonce: string): Promise<string> {
@@ -187,21 +187,21 @@ export class BrowserOAuthCredentialRepo {
         return false;
       this.localStorage.setItem(BROWSER_SESSION_KEY, JSON.stringify({ version: 1, ...session }));
       this.localStorage.removeItem(LOGIN_ATTEMPT_KEY);
-      window.dispatchEvent(new Event("zcode-browser-auth-change"));
+      window.dispatchEvent(new Event("codez-browser-auth-change"));
       return true;
     });
   }
 
   subscribeSessionChange(listener: () => void): () => void {
     const onStorage = (event: StorageEvent) => {
-      if (event.key === null || event.key.startsWith("oauth:") || event.key === ZCODE_JWT_TOKEN_KEY)
+      if (event.key === null || event.key.startsWith("oauth:") || event.key === CODEZ_JWT_TOKEN_KEY)
         listener();
     };
     window.addEventListener("storage", onStorage);
-    window.addEventListener("zcode-browser-auth-change", listener);
+    window.addEventListener("codez-browser-auth-change", listener);
     return () => {
       window.removeEventListener("storage", onStorage);
-      window.removeEventListener("zcode-browser-auth-change", listener);
+      window.removeEventListener("codez-browser-auth-change", listener);
     };
   }
 
@@ -230,13 +230,13 @@ export class BrowserOAuthCredentialRepo {
   saveTokenSet(tokenSet: WebZaiTokenSet | OAuthTokenSet, provider: WebOAuthProviderId): void {
     const accessToken =
       "zaiAccessToken" in tokenSet ? tokenSet.zaiAccessToken : tokenSet.accessToken;
-    const zcodeJwtToken = tokenSet.zcodeJwtToken;
+    const codezJwtToken = tokenSet.codezJwtToken;
 
     this.localStorage.setItem(providerKeys(provider).accessToken, accessToken);
-    if (zcodeJwtToken) {
-      this.localStorage.setItem(ZCODE_JWT_TOKEN_KEY, zcodeJwtToken);
+    if (codezJwtToken) {
+      this.localStorage.setItem(CODEZ_JWT_TOKEN_KEY, codezJwtToken);
     } else {
-      this.localStorage.removeItem(ZCODE_JWT_TOKEN_KEY);
+      this.localStorage.removeItem(CODEZ_JWT_TOKEN_KEY);
     }
   }
 
@@ -290,22 +290,22 @@ export class BrowserOAuthCredentialRepo {
     if (this.localStorage.getItem(BROWSER_SESSION_KEY) !== null) {
       const session = this.readPrimarySession();
       if (!session) return { status: "signed-out" };
-      return resolveJwtExpiration(session.zcodeJwtToken, this.now()).kind === "expired"
+      return resolveJwtExpiration(session.codezJwtToken, this.now()).kind === "expired"
         ? { status: "reauthentication-required", reason: "jwt-expired" }
         : { status: "authenticated", userInfo: session.userInfo };
     }
     const activeProvider = this.localStorage.getItem(ACTIVE_PROVIDER_KEY);
-    const zcodeJwtToken = this.localStorage.getItem(ZCODE_JWT_TOKEN_KEY);
+    const codezJwtToken = this.localStorage.getItem(CODEZ_JWT_TOKEN_KEY);
     // 一次只有一个 activeProvider（切换 provider = 重新登录并覆盖），所以按它选 key 段读。
     const keys = isWebOAuthProviderId(activeProvider) ? providerKeys(activeProvider) : null;
     const accessToken = keys ? this.localStorage.getItem(keys.accessToken) : null;
     const rawUserInfo = keys ? this.localStorage.getItem(keys.userInfo) : null;
 
-    if (!keys || !hasText(zcodeJwtToken) || !hasText(accessToken) || !hasText(rawUserInfo)) {
+    if (!keys || !hasText(codezJwtToken) || !hasText(accessToken) || !hasText(rawUserInfo)) {
       return { status: "signed-out" };
     }
 
-    if (resolveJwtExpiration(zcodeJwtToken, this.now()).kind === "expired") {
+    if (resolveJwtExpiration(codezJwtToken, this.now()).kind === "expired") {
       // Web localStorage 之前只检查 JWT 是否存在，过期后仍会恢复伪登录态。
       return { status: "reauthentication-required", reason: "jwt-expired" };
     }
@@ -323,13 +323,13 @@ export class BrowserOAuthCredentialRepo {
     return { status: "signed-out" };
   }
 
-  loadZCodeJwtToken(): string | null {
+  loadCodezJwtToken(): string | null {
     // loadCachedSessionState 只读，可选配置读取不会顺带清理过期或残缺的登录态。
     const session = this.loadCachedSessionState();
     if (session.status !== "authenticated") return null;
     return (
-      this.readPrimarySession()?.zcodeJwtToken ??
-      this.localStorage.getItem(ZCODE_JWT_TOKEN_KEY)?.trim() ??
+      this.readPrimarySession()?.codezJwtToken ??
+      this.localStorage.getItem(CODEZ_JWT_TOKEN_KEY)?.trim() ??
       null
     );
   }
@@ -341,7 +341,7 @@ export class BrowserOAuthCredentialRepo {
     this.localStorage.removeItem(LOGIN_ATTEMPT_KEY);
     this.localStorage.removeItem(OAUTH_PENDING_LOGINS_KEY);
     this.localStorage.removeItem(ACTIVE_PROVIDER_KEY);
-    this.localStorage.removeItem(ZCODE_JWT_TOKEN_KEY);
+    this.localStorage.removeItem(CODEZ_JWT_TOKEN_KEY);
     // 两个 provider 的 key 段一起清：切换 provider 时不能留下上一个身份的残片，
     // 否则 loadCachedSessionState 可能读到半套凭据。
     this.localStorage.removeItem(ZAI_ACCESS_TOKEN_KEY);
@@ -350,7 +350,7 @@ export class BrowserOAuthCredentialRepo {
     this.localStorage.removeItem(BIGMODEL_USER_INFO_KEY);
     this.localStorage.removeItem("oauth:zai_cn:access_token");
     this.localStorage.removeItem("oauth:zai_cn:user_info");
-    window.dispatchEvent(new Event("zcode-browser-auth-change"));
+    window.dispatchEvent(new Event("codez-browser-auth-change"));
   }
 
   /**

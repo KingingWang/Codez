@@ -23,15 +23,15 @@ sourceOfTruth:
     - packages/provider/src/registry.ts
     - packages/provider-node/src/model-selection-config-file-codec.ts
     - packages/provider-node/src/model-selection-config-repository.ts
-    - packages/provider-node/src/zcode-builtin-release.ts
-    - packages/provider-node/src/zcode-builtin-provider-config-source.ts
-    - packages/provider-node/src/zcode-builtin-remote-synchronizer.ts
-    - apps/zcode-cli/packages/bootstrap/src/app/provider-registry-model-runtime.ts
-    - apps/zcode-cli/packages/adapters/src/model/runner.ts
-    - apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/model-config.ts
-    - apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/input-intent.ts
+    - packages/provider-node/src/codez-builtin-release.ts
+    - packages/provider-node/src/codez-builtin-provider-config-source.ts
+    - packages/provider-node/src/codez-builtin-remote-synchronizer.ts
+    - apps/codez-cli/packages/bootstrap/src/app/provider-registry-model-runtime.ts
+    - apps/codez-cli/packages/adapters/src/model/runner.ts
+    - apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/commands/handlers/model-config.ts
+    - apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/commands/input-intent.ts
   graph:
-    - .agents/skills/feature-boundary-planner/references/zcode-feature-graph.yaml
+    - .agents/skills/feature-boundary-planner/references/codez-feature-graph.yaml
   graphIndex:
     status: unavailable
     note: No live codegraph index was present; live-code evidence was checked with rg and direct source reading.
@@ -167,7 +167,7 @@ dimensions:
   - id: provider-source
     category: provider
     values:
-      - id: zcode-builtin
+      - id: codez-builtin
       - id: account-builtin
       - id: personal
       - id: legacy-import
@@ -714,7 +714,7 @@ constraints:
               builtin-subagent,
             ]
         - dimension: provider-source
-          in: [zcode-builtin, account-builtin, personal, remote-host-mirror]
+          in: [codez-builtin, account-builtin, personal, remote-host-mirror]
     decision: signature-class-representative
     effect: Model IDs are grouped by provider/auth/API/capability/reasoning signatures; literal model IDs are not all multiplied together.
     invariant: model-id-is-opaque-but-wire-profile-is-the-test-equivalence-key
@@ -753,7 +753,7 @@ constraints:
       - docs/conversation-product-state-space.md
       - docs/conversation-protocol-declaration.md
       - docs/conversation-product-protocol.md
-      - apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/input-intent.ts
+      - apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/commands/input-intent.ts
     representativeCases: [MSR-QUEUE-001]
 
   - id: MSR-BUG-001
@@ -804,7 +804,7 @@ constraints:
     effect: Old client-config model facts, magic_name, fallback, and tombstone paths are not current Registry inputs; cover only migration compatibility where explicitly requested.
     evidence:
       - docs/model-provider-client-config-remote-model-facts.md
-      - apps/zcode-cli/packages/bootstrap/src/app/legacy-cli-model-config.ts
+      - apps/codez-cli/packages/bootstrap/src/app/legacy-cli-model-config.ts
 
 highRiskCrossProducts:
   - id: MSR-X-001
@@ -876,7 +876,7 @@ caseSeeds:
 
   - id: MSR-REG-004
     status: accepted
-    state: Account snapshot revision does not match ZCode Built-in revision
+    state: Account snapshot revision does not match Codez Built-in revision
     event: provider-refresh
     target: provider-settings -> chat-draft
     guard: revision pair mismatch

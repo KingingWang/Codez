@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import { dirname } from "node:path";
-import { buildRemoteWorkspaceIdentity, buildServerRemoteWorkspaceIdentity } from "@zcode/shared";
+import { buildRemoteWorkspaceIdentity, buildServerRemoteWorkspaceIdentity } from "@codez/shared";
 import {
   projectStorage,
   createProjectDataRepository,

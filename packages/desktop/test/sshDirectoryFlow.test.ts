@@ -1,7 +1,7 @@
 import { runInNewContext } from "node:vm";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ServiceChannels } from "@zcode/shared";
-import { TID_SETTINGS_SECTION_NAV, TID_TASK_SETTINGS_BUTTON, testId } from "@zcode/shared/test-ids";
+import { ServiceChannels } from "@codez/shared";
+import { TID_SETTINGS_SECTION_NAV, TID_TASK_SETTINGS_BUTTON, testId } from "@codez/shared/test-ids";
 import { clickTestIdByDom, clickTestIdByWebDriver } from "#e2e/helpers/desktop-app";
 import { callHandoffHost } from "#e2e/helpers/remote-project-handoff-probe";
 import { openSSHRemoteDialog, openSSHSourceDirectory } from "#e2e/helpers/ssh-remote-p0";

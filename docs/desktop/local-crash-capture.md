@@ -6,8 +6,8 @@ Desktop 主进程在启动早期配置 crash dump 路径，并同时保留两条
 - 本地额外归档一份原始 minidump，方便用户或开发排查（`desktopCrashCapture.ts`）
 
 ARMS crash collector 会扫描 `live` 目录中的全部 dump。为避免后代或外部程序继承
-Crashpad 后把 `hdc`、`plugin-container`、`chrome-headless-shell` 等 dump 混入 ZCode
-健康度，`beforeReport` 先保留 `binary_images` 中含当前 ZCode 产品可执行文件的事件；但仅有
+Crashpad 后把 `hdc`、`plugin-container`、`chrome-headless-shell` 等 dump 混入 Codez
+健康度，`beforeReport` 先保留 `binary_images` 中含当前 Codez 产品可执行文件的事件；但仅有
 二进制命中不能证明是主进程崩溃。没有明确 `native_dump_process_role=main` 的 dump 会标记为
 `native_dump_unattributed`，继续保留原始诊断事件但不进入 App Crash / Crash-Free，避免
 Linux/Windows 共用 executable 的 helper/utility crash loop 污染产品稳定性指标。
@@ -19,7 +19,7 @@ Linux/Windows 共用 executable 的 helper/utility crash loop 污染产品稳定
 事件里的 `meta.process` 仅是应用名，不能作为进程角色回退；缺失或无法解析角色时必须保持
 `native_dump_unattributed`。
 可信可执行文件名同时取产品应用名与 `basename(process.execPath)`：生产包通常两者相同；
-本地开发运行实际使用 `Electron`，Linux Preview 则使用 `zcode-preview`，不能只拿
+本地开发运行实际使用 `Electron`，Linux Preview 则使用 `codez-preview`，不能只拿
 `app.getName()` 与 dump 模块名比较。
 本地 `archive` 仍保留原始文件，过滤线上指标不会改变本地诊断链路。
 
@@ -28,10 +28,10 @@ Linux/Windows 共用 executable 的 helper/utility crash loop 污染产品稳定
 ```
 <appConfigDir>/crash/
   ├── live/        ← Electron / Crashpad 实时写入目录（`app.setPath("crashDumps")`）
-  └── archive/     ← ZCode 额外保留的本地副本
+  └── archive/     ← Codez 额外保留的本地副本
 ```
 
-`appConfigDir` 默认 `~/.zcode/v2/`；用户配置了自定义 `dataBaseDir` 时，路径为 `<dataBaseDir>/.zcode/v2/crash/`（依赖 `desktopEarlyDataBaseDirBootstrap` 在 crash 初始化前注入 `dataBaseDir`）。
+`appConfigDir` 默认 `~/.codez/v2/`；用户配置了自定义 `dataBaseDir` 时，路径为 `<dataBaseDir>/.codez/v2/crash/`（依赖 `desktopEarlyDataBaseDirBootstrap` 在 crash 初始化前注入 `dataBaseDir`）。
 
 ## 本地归档保留策略
 

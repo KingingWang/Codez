@@ -25,20 +25,20 @@ import type {
   IntegratedTerminalShellSelection,
   UsageEntitlementSnapshot,
   UserInfo,
-  ZCodeInteractionBehavior,
-} from "@zcode/shared";
-import { BUILTIN_MODEL_PROVIDER_IDS, isLocale } from "@zcode/shared";
+  CodezInteractionBehavior,
+} from "@codez/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS, isLocale } from "@codez/shared";
 import {
   TID_SETTINGS_BACK_BUTTON,
   TID_SETTINGS_PAGE,
   TID_SETTINGS_SECTION_NAV,
   TID_SETTINGS_USAGE_TAB,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { Button } from "@/components/ui/button.js";
 import { toast } from "@/components/ui/toast.js";
 import { DesktopWindowFrame } from "@/DesktopWindowFrame.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { logger } from "@/logger.js";
 import { getPathLeaf } from "@/lib/path.js";
@@ -111,7 +111,7 @@ import {
   SettingsHeaderBreadcrumb,
   type SettingsBreadcrumbItem,
 } from "@/settings/SettingsHeaderBreadcrumb.js";
-import { useZCodeStore } from "@/store/StoreProvider.js";
+import { useCodezStore } from "@/store/StoreProvider.js";
 import { useTabStore } from "@/store/TabStoreProvider.js";
 import { isWorkspaceTab } from "@/store/tabStore.js";
 import type { Theme } from "@/useTheme.js";
@@ -124,7 +124,7 @@ import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { cn } from "@/components/lib/utils.js";
 import { useSelectDirectory } from "@/hooks/usePlatform.js";
 import { ServiceProvider, useServices } from "@/hooks/useServices.js";
-import { DEFAULT_APP_TOOL_SEARCH_MODE, type AppToolSearchMode } from "@zcode/shared";
+import { DEFAULT_APP_TOOL_SEARCH_MODE, type AppToolSearchMode } from "@codez/shared";
 import { useSettings } from "@/hooks/useSettingService.js";
 import type { CreateTaskRequest, RemoteConnectionOpenPreference } from "@/app-shell/types.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
@@ -180,7 +180,7 @@ function SettingsUsageProviderTabs({
   codingPlanSources: CodingPlanUsageSource[];
   onTabChange: (tab: UsageStatsSectionTab) => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const tabItems = [
     {
       id: "app" as const,
@@ -340,7 +340,7 @@ export function SettingsPage({
   onLogout?: () => void;
   user?: UserInfo | null;
 }) {
-  const { intl, localePreference, setLocalePreference } = useZCodeIntl();
+  const { intl, localePreference, setLocalePreference } = useCodezIntl();
   const { settingsSectionGroups, settingsSections } = useMemo(
     () =>
       createSettingsPageConfig({
@@ -445,22 +445,22 @@ export function SettingsPage({
   const [settingsBreadcrumbItems, setSettingsBreadcrumbItems] = useState<
     readonly SettingsBreadcrumbItem[]
   >([]);
-  const interfaceMode = useZCodeStore((state) => state.interfaceMode);
+  const interfaceMode = useCodezStore((state) => state.interfaceMode);
   const setInterfaceMode = useSetInterfaceModeWithTelemetry(platform, "app.setting");
-  const theme = useZCodeStore((state) => state.theme);
-  const setTheme = useZCodeStore((state) => state.setTheme);
-  const codePreviewSettings = useZCodeStore((state) => state.codePreviewSettings);
-  const setCodePreviewSettings = useZCodeStore((state) => state.setCodePreviewSettings);
-  const fontSmoothingEnabled = useZCodeStore((state) => state.fontSmoothingEnabled);
-  const setFontSmoothingEnabled = useZCodeStore((state) => state.setFontSmoothingEnabled);
-  const uiFontSizePx = useZCodeStore((state) => state.uiFontSizePx);
-  const setUiFontSizePx = useZCodeStore((state) => state.setUiFontSizePx);
-  const hideProjectDeviceNames = useZCodeStore((state) => state.hideProjectDeviceNames);
-  const setHideProjectDeviceNames = useZCodeStore((state) => state.setHideProjectDeviceNames);
-  const notificationEnabled = useZCodeStore((state) => state.notificationEnabled);
-  const setNotificationEnabled = useZCodeStore((state) => state.setNotificationEnabled);
-  const notificationSoundEnabled = useZCodeStore((state) => state.notificationSoundEnabled);
-  const setNotificationSoundEnabled = useZCodeStore((state) => state.setNotificationSoundEnabled);
+  const theme = useCodezStore((state) => state.theme);
+  const setTheme = useCodezStore((state) => state.setTheme);
+  const codePreviewSettings = useCodezStore((state) => state.codePreviewSettings);
+  const setCodePreviewSettings = useCodezStore((state) => state.setCodePreviewSettings);
+  const fontSmoothingEnabled = useCodezStore((state) => state.fontSmoothingEnabled);
+  const setFontSmoothingEnabled = useCodezStore((state) => state.setFontSmoothingEnabled);
+  const uiFontSizePx = useCodezStore((state) => state.uiFontSizePx);
+  const setUiFontSizePx = useCodezStore((state) => state.setUiFontSizePx);
+  const hideProjectDeviceNames = useCodezStore((state) => state.hideProjectDeviceNames);
+  const setHideProjectDeviceNames = useCodezStore((state) => state.setHideProjectDeviceNames);
+  const notificationEnabled = useCodezStore((state) => state.notificationEnabled);
+  const setNotificationEnabled = useCodezStore((state) => state.setNotificationEnabled);
+  const notificationSoundEnabled = useCodezStore((state) => state.notificationSoundEnabled);
+  const setNotificationSoundEnabled = useCodezStore((state) => state.setNotificationSoundEnabled);
   const usageProviderSettingsRead = useProviderSettingsView();
   const usageProviderSettingsView =
     usageProviderSettingsRead.state.status === "ready"
@@ -703,10 +703,10 @@ export function SettingsPage({
         : "app",
     );
   }, [selectedUsageCodingPlanSource, usageActiveTab, usageCodingPlanSources]);
-  const setNewUserOnboardingOpen = useZCodeStore((state) => state.setNewUserOnboardingOpen);
+  const setNewUserOnboardingOpen = useCodezStore((state) => state.setNewUserOnboardingOpen);
   // 「通用」页「打开引导」打开职业引导；迁移向导只从数据同步页「迁移」进入。
   const openOccupationOnboarding = () => setNewUserOnboardingOpen(true);
-  const requestMigrationDialog = useZCodeStore((state) => state.requestOnboardingDialog);
+  const requestMigrationDialog = useCodezStore((state) => state.requestOnboardingDialog);
   const setActiveSettingsSection = useCallback(
     (section: SettingsSectionId, fallbackSection: SettingsSectionId = activeSection) => {
       const resolvedSection = resolveSettingsSection(section, fallbackSection);
@@ -852,8 +852,8 @@ export function SettingsPage({
   const [autoDownloadAndInstallUpdates, setAutoDownloadAndInstallUpdates] = useState(false);
   const [messageStreamShowReasoning, setMessageStreamShowReasoning] = useState(true);
   const [messageStreamShowTodos, setMessageStreamShowTodos] = useState(false);
-  const [zcodeInteractionBehavior, setZCodeInteractionBehavior] =
-    useState<ZCodeInteractionBehavior>("queue");
+  const [codezInteractionBehavior, setCodezInteractionBehavior] =
+    useState<CodezInteractionBehavior>("queue");
   const [defaultHomeDir, setDefaultHomeDir] = useState("");
   const [hostPlatform, setHostPlatform] = useState("");
 
@@ -985,7 +985,7 @@ export function SettingsPage({
     }
     setMessageStreamShowReasoning(sharedSettings.messageStreamShowReasoning ?? true);
     setMessageStreamShowTodos(sharedSettings.messageStreamShowTodos ?? false);
-    setZCodeInteractionBehavior(sharedSettings.zcodeInteractionBehavior ?? "queue");
+    setCodezInteractionBehavior(sharedSettings.codezInteractionBehavior ?? "queue");
     setReceivePreviewUpdates(sharedSettings.receivePreviewUpdates ?? false);
     setAutoDownloadAndInstallUpdates(sharedSettings.autoDownloadAndInstallUpdates ?? false);
   }, [sharedSettings]);
@@ -1371,16 +1371,16 @@ export function SettingsPage({
     },
     [updateSharedSettings],
   );
-  const handleZCodeInteractionBehaviorChange = useCallback(
-    async (behavior: ZCodeInteractionBehavior) => {
+  const handleCodezInteractionBehaviorChange = useCallback(
+    async (behavior: CodezInteractionBehavior) => {
       await runSettingsActionAsync({
         featureId: "settings.conversation",
         action: "change_interaction_behavior",
         trigger: "select",
-        operation: () => updateSharedSettings({ zcodeInteractionBehavior: behavior }),
+        operation: () => updateSharedSettings({ codezInteractionBehavior: behavior }),
         completed: { resultSource: "shared_settings", valueAfter: behavior },
       });
-      setZCodeInteractionBehavior(behavior);
+      setCodezInteractionBehavior(behavior);
     },
     [updateSharedSettings],
   );
@@ -1893,7 +1893,7 @@ export function SettingsPage({
                               }
                               messageStreamShowReasoning={messageStreamShowReasoning}
                               messageStreamShowTodos={messageStreamShowTodos}
-                              zcodeInteractionBehavior={zcodeInteractionBehavior}
+                              codezInteractionBehavior={codezInteractionBehavior}
                               askUserQuestionAutoResolutionEnabled={
                                 askUserQuestionAutoResolutionEnabled
                               }
@@ -1902,8 +1902,8 @@ export function SettingsPage({
                                 handleMessageStreamShowReasoningChange
                               }
                               onMessageStreamShowTodosChange={handleMessageStreamShowTodosChange}
-                              onZCodeInteractionBehaviorChange={
-                                handleZCodeInteractionBehaviorChange
+                              onCodezInteractionBehaviorChange={
+                                handleCodezInteractionBehaviorChange
                               }
                               onAskUserQuestionAutoResolutionEnabledChange={
                                 handleAskUserQuestionAutoResolutionEnabledChange
@@ -2082,7 +2082,7 @@ export function SettingsPage({
                               />
                             </ServiceProvider>
                           ) : activeSection === "personalization" ? (
-                            // 个性化指令编辑的是本机 ~/.zcode/AGENTS.md（Agent 实际读取的文件）。
+                            // 个性化指令编辑的是本机 ~/.codez/AGENTS.md（Agent 实际读取的文件）。
                             // 仅桌面本地入口可编辑：手机远控的 base services 可能归属远程
                             // Source（remoteWorkspaceServiceCollection 注册的是远端 settingService），
                             // 编辑会写错机器；Web 端只显示本地桌面端指引。

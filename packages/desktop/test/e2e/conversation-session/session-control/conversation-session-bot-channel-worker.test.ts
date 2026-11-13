@@ -4,7 +4,7 @@ import {
   createRecordingFeishuFetch,
   type RecordedRequest,
 } from "#e2e/bots/helpers/bots-service-harness";
-import { generateTraceId, type BotInboundMessage } from "@zcode/shared";
+import { generateTraceId, type BotInboundMessage } from "@codez/shared";
 
 // 默认工具注册与发送接线暂停；保留原用例及 fixture，待插件入口接入后恢复。
 describe.skip("BOT-E2E-MN-02/FN-01 actual channel reply tool chain", () => {

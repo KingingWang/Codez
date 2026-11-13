@@ -56,7 +56,7 @@ async function openRow() {
 }
 async function launch(name: string) {
   names.push(name);
-  // 合并适配：全局新任务落到独立聊天目录，Bash fixture 必须从 ZCodeProject 发起。
+  // 合并适配：全局新任务落到独立聊天目录，Bash fixture 必须从 CodezProject 发起。
   await startDraftFromProject(DEFAULT_WORKSPACE);
 
   // 项目新草稿恢复 build；显式选择 yolo，避免把模式切换动画中的旧文案当成已选中。
@@ -136,7 +136,7 @@ async function expectTaskProcessResources(pid: number, running: boolean) {
     const snapshot = await readResourceUsageSnapshot();
     expect(snapshot).not.toBeNull();
     if (!snapshot) throw new Error("资源管理器快照缺失");
-    const agents = snapshot.processes.filter((row) => row.name.startsWith("zcode-agent-"));
+    const agents = snapshot.processes.filter((row) => row.name.startsWith("codez-agent-"));
     expect(agents.length).toBeGreaterThan(0);
     expect(agents.every((row) => row.category === "base")).toBe(true);
     expect(new Set(snapshot.processes.map((row) => row.pid)).size).toBe(snapshot.processes.length);
@@ -164,7 +164,7 @@ async function expectTaskProcessResources(pid: number, running: boolean) {
     if (running) {
       await $('[data-testid="resource-manager-group-task"]').scrollIntoView({ block: "center" });
       await browser.saveScreenshot(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "task-process-memory.png"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "task-process-memory.png"),
       );
     }
   } finally {
@@ -174,7 +174,7 @@ async function expectTaskProcessResources(pid: number, running: boolean) {
 }
 
 async function readAgentLogs() {
-  const logDir = process.env.ZCODE_LOG_DIR!;
+  const logDir = process.env.CODEZ_LOG_DIR!;
   const files = (await readdir(logDir)).filter((file) => file.endsWith(".jsonl"));
   return (await Promise.all(files.map((file) => readFile(join(logDir, file), "utf8")))).join("\n");
 }
@@ -259,7 +259,7 @@ describe("后台 Bash 实时输出详情", () => {
       await contains(`${name}_THIRD_no_newline`);
       if (name === "EXPLICIT")
         await browser.saveScreenshot(
-          join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "background-bash-live.png"),
+          join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "background-bash-live.png"),
         );
       expect(await alive(name!)).toBe(true);
       expect(await details().getAttribute("data-status")).toBe("running");
@@ -272,7 +272,7 @@ describe("后台 Bash 实时输出详情", () => {
       expect(await details().$('[data-testid="background-bash-running"]').isExisting()).toBe(false);
       await expectStatusBarAlignment();
       if (name === "EXPLICIT") {
-        const logDir = process.env.ZCODE_E2E_RUNTIME_LOG_DIR;
+        const logDir = process.env.CODEZ_E2E_RUNTIME_LOG_DIR;
         expect(logDir).toBeTruthy();
         const files = (await readdir(logDir!)).filter((file) => file.endsWith(".log"));
         const logs = (
@@ -280,7 +280,7 @@ describe("后台 Bash 实时输出详情", () => {
         ).join("\n");
         // 成功日志曾随每秒轮询持续落盘；先确认真实 RPC 日志存在，再验证该查询被 debug 门控。
         expect(logs).toContain("[rpc:call]");
-        expect(logs).not.toContain("[rpc:call] zcode-agent.backgroundBashOutputV4 OK");
+        expect(logs).not.toContain("[rpc:call] codez-agent.backgroundBashOutputV4 OK");
       }
     });
   }
@@ -406,7 +406,7 @@ describe("后台 Bash 实时输出详情", () => {
       }),
     ).toBe(true);
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "background-bash-paused.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "background-bash-paused.png"),
     );
     expect(await viewport.getAttribute("data-scroll-mask")).toBe("bottom");
     const frozen = await text();
@@ -444,7 +444,7 @@ describe("后台 Bash 实时输出详情", () => {
   it("BGV04: 子会话冷恢复后仍能读取原后台 Bash，完成后保留最终输出", async function () {
     this.timeout(360000);
     names.push("CHILD");
-    // 合并适配：全局新任务落到独立聊天目录，Bash fixture 必须从 ZCodeProject 发起。
+    // 合并适配：全局新任务落到独立聊天目录，Bash fixture 必须从 CodezProject 发起。
     await startDraftFromProject(DEFAULT_WORKSPACE);
 
     await switchV4Mode("yolo");
@@ -508,7 +508,7 @@ describe("后台 Bash 实时输出详情", () => {
     });
     expect(await alive("CHILD")).toBe(true);
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "background-bash-child-released.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "background-bash-child-released.png"),
     );
     // Agent 摘要在已折叠的执行历史中；先展开历史，再从真实摘要入口重新订阅 child。
     const history = await $(
@@ -536,7 +536,7 @@ describe("后台 Bash 实时输出详情", () => {
     expect(await alive("CHILD")).toBe(true);
     expect(await countUpstreamRequests({ includes: ["E2E_BGV_CHILD_WORK:"] })).toBe(requests);
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "background-bash-cold-resume.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "background-bash-cold-resume.json"),
       JSON.stringify(
         {
           childSessionId,

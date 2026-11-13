@@ -38,7 +38,7 @@ Model ID
 
 - 设置页隐藏“工具调用”编辑项。
 - 内置 Provider 与 Provider Template 的能力基线统一为 `supportsToolCall: true`。
-- 运行时继续使用该能力字段；不能因为隐藏 UI 而删除能力或让 ZCode 失去工具调用。
+- 运行时继续使用该能力字段；不能因为隐藏 UI 而删除能力或让 Codez 失去工具调用。
 
 ### 2.3 Structured Output 改为严格 JSON Schema 语义
 
@@ -96,7 +96,7 @@ Model
 ## 实施记录（2026-09-04）
 
 - 完成 `supportsStructuredOutput` → `supportsJsonSchemaOutput` 的全仓字段切换；Schema 保持严格对象校验，旧字段不做迁移兼容。
-- 在设置页移除“工具调用”编辑项，保留运行时能力字段；Builtin 基线继续以 `supportsToolCall: true` 提供 ZCode 必需能力。
+- 在设置页移除“工具调用”编辑项，保留运行时能力字段；Builtin 基线继续以 `supportsToolCall: true` 提供 Codez 必需能力。
 - 将 GLM-5.3-Flash 的 PDF 能力放在 `modelApiRules` 的 `glm-5\\.3-flash + anthropic-messages` 规则中；Model baseline 和其他 API Schema 仍不声明 PDF。
 - 新增 Builtin 完整性回归，确认 Anthropic 组合支持 PDF、Chat 组合不支持，且配置文件不再含旧字段；受影响 Provider、Adapter、UI 测试通过，`pnpm typecheck` 和 `pnpm lint` 通过（0 error）。
 - Todo 80 的流式 JSON Schema 传递仍未改动，继续保持草案边界。

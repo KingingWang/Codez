@@ -9,7 +9,7 @@
 >
 > 后续 Agent 执行主干见
 > [CLI Agent Turn Trace 可观测性设计](./turn-trace-observability-v2.md)。本文已有
-> `zcode.model.call` / `zcode.model.attempt` 不废弃；它们将从当前短 Trace 迁移为
+> `codez.model.call` / `codez.model.attempt` 不废弃；它们将从当前短 Trace 迁移为
 > Turn / Step / Compaction / Tool 下的子 Span。
 
 ## 1. 结论
@@ -33,7 +33,7 @@ CLI 是模型调用事实的权威生产者。App 只负责在启动 CLI 时注�
 - 区分一次模型调用与它下面的物理 Provider 请求、Adapter Retry、流式恢复和 Transport Fallback。
 - 统计调用量、物理请求放大率、成功率、取消率、Retry 恢复率、耗时、TTFT、Token 和 Prompt Cache。
 - 记录实际 Provider、清洗后的 Endpoint、Model、请求与最终生效的 Thought Level。
-- 失败时记录 ZCode 错误码、Provider 错误码、HTTP 状态码、脱敏错误信息、错误阶段、是否可重试和 Provider Request ID。
+- 失败时记录 Codez 错误码、Provider 错误码、HTTP 状态码、脱敏错误信息、错误阶段、是否可重试和 Provider Request ID。
 - 所有记录携带 UID、设备、Session、Turn、Trace、Logical Call 和 Request 等关联 ID。
 - App-launched 和 Standalone CLI 共享同一 Schema 和 Exporter 逻辑。
 - Telemetry 失败、拥塞或未配置时不得阻塞或改变 Agent 行为。
@@ -179,7 +179,7 @@ Model Operation
 Agent Session 可能持续很久，并包含不受限的 Step、Tool 和 Compaction。把整个 Session 做成一个长 Trace 会造成 Span 数量、内存、采样和查询边界不稳定。
 
 Phase 1 已实现为每个 `ModelApiCallRecord` 对应一个短 Trace/Root Span，Physical Attempt 是
-Child Span；通过 ZCode 自己的 `session_id`、`turn_id`、`operation_id` 和
+Child Span；通过 Codez 自己的 `session_id`、`turn_id`、`operation_id` 和
 `logical_call_id` 跨 Trace 关联。
 
 目标结构不是 Session Trace，也不继续停留在孤立 Model Trace，而是：
@@ -281,7 +281,7 @@ runtime_surface
 - `provider_request_id`：Provider 响应 Header/Body 中的请求 ID，存在时记录。
 - OAuth/账号原始 UID 不进入 Record、OTLP Resource 或 Agent 子进程公共环境；App Host 只注入 SHA-256。
 - `user_id_hash` 用于 ARMS 用户关联；Exporter 同时映射为既有查询约定的 `uid`；`identity_state=authenticated|anonymous|unavailable`。
-- Standalone 无 ZCode 账号身份时，UID 留空，不使用字符串 `unknown` 冒充用户。
+- Standalone 无 Codez 账号身份时，UID 留空，不使用字符串 `unknown` 冒充用户。
 - Exporter 映射 `uid/rid/sid = user_id_hash/request_id/session_id`；领域 Schema 仍使用完整名称。
 
 上述 ID 只用于 Trace/SLS 详情查询，不作为 Metrics Label。
@@ -400,10 +400,10 @@ Physical Attempt，并通过 `previous_request_id` 关联。这样不会把 Core
 Compaction 等 Feature 专有字段放入命名空间，不污染公共 Schema：
 
 ```text
-zcode.compaction.trigger
-zcode.compaction.outer_attempt
-zcode.compaction.stream_output_committed
-zcode.compaction.fallback_eligible
+codez.compaction.trigger
+codez.compaction.outer_attempt
+codez.compaction.stream_output_committed
+codez.compaction.fallback_eligible
 ```
 
 ### 8.6 耗时
@@ -467,9 +467,9 @@ error_phase = prepare | connect | response | stream | parse | postprocess
 
 约束：
 
-- `error_code` 使用 ZCode `ModelErrorCode`。
+- `error_code` 使用 Codez `ModelErrorCode`。
 - `provider_error_code` 保存 Provider 业务码，不能覆盖统一错误码。
-- `error_message` 是 ZCode 归一化安全消息。
+- `error_message` 是 Codez 归一化安全消息。
 - `provider_error_message` 必须脱敏和截断，最大 1024 字符。
 - 错误消息和 Stack 不得成为 Metrics Label。
 - 成功调用不采集 Stack；错误 Stack 仅在明确开启且通过脱敏时进入详细 Trace。
@@ -624,7 +624,7 @@ headless / TUI / protocol async entry
                 |
                 +--> I/O failure -----------------> identity unavailable
   |
-  +--> synchronous createZCodeApp()
+  +--> synchronous createCodezApp()
          |
          +--> synchronous createModelTelemetry()（只消费已准备的 env）
 ```
@@ -632,7 +632,7 @@ headless / TUI / protocol async entry
 同一进程对同一 state 文件的并发 prepare 共享一个 Promise；跨进程继续复用
 `telemetry-state.lock`、stale owner 检测和原子 rename。身份 I/O 失败必须旁路，最多让
 `identity_state=unavailable`，不能阻断 App 创建或首个模型请求。直接嵌入并调用同步
-`createZCodeApp()` 的宿主负责注入身份；官方 headless、TUI、protocol 入口统一执行异步 prepare。
+`createCodezApp()` 的宿主负责注入身份；官方 headless、TUI、protocol 入口统一执行异步 prepare。
 
 配置优先级：
 
@@ -647,14 +647,14 @@ Phase 1 使用标准 OTel 环境变量，不增加用户设置 UI：
 OTEL_EXPORTER_OTLP_TRACES_ENDPOINT   # 优先，完整 /v1/traces 地址
 OTEL_EXPORTER_OTLP_ENDPOINT          # 次选，CLI 自动追加 /v1/traces
 OTEL_EXPORTER_OTLP_TRACES_HEADERS    # 优先于 OTEL_EXPORTER_OTLP_HEADERS
-OTEL_SERVICE_NAME                    # 默认 zcode-cli-agent
+OTEL_SERVICE_NAME                    # 默认 codez-cli-agent
 OTEL_RESOURCE_ATTRIBUTES
-ZCODE_MODEL_TELEMETRY_ENABLED        # false/0/off/disabled 可强制关闭
+CODEZ_MODEL_TELEMETRY_ENABLED        # false/0/off/disabled 可强制关闭
 ```
 
 Desktop main 只把 allowlist 内的 OTLP 配置定向传给 host，并丢弃外部传入的 UID hash、Identity State、Device MID 和 Runtime Surface，避免环境变量伪造身份。Host 初始化 services 时立即捕获 OTLP 配置并从公共 `process.env` 删除；启动 Agent 时再注入，CLI bootstrap 捕获后同样删除。因此认证 Header 不会进入 Bash、MCP 或 Tool 子进程。Desktop UID 从 OAuth Profile 读取后在 Host 内做 SHA-256 伪名化，原值不跨 Agent 边界；该散列仍是可关联标识符，并非匿名数据。Device MID 复用 App 已有 `telemetry-state.json`。
 
-当前 App 内置的 `ZCODE_ARMS_RUM_ENDPOINT` 是 `/rum/web/v2`，不能推导 OTLP 地址或复用 RUM 鉴权。部署环境必须另外提供目标 ARMS Workspace 的 OTLP Endpoint/Header；缺失时新链路明确 No-op，原 RUM、SQLite 和 `/event/report` 均保持运行。
+当前 App 内置的 `CODEZ_ARMS_RUM_ENDPOINT` 是 `/rum/web/v2`，不能推导 OTLP 地址或复用 RUM 鉴权。部署环境必须另外提供目标 ARMS Workspace 的 OTLP Endpoint/Header；缺失时新链路明确 No-op，原 RUM、SQLite 和 `/event/report` 均保持运行。
 
 ### 11.1 Desktop 正式安装包配置交付
 
@@ -662,18 +662,18 @@ Desktop main 只把 allowlist 内的 OTLP 配置定向传给 host，并丢弃外
 以下专用变量向 Desktop Main 注入部署默认值：
 
 ```text
-ZCODE_PACKAGED_AGENT_OTEL_ENDPOINT
-ZCODE_PACKAGED_AGENT_OTEL_HEADERS
-ZCODE_PACKAGED_AGENT_OTEL_SERVICE_NAME   # 可选，默认 zcode-cli-agent
+CODEZ_PACKAGED_AGENT_OTEL_ENDPOINT
+CODEZ_PACKAGED_AGENT_OTEL_HEADERS
+CODEZ_PACKAGED_AGENT_OTEL_SERVICE_NAME   # 可选，默认 codez-cli-agent
 ```
 
 它们只用于构建 Desktop Main，不直接作为通用 `OTEL_*` 变量暴露给 pnpm、
 electron-builder 或其他构建子进程。运行时再映射为 Agent 已支持的标准字段：
 
 ```text
-ZCODE_PACKAGED_AGENT_OTEL_ENDPOINT     -> OTEL_EXPORTER_OTLP_ENDPOINT
-ZCODE_PACKAGED_AGENT_OTEL_HEADERS      -> OTEL_EXPORTER_OTLP_HEADERS
-ZCODE_PACKAGED_AGENT_OTEL_SERVICE_NAME -> OTEL_SERVICE_NAME
+CODEZ_PACKAGED_AGENT_OTEL_ENDPOINT     -> OTEL_EXPORTER_OTLP_ENDPOINT
+CODEZ_PACKAGED_AGENT_OTEL_HEADERS      -> OTEL_EXPORTER_OTLP_HEADERS
+CODEZ_PACKAGED_AGENT_OTEL_SERVICE_NAME -> OTEL_SERVICE_NAME
 ```
 
 ```text
@@ -720,12 +720,12 @@ GitLab CI variables（Header 必须 masked）
 ```text
 同一个阿里云账号 / ARMS Workspace
   |
-  +--> zcode-desktop-rum
+  +--> codez-desktop-rum
   |      SDK: @arms/rum-electron
   |      Endpoint: /rum/web/v2
   |      范围: crash / JS error / UI / longTask / main-renderer network
   |
-  +--> zcode-cli-agent
+  +--> codez-cli-agent
          SDK: minimal OpenTelemetry trace packages（Metrics 为 P1）
          Endpoint: OTLP
          范围: Model API / Agent Runtime
@@ -873,9 +873,9 @@ telemetry_queue_size
 
 Telemetry 未配置时延迟初始化或保持 No-op，不创建 Batch Worker。实现 MR 必须报告：
 
-- `dist/zcode.cjs` minified 大小变化。
+- `dist/codez.cjs` minified 大小变化。
 - SEA 二进制大小变化。
-- Standalone `zcode --help` 和首次 Prompt 启动耗时变化。
+- Standalone `codez --help` 和首次 Prompt 启动耗时变化。
 - Telemetry disabled/enabled 的 RSS 基线。
 
 不建议为减小包体自行实现一套非标准 OTLP 协议；先用最小官方 SDK，只有测量证明包体不可接受时再评估替代。
@@ -909,7 +909,7 @@ Exporter 禁止无限重试、无限落盘、阻塞进程退出或把异常抛�
 | Standalone device state warm read P50/P95                     |                                     `0.014ms` / `0.017ms` | 历史同步基线；现为异步启动 I/O，不在模型热路径             |
 | 首批 OTel 加载 + 两 Span Export + shutdown                    |                                  `93.0ms`，RSS `+18.0MiB` | 发生在后台 Flush/退出，不进入模型 TTFT                     |
 | 1 Call + 1 Attempt OTLP protobuf                              |                            未压缩 `3,456B`，gzip `1,159B` | 单 Call 批次约 `1.13KiB` 网络载荷                          |
-| `dist/zcode.cjs`                                              |   `19,037,591B -> 20,146,129B`，`+1,108,538B`（`+5.82%`） | 官方最小 OTel SDK 是主要增量                               |
+| `dist/codez.cjs`                                              |   `19,037,591B -> 20,146,129B`，`+1,108,538B`（`+5.82%`） | 官方最小 OTel SDK 是主要增量                               |
 | darwin-arm64 SEA                                              | `181,513,504B -> 182,629,792B`，`+1,116,288B`（`+0.62%`） | SEA 总体增幅可控                                           |
 | `--help` 冷启动 P50（30 次）                                  |                            `290.2ms -> 295.0ms`，`+4.8ms` | 调度噪声较大，平均值未退化；继续在 CI 追踪                 |
 
@@ -923,7 +923,7 @@ Exporter 禁止无限重试、无限落盘、阻塞进程退出或把异常抛�
 
 | 层                 | 主要改动                                                                     | 侵入性                              |
 | ------------------ | ---------------------------------------------------------------------------- | ----------------------------------- |
-| `@zcode/contracts` | Operation Registry、Typed Observation、Call/Attempt/Error Records、Sink 接口 | 已完成；纯类型/Schema，无 ARMS 依赖 |
+| `@codez/contracts` | Operation Registry、Typed Observation、Call/Attempt/Error Records、Sink 接口 | 已完成；纯类型/Schema，无 ARMS 依赖 |
 | Model Adapter      | Attempt 生命周期、最终 Provider/Endpoint/Thought/Usage、错误补全             | 中；集中在 runner/status/options    |
 | Core Runtime       | 主 Step/Compaction/Verifier/Title 等调用点补 `operation` 和 Operation 结果   | 低到中；约十个语义入口              |
 | Tool Handlers      | WebSearch/WebFetch/ReadSessionContext 补严格 Operation                       | 低                                  |
@@ -948,7 +948,7 @@ model.generateText({
 
 公共事实由 Adapter 统一补齐，调用点不重复处理 Provider、Endpoint、Thought、Token、Cache 和错误。
 
-`modelCall` 是 ZCode 内部字段，Adapter 在构造 AI SDK 请求时必须剥离，不能发送给 Provider。
+`modelCall` 是 Codez 内部字段，Adapter 在构造 AI SDK 请求时必须剥离，不能发送给 Provider。
 
 ### 14.3 Phase 1 结构问题处理结果
 
@@ -1044,10 +1044,10 @@ provider_route
 不按 `step/compact/title/tool` 创建独立表。使用一个 OTel Service：
 
 ```text
-service.name = zcode-cli-agent
-span.name = zcode.model.call
-span.name = zcode.model.attempt
-span.name = zcode.model.operation
+service.name = codez-cli-agent
+span.name = codez.model.call
+span.name = codez.model.attempt
+span.name = codez.model.operation
 ```
 
 通过 `operation`、`actor_kind`、`transport` 等字段分类。Trace 数据由 ARMS 托管存储；若未来需要长期宽表或固定离线分析，再通过 SLS Scheduled SQL 生成派生 Logstore，不作为 P0 前置条件。
@@ -1140,7 +1140,7 @@ P0：
 | CLI 异常退出              | 进程退出            | 只做有界 Flush，不阻止退出                    |
 | Remote 无法获得 OTLP 配置 | 远端 Agent 正常运行 | No-op/本地 Usage，不回传 Main 代发            |
 
-Phase 1 没有新增 ARMS “表”：`zcode.model.call` 与 `zcode.model.attempt` 是同一 `service.name=zcode-cli-agent` 下的两类 Span，流量、成功率、耗时分位、Token/Cache 都从 Span 属性聚合。需要固定宽表时才在 SLS 侧创建派生 Logstore/定时 SQL，不改变 CLI Schema。
+Phase 1 没有新增 ARMS “表”：`codez.model.call` 与 `codez.model.attempt` 是同一 `service.name=codez-cli-agent` 下的两类 Span，流量、成功率、耗时分位、Token/Cache 都从 Span 属性聚合。需要固定宽表时才在 SLS 侧创建派生 Logstore/定时 SQL，不改变 CLI Schema。
 
 ## 21. 维度与剪枝
 
@@ -1217,10 +1217,10 @@ Phase 1 没有新增 ARMS “表”：`zcode.model.call` 与 `zcode.model.attemp
 - SQLite Usage 结果不回归。
 - 本地/SSH/WSL/Docker 的配置和身份边界。
 - Windows/macOS/Linux 的 URL、Shutdown、Signal 行为。
-- Desktop Agent 必须在不存在 `apps/zcode-cli/packages/telemetry/dist` 的干净环境中完成
+- Desktop Agent 必须在不存在 `apps/codez-cli/packages/telemetry/dist` 的干净环境中完成
   `prepare:desktop-runtime`；普通 pnpm 构建和 `bootstrap:with-remote` 直跑 tsc 构建必须共享
   `scripts/build-desktop-agent-cli.mjs` 中同一份 `cliWorkspaceBuilds` 依赖清单，顺序保持
-  `@zcode/contracts -> @zcode/telemetry -> @zcode/bootstrap`。禁止依赖开发机残留的 dist。
+  `@codez/contracts -> @codez/telemetry -> @codez/bootstrap`。禁止依赖开发机残留的 dist。
 
 ### 22.5 性能测试
 
@@ -1235,9 +1235,9 @@ Phase 1 没有新增 ARMS “表”：`zcode.model.call` 与 `zcode.model.attemp
 
 2026-07-22 使用 Node.js 24.14.0 验证：
 
-- `@zcode/telemetry`：6 files / 21 tests 通过，包含 Call/Attempt 父子 Span、真实本地 Fake OTLP Collector、gzip protobuf、队列、锁、错误脱敏和 Endpoint 清洗。
-- `@zcode/adapters`：55 files / 775 tests 通过，2 skipped；包含 Provider Thought 映射、request/global sink fan-out 与完整 runner 回归。
-- `@zcode/contracts`：22 files / 179 tests 通过；Operation Registry 和 Schema 测试通过。
+- `@codez/telemetry`：6 files / 21 tests 通过，包含 Call/Attempt 父子 Span、真实本地 Fake OTLP Collector、gzip protobuf、队列、锁、错误脱敏和 Endpoint 清洗。
+- `@codez/adapters`：55 files / 775 tests 通过，2 skipped；包含 Provider Thought 映射、request/global sink fan-out 与完整 runner 回归。
+- `@codez/contracts`：22 files / 179 tests 通过；Operation Registry 和 Schema 测试通过。
 - Core 本次相关 Compaction/Streaming：2 files / 104 tests 通过。
 - Bootstrap Workflow/Model Catalog：3 files / 10 tests 通过。
 - Shared/Services/Desktop 配置注入：3 files / 29 tests 通过。
@@ -1278,25 +1278,25 @@ I/O/模块行数边界、Subagent/WebFetch/Workflow 断言以及三个持久化/
 
 ## 25. 实现入口索引
 
-- Telemetry Contract：`apps/zcode-cli/packages/contracts/src/telemetry/index.ts`
-- Runtime/Recorder：`apps/zcode-cli/packages/telemetry/src/runtime.ts`、`model-api-recorder.ts`
-- OTLP Bootstrap/Exporter：`apps/zcode-cli/packages/telemetry/src/bootstrap.ts`、`lazy-otlp-exporter.ts`、`otlp-exporter.ts`
-- Endpoint 清洗：`apps/zcode-cli/packages/telemetry/src/provider-endpoint.ts`
-- Model Adapter：`apps/zcode-cli/packages/adapters/src/model/runner.ts`
-- Attempt Status：`apps/zcode-cli/packages/adapters/src/model/runner-status.ts`
-- Generate：`apps/zcode-cli/packages/adapters/src/model/runner-generate.ts`
-- Stream：`apps/zcode-cli/packages/adapters/src/model/runner-stream.ts`
-- Failure Classifier：`apps/zcode-cli/packages/adapters/src/model/failure-classifier.ts`
-- Thought Catalog：`apps/zcode-cli/packages/contracts/src/model/catalog.ts`
-- Thought Policies：`apps/zcode-cli/packages/adapters/src/model/reasoning-policy.ts`
-- Runtime Thought Mapping：`apps/zcode-cli/packages/adapters/src/model/runtime-thought-level.ts`（Bootstrap 保留兼容 re-export）
-- App/Standalone Bootstrap：`apps/zcode-cli/packages/bootstrap/src/app/create-app.ts`
-- Local Usage：`apps/zcode-cli/packages/core/src/runtime/methods/usage-observability.ts`
-- SQLite Usage：`apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/usage.ts`
+- Telemetry Contract：`apps/codez-cli/packages/contracts/src/telemetry/index.ts`
+- Runtime/Recorder：`apps/codez-cli/packages/telemetry/src/runtime.ts`、`model-api-recorder.ts`
+- OTLP Bootstrap/Exporter：`apps/codez-cli/packages/telemetry/src/bootstrap.ts`、`lazy-otlp-exporter.ts`、`otlp-exporter.ts`
+- Endpoint 清洗：`apps/codez-cli/packages/telemetry/src/provider-endpoint.ts`
+- Model Adapter：`apps/codez-cli/packages/adapters/src/model/runner.ts`
+- Attempt Status：`apps/codez-cli/packages/adapters/src/model/runner-status.ts`
+- Generate：`apps/codez-cli/packages/adapters/src/model/runner-generate.ts`
+- Stream：`apps/codez-cli/packages/adapters/src/model/runner-stream.ts`
+- Failure Classifier：`apps/codez-cli/packages/adapters/src/model/failure-classifier.ts`
+- Thought Catalog：`apps/codez-cli/packages/contracts/src/model/catalog.ts`
+- Thought Policies：`apps/codez-cli/packages/adapters/src/model/reasoning-policy.ts`
+- Runtime Thought Mapping：`apps/codez-cli/packages/adapters/src/model/runtime-thought-level.ts`（Bootstrap 保留兼容 re-export）
+- App/Standalone Bootstrap：`apps/codez-cli/packages/bootstrap/src/app/create-app.ts`
+- Local Usage：`apps/codez-cli/packages/core/src/runtime/methods/usage-observability.ts`
+- SQLite Usage：`apps/codez-cli/packages/adapters/src/storage/session-store/repositories/usage.ts`
 - App ARMS：`packages/desktop/src/main/appARMSBootstrap.ts`
 - RUM Plan Usage：`packages/ui/src/lib/planUsageArmsTelemetry.ts`
-- Host Spawn：`packages/services/src/zcode-agent/zcodeAgentProcessManager.ts`
-- Host OTLP 身份注入：`packages/services/src/zcode-agent/agentTelemetryEnv.ts`
+- Host Spawn：`packages/services/src/codez-agent/codezAgentProcessManager.ts`
+- Host OTLP 身份注入：`packages/services/src/codez-agent/agentTelemetryEnv.ts`
 - Business Telemetry：`packages/services/src/telemetry/telemetryCore.ts`
 
 ## 26. 关联文档
@@ -1306,7 +1306,7 @@ I/O/模块行数边界、Subagent/WebFetch/Workflow 断言以及三个持久化/
 - [Plan Usage ARMS 自定义事件](../../monitoring/plan-usage-arms-telemetry.md)
 - [ARMS Electron 监控](../../monitoring/arms-browser-monitoring.md)
 - [V4 对话埋点兼容规范](../../monitoring/conversation-telemetry-v4.md)
-- [CLI Usage Observability](../../../apps/zcode-cli/docs/design/v2/usage-observability.md)
-- [模型实现设计](../../../apps/zcode-cli/docs/design/v2/model/README.md)
+- [CLI Usage Observability](../../../apps/codez-cli/docs/design/v2/usage-observability.md)
+- [模型实现设计](../../../apps/codez-cli/docs/design/v2/model/README.md)
 - [ARMS OpenTelemetry Node.js 接入](https://help.aliyun.com/zh/opentelemetry/user-guide/use-managed-service-for-opentelemetry-to-submit-the-trace-data-of-a-node-js-application)
 - [ARMS 可观测数据存储](https://help.aliyun.com/zh/opentelemetry/developer-reference/arms-observable-data-storage-overview)

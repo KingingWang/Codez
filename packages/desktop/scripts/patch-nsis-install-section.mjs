@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { writeFileSync } from "node:fs";
 
-const PATCH_MARKER = "; zcode-installer-details-v1";
+const PATCH_MARKER = "; codez-installer-details-v1";
 
 function optionalMacro(name) {
   return [`!ifmacrodef ${name}`, `  !insertmacro ${name}`, "!endif"].join("\n");
@@ -100,7 +100,7 @@ export function restoreNsisInstallSectionFileSync({ filePath, originalSource }) 
 
 export { PATCH_MARKER };
 
-const UTIL_PATCH_MARKER = "; zcode-uninstall-recovery-v1";
+const UTIL_PATCH_MARKER = "; codez-uninstall-recovery-v1";
 
 export function patchNsisInstallUtilSource(source) {
   const sourceEol = source.includes("\r\n") ? "\r\n" : "\n";

@@ -7,9 +7,9 @@
 >
 > 数据分四条通道：
 >
-> - **ARMS（main 进程）**：`@arms/rum-electron` `sendCustom`，进程级稳定性 / 资源 / 网络；ZCode CLI 资源由 CLI 自采样后转交 main。
+> - **ARMS（main 进程）**：`@arms/rum-electron` `sendCustom`，进程级稳定性 / 资源 / 网络；Codez CLI 资源由 CLI 自采样后转交 main。
 > - **ARMS（renderer/UI）**：`reportArmsCustomEvent` → IPC → main `sendCustom`，`group=ui_perf`。
-> - **ARMS（CLI Agent）**：`@zcode/telemetry` → OTLP/HTTP protobuf，模型 Logical Call / Physical Attempt。
+> - **ARMS（CLI Agent）**：`@codez/telemetry` → OTLP/HTTP protobuf，模型 Logical Call / Physical Attempt。
 > - **`/report`（agent_trace）**：`reportAppTelemetryEvent`，消息链路质量与耗时，**非 ARMS**。
 >
 > **V4 接线规范**：聊天 `/report` 和 renderer ARMS 的恢复口径见
@@ -34,7 +34,7 @@
 | ARMS main             | `platform` / `app_version` / `arms_env` / `device_mid`（+各 group 专有维度，见下）                                                                |
 | ARMS ui_perf          | 同上 + `renderer_id`（由 main IPC handler 补齐）                                                                                                  |
 | `/report` agent_trace | `model_name` / `model_provider` / `ask_mode` / `agent` / `talk_id` / `message_id` / `workspace_kind` / `remote_kind`（version 由后端注入）        |
-| ARMS CLI Agent        | `service.name=zcode-cli-agent` + `uid`（hash）/ `device_mid` / `session_id` / `turn_id` / `trace_id` / `rid` / `operation` / `provider` / `model` |
+| ARMS CLI Agent        | `service.name=codez-cli-agent` + `uid`（hash）/ `device_mid` / `session_id` / `turn_id` / `trace_id` / `rid` / `operation` / `provider` / `model` |
 
 ---
 
@@ -45,7 +45,7 @@
 | 事件                       | value             | 上报内容                                                                                                                                                                                                      | 触发条件                                                                               |
 | -------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | `perf_app_start`           | —                 | 冷启动计数（Crash-Free 分母，绑 `device_mid`）                                                                                                                                                                | 主窗 `did-finish-load` 后延迟 **3.2s**（`PERF_APP_START_AFTER_VIEW_MS`）               |
-| `perf_crash`               | `1`               | `crash_scope` / `crash_cause` / `crash_source=electron_callback` / `crash_id` / 兼容字段 `crash_kind`                                                                                                         | `render-process-gone` / ZCode Host `child-process-gone`；每个 Electron 回调上报一次    |
+| `perf_crash`               | `1`               | `crash_scope` / `crash_cause` / `crash_source=electron_callback` / `crash_id` / 兼容字段 `crash_kind`                                                                                                         | `render-process-gone` / Codez Host `child-process-gone`；每个 Electron 回调上报一次    |
 | `perf_agent_start`         | `1`               | `runtime_instance_id` / `runtime_generation` / `provider`                                                                                                                                                     | Agent 子进程成功触发 Node `spawn`                                                      |
 | `perf_agent_ready`         | `1`               | `runtime_instance_id` / `runtime_generation` / `provider` / `startup_duration_ms`                                                                                                                             | Agent runtime 首次通过 provider/model 门禁                                             |
 | `perf_agent_crash`         | `1`               | `runtime_instance_id` / `error_name` / `error_code` / `error_message` / `error_stack` / `error_fingerprint` / `exit_code` / `signal` / `uptime_ms` / `crash_phase` / `termination_class` / `diagnostic_class` | Host 管理的 Agent 无主动退出意图且未命中受控终止排除条件时 exit；每个 runtime 只报一次 |
@@ -122,9 +122,9 @@ Chromium 使用同 tick 精确合计，CLI / MCP 使用最近样本（120 / 600 
 | 状态 | `background_ratio`、`app_uptime_minutes`         | `background_ratio` 与角色事件同源；uptime 取 main 进程运行时长     |
 | 整机 | `system_cpu_percent_p95`                         | `os.cpus()` 差分                                                   |
 | 整机 | `system_free_memory_kb_min`                      | 窗口内 `os.freemem()` 最小值                                       |
-| 应用 | `app_cpu_percent_p95`                            | 全部本机 ZCode 进程合计                                            |
+| 应用 | `app_cpu_percent_p95`                            | 全部本机 Codez 进程合计                                            |
 | 应用 | `app_rss_kb_total_mean`、`app_rss_kb_total_peak` | Chromium 体系每 10 秒精确合计，加 CLI 与 MCP 最近一次已知样本      |
-| 应用 | `process_count_total_peak`                       | 全部本机 ZCode 进程数峰值                                          |
+| 应用 | `process_count_total_peak`                       | 全部本机 Codez 进程数峰值                                          |
 | 质量 | `sample_count`                                   | 首个 tick 无 CPU 基线不产生样本，5 分钟窗口预期 29                 |
 | 质量 | `telemetry_self_ms`                              | 窗口内 main 侧采样与聚合代码累计墙钟毫秒数，`performance.now()` 计 |
 
@@ -154,8 +154,8 @@ Chromium 使用同 tick 精确合计，CLI / MCP 使用最近样本（120 / 600 
 
 ### 独立资源事件
 
-`perf_resource_zcode_data_size` 保持本地 ZCode 数据根逻辑字节数口径，每台设备最多 24 小时一次，
-见[ZCode 数据目录占用 ARMS 上报](./zcode-data-size-arms-telemetry.md)。更早的 `perf_resource_cpu`
+`perf_resource_codez_data_size` 保持本地 Codez 数据根逻辑字节数口径，每台设备最多 24 小时一次，
+见[Codez 数据目录占用 ARMS 上报](./codez-data-size-arms-telemetry.md)。更早的 `perf_resource_cpu`
 等仅用于历史查询。MCP 的三个稳定性生命周期事件见[MCP 进程 ARMS 可观测性](./mcp-process-arms-telemetry.md)。
 
 ---
@@ -215,7 +215,7 @@ renderer 侧埋点，全采（100%）。
 `agent_step` 明细只保留在 `/report` 的 `agent_trace` 链路；ARMS RUM 不再逐 step
 双发，避免一条长消息按 step 数放大 IPC 和自定义事件量。RUM 侧通过
 `perf_ui_turn_breakdown.agent_step_cnt`、首 token、端到端、流式停顿和工具终态事件做低频归因。
-CLI 直接上报的 `zcode.agent.step` OTel Span 属于
+CLI 直接上报的 `codez.agent.step` OTel Span 属于
 [CLI Agent Telemetry 开发指南](../trace/cli-agent-telemetry.md)，不经过这条 IPC/RUM 链路，
 也不等价于 `/report agent_step`。
 `perf_ui_tool_call_detail` 只镜像带 `raw.result.perf` 的工具终态。subagent mirror 子工具会带父子关联字段，数仓拿到父 `Agent` 的 `tool_call_id` 后，可在 ARMS 中按 `parent_tool_call_id` 下钻子工具；非 subagent 工具这些字段为空。
@@ -229,7 +229,7 @@ CLI 直接上报的 `zcode.agent.step` OTel Span 属于
 `model` 与 `chat_error_banner.model_id` 共用同一条白名单：只允许 telemetry 显式白名单中的
 内置稳定模型 ID，自定义 provider 的模型（`custom:<providerId>:<modelName>` 编码值）、
 `<providerId>/<modelId>` 复合值中非内置 provider 的部分，以及内置 provider 下未命中白名单的
-模型，统一写为 `custom`；缺失时留空。实现由 `@zcode/shared` 的
+模型，统一写为 `custom`；缺失时留空。实现由 `@codez/shared` 的
 `sanitizeTelemetryModelValue` 收口，`uiPerfArmsTelemetry.emit` 在发送前统一改写 `model`
 属性，调用方无需各自处理。白名单来源与内置 provider 双命名空间（运行时 `account:*` 与旧报表身份
 `builtin:*`）的判定规则见 [plan-usage-arms-telemetry](./plan-usage-arms-telemetry.md)。
@@ -287,7 +287,7 @@ telemetry 白名单内的内置稳定模型 ID；自定义或未命中白名单�
 React 错误边界拦截子树渲染异常并阻止其冒泡到 `window.onerror`，Browser RUM SDK 的自动采集
 看不到这类错误，因此单独补一条自定义事件。`boundary_scope` 为根级 `app` 或各 scoped 边界名。
 
-隐私边界：`error_message`、`error_stack`、`component_stack` 在上报前必须经 `@zcode/shared` 的
+隐私边界：`error_message`、`error_stack`、`component_stack` 在上报前必须经 `@codez/shared` 的
 `redactTelemetryText`，与 ARMS 自动采集 exception 事件
 （[脱敏边界](./arms-browser-monitoring.md#自动采集事件的脱敏边界)）同一套规则：绝对路径归一为
 `{path}`、邮箱归一为 `{email}`、URL 只留 `protocol//host` 与归一化路由、凭据归一为
@@ -331,18 +331,18 @@ Skill tool step 始终携带 `skill_name`（仅取通过遥测校验的已解析
 
 ## 六、ARMS CLI Agent 模型 API（OTLP Trace）
 
-`service.name=zcode-cli-agent`，不走 Electron RUM `/rum/web/v2`，也不新增客户端数据库表。
+`service.name=codez-cli-agent`，不走 Electron RUM `/rum/web/v2`，也不新增客户端数据库表。
 
 | span.name             | 粒度                                        | 关键字段                                                                                                                                                                           |
 | --------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `zcode.model.call`    | 一次 `generateText/streamText` Logical Call | `operation` / `actor` / `provider_id/kind/origin/route` / `model` / requested/effective thinking / status / duration / TTFT / token/cache / retry recovery / error / `uid/rid/sid` |
-| `zcode.model.attempt` | 一次真实 Provider HTTP/SSE 请求             | 上述公共维度 + attempt/max / transport / previous request / retry delay / provider request ID                                                                                      |
+| `codez.model.call`    | 一次 `generateText/streamText` Logical Call | `operation` / `actor` / `provider_id/kind/origin/route` / `model` / requested/effective thinking / status / duration / TTFT / token/cache / retry recovery / error / `uid/rid/sid` |
+| `codez.model.attempt` | 一次真实 Provider HTTP/SSE 请求             | 上述公共维度 + attempt/max / transport / previous request / retry delay / provider request ID                                                                                      |
 
 正常成功调用产生 1 Call + 1 Attempt；Adapter Retry 只增加 Attempt，Compaction SSE → HTTP fallback 产生两个通过 `previous_logical_call_id` 关联的 Call。所有事件都是 Terminal Span，不上报 Prompt、Header、Provider Options、工具内容或逐 SSE Chunk。
 
 默认 5 秒/100 条 gzip protobuf 批量，队列上限 2,000 条或 4MiB；未配置 OTLP 时 No-op。App RUM、SQLite Usage 和 `/report` 当前继续双写，待灰度对账后再决定长期替代范围。
 
-实现：`apps/zcode-cli/packages/telemetry`、`apps/zcode-cli/packages/adapters/src/model/runner-status.ts`。
+实现：`apps/codez-cli/packages/telemetry`、`apps/codez-cli/packages/adapters/src/model/runner-status.ts`。
 
 ## 覆盖度与已知缺口
 

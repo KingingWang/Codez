@@ -1,13 +1,13 @@
 import { create } from "zustand";
 import {
-  normalizeAgentProviderToZCodeAgent,
-  ZCODE_AGENT_PROVIDER,
-  type ZCodeProvider,
+  normalizeAgentProviderToCodezAgent,
+  CODEZ_AGENT_PROVIDER,
+  type CodezProvider,
   type AgentSummary,
   type AgentsCapability,
   type SubAgentConfig,
-} from "@zcode/shared";
-import type { ISubagentsService } from "@zcode/services";
+} from "@codez/shared";
+import type { ISubagentsService } from "@codez/services";
 import { shouldExposeE2EStoreBridge } from "@/lib/e2eStoreBridge.js";
 import { logger } from "@/logger.js";
 import { getRemoteWorkspaceServicesForIdentity } from "@/store/remoteWorkspaceSessionStore.js";
@@ -24,8 +24,8 @@ interface SubagentsStoreState {
   workspaceIdentity: string | null;
   loadedWorkspacePath: string | null;
   loadedWorkspaceIdentity: string | null;
-  provider: ZCodeProvider;
-  loadedProvider: ZCodeProvider | null;
+  provider: CodezProvider;
+  loadedProvider: CodezProvider | null;
   agents: AgentSummary[];
   capability: AgentsCapability | null;
   loading: boolean;
@@ -34,7 +34,7 @@ interface SubagentsStoreState {
   operatingAgentId: string | null;
   initialize: (
     workspacePath: string,
-    providerOrSubagentsService: ZCodeProvider | ISubagentsService,
+    providerOrSubagentsService: CodezProvider | ISubagentsService,
     maybeSubagentsService?: ISubagentsService,
     workspaceIdentity?: string,
   ) => Promise<void>;
@@ -47,7 +47,7 @@ interface SubagentsStoreState {
   ) => Promise<void>;
   createAgent: (
     config: SubAgentConfig,
-    provider: ZCodeProvider,
+    provider: CodezProvider,
     subagentsService: ISubagentsService,
     workspaceIdentity?: string,
   ) => Promise<AgentSummary | null>;
@@ -55,7 +55,7 @@ interface SubagentsStoreState {
     agentId: string,
     config: SubAgentConfig,
     oldFilePath: string | undefined,
-    provider: ZCodeProvider,
+    provider: CodezProvider,
     subagentsService: ISubagentsService,
     workspaceIdentity?: string,
   ) => Promise<AgentSummary | null>;
@@ -74,7 +74,7 @@ export const useSubagentsStore = create<SubagentsStoreState>((set, get) => ({
   workspaceIdentity: null,
   loadedWorkspacePath: null,
   loadedWorkspaceIdentity: null,
-  provider: ZCODE_AGENT_PROVIDER,
+  provider: CODEZ_AGENT_PROVIDER,
   loadedProvider: null,
   agents: [],
   capability: null,
@@ -83,14 +83,14 @@ export const useSubagentsStore = create<SubagentsStoreState>((set, get) => ({
   operatingAgentId: null,
   async initialize(
     workspacePath: string,
-    providerOrSubagentsService: ZCodeProvider | ISubagentsService,
+    providerOrSubagentsService: CodezProvider | ISubagentsService,
     maybeSubagentsService?: ISubagentsService,
     workspaceIdentity?: string,
   ) {
     const currentState = get();
     const hasProvider = typeof providerOrSubagentsService === "string";
-    const provider = normalizeAgentProviderToZCodeAgent(
-      hasProvider ? providerOrSubagentsService : ZCODE_AGENT_PROVIDER,
+    const provider = normalizeAgentProviderToCodezAgent(
+      hasProvider ? providerOrSubagentsService : CODEZ_AGENT_PROVIDER,
     );
     const subagentsService = hasProvider ? maybeSubagentsService : providerOrSubagentsService;
     const normalizedWorkspaceIdentity = workspaceIdentity?.trim() || null;
@@ -168,7 +168,7 @@ export const useSubagentsStore = create<SubagentsStoreState>((set, get) => ({
     }
     const workspaceIdentityFromState =
       workspaceIdentity?.trim() || get().workspaceIdentity || undefined;
-    const provider = normalizeAgentProviderToZCodeAgent(get().provider);
+    const provider = normalizeAgentProviderToCodezAgent(get().provider);
     const serviceAuthorityId = getServiceAuthorityId(subagentsService);
     const hasCachedAgents =
       get().agents.length > 0 && loadedSubagentsServiceAuthorityId === serviceAuthorityId;
@@ -246,7 +246,7 @@ export const useSubagentsStore = create<SubagentsStoreState>((set, get) => ({
   },
   async createAgent(
     config: SubAgentConfig,
-    provider: ZCodeProvider,
+    provider: CodezProvider,
     subagentsService: ISubagentsService,
     workspaceIdentity?: string,
   ) {
@@ -260,7 +260,7 @@ export const useSubagentsStore = create<SubagentsStoreState>((set, get) => ({
     try {
       const result = await subagentsService.createAgent({
         config,
-        provider: normalizeAgentProviderToZCodeAgent(provider),
+        provider: normalizeAgentProviderToCodezAgent(provider),
       });
       await get().refresh(subagentsService, workspaceIdentityFromState);
       return result.agent;
@@ -277,7 +277,7 @@ export const useSubagentsStore = create<SubagentsStoreState>((set, get) => ({
     agentId: string,
     config: SubAgentConfig,
     oldFilePath: string | undefined,
-    provider: ZCodeProvider,
+    provider: CodezProvider,
     subagentsService: ISubagentsService,
     workspaceIdentity?: string,
   ) {
@@ -293,7 +293,7 @@ export const useSubagentsStore = create<SubagentsStoreState>((set, get) => ({
         agentId,
         config,
         oldFilePath,
-        provider: normalizeAgentProviderToZCodeAgent(provider),
+        provider: normalizeAgentProviderToCodezAgent(provider),
       });
       await get().refresh(subagentsService, workspaceIdentityFromState);
       return result.agent;
@@ -346,7 +346,7 @@ declare global {
 }
 
 if (shouldExposeE2EStoreBridge()) {
-  // E2E 诊断入口必须由 WDIO 显式打开，不能复用 ZCODE_ENV=test，避免产品测试环境暴露可变全局 store。
+  // E2E 诊断入口必须由 WDIO 显式打开，不能复用 CODEZ_ENV=test，避免产品测试环境暴露可变全局 store。
   window.__subagentsStoreE2E = useSubagentsStore;
 }
 

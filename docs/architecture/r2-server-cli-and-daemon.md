@@ -4,20 +4,20 @@
 
 - 状态：P0/P1 已实现；本次 hardening 已补齐 Core 父进程断连、更新指针清理和稳定 Server identity；Linux x64 已完成 SSH 实机验证
 - 阶段：统一多端远程架构 R2 / D4
-- 本阶段目标：交付可独立安装、可后台运行、与 UI 生命周期解耦的 ZCode Server CLI
+- 本阶段目标：交付可独立安装、可后台运行、与 UI 生命周期解耦的 Codez Server CLI
 - 本文定位：R2 的实现规格和边界；可执行测试补充见 [R2 lifecycle test plan](./r2-server-cli-and-daemon-test-plan.md)
 - R2 不切换 Desktop 的生产远程连接主链
 
 本文基于：
 
-- [ZCode 统一多端远程连接架构与产品方案（评审稿）](https://internal-docs.example.invalid/redacted)
+- [Codez 统一多端远程连接架构与产品方案（评审稿）](https://internal-docs.example.invalid/redacted)
 - [R1 窗口级单 Host 进程重构规格](./r1-single-window-host-refactor.md)
 - [Agent Electron/Node runtime 事实](../runtime-tools/agent-electron-node-runtime.md)
-- [ZCode Lite / Server 统一多端架构实施计划](./unified-zcode-lite-server-multi-server-plan.md)
+- [Codez Lite / Server 统一多端架构实施计划](./unified-codez-lite-server-multi-server-plan.md)
 
 R2 交付：
 
-- 独立安装的 `zcode` Server CLI；
+- 独立安装的 `codez` Server CLI；
 - `serve`、`serve --daemon`、`status`、`stop`、`restart`、`update`、`uninstall`；
 - Supervisor、Server Core、Agent 的进程边界；
 - macOS、Linux、Windows 的用户级自启动服务；
@@ -38,20 +38,20 @@ R2 不交付：
 
 | 决策项               | R2 结论                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 新代码目录           | 新建 `packages/zcode-server-cli`；R2 不在 `packages/server` 中增加代码                                                                                                                                                                                                                                                                                                                                                                                                              |
+| 新代码目录           | 新建 `packages/codez-server-cli`；R2 不在 `packages/server` 中增加代码                                                                                                                                                                                                                                                                                                                                                                                                              |
 | 旧 `packages/server` | 仅作为现有 HTTP/WS、stdio、远程部署和协议行为参考；保持其当前入口兼容                                                                                                                                                                                                                                                                                                                                                                                                               |
-| 用户入口             | 独立发行包提供 `zcode`；无参数继续进入既有 TUI                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| 用户入口             | 独立发行包提供 `codez`；无参数继续进入既有 TUI                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | Server Core          | 新目录内实现新的 Core 入口和生命周期合同，不继承旧 `entry-http` / `entry-stdio` 的进程语义                                                                                                                                                                                                                                                                                                                                                                                          |
-| 业务服务             | 经过审查后复用 `@zcode/services`、`@zcode/shared`、`@zcode/rpc` 等底层能力                                                                                                                                                                                                                                                                                                                                                                                                          |
+| 业务服务             | 经过审查后复用 `@codez/services`、`@codez/shared`、`@codez/rpc` 等底层能力                                                                                                                                                                                                                                                                                                                                                                                                          |
 | Supervisor           | 只拥有生命周期状态，不拥有 task/session/stream/queue/snapshot 业务状态                                                                                                                                                                                                                                                                                                                                                                                                              |
 | 监听地址             | 默认回环地址和动态端口；非回环监听必须启用鉴权                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | Web / WS             | R2 实现并验证 Core 的 HTTP/WS ingress；具体远程 Transport 留给后续阶段                                                                                                                                                                                                                                                                                                                                                                                                              |
-| 数据目录             | 复用 `getZCodeDataRootDir()` 和 `ZCODE_DATA_BASE_DIR`；标准目录为 `<dataRoot>/server`。OS service 必须携带内部参数 `--server-root <absolute-path>`，不得依赖注册时 shell 的环境                                                                                                                                                                                                                                                                                                     |
+| 数据目录             | 复用 `getCodezDataRootDir()` 和 `CODEZ_DATA_BASE_DIR`；标准目录为 `<dataRoot>/server`。OS service 必须携带内部参数 `--server-root <absolute-path>`，不得依赖注册时 shell 的环境                                                                                                                                                                                                                                                                                                     |
 | Node runtime         | 沿用现有远端资产流程的 Node `v22.16.0`；Server CLI 不依赖系统 Node 或 Electron Node                                                                                                                                                                                                                                                                                                                                                                                                 |
 | 崩溃策略             | 5 次/5 分钟预算，退避 1、2、4、8、16 秒；超出后进入 `crash-loop-stopped`。ready 的 Core 连续 6 个 heartbeat 周期无 IPC 消息时由 Supervisor SIGKILL，按崩溃处理（§4.2 Core 活性）                                                                                                                                                                                                                                                                                                    |
 | Task 恢复            | Core 崩溃或更新后，运行中的 Task 中断，不自动恢复或重放输入                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | stop                 | 停止当前实例，但保留自启动注册                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| uninstall            | 停止实例、移除服务注册、删除 ZCode 自有数据；Workspace/Repo/用户文件不删除                                                                                                                                                                                                                                                                                                                                                                                                          |
+| uninstall            | 停止实例、移除服务注册、删除 Codez 自有数据；Workspace/Repo/用户文件不删除                                                                                                                                                                                                                                                                                                                                                                                                          |
 | update               | 默认从配置的 release catalog 在线下载并校验；无网络时可应用本地 pending；使用原子切换和失败回滚                                                                                                                                                                                                                                                                                                                                                                                     |
 | 组件更新             | 以 Node、server、agent、official-plugins、native-search-tools 五个粗粒度组件做内容寻址缓存；完整 release 仍是原子运行单元                                                                                                                                                                                                                                                                                                                                                           |
 | 平台服务注册         | 先探测当前用户的 launchctl / systemctl --user / schtasks 能力；Linux 非交互会话可从 `/run/user/<uid>/bus` 恢复 user bus 环境。服务管理器不可访问，或 systemd 在装载阶段（`daemon-reload`、`enable`）失败时，自动由 detached Supervisor 启动并报告 `serviceRegistered=false`；systemd 启动阶段（`start`）失败和 launchd / Task Scheduler 注册失败仍返回可诊断错误，不做伪装 fallback。每次冷启动重新选择，不持久保存。OS service 或 detached Supervisor 二选一成为 daemon 启动 owner |
@@ -59,8 +59,8 @@ R2 不交付：
 ## 3. 进程与职责模型
 
 ```text
-安装后的 zcode
-└── bin/zcode
+安装后的 codez
+└── bin/codez
     ├── serve
     │   └── Supervisor
     │       └── Server Core
@@ -141,7 +141,7 @@ Server Core ── HTTP/WS ──> Desktop Host / Browser / future Transport
 
 ### 4.1 CLI ↔ Supervisor
 
-本地控制协议由 `packages/zcode-server-cli` 自己拥有，使用严格运行时 schema 和 JSONL framing，至少包括：
+本地控制协议由 `packages/codez-server-cli` 自己拥有，使用严格运行时 schema 和 JSONL framing，至少包括：
 
 - `status`；
 - `stop`；
@@ -188,7 +188,7 @@ Desktop probe / serve --daemon 读到新端口 ──> 握手成功
 维护第二份 task registry。Core-local `TaskActivityTracker` 订阅所有已连接 workspace 的
 `turn.started` / `turn.terminal`，只保留按 `workspaceKey + sessionId` 去重的活动 key，并把数量作为
 生命周期快照发给 Supervisor。它不是公开 RPC 接口，也不持有正文、stream、queue 或 snapshot。
-Task facade 与直接调用 `IZCodeAgentService` v4 的 `desktop-continuous` 路径必须汇入同一 tracker；
+Task facade 与直接调用 `ICodezAgentService` v4 的 `desktop-continuous` 路径必须汇入同一 tracker；
 `web-remote-replayable` 仍只按自己的 gap/snapshot 边界向客户端恢复，活动计数不得改变两种 delivery
 语义。
 
@@ -245,7 +245,7 @@ Supervisor ── SIGKILL/crash ──X IPC ──disconnect──> Core
 
 `/api/server-info.serverId` 使用 `install.json.installationId` 作为持久用户数据环境的稳定身份。只有直接调用
 Core HTTP 工厂且未提供 server root 的测试/嵌入场景才回退到 hostname；真实 Supervisor 启动的
-Core 必须通过 `ZCODE_SERVER_ROOT` 校验 ownership marker 后注入 installationId。
+Core 必须通过 `CODEZ_SERVER_ROOT` 校验 ownership marker 后注入 installationId。
 
 现有 `packages/server` 中的 `/api/server-info`、`/api/rpc-host-capability`、`/ws`、`/ws/host` 等行为作为兼容性参考；新 Core 不直接导入旧入口，而是通过合同测试决定需要保留的边界。
 
@@ -258,7 +258,7 @@ R2 默认只监听回环地址和动态端口，并把实际端口写入 `status
 ## 6. 新代码目录与依赖边界
 
 ```text
-packages/zcode-server-cli/
+packages/codez-server-cli/
 ├── src/
 │   ├── main.ts
 │   ├── supervisor/
@@ -272,11 +272,11 @@ packages/zcode-server-cli/
 
 依赖规则：
 
-- 新 Core 不依赖 `@zcode/server` 的入口实现；
+- 新 Core 不依赖 `@codez/server` 的入口实现；
 - 不修改 `packages/server` 的 `entry-http`、`entry-stdio` 和 `build:remote`；
-- 只复用经过审查的 `@zcode/services`、`@zcode/shared`、`@zcode/rpc` 和服务类型；
+- 只复用经过审查的 `@codez/services`、`@codez/shared`、`@codez/rpc` 和服务类型；
 - 不把 Electron、Renderer、Desktop Main 或 Window Host 打入 Server CLI 包；
-- 不新增 App ↔ Agent 协议；若未来必须修改该协议，另行修改 `packages/shared/src/zcode-protocol` 并增加 schema 验证；
+- 不新增 App ↔ Agent 协议；若未来必须修改该协议，另行修改 `packages/shared/src/codez-protocol` 并增加 schema 验证；
 - 新增 IO 使用异步 API；锁、状态和 release 切换必须可恢复、可审计。
 
 ## 7. 安装包与 Node runtime
@@ -301,32 +301,32 @@ R2 沿用第二条远端资产链路，并把它扩展为独立 Server CLI 的�
 发行包结构：
 
 ```text
-zcode-server-<os>-<arch>/
+codez-server-<os>-<arch>/
 ├── bin/
-│   ├── zcode
-│   └── zcode.cmd
+│   ├── codez
+│   └── codez.cmd
 ├── runtime/
 │   ├── node                 # Windows 为 node.exe
 │   ├── package.json         # {"type":"module"}，让 .js 入口按 ESM 解析
 │   ├── server-cli.js        # ESM bundle（tsup 产物，含 __dirname banner）
 │   ├── server-core.js       # ESM bundle，server-cli 以同目录相对路径 fork
-│   ├── zcode.cjs            # 既有 CLI/Agent bundle（自包含 CJS）
+│   ├── codez.cjs            # 既有 CLI/Agent bundle（自包含 CJS）
 │   ├── node_modules/        # bundle 外置依赖闭包（含 node-pty 平台 prebuilds）
 │   ├── tools/               # bfs/rg/ugrep（Windows 为 rg/ugrep）
 │   └── packages/            # Agent 实际启用的官方插件
 └── manifest.json
 ```
 
-入口用 ESM `.js` 而不是最初设想的 `.cjs`：`@zcode/services` 依赖链已按 ESM 组织，
+入口用 ESM `.js` 而不是最初设想的 `.cjs`：`@codez/services` 依赖链已按 ESM 组织，
 CJS 化 bundle 风险更高；`server-cli.js` 通过 `new URL("./server-core.js", import.meta.url)`
-fork Core，通过同目录 `zcode.cjs` 委派既有 CLI，因此三个入口必须位于同一 `runtime/` 目录。
+fork Core，通过同目录 `codez.cjs` 委派既有 CLI，因此三个入口必须位于同一 `runtime/` 目录。
 
 ### 7.1 发行包 staging
 
-staging 由 `packages/zcode-server-cli/src/packaging/stage.ts` 实现，
-`pnpm --filter @zcode/server-cli stage --target <os>-<arch>` 触发，只做本地组装，不上传、不发布：
+staging 由 `packages/codez-server-cli/src/packaging/stage.ts` 实现，
+`pnpm --filter @codez/server-cli stage --target <os>-<arch>` 触发，只做本地组装，不上传、不发布：
 
-- 入口 bundle 来自本包 `tsup` 产物；`zcode.cjs` 来自 `apps/zcode-cli/packages/cli/dist/zcode.cjs`
+- 入口 bundle 来自本包 `tsup` 产物；`codez.cjs` 来自 `apps/codez-cli/packages/cli/dist/codez.cjs`
   （由 `scripts/build-desktop-agent-cli.mjs` 构建，与远端资产链同源）；
 - `runtime/node_modules` 内容以**产物扫描**为事实源：扫描 bundle 顶层裸模块引用，
   与 workspace `node_modules` 求交集后递归收集生产依赖闭包，从 workspace 复制为扁平布局；
@@ -349,46 +349,46 @@ staging 由 `packages/zcode-server-cli/src/packaging/stage.ts` 实现，
   与 native 来源包的版本，不一致即失败；
 - Node 二进制固定 `v22.16.0`：优先复用 `packages/desktop/mock-cdn/releases/<version>/node/<platform>/`
   已下载的缓存，缺失时从 nodejs.org 下载目标格式（POSIX 为 `tar.xz`，Windows 为 `zip`）并缓存；
-- 同时产出目录形态和 `zcode-server-<os>-<arch>.tar.gz`（供 scp 到远端解压验证）；
+- 同时产出目录形态和 `codez-server-<os>-<arch>.tar.gz`（供 scp 到远端解压验证）；
 - staging 实现六个目标：`darwin-x64/arm64`、`linux-x64/arm64`、`win32-x64/arm64`；POSIX
-  产出 `tar.gz`，Windows 产出 `zip` 和 `zcode.cmd`。Windows 不打包 `bfs`，使用 `rg.exe`、
+  产出 `tar.gz`，Windows 产出 `zip` 和 `codez.cmd`。Windows 不打包 `bfs`，使用 `rg.exe`、
   `ugrep.exe`，并保留系统/Git Bash fallback。
 - Agent bundle 的外置依赖以运行时入口扫描和官方插件定义为事实源；不再只扫描 Server CLI/Core，
-  因而 `@zcode/tui`、`playwright-core` 等 bundle 运行时依赖不会被遗漏。
+  因而 `@codez/tui`、`playwright-core` 等 bundle 运行时依赖不会被遗漏。
 - `runtime/tools` 由 `scripts/prepare-native-search-tools.mjs` 按目标 release plan 准备到
-  `node_modules/.cache/zcode-server-cli/tools/<target>`（内网依赖源已配置时下载，未配置时解包仓库归档），
+  `node_modules/.cache/codez-server-cli/tools/<target>`（内网依赖源已配置时下载，未配置时解包仓库归档），
   不复用 mock-cdn 或 bundled-tools 目录（远端 macOS 固定为 rg13）；每个工具目录同时携带
   `THIRD-PARTY-NOTICES.txt` 与 `SOURCES.json`。运行时通过
-  `ZCODE_SERVER_RUNTIME_ROOT` 解析；`runtime/packages` 包含当前官方插件定义中需要 seed 的七个
-  plugin（browser-use、document-skills、skill-creator、zcode-guide、android-emulator、
+  `CODEZ_SERVER_RUNTIME_ROOT` 解析；`runtime/packages` 包含当前官方插件定义中需要 seed 的七个
+  plugin（browser-use、document-skills、skill-creator、codez-guide、android-emulator、
   ios-simulator、restore-legacy-sessions）。
 - 内置技能包不变量：`stageRelease` 从独立的 `bundledSkillsDir` 参数发布
-  `runtime/packages/bundled-skills`（生产入口传入 `apps/zcode-cli/packages/bundled-skills`），
+  `runtime/packages/bundled-skills`（生产入口传入 `apps/codez-cli/packages/bundled-skills`），
   只复制 `README.md` 与 `skills/`，排除其他顶层文件。Agent 在
-  `zcode.cjs` 旁按官方插件同款候选目录原地读取它，`/workflow` 依赖的 `dynamic-workflows` 技能
+  `codez.cjs` 旁按官方插件同款候选目录原地读取它，`/workflow` 依赖的 `dynamic-workflows` 技能
   只在这里。它只属于 `agent-runtime` 组件并参与其内容哈希与归档，不写入 manifest 的 `plugins`。
   官方插件目录不提供也不覆盖技能包，发布不依赖插件缓存中是否存在同名目录。
   `stageRelease` 按 Agent 的必需文件清单 fail-closed 校验，缺任一文件时 staging 失败。
-- 官方插件 MCP runtime 不变量：凡 `plugin.json` 的 `mcpServers` 通过 `${ZCODE_PLUGIN_ROOT}/...`
+- 官方插件 MCP runtime 不变量：凡 `plugin.json` 的 `mcpServers` 通过 `${CODEZ_PLUGIN_ROOT}/...`
   引用的文件（当前为 android-emulator、ios-simulator、browser-use 的 `dist/mcp/server.js`）必须随
   archive 一起发布。这些 dist 不入库，由 `scripts/build-desktop-agent-cli.mjs` 的 MCP runtime 清单在
   staging 前构建；`stageRelease` 以 plugin.json 声明为事实源 fail-closed 校验，manifest 缺失或入口
   文件不存在时 staging 失败，不产出只含 skills、缺 MCP 入口的残缺插件。
 
 Agent 接线约定：发行包内 Core 不在 monorepo、也没有 Electron runtime。Supervisor 每次启动 Core
-时必须根据该 Core 所属 release 的 `runtime/` 重新计算接线（`runtime/node zcode.cjs app-server
+时必须根据该 Core 所属 release 的 `runtime/` 重新计算接线（`runtime/node codez.cjs app-server
 --stdio`），不得由旧 `server-cli.js` 把自动推导结果永久写入全局 `process.env`。显式配置的
-`ZCODE_AGENT_SERVER_COMMAND` 仍永远优先；开发态没有 release runtime 时不注入。
+`CODEZ_AGENT_SERVER_COMMAND` 仍永远优先；开发态没有 release runtime 时不注入。
 
-Agent 版本身份：Core 启动时把自身编译期版本 `ZCODE_VERSION` 写入 `ZCODE_APP_VERSION`，覆盖继承值；
-Core 拉起的 Agent 继承该 env，模型请求的 `User-Agent` / `X-ZCode-App-Version` 和遥测
+Agent 版本身份：Core 启动时把自身编译期版本 `CODEZ_VERSION` 写入 `CODEZ_APP_VERSION`，覆盖继承值；
+Core 拉起的 Agent 继承该 env，模型请求的 `User-Agent` / `X-Codez-App-Version` 和遥测
 productVersion 报告 App 版本，而不是 CLI 包版本。注入点只能在 Core：升级时旧 Supervisor 会拉起
 新 release 的 Core，Supervisor 与 SSH/WSL/Docker exec 的版本都不代表该 Core。
 
 安装后的程序和数据分离：
 
 ```text
-~/.zcode/server/
+~/.codez/server/
 ├── releases/<version>-<target>-<sha12>/   # 更新成功后只保留 current 与上一个 release
 │   ├── runtime/
 │   ├── bin/
@@ -396,10 +396,10 @@ productVersion 报告 App 版本，而不是 CLI 包版本。注入点只能在 
 ├── current.json
 ├── pending.json
 ├── downgrade.json                 # 显式降级标记 { releaseId, fromVersion }；仅在 releaseId 等于 current.json 时有效
-├── bin/zcode                       # Windows 为 zcode.cmd；OS service 稳定入口
+├── bin/codez                       # Windows 为 codez.cmd；OS service 稳定入口
 ├── service/<root-hash>.<platform>  # 运行时按 canonical root 生成，显式携带 --server-root
 ├── cache/components/<target>/<component>/<sha256>/
-├── config/provider/zcode-builtin-<sha256>.json   # Core 启动时按内容 hash 物化的 ZCode Built-in Provider Config（2026-09-07 起）
+├── config/provider/codez-builtin-<sha256>.json   # Core 启动时按内容 hash 物化的 Codez Built-in Provider Config（2026-09-07 起）
 └── run/
     ├── server.lock
     ├── update.lock                  # 跨 Supervisor handoff 的 CLI update/uninstall/restart 单 owner
@@ -408,17 +408,17 @@ productVersion 报告 App 版本，而不是 CLI 包版本。注入点只能在 
     └── control.sock / named pipe
 ```
 
-`config/provider/zcode-builtin-<sha256>.json` 由 Core（`server-core/core.ts`）在启动时从构建期 define
-`__ZCODE_BUILTIN_PROVIDER_CONFIG_JSON__` 物化（tmp + rename；同 hash 幂等，内容不一致则启动失败），
-`ZCODE_BUILTIN_PROVIDER_CONFIG_FILE` 显式指定时跳过物化。它落在 server root 而不是 release 自带的
+`config/provider/codez-builtin-<sha256>.json` 由 Core（`server-core/core.ts`）在启动时从构建期 define
+`__CODEZ_BUILTIN_PROVIDER_CONFIG_JSON__` 物化（tmp + rename；同 hash 幂等，内容不一致则启动失败），
+`CODEZ_BUILTIN_PROVIDER_CONFIG_FILE` 显式指定时跳过物化。它落在 server root 而不是 release 自带的
 `runtime/`：release 目录不可变，同一 releaseId 重装时会重算整棵树的内容哈希，多出的物化文件会让该目录
-被判为损坏副本并在重装时整体替换；文件名含内容 hash，跨 release 共用安全。当前 `zcode uninstall` 的
+被判为损坏副本并在重装时整体替换；文件名含内容 hash，跨 release 共用安全。当前 `codez uninstall` 的
 allowlist 不含 `config/`，卸载后该目录会保留并列入 `uninstalled.json.preservedPaths`。
 
 descriptor 不随 release archive 打包，而是在 `serve --daemon` 注册时由
 `platform/serviceManager.ts` 动态写入 `service/`。显式传入非标准 `--server-root` 时，Server CLI
-将该目录同时作为 `dataBaseDir`，因此 Agent/SQLite 等本地状态位于该 root 的 `.zcode/` 隔离目录；
-卸载仍只删除 ZCode allowlist，未知文件会保留并列入 `uninstalled.json.preservedPaths`。
+将该目录同时作为 `dataBaseDir`，因此 Agent/SQLite 等本地状态位于该 root 的 `.codez/` 隔离目录；
+卸载仍只删除 Codez allowlist，未知文件会保留并列入 `uninstalled.json.preservedPaths`。
 
 `current.json` 和 `pending.json` 只通过临时文件加 rename 更新。release 目录按 archive SHA 内容寻址
 且不可变：安装器只能把完整临时目录原子 promote 到尚不存在的 `releases/<releaseId>`；目标已存在
@@ -455,11 +455,11 @@ probe 也不读 release 内容。修复逻辑随 archive 内的 bootstrap CLI �
 更早版本的损坏副本由升级到不同版本恢复（新 releaseId 不与旧目录冲突）。
 
 **旧 release 回收（2026-11-03）**：每次换代都会新增一个完整 release（解压后约 300MB 以上），此前从不回收，
-远端磁盘随版本线性增长。`zcode update` 成功后，`releases/` 只保留两个 release：`current.json` 指向的
+远端磁盘随版本线性增长。`codez update` 成功后，`releases/` 只保留两个 release：`current.json` 指向的
 release，以及本次被替换的上一个 release（失败回滚与「将远端切换到旧版本」的复用目标）；`pending.json`
 仍引用的目录同样保留。
 
-- 时机：只在 `zcode update` 持有 `run/update.lock`，`current.json` 已切换，并且 daemon handoff 已收敛
+- 时机：只在 `codez update` 持有 `run/update.lock`，`current.json` 已切换，并且 daemon handoff 已收敛
   （daemon 离线时为指针已切换）之后执行。running-task guard、安装失败、handoff 回滚、首装和重装同一
   release（未换代）都不回收。
 - 范围：只处理 `releases/` 下的非隐藏目录。`.incoming-*`、`.damaged-*` 和未知文件不动。任一保留项无法
@@ -552,7 +552,7 @@ CLI 等待失败 ──> 旧："Timed out waiting for Server ready"
                 新："Timed out waiting for Server ready (state=crashed, last exit: core exited …: <fatal>)"
 
 本次未写状态 ──> 新："Timed out waiting for Server ready (running supervisor: state=crash-loop-stopped, last exit: …)"
-                    "ZCode Server daemon exited before ready (code=1 signal=none) (supervisor: Another ZCode Server
+                    "Codez Server daemon exited before ready (code=1 signal=none) (supervisor: Another Codez Server
                      instance is already running)"
                     "Timed out waiting for Server ready (supervisor: …; service: ActiveState=failed … NRestarts=5)"
 ```
@@ -579,7 +579,7 @@ Core IPC listener 必须绑定具体 child 与 generation，非当前 child 的�
 清空 host、port、startedAt 与 runningTaskCount，不能让已中断任务继续污染下一代 guard。
 
 `serve --daemon` 的启动 owner 只有 OS service。descriptor 的命令必须指向 data root 下的稳定入口
-`<serverRoot>/bin/zcode`（Windows 为 `zcode.cmd`），参数固定包含 `serve --supervisor --service-entry
+`<serverRoot>/bin/codez`（Windows 为 `codez.cmd`），参数固定包含 `serve --supervisor --service-entry
 --server-root <absolute-path>`；不得记录注册时 release 的 `server-cli.js` 绝对路径。CLI 注册并启动
 service 后等待现有 Supervisor 报告 ready；service entry 不能再次注册自身或 fork 第二个 Supervisor。
 只有 OS service entry 才报告 `serviceRegistered=true`；detached fallback（显式跳过 service
@@ -601,13 +601,13 @@ unit name、Windows task name 和 descriptor 文件名。兼容清理旧固定 s
 
 `--server-root` 是 service/fallback daemon 使用的内部全局参数，值必须是绝对路径。CLI 的 control
 endpoint、status、release、service descriptor 和 uninstall 均从该参数解析同一个 layout；Core/Agent
-同时获得对应的 `ZCODE_DATA_BASE_DIR`。因此自定义 data root 的 daemon 不得在默认 root 创建第二份
+同时获得对应的 `CODEZ_DATA_BASE_DIR`。因此自定义 data root 的 daemon 不得在默认 root 创建第二份
 status、lock、Core 或 SQLite。
 
-POSIX 稳定入口 `bin/zcode` 读取 `current.json.releaseDir`，只执行 `<root>/releases/` 下的 release；
-越界时输出 `Invalid current ZCode Server release` 并以 1 退出。该边界必须和写入方比较同一种路径：
+POSIX 稳定入口 `bin/codez` 读取 `current.json.releaseDir`，只执行 `<root>/releases/` 下的 release；
+越界时输出 `Invalid current Codez Server release` 并以 1 退出。该边界必须和写入方比较同一种路径：
 生命周期命令写 `current.json` 前已把 server root 收敛为 canonical（`realpath`）路径，launcher 也必须
-用物理路径（`cd -P` + `pwd -P`）计算 root。远端以 `"$HOME/.zcode/server/bin/zcode"` 调用入口，
+用物理路径（`cd -P` + `pwd -P`）计算 root。远端以 `"$HOME/.codez/server/bin/codez"` 调用入口，
 `$HOME` 可能经过符号链接（例如 NAS 的 `/var/services/homes -> /volume1/homes`、`/home -> /var/home`），
 这种别名不得让合法 release 被判为越界。
 
@@ -623,16 +623,16 @@ R2 至少准备以下平台资产：
 ## 8. CLI 命令语义
 
 ```bash
-zcode                  # 无参数仍进入 TUI
-zcode serve            # 前台 Server Core
-zcode serve --daemon   # 注册并启动 daemon
-zcode status
-zcode stop
-zcode stop --wait
-zcode restart
-zcode update
-zcode update --force
-zcode uninstall
+codez                  # 无参数仍进入 TUI
+codez serve            # 前台 Server Core
+codez serve --daemon   # 注册并启动 daemon
+codez status
+codez stop
+codez stop --wait
+codez restart
+codez update
+codez update --force
+codez uninstall
 ```
 
 | 命令                                               | 行为                                                                                                                                                                                                                                                                                                                                                                                |
@@ -645,14 +645,14 @@ zcode uninstall
 | `update`                                           | 获取 catalog 中当前 target 的新 release（或使用已有 pending），校验并安装后应用；在线 daemon 必须完成 Supervisor/Core/Agent 的整棵进程树换代与 runtime identity 校验后才返回成功；catalog 与 current archive 相同返回成功的 `up-to-date`，不得继续请求 apply；未配置 catalog 且没有 pending 时返回明确的 release source 错误；有运行 Task 时默认返回可操作的 guard 错误，不中断任务 |
 | `update --force`                                   | 明确允许中断运行 Task 后应用 release                                                                                                                                                                                                                                                                                                                                                |
 | `update --from-archive <path> [--allow-downgrade]` | 校验并应用本地 archive；archive 版本低于 `current.json` 且未带 `--allow-downgrade` 时，删除本次 `pending.json`，以 `source-server-downgrade-unconfirmed` 失败，不切换 release；带该参数时先写 `downgrade.json` 再应用                                                                                                                                                               |
-| `uninstall`                                        | 检查运行 Task（有运行 Task 时拒绝并保持原状态），要求两次输入 `DELETE`，停止并移除服务，删除允许列表内的 ZCode 数据                                                                                                                                                                                                                                                                 |
+| `uninstall`                                        | 检查运行 Task（有运行 Task 时拒绝并保持原状态），要求两次输入 `DELETE`，停止并移除服务，删除允许列表内的 Codez 数据                                                                                                                                                                                                                                                                 |
 
 `uninstall` 允许删除：
 
 - R2 程序 release；
 - Supervisor/Core 运行记录；
-- ZCode 配置、缓存、runtime 记录；
-- ZCode 自有状态数据库和日志。
+- Codez 配置、缓存、runtime 记录；
+- Codez 自有状态数据库和日志。
 
 `uninstall` 禁止删除：
 
@@ -696,12 +696,12 @@ canonical server root 和 installation id。`uninstall` 只有在 `realpath` 后
     启动方式只按调用方环境变量与服务管理器探测判定，与 `serve --daemon` 一致。control 请求带 `restart` 时按
     非法请求返回 `invalid-request`。
   - `restart` 取 `run/update.lock`（2026-10-21 确认），与 `update`、`uninstall` 以及另一次 `restart` 互斥：锁被占用时
-    不等待、不停止现有服务，直接失败；输出沿用 `uninstall` 的锁冲突结果 `{ok:false,error:"A ZCode Server update is
+    不等待、不停止现有服务，直接失败；输出沿用 `uninstall` 的锁冲突结果 `{ok:false,error:"A Codez Server update is
 already running"}`，不带公开错误码。锁在停止等待与启动等待 ready 期间一直持有，命令结束释放。桌面 Host 按设备的
     互斥保持不变，CLI 锁覆盖多台电脑或终端并发的场景。
 
 ```text
-zcode restart（协调 CLI）
+codez restart（协调 CLI）
   ├─ 取 run/update.lock ── 已被 update / uninstall / restart 占用 ──> 直接失败，不停止现有服务
   ├─ status ── ready / starting / crash-loop-stopped / stop-failed+pid:null ──> stop ──> 等锁释放 + stopped
   │         └─ 未运行或 Supervisor 已死（残留锁按 stale 回收）─────────────────> 跳过停止
@@ -736,7 +736,7 @@ Workspace / Repo / User files
 - stale lock 回收必须先按 ownership token 原子 claim 到隔离路径；release 只能删除仍属于自己的 token，禁止按一次陈旧的 PID 判断直接删除当前路径；
 - 持锁者判活按进程身份，不只看 PID（2026-10-21）。容器、WSL 发行版或整机重启后，进程全部消失但锁文件留在磁盘上；
   PID 从小号重新分配，同样的启动顺序会让新 Supervisor 拿到锁里记录的旧 PID，只看 PID 会把残留锁判为存活，
-  启动永久报 `Another ZCode Server instance is already running`。容器重启不换内核，`boot_id` 不变，所以只有开机标识不够。
+  启动永久报 `Another Codez Server instance is already running`。容器重启不换内核，`boot_id` 不变，所以只有开机标识不够。
   锁记录 `processIdentity`，持锁进程身份一致才算存活：
 
   | 锁记录                                                       | 判定                                                                                                               |
@@ -748,7 +748,7 @@ Workspace / Repo / User files
   - 已退出未回收的进程（僵尸）不算存活（2026-11-03，ZCT-2117275161536565248）。Docker 容器的 PID 1 常是
     `sleep infinity` 这类不回收子进程的程序：Supervisor 与 Core 非正常死亡后都成为 PID 1 名下的僵尸，
     `/proc/<pid>/stat` 仍在、starttime 不变，`kill(pid, 0)` 也成功，旧判定把僵尸当成持锁者，新 Supervisor
-    每次报 `Another ZCode Server instance is already running` 并 exit 1，容器重启前设备一直连不上。僵尸已释放
+    每次报 `Another Codez Server instance is already running` 并 exit 1，容器重启前设备一直连不上。僵尸已释放
     全部 fd、端口与内存，不可能再持有锁。Linux 按 `/proc/<pid>/stat` 的状态字段判定：`Z`（僵尸）、`X`（已死）
     视为进程不存在；带身份和不带身份的锁都适用。Node 主线程退出即进程结束，Supervisor 不会出现“主线程已退出、
     其余线程仍在运行”的状态。probe 仍只用 `kill -0` 判断快照中的 Core PID，遇到僵尸 Core 时多一次失败的握手，
@@ -771,7 +771,7 @@ Workspace / Repo / User files
     关闭 control server 和释放锁都按路径清理，路径上的 socket 与锁可能已属于新 owner。
   - 退出码按路径上的锁区分：
     - 锁文件不存在（root 被删除、移动或替换，还没有新 owner）：退出码 1，交给服务管理器。systemd `Restart=on-failure`、
-      launchd `KeepAlive.SuccessfulExit=false` 按新 root 的 `bin/zcode` 重新拉起；`bin/zcode` 不存在时由服务管理器限流。
+      launchd `KeepAlive.SuccessfulExit=false` 按新 root 的 `bin/codez` 重新拉起；`bin/codez` 不存在时由服务管理器限流。
       detached fallback 由下一次 `serve --daemon` 拉起。
     - 锁已属于其他 owner（内容不是本实例的 `ownerToken`）：退出码 0。新 owner 已在运行，服务管理器不重启本实例
       （2026-10-26）。多台主机共享 home 时，双方都把对方活着的锁判为 stale 并接管（规格不支持共享 home，见
@@ -783,7 +783,7 @@ Workspace / Repo / User files
   root 被删除/替换、锁被接管 ─> Core 下一次 heartbeat ─> Supervisor 写快照前读锁
                                                        ├─ 仍是自己的 ──> 照常写 status.json
                                                        ├─ 锁不存在 ──> 不写；停 Core；exit 1
-                                                       │     ├─ OS service：服务管理器按新 root 的 bin/zcode 重启
+                                                       │     ├─ OS service：服务管理器按新 root 的 bin/codez 重启
                                                        │     └─ detached：下一次 serve --daemon 拉起
                                                        └─ 换了 owner ─> 不写；停 Core；exit 0（新 owner 已在运行，不重启）
   ```
@@ -801,7 +801,7 @@ Workspace / Repo / User files
 ## 10. 实施顺序
 
 1. 保留本文作为 R2 spec，并补充 [R2 lifecycle test plan](./r2-server-cli-and-daemon-test-plan.md)；涉及 conversation/session 的用例先更新 case catalog 和 coverage matrix。
-2. 在 `packages/zcode-server-cli` 建立 CLI、IPC、runtime layout 和 contract schema，先写测试。
+2. 在 `packages/codez-server-cli` 建立 CLI、IPC、runtime layout 和 contract schema，先写测试。
 3. 实现单实例锁、状态文件、canonical path 和 allowlist 校验。
 4. 实现 Server Core 新入口，接入 `standalone-server` 服务并提供 HTTP/WS ingress。
 5. 实现 Supervisor、Core 私有 child IPC、崩溃预算和 running-task guard。

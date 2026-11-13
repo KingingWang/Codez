@@ -164,7 +164,7 @@ async function readPresentationFixture() {
   return JSON.parse(
     await readFile(
       new URL(
-        "../../../../../apps/zcode-cli/packages/core/tests/fixtures/runtime-input-presentation.json",
+        "../../../../../apps/codez-cli/packages/core/tests/fixtures/runtime-input-presentation.json",
         import.meta.url,
       ),
       "utf8",
@@ -173,7 +173,7 @@ async function readPresentationFixture() {
 }
 
 async function saveWireEvidence(request: unknown, label: string): Promise<void> {
-  const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR;
+  const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR;
   if (!artifactDir) return;
   const directory = join(artifactDir, "incoming-message-wire");
   await mkdir(directory, { recursive: true });

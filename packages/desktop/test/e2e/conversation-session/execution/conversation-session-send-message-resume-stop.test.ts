@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { TID_CHAT_SUMMARY_PANEL, TID_V4_SUBAGENT_OPEN_SIDE_PANE } from "@zcode/shared/test-ids";
+import { TID_CHAT_SUMMARY_PANEL, TID_V4_SUBAGENT_OPEN_SIDE_PANE } from "@codez/shared/test-ids";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import { waitForToolCallBlockByToolName } from "#e2e/helpers/conversation-session-tool";
 import {

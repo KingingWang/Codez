@@ -144,7 +144,7 @@
           "id": "toolu_dwe_inline_edit",
           "name": "Edit",
           "input": {
-            "file_path": ".zcode/workflow-drafts/E2E_DWE_INLINE.dwf.ts",
+            "file_path": ".codez/workflow-drafts/E2E_DWE_INLINE.dwf.ts",
             "old_string": "const second = agent(\"E2E_DWE_REVIEWER\");\nconst third = agent(\"E2E_DWE_REVIEWER\");",
             "new_string": "const second = agent(\"E2E_DWE_CHECKER\");\nconst third = agent(\"E2E_DWE_WRITER\");"
           }
@@ -178,7 +178,7 @@
           "name": "CreateWorkflow",
           "input": {
             "name": "E2E_DWE_INLINE_FIXED",
-            "path": ".zcode/workflow-drafts/E2E_DWE_INLINE.dwf.ts"
+            "path": ".codez/workflow-drafts/E2E_DWE_INLINE.dwf.ts"
           }
         }
       }
@@ -387,8 +387,8 @@
           "id": "toolu_dwe_path_write",
           "name": "Write",
           "input": {
-            "file_path": ".zcode/workflow-drafts/e2e-dwe-path.dwf.ts",
-            "content": "/* zcode-workflow\ndescription: E2E_DWE_PATH draft\n*/\nphase(\"检查\");\nconst total: number = \"E2E_DWE_PATH_BAD\";\nreturn String(total);\n"
+            "file_path": ".codez/workflow-drafts/e2e-dwe-path.dwf.ts",
+            "content": "/* codez-workflow\ndescription: E2E_DWE_PATH draft\n*/\nphase(\"检查\");\nconst total: number = \"E2E_DWE_PATH_BAD\";\nreturn String(total);\n"
           }
         }
       }
@@ -420,7 +420,7 @@
           "name": "CreateWorkflow",
           "input": {
             "name": "E2E_DWE_PATH_RUN",
-            "path": ".zcode/workflow-drafts/e2e-dwe-path.dwf.ts"
+            "path": ".codez/workflow-drafts/e2e-dwe-path.dwf.ts"
           }
         }
       }
@@ -451,7 +451,7 @@
           "id": "toolu_dwe_path_edit",
           "name": "Edit",
           "input": {
-            "file_path": ".zcode/workflow-drafts/e2e-dwe-path.dwf.ts",
+            "file_path": ".codez/workflow-drafts/e2e-dwe-path.dwf.ts",
             "old_string": "const total: number = \"E2E_DWE_PATH_BAD\";",
             "new_string": "const total: number = 2;"
           }
@@ -485,7 +485,7 @@
           "name": "CreateWorkflow",
           "input": {
             "name": "E2E_DWE_PATH_RUN",
-            "path": ".zcode/workflow-drafts/e2e-dwe-path.dwf.ts"
+            "path": ".codez/workflow-drafts/e2e-dwe-path.dwf.ts"
           }
         }
       }

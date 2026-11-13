@@ -1,7 +1,7 @@
 import { useBottomFollowingScroll } from "@/mentions/components/scrollMask.js";
 import { useContext, useId, useState, type KeyboardEvent, type ReactNode } from "react";
 import { BrainIcon, ChevronRightIcon } from "lucide-react";
-import { testId, TID_TOOL_SUMMARY_TRIGGER } from "@zcode/shared/test-ids";
+import { testId, TID_TOOL_SUMMARY_TRIGGER } from "@codez/shared/test-ids";
 import { cn } from "@/components/lib/utils.js";
 import {
   Collapsible,

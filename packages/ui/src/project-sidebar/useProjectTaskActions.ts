@@ -4,18 +4,18 @@ import type { ProjectTask } from "@/project-sidebar/contract.js";
 import { ProjectTaskListContext } from "@/project-sidebar/ProjectTaskListContext.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { useResolvedRemoteWorkspaceSessionId } from "@/hooks/useResolvedRemoteWorkspaceSessionId.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { toast } from "@/components/ui/toast.js";
 import { logger } from "@/logger.js";
 
 /** UI 命令适配：复用原 Host 入口，成功后仅处理本窗口展示，不保存会话事实。 */
 export function useProjectTaskActions(task: ProjectTask, refresh: () => Promise<void>) {
-  const { zcodeTaskService: service, windowControllerService: controller } =
+  const { codezTaskService: service, windowControllerService: controller } =
     useBaseWorkspaceServices();
   const { onPin } = useContext(ProjectTaskListContext);
-  const removeTaskState = useZCodeSessionStore((state) => state.removeTaskState);
-  const { intl } = useZCodeIntl();
+  const removeTaskState = useCodezSessionStore((state) => state.removeTaskState);
+  const { intl } = useCodezIntl();
   const remoteSessionId = useResolvedRemoteWorkspaceSessionId(
     task.workspacePath,
     undefined,

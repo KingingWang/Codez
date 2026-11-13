@@ -29,7 +29,7 @@ interface ProviderConfig {
 }
 ```
 
-`builtinModelIds` 由 ZCode Built-in 或 Account Built-in 管理，`modelIds` 由 Personal 管理。完成 Overlay 后，
+`builtinModelIds` 由 Codez Built-in 或 Account Built-in 管理，`modelIds` 由 Personal 管理。完成 Overlay 后，
 Resolver 将缺失或 `null` 归一化为 `[]`，再产生 source-aware inventory。
 
 成员 ID 去除首尾空格后按大小写敏感的精确字符串比较：
@@ -96,7 +96,7 @@ disabled Model：
 ## Built-in 默认与 Personal 覆盖
 
 Built-in 通用 Rule 提供完整默认 `enabled=true`。更具体、位置更后的 Built-in Rule 可以将淘汰或不建议继续使用的模型
-默认设为 `false`。这使 ZCode 发布新配置时能够调整官方默认，而不需要改 Provider 成员。
+默认设为 `false`。这使 Codez 发布新配置时能够调整官方默认，而不需要改 Provider 成员。
 
 Personal Rules 在全部 Built-in Rules 之后：
 
@@ -141,7 +141,7 @@ type ModelConfigRule =
 
 `provider-model` 的目标是一个精确 Provider/Model 组合。它可以属于两个 Source：
 
-- Built-in 专属 Rule 由 ZCode Built-in Release 管理，可以声明某个 Built-in Provider/Model 组合的官方特化；
+- Built-in 专属 Rule 由 Codez Built-in Release 管理，可以声明某个 Built-in Provider/Model 组合的官方特化；
 - Personal 专属 Rule 由 Settings 管理，可以覆盖 Built-in 或 Personal Model。
 
 只有 Personal 专属 Rule 参与用户生命周期：

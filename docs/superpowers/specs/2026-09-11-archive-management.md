@@ -166,7 +166,7 @@ E2E 放 manual-review/pending，fixture 在隔离 HOME/工作区创建；只用�
 
 ### 数据范围与承诺
 
-“永久删除”指物理清除当前 ZCode 会话存储中的记录及本次可删除的专属文件，不提供撤销或回收站。
+“永久删除”指物理清除当前 Codez 会话存储中的记录及本次可删除的专属文件，不提供撤销或回收站。
 它不是仅写 `time_deleted`。不承诺磁盘取证级擦除；不借本功能扩展成全设备隐私擦除、备份管理或分享管理。
 
 | 对象 | 处理 | 边界 |
@@ -213,7 +213,7 @@ N=0 时禁止确认。部分可执行时明确写“另有 M 个会话本次不�
 
 ```text
 永久删除 3 个归档会话？
-这些会话将从当前 ZCode 存储中永久删除，无法撤销。
+这些会话将从当前 Codez 存储中永久删除，无法撤销。
 
 将永久删除
   3 个会话的消息、内部历史及 2 个附属会话
@@ -377,7 +377,7 @@ sequenceDiagram
 | invariant-only | 分享、项目、worktree、目录记忆 | 不产生删除副作用 |
 | evidence-only | ARM02/03、TSL39、PJM07、CLI session-data tests | 现有软删除/项目删除证据不能视为新功能覆盖 |
 
-源码 seeds：`useArchiveManagement`、`mutateProjectTask`、`createZCodeTaskServiceAdapter`、
+源码 seeds：`useArchiveManagement`、`mutateProjectTask`、`createCodezTaskServiceAdapter`、
 `purgeSessionDataWith`、`listOwnedSessionTrees`、`listArtifactReferrers`、`purgeSessions`、
 `createNodeSessionDataFiles`、`ProjectRepository.purgeTasks`、`removeTaskState`。
 codegraph 已尝试；本次独立工作区无索引，未创建索引。以定向源码核对主要链路两层，存储 owner

@@ -192,6 +192,6 @@ Review 状态：
 | response delay fixture | N07、S06 | 已支持 `delayMs` / SSE `offsetMs`；需要统一超时阈值 |
 | partial SSE fixture | S01-S05 | 已支持写有限 events 后结束，也支持 `closeMode=destroy` 模拟异常断开；单测覆盖 `complete/end` 与 `error/destroy` 两种 artifact |
 | late SSE after stop | S07 | 需要 fixture 在 stop 后继续写事件，并用 inputId 证明 UI 忽略 stale event |
-| fs fault injection | D01-D05 | 已固化 `ZCODE_E2E_FS_FAULTS` 协议和 helper，provider/config、settings、provider display order、SQLite session DB open/write、workspace tool 的父目录创建 / 非原子写入 / 删除、tool artifact write、CLI JSONL log write、desktop main log append 已接入；workspace 默认 atomic temp/rename 路径不接入 fault hook；下一步需要确认产品语义并写具体 e2e 断言 |
+| fs fault injection | D01-D05 | 已固化 `CODEZ_E2E_FS_FAULTS` 协议和 helper，provider/config、settings、provider display order、SQLite session DB open/write、workspace tool 的父目录创建 / 非原子写入 / 删除、tool artifact write、CLI JSONL log write、desktop main log append 已接入；workspace 默认 atomic temp/rename 路径不接入 fault hook；下一步需要确认产品语义并写具体 e2e 断言 |
 | process lifecycle control | L03-L08 | 需要 WDIO helper 标准化 quit/relaunch、kill host、kill agent、renderer reload |
 | remote disconnect harness | W04 | 需要针对 SSH/WSL/Docker remote host 的连接断开模拟 |

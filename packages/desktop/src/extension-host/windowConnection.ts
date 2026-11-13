@@ -7,7 +7,7 @@ import {
   type Event,
   type MessagePortLike,
   type MessagePortPayload,
-} from "@zcode/rpc";
+} from "@codez/rpc";
 import {
   EXTENSION_HOST_CHANNEL,
   EXTENSION_WINDOW_CHANNEL,
@@ -20,13 +20,13 @@ import {
   type IExtensionHostChannel,
   type IExtensionWindowChannel,
   type ViewNotification,
-} from "@zcode/shared/extension-host";
+} from "@codez/shared/extension-host";
 import type { CapabilityClient } from "#src/extension-host/capabilityClient.js";
 import type { ExtensionRegistry } from "#src/extension-host/registry.js";
 import type { ViewHost } from "#src/extension-host/viewHost.js";
 import { hostLog } from "#src/extension-host/runtime.js";
 
-// L1 连接（docs/plugins/extension-host.md §3.2）：Main 牵线的端口上跑双向 @zcode/rpc。
+// L1 连接（docs/plugins/extension-host.md §3.2）：Main 牵线的端口上跑双向 @codez/rpc。
 // 本进程提供 extension-host 频道，并代理 Window Host 的 extension-window 频道。
 
 function wrapPort(port: MessagePortMain): MessagePortLike {

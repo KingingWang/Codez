@@ -1,5 +1,5 @@
-import type { ICloudContentService } from "@zcode/services";
-import type { MarketingAsset, MarketingVisual } from "@zcode/shared";
+import type { ICloudContentService } from "@codez/services";
+import type { MarketingAsset, MarketingVisual } from "@codez/shared";
 import type { CloudDialogHero } from "@/components/cloud-content-dialog/cloudContentDialogTypes.js";
 import { logger } from "@/logger.js";
 
@@ -35,7 +35,7 @@ export interface PreparedMarketingHero {
 const empty = (): PreparedMarketingHero => ({ hero: null, release: async () => {} });
 
 function heroData(args: Record<string, unknown> | undefined, locale: string) {
-  const raw = args?.zcode_plan;
+  const raw = args?.codez_plan;
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return args ?? {};
   const plan = raw as Record<string, unknown>;
   const entitlements = Array.isArray(plan.entitlements) ? plan.entitlements : [];
@@ -148,7 +148,7 @@ export async function prepareMarketingHero(
     return {
       hero: {
         type: "interactive_bundle",
-        runtime: "zcode-hero-sandbox-v1",
+        runtime: "codez-hero-sandbox-v1",
         bundle,
         resolvedUrl: lease.url,
         viewport: { aspectRatio: "4:3" },

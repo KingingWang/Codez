@@ -1,6 +1,6 @@
 import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { TID_V4_COMPOSER_INPUT } from "@zcode/shared/test-ids";
+import { TID_V4_COMPOSER_INPUT } from "@codez/shared/test-ids";
 import { clearAppData, setInputValueByTestIdDom } from "#e2e/helpers/desktop-app";
 import {
   ELECTRON_WINDOW_RECORDING_CAPTURE_MODE,
@@ -207,14 +207,14 @@ async function seedLifecycleMarketplaceCache(marketplaceRoot: string): Promise<v
           // install/enable 操作看似卡死。该隔离 HOME 只需声明已刷新，PLG12 不验证公网目录。
           {
             addedAt: "2026-07-31T00:00:00.000Z",
-            description: "Deterministic offline ZCode marketplace marker",
+            description: "Deterministic offline Codez marketplace marker",
             id: "zcode-plugins-official",
             lastUpdated: "2099-01-01T00:00:00.000Z",
             name: "zcode-plugins-official",
             pluginCount: 1,
             source: {
               source: "url",
-              url: "https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json",
+              url: "https://cdn-zcode.z.ai/codez/official-plugin/marketplace.json",
             },
           },
           {
@@ -266,9 +266,9 @@ async function waitForEnabledSwitchState(enabled: boolean): Promise<void> {
     () =>
       (
         window as Window & {
-          __zcodeTabStoreE2E?: { getState(): { activeWorkspacePath?: string | null } };
+          __codezTabStoreE2E?: { getState(): { activeWorkspacePath?: string | null } };
         }
-      ).__zcodeTabStoreE2E?.getState().activeWorkspacePath,
+      ).__codezTabStoreE2E?.getState().activeWorkspacePath,
   );
   if (!workspacePath) throw new Error("Plugin 试用没有当前 workspace");
   await browser.waitUntil(

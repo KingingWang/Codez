@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { hasCompletedSubagentSettingsLoad } from "#e2e/helpers/subagent-snapshot-wait";
 
 const overview = (pid: number) =>
-  `[pid:${pid}] [zcode-host] [rpc:call] plugin-management.getPluginsOverview OK (397.9ms)`;
-const list = (pid: number) => `[pid:${pid}] [zcode-host] [rpc:call] subagents.list OK (12.1ms)`;
+  `[pid:${pid}] [codez-host] [rpc:call] plugin-management.getPluginsOverview OK (397.9ms)`;
+const list = (pid: number) => `[pid:${pid}] [codez-host] [rpc:call] subagents.list OK (12.1ms)`;
 
 describe("Subagent 设置初始资源刷新屏障", () => {
   it("首次列表可见不能代替稍后完成的插件初始化", () => {

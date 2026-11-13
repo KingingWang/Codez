@@ -15,5 +15,5 @@
 ## 约束
 
 - 远端 workspace 任务查询必须传 `workspaceIdentity`，不能只靠 `workspacePath` 做隔离。
-- UI 层不直接调用 repo；所有任务读写继续通过对应 workspace 的 `zcodeTaskService`。
+- UI 层不直接调用 repo；所有任务读写继续通过对应 workspace 的 `codezTaskService`。
 - 远端补充读取失败只记录 warn 和 store error，不阻断 workspace 恢复。

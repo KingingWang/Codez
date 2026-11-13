@@ -1,6 +1,6 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { TID_BROWSER_ADDRESS_INPUT, TID_TASK_ITEM, testId } from "@zcode/shared/test-ids";
+import { TID_BROWSER_ADDRESS_INPUT, TID_TASK_ITEM, testId } from "@codez/shared/test-ids";
 import { DEFAULT_WORKSPACE, clearAppData } from "#e2e/helpers/desktop-app";
 import { openFirstBrowserTab } from "#e2e/helpers/browser-side-pane";
 import { startDraftFromProject } from "#e2e/helpers/project-sidebar";

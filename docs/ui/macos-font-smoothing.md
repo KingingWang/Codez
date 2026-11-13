@@ -31,5 +31,5 @@
 
 ```bash
 node --test packages/ui/test/browser/manual-review/pending/font-smoothing.test.mjs
-E2E_PROVIDER_HTTP_MODE=replay E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec ./test/e2e/settings/appearance/manual-review/pending/macos-font-smoothing.test.ts
+E2E_PROVIDER_HTTP_MODE=replay E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec ./test/e2e/settings/appearance/manual-review/pending/macos-font-smoothing.test.ts
 ```

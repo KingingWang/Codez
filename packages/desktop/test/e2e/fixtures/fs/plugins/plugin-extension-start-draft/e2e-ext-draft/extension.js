@@ -1,6 +1,6 @@
 // E2E 扩展 fixture（docs/plugins/extension-host.md §18.1 H2）：纯 JS，不需要构建。
 // composer.status 条目 draft 点击执行 start-draft：经 ctx.workbench.startDraft 开一个预填文字的新草稿，
-// 与 GitLab 面板「用 ZCode 审查」同一条路径。奇数次点击用当前工作区，偶数次显式传命令作用域的工作区。
+// 与 GitLab 面板「用 Codez 审查」同一条路径。奇数次点击用当前工作区，偶数次显式传命令作用域的工作区。
 // 第一次点击后另试两个不合规的入参（超长、空白），都应在扩展进程内报 invalid-input。
 // 日志只记点击序号、长度与结果，不记文字本身。
 const DRAFT_TEXT =

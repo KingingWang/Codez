@@ -8,7 +8,7 @@ import { test } from "node:test";
 import { resolveRuntimeHostBuild, verifyRuntimeHostPe } from "../build-windows-runtime-host.mjs";
 
 const source = resolve(import.meta.dirname, "../windows-runtime-host");
-const logName = "ZCode-process-cleanup.log";
+const logName = "Codez-process-cleanup.log";
 const sentinel = "existing log must survive\r\n";
 
 function launch(executable, args, options = {}) {
@@ -130,16 +130,16 @@ test(
         "--config",
         "Release",
         "--target",
-        "zcode-installer-process-helper",
-        "zcode-installer-process-fixture",
+        "codez-installer-process-helper",
+        "codez-installer-process-fixture",
       ],
     ]) {
       const cmake = launch(process.env.CMAKE || "cmake", args, { timeout: 120000 });
       cmake.child.stdin.end();
       await expectExit(cmake, 0);
     }
-    const helper = join(build, "Release/zcode-installer-process-helper.exe");
-    const fixture = join(build, "Release/zcode-installer-process-fixture.exe");
+    const helper = join(build, "Release/codez-installer-process-helper.exe");
+    const fixture = join(build, "Release/codez-installer-process-fixture.exe");
     for (const executable of [helper, fixture]) {
       verifyRuntimeHostPe(await readFile(executable), arch);
     }

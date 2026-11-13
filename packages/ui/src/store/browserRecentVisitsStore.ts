@@ -22,7 +22,7 @@ interface BrowserRecentVisitsState {
 const MAX_RECENT_VISITS = 20;
 const MAX_RECENT_VISIT_SCOPES = 50;
 const MAX_PERSISTED_FAVICON_URL_LENGTH = 2 * 1024;
-const STORAGE_KEY_PREFIX = "zcode-browser-recent-visits:";
+const STORAGE_KEY_PREFIX = "codez-browser-recent-visits:";
 
 function normalizePersistedVisit(record: BrowserVisitRecord): BrowserVisitRecord {
   const faviconUrl = record.faviconUrl;

@@ -13,8 +13,8 @@
 ## 环境
 
 - 开发机：macOS arm64，Docker 29.4（OrbStack）。
-- 路径 A：`node harness/remote/run-local-docker.mjs <spec...>`。容器镜像 `zcode-remote-ssh:test`，`uname -m` 为 `aarch64`。
-  old-glibc 用例使用 `zcode-remote-ssh:glibc227`（ubuntu 18.04，glibc 2.27）。
+- 路径 A：`node harness/remote/run-local-docker.mjs <spec...>`。容器镜像 `codez-remote-ssh:test`，`uname -m` 为 `aarch64`。
+  old-glibc 用例使用 `codez-remote-ssh:glibc227`（ubuntu 18.04，glibc 2.27）。
 - 本地 UI 与 AUTH 用例使用 `node scripts/run-windows-e2e-shards.mjs --spec <spec>`，即 `pnpm test:e2e` 的入口。
 - 工件：`packages/desktop/.e2e-artifacts/<runId>/summary.json`。
 - 改动生效的证据中，“改动前失败”部分沿用各提交记录的复现 runId，本轮只重跑改动后的版本。
@@ -38,14 +38,14 @@
 | `09a44a38e14` `76b5538e4d5` `aa8136c1cfa` | DSYNC-09-01～05 | 5/5 通过（`local-docker-20261104160910-361164`） |
 | `7cd54617545` | AUTH-09 | 通过（`desktop-e2e-20261104162730712-p89168-8767adab241ff745`） |
 | `d8ffd0558c8` `7e61900cab3` | AUTH-09-R（离线 SSH 目标、手机、第 6 步弹窗） | 通过（`local-docker-20261104160911-648172`） |
-| `142faf84612` `754f846c4e9` `06850cdb772` `bdf273ccd19` | MRO04 远端终端（`ZCODE_E2E_MRO04_REMOTE=1`） | 2/2 通过（`local-docker-20261104172748-c238d7`） |
+| `142faf84612` `754f846c4e9` `06850cdb772` `bdf273ccd19` | MRO04 远端终端（`CODEZ_E2E_MRO04_REMOTE=1`） | 2/2 通过（`local-docker-20261104172748-c238d7`） |
 | `b9ab416d23d` | status panel、v4 scroll、held queue | 通过（`desktop-e2e-20261104-160020-550`） |
 | `8237935aa07` `ab66f1db2a3` `351e5a523a2` | 设置页窄屏、usage 图表、供应商标题 | US-AU-01～05、UP-00～02、MP-UI-01～05 通过（同上）；390px 截图正常 |
 | `613750fb786` | `e2eConversationPreparation.test.ts` | 8/8 通过 |
 
 ### release 清理探针（`0bab7b0298f`）
 
-在手动容器里以 `dev` 运行 `zcode update --from-archive`：A→B→C 离线更新，在 C 上启动 daemon，再在线更新到 D，最后重装 D。
+在手动容器里以 `dev` 运行 `codez update --from-archive`：A→B→C 离线更新，在 C 上启动 daemon，再在线更新到 D，最后重装 D。
 
 - 修复后（3.17.1 包）：每次更新后 `releases/` 只剩 current 和 previous。重装同一 release 不清理。在线 handoff 后 daemon 仍为 `ready`。
 - 修复前（3.16.3 包）：同样流程，`releases/` 增长到 4 个。
@@ -80,12 +80,12 @@
 2. **并发 runner 共用模型回放抓包目录**（`harness/remote/local-docker.mjs`）
    - 现象：R3A-UPG-03/04 与 R3A-BLD-11 报“首发没有到达 provider”。抓包记录里出现了其他运行的 fixture（`ssh-cold-reconnect-*`、`r3-restart-remote-service-*`）。
    - 原因：wdio 默认把 `upstream-runtime.json`、`upstream-provider.json` 写到固定的 `.e2e-network-capture`，并发运行会互相覆盖。
-   - 修改：按 runId 设置 `ZCODE_E2E_NETWORK_CAPTURE_DIR`。先补回归测试（red 后 green），再并发重跑两个用例，均通过。
+   - 修改：按 runId 设置 `CODEZ_E2E_NETWORK_CAPTURE_DIR`。先补回归测试（red 后 green），再并发重跑两个用例，均通过。
 3. **两份手机 fixture 互相抢匹配**（`conversation-session-r3-mobile.json`）
    - 原因：r3-mobile 的宽匹配 `E2E_R3_MOBILE_` 也会命中 `E2E_R3_MOBILE_PERMISSION_*` 请求，同一次运行时 R3A-MOB-01 与 R3A-MOB-04 都失败。
    - 修改：在 title/main 两条宽匹配中排除 permission 标记。修改后两份 spec 同一次运行 3/3 通过。
 4. **RDUX-16 不认本机 runner 的容器名**（`conversation-session-remote-install-progress.test.ts`）
-   - 原因：容器名正则漏掉了 `zcode-local-remote-`，用例第一行断言就失败。
+   - 原因：容器名正则漏掉了 `codez-local-remote-`，用例第一行断言就失败。
    - 修改：补上这个前缀。修改后通过。
 5. **RDUX15 三处不稳定**（`conversation-session-background-connection.test.ts`、`wdio.conf.ts`）
    - 原因一：点项目行“新建任务”后，鼠标停留触发项目悬停卡片，卡片盖住 composer 的项目选择器，导致点击被拦截。

@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/continue-markdown-protocols/cross-seam.svg",
+      "path": ".codez-e2e/continue-markdown-protocols/cross-seam.svg",
       "source": "created-by-spec",
       "description": "OTC11 写入固定 SVG，让 Chat Completions 与 Responses API 子用例复用 OTC09 的 workspace-relative 图片拼接缝。"
     }

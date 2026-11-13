@@ -1,5 +1,5 @@
 import type { DraftPluginUiOpenRequest } from "@/plugin-ui/contract.js";
-import { withPluginTelemetry } from "@zcode/services";
+import { withPluginTelemetry } from "@codez/services";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { reportAppTelemetryEvent } from "@/lib/appTelemetry.js";
 /* eslint-disable max-lines -- 插件商店容器统一编排列表/详情、市场源对话框、卸载确认、试用跳转与技能刷新收尾，集中维护保证交互一致。 */
@@ -13,7 +13,7 @@ import { ArrowLeft, RefreshCw, Store } from "lucide-react";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { Button } from "@/components/ui/button.js";
 import { toast } from "@/components/ui/toast.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useServices } from "@/hooks/useServices.js";
 import { usePluginStoreOrder } from "@/hooks/usePluginStoreOrder.js";
 import { useScopedPluginManagementStore } from "@/store/pluginManagementStore.js";
@@ -22,7 +22,7 @@ import { PluginsSection } from "@/settings/PluginsSection.js";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog.js";
 import { resolvePluginUiSurfaceTitle } from "@/plugin-ui/index.js";
 import type { CreateTaskRequest } from "@/app-shell/types.js";
-import { invalidateDeferredDraftSessionForSkillChange } from "@/lib/zcodeDraftSkillInvalidation.js";
+import { invalidateDeferredDraftSessionForSkillChange } from "@/lib/codezDraftSkillInvalidation.js";
 import { refreshSharedSkillStoreForWorkspace } from "@/lib/skillStoreRefresh.js";
 import {
   PluginDetailRow,
@@ -46,7 +46,7 @@ import {
   resolvePluginDisplayName,
   type StorePluginItem,
 } from "@/settings/pluginStoreListing.js";
-import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID } from "@zcode/shared";
+import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID } from "@codez/shared";
 import { PluginUninstallConfirmDialog } from "@/settings/PluginUninstallConfirmDialog.js";
 import { usePluginUninstall } from "@/settings/usePluginUninstall.js";
 import { claimMarketplaceAutoRefresh } from "@/settings/officialMarketplaceAutoRefresh.js";
@@ -91,7 +91,7 @@ export function PluginStorePage({
   onBack,
 }: PluginStorePageProps) {
   const platform = usePlatform();
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const { order: storeOrder, refresh: refreshStoreOrder } = usePluginStoreOrder();
   const { pluginManagementService, skillsService } = useServices();
   const usePluginManagementStore = useScopedPluginManagementStore(pluginManagementService);
@@ -175,7 +175,7 @@ export function PluginStorePage({
     });
   }, [initialize, pluginManagementService, workspaceIdentity, workspacePath]);
 
-  // 目录自动刷新（Catalog Auto-Refresh）：只针对 ZCode 官方市场。每次进入商店页都刷新 CDN 目录，
+  // 目录自动刷新（Catalog Auto-Refresh）：只针对 Codez 官方市场。每次进入商店页都刷新 CDN 目录，
   // 否则新上架插件要等用户手动点刷新才可见；以 10 分钟窗口节流，并在发起时占位防抖（失败/在飞不重复），
   // 判据见 officialMarketplaceAutoRefresh。状态放模块级而非组件 ref，因为每次进入都是重新挂载。
   useEffect(() => {

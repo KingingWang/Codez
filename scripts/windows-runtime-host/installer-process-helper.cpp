@@ -26,7 +26,7 @@ void report(const char* stage, DWORD pid, DWORD error = 0) {
   wchar_t temp[MAX_PATH];
   DWORD length = GetTempPathW(MAX_PATH, temp);
   if (length == 0 || length >= MAX_PATH) return;
-  const std::wstring path = std::wstring(temp) + L"ZCode-process-cleanup.log";
+  const std::wstring path = std::wstring(temp) + L"Codez-process-cleanup.log";
   Handle log(CreateFileW(path.c_str(), FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
                          nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
   if (log.value == INVALID_HANDLE_VALUE) return;

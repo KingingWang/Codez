@@ -7,7 +7,7 @@ import {
   TID_PROMPT_SUGGESTION_SECTION,
   TID_PROMPT_SUGGESTION_STATUS,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { cn } from "@/components/lib/utils.js";
 import { CircleAlertIcon, Info } from "lucide-react";
 import {

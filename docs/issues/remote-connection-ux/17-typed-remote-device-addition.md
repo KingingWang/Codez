@@ -47,7 +47,7 @@ Status: done
 
 - 设置新建直接进入默认 SSH 分类表单；SSH config、WSL 发行版和 Docker 发现只填写配置，显式「添加并连接」才拨号。保持现有认证、安装、Source 归并和取消归属。
 - 类型切换、SSH 目标修改清除旧凭据；初次发现与用户主动刷新的迟到 Docker 响应均在类型生命周期结束后失效。
-- 验证：`pnpm typecheck`、`pnpm --filter @zcode/desktop typecheck:e2e`、`pnpm lint`（0 errors，208 条既有 warnings）、架构门禁（0 violations）、fixture check 均通过。受影响根单测 668 文件 / 6391 测试通过；最终远程 UI 回归 28 文件 / 295 测试通过。
+- 验证：`pnpm typecheck`、`pnpm --filter @codez/desktop typecheck:e2e`、`pnpm lint`（0 errors，208 条既有 warnings）、架构门禁（0 violations）、fixture check 均通过。受影响根单测 668 文件 / 6391 测试通过；最终远程 UI 回归 28 文件 / 295 测试通过。
 - 真实 macOS Desktop + 独占 Linux SSH / Docker 环境运行 `conversation-session-settings-connection-completion.test.ts`，2 项通过：SSH config 与手填、认证失败修正、同 Source 不同 Profile、已在线复用、Docker 发现与手填、Esc 取消、设置定位及原项目恢复。所有添加路径的项目数 / 聊天数保持原值。
 - 最终证据：`packages/desktop/.e2e-artifacts/desktop-e2e-20261012103617954-p8589-11f164b179b46093`，包括 16 组分类表单矩形与截图、8 组设置截图、`settings-completion-facts.json` 和测试报告；覆盖中英文、深浅主题、1440 / 480px。
 - 窄屏早期断言读到了既有 100ms `transition: all` 的中间帧。运行记录显示 480px 视口中，宽度从 672px 过渡到 448px（x=16），按钮 right=447 / bottom=789.375，稳定布局完整可见。测试改为等有限动画的 `finished` 再测量，没有修改产品布局或加入产品超时。

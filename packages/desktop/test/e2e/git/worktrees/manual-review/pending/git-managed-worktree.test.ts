@@ -15,7 +15,7 @@ import {
   TID_WORKTREE_CREATED_MARKER,
   TID_WORKTREE_CREATION_CARD,
   TID_WORKTREE_TOGGLE,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { DEFAULT_WORKSPACE, clearAppData, waitForWorkspaceApp } from "#e2e/helpers/desktop-app";
 import { E2E_REPLY_TOKEN } from "#e2e/helpers/conversation-session";
 import { openProjectMenuAction, startDraftFromProject } from "#e2e/helpers/project-sidebar";
@@ -29,9 +29,9 @@ import {
 
 const execGit = promisify(execFile);
 const TEST_TIMEOUT_MS = 180_000;
-// E2E 的 ZCODE_DATA_BASE_DIR 即 DEFAULT_WORKSPACE 的父目录；受管根目录与 Host 同一规则推导。
-const MANAGED_ROOT = join(dirname(DEFAULT_WORKSPACE), ".zcode", "worktrees");
-const BASELINE_FILE = join(".zcode-e2e", "managed-worktree", "baseline.md");
+// E2E 的 CODEZ_DATA_BASE_DIR 即 DEFAULT_WORKSPACE 的父目录；受管根目录与 Host 同一规则推导。
+const MANAGED_ROOT = join(dirname(DEFAULT_WORKSPACE), ".codez", "worktrees");
+const BASELINE_FILE = join(".codez-e2e", "managed-worktree", "baseline.md");
 const WORKTREE_MENU_ACTION = "worktrees";
 
 async function git(cwd: string, ...args: string[]): Promise<string> {
@@ -42,8 +42,8 @@ async function git(cwd: string, ...args: string[]): Promise<string> {
 async function prepareSourceRepository(): Promise<string> {
   await mkdir(dirname(join(DEFAULT_WORKSPACE, BASELINE_FILE)), { recursive: true });
   await execGit("git", ["init", "-q", "-b", "main"], { cwd: DEFAULT_WORKSPACE });
-  await git(DEFAULT_WORKSPACE, "config", "user.email", "zcode-e2e@example.invalid");
-  await git(DEFAULT_WORKSPACE, "config", "user.name", "ZCode E2E");
+  await git(DEFAULT_WORKSPACE, "config", "user.email", "codez-e2e@example.invalid");
+  await git(DEFAULT_WORKSPACE, "config", "user.name", "Codez E2E");
   await writeFile(join(DEFAULT_WORKSPACE, BASELINE_FILE), "baseline\n", "utf8");
   await git(DEFAULT_WORKSPACE, "add", BASELINE_FILE);
   await git(DEFAULT_WORKSPACE, "commit", "-qm", "test: managed worktree baseline");

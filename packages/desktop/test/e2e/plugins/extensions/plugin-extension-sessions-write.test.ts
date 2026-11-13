@@ -11,9 +11,9 @@
 import { cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { chromium, type Browser, type Page } from "playwright-core";
-import { ServiceChannels } from "@zcode/shared";
-import { EXTENSION_SESSION_CONSENT_REVISION } from "@zcode/shared/extension-host";
-import type { ProjectTask, ProjectTree } from "@zcode/services";
+import { ServiceChannels } from "@codez/shared";
+import { EXTENSION_SESSION_CONSENT_REVISION } from "@codez/shared/extension-host";
+import type { ProjectTask, ProjectTree } from "@codez/services";
 import {
   TID_EXTENSION_PERMISSIONS,
   TID_EXTENSION_PERMISSIONS_ACTION,
@@ -22,7 +22,7 @@ import {
   TID_TASK_ITEM,
   TID_V4_SESSION_PANE,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -84,7 +84,7 @@ const CREATE_REQUEST_ID = "e2e-p3c-create";
 const SEND_REQUEST_ID = "e2e-p3c-send";
 const LABEL_SELECTOR = '[data-v4-user-input-source-kind="extension"]';
 const LABELS = { "zh-CN": `来自插件 ${PLUGIN}`, "en-US": `From plugin ${PLUGIN}` } as const;
-const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR ?? process.cwd();
+const artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR ?? process.cwd();
 
 interface SessionRef {
   kind: "app";
@@ -331,7 +331,7 @@ describe("PLM-EXT-P3C 扩展经 ctx.sessions.* 写会话", () => {
 
     // (a) 默认工作区的项目。
     const [projects] = await runStep("projects", [
-      { name: "listProjects", input: { query: "ZCodeProject" } },
+      { name: "listProjects", input: { query: "CodezProject" } },
     ]);
     const project = (
       projects!.ok as { projects: Array<{ project: NonNullable<SessionRef["project"]> }> }
@@ -463,7 +463,7 @@ describe("PLM-EXT-P3C 扩展经 ctx.sessions.* 写会话", () => {
 
     // (h) 渲染进程伪造 extension 来源：Host 的连接作用域拒绝，会话里不多出消息。
     evidence.forged = await callHandoffHost(
-      ServiceChannels.ZCodeAgent,
+      ServiceChannels.CodezAgent,
       "sendConversationCommandV4",
       [
         {
@@ -604,7 +604,7 @@ describe("PLM-EXT-P3C 扩展经 ctx.sessions.* 写会话", () => {
     // (o) 宿主删除任务（与侧栏「删除」同一条路径）：之后 sendToSession 报 forbidden（项目树里找不到它）；
     // 已开着的行订阅不结束（会话仍在 CLI 里）。§18.3「大脑被删的信号」记的就是这个行为。
     const failTask = await readTask(failId);
-    await callHandoffHost(ServiceChannels.ZCodeTask, "deleteTask", [
+    await callHandoffHost(ServiceChannels.CodezTask, "deleteTask", [
       {
         taskId: failId,
         workspacePath: failTask.workspacePath,
@@ -631,12 +631,12 @@ describe("PLM-EXT-P3C 扩展经 ctx.sessions.* 写会话", () => {
     this.timeout(300000);
     requirePluginManualReview();
     expect(sessionId).toBeTruthy();
-    const endpoint = process.env.ZCODE_WEB_REMOTE_CONTROL_URL;
+    const endpoint = process.env.CODEZ_WEB_REMOTE_CONTROL_URL;
     if (!endpoint) throw new Error("the mobile Web fixture is not configured for this spec");
     const pairingUrl = await obtainUnreadPairingUrl(new URL(endpoint).origin);
     mobile = await chromium.launch({
-      ...(process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE
-        ? { executablePath: process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE }
+      ...(process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE
+        ? { executablePath: process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE }
         : { channel: "chrome" }),
       headless: true,
     });

@@ -1,6 +1,6 @@
 import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import type { ZCodePluginsOverviewResult } from "@zcode/shared";
+import type { CodezPluginsOverviewResult } from "@codez/shared";
 import { clearAppData, getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
 import {
   addMarketplaceSourceThroughAgent,
@@ -25,7 +25,7 @@ import {
 // PLM-EXT-STORE（docs/plugins/plugin-publishing.md §4.3–4.4）：商店按插件 API 版本挡住不兼容的扩展插件，
 // 安装前在详情页显示「含常驻代码」与申请的权限。本地市场四个插件：
 // - ok：engines ^1.4.0（App 的 EXTENSION_API_VERSION 是 1.4.0），申请完全访问与系统通知，可以装；
-// - future：engines ^99.0.0，商店显示「需要更新 ZCode」，不能装；
+// - future：engines ^99.0.0，商店显示「需要更新 Codez」，不能装；
 // - installed：先装兼容的 1.0.0，目录再升到不兼容的 2.0.0：不显示更新，「全部更新」跳过它；
 // - plain：不带扩展，安装与更新行为不变。
 const CASE_ID = "PLM-EXT-STORE";
@@ -102,28 +102,28 @@ async function bumpCatalog(market: string): Promise<void> {
     if (entry.name !== INSTALLED_NAME && entry.name !== PLAIN_NAME) continue;
     entry.version = "2.0.0";
     if (entry.name === INSTALLED_NAME) {
-      entry.extensionSummary = { engines: { zcode: "^99.0.0" }, grants: [] };
+      entry.extensionSummary = { engines: { codez: "^99.0.0" }, grants: [] };
     }
     const manifestPath = join(
       market,
       "plugins",
       String(entry.name),
-      ".zcode-plugin",
+      ".codez-plugin",
       "plugin.json",
     );
     const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as Record<string, unknown>;
     manifest.version = "2.0.0";
-    if (entry.name === INSTALLED_NAME) manifest.extension = { engines: { zcode: "^99.0.0" } };
+    if (entry.name === INSTALLED_NAME) manifest.extension = { engines: { codez: "^99.0.0" } };
     await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   }
   await writeFile(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`);
 }
 
-function findAvailable(overview: ZCodePluginsOverviewResult, id: string) {
+function findAvailable(overview: CodezPluginsOverviewResult, id: string) {
   return overview.availablePlugins.find((plugin) => plugin.id === id);
 }
 
-function findInstalled(overview: ZCodePluginsOverviewResult, id: string) {
+function findInstalled(overview: CodezPluginsOverviewResult, id: string) {
   return overview.installedPlugins.find((plugin) => plugin.id === id);
 }
 
@@ -145,7 +145,7 @@ async function captureStoreViews(label: "zh-CN-zai-light" | "en-US-zai-dark"): P
 
 describe("PLM-EXT-STORE 商店按插件 API 版本挡住不兼容的扩展插件", () => {
   after(async () => {
-    const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR;
+    const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR;
     if (artifactDir) {
       await writeFile(
         join(artifactDir, "plm-ext-store-evidence.json"),
@@ -174,17 +174,17 @@ describe("PLM-EXT-STORE 商店按插件 API 版本挡住不兼容的扩展插件
     // services 读到 CLI 的能力位后才要扩展摘要（§4.3）；没有扩展的插件不带，componentTypes 透传 extension。
     const initial = await getPluginOverview();
     expect(findAvailable(initial, OK)?.listing?.extensionSummary).toEqual({
-      engines: { zcode: "^1.4.0" },
+      engines: { codez: "^1.4.0" },
       grants: ["sessions.fullAccess", "notifications"],
     });
     expect(findAvailable(initial, OK)?.componentTypes).toContain("extension");
-    expect(findAvailable(initial, FUTURE)?.listing?.extensionSummary?.engines.zcode).toBe(
+    expect(findAvailable(initial, FUTURE)?.listing?.extensionSummary?.engines.codez).toBe(
       "^99.0.0",
     );
     expect(findAvailable(initial, PLAIN)?.listing?.extensionSummary).toBeUndefined();
     expect(findAvailable(initial, PLAIN)?.componentTypes ?? []).not.toContain("extension");
 
-    // (a) 列表：不兼容的插件按钮是不能点的「需要更新 ZCode」；兼容的与普通的照常「安装」。
+    // (a) 列表：不兼容的插件按钮是不能点的「需要更新 Codez」；兼容的与普通的照常「安装」。
     await setPluginPresentation({ locale: "zh-CN", theme: "zai-light", width: 1400, height: 900 });
     await openPluginSettings();
     await clickPluginControl("plugin-store-segment-personal");
@@ -192,7 +192,7 @@ describe("PLM-EXT-STORE 商店按插件 API 版本挡住不兼容的扩展插件
     expect(await readInstallButton(FUTURE)).toEqual({
       disabled: true,
       blocked: "requires-update",
-      text: "需要更新 ZCode",
+      text: "需要更新 Codez",
     });
     expect(await readInstallButton(OK)).toEqual({ disabled: false, blocked: null, text: "安装" });
     expect(await readInstallButton(PLAIN)).toEqual({
@@ -209,7 +209,7 @@ describe("PLM-EXT-STORE 商店按插件 API 版本挡住不兼容的扩展插件
     });
     expect(
       await getPluginControlText("plugin-store-extension-incompatible", { pluginId: FUTURE }),
-    ).toContain("更新 ZCode");
+    ).toContain("更新 Codez");
     const futureNotice = await readExtensionNotice(FUTURE);
     expect(futureNotice?.text).toContain("含常驻代码");
     expect(futureNotice?.grants).toEqual([{ grant: "sessions.read", text: "读取会话" }]);
@@ -242,7 +242,7 @@ describe("PLM-EXT-STORE 商店按插件 API 版本挡住不兼容的扩展插件
     await openPluginCard(FUTURE);
     expect(await readInstallButton(FUTURE)).toMatchObject({
       disabled: true,
-      text: "Requires newer ZCode",
+      text: "Requires newer Codez",
     });
     expect((await readExtensionNotice(FUTURE))?.text).toContain("Includes resident code");
     await backToStoreList();
@@ -276,7 +276,7 @@ describe("PLM-EXT-STORE 商店按插件 API 版本挡住不兼容的扩展插件
     await waitUntilPluginOverview(
       (overview) =>
         findInstalled(overview, INSTALLED)?.updateStatus === "update-available" &&
-        findInstalled(overview, INSTALLED)?.listing?.extensionSummary?.engines.zcode ===
+        findInstalled(overview, INSTALLED)?.listing?.extensionSummary?.engines.codez ===
           "^99.0.0" &&
         findInstalled(overview, PLAIN)?.updateStatus === "update-available",
       "both installed plugins should report a newer catalog version",

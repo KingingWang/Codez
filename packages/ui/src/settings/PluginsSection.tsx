@@ -13,12 +13,12 @@ import { toast } from "@/components/ui/toast.js";
 import { useConfirmExtensionEnable } from "@/extension-slots/index.js";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import { TID_PLUGIN_STORE_BROWSE } from "@zcode/shared/test-ids";
-import type { ZCodePluginInfo, ZCodePluginScope, ZCodePluginUserConfigOption } from "@zcode/shared";
+import { TID_PLUGIN_STORE_BROWSE } from "@codez/shared/test-ids";
+import type { CodezPluginInfo, CodezPluginScope, CodezPluginUserConfigOption } from "@codez/shared";
 import type { CreateTaskRequest } from "@/app-shell/types.js";
-import type { IServiceAccessor } from "@zcode/services";
+import type { IServiceAccessor } from "@codez/services";
 import { useConfigWorkspaceServicesResolution as useWorkspaceServicesResolution } from "@/workspace-config-catalog/index.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { McpSettingsSection } from "@/settings/McpSettingsSection.js";
 import { SkillsSection } from "@/settings/SkillsSection.js";
 import { CommandsSection } from "@/settings/CommandsSection.js";
@@ -145,7 +145,7 @@ function PluginList({
   inMarketplace?: boolean;
   onOpenUi?: PluginsSectionProps["onOpenUi"];
   target: ConfigWorkspaceTarget | null;
-  configScope: ZCodePluginScope;
+  configScope: CodezPluginScope;
   searchQuery: string;
   isDesktop: boolean;
   isMacDesktop: boolean;
@@ -162,7 +162,7 @@ function PluginList({
   unscopedServices?: IServiceAccessor;
   cacheAuthorityKey?: string;
 }) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   // 「用户」由 Scope 显式给出服务（本机 base / 远端 source-settings），不按路径推断 Host：
   // 本机项目路径可能与远程 tab 路径相同，推断会把本机「用户」路由到远端。
   const targetServiceResolution = useWorkspaceServicesResolution(
@@ -531,9 +531,9 @@ function PluginList({
     }));
   };
   const getPluginOptionValue = (
-    plugin: ZCodePluginInfo,
+    plugin: CodezPluginInfo,
     key: string,
-    option: ZCodePluginUserConfigOption,
+    option: CodezPluginUserConfigOption,
   ): string | number | boolean => {
     const draft = pluginOptionsDrafts[plugin.id]?.[key];
     if (draft === null) return "";
@@ -544,7 +544,7 @@ function PluginList({
       (option.type === "boolean" ? false : "")
     );
   };
-  const savePluginOptions = async (plugin: ZCodePluginInfo) => {
+  const savePluginOptions = async (plugin: CodezPluginInfo) => {
     const { options, clearOptionKeys } = buildPluginConfigPatch(
       plugin,
       pluginOptionsDrafts[plugin.id] ?? {},
@@ -631,7 +631,7 @@ function PluginList({
     targetServiceResolution.rpcReady,
   ]);
 
-  const renderPluginRows = (items: ZCodePluginInfo[]) => (
+  const renderPluginRows = (items: CodezPluginInfo[]) => (
     <div className="grid grid-cols-1 gap-y-1">
       {items.map((plugin) => (
         <div key={plugin.id} data-testid="plugin-settings-plugin-row" data-plugin-id={plugin.id}>
@@ -972,7 +972,7 @@ export function PluginsSection({
   onOpenPluginStore,
   showMarketplaceBreadcrumb = false,
 }: PluginsSectionProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const storeActiveWorkspacePath = useTabStore((state) => state.activeWorkspacePath);
   const storeActiveWorkspaceIdentity = useTabStore((state) => state.activeWorkspaceIdentity);
   const activeWorkspacePath = workspacePath ?? storeActiveWorkspacePath;

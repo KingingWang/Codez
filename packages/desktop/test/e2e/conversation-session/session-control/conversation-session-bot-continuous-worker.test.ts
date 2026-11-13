@@ -1,4 +1,4 @@
-import { generateTraceId, type BotActor } from "@zcode/shared";
+import { generateTraceId, type BotActor } from "@codez/shared";
 import { createBotWorkerIntegration } from "#e2e/helpers/bot-worker-integration";
 import { installBotPlatformFixture } from "#e2e/helpers/bot-platform-fixture";
 import { startConversationModelProviderReplayServer } from "#e2e/helpers/model-provider-replay";

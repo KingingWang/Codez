@@ -1,5 +1,5 @@
-import type { IDisposable } from "@zcode/rpc";
-import type { AppSessionRef } from "@zcode/session-control/contracts";
+import type { IDisposable } from "@codez/rpc";
+import type { AppSessionRef } from "@codez/session-control/contracts";
 import {
   EXTENSION_API_VERSION,
   ExtensionError,
@@ -16,7 +16,7 @@ import {
   type SessionReadRowsResult,
   type SessionRowsEvent,
   type SessionTargetInput,
-} from "@zcode/shared/extension-host";
+} from "@codez/shared/extension-host";
 import {
   TopicWireFrameAssembler,
   V4_WIRE_PROTOCOL_VERSION,
@@ -27,13 +27,13 @@ import {
   type ConversationSnapshot,
   type ConversationTopicFrame,
   type ConversationTopicWireCandidate,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import type { ServiceLogger } from "#src/logger/serviceLogger.js";
-import type { IZCodeAgentService, ZCodeAgentWorkspaceTarget } from "#src/zcode-agent/zcodeAgent.js";
+import type { ICodezAgentService, CodezAgentWorkspaceTarget } from "#src/codez-agent/codezAgent.js";
 import {
-  createZCodeAgentConnectionScope,
-  type ZCodeAgentConnectionScope,
-} from "#src/zcode-agent/zcodeAgentConnectionScope.js";
+  createCodezAgentConnectionScope,
+  type CodezAgentConnectionScope,
+} from "#src/codez-agent/codezAgentConnectionScope.js";
 import type {
   CapabilityCallContext,
   CapabilitySubscription,
@@ -56,8 +56,8 @@ import type { SessionsBackend } from "#src/extensions/sessionsBackend.js";
 // 列表泵在 sessionListPump.ts，与连接无关（读的是 Window Host 控制器投影）。
 
 export interface SessionReadsDeps {
-  /** 连接作用域的底座：Window Host 的 IZCodeAgentService（只在本进程内）。 */
-  agent: IZCodeAgentService | undefined;
+  /** 连接作用域的底座：Window Host 的 ICodezAgentService（只在本进程内）。 */
+  agent: ICodezAgentService | undefined;
   /** 解析会话目标走 facade（客户端类调用方，与 readSession 同一份授权与代际检查）。 */
   sessions: SessionsBackend;
   /** Window Host 控制器的任务投影；缺省时列表订阅报 unavailable。 */
@@ -76,7 +76,7 @@ export interface SessionReadsDeps {
 
 /** 一次性读取的结果：会话目标与当前交互（§17.12，回答与切换前的检查用）。 */
 export interface SessionInteractionsRead {
-  target: ZCodeAgentWorkspaceTarget & { sessionId: string };
+  target: CodezAgentWorkspaceTarget & { sessionId: string };
   event: SessionInteractionsEvent;
 }
 
@@ -112,7 +112,7 @@ export interface SessionReads {
   dispose(): void;
 }
 
-type Target = ZCodeAgentWorkspaceTarget & { sessionId: string };
+type Target = CodezAgentWorkspaceTarget & { sessionId: string };
 
 interface Registration {
   pluginId: string;
@@ -148,7 +148,7 @@ interface Mirror {
 
 interface Connection {
   gen: number;
-  scope: ZCodeAgentConnectionScope;
+  scope: CodezAgentConnectionScope;
   ready: Promise<void>;
   /** 每个工作区一条帧流与一条会话生命周期流，按 topic 分给镜像。 */
   workspaces: Map<string, IDisposable[]>;
@@ -156,7 +156,7 @@ interface Connection {
 }
 
 const jsonBytes = (value: unknown) => Buffer.byteLength(JSON.stringify(value));
-const workspaceKeyOf = (target: ZCodeAgentWorkspaceTarget) =>
+const workspaceKeyOf = (target: CodezAgentWorkspaceTarget) =>
   target.workspaceIdentity?.trim() || target.workspacePath;
 const describe = (error: unknown) =>
   isExtensionError(error)
@@ -185,7 +185,7 @@ export function createSessionReads(deps: SessionReadsDeps): SessionReads {
     releaseConnection("replaced");
     const agent = deps.agent;
     const connectionId = `extension-host:${gen}`;
-    const scope = createZCodeAgentConnectionScope(agent, {
+    const scope = createCodezAgentConnectionScope(agent, {
       connectionId,
       clientMode: "web-remote-replayable",
     });
@@ -234,10 +234,10 @@ export function createSessionReads(deps: SessionReadsDeps): SessionReads {
   };
 
   /** 每个工作区只挂一次帧流与生命周期流；按 topic 交给镜像。 */
-  const watchWorkspace = (current: Connection, target: ZCodeAgentWorkspaceTarget) => {
+  const watchWorkspace = (current: Connection, target: CodezAgentWorkspaceTarget) => {
     const key = workspaceKeyOf(target);
     if (current.workspaces.has(key)) return;
-    const workspace: ZCodeAgentWorkspaceTarget = {
+    const workspace: CodezAgentWorkspaceTarget = {
       workspacePath: target.workspacePath,
       ...(target.workspaceIdentity ? { workspaceIdentity: target.workspaceIdentity } : {}),
     };

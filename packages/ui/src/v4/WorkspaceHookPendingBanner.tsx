@@ -1,5 +1,5 @@
 import { memo, useCallback, useState, useSyncExternalStore } from "react";
-import type { WorkspaceMcpAdmissionSnapshotState } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkspaceMcpAdmissionSnapshotState } from "@codez/shared/codez-protocol-v4";
 import { getWorkspaceKey } from "@/lib/workspaceKey.js";
 import {
   TID_V4_WORKSPACE_MCP_PENDING_TRIGGER,
@@ -12,11 +12,11 @@ import {
   TID_V4_WORKSPACE_HOOK_PENDING_UNREAD,
   TID_V4_WORKSPACE_HOOK_PENDING_DISMISS,
   TID_V4_WORKSPACE_HOOK_PENDING_REVIEW,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { Anchor, Cable } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import {
   setPendingSettingsSectionIntent,
   setPendingSettingsPluginIntent,
@@ -67,7 +67,7 @@ export const WorkspaceHookPendingIndicator = memo(function WorkspaceHookPendingI
   workspaceIdentity,
   admission,
 }: WorkspaceHookPendingIndicatorProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const openSettingsTab = useOptionalTabStore((state) => state.openSettingsTab);
   const commandBindings = useWorkspaceHookReviewStore((state) => state.commandBindings);
   const [open, setOpen] = useState(false);
@@ -203,7 +203,7 @@ export const WorkspaceMcpPendingIndicator = memo(function WorkspaceMcpPendingInd
   workspaceIdentity?: string;
   admission: WorkspaceMcpAdmissionSnapshotState;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const openSettingsTab = useOptionalTabStore((state) => state.openSettingsTab);
   const [open, setOpen] = useState(false);
   const workspaceKey = getWorkspaceKey(workspacePath, workspaceIdentity);

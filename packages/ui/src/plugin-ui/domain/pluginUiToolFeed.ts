@@ -1,6 +1,6 @@
-import type { McpAppsToolResultPayload } from "@zcode/shared/mcp-apps";
-import { MCP_APPS_TRUNCATED_META_KEY } from "@zcode/shared/mcp-apps";
-import type { ConversationRow, ToolCallRow } from "@zcode/shared/zcode-protocol-v4";
+import type { McpAppsToolResultPayload } from "@codez/shared/mcp-apps";
+import { MCP_APPS_TRUNCATED_META_KEY } from "@codez/shared/mcp-apps";
+import type { ConversationRow, ToolCallRow } from "@codez/shared/codez-protocol-v4";
 import type { PluginUiPresentation } from "../contract.js";
 import { parseJsonText, readPluginUiPresentation } from "./readPluginUiPresentation.js";
 
@@ -51,7 +51,7 @@ export function buildPluginUiToolResult(
       : [];
   const baseMeta =
     typeof meta === "object" && meta !== null ? (meta as Record<string, unknown>) : {};
-  // H12：超限字段已被 agent 省略；页面从 _meta["zcode/truncated"].bytes 得知并可用 tools/call 重取。
+  // H12：超限字段已被 agent 省略；页面从 _meta["codez/truncated"].bytes 得知并可用 tools/call 重取。
   const mergedMeta = presentation.truncated
     ? { ...baseMeta, [MCP_APPS_TRUNCATED_META_KEY]: { bytes: presentation.truncatedBytes ?? 0 } }
     : baseMeta;

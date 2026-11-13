@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import type { ZCodeProvider } from "@zcode/shared";
+import type { CodezProvider } from "@codez/shared";
 import { logger } from "@/logger.js";
-import { useZCodeTaskService } from "@/hooks/useZCodeTaskService.js";
+import { useCodezTaskService } from "@/hooks/useCodezTaskService.js";
 
 /**
  * useWorkspaceActiveTaskState 的导出返回类型间接引用此接口，声明生成要求它可导出。
  * @lintignore
  */
 export interface TaskNativeSessionLogFileState {
-  provider: ZCodeProvider | null;
+  provider: CodezProvider | null;
   path: string | null;
   exists: boolean;
   loading: boolean;
@@ -39,7 +39,7 @@ const INITIAL_STATE: TaskNativeSessionLogFileState = {
 };
 
 export function supportsTaskNativeSessionLogFile(
-  _provider: ZCodeProvider | null | undefined,
+  _provider: CodezProvider | null | undefined,
 ): boolean {
   // 仅剩 glm provider，始终支持读取原生会话日志。
   return true;
@@ -48,16 +48,16 @@ export function supportsTaskNativeSessionLogFile(
 /**
  * 读取当前 task 对应的原生会话日志路径。
  *
- * 路径规则统一通过 zcodeTaskService 解析，避免 UI 层猜 provider 自己的目录结构。
+ * 路径规则统一通过 codezTaskService 解析，避免 UI 层猜 provider 自己的目录结构。
  */
 export function useTaskNativeSessionLogFile(
   workspacePath: string,
   taskId: string | null,
-  providerHint?: ZCodeProvider | null,
+  providerHint?: CodezProvider | null,
   workspaceIdentity?: string,
   options: { enabled?: boolean } = {},
 ) {
-  const zcodeTaskService = useZCodeTaskService(workspacePath, undefined, workspaceIdentity);
+  const codezTaskService = useCodezTaskService(workspacePath, undefined, workspaceIdentity);
   const [state, setState] = useState<TaskNativeSessionLogFileState>(INITIAL_STATE);
   const requestVersionRef = useRef(0);
   const enabled = options.enabled ?? true;
@@ -99,7 +99,7 @@ export function useTaskNativeSessionLogFile(
       error: null,
     });
 
-    void zcodeTaskService
+    void codezTaskService
       .getTaskNativeSessionLogFile({
         taskId,
         workspacePath,
@@ -143,7 +143,7 @@ export function useTaskNativeSessionLogFile(
     return () => {
       disposed = true;
     };
-  }, [enabled, zcodeTaskService, providerHint, taskId, workspaceIdentity, workspacePath]);
+  }, [enabled, codezTaskService, providerHint, taskId, workspaceIdentity, workspacePath]);
 
   return state;
 }

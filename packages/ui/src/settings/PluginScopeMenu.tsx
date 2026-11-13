@@ -9,7 +9,7 @@ import {
   Server,
 } from "lucide-react";
 import { Fragment, useState } from "react";
-import { testId } from "@zcode/shared/test-ids";
+import { testId } from "@codez/shared/test-ids";
 import { Button } from "@/components/ui/button.js";
 import {
   DropdownMenu,
@@ -24,7 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.js";
 import { InputGroup, InputGroupAddon } from "@/components/ui/input-group.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { getContainingDirectoryPath, getPathLeaf } from "@/lib/path.js";
 import {
   useSettingsScopeDevice,
@@ -80,7 +80,7 @@ function DeviceScopeMenu({
   workspaceTabs = [],
   onScopeKeyChange,
 }: PluginScopeMenuProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const { device: contextDevice, userAvailable } = useSettingsScopeDevice();
   const menuGroups: readonly SettingsScopeGroup[] = groups ?? [
     {
@@ -230,7 +230,7 @@ function ScopeProjectList({
   projects: readonly SettingsScopeOption[];
   workspaceOptionTestIdPrefix?: string;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [query, setQuery] = useState("");
   const labelCounts = new Map<string, number>();
   for (const option of projects) {
@@ -322,7 +322,7 @@ function FlatScopeMenu({
   workspaceOptions = [],
   onScopeKeyChange,
 }: PluginScopeMenuProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const selectedWorkspace = workspaceOptions.find(
     (workspace) => workspace.key === selectedScopeKey,
   );

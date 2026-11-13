@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import {
   execInRemoteContainer,
@@ -42,7 +42,7 @@ const LONGER_THAN_LIVENESS_LIMIT_MS = 75_000;
 const desktopRoot = process.cwd();
 const execFileAsync = promisify(execFile);
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-remote-core-unresponsive",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-remote-core-unresponsive",
 );
 
 // 只作用于 server-core.js。标记文件出现时，由一个 Core 认领（unlink 原子）后进入同步死循环：

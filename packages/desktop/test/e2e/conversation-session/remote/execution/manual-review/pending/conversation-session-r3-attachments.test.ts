@@ -1,7 +1,7 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { dirname, resolve } from "node:path";
-import { TID_V4_COMPOSER_INPUT } from "@zcode/shared/test-ids";
+import { TID_V4_COMPOSER_INPUT } from "@codez/shared/test-ids";
 import { clearAppData, DEFAULT_WORKSPACE } from "#e2e/helpers/desktop-app";
 import {
   getUpstreamRequestRecordCount,
@@ -26,10 +26,10 @@ import {
 
 const CASE_MARKER = "E2E_R3_ATTACHMENTS";
 const E2E_HOME_DIR = dirname(DEFAULT_WORKSPACE);
-const artifactDir = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-attachments");
+const artifactDir = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-attachments");
 const NATIVE_FILE = "r3-dev04-native.txt";
 const NATIVE_MARKER = `R3_NATIVE_MARKER_${Math.random().toString(36).slice(2, 10)}`;
-const nativePath = resolve(DEFAULT_WORKSPACE, ".zcode-e2e/r3-attachments", NATIVE_FILE);
+const nativePath = resolve(DEFAULT_WORKSPACE, ".codez-e2e/r3-attachments", NATIVE_FILE);
 const TEXT_FILE = "r3-dev04-note.txt";
 const IMAGE_FILE = "r3-dev04-image.png";
 const PDF_FILE = "r3-dev04-doc.pdf";
@@ -136,7 +136,7 @@ describe(`${CASE_MARKER}: 远端 workspace 附件上传、远端工具读取与 
     facts.composerAttachments = statuses;
     const stagedNative = await runSSHCommand(
       prepared.config,
-      `find "$HOME/.zcode/tmp/prompt-attachments" -type f -name '*${NATIVE_FILE}' -exec cat {} +`,
+      `find "$HOME/.codez/tmp/prompt-attachments" -type f -name '*${NATIVE_FILE}' -exec cat {} +`,
     );
     expect(stagedNative.code).toBe(0);
     expect(stagedNative.stdout).toContain(NATIVE_MARKER);
@@ -180,7 +180,7 @@ describe(`${CASE_MARKER}: 远端 workspace 附件上传、远端工具读取与 
     for (const { kind, bytes } of sourceFiles) {
       const path = requestText.match(new RegExp(`\\[${kind}: source: ([^\\]]+)\\]`, "u"))?.[1];
       // 模型不支持媒体时仍必须给出真实远端缓存引用；不能只记录文件名或目录扫描结果。
-      expect(path).toMatch(/^\/home\/dev\/\.zcode\/cli\/(?:pdf|image)-cache\/[A-Za-z0-9_./-]+$/u);
+      expect(path).toMatch(/^\/home\/dev\/\.codez\/cli\/(?:pdf|image)-cache\/[A-Za-z0-9_./-]+$/u);
       const contentHash = await runSSHCommand(prepared.config, `sha256sum -- '${path}'`);
       expect(contentHash.code).toBe(0);
       expect(contentHash.stdout.split(/\s/u)[0]).toBe(

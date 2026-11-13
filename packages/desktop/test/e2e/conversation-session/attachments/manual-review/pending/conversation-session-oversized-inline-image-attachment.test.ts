@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { TID_V4_COMPOSER_INPUT, TID_V4_COMPOSER_SEND } from "@zcode/shared/test-ids";
+import { TID_V4_COMPOSER_INPUT, TID_V4_COMPOSER_SEND } from "@codez/shared/test-ids";
 import { DEFAULT_WORKSPACE, clearAppData } from "#e2e/helpers/desktop-app";
 import {
   assertUpstreamRequestCapture,

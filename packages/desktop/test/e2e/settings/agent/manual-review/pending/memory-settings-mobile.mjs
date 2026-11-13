@@ -11,44 +11,44 @@ import { createServer } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { WebSocketServer } from "ws";
-import { ChannelServer, Emitter, Event, SocketProtocol, VSBuffer } from "@zcode/rpc";
+import { ChannelServer, Emitter, Event, SocketProtocol, VSBuffer } from "@codez/rpc";
 import {
   ISettingService,
   IMemoryService,
   IOnboardingRecordService,
   ServiceCollection,
-} from "@zcode/services";
-import { createSettingService } from "@zcode/services/node";
+} from "@codez/services";
+import { createSettingService } from "@codez/services/node";
 
 const repoRoot = fileURLToPath(new URL("../../../../../../../../", import.meta.url));
 const artifacts = resolve(repoRoot, "packages/desktop/.e2e-artifacts/memory-settings-mobile");
 const root = await mkdtemp(resolve(tmpdir(), "memory-settings-mobile-"));
 await mkdir(artifacts, { recursive: true });
 const targets = {};
-const previousDesktopHome = process.env.ZCODE_DESKTOP_HOME_DIR;
+const previousDesktopHome = process.env.CODEZ_DESKTOP_HOME_DIR;
 try {
   for (const name of ["local", "remote"]) {
     // SettingService 按实例捕获 home，不读取 dataBaseDir；必须在构造前隔离实际目录。
-    process.env.ZCODE_DESKTOP_HOME_DIR = resolve(root, name);
+    process.env.CODEZ_DESKTOP_HOME_DIR = resolve(root, name);
     const settings = createSettingService();
     await settings.update({ memoryEnabled: false, locale: "zh-CN" });
     targets[name] = settings;
   }
 } finally {
-  if (previousDesktopHome === undefined) delete process.env.ZCODE_DESKTOP_HOME_DIR;
-  else process.env.ZCODE_DESKTOP_HOME_DIR = previousDesktopHome;
+  if (previousDesktopHome === undefined) delete process.env.CODEZ_DESKTOP_HOME_DIR;
+  else process.env.CODEZ_DESKTOP_HOME_DIR = previousDesktopHome;
 }
 let catalogReads = 0;
 const entryId = resolve(repoRoot, "packages/desktop/memory-mobile-entry.js");
 const entry = `
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { connectViaWebSocket } from '@zcode/client';
-import { Event } from '@zcode/rpc';
+import { connectViaWebSocket } from '@codez/client';
+import { Event } from '@codez/rpc';
 import { ServiceProvider } from '@/hooks/useServices.js';
 import { PlatformProvider } from '@/hooks/usePlatform.js';
 import { StoreProvider } from '@/store/StoreProvider.js';
-import { ZCodeIntlProvider } from '@/i18n/IntlProvider.js';
+import { CodezIntlProvider } from '@/i18n/IntlProvider.js';
 import { MemorySettingsPage } from '@/settings/MemorySettingsSection.js';
 import '@/styles.css';
 const services = await connectViaWebSocket('ws://' + location.host + '/memory-rpc?target=' + new URLSearchParams(location.search).get('target'));
@@ -57,7 +57,7 @@ const platform = { getDeviceId: () => 'mobile-memory', reportTelemetryEvent: asy
 const broadcast = { onMessage: Event.None, send: async () => {} };
 createRoot(document.getElementById('root')).render(
   h(ServiceProvider, {services}, h(PlatformProvider, {platform},
-    h(StoreProvider, {broadcastService: broadcast}, h(ZCodeIntlProvider, null,
+    h(StoreProvider, {broadcastService: broadcast}, h(CodezIntlProvider, null,
       h('main', {style: {background: 'var(--color-background)', color: 'var(--color-foreground)', minHeight: '100vh', padding: 16}},
         h(MemorySettingsPage, {isDesktop: false, workspaceDisplayNames: []})))))));
 `;

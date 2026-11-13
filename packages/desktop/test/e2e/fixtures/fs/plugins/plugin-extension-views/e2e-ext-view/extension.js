@@ -1,5 +1,5 @@
 // E2E 扩展 fixture（docs/plugins/extension-host.md §8–§11）：纯 JS，不需要构建。
-// - 视图 context 用写法一（宿主帮手）：页面经 window.zcode 调 snapshot 工具读 context 组成，
+// - 视图 context 用写法一（宿主帮手）：页面经 window.codez 调 snapshot 工具读 context 组成，
 //   订阅 state 资源；context / workbench 变化时 view.notify 让页面刷新。
 // - composer.status 显示生成速率；点击执行命令，经 ctx.views.open 打开视图。
 // - 订阅 App 环境（ctx.env），语言变化写进日志。

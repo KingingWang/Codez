@@ -2,17 +2,17 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { chromium } from "playwright-core";
 
-// 手工回归前置：启动未登录的 ZCode Dev，打开 BigModel 设置页；静态配置包含真实个人和团队商品目录。
+// 手工回归前置：启动未登录的 Codez Dev，打开 BigModel 设置页；静态配置包含真实个人和团队商品目录。
 // 连接真实 App 验证完整 hook/RPC/渲染链路，不注入套餐数据或修改登录态。
 test("未登录使用静态目录展示个人和团队横幅", async () => {
   const browser = await chromium.connectOverCDP(
-    process.env.ZCODE_E2E_CDP_URL ?? "http://localhost:9229",
+    process.env.CODEZ_E2E_CDP_URL ?? "http://localhost:9229",
   );
   const page = browser
     .contexts()[0]
     .pages()
     .find((candidate) => candidate.url().includes("localhost:517"));
-  assert.ok(page, "需要已运行的 ZCode Dev");
+  assert.ok(page, "需要已运行的 Codez Dev");
   const cdp = await page.context().newCDPSession(page);
   const originalClass = await page.locator("html").getAttribute("class");
   try {

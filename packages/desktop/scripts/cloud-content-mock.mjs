@@ -164,7 +164,7 @@ export async function createCloudContentMockServer({ port = 0 } = {}) {
         payload.dialog.hero.data.endsAtPrefix = "Valid until";
         payload.dialog.hero.data.replayLabel = "Replay";
         payload.dialog.hero.data.benefits = ["GLM-5.3-Flash daily quota"];
-        payload.actions["copy-share"].text = "Try the new ZCode experience.";
+        payload.actions["copy-share"].text = "Try the new Codez experience.";
       }
       const english = payload.locale === "en-US";
       const scenario = url.searchParams.get("scenario");

@@ -32,9 +32,9 @@ ErrorBoundary 都用它，不再各写 `startsWith("zh")`。
 
 ## X-Client-Language
 
-规则：发往 ZCode/BigModel 服务端的请求，`X-Client-Language` 等于当前界面语言的 BCP-47 值
+规则：发往 Codez/BigModel 服务端的请求，`X-Client-Language` 等于当前界面语言的 BCP-47 值
 （如 `ja-JP`），切换后下一个请求立即生效；不能先降级成中英。详细链路见
-[ZCode Endpoint Client Language Header](../zcode-endpoint-client-language-header.md)。
+[Codez Endpoint Client Language Header](../codez-endpoint-client-language-header.md)。
 
 ## setting.json 存储格式与降级兼容
 
@@ -42,7 +42,7 @@ ErrorBoundary 都用它，不再各写 `startsWith("zh")`。
 `localePreference: z.enum(["system","zh-CN","en-US"])`，没有 `.catch`。读到 `ja-JP` 等新值时
 `appSettingsSchema.safeParse` 失败，`settingService` 把**整份设置**当默认值返回；之后旧版本任意一次
 `update()`（改设置、窗口尺寸、最近项目等）都以默认值为底合并写盘，磁盘上的全部设置被覆盖丢失。
-降级、或测试版/正式版共用 `~/.zcode/v2/setting.json` 时都会触发。
+降级、或测试版/正式版共用 `~/.codez/v2/setting.json` 时都会触发。
 
 存储格式（统一由 `packages/shared/src/locale.ts` 的函数读写，不要在别处手写）：
 
@@ -60,14 +60,14 @@ ErrorBoundary 都用它，不再各写 `startsWith("zh")`。
   `resolvePersistedUiLocale` / `resolvePersistedUiLocalePreference` 把新字段合并回内存的
   `locale` / `localePreference`；新字段只有在“降级后等于旧字段”时才采信，否则以旧字段为准
   （旧字段被手改或被只认旧字段的写入者改过）。内存 `AppSettings` 不含新字段，`locale` 始终是真实语言，
-  所以 X-Client-Language、`ZCODE_CLIENT_LANGUAGE`、遥测、Host 兜底等消费方不感知这层转换。
+  所以 X-Client-Language、`CODEZ_CLIENT_LANGUAGE`、遥测、Host 兜底等消费方不感知这层转换。
 - 直读原始 JSON 的地方也必须新字段优先：Main 冷启动同步读取（`desktopApplicationLocaleBootstrap.ts`）
   用 `resolvePersistedUiLocale`；其它读设置的地方都经 `settingService` / `appSettingsSchema`。
 - 旧版本 schema 的顶层 `z.object` 默认 strip（无 `.strict()` / `.passthrough()`），读到新字段不报错，
   但它写盘时会丢掉新字段：降级后再升级，界面语言回到旧字段的降级值（如 `en-US`），其它设置不丢。
 - 开发期内部版本曾把 `ja-JP` 等直接写进旧字段：新版本照常识别；`shouldPersistSettingsMigrations`
   检测到旧字段含旧版本不认识的值（`hasLegacyIncompatiblePersistedLocale`）时立即按新格式迁移落盘。
-- 渲染进程 localStorage `zcode-locale-preference` 可能存 `ja-JP`；旧版本读取时会校验并忽略未知值，不影响设置。
+- 渲染进程 localStorage `codez-locale-preference` 可能存 `ja-JP`；旧版本读取时会校验并忽略未知值，不影响设置。
 - E2E：`settings/general/settings-client-language-header.test.ts` 的 CLH-03/04/05 断言落盘格式与冷启动请求语言。
 
 ## 加新语言的步骤
@@ -82,5 +82,5 @@ ErrorBoundary 都用它，不再各写 `startsWith("zh")`。
 
 ## 已知限制
 
-- Agent（`apps/zcode-cli`）发出的模型请求仍用 Agent 进程的 `Intl` 语言，需要 App→Agent 传递界面语言（待定方案）。
+- Agent（`apps/codez-cli`）发出的模型请求仍用 Agent 进程的 `Intl` 语言，需要 App→Agent 传递界面语言（待定方案）。
 - 降级到旧版本后界面语言显示为中/英降级值；旧版本写盘会丢弃 `uiLocale`，再升级时需要重新选择日/俄/韩语（见上文降级兼容）。

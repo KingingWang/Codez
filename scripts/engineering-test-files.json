@@ -1,5 +1,5 @@
 [
-  ".agents/skills/zcode-large-task-fixture/scripts/generate-large-task-fixture.test.mjs",
+  ".agents/skills/codez-large-task-fixture/scripts/generate-large-task-fixture.test.mjs",
   "packages/desktop/scripts/gen-ui-runtime-assets.test.ts",
   "packages/desktop/test/app-asar-repack.test.ts",
   "packages/desktop/test/build-native-search-tools.test.ts",
@@ -162,10 +162,10 @@
   "packages/server/test/remoteOfficialPluginAssets.test.ts",
   "packages/server/test/tsupConfig.test.ts",
   "packages/web/test/viteConfigLoad.test.ts",
-  "packages/zcode-server-cli/test/packaging.test.ts",
-  "packages/zcode-server-cli/test/stageRemoteAssetsCli.test.ts",
-  "packages/zcode-server-cli/test/tsupConfig.test.ts",
-  "packages/zcode-server-cli/test/verifyRemoteSshTarget.test.ts",
+  "packages/codez-server-cli/test/packaging.test.ts",
+  "packages/codez-server-cli/test/stageRemoteAssetsCli.test.ts",
+  "packages/codez-server-cli/test/tsupConfig.test.ts",
+  "packages/codez-server-cli/test/verifyRemoteSshTarget.test.ts",
   "packages/desktop/test/credential-keyring-assets.test.ts",
   "packages/desktop/test/stdioTapCredentialRedaction.test.ts"
 ]

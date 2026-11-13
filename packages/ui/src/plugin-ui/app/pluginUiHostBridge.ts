@@ -36,7 +36,7 @@ export interface PluginUiRequestContext {
 
 /**
  * 控制器用到的官方 `AppBridge` 成员子集。生产用 `new AppBridge(null, …)`，测试可注入假实现。
- * 自定义方法（ZCode 扩展与需要放宽 schema 的 ui/message）走基类的三参 `setRequestHandler`；
+ * 自定义方法（Codez 扩展与需要放宽 schema 的 ui/message）走基类的三参 `setRequestHandler`；
  * 规范方法（resources/subscribe）走二参形式，handler 拿到完整 request。
  */
 export interface PluginUiHostBridge {

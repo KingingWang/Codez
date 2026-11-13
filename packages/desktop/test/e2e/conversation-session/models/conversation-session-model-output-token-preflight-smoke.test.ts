@@ -1,6 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { ESTIMATED_TOKEN_CHAR_DIVISOR } from "@zcode/shared";
+import { ESTIMATED_TOKEN_CHAR_DIVISOR } from "@codez/shared";
 import { clearAppData, getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
 import { selectUpstreamProviderModelById } from "#e2e/helpers/upstream-provider";
 import { waitForSelectedModel } from "#e2e/helpers/model-provider-restart";
@@ -332,7 +332,7 @@ function estimateTextTokens(value: string): number {
 
 /**
  * 本轮 token 预算提醒在 CLI 侧是一条独立隐藏 user 行，preflight 和用户消息一起计入
- * usage 锚点之后的增量（apps/zcode-cli/docs/design/v2/loop/meta-user-context.md）。
+ * usage 锚点之后的增量（apps/codez-cli/docs/design/v2/loop/meta-user-context.md）。
  * 修复原因：引入该提醒后 spec 只叠加用户消息，期望 cap 比实际高 29 token
  * （86 字符 / 3）。N 取本轮请求里的实际值，按投影后的 system-reminder 文本估算。
  */
@@ -499,7 +499,7 @@ async function readAutoCompactContexts(
   sessionId: string,
   event: "compact.auto.skipped" | "compact.auto.started",
 ): Promise<Record<string, unknown>[]> {
-  const logDir = process.env.ZCODE_LOG_DIR?.trim() || join(paths.storageRoot, "cli", "log");
+  const logDir = process.env.CODEZ_LOG_DIR?.trim() || join(paths.storageRoot, "cli", "log");
   const files = await readdir(logDir).catch(() => []);
   const contexts: Record<string, unknown>[] = [];
   for (const file of files) {

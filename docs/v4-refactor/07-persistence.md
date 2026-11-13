@@ -7,8 +7,8 @@ projection、topic event log、subscription、CommandInbox LRU 和 active runtim
 
 ## SQLite 事实
 
-CLI session store 位于 `~/.zcode/cli/db/db.sqlite`。迁移入口是
-`apps/zcode-cli/packages/adapters/src/storage/session-store/migrations.ts`，当前迁移到 `0018`：
+CLI session store 位于 `~/.codez/cli/db/db.sqlite`。迁移入口是
+`apps/codez-cli/packages/adapters/src/storage/session-store/migrations.ts`，当前迁移到 `0018`：
 
 | 迁移 | 当前作用 |
 | --- | --- |

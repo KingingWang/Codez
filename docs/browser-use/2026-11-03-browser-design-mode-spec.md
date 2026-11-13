@@ -11,7 +11,7 @@
 
 | 部分            | 位置                                                                                                                        | 职责                                                                                                                                                  |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 设计运行时      | `packages/design-runtime`（`@zcode/design-runtime`，纯 TS，无 React、无宿主依赖）                                           | 注入页面的脚本：固定命令、选中框、设计稿信号；元素定位 / 唯一选择器（选择元素脚本复用同一份）；宿主侧解析与上限；CSS 变量 → 控件、WCAG 对比度等纯函数 |
+| 设计运行时      | `packages/design-runtime`（`@codez/design-runtime`，纯 TS，无 React、无宿主依赖）                                           | 注入页面的脚本：固定命令、选中框、设计稿信号；元素定位 / 唯一选择器（选择元素脚本复用同一份）；宿主侧解析与上限；CSS 变量 → 控件、WCAG 对比度等纯函数 |
 | 源码写回        | `packages/design-runtime/src/sourceEdit.ts`（parse5，只在宿主侧用）                                                         | 在 HTML 源码里找到页面上的那个元素 / CSS 变量声明，只改它的 `style` 属性、文字或变量值，文件其余字节不动                                              |
 | 页面 → 宿主转发 | `packages/desktop/src/preload/embeddedBrowserDesignBridge.ts`（内置浏览器固定 guest preload）                               | 校验页面 `postMessage` 的来源、命名空间和大小，`sendToHost` 转给宿主                                                                                  |
 | 通信            | `packages/ui/src/browser-use/useBrowserDesignRuntime.ts`                                                                    | 信号探测、注入、`ipc-message` 收事件、`executeJavaScript` 发命令                                                                                      |
@@ -24,17 +24,17 @@
 
 ```text
 宿主（renderer）                                         页面（guest）
-  dom-ready / did-stop-loading ──signals script──▶  读 data-zcode-design、:root CSS 变量、data-variant、section.slide
-  运行时需要时 dom-ready ─────install script─────▶  window.__zcodeDesignRuntime（已装同版本则复用）
+  dom-ready / did-stop-loading ──signals script──▶  读 data-codez-design、:root CSS 变量、data-variant、section.slide
+  运行时需要时 dom-ready ─────install script─────▶  window.__codezDesignRuntime（已装同版本则复用）
   run(command) ──────────────executeJavaScript───▶  set-mode / set-selection / set-element-style / set-element-text /
                                                      set-css-variables / set-variant / go-to-slide / locate-for-capture /
                                                      end-capture / read-info / read-document-token / dispose
-  ipc-message(DesignEvents) ◀─sendToHost─ preload ◀─ window.postMessage({ __zcodeDesign: 1, events })
+  ipc-message(DesignEvents) ◀─sendToHost─ preload ◀─ window.postMessage({ __codezDesign: 1, events })
                                                      selection-changed / slide-changed / mode-changed
   ipc-message(DesignUndoShortcut) ◀─sendToHost─ preload keydown（capture、isTrusted、目标不是页面输入框）──▶ 宿主撤销 / 重做写回
 ```
 
-- preload 只转发 `event.source === window`、带 `__zcodeDesign: 1`、`events` 为非空数组、序列化后不超过 256 KB 的消息
+- preload 只转发 `event.source === window`、带 `__codezDesign: 1`、`events` 为非空数组、序列化后不超过 256 KB 的消息
   （常量在 shared 的 `EMBEDDED_BROWSER_DESIGN_BRIDGE`，频道在 `EmbeddedBrowserWebviewChannels.DesignEvents`）。
   Coding Plan 的 webview 用另一个 preload，不受影响。
 - 页面脚本照样能伪造这种消息：宿主侧 `parseDesignRuntimeEvents` / `parseDesignPageInfo` / `parseDesignPageSignals`
@@ -46,7 +46,7 @@
 
 ## 三、入口与什么时候出现
 
-- 设计工具只在设计稿页面（设计产物）出现：页面带 `<html data-zcode-design>`；或是本机页面（`file://`、`localhost`、`127.0.0.1`）
+- 设计工具只在设计稿页面（设计产物）出现：页面带 `<html data-codez-design>`；或是本机页面（`file://`、`localhost`、`127.0.0.1`）
   且有 `:root` / `html` 规则里的 CSS 变量、`[data-variant]` 或 `section.slide`。普通网站很多也声明 `:root` 变量，所以这三项只对本机页面看。
 - 人类 tab 的地址栏「选择元素」在任何页面上都是同一套点选（再点一次或页面里 Esc 退出），取代原来的元素选择器
   （11-06 产品决定：一个按钮一套逻辑；原来的选择器只给模型元素信息，新点选同样给，还能直接改）。
@@ -83,7 +83,7 @@
    页面上每个选中元素画选中框，多选时序号 1、2、3（选中顺序）贴在框左上角外侧、压在所有框上面；点选时按下鼠标不选页面文字（Shift + 点击不会选中一段文字）。面板「选中外层」把主选中换成它的外层。
 2. 选中集合就是输入框正文里的元素 token（11-05 反馈，像选 Goal / Skill 一样）：每个选中元素是一个带指针图标的 token
    （`PromptMentionNode`，category `elements`），插在正文末尾，前后可以穿插文字、换行再改。发送时序列化成
-   `[@元素名](zcode-element://引用 id)`，消息末尾的网页元素块里同一个元素带 `Reference: zcode-element://引用 id`，模型据此对上；
+   `[@元素名](codez-element://引用 id)`，消息末尾的网页元素块里同一个元素带 `Reference: codez-element://引用 id`，模型据此对上；
    历史消息里按同样的链接回显成元素 token。元素截图照常预上传、随消息发出，但不在附件行出缩略图（上传失败的照常显示）。
    token 与引用列表的同步只在 `ElementMentionSyncPlugin` 一处：引用多了插 token、少了删 token；用户在正文里删掉 token
    （程序化清空 / 发送后清空 / 历史回填不算）就移除这条引用并取消页面上的选中。
@@ -169,7 +169,7 @@ writeDesignSourceFile(expected = 读到的内容) ──文件变了──▶ �
 ## 七、方案与翻页
 
 - 页面里有 `[data-variant]` 元素时显示方案下拉：「全部」+ 各方案名（按文档顺序去重）。选中某方案时只显示该方案的元素，
-  并在 `<html>` 上设 `data-zcode-active-variant`；选「全部」还原。
+  并在 `<html>` 上设 `data-codez-active-variant`；选「全部」还原。
 - 页面里有 `section.slide` 时显示「‹ n / N ›」。翻页把对应 slide 滚到视口顶部；用户自己滚动时按视口中线所在的 slide 更新 n。
 
 ### 设计工具能力信号

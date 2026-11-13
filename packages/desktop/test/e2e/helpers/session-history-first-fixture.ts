@@ -38,7 +38,7 @@ export async function seedSessionHistoryFirstFixture(options: {
       },
     });
     // 通用 fixture 用于测试缺失 provider；此处补齐正式会话的 durable 模型选择，验证 ready 后续发。
-    const database = new DatabaseSync(join(options.e2eHomeDir, ".zcode", "cli", "db", "db.sqlite"));
+    const database = new DatabaseSync(join(options.e2eHomeDir, ".codez", "cli", "db", "db.sqlite"));
     try {
       // 旧版本可能保存不同的词法路径表示；真实 Host 仍从原 attachment 打开，不能靠迁库修正。
       if (sessionId === HISTORY_FIRST_SESSION) {
@@ -71,7 +71,7 @@ export async function seedSessionHistoryFirstFixture(options: {
   if (!options.legacyTitleHandoff) {
     // 普通历史不带旧 Host 标题交接；迁移场景在独立 HOME 中保留旧意图并单独验收。
     const database = new DatabaseSync(
-      join(options.e2eHomeDir, ".zcode", "v2", "tasks-index.sqlite"),
+      join(options.e2eHomeDir, ".codez", "v2", "tasks-index.sqlite"),
     );
     try {
       database
@@ -83,7 +83,7 @@ export async function seedSessionHistoryFirstFixture(options: {
       database.close();
     }
   } else {
-    const database = new DatabaseSync(join(options.e2eHomeDir, ".zcode", "cli", "db", "db.sqlite"));
+    const database = new DatabaseSync(join(options.e2eHomeDir, ".codez", "cli", "db", "db.sqlite"));
     try {
       // 两端标题不同，必须观察交接实际落盘，不能用本来相同的标题制造通过。
       database
@@ -93,7 +93,7 @@ export async function seedSessionHistoryFirstFixture(options: {
       database.close();
     }
   }
-  const root = join(options.workspacePath, ".zcode", "history-first-e2e");
+  const root = join(options.workspacePath, ".codez", "history-first-e2e");
   await mkdir(root, { recursive: true });
   const script = join(root, "resume-gate.mjs");
   // 文件事件屏障证明首帧不等待 hook；不用固定 sleep 猜测初始化进度。
@@ -115,7 +115,7 @@ await new Promise((resolve, reject) => {
 process.stdout.write('{}');
 `,
   );
-  const config = join(options.e2eHomeDir, ".zcode", "cli", "config.json");
+  const config = join(options.e2eHomeDir, ".codez", "cli", "config.json");
   const settings = JSON.parse(await readFile(config, "utf8").catch(() => "{}"));
   await writeFile(
     config,

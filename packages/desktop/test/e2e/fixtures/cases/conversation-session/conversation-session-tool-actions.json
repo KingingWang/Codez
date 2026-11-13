@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/conversation-session-tool-actions/tool-action-guard.txt",
+      "path": ".codez-e2e/conversation-session-tool-actions/tool-action-guard.txt",
       "source": "created-by-helper",
       "description": "用例创建并由真实 Read 工具读取的文件。"
     }

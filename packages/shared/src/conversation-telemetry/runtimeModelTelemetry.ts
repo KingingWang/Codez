@@ -1,4 +1,4 @@
-import { ZCODE_AGENT_PROVIDER } from "@zcode/shared";
+import { CODEZ_AGENT_PROVIDER } from "@codez/shared";
 import {
   legacyTelemetryModelValue,
   legacyTelemetryProviderId,
@@ -9,7 +9,7 @@ export function resolveLegacyRuntimeModelValue(params: {
 }): string | null | undefined {
   const configProvider = params.configProvider?.trim();
   const modelName = params.modelName?.trim();
-  if (!configProvider || !modelName || configProvider === ZCODE_AGENT_PROVIDER) {
+  if (!configProvider || !modelName || configProvider === CODEZ_AGENT_PROVIDER) {
     return params.modelName;
   }
   if (modelName.startsWith(`${configProvider}/`)) return legacyTelemetryModelValue(modelName);

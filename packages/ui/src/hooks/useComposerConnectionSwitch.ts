@@ -1,11 +1,11 @@
-import { completeNewModelSelection } from "@zcode/provider";
+import { completeNewModelSelection } from "@codez/provider";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   useBaseWorkspaceServices,
   useWorkspaceServicesResolution,
 } from "@/hooks/useWorkspaceServices.js";
 import { useSettings } from "@/hooks/useSettingService.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { persistProviderFamilyConnection } from "@/lib/providerFamilyConnectionTransition.js";
 import {
   chooseConnectionModel,
@@ -13,14 +13,14 @@ import {
   type ComposerConnection,
 } from "@/lib/composerPlanGroups.js";
 import { buildRegistryModelSelectGroups } from "@/lib/modelSelectionGroups.js";
-import { decodeCustomModelValue } from "@/lib/zcodeCustomModelValue.js";
+import { decodeCustomModelValue } from "@/lib/codezCustomModelValue.js";
 import { logger } from "@/logger.js";
-import type { ModelSelectionView, ProviderSettingsView } from "@zcode/services";
+import type { ModelSelectionView, ProviderSettingsView } from "@codez/services";
 import {
   resolveModelProviderFamilySpecByProviderId,
   type ProviderFamilyConnectionSelection,
-  type ZCodeProvider,
-} from "@zcode/shared";
+  type CodezProvider,
+} from "@codez/shared";
 
 export function useComposerConnectionSwitch({
   workspacePath,
@@ -39,7 +39,7 @@ export function useComposerConnectionSwitch({
 }: {
   workspacePath: string;
   workspaceIdentity?: string;
-  agentProvider: ZCodeProvider;
+  agentProvider: CodezProvider;
   normalizedValue: string;
   currentReasoningLevel?: string;
   onSelectModel: (value: string, reasoningLevel?: string) => void | Promise<void>;
@@ -58,7 +58,7 @@ export function useComposerConnectionSwitch({
     workspaceIdentity,
   );
   const { update, refresh: refreshSettings } = useSettings({ services: base });
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const workspaceKey = workspaceIdentity?.trim() || workspacePath;
   const token = useMemo(() => ({}), [target, base, workspaceKey, scopeId]);
   const owner = useRef({ token, mounted: true });

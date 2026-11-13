@@ -2,7 +2,7 @@ import {
   WEB_REMOTE_CONTROL_RELAY_V2_HTTP,
   WebRemoteControlV2ConnectionError,
   parseWebRemoteControlRelayV2HttpResponse,
-} from "@zcode/shared/web-remote-relay";
+} from "@codez/shared/web-remote-relay";
 import { withWebRemoteControlHttpSignal } from "#src/web-remote-control/adapters/webRemoteControlHttpSignal.js";
 
 /** 一次性 token 不缓存；401 交给入口恢复登录，网络故障交给 transport 退避。 */

@@ -40,7 +40,7 @@ before(async () => {
     resolve: {
       alias: {
         "@": `${root}packages/ui/src`,
-        "@zcode/zcode-cua/broker/ports": `${root}packages/zcode-cua/src/broker/ports.ts`,
+        "@codez/codez-cua/broker/ports": `${root}packages/codez-cua/src/broker/ports.ts`,
       },
     },
     optimizeDeps: { entries: [entry.slice(1)] },

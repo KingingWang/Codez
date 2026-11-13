@@ -23,7 +23,7 @@ import {
   waitForV4UserMessageContaining,
 } from "#e2e/helpers/v4-conversation";
 
-const artifacts = () => process.env.ZCODE_E2E_ARTIFACT_DIR!;
+const artifacts = () => process.env.CODEZ_E2E_ARTIFACT_DIR!;
 const ANSWER_ONE = "E2E_SCM_ANSWER_ONE";
 const ANSWER_TWO = "E2E_SCM_ANSWER_TWO";
 const COMMENT_KEEP = "E2E_SCM_COMMENT_KEEP";
@@ -131,7 +131,7 @@ describe("选区注释 manual review", () => {
       async () =>
         browser.execute(() => {
           const button = Array.from(
-            document.querySelectorAll<HTMLButtonElement>("#zcode-toast-host button"),
+            document.querySelectorAll<HTMLButtonElement>("#codez-toast-host button"),
           ).find((candidate) => candidate.textContent?.trim() === "撤销");
           if (!button) return false;
           button.click();
@@ -140,7 +140,7 @@ describe("选区注释 manual review", () => {
       {
         timeout: 5000,
         timeoutMsg: `删除注释后没有出现“撤销”: ${await browser.execute(
-          () => document.querySelector("#zcode-toast-host")?.textContent ?? "<no toast host>",
+          () => document.querySelector("#codez-toast-host")?.textContent ?? "<no toast host>",
         )}`,
       },
     );

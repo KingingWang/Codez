@@ -1,7 +1,7 @@
 import { startDraftFromProject } from "#e2e/helpers/project-sidebar";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { TID_V4_COMPOSER_INPUT } from "@zcode/shared/test-ids";
+import { TID_V4_COMPOSER_INPUT } from "@codez/shared/test-ids";
 import {
   getE2EAppDataPaths,
   setInputValueByTestIdDom,
@@ -10,7 +10,7 @@ import {
 } from "#e2e/helpers/desktop-app";
 
 const marker = "E2E_MFH01_HOST_SEARCH";
-const root = join(getE2EAppDataPaths().workspace, ".zcode-e2e", "file-mention-host-search");
+const root = join(getE2EAppDataPaths().workspace, ".codez-e2e", "file-mention-host-search");
 
 describe("MFH01：@ 文件候选由 Host 查询", () => {
   before(async () => {

@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/conversation-session-git-review-entry/status-panel-review.txt",
+      "path": ".codez-e2e/conversation-session-git-review-entry/status-panel-review.txt",
       "source": "created-by-spec",
       "description": "beforeSession case setup 创建未跟踪文件，驱动 status panel Git Changes 入口和 unstaged review 数据。"
     }

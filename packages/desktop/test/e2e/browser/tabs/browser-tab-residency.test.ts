@@ -1,4 +1,4 @@
-import { TID_BROWSER_WEBVIEW } from "@zcode/shared/test-ids";
+import { TID_BROWSER_WEBVIEW } from "@codez/shared/test-ids";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import { prepareConversationE2E } from "#e2e/helpers/conversation-session";
 import { reloadElectronSessionPreservingBrowserProfile } from "#e2e/helpers/e2e-electron-reload";
@@ -258,7 +258,7 @@ async function registerDetachedBrowserTab(
   const result = (await browser.executeAsync(
     async (targetTabId, guestId, targetWorkspaceKey, done) => {
       try {
-        const bridge = (window as Window & { zcode?: BrowserTestBridge }).zcode;
+        const bridge = (window as Window & { codez?: BrowserTestBridge }).codez;
         const attached = await bridge?.browserViewAttachGuest?.({
           key: targetTabId,
           webContentsId: guestId,
@@ -292,14 +292,14 @@ function readActiveWorkspaceKey(): Promise<string | null> {
   return browser.execute(() => {
     const bridge = (
       window as Window & {
-        __zcodeTabStoreE2E?: {
+        __codezTabStoreE2E?: {
           getState?: () => {
             activeWorkspaceIdentity?: string | null;
             activeWorkspacePath?: string | null;
           };
         };
       }
-    ).__zcodeTabStoreE2E;
+    ).__codezTabStoreE2E;
     const state = bridge?.getState?.();
     return state?.activeWorkspaceIdentity?.trim() || state?.activeWorkspacePath || null;
   });

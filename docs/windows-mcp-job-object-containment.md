@@ -2,7 +2,7 @@
 
 ## 目的
 
-在 Windows 上为 ZCode 的本地 stdio MCP root 进程创建独立的 Job Object，并在 MCP 关闭时优先终止该 Job。这样可以覆盖 root 在托管期间创建的后代进程，减少 Agent/MCP 退出后遗留的控制台进程。
+在 Windows 上为 Codez 的本地 stdio MCP root 进程创建独立的 Job Object，并在 MCP 关闭时优先终止该 Job。这样可以覆盖 root 在托管期间创建的后代进程，减少 Agent/MCP 退出后遗留的控制台进程。
 
 ## 范围
 

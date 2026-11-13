@@ -5,7 +5,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -21,7 +21,7 @@ import { reloadElectronSessionPreservingBrowserProfile } from "#e2e/helpers/e2e-
 // 旧版本读到「不认识的键」与当前版本读到「更新版本才有的键」走同一个 schema 行为（zod 默认 strip），
 // 所以这里写入一个只有「未来版本」才有的键来代表旧版本视角，同时确认已知键（含本键）原样生效。
 
-const FUTURE_ONLY_KEY = "zcodeE2EFutureOnlySettingFromNewerBuild";
+const FUTURE_ONLY_KEY = "codezE2EFutureOnlySettingFromNewerBuild";
 const certificateSelector =
   '[role="switch"][aria-label="忽略证书校验"], [role="switch"][aria-label="Ignore certificate errors"]';
 const htmlClickSelector =

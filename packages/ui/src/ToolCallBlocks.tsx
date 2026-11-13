@@ -3,9 +3,9 @@ import { SummaryIconOnlyContext } from "@/v4/conversationRowContext.js";
 import { useToolPresentationHostCapabilities } from "@/hooks/useToolPresentationHostCapabilities.js";
 import { ToolPresentationCapabilitiesProvider } from "@/ToolCallBlocks/presentationCapabilities.js";
 import { memo, useMemo } from "react";
-import { TID_CHAT_TOOL_CALL_BLOCK, testId } from "@zcode/shared/test-ids";
+import { TID_CHAT_TOOL_CALL_BLOCK, testId } from "@codez/shared/test-ids";
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { mapToolStatus } from "@/lib/mapToolStatus.js";
 import { buildToolDisplayModel } from "@/lib/toolDisplay.js";
 import type { TaskChatToolCallTreeNode } from "@/lib/toolCallTree.js";
@@ -104,7 +104,7 @@ function ToolCallBlockComponent({
   const inheritedPluginUi = PluginUi.usePluginUiToolBinding(toolCallNode.toolCall.toolId);
   const pluginUi = providedPluginUi ?? inheritedPluginUi;
   const { toolCall, childToolCalls } = toolCallNode;
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const isOfficeMode = useIsOfficeMode();
   // 注意：下面的 early return 必须放在所有 hook 调用之后。
   // 之前这里在 useMemo 之前就 `return null`，导致当某个 toolCall 的

@@ -34,12 +34,12 @@
 
 ```ts
 import { describe, expect, it, vi } from "vitest";
-import type { IPlatformService, WindowScreenshotResult } from "@zcode/shared";
+import type { IPlatformService, WindowScreenshotResult } from "@codez/shared";
 import { captureFeedbackScreenshotDraft } from "@/feedback/feedbackScreenshotDraft.js";
 
 const screenshot: WindowScreenshotResult = {
   dataBase64: "base64-image",
-  filename: "zcode-error-2026-06-17.png",
+  filename: "codez-error-2026-06-17.png",
   contentType: "image/png",
   size: 12,
 };
@@ -81,7 +81,7 @@ Expected: FAIL because `@/feedback/feedbackScreenshotDraft.js` does not exist.
 - [x] **Step 3: Write minimal implementation**
 
 ```ts
-import type { IPlatformService } from "@zcode/shared";
+import type { IPlatformService } from "@codez/shared";
 import type { FeedbackAttachmentDraft } from "@/feedback/feedbackStore.js";
 
 export async function captureFeedbackScreenshotDraft(
@@ -117,7 +117,7 @@ Update `packages/ui/test/workspaceHeaderActionSection.test.ts`:
 ```ts
 const screenshot = {
   dataBase64: "base64-image",
-  filename: "zcode-error-2026-06-17.png",
+  filename: "codez-error-2026-06-17.png",
   contentType: "image/png",
   size: 12,
 };

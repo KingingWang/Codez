@@ -1,7 +1,7 @@
 import { createRoot } from "react-dom/client";
 import { AgentToolCallBlock } from "@/ToolCallBlocks/renderers/agent.js";
 import type { ToolCallBlockRenderContext } from "@/ToolCallBlocks/shared.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import "@/styles.css";
 
@@ -18,7 +18,7 @@ const cases = [
   { id: "configured", input: { color: "red" } },
 ];
 createRoot(document.getElementById("root")!).render(
-  <ZCodeIntlProvider initialLocale={locale}>
+  <CodezIntlProvider initialLocale={locale}>
     <TooltipProvider>
       <main className="min-h-screen bg-background p-4 text-foreground">
         {cases.map(({ id, input }) => {
@@ -40,5 +40,5 @@ createRoot(document.getElementById("root")!).render(
         })}
       </main>
     </TooltipProvider>
-  </ZCodeIntlProvider>,
+  </CodezIntlProvider>,
 );

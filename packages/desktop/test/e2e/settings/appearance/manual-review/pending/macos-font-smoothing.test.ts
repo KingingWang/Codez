@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { TID_TASK_SETTINGS_BUTTON, TID_SETTINGS_SECTION_NAV, testId } from "@zcode/shared/test-ids";
+import { TID_TASK_SETTINGS_BUTTON, TID_SETTINGS_SECTION_NAV, testId } from "@codez/shared/test-ids";
 import { waitForWorkspaceApp, DEFAULT_WORKSPACE, clickTestIdByDom } from "#e2e/helpers/desktop-app";
 
 const toggle = () => $('[data-testid="font-smoothing-switch"]');
@@ -31,7 +31,7 @@ describe("macOS 字体平滑", () => {
     await openAppearance();
     expect(await toggle().getAttribute("aria-checked")).toBe("true");
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "font-smoothing-enabled.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "font-smoothing-enabled.png"),
     );
     await toggle().click();
     await browser.waitUntil(async () => (await smoothing()) === "auto");

@@ -1,7 +1,7 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import type { RemoteWorkspaceSessionEntry } from "@zcode/shared";
-import { PlatformChannels } from "@zcode/shared";
+import type { RemoteWorkspaceSessionEntry } from "@codez/shared";
+import { PlatformChannels } from "@codez/shared";
 import {
   clearAppData,
   getE2EAppDataPaths,
@@ -40,12 +40,12 @@ import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 const MARKER = "E2E_SSH_LEGACY_INSTALL_HANDOFF";
 const PROJECT_DIR = "legacy-install-project";
 // LIH-03 的普通失败：远端 PAM 先记录每次认证尝试，再拒绝认证（不是等待点）。
-const AUTH_ATTEMPTS_FILE = "/tmp/zcode-e2e-auth-attempts";
-const AUTH_ATTEMPT_SCRIPT = "/usr/local/bin/zcode-e2e-auth-attempt";
+const AUTH_ATTEMPTS_FILE = "/tmp/codez-e2e-auth-attempts";
+const AUTH_ATTEMPT_SCRIPT = "/usr/local/bin/codez-e2e-auth-attempt";
 const PAM_COUNT_LINE = `auth optional pam_exec.so quiet ${AUTH_ATTEMPT_SCRIPT}`;
 const PAM_DENY_LINE = "auth requisite pam_deny.so";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-remote-legacy-install-handoff",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-remote-legacy-install-handoff",
 );
 
 interface WizardState {
@@ -180,7 +180,7 @@ async function readSessionEntry(workspacePath: string) {
 describe(`${MARKER}: 迁移的密码 SSH 项目首次安装`, () => {
   const facts: Record<string, unknown> = {};
   const { credentialsFile, homeDir } = getE2EAppDataPaths();
-  const tasksIndexFile = join(homeDir, ".zcode/v2/tasks-index.sqlite");
+  const tasksIndexFile = join(homeDir, ".codez/v2/tasks-index.sqlite");
   let config: SSHConnectionConfig;
   let container: string;
   let workspacePath: string;
@@ -229,7 +229,7 @@ describe(`${MARKER}: 迁移的密码 SSH 项目首次安装`, () => {
       await execInRemoteContainer(container, [
         "sh",
         "-c",
-        `test -e /home/${config.username}/.zcode/server/bin/zcode && echo installed || echo absent`,
+        `test -e /home/${config.username}/.codez/server/bin/codez && echo installed || echo absent`,
       ])
     ).stdout.trim();
   }
@@ -286,7 +286,7 @@ describe(`${MARKER}: 迁移的密码 SSH 项目首次安装`, () => {
           [
             "sh",
             "-c",
-            `pkill -9 -u ${config.username} -f '.zcode/server' || true; rm -rf /home/${config.username}/.zcode/server`,
+            `pkill -9 -u ${config.username} -f '.codez/server' || true; rm -rf /home/${config.username}/.codez/server`,
           ],
           { user: "0" },
         );

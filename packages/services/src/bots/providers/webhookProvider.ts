@@ -5,7 +5,7 @@ import type {
   BotOutboundMessage,
   BotStructuredElicitationResponse,
   SelectionPrompt,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { BotProviderAdapter } from "./types.js";
 
 interface WebhookProviderDeps {
@@ -118,7 +118,7 @@ function parseWebhookAttachments(
 function parseWebhookElicitationResponse(
   payload: Record<string, unknown>,
 ): BotStructuredElicitationResponse | undefined {
-  if (payload.type !== "zcode.bot.elicitation_response") {
+  if (payload.type !== "codez.bot.elicitation_response") {
     return undefined;
   }
   const requestId =
@@ -186,10 +186,10 @@ export function createWebhookBotProvider(
           method: "POST",
           headers: {
             "content-type": "application/json",
-            [bot.webhookAuthHeaderName || "x-zcode-bot-secret"]: secret ?? "",
+            [bot.webhookAuthHeaderName || "x-codez-bot-secret"]: secret ?? "",
           },
           body: JSON.stringify({
-            type: "zcode.bot.test",
+            type: "codez.bot.test",
             botId: bot.id,
             provider: "webhook",
             sentAt: Date.now(),
@@ -219,13 +219,13 @@ export function createWebhookBotProvider(
         "content-type": "application/json",
       };
       if (secret) {
-        headers[bot.webhookAuthHeaderName || "x-zcode-bot-secret"] = secret;
+        headers[bot.webhookAuthHeaderName || "x-codez-bot-secret"] = secret;
       }
       const response = await postWebhookWithRetry(bot.webhookUrl, {
         method: "POST",
         headers,
         body: JSON.stringify({
-          type: "zcode.bot.message",
+          type: "codez.bot.message",
           botId: bot.id,
           provider: "webhook",
           userId: message.providerUserId,
@@ -233,7 +233,7 @@ export function createWebhookBotProvider(
           selection: message.selection,
           elicitation: message.elicitation,
           ...(message.elicitation
-            ? { type: "zcode.bot.elicitation_request" }
+            ? { type: "codez.bot.elicitation_request" }
             : {}),
           sentAt: Date.now(),
         }),

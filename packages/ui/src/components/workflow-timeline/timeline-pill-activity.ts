@@ -1,4 +1,4 @@
-import type { WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import { workflowRunOverlay } from "@/components/workflow-graph/run-status.js";
 import type { WorkflowCausalityGraphData } from "@/components/workflow-graph/types.js";
 import type { TimelinePill } from "./timeline-model.js";

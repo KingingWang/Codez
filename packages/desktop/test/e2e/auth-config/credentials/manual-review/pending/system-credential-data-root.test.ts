@@ -4,13 +4,13 @@ import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { AsyncEntry } from "@napi-rs/keyring";
-import { TID_LOGIN_TRIGGER } from "@zcode/shared/test-ids";
+import { TID_LOGIN_TRIGGER } from "@codez/shared/test-ids";
 import { reloadElectronSessionPreservingBrowserProfile } from "#e2e/helpers/e2e-electron-reload";
 import { clearAppData, getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
 
 // ZCT-2120723935487688704：3.18.0 起系统条目按凭据文件路径区分，切换数据存储路径只复制文件时，
 // 新根启动后解不开原凭据，也不能重新登录。本用例在真实系统库上验证切换时由 Main 登记密钥。
-const SERVICE = "ZCode Credential Encryption";
+const SERVICE = "Codez Credential Encryption";
 const KEY = "bot:e2e:data-root";
 const VALUE = "E2E_DATA_ROOT_SYNTHETIC_VALUE";
 const RELOGIN_KEY = "bot:e2e:data-root-relogin";
@@ -114,11 +114,11 @@ describe("System credential storage across a data directory change", () => {
     this.timeout(CASE_TIMEOUT_MS);
     const paths = getE2EAppDataPaths();
     const customBaseDir = join(paths.homeDir, "scs-data-root-custom");
-    const customCredentialsFile = join(customBaseDir, ".zcode", "v2", "credentials.json");
+    const customCredentialsFile = join(customBaseDir, ".codez", "v2", "credentials.json");
     const bootstrapSettingsFile = join(paths.appDataDir, "setting.json");
     const keychainLink = join(paths.homeDir, "Library", "Keychains");
     const accounts = [paths.credentialsFile, customCredentialsFile].map(accountFor);
-    expect(await browser.electron.execute(() => Boolean(process.env.ZCODE_CREDENTIAL_SECRET))).toBe(
+    expect(await browser.electron.execute(() => Boolean(process.env.CODEZ_CREDENTIAL_SECRET))).toBe(
       false,
     );
     try {

@@ -1,13 +1,13 @@
-import type { Event } from "@zcode/rpc";
-import { ServiceChannels } from "@zcode/shared";
+import type { Event } from "@codez/rpc";
+import { ServiceChannels } from "@codez/shared";
 import type {
   ExtensionViewInput,
   ExtensionViewRequestMethod,
   ResolvedScope,
   WorkspaceRef,
   NotificationsShowResult,
-} from "@zcode/shared/extension-host";
-import type { PluginSandboxHandle } from "@zcode/shared/mcp-apps";
+} from "@codez/shared/extension-host";
+import type { PluginSandboxHandle } from "@codez/shared/mcp-apps";
 import { createServiceDescriptor } from "#src/descriptors.js";
 
 // 扩展视图门面（docs/plugins/extension-host.md §8）：从 IExtensionsService 拆出的视图通道。

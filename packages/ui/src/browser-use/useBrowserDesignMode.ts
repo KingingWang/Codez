@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { IFileService } from "@zcode/services";
-import { browserPreviewSourceUrl } from "@zcode/shared";
+import type { IFileService } from "@codez/services";
+import { browserPreviewSourceUrl } from "@codez/shared";
 import {
   buildCssVariableTweakControls,
   DESIGN_PAGE_LIMITS,
@@ -12,7 +12,7 @@ import {
   type DesignRuntimeEvent,
   type DesignSelectedElement,
   type PageElementRect,
-} from "@zcode/design-runtime";
+} from "@codez/design-runtime";
 import {
   DESIGN_STYLE_CSS_NAMES,
   toDesignPageKey,
@@ -24,7 +24,7 @@ import {
 } from "@/browser-use/useBrowserDesignRuntime.js";
 import { useBrowserDesignSourceWriter } from "@/browser-use/useBrowserDesignSourceWriter.js";
 import { toast } from "@/components/ui/toast.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import {
   createWebElementContextId,
   dispatchWebElementContextAddToChat,
@@ -51,7 +51,7 @@ export interface DesignChipTarget {
 
 function isLocalPage(url: string): boolean {
   try {
-    // 本机 HTML 在 webview 里是 zcode-html:// 预览地址，先还原成源 file:// 再判断
+    // 本机 HTML 在 webview 里是 codez-html:// 预览地址，先还原成源 file:// 再判断
     const { hostname, protocol } = new URL(browserPreviewSourceUrl(url));
     return (
       protocol === "file:" ||
@@ -65,7 +65,7 @@ function isLocalPage(url: string): boolean {
 }
 
 /**
- * 设计工具自动出现的条件：页面带 `data-zcode-design`；或是本机页面（file:// / localhost）且有
+ * 设计工具自动出现的条件：页面带 `data-codez-design`；或是本机页面（file:// / localhost）且有
  * :root CSS 变量、data-variant 方案或 section.slide。普通网站很多也声明 :root 变量，所以只对本机页面看这几项。
  */
 export function shouldAutoShowDesignTools(signals: DesignPageSignals, pageUrl: string): boolean {
@@ -131,7 +131,7 @@ export function useBrowserDesignMode({
   webview: DesignRuntimeWebview | null;
   webviewGeneration: number;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const pageKey = toDesignPageKey(currentUrl);
   // 元素引用的 workspaceKey 在本地也有值，不能把它当远程身份，否则本地查询会走断连代理。
   const {

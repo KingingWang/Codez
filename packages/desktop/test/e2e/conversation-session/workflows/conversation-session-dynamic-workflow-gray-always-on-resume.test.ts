@@ -25,7 +25,7 @@ import { isOutsideClosedHistory, openClosedHistoryFolds } from "#e2e/helpers/v4-
 // 恢复一次停下的 run（docs/dynamic-workflow/presentation.md「The run card」「The run pane」、
 // docs/dynamic-workflow/transcript-and-notifications.md「Reminding an idle main agent」「The time figure」、
 // docs/dynamic-workflow/launch.md「The `FillWorkflowHole` tool」、
-// apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md「Resume by replay」「Cancel and resume」）
+// apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md「Resume by replay」「Cancel and resume」）
 // 的三条桌面链路：
 // - 用户停止后从 run 卡恢复：做完的 ask 与 world.run 由 journal 回答，未完成的 ask 重新执行；
 // - 完整重启切断的 run 从侧板恢复：同一个 run id，唯一一条终态通知；
@@ -40,7 +40,7 @@ const SUBAGENT_LINE = "You are a subagent inside a dynamic workflow run";
 const DIGEST = '[data-workflow-run-digest="true"]';
 const NOTIFICATION_ROW = '[data-testid^="chat-workflow-notification-row-"]';
 const COMPLETION_CARD = '[data-workflow-completion-card="true"]';
-// 留白 id 是名字的键（apps/zcode-cli/packages/dynamic-workflow/docs/analysis.md「Sites」）：「决定分组」→ 这个 id。
+// 留白 id 是名字的键（apps/codez-cli/packages/dynamic-workflow/docs/analysis.md「Sites」）：「决定分组」→ 这个 id。
 const HOLE_ID = "hole#21b40fca";
 const RESUMED_BY_AGENT_NAME = "E2E 恢复工作流丙";
 

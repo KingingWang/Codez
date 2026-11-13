@@ -34,7 +34,7 @@ export class ExtensionError extends Error {
   }
 }
 
-/** 跨 RPC 后类实例会丢失，只剩 name 与 code（@zcode/rpc 透传 code）。按字段判断。 */
+/** 跨 RPC 后类实例会丢失，只剩 name 与 code（@codez/rpc 透传 code）。按字段判断。 */
 export function isExtensionError(
   error: unknown,
 ): error is { code: ExtensionErrorCode; message: string } {

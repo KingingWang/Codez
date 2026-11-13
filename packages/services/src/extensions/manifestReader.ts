@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { PLUGIN_MANIFEST_CANDIDATES, type PluginManifestRead } from "@zcode/shared/extension-host";
+import { PLUGIN_MANIFEST_CANDIDATES, type PluginManifestRead } from "@codez/shared/extension-host";
 
 // 读插件的 plugin.json（docs/plugins/extension-host.md §16.1）：异步 IO，只在 Window Host 运行。
 // 校验与静态表生成在协议模块的纯函数 resolvePluginManifest 里，这里只负责找到并解析 JSON。

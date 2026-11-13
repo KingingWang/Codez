@@ -4,7 +4,7 @@
 >
 > 历史说明：本 Todo 当时完成的 `builtinModelIds/modelIds` 与 Properties 完整性仍有效；Model
 > `enabled/visibility`、重复成员冲突和设置交互已由
-> [`Todo 21`](./todo-21-zcode-builtin-config-ownership-and-model-activation-order.md) 重新裁决。
+> [`Todo 21`](./todo-21-codez-builtin-config-ownership-and-model-activation-order.md) 重新裁决。
 >
 > 日期：2026-08-24
 >
@@ -25,13 +25,13 @@
    只观察完整的模型事实。
 
 ```text
-ZCode Built-in Provider Config
+Codez Built-in Provider Config
               |
               v
  overlay Account Built-in Provider Config
               |
               v
-Effective Built-in Provider Config          ZCode Built-in Model Config Rules
+Effective Built-in Provider Config          Codez Built-in Model Config Rules
               |                                           +
               v                                  Personal Model Config Rules
  overlay Personal Provider Config                         |
@@ -80,7 +80,7 @@ interface ProviderConfig {
 
 | 配置来源                         | 通常维护的字段    | 语义                                       |
 | -------------------------------- | ----------------- | ------------------------------------------ |
-| ZCode Built-in Provider Config   | `builtinModelIds` | ZCode 声明的 Built-in 模型及顺序           |
+| Codez Built-in Provider Config   | `builtinModelIds` | Codez 声明的 Built-in 模型及顺序           |
 | Account Built-in Provider Config | `builtinModelIds` | 账号接口提供时覆盖 Built-in 模型集合       |
 | Personal Provider Config         | `modelIds`        | 用户添加、删除、重命名和排序 Personal 模型 |
 

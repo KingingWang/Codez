@@ -80,6 +80,6 @@
 - 已检查运行截图；首次缺 Chromium 动态库，复用既有临时依赖。首次截图缺 CJK 字体，使用本轮隔离解包的字体重新截取并检查，没有修改系统安装或用户配置。
 - `pnpm typecheck` 通过；`pnpm lint` 0 errors / 42 warnings（无本轮新增文件告警）；架构检查 0 violations；变更文件格式与 diff 检查通过。
 - 同步更新现有 Electron pending E2E 的 footer switch、高级展开、MFJS 排除断言；没有将 pending 晋级为正式回归。本轮未启动正式 Electron、Pro 或真实手机 shared-host，不声明这些通过。
-- 验证日志：`/tmp/todo134-unit-final.log`、`/tmp/todo134-unit-extra.log`、`/tmp/todo134-browser5.log`、`/tmp/todo134-browser-delivery.log`；截图 `/tmp/zcode-provider-settings-batch/todo134-*.png`（本地证据，不提交）。
+- 验证日志：`/tmp/todo134-unit-final.log`、`/tmp/todo134-unit-extra.log`、`/tmp/todo134-browser5.log`、`/tmp/todo134-browser-delivery.log`；截图 `/tmp/codez-provider-settings-batch/todo134-*.png`（本地证据，不提交）。
 - 范围复审：未修改完整执行 schema、Builtin 请求能力、Selection、账号状态、数据表、协议和远控链路。旧合法手动文件在当前版本可读；并不承诺旧客户端能读取移除 MFJS 后的新手动格式，回滚应用前应保留对应配置备份。本轮不为此附加隐藏双写字段。
 - 推送前关联测试补查：5357 项通过时发现服务层 `providerRuntime` 的旧测试 fixture 仍只在手动规则提供 MFJS；已将该系统字段放回测试 Built-in，追加手动规则不含该字段而 Registry 执行配置具备该字段的端到端断言。生产 Built-in 原本已有默认 MFJS，不改服务产品代码。

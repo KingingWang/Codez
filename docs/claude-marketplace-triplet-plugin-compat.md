@@ -3,7 +3,7 @@
 ## 背景
 
 在 `docs/hooks-implementation-analysis.md` 之后，需要继续验证 Claude Code marketplace
-中同时包含 **skills、commands、MCP servers** 的插件，确认 ZCode 当前插件发现、安装、
+中同时包含 **skills、commands、MCP servers** 的插件，确认 Codez 当前插件发现、安装、
 runtime projection 与下游 skill/command/MCP adapter 是否能完整兼容。
 
 本轮只验证低风险资源投影：不启动真实 MCP server、不执行 command、不运行 hook。
@@ -63,20 +63,20 @@ runtime projection 与下游 skill/command/MCP adapter 是否能完整兼容。
 - 默认 `skills/` / `commands/` 目录可投影到 runtime roots。
 - manifest path 形式（例如 `skills: "./skills/"`、`commands: "./commands/"`、
   `mcpServers: "./.mcp.json"`）可投影。
-- `.mcp.json` 可被读取并转换为 ZCode `McpServerConfig`。
-- MCP env 中 `${CLAUDE_PLUGIN_ROOT}`、`${CLAUDE_PLUGIN_DATA}`、`${ZCODE_PROJECT_DIR}`
+- `.mcp.json` 可被读取并转换为 Codez `McpServerConfig`。
+- MCP env 中 `${CLAUDE_PLUGIN_ROOT}`、`${CLAUDE_PLUGIN_DATA}`、`${CODEZ_PROJECT_DIR}`
   等变量可替换。
 
 认为不兼容或需单独诊断：
 
-- 只有根目录 `mcp.json` 且 manifest 未通过 `mcpServers` 指向时，ZCode 当前不会自动读取。
+- 只有根目录 `mcp.json` 且 manifest 未通过 `mcpServers` 指向时，Codez 当前不会自动读取。
 - 真实 MCP server 是否能启动不在本轮测试范围内；本轮只验证配置投影。
 
 ## skills 字段语义（已修复差一层目录问题）
 
 插件 manifest `skills` 支持字符串或路径数组。显式声明时只使用声明路径，空数组
 表示不加载技能；只有未声明字段时才使用默认 `skills/`。路径可以指向单技能或
-技能集合，由共享扫描规则（`apps/zcode-cli/packages/adapters/src/skills/scan.ts`）处理：
+技能集合，由共享扫描规则（`apps/codez-cli/packages/adapters/src/skills/scan.ts`）处理：
 
 - 技能根自身有可加载的 `SKILL.md` 时，只加载自身，不再枚举子目录；需要其中其他
   技能时必须另行声明路径。用户级、项目级技能扫描不受本规则影响；
@@ -94,13 +94,13 @@ runtime projection 与下游 skill/command/MCP adapter 是否能完整兼容。
   credentials`）同标准封堵；拒绝链接即无逃逸，不依赖判定链接指向（无跨盘符
   `relative` 谓词，无平台分支）。组件枚举（`collectSkillComponents`）对插件根
   无条件适用同一规则，不依赖 manifest 是否解析成功。词法防线（`resolveInside`
-  拒绝绝对路径与 `..` 穿越）继续生效。用户级技能根（`~/.zcode/skills` 的
+  拒绝绝对路径与 `..` 穿越）继续生效。用户级技能根（`~/.codez/skills` 的
   symlink 导入是受支持功能）保持默认跟随，行为不变。
 
 ## 验证命令
 
 ```bash
-pnpm --filter @zcode/adapters test plugins
+pnpm --filter @codez/adapters test plugins
 pnpm typecheck
 pnpm lint
 ```

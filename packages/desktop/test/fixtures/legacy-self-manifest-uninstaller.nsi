@@ -7,7 +7,7 @@ SilentInstall silent
 !include "LogicLib.nsh"
 ; 保留旧包的行为：文件仍打开时删除清单自身会失败，用于验证新外层安装器的兼容。
 Section
-  FileOpen $0 "$INSTDIR\.zcode-install-manifest" r
+  FileOpen $0 "$INSTDIR\.codez-install-manifest" r
   loop:
     ClearErrors
     FileRead $0 $1

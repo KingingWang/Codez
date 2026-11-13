@@ -5,7 +5,7 @@ import {
   SUPPORTED_LOCALES,
   type ApiClient,
   type Locale,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { readApiJson } from "#src/providers/api/apiJson.js";
 import type { IMarketingTouchService } from "#src/marketing-touch/marketingTouch.js";
 
@@ -42,7 +42,7 @@ export function createMarketingTouchService(options: {
       headers: {
         "X-Device-Mid": device,
         "X-Client-Language": localeSchema.parse(locale),
-        "X-ZCode-App-Version": options.appVersion,
+        "X-Codez-App-Version": options.appVersion,
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     };

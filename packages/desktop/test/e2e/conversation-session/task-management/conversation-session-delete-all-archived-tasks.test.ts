@@ -3,7 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import { DEFAULT_WORKSPACE, clearAppData, waitForWorkspaceApp } from "#e2e/helpers/desktop-app";
 import { restartIntoWorkspacePreservingProfile } from "#e2e/helpers/model-provider-restart-runtime";
 
-const home = process.env.ZCODE_E2E_HOME_DIR!;
+const home = process.env.CODEZ_E2E_HOME_DIR!;
 const prefix = "e2e-bulk-archive-";
 const control = `${prefix}active`;
 
@@ -22,8 +22,8 @@ describe("TSL39：一键删除全部归档任务", () => {
     // 在进程退出后准备两库完整历史，冷启读取；执行阶段只经真实 UI 发送删除。
     await restartIntoWorkspacePreservingProfile(DEFAULT_WORKSPACE, {
       afterElectronProcessExit: async () => {
-        const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
-        const cli = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"));
+        const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"));
+        const cli = new DatabaseSync(join(home, ".codez/cli/db/db.sqlite"));
         try {
           const project = db
             .prepare("SELECT project_id FROM project_roots WHERE root_path=? LIMIT 1")
@@ -78,8 +78,8 @@ describe("TSL39：一键删除全部归档任务", () => {
       cliRows: 26,
       cliDeleted: 0,
     });
-    const removedVisitKey = `zcode-browser-recent-visits:${JSON.stringify([DEFAULT_WORKSPACE, "", `${prefix}0`])}`;
-    const retainedVisitKey = `zcode-browser-recent-visits:${JSON.stringify([DEFAULT_WORKSPACE, "", control])}`;
+    const removedVisitKey = `codez-browser-recent-visits:${JSON.stringify([DEFAULT_WORKSPACE, "", `${prefix}0`])}`;
+    const retainedVisitKey = `codez-browser-recent-visits:${JSON.stringify([DEFAULT_WORKSPACE, "", control])}`;
     await browser.execute(
       (keys) => {
         const visit = JSON.stringify([
@@ -142,14 +142,14 @@ describe("TSL39：一键删除全部归档任务", () => {
     expect(visitsAfterDelete.retained).not.toBeNull();
     expect(await $$('[data-testid="archive-group"]').length).toBe(0);
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "delete-all-archived-tasks.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "delete-all-archived-tasks.png"),
     );
   });
 });
 
 function readCounts() {
-  const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"), { readOnly: true });
-  const cli = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"), { readOnly: true });
+  const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"), { readOnly: true });
+  const cli = new DatabaseSync(join(home, ".codez/cli/db/db.sqlite"), { readOnly: true });
   try {
     return {
       ...(db

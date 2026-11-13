@@ -2,8 +2,8 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { PlatformChannels } from "@zcode/shared";
-import { TID_BROWSER_ADDRESS_INPUT, TID_BROWSER_LOAD_ERROR } from "@zcode/shared/test-ids";
+import { PlatformChannels } from "@codez/shared";
+import { TID_BROWSER_ADDRESS_INPUT, TID_BROWSER_LOAD_ERROR } from "@codez/shared/test-ids";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import { openFirstBrowserTab } from "#e2e/helpers/browser-side-pane";
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
@@ -27,7 +27,7 @@ let downloadDir: string;
 
 describe("CR-01：下载不提交页面时恢复地址栏", () => {
   before(async () => {
-    downloadDir = await mkdtemp(join(tmpdir(), "zcode-browser-download-"));
+    downloadDir = await mkdtemp(join(tmpdir(), "codez-browser-download-"));
     server = createServer((request, response) => {
       if (request.url?.startsWith("/attachment")) {
         response.writeHead(200, {
@@ -163,7 +163,7 @@ async function installDownloadProbe(directory: string) {
       const report = handlers.get(channels.BrowserViewReportResidency);
       if (typeof report !== "function") throw new Error("缺少 residency handler");
       const send = host.send;
-      const session = electron.session.fromPartition("persist:zcode-embedded-browser");
+      const session = electron.session.fromPartition("persist:codez-embedded-browser");
       const held: Array<() => void> = [];
       let downloadIndex = 0;
       const probe: NonNullable<typeof globalThis.__browserDownloadAddressProbe> = {

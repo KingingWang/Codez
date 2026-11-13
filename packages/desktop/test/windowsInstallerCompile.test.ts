@@ -39,7 +39,7 @@ it("compiles real UAC calls when the plugin directory follows the custom include
     throw new Error("electron-builder NSIS toolset 缺少 NSISDIR");
   }
   const compiler = makeNsis.path;
-  const temp = await mkdtemp(join(tmpdir(), "zcode-nsis-compile-"));
+  const temp = await mkdtemp(join(tmpdir(), "codez-nsis-compile-"));
   try {
     for (const uninstaller of [false, true]) {
       const output = join(temp, uninstaller ? "uninstaller.exe" : "installer.exe");
@@ -52,8 +52,8 @@ it("compiles real UAC calls when the plugin directory follows the custom include
         `-DNSIS_INCLUDE_DIR=${join(nsisDir, "Include")}`,
         `-DELECTRON_BUILDER_NSIS_INCLUDE_DIR=${join(builderDir, "templates/nsis/include")}`,
         `-DNSIS_PLUGIN_DIR=${join(pluginsDir, "x86-unicode")}`,
-        `-DZCODE_INSTALLER_NSH=${join(desktopDir, "build/installer.nsh")}`,
-        `-DZCODE_INSTALLER_PROCESS_HELPER=${import.meta.filename}`,
+        `-DCODEZ_INSTALLER_NSH=${join(desktopDir, "build/installer.nsh")}`,
+        `-DCODEZ_INSTALLER_PROCESS_HELPER=${import.meta.filename}`,
         `-DFIXTURE_EXE=${import.meta.filename}`,
         `-DOUTPUT_FILE=${output}`,
         `-DDEFAULT_LOG_PATH=${join(temp, "default.log")}`,
@@ -78,8 +78,8 @@ it("compiles real UAC calls when the plugin directory follows the custom include
           `-DNSIS_INCLUDE_DIR=${join(nsisDir, "Include")}`,
           `-DELECTRON_BUILDER_NSIS_INCLUDE_DIR=${join(builderDir, "templates/nsis/include")}`,
           `-DNSIS_PLUGIN_DIR=${join(pluginsDir, "x86-unicode")}`,
-          `-DZCODE_INSTALLER_NSH=${join(desktopDir, "build/installer.nsh")}`,
-          `-DZCODE_INSTALLER_PROCESS_HELPER=${import.meta.filename}`,
+          `-DCODEZ_INSTALLER_NSH=${join(desktopDir, "build/installer.nsh")}`,
+          `-DCODEZ_INSTALLER_PROCESS_HELPER=${import.meta.filename}`,
           `-DFIXTURE_EXE=${import.meta.filename}`,
           `-DOUTPUT_FILE=${recoveryOutput}`,
           "-DRECOVERY_TEST",
@@ -95,7 +95,7 @@ it("compiles real UAC calls when the plugin directory follows the custom include
     // CR-01 回归：普通 NSIS 没有 APP_DIR_*；不传测试专用 define 时，必须能从 afterPack
     // 生成的按架构 define 文件解析 helper，缺失时明确失败而不是静默打出无收口的安装包。
     const generatedDir = join(desktopDir, "build", "generated");
-    const generatedDefine = join(generatedDir, "zcode-process-helper-x64.nsh");
+    const generatedDefine = join(generatedDir, "codez-process-helper-x64.nsh");
     const officialDefineArgs = [
       "-V2",
       "-INPUTCHARSET",
@@ -103,7 +103,7 @@ it("compiles real UAC calls when the plugin directory follows the custom include
       `-DNSIS_INCLUDE_DIR=${join(nsisDir, "Include")}`,
       `-DELECTRON_BUILDER_NSIS_INCLUDE_DIR=${join(builderDir, "templates/nsis/include")}`,
       `-DNSIS_PLUGIN_DIR=${join(pluginsDir, "x86-unicode")}`,
-      `-DZCODE_INSTALLER_NSH=${join(desktopDir, "build/installer.nsh")}`,
+      `-DCODEZ_INSTALLER_NSH=${join(desktopDir, "build/installer.nsh")}`,
       `-DFIXTURE_EXE=${import.meta.filename}`,
       `-DOUTPUT_FILE=${join(temp, "official-define.exe")}`,
       "-DRECOVERY_TEST",
@@ -113,7 +113,7 @@ it("compiles real UAC calls when the plugin directory follows the custom include
     await mkdir(generatedDir, { recursive: true });
     await writeFile(
       generatedDefine,
-      `!define ZCODE_INSTALLER_PROCESS_HELPER "${import.meta.filename.replaceAll("$", "$$")}"\n`,
+      `!define CODEZ_INSTALLER_PROCESS_HELPER "${import.meta.filename.replaceAll("$", "$$")}"\n`,
       "utf8",
     );
     try {
@@ -128,7 +128,7 @@ it("compiles real UAC calls when the plugin directory follows the custom include
         execFileAsync(compiler, officialDefineArgs, {
           env: { ...process.env, ...makeNsis.env },
         }),
-      ).rejects.toThrow(/ZCODE_INSTALLER_PROCESS_HELPER or generated define/);
+      ).rejects.toThrow(/CODEZ_INSTALLER_PROCESS_HELPER or generated define/);
     } finally {
       await rm(generatedDir, { recursive: true, force: true });
     }

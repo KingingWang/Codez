@@ -15,7 +15,7 @@ describe("pullAndExportMobileLogs", () => {
   let exportDir: string;
 
   beforeEach(async () => {
-    exportDir = await mkdtemp(join(tmpdir(), "zcode-mobile-log-export-"));
+    exportDir = await mkdtemp(join(tmpdir(), "codez-mobile-log-export-"));
   });
 
   afterEach(async () => {
@@ -95,7 +95,7 @@ describe("pullAndExportMobileLogs", () => {
     expect(showItemInFolder).toHaveBeenCalledWith(result.path);
   });
 
-  it("拉取日志统一 [web-remote-control] zcode_rc_log_pull_*，result 带 outcome/耗时/字节数/错误码", async () => {
+  it("拉取日志统一 [web-remote-control] codez_rc_log_pull_*，result 带 outcome/耗时/字节数/错误码", async () => {
     const info = vi.fn();
     const warn = vi.fn();
     await pullAndExportMobileLogs(
@@ -109,11 +109,11 @@ describe("pullAndExportMobileLogs", () => {
       }),
     );
     expect(info).toHaveBeenCalledWith(
-      "[web-remote-control] zcode_rc_log_pull_start",
+      "[web-remote-control] codez_rc_log_pull_start",
       expect.objectContaining({ window: 7 }),
     );
     const [message, fields] = warn.mock.calls.at(-1) ?? [];
-    expect(message).toBe("[web-remote-control] zcode_rc_log_pull_result");
+    expect(message).toBe("[web-remote-control] codez_rc_log_pull_result");
     expect(fields).toMatchObject({
       outcome: "error",
       error_code: "timeout",

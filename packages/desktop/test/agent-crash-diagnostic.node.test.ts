@@ -2,7 +2,7 @@
 // 这里是经评审同意的例外：Windows 退出码 0xE0000008 在 Linux 上无法用真实进程复现，
 // 只能对纯函数取样。使用 node:test，不进入工程 Vitest 清单和 pre-push；
 // 相关文件改动的 MR 上由 CI job test:agent-crash-diagnostic 自动执行（.gitlab/ci/23-agent-crash-diagnostic.yml）。
-// pnpm --filter @zcode/desktop test:agent-crash-diagnostic
+// pnpm --filter @codez/desktop test:agent-crash-diagnostic
 import assert from "node:assert/strict";
 import * as dns from "node:dns";
 import { readFileSync } from "node:fs";
@@ -14,7 +14,7 @@ import {
   classifyAgentProcessExitCause,
   parseAgentProcessExitDiagnostic,
   redactAgentDiagnosticSecrets,
-} from "@zcode/shared/agent-crash-diagnostic";
+} from "@codez/shared/agent-crash-diagnostic";
 
 // 构造样本：长期运行的 Agent 在几小时前打印过一次 HTTP 429 失败对象，stderr 尾部 20 行
 // 只剩响应头逐行转储；值均为虚构。
@@ -188,7 +188,7 @@ test("does not report Bearer tokens or later cookie segments", () => {
 // 真实链路：services 逐行收集 stderr 时先遮一遍，desktop main 上报前再遮一遍。
 const SERVICES_SOURCE = resolve(
   import.meta.dirname,
-  "../../services/src/zcode-agent/zcodeAgentProcessManager.ts",
+  "../../services/src/codez-agent/codezAgentProcessManager.ts",
 );
 
 function parseThroughServicesAndMain(stderrTail: string[]) {

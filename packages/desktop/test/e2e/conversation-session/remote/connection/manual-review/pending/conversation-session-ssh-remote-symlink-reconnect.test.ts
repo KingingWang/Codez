@@ -3,7 +3,7 @@ import {
   disconnectRemoteSource,
   requestRemoteProjectConnection,
 } from "#e2e/helpers/remote-project-actions";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import {
   connectSSHWorkspaceAndSendFirstTurn,

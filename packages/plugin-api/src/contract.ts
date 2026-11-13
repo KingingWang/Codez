@@ -1,4 +1,4 @@
-// @zcode-dev/plugin-api 根入口（docs/plugins/extension-host.md §17.9）：扩展代码用的类型。
+// @codez-dev/plugin-api 根入口（docs/plugins/extension-host.md §17.9）：扩展代码用的类型。
 // 只转出 extension-host-protocol 的类型，不手写第二份；没有运行时代码。
 export type {
   // ctx 与入口模块
@@ -45,4 +45,4 @@ export type {
   NotificationsShowResult,
   WorkbenchSession,
   WorkbenchStartDraftInput,
-} from "@zcode/shared/extension-host";
+} from "@codez/shared/extension-host";

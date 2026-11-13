@@ -12,8 +12,8 @@
 
 以下五处必须保持完全一致：
 
-1. `apps/zcode-cli/packages/browser-use-plugin/package.json`；
-2. `apps/zcode-cli/packages/browser-use-plugin/.zcode-plugin/plugin.json`；
+1. `apps/codez-cli/packages/browser-use-plugin/package.json`；
+2. `apps/codez-cli/packages/browser-use-plugin/.codez-plugin/plugin.json`；
 3. Bootstrap `OFFICIAL_PLUGIN_DEFINITIONS`；
 4. SEA `officialSeaPlugins`；
 5. MCP `NODE_REPL_SERVER_VERSION`。

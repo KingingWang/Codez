@@ -15,11 +15,11 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 async function fixture(name = "latest-mac.yml") {
-  const outputDir = await mkdtemp(join(tmpdir(), "zcode-update-manifest-"));
+  const outputDir = await mkdtemp(join(tmpdir(), "codez-update-manifest-"));
   roots.push(outputDir);
   const file = join(outputDir, name);
   const manifest =
-    "version: 3.15.1\nfiles:\n  - url: ZCode.zip\n    sha512: checksum\nreleaseNotes: release notes\n";
+    "version: 3.15.1\nfiles:\n  - url: Codez.zip\n    sha512: checksum\nreleaseNotes: release notes\n";
   await writeFile(file, manifest);
   return { outputDir, file, manifest };
 }

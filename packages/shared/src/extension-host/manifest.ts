@@ -5,7 +5,7 @@ import { extensionGrantSchema, extensionProtocolsSchema } from "#src/extension-h
 // 见 manifestSlots.ts；两者都由 Window Host 读清单时校验（§16.1）。
 
 /**
- * 扩展 API 的版本，不是 App 版本。清单 engines.zcode 按它判断兼容。
+ * 扩展 API 的版本，不是 App 版本。清单 engines.codez 按它判断兼容。
  * 1.1.0（P3a）：清单 `grants` / `protocols`、能力 `sessions.*` 的四个读、带入参的订阅、新错误码。
  * 1.2.0（P3b + P4）：会话读连接（列表、会话状态、行、readRows）；订阅可带 onError，准入与后端错误送达扩展；
  *   dot 与 GitLab 要的宿主能力（§18.1：app 作用域视图、dataPath、models.list、导航标记、grants.request、系统通知）。
@@ -62,13 +62,13 @@ const viewSchema = z.strictObject({
 const ENGINE_RANGE_PATTERN = /^(\^)?(\d+)\.(\d+)\.(\d+)$/;
 
 const extensionEnginesSchema = z.strictObject({
-  zcode: z.string().regex(ENGINE_RANGE_PATTERN, "engines.zcode must be ^x.y.z or x.y.z"),
+  codez: z.string().regex(ENGINE_RANGE_PATTERN, "engines.codez must be ^x.y.z or x.y.z"),
 });
 
-/** 第一步：只读 engines.zcode，其余字段原样放过。 */
+/** 第一步：只读 engines.codez，其余字段原样放过。 */
 const extensionEnginesProbeSchema = z.object({
   engines: z.object({
-    zcode: z.string().regex(ENGINE_RANGE_PATTERN, "engines.zcode must be ^x.y.z or x.y.z"),
+    codez: z.string().regex(ENGINE_RANGE_PATTERN, "engines.codez must be ^x.y.z or x.y.z"),
   }),
 });
 
@@ -194,7 +194,7 @@ export function isExtensionEngineCompatible(
 
 /**
  * 两步校验：
- * 1. 只读 engines.zcode。缺失或格式错误判 invalid；版本不兼容判 incompatible，不再看其余字段。
+ * 1. 只读 engines.codez。缺失或格式错误判 invalid；版本不兼容判 incompatible，不再看其余字段。
  * 2. 版本兼容后按严格对象校验整个 extension。未知字段判 invalid，并给出字段路径。
  */
 export function validateExtensionManifest(
@@ -205,7 +205,7 @@ export function validateExtensionManifest(
   if (!engines.success) {
     return { status: "invalid", ...firstManifestIssue(engines.error, "extension") };
   }
-  const required = engines.data.engines.zcode;
+  const required = engines.data.engines.codez;
   if (!isExtensionEngineCompatible(required, hostVersion)) {
     return {
       status: "incompatible",

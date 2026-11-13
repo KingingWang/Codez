@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile, rm } from "node:fs/promises";
-import type { IZCodeTaskService } from "@zcode/services";
+import type { ICodezTaskService } from "@codez/services";
 import {
   createBotsServiceHarness,
   createFeishuConfig,
@@ -9,8 +9,8 @@ import {
   type RecordedRequest,
 } from "#e2e/bots/helpers/bots-service-harness";
 
-type Prompt = Parameters<IZCodeTaskService["sendPrompt"]>[0];
-type GroupInput = Parameters<NonNullable<IZCodeTaskService["submitBotGroupInput"]>>[0];
+type Prompt = Parameters<ICodezTaskService["sendPrompt"]>[0];
+type GroupInput = Parameters<NonNullable<ICodezTaskService["submitBotGroupInput"]>>[0];
 
 describe("BOT-E2E-AT-01 large Bot attachments", () => {
   for (const provider of ["feishu", "lark"] as const) {
@@ -47,10 +47,10 @@ describe("BOT-E2E-AT-01 large Bot attachments", () => {
           const h = createBotsServiceHarness({ config: createFeishuConfig(provider, botId) });
           const prompts: Prompt[] = [];
           const groupInputs: GroupInput[] = [];
-          h.zcodeTaskService.sendPrompt = async (params: Prompt) => {
+          h.codezTaskService.sendPrompt = async (params: Prompt) => {
             prompts.push(params);
           };
-          h.zcodeTaskService.submitBotGroupInput = async (params: GroupInput) => {
+          h.codezTaskService.submitBotGroupInput = async (params: GroupInput) => {
             groupInputs.push(params);
             return {
               commandId: params.commandId,

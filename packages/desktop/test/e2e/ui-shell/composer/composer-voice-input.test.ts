@@ -9,7 +9,7 @@ import {
   TID_V4_COMPOSER_VOICE_PERMISSION_REAUTHORIZE,
   TID_V4_COMPOSER_VOICE_PERMISSION_RELAUNCH,
   TID_V4_COMPOSER_VOICE_WAVEFORM,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { readSettings, seedSettings, waitForDefaultWorkspaceReady } from "#e2e/helpers/desktop-app";
 import {
   startAsrFrameDroppingProxy,
@@ -33,7 +33,7 @@ import { getToastMessages, waitForToastContaining } from "#e2e/helpers/conversat
 // 规格：docs/chat/composer-voice-input.md。麦克风由 wdio appArgs 的 Chromium 假设备提供（持续正弦音）。
 
 type LexicalInputE2EElement = HTMLElement & {
-  __zcodeLexicalInputE2E?: {
+  __codezLexicalInputE2E?: {
     getText: () => string;
     focus: () => void;
     setText: (text: string) => void;
@@ -46,7 +46,7 @@ const byId = (id: string) => $(`[data-testid="${id}"]`);
 
 // 替身由 wdio beforeSession 在 Electron 启动前启动（prepareVoiceInputFixture）。
 function mockOrigin(): string {
-  const value = process.env.ZCODE_E2E_ASR_MOCK_URL;
+  const value = process.env.CODEZ_E2E_ASR_MOCK_URL;
   if (!value) throw new Error("缺少语音输入 ASR 替身");
   return value;
 }
@@ -80,7 +80,7 @@ async function waitForVoiceState(state: string, timeoutMsg: string) {
 async function editorText(): Promise<string> {
   return browser.execute((id) => {
     const root = document.querySelector<LexicalInputE2EElement>(`[data-testid="${id}"]`);
-    return root?.__zcodeLexicalInputE2E?.getText() ?? "";
+    return root?.__codezLexicalInputE2E?.getText() ?? "";
   }, TID_V4_COMPOSER_INPUT);
 }
 
@@ -90,7 +90,7 @@ async function resetEditor() {
     (id, text) => {
       const bridge = document.querySelector<LexicalInputE2EElement>(
         `[data-testid="${id}"]`,
-      )?.__zcodeLexicalInputE2E;
+      )?.__codezLexicalInputE2E;
       bridge?.setText(text);
       bridge?.focus();
     },
@@ -111,7 +111,7 @@ async function waitForEditorText(expected: string, timeoutMsg: string) {
 }
 
 async function runtimeLogText(): Promise<string> {
-  const logs = await browser.electron.execute(() => process.env.ZCODE_E2E_RUNTIME_LOG_DIR);
+  const logs = await browser.electron.execute(() => process.env.CODEZ_E2E_RUNTIME_LOG_DIR);
   if (!logs) throw new Error("缺少 worker 运行时日志目录");
   const names = (await readdir(logs)).filter((name) => name.endsWith(".log")).sort();
   return (await Promise.all(names.map((name) => readFile(join(logs, name), "utf8")))).join("\n");
@@ -543,10 +543,10 @@ describe("Composer 语音输入", () => {
     expect(await byId(TID_V4_COMPOSER_VOICE_PERMISSION_GUIDE).isDisplayed()).toBe(true);
   });
 
-  // 打包版会真实执行 tccutil 重置本机 ZCode 的麦克风记录，只在开发版 Electron 上跑（开发版跳过 tccutil）。
+  // 打包版会真实执行 tccutil 重置本机 Codez 的麦克风记录，只在开发版 Electron 上跑（开发版跳过 tccutil）。
   describe("macOS 重新授权", () => {
     before(function () {
-      if (process.platform !== "darwin" || process.env.ZCODE_E2E_PACKAGED_APP_PATH?.trim()) {
+      if (process.platform !== "darwin" || process.env.CODEZ_E2E_PACKAGED_APP_PATH?.trim()) {
         this.skip();
       }
     });
@@ -603,7 +603,7 @@ describe("Composer 语音输入", () => {
     await status.mockReturnValue("denied");
     await openPermissionGuide();
 
-    // 用户在系统设置里打开开关后回到 ZCode。
+    // 用户在系统设置里打开开关后回到 Codez。
     await status.mockReturnValue("granted");
     // 浮层的 focus 监听在 React effect 中挂上，比浮层出现晚一帧；重复发送 focus，直到浮层关闭。
     await browser.waitUntil(

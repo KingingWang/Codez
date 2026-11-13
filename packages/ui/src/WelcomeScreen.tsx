@@ -11,7 +11,7 @@ import {
   BIGMODEL_PROVIDER_ID,
   ZAI_PROVIDER_ID,
   ZAI_CN_PROVIDER_ID,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   TID_LOGIN_REGION_SWITCH,
   TID_LOGIN_USE_API_KEY_BUTTON,
@@ -19,16 +19,16 @@ import {
   TID_OAUTH_COPY_LOGIN_LINK,
   TID_OAUTH_ERROR,
   TID_OAUTH_LOGIN_BUTTON,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { Alert, AlertDescription } from "./components/ui/alert.js";
 import { Button } from "./components/ui/button.js";
-import { ZCodeAboutLogo } from "@/components/ui/ZCodeAboutLogo.js";
+import { CodezAboutLogo } from "@/components/ui/CodezAboutLogo.js";
 import { useOAuth } from "./hooks/useOAuth.js";
 import { usePlatform } from "./hooks/usePlatform.js";
-import { useZCodeIntl } from "./i18n/IntlProvider.js";
+import { useCodezIntl } from "./i18n/IntlProvider.js";
 import { LoginApiKeyForm } from "./login/LoginApiKeyForm.js";
 import { ThemeHeroVisual } from "./openWorkspacePageThemeHero.js";
-import { useZCodeStore } from "./store/StoreProvider.js";
+import { useCodezStore } from "./store/StoreProvider.js";
 import { DesktopOverlayWindowControls } from "@/DesktopOverlayWindowControls.js";
 import { toast } from "@/components/ui/toast.js";
 import type { useCredentialStoreRecovery } from "@/hooks/useCredentials.js";
@@ -47,7 +47,7 @@ export function CredentialStoreRecovery({
 }: {
   recovery: ReturnType<typeof useCredentialStoreRecovery>;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [confirming, setConfirming] = useState(false);
   const text = (id: Parameters<typeof intl.formatMessage>[0]["id"]) => intl.formatMessage({ id });
   return (
@@ -146,7 +146,7 @@ export function resolveLoginRegionForLocale(locale: string): SingleLoginRegion {
 }
 
 export function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const platform = usePlatform();
   return (
     <main className="relative h-full min-h-dvh overflow-hidden bg-background text-foreground">
@@ -216,7 +216,7 @@ export function shouldCompleteLoginFromExistingUser(params: {
 }
 
 export function LoginPanel({ active, onComplete }: LoginPanelProps) {
-  const { intl, locale, setLocalePreference } = useZCodeIntl();
+  const { intl, locale, setLocalePreference } = useCodezIntl();
   const {
     startLogin,
     cancel,
@@ -229,14 +229,14 @@ export function LoginPanel({ active, onComplete }: LoginPanelProps) {
     authorizeUrl,
     refreshProviders,
   } = useOAuth();
-  const user = useZCodeStore((s) => s.user);
-  const oauthError = useZCodeStore((s) => s.oauthError);
-  const setOAuthError = useZCodeStore((s) => s.setOAuthError);
-  const oauthSuccessSeq = useZCodeStore((s) => s.oauthSuccessSeq);
-  const lastOAuthSuccessProvider = useZCodeStore((s) => s.lastOAuthSuccessProvider);
-  const loginEntryRequest = useZCodeStore((s) => s.loginEntryRequest);
-  const clearLoginEntryRequest = useZCodeStore((s) => s.clearLoginEntryRequest);
-  const markLoginEntryAttemptStatus = useZCodeStore((s) => s.markLoginEntryAttemptStatus);
+  const user = useCodezStore((s) => s.user);
+  const oauthError = useCodezStore((s) => s.oauthError);
+  const setOAuthError = useCodezStore((s) => s.setOAuthError);
+  const oauthSuccessSeq = useCodezStore((s) => s.oauthSuccessSeq);
+  const lastOAuthSuccessProvider = useCodezStore((s) => s.lastOAuthSuccessProvider);
+  const loginEntryRequest = useCodezStore((s) => s.loginEntryRequest);
+  const clearLoginEntryRequest = useCodezStore((s) => s.clearLoginEntryRequest);
+  const markLoginEntryAttemptStatus = useCodezStore((s) => s.markLoginEntryAttemptStatus);
   const [loginMode, setLoginMode] = useState<"providers" | "apiKey">("providers");
   const [loginRegion, setLoginRegion] = useState<SingleLoginRegion>(() =>
     resolveLoginRegionForLocale(locale),
@@ -682,10 +682,10 @@ function LoginPanelLogo() {
     // 登录 logo 壳是固定深色底，边框不能跟随浅色主题 token，否则浅色主题下边框过重。
     <div
       className="relative flex size-16 items-center justify-center rounded-2xl bg-[linear-gradient(180deg,#000000_0%,#151718_100%)] text-[#ffffff] shadow-lg/20 before:pointer-events-none before:absolute before:inset-0 before:rounded-2xl before:border before:border-[rgba(255,255,255,0.1)]"
-      aria-label="ZCode"
+      aria-label="Codez"
       role="img"
     >
-      <ZCodeAboutLogo className="h-auto w-10" />
+      <CodezAboutLogo className="h-auto w-10" />
     </div>
   );
 }

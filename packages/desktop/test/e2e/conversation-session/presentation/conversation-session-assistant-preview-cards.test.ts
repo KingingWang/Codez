@@ -17,9 +17,9 @@ import {
   TID_BROWSER_ADDRESS_INPUT,
   TID_BROWSER_WEBVIEW,
   TID_PREVIEW_PANE,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import type { ChainablePromiseElement } from "webdriverio";
-import { PlatformChannels, type FileApplicationInfo } from "@zcode/shared";
+import { PlatformChannels, type FileApplicationInfo } from "@codez/shared";
 import {
   installFileApplicationMenuProbe,
   readFileApplicationMenuProbe,
@@ -437,7 +437,7 @@ describe("Assistant Preview Cards E2E", () => {
       () => document.querySelector<HTMLVideoElement>("video[controls]")?.currentSrc ?? "",
     );
     expect(mediaUrl).not.toBe("");
-    expect(new URL(mediaUrl).protocol).toBe("zcode-media:");
+    expect(new URL(mediaUrl).protocol).toBe("codez-media:");
     await assertPreviewVideoSurvivesResizeAndFullscreen();
     await assertLocalMediaPreviewLogs(logSnapshot);
   }).timeout(180_000);
@@ -566,7 +566,7 @@ async function readPreviewCards(
     (titles) => {
       const openLabels = new Set(["Open", "打开", "Preview", "预览"]);
       return Array.from(
-        document.querySelectorAll<HTMLElement>('[data-zcode-stream-animate="true"]'),
+        document.querySelectorAll<HTMLElement>('[data-codez-stream-animate="true"]'),
       )
         .filter((row) =>
           Array.from(row.querySelectorAll<HTMLButtonElement>("button")).some((button) =>
@@ -609,7 +609,7 @@ async function clickPreviewCard(title: string) {
   const result = await browser.execute((expectedTitle) => {
     const openLabels = new Set(["Open", "打开", "Preview", "预览"]);
     const row = Array.from(
-      document.querySelectorAll<HTMLElement>('[data-zcode-stream-animate="true"]'),
+      document.querySelectorAll<HTMLElement>('[data-codez-stream-animate="true"]'),
     ).find((candidate) => candidate.innerText.includes(expectedTitle));
     const button = Array.from(row?.querySelectorAll<HTMLButtonElement>("button") ?? []).find(
       (candidate) => openLabels.has((candidate.textContent ?? "").trim()),
@@ -766,14 +766,14 @@ async function assertFileOpenApps(filename: string, fixture?: FileApplicationInf
     (await browser.execute(async (filePath) => {
       const platform = (
         window as unknown as Window & {
-          zcode: {
+          codez: {
             getFileApplications(target: {
               path: string;
               pathKind: "file";
             }): Promise<FileApplicationInfo[]>;
           };
         }
-      ).zcode;
+      ).codez;
       return platform.getFileApplications({ path: filePath, pathKind: "file" });
     }, filePath));
   const row = await browser.$(`[data-preview-card-title="${filename}"]`);
@@ -793,7 +793,7 @@ async function assertLocalHtmlExternalOpen() {
   await openPath.mockResolvedValue("");
   try {
     const expectedTitle = basename(SOURCE_HTML_RELATIVE_PATH);
-    const rows = await browser.$$('[data-zcode-stream-animate="true"]');
+    const rows = await browser.$$('[data-codez-stream-animate="true"]');
     const row = (
       await rows.map(async (candidate) => ({
         candidate,
@@ -978,8 +978,8 @@ async function assertPreviewVideoSurvivesResizeAndFullscreen() {
   const videoReady = await browser.execute(() => {
     const video = document.querySelector<HTMLVideoElement>("video[controls][playsinline]");
     if (!video) return false;
-    const probeWindow = window as Window & { __zcodePreviewVideo?: HTMLVideoElement };
-    probeWindow.__zcodePreviewVideo = video;
+    const probeWindow = window as Window & { __codezPreviewVideo?: HTMLVideoElement };
+    probeWindow.__codezPreviewVideo = video;
     window.dispatchEvent(new Event("resize"));
     return true;
   });
@@ -988,10 +988,10 @@ async function assertPreviewVideoSurvivesResizeAndFullscreen() {
   // resize settling 的 state update 应该已经完成；媒体节点不能被替换或卸载。
   await browser.pause(80);
   const sameVideoAfterResize = await browser.execute(() => {
-    const probeWindow = window as Window & { __zcodePreviewVideo?: HTMLVideoElement };
+    const probeWindow = window as Window & { __codezPreviewVideo?: HTMLVideoElement };
     return (
       document.querySelector<HTMLVideoElement>("video[controls][playsinline]") ===
-      probeWindow.__zcodePreviewVideo
+      probeWindow.__codezPreviewVideo
     );
   });
   expect(sameVideoAfterResize).toBe(true);
@@ -1015,9 +1015,9 @@ async function assertPreviewVideoSurvivesResizeAndFullscreen() {
   if (fullscreenResult === "entered") {
     await browser.pause(500);
     const sameVideoInFullscreen = await browser.execute(() => {
-      const probeWindow = window as Window & { __zcodePreviewVideo?: HTMLVideoElement };
+      const probeWindow = window as Window & { __codezPreviewVideo?: HTMLVideoElement };
       const video = document.querySelector<HTMLVideoElement>("video[controls][playsinline]");
-      return video === probeWindow.__zcodePreviewVideo && document.fullscreenElement === video;
+      return video === probeWindow.__codezPreviewVideo && document.fullscreenElement === video;
     });
     expect(sameVideoInFullscreen).toBe(true);
     await browser.execute(() => {
@@ -1092,7 +1092,7 @@ async function materializeStaleSourceFiles() {
 }
 
 async function assertLocalMediaPreviewLogs(snapshot: Map<string, number>): Promise<void> {
-  const runtimeLogDir = process.env.ZCODE_E2E_RUNTIME_LOG_DIR?.trim();
+  const runtimeLogDir = process.env.CODEZ_E2E_RUNTIME_LOG_DIR?.trim();
   if (!runtimeLogDir) {
     throw new Error("当前 E2E worker 没有配置 desktop runtime log 目录");
   }
@@ -1116,7 +1116,7 @@ async function assertLocalMediaPreviewLogs(snapshot: Map<string, number>): Promi
 }
 
 async function snapshotDesktopRuntimeLogs(): Promise<Map<string, number>> {
-  const runtimeLogDir = process.env.ZCODE_E2E_RUNTIME_LOG_DIR?.trim();
+  const runtimeLogDir = process.env.CODEZ_E2E_RUNTIME_LOG_DIR?.trim();
   if (!runtimeLogDir) {
     throw new Error("当前 E2E worker 没有配置 desktop runtime log 目录");
   }

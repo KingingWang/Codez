@@ -3,7 +3,7 @@ import {
   TID_BROWSER_ADDRESS_INPUT,
   TID_BROWSER_REFRESH_BUTTON,
   TID_BROWSER_WEBVIEW,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clickTestIdByWebDriver } from "#e2e/helpers/desktop-app";
 import { openFirstBrowserTab } from "#e2e/helpers/browser-side-pane";
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";

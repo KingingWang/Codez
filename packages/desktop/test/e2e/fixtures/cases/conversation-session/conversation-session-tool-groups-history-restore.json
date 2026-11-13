@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/conversation-session-tool-groups-history-restore",
+      "path": ".codez-e2e/conversation-session-tool-groups-history-restore",
       "source": "created-by-spec",
       "description": "TGE05 Read/Write 的 case-owned fixture。"
     }

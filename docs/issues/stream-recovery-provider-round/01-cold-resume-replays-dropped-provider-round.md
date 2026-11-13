@@ -14,7 +14,7 @@ Status: needs-triage
 
 两边请求字节不同：重启后从这条消息开始缓存未命中，模型在重启后看到一次它之前没看到的服务端调用。
 
-复现：`apps/zcode-cli/packages/bootstrap/tests/tool-history-order.test.ts` 的 `stream-failure` 场景。
+复现：`apps/codez-cli/packages/bootstrap/tests/tool-history-order.test.ts` 的 `stream-failure` 场景。
 
 ## 根因证据
 
@@ -24,10 +24,10 @@ Status: needs-triage
 - 这条路径不给 assistant 消息打 `StreamRecoveryDiscarded` 标记。只有没有任何本地工具被接受时，
   `recoverPartialAssistantOutputFailure` 才会打这个标记。所以 hydrator 不会剔除这条消息里带
   `providerExecuted` 标记的 tool part，冷恢复把这一轮回放出来。
-- [Anthropic Stream Compat](../../../apps/zcode-cli/docs/design/v2/model/anthropic-stream-compat.md)「回放」
+- [Anthropic Stream Compat](../../../apps/codez-cli/docs/design/v2/model/anthropic-stream-compat.md)「回放」
   只规定了作废的 attempt 在 live 和冷恢复两边都剔除服务端轮次，没有覆盖这条「已有工具提交」的恢复路径。
 - 在 `origin/staging` `4637771911` 上同样存在：那时这个测试在更早的断言就失败了，走不到冷恢复的比较。
-  不是 [Assistant 内容块顺序](../../../apps/zcode-cli/docs/design/v2/model/assistant-block-order.md) 引入的。
+  不是 [Assistant 内容块顺序](../../../apps/codez-cli/docs/design/v2/model/assistant-block-order.md) 引入的。
 
 ## 待决定
 

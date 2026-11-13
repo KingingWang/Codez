@@ -645,7 +645,7 @@ export const TID_V4_COMPOSER_VOICE_PERMISSION_REAUTHORIZE =
 /** 麦克风权限引导浮层：打开系统设置 */
 export const TID_V4_COMPOSER_VOICE_PERMISSION_OPEN_SETTINGS =
   "v4-composer-voice-permission-open-settings";
-/** 麦克风权限引导浮层：重启 ZCode */
+/** 麦克风权限引导浮层：重启 Codez */
 export const TID_V4_COMPOSER_VOICE_PERMISSION_RELAUNCH = "v4-composer-voice-permission-relaunch";
 /** v4 暂停队列发送确认：清空队列并发送 */
 export const TID_V4_COMPOSER_CLEAR_QUEUE_SEND = "v4-composer-clear-queue-send";

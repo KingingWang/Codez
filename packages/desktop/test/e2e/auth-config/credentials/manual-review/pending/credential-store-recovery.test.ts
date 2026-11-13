@@ -61,7 +61,7 @@ describe("凭据容器确认恢复", () => {
     const fixture = fileURLToPath(
       new URL("../../../../fixtures/credential-recovery/oauth-attribution.ts", import.meta.url),
     );
-    const result = join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "oauth-attribution-recovery.json");
+    const result = join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "oauth-attribution-recovery.json");
     await promisify(execFile)(process.execPath, ["--import", "tsx", fixture, result], {
       timeout: 25_000,
     });
@@ -81,7 +81,7 @@ describe("凭据容器确认恢复", () => {
       new URL("../../../../fixtures/credential-recovery/conditional-mutations.ts", import.meta.url),
     );
     const result = join(
-      process.env.ZCODE_E2E_ARTIFACT_DIR!,
+      process.env.CODEZ_E2E_ARTIFACT_DIR!,
       "conditional-credential-mutations.json",
     );
     await promisify(execFile)(process.execPath, ["--import", "tsx", fixture, result], {
@@ -97,7 +97,7 @@ describe("凭据容器确认恢复", () => {
     const fixture = fileURLToPath(
       new URL("../../../../fixtures/credential-recovery/server-websocket.ts", import.meta.url),
     );
-    const result = join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "server-credential-rpc-denied.json");
+    const result = join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "server-credential-rpc-denied.json");
     await promisify(execFile)(process.execPath, ["--import", "tsx", fixture, result], {
       timeout: 25_000,
     });
@@ -160,7 +160,7 @@ describe("凭据容器确认恢复", () => {
     const generation = await readFile(`${file}.recovery-generation`, "utf8");
     expect(generation.length).toBeGreaterThan(0);
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "credential-recovered.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "credential-recovered.png"),
     );
     await clickTestIdByDom("credential-store-recovery-reload");
     await waitForTestIdByDom("oauth-login-button", { timeout: 30000 });
@@ -169,11 +169,11 @@ describe("凭据容器确认恢复", () => {
     await clickTestIdByDom("oauth-login-button");
     // 主 JWT 与渠道无关；写入即证明恢复后的空库可以重新完成 OAuth 登录。
     await browser.waitUntil(
-      async () => Boolean(JSON.parse(await readFile(file, "utf8"))["zcodejwttoken"]),
+      async () => Boolean(JSON.parse(await readFile(file, "utf8"))["codezjwttoken"]),
       { timeout: 15000, timeoutMsg: "空库恢复后未能重新 OAuth 登录并保存凭据" },
     );
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "credential-recovery.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "credential-recovery.json"),
       JSON.stringify({
         originalBytes: original.length,
         backupMatches: (await readFile(backup)).equals(original),
@@ -256,7 +256,7 @@ describe("凭据容器确认恢复", () => {
   });
   it("另一 Host 恢复后，旧 OAuth 响应不得重新写入凭据", async () => {
     const file = getE2EAppDataPaths().credentialsFile;
-    const baseUrl = process.env.ZCODE_E2E_OAUTH_RACE_URL!;
+    const baseUrl = process.env.CODEZ_E2E_OAUTH_RACE_URL!;
     await writeFile(file, "{}");
     await browser.refresh();
     await waitForTestIdByDom("oauth-login-button", { timeout: 30000 });
@@ -301,7 +301,7 @@ describe("凭据容器确认恢复", () => {
               async () =>
                 JSON.parse(await readFile(settingsFile, "utf8")).localePreference === locale,
             );
-            await browser.execute((value) => localStorage.setItem("zcode-theme", value), theme);
+            await browser.execute((value) => localStorage.setItem("codez-theme", value), theme);
             await setRendererViewport(width, 844);
             await browser.refresh();
             await waitForTestIdByDom("credential-store-recovery", { timeout: 30000 });
@@ -323,7 +323,7 @@ describe("凭据容器确认恢复", () => {
               ),
             ).toBe(true);
             await browser.saveScreenshot(
-              join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `recovery-${theme}-${locale}-${width}.png`),
+              join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `recovery-${theme}-${locale}-${width}.png`),
             );
             await clickTestIdByDom("credential-store-recovery-cancel");
             expect(await readFile(credentialsFile)).toEqual(Buffer.from('{"unfinished":'));
@@ -353,7 +353,7 @@ describe("凭据容器确认恢复", () => {
       await waitForTestIdByDom("oauth-login-button", { timeout: 30000 });
       expect(await browser.$('[data-testid="credential-store-recovery"]').isExisting()).toBe(false);
       await mkdir(file);
-      const logDir = await browser.electron.execute(() => process.env.ZCODE_E2E_RUNTIME_LOG_DIR!);
+      const logDir = await browser.electron.execute(() => process.env.CODEZ_E2E_RUNTIME_LOG_DIR!);
       const logs = join(logDir, new Date().toISOString().slice(0, 10) + ".log");
       const before = (await readFile(logs, "utf8").catch(() => "")).length;
       await browser.refresh();

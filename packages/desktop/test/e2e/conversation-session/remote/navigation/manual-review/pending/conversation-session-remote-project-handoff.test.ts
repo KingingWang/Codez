@@ -4,8 +4,8 @@ import {
   appSettingsSchema,
   ServiceChannels,
   type SourceServerManagementSnapshot,
-} from "@zcode/shared";
-import type { RemoteProjectDirectory } from "@zcode/services";
+} from "@codez/shared";
+import type { RemoteProjectDirectory } from "@codez/services";
 import { clearAppData, readSettings, seedSettings } from "#e2e/helpers/desktop-app";
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 import { reloadElectronSessionPreservingBrowserProfile } from "#e2e/helpers/e2e-electron-reload";
@@ -29,7 +29,7 @@ import {
 
 const MARKER = "E2E_REMOTE_PROJECT_HANDOFF";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-project-handoff",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-project-handoff",
 );
 const management = <T>(command: string, args: unknown[] = []) =>
   callHandoffHost<T>(ServiceChannels.SourceServerManagement, command, args);

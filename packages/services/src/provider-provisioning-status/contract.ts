@@ -1,5 +1,5 @@
-import type { ProviderProvisioningLaneStatus } from "@zcode/shared";
-import { ServiceChannels } from "@zcode/shared";
+import type { ProviderProvisioningLaneStatus } from "@codez/shared";
+import { ServiceChannels } from "@codez/shared";
 import { createServiceDescriptor } from "../descriptors.js";
 
 /**

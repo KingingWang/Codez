@@ -18,7 +18,7 @@
 | Registry 通过 current !== false 参与 providerExecutable | `packages/provider/src/resolver.ts` | UI 单独显示 Start 不能使真实执行通过 |
 | 所有内建账号套餐被分为 account-plan；有效选择要求恰好一个 current 并映射 providerId | `packages/provider-node/src/model-selection-facade.ts`、`packages/provider/src/effective-model-selection.ts` | 直接让 Start 与 Team 都 current 会破坏选模；必须收口公共选择策略 |
 | 请求期身份要求当前 selection 与 access.mode 匹配 | `resolveCurrentAccountAccess` | 只放开 Registry 仍会在鉴权前被拒绝 |
-| Start 凭据从登录 tokenSet.zcodeJwtToken 读取 | `packages/services/src/model-provider/accountProviderRequestAuthService.ts` | 无需在 Provider Config 或 UI 中新增 token 副本 |
+| Start 凭据从登录 tokenSet.codezJwtToken 读取 | `packages/services/src/model-provider/accountProviderRequestAuthService.ts` | 无需在 Provider Config 或 UI 中新增 token 副本 |
 | family 子项折叠到使用 Start ID 的 side key，详情会按当前套餐定位 | `packages/ui/src/settings/model-provider-section/useModelProviderNavigation.ts` | 独立 Start 需要导航身份与详情解析一起调整 |
 | 点击 Start 会生成 kind:start-plan 并保存 family selection | `packages/ui/src/settings/ModelProviderSection.tsx` 的 resolveConnectionSelectionForNavItem / persistProviderFamilyModeForNavItem | 页面浏览目前有执行连接副作用 |
 | 断开 handler 调用 OAuth logout | 同文件 handleCodingPlanDisconnect | Start 去连接化需要删除对应动作，不能只替换文案 |
@@ -59,12 +59,12 @@ ModelFactory → Account Request Auth → Start JWT 请求
 
 | 入口 | 当前代码事实 | 证据 |
 | --- | --- | --- |
-| 普通 Session | applySubmissionExecutionState 在普通提交真正开始执行时 setSessionModelSelection 并 persistRuntimeModelSelection；execution scope 的临时模型排除 | `apps/zcode-cli/packages/core/src/runtime/methods/turn-model.ts:40`，`turn.ts:284` |
+| 普通 Session | applySubmissionExecutionState 在普通提交真正开始执行时 setSessionModelSelection 并 persistRuntimeModelSelection；execution scope 的临时模型排除 | `apps/codez-cli/packages/core/src/runtime/methods/turn-model.ts:40`，`turn.ts:284` |
 | Composer | useDraftConfigControl 派生 effectiveSelection；captureAcceptedModelSelection 在 accepted 回调写回，保留原 scope／用户改选保护 | `packages/ui/src/v4/composer/useDraftConfigControl.ts:172`、`:242`，`SessionPane.tsx:1493` |
 | Automation | 首次派发通过目标 Host 解析长期选择，将结果写入 run；长期 automation.model_selection 不因该解析更新 | `packages/desktop/src/host/automationModelSelection.ts:5`，`host/index.ts:869`，`packages/services/src/session/automationRepo.ts` 的 fixRunModelSelection |
 | Bot | 草稿首发解析后创建会话；绑定后读取 Session 选择解析并提交，走 Session 写回路径 | `packages/services/src/bots/botsService.ts:4878`、`:4994` |
 | Wiki | 新生成解析一次，RepoWikiDraftSummary 保存 modelConfig.modelSelection；失败页补齐固定已有生成身份 | `packages/services/src/repo-wiki/repoWikiModelClient.ts:98`，`repoWikiService.ts:369` |
-| 显式 Subagent | profile 选择克隆后解析给本次执行，不修改 profile；继承使用父模型 | `apps/zcode-cli/packages/core/src/runtime/helpers/subagent-selection.ts:15`，`runtime/methods/subagent.ts:100` |
+| 显式 Subagent | profile 选择克隆后解析给本次执行，不修改 profile；继承使用父模型 | `apps/codez-cli/packages/core/src/runtime/helpers/subagent-selection.ts:15`，`runtime/methods/subagent.ts:100` |
 
 只读 effective-selection 函数不写原输入，不能推出整个提交链路不写回。此前由此推导全量 Session／草稿迁移、升级连接快照、逐存储语义版本，属于助手调查不足，已在用户指出写回事实后撤回。
 

@@ -6,19 +6,19 @@ import type {
   ReadResourceResult,
 } from "@modelcontextprotocol/client";
 import { INVALID_PARAMS, ProtocolError } from "@modelcontextprotocol/client";
-import type { IExtensionViewsService } from "@zcode/services";
+import type { IExtensionViewsService } from "@codez/services";
 import type {
   ExtensionViewInput,
   ExtensionViewRequestMethod,
   ResolvedScope,
-} from "@zcode/shared/extension-host";
+} from "@codez/shared/extension-host";
 import {
   MCP_APPS_HANDSHAKE_TIMEOUT_MS,
   MCP_APPS_HOST_NAME,
   MCP_APPS_HOST_VERSION,
   type PluginSandboxHandle,
   type PluginSandboxPlatformPort,
-} from "@zcode/shared/mcp-apps";
+} from "@codez/shared/mcp-apps";
 import {
   buildPluginUiHostCapabilities,
   buildPluginUiHostContext,
@@ -32,7 +32,7 @@ import { logger } from "@/logger.js";
 
 // 扩展视图页面（docs/plugins/extension-host.md §8）：复用 MCP App 的页面层（沙箱 webview、端口 transport、
 // 官方 AppBridge、hostContext 与卸载顺序），后端换成 IExtensionViewsService 的视图通道。
-// 页面经 window.zcode（沙箱注入的兼容层）发出的 tools/*、resources/* 都转给扩展进程里的视图 MCP server。
+// 页面经 window.codez（沙箱注入的兼容层）发出的 tools/*、resources/* 都转给扩展进程里的视图 MCP server。
 // 实例在标签页挂载时创建、卸载时关闭；所属扩展进程换代后由组件按新代际重建。
 
 export type ExtensionViewPhase = "preparing" | "mounted" | "running" | "error";

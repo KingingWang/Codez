@@ -260,7 +260,7 @@ type ProviderFamilyConnectionMode = "oauth" | "apiKey";
 ```
 
 The mode is persisted as an app-level UI preference in
-`AppSettings.modelProviderFamilyModes`, stored in `~/.zcode/v2/setting.json`:
+`AppSettings.modelProviderFamilyModes`, stored in `~/.codez/v2/setting.json`:
 
 ```json
 {

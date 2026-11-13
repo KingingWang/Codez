@@ -8,7 +8,7 @@
 
 ## Windows：创建时建立归属
 
-Windows 10 / Server 2016 及以上使用原生 `zcode-runtime-host.exe`：创建独立、唯一命名的 Job，启用 `KILL_ON_JOB_CLOSE`；通过 `PROC_THREAD_ATTRIBUTE_JOB_LIST` 在创建 CLI 时归组，主线程保持挂起。Host 完成协议和生命周期监听后发出 start，原生宿主恢复主线程并确认 started。归组失败则拒绝启动，不回退到 PID/PPID/CIM 推断。
+Windows 10 / Server 2016 及以上使用原生 `codez-runtime-host.exe`：创建独立、唯一命名的 Job，启用 `KILL_ON_JOB_CLOSE`；通过 `PROC_THREAD_ATTRIBUTE_JOB_LIST` 在创建 CLI 时归组，主线程保持挂起。Host 完成协议和生命周期监听后发出 start，原生宿主恢复主线程并确认 started。归组失败则拒绝启动，不回退到 PID/PPID/CIM 推断。
 
 ```mermaid
 sequenceDiagram
@@ -69,9 +69,9 @@ stderr 保留至流关闭或根退出后的 250ms 有界 drain，并使用旧 ru
 
 ```powershell
 cmake -S scripts/windows-runtime-host -B .tmp/runtime-host -A x64
-cmake --build .tmp/runtime-host --config Release --target zcode-runtime-host zcode-runtime-host-acceptance
+cmake --build .tmp/runtime-host --config Release --target codez-runtime-host codez-runtime-host-acceptance
 pnpm exec esbuild packages/services/src/windows-runtime-host/index.ts --bundle --platform=node --format=cjs --outfile=.tmp/runtime-host/Release/adapter.cjs
-.tmp/runtime-host/Release/zcode-runtime-host-acceptance.exe .tmp/runtime-host/Release/zcode-runtime-host.exe
+.tmp/runtime-host/Release/codez-runtime-host-acceptance.exe .tmp/runtime-host/Release/codez-runtime-host.exe
 node scripts/windows-runtime-host/host-acceptance.cjs .tmp/runtime-host/Release
 ```
 

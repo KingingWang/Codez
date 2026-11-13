@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { ConversationRowView } from "@/v4/ConversationRowView";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider";
+import { CodezIntlProvider } from "@/i18n/IntlProvider";
 import { ServiceProvider } from "@/hooks/useServices";
 import { PlatformProvider } from "@/hooks/usePlatform";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -106,7 +106,7 @@ function App() {
   );
   return (
     <ServiceProvider services={services as any}>
-      <ZCodeIntlProvider initialLocale="zh-CN">
+      <CodezIntlProvider initialLocale="zh-CN">
         <PlatformProvider platform={platform}>
           <TooltipProvider>
             <main data-owner={owner} className="min-h-screen bg-background p-8 text-foreground">
@@ -117,7 +117,7 @@ function App() {
             </main>
           </TooltipProvider>
         </PlatformProvider>
-      </ZCodeIntlProvider>
+      </CodezIntlProvider>
     </ServiceProvider>
   );
 }

@@ -213,13 +213,13 @@ Lint 的 671 条既有警告均不在本次改动文件。测试及 JSON 格式�
 
 ```bash
 # 正式场景集合；默认继续排除候选和不满足环境门禁的远程 case。
-pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/conversation-session/queue/**/*.test.ts'
+pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/conversation-session/queue/**/*.test.ts'
 
 # 单个正式用例。
-pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/conversation-session/composer/conversation-session-first-send.test.ts'
+pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/conversation-session/composer/conversation-session-first-send.test.ts'
 
 # 候选转正预览：保留 editing 场景，不自动批准 review。
-pnpm --filter @zcode/desktop e2e:promote -- --spec './test/e2e/conversation-session/editing/manual-review/pending/conversation-session-edit.test.ts'
+pnpm --filter @codez/desktop e2e:promote -- --spec './test/e2e/conversation-session/editing/manual-review/pending/conversation-session-edit.test.ts'
 ```
 
 ## 迁移验收

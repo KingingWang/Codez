@@ -80,8 +80,8 @@ export class E2EFailureArtifactCollector {
   constructor(options: E2EFailureArtifactCollectorOptions) {
     this.artifactDir = resolve(options.artifactDir);
     this.browser = options.browser;
-    this.enabled = options.enabled ?? process.env.ZCODE_E2E_FAILURE_ARTIFACTS === "1";
-    this.workerId = sanitizeFilePart(options.workerId ?? process.env.ZCODE_E2E_WORKER_ID ?? "main");
+    this.enabled = options.enabled ?? process.env.CODEZ_E2E_FAILURE_ARTIFACTS === "1";
+    this.workerId = sanitizeFilePart(options.workerId ?? process.env.CODEZ_E2E_WORKER_ID ?? "main");
   }
 
   async start(test: E2EFailureArtifactTest): Promise<void> {
@@ -116,25 +116,25 @@ export class E2EFailureArtifactCollector {
       activeCapture.recorder = await startElectronWindowRecording({
         browser: this.browser,
         captureTimeoutMs: readTimeoutEnv(
-          "ZCODE_E2E_FAILURE_VIDEO_CAPTURE_TIMEOUT_MS",
+          "CODEZ_E2E_FAILURE_VIDEO_CAPTURE_TIMEOUT_MS",
           DEFAULT_FAILURE_VIDEO_CAPTURE_TIMEOUT_MS,
         ),
         encodeTimeoutMs: readTimeoutEnv(
-          "ZCODE_E2E_FAILURE_VIDEO_ENCODE_TIMEOUT_MS",
+          "CODEZ_E2E_FAILURE_VIDEO_ENCODE_TIMEOUT_MS",
           DEFAULT_FAILURE_VIDEO_ENCODE_TIMEOUT_MS,
         ),
         frameDir: join(caseDir, "frames"),
         frameIntervalMs: readDurationEnv(
-          "ZCODE_E2E_FAILURE_VIDEO_FRAME_INTERVAL_MS",
+          "CODEZ_E2E_FAILURE_VIDEO_FRAME_INTERVAL_MS",
           DEFAULT_FAILURE_VIDEO_FRAME_INTERVAL_MS,
         ),
         outputPath: join(caseDir, "video.webm"),
         preRollDurationMs: readDurationEnv(
-          "ZCODE_E2E_FAILURE_VIDEO_PRE_ROLL_MS",
+          "CODEZ_E2E_FAILURE_VIDEO_PRE_ROLL_MS",
           DEFAULT_FAILURE_VIDEO_PRE_ROLL_MS,
         ),
         stopTimeoutMs: readTimeoutEnv(
-          "ZCODE_E2E_FAILURE_VIDEO_STOP_TIMEOUT_MS",
+          "CODEZ_E2E_FAILURE_VIDEO_STOP_TIMEOUT_MS",
           DEFAULT_FAILURE_VIDEO_STOP_TIMEOUT_MS,
         ),
       });
@@ -173,7 +173,7 @@ export class E2EFailureArtifactCollector {
     try {
       const recordingResult = await activeCapture.recorder?.stop({
         tailDurationMs: readDurationEnv(
-          "ZCODE_E2E_FAILURE_VIDEO_TAIL_MS",
+          "CODEZ_E2E_FAILURE_VIDEO_TAIL_MS",
           DEFAULT_FAILURE_VIDEO_TAIL_MS,
         ),
       });

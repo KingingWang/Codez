@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { completeNewModelSelection, validateModelSelectionOptions } from "@zcode/provider";
+import { completeNewModelSelection, validateModelSelectionOptions } from "@codez/provider";
 import {
   SessionControlError,
   type AccessGrant,
@@ -8,18 +8,18 @@ import {
   type AppSessionRef,
   type AppTrustedContext,
   type MutationResult,
-} from "@zcode/session-control/contracts";
+} from "@codez/session-control/contracts";
 import {
   type CommandAck,
   type CommandEnvelope,
   type CommandPayloadMap,
   type ConversationSnapshot,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import type { ProjectDirectories, ProjectTask } from "#src/project/contract.js";
 import type { AppControlServiceDependencies } from "#src/app-control/contract.js";
 import { getAppControlBinding } from "#src/app-control/context.js";
 import { observeAppConversation } from "#src/app-control/observation.js";
-import { withTrustedZCodeAgentV4Connection } from "#src/zcode-agent/zcodeAgentConnectionScope.js";
+import { withTrustedCodezAgentV4Connection } from "#src/codez-agent/codezAgentConnectionScope.js";
 
 export function appControlCommandId(context: AppTrustedContext, requestId: string): string {
   return `app-control-${createHash("sha256")
@@ -174,7 +174,7 @@ export function createAppExecutionPorts(
   ) {
     const binding = getAppControlBinding(context);
     return deps.agent.sendConversationCommandV4(
-      withTrustedZCodeAgentV4Connection(
+      withTrustedCodezAgentV4Connection(
         { ...target, ...(projectId !== undefined ? { projectId } : {}), envelope },
         { connectionId: binding.connectionId, clientMode: "desktop-continuous" },
       ),

@@ -5,8 +5,8 @@ import {
   ZAI_PROVIDER_ID,
 } from "./oauth.js";
 import { BUILTIN_MODEL_PROVIDER_IDS, type BuiltinModelProviderId } from "./model-provider-types.js";
-import { ZCODE_ENV } from "./env.js";
-import { buildBigModelCodingPlanTeamManageUrl } from "./zcodeEndpoint.js";
+import { CODEZ_ENV } from "./env.js";
+import { buildBigModelCodingPlanTeamManageUrl } from "./codezEndpoint.js";
 
 export type ModelProviderFamilyId = "zai" | "bigmodel";
 export type ProviderFamilyDomain = ModelProviderFamilyId;
@@ -47,7 +47,7 @@ export const MODEL_PROVIDER_FAMILY_SPECS = [
     startPlanProviderId: BUILTIN_MODEL_PROVIDER_IDS.bigmodelStartPlan,
     individualCodingPlanProviderId: BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan,
     teamCodingPlanProviderId: BUILTIN_MODEL_PROVIDER_IDS.bigmodelTeamCodingPlan,
-    teamCodingPlanManageUrl: buildBigModelCodingPlanTeamManageUrl({ ZCODE_ENV }),
+    teamCodingPlanManageUrl: buildBigModelCodingPlanTeamManageUrl({ CODEZ_ENV }),
   },
 ] as const satisfies readonly ModelProviderFamilySpec[];
 
@@ -135,7 +135,7 @@ export function resolveProviderFamilyDomainFromOAuthProvider(
  *
  * Bug 原因：`zai_cn` 不是套餐家族，上面的映射返回 null。国内新账号没有 BigModel 关联时，
  * Start 找不到所属家族，被判为未连接并要求登录，设置页还同时显示两个 Start 入口。
- * Start 是 ZCode 用户级权益，只需要 ZCode JWT；国内登录的 Start 固定属于 BigModel，
+ * Start 是 Codez 用户级权益，只需要 Codez JWT；国内登录的 Start 固定属于 BigModel，
  * 与 v3.17.2 国内入口（BigModel 直登）一致。付费套餐仍使用上面的家族映射与关联材料。
  */
 export function resolveStartPlanFamilyFromOAuthProvider(

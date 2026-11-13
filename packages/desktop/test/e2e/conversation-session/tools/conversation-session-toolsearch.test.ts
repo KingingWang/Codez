@@ -1,4 +1,4 @@
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import { skipOccupationOnboardingIfPresent } from "#e2e/helpers/occupation-onboarding";
 import {

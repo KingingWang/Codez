@@ -31,7 +31,7 @@ Provider 和 Model 的配置分别解决不同问题，最后在同一个模型�
 Provider Config 路径                              Model Config 路径
 ====================                              =================
 
-Provider Templates + Account Providers            ZCode Built-in Model Config Rules
+Provider Templates + Account Providers            Codez Built-in Model Config Rules
                 |                                                  |
                 v                                                  +
       Account Provider Config                      Personal Model Config Rules
@@ -74,13 +74,13 @@ Provider 的生效顺序固定为：
 
 ```ts
 effectiveProviders = resolveProviderTemplates(
-  zcodeBuiltinProviderTemplates,
-  zcodeBuiltinAccountProviders.overlay(accountProviders),
+  codezBuiltinProviderTemplates,
+  codezBuiltinAccountProviders.overlay(accountProviders),
   personalProviders,
 );
 ```
 
-- ZCode Built-in 提供普通 Provider Template 与 Account Provider 静态基线；
+- Codez Built-in 提供普通 Provider Template 与 Account Provider 静态基线；
 - Account 只投影账号连接与套餐造成的动态约束；
 - Personal 最后生效，表达用户显式配置；
 - `undefined` 表示本层不覆盖，`null` 表示本层显式清除，具体值表示显式覆盖；
@@ -156,7 +156,7 @@ Anthropic 时，才选择该入口实际支持且验证最充分的其他 Schema
 写入边界接收稀疏 Config；执行边界只接收经过完整性证明的类型。完整类型是同一份 Config 的类型收窄，
 不是另一套 DTO，也不是第二个 Registry。
 
-Model 的字段以 `@zcode/shared/model-config` 的完整数据 schema 为唯一来源；稀疏 schema 从同一字段派生
+Model 的字段以 `@codez/shared/model-config` 的完整数据 schema 为唯一来源；稀疏 schema 从同一字段派生
 缺省/null 覆盖语义。构造输入、JSON 输出及 Registry 完整类型使用 schema 推导，行为类只保留冻结、overlay
 和序列化行为。完整性检查复用该 schema，不再手写第二份字段/值域检查表。纯数据 schema 不引用行为类，
 避免 codec 与类之间循环依赖。Provider/API/Access 同样由 `config/provider-data-schema.ts` 提供单一数据合同；
@@ -225,7 +225,7 @@ interface ProviderConfig {
 | `logo`             | 展示资源 key，未知 key 回退通用图标                              |
 | `access`           | 调用所需访问材料的静态取得方式                                   |
 | `api`              | 最终 API Schema、Base URL 和静态 Header                          |
-| `builtinModelIds`  | ZCode 或 Account 层拥有的模型成员                                |
+| `builtinModelIds`  | Codez 或 Account 层拥有的模型成员                                |
 | `personalModelIds` | Personal 层拥有的模型成员                                        |
 | `modelOrder`       | 用户对最终成员集合表达的总顺序意图                               |
 | `visibility`       | Provider 是否进入普通设置/选择投影；不影响内部精确 Registry 查找 |
@@ -338,7 +338,7 @@ Patch；Adapter 只在 AI SDK 生成基础 Body 后、请求安全校验前应�
 
 Resolver 负责：
 
-1. 只允许 Account Overlay 作用于 ZCode Built-in Provider；
+1. 只允许 Account Overlay 作用于 Codez Built-in Provider；
 2. 计算 `Built-in -> Account -> Personal` 的 Effective Provider；
 3. 组合 Effective Model Rules；
 4. 解析最终模型成员、来源和顺序；
@@ -430,7 +430,7 @@ Provider Config，并被 Registry、ModelFactory 和 Runtime 消费。隐藏是�
 - 保留两家 Start Provider ID，统一显示名称，logo 各自沿用 Z.ai／BigModel。按当前品牌过滤，在现有“智谱”分组独立展示，复用详情，只去掉连接／断开。无虚拟 Provider、ID 合并或展示身份映射。
 - 保留 current，解释为匹配当前账号访问上下文。Start 不依赖付费 selection；个人／团队仍依赖当前付费选择。允许 Start 与一个付费套餐同时 current=true；权益、模型完整性、启用及请求凭据独立校验。Start connectionKey 不包含付费选择。
 - Start 按保存的 Provider ID／modelId／options 解析，退出唯一当前付费连接映射；个人／团队继续原映射。Start 失效或跨品牌后不自动替换 Provider。
-- Start 请求直接复用当前对应品牌登录的 zcodeJwtToken，解除 selection.kind 必须等于 Start 的条件；保留原鉴权，不复制 token、不新增切账号竞态校验或中断机制。
+- Start 请求直接复用当前对应品牌登录的 codezJwtToken，解除 selection.kind 必须等于 Start 的条件；保留原鉴权，不复制 token、不新增切账号竞态校验或中断机制。
 - 不迁移模型数据，不建立升级连接快照、额外迁移版本或全库转换。旧 kind:start-plan 保持可读而不控制 Start 执行；不再写此值启用 Start。首次付费初始化保持原顺序，旧值不得被当成新用户空态误选套餐。
 - 提交／创建时，若当前为付费套餐、同模型在 Start 有明确可用额度且思考选项兼容，提示“切换套餐／不了”和“不再提示”。切换只修改当前入口的模型选择，再继续原提交／保存，不改变全局付费连接；未知额度不阻断原提交。
 - 推荐覆盖对话新提交、定时任务创建／修改模型保存、Wiki 手动新生成，以及自定义 Subagent 保存、内置／插件 Subagent 显式模型的即时保存。继承／默认不变。Bot、立即运行、后台触发／执行、闲时、已提交队列执行、原请求重试及 Wiki 失败页补齐不提示；保存并运行仅在保存阶段提示一次。
@@ -536,7 +536,7 @@ Guide 携带选择时仍通过现有 Factory 重新解析并创建 Model，保�
 
 每个真正执行模型的 Environment 拥有自己的：
 
-- ZCode Built-in Config Source；
+- Codez Built-in Config Source；
 - Personal Config Repository；
 - Account Provider Source；
 - Resolver、Registry 和 ModelFactory。
@@ -550,7 +550,7 @@ Local、SSH、WSL、Docker 或 Server 由各自 Host/Worker 读取本环境配�
 - Source watcher 只通知“事实可能变化”；Registry Service 重新读取完整 Config 与 Account 快照后一次性解析发布。
 - 刷新期间继续服务上一份完整 Registry；失败不发布半成品，后续事件必须能够自愈重试。
 - Built-in 远端发布使用两层结构：版本/刷新元数据外壳 + 纯 Provider/Model Config 内容。
-- Built-in 活跃缓存按 ZCode Endpoint 隔离，避免不同 Environment 复用错误配置。
+- Built-in 活跃缓存按 Codez Endpoint 隔离，避免不同 Environment 复用错误配置。
 - 设置写入完成后，执行入口必须观察到对应 Environment 的新 Registry；连接测试应通过正式 Host
   Registry/ModelFactory 创建模型，不能在 Renderer 临时拼装另一个 Model。
 
@@ -558,11 +558,11 @@ Local、SSH、WSL、Docker 或 Server 由各自 Host/Worker 读取本环境配�
 
 领域名称固定为：
 
-- ZCode Built-in Provider Config；
+- Codez Built-in Provider Config；
 - Account Provider Config；
 - Personal Provider Config；
 - Effective Provider Config；
-- ZCode Built-in Model Config Rules；
+- Codez Built-in Model Config Rules；
 - Personal Model Config Rules；
 - Effective Model Config Rules；
 - Effective Model Config。
@@ -582,10 +582,10 @@ Personal 文件为 `{ schemaVersion: 1, config }`：config 内 `providerConfigRu
 ```text
 runtime/provider/
   <platform>/<appVersion>/<endpoint-key>/
-    zcode-builtin.json
-    zcode-builtin-refresh.json
+    codez-builtin.json
+    codez-builtin-refresh.json
   provisioning.json
-  bundled/zcode-builtin.json
+  bundled/codez-builtin.json
 ```
 
 随包副本固定路径，内容相同复用、变化原子替换；下载/刷新仍三维隔离。升级以退出旧进程为前提，不保留 hash 历史副本。
@@ -628,8 +628,8 @@ runtime/provider/
 
 ## 10. 核心不变量
 
-1. Provider 静态事实只有 ZCode Built-in、Account Overlay 和 Personal Overlay 三层来源。
-2. Model 静态事实只有 ZCode Built-in Rules 与 Personal Rules；Personal 在后，精确 Personal 最后。
+1. Provider 静态事实只有 Codez Built-in、Account Overlay 和 Personal Overlay 三层来源。
+2. Model 静态事实只有 Codez Built-in Rules 与 Personal Rules；Personal 在后，精确 Personal 最后。
 3. Effective Model Config 必须在 Effective Provider 的 API 上下文中解析。
 4. Settings 与 Registry 来自同一次 Resolver 解析；Settings 不从 Registry 反推不完整配置。
 5. Registry 只含完整可执行项，但 hidden Provider 仍可被内部精确执行。

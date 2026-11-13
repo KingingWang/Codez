@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
-import { TID_LOGIN_TRIGGER } from "@zcode/shared/test-ids";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
+import { TID_LOGIN_TRIGGER } from "@codez/shared/test-ids";
 import {
   clearAppData,
   DEFAULT_WORKSPACE,

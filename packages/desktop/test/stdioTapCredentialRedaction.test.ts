@@ -24,7 +24,7 @@ describe("stdio tap credential boundary", () => {
       const child = spawn(
         process.execPath,
         [
-          resolve("scripts/dev/zcode-stdio-tap.mjs"),
+          resolve("scripts/dev/codez-stdio-tap.mjs"),
           "--workspace-key",
           "test",
           "--log-dir",

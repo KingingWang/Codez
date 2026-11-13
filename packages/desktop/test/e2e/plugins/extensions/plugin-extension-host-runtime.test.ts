@@ -1,5 +1,5 @@
 // PLM-EXT-2A：扩展进程基础设施与插槽（docs/plugins/extension-host.md §6、§12、§15、§16.1、§16.2）。
-// 隔离 HOME：fixture 插件复制到 E2E HOME，经 ~/.zcode/cli/config.json 的 plugins.dirs 加载。
+// 隔离 HOME：fixture 插件复制到 E2E HOME，经 ~/.codez/cli/config.json 的 plugins.dirs 加载。
 // 运行时证据取自 Main 日志（[extension-host] 前缀）与 fixture 写出的状态文件。
 import { cp, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
@@ -12,7 +12,7 @@ import {
   TID_SIDE_PANE_EXTENSIONS_STOPPED,
   TID_SIDE_PANE_EXTENSION_PROBLEM,
   TID_SIDE_PANE_EXTENSION_VIEW_ITEM,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -70,7 +70,7 @@ const ENV_ALLOWLIST = new Set([
   "APPDATA",
   "LOCALAPPDATA",
   "NODE_ENV",
-  "ZCODE_PROCESS_LABEL",
+  "CODEZ_PROCESS_LABEL",
 ]);
 /**
  * 系统在子进程启动时注入的键，不来自 Window Host 的环境（见 docs/plugins/extension-host.md §12.1）：
@@ -95,7 +95,7 @@ async function seedExtensionFixtures(): Promise<void> {
   for (const name of PLUGINS) {
     await cp(join(FIXTURE_ROOT, name), join(target, name), { recursive: true, force: true });
   }
-  const configPath = join(getE2EAppDataPaths().homeDir, ".zcode", "cli", "config.json");
+  const configPath = join(getE2EAppDataPaths().homeDir, ".codez", "cli", "config.json");
   const config = JSON.parse(await readFile(configPath, "utf8").catch(() => "{}")) as Record<
     string,
     unknown
@@ -125,7 +125,7 @@ async function seedExtensionFixtures(): Promise<void> {
 
 async function readMainLog(): Promise<string[]> {
   const logDir =
-    process.env.ZCODE_E2E_RUNTIME_LOG_DIR?.trim() || join(resolveE2EStorageRoot(), "v2", "logs");
+    process.env.CODEZ_E2E_RUNTIME_LOG_DIR?.trim() || join(resolveE2EStorageRoot(), "v2", "logs");
   const names = (await readdir(logDir).catch(() => [] as string[]))
     .filter((name) => name.endsWith(".log"))
     .sort();
@@ -275,7 +275,7 @@ function findRow(rows: LauncherRow[], item: string): LauncherRow | undefined {
 describe("PLM-EXT-2A 扩展进程基础设施与插槽", () => {
   after(async () => {
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR ?? process.cwd(), "plm-ext-2a-evidence.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR ?? process.cwd(), "plm-ext-2a-evidence.json"),
       JSON.stringify(evidence, null, 2),
     ).catch(() => undefined);
     await clearAppData();
@@ -420,7 +420,7 @@ describe("PLM-EXT-2A 扩展进程基础设施与插槽", () => {
     expect(envKeys.some((key) => /OTEL|TELEMETRY|OAUTH|SECRET|TOKEN|BIGMODEL/i.test(key))).toBe(
       false,
     );
-    expect(envKeys).toContain("ZCODE_PROCESS_LABEL");
+    expect(envKeys).toContain("CODEZ_PROCESS_LABEL");
 
     // (d) 启动页「扩展」分区：清单非法（悬停带字段路径）、版本不兼容、条目不可用。
     await openLauncher();

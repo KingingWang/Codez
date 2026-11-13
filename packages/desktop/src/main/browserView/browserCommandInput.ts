@@ -1,4 +1,4 @@
-import type { BrowserKeyModifier, BrowserMouseButton } from "@zcode/shared";
+import type { BrowserKeyModifier, BrowserMouseButton } from "@codez/shared";
 import { RESOLVE_SCRIPT } from "./browserCommandScripts.js";
 import type { BrowserPoint, ControlledView } from "./browserCommandTypes.js";
 import { withFocusedFrameSession } from "./browserVirtualClipboard.js";
@@ -302,7 +302,7 @@ function keyText(keyName: string, modifiers: number): string | undefined {
 }
 
 // guest 主 frame 的 CDP Input.dispatchKeyEvent 按整个窗口的焦点路由：guest 没有焦点时按键会落到
-// ZCode 宿主页面（Esc 触发停止会话，Enter/Backspace 改写输入框）。sendInputEvent 直接投给 guest
+// Codez 宿主页面（Esc 触发停止会话，Enter/Backspace 改写输入框）。sendInputEvent 直接投给 guest
 // 自己的 RenderWidgetHost；焦点在跨进程 iframe 时，该 iframe 的 CDP 会话同样不按窗口焦点路由。
 async function dispatchKeyEvent(
   view: ControlledView,

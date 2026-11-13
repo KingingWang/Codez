@@ -9,9 +9,9 @@
 // 运行时证据：Main 日志（fixture 的 E2E_PROJECTS_*）、Window Host 项目树、侧栏 DOM、截图。
 import { cp, mkdir, writeFile } from "node:fs/promises";
 import { join, normalize, resolve } from "node:path";
-import { ServiceChannels } from "@zcode/shared";
-import { EXTENSION_SESSION_CONSENT_REVISION } from "@zcode/shared/extension-host";
-import type { ProjectTree, VirtualProject } from "@zcode/services";
+import { ServiceChannels } from "@codez/shared";
+import { EXTENSION_SESSION_CONSENT_REVISION } from "@codez/shared/extension-host";
+import type { ProjectTree, VirtualProject } from "@codez/services";
 import { DEFAULT_WORKSPACE, clearAppData, getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
 import { resolveE2EStorageRoot } from "#e2e/helpers/e2e-runtime-paths";
 import { restartIntoWorkspacePreservingProfile } from "#e2e/helpers/model-provider-restart-runtime";
@@ -49,7 +49,7 @@ const PROMPTS = {
   later: "E2E_P3C2_LATER: reply with the later marker.",
   recreated: "E2E_P3C2_RECREATED: reply with the recreated marker.",
 } as const;
-const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR ?? process.cwd();
+const artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR ?? process.cwd();
 
 interface CreateResult {
   creation?: string;

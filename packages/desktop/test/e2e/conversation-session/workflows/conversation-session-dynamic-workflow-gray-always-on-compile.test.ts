@@ -26,10 +26,10 @@ import { isOutsideClosedHistory, openClosedHistoryFolds } from "#e2e/helpers/v4-
 // 不起 run。每个 it 开一个新会话：技能是否加载按会话历史判定。
 const WORKFLOW_BLOCK = '[data-workflow-permission-block="true"]';
 const RUN_DIGEST = '[data-workflow-run-digest="true"]';
-// 修复原因：CLI 交给模型的草稿路径是平台原生相对路径，Windows 上为 `.zcode\workflow-drafts\…`；
+// 修复原因：CLI 交给模型的草稿路径是平台原生相对路径，Windows 上为 `.codez\workflow-drafts\…`；
 // 旧常量固定用 `/`，诊断行前缀与 NOTE 在 Windows 上全部匹配不到。这里按平台分隔符拼出期望值。
-const INLINE_DRAFT = join(".zcode", "workflow-drafts", "E2E_DWE_INLINE.dwf.ts");
-const PATH_DRAFT = join(".zcode", "workflow-drafts", "e2e-dwe-path.dwf.ts");
+const INLINE_DRAFT = join(".codez", "workflow-drafts", "E2E_DWE_INLINE.dwf.ts");
+const PATH_DRAFT = join(".codez", "workflow-drafts", "e2e-dwe-path.dwf.ts");
 const FEEDBACK_LEDE = "类型检查未通过，脚本未运行；反馈已交回模型，由它修改后重新提交。";
 
 const triggerOf = (toolCallId: string) => `[data-testid="tool-summary-trigger-${toolCallId}"]`;

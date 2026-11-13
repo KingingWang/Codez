@@ -1,6 +1,6 @@
 # Composer 语音输入
 
-在 Composer 中点击麦克风说话，识别出的文字直接写入输入框。识别由 zcode-server 的 ASR 接口完成，协议见 zcode-server 仓库 `docs/asr.md`。本功能不修改 zcode-server 代码，只依赖其现有能力。
+在 Composer 中点击麦克风说话，识别出的文字直接写入输入框。识别由 codez-server 的 ASR 接口完成，协议见 codez-server 仓库 `docs/asr.md`。本功能不修改 codez-server 代码，只依赖其现有能力。
 
 ## 范围
 
@@ -99,7 +99,7 @@
 
 ##### 权限引导浮层
 
-macOS 的麦克风列表没有「+」按钮，只有请求过权限的 App 才会出现在列表里。用户点过「不允许」，或系统没有弹框就拒绝（签名身份变化、旧版本缺少 entitlement 等），`askForMediaAccess` 都不会再弹框。用户可能在设置页里找不到 ZCode。所以 macOS 提供「重新授权」：只重置 ZCode 自己的麦克风记录，再请求一次，让系统重新弹框。
+macOS 的麦克风列表没有「+」按钮，只有请求过权限的 App 才会出现在列表里。用户点过「不允许」，或系统没有弹框就拒绝（签名身份变化、旧版本缺少 entitlement 等），`askForMediaAccess` 都不会再弹框。用户可能在设置页里找不到 Codez。所以 macOS 提供「重新授权」：只重置 Codez 自己的麦克风记录，再请求一次，让系统重新弹框。
 
 浮层挂在麦克风按钮上（`Popover`，`bg-popover`、`rounded-xl`），不自动消失。点击浮层外部或按 Escape 关闭。浮层打开和关闭都不移动焦点：焦点和光标留在输入框，与「点击按钮不抢输入框焦点」一致。
 
@@ -116,7 +116,7 @@ macOS                                                         Windows
 
 ```text
 renderer 点击「重新授权」
-  │  IPC zcode:reset-microphone-access
+  │  IPC codez:reset-microphone-access
   ▼
 main：读取当前状态
   ├─ granted（例如用户已在系统设置里打开）───────────────▶ granted（不执行 tccutil）
@@ -135,17 +135,17 @@ main：重新读取状态
 | ------------------ | ------------------------------------------------------------------------------------------------------- |
 | `granted`          | 关闭浮层，toast 提示「已开启麦克风权限」。不自动开始录音，用户再次点击按钮开始                          |
 | `denied`           | 保持浮层内容不变                                                                                        |
-| `restart-required` | 浮层改为「需要重启 ZCode」，提供「重启 ZCode」（`DesktopCommandIds.RelaunchApp`）。重启后点击按钮会弹框 |
+| `restart-required` | 浮层改为「需要重启 Codez」，提供「重启 Codez」（`DesktopCommandIds.RelaunchApp`）。重启后点击按钮会弹框 |
 | `failed`           | 打开系统麦克风设置页，浮层保持                                                                          |
 
-- 只重置 ZCode 自己 bundle id 的麦克风记录，不影响其他 App 和其他权限。用户仍需在系统弹框中点「允许」，不会绕过用户的选择。
+- 只重置 Codez 自己 bundle id 的麦克风记录，不影响其他 App 和其他权限。用户仍需在系统弹框中点「允许」，不会绕过用户的选择。
 - 开发版（未打包）的 bundle id 是所有未改名 Electron 共用的 `com.github.Electron`，TCC 记录按路径保存，按 bundle id 重置无效，还会影响其他项目，所以跳过 `tccutil`，只做后面的状态判断。
 - 是否需要重启由重置后的状态决定，不用超时或计时判断：仍是 `denied` 说明当前进程读不到重置结果。
 - 已经是 `granted` 时不重置，避免删掉用户刚给出的授权。
 - 重置在 main 进程串行：上一次「重新授权」还没结束时，后来的请求（例如分屏的另一个输入框）直接等待同一次结果，不会同时执行 `tccutil` 或请求系统授权。
 - 开发版跳过 `tccutil`，状态仍是 `denied` 时同样返回 `restart-required`，但重启后仍是 `denied`。这只影响开发版；保留这条路径是为了让 E2E 能覆盖「需要重启」的浮层。
-- 「重启 ZCode」失败时写 `warn` 日志，浮层保持。
-- 浮层打开时，窗口重新获得焦点（`window` 的 `focus` 事件）就再检查一次权限。结果是 `granted` 时关闭浮层，并 toast 提示「已开启麦克风权限」。这是事件触发，不轮询。用户在系统设置里打开开关后回到 ZCode，浮层会自动关闭。
+- 「重启 Codez」失败时写 `warn` 日志，浮层保持。
+- 浮层打开时，窗口重新获得焦点（`window` 的 `focus` 事件）就再检查一次权限。结果是 `granted` 时关闭浮层，并 toast 提示「已开启麦克风权限」。这是事件触发，不轮询。用户在系统设置里打开开关后回到 Codez，浮层会自动关闭。
 - macOS 在系统设置里修改权限后，当前进程有时仍读到旧状态。此时用户再点「重新授权」会进入 `restart-required`，重启后生效。
 - 日志：main 的 `info` 记录重置结果（`reset microphone access result=…`），`tccutil` 失败记 `warn`。不记录 bundle id 以外的路径信息。
 
@@ -179,7 +179,7 @@ renderer 在采集时统计本次录音的峰值电平。结束录音时按以�
 | 阶段                        | 原因                                            | 提示                                                                                                                                                                                     |
 | --------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 申请 ticket                 | 网络错误、超时                                  | 无法连接语音识别服务，请检查网络                                                                                                                                                         |
-| 申请 ticket                 | HTTP 401 `unauthorized`                         | 不单独提示。ticket 请求经 `NodeApiClient` 携带当前 `zcodejwttoken`，401 会进入全局登录失效流程：清理登录态并弹出「登录已过期」对话框，对话框中有登录按钮。登录态清空后麦克风按钮随之隐藏 |
+| 申请 ticket                 | HTTP 401 `unauthorized`                         | 不单独提示。ticket 请求经 `NodeApiClient` 携带当前 `codezjwttoken`，401 会进入全局登录失效流程：清理登录态并弹出「登录已过期」对话框，对话框中有登录按钮。登录态清空后麦克风按钮随之隐藏 |
 | 申请 ticket / WS 事件       | `rate_limited`、无响应体的 429                  | 语音识别繁忙，请稍后再试                                                                                                                                                                 |
 | 申请 ticket / WS 事件       | `unavailable`、`upstream_unavailable`、HTTP 503 | 语音识别服务暂不可用，请稍后再试                                                                                                                                                         |
 | WS 事件                     | `upstream_timeout`                              | 语音识别超时，请重试                                                                                                                                                                     |
@@ -222,10 +222,10 @@ idle ──点击──▶ requesting ──started──▶ recording ──点
 ## 链路
 
 ```text
-Renderer（packages/ui）                       Window Host（packages/services）           zcode-server
+Renderer（packages/ui）                       Window Host（packages/services）           codez-server
   getUserMedia → AudioWorklet
   → 16kHz 单声道 PCM16，每 100ms 一块（3200B）
-  start(attemptId, language) ───RPC───▶ POST /api/v1/asr/tickets {mode:"realtime"} ─────▶ (Bearer zcodejwttoken)
+  start(attemptId, language) ───RPC───▶ POST /api/v1/asr/tickets {mode:"realtime"} ─────▶ (Bearer codezjwttoken)
                                          WS /api/v1/asr/realtime?ticket=… ────────────────▶
                                          send start{pcm_s16le,16000,1,language}
   ◀──────── onEvent(started) ──────────── ◀ started
@@ -249,7 +249,7 @@ Renderer（packages/ui）                       Window Host（packages/services�
 
 ## 验收
 
-E2E：`packages/desktop/test/e2e/ui-shell/composer/composer-voice-input.test.ts`。麦克风使用 Chromium 假设备（wdio `--use-fake-device-for-media-stream`），zcode-server 由 `test/e2e/helpers/asr-mock-server.ts` 替身在 Electron 启动前接管。
+E2E：`packages/desktop/test/e2e/ui-shell/composer/composer-voice-input.test.ts`。麦克风使用 Chromium 假设备（wdio `--use-fake-device-for-media-stream`），codez-server 由 `test/e2e/helpers/asr-mock-server.ts` 替身在 Electron 启动前接管。
 
 | 用例  | 覆盖                                                                                                            |
 | ----- | --------------------------------------------------------------------------------------------------------------- |
@@ -266,7 +266,7 @@ E2E：`packages/desktop/test/e2e/ui-shell/composer/composer-voice-input.test.ts`
 | VI-04 | `completed` 空文本提示                                                                                          |
 | VI-05 | 系统权限被拒显示引导浮层，「打开系统设置」打开系统麦克风设置（macOS / Windows），不申请 ticket                  |
 | VI-15 | macOS「重新授权」：重置后状态变为未询问，系统弹框允许后关闭浮层并提示已开启                                     |
-| VI-16 | macOS「重新授权」：重置后仍是 `denied`，浮层改为「需要重启 ZCode」                                              |
+| VI-16 | macOS「重新授权」：重置后仍是 `denied`，浮层改为「需要重启 Codez」                                              |
 | VI-17 | 浮层打开时窗口重新获得焦点，权限已开启则关闭浮层                                                                |
 | VI-13 | 经 HTTP 代理：ticket 成功，代理在 WS 握手后丢弃数据帧并断开，提示代理问题，Host 日志记录 `opened` 与 `viaProxy` |
 | VI-14 | 经 HTTP 代理：服务端在 WS 握手阶段返回 403，提示通用失败而不是代理问题，Host 日志 `opened=false`                |
@@ -280,6 +280,6 @@ E2E：`packages/desktop/test/e2e/ui-shell/composer/composer-voice-input.test.ts`
 - 服务端返回错误或在 `completed` 前断开：回到空闲并提示。
 - 静音音频输入：提示没有检测到声音。有声音但服务端返回空文本：提示没有识别到内容。
 - macOS / Windows 拒绝权限：引导浮层的按钮打开对应系统设置页。Linux 设备错误：只显示文字提示。
-- macOS 打包版（需手动验收，E2E 跑开发版且 mock 了系统权限接口）：在系统弹框中点「不允许」后，点「重新授权」能再次弹框；允许后可以录音。重置后当前进程仍读到 `denied` 时，重启 ZCode 后点击按钮能弹框。
+- macOS 打包版（需手动验收，E2E 跑开发版且 mock 了系统权限接口）：在系统弹框中点「不允许」后，点「重新授权」能再次弹框；允许后可以录音。重置后当前进程仍读到 `denied` 时，重启 Codez 后点击按钮能弹框。
 - 每种失败在 Host 或 UI 日志中有一条记录，日志中没有识别文本和凭据。
 - 深浅两套主题、中英文界面下按钮显示正确。

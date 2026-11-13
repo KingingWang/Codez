@@ -7,7 +7,7 @@ import {
   TID_V4_COMPOSER_VOICE_PERMISSION_REAUTHORIZE,
   TID_V4_COMPOSER_VOICE_PERMISSION_RELAUNCH,
   TID_V4_COMPOSER_VOICE_WAVEFORM,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { Button } from "@/components/ui/button.js";
 import {
   Popover,
@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/popover.js";
 import { Spinner } from "@/components/ui/spinner.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import type {
   ComposerVoiceInput,
   MicrophonePermissionGuide,
@@ -84,11 +84,11 @@ const VoiceInputWaveform = memo(function VoiceInputWaveform(props: {
 
 /**
  * 麦克风权限引导浮层内容（docs/chat/composer-voice-input.md「权限引导浮层」）。
- * mac：打开系统设置 + 重新授权；重置后仍需重启时只提供重启 ZCode。Windows：只有打开系统设置。
+ * mac：打开系统设置 + 重新授权；重置后仍需重启时只提供重启 Codez。Windows：只有打开系统设置。
  */
 function MicrophonePermissionGuideContent(props: { guide: MicrophonePermissionGuide }) {
   const { guide } = props;
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const restart = guide.phase === "restart-required";
   const mac = guide.os === "mac";
   return (
@@ -169,7 +169,7 @@ export const VoiceInputButton = memo(function VoiceInputButton(props: {
   subscribeLevel: ComposerVoiceInput["subscribeLevel"];
   permissionGuide: MicrophonePermissionGuide;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const title = intl.formatMessage({ id: TITLE_IDS[props.state] });
   const active = props.state !== "idle";
   const guide = props.permissionGuide;

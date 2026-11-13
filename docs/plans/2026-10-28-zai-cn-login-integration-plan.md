@@ -1,10 +1,10 @@
-# ZCode 中国区登录与关联套餐接入计划
+# Codez 中国区登录与关联套餐接入计划
 
-当前技术方案见[分区登录与账号关联技术方案](../zcode-login-rework.md)。本文件保留逐文件影响分析、候选验收场景与联调证据，作为实施附件。
+当前技术方案见[分区登录与账号关联技术方案](../codez-login-rework.md)。本文件保留逐文件影响分析、候选验收场景与联调证据，作为实施附件。
 
 状态：客户端实施与本地合成验收已落地；真实账号/上游接口及目标设备验收尚未闭环。用户已确认按现有OAuth实现、无升级弹窗、不强退、单按钮区域切换。早期分析和问题表作为历史保留，当前状态以文末“完整性核对”及后端确认补充为准。
 
-**目标：** 保留单个授权按钮和国内／海外切换，国内走 `zai_cn`，海外走 `zai`；同手机号的原 BigModel 用户继续使用服务端返回的原 ZCode 业务身份，并能访问已关联套餐。
+**目标：** 保留单个授权按钮和国内／海外切换，国内走 `zai_cn`，海外走 `zai`；同手机号的原 BigModel 用户继续使用服务端返回的原 Codez 业务身份，并能访问已关联套餐。
 
 **架构：** 登录身份由 OAuth Host 管理；套餐凭据是该身份下的关联材料。Renderer 消费安全投影，Provider/请求服务按用途读取对应凭据，不再用登录渠道代替套餐归属。沿用现有 OAuth flow、状态代次、请求期 Project Token 与跨 Environment 同步边界。
 
@@ -21,7 +21,7 @@
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
 | [登录产品需求](https://internal-docs.example.invalid/redacted)                                                                                                 | Z.ai 登录；国内外入口；身份与订阅解耦；关联 BigModel；Start Plan 独立                         | 其中一方登录等旧状态不能覆盖后续讨论                            |
 | [10 月 27 日技术结论](https://applink.feishu.cn/client/thread/open?open_chat_id=oc_98e0ff89c4dc5713084e01906ddd4675&open_thread_id=omt_198595573ecedba3&thread_position=-1) | 加 `zai_cn`；关联 BigModel JWT/customer ID；客户端用关联材料访问 MaaS；处理无关联新用户       | 上游按手机号关联，客户端不自行匹配或合并账号                    |
-| [10 月 28 日部署通知](https://applink.feishu.cn/client/chat/open?openChatId=oc_98e0ff89c4dc5713084e01906ddd4675&position=88)                                                | 测试环境已部署；同手机号关联；新增 `GET /api/v1/oauth/profile`，接受 ZCode 或 Z.ai 一方 token | 通知只展示 profile 的主要字段，不能据此推断 token/poll 完整响应 |
+| [10 月 28 日部署通知](https://applink.feishu.cn/client/chat/open?openChatId=oc_98e0ff89c4dc5713084e01906ddd4675&position=88)                                                | 测试环境已部署；同手机号关联；新增 `GET /api/v1/oauth/profile`，接受 Codez 或 Z.ai 一方 token | 通知只展示 profile 的主要字段，不能据此推断 token/poll 完整响应 |
 | [10 月 28 日接口说明](https://applink.feishu.cn/client/chat/open?openChatId=oc_98e0ff89c4dc5713084e01906ddd4675&position=89)                                                | 联调中接口可能调整                                                                            | 需要保存实际响应结构及 request ID 的脱敏证据                    |
 | [MaaS Key 讨论](https://applink.feishu.cn/client/thread/open?open_chat_id=oc_0a7ae672b9641d413522b9e4b9c1b207&open_thread_id=omt_1984d0d9fdcf9b7f&thread_position=26)       | 返回全部 Key ID 和 name；删除的 Key 不返回；选择应稳定                                        | 不表示应恢复长期 API Key 作为模型请求凭据                       |
 | [迁移技术草案](https://internal-docs.example.invalid/redacted)                                                                                                 | 区域配置独立，使用返回的业务 user ID，复用 CLI flow；旧客户端兼容                             | 批量预建、停止旧注册、建议接口不是本轮已执行事实                |
@@ -34,8 +34,8 @@
 ### 2.1 已确认要做
 
 1. 中国区 OAuth 全链路可识别，授权、回调、轮询、恢复使用同一区域配置。
-2. 同一 ZCode 账号下读取关联的 Z.ai／BigModel 资料，缺失关联不冒充第二次登录。
-3. 使用 `user.user_id` 作为 ZCode 业务身份，保留原会话、设备和业务数据归属。
+2. 同一 Codez 账号下读取关联的 Z.ai／BigModel 资料，缺失关联不冒充第二次登录。
+3. 使用 `user.user_id` 作为 Codez 业务身份，保留原会话、设备和业务数据归属。
 4. 用关联 BigModel JWT/customer ID 请求相应套餐接口；不要求用户为了查询已关联权益再次登录 BigModel。
 5. 模型设置可以表达登录账号拥有的关联套餐，而不是简单隐藏另一登录渠道对应的整个套餐家族。
 6. 保留原有 Start Plan、手工 API Key、旧登录兼容、取消／失败重试和真实错误边界。
@@ -43,7 +43,7 @@
 
 ### 2.2 不能顺手扩大
 
-- 不在客户端按手机号或邮箱合并账号，不生成“猜测的”ZCode user ID。
+- 不在客户端按手机号或邮箱合并账号，不生成“猜测的”Codez user ID。
 - 不执行服务端批量迁移、关停 BigModel 注册、生产发布或数据库改造。
 - 不删除旧 `bigmodel` 协议支持；新版入口隐藏与旧版本协议兼容是两件事。
 - 不把 `zai_cn` 直接定义为第三个完整模型家族，也不将其无条件映射到海外 `zai` 或 `bigmodel`。
@@ -58,10 +58,10 @@
 | -------------------- | ------------------------------------------------------------- | ------------------------------------ | ------------------------------------ |
 | 登录区域             | 登录页选择 domestic/global                                    | 决定发起 `zai_cn`／`zai`             | 语言不是已经认证的区域证据           |
 | OAuth provider       | flow/state 绑定及成功结果                                     | 选择协议配置、恢复和退出             | 不能只根据回调 URL 或按钮文案改写    |
-| ZCode user ID        | 登录/profile 的 `user.user_id`                                | 会话、设备、权限等业务身份           | 不用上游 `sub`、customer ID 覆盖     |
-| 上游 Z.ai user ID    | 返回的 `zai.user_id`                                          | 上游账号身份与关联校验               | 不当作 ZCode 业务 ID                 |
-| BigModel customer ID | 返回的 `bigmodel.customer_id`                                 | BigModel 账号／套餐调用所需身份      | 不写成第二个已登录 ZCode 用户        |
-| ZCode JWT            | 登录响应 `token`；现有 `zcodejwttoken`                        | ZCode API、Relay、官方能力的用户身份 | 不发给 BigModel 充当其登录 JWT       |
+| Codez user ID        | 登录/profile 的 `user.user_id`                                | 会话、设备、权限等业务身份           | 不用上游 `sub`、customer ID 覆盖     |
+| 上游 Z.ai user ID    | 返回的 `zai.user_id`                                          | 上游账号身份与关联校验               | 不当作 Codez 业务 ID                 |
+| BigModel customer ID | 返回的 `bigmodel.customer_id`                                 | BigModel 账号／套餐调用所需身份      | 不写成第二个已登录 Codez 用户        |
+| Codez JWT            | 登录响应 `token`；现有 `codezjwttoken`                        | Codez API、Relay、官方能力的用户身份 | 不发给 BigModel 充当其登录 JWT       |
 | Z.ai token           | 当前海外流程先取 OAuth token，再换业务 JWT                    | 仅访问明确匹配的区域和接口           | 中国区能否沿用转换必须实测           |
 | BigModel JWT         | 返回的 `bigmodel.access_token`                                | 关联账号的 MaaS 请求                 | 不用残留的另一个用户 token 兜底      |
 | 套餐家族／选择       | Account Source、`providerFamilyDomain`、connection selections | 指定使用哪个套餐及个人／团队范围     | 不等同于 OAuth 登录 provider         |
@@ -93,7 +93,7 @@ flowchart TD
 | `OAuthService.startOAuthWithPolling()` 与 ready 解析写死两渠道         | 中国区会走错误分支，或把 ready 当作 BigModel 响应解析          |
 | `ZaiProviderAdapter.providerId`、换证 body 固定 `zai`                  | 不能直接复用实例而不修改 provider 绑定                         |
 | 当前 Z.ai 适配器要求 `data.zai.access_token` 并换业务 token            | 部署消息里的 profile 样例不足以证明中国区也满足该契约          |
-| `persistOAuthSession()` 清除另一 provider，repo 特判两渠道共享 JWT     | 新登录可能清错关联材料；中国区可能漏存或漏清 ZCode JWT         |
+| `persistOAuthSession()` 清除另一 provider，repo 特判两渠道共享 JWT     | 新登录可能清错关联材料；中国区可能漏存或漏清 Codez JWT         |
 | `node.ts` 按 family 读取对应 OAuth profile 和 token                    | 当前 `profile.id` 同时被当成套餐账号身份；关联账号需要明确解析 |
 | Root 成功回调按 OAuth provider 改写家族域                              | 中国区目前映射 null；直接增加映射仍不能表达两个关联家族        |
 | 购买鉴权判断要求 active provider 与套餐家族相同                        | 已有关联 JWT 也可能显示未登录，触发错误重登                    |
@@ -120,9 +120,9 @@ flowchart TD
 
 ### T01 定义契约与区域配置
 
-文件：`packages/shared/src/oauth.ts`、`packages/shared/src/zcodeEndpoint.ts`、`packages/services/src/oauth/runtimeConfig.ts`、`packages/services/src/oauth/providers/index.ts`、`packages/services/src/oauth/providers/zaiProviderConfig.ts`。
+文件：`packages/shared/src/oauth.ts`、`packages/shared/src/codezEndpoint.ts`、`packages/services/src/oauth/runtimeConfig.ts`、`packages/services/src/oauth/providers/index.ts`、`packages/services/src/oauth/providers/zaiProviderConfig.ts`。
 
-- 为 `zai_cn` 定义稳定常量及“已支持的 ZCode 登录 provider”判断，避免继续散落二元比较。保留通用 OAuth 扩展类型，不让任意字符串自动得到 ZCode 凭据权限。
+- 为 `zai_cn` 定义稳定常量及“已支持的 Codez 登录 provider”判断，避免继续散落二元比较。保留通用 OAuth 扩展类型，不让任意字符串自动得到 Codez 凭据权限。
 - 复用既有环境配置解析，明确每个区域的 authorize/token/profile/业务 origin、client ID、redirect URI。服务端 flow 返回 authorize URL 时原样打开，不自行拼另一区域参数。
 - 增加中国区 adapter 装配或使现有 Z.ai adapter 接受显式 provider/config；不要复制整份 adapter。
 - 共享层声明安全投影和运行时 schema；Secret 和后端默认配置留在服务层。
@@ -156,7 +156,7 @@ flowchart TD
 
 文件：`packages/services/src/oauth/repo/oauthCredentialRepo.ts`、`packages/services/src/oauth/oauthService.ts`、`packages/services/src/credential/credentialService.ts`、`packages/services/src/oauth/oauthProviderLogout.ts`。
 
-- 一个登录会话保存其 provider、业务 user ID、ZCode JWT 和关联材料。旧 `oauth:*` 键若继续保留，只能是统一 owner 维护的兼容投影，不能成为第二套可独立修改的登录事实。
+- 一个登录会话保存其 provider、业务 user ID、Codez JWT 和关联材料。旧 `oauth:*` 键若继续保留，只能是统一 owner 维护的兼容投影，不能成为第二套可独立修改的登录事实。
 - 不通过伪造一次 BigModel 登录来保存关联 JWT，也不把 BigModel customer ID 写成全局 user ID。
 - `clearActiveSession`／`logoutAll`／损坏恢复须清除本会话所属的全部关联材料；不清无关手工 API Key、Bot、SSH 凭据。
 - 登录快照必须有一致提交边界。当前 Host Credential Service 每个 save/delete 独立加锁，OAuth 队列仅串行本实例；它不能证明多个字段跨进程原子。
@@ -169,7 +169,7 @@ flowchart TD
 文件：`packages/services/src/node.ts`、`packages/services/src/model-provider/accountProviderConnectionResolver.ts`、`accountProviderCredentialService.ts`、`accountProviderRequestAuthService.ts`、`accountProviderApiKeyResolver.ts`、`accountProjectTokenClient.ts`。
 
 - 将 `loadAccountIdentity(family)` 与 `loadOAuthAccessToken(family)` 的二元键选择改为读取同一会话的套餐访问材料。
-- ZCode user ID 用于业务账号；BigModel customer ID 用于关联套餐身份。对外接口实际需要哪一个字段，以请求契约为准，不全局替换 `accountIdentity`。
+- Codez user ID 用于业务账号；BigModel customer ID 用于关联套餐身份。对外接口实际需要哪一个字段，以请求契约为准，不全局替换 `accountIdentity`。
 - 请求期快照需包含登录归属、目标平台/区域、关联身份和个人/团队 scope，IO 前后复核。缓存键增加哪些维度应由是否改变请求身份决定，不把 token 原文放日志或 UI cache key。
 - 继续用 Key ID 定位 → PAT 签发。MaaS 返回的多个 ID 按稳定规则选择；不能每次取不稳定数组第一项，也不能把其当长期 Secret。
 - 现有目标 Key 消失时按原 404/定位失效路径重查；不要主动删除用户 Key，不为每次刷新重复创建 Key。
@@ -192,7 +192,7 @@ flowchart TD
 
 - 购买鉴权不能再要求 `activeProvider === family`；应询问本登录身份是否拥有目标套餐所需材料。
 - 关联 BigModel 返回有效材料时沿用原订阅／团队／续费接口；缺失时按已确认产品行为显示，不能自动登录另一个账号。
-- 官网目标与凭据来源一起解析。不得把中国区 JWT 发给海外端点，也不把 ZCode JWT 当 BigModel JWT。
+- 官网目标与凭据来源一起解析。不得把中国区 JWT 发给海外端点，也不把 Codez JWT 当 BigModel JWT。
 - 已有可信内嵌页面的最小凭据传递继续受 origin、作用域和用户动作约束；不扩张为任意网页可读凭据。
 - 支付后按原订单及登录 attempt 刷新，取消／替换后不能恢复旧订单流程；侧栏升级入口和额度取同一目标套餐。
 
@@ -200,8 +200,8 @@ flowchart TD
 
 文件：`packages/services/src/oauth/oauthUnauthorizedRequest.ts`、`packages/services/src/oauth/oauthService.ts`、`packages/services/src/providers/api/nodeApiClient.ts`、`packages/services/src/oauth/providers/zaiProviderAdapter.ts`。
 
-- 扩展请求分类为“ZCode 身份凭据”“区域身份凭据”“关联套餐凭据”“PAT”，按请求 origin、提交时凭据及当前快照精确识别。
-- ZCode 身份确认失效才走全局退出；关联 BigModel JWT 失效优先刷新／标记该关联。无权限、网络失败、空响应不能一律踢掉 ZCode 登录。
+- 扩展请求分类为“Codez 身份凭据”“区域身份凭据”“关联套餐凭据”“PAT”，按请求 origin、提交时凭据及当前快照精确识别。
+- Codez 身份确认失效才走全局退出；关联 BigModel JWT 失效优先刷新／标记该关联。无权限、网络失败、空响应不能一律踢掉 Codez 登录。
 - 对旧请求的 401 在同一提交边界复核；旧 token 被新 token 替换后，不得删除新会话／新关联。
 - 继续区分 PAT 一次恢复、业务 JWT 恢复和登录刷新；不增加无界重试，不重放已输出内容的模型流。
 - 新响应含 `bigmodel` 后，现有 `sanitizeTokenPayloadForLog()` 的 `...data` 会保留未处理的新字段，存在把关联 JWT 写日志的风险。接入前改成允许字段摘要：provider、阶段、状态、是否存在关联、耗时、request ID，不打印响应原文。
@@ -212,7 +212,7 @@ flowchart TD
 文件：`packages/services/src/official-mcp/officialMcpCredentials.ts`、`packages/shared/src/official-mcp-auth.ts`；核对闲时、高速和请求安全校验调用方。
 
 - 现有官方 MCP 用 `activeProvider === selected.plan.providerFamily` 防止跨账号拼接。新模式下不能只删除这个判断，必须用服务端给出的同一登录快照关联关系替代。
-- ZCode JWT 与关联 MaaS JWT、团队范围必须来自同一会话和当前选择；前后快照检查仍保留。
+- Codez JWT 与关联 MaaS JWT、团队范围必须来自同一会话和当前选择；前后快照检查仍保留。
 - `zai_cn` 加入“有效登录身份”判断后，只有身份、无套餐时仍按原 planOptional 策略处理，不伪造套餐。
 - 静态插件 header 禁止覆盖身份头的保护保持；不修改现有头名和跨语言协议。
 
@@ -223,12 +223,12 @@ flowchart TD
 - 新会话数据必须同时更新 Source allowlist、Target 校验、变更触发及一致性读取；只加 Source 键会让新登录在远端静默不完整。
 - 若现有 v2 schema 不能安全表达新快照，应升级并明确新旧 Target 兼容门禁；不能假定 old Target 会懂新键，不能为兼容降级发送错误身份。
 - 同步经过受信 Host → Target 的既有事务与重新加密，不复制本地密文。远端使用自己的 Registry/ModelFactory，桌面不注入当前模型快照。
-- Relay 继续消费 ZCode 身份和登录事件；登录成功、换账号、退出时分别验证设备和连接行为。关联套餐刷新失败不应误撤销仍有效的手机身份。
+- Relay 继续消费 Codez 身份和登录事件；登录成功、换账号、退出时分别验证设备和连接行为。关联套餐刷新失败不应误撤销仍有效的手机身份。
 - 手机 replayable 与桌面 continuous 不改；手机不能调用 Provisioning 写入口。
 
 ### T11 Web 与独立 CLI 的兼容范围
 
-文件：`packages/web/src/auth/browserOAuthCredentialRepo.ts`、`zaiWebOAuthProvider.ts`、`webZaiOAuthConfig.ts`、`WebLoginPage.tsx`；`apps/zcode-cli/packages/adapters/src/auth/cli-oauth.ts`、`shared-credentials.ts` 及其调用方。
+文件：`packages/web/src/auth/browserOAuthCredentialRepo.ts`、`zaiWebOAuthProvider.ts`、`webZaiOAuthConfig.ts`、`WebLoginPage.tsx`；`apps/codez-cli/packages/adapters/src/auth/cli-oauth.ts`、`shared-credentials.ts` 及其调用方。
 
 - Web 当前 provider union、state、token 解析、localStorage 恢复均只有两渠道；新增中国区入口须一起处理，不能只加按钮。
 - Web `/remote` 与分享登录和桌面共用后端身份，但浏览器存储是独立边界；不能把桌面所有套餐 Secret 原样同步进浏览器。
@@ -242,7 +242,7 @@ flowchart TD
 sequenceDiagram
   participant UI as 登录页
   participant O as OAuth Host
-  participant B as ZCode 后端
+  participant B as Codez 后端
   participant R as Credential Repo
   participant A as Account Source
   UI->>O: start(provider, attempt)
@@ -281,7 +281,7 @@ sequenceDiagram
 | profile 缺少 BigModel 块         | 保持成功       | 未关联或查询失败    | 保留同主体旧关联，不跨主体沿用                     |
 | profile 网络／5xx 失败           | 不直接退出     | 状态未知            | 同账号有效旧快照能否暂用按契约；不得用于新账号     |
 | profile 内容畸形／user ID 不匹配 | 新结果不提交   | 不发布              | 返回明确错误并保留原始类别，不自动合并             |
-| 当前 ZCode 身份确认失效          | 按既有全局退出 | 清该会话关联        | 撤销手机身份；不清无关凭据                         |
+| 当前 Codez 身份确认失效          | 按既有全局退出 | 清该会话关联        | 撤销手机身份；不清无关凭据                         |
 | 关联 JWT 401                     | 未证明全局失效 | 定向刷新／不可用    | 后台按同一会话刷新；原请求不重放，下次操作读新材料 |
 | PAT 被拒绝                       | 不直接退出     | 同 scope 请求期恢复 | 一次预算，已有输出不重放                           |
 | Key 被用户删除                   | 保持登录       | 定位失效            | 重查合法 Key／按明确创建规则处理                   |
@@ -298,7 +298,7 @@ sequenceDiagram
 | Q04 | profile 的关联字段缺失是否明确表示无关联？部分查询失败如何表示？                     | 无关联／上游异常各一份响应                         | 能否删除旧关联与错误展示                  |
 | Q05 | BigModel JWT 有效期与刷新方式？customer ID 类型是否固定字符串？                      | 有效期、刷新、撤销契约                             | 缓存与恢复机制                            |
 | Q06 | 中国区 Z.ai Coding Plan 的 API、项目、支付、模型目录与 JWT 要求？                    | 套餐查询到模型请求的实际契约                       | 是否复用现有家族、Provider ID、业务适配器 |
-| Q07 | 关联 JWT 是否可用于官方 MCP 的双凭据校验？                                           | 同一 ZCode user + 关联 customer 的服务端确认／实测 | 替代当前家族相等守卫的依据                |
+| Q07 | 关联 JWT 是否可用于官方 MCP 的双凭据校验？                                           | 同一 Codez user + 关联 customer 的服务端确认／实测 | 替代当前家族相等守卫的依据                |
 | Q08 | MaaS Key 列表字段、顺序、分页及全删后的行为？                                        | 多 Key／删除后的响应                               | 稳定选择规则与已有 PAT client 的兼容      |
 
 以上为最初的问题分类；后续回复已确认既有接口可用性、缺块语义、CN业务及MCP接受条件。参见“21:05后端回复核对”和当前完整性表。真实过期/撤销及账号映射仍需实测，不从合成响应推导。
@@ -341,11 +341,11 @@ sequenceDiagram
 | PL04 | 无订阅、额度耗尽、接口失败                     | 三种状态不同，不全局登出                      | A，planned              |
 | KY01 | 多 Key 返回顺序变动                            | 稳定选中同一 Key ID                           | U：Q08                  |
 | KY02 | 当前 Key 删除／全删                            | 定向恢复或明确提示；不退回其他账号 Key        | A＋U：Q08               |
-| AU01 | 关联 JWT 401、ZCode JWT 有效                   | 定向处理关联，不误退出                        | A＋U：Q05               |
+| AU01 | 关联 JWT 401、Codez JWT 有效                   | 定向处理关联，不误退出                        | A＋U：Q05               |
 | AU02 | 新登录后旧请求 401                             | 新会话及新 token 保留                         | A，已有 E2E 待扩展      |
 | MC01 | 中国区身份＋合法 BigModel 套餐                 | 官方 MCP 同账号组合鉴权成功；不放宽无关身份   | U：Q07                  |
 | MC02 | 同时更换身份或团队 scope                       | MCP 拒绝混合两代凭据                          | A，planned              |
-| RM01 | 国内登录后手机扫码，随后退出／换账号           | 对应 ZCode 身份连接与撤销；无关联失败不误踢   | A，需桌面＋手机         |
+| RM01 | 国内登录后手机扫码，随后退出／换账号           | 对应 Codez 身份连接与撤销；无关联失败不误踢   | A，需桌面＋手机         |
 | RM02 | 新登录同步到 SSH／WSL／Docker                  | 目标独立保存完整快照，后续模型鉴权正确        | A，需目标运行时         |
 | RM03 | 新 Source 到旧 Target                          | 明确兼容失败或升级；Target 零部分写入         | A，planned              |
 | WB01 | 新 Web provider 回调与多标签页 state           | 对应 provider/nonce 匹配；旧 storage 可读     | U：P01                  |
@@ -368,7 +368,7 @@ sequenceDiagram
 | 4 多端兼容        | T10～T11；远端协议与 CLI/Web 适用项                       | 同步不半写；旧版本行为明确；手机/远端实际验证              |
 | 5 交付            | 最终 diff、文档、必要检查、运行证据                       | 全部本期必要验收通过才提交；未验证项明确保留               |
 
-先更新：`docs/zcode-login-rework.md`、`docs/ui/login-page.md`、`docs/oauth/desktop-oauth-polling.md`。涉及账号家族、PAT、远端、MCP 的契约改变时同步对应现有文档，不再新建互相重复的事实源。
+先更新：`docs/codez-login-rework.md`、`docs/ui/login-page.md`、`docs/oauth/desktop-oauth-polling.md`。涉及账号家族、PAT、远端、MCP 的契约改变时同步对应现有文档，不再新建互相重复的事实源。
 
 代码验证（实施阶段执行，本次计划不宣称已运行）：
 
@@ -376,21 +376,21 @@ sequenceDiagram
 pnpm typecheck
 pnpm lint
 pnpm architecture:check --changed
-pnpm --filter @zcode/desktop typecheck:e2e
+pnpm --filter @codez/desktop typecheck:e2e
 ```
 
 按变更文件执行格式检查及实际 E2E；示例为现有竞态用例：
 
 ```sh
-pnpm --filter @zcode/desktop test:e2e -- --spec ./test/e2e/auth-config/login/oauth-completion-race.test.ts
+pnpm --filter @codez/desktop test:e2e -- --spec ./test/e2e/auth-config/login/oauth-completion-race.test.ts
 ```
 
 若修改 CLI，还执行：
 
 ```sh
-pnpm --dir apps/zcode-cli typecheck
-pnpm --dir apps/zcode-cli lint
-pnpm --dir apps/zcode-cli --filter @zcode/adapters test --run tests/auth.test.ts
+pnpm --dir apps/codez-cli typecheck
+pnpm --dir apps/codez-cli lint
+pnpm --dir apps/codez-cli --filter @codez/adapters test --run tests/auth.test.ts
 ```
 
 CLI 测试命令以实际修改包和其 package scripts 为准；bootstrap／consumer 被影响时追加对应测试。不得只跑上述单个文件就声称 CLI 全链路通过。
@@ -410,7 +410,7 @@ CLI 测试命令以实际修改包和其 package scripts 为准；bootstrap／co
 | resolveOfficialMcpCredentials    | 身份 snapshot → 当前套餐 → 组合 JWT         | must-inspect：安全守卫必须改为可信关联         |
 | createProviderProvisioningSource | allowlist → Target → Remote Store           | must-inspect：新凭据格式的跨版本消费           |
 | Web OAuth／CLI OAuth             | 独立 storage／共享 credential adapter       | conditional：新入口范围；兼容回归必须检查      |
-| Task/Session 持久化              | 消费 ZCode user ID                          | invariant-only：主体延续；无证据不改任务数据库 |
+| Task/Session 持久化              | 消费 Codez user ID                          | invariant-only：主体延续；无证据不改任务数据库 |
 
 当前功能图只有通用 OAuth、pending callback、账号 Provider 与远端同步节点，未完整表达“一个登录主体拥有多个关联套餐”的边。建议在确认语义后补充 capability、关联凭据 owner、安全投影、MCP 与购买门禁的语义边。本次不改图谱，也不把静态可达的所有模块都列成必改代码。
 
@@ -424,18 +424,18 @@ CLI 测试命令以实际修改包和其 package scripts 为准；bootstrap／co
 
 ### 15.1 操作与结果
 
-用户在测试站手动登录，并手动完成 ZCode 授权页的条款确认和授权。以下为同一账号、同一次 `zai_cn` flow 的实际结果。敏感值仅在调试进程内存使用，未保存到本文、fixture 或本地 App 凭据库；不披露手机号、账号 ID 和 token 原文。
+用户在测试站手动登录，并手动完成 Codez 授权页的条款确认和授权。以下为同一账号、同一次 `zai_cn` flow 的实际结果。敏感值仅在调试进程内存使用，未保存到本文、fixture 或本地 App 凭据库；不披露手机号、账号 ID 和 token 原文。
 
 | 请求／操作                                             | 实测结果                                                                                           | 支持的结论                                                                         |
 | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| 测试站自身 `GET /api/v1/auths/`                        | HTTP 200，返回当前账号与站内 session token                                                         | 测试站已登录，不等于已获得 ZCode 业务登录态                                        |
-| 站内 session token → ZCode `GET /api/v1/oauth/profile` | HTTP 401，空响应；附加 `X-token-type: zai` 仍为 401                                                | 本次站内 session token 不能直接用于该接口，不能解释为未关联账号                    |
+| 测试站自身 `GET /api/v1/auths/`                        | HTTP 200，返回当前账号与站内 session token                                                         | 测试站已登录，不等于已获得 Codez 业务登录态                                        |
+| 站内 session token → Codez `GET /api/v1/oauth/profile` | HTTP 401，空响应；附加 `X-token-type: zai` 仍为 401                                                | 本次站内 session token 不能直接用于该接口，不能解释为未关联账号                    |
 | `POST /api/v1/oauth/cli/init`，provider 为 `zai_cn`    | HTTP 200、code 0；返回 `authorize_url`、`expires_at`、`flow_id`、`poll_interval_sec`、`poll_token` | 初始化已支持中国区；本次 polling 间隔为 2 秒                                       |
 | 服务端返回的授权路径                                   | 中国区测试站 `/auth/oauth/authorize`；redirect URI 路径为 `/api/v1/oauth/cli/callback/zai_cn`      | 不能将当前源码的 `/api/oauth/authorize` 直接照搬为中国区地址；应使用 init 返回 URL |
 | 用户完成授权后的 callback                              | 显示“Authorization Successful / 授权成功”                                                          | 浏览器授权成功                                                                     |
-| `GET /api/v1/oauth/cli/poll/{flow_id}`                 | HTTP 200、code 0、status 为 `ready`                                                                | 已取得包含关联材料的真实 ZCode 登录响应                                            |
-| ready 的 `data.token` → `GET /api/v1/oauth/profile`    | HTTP 200、code 0                                                                                   | ZCode JWT 可用于新 profile 接口                                                    |
-| ready 的 `data.zai.access_token` → 同一 profile 接口   | HTTP 401、空响应                                                                                   | 本次 OAuth access token 不能直接替代 ZCode JWT；不据此否定其他“一方 token”入口     |
+| `GET /api/v1/oauth/cli/poll/{flow_id}`                 | HTTP 200、code 0、status 为 `ready`                                                                | 已取得包含关联材料的真实 Codez 登录响应                                            |
+| ready 的 `data.token` → `GET /api/v1/oauth/profile`    | HTTP 200、code 0                                                                                   | Codez JWT 可用于新 profile 接口                                                    |
+| ready 的 `data.zai.access_token` → 同一 profile 接口   | HTTP 401、空响应                                                                                   | 本次 OAuth access token 不能直接替代 Codez JWT；不据此否定其他“一方 token”入口     |
 
 请求定位信息（无凭据）：poll 为 `202610281035373b9777650ab441366b96`；成功 profile 为 `20261028103549878a176ae9eac9bc7624`；OAuth access token 的 401 为 `202610281035569c9140405a42bfb4e7da`。时间均以客户端当日时区理解；请求 ID 原样保留供服务端定位，不按其内部格式推断时间。
 
@@ -448,9 +448,9 @@ CLI 测试命令以实际修改包和其 package scripts 为准；bootstrap／co
   "code": 0,
   "data": {
     "status": "ready",
-    "token": "<ZCode JWT>",
+    "token": "<Codez JWT>",
     "user": {
-      "user_id": "<ZCode user ID>",
+      "user_id": "<Codez user ID>",
       "name": "<display name>",
       "email": "<email>",
       "avatar": "<avatar>"
@@ -475,11 +475,11 @@ profile 使用同一 envelope，但 `data` 没有 `status` 和 `token`，其 `za
 
 ### 15.3 身份与 token 的实测边界
 
-- 本样本有 BigModel 关联；ready 与 profile 的 ZCode user ID、Z.ai user ID、BigModel customer ID 分别一致。
-- 本样本的 ZCode user ID 与 BigModel customer ID 相等；只证明该样本，不作为所有账号的客户端推导规则。
+- 本样本有 BigModel 关联；ready 与 profile 的 Codez user ID、Z.ai user ID、BigModel customer ID 分别一致。
+- 本样本的 Codez user ID 与 BigModel customer ID 相等；只证明该样本，不作为所有账号的客户端推导规则。
 - ready 的 Z.ai user ID 与测试站当前账号 ID 一致；ready 的 OAuth access token 与站内 session token 不同。
 - ready 的 Z.ai OAuth token 有 `iat`、`exp`，本次两者相差 3600 秒；到期时间为北京时间 2026-10-28 19:35:16。返回的 ready 未提供 refresh token 字段，后续刷新仍需核实协议。
-- 本次 ZCode JWT 含 `iat`、`sub`、`user_id`、`token_version`，未观察到 `exp`；BigModel JWT 也未观察到 `exp`。缺 `exp` 不能推导为永久有效，撤销和刷新规则仍由服务端契约决定。
+- 本次 Codez JWT 含 `iat`、`sub`、`user_id`、`token_version`，未观察到 `exp`；BigModel JWT 也未观察到 `exp`。缺 `exp` 不能推导为永久有效，撤销和刷新规则仍由服务端契约决定。
 - 本次 profile 返回的 BigModel JWT 与 ready 相同，只证明该次查询，不能推导所有刷新均不轮换。
 
 ### 15.4 对计划的实际修订
@@ -501,7 +501,7 @@ profile 使用同一 envelope，但 `data` 没有 `status` 和 `token`，其 `za
 - 自动在模型供应商处关联现有账号可用的套餐；不把新关联解读为新登录主体或并行执行模式。
 - 新用户主动登录仍使用已确认的单按钮＋国内／海外切换；用户主动退出与真实认证失效继续按既有语义处理。
 
-新增接口问题 Q09：升级前的 ZCode JWT 是否支持新 profile；若不支持，服务端如何兼容自动补关联且保留现有登录？需要旧版真实凭据的请求结果及服务端契约。第 15 节只验证了新授权，不能作为旧登录兼容证据。
+新增接口问题 Q09：升级前的 Codez JWT 是否支持新 profile；若不支持，服务端如何兼容自动补关联且保留现有登录？需要旧版真实凭据的请求结果及服务端契约。第 15 节只验证了新授权，不能作为旧登录兼容证据。
 
 新增候选验收：
 
@@ -529,7 +529,7 @@ profile 使用同一 envelope，但 `data` 没有 `status` 和 `token`，其 `za
 
 ## 21:05 后端回复核对（后续读取确认）
 
-[后端原文](https://applink.feishu.cn/client/chat/open?openChatId=oc_0ecc69bfb844c018e4f84a8103fa3d41&position=3510) 明确：profile 只依赖 ZCode JWT，存量可访问；缺失 zai/bigmodel 块既可能未关联，也可能查询失败；CN 上游 token 当前无业务用途，关联 BigModel JWT 使用原业务接口；重复 profile 可刷新，官方 MCP 接受；Key 保持现有逻辑。
+[后端原文](https://applink.feishu.cn/client/chat/open?openChatId=oc_0ecc69bfb844c018e4f84a8103fa3d41&position=3510) 明确：profile 只依赖 Codez JWT，存量可访问；缺失 zai/bigmodel 块既可能未关联，也可能查询失败；CN 上游 token 当前无业务用途，关联 BigModel JWT 使用原业务接口；重复 profile 可刷新，官方 MCP 接受；Key 保持现有逻辑。
 
 因此 Q02/Q06 不再要求实现独立 CN 套餐端点；Q04 确认不能由缺块推导解绑；Q05 的刷新方式、Q07 接口接受、Q09 存量兼容获得后端确认。撤销/实际过期样本与旧真实凭据仍需运行时验收，不把口头契约等同实测。现有实现继续正向补关联、缺块保留、不将 CN token 发往海外转换端点。
 
@@ -537,7 +537,7 @@ profile 使用同一 envelope，但 `data` 没有 `status` 和 `token`，其 `za
 
 ## 历史加速卡统计归属：已确认的兼容边界
 
-当前历史卡只有 cardId，healthy 请求读取当前主 JWT，无法证明旧卡属于当前账号。最小候选：Host 根据权威 ZCode user ID 生成稳定、带版本的不可逆 ownerKey，新卡随现有 metadata 保存，经 CLI transcript 恢复；healthy 请求前后验证主身份并使用同一 JWT 快照。ownerKey 不含 token、session revision、套餐/团队，因此同账号重登仍可查自己的卡；不能由当前账号自动认领未知卡。
+当前历史卡只有 cardId，healthy 请求读取当前主 JWT，无法证明旧卡属于当前账号。最小候选：Host 根据权威 Codez user ID 生成稳定、带版本的不可逆 ownerKey，新卡随现有 metadata 保存，经 CLI transcript 恢复；healthy 请求前后验证主身份并使用同一 JWT 快照。ownerKey 不含 token、session revision、套餐/团队，因此同账号重登仍可查自己的卡；不能由当前账号自动认领未知卡。
 
 用户已确认：旧卡没有 ownerKey 时，不再发新的 healthy 查询，保留已有 TPS/分享统计；没有已存统计的旧卡不补查。协议还需处理旧 CLI 的 strict metadata schema：只有支持归属字段的 CLI 才下发新字段，不能让老 Agent 因新增字段拒绝消息。
 
@@ -579,7 +579,7 @@ profile 使用同一 envelope，但 `data` 没有 `status` 和 `token`，其 `za
 | ------ | -------- | ---- |
 | Web CN授权 | 原页通过轮询自动进入设备选择页；新开同源页面恢复登录 | 验证真实授权与设备列表读取；未建立在线远控连接 |
 | profile与关联 | 主JWT请求profile为HTTP 200/code 0；主体与登录一致；返回BigModel关联材料 | 不代表全部业务接口或过期恢复通过 |
-| 桌面CN授权 | 桌面与网页的ZCode主体相同，关联owner及BigModel账号也相同 | 使用隔离本地客户端 |
+| 桌面CN授权 | 桌面与网页的Codez主体相同，关联owner及BigModel账号也相同 | 使用隔离本地客户端 |
 | BigModel旧业务接口 | 关联JWT请求getCustomerInfo为HTTP 200/code 200/success true；customerNumber与关联customerId一致 | 证明关联凭据可访问该业务接口，不是模型调用证据 |
 | 套餐 | 个人显示未开通，Start Plan显示无可用体验套餐；团队查询HTTP 200/code 200，hasSubscription=true、status=EXPIRED、memberGrantStatus=UNASSIGNED | 客户端准确显示团队已过期，不能把有订阅记录当作有效权益 |
 | 刷新与重启 | 套餐刷新后保留选中的团队；桌面进程重启恢复原账号 | 未将页面快捷键作为进程重启证据 |
@@ -601,4 +601,4 @@ profile 使用同一 envelope，但 `data` 没有 `status` 和 `token`，其 `za
 - HTML分享另抽查2条：1条可访问并正确渲染，1条返回404；未将404直接归因为登录、迁移或过期。
 - 最终逐行比较原库与备份：4条Host任务、4条CLI会话、28条message、84条part及11条session_entry均未变化。只有隔离副本被应用运行与产物重定位修改。
 
-此轮证明的是CN登录下的本地历史读取、旧公开分享展示及附件获取。没有验证私有分享owner权限、旧服务端账号归属、跨账号切换或“去ZCode继续”的导入/推理链路。没有部署。
+此轮证明的是CN登录下的本地历史读取、旧公开分享展示及附件获取。没有验证私有分享owner权限、旧服务端账号归属、跨账号切换或“去Codez继续”的导入/推理链路。没有部署。

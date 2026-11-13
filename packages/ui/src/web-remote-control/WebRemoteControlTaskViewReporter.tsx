@@ -3,7 +3,7 @@ import type {
   WebRemoteControlMobileTaskView,
   WebRemoteControlTaskViewSwitcher,
 } from "@/web-remote-control/contract.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
 import { logger } from "@/logger.js";
 
 /** 宽窄屏复用实际聊天表面；导航位置和当前查看分别上报，不保存第二份导航状态。 */
@@ -21,7 +21,7 @@ export function WebRemoteControlTaskViewReporter({
   switcher?: WebRemoteControlTaskViewSwitcher;
 }) {
   const workspaceKey = workspaceIdentity?.trim() || workspacePath;
-  const navigationCommitted = useZCodeSessionStore((state) => {
+  const navigationCommitted = useCodezSessionStore((state) => {
     const route = state.taskNavHistory.entries[state.taskNavHistory.cursor];
     return (
       route?.kind === "task" &&

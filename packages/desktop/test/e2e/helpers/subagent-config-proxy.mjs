@@ -17,10 +17,10 @@ if (process.argv.includes("app-server") && process.argv.includes("--stdio")) {
       NODE_OPTIONS: (process.env.NODE_OPTIONS ?? "").replace(preload, "").trim(),
     },
   });
-  const root = process.env.ZCODE_E2E_ARTIFACT_DIR;
+  const root = process.env.CODEZ_E2E_ARTIFACT_DIR;
   const control = join(root, "subagent-config-control.json");
   const log = join(root, `subagent-config-rpc-${child.pid}.jsonl`);
-  // 修复原因：Windows 上 CLI 由每个 CLI 独占的原生 helper（zcode-runtime-host.exe）在 Job 中创建，
+  // 修复原因：Windows 上 CLI 由每个 CLI 独占的原生 helper（codez-runtime-host.exe）在 Job 中创建，
   // process.ppid 是 helper 而不是 Host，"两个 CLI 属于同一 Host" 的断言会误报。父进程是该 helper 时
   // 再上取一级（helper 由 Host 直接启动）；其他平台与非 helper 父进程保持 process.ppid。
   const hostPid =
@@ -37,7 +37,7 @@ if (process.argv.includes("app-server") && process.argv.includes("--stdio")) {
             (error, stdout) => {
               const [name, parentPid] = String(stdout).trim().split("|");
               resolveHostPid(
-                !error && name?.toLowerCase() === "zcode-runtime-host.exe" && Number(parentPid) > 0
+                !error && name?.toLowerCase() === "codez-runtime-host.exe" && Number(parentPid) > 0
                   ? Number(parentPid)
                   : process.ppid,
               );

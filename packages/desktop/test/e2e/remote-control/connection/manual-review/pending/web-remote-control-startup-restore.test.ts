@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { type WebRemoteControlStatus } from "@zcode/shared";
+import { type WebRemoteControlStatus } from "@codez/shared";
 import {
   DEFAULT_WORKSPACE,
   getE2EAppDataPaths,
@@ -11,8 +11,8 @@ import { reloadElectronSessionSafely } from "#e2e/helpers/e2e-electron-reload";
 async function remoteStatus() {
   const serialized = await browser.execute(async () => {
     const bridge = (
-      window as Window & { zcode?: { getWebRemoteControlStatus(): Promise<{ status: string }> } }
-    ).zcode;
+      window as Window & { codez?: { getWebRemoteControlStatus(): Promise<{ status: string }> } }
+    ).codez;
     if (!bridge) throw new Error("缺少 preload 远控接口");
     // WebDriver 把返回对象的 error 字段当成协议错误；序列化后再在测试端还原真实状态。
     return JSON.stringify(await bridge.getWebRemoteControlStatus());
@@ -57,11 +57,11 @@ async function waitForRemoteTrigger() {
 describe("桌面重启后自动恢复远控", () => {
   it("AUTH-09: 上次启用目标不在窗口时仍恢复设备连接，用户停止后重启保持关闭", async function () {
     this.timeout(180_000);
-    const origin = process.env.ZCODE_E2E_REMOTE_AUTH_GATE_URL;
-    const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR;
+    const origin = process.env.CODEZ_E2E_REMOTE_AUTH_GATE_URL;
+    const artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR;
     if (!origin || !artifacts) throw new Error("缺少远控启动恢复 fixture");
 
-    // fixture 把上次启用目标写成未打开的 ZCodeProject-previous；窗口只恢复 ZCodeProject。
+    // fixture 把上次启用目标写成未打开的 CodezProject-previous；窗口只恢复 CodezProject。
     await waitForRemoteTrigger();
     await browser.waitUntil(async () => (await remoteStatus()).status === "running", {
       timeout: 40_000,

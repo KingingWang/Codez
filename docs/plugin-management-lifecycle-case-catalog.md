@@ -9,7 +9,7 @@
   Personal Source、inline 展示、重启恢复、代表性运行时注入、关键可恢复失败。
 - Excluded：Standalone Web、手机 `/remote`、remote workspace plugin sync、workspace-scope 安装、
   公网依赖的正式 CI、完整 locale/theme/viewport 笛卡尔积。
-- 安装、配置、enabled、来源和抑制状态由 `<E2E_HOME>/.zcode/cli/plugins` 与 CLI config 持久化；
+- 安装、配置、enabled、来源和抑制状态由 `<E2E_HOME>/.codez/cli/plugins` 与 CLI config 持久化；
   UI store 是投影，不是权威来源。
 - Desktop local workspace A/B 共用同一 E2E HOME，验证当前 user-scope 语义。
 
@@ -20,7 +20,7 @@ UI entry
 pluginManagementStore
   | typed plugin service
   v
-ZCode Agent plugin handlers
+Codez Agent plugin handlers
   |                     |
   v                     v
 user plugin storage     future session runtime discovery
@@ -61,7 +61,7 @@ user plugin storage     future session runtime discovery
 | `PLM-LC-014 builtin-uninstall-detail-parity`   | 隔离 HOME；内置插件已 seed、启用并有配置/data                                                     | 打开详情；卸载；在详情页重试；重启；点击 Install                                                                                                                          | `installed=false`；suppression 存在；Runtime 不提供 Skill/Command/MCP；Catalog/cache/完整组件详情仍可读；describe 不改变 config/data/cache；Install 恢复且不产生普通 installed record                                                                                                 | UI + protocol + config/data/cache/manifest + fresh discovery                    | `manual-review`                  |
 | `PLM-LC-015 bundled-install-ownership`         | suppressed builtin 与合并 official entry；另有 CDN 同名 source fixture                            | 分别走 UI Install 与 direct protocol install                                                                                                                              | bundled `filesystem/sea` 路径等价 restore；CDN source 仍走 Marketplace install；无 stale suppression、重复 ownership 或错误 installed record                                                                                                                                          | protocol + installed record + runtime                                           | `manual-review`                  |
 | `PLM-LC-016 seed-cache-runtime-separation`     | suppressed builtin 分别处于 cache 存在/缺失；filesystem 与 SEA seed fixture                       | resolve/list/describe/skills/commands；触发 cache 自愈                                                                                                                    | suppression 始终过滤 Runtime；缺失 cache 可由 seed 恢复；describe 前后都成功；Catalog 不被过滤；无 seed↔uninstall 互删震荡                                                                                                                                                            | bootstrap + adapter + services tests                                            | `manual-review`                  |
-| `PLM-LC-017 installed-menu-layout`             | 内置插件在 Workspace `.zcode/config.json` 显式启用（enabledSource=workspace）                     | Settings > Plugins 切到 Workspace scope；打开已安装列表行内「…」菜单                                                                                                      | 启停开关常驻、无逐行配置来源标签；菜单仅卸载，文字单行并按内容撑开；恢复继承与更新不放入菜单                                                                                                                                                                                          | menuitem 文本 Range 行框计数 + 截图                                             | `manual-review`                  |
+| `PLM-LC-017 installed-menu-layout`             | 内置插件在 Workspace `.codez/config.json` 显式启用（enabledSource=workspace）                     | Settings > Plugins 切到 Workspace scope；打开已安装列表行内「…」菜单                                                                                                      | 启停开关常驻、无逐行配置来源标签；菜单仅卸载，文字单行并按内容撑开；恢复继承与更新不放入菜单                                                                                                                                                                                          | menuitem 文本 Range 行框计数 + 截图                                             | `manual-review`                  |
 | `PLM-LC-018 official-auto-refresh-throttled`   | 隔离 HOME；官方目录已有条目且一分钟前刷新                                                         | 进入、退出、重新进入商店                                                                                                                                                  | 不再刷新；Claude 目录时间及失败状态不变；原候选仍可见                                                                                                                                                                                                                                 | DOM + overview + throttle 单测                                                  | `manual-review`                  |
 | `PLM-LC-019 official-auto-refresh-on-enter`    | 隔离 HOME；官方目录已有条目但时间过期；允许真实 CDN                                               | 不点刷新进入商店，再退出重进                                                                                                                                              | 官方时间更新且无失败诊断；重进不再次刷新                                                                                                                                                                                                                                              | DOM + overview + runtime logs                                                   | `manual-review`, never formal CI |
 | `PLM-LC-020 plugin-subagent-override-cold`     | 隔离 HOME；官方 judge 的结构化覆盖指定 alternate/high，主选择 primary/max                         | 完整重启后发送，通过 Agent 调用 documents:visual-judge                                                                                                                    | child 请求为 alternate/high，父 continuation 为 primary/max；Agent 正常完成；已保存覆盖不变                                                                                                                                                                                           | case-local replay + 实际请求 + UI + state                                       | `manual-review`                  |
@@ -184,7 +184,7 @@ preferences 响应让恢复保持 starting，面板不得进入 error 或提前�
 受控 Electron 回归入口：`node packages/desktop/scripts/mcp-apps-host-e2e.mjs --background-only`。
 无卡片冷启动、隐藏但仍挂载的 tab、握手后的多帧初始化、窗口最小化执行、session 空闲时内部工作继续、
 同窗空闲 guest 隔离、离屏期限保留内存、删除释放，详见 [后台执行契约](plugin-ui-background-execution.md)。
-设置 `ZCODE_PHOTOCRAFT_SERVER` 指向构建后的 PhotoCraft `dist/server.mjs`，使用
+设置 `CODEZ_PHOTOCRAFT_SERVER` 指向构建后的 PhotoCraft `dist/server.mjs`，使用
 `--photocraft-background-only` 使用未修改的 PhotoCraft 0.2.2 验证真实 WASM 后台启动、图片/图层操作、编辑状态保留，
 恢复后截图检查画布与新增图层；从可见编辑器切到其它主页面后，断言 UI 隐藏且不可命中，再后台新增图层并返回检查同一 guest 与文档。该入口不是正式 WDIO CI 准入，不自动晋级。
 
@@ -245,7 +245,7 @@ PLM-LC-021 新断言：安装后保留任务、自动换代、没有额外用户
 
 ## PLM-EXT-2A：扩展进程基础设施与插槽
 
-设计见 [扩展进程](plugins/extension-host.md) §6、§12、§15、§16.1、§16.2。正式桌面入口：`packages/desktop/test/e2e/plugins/extensions/plugin-extension-host-runtime.test.ts`。隔离 HOME；四个纯 JS fixture 插件（`test/e2e/fixtures/fs/plugins/plugin-extension-host-runtime/`）复制进 HOME，经 `~/.zcode/cli/config.json` 的 `plugins.dirs` 加载，重启后生效。清单用顶层 `slots`：`e2e-ext-status` 另有启动页视图条目 `open-panel`、引用未声明视图的条目 `broken` 与未知插槽 `future.slot`；`e2e-ext-invalid` 有一个指向自己（非法）扩展命令的条目。
+设计见 [扩展进程](plugins/extension-host.md) §6、§12、§15、§16.1、§16.2。正式桌面入口：`packages/desktop/test/e2e/plugins/extensions/plugin-extension-host-runtime.test.ts`。隔离 HOME；四个纯 JS fixture 插件（`test/e2e/fixtures/fs/plugins/plugin-extension-host-runtime/`）复制进 HOME，经 `~/.codez/cli/config.json` 的 `plugins.dirs` 加载，重启后生效。清单用顶层 `slots`：`e2e-ext-status` 另有启动页视图条目 `open-panel`、引用未声明视图的条目 `broken` 与未知插槽 `future.slot`；`e2e-ext-invalid` 有一个指向自己（非法）扩展命令的条目。
 
 | 子项 | 场景                                  | 断言                                                                                                                                                                                                                                                                                  |
 | ---- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -283,7 +283,7 @@ PLM-LC-021 新断言：安装后保留任务、自动换代、没有额外用户
 
 ## PLM-EXT-2C：示例插件 context-inspector
 
-已删除（2026-11-07）。示例插件迁到市场仓库 `zcode-plugins` 的 `ui-plugins/context-inspector`，z-code 里不再有它的源码与用例（[插件发布](plugins/plugin-publishing.md) §6.3）。它断言的宿主行为由 fixture 用例覆盖，逐条对照见 [覆盖矩阵](testing/plugin-management-lifecycle-e2e-coverage-matrix.md) 的「示例插件迁出」。插件自己的页面只做构建、清单校验与人工验收（[插件发布](plugins/plugin-publishing.md) §6.1）。
+已删除（2026-11-07）。示例插件迁到市场仓库 `codez-plugins` 的 `ui-plugins/context-inspector`，z-code 里不再有它的源码与用例（[插件发布](plugins/plugin-publishing.md) §6.3）。它断言的宿主行为由 fixture 用例覆盖，逐条对照见 [覆盖矩阵](testing/plugin-management-lifecycle-e2e-coverage-matrix.md) 的「示例插件迁出」。插件自己的页面只做构建、清单校验与人工验收（[插件发布](plugins/plugin-publishing.md) §6.1）。
 
 ## PLM-EXT-P2B：插件入口——主导航与文件查看器
 
@@ -366,11 +366,11 @@ Window Host 重连后的补齐（`getLogs({ sinceSeq })`）没有桌面运行时
 
 ## PLM-JARVIS-1：示例插件 Jarvis 的核心
 
-已删除（2026-11-07）。示例插件迁到市场仓库 `zcode-plugins` 的 `ui-plugins/jarvis`，z-code 里不再有它的源码与用例（[插件发布](plugins/plugin-publishing.md) §6.3）。它断言的宿主行为由 fixture 用例覆盖，逐条对照见 [覆盖矩阵](testing/plugin-management-lifecycle-e2e-coverage-matrix.md) 的「示例插件迁出」。插件自己的页面只做构建、清单校验与人工验收（[插件发布](plugins/plugin-publishing.md) §6.1）。
+已删除（2026-11-07）。示例插件迁到市场仓库 `codez-plugins` 的 `ui-plugins/jarvis`，z-code 里不再有它的源码与用例（[插件发布](plugins/plugin-publishing.md) §6.3）。它断言的宿主行为由 fixture 用例覆盖，逐条对照见 [覆盖矩阵](testing/plugin-management-lifecycle-e2e-coverage-matrix.md) 的「示例插件迁出」。插件自己的页面只做构建、清单校验与人工验收（[插件发布](plugins/plugin-publishing.md) §6.1）。
 
 ## PLM-JARVIS-2：示例插件 Jarvis 的工具、停止、重试、小结与设置
 
-已删除（2026-11-07）。示例插件迁到市场仓库 `zcode-plugins` 的 `ui-plugins/jarvis`，z-code 里不再有它的源码与用例（[插件发布](plugins/plugin-publishing.md) §6.3）。它断言的宿主行为由 fixture 用例覆盖，逐条对照见 [覆盖矩阵](testing/plugin-management-lifecycle-e2e-coverage-matrix.md) 的「示例插件迁出」。插件自己的页面只做构建、清单校验与人工验收（[插件发布](plugins/plugin-publishing.md) §6.1）。
+已删除（2026-11-07）。示例插件迁到市场仓库 `codez-plugins` 的 `ui-plugins/jarvis`，z-code 里不再有它的源码与用例（[插件发布](plugins/plugin-publishing.md) §6.3）。它断言的宿主行为由 fixture 用例覆盖，逐条对照见 [覆盖矩阵](testing/plugin-management-lifecycle-e2e-coverage-matrix.md) 的「示例插件迁出」。插件自己的页面只做构建、清单校验与人工验收（[插件发布](plugins/plugin-publishing.md) §6.1）。
 
 ## PLM-EXT-P3C2：插件项目（不指定项目建会话）
 
@@ -415,7 +415,7 @@ Window Host 重连后的补齐（`getLogs({ sinceSeq })`）没有桌面运行时
 | 子项 | 场景                        | 断言                                                                                                                                                                                                                                          |
 | ---- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | a    | H5 App 作用域视图           | 切到同一工作区的另一个会话再切回，实例 id 不变；全局「新建任务」进另一个工作区再切回，实例 id 仍不变，页面上只有一个这个视图的标签；`onDidOpen` 只调用一次                                                                                    |
-| b    | H6 `ctx.extension.dataPath` | 等于 CLI 的插件数据目录（`<E2E HOME>/.zcode/cli/plugins/data/<插件 id>`），激活前已建好                                                                                                                                                       |
+| b    | H6 `ctx.extension.dataPath` | 等于 CLI 的插件数据目录（`<E2E HOME>/.codez/cli/plugins/data/<插件 id>`），激活前已建好                                                                                                                                                       |
 | c    | H9 `models.list`            | 列出 E2E provider 的模型（主模型与第二个模型都在），`id` 是 `provider/model`，标签是模型 id                                                                                                                                                   |
 | d    | H11 导航未读标记            | 激活时为 3；改成 120 显示 99+；改成 `dot` 显示圆点；清除后没有标记；无障碍标签跟着变；英文界面同样                                                                                                                                            |
 | e    | H12 `grants.request`        | 视图请宿主弹授权对话框，只列清单声明的档位；取消返回空档位，确认后返回声明的档位，再请求不弹                                                                                                                                                  |
@@ -452,19 +452,19 @@ H5 切到远程工作区、窗口重载后恢复 App 视图标签（侧栏标签
 | 子项 | 场景               | 断言                                                                                                                                                                                    |
 | ---- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | a    | 能力位与透传       | overview 里 ok、future 的 `listing.extensionSummary` 与目录一致，`componentTypes` 含 `extension`；plain 没有扩展摘要                                                                    |
-| b    | 列表挡不兼容       | future 的安装按钮不能点，文字「需要更新 ZCode」，`data-install-blocked="requires-update"`；ok 与 plain 的按钮照常「安装」                                                               |
-| c    | 不兼容的详情页     | 按钮同上；简介下一行说明要先更新 ZCode；「含常驻代码」区列出「读取会话」，没有完全访问一行                                                                                              |
+| b    | 列表挡不兼容       | future 的安装按钮不能点，文字「需要更新 Codez」，`data-install-blocked="requires-update"`；ok 与 plain 的按钮照常「安装」                                                               |
+| c    | 不兼容的详情页     | 按钮同上；简介下一行说明要先更新 Codez；「含常驻代码」区列出「读取会话」，没有完全访问一行                                                                                              |
 | d    | 兼容的详情页       | 没有不兼容说明；「含常驻代码」区按档位名列出「读写会话（含完全访问）」「发送系统通知」，完全访问另起一行（授权对话框原文，以「完全访问：」开头）                                        |
 | e    | 普通插件与安装     | plain 的详情页没有扩展说明；ok 与 plain 从商店装上，装上后 ok 的安装前说明消失                                                                                                          |
 | f    | 不兼容的新版不提示 | 刷新后 CLI 对 installed 与 plain 都报 `update-available`，installed 的 `listing.extensionSummary` 是 `^99.0.0`；列表只给 plain 显示「可更新」与更新按钮；installed 的详情页没有更新入口 |
 | g    | 全部更新跳过       | 管理视图「全部更新（1）」；执行后 plain 到 2.0.0，按钮消失；installed 仍是 1.0.0、启用、`update-available`                                                                              |
-| h    | 语言与主题         | 列表、future 详情、ok 详情：中文浅色与英文深色各一张；英文文案「Requires newer ZCode」「Includes resident code」；全部更新前后各一张                                                    |
+| h    | 语言与主题         | 列表、future 详情、ok 详情：中文浅色与英文深色各一张；英文文案「Requires newer Codez」「Includes resident code」；全部更新前后各一张                                                    |
 
 版本不同的 Desktop 与远端 Server、新 services 配旧 CLI（没有能力位）都没有桌面运行时用例；由 CLI 协议测试（`plugins-protocol.test.ts` 的 extension summary、`v4-extension-input-source.test.ts` 的能力位）与 §4.3 的分层分析覆盖。会话里的插件推荐卡片与 Side Pane 默认界面推荐不挡（§4.3），没有用例。
 
 ## PLM-EXT-P3A：扩展的会话读权限、授权与审计
 
-设计见 [扩展进程](plugins/extension-host.md) §17.2、§17.3、§17.7、§17.8、§17.10 第 1 步。候选桌面入口：`packages/desktop/test/e2e/plugins/extensions/manual-review/pending/plugin-extension-sessions.test.ts`。隔离 HOME；三个纯 JS fixture 扩展（`test/e2e/fixtures/fs/plugins/plugin-extension-sessions/`）经 `plugins.dirs` 加载：`e2e-ext-sessions`（清单 `grants: ["sessions.read"]`、`protocols: { sessions: 1 }`；激活时与每次换语言时调 `ctx.sessions.listSessions({})`，再对每个会话调 `readSession({ sessionId, view: "messages" })`，日志只有数量、id、角色与是否含测试标记）、`e2e-ext-sessions-nogrant`（没有声明 grants）、`e2e-ext-sessions-late`（带代码，初始禁用）。正式会话用 replay 创建（提示词带标记 `E2E_EXT_SESSIONS` 与 `upstream-e2e-ok`，命中 `provider-basic.json` 的 `upstream-provider-basic`）。证据：Main 日志、隔离 HOME 的 `~/.zcode/v2/extensions/grants.json` 与 `audit/*.jsonl`、启动页与详情页 DOM。
+设计见 [扩展进程](plugins/extension-host.md) §17.2、§17.3、§17.7、§17.8、§17.10 第 1 步。候选桌面入口：`packages/desktop/test/e2e/plugins/extensions/manual-review/pending/plugin-extension-sessions.test.ts`。隔离 HOME；三个纯 JS fixture 扩展（`test/e2e/fixtures/fs/plugins/plugin-extension-sessions/`）经 `plugins.dirs` 加载：`e2e-ext-sessions`（清单 `grants: ["sessions.read"]`、`protocols: { sessions: 1 }`；激活时与每次换语言时调 `ctx.sessions.listSessions({})`，再对每个会话调 `readSession({ sessionId, view: "messages" })`，日志只有数量、id、角色与是否含测试标记）、`e2e-ext-sessions-nogrant`（没有声明 grants）、`e2e-ext-sessions-late`（带代码，初始禁用）。正式会话用 replay 创建（提示词带标记 `E2E_EXT_SESSIONS` 与 `upstream-e2e-ok`，命中 `provider-basic.json` 的 `upstream-provider-basic`）。证据：Main 日志、隔离 HOME 的 `~/.codez/v2/extensions/grants.json` 与 `audit/*.jsonl`、启动页与详情页 DOM。
 
 | 子项 | 场景                 | 断言                                                                                                                                                                                                                                                                                   |
 | ---- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -481,7 +481,7 @@ H5 切到远程工作区、窗口重载后恢复 App 视图标签（侧栏标签
 
 ## PLM-EXT-P2D：插件设置与扩展的 `settings` 能力
 
-设计见 [扩展进程](plugins/extension-host.md) §16.7、§16.10 第 4 步，存储见 CLI spec「Sensitive Option Storage」。正式桌面入口：`packages/desktop/test/e2e/plugins/extensions/plugin-extension-settings.test.ts`。隔离 HOME；两个纯 JS fixture 扩展（`test/e2e/fixtures/fs/plugins/plugin-extension-settings/`）经 `plugins.dirs` 加载：`e2e-ext-settings`（`userConfig` 有敏感键 `token` 与普通键 `region`，默认值 `eu`）与 `e2e-ext-settings-other`（只有自己的 `mode`，默认值 `lite`）。两个扩展都在 `env.onDidChange`（订阅后先收当前值，之后每次换语言）时调 `ctx.settings.get()` 并记日志；第一个另订阅 `ctx.settings.onDidChange`。fixture 只记 `hasToken`、token 长度、`region`、`mode` 与键名，不记 token 本身。token 每次运行随机生成。不需要模型。P4 H1（[扩展进程](plugins/extension-host.md) §18.1、§18.4 GitLab 第 1 步）在同一用例里加子项 h–k：第一个扩展多一个视图 `account`（写法一），工具 `login({ token })` 与 `logout()` 调 `ctx.settings.update`，用例经沙箱页面的 `window.zcode.callTool` 调它们（与 GitLab 面板登录同一条路径）；第二个扩展在第一次 `env.onDidChange` 时试写不属于它的键。H4（图标）也在这里验证：账号视图用 `git-pull-request`，启动页条目用 `log-in`，另有一个 `nav.primary` 条目用 `git-merge`。
+设计见 [扩展进程](plugins/extension-host.md) §16.7、§16.10 第 4 步，存储见 CLI spec「Sensitive Option Storage」。正式桌面入口：`packages/desktop/test/e2e/plugins/extensions/plugin-extension-settings.test.ts`。隔离 HOME；两个纯 JS fixture 扩展（`test/e2e/fixtures/fs/plugins/plugin-extension-settings/`）经 `plugins.dirs` 加载：`e2e-ext-settings`（`userConfig` 有敏感键 `token` 与普通键 `region`，默认值 `eu`）与 `e2e-ext-settings-other`（只有自己的 `mode`，默认值 `lite`）。两个扩展都在 `env.onDidChange`（订阅后先收当前值，之后每次换语言）时调 `ctx.settings.get()` 并记日志；第一个另订阅 `ctx.settings.onDidChange`。fixture 只记 `hasToken`、token 长度、`region`、`mode` 与键名，不记 token 本身。token 每次运行随机生成。不需要模型。P4 H1（[扩展进程](plugins/extension-host.md) §18.1、§18.4 GitLab 第 1 步）在同一用例里加子项 h–k：第一个扩展多一个视图 `account`（写法一），工具 `login({ token })` 与 `logout()` 调 `ctx.settings.update`，用例经沙箱页面的 `window.codez.callTool` 调它们（与 GitLab 面板登录同一条路径）；第二个扩展在第一次 `env.onDidChange` 时试写不属于它的键。H4（图标）也在这里验证：账号视图用 `git-pull-request`，启动页条目用 `log-in`，另有一个 `nav.primary` 条目用 `git-merge`。
 
 | 子项 | 场景                       | 断言                                                                                                                                                                                                                                                                 |
 | ---- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -503,7 +503,7 @@ H5 切到远程工作区、窗口重载后恢复 App 视图标签（侧栏标签
 
 ## PLM-EXT-H2：扩展开预填草稿（`workbench.startDraft`）
 
-设计见 [扩展进程](plugins/extension-host.md) §18.1 H2、§18.4 GitLab 第 3 步。正式桌面入口：`packages/desktop/test/e2e/plugins/extensions/plugin-extension-start-draft.test.ts`。隔离 HOME；纯 JS fixture 扩展 `e2e-ext-draft`（`test/e2e/fixtures/fs/plugins/plugin-extension-start-draft/`）经 `plugins.dirs` 加载。它有一个 `composer.status` 条目，点击执行命令，命令调 `ctx.workbench.startDraft`（与 GitLab 面板「用 ZCode 审查」同一条路径）。奇数次点击用当前工作区，偶数次显式传命令作用域的工作区。fixture 日志只记点击序号、长度与结果。不需要模型。
+设计见 [扩展进程](plugins/extension-host.md) §18.1 H2、§18.4 GitLab 第 3 步。正式桌面入口：`packages/desktop/test/e2e/plugins/extensions/plugin-extension-start-draft.test.ts`。隔离 HOME；纯 JS fixture 扩展 `e2e-ext-draft`（`test/e2e/fixtures/fs/plugins/plugin-extension-start-draft/`）经 `plugins.dirs` 加载。它有一个 `composer.status` 条目，点击执行命令，命令调 `ctx.workbench.startDraft`（与 GitLab 面板「用 Codez 审查」同一条路径）。奇数次点击用当前工作区，偶数次显式传命令作用域的工作区。fixture 日志只记点击序号、长度与结果。不需要模型。
 
 | 子项 | 场景         | 断言                                                                                                                                                            |
 | ---- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -4,7 +4,7 @@ import { QueuedSummaryContent } from "@/ToolCallBlocks/QueuedSummaryContent.js";
 import { ConsecutiveSummaryGroup } from "@/ToolCallBlocks/ToolSummaryRow.js";
 import { Reasoning, ReasoningTrigger } from "@/components/ai-elements/reasoning.js";
 import { SummaryGroupBoundaryContext } from "@/v4/conversationRowContext.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import "@/styles.css";
 
 const params = new URLSearchParams(location.search);
@@ -89,7 +89,7 @@ function Fixture() {
   );
 }
 createRoot(document.getElementById("root")!).render(
-  <ZCodeIntlProvider initialLocale={params.get("locale") === "zh-CN" ? "zh-CN" : "en-US"}>
+  <CodezIntlProvider initialLocale={params.get("locale") === "zh-CN" ? "zh-CN" : "en-US"}>
     <Fixture />
-  </ZCodeIntlProvider>,
+  </CodezIntlProvider>,
 );

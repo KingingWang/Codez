@@ -10,7 +10,7 @@ import {
   TID_SIDE_PANE_TOGGLE,
   TID_SIDE_PANE_FULL_VIEW_TOGGLE,
   TID_SIDE_PANE_FULL_VIEW_HOST,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
 import {
   getV4PaneSnapshot,
@@ -49,7 +49,7 @@ const ARTIFACT_DIR = join(process.cwd(), ".e2e-artifacts", "plugin-management", 
 // 每个评审步骤截图后停留，录像里能看清稳定态；同时记录时间点供生成字幕。
 const STEP_HOLD_MS = 1500;
 type DraftUiWindow = Window & {
-  __zcodeSessionStoreE2E?: {
+  __codezSessionStoreE2E?: {
     getState(): {
       getWorkspaceState(workspacePath: string): {
         pluginUiOpenRequest: unknown;
@@ -167,7 +167,7 @@ describe("PLM-UI-001 UI 插件市场与项目配置", () => {
         await browser.waitUntil(
           async () =>
             (await browser.$('[data-testid="plugin-settings-scope-trigger"]').getText()).includes(
-              "ZCodeProject",
+              "CodezProject",
             ),
           { timeout: 10000 },
         );
@@ -182,7 +182,7 @@ describe("PLM-UI-001 UI 插件市场与项目配置", () => {
             (await browser.electron.execute(async (electron) => {
               const guests = electron.webContents
                 .getAllWebContents()
-                .filter((guest) => guest.getURL().startsWith("zcode-sandbox://"));
+                .filter((guest) => guest.getURL().startsWith("codez-sandbox://"));
               for (const guest of guests) {
                 for (const frame of guest.mainFrame.frames) {
                   const ready = await frame
@@ -206,14 +206,14 @@ describe("PLM-UI-001 UI 插件市场与项目配置", () => {
       await waitForV4Pane((snapshot) => snapshot.sessionId === "draft", "市场没有返回根草稿");
       const guestId = await browser.electron.execute(async (electron) => {
         for (const guest of electron.webContents.getAllWebContents()) {
-          if (!guest.getURL().startsWith("zcode-sandbox://")) continue;
+          if (!guest.getURL().startsWith("codez-sandbox://")) continue;
           for (const frame of guest.mainFrame.frames) {
             const ready = await frame
               .executeJavaScript('document.getElementById("market-ui-ready")?.textContent')
               .catch(() => null);
             if (ready !== "PLUGIN_MARKET_UI_READY") continue;
             await frame.executeJavaScript(
-              'void window.zcode.callTool("version_marker", {}).then(result => { window.__draftToolResult = result; }, error => { window.__draftToolResult = {error:String(error)}; })',
+              'void window.codez.callTool("version_marker", {}).then(result => { window.__draftToolResult = result; }, error => { window.__draftToolResult = {error:String(error)}; })',
             );
             await frame.executeJavaScript('window.__draftUiMarker = "unsaved"');
             return guest.id;
@@ -227,7 +227,7 @@ describe("PLM-UI-001 UI 插件市场与项目配置", () => {
           async (electron, id, code) => {
             const guest = electron.webContents.fromId(id);
             const frame = guest?.mainFrame.frames.find((item) =>
-              item.url.startsWith("zcode-sandbox://plugin-"),
+              item.url.startsWith("codez-sandbox://plugin-"),
             );
             if (!frame) throw new Error("原插件 frame 已释放");
             return frame.executeJavaScript(code);
@@ -241,7 +241,7 @@ describe("PLM-UI-001 UI 插件市场与项目配置", () => {
         { timeout: 15000, timeoutMsg: "批准后未收到工具结果" },
       );
       await evaluateGuest(
-        'void window.zcode.callTool("version_marker", {}).then(result => { window.__draftDeniedResult = result; }, error => { window.__draftDeniedResult = {error:String(error)}; })',
+        'void window.codez.callTool("version_marker", {}).then(result => { window.__draftDeniedResult = result; }, error => { window.__draftDeniedResult = {error:String(error)}; })',
       );
       await denyV4PermissionWithFeedback("deny draft test");
       await browser.waitUntil(
@@ -278,7 +278,7 @@ describe("PLM-UI-001 UI 插件市场与项目配置", () => {
         }
       };
       await evaluateGuest(
-        'void window.zcode.callTool("version_marker", {}).then(result => { window.__draftFullAccessResult = result; }, error => { window.__draftFullAccessResult = {error:String(error)}; })',
+        'void window.codez.callTool("version_marker", {}).then(result => { window.__draftFullAccessResult = result; }, error => { window.__draftFullAccessResult = {error:String(error)}; })',
       );
       await waitForV4PermissionDialog();
       // 新审批默认切换为 guarded；先显式选择完全访问，再验证风险确认和草稿不落盘。
@@ -308,7 +308,7 @@ describe("PLM-UI-001 UI 插件市场与项目配置", () => {
       });
       expect(readDraftRows()).toEqual({ sessions: 0, entries: 0 });
       await evaluateGuest(
-        'void window.zcode.callTool("version_marker", {}).then(result => { window.__draftAfterGrantResult = result; })',
+        'void window.codez.callTool("version_marker", {}).then(result => { window.__draftAfterGrantResult = result; })',
       );
       await browser.waitUntil(
         async () =>
@@ -319,7 +319,7 @@ describe("PLM-UI-001 UI 插件市场与项目配置", () => {
       );
       await step("06a-draft-full-access-without-task");
       await evaluateGuest(
-        'window.zcode.updateModelContext({content:[{type:"text",text:"draft-plugin-context"}]})',
+        'window.codez.updateModelContext({content:[{type:"text",text:"draft-plugin-context"}]})',
       );
       expect((await getV4PaneSnapshot()).sessionId).toBe("draft");
       expect((await getV4PaneSnapshot()).rowCount).toBe(0);
@@ -383,7 +383,7 @@ describe("PLM-UI-001 UI 插件市场与项目配置", () => {
       expect((await getV4ConfigProjection()).mode).toBe("yolo");
       expect(readDraftRows().sessions).toBe(1);
       await evaluateGuest(
-        'void window.zcode.callTool("version_marker", {}).then(result => { window.__promotedToolResult = result; })',
+        'void window.codez.callTool("version_marker", {}).then(result => { window.__promotedToolResult = result; })',
       );
       await browser.waitUntil(
         async () =>
@@ -462,7 +462,7 @@ describe("PLM-UI-001 UI 插件市场与项目配置", () => {
               (workspacePath) =>
                 Boolean(
                   (window as DraftUiWindow)
-                    .__zcodeSessionStoreE2E!.getState()
+                    .__codezSessionStoreE2E!.getState()
                     .getWorkspaceState(workspacePath).pluginUiOpenRequest,
                 ),
               getE2EAppDataPaths().workspace,
@@ -473,7 +473,7 @@ describe("PLM-UI-001 UI 插件市场与项目配置", () => {
             await browser.execute(
               (workspacePath) =>
                 (window as DraftUiWindow)
-                  .__zcodeSessionStoreE2E!.getState()
+                  .__codezSessionStoreE2E!.getState()
                   .getWorkspaceState(workspacePath).pluginUiOpenRequest,
               getE2EAppDataPaths().workspace,
             ),

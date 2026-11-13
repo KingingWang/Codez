@@ -13,7 +13,7 @@ afterEach(async () => {
 });
 
 async function fixture(source: string) {
-  const root = await mkdtemp(join(tmpdir(), "zcode-driver-server-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-driver-server-"));
   roots.push(root);
   const script = join(root, "driver.mjs");
   await writeFile(script, source);

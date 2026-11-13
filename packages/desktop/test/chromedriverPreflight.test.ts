@@ -64,7 +64,7 @@ it("候选补丁仍不可下载时失败", async () => {
   ).rejects.toThrow("compatible ChromeDriver");
 });
 it("缓存保存安装器真实路径，离线阶段验证版本与平台后读取，不猜精确补丁目录", async () => {
-  const cacheDir = await mkdtemp(join(tmpdir(), "zcode-driver-"));
+  const cacheDir = await mkdtemp(join(tmpdir(), "codez-driver-"));
   roots.push(cacheDir);
   const executablePath = join(cacheDir, "actual-driver");
   await writeFile(executablePath, "fixture");
@@ -77,7 +77,7 @@ it("缓存保存安装器真实路径，离线阶段验证版本与平台后读�
   expect(await cachedChromedriverPath(input)).toBe(executablePath);
   await expect(cachedChromedriverPath({ ...input, electronVersion: "41.0.3" })).rejects.toThrow();
   await expect(cachedChromedriverPath({ ...input, platform: "mac_arm" })).rejects.toThrow();
-  const metadata = join(cacheDir, "zcode-chromedriver-44.7.0-linux.json");
+  const metadata = join(cacheDir, "codez-chromedriver-44.7.0-linux.json");
   const record = JSON.parse(await readFile(metadata, "utf8"));
   await writeFile(metadata, JSON.stringify({ ...record, chromiumVersion: "153.0.8000.1" }));
   await expect(cachedChromedriverPath(input)).rejects.toThrow("cache identity mismatch");
@@ -86,7 +86,7 @@ it("缓存保存安装器真实路径，离线阶段验证版本与平台后读�
   await expect(cachedChromedriverPath(input)).rejects.toThrow();
 });
 it("安装失败不发布缓存", async () => {
-  const cacheDir = await mkdtemp(join(tmpdir(), "zcode-driver-"));
+  const cacheDir = await mkdtemp(join(tmpdir(), "codez-driver-"));
   roots.push(cacheDir);
   const input = { cacheDir, electronVersion: "44.7.0", platform: "linux" };
   await expect(

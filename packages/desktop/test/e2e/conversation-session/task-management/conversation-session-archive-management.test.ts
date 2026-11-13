@@ -10,10 +10,10 @@ import { waitForWorkspaceApp, DEFAULT_WORKSPACE } from "#e2e/helpers/desktop-app
 import { seedArchiveAutomations } from "#e2e/helpers/archive-automations";
 
 const row = (id: string) => $(`[data-testid="archive-task"][data-task-id="${id}"]`);
-const home = process.env.ZCODE_E2E_HOME_DIR!;
+const home = process.env.CODEZ_E2E_HOME_DIR!;
 const ids = ["arm-alpha", "arm-beta", "arm-scheduled", "arm-loose", "arm-removed"];
 function readRow(id: string) {
-  const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"), { readOnly: true });
+  const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"), { readOnly: true });
   try {
     return db
       .prepare("SELECT archived,cli_deleted,project_id FROM tasks WHERE task_id=?")
@@ -52,14 +52,14 @@ describe("归档管理", () => {
   before(async function () {
     this.timeout(60000);
     // 原因：批量 runner 使用 runId 隔离 HOME，不能只接受早期手工回放的目录名。
-    if (!home || !/^(?:zcode-archive-e2e-|\.e2e-home-)/u.test(basename(home)))
+    if (!home || !/^(?:codez-archive-e2e-|\.e2e-home-)/u.test(basename(home)))
       throw new Error("isolated archive HOME required");
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 45000);
     // 旧夹具在运行中的 Host 下写库且缺少必填 meta，列表可见不代表任务命令能读取它。
     await restartIntoWorkspacePreservingProfile(DEFAULT_WORKSPACE, {
       afterElectronProcessExit: async () => {
-        const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
-        const cli = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"));
+        const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"));
+        const cli = new DatabaseSync(join(home, ".codez/cli/db/db.sqlite"));
         try {
           for (const [i, name] of [
             "E2E 虚拟项目甲",
@@ -136,8 +136,8 @@ describe("归档管理", () => {
             .prepare(
               "INSERT INTO part(id,message_id,session_id,time_created,time_updated,data) VALUES('arm-fork-part','arm-fork-msg','arm-fork',1,1,?)",
             )
-            .run(JSON.stringify({ type: "file", url: "zcode-artifact://arm-beta/shared" }));
-          const artifactDir = join(home, ".zcode/cli/artifacts/arm-beta");
+            .run(JSON.stringify({ type: "file", url: "codez-artifact://arm-beta/shared" }));
+          const artifactDir = join(home, ".codez/cli/artifacts/arm-beta");
           await mkdir(artifactDir, { recursive: true });
           await writeFile(join(artifactDir, "shared.png"), "retained shared attachment");
           await writeFile(join(artifactDir, "private.png"), "private attachment");
@@ -231,7 +231,7 @@ describe("归档管理", () => {
       await browser.waitUntil(async () => (await state()).calls === 1);
       expect((await state()).openedBeforeRequest).toBe(true);
       await browser.saveScreenshot(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "apd-preflight-pending.png"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "apd-preflight-pending.png"),
       );
       await browser.keys("Escape");
       await dialog.waitForExist({ reverse: true });
@@ -331,7 +331,7 @@ describe("归档管理", () => {
     await $('[role="option"]*=7 天后归档').click();
     await expect(days).toHaveText("7 天后归档");
     await browser.waitUntil(async () => {
-      const settings = JSON.parse(await readFile(join(home, ".zcode/v2/setting.json"), "utf8"));
+      const settings = JSON.parse(await readFile(join(home, ".codez/v2/setting.json"), "utf8"));
       return (
         settings.taskAutoArchiveEnabled === false && settings.taskAutoArchiveOlderThanDays === 7
       );
@@ -345,7 +345,7 @@ describe("归档管理", () => {
     await expect(days).toHaveText("7 天后归档");
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-checked", "true");
-    expect(JSON.parse(await readFile(join(home, ".zcode/v2/setting.json"), "utf8"))).toMatchObject({
+    expect(JSON.parse(await readFile(join(home, ".codez/v2/setting.json"), "utf8"))).toMatchObject({
       taskAutoArchiveEnabled: true,
       taskAutoArchiveOlderThanDays: 7,
     });
@@ -353,7 +353,7 @@ describe("归档管理", () => {
     await $('[role="option"]*=14 天后归档').click();
     await expect(days).toHaveText("14 天后归档");
     await browser.waitUntil(async () => {
-      const settings = JSON.parse(await readFile(join(home, ".zcode/v2/setting.json"), "utf8"));
+      const settings = JSON.parse(await readFile(join(home, ".codez/v2/setting.json"), "utf8"));
       return (
         settings.taskAutoArchiveEnabled === true && settings.taskAutoArchiveOlderThanDays === 14
       );
@@ -372,14 +372,14 @@ describe("归档管理", () => {
     await $('[role="option"]*=30 天后归档').click();
     await expect(days).toHaveText("30 天后归档");
     await browser.waitUntil(async () => {
-      const settings = JSON.parse(await readFile(join(home, ".zcode/v2/setting.json"), "utf8"));
+      const settings = JSON.parse(await readFile(join(home, ".codez/v2/setting.json"), "utf8"));
       return (
         settings.taskAutoArchiveEnabled === false && settings.taskAutoArchiveOlderThanDays === 30
       );
     });
     expect(ids.map((id) => readRow(id).archived)).toEqual(ids.map(() => 1));
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "ARM07-disabled-30-days.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "ARM07-disabled-30-days.png"),
     );
   });
   it("ARM01/05/06：分组折叠、搜索、时间排序和项目选择", async () => {
@@ -472,7 +472,7 @@ describe("归档管理", () => {
     await browser.execute(
       (path) =>
         localStorage.setItem(
-          `zcode-v4-composer-drafts:v1:${encodeURIComponent(path)}`,
+          `codez-v4-composer-drafts:v1:${encodeURIComponent(path)}`,
           JSON.stringify({
             version: 1,
             scopes: { "arm-beta": { text: "E2E_PRIVATE_DRAFT", updatedAt: 1 } },
@@ -489,7 +489,7 @@ describe("归档管理", () => {
     await expect(confirmation).toHaveText(expect.stringContaining("shared.png"));
     await expect(confirmation).toHaveText(expect.stringContaining("arm-fork"));
     // 确认后内容变化必须拒绝旧 revision，不能扩大用户确认范围。
-    const changed = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"));
+    const changed = new DatabaseSync(join(home, ".codez/cli/db/db.sqlite"));
     try {
       changed.prepare("UPDATE session SET time_updated=time_updated+1 WHERE id='arm-beta'").run();
     } finally {
@@ -511,11 +511,11 @@ describe("归档管理", () => {
     expect(
       await browser.execute(
         (path) =>
-          localStorage.getItem(`zcode-v4-composer-drafts:v1:${encodeURIComponent(path)}`) ?? "",
+          localStorage.getItem(`codez-v4-composer-drafts:v1:${encodeURIComponent(path)}`) ?? "",
         DEFAULT_WORKSPACE,
       ),
     ).not.toContain("E2E_PRIVATE_DRAFT");
-    const cli = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"), { readOnly: true });
+    const cli = new DatabaseSync(join(home, ".codez/cli/db/db.sqlite"), { readOnly: true });
     try {
       expect(cli.prepare("SELECT id FROM session WHERE id=?").get("arm-beta")).toBeUndefined();
       expect(cli.prepare("SELECT id FROM session WHERE id='arm-child'").get()).toBeUndefined();
@@ -525,10 +525,10 @@ describe("归档管理", () => {
         cli.prepare("SELECT state FROM session_purge WHERE session_id='arm-beta'").get()?.state,
       ).toBe("deleted");
       await expect(
-        access(join(home, ".zcode/cli/artifacts/arm-beta/shared.png")),
+        access(join(home, ".codez/cli/artifacts/arm-beta/shared.png")),
       ).resolves.toBeUndefined();
       await expect(
-        access(join(home, ".zcode/cli/artifacts/arm-beta/private.png")),
+        access(join(home, ".codez/cli/artifacts/arm-beta/private.png")),
       ).rejects.toThrow();
     } finally {
       cli.close();
@@ -567,7 +567,7 @@ describe("归档管理", () => {
     expect(readRow("arm-scheduled").archived).toBe(0);
   });
   it("APD03/11：待处理输入逐项显示原因，零项可删时禁止确认", async () => {
-    const cli = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"));
+    const cli = new DatabaseSync(join(home, ".codez/cli/db/db.sqlite"));
     try {
       cli
         .prepare(
@@ -586,7 +586,7 @@ describe("归档管理", () => {
     if (await confirmation.isDisplayed()) await browser.keys("Escape");
     await confirmation.waitForExist({ reverse: true });
     expect(readRow("arm-removed")).toBeDefined();
-    const stopped = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"));
+    const stopped = new DatabaseSync(join(home, ".codez/cli/db/db.sqlite"));
     try {
       stopped.prepare("UPDATE session_input SET status='cancelled' WHERE id='apd-queued'").run();
     } finally {
@@ -616,8 +616,8 @@ describe("归档管理", () => {
     const address = server.address();
     if (!address || typeof address === "string") throw new Error("pair receiver unavailable");
     const mobile = await chromium.launch({
-      ...(process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE
-        ? { executablePath: process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE }
+      ...(process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE
+        ? { executablePath: process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE }
         : { channel: "chrome" }),
       headless: true,
     });
@@ -673,7 +673,7 @@ describe("归档管理", () => {
       await seedMobileFixtureLogin(context);
       const page = await context.newPage();
       await openMobilePairingPage(page, await pairing, {
-        artifactDir: process.env.ZCODE_E2E_ARTIFACT_DIR!,
+        artifactDir: process.env.CODEZ_E2E_ARTIFACT_DIR!,
         caseMarker: "APD11",
         phase: "pairing",
         readySelector: '[data-testid="task-settings-button"]',
@@ -729,14 +729,14 @@ describe("归档管理", () => {
       );
       expect(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
       await page.screenshot({
-        path: join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "apd-mobile-confirmation.png"),
+        path: join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "apd-mobile-confirmation.png"),
       });
       await page.getByTestId("confirm-dialog-confirm").tap();
       await page.waitForFunction(() =>
         document.querySelector('[data-testid="archive-delete-all"]')?.hasAttribute("disabled"),
       );
       await browser.waitUntil(() => readRow("arm-removed") === undefined);
-      const cli = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"), { readOnly: true });
+      const cli = new DatabaseSync(join(home, ".codez/cli/db/db.sqlite"), { readOnly: true });
       try {
         expect(cli.prepare("SELECT 1 FROM session WHERE id='arm-removed'").get()).toBeUndefined();
       } finally {
@@ -746,7 +746,7 @@ describe("归档管理", () => {
       await page.evaluate(
         (path) =>
           localStorage.setItem(
-            `zcode-v4-composer-drafts:v1:${encodeURIComponent(path)}`,
+            `codez-v4-composer-drafts:v1:${encodeURIComponent(path)}`,
             JSON.stringify({
               version: 1,
               scopes: { "arm-removed": { text: "E2E_OFFLINE_DRAFT", updatedAt: 1 } },
@@ -758,7 +758,7 @@ describe("归档管理", () => {
       await page.waitForFunction(
         (path) =>
           !localStorage
-            .getItem(`zcode-v4-composer-drafts:v1:${encodeURIComponent(path)}`)
+            .getItem(`codez-v4-composer-drafts:v1:${encodeURIComponent(path)}`)
             ?.includes("E2E_OFFLINE_DRAFT"),
         DEFAULT_WORKSPACE,
       );
@@ -867,7 +867,7 @@ async function captureArchiveLayouts() {
         }
         await browser.saveScreenshot(
           join(
-            process.env.ZCODE_E2E_ARTIFACT_DIR!,
+            process.env.CODEZ_E2E_ARTIFACT_DIR!,
             `archive-${width}-${locale}-${theme}-collapsed.png`,
           ),
         );
@@ -882,7 +882,7 @@ async function captureArchiveLayouts() {
         ).toBe(true);
         await browser.saveScreenshot(
           join(
-            process.env.ZCODE_E2E_ARTIFACT_DIR!,
+            process.env.CODEZ_E2E_ARTIFACT_DIR!,
             `archive-${width}-${locale}-${theme}-expanded.png`,
           ),
         );

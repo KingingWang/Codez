@@ -6,9 +6,9 @@
 
 ## 已确认行为
 
-- 个人/团队/Standalone 查找专用 Key；不存在时创建。个人名称 zcode-api-key；团队名称 zcode-team-api-key，保留 keyType=2；创建显式 usageScene=1。查询不增加 usageScene 过滤。
+- 个人/团队/Standalone 查找专用 Key；不存在时创建。个人名称 codez-api-key；团队名称 codez-team-api-key，保留 keyType=2；创建显式 usageScene=1。查询不增加 usageScene 过滤。
 - 返回的 apiKey 是非 Secret 的 Key ID，作为签发路径参数。组织、项目和 Key ID 分别编码，不跨项目挑选 Key。
-- POST /api/biz/v1/organization/{org}/projects/{project}/api_keys/{id}/access_tokens，使用 Bearer 登录 JWT，body 包含 clientType=zcode 与真实 clientVersion。
+- POST /api/biz/v1/organization/{org}/projects/{project}/api_keys/{id}/access_tokens，使用 Bearer 登录 JWT，body 包含 clientType=codez 与真实 clientVersion。
 - 所有原先使用 API Key 的业务接口可使用 Token；通过逐接口测试表复测，不继续把兼容性作为实施前置阻塞。
 - 新客户端只走 Token；没有旧 Key 回退。明确 enable=false 或畸形响应时记录脱敏日志并失败。无可用 PAT 时，签发请求按下述一次临时故障重试规则处理，耗尽后失败；已有未过期 PAT 的提前刷新仅按下文的临时故障规则容错；省略 enable 时按默认开启处理，但仍严格校验 Token 和有效期。
 - Project Access Token 由平台签发，仍遵守官方版本的请求安全校验准入规则，不能因使用 Token 而跳过；用户手工 Key 的既有安全校验行为保留。
@@ -17,7 +17,7 @@
 
 ## 专用 Key 管理兼容契约
 
-- 个人仍按名称复用 zcode-api-key；同名条目缺少 ID 时失败，不重复创建。团队只复用名称 zcode-team-api-key、keyType=2 且 ID 非空的条目，创建响应也必须满足这三个条件，否则禁止继续换证。无关坏条目不影响有效条目。
+- 个人仍按名称复用 codez-api-key；同名条目缺少 ID 时失败，不重复创建。团队只复用名称 codez-team-api-key、keyType=2 且 ID 非空的条目，创建响应也必须满足这三个条件，否则禁止继续换证。无关坏条目不影响有效条目。
 - customerInfo 两 family 均用原始登录 JWT，和登录身份核验一致，避免 Bearer 格式拒绝被误判为登录失效。Key 列表/创建保留旧 Authorization：个人 BigModel 用原始登录 JWT，Z.AI 用 Bearer；团队两 family 均用原始登录 JWT，并保留组织项目头。access_tokens 统一使用 Bearer。
 - 桌面个人选择非团队项目（projectType 去空白后不为 2），跳过无组织 ID 的候选；Standalone 保留默认机构/默认项目优先、否则首项的规则，不新增项目类型过滤。团队成员归属比较继续去除 ID 两端空白。
 - 项目选择策略由调用端明确传给公共换证客户端，参与内存与持久化 ID 作用域，防止桌面和 CLI 共用记录时覆盖彼此的选择。既有 Token owner、刷新和退出失效时序不变。
@@ -241,7 +241,7 @@ ID 仅随请求期鉴权材料传递，不写入模型静态配置、不添加�
 
 Host 的真实 HTTP 响应必须先经过 `readApiJson` 的诊断响应头白名单，再由 `createAccountProjectTokenClient` 解析为相对等待量，最后交给共享 owner。响应头大小写由 Headers 处理，不得在白名单中丢弃 `retry-after`。
 
-MR 自动检查通过 `pnpm --filter @zcode/desktop test:project-token-retry-after-smoke` 执行该链路。修改响应头读取、Host adapter、共享 PAT owner、脚本或相关依赖/CI 配置时，`test:project-token-retry-after` 必须自动运行；正常模式必须通过，移除响应头的隔离变异必须在“60 秒不得提前重试”断言失败。仅运行解析器单测不能替代 Host 透传回归。该 job 不启动应用、不连接生产接口、不打包或部署；日志与结果按流水线 artifact 保留。
+MR 自动检查通过 `pnpm --filter @codez/desktop test:project-token-retry-after-smoke` 执行该链路。修改响应头读取、Host adapter、共享 PAT owner、脚本或相关依赖/CI 配置时，`test:project-token-retry-after` 必须自动运行；正常模式必须通过，移除响应头的隔离变异必须在“60 秒不得提前重试”断言失败。仅运行解析器单测不能替代 Host 透传回归。该 job 不启动应用、不连接生产接口、不打包或部署；日志与结果按流水线 artifact 保留。
 
 运行 `node packages/desktop/scripts/project-token-retry-after-smoke.mjs` 覆盖真实 HTTP 的 60 秒超预算（一次请求并保留 429）、1 秒、小数秒、HTTP 日期、非法及缺失响应头。变异命令加 `--omit-retry-after-header` 只改变隔离探针构建，应在超预算用例失败，证明该测试覆盖 Host 透传链路。另在隔离签名完整包验证实际 Host 的请求次数、时间间隔、日志与登录保留；使用合成凭据，不能视为生产账户验收。App 业务单测已退役，此处使用可重复运行时验收，不新增 shared/services 业务单测。
 

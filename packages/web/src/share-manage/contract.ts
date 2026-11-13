@@ -7,9 +7,9 @@ import type {
   ConversationShareManagedList,
   ConversationShareManagedUpdateRequest,
   ConversationShareTtlOptions,
-} from "@zcode/shared";
+} from "@codez/shared";
 
-export { CONVERSATION_SHARE_MANAGE_PAGE_SIZE } from "@zcode/shared";
+export { CONVERSATION_SHARE_MANAGE_PAGE_SIZE } from "@codez/shared";
 
 export interface ConversationShareManageApi {
   /** 读取服务端声明的有效期范围；未声明范围时返回 undefined，管理页不显示有效期选项。 */

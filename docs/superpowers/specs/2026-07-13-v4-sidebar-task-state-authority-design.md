@@ -21,7 +21,7 @@
 2. `useWorkspaceTaskNavigation` 清未读仍先查旧 `taskListCache`/optimistic cache；当前任务实际在 task query cache，导致已点开但判断不到 `unreadAt`。
 3. active pane 从 `ConversationSnapshot.pendingInteractions` 渲染阻塞卡片，侧栏仍读旧 `taskUiByTaskId`；`SessionSummary` 又没有轻量 attention 字段，权限和用户输入请求无法同步。
 4. `mapSessionSummaryToTaskMeta` 把实时 `phase/lastActivityAt` 填入持久化语义的 `status/updatedAt`，而 query cache 的 whole-meta merge 使用“较新 updatedAt 获胜”。tasks-index mutation 因此可以篡改列表排序，旧 optimistic `unreadAt` 也可以压住权威清除结果。
-5. V4 `usePaneSessionPersistence` 把 `activeTaskId=null` 同时解释成“冷启动尚未恢复”和“用户明确进入新草稿”。当用户从 workspace A 点击非当前 workspace B 的“新建对话”时，B 先执行 `startDraft`，随后首次挂载的恢复 effect 仍会读取 `zcode-v4-last-session` 并选择旧 task。workspace 行入口还绕过了全局新建已有的 `deactivateActiveGroup + resetToPrimaryPane`，导致 last-session、group primary binding 和 pane layout 都可能覆盖新建意图。
+5. V4 `usePaneSessionPersistence` 把 `activeTaskId=null` 同时解释成“冷启动尚未恢复”和“用户明确进入新草稿”。当用户从 workspace A 点击非当前 workspace B 的“新建对话”时，B 先执行 `startDraft`，随后首次挂载的恢复 effect 仍会读取 `codez-v4-last-session` 并选择旧 task。workspace 行入口还绕过了全局新建已有的 `deactivateActiveGroup + resetToPrimaryPane`，导致 last-session、group primary binding 和 pane layout 都可能覆盖新建意图。
 
 现有“配置/打开任务不 bump activity”的修复是正确的；本设计保留该修复，并进一步禁止 membership/meta mutation 进入 activity 排序字段。
 
@@ -93,7 +93,7 @@ type PendingInteractionSummary = {
 
 ### 侧栏行投影
 
-新增 UI-only `TaskListRowState`（最终命名可按现有目录约定调整），不再把实时 provenance 藏进持久化 `ZCodeTaskMeta.status/updatedAt`：
+新增 UI-only `TaskListRowState`（最终命名可按现有目录约定调整），不再把实时 provenance 藏进持久化 `CodezTaskMeta.status/updatedAt`：
 
 ```ts
 type TaskListRowState = {
@@ -113,11 +113,11 @@ type TaskListRowState = {
     archived: boolean;
     unreadAt?: number;
   };
-  persistedMeta: ZCodeTaskMeta;
+  persistedMeta: CodezTaskMeta;
 };
 ```
 
-query cache 可以继续缓存列表实体和查询结果，但 mutation API 必须按字段 owner patch。禁止把 `setTaskUnread`、rename、pin/archive 返回的整个 `ZCodeTaskMeta` 覆盖 activity 字段；禁止用 tasks-index 的 `updatedAt` 排 Updated 视图。
+query cache 可以继续缓存列表实体和查询结果，但 mutation API 必须按字段 owner patch。禁止把 `setTaskUnread`、rename、pin/archive 返回的整个 `CodezTaskMeta` 覆盖 activity 字段；禁止用 tasks-index 的 `updatedAt` 排 Updated 视图。
 
 ### 指示器派生
 
@@ -361,7 +361,7 @@ renderer query {requestGeneration}
 - TSL18 使用 E2E-only membership gate 精确暂停 tasks-index `listTasks` 回包：先确认 running row 与 spinner，
   再启动并确认旧 membership refresh 已在途，Stop 收敛为 `completedInterrupted` 后释放旧回包；最终等待
   对应 workspace query 重新 fresh，并断言释放窗口内 spinner 未重现。gate 只在
-  `VITE_ZCODE_E2E_STORE_BRIDGE=1` 时通过 `window.__testActions` 暴露，不进入普通生产 renderer。
+  `VITE_CODEZ_E2E_STORE_BRIDGE=1` 时通过 `window.__testActions` 暴露，不进入普通生产 renderer。
 - Goal 只取 `ordinary terminal / notSatisfied / verified / cancelled / error` 的通知边界，不与 queue kind、provider、分屏做笛卡尔积。
 - desktop restart 代表：先为 workspace B 持久化 last-session，从 A 点击 B 的 workspace 行“新建对话”，断言 draft 意图获胜且无旧 session 回写；另证普通激活 B 仍恢复 last-session。
 - mobile `web-remote-replayable` 只证明 snapshot/gap 恢复后同一 phase/attention/unread 投影一致，并验证 workspace identity 隔离。
@@ -369,7 +369,7 @@ renderer query {requestGeneration}
 
 ## 非目标
 
-- 不删除 Zustand 包或整个 `zcodeSessionStore`。
+- 不删除 Zustand 包或整个 `codezSessionStore`。
 - 不把 pin/archive/group/unread 移入 sessions-index。
 - 不把完整 pending interaction payload 放入列表 topic。
 - 不重写 task list 虚拟化、搜索、分组拖拽或全局通知系统。

@@ -107,8 +107,8 @@ const koKR: Record<string, string> = {
     "이 컴퓨터의 프로젝트는 나중에 이 페이지의 제거된 프로젝트에서 복원할 수 있습니다.",
   "projectManagement.confirm.restoreRemote":
     "원격 프로젝트를 나중에 되돌리려면 해당 기기에서 다시 추가하세요.",
-  "projectManagement.confirm.data.option": "ZCode 데이터도 함께 삭제",
-  "projectManagement.confirm.data.optionOne": "ZCode 데이터도 함께 삭제",
+  "projectManagement.confirm.data.option": "Codez 데이터도 함께 삭제",
+  "projectManagement.confirm.data.optionOne": "Codez 데이터도 함께 삭제",
   "projectManagement.confirm.data.note":
     "이 컴퓨터에 있는 프로젝트 {count}개의 세션, 세션 파일, 체크포인트, 메모리입니다.",
   "projectManagement.confirm.data.noteOne":
@@ -190,8 +190,8 @@ const koKR: Record<string, string> = {
   "project.hasUnread": "프로젝트에 읽지 않은 작업이 있습니다",
   "project.projectOrder": "프로젝트 순서",
   "project.taskOrder": "작업 순서",
-  "project.browseHint": "ZCode가 이 폴더를 읽고 편집할 수 있습니다",
-  "project.connectAndBrowseHint": "기기 상태: {status}. ZCode가 먼저 연결합니다.",
+  "project.browseHint": "Codez가 이 폴더를 읽고 편집할 수 있습니다",
+  "project.connectAndBrowseHint": "기기 상태: {status}. Codez가 먼저 연결합니다.",
   "project.selectHost": "원격 연결 선택",
   "project.back": "뒤로",
   "project.next": "다음",
@@ -204,7 +204,7 @@ const koKR: Record<string, string> = {
   "project.trustFolderTitle": "이 폴더를 신뢰하시겠습니까?",
   "project.trustFoldersTitle": "이 폴더들을 신뢰하시겠습니까?",
   "project.trustFoldersDescription":
-    "ZCode는 현재 권한 설정 범위 안에서 이 폴더의 파일을 읽고 편집하며 명령을 실행할 수 있습니다. 나열된 모든 폴더를 신뢰하는 경우에만 계속하세요.",
+    "Codez는 현재 권한 설정 범위 안에서 이 폴더의 파일을 읽고 편집하며 명령을 실행할 수 있습니다. 나열된 모든 폴더를 신뢰하는 경우에만 계속하세요.",
   "project.trustFoldersAndCreate": "폴더 신뢰 후 만들기",
   "project.trustFoldersAndRestore": "폴더 신뢰 후 복원",
   "project.existingOnDeviceHint": "이 기기에 이미 프로젝트가 있나요?",
@@ -338,7 +338,7 @@ const koKR: Record<string, string> = {
   "remote.action.downgrade-server": "원격을 {version}(으)로 전환",
   "remote.downgradeConfirmTitle": "원격을 {version}(으)로 전환하시겠습니까?",
   "remote.downgradeConfirmDescription":
-    "원격 ZCode 서비스가 {current}에서 이 데스크톱 앱과 같은 버전인 {version}(으)로 전환됩니다. 여전히 최신 데스크톱 앱을 사용하는 기기는 연결할 때 원격을 다시 업데이트해야 합니다. 이전 버전에서는 최신 버전이 기록한 콘텐츠가 완전히 표시되지 않을 수 있습니다.",
+    "원격 Codez 서비스가 {current}에서 이 데스크톱 앱과 같은 버전인 {version}(으)로 전환됩니다. 여전히 최신 데스크톱 앱을 사용하는 기기는 연결할 때 원격을 다시 업데이트해야 합니다. 이전 버전에서는 최신 버전이 기록한 콘텐츠가 완전히 표시되지 않을 수 있습니다.",
   "remote.downgradeConfirm": "전환",
   "remote.downgradedHint":
     "이전 데스크톱 앱이 이 원격을 {from}에서 현재 버전으로 전환했습니다. 원격은 확인한 후에만 업데이트됩니다.",
@@ -484,7 +484,7 @@ const koKR: Record<string, string> = {
   "startPlan.recommendation.dismiss": "다시 표시하지 않기",
   "occupationOnboarding.stepMode": "UI 모드",
   "occupationOnboarding.modeTitle": "UI 모드 선택",
-  "occupationOnboarding.modeDescription": "ZCode가 작업을 어떻게 보여 주길 원하시나요?",
+  "occupationOnboarding.modeDescription": "Codez가 작업을 어떻게 보여 주길 원하시나요?",
   "occupationOnboarding.coding": "코딩 모드",
   "occupationOnboarding.codingDescription":
     "개발 과정 전반에서 코드, 명령 출력, 변경 세부 정보를 보고 싶습니다.",
@@ -536,27 +536,27 @@ const koKR: Record<string, string> = {
   "occupationOnboarding.migrationDescription": "Claude Code의 대화 기록을 마이그레이션합니다",
   "occupationOnboarding.memory": "워크스페이스 메모리 사용",
   "occupationOnboarding.memoryDescription":
-    "ZCode가 사용자의 선호와 작업 컨텍스트를 기억하도록 합니다.",
+    "Codez가 사용자의 선호와 작업 컨텍스트를 기억하도록 합니다.",
   "occupationOnboarding.suggestions": "능동적 작업 제안 사용",
   "occupationOnboarding.suggestionsDescription":
     "새 대화에 제안을 표시합니다. 클릭하면 입력창에 채워집니다.",
   "occupationOnboarding.close": "온보딩 종료",
-  "startup.global.silent": "ZCode 시작 중",
+  "startup.global.silent": "Codez 시작 중",
   "startup.global.upgrading": "로컬 데이터 업그레이드 중",
   "startup.global.initializing": "로컬 데이터 초기화 중",
   "startup.global.waiting": "데이터베이스 준비 대기 중",
   "startup.global.saving": "업데이트 저장 중",
   "startup.global.finishing": "시작 마무리 중",
   "startup.global.servicesFailed":
-    "로컬 데이터는 준비되었지만 앱 서비스를 시작하지 못했습니다. 진단 정보를 복사한 후 ZCode를 종료하고 다시 여세요.",
+    "로컬 데이터는 준비되었지만 앱 서비스를 시작하지 못했습니다. 진단 정보를 복사한 후 Codez를 종료하고 다시 여세요.",
   "startup.global.starting": "로컬 데이터 준비 중",
   "startup.global.preparing_host_storage": "작업 인덱스 준비 중",
   "startup.global.preparing_session_storage": "채팅 기록 준비 중",
-  "startup.global.starting_services": "ZCode 시작 중",
+  "startup.global.starting_services": "Codez 시작 중",
   "startup.global.ready": "로컬 데이터 준비 완료",
   "startup.global.failed": "시작 준비 실패",
   "startup.global.help":
-    "준비가 끝나면 ZCode가 열립니다. 기록이 많으면 시간이 더 걸릴 수 있습니다. 앱을 계속 실행해 두세요.",
+    "준비가 끝나면 Codez가 열립니다. 기록이 많으면 시간이 더 걸릴 수 있습니다. 앱을 계속 실행해 두세요.",
   "startup.global.diagnostic": "진단 ID",
   "startup.global.copy": "진단 정보 복사",
   "startup.global.exportLogs": "로그 내보내기",
@@ -581,15 +581,15 @@ const koKR: Record<string, string> = {
   "startup.global.error.open_failed":
     "데이터베이스를 열 수 없습니다. 데이터 디렉터리가 존재하고 액세스할 수 있는지 확인한 후 다시 시도하세요.",
   "startup.global.error.lock_timeout":
-    "데이터베이스 쓰기 잠금 대기 시간이 초과되었습니다. 다른 ZCode 또는 CLI 프로세스가 데이터를 업데이트하는 중일 수 있습니다. 완료된 후 다시 시도하세요.",
+    "데이터베이스 쓰기 잠금 대기 시간이 초과되었습니다. 다른 Codez 또는 CLI 프로세스가 데이터를 업데이트하는 중일 수 있습니다. 완료된 후 다시 시도하세요.",
   "startup.global.error.sql_failed":
     "준비가 완료되지 않았습니다. 진단 정보를 복사하고 로그를 확인하세요. 문제를 해결한 후 직접 다시 시도하세요. 앱은 자동으로 다시 시도하지 않습니다.",
   "startup.global.error.startup_status_timeout":
-    "시작 상태를 받지 못했습니다. ZCode를 종료하고 다시 여세요. 다시 실패하면 진단 정보를 지원팀에 제공하세요.",
+    "시작 상태를 받지 못했습니다. Codez를 종료하고 다시 여세요. 다시 실패하면 진단 정보를 지원팀에 제공하세요.",
   "startup.global.error.transport_closed":
-    "준비 프로세스가 종료되었거나 연결이 끊어졌습니다. ZCode를 종료하고 다시 열어 마이그레이션 기록을 다시 확인하세요.",
+    "준비 프로세스가 종료되었거나 연결이 끊어졌습니다. Codez를 종료하고 다시 열어 마이그레이션 기록을 다시 확인하세요.",
   "startup.global.error.unsupported_runtime":
-    "구성된 에이전트가 스토리지 준비를 지원하지 않습니다. 번들 에이전트를 복원한 후 ZCode를 다시 여세요.",
+    "구성된 에이전트가 스토리지 준비를 지원하지 않습니다. 번들 에이전트를 복원한 후 Codez를 다시 여세요.",
   "startup.database.checking": "기록 확인 중",
   "startup.database.waiting_for_lock": "다른 창에서 데이터를 준비하기를 기다리는 중",
   "startup.database.migrating": "기록 업그레이드 중",
@@ -643,7 +643,7 @@ const koKR: Record<string, string> = {
   "offPeak.chatCreated.queuedAt": "대기열 #{position}번",
   "offPeak.chatCreated.open": "유휴 시간 작업으로 이동",
   "settings.computerUse.disabledToast":
-    "Computer Use가 비활성화되었습니다. 기존 대화에 적용하려면 ZCode를 다시 시작해야 합니다.",
+    "Computer Use가 비활성화되었습니다. 기존 대화에 적용하려면 Codez를 다시 시작해야 합니다.",
   "settings.modelProvider.connectionUnavailableNotice": "현재 플랜을 사용할 수 없습니다.",
   "settings.modelProvider.switchConnection": "“{connection}”(으)로 전환",
   "settings.modelProvider.connectionSuggestionStale":
@@ -754,7 +754,7 @@ const koKR: Record<string, string> = {
   "manualClaimPlan.claim.share.copyImageSucceeded": "이미지가 복사되었습니다",
   "manualClaimPlan.claim.share.actionFailed": "공유 작업에 실패했습니다. 다시 시도하세요.",
   "manualClaimPlan.claim.share.twitterText":
-    "ZCode에서 {subtitle}을(를) 받았어요. ZCode를 다운로드하고 설치해서 받아 보세요. https://zcode.z.ai",
+    "Codez에서 {subtitle}을(를) 받았어요. Codez를 다운로드하고 설치해서 받아 보세요. https://zcode.z.ai",
   "manualClaimPlan.claim.share.twitterTextLabel": "Twitter/X 게시물 텍스트",
   // Common
   "common.loading": "로드 중...",
@@ -802,8 +802,8 @@ const koKR: Record<string, string> = {
   "conversationShare.readonly.execute": "실행",
   "conversationShare.readonly.changes": "변경 사항",
   "conversationShare.readonly.artifactPreview": "파일 다운로드",
-  "conversation.row.unreadable": "이 내용을 보려면 최신 버전의 ZCode가 필요합니다",
-  "conversationShare.readonly.unsupportedRows": "일부 콘텐츠는 최신 버전의 ZCode가 필요합니다",
+  "conversation.row.unreadable": "이 내용을 보려면 최신 버전의 Codez가 필요합니다",
+  "conversationShare.readonly.unsupportedRows": "일부 콘텐츠는 최신 버전의 Codez가 필요합니다",
   "conversationShare.workflowSnapshot":
     "도구 실행 시점의 스냅샷이며 실시간으로 업데이트되지 않습니다",
   "conversationShare.shareTitle": "공유 제목",
@@ -837,7 +837,7 @@ const koKR: Record<string, string> = {
   "conversationShare.import.notAllowed":
     "이 공유는 보기 전용입니다. 작성자에게 가져오기를 허용해 달라고 요청하세요.",
   "conversationShare.import.unsupportedVersion":
-    "지원되지 않는 공유 형식입니다. ZCode를 업데이트하세요.",
+    "지원되지 않는 공유 형식입니다. Codez를 업데이트하세요.",
   "conversationShare.issue.ruleLabel": "검증 규칙",
   "conversationShare.issue.pathLabel": "필드 경로",
   "conversationShare.issue.fieldLabel": "필드",
@@ -845,7 +845,7 @@ const koKR: Record<string, string> = {
   "conversationShare.issue.rowKindLabel": "콘텐츠 유형",
   "conversationShare.publishFailed": "공유 링크를 생성할 수 없습니다. 다시 시도하세요.",
   "conversationShare.error.authenticationRequired":
-    "공유하기 전에 ZCode에 로그인하세요. 이미 로그인되어 있다면 다시 로그인한 후 시도하세요.",
+    "공유하기 전에 Codez에 로그인하세요. 이미 로그인되어 있다면 다시 로그인한 후 시도하세요.",
   "conversationShare.error.featureDisabled":
     "현재 공유를 사용할 수 없습니다. 나중에 다시 시도하세요.",
   "conversationShare.error.artifactNotAllowed":
@@ -857,7 +857,7 @@ const koKR: Record<string, string> = {
   "conversationShare.error.invalidContractHttp":
     "공유 서비스가 HTTP {status}을(를) 반환했습니다. 다시 시도하고, 문제가 계속되면 오류 세부 정보를 제공하세요.",
   "conversationShare.error.invalidContract":
-    "ZCode가 공유 서비스의 응답을 읽을 수 없어 공유를 완료하지 못했습니다. 나중에 다시 시도하세요. 계속 실패하면 오류 세부 정보에서 요청 ID를 복사하여 지원팀에 문의하세요.",
+    "Codez가 공유 서비스의 응답을 읽을 수 없어 공유를 완료하지 못했습니다. 나중에 다시 시도하세요. 계속 실패하면 오류 세부 정보에서 요청 ID를 복사하여 지원팀에 문의하세요.",
   "conversationShare.issue.clientRequestIdLabel": "클라이언트 요청 ID",
   "conversationShare.issue.codeLabel": "오류 코드",
   "conversationShare.error.network":
@@ -1056,7 +1056,7 @@ const koKR: Record<string, string> = {
   "conversationShare.import.committing": "공유된 대화 생성 중",
   "conversationShare.import.complete": "공유 가져오기 완료",
   "conversationShare.import.loginRequired":
-    "이 공유는 익명으로 가져올 수 없습니다. ZCode에 로그인한 후 다시 시도하세요",
+    "이 공유는 익명으로 가져올 수 없습니다. Codez에 로그인한 후 다시 시도하세요",
   "conversationShare.import.notFound":
     "공유를 찾을 수 없거나 액세스가 거부되었습니다. 링크와 계정을 확인하세요.",
   "conversationShare.import.expired":
@@ -1178,7 +1178,7 @@ const koKR: Record<string, string> = {
     "작업 또는 목록 새로고침에 실패했습니다. 새로고침하여 남은 작업을 확인하세요.",
   "taskList.noArchivedTasks": "보관된 작업이 없습니다",
   "bots.title": "봇",
-  "bots.description": "외부 채팅과 Webhook을 ZCode 봇에 연결합니다.",
+  "bots.description": "외부 채팅과 Webhook을 Codez 봇에 연결합니다.",
   "bots.listTitle": "봇",
   "bots.addBot": "새 봇",
   "bots.addBinding": "바인딩 추가",
@@ -1230,9 +1230,9 @@ const koKR: Record<string, string> = {
   "bots.setup.guide.weixin.create.1":
     "Weixin QR 로그인을 시작하고 Weixin으로 QR 코드를 스캔한 다음 휴대폰에서 확인하세요.",
   "bots.setup.guide.weixin.create.2":
-    "ZCode는 iLink가 반환한 bot_token을 자동으로 저장합니다. 스캔 후 Weixin에서 봇에게 아무 메시지나 보내 채팅을 활성화하세요.",
+    "Codez는 iLink가 반환한 bot_token을 자동으로 저장합니다. 스캔 후 Weixin에서 봇에게 아무 메시지나 보내 채팅을 활성화하세요.",
   "bots.setup.guide.weixin.create.3":
-    "ZCode는 내장 iLink 클라이언트를 사용합니다. 롱 폴링에는 `/ilink/bot/getupdates`, 응답에는 `/ilink/bot/sendmessage`를 사용합니다.",
+    "Codez는 내장 iLink 클라이언트를 사용합니다. 롱 폴링에는 `/ilink/bot/getupdates`, 응답에는 `/ilink/bot/sendmessage`를 사용합니다.",
   "bots.setup.guide.weixin.bind.1": "바인딩할 Weixin 개인 채팅을 여세요.",
   "bots.setup.guide.weixin.bind.2": "{command}을(를) 보내세요.",
   "bots.setup.guide.weixin.bind.3":
@@ -1248,17 +1248,17 @@ const koKR: Record<string, string> = {
   "bots.setup.guide.feishu.bind.3":
     "바인딩에 성공하면 이곳으로 돌아와 워크스페이스와 CLI 기본값 설정을 마치세요.",
   "bots.setup.guide.webhook.create.1":
-    "Webhook 모드는 서드파티 제품의 네이티브 봇이 필요하지 않습니다. 연동 시스템이 ZCode로 메시지를 POST하기만 하면 됩니다.",
+    "Webhook 모드는 서드파티 제품의 네이티브 봇이 필요하지 않습니다. 연동 시스템이 Codez로 메시지를 POST하기만 하면 됩니다.",
   "bots.setup.guide.webhook.create.2":
     "먼저 공유 시크릿을 설정하세요. 비동기 응답을 다시 푸시받으려면 발신 Webhook URL도 추가하세요.",
   "bots.setup.guide.webhook.create.3":
     "바인딩과 이후 컨텍스트가 같은 사람으로 확인되도록 외부 사용자마다 고정된 userId를 하나씩 유지하세요.",
   "bots.setup.guide.webhook.bind.1":
-    "ZCode의 `/api/bots/webhook` 엔드포인트로 개인 메시지 콜백을 POST하세요.",
+    "Codez의 `/api/bots/webhook` 엔드포인트로 개인 메시지 콜백을 POST하세요.",
   "bots.setup.guide.webhook.bind.2":
     '페이로드에는 최소한 이 botId, 고정된 userId, `chatType: "private"`가 포함되어야 하며, text는 {command}(으)로 설정해야 합니다.',
   "bots.setup.guide.webhook.bind.3":
-    "봇이 시크릿을 사용하는 경우 `x-zcode-bot-secret`도 함께 보낸 다음, 바인딩에 성공하면 이곳으로 돌아오세요.",
+    "봇이 시크릿을 사용하는 경우 `x-codez-bot-secret`도 함께 보낸 다음, 바인딩에 성공하면 이곳으로 돌아오세요.",
   "bots.setup.footer.choose": "계속하려면 지원되는 봇을 선택하세요.",
   "bots.setup.footer.create": "바인딩 전에 연결 테스트를 통과해야 합니다.",
   "bots.setup.testSuccess": "연결 테스트 통과",
@@ -1395,7 +1395,7 @@ const koKR: Record<string, string> = {
   "bots.runtime.telegramLongPollingStarting": "Telegram 롱 폴링을 시작하는 중입니다.",
   "bots.runtime.telegramLongPollingStopped": "Telegram 롱 폴링이 중지되었습니다.",
   "bots.runtime.telegramLongPollingHandledElsewhere":
-    "Telegram 롱 폴링을 다른 ZCode 창에서 처리하고 있습니다.",
+    "Telegram 롱 폴링을 다른 Codez 창에서 처리하고 있습니다.",
   "bots.runtime.telegramTokenMissing": "Telegram 봇 자격 증명이 없습니다.",
   "bots.runtime.telegramPollingFailedRetrying":
     "Telegram 폴링에 실패했습니다. 다시 시도하는 중입니다.",
@@ -1483,14 +1483,14 @@ const koKR: Record<string, string> = {
   "bots.unbindFailed": "봇 바인딩을 해제하지 못했습니다: {error}",
   "bots.deleteFailed": "봇을 삭제하지 못했습니다: {error}",
   // Welcome / Login
-  "welcome.title": "ZCode에 오신 것을 환영합니다",
+  "welcome.title": "Codez에 오신 것을 환영합니다",
   "welcome.username": "사용자 이름",
   "welcome.password": "비밀번호",
   "welcome.login": "로그인",
   "welcome.loggingIn": "로그인 중...",
   "welcome.loginFailed": "로그인 실패",
-  "login.title": "ZCode에 오신 것을 환영합니다",
-  "login.description": "계정을 연결하여 ZCode 사용을 시작하세요",
+  "login.title": "Codez에 오신 것을 환영합니다",
+  "login.description": "계정을 연결하여 Codez 사용을 시작하세요",
   "login.oauth.activeProviderHint":
     "현재 활성 공급자: {provider}. 다시 로그인하면 현재 ID가 대체됩니다.",
   "login.oauth.loadingProviders": "계정 공급자 로드 중...",
@@ -1535,7 +1535,7 @@ const koKR: Record<string, string> = {
   "app.currentTheme": "현재: {theme}",
   "app.login": "연결",
   "app.logout": "연결 해제",
-  "logout.confirm.title": "연결을 해제하고 ZCode를 다시 시작하시겠습니까?",
+  "logout.confirm.title": "연결을 해제하고 Codez를 다시 시작하시겠습니까?",
   "logout.confirm.descriptionWithRunningSessions":
     "현재 세션 {count}개가 실행 중입니다. 연결을 해제하면 세션이 중단되고 앱이 다시 시작됩니다.",
   "logout.confirm.descriptionDefault":
@@ -1885,7 +1885,7 @@ const koKR: Record<string, string> = {
   "modelTrajectory.refresh": "새로고침",
   "modelTrajectory.close": "닫기",
   "modelTrajectory.loading": "호출 기록 로드 중…",
-  "modelTrajectory.empty": "기록된 모델 호출이 없습니다(ZCode Agent만 model-io를 기록합니다)",
+  "modelTrajectory.empty": "기록된 모델 호출이 없습니다(Codez Agent만 model-io를 기록합니다)",
   "modelTrajectory.error": "호출 기록을 불러오지 못했습니다",
   "modelTrajectory.truncatedNotice": "기록이 너무 많아 최근 호출만 표시합니다",
   "modelTrajectory.summaryCalls": "호출 {count}회",
@@ -2376,14 +2376,14 @@ const koKR: Record<string, string> = {
   "titleBar.menu.view.actualSize": "실제 크기",
   "titleBar.menu.view.zoomIn": "확대",
   "titleBar.menu.view.zoomOut": "축소",
-  "titleBar.menu.help.about": "ZCode 정보",
+  "titleBar.menu.help.about": "Codez 정보",
   "titleBar.menu.help.checkForUpdates": "업데이트 확인",
   "titleBar.menu.help.feedback": "피드백",
   "sidebar.menu.community": "커뮤니티",
   "titleBar.menu.help.exportLogs": "로그 내보내기",
   "titleBar.menu.help.toggleDevTools": "개발자 도구 전환",
   "titleBar.menu.help.resourceManager": "리소스 관리자",
-  "titleBar.menu.help.toggleZCodeStdioTap": "에이전트 stdio 트래픽 캡처",
+  "titleBar.menu.help.toggleCodezStdioTap": "에이전트 stdio 트래픽 캡처",
   "titleBar.menu.help.clearAllData": "모든 데이터 지우기",
   // Directory browser
   "directoryBrowser.errorUnavailable":
@@ -2431,7 +2431,7 @@ const koKR: Record<string, string> = {
   "update.toast.ready": "v{version} 다운로드 완료, 다시 시작하여 설치하세요",
   "update.toast.devSkipped": "개발 빌드에서는 업데이트가 비활성화됩니다",
   "update.toast.error": "업데이트 확인 실패: {error}",
-  "forceUpdate.title": "계속하려면 ZCode를 업데이트하세요",
+  "forceUpdate.title": "계속하려면 Codez를 업데이트하세요",
   "forceUpdate.description":
     "현재 버전 v{currentVersion}은(는) 지원되는 최소 버전 v{minimalVersion}보다 낮습니다. 이 클라이언트를 계속 사용하려면 먼저 업데이트하세요.",
   "forceUpdate.currentVersion": "현재 버전",
@@ -2519,7 +2519,7 @@ const koKR: Record<string, string> = {
   "remote.error.credentialsRequired":
     "사용할 수 있는 SSH 비밀번호나 개인 키 자격 증명이 없습니다. 설정으로 돌아가 추가하세요.",
   "remote.error.sourceServerUpgradeRequired":
-    "원격 기기가 이 ZCode Desktop 버전과 호환되지 않아 업그레이드해야 합니다.",
+    "원격 기기가 이 Codez Desktop 버전과 호환되지 않아 업그레이드해야 합니다.",
   "remote.error.sourceServerRunningTasks":
     "원격 기기에 아직 실행 중인 작업이 있습니다. 완료될 때까지 기다리거나 강제 업데이트를 확인하세요.",
   "remote.error.sourceServerDowngradeUnconfirmed":
@@ -2560,7 +2560,7 @@ const koKR: Record<string, string> = {
   "remote.error.retryableHint": "나중에 다시 시도할 수 있습니다.",
   "remote.error.connectionClosed": "원격 연결이 닫혔습니다",
   "workspaceSidebar.unavailableLocalDirectory":
-    "워크스페이스 디렉터리가 존재하지 않거나 액세스할 수 없습니다. 지금은 기록만 볼 수 있습니다. 계속하려면 디렉터리를 복원하고 ZCode를 다시 시작하세요.",
+    "워크스페이스 디렉터리가 존재하지 않거나 액세스할 수 없습니다. 지금은 기록만 볼 수 있습니다. 계속하려면 디렉터리를 복원하고 Codez를 다시 시작하세요.",
   "workspaceSidebar.toggleSidebar": "사이드바 전환",
   "workspaceSidebar.resizeSidebar": "사이드바 크기 조정",
   "workspaceSidebar.showFileTree": "파일 표시",
@@ -2596,7 +2596,7 @@ const koKR: Record<string, string> = {
   "ssh.assetInstallMode.local-download-upload": "로컬에서 다운로드 후 업로드",
   "ssh.assetInstallMode.remote-download": "원격 서버에서 다운로드",
   "ssh.assetInstallModeDescription":
-    "원격 서버에서 다운로드하면 업로드 대기 시간이 줄지만, 서버가 ZCode CDN에 접속할 수 있어야 하며 다운로드, 압축 해제, 체크섬 도구가 있어야 합니다.",
+    "원격 서버에서 다운로드하면 업로드 대기 시간이 줄지만, 서버가 Codez CDN에 접속할 수 있어야 하며 다운로드, 압축 해제, 체크섬 도구가 있어야 합니다.",
   "ssh.password": "비밀번호",
   "ssh.passwordPlaceholder": "SSH 비밀번호 입력",
   "ssh.privateKey": "개인 키",
@@ -2686,7 +2686,7 @@ const koKR: Record<string, string> = {
   "remote.connectingSubtitleFailed": "연결 실패 · 다시 시도하거나 구성을 조정한 후 시도하세요",
   "remote.phase.channel": "기기에 연결",
   "remote.phase.identify": "기기 식별",
-  "remote.phase.deploy": "ZCode Server 설치",
+  "remote.phase.deploy": "Codez Server 설치",
   "remote.phase.handshake": "시작 및 호환성 확인",
   "remote.phase.workspace": "프로젝트 폴더 열기",
   "remote.phaseSub.workspaceReading": "{path} 읽는 중",
@@ -2696,7 +2696,7 @@ const koKR: Record<string, string> = {
   "remote.progress.copyError": "오류 세부 정보 복사",
   "remote.progress.copied": "복사됨",
   "remote.link.local": "이 기기",
-  "remote.link.localVersion": "ZCode v{version}",
+  "remote.link.localVersion": "Codez v{version}",
   "remote.link.deviceHint": "연결 후 기기 세부 정보가 표시됩니다",
   "remote.link.devicePending": "원격 기기",
   "remote.recognizedDevice": "{device} 기기에 연결됨",
@@ -2728,7 +2728,7 @@ const koKR: Record<string, string> = {
   "remote.phaseSub.channelEstablished.docker": "컨테이너에 연결됨",
   "remote.phaseSub.channelEstablished": "기기에 연결됨",
   "remote.phaseSub.identifyExisting": "{device} 기기에 연결됨",
-  "remote.phaseSub.identifyNew": "새 기기 · ZCode Server 미설치",
+  "remote.phaseSub.identifyNew": "새 기기 · Codez Server 미설치",
   "remote.phaseSub.deploySkipped": "원격이 이미 v{version} · 배포 건너뜀",
   "remote.phaseSub.deployWaitingConfirm": "설치 확인 대기 중…",
   "remote.phaseSub.deployUploading": "{file} 업로드 중 · {sent} / {total}",
@@ -2853,7 +2853,7 @@ const koKR: Record<string, string> = {
   "remote.kind.wsl": "WSL",
   "remote.kind.docker": "Docker",
   "remote.kind.server.note":
-    "Server(실행 중인 ZCode 서비스에 직접 연결)는 개발 빌드에서만 표시됩니다.",
+    "Server(실행 중인 Codez 서비스에 직접 연결)는 개발 빌드에서만 표시됩니다.",
   "remote.addAndConnect": "추가 후 연결",
   "remote.connect": "연결",
   "remote.connecting": "연결 중...",
@@ -2864,16 +2864,16 @@ const koKR: Record<string, string> = {
   "remote.connectionLog": "연결 로그",
   "remote.connectionLogEmpty": "연결 출력을 기다리는 중...",
   "remote.connectingConfirmTitle": "현재 연결을 중지하시겠습니까?",
-  "remote.sourceServerInstallTitle": "ZCode Server 설치 필요",
+  "remote.sourceServerInstallTitle": "Codez Server 설치 필요",
   "remote.sourceServerInstallDescription":
-    "ZCode가 일치하는 릴리스를 업로드하여 ~/.zcode/server에 설치하고 원격 서비스를 시작합니다. 기존 레거시 원격 파일은 보존됩니다.",
+    "Codez가 일치하는 릴리스를 업로드하여 ~/.codez/server에 설치하고 원격 서비스를 시작합니다. 기존 레거시 원격 파일은 보존됩니다.",
   "remote.sourceServerInstallConfirm": "설치 후 계속",
   "remote.installTarget": "대상 계정",
   "remote.installVersion": "설치 버전",
   "remote.installLocation": "설치 위치",
   "remote.sourceServerBoundaryTitle": "로컬이 오프라인이어도 작업은 계속 실행됩니다",
   "remote.sourceServerBoundaryDescription":
-    "ZCode를 닫거나 컴퓨터를 절전 모드로 전환해도 원격 작업은 계속 실행됩니다.",
+    "Codez를 닫거나 컴퓨터를 절전 모드로 전환해도 원격 작업은 계속 실행됩니다.",
   "remote.sourceServerBoundaryEyebrow": "새 원격 연결",
   "remote.sourceServerBoundaryLocalDevice": "이 컴퓨터",
   "remote.sourceServerBoundaryLocalStatus": "절전 / 종료됨",
@@ -2896,7 +2896,7 @@ const koKR: Record<string, string> = {
   "settings.source.retiredEntryNote": "연결 대상이 변경되었으며 새 ID가 확인되었습니다",
   "settings.source.retiredNameSuffix": " (이전)",
   "settings.source.reinstallRequired":
-    "원격에서 ZCode Server가 제거되었습니다. 연결 및 작업 기록은 이 기기에 남아 있습니다.",
+    "원격에서 Codez Server가 제거되었습니다. 연결 및 작업 기록은 이 기기에 남아 있습니다.",
   "settings.source.reinstallAndConnect": "다시 설치 후 연결",
   "settings.source.copyDeviceId": "기기 ID 복사",
   "common.justNow": "방금",
@@ -2918,7 +2918,7 @@ const koKR: Record<string, string> = {
     "이 컴퓨터의 버전을 사용합니다. 프로젝트와 작업은 유지됩니다.",
   "settings.source.reinstallRemoteServiceTitle": "원격 서비스를 다시 설치하시겠습니까?",
   "settings.source.reinstallRemoteServiceDescription":
-    "{source}에 ZCode Server {version}이(가) 다시 설치됩니다. 손상된 프로그램 파일이 교체됩니다. 프로젝트, 작업, 설정, 로그인 정보는 유지됩니다.",
+    "{source}에 Codez Server {version}이(가) 다시 설치됩니다. 손상된 프로그램 파일이 교체됩니다. 프로젝트, 작업, 설정, 로그인 정보는 유지됩니다.",
   "settings.source.reinstallRemoteServiceConfirm": "다시 설치",
   "settings.source.stopRemoteService": "원격 서비스 중지",
   "settings.source.stopRemoteServiceTitle": "원격 서비스를 중지하시겠습니까?",
@@ -2928,9 +2928,9 @@ const koKR: Record<string, string> = {
     "기기에서 작업 목록을 제공하지 않았습니다.",
   "settings.source.remoteServiceNoRunningTasks": "현재 이 기기에서 실행 중인 작업이 없습니다.",
   "settings.source.remoteServiceOtherClientsNotice":
-    "다른 컴퓨터의 ZCode가 이 기기에 연결되어 있다면 원격 서비스가 다시 시작될 수 있습니다.",
+    "다른 컴퓨터의 Codez가 이 기기에 연결되어 있다면 원격 서비스가 다시 시작될 수 있습니다.",
   "settings.source.stopRemoteServiceStartupReconnectNotice":
-    "“시작 시 자동으로 다시 연결”이 켜져 있어 다음에 ZCode를 열 때 원격 서비스가 다시 시작됩니다.",
+    "“시작 시 자동으로 다시 연결”이 켜져 있어 다음에 Codez를 열 때 원격 서비스가 다시 시작됩니다.",
   "settings.source.remoteServiceUpdateRequired": "원격 서비스를 업데이트한 후 사용할 수 있습니다",
   "settings.source.removeOpenProjects": "열려 있는 다음 프로젝트의 연결이 끊어집니다:\n{projects}",
   "settings.source.noOpenProjects": "이 기기에는 열려 있는 프로젝트가 없습니다.",
@@ -2938,7 +2938,7 @@ const koKR: Record<string, string> = {
   "settings.machine.unknownRemote": "원격 기기",
   "settings.source.connectionName": "연결 이름",
   "settings.source.connectionAddress": "주소",
-  "settings.source.connectionNameHint": "ZCode에서 이 연결을 구분하는 데만 사용됩니다.",
+  "settings.source.connectionNameHint": "Codez에서 이 연결을 구분하는 데만 사용됩니다.",
   "settings.source.deviceNameRequired": "기기 이름은 필수입니다.",
   "settings.source.error.connection-profile-unavailable":
     "이 연결을 더 이상 사용할 수 없습니다. 새로고침한 후 다시 시도하세요.",
@@ -2984,7 +2984,7 @@ const koKR: Record<string, string> = {
   "settings.source.updatePhase.checking": "기기 및 업데이트 파일 확인 중",
   "settings.source.updatePhase.downloading": "업데이트 파일 다운로드 중",
   "settings.source.updatePhase.uploading": "업데이트 파일 업로드 중",
-  "settings.source.updatePhase.installing": "ZCode Server 설치 중",
+  "settings.source.updatePhase.installing": "Codez Server 설치 중",
   "settings.source.updatePhase.reconnecting": "서비스 시작 및 다시 연결 중",
   "settings.source.updatePhase.completed": "업데이트 완료",
   "settings.source.updateLog": "업데이트 로그({count})",
@@ -3052,13 +3052,13 @@ const koKR: Record<string, string> = {
   "sourceServer.restartFailedToast":
     "{source}의 원격 서비스를 다시 시작할 수 없습니다. 세부 정보를 확인하세요.",
   "sourceServer.controllerUpdateAvailableToast":
-    "ZCode에 {source}용 업데이트가 있습니다\n데스크톱 {current} → {available}, 이 Source에 맞게 ZCode를 업데이트하세요.",
+    "Codez에 {source}용 업데이트가 있습니다\n데스크톱 {current} → {available}, 이 Source에 맞게 Codez를 업데이트하세요.",
   "settings.source.forceUpdate": "강제 업데이트",
   "settings.source.forceUpdateTitle": "이 기기를 강제로 업데이트하시겠습니까?",
   "settings.source.forceUpdateDescription":
     "강제 업데이트하면 이 기기에서 아직 실행 중인 작업이 중지됩니다. 해당 작업이 중단되어도 괜찮은지 확인하세요.",
   "settings.source.controllerUpdateRequired":
-    "먼저 이 ZCode Desktop을 업데이트하세요. 여기에서는 Server를 업데이트할 수 없습니다.",
+    "먼저 이 Codez Desktop을 업데이트하세요. 여기에서는 Server를 업데이트할 수 없습니다.",
   "settings.source.neverConnected": "연결되지 않음",
   "settings.source.unidentifiedProfiles": "연결되지 않음",
   "settings.source.unidentifiedProfilesDescription":
@@ -3120,7 +3120,7 @@ const koKR: Record<string, string> = {
   "remote.log.dockerTarget": "Docker 컨테이너 대상: {container}",
   "remote.log.requestingSession": "호스트 프로세스에 원격 세션 생성을 요청하는 중...",
   "remote.log.sessionReady": "원격 세션이 생성되었습니다. 이제 디렉터리를 선택할 수 있습니다.",
-  "server.description": "이미 실행 중인 ZCode 서버에 연결합니다.",
+  "server.description": "이미 실행 중인 Codez 서버에 연결합니다.",
   "server.url": "서버 URL",
   "server.urlPlaceholder": "예: https://studio.example.com:3030",
   "server.name": "표시 이름",
@@ -3280,7 +3280,7 @@ const koKR: Record<string, string> = {
   "chat.changeSummary.reverted": "실행 취소됨",
   "chat.changeSummary.rewindDialog.title": "파일 변경 사항 실행 취소",
   "chat.changeSummary.rewindDialog.description":
-    "ZCode는 쓰기 전에 현재 파일 내용을 다시 확인합니다. 다른 프로세스가 파일을 변경했다면 어떤 파일도 쓰지 않습니다.",
+    "Codez는 쓰기 전에 현재 파일 내용을 다시 확인합니다. 다른 프로세스가 파일을 변경했다면 어떤 파일도 쓰지 않습니다.",
   "chat.changeSummary.rewindDialog.loading": "되돌릴 수 있는 파일 확인 중…",
   "chat.changeSummary.rewindDialog.safeTitle": "안전하게 실행 취소 가능 {count}",
   "chat.changeSummary.rewindDialog.unsafeTitle": "실행 취소 시 위험 {count}",
@@ -3326,7 +3326,7 @@ const koKR: Record<string, string> = {
   "chat.previewCards.video": "동영상",
   "chat.previewCards.audio": "오디오",
   "chat.previewCards.openExternal": "브라우저에서 열기",
-  "chat.message.link.openInZCode": "ZCode에서 열기",
+  "chat.message.link.openInCodez": "Codez에서 열기",
   "chat.previewCards.previewInSidePane": "미리 보기",
   "chat.previewCards.openDefaultApp": "기본 앱으로 열기",
   "chat.previewCards.openWith": "연결 프로그램",
@@ -3463,7 +3463,7 @@ const koKR: Record<string, string> = {
     "내장 터미널을 시작할 때 가능하면 로그인 셸 환경, 프록시, Kubernetes 변수, 로컬 터미널 글꼴을 상속합니다.",
   "settings.terminalFontFamily": "터미널 글꼴",
   "settings.terminalFontFamilyDescription":
-    "비워 두면 시스템 터미널 설정을 자동으로 감지합니다. 값을 설정하면 ZCode 터미널 글꼴을 재정의합니다.",
+    "비워 두면 시스템 터미널 설정을 자동으로 감지합니다. 값을 설정하면 Codez 터미널 글꼴을 재정의합니다.",
   "settings.terminalFontFamilyPlaceholder": "비워 두면 상속(예: MesloLGS NF, monospace)",
   "settings.integratedTerminalShell": "통합 터미널 셸",
   "settings.integratedTerminalShellDescription":
@@ -3575,7 +3575,7 @@ const koKR: Record<string, string> = {
     "알림이 켜져 있을 때 작업 알림 소리만 따로 끌 수 있습니다.",
   "settings.mobilePush": "모바일 푸시 알림",
   "settings.mobilePushDescription":
-    "데스크톱에서 떨어져 있을 때 작업 완료, 실패 또는 확인 대기를 로그인된 ZCode App으로 푸시합니다.",
+    "데스크톱에서 떨어져 있을 때 작업 완료, 실패 또는 확인 대기를 로그인된 Codez App으로 푸시합니다.",
   "notification.taskWithTitle": "작업: {title}",
   "notification.taskWaiting": "작업이 확인을 기다리고 있습니다",
   "notification.completed": "작업 완료",
@@ -3610,11 +3610,11 @@ const koKR: Record<string, string> = {
   "settings.toolGroupingChanges": "파일 변경 그룹화",
   "settings.toolGroupingChangesDescription":
     "연속된 Write, Edit, ApplyPatch 호출을 변경 사항 섹션으로 묶습니다.",
-  "settings.zcodeInteractionBehavior": "상호 작용 방식",
-  "settings.zcodeInteractionBehaviorDescription":
-    "ZCode가 실행 중일 때 후속 동작을 대기열에 추가하거나, 다음 도구 호출 후 실행되도록 안내합니다.",
-  "settings.zcodeInteractionBehavior.option.queue": "대기열",
-  "settings.zcodeInteractionBehavior.option.guide": "안내",
+  "settings.codezInteractionBehavior": "상호 작용 방식",
+  "settings.codezInteractionBehaviorDescription":
+    "Codez가 실행 중일 때 후속 동작을 대기열에 추가하거나, 다음 도구 호출 후 실행되도록 안내합니다.",
+  "settings.codezInteractionBehavior.option.queue": "대기열",
+  "settings.codezInteractionBehavior.option.guide": "안내",
   "settings.askUserQuestionAutoResolution": "질문 자동 계속",
   "settings.askUserQuestionAutoResolutionDescription":
     "켜면 에이전트의 질문에 5분 동안 답하지 않을 경우 자동으로 계속합니다. 끄면 현재 및 이후 질문이 응답을 기다립니다.",
@@ -3649,14 +3649,14 @@ const koKR: Record<string, string> = {
   "settings.taskAutoArchiveDays.option.30": "30일 후 보관",
   "settings.dataBaseDir": "데이터 저장 경로",
   "settings.dataBaseDirDescription":
-    "앱 데이터의 루트 디렉터리입니다(기본값: 사용자 홈 디렉터리). 기존 데이터가 새 위치로 복사됩니다. .zcode/v2 접미사는 변경할 수 없습니다.",
+    "앱 데이터의 루트 디렉터리입니다(기본값: 사용자 홈 디렉터리). 기존 데이터가 새 위치로 복사됩니다. .codez/v2 접미사는 변경할 수 없습니다.",
   "settings.dataBaseDirPlaceholder": "기본값: 사용자 홈 디렉터리",
   "settings.dataBaseDirBrowse": "폴더 선택",
   "settings.dataBaseDirSave": "저장",
   "settings.dataBaseDirCopying": "데이터를 복사하는 중입니다. 앱을 닫지 마세요...",
   "settings.dataBaseDirCopyFailed": "데이터 복사에 실패했습니다. 경로가 변경되지 않았습니다.",
   "settings.dataBaseDirForbiddenInstallDir":
-    "Windows에서는 데이터 디렉터리를 ZCode 설치 폴더로 지정할 수 없습니다. 앱 설치 위치 밖의 폴더를 선택하세요.",
+    "Windows에서는 데이터 디렉터리를 Codez 설치 폴더로 지정할 수 없습니다. 앱 설치 위치 밖의 폴더를 선택하세요.",
   "settings.dataBaseDirRestartRequired":
     "데이터가 저장되었습니다. 적용하려면 앱을 다시 시작하세요.",
   "settings.locale.system": "시스템 기본값",
@@ -3673,7 +3673,7 @@ const koKR: Record<string, string> = {
   "settings.migration.title": "마이그레이션",
   "settings.migration.sectionTitle": "Claude 기록 마이그레이션",
   "settings.migration.sectionDescription":
-    "이 컴퓨터의 네이티브 Claude Code 기록을 스캔하고, 필요하면 워크스페이스와 활동 기간으로 필터링한 다음, 선택한 세션을 해당하는 ZCode 작업 목록으로 가져옵니다.",
+    "이 컴퓨터의 네이티브 Claude Code 기록을 스캔하고, 필요하면 워크스페이스와 활동 기간으로 필터링한 다음, 선택한 세션을 해당하는 Codez 작업 목록으로 가져옵니다.",
   "settings.migration.badge.localOnly": "로컬 Claude 기록",
   "settings.migration.badge.manualOnly": "수동 전용",
   "settings.migration.currentWorkspace": "현재 워크스페이스",
@@ -3727,14 +3727,14 @@ const koKR: Record<string, string> = {
     "소스 세션을 찾을 수 없거나 더 이상 현재 워크스페이스 필터와 일치하지 않습니다.",
   "settings.usageTitle": "사용량 통계",
   "settings.usageDescription": "로컬 세션에서 집계한 대략적인 활동 및 모델 사용량을 확인합니다.",
-  "resourceManager.storage.summaryTotal": "ZCode 총 사용량",
+  "resourceManager.storage.summaryTotal": "Codez 총 사용량",
   "resourceManager.storage.scanning": "계산 중…",
   "resourceManager.storage.lastScanned": "마지막 계산 {time}",
   "resourceManager.storage.idle": "아직 계산되지 않음",
   "resourceManager.storage.failed": "계산 실패",
   "resourceManager.storage.rescan": "다시 계산",
   "resourceManager.storage.disk": "디스크",
-  "resourceManager.storage.diskUsage": "ZCode 사용량 {used}",
+  "resourceManager.storage.diskUsage": "Codez 사용량 {used}",
   "resourceManager.storage.diskFree": "{total} 중 {free} 사용 가능",
   "resourceManager.storage.diskUnknown": "디스크 용량을 확인할 수 없음",
   "resourceManager.storage.roots": "데이터 디렉터리",
@@ -3808,7 +3808,7 @@ const koKR: Record<string, string> = {
   "settings.embeddedBrowserAllowInsecureCertificatesSavedHint":
     "인증서 설정이 저장되었습니다. 앱을 다시 시작해야 적용됩니다.",
   "settings.browser.data.section": "브라우저 데이터",
-  "settings.browser.desktopOnly": "브라우저 데이터는 ZCode 데스크톱 앱에서만 관리할 수 있습니다.",
+  "settings.browser.desktopOnly": "브라우저 데이터는 Codez 데스크톱 앱에서만 관리할 수 있습니다.",
   "settings.browser.import.title": "Chrome 로그인 상태 가져오기",
   "settings.browser.import.description":
     "Chrome 로그인 상태를 내장 브라우저로 한 번 가져와, AI가 이미 로그인된 사이트를 열고 더 원활하게 작업할 수 있게 합니다.",
@@ -3826,13 +3826,13 @@ const koKR: Record<string, string> = {
   "settings.browser.import.elevationCancelled":
     "Windows 관리자 권한이 취소되었습니다. 쿠키를 가져오지 않았습니다.",
   "settings.browser.import.helperVerificationFailed":
-    "ZCode가 Windows 보안 가져오기 구성 요소를 확인할 수 없습니다. 쿠키를 가져오기 전에 ZCode를 다시 설치하거나 업데이트하세요.",
+    "Codez가 Windows 보안 가져오기 구성 요소를 확인할 수 없습니다. 쿠키를 가져오기 전에 Codez를 다시 설치하거나 업데이트하세요.",
   "settings.browser.import.appBoundFailed":
     "Windows에서 Chrome의 App-Bound 쿠키를 잠금 해제할 수 없습니다. 쿠키를 가져오지 않았습니다.",
   "settings.browser.import.adminConfirmTitle":
     "Chrome 쿠키를 가져오기 위해 관리자 권한을 허용하시겠습니까?",
   "settings.browser.import.adminConfirmDescription":
-    "Windows에서 Chrome은 App-Bound 암호화로 쿠키를 보호합니다. 이번 가져오기에 한해 ZCode가 관리자 권한을 요청하고, 임시 시스템 서비스를 시작한 다음 바로 삭제합니다. Chrome 비밀번호는 절대 읽거나 가져오지 않습니다.",
+    "Windows에서 Chrome은 App-Bound 암호화로 쿠키를 보호합니다. 이번 가져오기에 한해 Codez가 관리자 권한을 요청하고, 임시 시스템 서비스를 시작한 다음 바로 삭제합니다. Chrome 비밀번호는 절대 읽거나 가져오지 않습니다.",
   "settings.browser.import.adminConsent": "이번 쿠키 가져오기에 한해 관리자 권한을 허용합니다",
   "settings.browser.import.adminConfirmAction": "계속 및 권한 요청",
   "settings.browser.import.cookieProtected":
@@ -3900,7 +3900,7 @@ const koKR: Record<string, string> = {
   "settings.mcp.trust.trusted": "현재 선언이 신뢰됨",
   "settings.mcp.trust.failed":
     "선언이 변경되었거나 신뢰를 사용할 수 없습니다. 새로고침한 후 다시 시도하세요.",
-  "settings.mcp.description": "ZCode Agent에서 사용하는 MCP 서버 구성을 관리합니다.",
+  "settings.mcp.description": "Codez Agent에서 사용하는 MCP 서버 구성을 관리합니다.",
   "settings.mcp.create.open": "MCP 서버 추가",
   "settings.mcp.import.open": "외부 에이전트에서 MCP 서버 가져오기",
   "settings.mcp.import.action": "가져오기",
@@ -3934,7 +3934,7 @@ const koKR: Record<string, string> = {
     "권한 부여를 열어 이 플러그인 MCP 서버 연결을 완료하세요.",
   "settings.mcp.oauth.openAuthorization": "권한 부여 열기",
   "settings.mcp.statusOnlyUnsupported":
-    "이 ZCode Agent는 OAuth 상태를 새로고침할 수 없습니다. ZCode를 업그레이드하거나 다시 시작한 다음, MCP 설정을 다시 열어 전체 새로고침을 실행하세요.",
+    "이 Codez Agent는 OAuth 상태를 새로고침할 수 없습니다. Codez를 업그레이드하거나 다시 시작한 다음, MCP 설정을 다시 열어 전체 새로고침을 실행하세요.",
   "settings.mcp.refreshFailed": "MCP 상태를 새로고침하지 못했습니다: {error}",
   "settings.mcp.status.toolCount": "도구 {count}개",
   "settings.mcp.status.connectedReason": "연결되어 사용할 수 있습니다.",
@@ -3959,7 +3959,7 @@ const koKR: Record<string, string> = {
   "settings.mcp.failure.official_origin_untrusted":
     "MCP 서버 URL이 보안 검사를 통과하지 못해 연결이 차단되었습니다.",
   "settings.mcp.failure.not_authenticated":
-    "로그인하지 않았습니다. 이 MCP 서버를 사용하려면 ZCode에 로그인하세요.",
+    "로그인하지 않았습니다. 이 MCP 서버를 사용하려면 Codez에 로그인하세요.",
   "settings.mcp.failure.coding_plan_required":
     "이 계정에는 Coding Plan이 없습니다. 이 MCP 서버를 사용하려면 Coding Plan을 구매하거나 구성하세요.",
   "settings.mcp.failure.server_not_found":
@@ -3978,7 +3978,7 @@ const koKR: Record<string, string> = {
   "settings.mcp.failureAdvice.config_invalid":
     "MCP 명령, 인수, 서버 주소, 환경 변수를 확인하세요. 설정을 수정한 뒤 상태를 새로고침하세요.",
   "settings.mcp.failureAdvice.runtime_unavailable":
-    "이 MCP를 실행하는 기기에서 필요한 런타임을 설치하거나 설정하고, ZCode가 시작 명령을 찾을 수 있는지 확인하세요.",
+    "이 MCP를 실행하는 기기에서 필요한 런타임을 설치하거나 설정하고, Codez가 시작 명령을 찾을 수 있는지 확인하세요.",
   "settings.mcp.failureAdvice.process_start_failed":
     "이 MCP를 실행하는 기기에서 시작 명령, 작업 디렉터리, 스크립트 경로, 실행 권한을 확인하세요. Python 종속성은 해당 명령의 인터프리터 또는 가상 환경으로 플러그인의 requirements 파일(예: requirements.txt)에서 설치하세요. Node MCP는 Node.js와 패키지 종속성을 확인하세요. 환경을 고친 뒤 새로고침하세요.",
   "settings.mcp.failureAdvice.network_unreachable":
@@ -3992,11 +3992,11 @@ const koKR: Record<string, string> = {
   "settings.mcp.failureAdvice.unexpected_disconnect":
     "아래 오류와 서버 로그를 확인하세요. 프로세스 종료, 종속성 누락, 연결 중단 여부를 점검한 뒤 상태를 새로고침하세요.",
   "settings.mcp.failureAdvice.oauth_authorization_failed":
-    "이 MCP 서버의 인증 링크를 다시 여세요. 브라우저에서 인증을 완료한 뒤 ZCode로 돌아와 상태를 새로고침하세요.",
+    "이 MCP 서버의 인증 링크를 다시 여세요. 브라우저에서 인증을 완료한 뒤 Codez로 돌아와 상태를 새로고침하세요.",
   "settings.mcp.failureAdvice.official_origin_untrusted":
     "플러그인과 서버 주소가 신뢰할 수 있는 설정에서 왔는지 확인하세요. 보안 검사를 끄거나 알 수 없는 주소에 로그인 정보를 입력하지 마세요.",
   "settings.mcp.failureAdvice.not_authenticated":
-    "ZCode에 로그인한 뒤 MCP 상태를 새로고침하세요. 계정이 로그인된 것으로 보이면 다시 로그인하고 재시도하세요.",
+    "Codez에 로그인한 뒤 MCP 상태를 새로고침하세요. 계정이 로그인된 것으로 보이면 다시 로그인하고 재시도하세요.",
   "settings.mcp.failureAdvice.coding_plan_required":
     "모델 설정에서 계정의 Coding Plan과 선택한 팀 또는 프로젝트를 확인하세요. 사용 가능한 상태임을 확인한 뒤 새로고침하세요.",
   "settings.mcp.failureAdvice.server_not_found":
@@ -4068,7 +4068,7 @@ const koKR: Record<string, string> = {
   "settings.mcpServers.import.targetLabel": "가져올 위치",
   "settings.mcpServers.import.target.global": "전역으로 가져오기",
   "settings.mcpServers.import.target.project": "프로젝트로 가져오기",
-  "settings.mcpServers.import.importing": "ZCode로 MCP 서버를 가져오는 중",
+  "settings.mcpServers.import.importing": "Codez로 MCP 서버를 가져오는 중",
   "settings.mcpServers.import.imported": "가져옴",
   "settings.mcpServers.import.skipped": "건너뜀",
   "settings.mcpServers.import.failed": "실패",
@@ -4210,7 +4210,7 @@ const koKR: Record<string, string> = {
   "settings.modelProvider.startPlan.highlight.trial.label": "체험 기간",
   "settings.modelProvider.startPlan.highlight.trial.value": "5일(달력 기준)",
   "settings.modelProvider.startPlan.highlight.trial.description":
-    "ZCode 3.x에 로그인한 후부터 기간이 시작됩니다.",
+    "Codez 3.x에 로그인한 후부터 기간이 시작됩니다.",
   "settings.modelProvider.startPlan.highlight.quota.label": "일일 할당량",
   "settings.modelProvider.startPlan.highlight.quota.value": "매일 3M 토큰",
   "settings.modelProvider.startPlan.highlight.quota.description":
@@ -4220,7 +4220,7 @@ const koKR: Record<string, string> = {
   "settings.modelProvider.startPlan.highlight.metering.description":
     "플랫폼 GLM 플래그십 모델을 사용한 경우에만 계량됩니다.",
   "settings.modelProvider.startPlan.compatibility":
-    "BYOK 및 BYOA를 지원합니다. Base URL, API 형식, API Key는 ZCode가 자동으로 관리합니다.",
+    "BYOK 및 BYOA를 지원합니다. Base URL, API 형식, API Key는 Codez가 자동으로 관리합니다.",
   "settings.modelProvider.codingPlan.title": "{provider} - Coding Plan",
   "settings.modelProvider.codingPlan.webview.title": "플랜 업그레이드",
   "settings.modelProvider.codingPlan.webview.authInjectFailed":
@@ -4355,7 +4355,7 @@ const koKR: Record<string, string> = {
   "settings.modelProvider.codingPlan.purchase.done": "완료",
   "settings.modelProvider.codingPlan.purchase.teamMemberNoticeTitle": "팀 플랜에 멤버 할당",
   "settings.modelProvider.codingPlan.purchase.teamMemberNoticeDescription":
-    "BigModel 팀 플랜 관리 페이지에서 본인 또는 다른 멤버를 추가하세요. 할당되면 ZCode에서 팀 할당량을 사용할 수 있습니다.",
+    "BigModel 팀 플랜 관리 페이지에서 본인 또는 다른 멤버를 추가하세요. 할당되면 Codez에서 팀 할당량을 사용할 수 있습니다.",
   "settings.modelProvider.codingPlan.purchase.manageTeamPlan": "팀 플랜 관리",
   "settings.modelProvider.codingPlan.manage": "관리",
   "settings.modelProvider.planCard.codingPlan": "Coding Plan",
@@ -4725,7 +4725,7 @@ const koKR: Record<string, string> = {
   "settings.modelProvider.resetForm": "양식 초기화",
   "settings.modelProvider.fieldHelp": "{field} 정보",
   "settings.modelProvider.help.contextWindow":
-    "모델이 한 번에 처리할 수 있는 컨텍스트 용량(토큰 단위)입니다. ZCode는 이 값으로 컨텍스트를 관리합니다.\n모델의 실제 한도를 초과하지 마세요.",
+    "모델이 한 번에 처리할 수 있는 컨텍스트 용량(토큰 단위)입니다. Codez는 이 값으로 컨텍스트를 관리합니다.\n모델의 실제 한도를 초과하지 마세요.",
   "settings.modelProvider.help.maxOutputTokens":
     "단일 모델 요청이 생성할 수 있는 최대 토큰 수입니다.\n모델의 실제 한도를 초과하지 마세요.",
   "settings.modelProvider.help.inputModalities":
@@ -4741,7 +4741,7 @@ const koKR: Record<string, string> = {
   "settings.modelProvider.help.advanced":
     "**MFJS 도구 스키마**: Moonshot Flavored JSON Schema 호환성을 사용합니다. 주로 Moonshot의 Kimi 모델 API에서 사용됩니다. 모델 API가 이 형식을 요구할 때만 사용하세요.",
   "settings.modelProvider.help.followRecommendedConfig":
-    "모델 ID, Base URL, API 형식을 기준으로 권장 구성을 매칭합니다. ZCode는 권장 구성을 지속적으로 업데이트하고 자동으로 동기화합니다.\n설정을 직접 변경하면 해당 설정은 수동 관리로 전환되어 권장 구성 업데이트를 더 이상 따르지 않으며, 나머지 설정은 계속 스마트 구성으로 관리됩니다.",
+    "모델 ID, Base URL, API 형식을 기준으로 권장 구성을 매칭합니다. Codez는 권장 구성을 지속적으로 업데이트하고 자동으로 동기화합니다.\n설정을 직접 변경하면 해당 설정은 수동 관리로 전환되어 권장 구성 업데이트를 더 이상 따르지 않으며, 나머지 설정은 계속 스마트 구성으로 관리됩니다.",
   "settings.modelProvider.modelDefaultsLoaded": "이 모델에 대한 스마트 구성이 매칭되었습니다",
   "settings.modelProvider.modelConfigIncomplete": "모델 구성이 완전하지 않습니다",
   "settings.modelProvider.models": "모델 목록",
@@ -4819,7 +4819,7 @@ const koKR: Record<string, string> = {
   "settings.usage.sourceProvider": "출처: {provider}",
   "settings.usage.billingBanner.title": "{provider} Coding Plan",
   "settings.usage.billingBanner.description":
-    "{provider} 계정을 연결하여 Coding Plan 이용 권한을 조회한 다음, 구매 또는 설정 후 ZCode에서 계속 코딩하세요.",
+    "{provider} 계정을 연결하여 Coding Plan 이용 권한을 조회한 다음, 구매 또는 설정 후 Codez에서 계속 코딩하세요.",
   "settings.usage.billingBanner.compactDescription":
     "사용량을 동기화하려면 {provider} 계정을 연결하세요.",
   "settings.usage.billingBanner.buy": "Coding Plan 구매",
@@ -4886,7 +4886,7 @@ const koKR: Record<string, string> = {
   "settings.usage.entitlementFiveHourUsage": "5시간 잔여량",
   "settings.usage.entitlementWeeklyUsage": "주간 잔여량",
   "settings.usage.entitlementMonthlyMcpUsage": "도구 호출",
-  "settings.usage.entitlementServerMcpUsage": "ZCode MCP",
+  "settings.usage.entitlementServerMcpUsage": "Codez MCP",
   "settings.usage.entitlementResetAt": "초기화: {time}",
   "settings.usage.entitlementUsageDetails": "도구 사용량 상세",
   "settings.usage.entitlementPromptCap": "5시간 프롬프트 풀",
@@ -4944,9 +4944,9 @@ const koKR: Record<string, string> = {
   "sidebar.usage.plan.fiveHour": "5시간",
   "sidebar.usage.plan.weekly": "주간",
   "sidebar.usage.plan.toolCalls": "도구 호출",
-  "sidebar.usage.plan.mcp": "ZCode MCP",
-  "sidebar.usage.plan.zcodeMcp": "ZCode MCP",
-  "sidebar.usage.plan.zcodeMcpDescription": "ZCode 내장 플러그인 MCP의 일일 통합 할당량",
+  "sidebar.usage.plan.mcp": "Codez MCP",
+  "sidebar.usage.plan.codezMcp": "Codez MCP",
+  "sidebar.usage.plan.codezMcpDescription": "Codez 내장 플러그인 MCP의 일일 통합 할당량",
   "chat.planUsage.title": "플랜 사용량",
   "chat.planUsage.titleWithPlan": "{plan} 플랜 사용량",
   "chat.planUsage.providerFallback": "현재 공급자",
@@ -5129,7 +5129,7 @@ const koKR: Record<string, string> = {
   "settings.skills.delete.title": "스킬 삭제",
   "settings.skills.delete.description":
     '"{name}"을(를) 삭제하시겠습니까? 디스크에서 스킬 폴더가 삭제되며 되돌릴 수 없습니다.',
-  "settings.skills.agent.glm": "ZCode Agent",
+  "settings.skills.agent.glm": "Codez Agent",
   "settings.skills.agent.unknown": "알 수 없는 출처",
   "settings.skills.create.open": "새 스킬",
   "settings.skills.create.taskCreateFailed":
@@ -5170,10 +5170,10 @@ const koKR: Record<string, string> = {
   "settings.skills.import.mode.copy": "복사",
   "settings.skills.import.mode.symlink": "심볼릭 링크",
   "settings.skills.import.mode.copy.description":
-    "전체 스킬 디렉터리를 ZCode로 복사합니다. 이후 외부 에이전트 디렉터리의 변경 사항은 자동으로 동기화되지 않습니다.",
+    "전체 스킬 디렉터리를 Codez로 복사합니다. 이후 외부 에이전트 디렉터리의 변경 사항은 자동으로 동기화되지 않습니다.",
   "settings.skills.import.mode.symlink.description":
-    "외부 에이전트 스킬에 대한 디렉터리 링크를 만듭니다. ZCode는 이후 원본 변경 사항을 따르지만, 스킬은 해당 원본 경로가 계속 존재해야 사용할 수 있습니다.",
-  "settings.skills.import.importing": "ZCode로 스킬 가져오는 중",
+    "외부 에이전트 스킬에 대한 디렉터리 링크를 만듭니다. Codez는 이후 원본 변경 사항을 따르지만, 스킬은 해당 원본 경로가 계속 존재해야 사용할 수 있습니다.",
+  "settings.skills.import.importing": "Codez로 스킬 가져오는 중",
   "settings.skills.import.imported": "가져옴",
   "settings.skills.import.skipped": "건너뜀",
   "settings.skills.import.failed": "실패",
@@ -5222,7 +5222,7 @@ const koKR: Record<string, string> = {
   "settings.skills.diagnostics.code.skill_not_found": "스킬을 찾을 수 없습니다",
   "settings.subagents.title": "하위 에이전트",
   "settings.subagents.description":
-    "ZCode Agent가 사용하는 사용자 수준 하위 에이전트 Markdown 파일을 관리합니다.",
+    "Codez Agent가 사용하는 사용자 수준 하위 에이전트 Markdown 파일을 관리합니다.",
   "settings.subagents.workspaceScopeUnsupported":
     "워크스페이스 수준의 생성 또는 편집은 지원되지 않습니다",
   "settings.subagents.searchPlaceholder": "하위 에이전트 검색...",
@@ -5604,10 +5604,10 @@ const koKR: Record<string, string> = {
   "settings.plugins.import.mode.copy": "복사",
   "settings.plugins.import.mode.symlink": "심볼릭 링크",
   "settings.plugins.import.mode.copy.description":
-    "전체 플러그인 디렉터리를 ZCode로 복사하고 plugins.dirs에 등록합니다. 이후 외부 에이전트 디렉터리의 변경 사항은 자동으로 동기화되지 않습니다.",
+    "전체 플러그인 디렉터리를 Codez로 복사하고 plugins.dirs에 등록합니다. 이후 외부 에이전트 디렉터리의 변경 사항은 자동으로 동기화되지 않습니다.",
   "settings.plugins.import.mode.symlink.description":
-    "외부 에이전트 플러그인에 대한 디렉터리 링크를 만들고 plugins.dirs에 등록합니다. ZCode는 이후 원본 변경 사항을 따르지만, 플러그인은 해당 원본 경로가 계속 존재해야 사용할 수 있습니다.",
-  "settings.plugins.import.importing": "ZCode로 플러그인 가져오는 중",
+    "외부 에이전트 플러그인에 대한 디렉터리 링크를 만들고 plugins.dirs에 등록합니다. Codez는 이후 원본 변경 사항을 따르지만, 플러그인은 해당 원본 경로가 계속 존재해야 사용할 수 있습니다.",
+  "settings.plugins.import.importing": "Codez로 플러그인 가져오는 중",
   "settings.plugins.import.imported": "가져옴",
   "settings.plugins.import.skipped": "건너뜀",
   "settings.plugins.import.failed": "실패",
@@ -5616,9 +5616,9 @@ const koKR: Record<string, string> = {
   "settings.plugins.import.finish": "완료",
   "settings.commands.title": "명령",
   "settings.commands.description":
-    "ZCode Agent의 .md 명령 파일을 관리합니다. 채팅에서 /command-name으로 명령을 호출할 수 있습니다.",
+    "Codez Agent의 .md 명령 파일을 관리합니다. 채팅에서 /command-name으로 명령을 호출할 수 있습니다.",
   "settings.commands.sourceFilterLabel": "출처 필터",
-  "settings.commands.source.zcodeAgent": "ZCode Agent",
+  "settings.commands.source.codezAgent": "Codez Agent",
   "settings.commands.add": "새로 만들기",
   "settings.commands.addNew": "새 명령",
   "settings.commands.addDescription":
@@ -5678,10 +5678,10 @@ const koKR: Record<string, string> = {
   "settings.commands.import.mode.copy": "복사",
   "settings.commands.import.mode.symlink": "심볼릭 링크",
   "settings.commands.import.mode.copy.description":
-    "명령 파일을 ZCode로 복사합니다. 이후 외부 에이전트 파일의 변경 사항은 자동으로 동기화되지 않습니다.",
+    "명령 파일을 Codez로 복사합니다. 이후 외부 에이전트 파일의 변경 사항은 자동으로 동기화되지 않습니다.",
   "settings.commands.import.mode.symlink.description":
-    "외부 에이전트 명령에 대한 파일 링크를 만듭니다. ZCode는 이후 원본 변경 사항을 따르지만, 명령은 해당 원본 경로가 계속 존재해야 사용할 수 있습니다.",
-  "settings.commands.import.importing": "ZCode로 명령 가져오는 중",
+    "외부 에이전트 명령에 대한 파일 링크를 만듭니다. Codez는 이후 원본 변경 사항을 따르지만, 명령은 해당 원본 경로가 계속 존재해야 사용할 수 있습니다.",
+  "settings.commands.import.importing": "Codez로 명령 가져오는 중",
   "settings.commands.import.imported": "가져옴",
   "settings.commands.import.skipped": "건너뜀",
   "settings.commands.import.failed": "실패",
@@ -5708,9 +5708,9 @@ const koKR: Record<string, string> = {
   "settings.hooks.title": "훅",
   "settings.workspaceFileSearch.title": "워크스페이스 검색 범위",
   "settings.workspaceFileSearch.description":
-    "워크스페이스 파일 검색 범위를 정하는 .zcodeignore 규칙(gitignore 구문)을 편집합니다. 저장 후 다음 검색부터 적용됩니다.",
+    "워크스페이스 파일 검색 범위를 정하는 .codezignore 규칙(gitignore 구문)을 편집합니다. 저장 후 다음 검색부터 적용됩니다.",
   "settings.workspaceFileSearch.templateHint":
-    ".zcodeignore가 아직 없습니다. 아래 내용은 초기 미리 보기(.gitignore 복사본 + 기본 제외 항목)이며, 저장한 후에만 워크스페이스에 기록됩니다.",
+    ".codezignore가 아직 없습니다. 아래 내용은 초기 미리 보기(.gitignore 복사본 + 기본 제외 항목)이며, 저장한 후에만 워크스페이스에 기록됩니다.",
   "settings.workspaceFileSearch.editorLabel": "워크스페이스 검색 무시 규칙 편집기",
   "settings.workspaceFileSearch.save": "저장",
   "settings.workspaceFileSearch.saved": "저장되었습니다. 다음 검색부터 적용됩니다",
@@ -5722,7 +5722,7 @@ const koKR: Record<string, string> = {
     "섹션 작업을 적용하지 못했습니다. 로그를 확인하세요",
   "settings.workspaceFileSearch.reveal": "파일 위치 표시",
   "settings.workspaceFileSearch.revealHint":
-    "먼저 저장하세요. .zcodeignore는 워크스페이스 루트에 있습니다",
+    "먼저 저장하세요. .codezignore는 워크스페이스 루트에 있습니다",
   "settings.workspaceFileSearch.unsaved": "저장되지 않은 변경 사항",
   "settings.workspaceFileSearch.noWorkspace":
     "열린 워크스페이스가 없어 검색 무시 규칙을 구성할 수 없습니다.",
@@ -5770,7 +5770,7 @@ const koKR: Record<string, string> = {
   "settings.hooks.customJson": "사용자 지정 필드 JSON",
   "settings.hooks.customJsonObjectError": "사용자 지정 필드는 JSON 객체여야 합니다.",
   "settings.hooks.customJsonParseError": "사용자 지정 필드 JSON을 구문 분석하지 못했습니다.",
-  "settings.plugins.zcodeOnly": "ZCode Agent 전용",
+  "settings.plugins.codezOnly": "Codez Agent 전용",
   "settingsSync.dialog.title": "설정 가져오기",
   "settingsSync.dialog.description": "없는 항목만 가져옵니다. 기존 설정은 자동으로 건너뜁니다.",
   "settingsSync.action.skip": "나중에",
@@ -5778,8 +5778,8 @@ const koKR: Record<string, string> = {
   "settingsSync.action.rescanning": "검색 중...",
   "settingsSync.action.importSelected": "선택 항목 가져오기",
   "settingsSync.action.importing": "가져오는 중...",
-  "settingsSync.action.finish": "ZCode 사용 시작",
-  "settingsSync.agent.zcode": "ZCode Agent",
+  "settingsSync.action.finish": "Codez 사용 시작",
+  "settingsSync.agent.codez": "Codez Agent",
   "settingsSync.agent.claudeCode": "Claude Code",
   "settingsSync.agent.codexCli": "Codex CLI",
   "settingsSync.agent.openCode": "OpenCode",
@@ -5827,7 +5827,7 @@ const koKR: Record<string, string> = {
   "settingsSync.discovery.title": "가져올 수 있는 설정을 찾았습니다",
   "settingsSync.discovery.description":
     "가져올 수 있는 에이전트 설정은 더 이상 자동으로 검색되지 않습니다.",
-  "settingsSync.discovery.helper": "없는 항목만 가져오며 현재 ZCode 설정은 덮어쓰지 않습니다.",
+  "settingsSync.discovery.helper": "없는 항목만 가져오며 현재 Codez 설정은 덮어쓰지 않습니다.",
   "settingsSync.discovery.agentCount": "발견된 에이전트: {count}",
   "settingsSync.discovery.categoryCount": "발견된 카테고리: {count}",
   "settingsSync.discovery.error": "검색 실패: {error}",
@@ -5853,7 +5853,7 @@ const koKR: Record<string, string> = {
     "최종 마이그레이션 전에 외부 에이전트에서 선택한 명령을 가져옵니다.",
   "onboarding.stepDescription.agentSettings": "가져올 에이전트의 공급자를 선택하세요.",
   "onboarding.stepDescription.migration":
-    "마이그레이션을 시작하고 ZCode가 선택 항목을 가져오는 동안 기다리세요.",
+    "마이그레이션을 시작하고 Codez가 선택 항목을 가져오는 동안 기다리세요.",
   "onboarding.sessions.empty":
     "아직 워크스페이스가 없습니다. 로컬 기록을 검색한 후 마이그레이션할 워크스페이스를 선택하세요.",
   "onboarding.sessions.count": "세션 {count}개",
@@ -5872,7 +5872,7 @@ const koKR: Record<string, string> = {
   "onboarding.agentsFile.error": "AGENTS.md 마이그레이션 상태를 확인할 수 없습니다: {error}",
   "onboarding.agentsFile.confirmTitle": "기본 AGENTS.md를 덮어쓰시겠습니까?",
   "onboarding.agentsFile.confirmDescription":
-    "ZCode가 {source}을(를) {target}(으)로 복사합니다.\n대상 파일이 이미 있으면 ZCode 기본 AGENTS 구성을 덮어씁니다.",
+    "Codez가 {source}을(를) {target}(으)로 복사합니다.\n대상 파일이 이미 있으면 Codez 기본 AGENTS 구성을 덮어씁니다.",
   "onboarding.agentsFile.confirmAction": "덮어쓰고 마이그레이션",
   "onboarding.finish.summary.label.imported": "가져옴",
   "onboarding.finish.summary.label.skipped": "건너뜀",
@@ -5964,8 +5964,8 @@ const koKR: Record<string, string> = {
   "chat.emptyResult.description":
     "이 작업은 채팅 내용 없이 종료되었습니다. 모델이 응답을 생성하기 전에 중지되었을 수 있습니다.",
   "chat.placeholder.newTask":
-    "ZCode에게 무엇이든 물어보세요. @로 컨텍스트 추가, /로 명령 또는 기능 사용",
-  "chat.placeholder.newTaskMobile": "ZCode에게 무엇이든 물어보세요…",
+    "Codez에게 무엇이든 물어보세요. @로 컨텍스트 추가, /로 명령 또는 기능 사용",
+  "chat.placeholder.newTaskMobile": "Codez에게 무엇이든 물어보세요…",
   "chat.placeholder.followUpAsk": "후속 변경 요청",
   "chat.placeholder.followUpQueue": "계속 입력하여 후속 변경을 대기열에 추가",
   "chat.placeholder.loading": "작업 초기화 중...",
@@ -6271,7 +6271,7 @@ const koKR: Record<string, string> = {
   "chat.compact.duplicateBlocked": "압축이 이미 실행 중이거나 대기 중입니다.",
   "chat.modelSwitch.contextWindowGuard.title": "모델을 전환하기 전에 컨텍스트를 압축하세요",
   "chat.modelSwitch.contextWindowGuard.description":
-    "이 대화는 {used} 토큰을 사용했으며, 최대 출력을 예약한 후 {modelName}에서 사용할 수 있는 컨텍스트 {target} 토큰을 초과합니다.\n먼저 현재 모델로 현재 대화를 압축하세요. 압축된 컨텍스트가 맞으면 ZCode가 모델 전환을 계속합니다.",
+    "이 대화는 {used} 토큰을 사용했으며, 최대 출력을 예약한 후 {modelName}에서 사용할 수 있는 컨텍스트 {target} 토큰을 초과합니다.\n먼저 현재 모델로 현재 대화를 압축하세요. 압축된 컨텍스트가 맞으면 Codez가 모델 전환을 계속합니다.",
   "chat.modelSwitch.contextWindowGuard.compress": "압축",
   "chat.modelSwitch.contextWindowGuard.runningBlocked":
     "이 대화가 사용한 컨텍스트가 최대 출력을 예약한 후 대상 모델에서 사용할 수 있는 컨텍스트보다 큽니다. 모델을 전환하기 전에 대화를 압축해야 하지만, 현재 작업이 아직 실행 중이어서 지금은 컨텍스트 압축을 실행할 수 없습니다. 작업이 끝날 때까지 기다린 후 다시 모델을 전환하세요.",
@@ -6284,11 +6284,11 @@ const koKR: Record<string, string> = {
     "Computer Use가 대기 중입니다. 처음 사용할 때 자동으로 시작됩니다",
   "chat.toolbar.computerUse.tooltip.starting": "Computer Use 플러그인 사용 설정 중…",
   "chat.toolbar.computerUse.tooltip.ready":
-    "Computer Use 준비 완료. ZCode에게 원하는 작업을 설명하기만 하면 됩니다",
+    "Computer Use 준비 완료. Codez에게 원하는 작업을 설명하기만 하면 됩니다",
   "chat.toolbar.computerUse.tooltip.permissionRequired":
     "macOS 권한이 없습니다. 클릭하여 권한을 부여하세요",
   "chat.toolbar.computerUse.tooltip.error":
-    "Computer Use를 사용하도록 설정하지 못했습니다. ZCode 앱을 다시 시작한 후 다시 시도하거나 ZCode에게 로그 조사를 요청하세요",
+    "Computer Use를 사용하도록 설정하지 못했습니다. Codez 앱을 다시 시작한 후 다시 시도하거나 Codez에게 로그 조사를 요청하세요",
   "chat.toolbar.computerUse.tooltip.sessionBusy":
     "대화가 실행 중입니다. 지금은 Computer Use를 전환할 수 없습니다. 대화가 끝난 후 다시 시도하세요.",
   "chat.toolbar.mode.description":
@@ -6642,7 +6642,7 @@ const koKR: Record<string, string> = {
     "로컬 에이전트에 연결할 수 없어 전역 워크플로를 사용할 수 없습니다.",
   "workflows.hub.empty.title": "열린 프로젝트에 아직 저장된 워크플로가 없습니다",
   "workflows.hub.empty.hint":
-    "채팅에서 ZCode와 함께 워크플로를 설계한 다음, 잘 작동하면 프로젝트에 저장하도록 요청하세요. 열려 있지 않은 프로젝트는 여기에 표시되지 않습니다.",
+    "채팅에서 Codez와 함께 워크플로를 설계한 다음, 잘 작동하면 프로젝트에 저장하도록 요청하세요. 열려 있지 않은 프로젝트는 여기에 표시되지 않습니다.",
   "workflows.hub.noWorkspace": "워크플로를 보려면 워크스페이스를 여세요.",
   "workflows.hub.loadError": "워크플로를 읽을 수 없습니다: {error}",
   "workflows.hub.invalid": "파일 {count}개를 읽을 수 없습니다",
@@ -6705,7 +6705,7 @@ const koKR: Record<string, string> = {
   "workflows.hub.detail.description": "설명",
   "workflows.hub.detail.whenToUse": "사용 시점",
   "workflows.hub.detail.whenToUse.help":
-    "ZCode를 위한 라우팅 힌트로, 이 워크플로가 적합한 경우를 설명합니다.",
+    "Codez를 위한 라우팅 힌트로, 이 워크플로가 적합한 경우를 설명합니다.",
   "workflows.hub.detail.args": "인수",
   "workflows.hub.detail.args.name": "이름",
   "workflows.hub.detail.args.type": "유형",
@@ -6726,7 +6726,7 @@ const koKR: Record<string, string> = {
   "workflows.hub.detail.meta.descriptionRequired": "설명은 필수입니다",
   "workflows.hub.detail.script": "스크립트",
   "workflows.hub.detail.script.note":
-    "스크립트는 읽기 전용입니다. 변경하려면 채팅에서 ZCode와 함께 수정한 후 새 버전을 저장하세요.",
+    "스크립트는 읽기 전용입니다. 변경하려면 채팅에서 Codez와 함께 수정한 후 새 버전을 저장하세요.",
   "workflows.hub.detail.script.copy": "스크립트 복사",
   "workflows.hub.detail.loadError": "이 워크플로를 읽을 수 없습니다: {reason}",
   "workflows.hub.detail.notFound": "이 워크플로가 더 이상 프로젝트에 없습니다.",
@@ -6913,7 +6913,7 @@ const koKR: Record<string, string> = {
   // 「配置」弹层（docs/dynamic-workflow/presentation.md「The settings popover」）：改子代理模型与最大并发数，
   // 应用即一次 GUI 修订（新 run 接着跑，旧 run 停下，已完成的步骤作缓存带过去）。
   // 完成卡与 run 侧板上的「保存 / 再次运行」（docs/dynamic-workflow/transcript-and-notifications.md
-  // 「Saving the run, and running it again」）。两条路：交给 ZCode 提炼，或按原样直接写下去。
+  // 「Saving the run, and running it again」）。两条路：交给 Codez 提炼，或按原样直接写下去。
   "chat.toolCall.workflow.saveRun.action": "저장",
   "chat.toolCall.workflow.saveRun.runAgain": "다시 실행",
   "chat.toolCall.workflow.saveRun.starting": "시작 중…",
@@ -6922,10 +6922,10 @@ const koKR: Record<string, string> = {
   "chat.toolCall.workflow.saveRun.announce.project": "프로젝트에 저장됨",
   "chat.toolCall.workflow.saveRun.announce.global": "전역 워크플로로 저장됨",
   "chat.toolCall.workflow.saveRun.title": "워크플로 저장",
-  "chat.toolCall.workflow.saveRun.lead": "ZCode가 다듬어 저장하도록 하기",
+  "chat.toolCall.workflow.saveRun.lead": "Codez가 다듬어 저장하도록 하기",
   "chat.toolCall.workflow.saveRun.lead.hint":
-    "ZCode가 재사용 가능한 워크플로를 정리한 후 확인을 요청합니다.",
-  "chat.toolCall.workflow.saveRun.lead.sending": "ZCode에 전달됨…",
+    "Codez가 재사용 가능한 워크플로를 정리한 후 확인을 요청합니다.",
+  "chat.toolCall.workflow.saveRun.lead.sending": "Codez에 전달됨…",
   "chat.toolCall.workflow.saveRun.lead.unsupported": "이 에이전트는 직접 저장할 수 없습니다.",
   "chat.toolCall.workflow.saveRun.or": "또는 그대로 저장",
   "chat.toolCall.workflow.saveRun.name": "이름",
@@ -7027,7 +7027,7 @@ const koKR: Record<string, string> = {
   "chat.toolCall.workflow.run.artifacts.nextVersion": "다음 버전",
   "chat.toolCall.workflow.run.artifacts.open": "산출물 열기",
   // 动作。「下载」（存到用户挑的位置）仍缺席；「作为文件打开」
-  // 落的是宿主 ~/.zcode/tmp 下的副本，不是用户挑的位置。
+  // 落的是宿主 ~/.codez/tmp 下的副本，不是用户挑的位置。
   "chat.toolCall.workflow.run.artifacts.reveal": "워크스페이스에서 표시",
   "chat.toolCall.workflow.run.artifacts.copy": "복사",
   "chat.toolCall.workflow.run.artifacts.copied": "복사됨",
@@ -7304,7 +7304,7 @@ const koKR: Record<string, string> = {
   "chat.slash.skills.empty": "일치하는 스킬이 없습니다",
   "chat.slash.subagents.title": "에이전트",
   "chat.slash.subagents.empty": "일치하는 에이전트가 없습니다",
-  "chat.slash.emptyUnavailable": "현재 ZCode Agent 세션에 브로드캐스트된 슬래시 명령이 없습니다",
+  "chat.slash.emptyUnavailable": "현재 Codez Agent 세션에 브로드캐스트된 슬래시 명령이 없습니다",
   "chat.slash.emptyResults": "일치하는 슬래시 명령이 없습니다",
   // Errors
   "chat.error.connectionLost": "에이전트와의 연결이 끊어졌습니다",
@@ -7349,9 +7349,9 @@ const koKR: Record<string, string> = {
   "chat.quota.startPlan.concurrentLimit.switchModel":
     "현재 모델의 요청 동시 실행 한도에 도달했습니다. 현재 작업을 계속하려면 모델을 전환하세요.",
   "chat.quota.mcp.quotaExhausted":
-    'ZCode MCP "{server}"의 오늘 할당량을 모두 사용했습니다. 내일 초기화됩니다.',
+    'Codez MCP "{server}"의 오늘 할당량을 모두 사용했습니다. 내일 초기화됩니다.',
   "chat.quota.mcp.codingPlanRequired":
-    'ZCode MCP "{server}" 할당량이 없습니다. 사용하려면 로그인하거나 Coding Plan을 구독하세요.',
+    'Codez MCP "{server}" 할당량이 없습니다. 사용하려면 로그인하거나 Coding Plan을 구독하세요.',
   "chat.quota.providerLimited":
     "현재 계정 할당량 또는 플랜 한도에 도달했습니다. 계속하려면 업그레이드하거나 플랜을 조정하세요.",
   "chat.quota.action.upgrade": "업그레이드",
@@ -7547,51 +7547,51 @@ const koKR: Record<string, string> = {
   "planTool.panel.syncing": "계획 동기화 중…",
   "planTool.guidance.enterMode": "계획 모드에 진입했습니다",
   "chat.permission.switchMode.placeholder": "구현 계획",
-  // ZCode Agent
-  "zcode.unavailable": "AI 에이전트를 사용할 수 없습니다",
-  "zcode.initFailed": "AI 에이전트를 시작하지 못했습니다",
-  "zcode.error.TASK_OWNED_BY_OTHER_HOST": "이 작업은 이미 연결된 다른 보기에서 실행 중입니다.",
-  "zcode.error.STALE_TASK_OWNER_COMMAND": "이 작업은 이전 실행에 속하므로 무시되었습니다.",
-  "zcode.error.NO_ACTIVE_TASK_OWNER": "이 작업에 사용할 수 있는 활성 작업 소유자가 없습니다.",
-  "zcode.error.OWNER_COMMAND_FAILED": "작업 소유자가 이 작업을 완료할 수 없습니다.",
-  "zcode.error.MEDIA_BUDGET_CURRENT_ATTACHMENT_TOO_LARGE":
+  // Codez Agent
+  "codez.unavailable": "AI 에이전트를 사용할 수 없습니다",
+  "codez.initFailed": "AI 에이전트를 시작하지 못했습니다",
+  "codez.error.TASK_OWNED_BY_OTHER_HOST": "이 작업은 이미 연결된 다른 보기에서 실행 중입니다.",
+  "codez.error.STALE_TASK_OWNER_COMMAND": "이 작업은 이전 실행에 속하므로 무시되었습니다.",
+  "codez.error.NO_ACTIVE_TASK_OWNER": "이 작업에 사용할 수 있는 활성 작업 소유자가 없습니다.",
+  "codez.error.OWNER_COMMAND_FAILED": "작업 소유자가 이 작업을 완료할 수 없습니다.",
+  "codez.error.MEDIA_BUDGET_CURRENT_ATTACHMENT_TOO_LARGE":
     "현재 첨부 파일이 한 번의 요청에 비해 너무 큽니다. 첨부 파일을 제거하거나 압축한 후 다시 시도하세요.",
-  "zcode.error.MEDIA_BUDGET_CURRENT_IMAGE_TOO_LARGE":
+  "codez.error.MEDIA_BUDGET_CURRENT_IMAGE_TOO_LARGE":
     "현재 이미지 첨부 파일이 너무 큽니다. 이미지를 제거하거나 압축한 후 다시 시도하세요.",
-  "zcode.error.MEDIA_BUDGET_CURRENT_VIDEO_TOO_LARGE":
+  "codez.error.MEDIA_BUDGET_CURRENT_VIDEO_TOO_LARGE":
     "현재 동영상 첨부 파일이 너무 큽니다. 동영상을 제거하거나 압축한 후 다시 시도하세요.",
-  "zcode.error.ZCODE_RUNTIME_MODEL_UNAVAILABLE":
+  "codez.error.CODEZ_RUNTIME_MODEL_UNAVAILABLE":
     "현재 모델을 더 이상 사용할 수 없습니다. 계속하려면 현재 모델 목록에서 사용 가능한 모델을 선택하세요.",
-  "zcode.error.ZCODE_BIGMODEL_TEAM_PLAN_MEMBER_REQUIRED":
+  "codez.error.CODEZ_BIGMODEL_TEAM_PLAN_MEMBER_REQUIRED":
     "현재 모델을 사용할 수 없습니다. 현재 계정이 프로젝트 구성원 목록에 추가되었는지 확인하세요.",
-  "zcode.error.CLAUDE_UNKNOWN_COMMAND":
+  "codez.error.CLAUDE_UNKNOWN_COMMAND":
     "Claude Code가 {command}을(를) 인식하지 못합니다. 명령 이름을 확인하거나, 이를 지원하는 에이전트/스킬로 전환한 후 다시 시도하세요.",
-  "zcode.error.CLAUDE_UNKNOWN_COMMAND_WITH_ARGS":
+  "codez.error.CLAUDE_UNKNOWN_COMMAND_WITH_ARGS":
     "Claude Code가 {command}(인수: {args})을(를) 인식하지 못합니다. 명령 이름을 확인하거나, 이를 지원하는 에이전트/스킬로 전환한 후 다시 시도하세요.",
-  "zcode.error.providerBusiness.1006": "로그인 세션이 만료되었습니다. 다시 로그인하세요.",
-  "zcode.error.providerBusiness.1005":
+  "codez.error.providerBusiness.1006": "로그인 세션이 만료되었습니다. 다시 로그인하세요.",
+  "codez.error.providerBusiness.1005":
     "오늘의 무료 플랜 할당량을 모두 사용했습니다. Coding Plan 구독이나 다른 모델로 전환하거나 할당량이 초기화될 때까지 기다리세요.",
-  "zcode.error.providerBusiness.3006":
+  "codez.error.providerBusiness.3006":
     "현재 모델은 이 플랜에 포함되어 있지 않습니다. 허용된 모델로 전환한 후 다시 시도하세요.",
-  "zcode.error.providerBusiness.3002":
+  "codez.error.providerBusiness.3002":
     "요청을 너무 빠르게 보내고 있습니다. 잠시 후 다시 시도하세요.",
-  "zcode.error.providerBusiness.3001":
+  "codez.error.providerBusiness.3001":
     "요청 매개변수가 올바르지 않습니다. 입력을 확인한 후 다시 시도하세요.",
-  "zcode.error.providerBusiness.3008":
+  "codez.error.providerBusiness.3008":
     "시스템이 혼잡합니다. 모델을 전환하거나, Coding Plan 구독으로 전환하거나, 잠시 후 다시 시도하세요.",
-  "zcode.error.providerBusiness.3009":
+  "codez.error.providerBusiness.3009":
     "시스템이 혼잡합니다. 모델을 전환하거나, Coding Plan 구독으로 전환하거나, 잠시 후 다시 시도하세요.",
-  "zcode.error.providerBusiness.3010":
+  "codez.error.providerBusiness.3010":
     "시스템이 혼잡합니다. 모델을 전환하거나, Coding Plan 구독으로 전환하거나, 잠시 후 다시 시도하세요.",
-  "zcode.error.providerBusiness.3102":
+  "codez.error.providerBusiness.3102":
     "이 작업이 대기열 맨 앞에 도달했을 때 기기가 오프라인 상태였습니다. 할당량은 반환되었습니다. 기기를 온라인 상태로 유지하고 새 유휴 시간 작업을 만드세요.",
-  "zcode.error.providerBusiness.3106":
+  "codez.error.providerBusiness.3106":
     "이번 실행이 1회 최대 실행 시간을 초과했습니다. 계속하려면 새 유휴 시간 작업을 만드세요.",
-  "zcode.error.offPeakTicketExpired":
+  "codez.error.offPeakTicketExpired":
     "이 유휴 시간 작업은 더 이상 계속할 수 없습니다. 새 유휴 시간 작업을 만드세요.",
-  "zcode.error.providerBusiness.2007":
+  "codez.error.providerBusiness.2007":
     "업스트림 서비스를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도하세요.",
-  "zcode.error.providerBusiness.429":
+  "codez.error.providerBusiness.429":
     "요청을 너무 빠르게 보내고 있습니다. 잠시 후 다시 시도하세요.",
   // Debug info bar
   "debugInfo.taskId": "작업 ID",
@@ -7621,7 +7621,7 @@ const koKR: Record<string, string> = {
   "resourceManager.network.empty": "새 네트워크 요청 대기 중…",
   "resourceManager.network.noMatches": "일치하는 요청이 없습니다",
   "resourceManager.storage": "저장 공간",
-  "resourceManager.appUsage": "ZCode",
+  "resourceManager.appUsage": "Codez",
   "resourceManager.systemUsage": "시스템",
   "resourceManager.category.base": "기본 서비스",
   "resourceManager.category.task": "작업 프로세스",
@@ -7864,7 +7864,7 @@ const koKR: Record<string, string> = {
   "feedback.submit.template.section.errorSummaryLine": "오류 요약: {message}",
   "feedback.submit.template.section.errorDetail": "오류 상세",
   "feedback.submit.template.section.errorTraceId": "TraceID: {traceId}",
-  "feedback.submit.template.section.copyErrorHeading": "ZCode 오류 정보",
+  "feedback.submit.template.section.copyErrorHeading": "Codez 오류 정보",
   "feedback.submit.template.section.notProvided": "제공되지 않음",
   "feedback.submit.template.section.remoteLogEmpty": "수집된 연결 로그가 없습니다",
   "feedback.submit.template.section.taskFeedbackTitle": "작업에 대한 피드백: {title}",
@@ -8025,7 +8025,7 @@ const koKR: Record<string, string> = {
   "automations.statusFilter.failed": "실패",
   "automations.statusFilter.empty": "이 필터와 일치하는 작업이 없습니다",
   "offPeak.keepAwakeBanner":
-    "ZCode가 채팅을 실행하는 동안 컴퓨터가 절전 모드로 전환되지 않도록 하세요.",
+    "Codez가 채팅을 실행하는 동안 컴퓨터가 절전 모드로 전환되지 않도록 하세요.",
   "offPeak.sectionTitle": "유휴 시간 작업",
   "offPeak.createButton": "유휴 시간 작업 만들기",
   "offPeak.templates.sectionTitle": "유휴 시간 작업 템플릿",
@@ -8081,7 +8081,7 @@ const koKR: Record<string, string> = {
   "offPeak.form.titlePlaceholder": "예: 야간 리팩터링",
   "offPeak.form.instructionsLabel": "지시 사항",
   "offPeak.form.instructionsPlaceholder":
-    "ZCode가 백그라운드에서 처리할 수 있는 작업을 기대 결과 및 제약 조건과 함께 설명하세요…",
+    "Codez가 백그라운드에서 처리할 수 있는 작업을 기대 결과 및 제약 조건과 함께 설명하세요…",
   "offPeak.form.permissionWarning":
     "유휴 시간 실행은 무인으로 진행됩니다. 확인이 필요한 작업은 응답할 때까지 작업을 일시 중지합니다.",
   "offPeak.form.modelLabel": "모델",
@@ -8274,9 +8274,9 @@ const koKR: Record<string, string> = {
   "automations.runs.nextPage": "다음",
   // CUA (Computer Use)
   "chat.cuaReadiness.toolsNotLoaded":
-    "ZCode Computer Use가 아직 준비 중이며 도구가 아직 로드되지 않았습니다({count}개 로드됨). 아래 권한을 부여하세요. 헬퍼가 준비되면 도구가 표시됩니다.",
+    "Codez Computer Use가 아직 준비 중이며 도구가 아직 로드되지 않았습니다({count}개 로드됨). 아래 권한을 부여하세요. 헬퍼가 준비되면 도구가 표시됩니다.",
   "chat.cuaReadiness.toolsPreparing":
-    "ZCode Computer Use가 아직 준비 중이며 도구가 아직 로드되지 않았습니다. 아래 권한을 부여하세요. 헬퍼가 준비되면 도구가 표시됩니다.",
+    "Codez Computer Use가 아직 준비 중이며 도구가 아직 로드되지 않았습니다. 아래 권한을 부여하세요. 헬퍼가 준비되면 도구가 표시됩니다.",
   "chat.toolCall.cua.requestAccess": "Computer Use 액세스 확인",
   "chat.toolCall.cua.appName": "Computer Use",
   "chat.toolCall.cua.group.completedLabel": "Computer Use",
@@ -8404,9 +8404,9 @@ const koKR: Record<string, string> = {
   "cuaPermission.modal.restartButton": "Helper 다시 시작",
   "cuaPermission.modal.restarting": "Helper 다시 시작 중…",
   "cuaPermission.modal.restartFailed": "Helper를 다시 시작할 수 없습니다: {error}",
-  "cuaPermission.modal.relaunchAppButton": "ZCode 다시 시작",
+  "cuaPermission.modal.relaunchAppButton": "Codez 다시 시작",
   "cuaPermission.modal.relaunchAppHint":
-    "Helper를 다시 시작해도 작동하지 않나요? ZCode를 다시 시작하여 Helper 프로세스를 완전히 다시 불러오세요.",
+    "Helper를 다시 시작해도 작동하지 않나요? Codez를 다시 시작하여 Helper 프로세스를 완전히 다시 불러오세요.",
   "cuaPermission.status.granted": "허용됨",
   "cuaPermission.status.missing": "없음",
   "cuaPermission.status.unknown": "알 수 없음",
@@ -8420,7 +8420,7 @@ const koKR: Record<string, string> = {
   "cuaPermission.tools.agentUpdateRequired":
     "연결된 에이전트가 너무 오래되어 안전한 준비 상태 확인을 할 수 없습니다. 업데이트하거나 다시 시작한 후 다시 확인하세요.",
   "cuaPermission.tools.untrustedRuntime":
-    "Computer Use 도구를 찾았지만 검증된 ZCode 플러그인에서 제공된 것이 아닙니다. 플러그인 설치를 검토한 후 다시 확인하세요.",
+    "Computer Use 도구를 찾았지만 검증된 Codez 플러그인에서 제공된 것이 아닙니다. 플러그인 설치를 검토한 후 다시 확인하세요.",
   "cuaPermission.perm.accessibility": "손쉬운 사용",
   "cuaPermission.perm.accessibility.purpose": "UI 요소 읽기/조작 + 입력 합성",
   "cuaPermission.perm.screenRecording": "화면 기록",
@@ -8431,7 +8431,7 @@ const koKR: Record<string, string> = {
     "사용하기 전에 macOS를 업그레이드하세요. 이전 버전에서는 권한 설정을 완료할 수 없습니다.",
   "cuaPermission.ready": "권한 준비 완료",
   "cuaPermission.ready.sessionValidationHint":
-    "첫 세션이 시작되면 ZCode가 해당 세션을 기준으로 Computer Use 도구를 확인합니다.",
+    "첫 세션이 시작되면 Codez가 해당 세션을 기준으로 Computer Use 도구를 확인합니다.",
   "settings.computerUse.title": "Computer Use",
   "settings.computerUse.toggleLabel": "Computer Use 사용",
   "settings.computerUse.toggleDescription":
@@ -8482,13 +8482,13 @@ const koKR: Record<string, string> = {
   "globalNotice.highspeed.textCopied": "공유 텍스트를 복사했습니다",
   "globalNotice.highspeed.textCopyFailed": "공유 텍스트를 복사할 수 없습니다. 다시 시도하세요.",
   "globalNotice.highspeed.copyImage": "이미지 복사",
-  "globalNotice.highspeed.badge": "ZCode & Coding Plan 전용 혜택",
+  "globalNotice.highspeed.badge": "Codez & Coding Plan 전용 혜택",
   "globalNotice.highspeed.standardTaskSpeed": "표준 생성 속도",
   "globalNotice.highspeed.relativeTaskDuration": "상대 생성 시간",
   "globalNotice.highspeed.speedSummary": "HighSpeed · {duration}",
   "globalNotice.highspeed.lessWaiting": "대기 시간 {percent}% 단축",
   "globalNotice.highspeed.copySummary":
-    "ZCode Highspeed 카드로 {duration}초를 절약했습니다. 한번 사용해 보세요. ZCode 다운로드 https://zcode.z.ai",
+    "Codez Highspeed 카드로 {duration}초를 절약했습니다. 한번 사용해 보세요. Codez 다운로드 https://zcode.z.ai",
   "globalNotice.highspeed.imageSummary": "{tokens} 토큰 · {duration}초 절약",
   "globalNotice.highspeed.close": "Highspeed 공유 카드 닫기",
   "remoteSync.title": "데이터 동기화",
@@ -8499,7 +8499,7 @@ const koKR: Record<string, string> = {
   "remoteSync.device.status.online": "연결됨",
   "remoteSync.empty.title": "연결된 기기가 없습니다",
   "remoteSync.empty.description":
-    "SSH, WSL 또는 Docker 기기를 연결하여 이 기기의 구성을 해당 기기의 ~/.zcode 디렉터리로 푸시하세요.",
+    "SSH, WSL 또는 Docker 기기를 연결하여 이 기기의 구성을 해당 기기의 ~/.codez 디렉터리로 푸시하세요.",
   "remoteSync.empty.connect": "원격 기기 연결",
   "remoteSync.device.neverSynced": "아직 동기화되지 않음",
   "remoteSync.device.lastSynced.today": "오늘 {time}에 동기화됨",
@@ -8564,7 +8564,7 @@ const koKR: Record<string, string> = {
   "remoteSync.blocked.compatDirectory":
     "원격 항목이 ~/.agents 호환 디렉터리에 있어 덮어쓸 수 없습니다",
   "remoteSync.blocked.externalDirectory":
-    "같은 이름의 원격 플러그인이 ~/.zcode/plugins 외부(예: 개발용 체크아웃)에 있어 업데이트할 수 없습니다",
+    "같은 이름의 원격 플러그인이 ~/.codez/plugins 외부(예: 개발용 체크아웃)에 있어 업데이트할 수 없습니다",
   "remoteSync.blocked.targetCompatConfig":
     "원격 기기가 ~/.agents 호환 구성을 사용합니다. 푸시하면 해당 구성이 비활성화됩니다",
   "remoteSync.blocked.sourceRemoved": "원본이 제거되어 동기화할 수 없습니다",

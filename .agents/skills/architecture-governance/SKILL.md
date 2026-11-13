@@ -1,11 +1,11 @@
 ---
 name: architecture-governance
-description: Check ZCode module and layer boundaries for code changes. Generate bounded context for cross-module or ownership changes; skip documentation-only work.
+description: Check Codez module and layer boundaries for code changes. Generate bounded context for cross-module or ownership changes; skip documentation-only work.
 ---
 
 # Architecture governance
 
-Use this skill before editing code in the ZCode repository. It is a design guide as well as a gate: the goal is to make the intended architecture obvious before code is generated, so the checker confirms a decision instead of discovering it for the first time.
+Use this skill before editing code in the Codez repository. It is a design guide as well as a gate: the goal is to make the intended architecture obvious before code is generated, so the checker confirms a decision instead of discovering it for the first time.
 
 ## Before writing code
 

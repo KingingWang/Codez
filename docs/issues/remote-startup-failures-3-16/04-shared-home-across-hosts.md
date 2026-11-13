@@ -22,7 +22,7 @@ ZCT-2112747431410888704 的日志显示同一用户在两台集群节点上使�
 
 ## 设计现状
 
-- server root 默认只在本机使用：锁不记录主机（`packages/zcode-server-cli/src/runtime/lock.ts`），每次 Core 启动都覆盖同一个 `run/ingress-token`，
+- server root 默认只在本机使用：锁不记录主机（`packages/codez-server-cli/src/runtime/lock.ts`），每次 Core 启动都覆盖同一个 `run/ingress-token`，
   `status.json` 与 `control.sock` 也在共享的 `run/` 下。规格没有共享 home 的约定。
 - 本分支的锁进程身份（boot_id + starttime）在跨主机时同样判为 stale，行为与修复前相同。
 

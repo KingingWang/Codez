@@ -6,7 +6,7 @@
 
 **Architecture:** Extend `conversationRowsRangeV4` with the projection revision so the share service can query selected turn headers through `conversationFileChangesV4` at one revision/epoch. Materialize explicit artifact rows and supported file-change candidates through one async local source, deduplicate by canonical realpath with explicit rows winning, synthesize transient artifact rows, then reuse the existing public projection and prepare/upload/confirm pipeline.
 
-**Tech Stack:** TypeScript, Zod, Vitest, Node async file APIs, ZCode V4 conversation protocol, existing conversation-share service and HTTP client.
+**Tech Stack:** TypeScript, Zod, Vitest, Node async file APIs, Codez V4 conversation protocol, existing conversation-share service and HTTP client.
 
 ## Global Constraints
 
@@ -24,9 +24,9 @@
 
 **Files:**
 
-- Modify: `packages/shared/src/zcode-protocol-v4/transport.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/conversation-topic-publisher.ts`
-- Test: `apps/zcode-cli/packages/bootstrap/tests/conversation-topic-publisher.test.ts`
+- Modify: `packages/shared/src/codez-protocol-v4/transport.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/conversation-topic-publisher.ts`
+- Test: `apps/codez-cli/packages/bootstrap/tests/conversation-topic-publisher.test.ts`
 - Modify fixtures that construct `V4ConversationRowsRangeResult` in affected tests.
 
 **Interfaces:**
@@ -40,7 +40,7 @@ Assert that `publisher.getRowsRange(...)` returns both `atLogEpoch` and the curr
 
 - [ ] **Step 2: Run the focused test and verify RED**
 
-Run: `pnpm vitest run apps/zcode-cli/packages/bootstrap/tests/conversation-topic-publisher.test.ts`
+Run: `pnpm vitest run apps/codez-cli/packages/bootstrap/tests/conversation-topic-publisher.test.ts`
 
 Expected: FAIL because `atRevision` is absent.
 
@@ -56,7 +56,7 @@ Return `snapshot.revision` from `getRowsRange`. Update typed fixtures mechanical
 
 - [ ] **Step 4: Run the focused test and verify GREEN**
 
-Run: `pnpm vitest run apps/zcode-cli/packages/bootstrap/tests/conversation-topic-publisher.test.ts`
+Run: `pnpm vitest run apps/codez-cli/packages/bootstrap/tests/conversation-topic-publisher.test.ts`
 
 Expected: PASS.
 

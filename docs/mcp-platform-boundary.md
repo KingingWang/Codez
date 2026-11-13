@@ -18,7 +18,7 @@ The platform abstraction owns these operations:
 - `saveMcpToUserDirectory`
 - `migrateLegacyCommonMcp`
 
-This keeps Electron-specific `window.zcode` access inside desktop renderer bootstrap code and preserves UI reuse across desktop, web, and mobile remote control.
+This keeps Electron-specific `window.codez` access inside desktop renderer bootstrap code and preserves UI reuse across desktop, web, and mobile remote control.
 
 ## MCP 2026-07-28 runtime boundary
 

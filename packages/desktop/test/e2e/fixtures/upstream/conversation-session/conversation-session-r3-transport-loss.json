@@ -138,7 +138,7 @@
           "id": "toolu_r3_task_permission",
           "name": "Write",
           "input": {
-            "file_path": "/home/dev/r3-workspace-a/.zcode-e2e/r3-transport-loss/permission-output.txt",
+            "file_path": "/home/dev/r3-workspace-a/.codez-e2e/r3-transport-loss/permission-output.txt",
             "content": "R3_TLOSS_PERMISSION_RESULT\n"
           }
         }

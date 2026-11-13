@@ -6,7 +6,7 @@ import {
   TID_V4_FORK,
   TID_V4_FORK_HERE,
   TID_V4_FORK_TO_WORKTREE,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { Button } from "@/components/ui/button.js";
 import {
   DropdownMenu,
@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 
 export function ForkDestinationMenu({
   rowId,
@@ -35,7 +35,7 @@ export function ForkDestinationMenu({
   onForkHere: () => void;
   onForkToWorktree: () => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const trigger = (
     <DropdownMenuTrigger asChild>
       <Button

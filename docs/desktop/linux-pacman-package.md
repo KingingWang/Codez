@@ -27,7 +27,7 @@ AppImage deb     rpm     pacman (.pkg.tar.zst)
 
 ## 包契约
 
-- 文件名沿用现有命名：`ZCode-<version>-linux-<arch>.pkg.tar.zst`。
+- 文件名沿用现有命名：`Codez-<version>-linux-<arch>.pkg.tar.zst`。
 - package name 与 deb/rpm 使用相同的 flavor 隔离名称，避免 Preview/Production 互相覆盖。
 - pacman 依赖由配置中的 Arch 官方仓库运行时依赖列表生成（gtk3、nss、libxss、libxtst、libnotify、alsa-lib、mesa、xdg-utils）；计划在 Arch x64/arm64 上执行安装、启动、卸载 smoke test。
 - `.pkg.tar.zst` 进入 CI artifact manifest、OSS 上传和 release metadata，但不替代 AppImage 更新路径。
@@ -54,4 +54,4 @@ ZCT-2100231841920471040：3.12.1 在 Ubuntu deb 安装形态下载 3.12.2 时，
 
 - 产物收集、共享目录清理、OSS glob、发布校验必须识别复合后缀 `.pkg.tar.zst`。
 - 不得把源码、source map、密钥或 CI 凭据加入包；沿用现有 app.asar 裁剪策略。
-- 需要验证 pacman 包的架构、依赖、桌面 entry、`zcode://` 协议注册，以及与 deb/rpm 共存时的 package identity。
+- 需要验证 pacman 包的架构、依赖、桌面 entry、`codez://` 协议注册，以及与 deb/rpm 共存时的 package identity。

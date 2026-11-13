@@ -72,7 +72,7 @@ ProductProjection.control.apiRetry
 ```
 
 该门槛只存在于 timeline presentation；不得在
-`normalizeZCodeApiRetryStatus`、`ProductProjection`、service tracker 或 protocol schema
+`normalizeCodezApiRetryStatus`、`ProductProjection`、service tracker 或 protocol schema
 中把 1/2 次重试改成 `null`，否则会丢失恢复态，影响 snapshot、desktop continuous 和
 mobile replayable 的恢复一致性。`attempt <= 2` 且当前 turn 被权限/问答/maintenance
 阻塞时，仍遵守现有 gating，不额外显示 generic loading。

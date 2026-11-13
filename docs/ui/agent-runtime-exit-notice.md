@@ -5,11 +5,11 @@
 同一个 workspace 的主会话与全部子代理跑在同一个 runtime 进程（app-server）里。进程意外退出时
 （例如 Windows 上系统可提交内存耗尽，退出码 `0xE0000008`，不写 stderr）：
 
-- 桌面端只在日志和稳定性遥测里记录 `ZCode agent process exited unexpectedly`，界面没有任何说明；
+- 桌面端只在日志和稳定性遥测里记录 `Codez agent process exited unexpectedly`，界面没有任何说明；
 - 会话面板保留旧快照并在 250 ms / 1 s / 3 s 重连（重连会拉起新进程），重连窗口内胶囊计时继续走、
   停止按钮指向已不存在的执行；三次都失败时窗格换成订阅错误面板，胶囊仍显示旧快照里的运行项；
 - 重连后的冷恢复由 CLI 收口：回合与工具调用收成已取消，上一代遗留的子代理收成 `lost`，并在下一轮
-  告诉主代理（见 [Subagent「上一代 runtime 遗留的 Agent」](../../apps/zcode-cli/docs/design/v2/tool/07-subagent.md)）。
+  告诉主代理（见 [Subagent「上一代 runtime 遗留的 Agent」](../../apps/codez-cli/docs/design/v2/tool/07-subagent.md)）。
 
 本页只规定界面如何说明「发生了什么」，不在界面改写会话状态。
 
@@ -33,8 +33,8 @@
 
 ## 行为
 
-- 事件：`IZCodeAgentService.onAgentRuntimeExited`，载荷含 `workspaceKey`、`exitCode`、`signal`、
-  `cause`、`exitedAt`。`cause` 由 `@zcode/shared/agent-crash-diagnostic` 的
+- 事件：`ICodezAgentService.onAgentRuntimeExited`，载荷含 `workspaceKey`、`exitCode`、`signal`、
+  `cause`、`exitedAt`。`cause` 由 `@codez/shared/agent-crash-diagnostic` 的
   `classifyAgentProcessExitCause` 判定，与稳定性遥测同一份规则；目前只有 `native_out_of_memory`
   （Windows `0xE0000008`）。回收、换代、关闭等主动终止，以及 mcp-status / plugin 泳道不发布。
 - 横幅：窗格底部，与「重启前的输入未进入对话」提示同一位置和样式。
@@ -60,5 +60,5 @@
   `kill -9`。期望：出现通用横幅；重连后胶囊不再有该子代理、目录中显示 `lost`；下一条消息时模型
   收到中断通知。
 - 内存不足文案：Windows 退出码无法在 Linux 用真实进程产生，分类规则由
-  `pnpm --filter @zcode/desktop test:agent-crash-diagnostic` 覆盖；需要时在 Windows 预览机耗尽可提交
+  `pnpm --filter @codez/desktop test:agent-crash-diagnostic` 覆盖；需要时在 Windows 预览机耗尽可提交
   内存复现。

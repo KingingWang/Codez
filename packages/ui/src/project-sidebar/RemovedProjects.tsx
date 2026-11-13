@@ -6,7 +6,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import type { VirtualProject } from "@/project-sidebar/contract.js";
 import { formatCountMessage } from "@/project-sidebar/project-management-view.js";
 import { useRelativeTime } from "@/project-sidebar/ProjectManagementRow.js";
@@ -23,7 +23,7 @@ export function RemovedProjects({
   disabled: boolean;
   onRestore(project: VirtualProject): void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const relative = useRelativeTime();
   const msg = (id: string, values?: Record<string, string | number>) =>
     intl.formatMessage({ id: `projectManagement.${id}` }, values);

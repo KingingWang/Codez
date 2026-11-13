@@ -5,7 +5,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -45,14 +45,14 @@ async function readWorkspaceTabState() {
   return await browser.execute(() => {
     const store = (
       window as Window & {
-        __zcodeTabStoreE2E?: {
+        __codezTabStoreE2E?: {
           getState(): {
             tabs: Array<{ id: string; kind: string }>;
             activeWorkspacePath: string | null;
           };
         };
       }
-    ).__zcodeTabStoreE2E;
+    ).__codezTabStoreE2E;
     const state = store?.getState();
     return {
       workspaceTabCount: state?.tabs.filter((tab) => tab.kind === "workspace").length ?? -1,
@@ -66,14 +66,14 @@ async function closeAllWorkspaceTabs() {
   await browser.execute(() => {
     const store = (
       window as Window & {
-        __zcodeTabStoreE2E?: {
+        __codezTabStoreE2E?: {
           getState(): {
             tabs: Array<{ id: string; kind: string }>;
             closeTab(id: string): void;
           };
         };
       }
-    ).__zcodeTabStoreE2E;
+    ).__codezTabStoreE2E;
     if (!store) throw new Error("tab store 未暴露");
     for (const tab of store.getState().tabs.filter((item) => item.kind === "workspace")) {
       store.getState().closeTab(tab.id);
@@ -172,7 +172,7 @@ describe(`${CASE_MARKER}: 迁移入口移到数据同步页`, () => {
     const dialog = await readMigrationDialog();
     expect(dialog.step).toBe("session");
     expect(dialog.text).toContain("迁移向导");
-    expect(dialog.text).not.toContain("欢迎使用 ZCode");
+    expect(dialog.text).not.toContain("欢迎使用 Codez");
     expect(dialog.hasCancel).toBe(true);
     expect(dialog.buttons).toContain("取消");
     expect(dialog.buttons).not.toContain("上一步");
@@ -201,7 +201,7 @@ describe(`${CASE_MARKER}: 迁移入口移到数据同步页`, () => {
     await $('[data-testid="onboarding-page"]').waitForExist({ reverse: true, timeout: 15_000 });
   });
 
-  it("DSYNC-16-02 没有打开的项目时从「迁移」导入用户级技能：完成页显示已导入，文件写入本机 ~/.zcode/skills", async function () {
+  it("DSYNC-16-02 没有打开的项目时从「迁移」导入用户级技能：完成页显示已导入，文件写入本机 ~/.codez/skills", async function () {
     this.timeout(5 * 60_000);
     const { homeDir } = getE2EAppDataPaths();
     const sourceDir = join(homeDir, ".claude", "skills", SKILL_NAME);
@@ -274,7 +274,7 @@ describe(`${CASE_MARKER}: 迁移入口移到数据同步页`, () => {
     });
     expect(settingsSummary).toEqual({ imported: "1", failed: "0", workspaceRequired: false });
     expect(
-      await readFile(join(homeDir, ".zcode", "skills", SKILL_NAME, "SKILL.md"), "utf-8"),
+      await readFile(join(homeDir, ".codez", "skills", SKILL_NAME, "SKILL.md"), "utf-8"),
     ).toContain("DSYNC-16-02 migration");
     // 整个流程中没有项目被重新打开。
     expect(await readWorkspaceTabState()).toEqual({

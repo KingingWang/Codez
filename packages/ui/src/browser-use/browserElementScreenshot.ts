@@ -1,4 +1,4 @@
-import type { CaptureBrowserGuestPageRequest, CaptureBrowserGuestPageResult } from "@zcode/shared";
+import type { CaptureBrowserGuestPageRequest, CaptureBrowserGuestPageResult } from "@codez/shared";
 import type { WebElementRect } from "@/lib/webElementContext.js";
 
 // 选元素带截图（docs/browser-use/2026-11-03-browser-element-screenshot-and-live-reload-spec.md）。

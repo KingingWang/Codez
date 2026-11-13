@@ -39,12 +39,12 @@ import pkg from 'electron-updater';
 import { initAutoUpdater, resolveUpdateFeedSourceFromStartupConfig } from './src/main/autoUpdater.ts';
 import { setSecuritySmokeOrigin } from 'security-smoke-origin';
 import { extractDeepLinkUrlFromArgs } from './src/main/desktopDeepLinkUrl.ts';
-const scenario = JSON.parse(process.env.ZCODE_SECURITY_SCENARIO);
-const root = process.env.ZCODE_SECURITY_ROOT;
+const scenario = JSON.parse(process.env.CODEZ_SECURITY_SCENARIO);
+const root = process.env.CODEZ_SECURITY_ROOT;
 app.setPath('userData', root);
 Object.defineProperty(app, 'isPackaged', { value: scenario.packaged });
-process.env.ZCODE_AUTO_UPDATE_DEV = '1';
-process.env.ZCODE_AUTO_UPDATE_DEV_VERSION = '3.17.0';
+process.env.CODEZ_AUTO_UPDATE_DEV = '1';
+process.env.CODEZ_AUTO_UPDATE_DEV_VERSION = '3.17.0';
 const { autoUpdater } = pkg;
 // 普通 Linux Electron 没有 APPIMAGE，打包态模拟不会经过产品的开发态激活逻辑。
 // 只激活隔离夹具的更新器，保留 scenario.packaged 作为更新源安全边界的被测输入。
@@ -71,9 +71,9 @@ async function listen(label) {
   setSecuritySmokeOrigin(trusted.url);
   const argv = ['app'];
   const env = {};
-  if (scenario.input === 'argv') argv.push('--zcode-update-feed-url=' + override.url);
-  if (scenario.input === 'env') env.ZCODE_UPDATE_FEED_URL = override.url;
-  if (scenario.input === 'deep-link') argv.push('--', 'zcode://x', '--zcode-update-feed-url=' + override.url);
+  if (scenario.input === 'argv') argv.push('--codez-update-feed-url=' + override.url);
+  if (scenario.input === 'env') env.CODEZ_UPDATE_FEED_URL = override.url;
+  if (scenario.input === 'deep-link') argv.push('--', 'codez://x', '--codez-update-feed-url=' + override.url);
   const updateFeedSource = scenario.input === 'direct' ? { url: override.url } : resolveUpdateFeedSourceFromStartupConfig({ argv, env });
   const configPath = resolve(root, 'app-update.yml');
   await writeFile(configPath, 'provider: generic\\nurl: ' + trusted.url + '\\nupdaterCacheDirName: security-smoke\\n');
@@ -117,7 +117,7 @@ async function listen(label) {
     childProcess.execFile = (...args) => {
       installOrder.push('verify');
       const command = Buffer.from(args[1].at(-1), 'base64').toString('utf16le');
-      const output = command.match(/\\$zcodeSignatureOutput='((?:[^'‘’‚‛]|(['‘’‚‛])\\2)*)';/)?.[1]?.replace(/(['‘’‚‛])\\1/g, '$1');
+      const output = command.match(/\\$codezSignatureOutput='((?:[^'‘’‚‛]|(['‘’‚‛])\\2)*)';/)?.[1]?.replace(/(['‘’‚‛])\\1/g, '$1');
       if (!output) throw new Error('signature output path missing');
       void writeFile(output, '\\uFEFF' + JSON.stringify(signature), 'utf8').then(
         () => args.at(-1)(null, '', ''),
@@ -138,7 +138,7 @@ async function listen(label) {
         Object.defineProperty(autoUpdater, 'installerPath', {get: () => 'C:/cached/update.exe'});
         autoUpdater.checkForUpdates = async () => null;
         autoUpdater.quitAndInstall = () => installOrder.push('install');
-        const install = handlers.get('zcode:quit-and-install-update');
+        const install = handlers.get('codez:quit-and-install-update');
         try {
           installOrder.length = 0;
           autoUpdater.emit('update-downloaded', {version: '99.0.0'});
@@ -153,7 +153,7 @@ async function listen(label) {
       }
     } finally { childProcess.execFile = original; }
   }
-  const callbacks = ['zcode://oauth/callback?state=example&code=test', 'zcode://payment/callback?provider=example&channel=web&status=success', 'zcode://workspace/open?path=%2Ftmp%2Fexample', 'zcode://share/import?code=example'];
+  const callbacks = ['codez://oauth/callback?state=example&code=test', 'codez://payment/callback?provider=example&channel=web&status=success', 'codez://workspace/open?path=%2Ftmp%2Fexample', 'codez://share/import?code=example'];
   const result = { cachedInstallChecks, signatureChecks, scenario: scenario.name, updaterType: autoUpdater.constructor.name, requests, autoDownload: autoUpdater.autoDownload, autoInstallOnAppQuit: autoUpdater.autoInstallOnAppQuit, callbacks: callbacks.map(url => extractDeepLinkUrlFromArgs(['app', '--', url]) === url) };
   await writeFile(resolve(root, 'result.json'), JSON.stringify(result, null, 2));
   console.log('UPDATE_SECURITY_RESULT=' + JSON.stringify(result));
@@ -178,7 +178,7 @@ async function listen(label) {
           contents:
             "export let origin; export function setSecuritySmokeOrigin(value) { origin = value; }",
         }));
-        api.onResolve({ filter: /^@zcode\/shared$/ }, () => ({
+        api.onResolve({ filter: /^@codez\/shared$/ }, () => ({
           path: "shared",
           namespace: "security-shared",
         }));
@@ -186,7 +186,7 @@ async function listen(label) {
           contents:
             "export * from " +
             JSON.stringify(resolve(repoRoot, "packages/shared/src/index.ts")) +
-            '; export { origin as DEFAULT_ZCODE_ENDPOINT_ORIGIN } from "security-smoke-origin";',
+            '; export { origin as DEFAULT_CODEZ_ENDPOINT_ORIGIN } from "security-smoke-origin";',
           resolveDir: desktopDir,
         }));
       },
@@ -234,8 +234,8 @@ for (const scenario of cases) {
   await mkdir(root);
   const env = {
     ...process.env,
-    ZCODE_SECURITY_SCENARIO: JSON.stringify(scenario),
-    ZCODE_SECURITY_ROOT: root,
+    CODEZ_SECURITY_SCENARIO: JSON.stringify(scenario),
+    CODEZ_SECURITY_ROOT: root,
     NODE_PATH: resolve(repoRoot, "node_modules"),
   };
   delete env.ELECTRON_RUN_AS_NODE;

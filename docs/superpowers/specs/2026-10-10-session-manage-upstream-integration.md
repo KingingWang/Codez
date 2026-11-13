@@ -39,7 +39,7 @@
 
 分组和会话管理以本分支为基础；连接、安装、认证、诊断、重连采用上游。公共文件逐段合并，不整文件偏向任一方。保留双方完整 migration ID、历史 SQL/checksum；不同名称的 0004 迁移都执行，不重编号。CLI 0023 soft-delete/outcome 与上游 Source/远端身份迁移均保留。
 
-合入身份迁移时，CLI `schema.baseline.sql` 同步包含 `zcode_database_identity(scope TEXT PRIMARY KEY, identity TEXT NOT NULL)`。上游没有本分支的 schema 基线检查，保留旧快照会使合并后的 `db:schema:check` 在反向比较时报 `Removed table`，并非迁移删除了表。基线由 `pnpm db:schema:update` 从实际迁移产物生成，再用 `pnpm db:schema:check` 验证旧结构兼容与快照一致；不修改历史迁移或关闭检查。
+合入身份迁移时，CLI `schema.baseline.sql` 同步包含 `codez_database_identity(scope TEXT PRIMARY KEY, identity TEXT NOT NULL)`。上游没有本分支的 schema 基线检查，保留旧快照会使合并后的 `db:schema:check` 在反向比较时报 `Removed table`，并非迁移删除了表。基线由 `pnpm db:schema:update` 从实际迁移产物生成，再用 `pnpm db:schema:check` 验证旧结构兼容与快照一致；不修改历史迁移或关闭检查。
 
 基线补齐验证：修复前 `db:schema:check` 复现缺表，修复后两库结构检查和 8 项 schema 合同测试通过；CLI 身份迁移、逐表写入边界、冻结迁移启动共 3 文件 34 项通过。合并范围原有的 643 项模块登记错误，按固定上游原样准入和自有代码模块登记处理；这不替代类型、单测和 E2E 验证。
 
@@ -65,7 +65,7 @@
 - services/UI/sqlite-migrations 模块批次：1490 文件中 1489 通过，运行中新增的 prepareSession 删除竞态用例最初失败；修复后的专项 21 文件 109 用例及最后新增的导航/身份/准备回归均通过。没有把该中间批次记为全绿。
 - CLI 迁移专项 7 文件 64 用例通过。AST 对比双方原分支已有 CLI migration ID/SQL 全部保持；app 双 0004 与 Source identity/schema 的 ledger/checksum/回滚由迁移用例验证。
 - 重建后的 macOS Electron：VPR01 平铺、跨设备离线拖拽、刷新持久化及入口清理通过，run desktop-e2e-20261010-034929-123。
-- 真实本机 ServerCore HTTP/WebSocket + 远端 Host/CLI：项目创建、不可改目录、改名、移除/重加、文件树、首发、历史重开、CLI 冷恢复、归档及正文保留通过，run desktop-e2e-20261010-035958-302。模型响应使用 replay；这不是 SSH 证据。夹具服务器使用独立 ZCODE_DESKTOP_HOME_DIR，固定 root 内替换技能验证冷恢复，不再修改远程 roots。
+- 真实本机 ServerCore HTTP/WebSocket + 远端 Host/CLI：项目创建、不可改目录、改名、移除/重加、文件树、首发、历史重开、CLI 冷恢复、归档及正文保留通过，run desktop-e2e-20261010-035958-302。模型响应使用 replay；这不是 SSH 证据。夹具服务器使用独立 CODEZ_DESKTOP_HOME_DIR，固定 root 内替换技能验证冷恢复，不再修改远程 roots。
 - Fixture check 通过；新增用例保持 manual-review/pending，未晋升 CI。回放命令需 E2E_PROVIDER_THOUGHT_LEVEL=disabled，与 env preset 的实际 Option Spec 一致；本机旧 high 配置会被上游 Provider Provisioning 正确拒绝。
 - TypeScript 的 build 模式会写 desktop/out，必须在 typecheck 完成后重建桌面再执行 E2E，避免拿被覆盖的未打包 Host 当发布产物。
 - 未执行：真实 SSH/WSL/Docker、真实手机 shared-host、Windows/Linux GUI、完整主题/390px/国际化矩阵。旧远程详情/设备包装层的 pending 视觉用例需按本裁决复核，不作为本次已通过证据。

@@ -6,7 +6,7 @@ import {
   type OperationFeed,
   type OperationSnapshot,
   type OperationUpdate,
-} from "@zcode/session-control/contracts";
+} from "@codez/session-control/contracts";
 import {
   TopicWireFrameAssembler,
   conversationTopic,
@@ -16,17 +16,17 @@ import {
   type ConversationSnapshot,
   type ConversationTopicFrame,
   type ConversationTopicWireCandidate,
-} from "@zcode/shared/zcode-protocol-v4";
-import { zcodeProtocolErrorCodes, zcodeTurnStartedEventPayloadSchema } from "@zcode/shared";
+} from "@codez/shared/codez-protocol-v4";
+import { codezProtocolErrorCodes, codezTurnStartedEventPayloadSchema } from "@codez/shared";
 import {
-  ZCODE_AGENT_RUNTIME_UNAVAILABLE_CODE,
-  type IZCodeAgentService,
-} from "#src/zcode-agent/zcodeAgent.js";
-import { withTrustedZCodeAgentV4Connection } from "#src/zcode-agent/zcodeAgentConnectionScope.js";
+  CODEZ_AGENT_RUNTIME_UNAVAILABLE_CODE,
+  type ICodezAgentService,
+} from "#src/codez-agent/codezAgent.js";
+import { withTrustedCodezAgentV4Connection } from "#src/codez-agent/codezAgentConnectionScope.js";
 
 /** 只读已活跃 session；缺 runtime 是明确未知，不订阅/恢复历史。 */
 export async function readAppLiveSummary(
-  agent: IZCodeAgentService,
+  agent: ICodezAgentService,
   session: AppSessionRef,
 ): Promise<
   { status: "unknown" | "idle" | "running" | "needs_attention"; executionId?: string } | undefined
@@ -66,7 +66,7 @@ export async function readAppLiveSummary(
           event.type === "turn.started",
       );
       const payload = started
-        ? zcodeTurnStartedEventPayloadSchema.safeParse(started.payload)
+        ? codezTurnStartedEventPayloadSchema.safeParse(started.payload)
         : undefined;
       if (payload?.success && payload.data.foregroundExecutionId)
         return { status, executionId: payload.data.foregroundExecutionId };
@@ -76,8 +76,8 @@ export async function readAppLiveSummary(
   } catch (error) {
     const code = (error as { code?: unknown })?.code;
     if (
-      code === ZCODE_AGENT_RUNTIME_UNAVAILABLE_CODE ||
-      code === zcodeProtocolErrorCodes.sessionUnavailable
+      code === CODEZ_AGENT_RUNTIME_UNAVAILABLE_CODE ||
+      code === codezProtocolErrorCodes.sessionUnavailable
     )
       return undefined;
     throw error;
@@ -166,7 +166,7 @@ export interface AppConversationObservation {
 
 /** 每个观察者使用独立 connectionId；先订阅 listener 再读 ACK，避免首帧夹在两者之间丢失。 */
 export async function observeAppConversation(
-  agent: IZCodeAgentService,
+  agent: ICodezAgentService,
   operation: AppOperationRef,
   signal: AbortSignal,
   connectionId: string,
@@ -306,7 +306,7 @@ export async function observeAppConversation(
     closePromise = subscriptionId
       ? agent
           .unsubscribeConversationV4(
-            withTrustedZCodeAgentV4Connection(
+            withTrustedCodezAgentV4Connection(
               { ...target, subscriptionId, runtimePolicy: "existing-only" as const },
               connection,
             ),
@@ -316,8 +316,8 @@ export async function observeAppConversation(
             // 不能让该清理错误覆盖 wait 的 unknown 和已完成结果。其他清理失败仍须传播。
             const code = (error as { code?: unknown } | null)?.code;
             if (
-              code !== ZCODE_AGENT_RUNTIME_UNAVAILABLE_CODE &&
-              code !== zcodeProtocolErrorCodes.sessionUnavailable
+              code !== CODEZ_AGENT_RUNTIME_UNAVAILABLE_CODE &&
+              code !== codezProtocolErrorCodes.sessionUnavailable
             )
               throw error;
           })
@@ -338,7 +338,7 @@ export async function observeAppConversation(
   try {
     if (signal.aborted) throw new SessionControlError("cancelled", "Observation cancelled");
     const result = await agent.subscribeConversationV4(
-      withTrustedZCodeAgentV4Connection(
+      withTrustedCodezAgentV4Connection(
         { ...target, visibility: "background" as const },
         connection,
       ),
@@ -392,7 +392,7 @@ export async function observeAppConversation(
 }
 
 export async function observeAppOperation(
-  agent: IZCodeAgentService,
+  agent: ICodezAgentService,
   operation: AppOperationRef,
   signal: AbortSignal,
   connectionId: string,
@@ -400,7 +400,7 @@ export async function observeAppOperation(
   const feed = await observeAppConversation(agent, operation, signal, connectionId);
   try {
     const query = await agent.queryConversationCommandsV4(
-      withTrustedZCodeAgentV4Connection(
+      withTrustedCodezAgentV4Connection(
         {
           workspacePath: operation.session.workspacePath,
           workspaceIdentity: operation.session.workspaceIdentity,

@@ -9,7 +9,7 @@ import {
   TID_TASK_SETTINGS_BUTTON,
   TID_V4_SESSION_PANE,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -97,7 +97,7 @@ const HOOK_LOG = join(DEFAULT_WORKSPACE, ".e2e-dsync-18-hooks.log");
 const HOOK_FORM = '[data-testid="hooks-form"]';
 const SCOPE_TRIGGER = '[data-plugin-scope-trigger="true"]';
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/dsync-18-local-runtime",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/dsync-18-local-runtime",
   "dsync-18",
 );
 
@@ -525,23 +525,23 @@ async function createCommandInSettings(): Promise<void> {
 /** 技能没有设置页新建入口（「新建」是开一个让 Agent 写文件的任务），直接写文件。 */
 async function writeSkillFile(homeDir: string): Promise<void> {
   await writeText(
-    join(homeDir, ".zcode", "skills", SKILL_NAME, "SKILL.md"),
+    join(homeDir, ".codez", "skills", SKILL_NAME, "SKILL.md"),
     `---\nname: ${SKILL_NAME}\ndescription: ${SKILL_DESC} local runtime skill\n---\n\n${SKILL_BODY}\n`,
   );
 }
 
 /** inline 插件没有设置页添加入口，写插件目录并登记到 config.json 的 plugins.dirs。 */
 async function writeInlinePlugin(homeDir: string): Promise<void> {
-  const dir = join(homeDir, ".zcode", "plugins", INLINE_PLUGIN);
+  const dir = join(homeDir, ".codez", "plugins", INLINE_PLUGIN);
   await writeText(
-    join(dir, ".zcode-plugin", "plugin.json"),
+    join(dir, ".codez-plugin", "plugin.json"),
     `${JSON.stringify(
       {
         name: INLINE_PLUGIN,
         version: "1.0.0",
         description: "local runtime inline plugin",
         mcpServers: {
-          rt: { type: "stdio", command: "node", args: ["${ZCODE_PLUGIN_ROOT}/server.cjs"] },
+          rt: { type: "stdio", command: "node", args: ["${CODEZ_PLUGIN_ROOT}/server.cjs"] },
         },
       },
       null,
@@ -549,7 +549,7 @@ async function writeInlinePlugin(homeDir: string): Promise<void> {
     )}\n`,
   );
   await writeText(join(dir, "server.cjs"), `${mcpServerScript(INLINE_PLUGIN, INLINE_RESULT)}\n`);
-  const configPath = join(homeDir, ".zcode", "cli", "config.json");
+  const configPath = join(homeDir, ".codez", "cli", "config.json");
   const config = await readFile(configPath, "utf-8")
     .then((text) => JSON.parse(text) as LocalCliConfig)
     .catch((): LocalCliConfig => ({}));

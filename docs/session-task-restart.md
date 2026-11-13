@@ -98,7 +98,7 @@ stop/restart 关闭本 session 拥有的前台/后台 subagent、其所属后代
 任务终态或 workflow 结算不能代表清理完成。关闭失败沿既有 faulted 合同阻止新实例。
 重启继续使用既有 history-first 加载，保留历史和文件，不重放被停止的任务；不新增状态或数据迁移。
 
-owner、并发准入与真实清理等待合同见 [CLI 生命周期 spec](../apps/zcode-cli/docs/design/v2/session-runtime-lifecycle.md#所属工作整体关闭2026-10-28)。
+owner、并发准入与真实清理等待合同见 [CLI 生命周期 spec](../apps/codez-cli/docs/design/v2/session-runtime-lifecycle.md#所属工作整体关闭2026-10-28)。
 场景与验证证据见 [实施计划](plans/session-task-restart-implementation.md#所属工作整体关闭实施2026-10-28) 和 SLR06–08。
 
 ## 浏览器释放与展示修正（2026-10-29）

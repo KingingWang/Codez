@@ -6,7 +6,7 @@ export type VoiceInputState = "idle" | "requesting" | "recording" | "finishing";
 /** Composer 触发的结束原因：发送消息、用户修改输入框。两者都与点击停止一致，等待最终结果。 */
 export type VoiceInputStopReason = "submit" | "user-input";
 
-/** 权限引导浮层阶段：denied 提供重新授权 / 打开设置；restart-required 提示重启 ZCode */
+/** 权限引导浮层阶段：denied 提供重新授权 / 打开设置；restart-required 提示重启 Codez */
 export type MicrophonePermissionGuidePhase = "denied" | "restart-required";
 
 /** 麦克风权限引导浮层（docs/chat/composer-voice-input.md「权限引导浮层」） */

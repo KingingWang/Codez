@@ -53,7 +53,7 @@ widget state 的最新值仍由 Desktop Host 管理；某次输入的模型上�
 | 改动           | 位置与职责                                                                                                                                                                                 | 不增加的机制                                                      |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
 | 分开正文与快照 | `packages/ui/src/v4/SessionPane.tsx`：移除 `text += context`，发送独立字段；保留现有状态采集时点和作用域                                                                                   | 不在队列面板、消息组件分别补过滤                                  |
-| 定义有界数据   | `packages/shared/src/gen-ui/contract.ts`、`zcode-protocol-v4/command.ts`、`input-intent.ts`：增加可选 `genUiContext` schema/type，校验 JSON、条数及大小                                    | shared 只承担协议与纯数据约束，不放新的显示解析器或 reminder 业务 |
+| 定义有界数据   | `packages/shared/src/gen-ui/contract.ts`、`codez-protocol-v4/command.ts`、`input-intent.ts`：增加可选 `genUiContext` schema/type，校验 JSON、条数及大小                                    | shared 只承担协议与纯数据约束，不放新的显示解析器或 reminder 业务 |
 | 完整传递并保存 | CLI `contracts/.../session.port.ts`、bootstrap 的 `commands/input-intent.ts`、`session-flow.ts`、`canonical-intent-replay.ts`，Core 的 `input-intent-persistence.ts`：所有显式映射保留字段 | 复用现有输入账本及消息 metadata，不新增表或旁路存储               |
 | 统一模型组装   | CLI `core/src/system-reminder/source.ts` 登记 `gen_ui_state`；普通发送、`steering.ts`、`session-history-hydrator.ts` 共用一个函数把快照挂到输入 entry 上，投影排序后派生                   | 不新增上下文插件框架，不把页面数据提升为可信系统指令              |
 | 恢复及投影     | CLI `event-normalizer.ts`、`transcript-hydration.ts`、`product-projection.ts` 核对 canonical intent 显式映射及旧记录读取；发布的用户正文来自规范化后的 `text`                              | 不逐个修改 copy、导航、搜索、分享组件                             |
@@ -134,9 +134,9 @@ widget state 的最新值仍由 Desktop Host 管理；某次输入的模型上�
 1. 以本规划定稿 spec，确认两处兼容边界及 GUC05 的快照策略；同步 Gen UI 各层 CONTRACT，记录旧拼接的根因。先写能复现 GUC01/GUC02/GUC03 的失败测试，再改生产逻辑。
 2. 先接通协议字段、canonical intent 全链和 Core reminder。扩展现有 `system-reminder-source`、`input-intent-persistence`、`runtime-reminders`、`queue-input-fidelity`、`v4-native-queue` 和 `v4-retry-reminder-persistence` 等定向套件，补旧解码及冷恢复断言。
 3. App 改独立传参，CLI 旧读取兼容接好后删除旧生产/剥离调用。复查所有显式映射，不用各出口过滤补救遗漏。
-4. 新 Desktop E2E 放 `conversation-session/manual-review/pending/`，按“发送与可见出口”“队列/guide”“冷恢复/手机”分组。页面 fixture 用真实 `window.zcode.setWidgetState`；既有 `gen-ui-e2e.mjs` 只能证明沙箱/bridge，不能代替完整 App → CLI → provider 验证。
+4. 新 Desktop E2E 放 `conversation-session/manual-review/pending/`，按“发送与可见出口”“队列/guide”“冷恢复/手机”分组。页面 fixture 用真实 `window.codez.setWidgetState`；既有 `gen-ui-e2e.mjs` 只能证明沙箱/bridge，不能代替完整 App → CLI → provider 验证。
 5. 用 case-local provider fixture 和 `controlled-stream` 明确屏障，等待状态或事件再放行，不用 sleep 制造时序。主请求、标题旁路都登记；保存 DOM/截图、命令与 canonical input、最终 HTTP 请求三层证据。测试不得往 UI store 注入“已经过滤”的结果冒充成功。
-6. 执行根 `pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed`；`pnpm test:engineering:affected --base <实施起点> --dry-run` 后运行实际选择范围。CLI 单独运行 `pnpm --dir apps/zcode-cli typecheck`、`lint` 及受影响 Core/Bootstrap/Storage 包与调用方测试。使用已定稿的 pending E2E 跑桌面及手机链路。
+6. 执行根 `pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed`；`pnpm test:engineering:affected --base <实施起点> --dry-run` 后运行实际选择范围。CLI 单独运行 `pnpm --dir apps/codez-cli typecheck`、`lint` 及受影响 Core/Bootstrap/Storage 包与调用方测试。使用已定稿的 pending E2E 跑桌面及手机链路。
 7. 完成覆盖矩阵审计、fixture 校验、diff 自检，必要检查通过后再按仓库规则提交。pending E2E 不自动转正；真实 SSH 传输、macOS/Windows/Linux 实机覆盖和环境阻塞按实际执行证据报告。
 
 ## 验证记录
