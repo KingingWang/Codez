@@ -21,6 +21,23 @@ Artifact：`packages/desktop/.e2e-artifacts/mncp-verification-DtJBfN`。
 所有新候选保持 pending review，不晋升 CI。native-mobile 仅覆盖手机 pane 平台输入，
 运行在隔离 Electron continuous transport；不声称真实手机 relay/replayable UI 全链路覆盖。
 
+### issue #36 原生模型切换回归
+
+当前候选：`packages/ui/src/settings/codex/qa/manual-review/pending/native-model-switch.mjs`。
+修复前源码中 native 模式禁用 legacy `modelSelectionRead`，已有会话主动选模却从该空
+View 补全，尚未发 `switchModelConfig` 即失败。新增验收在停止后只选另一 provider 的
+模型，先核对当前选择与配置 ACK，再发送并核对真实目标 provider/默认档位。
+本轮工件：`packages/desktop/.e2e-artifacts/codez-model-switch.7nYFcr/`。
+`baseline` 复现菜单仍显示 A、只有 create/send/stop ACK；renderer 记录
+`catalogAvailable: false`，尽管 B 在原生目录中声明了 medium/high。
+`desktop` 与 `mobile-pane` 的 `--model-switch-only` 各 1/1 通过：只选模型先收到配置
+ACK，点击实际「继续」只请求 B/medium，随后显式改档的下一次请求为 B/high，A 始终
+仅收到停止前 1 次。手机 pane 使用隔离 Electron 的平台输入覆盖，不计为真实 relay、
+replayable、手机设备或 macOS/Windows 验收。候选保持 pending review。
+原脚本默认完整路径在上述选模/请求成功后，仍失败于编辑界面的旧“无文件回退控件”
+断言（1 ≠ 0）；保留该断言，不把其后未执行的编辑/反馈检查写成通过。
+CI 的 `conversationTurnContinue.test.ts` 另加 native/legacy 接线守卫；它不是实机替代。
+
 ## CSAQ34：Codex 普通提问自动继续（2026-11-04）
 
 规格：[Codex 普通提问自动继续](../../specs/codex-question-auto-resolution.md)。

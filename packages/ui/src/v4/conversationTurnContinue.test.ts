@@ -216,3 +216,23 @@ test("SessionPane 把 handleContinue 接到 ConversationTimeline，并保持 pan
     assert.ok(gate.includes(guard), `continueActionsEnabled 缺少 ${guard}`);
   }
 });
+
+// issue #36：已有会话的原生选模不得重新接到被禁用的 legacy View。
+// 这是 CI 接线守卫；真实选择、ACK 与目标 provider 请求另由 native-model-switch 验证。
+test("中断后原生选模型使用当前 native catalog，不依赖被禁用的 legacy View", () => {
+  const source = readFileSync("packages/ui/src/v4/SessionPane.tsx", "utf8");
+  const selectStart = source.indexOf("const handleSelectModel = useCallback(");
+  const selectEnd = source.indexOf("const handleSelectThought = useCallback(", selectStart);
+  const select = source.slice(selectStart, selectEnd);
+  assert.match(
+    select,
+    /nativeCodexConfig\s*\?\s*codexModels\.catalog\s*\?\s*resolveCodexSelection\(codexModels\.catalog, requestedSelection\)/,
+  );
+  assert.match(select, /isCodexSelectionReady\(codexModels\.catalog, selection\)/);
+  assert.match(select, /dispatchConfigCas\(\s*"switchModelConfig"/);
+  assert.match(
+    readFileSync("packages/ui/src/v4/composer/useDraftConfigControl.ts", "utf8"),
+    /useModelSelectionServiceView\(\s*modelSelectionService,\s*!codexUsesCatalog,/,
+    "native 不得为绕过选模失败而重新启用 legacy Registry",
+  );
+});

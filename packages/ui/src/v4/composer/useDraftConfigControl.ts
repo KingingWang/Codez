@@ -1199,15 +1199,20 @@ export function useDraftConfigControl(params: {
     (modelProvider: string, model: string, reasoningLevel?: string) => {
       const modelId = modelProvider ? `${modelProvider}/${model}` : model;
       const parsedSelection = parseModelPickerValue(modelId);
+      // 原生配置 ACK 的显式档位必须进入同一选择再解析；只解析模型身份会把
+      // 已确认的档位覆盖为目录默认值，导致随后提交与刚才的 ACK 不一致。
+      const requestedSelection = reasoningLevel
+        ? { ...parsedSelection, options: { reasoningLevel } }
+        : parsedSelection;
       // 原因：调档后解析尚未返回时，菜单仍使用同 Host 的保留目录；只读 ready view
       // 会把随后主动选模写成无档位意图，永久显示“—”。目录仅用于选模，不放行提交。
       const catalog =
         modelSelectionView ??
         (modelSelectionRead.state.status === "loading" ? modelSelectionRead.state.catalog : null);
       const modelSelection = codexCatalog
-        ? (resolveCodexSelection(codexCatalog, parsedSelection) ?? parsedSelection)
+        ? (resolveCodexSelection(codexCatalog, requestedSelection) ?? requestedSelection)
         : reasoningLevel
-          ? { ...parsedSelection, options: { reasoningLevel } }
+          ? requestedSelection
           : catalog
             ? (completeNewModelSelection(catalog, parsedSelection) ?? parsedSelection)
             : parsedSelection;

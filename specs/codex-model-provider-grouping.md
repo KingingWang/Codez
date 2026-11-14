@@ -64,6 +64,40 @@ catalog/read ──→ 新增 bridge 控制面方法：host 本地读 catalog �
   provider-not-found（services）/ 迁移到 preferredSelection（UI 草稿）口径；
   跨组歧义（同 slug 多组）或无匹配时维持 provider-not-found / model-not-found。
 
+## 已有会话的原生模型切换（issue #36）
+
+- 原生桌面与原生手机 pane 的菜单、主动选模和提交校验共同读取当前 workspace 的
+  `useCodexModelCatalog`；不得启用 legacy Registry，或用 native 模式下已禁用的
+  `modelSelectionRead` 补全选中的模型。
+- 主动选模复用 `resolveCodexSelection`，从目标模型的原生默认档位构造选择；显式调档
+  保留用户指定的值。目录未就绪、模型被移除或选择无效时不发配置命令。
+- 空 `supportedReasoningEfforts` 遵循 `CodexSettings.spec.md` 的无档位维度规则；
+  不伪造档位，也不因此拒绝选模。既有 `switchModelConfig` 的 `thought` 字符串以空值
+  表达未指定，bridge 继续省略原生 `effort`。
+- 配置仍通过同一 `configCommandBarrier` / `dispatchConfigCas`；只有
+  accepted/noop/duplicate ACK 后才确认对应会话的 Composer 草稿。失败保留旧选择，
+  旧会话的迟到 ACK 不改写新会话，不增加持久化路径或配置写入。
+
+```text
+native workspace catalog → 解析用户所选模型/档位 → 既有配置屏障与 CAS
+                           → bridge/native 接纳 → 同会话草稿确认 → 后续提交
+desktop continuous / mobile pane 均复用该顺序；无 legacy Registry 读取
+```
+
+回归：`native-model-switch.mjs --model-switch-only` 使用真实 SessionPane、Host、固定 native 和两个
+loopback provider。手动停止 A 后，仅通过模型菜单选 B（不操作档位），必须先看到 B
+的选择和成功 `switchModelConfig` ACK，再点击实际「继续」；实际请求只能到 B，并携带
+B 的默认档位。随后显式改档的下一次普通提交保留已确认的档位。原生桌面与手机 pane
+分别运行，后者不冒充真实 relay/replayable 验证。该独立路径不声明原 MNCP 编辑/反馈
+断言的覆盖，默认脚本保留它们。
+
+2026-11-14 实跑证据：`packages/desktop/.e2e-artifacts/codez-model-switch.7nYFcr/`。
+修复前 `baseline` 的原生目录有 B/medium/high，但界面选 B 后仍为 A，没有配置 ACK，
+诊断显示 legacy 目录不可用。修复后 `desktop`、`mobile-pane` 各 1/1 通过，只选模型、
+实际「继续」的 B/medium 请求与下一次 B/high 提交均有断言；A 不收到后续请求。
+运行时用 `CODEZ_REACT_SCAN=0` 关闭开发诊断覆盖层，未关闭任何产品门禁。新增 CI
+接线守卫只保护 native 解析入口，不替代上述实机回归。
+
 ## 线程 provider 语义（bridge）
 
 - `thread/start` 创建线程时把 selection.providerId 作为 `modelProvider` 透传，
