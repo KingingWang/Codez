@@ -23,7 +23,10 @@ import { BotGroupDeliveryProvider } from "@/v4/BotGroupDeliveryAction.js";
 import { useOptionalProjectDirectoryActions } from "@/project-sidebar/index.js";
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 import { useCodexModelCatalog } from "@/hooks/useCodexModelCatalog.js";
-import { isCodexSelectionReady } from "@/settings/codex/codexModelCatalog.js";
+import {
+  isCodexSelectionReady,
+  resolveCodexSelection,
+} from "@/settings/codex/codexModelCatalog.js";
 import {
   isCodexComposerBusy,
   codexSubmissionSettingsAllowed,
@@ -5617,36 +5620,60 @@ export function SessionPane({
       }
       if (modelSelectionFlightsRef.current.has(modelSelectionOwnerKey)) return;
       const targetSessionId = sessionId;
-      const selection = reasoningLevel
-        ? { providerId: resolvedProvider, modelId: model, options: { reasoningLevel } }
-        : modelSelectionDisplayView
-          ? completeNewModelSelection(modelSelectionDisplayView, {
-              providerId: resolvedProvider,
-              modelId: model,
-            })
-          : undefined;
-      if (!selection?.options?.reasoningLevel) {
-        // 修复原因（issue #36）：切换失败有两条 toast 路径——这里的 Selection 不完整，
-        // 以及下方 catch 里的 ACK 拒绝；此前只有 ACK 路径落日志，现场拿到「切换失败」
-        // 无法判别根因。补上可判别事实：目录是否可用、目标 provider/model 是否在目录内、
-        // 目录声明的档位候选。只记配置事实，不含凭据或用户正文。
-        // 只读 modelSelectionDisplayView（已在依赖里），不新增 hooks 依赖。
+      const requestedSelection = {
+        providerId: resolvedProvider,
+        modelId: model,
+        ...(reasoningLevel ? { options: { reasoningLevel } } : {}),
+      };
+      // issue #36 根因：native 的 useDraftConfigControl 禁用 legacy View，菜单却从
+      // native catalog 渲染；用空 legacy View 补全让“仅选模型”在发命令前必然失败。
+      // 复用菜单/提交的同一 native catalog 与解析规则，不重新打开 Registry 读取。
+      const selection = nativeCodexConfig
+        ? codexModels.catalog
+          ? resolveCodexSelection(codexModels.catalog, requestedSelection)
+          : null
+        : reasoningLevel
+          ? requestedSelection
+          : modelSelectionDisplayView
+            ? completeNewModelSelection(modelSelectionDisplayView, requestedSelection)
+            : undefined;
+      if (
+        !selection ||
+        (nativeCodexConfig
+          ? selection.providerId !== resolvedProvider ||
+            selection.modelId !== model ||
+            !isCodexSelectionReady(codexModels.catalog, selection)
+          : !selection.options?.reasoningLevel)
+      ) {
+        // 主动选择不接受 resolver 为陌生身份返回的默认模型；失败保持旧意图。
+        // 普通 logger 在 production 是 no-op，低频失败必须走 lifecycle 才能落盘。
         const catalogProvider = modelSelectionDisplayView?.providers.find(
           (provider) => provider.providerId === resolvedProvider,
         );
-        logger.warn("[v4-pane] 会话模型切换被拒：Selection 缺少思考档位", {
+        const nativeProvider = codexModels.catalog?.groups.find(
+          (group) => group.providerId === resolvedProvider,
+        );
+        logger.lifecycle.warn("[v4-pane] 会话模型切换被拒：目标选择未就绪", {
           targetSessionId: sessionId,
-          catalogAvailable: Boolean(modelSelectionDisplayView),
+          nativeCodexConfig,
+          catalogAvailable: Boolean(
+            nativeCodexConfig ? codexModels.catalog : modelSelectionDisplayView,
+          ),
           provider: resolvedProvider,
           model,
-          providerInCatalog: Boolean(catalogProvider),
-          reasoningLevels:
-            catalogProvider?.models.find((candidate) => candidate.modelId === model)?.config
-              .optionSpecs.reasoningLevel.values ?? [],
+          providerInCatalog: Boolean(nativeCodexConfig ? nativeProvider : catalogProvider),
+          reasoningLevels: nativeCodexConfig
+            ? (nativeProvider?.models
+                .find((candidate) => candidate.model === model)
+                ?.supportedReasoningEfforts.map((effort) => effort.reasoningEffort) ?? [])
+            : (catalogProvider?.models.find((candidate) => candidate.modelId === model)?.config
+                .optionSpecs.reasoningLevel.values ?? []),
         });
         toast(intl.formatMessage({ id: "chat.toolbar.connection.switchFailed" }));
         return;
       }
+      // 原生无档位模型可就绪；空字符串沿用已有 wire schema，bridge 会省略 effort。
+      const thought = selection.options?.reasoningLevel ?? "";
       // Bug 原因：面板共用 pending 会阻塞 B；按会话和请求归属，返回 A 仍保留门禁。
       const flight = Symbol();
       modelSelectionFlightsRef.current.set(modelSelectionOwnerKey, flight);
@@ -5660,32 +5687,35 @@ export function SessionPane({
             {
               provider: selection.providerId,
               model: selection.modelId,
-              thought: selection.options!.reasoningLevel,
+              thought,
             },
             { targetSessionId },
           ),
         );
         if (ack?.status !== "accepted" && ack?.status !== "noop" && ack?.status !== "duplicate")
           throw new Error(`switchModelConfig: ${ack?.status ?? "missing-ack"}`);
-        logger.debug("[v4-pane] 会话模型配置回执", {
+        logger.lifecycle.info("[v4-pane] 会话模型配置回执", {
           targetSessionId,
           status: ack.status,
+          provider: selection.providerId,
+          model: selection.modelId,
+          revisionAtDecision: ack.revisionAtDecision,
           currentOwner: modelSelectionOwnerRef.current.key === modelSelectionOwnerKey,
-          thought: selection.options.reasoningLevel,
+          thought,
         });
         if (modelSelectionOwnerRef.current.key !== modelSelectionOwnerKey) return;
         // 返回原会话后使用当前草稿入口；旧闭包绑定的页面 scope 已失效。
         modelSelectionOwnerRef.current.confirm(
           selection.providerId,
           selection.modelId,
-          selection.options.reasoningLevel,
+          thought || undefined,
         );
         showModelChangeNotice(sourceModel, {
           provider: selection.providerId,
           model: selection.modelId,
         });
       } catch (error) {
-        logger.warn("[v4-pane] 会话模型切换失败，保留旧选择", {
+        logger.lifecycle.warn("[v4-pane] 会话模型切换失败，保留旧选择", {
           targetSessionId,
           error: String(error),
         });
@@ -5701,6 +5731,7 @@ export function SessionPane({
     },
     [
       activeHighspeedCard,
+      codexModels.catalog,
       configCommandBarrier,
       dispatchConfigCas,
       draftConfigRef,
@@ -5708,6 +5739,8 @@ export function SessionPane({
       intl,
       modelSelectionDisplayView,
       modelSelectionOwnerKey,
+      nativeCodexConfig,
+      nativeCodexSession,
       sessionId,
       showModelChangeNotice,
     ],
