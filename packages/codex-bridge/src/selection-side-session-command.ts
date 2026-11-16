@@ -19,6 +19,7 @@ import {
   withSelectionSideChatBoundary,
 } from "./selection-side-chat.js";
 import type { CodexProviderKeyGate } from "./provider-key-gate.js";
+import { paginateNativeRows } from "./native-paging.js";
 
 export interface SelectionSideSessionContext {
   rpc: CodexRpcPort;
@@ -44,7 +45,17 @@ export async function createSelectionSideSession(
     await rpc.request("thread/fork", {
       threadId: parentId,
       threadSource: SELECTION_SIDE_CHAT_THREAD_SOURCE,
+      excludeTurns: true,
     }),
+  );
+  // 修复原因：缺省 fork 把完整继承历史放进单帧，长会话超过 32 MiB 后响应被丢弃，
+  // 但原生 child 可能已经创建，重发会生成重复 child。excludeTurns 只省略回包、不截断历史；
+  // 复用已有只读分页入口（缩页及单 turn 的 items 补全），完整恢复后再注册投影缓存。
+  forked.turns = await paginateNativeRows(
+    rpc,
+    "thread/turns/list",
+    { threadId: string(forked.id), sortDirection: "asc", itemsView: "full" },
+    "history",
   );
   // 修复原因：
   // 1) 父会话在运行中或跨 provider 切换模型后，store 中的 parentThread 已记录最新生效的
@@ -54,7 +65,7 @@ export async function createSelectionSideSession(
   // 2) 过去在 markStarted 后无条件调用 reloadAfterHistoryChange，会额外串行发起
   //    thread/read + thread/resume + thread/turns/list(child) + thread/turns/list(parent) + thread/queue/list
   //    5 次原生 RPC，造成本地和远程打开辅助对话明显卡顿。
-  // 修复依据：合并已加载父线程的生效配置，并在 forked 已带完整 turns 时直接用父线程内存 turns
+  // 修复依据：合并已加载父线程的生效配置，在分页补齐 child turns 后直接用父线程内存 turns
   // 建立继承裁剪集合，省去冗余冷加载。
   const inheritedThread: Record<string, unknown> = {
     ...(typeof parentThread?.model === "string" && parentThread.model
@@ -103,18 +114,11 @@ export async function createSelectionSideSession(
   if (parentThread) {
     store.rememberMode(childId, projectThreadMode(parentThread));
   }
-  const hasFullTurns =
-    Array.isArray(inheritedThread.turns) &&
-    inheritedThread.turns.every((turn) => object(turn).itemsView === "full");
-  if (hasFullTurns) {
-    childState.sideChat = await resolveSelectionSideChatBoundary(
-      rpc,
-      childState.thread,
-      parentThread && Array.isArray(parentThread.turns) ? parentThread.turns : undefined,
-    );
-  } else {
-    await store.reloadAfterHistoryChange(childId);
-  }
+  childState.sideChat = await resolveSelectionSideChatBoundary(
+    rpc,
+    childState.thread,
+    parentThread && Array.isArray(parentThread.turns) ? parentThread.turns : undefined,
+  );
   if (!p.firstInput) return { type: "createSelectionSideSession", sessionId: childId };
   const childInput = await nativeInput(
     withSelectionSideChatBoundary(p.firstInput.text),

@@ -15,6 +15,8 @@ import {
   textInput,
 } from "./fixtures/commands-fixture.js";
 import { threadFixture } from "./projection-fixtures.test.js";
+import { MAX_FRAME_BYTES } from "../src/rpc-framing.js";
+import { CodexTransportError } from "../src/rpc-errors.js";
 
 function childFixture(): CodexThread {
   return {
@@ -39,7 +41,10 @@ function scopeHandlers(h: Awaited<ReturnType<typeof setup>>, child: CodexThread)
     data: p.threadId === child.id ? child.turns : parent.turns,
     nextCursor: null,
   }));
-  h.rpc.handlers.set("thread/queue/list", () => ({ data: [], nextCursor: null }));
+  h.rpc.handlers.set("thread/queue/list", () => ({
+    data: [],
+    nextCursor: null,
+  }));
 }
 
 test("createSelectionSideSession forks with persistent marker and hides inherited history", async (t) => {
@@ -50,19 +55,26 @@ test("createSelectionSideSession forks with persistent marker and hides inherite
 
   const ack = await h.execute(h.command("createSelectionSideSession", {}, "cmd-side-1"));
   assert.equal(ack.status, "accepted");
-  assert.deepEqual(ack.result, { type: "createSelectionSideSession", sessionId: child.id });
+  assert.deepEqual(ack.result, {
+    type: "createSelectionSideSession",
+    sessionId: child.id,
+  });
   assert.deepEqual(h.rpc.params("thread/fork"), [
-    { threadId: sessionId, threadSource: SELECTION_SIDE_CHAT_THREAD_SOURCE },
+    {
+      threadId: sessionId,
+      threadSource: SELECTION_SIDE_CHAT_THREAD_SOURCE,
+      excludeTurns: true,
+    },
   ]);
 
-  // 冷加载建立继承裁剪边界：fork 保留源 turn id，与父求交。
+  // child 分页历史与父缓存求交：fork 保留源 turn id。
   const state = h.store.get(child.id);
   assert.equal(state?.sideChat?.parentThreadId, sessionId);
   assert.deepEqual([...(state?.sideChat?.inheritedTurnIds ?? [])], ["turn-1"]);
   assert.deepEqual(
     h.rpc.calls.map((call) => call.method),
-    ["thread/fork"],
-    "hot createSelectionSideSession must reuse in-memory parent turns without redundant reload RPCs",
+    ["thread/fork", "thread/turns/list"],
+    "hot creation must page child history and reuse parent turns without read/resume/queue RPCs",
   );
 
   // 投影跳过继承历史：child 自有内容为空时 snapshot 无行。
@@ -83,6 +95,95 @@ test("createSelectionSideSession forks with persistent marker and hides inherite
     index.sessions.map((session) => session.sessionId),
     [sessionId],
   );
+});
+
+test("large side chat history is paginated without retrying the fork or losing inherited turns", async (t) => {
+  const h = await setup(t);
+  const child = childFixture();
+  const template = child.turns[0]!;
+  const text = "x".repeat(2 * 1024 * 1024);
+  child.turns = Array.from({ length: 18 }, (_, index) => ({
+    ...template,
+    id: `inherited-${index}`,
+    items: [
+      {
+        type: "agentMessage" as const,
+        id: `message-${index}`,
+        text,
+        phase: "final_answer" as const,
+      },
+    ],
+  }));
+  h.store.get(sessionId)!.thread.turns = child.turns;
+  scopeHandlers(h, child);
+  let forks = 0;
+  h.rpc.handlers.set("thread/fork", (p) => {
+    forks += 1;
+    // 原生已经创建 child 后才序列化响应；超限不能靠重发 fork 补救。
+    if (p.excludeTurns !== true)
+      throw new CodexTransportError("LIMIT", "Codex response frame exceeds size limit");
+    return { thread: { ...child, turns: [] } };
+  });
+  h.rpc.handlers.set("thread/turns/list", (p) => {
+    assert.equal(p.threadId, child.id, "the hot path must not reread parent history");
+    assert.equal(p.itemsView, "full");
+    const offset = p.cursor ? Number(p.cursor) : 0;
+    const data = child.turns.slice(offset, offset + Number(p.limit));
+    if (Buffer.byteLength(JSON.stringify({ data })) > MAX_FRAME_BYTES)
+      throw new CodexTransportError("LIMIT", "Codex response frame exceeds size limit");
+    const next = offset + data.length;
+    return {
+      data,
+      nextCursor: next < child.turns.length ? String(next) : null,
+    };
+  });
+
+  const ack = await h.execute(h.command("createSelectionSideSession", {}, "cmd-side-large"));
+  assert.equal(ack.status, "accepted");
+  assert.equal(forks, 1);
+  const state = h.store.get(child.id)!;
+  assert.deepEqual(state.thread.turns, child.turns);
+  assert.deepEqual(
+    [...state.sideChat!.inheritedTurnIds],
+    child.turns.map((turn) => turn.id),
+  );
+  assert.deepEqual(
+    h.rpc.params("thread/turns/list").map((p) => p.limit),
+    [100, 50, 25, 12, 12],
+  );
+  assert.equal(
+    projectThread(state.thread as unknown as CodexThread, {
+      workspacePath: cwd,
+      hiddenTurnIds: state.sideChat!.inheritedTurnIds,
+    }).rows.window.length,
+    0,
+  );
+  assert.equal((await h.store.ensure(child.id)).thread, state.thread);
+
+  const send = await h.execute(
+    h.command("sendText", { text: "Only answer this question" }, "cmd-side-large-send", child.id),
+  );
+  assert.equal(send.status, "accepted");
+  const input = h.rpc.params("turn/start")[0]!.input as { text: string }[];
+  assert.equal(input[0]!.text, `${SELECTION_SIDE_CHAT_BOUNDARY}\n\nOnly answer this question`);
+});
+
+test("side chat history read failure and command replay do not repeat the native fork", async (t) => {
+  const h = await setup(t);
+  const child = childFixture();
+  h.rpc.handlers.set("thread/fork", () => ({
+    thread: { ...child, turns: [] },
+  }));
+  h.rpc.handlers.set("thread/turns/list", () => {
+    throw new Error("history unavailable");
+  });
+  const command = h.command("createSelectionSideSession", {}, "cmd-side-read-failed");
+  const ack = await h.execute(command);
+  assert.equal(ack.status, "failed");
+  assert.equal(ack.message, "history unavailable");
+  assert.deepEqual(await h.execute(command), ack);
+  assert.equal(h.rpc.params("thread/fork").length, 1);
+  assert.equal(h.store.getLoaded(child.id), undefined);
 });
 
 test("createSelectionSideSession with firstInput starts child turn with boundary instruction", async (t) => {
@@ -120,7 +221,11 @@ test("createSelectionSideSession with firstInput starts child turn with boundary
 
   // firstInput 只落 child：turn/start 目标是 child，且文本以边界指令开头。
   assert.equal(started.length, 1);
-  const params = started[0] as { threadId: string; input: { text: string }[]; model?: string };
+  const params = started[0] as {
+    threadId: string;
+    input: { text: string }[];
+    model?: string;
+  };
   assert.equal(params.threadId, child.id);
   assert.ok(params.input[0]!.text.startsWith(`${SELECTION_SIDE_CHAT_BOUNDARY}\n\n`));
   assert.ok(params.input[0]!.text.endsWith("解释这段代码"));
@@ -206,7 +311,11 @@ test("createSelectionSideSession inherits parent active model, provider, effort 
   parent.thread.reasoningEffort = "high";
   parent.thread.collaborationMode = {
     mode: "plan",
-    settings: { model: "glm-5.3", reasoning_effort: "high", developer_instructions: null },
+    settings: {
+      model: "glm-5.3",
+      reasoning_effort: "high",
+      developer_instructions: null,
+    },
   };
   h.store.rememberMode(sessionId, "yolo");
 

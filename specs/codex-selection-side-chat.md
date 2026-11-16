@@ -7,12 +7,13 @@ Codex 运行时（codex-bridge）支持 `createSelectionSideSession`：右侧面
 ## 语义与所有权
 
 - child 的唯一事实所有者是原生 Codex 线程；bridge 不引入任何本地持久化文件。
-- 创建：`thread/fork { threadId: <parent>, threadSource: "codez_selection_side_chat" }`，不截断（继承全量历史）。fork 保留源 turn id，且 fork 后线程立即可 `turn/start`。
+- 创建：`thread/fork { threadId: <parent>, threadSource: "codez_selection_side_chat", excludeTurns: true }`，不截断（继承全量历史）。`excludeTurns` 只省略响应中的历史，不改变原生继承内容；fork 保留源 turn id，且 fork 后线程立即可 `turn/start`。
+  - fork 是有副作用的创建命令，只执行一次，不能在响应超限或超时后盲目重试。历史体积与模型上下文占用无关：完整历史超过 bridge 的 32 MiB 单帧限制时，缺省 fork 回包会被丢弃，即使原生 child 已成功创建。
   - `threadSource` 是原生 rollout 持久化字段（`SessionMeta.thread_source`），`Feature(String)` 变体接受任意字符串并原样回读；bridge 用它作为「这是辅助对话 child」的标记，重启后仍可识别。显式 fork（`forkAssistant`）不携带该标记，不受影响。
 - 任务列表隐藏：bridge `projectSessionsIndex` 过滤 `threadSource === 标记` 的线程。不用原生 `thread/archive`——归档是用户可见语义，且归档会级联归档后代线程。
   - 该过滤依赖原生 `thread/list` 返回 `threadSource`；旧版本原生 list 链路丢失该字段期间，child 会被 sessions-index discovery 播种进 `tasks-index.sqlite` 主列表。修复路径：syncer 首帧对「不在可见 index」的存量行逐条 `session/read`（`existing-only` + `index` 载荷）确认 `sessionKind === "selection_side_chat"`（`projectLegacySnapshot` 以 threadSource 推导）后软删，只清理派生索引行，不动 Agent 转录。
 - 继承历史裁剪与创建快路径：
-  - 热路径：`createSelectionSideSession` 刚由父线程 `thread/fork` 创建 child 时，父线程已由命令路由加载在内存（`store.get(parentId)`），且 child 已被原生运行时加载（无需重复 `thread/read`、`thread/resume`、`thread/turns/list` 或 `thread/queue/list`）。bridge 直接从已加载父线程与 `fork` 响应合并继承 `model`、`modelProvider`、`reasoningEffort`、`collaborationMode` 与 remembered 权限档位，同步用父线程内存中 turns 求交建立 `state.sideChat.inheritedTurnIds`（父 turns 未缓存时回退一次 `thread/turns/list`），避免创建与首次订阅之间的多余串行原生 RPC；只有 `fork` 返回的 turns 全部具备 `itemsView === "full"` 时才跳过 `reloadAfterHistoryChange`，若任一非继承 turn 非 full 则走分页重载。
+  - 热路径：`createSelectionSideSession` 刚由父线程 `thread/fork` 创建 child 时，父线程已由命令路由加载在内存（`store.get(parentId)`），且 child 已被原生运行时加载。bridge 通过既有 `paginateNativeRows` 入口按 `thread/turns/list(itemsView="full", sortDirection="asc")` 恢复 child 的完整历史；只读历史页超限时缩页，单 turn 超限时通过 `thread/items/list` 补齐，不截断或丢失继承内容。分页完成后从已加载父线程与 `fork` 元数据合并继承 `model`、`modelProvider`、`reasoningEffort`、`collaborationMode` 与 remembered 权限档位，用父线程内存中 turns 求交建立 `state.sideChat.inheritedTurnIds`（父 turns 未缓存时回退分页读取）。不重复 `thread/read`、`thread/resume` 或 `thread/queue/list`，首次订阅复用完整缓存。
   - 冷路径：`ThreadStateStore.load()` 发现线程带标记且有 `forkedFromId` 时，优先用已加载父线程 turns、未加载时 lock-free 读父线程 turns（`thread/turns/list`），把「turn id 同时存在于父」的 turn 记入 `state.sideChat.inheritedTurnIds`；`projectThread` 投影时跳过这些 turn。父读取失败（删除/跨 workspace）fail-open 不裁剪。父之后新增/revert turn 不影响 child 裁剪集合（fork 后 child 不再获得父 turn；id 不在集合里的 turn 一律展示）。
 - UI 侧能力与模型继承：
   - 右侧面板 `SelectionSideChatPane` 必须透传宿主 `isDesktop`，使桌面端辅助对话 `SessionPane` 启用 `useCodexModelCatalog` 与 `nativeCodexSession`，从 child 初始快照恢复继承的模型、思考等级、权限模式与 Plan 状态；若父会话未选择模型，则辅助对话保持未选模型状态，允许创建无模型辅助对话。
@@ -24,7 +25,9 @@ Codex 运行时（codex-bridge）支持 `createSelectionSideSession`：右侧面
 
 ```text
 UI dispatch createSelectionSideSession(parent)
-  → bridge: thread/fork(parent, threadSource=marker)
+  → bridge: thread/fork(parent, threadSource=marker, excludeTurns=true)（仅一次）
+  → Codex（唯一历史所有者）: 持久化完整继承历史，返回 child 元数据
+  → bridge: thread/turns/list(child) 分页恢复（超限仅重读只读页，必要时 items/list）
   → bridge: inherit parent model/provider/effort/mode + store.markStarted(child) + sideChat boundary
   → firstInput?  → child turn/start(指令 + text)（只落 child，不进父 queue）
   → ACK accepted { sessionId: childId }
@@ -43,4 +46,6 @@ UI dispatch createSelectionSideSession(parent)
 - child 副屏只显示 fork 之后自有 turn；划词引用经 UI 本地事件落入 child composer。
 - 首个模型请求（mock provider 观察）正文以边界指令开头。
 - 应用重启后 child 仍可打开、仍隐藏于任务列表、仍裁剪继承历史（load 冷路径）。
+- 超过 32 MiB 的合成父历史仍可创建 child：fork 仅执行一次且不携带历史回包，分页后完整保留所有 inherited turn/item，初始 snapshot 无继承行，首次自有输入带边界指令；已有模型、provider、思考等级、模式继承不变。
+- 分页失败时返回显式失败，不再次 fork；同一 commandId 重放遵循既有 ledger 的失败/未知结果边界，不生成重复 child。
 - `pnpm typecheck`、`pnpm lint`、bridge 单测通过。
