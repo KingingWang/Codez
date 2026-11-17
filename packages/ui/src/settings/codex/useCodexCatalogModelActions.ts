@@ -98,7 +98,8 @@ export function useCodexCatalogModelActions(params: {
       writeCatalog(() =>
         agent.writeCodexCatalogModel({
           ...workspaceRef,
-          model: { ...source, visibility: view.hidden ? "list" : "hidden" },
+          // Codex ModelVisibility 接受 hide，不接受 UI 布尔草稿名 hidden。
+          model: { ...source, visibility: view.hidden ? "list" : "hide" },
         }),
       ),
     );

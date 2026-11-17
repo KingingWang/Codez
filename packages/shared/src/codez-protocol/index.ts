@@ -4545,8 +4545,17 @@ export type CodezCatalogReadResult = z.infer<typeof codezCatalogReadResultSchema
 
 // Codex 模型目录管理（specs/codex-model-provider-management.md）：与 catalog/read
 // 同族的 bridge 本地 fs 控制面方法，绝不进入 codex/request 原生白名单。
-// 条目校验最小化（slug 必填非空 string），其余能力字段 passthrough 由原样保留。
-export const codezCatalogModelEntrySchema = z.object({ slug: nonEmptyString }).passthrough();
+// 修复依据：Codex ModelVisibility 只接受 list/hide/none；历史 GUI 把布尔草稿名
+// hidden 写成枚举会使配置重载和启动失败。兼容旧调用方，但输出只保留原生拼写。
+export const codezCatalogModelEntrySchema = z
+  .object({
+    slug: nonEmptyString,
+    visibility: z
+      .enum(["list", "hide", "none", "hidden"])
+      .transform((value) => (value === "hidden" ? ("hide" as const) : value))
+      .optional(),
+  })
+  .passthrough();
 export type CodezCatalogModelEntry = z.infer<typeof codezCatalogModelEntrySchema>;
 
 export const codezCatalogReadModelsParamsSchema = z

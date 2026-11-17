@@ -1,9 +1,8 @@
-import { readFile, rename, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
 import { z } from "zod";
 import * as s from "@codez/shared";
 import type { BridgeControlContext } from "./contract.js";
 import { ControlError, checkWorkspace, input, requestCoalescedRead } from "./control-common.js";
+import { readCatalogFile, writeCatalogFileAtomic } from "./catalog-file.js";
 
 // Codex 模型目录（model_catalog_json）读取。catalog/* 是 bridge 本地 fs 控制面
 // 方法族——codex app-server 的 model/list 不携带 per-model provider（v2 Model 无
@@ -11,18 +10,6 @@ import { ControlError, checkWorkspace, input, requestCoalescedRead } from "./con
 // codex/request 原生白名单。多 provider 分组事实的唯一来源是该目录文件：
 // codex 远端 catalog 从不设置 ModelInfo.provider。
 // 合同与失败语义见 specs/codex-model-provider-grouping.md。
-
-/** catalog JSON 顶层形状：codex 按 ModelsResponse 解析（`{ models: [...] }`）。 */
-const catalogFileSchema = z.object({
-  models: z.array(
-    z
-      .object({
-        slug: z.string(),
-        provider: z.string().optional(),
-      })
-      .passthrough(),
-  ),
-});
 
 function failure(method: string, reason: string): never {
   throw new ControlError(-32000, `${method}: ${reason}`, { method, reason: "upstream_failure" });
@@ -51,32 +38,6 @@ async function resolveCatalogPath(context: BridgeControlContext): Promise<string
     : null;
 }
 
-/** 读取并解析 catalog 文件；missingOk 时文件不存在按空目录处理（管理写路径）。 */
-async function readCatalogFile(
-  method: string,
-  path: string,
-  missingOk: boolean,
-): Promise<z.infer<typeof catalogFileSchema>> {
-  let raw: string;
-  try {
-    raw = await readFile(path, "utf8");
-  } catch (error) {
-    if (missingOk && (error as NodeJS.ErrnoException)?.code === "ENOENT") return { models: [] };
-    failure(
-      method,
-      `failed to read model catalog ${path}: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
-  try {
-    return catalogFileSchema.parse(JSON.parse(raw));
-  } catch (error) {
-    failure(
-      method,
-      `failed to parse model catalog ${path}: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
-}
-
 function catalogMapping(
   path: string | null,
   models: readonly { slug: string; provider?: string }[],
@@ -87,24 +48,6 @@ function catalogMapping(
       .filter((model) => typeof model.provider === "string" && model.provider.trim())
       .map((model) => ({ slug: model.slug, provider: model.provider!.trim() })),
   });
-}
-
-/** 同目录 tmp + rename 原子落盘，避免半截 JSON 被 codex/并发读者捡到。 */
-async function writeCatalogFileAtomic(
-  method: string,
-  path: string,
-  models: readonly unknown[],
-): Promise<void> {
-  const tmp = join(dirname(path), `.codez-catalog-${process.pid}-${Date.now()}.tmp`);
-  try {
-    await writeFile(tmp, `${JSON.stringify({ models }, null, 2)}\n`, "utf8");
-    await rename(tmp, path);
-  } catch (error) {
-    failure(
-      method,
-      `failed to write model catalog ${path}: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
 }
 
 /**
@@ -137,10 +80,8 @@ async function readCatalogModels(
 function normalizeCatalogModelEntry(model: s.CodezCatalogModelEntry): s.CodezCatalogModelEntry {
   // 修复原因：Codex 原生 ModelInfo 要求 display_name 与 description 为字符串；
   // 缺省时互相回退并最终回退到 slug，避免写盘后重启因缺少这两个字段而加载失败。
-  const rawDisplayName =
-    typeof model.display_name === "string" ? model.display_name.trim() : "";
-  const rawDescription =
-    typeof model.description === "string" ? model.description.trim() : "";
+  const rawDisplayName = typeof model.display_name === "string" ? model.display_name.trim() : "";
+  const rawDescription = typeof model.description === "string" ? model.description.trim() : "";
   const displayName = rawDisplayName || rawDescription || model.slug;
   const description = rawDescription || displayName;
   return {
@@ -183,7 +124,7 @@ async function writeCatalogModel(
     }
     models[index] = normalizedModel;
   } else models[index] = normalizedModel;
-  await writeCatalogFileAtomic(method, path, models);
+  await writeCatalogFileAtomic(method, path, { ...existing, models });
   return catalogMapping(path, models);
 }
 
@@ -203,7 +144,7 @@ async function deleteCatalogModel(
   // Codex 启动期拒绝已配置的空目录；只校验 UI 上一次读取会有竞态，
   // 因此必须在 bridge 本次读取后、原子写入前守住最后一条模型。
   if (models.length === 0) failure(method, "model_catalog_json must retain at least one model");
-  await writeCatalogFileAtomic(method, path, models);
+  await writeCatalogFileAtomic(method, path, { ...existing, models });
   return catalogMapping(path, models);
 }
 

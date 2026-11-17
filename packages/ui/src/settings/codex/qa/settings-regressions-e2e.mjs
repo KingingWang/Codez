@@ -288,13 +288,29 @@ export async function verifySingleCatalogModelAndRestart(page, settings, result,
   );
   const persisted = await inspectRpcLog(page, result);
   assert.equal(persisted.catalogWrites, initialWrites + 1);
-  assert.equal(persisted.catalogModelVisibility, "hidden");
+  assert.equal(persisted.catalogModelVisibility, "hide");
   checks.push(
     "Catalog model visibility switch has a target-specific name and matching checked state",
   );
   await catalogModels.getByRole("button", { name: "Edit", exact: true }).click();
   const slugInput = catalogModels.getByRole("textbox", { name: "Model slug", exact: true });
   assert.equal(await slugInput.isDisabled(), false);
+  assert.equal(
+    await catalogModels
+      .getByRole("switch", { name: "Hidden from the model picker", exact: true })
+      .getAttribute("aria-checked"),
+    "true",
+    "Native hide must remain hidden in the edit form",
+  );
+  await catalogModels.getByText("Advanced JSON", { exact: true }).click();
+  const advancedJson = catalogModels.getByRole("textbox", { name: "Advanced JSON", exact: true });
+  await advancedJson.fill(
+    JSON.stringify({
+      ...JSON.parse(await advancedJson.inputValue()),
+      context_window: 128000,
+      visibility: "none",
+    }),
+  );
   await slugInput.fill("renamed-model");
   await catalogModels.getByRole("button", { name: "Save model", exact: true }).click();
   await catalogModels.getByRole("button", { name: "Delete renamed-model" }).waitFor();
@@ -305,13 +321,41 @@ export async function verifySingleCatalogModelAndRestart(page, settings, result,
       provider: "referenced-provider",
       display_name: "second-model",
       description: "second-model",
-      visibility: "hidden",
+      visibility: "none",
+      context_window: 128000,
     },
     originalSlug: "second-model",
   });
   assert.equal(renamed.catalogWrites, persisted.catalogWrites + 1);
   assert.equal(renamed.catalogOriginalSlugRenames, 1);
+  assert.equal(renamed.catalogModelVisibility, "none");
   checks.push("Catalog model edits can rename the slug through the original-slug write boundary");
+  const renamedVisibility = catalogModels.getByRole("switch", {
+    name: "Show in the model picker: renamed-model",
+  });
+  await renamedVisibility.click();
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('[aria-label="Show in the model picker: renamed-model"]')
+        ?.getAttribute("aria-checked") === "true",
+  );
+  assert.equal((await inspectRpcLog(page, result)).catalogModelVisibility, "list");
+  await catalogModels.getByRole("button", { name: "Edit", exact: true }).click();
+  await catalogModels
+    .getByRole("switch", { name: "Hidden from the model picker", exact: true })
+    .click();
+  await catalogModels.getByRole("button", { name: "Save model", exact: true }).click();
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('[aria-label="Show in the model picker: renamed-model"]')
+        ?.getAttribute("aria-checked") === "false",
+  );
+  assert.equal((await inspectRpcLog(page, result)).catalogModelVisibility, "hide");
+  checks.push(
+    "List enable, form hide, advanced JSON and slug rename all persist native visibility",
+  );
   const restartRuntime = settings.getByRole("button", { name: "Restart runtime now" });
   await restartRuntime.waitFor();
   await restartRuntime.click();
@@ -327,6 +371,24 @@ export async function verifySingleCatalogModelAndRestart(page, settings, result,
   checks.push(
     "Catalog restart warns about in-flight tasks; cancel does not dispose, confirmation disposes once",
   );
+  // 新增也会复制隐藏模型的能力模板，不能从另一条表单保存路径写出 hidden。
+  await catalogModels.getByRole("button", { name: "Add model", exact: true }).click();
+  assert.equal(
+    await catalogModels
+      .getByRole("switch", { name: "Hidden from the model picker", exact: true })
+      .getAttribute("aria-checked"),
+    "true",
+  );
+  await catalogModels
+    .getByRole("textbox", { name: "Model slug", exact: true })
+    .fill("created-model");
+  await catalogModels.getByRole("button", { name: "Save model", exact: true }).click();
+  await catalogModels.getByRole("button", { name: "Delete created-model" }).waitFor();
+  const created = await inspectRpcLog(page, result);
+  assert.equal(created.catalogLastWrite.model.visibility, "hide");
+  assert.equal(created.catalogLastWrite.model.context_window, 128000);
+  assert.equal(created.catalogLastWrite.originalSlug, undefined);
+  checks.push("New models copied from a hidden template keep capabilities and write native hide");
 }
 
 export function createCatalogConfigReadCounter(page, result) {

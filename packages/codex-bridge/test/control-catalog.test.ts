@@ -318,6 +318,67 @@ test("catalog/writeModel requires a configured catalog path and a valid entry", 
   );
 });
 
+test("catalog visibility is canonical across direct writes, sibling updates and deletion", async () => {
+  const f = await fixture(
+    JSON.stringify({
+      metadata: { visibility: "hidden", revision: 7 },
+      models: [
+        {
+          slug: " legacy ",
+          provider: "fixture",
+          visibility: "hidden",
+          extra: { visibility: "hidden" },
+        },
+        { slug: "other", provider: "fixture", visibility: "list" },
+      ],
+    }),
+  );
+  const context = { rpc: rpcWithConfig({ model_catalog_json: f.catalogPath }), cwd: f.cwd };
+  const workspace = { workspace: { workspacePath: f.cwd, workspaceKey: f.cwd } };
+  const original = await readFile(f.catalogPath, "utf8");
+  const read = s.codezCatalogReadModelsResultSchema.parse(
+    await handleCatalogRequest("catalog/readModels", workspace, context),
+  );
+  assert.equal(read.models[0]?.visibility, "hide");
+  assert.equal(await readFile(f.catalogPath, "utf8"), original, "reading never migrates on disk");
+  for (const visibility of ["list", "hide", "none", "hidden"]) {
+    await handleCatalogRequest(
+      "catalog/writeModel",
+      {
+        ...workspace,
+        model: { slug: "other", provider: "fixture", visibility },
+      },
+      context,
+    );
+    const file = JSON.parse(await readFile(f.catalogPath, "utf8"));
+    assert.equal(file.models[1].visibility, visibility === "hidden" ? "hide" : visibility);
+    assert.equal(file.models[0].visibility, "hide", "sibling legacy values cannot be re-emitted");
+    assert.equal(file.models[0].slug, " legacy ", "sibling identity must not be trimmed on disk");
+    assert.deepEqual(file.models[0].extra, { visibility: "hidden" });
+    assert.deepEqual(file.metadata, { visibility: "hidden", revision: 7 });
+  }
+  const valid = await readFile(f.catalogPath, "utf8");
+  for (const visibility of ["disabled", "", null, 1]) {
+    await assert.rejects(
+      handleCatalogRequest(
+        "catalog/writeModel",
+        {
+          ...workspace,
+          model: { slug: "other", visibility },
+        },
+        context,
+      ),
+    );
+    assert.equal(await readFile(f.catalogPath, "utf8"), valid);
+  }
+  // 删除其他条目也经同一目录归一化，不把历史拼写重新留在文件内。
+  await writeFile(f.catalogPath, original, "utf8");
+  await handleCatalogRequest("catalog/deleteModel", { ...workspace, slug: "other" }, context);
+  const deleted = JSON.parse(await readFile(f.catalogPath, "utf8"));
+  assert.equal(deleted.models[0].visibility, "hide");
+  assert.deepEqual(deleted.metadata, { visibility: "hidden", revision: 7 });
+});
+
 test("catalog/deleteModel removes by slug and reports missing entries honestly", async () => {
   const f = await fixture(
     JSON.stringify({

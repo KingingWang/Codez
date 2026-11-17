@@ -22,6 +22,7 @@ import {
 } from "./diagnostics.js";
 import { createCodexProviderKeyGate, parseBlockedCodexProviderIds } from "./provider-key-gate.js";
 import { ensureDefaultCodexConfigFiles } from "./default-codex-config.js";
+import { migrateLegacyCatalogVisibility } from "./catalog-file.js";
 
 // 此闭合方法表与 Host 侧 codexBridgeTitleDiagnostic.ts 同步；未知方法不输出原文。
 const observedFrameMethods = new Set([
@@ -41,7 +42,9 @@ async function main(): Promise<void> {
     return;
   }
   // 首次安装打开软件时自动补齐缺失的 config.toml 与模型目录文件，确保后续 GUI 可管理供应商与模型。
-  await ensureDefaultCodexConfigFiles(process.env);
+  const { catalogPath } = await ensureDefaultCodexConfigFiles(process.env);
+  // 历史 GUI 写出的 hidden 会让原生加载配置失败；先备份并归一已配置的目录。
+  if (catalogPath) await migrateLegacyCatalogVisibility(catalogPath);
   // Windows 的 cwd 可保留 junction/短路径拼写；执行路径统一为物理目录，身份仍由 Host 指定。
   const cwd = await realpath(process.cwd());
   const workspaceId = process.env.CODEZ_WORKSPACE_IDENTITY?.trim() || cwd;

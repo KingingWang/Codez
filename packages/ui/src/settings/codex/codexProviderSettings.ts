@@ -319,7 +319,10 @@ export function codexCatalogModelView(
     provider: optionalString(entry.provider),
     displayName: optionalString(entry.display_name) ?? entry.slug,
     description: optionalString(entry.description),
-    hidden: entry.visibility === "hidden",
+    hidden:
+      entry.visibility === "hide" ||
+      entry.visibility === "none" ||
+      (entry as Record<string, unknown>).visibility === "hidden",
   };
 }
 
@@ -402,7 +405,8 @@ export function codexModelFormFrom(
       (entry ? entry.slug : ""),
     description:
       optionalString((base as Record<string, unknown>).description) ?? "",
-    hidden: (base as Record<string, unknown>).visibility === "hidden",
+    hidden:
+      base.visibility === "hide" || base.visibility === "none" || base.visibility === "hidden",
     rawJson: JSON.stringify(base, null, 2),
   };
 }
@@ -440,7 +444,13 @@ export function codexModelEntryFromForm(
     provider,
     display_name: displayName,
     description,
-    visibility: form.hidden ? "hidden" : "list",
+    // 原因：hidden 是 UI 布尔草稿名，Codex 枚举必须为 hide；none 是合法原生值，
+    // 隐藏状态未改变时保留高级 JSON 的 none，不把保存表单变成无意的可见性变更。
+    visibility: form.hidden
+      ? (raw as Record<string, unknown>).visibility === "none"
+        ? "none"
+        : "hide"
+      : "list",
   };
   return entry as CodezCatalogModelEntry;
 }
