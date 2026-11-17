@@ -2,7 +2,7 @@
 
 import { createElement, type ChangeEvent } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   TID_SUBAGENT_BUILT_IN_MODEL_TRIGGER,
@@ -12,6 +12,7 @@ import {
 import type { IServiceAccessor } from "@codez/services";
 import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
 import { encodeCustomModelValue } from "../src/lib/codezCustomModelValue.js";
+import type { ModelSelectGroup } from "../src/ModelConfigSelect.js";
 
 const capturedButtons: Array<Record<string, unknown>> = [];
 const capturedModelConfigSelects: Array<Record<string, unknown>> = [];
@@ -231,6 +232,27 @@ vi.mock("@/ModelConfigSelect.js", () => ({
       normalizedValue,
       ...props,
     });
+    if (useRealReactHooks) {
+      // 原因：render 记录可能来自未提交或已卸载的控件；交互用例要通过当前 DOM 的
+      // 事件绑定触发选择，不能把 captured props 中的历史回调当成用户操作。
+      return createElement(
+        "select",
+        {
+          "aria-label": "Subagent model",
+          "data-model-current-value": normalizedValue,
+          value: normalizedValue as string,
+          disabled: props.disabled === true,
+          onChange: (event: ChangeEvent<HTMLSelectElement>) => {
+            (props.onValueChange as (value: string) => void)(event.target.value);
+          },
+        },
+        (props.modelGroups as readonly ModelSelectGroup[]).flatMap((group) =>
+          group.items.map((item) =>
+            createElement("option", { key: item.key, value: item.value }, item.name),
+          ),
+        ),
+      );
+    }
     return createElement(
       "button",
       {
@@ -299,6 +321,9 @@ vi.mock("@/chat-input-toolbar/ThoughtLevelCycleControl.js", () => ({
     return createElement("button", {
       type: "button",
       "data-testid": "subagent-thought-level",
+      "data-thought-current-value": (props.option as { currentValue?: string } | undefined)
+        ?.currentValue,
+      disabled: props.disabled === true,
     });
   },
 }));
@@ -1363,12 +1388,12 @@ describe("SubagentsSection", () => {
       modelSelection: {
         providerId: "custom-openai",
         modelId: "glm-5.2",
-        options: { reasoningLevel: "high" },
+        options: { reasoningLevel: "max" },
       },
       modelSelectionOverride: {
         providerId: "custom-openai",
         modelId: "glm-5.2",
-        options: { reasoningLevel: "high" },
+        options: { reasoningLevel: "max" },
       },
       tools: ["Read"],
     };
@@ -1387,50 +1412,55 @@ describe("SubagentsSection", () => {
     );
 
     await renderInteractiveSubagentsSection();
+    const currentControls = () => {
+      const row = within(screen.getByTestId(testId(TID_SUBAGENT_ROW, agent.name)));
+      return {
+        model: row.getByRole("combobox", { name: "Subagent model" }) as HTMLSelectElement,
+        thought: row.getByTestId("subagent-thought-level") as HTMLButtonElement,
+      };
+    };
     await waitFor(() => {
-      expect(
-        capturedModelConfigSelects.some(
-          (candidate) => candidate.normalizedValue === "custom:custom-openai:glm-5.2",
-        ),
-      ).toBe(true);
+      const { model, thought } = currentControls();
+      expect(model.value).toBe("custom:custom-openai:glm-5.2");
+      expect(model.disabled).toBe(false);
+      expect(thought.getAttribute("data-thought-current-value")).toBe("max");
     });
 
-    const initialPicker = capturedModelConfigSelects.findLast(
-      (candidate) => candidate.normalizedValue === "custom:custom-openai:glm-5.2",
-    );
-    const onModelValueChange = initialPicker?.onValueChange;
-    expect(onModelValueChange).toBeTypeOf("function");
-    const beforeOptimisticRender = capturedModelConfigSelects.length;
-    act(() => {
-      (onModelValueChange as (value: string) => void)("custom:custom-openai:gpt-5.4");
+    // 服务入场才证明本次写入已开始；DOM 证明用户看到的组合，不依赖渲染尝试次数。
+    await act(async () => {
+      fireEvent.change(currentControls().model, {
+        target: { value: "custom:custom-openai:gpt-5.4" },
+      });
     });
     await waitFor(() => {
-      expect(
-        capturedModelConfigSelects
-          .slice(beforeOptimisticRender)
-          .some((candidate) => candidate.normalizedValue === "custom:custom-openai:gpt-5.4"),
-      ).toBe(true);
+      expect(mockSubagentsService.setBuiltInModelOverride).toHaveBeenCalledExactlyOnceWith({
+        agentName: "Explore",
+        modelSelection: {
+          providerId: "custom-openai",
+          modelId: "gpt-5.4",
+          options: { reasoningLevel: "high" },
+        },
+      });
+      const { model, thought } = currentControls();
+      expect(model.value).toBe("custom:custom-openai:gpt-5.4");
+      expect(thought.getAttribute("data-thought-current-value")).toBe("high");
+      expect(model.disabled).toBe(true);
+      expect(thought.disabled).toBe(true);
     });
 
     expect(rejectWrite).toBeTypeOf("function");
-    const beforeRollbackRender = capturedModelConfigSelects.length;
-    const beforeThoughtRollbackRender = capturedThoughtLevelControls.length;
     await act(async () => {
       rejectWrite!(new Error("write failed"));
       await Promise.resolve();
     });
 
     await waitFor(() => {
-      expect(
-        capturedModelConfigSelects
-          .slice(beforeRollbackRender)
-          .some((candidate) => candidate.normalizedValue === "custom:custom-openai:glm-5.2"),
-      ).toBe(true);
-      expect(
-        capturedThoughtLevelControls
-          .slice(beforeThoughtRollbackRender)
-          .some((candidate) => candidate.option?.currentValue === "high"),
-      ).toBe(true);
+      const { model, thought } = currentControls();
+      expect(model.value).toBe("custom:custom-openai:glm-5.2");
+      expect(thought.getAttribute("data-thought-current-value")).toBe("max");
+      expect(model.disabled).toBe(false);
+      expect(thought.disabled).toBe(false);
+      expect(mockSubagentsService.setBuiltInModelOverride).toHaveBeenCalledTimes(1);
     });
   });
 
