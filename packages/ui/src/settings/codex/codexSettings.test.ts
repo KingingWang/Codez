@@ -1416,7 +1416,7 @@ test("model entry builder overlays identity fields on the raw JSON and rejects b
     provider: "ollama1",
     display_name: "New",
     description: "New",
-    visibility: "hidden",
+    visibility: "hide",
     context_window: 123,
   });
   // displayName 未填而 description 已填时，display_name 默认使用 description。
@@ -1492,7 +1492,7 @@ test("model entry builder overlays identity fields on the raw JSON and rejects b
     visibility: "list",
   });
   // 视图投影：hidden 判定与 display_name 回退。
-  assert.deepEqual(codexCatalogModelView({ slug: "b", visibility: "hidden" }), {
+  assert.deepEqual(codexCatalogModelView({ slug: "b", visibility: "hide" }), {
     slug: "b",
     provider: undefined,
     displayName: "b",

@@ -268,7 +268,7 @@ For just the mapped-provider regression (also included in the full suite):
 CHOKIDAR_USEPOLLING=1 node packages/ui/src/settings/codex/qa/mapped-provider-runner.mjs
 ```
 
-For the targeted catalog-model slug edit regression (also included in the full suite):
+For targeted catalog-model visibility and slug edit regressions (also included in the full suite):
 
 ```sh
 node packages/ui/src/settings/codex/qa/provider-model-slug-e2e.mjs
@@ -276,6 +276,9 @@ node packages/ui/src/settings/codex/qa/provider-model-slug-e2e.mjs
 
 Set `CODEZ_UI_QA_CHROME=/path/to/browser` when this runner should use another
 installed Chromium/Chrome executable.
+The runner checks native `hide/none` values, list enable/disable, form hiding,
+advanced JSON/rename and creation from a hidden template. Host IO is injected;
+native parsing/reload/restart is independently verified by the bridge catalog tests.
 
 It mounts the actual catalog/draft hooks, model controls and Lexical input.
 Cold-start defaults and persisted non-default/high drafts must send without

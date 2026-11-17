@@ -13,6 +13,14 @@ allows fake transports in tests. Unknown mutations fail closed, and mutations
 with an unknown outcome are never blindly retried. No real user credentials are
 used by tests. See specs/codex-desktop-adapter.md for recovery and delivery rules.
 
+Catalog IO remains bridge-owned. Shared entry validation accepts native
+`list/hide/none` visibility and canonicalizes the historical `hidden` spelling
+to `hide`; unknown values reject before mutation. Catalog writes preserve root
+metadata and never re-emit legacy values. Before native startup, only the catalog
+referenced by the user config is migrated, with an original-byte backup and an
+idempotent atomic replacement. Other configuration layers and invalid files are
+left to native diagnostics. See specs/codex-model-provider-management.md.
+
 `InteractionBroker` owns ordinary native question registration eligibility,
 head-only absolute auto-resolution deadlines and snoozes. Preference updates,
 answers, lifecycle cleanup and timer callbacks serialize at the same owner.

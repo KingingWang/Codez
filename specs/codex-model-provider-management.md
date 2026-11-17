@@ -38,8 +38,9 @@ specs/codex-model-provider-grouping.md，本 spec 只定义管理（写）路径
   面板只呈现「已配置」状态；输入新值才覆盖，留空 = 不修改；提供「清除」
   （写 null 删键）。
 - 模型字段（MVP）：slug、provider（下拉，限已有供应商）、display_name、
-  description、visibility（list/hidden，hidden 不出现在 model/list 默认视图但
-  保留配置）。其余能力字段（context_window、reasoning levels 等约 30 个）经
+  description、visibility（原生枚举 `list/hide/none`；`hide` 不出现在 model/list
+  默认视图但保留配置，`none` 保持原生语义）。GUI「隐藏」草稿只是布尔值，
+  不能把 UI 字段名 `hidden` 当作原生枚举写入文件。其余能力字段（context_window、reasoning levels 等约 30 个）经
   **单模型高级 JSON 编辑器**维护：编辑表单内折叠区直接编辑该条目的完整
   JSON；新增模型时从同 provider 现有首条模型复制能力模板，只允许先改
   slug/display_name/description/provider。Codex 原生 `ModelInfo` schema 要求
@@ -108,19 +109,30 @@ specs/codex-model-provider-grouping.md，本 spec 只定义管理（写）路径
      - 解析顶层 `model_catalog_json`（相对路径相对 `codexHome` 解析），若已配置
        但目标目录文件尚不存在，则按默认推荐模型目录自动创建该文件（绑定配置中的
        `model_provider` 与 `model`），避免 Codex 因目录文件缺失而无法启动。
+  4. 原生进程启动前，检查上述用户配置引用的目录（含绝对、相对及 `~/` 路径）：
+     仅把模型条目顶层的历史 `visibility: "hidden"` 迁移为 `"hide"`。
+     迁移前在同目录保存唯一命名的 `.codez-catalog-*.bak` 原始字节备份，再原子写回；
+     保留文件权限、符号链接目标、其他模型能力和目录顶层未知字段。
+     已合法的文件不重写、不重复备份；非法 JSON、非法目录结构或其他未知枚举不猜测修复，
+     保留原文件交给 Codex 报错。该迁移不扫描其他目录、不改 config.toml，也不宣称解决
+     下述跨进程条件提交问题。托管/项目层覆盖的路径仍由原生配置与控制面解析，
+     不新增本地配置层合并器。
 
 ```text
 codex-bridge main 启动
   ──→ ensureDefaultCodexConfigFiles(env)
         ├─ config.toml 缺失 ──→ 补齐 models.json (wx) + 创建默认 config.toml (wx)
         └─ config.toml 已存在 ─→ 若 model_catalog_json 指向的文件缺失，补齐该目录文件 (wx)
+  ──→ 引用目录 legacy hidden → 备份 → 原子迁移 hide（无变化则跳过）
   ──→ createCodexProcess (spawn codex app-server)
   ──→ GUI CodexProvidersPanel 可直接读取 user layer 与 catalog.path，新增/编辑供应商与模型
 ```
 
 目录列表的可见性开关表达「在模型下拉中显示」（`checked = !hidden`），
 不能在勾选时读作「隐藏」。可访问名称包含模型 slug，同名模型也必须有不同控件名。
-编辑表单的独立「隐藏」开关仍表示持久化 `hidden` 草稿（`checked = hidden`）。
+编辑表单的独立「隐藏」开关仍表示布尔草稿（`checked = hidden`），保存写 `"hide"`；
+已有 `"none"` 的隐藏条目在不改变可见性时保存仍保留 `"none"`。
+读取兼容历史 `"hidden"`，同时正确展示原生 `"hide"` / `"none"` 为非列表可见。
 列表切换沿用原有目录写入命令、权威重读和重启提示。验收：可见与隐藏模型的
 勾选状态相反、读屏名称与状态一致且包含 slug；切换后向同一目录所有者写入
 相反的可见性，表单草稿语义不变。
@@ -169,6 +181,10 @@ model_catalog_json 文件     ──bridge catalog/* 本地控制面写──→
   末尾。编辑改名时传非空 `originalSlug`：必须命中一个旧条目并在其原位置整条
   替换；新 slug 与其他条目冲突、旧条目不存在时拒绝写入且文件字节不变。条目
   必须是带非空 string `slug` 的对象。原子写（同目录 tmp 文件 + rename）。
+  `visibility` 可省略；提供时只接受 `list/hide/none`，历史 `hidden` 在协议边界
+  归一为 `hide`。其他值（含 null/数字）拒绝且不落盘。列表开关、模型新增/编辑、
+  高级 JSON 保存和直连控制面共用该校验。读目录同样归一历史值，因此任一目录写入
+  都不能把其他条目的旧 `hidden` 再写回；读操作本身不改文件。
 - `catalog/deleteModel`：`{ workspace, slug }`。按 slug 删除；不存在时报
   未找到错误（调用方据此提示，不当成功处理）；最后一条目录模型则拒绝，
   仍返回明确错误，文件原始字节不变。
@@ -209,7 +225,9 @@ deleteCodexCatalogModel`，载体铁律与 `readCodexCatalog` 相同（workspace
    provider 组。
 6. 模型高级 JSON 编辑：修改 context_window 后保存，文件 JSON 合法且其他
    条目不变；非法 JSON 不落盘并提示。
-7. visibility 切 hidden → 下次 model/list（includeHidden=false）不再返回该模型。
+7. 列表关闭或表单隐藏保存写 `visibility: "hide"`；再开启写 `"list"`。
+   原生重启后 `model/list(includeHidden=false)` 排除隐藏模型，`includeHidden=true`
+   仍可读到条目，原生配置重载不产生 unknown variant 错误。
 8. 远程 workspace：全部读写经远端 bridge 执行，本机不产生文件写。
 9. 模型目录读取失败或尚在加载：非默认供应商的「删除」也不可操作，不向
    `config/batchWrite` 发删除 edit；重新打开面板成功读取后，引用数为零的
@@ -239,6 +257,24 @@ deleteCodexCatalogModel`，载体铁律与 `readCodexCatalog` 相同（workspace
     默认选择刷新后失效时回落到现有首个入口，不展示旧目标的编辑表单。
     Provider Key 轮换引起的同目标 runtime 重启不得关闭未成功保存的表单或
     将成功回包当成旧目标回包。
+17. 编辑已为 `hide/none` 的模型（含高级 JSON、改 slug）时隐藏状态正确，保存不变成
+    `hidden`；新增时复制隐藏模板也写合法枚举。直连 `catalog/writeModel` 传旧
+    `hidden` 写成 `hide`，传未知枚举失败且文件字节不变；删除/更新其他模型不重新
+    引入遗留值，目录顶层元数据保持不变。
+18. 用户配置引用的自定义目录已有 `hidden`：启动先保留原始备份并迁移，随后原生
+    app-server 正常初始化；再次启动目录字节不变且不产生新备份。分别验证绝对、
+    相对路径以及链接目标；无旧值、非法 JSON 或未知枚举不被擅自改写。
+
+### 2026-11-17 visibility 兼容修复证据
+
+- `packages/codex-bridge/test/catalog-file.test.ts` 在 Linux 真实 Codex 0.163.0
+  （仓库 pinned）和本机 0.165.0 均复现 `config/read` 拒绝 `hidden`；
+  迁移后配置读取、`model/list`、目录写入后 reloadUserConfig 与重启通过。
+  首次 `initialize` 握手完成不能单独证明目录可解析，不把报错归因于未核实的升级版本。
+- `packages/ui/src/settings/codex/qa/provider-model-slug-e2e.mjs` 实际组件浏览器
+  验收通过；8 项检查、5 次目录写入、1 次原 slug 改名，包含 `hide/none`、
+  高级 JSON、隐藏模板新增、390/1280px × 中英文 × 明暗。工件
+  `/tmp/codex-ui-provider-model-slug-llg96g`；假 Host 不替代真实远程连接或其他 OS 验收。
 
 ```text
 GUI 已观察目录 → 展示禁用或确认 → bridge 接收 deleteModel
