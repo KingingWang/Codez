@@ -7,6 +7,22 @@ import { join, resolve } from "node:path";
 import { createRequire } from "node:module";
 import { codexWorkspaceRoot } from "./codex-runtime.mjs";
 
+test("macOS native targets use explicit supported standard runner images", async () => {
+  const require = createRequire(new URL("../packages/desktop/package.json", import.meta.url));
+  const workflow = require("yaml").parse(
+    await readFile(new URL("../.github/workflows/codex-desktop.yml", import.meta.url), "utf8"),
+  );
+  // 2026-11-19：macos-15 arm64 连续三次在分配 Runner 前取消，不能靠删除原生验证放行。
+  // 固定官方支持的标准 macos-26；Intel 目标和两者的原生架构、构建器保持不变。
+  assert.deepEqual(
+    workflow.jobs.build.strategy.matrix.include.filter(({ os }) => os === "darwin"),
+    [
+      { os: "darwin", arch: "x64", runner: "macos-15-intel", builder: "mac" },
+      { os: "darwin", arch: "arm64", runner: "macos-26", builder: "mac" },
+    ],
+  );
+});
+
 test("workflow gates six native targets, four bundled remote targets and isolated bridge smoke", async () => {
   const require = createRequire(new URL("../packages/desktop/package.json", import.meta.url));
   const workflow = require("yaml").parse(

@@ -222,6 +222,32 @@ skipped or retried to hide an error. Acceptance asserts the effective override
 for every matrix target and requires both macOS architectures to pass the real
 workflow before publication.
 
+### macOS arm64 hosted-runner availability
+
+The darwin/arm64 matrix target uses the explicit standard `macos-26` image;
+darwin/x64 remains on `macos-15-intel`. GitHub's official
+[runner-images inventory](https://github.com/actions/runner-images)
+lists `macos-26` as arm64. Do not substitute retired `macos-14`, floating
+`macos-latest`, larger paid runner labels or an Intel cross-build.
+
+On 2026-11-19, run `44527448638` attempts 1–3 cancelled only darwin/arm64 before
+any build step: annotations reported “The job was not acquired by Runner of type
+hosted even after multiple attempts” and macOS arm64 capacity constraints.
+The other five native targets and remote-assets succeeded. This is evidence of
+runner acquisition failure, not a source compilation failure. Switching the
+supported image is a bounded availability mitigation; it is not proof that
+the new pool has capacity until the actual workflow executes successfully.
+
+The target stays native darwin/arm64 with Node 24.14.0 and pnpm 10.33.2.
+Distribution identity, deployment targets, remote manifest ownership, helper
+inputs, native smoke checks, signing policy and six-target release admission
+remain unchanged. Engineering regression asserts the exact two macOS matrix
+entries. Acceptance still requires all six targets and release to succeed on
+the final source; queued/cancelled jobs are never treated as passes.
+Local verification on 2026-11-19 passed all 98
+`node --test scripts/test-codex-distribution*.mjs` regressions, root typecheck,
+lint (existing warnings) and the changed-file architecture gate.
+
 ## Per-push release publication
 
 Automatic publication is main-only. A side-branch or tag push used to publish a
