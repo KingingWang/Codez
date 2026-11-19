@@ -243,7 +243,10 @@ jobs:
       matrix:
         include:
           - { os: darwin, arch: x64, runner: macos-15-intel, builder: mac }
-          - { os: darwin, arch: arm64, runner: macos-15, builder: mac }
+          # run 44527448638 attempt 1–3：macos-15 arm64 在分配 hosted Runner 前取消，
+          # 注释明确为容量不足。改用官方支持的固定标准镜像，保留原生架构与全部 smoke；
+          # 不改成收费 larger runner、Intel 交叉构建或跳过发布门禁。
+          - { os: darwin, arch: arm64, runner: macos-26, builder: mac }
           - { os: linux, arch: x64, runner: ubuntu-24.04, builder: linux }
           - { os: linux, arch: arm64, runner: ubuntu-24.04-arm, builder: linux }
           - { os: win32, arch: x64, runner: windows-2025, builder: win }
