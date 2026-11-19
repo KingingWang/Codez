@@ -14,6 +14,7 @@ import { pendingInteractionSchema, queueStateSchema } from "@codez/shared/codez-
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { PlatformProvider } from "@/hooks/usePlatform.js";
 import { TabStoreProvider } from "@/store/TabStoreProvider.js";
+import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
 import { CodezIntlProvider, useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useCodexModelCatalog } from "@/hooks/useCodexModelCatalog.js";
 import { useDraftConfigControl } from "@/v4/composer/useDraftConfigControl.js";
@@ -50,6 +51,7 @@ import "@/styles.css";
 const requests: Array<CodexRequest & { workspacePath?: string }> = [];
 let modelFailure = false;
 let providerCatalogFailure = true;
+let missingUserConfigLayer = false;
 let rolesReadFailure = true;
 let rolesWriteFailure = true;
 const agentRoles: CodezAgentRoleSummary[] = [];
@@ -103,10 +105,13 @@ const services = {
     }) => {
       requests.push(request.method === "config/read" ? { ...request, workspacePath } : request);
       switch (request.method) {
-        case "config/read":
-          return structuredClone(
+        case "config/read": {
+          const response = structuredClone(
             workspacePath === "/isolated/other-workspace" ? otherWorkspaceConfig : config,
           );
+          if (missingUserConfigLayer) response.layers = [];
+          return response;
+        }
         case "model/list":
           await waitForCatalogFixture();
           if (modelFailure) throw new Error("Fixture catalog unavailable");
@@ -223,6 +228,12 @@ const services = {
   broadcastService: createProjectDiscoveryLocalServices().broadcastService,
 } as unknown as IServiceAccessor;
 initializeProjectDiscoveryFixture();
+useRemoteWorkspaceSessionStore.getState().registerSession({
+  sessionId: "qa-settings",
+  workspaceIdentity: "qa-other",
+  services,
+});
+useRemoteWorkspaceSessionStore.getState().bindWorkspaceIdentity("qa-other", "qa-settings");
 function Harness() {
   const { setLocale } = useCodezIntl();
   const [busy, setBusy] = useState(false);
@@ -234,6 +245,7 @@ function Harness() {
   const [requestNumber, setRequestNumber] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [workspacePath, setWorkspacePath] = useState("/isolated/workspace");
+  const [settingsIdentity, setSettingsIdentity] = useState<string | undefined>();
   const read = useCodexModelCatalog({ workspacePath, enabled: true });
   const gate = useDraftModelReadinessGate({
     workspacePath,
@@ -257,11 +269,12 @@ function Harness() {
     (value: V4ComposerConfigPicker, open: boolean) => setPicker(open ? value : null),
     [],
   );
+  const switchDraftMode = draft.handleDraftSwitchMode;
   const handleSwitchMode = useCallback(
     (value: Parameters<typeof draft.handleDraftSwitchMode>[0]) => {
-      if (!busy) draft.handleDraftSwitchMode(value);
+      if (!busy) switchDraftMode(value);
     },
-    [busy, draft.handleDraftSwitchMode],
+    [busy, switchDraftMode],
   );
   const conversation = {
     sendCommand: async (envelope: { commandId: string; payload: unknown }) => {
@@ -355,6 +368,21 @@ function Harness() {
         <Button onClick={() => (providerCatalogFailure = !providerCatalogFailure)}>
           Toggle provider catalog failure
         </Button>
+        <Button onClick={() => (missingUserConfigLayer = !missingUserConfigLayer)}>
+          Toggle writable config layer
+        </Button>
+        <Button
+          onClick={() => setSettingsIdentity((identity) => (identity ? undefined : "qa-other"))}
+        >
+          Switch settings identity
+        </Button>
+        <Button onClick={catalogModelsFixture.rejectNextDisposal}>
+          Reject next runtime restart
+        </Button>
+        <Button onClick={catalogModelsFixture.holdDisposal}>Hold runtime restart</Button>
+        <Button onClick={catalogModelsFixture.releaseDisposal}>Release runtime restart</Button>
+        <Button onClick={catalogModelsFixture.holdWrite}>Hold catalog write</Button>
+        <Button onClick={catalogModelsFixture.releaseWrite}>Release catalog write</Button>
         <Button onClick={() => (rolesReadFailure = !rolesReadFailure)}>
           Toggle roles read failure
         </Button>
@@ -448,7 +476,9 @@ function Harness() {
           })}
         />
       </div>
-      {settingsOpen ? <CodexSettingsSection workspacePath={workspacePath} /> : null}
+      {settingsOpen ? (
+        <CodexSettingsSection workspacePath={workspacePath} workspaceIdentity={settingsIdentity} />
+      ) : null}
       <V4ConversationContext.Provider value={conversation}>
         <V4InteractionDialogs
           sessionId="fixture-session"

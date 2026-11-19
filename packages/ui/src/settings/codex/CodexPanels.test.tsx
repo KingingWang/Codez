@@ -39,6 +39,9 @@ const controller: CodexSettingsController = {
   },
   refresh: async () => {},
   run: async () => false,
+  catalogRestartPending: false,
+  markCatalogRestartPending() {},
+  restartRuntime: async () => false,
 };
 // Only the platform method used by this panel is available in the rendering fixture.
 const descriptor = {

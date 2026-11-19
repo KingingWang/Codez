@@ -64,7 +64,6 @@ export function CodexProvidersPanel({
   const text = useCodexMessages();
   const [catalog, setCatalog] = useState<CatalogState | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
-  const [catalogStale, setCatalogStale] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [providerForm, setProviderForm] = useState<{
@@ -249,27 +248,46 @@ export function CodexProvidersPanel({
       text,
       setFormError,
       setModelForm,
-      setCatalogStale,
       setNotice,
       loadCatalog,
     });
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-ui-base leading-6 text-foreground-subtle">{text.providersHelp}</p>
-        <SettingsResourceHeaderActions
-          onRefresh={
-            showRefresh ? () => void Promise.all([controller.refresh(), loadCatalog()]) : undefined
-          }
-          refreshLabel={text.refresh}
-          refreshing={controller.loading}
-          refreshDisabled={controller.busy || controller.loading || !controller.enabled}
-          onNew={addProvider}
-          newLabel={text.providerAdd}
-          newDisabled={Boolean(disabled)}
-        />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        {/* 窄屏下新增重启操作会把说明挤成逐字长列；保留说明的换行基宽，让操作组换行。 */}
+        <p className="min-w-0 basis-60 grow text-ui-base leading-6 text-foreground-subtle">
+          {text.providersHelp}
+        </p>
+        <div className="flex max-w-full flex-wrap items-start gap-2">
+          <CodexConfirmButton
+            label={text.modelRestartRuntime}
+            confirmationLabel={text.modelConfirmRestart}
+            confirmationNotice={text.modelRestartRuntimeConfirm}
+            // 重启是当前工作区的恢复入口，不依赖可写配置层或目录读取成功。
+            disabled={controller.busy || controller.loading || !controller.enabled || !workspaceRef}
+            onConfirm={restartRuntime}
+          />
+          <SettingsResourceHeaderActions
+            onRefresh={
+              showRefresh
+                ? () => void Promise.all([controller.refresh(), loadCatalog()])
+                : undefined
+            }
+            refreshLabel={text.refresh}
+            refreshing={controller.loading}
+            refreshDisabled={controller.busy || controller.loading || !controller.enabled}
+            onNew={addProvider}
+            newLabel={text.providerAdd}
+            newDisabled={Boolean(disabled)}
+          />
+        </div>
       </div>
+      {controller.catalogRestartPending ? (
+        <div data-testid="codex-catalog-restart-pending">
+          <CodexNotice>{text.modelCatalogStale}</CodexNotice>
+        </div>
+      ) : null}
       <ModelProviderSplitPanel
         navigation={
           <nav aria-label={text.providers} className="space-y-1 p-2">
@@ -464,20 +482,6 @@ export function CodexProvidersPanel({
                 onSubmit={submitModel}
                 onCancel={() => setModelForm(null)}
               />
-            ) : null}
-            {catalogStale ? (
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-3">
-                <p className="min-w-0 flex-1 text-ui-sm text-foreground-subtle">
-                  {text.modelCatalogStale}
-                </p>
-                <CodexConfirmButton
-                  label={text.modelRestartRuntime}
-                  confirmationLabel={text.modelConfirmRestart}
-                  confirmationNotice={text.modelRestartRuntimeConfirm}
-                  disabled={Boolean(disabled)}
-                  onConfirm={restartRuntime}
-                />
-              </div>
             ) : null}
           </section>
         </div>

@@ -16,6 +16,10 @@ specs/codex-model-provider-grouping.md，本 spec 只定义管理（写）路径
   重启确认与 390/1280px × 中英文 × Zai 明暗通过，工件
   `/tmp/codex-ui-provider-model-slug-rEpxvf`。布局/切换未产生配置写入；
   目录写入 2 次，其中原 slug 改名 1 次。浏览器假 Host 不替代真实 Key 存储或 SSH 验收。
+- 2026-11-19 常驻重启入口回归：实际组件定向验收 14 项及八种布局/确认态通过，
+  工件 `/tmp/codex-ui-provider-model-slug-dCKqaT`；完整交互回归 60 项、零页面异常，
+  工件 `/tmp/codex-ui-interaction-e2e-cfKCmw`。覆盖面板卸载、identity 隔离、
+  保存/重启在途禁用、取消、dispose 失败与重读失败；Host IO 为隔离夹具。
 - 右侧分两个区块：**供应商**（`model_providers` 表）与**模型**（catalog 文件
   条目）。模型按 catalog provider 筛选，与 composer 下拉同一归属口径；
   没有已配置供应商的目录组仍可通过左侧独立入口查看，不因布局改变隐藏历史条目。
@@ -162,11 +166,37 @@ model_catalog_json 文件     ──bridge catalog/* 本地控制面写──→
   StaticModelsManager 持有启动期目录快照，`model/list` 不随文件变更刷新
   （reloadUserConfig 只重载线程 Config）。因此目录写入后：
   新 turn 路由立即生效（线程 Config.model_catalog 已重读）；GUI 模型下拉
-  （model/list 数据源）需重启 workspace runtime。面板在目录写入成功后显示
-  该提示并提供「立即重启运行时」动作（codezAgentService.disposeWorkspace，
+  （model/list 数据源）需重启 workspace runtime。面板顶部常驻「重启 app-server」
+  动作，不以“本次打开面板是否修改过模型”为显示条件（codezAgentService.disposeWorkspace，
   中断该工作区在途任务，需用户确认）；确认时明确显示该中断风险和
   「确认重启」，不得沿用「确认移除」。不重启也不产生错误状态。
 - 供应商写路径不需要重启：provider 定义在 turn 时从线程 Config 解析。
+
+### 重启入口与待刷新提示
+
+- 重启按钮属于当前工作区，不属于某个供应商；没有目录改动时仍可主动重启。
+  保存中、读取中、重启中或工作区连接不可用时禁用。重启不要求存在可写 user config
+  layer，也不要求目录读取成功，避免恢复入口反过来依赖要恢复的配置。
+- 待刷新提示唯一归窗口内 `codexCatalogRestartStore`（Zustand）所有，只记录 GUI
+  已成功写入目录的提醒，不复制原生模型目录、任务或运行时事实，不持久化到磁盘。
+  作用域为 Agent service authority + `workspaceIdentity?.trim() || workspacePath`；
+  同路径不同 identity/Host 不共享标记。切换供应商、设置分区、关闭再打开设置和
+  配置重读不清除该标记。供应商配置保存不设置该标记。
+- 写入成功立即登记一个新标记，再重读目录；重读失败不能掩盖已写入的待刷新事实。
+  重启复用 `useCodexSettings.run` 的单一 mutation admission，确认后调用现有
+  `disposeWorkspace`，再通过当前目标目录读取拉起新 runtime，显式失效 composer 目录。
+  只有 dispose 和重读都成功才清除重启开始时捕获的标记；失败保留提示并展示错误。
+  清除采用标记身份比较，旧请求不能清除其他目标或其后新写入的标记。
+- Desktop 与手机 Web 均复用已有 workspace service/Host 路由，不新增 Agent、
+  Host、协议或 stream/snapshot 链路；远程 identity 与 attachment 边界不变。
+
+```text
+目录写入 → Host/bridge 原子写成功 → 窗口 Zustand owner 登记目标标记 → 重读目录
+切换设置 / 关闭设置 ─────────────→ 标记保留，重启按钮再次打开仍常驻
+用户确认 → settings.run（单一锁）→ disposeWorkspace（现有 Host/runtime owner）
+                                → 同目标读取拉起 app-server → 失效 composer 目录
+                                → 成功：仅清除捕获标记；失败：保留标记 + 显示错误
+```
 
 ## 合同
 
@@ -240,8 +270,13 @@ deleteCodexCatalogModel`，载体铁律与 `readCodexCatalog` 相同（workspace
     绕过 GUI 直发 `catalog/deleteModel` 被 bridge 拒绝，原始 JSON 字节不变，
     不引入原生 Codex 的空目录加载错误。加第二模型后允许删第一条，仍保留一条。
     外部进程在 GUI 读取后删去其他模型时，以 bridge 写入前的最新读取为准。
-12. 成功保存目录模型后，点击「立即重启运行时」先显示本工作区进行中任务
-    将被中断和「确认重启」；取消不调用 disposeWorkspace，确认才调用。
+12. 首次打开提供商页、尚未修改配置时即显示「重启 app-server」。
+    成功保存目录模型后，待刷新提示在切换设置分区、关闭再打开设置后仍存在。
+    同路径切换不同 identity 不串提示，返回原 identity 恢复其标记。
+    点击重启先显示本工作区进行中任务将被中断和「确认重启」；
+    取消不调用 disposeWorkspace、不清除提示，确认仅调用一次。
+    重启失败保留提示与错误；成功清除提示但按钮仍可用，并可再次主动重启。
+    保存和重启在途时按钮禁用；目录读取失败和缺少可写配置层不隐藏恢复入口。
 13. 首次启动时 `$CODEX_HOME` 下无 `config.toml` 与模型目录文件：bridge 启动时自动创建
     默认 `config.toml` 与 `models.json`，Codex 原生进程正常解析启动，GUI「模型供应商」
     面板可正常读取默认供应商与模型并继续添加新供应商与模型；已有文件绝不被覆盖。

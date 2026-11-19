@@ -4,6 +4,10 @@ import { logger } from "@/logger.js";
 import { useWorkspaceServicesResolution } from "@/hooks/useWorkspaceServices.js";
 import { invalidateCodexModelCatalog } from "@/hooks/useCodexModelCatalog.js";
 import {
+  codexCatalogRestartKey,
+  useCodexCatalogRestartStore,
+} from "@/store/codexCatalogRestartStore.js";
+import {
   readCodexResource,
   type CodexResource,
   type CodexSnapshot,
@@ -41,6 +45,15 @@ export function useCodexSettings({
   const { services, rpcReady, isRemoteTarget } = resolution;
   const [runtimeRevision, setRuntimeRevision] = useState(0);
   const workspaceKey = workspaceIdentity?.trim() || workspacePath;
+  const restartKey = workspaceKey
+    ? codexCatalogRestartKey(services.codezAgentService, workspaceKey)
+    : null;
+  const catalogRestartPending = useCodexCatalogRestartStore(
+    (state) => restartKey !== null && state.pending[restartKey] !== undefined,
+  );
+  const markCatalogRestartPending = useCallback(() => {
+    if (restartKey) useCodexCatalogRestartStore.getState().markPending(restartKey);
+  }, [restartKey]);
   // 写入目标身份（spec: codex-provider-runtime-env-key「设置页保存事务与 Agent
   // 重启的时序」）：只表达「写到哪台机器/哪个 workspace」，刻意不含 Agent 代际。
   // Key 轮换屏障会在 prepareKeySource 与 config/batchWrite 之间主动停止远端
@@ -234,6 +247,27 @@ export function useCodexSettings({
     [enabled, scope, refresh, writeTarget, workspaceKey],
   );
 
+  const restartRuntime = useCallback(async (): Promise<boolean> => {
+    if (
+      !workspacePath ||
+      !restartKey ||
+      !mounted.current ||
+      currentWriteTarget.current !== writeTarget
+    )
+      return false;
+    return run(async () => {
+      const pending = useCodexCatalogRestartStore.getState().pending[restartKey];
+      const agent = services.codezAgentService;
+      const workspaceRef = { workspacePath, workspaceIdentity };
+      await agent.disposeWorkspace(workspaceRef);
+      // dispose 后读取会经既有 Host 路由拉起新 app-server。仅在重读成功后清除
+      // 捕获标记；失败或旧目标返回不能把未刷新的目录误报为已刷新。
+      await agent.readCodexCatalogModels(workspaceRef);
+      invalidateCodexModelCatalog();
+      if (pending) useCodexCatalogRestartStore.getState().clearPending(restartKey, pending);
+    });
+  }, [workspacePath, workspaceIdentity, restartKey, writeTarget, services, run]);
+
   return {
     formKey: scope.formKey,
     snapshot: state.scope === scope ? state.snapshot : EMPTY,
@@ -246,6 +280,9 @@ export function useCodexSettings({
     request,
     refresh,
     run,
+    catalogRestartPending,
+    markCatalogRestartPending,
+    restartRuntime,
   };
 }
 export type CodexSettingsController = ReturnType<typeof useCodexSettings>;
