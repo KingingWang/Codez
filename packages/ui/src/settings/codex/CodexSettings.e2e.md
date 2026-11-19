@@ -52,6 +52,12 @@ credentials or install a real external plugin for these tests.
     Gemini wire API, edit a model slug, and exercise the last-model/restart guards.
     Check 390px/1280px, Chinese/English and light/dark. This is a real-component
     browser acceptance case, not proof of native credential storage or real SSH.
+    The app-server restart action must be present before any edits and after a
+    successful restart. Catalog-save hints survive leaving Providers and closing
+    Settings; same-path identities remain isolated. Cancel sends no disposal;
+    failed restart retains the hint/error, successful confirmation disposes once
+    and clears only that target's hint. Held save/restart disables the action.
+    Catalog-read failure or a missing writable user layer must not hide recovery.
 
 2026-11-02 case 12 passed through `qa/provider-model-slug-e2e.mjs`: six bounded
 rules and eight Zai light/dark, Chinese/English, 390/1280px layouts; evidence
@@ -63,6 +69,16 @@ page errors (`/tmp/codex-ui-interaction-e2e-IKa4ah`), including pending title
 preferences, native writes, approval IDs, catalog/restart guards, Host identity
 isolation, stale legacy OAuth callbacks/polls, reauthentication cancellation and
 localized Memory controls. It is not an external OAuth or all-platform desktop pass.
+
+2026-11-19 restart regression: `qa/provider-model-slug-e2e.mjs` passed 14 bounded
+checks plus eight 390/1280px × Chinese/English × Zai light/dark layouts and their
+restart confirmations (`/tmp/codex-ui-provider-model-slug-dCKqaT`). The full
+`qa/interaction-e2e.mjs` passed 60 checks with zero page errors
+(`/tmp/codex-ui-interaction-e2e-cfKCmw`). Both used pinned Node 24.14.0 and isolated
+loopback Host fixtures; the layout run used `CODEZ_REACT_SCAN=0`,
+`CODEZ_UI_QA_CHROME=/opt/google/chrome/chrome` and `CHOKIDAR_USEPOLLING=1`.
+Runners closed their browser/server processes. This verifies real UI/controller
+interactions, not actual native task interruption or an external SSH attachment.
 
 Record runner command, native build/schema revision, screenshots, RPC assertions,
 and cleanup evidence when these cases are actually executed. This plan is not an

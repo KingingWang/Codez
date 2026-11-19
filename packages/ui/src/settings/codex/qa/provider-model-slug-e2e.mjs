@@ -80,6 +80,39 @@ try {
               .getByTestId("codex-provider-description")
               .evaluate((element) => element.clientWidth >= 80),
           );
+          const restart = settings.getByRole("button", {
+            name: locale === "zh-CN" ? "重启 app-server" : "Restart app-server",
+            exact: true,
+          });
+          await restart.scrollIntoViewIfNeeded();
+          assert.equal(await restart.isEnabled(), true);
+          const header = restart.locator("xpath=ancestor::div[2]");
+          assert.ok(
+            await header
+              .locator("p")
+              .first()
+              .evaluate((element) => element.clientWidth >= 240),
+            "Provider help must not be squeezed into a narrow column by restart actions",
+          );
+          await page.screenshot({
+            path: join(evidence, `restart-${width}-${locale}-${theme}.png`),
+          });
+          await restart.click();
+          await settings
+            .getByRole("button", {
+              name: locale === "zh-CN" ? "确认重启" : "Confirm restart",
+              exact: true,
+            })
+            .waitFor();
+          await page.screenshot({
+            path: join(evidence, `restart-confirm-${width}-${locale}-${theme}.png`),
+          });
+          await settings
+            .getByRole("button", {
+              name: locale === "zh-CN" ? "取消" : "Cancel",
+              exact: true,
+            })
+            .click();
           await settings.getByTestId("codex-provider-description").scrollIntoViewIfNeeded();
           await page.screenshot({
             path: join(evidence, `providers-${width}-${locale}-${theme}.png`),
@@ -87,6 +120,7 @@ try {
         }
     const afterLayouts = await inspectRpcLog(page, result);
     assert.equal(afterLayouts.catalogWrites, beforeLayouts.catalogWrites);
+    assert.equal(afterLayouts.runtimeDisposals, beforeLayouts.runtimeDisposals);
     checks.push(
       "Provider split layout works at 390/1280px in Chinese/English and light/dark without native writes",
     );

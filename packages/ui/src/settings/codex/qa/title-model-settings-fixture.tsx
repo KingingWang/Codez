@@ -96,6 +96,9 @@ const controller: CodexSettingsController = {
   },
   refresh: async () => {},
   run: async () => false,
+  catalogRestartPending: false,
+  markCatalogRestartPending() {},
+  restartRuntime: async () => false,
 };
 
 function Harness() {

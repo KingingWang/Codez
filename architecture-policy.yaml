@@ -2867,6 +2867,7 @@ modules:
       - packages/ui/src/settings/codex/useCodexCatalogModelActions.ts
       - packages/ui/src/settings/codex/useCodexNativeBrowserCua.ts
       - packages/ui/src/settings/codex/useCodexProviderKeySupport.ts
+      - packages/ui/src/store/codexCatalogRestartStore.ts
     managed: true
     requires:
       - codex-capability-ui

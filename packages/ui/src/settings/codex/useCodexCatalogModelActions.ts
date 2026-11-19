@@ -27,7 +27,6 @@ export function useCodexCatalogModelActions(params: {
   text: ReturnType<typeof useCodexMessages>;
   setFormError: (value: string | null) => void;
   setModelForm: (value: CodexModelForm | null) => void;
-  setCatalogStale: (value: boolean) => void;
   setNotice: (value: string | null) => void;
   loadCatalog: () => Promise<void>;
 }): {
@@ -44,7 +43,6 @@ export function useCodexCatalogModelActions(params: {
     text,
     setFormError,
     setModelForm,
-    setCatalogStale,
     setNotice,
     loadCatalog,
   } = params;
@@ -52,9 +50,9 @@ export function useCodexCatalogModelActions(params: {
   async function writeCatalog(operation: () => Promise<unknown>) {
     setNotice(null);
     await operation();
+    // 写盘成功就登记提醒；即使随后重读失败或面板卸载，也不能丢掉待刷新事实。
+    controller.markCatalogRestartPending();
     await loadCatalog();
-    setCatalogStale(true);
-    setNotice(text.modelCatalogStale);
   }
 
   const submitModel = () => {
@@ -69,9 +67,7 @@ export function useCodexCatalogModelActions(params: {
     void controller
       .run(() =>
         writeCatalog(() =>
-          agent.writeCodexCatalogModel(
-            codexCatalogModelWriteParams(modelForm, workspaceRef),
-          ),
+          agent.writeCodexCatalogModel(codexCatalogModelWriteParams(modelForm, workspaceRef)),
         ),
       )
       .then((ok) => {
@@ -83,9 +79,7 @@ export function useCodexCatalogModelActions(params: {
     if (!workspaceRef) return;
     const agent = controller.services.codezAgentService;
     void controller.run(() =>
-      writeCatalog(() =>
-        agent.deleteCodexCatalogModel({ ...workspaceRef, slug }),
-      ),
+      writeCatalog(() => agent.deleteCodexCatalogModel({ ...workspaceRef, slug })),
     );
   };
 
@@ -106,15 +100,8 @@ export function useCodexCatalogModelActions(params: {
   };
 
   const restartRuntime = () => {
-    if (!workspaceRef) return;
-    const agent = controller.services.codezAgentService;
-    void controller.run(async () => {
-      await agent.disposeWorkspace(workspaceRef);
-      // dispose 后的首次请求立即拉起新 runtime（代际 >1 → onAgentRuntimeRestarted →
-      // composer 模型下拉重拉 model/list），新 app-server 重读目录文件。
-      await loadCatalog();
-      setCatalogStale(false);
-      setNotice(text.saved);
+    void controller.restartRuntime().then((ok) => {
+      if (ok) setNotice(text.saved);
     });
   };
 

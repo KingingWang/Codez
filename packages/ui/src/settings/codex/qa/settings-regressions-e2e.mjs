@@ -256,6 +256,15 @@ export async function inspectRpcLog(page, result) {
 }
 
 export async function verifySingleCatalogModelAndRestart(page, settings, result, checks) {
+  const restartRuntime = settings.getByRole("button", { name: "Restart app-server", exact: true });
+  await restartRuntime.waitFor();
+  await waitFixtureButtonEnabled(page, "Restart app-server");
+  assert.equal(await settings.getByTestId("codex-catalog-restart-pending").count(), 0);
+  await restartRuntime.click();
+  await settings.getByRole("button", { name: "Confirm restart" }).waitFor();
+  await settings.getByRole("button", { name: "Cancel", exact: true }).click();
+  assert.equal((await inspectRpcLog(page, result)).runtimeDisposals, 0);
+  checks.push("App-server restart is available before editing and cancellation sends no disposal");
   // 模型管理恢复原供应商分栏；选择仅改变 UI，不能触发默认供应商写入。
   const beforeSelection = await inspectRpcLog(page, result);
   await settings.getByTestId("codex-provider-nav-referenced-provider").click();
@@ -279,7 +288,10 @@ export async function verifySingleCatalogModelAndRestart(page, settings, result,
   });
   assert.equal(await visibleInPicker.getAttribute("aria-checked"), "true");
   const initialWrites = (await inspectRpcLog(page, result)).catalogWrites;
+  await page.getByRole("button", { name: "Hold catalog write", exact: true }).click();
   await visibleInPicker.click();
+  assert.equal(await restartRuntime.isDisabled(), true);
+  await page.getByRole("button", { name: "Release catalog write", exact: true }).click();
   await page.waitForFunction(
     () =>
       document
@@ -356,7 +368,27 @@ export async function verifySingleCatalogModelAndRestart(page, settings, result,
   checks.push(
     "List enable, form hide, advanced JSON and slug rename all persist native visibility",
   );
-  const restartRuntime = settings.getByRole("button", { name: "Restart runtime now" });
+  const pendingHint = settings.getByTestId("codex-catalog-restart-pending");
+  await pendingHint.waitFor();
+  await settings.getByRole("button", { name: "Memory", exact: true }).click();
+  await settings.getByRole("button", { name: "Providers", exact: true }).click();
+  await pendingHint.waitFor();
+  await page.getByRole("button", { name: "Toggle settings", exact: true }).click();
+  await page.getByRole("button", { name: "Toggle settings", exact: true }).click();
+  await settings.getByRole("button", { name: "Providers", exact: true }).click();
+  await pendingHint.waitFor();
+  await settings.getByTestId("codex-provider-nav-referenced-provider").click();
+  checks.push("Catalog pending hint survives settings navigation and full settings remount");
+  await page.getByRole("button", { name: "Switch settings identity", exact: true }).click();
+  await settings.getByRole("button", { name: "Providers", exact: true }).click();
+  await waitFixtureButtonEnabled(page, "Restart app-server");
+  assert.equal(await pendingHint.count(), 0);
+  await page.getByRole("button", { name: "Switch settings identity", exact: true }).click();
+  await settings.getByRole("button", { name: "Providers", exact: true }).click();
+  await pendingHint.waitFor();
+  await waitFixtureButtonEnabled(page, "Restart app-server");
+  await settings.getByTestId("codex-provider-nav-referenced-provider").click();
+  checks.push("Same-path workspace identities do not share pending catalog hints");
   await restartRuntime.waitFor();
   await restartRuntime.click();
   await settings
@@ -365,11 +397,43 @@ export async function verifySingleCatalogModelAndRestart(page, settings, result,
   await settings.getByRole("button", { name: "Confirm restart" }).waitFor();
   await settings.getByRole("button", { name: "Cancel", exact: true }).click();
   assert.equal((await inspectRpcLog(page, result)).runtimeDisposals, 0);
+  await pendingHint.waitFor();
+  await page.getByRole("button", { name: "Reject next runtime restart", exact: true }).click();
   await restartRuntime.click();
   await settings.getByRole("button", { name: "Confirm restart" }).click();
+  await settings.getByText("Fixture app-server restart rejected", { exact: true }).waitFor();
+  await pendingHint.waitFor();
+  assert.equal((await inspectRpcLog(page, result)).runtimeDisposals, 0);
+  await page.getByRole("button", { name: "Hold runtime restart", exact: true }).click();
+  await restartRuntime.click();
+  await settings.getByRole("button", { name: "Confirm restart" }).click();
+  assert.equal(await restartRuntime.isDisabled(), true);
+  await pendingHint.waitFor();
+  await page.getByRole("button", { name: "Release runtime restart", exact: true }).click();
+  await waitFixtureButtonEnabled(page, "Restart app-server");
   assert.equal((await inspectRpcLog(page, result)).runtimeDisposals, 1);
+  assert.equal(await pendingHint.count(), 0);
+  await restartRuntime.click();
+  await settings.getByRole("button", { name: "Confirm restart" }).click();
+  await waitFixtureButtonEnabled(page, "Restart app-server");
+  assert.equal((await inspectRpcLog(page, result)).runtimeDisposals, 2);
   checks.push(
-    "Catalog restart warns about in-flight tasks; cancel does not dispose, confirmation disposes once",
+    "Catalog restart warns about in-flight tasks, clears the hint on success and remains available",
+  );
+  checks.push(
+    "Save/restart admission disables restart; failed restart retains the pending hint/error",
+  );
+  await page.getByRole("button", { name: "Toggle provider catalog failure", exact: true }).click();
+  await page.getByRole("button", { name: "Toggle writable config layer", exact: true }).click();
+  await settings.getByRole("button", { name: "Refresh", exact: true }).click();
+  await settings.getByText("Fixture provider catalog unavailable", { exact: true }).waitFor();
+  await waitFixtureButtonEnabled(page, "Restart app-server");
+  await page.getByRole("button", { name: "Toggle provider catalog failure", exact: true }).click();
+  await page.getByRole("button", { name: "Toggle writable config layer", exact: true }).click();
+  await settings.getByRole("button", { name: "Refresh", exact: true }).click();
+  await waitFixtureButtonEnabled(page, "Restart app-server");
+  checks.push(
+    "Restart recovery does not depend on catalog-read success or a writable config layer",
   );
   // 新增也会复制隐藏模型的能力模板，不能从另一条表单保存路径写出 hidden。
   await catalogModels.getByRole("button", { name: "Add model", exact: true }).click();
@@ -389,6 +453,21 @@ export async function verifySingleCatalogModelAndRestart(page, settings, result,
   assert.equal(created.catalogLastWrite.model.context_window, 128000);
   assert.equal(created.catalogLastWrite.originalSlug, undefined);
   checks.push("New models copied from a hidden template keep capabilities and write native hide");
+  await pendingHint.waitFor();
+  await page.getByRole("button", { name: "Toggle provider catalog failure", exact: true }).click();
+  await restartRuntime.click();
+  await settings.getByRole("button", { name: "Confirm restart" }).click();
+  await settings.getByText("Fixture provider catalog unavailable", { exact: true }).waitFor();
+  await pendingHint.waitFor();
+  await waitFixtureButtonEnabled(page, "Restart app-server");
+  assert.equal((await inspectRpcLog(page, result)).runtimeDisposals, 3);
+  await page.getByRole("button", { name: "Toggle provider catalog failure", exact: true }).click();
+  await restartRuntime.click();
+  await settings.getByRole("button", { name: "Confirm restart" }).click();
+  await waitFixtureButtonEnabled(page, "Restart app-server");
+  assert.equal(await pendingHint.count(), 0);
+  assert.equal((await inspectRpcLog(page, result)).runtimeDisposals, 4);
+  checks.push("Post-disposal read failure retains the hint until a verified restart succeeds");
 }
 
 export function createCatalogConfigReadCounter(page, result) {
