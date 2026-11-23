@@ -60,6 +60,7 @@ export function CodexConfirmButton({
   confirmationNotice,
   disabled,
   onConfirm,
+  testId,
 }: {
   label: string;
   targetLabel?: string;
@@ -67,6 +68,8 @@ export function CodexConfirmButton({
   confirmationNotice?: string;
   disabled: boolean;
   onConfirm: () => void;
+  /** 需要被 E2E 稳定定位的确认动作才传；按可见文案匹配会随 i18n 改文案而断。 */
+  testId?: string;
 }) {
   const text = useCodexMessages();
   const [confirming, setConfirming] = useState(false);
@@ -82,6 +85,7 @@ export function CodexConfirmButton({
         size="sm"
         variant="destructive"
         disabled={disabled}
+        data-testid={testId ? `${testId}-confirm` : undefined}
         aria-label={targetLabel ? `${confirmAction} ${targetLabel}` : undefined}
         onClick={() => {
           setConfirming(false);
@@ -104,6 +108,7 @@ export function CodexConfirmButton({
       size="sm"
       variant="outline"
       disabled={disabled}
+      data-testid={testId}
       aria-label={targetLabel ? `${label} ${targetLabel}` : undefined}
       onClick={() => setConfirming(true)}
     >

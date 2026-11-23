@@ -333,7 +333,10 @@ import {
   hasPluginReferenceRowsInPartition,
   isSessionPluginCatalogReady,
 } from "@/v4/pluginReferenceIconProjection.js";
-import { shouldResyncForStaleAuthority } from "@/v4/staleAuthorityRecovery.js";
+import {
+  shouldRecoverFromStopTargetChanged,
+  shouldResyncForStaleAuthority,
+} from "@/v4/staleAuthorityRecovery.js";
 import { createCommandEnvelope } from "@/v4/commandFactory.js";
 import { ForkDestinationContext, useTaskWorktreePlacement } from "@/managed-worktrees/index.js";
 import { useWorktreeSupport } from "@/managed-worktrees/index.js";
@@ -2641,7 +2644,10 @@ export function SessionPane({
           revisionAtDecision: ack.revisionAtDecision,
           at: Date.now(),
         });
-        if (shouldResyncForStaleAuthority(ack)) {
+        // stop 的目标守卫 noop 与 proto.stale* 同源：runtime 已无匹配前台执行说明
+        // 本地投影陈旧，必须走同一套 same-sub recovery，否则幻影 running 永久留存，
+        // 且此后每次 stop 都继续 noop（spec: specs/codex-desktop-stop-stale-projection.md）。
+        if (shouldResyncForStaleAuthority(ack) || shouldRecoverFromStopTargetChanged(type, ack)) {
           // epoch/entity authority 已变化时只清 optimistic overlay 仍会继续拿旧
           // target 发命令；统一 same-sub recovery 后才能基于同代 rowId/entityId 再裁决。
           commandLease?.store?.recoverFromStaleAuthority();
@@ -5906,11 +5912,21 @@ export function SessionPane({
         "stop",
         foregroundExecutionId ? { expectedForegroundExecutionId: foregroundExecutionId } : {},
         sessionId,
-      ).catch((error) => {
-        logger.lifecycle.warn(`[v4-pane] stop 失败: ${String(error)}`);
-      });
+      )
+        .then((ack) => {
+          // 修复原因：noop(guard.stopTargetChanged) 是 RPC 成功返回，旧实现的 .catch
+          // 永不触发；生产 renderer 日志又不落盘，用户看到的就是「按停止键没有任何反应」。
+          // 这里必须把结果可见化（与 stopSubagent 的失败提示同一入口）；投影刷新由
+          // dispatchCommand 的 stale-authority recovery 统一负责，这里不另起重连。
+          if (!shouldRecoverFromStopTargetChanged("stop", ack)) return;
+          if (sessionIdRef.current !== sessionId) return;
+          toast(intl.formatMessage({ id: "chat.stop.targetChanged" }));
+        })
+        .catch((error) => {
+          logger.lifecycle.warn(`[v4-pane] stop 失败: ${String(error)}`);
+        });
     },
-    [dispatchCommand, sessionId],
+    [dispatchCommand, intl, sessionId],
   );
 
   const handlePauseGoal = useCallback(() => {

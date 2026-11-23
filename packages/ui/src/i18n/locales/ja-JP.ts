@@ -6392,6 +6392,15 @@ const jaJP: Record<string, string> = {
   "chat.summaryPanel.stopSubagentFailed":
     "サブエージェントを停止できませんでした。再試行してください。",
   "chat.summaryPanel.openRunningSubagentSession": "サブエージェントのセッションを開く",
+  "chat.stop.targetChanged":
+    "その実行はすでに終了または変更されています。セッション状態を更新しています。",
+  "chat.composer.backgroundWorks.tooltipTerminal": "実行中のターミナルを開く",
+  "chat.composer.backgroundWorks.tooltipAgent": "実行中のエージェントを開く",
+  "chat.composer.backgroundWorks.tooltipWorkflow": "実行中のワークフローを開く",
+  "chat.composer.backgroundWorks.tooltipWorkflowDetails": "ワークフローの詳細を開く",
+  "chat.composer.backgroundWorks.tooltipMixed": "実行中のターミナルとエージェントを開く",
+  "chat.composer.backgroundWorks.ariaLabel":
+    "実行中のバックグラウンドタスクを開く: Bash {bashCount} 件、ワークフロー {workflowCount} 件、サブエージェント {subagentCount} 件、合計 {count} 件",
   "chat.summaryPanel.goalIterationValue": "反復 {count}",
   "chat.statusPanel.viewAllChanges": "すべての変更を表示",
   "chat.statusPanel.runningStop": "停止",
