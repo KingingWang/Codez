@@ -6332,6 +6332,7 @@ const ruRU: Record<string, string> = {
   "chat.summaryPanel.stopRunningSubagent": "Остановить работающего субагента",
   "chat.summaryPanel.stopSubagentFailed": "Не удалось остановить субагента. Повторите попытку.",
   "chat.summaryPanel.openRunningSubagentSession": "Открыть сеанс субагента",
+  "chat.stop.targetChanged": "Этот запуск уже завершён или изменён. Обновляем состояние сеанса.",
   "chat.composer.backgroundWorks.tooltipTerminal": "Открыть запущенные терминалы",
   "chat.composer.backgroundWorks.tooltipAgent": "Открыть запущенных агентов",
   "chat.composer.backgroundWorks.tooltipWorkflow": "Открыть запущенные рабочие процессы",

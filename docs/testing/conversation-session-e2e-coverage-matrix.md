@@ -4,6 +4,18 @@
 
 # Conversation Session E2E Coverage Matrix
 
+## Stop 命中陈旧投影（STSP，2026-11-23）
+
+规格：[停止按钮命中陈旧投影时必须可见并自愈](../../specs/codex-desktop-stop-stale-projection.md)。
+
+| Case | Status | Evidence |
+| --- | --- | --- |
+| STSP-01 | pending (E2E-pending) | 候选 spec `packages/desktop/test/e2e/conversation-session/execution/manual-review/pending/conversation-session-stop-stale-projection-recovery.test.ts`：在途轮次期间经供应商设置「重启 app-server」回收 workspace runtime，停止后必须出现提示并离开幻影 running。尚未执行 manual/capture，未晋级，不作为覆盖证据。 |
+| STSP-02 | pending (E2E-pending) | 同一候选 spec 的连点断言：重复停止不回到 streaming、不产生第二条恢复路径。尚未执行。 |
+| STSP-03 | 既有覆盖 | 正常在途轮次停止仍由 `execution/conversation-session-stop-empty.test.ts` 与 `execution/conversation-session-stop-tool-results.test.ts` 覆盖；本次未改动该路径。 |
+
+本次只新增候选，不改既有 case 的状态；人工 review 与晋级/准入按 E2E 生命周期执行。
+
 ## 手机原生模型选择一致性（MNCP，2026-11-08）
 
 规格：[手机原生 Composer 一致性](../../specs/mobile-native-composer-parity.md)。

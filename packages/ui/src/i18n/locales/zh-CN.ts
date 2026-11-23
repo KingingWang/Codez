@@ -6394,6 +6394,7 @@ const zhCN: Record<string, string> = {
   "chat.summaryPanel.stopRunningSubagent": "停止运行中的智能体",
   "chat.summaryPanel.stopSubagentFailed": "未能停止智能体，请重试。",
   "chat.summaryPanel.openRunningSubagentSession": "打开子智能体会话",
+  "chat.stop.targetChanged": "那一轮已结束或已变更，正在刷新会话状态。",
   "chat.composer.backgroundWorks.tooltipTerminal": "运行中的终端",
   "chat.composer.backgroundWorks.tooltipAgent": "打开运行中的智能体",
   // workflow 从 bash 拆出后 badge 有三类：

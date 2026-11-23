@@ -6853,6 +6853,7 @@ const enUS: Record<string, string> = {
   "chat.summaryPanel.stopRunningSubagent": "Stop running agent",
   "chat.summaryPanel.stopSubagentFailed": "Could not stop the agent. Try again.",
   "chat.summaryPanel.openRunningSubagentSession": "Open subagent session",
+  "chat.stop.targetChanged": "That run already ended or changed. Refreshing the session state.",
   "chat.composer.backgroundWorks.tooltipTerminal": "Open running terminals",
   "chat.composer.backgroundWorks.tooltipAgent": "Open running agents",
   "chat.composer.backgroundWorks.tooltipWorkflow": "Open running workflows",

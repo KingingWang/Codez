@@ -6203,6 +6203,8 @@ const koKR: Record<string, string> = {
   "chat.summaryPanel.stopRunningSubagent": "실행 중인 하위 에이전트 중지",
   "chat.summaryPanel.stopSubagentFailed": "하위 에이전트를 중지하지 못했습니다. 다시 시도하세요.",
   "chat.summaryPanel.openRunningSubagentSession": "하위 에이전트 세션 열기",
+  "chat.stop.targetChanged":
+    "해당 실행이 이미 종료되었거나 변경되었습니다. 세션 상태를 새로 고치는 중입니다.",
   "chat.composer.backgroundWorks.tooltipTerminal": "실행 중인 터미널 열기",
   "chat.composer.backgroundWorks.tooltipAgent": "실행 중인 에이전트 열기",
   "chat.composer.backgroundWorks.tooltipWorkflow": "실행 중인 워크플로 열기",

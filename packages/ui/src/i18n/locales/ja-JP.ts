@@ -6353,6 +6353,8 @@ const jaJP: Record<string, string> = {
   "chat.summaryPanel.stopSubagentFailed":
     "サブエージェントを停止できませんでした。再試行してください。",
   "chat.summaryPanel.openRunningSubagentSession": "サブエージェントのセッションを開く",
+  "chat.stop.targetChanged":
+    "その実行はすでに終了または変更されています。セッション状態を更新しています。",
   "chat.composer.backgroundWorks.tooltipTerminal": "実行中のターミナルを開く",
   "chat.composer.backgroundWorks.tooltipAgent": "実行中のエージェントを開く",
   "chat.composer.backgroundWorks.tooltipWorkflow": "実行中のワークフローを開く",

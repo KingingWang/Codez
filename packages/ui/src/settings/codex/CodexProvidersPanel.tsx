@@ -267,6 +267,7 @@ export function CodexProvidersPanel({
             // 重启是当前工作区的恢复入口，不依赖可写配置层或目录读取成功。
             disabled={controller.busy || controller.loading || !controller.enabled || !workspaceRef}
             onConfirm={restartRuntime}
+            testId="codex-catalog-restart"
           />
           <SettingsResourceHeaderActions
             onRefresh={
