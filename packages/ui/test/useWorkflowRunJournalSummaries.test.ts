@@ -160,8 +160,12 @@ describe("useWorkflowRunJournalSummaries", () => {
       { initialProps: { live: false } },
     );
 
-    await waitFor(() => expect(workflowRuns).toHaveBeenCalledTimes(1));
-    expect(hook.result.current).toBeNull();
+    // 修复原因：原来先等「查询被发起一次」再断言状态，但发起与失败态提交是两步；
+    // 全量套件有负载时 waitFor 会在 setState 提交前放行，hook.result.current 仍是初始的
+    // undefined 而不是失败后的 null（单独跑恰好赶上提交，因此表现为偶发红）。
+    // 改成直接等状态本身收敛到 null，再断言只查了一次，顺序不再依赖调度时序。
+    await waitFor(() => expect(hook.result.current).toBeNull());
+    expect(workflowRuns).toHaveBeenCalledTimes(1);
 
     hook.rerender({ live: true });
     await waitFor(() => expect(hook.result.current).toHaveLength(1));
