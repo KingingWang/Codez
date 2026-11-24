@@ -444,6 +444,28 @@ ui Node 4 例），本轮不扩大也不掩盖：新增失败全部修复，存�
 visual-judge 资产随上游移除；preinstalledTools 菜单项与回复语言接线为上游新特性，
 codex flavor 映射 production 预装资产。
 
+CI 首轮（`d9886241b`）与修复：remote-assets 在 serverCore 回归失败——干净环境下
+`CODEZ_SERVER_CREDENTIAL_FORMAT` 未设置，core.ts 走旧 Supervisor 回滚分支调用
+`getCredentialsFilePath`，测试 mock 未提供该导出（本地因常驻服务注入的同名 env 被掩盖）；
+补齐 mock 后干净环境 6/6 通过。Encrypted mobile remote page 的 deploy 失败为 GitHub
+Pages artifact 元数据瞬时故障（deploy-pages 官方报错建议重试），重新触发后成功；
+Android app 首轮即成功。另为上游 v4.0.0 刷新链路补齐 root-provider-startup QA 夹具的
+`getAccountAvailability`（缺失导致浏览器回归超时），本地 native-login 与
+automation-model-read 两个浏览器回归全绿后随第二轮推送。
+
+adapters 包套件（不在任何 workflow 门禁内）失败分类：3 处 fork 接缝已修复——官方市场
+分片/ hydrate 夹具误留 CDN 例外字面量 `zcode-plugins-official`（fork bundled 断言
+`codez-plugins-official`，改为 fork 语义后 official-marketplace 7/7、plugins 相关 4 例转绿）；
+`0025_session_permanent_deletion` 的已发布摘要钉住值改回 fork 实际 checksum
+（fork SQL 含 `codez-artifact://` 品牌串，摘要与上游 `608f…` 不同；0026 新迁移不影响 0025）。
+其余失败分类如下且不再处理：skills/plugins 权限模拟用例在 root 环境误报（chmod 000 对
+root 无效，属任务预认可类别）；runner-options（12 例）与 logging（1 例）为基线红
+（源与测试同旧 main 逐字节一致，`maxOutputTokensSource` 等逻辑在旧 main 亦不存在）；
+plugins 的 case-equivalent/parse-once 等为上游套件隔离抖动（单独运行通过，源与测试与
+上游 v4.0.0 逐字节一致）。credential-recovery-fence、exec、mcp-oauth-cross-process、
+provider-builtin-tool-rounds 在设置 `CODEZ_CREDENTIAL_SECRET` 后全部通过（本机无
+OS 凭据库的环境性失败）。
+
 ## Unresolved Questions
 
 | 项                       | 处理边界                                                                                                                                                                                                                     |
