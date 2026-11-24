@@ -942,7 +942,11 @@ describe("useDraftConfigControl slash command hydration", () => {
       control = useActualDraftConfigControl({
         workspacePath,
         sessionId,
-        sessionConfig: { mode: "build" },
+        // 对齐现状（上游 v4.0.0）：会话首个快照下 modelSelection 以 Session 为准
+        // （见 useDraftConfigControl 的 firstSnapshot 分支注释），Session 未声明时草稿选择会被清空。
+        // 本用例要验证的是「有效选择只在接纳时写回」，因此让 Session 带上待映射的原选择，
+        // 由 getView 把 old-account 映射成 effective，其余断言保持不变。
+        sessionConfig: { mode: "build", modelSelection: original },
         agentStartupAllowed: false,
         modelSelectionService: service,
       });
@@ -1228,7 +1232,17 @@ describe("useDraftConfigControl slash command hydration", () => {
       control = useDraftConfigControl({
         workspacePath,
         sessionId: "session",
-        sessionConfig: { mode: "build" },
+        // 同上：会话首个快照以 Session 的 modelSelection 为准，因此由 Session 带上
+        // 含失效档位（reasoningLevel: "deleted"）的选择，本用例才能真正校验
+        // 「Reasoning 失效只清档位、loading 不清选择、重挂载不补默认」。
+        sessionConfig: {
+          mode: "build",
+          modelSelection: {
+            providerId: "provider",
+            modelId: "old",
+            options: { reasoningLevel: "deleted" },
+          },
+        },
         agentStartupAllowed: false,
         modelSelectionView: view,
       });
@@ -1311,7 +1325,19 @@ describe("useDraftConfigControl slash command hydration", () => {
     act(() => staleContentCallback({ text: "迟到 A" }));
     expect(control!.composerDraft).toMatchObject({ text: "", mode: "build", planEnabled: true });
     await act(async () => {
-      root.render(createElement(Probe, { sessionId: "a", config: { mode: "build" } }));
+      // 对齐现状：切回 scope 时重新拿到会话首个快照，modelSelection 以 Session 为准；
+      // Session 未声明选择会清空草稿里的用户选模（上游修复「离开期间已确认的调档在返回
+      // 发送时被撤销」时确立的规则）。这里让 Session 带回用户已确认的选择，
+      // 继续验证「正文保存与选模共享完整草稿且 scope 隔离」。
+      root.render(
+        createElement(Probe, {
+          sessionId: "a",
+          config: {
+            mode: "build",
+            modelSelection: { providerId: "provider", modelId: "new" },
+          },
+        }),
+      );
     });
     expect(control!.composerDraft).toMatchObject({
       text: "草稿 A",
@@ -1495,7 +1521,11 @@ describe("useDraftConfigControl slash command hydration", () => {
         text: hasText ? "keep text" : "",
         mode: "build",
         planEnabled: false,
-        modelSelection: { modelId: hasText ? "draft-model" : "session-model" },
+        // 对齐现状（上游 v4.0.0）：会话首个快照下 modelSelection 一律以 Session 为准，
+        // 即使本地草稿正文存在也不再保留草稿里的旧模型——上游修复的正是
+        // 「草稿正文存在时保留旧模型，导致离开期间已确认的调档在返回发送时被撤销」。
+        // 正文仍按 scope 保留（见上一行 text 断言）。
+        modelSelection: { modelId: "session-model" },
       });
       act(() => {
         control!.handleDraftSwitchMode("yolo");
