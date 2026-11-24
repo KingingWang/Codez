@@ -220,7 +220,14 @@ describe("WorkspaceHelpMenuButton", () => {
       (entry) => entry.label === "titleBar.menu.help.checkForUpdates",
     );
     expect(index).toBeGreaterThan(0);
-    expect(captured.menuItems[index - 1]?.testId).toBe(TID_WORKSPACE_HELP_MENU_RESOURCE_MANAGER);
+    // 上游 v4.0.0 在资源管理器与检查更新之间新增「预装工具」入口；
+    // 检查更新仍位于资源管理器之后，点击仍执行既有命令。
+    const resourceIndex = captured.menuItems.findIndex(
+      (entry) => entry.testId === TID_WORKSPACE_HELP_MENU_RESOURCE_MANAGER,
+    );
+    expect(resourceIndex).toBeGreaterThanOrEqual(0);
+    expect(index).toBeGreaterThan(resourceIndex);
+    expect(captured.menuItems[index - 1]?.testId).toBe("workspace-help-menu-preinstalled-tools");
     await captured.menuItems[index]?.onSelect?.();
     expect(captured.executeDesktopCommand).toHaveBeenCalledExactlyOnceWith(
       DesktopCommandIds.CheckForUpdates,
@@ -273,6 +280,9 @@ describe("WorkspaceHelpMenuButton", () => {
               // 与两份 locale），位于导出日志之后、资源管理器之前；分组与分隔线结构不变。
               "workspaceHeader.help.copyDeviceMid",
               "titleBar.menu.help.resourceManager",
+              // 上游 v4.0.0 在桌面组新增「预装工具」入口，位于资源管理器之后、检查更新之前；
+              // 分组与分隔线结构不变。
+              "preinstalledTools.title",
               "titleBar.menu.help.checkForUpdates",
               "titleBar.menu.help.about",
             ]

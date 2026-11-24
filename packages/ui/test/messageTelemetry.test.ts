@@ -153,6 +153,13 @@ describe("messageTelemetry", () => {
         tool_call_failed: "0",
         error_type: "",
         error_msg: "",
+        // 上游 v4.0.0 新增首响归属字段：用例未登记 admission/请求指标，全部落缺省值。
+        is_first_message: "unknown",
+        send_mode: "unknown",
+        ttft_output_kind: "unknown",
+        ttft_request_id: "",
+        ttft_input_tokens: "",
+        ttft_cached_input_tokens: "",
       },
     });
   });
@@ -477,6 +484,13 @@ describe("messageTelemetry", () => {
         tool_call_failed: "1",
         error_type: "TOOL_CALL_FAILED",
         error_msg: "command timed out",
+        // 上游 v4.0.0 新增：首响由工具调用产生 → ttft_output_kind 为 "tool"。
+        is_first_message: "unknown",
+        send_mode: "unknown",
+        ttft_output_kind: "tool",
+        ttft_request_id: "",
+        ttft_input_tokens: "",
+        ttft_cached_input_tokens: "",
       },
     });
   });
@@ -650,6 +664,13 @@ describe("messageTelemetry", () => {
         tool_call_failed: "0",
         error_type: "UNKNOWN",
         error_msg: "",
+        // 上游 v4.0.0 新增：首 token 未到达 → ttft_output_kind 为 "none"。
+        is_first_message: "unknown",
+        send_mode: "unknown",
+        ttft_output_kind: "none",
+        ttft_request_id: "",
+        ttft_input_tokens: "",
+        ttft_cached_input_tokens: "",
       },
     });
   });
@@ -1082,6 +1103,8 @@ describe("messageTelemetry", () => {
           total_tokens: "0",
           error_type: "",
           error_msg: "",
+          // 上游 v4.0.0 新增：非工具失败步骤的 error_code 恒为空串。
+          error_code: "",
         },
       },
     ]);
@@ -1132,6 +1155,8 @@ describe("messageTelemetry", () => {
           total_tokens: "0",
           error_type: "TOOL_EXEC_ERROR",
           error_msg: "File not found: utils.ts",
+          // 上游 v4.0.0 新增：失败工具步骤归一化 errorCode；用例未提供 → "unknown"。
+          error_code: "unknown",
         },
       },
     ]);
@@ -1190,6 +1215,7 @@ describe("messageTelemetry", () => {
           total_tokens: "0",
           error_type: "",
           error_msg: "",
+          error_code: "",
         },
       },
     ]);

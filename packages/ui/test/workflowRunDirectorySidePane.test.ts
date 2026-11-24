@@ -315,7 +315,10 @@ describe("WorkflowRunDirectorySidePane", () => {
     expect(failed.textContent).toContain("Errored");
     expect(failed.textContent).toContain("DriverError");
     const completed = pane.container.querySelector("[data-run-id='r-done']") as HTMLElement;
-    expect(completed.textContent).toContain("Completed");
+    // 上游 v4.0.0 重设计：completed 行不再渲染状态词（改由参与者完成标记表达），
+    // 标题仍在；stopped/errored 行继续复用既有词汇表（决策 15 的其余断言不变）。
+    expect(completed.textContent).toContain("Workflow script");
+    expect(completed.textContent).not.toContain("Completed");
     expect(completed.textContent).not.toContain("DriverError");
   });
 
