@@ -649,10 +649,15 @@ beforeEach(() => {
   };
 });
 
-afterEach(() => {
+afterEach(async () => {
   for (const root of mountedRoots.splice(0)) {
     act(() => root.unmount());
   }
+  // React 19 的 scheduler 可能在 root.unmount() 后仍留有一个 setImmediate 回调。
+  // 必须先让它在 DOM shim 仍存在时排空，否则本文件删除 window 之后回调再跑就会抛
+  // 「ReferenceError: window is not defined」，被 Vitest 记成 unhandled error
+  // （整轮全量跑时出现 3 次，并可能连带造成其它文件的假失败）。
+  await new Promise<void>((resolve) => setImmediate(resolve));
   delete (globalThis as { document?: unknown }).document;
   delete (globalThis as { window?: unknown }).window;
   delete (globalThis as { IS_REACT_ACT_ENVIRONMENT?: unknown }).IS_REACT_ACT_ENVIRONMENT;
