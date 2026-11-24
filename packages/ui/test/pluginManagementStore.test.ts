@@ -226,7 +226,10 @@ describe("pluginManagementStore", () => {
     expect(usePluginManagementStore.getState().plugins[0]?.name).toBe("workspace-view");
   });
 
-  it("keeps marketplace availability unknown when overview fails but list fallback succeeds", async () => {
+  // 对齐现状（上游 v4.0.0）：list 与 overview 改为 Promise.allSettled 并行收口，
+  // 失败接口不再串行重复请求（见 pluginManagementStoreLoading.runLoadInto 注释），
+  // 因此 overview 失败时 listPlugins 只会被调用一次；目录未知的语义保持不变。
+  it("keeps marketplace availability unknown when overview fails while the parallel list succeeds", async () => {
     const fallbackPlugin = makePlugin({
       id: "personal@personal-market",
       name: "personal",
@@ -258,7 +261,7 @@ describe("pluginManagementStore", () => {
       plugins: state.plugins,
       restorableBuiltins: state.restorableBuiltins,
     });
-    expect(listPlugins).toHaveBeenCalledTimes(2);
+    expect(listPlugins).toHaveBeenCalledTimes(1);
     expect(state.marketplaceAvailabilityKnown).toBe(false);
     expect(item).toMatchObject({
       id: "personal@personal-market",

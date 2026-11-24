@@ -221,7 +221,11 @@ describe("pluginManagedResourceGroups", () => {
     ]);
   });
 
-  it("maps Browser host MCP metadata to the unprefixed node_repl runtime", () => {
+  // 对齐现状（docs/plugin-managed-settings-resources.md「数据来源」2026-11-05）：
+  // 宿主内建 MCP（Browser Use / Computer Use 共用的 node_repl）不再在设置页展示。
+  // Agent 不再投影 hostMcpServerNames，设置页也不读取它；协议 schema 仅为兼容旧版 Agent
+  // 保留该可选字段。因此带 hostMcpServerNames 的插件不应产生任何只读 MCP 行。
+  it("does not project host-provided node_repl MCP metadata into the settings list", () => {
     const plugins: CodezPluginInfo[] = [
       {
         commandRootCount: 0,
@@ -247,23 +251,7 @@ describe("pluginManagedResourceGroups", () => {
           updatedAt: "2026-07-13T00:00:00.000Z",
         },
       }),
-    ).toEqual([
-      {
-        active: true,
-        authorization: undefined,
-        error: undefined,
-        hostProvided: true,
-        id: "browser-use@codez-plugins-official:node_repl",
-        name: "node_repl",
-        pluginEnabled: false,
-        pluginId: "browser-use@codez-plugins-official",
-        pluginMarketplace: "codez-plugins-official",
-        pluginName: "browser-use",
-        runtimeServerName: "node_repl",
-        status: "connected",
-        toolCount: 3,
-      },
-    ]);
+    ).toEqual([]);
   });
 
   it("attaches plugin MCP OAuth authorization from runtime status snapshots", () => {

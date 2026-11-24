@@ -53,6 +53,38 @@ vi.mock("@/app-shell/useWorkspaceSessionReload.js", async (importOriginal) => {
   return { ...actual, useSessionRuntimeRestart: () => sessionRuntimeRestartStub };
 });
 
+// 对齐现状：本文件用 renderToStaticMarkup 直接渲染 SessionPane，没有宿主 Provider 树。
+// SessionPane 的多个 hook 经 useTabStore 要求 TabStoreProvider（SSR 下 useStore 还会因缺少
+// getServerSnapshot 抛错），这里按仓库既有 SSR 隔离做法桩成一个默认空 tab store 的同步读取。
+vi.mock("@/store/TabStoreProvider.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/store/TabStoreProvider.js")>();
+  const { createTabStore } = await import("@/store/tabStore.js");
+  const fallback = createTabStore(null);
+  const readSnapshot = (selector: (state: never) => unknown) =>
+    selector(fallback.getState() as never);
+  return {
+    ...actual,
+    useTabStore: readSnapshot,
+    useOptionalTabStore: readSnapshot,
+    useTabStoreApi: () => fallback,
+  };
+});
+
+// fork worktree 特性使 SessionPane 经 useTaskWorktreePlacement → useIndexedTaskMeta →
+// useCodezTaskService → useWorkspaceServices 引入服务依赖。本文件只验证预览卡 handler 透传，
+// 按仓库既有隔离做法桩掉该入口：普通任务恒可用、cwd 即 workspace。
+vi.mock("@/managed-worktrees/index.js", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    useTaskWorktreePlacement: ({ workspacePath }: { workspacePath: string }) => ({
+      cwd: workspacePath,
+      worktreeRoot: undefined,
+      worktreeAvailable: true,
+    }),
+  };
+});
+
 vi.mock("@/AssistantPreviewCards.js", async () => {
   const React = await import("react");
   return {
@@ -170,19 +202,35 @@ vi.mock("@/hooks/useSettingService.js", () => ({
 vi.mock("@/hooks/useCodexModelCatalog.js", () => ({
   useCodexModelCatalog: () => ({ status: "unavailable", reload: vi.fn(), readCurrent: vi.fn() }),
 }));
+// 对齐现状：SessionPane 现在会把 subagentsService 当作 WeakMap authority 键（useSubagents →
+// getSubagentsContextKey），并无守卫地订阅 oauthService / codezAgentService。
+// 服务桩必须是稳定引用：每次渲染新建对象会让 authority id 不断变化，触发无谓的重渲染。
+const servicesMock = vi.hoisted(() => ({
+  subagentsService: {
+    list: vi.fn(async () => ({ agents: [], capability: null })),
+    setEnabled: vi.fn(async () => {}),
+  },
+  oauthService: {
+    onDidChangeSession: vi.fn(() => ({ dispose() {} })),
+  },
+  codezAgentService: {
+    onAgentRuntimeExited: vi.fn(() => ({ dispose() {} })),
+    onDynamicPluginStartupDegraded: vi.fn(() => () => ({ dispose() {} })),
+  },
+  codezSessionService: {
+    updateProviderRegistry: vi.fn(),
+  },
+  codezTaskService: {
+    restartWorkspaceProcess: vi.fn(),
+  },
+}));
+
 vi.mock("@/hooks/useServices.js", () => ({
   useComposerClientNamespace: () => "desktop",
   // Bug 根因：Highspeed 历史消息改用可选服务以支持无 Provider 的只读渲染；
   // Vitest 的整模块 mock 未同步新导出，导致组件进入业务断言前就直接失败。
   useOptionalServices: () => null,
-  useServices: () => ({
-    codezSessionService: {
-      updateProviderRegistry: vi.fn(),
-    },
-    codezTaskService: {
-      restartWorkspaceProcess: vi.fn(),
-    },
-  }),
+  useServices: () => servicesMock,
 }));
 
 vi.mock("@/v4/composer/useDraftConfigControl.js", () => ({
@@ -195,6 +243,20 @@ vi.mock("@/v4/composer/useDraftConfigControl.js", () => ({
     handleDraftSelectThought: vi.fn(),
     handleDraftSwitchMode: vi.fn(),
     resolveInitialDraftConfig: vi.fn(() => ({})),
+    // 上游 v4.0.0 扩充了 hook 返回形状（composerDraft/staging 等）；SessionPane 会解构消费，
+    // 本文件只验证预览卡 handler 透传，按惰性缺省补齐，保持既有字段原值。
+    composerDraft: {},
+    composerDraftScopeToken: undefined,
+    draftConfig: {},
+    stageComposerContent: vi.fn(),
+    captureComposerContentLifecycleCommit: vi.fn(),
+    captureComposerSubmissionDraftTransaction: vi.fn(),
+    persistComposerContent: vi.fn(),
+    updateComposerContent: vi.fn(),
+    replaceComposerDraft: vi.fn(),
+    promoteComposerDraft: () => true,
+    observeDraftPermissionGrant: vi.fn(),
+    keepEditConfigOnExit: vi.fn(),
   }),
 }));
 

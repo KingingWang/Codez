@@ -207,6 +207,9 @@ describe("useWorkspaceTaskNavigation", () => {
       workspaceIdentity: "remote:ssh:dev:22:user:/home/dev",
     });
     expect(onNavigateToAutomations).toHaveBeenCalledWith({
+      // 对齐现状：AutomationsNavEntry 以 kind 作为判别字段，前进回放会把整条历史 entry
+      // 原样透传给导航回调（handleOpenAutomations 那条路径只传导航目标，不含 kind）。
+      kind: "automations",
       workspacePath: "/home/dev",
       workspaceIdentity: "remote:ssh:dev:22:user:/home/dev",
       automationTab: "idle",

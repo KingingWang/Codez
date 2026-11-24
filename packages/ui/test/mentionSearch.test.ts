@@ -149,9 +149,10 @@ describe("parseMentionMarkdown", () => {
       parseMentionMarkdown("查看 [@src/demo.ts](<./src/demo.ts>) 和 [src/app.ts](./src/app.ts)"),
     ).toEqual([
       { type: "text", text: "查看 " },
-      { type: "file", label: "src/demo.ts" },
+      // 对齐现状：file part 现在保留链接 destination（href），消息层据此打开真实文件/图片。
+      { type: "file", label: "src/demo.ts", href: "./src/demo.ts" },
       { type: "text", text: " 和 " },
-      { type: "file", label: "src/app.ts" },
+      { type: "file", label: "src/app.ts", href: "./src/app.ts" },
     ]);
   });
 });

@@ -384,7 +384,9 @@ describe("SessionsIndexStore", () => {
 
   it("强制 snapshot 再次被内容拒绝 → contentRejected 终态，且不排退避重订阅", async () => {
     vi.useFakeTimers();
-    const warn = vi.spyOn(logger, "warn").mockImplementation(() => {});
+    // 对齐现状：fail-closed 终态改走 logger.lifecycle.warn（打包版仍留痕），
+    // reasonCode 放在结构化字段里，不再拼进 warn 文案。
+    const warn = vi.spyOn(logger.lifecycle, "warn").mockImplementation(() => {});
     try {
       const store = new SessionsIndexStore();
       const kit = mockTransport();
@@ -399,7 +401,13 @@ describe("SessionsIndexStore", () => {
       kit.pushFault("recovery", WIRE_FAULT_INVALID_PAYLOAD);
       await vi.advanceTimersByTimeAsync(0);
       expect(store.getStatus()).toBe("error");
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining(SUBSCRIPTION_CONTENT_REJECTED));
+      expect(warn).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          reasonCode: expect.stringContaining(SUBSCRIPTION_CONTENT_REJECTED),
+          scheduleRetry: false,
+        }),
+      );
 
       // 关键回归：退避重订阅不再排。修复前这里会每 5s/15s 清空投影再订阅一次，永不收敛。
       await vi.advanceTimersByTimeAsync(60_000);
@@ -427,7 +435,8 @@ describe("SessionsIndexStore", () => {
 
   it("内容 flight 上的 deadline 超时仍报 timeout 终态，并保留退避重订阅", async () => {
     vi.useFakeTimers();
-    const warn = vi.spyOn(logger, "warn").mockImplementation(() => {});
+    // 对齐现状：同上，fail-closed 终态走 logger.lifecycle.warn + 结构化 reasonCode。
+    const warn = vi.spyOn(logger.lifecycle, "warn").mockImplementation(() => {});
     try {
       const store = new SessionsIndexStore();
       const kit = mockTransport();
@@ -439,7 +448,11 @@ describe("SessionsIndexStore", () => {
       await vi.advanceTimersByTimeAsync(PROTOCOL_V4_LIMITS.logicalFrameAssemblyTimeoutMs);
       expect(store.getStatus()).toBe("error");
       expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("fault.subscription.recoveryFrameTimedOut"),
+        expect.any(String),
+        expect.objectContaining({
+          reasonCode: expect.stringContaining("fault.subscription.recoveryFrameTimedOut"),
+          scheduleRetry: true,
+        }),
       );
       await vi.advanceTimersByTimeAsync(5_000);
       await Promise.resolve();

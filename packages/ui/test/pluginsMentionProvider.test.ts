@@ -204,7 +204,8 @@ describe("plugin mention markdown carrier", () => {
       { type: "text", text: "before " },
       { type: "plugin", label: "Demo", pluginId: "demo@mkt-a" },
       { type: "text", text: " after " },
-      { type: "file", label: "readme" },
+      // 对齐现状：file part 现在保留链接 destination（href），消息层据此打开真实文件/图片。
+      { type: "file", label: "readme", href: "./README.md" },
     ]);
   });
 

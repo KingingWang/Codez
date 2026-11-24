@@ -18,6 +18,14 @@ vi.mock("@/components/lib/utils.js", () => ({
   cn: (...values: Array<string | false | null | undefined>) => values.filter(Boolean).join(" "),
 }));
 
+// 对齐原因：AgentBehaviorSectionContent 里的 ReplyLanguageSetting 会调用 usePlatform()，
+// SSR 渲染没有 PlatformProvider 时会抛错；这里给一个不含 setReplyLanguage 的最小平台桩，
+// 让回复语言行走「本机设置不可用」分支，避免把无关断言打断。
+vi.mock("@/hooks/usePlatform.js", () => ({
+  usePlatform: () => ({}),
+  useOptionalPlatform: () => ({}),
+}));
+
 vi.mock("@/components/ui/button.js", () => ({
   Button: ({ children, ...props }: { children: unknown; [key: string]: unknown }) => {
     capturedButtons.push({ children, ...props });
@@ -157,7 +165,6 @@ async function renderGeneralSection(
 
   return renderToStaticMarkup(
     createElement(GeneralSectionContent, {
-      theme: "system",
       localePreference: "system",
       notificationEnabled: true,
       notificationSoundEnabled: true,
@@ -170,41 +177,53 @@ async function renderGeneralSection(
       dataBaseDir: "/Users/test",
       terminalInheritSystemProfile: true,
       terminalFontFamily: "",
-      nativeSearchEnhancementsEnabled: true,
       defaultHomeDir: "/Users/test",
-      setTheme: vi.fn(),
       setLocalePreference: vi.fn(),
       setNotificationEnabled: vi.fn(),
       setNotificationSoundEnabled: vi.fn(),
-      messageStreamShowReasoning: true,
-      messageStreamShowTodos: false,
-      toolGroupingExploreEnabled: true,
-      toolGroupingTerminalEnabled: true,
-      toolGroupingChangesEnabled: false,
-      codezInteractionBehavior: "queue",
-      askUserQuestionAutoResolutionEnabled: true,
-      modelIoFullRetentionEnabled: false,
       onDataBaseDirChange: vi.fn(async () => {}),
       onSelectDataBaseDir: vi.fn(async () => "/Users/test/data"),
       onTerminalInheritSystemProfileChange: vi.fn(async () => {}),
       onTerminalFontFamilyChange: vi.fn(async () => {}),
-      onNativeSearchEnhancementsEnabledChange: vi.fn(async () => {}),
-      onToolSearchModeChange: vi.fn(async () => {}),
       onDesktopChromiumHardwareAccelerationChange: vi.fn(async () => {}),
       onCloseToTrayOnWindowsChange: vi.fn(async () => {}),
       onKeepAwakeWhileRunningChange: vi.fn(async () => {}),
       onReceivePreviewUpdatesChange: vi.fn(async () => {}),
       onAutoDownloadAndInstallUpdatesChange: vi.fn(async () => {}),
+      onOpenOnboardingDialog: vi.fn(),
+      ...overrides,
+    }),
+  );
+}
+
+/**
+ * 对齐原因：上游 v4.0.0 把「增强搜索 / 完整保留模型 I/O / 显示思考过程 / 显示流式待办 /
+ * 提问自动继续」等 Agent 行为开关从 GeneralSectionContent 拆到 AgentBehaviorSectionContent，
+ * 主题设置拆到 AppearanceSectionContent；工具分组开关在设置页已整体下线（协议字段保留但无 UI 消费方）。
+ * 因此这些开关的持久值读写断言改为渲染 AgentBehaviorSectionContent。
+ */
+async function renderAgentBehaviorSection(
+  overrides: Partial<
+    Parameters<typeof import("../src/settingsPageHelpers.js").AgentBehaviorSectionContent>[0]
+  > = {},
+) {
+  const { AgentBehaviorSectionContent } = await import("../src/settingsPageHelpers.js");
+
+  return renderToStaticMarkup(
+    createElement(AgentBehaviorSectionContent, {
+      nativeSearchEnhancementsEnabled: true,
+      messageStreamShowReasoning: true,
+      messageStreamShowTodos: false,
+      codezInteractionBehavior: "queue",
+      askUserQuestionAutoResolutionEnabled: true,
+      modelIoFullRetentionEnabled: false,
+      onToolSearchModeChange: vi.fn(async () => {}),
+      onNativeSearchEnhancementsEnabledChange: vi.fn(async () => {}),
       onMessageStreamShowReasoningChange: vi.fn(async () => {}),
       onMessageStreamShowTodosChange: vi.fn(async () => {}),
-      onToolGroupingExploreEnabledChange: vi.fn(async () => {}),
-      onToolGroupingTerminalEnabledChange: vi.fn(async () => {}),
-      onToolGroupingChangesEnabledChange: vi.fn(async () => {}),
       onCodezInteractionBehaviorChange: vi.fn(async () => {}),
       onAskUserQuestionAutoResolutionEnabledChange: vi.fn(async () => {}),
       onModelIoFullRetentionEnabledChange: vi.fn(async () => {}),
-      onOptimizeAgentExperienceEnabledChange: vi.fn(async () => {}),
-      onOpenOnboardingDialog: vi.fn(),
       ...overrides,
     }),
   );
@@ -230,7 +249,7 @@ describe("GeneralSectionContent data directory control", () => {
   it("ModelIO 读取关闭值并通过标准设置开关提交", async () => {
     const onModelIoFullRetentionEnabledChange = vi.fn(async () => {});
 
-    await renderGeneralSection({ isDesktop: false, onModelIoFullRetentionEnabledChange });
+    await renderAgentBehaviorSection({ onModelIoFullRetentionEnabledChange });
 
     const modelIoSwitch = capturedSwitches.find(
       (entry) => entry["aria-label"] === "完整保留模型 I/O",
@@ -272,7 +291,7 @@ describe("GeneralSectionContent data directory control", () => {
   it("增强搜索读取持久值并写回用户切换", async () => {
     const onNativeSearchEnhancementsEnabledChange = vi.fn(async () => {});
 
-    await renderGeneralSection({
+    await renderAgentBehaviorSection({
       nativeSearchEnhancementsEnabled: false,
       onNativeSearchEnhancementsEnabledChange,
     });
@@ -311,7 +330,7 @@ describe("GeneralSectionContent data directory control", () => {
     const onMessageStreamShowReasoningChange = vi.fn(async () => {});
     const onMessageStreamShowTodosChange = vi.fn(async () => {});
 
-    await renderGeneralSection({
+    await renderAgentBehaviorSection({
       onMessageStreamShowReasoningChange,
       onMessageStreamShowTodosChange,
     });
@@ -329,38 +348,10 @@ describe("GeneralSectionContent data directory control", () => {
     expect(onMessageStreamShowTodosChange).toHaveBeenCalledWith(true);
   });
 
-  it("工具分组开关读取持久值，并把用户操作写回设置回调", async () => {
-    const onToolGroupingExploreEnabledChange = vi.fn(async () => {});
-    const onToolGroupingTerminalEnabledChange = vi.fn(async () => {});
-    const onToolGroupingChangesEnabledChange = vi.fn(async () => {});
-
-    await renderGeneralSection({
-      onToolGroupingExploreEnabledChange,
-      onToolGroupingTerminalEnabledChange,
-      onToolGroupingChangesEnabledChange,
-    });
-
-    const exploreSwitch = capturedSwitches.find((item) => item["aria-label"] === "分组探索工具");
-    const terminalSwitch = capturedSwitches.find((item) => item["aria-label"] === "分组终端命令");
-    const changesSwitch = capturedSwitches.find((item) => item["aria-label"] === "分组文件更改");
-
-    expect(exploreSwitch?.checked).toBe(true);
-    expect(terminalSwitch?.checked).toBe(true);
-    expect(changesSwitch?.checked).toBe(false);
-
-    (exploreSwitch?.onCheckedChange as ((checked: boolean) => void) | undefined)?.(false);
-    (terminalSwitch?.onCheckedChange as ((checked: boolean) => void) | undefined)?.(false);
-    (changesSwitch?.onCheckedChange as ((checked: boolean) => void) | undefined)?.(true);
-
-    expect(onToolGroupingExploreEnabledChange).toHaveBeenCalledWith(false);
-    expect(onToolGroupingTerminalEnabledChange).toHaveBeenCalledWith(false);
-    expect(onToolGroupingChangesEnabledChange).toHaveBeenCalledWith(true);
-  });
-
   it("提问自动继续开关读取持久值并写回选择", async () => {
     const onAskUserQuestionAutoResolutionEnabledChange = vi.fn(async () => {});
 
-    await renderGeneralSection({
+    await renderAgentBehaviorSection({
       askUserQuestionAutoResolutionEnabled: false,
       onAskUserQuestionAutoResolutionEnabledChange,
     });
