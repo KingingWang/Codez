@@ -37,6 +37,12 @@ const captured = vi.hoisted(() => ({
   composerProps: null as ComposerProps | null,
 }));
 
+// 对齐现状：卡级 TPS 补采样有归属门禁——SessionPane 只对 `card.ownerKey === highspeedOwner.key`
+// 的到期卡调用 highspeedCardService.healthy（「旧卡不能由当前账号认领」）。因此夹具里的
+// highspeed.ownerKey 与 getCurrentOwnerKey 必须是同一个值，否则到期补跑链路整段跳过，
+// healthy 永不被调用（这两个用例此前正是死在这里）。格式须满足 ^v1:[a-f0-9]{64}$。
+const HIGH_SPEED_OWNER_KEY = `v1:${"a".repeat(64)}`;
+
 const mocks = vi.hoisted(() => ({
   // SessionPane 会读取 Bot 绑定并订阅广播；此处保持普通任务，避免依赖缺失阻断到期断言。
   botsService: {
@@ -59,10 +65,9 @@ const mocks = vi.hoisted(() => ({
       durationSeconds: 10,
     })),
     share: vi.fn(),
-  
-      getCurrentOwnerKey: vi.fn(async () => null),
-      invalidateCard: vi.fn(async () => {}),
-    },
+    getCurrentOwnerKey: vi.fn(async () => HIGH_SPEED_OWNER_KEY),
+    invalidateCard: vi.fn(async () => {}),
+  },
   layer: {
     acquire: vi.fn((sessionId: string) => ({
       sessionId,
@@ -141,9 +146,13 @@ vi.mock("@/v4/ConversationDraftSuggestedPromptsContainer.js", () => ({
 vi.mock("@/hooks/useCodexModelCatalog.js", () => ({
   useCodexModelCatalog: () => ({ status: "unavailable", reload: vi.fn(), readCurrent: vi.fn() }),
 }));
-vi.mock("@/hooks/useServices.js", () => ({
-  useComposerClientNamespace: () => "desktop",
-  useServices: () => ({
+vi.mock("@/hooks/useServices.js", () => {
+  // 修复原因：服务集合必须是稳定引用。useCodexNativeHostStatus 的 effect 以 agentService
+  // 身份为依赖，每次渲染返回新对象会让「effect → setResolution → 重渲染 → 新对象」无限循环，
+  // 直接抛 Maximum update depth exceeded（三个用例都死在这里，进不到 visibilitychange 断言）。
+  let cachedServices: Record<string, unknown> | null = null;
+  const services = () =>
+    (cachedServices ??= {
     // useSubagents 用 subagentsService 作 WeakMap authority 键并发起 list；给惰性桩避免 WeakMap 崩溃。
     subagentsService: {
       list: vi.fn(async () => ({ agents: [], capability: null })),
@@ -164,11 +173,15 @@ vi.mock("@/hooks/useServices.js", () => ({
     modelProviderService: mocks.modelProviderService,
     codezSessionService: mocks.codezSessionService,
     codezTaskService: mocks.codezTaskService,
-  }),
-  // SessionPane 渲染链里的 useStartPlanRecommendation 走可选服务降级，
-  // 本用例只验证到期采样，无服务上下文按 null 处理即可（与其它 SessionPane 用例一致）。
-  useOptionalServices: () => null,
-}));
+    });
+  return {
+    useComposerClientNamespace: () => "desktop",
+    useServices: () => services(),
+    // SessionPane 渲染链里的 useStartPlanRecommendation 走可选服务降级，
+    // 本用例只验证到期采样，无服务上下文按 null 处理即可（与其它 SessionPane 用例一致）。
+    useOptionalServices: () => null,
+  };
+});
 
 vi.mock("@/v4/useConversationProjection.js", () => ({
   useConversationProjection: () => projectionState.current,
@@ -428,6 +441,11 @@ function makeSnapshot(
           highspeed: {
             schemaVersion: 1,
             cardId,
+            // 对齐现状：卡级 TPS 补采样只认领带唯一 ownerKey 的卡
+            // （highspeedTurnStore.listExpiredHighspeedCardsAwaitingTps：
+            // 「旧卡不能由当前账号认领；同卡归属冲突也不能拿任一用户的JWT补查」）。
+            // 夹具缺 ownerKey 时到期补跑链路会整段跳过，healthy 永不被调用。
+            ownerKey: HIGH_SPEED_OWNER_KEY,
             taskId: "task-1",
             provider: "zai",
             model: "glm-5",
@@ -520,7 +538,12 @@ describe("highspeed expiry clock visibility refresh", () => {
         await flushMicrotasks();
       });
 
-      expect(mocks.highspeedCardService.healthy).toHaveBeenCalledWith("hsc-vis-1");
+      // 对齐现状：卡级 healthy 现在同时传归属键（SessionPane 用 card.ownerKey 认领查询，
+      // 防止拿当前账号 JWT 补查旧卡），断言必须带上第二个实参。
+      expect(mocks.highspeedCardService.healthy).toHaveBeenCalledWith(
+        "hsc-vis-1",
+        HIGH_SPEED_OWNER_KEY,
+      );
     } finally {
       await act(async () => root.unmount());
     }
@@ -537,7 +560,12 @@ describe("highspeed expiry clock visibility refresh", () => {
         await flushMicrotasks();
       });
 
-      expect(mocks.highspeedCardService.healthy).toHaveBeenCalledWith("hsc-vis-2");
+      // 对齐现状：卡级 healthy 现在同时传归属键（SessionPane 用 card.ownerKey 认领查询，
+      // 防止拿当前账号 JWT 补查旧卡），断言必须带上第二个实参。
+      expect(mocks.highspeedCardService.healthy).toHaveBeenCalledWith(
+        "hsc-vis-2",
+        HIGH_SPEED_OWNER_KEY,
+      );
     } finally {
       await act(async () => root.unmount());
     }
