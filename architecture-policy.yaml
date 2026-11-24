@@ -2718,6 +2718,9 @@ modules:
       - packages/ui/src/CurrentWorkspaceConcurrencyHint.tsx
       - packages/ui/src/v4/CodexRetryStatus.tsx
       - packages/ui/src/v4/composer/CodexFollowupModeMenu.tsx
+      # fork 保留的 composer 后台任务入口：上游 v4.0.0 删除该文件，rebase 后按 fork 版恢复，
+      # 相对新 rename 基准是新文件，需登记进本模块（与同目录既有 fork 文件同级）。
+      - packages/ui/src/v4/composer/ConversationBackgroundWorkTrigger.tsx
       - packages/ui/src/v4/composer/acceptedGuideNotices.ts
       - packages/ui/src/v4/composer/codexFullAccessAcknowledgement.ts
       - packages/ui/src/v4/composer/codexSessionUsage.ts
@@ -2734,6 +2737,7 @@ modules:
       - packages/ui/src/CurrentWorkspaceConcurrencyHint.tsx
       - packages/ui/src/v4/CodexRetryStatus.tsx
       - packages/ui/src/v4/composer/CodexFollowupModeMenu.tsx
+      - packages/ui/src/v4/composer/ConversationBackgroundWorkTrigger.tsx
       - packages/ui/src/v4/composer/acceptedGuideNotices.ts
       - packages/ui/src/v4/composer/codexFullAccessAcknowledgement.ts
       - packages/ui/src/v4/composer/codexSessionUsage.ts
