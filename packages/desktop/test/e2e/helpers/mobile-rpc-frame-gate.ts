@@ -43,7 +43,9 @@ export class MobileRpcFrameGate {
     const payload = parseWebRemoteControlRpcTransportPayload(
       (JSON.parse(String(message)) as { payload?: unknown }).payload,
     );
-    if (payload?.zcode_type !== "rpc-frame") {
+    // fork 的 RPC 传输载荷字段是 codez_type：relay 信封才保留上游 zcode_type 线级边界
+    // （见 fix(web): preserve upstream relay wire boundary）。上游新增门禁按 fork wire 适配。
+    if (payload?.codez_type !== "rpc-frame") {
       this.send(message);
       return;
     }

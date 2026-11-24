@@ -2557,7 +2557,8 @@ app.whenReady().then(async () => {
     dataRoot: getCodezDataRootDir(),
     release: resolvePreinstalledToolsRelease({
       runtimeEnv: desktopRuntimeEnv,
-      productFlavor: CODEZ_PRODUCT_FLAVOR,
+      // codex 安装身份复用 production 预装工具资产：上游发行通道只认 production/preview。
+      productFlavor: CODEZ_PRODUCT_FLAVOR === "codex" ? "production" : CODEZ_PRODUCT_FLAVOR,
     }),
     tools,
     windowsEntryShim: resolvePreinstalledEntryShimPath(),

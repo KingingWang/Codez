@@ -4562,7 +4562,8 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
                 dataRoot: getCodezDataRootDir(),
                 release: resolvePreinstalledToolsRelease({
                   runtimeEnv: resolveCodezRuntimeEnv(process.env),
-                  productFlavor: CODEZ_PRODUCT_FLAVOR,
+                  // codex 安装身份复用 production 预装工具资产：上游发行通道只认 production/preview。
+                  productFlavor: CODEZ_PRODUCT_FLAVOR === "codex" ? "production" : CODEZ_PRODUCT_FLAVOR,
                 }),
               }),
               onAppControlServiceCreated: (handle) => {
