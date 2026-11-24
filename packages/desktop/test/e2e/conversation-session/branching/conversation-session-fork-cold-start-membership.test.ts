@@ -5,15 +5,15 @@ import { chromium } from "playwright-core";
 import { openMobilePairingPage, seedMobileFixtureLogin } from "#e2e/helpers/mobile-pairing";
 import { obtainUnreadPairingUrl, showMobileTaskHome } from "#e2e/helpers/web-remote-unread";
 import { writeFile } from "node:fs/promises";
-import { ServiceChannels } from "@zcode/shared";
-import type { VirtualProject } from "@zcode/services";
+import { ServiceChannels } from "@codez/shared";
+import type { VirtualProject } from "@codez/services";
 import { callHandoffHost, installHandoffRpcProbe } from "#e2e/helpers/remote-project-handoff-probe";
 import {
   TID_TASK_ITEM,
   TID_V4_COMPOSER_INPUT,
   TID_WORKSPACE_TITLE,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -201,17 +201,17 @@ async function waitForTitle(taskId: string, title: string) {
     );
   } finally {
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `fork-title-${taskId}.json`),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `fork-title-${taskId}.json`),
       JSON.stringify({ taskId, expected: title, observed }, null, 2),
     );
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `fork-title-${taskId}.png`),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `fork-title-${taskId}.png`),
     );
   }
 }
 
 function readTaskOwnership(taskId: string) {
-  const database = new DatabaseSync(join(homedir(), ".zcode", "v2", "tasks-index.sqlite"), {
+  const database = new DatabaseSync(join(homedir(), ".codez", "v2", "tasks-index.sqlite"), {
     readOnly: true,
   });
   try {
@@ -240,7 +240,7 @@ async function assertProjectOwnership(
 ) {
   const ownership = readTaskOwnership(taskId);
   await writeFile(
-    join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `fork-ownership-${stage}.json`),
+    join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `fork-ownership-${stage}.json`),
     JSON.stringify({ taskId, expectedProjectId, otherProjectId, ownership }, null, 2),
   );
   expect(ownership?.project_id).toBe(expectedProjectId);
@@ -268,7 +268,7 @@ async function assertProjectOwnership(
     { timeout: 30_000, timeoutMsg: `TSL41 ${stage}: fork 行不在指定项目内或重复出现在其他区域` },
   );
   await browser.saveScreenshot(
-    join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `fork-ownership-${stage}.png`),
+    join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `fork-ownership-${stage}.png`),
   );
 }
 
@@ -299,7 +299,7 @@ async function waitForSingleProjectRow(taskId: string, timeoutMsg: string): Prom
 
 function readWorkspaceTaskIds(): string[] {
   // Node 当前内置 SQLite 只提供 DatabaseSync；E2E 轮询每次都立即关闭只读句柄。
-  const database = new DatabaseSync(join(homedir(), ".zcode", "v2", "tasks-index.sqlite"), {
+  const database = new DatabaseSync(join(homedir(), ".codez", "v2", "tasks-index.sqlite"), {
     readOnly: true,
   });
   try {
@@ -324,7 +324,7 @@ function readCliSession(sessionId: string): {
   taskType: string | null;
 } | null {
   // Node 当前内置 SQLite 只提供 DatabaseSync；E2E 只读一次并立即关闭句柄。
-  const database = new DatabaseSync(join(homedir(), ".zcode", "cli", "db", "db.sqlite"), {
+  const database = new DatabaseSync(join(homedir(), ".codez", "cli", "db", "db.sqlite"), {
     readOnly: true,
   });
   try {
@@ -339,10 +339,10 @@ function readCliSession(sessionId: string): {
 
 async function verifyMobileFork(parentId: string, projectId: string, otherProjectId: string) {
   const pairingUrl = await obtainUnreadPairingUrl(
-    new URL(process.env.ZCODE_WEB_REMOTE_CONTROL_URL!).origin,
+    new URL(process.env.CODEZ_WEB_REMOTE_CONTROL_URL!).origin,
   );
   const webBrowser = await chromium.launch({
-    executablePath: process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE,
+    executablePath: process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE,
     headless: true,
     args: ["--no-sandbox"],
   });
@@ -357,7 +357,7 @@ async function verifyMobileFork(parentId: string, projectId: string, otherProjec
     const page = await context.newPage();
     const projectSelector = `[data-project-id="${projectId}"]`;
     await openMobilePairingPage(page, pairingUrl, {
-      artifactDir: process.env.ZCODE_E2E_ARTIFACT_DIR!,
+      artifactDir: process.env.CODEZ_E2E_ARTIFACT_DIR!,
       caseMarker: "TSL41",
       phase: "fork",
       readySelector: projectSelector,
@@ -402,11 +402,11 @@ async function verifyMobileFork(parentId: string, projectId: string, otherProjec
         .count(),
     ).toBe(0);
     await page.screenshot({
-      path: join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "fork-ownership-mobile.png"),
+      path: join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "fork-ownership-mobile.png"),
       fullPage: true,
     });
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "fork-ownership-mobile.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "fork-ownership-mobile.json"),
       JSON.stringify(
         { parentId, childId, projectId, ownership: readTaskOwnership(childId) },
         null,

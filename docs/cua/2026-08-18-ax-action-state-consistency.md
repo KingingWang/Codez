@@ -4,7 +4,7 @@
 
 | Field            | Value                                                                                           |
 | ---------------- | ----------------------------------------------------------------------------------------------- |
-| Developer intent | 让 ZCode consumer 只消费 producer 的动作回执，避免在 consumer 侧维护第二套 post-state 屏障        |
+| Developer intent | 让 Codez consumer 只消费 producer 的动作回执，避免在 consumer 侧维护第二套 post-state 屏障        |
 | Capability       | Computer Use action receipt authority                                                           |
 | Change layer     | result projection / retry safety / media authority                                               |
 | Operating mode   | planning + implementation-handoff                                                               |
@@ -12,7 +12,7 @@
 | Out of scope     | conversation session 状态语义、remote owner/queue、Windows/Linux native 读回、人工接管 UI       |
 
 当前 consumer 契约不再要求 action outcome 与 post-state 原子配对。producer 只通过公开
-MCP result 暴露 `action_receipt`；ZCode 不镜像 AX native 实现，也不在 consumer 侧合成
+MCP result 暴露 `action_receipt`；Codez 不镜像 AX native 实现，也不在 consumer 侧合成
 `refresh_required` 或 post-state。
 
 ## 状态与时序
@@ -32,7 +32,7 @@ element write -> producer native dispatch
     v                v
 action_sent=false   never replay from native error
 
-zcode-cua MCP result -> official authority gate
+codez-cua MCP result -> official authority gate
     |
     +-- image_ref + image: final-raster protection remains special and fail-closed
     +-- action_receipt/text/structuredContent: generic MCP result projection and budget
@@ -65,8 +65,8 @@ zcode-cua MCP result -> official authority gate
 
 | State/fact                            | Display owner                | Authoritative owner           | Commit sink                            | Persistence/cache                |
 | ------------------------------------- | ---------------------------- | ----------------------------- | -------------------------------------- | -------------------------------- |
-| `state_id` 与 mutation epoch          | explicit observation result  | `zcode-cua` transport session | `get_app_state` / frame-producing tools | producer in-memory session       |
-| broker/Helper dispatch fact           | CUA action receipt           | `zcode-cua` + signed Helper   | per-server MCP/Broker RPC               | 既有 tool result/session history |
+| `state_id` 与 mutation epoch          | explicit observation result  | `codez-cua` transport session | `get_app_state` / frame-producing tools | producer in-memory session       |
+| broker/Helper dispatch fact           | CUA action receipt           | `codez-cua` + signed Helper   | per-server MCP/Broker RPC               | 既有 tool result/session history |
 | receipt 文本/structuredContent 投影   | provider tool-result history | generic MCP bridge            | tool executor serialization             | 既有 tool result/session history |
 | UI tool lifecycle                     | conversation row             | 既有 session event/projection | generic MCP tool lifecycle             | 既有 conversation persistence    |
 
@@ -104,8 +104,8 @@ zcode-cua MCP result -> official authority gate
 ## 验证结果
 
 以下结果均使用 Node `24.14.0`。producer 已通过
-[`zcode-cua!533`](https://git.example.invalid/codegeex/zcode-cua/-/merge_requests/533) 合入
-`main`；ZCode consumer 精确锁定合入前经过评审的 source commit
+[`codez-cua!533`](https://git.example.invalid/codegeex/codez-cua/-/merge_requests/533) 合入
+`main`；Codez consumer 精确锁定合入前经过评审的 source commit
 `589dc68d4127457ca3d48bb9894cabae393e9668`，不从 semver 猜测实现来源。
 
 | 范围                         | 结果                                                                           | 结论                                                                                         |
@@ -116,9 +116,9 @@ zcode-cua MCP result -> official authority gate
 | consumer action/frame 重点集 | 5 files；117 passed                                                            | receipt pass-through、generic budget、hook 追加与 final-raster 门禁均覆盖                   |
 | consumer Helper 兼容重点集   | 8 files；277 passed、1 skipped                                                 | `0.5.6` Helper 名称与 receipt/dispatch 语义已对齐                                            |
 | wrapper/provenance           | 13/13；host authority 1/1                                                      | 版本、skill bytes、producer SHA 与 runtime contract 一致                                     |
-| ZCode 全量单测               | 1309 files passed、1 skipped；11475 passed、12 skipped                         | consumer 与产品链路完整回归通过                                                              |
-| ZCode 静态门禁               | root typecheck 通过；CLI 24/24 typecheck；root lint 0 error、38 条既有 warning | 本次变更没有新增 lint error                                                                  |
-| 独立 MCP                     | 30 个工具；initialize、request_access、list_apps、Chrome full state 成功       | `zcode-cua@0.5.6` 可脱离 ZCode wrapper 直接通过 stdio 使用                                   |
+| Codez 全量单测               | 1309 files passed、1 skipped；11475 passed、12 skipped                         | consumer 与产品链路完整回归通过                                                              |
+| Codez 静态门禁               | root typecheck 通过；CLI 24/24 typecheck；root lint 0 error、38 条既有 warning | 本次变更没有新增 lint error                                                                  |
+| 独立 MCP                     | 30 个工具；initialize、request_access、list_apps、Chrome full state 成功       | `codez-cua@0.5.6` 可脱离 Codez wrapper 直接通过 stdio 使用                                   |
 
 独立 MCP 还验证了失败路径：Godot AX tree 在 8 秒遍历期限内未完成时安全返回错误，未派发
 动作；当前新安装的 Dev Helper 尚未获得 macOS Screen Recording 权限，因此 consumer 环境的

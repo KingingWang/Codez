@@ -10,8 +10,8 @@ test("只接纳原样上游的行数诊断，其他错误与修改过的文件�
     { filename: "src/original.ts", code: "eslint(no-unused-vars)", severity: "warning" },
   ];
   const result = classifyLintDiagnostics(diagnostics, {
-    relativeDirectory: "apps/zcode-cli/packages/example",
-    pristine: new Set(["apps/zcode-cli/packages/example/src/original.ts"]),
+    relativeDirectory: "apps/codez-cli/packages/example",
+    pristine: new Set(["apps/codez-cli/packages/example/src/original.ts"]),
   });
   assert.deepEqual(result.accepted, [diagnostics[0]]);
   assert.deepEqual(result.errors, diagnostics.slice(1, 3));

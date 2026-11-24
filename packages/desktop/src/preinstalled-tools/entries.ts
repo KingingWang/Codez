@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import type {
   PreinstalledToolEntry,
   PreinstalledToolInstallation,
-} from "@zcode/shared/preinstalled-tools";
+} from "@codez/shared/preinstalled-tools";
 
 const shellQuote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
 const isWindows = process.platform === "win32";

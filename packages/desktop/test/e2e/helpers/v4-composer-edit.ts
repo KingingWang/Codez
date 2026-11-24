@@ -15,7 +15,7 @@ import {
   TID_V4_QUEUE_ITEM_EDIT_LOCK,
   TID_V4_QUEUE_ITEM_RELEASE_EDIT,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clickTestIdByDom } from "./desktop-app.js";
 
 export type V4ComposerEditTargetKind = "userQuery" | "queueItem";

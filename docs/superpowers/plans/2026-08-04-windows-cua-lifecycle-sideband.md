@@ -6,12 +6,12 @@
 
 **Architecture:** CLI 在原始 `SessionEvent` 进入协议投影时额外发送严格、精简、不可重放的 `computer-use/operation-event` 通知；通知与 v4 conversation frame 并行，且位于 `record.deliveryKind` 判断之前。Services 只用该通知驱动 `CuaOperationTurnTracker`，再沿既有 Host→Main `cua-operation-state` 链路显示浮层；旧 `session/event`、Renderer、snapshot 和 relay 都不拥有提示状态。
 
-**Tech Stack:** TypeScript 6、Zod、Vitest 4、ZCode Protocol NDJSON、Electron UtilityProcess/BrowserWindow、pnpm。
+**Tech Stack:** TypeScript 6、Zod、Vitest 4、Codez Protocol NDJSON、Electron UtilityProcess/BrowserWindow、pnpm。
 
 ## Global Constraints
 
 - 先修改测试并观察预期失败，再写最小实现；不得先改生产代码。
-- App ↔ Agent 新协议必须定义在 `packages/shared/src/zcode-protocol/index.ts`，使用严格 runtime schema。
+- App ↔ Agent 新协议必须定义在 `packages/shared/src/codez-protocol/index.ts`，使用严格 runtime schema。
 - method 固定为 `computer-use/operation-event`；官方身份只接受 `computer-use` 中划线形式，不新增 `computer_use`。
 - 通知只携带 lifecycle 元数据，不携带 tool input/result、模型文本、截图或用户内容。
 - 通知不受旧 `session/event` 的 `deliveryKind` 或 v4 subscription 状态影响，不进入 snapshot/replayable/v4 topic/relay。
@@ -25,15 +25,15 @@
 
 ## File Structure
 
-- Modify `packages/shared/src/zcode-protocol/index.ts`: 定义 sideband method、严格判别联合 schema 和导出类型。
-- Modify `packages/shared/test/zcodeProtocol.test.ts`: 验证 method、六类 payload、严格字段和非法输入。
-- Create `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/computer-use-operation-event.ts`: 将 runtime `SessionEvent` 投影为最小 sideband payload。
-- Modify `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts`: 在 v4/legacy 分流之前 best-effort 发送 sideband。
-- Modify `apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts`: 验证无 `deliveryKind` 仍发送、无敏感 payload、发送失败不阻断 v4。
-- Modify `packages/services/src/zcode-agent/cuaOperationTurnTracker.ts`: 改为消费 sideband 类型并按 `eventId`/`sequenceNumber` 去重。
+- Modify `packages/shared/src/codez-protocol/index.ts`: 定义 sideband method、严格判别联合 schema 和导出类型。
+- Modify `packages/shared/test/codezProtocol.test.ts`: 验证 method、六类 payload、严格字段和非法输入。
+- Create `apps/codez-cli/packages/bootstrap/src/codez-protocol/computer-use-operation-event.ts`: 将 runtime `SessionEvent` 投影为最小 sideband payload。
+- Modify `apps/codez-cli/packages/bootstrap/src/codez-protocol/server-operations.ts`: 在 v4/legacy 分流之前 best-effort 发送 sideband。
+- Modify `apps/codez-cli/packages/bootstrap/tests/codez-protocol.test.ts`: 验证无 `deliveryKind` 仍发送、无敏感 payload、发送失败不阻断 v4。
+- Modify `packages/services/src/codez-agent/cuaOperationTurnTracker.ts`: 改为消费 sideband 类型并按 `eventId`/`sequenceNumber` 去重。
 - Modify `packages/services/test/cuaOperationTurnTracker.test.ts`: 将 fixture 和全部状态机断言迁移到 sideband 生命周期。
-- Modify `packages/services/src/zcode-agent/zcodeAgentService.ts`: 新增 sideband notification 分支，移除旧 `session/event` 对 tracker 的驱动。
-- Modify `packages/services/test/zcodeAgentService.test.ts`: fake agent 只发 sideband，验证 reporter 跃迁且普通 session 流不受影响。
+- Modify `packages/services/src/codez-agent/codezAgentService.ts`: 新增 sideband notification 分支，移除旧 `session/event` 对 tracker 的驱动。
+- Modify `packages/services/test/codezAgentService.test.ts`: fake agent 只发 sideband，验证 reporter 跃迁且普通 session 流不受影响。
 - Modify `docs/product-capability-map-office-computer-use.md`: 更新真实状态链。
 - Modify `apps/dev-docs/src/data/productCapabilityMap.ts`: 更新能力图 producer/consumer 描述。
 - Modify `apps/dev-docs/test/capabilityMapOfficeComputerUse.test.ts`: 固化 sideband 状态链。
@@ -44,21 +44,21 @@
 
 **Files:**
 
-- Modify: `packages/shared/src/zcode-protocol/index.ts`
-- Test: `packages/shared/test/zcodeProtocol.test.ts`
+- Modify: `packages/shared/src/codez-protocol/index.ts`
+- Test: `packages/shared/test/codezProtocol.test.ts`
 
 **Interfaces:**
 
-- Produces: `zcodeProtocolMethods.computerUseOperationEvent === "computer-use/operation-event"`
-- Produces: `zcodeComputerUseOperationEventSchema`
-- Produces: `ZCodeComputerUseOperationEvent`
+- Produces: `codezProtocolMethods.computerUseOperationEvent === "computer-use/operation-event"`
+- Produces: `codezComputerUseOperationEventSchema`
+- Produces: `CodezComputerUseOperationEvent`
 
 - [ ] **Step 1: Write failing protocol contract tests**
 
 Import the new schema and assert exact method naming plus one valid payload for every kind:
 
 ```ts
-expect(zcodeProtocolMethods.computerUseOperationEvent).toBe("computer-use/operation-event");
+expect(codezProtocolMethods.computerUseOperationEvent).toBe("computer-use/operation-event");
 
 const base = {
   eventId: "evt-1",
@@ -86,7 +86,7 @@ for (const event of [
   },
   { ...base, kind: "session-closed" },
 ]) {
-  expect(zcodeComputerUseOperationEventSchema.safeParse(event).success).toBe(true);
+  expect(codezComputerUseOperationEventSchema.safeParse(event).success).toBe(true);
 }
 ```
 
@@ -94,7 +94,7 @@ Add table cases rejecting empty ids, negative `sequenceNumber`, missing turn/too
 
 - [ ] **Step 2: Run RED**
 
-Run: `pnpm exec vitest run packages/shared/test/zcodeProtocol.test.ts`
+Run: `pnpm exec vitest run packages/shared/test/codezProtocol.test.ts`
 
 Expected: FAIL because the method and schema exports do not exist.
 
@@ -103,23 +103,23 @@ Expected: FAIL because the method and schema exports do not exist.
 Define a shared strict base and discriminated union:
 
 ```ts
-const zcodeComputerUseOperationEventBaseSchema = z.object({
+const codezComputerUseOperationEventBaseSchema = z.object({
   eventId: nonEmptyString,
   sequenceNumber: z.number().int().nonnegative(),
   sessionId: nonEmptyString,
   timestamp: timestampMsSchema,
 });
 
-export const zcodeComputerUseOperationEventSchema = z.discriminatedUnion("kind", [
+export const codezComputerUseOperationEventSchema = z.discriminatedUnion("kind", [
   ...["turn-started", "turn-completed", "turn-failed"].map((kind) =>
-    zcodeComputerUseOperationEventBaseSchema
+    codezComputerUseOperationEventBaseSchema
       .extend({
         kind: z.literal(kind),
         turnId: nonEmptyString,
       })
       .strict(),
   ),
-  zcodeComputerUseOperationEventBaseSchema
+  codezComputerUseOperationEventBaseSchema
     .extend({
       kind: z.literal("tool-scheduled"),
       turnId: nonEmptyString,
@@ -127,7 +127,7 @@ export const zcodeComputerUseOperationEventSchema = z.discriminatedUnion("kind",
       toolName: nonEmptyString,
     })
     .strict(),
-  zcodeComputerUseOperationEventBaseSchema
+  codezComputerUseOperationEventBaseSchema
     .extend({
       kind: z.literal("tool-started"),
       turnId: nonEmptyString.optional(),
@@ -135,7 +135,7 @@ export const zcodeComputerUseOperationEventSchema = z.discriminatedUnion("kind",
       toolName: nonEmptyString.optional(),
     })
     .strict(),
-  zcodeComputerUseOperationEventBaseSchema
+  codezComputerUseOperationEventBaseSchema
     .extend({
       kind: z.literal("session-closed"),
     })
@@ -147,7 +147,7 @@ Use explicit schema declarations instead of `.map()` if TypeScript cannot preser
 
 - [ ] **Step 4: Run GREEN**
 
-Run: `pnpm exec vitest run packages/shared/test/zcodeProtocol.test.ts`
+Run: `pnpm exec vitest run packages/shared/test/codezProtocol.test.ts`
 
 Expected: PASS with zero failures.
 
@@ -157,15 +157,15 @@ Expected: PASS with zero failures.
 
 **Files:**
 
-- Create: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/computer-use-operation-event.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts`
-- Test: `apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts`
+- Create: `apps/codez-cli/packages/bootstrap/src/codez-protocol/computer-use-operation-event.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/server-operations.ts`
+- Test: `apps/codez-cli/packages/bootstrap/tests/codez-protocol.test.ts`
 
 **Interfaces:**
 
 - Consumes: `SessionEvent`
-- Produces: `mapComputerUseOperationEvent(event): ZCodeComputerUseOperationEvent | undefined`
-- Emits: `{ method: zcodeProtocolMethods.computerUseOperationEvent, params }`
+- Produces: `mapComputerUseOperationEvent(event): CodezComputerUseOperationEvent | undefined`
+- Emits: `{ method: codezProtocolMethods.computerUseOperationEvent, params }`
 
 - [ ] **Step 1: Write failing CLI projection and delivery tests**
 
@@ -194,7 +194,7 @@ Assert `v4Gateway.ingest` still receives every parent-session event. Add a separ
 
 - [ ] **Step 2: Run RED**
 
-Run: `pnpm --dir apps/zcode-cli exec vitest run packages/bootstrap/tests/zcode-protocol.test.ts`
+Run: `pnpm --dir apps/codez-cli exec vitest run packages/bootstrap/tests/codez-protocol.test.ts`
 
 Expected: FAIL because no sideband is emitted.
 
@@ -211,12 +211,12 @@ const operationEvent = mapComputerUseOperationEvent(event);
 if (operationEvent) {
   try {
     context.notify({
-      method: zcodeProtocolMethods.computerUseOperationEvent,
+      method: codezProtocolMethods.computerUseOperationEvent,
       params: operationEvent,
     });
   } catch (error) {
     context.logger?.warn("Computer Use operation lifecycle notification failed", {
-      event: "zcode_protocol.computer_use_operation_event.failed",
+      event: "codez_protocol.computer_use_operation_event.failed",
       eventId: operationEvent.eventId,
       sessionId: operationEvent.sessionId,
       turnId: "turnId" in operationEvent ? operationEvent.turnId : undefined,
@@ -230,7 +230,7 @@ The log event identifier may use underscores as a logger key, but method/tool id
 
 - [ ] **Step 5: Run GREEN**
 
-Run: `pnpm --dir apps/zcode-cli exec vitest run packages/bootstrap/tests/zcode-protocol.test.ts`
+Run: `pnpm --dir apps/codez-cli exec vitest run packages/bootstrap/tests/codez-protocol.test.ts`
 
 Expected: PASS with zero failures.
 
@@ -240,19 +240,19 @@ Expected: PASS with zero failures.
 
 **Files:**
 
-- Modify: `packages/services/src/zcode-agent/cuaOperationTurnTracker.ts`
+- Modify: `packages/services/src/codez-agent/cuaOperationTurnTracker.ts`
 - Modify: `packages/services/test/cuaOperationTurnTracker.test.ts`
-- Modify: `packages/services/src/zcode-agent/zcodeAgentService.ts`
-- Modify: `packages/services/test/zcodeAgentService.test.ts`
+- Modify: `packages/services/src/codez-agent/codezAgentService.ts`
+- Modify: `packages/services/test/codezAgentService.test.ts`
 
 **Interfaces:**
 
-- `CuaOperationTurnTracker.accept(workspace, event: ZCodeComputerUseOperationEvent): void`
-- `ZCodeAgentService.wireClient` consumes `zcodeProtocolMethods.computerUseOperationEvent`
+- `CuaOperationTurnTracker.accept(workspace, event: CodezComputerUseOperationEvent): void`
+- `CodezAgentService.wireClient` consumes `codezProtocolMethods.computerUseOperationEvent`
 
 - [ ] **Step 1: Migrate tracker tests to the new event contract**
 
-Replace `ZCodeSessionEvent` fixtures with sideband fixtures using `kind`, `sequenceNumber` and `eventId`. Preserve every existing activation, exclusion, terminal, workspace isolation and reporter-failure assertion. Remove result/error fixture delivery because the sideband deliberately omits them; retain the assertion that state stays active until a turn terminal.
+Replace `CodezSessionEvent` fixtures with sideband fixtures using `kind`, `sequenceNumber` and `eventId`. Preserve every existing activation, exclusion, terminal, workspace isolation and reporter-failure assertion. Remove result/error fixture delivery because the sideband deliberately omits them; retain the assertion that state stays active until a turn terminal.
 
 Add an explicit duplicate-id test:
 
@@ -271,11 +271,11 @@ expect(states).toHaveLength(1);
 
 Run: `pnpm exec vitest run packages/services/test/cuaOperationTurnTracker.test.ts`
 
-Expected: FAIL because `accept` still expects legacy `ZCodeSessionEvent` kinds.
+Expected: FAIL because `accept` still expects legacy `CodezSessionEvent` kinds.
 
 - [ ] **Step 3: Implement the minimal sideband state machine adaptation**
 
-Import `ZCodeComputerUseOperationEvent`, replace `seq` with `sequenceNumber`, add a bounded `seenEventIds` set/order, and switch on the new kinds. Keep all existing canonical tool matching, non-operating actions, stop behavior, retired-turn protection, reporter isolation and workspace cleanup. Add a Chinese bug-cause comment explaining why legacy `session/event` and sideband sequence domains must not be mixed.
+Import `CodezComputerUseOperationEvent`, replace `seq` with `sequenceNumber`, add a bounded `seenEventIds` set/order, and switch on the new kinds. Keep all existing canonical tool matching, non-operating actions, stop behavior, retired-turn protection, reporter isolation and workspace cleanup. Add a Chinese bug-cause comment explaining why legacy `session/event` and sideband sequence domains must not be mixed.
 
 - [ ] **Step 4: Run tracker GREEN**
 
@@ -287,7 +287,7 @@ Expected: PASS with zero failures.
 
 Update `CUA_OPERATION_LIVE_EVENT_FAKE_AGENT` so it sends strict `computer-use/operation-event` notifications after the existing subscribe ACK, but sends no `session/event`. Assert reporter states are `[true, false]`, invalid payload is ignored, duplicate `eventId` is idempotent, and received legacy session events remain empty.
 
-Run: `pnpm exec vitest run packages/services/test/zcodeAgentService.test.ts`
+Run: `pnpm exec vitest run packages/services/test/codezAgentService.test.ts`
 
 Expected: FAIL because `wireClient` ignores the new notification.
 
@@ -296,8 +296,8 @@ Expected: FAIL because `wireClient` ignores the new notification.
 In `wireClient`, before generic state/interaction branches:
 
 ```ts
-if (message.method === zcodeProtocolMethods.computerUseOperationEvent) {
-  const parsed = zcodeComputerUseOperationEventSchema.safeParse(message.params);
+if (message.method === codezProtocolMethods.computerUseOperationEvent) {
+  const parsed = codezComputerUseOperationEventSchema.safeParse(message.params);
   if (parsed.success) {
     cuaOperationTurnTracker?.accept(workspace, parsed.data);
   } else {
@@ -321,7 +321,7 @@ Remove `cuaOperationTurnTracker?.accept(workspace, normalizedEvent)` from `handl
 Run:
 
 ```powershell
-pnpm exec vitest run packages/services/test/cuaOperationTurnTracker.test.ts packages/services/test/zcodeAgentService.test.ts packages/services/test/cuaPermissionBrokerProductAgentEnv.test.ts
+pnpm exec vitest run packages/services/test/cuaOperationTurnTracker.test.ts packages/services/test/codezAgentService.test.ts packages/services/test/cuaPermissionBrokerProductAgentEnv.test.ts
 ```
 
 Expected: PASS with zero failures.
@@ -368,8 +368,8 @@ CLI runtime lifecycle
 Run:
 
 ```powershell
-pnpm exec vitest run packages/shared/test/zcodeProtocol.test.ts packages/services/test/cuaOperationTurnTracker.test.ts packages/services/test/zcodeAgentService.test.ts packages/services/test/cuaPermissionBrokerProductAgentEnv.test.ts packages/desktop/test/desktopHostProcess.test.ts packages/desktop/test/windowsCuaOperationIndicator.test.ts apps/dev-docs/test/capabilityMapOfficeComputerUse.test.ts
-pnpm --dir apps/zcode-cli exec vitest run packages/bootstrap/tests/zcode-protocol.test.ts
+pnpm exec vitest run packages/shared/test/codezProtocol.test.ts packages/services/test/cuaOperationTurnTracker.test.ts packages/services/test/codezAgentService.test.ts packages/services/test/cuaPermissionBrokerProductAgentEnv.test.ts packages/desktop/test/desktopHostProcess.test.ts packages/desktop/test/windowsCuaOperationIndicator.test.ts apps/dev-docs/test/capabilityMapOfficeComputerUse.test.ts
+pnpm --dir apps/codez-cli exec vitest run packages/bootstrap/tests/codez-protocol.test.ts
 ```
 
 Expected: both commands pass with zero failed tests.
@@ -393,13 +393,13 @@ Verify:
 ```powershell
 git status --short
 git diff --stat
-rg -n -- "computer_use" packages/shared/src/zcode-protocol apps/zcode-cli/packages/bootstrap/src/zcode-protocol packages/services/src/zcode-agent
+rg -n -- "computer_use" packages/shared/src/codez-protocol apps/codez-cli/packages/bootstrap/src/codez-protocol packages/services/src/codez-agent
 ```
 
 Confirm no new `computer_use` tool/method identity was introduced, `.tmp/` and unrelated user files are not staged, and the final diff matches the approved spec. Then commit only scoped files:
 
 ```powershell
-git add -- packages/shared/src/zcode-protocol/index.ts packages/shared/test/zcodeProtocol.test.ts apps/zcode-cli/packages/bootstrap/src/zcode-protocol/computer-use-operation-event.ts apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts packages/services/src/zcode-agent/cuaOperationTurnTracker.ts packages/services/src/zcode-agent/zcodeAgentService.ts packages/services/test/cuaOperationTurnTracker.test.ts packages/services/test/zcodeAgentService.test.ts apps/dev-docs/src/data/productCapabilityMap.ts apps/dev-docs/test/capabilityMapOfficeComputerUse.test.ts docs/product-capability-map-office-computer-use.md docs/superpowers/plans/2026-08-04-windows-cua-lifecycle-sideband.md
+git add -- packages/shared/src/codez-protocol/index.ts packages/shared/test/codezProtocol.test.ts apps/codez-cli/packages/bootstrap/src/codez-protocol/computer-use-operation-event.ts apps/codez-cli/packages/bootstrap/src/codez-protocol/server-operations.ts apps/codez-cli/packages/bootstrap/tests/codez-protocol.test.ts packages/services/src/codez-agent/cuaOperationTurnTracker.ts packages/services/src/codez-agent/codezAgentService.ts packages/services/test/cuaOperationTurnTracker.test.ts packages/services/test/codezAgentService.test.ts apps/dev-docs/src/data/productCapabilityMap.ts apps/dev-docs/test/capabilityMapOfficeComputerUse.test.ts docs/product-capability-map-office-computer-use.md docs/superpowers/plans/2026-08-04-windows-cua-lifecycle-sideband.md
 git diff --cached --check
 git commit -m "fix(cua): drive Windows indicator from runtime lifecycle"
 ```

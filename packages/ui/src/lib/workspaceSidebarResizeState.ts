@@ -1,5 +1,5 @@
 export const WORKSPACE_SIDEBAR_RESIZING_ATTR = "data-workspace-sidebar-resizing";
-export const WORKSPACE_SIDEBAR_RESIZE_END_EVENT = "zcode:workspace-sidebar-resize-end";
+export const WORKSPACE_SIDEBAR_RESIZE_END_EVENT = "codez:workspace-sidebar-resize-end";
 
 const WORKSPACE_SIDEBAR_RESIZING_VALUE = "true";
 const WORKSPACE_SHELL_SELECTOR = "[data-workspace-shell]";

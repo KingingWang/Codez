@@ -102,11 +102,11 @@ PY-12：归档中没有 `tests` 目录，也没有 `.opt-1.pyc`、`.opt-2.pyc`�
    - `.artifact.json` 中 `provenance.bytecode.optimizationLevels` 为 `[0]`；`provenance.removedTests` 列出删除的目录。
    - 记录 `-r1` 与 `-r2` 的文件数、归档字节数和安装字节数。
 5. 按 [12](12-macos-arm64-full-chain.md) 回放 real-loopback 候选 `conversation-session/manual-review/pending/conversation-session-preinstalled-tools-real-loopback.test.ts`：
-   - `ZCODE_E2E_MANUAL_REVIEW=1`。
-   - `ZCODE_E2E_PREINSTALL_ARTIFACTS` 指向一个 JSON 数组文件，按 Python、qpdf、Pandoc、Poppler、LibreOffice 的顺序列出五个描述路径。Python 用新的 `-r2`。qpdf、Pandoc、LibreOffice 沿用 12 的 darwin-arm64 资源。Poppler 用同一归档按现行规则生成的描述 `timeouts-20261030/poppler/poppler-26.10.0-darwin-arm64-r2.artifact.json`，运行检查时限为 60 秒。12 列表中的 Poppler 描述 `11/resources/mac-r2-first` 还是旧的 10 秒时限，不要沿用（见“macOS arm64 记录”中 attempt-01、02 的失败原因）。
-   - `ZCODE_E2E_PREINSTALL_UPGRADE_ARTIFACT` 沿用 12 的 qpdf 升级资源。
-   - `ZCODE_E2E_DOCUMENT_PYTHON`、`ZCODE_E2E_DOCUMENT_SAMPLES`、`ZCODE_E2E_LIBREOFFICE_SYSTEM_APP`、`ZCODE_E2E_LIBREOFFICE_DEFAULT_PROFILE` 与 12 相同。
-   - 运行：`pnpm --filter @zcode/desktop test:e2e -- --spec ./test/e2e/conversation-session/manual-review/pending/conversation-session-preinstalled-tools-real-loopback.test.ts`。
+   - `CODEZ_E2E_MANUAL_REVIEW=1`。
+   - `CODEZ_E2E_PREINSTALL_ARTIFACTS` 指向一个 JSON 数组文件，按 Python、qpdf、Pandoc、Poppler、LibreOffice 的顺序列出五个描述路径。Python 用新的 `-r2`。qpdf、Pandoc、LibreOffice 沿用 12 的 darwin-arm64 资源。Poppler 用同一归档按现行规则生成的描述 `timeouts-20261030/poppler/poppler-26.10.0-darwin-arm64-r2.artifact.json`，运行检查时限为 60 秒。12 列表中的 Poppler 描述 `11/resources/mac-r2-first` 还是旧的 10 秒时限，不要沿用（见“macOS arm64 记录”中 attempt-01、02 的失败原因）。
+   - `CODEZ_E2E_PREINSTALL_UPGRADE_ARTIFACT` 沿用 12 的 qpdf 升级资源。
+   - `CODEZ_E2E_DOCUMENT_PYTHON`、`CODEZ_E2E_DOCUMENT_SAMPLES`、`CODEZ_E2E_LIBREOFFICE_SYSTEM_APP`、`CODEZ_E2E_LIBREOFFICE_DEFAULT_PROFILE` 与 12 相同。
+   - 运行：`pnpm --filter @codez/desktop test:e2e -- --spec ./test/e2e/conversation-session/manual-review/pending/conversation-session-preinstalled-tools-real-loopback.test.ts`。
    - 失败批次保留原始记录，重跑通过不能写成首次通过。
 6. 把结果写进本票的“macOS arm64 记录”一节，并把 `-r2` 的下载字节数和安装字节数写进 [Python 规格](../../preinstalled-tools/python.md)的“体积”一节。内容包括：资源 SHA-256 与字节数、两次制作是否一致、PY-12 结果、E2E 证据目录名与结果、Python 从开始解包到 ready 的耗时。
 7. 交付 `.artifact.json`、`.tar.gz`、`.bytecode.json` 和制作日志，用于发布。
@@ -139,7 +139,7 @@ PY-12：归档中没有 `tests` 目录，也没有 `.opt-1.pyc`、`.opt-2.pyc`�
 - `provenance.bytecode.optimizationLevels` 为 `[0]`。3242 个源文件全部编译，失败 0 个。
 - `provenance.removedTests` 列出 19 个目录，共 1,747 个文件、24,369,350 字节：pandas 1 个（1,143 个文件）、numpy 13 个、matplotlib 1 个、mpl_toolkits 3 个、pip 内置的 certifi 1 个。
 - 运行检查：E2E 四个批次中 Python 都通过运行检查，到达“安装发布完成”。
-- PY-01：attempt-04 中通过。四个插件都通过 `bin/zcode-python` 运行，pptx 检查的解释器是 `-r2` 附加区的 `overlay/bin/python`，公式为 `C1=5`、`D1=#DIV/0!`，pdf2image 使用预装的 `pdftoppm`（`15/attempt-04/real-document-results/main.json`）。attempt-03 的主流程断言也通过，但该批次后续步骤失败。
+- PY-01：attempt-04 中通过。四个插件都通过 `bin/codez-python` 运行，pptx 检查的解释器是 `-r2` 附加区的 `overlay/bin/python`，公式为 `C1=5`、`D1=#DIV/0!`，pdf2image 使用预装的 `pdftoppm`（`15/attempt-04/real-document-results/main.json`）。attempt-03 的主流程断言也通过，但该批次后续步骤失败。
 - 安装后的预装区 `python/` 共 10,017 个条目（9,086 个文件、6 个链接、925 个目录），没有 `.opt-1.pyc`、`.opt-2.pyc`，site-packages 中没有 `tests/`（`python-base-before.json`）。默认缓存设置下导入 16 个包、并在附加区用 pip 安装探针包之后，预装区的文件集合和摘要都没有变化（`finish.json` 的 `pythonBaseUnchanged: true`）。所以只编译 0 级字节码没有遗漏默认运行要用的缓存。
 - PY-12 在 macOS arm64 上满足。
 
@@ -161,7 +161,7 @@ PY-12：归档中没有 `tests` 目录，也没有 `.opt-1.pyc`、`.opt-2.pyc`�
 
 ### E2E（real-loopback）
 
-- 输入：Python 为本次 `-r2`，qpdf、Pandoc、Poppler、LibreOffice 与 qpdf 升级资源沿用 12；`ZCODE_E2E_DOCUMENT_*`、`ZCODE_E2E_LIBREOFFICE_*` 与 12 相同。运行脚本 `15/scripts/run-e2e.sh`，环境记录 `15/logs/attempt-NN.env.txt`。四次都在 HEAD `bdafbb09292`，工作区只有本节两份文档的改动。
+- 输入：Python 为本次 `-r2`，qpdf、Pandoc、Poppler、LibreOffice 与 qpdf 升级资源沿用 12；`CODEZ_E2E_DOCUMENT_*`、`CODEZ_E2E_LIBREOFFICE_*` 与 12 相同。运行脚本 `15/scripts/run-e2e.sh`，环境记录 `15/logs/attempt-NN.env.txt`。四次都在 HEAD `bdafbb09292`，工作区只有本节两份文档的改动。
 
 | 批次       | 启动方式                            | run ID                                                  | 结果     | 用例耗时 | Python 解包 → ready（解包 + 检查） | 失败点                     |
 | ---------- | ----------------------------------- | ------------------------------------------------------- | -------- | -------- | ---------------------------------- | -------------------------- |
@@ -217,7 +217,7 @@ PY-12：归档中没有 `tests` 目录，也没有 `.opt-1.pyc`、`.opt-2.pyc`�
   - `com.apple.provenance` 不是决定因素：iterm-restart-01 解包出的 `pdftoppm` 带这个属性，首次仍为 0.113 秒；terminal-01 的不带，也快。Terminal.app 写出的文件有时带、有时不带（attempt-03 的 `.env.txt` 带，attempt-04 的不带），原因没有核对。之前“文件带属性时首次执行慢”的推测不成立。
   - 本 worktree 的 Electron 带这个属性，与 12 记录的 Electron 不同。attempt-03、04 用同一个 Electron 也快，所以它不是决定因素。
   - 12 中由 ChromeDriver 拉起 App 时失败、改为独立启动后通过，可能也是同一个条件（App 的负责进程不同）。没有验证。
-  - 对用户的影响：用户从 Finder 或 Dock 打开 ZCode 时，一般走慢路径。慢路径的耗时已写在通用规格的运行检查一步，现行时限（Python 180 秒、Poppler 60 秒）覆盖了它。attempt-01、02 也说明 Python `-r2` 在慢路径下能通过检查。通过的 attempt-04 走的是快路径。
+  - 对用户的影响：用户从 Finder 或 Dock 打开 Codez 时，一般走慢路径。慢路径的耗时已写在通用规格的运行检查一步，现行时限（Python 180 秒、Poppler 60 秒）覆盖了它。attempt-01、02 也说明 Python `-r2` 在慢路径下能通过检查。通过的 attempt-04 走的是快路径。
   - 本票没有删除属性，没有放宽检查时限。
 
 - 未验证：macOS 13/15 真机首次运行（PY-10）；Python 专属的升级（PY-07，本票与 12 一样用 qpdf 升级）。候选保持 `manual-review/pending`。

@@ -1,13 +1,13 @@
 // 服务端规则驱动的草稿模型迁移：纯判定与客户端标记，规格见 docs/chat/draft-model-migration.md。
 // 判定只读目标 Host 的 ModelSelectionView，标记存在本设备 localStorage，不进 Session 或 Host 状态。
-import { completeNewModelSelection } from "@zcode/provider";
+import { completeNewModelSelection } from "@codez/provider";
 import {
   OFFICIAL_PROVIDER_TEMPLATE_IDS,
   type DraftModelMigrationNotice,
   type DraftModelMigrationRule,
-} from "@zcode/shared";
-import type { ModelSelection } from "@zcode/shared/model-selection";
-import type { ModelSelectionView } from "@zcode/services";
+} from "@codez/shared";
+import type { ModelSelection } from "@codez/shared/model-selection";
+import type { ModelSelectionView } from "@codez/services";
 import { logger } from "@/logger.js";
 import { composerScopeKey, type ComposerScope } from "@/v4/composer/composerDraftStore.js";
 
@@ -25,8 +25,8 @@ export type DraftModelMigrationDecision =
       readonly selection: ModelSelection;
     };
 
-const MARKER_KEY_PREFIX = "zcode-draft-model-migration:v1:";
-const NOTICE_KEY = "zcode-draft-model-migration-notice:v1";
+const MARKER_KEY_PREFIX = "codez-draft-model-migration:v1:";
+const NOTICE_KEY = "codez-draft-model-migration-notice:v1";
 
 export function decideDraftModelMigration(input: {
   readonly rule: DraftModelMigrationRule;

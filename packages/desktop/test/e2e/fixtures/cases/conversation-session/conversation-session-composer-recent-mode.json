@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/conversation-session-composer-recent-mode/result.txt",
+      "path": ".codez-e2e/conversation-session-composer-recent-mode/result.txt",
       "source": "created-by-spec",
       "description": "隔离 workspace 中由真实 Write 工具生成，验证 yolo 执行权限。"
     }

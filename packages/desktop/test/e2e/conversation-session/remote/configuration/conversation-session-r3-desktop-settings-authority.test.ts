@@ -10,7 +10,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -34,7 +34,7 @@ const CASE_MARKER = "E2E_R3_DESKTOP_SETTINGS_AUTHORITY";
 const paths = getE2EAppDataPaths();
 const customRoot = resolveE2ERuntimePath("r3-desktop-settings-authority", "data");
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-desktop-settings-authority",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-desktop-settings-authority",
 );
 const hardwareSelector =
   '[role="switch"][aria-label="Chrome 硬件加速"], [role="switch"][aria-label="Chrome hardware acceleration"]';
@@ -88,7 +88,7 @@ describe(`${CASE_MARKER}: 远端激活时桌面设置仍属于本机`, () => {
     const conversation = await completeSSHProjectConnection(config, CASE_MARKER);
     facts.workspaceIdentity = conversation.workspaceIdentity;
     const readSourceSettings = async (): Promise<Record<string, unknown>> => {
-      const result = await runSSHCommand(config, 'cat "$HOME/.zcode/v2/setting.json"');
+      const result = await runSSHCommand(config, 'cat "$HOME/.codez/v2/setting.json"');
       expect(result.code).toBe(0);
       return JSON.parse(result.stdout);
     };
@@ -163,7 +163,7 @@ describe(`${CASE_MARKER}: 远端激活时桌面设置仍属于本机`, () => {
       { timeout: 60_000 },
     );
     expect((await localSettings()).dataBaseDir).toBe(customRoot);
-    expect(await readFile(join(customRoot, ".zcode/v2", canary), "utf8")).toBe(CASE_MARKER);
+    expect(await readFile(join(customRoot, ".codez/v2", canary), "utf8")).toBe(CASE_MARKER);
     const sourceAfter = await readSourceSettings();
     for (const field of [
       "dataBaseDir",
@@ -174,7 +174,7 @@ describe(`${CASE_MARKER}: 远端激活时桌面设置仍属于本机`, () => {
     }
     facts.sourceDesktopSettingsUnchanged = true;
     facts.localCanaryCopied = true;
-    const startupCwd = join(customRoot, ".zcode", "workspace", "default");
+    const startupCwd = join(customRoot, ".codez", "workspace", "default");
     // 根因回归：复制 v2 不会创建新根下的存储 cwd，必须由启动 owner 在启动 Worker 前准备。
     await expect(stat(startupCwd)).rejects.toMatchObject({ code: "ENOENT" });
     facts.startupCwdAbsentBeforeRestart = true;

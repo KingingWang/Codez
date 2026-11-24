@@ -1,4 +1,4 @@
-import { BufferReader, BufferWriter, VSBuffer, deserialize, serialize } from "@zcode/rpc";
+import { BufferReader, BufferWriter, VSBuffer, deserialize, serialize } from "@codez/rpc";
 import { join } from "node:path";
 import { selectTaskById } from "#e2e/helpers/conversation-session";
 import { clearAppData, pinE2ELocale } from "#e2e/helpers/desktop-app";
@@ -89,7 +89,7 @@ describe("Activity retention desktop candidate", () => {
       await $(ended).waitForDisplayed({ timeout: 60000 });
       expect(await $(ended).getText()).toBe(frozenText);
       await browser.saveScreenshot(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `activity-${state}.png`),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `activity-${state}.png`),
       );
       await browser.keys("Escape");
       if (state === "DONE") {

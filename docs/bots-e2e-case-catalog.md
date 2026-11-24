@@ -10,7 +10,7 @@
   background up to its own message. Requires real Feishu CUA evidence in addition to
   provider/service tests. No fixture can prove tenant permissions or native routing.
 
-本文记录 Bot 渠道的端到端行为合同。Bot 用例独立于 conversation-session：它们复用 ZCode task stream，但入口、状态所有者和外部证据位于 `BotsService` 与 provider API。
+本文记录 Bot 渠道的端到端行为合同。Bot 用例独立于 conversation-session：它们复用 Codez task stream，但入口、状态所有者和外部证据位于 `BotsService` 与 provider API。
 
 ## 范围决策
 

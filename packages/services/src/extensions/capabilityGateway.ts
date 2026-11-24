@@ -1,4 +1,4 @@
-import type { Event, IDisposable } from "@zcode/rpc";
+import type { Event, IDisposable } from "@codez/rpc";
 import {
   ExtensionError,
   capabilityCallInputSchema,
@@ -16,7 +16,7 @@ import {
   type ExtensionGrant,
   type ExtensionProtocols,
   type IExtensionWindowChannel,
-} from "@zcode/shared/extension-host";
+} from "@codez/shared/extension-host";
 import type { ServiceLogger } from "#src/logger/serviceLogger.js";
 import type {
   CapabilityCallContext,

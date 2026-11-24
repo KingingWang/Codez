@@ -21,7 +21,7 @@
 ## 兼容性
 
 - 逻辑位于 `packages/ui` 的 Lexical 输入层，桌面端、本地 Web 和手机远控复用同一输入组件。
-- 不修改 `@zcode/protocol`，不影响 agent、session、continuous/replayable 消息流或远控 task command queue。
+- 不修改 `@codez/protocol`，不影响 agent、session、continuous/replayable 消息流或远控 task command queue。
 
 ## 验收
 

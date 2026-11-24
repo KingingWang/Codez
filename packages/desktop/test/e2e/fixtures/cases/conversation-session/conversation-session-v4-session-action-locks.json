@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/conversation-session-v4-session-action-locks/locks.txt",
+      "path": ".codez-e2e/conversation-session-v4-session-action-locks/locks.txt",
       "source": "created-by-provider-tool",
       "description": "fixture 驱动单次 Write 创建两行文件，产生文件摘要与撤销 preview 所需 checkpoint。"
     }

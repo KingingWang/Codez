@@ -30,7 +30,7 @@ export function installDesignRuntime(
   inspector: ElementInspector,
   readSignals: (maxCount: number) => DesignPageSignals,
 ): DesignRuntimeReply<DesignPageInfo> {
-  const stateKey = "__zcodeDesignRuntime";
+  const stateKey = "__codezDesignRuntime";
   type RuntimeHandle = {
     version: string;
     run: (command: DesignRuntimeCommand) => DesignRuntimeReply;
@@ -49,7 +49,7 @@ export function installDesignRuntime(
 
   // ---- 浮层：放进 closed shadow root，页面样式影响不到，也不参与命中测试 ----
   const host = document.createElement("div");
-  host.setAttribute("data-zcode-design-runtime", "");
+  host.setAttribute("data-codez-design-runtime", "");
   Object.assign(host.style, {
     position: "fixed",
     left: "0",
@@ -304,7 +304,7 @@ export function installDesignRuntime(
     return stageBoards.length > 0 ? chain : null;
   };
   const stageStyle = document.createElement("style");
-  stageStyle.setAttribute("data-zcode-design-runtime", "");
+  stageStyle.setAttribute("data-codez-design-runtime", "");
   const backdropSelector = (element: Element): string => {
     if (element === document.documentElement) return "html";
     if (element === document.body) return "body";
@@ -336,7 +336,7 @@ export function installDesignRuntime(
   // 点到按钮 / 链接里的文字或图标时，选中按钮本身（设计师心里点的是按钮）
   const meaningfulTarget = (target: Element) =>
     target.closest("button,a,[role=button],label,summary") ?? target;
-  const isOwnElement = (element: Element) => element.hasAttribute("data-zcode-design-runtime");
+  const isOwnElement = (element: Element) => element.hasAttribute("data-codez-design-runtime");
   const sourceChildren = (parent: Element) =>
     Array.from(parent.children).filter((child) => !isOwnElement(child));
   // 元素在源码里的位置：从 <html> 往下每级的标签、序号、兄弟数（运行时自己的节点不算）。
@@ -493,13 +493,13 @@ export function installDesignRuntime(
     variantStyle = null;
     activeVariant = variant;
     if (variant === null) {
-      document.documentElement.removeAttribute("data-zcode-active-variant");
+      document.documentElement.removeAttribute("data-codez-active-variant");
     } else {
       variantStyle = document.createElement("style");
-      variantStyle.setAttribute("data-zcode-design-runtime", "variant");
+      variantStyle.setAttribute("data-codez-design-runtime", "variant");
       variantStyle.textContent = `body [data-variant]:not([data-variant="${CSS.escape(variant)}"]){display:none !important}`;
       document.head.append(variantStyle);
-      document.documentElement.setAttribute("data-zcode-active-variant", variant);
+      document.documentElement.setAttribute("data-codez-active-variant", variant);
     }
     scheduleLayout();
   };

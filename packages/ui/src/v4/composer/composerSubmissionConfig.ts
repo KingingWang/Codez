@@ -1,9 +1,9 @@
-import { resolveExecutionState, type ModelSelection } from "@zcode/shared";
-import { submissionModeSchema, type SubmissionMode } from "@zcode/shared/zcode-protocol-v4";
-import type { ModelSelectionView } from "@zcode/services";
-import { validateModelSelectionOptions } from "@zcode/provider";
+import { resolveExecutionState, type ModelSelection } from "@codez/shared";
+import { submissionModeSchema, type SubmissionMode } from "@codez/shared/codez-protocol-v4";
+import type { ModelSelectionView } from "@codez/services";
+import { validateModelSelectionOptions } from "@codez/provider";
 import type { ModelSelectionState } from "@/hooks/useModelSelectionView.js";
-import type { ZCodeUiError } from "@/lib/zcodeUiError.js";
+import type { CodezUiError } from "@/lib/codezUiError.js";
 
 export interface ComposerSubmissionConfig {
   modelSelection: ModelSelection;
@@ -46,7 +46,7 @@ export function createComposerSubmissionConfig(
 }
 
 /** 与 CLI 旧协议拒绝、restoreWarning 共用的稳定 code；ChatErrorBanner 按它本地化。 */
-export const SESSION_MODEL_UNAVAILABLE_ERROR_CODE = "ZCODE_RUNTIME_MODEL_UNAVAILABLE";
+export const SESSION_MODEL_UNAVAILABLE_ERROR_CODE = "CODEZ_RUNTIME_MODEL_UNAVAILABLE";
 
 /** 会话原选择在当前 Registry 视图里解析不出可执行模型的三种原因；档位问题不属于「模型不可用」。 */
 const SESSION_MODEL_UNAVAILABLE_ISSUES = new Set<ModelSelectionView["selectionIssue"]>([
@@ -63,7 +63,7 @@ export interface SessionModelUnavailable {
    * 发送再次被禁用却没有解释，重现了本来要解决的静默阻塞。
    */
   key: string;
-  error: ZCodeUiError;
+  error: CodezUiError;
 }
 
 /**

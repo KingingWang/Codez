@@ -12,7 +12,7 @@ const dependenciesRule = "eslint-plugin-react-hooks(exhaustive-deps)";
 const hooksRule = "eslint-plugin-react-hooks(rules-of-hooks)";
 
 async function lint(source, file = "packages/ui/src/Example.tsx", packageDirectory = ".") {
-  const cwd = await mkdtemp(join(tmpdir(), "zcode-hooks-lint-"));
+  const cwd = await mkdtemp(join(tmpdir(), "codez-hooks-lint-"));
   try {
     await writeFile(join(cwd, ".oxlintrc.json"), await readFile(join(root, ".oxlintrc.json")));
     await mkdir(dirname(join(cwd, file)), { recursive: true });
@@ -56,7 +56,7 @@ export function Example({ enabled }: { enabled: boolean }) {
   const regular = await lint(source);
   assert.equal(regular.code, 1);
   assert.equal(regular.diagnostics.find((item) => item.code === hooksRule)?.severity, "error");
-  const legacy = await lint(source, "packages/ui/src/hooks/useZCodeAgentService.ts");
+  const legacy = await lint(source, "packages/ui/src/hooks/useCodezAgentService.ts");
   assert.equal(legacy.code, 0);
   assert.equal(legacy.diagnostics.find((item) => item.code === hooksRule)?.severity, "warning");
 });

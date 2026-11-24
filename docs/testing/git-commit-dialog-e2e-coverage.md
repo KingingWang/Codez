@@ -59,6 +59,6 @@ GCD-UI-01 增加提交弹窗计算圆角 16px 的断言。共享默认值、业�
 ### 本次验证结果
 
 - 新增圆角测试在修改前失败；修改后相关单测通过（首轮 34 项，补充聊天区查找分支后该测试组 18 项通过）。
-- `pnpm typecheck`、`pnpm --filter @zcode/desktop typecheck:e2e`、`pnpm lint` 通过；Lint 为 41 个已有警告、0 错误。
+- `pnpm typecheck`、`pnpm --filter @codez/desktop typecheck:e2e`、`pnpm lint` 通过；Lint 为 41 个已有警告、0 错误。
 - macOS Electron GCD-UI-01：1/1 通过，包含计算圆角 16px 断言；运行 ID：`desktop-e2e-20260904080854303-p50838-b01f152a8e3d50f0`。
 - 三类预览保留 xl 的入口由单测验证，未逐个运行预览 UI；手机 Web、Windows、Linux 尚未进行独立视觉验证。

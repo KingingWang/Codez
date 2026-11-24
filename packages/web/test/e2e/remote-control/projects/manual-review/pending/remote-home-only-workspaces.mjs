@@ -1,6 +1,6 @@
 // HO01：home-only 首页工作区列表与重连入口；真实 Web 入口，受控 relay/桌面响应。
 // 不替代真机、OAuth 与线上部署验收。
-// 启动：pnpm --filter @zcode/web exec vite --host 127.0.0.1 --port 5178 --strictPort
+// 启动：pnpm --filter @codez/web exec vite --host 127.0.0.1 --port 5178 --strictPort
 // 运行：pnpm exec tsx packages/web/test/e2e/remote-control/projects/manual-review/pending/remote-home-only-workspaces.mjs
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -145,7 +145,7 @@ try {
           const onboarding = page.getByTestId("onboarding-page");
           await onboarding.waitFor();
           await onboarding.getByRole("button", { name: /退出引导|Exit onboarding/ }).click();
-          const welcome = page.getByRole("dialog", { name: /欢迎使用 ZCode|Welcome to ZCode/ });
+          const welcome = page.getByRole("dialog", { name: /欢迎使用 Codez|Welcome to Codez/ });
           await welcome.waitFor();
           await welcome.getByRole("button", { name: /^(Close|关闭)$/ }).click();
           await welcome.waitFor({ state: "detached" });

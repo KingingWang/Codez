@@ -36,7 +36,7 @@ None (can start immediately)
 - Commit：`029e231c1f` refactor(remote): unify supervisor stop wait and lifecycle flights
 - 实现：`shutdownWait.ts` 新增 `stopSupervisorAndWait`，update handoff 与 `serve --daemon`（fallback 迁移、`stop-failed` 收口）统一调用；
   连接管理器 `updateFlights` 泛化为 `lifecycleOperationFlights`（`kind` 当前只有 `update`，保留同 Source 多 flight 的 Set 语义）。
-  新增 `packages/zcode-server-cli/test/shutdownWait.test.ts`（4 例，先红后绿）；现有测试断言未改。
+  新增 `packages/codez-server-cli/test/shutdownWait.test.ts`（4 例，先红后绿）；现有测试断言未改。
 - 验证：`pnpm typecheck` 通过；`pnpm lint` 通过（0 error，告警均为存量）；`pnpm architecture:check --changed` 0 violation；
   `pnpm test:unit:affected` 通过（10 文件 / 176 例）；server-cli 全部测试与连接管理器、更新取消定向测试通过（35 文件 / 315 例）；
   `check-competitor-terms` 0 处。

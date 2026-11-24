@@ -30,7 +30,7 @@ describe("预装工具无发布目标的环境（待审核）", () => {
       join(directory, "config.json"),
       JSON.stringify({
         storageRoot: resolveE2EStorageRoot(),
-        python: process.env.ZCODE_E2E_DOCUMENT_PYTHON || "python3",
+        python: process.env.CODEZ_E2E_DOCUMENT_PYTHON || "python3",
       }),
     );
     await prepareV4ConversationE2E();
@@ -48,10 +48,10 @@ describe("预装工具无发布目标的环境（待审核）", () => {
         await waitForV4AssistantMessageContaining(`${marker}_DONE`, 90000);
       } catch (error) {
         await writeFile(
-          join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "lop-env-failure-state.json"),
+          join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "lop-env-failure-state.json"),
           JSON.stringify({ snapshot: await getV4PaneSnapshot(), text: await $("body").getText() }),
         );
-        await browser.saveScreenshot(`${process.env.ZCODE_E2E_ARTIFACT_DIR}/lop-env-failure.png`);
+        await browser.saveScreenshot(`${process.env.CODEZ_E2E_ARTIFACT_DIR}/lop-env-failure.png`);
         throw error;
       }
       await waitForV4ConversationState((state) => state.state === "idle", "环境探测未结束");
@@ -70,9 +70,9 @@ describe("预装工具无发布目标的环境（待审核）", () => {
       observations.push(observed);
     }
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "lop-no-target-environment.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "lop-no-target-environment.json"),
       JSON.stringify(observations),
     );
-    await browser.saveScreenshot(`${process.env.ZCODE_E2E_ARTIFACT_DIR}/lop-env-continued.png`);
+    await browser.saveScreenshot(`${process.env.CODEZ_E2E_ARTIFACT_DIR}/lop-env-continued.png`);
   });
 });

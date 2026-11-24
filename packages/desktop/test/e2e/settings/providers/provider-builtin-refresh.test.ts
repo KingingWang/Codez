@@ -1,4 +1,4 @@
-import { NodePersonalProviderConfigRepository } from "@zcode/provider-node";
+import { NodePersonalProviderConfigRepository } from "@codez/provider-node";
 import { createServer } from "node:http";
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -7,7 +7,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -63,16 +63,16 @@ describe("Todo127 Built-in 设置刷新整链", () => {
     let proxy: Awaited<ReturnType<typeof startE2ENetworkCaptureProxy>> | undefined;
     try {
       await prepareV4ConversationE2E({ skipProvider: true });
-      const root = join(paths.workspace, ".zcode-e2e", "builtin-refresh");
+      const root = join(paths.workspace, ".codez-e2e", "builtin-refresh");
       await mkdir(root, { recursive: true });
       // afterSession 会清理隔离工作区，验收证据必须写到报告目录。
       const artifacts = join(
-        process.env.ZCODE_E2E_ARTIFACT_DIR || join(process.cwd(), ".e2e-artifacts"),
+        process.env.CODEZ_E2E_ARTIFACT_DIR || join(process.cwd(), ".e2e-artifacts"),
         "provider-builtin-refresh",
       );
       await mkdir(artifacts, { recursive: true });
       const release = JSON.parse(
-        await readFile(join(process.cwd(), "../../config/provider/zcode-builtin.json"), "utf8"),
+        await readFile(join(process.cwd(), "../../config/provider/codez-builtin.json"), "utf8"),
       );
       const clientConfig = JSON.parse(
         await readFile(
@@ -132,7 +132,7 @@ describe("Todo127 Built-in 设置刷新整链", () => {
             models: current.models.deleteExactForProvider(providerId),
           }));
           await seedSettings({
-            zcodeEndpointOrigin: "https://builtin-control.e2e.invalid",
+            codezEndpointOrigin: "https://builtin-control.e2e.invalid",
             httpProxy: network.proxyUrl,
             httpProxyNoProxy: "localhost,127.0.0.1,::1",
             httpProxyCaCertPath: network.caCertPath,

@@ -1,7 +1,7 @@
 # Windows 输入派发：electron 直接 Chromium 宿主 PostMessage 可达性探针报告
 
 > 状态：已完成取证（2026-10-20）。计划：[S4 实施计划 §7](./2026-10-19-windows-input-s4-plan.md)。
-> 探针脚本：`packages/zcode-cua/scripts/windows-electron-postmessage-probe.mjs`。
+> 探针脚本：`packages/codez-cua/scripts/windows-electron-postmessage-probe.mjs`。
 > 原始证据：`test/fixtures/reports/electron-postmessage-probe-2026-10-20T02-27-01.json`
 >（3 姿态 × 3 重复，journal oracle + 焦点取证）。
 

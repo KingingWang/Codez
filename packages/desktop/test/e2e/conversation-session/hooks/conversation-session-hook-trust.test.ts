@@ -12,7 +12,7 @@ import { obtainUnreadPairingUrl, showMobileTaskHome } from "#e2e/helpers/web-rem
  * - UI/交互：composer Hook 图标浮层、Settings 钩子行内“信任”按钮、锁定 Switch
  * - Runtime：`.hook-trust-e2e/executions.jsonl` 执行证据（未信任零执行、不补跑、
  *   信任后自然事件执行）
- * - 持久化：`<E2E_HOME>/.zcode/security/workspace-hook-trust-v1.json` 精确落盘
+ * - 持久化：`<E2E_HOME>/.codez/security/workspace-hook-trust-v1.json` 精确落盘
  *
  * fixture 由 wdio.conf.ts 在 beforeSession 阶段（resetE2EHome 内）落盘，
  * 首个 agent 进程冷启动即加载 workspace hooks；spec 内不重复安装。
@@ -30,7 +30,7 @@ import {
   TID_V4_WORKSPACE_HOOK_PENDING_DISMISS,
   TID_V4_WORKSPACE_HOOK_PENDING_REVIEW,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -255,7 +255,7 @@ describe("Workspace Hook Trust (HK05–HK07, HK18–HK19)", () => {
   // 手机 Web 远控与桌面共用同一 Host 设置数据：入口脚本缺失的行同样只显示原因，开关锁定，无信任按钮。
   it("HK19: 手机 Web 远控设置页对入口脚本缺失的 Hook 显示原因、锁定开关、无信任按钮", async function () {
     this.timeout(180000);
-    const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts";
+    const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts";
     const { taskId } = await getV4ConversationState();
     expect(taskId).toBeTruthy();
     // 前序用例的窄视口验收会让侧栏折叠；配对入口在侧栏底部，先展开。
@@ -274,11 +274,11 @@ describe("Workspace Hook Trust (HK05–HK07, HK18–HK19)", () => {
     }
     // 远控 fixture（web-remote-control-auth-gate-fixture 登记本 spec）提供本地 relay 与测试登录态，
     // 否则桌面端的远控弹窗会停在登录门禁，拿不到配对链接。
-    const endpoint = process.env.ZCODE_WEB_REMOTE_CONTROL_URL;
+    const endpoint = process.env.CODEZ_WEB_REMOTE_CONTROL_URL;
     if (!endpoint) throw new Error("HK19 requires the web remote control fixture");
     const pairingUrl = await obtainUnreadPairingUrl(new URL(endpoint).origin);
     const executablePath =
-      process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE || process.env.R3_MOBILE_CHROME;
+      process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE || process.env.R3_MOBILE_CHROME;
     let chrome: Browser | undefined;
     let page: Page | undefined;
     try {

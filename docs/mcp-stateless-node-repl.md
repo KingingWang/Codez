@@ -46,7 +46,7 @@ sessionId -> BrowserControlPort.requireSession -> workspace/remote/clientMode
 
 `node_repl` 的 server instructions 和该 tool description 用一句话同时说明能力与路由禁令：
 
-- **能力**：`js` 以 ZCode agent 的权限运行、没有沙箱（unsandboxed），可加载任意本地模块。文案不得暗示存在
+- **能力**：`js` 以 Codez agent 的权限运行、没有沙箱（unsandboxed），可加载任意本地模块。文案不得暗示存在
   模块白名单或能力限制。vm context 只负责每次调用的全局状态隔离；协议保护 `process` facade 只保护
   MCP stdio 和宿主进程生命周期。
 - **审批路径与 Bash 不同**：`js` 按 MCP 的 high/system 能力审批。build 模式每次询问（可始终允许）；
@@ -141,7 +141,7 @@ ZCT-2114629172776046592 类的单 turn 空转仍未防住：core 的重复调用
 MCP `2026-07-28` 的 `_meta` 是请求 envelope/context，不是独立授权凭证。内置链路按以下顺序校验：
 
 ```text
-tools/call _meta["com.zcode/request-context"]
+tools/call _meta["com.codez/request-context"]
   -> node_repl 只读取宿主命名空间，不读取模型参数里的 session 字段
   -> child 使用进程私有 broker socket + 256-bit token
   -> broker 校验 token（不再按 runtimeScope 拒绝 subagent）
@@ -206,7 +206,7 @@ BrowserControl/desktop guest manager: tab/page authority
   真实 tool result 中的动态 stable tab id 执行 `tabs.get`。每次工具终态先断言 completed 和结果 marker，
   V4 投影滞后时以模型收到的 `tool_result.is_error` 为准；`ReferenceError` 等失败必须在工具边界直接
   暴露，不能退化成后续 UI 或 provider matcher 超时。
-- 同 workspace 两个 session 只保留一个稳定 `zcode-node-repl-mcp` frontend/PID；A/B 的 global、
+- 同 workspace 两个 session 只保留一个稳定 `codez-node-repl-mcp` frontend/PID；A/B 的 global、
   module dirs、tool result、权限和 tab 隔离。
 - 终止 frontend 进程后，不等模型调用就出现新的 frontend PID；重启期间 `mcp__node_repl__js` 不离开
   provider 请求；同一 session 下一次 `js` 成功，原 tab/page 状态连续。重启 5 次都失败时进入 failed；

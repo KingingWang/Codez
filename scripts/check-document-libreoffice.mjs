@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root =
-  process.argv[2] || fileURLToPath(new URL("../apps/zcode-cli/packages", import.meta.url));
+  process.argv[2] || fileURLToPath(new URL("../apps/codez-cli/packages", import.meta.url));
 async function files(directory, relative = "") {
   const found = [];
   for (const item of await readdir(join(directory, relative), { withFileTypes: true })) {
@@ -24,7 +24,7 @@ try {
     const actual = await files(join(target, profile));
     if (JSON.stringify(actual) !== JSON.stringify(expected))
       throw new Error(`${name}: profile file set differs`);
-    for (const file of ["zcode_libreoffice.py", ...expected.map((path) => join(profile, path))]) {
+    for (const file of ["codez_libreoffice.py", ...expected.map((path) => join(profile, path))]) {
       const [a, b] = await Promise.all([
         readFile(join(reference, file)),
         readFile(join(target, file)),

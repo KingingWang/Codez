@@ -25,7 +25,7 @@
 ## 3. 分层架构（4 进程边界）
 
 ```
-AGENT (zcode-cli 子进程, stdio NDJSON ZCode Protocol)
+AGENT (codez-cli 子进程, stdio NDJSON Codez Protocol)
   node_repl: 每 session 一个持久 vm.Context（sandbox === globalThis，跨调用保持）
              + nodeRepl.write sink + 动态 import() + require
   browser-client 库: setupBrowserRuntime({globals,execute}) → agent.browsers.*
@@ -34,7 +34,7 @@ AGENT (zcode-cli 子进程, stdio NDJSON ZCode Protocol)
                      → context.requestClient("interaction/browserExecute", {command})
         │ stdio JSON-RPC 反向请求（server→client request）
 HOST (utilityProcess, 业务 services)
-  zcodeAgentService.client.onRequest: case "interaction/browserExecute"
+  codezAgentService.client.onRequest: case "interaction/browserExecute"
         校验 → BrowserControlMainBridge.execute() → respondResult/respondError
         （纯 RPC 中继：不 emitSessionEvent、不进 UI，区别于 permission 请求）
         │ parentPort（MessagePortMain，按 requestId 关联）
@@ -71,7 +71,7 @@ await nodeRepl.emitImage({ base64: shot.image.base64, mimeType: shot.image.mimeT
 
 见 plan（T0–T6 为 P0，T7–T11 为 P1）。每 task 先写组件 spec 再码，单独 Conventional Commit。
 
-- **T1/T2 验证**：`pnpm --filter @zcode/core test` + `@zcode/contracts`；纯 REPL 语义（globalThis 持久/reset 清空/顶层 await/动态 import/write 收集/AbortSignal）单测全绿。
+- **T1/T2 验证**：`pnpm --filter @codez/core test` + `@codez/contracts`；纯 REPL 语义（globalThis 持久/reset 清空/顶层 await/动态 import/write 收集/AbortSignal）单测全绿。
 - **P0 端到端**：desktop 起（feature 开关开）→ agent 会话模型写上面那段 js → 断言 main WebContentsView 实际导航、返回非空 PNG base64；抓 main 日志确认 CDP attach + `Page.captureScreenshot`。
 - **收尾**：`pnpm typecheck`（含 desktop renderer/main/preload 单独 tsc）+ `pnpm lint`。
 

@@ -130,7 +130,7 @@ Picker 只展示当前 authority 声明的候选，不借此扩大或收紧工�
 ## Verification
 
 - 正式 Desktop E2E `conversation-session-v4-mention.test.ts` 在真实 workspace 写入临时
-  `.zcode/skills/e2e-session-skill-catalog/SKILL.md`：旧 resident Session 的 `/`、`$` 均不出现该
+  `.codez/skills/e2e-session-skill-catalog/SKILL.md`：旧 resident Session 的 `/`、`$` 均不出现该
   Skill；点击新建任务后两个入口出现同一个 canonical `skill:` 候选。
 - latest passing artifact：`desktop-e2e-20260820-135214-127`。该 VM 代表 desktop local 的 S08-A/B；
   runtime restart、remote attachment、scope 迟到结果与 prewarm key 切换继续由 focused tests 取证，

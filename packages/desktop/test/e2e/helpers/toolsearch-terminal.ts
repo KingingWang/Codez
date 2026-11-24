@@ -10,15 +10,15 @@ import type { createToolSearchCliFixture } from "./toolsearch-cli-process.js";
 let tuiBuild: Promise<void> | undefined;
 
 /**
- * 构建 CLI `tui` 子命令加载的 `@zcode/tui` dist；同一 worker 只构建一次。
- * 修复原因：`zcode.cjs` 把 `@zcode/tui` 作为外部模块，从其 `dist/index.js` 加载；desktop agent
+ * 构建 CLI `tui` 子命令加载的 `@codez/tui` dist；同一 worker 只构建一次。
+ * 修复原因：`codez.cjs` 把 `@codez/tui` 作为外部模块，从其 `dist/index.js` 加载；desktop agent
  * 构建（scripts/build-desktop-agent-cli.mjs）不产出该 dist，干净的 Windows CI 工作区里 TUI 启动即报
- * `Cannot find module …/@zcode/tui/dist/index.js`（PTY 捕获为证），用例只表现为"TUI 未完成首帧
+ * `Cannot find module …/@codez/tui/dist/index.js`（PTY 捕获为证），用例只表现为"TUI 未完成首帧
  * 终端绘制"。本地残留旧 dist 时也会跑到过期 TUI，因此每次运行都重新构建。
  */
 export function ensureToolSearchTuiBuild(): Promise<void> {
   tuiBuild ??= new Promise<void>((resolveBuild, rejectBuild) => {
-    const child = spawnProcess("pnpm", ["--filter", "@zcode/tui", "build"], {
+    const child = spawnProcess("pnpm", ["--filter", "@codez/tui", "build"], {
       cwd: resolve(process.cwd(), "../.."),
       stdio: "inherit",
       // Windows 上 pnpm 是 .cmd 包装脚本，必须经 shell 启动。
@@ -26,7 +26,7 @@ export function ensureToolSearchTuiBuild(): Promise<void> {
     });
     child.on("error", rejectBuild);
     child.on("exit", (code) =>
-      code === 0 ? resolveBuild() : rejectBuild(new Error(`@zcode/tui 构建失败，退出码 ${code}`)),
+      code === 0 ? resolveBuild() : rejectBuild(new Error(`@codez/tui 构建失败，退出码 ${code}`)),
     );
   });
   return tuiBuild;

@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { setGlobalProxyFromEnv } from "node:http";
 import { sep } from "node:path";
 import { format } from "node:util";
-import { ExtensionError, type ExtensionHostToMainMessage } from "@zcode/shared/extension-host";
+import { ExtensionError, type ExtensionHostToMainMessage } from "@codez/shared/extension-host";
 
 // 扩展进程的运行时护栏（docs/plugins/extension-host.md §7.1）：
 // - 扩展代码的未捕获错误只记日志，并标明所属插件，不让进程退出。

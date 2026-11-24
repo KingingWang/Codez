@@ -52,9 +52,9 @@ export const DEFAULT_E2E_DESKTOP_BUILD_INPUTS = [
   "tsconfig.base.json",
   "packages/desktop/scripts/build-metadata.mjs",
   "scripts/builtin-provider-config.mjs",
-  "config/provider/zcode-builtin.json",
-  "config/provider/zcode-builtin.test.json",
-  "packages/provider-node/src/zcode-builtin-release.ts",
+  "config/provider/codez-builtin.json",
+  "config/provider/codez-builtin.test.json",
+  "packages/provider-node/src/codez-builtin-release.ts",
   "packages/desktop/scripts/run-production-build.mjs",
   "packages/desktop/tsconfig.json",
   "packages/desktop/tsconfig.host.json",
@@ -81,25 +81,25 @@ export const E2E_DESKTOP_BUILD_ENV_NAMES = [
   "VITE_REWARDS_WEBVIEW_ORIGIN",
   "VITE_ZAI_OAUTH_CLIENT_ID",
   "VITE_ZAI_OAUTH_ORIGIN",
-  "VITE_ZCODE_BASE_URL",
-  "VITE_ZCODE_E2E_STORE_BRIDGE",
-  "VITE_ZCODE_ENDPOINT_ORIGIN",
+  "VITE_CODEZ_BASE_URL",
+  "VITE_CODEZ_E2E_STORE_BRIDGE",
+  "VITE_CODEZ_ENDPOINT_ORIGIN",
   "ZAI_BUSINESS_BASE_URL",
   "ZAI_BUSINESS_LOGIN_URL",
   "ZAI_OAUTH_CLIENT_ID",
   "ZAI_OAUTH_ORIGIN",
-  "ZCODE_BASE_URL",
-  "ZCODE_COMMIT",
-  "ZCODE_CUA_HELPER_BUILD_ID",
-  "ZCODE_ENDPOINT_ORIGIN",
-  "ZCODE_ENV",
-  "ZCODE_E2E_COVERAGE",
-  "ZCODE_E2E_KEEP_BUILD_CACHE",
-  "ZCODE_PACKAGED_AGENT_OTEL_ENDPOINT",
-  "ZCODE_PACKAGED_AGENT_OTEL_HEADERS",
-  "ZCODE_PACKAGED_AGENT_OTEL_SERVICE_NAME",
-  "ZCODE_PRODUCTION_BASE_URL",
-  "ZCODE_TEST_BASE_URL",
+  "CODEZ_BASE_URL",
+  "CODEZ_COMMIT",
+  "CODEZ_CUA_HELPER_BUILD_ID",
+  "CODEZ_ENDPOINT_ORIGIN",
+  "CODEZ_ENV",
+  "CODEZ_E2E_COVERAGE",
+  "CODEZ_E2E_KEEP_BUILD_CACHE",
+  "CODEZ_PACKAGED_AGENT_OTEL_ENDPOINT",
+  "CODEZ_PACKAGED_AGENT_OTEL_HEADERS",
+  "CODEZ_PACKAGED_AGENT_OTEL_SERVICE_NAME",
+  "CODEZ_PRODUCTION_BASE_URL",
+  "CODEZ_TEST_BASE_URL",
 ];
 
 const WORKSPACE_DEPENDENCY_FIELDS = [
@@ -112,25 +112,25 @@ const WORKSPACE_DEPENDENCY_FIELDS = [
 /**
  * E2E 桌面包固定按 test 环境构建。
  *
- * bug 根因：从 ZCode 客户端拉起的 shell 里带有应用自身环境（实测 ZCODE_ENV=production、
- * ZCODE_BASE_URL=https://zcode.z.ai）。这些变量被 tsup 当作构建输入编译进 main/host 包，
- * 于是 `resolveZCodeEndpointOrigin` 走 production 分支、忽略 settings 里的 endpoint，
+ * bug 根因：从 Codez 客户端拉起的 shell 里带有应用自身环境（实测 CODEZ_ENV=production、
+ * CODEZ_BASE_URL=https://zcode.z.ai）。这些变量被 tsup 当作构建输入编译进 main/host 包，
+ * 于是 `resolveCodezEndpointOrigin` 走 production 分支、忽略 settings 里的 endpoint，
  * spec 用 fixture 起的本地 mock server 全部收不到请求，表现为大批配置类用例失败。
- * 构建前统一归一，runner 与本脚本共用同一结果；ZCODE_BASE_URL 等运行时变量也不能进入构建。
+ * 构建前统一归一，runner 与本脚本共用同一结果；CODEZ_BASE_URL 等运行时变量也不能进入构建。
  */
 export const E2E_DESKTOP_BUILD_INHERITED_ENV_NAMES = [
-  "ZCODE_BASE_URL",
-  "ZCODE_RUNTIME_ENV",
-  "ZCODE_APP_VERSION",
-  "ZCODE_BUILD_COMMIT_ID",
-  "ZCODE_PROCESS_LABEL",
-  "ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED",
-  "ZCODE_CUA_BUNDLED_HELPER_APP_PATH",
-  "ZCODE_CUA_LAUNCHER_PID",
+  "CODEZ_BASE_URL",
+  "CODEZ_RUNTIME_ENV",
+  "CODEZ_APP_VERSION",
+  "CODEZ_BUILD_COMMIT_ID",
+  "CODEZ_PROCESS_LABEL",
+  "CODEZ_DESKTOP_CONTEXT_PROMPT_ENABLED",
+  "CODEZ_CUA_BUNDLED_HELPER_APP_PATH",
+  "CODEZ_CUA_LAUNCHER_PID",
 ];
 
 export function normalizeE2EDesktopBuildEnv(env = process.env) {
-  const normalized = { ...env, ZCODE_ENV: "test" };
+  const normalized = { ...env, CODEZ_ENV: "test" };
   for (const name of E2E_DESKTOP_BUILD_INHERITED_ENV_NAMES) {
     delete normalized[name];
   }
@@ -177,7 +177,7 @@ export function createE2EDesktopBuildFingerprint({
 }
 
 export function resolveE2EDesktopBuildInputPaths({
-  entryPackageName = "@zcode/desktop",
+  entryPackageName = "@codez/desktop",
   repoRoot = REPO_ROOT,
 } = {}) {
   const workspacePackages = readWorkspacePackages(repoRoot);
@@ -207,7 +207,7 @@ export function resolveE2EDesktopBuildInputPaths({
     }
   }
 
-  // Bug 根因：手写输入目录遗漏了 tsup noExternal 内联的 @zcode/server，导致同一
+  // Bug 根因：手写输入目录遗漏了 tsup noExternal 内联的 @codez/server，导致同一
   // HEAD 下修改 server 仍可能命中旧 bundle。依赖图作为权威输入，新增 workspace
   // 依赖时无需再同步维护缓存白名单。
   return [...new Set([...DEFAULT_E2E_DESKTOP_BUILD_INPUTS, ...packageInputPaths])].sort();
@@ -283,7 +283,7 @@ export function ensureE2EDesktopBuild({
     // packages/desktop/out。fingerprint 与 cache hit 必须在获得共享写锁后重新计算和检查。
     const buildEnv = normalizeE2EDesktopBuildEnv(env);
     const fingerprint = createE2EDesktopBuildFingerprint({ ...fingerprintOptions, env: buildEnv });
-    const forceBuild = env.ZCODE_E2E_FORCE_DESKTOP_BUILD === "1";
+    const forceBuild = env.CODEZ_E2E_FORCE_DESKTOP_BUILD === "1";
     if (
       !forceBuild &&
       isE2EDesktopBuildCacheHit({
@@ -303,7 +303,7 @@ export function ensureE2EDesktopBuild({
     if (buildDesktop) {
       buildDesktop();
     } else {
-      execFileSync("pnpm", ["--filter", "@zcode/desktop", "build:no-runtime-assets"], {
+      execFileSync("pnpm", ["--filter", "@codez/desktop", "build:no-runtime-assets"], {
         cwd: REPO_ROOT,
         env: buildEnv,
         shell: process.platform === "win32",

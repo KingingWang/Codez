@@ -95,10 +95,10 @@ async function runtime() {
       update: async () => {},
     },
   });
-  ipcMain.handle("zcode:open-update-status-window", () => openUpdateStatusWindow());
+  ipcMain.handle("codez:open-update-status-window", () => openUpdateStatusWindow());
   let holdNextSnapshot = false;
   let releaseSnapshot;
-  ipcMain.handle("zcode:get-update-state", () => {
+  ipcMain.handle("codez:get-update-state", () => {
     const state = getAutoUpdaterState();
     if (!holdNextSnapshot) return state;
     holdNextSnapshot = false;
@@ -109,10 +109,10 @@ async function runtime() {
       };
     });
   });
-  ipcMain.handle("zcode:get-auto-update-preferences", () => ({
+  ipcMain.handle("codez:get-auto-update-preferences", () => ({
     autoDownloadAndInstallUpdates: false,
   }));
-  ipcMain.handle("zcode:get-desktop-session-activity", () => ({ runningAgentSessionCount: 0 }));
+  ipcMain.handle("codez:get-desktop-session-activity", () => ({ runningAgentSessionCount: 0 }));
   const main = new BrowserWindow({
     width: 1100,
     height: 760,
@@ -235,16 +235,16 @@ test("普通更新窗口关闭、后台下载、快照恢复和退出", { timeou
         'const {contextBridge,ipcRenderer}=require("electron");',
         "const on=(channel,fn)=>{const handler=(_event,value)=>fn(value);ipcRenderer.on(channel,handler);return()=>ipcRenderer.removeListener(channel,handler)};",
         'contextBridge.exposeInMainWorld("updateFixture",{',
-        'getUpdateState:()=>ipcRenderer.invoke("zcode:get-update-state"),',
-        'onUpdateStateChanged:fn=>on("zcode:update-state-changed",fn),',
-        'onUpdateReady:fn=>on("zcode:update-ready",fn),',
-        'onApplicationLocaleChanged:fn=>on("zcode:application-locale-changed",fn),',
-        'getAutoUpdatePreferences:()=>ipcRenderer.invoke("zcode:get-auto-update-preferences"),',
-        'getDesktopSessionActivity:()=>ipcRenderer.invoke("zcode:get-desktop-session-activity"),',
-        'downloadUpdate:()=>ipcRenderer.invoke("zcode:download-update"),',
-        'cancelUpdateDownload:()=>ipcRenderer.invoke("zcode:cancel-update-download"),',
-        'quitAndInstallUpdate:()=>ipcRenderer.invoke("zcode:quit-and-install-update"),',
-        'openUpdateStatusWindow:()=>ipcRenderer.invoke("zcode:open-update-status-window"),',
+        'getUpdateState:()=>ipcRenderer.invoke("codez:get-update-state"),',
+        'onUpdateStateChanged:fn=>on("codez:update-state-changed",fn),',
+        'onUpdateReady:fn=>on("codez:update-ready",fn),',
+        'onApplicationLocaleChanged:fn=>on("codez:application-locale-changed",fn),',
+        'getAutoUpdatePreferences:()=>ipcRenderer.invoke("codez:get-auto-update-preferences"),',
+        'getDesktopSessionActivity:()=>ipcRenderer.invoke("codez:get-desktop-session-activity"),',
+        'downloadUpdate:()=>ipcRenderer.invoke("codez:download-update"),',
+        'cancelUpdateDownload:()=>ipcRenderer.invoke("codez:cancel-update-download"),',
+        'quitAndInstallUpdate:()=>ipcRenderer.invoke("codez:quit-and-install-update"),',
+        'openUpdateStatusWindow:()=>ipcRenderer.invoke("codez:open-update-status-window"),',
         "openExternal:()=>{},",
         "});",
       ].join("\n"),
@@ -259,11 +259,11 @@ test("普通更新窗口关闭、后台下载、快照恢复和退出", { timeou
         'import React,{useEffect,useState} from "react";import {createRoot} from "react-dom/client";',
         'import {UpdateStatusButton} from "@/UpdateStatusButton";import {TooltipProvider} from "@/components/ui/tooltip";',
         'import {UpdateStatusWindowRoot} from "@/UpdateStatusWindowRoot";',
-        'import {ZCodeIntlProvider} from "@/i18n/IntlProvider";import "@/styles.css";',
+        'import {CodezIntlProvider} from "@/i18n/IntlProvider";import "@/styles.css";',
         'const params=new URLSearchParams(location.search);const locale=params.get("locale")||"zh-CN";',
         'document.documentElement.classList.add("theme-"+(params.get("theme")||"zai-light"));',
         'document.body.style.background="var(--color-background)";const platform=window.updateFixture;',
-        'function Main(){const[state,setState]=useState(null);useEffect(()=>{platform.getUpdateState().then(setState);return platform.onUpdateStateChanged(setState)},[]);return <ZCodeIntlProvider initialLocale={locale}><TooltipProvider><main style={{padding:32}}><UpdateStatusButton platform={platform} updateState={state} version={null}/><button id="workspace">Workspace</button></main></TooltipProvider></ZCodeIntlProvider>}',
+        'function Main(){const[state,setState]=useState(null);useEffect(()=>{platform.getUpdateState().then(setState);return platform.onUpdateStateChanged(setState)},[]);return <CodezIntlProvider initialLocale={locale}><TooltipProvider><main style={{padding:32}}><UpdateStatusButton platform={platform} updateState={state} version={null}/><button id="workspace">Workspace</button></main></TooltipProvider></CodezIntlProvider>}',
         'createRoot(document.getElementById("root")!).render(params.get("windowKind")==="update-status"?<UpdateStatusWindowRoot platform={platform} initialLocale={locale} onRequestClose={()=>window.close()}/>:<Main/>);',
       ].join("\n"),
     );
@@ -310,7 +310,7 @@ test("普通更新窗口关闭、后台下载、快照恢复和退出", { timeou
         PRELOAD_PATH: JSON.stringify(preload),
         RENDERER_URL: JSON.stringify(vite.resolvedUrls.local[0]),
       },
-      alias: { "@zcode/shared": resolve(root, "packages/shared/src/index.ts") },
+      alias: { "@codez/shared": resolve(root, "packages/shared/src/index.ts") },
       plugins: [
         {
           name: "isolated-logger",

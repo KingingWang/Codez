@@ -63,7 +63,7 @@ export interface CliMemoryAllocation {
 }
 
 export interface CliMemoryDiagnostic {
-  format: "zcode-cli-memory-v1";
+  format: "codez-cli-memory-v1";
   timestamp: number;
   instanceId: string;
   pid: number;
@@ -102,7 +102,7 @@ export function sanitizeCliMemoryDiagnostic(value: unknown): CliMemoryDiagnostic
   const token = (candidate: unknown): string =>
     typeof candidate === "string" && /^[a-zA-Z0-9._-]{1,80}$/.test(candidate) ? candidate : "";
   const raw = record(value);
-  if (!raw || raw.format !== "zcode-cli-memory-v1" || !Array.isArray(raw.samples)) return null;
+  if (!raw || raw.format !== "codez-cli-memory-v1" || !Array.isArray(raw.samples)) return null;
   const sampler = record(raw.sampler);
   if (
     !sampler ||
@@ -147,7 +147,7 @@ export function sanitizeCliMemoryDiagnostic(value: unknown): CliMemoryDiagnostic
   const degradation = record(sampler.degradation);
   const reason = CLI_MEMORY_DEGRADATION_REASONS.find((item) => item === degradation?.reason);
   return {
-    format: "zcode-cli-memory-v1",
+    format: "codez-cli-memory-v1",
     timestamp: number(raw.timestamp),
     instanceId:
       typeof raw.instanceId === "string" && /^[a-f0-9-]{36}$/.test(raw.instanceId)

@@ -6,7 +6,7 @@ import {
   ProjectAccessTokenTransientError,
   projectAccessTokenRetryAfterMs,
   type ApiClient,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { ICredentialService } from "#src/credential/credential.js";
 import type { LocalCredentialService } from "#src/credential/credentialService.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";

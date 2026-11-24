@@ -7,17 +7,17 @@ non-API links.
 
 ## Rules
 
-- `ZCODE_ENV=production` uses `https://bigmodel.cn` for BigModel API requests.
-- `ZCODE_ENV=test` uses `https://bigmodel.cn` for BigModel API requests.
+- `CODEZ_ENV=production` uses `https://bigmodel.cn` for BigModel API requests.
+- `CODEZ_ENV=test` uses `https://bigmodel.cn` for BigModel API requests.
 - `BIGMODEL_API_BASE_URL` may override the selected API origin for local debugging.
 - `BIGMODEL_TEST_API_BASE_URL` and `BIGMODEL_PRODUCTION_API_BASE_URL` are scoped
   overrides, following the same pattern as Z.ai test/production endpoint config.
 - BigModel OAuth authorize/login uses the same environment main domain with
-  `/login`, so `ZCODE_ENV=test` opens `https://bigmodel.cn/login`.
+  `/login`, so `CODEZ_ENV=test` opens `https://bigmodel.cn/login`.
 - Docs, purchase pages, and model runtime subdomains such as `open.bigmodel.cn`
   are not changed by this environment switch.
 - The selected origin is resolved by the shared endpoint resolver in
-  `packages/shared/src/zcodeEndpoint.ts`; service-side OAuth and provider code should
+  `packages/shared/src/codezEndpoint.ts`; service-side OAuth and provider code should
   pass runtime `env` into that resolver instead of reading compiled globals.
 
 ## Covered Request Types

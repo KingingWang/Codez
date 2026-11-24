@@ -39,7 +39,7 @@ Wiki 选择 / 生成设置（无输出预算）
 ### Todo 94 验证与二次复审
 
 - 最终相关单测：`pnpm exec vitest run packages/services/test/repoWiki packages/ui/test/repoWiki packages/shared/test/repoWiki.test.ts --reporter=dot --silent`，15 文件 / 160 条通过。覆盖两类请求、多种模型上限、工具循环/静态回退/压缩 final、旧 Wiki/Draft 读取不写盘与正常保存移除旧预算、截断普通重试、取消和超时。
-- Pro 隔离目录 `/tmp/zcode-todo94-97.qBney3`，源为基线 HEAD + 当前源码差异；未修改 Pro 原工作区或用户数据。依赖下载遇到 SSH 钥匙串错误，未解锁或改凭据；复用现有隔离仓库完全同 SHA256 锁文件的依赖，重新构建当前桌面源码。
+- Pro 隔离目录 `/tmp/codez-todo94-97.qBney3`，源为基线 HEAD + 当前源码差异；未修改 Pro 原工作区或用户数据。依赖下载遇到 SSH 钥匙串错误，未解锁或改凭据；复用现有隔离仓库完全同 SHA256 锁文件的依赖，重新构建当前桌面源码。
 - Pro 正式 E2E：generation-settings、generation-produces-wiki 两项通过。证据目录：`packages/desktop/.e2e-artifacts/desktop-e2e-20260908161324585-p92955-4b3566c99ee6dd7f`（上述 Pro 隔离目录内）。第一次运行生成用例仍点击单一 disabled 档位菜单，现行 UI 是固定值，因测试过时失败；调整为验证固定值后重跑通过，未修改产品推理行为。
 - 二次复审：目录/正文/失败页补齐/自动刷新不再存在 Wiki 预算覆盖；ModelConfig 从目标 View 取 Limit，ModelClient 原样传入，最终 Model 校验和 Option Map 不变。没有 Factory 默认值、Provider 特判、远端发送同步或执行中换模型。
 - UI 删除共用组件中的两处入口和双语文案，无新增样式；不能据此宣称手机实机、Windows 或真实供应商请求已验证。E2E 使用 L2 mock，实际 API 字段仍由既有 Map 契约测试负责。
@@ -67,7 +67,7 @@ Wiki 选择 / 生成设置（无输出预算）
 
 ### Todo 96 核心验证与二审
 
-- 根工作区 28 文件 / 438 条通过：Bot 全组、Subagents、Automation Repo、Wiki selection、ZCodeAgentService、共享身份、Account resolver、Host 派发、Draft control。Agent 6 文件 / 73 条通过：真实 SQLite 迁移、App/Protocol 恢复、Subagent 初始化及冷恢复。首次 Agent 测试命中了旧 adapters dist，重建 contracts/adapters 后复跑，未用改断言掩盖旧构建。
+- 根工作区 28 文件 / 438 条通过：Bot 全组、Subagents、Automation Repo、Wiki selection、CodezAgentService、共享身份、Account resolver、Host 派发、Draft control。Agent 6 文件 / 73 条通过：真实 SQLite 迁移、App/Protocol 恢复、Subagent 初始化及冷恢复。首次 Agent 测试命中了旧 adapters dist，重建 contracts/adapters 后复跑，未用改断言掩盖旧构建。
 - 根 `pnpm typecheck`、`pnpm lint` 和 Agent bootstrap typecheck 通过；Lint 41 警告 / 0 错误。最终清理已有未使用项另计，不声称全库零警告。
 - 删除专用于旧迁移的 `session/resolveLegacyModelProvider` RPC、Host 装配回调和 Agent 注入；真实账号连接迁移/OAuth 查询不动。Protocol 恢复测试同时覆盖 continuous/replayable，并断言恢复不发该迁移 RPC。
 - Bot 菜单原有跨 Workspace 全局缓存会在目标 View 失败后展示其他 Host 的模型；删除该缓存和本地借用路径，原持久选择不变，目标恢复后正常重读。回归测试显式保存真实 Bot context 后覆盖同路径不同远端身份，不能用未持久化的测试 context 假装切换成功。

@@ -9,8 +9,8 @@ WSL 连接项目时，左侧任务栏与聊天区的任务运行状态持续不�
 - 症状①：任务列表在转圈（loading），聊天区任务已结束；
 - 症状②：任务列表没有转圈，聊天区任务仍在进行中。
 
-事发环境：ZCode 3.9.0（commit cb07e825，Windows 11，production），workspace `remote:wsl:default:/home/dev`。
-证据材料：用户日志 bundle `zcode-logs-20260821-202010-wsl-status`（含 4 天桌面日志、Windows 侧 CLI 日志、tasks-index.sqlite）。
+事发环境：Codez 3.9.0（commit cb07e825，Windows 11，production），workspace `remote:wsl:default:/home/dev`。
+证据材料：用户日志 bundle `codez-logs-20260821-202010-wsl-status`（含 4 天桌面日志、Windows 侧 CLI 日志、tasks-index.sqlite）。
 
 ## 结论
 
@@ -114,11 +114,11 @@ CLI(WSL)              renderer sessionsIndexStore           任务列表      �
 | 2   | error 态保留旧投影且无出口；dormant 分支才正确清空                                     | `packages/ui/src/v4/sessionsIndexStore.ts:522-527,459-468`（对照 :585-590）                          |
 | 3   | 消费方不查 status，error 排除在 hydrating 外                                           | `packages/ui/src/v4/useWorkspaceSessionsIndexItems.ts:85-91,177-191`                                 |
 | 4   | store 是 workspace 级长命对象，切 tab/关面板不重建，error 卡死无用户可救               | `packages/ui/src/v4/sessionsIndexRegistry.ts:88-142`                                                 |
-| 5   | CLI 无订阅者门禁 + existing publisher 不重放种子                                       | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/v4-gateway.ts:816,932-960`                  |
+| 5   | CLI 无订阅者门禁 + existing publisher 不重放种子                                       | `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/v4-gateway.ts:816,932-960`                  |
 | 6   | `flushIndex` 对空订阅自 no-op、deltaLog 有界（去门禁安全）                             | `v4-gateway.ts:845-850`、`sessions-index-publisher.ts:93-99`                                         |
 | 7   | sessions-index 是 conversation 投影的下游窄投影（两 surface 同源）                     | `v4-gateway.ts:817-822`                                                                              |
-| 8   | 冷启动种子无条件 completedSuccess（不会发布 running）                                  | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/v4-bridge.ts:1239-1250`                        |
-| 9   | hydration 把未收口 turn 合成 cancelled 收口（聊天区自愈）                              | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/transcript-hydration.ts:786-788`            |
+| 8   | 冷启动种子无条件 completedSuccess（不会发布 running）                                  | `apps/codez-cli/packages/bootstrap/src/codez-protocol/v4-bridge.ts:1239-1250`                        |
+| 9   | hydration 把未收口 turn 合成 cancelled 收口（聊天区自愈）                              | `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/transcript-hydration.ts:786-788`            |
 | 10  | 远程 lifecycle/restart 靠两跳 RPC 隐式透传，无显式 relay；RepoWiki 有失效前科          | `packages/desktop/src/host/remoteWorkspaceServiceCollection.ts:173,300-307`                          |
 | 11  | conversation 侧换代走 ReplaceableConversationTransport.replace()，每次打开会话全新建立 | `packages/ui/src/v4/workspaceConnectionRegistry.ts:167-189`                                          |
 | 12  | 生产构建 renderer 全部日志 no-op（本次定位最大盲区）                                   | `packages/ui/src/logger.ts:38-41`                                                                    |
@@ -132,7 +132,7 @@ CLI(WSL)              renderer sessionsIndexStore           任务列表      �
 - 手机远控链路干扰 → 截图为桌面端，web-remote bridge 日志全部指向本地 test-00x 工作区。
 - 远程 lifecycle 事件完全不转发 → 反证：per-remote-session attachment 通道 + ProxyChannel
   延迟发现分支可透传（`packages/rpc/src/proxy-channel.ts:64-80`），Local Host 自身消费到了
-  remote lifecycle（`zcodeAgentConnectionScope.ts:627-645`）。可靠性未被 e2e 覆盖，列为后续项。
+  remote lifecycle（`codezAgentConnectionScope.ts:627-645`）。可靠性未被 e2e 覆盖，列为后续项。
 
 ## 推荐修复（最小连贯变更，两处互补，均为根因修复）
 
@@ -144,7 +144,7 @@ CLI(WSL)              renderer sessionsIndexStore           任务列表      �
    `connect(transport, { forceSnapshot: true })`；撞到 runtime-unavailable 错误时沿既有分支
    转 `dormant`（防重连风暴，dormant 由 lifecycle available 唤醒）。
 
-### R-B：`apps/zcode-cli/.../v4-gateway.ts` `publishCurrentSummaryToIndex` —— 恢复"归约态忠实"
+### R-B：`apps/codez-cli/.../v4-gateway.ts` `publishCurrentSummaryToIndex` —— 恢复"归约态忠实"
 
 - 把 `!indexPublisher.hasSubscribers()` 从早退条件移除（保留 `!indexPublisher`）；
   `flushIndex` 对空订阅集自然 no-op，帧语义/seq 记账/schema 全部不变。
@@ -190,7 +190,7 @@ CLI(WSL)              renderer sessionsIndexStore           任务列表      �
 1. 回归测试 1（修复前必红）：`packages/ui/test/sessionsIndexStore.test.ts`
    —— store live 且含 `phase=running` → 注入 recovery fail-closed → 断言投影清空、无 running；
    推进 fake timer → 断言自动 fresh subscribe 成功后 `status=live` 且投影为新 snapshot。
-2. 回归测试 2（修复前必红）：`apps/zcode-cli/packages/bootstrap/tests/v4-gateway-sessions-index.test.ts`
+2. 回归测试 2（修复前必红）：`apps/codez-cli/packages/bootstrap/tests/v4-gateway-sessions-index.test.ts`
    —— 首次订阅→全部退订→无订阅者窗口注入 TurnStarted+TurnComplete→重订阅
    → 断言 snapshot phase 为当前真值而非窗口前旧值。
 3. 不变量测试：error 进入路径全枚举（failRecovery/resync 失败/connect 非瞬态失败）均不残留
@@ -205,7 +205,7 @@ CLI(WSL)              renderer sessionsIndexStore           任务列表      �
 ## 剩余风险与后续材料
 
 - 截图时刻端内状态不可回放（renderer 无日志），判级 probable；R-C 落地后可闭环。
-- 下次复现请让用户额外导出 WSL 内 `~/.zcode/cli/log`（当前 bundle 只含 Windows 侧 CLI 日志）。
+- 下次复现请让用户额外导出 WSL 内 `~/.codez/cli/log`（当前 bundle 只含 Windows 侧 CLI 日志）。
 - 远程两跳事件隐式透传可靠性未被 e2e 覆盖，独立跟进。
 
 ## 修复实施记录
@@ -223,7 +223,7 @@ CLI(WSL)              renderer sessionsIndexStore           任务列表      �
 
 - `packages/ui/test/sessionsIndexStore.test.ts`：recovery fail-closed 清空与 fresh subscribe、非瞬态
   subscribe 的 5s/15s 退避。
-- `apps/zcode-cli/packages/bootstrap/tests/v4-gateway-sessions-index.test.ts`：无订阅者窗口内
+- `apps/codez-cli/packages/bootstrap/tests/v4-gateway-sessions-index.test.ts`：无订阅者窗口内
   `TurnStarted` 后重订阅 snapshot 返回 `phase=running`。
 
 R-C（生产 renderer 放行 `warn/error`）以及远程 lifecycle e2e 仍是独立后续项，本次未改变。
@@ -256,7 +256,7 @@ R-C（生产 renderer 放行 `warn/error`）以及远程 lifecycle e2e 仍是独
   1 条新用例失败（新测试确实抓得住原缺陷）。
 - 绿验证：修复代码上两文件全绿（28 + 16 通过）。
 - 门禁：根 `pnpm typecheck` 通过；`pnpm lint` 0 errors（39 个 warnings 均不涉及本次改动文件）。
-  `apps/zcode-cli/packages/bootstrap` 局部 `tsc --noEmit` 有 3 个存量/环境错误
+  `apps/codez-cli/packages/bootstrap` 局部 `tsc --noEmit` 有 3 个存量/环境错误
   （`product-projection.ts:2457`、`workspace-model-catalog.ts:22-23`），均不在本次改动文件内，
   以 CI 为准复核。
 
@@ -278,7 +278,7 @@ R-C（生产 renderer 放行 `warn/error`）以及远程 lifecycle e2e 仍是独
 
 > Todo103：以下保留 staging T3 历史调查与裁决；本轮证据另记整合账本，不把历史验证当成本轮通过。
 
-## 第二次事故（2026-09-04，ZCode 3.11.1）：Settings 覆盖远程 workspace 顶掉侧栏 sessions-index 订阅（T3）
+## 第二次事故（2026-09-04，Codez 3.11.1）：Settings 覆盖远程 workspace 顶掉侧栏 sessions-index 订阅（T3）
 
 ### 症状与判级
 
@@ -349,4 +349,4 @@ R-C（生产 renderer 放行 `warn/error`）以及远程 lifecycle e2e 仍是独
   或 facade 在 `remember()` 驱逐 owned entry 时通知旧 owner。
 - D3 mitigation（不建议）：让 tasks-index 中更新且已终态的行覆盖陈旧 running activity，会掩盖症状且与
   "loading 必须由 runtime 证明"方向相反。
-- 顺带发现（另开工单）：14:50:36–14:51:38 十二次 `zcode-agent.createSession FAIL`，本地工作区键被路由到 WSL 远端服务。
+- 顺带发现（另开工单）：14:50:36–14:51:38 十二次 `codez-agent.createSession FAIL`，本地工作区键被路由到 WSL 远端服务。

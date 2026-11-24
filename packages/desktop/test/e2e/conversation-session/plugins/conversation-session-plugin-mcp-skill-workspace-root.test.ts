@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { TID_SETTINGS_BACK_BUTTON } from "@zcode/shared/test-ids";
+import { TID_SETTINGS_BACK_BUTTON } from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,

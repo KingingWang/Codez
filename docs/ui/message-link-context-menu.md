@@ -4,7 +4,7 @@
 
 | 分组 | 中文            | 英文            | 图标与行为                                  |
 | ---- | --------------- | --------------- | ------------------------------------------- |
-| 打开 | 在 ZCode 中打开 | Open in ZCode   | `PanelRight`；调用现有强制内置浏览器入口    |
+| 打开 | 在 Codez 中打开 | Open in Codez   | `PanelRight`；调用现有强制内置浏览器入口    |
 | 打开 | 在浏览器中打开  | Open in browser | `ExternalLink`；调用现有强制外部浏览器入口  |
 | 复制 | 复制链接        | Copy link       | `Copy`；将原始完整 URL 写入当前客户端剪贴板 |
 
@@ -15,7 +15,7 @@ ContextMenu 样式，保留深浅主题、键盘操作与窄屏定位能力。�
 
 ```text
 右键链接 → 同一菜单
-             ├─ 在 ZCode 中打开 → 现有 onOpenExternalUrl
+             ├─ 在 Codez 中打开 → 现有 onOpenExternalUrl
              ├─ 在浏览器中打开 → 现有 platform.openExternal
              └─ 复制链接 → 当前客户端 navigator.clipboard
 ```

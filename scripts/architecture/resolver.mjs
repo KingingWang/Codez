@@ -2,9 +2,9 @@
  * 导入说明符解析器。
  *
  * 修复原因（2026-09 review）：首版 `resolveImport` 只解析 `./` `../` 开头的相对路径，
- * 其余全部返回 null 不建边。而本仓库主流写法是 `@zcode/<pkg>`、ui 的 `@/`、services 的 `#src/`，
+ * 其余全部返回 null 不建边。而本仓库主流写法是 `@codez/<pkg>`、ui 的 `@/`、services 的 `#src/`，
  * 于是 module-dependency / deep-import / cycle / layer-direction / ui-implementation-import
- * 对跨包依赖全部失明（用 `@zcode/services/src/bots/botsService.js` 深导入实测 0 违规）。
+ * 对跨包依赖全部失明（用 `@codez/services/src/bots/botsService.js` 深导入实测 0 违规）。
  *
  * 这里按 Node 与 TypeScript 的真实解析顺序建边：
  *   1. 相对路径

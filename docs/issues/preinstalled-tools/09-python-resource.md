@@ -8,18 +8,18 @@ Status: done
 
 ## What to build
 
-产出可以安装的 Python 资源。装好后，`zcode-python` 能运行文档插件需要的全部预装包。Agent 另外安装的包写进附加区，不改动预装包。规则见 [Python 规格](../../preinstalled-tools/python.md)。
+产出可以安装的 Python 资源。装好后，`codez-python` 能运行文档插件需要的全部预装包。Agent 另外安装的包写进附加区，不改动预装包。规则见 [Python 规格](../../preinstalled-tools/python.md)。
 
 - **转换器**：
   - 解释器用 python-build-standalone 的 3.12 `install_only_stripped`。第三方许可证从同一 release 的完整包中取出。
   - 预装包只用 wheel。按平台生成带哈希的锁文件，写进 recipe。macOS 以 13.0 为目标，Linux 以 manylinux_2_28 为目标。
   - 包清单按规格，不包含 PyMuPDF、markitdown、adjustText 和 pytesseract。
-  - 删除 pip 生成的命令脚本，放入 `EXTERNALLY-MANAGED` 标记，生成 `zcode/constraints.txt`。
+  - 删除 pip 生成的命令脚本，放入 `EXTERNALLY-MANAGED` 标记，生成 `codez/constraints.txt`。
   - 打包时建好附加区：
     - 用 `--system-site-packages --without-pip` 创建虚拟环境。
     - POSIX 上把链接改为相对链接。
     - 把 `pyvenv.cfg` 中的构建机路径换成占位符，并以 `text` 模式声明 `rewrite`。
-  - 入口 `zcode-python` 的目标与环境：`PYTHONNOUSERSITE=1`；`PIP_CONSTRAINT` 设为约束文件的 file URL；清除 `PYTHONHOME`。另加两项运行检查。
+  - 入口 `codez-python` 的目标与环境：`PYTHONNOUSERSITE=1`；`PIP_CONSTRAINT` 设为约束文件的 file URL；清除 `PYTHONHOME`。另加两项运行检查。
   - wheel 与附加区就绪后，对完整 `python/` 预编译 `unchecked-hash` 模式字节码，去掉 staging 路径前缀，并把已有 timestamp 缓存转换为该模式。检查每个能编译的 `.py` 都有对应缓存；编译失败逐文件记录原因，不阻止打包。运行时不新增 `PYTHONPYCACHEPREFIX` 或 `PYTHONDONTWRITEBYTECODE`，附加区及插件自身的缓存方式不变。
   - 固定编译时 `PYTHONHASHSEED=0`、资源解释器和优化级别等参数。含已声明上游路径的生成 pyc 按公共层 `.pyc` 格式检查独立重编译，并核对原始源码来源、摘要、前缀和完整产物字节；不增加通用派生框架，不改其他路径门禁。
   - 生成 `LICENSES/` 与 `SOURCES.json`。
@@ -31,7 +31,7 @@ Status: done
 ## Acceptance criteria
 
 - [x] macOS arm64 资源经 loopback 安装后，两项运行检查都通过。
-- [x] 运行插件主流程并用 `zcode-python -m pip install` 安装一个未预装的包：包写进附加区，预装区不新增文件且原有文件摘要不变，下一次调用能导入这个包（PY-03）。
+- [x] 运行插件主流程并用 `codez-python -m pip install` 安装一个未预装的包：包写进附加区，预装区不新增文件且原有文件摘要不变，下一次调用能导入这个包（PY-03）。
 - [x] 每个能编译的预装 `.py` 都有 `unchecked-hash` 缓存；编译失败的文件和原因有日志；缓存不含打包机路径，固定归档时间后仍有效，重复制作结果一致。
 - [x] `.pyc` 格式例外的每种拒绝情况先有失败用例：源码没有该前缀、源码已改动、不同编译参数导致重编译字节不同、pyc 含本次打包路径、其他生成文件含上游路径。只审计需要该豁免的生成 pyc；不一致时列出文件并失败，不能退回直接允许。
 - [x] 安装一个与预装包版本冲突的包：pip 因约束失败，预装包不变（PY-04）。

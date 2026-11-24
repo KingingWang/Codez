@@ -46,9 +46,9 @@ def prepare():
         text = archive.read("xl/worksheets/sheet1.xml").decode()
         assert '<f>SUM(A1:B1)</f><v></v>' in text
         assert '<f>1/0</f><v></v>' in text
-    package = "zcode_full_chain_probe"
+    package = "codez_full_chain_probe"
     dist = package + "-1.0.dist-info"
-    files = {package + "/__init__.py": "value = 'overlay-only'\n", dist + "/METADATA": "Metadata-Version: 2.1\nName: zcode-full-chain-probe\nVersion: 1.0\n", dist + "/WHEEL": "Wheel-Version: 1.0\nGenerator: acceptance\nRoot-Is-Purelib: true\nTag: py3-none-any\n"}
+    files = {package + "/__init__.py": "value = 'overlay-only'\n", dist + "/METADATA": "Metadata-Version: 2.1\nName: codez-full-chain-probe\nVersion: 1.0\n", dist + "/WHEEL": "Wheel-Version: 1.0\nGenerator: acceptance\nRoot-Is-Purelib: true\nTag: py3-none-any\n"}
     files[dist + "/RECORD"] = "".join(name + ",,\n" for name in [*files, dist + "/RECORD"])
     with zipfile.ZipFile(DOCS / (package + "-1.0-py3-none-any.whl"), "w") as archive:
         for name, content in files.items():

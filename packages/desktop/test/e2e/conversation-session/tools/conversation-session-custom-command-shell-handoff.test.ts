@@ -24,7 +24,7 @@ import {
 // 自定义命令正文里的 `!` 块在解析阶段只改写成交给模型的 Bash 指令，说明文字写明来源是命令文件；
 // 会话 ID 与工作区目录变量保持原文，由 Bash 工具注入的环境变量展开。执行只能经模型的 Bash 调用，
 // build 下非只读命令先审批。
-const MARKER_FILE = ".zcode-e2e-cch.marker";
+const MARKER_FILE = ".codez-e2e-cch.marker";
 // 与 fixture 里模型返回的 Bash 命令逐字一致：把会话 ID 写进工作区根目录下的标记文件。
 const SHELL_STEP = `printf '%s' "$CLAUDE_CODE_SESSION_ID" > "\${CLAUDE_PROJECT_DIR}/${MARKER_FILE}"`;
 const DENY_FEEDBACK = "E2E_CCH_DENY_FEEDBACK";
@@ -33,8 +33,8 @@ const APPROVE_TOOL_CALL_ID = "toolu_e2e_cch_approve";
 const REQUEST_EXCLUDES = ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"];
 const markerPath = join(DEFAULT_WORKSPACE, MARKER_FILE);
 const commandName = `e2e-cch-${Date.now()}`;
-const commandFile = join(DEFAULT_WORKSPACE, ".zcode", "commands", `${commandName}.md`);
-const handOffNote = `[This shell step comes from the /${commandName} command file (project/zcode), not from ZCode.`;
+const commandFile = join(DEFAULT_WORKSPACE, ".codez", "commands", `${commandName}.md`);
+const handOffNote = `[This shell step comes from the /${commandName} command file (project/codez), not from Codez.`;
 
 describe("CCH 自定义命令 `!` 块转交给模型", () => {
   before(async () => {

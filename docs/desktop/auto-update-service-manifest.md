@@ -2,7 +2,7 @@
 
 ## 背景
 
-旧版桌面端直接让 `electron-updater` 读取 CDN 上的 `latest*.yml`。这种方式适合静态全量发布，但不适合按设备灰度、区分 stable / preview 或在服务端把 preview 提升为 stable。新版客户端改为先请求 ZCode 服务端 manifest 接口，再把服务端返回的 `latest.yml` 同格式内容交给 `electron-updater` 执行下载、校验和安装。
+旧版桌面端直接让 `electron-updater` 读取 CDN 上的 `latest*.yml`。这种方式适合静态全量发布，但不适合按设备灰度、区分 stable / preview 或在服务端把 preview 提升为 stable。新版客户端改为先请求 Codez 服务端 manifest 接口，再把服务端返回的 `latest.yml` 同格式内容交给 `electron-updater` 执行下载、校验和安装。
 
 CDN 仍保存安装包、blockmap 和更新清单文件，但这些文件只进入版本化目录，不再由 CI 覆盖全局 stable feed。服务端 manifest 根据 release API 中的 stable / preview 状态选择版本，并下发指向版本化平台目录的绝对 CDN URL。
 
@@ -54,10 +54,10 @@ GET /api/v1/releases/electron/manifest
 | `channel`    | `X-Release-Channel` | 标准通道 `1`；抢先体验/preview 通道 `3`                                          |
 | `device_mid` | `X-Device-Mid`      | 桌面端 telemetry 复用的 uuidv4 风格设备 ID                                       |
 
-已登录时，manifest 请求携带 `Authorization: Bearer <zcodejwttoken>`。每次请求前通过
-注入的凭据读取函数获取当前 ZCode JWT，不缓存启动时的登录状态；未登录或 Token 为空时
+已登录时，manifest 请求携带 `Authorization: Bearer <codezjwttoken>`。每次请求前通过
+注入的凭据读取函数获取当前 Codez JWT，不缓存启动时的登录状态；未登录或 Token 为空时
 省略该 header。退出或切换账号后的下一次检查使用新的凭据状态。
-更新检查与 telemetry 共用 `@zcode/shared` 的 `toBearerAuthorization`：先 trim，再检查
+更新检查与 telemetry 共用 `@codez/shared` 的 `toBearerAuthorization`：先 trim，再检查
 Token 是否全部为可见 ASCII 字符（`0x21–0x7e`），合法时生成 Bearer 头，否则返回空值。
 这是请求头字符校验，不校验 JWT 签名、有效期或登录身份。
 Token 只用于 manifest 请求，不写入 URL、日志或 updater 全局请求头，安装包与 blockmap
@@ -74,10 +74,10 @@ Electron 和本地 HTTP 服务，检查未登录、登录、切账号、退出�
 ```yaml
 version: 3.4.0
 files:
-  - url: https://cdn.example.com/zcode/electron/releases/3.4.0/macos-arm64/ZCode-3.4.0-mac-arm64.zip
+  - url: https://cdn.example.com/codez/electron/releases/3.4.0/macos-arm64/Codez-3.4.0-mac-arm64.zip
     sha512: ...
     size: 123456
-path: https://cdn.example.com/zcode/electron/releases/3.4.0/macos-arm64/ZCode-3.4.0-mac-arm64.zip
+path: https://cdn.example.com/codez/electron/releases/3.4.0/macos-arm64/Codez-3.4.0-mac-arm64.zip
 sha512: ...
 releaseDate: "2026-07-09T00:00:00.000Z"
 ```
@@ -129,7 +129,7 @@ idle -> checking -> update-available -> download-progress -> update-downloaded
   - 下载前（`update-available`）：展示发布时间，不展示更新通道 badge；底部展示“跳过此版本”“稍后”“下载更新”。
   - 下载中（`download-progress`）：隐藏“跳过此版本”，展示下载进度、“后台下载”和“取消下载”；进度区域在弹窗主内边距内再增加 `8px` 左侧外边距；进度条右侧优先展示已下载/总大小，格式为 `1.0MB / 10.0MB`，保留 1 位小数，字节数据缺失时不显示右侧文本，避免残留 `0%` 这类百分比口径；主界面更新入口显示 loading spinner，不显示文字。`download-progress.version` 是协议可选字段，renderer 必须按 `kind` 识别下载态，即使某一帧缺少版本号也要保持更新入口和已打开弹窗，不得卸载组件或关闭弹窗。用户点击“下载更新”后，renderer 必须先本地进入“下载已请求”的 downloading 展示；`downloadUpdate()` 的 IPC 返回只代表命令已被 main 侧接收，不代表已经进入下载态。若随后短暂收到 `checking` / `idle` 等无版本过渡状态，renderer 必须复用上一帧可见更新模型保持弹窗，直到 `download-progress` / `update-downloaded` 收口。若 main 侧下载启动失败，失败收敛必须回到 `update-available` 让用户可见并可重试，不得直接广播 `idle` 让主入口和弹窗一起消失。
   - 下载后（`update-downloaded` / legacy `UpdateReady` ready）：展示发布时间，不展示更新通道 badge；底部展示“稍后”“重启以更新”，不展示“跳过此版本”。
-- Linux 的 `.deb`、`.rpm` 和 pacman 安装属于系统包安装。AppImage 直接替换用户可写文件，不需要管理员授权提示。对于 Linux 系统包，main 在 `prepareAppQuit` 之前只对非 root 用户执行一次无交互 `sudo -n -v` 探测：探测成功时不显示额外提示；探测返回权限失败时显示“可能需要管理员权限”，提示用户留意系统授权窗口或启动 ZCode 的终端；sudo 不存在、探测超时或发生其他异常时按未知处理，不显示提示、不阻断更新。探测使用异步 `execFile` 与超时选项，输出由回调接收，不传入仅适用于 `spawn` 的 `stdio` 选项。探测不读取、不保存密码，实际安装仍由 `electron-updater` 选择 Polkit 或 sudo。当前 Linux 安装器调用是同步的，本流程不提供声称可以中断原生授权的 renderer 取消按钮。
+- Linux 的 `.deb`、`.rpm` 和 pacman 安装属于系统包安装。AppImage 直接替换用户可写文件，不需要管理员授权提示。对于 Linux 系统包，main 在 `prepareAppQuit` 之前只对非 root 用户执行一次无交互 `sudo -n -v` 探测：探测成功时不显示额外提示；探测返回权限失败时显示“可能需要管理员权限”，提示用户留意系统授权窗口或启动 Codez 的终端；sudo 不存在、探测超时或发生其他异常时按未知处理，不显示提示、不阻断更新。探测使用异步 `execFile` 与超时选项，输出由回调接收，不传入仅适用于 `spawn` 的 `stdio` 选项。探测不读取、不保存密码，实际安装仍由 `electron-updater` 选择 Polkit 或 sudo。当前 Linux 安装器调用是同步的，本流程不提供声称可以中断原生授权的 renderer 取消按钮。
 - 普通更新窗口在下载前、下载中、下载完成后均可用系统关闭按钮关闭；下载中另有“后台下载”按钮。关闭只销毁展示窗口并释放该窗口的状态监听，不取消下载、不安装、不创建新下载任务；真正退出应用仍沿用现有退出规则。强制更新窗口不受此规则影响。
 - 下载状态和取消令牌由 main 的 `autoUpdater` 单独持有。窗口关闭后进度、成功或失败事件继续更新同一个状态，但不得自行创建、显示窗口。用户从现有主界面更新入口重开时，读取当前快照；下载中展示同一进度，完成后展示“重启以更新”，失败后回到既有可重试状态。重复打开只激活现有单例，关闭/重开与迟到快照交错时不得重复监听或启动下载。
 - 原生 close 事件早于 BrowserWindow 销毁。已收到 close 的窗口立即失去展示资格，重开不能复用它，也不能把它选作新窗口的 parent；旧窗口的 closed 清理只能清理自身，不能清空后来新建的窗口引用。
@@ -170,7 +170,7 @@ skippedElectronUpdateVersions?: Partial<Record<"stable" | "preview", string>>;
 ## 兼容与迁移
 
 - 旧安装包若仍按包内 `app-update.yml` 从 CDN stable feed 检查更新，不再由当前 CI 全量阶段自动刷新对应 feed。需要兼容旧包时，应由服务端 manifest 迁移策略、单独的应急发布动作或旧 feed 运维流程承接，避免把新 release 状态再次绑定到 CI 的静态 feed 覆盖。
-- 新安装包默认使用服务端 manifest provider。打包态更新入口只允许既有官方生产或测试 HTTPS 域名，其他通用后端覆盖不会授权更新源，回到官方生产入口。打包后的应用忽略 `ZCODE_UPDATE_FEED_URL`、`--zcode-update-feed-url` 以及内部传入的自定义 manifest URL；深链或启动参数不得改变更新源。未打包的开发态可指定完整 manifest 接口 URL，仍由客户端覆盖 `platform` / `device_mid` / `channel` 查询参数和对应 header。`--` 后的参数不再作为更新器开关解析。
+- 新安装包默认使用服务端 manifest provider。打包态更新入口只允许既有官方生产或测试 HTTPS 域名，其他通用后端覆盖不会授权更新源，回到官方生产入口。打包后的应用忽略 `CODEZ_UPDATE_FEED_URL`、`--codez-update-feed-url` 以及内部传入的自定义 manifest URL；深链或启动参数不得改变更新源。未打包的开发态可指定完整 manifest 接口 URL，仍由客户端覆盖 `platform` / `device_mid` / `channel` 查询参数和对应 header。`--` 后的参数不再作为更新器开关解析。
 - Windows 签名构建仍读取应用的有效 Authenticode 签名，并写入 `app-update.yml` 的 `publisherName`，以激活 electron-updater 6.8.10 的自定义签名检查入口。该字段只保留签名身份作为诊断信息，不是未来更新的 DN 白名单；不能直接删除字段，否则当前依赖会跳过验证。签名或配置读取失败时构建失败。
 - Windows 更新使用显式 Authenticode 校验：下载后及交给安装器之前均要求 Windows 返回有效签名和非空签名者；无签名、损坏、不可信证书、PowerShell 错误均拒绝。子进程仅静默模块初始化进度，避免进度 CLIXML 被误判为 stderr 错误；实际 stderr 和失败退出仍拒绝。不比较旧 DN，所以更新证书或发布者 DN 不需要用户预装过渡版。安装前使用既有 `preparing` 状态锁定目标，在退出 Host/Agent 前完成检查。
 - Windows 签名查询在普通用户权限下执行；其专用命令避免受限语言模式禁止的 .NET 方法调用，使允许 `Get-AuthenticodeSignature` 的 ConstrainedLanguage 环境也可完成查询。路径字面量必须双写 ASCII 及 PowerShell 识别的四种排版单引号（U+2018、U+2019、U+201A、U+201B），拒绝 NUL、CR、LF，避免用户名或临时目录中的撇号中断字符串或被解释为代码。PowerShell 模块或签名查询若仍被设备策略禁止、结果文件缺失或无法解析，继续拒绝下载完成或安装，不提权、不修改设备策略、不退回免检。独立子进程切换语言模式的测试只验证脚本兼容，不代表所有 WDAC/AppLocker 策略已验收。
@@ -186,7 +186,7 @@ skippedElectronUpdateVersions?: Partial<Record<"stable" | "preview", string>>;
 官方 HTTPS 清单 → 文件哈希匹配 → Windows 签名有效 → 安装
 ```
 
-`publisherName` 的旧 DN 不参与批准或拒绝，`ZCODE_WINDOWS_UPDATE_TRUSTED_PUBLISHER_DNS` 过渡配置不再使用。新旧证书可以具有不同 DN，但新安装包必须具有 Windows 认可的有效 Authenticode 签名。带有效时间戳的旧签名可在证书到期后继续验证；证书吊销、不可信证书链或操作系统信任策略仍可能导致拒绝。
+`publisherName` 的旧 DN 不参与批准或拒绝，`CODEZ_WINDOWS_UPDATE_TRUSTED_PUBLISHER_DNS` 过渡配置不再使用。新旧证书可以具有不同 DN，但新安装包必须具有 Windows 认可的有效 Authenticode 签名。带有效时间戳的旧签名可在证书到期后继续验证；证书吊销、不可信证书链或操作系统信任策略仍可能导致拒绝。
 
 验收需覆盖真实旧正式包到修复包的升级、不同 DN 的有效签名通过、无签名及损坏签名拒绝、PowerShell 故障拒绝，以及缓存安装前检查。不同 DN 验证必须区分真实证书运行结果和受控替身；测试不能宣称所有 Windows 环境均已覆盖。未修改 macOS/Linux 的签名和安装链路。
 
@@ -228,16 +228,16 @@ critical 扩展还必须无 PKIjs `parsingError` 标记；DER 可解码但不符
 curl "http://intranet.example.invalid:3011/api/v1/releases/electron/manifest?platform=darwin-aarch64&channel=stable&device_mid=00000000-0000-4000-8000-000000000000"
 ```
 
-然后在仓库根目录启动桌面端。`ZCODE_UPDATE_FEED_URL` 必须传完整 manifest 接口 URL，客户端会在请求时覆盖 `platform`、`channel`、`device_mid` query 和对应 header；`ZCODE_AUTO_UPDATE_DEV=1` 用于在 dev Electron 内打开更新链路，`ZCODE_AUTO_UPDATE_DEV_VERSION` 用于把本地应用版本压低到服务端版本以下，方便触发“发现更新”：
+然后在仓库根目录启动桌面端。`CODEZ_UPDATE_FEED_URL` 必须传完整 manifest 接口 URL，客户端会在请求时覆盖 `platform`、`channel`、`device_mid` query 和对应 header；`CODEZ_AUTO_UPDATE_DEV=1` 用于在 dev Electron 内打开更新链路，`CODEZ_AUTO_UPDATE_DEV_VERSION` 用于把本地应用版本压低到服务端版本以下，方便触发“发现更新”：
 
 ```bash
-ZCODE_UPDATE_FEED_URL="http://intranet.example.invalid:3011/api/v1/releases/electron/manifest" \
-ZCODE_AUTO_UPDATE_DEV=1 \
-ZCODE_AUTO_UPDATE_DEV_VERSION=3.3.3 \
+CODEZ_UPDATE_FEED_URL="http://intranet.example.invalid:3011/api/v1/releases/electron/manifest" \
+CODEZ_AUTO_UPDATE_DEV=1 \
+CODEZ_AUTO_UPDATE_DEV_VERSION=3.3.3 \
 pnpm dev:desktop:prod
 ```
 
-如果要测试 preview 通道，在设置页打开“抢先体验/preview 更新”后重新检查更新即可；不要把 channel 固定写进 `ZCODE_UPDATE_FEED_URL`，否则容易和 renderer 设置态不一致。
+如果要测试 preview 通道，在设置页打开“抢先体验/preview 更新”后重新检查更新即可；不要把 channel 固定写进 `CODEZ_UPDATE_FEED_URL`，否则容易和 renderer 设置态不一致。
 
 ## 验证要求
 

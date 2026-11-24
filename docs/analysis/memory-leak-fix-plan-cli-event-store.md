@@ -1,6 +1,6 @@
 # 内存泄漏修复规划：CLI 内存 event store 的保留策略
 
-状态：**已实现**（spec 见 `apps/zcode-cli/docs/design/v2/session-event-store-retention.md`；用户已确认一 turn 滞后淘汰。本文保留为决策过程记录）
+状态：**已实现**（spec 见 `apps/codez-cli/docs/design/v2/session-event-store-retention.md`；用户已确认一 turn 滞后淘汰。本文保留为决策过程记录）
 
 关联：审计报告 `docs/analysis/memory-leak-audit-2026-09-03.md`；观测能力 `docs/monitoring/memory-diagnostics-log.md`（已落地，`eventRows` 计数器就是本项的前后对照证据）。
 
@@ -60,7 +60,7 @@
 
 - `append` 改原地 `push`，去掉 O(n) 拷贝；`getEvents` 保持返回拷贝（调用方有 `[...events]` 习惯，不冒险）。
 - `getLatestSequenceNumber` 改独立单调计数器 `latestSeqBySession`。
-- session 记录释放时调用 `eventStore.deleteSession(sessionId)`：`session/close`、创建失败、idle 去激活、进程退出四条路径（`bootstrap/src/zcode-protocol/server.ts` / `session-residency.ts`）。
+- session 记录释放时调用 `eventStore.deleteSession(sessionId)`：`session/close`、创建失败、idle 去激活、进程退出四条路径（`bootstrap/src/codez-protocol/server.ts` / `session-residency.ts`）。
 - `v4-bridge.ts:1506` 的 `sourceEventSeq` 与 `server-operations.ts:800` 的 `getProtocolEventSeq` 改读计数器 / `lastSeq`（此时行为等价，先改好为 Phase 2 铺路）。
 - 验收：现有全部测试绿；`eventRows` 在 session 关闭后归零。
 
@@ -87,33 +87,33 @@
 | retention 状态机 | 瞬态事件在所属 turn 进行中 retain；`TurnStarted(T+1)` 后 `T` 桶淘汰；`T+1` 未结束前 `T+1` 桶保留；非瞬态永不淘汰；rewind 不触发淘汰 |
 | store：seq 单调 | 淘汰后 `getLatestSequenceNumber` 不回退；`append` 返回的 seq 严格递增 |
 | store：读路径 | `getEvents/getEventsAfter` 返回非瞬态 ∪ 窗口内瞬态，按 seq 排序；`deleteSession` 后 `getStats` 归零 |
-| store：性能 | append 10^5 次线性（防回到 O(n²)），用现有 `ZCODE_PERF_REPRO=1` 门控写法 |
+| store：性能 | append 10^5 次线性（防回到 O(n²)），用现有 `CODEZ_PERF_REPRO=1` 门控写法 |
 | Port 合同测试 | `describeSessionEventStoreContract(factory)` 同时跑 unbounded 与 turn-window 两种模式，保证接口语义一致 |
 
 ### bootstrap 集成（现有 + 新增）
 
-- 必跑现有：`zcode-protocol.test.ts`（含 5 处 `model.streaming` 回放/seq 断言）、`v4-gateway*.test.ts`、`v4-cold-resume.test.ts`、`cold-event-merge.test.ts`、`transcript-hydration.test.ts`、`product-projection*.test.ts`、`session-resident-pool.test.ts`。
+- 必跑现有：`codez-protocol.test.ts`（含 5 处 `model.streaming` 回放/seq 断言）、`v4-gateway*.test.ts`、`v4-cold-resume.test.ts`、`cold-event-merge.test.ts`、`transcript-hydration.test.ts`、`product-projection*.test.ts`、`session-resident-pool.test.ts`。
 - 新增：
   1. turn 进行中 `session/subscribe afterSeq` 仍回放当前 turn 的 delta；
   2. 连续两个 turn 后回放只含消息与低频事件，protocolSeq 连续无洞；
   3. 冷恢复 `sourceEventSeq` 在淘汰后等于最新 seq，且 gap 补齐正确；
   4. raw seq 乱序到达（N+1 先于 N）在淘汰后仍能正确 drain；
   5. rewind / fork / checkpoint 在淘汰后结果与 unbounded 模式逐字节相同（两种模式跑同一脚本对比）。
-- 基线已知无关失败：`v4-gateway.test.ts` "旧 revision retry"、`zcode-protocol.test.ts` "三类 v4 subscribe response"，修复前先在干净基线确认它们的状态，避免误判。
+- 基线已知无关失败：`v4-gateway.test.ts` "旧 revision retry"、`codez-protocol.test.ts` "三类 v4 subscribe response"，修复前先在干净基线确认它们的状态，避免误判。
 
 ### 内存回归（新增）
 
-`bootstrap/tests/session-event-store-retention.perf.test.ts`：`ZCODE_PERF_REPRO=1` 门控，`--expose-gc`，跑 N 个 turn × M 个 delta，断言 `getStats().events ≤ 非瞬态数 + 2 个 turn 的瞬态数`，且 `heapUsed` 增量有界；同一脚本在 unbounded 模式下作为对照输出。
+`bootstrap/tests/session-event-store-retention.perf.test.ts`：`CODEZ_PERF_REPRO=1` 门控，`--expose-gc`，跑 N 个 turn × M 个 delta，断言 `getStats().events ≤ 非瞬态数 + 2 个 turn 的瞬态数`，且 `heapUsed` 增量有界；同一脚本在 unbounded 模式下作为对照输出。
 
 ### 手工 / E2E
 
-- 桌面端连本地 CLI 跑 >30 分钟流式长会话，看 `~/.zcode/cli/log` 里 `memory_sample` 的 `eventRows` 曲线：修复前随 token 线性上升，修复后在 turn 间回落。
+- 桌面端连本地 CLI 跑 >30 分钟流式长会话，看 `~/.codez/cli/log` 里 `memory_sample` 的 `eventRows` 曲线：修复前随 token 线性上升，修复后在 turn 间回落。
 - V4 pane 与 legacy bot 流同时订阅、断网重连走 `afterSeq` 回放；rewind / fork / compact 后再回放。
 - 跑 `pnpm test:e2e:container:conversation`（conversation 验证集覆盖 streaming / replay 语义）。
 
 ## 五、如何保证对其他模块修改的可测试性
 
-1. **依赖注入取代硬编码构造**：`server-operations.ts:3493` 与 `:2883` 直接 `createInMemorySessionEventStore()`。新增 `context.deps.createSessionEventStore?(sessionId)`（`server-types.ts` 的 `ZCodeProtocolAgentDependencies`），默认 turn-window store；测试可注入 spy store 断言 append / delete 调用，也可注入 unbounded store 做 A/B 对照。`create-app.ts:558` 已有 `options.eventStore` 口子，沿用。
+1. **依赖注入取代硬编码构造**：`server-operations.ts:3493` 与 `:2883` 直接 `createInMemorySessionEventStore()`。新增 `context.deps.createSessionEventStore?(sessionId)`（`server-types.ts` 的 `CodezProtocolAgentDependencies`），默认 turn-window store；测试可注入 spy store 断言 append / delete 调用，也可注入 unbounded store 做 A/B 对照。`create-app.ts:558` 已有 `options.eventStore` 口子，沿用。
 2. **策略与容器分离**：淘汰规则是无 IO 的纯状态机，单测穷举分支；store 只做"调用策略、维护 Map"。以后改规则不碰 store，也不碰任何消费者。
 3. **一份 Port 合同测试**：`describeSessionEventStoreContract` 放 `adapters/tests`，现有 `core/tests/test-event-store.ts` 这个手写替身（与生产实现同款 O(n) 拷贝）删掉，core 的 40 处测试改用真实 store，消除"替身与生产行为漂移"这一类假绿。
 4. **单一出处常量**：`TRANSIENT_SESSION_EVENT_TYPES` 从 contracts 导出，store、spec、`readStreamingDeltaBatchableEvent`（`server-operations.ts:382`）引用同一集合；新增事件类型时只改一处，测试断言该集合与 reducer 忽略集一致。
@@ -123,7 +123,7 @@
 
 ## 六、交付顺序
 
-1. `docs`：本文转 spec 到 `apps/zcode-cli/docs/design/v2/session-event-store-retention.md`，同步更新 `docs/design/v2/session-idle-deactivation.md`（record 释放时 `deleteSession`）与 `docs/conversation-product-protocol.md`（legacy 回放行为变化）。
+1. `docs`：本文转 spec 到 `apps/codez-cli/docs/design/v2/session-event-store-retention.md`，同步更新 `docs/design/v2/session-idle-deactivation.md`（record 释放时 `deleteSession`）与 `docs/conversation-product-protocol.md`（legacy 回放行为变化）。
 2. `refactor(cli): in-place event append, seq counter, deleteSession on release`（Phase 1 + 消费者改读计数器 + DI seam + 合同测试 + 删除测试替身）。
 3. `feat(cli): turn-window retention for transient session events`（Phase 2 + 新增集成/perf 用例 + getStats 扩展）。
 4. 并行小 MR：main `will-download` / `streamBatches`，renderer shiki / snapshot LRU。
@@ -131,4 +131,4 @@
 ## 七、需要你决策的点
 
 - 一 turn 滞后淘汰是否可接受（代价：内存里始终多保留一个已完成 turn 的 delta；收益：不依赖持久化时序）。
-- legacy `session/events` 不再重放已完成 turn 的 `model.streaming`，桌面 replayable / bots 侧是否有依赖它渲染历史文本的地方（实现前先查 `session-mapper.ts` 的 `ModelComplete` 映射与 `packages/services/src/zcode-agent/zcodeAgentService.ts:5640` 的消费方）。
+- legacy `session/events` 不再重放已完成 turn 的 `model.streaming`，桌面 replayable / bots 侧是否有依赖它渲染历史文本的地方（实现前先查 `session-mapper.ts` 的 `ModelComplete` 映射与 `packages/services/src/codez-agent/codezAgentService.ts:5640` 的消费方）。

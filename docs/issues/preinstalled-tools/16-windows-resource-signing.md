@@ -28,24 +28,24 @@ App 的 Windows 签名已在 CI 中运行，本票复用它：
 - `scripts/sign-windows.ps1`：调用 vsigntool 和 SafeNet token，每次签一个文件。包括同一规则内重试、单次超时、时间戳服务回退，以及卡住时结束进程树。
 - `packages/desktop/scripts/sign-windows-hook.cjs`：只把 `MZ` 开头的文件送进签名工具。
 - `packages/desktop/electron-builder.config.js` 中的 `assertSignedWindowsResourceExecutable`：用 `Get-AuthenticodeSignature` 校验状态为 `Valid`，签名证书指纹与 App 主程序一致。
-- Windows 打包 job 运行在带 `windows` tag 的 runner 上，设置 `ZCODE_ENABLE_WINDOWS_SIGN=1`，以及 `VSIGNTOOL_RETRY_COUNT`、`VSIGNTOOL_RETRY_DELAY_SECONDS`、`VSIGNTOOL_ATTEMPT_TIMEOUT_SECONDS`。签名证书只在这台 runner 上。
+- Windows 打包 job 运行在带 `windows` tag 的 runner 上，设置 `CODEZ_ENABLE_WINDOWS_SIGN=1`，以及 `VSIGNTOOL_RETRY_COUNT`、`VSIGNTOOL_RETRY_DELAY_SECONDS`、`VSIGNTOOL_ATTEMPT_TIMEOUT_SECONDS`。签名证书只在这台 runner 上。
 
 ## What to build
 
 - **recipe 字段** `windowsSigning`：
-  - 值为 `zcode` 或 `none`。`none` 必须写 `reason`。
-  - `zcode` 可以带 `exclude`，每项写精确路径和原因。
+  - 值为 `codez` 或 `none`。`none` 必须写 `reason`。
+  - `codez` 可以带 `exclude`，每项写精确路径和原因。
   - Windows recipe 缺少这个字段时，制作失败。
 - **recipe 改动**：
-  - Python win32-x64 和 win32-arm64 用 `zcode`，`exclude` 列出 pip 的 6 个启动器模板。
-  - qpdf win32-x64、win32-arm64，以及 Poppler win32-x64，用 `zcode`。
+  - Python win32-x64 和 win32-arm64 用 `codez`，`exclude` 列出 pip 的 6 个启动器模板。
+  - qpdf win32-x64、win32-arm64，以及 Poppler win32-x64，用 `codez`。
   - Pandoc win32-x64 和 LibreOffice 的两个 Windows recipe 用 `none`。
 - **转换器检查**：Windows 资源的 `rewrite` 指向 PE 文件时，制作失败。转换器的其他行为不变，产出的是未签名的中间归档。
 - **签名命令**：放在 `scripts/preinstalled-tools/common/`，只在 Windows 上运行。
   - 输入：中间归档和中间资源描述。
   - 步骤：解开归档；按规格选出要签的文件，逐个调用 `scripts/sign-windows.ps1`；完成规格中的全部校验；用公共层的归档函数重新打包；写出最终资源描述和 `provenance.windowsSigning`。
   - 选文件、校验和"去掉签名后比较"放在可测试的函数中。签名程序可以替换，供工程测试使用。
-- **发布命令**：`windowsSigning` 为 `zcode` 的资源，没有 `provenance.windowsSigning` 时拒绝。
+- **发布命令**：`windowsSigning` 为 `codez` 的资源，没有 `provenance.windowsSigning` 时拒绝。
 - **CI job**：新增手动触发的 job，比如 `sign:preinstalled-tools:windows`。
   - 运行在 Windows 签名 runner 上，签名环境变量与 Windows 打包 job 相同。
   - 输入一份或多份中间归档，产出最终归档和资源描述，作为 job artifact。
@@ -63,7 +63,7 @@ App 的 Windows 签名已在 CI 中运行，本票复用它：
   - 缺少 `windowsSigning`；`exclude` 指向不存在的文件、非 PE 文件或已签名文件；`rewrite` 指向 PE 文件。
   - 选文件只看 `MZ` 和签名状态；已签名的文件和非 PE 文件不送进签名程序。
   - 签名程序失败；签名后状态不是 `Valid` 或没有时间戳；同一资源出现两个证书指纹；签过的文件去掉签名后与原文件不同；其他文件被改动。
-  - 发布命令拒绝没有签名记录的 `zcode` 资源。
+  - 发布命令拒绝没有签名记录的 `codez` 资源。
   - 测试用本机自签名证书或替身签名程序，不需要真实证书。
 - [ ] CI 签名 job 对 Python、qpdf、Poppler 的 win32-x64 中间归档各运行一次，全部校验通过。记录每个资源的签名文件数、总用时和单个文件的平均用时。
 - [x] 签过的文件的证书指纹与当前 App 安装包中主程序的指纹一致。（2026-11-04 手动签名版，见 Comments）
@@ -81,7 +81,7 @@ App 的 Windows 签名已在 CI 中运行，本票复用它：
 1. **中间归档放在哪里**：签名 runner 要从哪里取中间归档？例如 Windows runner 的共享目录、内网文件服务器，或者由上一个 job 的 artifact 传入。
 2. ~~**qpdf 的编号**~~：已决定，首次发布沿用现有编号，见 What to build。
 3. **签名规则和证书**：
-   - 时间戳回退规则 `zcode` 和主规则 `zcodedigicert` 用的是不是同一张证书？如果不是，按规格，同一资源出现两个指纹时会失败。
+   - 时间戳回退规则 `codez` 和主规则 `codezdigicert` 用的是不是同一张证书？如果不是，按规格，同一资源出现两个指纹时会失败。
    - `sign-windows.ps1` 默认的 `-m 3` 是什么签名模式？是否是 SHA-1 加 SHA-256 双签？
 4. **SAC 虚拟机**：在哪里准备开启 SAC 强制模式的干净 Windows 11？SAC 只能在全新安装的系统上开启。
 

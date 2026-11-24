@@ -14,7 +14,7 @@ plugin card grid, and a list↔detail view toggle. The detail view must show eac
 ## Key constraint & the decision that shaped everything
 
 The original constraint was "don't change the data protocol". But investigation proved
-that the marketplace protocol (`ZCodeAvailablePluginSummary`) carries only a coarse
+that the marketplace protocol (`CodezAvailablePluginSummary`) carries only a coarse
 `componentTypes` array — **no component names, no descriptions, no per-plugin manifest RPC**.
 Showing name + description per component is therefore impossible without a new
 CLI→UI data channel.
@@ -31,13 +31,13 @@ descriptions by reading each component's frontmatter. This is the only protocol 
 ## What was built
 
 ### 1. New protocol method `plugins/describe` (the only protocol change)
-`packages/shared/src/zcode-protocol/index.ts`
-- `zcodeProtocolMethods.pluginsDescribe = "plugins/describe"`
+`packages/shared/src/codez-protocol/index.ts`
+- `codezProtocolMethods.pluginsDescribe = "plugins/describe"`
 - params `{ workspace, marketplace, pluginName }`
 - result `{ components: Array<{ kind: agent|command|skill|hook|mcp, items: Array<{ name, description? }> }>, diagnostics? }`
 - registered in the session-method contract table.
 
-### 2. CLI handler (apps/zcode-cli)
+### 2. CLI handler (apps/codez-cli)
 - `adapters/src/plugins/marketplace.ts` → `describeMarketplacePlugin({ marketplace, name, storageRoot })`:
   - installed → `resolveInstalledPluginRoot` (local cache dir, offline);
   - uninstalled → `resolvePluginSourceRoot` (temp clone via `mkdtemp`, cleaned up in `finally`) — mirrors `validateMarketplacePlugin`.
@@ -46,12 +46,12 @@ descriptions by reading each component's frontmatter. This is the only protocol 
   `skills/` (`SKILL.md` frontmatter), hooks (manifest events), mcp (manifest server names).
   Extracted out of marketplace.ts to keep that file from growing further (it already
   exceeds the repo `max-lines` baseline — pre-existing).
-- `bootstrap/src/plugins.ts` → `describeZCodePlugin` wrapper.
-- `bootstrap/src/zcode-protocol/plugins.ts` → `describePlugin` handler (maps adapter result → protocol shape).
-- `bootstrap/src/zcode-protocol/server.ts` → routed the new method.
+- `bootstrap/src/plugins.ts` → `describeCodezPlugin` wrapper.
+- `bootstrap/src/codez-protocol/plugins.ts` → `describePlugin` handler (maps adapter result → protocol shape).
+- `bootstrap/src/codez-protocol/server.ts` → routed the new method.
 
 ### 3. Services layer
-`packages/services/src/zcode-agent/{zcodeAgent.ts,zcodeAgentService.ts}` →
+`packages/services/src/codez-agent/{codezAgent.ts,codezAgentService.ts}` →
 `describePlugin(params)` following the `pluginsValidate` call pattern.
 
 ### 4. UI (packages/ui)

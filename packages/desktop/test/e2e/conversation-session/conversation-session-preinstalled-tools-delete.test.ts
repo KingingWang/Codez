@@ -19,13 +19,13 @@ import { basename, join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
 import { once } from "node:events";
-import type { PreinstalledToolsState } from "@zcode/shared/preinstalled-tools";
+import type { PreinstalledToolsState } from "@codez/shared/preinstalled-tools";
 import {
   TID_RESOURCE_MANAGER_STORAGE_CATEGORY_CLEAN,
   TID_RESOURCE_MANAGER_STORAGE_CATEGORY_ROW,
   TID_RESOURCE_MANAGER_STORAGE_STATUS,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { resolveE2EHomeDir, resolveE2EStorageRoot } from "#e2e/helpers/e2e-runtime-paths";
 import { reloadElectronSessionPreservingBrowserProfile } from "#e2e/helpers/e2e-electron-reload";
 import { setPluginPresentation } from "#e2e/helpers/plugin-management-lifecycle";
@@ -39,9 +39,9 @@ import {
   waitForResourceManagerReady,
 } from "#e2e/helpers/resource-manager";
 
-const fixtureUrl = () => process.env.ZCODE_E2E_PREINSTALL_FIXTURE_URL!;
+const fixtureUrl = () => process.env.CODEZ_E2E_PREINSTALL_FIXTURE_URL!;
 const screenshot = (name: string) =>
-  browser.saveScreenshot(`${process.env.ZCODE_E2E_ARTIFACT_DIR}/lop-delete-${name}.png`);
+  browser.saveScreenshot(`${process.env.CODEZ_E2E_ARTIFACT_DIR}/lop-delete-${name}.png`);
 async function openDialog() {
   await $('[data-testid="workspace-help-menu-trigger"]').click();
   await $('[data-testid="workspace-help-menu-preinstalled-tools"]').click();
@@ -123,13 +123,13 @@ describe("预装工具删除与存储（待审核）", () => {
       await openDialog();
       await waitStatus("ready");
       const storageRoot = resolveE2EStorageRoot();
-      expect(storageRoot).toBe(join(resolveE2EHomeDir(), ".zcode"));
+      expect(storageRoot).toBe(join(resolveE2EHomeDir(), ".codez"));
       const roots = join(storageRoot, "preinstalled-tools");
       const release = (await readdir(roots))[0]!;
       const root = join(roots, release);
       const recordPath = await preinstalledFixtureRecordPath(root);
       const versions = join(root, "tools", "libreoffice", "versions");
-      const entry = preinstalledEntryPath(join(root, "bin"), "zcode-soffice");
+      const entry = preinstalledEntryPath(join(root, "bin"), "codez-soffice");
       expect((await stat(entry)).isFile()).toBe(true);
       let record = JSON.parse(await readFile(recordPath, "utf8"));
       const firstInstalledAt = record.installedAt;
@@ -231,7 +231,7 @@ describe("预装工具删除与存储（待审核）", () => {
       await writeFile(join(oldAfterPublish, "keep-until-app-start.txt"), "old");
       const workerBeforeCrash = await browser.electron.execute(
         (electron) =>
-          electron.app.getAppMetrics().find((item) => item.name === "zcode-preinstalled-tools")
+          electron.app.getAppMetrics().find((item) => item.name === "codez-preinstalled-tools")
             ?.pid,
       );
       expect(workerBeforeCrash).toBeDefined();
@@ -242,7 +242,7 @@ describe("预装工具删除与存储（待审核）", () => {
         async () => {
           const pid = await browser.electron.execute(
             (electron) =>
-              electron.app.getAppMetrics().find((item) => item.name === "zcode-preinstalled-tools")
+              electron.app.getAppMetrics().find((item) => item.name === "codez-preinstalled-tools")
                 ?.pid,
           );
           return Boolean(pid && pid !== workerBeforeCrash);
@@ -252,9 +252,9 @@ describe("预装工具删除与存储（待审核）", () => {
       await browser.execute(async () =>
         (
           window as typeof window & {
-            zcode: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
+            codez: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
           }
-        ).zcode.getPreinstalledToolsState(),
+        ).codez.getPreinstalledToolsState(),
       );
       expect((await stat(oldAfterPublish)).isDirectory()).toBe(true);
       const oldBusy = join(versions, "fixture-old-busy");
@@ -354,7 +354,7 @@ describe("预装工具删除与存储（待审核）", () => {
       await switchToElectronRendererTarget(isMainRendererUrl);
 
       await writeFile(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "lop-delete-facts.json"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "lop-delete-facts.json"),
         JSON.stringify(
           {
             release,

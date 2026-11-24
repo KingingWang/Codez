@@ -4,14 +4,14 @@ Status: needs-triage
 
 ## 现象
 
-- 桌面本地会话使用 Host 的 subagent 快照时，只读取 `<workspace>/.zcode/agents`。
+- 桌面本地会话使用 Host 的 subagent 快照时，只读取 `<workspace>/.codez/agents`。
 - CLI 自己扫描时（远程、Web、独立 CLI）还会读取 `additionalDirectories` 下的 agent。
 - 同一份配置，桌面本地会话少了附加目录里的 agent。
 
 ## 证据
 
 - Host：`packages/services/src/subagents/subagentRuntimeConfig.ts:200`。
-- CLI 扫描：`apps/zcode-cli/packages/bootstrap/src/subagents.ts:60`。
+- CLI 扫描：`apps/codez-cli/packages/bootstrap/src/subagents.ts:60`。
 
 ## 影响
 

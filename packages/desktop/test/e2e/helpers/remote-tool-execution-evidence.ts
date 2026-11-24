@@ -56,7 +56,7 @@ export async function readRemoteToolExecutionEvents(
   const { runSSHCommand } = await import("./ssh-remote-p0.js");
   const result = await runSSHCommand(
     config,
-    `grep -h -E '"event"[[:space:]]*:[[:space:]]*"tool[.]call[.](started|completed)"' "$HOME/.zcode/cli/log/"*.jsonl`,
+    `grep -h -E '"event"[[:space:]]*:[[:space:]]*"tool[.]call[.](started|completed)"' "$HOME/.codez/cli/log/"*.jsonl`,
   );
   // grep 1 表示没有执行事件；日志不可读等真实错误不能伪装为零次执行。
   if (result.code !== 0 && result.code !== 1) {

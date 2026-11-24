@@ -3,7 +3,7 @@ import { realpath, stat } from "node:fs/promises";
 import { isAbsolute, join, relative, posix } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { list, extract } from "tar";
-import type { PreinstalledToolManifest } from "@zcode/shared/preinstalled-tools";
+import type { PreinstalledToolManifest } from "@codez/shared/preinstalled-tools";
 
 function inside(root: string, target: string): boolean {
   const remainder = relative(root, target);

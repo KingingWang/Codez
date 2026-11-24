@@ -11,8 +11,8 @@ Status: needs-triage
 ## 证据
 
 - 设置页：`packages/ui/src/store/mcpStoreHelpers.ts:167-171`（`getServerPriority`）。
-- CLI 启动路径：`apps/zcode-cli/packages/adapters/src/config/config-factory.ts` 的 `resolveEffectiveMcpServers`，注释写明 "user config shadows project config"。
-- CLI 动态加载路径：`apps/zcode-cli/packages/adapters/src/mcp/config-loader.ts`，同样是 project 先、user 后。
+- CLI 启动路径：`apps/codez-cli/packages/adapters/src/config/config-factory.ts` 的 `resolveEffectiveMcpServers`，注释写明 "user config shadows project config"。
+- CLI 动态加载路径：`apps/codez-cli/packages/adapters/src/mcp/config-loader.ts`，同样是 project 先、user 后。
 
 ## 影响
 

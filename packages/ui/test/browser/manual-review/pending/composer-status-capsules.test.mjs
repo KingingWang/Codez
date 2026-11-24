@@ -19,9 +19,9 @@ import { AgentToolCallBlock } from "@/ToolCallBlocks/renderers/agent.js";
 import { ToolPresentationCapabilitiesProvider } from "@/ToolCallBlocks/presentationCapabilities.js";
 import { V4ConversationContext } from "@/v4/V4ConversationContext.js";
 import { useWorkflowRunJournalSummaries } from "@/hooks/useWorkflowRunJournalSummaries.js";
-import { subagentProjectionStateSchema } from "@zcode/shared/zcode-protocol-v4";
+import { subagentProjectionStateSchema } from "@codez/shared/codez-protocol-v4";
 import { createRoot } from "react-dom/client";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { ComposerStatusRow, StatusCapsule, ConversationStatusPanel } from "@/v4/ConversationStatusPanel.js";
 import { GitStatusRepositoryContext } from "@/hooks/useGitRepository.js";
 import { ChatErrorBanner } from "@/ChatErrorBanner.js";
@@ -46,7 +46,7 @@ function Fixture() {
  const [terminalRunning, setTerminalRunning] = useState(false);
  const real = query.has("real");
  if(query.has("journalQuery")) return <V4ConversationContext.Provider value={queryContext}><QueryProbe/></V4ConversationContext.Provider>;
- return <ZCodeIntlProvider initialLocale={query.get("locale")}>
+ return <CodezIntlProvider initialLocale={query.get("locale")}>
   <ToolPresentationCapabilitiesProvider value={query.has("configuredColor") ? {agentColor:()=>"blue"} : {}}><TooltipProvider><main className="h-screen bg-background text-foreground p-3">
    <button data-testid="outside">Outside</button><button data-testid="toggle" onClick={()=>setTodoVisible(v=>!v)}>Toggle</button><output>{result}</output>
    <button data-testid="todo-running" onClick={()=>setTodoState("inProgress")}>Run todo</button>
@@ -91,7 +91,7 @@ function Fixture() {
     <textarea aria-label="Composer" className="w-full" />
    </div>
   </main></TooltipProvider></ToolPresentationCapabilitiesProvider>
- </ZCodeIntlProvider>;
+ </CodezIntlProvider>;
 }
 createRoot(document.getElementById("root")).render(<Fixture />);
 `;
@@ -129,9 +129,9 @@ before(async () => {
     resolve: {
       alias: {
         "@": join(root, "packages/ui/src"),
-        "@zcode/shared/zcode-protocol-v4": join(
+        "@codez/shared/codez-protocol-v4": join(
           root,
-          "packages/shared/src/zcode-protocol-v4/index.ts",
+          "packages/shared/src/codez-protocol-v4/index.ts",
         ),
       },
     },

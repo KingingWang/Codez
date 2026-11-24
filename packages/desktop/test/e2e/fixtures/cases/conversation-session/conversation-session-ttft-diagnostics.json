@@ -8,12 +8,12 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/ttft-diagnostics/input.txt",
+      "path": ".codez-e2e/ttft-diagnostics/input.txt",
       "source": "created-by-helper",
       "description": "用例通过异步 fs 创建，只在隔离 E2E workspace 执行。"
     },
     {
-      "path": ".zcode-e2e/ttft-diagnostics/hook.cjs",
+      "path": ".codez-e2e/ttft-diagnostics/hook.cjs",
       "source": "created-by-helper",
       "description": "用例通过异步 fs 创建，只在隔离 E2E workspace 执行。"
     }

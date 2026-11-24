@@ -1,4 +1,4 @@
-import type { IUsageStatsService } from "@zcode/services";
+import type { IUsageStatsService } from "@codez/services";
 import { useProviderSettingsView } from "@/hooks/useProviderSettingsView.js";
 import { useUsageEntitlementWithService } from "@/hooks/useUsageEntitlement.js";
 import { buildStartPlanEntitlementOptions } from "@/lib/startPlanEntitlementOptions.js";

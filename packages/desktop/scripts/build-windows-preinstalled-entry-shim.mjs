@@ -13,7 +13,7 @@ import { spawnCancellableStep } from "./e2e-step-process.mjs";
 const exec = promisify(execFile);
 const desktopRoot = resolve(import.meta.dirname, "..");
 const sourceRoot = join(desktopRoot, "native/windows-preinstalled-entry-shim");
-const outputName = "zcode-preinstalled-entry-shim.exe";
+const outputName = "codez-preinstalled-entry-shim.exe";
 const BUILD_TIMEOUT_MS = 5 * 60_000;
 export const PREINSTALLED_ENTRY_SHIM_PROCESS_TIMEOUT_MS = 6 * 60_000;
 const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
@@ -129,7 +129,7 @@ async function runCmake(command, args, deadline) {
 
 async function build(outputDir, targetArch, source, deadline) {
   const command = await resolveCmake(deadline);
-  const work = await mkdtemp(join(tmpdir(), "zcode-preinstalled-entry-shim-"));
+  const work = await mkdtemp(join(tmpdir(), "codez-preinstalled-entry-shim-"));
   try {
     const buildDir = join(work, "build");
     const builtDir = join(work, "out");
@@ -144,7 +144,7 @@ async function build(outputDir, targetArch, source, deadline) {
         "Visual Studio 17 2022",
         "-A",
         targetArch === "arm64" ? "ARM64" : "x64",
-        `-DZCODE_SHIM_OUTPUT_DIR=${builtDir.replaceAll("\\", "/")}`,
+        `-DCODEZ_SHIM_OUTPUT_DIR=${builtDir.replaceAll("\\", "/")}`,
       ],
       deadline,
     );
@@ -174,7 +174,7 @@ async function main(args) {
     throw new Error("--check and --ensure are mutually exclusive");
   const targetArch = (
     argument(args, "--arch") ??
-    process.env.ZCODE_TARGET_ARCH ??
+    process.env.CODEZ_TARGET_ARCH ??
     arch()
   ).toLowerCase();
   if (targetArch !== "x64" && targetArch !== "arm64")

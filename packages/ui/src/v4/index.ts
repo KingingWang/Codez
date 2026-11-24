@@ -1,5 +1,5 @@
 // UI 侧 v4 数据层（M3 m3-ui-core，docs/v4-refactor/06-ui）。
-// 纯新增：与旧 store/zcodeSessionStore* 并存，删除发生在竖切可用后（11-deletion-plan 波次 1）。
+// 纯新增：与旧 store/codezSessionStore* 并存，删除发生在竖切可用后（11-deletion-plan 波次 1）。
 export {
   conversationTopic,
   type ConversationTransport,

@@ -10,8 +10,8 @@ import {
   TID_MODEL_PROVIDER_CONNECTION_MODE_TRIGGER,
   TID_MODEL_PROVIDER_CONNECTION_MODE_ITEM,
   testId,
-} from "@zcode/shared/test-ids";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+} from "@codez/shared/test-ids";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 import {
   clearAppData,
   getE2EAppDataPaths,
@@ -115,15 +115,15 @@ describe("PAT-KEY-E2E: 账号就绪时创建 Coding Plan Key", () => {
           "oauth:session_revision": "e2e-linked-revision",
           "oauth:zai_cn:access_token": "e2e-cn-upstream-oauth",
           "oauth:zai_cn:user_info": JSON.stringify({
-            user_id: "zcode-primary-user",
+            user_id: "codez-primary-user",
             name: "CN User",
           }),
           "oauth:linked_bigmodel": JSON.stringify({
-            userId: "zcode-primary-user",
+            userId: "codez-primary-user",
             customerId: "e2e-user",
             accessToken: "e2e-linked-bigmodel-jwt",
           }),
-          zcodejwttoken: "e2e-cn-zcode-jwt",
+          codezjwttoken: "e2e-cn-codez-jwt",
         });
         await writeFile(credentialsFile, JSON.stringify(credentials), "utf8");
         await seedSettings({
@@ -174,7 +174,7 @@ describe("PAT-KEY-E2E: 账号就绪时创建 Coding Plan Key", () => {
     const mcp = (await readCodingPlanUpgradeMockRequests()).requests.find(
       (request) => request.path === "/api/v1/mcp/usage",
     );
-    expect(mcp?.headers.authorization).toBe("Bearer e2e-cn-zcode-jwt");
+    expect(mcp?.headers.authorization).toBe("Bearer e2e-cn-codez-jwt");
     expect(mcp?.headers["x-bigmodel-authorization"]).toBe("Bearer e2e-linked-bigmodel-jwt");
     expect(mcp?.headers["bigmodel-target-type"]).toBe("PERSONAL");
     expect(mcp?.headers["x-coding-plan-api-key"]).toBeUndefined();
@@ -207,7 +207,7 @@ describe("PAT-KEY-E2E: 账号就绪时创建 Coding Plan Key", () => {
     const resetRequest = (await readCodingPlanUpgradeMockRequests()).requests.find(
       (request) => request.path === "/api/v1/coding-plan/reset/status",
     );
-    expect(resetRequest?.headers.authorization).toBe("Bearer e2e-cn-zcode-jwt");
+    expect(resetRequest?.headers.authorization).toBe("Bearer e2e-cn-codez-jwt");
     expect(resetRequest?.headers["x-bigmodel-authorization"]).toBe("e2e-linked-bigmodel-jwt");
     const accelerated = await browser.execute(
       async (triggerId, providerId) => {
@@ -242,7 +242,7 @@ describe("PAT-KEY-E2E: 账号就绪时创建 Coding Plan Key", () => {
                 result.execution?.requestAuth.headers["X-Bigmodel-Authorization"] ===
                 "Bearer e2e-linked-bigmodel-jwt",
               correctPrimaryAuth:
-                result.execution?.requestAuth.headers.Authorization === "Bearer e2e-cn-zcode-jwt",
+                result.execution?.requestAuth.headers.Authorization === "Bearer e2e-cn-codez-jwt",
             };
           }
           fiber = fiber.return;
@@ -357,7 +357,7 @@ describe("PAT-KEY-E2E: 账号就绪时创建 Coding Plan Key", () => {
     const offPeakRequest = accelerationRequests.find(
       (request) => request.path === "/api/v1/off-peak/ticket/availability",
     );
-    expect(offPeakRequest?.headers.authorization).toBe("Bearer e2e-cn-zcode-jwt");
+    expect(offPeakRequest?.headers.authorization).toBe("Bearer e2e-cn-codez-jwt");
     expect(offPeakRequest?.headers["x-coding-plan-api-key"]).toBeTruthy();
     expect(offPeakRequest?.headers["x-coding-plan-api-key"]).not.toBe("e2e-linked-bigmodel-jwt");
     const drawRequest = accelerationRequests.find(
@@ -524,7 +524,7 @@ describe("PAT-KEY-E2E: 账号就绪时创建 Coding Plan Key", () => {
     );
     const mismatched = JSON.parse(await readFile(credentialsFile, "utf8"));
     mismatched["oauth:linked_bigmodel"] = JSON.stringify({
-      userId: "another-zcode-user",
+      userId: "another-codez-user",
       customerId: "e2e-user",
       accessToken: "e2e-linked-bigmodel-jwt",
     });
@@ -577,7 +577,7 @@ describe("PAT-KEY-E2E: 账号就绪时创建 Coding Plan Key", () => {
       user_id: "e2e-association-user",
       name: "Associated User",
     });
-    credentials.zcodejwttoken = "e2e-association-upgrade-jwt";
+    credentials.codezjwttoken = "e2e-association-upgrade-jwt";
     await writeFile(credentialsFile, JSON.stringify(credentials), "utf8");
     const selections = {
       zai: { kind: "individual-coding-plan" as const },
@@ -722,7 +722,7 @@ describe("PAT-KEY-E2E: 账号就绪时创建 Coding Plan Key", () => {
         customerId: "e2e-user",
         accessToken: "e2e-expiring-business",
       }),
-      zcodejwttoken: "e2e-expiring-primary",
+      codezjwttoken: "e2e-expiring-primary",
     });
     await writeFile(credentialsFile, JSON.stringify(saved), "utf8");
     await seedSettings({
@@ -792,7 +792,7 @@ describe("PAT-KEY-E2E: 账号就绪时创建 Coding Plan Key", () => {
     await control("ok", false);
     expect(await query()).toBe(true);
     expect(await profiles()).toBe(initial);
-    const logDir = await browser.electron.execute(() => process.env.ZCODE_E2E_RUNTIME_LOG_DIR);
+    const logDir = await browser.electron.execute(() => process.env.CODEZ_E2E_RUNTIME_LOG_DIR);
     if (!logDir) throw new Error("缺少 E2E 日志目录");
     const recoveryCompletions = async () => {
       const logs = await Promise.all(
@@ -909,7 +909,7 @@ describe("PAT-KEY-E2E: 账号就绪时创建 Coding Plan Key", () => {
       delete (window as any).__associated401Services;
     });
   });
-  it("BigModel 资料补齐不改变 ZCode 主体", async function () {
+  it("BigModel 资料补齐不改变 Codez 主体", async function () {
     this.timeout(90_000);
     await seedCredentials("e2e-legacy-migration-primary");
     const { credentialsFile } = getE2EAppDataPaths();
@@ -921,7 +921,7 @@ describe("PAT-KEY-E2E: 账号就绪时创建 Coding Plan Key", () => {
       "oauth:session_revision": "legacy-migration-original",
       "oauth:bigmodel:access_token": "e2e-legacy-migration-business",
       "oauth:bigmodel:user_info": JSON.stringify({
-        id: "e2e-canonical-zcode-subject",
+        id: "e2e-canonical-codez-subject",
         username: "Original User",
         displayName: "Original User",
       }),
@@ -961,8 +961,8 @@ describe("PAT-KEY-E2E: 账号就绪时创建 Coding Plan Key", () => {
       async () => (await readProfile())?.displayName === "Legacy Business Profile",
       { timeout: 15_000 },
     );
-    expect((await readProfile())?.id).toBe("e2e-canonical-zcode-subject");
-    expect((await readProfile(true))?.id).toBe("e2e-canonical-zcode-subject");
+    expect((await readProfile())?.id).toBe("e2e-canonical-codez-subject");
+    expect((await readProfile(true))?.id).toBe("e2e-canonical-codez-subject");
   });
   it("中国区直接退出自动清除套餐可用性投影", async function () {
     this.timeout(90_000);
@@ -970,7 +970,7 @@ describe("PAT-KEY-E2E: 账号就绪时创建 Coding Plan Key", () => {
     await Promise.all(
       baseUrls.map((url) => resetCodingPlanUpgradeMockServer(url, "webview-refresh-provider")),
     );
-    await seedCredentials("e2e-cn-zcode-jwt");
+    await seedCredentials("e2e-cn-codez-jwt");
     const { credentialsFile } = getE2EAppDataPaths();
     const credentials = JSON.parse(await readFile(credentialsFile, "utf8"));
     for (const key of Object.keys(credentials))
@@ -979,9 +979,9 @@ describe("PAT-KEY-E2E: 账号就绪时创建 Coding Plan Key", () => {
       "oauth:active_provider": "zai_cn",
       "oauth:session_revision": "cn-direct-logout",
       "oauth:zai_cn:access_token": "e2e-cn-upstream-oauth",
-      "oauth:zai_cn:user_info": JSON.stringify({ user_id: "zcode-primary-user", name: "CN User" }),
+      "oauth:zai_cn:user_info": JSON.stringify({ user_id: "codez-primary-user", name: "CN User" }),
       "oauth:linked_bigmodel": JSON.stringify({
-        userId: "zcode-primary-user",
+        userId: "codez-primary-user",
         customerId: "e2e-user",
         accessToken: "e2e-linked-bigmodel-jwt",
       }),
@@ -1056,7 +1056,7 @@ async function assertCreation(authorization: string) {
       request.method === "POST" &&
       request.path.endsWith("/organization/org-e2e/projects/proj-e2e/api_keys") &&
       request.headers.authorization === authorization &&
-      request.keyCreation?.name === "zcode-api-key" &&
+      request.keyCreation?.name === "codez-api-key" &&
       request.keyCreation.usageScene === 1,
     "真实 Host 没有创建 usageScene=1 的套餐 Key",
   );

@@ -17,9 +17,9 @@ await mkdir(outputRoot, { recursive: true });
 const output = await mkdtemp(join(outputRoot, "run-"));
 const require = createRequire(join(root, "package.json"));
 const runtime = process.argv[3] ?? require("electron");
-const memorySource = join(root, "apps/zcode-cli/packages/adapters/src/memory-diagnostics/index.ts");
+const memorySource = join(root, "apps/codez-cli/packages/adapters/src/memory-diagnostics/index.ts");
 const archiveSource = join(root, "packages/services/src/feedback/feedbackLogArchive.ts");
-const collectorSource = join(root, "packages/services/src/zcode-agent/agentStderrCollector.ts");
+const collectorSource = join(root, "packages/services/src/codez-agent/agentStderrCollector.ts");
 const report = { platform: process.platform, runtime, checks: [], children: [], sourceHashes: {} };
 for (const path of [
   memorySource,
@@ -101,7 +101,7 @@ await check("fatal-header-bounded-retention", async () => {
   assert.ok(!tail.snapshot().tail.some((line) => line.startsWith("FATAL ERROR:")));
 });
 function exitLine(tail, code = 1, signal = null) {
-  return `[2026-11-16 12:00:00] [error] [pid:123] [host] [zcode-agent] ZCode agent process exited unexpectedly ${JSON.stringify(
+  return `[2026-11-16 12:00:00] [error] [pid:123] [host] [codez-agent] Codez agent process exited unexpectedly ${JSON.stringify(
     {
       pid: 123,
       code,
@@ -150,7 +150,7 @@ for (const [format, address] of [
           ...frames,
           `TypeError: secondary failure context: ${secret}`,
           `RangeError: final failure password="${secret}"`,
-          "    at probe (zcode.cjs:7:19)",
+          "    at probe (codez.cjs:7:19)",
         ];
         const { files, path } = await archiveCase(
           `native-stack-${format}-${newline.length}`,
@@ -239,7 +239,7 @@ await check("error-header-leading-context", async () => {
     exitLine([
       `Error: token=${secret}`,
       `TypeError: context: ${secret}`,
-      "    at probe (zcode.cjs:7:19)",
+      "    at probe (codez.cjs:7:19)",
     ]),
   );
   const { agentCrash } = readCrashRecord(files);
@@ -247,7 +247,7 @@ await check("error-header-leading-context", async () => {
   assert.equal(lines.length, 3);
   assert.match(lines[0], /^Error:[ \t]+\[REDACTED\]$/);
   assert.match(lines[1], /^TypeError:[ \t]+\[REDACTED\]$/);
-  assert.equal(lines[2], "    at probe (zcode.cjs:7:19)");
+  assert.equal(lines[2], "    at probe (codez.cjs:7:19)");
   assert.ok(![...files.values()].join("\n").includes(secret));
   return { path };
 });
@@ -263,8 +263,8 @@ await check("stack-frame-privacy", async () => {
       " 6: deadbeefg not_a_native_address",
       " 7: 12345678901234567 not_a_native_address",
       " 2: 0x2345bcde node::Abort()",
-      `    at probe (zcode.cjs:7:19) password=${secret}`,
-      "    at caller (zcode.cjs:8:20)",
+      `    at probe (codez.cjs:7:19) password=${secret}`,
+      "    at caller (codez.cjs:8:20)",
     ]),
   );
   const { agentCrash, stderr } = readCrashRecord(files);
@@ -272,7 +272,7 @@ await check("stack-frame-privacy", async () => {
   assert.match(agentCrash.errorStack, /^ 2: 0x2345bcde node::Abort\(\)/m);
   assert.match(agentCrash.errorStack, /^ 4: 00007FF8A5E9CC91 RtlUserThreadStart\+33/m);
   assert.ok(!agentCrash.errorStack.includes("not_a_native_address"));
-  assert.match(agentCrash.errorStack, /^    at caller \(zcode.cjs:8:20\)/m);
+  assert.match(agentCrash.errorStack, /^    at caller \(codez.cjs:8:20\)/m);
   assert.equal(stderr, "[REDACTED]");
   assert.ok(![...files.values()].join("\n").includes(secret));
   return { path };
@@ -320,7 +320,7 @@ for (const [mode, budget] of [["full"], ["compact", 2 * 1024 * 1024]]) {
 }
 const errorLine = exitLine([
   `Error: ${crashMarker} token=${secret}`,
-  "    at probe (zcode.cjs:7:19)",
+  "    at probe (codez.cjs:7:19)",
   " 1: 0x1234abcd node::OOMErrorHandler()",
   " 2: 00007FF8A5E9CC91 RtlUserThreadStart+33",
   `prompt: ${secret}`,
@@ -339,7 +339,7 @@ for (const [name, size, budget] of [
     const log = files.get("logs/app.log");
     assert.ok(log?.includes(crashMarker), "crash summary missing from ZIP");
     assert.ok(log.includes("agentCrash"));
-    assert.ok(log.includes("zcode.cjs:7:19"));
+    assert.ok(log.includes("codez.cjs:7:19"));
     const { agentCrash } = readCrashRecord(
       new Map([["logs/app.log", log.trim().split("\n").at(-1)]]),
     );
@@ -527,7 +527,7 @@ for (const mode of ["exception", "oom"]) {
       sources: [
         {
           directory: child.directory,
-          archivePrefix: ".zcode/cli/memory-diagnostics",
+          archivePrefix: ".codez/cli/memory-diagnostics",
           contentPolicy: "cli-memory",
           onlyCurrentDay: false,
         },

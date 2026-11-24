@@ -8,7 +8,7 @@
 现有 `perf_ui_first_screen`（见 `docs/monitoring/performance-monitoring.md`）的计时区间是：
 
 - 起点：renderer 的 JS bundle 开始执行（`main.tsx` 模块层 `performance.now()`）
-- 终点：React 首次 commit（`zcode-react-startup-ready` 事件）
+- 终点：React 首次 commit（`codez-react-startup-ready` 事件）
 
 线上均值 ≈ 75ms。它**只覆盖了 renderer 内部渲染那一小段**，把用户主观感受的大头全漏掉了：
 
@@ -53,7 +53,7 @@ ARMS 上报链路（`desktopMainIpcRemote.ts:126-148`）里，只有 `value` 被
 | `T2` | `app.whenReady().then` 回调入口（index.ts:981）`Date.now()` | main | 框架就绪 |
 | `T3` | 主窗口 `loadURL` 调用前 `Date.now()` | main | 开始加载 renderer |
 | `T4` | `renderer/src/main.tsx` 模块顶部 `Date.now()` | renderer | bundle 开始执行 |
-| `T5` | `zcode-react-startup-ready` 触发时 `Date.now()` | renderer | React 首次 commit |
+| `T5` | `codez-react-startup-ready` 触发时 `Date.now()` | renderer | React 首次 commit |
 | `T6` | 启动门禁 `isStartupRenderBlocked` 由 `true→false` 时 `Date.now()` | renderer | 输入框可用 |
 
 ### 七个阶段（相邻差）
@@ -79,16 +79,16 @@ main 进程
   T2 = Date.now()  (app.whenReady 回调入口)
   T3 = Date.now()  (主窗口 loadURL 前)
     └─ 序列化 {T0,T1,T2,T3} 注入 webPreferences.additionalArguments
-       形如 --zcode-launch-marks=<json>（先例：desktopWindowChrome.ts:283 的 --device-id=）
+       形如 --codez-launch-marks=<json>（先例：desktopWindowChrome.ts:283 的 --device-id=）
          │
 renderer 进程
   从 process.argv 解析出 {T0,T1,T2,T3}（先例：preload/index.ts:14 已读 argv）
   T4 = Date.now()  (renderer/src/main.tsx 模块顶部)
-  T5 = Date.now()  (zcode-react-startup-ready, 一次性)
+  T5 = Date.now()  (codez-react-startup-ready, 一次性)
   T6 = Date.now()  (Root: isStartupRenderBlocked true→false)
     └─ 在 T6 处统一算 7 段 → reportUiLaunchStages(...)
        → uiPerfArmsTelemetry 单例 reporter.reportArmsCustomEvent × 7
-       → window.zcode.reportArmsCustomEvent → IPC → armsRum.sendCustom
+       → window.codez.reportArmsCustomEvent → IPC → armsRum.sendCustom
 ```
 
 公共维度（app_version / arms_env / device_mid / platform / renderer_id）由 main handler 统一补齐，UI 侧不重复填。
@@ -110,7 +110,7 @@ renderer 进程
 其语义被 `perf_ui_launch_react_commit_ms`（`T5 - T4`）完全覆盖。一并清理：
 
 - `uiPerfArmsTelemetry.ts`：删除 `UI_PERF_EVENT_FIRST_SCREEN`、`reportUiFirstScreen`、`pendingFirstScreenPayload` 及 `setUiPerfArmsReporter` 内的补发分支。
-- `renderer/src/main.tsx`：删除 `uiFirstScreenStartedAt` 与 `zcode-react-startup-ready` 监听里调用 `reportUiFirstScreen` 的部分（该事件监听本身保留——T5 仍需它）。
+- `renderer/src/main.tsx`：删除 `uiFirstScreenStartedAt` 与 `codez-react-startup-ready` 监听里调用 `reportUiFirstScreen` 的部分（该事件监听本身保留——T5 仍需它）。
 - 测试 / 文档中 `perf_ui_first_screen` 的条目替换为新事件。
 
 > 注：旧事件历史看板会断更。已与需求方确认接受（目标是更完整的启动链路，旧的 75ms 段并入新链路）。
@@ -122,7 +122,7 @@ renderer 进程
 | `packages/desktop/src/main/index.ts` | 模块顶部记 `T1`；`whenReady` 回调入口记 `T2`；取 `T0=process.getCreationTime()` |
 | `packages/desktop/src/main/desktopWindowLifecycle.ts` | `loadURL` 前记 `T3`；把 `{T0,T1,T2,T3}` 注入主窗口 `additionalArguments` |
 | `packages/desktop/src/preload/index.ts` 或 renderer 入口 | 从 `process.argv` 解析 launch marks，暴露给 renderer |
-| `packages/desktop/src/renderer/src/main.tsx` | 记 `T4`；`zcode-react-startup-ready` 里记 `T5`（移除旧 `reportUiFirstScreen` 调用） |
+| `packages/desktop/src/renderer/src/main.tsx` | 记 `T4`；`codez-react-startup-ready` 里记 `T5`（移除旧 `reportUiFirstScreen` 调用） |
 | `packages/ui/src/Root.tsx` | `useEffect` 监听 `isStartupRenderBlocked` 翻转记 `T6`，组装 marks 调 `reportUiLaunchStages`（含 WelcomeScreen 跳过判定） |
 | `packages/ui/src/lib/uiPerfArmsTelemetry.ts` | 新增 `reportUiLaunchStages(marks)` 发 7 条；删除 `reportUiFirstScreen` 及暂存逻辑；新增常量 |
 | `packages/ui/src/lib/uiPerfArmsTelemetry.test.ts` | 删旧 first_screen 用例；新增：7 段 payload 正确、负值钳为 0、哨兵丢弃、WelcomeScreen 跳过、reporter 未注入吞错 |
@@ -135,7 +135,7 @@ renderer 进程
 | `UI_PERF_ARMS_GROUP` | `"ui_perf"`（复用） | uiPerfArmsTelemetry.ts |
 | `UI_PERF_EVENT_LAUNCH_TO_INPUT` 等 7 个事件名 | 见上表 | uiPerfArmsTelemetry.ts |
 | `LAUNCH_TO_INPUT_SANITY_MAX_MS` | `300000` | uiPerfArmsTelemetry.ts |
-| `LAUNCH_MARKS_ARGV_PREFIX` | `"--zcode-launch-marks="` | 共享常量 |
+| `LAUNCH_MARKS_ARGV_PREFIX` | `"--codez-launch-marks="` | 共享常量 |
 
 ## 错误处理
 

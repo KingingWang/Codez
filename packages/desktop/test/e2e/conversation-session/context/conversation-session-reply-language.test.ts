@@ -6,7 +6,7 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { TID_V4_COMPOSER_INPUT } from "@zcode/shared/test-ids";
+import { TID_V4_COMPOSER_INPUT } from "@codez/shared/test-ids";
 import {
   clearAppData,
   DEFAULT_WORKSPACE,
@@ -340,7 +340,7 @@ function stripCacheControl<T>(value: T): T {
 function languagePartIds(sessionId: string): string[] {
   // Node SQLite 只提供同步 API；只读隔离 E2E DB，不改写运行中的 session。
   const db = new DatabaseSync(
-    join(getE2EAppDataPaths().homeDir, ".zcode", "cli", "db", "db.sqlite"),
+    join(getE2EAppDataPaths().homeDir, ".codez", "cli", "db", "db.sqlite"),
     { readOnly: true },
   );
   try {
@@ -355,5 +355,5 @@ function languagePartIds(sessionId: string): string[] {
 }
 
 function artifactPath(name: string): string {
-  return join(process.env.ZCODE_E2E_ARTIFACT_DIR ?? join(process.cwd(), ".e2e-artifacts"), name);
+  return join(process.env.CODEZ_E2E_ARTIFACT_DIR ?? join(process.cwd(), ".e2e-artifacts"), name);
 }

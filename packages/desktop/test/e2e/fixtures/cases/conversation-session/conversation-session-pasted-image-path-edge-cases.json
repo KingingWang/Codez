@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode/cli/image-cache/<session>/image-*.png",
+      "path": ".codez/cli/image-cache/<session>/image-*.png",
       "source": "created-by-spec",
       "description": "T16 首轮成功后删除真实派生图片，随后连同同 session 的 durable data URL artifact 一起删除。"
     }

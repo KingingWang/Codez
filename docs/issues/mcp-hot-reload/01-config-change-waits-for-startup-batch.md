@@ -14,14 +14,14 @@ Status: needs-triage
 ## 时序（`desktop-e2e-20261105102132133-p44915-45ddc399ec796406`，macOS，负载约 33）
 
 ```
-10:23:01.867  任务 B 创建，启动连接开始（官方 zcode-site 插件在高负载下很慢）
+10:23:01.867  任务 B 创建，启动连接开始（官方 codez-site 插件在高负载下很慢）
 10:23:04.620  新配置（新增 shared09）送到任务 B 的配置 view
               → 会话 reconcile 调用 connectConfiguredServers
               → 工作区信任层的 mutate 队列：排在启动批次后面
 10:23:05.719  任务 B 的 prompt；10:23:06.142 ToolSearch 返回
-              "No matching deferred tools found. Some MCP servers are still connecting: plugin:zcode-site:sites"
+              "No matching deferred tools found. Some MCP servers are still connecting: plugin:codez-site:sites"
               （没有 shared09）
-10:23:07.255  zcode-site 连上，启动批次结束
+10:23:07.255  codez-site 连上，启动批次结束
 10:23:07.346  任务 B 才开始连接 shared09
 ```
 
@@ -29,8 +29,8 @@ Status: needs-triage
 
 ## 证据
 
-- 排队点：`apps/zcode-cli/packages/bootstrap/src/workspace-mcp-trust/index.ts` 的 `mutate`。`connectConfiguredServers` 整个放在队列里，包括 `raw.connectConfiguredServers` 的握手等待；下一次变更要等上一次完全结束。
-- 启动批次的等待上限：`apps/zcode-cli/packages/core/src/runtime/agent-runtime.ts` 的 `MCP_SESSION_OAUTH_WAIT_MS`（15 s），adapter 的 `waitForSharedConnection` 用它限制每个 server 的等待。
+- 排队点：`apps/codez-cli/packages/bootstrap/src/workspace-mcp-trust/index.ts` 的 `mutate`。`connectConfiguredServers` 整个放在队列里，包括 `raw.connectConfiguredServers` 的握手等待；下一次变更要等上一次完全结束。
+- 启动批次的等待上限：`apps/codez-cli/packages/core/src/runtime/agent-runtime.ts` 的 `MCP_SESSION_OAUTH_WAIT_MS`（15 s），adapter 的 `waitForSharedConnection` 用它限制每个 server 的等待。
 - 排队期间新 server 没有 pool lease，所以 `getToolSnapshot` 里没有它，ToolSearch 既不能把它列为 pending，也搜不到它的工具。
 - 配置推送本身是准时的：两次运行里各 view 在 30 ms 内收到新快照。
 

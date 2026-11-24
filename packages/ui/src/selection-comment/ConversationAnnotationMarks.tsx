@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObje
 import { createPortal, flushSync } from "react-dom";
 import { cn } from "@/components/lib/utils.js";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import type { ConversationSelectionTextAnchor } from "@/lib/conversationSelectionReference.js";
 import {
   AnnotationNumber,
@@ -63,7 +63,7 @@ export function ConversationAnnotationMarks({
   /** 点编号气泡：打开编辑浮层，rect 是气泡在视口里的位置。 */
   onActivate: (id: string, rect: DOMRect) => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [host, setHost] = useState<HTMLElement | null>(null);
   const [layouts, setLayouts] = useState<readonly MarkLayout[]>([]);
   const itemsRef = useRef(items);

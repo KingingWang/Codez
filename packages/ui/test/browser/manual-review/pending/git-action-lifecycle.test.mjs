@@ -15,7 +15,7 @@ const artifacts = join(root, "packages/desktop/.e2e-artifacts/git-action-lifecyc
 const fixture = `
 import { useState, useCallback } from "react";
 import { createRoot } from "react-dom/client";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { GitBranchActionsHost } from "@/GitBranchSwitcher.js";
 import { ComposerStatusRow, ConversationStatusPanel } from "@/v4/ConversationStatusPanel.js";
@@ -40,7 +40,7 @@ const services={gitService:{
 function Fixture(){
  const [hidden,setHidden]=useState(false),[dirty,setDirty]=useState(true),[session,setSession]=useState("a"),[cwd,setCwd]=useState("/example");
  const refresh=useCallback(()=>{if(committed)setDirty(false)},[]);
- return <ZCodeIntlProvider initialLocale={query.get("locale")??"en-US"}><ServiceProvider services={services}><TooltipProvider>
+ return <CodezIntlProvider initialLocale={query.get("locale")??"en-US"}><ServiceProvider services={services}><TooltipProvider>
  <button data-testid="hide-error" onClick={()=>setHidden(true)}>Error</button>
  <button data-testid="hide-quota" onClick={()=>setHidden(true)}>Quota</button>
  <button data-testid="release" onClick={()=>releaseFailure?.()}>Release failure</button>
@@ -50,7 +50,7 @@ function Fixture(){
  <input data-testid="retained-editor" defaultValue="draft"/><GitStatusRepositoryContext.Provider value={{state:{datasets:{unstaged:{sections:dirty?[{changes:[{path:"file.txt",added:1,removed:0}]}]:[]},staged:{sections:[]}}}}}>
  {!hidden ? <div className="fixed bottom-4 left-4 right-4"><ComposerStatusRow><ConversationStatusPanel workspacePath="/example" gitSummary={summary} gitDirtyFileCount={dirty?1:0} onRefreshGit={refresh} /></ComposerStatusRow></div>:null}
  </GitStatusRepositoryContext.Provider></GitBranchActionsHost>
- </TooltipProvider></ServiceProvider></ZCodeIntlProvider>
+ </TooltipProvider></ServiceProvider></CodezIntlProvider>
 }
 createRoot(document.getElementById("root")).render(<Fixture/>);
 `;

@@ -4,18 +4,18 @@ import {
   SOURCE_SERVER_RELEASE_DESCRIPTOR_FILE_NAME,
   SOURCE_SERVER_RELEASE_TARGETS,
   sourceServerReleaseDescriptorSchema,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 /**
  * 远程资源就绪判断的范围。
  * - `all`：默认（服务器队列、本机），descriptor 须登记四个平台且对应 archive 都存在，缺失时调用全平台入口。
  * - `linux`：CI 与本机 Docker runner 声明「本次只需要 Linux 目标」，descriptor 须登记两个 Linux 目标
- *   且对应 archive 存在，缺失时调用 `ZCODE_ENV=test pnpm prepare:remote-assets:linux`，永不调用全平台入口。
+ *   且对应 archive 存在，缺失时调用 `CODEZ_ENV=test pnpm prepare:remote-assets:linux`，永不调用全平台入口。
  */
 export type SshRemoteReleaseScope = "all" | "linux";
 
 /** 本机 Docker runner 向 wdio 声明范围的环境变量。 */
-export const SSH_REMOTE_RELEASE_SCOPE_ENV = "ZCODE_E2E_REMOTE_RELEASE_SCOPE";
+export const SSH_REMOTE_RELEASE_SCOPE_ENV = "CODEZ_E2E_REMOTE_RELEASE_SCOPE";
 
 export interface SshRemoteReleasePrepareRequest {
   /** 根 package.json 的脚本名。 */
@@ -37,11 +37,11 @@ export interface EnsureSshRemoteReleaseAssetsOptions {
   buildRevision?: string;
   /**
    * 本轮 onPrepare 是否真实构建了 agent bundle。只有为 true 时打包器才跳过首个 target 的 agent 构建；
-   * 只检查过入口存在（ZCODE_E2E_SKIP_AGENT_BUILD=1）不算，那时工作区里的 bundle 可能来自旧构建。
+   * 只检查过入口存在（CODEZ_E2E_SKIP_AGENT_BUILD=1）不算，那时工作区里的 bundle 可能来自旧构建。
    */
   agentBundleBuiltThisRun?: boolean;
   /**
-   * 执行根 package.json 的 prepare 脚本（→ @zcode/server-cli stage:remote-assets）的回调，
+   * 执行根 package.json 的 prepare 脚本（→ @codez/server-cli stage:remote-assets）的回调，
    * 由 wdio.conf.ts 注入以复用 runPnpmWorkspaceCommand（处理 CI HOME / NODE_OPTION /
    * Windows shell）。脚本名与环境由本 helper 按范围决定。
    */
@@ -65,8 +65,8 @@ const PREPARE_REQUESTS: Record<
   Omit<SshRemoteReleasePrepareRequest, "args">
 > = {
   all: { script: "prepare:remote-assets", env: {} },
-  // E2E 桌面端固定 ZCODE_ENV=test；远端 server 在构建时编译 ZCODE_ENV，两端必须一致。
-  linux: { script: "prepare:remote-assets:linux", env: { ZCODE_ENV: "test" } },
+  // E2E 桌面端固定 CODEZ_ENV=test；远端 server 在构建时编译 CODEZ_ENV，两端必须一致。
+  linux: { script: "prepare:remote-assets:linux", env: { CODEZ_ENV: "test" } },
 };
 
 export function resolveSshRemoteReleaseScope(env: NodeJS.ProcessEnv): SshRemoteReleaseScope {
@@ -92,7 +92,7 @@ const RELEASE_TARGETS_BY_SCOPE: Record<SshRemoteReleaseScope, readonly string[]>
 
 // Bug 根因：release 产物已切换为 descriptor + archive 布局（stage:remote-assets →
 // remoteAssetRelease.ts collectSourceServerRemoteReleaseArchives），旧的 manifest-<platform>.json
-// 不再产出；继续用它做哨兵会让新布局永远判“不完整”。这里直接复用 @zcode/shared 的 target 与
+// 不再产出；继续用它做哨兵会让新布局永远判“不完整”。这里直接复用 @codez/shared 的 target 与
 // descriptor 文件名常量，避免再次漂移。
 // Bug 根因（!3777 评审 CR-02）：全平台判断原来只看文件存在。Linux 范围重建只替换两个 Linux
 // 目标、descriptor 只登记它们，旧 darwin archive 仍留在目录里；切回 all 时会被当成完整而复用，
@@ -116,7 +116,7 @@ async function listMissingReleaseAssets(
   }
   const missing: string[] = [];
   for (const target of targets) {
-    const fileName = `zcode-server-${target}.tar.gz`;
+    const fileName = `codez-server-${target}.tar.gz`;
     if (!listed.has(target)) missing.push(`${target}（descriptor 未列出）`);
     else if (!(await exists(join(releaseDir, fileName)))) missing.push(fileName);
   }

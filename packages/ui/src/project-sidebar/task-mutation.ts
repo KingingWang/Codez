@@ -1,9 +1,9 @@
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
-import type { V4SessionDeletionPreviewBatchItem } from "@zcode/shared/zcode-protocol-v4";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
+import type { V4SessionDeletionPreviewBatchItem } from "@codez/shared/codez-protocol-v4";
 import { isArchivedTaskDeletionBatchUnsupported } from "@/project-sidebar/contract.js";
 import type {
   ProjectTaskRef,
-  IZCodeTaskService,
+  ICodezTaskService,
   IWindowControllerService,
   WindowHostControllerMutation,
   WindowHostTaskAddress,
@@ -13,7 +13,7 @@ export type ProjectTaskMutation = Exclude<
   { kind: "open" | "resume" }
 >;
 interface ProjectTaskPorts {
-  service: IZCodeTaskService;
+  service: ICodezTaskService;
   controller?: IWindowControllerService;
 }
 function taskAddress(task: ProjectTaskRef, remoteSessionId?: string | null): WindowHostTaskAddress {

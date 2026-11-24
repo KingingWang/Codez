@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { AlignCenter, AlignLeft, AlignRight } from "lucide-react";
-import { parseCssColor, toHexColor } from "@zcode/design-runtime";
+import { parseCssColor, toHexColor } from "@codez/design-runtime";
 import { joinColor, splitColor } from "@/browser-use/browserDesignProperties.js";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";

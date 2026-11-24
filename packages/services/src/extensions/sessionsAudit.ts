@@ -1,4 +1,4 @@
-import type { ExtensionAuditEntry } from "@zcode/shared/extension-host";
+import type { ExtensionAuditEntry } from "@codez/shared/extension-host";
 
 // 写动作的审计行（docs/plugins/extension-host.md §17.8，实现 P3c-1）：只从入参与结果里取身份、目标与长度，
 // 不写提示词、标题、正文、路径、错误原文，也不写结果里可能是自由文本的 reason。

@@ -12,7 +12,7 @@ import { chromium } from "playwright-core";
 const root = fileURLToPath(new URL("../../../../../../", import.meta.url));
 const entry =
   "/packages/ui/test/browser/manual-review/pending/start-plan-bucket-reminder.fixture.tsx";
-const artifacts = process.env.START_PLAN_ARTIFACTS ?? join(tmpdir(), "zcode-start-plan-reminder");
+const artifacts = process.env.START_PLAN_ARTIFACTS ?? join(tmpdir(), "codez-start-plan-reminder");
 let server, browser, origin;
 before(async () => {
   await mkdir(artifacts, { recursive: true });

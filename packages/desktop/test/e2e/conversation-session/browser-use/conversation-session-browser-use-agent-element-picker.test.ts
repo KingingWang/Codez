@@ -4,7 +4,7 @@ import {
   TID_BROWSER_DESIGN_INSPECTOR,
   TID_BROWSER_ELEMENT_PICKER_BUTTON,
   TID_WEB_ELEMENT_CONTEXT_CHIP,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import { clickGuestElement, waitForDataCount } from "#e2e/helpers/browser-design-mode";
 import {

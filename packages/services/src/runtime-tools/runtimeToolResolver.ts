@@ -1,6 +1,6 @@
 import { accessSync, constants, existsSync } from "node:fs";
 import { delimiter, dirname, join, resolve as resolvePath } from "node:path";
-import { getRuntimeToolRuntime, type RuntimeToolId } from "@zcode/shared";
+import { getRuntimeToolRuntime, type RuntimeToolId } from "@codez/shared";
 
 function isExecutableFile(path: string): boolean {
   try {
@@ -113,7 +113,7 @@ export function findRuntimeToolBinary(
     typeof (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath === "string"
       ? (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath
       : null;
-  const runtimeRoot = env.ZCODE_SERVER_RUNTIME_ROOT?.trim();
+  const runtimeRoot = env.CODEZ_SERVER_RUNTIME_ROOT?.trim();
   const moduleDir: string | undefined = import.meta.dirname;
   const candidate = resolveExistingPath([
     runtimeRoot ? resolvePath(runtimeRoot, "tools", runtime.bundledResourceDir, ...entrySegments) : null,

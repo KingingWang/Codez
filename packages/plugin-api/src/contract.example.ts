@@ -4,10 +4,10 @@ import type {
   ExtensionContext,
   ExtensionModule,
   ExtensionCapabilityOutput,
-} from "@zcode-dev/plugin-api";
-import type { ManifestSlots } from "@zcode-dev/plugin-api/manifest";
-import type { ConversationRow } from "@zcode-dev/plugin-api/protocol-v4";
-import type { SessionActionInput, SessionRowsEvent } from "@zcode-dev/plugin-api/sessions";
+} from "@codez-dev/plugin-api";
+import type { ManifestSlots } from "@codez-dev/plugin-api/manifest";
+import type { ConversationRow } from "@codez-dev/plugin-api/protocol-v4";
+import type { SessionActionInput, SessionRowsEvent } from "@codez-dev/plugin-api/sessions";
 
 // 清单顶层 slots：输入框状态位的一个条目，点击执行命令。
 export const exampleSlots = {

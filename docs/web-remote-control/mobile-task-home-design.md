@@ -48,7 +48,7 @@
 2. 手机端新建 SSH / WSL / Docker remote session。
 3. 手机端管理桌面窗口外的 workspace。
 4. 多手机同时控制同一 desktop window。
-5. 重做聊天组件、ZCode runtime 或 relay 协议主链路。
+5. 重做聊天组件、Codez runtime 或 relay 协议主链路。
 6. 让桌面端同步切到手机端选择的 task。
 
 ## 2026-05-02 补充：workspace 级新建任务入口
@@ -457,12 +457,12 @@ attention?: { kind: "permission" | "userInput"; count: number };
 
 1. `displayStatus` 由 desktop renderer 在构建 `WebRemoteControlTaskTarget` 快照时计算；
    `buildWebRemoteControlTaskTargets()` 先读取 task 行携带的 sessions-index activity，再按上述顺序
-   fallback 到 Zustand task runtime state 和 `ZCodeTaskMeta.status`。
-2. mobile 首页只消费 `WebRemoteControlTaskTarget.displayStatus`，不能直接读取 ZCode runtime、Repo、Service 或持久化实现。
+   fallback 到 Zustand task runtime state 和 `CodezTaskMeta.status`。
+2. mobile 首页只消费 `WebRemoteControlTaskTarget.displayStatus`，不能直接读取 Codez runtime、Repo、Service 或持久化实现。
 3. 同步链路仍是 renderer `syncWebRemoteControlTasks()` -> desktop main -> relay -> mobile bootstrap/listWorkspaces，不新增 mobile 侧状态查询入口。
 4. sessions-index activity 或兼容 task runtime state 变化都要触发重新构建并同步 task snapshot，避免
    `running` / `completed` / `error` pill 滞后到下一次 task list 刷新。
-5. 该字段只用于手机首页展示，不改变 ZCode runtime 的真实状态来源。旧数据缺失时 mobile 前端 fallback 为 `idle`。
+5. 该字段只用于手机首页展示，不改变 Codez runtime 的真实状态来源。旧数据缺失时 mobile 前端 fallback 为 `idle`。
 
 ### 需要处理信号（attention）
 
@@ -548,7 +548,7 @@ pinned?: boolean;
 1. Desktop renderer 在 `Root` 中分别通过 `useGlobalTaskList({ kind: "pinned" })` 和
    `useGlobalTaskList({ kind: "timeline" })` 读取任务。
 2. `buildWebRemoteControlTaskTargets()` 对 pinned 查询结果标记 `pinned: true`，timeline 查询结果不标记。
-3. Mobile 首页只消费该展示字段进行分区；不直接读取 task repo、sqlite、ZCode service 或 runtime。
+3. Mobile 首页只消费该展示字段进行分区；不直接读取 task repo、sqlite、Codez service 或 runtime。
 4. `workspace_task_list_changed` 携带 task meta 的增量事件只表示标题、时间、状态等元数据变化，不表示
    pinned/archived 成员关系变化。前端缓存更新必须保留现有列表归属，避免状态刷新把置顶任务移出 pinned 分区。
 
@@ -563,7 +563,7 @@ currentMobilePage: "home" | "chat"
 进入聊天：
 
 1. 用户打开任务或草稿成功后，设置 `currentMobilePage = "chat"`。
-2. 窄屏聊天显示时，在浏览器历史中记录 `zcodeMobilePage: "chat"`。初次进入聊天用 `pushState`，已标记为 `chat` 时不重复写；当前记录是箭头留下的 `home` 时，用 `replaceState` 复用这一项。
+2. 窄屏聊天显示时，在浏览器历史中记录 `codezMobilePage: "chat"`。初次进入聊天用 `pushState`，已标记为 `chat` 时不重复写；当前记录是箭头留下的 `home` 时，用 `replaceState` 复用这一项。
 
 返回首页：
 
@@ -648,7 +648,7 @@ pnpm lint
    - 如新增 `displayStatus`，补 schema/类型兼容测试。
 6. `packages/ui/test/webRemoteControlTaskIndex.test.ts`
    - `buildWebRemoteControlTaskTargets()` 按 sessions-index activity → task runtime →
-     `ZCodeTaskMeta.status` 的优先级计算 `displayStatus`。
+     `CodezTaskMeta.status` 的优先级计算 `displayStatus`。
    - 覆盖 live phase 与 stale runtime/persisted cache 在 running、completed、error 三个方向上的冲突。
    - activity 缺失或为兼容 `draft` 时保持原有 runtime/persisted fallback，持久 `running` 仍不得制造假
      running。

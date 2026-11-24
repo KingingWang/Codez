@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import {
   preinstalledToolsCatalogSchema,
   resolvePreinstalledToolsCatalog,
-} from "@zcode/shared/preinstalled-tools";
+} from "@codez/shared/preinstalled-tools";
 
 const resource = {
   toolId: "qpdf",
@@ -59,7 +59,7 @@ describe("published built-in resource catalog", () => {
         catalog,
         platform!,
         arch!,
-        ["https://cdn.example.com/zcode/preinstalled-tools"],
+        ["https://cdn.example.com/codez/preinstalled-tools"],
       );
       expect(downloadBaseUrlsError).toBeUndefined();
       expect(tools.every((item) => item.manifest !== null)).toBe(true);
@@ -206,13 +206,13 @@ describe("download address assembly", () => {
       tools: [configuration],
       downloadBaseUrlsError,
     } = resolvePreinstalledToolsCatalog(catalog, "darwin", "arm64", [
-      "https://cn.example.com/zcode/preinstalled-tools/",
+      "https://cn.example.com/codez/preinstalled-tools/",
       "http://127.0.0.1:8080",
-      "https://cn.example.com/zcode/preinstalled-tools",
+      "https://cn.example.com/codez/preinstalled-tools",
     ]);
     expect(downloadBaseUrlsError).toBeUndefined();
     expect(configuration?.manifest?.downloadUrls).toEqual([
-      "https://cn.example.com/zcode/preinstalled-tools/qpdf/v1%2Bb/a%20b.tar.gz",
+      "https://cn.example.com/codez/preinstalled-tools/qpdf/v1%2Bb/a%20b.tar.gz",
       "http://127.0.0.1:8080/qpdf/v1%2Bb/a%20b.tar.gz",
     ]);
     expect(
@@ -226,7 +226,7 @@ describe("download address assembly", () => {
       [],
       ["file:///tmp/tools"],
       ["not-a-url"],
-      ["cdn.example.com/zcode/preinstalled-tools"],
+      ["cdn.example.com/codez/preinstalled-tools"],
       ["https://cn.example.com", "ftp://x.example.com"],
     ]) {
       const { tools, downloadBaseUrlsError } = resolvePreinstalledToolsCatalog(

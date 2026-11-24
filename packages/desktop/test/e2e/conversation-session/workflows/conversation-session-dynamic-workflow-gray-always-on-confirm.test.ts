@@ -1,4 +1,4 @@
-import { TID_CHAT_WORKFLOW_RUN_DIGEST } from "@zcode/shared";
+import { TID_CHAT_WORKFLOW_RUN_DIGEST } from "@codez/shared";
 import { clearAppData, pinE2ELocale } from "#e2e/helpers/desktop-app";
 import { readDynamicWorkflowGrayMockStatus } from "#e2e/helpers/dynamic-workflow-gray";
 import {

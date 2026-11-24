@@ -39,7 +39,7 @@ UTF-8 编码的 JSON，由预装进程按安装记录中的入口定义生成：
 ```json
 {
   "schemaVersion": 1,
-  "target": "C:\\Users\\用户\\.zcode\\preinstalled-tools\\production\\tools\\qpdf\\versions\\r1\\Library\\bin\\qpdf.exe",
+  "target": "C:\\Users\\用户\\.codez\\preinstalled-tools\\production\\tools\\qpdf\\versions\\r1\\Library\\bin\\qpdf.exe",
   "args": ["--install=C:\\…\\versions\\r1"],
   "env": [
     { "name": "FIXTURE_DEFAULT", "action": "default", "value": "x" },
@@ -72,7 +72,7 @@ UTF-8 编码的 JSON，由预装进程按安装记录中的入口定义生成：
 <发布根>\bin\
 ├─ qpdf.exe            shim 程序副本（所有入口内容相同）
 ├─ qpdf.shim           该入口的配置
-├─ zcode-python.exe / zcode-python.shim …
+├─ codez-python.exe / codez-python.shim …
 └─ .retired\           被撤下、暂时删不掉的 shim 副本
 ```
 
@@ -97,23 +97,23 @@ UTF-8 编码的 JSON，由预装进程按安装记录中的入口定义生成：
 - Windows 上直接启动检查目录中的 `<entry>.exe`，与 macOS 和 Linux 用同一套超时、取消和输出处理。不再经过 `cmd /d /s /c`，也不再需要 `windowsVerbatimArguments` 和 `taskkill`。
 - 超时或取消时结束 shim，作业对象负责结束目标及其后代。macOS 和 Linux 没有 shim，改为结束检查所在的进程组。
 - 检查目录中的入口同样按上面的布局写入。
-- 已知限制（本期不处理）：检查入口的完整路径是 `<数据根>\.zcode\preinstalled-tools\<发布身份>\tools\<工具>\staging\<uuid>\check-XXXXXX\<entry>.exe`，在默认数据根下约 130 个字符。数据根很深时，这个路径会超过 `MAX_PATH`（含结尾空字符共 260 个字符），入口启动失败（实测报 `ENOENT`），运行检查报 `runtime`。
+- 已知限制（本期不处理）：检查入口的完整路径是 `<数据根>\.codez\preinstalled-tools\<发布身份>\tools\<工具>\staging\<uuid>\check-XXXXXX\<entry>.exe`，在默认数据根下约 130 个字符。数据根很深时，这个路径会超过 `MAX_PATH`（含结尾空字符共 260 个字符），入口启动失败（实测报 `ENOENT`），运行检查报 `runtime`。
 
 ## shim 的来源、构建与签名
 
 | 项目     | 规定                                                                                                                                                                                               |
 | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 源码     | `packages/desktop/native/windows-preinstalled-entry-shim/`：一份 C 源文件和 `CMakeLists.txt`。只依赖 Windows API，静态链接 C 运行库                                                                |
-| 构建     | `pnpm --filter @zcode/desktop prepare:preinstalled-entry-shim`。MSVC/CMake（Visual Studio 17 2022 生成器），与 native-search 编译 `ugrep.exe` 的方式相同。按 `ZCODE_TARGET_ARCH` 产出 x64 或 arm64 |
-| 开发产物 | `packages/desktop/bundled-tools/win32-<arch>/preinstalled-entry-shim/zcode-preinstalled-entry-shim.exe`（已被 gitignore）。Windows 本地准备运行资源时自动构建                                      |
-| 打包位置 | `resources/preinstalled-entry-shim/zcode-preinstalled-entry-shim.exe`。每个安装包只带自己架构的 shim                                                                                               |
+| 构建     | `pnpm --filter @codez/desktop prepare:preinstalled-entry-shim`。MSVC/CMake（Visual Studio 17 2022 生成器），与 native-search 编译 `ugrep.exe` 的方式相同。按 `CODEZ_TARGET_ARCH` 产出 x64 或 arm64 |
+| 开发产物 | `packages/desktop/bundled-tools/win32-<arch>/preinstalled-entry-shim/codez-preinstalled-entry-shim.exe`（已被 gitignore）。Windows 本地准备运行资源时自动构建                                      |
+| 打包位置 | `resources/preinstalled-entry-shim/codez-preinstalled-entry-shim.exe`。每个安装包只带自己架构的 shim                                                                                               |
 | 签名     | 与浏览器导入辅助程序相同：electron-builder 钩子显式签名，并校验签名者与 App 主程序一致                                                                                                             |
 | 传递     | Main 解析 shim 的绝对路径，经预装进程的 `initialize` 消息传入（字段 `windowsEntryShim`，只在 Windows 上有）。预装进程不自己推算路径                                                                |
 | 替换判断 | 以 shim 文件的 SHA-256 判断 bin 中的 `.exe` 是否需要替换，不另设版本号                                                                                                                             |
 
 ## 受影响的其他部分
 
-- 四个文档插件的统一入口 `zcode_libreoffice.py`：Windows 上不再查找 `zcode-soffice.cmd`，改为按 `PATHEXT` 查找 `zcode-soffice`；四份副本保持逐字节一致。
+- 四个文档插件的统一入口 `codez_libreoffice.py`：Windows 上不再查找 `codez-soffice.cmd`，改为按 `PATHEXT` 查找 `codez-soffice`；四份副本保持逐字节一致。
 - 通用规格中的“入口文件”“已知风险”和 PT-26，以及 Agent 侧入口规格中关于 `.cmd` 的描述，按本文更新。
 - 小包 E2E 夹具：入口目标仍可以是 `.cmd`，由 shim 启动；断言改为检查 `.exe` 与 `.shim`。
 
@@ -126,7 +126,7 @@ UTF-8 编码的 JSON，由预装进程按安装记录中的入口定义生成：
 产物摘要均匹配时复用缓存；缺失、损坏或源码变化才重新构建。二进制和 `build.json` 分别通过
 同目录临时文件加 rename 发布，manifest 最后发布；校验及复制也在同一把锁内完成。
 
-分片 child（`ZCODE_E2E_SKIP_BUILD=1`）只执行 `--check`，不允许回退编译。每个 child 把已校验
+分片 child（`CODEZ_E2E_SKIP_BUILD=1`）只执行 `--check`，不允许回退编译。每个 child 把已校验
 的 shim 复制到自己的 `.e2e-cache/<runId>/bundled-tools/win32-<arch>/preinstalled-entry-shim/`。
 Main 优先使用该运行目录中的副本，然后才回退到开发工作区路径。运行中的副本不被后续缓存
 构建修改。直接启动且未指定复用的 WDIO，由其准备阶段持锁 ensure 并生成同样的独立副本；

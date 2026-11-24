@@ -15,7 +15,7 @@
   `browserGuestManager.ts`、`browserGuestManager.test.ts`、`AnimatedSidePanePanel.tsx`、
   `UnifiedBrowserView.tsx`、`BrowserViewportSurface.tsx`、`electron-webview.d.ts` 及其测试的
   未提交修改；执行前必须等待这些文件稳定并重新阅读最终 diff，禁止覆盖或回退它们。
-- 不修改 `@zcode/protocol`，不新增 relay、task、stream、queue、snapshot 或 replayable 状态；prepare/ready/release 仅是 desktop main 与 owner renderer 的瞬时平台 IPC。
+- 不修改 `@codez/protocol`，不新增 relay、task、stream、queue、snapshot 或 replayable 状态；prepare/ready/release 仅是 desktop main 与 owner renderer 的瞬时平台 IPC。
 - workspace 身份继续使用 `workspaceKey = workspaceIdentity?.trim() || workspacePath`；消息必须同时携带 `workspaceKey`、`sessionId`、`browserId`、`browserGeneration`、`tabId`、`webContentsId` 和 `requestId`。
 - prepare 默认总预算固定为 `3000ms`；main 通过 prepare payload 把实际 `timeoutMs` 传给
   renderer，renderer 的本地验证保险 deadline 为 `timeoutMs + 1000ms`。viewport 比较允许每边
@@ -212,11 +212,11 @@ Expected: FAIL，错误包含 `BrowserViewScreenshotSurfacePrepare` 或 `api.onB
 
 ```ts
 /** Main → Renderer：截图前请求 owner renderer 准备后台 guest 合成表面。 */
-BrowserViewScreenshotSurfacePrepare: "zcode:browser-view-screenshot-surface-prepare",
+BrowserViewScreenshotSurfacePrepare: "codez:browser-view-screenshot-surface-prepare",
 /** Renderer → Main：目标 guest 连续两个 animation frame 的 viewport 已稳定。 */
-BrowserViewScreenshotSurfaceReady: "zcode:browser-view-screenshot-surface-ready",
+BrowserViewScreenshotSurfaceReady: "codez:browser-view-screenshot-surface-ready",
 /** Main → Renderer：截图结束或准备失败，释放临时后台合成层。 */
-BrowserViewScreenshotSurfaceRelease: "zcode:browser-view-screenshot-surface-release",
+BrowserViewScreenshotSurfaceRelease: "codez:browser-view-screenshot-surface-release",
 ```
 
 并在 `PlatformIpcContract` 加入：
@@ -238,7 +238,7 @@ BrowserViewScreenshotSurfaceRelease: "zcode:browser-view-screenshot-surface-rele
 
 - [ ] **Step 5: 实现 preload 和 renderer platform adapter**
 
-在 `packages/desktop/src/preload/index.ts` 导入三个 payload type，并在 `exposeInMainWorld("zcode", …)` 中加入：
+在 `packages/desktop/src/preload/index.ts` 导入三个 payload type，并在 `exposeInMainWorld("codez", …)` 中加入：
 
 ```ts
 onBrowserViewScreenshotSurfacePrepare: (
@@ -268,11 +268,11 @@ browserViewScreenshotSurfaceReady: (payload: BrowserViewScreenshotSurfaceReadyPa
 
 ```ts
 onBrowserViewScreenshotSurfacePrepare: (handler) =>
-  window.zcode.onBrowserViewScreenshotSurfacePrepare?.(handler) ?? (() => {}),
+  window.codez.onBrowserViewScreenshotSurfacePrepare?.(handler) ?? (() => {}),
 onBrowserViewScreenshotSurfaceRelease: (handler) =>
-  window.zcode.onBrowserViewScreenshotSurfaceRelease?.(handler) ?? (() => {}),
+  window.codez.onBrowserViewScreenshotSurfaceRelease?.(handler) ?? (() => {}),
 browserViewScreenshotSurfaceReady: (payload) =>
-  window.zcode.browserViewScreenshotSurfaceReady?.(payload),
+  window.codez.browserViewScreenshotSurfaceReady?.(payload),
 ```
 
 - [ ] **Step 6: 运行 bridge 测试和 shared/desktop typecheck**
@@ -284,7 +284,7 @@ pnpm exec vitest run packages/desktop/test/preloadDisposer.test.ts
 pnpm exec tsc -p packages/desktop/tsconfig.json --noEmit
 ```
 
-Expected: preload suite PASS；TypeScript 不再报告新频道或 `window.zcode` 方法缺失。
+Expected: preload suite PASS；TypeScript 不再报告新频道或 `window.codez` 方法缺失。
 
 - [ ] **Step 7: 提交平台合同**
 
@@ -485,7 +485,7 @@ Expected: FAIL，至少包含
 创建 `packages/desktop/src/main/browserView/browserScreenshotSurfaceCoordinator.ts`。核心实现必须使用一个 `pendingByRequestId`，并统一通过 `finishError` / `finishReady` 清理 timer 和 abort listener：
 
 ```ts
-import { BROWSER_SCREENSHOT_SURFACE_PREPARE_TIMEOUT_MS } from "@zcode/shared";
+import { BROWSER_SCREENSHOT_SURFACE_PREPARE_TIMEOUT_MS } from "@codez/shared";
 
 const DEFAULT_SCREENSHOT_SURFACE_TIMEOUT_MS =
   BROWSER_SCREENSHOT_SURFACE_PREPARE_TIMEOUT_MS;
@@ -1418,7 +1418,7 @@ function periodicMatchRatio(bitmap, width, height, stride, dx, dy) {
 Run:
 
 ```powershell
-pnpm --filter @zcode/desktop test:browser-screenshot-surface-smoke
+pnpm --filter @codez/desktop test:browser-screenshot-surface-smoke
 ```
 
 Expected:
@@ -1449,7 +1449,7 @@ git commit -m "test(browser-use): cover background screenshot compositor"
 - Consumes: Tasks 1-5 的完整实现和 smoke 命令。
 - Produces: 用户场景的运行时证据、全仓 typecheck/lint、干净且可审计的最终 commit chain。
 
-- [ ] **Step 1: 对照原始失败尺寸执行 ZCode 运行时复验**
+- [ ] **Step 1: 对照原始失败尺寸执行 Codez 运行时复验**
 
 启动当前桌面开发构建：
 
@@ -1525,7 +1525,7 @@ Expected:
 - `git diff --check` 无输出；
 - 工作树不包含本任务未提交文件；
 - commit chain 至少包含 platform contract、coordinator、manager gate、renderer capture layer、Electron smoke 五个 Conventional Commits；
-- 没有修改 `packages/shared/src/zcode-protocol/index.ts`、relay、remote snapshot、task queue 或 conversation persistence。
+- 没有修改 `packages/shared/src/codez-protocol/index.ts`、relay、remote snapshot、task queue 或 conversation persistence。
 
 - [ ] **Step 6: 如复验产生必要小修，单独提交**
 

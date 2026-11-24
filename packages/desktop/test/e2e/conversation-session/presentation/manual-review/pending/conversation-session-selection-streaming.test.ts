@@ -23,7 +23,7 @@ import {
   waitForV4ConversationState,
 } from "#e2e/helpers/v4-conversation";
 
-const artifacts = () => process.env.ZCODE_E2E_ARTIFACT_DIR!;
+const artifacts = () => process.env.CODEZ_E2E_ARTIFACT_DIR!;
 const HISTORY_PARA = "E2E_SCS_HISTORY_PARA";
 const LIVE_PARA = "E2E_SCS_LIVE_PARA";
 const COMMENT = "E2E_SCS_COMMENT";

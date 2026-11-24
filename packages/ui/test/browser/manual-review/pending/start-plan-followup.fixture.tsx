@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
-import { getModelProviderFamilySpec } from "@zcode/shared";
-import { ZCodeIntlProvider, useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { getModelProviderFamilySpec } from "@codez/shared";
+import { CodezIntlProvider, useCodezIntl } from "@/i18n/IntlProvider.js";
 import { CodingPlanStatusPanel } from "@/settings/model-provider-section/StatusCards.js";
 import { ProviderFamilyPlanModeSwitch } from "@/settings/model-provider-section/ProviderFamilyModeHeader.js";
 import type {
@@ -49,7 +49,7 @@ const items: ModelProviderNavItem[] = [
 document.documentElement.className =
   params.get("theme") === "light" ? "light theme-zai-light" : "dark theme-zai-dark";
 function Fixture() {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [selected, setSelected] = useState(items[0]!);
   const [actions, setActions] = useState(0);
   return (
@@ -125,9 +125,9 @@ function Fixture() {
   );
 }
 createRoot(document.getElementById("root")!).render(
-  <ZCodeIntlProvider initialLocale={params.get("locale") === "zh-CN" ? "zh-CN" : "en-US"}>
+  <CodezIntlProvider initialLocale={params.get("locale") === "zh-CN" ? "zh-CN" : "en-US"}>
     <TooltipProvider>
       <Fixture />
     </TooltipProvider>
-  </ZCodeIntlProvider>,
+  </CodezIntlProvider>,
 );

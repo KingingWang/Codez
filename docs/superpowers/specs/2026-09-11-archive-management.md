@@ -166,7 +166,7 @@ E2E 放 manual-review/pending，fixture 在隔离 HOME/工作区创建；只用�
 
 ### 数据范围与承诺
 
-“永久删除”指物理清除当前 ZCode 会话存储中的记录及本次可删除的专属文件，不提供撤销或回收站。
+“永久删除”指物理清除当前 Codez 会话存储中的记录及本次可删除的专属文件，不提供撤销或回收站。
 它不是仅写 `time_deleted`。不承诺磁盘取证级擦除；不借本功能扩展成全设备隐私擦除、备份管理或分享管理。
 
 | 对象 | 处理 | 边界 |
@@ -213,7 +213,7 @@ N=0 时禁止确认。部分可执行时明确写“另有 M 个会话本次不�
 
 ```text
 永久删除 3 个归档会话？
-这些会话将从当前 ZCode 存储中永久删除，无法撤销。
+这些会话将从当前 Codez 存储中永久删除，无法撤销。
 
 将永久删除
   3 个会话的消息、内部历史及 2 个附属会话
@@ -261,7 +261,7 @@ stateDiagram-v2
 
 现场：永久删除 259 个归档会话时弹窗长时间停在“正在检查 0/259 个会话…”，检查期间其他会话也变卡。
 根因：UI 逐个串行预检，CLI 每个根都对 part/message/输入/工作流 journal 等 13 张表做一次
-`instr(body,'zcode-artifact://')` 全表扫描，另有 fork 与 runtime presence 全表读取；执行阶段与写锁内复检各再扫一次。
+`instr(body,'codez-artifact://')` 全表扫描，另有 fork 与 runtime presence 全表读取；执行阶段与写锁内复检各再扫一次。
 同步 SQLite 扫描阻塞 Agent 事件循环，总量约 N×13×3 次全表扫描。
 
 修法（负责人已确认）：
@@ -281,7 +281,7 @@ UI（每批 20 项）
 - “树外”仍按单个根的视角判定：引用方不在被引用会话所属根的 owned tree 内，就是外部引用，
   同批其他根也算引用方。批量结果与逐个预检对同一数据完全一致（sessionIds、forks、references 及其排序、revision）。
 - 无产物跳过：某根的 owned tree 在 CLI 存储里没有任何 artifact 文件，且删除凭据里也没有保留附件时，
-  该根不做引用扫描。引用只可能指向存在的产物；产物文件已丢失而库里仍有 `zcode-artifact://` 文本时，
+  该根不做引用扫描。引用只可能指向存在的产物；产物文件已丢失而库里仍有 `codez-artifact://` 文本时，
   不再列为“保留附件”。预检、执行与写锁内复检使用同一判定，revision 保持一致。
 - 单项旧方法 `deletionPreview` 与执行协议不变；执行仍逐项复检 revision、运行态与引用，写锁内复检走同一批量实现。
   已知边界：无产物的根在写锁内也不重扫引用。若在执行阶段列文件之后、加写锁之前，这棵树恰好新生成产物并被别的会话引用，
@@ -412,7 +412,7 @@ sequenceDiagram
 | invariant-only | 分享、项目、worktree、目录记忆 | 不产生删除副作用 |
 | evidence-only | ARM02/03、TSL39、PJM07、CLI session-data tests | 现有软删除/项目删除证据不能视为新功能覆盖 |
 
-源码 seeds：`useArchiveManagement`、`mutateProjectTask`、`createZCodeTaskServiceAdapter`、
+源码 seeds：`useArchiveManagement`、`mutateProjectTask`、`createCodezTaskServiceAdapter`、
 `purgeSessionDataWith`、`listOwnedSessionTrees`、`listArtifactReferrers`、`purgeSessions`、
 `createNodeSessionDataFiles`、`ProjectRepository.purgeTasks`、`removeTaskState`。
 codegraph 已尝试；本次独立工作区无索引，未创建索引。以定向源码核对主要链路两层，存储 owner

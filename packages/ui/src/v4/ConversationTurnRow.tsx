@@ -1,4 +1,4 @@
-import type { ConversationRow, ConversationRowTarget } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationRow, ConversationRowTarget } from "@codez/shared/codez-protocol-v4";
 import type { AssistantPreviewCard } from "@/lib/assistantPreviewCards.js";
 import type { AssistantCodeCommentCard } from "@/lib/assistantCodeComment.js";
 import { extractPlanToolCallContent } from "@/lib/planToolCall.js";

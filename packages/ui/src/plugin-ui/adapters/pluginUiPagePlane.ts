@@ -1,5 +1,5 @@
 import { autoUpdate } from "@floating-ui/dom";
-import type { PluginSandboxHandle } from "@zcode/shared/mcp-apps";
+import type { PluginSandboxHandle } from "@codez/shared/mcp-apps";
 import type { SandboxPagePlacement } from "../contract.js";
 
 /**
@@ -8,7 +8,7 @@ import type { SandboxPagePlacement } from "../contract.js";
  * 缺少 URL 时按重载处理。
  */
 export function isSandboxDocumentNavigation(url: string | undefined): boolean {
-  return !url || url.startsWith("zcode-sandbox:");
+  return !url || url.startsWith("codez-sandbox:");
 }
 
 function parkingRoot(): HTMLElement {
@@ -263,7 +263,7 @@ export function createPluginUiPagePlane(events: {
       unmount();
       handleId = handle.sandboxId;
       frame = document.createElement("webview");
-      frame.setAttribute("data-zcode-retained-sandbox", "");
+      frame.setAttribute("data-codez-retained-sandbox", "");
       frame.setAttribute("src", handle.shellUrl);
       frame.setAttribute("partition", handle.partition);
       frame.setAttribute("data-testid", "plugin-ui-webview");

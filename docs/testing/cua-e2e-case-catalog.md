@@ -3,12 +3,12 @@
 ## Scope and evidence levels
 
 This catalog is the product-level index for Computer Use. It maps product cases
-to the producer (`zcode-cua`) and consumer (`z-code`) evidence that proves them.
+to the producer (`codez-cua`) and consumer (`z-code`) evidence that proves them.
 Passing one platform never implies another platform passed.
 
 Evidence levels:
 
-- `desktop-e2e`: ZCode Electron UI/runtime path.
+- `desktop-e2e`: Codez Electron UI/runtime path.
 - `mcp-e2e`: real MCP transport plus deterministic broker/native oracle.
 - `live-macos`, `live-windows`, `live-linux`: real OS application and independent
   post-condition oracle.
@@ -66,14 +66,14 @@ model-visible raster -> integer x/y only
 | CU-35 |  P0 | Targetless `type`/`key` fails closed across focus changes                                                                                                          | keyboard schema/runtime contracts; C16 scoped positive path                                    | mcp-e2e + live platform                       |
 | CU-36 |  P0 | Mid-input focus/modal changes do not redirect input                                                                                                                | app/window identity and frontmost gates                                                        | live platform race lane                       |
 | CU-37 |  P1 | Similar same-app windows modify only the pinned window                                                                                                             | ZGE C13/M13                                                                                    | live-macos/windows                            |
-| CU-38 |  P0 | Two ZCode/controllers cannot steal lease; stale token/socket/PID reuse fails                                                                                       | controller admission/lease/isolation suites                                                    | desktop-e2e + live controller smoke           |
+| CU-38 |  P0 | Two Codez/controllers cannot steal lease; stale token/socket/PID reuse fails                                                                                       | controller admission/lease/isolation suites                                                    | desktop-e2e + live controller smoke           |
 | CU-39 |  P0 | Official CUA is unavailable in Subagent and available to Main Agent                                                                                                | producer runtime-scope preflight; consumer subagent policy tests                               | consumer integration                          |
 | CU-40 |  P1 | Similar third-party MCP names are not blocked by official-CUA policy                                                                                               | consumer subagent computer-use policy tests                                                    | consumer integration                          |
 | CU-41 |  P1 | Windows indicator appears for each Computer Use cell, backstop-clears 30s after the latest cell, and always clears on terminal/runtime failure                                | Windows operation-indicator suite                                                              | live-windows                                  |
 | CU-42 |  P0 | Windows locked/non-interactive/Session 0 refuses blind operation                                                                                                   | Windows desktop/session preflight suite                                                        | live-windows                                  |
 | CU-43 |  P1 | macOS background element action works; Windows app-scoped keyboard requires foreground                                                                             | macOS native workflows + Windows foreground gates                                              | live-macos + live-windows                     |
-| CU-44 |  P2 | Locale/theme/narrow layout keeps entry/tool cards and macOS permission onboarding readable; permission-panel copy follows the active ZCode locale                   | UI component tests, `cua-permission-panel-i18n.test.ts`, plus visual desktop sweep              | desktop-e2e visual                            |
-| CU-45 |  P1 | Linux standalone AT-SPI is tested without claiming ZCode Linux product support                                                                                     | LAV01-LAV68 and Linux readiness docs                                                           | live-linux standalone                         |
+| CU-44 |  P2 | Locale/theme/narrow layout keeps entry/tool cards and macOS permission onboarding readable; permission-panel copy follows the active Codez locale                   | UI component tests, `cua-permission-panel-i18n.test.ts`, plus visual desktop sweep              | desktop-e2e visual                            |
+| CU-45 |  P1 | Linux standalone AT-SPI is tested without claiming Codez Linux product support                                                                                     | LAV01-LAV68 and Linux readiness docs                                                           | live-linux standalone                         |
 | CU-46 |  P0 | A multimodal model clicks a canvas-only target from the delivered raster without AX/DOM coordinates, model-side frame-token relay, or ancestor-raster fallback     | producer internal-frame binding contracts plus `glm-x-preview-f` canvas live lane              | mcp-e2e + live-macos model lane               |
 | CU-47 |  P0 | `open_application` launches the named app deterministically: ordinary placeholder window ids are ignored, bundle identity outranks display name, localized name-only launch resolves uniquely, and the model never substitutes apps or loops over guessed names | producer ZGE M17-M20 direct/model lanes plus trajectory-step contract tests | mcp-e2e + live-macos model lane |
 | CU-48 |  P0 | Anthropic transport preserves real CUA observation/action block order; an unavailable raster exposes neither image_ref nor coordinate guidance                     | deterministic adapter/core golden tests; producer MaaS echo smoke is advisory                  | consumer integration + live-provider advisory |
@@ -84,7 +84,7 @@ model-visible raster -> integer x/y only
 | CU-53 |  P0 | `request_access` permission observation is desktop-continuous/local only; history, recovery, mobile replayable and remote workspaces create no permission side effect | protocol/service delivery-boundary tests + Electron cold/mobile representative                 | consumer integration                          |
 | CU-54 |  P0 | Confirmation rechecks fresh status, opens only exact missing permissions, restarts Helper on return, and never replays or continues the task                        | permission coordinator unit + Electron manual-review                                            | consumer integration + live-macos             |
 | CU-55 |  P0 | Idle Helper has no periodic health probe or timer-triggered recovery; the next CUA resolve boundary performs the bounded on-demand check while agent spawn injects process-stable pure-data credentials with zero Helper IO, without restarting Agent | default services assembly contract + producer resolver health contracts; agentProxyEnv lazy-spawn source contract | consumer integration + live-macos/windows |
-| CU-56 |  P0 | Agent spawn credentials are process-stable pure data (MC-1/3/4/8): darwin stable socket + per-spawn authority; win32 stable pipe + ZCODE_CUA_WIN_HELPER_RECIPE; no Helper IO, no health verdict, no marker, no acquire; authorization-flow managed host does not feed spawn credentials | agentProxyEnv lazy-spawn source contract + stableCuaTransport pipe contracts | consumer integration + live-macos (win32 pending real-machine) |
+| CU-56 |  P0 | Agent spawn credentials are process-stable pure data (MC-1/3/4/8): darwin stable socket + per-spawn authority; win32 stable pipe + CODEZ_CUA_WIN_HELPER_RECIPE; no Helper IO, no health verdict, no marker, no acquire; authorization-flow managed host does not feed spawn credentials | agentProxyEnv lazy-spawn source contract + stableCuaTransport pipe contracts | consumer integration + live-macos (win32 pending real-machine) |
 | CU-57 |  P1 | win32 settings getStatus truth chain (MC-9): probe stable pipe -> host fork -> permission_status truth; launch failure degrades to idle:true copy | stableCuaTransport pipe contracts; full chain owned by the live lane | live-windows (pending real-machine) |
 
 ## Deterministic application launch model lane
@@ -204,20 +204,20 @@ Dev Helper:
 
 Retained evidence:
 
-- producer ZGE reports under `evals/zcode-gui-eval/artifacts/`, notably
+- producer ZGE reports under `evals/codez-gui-eval/artifacts/`, notably
   `cua-internal-frame-direct-core-final.json`,
   `cua-internal-frame-c18-final3.json`, and
   `cua-internal-frame-m12-final.json`;
 - consumer dogfood report under
   `dogfood-output/cua-comprehensive-20260821/report.md`;
 - model I/O trace at
-  `~/.zcode/cli/debug/model-io-sess_3a199ff0-35cf-4f1f-969b-d3b0a8b9d633.jsonl`.
+  `~/.codez/cli/debug/model-io-sess_3a199ff0-35cf-4f1f-969b-d3b0a8b9d633.jsonl`.
 - canvas model traces at
-  `~/.zcode/cli/debug/model-io-sess_39975407-4287-4fc0-bbda-1ad2c2ef1fd4.jsonl`
+  `~/.codez/cli/debug/model-io-sess_39975407-4287-4fc0-bbda-1ad2c2ef1fd4.jsonl`
   and
-  `~/.zcode/cli/debug/model-io-sess_c2d24f67-4b69-4411-9c7a-46feaa3c49c8.jsonl`.
+  `~/.codez/cli/debug/model-io-sess_c2d24f67-4b69-4411-9c7a-46feaa3c49c8.jsonl`.
 - 0820 image-first/recovery trace at
-  `~/.zcode/cli/debug/model-io-sess_47b6badf-9faa-43c2-a252-1ad6e3c21612.jsonl`.
+  `~/.codez/cli/debug/model-io-sess_47b6badf-9faa-43c2-a252-1ad6e3c21612.jsonl`.
 
 Not executed on this machine: CU-14 true dual-display hardware switching,
 CU-41/CU-42/the Windows half of CU-43, and CU-45 Linux AT-SPI. Their platform

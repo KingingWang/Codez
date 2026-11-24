@@ -9,14 +9,14 @@ import {
   CREDENTIAL_DECRYPT_ERROR_PREFIX,
   type CredentialCipherRequest,
   type CredentialCipherReply,
-} from "@zcode/shared";
+} from "@codez/shared";
 export {
   credentialCipherRequestSchema,
   credentialCipherReplySchema,
   credentialCipherResultSchema,
   type CredentialCipherRequest,
   type CredentialCipherReply,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 /** 只走已建立的可信进程通道；系统主密钥始终留在 owner，不进入消息载荷。 */
 export function createCredentialCipherBridge(send: (request: CredentialCipherRequest) => void): {
@@ -109,7 +109,7 @@ export async function executeCredentialCipherRequest(
     };
   } catch (error) {
     const code = (error as { code?: string })?.code;
-    const decryptFailed = code === "ZCODE_CREDENTIAL_DECRYPT_FAILED";
+    const decryptFailed = code === "CODEZ_CREDENTIAL_DECRYPT_FAILED";
     const invalid = code === "CREDENTIAL_CIPHER_INVALID_PAYLOAD";
     // 只返回受控错误；原生异常可能含系统细节，不能穿过凭据桥或进入日志。
     return {

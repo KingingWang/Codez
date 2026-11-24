@@ -6,13 +6,13 @@ import type {
 } from "@modelcontextprotocol/ext-apps/app-bridge";
 import { constrainPluginUiDisplayModes } from "@/plugin-ui/domain/buildPluginUiHostContext.js";
 import { AppBridge } from "@modelcontextprotocol/ext-apps/app-bridge";
-import type { PluginSandboxHandle, PluginSandboxTransportPort } from "@zcode/shared/mcp-apps";
+import type { PluginSandboxHandle, PluginSandboxTransportPort } from "@codez/shared/mcp-apps";
 import {
   MCP_APPS_HANDSHAKE_TIMEOUT_MS,
   MCP_APPS_HOST_NAME,
   MCP_APPS_WIDGET_STATE_CONTEXT_KEY,
   buildPluginSandboxScopeId,
-} from "@zcode/shared/mcp-apps";
+} from "@codez/shared/mcp-apps";
 import { createPluginUiAppTools } from "./pluginUiAppTools.js";
 import {
   installPluginUiHostAppHandlers,

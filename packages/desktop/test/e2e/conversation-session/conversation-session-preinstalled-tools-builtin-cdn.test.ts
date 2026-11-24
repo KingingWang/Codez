@@ -3,12 +3,12 @@ import { mkdtemp, readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
-import type { IPlatformService } from "@zcode/shared";
+import type { IPlatformService } from "@codez/shared";
 import {
   preinstalledToolInstallationSchema,
   preinstalledToolsCatalogSchema,
   type PreinstalledToolState,
-} from "@zcode/shared/preinstalled-tools";
+} from "@codez/shared/preinstalled-tools";
 import { resolveE2EStorageRoot } from "#e2e/helpers/e2e-runtime-paths";
 import { preinstalledEntryPath } from "#e2e/helpers/preinstalled-tools-fixture";
 import {
@@ -20,7 +20,7 @@ import {
 const exec = promisify(execFile);
 const state = () =>
   browser.execute(() => {
-    const api = (window as Window & { zcode?: IPlatformService }).zcode;
+    const api = (window as Window & { codez?: IPlatformService }).codez;
     if (!api?.getPreinstalledToolsState) throw new Error("预装工具 API 未就绪");
     return api.getPreinstalledToolsState();
   });
@@ -32,8 +32,8 @@ describe("内置预装资源真实 CDN（待审核）", () => {
     await prepareV4ConversationE2E();
     expect(
       await browser.electron.execute(() => ({
-        catalog: process.env.ZCODE_E2E_PREINSTALLED_TOOLS_CATALOG ?? null,
-        baseUrl: process.env.ZCODE_PREINSTALLED_TOOLS_CDN_BASE_URL ?? null,
+        catalog: process.env.CODEZ_E2E_PREINSTALLED_TOOLS_CATALOG ?? null,
+        baseUrl: process.env.CODEZ_PREINSTALLED_TOOLS_CDN_BASE_URL ?? null,
       })),
     ).toEqual({ catalog: null, baseUrl: null });
     // 转正移除两级候选目录后，仍读取桌面构建的同一份资源清单。
@@ -100,7 +100,7 @@ describe("内置预装资源真实 CDN（待审核）", () => {
         throw new Error(`真实 CDN 安装失败: ${JSON.stringify(failed)}`);
       recoveries.push(failed);
       await writeFile(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "builtin-cdn-network-recovery.json"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "builtin-cdn-network-recovery.json"),
         JSON.stringify(recoveries, null, 2),
       );
       await $(`[data-tool-id="${failed.toolId}"] [data-testid="preinstalled-tools-retry"]`).click();
@@ -118,7 +118,7 @@ describe("内置预装资源真实 CDN（待审核）", () => {
       );
       expect(record.resourceId).toBe(resource.resourceId);
       expect(record.entries).toEqual(resource.entries);
-      const temporary = await mkdtemp(join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "builtin-entry-"));
+      const temporary = await mkdtemp(join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "builtin-entry-"));
       const substitutions: Record<string, string> = {
         INSTALL_DIR: record.installationDir,
         CHECK_TEMP_DIR: temporary,
@@ -140,9 +140,9 @@ describe("内置预装资源真实 CDN（待审核）", () => {
         checks.push({ toolId: resource.toolId, entry: check.entry, output });
       }
     }
-    await browser.saveScreenshot(`${process.env.ZCODE_E2E_ARTIFACT_DIR}/builtin-cdn-ready.png`);
+    await browser.saveScreenshot(`${process.env.CODEZ_E2E_ARTIFACT_DIR}/builtin-cdn-ready.png`);
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "builtin-cdn-facts.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "builtin-cdn-facts.json"),
       JSON.stringify({ initial, final: await state(), checks, recoveries }, null, 2),
     );
   });

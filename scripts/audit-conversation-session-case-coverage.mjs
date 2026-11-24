@@ -16,7 +16,7 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 function resolveFormalAdmissionRoot() {
   const override =
-    process.env.ZCODE_CONVERSATION_SESSION_FORMAL_ADMISSION_ROOT?.trim();
+    process.env.CODEZ_CONVERSATION_SESSION_FORMAL_ADMISSION_ROOT?.trim();
   if (!override) {
     return REPO_ROOT;
   }
@@ -24,7 +24,7 @@ function resolveFormalAdmissionRoot() {
   // audit 可被指向空目录并静默跳过正式用例；NODE_ENV=test 不是可信测试进程证明。
   if (!process.env.NODE_TEST_CONTEXT) {
     throw new Error(
-      "ZCODE_CONVERSATION_SESSION_FORMAL_ADMISSION_ROOT is test-only and requires NODE_TEST_CONTEXT",
+      "CODEZ_CONVERSATION_SESSION_FORMAL_ADMISSION_ROOT is test-only and requires NODE_TEST_CONTEXT",
     );
   }
   return resolve(override);
@@ -66,13 +66,13 @@ const MAIN_AUTOMATION_SPEC_PATH_PREFIXES = [
   "packages/desktop/test/e2e/",
   // 修复原因：App 单测退役后不能继续接纳已删 UI 文件；正文退役说明不会移除机器索引。
   // A12 的自动化缺口记为 missing，保留的 CLI 证据仍按下列明确路径接纳。
-  "apps/zcode-cli/packages/core/tests/",
+  "apps/codez-cli/packages/core/tests/",
   // 修复原因：普通 retry UI 退役后，K10/K11 的稳定命令门禁证据只保留在
   // bootstrap 原生命令 focused suite；精确放行该文件，避免把其它补充证据误计入 formal E2E。
-  "apps/zcode-cli/packages/bootstrap/tests/v4-native-fork-edit-retry.test.ts",
+  "apps/codez-cli/packages/bootstrap/tests/v4-native-fork-edit-retry.test.ts",
   // 修复原因：I69 验证的是 Agent Gateway raw epoch/gap 控制流，无法由 renderer WDIO
   // 稳定制造；只接纳对应 focused suite，避免把整个 bootstrap tests 目录冒充 E2E 证据。
-  "apps/zcode-cli/packages/bootstrap/tests/v4-gateway.test.ts",
+  "apps/codez-cli/packages/bootstrap/tests/v4-gateway.test.ts",
 ];
 
 const DECISION_E2E_ROADMAP_STATUSES = [

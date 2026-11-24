@@ -26,7 +26,7 @@ if (process.platform !== "win32") {
     getBinFromUrl("nsis-3.0.4.1", "nsis-3.0.4.1.7z", NSIS_CHECKSUM),
     getBinFromUrl("nsis-resources-3.4.1", "nsis-resources-3.4.1.7z", NSIS_RESOURCES_CHECKSUM),
   ]);
-  const tempRoot = mkdtempSync(join(tmpdir(), "zcode-preserve-files-"));
+  const tempRoot = mkdtempSync(join(tmpdir(), "codez-preserve-files-"));
   try {
     const makensisPath = resolve(nsisDir, "makensis.exe");
     const uninstallerOutput = join(tempRoot, "uninstaller.exe");
@@ -41,8 +41,8 @@ if (process.platform !== "win32") {
         `/DNSIS_INCLUDE_DIR=${resolve(nsisDir, "Include")}`,
         `/DELECTRON_BUILDER_NSIS_INCLUDE_DIR=${resolve(appBuilderLibDir, "templates/nsis/include")}`,
         `/DNSIS_PLUGIN_DIR=${resolve(nsisResourcesDir, "plugins/x86-unicode")}`,
-        `/DZCODE_INSTALLER_NSH=${installerNshPath}`,
-        `/DZCODE_INSTALLER_PROCESS_HELPER=${resolve(desktopDir, `bundled-tools/win32-${process.arch}/runtime-host/zcode-installer-process-helper.exe`)}`,
+        `/DCODEZ_INSTALLER_NSH=${installerNshPath}`,
+        `/DCODEZ_INSTALLER_PROCESS_HELPER=${resolve(desktopDir, `bundled-tools/win32-${process.arch}/runtime-host/codez-installer-process-helper.exe`)}`,
         // 夹具只校验文件字节，不执行该载荷；避免 32 位 NSIS 将 System32 重定向到 SysWOW64。
         `/DFIXTURE_EXE=${fixturePath}`,
         `/DOUTPUT_FILE=${uninstallerOutput}`,
@@ -77,8 +77,8 @@ if (process.platform !== "win32") {
         `/DNSIS_INCLUDE_DIR=${resolve(nsisDir, "Include")}`,
         `/DELECTRON_BUILDER_NSIS_INCLUDE_DIR=${resolve(appBuilderLibDir, "templates/nsis/include")}`,
         `/DNSIS_PLUGIN_DIR=${resolve(nsisResourcesDir, "plugins/x86-unicode")}`,
-        `/DZCODE_INSTALLER_NSH=${installerNshPath}`,
-        `/DZCODE_INSTALLER_PROCESS_HELPER=${resolve(desktopDir, `bundled-tools/win32-${process.arch}/runtime-host/zcode-installer-process-helper.exe`)}`,
+        `/DCODEZ_INSTALLER_NSH=${installerNshPath}`,
+        `/DCODEZ_INSTALLER_PROCESS_HELPER=${resolve(desktopDir, `bundled-tools/win32-${process.arch}/runtime-host/codez-installer-process-helper.exe`)}`,
         `/DFIXTURE_EXE=${fixturePath}`,
         `/DOUTPUT_FILE=${outputPath}`,
         fixturePath,
@@ -91,14 +91,14 @@ if (process.platform !== "win32") {
         stdio: ["ignore", "pipe", "pipe"],
       });
       execFileSync(outputPath, ["/S", `/D=${installDir}`], { encoding: "utf-8" });
-      const ownedFileExists = existsSync(join(installDir, "owned-by-zcode.txt"));
+      const ownedFileExists = existsSync(join(installDir, "owned-by-codez.txt"));
       if (omitManifest !== ownedFileExists) {
         throw new Error(`${scenario}: ownership fallback mismatch`);
       }
       if (!existsSync(join(installDir, "user-data.txt"))) {
         throw new Error(`${scenario}: unrelated file was removed`);
       }
-      if (readFileSync(join(installDir, "ZCode.exe")).length === 0) {
+      if (readFileSync(join(installDir, "Codez.exe")).length === 0) {
         throw new Error(`${scenario}: application payload was not installed`);
       }
     }
@@ -114,11 +114,11 @@ if (process.platform !== "win32") {
       `/DNSIS_INCLUDE_DIR=${resolve(nsisDir, "Include")}`,
       `/DELECTRON_BUILDER_NSIS_INCLUDE_DIR=${resolve(appBuilderLibDir, "templates/nsis/include")}`,
       `/DNSIS_PLUGIN_DIR=${resolve(nsisResourcesDir, "plugins/x86-unicode")}`,
-      `/DZCODE_INSTALLER_NSH=${installerNshPath}`,
-      `/DZCODE_INSTALLER_PROCESS_HELPER=${resolve(desktopDir, `bundled-tools/win32-${process.arch}/runtime-host/zcode-installer-process-helper.exe`)}`,
+      `/DCODEZ_INSTALLER_NSH=${installerNshPath}`,
+      `/DCODEZ_INSTALLER_PROCESS_HELPER=${resolve(desktopDir, `bundled-tools/win32-${process.arch}/runtime-host/codez-installer-process-helper.exe`)}`,
       `/DFIXTURE_EXE=${fixturePath}`,
       `/DOUTPUT_FILE=${failureOutputPath}`,
-      `/DZCODE_UNINSTALLER_LOG_PATH=${failureLogPath}`,
+      `/DCODEZ_UNINSTALLER_LOG_PATH=${failureLogPath}`,
       "/DFAIL_DELETE",
       fixturePath,
     ];
@@ -141,7 +141,7 @@ if (process.platform !== "win32") {
     const failureLog = readFileSync(failureLogPath, "utf8");
     for (const marker of [
       "cleanup-started",
-      "cleanup-failed reason=delete-failed path=owned-by-zcode.txt win32-error=",
+      "cleanup-failed reason=delete-failed path=owned-by-codez.txt win32-error=",
     ]) {
       if (!failureLog.includes(marker)) {
         throw new Error(`uninstaller log is missing ${marker}: ${failureLog}`);
@@ -151,7 +151,7 @@ if (process.platform !== "win32") {
       throw new Error(`uninstaller log is missing a positive PID: ${failureLog}`);
     }
 
-    if (existsSync(join(failureInstallDir, "ZCode.exe"))) {
+    if (existsSync(join(failureInstallDir, "Codez.exe"))) {
       throw new Error("old cleanup fixture did not reproduce the deleted application");
     }
     // 真正运行旧清理进程，分别验证完整恢复、可选备份失败和成功后的新载荷写入。
@@ -188,7 +188,7 @@ if (process.platform !== "win32") {
       recoveryArgs.push(
         `/DOUTPUT_FILE=${recoveryOutputPath}`,
         "/DRECOVERY_TEST",
-        `/DZCODE_INSTALLER_DEFAULT_LOG_PATH=${installerLogPath}`,
+        `/DCODEZ_INSTALLER_DEFAULT_LOG_PATH=${installerLogPath}`,
         `/DOLD_CLEANUP_EXE=${installSucceeds ? legacySelfUninstaller : failureOutputPath}`,
       );
       if (scenario.startsWith("self-manifest")) recoveryArgs.push("/DSELF_MANIFEST");
@@ -222,7 +222,7 @@ if (process.platform !== "win32") {
       }
       if (
         scenario === "restore-failure" &&
-        readFileSync(join(backupDir, "ZCode.exe"), "utf8") !== "old application payload"
+        readFileSync(join(backupDir, "Codez.exe"), "utf8") !== "old application payload"
       ) {
         throw new Error(`${scenario}: recoverable application backup was lost`);
       }
@@ -256,25 +256,25 @@ if (process.platform !== "win32") {
       }
       if (installSucceeds) {
         if (
-          !readFileSync(join(recoveryInstallDir, "ZCode.exe")).equals(readFileSync(fixturePath)) ||
+          !readFileSync(join(recoveryInstallDir, "Codez.exe")).equals(readFileSync(fixturePath)) ||
           readFileSync(installMarker, "utf8") !== "removed"
         ) {
           throw new Error(`${scenario}: new application payload was not installed after cleanup`);
         }
       } else if (scenario === "backup-and-uninstall-failure") {
-        if (existsSync(join(recoveryInstallDir, "ZCode.exe"))) {
+        if (existsSync(join(recoveryInstallDir, "Codez.exe"))) {
           throw new Error(`${scenario}: partial backup was incorrectly restored`);
         }
       } else if (
         scenario !== "restore-failure" &&
-        readFileSync(join(recoveryInstallDir, "ZCode.exe"), "utf8") !== "old application payload"
+        readFileSync(join(recoveryInstallDir, "Codez.exe"), "utf8") !== "old application payload"
       ) {
         throw new Error(`${scenario}: original application bytes were lost`);
       }
       if (
         scenario === "self-manifest-recovery" &&
-        readFileSync(join(recoveryInstallDir, ".zcode-install-manifest"), "utf8") !==
-          "ZCode.exe\r\nowned-by-zcode.txt\r\n.zcode-install-manifest\r\n..\\user-data.txt\r\n"
+        readFileSync(join(recoveryInstallDir, ".codez-install-manifest"), "utf8") !==
+          "Codez.exe\r\nowned-by-codez.txt\r\n.codez-install-manifest\r\n..\\user-data.txt\r\n"
       ) {
         throw new Error("self-manifest-recovery: original manifest bytes changed");
       }
@@ -285,7 +285,7 @@ if (process.platform !== "win32") {
 
     process.stdout.write("[installer-preserve-files] passed\n");
   } finally {
-    if (process.env.ZCODE_KEEP_INSTALLER_FIXTURE !== "1") {
+    if (process.env.CODEZ_KEEP_INSTALLER_FIXTURE !== "1") {
       rmSync(tempRoot, { recursive: true, force: true });
     }
   }

@@ -1,4 +1,4 @@
-import type { EmbeddedBrowserPermissionDeviceOption } from "@zcode/shared";
+import type { EmbeddedBrowserPermissionDeviceOption } from "@codez/shared";
 
 /** select-* 事件携带的 Electron 设备对象（HID/USB/Serial/Bluetooth 字段各异）映射为统一弹窗选项。 */
 export function readDeviceOptions(rawList: unknown): EmbeddedBrowserPermissionDeviceOption[] {

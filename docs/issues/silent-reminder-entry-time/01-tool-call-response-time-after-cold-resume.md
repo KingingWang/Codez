@@ -4,7 +4,7 @@ Status: needs-triage
 
 ## 现象
 
-静默提醒按条目时间计时，规则见 [Silent-turn reminder](../../../apps/zcode-cli/docs/design/v2/loop/meta-user-context.md)。
+静默提醒按条目时间计时，规则见 [Silent-turn reminder](../../../apps/codez-cli/docs/design/v2/loop/meta-user-context.md)。
 带工具调用的 assistant 响应，live 与冷恢复得到的条目时间不同：
 
 ```text
@@ -24,7 +24,7 @@ t=150    工具批次结算           → 行的 time.completed → 冷恢复条
 
 ## 根因证据
 
-- live：`commitTurnRequestEntries`（`apps/zcode-cli/packages/core/src/runtime/methods/turn-output-token-continuation.ts`）
+- live：`commitTurnRequestEntries`（`apps/codez-cli/packages/core/src/runtime/methods/turn-output-token-continuation.ts`）
   在提交时记录时间。带工具调用的 assistant 必须在工具执行之前提交：工具结果要跟在它的 tool-call 后面
   （`turn-model-step.ts` 中 `commitAssistantToTurnRequest` 调用前的注释）。
 - 冷恢复：`session-history-hydrator.ts` 对 assistant 行取 `time.completed ?? time.created`。`time.completed` 由
@@ -47,6 +47,6 @@ t=150    工具批次结算           → 行的 time.completed → 冷恢复条
 
 ## 测试
 
-`apps/zcode-cli/packages/core/tests/runtime-tool-loop.test.ts` 的
+`apps/codez-cli/packages/core/tests/runtime-tool-loop.test.ts` 的
 `collects and restores timed silent reminders only for main continuations` 断言这个已知差异：带工具调用的响应，
 冷恢复后的时间多一个工具批次（`toolMs`）。选定 B、C 或 D 之后，改成“冷恢复等于 live”。

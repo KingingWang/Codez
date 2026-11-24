@@ -1,5 +1,5 @@
-import type { ZCodeConfigOption } from "@zcode/shared";
-import type { ModelSelectionView } from "@zcode/services";
+import type { CodezConfigOption } from "@codez/shared";
+import type { ModelSelectionView } from "@codez/services";
 
 /** 从 Registry 的 ModelConfig Option Specs 读取思考档位。 */
 export function resolveModelThoughtOption(params: {
@@ -8,7 +8,7 @@ export function resolveModelThoughtOption(params: {
   modelId: string;
   currentValue?: string;
   formatLevelName?: (level: string) => string;
-}): ZCodeConfigOption | null {
+}): CodezConfigOption | null {
   const provider = params.modelSelectionView.providers.find(
     (candidate) => candidate.providerId === params.providerId,
   );

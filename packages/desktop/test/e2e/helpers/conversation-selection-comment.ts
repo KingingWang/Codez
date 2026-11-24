@@ -1,4 +1,4 @@
-import { TID_V4_SESSION_PANE, testId } from "@zcode/shared/test-ids";
+import { TID_V4_SESSION_PANE, testId } from "@codez/shared/test-ids";
 
 const MAIN_PANE = testId(TID_V4_SESSION_PANE, "workspace-main");
 

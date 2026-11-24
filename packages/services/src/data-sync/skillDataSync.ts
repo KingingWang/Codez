@@ -6,7 +6,7 @@ import type {
   DataSyncImportResultItem,
   DataSyncListItem,
   SkillDataSyncPayload,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { pathExists, updateJsonObjectFile } from "#src/fs/atomicFileUtils.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import { checkRemoteSyncDirectoriesWriteAccess } from "#src/remote-sync/remoteSyncWriteAccess.js";
@@ -46,28 +46,28 @@ interface ResolvedUserSkill {
   /** 技能目录（可能是软链路径）。 */
   directoryPath: string;
   skillFilePath: string;
-  location: "zcode" | "agents";
+  location: "codez" | "agents";
   /** 技能目录或其位于技能根以内的上级目录是软链。 */
   isSymlink: boolean;
 }
 
 function getCliConfigPath(): string {
-  return join(resolveUserHomeDir(), ".zcode", "cli", "config.json");
+  return join(resolveUserHomeDir(), ".codez", "cli", "config.json");
 }
 
 function normalizeSkillConfigPath(path: string): string {
   return path.replaceAll("\\", "/");
 }
 
-/** 按归一化 name 对齐的用户级技能；同名时保留候选排序中的第一项（`.zcode` 优先）。 */
+/** 按归一化 name 对齐的用户级技能；同名时保留候选排序中的第一项（`.codez` 优先）。 */
 async function resolveUserSkills(): Promise<Map<string, ResolvedUserSkill>> {
-  const zcodeRoot = getUserZcodeSkillRoot();
+  const codezRoot = getUserZcodeSkillRoot();
   const result = new Map<string, ResolvedUserSkill>();
   for (const candidate of await collectUserSkillCandidates()) {
     const key = normalizeSkillNameKey(candidate.name);
     if (result.has(key)) continue;
     const directoryPath = dirname(candidate.path);
-    const location = isPathWithin(zcodeRoot, directoryPath) ? "zcode" : "agents";
+    const location = isPathWithin(codezRoot, directoryPath) ? "codez" : "agents";
     result.set(key, {
       key,
       name: candidate.name,
@@ -76,7 +76,7 @@ async function resolveUserSkills(): Promise<Map<string, ResolvedUserSkill>> {
       directoryPath,
       skillFilePath: candidate.path,
       location,
-      isSymlink: location === "zcode" ? await hasSymlinkWithin(zcodeRoot, directoryPath) : false,
+      isSymlink: location === "codez" ? await hasSymlinkWithin(codezRoot, directoryPath) : false,
     });
   }
   return result;
@@ -271,7 +271,7 @@ export function createSkillDataSyncMethods(options: {
     }
 
     if (!existing) return { key: item.key, status: "conflict" };
-    if (existing.location !== "zcode" || existing.isSymlink) {
+    if (existing.location !== "codez" || existing.isSymlink) {
       return failed(`target cannot be overwritten: ${existing.directoryPath}`);
     }
     // 修复：覆盖是整目录替换，原来不检查目标端嵌套在该目录里的其他技能（例如 parent/child），

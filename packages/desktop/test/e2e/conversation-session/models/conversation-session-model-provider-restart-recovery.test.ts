@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { TID_V4_COMPOSER_INPUT, TID_V4_COMPOSER_SEND } from "@zcode/shared/test-ids";
+import { TID_V4_COMPOSER_INPUT, TID_V4_COMPOSER_SEND } from "@codez/shared/test-ids";
 import {
   clearAppData,
   setInputValueByTestIdDom,

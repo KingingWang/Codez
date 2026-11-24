@@ -1,6 +1,6 @@
 import { BrowserWindow, MessageChannelMain } from "electron";
 import type { MessagePortMain, UtilityProcess as ElectronUtilityProcess } from "electron";
-import { HostMessageTypes, type RemoteUsageRemoteKind } from "@zcode/shared";
+import { HostMessageTypes, type RemoteUsageRemoteKind } from "@codez/shared";
 
 type WebRemoteControlSharedHostKind = "local" | "remote";
 

@@ -14,7 +14,7 @@ import {
 } from "@/components/workflow-timeline/WorkflowArtifactTile.js";
 import { useWorkflowRunArtifactBytes } from "@/hooks/useWorkflowRunArtifactBytes.js";
 import { useWorkflowRunArtifactData } from "@/hooks/useWorkflowRunArtifactData.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import type { Theme } from "@/useTheme.js";
 
 /**
@@ -126,7 +126,7 @@ export function WorkflowArtifactTilePreview({
   runId: string;
   theme: Theme;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const preset = isArtifactPresetKind(artifact.kind);
   const mode = preset ? undefined : previewModeFor(artifact);
   const bytesState = useWorkflowRunArtifactBytes({

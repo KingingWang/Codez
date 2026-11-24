@@ -71,14 +71,14 @@ OTEL_EXPORTER_OTLP_HEADERS
 OTEL_EXPORTER_OTLP_METRICS_ENDPOINT
 OTEL_EXPORTER_OTLP_METRICS_HEADERS
 OTEL_SERVICE_NAME
-ZCODE_MODEL_TELEMETRY_ENABLED
-ZCODE_TELEMETRY_DEVICE_MID
-ZCODE_TELEMETRY_USER_SUBJECT_ID
-ZCODE_TELEMETRY_IDENTITY_STATE
-ZCODE_TELEMETRY_RUNTIME_SURFACE
-ZCODE_TELEMETRY_RUNTIME_DISTRIBUTION
-ZCODE_APP_VERSION
-ZCODE_BUILD_COMMIT_ID
+CODEZ_MODEL_TELEMETRY_ENABLED
+CODEZ_TELEMETRY_DEVICE_MID
+CODEZ_TELEMETRY_USER_SUBJECT_ID
+CODEZ_TELEMETRY_IDENTITY_STATE
+CODEZ_TELEMETRY_RUNTIME_SURFACE
+CODEZ_TELEMETRY_RUNTIME_DISTRIBUTION
+CODEZ_APP_VERSION
+CODEZ_BUILD_COMMIT_ID
 ```
 
 若只配置公共 `OTEL_EXPORTER_OTLP_ENDPOINT`，Trace 自动追加 `/v1/traces`，Metric 自动追加
@@ -89,7 +89,7 @@ Header 是运行时 Secret，只进入 Exporter 配置，不进入 Resource、Sp
 
 ### 1.3 Disabled 路径
 
-没有合法 Trace Endpoint，或 `ZCODE_MODEL_TELEMETRY_ENABLED` 为
+没有合法 Trace Endpoint，或 `CODEZ_MODEL_TELEMETRY_ENABLED` 为
 `0/false/off/disabled` 时：
 
 - 不动态 import OTel SDK/Exporter；
@@ -103,8 +103,8 @@ Header 是运行时 Secret，只进入 Exporter 配置，不进入 Resource、Sp
 Standalone 安装 ID 保存于：
 
 ```text
-$ZCODE_HOME/v2/telemetry-state.json
-或 ~/.zcode/v2/telemetry-state.json
+$CODEZ_HOME/v2/telemetry-state.json
+或 ~/.codez/v2/telemetry-state.json
 ```
 
 创建使用异步文件 I/O、临时文件原子 Rename、跨进程锁和 5 分钟 Stale Lock 回收。另一个活跃
@@ -197,7 +197,7 @@ attachment 时，数据仍由承载真实 CLI Runtime 的 Host 上报；不能�
 否则会重复计数。
 
 当前 `AgentTelemetryCausation` 是 CLI 内部严格类型，不等价于 Desktop/RUM 到 Agent 的完整 W3C
-跨进程传播。未来打通时必须修改 `@zcode/protocol` 严格 Schema 并补拓扑测试。
+跨进程传播。未来打通时必须修改 `@codez/protocol` 严格 Schema 并补拓扑测试。
 
 ## 3. Writer 与终态保证
 
@@ -209,7 +209,7 @@ Writer 不使用运行时 Schema Registry，也不要求业务把结果重新封
 业务事实发生
     -> 具体 Writer Setter
          +-- 归一化/脱敏
-         +-- 写 Canonical zcode.*
+         +-- 写 Canonical codez.*
          +-- 必要时写 Event
          +-- 必要时记 Metric
          `-- 必要时投影 Compatibility Alias
@@ -308,7 +308,7 @@ Adapter 只接受已经归一化、清洗后的事实：
 ```text
 Provider Adapter / Writer Setter
         |
-        +-- Canonical zcode.*
+        +-- Canonical codez.*
         |
         `-- compatibility-adapters.ts
               +-- gen_ai.*
@@ -429,7 +429,7 @@ Output Bytes、Truncated。
 ```text
 拒绝创建新 Span
     -> 返回共享 No-op Writer
-    -> zcode.telemetry.creation_drop.count += 1
+    -> codez.telemetry.creation_drop.count += 1
     -> onWarning（容量恢复前只报告一次活跃告警）
     -> 业务继续执行
 ```
@@ -513,8 +513,8 @@ Retry = one Call + multiple Attempt
 - Standalone CLI 与 Desktop Packaged Agent 发送真实 Canary；
 - Packaged 构建缓存指纹包含 Endpoint/Header/Service Name 等构建输入；
 - `service.version` 与 bundle 内 CLI 版本一致；
-- `zcode.product.version` 与产品安装包版本一致；
-- `zcode.build.commit_id` 能定位构建；
+- `codez.product.version` 与产品安装包版本一致；
+- `codez.build.commit_id` 能定位构建；
 - 提交前执行相关测试、`pnpm typecheck` 和 `pnpm lint`。
 
 主要现有测试：
@@ -532,7 +532,7 @@ packages/core/tests/tool-agent-telemetry.test.ts
 packages/bootstrap/tests/telemetry-bootstrap.test.ts
 ```
 
-路径均相对于 `apps/zcode-cli/`。
+路径均相对于 `apps/codez-cli/`。
 
 ## 9. ARMS 查询、大盘与统计口径
 
@@ -547,16 +547,16 @@ OTel 原生字段
 
 Resource
     resources.service.version
-    resources.zcode.product.version
-    resources.zcode.build.commit_id
-    resources.zcode.telemetry.schema_version
-    resources.zcode.runtime.surface
-    resources.zcode.device.installation_id
+    resources.codez.product.version
+    resources.codez.build.commit_id
+    resources.codez.telemetry.schema_version
+    resources.codez.runtime.surface
+    resources.codez.device.installation_id
 
 Span Attribute
-    attributes.zcode.execution.turn_id
-    attributes.zcode.<span_name>.outcome
-    attributes.zcode.model_attempt.provider_origin
+    attributes.codez.execution.turn_id
+    attributes.codez.<span_name>.outcome
+    attributes.codez.model_attempt.provider_origin
 ```
 
 不同 ARMS 控制台版本可能使用可视化条件、SPL 或等价查询语法，字段语义不变。
@@ -566,8 +566,8 @@ Span Attribute
 公共条件：
 
 ```text
-serviceName : zcode-cli-agent
-and resources.zcode.telemetry.schema_version : 5
+serviceName : codez-cli-agent
+and resources.codez.telemetry.schema_version : 5
 ```
 
 Turn：
@@ -580,30 +580,30 @@ and spanName : agent_turn
 
 ```text
 and spanName : model_attempt
-and attributes.zcode.model_attempt.outcome : failed
+and attributes.codez.model_attempt.outcome : failed
 ```
 
 429：
 
 ```text
 and spanName : model_attempt
-and attributes.zcode.model_attempt.http_status_code : 429
+and attributes.codez.model_attempt.http_status_code : 429
 ```
 
 按 Provider Error 信息排查：
 
 ```text
 and spanName : model_attempt
-and attributes.zcode.model_attempt.outcome : failed
+and attributes.codez.model_attempt.outcome : failed
 
 聚合/展示：
-attributes.zcode.model_attempt.provider_origin
-attributes.zcode.model_attempt.provider_route
-attributes.zcode.model_attempt.http_status_code
-attributes.zcode.model_attempt.provider_error_code
-attributes.zcode.model_attempt.provider_error_message
-attributes.zcode.model_attempt.error_code
-attributes.zcode.model_attempt.error_message
+attributes.codez.model_attempt.provider_origin
+attributes.codez.model_attempt.provider_route
+attributes.codez.model_attempt.http_status_code
+attributes.codez.model_attempt.provider_error_code
+attributes.codez.model_attempt.provider_error_message
+attributes.codez.model_attempt.error_code
+attributes.codez.model_attempt.error_message
 ```
 
 注意：Provider 没有返回结构化错误正文时，`provider_error_message` 可以为空；网络/DNS/Timeout
@@ -614,9 +614,9 @@ attributes.zcode.model_attempt.error_message
 
 ```text
 resources.service.version
-resources.zcode.product.version
-resources.zcode.build.commit_id
-resources.zcode.telemetry.schema_version
+resources.codez.product.version
+resources.codez.build.commit_id
+resources.codez.telemetry.schema_version
 ```
 
 ARMS 若不支持语义版本字符串的 `>=`，不要按字典序比较 `3.10` 和 `3.9`。使用精确版本集合、
@@ -684,7 +684,7 @@ model_call.duration count where retry_state in (recovered, not_recovered)
 Attempt 放大率：
 
 ```text
-sum(zcode.model.call.attempts) / count(zcode.model.call.attempts)
+sum(codez.model.call.attempts) / count(codez.model.call.attempts)
 ```
 
 Cache 使用原始 Token：
@@ -706,9 +706,9 @@ Cache 语义无说明地合并成一个“命中率”。
 
 ```text
 service.version                  CLI Telemetry 生产者版本
-zcode.product.version            Desktop/产品版本
-zcode.telemetry.schema_version   数据契约版本
-zcode.build.commit_id            精确构建身份
+codez.product.version            Desktop/产品版本
+codez.telemetry.schema_version   数据契约版本
+codez.build.commit_id            精确构建身份
 ```
 
 破坏 Attribute Key/类型/单位、Outcome 含义、Parent/Link 拓扑或 Metric 统计分母时升级 Schema

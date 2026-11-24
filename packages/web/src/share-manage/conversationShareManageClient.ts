@@ -12,7 +12,7 @@ import {
   type ConversationShareManagedList,
   type ConversationShareManagedUpdateRequest,
   type ConversationShareTtlOptions,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { z } from "zod";
 import { ConversationSharePreviewClientError } from "../share/conversationSharePreviewClient.js";
 import {

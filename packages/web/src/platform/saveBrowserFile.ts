@@ -1,4 +1,4 @@
-import type { SaveFileRequest, SaveFileResult } from "@zcode/shared";
+import type { SaveFileRequest, SaveFileResult } from "@codez/shared";
 
 const MAX_DOWNLOAD_BYTES = 50 * 1024 * 1024;
 const FETCH_TIMEOUT_MS = 30_000;

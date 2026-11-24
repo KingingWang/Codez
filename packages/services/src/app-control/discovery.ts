@@ -6,7 +6,7 @@ import {
   type AppTrustedContext,
   type SessionSummary,
   type AppSessionControlDependencies,
-} from "@zcode/session-control/contracts";
+} from "@codez/session-control/contracts";
 import type { ProjectTask, ProjectTree } from "#src/project/contract.js";
 import type {
   AppControlCallerConnection,

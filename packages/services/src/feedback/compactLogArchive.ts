@@ -1,7 +1,7 @@
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import { CLI_MEMORY_DIAGNOSTIC_DIRECTORY } from "@zcode/shared";
+import { CLI_MEMORY_DIAGNOSTIC_DIRECTORY } from "@codez/shared";
 import { getAppConfigDir, getFeedbackLogArchiveDir } from "../paths.js";
 import { createFeedbackDiagnosticArchive } from "./feedbackLogArchive.js";
 
@@ -25,8 +25,8 @@ export async function prepareCompactLogArchive(options?: {
   return createFeedbackDiagnosticArchive({
     sources: [
       {
-        directory: join(homedir(), ".zcode", "cli", CLI_MEMORY_DIAGNOSTIC_DIRECTORY),
-        archivePrefix: ".zcode/cli/memory-diagnostics",
+        directory: join(homedir(), ".codez", "cli", CLI_MEMORY_DIAGNOSTIC_DIRECTORY),
+        archivePrefix: ".codez/cli/memory-diagnostics",
         contentPolicy: "cli-memory",
         onlyCurrentDay: false,
       },

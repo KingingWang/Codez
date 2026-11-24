@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { stat } from "node:fs/promises";
 import { isAbsolute, normalize, win32 } from "node:path";
-import type { FileApplicationInfo, FileApplicationTarget } from "@zcode/shared";
+import type { FileApplicationInfo, FileApplicationTarget } from "@codez/shared";
 import type {
   FileApplicationNativeAdapter,
   FileOpenAppsContract,

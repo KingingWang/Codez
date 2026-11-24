@@ -13,8 +13,8 @@ import { BUILTIN_MODEL_PROVIDER_IDS } from "./model-provider-types.js";
 export const HIGHSPEED_CARD_EXPIRED_PROVIDER_ERROR_CODE = "3402";
 
 /**
- * 加速卡的隐藏 Built-in Provider；端点与模型名单由 ZCode Built-in Provider Config 提供
- * （config/provider/zcode-builtin.json），这里只保留跨层引用的 ID。
+ * 加速卡的隐藏 Built-in Provider；端点与模型名单由 Codez Built-in Provider Config 提供
+ * （config/provider/codez-builtin.json），这里只保留跨层引用的 ID。
  * 与 Off-Peak 同规则按账号 Family 拆分：卡是对当前账号 Coding Plan 权益的抽取，
  * 不跨 Family 静默迁移。
  */

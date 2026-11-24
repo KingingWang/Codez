@@ -1,11 +1,11 @@
 # Web Remote Control Task Snapshot In-Flight Dedupe
 
 ## 背景
-手机远控首屏恢复时，多个 UI hook 会并发调用 `zcodeTaskService.getTaskSnapshot(...)`。
+手机远控首屏恢复时，多个 UI hook 会并发调用 `codezTaskService.getTaskSnapshot(...)`。
 在大任务场景下，这会让 host 连续返回多份超大 snapshot，并通过 relay 重复发送大包。
 
 ## 改动
-在 `packages/ui/src/hooks/useZCodeTaskService.ts` 为 `getTaskSnapshot` 增加并发去重：
+在 `packages/ui/src/hooks/useCodezTaskService.ts` 为 `getTaskSnapshot` 增加并发去重：
 - 维度：`workspacePath + workspaceIdentity + taskId + messageLimit + byteBudget + toolLimit + clientMode`
 - 行为：同 key 的并发请求复用同一个 Promise，只发起一次 RPC
 - 生命周期：请求完成后立即从 in-flight map 清理

@@ -5,7 +5,7 @@ import {
   resolveSubagentRuntimeProfiles,
   type SubagentRuntimeConfig,
   type SubagentRuntimeState,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import {
   createSubagentConfigScope,
@@ -197,7 +197,7 @@ export function createSubagentRuntimeConfigCache(reader: ConfigReader) {
       if (workspace) {
         const workspaceKey = key(workspace);
         workspaces.get(workspaceKey)?.dispose();
-        const project = documentScope(join(workspace.workspacePath, ".zcode", "agents"), "project");
+        const project = documentScope(join(workspace.workspacePath, ".codez", "agents"), "project");
         workspaces.set(workspaceKey, project);
         initializing.push(project);
       }

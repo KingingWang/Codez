@@ -1,10 +1,10 @@
 import {
   generateTraceId,
   resolveWorkspaceKey,
-  ZCODE_AGENT_PROVIDER,
-  type ZCodeTaskMeta,
-} from "@zcode/shared";
-import type { SessionsIndexReconcileResult } from "@zcode/shared/zcode-protocol-v4";
+  CODEZ_AGENT_PROVIDER,
+  type CodezTaskMeta,
+} from "@codez/shared";
+import type { SessionsIndexReconcileResult } from "@codez/shared/codez-protocol-v4";
 import type {
   TaskFactChange,
   TaskFactSource,
@@ -58,7 +58,7 @@ export function createTaskFacts(options: {
           createdAt: fact.createdAt,
           updatedAt: fact.updatedAt,
           mode: "default",
-          provider: ZCODE_AGENT_PROVIDER,
+          provider: CODEZ_AGENT_PROVIDER,
           // 对账可能先于摘要完成首次入库；两条路径必须保留相同的父子关系。
           ...(fact.parentSessionId ? { forkedFromTaskId: fact.parentSessionId } : {}),
         },
@@ -86,7 +86,7 @@ export function createTaskFacts(options: {
     async ingest(target, summary) {
       refreshes.delete(key({ ...target, taskId: summary.sessionId }));
       const lastOutcome = summary.lastOutcome;
-      const meta: ZCodeTaskMeta = {
+      const meta: CodezTaskMeta = {
         taskId: summary.sessionId,
         traceId: generateTraceId(summary.sessionId),
         title: summary.title,
@@ -95,7 +95,7 @@ export function createTaskFacts(options: {
         createdAt: summary.createdAt,
         updatedAt: summary.lastActivityAt,
         mode: "default",
-        provider: ZCODE_AGENT_PROVIDER,
+        provider: CODEZ_AGENT_PROVIDER,
         ...(summary.parentSessionId ? { forkedFromTaskId: summary.parentSessionId } : {}),
         ...(lastOutcome ? { status: lastOutcome === "error" ? "error" : "completed" } : {}),
       };

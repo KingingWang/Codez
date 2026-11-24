@@ -9,8 +9,8 @@
 
 ## 1. 目标
 
-基于 2026-08 当前厂商官网、搜索发现和已确认的 ZCode 产品事实，把
-`config/provider/zcode-builtin.json` 升级为 revision 3：补齐当前主推/独特模型，校正确定能力，使用
+基于 2026-08 当前厂商官网、搜索发现和已确认的 Codez 产品事实，把
+`config/provider/codez-builtin.json` 升级为 revision 3：补齐当前主推/独特模型，校正确定能力，使用
 Provider-Model Exact Rule 表达默认 enabled，并让 Provider 成员物理顺序与 enabled 区一致。
 
 本轮接受保守但不完美的结果；不把未经验证的猜测写成开启状态。后续用独立模型验证 API 继续校准。
@@ -49,9 +49,9 @@ workspace identity。Active Model 仍冻结本轮创建时的 Effective Model Co
 
 ### 2.3 主要实现种子
 
-- `config/provider/zcode-builtin.json`
-- `packages/provider-node/test/zcode-builtin-integrity.test.ts`
-- `docs/working-memory/provider-refactor/design/registry/zcode-builtin-provider-config.md`
+- `config/provider/codez-builtin.json`
+- `packages/provider-node/test/codez-builtin-integrity.test.ts`
+- `docs/working-memory/provider-refactor/design/registry/codez-builtin-provider-config.md`
 - `docs/working-memory/provider-refactor/research/account-provider-and-builtin-config-review.md`
 
 当前环境没有可调用的 codegraph 工具；本轮以正式 Config、Resolver 完整性测试、Feature Graph 现有
@@ -85,9 +85,9 @@ workspace identity。Active Model 仍冻结本轮创建时的 Effective Model Co
 
 ## 5. 验证与验收
 
-1. `pnpm --filter @zcode/provider-node test`
-2. `pnpm --filter @zcode/provider-node typecheck`
-3. `pnpm --filter @zcode/provider test` 与 typecheck
+1. `pnpm --filter @codez/provider-node test`
+2. `pnpm --filter @codez/provider-node typecheck`
+3. `pnpm --filter @codez/provider test` 与 typecheck
 4. `pnpm typecheck`
 5. `pnpm lint`
 6. 相关格式检查、`git diff --check`

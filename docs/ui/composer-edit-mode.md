@@ -322,7 +322,7 @@ C07、D01、D12–D18、D21–D28（最后一条消息编辑态）。交互变�
 - 编辑态模块：`packages/ui/src/composer-edit-mode/`（store、`useComposerEditMode`、`ComposerEditBar`）
 - composer 接入与提交路由：`packages/ui/src/v4/ConversationComposer.tsx`、`packages/ui/src/v4/SessionPane.tsx`
 - 占位与入口：`packages/ui/src/v4/ConversationRowView.tsx`、`packages/ui/src/v4/ConversationQueuePanel.tsx`
-- 协议：`packages/shared/src/zcode-protocol-v4/command.ts`、`snapshot.ts`
-- CLI：`apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/queue.ts`（命令）、
-  `apps/zcode-cli/packages/core/src/runtime/methods/steering.ts`（锁与原地编辑）、
-  `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/queue-auto-drain.ts`（冻结队首暂停）
+- 协议：`packages/shared/src/codez-protocol-v4/command.ts`、`snapshot.ts`
+- CLI：`apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/commands/handlers/queue.ts`（命令）、
+  `apps/codez-cli/packages/core/src/runtime/methods/steering.ts`（锁与原地编辑）、
+  `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/queue-auto-drain.ts`（冻结队首暂停）

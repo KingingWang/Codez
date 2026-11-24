@@ -2,7 +2,7 @@
  * desktop-microphone-access 对外契约：Main 进程的麦克风系统权限与系统设置跳转。
  * Renderer 只经 preload 的两个 IPC 频道调用，见 docs/chat/composer-voice-input.md「麦克风权限」。
  */
-import type { MicrophoneAccessResetResult, MicrophoneAccessResult } from "@zcode/shared";
+import type { MicrophoneAccessResetResult, MicrophoneAccessResult } from "@codez/shared";
 
 export interface DesktopMicrophoneAccessContract {
   /** 注册 MicrophoneAccess / OpenMicrophoneSettings 两个 IPC 处理器；只调用一次 */

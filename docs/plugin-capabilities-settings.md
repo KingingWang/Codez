@@ -28,7 +28,7 @@ Plugin（设置页导航）
 - Scope 菜单只展示当前可连接的 Workspace：本地目录不可用时隐藏；远端 identity/target 没有对应 `remoteSessionId` 时视为未连接并隐藏。可用的本地 Workspace 使用 `Folder`，已连接的远端 Workspace 使用 `Cloud`；触发按钮与菜单项必须使用同一图标语义。当前选择失效时设置页回退到 User scope。
 - Plugin 贡献资源的归属跟随所属 Plugin 的安装 scope；`Skill.scope=plugin` 或 Plugin MCP 来源本身不能绕过 Scope。
 - Built-in 以缺少 marketplace 安装记录且 runtime `source=official` 为准，属于 User Scope；存在安装记录时必须优先服从记录的 user/workspace scope，不能因使用 official cache 被误判为 Built-in。
-- 宿主运行时插件 `node-repl-host@zcode-plugins-official` 不对用户显示：它是 Browser Use 与 Computer Use 共用的 node_repl 宿主，没有 skill、没有 listing，也不能由用户启停。Agent 在 `plugins/list` 与 `plugins/overview`（availablePlugins / installedPlugins / restorableBuiltins）投影里统一剔除它，判定为 `@zcode/shared` 的 `isUserFacingPlugin`；Plugins、MCPs 与插件商店都不再自行过滤。它提供的宿主 `node_repl` MCP 同样不在 MCPs 页显示：Agent 不再在 `plugins/list` 投影 `hostMcpServerNames`，设置页也不再读取该字段，所以 Browser Use / Computer Use 分组下不再出现 `node_repl` 行，MCP 计数不含它。协议 schema 仍保留该可选字段，只为兼容旧版 Agent 的严格解析，App 忽略其内容。Agent 内部的插件加载、seed、node_repl 注册与资源管理器的进程归属（`resolveOfficialPluginNameByHostMcpServerName`）不受影响。
+- 宿主运行时插件 `node-repl-host@zcode-plugins-official` 不对用户显示：它是 Browser Use 与 Computer Use 共用的 node_repl 宿主，没有 skill、没有 listing，也不能由用户启停。Agent 在 `plugins/list` 与 `plugins/overview`（availablePlugins / installedPlugins / restorableBuiltins）投影里统一剔除它，判定为 `@codez/shared` 的 `isUserFacingPlugin`；Plugins、MCPs 与插件商店都不再自行过滤。它提供的宿主 `node_repl` MCP 同样不在 MCPs 页显示：Agent 不再在 `plugins/list` 投影 `hostMcpServerNames`，设置页也不再读取该字段，所以 Browser Use / Computer Use 分组下不再出现 `node_repl` 行，MCP 计数不含它。协议 schema 仍保留该可选字段，只为兼容旧版 Agent 的严格解析，App 忽略其内容。Agent 内部的插件加载、seed、node_repl 注册与资源管理器的进程归属（`resolveOfficialPluginNameByHostMcpServerName`）不受影响。
 - Plugins 分组标题使用 base 主文字，数量使用 sm 次要文字，避免数量与分组名称争夺视觉层级。
 - Plugins 列表图标容器使用 `bg-background`，与列表的 `bg-surface` 层级区分。
 - 点击 Plugin 的插件列表项进入内联详情页，复用插件商店的 `PluginStoreDetailView`（介绍、Hero、示例提示词、能力清单与信息区），不再打开简化管理弹窗；已安装态的启停、更新、卸载和高级配置继续复用同一套动作。进入详情时隐藏 Scope/Tabs/Search，使用设置页包屑返回列表。
@@ -41,18 +41,18 @@ Plugin（设置页导航）
 - Plugin MCP 名称后不重复显示 User/Workspace、marketplace 或 `Plugin` Badge；分组标题已经表达来源。MCP 特有的状态、授权按钮、工具数量与诊断信息继续保留。
 - 插件贡献的 MCP 行首使用所属插件的商店图标，通过 pluginId 关联 listing 并复用 `PluginStoreAvatar`；没有图标或加载失败时使用该组件的统一 fallback。直接 MCP 使用 Cable 图标。
 - Plugin 的 Plugins 与 MCPs 分组标题统一使用 `h-7 items-center`，保证 Installed、Built-in、Needs Attention、Plugins 标题高度一致。
-- Plugin MCPs 不显示 “Manage MCP server configurations used by ZCode Agent.” 页面说明；Import 与 New 操作位于 Installed 分组标题右侧，两者参考 Plugins 的 New 按钮使用 default 尺寸与 `rounded-lg`。普通 MCP 设置页仍保留说明和原顶部 Import/Create 操作区，远程同步操作不随之移动。
+- Plugin MCPs 不显示 “Manage MCP server configurations used by Codez Agent.” 页面说明；Import 与 New 操作位于 Installed 分组标题右侧，两者参考 Plugins 的 New 按钮使用 default 尺寸与 `rounded-lg`。普通 MCP 设置页仍保留说明和原顶部 Import/Create 操作区，远程同步操作不随之移动。
 - 当前 Scope 真的没有直接安装项时，Plugins Installed 显示 Browse plugins 引导，MCPs Installed 显示 New MCP server 与 Import 引导；Built-in 或插件贡献资源存在时仍保留 Installed 空引导。存在搜索词时，各 Tab 只显示有匹配项的分组：直属 Installed 为 0 时连同标题、数量和 New/Import 操作一起隐藏；Built-in、Needs Attention 与各插件来源分组遵循同一规则。全部分组都无结果时，只显示统一的透明虚线“没有匹配结果”反馈，避免把搜索空结果误认为未安装。
 - Plugins、MCPs 与 Skills 共用的“尚未安装”引导容器，以及 Plugin 的无匹配/不可用空状态，均使用透明背景和 `border-border` 虚线边框，不与正常的 `bg-surface` 列表混淆；容器内操作按钮统一使用 `size="lg"`。Plugin loading 状态复用同一容器层级和留白。
 - Plugin Skills 保留“当前 Scope 直属技能 + 每个插件独立分组”的来源结构。直属技能分组统一命名为 `Installed`，Scope 只由顶部选择器表达；技能名称后不再重复显示 User、Workspace 或 Plugin 标签。分组标题、列表容器、显式分割线、图标底色与行 hover 对齐 MCPs，标题右侧只放置 Import 与 New，不提供手动刷新；导入、新建、同步或启停等数据变更完成后自动刷新列表。Skills 不提供启用状态筛选菜单，列表始终包含当前 Scope 中已启用和已停用的技能。当前 Scope 没有直属技能时显示新建或导入引导，插件技能仍按插件分组继续展示；搜索导致的空结果不显示安装引导。
 - Plugin Skills 的直属技能使用 WandSparkles 缺省图标；插件技能通过对应插件的 marketplace listing 显示插件图标，找不到匹配插件时回退到缺省图标。
-- Plugin Skills 的插件分组标题复用 `formatCanonicalPluginName` 做名称转换，与 Plugins 和 MCPs 的插件显示名保持一致；其中 `mcp`、`aws`、`zcode` token 固定显示为 `MCP`、`AWS`、`ZCode`，内部分组 key 仍使用原始规范化名称。
+- Plugin Skills 的插件分组标题复用 `formatCanonicalPluginName` 做名称转换，与 Plugins 和 MCPs 的插件显示名保持一致；其中 `mcp`、`aws`、`codez` token 固定显示为 `MCP`、`AWS`、`Codez`，内部分组 key 仍使用原始规范化名称。
 - MCP 授权操作统一使用 `<ExternalLink size-4> Authenticate` 的 link variant 按钮，并明确使用 `text-sky-500 dark:text-sky-400` 及对应 hover 色；不能使用会在 Zai 主题变成黑/白的 `text-brand`。直接 MCP 与插件 MCP 保持一致。
 - 直接 MCP 的缺省图标始终为 Cable，插件 MCP 使用对应插件图标。两类 MCP 的状态 dot 统一叠放在图标容器右下角，不再占用名称行空间；父容器固定为 `size-4 bg-background` 并居中内容，静态圆点使用 `size-2.5`，确保切换到连接中旋转状态时外层尺寸不跳动。状态颜色和原因 Tooltip 保持不变。
 - 进入 MCP 新建或编辑子页面时隐藏 Plugin 的 Scope、Tabs 与 Search 工具栏，并移除列表态顶部间距；保存、删除或取消回到列表后恢复工具栏。
 - MCP 新建/编辑表单复用顶部完整 Scope 菜单（User 与当前窗口全部 Workspace），不再使用仅有 User/Workspace 的简化 Select。新建表单打开时快照父级当前 Scope；编辑表单显示资源实际归属并锁定，避免一次编辑隐式迁移配置。新建表单内切换 Scope 只改变本次保存目标，不修改父级 Scope；关闭表单后父级仍显示打开表单前的选择。
 - MCP 表单的 Form/JSON 模式切换复用自动化详情 Settings/History 的设置分段 Tabs：`bg-surface` 圆形外壳、`bg-background` 圆形激活项；两处由同一个通用组件维护，不复制视觉 class。
-- 新建 MCP 保存前必须先按表单 Scope 解析具体 workspace target，并等待对应 `workspacePath + workspaceIdentity` 的 MCP 配置加载完成；User 使用当前可用 host 的用户目录，Workspace 写入所选 Workspace 的 `.zcode/config.json`。目标切换期间不得使用上一个 workspace 的 path 或远程 directory service。
+- 新建 MCP 保存前必须先按表单 Scope 解析具体 workspace target，并等待对应 `workspacePath + workspaceIdentity` 的 MCP 配置加载完成；User 使用当前可用 host 的用户目录，Workspace 写入所选 Workspace 的 `.codez/config.json`。目标切换期间不得使用上一个 workspace 的 path 或远程 directory service。
 - Workspace 不混入 User 资源；User 不混入任意 Workspace 资源；不同 Workspace 之间也不共享资源投影。
 - Workspace 列表来自当前窗口已打开的 workspace tabs，保持标签顺序并按 workspace identity 去重。
 - Workspace 显示 tab label；身份 key 必须使用 `workspaceIdentity?.trim() || workspacePath`。

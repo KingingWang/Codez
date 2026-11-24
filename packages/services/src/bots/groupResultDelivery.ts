@@ -1,6 +1,6 @@
 import { getUnavailableReplyFallback } from "#src/bots/groupReply.js";
 import { setTimeout as sleep } from "node:timers/promises";
-import type { BotGroupDelivery } from "@zcode/shared";
+import type { BotGroupDelivery } from "@codez/shared";
 
 interface GroupDeliveryDependencies {
   read(id: string): Promise<BotGroupDelivery | undefined>;

@@ -11,10 +11,10 @@ Windows CI 的 `VP08/VP17/VP18 URL：元数据无 tab，远端任务执行、重
 本地 Windows 复现（2026-11-11，`desktop-e2e-20261111-101721-987`）：
 
 - 远端 Source Server 收到的 `sendConversationCommandV4` 入参 `workspacePath` 是原生路径 `C:\...\url-server\work\repo`。
-- 远端 CLI 的 `zcode_protocol.session_create.started` 日志中 `workspacePath` 是 `/C:/.../url-server/work/repo`，`bootstrap.app.startup.runtime_config.completed` 的 `workingDirectory` 是 `C:\C:\...\url-server\work\repo`。
+- 远端 CLI 的 `codez_protocol.session_create.started` 日志中 `workspacePath` 是 `/C:/.../url-server/work/repo`，`bootstrap.app.startup.runtime_config.completed` 的 `workingDirectory` 是 `C:\C:\...\url-server\work\repo`。
 - 抓到的远端模型请求中，skill 列表只有插件 skill，没有任何项目级 skill。
 
-原因链：`normalizeWorkspacePathForIdentity` 把 `C:\x` 归一成 `/C:/x` 写进 identity；CLI 的 `resolveWorkspaceRefFromId`（`apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace.ts`）从 identity 取回路径时没有反向转换，Windows 上 `resolve("/C:/x")` 得到 `C:\C:\x`，项目 skill 根和 cwd 都指向不存在的目录。
+原因链：`normalizeWorkspacePathForIdentity` 把 `C:\x` 归一成 `/C:/x` 写进 identity；CLI 的 `resolveWorkspaceRefFromId`（`apps/codez-cli/packages/bootstrap/src/codez-protocol/workspace.ts`）从 identity 取回路径时没有反向转换，Windows 上 `resolve("/C:/x")` 得到 `C:\C:\x`，项目 skill 根和 cwd 都指向不存在的目录。
 
 ## 判断
 

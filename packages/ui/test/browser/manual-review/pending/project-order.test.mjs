@@ -71,7 +71,7 @@ async function open(saved, tree, mobile = false) {
       if (!sessionStorage.getItem("project-order-fixture-tree")) {
         sessionStorage.setItem("project-order-fixture-tree", JSON.stringify(tree));
         localStorage.setItem(
-          "zcode-project-sidebar-preferences",
+          "codez-project-sidebar-preferences",
           JSON.stringify({ view: "projects", order: saved }),
         );
       }

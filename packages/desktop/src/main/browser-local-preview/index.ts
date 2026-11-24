@@ -5,7 +5,7 @@ import { open, realpath, stat, type FileHandle } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { Readable } from "node:stream";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { BROWSER_LOCAL_PREVIEW_SCHEME, PlatformChannels } from "@zcode/shared";
+import { BROWSER_LOCAL_PREVIEW_SCHEME, PlatformChannels } from "@codez/shared";
 import type { BrowserLocalPreviewContract } from "@desktop/main/browser-local-preview/contract.js";
 
 export const BROWSER_LOCAL_PREVIEW_PRIVILEGES = {

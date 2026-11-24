@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { writeFile } from "node:fs/promises";
 import { chromium } from "playwright-core";
-import { TID_TASK_ITEM, testId } from "@zcode/shared/test-ids";
+import { TID_TASK_ITEM, testId } from "@codez/shared/test-ids";
 import { obtainUnreadPairingUrl, showMobileTaskHome } from "#e2e/helpers/web-remote-unread";
 import { openMobilePairingPage, seedMobileFixtureLogin } from "#e2e/helpers/mobile-pairing";
 import { clearAppData } from "#e2e/helpers/desktop-app";
@@ -22,7 +22,7 @@ import {
   selectV4TaskById,
 } from "#e2e/helpers/v4-conversation";
 
-const artifacts = () => process.env.ZCODE_E2E_ARTIFACT_DIR!;
+const artifacts = () => process.env.CODEZ_E2E_ARTIFACT_DIR!;
 const EMPTY = "E2E_BG_HISTORY_EMPTY";
 const HISTORY = "E2E_BG_HISTORY_HISTORY";
 const TITLE = '[data-testid^="chat-background-result-title-"]';
@@ -32,9 +32,9 @@ const CONTENT = '[data-testid^="chat-assistant-history-content-"]';
 async function assertMobileEmptyHistory() {
   const sessionId = (await getV4PaneSnapshot()).sessionId!;
   const pairingUrl = await obtainUnreadPairingUrl(
-    new URL(process.env.ZCODE_WEB_REMOTE_CONTROL_URL!).origin,
+    new URL(process.env.CODEZ_WEB_REMOTE_CONTROL_URL!).origin,
   );
-  const executablePath = process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE;
+  const executablePath = process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE;
   const mobileBrowser = await chromium.launch({
     ...(executablePath ? { executablePath } : { channel: "chrome" }),
     headless: true,

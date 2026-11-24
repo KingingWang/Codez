@@ -1,11 +1,11 @@
 // 手机实时日志（mobile-log 推送帧）的桌面落盘：按「设备目录 / 日期_会话 文件」分文件，
 // 单文件超限滚动到 .1/.2…，单设备目录超限删最旧文件，超过保留天数的文件启动后首写时清理。
 // 全部 IO 异步且串行（单条 promise 链），写失败只记一次 warn，不影响远控主链路。
-// 目录默认在 ~/.zcode/v2/logs/mobile/，因此「导出日志」打包 logs/ 时会自动带上。
+// 目录默认在 ~/.codez/v2/logs/mobile/，因此「导出日志」打包 logs/ 时会自动带上。
 
 import { appendFile, mkdir, readdir, stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
-import type { WebRemoteControlMobileLogEntry } from "@zcode/shared";
+import type { WebRemoteControlMobileLogEntry } from "@codez/shared";
 
 export const MOBILE_LOG_SINK_DEFAULTS = {
   maxFileBytes: 4 * 1024 * 1024,

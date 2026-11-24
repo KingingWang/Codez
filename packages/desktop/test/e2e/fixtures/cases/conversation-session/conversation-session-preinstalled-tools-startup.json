@@ -8,17 +8,17 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode/preinstalled-tools/<release>/staging",
+      "path": ".codez/preinstalled-tools/<release>/staging",
       "source": "created-by-spec",
       "description": "冷重启前用普通文件制造真实目录冲突；聊天建立后移除冲突，再通过帮助对话框手动重试。"
     },
     {
-      "path": ".zcode/preinstalled-tools/<release>/installation.json",
+      "path": ".codez/preinstalled-tools/<release>/installation.json",
       "source": "created-by-spec",
       "description": "保留可读的旧版根级记录，断言新会话固定地址不会消费它。"
     },
     {
-      "path": ".zcode/preinstalled-tools/<release>/records/old-resource/25.0.0-darwin-arm64/installation.json",
+      "path": ".codez/preinstalled-tools/<release>/records/old-resource/25.0.0-darwin-arm64/installation.json",
       "source": "created-by-spec",
       "description": "保留可读的旧目标记录；真实安装 owner 只在重试成功后发布当前目标记录。"
     }

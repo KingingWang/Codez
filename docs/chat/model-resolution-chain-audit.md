@@ -49,13 +49,13 @@ V4 已经删除“UI task config、task meta、workspace 默认、session snapsh
 当前模型：
 
 - `ChatInputToolbar` / `useToolbarModelChange` 的 active-task 分支；
-- `useZCodeChatSendPrompt` 的 resume hint 解析；
+- `useCodezChatSendPrompt` 的 resume hint 解析；
 - `taskConfigOptionsByTaskId` 作为 conversation config 权威；
 - renderer-local busy prompt queue；
 - `session/setModel`、`workspace/setDefaultModel` 作为 V4 会话写入口；
 - 从消息最后一个 model 或 task meta 推导 toolbar 当前值。
 
-`zcodeSessionStore` 仍服务 workspace shell、task list、未读、兼容服务投影和草稿目录，不等于它仍拥有 V4
+`codezSessionStore` 仍服务 workspace shell、task list、未读、兼容服务投影和草稿目录，不等于它仍拥有 V4
 conversation transcript 或 session config。
 
 ## 已验证的不变量
@@ -85,8 +85,8 @@ conversation transcript 或 session config。
 - `packages/ui/src/v4/SessionPane.tsx`
 - `packages/ui/src/v4/composer/useDraftConfigControl.ts`
 - `packages/ui/src/v4/composer/useDraftSessionPrewarm.ts`
-- `packages/shared/src/zcode-protocol-v4/command.ts`
-- `packages/shared/src/zcode-protocol-v4/snapshot.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/model-config.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/session-mgmt.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts`
+- `packages/shared/src/codez-protocol-v4/command.ts`
+- `packages/shared/src/codez-protocol-v4/snapshot.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/commands/handlers/model-config.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/commands/handlers/session-mgmt.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol/workspace-model-catalog.ts`

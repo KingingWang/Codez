@@ -18,7 +18,7 @@
 
 ```
 RENDERER (React UI)
-  UnifiedBrowserView：chrome(地址栏/前进后退/刷新/DevTools/picker) + <webview partition="persist:zcode-embedded-browser">
+  UnifiedBrowserView：chrome(地址栏/前进后退/刷新/DevTools/picker) + <webview partition="persist:codez-embedded-browser">
     - webview 随 DOM 布局定位（不再 setBounds/setVisible 覆盖）
     - dom-ready 时 getWebContentsId() → IPC 上报 { key, webContentsId } 给 main
     - webview 事件(did-navigate/page-title-updated/did-fail-load) 驱动本地 chrome 状态
@@ -88,11 +88,11 @@ MAIN
 - **guestId 时序**：dom-ready 前 getWebContentsId 可能无效；用 dom-ready 事件为准。webview 崩溃/重载后 guestId 变 → 需重新 attach（监听 destroyed/did-attach）。
 - **CDP attach 冲突**：同 guest 只允许一个 debugger；打开 DevTools 会占用 → attach 失败需结构化处理。
 - **`<webview>` 官方长期不推荐**：但 Electron 41 仍支持，且它是让页面内容参与 DOM 合成、可被菜单覆盖的方案；接受。
-- **partition 登录态**：webview 显式 `partition="persist:zcode-embedded-browser"`，与之前一致。
+- **partition 登录态**：webview 显式 `partition="persist:codez-embedded-browser"`，与之前一致。
 
 ## 7. Popup / 新标签页创建期契约（2026-07-20 补充）
 
-网页通过 `<a target="_blank">`、`window.open()` 或 `form target="_blank"` 请求新页面时，必须由 main 的 `setWindowOpenHandler` 拦截，校验协议后路由到 ZCode 内部 Browser tab；不得静默吞掉，也不得放任 Electron 创建脱离 ZCode 的 `BrowserWindow`。
+网页通过 `<a target="_blank">`、`window.open()` 或 `form target="_blank"` 请求新页面时，必须由 main 的 `setWindowOpenHandler` 拦截，校验协议后路由到 Codez 内部 Browser tab；不得静默吞掉，也不得放任 Electron 创建脱离 Codez 的 `BrowserWindow`。
 
 `allowpopups` 是 Electron guest 的**创建期能力**，必须在 React 创建 `<webview>` DOM 节点时就作为 attribute 输出。禁止在 ref、effect、`dom-ready` 或 `did-attach-webview` 之后再补：这些阶段 guest 已经 attach，虽然宿主 DOM 最终能看到 attribute，Chromium 仍会在更早的 popup 权限边界直接吞掉新窗口请求，main 的 `setWindowOpenHandler` 不会收到事件。`will-attach-webview` 继续负责安全硬化和二次固定参数，但不能代替 renderer 的创建期声明。
 

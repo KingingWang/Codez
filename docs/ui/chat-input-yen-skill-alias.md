@@ -20,7 +20,7 @@
 ## 兼容性
 
 - 逻辑位于 `packages/ui` 的 prompt trigger 解析层，桌面端、本地 Web 和手机远控复用同一输入组件与面板逻辑。
-- 不涉及 `@zcode/protocol`，不影响 session、continuous/replayable 实时消息流、远控 snapshot 或 task command queue。
+- 不涉及 `@codez/protocol`，不影响 session、continuous/replayable 实时消息流、远控 snapshot 或 task command queue。
 - `$` 原有输入、匹配、筛选和 mention 插入行为保持不变。
 
 ## 验收

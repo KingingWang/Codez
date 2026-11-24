@@ -2,7 +2,7 @@
 
 - 日期：2026-08-25
 - 状态：实现中
-- 关联：producer `zcode-cua` !576、consumer `z-code` !2315
+- 关联：producer `codez-cua` !576、consumer `z-code` !2315
 
 ## 产品合同
 
@@ -16,7 +16,7 @@ live official request_access
   -> authority-gated CLI projection
   -> desktop-only live observation
   -> fresh Host status
-  -> ZCode confirmation
+  -> Codez confirmation
   -> fresh Host status
   -> existing onboarding
   -> Helper restart + refresh

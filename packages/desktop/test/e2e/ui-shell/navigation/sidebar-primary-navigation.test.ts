@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { TID_AUTOMATIONS_OPEN, TID_TASK_NEW_BUTTON } from "@zcode/shared/test-ids";
+import { TID_AUTOMATIONS_OPEN, TID_TASK_NEW_BUTTON } from "@codez/shared/test-ids";
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
 describe("桌面侧栏主导航", () => {
@@ -46,7 +46,7 @@ describe("桌面侧栏主导航", () => {
         );
         expect(await automation.getAttribute("aria-pressed")).toBe("false");
         await browser.saveScreenshot(
-          join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `sidebar-navigation-${theme}-${locale}.png`),
+          join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `sidebar-navigation-${theme}-${locale}.png`),
         );
       }
     }

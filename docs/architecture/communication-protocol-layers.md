@@ -27,8 +27,8 @@
 当前项目的通道包括：
 
 - `MessagePort`：Renderer 与 Window Host 之间的本地端口。
-- `stdio`：Host 与 `zcode-cli`，以及 `zcode-server` 与其 Agent 子进程之间的标准输入输出。
-- `WebSocket`：连接已存在的 `zcode-server`，或连接手机远控 Relay。
+- `stdio`：Host 与 `codez-cli`，以及 `codez-server` 与其 Agent 子进程之间的标准输入输出。
+- `WebSocket`：连接已存在的 `codez-server`，或连接手机远控 Relay。
 - Electron IPC：Renderer 与 Main 之间的平台调用。
 - UtilityProcess `postMessage`：Main 与 Window Host 之间的进程控制消息。
 
@@ -46,16 +46,16 @@
 
 当前有三种主要形式：
 
-### `@zcode/rpc`
+### `@codez/rpc`
 
 通用的 Service 调用协议，支持 `call`、`response`、`listen` 和事件通知。它主要用于：
 
 - Renderer ↔ Window Host；
-- Window Host ↔ 远程 `zcode-server`。
+- Window Host ↔ 远程 `codez-server`。
 
-### ZCode Protocol JSON envelope
+### Codez Protocol JSON envelope
 
-Host 与 `zcode-cli` 使用的 JSON 请求/响应/通知外壳，典型结构如下（为便于阅读省略了部分身份字段）：
+Host 与 `codez-cli` 使用的 JSON 请求/响应/通知外壳，典型结构如下（为便于阅读省略了部分身份字段）：
 
 ```json
 {
@@ -75,7 +75,7 @@ Host 与 `zcode-cli` 使用的 JSON 请求/响应/通知外壳，典型结构如
 
 ### Typed IPC / `postMessage`
 
-Main 的控制消息不经过通用 `@zcode/rpc`，而是直接发送带有 `type` 的结构化对象，例如：
+Main 的控制消息不经过通用 `@codez/rpc`，而是直接发送带有 `type` 的结构化对象，例如：
 
 ```ts
 {
@@ -101,7 +101,7 @@ V4 负责 Agent 会话和对话事实，例如：
 - 订阅、断线恢复、resync；
 - `desktop-continuous` 与 `web-remote-replayable` 交付语义。
 
-V4 的最终事实源和命令裁决者是 workspace 对应的 `zcode-cli`，不是 Renderer、Main 或 Relay。
+V4 的最终事实源和命令裁决者是 workspace 对应的 `codez-cli`，不是 Renderer、Main 或 Relay。
 
 ### Service API
 
@@ -110,8 +110,8 @@ Service API 是 Host 对外暴露的能力，例如：
 - `fileService.readFile`；
 - `terminalService.create`；
 - `gitService.status`；
-- `zcodeAgentService.sendConversationCommandV4`；
-- `zcodeAgentService.subscribeConversationV4`。
+- `codezAgentService.sendConversationCommandV4`；
+- `codezAgentService.subscribeConversationV4`。
 
 Service API 可以承载 V4，也可以承载文件、终端、Git 等非 V4 能力。
 
@@ -130,12 +130,12 @@ Main 与 Host 之间传递的是进程和连接控制，例如：
 
 | 链路 | 第 3 层：内容 | 第 2 层：信封 | 第 1 层：通道 |
 | --- | --- | --- | --- |
-| Renderer → Host | Service API、V4 命令/查询/订阅 | `@zcode/rpc` | `MessagePort` |
+| Renderer → Host | Service API、V4 命令/查询/订阅 | `@codez/rpc` | `MessagePort` |
 | Renderer → Main | 平台操作 | Electron IPC channel | Electron IPC |
 | Main → Host | Host 控制消息 | typed `{ type, ... }` | `postMessage` |
-| Host → 本地 CLI | V4、少量 legacy 操作 | ZCode Protocol JSON | stdio NDJSON |
-| Host → `zcode-server` | 远程 Service API，参数可携带 V4 | `@zcode/rpc` | SSH stdio 或 WebSocket |
-| `zcode-server` → 远端 CLI | V4、少量 legacy 操作 | ZCode Protocol JSON | stdio NDJSON |
+| Host → 本地 CLI | V4、少量 legacy 操作 | Codez Protocol JSON | stdio NDJSON |
+| Host → `codez-server` | 远程 Service API，参数可携带 V4 | `@codez/rpc` | SSH stdio 或 WebSocket |
+| `codez-server` → 远端 CLI | V4、少量 legacy 操作 | Codez Protocol JSON | stdio NDJSON |
 | 手机 → Relay → Main | 远控 Service/V4 调用 | relay envelope + `rpc-frame` | WebSocket |
 
 手机远控还会通过 shared-host attachment 进入已有 Window Host；Relay 和 Main 只负责鉴权、配对、心跳、frame 透传与 attachment 调度，不持有 conversation/task/stream 业务状态。
@@ -147,21 +147,21 @@ Main 与 Host 之间传递的是进程和连接控制，例如：
         │
         ▼
 Renderer
-  第 2 层：@zcode/rpc 调用 sendConversationCommandV4(...)
+  第 2 层：@codez/rpc 调用 sendConversationCommandV4(...)
   第 1 层：MessagePort
         │
         ▼
 Window Host
-  第 2 层：远程 @zcode/rpc Service 调用
+  第 2 层：远程 @codez/rpc Service 调用
   第 1 层：SSH stdio / WebSocket
         │
         ▼
-zcode-server
-  第 2 层：ZCode Protocol JSON，method = "v4/command"
+codez-server
+  第 2 层：Codez Protocol JSON，method = "v4/command"
   第 1 层：子进程 stdio
         │
         ▼
-远端 zcode-cli
+远端 codez-cli
   CommandInbox 裁决并执行 sendText
 ```
 
@@ -172,17 +172,17 @@ V4 命令 = 具体业务意图，例如 sendText
 V4 调用 = 调用 Service API，把这条命令送到下一跳
 ```
 
-因此，截图中“Host → zcode-server：V4 调用”更准确的说法是：
+因此，截图中“Host → codez-server：V4 调用”更准确的说法是：
 
 > **远程 Service RPC，参数中携带 V4 命令或 V4 查询。**
 
 ## 相关实现入口
 
-- [代码架构总览](./zcode-code-architecture-overview.md)
+- [代码架构总览](./codez-code-architecture-overview.md)
 - [Message Flow](./message-flow.md)
-- [`@zcode/rpc` 分层实现](../../packages/rpc/src/index.ts)
-- [V4 command schema](../../packages/shared/src/zcode-protocol-v4/command.ts)
-- [V4 transport schema](../../packages/shared/src/zcode-protocol-v4/transport.ts)
+- [`@codez/rpc` 分层实现](../../packages/rpc/src/index.ts)
+- [V4 command schema](../../packages/shared/src/codez-protocol-v4/command.ts)
+- [V4 transport schema](../../packages/shared/src/codez-protocol-v4/transport.ts)
 - [远程 RPC 连接](../../packages/server/src/remote/connect.ts)
-- [zcode-server stdio RPC server](../../packages/server/src/stdio.ts)
-- [Agent ZCode Protocol client](../../packages/services/src/zcode-agent/zcodeProtocolClient.ts)
+- [codez-server stdio RPC server](../../packages/server/src/stdio.ts)
+- [Agent Codez Protocol client](../../packages/services/src/codez-agent/codezProtocolClient.ts)

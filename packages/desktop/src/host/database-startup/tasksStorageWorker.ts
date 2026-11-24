@@ -1,11 +1,11 @@
 import { parentPort, workerData } from "node:worker_threads";
 import { tasksStorageWorkerDataSchema } from "./contract.js";
-import { prepareTasksIndexStorage, createSettingService } from "@zcode/services/storage-startup";
+import { prepareTasksIndexStorage, createSettingService } from "@codez/services/storage-startup";
 import {
   classifyDatabaseStartupError,
   databaseStartupErrorDetails,
   databaseMigrationFactsSchema,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 const data = tasksStorageWorkerDataSchema.parse(workerData);
 try {

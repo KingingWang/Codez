@@ -19,7 +19,7 @@ export class AcknowledgedRelayBatchQueue {
     return this.storage.length - this.headIndex;
   }
 
-  /** 内部有界性测试观察点；不从 @zcode/client public entry 导出。 */
+  /** 内部有界性测试观察点；不从 @codez/client public entry 导出。 */
   get retainedStorageSlots(): number {
     return this.storage.length;
   }

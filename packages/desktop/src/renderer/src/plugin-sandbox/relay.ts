@@ -44,7 +44,7 @@ export function sanitizePluginSandboxIframeAllow(value: unknown): string {
 export const PLUGIN_SANDBOX_SHELL_HOST_PREFIX = "shell-";
 export const PLUGIN_SANDBOX_PLUGIN_HOST_PREFIX = "plugin-";
 
-/** 从 shell 自己的 origin（zcode-sandbox://shell-<id>）推导 sandboxId 与插件 iframe 的 origin / URL。 */
+/** 从 shell 自己的 origin（codez-sandbox://shell-<id>）推导 sandboxId 与插件 iframe 的 origin / URL。 */
 export function resolvePluginSandboxShellIdentity(origin: string): {
   sandboxId: string;
   pluginOrigin: string;

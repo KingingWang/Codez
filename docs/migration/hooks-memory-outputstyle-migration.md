@@ -81,7 +81,7 @@
 - 测试 hooks 配置的读写
 - 测试 memory 的读写
 - 测试 outputstyle 的切换
-- 测试与 ZCode app-server 系统的集成
+- 测试与 Codez app-server 系统的集成
 
 ### 9. 软连接支持（可选）⏳
 如需支持软连接功能，参考：
@@ -111,7 +111,7 @@
 - **OutputStyle**: `~/.claude/output-styles/` 目录下的 `.md` 文件
 
 ### 当前项目配置目录
-当前项目使用 `~/.zcode/v2/` 作为主配置目录，但对于 workspace 级配置，仍然使用 workspace 目录下的 `.claude/` 目录。
+当前项目使用 `~/.codez/v2/` 作为主配置目录，但对于 workspace 级配置，仍然使用 workspace 目录下的 `.claude/` 目录。
 
 ## 后续建议
 

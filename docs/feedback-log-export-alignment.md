@@ -12,7 +12,7 @@
 仍优先处理。`about.txt` 增加截尾数量，细分非当天、硬链接、单文件/来源/总量限额等跳过原因，
 不再把它们混为 `metadata-policy`。UTF-8/UTF-16 截尾保持完整字符与记录；无可识别记录则跳过。
 
-崩溃诊断仅在导出时处理已有的 `ZCode agent process exited unexpectedly` 完整日志记录：
+崩溃诊断仅在导出时处理已有的 `Codez agent process exited unexpectedly` 完整日志记录：
 原始 `stderr` 继续按正文删除，只从有界尾部选择错误摘要和栈帧，经过共享 Agent 崩溃诊断器
 及反馈脱敏生成 `agentCrash` 安全投影，保留错误类别、错误码、摘要、位置和指纹；不保留任意
 stderr 对象转储、工具正文、环境变量或源码行。其他日志的 stdout/stderr 规则不放宽。
@@ -56,7 +56,7 @@ Windows helper 的退出摘要和 Main 调度延迟汇总以固定标记及独�
 - 标量按所在键的敏感性处理：
   - 敏感键（含从父键继承，如 `{"token":[123456]}` 的数组元素）下的数字换成字符串 `"***REDACTED***"`：纯数字口令、PIN 本身就是凭据。staging 原文本规则同样会替换它们，结构化脱敏不能在这里回退。
   - 敏感键下的布尔和 null 原样保留：只有 `true`/`false`/`null` 三个取值，承载不了凭据，保留后排障能看出 `hasAuth`、`token: null`（未配置）这类状态。
-  - 非敏感键下的数字原样保留。模型用量里的计数键名含 `token` 子串，因此白名单逐个列出计数字段：provider 用量里的 `cache_read_input_tokens`、`cache_creation_input_tokens`、`ephemeral_5m_input_tokens`、`prompt_tokens_details`、`completion_tokens_details`、`max_completion_tokens`、`prompt_cache_hit_tokens` / `prompt_cache_miss_tokens`、`*TokenCount`，以及 ZCode 内部 camelCase 的 `maxOutputTokens`、`cacheReadTokens` 等。白名单的前缀只由计数用词组成，不放行任意 `*_tokens`：`access_tokens`、`session_tokens`、`read_token` 仍会脱敏。`buildSnapshot` 是快照耗时，因含 `dsn` 子串被误判，也列入白名单。
+  - 非敏感键下的数字原样保留。模型用量里的计数键名含 `token` 子串，因此白名单逐个列出计数字段：provider 用量里的 `cache_read_input_tokens`、`cache_creation_input_tokens`、`ephemeral_5m_input_tokens`、`prompt_tokens_details`、`completion_tokens_details`、`max_completion_tokens`、`prompt_cache_hit_tokens` / `prompt_cache_miss_tokens`、`*TokenCount`，以及 Codez 内部 camelCase 的 `maxOutputTokens`、`cacheReadTokens` 等。白名单的前缀只由计数用词组成，不放行任意 `*_tokens`：`access_tokens`、`session_tokens`、`read_token` 仍会脱敏。`buildSnapshot` 是快照耗时，因含 `dsn` 子串被误判，也列入白名单。
 - 结构化脱敏的递归深度上限是 256 层，字符串里嵌套的 JSON 与外层共用这个预算。超过上限的行整行换成 `{"exportRedaction":"line replaced: JSON nested deeper than 256 levels"}`（仍是合法 JSON），导出继续；逐层递归 5000 层就会栈溢出，中断整个导出。
 - 其他行（app `logs/*.log`、格式化的 `config.json`、截断的 JSONL）按文本规则，结构化分支里的普通字符串也走同一套文本规则：
   - 双引号键下的裸值换成带引号的占位符。

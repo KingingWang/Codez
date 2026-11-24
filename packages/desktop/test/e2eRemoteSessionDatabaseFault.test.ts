@@ -23,7 +23,7 @@ describe.skipIf(process.platform === "win32")("远端会话库故障恢复", () 
     directory = await mkdtemp(join(tmpdir(), "e2e-session-db-"));
     vi.mocked(execInRemoteContainer).mockImplementation(async (_container, command) => {
       expect(command.slice(0, 2)).toEqual(["bash", "-lc"]);
-      const remoteDirectory = '"$HOME/.zcode/cli/db"';
+      const remoteDirectory = '"$HOME/.codez/cli/db"';
       expect(command[2]).toContain(remoteDirectory);
       return run(
         "bash",

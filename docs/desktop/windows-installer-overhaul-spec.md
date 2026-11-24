@@ -5,14 +5,14 @@
 本 spec 约束 Windows NSIS 覆盖安装的四个用户问题：
 
 1. managed 更新不得因为 NSIS 默认的全树清理而删除安装目录中的无关文件；无 manifest 的历史升级不在本轮保证范围内。
-2. 对本版本之后生成的、带 ownership manifest 的更新链路，磁盘不足、权限不足和文件清理失败必须显示真实阶段和原因，不能统一伪装成“ZCode 正在运行”。历史版本卸载器不纳入本轮兼容承诺。
+2. 对本版本之后生成的、带 ownership manifest 的更新链路，磁盘不足、权限不足和文件清理失败必须显示真实阶段和原因，不能统一伪装成“Codez 正在运行”。历史版本卸载器不纳入本轮兼容承诺。
 3. 安装器需要显示可核对的阶段步骤，并保留离线日志。
 4. 更新后开始菜单、桌面快捷方式和 Windows AUMID 必须保持一致；用户主动删除的快捷方式不能被偷偷重建。
 
 ## 范围与不变量
 
 - 继续使用 `electron-updater` 下载/校验，Windows 目标继续使用 NSIS；本轮不迁移到 Squirrel 或 MSIX。
-- 安装目录是应用文件的执行目录，不是数据目录；只有检测到上一版本没有 ownership manifest、仍可能被旧卸载器全量删除时，命中安装目录或其子目录的 `.zcode` 数据才阻断覆盖安装。支持 manifest 的新卸载器只删除声明文件，不再因为 `.zcode` 阻断。
+- 安装目录是应用文件的执行目录，不是数据目录；只有检测到上一版本没有 ownership manifest、仍可能被旧卸载器全量删除时，命中安装目录或其子目录的 `.codez` 数据才阻断覆盖安装。支持 manifest 的新卸载器只删除声明文件，不再因为 `.codez` 阻断。
 - 只允许删除当前版本明确声明为应用所有的文件；未知文件默认保留，冲突时以新版本应用文件为准。
 - manifest cleanup 必须拒绝绝对路径、`..` 越界和卸载器自身条目；交互式目录保护扫描的 reparse point/junction 加固与访问预算作为后续收敛项。
 - 安装器对已实现阶段尽力留下日志；日志写入失败不得阻断安装，日志不得记录完整原始命令行、用户数据内容或凭据。
@@ -22,7 +22,7 @@
 
 ## 版本边界与前向收敛
 
-- `.zcode-install-manifest` 是新旧卸载器之间的能力标记，不要求比较数字版本。更新调用旧卸载器前，安装器先检查旧安装目录是否存在该文件：存在即按 manifest cleanup，不触发 `.zcode` 保护扫描；缺失即按 legacy full-cleanup 风险处理，先执行 `.zcode` 保护扫描。
+- `.codez-install-manifest` 是新旧卸载器之间的能力标记，不要求比较数字版本。更新调用旧卸载器前，安装器先检查旧安装目录是否存在该文件：存在即按 manifest cleanup，不触发 `.codez` 保护扫描；缺失即按 legacy full-cleanup 风险处理，先执行 `.codez` 保护扫描。
 - 首次从没有 manifest 的历史版本升级时，继续使用 electron-builder 的旧卸载器流程属于已知限制：旧卸载器可能全量清理安装目录、使用原生重试文案，或无法返回可分类的错误原因。本轮不为这条路径增加备份、恢复、回滚或定制卸载器兼容层。
 - 用户在历史版本升级失败时，可以通过卸载重装或手动迁移文件完成升级；这不改变新版本之间更新的可靠性目标。
 - 每个后续版本只收敛当前版本仍能观测到的失败，不以一次性兼容所有历史安装状态为目标。新增保证必须以真实安装器/卸载器 smoke 覆盖后再写入本 spec。
@@ -42,14 +42,14 @@ launch NSIS
       v
   检查旧安装目录 manifest 能力
       |
-      +----(无 manifest)----> `.zcode` 保护扫描
+      +----(无 manifest)----> `.codez` 保护扫描
       |                           |
       |                           +----(data)----> blocked
       |                           |
       |                           v
       |                      legacy best-effort（允许原生重试/错误文案）
       |
-      +----(有 manifest)----> ownership cleanup（跳过 `.zcode` 扫描）
+      +----(有 manifest)----> ownership cleanup（跳过 `.codez` 扫描）
                                   |
                                   +----(lock/ACL/space)----> 恢复已删除文件 + cleanup log
       |
@@ -57,7 +57,7 @@ launch NSIS
 extract new files -> repair existing shortcuts -> write AUMID/notify Shell
       |
       v
-installer-completed (日志可查，完成页直接启动 `$INSTDIR\\ZCode.exe`)
+installer-completed (日志可查，完成页直接启动 `$INSTDIR\\Codez.exe`)
 ```
 
 ## 文件所有权与迁移
@@ -80,8 +80,8 @@ installer-completed (日志可查，完成页直接启动 `$INSTDIR\\ZCode.exe`)
 ## 诊断与步骤显示
 
 - 本版本交互安装器始终显示 Details 区域（覆盖 electron-builder 默认的 `nevershow`），并把安装段的 `SetDetailsPrint none` 改为 `listonly`。安装详情按顺序显示安装开始、清理阶段、解压阶段、逐项 NSIS `File` 条目、快捷方式阶段和完成收尾；进程启动、初始化事件发生在 `.onInit`，以文件日志为准。
-- 上一版本卸载器是独立进程，外层详情先显示 cleanup 开始/完成，进程返回后回放本次卸载器日志；当前版本卸载器会将 manifest 中实际尝试删除的相对路径逐项写入 `%TEMP%\\ZCode-uninstaller.log`。
-- 静默更新不显示 UI，但写 `%TEMP%\\ZCode-installer.log`；UAC 提权内层直接尝试写 `%WINDIR%\\Logs\\ZCode-installer.log`。当前没有“外层临时日志按权限复制到 Windir”的实现，日志不可写不应阻断安装。
+- 上一版本卸载器是独立进程，外层详情先显示 cleanup 开始/完成，进程返回后回放本次卸载器日志；当前版本卸载器会将 manifest 中实际尝试删除的相对路径逐项写入 `%TEMP%\\Codez-uninstaller.log`。
+- 静默更新不显示 UI，但写 `%TEMP%\\Codez-installer.log`；UAC 提权内层直接尝试写 `%WINDIR%\\Logs\\Codez-installer.log`。当前没有“外层临时日志按权限复制到 Windir”的实现，日志不可写不应阻断安装。
 - 日志 marker 使用数字 PID 和阶段枚举，不写 `$CMDLINE`。安装阶段为 `install-started`、`cleanup-started/completed`、`extract-started/completed`、`shortcuts-started/completed`、`install-finalization-started` 和 `install-completed`；managed cleanup 的文件删除失败记录相对路径及即时 Win32 错误码，不再固定归为 `permission-or-disk-space`。旧安装进程收口记录路径匹配、结束/等待/复查阶段及 PID；旧卸载器非零退出仍保留原退出码。`reparse-point`、`extract` 的细粒度诊断作为后续收敛项。
 - 交互式 managed 更新保留最多 5 次旧卸载器重试；重试耗尽后使用本项目的清理失败及退出码提示，提示按是否存在完整备份区分：有备份时承诺取消后恢复已删除文件，无备份时明确取消仅退出安装且无法自动恢复。真实应用进程检查仍使用原有“应用无法关闭”提示；静默路径以退出码和日志为准。
 - 清理失败错误框带 `/SD IDOK`，交互模式显示提示，静默模式自动确认并返回退出码 `2`，不得阻塞无人值守更新。
@@ -91,7 +91,7 @@ installer-completed (日志可查，完成页直接启动 `$INSTDIR\\ZCode.exe`)
 - 开始菜单/桌面 `.lnk` 目标正确时原样保留（包括参数）。
 - 目标错误但 `.lnk` 存在时原位修复，随后设置稳定 AUMID 并发送 `SHChangeNotify(SHCNE_UPDATEITEM)`。
 - 用户删除的 `.lnk` 不重建；完成页直接启动新安装目录的 exe。
-- `app.setAppUserModelId()` 在打包态使用生产/Preview 对应 `appId`，开发态使用 `cn.aminer.zcode`。
+- `app.setAppUserModelId()` 在打包态使用生产/Preview 对应 `appId`，开发态使用 `cn.aminer.codez`。
 
 ## 接受用例
 
@@ -105,7 +105,7 @@ installer-completed (日志可查，完成页直接启动 `$INSTDIR\\ZCode.exe`)
 | WIN-INSTALL-RECOVERY-003  | 已删除主程序的位置出现同名目录         | 不能声明恢复成功，保留备份并报告路径                                   |
 | WIN-INSTALL-RECOVERY-004  | 完整备份后旧卸载成功，但备份删除失败   | 日志保留备份路径，不弹框，仍写入新载荷、退出码为零                     |
 | WIN-INSTALL-RECOVERY-005  | 备份失败后旧卸载也失败                 | 不使用半份备份恢复，保留旧卸载失败退出码，不声称旧版完整               |
-| WIN-INSTALL-PROCESS-001   | 旧安装目录的 ZCode.exe 进程存活        | 句柄校验路径并终止后确认退出；旧安装目录外的同名进程保持运行           |
+| WIN-INSTALL-PROCESS-001   | 旧安装目录的 Codez.exe 进程存活        | 句柄校验路径并终止后确认退出；旧安装目录外的同名进程保持运行           |
 | WIN-INSTALL-PROCESS-002   | 旧安装目录候选进程不能查询或结束       | 备份和卸载未开始；日志含阶段及 PID，旧版文件未改动                     |
 | WIN-INSTALL-DIAG-003      | 旧版本无 manifest 或解压阶段失败       | 非本轮细粒度诊断保证；保留原生安装器结果，后续按真实问题逐步收敛       |
 | WIN-INSTALL-DIAG-002      | 静默 `/S` 更新                         | 无 UI 但有阶段日志，日志 PID 为数字且无原始命令行                      |

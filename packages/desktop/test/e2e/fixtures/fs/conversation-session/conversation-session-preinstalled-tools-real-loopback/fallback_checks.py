@@ -17,7 +17,7 @@ ROOT = Path(__file__).parent
 CONFIG = json.loads((ROOT / "config.json").read_text(encoding="utf8"))
 DOCS = ROOT / "中文 空格"
 PLUGINS = json.loads((ROOT / "plugins.json").read_text(encoding="utf8"))
-HELPER = Path(PLUGINS["documents"]["path"]) / "scripts/zcode_libreoffice.py"
+HELPER = Path(PLUGINS["documents"]["path"]) / "scripts/codez_libreoffice.py"
 WINDOWS = sys.platform == "win32"
 
 
@@ -30,22 +30,22 @@ def fake_soffice(mode):
     arguments = sys.argv[2:]
     if mode == "managed":
         if "--version" in arguments:
-            sys.exit(subprocess.run([os.environ["ZCODE_FALLBACK_ORIGINAL"], *arguments]).returncode)
-        with open(os.environ["ZCODE_FALLBACK_MANAGED_LOG"], "a", encoding="utf8") as log:
+            sys.exit(subprocess.run([os.environ["CODEZ_FALLBACK_ORIGINAL"], *arguments]).returncode)
+        with open(os.environ["CODEZ_FALLBACK_MANAGED_LOG"], "a", encoding="utf8") as log:
             for argument in arguments:
                 if argument.startswith("-env:UserInstallation="):
                     log.write(argument + "\n")
-        if os.environ["ZCODE_FALLBACK_MODE"] == "sleep":
+        if os.environ["CODEZ_FALLBACK_MODE"] == "sleep":
             time.sleep(60)
             sys.exit(0)
-        Path(os.environ["ZCODE_FALLBACK_PARTIAL"]).write_text("failed partial output")
+        Path(os.environ["CODEZ_FALLBACK_PARTIAL"]).write_text("failed partial output")
         sys.exit(78)
-    actual = os.environ["ZCODE_FALLBACK_SYSTEM"]
+    actual = os.environ["CODEZ_FALLBACK_SYSTEM"]
     if "--version" in arguments:
         sys.exit(subprocess.run([actual, *arguments]).returncode)
-    with open(os.environ["ZCODE_FALLBACK_SYSTEM_LOG"], "a", encoding="utf8") as log:
+    with open(os.environ["CODEZ_FALLBACK_SYSTEM_LOG"], "a", encoding="utf8") as log:
         log.write("run\n")
-    if Path(os.environ["ZCODE_FALLBACK_PARTIAL"]).exists():
+    if Path(os.environ["CODEZ_FALLBACK_PARTIAL"]).exists():
         sys.exit(91)
     sys.exit(subprocess.run([actual, *arguments]).returncode)
 
@@ -70,12 +70,12 @@ def shim_config(mode):
 async def main():
     bin_dir = Path(CONFIG["root"]) / "bin"
     # Windows 入口是 shim：exe 不变，改写同名 .shim 配置即可换目标；其他平台替换 sh 脚本。
-    entry = bin_dir / ("zcode-soffice.shim" if WINDOWS else "zcode-soffice")
+    entry = bin_dir / ("codez-soffice.shim" if WINDOWS else "codez-soffice")
     original = entry.read_bytes()
     backup = ROOT / ("original-soffice-entry.exe" if WINDOWS else "original-soffice-entry")
     if WINDOWS:
         # 备份是完整入口（shim 副本加原配置）；配置写的是绝对路径，放在夹具目录也能运行。
-        shutil.copyfile(bin_dir / "zcode-soffice.exe", backup)
+        shutil.copyfile(bin_dir / "codez-soffice.exe", backup)
         backup.with_suffix(".shim").write_bytes(original)
     else:
         backup.write_bytes(original)
@@ -92,7 +92,7 @@ async def main():
     system_dir.mkdir(exist_ok=True)
     # 系统 shim 只记录次数并委托真实系统应用；不修改官方应用目录。
     if WINDOWS:
-        shutil.copyfile(bin_dir / "zcode-soffice.exe", system_dir / "soffice.exe")
+        shutil.copyfile(bin_dir / "codez-soffice.exe", system_dir / "soffice.exe")
         (system_dir / "soffice.shim").write_text(shim_config("system"), encoding="utf-8")
     else:
         system_entry = system_dir / "soffice"
@@ -109,11 +109,11 @@ exec {quoted(actual_system)} "$@"
     env = dict(os.environ, PATH=str(system_dir) + os.pathsep + os.environ["PATH"])
     if WINDOWS:
         env.update({
-            "ZCODE_FALLBACK_ORIGINAL": str(backup),
-            "ZCODE_FALLBACK_MANAGED_LOG": str(managed_log),
-            "ZCODE_FALLBACK_SYSTEM_LOG": str(system_log),
-            "ZCODE_FALLBACK_PARTIAL": str(partial),
-            "ZCODE_FALLBACK_SYSTEM": str(actual_system),
+            "CODEZ_FALLBACK_ORIGINAL": str(backup),
+            "CODEZ_FALLBACK_MANAGED_LOG": str(managed_log),
+            "CODEZ_FALLBACK_SYSTEM_LOG": str(system_log),
+            "CODEZ_FALLBACK_PARTIAL": str(partial),
+            "CODEZ_FALLBACK_SYSTEM": str(actual_system),
         })
     header = f'''#!/bin/sh
 for arg do
@@ -126,7 +126,7 @@ done
 
     def install_entry(mode):
         if WINDOWS:
-            env["ZCODE_FALLBACK_MODE"] = mode
+            env["CODEZ_FALLBACK_MODE"] = mode
             entry.write_text(shim_config("managed"), encoding="utf-8")
         else:
             body = "sleep 60\n" if mode == "sleep" else f"printf 'failed partial output' > {quoted(partial)}\nexit 78\n"

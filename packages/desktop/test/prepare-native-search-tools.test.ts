@@ -18,7 +18,7 @@ vi.mock("../../../scripts/intranetDefaults.mjs", async (importOriginal) => {
     ...actual,
     resolveIntranetDepsBaseUrl: (env?: NodeJS.ProcessEnv) => {
       if (!mocks.intranetConfigured) {
-        throw new Error("Configure ZCODE_DEPS_BASE_URL or INTRANET_MACHINE_HOST");
+        throw new Error("Configure CODEZ_DEPS_BASE_URL or INTRANET_MACHINE_HOST");
       }
       return resolveActual({ INTRANET_MACHINE_HOST: "intranet-deps.example", ...env });
     },
@@ -66,7 +66,7 @@ const remoteTargets = localTargets.filter(([platform]) => platform !== "win32");
 
 const temporaryDirectories: string[] = [];
 async function createTemporaryDirectory(): Promise<string> {
-  const directory = await mkdtemp(join(tmpdir(), "zcode-prepare-native-search-"));
+  const directory = await mkdtemp(join(tmpdir(), "codez-prepare-native-search-"));
   temporaryDirectories.push(directory);
   return directory;
 }

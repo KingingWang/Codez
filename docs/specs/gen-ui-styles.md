@@ -39,7 +39,7 @@ App styles.css → Gen UI 专用变量映射 → 既有 HostContext → guest �
 独立导出：同一 visualize.css → light/dark 默认值
 ```
 
-字号/圆角使用 MCP 标准变量；专用颜色使用 `zcode/genUiStyles` HostContext 扩展，
+字号/圆角使用 MCP 标准变量；专用颜色使用 `codez/genUiStyles` HostContext 扩展，
 由 shared schema 验证为 Gen UI CSS 变量键和字符串值。SDK 的标准变量对象为严格
 枚举，不允许向其中塞入自定义键。新增变量仅位于 Gen UI 投影。主题/字体切换复用现有
 根属性观察和 HostContext 路径，不增加缓存、timer 或状态来源。不修改尺寸协议、

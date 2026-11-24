@@ -1,4 +1,4 @@
-import { sanitizeRemoteConnectionLog } from "@zcode/shared";
+import { sanitizeRemoteConnectionLog } from "@codez/shared";
 import { AsyncLocalStorage } from "node:async_hooks";
 
 export type RemoteConnectionProgressLevel = "info" | "warn" | "error";

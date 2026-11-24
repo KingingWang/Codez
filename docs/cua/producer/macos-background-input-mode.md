@@ -13,12 +13,12 @@ open panel）证实：`Cmd+Shift+G` 一字不落地被忽略，而侧栏 cell �
 > 2026-08 更新：本文的 native owner、后台投递和 possibly_sent 安全边界仍有效。
 > “动作后强制 compact/full state、action_outcome、state_sync_status、delta/no_change
 > 解锁屏障”已被 `docs/cua-receipt-observation-contract.md` 取代。当前模型可见动作结果
-> 默认是 `zcode-cua-action-receipt-v1`；只有显式 `return_state=compact|full` 时才抓一次
+> 默认是 `codez-cua-action-receipt-v1`；只有显式 `return_state=compact|full` 时才抓一次
 > `force_full` 状态。
 
 ## 目标
 
-zcode-cua 在 macOS 上默认不得改变用户当前的系统前台应用、key window、窗口层级或
+codez-cua 在 macOS 上默认不得改变用户当前的系统前台应用、key window、窗口层级或
 物理鼠标位置。动作必须显式绑定到一个 live 逻辑应用、presentation window 和实际
 surface；证据不足时失败关闭。仅当逻辑应用已经是前台，且 WindowServer 证明普通 OS
 hit-test 与截图 surface 完全一致时，允许用 `kCGHIDEventTap` 把事件交给 AppKit 当前
@@ -127,7 +127,7 @@ accepted/possibly_sent receipt（retry_action=false）
     `-- return_state=compact/full --> 一次 force_full capture --> 新状态 s-(N+1)
 ```
 
-模型可见动作结果现在统一为 `zcode-cua-action-receipt-v1`：
+模型可见动作结果现在统一为 `codez-cua-action-receipt-v1`：
 
 - `dispatch_status="accepted" | "possibly_sent" | "not_sent"` 只描述派发事实；
 - `retry_action=false` 禁止宿主或模型原样重放非幂等调用；

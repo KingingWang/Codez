@@ -26,7 +26,7 @@ Provider 关键 E2E 晋升
 
 ## 2. 自动化证明
 
-1. 直接读取真实 `config/provider/zcode-builtin.json`，为 API Key、Account 与 Request Auth Provider 补入各自最小执行期访问材料，证明每个 Built-in Provider 和模型成员都能解析成完整 Registry Config。
+1. 直接读取真实 `config/provider/codez-builtin.json`，为 API Key、Account 与 Request Auth Provider 补入各自最小执行期访问材料，证明每个 Built-in Provider 和模型成员都能解析成完整 Registry Config。
 2. 使用真实 Built-in Config 贯通 Overlay、Resolver、Registry、ModelFactory 与 Adapter，证明最终 Provider/Model Config 不被重新推断。
 3. 复核普通请求、Compact、Memory、Subagent 与 Off-Peak 均消费同一个 Active Model；已有直接证据的链路不重复造测试。
 4. 对 Provider 身份、Registry 冷启动、闲时子 Agent 与候选过滤四个 pending E2E 完成 fixture、replay 和人工 review 门禁；未经人工确认不得晋升。
@@ -57,7 +57,7 @@ Provider 关键 E2E 晋升
   Provider。旧 `same-model-provider-identity` 实际使用不同 modelId，只能作为普通跨 Provider 切换覆盖，
   不承担本阶段的同名身份隔离证明。
 - 候选过滤 E2E 使用代表性负样本证明 hidden Provider、visible Provider 下的 hidden Model、disabled 或
-  incomplete Provider 不进入普通候选；同时以真实 ZCode Built-in Provider + Personal 同 modelId 覆盖证明
+  incomplete Provider 不进入普通候选；同时以真实 Codez Built-in Provider + Personal 同 modelId 覆盖证明
   冲突时 Built-in 成员仍可选择、可发送。重复排列和 issue code 继续由 Resolver 单测证明，E2E 不复制
   Resolver 全量状态空间。
 - 普通任务中，无显式模型的 Subagent 继承父 ModelFactory，显式模型仍创建自己的 Model；Off-Peak 是
@@ -81,12 +81,12 @@ Provider 关键 E2E 晋升
 
 | 证明层                      | 自动化证据                                                                                | 结果                                                                                                 |
 | --------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| 真实 Built-in Config 完整性 | `packages/provider-node/test/zcode-builtin-integrity.test.ts`                             | 真实 JSON 的 Provider、模型成员、访问材料 Overlay、完整 Model Config、隐藏闲时模型与旧字段归零均通过 |
-| API Key 纵向链路            | `apps/zcode-cli/packages/bootstrap/tests/zcode-builtin-model-runtime-integration.test.ts` | `builtin:zai` 从 Built-in + Personal Overlay 经 Resolver/Registry/ModelFactory 原样进入 Adapter      |
+| 真实 Built-in Config 完整性 | `packages/provider-node/test/codez-builtin-integrity.test.ts`                             | 真实 JSON 的 Provider、模型成员、访问材料 Overlay、完整 Model Config、隐藏闲时模型与旧字段归零均通过 |
+| API Key 纵向链路            | `apps/codez-cli/packages/bootstrap/tests/codez-builtin-model-runtime-integration.test.ts` | `builtin:zai` 从 Built-in + Personal Overlay 经 Resolver/Registry/ModelFactory 原样进入 Adapter      |
 | Account 纵向链路            | 同上                                                                                      | Start Plan 的 Account 成员约束生效，Personal Provider Overlay 保持最后覆盖                           |
 | Request Auth 纵向链路       | 同上                                                                                      | 隐藏闲时 Provider 可由普通 Registry 精确创建，Request Auth Source 仅在执行期绑定                     |
-| Request Auth 缺失           | `apps/zcode-cli/packages/adapters/tests/model.test.ts`                                    | generate/stream 均在网络调用前返回 `ModelRequestAuthMissing`                                         |
-| Model 冻结                  | `apps/zcode-cli/packages/bootstrap/tests/provider-registry-model-runtime.test.ts`         | Registry 更新只影响后来创建的 Model                                                                  |
+| Request Auth 缺失           | `apps/codez-cli/packages/adapters/tests/model.test.ts`                                    | generate/stream 均在网络调用前返回 `ModelRequestAuthMissing`                                         |
+| Model 冻结                  | `apps/codez-cli/packages/bootstrap/tests/provider-registry-model-runtime.test.ts`         | Registry 更新只影响后来创建的 Model                                                                  |
 
 真实 Built-in 集成测试只捕获 Adapter 的创建参数，不发送网络请求，也没有增加执行 Registry、能力 DTO、
 Provider snapshot 或测试专用生产 API。
@@ -117,8 +117,8 @@ Chrome WebDriver session 在业务页面和用例断言前退出。因此这里�
 
 ### 6.4 回归结果
 
-- `@zcode/provider`：13 个文件、115 个测试通过；typecheck 通过。
-- `@zcode/provider-node`：4 个文件、20 个测试通过；typecheck 通过。并发包测试曾令既有 file watcher
+- `@codez/provider`：13 个文件、115 个测试通过；typecheck 通过。
+- `@codez/provider-node`：4 个文件、20 个测试通过；typecheck 通过。并发包测试曾令既有 file watcher
   测试额外收到一次 `watch-error`，串行复跑稳定通过，新增完整性测试始终通过。
 - Services 定向：5 个文件、30 个测试通过。
 - 真实 Built-in Bootstrap 集成：1 个文件、3 个测试通过。

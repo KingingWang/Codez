@@ -16,16 +16,16 @@
 | ----- | -------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------ | ---------------- |
 | 1     | 本期是否扩展到全部 hook 事件类型       | “目前只支持这 7 个已有的 hook”                                                              | 只覆盖 7 个现有事件                              | no               |
 | 1     | 是否逐事件验证并增加整体 E2E lifecycle | “确保这 7 个 hook 都是能用的，挨个测试，对 hook 整体的能力添加一个 e2e case lifecycle 测试” | 7 条 focused contract case + 1 条窗口级组合 case | no               |
-| 0     | 设置页和来源如何处理                   | 按已确认方案实施                                                                            | `.zcode` 可编辑，plugin 只读，legacy 显式导入    | no               |
+| 0     | 设置页和来源如何处理                   | 按已确认方案实施                                                                            | `.codez` 可编辑，plugin 只读，legacy 显式导入    | no               |
 
 ## Domain Scope
 
 | Domain                   | Include?            | Reason                                                            | Primary sources                                               |
 | ------------------------ | ------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------- |
-| Agent runtime/config     | yes                 | 决定 Hook 是否真实执行和影响 turn/tool                            | `apps/zcode-cli/packages/{contracts,core,adapters,bootstrap}` |
-| Permission/tool          | yes                 | 4 个 tool 事件横跨校验、permission、success/failure               | `apps/zcode-cli/packages/core/src/tool/executor`              |
-| Conversation/session     | yes                 | SessionStart、UserPromptSubmit、Stop 位于 turn lifecycle          | `apps/zcode-cli/packages/core/src/runtime`                    |
-| Settings UI/source       | yes                 | 用户需要配置 `.zcode` 并查看 plugin hooks                         | `packages/{services,ui}`                                      |
+| Agent runtime/config     | yes                 | 决定 Hook 是否真实执行和影响 turn/tool                            | `apps/codez-cli/packages/{contracts,core,adapters,bootstrap}` |
+| Permission/tool          | yes                 | 4 个 tool 事件横跨校验、permission、success/failure               | `apps/codez-cli/packages/core/src/tool/executor`              |
+| Conversation/session     | yes                 | SessionStart、UserPromptSubmit、Stop 位于 turn lifecycle          | `apps/codez-cli/packages/core/src/runtime`                    |
+| Settings UI/source       | yes                 | 用户需要配置 `.codez` 并查看 plugin hooks                         | `packages/{services,ui}`                                      |
 | Mobile remote/replayable | representative only | Hook 在共享 Agent runtime 执行，不改变 stream/snapshot/queue 语义 | 架构 invariant                                                |
 
 ## State Owners
@@ -33,7 +33,7 @@
 | State / fact              | Authority                            | Mirrors / caches         | Evidence                              |
 | ------------------------- | ------------------------------------ | ------------------------ | ------------------------------------- |
 | 当前 session 的 Hook 配置 | Agent runtime snapshot               | Settings UI 文件视图     | runtime Hook events、Hook trace file  |
-| `.zcode` Hook 配置        | user config file；project 只展示编辑 | hooksStore               | 文件 round-trip、service/runtime test |
+| `.codez` Hook 配置        | user config file；project 只展示编辑 | hooksStore               | 文件 round-trip、service/runtime test |
 | plugin Hook 生效状态      | Agent plugin resolver                | pluginManagementStore    | `plugins/list` payload、runtime trace |
 | Hook 执行结果             | HookRunner + event-specific consumer | session event projection | tool result/model request/trace file  |
 
@@ -94,7 +94,7 @@ Case-local artifacts：
   `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-hooks-lifecycle.json`
 - Manifest：
   `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-hooks-lifecycle.json`
-- File fixture：WDIO 在隔离 HOME 的 user `~/.zcode/cli/config.json` 写 hooks；spec 在默认
+- File fixture：WDIO 在隔离 HOME 的 user `~/.codez/cli/config.json` 写 hooks；spec 在默认
   workspace 写 Node recorder/trace，完成后恢复 user config 并删除 workspace 产物。
 - Timing：`fast-text`。Hook 运行和文件断言不依赖 SSE cadence。
 
@@ -124,7 +124,7 @@ Case-local artifacts：
 - default replay：必跑。
 - Docker：先做单 spec replay-isolated 证明；只有通过后才可用 `e2e:docker:admit` 加入
   conversation preset。
-- 收尾门禁：`pnpm --filter @zcode/desktop typecheck:e2e`、`pnpm typecheck`、`pnpm lint`。
+- 收尾门禁：`pnpm --filter @codez/desktop typecheck:e2e`、`pnpm typecheck`、`pnpm lint`。
 
 ## Verification Record
 

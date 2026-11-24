@@ -1,5 +1,5 @@
-export const CODING_PLAN_TEAM_MOCK_BASE_URL_ENV = "ZCODE_CODING_PLAN_TEAM_MOCK_BASE_URL";
-export const CODING_PLAN_UPGRADE_MOCK_BASE_URL_ENV = "ZCODE_CODING_PLAN_UPGRADE_MOCK_BASE_URL";
+export const CODING_PLAN_TEAM_MOCK_BASE_URL_ENV = "CODEZ_CODING_PLAN_TEAM_MOCK_BASE_URL";
+export const CODING_PLAN_UPGRADE_MOCK_BASE_URL_ENV = "CODEZ_CODING_PLAN_UPGRADE_MOCK_BASE_URL";
 
 type MutableEnvironment = Record<string, string | undefined>;
 
@@ -8,11 +8,11 @@ export function isOffPeakTeamPlanSpec(specs: readonly string[]) {
 }
 
 const CODING_PLAN_COMMON_ENV_KEYS = [
-  "ZCODE_BASE_URL",
-  "ZCODE_ENDPOINT_ORIGIN",
-  "ZCODE_TEST_BASE_URL",
+  "CODEZ_BASE_URL",
+  "CODEZ_ENDPOINT_ORIGIN",
+  "CODEZ_TEST_BASE_URL",
   "BIGMODEL_API_BASE_URL",
-  "ZCODE_E2E_CODING_PLAN_MOCK_URL",
+  "CODEZ_E2E_CODING_PLAN_MOCK_URL",
 ] as const;
 
 const CODING_PLAN_TEAM_SPEC_MARKERS = [
@@ -108,16 +108,16 @@ export function shouldPrepareCodingPlanTeamMock(specs: readonly string[]) {
 
 export function applyCodingPlanTeamMockEnv(environment: MutableEnvironment, baseUrl: string) {
   environment[CODING_PLAN_TEAM_MOCK_BASE_URL_ENV] = baseUrl;
-  environment.ZCODE_ENV = "test";
+  environment.CODEZ_ENV = "test";
   for (const key of CODING_PLAN_COMMON_ENV_KEYS) {
     environment[key] = baseUrl;
   }
-  environment.ZCODE_BIGMODEL_USAGE_QUOTA_URL = `${baseUrl}/api/monitor/usage/quota/limit`;
+  environment.CODEZ_BIGMODEL_USAGE_QUOTA_URL = `${baseUrl}/api/monitor/usage/quota/limit`;
   environment.BIGMODEL_USAGE_QUOTA_URL = `${baseUrl}/api/monitor/usage/quota/limit`;
 }
 
 /**
- * Bug 原因：team mock 只接管 ZCode / BigModel 控制面，ZCODE_ENV=test 时 Z.ai 渠道的业务请求
+ * Bug 原因：team mock 只接管 Codez / BigModel 控制面，CODEZ_ENV=test 时 Z.ai 渠道的业务请求
  * （项目 token、套餐、换证）仍带着合成 token 打到真实测试业务域。CI 机器能连上，被拒的 401 命中
  * 「当前凭据请求」后清掉登录态，冷启动随即弹「登录已过期」（PLM-REGION-001 在 macOS / Windows 复现；
  * 任务容器连不上该域，只得到网络错误，所以 Linux 本地一直是绿的）。
@@ -151,7 +151,7 @@ export function applyZaiBusinessTeamMockEnv(
 export function clearCodingPlanTeamMockEnv(environment: MutableEnvironment, baseUrl: string) {
   clearOwnedEnvironmentValues(environment, baseUrl, [
     ...CODING_PLAN_COMMON_ENV_KEYS,
-    "ZCODE_BIGMODEL_USAGE_QUOTA_URL",
+    "CODEZ_BIGMODEL_USAGE_QUOTA_URL",
     "BIGMODEL_USAGE_QUOTA_URL",
   ]);
   if (environment[CODING_PLAN_TEAM_MOCK_BASE_URL_ENV] === baseUrl) {
@@ -172,7 +172,7 @@ export function applyCodingPlanUpgradeMockEnv(environment: MutableEnvironment, b
 export function shouldReuseDesktopE2EBuild(environment: MutableEnvironment): boolean {
   // 子 shard 的动态端口晚于父构建；构建决策和源码证据必须共用这个判据。
   return (
-    environment.ZCODE_E2E_SKIP_BUILD === "1" &&
+    environment.CODEZ_E2E_SKIP_BUILD === "1" &&
     !environment[CODING_PLAN_UPGRADE_MOCK_BASE_URL_ENV]?.trim()
   );
 }

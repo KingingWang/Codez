@@ -13,7 +13,7 @@ const AUDIT_SCRIPT = resolve(process.cwd(), "scripts/audit-conversation-session-
 // --json-out 写出的审计 JSON 判断是否标记 Draft（docs/testing/conversation-session-automatic-e2e-ci.md）。
 // 文本输出必须保持不变，job 日志仍要直接看到审计结果。
 test("--json-out writes the audit summary with its errors list and keeps the text output", async () => {
-  const outDir = await mkdtemp(join(tmpdir(), "zcode-audit-json-out-"));
+  const outDir = await mkdtemp(join(tmpdir(), "codez-audit-json-out-"));
   const outPath = join(outDir, "nested", "audit.json");
 
   const { stdout } = await execFileAsync(

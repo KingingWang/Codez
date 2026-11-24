@@ -27,7 +27,7 @@ sequenceDiagram
 
 验收分别记录事件循环响应、插件依赖等待、现有 transport 的请求调度限制及连续调用的读／解析次数。受控 Promise 决定并发顺序，真实临时目录验证锁与文件操作；不以固定 sleep 推断任务完成。首次加载和外部持续改写不承诺零等待，开发文件元数据校验不等于任意内容修改检测。
 
-第二个提交的准备状态由协议进程入口创建，随原有 active-workspace Agent 启动后台预热，并借给 App 与查询入口。它只保留成功准备的来源描述和目标元数据；每次仍检查 source、Catalog、marker、manifest、必需入口与宿主命令身份。部分失败不记作成功；任一插件持续降级时，后续查询仍重试整个准备流程，保守保留自愈能力。安装或配置写入完成后令准备描述失效，关闭会撤销在途结果并释放状态。源变化或失效与准备交错时，仍在 storageRoot admission 内最多重建三次，随后返回 `ZCODE_PLUGIN_SOURCES_CHANGED`；不会用 sleep 等待稳定。
+第二个提交的准备状态由协议进程入口创建，随原有 active-workspace Agent 启动后台预热，并借给 App 与查询入口。它只保留成功准备的来源描述和目标元数据；每次仍检查 source、Catalog、marker、manifest、必需入口与宿主命令身份。部分失败不记作成功；任一插件持续降级时，后续查询仍重试整个准备流程，保守保留自愈能力。安装或配置写入完成后令准备描述失效，关闭会撤销在途结果并释放状态。源变化或失效与准备交错时，仍在 storageRoot admission 内最多重建三次，随后返回 `CODEZ_PLUGIN_SOURCES_CHANGED`；不会用 sleep 等待稳定。
 
 准备命中时，使用首次目标元数据作为返回前复核的基准，省去中间重复读取。不能在判定命中后用新读到的目标状态替换基准，否则外部改写可能被记为成功；来源与目标的最终复核仍在 admission 内执行。`createSession` 和 `workspace/readPresentation` 在下述启动预算内等待完整插件结果；Windows 文件占用重试与等锁让出事件循环，普通协议请求的既有串行顺序不变，不以心跳可运行推断所有请求均可并发。
 
@@ -98,7 +98,7 @@ stateDiagram-v2
 
 超时只限制插件等待，不承诺整个应用三秒启动。调用方不等待在途文件操作收尾；中止信号禁止继续调度扫描、复制和重试，并拒绝迟到发现结果。已进入目录替换事务时必须先完成替换或回滚、再释放锁，不能因中止留下已移走的目标目录。操作系统已开始的 IO、同步摘要计算和事件循环调度不受硬实时保证。已有 Runtime 的能力快照不热切换。
 
-影响层为 option-source、validation 与 presentation。唯一状态 owner 是协议进程注入的插件准备对象，无新增持久化状态。必须检查的入口为 `resolveStartupPlugins`、`resolveZCodePlugins`、`workspace/readPresentation` 与进程预热；桌面和手机共用协议事实，按原工作区身份展示提示；独立 workspace 进程不共享 degraded。商店的显式管理写操作不属于启动降级授权，不改写用户配置。
+影响层为 option-source、validation 与 presentation。唯一状态 owner 是协议进程注入的插件准备对象，无新增持久化状态。必须检查的入口为 `resolveStartupPlugins`、`resolveCodezPlugins`、`workspace/readPresentation` 与进程预热；桌面和手机共用协议事实，按原工作区身份展示提示；独立 workspace 进程不共享 degraded。商店的显式管理写操作不属于启动降级授权，不改写用户配置。
 
 验收采用以下已接受场景；测试未执行前不标记已覆盖：
 
@@ -115,7 +115,7 @@ stateDiagram-v2
 
 目标是同一 workspace 的 Session A 已加载能力后，Session B 不再重复读取未变化的 Skill、插件 manifest、插件 Agent Markdown 和配置正文，也不重复解析这些内容。仍允许必要的文件元数据校验，不承诺命中时零文件系统操作。
 
-当前 `createZCodeApp()` 每次创建 App 都调用 `createConfig()`、`resolveStartupPlugins()`、`loadPluginAgentTemplates()`，并创建独立 `NodeSkillAdapter`。`ensureContextInitialized()` 把发现结果存入本 Runtime；这不能为另一个 Runtime 提供解析缓存。
+当前 `createCodezApp()` 每次创建 App 都调用 `createConfig()`、`resolveStartupPlugins()`、`loadPluginAgentTemplates()`，并创建独立 `NodeSkillAdapter`。`ensureContextInitialized()` 把发现结果存入本 Runtime；这不能为另一个 Runtime 提供解析缓存。
 
 已有能力应复用，不另建 owner：
 
@@ -144,7 +144,7 @@ bootstrap 在 `app-server` 启动时创建一个 `CapabilityDiscoveryService`，
 
 adapter 负责文件 I/O、解析缓存、watcher、generation 和并发调度；bootstrap 负责配置层合并、依赖装配及每次 activation 的最终投影；core 只消费严格类型的不可变结果，不导入 adapter 具体实现。名称是拟定契约，不表示已有 API。
 
-插件 seed、离线配置迁移、安装事务等有副作用的准备工作仍由原 owner 完成；它们发布成功后的资源 revision 才能进入缓存。不得直接给整个 `createConfig()` 或 `createZCodeApp()` 加 memoization，把迁移、存储打开和 session 装配一起跳过。
+插件 seed、离线配置迁移、安装事务等有副作用的准备工作仍由原 owner 完成；它们发布成功后的资源 revision 才能进入缓存。不得直接给整个 `createConfig()` 或 `createCodezApp()` 加 memoization，把迁移、存储打开和 session 装配一起跳过。
 
 ```mermaid
 flowchart TB
@@ -322,7 +322,7 @@ generation 7 开始读取
 
 | 用户场景／入口          | 共享实现                                 | 展示／草稿与默认来源                               | 校验与提交                            | 权威 owner／落点                      | 模式／隔离                                 |
 | ----------------------- | ---------------------------------------- | -------------------------------------------------- | ------------------------------------- | ------------------------------------- | ------------------------------------------ |
-| 打开历史 `SessionPane`  | activation → `createZCodeApp`            | 历史 projection；草稿仍在 renderer                 | 原 runtime readiness；原 send command | CLI Runtime、持久 transcript          | desktop continuous／mobile replayable 不变 |
+| 打开历史 `SessionPane`  | activation → `createCodezApp`            | 历史 projection；草稿仍在 renderer                 | 原 runtime readiness；原 send command | CLI Runtime、持久 transcript          | desktop continuous／mobile replayable 不变 |
 | `/`、`$` Skill Picker   | `useSkills` → `getSkillReferenceCatalog` | 有 session 取冻结目录，无 session 取当前 workspace | 原查询与 canonical mention            | Runtime 或文件系统；不保存新 UI cache | 旧 scope 请求不得回填新 scope              |
 | `@` 插件 Picker         | plugin reference catalog                 | 当前 session 冻结身份                              | 原引用校验与输入提交                  | session App catalog／transcript       | 不扩展插件启用状态                         |
 | Skill／插件设置页       | Skills／Plugins service                  | 磁盘当前状态与页面草稿                             | 原安装／启停／刷新入口                | 文件和安装记录                        | 设置页刷新不热更新正式 session             |
@@ -337,7 +337,7 @@ generation 7 开始读取
 
 | 等级           | 来源 → 语义边 → 目标                             | 原因／证据                                                                          |
 | -------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------- |
-| must-inspect   | bootstrap → 装配 → discovery service             | `createZCodeApp`、`resolveStartupPlugins`、`NodeSkillAdapter`                       |
+| must-inspect   | bootstrap → 装配 → discovery service             | `createCodezApp`、`resolveStartupPlugins`、`NodeSkillAdapter`                       |
 | must-inspect   | cache snapshot → 冻结材料 → Runtime catalog      | `ensureContextInitialized`、`getSkillReferenceCatalog`、`getPluginReferenceCatalog` |
 | must-inspect   | Host Subagents → 提供定义 → 新父上下文           | `createSubagentRuntimeConfigCache`、`subagent-runtime-refresh.md`                   |
 | should-inspect | 设置／安装写入口 → 使来源变化 → cache validation | `createSkillsService`、workspace plugin 配置与安装记录                              |
@@ -354,8 +354,8 @@ L1/L2 的 owner 是新 adapter 服务；权威输入来自文件／配置 owner�
 
 | Seed                               | 直接调用方／关键链路                          | 既有测试证据                                                                    |
 | ---------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------- |
-| `resolveStartupPlugins`            | `createZCodeApp`、协议 MCP 列表               | bootstrap `plugins.test.ts`、`visualize-skill-gate.test.ts`                     |
-| `createZCodeApp`                   | protocol entrypoint、独立／嵌入式调用         | bootstrap `mcp-project-config.test.ts`、`provider-registry-app-runtime.test.ts` |
+| `resolveStartupPlugins`            | `createCodezApp`、协议 MCP 列表               | bootstrap `plugins.test.ts`、`visualize-skill-gate.test.ts`                     |
+| `createCodezApp`                   | protocol entrypoint、独立／嵌入式调用         | bootstrap `mcp-project-config.test.ts`、`provider-registry-app-runtime.test.ts` |
 | `getSkillReferenceCatalog`         | protocol server、UI `useSkills`               | bootstrap `skill-reference-catalog.test.ts`                                     |
 | `getPluginReferenceCatalog`        | protocol server、MCP App notification         | bootstrap `plugin-reference-protocol.test.ts`                                   |
 | `createSubagentRuntimeConfigCache` | `createSubagentsService` → service collection | services `subagentRuntimeConfig.test.ts`、watcher tests                         |

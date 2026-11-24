@@ -249,7 +249,7 @@ test("缺少镜像地址时明确失败", async () => {
 test("未显式配置 mirror 时按内网 deps 推导默认地址", () => {
   assert.equal(
     resolveVerifyMirror({ INTRANET_MACHINE_HOST: "192.0.2.10" }),
-    "http://192.0.2.10:12345/zcode/deps/electron-builder-binaries/",
+    "http://192.0.2.10:12345/codez/deps/electron-builder-binaries/",
   );
   assert.equal(
     resolveVerifyMirror({
@@ -260,14 +260,14 @@ test("未显式配置 mirror 时按内网 deps 推导默认地址", () => {
   );
   assert.equal(
     resolveVerifyMirror({
-      ZCODE_DEPS_BASE_URL: "https://deps.example.test/zcode/deps",
+      CODEZ_DEPS_BASE_URL: "https://deps.example.test/codez/deps",
     }),
-    "https://deps.example.test/zcode/deps/electron-builder-binaries/",
+    "https://deps.example.test/codez/deps/electron-builder-binaries/",
   );
   // 闭源树的内网默认机器是 intranet.example.invalid；与 bundle.mjs 的默认镜像同源。
   assert.equal(
     resolveVerifyMirror({}),
-    "http://intranet.example.invalid:12345/zcode/deps/electron-builder-binaries/",
+    "http://intranet.example.invalid:12345/codez/deps/electron-builder-binaries/",
   );
 });
 

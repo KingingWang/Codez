@@ -93,8 +93,8 @@ const INDICATOR_SHADOW_INSET = { top: 6, right: 8, bottom: 12, left: 8 } as cons
 
 function indicatorCopy(locale: Locale): { text: string; width: number } {
   return locale === "zh-CN"
-    ? { text: "ZCode 正在操作电脑", width: 234 }
-    : { text: "ZCode is controlling your computer", width: 308 };
+    ? { text: "Codez 正在操作电脑", width: 234 }
+    : { text: "Codez is controlling your computer", width: 308 };
 }
 
 function indicatorWindowSize(locale: Locale): { width: number; height: number } {
@@ -171,11 +171,11 @@ git add -- packages/desktop/src/main/windowsCuaOperationIndicator.ts packages/de
 git commit -m "fix(cua): render natural Windows indicator shadow"
 ```
 
-停止当前 `@zcode/desktop dev:local-cli` 进程树，然后用以下环境变量启动隐藏 dev 进程：
+停止当前 `@codez/desktop dev:local-cli` 进程树，然后用以下环境变量启动隐藏 dev 进程：
 
 ```powershell
-$env:ZCODE_CUA_DEV_ROOT = "C:\Users\dev\zcode-cua"
-pnpm --filter @zcode/desktop dev:local-cli
+$env:CODEZ_CUA_DEV_ROOT = "C:\Users\dev\codez-cua"
+pnpm --filter @codez/desktop dev:local-cli
 ```
 
-Expected: Electron main、desktop Host、`zcode.cjs app-server --stdio` 和 `C:\Users\dev\zcode-cua\dist\windows-helper.js` 均存在。
+Expected: Electron main、desktop Host、`codez.cjs app-server --stdio` 和 `C:\Users\dev\codez-cua\dist\windows-helper.js` 均存在。

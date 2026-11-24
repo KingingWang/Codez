@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
-import { TID_CONFIRM_DIALOG_CONFIRM, TID_SETTINGS_BACK_BUTTON } from "@zcode/shared/test-ids";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
+import { TID_CONFIRM_DIALOG_CONFIRM, TID_SETTINGS_BACK_BUTTON } from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom } from "#e2e/helpers/desktop-app";
 import { getToastMessages } from "#e2e/helpers/conversation-session-toast";
 import {
@@ -24,7 +24,7 @@ import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
 const CASE_MARKER = "E2E_R3_REINSTALL_DAMAGED_RELEASE";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-reinstall-damaged-release",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-reinstall-damaged-release",
 );
 // 重装要上传完整 archive 再启动远端服务；本机 Docker 远端通常一分钟内完成，留足余量。
 const REINSTALL_TIMEOUT_MS = 5 * 60_000;
@@ -41,7 +41,7 @@ async function readRemoteRelease(config: SSHConnectionConfig): Promise<RemoteRel
   const result = await runSSHCommand(
     config,
     [
-      'R="$HOME/.zcode/server"',
+      'R="$HOME/.codez/server"',
       'id=$(sed -n \'s/^[[:space:]]*"releaseId"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p\' "$R/current.json" | head -n 1)',
       'echo "release=$id"',
       'echo "package=$(wc -c < "$R/releases/$id/runtime/package.json" | tr -d " ") $(sha256sum "$R/releases/$id/runtime/package.json" | cut -d " " -f 1)"',
@@ -69,12 +69,12 @@ async function damageCurrentRelease(config: SSHConnectionConfig): Promise<string
   const result = await runSSHCommand(
     config,
     [
-      'R="$HOME/.zcode/server"',
-      '"$R/bin/zcode" stop --wait --server-root "$R" --json >/dev/null 2>&1 || true',
+      'R="$HOME/.codez/server"',
+      '"$R/bin/codez" stop --wait --server-root "$R" --json >/dev/null 2>&1 || true',
       'id=$(sed -n \'s/^[[:space:]]*"releaseId"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p\' "$R/current.json" | head -n 1)',
       ': > "$R/releases/$id/runtime/package.json"',
       // 直接执行一次与 Desktop 相同的启动命令，确认损坏能复现事故签名。
-      '"$R/bin/zcode" serve --daemon --json --server-root "$R" 2>&1 | grep -c ERR_INVALID_PACKAGE_CONFIG',
+      '"$R/bin/codez" serve --daemon --json --server-root "$R" 2>&1 | grep -c ERR_INVALID_PACKAGE_CONFIG',
     ].join("; "),
     { timeoutMs: 60_000 },
   );
@@ -118,7 +118,7 @@ async function setTheme(theme: "light" | "dark"): Promise<void> {
 
 /** 深浅主题截图，供人工复核新入口在错误面板与菜单中的可辨识度；结束后恢复浅色。 */
 async function captureThemeScreenshots(name: string): Promise<void> {
-  const root = process.env.ZCODE_E2E_ARTIFACT_DIR?.trim();
+  const root = process.env.CODEZ_E2E_ARTIFACT_DIR?.trim();
   if (!root) return;
   const dir = resolve(root, "r3-reinstall-damaged-release");
   await mkdir(dir, { recursive: true });

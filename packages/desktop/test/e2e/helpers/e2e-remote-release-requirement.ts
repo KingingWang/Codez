@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 
-import { SOURCE_SERVER_RELEASE_DESCRIPTOR_FILE_NAME } from "@zcode/shared";
+import { SOURCE_SERVER_RELEASE_DESCRIPTOR_FILE_NAME } from "@codez/shared";
 
 /**
  * 本轮是否需要 SSH remote release（mock-cdn/releases/<version>）的唯一判据：调度的 spec
@@ -22,7 +22,7 @@ export const REMOTE_RELEASE_CONSUMER_MODULES = [
 ] as const;
 
 /** onPrepare stage remote release 后经 runnerEnv 下发的目录；worker 兜底只认它。 */
-export const REMOTE_RELEASE_DIR_ENV = "ZCODE_E2E_REMOTE_RELEASE_DIR";
+export const REMOTE_RELEASE_DIR_ENV = "CODEZ_E2E_REMOTE_RELEASE_DIR";
 
 // 覆盖 `import x from`、`import type x from`、`export x from`、`import "x"` 与 `import("x")`。
 // 不区分类型 import：多准备不会出错，少准备会让用例在兜底处失败。
@@ -109,7 +109,7 @@ export function assertRemoteReleaseStaged(
   env: Record<string, string | undefined> = process.env,
 ): void {
   // 已打包应用使用随包配置的发布源，不读 mock-cdn，onPrepare 也不 stage。
-  if (env.ZCODE_E2E_PACKAGED_APP_PATH?.trim()) return;
+  if (env.CODEZ_E2E_PACKAGED_APP_PATH?.trim()) return;
   const releaseDir = env[REMOTE_RELEASE_DIR_ENV]?.trim();
   if (releaseDir && existsSync(join(releaseDir, SOURCE_SERVER_RELEASE_DESCRIPTOR_FILE_NAME)))
     return;

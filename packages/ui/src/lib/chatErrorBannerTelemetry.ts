@@ -3,7 +3,7 @@ import {
   resolveTelemetryProviderScope,
   type ArmsCustomEventPayload,
   type IPlatformService,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { logger } from "@/logger.js";
 import {
   getProviderBusinessErrorUiAction,
@@ -12,7 +12,7 @@ import {
   type ProviderBusinessErrorUiAction,
 } from "@/lib/providerBusinessError.js";
 import { resolveTelemetryAttribution } from "@/lib/chatErrorAttribution.js";
-import type { ZCodeUiError } from "@/lib/zcodeUiError.js";
+import type { CodezUiError } from "@/lib/codezUiError.js";
 
 export const CHAT_ERROR_BANNER_ARMS_EVENT_NAME = "chat_error_banner";
 export const CHAT_ERROR_BANNER_ARMS_GROUP = "ui_error";
@@ -34,7 +34,7 @@ function sanitizeUnderlyingTelemetryText(value: string | undefined): string | un
   return truncateTelemetryText(value);
 }
 
-// provider/model 白名单与归一实现已收敛到 @zcode/shared 的 telemetryRedaction：
+// provider/model 白名单与归一实现已收敛到 @codez/shared 的 telemetryRedaction：
 // plan_usage、ui_perf 等事件复用同一条白名单，避免多份副本各自漂移。
 
 interface ChatProviderBusinessRecoveryAction {
@@ -43,7 +43,7 @@ interface ChatProviderBusinessRecoveryAction {
 }
 
 export function resolveVisibleChatErrorTelemetryRecoveryAction(
-  error: Pick<ZCodeUiError, "code" | "message">,
+  error: Pick<CodezUiError, "code" | "message">,
 ): ChatProviderBusinessRecoveryAction | null {
   // 修复原因：旧 UI 会把普通 provider 业务错误的可见恢复动作作为聚合维度上报；
   // 3007 的 request verification retry 是内部自动恢复动作，不显示按钮，因此必须继续留空。
@@ -85,7 +85,7 @@ function hashTelemetryFingerprint(value: string): string {
 
 function resolveErrorKey(params: {
   errorKey?: string | null;
-  error: ZCodeUiError;
+  error: CodezUiError;
   displayMessage: string;
   providerBusinessRecoveryAction: ChatProviderBusinessRecoveryAction | null;
 }): string {
@@ -120,7 +120,7 @@ export function buildChatErrorBannerTelemetryPayload(params: {
   surface?: ChatErrorBannerSurface;
   errorKey?: string | null;
   displayMessage: string;
-  error: ZCodeUiError;
+  error: CodezUiError;
   providerBusinessRecoveryAction: ChatProviderBusinessRecoveryAction | null;
 }): ArmsCustomEventPayload {
   const errorMsg = truncateTelemetryText(params.displayMessage);
@@ -179,7 +179,7 @@ export async function reportChatErrorBannerTelemetry(
     surface?: ChatErrorBannerSurface;
     errorKey?: string | null;
     displayMessage: string;
-    error: ZCodeUiError;
+    error: CodezUiError;
     providerBusinessRecoveryAction: ChatProviderBusinessRecoveryAction | null;
   },
 ): Promise<void> {

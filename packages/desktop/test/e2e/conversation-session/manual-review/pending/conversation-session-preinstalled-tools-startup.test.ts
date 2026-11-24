@@ -25,7 +25,7 @@ async function waitStatus(status: string) {
     { timeout: 30000 },
   );
 }
-const fixtureUrl = () => process.env.ZCODE_E2E_PREINSTALL_FIXTURE_URL!;
+const fixtureUrl = () => process.env.CODEZ_E2E_PREINSTALL_FIXTURE_URL!;
 
 describe("预装初始化失败恢复（待审核）", () => {
   it("LOP-STARTUP: 目录故障不阻塞聊天，手动修复后原会话继续", async function () {
@@ -58,11 +58,11 @@ describe("预装初始化失败恢复（待审核）", () => {
     await waitStatus("failed");
     const pid = await browser.electron.execute(
       (electron) =>
-        electron.app.getAppMetrics().find((metric) => metric.name === "zcode-preinstalled-tools")
+        electron.app.getAppMetrics().find((metric) => metric.name === "codez-preinstalled-tools")
           ?.pid,
     );
     expect(pid).toBeDefined();
-    await browser.saveScreenshot(`${process.env.ZCODE_E2E_ARTIFACT_DIR}/lop-startup-failed.png`);
+    await browser.saveScreenshot(`${process.env.CODEZ_E2E_ARTIFACT_DIR}/lop-startup-failed.png`);
     await browser.keys("Escape");
     await sendV4Prompt("E2E_LOP_STARTUP_BEFORE: Read the preinstalled tools environment.");
     await waitForV4AssistantMessageContaining("E2E_LOP_STARTUP_BEFORE_DONE", 90000);
@@ -73,7 +73,7 @@ describe("预装初始化失败恢复（待审核）", () => {
       available: string;
     };
     expect(first.exists).toBe(false);
-    expect(first.entryPath).toContain(join("bin", "zcode-soffice"));
+    expect(first.entryPath).toContain(join("bin", "codez-soffice"));
     expect(await readFile(oldRecord, "utf8")).toBe("readable-old-target");
     expect(await readFile(legacy, "utf8")).toBe("readable-legacy-target");
     const sessionId = (await getV4PaneSnapshot()).sessionId;
@@ -86,11 +86,11 @@ describe("预装初始化失败恢复（待审核）", () => {
     expect(
       await browser.electron.execute(
         (electron) =>
-          electron.app.getAppMetrics().find((metric) => metric.name === "zcode-preinstalled-tools")
+          electron.app.getAppMetrics().find((metric) => metric.name === "codez-preinstalled-tools")
             ?.pid,
       ),
     ).toBe(pid);
-    await browser.saveScreenshot(`${process.env.ZCODE_E2E_ARTIFACT_DIR}/lop-startup-ready.png`);
+    await browser.saveScreenshot(`${process.env.CODEZ_E2E_ARTIFACT_DIR}/lop-startup-ready.png`);
     await browser.keys("Escape");
     await sendV4Prompt("E2E_LOP_STARTUP_CONTINUE: Read the fixed tool entry after preparation.");
     await waitForV4AssistantMessageContaining("E2E_LOP_STARTUP_CONTINUE_DONE", 90000);
@@ -108,6 +108,6 @@ describe("预装初始化失败恢复（待审核）", () => {
     expect(continued.content).toContain(
       `fixture-libreoffice-26.8.1-${process.platform}-${process.arch}`,
     );
-    await browser.saveScreenshot(`${process.env.ZCODE_E2E_ARTIFACT_DIR}/lop-startup-continued.png`);
+    await browser.saveScreenshot(`${process.env.CODEZ_E2E_ARTIFACT_DIR}/lop-startup-continued.png`);
   });
 });

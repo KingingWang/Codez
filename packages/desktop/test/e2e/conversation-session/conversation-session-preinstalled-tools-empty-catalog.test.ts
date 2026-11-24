@@ -1,5 +1,5 @@
 import { pinE2ELocale } from "#e2e/helpers/desktop-app";
-import type { IPlatformService } from "@zcode/shared";
+import type { IPlatformService } from "@codez/shared";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
@@ -16,7 +16,7 @@ describe("预装工具尚无发布资源（待审核）", () => {
     await pinE2ELocale("zh-CN");
     // Electron 测试桥会将顶层 null 结果折叠为 undefined；用对象保留缺省值的证据。
     const { testCatalog } = await browser.electron.execute(() => ({
-      testCatalog: process.env.ZCODE_E2E_PREINSTALLED_TOOLS_CATALOG ?? null,
+      testCatalog: process.env.CODEZ_E2E_PREINSTALLED_TOOLS_CATALOG ?? null,
     }));
     expect(testCatalog).toBeTruthy();
     const catalog = JSON.parse(await readFile(testCatalog!, "utf8"));
@@ -31,7 +31,7 @@ describe("预装工具尚无发布资源（待审核）", () => {
       "当前版本暂未提供此工具。",
     );
     const state = await browser.execute(() =>
-      (window as Window & { zcode?: IPlatformService }).zcode?.getPreinstalledToolsState?.(),
+      (window as Window & { codez?: IPlatformService }).codez?.getPreinstalledToolsState?.(),
     );
     expect(state).toMatchObject({
       autoInstallEnabled: true,
@@ -46,9 +46,9 @@ describe("预装工具尚无发布资源（待审核）", () => {
       expect(await $(`[data-testid="preinstalled-tools-${action}"]`).isExisting()).toBe(false);
     }
     expect(await $$("[data-sonner-toast]").length).toBe(0);
-    await browser.saveScreenshot(`${process.env.ZCODE_E2E_ARTIFACT_DIR}/lop-empty-catalog.png`);
+    await browser.saveScreenshot(`${process.env.CODEZ_E2E_ARTIFACT_DIR}/lop-empty-catalog.png`);
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "lop-empty-facts.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "lop-empty-facts.json"),
       JSON.stringify({ testCatalog, state }, null, 2),
     );
     await browser.keys("Escape");

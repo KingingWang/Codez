@@ -53,8 +53,8 @@
       );
     </script>
     <script>
-      // 页面只经 window.zcode 读写；window.zcode 是不可配置的全局属性，顶层不再声明同名变量。
-      const host = window.zcode;
+      // 页面只经 window.codez 读写；window.codez 是不可配置的全局属性，顶层不再声明同名变量。
+      const host = window.codez;
       const applyHostStyles = () => {
         const variables = host.hostContext?.styles?.variables ?? {};
         for (const [name, value] of Object.entries(variables)) {

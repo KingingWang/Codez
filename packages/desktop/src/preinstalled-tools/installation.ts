@@ -9,9 +9,9 @@ import {
   type PreinstalledToolError,
   type PreinstalledToolInstallation,
   type PreinstalledToolEntry,
-} from "@zcode/shared/preinstalled-tools";
-import type { resolvePreinstalledToolPaths } from "@zcode/shared/preinstalled-tools/node";
-import type { createServiceLogger, HostApiNetworkTransport } from "@zcode/services/node";
+} from "@codez/shared/preinstalled-tools";
+import type { resolvePreinstalledToolPaths } from "@codez/shared/preinstalled-tools/node";
+import type { createServiceLogger, HostApiNetworkTransport } from "@codez/services/node";
 import {
   extractPreinstalledArchive,
   validatePreinstalledFiles,

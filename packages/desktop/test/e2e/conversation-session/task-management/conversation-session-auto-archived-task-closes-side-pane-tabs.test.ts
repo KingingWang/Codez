@@ -2,7 +2,7 @@ import { createServer, type Server } from "node:http";
 import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";
 import type { AddressInfo } from "node:net";
-import { TID_BROWSER_ADDRESS_INPUT, TID_TASK_ITEM, testId } from "@zcode/shared/test-ids";
+import { TID_BROWSER_ADDRESS_INPUT, TID_TASK_ITEM, testId } from "@codez/shared/test-ids";
 import { DEFAULT_WORKSPACE, clearAppData } from "#e2e/helpers/desktop-app";
 import { seedArchiveAutomations } from "#e2e/helpers/archive-automations";
 import { ensureProjectExpanded } from "#e2e/helpers/project-sidebar";
@@ -18,7 +18,7 @@ const CASE_TIMEOUT_MS = 180_000;
 const PROMPT_MARKER = "E2E_AUTO_ARCHIVED_TASK_BROWSER_TABS";
 const REPLY_MARKER = "AUTO_ARCHIVED_TASK_BROWSER_TABS_OK";
 const DAY = 86_400_000;
-const home = process.env.ZCODE_E2E_HOME_DIR!;
+const home = process.env.CODEZ_E2E_HOME_DIR!;
 
 let fixtureServer: Server | null = null;
 let fixtureUrl = "";
@@ -119,8 +119,8 @@ async function waitForFixtureGuest(expected: boolean, timeoutMsg: string): Promi
 
 function ageTask(taskId: string, ageMs: number): void {
   const updatedAt = Date.now() - ageMs;
-  const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
-  const cli = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"));
+  const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"));
+  const cli = new DatabaseSync(join(home, ".codez/cli/db/db.sqlite"));
   try {
     db.prepare("UPDATE tasks SET cli_updated_at=? WHERE task_id=?").run(updatedAt, taskId);
     cli.prepare("UPDATE session SET time_updated=? WHERE id=?").run(updatedAt, taskId);
@@ -131,7 +131,7 @@ function ageTask(taskId: string, ageMs: number): void {
 }
 
 function readArchived(taskId: string): number | undefined {
-  const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"), { readOnly: true });
+  const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"), { readOnly: true });
   try {
     return (
       db.prepare("SELECT archived FROM tasks WHERE task_id=?").get(taskId) as

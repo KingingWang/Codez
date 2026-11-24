@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { parseRemoteWorkspaceIdentity, type SourceServerManagementSnapshot } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity, type SourceServerManagementSnapshot } from "@codez/shared";
 import { clearAppData, readSettings, waitForDefaultWorkspaceReady } from "#e2e/helpers/desktop-app";
 import {
   disconnectRemoteSource,
@@ -34,14 +34,14 @@ import {
 
 const CASE_MARKER = "E2E_R3_UPDATE_INFLIGHT";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-update-inflight",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-update-inflight",
 );
 
 async function readRemoteCurrentSha(container: string): Promise<string> {
   const { stdout } = await execInRemoteContainer(container, [
     "sh",
     "-c",
-    'cat "$HOME/.zcode/server/current.json"',
+    'cat "$HOME/.codez/server/current.json"',
   ]);
   return /"archiveSha256":\s*"([0-9a-f]{64})"/u.exec(stdout)?.[1] ?? "";
 }
@@ -443,8 +443,8 @@ describe(`${CASE_MARKER}: 更新进行中的连接不覆盖更新，向导保留
     const rewrite = await execInRemoteContainer(container, [
       "sh",
       "-c",
-      'set -e; R="$HOME/.zcode/server"; ' +
-        '"$R/bin/zcode" stop --wait --server-root "$R" --json >/dev/null 2>&1 || true; ' +
+      'set -e; R="$HOME/.codez/server"; ' +
+        '"$R/bin/codez" stop --wait --server-root "$R" --json >/dev/null 2>&1 || true; ' +
         "NEW=$(cat /proc/sys/kernel/random/uuid); " +
         'sed -i -E "s/(\\"installationId\\"[[:space:]]*:[[:space:]]*\\")[0-9a-f-]{36}/\\1$NEW/" "$R/install.json"; ' +
         'grep -q "$NEW" "$R/install.json"; echo "$NEW"',

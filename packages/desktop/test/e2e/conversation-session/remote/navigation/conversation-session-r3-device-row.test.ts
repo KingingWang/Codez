@@ -1,4 +1,4 @@
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 import { clearAppData, readSettings } from "#e2e/helpers/desktop-app";
 import {
   connectRemoteSourceFromSettings,

@@ -10,10 +10,10 @@ import type {
   ConversationShareRejection,
   ConversationShareTtlOptions,
   Locale,
-} from "@zcode/shared";
-import { conversationShareRejectionSchema, ServiceChannels } from "@zcode/shared";
-import type { WireConversationRow } from "@zcode/shared/zcode-protocol-v4";
-import { Event as RpcEvent, type Event } from "@zcode/rpc";
+} from "@codez/shared";
+import { conversationShareRejectionSchema, ServiceChannels } from "@codez/shared";
+import type { WireConversationRow } from "@codez/shared/codez-protocol-v4";
+import { Event as RpcEvent, type Event } from "@codez/rpc";
 
 import { createServiceDescriptor } from "../descriptors.js";
 import type { ConversationShareClientErrorKind } from "./conversationShareHttpClient.js";

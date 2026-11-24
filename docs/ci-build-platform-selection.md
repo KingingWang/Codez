@@ -2,7 +2,7 @@
 
 ## 目标
 
-允许创建 GitLab pipeline 时通过可选变量 `ZCODE_BUILD_PLATFORMS` 指定自动打包的平台。MR pipeline 默认只自动打包 macOS ARM64 和 Windows x64，手动创建的 pipeline 未传变量时仍保持全平台自动打包。
+允许创建 GitLab pipeline 时通过可选变量 `CODEZ_BUILD_PLATFORMS` 指定自动打包的平台。MR pipeline 默认只自动打包 macOS ARM64 和 Windows x64，手动创建的 pipeline 未传变量时仍保持全平台自动打包。
 
 ## 平台标识
 
@@ -18,15 +18,15 @@
 示例：
 
 ```text
-ZCODE_BUILD_PLATFORMS=macos-arm64,windows-x64
+CODEZ_BUILD_PLATFORMS=macos-arm64,windows-x64
 ```
 
 在 GitLab **Run pipeline** 页面手动创建流水线时，可以在 Variables 中填写该变量；通过 Pipeline API 或 Trigger API 创建 pipeline 时同样可以传入。这些手动触发方式都使用相同的平台选择规则。
 
 ## 行为契约
 
-- MR pipeline 由 workflow 默认注入 `ZCODE_BUILD_PLATFORMS=macos-arm64,windows-x64`，因此只自动运行 macOS ARM64 和 Windows x64；其余平台保留为非阻塞 manual job。
-- GitLab **Run pipeline**、Pipeline API 和 Trigger API 手动创建的 pipeline 未传或传入空的 `ZCODE_BUILD_PLATFORMS` 时，六个平台 job 全部按现有方式自动运行。
+- MR pipeline 由 workflow 默认注入 `CODEZ_BUILD_PLATFORMS=macos-arm64,windows-x64`，因此只自动运行 macOS ARM64 和 Windows x64；其余平台保留为非阻塞 manual job。
+- GitLab **Run pipeline**、Pipeline API 和 Trigger API 手动创建的 pipeline 未传或传入空的 `CODEZ_BUILD_PLATFORMS` 时，六个平台 job 全部按现有方式自动运行。
 - 传入非空列表时，列表内的平台 job 自动运行。
 - 传入非空列表时，列表外的平台 job 保留在 pipeline 中，状态为可选手动执行，且未执行时不阻塞流水线。
 - 平台判断使用逗号边界的完整 token 匹配，禁止用平台名或架构子串进行模糊匹配。
@@ -47,8 +47,8 @@ ZCODE_BUILD_PLATFORMS=macos-arm64,windows-x64
   |
   `-- Web / Pipeline API / Trigger API
         |
-        +-- ZCODE_BUILD_PLATFORMS 未传或为空 -> 所有平台 job on_success
-        `-- ZCODE_BUILD_PLATFORMS 为非空列表
+        +-- CODEZ_BUILD_PLATFORMS 未传或为空 -> 所有平台 job on_success
+        `-- CODEZ_BUILD_PLATFORMS 为非空列表
               +-- 当前平台完整命中 -> on_success
               `-- 当前平台未命中   -> manual + allow_failure
 ```

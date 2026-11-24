@@ -2,14 +2,14 @@ import { ChevronRight, CircleAlert, Info, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { Checkbox } from "@/components/ui/checkbox.js";
 import { cn } from "@/components/lib/utils.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import type { DataSyncProvidersState } from "@/data-sync/app/useDataSyncProviders.js";
 import {
   resolveDataSyncProvisioningDisplay,
   type DataSyncProvisioningDisplay,
 } from "@/data-sync/domain/providers.js";
 
-type Intl = ReturnType<typeof useZCodeIntl>;
+type Intl = ReturnType<typeof useCodezIntl>;
 
 const ERROR_MESSAGE_ID: Record<string, string> = {
   "source-read-failed": "remoteSync.providers.error.sourceReadFailed",
@@ -70,7 +70,7 @@ export function DataSyncProvidersPanel(props: {
   /** 设备离线时禁用重试。 */
   disabled: boolean;
 }) {
-  const intl = useZCodeIntl();
+  const intl = useCodezIntl();
   const { formatMessage } = intl.intl;
   const { state } = props;
   const display = resolveDataSyncProvisioningDisplay(state.provisioning, state.retrying);
@@ -179,7 +179,7 @@ export function DataSyncProvidersOverviewRow(props: {
   label: string;
   onNavigate(): void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const display = resolveDataSyncProvisioningDisplay(
     props.state.provisioning,
     props.state.retrying,

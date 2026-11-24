@@ -32,7 +32,7 @@ export function resolveWindowsE2EMobileBrowserExecutable(
  * USERPROFILE 后可正常启动。浏览器子进程还原系统真实用户目录，其余环境不变。
  */
 export function e2eMobileBrowserLaunchOptions(env: NodeJS.ProcessEnv = process.env) {
-  const executablePath = env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE?.trim();
+  const executablePath = env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE?.trim();
   return {
     ...(executablePath ? { executablePath } : { channel: "chrome" }),
     env: {

@@ -1,5 +1,5 @@
 /*
- * ZCode 官方 Server MCP 的凭证解析与身份头构造。
+ * Codez 官方 Server MCP 的凭证解析与身份头构造。
  *
  * 本文件与 Off-Peak 的 offPeakRuntimeModel.ts **逻辑等价但完全独立**：
  * 不复用其函数、不修改其行为。理由是两者的套餐门槛、Team 支持范围与凭证通道预期会独立演进，
@@ -17,18 +17,18 @@
  */
 import {
   OFFICIAL_MCP_AUTH_HEADER_NAMES,
-  zcodeProviderAccountAccessSchema,
+  codezProviderAccountAccessSchema,
   type OfficialAuthConsumerKind,
   type OfficialMcpAuthFailureReason,
-  type ZCodeAccountAccess,
-  type ZCodeProviderAccountAccess,
-} from "@zcode/shared";
+  type CodezAccountAccess,
+  type CodezProviderAccountAccess,
+} from "@codez/shared";
 import {
   isSameOAuthAccountMaterial,
   type OAuthAccountMaterial,
   type OAuthIdentityMaterial,
 } from "#src/oauth/repo/oauthCredentialRepo.js";
-import type { ModelSelectionView } from "@zcode/provider";
+import type { ModelSelectionView } from "@codez/provider";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 
 const log = createServiceLogger("official-mcp");
@@ -85,7 +85,7 @@ let lastCredentialResolvedLogKey: string | undefined;
 export interface OfficialMcpCredentialResolveOptions {
   /**
    * 套餐可选（插件命令进程，技术方案 5.8）：选中连接没有有效套餐时不返回 plan_required，
-   * 只给 ZCode 登录身份，由服务端按免费档处理。登录态不完整（缺 MaaS JWT、跨 family）
+   * 只给 Codez 登录身份，由服务端按免费档处理。登录态不完整（缺 MaaS JWT、跨 family）
    * 仍按 unavailable 返回，绝不把付费用户降成免费。
    */
   planOptional?: boolean;
@@ -93,7 +93,7 @@ export interface OfficialMcpCredentialResolveOptions {
 
 export interface OfficialMcpCredentialResolverDeps {
   accountRequestAuthService: {
-    resolveAccessCurrent(access: ZCodeProviderAccountAccess): Promise<ZCodeAccountAccess | null>;
+    resolveAccessCurrent(access: CodezProviderAccountAccess): Promise<CodezAccountAccess | null>;
   };
   getRegistryRevision(): number | null;
   loadOAuthIdentityMaterial(): Promise<OAuthIdentityMaterial | null>;
@@ -137,7 +137,7 @@ type SelectedPlan = {
 
 type SelectedProvider = {
   providerId: string;
-  access: ZCodeProviderAccountAccess;
+  access: CodezProviderAccountAccess;
 };
 
 function fail(reason: OfficialMcpAuthFailureReason): {
@@ -155,7 +155,7 @@ function resolveSelectedProvider(
   registry: ModelSelectionView,
 ): { ok: true; provider: SelectedProvider } | { ok: false; reason: OfficialMcpAuthFailureReason } {
   const candidates = registry.providers.flatMap((provider) => {
-    const parsed = zcodeProviderAccountAccessSchema.safeParse(provider.config.access);
+    const parsed = codezProviderAccountAccessSchema.safeParse(provider.config.access);
     return parsed.success &&
       (parsed.data.mode === "individual-coding-plan" || parsed.data.mode === "team-coding-plan")
       ? [{ providerId: provider.providerId, access: parsed.data }]
@@ -169,7 +169,7 @@ function resolveSelectedProvider(
 
 function resolveSelectedPlan(
   selectedProvider: SelectedProvider,
-  access: ZCodeAccountAccess | null,
+  access: CodezAccountAccess | null,
 ): { ok: true; plan: SelectedPlan } | { ok: false; reason: OfficialMcpAuthFailureReason } {
   if (
     !access ||
@@ -249,9 +249,9 @@ async function readIdentitySnapshot(
     ok: true,
     snapshot: {
       activeProvider,
-      userId: identity.zcodeUserId,
+      userId: identity.codezUserId,
       sessionRevision: identity.sessionRevision,
-      jwt: identity.zcodeJwtToken,
+      jwt: identity.codezJwtToken,
       registry,
       registryRevision,
       selectionFingerprint: createSelectionFingerprint(registry),
@@ -292,7 +292,7 @@ function identityOnlyOutcome(identity: OfficialMcpIdentitySnapshot): OfficialMcp
 /**
  * 解析当前选中连接的官方 MCP 凭证。
  *
- * 防竞态：Registry、动态 Account Access、active provider、zcode JWT 与 MaaS JWT
+ * 防竞态：Registry、动态 Account Access、active provider、codez JWT 与 MaaS JWT
  * 都可能在解析期间变化。登录渠道不决定套餐 family；主身份与关联材料必须匹配同一
  * user ID、revision 和业务 JWT。解析前后再比对选择及关联材料，两轮仍不稳定则返回不可用。
  */
@@ -342,9 +342,9 @@ export async function resolveOfficialMcpCredentials(
     if (
       !material ||
       material.loginProvider !== identity.snapshot.activeProvider ||
-      material.zcodeUserId !== identity.snapshot.userId ||
+      material.codezUserId !== identity.snapshot.userId ||
       material.sessionRevision !== identity.snapshot.sessionRevision ||
-      material.zcodeJwtToken !== identity.snapshot.jwt
+      material.codezJwtToken !== identity.snapshot.jwt
     )
       continue;
     const codingPlanAuthorization = material.accessToken.trim();
@@ -464,7 +464,7 @@ export function createOfficialMcpAuthHeadersResolver(deps: OfficialMcpCredential
   >();
 
   return {
-    // request 只用来选解析模式（host handler 已在此之前完成可信校验，见 zcodeAgentService）；
+    // request 只用来选解析模式（host handler 已在此之前完成可信校验，见 codezAgentService）；
     // 凭据是 host 全局状态，**不**按 plugin/mcpKey/workspace 分桶——分桶只会削弱 in-flight
     // 去重而不增加隔离。
     resolveHeaders(request?: OfficialMcpAuthHeadersRequestContext) {

@@ -27,7 +27,7 @@ DGJ01–03 accepted，2026-11-03 已完成下列本地验收，候选仍保留 m
 
 桌面证据位于 `packages/desktop/.e2e-artifacts/desktop-e2e-20261103071911420-p15551-807e0007df687214/`，含报告、每组布局采样和宽/窄截图；浏览器证据位于 `packages/desktop/.e2e-artifacts/draft-greeting-browser/`，含 `before.log`、`after.log`、布局采样与截图。构建基线为 `681c5f2d5b` 加本次修复；最后一次桌面复跑复用本轮生产构建。
 
-桌面正式入口使用默认 replay，执行 `pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/ui-shell/composer/draft-greeting-layout.test.ts'`。浏览器执行 `node --test packages/ui/test/browser/manual-review/pending/draft-greeting-layout.test.mjs`，可用 `CHROME_EXECUTABLE_PATH` 指定已安装的 Chromium。
+桌面正式入口使用默认 replay，执行 `pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/ui-shell/composer/draft-greeting-layout.test.ts'`。浏览器执行 `node --test packages/ui/test/browser/manual-review/pending/draft-greeting-layout.test.mjs`，可用 `CHROME_EXECUTABLE_PATH` 指定已安装的 Chromium。
 
 原生 Windows/Linux、手机实机与真实远控链路未验证。测试等待草稿投影就绪及字体加载完成；桌面临时调整 renderer 时区到下午并在结束时恢复，浏览器固定到下午时刻，避免短问候语随运行时间变化而不再触发缩字。冷启动 scope 回填不属于此次布局回归。
 

@@ -3,7 +3,7 @@ import { projectKey } from "@/project-sidebar/view.js";
 import { ProjectNode } from "@/project-sidebar/ProjectNode.js";
 import { ProjectComposerMenu } from "@/project-sidebar/ProjectComposerMenu.js";
 import type { ProjectNodeProps } from "@/project-sidebar/ProjectNodeContent.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import "@/styles.css";
 
@@ -51,7 +51,7 @@ Object.assign(window, {
   },
 });
 createRoot(document.getElementById("root")!).render(
-  <ZCodeIntlProvider initialLocale={locale}>
+  <CodezIntlProvider initialLocale={locale}>
     <TooltipProvider>
       <main className="min-h-screen bg-background p-4 text-foreground">
         <section className="w-64 max-w-full bg-sidebar" aria-label="Sidebar">
@@ -81,5 +81,5 @@ createRoot(document.getElementById("root")!).render(
         </div>
       </main>
     </TooltipProvider>
-  </ZCodeIntlProvider>,
+  </CodezIntlProvider>,
 );

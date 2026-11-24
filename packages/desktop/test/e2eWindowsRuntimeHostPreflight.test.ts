@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-// Bug 根因：Windows 上 Agent CLI 只能经过 zcode-runtime-host.exe 启动，而 E2E 只跑
+// Bug 根因：Windows 上 Agent CLI 只能经过 codez-runtime-host.exe 启动，而 E2E 只跑
 // build:no-runtime-assets，CI 上没有该 exe，全部 case 报 runtime host missing / slash 目录为空。
 describe("E2E Windows runtime host preflight", () => {
   it("prepareDesktopAppBuild 在复用或重建桌面产物前确保 runtime host 就绪", () => {

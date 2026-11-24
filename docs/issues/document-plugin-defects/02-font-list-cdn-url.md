@@ -4,8 +4,8 @@ Status: needs-triage
 
 ## 现象
 
-- `apps/zcode-cli/packages/documents-plugin/skills/docx/env_setup/font_list.txt` 中每行是绝对路径，例如 `/usr/share/fonts/truetype/chinese/SarasaMonoSC-Regular.ttf`。
-- `apps/zcode-cli/packages/documents-plugin/skills/docx/env_setup/setup_mac_linux.sh:186` 设置 CDN 根地址，`:221` 把每行直接拼到根地址后面。拼出的地址形如 `<CDN 根>//usr/share/fonts/...`。
+- `apps/codez-cli/packages/documents-plugin/skills/docx/env_setup/font_list.txt` 中每行是绝对路径，例如 `/usr/share/fonts/truetype/chinese/SarasaMonoSC-Regular.ttf`。
+- `apps/codez-cli/packages/documents-plugin/skills/docx/env_setup/setup_mac_linux.sh:186` 设置 CDN 根地址，`:221` 把每行直接拼到根地址后面。拼出的地址形如 `<CDN 根>//usr/share/fonts/...`。
 - setup.md 的示例地址是 `<CDN 根>/chinese/...`，两者不一致。
 
 推断：按当前脚本，字体下载可能全部失败。没有联网验证。pdf 插件与 xlsx 插件的字体列表和脚本需要一并核对。

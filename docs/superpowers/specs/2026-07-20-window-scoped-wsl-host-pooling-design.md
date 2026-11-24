@@ -7,7 +7,7 @@
 `docs/testing/wsl-host-pooling-runtime-evidence.md`。
 
 真实环境已验证同窗口同 distro/user 的 1、3、5 个 logical workspace 只保留一个 Windows remote
-Host 和一个 WSL `zcode-server`；最后 owner 释放后按约 60 秒 idle TTL 回收，整个 App 正常关闭时
+Host 和一个 WSL `codez-server`；最后 owner 释放后按约 60 秒 idle TTL 回收，整个 App 正常关闭时
 跳过 TTL，并在约 4 秒的采样窗口内完成 Host/server 回收。task draining、mobile attachment 和 Docker
 dedicated 边界由自动化测试覆盖，尚未执行真实 task、真实手机和更新安装运行态注入。
 
@@ -73,35 +73,35 @@ sendPrompt(taskId, traceId)
 | Field | Value |
 | --- | --- |
 | Change | 将 Desktop WSL remote workspace 从“一 workspace 一套 Host/server”调整为“同一窗口、同一 distro、同一 Linux user 共享一套 Host/server”，并补齐 workspace runtime 回收、连接并发控制和退出屏障。 |
-| Primary goal | 多个 WSL workspace 并行使用时，减少重复 UtilityProcess Host、`wsl.exe` 启动和 `zcode-server` 常驻内存，同时保持 workspace、桌面与手机远控边界。 |
+| Primary goal | 多个 WSL workspace 并行使用时，减少重复 UtilityProcess Host、`wsl.exe` 启动和 `codez-server` 常驻内存，同时保持 workspace、桌面与手机远控边界。 |
 | User-visible surfaces | WSL 连接、远程目录选择、remote workspace tab、关闭 workspace、真实关窗、App 退出、更新安装、Renderer reload、手机 `/remote` attachment。 |
 | Pool scope | 当前产品虽然限制单窗口，pool identity 仍显式包含 `windowWebContentsId`；不跨 Electron 窗口共享。 |
 | Idle policy | 最后一个有效 workspace 引用和 draining task 消失后进入 60 秒 idle TTL；真实关窗、App 退出和更新安装跳过 TTL，立即执行有界回收。 |
-| Existing docs | `docs/wsl-remote-workspace-design.md`、`docs/remote/wsl-remote-realtime-boundary.md`、`docs/superpowers/specs/2026-07-19-wsl-remote-process-cleanup-design.md`、`docs/superpowers/specs/2026-07-13-window-scoped-ssh-remote-host-pooling-design.md`、`docs/architecture/zcode-code-architecture-overview.md`。 |
-| Main code owners | `packages/desktop/src/main/desktopRemoteSessions.ts`、`packages/desktop/src/host/index.ts`、`packages/desktop/src/host/remoteWorkspaceServiceCollection.ts`、`packages/server/src/remote/wsl-backend.ts`、`packages/server/src/remote/connect.ts`、`packages/services/src/zcode-agent/zcodeAgentProcessManager.ts`。 |
+| Existing docs | `docs/wsl-remote-workspace-design.md`、`docs/remote/wsl-remote-realtime-boundary.md`、`docs/superpowers/specs/2026-07-19-wsl-remote-process-cleanup-design.md`、`docs/superpowers/specs/2026-07-13-window-scoped-ssh-remote-host-pooling-design.md`、`docs/architecture/codez-code-architecture-overview.md`。 |
+| Main code owners | `packages/desktop/src/main/desktopRemoteSessions.ts`、`packages/desktop/src/host/index.ts`、`packages/desktop/src/host/remoteWorkspaceServiceCollection.ts`、`packages/server/src/remote/wsl-backend.ts`、`packages/server/src/remote/connect.ts`、`packages/services/src/codez-agent/codezAgentProcessManager.ts`。 |
 
 ## 背景与已验证事实
 
 当前 WSL、Docker 和 server remote 使用 dedicated Host；只有 SSH 使用窗口级 Host pool。同一 WSL distro
 打开多个 workspace 时，每个逻辑 session 都会创建一个 UtilityProcess Host，并通过独立 `wsl.exe` stdio
-连接启动一个独立 `zcode-server`。
+连接启动一个独立 `codez-server`。
 
 ```text
 当前：同一 distro 的三个 WSL workspace
 
 Desktop Main
-├─ Host A ─ wsl.exe ─ zcode-server A ─ Agent(workspaceKey A)
-├─ Host B ─ wsl.exe ─ zcode-server B ─ Agent(workspaceKey B)
-└─ Host C ─ wsl.exe ─ zcode-server C ─ Agent(workspaceKey C)
+├─ Host A ─ wsl.exe ─ codez-server A ─ Agent(workspaceKey A)
+├─ Host B ─ wsl.exe ─ codez-server B ─ Agent(workspaceKey B)
+└─ Host C ─ wsl.exe ─ codez-server C ─ Agent(workspaceKey C)
 ```
 
-运行态测量中，三个完成握手但尚未启动实际 task 的 `zcode-server` RSS 约为 165 MB、156 MB 和
+运行态测量中，三个完成握手但尚未启动实际 task 的 `codez-server` RSS 约为 165 MB、156 MB 和
 164 MB，总计约 485 MB。该数字不包含 Windows UtilityProcess Host、按 workspace 启动的 Agent 及
 按需启动的 MCP 进程，因此只能作为当前重复 server 基线，不能写成固定产品预算。
 
 以下事实限定本设计：
 
-- 远端 `createLocalServices()` 和 `ZCodeAgentProcessManager` 已能在一个 server 内按 `workspaceKey`
+- 远端 `createLocalServices()` 和 `CodezAgentProcessManager` 已能在一个 server 内按 `workspaceKey`
   管理多个 workspace。
 - Agent 主要按 workspace 管理，不是“一 conversation 一 Agent”；一个 workspace Agent 可以承载多个
   session。
@@ -148,7 +148,7 @@ workspace Agent 长期留到窗口关闭，形成另一种资源滞留。
 ## 目标
 
 - 同一窗口、同一规范化 distro、同一 Linux user 的 WSL workspace 共享一个 UtilityProcess Host、一条
-  `wsl.exe` stdio server connection 和一个 `zcode-server`。
+  `wsl.exe` stdio server connection 和一个 `codez-server`。
 - 每个 workspace 保持独立 `remoteSessionId`、`attachmentId`、`workspaceIdentity`、`workspaceKey` 和
   Renderer RPC port。
 - 关闭单个 workspace 时只 detach logical session；当 workspace 无桌面/手机引用且没有运行 task 时，释放该
@@ -164,16 +164,16 @@ workspace Agent 长期留到窗口关闭，形成另一种资源滞留。
 ## 非目标
 
 - 不跨 Electron 窗口或跨 Desktop App 实例共享 Host。
-- 不把 `zcode-server` 改成监听 TCP/Unix socket 的常驻 daemon。
+- 不把 `codez-server` 改成监听 TCP/Unix socket 的常驻 daemon。
 - 不调用 `wsl --terminate` 或 `wsl --shutdown`，不停止整个 distro。
 - 不按进程名扫描或清理用户进程，不扩大 owner registry 的既有边界。
 - 不把 Docker backend 改成 shared pool；Docker container 的 owner 和隔离语义另行设计。
 - 不改变 SSH pool 的缓存策略。
 - 不新增 UI、设置项或用户可配置 TTL；本期 TTL 固定为 60 秒并通过内部常量测试。
 - 不把 task、stream、queue、snapshot、permission 或 elicitation 状态下沉到 Desktop Main。
-- 不改变 App 与 Agent 的 `@zcode/protocol`，除非实施时证明现有 service RPC 无法表达 workspace runtime
+- 不改变 App 与 Agent 的 `@codez/protocol`，除非实施时证明现有 service RPC 无法表达 workspace runtime
   release；若必须修改，需单独更新协议 spec 和 runtime schema。
-- 不承诺 WSL distro 在 ZCode 退出后显示 `Stopped`；验收对象是 ZCode-owned Host、server 和 Agent。
+- 不承诺 WSL distro 在 Codez 退出后显示 `Stopped`；验收对象是 Codez-owned Host、server 和 Agent。
 
 ## Clarification Log
 
@@ -208,7 +208,7 @@ service graph。
 
 ### 方案 B：保持 dedicated，只做缓存与节流（不采用为最终方案）
 
-它可作为方案 A 的前置阶段，但不能消除重复 `zcode-server` 和本地 Host service graph 的常驻成本，因此不能
+它可作为方案 A 的前置阶段，但不能消除重复 `codez-server` 和本地 Host service graph 的常驻成本，因此不能
 作为本 feature 的完成状态。
 
 ### 方案 C：App 全局 WSL daemon/pool（不采用）
@@ -229,7 +229,7 @@ Desktop Main（生命周期 owner）
    │  └─ workspace lifecycle coordinator
    │
    └─ WSLBackend / wsl.exe stdio connection
-      └─ one zcode-server
+      └─ one codez-server
          ├─ workspaceKey A → Agent runtime A
          ├─ workspaceKey B → Agent runtime B
          └─ workspaceKey C → Agent runtime C
@@ -268,10 +268,10 @@ Remote Host 持有一个共享 `activeServices`，通过多个 `AttachServicePor
 - Main/Host 上层对同 pool 的 `connectRemote()` 只允许一个 in-flight Promise。
 - backend 只回收自己明确创建的 Windows child，继续以 stdin EOF 为正常 server 退出路径。
 
-### Remote zcode-server / services
+### Remote codez-server / services
 
 - 继续由一个 `createLocalServices()` 服务多个 workspace。
-- `ZCodeAgentProcessManager` 继续按 `workspaceKey` 隔离 Agent。
+- `CodezAgentProcessManager` 继续按 `workspaceKey` 隔离 Agent。
 - 实现可等待且幂等的 workspace preparation/runtime release；不得只关闭 Renderer port 而遗留 Agent。
 - runtime release 不删除 task/session 持久数据，只释放进程和可重建的内存态资源。
 
@@ -466,7 +466,7 @@ Workspace A connect
   → create Host
   → create WSLBackend
   → resolve distro + Linux user
-  → detect/deploy/start zcode-server
+  → detect/deploy/start codez-server
   → Host Connected
   → entry(ready)
   → AttachServicePort(A, workspace context)
@@ -649,7 +649,7 @@ dispose 可能被共享的整个 backend。
 ```text
 deployServer
   → start remote lock-holder shell
-      → mkdir ~/.zcode/server/.deploy.lock (atomic acquire)
+      → mkdir ~/.codez/server/.deploy.lock (atomic acquire)
       → write owner UUID + heartbeat
       → emit acquired marker
   → lock 内重新执行 checkServerDeployDecision
@@ -856,7 +856,7 @@ Docker 仍使用 dedicated Host，但继续参与统一的真实关窗/App/updat
 5. 在 task 运行时关闭 workspace，确认 task 不被立即中断；terminal 后 Agent 释放。
 6. 关闭最后 workspace，确认 60 秒内 Host/server 保持；TTL 到期后退出。
 7. TTL 内重新打开 workspace，确认复用原 Host/server PID，旧 timer 不误杀。
-8. TTL 期间退出 App，确认不等待 60 秒，全部 ZCode-owned Host/server/Agent 在 shutdown deadline 内退出。
+8. TTL 期间退出 App，确认不等待 60 秒，全部 Codez-owned Host/server/Agent 在 shutdown deadline 内退出。
 9. 分别验证真实关窗、更新安装、renderer reload、最小化、托盘隐藏。
 10. 手机 attach 后关闭桌面 tab，验证 mobile owner 保持 runtime；手机再断开后进入 draining/idle 判定。
 11. 注入 Host crash、connect cancel、deploy failure 和 stale timer，保存日志与 PID 证据。
@@ -876,7 +876,7 @@ pnpm lint
 | Metric | Expected direction |
 | --- | --- |
 | 同 pool UtilityProcess Host 数 | `N → 1` |
-| 同 pool `zcode-server` 数 | `N → 1` |
+| 同 pool `codez-server` 数 | `N → 1` |
 | 同 pool 长驻 `wsl.exe` server launcher 数 | `N → 1` |
 | 第二至第五 workspace attach 时间 | 明显低于首次冷连接，不重复 deploy/server start |
 | 空闲 server RSS | 从 N 份降为 1 份；不规定跨版本绝对阈值 |
@@ -905,7 +905,7 @@ idle timer install/cancel/fire、owner shutdown override、Host exit。
 ## 验收标准
 
 - 同一窗口、同一 canonical distro 和 Linux user 的多个 WSL workspace 只存在一个 Host、一个 server
-  connection 和一个 `zcode-server`。
+  connection 和一个 `codez-server`。
 - 每个 logical workspace 保持独立 remoteSessionId、attachment、workspaceIdentity 和 workspaceKey；跨 workspace
   task/session/provider/queue 不串线。
 - 关闭无运行 task 的 workspace 能真实释放对应 Agent/preparation runtime，不再停留在空操作。
@@ -921,5 +921,5 @@ idle timer install/cancel/fire、owner shutdown override、Host exit。
   attachment。
 - Docker 保持 dedicated，但继续被应用级 shutdown barrier 覆盖。
 - 真实 Windows + WSL 的 1/3/5 workspace 验证留下 PID、RSS、耗时和释放时间证据。
-- 不调用 distro terminate，不影响非 ZCode WSL 用户进程。
+- 不调用 distro terminate，不影响非 Codez WSL 用户进程。
 - 相关测试、`pnpm typecheck` 和 `pnpm lint` 全部通过。

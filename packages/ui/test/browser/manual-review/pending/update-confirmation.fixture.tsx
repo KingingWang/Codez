@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { ConfirmDialogHost } from "@/ConfirmDialog.js";
-import { ZCodeIntlProvider, useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider, useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useConfirmDialogStore } from "@/store/confirmDialogStore.js";
 import "@/styles.css";
 
@@ -10,7 +10,7 @@ const theme = params.get("theme") === "dark" ? "dark" : "light";
 document.documentElement.className = `${theme} theme-zai-${theme} platform-windows-desktop`;
 
 function Fixture() {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [choice, setChoice] = useState("pending");
   const requestChoice = useConfirmDialogStore((state) => state.requestChoice);
   const open = (update: boolean) => {
@@ -39,7 +39,7 @@ function Fixture() {
 }
 
 createRoot(document.getElementById("root")!).render(
-  <ZCodeIntlProvider initialLocale={params.get("locale") === "en-US" ? "en-US" : "zh-CN"}>
+  <CodezIntlProvider initialLocale={params.get("locale") === "en-US" ? "en-US" : "zh-CN"}>
     <Fixture />
-  </ZCodeIntlProvider>,
+  </CodezIntlProvider>,
 );

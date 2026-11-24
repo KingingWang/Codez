@@ -34,7 +34,7 @@ Host 仅接入本进程已有的本地 CLI 注册表，新 client 登记时继�
 | 必验 | 共享 onBeforeRequest 分发器的其他观测者 / 三套代理出口 | Electron 单监听限制；直连、代理、noProxy、证书与失败路径 |
 | 隔离 | Web/手机、远程 CLI、外部浏览器 | 不增加入口、不传播采集控制、不改任务恢复语义 |
 
-代码扫描入口：ResourceManagerApp、openResourceManager、registerHostProcess、ZCodeAgentProcessManager、createMcpTransportFetch、ZCodeProtocolNdjsonConnection；沿直接调用方核对至 Host/CLI，未扩大为所有静态可达功能。desktop 当前不是 architecture-policy 的 managed module，架构门禁通过不代替运行时证明。
+代码扫描入口：ResourceManagerApp、openResourceManager、registerHostProcess、CodezAgentProcessManager、createMcpTransportFetch、CodezProtocolNdjsonConnection；沿直接调用方核对至 Host/CLI，未扩大为所有静态可达功能。desktop 当前不是 architecture-policy 的 managed module，架构门禁通过不代替运行时证明。
 
 功能图补入网络 aliases、节点入口及窗口生命周期不变量。无待裁决的产品范围；Body、远程、原始 socket 均由用户明确剪枝，主题/平台采用代表性覆盖。
 

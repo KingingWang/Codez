@@ -1,7 +1,7 @@
-import { EMBEDDED_BROWSER_DESIGN_BRIDGE, EmbeddedBrowserWebviewChannels } from "@zcode/shared";
+import { EMBEDDED_BROWSER_DESIGN_BRIDGE, EmbeddedBrowserWebviewChannels } from "@codez/shared";
 
 // 设计运行时页面 → 宿主的转发（docs/browser-use/2026-11-03-browser-design-mode-spec.md 第二节）。
-// 运行时在页面主世界 `window.postMessage({ __zcodeDesign: 1, events })`；这里在 preload 的隔离世界收下，
+// 运行时在页面主世界 `window.postMessage({ __codezDesign: 1, events })`；这里在 preload 的隔离世界收下，
 // 只认自己窗口发给自己的、带命名空间且大小在上限内的消息，再 sendToHost 给宿主。
 // 页面脚本照样能伪造这种消息：宿主侧解析还会逐字段校验和截断，结果只会变成用户看得见、能删的上下文。
 

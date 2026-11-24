@@ -1,15 +1,15 @@
 import { z } from "zod";
-import { ZCODE_VERSION } from "../version.js";
+import { CODEZ_VERSION } from "../version.js";
 
-declare const __ZCODE_MIN_COMPATIBLE_VERSION__: string;
+declare const __CODEZ_MIN_COMPATIBLE_VERSION__: string;
 
-export const ZCODE_MIN_COMPATIBLE_VERSION =
-  typeof __ZCODE_MIN_COMPATIBLE_VERSION__ !== "undefined"
-    ? __ZCODE_MIN_COMPATIBLE_VERSION__
-    : ZCODE_VERSION;
+export const CODEZ_MIN_COMPATIBLE_VERSION =
+  typeof __CODEZ_MIN_COMPATIBLE_VERSION__ !== "undefined"
+    ? __CODEZ_MIN_COMPATIBLE_VERSION__
+    : CODEZ_VERSION;
 
 /**
- * 远端服务支持设备卡停止 / 重启合同（`zcode stop --wait` 等，RDLC-01）的首个版本，桌面端据此做版本门禁。
+ * 远端服务支持设备卡停止 / 重启合同（`codez stop --wait` 等，RDLC-01）的首个版本，桌面端据此做版本门禁。
  * 取首个包含本合同的正式版 3.17.0。不提升最低兼容版本。
  *
  * Bug 原因：曾先后取 3.16.2（根版本占位）和 3.16.3（假设下一次发版包含本合同）。实际 v3.16.3 从 release 分支发布、
@@ -30,8 +30,8 @@ export const compatibilityManifestSchema = z
 export type CompatibilityManifest = z.infer<typeof compatibilityManifestSchema>;
 
 export function createCompatibilityManifest(
-  productVersion = ZCODE_VERSION,
-  minCompatibleVersion = ZCODE_MIN_COMPATIBLE_VERSION,
+  productVersion = CODEZ_VERSION,
+  minCompatibleVersion = CODEZ_MIN_COMPATIBLE_VERSION,
 ): CompatibilityManifest {
   return compatibilityManifestSchema.parse({
     schemaVersion: 1,
@@ -40,7 +40,7 @@ export function createCompatibilityManifest(
   });
 }
 
-export const ZCODE_COMPATIBILITY_MANIFEST = Object.freeze(createCompatibilityManifest());
+export const CODEZ_COMPATIBILITY_MANIFEST = Object.freeze(createCompatibilityManifest());
 
 interface ParsedVersion {
   major: number;

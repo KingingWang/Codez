@@ -3,13 +3,13 @@ import { randomBytes } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 import {
   TID_SETTINGS_PAGE,
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -32,13 +32,13 @@ import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
 const run = promisify(execFile);
 const MARKER = "E2E_COMMAND_AUTHORITY_RACE";
-const COMMAND_DIR = "/home/dev/.zcode/commands";
+const COMMAND_DIR = "/home/dev/.codez/commands";
 const FIFO = `${COMMAND_DIR}/pending-a.md`;
-const FIFO_KEEPER = "/home/dev/.zcode/e2e-command-fifo.pid";
-const CONFIG = "/home/dev/.zcode/cli/config.json";
+const FIFO_KEEPER = "/home/dev/.codez/e2e-command-fifo.pid";
+const CONFIG = "/home/dev/.codez/cli/config.json";
 const A_MARKER = "AUTHORITY_A_ONLY";
 const B_MARKER = "AUTHORITY_B_ONLY";
-const artifactDir = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR!, "command-authority-race");
+const artifactDir = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR!, "command-authority-race");
 
 async function selectUserScope(sourceId: string): Promise<void> {
   const key = `source-user:${sourceId}`;
@@ -90,7 +90,7 @@ async function fifoHasReader(container: string): Promise<boolean> {
   const result = await execInRemoteContainer(container, [
     "sh",
     "-c",
-    'pid=$(sed -nE \'s/.*"pid": *([0-9]+).*/\\1/p\' "$HOME/.zcode/server/run/status.json" | head -n1); for file in /proc/"$pid"/fd/*; do if [ "$(readlink "$file" 2>/dev/null)" = "$1" ]; then printf yes; break; fi; done',
+    'pid=$(sed -nE \'s/.*"pid": *([0-9]+).*/\\1/p\' "$HOME/.codez/server/run/status.json" | head -n1); for file in /proc/"$pid"/fd/*; do if [ "$(readlink "$file" 2>/dev/null)" = "$1" ]; then printf yes; break; fi; done',
     "sh",
     FIFO,
   ]);
@@ -99,7 +99,7 @@ async function fifoHasReader(container: string): Promise<boolean> {
 
 async function startFifoKeeper(container: string): Promise<void> {
   const release = JSON.parse(
-    (await execInRemoteContainer(container, ["cat", "/home/dev/.zcode/server/current.json"]))
+    (await execInRemoteContainer(container, ["cat", "/home/dev/.codez/server/current.json"]))
       .stdout,
   );
   // 保留写端使 Core 的 open 能完成而 read 继续等待；因此可从 Core fd 证明请求确实在途。
@@ -159,7 +159,7 @@ describe("DSYNC-15-06：两个相同 home 远端的命令读取与写入隔离",
     this.timeout(15 * 60_000);
     firstContainer = readRemoteDockerContainer(MARKER);
     const configA = readSSHRuntimeConfig(MARKER);
-    secondContainer = `zcode-command-authority-${randomBytes(6).toString("hex")}`;
+    secondContainer = `codez-command-authority-${randomBytes(6).toString("hex")}`;
     facts.fixtureContainers = { first: firstContainer, second: secondContainer };
     await mkdir(artifactDir, { recursive: true });
     await writeFile(resolve(artifactDir, "facts.json"), JSON.stringify(facts, null, 2));
@@ -169,12 +169,12 @@ describe("DSYNC-15-06：两个相同 home 远端的命令读取与写入隔离",
       "--name",
       secondContainer,
       "--label",
-      "zcode.e2e.run=r3-server",
+      "codez.e2e.run=r3-server",
       "--label",
-      "zcode.e2e.runner=local-docker",
+      "codez.e2e.runner=local-docker",
       "-p",
       "127.0.0.1::22",
-      "zcode-remote-ssh:test",
+      "codez-remote-ssh:test",
     ]);
     // 两个临时目标共用 runner 生成的口令，确保其现有日志脱敏覆盖第二条真实 SSH 线路。
     const password = configA.password;

@@ -1,4 +1,4 @@
-import type { BotGroupInputSource } from "@zcode/shared";
+import type { BotGroupInputSource } from "@codez/shared";
 import {
   createBotsServiceHarness,
   createFeishuConfig,
@@ -29,13 +29,13 @@ describe("BOT-E2E-GR-01 group provider admission", () => {
       const admissions: Array<{ taskId: string; commandId: string; source: BotGroupInputSource }> =
         [];
       let created = 0;
-      h.zcodeTaskService.createTask = async () => ({
+      h.codezTaskService.createTask = async () => ({
         taskId: `group-task-${++created}`,
         title: "E2E Group",
         workspacePath: resolveE2ERuntimePath("bots", "e2e-bot-workspace"),
         provider: "glm",
       });
-      h.zcodeTaskService.submitBotGroupInput = async (params: (typeof admissions)[number]) => {
+      h.codezTaskService.submitBotGroupInput = async (params: (typeof admissions)[number]) => {
         admissions.push(params);
         return {
           commandId: params.commandId,

@@ -16,17 +16,17 @@ ZCT-2112590910155751424、ZCT-2112431540050116608、ZCT-2112389768754774016。
   - Core 启动崩溃：原因未知。本次修复后，连接错误会带出 Core 的 fatal 原因。
   - 首次启动迁移旧数据过慢（Core 在 ready 前执行 `migrateApplicationStorage`）：没有真实的 3.15 远端数据集，未验证。
 - 为什么区分不了：3.16.2 的错误不带任何 Core 状态，远端也没有日志。
-- 下一步：请用户升级到含本次修复的版本后重试，或回传 `cat ~/.zcode/server/run/status.json` 与 `journalctl --user -u 'com.zhipu.zcode.server.*' -n 50`。
+- 下一步：请用户升级到含本次修复的版本后重试，或回传 `cat ~/.codez/server/run/status.json` 与 `journalctl --user -u 'com.zhipu.codez.server.*' -n 50`。
 
 ## G 类：读取 ingress-token 失败
 
-工单：ZCT-2112503947329736704。注册成功、status 已 ready 后，`ensureDaemon` 读 `~/.zcode/server/run/ingress-token`
+工单：ZCT-2112503947329736704。注册成功、status 已 ready 后，`ensureDaemon` 读 `~/.codez/server/run/ingress-token`
 （`packages/server/src/source-server/transportAdapter.ts:418`）报 `Command failed (code 1): cat: [redacted-path]`。
 
 - 已排除：shell 启动输出污染 `$HOME` 解析。同一次连接的上传也用同一个缓存的 `$HOME` 解析 `~`，上传与解压都成功。
 - 事实：token 由 Core 原子写入（临时文件 + rename），写完才报 ready；连接链路里没有删除它的代码。
 - 缺口：客户端脱敏把 `cat` 的 errno 一起抹掉了，分不清“文件不存在”还是“没有权限”。
-- 下一步：请用户回传 `ls -la ~/.zcode/server/run` 与 `id`。
+- 下一步：请用户回传 `ls -la ~/.codez/server/run` 与 `id`。
 
 ## Comments
 

@@ -135,9 +135,9 @@ App 动态 provider（含 ToB 别名）
 2. 在 shared 增加统一模型身份判断，并由 `default-policy.ts` 使用；该策略放在所有宽泛
    模型策略之后，作为顺序合并的最终覆盖项。互斥分支则在 Kimi、DeepSeek、Claude、GPT
    等模型判断之前先判断 GLM-5.3。
-3. 更新 `models_catalog_china_llm_zcode_2026-06-03.json`，为四个 Anthropic
+3. 更新 `models_catalog_china_llm_codez_2026-06-03.json`，为四个 Anthropic
    provider 增加 GLM-5.3，档位与当前动态 Anthropic 请求事实一致。
-4. 更新 `apps/zcode-cli/api.json` 中四个对应 provider，并重新生成
+4. 更新 `apps/codez-cli/api.json` 中四个对应 provider，并重新生成
    `models-dev-snapshot.ts`。
 5. App catalog 仅在模型 ID 大小写不敏感地精确等于 `glm-5.3` 时使用 canonical catalog
    metadata；带路径、前缀或后缀的路由 ID 不做关联。

@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 
 import * as v4 from "#e2e/helpers/v4-conversation";
 import * as ssh from "#e2e/helpers/ssh-remote-p0";
@@ -9,7 +9,7 @@ import * as provider from "#e2e/helpers/custom-openai-provider";
 import * as models from "#e2e/helpers/upstream-provider";
 import * as network from "#e2e/helpers/conversation-session-network";
 
-// ZCT-2120452663971209216：远端与同一用户的 Desktop 共用 ~/.zcode/v2，且 Desktop 已把凭据库
+// ZCT-2120452663971209216：远端与同一用户的 Desktop 共用 ~/.codez/v2，且 Desktop 已把凭据库
 // 固定为系统库来源。修复前 Server Core 只能去读 Desktop 的系统密钥（容器内没有 Secret Service），
 // 启动失败；修复后 Server 改用 <server-root>/credentials/ 自有库，共享库保持不变。
 const marker = "E2E_R3_SSH_SHARED_CRED";
@@ -17,10 +17,10 @@ const providerId = "e2e-r3-ssh-shared-cred";
 const providerName = "R3 SSH Shared Credentials";
 const modelId = "e2e-r3-ssh-shared-cred-model";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-ssh-shared-desktop-credentials",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-ssh-shared-desktop-credentials",
 );
-const SHARED_DIR = '"$HOME/.zcode/v2"';
-const SERVER_CREDENTIALS_DIR = '"$HOME/.zcode/server/credentials"';
+const SHARED_DIR = '"$HOME/.codez/v2"';
+const SERVER_CREDENTIALS_DIR = '"$HOME/.codez/server/credentials"';
 // 合成的 Desktop 系统库密文，只用于让共享库呈现“已固定 os”的状态，不含任何真实凭据。
 const SHARED_DESKTOP_RECORD =
   '{"e2e:shared-desktop-sentinel":"enc:v2:os:0123456789abcdef01234567:AAAAAAAAAAAAAAAA.AAAAAAAAAAAAAAAAAAAAAA.AAAA"}';
@@ -47,7 +47,7 @@ describe(`${marker}: 同机 Desktop 已固定系统库时远端使用 Server 自
       // 本 case 预置的共享库与 Server 自有库只属于本次运行；停止本次连接启动的 Server 后清理。
       await ssh.runSSHCommand(
         ownedConfig,
-        `"$HOME/.zcode/server/bin/zcode" stop --wait --json >/dev/null 2>&1; rm -rf ${SERVER_CREDENTIALS_DIR} ${SHARED_DIR}/credential-source ${SHARED_DIR}/credentials.json`,
+        `"$HOME/.codez/server/bin/codez" stop --wait --json >/dev/null 2>&1; rm -rf ${SERVER_CREDENTIALS_DIR} ${SHARED_DIR}/credential-source ${SHARED_DIR}/credentials.json`,
       );
     }
   });
@@ -146,17 +146,17 @@ describe(`${marker}: 同机 Desktop 已固定系统库时远端使用 Server 自
 
     // Core 拉起的 Agent 必须与 Core 读写同一凭据文件。远端 Agent 在回合结束后会退出（实测进程树
     // 只剩 Supervisor/Core），因此在 controlled-stream 延迟回复期间读取：请求已到达回放服务，
-    // 发起请求的 Agent 一定仍在运行。Agent 会把进程标题改为 zcode-cli（覆盖 cmdline），其插件子进程
-    // 仍是 zcode.cjs __zcode-plugin；两者都按 exec 时环境核对。Core 的值在运行时写入 process.env，
+    // 发起请求的 Agent 一定仍在运行。Agent 会把进程标题改为 codez-cli（覆盖 cmdline），其插件子进程
+    // 仍是 codez.cjs __codez-plugin；两者都按 exec 时环境核对。Core 的值在运行时写入 process.env，
     // /proc 只能看到 exec 时环境，因此不把 Core 计入。
     const agent = await ssh.runSSHCommand(
       activeConfig,
       [
-        `echo "expected=ZCODE_CREDENTIALS_FILE=$(cd ${SERVER_CREDENTIALS_DIR} && pwd -P)/credentials.json"`,
+        `echo "expected=CODEZ_CREDENTIALS_FILE=$(cd ${SERVER_CREDENTIALS_DIR} && pwd -P)/credentials.json"`,
         "for d in /proc/[0-9]*; do",
         `  cmd=$(tr '\\0' ' ' < "$d/cmdline" 2>/dev/null) || continue`,
-        '  case "$cmd" in zcode-cli*) kind=agent;; */runtime/zcode.cjs\\ *) kind=plugin;; *) continue;; esac',
-        `  value=$(tr '\\0' '\\n' < "$d/environ" 2>/dev/null | grep '^ZCODE_CREDENTIALS_FILE=' || echo '<missing>')`,
+        '  case "$cmd" in codez-cli*) kind=agent;; */runtime/codez.cjs\\ *) kind=plugin;; *) continue;; esac',
+        `  value=$(tr '\\0' '\\n' < "$d/environ" 2>/dev/null | grep '^CODEZ_CREDENTIALS_FILE=' || echo '<missing>')`,
         '  echo "agent=${d#/proc/}|$kind|$value"',
         "done",
       ].join("\n"),

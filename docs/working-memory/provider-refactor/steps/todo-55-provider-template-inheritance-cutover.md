@@ -167,10 +167,10 @@ Template 集合使用以 `templateId` 为键的独立 Map；Provider 集合继�
 ### 2.2 Built-in Release 结构
 
 ```ts
-interface ZCodeBuiltinConfigContent {
+interface CodezBuiltinConfigContent {
   readonly providers: ProviderConfigMap;
   readonly providerTemplates: ProviderTemplateMap;
-  readonly modelConfigRules: ZCodeBuiltinModelConfigRules;
+  readonly modelConfigRules: CodezBuiltinModelConfigRules;
 }
 ```
 
@@ -334,7 +334,7 @@ modelRules.resolve({ providerId, templateId, modelId, apiType, baseURL });
 不同 Rule 类型不依靠一个混合 JSON 数组的偶然位置表达跨层优先级：
 
 ```ts
-interface ZCodeBuiltinModelConfigRules {
+interface CodezBuiltinModelConfigRules {
   readonly matchRules: readonly MatchModelConfigRule[];
   readonly templateModelRules: readonly TemplateModelConfigRule[];
   readonly providerModelRules: readonly ProviderModelConfigRule[];
@@ -604,7 +604,7 @@ createPersonalProvider({
 在测试和生产代码之前，先把本 Todo 已裁决语义写回当前事实文档与 Feature Graph，至少覆盖：
 
 - `design.md`、`configuration.md`、`provider-and-model-configuration-overview.md`；
-- `zcode-builtin-provider-config.md`、`model-membership-and-enablement.md`、`settings.md`；
+- `codez-builtin-provider-config.md`、`model-membership-and-enablement.md`、`settings.md`；
 - `request-compatibility-and-access-protocols.md` 中固定 API Provider / Account Type 边界；
 - Feature Graph 中普通 Built-in placement、Provider enabled、Family 按量 API 与 Welcome 固定 Provider seed。
 

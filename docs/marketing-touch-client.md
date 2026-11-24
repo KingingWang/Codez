@@ -2,7 +2,7 @@
 
 ## Banner hover 桥接（2026-09-15）
 
-Banner iframe 保留 pointer-events:none、inert、不可聚焦及忽略包内 action。App Banner 是 hover 唯一 owner：鼠标移入/移出整块 Banner，经已有 `zcode-cloud-hero-v1` 发送 `{type:"hover",instanceId,hovered:boolean}`；不发送坐标、点击或业务事件，不改服务端投放字段。
+Banner iframe 保留 pointer-events:none、inert、不可聚焦及忽略包内 action。App Banner 是 hover 唯一 owner：鼠标移入/移出整块 Banner，经已有 `codez-cloud-hero-v1` 发送 `{type:"hover",instanceId,hovered:boolean}`；不发送坐标、点击或业务事件，不改服务端投放字段。
 
 ```text
 鼠标移入/移出 → App Banner hovered → ready 后发 hover → 资源包动画
@@ -20,7 +20,7 @@ iframe ready 前不发 hover；ready 后同步当前值。减少动态效果时�
 
 ### 领取结果不再使用 toast（2026-09-14）
 
-`claim_zcode_plan` 成功或失败均不弹 toast。成功沿用服务端 `success_popup`（未配置则不额外提示）；失败、安全校验取消及结果不确定沿用现有失败弹窗。删除 Provider 的额外成功 toast，不新增状态/计时器，不修改服务端协议、权益刷新、轮询与 confirm/cancel 上报。复制成功、导航等非领取动作的 toast 保留，桌面与 Web 共用行为。
+`claim_codez_plan` 成功或失败均不弹 toast。成功沿用服务端 `success_popup`（未配置则不额外提示）；失败、安全校验取消及结果不确定沿用现有失败弹窗。删除 Provider 的额外成功 toast，不新增状态/计时器，不修改服务端协议、权益刷新、轮询与 confirm/cancel 上报。复制成功、导航等非领取动作的 toast 保留，桌面与 Web 共用行为。
 
 ```text
 领取结果 → Controller → 成功：success_popup（如有）
@@ -46,7 +46,7 @@ message 缺失、非字符串或纯空白时，App 使用本地化通用失败�
 推导日期和文案。领取接口兼容数字及数字字符串 code，缺失 code 仍失败，成功仍要求
 code=0 且 data.plan 存在；其他接口解包不变。
 
-Controller 是唯一错误状态源，携带错误所属 action；仅 claim_zcode_plan 的失败提示由
+Controller 是唯一错误状态源，携带错误所属 action；仅 claim_codez_plan 的失败提示由
 toast 改为 Dialog。弹窗无可见标题、无 Hero/关闭 X；内容为既有 Alert + InfoIcon +
 AlertDescription，下方「知道了」右对齐。保留屏幕阅读器隐藏标题，长文案可换行、滚动。
 Alert 仅复用语义和图文布局，移除背景、边框及内边距，不形成第二层可见容器；外层 Dialog 不变。
@@ -232,7 +232,7 @@ GET -> shared Schema -> 资源授权 -> prepareMarketingHero(background)
 App 整图按钮/关闭 -> 原 Controller -> 安全校验/领取 -> confirm/cancel
 ```
 
-Banner bundle 展示比例为 236:100，宽度随侧栏自适应；包内画面应响应此 viewport。外层无卡片背景/边框/圆角/阴影，iframe 透明且不可聚焦、不接收指针；App 整图按钮接收点击和键盘，关闭与 loading 覆盖其上。包只负责画面与自主动画，包内 action 消息不执行业务，也不提供包内独立点击/拖拽交互。继续使用 `zcode-cloud-hero-v1` 的 init/theme/visibility/destroy/ready/error 消息；args 经现有套餐展示映射传入 data，原始 args 字段保留，不携带凭据。resize 不改变固定比例。
+Banner bundle 展示比例为 236:100，宽度随侧栏自适应；包内画面应响应此 viewport。外层无卡片背景/边框/圆角/阴影，iframe 透明且不可聚焦、不接收指针；App 整图按钮接收点击和键盘，关闭与 loading 覆盖其上。包只负责画面与自主动画，包内 action 消息不执行业务，也不提供包内独立点击/拖拽交互。继续使用 `codez-cloud-hero-v1` 的 init/theme/visibility/destroy/ready/error 消息；args 经现有套餐展示映射传入 data，原始 args 字段保留，不携带凭据。resize 不改变固定比例。
 
 Controller 仍是投放/动作唯一 owner；组件仅持有 iframe 就绪状态。下载、解压完成后离屏裁切挂载 iframe，ready 前不展示或启用控件；错误使用已校验解码的 fallback，否则隐藏且不上报。替换/撤下/关闭/身份切换按既有 generation 丢弃迟到资源并释放 lease，success_popup 的资源与 Banner 资源分别持有、共同释放。相同下发不重挂载，资源按现有缓存复用；不新增 campaign 去重。Web 不请求桌面 loopback，只显示 fallback；无 fallback 隐藏。共享组件覆盖主题/语言/窄屏，task continuous/replayable、远控 attachment 不变。
 
@@ -272,7 +272,7 @@ GET banner -> Schema -> Service 资源授权 -> Controller -> MarketingBanner
 
 `style:null` 回归：修改前1条测试失败，修改后14条相关单测通过；使用 null 样式 fixture 的 macOS App E2E 3条通过（run `desktop-e2e-20260910104035687-p56768-d8445a96ab6405e9`）。类型/E2E类型/架构检查通过，Lint 0错误、46条已有警告；未新增其他平台实机验证。
 
-GET /api/v1/marketing/touch 返回 data.server_time、language、deliveries；每条按 resource_position 使用 banner 或 popup 字段，不使用 content 包装。POST /api/v1/marketing/touch/action 只发送 campaign_id、action_type(confirm/cancel)。两接口携带 X-Device-Mid、X-Client-Language、X-ZCode-App-Version 和可选 Authorization。
+GET /api/v1/marketing/touch 返回 data.server_time、language、deliveries；每条按 resource_position 使用 banner 或 popup 字段，不使用 content 包装。POST /api/v1/marketing/touch/action 只发送 campaign_id、action_type(confirm/cancel)。两接口携带 X-Device-Mid、X-Client-Language、X-Codez-App-Version 和可选 Authorization。
 
 Banner 为左下角图片或 ZIP 展示位。buttons 最多一个 close、一个非 close；close 复用右上角 X，常规动作绑定整图，无 banner.action。未知 layout/action、多个常规动作、image/bundle 以外的 Banner 独立拒绝，不影响另一资源位。Popup Hero 可空；支持 image/video/bundle，服务端暂无 lottie。文本使用 plaintext/html/markdown 的既有渲染能力（Banner 按钮空 format 按 plaintext；markdown 暂按原文），忽略远端 style。按钮文字提取安全纯文本用于标签。
 
@@ -318,7 +318,7 @@ ready -> login -> verifying -> submitting -> success-preparing -> result
 
 ## 轮询与展示
 
-环境频率恢复：正式构建且 `ZCODE_ENV=production` 时正常轮询间隔10分钟；test或开发构建30秒。移除随机 jitter，保留失败退避和事件立即刷新。旧 ManualClaimPlanBanner/ResultDialog 及其专属辅助逻辑和测试删除；输入框正在使用的模型选择引导、共用失败文案、Hero HTML/ZIP 与测试 fixture 保留。
+环境频率恢复：正式构建且 `CODEZ_ENV=production` 时正常轮询间隔10分钟；test或开发构建30秒。移除随机 jitter，保留失败退避和事件立即刷新。旧 ManualClaimPlanBanner/ResultDialog 及其专属辅助逻辑和测试删除；输入框正在使用的模型选择引导、共用失败文案、Hero HTML/ZIP 与测试 fixture 保留。
 
 ```text
 query完成 -> production build + production env ? 600s : 30s -> 下一次query
@@ -401,18 +401,18 @@ App -> Marketing Touch GET -> URL/hash 授权 -> ZIP prepare/release -> Dialog
 ## 2026-09-10 验证记录
 
 - 相关单测：12 个文件50条通过；随后增加生产授权 ZIP 用例，cloudContentService 3条全部通过（相关用例合计51条）。覆盖 DTO隔离、鉴权与上报、资源哈希/缓存/ZIP、Web降级、轮询、安全校验取消、资源迟到、待操作快照与弹窗互斥。
-- `pnpm typecheck`、`pnpm --filter @zcode/desktop typecheck:e2e` 通过。
+- `pnpm typecheck`、`pnpm --filter @codez/desktop typecheck:e2e` 通过。
 - `pnpm lint`：0 error，46项既有 warning；`pnpm architecture:check --changed`：0 violation。
 - macOS Electron delivery E2E：3条通过，最终 run `desktop-e2e-20260910085452990-p8774-6db97d91e9675478`。真实 HTTP/ZIP/iframe ready，挂起 claim 观察 loading，ledger 断言 confirm/cancel及没有 preview 请求。
 - macOS entitlement E2E：1条通过，run `desktop-e2e-20260910085137939-p2018-6b1a685ecf45e04b`。保留权益刷新、Start/Individual 及 Subagent 选择联动。
 - 两个新 E2E 均位于 `packages/desktop/test/e2e/ui-shell/manual-review/pending/marketing-touch-*.test.ts`。按 e2e-case-lifecycle 保持 pending，自动通过不代表人工视觉验收或正式 suite promotion。
 - 未执行：线上真实 Campaign/领取、真实安全校验服务、多窗口实机、Windows/Linux、手机 Web及双主题窄屏视觉验收；不得以本地 fixture 冒充这些验证。
 
-2026-09-12 用户确认转正：三个 spec（delivery、entitlement、anonymous）位于 `packages/desktop/test/e2e/ui-shell/`。复跑：`pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec './test/e2e/ui-shell/marketing-touch-*.test.ts'`，不需要 MANUAL_REVIEW 开关。fixture 自动提供 Banner、独立 Popup、ZIP Hero、挂起/释放领取与上报 ledger；不访问真实套餐。使用本机 Electron，不使用 Docker。最新证据与覆盖边界见 `docs/testing/marketing-touch-e2e-implementation.md`；上方 pending 路径是历史记录。
+2026-09-12 用户确认转正：三个 spec（delivery、entitlement、anonymous）位于 `packages/desktop/test/e2e/ui-shell/`。复跑：`pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec './test/e2e/ui-shell/marketing-touch-*.test.ts'`，不需要 MANUAL_REVIEW 开关。fixture 自动提供 Banner、独立 Popup、ZIP Hero、挂起/释放领取与上报 ledger；不访问真实套餐。使用本机 Electron，不使用 Docker。最新证据与覆盖边界见 `docs/testing/marketing-touch-e2e-implementation.md`；上方 pending 路径是历史记录。
 
 # 推送回归修复约束（2026-09-11）
 
-全量门禁在 Node 24/macOS threads 池出现原生 SIGSEGV 时，可使用 `ZCODE_TEST_POOL=forks` 切换普通用例为两进程隔离模式；不改变测试集合、断言和原有串行隔离组，默认仍为 threads。此次崩溃进程 PID 88256，系统报告 node-2026-09-11-200243.ips，尚不能据此定位具体 V8/原生模块缺陷。
+全量门禁在 Node 24/macOS threads 池出现原生 SIGSEGV 时，可使用 `CODEZ_TEST_POOL=forks` 切换普通用例为两进程隔离模式；不改变测试集合、断言和原有串行隔离组，默认仍为 threads。此次崩溃进程 PID 88256，系统报告 node-2026-09-11-200243.ips，尚不能据此定位具体 V8/原生模块缺陷。
 
 营销接入不得删除或回退既有非营销翻译；保留当前营销新增文案。测试服务器仅在显式启用 marketingTouch 时挂载营销 fixture，旧套餐测试不承担营销 release 握手。Root 隔离测试在 Provider 边界替换营销业务子树，避免依赖不完整和首轮模块导入超时；营销业务继续由专属单测和 App E2E 覆盖，不修改生产选择逻辑。
 

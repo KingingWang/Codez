@@ -1,10 +1,10 @@
 /**
- * 语音输入 E2E 的 zcode-server ASR 替身（协议见 zcode-server docs/asr.md）。
+ * 语音输入 E2E 的 codez-server ASR 替身（协议见 codez-server docs/asr.md）。
  *
  * 只实现 Composer 语音输入用到的 `POST /api/v1/asr/tickets` 与 `WS /api/v1/asr/realtime`，
- * 行为由 `scenario` 控制；其余 zcode / 账号请求返回 404。
+ * 行为由 `scenario` 控制；其余 codez / 账号请求返回 404。
  * 根因记录：假 JWT 若打到真实控制面会收到 401，全局登录失效流程随即退出登录，
- * 语音按钮因未登录而隐藏；所以必须在 Electron 启动前把 zcode 与账号域名都指向本替身。
+ * 语音按钮因未登录而隐藏；所以必须在 Electron 启动前把 codez 与账号域名都指向本替身。
  * spec 通过 `/__e2e/asr/*` 控制端点切换场景、读取记录。
  */
 import { createServer, type IncomingMessage } from "node:http";
@@ -283,7 +283,7 @@ export async function startAsrFrameDroppingProxy(): Promise<AsrFrameDroppingProx
 
 export const VOICE_INPUT_SPEC = "composer-voice-input.test.ts";
 
-/** wdio beforeSession：Electron 启动前启动替身并改写 zcode / 账号域名；其他 spec 为 no-op。 */
+/** wdio beforeSession：Electron 启动前启动替身并改写 codez / 账号域名；其他 spec 为 no-op。 */
 export async function prepareVoiceInputFixture(
   specs: string[],
 ): Promise<(() => Promise<void>) | null> {
@@ -291,10 +291,10 @@ export async function prepareVoiceInputFixture(
     return null;
   const mock = await startAsrMockServer({ kind: "normal", partial: "", final: "" });
   const envPatch = {
-    ZCODE_E2E_ASR_MOCK_URL: mock.origin,
-    ZCODE_BASE_URL: mock.origin,
-    ZCODE_TEST_BASE_URL: mock.origin,
-    ZCODE_ENDPOINT_ORIGIN: mock.origin,
+    CODEZ_E2E_ASR_MOCK_URL: mock.origin,
+    CODEZ_BASE_URL: mock.origin,
+    CODEZ_TEST_BASE_URL: mock.origin,
+    CODEZ_ENDPOINT_ORIGIN: mock.origin,
     ZAI_BUSINESS_BASE_URL: mock.origin,
     ZAI_OAUTH_USERINFO_URL: `${mock.origin}/api/oauth/userinfo`,
     BIGMODEL_API_BASE_URL: mock.origin,

@@ -2,7 +2,7 @@ import {
   WORKBENCH_REPORT_MAX_SESSIONS,
   type WorkbenchReport,
   type WorkbenchReportSession,
-} from "@zcode/shared/extension-host";
+} from "@codez/shared/extension-host";
 import type { WorkbenchPaneReport } from "@/extension-slots/contract.js";
 
 // 纯函数：把各窗格的报告合成一份屏幕会话报告（docs/plugins/extension-host.md §3.4）。

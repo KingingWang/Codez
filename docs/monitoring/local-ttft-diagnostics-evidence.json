@@ -284,60 +284,60 @@
   "spanCount": 532,
   "uniqueSpanCount": 532,
   "histograms": {
-    "zcode.local_ttft.stage.observation.duration": {
+    "codez.local_ttft.stage.observation.duration": {
       "count": 48,
       "sumMs": 42298.5849609375
     },
-    "zcode.local_ttft.preparation.observation.duration": {
+    "codez.local_ttft.preparation.observation.duration": {
       "count": 84,
       "sumMs": 13853.34033203125
     },
-    "zcode.local_ttft.duration": {
+    "codez.local_ttft.duration": {
       "count": 6,
       "sumMs": 40642.099609375
     },
-    "zcode.local_ttft.stage.duration": {
+    "codez.local_ttft.stage.duration": {
       "count": 36,
       "sumMs": 40642.099609375
     },
-    "zcode.local_ttft.system.duration": {
+    "codez.local_ttft.system.duration": {
       "count": 6,
       "sumMs": 40232.49951171875
     },
-    "zcode.local_ttft.preparation.duration": {
+    "codez.local_ttft.preparation.duration": {
       "count": 62,
       "sumMs": 10153.557373046875
     },
-    "zcode.local_ttft.attempt.duration": {
+    "codez.local_ttft.attempt.duration": {
       "count": 8,
       "sumMs": 13929.37646484375
     },
-    "zcode.local_ttft.execution.duration": {
+    "codez.local_ttft.execution.duration": {
       "count": 6,
       "sumMs": 24799.61572265625
     },
-    "zcode.local_ttft.first_text.duration": {
+    "codez.local_ttft.first_text.duration": {
       "count": 6,
       "sumMs": 40935.599609375
     },
-    "zcode.local_ttft.no_output.wait": {
+    "codez.local_ttft.no_output.wait": {
       "count": 3,
       "sumMs": 4124.699951171875
     }
   },
   "observedAttributeCombinations": {
-    "zcode.local_ttft.stage.observation.duration": 23,
-    "zcode.local_ttft.records": 29,
-    "zcode.local_ttft.dropped": 1,
-    "zcode.local_ttft.preparation.observation.duration": 29,
-    "zcode.local_ttft.duration": 4,
-    "zcode.local_ttft.stage.duration": 24,
-    "zcode.local_ttft.system.duration": 4,
-    "zcode.local_ttft.preparation.duration": 26,
-    "zcode.local_ttft.attempt.duration": 5,
-    "zcode.local_ttft.execution.duration": 4,
-    "zcode.local_ttft.first_text.duration": 4,
-    "zcode.local_ttft.no_output.wait": 3
+    "codez.local_ttft.stage.observation.duration": 23,
+    "codez.local_ttft.records": 29,
+    "codez.local_ttft.dropped": 1,
+    "codez.local_ttft.preparation.observation.duration": 29,
+    "codez.local_ttft.duration": 4,
+    "codez.local_ttft.stage.duration": 24,
+    "codez.local_ttft.system.duration": 4,
+    "codez.local_ttft.preparation.duration": 26,
+    "codez.local_ttft.attempt.duration": 5,
+    "codez.local_ttft.execution.duration": 4,
+    "codez.local_ttft.first_text.duration": 4,
+    "codez.local_ttft.no_output.wait": 3
   },
   "clockErrorMaxMs": 3.3792724609375,
   "rendererPerformance": [
@@ -927,7 +927,7 @@
     "Windows/Linux device E2E and ARMS ingestion/waterfall/retention/cost validation remain open."
   ],
   "arms": {
-    "query": "\"zcode-local-ttft\" | select count(1) as samples",
+    "query": "\"codez-local-ttft\" | select count(1) as samples",
     "range": "now-1h..now",
     "sampleCount": 0,
     "verified": "read-only logstore access; no new service samples"
@@ -936,27 +936,27 @@
     "baseCommit": "a77a09bb3eaa9d147f6878b83ab10ec064690532",
     "sha256": "1d6b342e73d58493a9bb50dbfda7c37efd2272af8ae4fbe35e7f0189cea4bd30",
     "files": [
-      "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/local-ttft-clock.ts",
-      "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/local-ttft-compaction.ts",
-      "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/local-ttft.ts",
-      "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/v4-gateway.ts",
-      "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/v4-bridge.ts",
-      "apps/zcode-cli/packages/contracts/src/index.ts",
-      "apps/zcode-cli/packages/contracts/src/tracing/local-turn-preparation.ts",
-      "apps/zcode-cli/packages/core/src/runtime/methods/model.ts",
-      "apps/zcode-cli/packages/core/src/runtime/methods/turn-loop.ts",
-      "apps/zcode-cli/packages/core/src/runtime/methods/turn-model-step.ts",
-      "apps/zcode-cli/packages/core/src/runtime/methods/turn.ts",
+      "apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/local-ttft-clock.ts",
+      "apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/local-ttft-compaction.ts",
+      "apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/local-ttft.ts",
+      "apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/v4-gateway.ts",
+      "apps/codez-cli/packages/bootstrap/src/codez-protocol/v4-bridge.ts",
+      "apps/codez-cli/packages/contracts/src/index.ts",
+      "apps/codez-cli/packages/contracts/src/tracing/local-turn-preparation.ts",
+      "apps/codez-cli/packages/core/src/runtime/methods/model.ts",
+      "apps/codez-cli/packages/core/src/runtime/methods/turn-loop.ts",
+      "apps/codez-cli/packages/core/src/runtime/methods/turn-model-step.ts",
+      "apps/codez-cli/packages/core/src/runtime/methods/turn.ts",
       "packages/desktop/src/main/localTtftExportDedupe.ts",
       "packages/desktop/src/main/localTtftExporter.ts",
       "packages/desktop/src/main/localTtftSpans.ts",
       "packages/desktop/src/renderer/src/localTtftBootstrap.ts",
-      "packages/services/src/zcode-agent/zcodeAgent.ts",
-      "packages/services/src/zcode-agent/zcodeAgentConnectionScope.ts",
-      "packages/services/src/zcode-agent/zcodeAgentService.ts",
+      "packages/services/src/codez-agent/codezAgent.ts",
+      "packages/services/src/codez-agent/codezAgentConnectionScope.ts",
+      "packages/services/src/codez-agent/codezAgentService.ts",
       "packages/shared/src/localTtft.ts",
-      "packages/shared/src/zcode-protocol-v4/transport.ts",
-      "packages/shared/src/zcode-protocol/index.ts",
+      "packages/shared/src/codez-protocol-v4/transport.ts",
+      "packages/shared/src/codez-protocol/index.ts",
       "packages/ui/src/v4/ConversationComposer.tsx",
       "packages/ui/src/v4/SessionPane.tsx",
       "packages/ui/src/v4/agentConversationTransport.ts",

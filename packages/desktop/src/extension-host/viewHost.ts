@@ -12,15 +12,15 @@ import {
   type ViewRequestInput,
   type ViewServerFactory,
   type McpServerLike,
-} from "@zcode/shared/extension-host";
-import { buildMcpAppsClientCapabilities } from "@zcode/shared/mcp-apps";
+} from "@codez/shared/extension-host";
+import { buildMcpAppsClientCapabilities } from "@codez/shared/mcp-apps";
 import { hostLog, runAsPlugin } from "#src/extension-host/runtime.js";
 import { createHelperViewServer } from "#src/extension-host/viewServer.js";
 
 // 扩展视图实例（docs/plugins/extension-host.md §8）：两种写法都经进程内 transport 连一个 MCP Client，
 // 之后走同一条路径。实例只活在本进程内存里；扩展进程换代后旧实例随进程消失。
 
-const CLIENT_INFO = { name: "zcode-extension-host", version: "1" } as const;
+const CLIENT_INFO = { name: "codez-extension-host", version: "1" } as const;
 /** 页面的读与列表每次都要拿最新值：关掉 SDK 的客户端缓存。 */
 const NO_CACHE = { cacheMode: "bypass" } as const;
 /** 只有这几类 server 通知转给页面。 */

@@ -5,14 +5,14 @@
 //   1. 这次 run 对应哪个已保存工作流（推导，缓存在 workflowRunSavedStore）；
 //   2. 「直接保存」= `workflows/save`（按 runId 取脚本，无模型回合）；
 //   3. 「再次运行」= 中枢那台启动器（`useSavedWorkflowLauncher`），实参取这次 run 跑过的那份。
-// 「让 ZCode 帮我提炼保存」不在这里：它只是把一条用户消息交回宿主发出去（卡在会话里、侧板在父
+// 「让 Codez 帮我提炼保存」不在这里：它只是把一条用户消息交回宿主发出去（卡在会话里、侧板在父
 // 会话里），宿主各有各的发送路径。
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   resolveWorkspaceKey,
-  type ZCodeSavedWorkflowEntry,
-  type ZCodeSavedWorkflowScope,
-} from "@zcode/shared";
+  type CodezSavedWorkflowEntry,
+  type CodezSavedWorkflowScope,
+} from "@codez/shared";
 import { useWorkspaceServicesResolution } from "@/hooks/useWorkspaceServices.js";
 import {
   selectWorkflowRunSavedState,
@@ -42,7 +42,7 @@ export function useWorkflowRunSave(host: WorkflowRunSaveHost): WorkflowRunSaveCo
     host.workspaceIdentity,
   );
   const { rpcReady, services } = resolution;
-  const agentService = services.zcodeAgentService;
+  const agentService = services.codezAgentService;
   const isRemote = resolution.isRemoteTarget;
 
   const target = useMemo<WorkflowRunSaveTarget>(
@@ -117,7 +117,7 @@ export function useWorkflowRunSave(host: WorkflowRunSaveHost): WorkflowRunSaveCo
   );
 
   const checkNameTaken = useCallback(
-    async (name: string, scope: ZCodeSavedWorkflowScope) => {
+    async (name: string, scope: CodezSavedWorkflowScope) => {
       try {
         const result = await agentService.getSavedWorkflow({ ...target, name, scope });
         return result.ok;
@@ -135,7 +135,7 @@ export function useWorkflowRunSave(host: WorkflowRunSaveHost): WorkflowRunSaveCo
   });
   const launch = useCallback(
     async (
-      entry: ZCodeSavedWorkflowEntry,
+      entry: CodezSavedWorkflowEntry,
       args: Record<string, unknown>,
       launchTarget?: WorkflowRunSaveTarget,
     ) => {

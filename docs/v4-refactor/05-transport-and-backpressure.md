@@ -364,7 +364,7 @@ interface ConnectionFlowControl {
 raw adapter SAT/DRN
   -> desktop main owning MessagePortProtocol.sendFlowState
   -> host attachment MessagePort sideband（只消费 control object）
-  -> ZCodeAgentConnectionScope per-scope serial chain
+  -> CodezAgentConnectionScope per-scope serial chain
   -> trusted v4/connection/flow {connectionId,state}
   -> CLI pausedConnections
   -> 只 pause/resume 该 connection 的 conversation/index/config subscriptions

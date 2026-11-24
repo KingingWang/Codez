@@ -38,8 +38,8 @@ mac conversation job `ci-conversation-341152-1138993`（ff3ecc47）的失败分�
 
 ### 同 spec 第二个用例（持久私聊）的运行时事实
 
-- Agent 日志（`failures/0-41/957c57148bca5284/attempt-0/logs/agent/zcode-2026-11-17.jsonl`，UTC）：第一轮 `Turn started 04:12:27.144` / `Turn completed 04:12:27.889`；第二轮 `Turn started 04:12:27.913` / `Turn completed 04:12:28.050`。
-- 网络捕获（`network-capture/conversation-session-bot-continuous-worker.json`）：第二轮主请求 `x-zcode-query-source=main_turn` 命中夹具 `private-next` 并返回 200，文本 `E2E_PRIVATE_NEXT_DONE`；其余 500（`Missing Upstream e2e fixture`）全是 `session_title` 标题请求，与投递无关。
+- Agent 日志（`failures/0-41/957c57148bca5284/attempt-0/logs/agent/codez-2026-11-17.jsonl`，UTC）：第一轮 `Turn started 04:12:27.144` / `Turn completed 04:12:27.889`；第二轮 `Turn started 04:12:27.913` / `Turn completed 04:12:28.050`。
+- 网络捕获（`network-capture/conversation-session-bot-continuous-worker.json`）：第二轮主请求 `x-codez-query-source=main_turn` 命中夹具 `private-next` 并返回 200，文本 `E2E_PRIVATE_NEXT_DONE`；其余 500（`Missing Upstream e2e fixture`）全是 `session_title` 标题请求，与投递无关。
 - 因此模型和 Agent 侧已完成第二轮；失败在 Bot 平台侧：没有「恰好 1 条」含 `E2E_PRIVATE_NEXT_DONE` 的平台 POST。当前日志里没有 `platform.requests`（测试进程内的假平台），无法区分「Bot 没投递」与「两条 POST 落在同一个 500ms 轮询间隔、计数从 0 直接跳到 2」。
 - 该问题的根因见下一节，spec 不需要改。
 
@@ -47,21 +47,21 @@ mac conversation job `ci-conversation-341152-1138993`（ff3ecc47）的失败分�
 
 上面两条（群聊文本串轮、私聊第二轮不投递）有同一个上游原因，不是群聊/私聊路径各自的重置规则问题：
 
-- CLI 在 `turn_started` 事件里新增了 `isFirstMessage`（提交 `8172e49580`，`apps/zcode-cli/packages/core/src/runtime/methods/turn.ts:536`，`contracts/.../session.events.ts:518`）。映射层 `mapSessionEventPayload` 对 `turn_started` 原样透传。
-- App 侧 `zcodeTurnStartedEventPayloadSchema`（`packages/shared/src/zcode-protocol/index.ts:1615-1646`）是 `.strict()` 且没有声明 `isFirstMessage`。
-- 运行时证据：`failures/0-41/957c57148bca5284/attempt-0/logs/agent/zcode-2026-11-17.jsonl` 里 `session_event.sent`（`turn_started`，04:12:27.146 与 04:12:27.915 两轮）的 `payloadKeys` 都含 `isFirstMessage`。
-- 离线复现：用仓库里的 `zcodeSessionEventSchema.safeParse` 解析同形事件，不带该键通过；带 `isFirstMessage: true/false` 均失败，`unrecognized_keys: ["isFirstMessage"]`（在 `packages/shared` 下用 tsx 导入 `zcodeSessionEventSchema`，构造 `type: "turn.started"` 的最小事件即可复现）。
-- 后果链：`session/event` 校验失败 → `zcodeAgentService.ts:2760-2777` 丢弃整条事件 → `zcodeTaskServiceAdapter.ts:4056` 的 `task_run_started` 不再产生 → Bot 不执行 `task_run_started` 分支里的状态重置。
+- CLI 在 `turn_started` 事件里新增了 `isFirstMessage`（提交 `8172e49580`，`apps/codez-cli/packages/core/src/runtime/methods/turn.ts:536`，`contracts/.../session.events.ts:518`）。映射层 `mapSessionEventPayload` 对 `turn_started` 原样透传。
+- App 侧 `codezTurnStartedEventPayloadSchema`（`packages/shared/src/codez-protocol/index.ts:1615-1646`）是 `.strict()` 且没有声明 `isFirstMessage`。
+- 运行时证据：`failures/0-41/957c57148bca5284/attempt-0/logs/agent/codez-2026-11-17.jsonl` 里 `session_event.sent`（`turn_started`，04:12:27.146 与 04:12:27.915 两轮）的 `payloadKeys` 都含 `isFirstMessage`。
+- 离线复现：用仓库里的 `codezSessionEventSchema.safeParse` 解析同形事件，不带该键通过；带 `isFirstMessage: true/false` 均失败，`unrecognized_keys: ["isFirstMessage"]`（在 `packages/shared` 下用 tsx 导入 `codezSessionEventSchema`，构造 `type: "turn.started"` 的最小事件即可复现）。
+- 后果链：`session/event` 校验失败 → `codezAgentService.ts:2760-2777` 丢弃整条事件 → `codezTaskServiceAdapter.ts:4056` 的 `task_run_started` 不再产生 → Bot 不执行 `task_run_started` 分支里的状态重置。
   - 群聊：第二轮不重置 `assistantParts`/`streamingCardBlocks` 等，delivery 文本串上第一轮（本 issue 的现象）。
   - 持久私聊（按代码路径推断，日志里没有 Bot 内部变量）：第二轮 `resultSourceCommandId` 仍是第一轮的 inputId，后续 chunk/complete 在 `botsService.ts` 的 `resultSourceCommandId !== event.inputId` 判断处被丢弃，所以没有 `E2E_PRIVATE_NEXT_DONE` 的 POST。第一轮能通过是因为此时 `resultRunId` 为空，走 `if (!resultRunId && runId)` 兜底。
 - 同一原因还让 App 的 `readAppLiveSummary` 读事件时抛 ZodError（见 plugin-extension-sessions-\* 三个用例），所以三类失败同源。
 
-建议（需产品确认后再改）：在 `zcodeTurnStartedEventPayloadSchema` 增加 `isFirstMessage: z.boolean().optional()`（与历史上同类修复一致），并补一个 CLI 事件与 App strict schema 的契约回归。群聊路径是否仍应补齐重置规则，等上游修复后用原用例重跑再判断。分类：产品问题（协议 schema 漂移），不是测试问题。
+建议（需产品确认后再改）：在 `codezTurnStartedEventPayloadSchema` 增加 `isFirstMessage: z.boolean().optional()`（与历史上同类修复一致），并补一个 CLI 事件与 App strict schema 的契约回归。群聊路径是否仍应补齐重置规则，等上游修复后用原用例重跑再判断。分类：产品问题（协议 schema 漂移），不是测试问题。
 
 ### 处理结果（2026-11-17）
 
 - 上游原因有两侧修复，作用不同：
-  - 发送侧（当前 CLI）：staging 的 148827e6dc 让旧协议 mapper 移除 `isFirstMessage`，当前 CLI 不再发送它（`docs/zcode-protocol.md`「兼容回合开始事件」，回归 `session-mapper-legacy-strip.test.ts`）。
-  - 接收侧（兼容旧发送方）：本 MR 在 `zcodeTurnStartedEventPayloadSchema` 声明可选的 `isFirstMessage`，让 8172e49580~148827e6dc 之间的旧 CLI（例如远端设备上的旧版本）发来的 `turn.started` 不被整条丢弃；回归在 `session-mapper-turn-payload.test.ts` 中绕过 mapper 直接解析线协议事件。
+  - 发送侧（当前 CLI）：staging 的 148827e6dc 让旧协议 mapper 移除 `isFirstMessage`，当前 CLI 不再发送它（`docs/codez-protocol.md`「兼容回合开始事件」，回归 `session-mapper-legacy-strip.test.ts`）。
+  - 接收侧（兼容旧发送方）：本 MR 在 `codezTurnStartedEventPayloadSchema` 声明可选的 `isFirstMessage`，让 8172e49580~148827e6dc 之间的旧 CLI（例如远端设备上的旧版本）发来的 `turn.started` 不被整条丢弃；回归在 `session-mapper-turn-payload.test.ts` 中绕过 mapper 直接解析线协议事件。
 - `Required<TurnStartedPayloadBase>` 用例另行守护：CLI 新增其他字段时先编译失败，提醒同步 App schema。
 - mac 测试机 `triage-verify2`：`conversation-session-bot-continuous-worker.test.ts` 两个用例都通过，群聊不再串轮。`task_run_started` 恢复后，群聊路径的现有重置已足够，不需要再改 `botsService.ts`。

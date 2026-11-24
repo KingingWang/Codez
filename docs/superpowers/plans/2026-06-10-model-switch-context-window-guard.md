@@ -12,7 +12,7 @@
 
 **Architecture:** Add a pure context-window guard helper under the chat input toolbar domain, test it first, then wire it into `useToolbarModelChange` before the existing native/custom/local selection branches. Reuse the existing `/compact` send path so desktop continuous and mobile replayable semantics stay unchanged.
 
-**Tech Stack:** React 19, Zustand, Vitest, TypeScript, existing ZCode UI components, existing model provider metadata helpers.
+**Tech Stack:** React 19, Zustand, Vitest, TypeScript, existing Codez UI components, existing model provider metadata helpers.
 
 ---
 
@@ -60,14 +60,14 @@ import { describe, expect, it } from "vitest";
 import {
   encodeCustomModelValue,
   type ModelProviderConfig,
-  type ZCodeConfigOption,
-} from "@zcode/shared";
+  type CodezConfigOption,
+} from "@codez/shared";
 import { resolveTargetModelContextWindow } from "@/chat-input-toolbar/modelSwitchContextWindowGuard.js";
 
 function createModelOption(
   value: string,
   providerId = "builtin:zai",
-): ZCodeConfigOption {
+): CodezConfigOption {
   return {
     id: "model",
     name: "Model",
@@ -215,10 +215,10 @@ import {
   resolveModelProviderContextWindow,
   type ModelProviderConfig,
   type ModelProviderModelEntry,
-  type ZCodeConfigOption,
-  type ZCodeProvider,
-} from "@zcode/shared";
-import { decodeCustomModelValue } from "@/lib/zcodeCustomModelValue.js";
+  type CodezConfigOption,
+  type CodezProvider,
+} from "@codez/shared";
+import { decodeCustomModelValue } from "@/lib/codezCustomModelValue.js";
 
 export interface TargetModelContextWindow {
   contextWindow: number;
@@ -228,8 +228,8 @@ export interface TargetModelContextWindow {
 
 export interface ResolveTargetModelContextWindowParams {
   modelProviders: readonly ModelProviderConfig[];
-  option: ZCodeConfigOption;
-  selectedProvider: ZCodeProvider;
+  option: CodezConfigOption;
+  selectedProvider: CodezProvider;
   value: string;
 }
 
@@ -260,7 +260,7 @@ function modelIdCandidates(value: string): string[] {
   return [...candidates].filter(Boolean);
 }
 
-function resolveOptionProviderId(option: ZCodeConfigOption, value: string): string | null {
+function resolveOptionProviderId(option: CodezConfigOption, value: string): string | null {
   if (option.type !== "select") {
     return null;
   }
@@ -271,7 +271,7 @@ function resolveOptionProviderId(option: ZCodeConfigOption, value: string): stri
 function findProvider(
   modelProviders: readonly ModelProviderConfig[],
   providerId: string | null,
-  selectedProvider: ZCodeProvider,
+  selectedProvider: CodezProvider,
 ): ModelProviderConfig | null {
   if (providerId) {
     const exact = modelProviders.find((provider) => provider.id === providerId);
@@ -823,7 +823,7 @@ In `packages/ui/src/i18n/locales/en-US.ts`, add:
 ```ts
   "chat.modelSwitch.contextWindowGuard.title": "Compress context before switching models",
   "chat.modelSwitch.contextWindowGuard.description":
-    "This conversation has used {used} tokens, which exceeds {modelName}'s context window of {target} tokens.\nCompress the current conversation with the current model first. If the compressed context fits, ZCode will continue switching models.",
+    "This conversation has used {used} tokens, which exceeds {modelName}'s context window of {target} tokens.\nCompress the current conversation with the current model first. If the compressed context fits, Codez will continue switching models.",
   "chat.modelSwitch.contextWindowGuard.compress": "Compress",
   "chat.modelSwitch.contextWindowGuard.runningBlocked":
     "The target model's context window is smaller than the context already used by this conversation. The conversation must be compressed before switching models, but the current task is still running and context compression cannot run now. Wait for the task to finish, then switch models again.",
@@ -944,23 +944,23 @@ At the top of `useToolbarModelChange.ts`, add:
 ```ts
 import { toast } from "@/components/ui/toast.js";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { isTaskRuntimeBusy } from "@/lib/zcodeTaskRuntimeMonitorTypes.js";
-import { getTaskRuntimeState, useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
+import { isTaskRuntimeBusy } from "@/lib/codezTaskRuntimeMonitorTypes.js";
+import { getTaskRuntimeState, useCodezSessionStore } from "@/store/codezSessionStore.js";
 import {
   resolveTargetModelContextWindow,
   runModelSwitchContextWindowGuard,
 } from "./modelSwitchContextWindowGuard.js";
 ```
 
-Remove the existing duplicate `useZCodeSessionStore` import line if needed so the file imports it only once.
+Remove the existing duplicate `useCodezSessionStore` import line if needed so the file imports it only once.
 
 - [ ] **Step 4: Initialize dialog and formatter hooks**
 
 Inside `useToolbarModelChange`, before the returned `useCallback`, add:
 
 ```ts
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const confirmDialog = useConfirmDialog();
   const numberFormatter = new Intl.NumberFormat(locale);
 ```
@@ -978,7 +978,7 @@ Inside the returned callback, after `modelChangeNotice` and `runExistingModelSel
       });
 
       if (params.taskId && targetContext) {
-        const workspaceState = useZCodeSessionStore
+        const workspaceState = useCodezSessionStore
           .getState()
           .getWorkspaceState(params.workspacePath, params.workspaceIdentity);
         const taskRuntime = getTaskRuntimeState(workspaceState, params.taskId);
@@ -1027,7 +1027,7 @@ Inside the returned callback, after `modelChangeNotice` and `runExistingModelSel
                 );
               },
               readContextUsedAfterCompression: () => {
-                const latestWorkspaceState = useZCodeSessionStore
+                const latestWorkspaceState = useCodezSessionStore
                   .getState()
                   .getWorkspaceState(params.workspacePath, params.workspaceIdentity);
                 const latestUsage = getTaskRuntimeState(

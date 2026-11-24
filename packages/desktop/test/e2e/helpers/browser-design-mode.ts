@@ -4,7 +4,7 @@ import {
   TID_BROWSER_ADDRESS_INPUT,
   TID_BROWSER_DESIGN_INSPECTOR,
   TID_BROWSER_ELEMENT_PICKER_BUTTON,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clickTestIdByDom, DEFAULT_WORKSPACE } from "#e2e/helpers/desktop-app";
 import {
   clickPluginControl,

@@ -6,7 +6,7 @@
 
 **架构：** 不把内置 subagent 变成可编辑 custom agent，而是在现有 subagent state 上增加一层 built-in model override。Settings 只开放内置 agent 的模型选择，runtime 启动时读取同一份 state 并注入 built-in profile；`Explore` 的工具面必须和最终 child model 使用同一个 effective model 计算。
 
-**技术栈：** TypeScript、React、Vitest、Zod/JSON Schema tool contract、现有 subagents service、现有 zcode-cli runtime/bootstrap。
+**技术栈：** TypeScript、React、Vitest、Zod/JSON Schema tool contract、现有 subagents service、现有 codez-cli runtime/bootstrap。
 
 ## 本轮执行边界
 
@@ -27,19 +27,19 @@
 - `Explore` 未配置覆盖时继承父会话主模型。
 - `Explore` provider-visible child tools 必须按最终 effective child model 判断 embedded-search 分支。
 - 不把 subagent/session/task 状态下沉到 relay 或 Electron main。
-- 若执行中改动 `Agent` tool provider-visible schema，必须同步更新 `apps/zcode-cli/docs/design/v2/tool/00-tool-change-chain.md` 与 `apps/zcode-cli/docs/design/v2/tool/07-subagent.md`。
+- 若执行中改动 `Agent` tool provider-visible schema，必须同步更新 `apps/codez-cli/docs/design/v2/tool/00-tool-change-chain.md` 与 `apps/codez-cli/docs/design/v2/tool/07-subagent.md`。
 - 每个 phase 完成后跑 targeted tests；最终跑 `pnpm typecheck` 与 `pnpm lint`。
 
 ---
 
 ## 当前事实
 
-- `apps/zcode-cli/packages/core/src/subagent/profile.ts` 的 `AgentProfile` 已支持 `model?: string`。
+- `apps/codez-cli/packages/core/src/subagent/profile.ts` 的 `AgentProfile` 已支持 `model?: string`。
 - custom markdown profile 已支持保存 `model: custom:provider:model`。
 - `createBuiltInExploreAgentProfile()` 当前不再写默认 `model` 字段，运行时等价于继承 main model。
 - `createBuiltInGeneralPurposeAgentProfile()` 当前没有 `model` 字段，运行时等价于继承 main model。
-- `apps/zcode-cli/packages/core/src/subagent/runner.ts` 已经把 `request.model` 与 `profile.model` 合并后传给 child runtime。
-- `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts` 已经能把 `custom:provider:model` 解析成 `ModelRef`。
+- `apps/codez-cli/packages/core/src/subagent/runner.ts` 已经把 `request.model` 与 `profile.model` 合并后传给 child runtime。
+- `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts` 已经能把 `custom:provider:model` 解析成 `ModelRef`。
 - `packages/services/src/subagents/subagentsService.ts` 当前把内置 agent 作为 `readOnly: true` summary 返回。
 - `packages/ui/src/settings/SubagentsSection.tsx` 当前只允许 user agent edit/delete/toggle，并隐藏 built-in model badge。
 
@@ -51,16 +51,16 @@
 - 修改 `packages/services/src/subagents/subagents.ts`：新增 service 方法。
 - 修改 `packages/services/src/subagents/subagentsService.ts`：读写 state、投影 built-in effective model。
 - 修改 `packages/services/test/subagentsService.test.ts`：service 侧 state 与 list 测试。
-- 修改 `apps/zcode-cli/packages/bootstrap/src/subagents.ts`：启动时读取 built-in overrides。
-- 修改 `apps/zcode-cli/packages/bootstrap/src/app/create-app.ts`：把 overrides 传入 runtime config。
-- 修改 `apps/zcode-cli/packages/bootstrap/src/app/runtime-config.ts`：合并 config overrides。
-- 修改 `apps/zcode-cli/packages/bootstrap/tests/subagents.test.ts`：bootstrap loader 测试。
-- 修改 `apps/zcode-cli/packages/core/src/runtime/types.ts`：runtime config 增加 `subagents.builtInModelOverrides`。
-- 修改 `apps/zcode-cli/packages/core/src/subagent/profile.ts`：built-in profile 创建时接收 overrides。
-- 修改 `apps/zcode-cli/packages/core/src/subagent/runner.ts`：`Explore` allowed tools 接收 effective model 上下文。
-- 修改 `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts`：抽 shared effective model resolver，供 child runtime 与 allowlist 共用。
-- 修改 `apps/zcode-cli/packages/core/tests/subagent-profile.test.ts`：profile override 测试。
-- 修改 `apps/zcode-cli/packages/core/tests/subagent-explore.test.ts`：provider-visible child model 与 `Explore` tool branch 测试。
+- 修改 `apps/codez-cli/packages/bootstrap/src/subagents.ts`：启动时读取 built-in overrides。
+- 修改 `apps/codez-cli/packages/bootstrap/src/app/create-app.ts`：把 overrides 传入 runtime config。
+- 修改 `apps/codez-cli/packages/bootstrap/src/app/runtime-config.ts`：合并 config overrides。
+- 修改 `apps/codez-cli/packages/bootstrap/tests/subagents.test.ts`：bootstrap loader 测试。
+- 修改 `apps/codez-cli/packages/core/src/runtime/types.ts`：runtime config 增加 `subagents.builtInModelOverrides`。
+- 修改 `apps/codez-cli/packages/core/src/subagent/profile.ts`：built-in profile 创建时接收 overrides。
+- 修改 `apps/codez-cli/packages/core/src/subagent/runner.ts`：`Explore` allowed tools 接收 effective model 上下文。
+- 修改 `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts`：抽 shared effective model resolver，供 child runtime 与 allowlist 共用。
+- 修改 `apps/codez-cli/packages/core/tests/subagent-profile.test.ts`：profile override 测试。
+- 修改 `apps/codez-cli/packages/core/tests/subagent-explore.test.ts`：provider-visible child model 与 `Explore` tool branch 测试。
 - 修改 `packages/ui/src/settings/SubagentsSection.tsx`：内置 row 增加模型控件。
 - 修改 `packages/ui/test/subagentsSection.test.ts`：UI 渲染与保存行为测试。
 - 修改现有 i18n 文件：补内置默认模型、保存失败文案。
@@ -322,7 +322,7 @@ pnpm typecheck
 - [ ] **Step 2：确认测试失败**
 
 ```bash
-pnpm --filter @zcode/services test -- --run test/subagentsService.test.ts
+pnpm --filter @codez/services test -- --run test/subagentsService.test.ts
 ```
 
 预期：失败，原因是 `setBuiltInModelOverride` 尚未实现。
@@ -496,7 +496,7 @@ async setBuiltInModelOverride(params: BuiltInSubagentModelOverrideParams): Promi
 - [ ] **Step 7：跑 service 测试**
 
 ```bash
-pnpm --filter @zcode/services test -- --run test/subagentsService.test.ts
+pnpm --filter @codez/services test -- --run test/subagentsService.test.ts
 ```
 
 预期：通过。
@@ -513,11 +513,11 @@ git commit -m "feat(subagents): persist built-in model overrides"
 ### Task 4：启动时读取 built-in overrides
 
 **文件：**
-- 修改 `apps/zcode-cli/packages/bootstrap/src/subagents.ts`
-- 修改 `apps/zcode-cli/packages/bootstrap/src/app/create-app.ts`
-- 修改 `apps/zcode-cli/packages/bootstrap/src/app/runtime-config.ts`
-- 修改 `apps/zcode-cli/packages/bootstrap/tests/subagents.test.ts`
-- 修改 `apps/zcode-cli/packages/core/src/runtime/types.ts`
+- 修改 `apps/codez-cli/packages/bootstrap/src/subagents.ts`
+- 修改 `apps/codez-cli/packages/bootstrap/src/app/create-app.ts`
+- 修改 `apps/codez-cli/packages/bootstrap/src/app/runtime-config.ts`
+- 修改 `apps/codez-cli/packages/bootstrap/tests/subagents.test.ts`
+- 修改 `apps/codez-cli/packages/core/src/runtime/types.ts`
 
 **产出接口：**
 
@@ -529,11 +529,11 @@ subagents: {
 
 - [ ] **Step 1：写失败测试**
 
-在 `apps/zcode-cli/packages/bootstrap/tests/subagents.test.ts` 的 `describe("loadZCodeAgentProfiles", ...)` 中加入：
+在 `apps/codez-cli/packages/bootstrap/tests/subagents.test.ts` 的 `describe("loadCodezAgentProfiles", ...)` 中加入：
 
 ```ts
 it("loads built-in model overrides from shared subagent state", async () => {
-  const root = await mkdtemp(join(tmpdir(), "zcode-subagents-built-in-model-"));
+  const root = await mkdtemp(join(tmpdir(), "codez-subagents-built-in-model-"));
   const storageRoot = join(root, "home");
   const workingDirectory = join(root, "workspace");
   try {
@@ -550,7 +550,7 @@ it("loads built-in model overrides from shared subagent state", async () => {
       "utf8",
     );
 
-    const result = loadZCodeAgentProfiles({ storageRoot, workingDirectory });
+    const result = loadCodezAgentProfiles({ storageRoot, workingDirectory });
 
     expect(result.builtInModelOverrides).toEqual({
       "general-purpose": "custom:custom-openai:gpt-5.4",
@@ -565,23 +565,23 @@ it("loads built-in model overrides from shared subagent state", async () => {
 - [ ] **Step 2：确认测试失败**
 
 ```bash
-pnpm --filter @zcode/bootstrap test -- --run tests/subagents.test.ts
+pnpm --filter @codez/bootstrap test -- --run tests/subagents.test.ts
 ```
 
 预期：失败，原因是 loader 尚未返回 `builtInModelOverrides`。
 
 - [ ] **Step 3：扩展 bootstrap loader**
 
-在 `apps/zcode-cli/packages/bootstrap/src/subagents.ts` 引入 shared 类型：
+在 `apps/codez-cli/packages/bootstrap/src/subagents.ts` 引入 shared 类型：
 
 ```ts
-import type { BuiltInSubagentModelOverrides } from "@zcode/shared";
+import type { BuiltInSubagentModelOverrides } from "@codez/shared";
 ```
 
 扩展 result：
 
 ```ts
-interface LoadZCodeAgentProfilesResult {
+interface LoadCodezAgentProfilesResult {
   builtInModelOverrides: BuiltInSubagentModelOverrides;
   diagnostics: AgentProfileParseDiagnostic[];
   profiles: AgentProfile[];
@@ -652,24 +652,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 - [ ] **Step 4：把 overrides 传入 runtime config**
 
-在 `apps/zcode-cli/packages/bootstrap/src/app/create-app.ts` 中保留 loader outcome：
+在 `apps/codez-cli/packages/bootstrap/src/app/create-app.ts` 中保留 loader outcome：
 
 ```ts
-const zcodeSubagentProfileOutcome = loadZCodeAgentProfiles({
+const codezSubagentProfileOutcome = loadCodezAgentProfiles({
   logger,
   storageRoot,
   workingDirectory,
 });
-const zcodeSubagentProfiles = zcodeSubagentProfileOutcome.profiles;
+const codezSubagentProfiles = codezSubagentProfileOutcome.profiles;
 ```
 
 调用 `resolveAppRuntimeConfig()` 时传入：
 
 ```ts
-builtInSubagentModelOverrides: zcodeSubagentProfileOutcome.builtInModelOverrides,
+builtInSubagentModelOverrides: codezSubagentProfileOutcome.builtInModelOverrides,
 ```
 
-在 `apps/zcode-cli/packages/bootstrap/src/app/runtime-config.ts` 的 input 类型加入：
+在 `apps/codez-cli/packages/bootstrap/src/app/runtime-config.ts` 的 input 类型加入：
 
 ```ts
 builtInSubagentModelOverrides: BuiltInSubagentModelOverrides;
@@ -695,18 +695,18 @@ subagents: {
 
 - [ ] **Step 5：扩展 core runtime 类型**
 
-在 `apps/zcode-cli/packages/core/src/runtime/types.ts` 中给 `subagents` 增加：
+在 `apps/codez-cli/packages/core/src/runtime/types.ts` 中给 `subagents` 增加：
 
 ```ts
 builtInModelOverrides?: Partial<Record<"general-purpose" | "Explore", string>>;
 ```
 
-不要让 core 反向依赖 services。若 core 当前允许依赖 `@zcode/shared`，也可以使用 shared 类型；否则保留上面的 core-local 类型。
+不要让 core 反向依赖 services。若 core 当前允许依赖 `@codez/shared`，也可以使用 shared 类型；否则保留上面的 core-local 类型。
 
 - [ ] **Step 6：跑 bootstrap 测试**
 
 ```bash
-pnpm --filter @zcode/bootstrap test -- --run tests/subagents.test.ts
+pnpm --filter @codez/bootstrap test -- --run tests/subagents.test.ts
 ```
 
 预期：通过。
@@ -714,15 +714,15 @@ pnpm --filter @zcode/bootstrap test -- --run tests/subagents.test.ts
 ### Task 5：内置 profile 应用模型覆盖
 
 **文件：**
-- 修改 `apps/zcode-cli/packages/core/src/subagent/profile.ts`
-- 修改 `apps/zcode-cli/packages/core/src/subagent/runner.ts`
-- 修改 `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts`
-- 修改 `apps/zcode-cli/packages/core/tests/subagent-profile.test.ts`
-- 修改 `apps/zcode-cli/packages/core/tests/subagent-explore.test.ts`
+- 修改 `apps/codez-cli/packages/core/src/subagent/profile.ts`
+- 修改 `apps/codez-cli/packages/core/src/subagent/runner.ts`
+- 修改 `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts`
+- 修改 `apps/codez-cli/packages/core/tests/subagent-profile.test.ts`
+- 修改 `apps/codez-cli/packages/core/tests/subagent-explore.test.ts`
 
 - [ ] **Step 1：写 profile 失败测试**
 
-在 `apps/zcode-cli/packages/core/tests/subagent-profile.test.ts` 中加入：
+在 `apps/codez-cli/packages/core/tests/subagent-profile.test.ts` 中加入：
 
 ```ts
 it("applies built-in model overrides when normalizing built-in profiles", () => {
@@ -744,7 +744,7 @@ it("applies built-in model overrides when normalizing built-in profiles", () => 
 
 - [ ] **Step 2：修改 built-in profile 构造**
 
-在 `apps/zcode-cli/packages/core/src/subagent/profile.ts` 中加入：
+在 `apps/codez-cli/packages/core/src/subagent/profile.ts` 中加入：
 
 ```ts
 export type BuiltInSubagentModelOverrides = Partial<
@@ -820,7 +820,7 @@ export function normalizeAgentProfiles(
 
 - [ ] **Step 3：把 runtime config 传入 port**
 
-在 `apps/zcode-cli/packages/core/src/subagent/runner.ts` 的 `ExploreSubagentPortOptions` 中加入：
+在 `apps/codez-cli/packages/core/src/subagent/runner.ts` 的 `ExploreSubagentPortOptions` 中加入：
 
 ```ts
 builtInModelOverrides?: BuiltInSubagentModelOverrides;
@@ -834,7 +834,7 @@ const profiles = normalizeAgentProfiles(options.profiles ?? [], {
 });
 ```
 
-在 `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts` 创建 port 时加入：
+在 `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts` 创建 port 时加入：
 
 ```ts
 builtInModelOverrides: this.config.subagents?.builtInModelOverrides,
@@ -842,7 +842,7 @@ builtInModelOverrides: this.config.subagents?.builtInModelOverrides,
 
 - [ ] **Step 4：写 runtime provider-visible 模型测试**
 
-在 `apps/zcode-cli/packages/core/tests/subagent-explore.test.ts` 中加入 `general-purpose` 测试：
+在 `apps/codez-cli/packages/core/tests/subagent-explore.test.ts` 中加入 `general-purpose` 测试：
 
 ```ts
 it("runs built-in general-purpose on configured concrete model override", async () => {
@@ -1014,7 +1014,7 @@ it("runs built-in Explore on configured concrete model override", async () => {
 - [ ] **Step 5：跑 core targeted tests**
 
 ```bash
-pnpm --filter @zcode/core test -- --run tests/subagent-profile.test.ts tests/subagent-explore.test.ts
+pnpm --filter @codez/core test -- --run tests/subagent-profile.test.ts tests/subagent-explore.test.ts
 ```
 
 预期：通过。
@@ -1022,15 +1022,15 @@ pnpm --filter @zcode/core test -- --run tests/subagent-profile.test.ts tests/sub
 ### Task 6：修正 Explore allowed tools 的 effective model 边界
 
 **文件：**
-- 修改 `apps/zcode-cli/packages/core/src/subagent/runner.ts`
-- 修改 `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts`
-- 修改 `apps/zcode-cli/packages/core/tests/subagent-explore.test.ts`
+- 修改 `apps/codez-cli/packages/core/src/subagent/runner.ts`
+- 修改 `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts`
+- 修改 `apps/codez-cli/packages/core/tests/subagent-explore.test.ts`
 
 **目标：** `Explore` child request 使用哪个模型，`Explore` allowed tools 就按哪个模型判断。
 
 - [ ] **Step 1：写失败测试**
 
-在 `apps/zcode-cli/packages/core/tests/subagent-explore.test.ts` 中新增测试。模型名要选一个当前 capability resolver 会走 direct fallback 的 fixture；如果下面 provider/model 与当前 capability 表不匹配，只改 provider/model 字符串，不改断言目标：
+在 `apps/codez-cli/packages/core/tests/subagent-explore.test.ts` 中新增测试。模型名要选一个当前 capability resolver 会走 direct fallback 的 fixture；如果下面 provider/model 与当前 capability 表不匹配，只改 provider/model 字符串，不改断言目标：
 
 ```ts
 it("resolves Explore allowed tools from the effective overridden model", async () => {
@@ -1135,7 +1135,7 @@ it("resolves Explore allowed tools from the effective overridden model", async (
 
 - [ ] **Step 2：抽 effective model helper**
 
-在 `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts` 中加入：
+在 `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts` 中加入：
 
 ```ts
 function resolveEffectiveSubagentModelRef(input: {
@@ -1181,7 +1181,7 @@ return resolveEffectiveSubagentModelRef({
 
 - [ ] **Step 3：runner 给 allowlist 传模型上下文**
 
-在 `apps/zcode-cli/packages/core/src/subagent/runner.ts` 中把 `getAllowedTools` 类型改为：
+在 `apps/codez-cli/packages/core/src/subagent/runner.ts` 中把 `getAllowedTools` 类型改为：
 
 ```ts
 getAllowedTools?: (input: {
@@ -1250,7 +1250,7 @@ getAllowedTools: (input) => {
 - [ ] **Step 5：跑 runtime 测试**
 
 ```bash
-pnpm --filter @zcode/core test -- --run tests/subagent-explore.test.ts
+pnpm --filter @codez/core test -- --run tests/subagent-explore.test.ts
 ```
 
 预期：通过。
@@ -1258,7 +1258,7 @@ pnpm --filter @zcode/core test -- --run tests/subagent-explore.test.ts
 - [ ] **Step 6：提交 runtime**
 
 ```bash
-git add apps/zcode-cli/packages/bootstrap/src/subagents.ts apps/zcode-cli/packages/bootstrap/src/app/create-app.ts apps/zcode-cli/packages/bootstrap/src/app/runtime-config.ts apps/zcode-cli/packages/bootstrap/tests/subagents.test.ts apps/zcode-cli/packages/core/src/runtime/types.ts apps/zcode-cli/packages/core/src/subagent/profile.ts apps/zcode-cli/packages/core/src/subagent/runner.ts apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts apps/zcode-cli/packages/core/tests/subagent-profile.test.ts apps/zcode-cli/packages/core/tests/subagent-explore.test.ts
+git add apps/codez-cli/packages/bootstrap/src/subagents.ts apps/codez-cli/packages/bootstrap/src/app/create-app.ts apps/codez-cli/packages/bootstrap/src/app/runtime-config.ts apps/codez-cli/packages/bootstrap/tests/subagents.test.ts apps/codez-cli/packages/core/src/runtime/types.ts apps/codez-cli/packages/core/src/subagent/profile.ts apps/codez-cli/packages/core/src/subagent/runner.ts apps/codez-cli/packages/core/src/runtime/methods/subagent.ts apps/codez-cli/packages/core/tests/subagent-profile.test.ts apps/codez-cli/packages/core/tests/subagent-explore.test.ts
 git commit -m "feat(agent): apply built-in subagent model overrides"
 ```
 
@@ -1409,7 +1409,7 @@ function BuiltInModelControl({
   onChange: (agent: AgentSummary, model: string) => void;
   onManageModels?: () => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const defaultValue = getBuiltInDefaultModelValue(agent);
   const defaultLabel = intl.formatMessage({ id: "settings.subagents.model.builtInDefault" });
   const groups = createBuiltInSubagentModelSelectGroups(defaultLabel, defaultValue, modelSelectGroups);
@@ -1522,7 +1522,7 @@ const handleBuiltInModelChange = async (agent: AgentSummary, nextValue: string) 
 - [ ] **Step 10：跑 UI 测试**
 
 ```bash
-pnpm --filter @zcode/ui test -- --run test/subagentsSection.test.ts
+pnpm --filter @codez/ui test -- --run test/subagentsSection.test.ts
 ```
 
 预期：通过。
@@ -1545,17 +1545,17 @@ git commit -m "feat(ui): configure built-in subagent models"
 - [ ] **Step 1：跑 targeted tests**
 
 ```bash
-pnpm --filter @zcode/services test -- --run test/subagentsService.test.ts
-pnpm --filter @zcode/bootstrap test -- --run tests/subagents.test.ts
-pnpm --filter @zcode/core test -- --run tests/subagent-profile.test.ts tests/subagent-explore.test.ts
-pnpm --filter @zcode/ui test -- --run test/subagentsSection.test.ts
+pnpm --filter @codez/services test -- --run test/subagentsService.test.ts
+pnpm --filter @codez/bootstrap test -- --run tests/subagents.test.ts
+pnpm --filter @codez/core test -- --run tests/subagent-profile.test.ts tests/subagent-explore.test.ts
+pnpm --filter @codez/ui test -- --run test/subagentsSection.test.ts
 ```
 
 预期：全部通过。
 
 - [ ] **Step 2：检查 provider-visible 断言**
 
-确认 `apps/zcode-cli/packages/core/tests/subagent-explore.test.ts` 中存在：
+确认 `apps/codez-cli/packages/core/tests/subagent-explore.test.ts` 中存在：
 
 ```ts
 expect(childRequests[0].model).toMatchObject({
@@ -1585,7 +1585,7 @@ pnpm lint
 - [ ] **Step 4：查 stale 文档描述**
 
 ```bash
-rg -n "hide built-in subagent model|内置.*不展示模型|built-in.*不展示模型|first version does not support.*Agent.*model" docs apps/zcode-cli/docs packages -S
+rg -n "hide built-in subagent model|内置.*不展示模型|built-in.*不展示模型|first version does not support.*Agent.*model" docs apps/codez-cli/docs packages -S
 ```
 
 预期：当前设计文档没有过期描述；changelog 里的历史记录可以保留。
@@ -1595,7 +1595,7 @@ rg -n "hide built-in subagent model|内置.*不展示模型|built-in.*不展示�
 若 Step 4 修改了当前 docs：
 
 ```bash
-git add docs apps/zcode-cli/docs
+git add docs apps/codez-cli/docs
 git commit -m "docs: align subagent model override references"
 ```
 
@@ -1635,10 +1635,10 @@ pnpm lint
 - `Explore` allowed tools 已按 effective child model 计算。
 
 验证：
-- `pnpm --filter @zcode/services test -- --run test/subagentsService.test.ts`
-- `pnpm --filter @zcode/bootstrap test -- --run tests/subagents.test.ts`
-- `pnpm --filter @zcode/core test -- --run tests/subagent-profile.test.ts tests/subagent-explore.test.ts`
-- `pnpm --filter @zcode/ui test -- --run test/subagentsSection.test.ts`
+- `pnpm --filter @codez/services test -- --run test/subagentsService.test.ts`
+- `pnpm --filter @codez/bootstrap test -- --run tests/subagents.test.ts`
+- `pnpm --filter @codez/core test -- --run tests/subagent-profile.test.ts tests/subagent-explore.test.ts`
+- `pnpm --filter @codez/ui test -- --run test/subagentsSection.test.ts`
 - `pnpm typecheck`
 - `pnpm lint`
 ```

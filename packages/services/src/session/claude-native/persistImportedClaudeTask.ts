@@ -1,6 +1,6 @@
 import { mkdir, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import type { ZCodeSessionFile } from "@zcode/shared";
+import type { CodezSessionFile } from "@codez/shared";
 import { getLegacyTaskSessionSnapshotPath } from "#src/paths.js";
 import {
   parseLegacyTaskSessionFile,
@@ -9,7 +9,7 @@ import {
 
 const TASK_SEARCH_TEXT_MAX_CHARS = 200_000;
 
-export function buildSearchableTextFromMessages(messages: ZCodeSessionFile["messages"]): string {
+export function buildSearchableTextFromMessages(messages: CodezSessionFile["messages"]): string {
   const parts: string[] = [];
   let total = 0;
   for (const message of messages) {
@@ -52,7 +52,7 @@ export async function writeImportedClaudeTaskSnapshot(params: {
   );
 
   // legacy ACP 下线后 importClaudeSessions 变成空桩，导入虽复制了 jsonl 却没有写
-  // ~/.zcode/v2/sessions/{hash}/{taskId}.json。现在真实 ZCode session 承担续聊，legacy snapshot
+  // ~/.codez/v2/sessions/{hash}/{taskId}.json。现在真实 Codez session 承担续聊，legacy snapshot
   // 只保存过滤后的迁移备份，避免 Claude 来源运行态污染当前模型选择。
   await writeSessionFileAtomic(filePath, parsed);
 }

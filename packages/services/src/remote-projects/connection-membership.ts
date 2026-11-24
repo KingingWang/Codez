@@ -5,7 +5,7 @@ import {
   type ConnectionProfile,
   type RemoteTarget,
   stripRemoteTargetSecrets,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { IRemoteProjectService } from "#src/remote-projects/contract.js";
 
 function hostIdForTarget(target: RemoteTarget, sourceServerId?: string): string | null {

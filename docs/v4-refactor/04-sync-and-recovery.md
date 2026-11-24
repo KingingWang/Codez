@@ -198,7 +198,7 @@ function onLogicalFrame(store, frame, deliveryKind) {
     停手，终态写 `fault.subscription.contentRejected` 而不是 `recoveryFailed`，且 sessions-index 不排
     退避重订阅（那对确定性失败是永不收敛的循环：清空投影 → 重订阅 → 再被拒）。自愈路径仍在：
     runtime 换代、fresh connect、用户重连都会重新订阅。判定函数与两个 code 见
-    `packages/shared/src/zcode-protocol-v4/wire-fault.ts`；其余 reason code 一律仍按瞬态处理——把瞬态
+    `packages/shared/src/codez-protocol-v4/wire-fault.ts`；其余 reason code 一律仍按瞬态处理——把瞬态
     误判成确定性会让本该自愈的 gap 停在原地，那比多一次无用重试更坏。
 
     实测代价（2026-09-21，sess_4142de31）：一张工具卡载荷多带两个键，阶梯在同一份内容上烧掉三帧后

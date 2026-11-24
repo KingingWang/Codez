@@ -1,6 +1,6 @@
 import { cp, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { PreinstalledToolsState } from "@zcode/shared/preinstalled-tools";
+import type { PreinstalledToolsState } from "@codez/shared/preinstalled-tools";
 import {
   lockPreinstalledDirectory,
   preinstalledFixtureRecordPath,
@@ -20,7 +20,7 @@ import {
   waitForV4ConversationState,
 } from "#e2e/helpers/v4-conversation";
 
-const fixtureUrl = () => process.env.ZCODE_E2E_PREINSTALL_FIXTURE_URL!;
+const fixtureUrl = () => process.env.CODEZ_E2E_PREINSTALL_FIXTURE_URL!;
 const card = (toolId: string) =>
   `[data-testid="preinstalled-tools-card"][data-tool-id="${toolId}"]`;
 const toggle = (toolId: string) =>
@@ -29,9 +29,9 @@ const snapshot = () =>
   browser.execute(async () =>
     (
       window as typeof window & {
-        zcode: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
+        codez: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
       }
-    ).zcode.getPreinstalledToolsState(),
+    ).codez.getPreinstalledToolsState(),
   );
 const requests = async () =>
   (await (await fetch(`${fixtureUrl()}/status`)).json()).requests as number;
@@ -109,7 +109,7 @@ describe("每工具 Agent 使用开关（待审核）", () => {
       join(directory, "config.json"),
       JSON.stringify({
         storageRoot: resolveE2EStorageRoot(),
-        python: process.env.ZCODE_E2E_DOCUMENT_PYTHON || "python3",
+        python: process.env.CODEZ_E2E_DOCUMENT_PYTHON || "python3",
       }),
     );
     await prepareV4ConversationE2E();
@@ -211,7 +211,7 @@ describe("每工具 Agent 使用开关（待审核）", () => {
       ).toBe(true);
       const workerPid = await browser.electron.execute(
         (electron) =>
-          electron.app.getAppMetrics().find((item) => item.name === "zcode-preinstalled-tools")!
+          electron.app.getAppMetrics().find((item) => item.name === "codez-preinstalled-tools")!
             .pid,
       );
       process.kill(workerPid, "SIGKILL");
@@ -219,7 +219,7 @@ describe("每工具 Agent 使用开关（待审核）", () => {
         async () => {
           const pid = await browser.electron.execute(
             (electron) =>
-              electron.app.getAppMetrics().find((item) => item.name === "zcode-preinstalled-tools")
+              electron.app.getAppMetrics().find((item) => item.name === "codez-preinstalled-tools")
                 ?.pid,
           );
           return Boolean(pid && pid !== workerPid);
@@ -292,7 +292,7 @@ describe("每工具 Agent 使用开关（待审核）", () => {
           expect(layout.right).toBeLessThanOrEqual(layout.width + 1);
           expect(layout.bottom).toBeLessThanOrEqual(layout.height + 1);
           await browser.saveScreenshot(
-            `${process.env.ZCODE_E2E_ARTIFACT_DIR}/agent-switch-unsynced-${locale}-${theme}.png`,
+            `${process.env.CODEZ_E2E_ARTIFACT_DIR}/agent-switch-unsynced-${locale}-${theme}.png`,
           );
         }
       await setPluginPresentation({ locale: "zh-CN", theme: "zai-dark", width: 1000, height: 760 });
@@ -361,7 +361,7 @@ describe("每工具 Agent 使用开关（待审核）", () => {
       expect(await toggle(toolId).getAttribute("aria-checked")).toBe("false");
     }
     await expect(stat(preinstalledEntryPath(bin, "qpdf"))).rejects.toHaveProperty("code", "ENOENT");
-    await expect(stat(preinstalledEntryPath(bin, "zcode-soffice"))).rejects.toHaveProperty(
+    await expect(stat(preinstalledEntryPath(bin, "codez-soffice"))).rejects.toHaveProperty(
       "code",
       "ENOENT",
     );
@@ -374,7 +374,7 @@ describe("每工具 Agent 使用开关（待审核）", () => {
     const settings = JSON.parse(await readFile(join(settingsDirectory, "setting.json"), "utf8"));
     expect(settings.preinstalledToolsAgentDisabled.sort()).toEqual(["libreoffice", "qpdf"]);
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "agent-switch-evidence.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "agent-switch-evidence.json"),
       JSON.stringify(
         {
           observations,

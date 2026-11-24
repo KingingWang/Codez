@@ -46,7 +46,7 @@ import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 //     修复后：等 lane 两轮结束 ─▶ 远端已是个人 ─▶ 核对通过
 const CASE_MARKER = "E2E_REMOTE_PLAN_SWITCH_WAIT_PROVISIONING";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-composer-plan-switch-wait",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-composer-plan-switch-wait",
 );
 // 远端每个账号请求的额外延迟。一轮账号刷新含多次请求，足够覆盖从设置页回到 Composer 点击的操作时间。
 const REMOTE_ACCOUNT_DELAY_MS = 3_000;
@@ -76,7 +76,7 @@ describe(`${CASE_MARKER}: 远端 Composer 切换套餐连接等待下发结果`,
     const workspacePath = config.workspacePaths[0];
     const apiProviderId = process.env.E2E_PROVIDER_ID?.trim();
     if (!apiProviderId) throw new Error(`${CASE_MARKER}: 缺少 E2E API Provider`);
-    const mockBaseUrl = process.env.ZCODE_E2E_CODING_PLAN_MOCK_URL?.trim();
+    const mockBaseUrl = process.env.CODEZ_E2E_CODING_PLAN_MOCK_URL?.trim();
     if (!mockBaseUrl) throw new Error(`${CASE_MARKER}: 缺少账号套餐 mock 地址`);
 
     await seedSignedInIndividualPlan(CASE_MARKER);

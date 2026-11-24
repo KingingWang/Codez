@@ -4,7 +4,7 @@
 
 - 本文是 `feature-boundary-planner` 在实现前执行功能扫描与影响分析的事实规范。
 - 本文描述分析方法和输出契约，不修改产品运行时行为。
-- 功能语义图位于 `.agents/skills/feature-boundary-planner/references/zcode-feature-graph.yaml`；代码事实以当前工作区和 codegraph 索引为准。
+- 功能语义图位于 `.agents/skills/feature-boundary-planner/references/codez-feature-graph.yaml`；代码事实以当前工作区和 codegraph 索引为准。
 
 ## 目标
 

@@ -2,7 +2,7 @@ import { waitForControlledReplay, releaseControlledReplay } from "#e2e/helpers/c
 import { openStatusCapsule } from "#e2e/helpers/status-capsule";
 import { open, rm, utimes, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { TID_GIT_PANE, TID_TASK_ITEM, testId } from "@zcode/shared/test-ids";
+import { TID_GIT_PANE, TID_TASK_ITEM, testId } from "@codez/shared/test-ids";
 import type { ChainablePromiseElement } from "webdriverio";
 import {
   DEFAULT_WORKSPACE,
@@ -162,7 +162,7 @@ describe("SP13：status panel Git Changes 打开变更审阅", () => {
     expect(await $("[data-v4-timeline-scroll]").getAttribute("data-git-task-retained")).toBe("yes");
     await waitForExpandedStatusPanel();
     // 通过真实文件 watcher 刷新；无需打开 Git pane，也不创建会话或调用模型。
-    const caseRoot = join(DEFAULT_WORKSPACE, ".zcode-e2e/conversation-session-git-review-entry");
+    const caseRoot = join(DEFAULT_WORKSPACE, ".codez-e2e/conversation-session-git-review-entry");
     const largeText = "large-untracked.txt";
     await browser.electron.execute((electron) => {
       const state = globalThis as typeof globalThis & {
@@ -171,7 +171,7 @@ describe("SP13：status panel Git Changes 打开变更审阅", () => {
       const readHostKb = () =>
         electron.app
           .getAppMetrics()
-          .filter((metric) => metric.name?.startsWith("zcode-host"))
+          .filter((metric) => metric.name?.startsWith("codez-host"))
           .reduce((total, metric) => total + metric.memory.workingSetSize, 0);
       const baseline = readHostKb();
       if (!baseline) throw new Error("没有找到待采样的真实 Host 进程");
@@ -336,15 +336,15 @@ async function waitForGitReview() {
     const navigation = await browser.execute(() => {
       const bridge = window as Window & {
         __gitReviewClickTrace?: string[];
-        __zcodeTabStoreE2E?: {
+        __codezTabStoreE2E?: {
           getState(): { tabs: unknown[]; activeWorkspacePath: string | null };
         };
       };
       return {
         clickTrace: bridge.__gitReviewClickTrace,
-        navigation: bridge.__zcodeTabStoreE2E?.getState().tabs,
-        activePath: bridge.__zcodeTabStoreE2E?.getState().activeWorkspacePath,
-        interfaceMode: localStorage.getItem("zcode-interface-mode"),
+        navigation: bridge.__codezTabStoreE2E?.getState().tabs,
+        activePath: bridge.__codezTabStoreE2E?.getState().activeWorkspacePath,
+        interfaceMode: localStorage.getItem("codez-interface-mode"),
         sidePaneTabs: [...document.querySelectorAll("[data-side-pane-tab-id]")].map((el) => ({
           id: el.getAttribute("data-side-pane-tab-id"),
           state: el.getAttribute("data-state"),

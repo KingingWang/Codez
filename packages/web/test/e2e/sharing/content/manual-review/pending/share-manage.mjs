@@ -29,7 +29,7 @@ try {
         const chinese = locale === "cn/share";
         const t = (zh, en) => (chinese ? zh : en);
         const context = await browser.newContext({ viewport: { width, height: 900 } });
-        await context.addInitScript((value) => localStorage.setItem("zcode-theme", value), theme);
+        await context.addInitScript((value) => localStorage.setItem("codez-theme", value), theme);
         const page = await context.newPage();
 
         // 未登录：管理页显示管理专用的登录卡片，而不是被当成分享码请求 preview。

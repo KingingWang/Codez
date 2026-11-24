@@ -83,14 +83,14 @@ describe("CR 桌面崩溃重启", () => {
         inRenderer(
           url,
           () =>
-            document.body.classList.contains("zcode-startup-ready") &&
+            document.body.classList.contains("codez-startup-ready") &&
             !document.getElementById("loading"),
         ),
       );
 
       // 在真实入口的根边界设置故障状态；独立浏览器验收另覆盖真实子组件抛错。
       await inRenderer(url, () => {
-        localStorage.setItem("zcode-locale-preference", "en-US");
+        localStorage.setItem("codez-locale-preference", "en-US");
         const root = document.getElementById("root")!;
         const key = Object.keys(root).find((name) => name.startsWith("__reactContainer$"))!;
         type Fiber = {
@@ -136,7 +136,7 @@ describe("CR 桌面崩溃重启", () => {
       expect((await readEvidence()).order).toEqual(["relaunch", "exit"]);
       await clickRestart();
       expect((await readEvidence()).order).toEqual(["relaunch", "exit"]);
-      const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR!;
+      const artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR!;
       await mkdir(artifacts, { recursive: true });
       await inRenderer(
         url,

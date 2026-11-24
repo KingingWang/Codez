@@ -12,7 +12,7 @@ Task title can come from several places during a session lifecycle. Renderer cod
 ## Renderer restore rule
 
 - CLI owns persisted titles and title source; `tasks-index.sqlite` contains their read-only Host projection.
-- The active header reads the existing workspace-scoped `ZCodeTaskService.getTaskMeta` and refreshes on Host metadata events. It does not depend on a sidebar/query-cache row or call `readSession` to obtain a title. Historical and archived sessions can have metadata before their CLI runtime is active.
+- The active header reads the existing workspace-scoped `CodezTaskService.getTaskMeta` and refreshes on Host metadata events. It does not depend on a sidebar/query-cache row or call `readSession` to obtain a title. Historical and archived sessions can have metadata before their CLI runtime is active.
 - `readSession` / `resumeSession` returns a raw agent snapshot. Its projected task meta is only a runtime candidate and can be missing app-side `titleOverridden`.
 - Restore and remaining task cache sync paths must merge raw snapshot meta with indexed/query-cache meta before writing renderer caches. The active header uses Host metadata directly; existing optimistic metadata is used only before the indexed record arrives.
 - A raw snapshot title must not overwrite a title whose existing meta has `titleOverridden=true`.

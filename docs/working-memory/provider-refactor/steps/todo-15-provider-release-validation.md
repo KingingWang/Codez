@@ -73,7 +73,7 @@ conversation Docker preset
 
 #### Account
 
-- Account Built-in Overlay 只处理 ZCode Built-in 声明的账号 Provider；
+- Account Built-in Overlay 只处理 Codez Built-in 声明的账号 Provider；
 - Start、Individual、Team Plan 使用结构化 `family/planKind/accessId`，Team Scope 按既有契约补齐；
 - 权益接口确实返回模型集合时才覆盖 `builtinModelIds`；未返回时继续使用 Built-in 成员；
 - Personal Overlay 继续最后生效；
@@ -95,7 +95,7 @@ conversation Docker preset
 ### 1.3 历史配置与持久化
 
 - 全新安装使用 Built-in + 空 Personal + 当前 Account 正常建立 Registry；
-- 旧 `.zcode/v2/config.json` 在同路径迁移前创建内容哈希备份，再原子替换为正式版本化 Personal Config；
+- 旧 `.codez/v2/config.json` 在同路径迁移前创建内容哈希备份，再原子替换为正式版本化 Personal Config；
 - 旧 `model-providers.json` 只作为一次性只读来源，不被修改，也不重新进入稳态 Registry；
 - Custom Provider 的明确用户事实完整迁入 Personal；Built-in Provider 只迁移用户显式差异；
 - Legacy `modalities` 和已发布平铺能力字段只在 importer 私有边界转换，不进入当前 Config/Runtime；
@@ -107,12 +107,12 @@ conversation Docker preset
 
 ### 1.4 发布制品与跨平台启动
 
-- Desktop 开发环境和发布包都能定位 `config/provider/zcode-builtin.json`；
+- Desktop 开发环境和发布包都能定位 `config/provider/codez-builtin.json`；
 - CLI/TUI/SEA 能从嵌入资产或显式路径物化并读取同一 Built-in Config；
 - Server 构建能使用嵌入资产或受支持的显式环境变量启动；
-- macOS、Windows、Linux 都使用当前 Environment 的 `.zcode/v2/config.json`，并验证路径、权限、文件锁、
+- macOS、Windows、Linux 都使用当前 Environment 的 `.codez/v2/config.json`，并验证路径、权限、文件锁、
   原子写和 watcher 行为；
-- `ZCODE_DATA_BASE_DIR`、测试隔离目录和显式 Built-in/Personal 路径不产生跨 Environment 污染；
+- `CODEZ_DATA_BASE_DIR`、测试隔离目录和显式 Built-in/Personal 路径不产生跨 Environment 污染；
 - 冷启动、正常重启、配置更新和失败后恢复都得到一致的 Config/Registry 生命周期；
 - 打包产物不遗漏 Built-in Config，也不携带真实 API Key 或测试凭据。
 

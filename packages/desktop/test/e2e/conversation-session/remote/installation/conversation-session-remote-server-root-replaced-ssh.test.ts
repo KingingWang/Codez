@@ -23,17 +23,17 @@ import {
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
 // A4（ZCT-2112854001415753728）的真实 SSH 验证（本机 Docker runner --systemd）：daemon 以 OS 用户服务运行时
-// 删除 ~/.zcode/server 再重装。旧 Supervisor 的锁、control socket 与 ingress-token 随旧目录消失；
+// 删除 ~/.codez/server 再重装。旧 Supervisor 的锁、control socket 与 ingress-token 随旧目录消失；
 // 它不能再把 ready 与旧端口写进新 root。连接必须拉起新的 Supervisor 并读到 token，不能报 `cat: …ingress-token`。
 const MARKER = "E2E_REMOTE_SERVER_ROOT_REPLACED_SSH";
 const DEV: RemoteAccount = { user: "dev", home: "/home/dev" };
-const SERVER_ROOT = '"$HOME/.zcode/server"';
-const SERVER_BIN = '"$HOME/.zcode/server/bin/zcode"';
+const SERVER_ROOT = '"$HOME/.codez/server"';
+const SERVER_BIN = '"$HOME/.codez/server/bin/codez"';
 // Core heartbeat 周期是 10 秒；等 1.5 个周期，旧实现此时已把旧快照写进新 root。
 const AFTER_HEARTBEAT_MS = 15_000;
 const desktopRoot = process.cwd();
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-server-root-replaced-ssh",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-server-root-replaced-ssh",
 );
 
 /** 以 dev 身份执行，带 user manager 的 bus，等同于 SSH 会话里的 systemctl --user。 */
@@ -51,7 +51,7 @@ async function devShell(container: string, script: string): Promise<string> {
 async function readUnit(container: string): Promise<Record<string, string>> {
   const output = await devShell(
     container,
-    "systemctl --user show 'com.zhipu.zcode.server.*.service' -p Id -p ActiveState -p MainPID -p NRestarts",
+    "systemctl --user show 'com.zhipu.codez.server.*.service' -p Id -p ActiveState -p MainPID -p NRestarts",
   );
   return Object.fromEntries(
     output

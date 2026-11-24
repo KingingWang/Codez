@@ -1,4 +1,4 @@
-// 运行：pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec ./test/e2e/conversation-session/plugins/conversation-session-plugin-skill-live-catalog.test.ts
+// 运行：pnpm --filter @codez/desktop exec wdio run wdio.conf.ts --spec ./test/e2e/conversation-session/plugins/conversation-session-plugin-skill-live-catalog.test.ts
 // 合同：docs/skills-live-catalog.md。打开的会话跟随 skill 目录变化：新 skill 只追加一行，
 // 插件停用后它的 skill 不再能加载，已发送的列表不改写、不发删除通知。
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -82,7 +82,7 @@ describe("Skill live catalog in an open session E2E", () => {
 
 async function disableWorkspacePlugin(): Promise<void> {
   const { workspace } = getE2EAppDataPaths();
-  const configPath = join(workspace, ".zcode", "config.json");
+  const configPath = join(workspace, ".codez", "config.json");
   const config = JSON.parse(await readFile(configPath, "utf8")) as {
     plugins?: { enabledPlugins?: Record<string, boolean> };
   };
@@ -105,7 +105,7 @@ async function disableWorkspacePlugin(): Promise<void> {
 
 async function writeWorkspaceSkill(): Promise<void> {
   const { workspace } = getE2EAppDataPaths();
-  const directory = join(workspace, ".zcode", "skills", LIVE_SKILL_NAME);
+  const directory = join(workspace, ".codez", "skills", LIVE_SKILL_NAME);
   await mkdir(directory, { recursive: true });
   await writeFile(
     join(directory, "SKILL.md"),

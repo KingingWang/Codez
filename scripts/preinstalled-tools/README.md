@@ -19,7 +19,7 @@
 | `conda*.mjs`                     | 固定 conda 输入、安全解包、前缀元数据、原始来源、导入表闭包与裁剪 |
 | `source-member.mjs`              | 从 ZIP 或 tar.gz 只提取指定上游文件，保留边界和大小限制           |
 
-转换器先完成输入校验与平台转换，写入与 recipe 一致的 `zcode-tool-resource.json`，收集许可/来源，再调用 `packageResource`。`resource` 使用 `platforms`、`binaryArch`、`entries`、`runtimeChecks` 和嵌套的 `archive`。未发布描述没有下载地址，`validation.runtime` 固定为 `not-run`；二进制结构通过不表示目标平台运行通过。
+转换器先完成输入校验与平台转换，写入与 recipe 一致的 `codez-tool-resource.json`，收集许可/来源，再调用 `packageResource`。`resource` 使用 `platforms`、`binaryArch`、`entries`、`runtimeChecks` 和嵌套的 `archive`。未发布描述没有下载地址，`validation.runtime` 固定为 `not-run`；二进制结构通过不表示目标平台运行通过。
 
 `SOURCES.json` 为组件列表，每项保存 `component`、固定来源 `url`、`sha256` 和包内 `licenses` 路径。LibreOffice 记录官方安装包、完整验签指纹 `signingFingerprint` 以及官方源码归档；未修改字体记录固定提交中的原始字体；MSI 内 VC++ 运行库保留官方分发来源，另外的 `provenance.runtime.origin` 区分 MSI 与显式补充输入。GPL 源码归档的 CDN 存档属于发布步骤。
 

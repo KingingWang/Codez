@@ -4,7 +4,7 @@
 >
 > 日期：2026-08-27
 >
-> 来源：macOS ZCode Provider Settings 手工体验与实现链路审计
+> 来源：macOS Codez Provider Settings 手工体验与实现链路审计
 
 ## 1. 问题
 

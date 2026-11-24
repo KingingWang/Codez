@@ -1,6 +1,6 @@
 import { memo, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowDownToLineIcon, CopyIcon, EraserIcon } from "lucide-react";
-import type { ExtensionLogEntry } from "@zcode/shared/extension-host";
+import type { ExtensionLogEntry } from "@codez/shared/extension-host";
 import {
   TID_EXTENSION_LOGS,
   TID_EXTENSION_LOGS_AUTO_SCROLL,
@@ -9,7 +9,7 @@ import {
   TID_EXTENSION_LOGS_LEVEL_FILTER,
   TID_EXTENSION_LOGS_ROW,
   TID_EXTENSION_LOGS_SOURCE_FILTER,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
 import {
@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select.js";
 import { toast } from "@/components/ui/toast.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import { useExtensionLogs } from "@/extension-slots/adapters/useExtensionLogs.js";
 import {
@@ -97,7 +97,7 @@ const ExtensionLogRow = memo(function ExtensionLogRow({
  * 来源、级别过滤与自动滚动是标签内的状态；「清空」只清视图（store 记下 seq）。
  */
 export function ExtensionLogsPane({ visible }: ExtensionLogsPaneProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const model = useExtensionLogs();
   const [source, setSource] = useState<ExtensionLogSourceFilter>("all");
   const [level, setLevel] = useState<ExtensionLogLevelFilter>("all");

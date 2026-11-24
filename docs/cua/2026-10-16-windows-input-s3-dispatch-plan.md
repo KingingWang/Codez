@@ -329,7 +329,7 @@ WinUI3 普通单击覆盖 Invoke、Toggle、Select、Expand；语义双 Invoke �
 ### 7.2 原始报告与证据归属
 
 当前点击实现的八宿主报告与工具原始证据保存在
-packages/zcode-cua/test/fixtures/reports/：
+packages/codez-cua/test/fixtures/reports/：
 
 - baseline-2026-10-18T03-04-31-108Z-78712b3515.json（S3 出口时点）
 - evidence-2026-10-18T03-04-31-108Z-78712b3515.ndjson
@@ -373,16 +373,16 @@ runner 与 fixture 对应当前提交。该标识保留为原始证据，不改�
 恢复、JS 可响应、同 PID 兄弟根窗拒绝、错误 shield 宿主/PID 拒绝、无重复业务动作，
 另有 WinUI3 四模式控件与 GTK3 十轮激活点击及中途缩放。
 
-三个真实测试文件位于 packages/zcode-cua/test/native/：
+三个真实测试文件位于 packages/codez-cua/test/native/：
 win-uia-timeout-lifecycle-cua.test.ts、win-uia-patterns-cua.test.ts、win-gtk-click-cua.test.ts。
 
 复跑时先按矩阵规范构建 fixture、native 与 producer，再串行执行以下命令；
-ZCODE_CUA_HARNESS_E2E=1 是真实测试的显式开关：
+CODEZ_CUA_HARNESS_E2E=1 是真实测试的显式开关：
 
 ```powershell
-$env:ZCODE_CUA_HARNESS_E2E = '1'
-corepack pnpm --filter @zcode/zcode-cua exec vitest run test/native/win-uia-timeout-lifecycle-cua.test.ts test/native/win-uia-patterns-cua.test.ts test/native/win-gtk-click-cua.test.ts --maxWorkers 1
-node packages/zcode-cua/scripts/windows-harness-matrix-baseline.mjs
+$env:CODEZ_CUA_HARNESS_E2E = '1'
+corepack pnpm --filter @codez/codez-cua exec vitest run test/native/win-uia-timeout-lifecycle-cua.test.ts test/native/win-uia-patterns-cua.test.ts test/native/win-gtk-click-cua.test.ts --maxWorkers 1
+node packages/codez-cua/scripts/windows-harness-matrix-baseline.mjs
 ```
 
 ### 7.4 剩余问题与未验证项

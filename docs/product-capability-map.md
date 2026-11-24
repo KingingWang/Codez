@@ -1,10 +1,10 @@
-# ZCode 产品能力关系图
+# Codez 产品能力关系图
 
 ## 目标
 
-本文定义 ZCode 产品能力图的维护口径。关系图不是代码目录图，也不是组织架构图，而是用来回答：
+本文定义 Codez 产品能力图的维护口径。关系图不是代码目录图，也不是组织架构图，而是用来回答：
 
-1. 产品能力主要运行在 Renderer、Host 还是 ZCode CLI，或属于产品运行时之外的工程基础设施；
+1. 产品能力主要运行在 Renderer、Host 还是 Codez CLI，或属于产品运行时之外的工程基础设施；
 2. 每个顶层区域由哪些能力群组成；
 3. 每个能力群包含哪些可独立维护的能力节点；
 4. 不同节点通过什么语义产生依赖；
@@ -13,7 +13,7 @@
 交互式关系图由 `apps/dev-docs` 承载。运行 `pnpm dev:docs` 后访问
 `http://localhost:5186/?view=capabilities`。
 
-![ZCode 产品能力关系图预览](./product-capability-map-preview.png)
+![Codez 产品能力关系图预览](./product-capability-map-preview.png)
 
 ## 图模型
 
@@ -27,7 +27,7 @@ Top-level Area
 Capability Node ── semantic relationship ──> Capability Node
 ```
 
-- **顶层区域（Top-level Area）**：前三个区域按真实部署与状态边界划分为 Renderer、Host、ZCode CLI；第四个区域是产品运行时之外的工程基础设施。
+- **顶层区域（Top-level Area）**：前三个区域按真实部署与状态边界划分为 Renderer、Host、Codez CLI；第四个区域是产品运行时之外的工程基础设施。
 - **能力群（Group）**：顶层区域内适合分配一个主要维护团队或负责人的能力集合，例如 Agent Core、账户权益、构建发布、测试自动化。
 - **能力节点（Node）**：拥有独立产品语义、权威状态或提交副作用的可维护单元。
 - **关系（Edge）**：只记录有明确产品语义的依赖，不把所有静态代码引用都画成产品关系。
@@ -53,7 +53,7 @@ Capability Node ── semantic relationship ──> Capability Node
                                  ELK Rectangle Packing
                                            |
                                            v
-Renderer -> Host -> ZCode CLI 固定层顺序
+Renderer -> Host -> Codez CLI 固定层顺序
                   +
 Engineering Infrastructure 位于三层下方
                   +
@@ -63,7 +63,7 @@ React Flow 跨群连线
 - 顶层区域和能力群都使用 React Flow parent node；能力群位于唯一顶层区域内，能力节点位于唯一主要能力群内。
 - 每个能力群独立使用 ELK Layered 计算节点位置与群内正交 bend points，群内关系仍参与排序和避让。
 - 同一顶层区域内的跨群节点关系按 source/target 能力群聚合为带权无向邻接关系；以关系度和边权作为稳定遍历顺序，让强关联群优先相邻，但不允许单条跨群长边拉大群间层级。
-- 能力群使用 ELK Rectangle Packing 紧凑装箱；Renderer、Host、ZCode CLI 保持固定从左到右的运行层顺序，工程基础设施作为独立区域居中放在三层下方。
+- 能力群使用 ELK Rectangle Packing 紧凑装箱；Renderer、Host、Codez CLI 保持固定从左到右的运行层顺序，工程基础设施作为独立区域居中放在三层下方。
 - 布局使用稳定随机种子、定义顺序作为 tie-breaker 和确定性输入，保证相同数据得到相同布局，方便评审和截图比较。
 - 布局采用紧凑间距 profile：压缩顶层区域外边距、能力群间距、群内节点间距和节点卡片宽度；文字仍使用原有 `text-ui-*` 层级，不通过缩小字体换取密度。
 - 顶层区域标题、能力群标题与其子元素起始位置使用同一组几何常量；子元素必须位于标题分隔线下方，并至少保留 12px 的画布间距，双语标题、owner 和规模徽标不得侵入子元素区域。
@@ -136,9 +136,9 @@ Renderer（Desktop / Web / Mobile）
 Host（Local / SSH / WSL / Docker / Shared Host）
   platform services / process supervision / routing / attachment
                          |
-                         | ZCode Protocol / service RPC
+                         | Codez Protocol / service RPC
                          v
-ZCode CLI
+Codez CLI
   AgentRuntime / CommandInbox / ProductProjection /
   session event journal / usage SQLite
 ```
@@ -147,7 +147,7 @@ ZCode CLI
 | ------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
 | 渲染层（Renderer）        | 输入草稿、选择态、筛选范围、图表 range、UI projection cache                                                | Agent 运行态、会话正文、CLI queue、usage 事实           |
 | 宿主层（Host）            | 窗口级服务、Credential、远程连接、进程监督、附件路由、平台 IO、远端权益请求、Telemetry/ARMS 发送           | conversation 正文、Agent turn、手机 replayable 业务状态 |
-| 智能体运行层（ZCode CLI） | Agent/Turn、CommandInbox、ProductProjection、session event、模型/工具执行、会话恢复、usage SQLite 权威事实 | Renderer 草稿、窗口布局、Electron 平台状态              |
+| 智能体运行层（Codez CLI） | Agent/Turn、CommandInbox、ProductProjection、session event、模型/工具执行、会话恢复、usage SQLite 权威事实 | Renderer 草稿、窗口布局、Electron 平台状态              |
 
 - Desktop Renderer、未来 Web App 和 Mobile Renderer 复用产品语义，但通过不同 attachment 接入 Host。
 - SSH、WSL、Docker 和本地窗口都由 Host 建立工作区级连接；远程工作区必须贯穿 `workspaceIdentity` 与 `remoteSessionId`。
@@ -158,7 +158,7 @@ ZCode CLI
 工程基础设施不属于上述三层，也不参与线上请求链：
 
 ```text
-Renderer  ->  Host  ->  ZCode CLI
+Renderer  ->  Host  ->  Codez CLI
     \           |          /
      \          |         /
       +---------+--------+
@@ -196,14 +196,14 @@ Engineering Infrastructure
 | Host      | 自动化与渠道运行时（Automation & Channel Runtime）                  | scheduler、automation record、off-peak、Bots、第三方渠道                                                |
 | Host      | 客户端平台（Client Platform）                                       | Electron 生命周期、客户端更新、Feedback ticket 与诊断包                                                 |
 | Host      | 数据与可观测性（Data & Observability）                              | App Usage bridge、产品埋点、Conversation telemetry、ARMS、性能可靠性、日志与进程监控                    |
-| ZCode CLI | 智能体核心（Agent Core）                                            | runtime 装配、turn 状态机、上下文、memory、compact、stream recovery、goal/target、故障收口              |
-| ZCode CLI | 对话运行时（Conversation Runtime）                                  | session lifecycle、input admission、CLI queue、event journal、ProductProjection、fork/rewind            |
-| ZCode CLI | 模型能力（Model Capabilities）                                      | provider runtime、目录能力、token 预算、多模态、推理与工具能力                                          |
-| ZCode CLI | 工具运行时与安全（Tool Runtime & Safety）                           | 内置工具、调度、权限、模式策略、工具产物                                                                |
-| ZCode CLI | 多智能体（Multi-Agent）                                             | Subagent profile、child runtime、交互协调与后台任务                                                     |
-| ZCode CLI | 扩展运行时（Extension Runtime）                                     | MCP、Skill、Hooks、Commands、Memory resources                                                           |
-| ZCode CLI | 浏览器运行时（Browser Runtime）                                     | Browser Use Plugin、Node REPL/Playwright、Headless backend                                              |
-| ZCode CLI | 用量可观测存储（Usage Observability）                               | model/turn/tool usage 事实、SQLite 30 天保留与 App Usage SQL 聚合                                       |
+| Codez CLI | 智能体核心（Agent Core）                                            | runtime 装配、turn 状态机、上下文、memory、compact、stream recovery、goal/target、故障收口              |
+| Codez CLI | 对话运行时（Conversation Runtime）                                  | session lifecycle、input admission、CLI queue、event journal、ProductProjection、fork/rewind            |
+| Codez CLI | 模型能力（Model Capabilities）                                      | provider runtime、目录能力、token 预算、多模态、推理与工具能力                                          |
+| Codez CLI | 工具运行时与安全（Tool Runtime & Safety）                           | 内置工具、调度、权限、模式策略、工具产物                                                                |
+| Codez CLI | 多智能体（Multi-Agent）                                             | Subagent profile、child runtime、交互协调与后台任务                                                     |
+| Codez CLI | 扩展运行时（Extension Runtime）                                     | MCP、Skill、Hooks、Commands、Memory resources                                                           |
+| Codez CLI | 浏览器运行时（Browser Runtime）                                     | Browser Use Plugin、Node REPL/Playwright、Headless backend                                              |
+| Codez CLI | 用量可观测存储（Usage Observability）                               | model/turn/tool usage 事实、SQLite 30 天保留与 App Usage SQL 聚合                                       |
 | 基础设施  | 构建与发布工程（Build & Release Engineering）                       | GitLab pipeline、跨平台构建、打包签名、公证、制品、CDN、灰度/稳定发布                                   |
 | 基础设施  | 测试自动化平台（Test Automation Platform）                          | Desktop/CLI E2E harness、capture/replay、跨平台执行、故障注入、用例准入与晋级                           |
 | 基础设施  | 质量数据与工程治理（Quality Intelligence & Engineering Governance） | E2E 报告、覆盖率、质量趋势、静态门禁、工程性能与失败制品                                                |
@@ -223,7 +223,7 @@ Host      |
   App Usage Protocol Bridge       Product Telemetry / ARMS / Logs
           ^                                  |
           | usage/stats                      `--> 外部数据与诊断后端
-ZCode CLI |
+Codez CLI |
   App Usage SQL Aggregation
           ^
           |
@@ -234,18 +234,18 @@ ZCode CLI |
 ```
 
 - Personal Coding Plan、Team Plan、Start Plan 是三套不同 entitlement 身份，必须拆成独立节点。
-- Start Plan 使用 OAuth zcode JWT 与 balance/daily quota；它不使用 Coding Plan monitor API。
+- Start Plan 使用 OAuth codez JWT 与 balance/daily quota；它不使用 Coding Plan monitor API。
 - Team Plan 使用 organization/project/project-key 隔离，不能退化为个人 Coding Plan 的显示标签。
 - Plan Quota & Monitor 是远端商业套餐数据；失败时不得回退 App Usage。
-- App Usage 是本地产品使用统计。权威源是 ZCode CLI 默认
-  `~/.zcode/cli/db/db.sqlite` 中独立语义的 `model_usage`、`turn_usage`、`tool_usage` 表，
+- App Usage 是本地产品使用统计。权威源是 Codez CLI 默认
+  `~/.codez/cli/db/db.sqlite` 中独立语义的 `model_usage`、`turn_usage`、`tool_usage` 表，
   经 `usage/stats` 协议提供给 Host 和 Renderer；它不是计费账本。
 - `/report` 产品埋点、ARMS/RUM、Conversation telemetry、日志基础设施和 App Usage 是不同通道，
   不能再合并成一个 `telemetry` 或 `usage-quota` 节点。
 
 ## 智能体核心与对话运行时边界
 
-智能体核心不再压缩成 Turn、Context、Compact、Session 四个节点。ZCode CLI 内至少要区分：
+智能体核心不再压缩成 Turn、Context、Compact、Session 四个节点。Codez CLI 内至少要区分：
 
 ```text
 Agent Core
@@ -309,7 +309,7 @@ Conversation Runtime
 
 ## Office 与 Computer Use 孵化边界
 
-Office 与 Computer Use 是跨层产品域，但不新增第四个产品运行层。Renderer 拥有预览、编辑、操作轨迹和接管体验；Host 拥有文件/转换服务与系统级 CUA 权限主体；ZCode CLI 通过 Document Skills 和 Computer Use MCP 执行 Agent 意图。
+Office 与 Computer Use 是跨层产品域，但不新增第四个产品运行层。Renderer 拥有预览、编辑、操作轨迹和接管体验；Host 拥有文件/转换服务与系统级 CUA 权限主体；Codez CLI 通过 Document Skills 和 Computer Use MCP 执行 Agent 意图。
 
 ```text
 Renderer
@@ -322,9 +322,9 @@ Host
   File Service + Office Document Service（planned）
   Computer Use Helper Lifecycle + Trust Broker + Surface/Input Backend（macOS beta）
                     ^
-                    | ZCode Protocol / per-server MCP broker credentials
+                    | Codez Protocol / per-server MCP broker credentials
                     |
-ZCode CLI
+Codez CLI
   Document Skills（DOCX/PDF/PPTX/XLSX current）
   Computer Use MCP Integration（current beta）
 ```
@@ -378,7 +378,7 @@ Agent runtime + ProductProjection
 新增或修改能力节点时：
 
 1. 先确认节点的用户语义、权威状态和提交落点；
-2. 先判断能力属于 Renderer / Host / ZCode CLI 运行时，还是只构建、验证、度量、发布产品的工程基础设施，再放入唯一主要能力群；
+2. 先判断能力属于 Renderer / Host / Codez CLI 运行时，还是只构建、验证、度量、发布产品的工程基础设施，再放入唯一主要能力群；
 3. 只添加有明确语义的跨节点关系；
 4. 如果只是测试依赖或静态可达关系，不进入产品图；
 5. 涉及 desktop/mobile、local/remote 时，明确 `clientMode`、`deliveryKind` 和 workspace identity 边界；

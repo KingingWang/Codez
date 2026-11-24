@@ -9,8 +9,8 @@ import {
   TID_CHAT_MODEL_GUIDE,
   TID_CHAT_MODEL_SELECT_TRIGGER,
   TID_V4_COMPOSER,
-} from "@zcode/shared/test-ids";
-import { encodeCustomModelValue } from "@zcode/shared";
+} from "@codez/shared/test-ids";
+import { encodeCustomModelValue } from "@codez/shared";
 import {
   clearAppData,
   DEFAULT_WORKSPACE,
@@ -32,12 +32,12 @@ const TARGET_MODEL = "e2e-dmm-model-b";
 // 较长的中文文案：390 宽的手机上必须换行，用来验证气泡不超出输入框、离屏幕边留出间距。
 const NOTICE_ZH_CN =
   "E2E 手机文案：新建任务的默认模型已按服务端规则切换为 e2e-dmm-model-b，可在模型菜单中改回原来的模型。";
-const NOTICE_KEY = "zcode-draft-model-migration-notice:v1";
+const NOTICE_KEY = "codez-draft-model-migration-notice:v1";
 const PROJECT_SELECTOR = '[data-testid="project-section"]';
 
 type MobileWindow = Window & {
-  __zcodeTabStoreE2E?: { getState(): { activeWorkspacePath: string | null } };
-  __zcodeSessionStoreE2E?: {
+  __codezTabStoreE2E?: { getState(): { activeWorkspacePath: string | null } };
+  __codezSessionStoreE2E?: {
     getState(): {
       getWorkspaceState(path: string): { draftProjectId?: string | null };
     };
@@ -47,7 +47,7 @@ type MobileWindow = Window & {
 
 /** 手机夹具的 relay 同时是控制面；规则经它的 client/configs 下发，不能另改 endpoint 打断配对认证。 */
 async function setRelayClientConfigs(configs: Record<string, unknown>) {
-  const relayUrl = process.env.ZCODE_E2E_REMOTE_AUTH_GATE_URL?.trim();
+  const relayUrl = process.env.CODEZ_E2E_REMOTE_AUTH_GATE_URL?.trim();
   if (!relayUrl) throw new Error("手机 relay 夹具未启动，无法下发 client/configs");
   const response = await fetch(new URL("/__e2e/client-configs", relayUrl), {
     body: JSON.stringify({ configs }),
@@ -112,7 +112,7 @@ describe("草稿模型迁移：手机远控", () => {
     if (!address || typeof address === "string") throw new Error("Missing pairing receiver");
     let mobile: Browser | undefined;
     let page: Page | undefined;
-    const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR!;
+    const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR!;
     try {
       await browser.execute((port) => {
         const original = navigator.clipboard.writeText.bind(navigator.clipboard);
@@ -146,7 +146,7 @@ describe("草稿模型迁移：手机远控", () => {
       mobile = await chromium.launch({
         ...e2eMobileBrowserLaunchOptions(),
         headless: true,
-        args: process.env.ZCODE_E2E_BROWSER_NO_PROXY === "1" ? ["--no-proxy-server"] : [],
+        args: process.env.CODEZ_E2E_BROWSER_NO_PROXY === "1" ? ["--no-proxy-server"] : [],
       });
       const context = await mobile.newContext({
         viewport: { width: 390, height: 844 },
@@ -177,13 +177,13 @@ describe("草稿模型迁移：手机远控", () => {
       await page.waitForFunction(() => document.documentElement.lang === "zh-CN");
       const recentKey = await page.evaluate(() => {
         const target = window as MobileWindow;
-        const path = target.__zcodeTabStoreE2E!.getState().activeWorkspacePath!;
+        const path = target.__codezTabStoreE2E!.getState().activeWorkspacePath!;
         const projectId = target
-          .__zcodeSessionStoreE2E!.getState()
+          .__codezSessionStoreE2E!.getState()
           .getWorkspaceState(path).draftProjectId;
         // 手机命名空间来自配对参数；从已有键里取，避免测试侧复算设备身份。
         const existing = Object.keys(localStorage).find((key) =>
-          key.startsWith("zcode-composer-workspace-scope:v1:"),
+          key.startsWith("codez-composer-workspace-scope:v1:"),
         );
         const scope = existing
           ? (JSON.parse(localStorage.getItem(existing)!) as {
@@ -194,7 +194,7 @@ describe("草稿模型迁移：手机远控", () => {
         if (!scope?.clientNamespace.startsWith("mobile:")) {
           throw new Error(`手机草稿作用域未就绪: ${existing ?? "none"}`);
         }
-        return `zcode-composer-recent:v2:${JSON.stringify([scope.clientNamespace, scope.hostId, projectId ?? null])}`;
+        return `codez-composer-recent:v2:${JSON.stringify([scope.clientNamespace, scope.hostId, projectId ?? null])}`;
       });
       await page.evaluate(
         ({ key, providerId, modelId }) =>

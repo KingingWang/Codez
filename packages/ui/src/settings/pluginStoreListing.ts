@@ -1,13 +1,13 @@
 import type {
   OAuthProviderId,
   PluginStoreModeOrder,
-  ZCodeAvailablePluginSummary,
-  ZCodeInstalledPluginSummary,
-  ZCodePluginInfo,
-  ZCodePluginMarketplaceSummary,
-  ZCodePluginStoreListing,
-  ZCodePluginStoreRegion,
-} from "@zcode/shared";
+  CodezAvailablePluginSummary,
+  CodezInstalledPluginSummary,
+  CodezPluginInfo,
+  CodezPluginMarketplaceSummary,
+  CodezPluginStoreListing,
+  CodezPluginStoreRegion,
+} from "@codez/shared";
 import {
   BIGMODEL_PROVIDER_ID,
   ZAI_CN_PROVIDER_ID,
@@ -21,8 +21,8 @@ import {
   resolveLocalizedText,
   resolvePluginDisplayName,
   ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
-} from "@zcode/shared";
-import { isExtensionEngineCompatible } from "@zcode/shared/extension-host";
+} from "@codez/shared";
+import { isExtensionEngineCompatible } from "@codez/shared/extension-host";
 import { DEFAULT_MARKETPLACE_ID } from "@/settings/recommendedPlugins.js";
 import { pluginSearchMatches } from "@/settings/pluginSearch.js";
 
@@ -30,7 +30,7 @@ export {
   formatCanonicalPluginName,
   resolveLocalizedText,
   resolvePluginDisplayName,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 export { isPublicStoreMarketplaceId };
 export { isTrustedImageUrl } from "@/lib/trustedImageUrl.js";
@@ -41,11 +41,11 @@ export { isTrustedImageUrl } from "@/lib/trustedImageUrl.js";
  * 会把第三方条目的品牌和图标误挂到另一个 marketplace，安全降级为 slug 更可靠。
  */
 export function resolveUniquePluginListingByName(
-  plugins: readonly Pick<ZCodeAvailablePluginSummary, "name" | "listing">[],
+  plugins: readonly Pick<CodezAvailablePluginSummary, "name" | "listing">[],
   name: string,
-): ZCodePluginStoreListing | undefined {
+): CodezPluginStoreListing | undefined {
   const normalizedName = name.trim().toLocaleLowerCase();
-  let match: ZCodePluginStoreListing | undefined;
+  let match: CodezPluginStoreListing | undefined;
   let count = 0;
   for (const plugin of plugins) {
     if (plugin.name.trim().toLocaleLowerCase() !== normalizedName) continue;
@@ -68,11 +68,11 @@ export interface StorePluginItem {
   restorable: boolean;
   /** 已安装但原 marketplace 已移除；仍可运行和管理，但不能更新。 */
   orphaned: boolean;
-  listing?: ZCodePluginStoreListing;
-  summary?: ZCodeAvailablePluginSummary;
+  listing?: CodezPluginStoreListing;
+  summary?: CodezAvailablePluginSummary;
   /** 运行时信息（仅已发现的已安装插件有）：启用态、组件、manifest 回退字段。 */
-  info?: ZCodePluginInfo;
-  installedMeta?: ZCodeInstalledPluginSummary;
+  info?: CodezPluginInfo;
+  installedMeta?: CodezInstalledPluginSummary;
 }
 
 // 市场和右侧推荐共用按插件的忙碌判定，避免安装一个插件时禁用整个推荐列表。
@@ -96,7 +96,7 @@ export function isItemBusy(
   );
 }
 
-export type PluginUpdateStatus = NonNullable<ZCodeInstalledPluginSummary["updateStatus"]>;
+export type PluginUpdateStatus = NonNullable<CodezInstalledPluginSummary["updateStatus"]>;
 
 export function isPluginUpdatePending(
   updateStatus: PluginUpdateStatus | undefined,
@@ -110,13 +110,13 @@ export function isPluginUpdatePending(
  * 没有扩展摘要（不带扩展，或旧 CLI 没给）时不挡，装上后由扩展进程判「版本不兼容」。
  */
 export function isExtensionIncompatible(
-  listing: Pick<ZCodePluginStoreListing, "extensionSummary"> | undefined,
+  listing: Pick<CodezPluginStoreListing, "extensionSummary"> | undefined,
 ): boolean {
-  const range = listing?.extensionSummary?.engines.zcode;
+  const range = listing?.extensionSummary?.engines.codez;
   return range !== undefined && !isExtensionEngineCompatible(range);
 }
 
-/** 未安装条目要先更新 ZCode 才能装。卡片、详情页按钮与 handleInstall 共用这一个判断。 */
+/** 未安装条目要先更新 Codez 才能装。卡片、详情页按钮与 handleInstall 共用这一个判断。 */
 export function isStoreItemInstallBlocked(
   item: Pick<StorePluginItem, "installed" | "restorable" | "listing">,
 ): boolean {
@@ -128,7 +128,7 @@ export function isStoreItemInstallBlocked(
  * 已装插件的 listing 来自目录最新版条目，所以这里看的是最新版的扩展摘要。
  */
 export function hasInstallableUpdate(
-  summary: Pick<ZCodeInstalledPluginSummary, "updateStatus" | "listing"> | undefined,
+  summary: Pick<CodezInstalledPluginSummary, "updateStatus" | "listing"> | undefined,
 ): boolean {
   return isPluginUpdatePending(summary?.updateStatus) && !isExtensionIncompatible(summary?.listing);
 }
@@ -150,7 +150,7 @@ export function canUpdatePluginItem(
 export function needsPluginUpdate(
   state: {
     installedPlugins: readonly Pick<
-      ZCodeInstalledPluginSummary,
+      CodezInstalledPluginSummary,
       "id" | "updateStatus" | "listing"
     >[];
     activeOperations: readonly { id: string }[];
@@ -218,7 +218,7 @@ export function resolveItemDescription(item: StorePluginItem, locale: string): s
 
 /** 管理列表与商店复用完整 ID 关联的展示信息，避免英文 manifest 绕过本地化。 */
 export function resolveManagedPluginDisplay(
-  plugin: ZCodePluginInfo,
+  plugin: CodezPluginInfo,
   item: StorePluginItem | undefined,
   locale: string,
 ): { name: string; description: string | undefined } {
@@ -244,7 +244,7 @@ export {
   resolvePluginStoreCategory as resolveStoreCategory,
   FALLBACK_PLUGIN_STORE_CATEGORY as FALLBACK_CATEGORY,
   PLUGIN_STORE_CATEGORY_ORDER as KNOWN_CATEGORY_ORDER,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 export interface StoreCategoryGroup {
   category: string;
@@ -283,9 +283,9 @@ const OFFICIAL_MARKETPLACE_ORDER = [
  * 同一时间使用本地化名称稳定兜底，避免市场源顺序随持久化数组历史漂移。
  */
 export function sortMarketplaceSources(
-  marketplaces: readonly ZCodePluginMarketplaceSummary[],
+  marketplaces: readonly CodezPluginMarketplaceSummary[],
   locale: string,
-): ZCodePluginMarketplaceSummary[] {
+): CodezPluginMarketplaceSummary[] {
   const officialRank = new Map(OFFICIAL_MARKETPLACE_ORDER.map((id, index) => [id, index]));
   return marketplaces.toSorted((left, right) => {
     const leftRank = officialRank.get(left.id);
@@ -311,7 +311,7 @@ export function sortMarketplaceSources(
  */
 export function sortPersonalMarketplaceGroups(
   groups: PersonalMarketplaceGroup[],
-  marketplaces: readonly ZCodePluginMarketplaceSummary[],
+  marketplaces: readonly CodezPluginMarketplaceSummary[],
   locale: string,
 ): PersonalMarketplaceGroup[] {
   const lastUpdatedById = new Map(
@@ -333,12 +333,12 @@ export function sortPersonalMarketplaceGroups(
  * 条目宇宙 = availablePlugins ∪ restorableBuiltins ∪ 实际发现的插件包（覆盖 inline/孤儿插件）。
  */
 export function buildStoreItems(input: {
-  marketplaces: ZCodePluginMarketplaceSummary[];
+  marketplaces: CodezPluginMarketplaceSummary[];
   marketplaceAvailabilityKnown: boolean;
-  availablePlugins: ZCodeAvailablePluginSummary[];
-  installedPlugins: ZCodeInstalledPluginSummary[];
-  plugins: ZCodePluginInfo[];
-  restorableBuiltins: ZCodeAvailablePluginSummary[];
+  availablePlugins: CodezAvailablePluginSummary[];
+  installedPlugins: CodezInstalledPluginSummary[];
+  plugins: CodezPluginInfo[];
+  restorableBuiltins: CodezAvailablePluginSummary[];
 }): StorePluginItem[] {
   const infoById = new Map(input.plugins.map((plugin) => [plugin.id, plugin]));
   const metaById = new Map(input.installedPlugins.map((item) => [item.id, item]));
@@ -423,7 +423,7 @@ export function buildStoreItems(input: {
  * - `none`：确认未登录或其他渠道，不过滤。
  * - `unknown`：登录信息读取中或读取失败，隐藏带 regions 的条目。
  */
-export type PluginLoginRegion = ZCodePluginStoreRegion | "none" | "unknown";
+export type PluginLoginRegion = CodezPluginStoreRegion | "none" | "unknown";
 
 /**
  * 从 useOAuth 的读取状态派生商店区域。`zai` 是海外入口；`zai_cn` 是国内入口，旧渠道 `bigmodel` 也算国内。
@@ -461,7 +461,7 @@ export function isPluginVisibleForLoginRegion(
 /** 公开分段：Featured（CDN featured 名单按序）+ 分类聚合（无分类归 other，排最后）。 */
 export function selectFeaturedItems(
   publicItems: StorePluginItem[],
-  marketplaces: ZCodePluginMarketplaceSummary[],
+  marketplaces: CodezPluginMarketplaceSummary[],
 ): StorePluginItem[] {
   const byName = new Map<string, StorePluginItem>();
   for (const item of publicItems) {

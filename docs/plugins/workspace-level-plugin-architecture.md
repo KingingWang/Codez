@@ -2,7 +2,7 @@
 
 > Status: Accepted architecture; V1 implementation and local pending E2E evidence recorded; mobile remains focused integration only and formal admission is pending
 > Date: 2026-08-19
-> Decision: 采用 User/Workspace 两级配置形态；不做 Local scope，并采用 ZCode 已确认的开放 Plugin 安全策略
+> Decision: 采用 User/Workspace 两级配置形态；不做 Local scope，并采用 Codez 已确认的开放 Plugin 安全策略
 > Target: Desktop local、SSH/WSL/Docker workspace Agent Host、mobile `/remote` shared-host attachment
 
 ## 1. Final decision
@@ -10,13 +10,13 @@
 Workspace-level Plugin 支持项目启停与用户显式保存的项目选项。仓库文件只决定启停，运行时 options 由用户配置与 Host 私有项目配置决定，只支持两级 scope：
 
 ```text
-User       ~/.zcode/cli/config.json + plugin-secrets.json 的 user 条目
-Workspace  <workspace>/.zcode/config.json（启停）+ plugin-secrets.json 的 workspaces 条目（选项）
+User       ~/.codez/cli/config.json + plugin-secrets.json 的 user 条目
+Workspace  <workspace>/.codez/config.json（启停）+ plugin-secrets.json 的 workspaces 条目（选项）
 ```
 
 不实现以下内容：
 
-- `<workspace>/.zcode/config.local.json`；
+- `<workspace>/.codez/config.local.json`；
 - Host 外部 `plugins/assignments/workspaces/<hash>.json`；
 - Workspace 独立 package/cache/data；
 - 打开项目时自动安装 Plugin；
@@ -67,7 +67,7 @@ effectiveOptions[pluginId] = {
 ```
 
 私有 Workspace 配置只覆盖用户保存的字段，其余字段继续继承 User 配置。存储与清除规则见
-[插件兼容规格](../../apps/zcode-cli/docs/design/v2/plugin-compat.md#sensitive-option-storage)。
+[插件兼容规格](../../apps/codez-cli/docs/design/v2/plugin-compat.md#sensitive-option-storage)。
 
 ## 3. Persistence ownership
 
@@ -76,7 +76,7 @@ effectiveOptions[pluginId] = {
 权威文件：
 
 ```text
-<workspace>/.zcode/config.json
+<workspace>/.codez/config.json
 ```
 
 支持的 Plugin 配置包括：
@@ -94,17 +94,17 @@ Workspace 配置不保存 package bytes、安装完成态、Marketplace cache、
 ### 3.2 User/Host state
 
 ```text
-~/.zcode/cli/config.json
+~/.codez/cli/config.json
   plugins.enabledPlugins
   plugins.options
   plugins.suppressedBuiltins
   user-level plugins.dirs
 
-~/.zcode/cli/plugin-secrets.json
+~/.codez/cli/plugin-secrets.json
   user（敏感选项）
   workspaces[workspace root]（全部项目选项）
 
-~/.zcode/cli/plugins/
+~/.codez/cli/plugins/
   known_marketplaces.json
   installed_plugins.json
   marketplaces/
@@ -128,7 +128,7 @@ Plugin package、安装、更新、卸载、缓存和 data 仍是目标 Agent Ho
 读取 User config
           |
           v
-读取 <workspace>/.zcode/config.json
+读取 <workspace>/.codez/config.json
           |
           v
 剥离仓库 options，读取 Host 私有 workspace 选项
@@ -226,10 +226,10 @@ Source: User / Workspace
 
 ```text
 User scope:
-  patch ~/.zcode/cli/config.json#plugins.enabledPlugins[id]
+  patch ~/.codez/cli/config.json#plugins.enabledPlugins[id]
 
 Workspace scope:
-  patch <workspace>/.zcode/config.json#plugins.enabledPlugins[id]
+  patch <workspace>/.codez/config.json#plugins.enabledPlugins[id]
 ```
 
 Workspace 页面提供“恢复 User 配置”，行为是删除 Workspace 中的 key，而不是写入第三种 sentinel。
@@ -307,7 +307,7 @@ one window-scoped Local Host
 文件读写使用执行语义：
 
 ```text
-<target workspacePath>/.zcode/config.json
+<target workspacePath>/.codez/config.json
 ```
 
 缓存、Session、异步请求和状态隔离使用：
@@ -326,7 +326,7 @@ UI 不直接写文件，保持：
 
 ```text
 UI -> PluginManagementStore -> IPluginManagementService
-   -> ZCode Protocol -> Agent config loader/runtime
+   -> Codez Protocol -> Agent config loader/runtime
 ```
 
 接口显式携带 scope 和 Workspace 上下文：
@@ -459,7 +459,7 @@ promotion、Docker admission 和三平台 CI。`WPL-005` 当前只用 Skill+MCP 
 ## 10. Acceptance gates
 
 1. Plugin 页面存在 User/Workspace selector，行为与 Skill/Command scope 一致。
-2. Workspace 启停写入 `<workspace>/.zcode/config.json`；全部项目选项写入 Host 用户私有文件，不创建 Local 文件。
+2. Workspace 启停写入 `<workspace>/.codez/config.json`；全部项目选项写入 Host 用户私有文件，不创建 Local 文件。
 3. Workspace `enabledPlugins` 对新 Session 生效，缺包不自动安装。
 4. Workspace options 按 option key 覆盖 User；普通、credential、secret 均可生效。
 5. sensitive 值允许持久化，但 UI、日志、diagnostic、provider capture、mobile replay 不泄露。
@@ -503,7 +503,7 @@ Settings / CLI explicit workspace configure
         +--> trusted effective options enter Plugin runtime
 ```
 
-已安装插件仍按既有启停策略进入 runtime，但插件身份不授予仓库选项信任。tracked `.zcode/config.json` 不能改变插件 runtime 参数；显式配置的项目值保留在用户目录。即使插件在模块顶层探测或启动解释器，也只能消费可信配置值。
+已安装插件仍按既有启停策略进入 runtime，但插件身份不授予仓库选项信任。tracked `.codez/config.json` 不能改变插件 runtime 参数；显式配置的项目值保留在用户目录。即使插件在模块顶层探测或启动解释器，也只能消费可信配置值。
 
 | Boundary                        | Decision                                                      |
 | ------------------------------- | ------------------------------------------------------------- |
@@ -519,7 +519,7 @@ Settings / CLI explicit workspace configure
 
 当前实现和验证边界包括：
 
-- 项目配置由现有 `.zcode/config.json` discovery 链加载；
+- 项目配置由现有 `.codez/config.json` discovery 链加载；
 - Plugin startup、`mcp/list` 和 Settings overview 必须统一到同一 effective resolver；
 - Plugin package/installed record 当前是目标 Host 用户级；
 - `workspaceKey = workspaceIdentity?.trim() || workspacePath` 是状态隔离合同；

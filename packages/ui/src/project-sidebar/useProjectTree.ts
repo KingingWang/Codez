@@ -11,8 +11,8 @@ import { stabilizeProjectTree, applyProjectTaskActivities } from "@/project-side
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { useTabStore } from "@/store/TabStoreProvider.js";
 import { isWorkspaceTab } from "@/store/tabStore.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
-import { onTaskNavigationCommitted } from "@/store/zcodeSessionStoreNavigation.js";
+import { useCodezSessionStore } from "@/store/codezSessionStore.js";
+import { onTaskNavigationCommitted } from "@/store/codezSessionStoreNavigation.js";
 import { useWorkspaceSessionsIndexItems } from "@/v4/useWorkspaceSessionsIndexItems.js";
 import { getTaskListRowActivity } from "@/v4/taskListRowActivity.js";
 import { getWindowControllerTaskListRegistry } from "@/v4/windowControllerTaskListRegistry.js";
@@ -55,7 +55,7 @@ export function useProjectTree(isDesktop = false) {
   const directoryRevision = registry?.getDirectoryRevision() ?? 0;
   const sourceRevision = registry?.getSourceRevision() ?? 0;
   const tabs = useTabStore((state) => state.tabs);
-  const version = useZCodeSessionStore((state) =>
+  const version = useCodezSessionStore((state) =>
     Object.values(state.workspaces).reduce((n, workspace) => n + workspace.taskListVersion, 0),
   );
   const [tree, setTree] = useState<ProjectTree>(EMPTY);
@@ -82,7 +82,7 @@ export function useProjectTree(isDesktop = false) {
       finish(error?: unknown): void;
     }>(),
   );
-  const removeTaskState = useZCodeSessionStore((state) => state.removeTaskState);
+  const removeTaskState = useCodezSessionStore((state) => state.removeTaskState);
   const accepted = useRef<{
     service: typeof service;
     remote: typeof remoteService;
@@ -382,7 +382,7 @@ export function useProjectTree(isDesktop = false) {
   }, [refreshDirectory]);
   useEffect(() => {
     const subscriptions = (registry ? [] : scopes).map((scope) =>
-      services.zcodeTaskService.onDynamicWorkspaceEvent(scope)((event) => {
+      services.codezTaskService.onDynamicWorkspaceEvent(scope)((event) => {
         if (event.type === "workspace_task_list_changed") void refresh();
       }),
     );

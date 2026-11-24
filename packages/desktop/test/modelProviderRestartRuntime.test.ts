@@ -16,16 +16,16 @@ describe("model provider restart runtime", () => {
       hostId: "local",
       projectId: "project-a",
     };
-    const recentKey = 'zcode-composer-recent:v2:["desktop","local","project-a"]';
+    const recentKey = 'codez-composer-recent:v2:["desktop","local","project-a"]';
     vi.stubGlobal("browser", {
       execute: async (script: (...args: unknown[]) => unknown, ...args: unknown[]) =>
         Reflect.apply(script, undefined, args),
     });
     return import("./e2e/helpers/desktop-app.js").then(({ getE2EAppDataPaths }) => {
-      const mappingKey = `zcode-composer-workspace-scope:v1:${JSON.stringify(["desktop", getE2EAppDataPaths().workspace])}`;
+      const mappingKey = `codez-composer-workspace-scope:v1:${JSON.stringify(["desktop", getE2EAppDataPaths().workspace])}`;
       const values = { [mappingKey]: JSON.stringify(scope), ...records };
       vi.stubGlobal("window", {
-        __zcodeSessionStoreE2E: {
+        __codezSessionStoreE2E: {
           getState: () => ({
             workspaces: { [getE2EAppDataPaths().workspace]: { draftProjectId: scope.projectId } },
           }),
@@ -43,12 +43,12 @@ describe("model provider restart runtime", () => {
 
   it("读取当前项目的 Recent，忽略其他项目和旧 workspace 选择", async () => {
     const { values, recentKey } = await installStorage({
-      'zcode-composer-recent:v2:["desktop","local","project-b"]': JSON.stringify({
+      'codez-composer-recent:v2:["desktop","local","project-b"]': JSON.stringify({
         modelSelection: { providerId: "wrong", modelId: "wrong" },
       }),
     });
     const { getE2EAppDataPaths } = await import("./e2e/helpers/desktop-app.js");
-    values[`zcode-model-selection-recent-v1:${getE2EAppDataPaths().workspace}`] = JSON.stringify({
+    values[`codez-model-selection-recent-v1:${getE2EAppDataPaths().workspace}`] = JSON.stringify({
       providerId: "legacy",
       modelId: "legacy",
     });
@@ -70,7 +70,7 @@ describe("model provider restart runtime", () => {
 
   it("播种当前项目结构化 Recent，保留已有权限且不覆盖其他项目", async () => {
     const { values, recentKey } = await installStorage();
-    const otherKey = 'zcode-composer-recent:v2:["desktop","local","project-b"]';
+    const otherKey = 'codez-composer-recent:v2:["desktop","local","project-b"]';
     const otherSelection = JSON.stringify({
       modelSelection: { providerId: "other", modelId: "other" },
     });
@@ -94,7 +94,7 @@ describe("model provider restart runtime", () => {
     expect((await readLastSelectedAgentConfig())?.thoughtLevel).toBe("max");
     expect(values[otherKey]).toBe(otherSelection);
     expect(
-      Object.keys(values).some((key) => key.startsWith("zcode-model-selection-recent-v1")),
+      Object.keys(values).some((key) => key.startsWith("codez-model-selection-recent-v1")),
     ).toBe(false);
   });
 
@@ -109,7 +109,7 @@ describe("model provider restart runtime", () => {
       reasoningLevel: "high",
     });
     expect(
-      JSON.parse(values['zcode-composer-recent:v2:["desktop","local",null]']!).modelSelection
+      JSON.parse(values['codez-composer-recent:v2:["desktop","local",null]']!).modelSelection
         .modelId,
     ).toBe("model-a");
   });
@@ -122,15 +122,15 @@ describe("model provider restart runtime", () => {
   });
 
   it("通过正式 Model Selection Config 设置冷启动默认模型", async () => {
-    const homeDir = await mkdtemp(join(tmpdir(), "zcode-restart-selection-"));
-    vi.stubEnv("ZCODE_E2E_HOME_DIR", homeDir);
+    const homeDir = await mkdtemp(join(tmpdir(), "codez-restart-selection-"));
+    vi.stubEnv("CODEZ_E2E_HOME_DIR", homeDir);
     const { seedTurboAgentStartupModel } =
       await import("./e2e/helpers/model-provider-restart-runtime.js");
 
     await seedTurboAgentStartupModel("provider-a", "model-a");
 
     expect(
-      JSON.parse(await readFile(join(homeDir, ".zcode", "v2", "provider_config.json"), "utf-8")),
+      JSON.parse(await readFile(join(homeDir, ".codez", "v2", "provider_config.json"), "utf-8")),
     ).toEqual({
       schemaVersion: 1,
       config: {
@@ -141,7 +141,7 @@ describe("model provider restart runtime", () => {
       },
     });
     await expect(
-      stat(join(homeDir, "ZCodeProject", ".zcode", "config.json")),
+      stat(join(homeDir, "CodezProject", ".codez", "config.json")),
     ).rejects.toMatchObject({ code: "ENOENT" });
   });
 });

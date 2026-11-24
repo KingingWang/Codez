@@ -2,7 +2,7 @@
 
 > 状态（2026-07-15）：已实施，本文保留为历史修复计划。当前 telemetry 契约以
 > `docs/monitoring/business-monitoring.md`、`docs/monitoring/performance-telemetry-catalog.md`
-> 和 `packages/ui/src/lib/messageTelemetry.ts` 为准；下文旧 `useZCodeChat` 调用路径仅供追溯。
+> 和 `packages/ui/src/lib/messageTelemetry.ts` 为准；下文旧 `useCodezChat` 调用路径仅供追溯。
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -36,8 +36,8 @@
 ### Task 3: Simplify completion callers and update the monitoring contract
 
 **Files:**
-- Modify: `packages/ui/src/hooks/useZCodeChat.ts`
-- Modify: `packages/ui/src/lib/zcodeTaskRuntimeMonitor.ts`
+- Modify: `packages/ui/src/hooks/useCodezChat.ts`
+- Modify: `packages/ui/src/lib/codezTaskRuntimeMonitor.ts`
 - Modify: `docs/monitoring/business-monitoring.md`
 - Modify: `docs/monitoring/performance-telemetry-catalog.md`
 

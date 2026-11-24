@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { parseRemoteWorkspaceIdentity, ServiceChannels } from "@zcode/shared";
-import type { RemoteProjectDirectory, RemoteProjectHost } from "@zcode/services";
+import { parseRemoteWorkspaceIdentity, ServiceChannels } from "@codez/shared";
+import type { RemoteProjectDirectory, RemoteProjectHost } from "@codez/services";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import {
   callHandoffHost,
@@ -25,7 +25,7 @@ import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
 const MARKER = "E2E_SSH_HOST_CAPACITY";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-host-capacity",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-host-capacity",
 );
 const readDirectory = () =>
   callHandoffHost<RemoteProjectDirectory>(ServiceChannels.RemoteProjects, "readDirectory");

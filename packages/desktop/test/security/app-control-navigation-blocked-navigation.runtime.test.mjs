@@ -54,7 +54,7 @@ const { app, BrowserWindow } = require("electron");
 const { join } = require("node:path");
 const { pathToFileURL } = require("node:url");
 const __APP_MAIN_DIR__ = ${JSON.stringify(mainDir)};
-const APP_NAVIGATION_IPC = "zcode:app-control-navigation";
+const APP_NAVIGATION_IPC = "codez:app-control-navigation";
 const surfaces = new WeakMap();
 ${production}
 
@@ -103,7 +103,7 @@ test(
   "导航守卫拦截外部导航后 App 控制导航登记仍有效，reload 后失效",
   { timeout: 120000 },
   async () => {
-    const base = await mkdtemp(join(tmpdir(), "zcode-app-nav-blocked-"));
+    const base = await mkdtemp(join(tmpdir(), "codez-app-nav-blocked-"));
     const mainDir = join(base, "app", "main");
     const rendererDir = join(base, "app", "renderer");
     await mkdir(mainDir, { recursive: true });

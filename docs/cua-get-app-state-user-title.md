@@ -8,7 +8,7 @@
 | Capability       | Computer Use observation tool projection                                                            |
 | Change layer     | validation + presentation                                                                           |
 | Operating mode   | planning                                                                                            |
-| Primary seeds    | `apps/zcode-cli/packages/core/src/mcp/index.ts`、`packages/ui/src/ToolCallBlocks/renderers/cua.tsx` |
+| Primary seeds    | `apps/codez-cli/packages/core/src/mcp/index.ts`、`packages/ui/src/ToolCallBlocks/renderers/cua.tsx` |
 | Out of scope     | 修改 Computer Use Helper 权限边界、改变 `get_app_state` 的观察结果、要求其他 CUA 工具提供标题                |
 
 ## Product Contract
@@ -16,7 +16,7 @@
 - 官方 CUA `get_app_state` 的模型可见 input schema 必须包含必填 `title`：长度为
   1–120 个字符，使用用户当前语言，描述本次读取的目的，而不是复述
   `get_app_state`、CUA 或 MCP 等实现名。
-- `title` 是 ZCode 的展示元数据，不属于上游 `zcode-cua` runtime 参数。Core MCP bridge
+- `title` 是 Codez 的展示元数据，不属于上游 `codez-cua` runtime 参数。Core MCP bridge
   在调用 `McpPort.callTool` 前必须移除它，避免破坏上游严格 schema。
 - Conversation 工具卡优先展示 `input.title`。旧会话或历史 provider 调用没有 title 时，继续
   回退到「读取 {app} 应用界面」或「读取应用界面」。
@@ -45,7 +45,7 @@ Model tool contract -----> model emits { title, app_ref, ... }
                     |                           |
                     | 展示 input.title          | 移除 title
                     v                           v
-             CUA tool summary          zcode-cua get_app_state
+             CUA tool summary          codez-cua get_app_state
                                                 |
                                                 v
                                       Helper observation result
@@ -55,7 +55,7 @@ Model tool contract -----> model emits { title, app_ref, ... }
 
 | Concern      | Shared                                  | Deliberately different                                                          | Why it matters                               |
 | ------------ | --------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------- |
-| 模型标题     | 与 `node_repl` 一样由模型给出短标题     | CUA title 由 Core 叠加到外部 MCP descriptor；`node_repl` 在自身 contract 中定义 | 外部 CUA server 不应被迫识别 ZCode UI 元数据 |
+| 模型标题     | 与 `node_repl` 一样由模型给出短标题     | CUA title 由 Core 叠加到外部 MCP descriptor；`node_repl` 在自身 contract 中定义 | 外部 CUA server 不应被迫识别 Codez UI 元数据 |
 | UI fallback  | 新旧会话都走同一个 CUA renderer         | 新调用优先模型标题；旧调用保留本地化固定文案                                    | 历史任务必须继续可渲染                       |
 | runtime 参数 | 原有 `app_ref`、`detail` 等参数原样传递 | 仅 `title` 在 dispatch 前移除                                                   | 不能改变观察语义或上游兼容性                 |
 
@@ -102,7 +102,7 @@ Model tool contract -----> model emits { title, app_ref, ... }
 
 | Boundary       | Decision                                  | Includes                                                            | Excludes / prunes                       | Source                    |
 | -------------- | ----------------------------------------- | ------------------------------------------------------------------- | --------------------------------------- | ------------------------- |
-| 工具范围       | 只改 `get_app_state`                      | 当前 official、`computer-use` 与 legacy `zcode-cua` server identity | screenshot、click、type 等其他工具      | 用户请求                  |
+| 工具范围       | 只改 `get_app_state`                      | 当前 official、`computer-use` 与 legacy `codez-cua` server identity | screenshot、click、type 等其他工具      | 用户请求                  |
 | 标题 authority | 模型 input.title 是新调用的显示 authority | 1–120 字符、用户语言                                                | UI 根据 app 名二次改写模型标题          | 用户请求 + node_repl 先例 |
 | 上游兼容       | title 在 Core dispatch 前剥离             | provider contract、history projection                               | 修改或升级外部 CUA package schema       | 当前依赖边界              |
 | 历史兼容       | 缺 title 使用既有 i18n fallback           | 旧 session、旧 provider                                             | 对历史输入做迁移                        | 兼容性不变量              |

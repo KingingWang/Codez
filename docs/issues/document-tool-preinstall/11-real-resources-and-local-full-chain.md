@@ -93,7 +93,7 @@ Status: in-progress
 ### 2026-10-28 — 回退与防粘住补充验收
 
 - 真实包回放 `desktop-e2e-20261028081619096-p39234-970c0943043a4412` 1/1 通过。在隔离 HOME 放置可发现的系统 26.2.6.3，安装前实际调用已分发 helper 的 check，确认 source=system；目标发布后关闭自动预装，原会话仍切到受管 26.8.1。Word/PPT、SUM=5、#DIV/0! 与签名检查通过，随后通过 UI 删除运行过的真实安装。
-- 此回放使用 `ZCODE_E2E_LIBREOFFICE_SYSTEM_APP` 指向已验签的现有 .app，仅由测试读取；同时指定既有 Python、样例与资源 artifact。WDIO 包装层不会被 `this.timeout` 覆盖；经过脚本参数分隔符传递的 timeout 参数也未生效。最终使用既有 `ZCODE_E2E_MANUAL_REVIEW_HOLD_MS=300000` 将外层预算与本例 420 秒预算对齐，不改变测试状态判断。此前 120 秒截断记录均保留，不算通过。
+- 此回放使用 `CODEZ_E2E_LIBREOFFICE_SYSTEM_APP` 指向已验签的现有 .app，仅由测试读取；同时指定既有 Python、样例与资源 artifact。WDIO 包装层不会被 `this.timeout` 覆盖；经过脚本参数分隔符传递的 timeout 参数也未生效。最终使用既有 `CODEZ_E2E_MANUAL_REVIEW_HOLD_MS=300000` 将外层预算与本例 420 秒预算对齐，不改变测试状态判断。此前 120 秒截断记录均保留，不算通过。
 - 本地 HTTP 仍不代表 CDN。标准用户账户、正式签名且使用 asar 的整包、其他 OS 与未覆盖的字体名矩阵继续单列；本轮没有据此关闭 11 或 12。
 
 - 最终补跑 `desktop-e2e-20261028100412567-p60573-d91a4f7331e33bad` 1/1 PASS，约 223 秒：解压中强制退出后恢复为未安装，不自动重下；手动重试共完成两次真实包下载；同会话切换、关闭自动预装、文档／公式／签名检查与真实删除均通过。

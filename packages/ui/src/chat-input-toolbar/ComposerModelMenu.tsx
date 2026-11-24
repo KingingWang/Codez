@@ -2,7 +2,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { CircleXIcon, SearchIcon } from "lucide-react";
 import { Input } from "@/components/ui/input.js";
 import { Button } from "@/components/ui/button.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { ScrollFadeViewport } from "@/components/ui/scroll-fade-viewport.js";
 import type { ComposerPlanGroup } from "@/lib/composerPlanGroups.js";
 import type { ModelSelectGroup } from "@/ModelConfigSelect.js";
@@ -117,7 +117,7 @@ export function ComposerModelMenu({
   isItemLocked: (value: string) => boolean;
   onSelectModel: (value: string) => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   // 无可用模型的分组仍可浏览配置；实际选择始终由 Composer owner 回传。
   const [browse, setBrowse] = useState<{ key: string; selection: string } | null>(null);
   const menuGroups: readonly ComposerPlanGroup[] = options.providerMenu?.groups ?? groups;

@@ -4,7 +4,7 @@
  * ```text
  * closed ─show()─▶ denied ─重新授权─┬─ granted ──────────▶ closed（toast 已开启）
  *                    ▲              ├─ denied ───────────▶ denied
- *                    │              ├─ restart-required ─▶ restart-required ─重启 ZCode─▶ 应用重启
+ *                    │              ├─ restart-required ─▶ restart-required ─重启 Codez─▶ 应用重启
  *                    │              └─ failed ───────────▶ denied（打开系统设置）
  *                    └─ 窗口 focus：ensureAccess 为 granted ─▶ closed（toast 已开启）
  * ```
@@ -15,10 +15,10 @@
  *   避免同时调用 askForMediaAccess；结果以重新授权的返回值为准。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { DesktopCommandIds } from "@zcode/shared";
+import { DesktopCommandIds } from "@codez/shared";
 import { toast } from "@/components/ui/toast.js";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import type {
   MicrophonePermissionGuide,
@@ -29,7 +29,7 @@ import { resolveVoiceInputOs } from "@/voice-input/domain/voiceInputFailure.js";
 export function useMicrophonePermissionGuide(): MicrophonePermissionGuide {
   const platform = useOptionalPlatform();
   const microphone = platform?.microphone;
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const os = resolveVoiceInputOs(typeof navigator === "undefined" ? "" : navigator.userAgent);
   const [phase, setPhase] = useState<MicrophonePermissionGuidePhase | null>(null);
   const [busy, setBusy] = useState(false);
@@ -84,7 +84,7 @@ export function useMicrophonePermissionGuide(): MicrophonePermissionGuide {
     });
   }, [platform]);
 
-  // 用户在系统设置里打开开关后回到 ZCode：检查一次，已允许就关闭浮层。
+  // 用户在系统设置里打开开关后回到 Codez：检查一次，已允许就关闭浮层。
   const open = phase !== null;
   useEffect(() => {
     if (!open || !microphone) return;

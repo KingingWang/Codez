@@ -69,6 +69,6 @@ V4 queue 在 CLI command core 内裁决，不再存在旧 renderer-local convers
 
 - `packages/ui/src/v4/SessionPane.tsx`
 - `packages/ui/src/v4/configCommandBarrier.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/session-flow.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/queue.ts`
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/prompt-turn.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/commands/handlers/session-flow.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/commands/handlers/queue.ts`
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/commands/prompt-turn.ts`

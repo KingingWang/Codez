@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { ChevronRightIcon } from "lucide-react";
-import type { WebRemoteControlRelayV2Device } from "@zcode/shared/web-remote-relay";
+import type { WebRemoteControlRelayV2Device } from "@codez/shared/web-remote-relay";
 import {
   BottomSheet,
   BottomSheetClose,
@@ -8,23 +8,23 @@ import {
   BottomSheetDescription,
   BottomSheetHeader,
   BottomSheetTitle,
-} from "@zcode/ui/bottom-sheet";
-import { Button } from "@zcode/ui/button";
-import { DevicePlatformIcon } from "@zcode/ui/device-platform-icon";
+} from "@codez/ui/bottom-sheet";
+import { Button } from "@codez/ui/button";
+import { DevicePlatformIcon } from "@codez/ui/device-platform-icon";
 import type { WebRemoteControlDeviceGroup } from "#src/web-remote-control/contract.js";
 import type { WebRemoteControlScreenLocale } from "#src/web-remote-control/domain/webRemoteControlScreenCopy.js";
 
 const copyByLocale = {
   "zh-CN": {
     unnamed: "未命名设备",
-    sheetDescription: (count: number) => `这台电脑上有 ${count} 个 ZCode 在线，选择要连接的一个`,
+    sheetDescription: (count: number) => `这台电脑上有 ${count} 个 Codez 在线，选择要连接的一个`,
     startedAgo: (relative: string) => `${relative}启动`,
     cancel: "取消",
   },
   "en-US": {
     unnamed: "Unnamed device",
     sheetDescription: (count: number) =>
-      `${count} ZCode instances are online on this computer. Choose one.`,
+      `${count} Codez instances are online on this computer. Choose one.`,
     startedAgo: (relative: string) => `started ${relative}`,
     cancel: "Cancel",
   },
@@ -123,8 +123,8 @@ export function WebRemoteControlConnectionList({
           >
             <span className="block truncate text-ui-base font-medium">
               {connection.meta.version?.trim()
-                ? `ZCode ${connection.meta.version.trim()}`
-                : "ZCode"}
+                ? `Codez ${connection.meta.version.trim()}`
+                : "Codez"}
             </span>
             <span className="mt-0.5 block truncate text-ui-sm text-foreground-subtle">
               {copy.startedAgo(formatRelativeTime(connection.created_at, locale, now))}
@@ -137,7 +137,7 @@ export function WebRemoteControlConnectionList({
   );
 }
 
-/** 同一台电脑多个在线 ZCode 时的底部选择层；选择沿用与单连接相同的 admission。 */
+/** 同一台电脑多个在线 Codez 时的底部选择层；选择沿用与单连接相同的 admission。 */
 export function WebRemoteControlConnectionSheet({
   device,
   locale,

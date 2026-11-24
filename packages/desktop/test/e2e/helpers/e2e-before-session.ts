@@ -16,7 +16,7 @@ export interface E2EBeforeSessionSetupOptions {
 export async function runE2EBeforeSessionSetup(options: E2EBeforeSessionSetupOptions) {
   options.recordBeforeSession(options.cid, options.specs);
   // 修复原因：并行 worker 的日志目录在 recordBeforeSession 内按 cid 设置；随后再配置
-  // agent server，子进程才能继承 worker 专属的 ZCODE_LOG_DIR，而不会写到共享日志文件。
+  // agent server，子进程才能继承 worker 专属的 CODEZ_LOG_DIR，而不会写到共享日志文件。
   options.configureAgentServerEnv();
   await options.startCodingPlanTeamMockIfNeeded(options.specs);
   // Bug 根因：Coding Plan mock 由 launcher 进程在整个 WDIO run 内共享；只在创建

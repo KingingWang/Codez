@@ -7,7 +7,7 @@ import {
   TID_LOGIN_TRIGGER,
   TID_LOGIN_USE_API_KEY_BUTTON,
   TID_OAUTH_LOGIN_BUTTON,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom, waitForTestIdByDom } from "#e2e/helpers/desktop-app";
 import { clearRendererViewport, setRendererViewport } from "#e2e/helpers/renderer-viewport";
 
@@ -84,7 +84,7 @@ describe("Login page layout", () => {
         await browser.waitUntil(() =>
           browser.execute((value) => document.documentElement.lang === value, locale),
         );
-        const artifacts = join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "login-layout");
+        const artifacts = join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "login-layout");
         await mkdir(artifacts, { recursive: true });
         for (const [width, height] of viewports) {
           await setRendererViewport(width, height);

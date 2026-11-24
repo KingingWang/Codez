@@ -12,7 +12,7 @@ import {
 const createdDirs: string[] = [];
 
 async function createFixture() {
-  const root = await mkdtemp(path.join(os.tmpdir(), "zcode-e2e-heatmap-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "codez-e2e-heatmap-"));
   createdDirs.push(root);
   const repoRoot = path.join(root, "repo");
   const coverageDir = path.join(root, "coverage");

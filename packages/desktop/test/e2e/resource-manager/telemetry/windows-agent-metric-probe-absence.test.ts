@@ -5,7 +5,7 @@ import {
   TID_LOGIN_USE_API_KEY_BUTTON,
   TID_TASK_ITEM,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -50,7 +50,7 @@ windowsDescribe("Windows Agent 指标采集 main process 门禁", () => {
     await waitForDefaultWorkspaceReady(30000);
     await waitForSeededHistory();
 
-    const runtimeLogDir = process.env.ZCODE_E2E_RUNTIME_LOG_DIR?.trim();
+    const runtimeLogDir = process.env.CODEZ_E2E_RUNTIME_LOG_DIR?.trim();
     if (!runtimeLogDir) {
       throw new Error("当前 E2E worker 没有配置 desktop runtime log 目录");
     }

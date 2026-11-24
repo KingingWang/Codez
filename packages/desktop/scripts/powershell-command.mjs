@@ -10,8 +10,8 @@ const WINDOWS_POWERSHELL_SECURITY_BOOTSTRAP = [
   "$ProgressPreference='SilentlyContinue';",
   "$ErrorActionPreference='Stop';",
   "try{",
-  "$zcodeSecurityModule=[IO.Path]::Combine($PSHOME,'Modules','Microsoft.PowerShell.Security','Microsoft.PowerShell.Security.psd1');",
-  "Import-Module -Name $zcodeSecurityModule -Force -ErrorAction Stop;",
+  "$codezSecurityModule=[IO.Path]::Combine($PSHOME,'Modules','Microsoft.PowerShell.Security','Microsoft.PowerShell.Security.psd1');",
+  "Import-Module -Name $codezSecurityModule -Force -ErrorAction Stop;",
   "}catch{",
   "[Console]::Error.WriteLine(('Windows PowerShell Security module load failed: {0}' -f $_.Exception.Message));",
   "exit 26;",
@@ -29,7 +29,7 @@ export function createEncodedPowerShellArgs(script, values = []) {
   const valueBindings = values
     .map(
       (value, index) =>
-        `$zcodeArg${index}=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${encodeUtf8Value(value)}'));`,
+        `$codezArg${index}=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${encodeUtf8Value(value)}'));`,
     )
     .join("");
   const encodedCommand = Buffer.from(`${valueBindings}${script}`, "utf16le").toString("base64");
@@ -53,21 +53,21 @@ export function createWindowsPowerShellSecurityArgs(script, values = []) {
 
 export async function readWindowsAuthenticodeSignature(filePath) {
   const pathLiteral = escapePowerShellLiteral(filePath);
-  const outputDir = await mkdtemp(join(tmpdir(), "zcode-signature-"));
+  const outputDir = await mkdtemp(join(tmpdir(), "codez-signature-"));
   try {
     const outputPath = join(outputDir, "signature.json");
     // 受限语言模式会禁止路径解码和 Console 编码的 .NET 调用；专用查询只用 cmdlet，
     // 结果写入独立 UTF-8 文件，既保留中文签名者，也不改变其他 PowerShell 消费者。
     const script = [
-      `$zcodeArg0=${pathLiteral};`,
-      `$zcodeSignatureOutput=${escapePowerShellLiteral(outputPath)};`,
+      `$codezArg0=${pathLiteral};`,
+      `$codezSignatureOutput=${escapePowerShellLiteral(outputPath)};`,
       "$ProgressPreference='SilentlyContinue';",
       "$ErrorActionPreference='Stop';",
       "try{",
       "$securityModule=Join-Path $PSHOME 'Modules/Microsoft.PowerShell.Security/Microsoft.PowerShell.Security.psd1';",
       "Import-Module -Name $securityModule -Force -ErrorAction Stop;",
-      "$signature=Microsoft.PowerShell.Security\\Get-AuthenticodeSignature -LiteralPath $zcodeArg0;",
-      "@{status=[int]$signature.Status;subject=$signature.SignerCertificate.Subject}|ConvertTo-Json -Compress|Out-File -LiteralPath $zcodeSignatureOutput -Encoding utf8 -NoNewline;",
+      "$signature=Microsoft.PowerShell.Security\\Get-AuthenticodeSignature -LiteralPath $codezArg0;",
+      "@{status=[int]$signature.Status;subject=$signature.SignerCertificate.Subject}|ConvertTo-Json -Compress|Out-File -LiteralPath $codezSignatureOutput -Encoding utf8 -NoNewline;",
       "}catch{Write-Error ('Windows Authenticode query failed: ' + $_.Exception.Message) -ErrorAction Continue;exit 27};",
     ].join("");
 

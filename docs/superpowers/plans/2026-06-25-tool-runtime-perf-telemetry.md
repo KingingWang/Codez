@@ -1,7 +1,7 @@
 # Tool Runtime Perf Telemetry Implementation Plan
 
 > 状态（2026-07-15）：已实施，本文保留为历史实施计划。当前结构化工具 perf 合同以
-> `apps/zcode-cli/packages/contracts/src/tools/performance.ts` 和 core tool executor/handlers 为准，
+> `apps/codez-cli/packages/contracts/src/tools/performance.ts` 和 core tool executor/handlers 为准，
 > UI 事件定义以 `packages/ui/src/lib/uiPerfArmsTelemetry.ts` 为准；下文旧 task-stream 接入点仅供追溯。
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -10,7 +10,7 @@
 
 **Architecture:** Define a shared contracts-level `ToolPerformanceTelemetrySchema`, attach optional `perf` to Bash/Write/Edit structured outputs, merge executor-level permission wait into `tool_call_result.payload.result.perf`, and report one UI ARMS event per terminal tool update.
 
-**Tech Stack:** TypeScript, Zod contracts, Vitest, existing ZCode session events, existing ARMS custom event wrapper.
+**Tech Stack:** TypeScript, Zod contracts, Vitest, existing Codez session events, existing ARMS custom event wrapper.
 
 ---
 
@@ -18,7 +18,7 @@
 
 **Files:**
 - Modify: `docs/superpowers/specs/2026-06-16-ui-perf-arms-telemetry-design.md`
-- Modify: `apps/zcode-cli/docs/design/v2/tool/00-tool-change-chain.md`
+- Modify: `apps/codez-cli/docs/design/v2/tool/00-tool-change-chain.md`
 - Create: `docs/superpowers/plans/2026-06-25-tool-runtime-perf-telemetry.md`
 
 - [x] **Step 1: Update specs before code**
@@ -28,10 +28,10 @@ Document `perf` as structured metadata only, with low-cardinality and privacy co
 ### Task 2: Write Failing Tests
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/tests/bash-handler.test.ts`
-- Modify: `apps/zcode-cli/packages/core/tests/write-tool-contract.test.ts`
-- Modify: `apps/zcode-cli/packages/core/tests/edit-tool-contract.test.ts`
-- Modify: `apps/zcode-cli/packages/core/tests/tool-executor-trace.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/bash-handler.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/write-tool-contract.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/edit-tool-contract.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/tool-executor-trace.test.ts`
 - Modify: `packages/ui/test/uiPerfArmsTelemetry.test.ts`
 
 - [x] **Step 1: Test handler output perf**
@@ -52,18 +52,18 @@ Expected `reportUiToolCallDetail` emits `perf_ui_tool_call_detail` with sanitize
 ### Task 3: Implement Runtime Perf
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/contracts/src/tools/bash.ts`
-- Modify: `apps/zcode-cli/packages/contracts/src/tools/write.ts`
-- Modify: `apps/zcode-cli/packages/contracts/src/tools/edit.ts`
-- Create: `apps/zcode-cli/packages/contracts/src/tools/performance.ts`
-- Create: `apps/zcode-cli/packages/core/src/tool/handlers/tool-perf.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/handlers/bash.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/handlers/write.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/handlers/edit.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/permission-flow.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/events.ts`
-- Modify: `apps/zcode-cli/packages/contracts/src/events/session.events.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/tools/bash.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/tools/write.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/tools/edit.ts`
+- Create: `apps/codez-cli/packages/contracts/src/tools/performance.ts`
+- Create: `apps/codez-cli/packages/core/src/tool/handlers/tool-perf.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/handlers/bash.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/handlers/write.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/handlers/edit.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/permission-flow.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/call-runner.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/events.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/events/session.events.ts`
 
 - [x] **Step 1: Add schema and output fields**
 
@@ -101,7 +101,7 @@ Read `event.raw.result.perf` for `completed/failed/denied` statuses and report.
 - [x] **Step 1: Run targeted tests**
 
 ```bash
-pnpm vitest run apps/zcode-cli/packages/core/tests/bash-handler.test.ts apps/zcode-cli/packages/core/tests/write-tool-contract.test.ts apps/zcode-cli/packages/core/tests/edit-tool-contract.test.ts apps/zcode-cli/packages/core/tests/tool-executor-trace.test.ts packages/ui/test/uiPerfArmsTelemetry.test.ts
+pnpm vitest run apps/codez-cli/packages/core/tests/bash-handler.test.ts apps/codez-cli/packages/core/tests/write-tool-contract.test.ts apps/codez-cli/packages/core/tests/edit-tool-contract.test.ts apps/codez-cli/packages/core/tests/tool-executor-trace.test.ts packages/ui/test/uiPerfArmsTelemetry.test.ts
 ```
 
 - [x] **Step 2: Run required checks**
@@ -114,6 +114,6 @@ pnpm lint
 - [x] **Step 3: Commit**
 
 ```bash
-git add docs/superpowers/specs/2026-06-16-ui-perf-arms-telemetry-design.md apps/zcode-cli/docs/design/v2/tool/00-tool-change-chain.md docs/superpowers/plans/2026-06-25-tool-runtime-perf-telemetry.md apps/zcode-cli/packages/contracts/src/tools apps/zcode-cli/packages/contracts/src/events/session.events.ts apps/zcode-cli/packages/core/src/tool packages/ui/src/lib/uiPerfArmsTelemetry.ts packages/ui/src/hooks/taskStreamEventHandlers.ts packages/ui/test/uiPerfArmsTelemetry.test.ts
+git add docs/superpowers/specs/2026-06-16-ui-perf-arms-telemetry-design.md apps/codez-cli/docs/design/v2/tool/00-tool-change-chain.md docs/superpowers/plans/2026-06-25-tool-runtime-perf-telemetry.md apps/codez-cli/packages/contracts/src/tools apps/codez-cli/packages/contracts/src/events/session.events.ts apps/codez-cli/packages/core/src/tool packages/ui/src/lib/uiPerfArmsTelemetry.ts packages/ui/src/hooks/taskStreamEventHandlers.ts packages/ui/test/uiPerfArmsTelemetry.test.ts
 git commit -m "feat: add tool runtime perf telemetry"
 ```

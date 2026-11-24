@@ -11,7 +11,7 @@ afterEach(async () => {
 });
 
 async function fixture() {
-  const packageRoot = await mkdtemp(join(tmpdir(), "zcode-electron-runtime-"));
+  const packageRoot = await mkdtemp(join(tmpdir(), "codez-electron-runtime-"));
   roots.push(packageRoot);
   await writeFile(join(packageRoot, "install.js"), "");
   const binary = join(packageRoot, "dist", "electron");

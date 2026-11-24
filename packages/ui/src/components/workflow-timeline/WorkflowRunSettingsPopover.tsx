@@ -10,11 +10,11 @@
 // 表单只在打开时挂载——模型清单的订阅也随之只活在打开期间。
 
 import { useCallback, useRef, useState, type RefObject } from "react";
-import type { CommandAck, WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import type { CommandAck, WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import { Button } from "@/components/ui/button.js";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTitle } from "@/components/ui/popover.js";
 import { Spinner } from "@/components/ui/spinner.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import {
   WorkflowRunSettingsBoundField,
@@ -123,7 +123,7 @@ function WorkflowRunSettingsForm({
   onClose: () => void;
   run: WorkflowRunState;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const format = useCallback(
     (id: string, values?: Record<string, string | number>) => intl.formatMessage({ id }, values),
     [intl],

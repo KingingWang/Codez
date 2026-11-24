@@ -6,10 +6,10 @@
 
 ## 背景
 
-- 主窗口 `BrowserWindow` 的 `webContents` 使用 `window.zcode` preload，并通过 `contextBridge`
+- 主窗口 `BrowserWindow` 的 `webContents` 使用 `window.codez` preload，并通过 `contextBridge`
   暴露 MCP 用户目录读写、本地文件打开、临时文件写入等特权 IPC（`packages/desktop/src/main/desktopWindowChrome.ts`
-  创建 `webPreferences.preload`；`packages/desktop/src/preload/index.ts` 的 `exposeInMainWorld("zcode", ...)`）。
-- preload 绑定到 `webContents`，不随页面 origin 变化。主窗口一旦顶层导航到远程页面，该页面也能调用 `window.zcode`。
+  创建 `webPreferences.preload`；`packages/desktop/src/preload/index.ts` 的 `exposeInMainWorld("codez", ...)`）。
+- preload 绑定到 `webContents`，不随页面 origin 变化。主窗口一旦顶层导航到远程页面，该页面也能调用 `window.codez`。
 - Markdown 中 Mermaid 生成的 SVG `<a xlink:href>` 通过 `dangerouslySetInnerHTML` 注入
   （`packages/ui/src/components/ai-elements/mermaid-block.tsx`），不经过应用的链接组件。点击后 Chromium 在主窗口内
   做顶层导航，文档作者可以借此把用户带到任意页面。
@@ -17,7 +17,7 @@
 
 ## 信任边界（预期行为）
 
-- 挂载 `preload/index.cjs`（window.zcode）的窗口都有导航守卫，目前包括：
+- 挂载 `preload/index.cjs`（window.codez）的窗口都有导航守卫，目前包括：
   - 主窗口（`createBrowserWindow`，`desktopWindowChrome.ts`）；
   - 更新状态窗口（`index.ts` 中 `windowKind: "update-status"`）。
     两者调用同一个 `guardWindowNavigation`，判定函数 `isAppOriginMainWindowUrl` 不复制。
@@ -53,13 +53,13 @@ reload / 应用内页面跳转 → did-start-navigation → will-navigate（放�
 - 运行时验收：`packages/desktop/test/security/main-window-navigation-guard.runtime.test.mjs`。在真实 Electron 中加载
   生产中的 `guardWindowNavigation` 与 `isAppOriginMainWindowUrl`（从源码 AST 抽取，不复制逻辑），
   对主窗口与更新状态窗口分别断言：导航到本机外部地址被拦截且目标服务器未收到请求；应用渲染入口正常加载。
-  运行：`pnpm --filter @zcode/desktop exec node --test test/security/main-window-navigation-guard.runtime.test.mjs`
+  运行：`pnpm --filter @codez/desktop exec node --test test/security/main-window-navigation-guard.runtime.test.mjs`
   （需要已安装 electron 二进制；不需要网络，外部地址为本机回环服务。）
   反向对照：临时去掉守卫调用后该用例失败（`main 外部导航不应改变地址`），说明断言能区分有无守卫。
 - 守卫与 App 控制导航：`packages/desktop/test/security/app-control-navigation-blocked-navigation.runtime.test.mjs`。
   在真实 Electron 中组合生产中的 `guardWindowNavigation`、`windowSurface`（`electronBridge.ts`）与
   `createAppControlNavigationWindow`（均从源码抽取）：外部导航被拦截后，导航请求仍送达当前 renderer，不返回
   `renderer-unavailable`；之后 reload，请求立即返回 `renderer-unavailable`。
-  运行：`pnpm --filter @zcode/desktop exec node --test test/security/app-control-navigation-blocked-navigation.runtime.test.mjs`
+  运行：`pnpm --filter @codez/desktop exec node --test test/security/app-control-navigation-blocked-navigation.runtime.test.mjs`
 - 未纳入本验收：完整 `createBrowserWindow` 与更新状态窗口的接线，以及 `loadURL` 发起的程序化导航（Electron 不对其触发
   `will-navigate`，应由调用方自身保证目标地址可信）。

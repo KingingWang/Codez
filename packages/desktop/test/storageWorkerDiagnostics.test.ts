@@ -31,7 +31,7 @@ it("E2E observer records stderr, exit code and final frame without changing Work
         new URL("./e2e/helpers/storage-worker-diagnostics.mjs", import.meta.url).href,
         probePath,
       ],
-      { env: { ...process.env, ZCODE_E2E_STORAGE_WORKER_DIAGNOSTICS_DIR: artifacts } },
+      { env: { ...process.env, CODEZ_E2E_STORAGE_WORKER_DIAGNOSTICS_DIR: artifacts } },
     );
     const files = await readdir(artifacts);
     expect(files).toHaveLength(1);

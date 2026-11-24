@@ -1,13 +1,13 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { ServiceChannels } from "@zcode/shared";
+import { ServiceChannels } from "@codez/shared";
 import {
   TID_PROMPT_SUGGESTION_OPTION,
   TID_PROMPT_SUGGESTION_PANEL,
   TID_PROMPT_SUGGESTION_SECTION,
   TID_V4_COMPOSER_INPUT,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   DEFAULT_WORKSPACE,
@@ -23,7 +23,7 @@ type LexicalInputE2EBridge = {
 };
 
 type LexicalInputE2EElement = HTMLElement & {
-  __zcodeLexicalInputE2E?: LexicalInputE2EBridge;
+  __codezLexicalInputE2E?: LexicalInputE2EBridge;
 };
 
 const FILE_MENTION_LABEL = "option-right-repro.ts";
@@ -36,7 +36,7 @@ const PLUGIN_OPTION_ID = `plugin:${PLUGIN_STABLE_ID}`;
 const SCROLL_ANCHOR_PREFIX = "e2e-scroll-anchor";
 const SCROLL_ANCHOR_DIR = join(DEFAULT_WORKSPACE, SCROLL_ANCHOR_PREFIX);
 const SCROLL_ANCHOR_FILE_COUNT = 40;
-const ZCODEIGNORE_PATH = join(DEFAULT_WORKSPACE, ".zcodeignore");
+const CODEZIGNORE_PATH = join(DEFAULT_WORKSPACE, ".codezignore");
 const OPTION_ROW_HEIGHT = 34;
 const LISTBOX_SELECTOR = `[data-testid="${TID_PROMPT_SUGGESTION_PANEL}"] [role="listbox"]`;
 
@@ -129,11 +129,11 @@ describe("chat input mention navigation", () => {
       });
       const beforeRefresh = await getListboxSnapshot();
 
-      // 刷新结果要和刷新前有可见差异，才能证明新结果真的替换上去了：用 .zcodeignore 去掉最后一个文件
-      // （远离视口，不影响当前滚动位置）。.zcodeignore 的修改时间与大小属于 Host 文件列表缓存签名，
+      // 刷新结果要和刷新前有可见差异，才能证明新结果真的替换上去了：用 .codezignore 去掉最后一个文件
+      // （远离视口，不影响当前滚动位置）。.codezignore 的修改时间与大小属于 Host 文件列表缓存签名，
       // 这次重新查询不会命中旧缓存。
       await writeFile(
-        ZCODEIGNORE_PATH,
+        CODEZIGNORE_PATH,
         `${SCROLL_ANCHOR_PREFIX}/${SCROLL_ANCHOR_PREFIX}-${String(SCROLL_ANCHOR_FILE_COUNT - 1).padStart(2, "0")}.ts\n`,
       );
       // 等候选刷新的 Host 响应真正回到渲染层，再判定位置，避免刷新未发生时用例空过。
@@ -204,7 +204,7 @@ describe("chat input mention navigation", () => {
     } finally {
       await browser.keys("Escape");
       await rm(SCROLL_ANCHOR_DIR, { recursive: true, force: true });
-      await rm(ZCODEIGNORE_PATH, { force: true });
+      await rm(CODEZIGNORE_PATH, { force: true });
     }
   });
 });
@@ -259,7 +259,7 @@ async function getListboxSnapshot(): Promise<ListboxSnapshot | null> {
 /** 统计渲染层收到的、包含长列表文件名的 Host 响应，用来确认候选刷新确实发生。 */
 async function installFileSearchResponseProbe() {
   await browser.execute((marker) => {
-    const probeWindow = window as Window & { __zcodeMentionScrollProbe?: { responses: number } };
+    const probeWindow = window as Window & { __codezMentionScrollProbe?: { responses: number } };
     const probe = { responses: 0 };
     const ports = new WeakSet<MessagePort>();
     const original = MessagePort.prototype.postMessage;
@@ -276,15 +276,15 @@ async function installFileSearchResponseProbe() {
       }
       Reflect.apply(original, this, options === undefined ? [message] : [message, options]);
     };
-    probeWindow.__zcodeMentionScrollProbe = probe;
+    probeWindow.__codezMentionScrollProbe = probe;
   }, `${SCROLL_ANCHOR_PREFIX}-00`);
 }
 
 async function readFileSearchResponseCount(): Promise<number> {
   return browser.execute(
     () =>
-      (window as Window & { __zcodeMentionScrollProbe?: { responses: number } })
-        .__zcodeMentionScrollProbe?.responses ?? 0,
+      (window as Window & { __codezMentionScrollProbe?: { responses: number } })
+        .__codezMentionScrollProbe?.responses ?? 0,
   );
 }
 
@@ -330,7 +330,7 @@ async function startPluginOptionStabilityProbe() {
         panelDisconnected: boolean;
       };
       const probeWindow = window as Window & {
-        __zcodeMentionStabilityProbe?: StabilityProbe;
+        __codezMentionStabilityProbe?: StabilityProbe;
       };
       const panel = document.querySelector(`[data-testid="${panelTestId}"]`);
       const option = document.querySelector(`[data-testid="${optionTestId}"]`);
@@ -349,7 +349,7 @@ async function startPluginOptionStabilityProbe() {
         panelDisconnected: false,
       };
       probe.observer.observe(document.body, { childList: true, subtree: true });
-      probeWindow.__zcodeMentionStabilityProbe = probe;
+      probeWindow.__codezMentionStabilityProbe = probe;
       return true;
     },
     TID_PROMPT_SUGGESTION_PANEL,
@@ -361,15 +361,15 @@ async function startPluginOptionStabilityProbe() {
 async function finishPluginOptionStabilityProbe() {
   return browser.execute(() => {
     const probeWindow = window as Window & {
-      __zcodeMentionStabilityProbe?: {
+      __codezMentionStabilityProbe?: {
         observer: MutationObserver;
         optionDisconnected: boolean;
         panelDisconnected: boolean;
       };
     };
-    const probe = probeWindow.__zcodeMentionStabilityProbe;
+    const probe = probeWindow.__codezMentionStabilityProbe;
     probe?.observer.disconnect();
-    delete probeWindow.__zcodeMentionStabilityProbe;
+    delete probeWindow.__codezMentionStabilityProbe;
     return {
       optionDisconnected: probe?.optionDisconnected ?? true,
       panelDisconnected: probe?.panelDisconnected ?? true,
@@ -380,7 +380,7 @@ async function finishPluginOptionStabilityProbe() {
 function getComposerText() {
   return browser.execute((inputTestId) => {
     const input = document.querySelector<LexicalInputE2EElement>(`[data-testid="${inputTestId}"]`);
-    return input?.__zcodeLexicalInputE2E?.getText() ?? "";
+    return input?.__codezLexicalInputE2E?.getText() ?? "";
   }, TID_V4_COMPOSER_INPUT);
 }
 
@@ -391,7 +391,7 @@ async function setChatInputFileMentionState() {
         const input = document.querySelector<LexicalInputE2EElement>(
           `[data-testid="${inputTestId}"]`,
         );
-        return Boolean(input?.__zcodeLexicalInputE2E);
+        return Boolean(input?.__codezLexicalInputE2E);
       }, TID_V4_COMPOSER_INPUT),
     {
       timeout: 15000,
@@ -456,7 +456,7 @@ async function setChatInputFileMentionState() {
       const input = document.querySelector<LexicalInputE2EElement>(
         `[data-testid="${inputTestId}"]`,
       );
-      const bridge = input?.__zcodeLexicalInputE2E;
+      const bridge = input?.__codezLexicalInputE2E;
       if (!input || !bridge) {
         return { ok: false, reason: "bridge-missing" };
       }
@@ -531,7 +531,7 @@ function getMentionNavigationSnapshot() {
     const input = document.querySelector<LexicalInputE2EElement>(`[data-testid="${inputTestId}"]`);
     const selection = window.getSelection();
     return {
-      bridgeText: input?.__zcodeLexicalInputE2E?.getText() ?? "",
+      bridgeText: input?.__codezLexicalInputE2E?.getText() ?? "",
       domText: input?.innerText ?? input?.textContent ?? "",
       mentionCount: input?.querySelectorAll("[data-mention-id]").length ?? 0,
       selection: {

@@ -28,16 +28,16 @@ import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 // Restart=on-failure 会轮流重启、互相接管，每轮都停掉 Core。
 const MARKER = "E2E_REMOTE_SHARED_ROOT_PEER_HOST_SSH";
 const DEV: RemoteAccount = { user: "dev", home: "/home/dev" };
-const SERVER_ROOT = '"$HOME/.zcode/server"';
-const SERVER_BIN = '"$HOME/.zcode/server/bin/zcode"';
-const PEER_UNIT = "zcode-peer-host.service";
+const SERVER_ROOT = '"$HOME/.codez/server"';
+const SERVER_BIN = '"$HOME/.codez/server/bin/codez"';
+const PEER_UNIT = "codez-peer-host.service";
 // 与产品 unit 相同的 ExecStart 和 Restart=on-failure，只多一层命名空间。unit 写进共享 home 的 ~/.config，
 // 与真实共享 home 下另一台主机的 user manager 读到的位置相同。
 const PEER_UNIT_CONTENT = [
   "[Unit]",
-  "Description=ZCode Server on a peer host sharing this home",
+  "Description=Codez Server on a peer host sharing this home",
   "[Service]",
-  `ExecStart=/usr/bin/unshare --user --map-root-user --pid --fork --kill-child --mount-proc ${DEV.home}/.zcode/server/bin/zcode serve --supervisor --service-entry --server-root ${DEV.home}/.zcode/server`,
+  `ExecStart=/usr/bin/unshare --user --map-root-user --pid --fork --kill-child --mount-proc ${DEV.home}/.codez/server/bin/codez serve --supervisor --service-entry --server-root ${DEV.home}/.codez/server`,
   "Restart=on-failure",
   "",
 ].join("\n");
@@ -46,7 +46,7 @@ const PEER_UNIT_CONTENT = [
 const OBSERVE_MS = 30_000;
 const desktopRoot = process.cwd();
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-shared-root-peer-host-ssh",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-shared-root-peer-host-ssh",
 );
 
 /** 以 dev 身份执行，带 user manager 的 bus，等同于 SSH 会话里的 systemctl --user。 */
@@ -125,12 +125,12 @@ describe(`${MARKER}: 共享 home 的另一台主机接管锁后不互相重启`,
         .at(-1) ?? "{}",
     ) as Record<string, unknown>;
     const before = await readRemoteDaemonFiles(container, DEV);
-    const localBefore = await readUnit(container, "com.zhipu.zcode.server.*.service");
+    const localBefore = await readUnit(container, "com.zhipu.codez.server.*.service");
     const localUnit = localBefore.Id ?? "";
     facts.before = { served, files: before, localUnit: localBefore };
     expect(served).toMatchObject({ state: "ready", serviceRegistered: true });
     expect(localBefore.ActiveState).toBe("active");
-    expect(localUnit).toMatch(/^com\.zhipu\.zcode\.server\..+\.service$/);
+    expect(localUnit).toMatch(/^com\.zhipu\.codez\.server\..+\.service$/);
     const localSupervisorPid = Number(localBefore.MainPID);
     const localCorePid = before.status?.pid as number;
     expect(await isRemotePidAlive(container, DEV, localCorePid)).toBe(true);

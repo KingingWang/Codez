@@ -2,7 +2,7 @@ import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getLatestUpstreamToolResultByToolCallId } from "#e2e/helpers/conversation-session-network";
 import { reloadElectronSessionSafely } from "#e2e/helpers/e2e-electron-reload";
-import { TID_LOGIN_USE_API_KEY_BUTTON, TID_TASK_ITEM, testId } from "@zcode/shared/test-ids";
+import { TID_LOGIN_USE_API_KEY_BUTTON, TID_TASK_ITEM, testId } from "@codez/shared/test-ids";
 import { DEFAULT_WORKSPACE, clearAppData, pinE2ELocale } from "#e2e/helpers/desktop-app";
 import {
   approveV4Permission,
@@ -17,7 +17,7 @@ import {
 
 // 重启与重载（docs/dynamic-workflow/presentation.md「Cold replay」「Joining cards to runs」、
 // docs/dynamic-workflow/transcript-and-notifications.md「The pipeline and cold restore」「What a run
-// leaves behind」、apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md「Engine ownership」）
+// leaves behind」、apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md「Engine ownership」）
 // 的三条桌面链路：
 // - renderer 重载不碰 Host 与 CLI：run 继续跑，重载后卡仍是 running，并且自己走到终态；
 // - 完整重启 Electron / Host / CLI：已完成的 run 由 CLI 冷回放进投影，卡、完成卡与侧板与重启前一致；

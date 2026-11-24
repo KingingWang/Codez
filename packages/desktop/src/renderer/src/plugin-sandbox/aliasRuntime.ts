@@ -16,19 +16,19 @@ import type {
   McpUiToolInputNotification,
   McpUiToolResultNotification,
 } from "@modelcontextprotocol/ext-apps";
-import type { McpAppsDownloadFileItem } from "@zcode/shared/mcp-apps";
+import type { McpAppsDownloadFileItem } from "@codez/shared/mcp-apps";
 import {
   MCP_APPS_SET_WIDGET_STATE_METHOD,
   MCP_APPS_WIDGET_STATE_CONTEXT_KEY,
-} from "@zcode/shared/mcp-apps";
+} from "@codez/shared/mcp-apps";
 import type { OpenAiCompatApi, ZcodeAliasApi } from "./aliasApi.js";
 import { createOpenAiCompatApi, readOpenAiGlobals } from "./openaiAlias.js";
 
 /**
- * 插件 iframe 内 `window.zcode` / `window.openai` 别名的运行时：官方 ext-apps `App` 上的薄封装，协议、握手、
+ * 插件 iframe 内 `window.codez` / `window.openai` 别名的运行时：官方 ext-apps `App` 上的薄封装，协议、握手、
  * 错误码全部来自 SDK，自己不持有 JSON-RPC。纯逻辑（消息经注入的 App 收发），alias.ts 负责接 DOM。
  *
- * 懒连接：别名脚本注入到每个插件页面，而用官方 SDK 自建 `App` 的页面（官方示例）不会碰 `window.zcode`；
+ * 懒连接：别名脚本注入到每个插件页面，而用官方 SDK 自建 `App` 的页面（官方示例）不会碰 `window.codez`；
  * 首次访问任一成员才握手，避免同一页面对宿主发两次 ui/initialize。
  */
 export interface AliasAppLike {
@@ -46,7 +46,7 @@ export interface AliasAppLike {
   }): Promise<CallToolResult>;
   readServerResource(params: { uri: string }): Promise<ReadResourceResult>;
   listServerResources(params?: { cursor?: string }): Promise<ListResourcesResult>;
-  /** 规范方法（resources/templates/list、resources/subscribe…）与 ZCode 扩展方法走基类 request。 */
+  /** 规范方法（resources/templates/list、resources/subscribe…）与 Codez 扩展方法走基类 request。 */
   request(
     request: { method: string; params?: Record<string, unknown> },
     resultSchema: unknown,
@@ -70,10 +70,10 @@ export interface AliasAppLike {
   downloadFile(params: { contents: McpAppsDownloadFileItem[] }): Promise<{ isError?: boolean }>;
 }
 
-export const ZCODE_GLOBALS_EVENT = "zcode:globals";
+export const CODEZ_GLOBALS_EVENT = "codez:globals";
 
 export interface PluginSandboxAliasRuntime {
-  zcode: ZcodeAliasApi;
+  codez: ZcodeAliasApi;
   openai: OpenAiCompatApi;
   /** 是否已经（或正在）握手；诊断用。 */
   readonly connecting: boolean;
@@ -137,7 +137,7 @@ export function createPluginSandboxAliasRuntime(options: {
     if (foreignApp && !connectPromise) {
       return Promise.reject(
         new Error(
-          "window.zcode is unavailable: this page already connected its own MCP Apps App; use it directly",
+          "window.codez is unavailable: this page already connected its own MCP Apps App; use it directly",
         ),
       );
     }
@@ -165,7 +165,7 @@ export function createPluginSandboxAliasRuntime(options: {
   const whenReady = <T>(run: () => Promise<T>): Promise<T> => ready().then(run);
 
   const hostContext = () => app.getHostContext() ?? null;
-  const zcodeTarget: ZcodeAliasApi = {
+  const codezTarget: ZcodeAliasApi = {
     get toolInput() {
       return toolInput;
     },
@@ -294,11 +294,11 @@ export function createPluginSandboxAliasRuntime(options: {
         return Reflect.get(object, key, receiver);
       },
     });
-  const zcode = lazy(zcodeTarget);
-  const openai = lazy(createOpenAiCompatApi(zcodeTarget));
+  const codez = lazy(codezTarget);
+  const openai = lazy(createOpenAiCompatApi(codezTarget));
 
   return {
-    zcode,
+    codez,
     openai,
     get connecting() {
       return connectPromise !== null;

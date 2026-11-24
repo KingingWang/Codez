@@ -1,7 +1,7 @@
 import { join, resolve } from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
 import { DatabaseSync } from "node:sqlite";
-import { modelSelectionSchema, OFF_PEAK_PROVIDER_IDS, type ModelSelection } from "@zcode/shared";
+import { modelSelectionSchema, OFF_PEAK_PROVIDER_IDS, type ModelSelection } from "@codez/shared";
 import {
   TID_OFFPEAK_CARD,
   TID_OFFPEAK_CREATE_CARD,
@@ -10,7 +10,7 @@ import {
   TID_OFFPEAK_EDIT_VIEW,
   TID_OFFPEAK_FORM_TITLE,
   TID_OFFPEAK_TAB,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -89,9 +89,9 @@ describe("已有对话内 OffPeakCreate（冷恢复会话）E2E", () => {
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 60000);
 
     // 修复原因：默认回放强制录屏会在无 ffmpeg 的 runner 上于业务通过后报 spawn ffmpeg ENOENT；
-    // 仅人工审核需要视频，与 DCA-V1-06 一致按 ZCODE_E2E_MANUAL_REVIEW=1 启用。
+    // 仅人工审核需要视频，与 DCA-V1-06 一致按 CODEZ_E2E_MANUAL_REVIEW=1 启用。
     const recording =
-      process.env.ZCODE_E2E_MANUAL_REVIEW === "1"
+      process.env.CODEZ_E2E_MANUAL_REVIEW === "1"
         ? await startElectronWindowRecording({
             frameIntervalMs: 200,
             outputPath: resolveArtifactPath(`${CASE_NAME}.webm`),
@@ -338,7 +338,7 @@ async function readTestIdValue(currentTestId: string): Promise<string> {
 
 function resolveArtifactPath(fileName: string) {
   return resolve(
-    process.env.ZCODE_E2E_ARTIFACT_DIR?.trim() ||
+    process.env.CODEZ_E2E_ARTIFACT_DIR?.trim() ||
       process.env.CODEX_E2E_ARTIFACT_DIR?.trim() ||
       join(process.cwd(), ".e2e-artifacts", CASE_NAME),
     fileName,

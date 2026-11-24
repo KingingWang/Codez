@@ -17,7 +17,7 @@ OpenRouter 的模型 ID 按普通字符串保存于结构化 `providerId + model
 `packages/shared/src/openrouter-attribution.ts` 已按最终 `baseURL` 识别 OpenRouter：协议必须为 HTTPS，host 为 `openrouter.ai` 或其子域。命中后添加：
 
 ```text
-X-OpenRouter-Title: ZCode
+X-OpenRouter-Title: Codez
 X-OpenRouter-Categories: programming-app
 ```
 
@@ -38,7 +38,7 @@ X-OpenRouter-Categories: programming-app
 维护成员以 [`Builtin Provider 维护清单`](../design-v2/builtin-provider-inventory.md) 为准。OpenRouter 不是只接入少数代表模型，
 而是覆盖本表中各家普通 API Template 的全部维护模型：某个上游模型只要当前被 OpenRouter 提供，就纳入 OpenRouter Template；
 同一供应商的 Account Provider 不重复计算。每家至少一个重点模型默认启用，其余一般维护、默认关闭。OpenRouter 仍不复制自己的
-全量动态目录，未列入 ZCode 维护范围的模型继续由用户通过自定义 Provider 使用。
+全量动态目录，未列入 Codez 维护范围的模型继续由用户通过自定义 Provider 使用。
 
 OpenRouter 的模型清单参照本表中各家上游 API Template 的维护模型。当前 OpenRouter 的一个实际命名示例是上游模型 ID
 `gpt-5.6-sol` 对应 `openai/gpt-5.6-sol`；这只是 OpenRouter 的模型成员和命名事实，不是所有聚合供应商的通用格式，也不是

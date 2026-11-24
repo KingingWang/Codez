@@ -11,15 +11,15 @@ export const config = JSON.parse(await readFile(join(directory, "config.json"), 
 export const isWindows = process.platform === "win32";
 // Windows 上 Agent 的 Bash 是 Git Bash；裸 bash 可能解析到 WSL，必须用测试传入的绝对路径。
 export const bash = config.bash ?? "/bin/bash";
-export const agentCommand = /(?:zcode-cli|agent-cli|zcode-agent|[\\/]cli[\\/]dist[\\/])/;
+export const agentCommand = /(?:codez-cli|agent-cli|codez-agent|[\\/]cli[\\/]dist[\\/])/;
 export const docs = join(directory, "中文 空格");
 export const tools = ["python", "qpdf", "pandoc", "poppler", "libreoffice"];
 export const entries = {
-  python: ["zcode-python"],
+  python: ["codez-python"],
   qpdf: ["qpdf"],
   pandoc: ["pandoc"],
   poppler: ["pdftoppm", "pdftotext", "pdfimages", "pdfinfo"],
-  libreoffice: ["zcode-soffice"],
+  libreoffice: ["codez-soffice"],
 };
 export const hash = async (path) =>
   createHash("sha256")
@@ -84,9 +84,9 @@ export async function plugin(name) {
   const versions = await readdir(cache);
   assert.equal(versions.length, 1);
   const root = join(cache, versions[0]);
-  const metadata = JSON.parse(await readFile(join(root, ".zcode-plugin/plugin.json"), "utf8"));
+  const metadata = JSON.parse(await readFile(join(root, ".codez-plugin/plugin.json"), "utf8"));
   assert.equal(metadata.version, versions[0]);
-  assert.equal(await hash(join(root, "scripts/zcode_libreoffice.py")), config.helperSha256);
+  assert.equal(await hash(join(root, "scripts/codez_libreoffice.py")), config.helperSha256);
   return root;
 }
 export async function tree(root) {

@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { DatabaseSync } from "node:sqlite";
 import { chromium } from "playwright-core";
-import { TID_TASK_SETTINGS_BUTTON } from "@zcode/shared/test-ids";
+import { TID_TASK_SETTINGS_BUTTON } from "@codez/shared/test-ids";
 import { join, basename } from "node:path";
 import { isE2EHomeDirName } from "#e2e/helpers/e2e-runtime-paths";
 import { e2eMobileBrowserLaunchOptions } from "#e2e/helpers/e2e-mobile-browser-executable";
@@ -17,7 +17,7 @@ import { waitForWorkspaceApp, DEFAULT_WORKSPACE } from "#e2e/helpers/desktop-app
  * （文件夹不存在 / 没有会话 / 两个超过 90 天）、一个置顶的久未使用项目和一个已软删除且目录不存在的项目；
  * 另有一个独占目录、带会话文件的活跃项目，供 PJM07 彻底删除数据。
  */
-const home = process.env.ZCODE_E2E_HOME_DIR!;
+const home = process.env.CODEZ_E2E_HOME_DIR!;
 const DAY = 86_400_000;
 const PROJECTS = [
   { id: "pjm-active", name: "PJM 活跃", lastActive: 1 },
@@ -30,13 +30,13 @@ const PROJECTS = [
   { id: "pjm-purge", name: "PJM 删除数据", lastActive: 2, own: true },
 ] as const;
 const PURGE_SESSION = "pjm-purge-task";
-const purgeArtifacts = () => join(home, ".zcode/cli/artifacts", PURGE_SESSION);
+const purgeArtifacts = () => join(home, ".codez/cli/artifacts", PURGE_SESSION);
 const CANDIDATES = ["pjm-missing", "pjm-idle", "pjm-keep", "pjm-empty"];
-const editRoot = () => join(DEFAULT_WORKSPACE, ".zcode-e2e/project-management/extra");
+const editRoot = () => join(DEFAULT_WORKSPACE, ".codez-e2e/project-management/extra");
 
 const row = (id: string) => $(`[data-testid="project-management-row"][data-project-id="${id}"]`);
 function readProjects() {
-  const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"), { readOnly: true });
+  const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"), { readOnly: true });
   try {
     return Object.fromEntries(
       (
@@ -50,7 +50,7 @@ function readProjects() {
   }
 }
 function readTaskProject(id: string) {
-  const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"), { readOnly: true });
+  const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"), { readOnly: true });
   try {
     return (
       db.prepare("SELECT project_id FROM tasks WHERE task_id=?").get(id) as {
@@ -95,21 +95,21 @@ describe("项目管理", () => {
   let pairingUrl: string;
   before(async function () {
     this.timeout(60000);
-    // 修复原因：旧守卫只认 `.e2e-home-` 前缀，Windows CI 未设 ZCODE_E2E_HOME_DIR 时默认 HOME 是
+    // 修复原因：旧守卫只认 `.e2e-home-` 前缀，Windows CI 未设 CODEZ_E2E_HOME_DIR 时默认 HOME 是
     // `.e2e-home`，before 直接抛错。统一用 isE2EHomeDirName，只接受 `.e2e-home` 与 `.e2e-home-*`。
     if (
       !home ||
       !(
         isE2EHomeDirName(basename(home)) ||
-        basename(home).startsWith("zcode-project-management-e2e-")
+        basename(home).startsWith("codez-project-management-e2e-")
       )
     )
       throw new Error("isolated project management HOME required");
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 45000);
     await restartIntoWorkspacePreservingProfile(DEFAULT_WORKSPACE, {
       afterElectronProcessExit: async () => {
-        const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
-        const cli = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"));
+        const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"));
+        const cli = new DatabaseSync(join(home, ".codez/cli/db/db.sqlite"));
         const now = Date.now();
         try {
           for (const [i, project] of PROJECTS.entries()) {
@@ -189,7 +189,7 @@ describe("项目管理", () => {
     await setLocaleAndTheme("zh-CN", "zai-light");
     // 在进入设置前从首页配对；设置页和首页各有 footer，不能用全局定位器猜测当前入口。
     pairingUrl = await obtainUnreadPairingUrl(
-      new URL(process.env.ZCODE_WEB_REMOTE_CONTROL_URL!).origin,
+      new URL(process.env.CODEZ_WEB_REMOTE_CONTROL_URL!).origin,
     );
   });
 
@@ -251,7 +251,7 @@ describe("项目管理", () => {
     await $('[data-project-name="PJM 编辑完成"]').waitForExist();
     await expect(row("pjm-keep")).toHaveText(expect.stringContaining("PJM 保留"));
     expect(readTaskProject("pjm-active-task")).toBe("pjm-active");
-    const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"), { readOnly: true });
+    const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"), { readOnly: true });
     try {
       expect(
         db.prepare("SELECT root_path FROM tasks WHERE task_id='pjm-active-task'").get(),
@@ -308,7 +308,7 @@ describe("项目管理", () => {
     const devices = await dialog.$$('[data-testid="project-management-confirm-device"]');
     expect(devices).toHaveLength(1);
     await expect(devices[0]!).toHaveText(expect.stringContaining("3 个项目"));
-    await browser.saveScreenshot(join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "PJM03-confirm.png"));
+    await browser.saveScreenshot(join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "PJM03-confirm.png"));
     await dialog.$('[data-testid="project-management-confirm-remove"]').click();
     await dialog.waitForExist({ reverse: true });
     await browser.waitUntil(() => readProjects()["pjm-idle"] === 1);
@@ -416,17 +416,17 @@ describe("项目管理", () => {
               };
             });
             await writeFile(
-              join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "PJM06-layout.json"),
+              join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "PJM06-layout.json"),
               JSON.stringify(layout, null, 2),
             );
             await browser.saveScreenshot(
-              join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "PJM06-layout.png"),
+              join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "PJM06-layout.png"),
             );
           }
           expect(fits).toBe(true);
           await browser.saveScreenshot(
             join(
-              process.env.ZCODE_E2E_ARTIFACT_DIR!,
+              process.env.CODEZ_E2E_ARTIFACT_DIR!,
               `project-management-${width}-${locale}-${theme}.png`,
             ),
           );
@@ -447,7 +447,7 @@ describe("项目管理", () => {
           expect(editorFits).toBe(true);
           await browser.saveScreenshot(
             join(
-              process.env.ZCODE_E2E_ARTIFACT_DIR!,
+              process.env.CODEZ_E2E_ARTIFACT_DIR!,
               `project-editor-${width}-${locale}-${theme}.png`,
             ),
           );
@@ -482,7 +482,7 @@ describe("项目管理", () => {
     await expect(confirm).toBeDisabled();
     await dialog.$('[data-testid="project-management-confirm-data-word"]').setValue("删除");
     await expect(confirm).toBeEnabled();
-    await browser.saveScreenshot(join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "PJM07-confirm.png"));
+    await browser.saveScreenshot(join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "PJM07-confirm.png"));
     await confirm.click();
     await dialog.waitForExist({ reverse: true });
     // 结果 toast 不带撤销；项目行在无引用后删除，不进入「已移除的项目」。
@@ -491,7 +491,7 @@ describe("项目管理", () => {
     await browser.waitUntil(() => !("pjm-purge" in readProjects()), { timeout: 30000 });
     expect(readTaskProject(PURGE_SESSION)).toBeUndefined();
     expect(existsSync(purgeArtifacts())).toBe(false);
-    const cli = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"), { readOnly: true });
+    const cli = new DatabaseSync(join(home, ".codez/cli/db/db.sqlite"), { readOnly: true });
     try {
       expect(cli.prepare("SELECT id FROM session WHERE id=?").get(PURGE_SESSION)).toBeUndefined();
     } finally {
@@ -523,7 +523,7 @@ describe("项目管理", () => {
       await seedMobileFixtureLogin(context);
       const page = await context.newPage();
       await openMobilePairingPage(page, pairingUrl, {
-        artifactDir: process.env.ZCODE_E2E_ARTIFACT_DIR!,
+        artifactDir: process.env.CODEZ_E2E_ARTIFACT_DIR!,
         caseMarker: "PJM09",
         phase: "project-edit",
         readySelector: '[data-project-name="PJM 编辑完成"]',
@@ -558,7 +558,7 @@ describe("项目管理", () => {
           theme === "zai-light" ? "PJM 编辑完成" : "PJM 手机编辑",
         );
         await page.screenshot({
-          path: join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `PJM09-mobile-${theme}.png`),
+          path: join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `PJM09-mobile-${theme}.png`),
         });
         if (theme === "zai-light") {
           await name.fill("PJM 手机编辑");

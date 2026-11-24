@@ -1,5 +1,5 @@
-import type { Event } from "@zcode/rpc";
-import { ServiceChannels } from "@zcode/shared";
+import type { Event } from "@codez/rpc";
+import { ServiceChannels } from "@codez/shared";
 import type {
   DecideExtensionActivationInput,
   DescribeExtensionEnableInput,
@@ -10,7 +10,7 @@ import type {
   GrantExtensionInput,
   RevokeExtensionInput,
   SetExtensionNotificationsInput,
-} from "@zcode/shared/extension-host";
+} from "@codez/shared/extension-host";
 import { createServiceDescriptor } from "#src/descriptors.js";
 
 // 扩展授权门面（docs/plugins/extension-host.md §17.7、§17.8）：授予、撤销、授权状态、启用确认与最近操作。

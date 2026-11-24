@@ -4,9 +4,9 @@ import type {
   WebRemoteControlEntryOptions,
   WebRemoteControlDeviceGroup,
 } from "#src/web-remote-control/contract.js";
-import type { WebRemoteControlRelayV2Device } from "@zcode/shared/web-remote-relay";
-import { parseWebRemoteControlExternalQrParams, type WebRemoteControlFailure } from "@zcode/shared";
-import { WebRemoteControlV2ConnectionError } from "@zcode/shared/web-remote-relay";
+import type { WebRemoteControlRelayV2Device } from "@codez/shared/web-remote-relay";
+import { parseWebRemoteControlExternalQrParams, type WebRemoteControlFailure } from "@codez/shared";
+import { WebRemoteControlV2ConnectionError } from "@codez/shared/web-remote-relay";
 import type { WebOAuthProviderId } from "#src/auth/contract.js";
 import { groupWebRemoteControlDevices } from "#src/web-remote-control/domain/webRemoteControlDeviceGroups.js";
 import {
@@ -25,8 +25,8 @@ export function isWebRemoteControlOAuthCallback(url: URL): boolean {
   );
 }
 
-const LAST_DEVICE_KEY = "zcode-web-remote-last-device-sid";
-const LAST_DEVICE_MID_KEY = "zcode-web-remote-last-device-mid";
+const LAST_DEVICE_KEY = "codez-web-remote-last-device-sid";
+const LAST_DEVICE_MID_KEY = "codez-web-remote-last-device-mid";
 
 /**
  * 最近设备的自动落点：最近 SID 在线优先；否则同一台电脑（最近 MID）恰好一个在线 SID 时接上它。
@@ -79,7 +79,7 @@ export class WebRemoteControlEntry {
   private reset(): void {
     this.dispose();
     this.scope = new AbortController();
-    const jwt = this.options.auth.getZCodeJwtToken();
+    const jwt = this.options.auth.getCodezJwtToken();
     const revision = this.options.auth.getSessionRevision();
     const unsubscribe = this.options.auth.subscribeSessionChange(() => {
       if (!this.matchesSession(jwt, revision)) void this.start();
@@ -89,7 +89,7 @@ export class WebRemoteControlEntry {
 
   private matchesSession(jwt: string | null, revision: string | null): boolean {
     return (
-      this.options.auth.getZCodeJwtToken() === jwt &&
+      this.options.auth.getCodezJwtToken() === jwt &&
       this.options.auth.getSessionRevision() === revision
     );
   }
@@ -101,7 +101,7 @@ export class WebRemoteControlEntry {
       this.options.onView({ kind: "callback" });
       return;
     }
-    if (!this.options.auth.getZCodeJwtToken()) {
+    if (!this.options.auth.getCodezJwtToken()) {
       this.options.onView({ kind: "login" });
       return;
     }
@@ -151,7 +151,7 @@ export class WebRemoteControlEntry {
     const list = this.list;
     if (!list) return;
     if (list.request) return list.request;
-    const jwt = this.options.auth.getZCodeJwtToken();
+    const jwt = this.options.auth.getCodezJwtToken();
     const revision = this.options.auth.getSessionRevision();
     if (!jwt) return this.switchAccount();
     if (list.acceptedJwt && !this.matchesSession(list.acceptedJwt, list.acceptedRevision ?? null))
@@ -241,7 +241,7 @@ export class WebRemoteControlEntry {
   ): Promise<void> {
     this.reset();
     const { signal } = this.scope;
-    const jwt = this.options.auth.getZCodeJwtToken();
+    const jwt = this.options.auth.getCodezJwtToken();
     const revision = this.options.auth.getSessionRevision();
     if (!jwt) return this.switchAccount();
     try {
@@ -305,7 +305,7 @@ export class WebRemoteControlEntry {
       params,
       signal,
       getToken: async (tokenSignal) => {
-        const jwt = this.options.auth.getZCodeJwtToken();
+        const jwt = this.options.auth.getCodezJwtToken();
         const revision = this.options.auth.getSessionRevision();
         if (!jwt) throw new WebRemoteControlV2ConnectionError("auth-required");
         try {
@@ -317,7 +317,7 @@ export class WebRemoteControlEntry {
         } catch (error) {
           // Bugfix: 401 只否定这次请求用的 JWT。请求在途时其他标签页写入了新 JWT，旧实现仍按 401
           // 登出，把新登录一起清掉并回登录页；这里改为可重试，transport 下一轮读取新 JWT 重新申请。
-          const current = this.options.auth.getZCodeJwtToken();
+          const current = this.options.auth.getCodezJwtToken();
           if (
             error instanceof WebRemoteControlV2ConnectionError &&
             error.reason === "auth-required" &&

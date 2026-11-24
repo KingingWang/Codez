@@ -4,7 +4,7 @@ import {
   MEMORY_SAMPLE_INTERVAL_MS,
   memoryUsageToSampleFields,
   type MemorySample,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 interface HostMemoryDiagnosticsLogger {
   info(...args: unknown[]): void;

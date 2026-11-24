@@ -9,8 +9,8 @@
 
 ## 1. 落点
 
-- `apps/zcode-cli/packages/core/src/browser-client/index.ts`（新）：`setupBrowserRuntime` + `agent.browsers` 对象图。
-- `apps/zcode-cli/packages/core/src/browser-client/facade.ts`（新）：`BrowsersFacade`/`Browser`/`Tab` 类，把方法调用构造成 `BrowserCommand` → `execute(cmd)`。
+- `apps/codez-cli/packages/core/src/browser-client/index.ts`（新）：`setupBrowserRuntime` + `agent.browsers` 对象图。
+- `apps/codez-cli/packages/core/src/browser-client/facade.ts`（新）：`BrowsersFacade`/`Browser`/`Tab` 类，把方法调用构造成 `BrowserCommand` → `execute(cmd)`。
 - 改 `packages/core/src/tool/handlers/node-repl.ts`：`getSession` 用 `context.browserControlPort` 构造注入 globals。
 
 ## 2. 对象图（P0 核心子集）
@@ -63,7 +63,7 @@ class Browser {
 
 ## 4. P0 验收（端到端，真机）
 
-`ZCODE_BROWSER_USE=1`(或临时在 desktop 装配无条件启用 includeNodeRepl + browserControlPort) 起 desktop → agent 会话里模型：
+`CODEZ_BROWSER_USE=1`(或临时在 desktop 装配无条件启用 includeNodeRepl + browserControlPort) 起 desktop → agent 会话里模型：
 ```js
 const b = await agent.browsers.open("https://example.com");
 nodeRepl.write(JSON.stringify(await b.getState()));

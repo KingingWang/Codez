@@ -41,8 +41,8 @@ test("historical labels, planned E2E and retained CLI CUA browser engineering ev
     `| M06g | unit-retired | \`retired:${unit}\` | 待补 E2E |`,
     `| M06o | partial | \`retired:${unit}\` + \`${e2e}\` | remaining E2E |`,
     `| \`LONG\` | \`${e2e}\`（planned） |`,
-    "`apps/zcode-cli/packages/core/tests/read-tool-contract.test.ts`",
-    "`packages/zcode-cua/test/example.test.ts`",
+    "`apps/codez-cli/packages/core/tests/read-tool-contract.test.ts`",
+    "`packages/codez-cua/test/example.test.ts`",
     "`packages/ui/test/browser/manual-review/pending/example.test.mjs`",
     "`packages/desktop/test/fixture.test.ts`",
   ].join("\n");
@@ -66,8 +66,8 @@ test("planned prose cannot stand in for retained evidence", () => {
 test("retirement cannot relabel protected CLI CUA browser E2E or engineering evidence", () => {
   for (const path of [
     e2e,
-    "apps/zcode-cli/packages/core/tests/read-tool-contract.test.ts",
-    "packages/zcode-cua/test/example.test.ts",
+    "apps/codez-cli/packages/core/tests/read-tool-contract.test.ts",
+    "packages/codez-cua/test/example.test.ts",
     "packages/ui/test/browser/example.test.mjs",
     "packages/desktop/test/fixture.test.ts",
   ]) {

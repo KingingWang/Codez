@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { TID_SETTINGS_BACK_BUTTON } from "@zcode/shared/test-ids";
+import { TID_SETTINGS_BACK_BUTTON } from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -43,7 +43,7 @@ describe("WPL-015 Marketplace installed roundtrip E2E", () => {
     const fixture = await createPluginLifecycleFixture("1.0.0");
     const { storageRoot, workspace } = getE2EAppDataPaths();
     const userConfigPath = join(storageRoot, "cli", "config.json");
-    const workspaceConfigPath = join(workspace, ".zcode", "config.json");
+    const workspaceConfigPath = join(workspace, ".codez", "config.json");
 
     await waitForDefaultWorkspaceReady();
     await addMarketplaceSourceThroughAgent(fixture.marketplaceRoot);
@@ -122,7 +122,7 @@ describe("WPL-015 Marketplace installed roundtrip E2E", () => {
     await clickPluginControl("plugin-store-config-save", {
       pluginId: PLUGIN_LIFECYCLE_ID,
     });
-    // 修复原因：a54857749d 起 Workspace option 存到用户私有文件，项目 .zcode/config.json 里的
+    // 修复原因：a54857749d 起 Workspace option 存到用户私有文件，项目 .codez/config.json 里的
     // plugins.options 不再生效也不再写入；改读 Agent 投影的 configuredOptions/optionSources，并断言项目文件不含该 option。
     await browser.waitUntil(
       async () => {

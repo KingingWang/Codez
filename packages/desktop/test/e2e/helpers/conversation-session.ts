@@ -19,7 +19,7 @@ import {
   TID_V4_STOP,
   TID_V4_TIMELINE,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import AppPage from "../pages/app.page.js";
 import {
   clickTestIdByDom,
@@ -44,7 +44,7 @@ type LexicalInputE2EBridge = {
 };
 
 type LexicalInputE2EElement = HTMLElement & {
-  __zcodeLexicalInputE2E?: LexicalInputE2EBridge;
+  __codezLexicalInputE2E?: LexicalInputE2EBridge;
 };
 
 export const E2E_REPLY_TOKEN = "upstream-e2e-ok";
@@ -447,7 +447,7 @@ async function writePromptWithLexicalBridge(prompt: string): Promise<{
           const input = document.querySelector<LexicalInputE2EElement>(
             `[data-testid="${inputTestId}"]`,
           );
-          return Boolean(input?.__zcodeLexicalInputE2E);
+          return Boolean(input?.__codezLexicalInputE2E);
         }, TID_CHAT_INPUT),
       {
         timeout: 5000,
@@ -467,7 +467,7 @@ async function writePromptWithLexicalBridge(prompt: string): Promise<{
         const input = document.querySelector<LexicalInputE2EElement>(
           `[data-testid="${inputTestId}"]`,
         );
-        const bridge = input?.__zcodeLexicalInputE2E;
+        const bridge = input?.__codezLexicalInputE2E;
         if (!bridge) {
           return { ok: false, reason: "bridge-missing" };
         }
@@ -528,7 +528,7 @@ function readLexicalBridgePromptSnapshot(): Promise<{
       const input = document.querySelector<LexicalInputE2EElement>(
         `[data-testid="${inputTestId}"]`,
       );
-      const bridge = input?.__zcodeLexicalInputE2E;
+      const bridge = input?.__codezLexicalInputE2E;
       if (!bridge) {
         return { ok: false, reason: "bridge-missing" };
       }

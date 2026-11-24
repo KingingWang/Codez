@@ -6,14 +6,14 @@ import type {
   DataSyncImportResultItem,
   DataSyncListItem,
   HookDataSyncPayload,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   WORKSPACE_HOOK_EVENT_NAMES,
   workspaceHookMatcherConfigSchema,
   workspaceHooksConfigSchema,
   type WorkspaceHookDefinition,
   type WorkspaceHookEventName,
-} from "@zcode/shared/workspace-hook-discovery";
+} from "@codez/shared/workspace-hook-discovery";
 import { readJsonObjectFileForUpdate, updateJsonObjectFile } from "#src/fs/atomicFileUtils.js";
 import { checkRemoteSyncDirectoryWriteAccess } from "#src/remote-sync/remoteSyncWriteAccess.js";
 import { resolveUserHomeDir } from "#src/subagents/subagentStorage.js";
@@ -35,9 +35,9 @@ interface HookEntry {
   index: number;
 }
 
-/** 只同步用户级 `~/.zcode/cli/config.json` 的 hooks；`~/.agents`、`~/.claude` 下的只读来源不读。 */
+/** 只同步用户级 `~/.codez/cli/config.json` 的 hooks；`~/.agents`、`~/.claude` 下的只读来源不读。 */
 function userConfigPath(): string {
-  return join(resolveUserHomeDir(), ".zcode", "cli", "config.json");
+  return join(resolveUserHomeDir(), ".codez", "cli", "config.json");
 }
 
 function sha256(value: string): string {

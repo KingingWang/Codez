@@ -15,7 +15,7 @@ interface FixtureStatus {
   pending: number[];
   runtimeChecks: number;
 }
-const fixtureUrl = () => process.env.ZCODE_E2E_PREINSTALL_FIXTURE_URL!;
+const fixtureUrl = () => process.env.CODEZ_E2E_PREINSTALL_FIXTURE_URL!;
 const status = async () => (await (await fetch(`${fixtureUrl()}/status`)).json()) as FixtureStatus;
 async function openDialog() {
   await $('[data-testid="workspace-help-menu-trigger"]').click();
@@ -59,7 +59,7 @@ async function restart(scenario: string, afterExit?: () => Promise<void>) {
   await openDialog();
 }
 async function screenshot(name: string) {
-  await browser.saveScreenshot(`${process.env.ZCODE_E2E_ARTIFACT_DIR}/lop-fault-${name}.png`);
+  await browser.saveScreenshot(`${process.env.CODEZ_E2E_ARTIFACT_DIR}/lop-fault-${name}.png`);
 }
 // 代理与私有 CA 需要只能经代理访问的基址，见 conversation-session-preinstalled-tools-proxy。
 describe("预装工具下载故障与网络策略（待审核）", () => {
@@ -73,7 +73,7 @@ describe("预装工具下载故障与网络策略（待审核）", () => {
       "磁盘空间不足",
     );
     const spaceManifest = JSON.parse(
-      await readFile(process.env.ZCODE_E2E_PREINSTALLED_TOOLS_CATALOG!, "utf8"),
+      await readFile(process.env.CODEZ_E2E_PREINSTALLED_TOOLS_CATALOG!, "utf8"),
     )[0].resources[0] as { archive: { sizeBytes: number }; installedSizeBytes: number };
     const requiredSpace = new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 1 }).format(
       (spaceManifest.archive.sizeBytes + spaceManifest.installedSizeBytes) / 1024 ** 3,
@@ -127,7 +127,7 @@ describe("预装工具下载故障与网络策略（待审核）", () => {
       await $('[data-testid="preinstalled-tools-retry"]').waitForDisplayed();
       // 固定发布点仍保留旧完整记录；失败不能发布本次资源或撤销旧入口。
       expect(JSON.parse(await readFile(originalRecordPath, "utf8"))).toEqual(original);
-      expect(await readPreinstalledEntryDefinition(join(root, "bin"), "zcode-soffice")).toContain(
+      expect(await readPreinstalledEntryDefinition(join(root, "bin"), "codez-soffice")).toContain(
         original.installationDir,
       );
       expect(await readdir(join(root, "tools", "libreoffice", "staging"))).toEqual([]);

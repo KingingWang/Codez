@@ -6,14 +6,14 @@ import { REMOTE_RELEASE_DIR_ENV } from "./e2e/helpers/e2e-remote-release-require
 import { readSingleSSHWorkspaceRuntimeConfig } from "./e2e/helpers/ssh-remote-p0.js";
 
 const ENV_KEYS = [
-  "ZCODE_E2E_SSH_HOST",
-  "ZCODE_E2E_SSH_PORT",
-  "ZCODE_E2E_SSH_USERNAME",
-  "ZCODE_E2E_SSH_PASSWORD",
-  "ZCODE_E2E_SSH_WORKSPACE_PATH",
-  "ZCODE_E2E_SSH_SHARED_WORKSPACE_PATH",
+  "CODEZ_E2E_SSH_HOST",
+  "CODEZ_E2E_SSH_PORT",
+  "CODEZ_E2E_SSH_USERNAME",
+  "CODEZ_E2E_SSH_PASSWORD",
+  "CODEZ_E2E_SSH_WORKSPACE_PATH",
+  "CODEZ_E2E_SSH_SHARED_WORKSPACE_PATH",
   REMOTE_RELEASE_DIR_ENV,
-  "ZCODE_E2E_PACKAGED_APP_PATH",
+  "CODEZ_E2E_PACKAGED_APP_PATH",
 ] as const;
 
 const originalEnv = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
@@ -28,13 +28,13 @@ afterEach(() => {
 
 describe("SSH remote E2E config helpers", () => {
   it("reads a single target without requiring a second SSH identity", () => {
-    process.env.ZCODE_E2E_SSH_HOST = "e2e.example.test";
-    process.env.ZCODE_E2E_SSH_USERNAME = "e2e-user";
-    process.env.ZCODE_E2E_SSH_PASSWORD = "e2e-password";
-    process.env.ZCODE_E2E_SSH_PORT = "2222";
-    process.env.ZCODE_E2E_SSH_WORKSPACE_PATH = "/root/workspace";
-    delete process.env.ZCODE_E2E_PACKAGED_APP_PATH;
-    const releaseDir = mkdtempSync(join(tmpdir(), "zcode-ssh-release-"));
+    process.env.CODEZ_E2E_SSH_HOST = "e2e.example.test";
+    process.env.CODEZ_E2E_SSH_USERNAME = "e2e-user";
+    process.env.CODEZ_E2E_SSH_PASSWORD = "e2e-password";
+    process.env.CODEZ_E2E_SSH_PORT = "2222";
+    process.env.CODEZ_E2E_SSH_WORKSPACE_PATH = "/root/workspace";
+    delete process.env.CODEZ_E2E_PACKAGED_APP_PATH;
+    const releaseDir = mkdtempSync(join(tmpdir(), "codez-ssh-release-"));
     writeFileSync(join(releaseDir, "source-server-release.json"), "{}");
 
     // onPrepare 没有 stage remote release 时，SSH 配置入口直接失败。

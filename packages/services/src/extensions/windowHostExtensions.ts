@@ -9,7 +9,7 @@ import {
   type Event,
   type IDisposable,
   type MessagePortLike,
-} from "@zcode/rpc";
+} from "@codez/rpc";
 import {
   EXTENSION_HOST_CHANNEL,
   EXTENSION_WINDOW_CHANNEL,
@@ -44,13 +44,13 @@ import {
   type IExtensionHostChannel,
   type MainToExtensionWindowMessage,
   type StaticPlugin,
-} from "@zcode/shared/extension-host";
-import type { PluginSandboxHandle, PluginSandboxRegisterInput } from "@zcode/shared/mcp-apps";
+} from "@codez/shared/extension-host";
+import type { PluginSandboxHandle, PluginSandboxRegisterInput } from "@codez/shared/mcp-apps";
 import type { IPluginManagementService } from "#src/plugins/pluginManagement.js";
 import type { IModelSelectionService } from "#src/model-provider/providerFacadeServices.js";
 import type { PluginMutationSucceededEvent } from "#src/plugins/pluginManagementService.js";
-import type { PluginUserOptionsReader } from "#src/zcode-agent/pluginHostQueriesClient.js";
-import type { IZCodeAgentService } from "#src/zcode-agent/zcodeAgent.js";
+import type { PluginUserOptionsReader } from "#src/codez-agent/pluginHostQueriesClient.js";
+import type { ICodezAgentService } from "#src/codez-agent/codezAgent.js";
 import type { AppControlServiceHandle } from "#src/app-control/contract.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import {
@@ -100,7 +100,7 @@ export interface WindowHostExtensionsDeps {
    * 数据泵的来源：context 组成与生成速率都由 CLI 产生（§3.4）；会话读连接以它为底座建连接作用域（§17.5）。
    * 只在本进程内传递。
    */
-  agent: IZCodeAgentService;
+  agent: ICodezAgentService;
   /** Window Host 控制器的任务投影（会话列表泵，§17.5）：只在本进程内传递。缺省时列表订阅报 unavailable。 */
   taskRows?: ExtensionTaskRowsSource;
   /** 扩展视图的沙箱登记（Host → Main）。缺省时扩展视图不可用。 */
@@ -121,7 +121,7 @@ export interface WindowHostExtensionsDeps {
   projects: Pick<IProjectService, "readProjects" | "saveProject">;
   /** 能力 models.list 的来源（§18.1 H9）：输入框模型选择器同一份视图。缺省时报 unavailable。 */
   modelSelection?: Pick<IModelSelectionService, "getView">;
-  /** 本服务的数据目录（`~/.zcode/v2/extensions`）：授权记录 grants.json 与审计目录 audit/（§17.7、§17.8）。 */
+  /** 本服务的数据目录（`~/.codez/v2/extensions`）：授权记录 grants.json 与审计目录 audit/（§17.7、§17.8）。 */
   dataDir: string;
   postToMain(message: ExtensionWindowToMainMessage): void;
 }

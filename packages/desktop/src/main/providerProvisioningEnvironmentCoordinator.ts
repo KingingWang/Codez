@@ -3,7 +3,7 @@ import type {
   ProviderProvisioningLaneStatus,
   ProviderProvisioningSourceTrigger,
   ProviderProvisioningTrigger,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 type ExecuteSync = (trigger: ProviderProvisioningTrigger) => Promise<void>;
 

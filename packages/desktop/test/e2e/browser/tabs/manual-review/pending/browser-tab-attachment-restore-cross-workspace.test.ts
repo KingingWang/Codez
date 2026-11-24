@@ -1,6 +1,6 @@
 import { createServer, type Server } from "node:http";
 import { dirname } from "node:path";
-import { TID_BROWSER_ADDRESS_INPUT } from "@zcode/shared/test-ids";
+import { TID_BROWSER_ADDRESS_INPUT } from "@codez/shared/test-ids";
 import { DEFAULT_WORKSPACE, clearAppData, waitForWorkspaceApp } from "#e2e/helpers/desktop-app";
 import {
   SMALL_AGENT_WARMUP_SCENARIO,

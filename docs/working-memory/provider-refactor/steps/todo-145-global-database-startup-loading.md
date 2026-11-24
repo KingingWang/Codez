@@ -1,4 +1,4 @@
-# Todo 145：进入 ZCode 前统一准备数据库
+# Todo 145：进入 Codez 前统一准备数据库
 
 > 状态：代码已实现并复审；桌面 GUI / Windows、macOS 和 ARMS 后台验收尚未通过，不标为可发布。
 > 日期：2026-09-14。代码评估基线：`fix-database-migration-startup`，`845391b5dc`。
@@ -8,7 +8,7 @@
 
 ## 1. 目标与不变量
 
-用户打开 ZCode 后，先看到独立启动页。本地启动必需数据库准备完成后，才挂载正常业务 Root、恢复工作区并放行依赖数据库的后台业务。
+用户打开 Codez 后，先看到独立启动页。本地启动必需数据库准备完成后，才挂载正常业务 Root、恢复工作区并放行依赖数据库的后台业务。
 不能仅覆盖界面、让 Root hooks 或 scheduler 在背后继续访问未就绪数据库。没有工作区的新用户也必须走同一启动流程。
 
 - 原 migration ID、SQL、checksum、账本和执行顺序保持不变；已完成项按既有规则校验并跳过。
@@ -121,7 +121,7 @@ Main 只调度和透传，不承载迁移业务。Host 拥有启动编排，Agen
 - [ ] 运行 `pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed`、CLI 对应类型检查、受影响单测和桌面 E2E。
 - [ ] 更新 spec、case catalog、coverage matrix；仅有实际证据的条目标记完成。
 - [x] 删除失效工作区接口和重复状态；确认迁移定义相对目标分支 diff 为空，Provider 补丁仍在。
-- [ ] 更新草稿 MR 的最终范围、证据和限制，经必需检查再提交；推送/MR 更新使用 zcode-mr skill。
+- [ ] 更新草稿 MR 的最终范围、证据和限制，经必需检查再提交；推送/MR 更新使用 codez-mr skill。
 
 ## 5. 失败、回滚与恢复合同
 
@@ -235,7 +235,7 @@ SQLite 使用原始数值 errcode（含扩展码时提取低 8 位）及结构�
 - `packages/desktop/src/main/desktopArmsCustomEvent.ts`：统一 custom payload、应用版本/平台等上下文与最终发送前 E2E 捕获。
 - `packages/desktop/src/main/desktopRemoteUsageArmsTelemetry.ts`：Host/生命周期事实在 Main 汇总上报的参考实现。
 - `packages/services/src/storage/adapters/volumeProbe.ts`：异步 stat/statfs 探测卷容量，失败返回 null；复用须通过领域接口或依赖注入，不能跨域直接导入内部 adapter。
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/storage-startup.ts`：现有迁移通知入口；新方案从同一启动状态生成 UI 和遥测，不解析日志文本推断状态。
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol/storage-startup.ts`：现有迁移通知入口；新方案从同一启动状态生成 UI 和遥测，不解析日志文本推断状态。
 
 ```text
 Host/Agent 启动事实 ──→ 启动协调器 ──→ UI 阶段与安全错误提示

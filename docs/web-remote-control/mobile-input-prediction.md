@@ -5,11 +5,11 @@
 ## 链路
 
 ```text
-手机 ZCodeAgentServiceClient.invoke("conversationInputPredictionV4", target, params)
-  → 桌面 IZCodeAgentService.conversationInputPredictionV4（packages/services）
+手机 CodezAgentServiceClient.invoke("conversationInputPredictionV4", target, params)
+  → 桌面 ICodezAgentService.conversationInputPredictionV4（packages/services）
       开关关闭 → 直接回 unavailable，不转发
       开关开启 → getReadOnlyClient(existing-only)，不为预测拉起运行时
-  → CLI v4/conversation/inputPrediction（apps/zcode-cli/packages/bootstrap）
+  → CLI v4/conversation/inputPrediction（apps/codez-cli/packages/bootstrap）
       ConversationInputPredictionHandler：同会话替代、LRU 缓存、降级
   → core input-prediction-sidecar：上下文组装、提示词、解析、后过滤、决策
   → app.generateWorkspaceText(querySource = "input_prediction")：辅助档位，一次非流式调用
@@ -19,11 +19,11 @@
 
 ## 线格式
 
-方法：`v4/conversation/inputPrediction`，即 `V4_METHODS.conversationInputPrediction`。手机侧的 service 方法名是 `conversationInputPredictionV4`。schema 定义在 `packages/shared/src/zcode-protocol-v4/input-prediction/contract.ts`（架构登记为 managed 模块 `remote-input-prediction`，见同目录 `CONTRACT.md`）。
+方法：`v4/conversation/inputPrediction`，即 `V4_METHODS.conversationInputPrediction`。手机侧的 service 方法名是 `conversationInputPredictionV4`。schema 定义在 `packages/shared/src/codez-protocol-v4/input-prediction/contract.ts`（架构登记为 managed 模块 `remote-input-prediction`，见同目录 `CONTRACT.md`）。
 
 ### 请求
 
-手机发给 service 的请求在 `ZCodeAgentSessionTarget`（workspacePath 等）的基础上增加以下字段：
+手机发给 service 的请求在 `CodezAgentSessionTarget`（workspacePath 等）的基础上增加以下字段：
 
 | 字段        | 类型          | 必填 | 说明                                                                                       |
 | ----------- | ------------- | ---- | ------------------------------------------------------------------------------------------ |
@@ -73,7 +73,7 @@ v4 `hello.capabilities.inputPrediction`：
 - `true`：Host 开关已开启，手机可以发起预测。
 - `false` 或字段缺席（老 Host）：手机**不得**发起预测。
 
-判断必须写成 `=== true`。`hostCapabilitiesSchema` 不是 strict 的，加这个可选字段对老客户端是线兼容的。字段由 `createHello()`（`packages/services/src/zcode-agent/zcodeAgentConnectionScope.ts`）在每次 hello 时按开关计算。它和 service 方法的门禁共用同一个判定函数，二者不会不一致。
+判断必须写成 `=== true`。`hostCapabilitiesSchema` 不是 strict 的，加这个可选字段对老客户端是线兼容的。字段由 `createHello()`（`packages/services/src/codez-agent/codezAgentConnectionScope.ts`）在每次 hello 时按开关计算。它和 service 方法的门禁共用同一个判定函数，二者不会不一致。
 
 hello 只能说明 Host 侧已经开启。如果 Host 连接的是远端（SSH）上的旧 CLI，这一点无法通过 hello 得知，此时请求会得到 `unavailable`。
 
@@ -81,12 +81,12 @@ hello 只能说明 Host 侧已经开启。如果 Host 连接的是远端（SSH�
 
 | 项       | 值                                                                                                                                                                                               |
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 环境变量 | `ZCODE_REMOTE_INPUT_PREDICTION`，由桌面 Host 进程读取（`packages/services/src/zcode-agent/inputPredictionSwitch.ts`）                                                                            |
+| 环境变量 | `CODEZ_REMOTE_INPUT_PREDICTION`，由桌面 Host 进程读取（`packages/services/src/codez-agent/inputPredictionSwitch.ts`）                                                                            |
 | 取值     | 去掉首尾空白后：未设置或为空 → 取缺省值（开启）；`"1"` → 开启；`"0"` 或其它任何值 → 关闭                                                                                                         |
-| 缺省     | **开启**（`REMOTE_INPUT_PREDICTION_DEFAULT_ENABLED = true`）。用户决定（2026-10-23）：输入预测所有渠道默认打开。每次请求都会调用一次模型，有成本；需要关闭时设 `ZCODE_REMOTE_INPUT_PREDICTION=0` |
+| 缺省     | **开启**（`REMOTE_INPUT_PREDICTION_DEFAULT_ENABLED = true`）。用户决定（2026-10-23）：输入预测所有渠道默认打开。每次请求都会调用一次模型，有成本；需要关闭时设 `CODEZ_REMOTE_INPUT_PREDICTION=0` |
 | 生效     | 每次 hello 和每次请求都会重新读取。运行中修改进程环境变量不会生效，需要重启桌面端                                                                                                                |
 | 错误行为 | 无效值（非空且不是 `"1"`）按关闭处理，不报错                                                                                                                                                     |
-| 测试     | `packages/services/test/inputPredictionSwitch.test.ts`、`packages/services/test/zcodeAgentService.v4.test.ts`（inputPrediction 用例）                                                            |
+| 测试     | `packages/services/test/inputPredictionSwitch.test.ts`、`packages/services/test/codezAgentService.v4.test.ts`（inputPrediction 用例）                                                            |
 
 之所以用环境变量而不是设置项，是因为这是 Host 侧总开关，不面向普通用户。最初灰度阶段缺省关闭；2026-10-23 按用户决定改为缺省开启（与手机端所有渠道默认开一致），环境变量保留为关闭手段。后续如改为设置项，需同步更新本文。
 

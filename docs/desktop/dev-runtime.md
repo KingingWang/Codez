@@ -5,8 +5,8 @@
 - macOS 开发启动脚本 `packages/desktop/scripts/dev.mjs` 指定仓库根目录下的
   `.zcode-runtime/desktop-dev` 为 Electron 开发副本目录。
 - `prepareDevElectronAppBundle` 通过现有 `runtimeRoot` 参数接收目录，并负责创建、
-  校验和复用 `<Electron 版本>-<架构>/ZCode Dev.app`。
-- 副本保留现有应用身份与 `zcode` 协议声明；Windows、Linux 和打包版本的启动逻辑不变。
+  校验和复用 `<Electron 版本>-<架构>/Codez Dev.app`。
+- 副本保留现有应用身份与 `codez` 协议声明；Windows、Linux 和打包版本的启动逻辑不变。
 - `.zcode-runtime/` 是可重建的本地产物，必须由 `.gitignore` 忽略。
 
 ## 切换与失败边界

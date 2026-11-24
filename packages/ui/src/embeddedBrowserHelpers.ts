@@ -1,4 +1,4 @@
-import { BROWSER_LOCAL_PREVIEW_SCHEME, browserPreviewSourceUrl } from "@zcode/shared";
+import { BROWSER_LOCAL_PREVIEW_SCHEME, browserPreviewSourceUrl } from "@codez/shared";
 
 export const DEFAULT_BROWSER_URL = "about:blank";
 

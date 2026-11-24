@@ -8,7 +8,7 @@ import {
 } from "#e2e/helpers/remote-project-handoff-probe";
 import { openWorkspaceDraftFromSidebar } from "#e2e/helpers/workspace-agent-warmup";
 import { setRendererViewport, clearRendererViewport } from "#e2e/helpers/renderer-viewport";
-import type { VirtualProject } from "@zcode/services";
+import type { VirtualProject } from "@codez/services";
 import { selectNativeProjectDirectories } from "#e2e/helpers/project-sidebar";
 import { openScopeProjectSubmenu } from "#e2e/helpers/settings-scope-menu";
 import { spawn } from "node:child_process";
@@ -16,7 +16,7 @@ import { once } from "node:events";
 import { join, basename, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { ServiceChannels } from "@zcode/shared";
+import { ServiceChannels } from "@codez/shared";
 import {
   TID_TASK_SETTINGS_BUTTON,
   TID_TASK_ITEM,
@@ -35,7 +35,7 @@ import {
   TID_AUTOMATION_FORM_SUBMIT,
   TID_AUTOMATIONS_LIST,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   setInputValueByTestIdDom,
@@ -101,7 +101,7 @@ describe("虚拟项目", () => {
       /可读取和编辑|can read and edit/,
     );
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "virtual-project-editor.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "virtual-project-editor.png"),
     );
     await captureProjectDialogLayouts("editor");
     await browser.keys("Escape");
@@ -134,7 +134,7 @@ describe("虚拟项目", () => {
   });
   it("VP20：项目图标、hover 三入口和右键操作保持一致", async function () {
     this.timeout(90_000);
-    const root = join(DEFAULT_WORKSPACE, ".zcode-e2e", "project-row-actions");
+    const root = join(DEFAULT_WORKSPACE, ".codez-e2e", "project-row-actions");
     const paths = [join(root, "one"), join(root, "two")] as const;
     await Promise.all(
       paths.map(async (path, index) => {
@@ -176,7 +176,7 @@ describe("虚拟项目", () => {
     for (const icon of ["ellipsis", "list-tree", "message-circle-plus"])
       expect(await row.$(`svg.lucide-${icon}`).isExisting()).toBe(true);
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "VP20-project-row-hover.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "VP20-project-row-hover.png"),
     );
     await row.$('[data-testid="virtual-project-menu"]').click();
     await $('[data-testid="virtual-project-edit"]').click();
@@ -205,14 +205,14 @@ describe("虚拟项目", () => {
     await row.$('[data-testid="virtual-project-create-task"]').click();
     await waitForWorkspaceApp(paths[0], 30_000);
     expect(await toggle.getAttribute("aria-expanded")).toBe("false");
-    const original = $('[data-project-name="ZCodeProject"]');
+    const original = $('[data-project-name="CodezProject"]');
     await original.moveTo();
     await original.$('[data-testid="virtual-project-create-task"]').click();
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 30_000);
   });
   it("VP20：单 workspace 查看文件显示完整路径并适配窄屏", async function () {
     this.timeout(60_000);
-    const original = $('[data-project-name="ZCodeProject"]');
+    const original = $('[data-project-name="CodezProject"]');
     await original.waitForDisplayed();
     const appearance = await browser.execute(() => ({
       width: innerWidth,
@@ -279,7 +279,7 @@ describe("虚拟项目", () => {
           expect(fit.left).toBeGreaterThanOrEqual(0);
           expect(fit.right).toBeLessThanOrEqual(fit.viewport);
           await browser.saveScreenshot(
-            join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `VP20-single-root-${width}-${theme}.png`),
+            join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `VP20-single-root-${width}-${theme}.png`),
           );
         }
       }
@@ -305,11 +305,11 @@ describe("虚拟项目", () => {
   it("VP20：本地项目共用详情，单多目录完整展示且不重复名称", async function () {
     this.timeout(180_000);
     const paths = ["one", "two-with-a-long-directory-name-for-hover-layout"].map((name) =>
-      join(DEFAULT_WORKSPACE, ".zcode-e2e", "project-hover-details", name),
+      join(DEFAULT_WORKSPACE, ".codez-e2e", "project-hover-details", name),
     );
     await Promise.all(paths.map((path) => mkdir(path, { recursive: true })));
     const cases = [
-      { name: "ZCodeProject", paths: [DEFAULT_WORKSPACE] },
+      { name: "CodezProject", paths: [DEFAULT_WORKSPACE] },
       { name: "E2E_PROJECT_HOVER_MULTI", paths },
       { name: "E2E_PROJECT_HOVER_EMPTY", paths: [] },
     ];
@@ -452,7 +452,7 @@ describe("虚拟项目", () => {
             );
             await browser.saveScreenshot(
               join(
-                process.env.ZCODE_E2E_ARTIFACT_DIR!,
+                process.env.CODEZ_E2E_ARTIFACT_DIR!,
                 `VP20-hover-${project.paths.length}-${entry}-${width}-${theme}-${locale}.png`,
               ),
             );
@@ -485,18 +485,18 @@ describe("虚拟项目", () => {
   });
   it("VP22：已有目录列表、设为主要与编辑器删除", async function () {
     this.timeout(90_000);
-    const testHome = process.env.ZCODE_E2E_HOME_DIR!;
+    const testHome = process.env.CODEZ_E2E_HOME_DIR!;
     if (
       // 修复原因：Windows CI 单 WDIO job 使用默认 `.e2e-home`（无 runId 后缀），旧前缀
       // `.e2e-home-` 把隔离 HOME 误判为日常目录；改用 isE2EHomeDirName，只接受 `.e2e-home` 与 `.e2e-home-*` 两种布局。
       !(
         isE2EHomeDirName(basename(testHome)) ||
-        basename(testHome).startsWith("zcode-virtual-project-e2e-")
+        basename(testHome).startsWith("codez-virtual-project-e2e-")
       )
     )
       throw new Error("隔离 HOME required");
     const paths = ["test-aaa", "test-bbb"].map((name) =>
-      join(DEFAULT_WORKSPACE, ".zcode-e2e", "project-editor", name),
+      join(DEFAULT_WORKSPACE, ".codez-e2e", "project-editor", name),
     );
     await Promise.all(
       paths.map(async (path) => {
@@ -520,7 +520,7 @@ describe("虚拟项目", () => {
     const project = $('[data-project-name="E2E_PROJECT_EDITOR"]');
     await project.waitForDisplayed();
     const id = await project.getAttribute("data-project-id");
-    const db = new DatabaseSync(join(testHome, ".zcode", "v2", "tasks-index.sqlite"), {
+    const db = new DatabaseSync(join(testHome, ".codez", "v2", "tasks-index.sqlite"), {
       readOnly: true,
     });
     const primary = () =>
@@ -588,7 +588,7 @@ describe("虚拟项目", () => {
     } finally {
       db.close();
       await browser.keys("Escape");
-      const original = $('[data-project-name="ZCodeProject"]');
+      const original = $('[data-project-name="CodezProject"]');
       await original.moveTo();
       await original.$('[data-testid="virtual-project-create-task"]').click();
       await waitForWorkspaceApp(DEFAULT_WORKSPACE, 30_000);
@@ -597,14 +597,14 @@ describe("虚拟项目", () => {
   it("VP12：Bot 访问范围选择项目 ID，同 cwd 的项目分别保存", async function () {
     this.timeout(90_000);
     await openWorkspaceDraftFromSidebar(DEFAULT_WORKSPACE);
-    const testHome = process.env.ZCODE_E2E_HOME_DIR!;
+    const testHome = process.env.CODEZ_E2E_HOME_DIR!;
     if (
       !testHome ||
       // 修复原因：Windows CI 单 WDIO job 使用默认 `.e2e-home`（无 runId 后缀），旧前缀
       // `.e2e-home-` 把隔离 HOME 误判为日常目录；改用 isE2EHomeDirName，只接受 `.e2e-home` 与 `.e2e-home-*` 两种布局。
       !(
         isE2EHomeDirName(basename(testHome)) ||
-        basename(testHome).startsWith("zcode-virtual-project-e2e-")
+        basename(testHome).startsWith("codez-virtual-project-e2e-")
       )
     )
       throw new Error("隔离 HOME required");
@@ -630,13 +630,13 @@ describe("虚拟项目", () => {
       browser.execute(() => {
         const store = (
           window as Window & {
-            __zcodeTabStoreE2E?: { getState(): { tabs: Array<{ workspacePath?: string }> } };
+            __codezTabStoreE2E?: { getState(): { tabs: Array<{ workspacePath?: string }> } };
           }
-        ).__zcodeTabStoreE2E;
+        ).__codezTabStoreE2E;
         return store?.getState().tabs.map((tab) => tab.workspacePath) ?? [];
       });
     const tabsBeforeBotAccess = await readBotTabs();
-    const configPath = join(testHome, ".zcode/v2/bot-config.v3.json");
+    const configPath = join(testHome, ".codez/v2/bot-config.v3.json");
     await writeFile(
       configPath,
       JSON.stringify({
@@ -704,20 +704,20 @@ describe("虚拟项目", () => {
   it("VP01：首个窗口可用时 app 与 CLI 两库的版本化迁移已经完成", async function () {
     this.timeout(60_000);
     await openWorkspaceDraftFromSidebar(DEFAULT_WORKSPACE);
-    const testHome = process.env.ZCODE_E2E_HOME_DIR;
+    const testHome = process.env.CODEZ_E2E_HOME_DIR;
     if (
       !testHome ||
       // 修复原因：Windows CI 单 WDIO job 使用默认 `.e2e-home`（无 runId 后缀），旧前缀
       // `.e2e-home-` 把隔离 HOME 误判为日常目录；改用 isE2EHomeDirName，只接受 `.e2e-home` 与 `.e2e-home-*` 两种布局。
       !(
         isE2EHomeDirName(basename(testHome)) ||
-        basename(testHome).startsWith("zcode-virtual-project-e2e-")
+        basename(testHome).startsWith("codez-virtual-project-e2e-")
       )
     )
       throw new Error("isolated temporary E2E HOME required");
     for (const [path, migrationId] of [
-      [join(testHome, ".zcode", "v2", "tasks-index.sqlite"), "0005_projects"],
-      [join(testHome, ".zcode", "cli", "db", "db.sqlite"), "0023_session_soft_delete_outcome"],
+      [join(testHome, ".codez", "v2", "tasks-index.sqlite"), "0005_projects"],
+      [join(testHome, ".codez", "cli", "db", "db.sqlite"), "0023_session_soft_delete_outcome"],
     ] as const) {
       const db = new DatabaseSync(path, { readOnly: true });
       try {
@@ -732,18 +732,18 @@ describe("虚拟项目", () => {
   it("VP08：离线远端项目只显示缓存，移除入口后重载不复活", async function () {
     this.timeout(90_000);
     await openWorkspaceDraftFromSidebar(DEFAULT_WORKSPACE);
-    const testHome = process.env.ZCODE_E2E_HOME_DIR;
+    const testHome = process.env.CODEZ_E2E_HOME_DIR;
     if (
       !testHome ||
       // 修复原因：Windows CI 单 WDIO job 使用默认 `.e2e-home`（无 runId 后缀），旧前缀
       // `.e2e-home-` 把隔离 HOME 误判为日常目录；改用 isE2EHomeDirName，只接受 `.e2e-home` 与 `.e2e-home-*` 两种布局。
       !(
         isE2EHomeDirName(basename(testHome)) ||
-        basename(testHome).startsWith("zcode-virtual-project-e2e-")
+        basename(testHome).startsWith("codez-virtual-project-e2e-")
       )
     )
       throw new Error("isolated temporary E2E HOME required");
-    const db = new DatabaseSync(join(testHome, ".zcode", "v2", "tasks-index.sqlite"));
+    const db = new DatabaseSync(join(testHome, ".codez", "v2", "tasks-index.sqlite"));
     try {
       // 只在隔离 HOME 注入离线缓存，不接触真实设备、网络或用户目录。
       db.prepare("INSERT INTO hosts(host_id,kind,target_json,membership_id) VALUES(?,?,?,?)").run(
@@ -802,7 +802,7 @@ describe("虚拟项目", () => {
       throw new Error(String(error) + JSON.stringify(geometry));
     }
     const readSettings = async () =>
-      JSON.parse(await readFile(join(testHome, ".zcode/v2/setting.json"), "utf8"));
+      JSON.parse(await readFile(join(testHome, ".codez/v2/setting.json"), "utf8"));
     await browser.waitUntil(async () =>
       (await readSettings()).lastWorkspaceSession.some(
         (entry: { workspacePath: string }) => entry.workspacePath === "/e2e/offline-root",
@@ -827,7 +827,7 @@ describe("虚拟项目", () => {
     ).toBe(false);
     await refreshVirtualProjectWorkspace();
     expect(await offline.isExisting()).toBe(false);
-    const check = new DatabaseSync(join(testHome, ".zcode", "v2", "tasks-index.sqlite"), {
+    const check = new DatabaseSync(join(testHome, ".codez", "v2", "tasks-index.sqlite"), {
       readOnly: true,
     });
     try {
@@ -845,19 +845,19 @@ describe("虚拟项目", () => {
   });
   it("VP08/VP17/VP18 URL：元数据无 tab，远端任务执行、重开与 CLI 冷恢复", async function () {
     this.timeout(120_000);
-    const testHome = process.env.ZCODE_E2E_HOME_DIR;
+    const testHome = process.env.CODEZ_E2E_HOME_DIR;
     if (
       !testHome ||
       // 修复原因：Windows CI 单 WDIO job 使用默认 `.e2e-home`（无 runId 后缀），旧前缀
       // `.e2e-home-` 把隔离 HOME 误判为日常目录；改用 isE2EHomeDirName，只接受 `.e2e-home` 与 `.e2e-home-*` 两种布局。
       !(
         isE2EHomeDirName(basename(testHome)) ||
-        basename(testHome).startsWith("zcode-virtual-project-e2e-")
+        basename(testHome).startsWith("codez-virtual-project-e2e-")
       )
     )
       throw new Error("isolated E2E HOME required");
     const serverHome = join(testHome, "url-server");
-    await mkdir(join(serverHome, ".zcode", "v2"), { recursive: true });
+    await mkdir(join(serverHome, ".codez", "v2"), { recursive: true });
     const child = spawn(
       process.execPath,
       ["--import", "tsx", "test/e2e/fixtures/virtual-project/server.ts"],
@@ -867,8 +867,8 @@ describe("虚拟项目", () => {
           ...process.env,
           HOME: serverHome,
           USERPROFILE: serverHome,
-          ZCODE_DATA_BASE_DIR: serverHome,
-          ZCODE_DESKTOP_HOME_DIR: serverHome,
+          CODEZ_DATA_BASE_DIR: serverHome,
+          CODEZ_DESKTOP_HOME_DIR: serverHome,
         },
         stdio: ["pipe", "pipe", "pipe"],
       },
@@ -905,7 +905,7 @@ describe("虚拟项目", () => {
           }
         });
       });
-      const dbPath = join(testHome, ".zcode/v2/tasks-index.sqlite");
+      const dbPath = join(testHome, ".codez/v2/tasks-index.sqlite");
       const db = new DatabaseSync(dbPath);
       try {
         db.prepare("INSERT INTO hosts(host_id,kind,target_json,membership_id) VALUES(?,?,?,?)").run(
@@ -948,13 +948,13 @@ describe("虚拟项目", () => {
         browser.execute(() => {
           const state = (
             window as Window & {
-              __zcodeTabStoreE2E?: {
+              __codezTabStoreE2E?: {
                 getState(): {
                   tabs: { workspacePath?: string; workspaceIdentity?: string; kind?: string }[];
                 };
               };
             }
-          ).__zcodeTabStoreE2E?.getState();
+          ).__codezTabStoreE2E?.getState();
           return state?.tabs.map((tab) => tab.workspaceIdentity || tab.workspacePath || tab.kind);
         });
       const tabs = await readTabs();
@@ -1009,7 +1009,7 @@ describe("虚拟项目", () => {
       await $('[data-testid="virtual-project-save"]').click();
       const renamed = $('[data-project-name="E2E_VP08_URL_RENAMED"]');
       await renamed.waitForDisplayed();
-      const remoteDb = new DatabaseSync(join(serverHome, ".zcode/v2/tasks-index.sqlite"), {
+      const remoteDb = new DatabaseSync(join(serverHome, ".codez/v2/tasks-index.sqlite"), {
         readOnly: true,
       });
       try {
@@ -1066,13 +1066,13 @@ describe("虚拟项目", () => {
       await $(`[data-testid="${TID_V4_COMPOSER_INPUT}"]`).waitForDisplayed();
       const draftOwner = await browser.execute(() => {
         const testWindow = window as Window & {
-          __zcodeTabStoreE2E?: {
+          __codezTabStoreE2E?: {
             getState(): {
               activeWorkspacePath: string | null;
               activeWorkspaceIdentity?: string | null;
             };
           };
-          __zcodeSessionStoreE2E?: {
+          __codezSessionStoreE2E?: {
             getState(): {
               getWorkspaceState(
                 path: string,
@@ -1081,9 +1081,9 @@ describe("虚拟项目", () => {
             };
           };
         };
-        const tabs = testWindow.__zcodeTabStoreE2E?.getState();
+        const tabs = testWindow.__codezTabStoreE2E?.getState();
         const draft = tabs?.activeWorkspacePath
-          ? testWindow.__zcodeSessionStoreE2E
+          ? testWindow.__codezSessionStoreE2E
               ?.getState()
               .getWorkspaceState(
                 tabs.activeWorkspacePath,
@@ -1098,7 +1098,7 @@ describe("虚拟项目", () => {
         };
       });
       await writeFile(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "VP17-draft.json"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "VP17-draft.json"),
         JSON.stringify(draftOwner, null, 2),
       );
       expect(draftOwner.projectId).toBe(ready.projectId);
@@ -1115,7 +1115,7 @@ describe("虚拟项目", () => {
       expect(JSON.stringify(captured.requestJson).includes("E2E_VP17_REMOTE_EXTRA_SKILL")).toBe(
         true,
       );
-      const remoteFacts = new DatabaseSync(join(serverHome, ".zcode/v2/tasks-index.sqlite"), {
+      const remoteFacts = new DatabaseSync(join(serverHome, ".codez/v2/tasks-index.sqlite"), {
         readOnly: true,
       });
       let remoteTaskId: string;
@@ -1160,7 +1160,7 @@ describe("虚拟项目", () => {
       await renamed.$(`[data-testid="${testId(TID_TASK_ITEM, remoteTaskId)}"]`).click();
       await $('//*[normalize-space(.)="E2E_VP17_READY" and not(*)]').waitForDisplayed();
       await browser.saveScreenshot(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "VP17-remote-task.png"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "VP17-remote-task.png"),
       );
       const currentRuntime = () =>
         Array.from(output.matchAll(/E2E_VP18_RUNTIME ([^\n]+)\n/g))
@@ -1204,7 +1204,7 @@ describe("虚拟项目", () => {
       expect(currentRuntime()).toBeTruthy();
       expect(currentRuntime()).not.toBe(previousRuntime);
       await browser.saveScreenshot(
-        join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "VP18-remote-cold.png"),
+        join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "VP18-remote-cold.png"),
       );
 
       // VP25：远端留存 activeTaskId 不能让离开的行继续高亮；归档当前任务后必须退出正文。
@@ -1228,7 +1228,7 @@ describe("虚拟项目", () => {
       await $('//*[normalize-space(.)="E2E_VP18_READY" and not(*)]').waitForDisplayed({
         reverse: true,
       });
-      const archiveFacts = new DatabaseSync(join(serverHome, ".zcode/v2/tasks-index.sqlite"), {
+      const archiveFacts = new DatabaseSync(join(serverHome, ".codez/v2/tasks-index.sqlite"), {
         readOnly: true,
       });
       try {
@@ -1240,13 +1240,13 @@ describe("虚拟项目", () => {
         archiveFacts.close();
       }
 
-      await $('[data-project-name="ZCodeProject"]')
+      await $('[data-project-name="CodezProject"]')
         .$('[data-testid="virtual-project-create-task"]')
         .click();
       await waitForWorkspaceApp(DEFAULT_WORKSPACE, 30_000);
       await removeRemoteProjectEntryForRow('[data-project-name="E2E_VP08_URL_RENAMED"]');
       await renamed.waitForDisplayed({ reverse: true });
-      const cliDb = new DatabaseSync(join(serverHome, ".zcode", "cli", "db", "db.sqlite"), {
+      const cliDb = new DatabaseSync(join(serverHome, ".codez", "cli", "db", "db.sqlite"), {
         readOnly: true,
       });
       try {
@@ -1264,15 +1264,15 @@ describe("虚拟项目", () => {
       }
     } finally {
       try {
-        await browser.saveScreenshot(join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "VP17-final.png"));
+        await browser.saveScreenshot(join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "VP17-final.png"));
         // 测试服务退出前回到本地，防止后续用例被已关闭 Source 的活动 tab 阻塞。
-        await $('[data-project-name="ZCodeProject"]')
+        await $('[data-project-name="CodezProject"]')
           .$('[data-testid="virtual-project-create-task"]')
           .click();
         await waitForWorkspaceApp(DEFAULT_WORKSPACE, 30_000);
       } catch (error) {
         await writeFile(
-          join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "VP17-cleanup-error.log"),
+          join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "VP17-cleanup-error.log"),
           String(error),
         );
       } finally {
@@ -1281,12 +1281,12 @@ describe("虚拟项目", () => {
           await once(child, "exit");
         }
       }
-      const factsDb = new DatabaseSync(join(serverHome, ".zcode/v2/tasks-index.sqlite"), {
+      const factsDb = new DatabaseSync(join(serverHome, ".codez/v2/tasks-index.sqlite"), {
         readOnly: true,
       });
       try {
         await writeFile(
-          join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "VP17-facts.json"),
+          join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "VP17-facts.json"),
           JSON.stringify(
             factsDb
               .prepare(
@@ -1300,10 +1300,10 @@ describe("虚拟项目", () => {
       } finally {
         factsDb.close();
       }
-      await writeFile(join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "VP17-server.log"), output);
+      await writeFile(join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "VP17-server.log"), output);
       if (process.env.E2E_PROVIDER_CAPTURE_PATH)
         await writeFile(
-          join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "VP17-network.json"),
+          join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "VP17-network.json"),
           await readFile(process.env.E2E_PROVIDER_CAPTURE_PATH),
         );
     }
@@ -1318,13 +1318,13 @@ describe("虚拟项目", () => {
     const readDraft = () =>
       browser.execute(() => {
         const bridge = window as Window & {
-          __zcodeTabStoreE2E?: {
+          __codezTabStoreE2E?: {
             getState(): {
               activeWorkspacePath: string | null;
               activeWorkspaceIdentity?: string | null;
             };
           };
-          __zcodeSessionStoreE2E?: {
+          __codezSessionStoreE2E?: {
             getState(): {
               getWorkspaceState(
                 path: string,
@@ -1333,10 +1333,10 @@ describe("虚拟项目", () => {
             };
           };
         };
-        const tabs = bridge.__zcodeTabStoreE2E?.getState();
+        const tabs = bridge.__codezTabStoreE2E?.getState();
         const path = tabs?.activeWorkspacePath;
         const state = path
-          ? bridge.__zcodeSessionStoreE2E
+          ? bridge.__codezSessionStoreE2E
               ?.getState()
               .getWorkspaceState(path, tabs?.activeWorkspaceIdentity ?? undefined)
           : undefined;
@@ -1355,9 +1355,9 @@ describe("虚拟项目", () => {
     expect(second.projectId).toBeNull();
     expect(second.activeTaskId).toBeNull();
     expect(second.path).toBe(first.path);
-    const testHome = process.env.ZCODE_E2E_HOME_DIR!;
+    const testHome = process.env.CODEZ_E2E_HOME_DIR!;
     await browser.waitUntil(async () => {
-      const settings = JSON.parse(await readFile(join(testHome, ".zcode/v2/setting.json"), "utf8"));
+      const settings = JSON.parse(await readFile(join(testHome, ".codez/v2/setting.json"), "utf8"));
       return settings.lastActiveWorkspace?.workspacePath === second.path;
     });
     // 此场景使用内存登录夹具；刷新后沿已有真实 API key 入口恢复认证，再检查原目录。
@@ -1394,7 +1394,7 @@ describe("虚拟项目", () => {
     });
     // 从草稿新建项目会初始化主目录；恢复必须选回实际 roots，不能再次用空 roots 比较。
     const db = new DatabaseSync(
-      join(process.env.ZCODE_E2E_HOME_DIR!, ".zcode/v2/tasks-index.sqlite"),
+      join(process.env.CODEZ_E2E_HOME_DIR!, ".codez/v2/tasks-index.sqlite"),
       { readOnly: true },
     );
     let restoreRoots: string[];
@@ -1424,13 +1424,13 @@ describe("虚拟项目", () => {
   });
   it("VP11：设置目录来自去重 roots，未打开的目录可以选择", async function () {
     this.timeout(90_000);
-    const testHome = process.env.ZCODE_E2E_HOME_DIR!;
+    const testHome = process.env.CODEZ_E2E_HOME_DIR!;
     if (
       // 修复原因：Windows CI 单 WDIO job 使用默认 `.e2e-home`（无 runId 后缀），旧前缀
       // `.e2e-home-` 把隔离 HOME 误判为日常目录；改用 isE2EHomeDirName，只接受 `.e2e-home` 与 `.e2e-home-*` 两种布局。
       !(
         isE2EHomeDirName(basename(testHome)) ||
-        basename(testHome).startsWith("zcode-virtual-project-e2e-")
+        basename(testHome).startsWith("codez-virtual-project-e2e-")
       )
     )
       throw new Error("隔离 HOME required");
@@ -1454,9 +1454,9 @@ describe("虚拟项目", () => {
       browser.execute(() => {
         const store = (
           window as Window & {
-            __zcodeTabStoreE2E?: { getState(): { tabs: Array<{ workspacePath?: string }> } };
+            __codezTabStoreE2E?: { getState(): { tabs: Array<{ workspacePath?: string }> } };
           }
-        ).__zcodeTabStoreE2E;
+        ).__codezTabStoreE2E;
         return (
           store
             ?.getState()
@@ -1563,9 +1563,9 @@ describe("虚拟项目", () => {
     );
     await clickTestIdByDom(TID_AUTOMATION_FORM_SUBMIT);
     await $(`[data-testid="${TID_AUTOMATIONS_LIST}"]`).waitForDisplayed({ timeout: 15_000 });
-    const testHome = process.env.ZCODE_E2E_HOME_DIR;
+    const testHome = process.env.CODEZ_E2E_HOME_DIR;
     if (!testHome) throw new Error("isolated E2E HOME required");
-    const db = new DatabaseSync(join(testHome, ".zcode", "v2", "tasks-index.sqlite"), {
+    const db = new DatabaseSync(join(testHome, ".codez", "v2", "tasks-index.sqlite"), {
       readOnly: true,
     });
     try {
@@ -1583,7 +1583,7 @@ describe("虚拟项目", () => {
         .prepare("SELECT root_path FROM project_roots WHERE project_id=? AND is_primary=1")
         .get(secondId);
       expect(row?.workspace_path).toBe(root?.root_path);
-      expect(String(row?.workspace_path).startsWith(join(testHome, ".zcode", "workspace"))).toBe(
+      expect(String(row?.workspace_path).startsWith(join(testHome, ".codez", "workspace"))).toBe(
         true,
       );
     } finally {
@@ -1659,7 +1659,7 @@ async function captureProjectDialogLayouts(stage: string) {
           expect(fit.inputSize).toBeGreaterThanOrEqual(16);
         await browser.saveScreenshot(
           join(
-            process.env.ZCODE_E2E_ARTIFACT_DIR!,
+            process.env.CODEZ_E2E_ARTIFACT_DIR!,
             `VP19-${stage}-${width}-${dark ? "dark" : "light"}.png`,
           ),
         );

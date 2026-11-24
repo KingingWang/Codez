@@ -17,9 +17,9 @@ afterEach(async () => {
 });
 
 async function fixture(source: string) {
-  const dir = await mkdtemp(join(tmpdir(), "zcode bytecode 中文 "));
+  const dir = await mkdtemp(join(tmpdir(), "codez bytecode 中文 "));
   directories.push(dir);
-  const entryPath = join(dir, "zcode.cjs");
+  const entryPath = join(dir, "codez.cjs");
   await writeFile(entryPath, source);
   return { dir, entryPath };
 }
@@ -42,7 +42,7 @@ process.stdout.write(JSON.stringify({value, args:process.argv.slice(2),
   expect(JSON.parse(result.stdout)).toEqual({
     value: 42,
     args: ["app-server", "--stdio"],
-    filename: "zcode.cjs",
+    filename: "codez.cjs",
     directory: await realpath(dir),
     dynamic: 7,
     hasDynamicSource: true,
@@ -128,6 +128,6 @@ it("编译失败保留上次可运行的加载器，编译阶段不执行 CLI", 
 it("拒绝 coverage 构建混用字节码", async () => {
   const { entryPath } = await fixture("42;");
   await expect(
-    buildDesktopAgentBytecode({ entryPath, electronPath, env: { ZCODE_E2E_COVERAGE: "1" } }),
+    buildDesktopAgentBytecode({ entryPath, electronPath, env: { CODEZ_E2E_COVERAGE: "1" } }),
   ).rejects.toThrow(/coverage/);
 });

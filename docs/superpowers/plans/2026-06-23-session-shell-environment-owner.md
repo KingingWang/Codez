@@ -6,7 +6,7 @@
 
 **Architecture:** 保留现有 `ExecutionShellSelection` / `resolveEffectiveBashShellSelection()` 的解析能力，但新增一个 core runtime owner：`session-shell-environment.ts`。所有 runtime 内部 shell 状态读写、EnvInfo shell patch、snapshot persist/restore 都通过这个 owner；pre-conversation context rebuild 抽到无环的 shared helper，owner 只调用 helper，不反向依赖 `config.ts` / `context.ts`。bootstrap/protocol 只负责提供“当前候选 selection”，不再维护额外 prepared 状态。
 
-**Tech Stack:** TypeScript, Vitest, `@zcode/contracts`, `@zcode/adapters`, `@zcode/core`, `@zcode/bootstrap`, ZCode Protocol.
+**Tech Stack:** TypeScript, Vitest, `@codez/contracts`, `@codez/adapters`, `@codez/core`, `@codez/bootstrap`, Codez Protocol.
 
 ## Global Constraints
 
@@ -27,13 +27,13 @@
 
 当前 `freat/shell-fix` 已经有不少正确能力，但 owner 分散：
 
-- `apps/zcode-cli/packages/core/src/runtime/methods/bash-shell-selection.ts` 只是一组 getter/setter，不能表达完整生命周期。
-- `apps/zcode-cli/packages/core/src/runtime/methods/config.ts` 负责 apply selection、刷新 pre-conversation context、patch envInfo。
-- `apps/zcode-cli/packages/core/src/runtime/methods/context.ts` 直接读取 selection 并传 `effectiveShellDisplayName`。
-- `apps/zcode-cli/packages/core/src/runtime/methods/resume.ts` 直接读 snapshot、fallback、插 drift reminder。
-- `apps/zcode-cli/packages/core/src/runtime/methods/events.ts` 直接持久化 snapshot。
-- `apps/zcode-cli/packages/bootstrap/src/app/create-app.ts` 维护本地 `bashShellSelectionPrepared`，和 runtime 内部 selection 状态重复。
-- `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts` 在 create/resume/send 多处解析和传递 shell candidate。
+- `apps/codez-cli/packages/core/src/runtime/methods/bash-shell-selection.ts` 只是一组 getter/setter，不能表达完整生命周期。
+- `apps/codez-cli/packages/core/src/runtime/methods/config.ts` 负责 apply selection、刷新 pre-conversation context、patch envInfo。
+- `apps/codez-cli/packages/core/src/runtime/methods/context.ts` 直接读取 selection 并传 `effectiveShellDisplayName`。
+- `apps/codez-cli/packages/core/src/runtime/methods/resume.ts` 直接读 snapshot、fallback、插 drift reminder。
+- `apps/codez-cli/packages/core/src/runtime/methods/events.ts` 直接持久化 snapshot。
+- `apps/codez-cli/packages/bootstrap/src/app/create-app.ts` 维护本地 `bashShellSelectionPrepared`，和 runtime 内部 selection 状态重复。
+- `apps/codez-cli/packages/bootstrap/src/codez-protocol/server-operations.ts` 在 create/resume/send 多处解析和传递 shell candidate。
 
 这导致后续维护者需要同时理解 protocol、bootstrap、runtime config、context、resume、persistence、executor 七处逻辑，容易继续漏掉 `/goal`、workflow、steer、deferred draft、resume 等入口。
 
@@ -42,7 +42,7 @@
 新增一个 runtime owner：
 
 ```ts
-// apps/zcode-cli/packages/core/src/runtime/methods/session-shell-environment.ts
+// apps/codez-cli/packages/core/src/runtime/methods/session-shell-environment.ts
 export interface SessionShellEnvironment {
   selection: ExecutionShellSelection;
   promptShell: string;
@@ -95,60 +95,60 @@ runtime.initializeSessionShellEnvironmentIfNeeded(candidate)
 
 ## File Structure
 
-- Create: `apps/zcode-cli/packages/core/src/runtime/methods/session-shell-environment.ts`
+- Create: `apps/codez-cli/packages/core/src/runtime/methods/session-shell-environment.ts`
   - Single owner for session shell environment lifecycle.
-- Create: `apps/zcode-cli/packages/core/src/runtime/methods/context-history-entries.ts`
+- Create: `apps/codez-cli/packages/core/src/runtime/methods/context-history-entries.ts`
   - Shared `buildContextHistoryEntries()` helper，避免 owner/context-refresh 反向 import `context.ts`。
-- Create: `apps/zcode-cli/packages/core/src/runtime/methods/context-refresh.ts`
+- Create: `apps/codez-cli/packages/core/src/runtime/methods/context-refresh.ts`
   - Shared context-prefix rebuild helper，供 config model/language/style refresh 和 shell owner pre-conversation refresh 共同使用。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/bash-shell-selection.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/bash-shell-selection.ts`
   - Delete or reduce to compatibility re-exports after owner migration.
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/config.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/config.ts`
   - Remove local shell apply/refresh helpers; delegate to owner.
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/context.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/context.ts`
   - Ask owner for context shell display override.
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/resume.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/resume.ts`
   - Ask owner to restore persisted shell environment and emit drift reminder.
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/events.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/events.ts`
   - Ask owner to persist current shell environment snapshot.
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts`
   - Ask owner for inherited child `envInfo.shell` and `bashShellSelection`.
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/call-runner.ts`
   - Consume only `getBashShellSelection`; remove `bashShellOverride` fallback after runtime migration.
-- Modify: `apps/zcode-cli/packages/core/src/tool/handlers/bash.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/handlers/bash.ts`
   - Consume only `context.bashShellSelection`.
-- Modify: `apps/zcode-cli/packages/core/src/runtime/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/types.ts`
   - Remove runtime-level `bashShellOverride` once call sites are migrated.
-- Modify: `apps/zcode-cli/packages/core/src/runtime/agent-runtime.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/agent-runtime.ts`
   - Rename public method from `initializeBashShellSelectionIfNeeded` to `initializeSessionShellEnvironmentIfNeeded`.
-- Modify: `apps/zcode-cli/packages/core/src/runtime/internal-methods.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/internal-methods.ts`
   - Same method rename for internal interface.
-- Modify: `apps/zcode-cli/packages/bootstrap/src/app/create-app.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/app/create-app.ts`
   - Remove local `bashShellSelectionPrepared`; runtime owner decides if initialization is needed.
-- Modify: `apps/zcode-cli/packages/bootstrap/src/app/types.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/app/types.ts`
   - Keep `bashShellSelection` as boundary candidate; add optional app-level `platform` if bootstrap default resolution must preserve protocol test/platform injection.
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/server-operations.ts`
   - Keep protocol setting-to-selection resolver, but only pass candidate to user execution boundary/send.
 - Modify: `docs/runtime-tools/bash-effective-shell-snapshot.md`
   - Update spec to name `session-shell-environment.ts` as single owner.
-- Test: `apps/zcode-cli/packages/core/tests/runtime-trace.test.ts`
-- Test: `apps/zcode-cli/packages/core/tests/runtime-persistence.test.ts`
-- Test: `apps/zcode-cli/packages/core/tests/subagent-explore.test.ts`
-- Test: `apps/zcode-cli/packages/core/tests/bash-handler.test.ts`
-- Test: `apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts`
+- Test: `apps/codez-cli/packages/core/tests/runtime-trace.test.ts`
+- Test: `apps/codez-cli/packages/core/tests/runtime-persistence.test.ts`
+- Test: `apps/codez-cli/packages/core/tests/subagent-explore.test.ts`
+- Test: `apps/codez-cli/packages/core/tests/bash-handler.test.ts`
+- Test: `apps/codez-cli/packages/bootstrap/tests/codez-protocol.test.ts`
 
 ---
 
 ### Task 1: Introduce Session Shell Environment Owner
 
 **Files:**
-- Create: `apps/zcode-cli/packages/core/src/runtime/methods/context-history-entries.ts`
-- Create: `apps/zcode-cli/packages/core/src/runtime/methods/context-refresh.ts`
-- Create: `apps/zcode-cli/packages/core/src/runtime/methods/session-shell-environment.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/bash-shell-selection.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/config.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/context.ts`
-- Test: `apps/zcode-cli/packages/core/tests/runtime-trace.test.ts`
+- Create: `apps/codez-cli/packages/core/src/runtime/methods/context-history-entries.ts`
+- Create: `apps/codez-cli/packages/core/src/runtime/methods/context-refresh.ts`
+- Create: `apps/codez-cli/packages/core/src/runtime/methods/session-shell-environment.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/bash-shell-selection.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/config.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/context.ts`
+- Test: `apps/codez-cli/packages/core/tests/runtime-trace.test.ts`
 
 **Interfaces:**
 - Consumes: `ExecutionShellSelection`
@@ -156,7 +156,7 @@ runtime.initializeSessionShellEnvironmentIfNeeded(candidate)
 
 - [ ] **Step 1: Add failing owner coverage through runtime trace tests**
 
-Add a focused test in `apps/zcode-cli/packages/core/tests/runtime-trace.test.ts` near existing shell snapshot tests:
+Add a focused test in `apps/codez-cli/packages/core/tests/runtime-trace.test.ts` near existing shell snapshot tests:
 
 ```ts
 it("initializes session shell environment once and ignores later candidates", async () => {
@@ -233,7 +233,7 @@ it("initializes session shell environment once and ignores later candidates", as
 
 - [ ] **Step 2: Extract context history entries helper**
 
-Create `apps/zcode-cli/packages/core/src/runtime/methods/context-history-entries.ts`:
+Create `apps/codez-cli/packages/core/src/runtime/methods/context-history-entries.ts`:
 
 ```ts
 import {
@@ -254,7 +254,7 @@ export function buildContextHistoryEntries(
 }
 ```
 
-Then in `apps/zcode-cli/packages/core/src/runtime/methods/context.ts`, remove the local `buildContextHistoryEntries()` function and import:
+Then in `apps/codez-cli/packages/core/src/runtime/methods/context.ts`, remove the local `buildContextHistoryEntries()` function and import:
 
 ```ts
 import { buildContextHistoryEntries } from "./context-history-entries.js";
@@ -264,7 +264,7 @@ Also remove now-unused `systemReminderAttachmentEntry` and `RuntimeMessageEntry`
 
 - [ ] **Step 3: Extract context refresh helper**
 
-Create `apps/zcode-cli/packages/core/src/runtime/methods/context-refresh.ts`:
+Create `apps/codez-cli/packages/core/src/runtime/methods/context-refresh.ts`:
 
 ```ts
 import { countContextPrefixMessages } from "../deps.js";
@@ -302,7 +302,7 @@ export function refreshContextModelSnapshot(runtime: AgentRuntimeInternal): void
 }
 ```
 
-Then in `apps/zcode-cli/packages/core/src/runtime/methods/config.ts`, replace the local `refreshContextModelSnapshot()` function with an import:
+Then in `apps/codez-cli/packages/core/src/runtime/methods/config.ts`, replace the local `refreshContextModelSnapshot()` function with an import:
 
 ```ts
 import { refreshContextModelSnapshot } from "./context-refresh.js";
@@ -322,7 +322,7 @@ refreshContextModelSnapshot(this);
 
 - [ ] **Step 4: Create owner module**
 
-Create `apps/zcode-cli/packages/core/src/runtime/methods/session-shell-environment.ts`:
+Create `apps/codez-cli/packages/core/src/runtime/methods/session-shell-environment.ts`:
 
 ```ts
 import { countContextPrefixMessages } from "../deps.js";
@@ -425,7 +425,7 @@ function refreshPreConversationShellContext(
 
 - [ ] **Step 5: Convert old helper to compatibility wrapper**
 
-Replace `apps/zcode-cli/packages/core/src/runtime/methods/bash-shell-selection.ts` with:
+Replace `apps/codez-cli/packages/core/src/runtime/methods/bash-shell-selection.ts` with:
 
 ```ts
 export {
@@ -451,7 +451,7 @@ Do not keep a temporary public alias for `initializeBashShellSelectionIfNeeded`;
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/runtime-trace.test.ts
+pnpm --filter @codez/core exec vitest run tests/runtime-trace.test.ts
 ```
 
 Expected: runtime trace tests pass. The new test proves the owner API initializes once and produces the provider-visible shell display used by context.
@@ -461,11 +461,11 @@ Expected: runtime trace tests pass. The new test proves the owner API initialize
 ### Task 2: Move Runtime Context Mutation Into The Owner
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/config.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/context.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/agent-runtime.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/internal-methods.ts`
-- Test: `apps/zcode-cli/packages/core/tests/runtime-trace.test.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/config.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/context.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/agent-runtime.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/internal-methods.ts`
+- Test: `apps/codez-cli/packages/core/tests/runtime-trace.test.ts`
 
 **Interfaces:**
 - Consumes: owner functions from Task 1
@@ -563,7 +563,7 @@ Update any remaining bootstrap/tests call sites to use `initializeSessionShellEn
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/runtime-trace.test.ts tests/context-builder.test.ts
+pnpm --filter @codez/core exec vitest run tests/runtime-trace.test.ts tests/context-builder.test.ts
 ```
 
 Expected: runtime trace and context builder tests pass.
@@ -573,11 +573,11 @@ Expected: runtime trace and context builder tests pass.
 ### Task 3: Move Snapshot Persistence And Resume Restore Into The Owner
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/session-shell-environment.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/bash-shell-snapshot.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/events.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/resume.ts`
-- Test: `apps/zcode-cli/packages/core/tests/runtime-persistence.test.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/session-shell-environment.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/bash-shell-snapshot.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/events.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/resume.ts`
+- Test: `apps/codez-cli/packages/core/tests/runtime-persistence.test.ts`
 
 **Interfaces:**
 - Consumes: `readPersistedBashShellSelectionSnapshot()`, `resolveBashShellSnapshotForResume()`, `persistBashShellSelectionSnapshot()`
@@ -711,7 +711,7 @@ It must not mutate runtime config or message history.
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/runtime-persistence.test.ts
+pnpm --filter @codez/core exec vitest run tests/runtime-persistence.test.ts
 ```
 
 Expected: tests cover restored snapshot, stale snapshot fallback, legacy session drift reminder, and invalid snapshot fallback.
@@ -721,15 +721,15 @@ Expected: tests cover restored snapshot, stale snapshot fallback, legacy session
 ### Task 4: Collapse Bootstrap And Protocol Initialization Around Runtime Owner
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/bootstrap/src/app/create-app.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/app/types.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/app/input-facade.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/app/session-facade.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/app/workflow-methods.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/app/workflow-facade.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/app/script-workflow-methods.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts`
-- Test: `apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/app/create-app.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/app/types.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/app/input-facade.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/app/session-facade.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/app/workflow-methods.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/app/workflow-facade.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/app/script-workflow-methods.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/server-operations.ts`
+- Test: `apps/codez-cli/packages/bootstrap/tests/codez-protocol.test.ts`
 
 **Interfaces:**
 - Consumes: `runtime.initializeSessionShellEnvironmentIfNeeded(candidate)`
@@ -737,13 +737,13 @@ Expected: tests cover restored snapshot, stale snapshot fallback, legacy session
 
 - [ ] **Step 1: Add app-level platform injection for default shell resolution**
 
-In `apps/zcode-cli/packages/bootstrap/src/app/types.ts`, add to `ZCodeAppOptions`:
+In `apps/codez-cli/packages/bootstrap/src/app/types.ts`, add to `CodezAppOptions`:
 
 ```ts
 platform?: NodeJS.Platform | string;
 ```
 
-In `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts`, pass protocol platform through when creating app options:
+In `apps/codez-cli/packages/bootstrap/src/codez-protocol/workspace-model-catalog.ts`, pass protocol platform through when creating app options:
 
 ```ts
 platform: context.deps.platform,
@@ -822,7 +822,7 @@ Do not pass shell selection through `session/create` for non-resume draft creati
 
 - [ ] **Step 6: Update protocol tests**
 
-In `zcode-protocol.test.ts`, assert:
+In `codez-protocol.test.ts`, assert:
 
 - deferred `session/create` does not initialize shell selection
 - first `session/send` initializes shell selection from current setting candidate
@@ -837,7 +837,7 @@ Use existing test helpers around lines where `recordShellInitialization()` is al
 Run:
 
 ```bash
-pnpm --filter @zcode/bootstrap exec vitest run tests/zcode-protocol.test.ts
+pnpm --filter @codez/bootstrap exec vitest run tests/codez-protocol.test.ts
 ```
 
 Expected: protocol tests pass.
@@ -847,15 +847,15 @@ Expected: protocol tests pass.
 ### Task 5: Remove Runtime `bashShellOverride` As A State Source
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/runtime/types.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/agent-runtime.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/internal-methods.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/types.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/impl.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/types.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/handlers/bash.ts`
-- Test: `apps/zcode-cli/packages/core/tests/bash-handler.test.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/agent-runtime.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/internal-methods.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/call-runner.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/impl.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/handlers/bash.ts`
+- Test: `apps/codez-cli/packages/core/tests/bash-handler.test.ts`
 
 **Interfaces:**
 - Consumes: `ExecutionShellSelection`
@@ -869,7 +869,7 @@ In `AgentRuntimeConfig`, delete:
 bashShellOverride?: ExecutionShellOverride | undefined;
 ```
 
-Keep `ExecutionShellOverride` in `@zcode/contracts` because the low-level execution boundary still names `shellOverride` on `ExecutionCommand`.
+Keep `ExecutionShellOverride` in `@codez/contracts` because the low-level execution boundary still names `shellOverride` on `ExecutionCommand`.
 
 - [ ] **Step 2: Update runtime updateConfig patch type**
 
@@ -929,7 +929,7 @@ because `ExecutionCommand` is the adapter boundary and already documents that th
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/bash-handler.test.ts
+pnpm --filter @codez/core exec vitest run tests/bash-handler.test.ts
 ```
 
 Expected: Bash tests pass and no call site still references runtime-level `bashShellOverride`.
@@ -939,7 +939,7 @@ Expected: Bash tests pass and no call site still references runtime-level `bashS
 Run:
 
 ```bash
-rg -n "bashShellOverride|getBashShellOverride" apps/zcode-cli/packages/core apps/zcode-cli/packages/bootstrap
+rg -n "bashShellOverride|getBashShellOverride" apps/codez-cli/packages/core apps/codez-cli/packages/bootstrap
 ```
 
 Expected: no hits in core/bootstrap runtime state. Hits in contracts/adapters are acceptable only for the low-level `ExecutionCommand.shellOverride` boundary.
@@ -949,8 +949,8 @@ Expected: no hits in core/bootstrap runtime state. Hits in contracts/adapters ar
 ### Task 6: Update Explore Inheritance Through The Owner
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/subagent.ts`
-- Test: `apps/zcode-cli/packages/core/tests/subagent-explore.test.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/subagent.ts`
+- Test: `apps/codez-cli/packages/core/tests/subagent-explore.test.ts`
 
 **Interfaces:**
 - Consumes: `getSessionShellEnvironment()`
@@ -995,7 +995,7 @@ Do not pass any shell override alias.
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/subagent-explore.test.ts
+pnpm --filter @codez/core exec vitest run tests/subagent-explore.test.ts
 ```
 
 Expected: Explore child prompt shell and Bash execution selection both inherit parent session-start shell.
@@ -1018,7 +1018,7 @@ In `docs/runtime-tools/bash-effective-shell-snapshot.md`, add a new section afte
 ```md
 ## Runtime Owner
 
-`apps/zcode-cli/packages/core/src/runtime/methods/session-shell-environment.ts` 是 session shell environment 的唯一 owner。
+`apps/codez-cli/packages/core/src/runtime/methods/session-shell-environment.ts` 是 session shell environment 的唯一 owner。
 
 它负责：
 
@@ -1065,7 +1065,7 @@ Expected: docs mention `bashShellOverride` only as a removed runtime concept or 
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run \
+pnpm --filter @codez/core exec vitest run \
   tests/runtime-trace.test.ts \
   tests/runtime-persistence.test.ts \
   tests/subagent-explore.test.ts \
@@ -1079,17 +1079,17 @@ Expected: all selected core tests pass.
 Run:
 
 ```bash
-pnpm --filter @zcode/bootstrap exec vitest run tests/zcode-protocol.test.ts
+pnpm --filter @codez/bootstrap exec vitest run tests/codez-protocol.test.ts
 ```
 
 Expected: protocol shell initialization, deferred draft, resume, and send tests pass.
 
 - [ ] **Step 3: Run adapter tests if shell resolver changed**
 
-If Task 2 touched `apps/zcode-cli/packages/adapters/src/exec/bash-shell-provider.ts` or `apps/zcode-cli/packages/adapters/src/exec/index.ts`, run:
+If Task 2 touched `apps/codez-cli/packages/adapters/src/exec/bash-shell-provider.ts` or `apps/codez-cli/packages/adapters/src/exec/index.ts`, run:
 
 ```bash
-pnpm --filter @zcode/adapters exec vitest run tests/exec.test.ts tests/fs-context.test.ts
+pnpm --filter @codez/adapters exec vitest run tests/exec.test.ts tests/fs-context.test.ts
 ```
 
 Expected: adapters tests pass.
@@ -1110,7 +1110,7 @@ Expected: both pass.
 Run:
 
 ```bash
-rg -n "initializeBashShellSelectionIfNeeded|bashShellSelectionPrepared|getBashShellOverride|bashShellOverride" apps/zcode-cli/packages/core apps/zcode-cli/packages/bootstrap
+rg -n "initializeBashShellSelectionIfNeeded|bashShellSelectionPrepared|getBashShellOverride|bashShellOverride" apps/codez-cli/packages/core apps/codez-cli/packages/bootstrap
 ```
 
 Expected:
@@ -1123,7 +1123,7 @@ Expected:
 Run:
 
 ```bash
-rg -n "getSessionShellEnvironment|initializeSessionShellEnvironmentIfNeeded|restoreSessionShellEnvironmentSelectionForResume|announceSessionShellEnvironmentDriftAfterResume|persistSessionShellEnvironmentSnapshot" apps/zcode-cli/packages/core apps/zcode-cli/packages/bootstrap
+rg -n "getSessionShellEnvironment|initializeSessionShellEnvironmentIfNeeded|restoreSessionShellEnvironmentSelectionForResume|announceSessionShellEnvironmentDriftAfterResume|persistSessionShellEnvironmentSnapshot" apps/codez-cli/packages/core apps/codez-cli/packages/bootstrap
 ```
 
 Expected:

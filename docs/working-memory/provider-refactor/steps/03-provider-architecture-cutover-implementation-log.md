@@ -68,7 +68,7 @@ Bootstrap 的 Registry `setModel`、reasoning level 修改和冷恢复统一调�
 
 全局引用审计确认生产调用方已经离开 `updateConfig({ modelRef })` 后，Core 从 `updateConfig` 的公开类型和实现中删除该字段。运行参数更新与 Session Selection 写入由此形成机械边界：context window、max output tokens 等运行参数更新不能隐式改写 Selection，模型意图只能经 `setSessionModelSelection()` 或 Submission admission 进入。
 
-新增的边界测试与模型生命周期测试共 16 项通过，Core TypeScript build 通过。`dep:refs` 当前无法把嵌套的 `apps/zcode-cli` package 加载进根 project；删除审计因此同时使用全量 knip 与无 scope 的文本调用图，不能把该工具失败误记为零引用证明。
+新增的边界测试与模型生命周期测试共 16 项通过，Core TypeScript build 通过。`dep:refs` 当前无法把嵌套的 `apps/codez-cli` package 加载进根 project；删除审计因此同时使用全量 knip 与无 scope 的文本调用图，不能把该工具失败误记为零引用证明。
 
 ## 13. 新建 Runtime 直接接收 ModelSelection
 
@@ -78,7 +78,7 @@ Bootstrap 的 Registry `setModel`、reasoning level 修改和冷恢复统一调�
 
 ## 14. Protocol Session Entry 解析为 Selection
 
-ZCode Protocol 的 `session/create` 仍接受 wire 层结构化 model DTO，但进入 App Runtime 前直接转换为 `ModelSelection`，reasoning variant 写入 `options.reasoningLevel`，不再构造初始 `ModelRef`。Workspace generate text 仍是独立模型任务，暂时保留自己的旧输入，后续按独立任务迁移切片处理。
+Codez Protocol 的 `session/create` 仍接受 wire 层结构化 model DTO，但进入 App Runtime 前直接转换为 `ModelSelection`，reasoning variant 写入 `options.reasoningLevel`，不再构造初始 `ModelRef`。Workspace generate text 仍是独立模型任务，暂时保留自己的旧输入，后续按独立任务迁移切片处理。
 
 新增协议入口测试确认 Runtime 收到完整 Selection 且配置中不存在 `modelRef`；目标测试 1 项通过。
 
@@ -108,7 +108,7 @@ Contract 测试先在旧 parser 仍输出 undefined metadata key 时失败，删
 
 ## 19. 删除 AgentRuntimeConfig.modelRef
 
-Core Runtime 构造配置与 Bootstrap Registry 初始化已删除旧 `modelRef` 输入和兼容读取；Runtime 只能由 `modelSelection` 初始化。未提供 Selection 的低层测试/占位 Runtime 使用明确的 `zcode-unconfigured/missing-model` 结构化占位值，不再通过内部字符串 parser 生成。Protocol、Workflow 与 Subagent 生产入口此前已完成 Selection 迁移。
+Core Runtime 构造配置与 Bootstrap Registry 初始化已删除旧 `modelRef` 输入和兼容读取；Runtime 只能由 `modelSelection` 初始化。未提供 Selection 的低层测试/占位 Runtime 使用明确的 `codez-unconfigured/missing-model` 结构化占位值，不再通过内部字符串 parser 生成。Protocol、Workflow 与 Subagent 生产入口此前已完成 Selection 迁移。
 
 12 个 Core 测试文件的 61 个构造夹具和 3 个 Bootstrap 测试/基座先迁移，Core 393 项及连同 Runtime Config 的 420 项通过。Telemetry 同时删除从 ModelRef 投影 `modelRole` 的路径；先行红测转绿，5 项通过。Core、Adapter、Telemetry 及其依赖 build 通过，Bootstrap 回到两项 legacy importer 基线错误。
 
@@ -220,7 +220,7 @@ Bootstrap 专项继续发现冷恢复断言和两个 fake app 仍从 `runtimeCon
 
 ## 37. 修复旧 CLI 导入边界的类型真源
 
-Desktop E2E 构建暴露 Bootstrap 一直被掩盖的两项类型错误：普通 `ZCodeConfigFileSchema` 有意把旧 `provider` 留作 passthrough unknown，但一次性导入器先用它解析、再假定该 unknown 已是旧 Provider 类型。专用 `parseLegacyCliModelConfig` 本来已经执行完整旧格式校验，现在直接把已校验的 `provider` 投影返回，导入器只消费这一个真源；普通 Runtime Config 仍不拥有 Provider 字段。
+Desktop E2E 构建暴露 Bootstrap 一直被掩盖的两项类型错误：普通 `CodezConfigFileSchema` 有意把旧 `provider` 留作 passthrough unknown，但一次性导入器先用它解析、再假定该 unknown 已是旧 Provider 类型。专用 `parseLegacyCliModelConfig` 本来已经执行完整旧格式校验，现在直接把已校验的 `provider` 投影返回，导入器只消费这一个真源；普通 Runtime Config 仍不拥有 Provider 字段。
 
 Adapter 先行测试确认专用投影包含完整 Provider/Model 定义；实现后该测试、Bootstrap 导入器 9 项以及 Adapter/Bootstrap build 全部通过，原来阻断 Desktop E2E 的两项基线错误归零。
 
@@ -236,7 +236,7 @@ E2E 现在共用一条原子设置 helper：点击 `custom:add` 后等待已落�
 
 最终旧符号审计发现 Memory runtime E2E 仍用 `modelRef + liteModelRef` 构造 App，并向已经只接受 Registry Config 的 Adapter 传递旧 `modelConfig`。迁移前完整命令在场景启动处以 `createModelAdapter requires registryConfig` 失败；夹具改为通过正式 `createAiSdkModelRegistryConfig` 装配 Adapter，并只向 Runtime 传递结构化 `modelSelection`。
 
-首次迁移后运行又暴露既有 trajectory 断言的并发假设：首个 no-op Extraction 如果已经启动，完整轨迹为 6 次；如果下一次用户提交先到达，Scheduler 按既定 `latest pending` 语义合并旧快照，轨迹为 5 次。证据校验现在只接受这两种合法结果，显式 Extraction 的三步工具轨迹、next-session no-op、关闭取消以及文件结果仍各自独立断言。对应证据单测 4 项与 `pnpm --dir apps/zcode-cli test:e2e:memory` 完整构建、运行、产物校验均通过。
+首次迁移后运行又暴露既有 trajectory 断言的并发假设：首个 no-op Extraction 如果已经启动，完整轨迹为 6 次；如果下一次用户提交先到达，Scheduler 按既定 `latest pending` 语义合并旧快照，轨迹为 5 次。证据校验现在只接受这两种合法结果，显式 Extraction 的三步工具轨迹、next-session no-op、关闭取消以及文件结果仍各自独立断言。对应证据单测 4 项与 `pnpm --dir apps/codez-cli test:e2e:memory` 完整构建、运行、产物校验均通过。
 
 ## 40. 当前基线最终验收状态
 

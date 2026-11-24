@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 将 ZCode Plan mode 的 `ExitPlanMode(plan)` 设计改造成 plan-file 设计：计划正文写入 plan file，确保 compact / resume / pending approval replay 后仍能从 plan file 恢复完整计划。
+**Goal:** 将 Codez Plan mode 的 `ExitPlanMode(plan)` 设计改造成 plan-file 设计：计划正文写入 plan file，确保 compact / resume / pending approval replay 后仍能从 plan file 恢复完整计划。
 
 **Architecture:** 以 provider-visible tool schema、tool prompt、runtime injected input、tool output、plan-file reminder 组成的 plan-file 合同为唯一目标。模型只看到 `ExitPlanMode({ allowedPrompts? })`；runtime 在 permission/hook/handler 之前从当前 plan file 注入 `{ plan, planFilePath }`；审批通过后的 tool output 使用 `{ plan, isAgent, filePath, hasTaskTool?, planWasEdited?, awaitingLeaderApproval?, requestId? }` shape。Plan file 本身是计划正文的事实来源，session event 只记录 plan file path/status 以支持 compact、resume 和 snapshot。
 
-**Tech Stack:** TypeScript, Zod, Vitest, `@zcode/contracts`, ZCode core runtime/tool executor, session events/reducer, provider-visible prompt trajectory, desktop continuous and web-remote replayable session projection.
+**Tech Stack:** TypeScript, Zod, Vitest, `@codez/contracts`, Codez core runtime/tool executor, session events/reducer, provider-visible prompt trajectory, desktop continuous and web-remote replayable session projection.
 
 ## Global Constraints
 
@@ -15,7 +15,7 @@
 - 不保留新的 provider-visible legacy `plan` 参数兼容路径。新的 provider-visible `ExitPlanMode.inputSchema` 只能包含 `allowedPrompts?`，不能包含 `plan`、`planFilePath`、`filePath`。
 - Runtime 可以有 internal injected input schema：`allowedPrompts?` + `plan?` + `planFilePath?`。该 schema 只用于 normalize / permission / hooks / handler，不能泄漏到 `registry.toContracts()`。
 - Output schema 字段固定为：`plan`, `isAgent`, `filePath`, `hasTaskTool?`, `planWasEdited?`, `awaitingLeaderApproval?`, `requestId?`。不要新增 `planFilePath` output 字段。
-- Plan file path 使用 workspace root 下的 `.claude/plans/plan-session-id.md` 命名模式。实际实现用 `plan-<sanitized session id>.md` 和数字后缀保证唯一；这是本仓库已有的 plan artifact 位置。不要改成 `.zcode/plans`、artifact store、session sqlite、docs/superpowers/plans 或临时目录。
+- Plan file path 使用 workspace root 下的 `.claude/plans/plan-session-id.md` 命名模式。实际实现用 `plan-<sanitized session id>.md` 和数字后缀保证唯一；这是本仓库已有的 plan artifact 位置。不要改成 `.codez/plans`、artifact store、session sqlite、docs/superpowers/plans 或临时目录。
 - Plan file 写入只允许当前 reserved plan file。Plan mode 仍禁止普通非只读修改；只对 `Write` / `Edit` 的 exact current plan file path 放行。不要允许 Bash redirect、ApplyPatch、任意 workspace write、任意 `.claude` 写入。
 - `EnterPlanMode` 只 reserve plan file path，不预创建文件。这样模型可用 `Write` 创建该文件，且不会触发已有文件未 Read 的 Write stale guard。
 - `ExitPlanMode` 不能在 handler 里才读 plan file，因为 permission、hooks、pending approval UI 都发生在 handler 之前。必须在 PreToolUse hook 之前完成 runtime input enrichment，让 PreToolUse、PermissionRequest、broker、pending snapshot、PostToolUse 都看到 injected input。
@@ -32,8 +32,8 @@
 
 ## Explicit Skip List
 
-- 不实现 team lead / teammate mailbox / agent swarm approval：`awaitingLeaderApproval` 和 `requestId` 只保留在 output schema，普通 ZCode main-agent flow 不设置。
-- 不实现 agent 身份分支：普通 ZCode `ExitPlanMode` 输出 `isAgent: false`。
+- 不实现 team lead / teammate mailbox / agent swarm approval：`awaitingLeaderApproval` 和 `requestId` 只保留在 output schema，普通 Codez main-agent flow 不设置。
+- 不实现 agent 身份分支：普通 Codez `ExitPlanMode` 输出 `isAgent: false`。
 - 不实现 `Ctrl+G` plan editor UI；只实现文件已存在时用户可通过外部编辑器修改，runtime 以 disk content 为准。
 - 不实现 plan file 内容摘要、截断版 approved snapshot 或 artifact fallback。传给模型的 tool result 仍受现有 result budget 控制，但 plan file 本身不被截断写入。
 - 不改变 `ExitPlanMode` 审批边界：仍遵守 `docs/plan-mode-approval-boundary.md` 的用户确认、拒绝停轮、拒绝反馈继续修订语义。
@@ -67,59 +67,59 @@
 
 - Create: `docs/plan-mode-plan-file.md`
   - 语义 spec：plan file path、provider schema、runtime injected input、approval、compact/resume、UI/replayable 边界。
-- Modify: `apps/zcode-cli/docs/design/v2/tool/16-plan-mode.md`
+- Modify: `apps/codez-cli/docs/design/v2/tool/16-plan-mode.md`
   - 删除旧的“计划正文通过 `ExitPlanMode.plan` 直接传入、不引入 plan file”contract，替换为 plan-file contract。
 - Modify: `docs/plan-mode-approval-boundary.md`
   - 保留审批边界，补充审批内容来源从 `input.plan` 改为 injected plan file content。
-- Modify: `apps/zcode-cli/packages/contracts/src/tools/plan-mode.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/tools/plan-mode.ts`
   - 拆分 provider input schema 与 internal injected input schema；output 加 plan-file 字段。
-- Modify: `apps/zcode-cli/packages/contracts/src/events/session.events.ts`
-- Modify: `apps/zcode-cli/packages/contracts/src/events/event-reducer.ts`
-- Modify: `packages/shared/src/zcode-protocol/index.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/events/session.events.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/events/event-reducer.ts`
+- Modify: `packages/shared/src/codez-protocol/index.ts`
   - 增加 plan file state / snapshot 字段，保留 pending permission input。
-- Modify: `apps/zcode-cli/packages/core/src/tool/types.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/types.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/validation.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/permission-flow.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/call-runner.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/validation.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/permission-flow.ts`
   - 增加 provider input validation、pre-hook input preparation、execution input validation，并让 permission request 使用 injected input。
-- Modify: `apps/zcode-cli/packages/core/src/permission/service.ts`
+- Modify: `apps/codez-cli/packages/core/src/permission/service.ts`
   - 增加 exact current plan file write exception。
-- Modify: `apps/zcode-cli/packages/core/src/tool/handlers/write.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/handlers/edit.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/handlers/write.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/handlers/edit.ts`
   - 只在 plan mode 且 exact current plan file path 时放行 Write/Edit。
-- Create: `apps/zcode-cli/packages/core/src/runtime/helpers/plan-file.ts`
+- Create: `apps/codez-cli/packages/core/src/runtime/helpers/plan-file.ts`
   - plan file path 生成、slug 生成、跨 POSIX/Windows path join、disk read、system reminder formatter。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/internal.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/agent-runtime.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/session-mode-port.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/helpers/runtime-reminders.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/turn-loop.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/resume.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/internal.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/agent-runtime.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/session-mode-port.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/helpers/runtime-reminders.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/turn-loop.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/resume.ts`
   - 维护当前 / approved plan file path，注入 plan mode / exit reminders。
-- Modify: `apps/zcode-cli/packages/core/src/runtime/helpers/compact-post-reminders.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/compact-active.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/helpers/compact-post-reminders.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/compact-active.ts`
   - compact 后 explicit plan file reference。
-- Modify: `apps/zcode-cli/packages/core/src/tool/handlers/plan-mode.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/handlers/plan-mode-prompts.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/handlers/plan-mode.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/handlers/plan-mode-prompts.ts`
   - `ExitPlanMode` 读取 injected input，输出 `filePath`。
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/session-mapper.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/interaction-broker.ts`
-- Modify: `packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts`
-- Modify: `packages/ui/src/lib/zcodeSessionProjection.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/session-mapper.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/interaction-broker.ts`
+- Modify: `packages/services/src/codez-agent/codezTaskServiceAdapter.ts`
+- Modify: `packages/ui/src/lib/codezSessionProjection.ts`
 - Modify: `packages/ui/src/lib/toolDisplay.ts`
 - Modify: `packages/ui/src/ToolCallBlocks/ToolCallBody.tsx`
   - snapshot/replay/UI 使用 `filePath`，pending approval schema 保留 injected input。
-- Test: `apps/zcode-cli/packages/core/tests/tool-contracts.test.ts`
-- Test: `apps/zcode-cli/packages/core/tests/plan-mode-tool.test.ts`
-- Test: `apps/zcode-cli/packages/core/tests/permission-service.test.ts`
-- Test: `apps/zcode-cli/packages/core/tests/runtime-compact.test.ts`
-- Test: `apps/zcode-cli/packages/core/tests/runtime-persistence.test.ts`
+- Test: `apps/codez-cli/packages/core/tests/tool-contracts.test.ts`
+- Test: `apps/codez-cli/packages/core/tests/plan-mode-tool.test.ts`
+- Test: `apps/codez-cli/packages/core/tests/permission-service.test.ts`
+- Test: `apps/codez-cli/packages/core/tests/runtime-compact.test.ts`
+- Test: `apps/codez-cli/packages/core/tests/runtime-persistence.test.ts`
 - Test: `packages/ui/test/toolDisplay.test.ts`
-- Test: `packages/ui/test/zcodeSessionProjection.test.ts`
-- Test: `packages/services/test/zcodeAgentService.test.ts`
-- Test: `packages/services/test/zcodeSessionService.test.ts`
-- Test: prompt trajectory fixture under `apps/zcode-cli/tools/prompt-trajectory/testcases/`
+- Test: `packages/ui/test/codezSessionProjection.test.ts`
+- Test: `packages/services/test/codezAgentService.test.ts`
+- Test: `packages/services/test/codezSessionService.test.ts`
+- Test: prompt trajectory fixture under `apps/codez-cli/tools/prompt-trajectory/testcases/`
 
 ---
 
@@ -140,7 +140,7 @@ Create `docs/plan-mode-plan-file.md` with this content:
 
 ## Target
 
-ZCode Plan mode keeps the plan body in a reserved plan file; `ExitPlanMode` reads the plan from disk instead of taking it as a tool parameter.
+Codez Plan mode keeps the plan body in a reserved plan file; `ExitPlanMode` reads the plan from disk instead of taking it as a tool parameter.
 
 ## Tool Contract
 
@@ -151,7 +151,7 @@ ZCode Plan mode keeps the plan body in a reserved plan file; `ExitPlanMode` read
 - `plan_file_reference` re-injects the plan file path and complete plan contents after compact/resume.
 - `plan_mode_exit` tells the model that edits/tools are allowed and includes the plan file path when a plan exists.
 
-## ZCode Contract
+## Codez Contract
 
 - `EnterPlanMode` reserves a unique plan file path under the workspace root, using the `.claude/plans/plan-session-id.md` naming pattern.
 - `EnterPlanMode` does not create the file.
@@ -190,7 +190,7 @@ Expected: commit succeeds.
 ### Task 1: 更新现有 Plan Mode 语义文档
 
 **Files:**
-- Modify: `apps/zcode-cli/docs/design/v2/tool/16-plan-mode.md`
+- Modify: `apps/codez-cli/docs/design/v2/tool/16-plan-mode.md`
 - Modify: `docs/plan-mode-approval-boundary.md`
 
 **Interfaces:**
@@ -202,7 +202,7 @@ Expected: commit succeeds.
 Replace the old first-version scope with:
 
 ```markdown
-ZCode 当前版本采用 plan-file 语义：计划正文写入 workspace root 下的 `.claude/plans/plan-session-id.md`，`ExitPlanMode` 的 provider-visible 输入只包含 `allowedPrompts?`，runtime 在 permission / hook / handler 前从 plan file 注入 `plan` 与 `planFilePath`。
+Codez 当前版本采用 plan-file 语义：计划正文写入 workspace root 下的 `.claude/plans/plan-session-id.md`，`ExitPlanMode` 的 provider-visible 输入只包含 `allowedPrompts?`，runtime 在 permission / hook / handler 前从 plan file 注入 `plan` 与 `planFilePath`。
 ```
 
 In the `ExitPlanMode` section, make the input/output bullets:
@@ -247,17 +247,17 @@ Add this paragraph under `## 语义`:
 Run:
 
 ```bash
-rg -n 'DOES take the plan content|required plan parameter|计划正文通过 `ExitPlanMode.plan` 直接传入|不做 `ExitPlanMode` V2|保留 ZCode 当前 `ExitPlanMode\\(plan\\)`|工具必须通过 `plan` 参数' apps/zcode-cli/docs docs
+rg -n 'DOES take the plan content|required plan parameter|计划正文通过 `ExitPlanMode.plan` 直接传入|不做 `ExitPlanMode` V2|保留 Codez 当前 `ExitPlanMode\\(plan\\)`|工具必须通过 `plan` 参数' apps/codez-cli/docs docs
 ```
 
-Expected: no hits except historical completed-plan files under `apps/zcode-cli/docs/plan/trajectory/completed/` if those files are explicitly describing old completed work. Do not edit completed historical plans.
+Expected: no hits except historical completed-plan files under `apps/codez-cli/docs/plan/trajectory/completed/` if those files are explicitly describing old completed work. Do not edit completed historical plans.
 
 - [ ] **Step 4: Commit Task 1**
 
 Run:
 
 ```bash
-git add apps/zcode-cli/docs/design/v2/tool/16-plan-mode.md docs/plan-mode-approval-boundary.md
+git add apps/codez-cli/docs/design/v2/tool/16-plan-mode.md docs/plan-mode-approval-boundary.md
 git commit -m "docs: align plan mode docs with plan files"
 ```
 
@@ -268,13 +268,13 @@ Expected: commit succeeds.
 ### Task 2: 拆分 Provider Schema 与 Runtime Injected Schema
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/contracts/src/tools/plan-mode.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/types.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/validation.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/types.ts`
-- Test: `apps/zcode-cli/packages/core/tests/tool-contracts.test.ts`
-- Test: `apps/zcode-cli/packages/core/tests/plan-mode-tool.test.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/tools/plan-mode.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/validation.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/call-runner.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/types.ts`
+- Test: `apps/codez-cli/packages/core/tests/tool-contracts.test.ts`
+- Test: `apps/codez-cli/packages/core/tests/plan-mode-tool.test.ts`
 
 **Interfaces:**
 - Produces: `ExitPlanModeInputSchema` for provider input: `{ allowedPrompts? }`.
@@ -284,7 +284,7 @@ Expected: commit succeeds.
 
 - [ ] **Step 1: Write failing contract test**
 
-In `apps/zcode-cli/packages/core/tests/tool-contracts.test.ts`, replace the current ExitPlanMode contract test with:
+In `apps/codez-cli/packages/core/tests/tool-contracts.test.ts`, replace the current ExitPlanMode contract test with:
 
 ```ts
 it("matches the ExitPlanMode plan-file provider contract", () => {
@@ -305,14 +305,14 @@ it("matches the ExitPlanMode plan-file provider contract", () => {
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/tool-contracts.test.ts -t "ExitPlanMode plan-file provider contract"
+pnpm --filter @codez/core exec vitest run tests/tool-contracts.test.ts -t "ExitPlanMode plan-file provider contract"
 ```
 
 Expected: FAIL because current schema exposes `plan`.
 
 - [ ] **Step 2: Write failing injected schema test**
 
-In `apps/zcode-cli/packages/core/tests/plan-mode-tool.test.ts`, add:
+In `apps/codez-cli/packages/core/tests/plan-mode-tool.test.ts`, add:
 
 ```ts
 it("keeps injected ExitPlanMode plan fields out of provider schema", () => {
@@ -327,14 +327,14 @@ it("keeps injected ExitPlanMode plan fields out of provider schema", () => {
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/plan-mode-tool.test.ts -t "injected ExitPlanMode plan fields"
+pnpm --filter @codez/core exec vitest run tests/plan-mode-tool.test.ts -t "injected ExitPlanMode plan fields"
 ```
 
 Expected: FAIL because `executionInputSchema` does not exist.
 
 - [ ] **Step 3: Implement contract schemas**
 
-In `apps/zcode-cli/packages/contracts/src/tools/plan-mode.ts`, replace the current `ExitPlanModeInputSchema` with:
+In `apps/codez-cli/packages/contracts/src/tools/plan-mode.ts`, replace the current `ExitPlanModeInputSchema` with:
 
 ```ts
 export const ExitPlanModeInputSchema = z
@@ -387,7 +387,7 @@ Do not export `PLAN_MODE_MAX_PLAN_CHARS`; it no longer applies to provider input
 
 - [ ] **Step 4: Add execution input schema plumbing**
 
-In `apps/zcode-cli/packages/core/src/tool/types.ts`, add:
+In `apps/codez-cli/packages/core/src/tool/types.ts`, add:
 
 ```ts
 export interface ToolInputPreparationContext {
@@ -421,7 +421,7 @@ getCurrentPlanFilePath?: () => string | undefined;
 
 - [ ] **Step 5: Split validation phases**
 
-In `apps/zcode-cli/packages/core/src/tool/executor/validation.ts`, change `validateInput` to:
+In `apps/codez-cli/packages/core/src/tool/executor/validation.ts`, change `validateInput` to:
 
 ```ts
 export function validateInput(
@@ -494,7 +494,7 @@ Do not implement `prepareInput` yet; Task 3 adds it.
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/tool-contracts.test.ts tests/plan-mode-tool.test.ts
+pnpm --filter @codez/core exec vitest run tests/tool-contracts.test.ts tests/plan-mode-tool.test.ts
 ```
 
 Expected: only tests that require actual plan file enrichment may still fail; schema tests pass.
@@ -504,7 +504,7 @@ Expected: only tests that require actual plan file enrichment may still fail; sc
 Run:
 
 ```bash
-git add apps/zcode-cli/packages/contracts/src/tools/plan-mode.ts apps/zcode-cli/packages/core/src/tool/types.ts apps/zcode-cli/packages/core/src/tool/executor/types.ts apps/zcode-cli/packages/core/src/tool/executor/validation.ts apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts apps/zcode-cli/packages/core/src/tool/handlers/plan-mode.ts apps/zcode-cli/packages/core/tests/tool-contracts.test.ts apps/zcode-cli/packages/core/tests/plan-mode-tool.test.ts
+git add apps/codez-cli/packages/contracts/src/tools/plan-mode.ts apps/codez-cli/packages/core/src/tool/types.ts apps/codez-cli/packages/core/src/tool/executor/types.ts apps/codez-cli/packages/core/src/tool/executor/validation.ts apps/codez-cli/packages/core/src/tool/executor/call-runner.ts apps/codez-cli/packages/core/src/tool/handlers/plan-mode.ts apps/codez-cli/packages/core/tests/tool-contracts.test.ts apps/codez-cli/packages/core/tests/plan-mode-tool.test.ts
 git commit -m "feat: split plan mode provider and injected schemas"
 ```
 
@@ -515,18 +515,18 @@ Expected: commit succeeds.
 ### Task 3: 实现 Plan File Path 生命周期与 Plan Mode 写入例外
 
 **Files:**
-- Create: `apps/zcode-cli/packages/core/src/runtime/helpers/plan-file.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/internal.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/agent-runtime.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/session-mode-port.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/types.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/impl.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts`
-- Modify: `apps/zcode-cli/packages/core/src/permission/service.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/handlers/write.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/handlers/edit.ts`
-- Test: `apps/zcode-cli/packages/core/tests/plan-mode-tool.test.ts`
-- Test: `apps/zcode-cli/packages/core/tests/permission-service.test.ts`
+- Create: `apps/codez-cli/packages/core/src/runtime/helpers/plan-file.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/internal.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/agent-runtime.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/session-mode-port.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/types.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/impl.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/executor/call-runner.ts`
+- Modify: `apps/codez-cli/packages/core/src/permission/service.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/handlers/write.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/handlers/edit.ts`
+- Test: `apps/codez-cli/packages/core/tests/plan-mode-tool.test.ts`
+- Test: `apps/codez-cli/packages/core/tests/permission-service.test.ts`
 
 **Interfaces:**
 - Produces: `runtime.currentPlanFilePath?: string`.
@@ -562,18 +562,18 @@ it("does not create the plan file when entering plan mode", async () => {
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/plan-mode-tool.test.ts -t "plan file"
+pnpm --filter @codez/core exec vitest run tests/plan-mode-tool.test.ts -t "plan file"
 ```
 
 Expected: FAIL because no plan path is reserved.
 
 - [ ] **Step 2: Implement plan file helper**
 
-Create `apps/zcode-cli/packages/core/src/runtime/helpers/plan-file.ts`:
+Create `apps/codez-cli/packages/core/src/runtime/helpers/plan-file.ts`:
 
 ```ts
 import path from "node:path";
-import type { FileSystemPort, SessionId } from "@zcode/contracts";
+import type { FileSystemPort, SessionId } from "@codez/contracts";
 
 export interface PlanFilePathInput {
   fileSystemPort: FileSystemPort;
@@ -703,7 +703,7 @@ it("still denies non-plan-file writes while in plan mode", () => {
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/permission-service.test.ts -t "plan file"
+pnpm --filter @codez/core exec vitest run tests/permission-service.test.ts -t "plan file"
 ```
 
 Expected: FAIL because `allowInPlanMode` does not exist.
@@ -779,7 +779,7 @@ Use `EditInputSchema` in `edit.ts`. Do not add this to `ApplyPatch` or `Bash`.
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/plan-mode-tool.test.ts tests/permission-service.test.ts
+pnpm --filter @codez/core exec vitest run tests/plan-mode-tool.test.ts tests/permission-service.test.ts
 ```
 
 Expected: PASS.
@@ -789,7 +789,7 @@ Expected: PASS.
 Run:
 
 ```bash
-git add apps/zcode-cli/packages/core/src/runtime/helpers/plan-file.ts apps/zcode-cli/packages/core/src/runtime/internal.ts apps/zcode-cli/packages/core/src/runtime/agent-runtime.ts apps/zcode-cli/packages/core/src/runtime/session-mode-port.ts apps/zcode-cli/packages/core/src/tool/executor/types.ts apps/zcode-cli/packages/core/src/tool/executor/impl.ts apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts apps/zcode-cli/packages/core/src/permission/service.ts apps/zcode-cli/packages/core/src/tool/handlers/write.ts apps/zcode-cli/packages/core/src/tool/handlers/edit.ts apps/zcode-cli/packages/core/tests/plan-mode-tool.test.ts apps/zcode-cli/packages/core/tests/permission-service.test.ts
+git add apps/codez-cli/packages/core/src/runtime/helpers/plan-file.ts apps/codez-cli/packages/core/src/runtime/internal.ts apps/codez-cli/packages/core/src/runtime/agent-runtime.ts apps/codez-cli/packages/core/src/runtime/session-mode-port.ts apps/codez-cli/packages/core/src/tool/executor/types.ts apps/codez-cli/packages/core/src/tool/executor/impl.ts apps/codez-cli/packages/core/src/tool/executor/call-runner.ts apps/codez-cli/packages/core/src/permission/service.ts apps/codez-cli/packages/core/src/tool/handlers/write.ts apps/codez-cli/packages/core/src/tool/handlers/edit.ts apps/codez-cli/packages/core/tests/plan-mode-tool.test.ts apps/codez-cli/packages/core/tests/permission-service.test.ts
 git commit -m "feat: reserve plan files in plan mode"
 ```
 
@@ -800,12 +800,12 @@ Expected: commit succeeds.
 ### Task 4: 从 Plan File 注入 ExitPlanMode Input 并输出 Plan-File Tool Result
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/tool/handlers/plan-mode.ts`
-- Modify: `apps/zcode-cli/packages/core/src/tool/handlers/plan-mode-prompts.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/session-mode-port.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/helpers/runtime-reminders.ts`
-- Test: `apps/zcode-cli/packages/core/tests/plan-mode-tool.test.ts`
-- Test: `apps/zcode-cli/packages/core/tests/tool-contracts.test.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/handlers/plan-mode.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/handlers/plan-mode-prompts.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/session-mode-port.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/helpers/runtime-reminders.ts`
+- Test: `apps/codez-cli/packages/core/tests/plan-mode-tool.test.ts`
+- Test: `apps/codez-cli/packages/core/tests/tool-contracts.test.ts`
 
 **Interfaces:**
 - Produces: `prepareExitPlanModeInput(input, context)`.
@@ -854,7 +854,7 @@ it("injects plan and planFilePath from disk before requesting approval", async (
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/plan-mode-tool.test.ts -t "injects plan"
+pnpm --filter @codez/core exec vitest run tests/plan-mode-tool.test.ts -t "injects plan"
 ```
 
 Expected: FAIL because `prepareInput` is not implemented.
@@ -998,7 +998,7 @@ Update `turn-loop.ts` to pass `this.approvedPlanFilePath`.
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/plan-mode-tool.test.ts tests/tool-contracts.test.ts
+pnpm --filter @codez/core exec vitest run tests/plan-mode-tool.test.ts tests/tool-contracts.test.ts
 ```
 
 Expected: PASS.
@@ -1008,7 +1008,7 @@ Expected: PASS.
 Run:
 
 ```bash
-git add apps/zcode-cli/packages/core/src/tool/handlers/plan-mode.ts apps/zcode-cli/packages/core/src/tool/handlers/plan-mode-prompts.ts apps/zcode-cli/packages/core/src/runtime/session-mode-port.ts apps/zcode-cli/packages/core/src/runtime/helpers/runtime-reminders.ts apps/zcode-cli/packages/core/src/runtime/methods/turn-loop.ts apps/zcode-cli/packages/core/tests/plan-mode-tool.test.ts apps/zcode-cli/packages/core/tests/tool-contracts.test.ts
+git add apps/codez-cli/packages/core/src/tool/handlers/plan-mode.ts apps/codez-cli/packages/core/src/tool/handlers/plan-mode-prompts.ts apps/codez-cli/packages/core/src/runtime/session-mode-port.ts apps/codez-cli/packages/core/src/runtime/helpers/runtime-reminders.ts apps/codez-cli/packages/core/src/runtime/methods/turn-loop.ts apps/codez-cli/packages/core/tests/plan-mode-tool.test.ts apps/codez-cli/packages/core/tests/tool-contracts.test.ts
 git commit -m "feat: read exit plans from plan files"
 ```
 
@@ -1019,14 +1019,14 @@ Expected: commit succeeds.
 ### Task 5: 用 Session Event / Snapshot 恢复 Plan File State
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/contracts/src/events/session.events.ts`
-- Modify: `apps/zcode-cli/packages/contracts/src/events/event-reducer.ts`
-- Modify: `packages/shared/src/zcode-protocol/index.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/session-mapper.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/session-mode-port.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/resume.ts`
-- Test: `apps/zcode-cli/packages/core/tests/runtime-persistence.test.ts`
-- Test: `packages/services/test/zcodeSessionService.test.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/events/session.events.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/events/event-reducer.ts`
+- Modify: `packages/shared/src/codez-protocol/index.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/session-mapper.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/session-mode-port.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/resume.ts`
+- Test: `apps/codez-cli/packages/core/tests/runtime-persistence.test.ts`
+- Test: `packages/services/test/codezSessionService.test.ts`
 
 **Interfaces:**
 - Produces: `SessionEventType.PlanFileChanged`.
@@ -1144,9 +1144,9 @@ The UI and services must receive this under session projection, not as relay/mai
 Run:
 
 ```bash
-pnpm --filter @zcode/contracts exec vitest run
-pnpm --filter @zcode/core exec vitest run tests/plan-mode-tool.test.ts tests/runtime-persistence.test.ts
-pnpm vitest run packages/services/test/zcodeSessionService.test.ts
+pnpm --filter @codez/contracts exec vitest run
+pnpm --filter @codez/core exec vitest run tests/plan-mode-tool.test.ts tests/runtime-persistence.test.ts
+pnpm vitest run packages/services/test/codezSessionService.test.ts
 ```
 
 Expected: PASS.
@@ -1156,7 +1156,7 @@ Expected: PASS.
 Run:
 
 ```bash
-git add apps/zcode-cli/packages/contracts/src/events/session.events.ts apps/zcode-cli/packages/contracts/src/events/event-reducer.ts packages/shared/src/zcode-protocol/index.ts apps/zcode-cli/packages/bootstrap/src/zcode-protocol/session-mapper.ts apps/zcode-cli/packages/core/src/runtime/session-mode-port.ts apps/zcode-cli/packages/core/src/runtime/methods/resume.ts
+git add apps/codez-cli/packages/contracts/src/events/session.events.ts apps/codez-cli/packages/contracts/src/events/event-reducer.ts packages/shared/src/codez-protocol/index.ts apps/codez-cli/packages/bootstrap/src/codez-protocol/session-mapper.ts apps/codez-cli/packages/core/src/runtime/session-mode-port.ts apps/codez-cli/packages/core/src/runtime/methods/resume.ts
 git commit -m "feat: persist plan file session state"
 ```
 
@@ -1167,10 +1167,10 @@ Expected: commit succeeds.
 ### Task 6: Compact / Resume 注入 `plan_file_reference`
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/runtime/helpers/plan-file.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/helpers/compact-post-reminders.ts`
-- Modify: `apps/zcode-cli/packages/core/src/runtime/methods/compact-active.ts`
-- Test: `apps/zcode-cli/packages/core/tests/runtime-compact.test.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/helpers/plan-file.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/helpers/compact-post-reminders.ts`
+- Modify: `apps/codez-cli/packages/core/src/runtime/methods/compact-active.ts`
+- Test: `apps/codez-cli/packages/core/tests/runtime-compact.test.ts`
 
 **Interfaces:**
 - Produces: `buildPlanFileReferenceEntry({ planFilePath, planContent })`.
@@ -1201,7 +1201,7 @@ it("re-injects approved plan file contents after compact", async () => {
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/runtime-compact.test.ts -t "approved plan file"
+pnpm --filter @codez/core exec vitest run tests/runtime-compact.test.ts -t "approved plan file"
 ```
 
 Expected: FAIL because no plan reminder exists.
@@ -1303,7 +1303,7 @@ it("re-injects draft plan file contents when compact runs during plan mode", asy
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/runtime-compact.test.ts
+pnpm --filter @codez/core exec vitest run tests/runtime-compact.test.ts
 ```
 
 Expected: PASS.
@@ -1313,7 +1313,7 @@ Expected: PASS.
 Run:
 
 ```bash
-git add apps/zcode-cli/packages/core/src/runtime/helpers/plan-file.ts apps/zcode-cli/packages/core/src/runtime/helpers/compact-post-reminders.ts apps/zcode-cli/packages/core/src/runtime/methods/compact-active.ts apps/zcode-cli/packages/core/tests/runtime-compact.test.ts
+git add apps/codez-cli/packages/core/src/runtime/helpers/plan-file.ts apps/codez-cli/packages/core/src/runtime/helpers/compact-post-reminders.ts apps/codez-cli/packages/core/src/runtime/methods/compact-active.ts apps/codez-cli/packages/core/tests/runtime-compact.test.ts
 git commit -m "feat: restore plan files after compact"
 ```
 
@@ -1324,15 +1324,15 @@ Expected: commit succeeds.
 ### Task 7: 修复 Pending Approval / UI / Replayable Snapshot 的 Plan Payload
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/interaction-broker.ts`
-- Modify: `packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts`
-- Modify: `packages/ui/src/lib/zcodeSessionProjection.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/interaction-broker.ts`
+- Modify: `packages/services/src/codez-agent/codezTaskServiceAdapter.ts`
+- Modify: `packages/ui/src/lib/codezSessionProjection.ts`
 - Modify: `packages/ui/src/lib/toolDisplay.ts`
 - Modify: `packages/ui/src/ToolCallBlocks/ToolCallBody.tsx`
-- Test: `packages/ui/test/zcodeSessionProjection.test.ts`
+- Test: `packages/ui/test/codezSessionProjection.test.ts`
 - Test: `packages/ui/test/toolDisplay.test.ts`
-- Test: `packages/services/test/zcodeAgentService.test.ts`
-- Test: `packages/services/test/zcodeSessionService.test.ts`
+- Test: `packages/services/test/codezAgentService.test.ts`
+- Test: `packages/services/test/codezSessionService.test.ts`
 
 **Interfaces:**
 - Produces: pending ExitPlanMode elicitation `schema` includes original injected input plus `{ interaction: "plan_approval", toolName }`.
@@ -1350,7 +1350,7 @@ Expected: file is read. Apply only field/display changes; do not redesign the pl
 
 - [ ] **Step 2: Write failing pending snapshot test**
 
-In `packages/ui/test/zcodeSessionProjection.test.ts`, update the pending ExitPlanMode approval test to assert:
+In `packages/ui/test/codezSessionProjection.test.ts`, update the pending ExitPlanMode approval test to assert:
 
 ```ts
 expect(elicitation.schema).toMatchObject({
@@ -1364,7 +1364,7 @@ expect(elicitation.schema).toMatchObject({
 Run:
 
 ```bash
-pnpm vitest run packages/ui/test/zcodeSessionProjection.test.ts -t "ExitPlanMode"
+pnpm vitest run packages/ui/test/codezSessionProjection.test.ts -t "ExitPlanMode"
 ```
 
 Expected: FAIL because schema currently drops `permission.input`.
@@ -1385,7 +1385,7 @@ Use the existing local `isRecord` helper or add one in the file.
 
 - [ ] **Step 4: Preserve injected input in services adapter**
 
-Apply the same schema merge in `packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts`.
+Apply the same schema merge in `packages/services/src/codez-agent/codezTaskServiceAdapter.ts`.
 
 - [ ] **Step 5: Update interaction broker**
 
@@ -1426,8 +1426,8 @@ Expected display path resolves to `/workspace/.claude/plans/plan-session.md`.
 Run:
 
 ```bash
-pnpm vitest run packages/ui/test/zcodeSessionProjection.test.ts packages/ui/test/toolDisplay.test.ts
-pnpm vitest run packages/services/test/zcodeAgentService.test.ts packages/services/test/zcodeSessionService.test.ts
+pnpm vitest run packages/ui/test/codezSessionProjection.test.ts packages/ui/test/toolDisplay.test.ts
+pnpm vitest run packages/services/test/codezAgentService.test.ts packages/services/test/codezSessionService.test.ts
 ```
 
 Expected: PASS.
@@ -1437,7 +1437,7 @@ Expected: PASS.
 Run:
 
 ```bash
-git add packages/ui/src/lib/zcodeSessionProjection.ts packages/ui/src/lib/toolDisplay.ts packages/ui/src/ToolCallBlocks/ToolCallBody.tsx packages/ui/test/zcodeSessionProjection.test.ts packages/ui/test/toolDisplay.test.ts packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts packages/services/test/zcodeAgentService.test.ts packages/services/test/zcodeSessionService.test.ts apps/zcode-cli/packages/bootstrap/src/zcode-protocol/interaction-broker.ts
+git add packages/ui/src/lib/codezSessionProjection.ts packages/ui/src/lib/toolDisplay.ts packages/ui/src/ToolCallBlocks/ToolCallBody.tsx packages/ui/test/codezSessionProjection.test.ts packages/ui/test/toolDisplay.test.ts packages/services/src/codez-agent/codezTaskServiceAdapter.ts packages/services/test/codezAgentService.test.ts packages/services/test/codezSessionService.test.ts apps/codez-cli/packages/bootstrap/src/codez-protocol/interaction-broker.ts
 git commit -m "fix: preserve plan approval payloads in snapshots"
 ```
 
@@ -1448,10 +1448,10 @@ Expected: commit succeeds.
 ### Task 8: Provider-Visible Trajectory 和 Request 验收
 
 **Files:**
-- Modify: `apps/zcode-cli/tools/prompt-trajectory/testcases/system-reminder-sr9-runtime/expect.json`
-- Create: `apps/zcode-cli/tools/prompt-trajectory/testcases/plan-file-exit/fixture.json`
-- Create: `apps/zcode-cli/tools/prompt-trajectory/testcases/plan-file-exit/expect.json`
-- Test: `apps/zcode-cli/packages/core/tests/tool-contracts.test.ts`
+- Modify: `apps/codez-cli/tools/prompt-trajectory/testcases/system-reminder-sr9-runtime/expect.json`
+- Create: `apps/codez-cli/tools/prompt-trajectory/testcases/plan-file-exit/fixture.json`
+- Create: `apps/codez-cli/tools/prompt-trajectory/testcases/plan-file-exit/expect.json`
+- Test: `apps/codez-cli/packages/core/tests/tool-contracts.test.ts`
 - Test: prompt trajectory tests
 
 **Interfaces:**
@@ -1485,9 +1485,9 @@ Expected assertions in `expect.json`:
 Run:
 
 ```bash
-pnpm --filter @zcode/contracts build
-pnpm --filter @zcode/core build
-pnpm --filter @zcode/bootstrap build
+pnpm --filter @codez/contracts build
+pnpm --filter @codez/core build
+pnpm --filter @codez/bootstrap build
 ```
 
 Expected: all build commands exit `0`.
@@ -1497,7 +1497,7 @@ Expected: all build commands exit `0`.
 Run:
 
 ```bash
-pnpm --filter @zcode/prompt-trajectory run:testcases -- plan-file-exit
+pnpm --filter @codez/prompt-trajectory run:testcases -- plan-file-exit
 ```
 
 Expected: new plan-file fixture passes and old SR9 runtime fixture is updated for plan file wording.
@@ -1507,7 +1507,7 @@ Expected: new plan-file fixture passes and old SR9 runtime fixture is updated fo
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/tool-contracts.test.ts -t "ExitPlanMode"
+pnpm --filter @codez/core exec vitest run tests/tool-contracts.test.ts -t "ExitPlanMode"
 ```
 
 Expected: PASS and no provider-visible `properties.plan`.
@@ -1517,7 +1517,7 @@ Expected: PASS and no provider-visible `properties.plan`.
 Run:
 
 ```bash
-git add apps/zcode-cli/tools/prompt-trajectory/testcases/system-reminder-sr9-runtime apps/zcode-cli/tools/prompt-trajectory/testcases/plan-file-exit apps/zcode-cli/packages/core/tests/tool-contracts.test.ts
+git add apps/codez-cli/tools/prompt-trajectory/testcases/system-reminder-sr9-runtime apps/codez-cli/tools/prompt-trajectory/testcases/plan-file-exit apps/codez-cli/packages/core/tests/tool-contracts.test.ts
 git commit -m "test: cover plan file provider trajectory"
 ```
 
@@ -1548,8 +1548,8 @@ Expected: no unrelated uncommitted changes from this plan. If user WIP exists, l
 Run:
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/tool-contracts.test.ts tests/plan-mode-tool.test.ts tests/permission-service.test.ts tests/runtime-compact.test.ts
-pnpm vitest run packages/ui/test/zcodeSessionProjection.test.ts packages/ui/test/toolDisplay.test.ts
+pnpm --filter @codez/core exec vitest run tests/tool-contracts.test.ts tests/plan-mode-tool.test.ts tests/permission-service.test.ts tests/runtime-compact.test.ts
+pnpm vitest run packages/ui/test/codezSessionProjection.test.ts packages/ui/test/toolDisplay.test.ts
 ```
 
 Expected: PASS.
@@ -1570,7 +1570,7 @@ Expected: both commands exit `0`.
 Run:
 
 ```bash
-rg -n "DOES take the plan content|required plan parameter|properties\\.plan|planFilePath.*output|ExitPlanMode\\(plan" apps/zcode-cli/packages apps/zcode-cli/docs docs packages
+rg -n "DOES take the plan content|required plan parameter|properties\\.plan|planFilePath.*output|ExitPlanMode\\(plan" apps/codez-cli/packages apps/codez-cli/docs docs packages
 ```
 
 Expected:

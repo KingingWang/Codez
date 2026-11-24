@@ -53,7 +53,7 @@ Web use the same scale. The existing preference remains persisted in
 
 Independent desktop renderers that do not create the shared Zustand store must
 apply `loadUiFontSizePx()` before their first React render. While open, they must
-also subscribe to `zcode-ui-font-size-px` storage changes and apply them through
+also subscribe to `codez-ui-font-size-px` storage changes and apply them through
 `applyUiFontSizePx()`. This keeps lightweight windows such as Resource Manager in
 sync without attaching them to a Local/Remote Host workspace scope or the application RPC state
 channel. The storage-event path assumes the windows share Electron's existing

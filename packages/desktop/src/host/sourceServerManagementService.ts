@@ -1,5 +1,5 @@
 import { createSourceServerMigrationCounts } from "./sourceServerMigrationCounts.js";
-import { Emitter, type Event } from "@zcode/rpc";
+import { Emitter, type Event } from "@codez/rpc";
 import {
   sourceServerManagementSnapshotSchema,
   sourceServerLifecycleSourceIdSchema,
@@ -23,7 +23,7 @@ import {
   type SourceServerManagementStateDelta,
   type SourceServerOperationLog,
   type SourceServerRunningTasksResult,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type {
   SourceServerDirectorySnapshot,
   SourceServerReconnectCandidate,
@@ -33,7 +33,7 @@ import type {
   SourceServerConnectionManagerOptions,
   ConnectSourceServerOptions,
 } from "./sourceServerConnectionManager.js";
-import type { ISourceServerManagementService, UpdateConnectionProfileInput } from "@zcode/services";
+import type { ISourceServerManagementService, UpdateConnectionProfileInput } from "@codez/services";
 
 interface SourceServerManagementDirectory {
   readonly onDidChange?: Event<void>;

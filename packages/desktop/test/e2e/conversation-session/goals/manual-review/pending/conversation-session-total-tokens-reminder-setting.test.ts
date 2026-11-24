@@ -1,5 +1,5 @@
 // TT11–TT13 token 预算提醒设置开关（docs/conversation-session-case-catalog.md「token 预算提醒」）。
-// 规格见 apps/zcode-cli/docs/design/v2/loop/meta-user-context.md「Total-tokens reminder」。
+// 规格见 apps/codez-cli/docs/design/v2/loop/meta-user-context.md「Total-tokens reminder」。
 // 开关只在创建或冷恢复 runtime 时读取：运行中的任务保持原值，新任务和冷恢复读最新值；冷恢复的 system
 // 按快照原字节发送，倒数提醒按当前值收集。关闭后冷恢复打开时写下的会话由 core 测试和 TT09 覆盖。
 // 断言读取上游请求体。
@@ -10,7 +10,7 @@ import {
   TID_SETTINGS_TOTAL_TOKENS_REMINDER_SWITCH,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,

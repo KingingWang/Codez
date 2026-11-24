@@ -1,4 +1,4 @@
-import type { EditorInfo } from "@zcode/shared";
+import type { EditorInfo } from "@codez/shared";
 import {
   ChevronDownIcon,
   CopyIcon,
@@ -41,7 +41,7 @@ import {
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useFileContextActions } from "@/hooks/useFileContextActions.js";
 import { useWorkspaceOpenInEditorTarget } from "@/hooks/useWorkspaceOpenInEditorTarget.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { persistLastSelectedEditorId } from "@/lib/editorPreference.js";
 import type { CodeViewerSource } from "@/lib/codeViewer.js";
 import { getFileManagerLabel } from "@/workspace-file-tree/helpers.js";
@@ -96,7 +96,7 @@ export function OpenSplitButton({
   stopPropagation = false,
   renderCard,
 }: OpenSplitButtonProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const platform = usePlatform();
 
   const previewSource = target.type === "file" ? target.previewSource : undefined;
@@ -538,7 +538,7 @@ function OpenSplitButtonDropdownActions({
   canOpenWith: boolean;
   reveal?: { label: string; onSelect: () => void };
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const fileActions = useFileContextActions();
   const revealItem = reveal ? (
     <DropdownMenuItem onSelect={reveal.onSelect}>

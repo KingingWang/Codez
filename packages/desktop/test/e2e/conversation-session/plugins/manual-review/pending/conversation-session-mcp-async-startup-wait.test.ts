@@ -32,7 +32,7 @@ import {
   TID_MCP_OPEN_AUTHORIZATION_BUTTON,
   TID_SETTINGS_PAGE,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   DEFAULT_WORKSPACE,
@@ -108,7 +108,7 @@ const SLOW_MCP_SERVER_TIMEOUT_MS = 120_000;
 // 慢 server 进程启动（先加载 MCP SDK 与 zod 才写 started）的等待上限；只防止无限等待。
 const SLOW_MCP_START_WAIT_MS = 15_000;
 const E2E_PATHS = getE2EAppDataPaths();
-const CLI_CONFIG_FILE = join(E2E_PATHS.homeDir, ".zcode", "cli", "config.json");
+const CLI_CONFIG_FILE = join(E2E_PATHS.homeDir, ".codez", "cli", "config.json");
 const CASE_ROOT = resolveE2ERuntimePath(CASE);
 const EVENT_LOG = join(CASE_ROOT, "slow-mcp-events.ndjson");
 const RELEASE_FILE = join(CASE_ROOT, "slow-mcp.release");
@@ -144,7 +144,7 @@ const MCP_CONFIG_SETTLE_MS = MCP_CONFIG_EVENT_DEBOUNCE_MS + MCP_CONFIG_SETTLE_MA
 const MCPW10_CASE = "MCPW10";
 const MCPW10_SERVER = "oauthmcp";
 const MCPW10_TOOL = `mcp__${MCPW10_SERVER}__oauth_ping`;
-const MCPW10_OAUTH_CLIENT_NAME = "ZCode MCPW10 OAuth E2E";
+const MCPW10_OAUTH_CLIENT_NAME = "Codez MCPW10 OAuth E2E";
 const MCPW10_OAUTH_SCOPE = "mcp:tools";
 const MCPW10_SERVER_TIMEOUT_MS = 30_000;
 const MCPW10_FIRST = "E2E_MCPW10_FIRST";
@@ -156,7 +156,7 @@ const MCPW10_REAUTHORIZED_CALL_ID = "toolu_mcpw10_reauthorized_call";
 const MCPW10_REVOKED_CALL_FIXTURE = "mcpw10-revoked-call";
 const MCPW10_REVOKED_FINAL_FIXTURE = "mcpw10-revoked-final";
 // core 把调用期授权的结果改写成这段固定文本；case 断言原文，不只断言片段。
-const MCPW10_NEEDS_AUTH_TEXT = `MCP tool is unavailable in the current session: ${MCPW10_TOOL}. Its MCP server '${MCPW10_SERVER}' needs the user to re-authorize it before its tools work again. Ask the user to authorize it in the ZCode MCP settings. Continue without this tool and tell the user if the task depends on it.`;
+const MCPW10_NEEDS_AUTH_TEXT = `MCP tool is unavailable in the current session: ${MCPW10_TOOL}. Its MCP server '${MCPW10_SERVER}' needs the user to re-authorize it before its tools work again. Ask the user to authorize it in the Codez MCP settings. Continue without this tool and tell the user if the task depends on it.`;
 // 修复前要等满 server 的 30s 超时；授权链接一发布就应结束，留一半余量。
 const MCPW10_MAX_AUTH_CALL_MS = 15_000;
 // 撤销公告的两段正文；工具保留在目录里时请求中不能出现。
@@ -205,13 +205,13 @@ interface SlowMcpEvent {
 
 /*
  * 本地运行：
- *   ZCODE_E2E_HOME_DIR=<仓库外新建的空目录>/.e2e-home-mcpw ZCODE_E2E_MANUAL_REVIEW=1 \
- *     pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/conversation-session/plugins/manual-review/pending/conversation-session-mcp-async-startup-wait.test.ts'
+ *   CODEZ_E2E_HOME_DIR=<仓库外新建的空目录>/.e2e-home-mcpw CODEZ_E2E_MANUAL_REVIEW=1 \
+ *     pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/conversation-session/plugins/manual-review/pending/conversation-session-mcp-async-startup-wait.test.ts'
  * E2E home 要放在仓库外，并且每次用新的空目录（beforeSession 会清空它）。默认 home 在仓库内，E2E 工作区会被当成
  * 本仓库的一部分：Host 的 Git 自动刷新同步监听主仓库的 .git，曾一次卡住 73 s，MCPW08 一步超时；模型请求还会带上
  * 开发者的 Git 状态和仓库根目录的 AGENTS.md。见 docs/issues/desktop-e2e-isolation/01-e2e-home-inside-repository.md
  * 与 docs/issues/host-file-watcher-legacy/01-sync-fs-watch-blocks-host-rpc.md。
- * MCPW06 与 Native 依赖 MCPW01 留下的会话，单独运行它们时用 ZCODE_E2E_MOCHA_GREP='MCPW0[16]'。
+ * MCPW06 与 Native 依赖 MCPW01 留下的会话，单独运行它们时用 CODEZ_E2E_MOCHA_GREP='MCPW0[16]'。
  */
 describe("会话区 MCP 异步启动与实时搜索 E2E", () => {
   let webBrowser: Browser | undefined;
@@ -233,10 +233,10 @@ describe("会话区 MCP 异步启动与实时搜索 E2E", () => {
     if (!page) {
       const pairingUrl = await obtainUnreadPairingUrl();
       webBrowser = await chromium.launch({
-        ...(process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE || process.env.R3_MOBILE_CHROME
+        ...(process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE || process.env.R3_MOBILE_CHROME
           ? {
               executablePath:
-                process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE || process.env.R3_MOBILE_CHROME,
+                process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE || process.env.R3_MOBILE_CHROME,
             }
           : { channel: "chrome" }),
         headless: true,
@@ -254,7 +254,7 @@ describe("会话区 MCP 异步启动与实时搜索 E2E", () => {
       }, WEB_REMOTE_CONTROL_FIXTURE_CREDENTIALS);
       page = await context.newPage();
       await openMobilePairingPage(page, pairingUrl, {
-        artifactDir: process.env.ZCODE_E2E_ARTIFACT_DIR ?? CASE_ROOT,
+        artifactDir: process.env.CODEZ_E2E_ARTIFACT_DIR ?? CASE_ROOT,
         caseMarker,
         phase,
         readySelector: MOBILE_READY_SELECTOR,
@@ -265,7 +265,7 @@ describe("会话区 MCP 异步启动与实时搜索 E2E", () => {
   };
 
   after(async () => {
-    const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR;
+    const artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR;
     if (artifacts) {
       await mkdir(artifacts, { recursive: true });
       await page
@@ -385,16 +385,16 @@ describe("会话区 MCP 异步启动与实时搜索 E2E", () => {
     const pluginRoot = join(CASE_ROOT, "data-plugin");
     const pluginLog = join(CASE_ROOT, "plugin-events.ndjson");
     await rm(pluginLog, { force: true });
-    await mkdir(join(pluginRoot, ".zcode-plugin"), { recursive: true });
+    await mkdir(join(pluginRoot, ".codez-plugin"), { recursive: true });
     await writeFile(
-      join(pluginRoot, ".zcode-plugin", "plugin.json"),
+      join(pluginRoot, ".codez-plugin", "plugin.json"),
       JSON.stringify({
         name: "mcp-data-fixture",
         mcpServers: {
           data: {
             command: process.execPath,
             args: [SLOW_MCP_SERVER_SCRIPT],
-            cwd: "${ZCODE_PLUGIN_DATA}",
+            cwd: "${CODEZ_PLUGIN_DATA}",
             env: { E2E_MCP_ASYNC_WAIT_LOG: pluginLog, E2E_MCP_RELEASE_FILE: RELEASE_FILE },
           },
         },
@@ -515,7 +515,7 @@ describe("会话区 MCP 异步启动与实时搜索 E2E", () => {
         .waitFor({ state: "visible", timeout: 60_000 });
     }
     // 截图在断言后立即拍，作为两个工具块已可见的证据。
-    const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR ?? CASE_ROOT;
+    const artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR ?? CASE_ROOT;
     await mkdir(artifacts, { recursive: true });
     await mobilePage.screenshot({ path: join(artifacts, `${CASE}-mobile-tools-visible.png`) });
     evidence.mobile = {
@@ -864,7 +864,7 @@ describe("会话区 MCP 异步启动与实时搜索 E2E", () => {
       const callIds = [MCPW10_FIRST_CALL_ID, MCPW10_REVOKED_CALL_ID, MCPW10_REAUTHORIZED_CALL_ID];
       const mobilePage = await openMobileTaskPage(taskId, MCPW10_CASE, "mcpw10-tool-events");
       await expandMobileHistory(mobilePage);
-      const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR ?? CASE_ROOT;
+      const artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR ?? CASE_ROOT;
       await mkdir(artifacts, { recursive: true });
       const mobileScreenshots: string[] = [];
       for (const callId of callIds) {
@@ -918,7 +918,7 @@ describe("会话区 MCP 异步启动与实时搜索 E2E", () => {
         timeoutMs: SLOW_MCP_SERVER_TIMEOUT_MS,
       },
     };
-    await mkdir(join(E2E_PATHS.homeDir, ".zcode", "cli"), { recursive: true });
+    await mkdir(join(E2E_PATHS.homeDir, ".codez", "cli"), { recursive: true });
     await writeFile(CLI_CONFIG_FILE, `${JSON.stringify({ ...config, mcp }, null, 2)}\n`, "utf8");
     await browser.waitUntil(
       async () => (await readSlowMcpEvents(MCPW11_LOG)).some((entry) => entry.event === "started"),
@@ -996,7 +996,7 @@ describe("会话区 MCP 异步启动与实时搜索 E2E", () => {
         .first()
         .waitFor({ state: "visible", timeout: 60_000 });
     }
-    const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR ?? CASE_ROOT;
+    const artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR ?? CASE_ROOT;
     await mkdir(artifacts, { recursive: true });
     await mobilePage.screenshot({
       path: join(artifacts, `${MCPW11_CASE}-mobile-tools-visible.png`),
@@ -1053,7 +1053,7 @@ describe("会话区 MCP 异步启动与实时搜索 E2E", () => {
     await browser.waitUntil(
       async () =>
         (await browser.execute(readActiveWorkspaceInBrowser)).startsWith(
-          join(E2E_PATHS.homeDir, ".zcode", "workspace"),
+          join(E2E_PATHS.homeDir, ".codez", "workspace"),
         ),
       { timeout: 15_000, timeoutMsg: "Native 任务尚未进入独立执行目录" },
     );
@@ -1621,9 +1621,9 @@ async function archiveAndDeleteTask(taskId: string): Promise<void> {
 function readActiveWorkspaceInBrowser() {
   return (
     window as unknown as Window & {
-      __zcodeTabStoreE2E: { getState(): { activeWorkspacePath: string } };
+      __codezTabStoreE2E: { getState(): { activeWorkspacePath: string } };
     }
-  ).__zcodeTabStoreE2E.getState().activeWorkspacePath;
+  ).__codezTabStoreE2E.getState().activeWorkspacePath;
 }
 
 /**
@@ -1653,7 +1653,7 @@ async function readNativeCapture(marker: string) {
   const artifact = JSON.parse(
     await readFile(
       resolve(
-        process.env.ZCODE_E2E_NETWORK_CAPTURE_DIR || ".e2e-network-capture",
+        process.env.CODEZ_E2E_NETWORK_CAPTURE_DIR || ".e2e-network-capture",
         "coding-plan-data-plane.json",
       ),
       "utf8",
@@ -1685,7 +1685,7 @@ async function writeSlowMcpFixture(): Promise<void> {
   };
   mcp.servers = servers;
   config.mcp = mcp;
-  await mkdir(join(E2E_PATHS.homeDir, ".zcode", "cli"), { recursive: true });
+  await mkdir(join(E2E_PATHS.homeDir, ".codez", "cli"), { recursive: true });
   await writeFile(CLI_CONFIG_FILE, `${JSON.stringify(config, null, 2)}\n`, "utf8");
 }
 
@@ -1742,8 +1742,8 @@ async function waitForSlowMcpPing(timeoutMs: number): Promise<SlowMcpEvent[]> {
 
 /** agent 日志里已结束 MCP 启动批次的会话（`mcp.startup.completed`）；只读日志，不往产品代码加测试入口。 */
 async function readMcpStartupCompletedSessions(): Promise<Set<string>> {
-  const logDir = process.env.ZCODE_LOG_DIR;
-  if (!logDir) throw new Error("缺少 worker 日志目录 ZCODE_LOG_DIR");
+  const logDir = process.env.CODEZ_LOG_DIR;
+  if (!logDir) throw new Error("缺少 worker 日志目录 CODEZ_LOG_DIR");
   const sessions = new Set<string>();
   for (const file of (await readdir(logDir)).filter((name) => name.endsWith(".jsonl"))) {
     const content = await readFile(join(logDir, file), "utf8");

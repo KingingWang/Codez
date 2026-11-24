@@ -2,13 +2,13 @@
 
 ## Scope
 
-When a user changes the model inside an existing ZCode session, the UI immediately shows a toast warning that switching models during a conversation can reduce performance. The conversation timeline notice is held as pending and only appears before the next accepted prompt in that same task.
+When a user changes the model inside an existing Codez session, the UI immediately shows a toast warning that switching models during a conversation can reduce performance. The conversation timeline notice is held as pending and only appears before the next accepted prompt in that same task.
 
 ## State Boundary
 
 - Notices are stored only in `packages/ui` Zustand memory state.
 - Notices are keyed by workspace state (`workspaceIdentity?.trim() || workspacePath`) and task id.
-- Notices are not written to localStorage, task history, ZCode protocol snapshots, replayable stream state, or service-layer persistence.
+- Notices are not written to localStorage, task history, Codez protocol snapshots, replayable stream state, or service-layer persistence.
 - A model change that is not followed by another prompt remains pending and does not alter the visible conversation timeline.
 - Each task keeps only the most recent notices to avoid unbounded memory growth during one app lifecycle.
 

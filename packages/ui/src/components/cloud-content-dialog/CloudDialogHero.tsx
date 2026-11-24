@@ -10,7 +10,7 @@ import type {
   CloudHeroResourceMessage,
 } from "@/components/cloud-content-dialog/cloudContentDialogTypes.js";
 
-export const CLOUD_HERO_MESSAGE_CHANNEL = "zcode-cloud-hero-v1" as const;
+export const CLOUD_HERO_MESSAGE_CHANNEL = "codez-cloud-hero-v1" as const;
 
 let nextCloudHeroInstanceId = 0;
 

@@ -43,13 +43,13 @@ import {
   TID_V4_BACKGROUND_WORK_CANCEL,
   TID_V4_BACKGROUND_WORK_ITEM,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import type {
   GitChangeSourceId,
   GitRepositorySummary,
-  ZCodeSessionRunningSubagent,
-  ZCodeTaskChangeSummary,
-} from "@zcode/shared";
+  CodezSessionRunningSubagent,
+  CodezTaskChangeSummary,
+} from "@codez/shared";
 import type {
   BackgroundWorkSummary,
   ConversationSnapshot,
@@ -57,7 +57,7 @@ import type {
   GoalState,
   PlanState,
   WorkflowRunState,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { cn } from "@/components/lib/utils.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.js";
 import { GitStatusRepositoryContext } from "@/hooks/useGitRepository.js";
@@ -69,7 +69,7 @@ import { formatBackgroundTaskElapsedLabel } from "@/BackgroundTaskElapsedLabel.j
 import { GitActionMenu } from "@/GitActionMenu.js";
 import { HostedGitBranchSwitcher } from "@/GitBranchSwitcher.js";
 import { resolveGitBranchTriggerLabel } from "@/git-branch-switcher/display.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import type {
   OpenSubagentDirectorySideTabRequest,
   OpenSubagentSideTabRequest,
@@ -318,7 +318,7 @@ export interface ConversationStatusPanelProps {
   gitDirtyFileCount?: number;
   gitWorktreeReviewSourceId?: GitChangeSourceId | null;
   gitWorktreeChangeSummary?: { added: number; removed: number } | null;
-  activeTaskChangeSummary?: ZCodeTaskChangeSummary | null;
+  activeTaskChangeSummary?: CodezTaskChangeSummary | null;
   goal?: GoalState | null;
   plan?: PlanState | null;
   backgroundWorks?: readonly BackgroundWorkSummary[];
@@ -361,7 +361,7 @@ const EMPTY_WORKFLOW_RUNS: readonly WorkflowRunState[] = [];
 
 function formatDurationUnits(
   totalSeconds: number,
-  formatMessage: ReturnType<typeof useZCodeIntl>["intl"]["formatMessage"],
+  formatMessage: ReturnType<typeof useCodezIntl>["intl"]["formatMessage"],
 ) {
   const seconds = Math.max(0, Math.floor(totalSeconds));
   const hours = Math.floor(seconds / 3600);
@@ -397,7 +397,7 @@ function GoalStatusSection({
   onPauseGoal?: () => void;
   onResumeGoal?: () => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const goal = model.goal;
   const isPausable =
     goal?.status === "active" || goal?.status === "verifying" || goal?.status === "notSatisfied";
@@ -572,7 +572,7 @@ function RunningWorkCancelButton({
   workId: string;
   onCancel?: (workId: string) => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const handleClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       event.stopPropagation();
@@ -608,7 +608,7 @@ export function buildRunningSubagentOpenRequest({
 }: {
   parentSessionId?: string;
   rootSessionId?: string;
-  subagent: ZCodeSessionRunningSubagent;
+  subagent: CodezSessionRunningSubagent;
 }): OpenSubagentSideTabRequest | null {
   if (!parentSessionId) return null;
   return {
@@ -631,7 +631,7 @@ function RunningStatusItem({
   onCancelBackgroundWork?: (workId: string) => void;
   work: BackgroundWorkSummary;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
 
   return (
     <li
@@ -695,7 +695,7 @@ function WorkflowRunRow({
   run: ConversationStatusPanelWorkflowRun;
   actors?: WorkflowRunState["actors"];
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const openTarget = onOpenWorkflowRun ? workflowRunOpenTarget(run) : null;
   const displayName =
     workflowRunDisplayName(run) ??
@@ -780,7 +780,7 @@ function SubagentStatusSection({
   rootSessionId?: string;
   subagents: readonly ConversationStatusPanelRunningSubagent[];
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [now, setNow] = useState(() => Date.now());
   const presentation = useToolPresentationCapabilities();
   const ordered = useMemo(
@@ -953,7 +953,7 @@ function EndedActivityItem({
   endedAt?: number;
   onOpen?: () => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   return (
     <li
       data-activity-result={result}
@@ -1005,7 +1005,7 @@ function EndedActivityItem({
 }
 
 function ConversationStatusPanelImpl(props: ConversationStatusPanelProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const presentation = useToolPresentationCapabilities();
   const capsuleContext = useContext(StatusCapsuleContext);
   const isOfficeMode = useIsOfficeMode();

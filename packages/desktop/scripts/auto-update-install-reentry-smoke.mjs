@@ -34,7 +34,7 @@ await build({
     sourcefile: "auto-update-install-reentry-fixture.mjs",
     contents: `
       import { app, BrowserWindow, dialog, ipcMain } from "electron";
-      import { PlatformChannels } from "@zcode/shared";
+      import { PlatformChannels } from "@codez/shared";
       import { initAutoUpdater, downloadAvailableUpdate, getAutoUpdaterState, requestAutoUpdateCheckWithoutWindow } from "./src/main/autoUpdater.ts";
 
       (async () => {
@@ -86,7 +86,7 @@ await build({
       };
       if (linuxDeb) {
         autoUpdater.downloadedUpdateHelper = {
-          file: "/tmp/zcode smoke/update.deb", downloadedFileInfo: { isAdminRightsRequired: false },
+          file: "/tmp/codez smoke/update.deb", downloadedFileInfo: { isAdminRightsRequired: false },
         };
         autoUpdater.hasCommand = (command) => ["dpkg", "pkexec"].includes(command);
         autoUpdater.spawnSyncLog = (command, args) => {
@@ -184,7 +184,7 @@ await build({
     js: `globalThis.__smokeUpdater = ${linuxDeb ? 'new (require("electron-updater").DebUpdater)()' : 'require("electron-updater").autoUpdater'};`,
   },
   external: ["electron", "electron-updater", "semver"],
-  alias: { "@zcode/shared": resolve(repoRoot, "packages/shared/src/index.ts") },
+  alias: { "@codez/shared": resolve(repoRoot, "packages/shared/src/index.ts") },
   plugins: [
     {
       name: "isolated-sudo-probe",

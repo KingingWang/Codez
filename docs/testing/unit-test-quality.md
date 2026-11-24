@@ -7,7 +7,7 @@ Web、Provider、RPC、Client、Server 和 Source Server 中的业务 test/spec 
 包括源码旁未注册测试和模块 contract.test.ts。此次按归属退役，不逐项宣称测试没有价值。
 产品运行时代码与产品行为不变。
 
-保留 Agent CLI（apps/zcode-cli）、CUA producer（packages/zcode-cua）、桌面 E2E、
+保留 Agent CLI（apps/codez-cli）、CUA producer（packages/codez-cua）、桌面 E2E、
 浏览器验收、Android 设备验收，以及构建、发布、架构、数据库 schema、E2E 工具等工程测试。
 工程测试按被测对象判断，不能因为它位于 packages/desktop/test 就删除。
 工程 Vitest 文件使用显式清单注册，禁止重新使用 packages/\*/test 的业务单测通配符。

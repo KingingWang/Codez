@@ -77,7 +77,7 @@ App 八张表的结论：`automations` 的旧 model/provider/thought_level 生�
 
 ### Pro 集中桌面验证
 
-- Pro 隔离目录 `/Users/dev/Desktop/projects/Z.AI/zcode-db109-e2e.L1ztpm`；没有覆盖其原工作区或真实用户库。一次整批构建，复用 pending `conversation-session-unbound-resume.test.ts`。
+- Pro 隔离目录 `/Users/dev/Desktop/projects/Z.AI/codez-db109-e2e.L1ztpm`；没有覆盖其原工作区或真实用户库。一次整批构建，复用 pending `conversation-session-unbound-resume.test.ts`。
 - Run ID：`desktop-e2e-20260910130906791-p75075-7e14793053e6f24c`。报告位于上述目录 `packages/desktop/.e2e-artifacts/<Run ID>/summary.md`。**1 spec / 1 test PASS，零 flaky，零基础设施失败**；一条用例串联四个冷启动场景。
 - 验证：首次真实启动先迁移旧选择且原字段保留；缺档位/非法 Provider 不妨碍显示历史；回滚写入导致缺新字段时不重跑 0020、模型选择保持空；用户重选后同一 Session 成功提交并得到 replay 回复。没有调用真实模型服务，也不自动晋级 pending。
 - DB109-01～13 的数据库/Reader/协议关键断言已覆盖；DB109-14 **部分验证**：桌面本地实机、两种协议 clientMode、workspace identity 单测通过，但未运行手机 shared-host + 真实 SSH/WSL 联合 E2E，不把协议单测等同联合实机。Windows/完整旧版桌面二进制同样未实跑。

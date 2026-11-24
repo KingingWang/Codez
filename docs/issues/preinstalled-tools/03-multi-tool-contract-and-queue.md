@@ -17,7 +17,7 @@ Status: done
   - 不在本票范围：`rewrite` 字段（[06](06-install-rewrite-and-resign.md)）、`installed` 状态与升级（[04](04-upgrade-and-startup-cleanup.md)）、“Agent 使用预装版本”开关（[05](05-agent-use-switch.md)）。
 - **装配**：
   - Main 读取内置 catalog，按平台为每个工具选资源，按地域规则排序下载地址。内置 catalog 保留本期五个工具描述，顺序按规格；各工具的 `resources` 均为空，不放未发布的资源。
-  - E2E 覆盖变量改名为 `ZCODE_E2E_PREINSTALLED_TOOLS_CATALOG`，只在 E2E 编译开关打开时读取。
+  - E2E 覆盖变量改名为 `CODEZ_E2E_PREINSTALLED_TOOLS_CATALOG`，只在 E2E 编译开关打开时读取。
 - **预装进程**：
   - 每个工具一个 owner，复用现有安装事务。全局一个串行队列，排队中的工具阶段为 `queued`。
   - 取消只影响该工具：正在执行就中止，在队列中就移出。删除等该工具的在途操作结束后再执行。
@@ -59,7 +59,7 @@ Status: done
 
 - 实现 commit：`ee766fb7e39a4f331fdf605910ee127b0edbbef0`（`feat(preinstalled-tools): prepare catalog tools serially`）。开工 HEAD 为 `e4dcf2080da`，完成前已合入集成分支 `6eff4fbbf02`（含 08）。worktree 基线核对与 freshness 通过。
 - catalog、状态和命令已通用化；每工具使用固定发布点与独立 owner，准备共用串行队列。公开入口与运行检查共用记录里的入口定义，运行检查在最终版本目录执行；已删除运行时归档身份核对、调用标记、删除门与删除意图记录。旧 LibreOffice 打包器暂时使用其目录内的 producer-only schema，以保持顺序实施期间可构建；07 迁移时删除该过渡，不恢复旧 App 协议。
-- 必要检查通过：根 `pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed`；`pnpm --filter @zcode/desktop typecheck:e2e`；CLI `pnpm --dir apps/zcode-cli typecheck`、`pnpm --dir apps/zcode-cli lint`。根 lint 172 warnings / 0 errors；CLI lint 71 warnings / 0 errors，9 项原样上游行数接纳；architecture 0 violations。
+- 必要检查通过：根 `pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed`；`pnpm --filter @codez/desktop typecheck:e2e`；CLI `pnpm --dir apps/codez-cli typecheck`、`pnpm --dir apps/codez-cli lint`。根 lint 172 warnings / 0 errors；CLI lint 71 warnings / 0 errors，9 项原样上游行数接纳；architecture 0 violations。
 - 工程：`pnpm test:engineering scripts/preinstalled-tools/catalog.test.ts packages/desktop/test/preinstalledToolsFaultServer.test.ts scripts/libreoffice packages/desktop/test/tsupChunkIsolation.test.ts`，63 项通过。catalog 与多工具/真实资源夹具变更均先有失败回归、后通过。CLI adapters 的 `preinstalled-tools.test.ts`、`libreoffice-entry.test.ts`、`document-python-entry.test.ts` 共 16 项通过；旧 CLI 清单/路径断言迁移前实际出现 2 失败、1 通过，按新契约更新后全部通过，未改 CLI 产品逻辑。
 - 六个 pending 候选的 fixture check 与 macOS arm64 回放通过，App 3.16.3：tracer 首次 run `desktop-e2e-20261029065729459-p16013-b88b99c92df13ba3`；补齐活动取消、自动预装关闭后队列继续和公开 qpdf 入口执行的 run `desktop-e2e-20261029071436648-p50458-8cb108a089f579a3`；controls/faults/empty-catalog/startup 合批 run `desktop-e2e-20261029070743770-p39766-096451673079f4e8`，4/4；真实 SSH remote-context run `local-docker-20261029071659-f4752d`，1/1，Linux arm64 Agent 的 AVAILABLE 与预装 PATH 均不存在，临时容器已删除。全部候选保留 pending，未转正。
 - 已查看多卡排队、五卡无资源、中英文、深浅主题和小窗口截图；controls 保留键盘、迟到响应、发布失败、动态进度条与 reduced-motion 断言。faults 保留断连、校验/解压/运行失败、磁盘空间、代理/CA、候选顺序、旧记录/入口保留和 staging 清理。不适用平台由 Main 装配为 `target:null`，对应 PT-24 的“暂未提供”与零下载；不把旧归档身份错误当成平台兼容证据。

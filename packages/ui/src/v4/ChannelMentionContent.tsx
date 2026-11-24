@@ -4,7 +4,7 @@ import {
   channelContentText,
   type ChannelContentPart,
   type BotGroupInputSource,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { PROMPT_MENTION_BASE_CLASS_NAME } from "@/mentions/mentionChip.js";
 
 /** 只渲染可信消息节点；复制出的 @name 普通文本不能恢复平台身份。 */

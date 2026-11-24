@@ -8,7 +8,7 @@
 // 画的就是 GUI「配置」留下的那条设置行（`WorkflowSettingsChangeRow`），一字不差——同一件事由谁
 // 发起不该有两种读法。唯一的差别是它**可点**：工具行是模型这一步的落点，用户从这里回到那条 run。
 
-import type { WorkflowSettingsAmendMeta } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowSettingsAmendMeta } from "@codez/shared/codez-protocol-v4";
 import { WorkflowSettingsChangeRow } from "@/components/workflow-timeline/WorkflowSettingsChangeRow.js";
 
 /**

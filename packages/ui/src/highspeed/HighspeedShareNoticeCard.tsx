@@ -7,7 +7,7 @@ import shareDialogNoiseUrl from "@/assets/highspeed/share-dialog-noise.png";
 import shareDialogNoiseLightUrl from "@/assets/highspeed/share-dialog-noise-light.png";
 import zaiLogoUrl from "@/assets/highspeed/zai-logo.png";
 import { Button } from "@/components/ui/button.js";
-import { ZCodeWordmarkLogo } from "@/components/ui/ZCodeAboutLogo.js";
+import { CodezWordmarkLogo } from "@/components/ui/CodezAboutLogo.js";
 import {
   Dialog,
   DialogClose,
@@ -27,7 +27,7 @@ import {
   resolveHighspeedShareNoticeMetrics,
 } from "@/highspeed/highspeedShare.js";
 import { calculateHighspeedSavedDurationMs } from "@/highspeed/highspeedSavedTime.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { toast } from "@/components/ui/toast.js";
 
 export function HighspeedShareNoticeCard({
@@ -37,7 +37,7 @@ export function HighspeedShareNoticeCard({
   notice: GlobalNoticeEnvelope;
   onDismiss: () => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [open, setOpen] = useState(false);
   const payload = isHighspeedShareNoticePayload(notice.payload) ? notice.payload : null;
   if (!payload) return null;
@@ -74,8 +74,8 @@ export function HighspeedShareNoticeCard({
             data-highspeed-card-background="dark"
           />
           <div className="highspeed-sidebar-share-card__content">
-            <div className="highspeed-sidebar-share-card__title" role="img" aria-label="ZCode">
-              <ZCodeWordmarkLogo className="highspeed-sidebar-share-card__wordmark" />
+            <div className="highspeed-sidebar-share-card__title" role="img" aria-label="Codez">
+              <CodezWordmarkLogo className="highspeed-sidebar-share-card__wordmark" />
             </div>
             <Button
               type="button"
@@ -152,7 +152,7 @@ export function HighspeedShareDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const prefersReducedMotion = useReducedMotion();
   const speedup = highspeedSpeedup(metrics);
   const savedDurationMs = metrics.savedDurationMs ?? calculateHighspeedSavedDurationMs(metrics);

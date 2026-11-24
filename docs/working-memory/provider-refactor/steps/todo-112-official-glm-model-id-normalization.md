@@ -15,7 +15,7 @@
 
 ### 2.1 官方模板：名单与精确规则一起改
 
-`config/provider/zcode-builtin.json` 中，当前 `zai-api`、`bigmodel-api` 各有 21 个小写 GLM 成员，对应合计 42 条 GLM `templateModelRules`。
+`config/provider/codez-builtin.json` 中，当前 `zai-api`、`bigmodel-api` 各有 21 个小写 GLM 成员，对应合计 42 条 GLM `templateModelRules`。
 
 - 修改两个模板的 `builtinModelIds`，同时修改对应 `templateModelRules[].modelId`；后者严格匹配，不能只改名单。
 - 例如 `glm-5.3` → `GLM-5.3`，`glm-5.3-flash` → `GLM-5.3-Flash`，`glm-5-turbo` → `GLM-5-Turbo`。

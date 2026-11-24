@@ -10,9 +10,9 @@ import { useStartPlanRecommendation } from "@/hooks/useStartPlanRecommendation.j
 import { hasExplicitModelChanged } from "@/lib/startPlanRecommendation.js";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Check, Plus, Trash2 } from "lucide-react";
-import { completeNewModelSelection } from "@zcode/provider";
+import { completeNewModelSelection } from "@codez/provider";
 import {
-  ZCODE_AGENT_PROVIDER,
+  CODEZ_AGENT_PROVIDER,
   type AgentColor,
   type AgentsCapability,
   type AgentsListResult,
@@ -20,13 +20,13 @@ import {
   type BuiltInSubagentName,
   type ModelSelection,
   type SubAgentConfig,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   TID_SUBAGENT_BUILT_IN_MODEL_TRIGGER,
   TID_SUBAGENT_ROW,
   testId,
-} from "@zcode/shared/test-ids";
-import type { ModelSelectionView } from "@zcode/services";
+} from "@codez/shared/test-ids";
+import type { ModelSelectionView } from "@codez/services";
 import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
 import {
@@ -51,14 +51,14 @@ import { settingsResourceRowInteraction } from "@/settings/settingsResourceRowIn
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
 import { useModelSelectionServiceView } from "@/hooks/useModelSelectionView.js";
 import { useConfigWorkspaceServicesResolution as useWorkspaceServicesResolution } from "@/workspace-config-catalog/index.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import {
   buildRegistryModelSelectGroups,
   resolveModelDisplayName,
 } from "@/lib/modelSelectionGroups.js";
 import { resolveModelThoughtOption } from "@/lib/modelThoughtOption.js";
-import { parseModelPickerValue } from "@/lib/zcodeSessionProjection.js";
-import { encodeCustomModelValue } from "@/lib/zcodeCustomModelValue.js";
+import { parseModelPickerValue } from "@/lib/codezSessionProjection.js";
+import { encodeCustomModelValue } from "@/lib/codezCustomModelValue.js";
 import { WorkflowAgentFace } from "@/components/workflow-timeline/WorkflowAgentFace.js";
 import { SUBAGENT_COLORS, SUBAGENT_WORKFLOW_COLOR } from "@/lib/subagentColors.js";
 import { SettingsResourceGroupHeader } from "@/settings/SettingsResourceGroupHeader.js";
@@ -477,7 +477,7 @@ function AgentListRow({
   onEdit: (agent: AgentSummary) => void;
   onToggle: (agent: AgentSummary, enabled: boolean) => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const editable = isEditableUserAgent(agent);
   const showEnabledToggle = supportsEnabledToggle(agent);
   const rowEditable = editable && !isOperating;
@@ -635,7 +635,7 @@ function SubagentModelOverrideControl({
   ) => Promise<void>;
 }) {
   const recommendStartPlan = useStartPlanRecommendation(modelSelectionView, "subagent");
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [pending, setPending] = useState(false);
   const [config, setConfig] = useState<{
     model?: string;
@@ -843,7 +843,7 @@ function SubagentForm({
   onScopeKeyChange: (scopeKey: string) => void;
 }) {
   const recommendStartPlan = useStartPlanRecommendation(modelSelectionView, "subagent");
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const initialFormStateKey = createSubagentFormInitialStateKey(initial);
   const initialFormState = useMemo(
     () => createSubagentFormInitialState(initial),
@@ -1305,7 +1305,7 @@ export function SubagentsSection({
   workspacePath,
   workspaceIdentity,
 }: SubagentsSectionProps) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const confirmDialog = useConfirmDialog();
   const plugins = usePluginManagementStore((state) => state.plugins);
   const availablePlugins = usePluginManagementStore((state) => state.availablePlugins);
@@ -1408,7 +1408,7 @@ export function SubagentsSection({
   const pluginInventoryWorkspacePath = targetWorkspacePath;
   const chatModelSelectGroups = useMemo(() => {
     if (!modelSelectionView) return [];
-    return buildRegistryModelSelectGroups(ZCODE_AGENT_PROVIDER, modelSelectionView, {
+    return buildRegistryModelSelectGroups(CODEZ_AGENT_PROVIDER, modelSelectionView, {
       startPlanBadgeLabel: intl.formatMessage({
         id: "settings.modelProvider.connectionMode.startPlanBadge",
       }),
@@ -1433,7 +1433,7 @@ export function SubagentsSection({
         const result = await subagentsService.list({
           workspacePath: targetWorkspacePath ?? "",
           workspaceIdentity: targetWorkspaceIdentity,
-          provider: ZCODE_AGENT_PROVIDER,
+          provider: CODEZ_AGENT_PROVIDER,
           mode: activeScope === "user" ? "settingsUserOnly" : "allRuntimeScopes",
         });
         if (requestId !== latestRequestIdRef.current) {
@@ -1538,7 +1538,7 @@ export function SubagentsSection({
             agentId: editingAgent.id,
             config,
             oldFilePath: editingAgent.path,
-            provider: ZCODE_AGENT_PROVIDER,
+            provider: CODEZ_AGENT_PROVIDER,
             scope: editingAgent.scope === "workspace" ? "workspace" : "user",
             workspacePath: editingAgent.projectPath ?? targetWorkspacePath ?? undefined,
             workspaceIdentity: targetWorkspaceIdentity,
@@ -1546,7 +1546,7 @@ export function SubagentsSection({
         } else {
           await subagentsService.createAgent({
             config,
-            provider: ZCODE_AGENT_PROVIDER,
+            provider: CODEZ_AGENT_PROVIDER,
             scope: activeScope,
             workspacePath: targetWorkspacePath ?? undefined,
             workspaceIdentity: targetWorkspaceIdentity,

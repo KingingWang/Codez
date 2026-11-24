@@ -1,13 +1,13 @@
 import {
-  buildZCodeEndpointUrls,
+  buildCodezEndpointUrls,
   clientConfigReadOptionsSchema,
   parseClientConfigResponse,
-  resolveOptionalZCodeAuthorization,
+  resolveOptionalCodezAuthorization,
   type ApiClient,
   type ClientConfigResponse,
   type ClientConfigSnapshot,
-  type ZCodeJwtTokenResolver,
-} from "@zcode/shared";
+  type CodezJwtTokenResolver,
+} from "@codez/shared";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import type { IClientConfigService } from "./clientConfig.js";
 
@@ -40,7 +40,7 @@ interface CacheEntry {
 export function createClientConfigService(dependencies: {
   apiClient: ApiClient;
   resolveRequestContext: () => RequestContext | Promise<RequestContext>;
-  resolveZcodeJwtToken?: ZCodeJwtTokenResolver;
+  resolveZcodeJwtToken?: CodezJwtTokenResolver;
 }): IClientConfigService {
   const entries = new Map<string, CacheEntry>();
 
@@ -123,12 +123,12 @@ export function createClientConfigService(dependencies: {
     async getSnapshot(options = {}) {
       const { forceRefresh } = clientConfigReadOptionsSchema.parse(options);
       const context = await dependencies.resolveRequestContext();
-      const authorization = await resolveOptionalZCodeAuthorization(
+      const authorization = await resolveOptionalCodezAuthorization(
         dependencies.resolveZcodeJwtToken,
       );
       const url = new URL(
         "/api/v1/client/configs",
-        buildZCodeEndpointUrls(context.endpointOrigin).origin,
+        buildCodezEndpointUrls(context.endpointOrigin).origin,
       );
       url.searchParams.set("app_version", context.appVersion);
       url.searchParams.set("platform", context.platform);

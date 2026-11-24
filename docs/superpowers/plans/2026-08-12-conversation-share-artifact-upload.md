@@ -6,7 +6,7 @@
 
 **Architecture:** Extend the formal V4 row protocol with an artifact row projected from completed tool attachments. The share service materializes only selected artifact rows through an injected async local file reader, validates capabilities and integrity, creates a preparation with the exact count, uploads multipart descriptors/files in deterministic order, then confirms the unchanged public projection.
 
-**Tech Stack:** TypeScript, Zod, Vitest, Node async file APIs, existing ZCode V4 projection and conversation-share HTTP client.
+**Tech Stack:** TypeScript, Zod, Vitest, Node async file APIs, existing Codez V4 projection and conversation-share HTTP client.
 
 ---
 
@@ -22,14 +22,14 @@ Record source authority, state pruning, upload ordering, integrity, failure beha
 ### Task 2: Add the formal artifact row
 
 **Files:**
-- Modify: `packages/shared/src/zcode-protocol-v4/rows.ts`
+- Modify: `packages/shared/src/codez-protocol-v4/rows.ts`
 - Modify: `packages/shared/src/conversation-share.ts`
 - Test: `packages/shared/test/conversationShareContract.test.ts`
-- Modify: `apps/zcode-cli/packages/contracts/src/events/session.events.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/product-projection.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/transcript-hydration.ts`
-- Test: `apps/zcode-cli/packages/bootstrap/tests/product-projection.test.ts`
-- Test: `apps/zcode-cli/packages/bootstrap/tests/transcript-hydration.test.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/events/session.events.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/product-projection.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/transcript-hydration.ts`
+- Test: `apps/codez-cli/packages/bootstrap/tests/product-projection.test.ts`
+- Test: `apps/codez-cli/packages/bootstrap/tests/transcript-hydration.test.ts`
 
 Write failing schema/live/cold tests, then project completed tool attachments as deterministic artifact rows. Keep text-only paths unrecognized.
 

@@ -1,4 +1,4 @@
-import type { SessionRealtimePort } from "@zcode/services";
+import type { SessionRealtimePort } from "@codez/services";
 import {
   type TaskRealtimeHostDeliveryKind,
   createUuid,
@@ -10,7 +10,7 @@ import {
   HostMessageTypes,
   HostResponseTypes,
   hostIncomingMessageSchema,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 interface ParentPortLike {
   postMessage(message: unknown): void;

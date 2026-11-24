@@ -43,7 +43,7 @@ export function assertSubagentListingTrajectory(
     );
     assert.ok(
       description.includes(
-        "Each agent type's model, reasoning effort, and tools come from its definition (`.zcode/agents/*.md` frontmatter).",
+        "Each agent type's model, reasoning effort, and tools come from its definition (`.codez/agents/*.md` frontmatter).",
       ),
     );
     assert.ok(!description.includes("ID or name"));

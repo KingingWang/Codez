@@ -1,6 +1,6 @@
 # 01 — Web 远控接入 Relay V2：手机登录后连接桌面
 
-**What to build:** 把 Web 远控的 relay 层从 V1（匿名注册 + 二维码携带 `pass_hash` 的 nonce/HMAC 挑战应答）切换到 zcode-server 的 Relay V2（JWT 注册设备 + 一次性连接 token）。桌面端与手机端都只实现 V2；手机端必须用与桌面相同的账号登录，才能扫码或从设备列表选择桌面并进入现有的 workspace bridge / `rpc-frame` 链路。手机页面继续部署在 `/remote/v4`，靠 OSS 版本目录与旧版本 App 隔离。
+**What to build:** 把 Web 远控的 relay 层从 V1（匿名注册 + 二维码携带 `pass_hash` 的 nonce/HMAC 挑战应答）切换到 codez-server 的 Relay V2（JWT 注册设备 + 一次性连接 token）。桌面端与手机端都只实现 V2；手机端必须用与桌面相同的账号登录，才能扫码或从设备列表选择桌面并进入现有的 workspace bridge / `rpc-frame` 链路。手机页面继续部署在 `/remote/v4`，靠 OSS 版本目录与旧版本 App 隔离。
 
 **Blocked by:** 开发不受阻。生产发布受「补充说明 → 外部依赖」中的四项阻塞。
 
@@ -10,13 +10,13 @@
 
 ## 问题陈述
 
-- 服务端 Relay V2 已合入 zcode-server `staging` 并在测试环境生效，V1 入口成为受 `relay.disable_v1` 控制的遗留路径。客户端至今只有 V1 实现，V1 一旦关闭，所有版本的 Web 远控全部失效。
+- 服务端 Relay V2 已合入 codez-server `staging` 并在测试环境生效，V1 入口成为受 `relay.disable_v1` 控制的遗留路径。客户端至今只有 V1 实现，V1 一旦关闭，所有版本的 Web 远控全部失效。
 - V1 的安全模型是"拿到二维码 URL 的人就能控制电脑"：`pass_hash` 明文出现在 URL 中，与用户身份无关。手机端没有登录，也无法知道"我的设备有哪些"。
 - 4 月为"手机登录后选设备"预留的 `/web-remote` 入口从未真正上线，生产与测试环境都被边缘网关重定向到官网 404，OAuth 回调地址也随之失效。
 
 ## 解决方案
 
-- 桌面端启动远控前必须已登录（ZAI 或 BigModel 任一能签发 zcode JWT 的 provider）。首次启动时用 JWT 向服务端注册设备并持久化 `device_sid`；每次建连前申请一次性 `role=device` token，连接 `/api/v1/remote/ws2`。
+- 桌面端启动远控前必须已登录（ZAI 或 BigModel 任一能签发 codez JWT 的 provider）。首次启动时用 JWT 向服务端注册设备并持久化 `device_sid`；每次建连前申请一次性 `role=device` token，连接 `/api/v1/remote/ws2`。
 - 二维码只携带 `app_version`、`sid`、`mid`、`name`，不再携带任何鉴权材料。
 - 手机打开 `/remote/v4` 后先经过登录门禁；登录成功后，有 `sid` 直接连接该设备，无 `sid` 则连接上次设备或展示当前账号的在线设备列表。每次建连前申请 `role=terminal` token。
 - OAuth 回调直接回到 `/remote/v4`（页面识别 `code`+`state`），登录态写入同源 localStorage，随后回跳到携带完整参数的原 URL。
@@ -68,11 +68,11 @@
 - 手机入口保持 `/remote/v4`。版本隔离依赖 OSS 多版本发布：桌面二维码携带自身 `app_version`，网关按版本目录取页面；3.13.0 及更早的 App 继续使用各自 tag 构建的 V1 页面。不做双模式，不新增 `/remote/v5`。
 - 删除 `/remote`、`/remote/v3`、`/remote/v4` 三条 Docker 构建链（Dockerfile、nginx 配置、构建/推送/验证脚本、package.json 命令及文档中对 旧基础设施仓库及其路径变量 的引用）；保留 `/remote/__test__` 测试链和 OSS 流水线。文档标注旧部署冻结在最后一次 V1 镜像。
 - 删除 `/web-remote` 路由判断、已登录等待页、`remoteControlToken`/`relayOrigin` 旧 bootstrap 及其 `/api/remote-control/*` 请求；复用登录页、回调页、Web 认证服务、浏览器 OAuth 凭据仓库和 OAuth state 编解码。4 月的 Web 远控登录设计文档顶部标注被本 spec 取代。
-- 纯客户端适配，不向 zcode-server 提任何改动，全部按 staging 现有契约实现。
+- 纯客户端适配，不向 codez-server 提任何改动，全部按 staging 现有契约实现。
 
 ### B. 桌面端：登录门禁与设备身份
 
-- 已登录的判定：凭据存储中存在 `zcodejwttoken`。ZAI 与 BigModel 两个 provider 都满足。
+- 已登录的判定：凭据存储中存在 `codezjwttoken`。ZAI 与 BigModel 两个 provider 都满足。
 - 未登录时远控弹窗展示"需要先登录"状态并提供登录入口；此时不注册设备、不连接 relay、不签发内部启动票据。
 - 懒注册：首次启动远控且已登录时调用设备注册接口，`device_mid` 沿用现有桌面 deviceMid（uuid，仅展示与网关哈希用途），`meta.name` 为主机名。持久化 `{deviceSid, userId, endpointOrigin}` 到 AppSettings，不再写入 credential。
 - 身份重绑：启动远控时若当前登录用户 id 或 endpoint origin 与持久化记录不一致，或服务端在 `auth_init` 返回 `AUTH_FAILED`，则重新注册并尽力调用删除接口清理旧记录（失败忽略，不阻塞）。
@@ -82,7 +82,7 @@
 
 ### C. 桌面端：连接与 token
 
-- 每次建连前用 JWT 调用 token 接口申请 `role=device` 的一次性 token；WebSocket 地址为 `wss://<endpoint origin>/api/v1/remote/ws2?token=<token>&mid=<deviceMid>`。任何一次 WebSocket 失败都重新申请 token，不复用 URL。删除 `X-Device-ID` 请求头。`ZCODE_WEB_REMOTE_CONTROL_RELAY_WS_URL` 调试覆盖保留，语义改为 V2 地址；test endpoint 继续映射到测试域名。
+- 每次建连前用 JWT 调用 token 接口申请 `role=device` 的一次性 token；WebSocket 地址为 `wss://<endpoint origin>/api/v1/remote/ws2?token=<token>&mid=<deviceMid>`。任何一次 WebSocket 失败都重新申请 token，不复用 URL。删除 `X-Device-ID` 请求头。`CODEZ_WEB_REMOTE_CONTROL_RELAY_WS_URL` 调试覆盖保留，语义改为 V2 地址；test endpoint 继续映射到测试域名。
 - `auth_init` 只带 `device_sid`、`meta`、`client_ts`，不带 `role`；`pair_status_query` 不带 `device_sid`；`client_ts` 使用 Unix 秒。
 - 心跳基准 5 秒、jitter ±1 秒、ACK watchdog 15 秒；沿用递归 `setTimeout`、不补发历史心跳、watchdog 触发重连附加小幅随机延迟的既有约束。
 - `KICKED` 有界重试：延迟 2~5 秒随机后换新 token 重连一次；60 秒内再次收到 `KICKED` 则停止自动重连，状态置 `kicked`，对外 failure 为 `session-conflict`。
@@ -154,7 +154,7 @@ auth_ack(matched) ─▶ bootstrap-request ─▶ 版本守卫 ─▶ workspace-
 
 - 多窗口各自启动远控共用同一设备身份导致互踢；保持现状，仅在文档记录风险。
 - 手机端删除设备、重命名设备、设备管理页；桌面端"重新注册此设备"排障入口。
-- 任何 zcode-server 改动（区分 `KICKED` 与 owner 丢失、持久化离线设备 `meta`、`client_ts` 单位说明）。
+- 任何 codez-server 改动（区分 `KICKED` 与 owner 丢失、持久化离线设备 `meta`、`client_ts` 单位说明）。
 - V1 关闭时机与 `relay.disable_v1` 切换；旧版本 App 的兼容维护。
 - 未登录用户的远控能力；除 ZAI、BigModel 外的登录方式。
 - 网关、ESA、OSS、OAuth 白名单等基础设施变更本身（只在本 spec 列出需求与验收方法）。
@@ -166,7 +166,7 @@ auth_ack(matched) ─▶ bootstrap-request ─▶ 版本守卫 ─▶ workspace-
 
 | 项                                                                                           | 归属                              | 现状                                                                                                      | 验收方法                                                   |
 | -------------------------------------------------------------------------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| 生产 zcode-server 部署 V2                                                                    | 服务端                            | `zcode.z.ai/api/v1/remote/token` 返回 404                                                                 | 该接口无 JWT 返回 401                                      |
+| 生产 codez-server 部署 V2                                                                    | 服务端                            | `zcode.z.ai/api/v1/remote/token` 返回 404                                                                 | 该接口无 JWT 返回 401                                      |
 | 生产网关将 `/api/v1/remote/ws2` 精确转发到 V2 relay，device 与 terminal 按 `mid` 落同一实例  | ESA/阿里云网关维护方              | 当前按 `/api/v1/remote/ws` 前缀落到 V1 处理器（返回 400）                                                 | 无 token 返回 401；同 `mid` 两端配对稳定                   |
 | 生产网关按 `app_version` 取 OSS `<version>/index.html`，`/remote/v4/<dir>/<path>` 取对应目录 | ESA/阿里云网关维护方              | 测试环境已生效；生产对所有版本返回同一份 index，`/remote/v4/3.13.0/release-manifest.json` 返回 index.html | 该 manifest 返回 JSON；不同 `app_version` 返回各自版本资源 |
 | OAuth 白名单登记 `https://zcode.z.ai/remote/v4` 与 `https://zcode.z.ai/remote/v4`    | 与 ZAI、BigModel OAuth 提供方沟通 | 未开始                                                                                                    | 测试环境完成一次真实登录回跳                               |

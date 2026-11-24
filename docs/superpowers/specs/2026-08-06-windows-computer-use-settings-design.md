@@ -7,7 +7,7 @@
 ## 目标
 
 在 Windows 桌面端设置页展示「电脑控制」分区，并复用 macOS 现有的官方
-`zcode-cua` 插件总开关。Windows 分区只展示总开关，不展示系统授权相关内容
+`codez-cua` 插件总开关。Windows 分区只展示总开关，不展示系统授权相关内容
 （Windows 无 macOS TCC 权限模型）。
 
 ## 产品边界
@@ -16,7 +16,7 @@
   不再包含画中画、后台模式、Helper 状态或 Input controller）。
 - Windows 桌面端展示同一个「电脑控制」导航入口，但内容只包含总开关。
 - Windows 总开关与 macOS 共用插件管理状态和启停逻辑；切换时同步启用或禁用官方
-  `zcode-cua` 插件及其 MCP、Skill。
+  `codez-cua` 插件及其 MCP、Skill。
 - Linux、普通 Web 和手机远控不展示「电脑控制」导航入口。
 - 不新增 Windows 专属设置字段、文案、协议或 runtime 生命周期。
 - 不改变远程 workspace、手机 `/remote`、replayable 消息流、owner、queue、snapshot 或
@@ -31,16 +31,16 @@
 ```text
 SettingsPage(isMacDesktop, isWindowsDesktop)
   |
-  +-- macOS Desktop ------> 电脑控制导航 ------> 共享 zcode-cua 总开关
+  +-- macOS Desktop ------> 电脑控制导航 ------> 共享 codez-cua 总开关
   |                                                |
   |                                                +--> macOS 权限行（Accessibility / Screen Recording）
   |
-  +-- Windows Desktop ----> 电脑控制导航 ------> 共享 zcode-cua 总开关
+  +-- Windows Desktop ----> 电脑控制导航 ------> 共享 codez-cua 总开关
   |
   +-- Linux / Web / 手机 -> 不生成电脑控制导航
 
 共享总开关
-  -> pluginManagementStore.setEnabled(zcode-cua, next)
+  -> pluginManagementStore.setEnabled(codez-cua, next)
      -> 成功：store 确认新状态，插件的 MCP 与 Skill 同步启停
      -> 失败：保留原状态并沿用现有 toast 错误提示
 ```
@@ -82,7 +82,7 @@ Windows 不通过 CSS 隐藏高级设置；组件渲染与副作用本身都必�
 1. macOS 和 Windows 桌面配置都包含 `computerUse`，Linux/Web/手机配置不包含。
 2. Windows `ComputerUseSection` 只渲染总开关，不渲染授权内容；macOS 不再渲染已下线的
    画中画/后台模式/Helper/controller 行。
-3. Windows 总开关调用官方 `zcode-cua` 插件的现有 `setEnabled` 流程。
+3. Windows 总开关调用官方 `codez-cua` 插件的现有 `setEnabled` 流程。
 4. macOS 权限行的渲染条件保持不变。
 5. 不可见分区的初始偏好或导航意图回退到 `general`，设置页不出现空白。
 6. 相关单元测试、`pnpm typecheck` 和 `pnpm lint` 全部通过。
@@ -92,4 +92,4 @@ Windows 不通过 CSS 隐藏高级设置；组件渲染与副作用本身都必�
 - 为 Windows 增加授权 UI 或任何 CUA 专属设置行。
 - 修改 Windows CUA runtime、安装、签名、broker 或工具能力。
 - 为 Linux 或 Web 开放 CUA 设置。
-- 改变插件页中的 `zcode-cua` 管理行为。
+- 改变插件页中的 `codez-cua` 管理行为。

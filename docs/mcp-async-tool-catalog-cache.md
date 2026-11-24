@@ -16,7 +16,7 @@ flowchart LR
 
 ## 配置
 
-配置身份只有一个判定：`mcpConfigKey`（`@zcode/contracts`）对键排序并丢弃 undefined 字段后序列化。pool 的连接 key、adapter 的复用判断、MCP App 连接摘要、session 的配置变化判断都使用它；`{ timeoutMs: undefined }` 与 `{}` 是同一配置，不重建共享连接。
+配置身份只有一个判定：`mcpConfigKey`（`@codez/contracts`）对键排序并丢弃 undefined 字段后序列化。pool 的连接 key、adapter 的复用判断、MCP App 连接摘要、session 的配置变化判断都使用它；`{ timeoutMs: undefined }` 与 `{}` 是同一配置，不重建共享连接。
 
 执行环境中的 CLI 监听用户与项目配置、插件安装记录 `installed_plugins.json`、官方插件 bundled 分片，以及 inline 插件（用户配置 `plugins.dirs`）的 manifest 与 MCP 声明文件。desktop 会话读磁盘配置；设置页和插件操作在别的 CLI 进程里执行，文件监听是唯一的跨进程传播途径。
 
@@ -56,8 +56,8 @@ flowchart LR
 - 加载 warn（配置读取失败、manifest 无效、插件 MCP 诊断与准备失败、filesystem 目录不可读）在结果被采纳时记录，只记上次采纳的结果里没有的条目；重复保存配置、warn 不变时不重复记录。
 - 项目文件（用户配置以外的配置路径）与启动配置用同一份项目白名单解析（[项目配置信任边界](./security/deep-link-project-trust-boundary.md)）：只认扩展声明与启停，`features`、`plugins.enabled`、`plugins.suppressedBuiltins` 等运行参数不生效；运行参数的非法值不让同一文件里的 MCP 声明失效。之后与启动配置共用同一个整形规则：去掉 Hook 声明和 `plugins.dirs`，stdio 的相对 `cwd` 按项目根解析。项目配置不能引入插件根目录。
 - 各配置文件整份按 scope 优先级合并（项目高于用户），与 `createConfig` 相同：一个文件没有声明的顶层字段不覆盖低优先级文件。例如用户配置关闭 `features.mcp`、项目配置只写了 `plugins.enabledPlugins` 时，MCP 仍是关闭的。嵌套对象的合并规则也与 `createConfig` 相同（见 [配置合并存量问题](./issues/config-merge-legacy/01-nested-fields-replaced-by-higher-layer.md)）。
-- 某个配置文件没有 server 时，读取它登记的回退文件：`<工作目录>/.zcode/config.json` 回退到 `<工作目录>/.agents/mcp.json`，用户配置回退到 `~/.agents/mcp.json`。
-- 每个 server 按所在文件标记来源：项目文件及其回退标为 `workspace`，用户配置及其回退标为 `user`。插件和内建 server 保留各自的来源，显式传入的 map 保留调用方的标记。工作区 guard 只按这个标记和自己的项目声明判定：标为 `workspace` 却没有对应项目声明的 server 一律拒绝，显示为未信任。例如项目里别的文件已声明 server 时，`.zcode/config.json` 为空而回退读出的 `.agents/mcp.json` 条目就属于这种情况。
+- 某个配置文件没有 server 时，读取它登记的回退文件：`<工作目录>/.codez/config.json` 回退到 `<工作目录>/.agents/mcp.json`，用户配置回退到 `~/.agents/mcp.json`。
+- 每个 server 按所在文件标记来源：项目文件及其回退标为 `workspace`，用户配置及其回退标为 `user`。插件和内建 server 保留各自的来源，显式传入的 map 保留调用方的标记。工作区 guard 只按这个标记和自己的项目声明判定：标为 `workspace` 却没有对应项目声明的 server 一律拒绝，显示为未信任。例如项目里别的文件已声明 server 时，`.codez/config.json` 为空而回退读出的 `.agents/mcp.json` 条目就属于这种情况。
 
 未显式传入 server map 时读取执行环境的磁盘配置；显式传入的 map 保留原覆盖语义。除来源标记外，加载器首载结果与 `createConfig` + 插件 + 内建 server 的结果一致（一致性测试锁定）。
 
@@ -186,7 +186,7 @@ needs-auth 段放在失败段之前：
 The following MCP servers require authentication before their tools can be used:
 <names>
 
-The authorization cannot be completed from this conversation. If the user's request depends on one of these servers (even if they didn't name it explicitly), or they ask about it, tell them that it needs to be authorized — via the MCP server settings in ZCode — and that the capability is unavailable until they do. Otherwise carry on with the request and do not mention these servers. Do not ask the user for authorization codes, tokens, or callback URLs.
+The authorization cannot be completed from this conversation. If the user's request depends on one of these servers (even if they didn't name it explicitly), or they ask about it, tell them that it needs to be authorized — via the MCP server settings in Codez — and that the capability is unavailable until they do. Otherwise carry on with the request and do not mention these servers. Do not ask the user for authorization codes, tokens, or callback URLs.
 ```
 
 超过 30 个名称时用 `, ` 连接并追加 `…and N more`。ToolSearch 无匹配结果只附 pending 与 failed 事实。
@@ -271,8 +271,8 @@ ToolSearch 即使只有 pending server 也可用。执行时读最新的作用�
   Connected (their tools are now available — call them directly): <names>
   Failed to connect: <names>
   Still connecting (try again or proceed without): <names>
-  Needs authentication (ask the user to authorize them in the ZCode MCP settings): <names>
-  Disabled (ask the user to enable them in the ZCode MCP settings): <names>
+  Needs authentication (ask the user to authorize them in the Codez MCP settings): <names>
+  Disabled (ask the user to enable them in the Codez MCP settings): <names>
   Unknown (no MCP server with this name is configured): <names>
   ```
 
@@ -280,7 +280,7 @@ ToolSearch 即使只有 pending server 也可用。执行时读最新的作用�
 
 ## 缓存
 
-协议入口（App 经 ZCode Protocol 启动的 CLI）在 MCP 功能开启时创建共享连接池，并默认开启 stdio 进程内缓存，命中后仍后台主动连接；TUI 和 headless 不使用这份缓存。缓存只补当前有效 pending 连接尚未知的目录；无连接记录、租约释放、最终失败和有效空列表不能回退到缓存。容量 32 条、TTL 30 分钟、单条 2 MiB、总量 16 MiB；远程不使用本地目录缓存。缓存不持有 client，不作为执行和权限事实。
+协议入口（App 经 Codez Protocol 启动的 CLI）在 MCP 功能开启时创建共享连接池，并默认开启 stdio 进程内缓存，命中后仍后台主动连接；TUI 和 headless 不使用这份缓存。缓存只补当前有效 pending 连接尚未知的目录；无连接记录、租约释放、最终失败和有效空列表不能回退到缓存。容量 32 条、TTL 30 分钟、单条 2 MiB、总量 16 MiB；远程不使用本地目录缓存。缓存不持有 client，不作为执行和权限事实。
 
 ## 验收与延期
 

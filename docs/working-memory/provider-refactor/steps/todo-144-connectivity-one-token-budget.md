@@ -7,7 +7,7 @@
 ## 裁决与边界
 
 - 连接测试不是内容生成，不再复用 `auxiliaryModelOptions()` 的 5,000 Token 预算；在 Core `testModelConnectivity()` 独立绑定 `maxOutputTokens: 1`，仍取模型公开有序推理档位的首项。
-- 固定 system `You are ZCode connectivity probe.` 与 user `hi` 原样保留，不改提示词、角色、模型配置或用户保存的选择。
+- 固定 system `You are Codez connectivity probe.` 与 user `hi` 原样保留，不改提示词、角色、模型配置或用户保存的选择。
 - 消费完整正式 Model 流。正常 finish（含达到输出上限 length）即成功，允许无正文、只有 reasoning；仅开始响应但缺少 finish、error event、鉴权/参数拒绝、超时等仍失败。不吞错误，不自动提高预算重试。
 - Git、标题等其他辅助调用的预算不变。无新配置、协议、持久化或迁移，无 Provider 特判。
 - 部分上游可能拒绝 1 Token 或存在 thinking budget 约束，按正式错误边界报告；不声称支持所有供应商，也不承诺缩短排队/首响应耗时。

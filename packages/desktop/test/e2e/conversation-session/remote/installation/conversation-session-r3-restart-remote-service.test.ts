@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
-import { TID_CONFIRM_DIALOG_CONFIRM, TID_SETTINGS_BACK_BUTTON } from "@zcode/shared/test-ids";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
+import { TID_CONFIRM_DIALOG_CONFIRM, TID_SETTINGS_BACK_BUTTON } from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom } from "#e2e/helpers/desktop-app";
 import { getToastMessages } from "#e2e/helpers/conversation-session-toast";
 import {
@@ -21,7 +21,7 @@ import { readHostProcesses, runSSHCommand, waitForRemoteTab } from "#e2e/helpers
 
 const CASE_MARKER = "E2E_R3_RESTART_REMOTE_SERVICE";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-restart-remote-service",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-restart-remote-service",
 );
 
 /**
@@ -157,7 +157,7 @@ describe(`${CASE_MARKER}: 设备卡重启远端服务`, () => {
     expect(core1.pid).not.toBe(core0.pid);
     expect(core1.supervisorPid).not.toBe(core0.supervisorPid);
     const status1 = JSON.parse(
-      (await runSSHCommand(config, 'cat "$HOME/.zcode/server/run/status.json"')).stdout,
+      (await runSSHCommand(config, 'cat "$HOME/.codez/server/run/status.json"')).stdout,
     ) as { serviceRegistered: boolean; crashBudget: { crashCount: number } };
     expect(status1.serviceRegistered).toBe(false);
     expect(status1.crashBudget.crashCount).toBe(0);

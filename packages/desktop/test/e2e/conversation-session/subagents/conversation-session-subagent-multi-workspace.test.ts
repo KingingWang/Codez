@@ -6,7 +6,7 @@ import {
 } from "#e2e/helpers/subagent-refresh-conversation";
 import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { TID_VIRTUAL_PROJECT_ADD } from "@zcode/shared/test-ids";
+import { TID_VIRTUAL_PROJECT_ADD } from "@codez/shared/test-ids";
 import {
   selectNativeProjectDirectories,
   startDraftFromProject,
@@ -69,7 +69,7 @@ describe("Subagent 多实际 workspace CLI", () => {
     await turn("A_SEED");
     const a = (await getV4PaneSnapshot()).sessionId!;
     const workspaceB = join(getE2EAppDataPaths().homeDir, "subagent-workspace-b");
-    await mkdir(join(workspaceB, ".zcode", "agents"), { recursive: true });
+    await mkdir(join(workspaceB, ".codez", "agents"), { recursive: true });
     // 项目新增已统一为项目编辑器；旧 Open folder 菜单不再存在。
     await $('[data-testid="project-section"]').moveTo();
     await $(`[data-testid="${TID_VIRTUAL_PROJECT_ADD}"]`).click();
@@ -99,7 +99,7 @@ describe("Subagent 多实际 workspace CLI", () => {
     await started("B_HOLD");
     // 真实文件系统故障：B 的 agents 根目录暂时变成文件，读取必定 ENOTDIR，跨平台一致。
     // 此时两轮已经取到快照；用户配置保存不应再遍历 B。
-    const blockedRoot = join(workspaceB, ".zcode", "agents");
+    const blockedRoot = join(workspaceB, ".codez", "agents");
     async function blockProject() {
       const removed = await subagentUpdateCursor();
       await rename(blockedRoot, blockedRoot + "-saved");

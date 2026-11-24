@@ -16,7 +16,7 @@ import {
   TID_V4_WORKSPACE_HOOK_PENDING_TRIGGER,
   TID_WORKTREE_TOGGLE,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -34,12 +34,12 @@ import {
 } from "#e2e/helpers/v4-conversation";
 
 const TEST_TIMEOUT_MS = 180_000;
-// E2E 的 ZCODE_DATA_BASE_DIR 即 DEFAULT_WORKSPACE 的父目录；受管根目录与 Host 同一规则推导。
-const MANAGED_ROOT = join(dirname(DEFAULT_WORKSPACE), ".zcode", "worktrees");
+// E2E 的 CODEZ_DATA_BASE_DIR 即 DEFAULT_WORKSPACE 的父目录；受管根目录与 Host 同一规则推导。
+const MANAGED_ROOT = join(dirname(DEFAULT_WORKSPACE), ".codez", "worktrees");
 const HOOKS_SECTION_SELECTOR = '[data-testid="hooks-settings-section"]';
 // 「新建」按钮由 SettingsResourceHeaderActions 渲染，按 data 属性定位，不依赖 locale。
 const NEW_HOOK_BUTTON_SELECTOR = '[data-settings-create-action="settings.hooks.add"]';
-const CONFIG_RELATIVE_PATH = join(".zcode", "config.json");
+const CONFIG_RELATIVE_PATH = join(".codez", "config.json");
 const WORKTREE_NOTICE_SELECTOR = '[data-testid="workspace-hook-worktree-notice"]';
 const HOOK_ROW_SELECTOR = `//div[@data-testid="configured-hook-row"][contains(., "${HOOK_TRUST_WORKTREE_ENTRY_LABEL}")]`;
 // 信任按钮通过 ShieldCheck 图标定位（lucide class），不依赖 locale 文案。

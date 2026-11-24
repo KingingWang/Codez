@@ -16,7 +16,7 @@ import {
   TID_V4_QUEUE_ITEM_EDIT,
   TID_V4_QUEUE_ITEM_EDIT_LOCK,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import { releaseControlledReplay } from "#e2e/helpers/controlled-replay";
 import { openMobilePairingPage, seedMobileFixtureLogin } from "#e2e/helpers/mobile-pairing";
@@ -57,9 +57,9 @@ describe("B09 排队消息冻结编辑：桌面与手机", () => {
   let mobile: Page | undefined;
 
   after(async () => {
-    if (mobile && process.env.ZCODE_E2E_ARTIFACT_DIR)
+    if (mobile && process.env.CODEZ_E2E_ARTIFACT_DIR)
       await mobile
-        .screenshot({ path: join(process.env.ZCODE_E2E_ARTIFACT_DIR, "B09-mobile.png") })
+        .screenshot({ path: join(process.env.CODEZ_E2E_ARTIFACT_DIR, "B09-mobile.png") })
         .catch(() => undefined);
     await webBrowser?.close();
     const pane = await getV4PaneSnapshot().catch(() => null);
@@ -184,7 +184,7 @@ describe("B09 排队消息冻结编辑：桌面与手机", () => {
     );
     // B09k（刷新）：手机页面刷新后沿用同一 editorId（Web Lock 随旧文档卸载释放，新文档能重新取得），
     // 发现自己的遗留锁并自动释放；随后重新进入编辑，供下面的复制标签页与断开步骤使用。
-    const editorIdKey = "zcode-v4-editor-id:v1";
+    const editorIdKey = "codez-v4-editor-id:v1";
     const editorIdBeforeReload = await mobile!.evaluate(
       (key) => sessionStorage.getItem(key),
       editorIdKey,
@@ -271,14 +271,14 @@ describe("B09 排队消息冻结编辑：桌面与手机", () => {
 
   async function openMobileTask(taskId: string): Promise<Page> {
     const pairingUrl = await obtainUnreadPairingUrl(
-      new URL(process.env.ZCODE_WEB_REMOTE_CONTROL_URL!).origin,
+      new URL(process.env.CODEZ_WEB_REMOTE_CONTROL_URL!).origin,
     );
     webBrowser = await chromium.launch({
-      ...(process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE
-        ? { executablePath: process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE }
+      ...(process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE
+        ? { executablePath: process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE }
         : { channel: "chrome" }),
       headless: true,
-      args: process.env.ZCODE_E2E_BROWSER_NO_PROXY === "1" ? ["--no-proxy-server"] : [],
+      args: process.env.CODEZ_E2E_BROWSER_NO_PROXY === "1" ? ["--no-proxy-server"] : [],
     });
     mobileContext = await webBrowser.newContext({
       viewport: { width: 390, height: 844 },
@@ -289,7 +289,7 @@ describe("B09 排队消息冻结编辑：桌面与手机", () => {
     await seedMobileFixtureLogin(mobileContext);
     const page = await mobileContext.newPage();
     await openMobilePairingPage(page, pairingUrl, {
-      artifactDir: process.env.ZCODE_E2E_ARTIFACT_DIR!,
+      artifactDir: process.env.CODEZ_E2E_ARTIFACT_DIR!,
       caseMarker: CASE_MARKER,
       phase: "pair",
       readySelector: `[data-testid="${testId(TID_TASK_ITEM, taskId)}"]`,

@@ -4,9 +4,9 @@ import {
   type ProjectAccessTokenMaterial,
   resolveBigModelApiOrigin,
   resolveZaiBusinessBaseUrl,
-  type ZCodeAccountAccess,
+  type CodezAccountAccess,
   type ProviderFamilyDomain,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   isSameOAuthAccountMaterial,
   type OAuthAccountMaterial,
@@ -25,7 +25,7 @@ interface TeamPlanRequestKeyDependencies {
   readonly loadOAuthAccountMaterial: (
     family: ProviderFamilyDomain,
   ) => Promise<OAuthAccountMaterial | null>;
-  readonly access: Extract<ZCodeAccountAccess, { planKind: "team-coding-plan" }>;
+  readonly access: Extract<CodezAccountAccess, { planKind: "team-coding-plan" }>;
 }
 
 export async function resolveAccountTeamPlanRuntimeApiKey(
@@ -48,10 +48,10 @@ export async function resolveAccountTeamPlanRuntimeMaterial(
     });
     return null;
   }
-  const zcodeJwtToken = account.zcodeJwtToken;
-  if (family === "bigmodel" && zcodeJwtToken && token === zcodeJwtToken) {
-    // BigModel /api/biz 只接受登录 access token，不能使用旧版本误存的 ZCode JWT。
-    log.warn(undefined, "Team Plan runtime key projection skipped: stale zcode JWT token", {
+  const codezJwtToken = account.codezJwtToken;
+  if (family === "bigmodel" && codezJwtToken && token === codezJwtToken) {
+    // BigModel /api/biz 只接受登录 access token，不能使用旧版本误存的 Codez JWT。
+    log.warn(undefined, "Team Plan runtime key projection skipped: stale codez JWT token", {
       family,
       projectId,
     });

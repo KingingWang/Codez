@@ -48,8 +48,8 @@ Status: ready-for-human
 在 Windows 的登录桌面会话中运行桌面 E2E（不经 SSH；SSH 会话不是桌面会话，Electron 窗口与截图不可靠）。按层执行，前一层失败先定位再继续：
 
 1. 预装打包工程测试：`pnpm test:engineering scripts/preinstalled-tools`。
-2. CLI 测试：adapters 的 `preinstalled-tools`、`document-python-entry`、`libreoffice-entry`、`mcp-network`，bootstrap 的 `preinstalled-tool-environment`。先构建 `@zcode/bootstrap...`。
-3. 小包桌面 E2E 候选，`ZCODE_E2E_MANUAL_REVIEW=1`，一次一个。
+2. CLI 测试：adapters 的 `preinstalled-tools`、`document-python-entry`、`libreoffice-entry`、`mcp-network`，bootstrap 的 `preinstalled-tool-environment`。先构建 `@codez/bootstrap...`。
+3. 小包桌面 E2E 候选，`CODEZ_E2E_MANUAL_REVIEW=1`，一次一个。
 4. 真实 win32 资源的 real-loopback 候选。
 5. PT-26 入口矩阵：cmd、PowerShell、Git Bash、Python 列表参数、Node `execFile`、MCP stdio；参数含空格、中文、`%`、`^`、`&`；撤下运行中的入口；Git Bash 中 `<bin>` 在 PATH 中的位置。
 
@@ -114,7 +114,7 @@ Status: ready-for-human
 
 ### 第 2 层：CLI 测试（2026-11-02，首次）
 
-- 首次运行因 `@zcode/contracts` 未构建而无法加载；构建 `@zcode/bootstrap...` 后重跑。
+- 首次运行因 `@codez/contracts` 未构建而无法加载；构建 `@codez/bootstrap...` 后重跑。
 - adapters：43 个用例，4 通过、1 失败、38 跳过；bootstrap：1 个用例跳过。跳过的都是 `skipIf(win32)`，因此 Windows 的预装 PATH 注入、入口查找与 Bash 快照没有 CLI 自动化覆盖，由桌面 E2E 与 PT-26 补充。
 - 失败：`mcp-network.test.ts`“preserves an existing PATH…”用 `#!/bin/sh` 脚本冒充 node，Windows 上不可执行，代码按设计把运行中 Node 的目录加到 PATH 前。该用例与实现在本分支没有改动，属于既有失败，与预装无关。
 
@@ -208,7 +208,7 @@ Status: ready-for-human
 | env            | 第 1 批通过                                                           | `desktop-e2e-20261102094513785-p13164-5a84e990eff547ef`                | 无                                                                                |
 | clear-data     | 第 1 批通过                                                           | `desktop-e2e-20261102094935794-p9044-d08aa5cba3c6a45d`                 | 无                                                                                |
 | empty-catalog  | 第 2 次运行通过（第 1 次被系统因内存紧张停止，无结论）                | `desktop-e2e-20261102095612242-p19828-270dd1749278bbeb`                | 无                                                                                |
-| remote-context | 环境阻塞：缺少 `ZCODE_E2E_SSH_HOST`，用例未进入实际步骤。未验证 PT-19 | 无（运行记录 `desktop-e2e-20261102100718027-p16264-55f4f83f649267a4`） | 无                                                                                |
+| remote-context | 环境阻塞：缺少 `CODEZ_E2E_SSH_HOST`，用例未进入实际步骤。未验证 PT-19 | 无（运行记录 `desktop-e2e-20261102100718027-p16264-55f4f83f649267a4`） | 无                                                                                |
 
 tracer 的结果见上文。小包候选的入口目标是 `.cmd`，不能证明 `.exe` 目标的行为。
 
@@ -233,7 +233,7 @@ tracer 的结果见上文。小包候选的入口目标是 `.cmd`，不能证明
 | ----------------------------------- | --------------------------------------------- |
 | Node `execFile` 按名字调用          | 8 个参数一致                                  |
 | Python `subprocess.run` 列表参数    | 8 个参数一致                                  |
-| Python `shutil.which`               | 找到 `zcode-probe.EXE`                        |
+| Python `shutil.which`               | 找到 `codez-probe.EXE`                        |
 | cross-spawn（MCP stdio 的启动方式） | 8 个参数一致                                  |
 | Git Bash                            | 8 个参数一致；`command -v` 找到入口；退出码 7 |
 | cmd                                 | 8 个参数一致；退出码 7                        |
@@ -253,7 +253,7 @@ tracer 的结果见上文。小包候选的入口目标是 `.cmd`，不能证明
 此前失败：
 
 - tracer 第 1 批（`desktop-e2e-20261102155314571-p10412-da020f5e7bd6d043`）：预装进程报“缺少 Windows 入口 shim”。根因是 Main 只按 `import.meta.dirname` 推算 shim 路径，桌面 E2E 从 `.e2e-cache/<run>/app` 运行 Main 时找不到。已按 Agent 二进制的做法增加 `process.cwd()` 候选。缺 shim 时拒绝写入口、不退回 `.cmd`，符合规格。
-- tracer 第 2 批（`desktop-e2e-20261102160537496-p21132-d4d0388d42694a37`）：qpdf 通过；libreoffice 运行检查报 `spawn …\check-XXXXXX\zcode-soffice.exe ENOENT`。该路径正好 260 个字符，超过 `MAX_PATH`；qpdf 同类路径 244 个字符。原因是 worktree 路径加上带 runId 的 E2E 数据目录。把 `ZCODE_E2E_HOME_DIR` 指向用户目录下的短路径后通过。属于环境问题，产品未改。
+- tracer 第 2 批（`desktop-e2e-20261102160537496-p21132-d4d0388d42694a37`）：qpdf 通过；libreoffice 运行检查报 `spawn …\check-XXXXXX\codez-soffice.exe ENOENT`。该路径正好 260 个字符，超过 `MAX_PATH`；qpdf 同类路径 244 个字符。原因是 worktree 路径加上带 runId 的 E2E 数据目录。把 `CODEZ_E2E_HOME_DIR` 指向用户目录下的短路径后通过。属于环境问题，产品未改。
 - agent-switch 第 1 批（`desktop-e2e-20261102162635798-p24068-0d8a561fc6220916`）：夹具断言期望 `bin\qpdf`，实际 `bin\qpdf.exe`。已改为按入口路径辅助函数比较。
 
 **rebase 后回归**（2026-11-03）：origin 新增 4 个提交后，把本地 2 个提交 rebase 到 `ba579a05ee` 上。只有 README“运行检查”一条有文本冲突，保留 shim 的主句，再加上 origin 新增的两个子项。之后：
@@ -263,7 +263,7 @@ tracer 的结果见上文。小包候选的入口目标是 `.cmd`，不能证明
 - proxy：origin 新增的候选，Windows 上首次运行即通过，`desktop-e2e-20261103014344842-p18852-f391901e908bd4bd`。
 - 其余候选没有在新基线上重跑。上表中它们的结果来自 rebase 前的基线。
 
-已知风险（用户确认保留，本期不处理；规格见 [Windows 入口 shim](../../preinstalled-tools/windows-entry-shim.md#运行检查)）：运行检查入口位于 `<数据根>\.zcode\preinstalled-tools\<发布身份>\tools\<工具>\staging\<uuid>\check-XXXXXX\<入口>.exe`，默认数据根下约 130 个字符。自定义数据目录很深时会超过 `MAX_PATH`，运行检查报 `runtime`。旧 `.cmd` 入口是否同样受限没有实测。
+已知风险（用户确认保留，本期不处理；规格见 [Windows 入口 shim](../../preinstalled-tools/windows-entry-shim.md#运行检查)）：运行检查入口位于 `<数据根>\.codez\preinstalled-tools\<发布身份>\tools\<工具>\staging\<uuid>\check-XXXXXX\<入口>.exe`，默认数据根下约 130 个字符。自定义数据目录很深时会超过 `MAX_PATH`，运行检查报 `runtime`。旧 `.cmd` 入口是否同样受限没有实测。
 
 未验证：arm64 shim；Ctrl+C 转发（需要交互式控制台）；App 签名后的 shim（本机无签名环境）；真实资源经 shim 运行（第 4 层）。
 

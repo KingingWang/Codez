@@ -1,5 +1,5 @@
 import { readPluginUiStyleVariables } from "@/plugin-ui/hostPrimitives.js";
-import { GEN_UI_STYLE_CONTEXT_KEY, genUiStyleVariablesSchema } from "@zcode/shared/gen-ui";
+import { GEN_UI_STYLE_CONTEXT_KEY, genUiStyleVariablesSchema } from "@codez/shared/gen-ui";
 import { McpUiHostStylesSchema } from "@modelcontextprotocol/ext-apps";
 
 /** Gen UI 使用正文层级与中性色控件；不覆盖第三方 MCP App 的标准 token 投影。 */

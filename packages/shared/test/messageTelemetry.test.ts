@@ -10,14 +10,14 @@ import {
   resolveSendAckSettlement,
   WORKFLOW_RUN_RESULT_STATUSES,
   WORKFLOW_RUN_STOP_REASONS,
-} from "@zcode/shared/conversation-telemetry";
-import { resetMessageTelemetryForTest } from "@zcode/shared/conversation-telemetry/messageTelemetry";
+} from "@codez/shared/conversation-telemetry";
+import { resetMessageTelemetryForTest } from "@codez/shared/conversation-telemetry/messageTelemetry";
 import {
   normalizeToolErrorCode,
   sanitizeTelemetryEventDetail,
   sanitizeToolErrorCode,
-} from "@zcode/shared";
-import type { ConversationTelemetryInput } from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared";
+import type { ConversationTelemetryInput } from "@codez/shared/codez-protocol-v4";
 
 describe("message 首响时序与独立通知", () => {
   const engines: ConversationTelemetryEngine[] = [];
@@ -618,7 +618,7 @@ describe("工具失败原因码 agent_step.error_code", () => {
 
   it("白名单与 CLI 的 CoreErrorType、AgentErrorCode 和 fact 里写死的 code 同步", () => {
     const cliSource = (path: string) =>
-      readFileSync(new URL(`../../../apps/zcode-cli/packages/${path}`, import.meta.url), "utf8");
+      readFileSync(new URL(`../../../apps/codez-cli/packages/${path}`, import.meta.url), "utf8");
     const constValues = (source: string, name: string) => {
       const body = new RegExp(`export const ${name} = \\{([\\s\\S]*?)\\} as const;`, "u").exec(
         source,
@@ -633,7 +633,7 @@ describe("工具失败原因码 agent_step.error_code", () => {
     }
     // fact 归一器里写死的 errorCode（如被用户停止的 turn 的 USER_INTERRUPT）同样要能识别。
     const factCodes = [
-      ...cliSource("bootstrap/src/zcode-protocol-v4/conversation-telemetry-facts.ts").matchAll(
+      ...cliSource("bootstrap/src/codez-protocol-v4/conversation-telemetry-facts.ts").matchAll(
         /errorCode: "([A-Z_]+)"/gu,
       ),
     ].map((m) => m[1]!);
@@ -875,7 +875,7 @@ describe("Workflow run 结果 workflow_run_result", () => {
     const reasons = [...WORKFLOW_RUN_STOP_REASONS].sort();
     const statuses = [...WORKFLOW_RUN_RESULT_STATUSES].sort();
 
-    const schema = read("packages/shared/src/zcode-protocol-v4/telemetry.ts");
+    const schema = read("packages/shared/src/codez-protocol-v4/telemetry.ts");
     const schemaBlock =
       /const workflowLifecycleFactSchema = z([\s\S]*?)\.strict\(\);/u.exec(schema)?.[1] ?? "";
     expect(literals(/stopReason: z\.enum\(\[([^\]]*)\]\)/u.exec(schemaBlock)?.[1] ?? "")).toEqual(
@@ -886,7 +886,7 @@ describe("Workflow run 结果 workflow_run_result", () => {
     );
 
     const cli = read(
-      "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/conversation-telemetry-workflow-facts.ts",
+      "apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/conversation-telemetry-workflow-facts.ts",
     );
     expect(literals(/type WorkflowRunStopReason = ([^;]*);/u.exec(cli)?.[1] ?? "")).toEqual(
       reasons,
@@ -895,7 +895,7 @@ describe("Workflow run 结果 workflow_run_result", () => {
       statuses,
     );
 
-    const engineTypes = read("apps/zcode-cli/packages/dynamic-workflow/src/engine/types.ts");
+    const engineTypes = read("apps/codez-cli/packages/dynamic-workflow/src/engine/types.ts");
     expect(literals(/export type RunStopReason = ([^;]*);/u.exec(engineTypes)?.[1] ?? "")).toEqual(
       reasons,
     );

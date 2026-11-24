@@ -2,8 +2,8 @@
 // 规格见 docs/builtin-provider-maintenance/delivery.md「生效与恢复边界」。
 import {
   NodePersonalProviderConfigRepository,
-  createZCodeBuiltinEndpointKey,
-} from "@zcode/provider-node";
+  createCodezBuiltinEndpointKey,
+} from "@codez/provider-node";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
@@ -11,7 +11,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -50,16 +50,16 @@ describe("Built-in 按服务端间隔自动刷新", () => {
     let proxy: Awaited<ReturnType<typeof startE2ENetworkCaptureProxy>> | undefined;
     try {
       await prepareV4ConversationE2E({ skipProvider: true });
-      const root = join(paths.workspace, ".zcode-e2e", "builtin-cadence");
+      const root = join(paths.workspace, ".codez-e2e", "builtin-cadence");
       await mkdir(root, { recursive: true });
       const artifacts = join(
-        process.env.ZCODE_E2E_ARTIFACT_DIR || join(process.cwd(), ".e2e-artifacts"),
+        process.env.CODEZ_E2E_ARTIFACT_DIR || join(process.cwd(), ".e2e-artifacts"),
         "provider-builtin-refresh-cadence",
       );
       await mkdir(artifacts, { recursive: true });
       const networkArtifact = join(artifacts, "network.json");
       const release = JSON.parse(
-        await readFile(join(process.cwd(), "../../config/provider/zcode-builtin.json"), "utf8"),
+        await readFile(join(process.cwd(), "../../config/provider/codez-builtin.json"), "utf8"),
       );
       const clientConfig = JSON.parse(
         await readFile(
@@ -114,7 +114,7 @@ describe("Built-in 按服务端间隔自动刷新", () => {
             models: current.models.deleteExactForProvider(providerId),
           }));
           await seedSettings({
-            zcodeEndpointOrigin: `https://${CONTROL_HOST}`,
+            codezEndpointOrigin: `https://${CONTROL_HOST}`,
             httpProxy: network.proxyUrl,
             httpProxyNoProxy: "localhost,127.0.0.1,::1",
             httpProxyCaCertPath: network.caCertPath,
@@ -141,9 +141,9 @@ describe("Built-in 按服务端间隔自动刷新", () => {
       // ClientConfigService 也读同一个 client/configs；Built-in 是否完成一轮检查只看它自己的控制文件。
       const readControl = async () => {
         const providerRoot = join(paths.appDataDir, "runtime", "provider");
-        const endpointKey = createZCodeBuiltinEndpointKey(`https://${CONTROL_HOST}`);
+        const endpointKey = createCodezBuiltinEndpointKey(`https://${CONTROL_HOST}`);
         const files = (await readdir(providerRoot, { recursive: true })).filter(
-          (file) => file.includes(endpointKey) && file.endsWith("zcode-builtin-refresh.json"),
+          (file) => file.includes(endpointKey) && file.endsWith("codez-builtin-refresh.json"),
         );
         if (files.length !== 1) return null;
         return JSON.parse(await readFile(join(providerRoot, files[0]!), "utf8")) as {

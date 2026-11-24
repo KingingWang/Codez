@@ -8,12 +8,12 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { createRequire } from "node:module";
 import { chromium, type Browser as PreviewBrowser } from "playwright-core";
-import type { PreinstalledToolsState } from "@zcode/shared/preinstalled-tools";
+import type { PreinstalledToolsState } from "@codez/shared/preinstalled-tools";
 import { resolveE2EHomeDir, resolveE2EStorageRoot } from "#e2e/helpers/e2e-runtime-paths";
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
 const exec = promisify(execFile);
-const fixtureUrl = () => process.env.ZCODE_E2E_PREINSTALL_FIXTURE_URL!;
+const fixtureUrl = () => process.env.CODEZ_E2E_PREINSTALL_FIXTURE_URL!;
 
 describe("预装工具发布身份隔离（待审核，仅 macOS）", () => {
   (process.platform === "darwin" ? it : it.skip)(
@@ -28,8 +28,8 @@ describe("预装工具发布身份隔离（待审核，仅 macOS）", () => {
         electronVersion: process.versions.electron!,
       }));
       expect(primary.packaged).toBe(false);
-      const artifact = join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "lop27-preview");
-      const productName = "ZCode LOP27 Preview";
+      const artifact = join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "lop27-preview");
+      const productName = "Codez LOP27 Preview";
       const previewApp = join(artifact, "packaged", "mac-arm64", `${productName}.app`);
       const userData = join(artifact, "user-data");
       const infoPath = join(artifact, "startup.json");
@@ -40,7 +40,7 @@ describe("预装工具发布身份隔离（待审核，仅 macOS）", () => {
       await writeFile(
         join(appRoot, "package.json"),
         JSON.stringify({
-          name: "zcode-preinstall-preview-fixture",
+          name: "codez-preinstall-preview-fixture",
           version: "3.16.3",
           type: "module",
           main: "entry.mjs",
@@ -71,7 +71,7 @@ await import(${JSON.stringify(mainEntry)});
       await writeFile(
         configPath,
         JSON.stringify({
-          appId: "com.example.zcode.lop27.preview",
+          appId: "com.example.codez.lop27.preview",
           productName,
           electronVersion: primary.electronVersion,
           // 夹具只检查中英文双发布身份；全量语言包曾触发数百次无关资源签名。
@@ -144,13 +144,13 @@ await import(${JSON.stringify(mainEntry)});
               NODE_OPTIONS: undefined,
               HOME: resolveE2EHomeDir(),
               USERPROFILE: resolveE2EHomeDir(),
-              ZCODE_DESKTOP_HOME_DIR: resolveE2EHomeDir(),
-              ZCODE_DATA_BASE_DIR: resolveE2EHomeDir(),
-              ZCODE_DESKTOP_APPLICATION_NAME: productName,
-              ZCODE_DESKTOP_USER_DATA_DIR: userData,
-              ZCODE_DESKTOP_SESSION_DATA_DIR: join(userData, "session"),
-              ZCODE_DESKTOP_USE_ELECTRON_DEFAULT_USER_DATA: "0",
-              ZCODE_E2E_RUNTIME_LOG_DIR: join(artifact, "runtime-logs"),
+              CODEZ_DESKTOP_HOME_DIR: resolveE2EHomeDir(),
+              CODEZ_DATA_BASE_DIR: resolveE2EHomeDir(),
+              CODEZ_DESKTOP_APPLICATION_NAME: productName,
+              CODEZ_DESKTOP_USER_DATA_DIR: userData,
+              CODEZ_DESKTOP_SESSION_DATA_DIR: join(userData, "session"),
+              CODEZ_DESKTOP_USE_ELECTRON_DEFAULT_USER_DATA: "0",
+              CODEZ_E2E_RUNTIME_LOG_DIR: join(artifact, "runtime-logs"),
             },
             stdio: ["ignore", "pipe", "pipe"],
           },
@@ -202,7 +202,7 @@ await import(${JSON.stringify(mainEntry)});
           .find((item) => item.url().includes("renderer/index.html"))!;
         await page.waitForFunction(() =>
           Boolean(
-            (window as typeof window & { zcode?: { getPreinstalledToolsState?: unknown } }).zcode
+            (window as typeof window & { codez?: { getPreinstalledToolsState?: unknown } }).codez
               ?.getPreinstalledToolsState,
           ),
         );
@@ -215,9 +215,9 @@ await import(${JSON.stringify(mainEntry)});
         const before = await page.evaluate(async () =>
           (
             window as typeof window & {
-              zcode: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
+              codez: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
             }
-          ).zcode.getPreinstalledToolsState(),
+          ).codez.getPreinstalledToolsState(),
         );
         expect(before.tools.find((tool) => tool.toolId === "libreoffice")?.status).toBe(
           "preparing",
@@ -225,9 +225,9 @@ await import(${JSON.stringify(mainEntry)});
         const own = await browser.execute(async () =>
           (
             window as typeof window & {
-              zcode: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
+              codez: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
             }
-          ).zcode.getPreinstalledToolsState(),
+          ).codez.getPreinstalledToolsState(),
         );
         expect(own.tools.find((tool) => tool.toolId === "libreoffice")?.status).toBe("preparing");
         await fetch(`${fixtureUrl()}/release`);
@@ -237,9 +237,9 @@ await import(${JSON.stringify(mainEntry)});
             (
               await (
                 window as typeof window & {
-                  zcode: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
+                  codez: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
                 }
-              ).zcode.getPreinstalledToolsState()
+              ).codez.getPreinstalledToolsState()
             ).tools.find((tool) => tool.toolId === "libreoffice")?.status === "ready",
         );
         await browser.waitUntil(
@@ -248,9 +248,9 @@ await import(${JSON.stringify(mainEntry)});
               await browser.execute(async () =>
                 (
                   window as typeof window & {
-                    zcode: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
+                    codez: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
                   }
-                ).zcode.getPreinstalledToolsState(),
+                ).codez.getPreinstalledToolsState(),
               )
             ).tools.find((tool) => tool.toolId === "libreoffice")?.status === "ready",
           { timeout: 30000 },
@@ -268,9 +268,9 @@ await import(${JSON.stringify(mainEntry)});
         const previewReady = await page.evaluate(async () =>
           (
             window as typeof window & {
-              zcode: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
+              codez: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
             }
-          ).zcode.getPreinstalledToolsState(),
+          ).codez.getPreinstalledToolsState(),
         );
         expect(
           previewReady.tools.find((tool) => tool.toolId === "libreoffice")?.installed,

@@ -7,7 +7,7 @@ import type {
   PruneWorktreesRequest,
   RemoveManagedWorktreeRequest,
   RemoveManagedWorktreeResult,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 export interface GitWorktreeCreateOptions {
   /** git 输出与进度行，按到达顺序回调（写入创建记录，§6.2）。 */

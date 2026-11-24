@@ -2,11 +2,11 @@
 
 ## 问题
 
-Bot 处理 workspace 切换或读取 workspace 配置时，会通过 ZCode Protocol 的
+Bot 处理 workspace 切换或读取 workspace 配置时，会通过 Codez Protocol 的
 `workspace/readState` 读取模型与模式状态。调用已经取得 workspace client 后，如果该
 workspace 恰好因为配置更新、模型切换或进程生命周期变化而重启，旧 client 的 stdio
 transport 会在请求发送前关闭，最终向用户返回
-`ZCode agent stdio transport is closed`。
+`Codez agent stdio transport is closed`。
 
 ## 语义
 

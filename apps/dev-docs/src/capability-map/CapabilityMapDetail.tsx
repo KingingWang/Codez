@@ -50,7 +50,7 @@ export function CapabilityMapDetail({
         </div>
         <h2 className="mt-2 text-ui-lg font-medium">选择一个群或节点</h2>
         <p className="mt-2 text-ui-base leading-6 text-foreground-subtle">
-          地图按 Renderer、Host、ZCode CLI
+          地图按 Renderer、Host、Codez CLI
           三层运行时和底部工程基础设施组织。选择后保留当前视角并突出一阶关系，点击空白区域可重置。
         </p>
         <div className="mt-4 flex flex-wrap gap-2">

@@ -6,7 +6,7 @@ import engineeringTestFiles from "./scripts/engineering-test-files.json";
 export default defineConfig({
   // 测试固定注入事件上报端点，使遥测上报链路在单测中可验证；真实构建由 scripts/build-time-config.mjs 决定。
   define: {
-    __ZCODE_TELEMETRY_REPORT_ENDPOINT__: JSON.stringify("https://zcode.z.ai/api/v1/event/report"),
+    __CODEZ_TELEMETRY_REPORT_ENDPOINT__: JSON.stringify("https://zcode.z.ai/api/v1/event/report"),
   },
   resolve: {
     alias: {
@@ -68,7 +68,7 @@ export default defineConfig({
           maxWorkers: 1,
         },
       },
-      "packages/zcode-cua/vitest.config.ts",
+      "packages/codez-cua/vitest.config.ts",
     ],
   },
 });

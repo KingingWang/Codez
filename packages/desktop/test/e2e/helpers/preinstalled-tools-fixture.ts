@@ -5,7 +5,7 @@ import { chmod, mkdir, mkdtemp, readFile, stat, writeFile, symlink } from "node:
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { create as createTar } from "tar";
-import { preinstalledToolsCatalogSchema } from "@zcode/shared/preinstalled-tools";
+import { preinstalledToolsCatalogSchema } from "@codez/shared/preinstalled-tools";
 
 const isWindows = process.platform === "win32";
 
@@ -287,7 +287,7 @@ export async function startPreinstalledToolsFixture(
     const archive = join(directory, toolId, "fixture.tar.gz");
     await createTar({ gzip: true, portable: true, cwd: payload, file: archive }, ["bin"]);
     tool.bytes = await readFile(archive);
-    const entryName = toolId === "libreoffice" ? "zcode-soffice" : toolId;
+    const entryName = toolId === "libreoffice" ? "codez-soffice" : toolId;
     catalog.push({
       toolId,
       displayName: toolId === "libreoffice" ? "LibreOffice" : toolId,

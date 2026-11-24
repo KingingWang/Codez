@@ -3,8 +3,8 @@ import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { chromium } from "playwright-core";
-import { BufferReader, BufferWriter, deserialize, serialize, VSBuffer } from "@zcode/rpc";
-import { TID_TASK_ITEM, testId } from "@zcode/shared/test-ids";
+import { BufferReader, BufferWriter, deserialize, serialize, VSBuffer } from "@codez/rpc";
+import { TID_TASK_ITEM, testId } from "@codez/shared/test-ids";
 import { openMobilePairingPage, seedMobileFixtureLogin } from "#e2e/helpers/mobile-pairing";
 import { obtainUnreadPairingUrl } from "#e2e/helpers/web-remote-unread";
 import { restartIntoWorkspacePreservingProfile } from "#e2e/helpers/model-provider-restart";
@@ -36,7 +36,7 @@ export async function assertForkAfterBackgroundNotification(finalText: string) {
   expect(parentId).not.toBe("draft");
   const before = readHistory(parentId);
   await writeFile(
-    join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "fork-background-source.json"),
+    join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "fork-background-source.json"),
     JSON.stringify(before, null, 2),
   );
   // live anchor 的 productTurnId 由首次 fork resolver 惰性补齐；不能要求首 fork 前已存在。
@@ -85,7 +85,7 @@ type StoredMessage = {
 };
 function readHistory(sessionId: string): StoredMessage[] {
   // Node 内置 SQLite 只有同步 API；隔离测试库仅作短只读查询，立即关闭句柄。
-  const db = new DatabaseSync(join(homedir(), ".zcode", "cli", "db", "db.sqlite"), {
+  const db = new DatabaseSync(join(homedir(), ".codez", "cli", "db", "db.sqlite"), {
     readOnly: true,
   });
   try {
@@ -182,7 +182,7 @@ async function assertVisibleForkFailure(kind: "ack" | "transport") {
     expect((await getV4PaneSnapshot()).sessionId).toBe(parentId);
     expect(await browser.execute(() => window.__forkHistoryFault!.calls)).toBe(1);
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `fork-failure-${kind}.png`),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `fork-failure-${kind}.png`),
     );
   } finally {
     await browser.execute(() => window.__forkHistoryFault?.restore());
@@ -196,10 +196,10 @@ function hasForkFailureToast() {
 
 async function assertMobileFork(parentId: string, finalText: string) {
   const pairingUrl = await obtainUnreadPairingUrl(
-    new URL(process.env.ZCODE_WEB_REMOTE_CONTROL_URL!).origin,
+    new URL(process.env.CODEZ_WEB_REMOTE_CONTROL_URL!).origin,
   );
   const webBrowser = await chromium.launch({
-    executablePath: process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE,
+    executablePath: process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE,
     headless: true,
     args: ["--no-sandbox"],
   });
@@ -213,7 +213,7 @@ async function assertMobileFork(parentId: string, finalText: string) {
     await seedMobileFixtureLogin(context);
     const page = await context.newPage();
     await openMobilePairingPage(page, pairingUrl, {
-      artifactDir: process.env.ZCODE_E2E_ARTIFACT_DIR!,
+      artifactDir: process.env.CODEZ_E2E_ARTIFACT_DIR!,
       caseMarker: "FX14",
       phase: "fork",
       readySelector: '[data-testid="virtual-project-toggle"]',
@@ -232,7 +232,7 @@ async function assertMobileFork(parentId: string, finalText: string) {
     await page.getByText(finalText, { exact: true }).first().waitFor();
     assertInTurnNotification(readHistory(childId));
     await page.screenshot({
-      path: join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "fork-background-mobile.png"),
+      path: join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "fork-background-mobile.png"),
       fullPage: true,
     });
   } finally {

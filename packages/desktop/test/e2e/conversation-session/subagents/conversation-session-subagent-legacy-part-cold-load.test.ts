@@ -5,7 +5,7 @@ import {
   TID_TASK_ITEM,
   TID_V4_SUBAGENT_OPEN_SIDE_PANE,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { releaseControlledReplay, waitForControlledReplay } from "#e2e/helpers/controlled-replay";
 import { clearAppData, getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
 import { waitForUpstreamRequest } from "#e2e/helpers/conversation-session-network";

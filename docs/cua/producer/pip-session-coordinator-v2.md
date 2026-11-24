@@ -42,7 +42,7 @@ macOS 14.0/14.1 没有 ScreenCaptureKit `includeChildWindows`，因此同样保�
 
 ## Strict native ABI
 
-公开协议升级为 version `2`、runtime id `zcode-cua-pip-session-v2`。Helper handshake 只有在 native
+公开协议升级为 version `2`、runtime id `codez-cua-pip-session-v2`。Helper handshake 只有在 native
 提供 `pipStartVerifiedCompositeAsync` 时才 ready；缺少该 ABI 时关闭 Auto-PiP，禁止回退 v1
 `pipStartVerifiedAsync`。
 

@@ -1,4 +1,4 @@
-import type { WebRemoteControlAppPayload, WebRemoteControlFailure } from "@zcode/shared";
+import type { WebRemoteControlAppPayload, WebRemoteControlFailure } from "@codez/shared";
 import { createFailure } from "#src/web-remote-control/adapters/relayMessage.js";
 
 interface WebRemoteControlAppPayloadRequesterOptions {

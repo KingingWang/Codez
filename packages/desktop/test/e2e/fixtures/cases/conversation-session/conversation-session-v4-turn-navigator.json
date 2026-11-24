@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/conversation-session-v4-turn-navigator/tool-secret.txt",
+      "path": ".codez-e2e/conversation-session-v4-turn-navigator/tool-secret.txt",
       "source": "created-by-spec",
       "description": "spec 写入固定 Read 工具结果，用于断言 turn navigator tooltip 不泄露工具正文。"
     }

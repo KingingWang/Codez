@@ -8,7 +8,7 @@ import {
 } from "#e2e/helpers/v4-conversation";
 
 const CASE_TIMEOUT_MS = 120_000;
-const PENDING_COMMAND_STORAGE_KEY = "zcode-v4-pending-commands:v1";
+const PENDING_COMMAND_STORAGE_KEY = "codez-v4-pending-commands:v1";
 const PROMPT_MARKER = "E2E_COMMAND_UNKNOWN_RECOVERY";
 const REPLY_MARKER = "COMMAND_UNKNOWN_RECOVERY_OK";
 const UNKNOWN_TEXT = "E2E_UNKNOWN_COMMAND_MUST_NOT_REPLAY";
@@ -194,14 +194,14 @@ function readActiveWorkspace(): Promise<{
   return browser.execute(() => {
     const tabs = (
       window as Window & {
-        __zcodeTabStoreE2E?: {
+        __codezTabStoreE2E?: {
           getState(): {
             activeWorkspacePath: string | null;
             activeWorkspaceIdentity: string | null;
           };
         };
       }
-    ).__zcodeTabStoreE2E?.getState();
+    ).__codezTabStoreE2E?.getState();
     if (!tabs?.activeWorkspacePath) throw new Error("PV4-25U 缺少活动 workspace 身份");
     return {
       workspacePath: tabs.activeWorkspacePath,

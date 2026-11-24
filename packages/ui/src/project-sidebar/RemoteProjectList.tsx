@@ -12,7 +12,7 @@ import type {
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog.js";
 import { Button } from "@/components/ui/button.js";
 import { remoteHostLabel } from "@/project-sidebar/RemoteHostSection.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 
 export function RemoteProjectList({
   host,
@@ -58,7 +58,7 @@ export function RemoteProjectList({
       active.current = false;
     };
   }, []);
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const msg = (id: string) => intl.formatMessage({ id: `project.${id}` });
   const [projects, setProjects] = useState<VirtualProject[]>([]);
   const [loading, setLoading] = useState(true);

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
-import type { IServiceAccessor, ITerminalService } from "@zcode/services";
+import type { IServiceAccessor, ITerminalService } from "@codez/services";
 import { TerminalSession } from "@/terminal/TerminalSession.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import "@/styles.css";
 
 const writes: string[] = [];
@@ -40,7 +40,7 @@ const onOpenBrowserUrl = () => {};
 function Fixture() {
   const [mounted, setMounted] = useState(true);
   return (
-    <ZCodeIntlProvider initialLocale="zh-CN">
+    <CodezIntlProvider initialLocale="zh-CN">
       <button onClick={() => setMounted((value) => !value)}>Toggle</button>
       <button
         onClick={() => {
@@ -65,7 +65,7 @@ function Fixture() {
           />
         )}
       </div>
-    </ZCodeIntlProvider>
+    </CodezIntlProvider>
   );
 }
 

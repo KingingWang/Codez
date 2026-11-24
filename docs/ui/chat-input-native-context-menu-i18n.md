@@ -2,7 +2,7 @@
 
 ## 背景
 
-桌面端输入框的右键菜单由 Electron 主进程监听 `context-menu` 事件后动态弹出。菜单项目前只设置了 Electron `role`，没有设置 `label`，因此文案由 Electron/操作系统默认语言决定，可能与 ZCode 当前应用语言不一致。
+桌面端输入框的右键菜单由 Electron 主进程监听 `context-menu` 事件后动态弹出。菜单项目前只设置了 Electron `role`，没有设置 `label`，因此文案由 Electron/操作系统默认语言决定，可能与 Codez 当前应用语言不一致。
 
 ## 目标
 

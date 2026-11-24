@@ -8,8 +8,8 @@ import {
   ProviderApiConfig,
   ProviderConfig,
   type ProviderConfigLayerSnapshot,
-} from "@zcode/provider";
-import { NodePersonalProviderConfigRepository } from "@zcode/provider-node";
+} from "@codez/provider";
+import { NodePersonalProviderConfigRepository } from "@codez/provider-node";
 import {
   createE2EProviderModelSnapshot,
   getE2EAppDataPaths,
@@ -23,7 +23,7 @@ import { getUpstreamApiKey } from "./upstream-provider.js";
 const E2E_APP_DATA_PATHS = getE2EAppDataPaths();
 const PERSONAL_CONFIG_FILE = E2E_APP_DATA_PATHS.configFile;
 const E2E_PROVIDER_RUNTIME_FILE = resolve(
-  process.env.ZCODE_E2E_NETWORK_CAPTURE_DIR?.trim() ||
+  process.env.CODEZ_E2E_NETWORK_CAPTURE_DIR?.trim() ||
     resolve(E2E_APP_DATA_PATHS.homeDir, "..", ".e2e-network-capture"),
   "upstream-runtime.json",
 );

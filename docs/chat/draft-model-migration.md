@@ -84,9 +84,9 @@
 
 | Key                                                 | 值                              | 写入时机              |
 | --------------------------------------------------- | ------------------------------- | --------------------- |
-| `zcode-draft-model-migration:v1:<composerScopeKey>` | `{ rootDraft?: n, recent?: n }` | settle / migrate      |
-| `zcode-draft-model-migration-notice:v1`             | `{ revision: n }`               | 气泡真正显示时        |
-| `zcode-composer-recent:v2:<composerScopeKey>`       | 仅替换 `modelSelection`         | migrate 且 src=recent |
+| `codez-draft-model-migration:v1:<composerScopeKey>` | `{ rootDraft?: n, recent?: n }` | settle / migrate      |
+| `codez-draft-model-migration-notice:v1`             | `{ revision: n }`               | 气泡真正显示时        |
+| `codez-composer-recent:v2:<composerScopeKey>`       | 仅替换 `modelSelection`         | migrate 且 src=recent |
 
 - 标记按来源分开，文字草稿迁移不会让 Recent 漏迁。
 - Recent 改写是 [Recent 只在接纳时写入](../ui/project-task-draft-lifecycle.md#默认配置) 的唯一例外：

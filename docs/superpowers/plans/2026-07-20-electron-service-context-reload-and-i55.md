@@ -43,7 +43,7 @@
 
 - [x] 先写失败测试：quit 请求返回旧主 PID；等待存活进程退出；超时必须报出 PID；退出完成后才调用 reload。
 - [x] `restartIntoWorkspace()` 保存偏好后调用安全 reload helper；helper 包裹 WDIO 内部 delete，等待旧 PID 后再建新 session，随后恢复 localStorage 并 reload renderer。
-- [x] 修正 `waitForSelectedModel()` 诊断读取原子 `zcode-last-agent-config`，删除旧分离 key 的误导输出。
+- [x] 修正 `waitForSelectedModel()` 诊断读取原子 `codez-last-agent-config`，删除旧分离 key 的误导输出。
 
 ### Task 3: 按确认语义修复 I55
 
@@ -63,6 +63,6 @@
 - [x] 运行 Electron lifecycle/reload、window target、偏好 seed focused unit。
 - [x] 对 I55、Turbo switch/recovery 运行 fixture check。
 - [x] 分别运行 I55、I38/I39/I42 目标 E2E；I55 修复后连续 3 次通过，I38/I39/I42 真实 reload 3/3 通过。
-- [x] 运行 `pnpm --filter @zcode/desktop typecheck:e2e`、`pnpm typecheck`、`pnpm lint`。
+- [x] 运行 `pnpm --filter @codez/desktop typecheck:e2e`、`pnpm typecheck`、`pnpm lint`。
 - [x] 检查运行后无 Electron/host/agent/Chromedriver 残留并复核最终 diff。
 - [x] 仅暂存本任务文件并提交 Conventional Commit。

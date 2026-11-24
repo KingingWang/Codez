@@ -5,18 +5,18 @@ export const GEN_UI_HTML_MAX_BYTES = 5_000_000;
 export const GEN_UI_STATE_MAX_BYTES = 16 * 1024;
 export const GEN_UI_STATE_MAX_ENTRIES = 100;
 export const GEN_UI_CONTEXT_MAX_BYTES = 64 * 1024;
-export const GEN_UI_GLOBALS_EVENT = "zcode:set_globals";
-export const GEN_UI_STATE_CONTEXT_KEY = "zcode/genUiState";
-export const GEN_UI_TWEAK_CONTEXT_KEY = "zcode/genUiTweaks";
-export const GEN_UI_STYLE_CONTEXT_KEY = "zcode/genUiStyles";
+export const GEN_UI_GLOBALS_EVENT = "codez:set_globals";
+export const GEN_UI_STATE_CONTEXT_KEY = "codez/genUiState";
+export const GEN_UI_TWEAK_CONTEXT_KEY = "codez/genUiTweaks";
+export const GEN_UI_STYLE_CONTEXT_KEY = "codez/genUiStyles";
 export const genUiStyleVariablesSchema = z.record(
   z.string().regex(/^--gen-ui-[a-z-]+$/),
   z.string(),
 );
-export const GEN_UI_STATE_METHOD = "zcode/gen-ui/state";
-export const GEN_UI_FOLLOW_UP_METHOD = "zcode/gen-ui/follow-up";
-export const GEN_UI_TWEAK_METHOD = "zcode/gen-ui/tweak";
-export const GEN_UI_PRESENTATION_METHOD = "zcode/gen-ui/presentation";
+export const GEN_UI_STATE_METHOD = "codez/gen-ui/state";
+export const GEN_UI_FOLLOW_UP_METHOD = "codez/gen-ui/follow-up";
+export const GEN_UI_TWEAK_METHOD = "codez/gen-ui/tweak";
+export const GEN_UI_PRESENTATION_METHOD = "codez/gen-ui/presentation";
 export const GEN_UI_STATIC_DOMAINS = [
   "cdnjs.cloudflare.com",
   "esm.sh",

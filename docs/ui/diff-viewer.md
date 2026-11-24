@@ -8,7 +8,7 @@ It wraps `@pierre/diffs/react` diff components directly:
 - renders a before/after file pair with `MultiFileDiff`
 - uses its own Pierre-style defaults instead of `createPatchDiffOptions`
 - keeps the diff worker pool enabled by default
-- applies ZCode background and font-size CSS variables
+- applies Codez background and font-size CSS variables
 - contains no parser recovery or plain-text fallback itself; patch callers must route unsafe inputs before mounting it
 
 The default options intentionally follow the official docs more closely while fitting the side pane: `diffIndicators: "bars"`, `lineDiffType: "word-alt"`, hidden file headers, and built-in hunk separators. `DiffViewer` does not inject Shadow DOM CSS or carry a plain-text fallback path, so any patch that reaches the component still leaves parsing and rendering to `@pierre/diffs`.

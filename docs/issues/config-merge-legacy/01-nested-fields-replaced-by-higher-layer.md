@@ -13,16 +13,16 @@ Status: needs-triage
 | 用户配置                                                            | 现在的结果                              |
 | ------------------------------------------------------------------- | --------------------------------------- |
 | `permission.allowedTools`、`disallowedTools`、`autoApproveHighRisk` | 全部回到默认值，用户写的不生效          |
-| `network.caCertFile`                                                | 设了 `ZCODE_HTTP_PROXY` 时被丢弃        |
-| `storage.sessionDbPath`                                             | 设了 `ZCODE_STORAGE_DIR` 时回到默认路径 |
-| `network.httpProxy`                                                 | 设了 `ZCODE_HTTP_TIMEOUT` 时被丢弃      |
+| `network.caCertFile`                                                | 设了 `CODEZ_HTTP_PROXY` 时被丢弃        |
+| `storage.sessionDbPath`                                             | 设了 `CODEZ_STORAGE_DIR` 时回到默认路径 |
+| `network.httpProxy`                                                 | 设了 `CODEZ_HTTP_TIMEOUT` 时被丢弃      |
 
-Desktop 新建会话总会传 `mode`（`apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts` 的 `createWorkspaceZCodeApp` 调用），经 `createConfigCliOverrides` 变成 `cliOverrides.permission`，所以第一行影响所有 Desktop 会话。
+Desktop 新建会话总会传 `mode`（`apps/codez-cli/packages/bootstrap/src/codez-protocol/server-operations.ts` 的 `createWorkspaceCodezApp` 调用），经 `createConfigCliOverrides` 变成 `cliOverrides.permission`，所以第一行影响所有 Desktop 会话。
 
 ## 证据
 
-- 代码：`apps/zcode-cli/packages/adapters/src/config/config-merger.ts` 的 `mergeConfigs`。
-- 探针：用户配置写上述字段，`createConfig` 带 `cliOverrides.permission.mode` 与 `ZCODE_HTTP_PROXY`、`ZCODE_STORAGE_DIR`；改为按键合并后，三项权限字段、`caCertFile`、`sessionDbPath` 全部开始生效。
+- 代码：`apps/codez-cli/packages/adapters/src/config/config-merger.ts` 的 `mergeConfigs`。
+- 探针：用户配置写上述字段，`createConfig` 带 `cliOverrides.permission.mode` 与 `CODEZ_HTTP_PROXY`、`CODEZ_STORAGE_DIR`；改为按键合并后，三项权限字段、`caCertFile`、`sessionDbPath` 全部开始生效。
 
 ## 影响
 
@@ -35,7 +35,7 @@ Desktop 新建会话总会传 `mode`（`apps/zcode-cli/packages/bootstrap/src/zc
 
 ## 处理方向（未定）
 
-逐个字段决定"按键合并"还是"高优先级层整体决定"，写进 `apps/zcode-cli/docs/design/v2/architecture.md` §1.4，再改 `mergeConfigs` 并补回归测试。`permission` 需要产品和安全一起确认宿主传 `mode` 时是否保留用户的权限列表。
+逐个字段决定"按键合并"还是"高优先级层整体决定"，写进 `apps/codez-cli/docs/design/v2/architecture.md` §1.4，再改 `mergeConfigs` 并补回归测试。`permission` 需要产品和安全一起确认宿主传 `mode` 时是否保留用户的权限列表。
 
 ## 来源
 

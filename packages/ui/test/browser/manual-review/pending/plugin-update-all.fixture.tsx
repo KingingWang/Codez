@@ -1,11 +1,11 @@
 import { useState, type ComponentType } from "react";
 import { createRoot } from "react-dom/client";
-import type { IBroadcastService, IServiceAccessor } from "@zcode/services";
+import type { IBroadcastService, IServiceAccessor } from "@codez/services";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { TabStoreProvider } from "@/store/TabStoreProvider.js";
 import { StoreContext } from "@/store/StoreProvider.js";
-import { createZCodeStore } from "@/store/index.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { createCodezStore } from "@/store/index.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import * as section from "@/settings/PluginsSection.js";
 import { logger } from "@/logger.js";
@@ -15,7 +15,7 @@ import "@/styles.css";
 const PluginList = (section as unknown as { PluginList: ComponentType<Record<string, unknown>> })
   .PluginList;
 const params = new URLSearchParams(location.search);
-const store = createZCodeStore({
+const store = createCodezStore({
   send: async () => {},
   onMessage: () => ({ dispose() {} }),
 } as unknown as IBroadcastService);
@@ -112,11 +112,11 @@ function Fixture() {
 createRoot(document.getElementById("root")!).render(
   <StoreContext.Provider value={store}>
     <TabStoreProvider>
-      <ZCodeIntlProvider initialLocale={params.get("locale") === "zh-CN" ? "zh-CN" : "en-US"}>
+      <CodezIntlProvider initialLocale={params.get("locale") === "zh-CN" ? "zh-CN" : "en-US"}>
         <TooltipProvider>
           <Fixture />
         </TooltipProvider>
-      </ZCodeIntlProvider>
+      </CodezIntlProvider>
     </TabStoreProvider>
   </StoreContext.Provider>,
 );

@@ -3,7 +3,7 @@ import {
   type OAuthProviderId,
   type OAuthTokenSet,
   type OAuthUserProfile,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { OAuthProviderAdapter } from "./providers/index.js";
 
 const BIGMODEL_PROFILE_SCHEMA_VERSION = 2;
@@ -24,7 +24,7 @@ function getCachedProfileSchemaVersion(profile: OAuthUserProfile): number | null
     return null;
   }
 
-  const version = (rawProfile as { zcodeProfileSchemaVersion?: unknown }).zcodeProfileSchemaVersion;
+  const version = (rawProfile as { codezProfileSchemaVersion?: unknown }).codezProfileSchemaVersion;
   return typeof version === "number" ? version : null;
 }
 
@@ -34,8 +34,8 @@ function getCachedProfileMigrationRetryAfter(profile: OAuthUserProfile): number 
     return null;
   }
 
-  const retryAfter = (rawProfile as { zcodeProfileMigrationRetryAfter?: unknown })
-    .zcodeProfileMigrationRetryAfter;
+  const retryAfter = (rawProfile as { codezProfileMigrationRetryAfter?: unknown })
+    .codezProfileMigrationRetryAfter;
   return typeof retryAfter === "number" ? retryAfter : null;
 }
 
@@ -43,7 +43,7 @@ function isBigModelUserInfoFallback(profile: OAuthUserProfile): boolean {
   return profile.id === "unknown" && profile.username === "user" && profile.displayName === "User";
 }
 
-/** 上游业务userinfo只拥有展示字段；customerNumber或sub不能成为ZCode资产主体。 */
+/** 上游业务userinfo只拥有展示字段；customerNumber或sub不能成为Codez资产主体。 */
 export function mergeOAuthDisplayProfile(
   cachedProfile: OAuthUserProfile,
   businessProfile: OAuthUserProfile,
@@ -82,13 +82,13 @@ export function withProviderProfileSchema(
   const rawProfile =
     profile.rawProfile && typeof profile.rawProfile === "object" ? profile.rawProfile : {};
   const nextRawProfile = { ...(rawProfile as Record<string, unknown>) };
-  delete nextRawProfile.zcodeProfileMigrationRetryAfter;
+  delete nextRawProfile.codezProfileMigrationRetryAfter;
 
   return {
     ...profile,
     rawProfile: {
       ...nextRawProfile,
-      zcodeProfileSchemaVersion: BIGMODEL_PROFILE_SCHEMA_VERSION,
+      codezProfileSchemaVersion: BIGMODEL_PROFILE_SCHEMA_VERSION,
     },
   };
 }
@@ -104,7 +104,7 @@ function withBigModelProfileMigrationRetryAfter(
     ...profile,
     rawProfile: {
       ...(rawProfile as Record<string, unknown>),
-      zcodeProfileMigrationRetryAfter: now + BIGMODEL_PROFILE_MIGRATION_RETRY_DELAY_MS,
+      codezProfileMigrationRetryAfter: now + BIGMODEL_PROFILE_MIGRATION_RETRY_DELAY_MS,
     },
   };
 }
@@ -139,13 +139,13 @@ export async function refreshLegacyBigModelCachedProfile(
       }),
     );
     if (isBigModelUserInfoFallback(refreshedProfile)) {
-      // 旧版本可能把 zcode JWT 写进 BigModel access token。
+      // 旧版本可能把 codez JWT 写进 BigModel access token。
       // adapter 会返回 unknown/User 哨兵值表示无法查 BigModel 用户信息；
       // 迁移不能把已有可信缓存覆盖成这个哨兵值，否则版本标记会永久固化错误展示名。
       await saveProfile(withProviderProfileSchema(BIGMODEL_PROVIDER_ID, cachedProfile));
       return cachedProfile;
     }
-    // BigModel customerNumber属于业务账号，不能覆盖已保存的ZCode主体。
+    // BigModel customerNumber属于业务账号，不能覆盖已保存的Codez主体。
     // 旧迁移把整份业务profile回写，两个ID不同时会让设备、关联和资产被当成另一账号。
     const migratedProfile = withProviderProfileSchema(
       BIGMODEL_PROVIDER_ID,

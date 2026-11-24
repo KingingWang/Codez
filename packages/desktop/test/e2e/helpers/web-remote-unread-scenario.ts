@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright-core";
-import { ServiceChannels, parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { ServiceChannels, parseRemoteWorkspaceIdentity } from "@codez/shared";
 import {
   TID_TASK_ITEM,
   TID_TASK_NEW_BUTTON,
@@ -9,8 +9,8 @@ import {
   TID_V4_COMPOSER_SEND,
   TID_V4_STOP,
   testId,
-} from "@zcode/shared/test-ids";
-import type { ProjectTask, ProjectTree } from "@zcode/services";
+} from "@codez/shared/test-ids";
+import type { ProjectTask, ProjectTree } from "@codez/services";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import { releaseControlledReplay } from "#e2e/helpers/controlled-replay";
 import { openMobilePairingPage, redactMobileDiagnosticText } from "#e2e/helpers/mobile-pairing";
@@ -56,7 +56,7 @@ import { createWebRemoteVisibilityBrowser } from "#e2e/helpers/web-remote-visibi
 // 共用原有操作和断言；每个 spec 独立持有测试状态，本地入口不申请 SSH 环境。
 export function createMobileUnreadScenario() {
   const CASE = "E2E_MRO03";
-  const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR;
+  const artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR;
   const evidence: Record<string, unknown> = {};
 
   async function readTask(address: UnreadTaskAddress): Promise<ProjectTask> {
@@ -210,7 +210,7 @@ export function createMobileUnreadScenario() {
   };
   const local = async function (this: Mocha.Context) {
     this.timeout(15 * 60_000);
-    if (!artifacts || !process.env.ZCODE_E2E_HOME_DIR)
+    if (!artifacts || !process.env.CODEZ_E2E_HOME_DIR)
       throw new Error("MRO03 isolated runner required");
     await prepareSSHConnectionPage(CASE);
     await ensureUpstreamProviderForE2E({ skipToolbarSelection: true });
@@ -220,10 +220,10 @@ export function createMobileUnreadScenario() {
     await selectUpstreamThoughtLevelValue("high");
     await installHandoffRpcProbe();
     webBrowser = await chromium.launch({
-      ...(process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE || process.env.R3_MOBILE_CHROME
+      ...(process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE || process.env.R3_MOBILE_CHROME
         ? {
             executablePath:
-              process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE || process.env.R3_MOBILE_CHROME,
+              process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE || process.env.R3_MOBILE_CHROME,
           }
         : { channel: "chrome" }),
       headless: true,
@@ -347,14 +347,14 @@ export function createMobileUnreadScenario() {
       const promoted: UnreadTaskAddress = await page.evaluate((taskId) => {
         const tabs = (
           window as Window & {
-            __zcodeTabStoreE2E?: {
+            __codezTabStoreE2E?: {
               getState(): {
                 activeWorkspacePath: string | null;
                 activeWorkspaceIdentity?: string | null;
               };
             };
           }
-        ).__zcodeTabStoreE2E?.getState();
+        ).__codezTabStoreE2E?.getState();
         if (!tabs?.activeWorkspacePath) throw new Error("MRO03 promoted workspace missing");
         return {
           taskId,
@@ -497,10 +497,10 @@ export function createMobileUnreadScenario() {
       remoteSessionId: task.remoteSessionId,
     };
     webBrowser = await chromium.launch({
-      ...(process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE || process.env.R3_MOBILE_CHROME
+      ...(process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE || process.env.R3_MOBILE_CHROME
         ? {
             executablePath:
-              process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE || process.env.R3_MOBILE_CHROME,
+              process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE || process.env.R3_MOBILE_CHROME,
           }
         : { channel: "chrome" }),
       headless: true,

@@ -6,12 +6,12 @@ type FinalArmsEntry = {
 };
 
 type ArmsBridgeWindow = Window & {
-  __zcodeFinalArmsCustomEventsE2E?: {
+  __codezFinalArmsCustomEventsE2E?: {
     clear(): Promise<void>;
     configure(request: { suppressedEventNames: string[] }): Promise<void>;
     read(): Promise<FinalArmsEntry[]>;
   };
-  zcode?: {
+  codez?: {
     reportArmsCustomEvent(payload: {
       name: string;
       group: string;
@@ -26,7 +26,7 @@ const OTHER_MESSAGE = "Windows runtime control closed before Job was confirmed e
 async function reportSubscriptionError(errorKey: string, message: string) {
   await browser.execute(
     async (key, errorMessage) => {
-      const reporter = (window as ArmsBridgeWindow).zcode?.reportArmsCustomEvent;
+      const reporter = (window as ArmsBridgeWindow).codez?.reportArmsCustomEvent;
       if (!reporter) throw new Error("ARMS event reporter is unavailable");
       await reporter({
         name: "chat_error_banner",
@@ -46,7 +46,7 @@ async function reportSubscriptionError(errorKey: string, message: string) {
 
 async function readCapturedErrors(): Promise<FinalArmsEntry[]> {
   return browser.execute(async () => {
-    const bridge = (window as ArmsBridgeWindow).__zcodeFinalArmsCustomEventsE2E;
+    const bridge = (window as ArmsBridgeWindow).__codezFinalArmsCustomEventsE2E;
     if (!bridge) throw new Error("Final ARMS event capture is unavailable");
     return bridge.read();
   });
@@ -58,7 +58,7 @@ describe("正常退出时的 Windows Session 订阅错误上报", () => {
     this.timeout(90_000);
 
     await browser.execute(async () => {
-      const bridge = (window as ArmsBridgeWindow).__zcodeFinalArmsCustomEventsE2E;
+      const bridge = (window as ArmsBridgeWindow).__codezFinalArmsCustomEventsE2E;
       if (!bridge) throw new Error("Final ARMS event capture is unavailable");
       await bridge.clear();
       // 捕获最终 payload，但不把测试错误发送到 ARMS。

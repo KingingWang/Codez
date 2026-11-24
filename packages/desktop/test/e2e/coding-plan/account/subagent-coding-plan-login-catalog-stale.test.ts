@@ -1,9 +1,9 @@
-import type { ModelSelectionView } from "@zcode/provider";
+import type { ModelSelectionView } from "@codez/provider";
 import {
   BUILTIN_MODEL_PROVIDER_IDS,
   decodeCustomModelValue,
   encodeCustomModelValue,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   TID_CHAT_MODEL_SELECT_GROUP,
   TID_CHAT_MODEL_SELECT_ITEM,
@@ -19,7 +19,7 @@ import {
   TID_SUBAGENT_ROW,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom, waitForTestIdByDom } from "#e2e/helpers/desktop-app";
 import { UPSTREAM_MODEL, UPSTREAM_PROVIDER_ID } from "#e2e/helpers/upstream-provider";
 import { sel } from "#e2e/helpers/selectors";
@@ -97,7 +97,7 @@ describe("BigModel 登录后 Subagent runtime catalog 滞后", () => {
     const authorizationUrl = await waitForBigModelAuthorizationUrl(openExternalMock);
     const state = new URL(authorizationUrl).searchParams.get("state");
     expect(state).toBeTruthy();
-    await deliverOAuthCallback(`zcode://oauth/callback?state=${state}&authCode=e2e-auth-code`);
+    await deliverOAuthCallback(`codez://oauth/callback?state=${state}&authCode=e2e-auth-code`);
 
     await waitForTestIdByDom(TID_TASK_SETTINGS_BUTTON, {
       timeout: 60_000,
@@ -149,7 +149,7 @@ describe("BigModel 登录后 Subagent runtime catalog 滞后", () => {
 });
 
 async function readCodingPlanMockRequests(): Promise<unknown[]> {
-  const baseUrl = process.env.ZCODE_E2E_CODING_PLAN_MOCK_URL?.trim();
+  const baseUrl = process.env.CODEZ_E2E_CODING_PLAN_MOCK_URL?.trim();
   if (!baseUrl) {
     return [];
   }

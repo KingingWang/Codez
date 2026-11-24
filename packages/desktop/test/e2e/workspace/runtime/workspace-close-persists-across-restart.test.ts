@@ -19,7 +19,7 @@ import {
 
 describe("project removal persists across restart E2E", () => {
   const { homeDir } = getE2EAppDataPaths();
-  const closedWorkspacePath = join(homeDir, "ZCodeProjectClosed");
+  const closedWorkspacePath = join(homeDir, "CodezProjectClosed");
 
   after(async () => {
     await browser.electron.restoreAllMocks();
@@ -33,7 +33,7 @@ describe("project removal persists across restart E2E", () => {
     await mkdir(closedWorkspacePath, { recursive: true });
     await $('[data-testid="project-section"]').moveTo();
     await $('[data-testid="virtual-project-add"]').click();
-    await $('[data-testid="virtual-project-name"]').setValue("ZCodeProjectClosed");
+    await $('[data-testid="virtual-project-name"]').setValue("CodezProjectClosed");
     await selectNativeProjectDirectories([closedWorkspacePath]);
     await $('[data-testid="virtual-project-save"]').click();
     await $('[data-testid="project-folder-trust-confirm"]').waitForDisplayed();
@@ -46,7 +46,7 @@ describe("project removal persists across restart E2E", () => {
     await waitForProjectRowGone(closedWorkspacePath);
 
     const readDeletedProject = () => {
-      const db = new DatabaseSync(join(homeDir, ".zcode/v2/tasks-index.sqlite"), {
+      const db = new DatabaseSync(join(homeDir, ".codez/v2/tasks-index.sqlite"), {
         readOnly: true,
       });
       try {

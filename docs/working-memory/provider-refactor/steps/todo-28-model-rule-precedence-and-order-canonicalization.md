@@ -6,7 +6,7 @@
 >
 > 来源：Todo 21/23 完成后的实现反向审查
 >
-> 关联任务：[`Todo 21`](./todo-21-zcode-builtin-config-ownership-and-model-activation-order.md)、
+> 关联任务：[`Todo 21`](./todo-21-codez-builtin-config-ownership-and-model-activation-order.md)、
 > [`Todo 23`](./todo-23-provider-refactor-decision-gap-closure.md)、
 > [`Bugfix 02`](./bugfix-02-provider-reorder-drop-flicker.md)
 
@@ -39,7 +39,7 @@ Todo 21 已经确立 Model Rule 后置覆盖和 Provider/Model 三段顺序，To
 Effective Model Rules 的唯一组合顺序固定为：
 
 ```text
-ZCode Built-in Rules（完整保留 Built-in 内部顺序）
+Codez Built-in Rules（完整保留 Built-in 内部顺序）
                        +
 Personal Match Rules（保留 Personal Match 内部顺序）
                        +
@@ -53,7 +53,7 @@ Personal provider-model Rules（保留 Personal 精确 Rule 内部顺序）
 - Settings Personal Model Draft Preview；
 - 连接测试、ModelFactory 和其他间接消费 Effective Model Config 的链路。
 
-不重排 ZCode Built-in Rules 自身；Built-in 中的通用、API、Provider 和 Endpoint 特化仍由 Built-in 文件
+不重排 Codez Built-in Rules 自身；Built-in 中的通用、API、Provider 和 Endpoint 特化仍由 Built-in 文件
 的作者顺序决定。不要通过重写 Personal JSON 的物理排列实现优先级；应在组合 Effective Rule
 数组的领域边界做一次确定性分组。
 
@@ -160,4 +160,4 @@ Provider 保持固定前段，不写入 Personal `providerOrder`。Model 没有�
 - `resolveOwnedOrder()` 同时服务读取 Resolver 与 Provider/Model 写入规范化，删除写入侧 requested-first
   重复算法；Family Provider 继续位于固定段之外；
 - 增加 Personal 精确 Rule 物理前置、Provider 三段写入及 Facade/Registry 一致性回归测试；
-- `@zcode/provider` 155 个测试、typecheck、lint 与 `git diff --check` 通过。
+- `@codez/provider` 155 个测试、typecheck、lint 与 `git diff --check` 通过。

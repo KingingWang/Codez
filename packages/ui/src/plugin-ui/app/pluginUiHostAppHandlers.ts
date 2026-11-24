@@ -1,7 +1,7 @@
 import type { CallToolResult } from "@modelcontextprotocol/client";
 import { INVALID_PARAMS, ProtocolError } from "@modelcontextprotocol/client";
 import type { McpUiDisplayMode, McpUiHostContext } from "@modelcontextprotocol/ext-apps/app-bridge";
-import type { IPluginUiBridgeService, PluginUiPluginScope } from "@zcode/services";
+import type { IPluginUiBridgeService, PluginUiPluginScope } from "@codez/services";
 import { resolveRequestedDisplayMode } from "../domain/buildPluginUiHostContext.js";
 import type { PluginUiHostBridge } from "./pluginUiHostBridge.js";
 
@@ -62,7 +62,7 @@ export function installPluginUiHostAppHandlers(
         callId,
       });
       // 长轮询只有交付实际工作才续期；必须先标记活动再解除 busy，避免回收撞上任务交付。
-      if (result._meta?.["zcode/activity"] === true) deps.onActivity?.();
+      if (result._meta?.["codez/activity"] === true) deps.onActivity?.();
       return result as CallToolResult;
     } finally {
       signal?.removeEventListener("abort", onAbort);

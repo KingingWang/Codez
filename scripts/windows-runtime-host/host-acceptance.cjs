@@ -36,8 +36,8 @@ for (const level of ["log", "warn", "error"]) {
 const nativeMarker = "[windows-runtime-host:exit] ";
 const buildDir = resolve(process.argv[2]);
 const { spawnWindowsRuntimeHost } = require(join(buildDir, "adapter.cjs"));
-process.env.ZCODE_RUNTIME_HOST_PATH = join(buildDir, "zcode-runtime-host.exe");
-const fixture = join(buildDir, "zcode-runtime-host-acceptance.exe");
+process.env.CODEZ_RUNTIME_HOST_PATH = join(buildDir, "codez-runtime-host.exe");
+const fixture = join(buildDir, "codez-runtime-host-acceptance.exe");
 async function create(mode) {
   const abort = new AbortController();
   const runtime = await spawnWindowsRuntimeHost({

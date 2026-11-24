@@ -2,7 +2,7 @@
 
 ## 目标
 
-Windows named pipe 没有 Unix socket 的 `.pending -> final` 原子让渡语义。Helper 冷启动时，Host 因此需要在功能初始化完成前先拿到一份已经完成认证绑定的 transport tuple，让 Agent 可以立即启动 `zcode-cua` MCP；功能层仍在初始化时，工具调用由 broker 以可重试的 `broker_unavailable` 响应表示 warming-up。
+Windows named pipe 没有 Unix socket 的 `.pending -> final` 原子让渡语义。Helper 冷启动时，Host 因此需要在功能初始化完成前先拿到一份已经完成认证绑定的 transport tuple，让 Agent 可以立即启动 `codez-cua` MCP；功能层仍在初始化时，工具调用由 broker 以可重试的 `broker_unavailable` 响应表示 warming-up。
 
 ## 状态与时序
 

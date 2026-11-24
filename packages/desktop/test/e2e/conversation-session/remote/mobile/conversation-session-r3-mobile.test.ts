@@ -5,8 +5,8 @@ import { execFile } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
-import { parseRemoteWorkspaceIdentity, parseWebRemoteControlAppPayload } from "@zcode/shared";
-import { BufferReader, deserialize, VSBuffer } from "@zcode/rpc";
+import { parseRemoteWorkspaceIdentity, parseWebRemoteControlAppPayload } from "@codez/shared";
+import { BufferReader, deserialize, VSBuffer } from "@codez/rpc";
 import type { Page, WebSocketRoute } from "playwright-core";
 import {
   TID_TASK_ITEM,
@@ -15,7 +15,7 @@ import {
   TID_V4_SESSION_PANE,
   TID_SSH_CONNECT_TRIGGER,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, DEFAULT_WORKSPACE } from "#e2e/helpers/desktop-app";
 import { openWorkspaceDraftFromSidebar } from "#e2e/helpers/workspace-agent-warmup";
 import { disconnectRemoteSource } from "#e2e/helpers/remote-project-actions";
@@ -53,7 +53,7 @@ import {
 } from "#e2e/helpers/v4-conversation";
 
 const CASE_MARKER = "E2E_R3_MOBILE";
-const artifactDir = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-mobile");
+const artifactDir = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-mobile");
 // Linux e2e 服务器上没有 macOS 版 Chrome：用 R3_MOBILE_CHROME 指向该机 playwright 下载的
 // chromium（缺省仍回退开发机 macOS 路径），否则本 case 在服务器上直接起不了手机浏览器。
 const CHROME =
@@ -193,7 +193,7 @@ async function installSubmissionBridgeProbe(page: Page) {
         const header = deserialize(reader) as unknown[];
         if (
           header[0] === 100 &&
-          header[2] === "zcode-agent" &&
+          header[2] === "codez-agent" &&
           header[3] === "sendConversationCommandV4"
         ) {
           const args = deserialize(reader) as Array<{ envelope?: { payload?: { text?: string } } }>;
@@ -340,8 +340,8 @@ describe(`${CASE_MARKER}: 手机 viewport 经真实 relay 配对，选择 SSH ta
 
   it("R3A-MOB-01/02/03/07 配对成功且 Host/SSH/Agent 数不增；手机断网恢复独立 replay、桌面 continuous 持续；双端交替输入同一 FIFO 无丢失重复；手机无新建远程能力", async function () {
     this.timeout(40 * 60_000);
-    const container = process.env.ZCODE_E2E_SSH_CONTAINER?.trim();
-    if (!container) throw new Error(`${CASE_MARKER}: 缺少 ZCODE_E2E_SSH_CONTAINER`);
+    const container = process.env.CODEZ_E2E_SSH_CONTAINER?.trim();
+    if (!container) throw new Error(`${CASE_MARKER}: 缺少 CODEZ_E2E_SSH_CONTAINER`);
     const prepared = await prepareSSHLifecycle(CASE_MARKER, {
       apiType: "anthropic-messages",
       tunnelUsername: "tunnel",
@@ -825,7 +825,7 @@ PY`,
       });
       facts.sourceReconnectFailure = {
         text: (await mobileText(mobile)).slice(0, 3000),
-        historyPage: await mobile.evaluate(() => window.history.state?.zcodeMobilePage ?? null),
+        historyPage: await mobile.evaluate(() => window.history.state?.codezMobilePage ?? null),
       };
       throw error;
     });
@@ -921,7 +921,7 @@ PY`,
       // 核对本项目的持久正文，不能用旧 key 超时误判为产品丢草稿。
       await mobile.waitForFunction(
         ({ text, projectId, hostId }: { text: string; projectId: string; hostId: string }) => {
-          const prefix = "zcode-v4-composer-project-drafts:v1:";
+          const prefix = "codez-v4-composer-project-drafts:v1:";
           return Object.keys(localStorage).some((key) => {
             if (!key.startsWith(prefix)) return false;
             const [client, host, project] = JSON.parse(key.slice(prefix.length));

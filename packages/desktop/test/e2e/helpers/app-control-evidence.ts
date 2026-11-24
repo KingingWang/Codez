@@ -46,7 +46,7 @@ export function appControlToolBlock(
 
 /**
  * Anthropic Messages 投影会把紧随工具结果的提醒折叠进最后一个 tool_result
- * （docs: apps/zcode-cli/docs/design/v2/loop/meta-user-context.md，`foldRemindersIntoToolResults`）。
+ * （docs: apps/codez-cli/docs/design/v2/loop/meta-user-context.md，`foldRemindersIntoToolResults`）。
  * 工具本身的 JSON 在前，提醒以 "\n\n<system-reminder>" 追加；只剥离这一尾部，不改写工具正文。
  */
 function stripFoldedReminders(text: string): string {

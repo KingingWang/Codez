@@ -204,21 +204,21 @@ type OwnedAppCallbacks = {
   restartAfterExit(): Promise<ReadyApp>;
   bind(browser: WebdriverIO.Browser): Promise<void>;
 };
-type BrowserWithOwnedApp = WebdriverIO.Browser & { __zcodeE2EOwnedApp?: OwnedAppCallbacks };
+type BrowserWithOwnedApp = WebdriverIO.Browser & { __codezE2EOwnedApp?: OwnedAppCallbacks };
 
 export async function restartPrelaunchedElectronAfterExit(
   browser: WebdriverIO.Browser,
 ): Promise<void> {
-  await (browser as BrowserWithOwnedApp).__zcodeE2EOwnedApp?.restartAfterExit();
+  await (browser as BrowserWithOwnedApp).__codezE2EOwnedApp?.restartAfterExit();
 }
 export async function bindPrelaunchedElectronSession(
   browser: WebdriverIO.Browser,
   owner?: PrelaunchedElectronOwner,
 ): Promise<void> {
   const bound = browser as BrowserWithOwnedApp;
-  if (owner && !bound.__zcodeE2EOwnedApp) {
+  if (owner && !bound.__codezE2EOwnedApp) {
     // config与spec可被loader实例化多次；操作闭包显式绑定到同一个browser，不查模块全局状态。
-    Object.defineProperty(bound, "__zcodeE2EOwnedApp", {
+    Object.defineProperty(bound, "__codezE2EOwnedApp", {
       configurable: true,
       value: {
         owner,
@@ -244,7 +244,7 @@ export async function bindPrelaunchedElectronSession(
       } as never,
     );
   }
-  if (owner && bound.__zcodeE2EOwnedApp?.owner !== owner)
+  if (owner && bound.__codezE2EOwnedApp?.owner !== owner)
     throw new Error("Browser already has another App owner");
-  await bound.__zcodeE2EOwnedApp?.bind(browser);
+  await bound.__codezE2EOwnedApp?.bind(browser);
 }

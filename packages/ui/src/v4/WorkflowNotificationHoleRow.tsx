@@ -1,8 +1,8 @@
 import { Pen } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { WorkflowNotificationMeta, WorkflowRunHole } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowNotificationMeta, WorkflowRunHole } from "@codez/shared/codez-protocol-v4";
 import { ToolLayout } from "@/ToolCallBlocks/ToolLayout.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { workflowRunQuestionWaitedLabel } from "@/app-shell/workflowRunQuestions.js";
 
 /**
@@ -57,7 +57,7 @@ export function WorkflowNotificationHoleRow({
   onOpenRun?: () => void;
   forceOpen?: boolean;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const state = holeRowState(holes, notification.siteId);
 
   // 等待时长要在没有事件流时也照走（停驻的 run 恰恰不发事件），30 秒喂一次新的「现在」；只在等待时走。

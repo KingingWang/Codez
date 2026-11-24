@@ -1,7 +1,7 @@
 import { createServer, request as httpRequest, type Server } from "node:http";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 import {
   TID_CHAT_MODEL_SELECT_TRIGGER,
   TID_MODEL_PROVIDER_CONNECTION_MODE_ITEM,
@@ -13,7 +13,7 @@ import {
   TID_TASK_SETTINGS_BUTTON,
   TID_V4_MODEL_CONFIG,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clickTestIdByDom,
@@ -33,7 +33,7 @@ import { sel } from "#e2e/helpers/selectors";
  */
 const APP_DATA_PATHS = getE2EAppDataPaths();
 const SETTINGS_FILE = join(APP_DATA_PATHS.appDataDir, "setting.json");
-export const REMOTE_DATA_DIR = "/home/dev/.zcode/v2";
+export const REMOTE_DATA_DIR = "/home/dev/.codez/v2";
 const REMOTE_SETTINGS_FILE = `${REMOTE_DATA_DIR}/setting.json`;
 export const INDIVIDUAL_PROVIDER_ID = BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan;
 const BIGMODEL_ACCOUNT_NAV_KEY = `preset:${BUILTIN_MODEL_PROVIDER_IDS.bigmodelStartPlan}`;
@@ -54,7 +54,7 @@ export interface ProvisioningLogEntry {
 export async function readAccountSettingsSyncs(
   caseMarker: string,
 ): Promise<ProvisioningLogEntry[]> {
-  const directory = await browser.electron.execute(() => process.env.ZCODE_E2E_RUNTIME_LOG_DIR);
+  const directory = await browser.electron.execute(() => process.env.CODEZ_E2E_RUNTIME_LOG_DIR);
   if (!directory) throw new Error(`${caseMarker}: 缺少本次 Main 日志目录`);
   const markers = [
     "[provider-provisioning] Environment sync completed ",
@@ -128,7 +128,7 @@ export async function readRemoteSelectionKind(container: string): Promise<string
 }
 
 export async function seedSignedInIndividualPlan(caseMarker: string) {
-  const mockBaseUrl = process.env.ZCODE_E2E_CODING_PLAN_MOCK_URL?.trim();
+  const mockBaseUrl = process.env.CODEZ_E2E_CODING_PLAN_MOCK_URL?.trim();
   if (!mockBaseUrl) throw new Error(`${caseMarker}: 缺少账号套餐 mock 地址`);
   // 旧 Electron 仍存活时改设置会被退出阶段的写回覆盖；先退出，再写夹具，再重建应用。
   await quitElectronAppGracefully();
@@ -146,7 +146,7 @@ export async function seedSignedInIndividualPlan(caseMarker: string) {
       id: "bigmodel-e2e-user",
       username: "bigmodel-e2e-user",
     }),
-    zcodejwttoken: "",
+    codezjwttoken: "",
   });
   await writeJsonPatch(SETTINGS_FILE, {
     providerFamilyConnectionSelections: { bigmodel: { kind: "individual-coding-plan" } },
@@ -280,7 +280,7 @@ export async function closeSettingsPage(caseMarker: string) {
 
 /** 失败排查用：容器内是否能连到账号 mock，以及远端日志中与账号套餐相关的行。不收集凭据和正文。 */
 export async function collectRemoteDiagnostics(container: string) {
-  const mockPort = new URL(process.env.ZCODE_E2E_CODING_PLAN_MOCK_URL ?? "http://127.0.0.1:0").port;
+  const mockPort = new URL(process.env.CODEZ_E2E_CODING_PLAN_MOCK_URL ?? "http://127.0.0.1:0").port;
   const run = async (script: string) => {
     try {
       const result = await execInRemoteContainer(container, ["bash", "-c", script]);
@@ -294,10 +294,10 @@ export async function collectRemoteDiagnostics(container: string) {
       `exec 3<>/dev/tcp/127.0.0.1/${mockPort} && printf 'GET /__e2e/coding-plan/requests HTTP/1.0\\r\\n\\r\\n' >&3 && head -c 300 <&3`,
     ),
     logFiles: await run(
-      "find /home/dev/.zcode -maxdepth 5 -type f \\( -name '*.log' -o -name '*.jsonl' \\) | head -40",
+      "find /home/dev/.codez -maxdepth 5 -type f \\( -name '*.log' -o -name '*.jsonl' \\) | head -40",
     ),
     accountLines: await run(
-      "find /home/dev/.zcode -maxdepth 5 -type f \\( -name '*.log' -o -name '*.jsonl' \\) -print0 | xargs -0 grep -h -E 'coding-plan-availability|billing/balance|account-provider|provider-provisioning|entitle' 2>/dev/null | tail -40 | cut -c1-400",
+      "find /home/dev/.codez -maxdepth 5 -type f \\( -name '*.log' -o -name '*.jsonl' \\) -print0 | xargs -0 grep -h -E 'coding-plan-availability|billing/balance|account-provider|provider-provisioning|entitle' 2>/dev/null | tail -40 | cut -c1-400",
     ),
   };
 }

@@ -1,4 +1,4 @@
-import { extractPlanStepsFromToolInput, extractPlanStepsFromToolOutput } from "@zcode/shared";
+import { extractPlanStepsFromToolInput, extractPlanStepsFromToolOutput } from "@codez/shared";
 import { getExecuteSecondaryText } from "@/ToolCallBlocks/renderers/execute.js";
 import { buildReadSummary, ReadFileChip } from "@/ToolCallBlocks/renderers/read.js";
 import { getWebFetchPrimaryText } from "@/ToolCallBlocks/renderers/web-fetch.js";
@@ -7,7 +7,7 @@ import { resolveToolCallIdentity } from "@/lib/toolIdentity.js";
 import type { ToolCallBlockRenderContext } from "@/ToolCallBlocks/shared.js";
 import { type ReactNode } from "react";
 import type { TaskChatToolCallTreeNode } from "@/lib/toolCallTree.js";
-import type { ZCodePlanStep } from "@zcode/shared";
+import type { CodezPlanStep } from "@codez/shared";
 
 type IntlLike = {
   formatMessage: (descriptor: { id: string }, values?: Record<string, string>) => string;
@@ -53,7 +53,7 @@ function renderChildActionKindPrefix(actionKindLabel: string | null, content: Re
 
 function readTodoPlanFromToolCall(
   childToolCall: ToolCallBlockRenderContext["toolCallNode"]["toolCall"],
-): ZCodePlanStep[] | null {
+): CodezPlanStep[] | null {
   return (
     extractPlanStepsFromToolOutput({
       title: childToolCall.title,

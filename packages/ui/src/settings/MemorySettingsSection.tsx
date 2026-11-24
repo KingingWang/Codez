@@ -3,13 +3,13 @@ import type {
   IMemoryService,
   IServiceAccessor,
   ProjectMemoryWorkspaceSummary,
-} from "@zcode/services";
+} from "@codez/services";
 import { Alert, AlertDescription } from "@/components/ui/alert.js";
 import { Button } from "@/components/ui/button.js";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { useSettings, updateSettingsAndRefreshSnapshot } from "@/hooks/useSettingService.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { runUserAction, runUserActionAsync } from "@/lib/userActionTelemetry.js";
 import { logger } from "@/logger.js";
 import {
@@ -20,7 +20,7 @@ import {
 } from "@/settings-scope/index.js";
 import { PluginScopeMenu } from "@/settings/PluginScopeMenu.js";
 
-import { TID_SETTINGS_MEMORY_SWITCH } from "@zcode/shared/test-ids";
+import { TID_SETTINGS_MEMORY_SWITCH } from "@codez/shared/test-ids";
 import { Switch } from "@/components/ui/switch.js";
 import {
   MemorySettingsViewer,
@@ -115,7 +115,7 @@ function MemoryDeviceSettings({
   isDesktop: boolean;
   workspaceDisplayNames: readonly string[];
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const { settings, loading, error, refresh } = useSettings({ services });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -238,7 +238,7 @@ export function MemorySettingsSection({
   remoteDevice?: boolean;
   workspaceDisplayNames?: readonly string[];
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const catalogRequestIdRef = useRef(0);
   const [catalogState, setCatalogState] = useState<MemoryViewerLoadingState>("idle");
   const [catalogError, setCatalogError] = useState<string | null>(null);

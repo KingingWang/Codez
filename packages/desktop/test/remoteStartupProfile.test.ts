@@ -7,7 +7,7 @@ import { getAppConfigDir, setDataBaseDir } from "../../services/src/paths.js";
 import { seedRemoteOnboardingFixture } from "./e2e/helpers/remote-startup-profile.js";
 
 const homes: string[] = [];
-const fixtureUser = "zcode-e2e-user";
+const fixtureUser = "codez-e2e-user";
 const remoteSpec = "conversation-session-ssh-remote-connection-p0.test.ts";
 const fixtureDeviceMid = "e2e-device-mid";
 
@@ -20,7 +20,7 @@ function createService(userId: string | null) {
 }
 
 async function prepare(enabled: boolean, spec = remoteSpec) {
-  const home = await mkdtemp(join(tmpdir(), "zcode-remote-startup-"));
+  const home = await mkdtemp(join(tmpdir(), "codez-remote-startup-"));
   homes.push(home);
   setDataBaseDir(home);
   await seedRemoteOnboardingFixture({

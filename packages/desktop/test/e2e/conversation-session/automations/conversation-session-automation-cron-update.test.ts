@@ -19,7 +19,7 @@ import {
   TID_AUTOMATIONS_OPEN,
   TID_CRON_CREATE_CARD,
   TID_CRON_CREATE_OPEN,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   DEFAULT_WORKSPACE,
@@ -181,7 +181,7 @@ interface AutomationRecord {
 }
 
 function automationDatabasePath(): string {
-  return join(homedir(), ".zcode", "v2", "tasks-index.sqlite");
+  return join(homedir(), ".codez", "v2", "tasks-index.sqlite");
 }
 
 function readAutomationRecordById(automationId: string): AutomationRecord | null {

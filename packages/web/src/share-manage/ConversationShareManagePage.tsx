@@ -5,9 +5,9 @@ import {
   type ConversationShareAccessMode,
   type ConversationShareManagedItem,
   type ConversationShareManagedUpdateRequest,
-} from "@zcode/shared";
-import { applyTheme, type Theme } from "@zcode/ui/useTheme";
-import { Button } from "@zcode/ui/button";
+} from "@codez/shared";
+import { applyTheme, type Theme } from "@codez/ui/useTheme";
+import { Button } from "@codez/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,7 +17,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@zcode/ui/alert-dialog";
+} from "@codez/ui/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +28,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@zcode/ui/dropdown-menu";
+} from "@codez/ui/dropdown-menu";
 import {
   ArrowUpRightIcon,
   CheckIcon,
@@ -111,12 +111,12 @@ interface ManageCopy {
 
 const COPY: Record<ConversationShareLandingLocale, ManageCopy> = {
   "zh-CN": {
-    brand: "ZCode",
+    brand: "Codez",
     pageTitle: "我的分享",
     loginTitle: "登录后管理分享",
     loginDescription: "请使用创建分享时的账号登录，查看和管理你的分享。",
     emptyTitle: "还没有生效中的分享",
-    emptyDescription: "在 ZCode 中分享会话后会显示在这里。已过期的分享不会显示。",
+    emptyDescription: "在 Codez 中分享会话后会显示在这里。已过期的分享不会显示。",
     statusActive: "生效中",
     statusRevoked: "已撤销",
     createdAt: "创建于 {time}",
@@ -163,13 +163,13 @@ const COPY: Record<ConversationShareLandingLocale, ManageCopy> = {
     switchToLightTheme: "切换到浅色主题",
   },
   "en-US": {
-    brand: "ZCode",
+    brand: "Codez",
     pageTitle: "My shares",
     loginTitle: "Sign in to manage your shares",
     loginDescription: "Sign in with the account you used to create the shares.",
     emptyTitle: "No active shares",
     emptyDescription:
-      "Conversations you share from ZCode appear here. Expired shares are not shown.",
+      "Conversations you share from Codez appear here. Expired shares are not shown.",
     statusActive: "Active",
     statusRevoked: "Revoked",
     createdAt: "Created {time}",
@@ -517,7 +517,7 @@ export function ConversationShareManageLoader({
   }, [copy.brand, copy.pageTitle]);
 
   const handleThemeChange = useCallback((nextTheme: Theme) => {
-    localStorage.setItem("zcode-theme", nextTheme);
+    localStorage.setItem("codez-theme", nextTheme);
     setActiveTheme(nextTheme);
     applyTheme(nextTheme);
   }, []);
@@ -696,7 +696,7 @@ export function ConversationShareManageLoader({
     >
       <header className="sticky top-0 z-20 border-b border-border bg-background">
         <div className="mx-auto flex h-16 w-full max-w-4xl items-center gap-4 px-4 sm:px-8">
-          {/* 与分享落地页同一套品牌组合（图标 + 字标，16px 后接标题），不再用纯文字「ZCode /」。 */}
+          {/* 与分享落地页同一套品牌组合（图标 + 字标，16px 后接标题），不再用纯文字「Codez /」。 */}
           <div
             data-share-manage-brand="true"
             className="flex shrink-0 items-center gap-2 text-foreground"

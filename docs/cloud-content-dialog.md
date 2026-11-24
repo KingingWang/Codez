@@ -4,7 +4,7 @@
 
 ## 当前实现
 
-Banner presentation 支持宿主视觉消息 `{channel:"zcode-cloud-hero-v1",type:"hover",instanceId,hovered:boolean}`，仅 ready 后发送，减少动态效果时为 false。不是业务 action；iframe 继续不可聚焦、不接收原生指针、忽略包内 action。弹窗 Hero 不接收该桥接，仍使用原生交互。详见 Marketing Touch 的 Banner hover 桥接规范。
+Banner presentation 支持宿主视觉消息 `{channel:"codez-cloud-hero-v1",type:"hover",instanceId,hovered:boolean}`，仅 ready 后发送，减少动态效果时为 false。不是业务 action；iframe 继续不可聚焦、不接收原生指针、忽略包内 action。弹窗 Hero 不接收该桥接，仍使用原生交互。详见 Marketing Touch 的 Banner hover 桥接规范。
 
 关闭按钮采用与 Hero/App 主题无关的媒体覆盖层配色：黑色 50% 不透明度背景、白色 X，无边框；hover 背景加深到黑色 65%。保持圆形、原尺寸和焦点/关闭/上报路径，不新增服务端字段，不修改 Banner 或全局 Dialog。
 
@@ -43,7 +43,7 @@ Hero ZIP 及 HTML 源资源现由独立制作工作区维护，App 仓库的旧�
 | image              | src、darkSrc?、alt、fit?                                                                     |
 | video              | src、darkSrc?、poster、autoplay?、loop?、muted:true、fit?                                    |
 | lottie             | src、darkSrc?、autoplay?、loop?、speed?（0.1–4）、fallback?                                  |
-| interactive_bundle | runtime:zcode-hero-sandbox-v1、bundle、viewport:{aspectRatio:"4:3"}、data、events、fallback? |
+| interactive_bundle | runtime:codez-hero-sandbox-v1、bundle、viewport:{aspectRatio:"4:3"}、data、events、fallback? |
 
 bundle 必须包含 `format:"zip"`、`url`、`entry`、`sha256`（64 位小写十六进制）；`sizeBytes` 可选，提供时必须为正整数且匹配实际大小。服务端 Marketing Touch 无大小字段，下载及展开的实际字节上限仍强制执行。HTTP mock 使用实算元数据，不能以占位哈希通过校验。
 
@@ -90,7 +90,7 @@ Main 不承担资源下载/解压业务。服务通过 ServiceCollection/RPC 注
 Desktop 的实际目录：
 
 ```text
-<ZCode data base>/.zcode/v2/cache/content-bundles/<host-instance-uuid>/
+<Codez data base>/.codez/v2/cache/content-bundles/<host-instance-uuid>/
   staging/<unique-attempt>/
   <sha256>/index.html
   <sha256>/.bundle.json

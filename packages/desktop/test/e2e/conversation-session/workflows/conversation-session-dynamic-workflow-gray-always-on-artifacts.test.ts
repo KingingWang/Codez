@@ -1,7 +1,7 @@
 import type { ChainablePromiseElement } from "webdriverio";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import { TID_CHAT_WORKFLOW_RUN_DIGEST } from "@zcode/shared";
+import { TID_CHAT_WORKFLOW_RUN_DIGEST } from "@codez/shared";
 import { clearAppData, pinE2ELocale } from "#e2e/helpers/desktop-app";
 import { resolveE2ERuntimePath } from "#e2e/helpers/e2e-runtime-paths";
 import {
@@ -46,7 +46,7 @@ describe("动态工作流 · 产物", () => {
     await prepareV4ConversationE2E();
     // 断言中文文案：固定界面语言，不跟随宿主系统语言（容器里默认英文）。
     await pinE2ELocale("zh-CN");
-    // `artifact.file` 读工作区里的文件：用例先把它放进 Agent 的工作区（`.zcode-e2e/` 在工作区内）。
+    // `artifact.file` 读工作区里的文件：用例先把它放进 Agent 的工作区（`.codez-e2e/` 在工作区内）。
     await mkdir(dirname(SCORES_PATH), { recursive: true });
     await writeFile(SCORES_PATH, SCORES_CSV);
     await rm(GATE_A, { force: true });

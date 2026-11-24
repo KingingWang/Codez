@@ -22,15 +22,15 @@ function writeLog(level: "info" | "warn" | "error", message: string, fields: unk
 
 async function resolveHelper(): Promise<string> {
   const resources = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
-  const candidates = process.env.ZCODE_RUNTIME_HOST_PATH
-    ? [process.env.ZCODE_RUNTIME_HOST_PATH]
+  const candidates = process.env.CODEZ_RUNTIME_HOST_PATH
+    ? [process.env.CODEZ_RUNTIME_HOST_PATH]
     : [
-        ...(resources ? [join(resources, "tools/runtime-host/zcode-runtime-host.exe")] : []),
-        ...(process.env.ZCODE_SERVER_RUNTIME_ROOT
+        ...(resources ? [join(resources, "tools/runtime-host/codez-runtime-host.exe")] : []),
+        ...(process.env.CODEZ_SERVER_RUNTIME_ROOT
           ? [
               join(
-                process.env.ZCODE_SERVER_RUNTIME_ROOT,
-                "tools/runtime-host/zcode-runtime-host.exe",
+                process.env.CODEZ_SERVER_RUNTIME_ROOT,
+                "tools/runtime-host/codez-runtime-host.exe",
               ),
             ]
           : []),
@@ -38,19 +38,19 @@ async function resolveHelper(): Promise<string> {
           process.cwd(),
           "bundled-tools",
           `win32-${process.arch}`,
-          "runtime-host/zcode-runtime-host.exe",
+          "runtime-host/codez-runtime-host.exe",
         ),
         join(
           process.cwd(),
           "packages/desktop/bundled-tools",
           `win32-${process.arch}`,
-          "runtime-host/zcode-runtime-host.exe",
+          "runtime-host/codez-runtime-host.exe",
         ),
         join(
           process.cwd(),
           "../desktop/bundled-tools",
           `win32-${process.arch}`,
-          "runtime-host/zcode-runtime-host.exe",
+          "runtime-host/codez-runtime-host.exe",
         ),
       ];
   for (const candidate of candidates) {
@@ -81,8 +81,8 @@ export async function spawnWindowsRuntimeHost(
 ): Promise<WindowsRuntimeHost> {
   const helper = await resolveHelper();
   options.signal.throwIfAborted();
-  const jobName = `Local\\zcode-runtime-${randomUUID()}`;
-  const pipeName = `\\\\.\\pipe\\zcode-runtime-${randomUUID()}`;
+  const jobName = `Local\\codez-runtime-${randomUUID()}`;
+  const pipeName = `\\\\.\\pipe\\codez-runtime-${randomUUID()}`;
   const runId = randomUUID();
   let helperPid: number | undefined;
   const ready = Promise.withResolvers<number>();

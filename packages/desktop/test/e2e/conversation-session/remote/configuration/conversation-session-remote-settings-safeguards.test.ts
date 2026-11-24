@@ -1,13 +1,13 @@
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 import {
   TID_SETTINGS_PAGE,
   TID_SETTINGS_BACK_BUTTON,
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom, waitForWorkspaceApp } from "#e2e/helpers/desktop-app";
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 import {
@@ -132,7 +132,7 @@ describe(`${CASE_MARKER}: 设置防护、连接编辑与机器标注`, () => {
     expect(await $("#edit-device-name").getValue()).toBe(deviceName);
     expect(await $('[data-testid="ssh-auth-password"]').getAttribute("aria-pressed")).toBe("true");
     const artifactDir = resolve(
-      process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-settings-safeguards",
+      process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-settings-safeguards",
     );
     await mkdir(artifactDir, { recursive: true });
     for (const locale of ["zh-CN", "en-US"] as const) {

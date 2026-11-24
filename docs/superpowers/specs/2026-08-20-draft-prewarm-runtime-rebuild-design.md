@@ -31,7 +31,7 @@ CUA Helper 就绪会触发 agent runtime 无条件回收（`packages/services/sr
 - `reconcile()` 在 `blockedInvalidationVersion === requestedVersion` 时直接 return（`:313-315`），**同版本不再重建**；
 - 于是 `prewarmSessionId` 永久为 null，附件卡在 `waitingSession`，即现象 1。
 
-冷启动时 `createSession` 因 `ZCode Protocol client disposed` 失败（`useDraftSessionPrewarm.ts:139-144` 只 warn、无重试）会到达同样的终态。
+冷启动时 `createSession` 因 `Codez Protocol client disposed` 失败（`useDraftSessionPrewarm.ts:139-144` 只 warn、无重试）会到达同样的终态。
 
 ## 方案选择
 
@@ -41,7 +41,7 @@ CUA Helper 就绪会触发 agent runtime 无条件回收（`packages/services/sr
 
 被否决/推迟的替代方案：
 - 在回收侧区分触发源（`onHelperHealthy` 冷启动首次就绪 vs `onHelperCredentialsRotated`），使正在服务的 workspace 不被回收；
-- 给 `ZCodeAgentService` 补活跃 turn 查询，把 `hasActiveTurnRef`（`node.ts:1467` 现为 `() => false`）真正接上。
+- 给 `CodezAgentService` 补活跃 turn 查询，把 `hasActiveTurnRef`（`node.ts:1467` 现为 `() => false`）真正接上。
 
 这两条与本方案不冲突，可后续单独推进。
 
@@ -50,8 +50,8 @@ CUA Helper 就绪会触发 agent runtime 无条件回收（`packages/services/sr
 ```
 12:26:43.617  cua helper liveness: Helper unreachable (attempt 3); triggering resolver recovery
 12:26:44.980  cua helper ready pid=97629
-12:26:45.489  ZCode agent cleanup ... reason='workspace-dispose'
-              runtimeIdentity: /Users/dev/.zcode/workspace/default:4:57273
+12:26:45.489  Codez agent cleanup ... reason='workspace-dispose'
+              runtimeIdentity: /Users/dev/.codez/workspace/default:4:57273
 ```
 
 helper ready 后 509ms 触发回收，且该 workspace 已到 generation 4。若改从回收侧堵，需同时覆盖 `onHelperHealthy`、`onHelperCredentialsRotated` 与 liveness 恢复三条路径，改动面显著大于 renderer 侧补偿。
@@ -77,7 +77,7 @@ helper ready 后 509ms 触发回收，且该 workspace 已到 generation 4。若
 ```
 transport.onRuntimeRestart                         SessionPane props:446，已按 workspaceKey 过滤
   → 新增 effect（仅 sessionId === null）
-  → invalidateDraftRuntime(workspacePath, workspaceIdentity)    已存在：zcodeSessionStoreWorkspaceSlice.ts:408
+  → invalidateDraftRuntime(workspacePath, workspaceIdentity)    已存在：codezSessionStoreWorkspaceSlice.ts:408
   → draftRuntimeInvalidationVersion + 1
   → reconcile()：清 blockedInvalidationVersion → retireCurrent → startCurrent
   → onReady → 新 binding → prewarmSessionId → effectiveSessionId

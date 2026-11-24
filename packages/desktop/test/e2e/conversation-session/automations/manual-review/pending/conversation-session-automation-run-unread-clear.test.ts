@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { encodeCustomModelValue, resolveWorkspaceKey } from "@zcode/shared";
+import { encodeCustomModelValue, resolveWorkspaceKey } from "@codez/shared";
 import {
   TID_AUTOMATION_CREATE_MANUALLY,
   TID_AUTOMATION_CREATE_MENU,
@@ -15,7 +15,7 @@ import {
   TID_PROJECT_SECTION,
   TID_TASK_ITEM,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_CONVERSATION_WORKSPACE,
   DEFAULT_WORKSPACE,
@@ -53,7 +53,7 @@ interface AutomationIndexState {
 describe("TSL38：定时任务后台执行完成后点击清除未读", () => {
   afterEach(async function () {
     if (this.currentTest?.state !== "failed") return;
-    const database = new DatabaseSync(join(homedir(), ".zcode", "v2", "tasks-index.sqlite"));
+    const database = new DatabaseSync(join(homedir(), ".codez", "v2", "tasks-index.sqlite"));
     try {
       console.info("[Todo88 legacy automation]", {
         definitions: database
@@ -182,7 +182,7 @@ async function createScheduledAutomationAndMakeDue(): Promise<string> {
   await clickTestIdByDom(TID_AUTOMATIONS_OPEN);
   // 启动时 scheduler 早于窗口 Host 就绪；到期会进入正常的 no-local-host 退避。
   // 本 case 不测该退避，只在 Host 已就绪后推进调度时间，不再改模型选择或编辑保存。
-  const database = new DatabaseSync(join(homedir(), ".zcode", "v2", "tasks-index.sqlite"));
+  const database = new DatabaseSync(join(homedir(), ".codez", "v2", "tasks-index.sqlite"));
   try {
     database
       .prepare("update automations set next_run_at = ? where automation_id = ?")
@@ -253,7 +253,7 @@ async function waitForTaskIndexState(
 }
 
 function readTaskIndexState(taskId: string): TaskIndexState | null {
-  const database = new DatabaseSync(join(homedir(), ".zcode", "v2", "tasks-index.sqlite"));
+  const database = new DatabaseSync(join(homedir(), ".codez", "v2", "tasks-index.sqlite"));
   try {
     const row = database
       .prepare(
@@ -269,7 +269,7 @@ function readTaskIndexState(taskId: string): TaskIndexState | null {
 }
 
 function readLatestUnreadTaskIndexState(automationId: string): TaskIndexState | null {
-  const database = new DatabaseSync(join(homedir(), ".zcode", "v2", "tasks-index.sqlite"));
+  const database = new DatabaseSync(join(homedir(), ".codez", "v2", "tasks-index.sqlite"));
   try {
     const row = database
       .prepare(
@@ -300,7 +300,7 @@ async function waitForAutomationByTitle(title: string): Promise<AutomationIndexS
 }
 
 function readAutomationByTitle(title: string): AutomationIndexState | null {
-  const database = new DatabaseSync(join(homedir(), ".zcode", "v2", "tasks-index.sqlite"));
+  const database = new DatabaseSync(join(homedir(), ".codez", "v2", "tasks-index.sqlite"));
   try {
     const row = database
       .prepare(
@@ -315,13 +315,13 @@ function readAutomationByTitle(title: string): AutomationIndexState | null {
 }
 
 function seedLegacyAutomationSelection(automationId: string): void {
-  const database = new DatabaseSync(join(homedir(), ".zcode", "v2", "tasks-index.sqlite"));
+  const database = new DatabaseSync(join(homedir(), ".codez", "v2", "tasks-index.sqlite"));
   try {
     database.exec("PRAGMA busy_timeout = 5000");
     const result = database
       .prepare(
         `update automations set next_run_at = NULL, retry_at = null, running = 0,
-           provider = 'zcode', model = ?, thought_level = 'high', model_selection = NULL,
+           provider = 'codez', model = ?, thought_level = 'high', model_selection = NULL,
            workspace_key = ?, workspace_path = ?, workspace_identity = NULL,
            project_id = NULL, additional_directories = NULL
          where automation_id = ?`,
@@ -346,7 +346,7 @@ function seedLegacyAutomationSelection(automationId: string): void {
 }
 
 function assertMigratedAutomationSelection(automationId: string): void {
-  const database = new DatabaseSync(join(homedir(), ".zcode", "v2", "tasks-index.sqlite"));
+  const database = new DatabaseSync(join(homedir(), ".codez", "v2", "tasks-index.sqlite"));
   try {
     const row = database
       .prepare(
@@ -360,7 +360,7 @@ function assertMigratedAutomationSelection(automationId: string): void {
     };
     expect(JSON.parse(String(row.model_selection))).toEqual(expected);
     expect(row).toMatchObject({
-      provider: "zcode",
+      provider: "codez",
       model: encodeCustomModelValue(UPSTREAM_PROVIDER_ID, UPSTREAM_MODEL),
       thought_level: "high",
     });

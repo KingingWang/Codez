@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import { EMBEDDED_BROWSER_DESIGN_BRIDGE, EmbeddedBrowserWebviewChannels } from "@zcode/shared";
+import { EMBEDDED_BROWSER_DESIGN_BRIDGE, EmbeddedBrowserWebviewChannels } from "@codez/shared";
 import {
   buildDesignPageSignalsScript,
   buildDesignRuntimeCommandScript,
@@ -12,7 +12,7 @@ import {
   type DesignPageSignals,
   type DesignRuntimeCommand,
   type DesignRuntimeEvent,
-} from "@zcode/design-runtime";
+} from "@codez/design-runtime";
 import { logger } from "@/logger.js";
 
 // 设计工具的宿主 ↔ 页面通信（docs/browser-use/2026-11-03-browser-design-mode-spec.md 第二节）。
@@ -91,7 +91,7 @@ export function useBrowserDesignRuntime({
     }
   }, []);
 
-  // 设计稿信号：不装运行时，只读 data-zcode-design / :root CSS 变量 / data-variant / section.slide。
+  // 设计稿信号：不装运行时，只读 data-codez-design / :root CSS 变量 / data-variant / section.slide。
   useEffect(() => {
     if (!probeEnabled || !webview) return;
     let disposed = false;

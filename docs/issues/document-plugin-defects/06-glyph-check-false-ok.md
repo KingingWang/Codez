@@ -4,7 +4,7 @@ Status: needs-triage
 
 ## 现象
 
-- `apps/zcode-cli/packages/pdf-plugin/skills/pdf/scripts/pdf.py:2538` 的 `check_missing_glyphs` 导入 PyMuPDF 失败时，只向 stderr 打印警告，然后返回空列表（`:2544-2548`）。
+- `apps/codez-cli/packages/pdf-plugin/skills/pdf/scripts/pdf.py:2538` 的 `check_missing_glyphs` 导入 PyMuPDF 失败时，只向 stderr 打印警告，然后返回空列表（`:2544-2548`）。
 - 调用方 `font.check`（`:2602`）把空列表报告为 `"status": "ok"`。
 
 所以缺少 PyMuPDF 时，缺字检查没有执行，结果却显示通过。

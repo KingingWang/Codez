@@ -73,7 +73,7 @@ export type CredentialKeyFailureStage =
 /** 受控诊断：只含阶段与固定格式的错误码，不含密钥、凭据值、路径或原生错误正文。 */
 export interface CredentialKeyFailureDiagnostic {
   stage: CredentialKeyFailureStage;
-  /** Node.js 错误码，如 `ENOENT`、`EPERM`、`ZCODE_FILE_LOCK_TIMEOUT`。 */
+  /** Node.js 错误码，如 `ENOENT`、`EPERM`、`CODEZ_FILE_LOCK_TIMEOUT`。 */
   errorCode?: string;
   /** 系统错误号，如 Windows `8` = `ERROR_NOT_ENOUGH_MEMORY`。 */
   osCode?: number;

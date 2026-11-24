@@ -6,7 +6,7 @@ import {
   genUiStateTargetSchema,
   type GenUiDocument,
   type GenUiStateTarget,
-} from "@zcode/shared/gen-ui";
+} from "@codez/shared/gen-ui";
 
 export function assertGenUiFragment(html: string): void {
   if (Buffer.byteLength(html, "utf8") > GEN_UI_HTML_MAX_BYTES)

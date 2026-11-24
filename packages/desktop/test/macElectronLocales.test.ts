@@ -15,9 +15,9 @@ afterEach(() => {
 });
 
 function createPackagedApp(lprojNames: string[]) {
-  const root = mkdtempSync(join(tmpdir(), "zcode-mac-locales-"));
+  const root = mkdtempSync(join(tmpdir(), "codez-mac-locales-"));
   tempDirs.push(root);
-  const appPath = join(root, "ZCode.app");
+  const appPath = join(root, "Codez.app");
   const resourcesDir = resolveMacElectronFrameworkResourcesDir(appPath);
   mkdirSync(resourcesDir, { recursive: true });
   for (const name of lprojNames) mkdirSync(join(resourcesDir, `${name}.lproj`));

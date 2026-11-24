@@ -2,7 +2,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
 async function runtimeLogReader() {
-  const root = await browser.electron.execute(() => process.env.ZCODE_E2E_RUNTIME_LOG_DIR!);
+  const root = await browser.electron.execute(() => process.env.CODEZ_E2E_RUNTIME_LOG_DIR!);
   const read = async () =>
     (
       await Promise.all(
@@ -50,7 +50,7 @@ export function hasCompletedSubagentSettingsLoad(lines: readonly string[]): bool
   const initializedHosts = new Set<string>();
   for (const line of lines) {
     const match = line.match(
-      /\[pid:(\d+)\] \[zcode-host\] \[rpc:call\] (plugin-management\.getPluginsOverview|subagents\.list) OK/u,
+      /\[pid:(\d+)\] \[codez-host\] \[rpc:call\] (plugin-management\.getPluginsOverview|subagents\.list) OK/u,
     );
     if (!match) continue;
     if (match[2] === "plugin-management.getPluginsOverview") initializedHosts.add(match[1]!);

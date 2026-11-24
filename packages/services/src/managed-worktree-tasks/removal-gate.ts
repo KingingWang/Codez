@@ -1,7 +1,7 @@
 // 受管 worktree 的删除租约与会话操作闸门（docs/git/worktree.md §8.3）。
 // 租约按 worktree 根目录记录，是"删除中"的唯一数据源；Agent 服务的会话命令、冷订阅与终端创建
 // 都经这里检查。会话忙闲不在这里判断，由项目 CLI 判定（session/releaseUnderDirectory）。
-import { isPathInside } from "@zcode/shared/managed-worktree";
+import { isPathInside } from "@codez/shared/managed-worktree";
 
 export const WORKTREE_REMOVING_ERROR = "worktree.removing";
 

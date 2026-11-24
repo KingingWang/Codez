@@ -2,7 +2,7 @@
 
 ## 背景
 
-桌面端已经通过 View 菜单和 `Cmd/Ctrl + +/-/0` 支持页面缩放，内部档位为 `[-3, 5]`，每档倍率是 `1.1 ^ level`。侧边栏头像菜单之前移除过旧的 `zcode-zoom-level` localStorage 偏好；后来恢复的轻量菜单只复用当前窗口系统缩放命令，导致用户通过菜单或快捷键调整后，下次重启又回到默认大小。
+桌面端已经通过 View 菜单和 `Cmd/Ctrl + +/-/0` 支持页面缩放，内部档位为 `[-3, 5]`，每档倍率是 `1.1 ^ level`。侧边栏头像菜单之前移除过旧的 `codez-zoom-level` localStorage 偏好；后来恢复的轻量菜单只复用当前窗口系统缩放命令，导致用户通过菜单或快捷键调整后，下次重启又回到默认大小。
 
 ## 目标
 
@@ -16,7 +16,7 @@
 
 - 不改变 Web / 手机端浏览器自身缩放能力。
 - 不改变 Web 远控 replayable 恢复链路，也不向远控链路增加 zoom 状态。
-- 不恢复旧的设置页 Interface zoom 偏好或 `zcode-zoom-level` localStorage 读写。
+- 不恢复旧的设置页 Interface zoom 偏好或 `codez-zoom-level` localStorage 读写。
 - 不把手机 Web 远控的 replayable 恢复语义扩散到桌面端 continuous 主链路；缩放偏好只影响桌面端 BrowserWindow。
 
 ## 实现

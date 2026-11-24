@@ -6,18 +6,18 @@ Accepted（2026-09-14）
 
 ## 目标
 
-Windows 顶部提示条（`ZCode 正在操作电脑` / `ZCode is controlling your computer`）在模型使用
+Windows 顶部提示条（`Codez 正在操作电脑` / `Codez is controlling your computer`）在模型使用
 Computer Use 期间可见，并且**在任何情况下都能关闭**。
 
 指示器保持在 desktop main 侧（`windowsCuaOperationIndicator.ts`，2026-08-04 的既有实现），
 只修被 SDK 重构打断的那一段判定链路。
 
 本 spec 不改变：模型可见工具面、SDK 形状、broker 协议、Helper 生命周期与进程模型、
-macOS PiP 行为。zcode-cua producer **零改动**，因此不需要升 pin。
+macOS PiP 行为。codez-cua producer **零改动**，因此不需要升 pin。
 
 ## 为什么当前失效
 
-`bootstrap/src/zcode-protocol/computer-use-operation-event.ts` 用正则从
+`bootstrap/src/codez-protocol/computer-use-operation-event.ts` 用正则从
 `mcp__node_repl__js` 的 `input.code` 里提取 SDK 调用名，再拿动作词表
 （tracker 的 `CUA_SDK_ACTIONS`）比对。node_repl 重构后没有任何真实调用形态能命中：
 
@@ -55,10 +55,10 @@ desktop    windowsCuaOperationIndicator（既有实现，只调兜底时限）
 它是模型**必须原样照抄**的引导语句，而且这是架构强制而非文档软要求：node_repl 每个 cell
 都是全新 Worker、SDK 绑定不跨 cell，所以模型面文档写明「The first executable statement of
 every CUA cell must be this bootstrap, and the bootstrap and the actions must be in the
-**same** cell」（`zcode-cua-plugin/docs/computer-use.md:25`、`skills/computer-use/SKILL.md`）。
+**same** cell」（`codez-cua-plugin/docs/computer-use.md:25`、`skills/computer-use/SKILL.md`）。
 凡用 CUA 的 cell 必然含这一句。
 
-它还自带回归防护：`zcode-cua-plugin/tests/skill-sync.node-test.mjs` 钉住了 SKILL.md 里
+它还自带回归防护：`codez-cua-plugin/tests/skill-sync.node-test.mjs` 钉住了 SKILL.md 里
 `setupComputerUseRuntime({ globals: globalThis })` 这个模式，引导语句一旦改写那个测试会红。
 旧正则最缺的正是这一层——它锚在会随 SDK 动作面演化的东西上，且无人钉住。
 
@@ -110,16 +110,16 @@ Reporter 与边界回调的异常都被吞掉并只记 warn（`report` / `notify
   `scheduledOperationActionByCall`
 - 协议：`tool-scheduled` / `tool-started` 的 `operationAction` 字段
 
-`mcp__computer-use__*` 前缀分支同批删除：`zcode-cua-plugin` 不再注册任何 MCP server
+`mcp__computer-use__*` 前缀分支同批删除：`codez-cua-plugin` 不再注册任何 MCP server
 （`package.json`：execution is provided by the shared node_repl host），旧配置在 bootstrap
 即被丢弃且禁止重新注册（`2026-08-24-cua-node-repl-sdk-migration-spec.md`、
 `cua-dev-mcp-runtime-assets.md`），且 tracker 只从 live sideband 喂入
-（`zcodeAgentService.ts:1910`），历史 transcript 的只读解析到不了它。
+（`codezAgentService.ts:1910`），历史 transcript 的只读解析到不了它。
 
-**消费者已核实**（2026-09-14）：`ZCodeComputerUseOperationEvent` 与
-`zcodeComputerUseOperationEventSchema` 的引用只出现在三处——`packages/shared`（定义与其
-测试）、`packages/services/src/zcode-agent/{zcodeAgentService,cuaOperationTurnTracker}.ts`
-及其测试、`apps/zcode-cli/packages/bootstrap/src/zcode-protocol/computer-use-operation-event.ts`。
+**消费者已核实**（2026-09-14）：`CodezComputerUseOperationEvent` 与
+`codezComputerUseOperationEventSchema` 的引用只出现在三处——`packages/shared`（定义与其
+测试）、`packages/services/src/codez-agent/{codezAgentService,cuaOperationTurnTracker}.ts`
+及其测试、`apps/codez-cli/packages/bootstrap/src/codez-protocol/computer-use-operation-event.ts`。
 UI、desktop main、web 与其他包均无引用，因此 `operationAction` 没有本链路之外的消费者。
 
 `toolName` / `toolCallId` 保留：tracker 需要 `toolCallId` 做排期与开始的配对。
@@ -155,7 +155,7 @@ UI、desktop main、web 与其他包均无引用，因此 `operationAction` 没�
 - 需要在 Helper 内新写状态机与窗口，且跨两个仓库交付、要升 producer pin。
 - 两侧实现不得共存，desktop main 侧的既有指示器必须在真机验收后删除。
 
-而 zcode 侧修一处判定即可，producer 零改动。方案期间踩到并已修掉的真实缺陷单独留存：
+而 codez 侧修一处判定即可，producer 零改动。方案期间踩到并已修掉的真实缺陷单独留存：
 `windowsCuaDevHelperHost.ts` 把 `ELECTRON_RUN_AS_NODE: "1"` 硬编码在 `...commandEnv`
 **之后**，导致 `commandEnv` 永远无法覆盖它——这是当时真机测试指示器始终不出现的根因。
 
@@ -182,7 +182,7 @@ UI、desktop main、web 与其他包均无引用，因此 `operationAction` 没�
   动作名转 camelCase 门面。正则与 `CUA_SDK_ACTIONS` 未同步，指示器自此失效；因该路径无
   typecheck 覆盖（测试目录不在 `packages/services/tsconfig.json` 的 `include` 内）且夹具
   虚构了调用形态，CI 全程为绿。
-- 2026-09-14 曾尝试"producer 发布动作级事实 + MCP 通知送回 agent"（zcode-cua
+- 2026-09-14 曾尝试"producer 发布动作级事实 + MCP 通知送回 agent"（codez-cua
   `4439fc8a`，已由 `c0ad9f81` 回滚）。该方案要新建跨进程通道、新协议 kind 与信任边界；
   复核 PiP 结构后确认面板可与事实同处 Helper，那条回程路整体不需要。
-- 2026-09-14 Helper 自持窗口方案（见上）实现后否决，zcode-cua 侧改动整体 reset。
+- 2026-09-14 Helper 自持窗口方案（见上）实现后否决，codez-cua 侧改动整体 reset。

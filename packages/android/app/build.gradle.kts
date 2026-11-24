@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.zcode_mobile"
+    namespace = "com.example.codez_mobile"
     buildToolsVersion = "36.1.0"
     compileSdk {
         version = release(36) {
@@ -13,7 +13,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.zcode_mobile"
+        applicationId = "com.example.codez_mobile"
         minSdk = 24
         targetSdk = 36
         versionCode = 1

@@ -3,13 +3,13 @@
 ## 状态
 
 - 日期：2026-07-15
-- 基线：ZCode `feat/streamable-compact`
+- 基线：Codez `feat/streamable-compact`
 - 变更类型：compact summary 辅助请求的 transport 调整
 - 明确非目标：cache-sharing fork、独立 summarizer、compact 产品状态或 prompt 语义调整
 
 ## 背景
 
-变更前，ZCode 在 `compactActiveConversation()` 中直接调用
+变更前，Codez 在 `compactActiveConversation()` 中直接调用
 `modelAdapter.generateText(...)`。因此即使普通主请求使用 SSE，compact summary 仍固定走 HTTP
 non-stream 请求。
 
@@ -49,7 +49,7 @@ P32 direct-summarizer/cache-sharing gap 继续保持 postponed。
 
 ### Core compact
 
-`apps/zcode-cli/packages/core/src/runtime/methods/compact-active.ts` 当前负责：
+`apps/codez-cli/packages/core/src/runtime/methods/compact-active.ts` 当前负责：
 
 - 创建一次 `ModelRequest(querySource=compact)`；
 - 组装 projected messages、compact tools、provider options、status sink、trace 和 header refresh hook；
@@ -74,7 +74,7 @@ P32 direct-summarizer/cache-sharing gap 继续保持 postponed。
 
 新增：
 
-`apps/zcode-cli/packages/core/src/runtime/methods/compact-summary-model-request.ts`
+`apps/codez-cli/packages/core/src/runtime/methods/compact-summary-model-request.ts`
 
 主接口：
 
@@ -117,7 +117,7 @@ header refresh hook 仍可在每个物理 attempt 产生新 header；测试只�
 ### 隐藏 stream 聚合
 
 Compact summary 继续携带现有 runtime/MCP tool schema，以保持 provider-visible request 和 cache
-shape；但 `formatCompactSummaryOrThrow()` 不把 tool call 交给 executor，只按文本生成摘要，compact 不执行工具（规则见 `apps/zcode-cli/docs/design/v2/compact/README.md`「摘要文本的选取」）。
+shape；但 `formatCompactSummaryOrThrow()` 不把 tool call 交给 executor，只按文本生成摘要，compact 不执行工具（规则见 `apps/codez-cli/docs/design/v2/compact/README.md`「摘要文本的选取」）。
 因此 compact 不需要普通主请求“参数 JSON 一完整就提前发布 tool call”的优化。Compact request 只做
 单向 opt-in：设置 runtime-only `preserveProviderStreamBoundaries: true`。该字段统一保留三组
 provider stream provenance：首个真实 provider event 结束 SSE retry 资格；provider response start、

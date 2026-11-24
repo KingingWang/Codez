@@ -10,7 +10,7 @@ interface FixtureStatus {
   proxyUrl: string;
   caCertPath: string;
 }
-const fixtureUrl = () => process.env.ZCODE_E2E_PREINSTALL_FIXTURE_URL!;
+const fixtureUrl = () => process.env.CODEZ_E2E_PREINSTALL_FIXTURE_URL!;
 const status = async () => (await (await fetch(`${fixtureUrl()}/status`)).json()) as FixtureStatus;
 const statusSelector = '[data-tool-id="libreoffice"] [data-testid="preinstalled-tools-status"]';
 async function openDialog() {
@@ -27,12 +27,12 @@ async function terminalStatus() {
   return $(statusSelector).getAttribute("data-status");
 }
 async function screenshot(name: string) {
-  await browser.saveScreenshot(`${process.env.ZCODE_E2E_ARTIFACT_DIR}/lop-proxy-${name}.png`);
+  await browser.saveScreenshot(`${process.env.CODEZ_E2E_ARTIFACT_DIR}/lop-proxy-${name}.png`);
 }
 async function preinstallPid() {
   return browser.electron.execute(
     (electron) =>
-      electron.app.getAppMetrics().find((metric) => metric.name === "zcode-preinstalled-tools")
+      electron.app.getAppMetrics().find((metric) => metric.name === "codez-preinstalled-tools")
         ?.pid ?? null,
   );
 }

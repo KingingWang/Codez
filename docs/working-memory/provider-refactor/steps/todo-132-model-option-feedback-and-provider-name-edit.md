@@ -133,5 +133,5 @@ Esc 的含义是取消**本地尚未确认的名称草稿**，不是把已发生
 - 名称不调用 idle schedule/cancel，Enter/blur 通过 nameConfirmed 显式纳入保存，其他保存入口默认排除名称；Esc 先取消编辑身份再退出，不补偿写盘。切换 Provider 清除旧编辑身份并废弃旧反馈 revision。连接草稿原时机不变。
 - 测试先复现 idle 误存、Key 保存夹带名称。修复后与 Todo115 合跑 109 项单测通过，包括 IME、一次确认、Esc 后 blur/cleanup、Key 保留、保存失败重试及目标切换。未引入另一套保存服务/Schema。
 - 模型布尔选项局部使用 foreground 15% 底色、hover/focus 20%；关闭、文本框/Map 输入分支不变。图片/能力/MFJS 的真实浏览器同位置反复点击证明底色有差异，而文字/图标颜色、尺寸、覆盖边框不变；固定文本仍锁定。
-- 6 项浏览器组件用例通过；双主题/代表性宽度的计算值和截图保存在 `/tmp/zcode-provider-settings-batch/header-options-*.json`、`selected-*.png`。已实际查看截图，不仅断言类名；本机缺中文字体，中文视觉字形不算通过。
+- 6 项浏览器组件用例通过；双主题/代表性宽度的计算值和截图保存在 `/tmp/codez-provider-settings-batch/header-options-*.json`、`selected-*.png`。已实际查看截图，不仅断言类名；本机缺中文字体，中文视觉字形不算通过。
 - 根 typecheck/lint 通过；Electron 创建供应商 helper 已改为更多菜单进入、失焦确认，尚未声称 Electron/真实手机整链路通过。最终整批验收继续覆盖。

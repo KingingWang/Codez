@@ -7,7 +7,7 @@
 ## 1. 背景与根因
 
 工单 `ZCT-2092076135526567936` 的 `v3.9.1` 构建中，连续 Playwright/CDP 自动化期间出现
-ZCode 主进程 native access violation。崩溃前日志同时出现：
+Codez 主进程 native access violation。崩溃前日志同时出现：
 
 ```text
 detachGuest cdp message cleanup failed ... Object has been destroyed

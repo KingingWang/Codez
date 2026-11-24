@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { ImagePreviewDialog } from "@/components/ai-elements/image-preview-dialog.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { registerImageComposerTarget } from "@/image-preview-editor/index.js";
 import "@/styles.css";
 const params = new URLSearchParams(location.search);
 const locale = params.get("locale") === "en-US" ? "en-US" : "zh-CN";
-localStorage.setItem("zcode-locale-preference", locale);
+localStorage.setItem("codez-locale-preference", locale);
 document.documentElement.className =
   params.get("theme") === "light" ? "theme-zai-light" : "theme-zai-dark dark";
 const src =
@@ -40,7 +40,7 @@ function Fixture() {
     [scope],
   );
   return (
-    <ZCodeIntlProvider initialLocale={locale}>
+    <CodezIntlProvider initialLocale={locale}>
       <button onClick={() => setOpen(true)}>Open</button>
       <div className="m-6 rounded-xl border border-border bg-background p-4 text-foreground">
         <label>
@@ -66,7 +66,7 @@ function Fixture() {
             : [{ alt: "drawing.svg", src }]
         }
       />
-    </ZCodeIntlProvider>
+    </CodezIntlProvider>
   );
 }
 createRoot(document.getElementById("root")!).render(<Fixture />);

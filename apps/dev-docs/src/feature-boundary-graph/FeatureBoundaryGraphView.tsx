@@ -19,7 +19,7 @@ import {
   type NodeProps,
 } from "@xyflow/react";
 import { Filter, Network, RotateCcw, Search } from "lucide-react";
-import graph from "virtual:zcode-feature-boundary-graph";
+import graph from "virtual:codez-feature-boundary-graph";
 import {
   featureBoundaryNodeKindLabels,
   getFeatureBoundaryGraphStats,

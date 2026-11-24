@@ -3,7 +3,7 @@ import type { ProjectDisplayOrderKey } from "#src/window-controller/windowContro
 import type {
   PendingInteractionSummary,
   WindowHostControllerTaskRow,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 
 /**
  * 手机项目树的实时待处理交互叠加。

@@ -1,7 +1,7 @@
 import {
   TID_CHAT_ASSISTANT_HISTORY_CONTENT,
   TID_CHAT_ASSISTANT_HISTORY_TRIGGER,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 
 // 「已处理」折叠（ConversationTurnGroup 的 history 收纳）的读取约定，见 docs/ui/chat-virtual-scroll.md。
 //

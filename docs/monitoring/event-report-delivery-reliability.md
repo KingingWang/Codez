@@ -17,9 +17,9 @@ Web/mobile `web-remote-replayable` 均保持不变。
 
 ### 请求头（2026-09-16）
 
-仅 App `/api/v1/event/report` 复用 `buildZCodeSourceHeadersFromContext` 的完整公共头：User-Agent、HTTP-Referer、X-Title、X-ZCode-App-Version、X-Platform、X-Release-Channel、X-Client-Language、X-Client-Timezone、X-Os-Category、X-Os-Version、X-Device-Mid。语言、时区和设备 ID 与本事件上下文一致；环境来源为当前 endpoint，版本/平台取 App 上下文。缺失或非法值沿用公共函数的归一化规则。
+仅 App `/api/v1/event/report` 复用 `buildCodezSourceHeadersFromContext` 的完整公共头：User-Agent、HTTP-Referer、X-Title、X-Codez-App-Version、X-Platform、X-Release-Channel、X-Client-Language、X-Client-Timezone、X-Os-Category、X-Os-Version、X-Device-Mid。语言、时区和设备 ID 与本事件上下文一致；环境来源为当前 endpoint，版本/平台取 App 上下文。缺失或非法值沿用公共函数的归一化规则。
 
-凭据服务仍是登录身份唯一 owner；Main 注入只读 Authorization loader，每次发送（包括重试）从当前活动账户读取 `zcodejwttoken`。账户与事件 user_id 一致且 token 非空时发 `Authorization: Bearer <ZCode JWT>`，匿名、退出、切换到其他账号、凭据读取失败时不带该头。禁止 OAuth token / API key 替代，禁止缓存 JWT、将 JWT 写入事件体或日志。读取后复核活动账户和 user_id，丢弃跨账户异步结果。
+凭据服务仍是登录身份唯一 owner；Main 注入只读 Authorization loader，每次发送（包括重试）从当前活动账户读取 `codezjwttoken`。账户与事件 user_id 一致且 token 非空时发 `Authorization: Bearer <Codez JWT>`，匿名、退出、切换到其他账号、凭据读取失败时不带该头。禁止 OAuth token / API key 替代，禁止缓存 JWT、将 JWT 写入事件体或日志。读取后复核活动账户和 user_id，丢弃跨账户异步结果。
 
 上报请求禁用自动重定向，避免服务端 3xx 将携带的身份/设备头转发到其他地址；失败仍沿用有界重试，不扩大目的地。
 

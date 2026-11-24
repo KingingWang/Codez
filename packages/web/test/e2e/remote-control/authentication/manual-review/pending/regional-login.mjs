@@ -173,7 +173,7 @@ try {
             const session = await readSession(h.page);
             assert.equal(session.provider, provider);
             assert.equal(session.userInfo.id, "e2e-user");
-            assert.equal(session.zcodeJwtToken, "e2e-jwt");
+            assert.equal(session.codezJwtToken, "e2e-jwt");
             assert.equal(
               session.businessAccessToken,
               provider === "zai" ? "current-global-business" : undefined,
@@ -267,7 +267,7 @@ try {
               version: 1,
               provider: "zai_cn",
               userInfo: { id: "same-user", username: "Old", displayName: "Old" },
-              zcodeJwtToken: "e2e-jwt",
+              codezJwtToken: "e2e-jwt",
               revision: "before",
             }),
           ),
@@ -280,7 +280,7 @@ try {
               version: 1,
               provider: "zai_cn",
               userInfo: { id: "same-user", username: "New", displayName: "New" },
-              zcodeJwtToken: "e2e-jwt",
+              codezJwtToken: "e2e-jwt",
               revision: "after",
             }),
           ),
@@ -320,7 +320,7 @@ try {
             {
               provider: "zai_cn",
               userInfo: { id: "new-user", username: "New", displayName: "New" },
-              zcodeJwtToken: "e2e-jwt",
+              codezJwtToken: "e2e-jwt",
               revision: "new-attempt",
             },
             expected,
@@ -342,7 +342,7 @@ try {
           const { BrowserOAuthCredentialRepo } =
             await import("/src/auth/browserOAuthCredentialRepo.ts");
           localStorage.setItem("oauth:active_provider", "zai");
-          localStorage.setItem("zcodejwttoken", "old-jwt");
+          localStorage.setItem("codezjwttoken", "old-jwt");
           localStorage.setItem("oauth:zai:access_token", "old-access");
           localStorage.setItem(
             "oauth:zai:user_info",
@@ -426,7 +426,7 @@ try {
                   version: 1,
                   provider: "zai_cn",
                   userInfo: { id: "new-user", username: "New", displayName: "New" },
-                  zcodeJwtToken: "e2e-jwt",
+                  codezJwtToken: "e2e-jwt",
                   revision: "newer",
                 }),
               );
@@ -468,7 +468,7 @@ try {
             await callbackPage.getByRole("heading", { name: "选择电脑", exact: true }).waitFor();
             assert.equal(h.callbacks.length, 1);
             const session = await readSession(callbackPage);
-            assert.equal(session.zcodeJwtToken, "e2e-jwt");
+            assert.equal(session.codezJwtToken, "e2e-jwt");
             assert.equal(session.userInfo.id, "e2e-user");
             // pending 取出即删，poll 凭据不残留。
             assert.equal(

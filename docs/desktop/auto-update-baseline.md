@@ -13,7 +13,7 @@
 <path-prefix>/<version>/linux-arm64/
 ```
 
-版本化平台/架构目录内统一上传包含多语言日志的 `latest.yml`、安装包和 `.blockmap`。electron-builder 固定配置 `detectUpdateChannel: false`，包括 prerelease 在内都生成统一的 `latest.yml`，发布通道由服务端 manifest 决定。灰度与全量发布只通过 release API 的 `status=3` / `status=1` 控制，CI 不再覆盖 `/update` 或 `/update-insider` 这类 stable feed，也不再支持 `ZCODE_STABLE_UPDATE_FEED_ROOTS` 发布开关。
+版本化平台/架构目录内统一上传包含多语言日志的 `latest.yml`、安装包和 `.blockmap`。electron-builder 固定配置 `detectUpdateChannel: false`，包括 prerelease 在内都生成统一的 `latest.yml`，发布通道由服务端 manifest 决定。灰度与全量发布只通过 release API 的 `status=3` / `status=1` 控制，CI 不再覆盖 `/update` 或 `/update-insider` 这类 stable feed，也不再支持 `CODEZ_STABLE_UPDATE_FEED_ROOTS` 发布开关。
 
 ## 历史背景
 

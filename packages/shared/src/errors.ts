@@ -27,7 +27,7 @@ export interface NormalizedUnknownError {
   code?: string;
 }
 
-export const ZCODE_FILE_LOCK_TIMEOUT_ERROR_CODE = "ZCODE_FILE_LOCK_TIMEOUT" as const;
+export const CODEZ_FILE_LOCK_TIMEOUT_ERROR_CODE = "CODEZ_FILE_LOCK_TIMEOUT" as const;
 
 export function stringifyUnknownValue(value: unknown): string {
   if (typeof value === "string") {
@@ -87,12 +87,12 @@ export function normalizeUnknownError(error: unknown): NormalizedUnknownError {
   };
 }
 
-export function isZCodeFileLockTimeoutError(error: unknown): boolean {
-  return normalizeUnknownError(error).code === ZCODE_FILE_LOCK_TIMEOUT_ERROR_CODE;
+export function isCodezFileLockTimeoutError(error: unknown): boolean {
+  return normalizeUnknownError(error).code === CODEZ_FILE_LOCK_TIMEOUT_ERROR_CODE;
 }
 
 /**
- * 不可自动重试的 workspace ZCode Agent 预热错误模式列表。
+ * 不可自动重试的 workspace Codez Agent 预热错误模式列表。
  *
  * 这些错误代表确定性的配置/安装/鉴权问题，继续重试不会变好。
  * 同时用于 MCP-fallback 降级判断：命中这些模式时不做 MCP 降级，因为错误与 MCP 无关。
@@ -132,7 +132,7 @@ const OPENCODE_RUNTIME_CRASH_ERROR_PATTERNS = [
 ] as const;
 
 /**
- * 判断错误消息是否代表确定性失败，不应自动重试 workspace ZCode Agent 预热。
+ * 判断错误消息是否代表确定性失败，不应自动重试 workspace Codez Agent 预热。
  */
 export function isNonRetryableWorkspacePrepareError(errorMessage: string): boolean {
   const normalizedMessage = errorMessage.toLowerCase();

@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { PlatformChannels } from "@zcode/shared";
+import { PlatformChannels } from "@codez/shared";
 import {
   TID_CONFIRM_DIALOG_CONFIRM,
   TID_LOGIN_MENU_ITEM,
@@ -8,7 +8,7 @@ import {
   TID_LOGIN_USE_API_KEY_BUTTON,
   TID_LOGOUT_BUTTON,
   TID_OAUTH_LOGIN_BUTTON,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom, waitForTestIdByDom } from "#e2e/helpers/desktop-app";
 import { dismissOccupationOnboarding } from "#e2e/helpers/occupation-onboarding";
 import { startElectronWindowRecording } from "#e2e/helpers/electron-window-recorder";
@@ -36,18 +36,18 @@ describe("AUTH-LOGOUT-GATE 退出登录到重启前的登录门禁", () => {
 
   it("确认退出后到重启前不暴露登录入口，重启失败才恢复", async function () {
     this.timeout(180_000);
-    const baseUrl = process.env.ZCODE_E2E_OAUTH_RACE_URL;
+    const baseUrl = process.env.CODEZ_E2E_OAUTH_RACE_URL;
     if (!baseUrl) throw new Error("缺少合成 OAuth 控制面 fixture");
     const openExternal = await browser.electron.mock("shell", "openExternal");
     await openExternal.mockResolvedValue(undefined);
 
-    // 人工复核用录屏：仅 ZCODE_E2E_RECORD_LOGOUT_GATE=1 时开启，并在关键画面停留，不影响常规运行。
+    // 人工复核用录屏：仅 CODEZ_E2E_RECORD_LOGOUT_GATE=1 时开启，并在关键画面停留，不影响常规运行。
     const recording =
-      process.env.ZCODE_E2E_RECORD_LOGOUT_GATE === "1"
+      process.env.CODEZ_E2E_RECORD_LOGOUT_GATE === "1"
         ? await startElectronWindowRecording({
             browser,
             outputPath: join(
-              process.env.ZCODE_E2E_ARTIFACT_DIR!,
+              process.env.CODEZ_E2E_ARTIFACT_DIR!,
               "logout-relaunch-login-gate.webm",
             ),
             frameIntervalMs: 100,

@@ -17,7 +17,7 @@ describe("Python 真实预装资源（待审核）", () => {
     await $('[data-testid="preinstalled-tools-dialog"]').waitForDisplayed();
     const card = $('[data-testid="preinstalled-tools-card"][data-tool-id="python"]');
     await card.waitForDisplayed();
-    await fetch(`${process.env.ZCODE_E2E_PREINSTALL_FIXTURE_URL}/release`);
+    await fetch(`${process.env.CODEZ_E2E_PREINSTALL_FIXTURE_URL}/release`);
     await browser.waitUntil(
       async () =>
         (await card.$('[data-testid="preinstalled-tools-status"]').getAttribute("data-status")) ===
@@ -30,20 +30,20 @@ describe("Python 真实预装资源（待审核）", () => {
       await readFile(join(release, "tools/python/installation.json"), "utf8"),
     );
     const result = await exec(
-      join(release, "bin/zcode-python"),
+      join(release, "bin/codez-python"),
       ["-c", "import sys; print(sys.prefix)"],
       { timeout: 30000 },
     );
     expect(result.stdout.trim()).toBe(join(record.installationDir, "overlay"));
     const additionalPackage = join(
       record.installationDir,
-      "overlay/lib/python3.12/site-packages/zcode_delete_probe",
+      "overlay/lib/python3.12/site-packages/codez_delete_probe",
     );
     await mkdir(additionalPackage, { recursive: true });
     await writeFile(join(additionalPackage, "__init__.py"), "VALUE = 'delete-probe'\n");
     const imported = await exec(
-      join(release, "bin/zcode-python"),
-      ["-c", "import zcode_delete_probe; print(zcode_delete_probe.VALUE)"],
+      join(release, "bin/codez-python"),
+      ["-c", "import codez_delete_probe; print(codez_delete_probe.VALUE)"],
       { timeout: 30000 },
     );
     expect(imported.stdout.trim()).toBe("delete-probe");
@@ -59,7 +59,7 @@ describe("Python 真实预装资源（待审核）", () => {
             : "Python packages added by the Agent will also be deleted.",
         );
         await browser.saveScreenshot(
-          `${process.env.ZCODE_E2E_ARTIFACT_DIR}/python-delete-${locale}-${theme}.png`,
+          `${process.env.CODEZ_E2E_ARTIFACT_DIR}/python-delete-${locale}-${theme}.png`,
         );
         await $('[data-testid="preinstalled-tools-delete-confirm-cancel"]').click();
       }
@@ -76,6 +76,6 @@ describe("Python 真实预装资源（待审核）", () => {
     await card.$('[data-testid="preinstalled-tools-download"]').waitForEnabled({ timeout: 30000 });
     await expect(stat(additionalPackage)).rejects.toHaveProperty("code", "ENOENT");
     await expect(stat(record.installationDir)).rejects.toHaveProperty("code", "ENOENT");
-    await expect(stat(join(release, "bin/zcode-python"))).rejects.toHaveProperty("code", "ENOENT");
+    await expect(stat(join(release, "bin/codez-python"))).rejects.toHaveProperty("code", "ENOENT");
   });
 });

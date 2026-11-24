@@ -133,7 +133,7 @@ it("模型回归目录的标题不得命中包含同一 E2E marker 的正文 fix
 });
 
 it("SR87 账号请求通过 case-local matcher，R95C 首发与标题分别返回 SSE 和 JSON", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "zcode-sr87-replay-"));
+  const dir = await mkdtemp(join(tmpdir(), "codez-sr87-replay-"));
   const upstream = await startUpstreamReplayServer({
     artifactPath: join(dir, "upstream.json"),
     fixturePaths: [
@@ -215,7 +215,7 @@ it("SR87 账号请求通过 case-local matcher，R95C 首发与标题分别返�
 });
 
 it("同一模型端点区分普通 JSON 标题与流式正文，并保存真实响应类型", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "zcode-response-type-"));
+  const dir = await mkdtemp(join(tmpdir(), "codez-response-type-"));
   const artifactPath = join(dir, "capture.json");
   const proxy = await startE2ENetworkCaptureProxy({
     artifactPath,
@@ -274,7 +274,7 @@ it("同一模型端点区分普通 JSON 标题与流式正文，并保存真实�
 });
 
 it("账号数据面转发到受控回放时保留首块、请求体和原地址证据", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "zcode-account-replay-"));
+  const dir = await mkdtemp(join(tmpdir(), "codez-account-replay-"));
   let release = () => {};
   const gate = new Promise<void>((resolve) => {
     release = resolve;

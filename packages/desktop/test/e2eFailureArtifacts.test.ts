@@ -16,12 +16,12 @@ afterEach(async () => {
 
 describe("E2E failure artifacts", () => {
   it("copies only log bytes emitted by the current case", async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), "zcode-e2e-failure-artifacts-"));
+    const tempDir = await mkdtemp(join(tmpdir(), "codez-e2e-failure-artifacts-"));
     tempDirs.push(tempDir);
     const runtimeLogs = join(tempDir, "runtime-logs");
     const outputDir = join(tempDir, "failure", "logs");
     const desktopLog = join(runtimeLogs, "desktop", "2026-07-13.log");
-    const agentLog = join(runtimeLogs, "agent", "zcode-2026-07-13.jsonl");
+    const agentLog = join(runtimeLogs, "agent", "codez-2026-07-13.jsonl");
 
     await mkdir(join(runtimeLogs, "desktop"), { recursive: true });
     await mkdir(join(runtimeLogs, "agent"), { recursive: true });
@@ -37,19 +37,19 @@ describe("E2E failure artifacts", () => {
     });
 
     expect(copied).toEqual([
-      { path: join("agent", "zcode-2026-07-13.jsonl"), truncated: false },
+      { path: join("agent", "codez-2026-07-13.jsonl"), truncated: false },
       { path: join("desktop", "2026-07-13.log"), truncated: false },
     ]);
     await expect(readFile(join(outputDir, "desktop", "2026-07-13.log"), "utf-8")).resolves.toBe(
       "case-desktop\n",
     );
     await expect(
-      readFile(join(outputDir, "agent", "zcode-2026-07-13.jsonl"), "utf-8"),
+      readFile(join(outputDir, "agent", "codez-2026-07-13.jsonl"), "utf-8"),
     ).resolves.toBe("case-agent\n");
   });
 
   it("discards the capture of a skipped case instead of filing it as a failure", async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), "zcode-e2e-failure-artifacts-"));
+    const tempDir = await mkdtemp(join(tmpdir(), "codez-e2e-failure-artifacts-"));
     tempDirs.push(tempDir);
     // 录像依赖真实 Electron；假 browser 让录像失败并被记为采集错误，不影响跳过判定。
     const collector = new E2EFailureArtifactCollector({

@@ -19,8 +19,8 @@ try {
       recordVideo: { dir: probeDir, size: viewport },
     });
     const page = await context.newPage();
-    await page.setContent("<title>ZCode E2E browser probe</title><main>Browser and video</main>");
-    if ((await page.title()) !== "ZCode E2E browser probe") {
+    await page.setContent("<title>Codez E2E browser probe</title><main>Browser and video</main>");
+    if ((await page.title()) !== "Codez E2E browser probe") {
       throw new Error("Playwright browser did not return the probe page title");
     }
     const video = page.video();

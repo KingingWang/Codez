@@ -1,4 +1,4 @@
-// @zcode-dev/plugin-api/sessions（docs/plugins/extension-host.md §17.9）：会话投影 v1、会话动作的入参与返回、读事件。
+// @codez-dev/plugin-api/sessions（docs/plugins/extension-host.md §17.9）：会话投影 v1、会话动作的入参与返回、读事件。
 export type {
   // 会话动作：SessionActionInput<"createSession"> 等
   SessionAction,
@@ -25,4 +25,4 @@ export type {
   SessionResolveInteractionResult,
   SessionSetPermissionModeInput,
   SessionSetPermissionModeResult,
-} from "@zcode/shared/extension-host";
+} from "@codez/shared/extension-host";

@@ -23,9 +23,9 @@ const MODEL_RETRY_DISABLED_SPEC_MARKERS = [
   // 把 turn 保持在 streaming，必须沿用 N05 的零重试隔离。
   "conversation-session-turn-error-history-activity.test.ts",
 ] as const;
-const MODEL_RETRY_MAX_RETRIES_ENV = "ZCODE_MODEL_RETRY_MAX_RETRIES";
-const HTTP_PROXY_ENV = "ZCODE_HTTP_PROXY";
-const NO_PROXY_ENV = "ZCODE_NO_PROXY";
+const MODEL_RETRY_MAX_RETRIES_ENV = "CODEZ_MODEL_RETRY_MAX_RETRIES";
+const HTTP_PROXY_ENV = "CODEZ_HTTP_PROXY";
+const NO_PROXY_ENV = "CODEZ_NO_PROXY";
 
 interface E2EWorkerNetworkEnvSnapshot {
   httpProxy: string | undefined;

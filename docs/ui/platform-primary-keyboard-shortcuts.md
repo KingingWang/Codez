@@ -2,9 +2,9 @@
 
 ## Background
 
-ZCode uses a cross-platform primary shortcut concept for workspace-level commands such as command center, task find, sidebar, terminal, side pane, and navigation. The label layer already displays macOS shortcuts with Command and Windows/Linux shortcuts with Ctrl, but the runtime matching used to accept both `metaKey` and `ctrlKey` on every platform.
+Codez uses a cross-platform primary shortcut concept for workspace-level commands such as command center, task find, sidebar, terminal, side pane, and navigation. The label layer already displays macOS shortcuts with Command and Windows/Linux shortcuts with Ctrl, but the runtime matching used to accept both `metaKey` and `ctrlKey` on every platform.
 
-On macOS this makes `Ctrl+F`, `Ctrl+B`, `Ctrl+K`, and related Emacs-style editing shortcuts trigger ZCode workspace commands instead of reaching the focused text editor or system text binding.
+On macOS this makes `Ctrl+F`, `Ctrl+B`, `Ctrl+K`, and related Emacs-style editing shortcuts trigger Codez workspace commands instead of reaching the focused text editor or system text binding.
 
 ## Spec
 

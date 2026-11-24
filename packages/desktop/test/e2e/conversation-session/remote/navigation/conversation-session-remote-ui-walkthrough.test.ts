@@ -21,7 +21,7 @@ import {
   TID_SSH_SUCCESS,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -54,7 +54,7 @@ import {
  */
 const MARKER = "E2E_REMOTE_UI_WALKTHROUGH";
 const artifact = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-ui-walkthrough",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-ui-walkthrough",
 );
 const dialog = `[data-testid="${TID_SSH_DIALOG}"]`;
 const run = promisify(execFile);
@@ -305,13 +305,13 @@ async function startStallServer() {
 
 /** 只允许操作本用例专属、带 r3-server 标签的目标容器，绝不碰共享的开发容器。 */
 async function ownedContainer(): Promise<string | null> {
-  const name = process.env.ZCODE_E2E_SSH_CONTAINER?.trim();
-  if (!name || !/^zcode-r3-server-[a-z0-9-]+$/u.test(name)) return null;
+  const name = process.env.CODEZ_E2E_SSH_CONTAINER?.trim();
+  if (!name || !/^codez-r3-server-[a-z0-9-]+$/u.test(name)) return null;
   try {
     const { stdout } = await run("docker", [
       "inspect",
       "--format",
-      '{{index .Config.Labels "zcode.e2e.run"}}',
+      '{{index .Config.Labels "codez.e2e.run"}}',
       name,
     ]);
     return stdout.trim() === "r3-server" ? name : null;
@@ -440,14 +440,14 @@ describe(`${MARKER}: 远程连接 UI 走查`, () => {
         { timeoutMs: 120_000, intervalMs: 500 },
       );
       if (await installVisible()) {
-        await capture("install-confirm", "首次连接：新设备需要安装 ZCode Server 的确认卡");
+        await capture("install-confirm", "首次连接：新设备需要安装 Codez Server 的确认卡");
         await clickButton(/^连接日志/u);
         await settle();
         await capture("install-confirm-log-expanded", "安装确认 + 展开连接日志");
         await clickButton("安装并继续");
         await captureFrames(
           "installing",
-          "安装并启动 ZCode Server 的实时进度",
+          "安装并启动 Codez Server 的实时进度",
           async () => (await boundary.isDisplayed()) || !(await $(dialog).isExisting()),
           { timeoutMs: 240_000, intervalMs: 700 },
         );

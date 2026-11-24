@@ -102,9 +102,9 @@ describe("desktop E2E environment-gated formal spec admission", () => {
     const local = `./test/e2e/${localSpec}`;
     const ssh = `./test/e2e/${sshSpec}`;
     const credentials = {
-      ZCODE_E2E_SSH_HOST: "ssh.example.test",
-      ZCODE_E2E_SSH_USERNAME: "example",
-      ZCODE_E2E_SSH_PASSWORD: "example",
+      CODEZ_E2E_SSH_HOST: "ssh.example.test",
+      CODEZ_E2E_SSH_USERNAME: "example",
+      CODEZ_E2E_SSH_PASSWORD: "example",
     };
     for (const env of [{}, credentials]) {
       const selected = listDefaultFormalE2ESpecs(resolve("packages/desktop"), env);
@@ -116,7 +116,7 @@ describe("desktop E2E environment-gated formal spec admission", () => {
       expect(isFormalSpecAdmittedByEnvironment(local, env)).toBe(true);
       expect(isFormalSpecAdmittedByEnvironment(ssh, env)).toBe(false);
     }
-    const harness = { ...credentials, ZCODE_E2E_SSH_CONTAINER: "example" };
+    const harness = { ...credentials, CODEZ_E2E_SSH_CONTAINER: "example" };
     const selected = listDefaultFormalE2ESpecs(resolve("packages/desktop"), harness);
     expect(selected).toContain(local);
     expect(selected).toContain(ssh);
@@ -335,10 +335,10 @@ describe("desktop E2E environment-gated formal spec admission", () => {
 
   it("keeps explicit SSH runs fail-closed and admits configured default runs", () => {
     const env = {
-      ZCODE_E2E_SSH_HOST: "ssh.example.test",
-      ZCODE_E2E_SSH_USERNAME: "root",
-      ZCODE_E2E_SSH_PASSWORD: "secret-from-test-env",
-      ZCODE_E2E_SSH_CONTAINER: "zcode-r3-server-example",
+      CODEZ_E2E_SSH_HOST: "ssh.example.test",
+      CODEZ_E2E_SSH_USERNAME: "root",
+      CODEZ_E2E_SSH_PASSWORD: "secret-from-test-env",
+      CODEZ_E2E_SSH_CONTAINER: "codez-r3-server-example",
     };
     expect(hasRequiredSshE2EEnvironment(env)).toBe(true);
     expect(resolveEnvironmentGatedFormalSpecExcludes({ env, targeted: false })).toEqual(
@@ -356,11 +356,11 @@ describe("desktop E2E environment-gated formal spec admission", () => {
     (suffix) => {
       const formal = `./test/e2e/conversation-session/conversation-session-preinstalled-tools-${suffix}.test.ts`;
       const env = {
-        ZCODE_E2E_SSH_HOST: "ssh.example.test",
-        ZCODE_E2E_SSH_USERNAME: "dev",
-        ZCODE_E2E_SSH_PASSWORD: "test-password",
-        ZCODE_E2E_SSH_CONTAINER: "ordinary-ssh-target",
-        ZCODE_E2E_PYTHON_ARTIFACT: "/tmp/example.artifact.json",
+        CODEZ_E2E_SSH_HOST: "ssh.example.test",
+        CODEZ_E2E_SSH_USERNAME: "dev",
+        CODEZ_E2E_SSH_PASSWORD: "test-password",
+        CODEZ_E2E_SSH_CONTAINER: "ordinary-ssh-target",
+        CODEZ_E2E_PYTHON_ARTIFACT: "/tmp/example.artifact.json",
       };
       for (const batchEnv of [{}, env]) {
         expect(isFormalSpecAdmittedByEnvironment(formal, batchEnv)).toBe(false);
@@ -377,10 +377,10 @@ describe("desktop E2E environment-gated formal spec admission", () => {
 
   it("keeps dedicated fixture cases out of ordinary batches even with an SSH container", () => {
     const env = {
-      ZCODE_E2E_SSH_HOST: "ssh.example.test",
-      ZCODE_E2E_SSH_USERNAME: "dev",
-      ZCODE_E2E_SSH_PASSWORD: "test-password",
-      ZCODE_E2E_SSH_CONTAINER: "ordinary-ssh-target",
+      CODEZ_E2E_SSH_HOST: "ssh.example.test",
+      CODEZ_E2E_SSH_USERNAME: "dev",
+      CODEZ_E2E_SSH_PASSWORD: "test-password",
+      CODEZ_E2E_SSH_CONTAINER: "ordinary-ssh-target",
     };
     for (const spec of DEDICATED_FIXTURE_SPECS) {
       const formal = `./test/e2e/${spec.replace("/manual-review/pending/", "/")}`;
@@ -396,10 +396,10 @@ describe("desktop E2E environment-gated formal spec admission", () => {
     "installation/conversation-session-r3-install-environment.test.ts",
   ])("requires explicit specialized setup for %s", (suffix) => {
     const env = {
-      ZCODE_E2E_SSH_HOST: "ssh.example.test",
-      ZCODE_E2E_SSH_USERNAME: "dev",
-      ZCODE_E2E_SSH_PASSWORD: "test-password",
-      ZCODE_E2E_SSH_CONTAINER: "ordinary-ssh-target",
+      CODEZ_E2E_SSH_HOST: "ssh.example.test",
+      CODEZ_E2E_SSH_USERNAME: "dev",
+      CODEZ_E2E_SSH_PASSWORD: "test-password",
+      CODEZ_E2E_SSH_CONTAINER: "ordinary-ssh-target",
     };
     const formal = `./test/e2e/conversation-session/remote/${suffix}`;
     expect(isFormalSpecAdmittedByEnvironment(formal, env)).toBe(false);
@@ -410,9 +410,9 @@ describe("desktop E2E environment-gated formal spec admission", () => {
   it("requires the harness container for queued remote targets", () => {
     // 远程队列按 case 准备干净目标；只有共享 SSH 凭据的 runner 不能运行这些用例。
     const credentials = {
-      ZCODE_E2E_SSH_HOST: "ssh.example.test",
-      ZCODE_E2E_SSH_USERNAME: "root",
-      ZCODE_E2E_SSH_PASSWORD: "secret-from-test-env",
+      CODEZ_E2E_SSH_HOST: "ssh.example.test",
+      CODEZ_E2E_SSH_USERNAME: "root",
+      CODEZ_E2E_SSH_PASSWORD: "secret-from-test-env",
     };
     const queued =
       "./test/e2e/conversation-session/remote/configuration/conversation-session-r3-model-switch.test.ts";
@@ -435,7 +435,7 @@ describe("desktop E2E environment-gated formal spec admission", () => {
     expect(
       isFormalSpecAdmittedByEnvironment(queued, {
         ...credentials,
-        ZCODE_E2E_SSH_CONTAINER: "zcode-r3-server-example",
+        CODEZ_E2E_SSH_CONTAINER: "codez-r3-server-example",
       }),
     ).toBe(true);
     expect(

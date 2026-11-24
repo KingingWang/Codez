@@ -117,7 +117,7 @@ describe("desktop E2E container presets", () => {
 
 // 用假的 docker 记录参数，验证容器脚本透传给容器的上游供应商配置；取最后一次 docker run（前面一次是驱动预取）。
 function runContainerScriptWithFakeDocker(env: Record<string, string>) {
-  const dir = mkdtempSync(join(tmpdir(), "zcode-e2e-container-"));
+  const dir = mkdtempSync(join(tmpdir(), "codez-e2e-container-"));
   try {
     const binDir = join(dir, "bin");
     mkdirSync(binDir);
@@ -160,7 +160,7 @@ describe.skipIf(process.platform === "win32")("desktop E2E container upstream pr
 
     expect(result.status).toBe(0);
     expect(result.runArgs).toContain(
-      "ZCODE_E2E_SPEC=./test/e2e/plugins/runtime/plugin-ui-session-ready.test.ts",
+      "CODEZ_E2E_SPEC=./test/e2e/plugins/runtime/plugin-ui-session-ready.test.ts",
     );
     expect(result.runArgs).toContain("E2E_PROVIDER_HTTP_MODE=replay");
   });

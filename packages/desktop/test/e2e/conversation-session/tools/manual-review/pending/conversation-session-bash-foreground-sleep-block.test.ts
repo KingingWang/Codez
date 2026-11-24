@@ -1,5 +1,5 @@
 // Z03 前台长 sleep 拦截（docs/conversation-session-case-catalog.md「Z」分组）。规格见
-// apps/zcode-cli/docs/design/v2/tool/04-bash.md「前台 sleep 拦截」与「Prompt 约束」末尾的描述三处文字。
+// apps/codez-cli/docs/design/v2/tool/04-bash.md「前台 sleep 拦截」与「Prompt 约束」末尾的描述三处文字。
 // 断言读上游请求体：首个请求的 Bash 描述、live continuation 与完整 CLI cold restart 后的 error tool_result。
 import { access } from "node:fs/promises";
 import { join } from "node:path";

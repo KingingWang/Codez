@@ -1,10 +1,10 @@
-import type { ZCodeTaskGroupColor } from "@/project-sidebar/grouped/types.js";
+import type { CodezTaskGroupColor } from "@/project-sidebar/grouped/types.js";
 
 import { Hash } from "lucide-react";
 import { cn } from "@/components/lib/utils.js";
 import { TASK_GROUP_COLOR_CLASS } from "@/project-sidebar/grouped/types.js";
 
-function TaskGroupColorMark({ color }: { color: ZCodeTaskGroupColor }) {
+function TaskGroupColorMark({ color }: { color: CodezTaskGroupColor }) {
   return (
     <span
       className={cn(
@@ -17,7 +17,7 @@ function TaskGroupColorMark({ color }: { color: ZCodeTaskGroupColor }) {
   );
 }
 
-function TaskGroupColorDot({ color }: { color: ZCodeTaskGroupColor }) {
+function TaskGroupColorDot({ color }: { color: CodezTaskGroupColor }) {
   return <span className={cn("size-2.5 shrink-0 rounded-full", TASK_GROUP_COLOR_CLASS[color])} />;
 }
 

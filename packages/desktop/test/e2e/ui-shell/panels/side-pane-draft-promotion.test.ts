@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { TID_BROWSER_ADDRESS_INPUT, TID_SIDE_PANE_TOGGLE } from "@zcode/shared/test-ids";
+import { TID_BROWSER_ADDRESS_INPUT, TID_SIDE_PANE_TOGGLE } from "@codez/shared/test-ids";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import { clickCloseButton, openFirstBrowserTab } from "#e2e/helpers/browser-side-pane";
 import {
@@ -9,7 +9,7 @@ import {
   waitForV4Pane,
 } from "#e2e/helpers/v4-conversation";
 
-const PAGE_MARKER = "__zcodeDraftPromotionMarker";
+const PAGE_MARKER = "__codezDraftPromotionMarker";
 
 describe("Side pane 草稿首发迁移（manual review）", () => {
   let fixture: Awaited<ReturnType<typeof startPageFixture>>;

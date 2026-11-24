@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import type { IFileService } from "@zcode/services";
+import type { IFileService } from "@codez/services";
 import {
   locateSourceCssVariable,
   locateSourceElement,
@@ -7,10 +7,10 @@ import {
   rewriteSourceElement,
   type DesignRuntimeCommand,
   type DesignSelectedElement,
-} from "@zcode/design-runtime";
+} from "@codez/design-runtime";
 import { fileUrlToLocalPath, liveReloadPathKey } from "@/browser-use/useBrowserFileLiveReload.js";
 import { toast } from "@/components/ui/toast.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 
 // 属性面板写回源文件与撤销（docs/browser-use/2026-11-03-browser-design-mode-spec.md 第五节）。
@@ -62,7 +62,7 @@ export interface DesignElementEdit {
 /** 认作「自己写的」最近几次写回内容 */
 const OWN_WRITE_HISTORY = 4;
 
-/** 本机 HTML 文件才能写回（zcode-html:// 预览地址由 fileUrlToLocalPath 换回源文件）；其他页面为 null */
+/** 本机 HTML 文件才能写回（codez-html:// 预览地址由 fileUrlToLocalPath 换回源文件）；其他页面为 null */
 export function designSourcePath(pageUrl: string): string | null {
   const path = fileUrlToLocalPath(pageUrl);
   return path && /\.html?$/iu.test(path) ? path : null;
@@ -83,7 +83,7 @@ export function useBrowserDesignSourceWriter({
   /** 页面上 CSS 变量的预览值归 useBrowserDesignMode 管；写成 / 撤销 / 撤回时由这里告诉它 */
   setVariablePreview: (name: string, value: string | null) => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const path = designSourcePath(pageUrl);
   const undoRef = useRef<WriteEntry[]>([]);
   const redoRef = useRef<WriteEntry[]>([]);

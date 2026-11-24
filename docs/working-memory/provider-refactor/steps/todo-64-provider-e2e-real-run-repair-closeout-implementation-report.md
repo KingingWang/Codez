@@ -8,7 +8,7 @@
 
 - 开始 SHA：`64d48f6eee`
 - 本地工作区：独立 worktree
-- MacBook Pro 运行目录：`/private/tmp/zcode-todo64-run.SWhC6y`
+- MacBook Pro 运行目录：`/private/tmp/codez-todo64-run.SWhC6y`
 - 初始证据：55 条具备本地环境条件的 Case 中 43 条通过、12 条失败；Remote SSH 1 条因环境条件阻塞。
 - 当前证据：当前受影响清单共 52 条，51 条通过；Remote SSH 1 条因环境条件跳过。初始数量与当前数量的差异来自测试拆分、合并与旧 Case 删除，不把历史数字伪装成当前清单。
 
@@ -69,8 +69,8 @@ MP-UI-01/I08、OTB08–10 和 QR-E2E-09 均取得可复现证据或隔离结论�
 
 ```bash
 export PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:$PATH"
-export ZCODE_E2E_SKIP_BUILD=1
-pnpm --filter @zcode/desktop test:e2e:serial -- --spec <spec>
+export CODEZ_E2E_SKIP_BUILD=1
+pnpm --filter @codez/desktop test:e2e:serial -- --spec <spec>
 ```
 
 主要 artifact：

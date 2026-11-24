@@ -1,6 +1,6 @@
 import { stationLampClass } from "@/components/workflow-timeline/WorkflowTimelineLedge.js";
 import { memo, useEffect, useMemo, useState } from "react";
-import type { WorkflowRunState } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkflowRunState } from "@codez/shared/codez-protocol-v4";
 import { WorkflowAgentFace } from "@/components/workflow-timeline/WorkflowAgentFace.js";
 import { cn } from "@/components/lib/utils.js";
 import {
@@ -9,7 +9,7 @@ import {
   workflowRunStopReasonMessageId,
 } from "@/components/workflow-graph/run-status-presentation.js";
 import { useWorkflowRunJournalSummaries } from "@/hooks/useWorkflowRunJournalSummaries.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import type {
   OpenScopedWorkflowRunSideTabRequest,
   WorkflowRunDirectorySidePaneTab,
@@ -65,7 +65,7 @@ const DirectoryRow = memo(function DirectoryRow({
   row: WorkflowRunDirectoryRow;
   actors?: WorkflowRunState["actors"];
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   // 未命名的 run 用与工具卡/任务列表同一个兜底名，绝不把 runId 端到台面上。
   const name = row.label ?? intl.formatMessage({ id: "chat.toolCall.workflow.fallbackName" });
   const statusLabel = intl.formatMessage({
@@ -194,7 +194,7 @@ const WorkflowRunDirectoryContents = memo(function WorkflowRunDirectoryContents(
   onOpenWorkflowRun: (request: OpenScopedWorkflowRunSideTabRequest) => void;
   tab: WorkflowRunDirectorySidePaneTab;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const { layer } = useV4Conversation();
   const [lease, setLease] = useState<SessionLease | null>(null);
   const projection = useConversationProjection(lease);

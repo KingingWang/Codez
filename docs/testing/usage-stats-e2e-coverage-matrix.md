@@ -51,7 +51,7 @@
 
 ## Coverage 采集合同
 
-1. 使用 `ZCODE_E2E_COVERAGE=1` 采集 renderer/main/host/CLI 四运行域，任一相关域为
+1. 使用 `CODEZ_E2E_COVERAGE=1` 采集 renderer/main/host/CLI 四运行域，任一相关域为
    `incomplete` 时不得报告覆盖率完成。
 2. 以 `origin/staging...HEAD` 的可执行变更为目标，docs、tests、类型声明和 `.gitignore` 不进入
    changed-code 分母。

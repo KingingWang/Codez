@@ -1,4 +1,4 @@
-import { TID_CHAT_MODEL_SELECT_TRIGGER } from "@zcode/shared/test-ids";
+import { TID_CHAT_MODEL_SELECT_TRIGGER } from "@codez/shared/test-ids";
 import {
   E2E_BIGMODEL_PLAN_PROVIDER_ID,
   E2E_PLAN_FIRST_MODEL,
@@ -50,8 +50,8 @@ const HIGHSPEED_E2E_CONNECTION = {
 
 declare global {
   interface Window {
-    __zcodeHighspeedEntranceProbe?: HighspeedEntranceProbe;
-    __zcodeHighspeedComposerProbe?: HighspeedComposerProbe;
+    __codezHighspeedEntranceProbe?: HighspeedEntranceProbe;
+    __codezHighspeedComposerProbe?: HighspeedComposerProbe;
   }
 }
 
@@ -186,7 +186,7 @@ async function forceMotionPreference() {
 export async function startHighspeedEntranceProbe() {
   await forceMotionPreference();
   await browser.execute(() => {
-    window.__zcodeHighspeedEntranceProbe?.observer.disconnect();
+    window.__codezHighspeedEntranceProbe?.observer.disconnect();
     const state = { diffusionMounted: false };
     const observer = new MutationObserver((records) => {
       for (const record of records) {
@@ -202,16 +202,16 @@ export async function startHighspeedEntranceProbe() {
       }
     });
     observer.observe(document.body, { childList: true, subtree: true });
-    window.__zcodeHighspeedEntranceProbe = { observer, state };
+    window.__codezHighspeedEntranceProbe = { observer, state };
   });
 }
 
 /** 停止探针并读取入场快照：入场方式、背景阶段、模型标识是否已呈现，以及期间扩散 Canvas 是否挂载过。 */
 export function takeHighspeedEntranceProbe(): Promise<HighspeedEntranceSnapshot> {
   return browser.execute(() => {
-    const probe = window.__zcodeHighspeedEntranceProbe;
+    const probe = window.__codezHighspeedEntranceProbe;
     probe?.observer.disconnect();
-    delete window.__zcodeHighspeedEntranceProbe;
+    delete window.__codezHighspeedEntranceProbe;
     const surface = document.querySelector<HTMLElement>('[data-highspeed-composer="true"]');
     return {
       diffusionMounted: probe ? probe.state.diffusionMounted : null,
@@ -232,7 +232,7 @@ export function takeHighspeedEntranceProbe(): Promise<HighspeedEntranceSnapshot>
  */
 export async function startHighspeedComposerProbe() {
   await browser.execute(() => {
-    window.__zcodeHighspeedComposerProbe?.observer.disconnect();
+    window.__codezHighspeedComposerProbe?.observer.disconnect();
     const state = {
       highspeedSeen: document.querySelector('[data-highspeed-composer="true"]') !== null,
     };
@@ -245,16 +245,16 @@ export async function startHighspeedComposerProbe() {
       childList: true,
       subtree: true,
     });
-    window.__zcodeHighspeedComposerProbe = { observer, state };
+    window.__codezHighspeedComposerProbe = { observer, state };
   });
 }
 
 /** 停止探针；探针缺失时返回 null，调用方用 `toBe(false)` 断言可避免否定断言空转通过。 */
 export function takeHighspeedComposerProbe(): Promise<boolean | null> {
   return browser.execute(() => {
-    const probe = window.__zcodeHighspeedComposerProbe;
+    const probe = window.__codezHighspeedComposerProbe;
     probe?.observer.disconnect();
-    delete window.__zcodeHighspeedComposerProbe;
+    delete window.__codezHighspeedComposerProbe;
     return probe ? probe.state.highspeedSeen : null;
   });
 }

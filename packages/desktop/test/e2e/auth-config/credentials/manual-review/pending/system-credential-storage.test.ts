@@ -5,7 +5,7 @@ import { reloadElectronSessionPreservingBrowserProfile } from "#e2e/helpers/e2e-
 import { AsyncEntry } from "@napi-rs/keyring";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { TID_LOGIN_TRIGGER } from "@zcode/shared/test-ids";
+import { TID_LOGIN_TRIGGER } from "@codez/shared/test-ids";
 import { clearAppData, getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
 
 const KEY = "bot:e2e:secure-storage";
@@ -57,11 +57,11 @@ describe("System credential storage", () => {
     // 仅创建/清理本用例散列目录名对应的临时条目，不修改系统默认钥匙串设置。
     // 链接由 beforeSession 在启动 Main 前准备，不能在首次访问失败后再补。
     const entry = new AsyncEntry(
-      "ZCode Credential Encryption",
+      "Codez Credential Encryption",
       createHash("sha256").update(file).digest("hex"),
       { linux: { store: "secret-service" } },
     );
-    expect(await browser.electron.execute(() => Boolean(process.env.ZCODE_CREDENTIAL_SECRET))).toBe(
+    expect(await browser.electron.execute(() => Boolean(process.env.CODEZ_CREDENTIAL_SECRET))).toBe(
       false,
     );
     try {
@@ -85,7 +85,7 @@ describe("System credential storage", () => {
         await promisify(execFile)("/usr/bin/security", [
           "delete-generic-password",
           "-s",
-          "ZCode Credential Encryption",
+          "Codez Credential Encryption",
           "-a",
           createHash("sha256").update(file).digest("hex"),
         ]).catch((error: { code?: number }) => {

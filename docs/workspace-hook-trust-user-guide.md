@@ -27,8 +27,8 @@ Hook 名称与命令                                      [信任] [开关]
 未变化声明继续命中原 Trust。`onError: "deny"`（Hook 失败时拦截工具调用）也算执行语义：
 加上或去掉它都会改变 digest；不写或写成 `allow` 不改变 digest。
 
-声明直接调用的工作区脚本也算在内，例如 `./scripts/check.sh`、`bash .zcode/hook.sh`，
-或 process 类型的 `{ "command": "node", "args": [".zcode/audit.mjs"] }`。脚本内容变化后该条恢复未信任，
+声明直接调用的工作区脚本也算在内，例如 `./scripts/check.sh`、`bash .codez/hook.sh`，
+或 process 类型的 `{ "command": "node", "args": [".codez/audit.mjs"] }`。脚本内容变化后该条恢复未信任，
 重新信任后恢复。会话进行中脚本被改，这条 Hook 在本会话中每次运行前都会被拦下，直到脚本恢复为已信任的内容；
 在设置页重新信任后，新开任务才按新内容运行。若它是配置了 `onError: "deny"` 的 PreToolUse 守卫，本会话中的工具调用会持续被拒绝。
 新开任务时入口脚本已不存在，这条 Hook 不能信任、会被跳过，守卫不再拦截工具调用；请恢复脚本后重新信任。升级后，这类 Hook 需要重新信任一次。
@@ -62,14 +62,14 @@ worktree 中的声明或入口脚本与源仓库不同时（例如源仓库有�
 
 ### Trust store 损坏（`workspace_hooks_trust_store_corrupt`）
 
-持久 Trust store（`~/.zcode/security/workspace-hook-trust-v1.json`，可被 user config 的
+持久 Trust store（`~/.codez/security/workspace-hook-trust-v1.json`，可被 user config 的
 `storage.dir` 重定向）按完整 strict schema 解析：JSON 语法错误、缺少 `schemaVersion`、
 record 缺少必需字段（`decision` / `grantedAt` / `digestAlgorithm` 等）、非法时间戳、未知
 字段等一律判 corrupt 并 fail-closed——所有消费者（Settings UI、Runtime admission、CLI）
 对同一文件得出同一结论，corrupt 下不展示任何 `trusted_persistent`，Hook 全部按未信任
 软门禁跳过。
 
-`zcode hooks trust status` 对损坏 store 显式返回
+`codez hooks trust status` 对损坏 store 显式返回
 `reasonCode: workspace_hooks_trust_store_corrupt`（而非 `pending_trust`），且 `grant` /
 `revoke` 会被拒绝直到修复。首次读取时损坏文件会被改名为
 `workspace-hook-trust-v1.json.corrupt-<timestamp>`；恢复方式：从备份还原该文件，或确认

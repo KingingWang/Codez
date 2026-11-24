@@ -80,7 +80,7 @@
 | R3A-PRV-16 | P0        | 本地/远端模型候选不同；remote-waiting/旧响应可控               | 快速切tab、重连、从无模型横幅打开设置                                   | 对话读目标远端；不fallback本机/不采旧generation；设置编辑始终本地                                                       | E/URF     |
 | R3A-PRV-17 | P1        | 激活Linux路径，存在/不存在可用本地workspace两类                | 模型设置连通性测试                                                      | 有本地cwd时在本地执行；无本地cwd时用本机对话目录在本地执行；不把Linux路径交本机Agent                                    | E/URPN    |
 | R3A-PRV-18 | P1        | 同Source两条不同Environment key线路                            | 两线路连接、触发保存与接管                                              | 允许各自同步；事务不部分覆盖，最终配置一致；不强加按Source仅同步一次的未实施优化                                        | E+I/URF   |
-| R3A-PRV-19 | P0        | 同机 Desktop 已把 `~/.zcode/v2` 固定为 os；全新远端 HOME       | 首连安装、Provisioning、远端项目首发                                    | 用 Server 自有凭据库：700/600、写入 `enc:v2:env:`；共享库字节不变；Agent 指向同一文件                                   | E/URLF    |
+| R3A-PRV-19 | P0        | 同机 Desktop 已把 `~/.codez/v2` 固定为 os；全新远端 HOME       | 首连安装、Provisioning、远端项目首发                                    | 用 Server 自有凭据库：700/600、写入 `enc:v2:env:`；共享库字节不变；Agent 指向同一文件                                   | E/URLF    |
 
 Provisioning GUI 用例的 PRV-12 验收必须实际撤销隔离 Source 配置目录的写权限，证明本机保存成功、远端原配置保留、Main 产生带 Environment/trigger/status 的 warning、原会话不换代；保存事件收口后观察 10 秒无重试，再恢复权限并由新的真实保存下发完整最新配置。权限恢复放在 `finally`，不能把无故障的保存当作该失败分支证据。PRV-13 在删除配置时扣留 Desktop 产品 SSH 回包，先核对 Source 已提交且 Main 尚无完成结果，再断开；回放模型与控制探针走独立直连。旧 pending RPC 的拒绝还由 `packages/desktop/test/serverRemoteConnectionLifecycle.test.ts` 在真实 WebSocket/duplex 上验证。
 
@@ -98,7 +98,7 @@ Provisioning GUI 用例的 PRV-12 验收必须实际撤销隔离 Source 配置�
 
 DEV-06 当前回归入口：远端项目激活时选择普通 User，
 新建后本机 `agents/<name>.md` 存在、远端 user/project 同名文件不存在；按完整
-workspace identity 选择远端项目后，新建只落各自 `.zcode/agents`。
+workspace identity 选择远端项目后，新建只落各自 `.codez/agents`。
 DEV-07 的显式 Source User 必须独立验收，不得用菜单中最后一个 `default` workspace
 冒充远端 User；该入口缺失时记录未覆盖，不改变 DEV-06 的本机 User 断言。
 | R3A-DEV-08 | P1 | MCP/Skill/Plugin/Hook代表各有运行marker | 远端调用工具/执行一回合后切Source | 实际能力来自目标scope，输出/文件/执行日志正确；非Provider配置不被自动同步覆盖 | E/UPRNF |
@@ -211,7 +211,7 @@ R3-REMOTE-01～15（含子 case）的稳定编号与 setup/action/assertion 由 
 | BLD/CON     | SSH-P0-CONN-01/02/03/04/05、CLI verify-remote-ssh、release manager tests | R3本地archive/进程证据；旧CONN-04仍测legacy manifest的内容须重写，不能照搬     |
 | ID/TASK/PRV | SSH-P0-TASK-01/02、project-conversation-scope                            | 逐字段/实际请求证明；多Source同path；不以provisioning records数量替代正确性    |
 | DEV         | SSH-P0-DEV-01/02/03、Source settings focused tests                       | 先装Git到专属环境；八设置写入断言；附件/媒体/能力实际执行                      |
-| REC         | LIFE-01/02、offline-icons、cancel-retry pending                          | 替换旧zcode-server.cjs PID归属；冷重启真实到达恢复断言；blocking各交叉独立验证 |
+| REC         | LIFE-01/02、offline-icons、cancel-retry pending                          | 替换旧codez-server.cjs PID归属；冷重启真实到达恢复断言；blocking各交叉独立验证 |
 | UPG         | R2 CLI tests、identity migration SQLite tests                            | 旧程序自然造数与真实GUI升级/回退，不能用空runtime archive当旧版                |
 | MOB/TRN     | shared-host/allowlist/stream合同、Docker/WSL verifier                    | 新增浏览器真实配对与relay编排；区分SSH容器/原生Docker transport/WSL            |
 | LIVE/SOAK   | reporter/recorder、provider真实请求入口                                  | 实际请求与usage记录，资源/日志趋势，success代表录像与远端证据                  |

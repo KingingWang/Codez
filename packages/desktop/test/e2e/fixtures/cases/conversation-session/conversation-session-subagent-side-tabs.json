@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/shared/readonly-tool.txt",
+      "path": ".codez-e2e/shared/readonly-tool.txt",
       "source": "created-by-helper",
       "description": "六个 child 与后台 child 分别执行真实 Read 的输入文件。"
     }

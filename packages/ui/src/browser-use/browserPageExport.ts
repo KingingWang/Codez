@@ -3,7 +3,7 @@ import type {
   CaptureBrowserGuestPageResult,
   SaveFileRequest,
   SaveFileResult,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { isDefaultBrowserOpenableUrl } from "@/embeddedBrowserHelpers.js";
 
 // 内置浏览器人类用户「导出 PNG / PDF」（docs/browser-use/2026-10-16-browser-device-presets-and-export-spec.md）。

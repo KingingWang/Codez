@@ -43,7 +43,7 @@ it("分享 HTTP Mock 保留 multipart 文件字节和描述，校验真实上传
       producer_product_turn_id: "share-product-turn-1",
       artifact_version: 1,
       state: "current",
-      ref: "zcode-artifact://share/share-artifact-1",
+      ref: "codez-artifact://share/share-artifact-1",
       artifact_type: "pdf",
       display_name: "报告.pdf",
       extension: "pdf",

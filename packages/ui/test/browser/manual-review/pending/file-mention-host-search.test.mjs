@@ -19,8 +19,8 @@ let server;
 let browser;
 let origin;
 before(async () => {
-  workspace = await mkdtemp(join(tmpdir(), "zcode-mfh-browser-"));
-  await writeFile(join(workspace, ".zcodeignore"), "");
+  workspace = await mkdtemp(join(tmpdir(), "codez-mfh-browser-"));
+  await writeFile(join(workspace, ".codezignore"), "");
   await Promise.all(
     Array.from({ length: 1200 }, (_, index) =>
       writeFile(join(workspace, `MFH_BULK_${index}.ts`), ""),
@@ -126,7 +126,7 @@ for (const [width, locale, theme] of [
     assert.match(await editor.innerText(), /MFH_BULK_1199.ts/);
     assert.match(await editor.innerText(), /continue/);
     assert.deepEqual(errors, []);
-    const artifacts = join(tmpdir(), "zcode-file-mention-host-search");
+    const artifacts = join(tmpdir(), "codez-file-mention-host-search");
     await mkdir(artifacts, { recursive: true });
     await page.screenshot({ path: join(artifacts, `${width}-${theme}.png`), fullPage: true });
     await page.close();

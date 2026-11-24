@@ -21,7 +21,7 @@ export {
   writeCredentialRecordLocked,
 } from "./systemCredentialCipher.js";
 export {
-  ZCODE_CREDENTIALS_FILE_ENV,
+  CODEZ_CREDENTIALS_FILE_ENV,
   prepareServerCredentialFile,
   readAssignedCredentialsFile,
   resolveServerCredentialFile,

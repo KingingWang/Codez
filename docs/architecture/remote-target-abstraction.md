@@ -58,7 +58,7 @@
 - `listWSLDistros()`
 - `listDockerContainers()`
 
-Desktop 通过 main process 动态调用 `@zcode/server/remote` 的探测函数，Web 侧保持空实现。
+Desktop 通过 main process 动态调用 `@codez/server/remote` 的探测函数，Web 侧保持空实现。
 
 UI 入口不再继续拆 `SSHDialog` / `WSLDialog` / `DockerDialog`，而是统一成一个 remote 连接弹窗：
 

@@ -2,7 +2,7 @@
 
 ## 背景
 
-ZCode Dev 的设置页会通过 `zcode/mcp/list` 展示插件 MCP 和用户 MCP 的合并结果，但桌面端创建或恢复 session 时，UI 传给 protocol 的 `mcpServers` 只来自 `source === "zcodeagentmcp"` 的用户配置。
+Codez Dev 的设置页会通过 `codez/mcp/list` 展示插件 MCP 和用户 MCP 的合并结果，但桌面端创建或恢复 session 时，UI 传给 protocol 的 `mcpServers` 只来自 `source === "codezagentmcp"` 的用户配置。
 
 ## 问题
 

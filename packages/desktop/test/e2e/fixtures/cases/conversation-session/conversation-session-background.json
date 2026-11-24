@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/conversation-session-background/bg08-launcher.cjs",
+      "path": ".codez-e2e/conversation-session-background/bg08-launcher.cjs",
       "source": "created-by-spec",
       "description": "BG08 由 spec 写入 launcher，真实启动跨 PGID worker 并留下 fresh PID marker。"
     }

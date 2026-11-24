@@ -11,7 +11,7 @@ Status: ready-for-agent
 | [Poppler](poppler.md)                                                              | pdftoppm 等命令、安装时改写路径、字体配置               |
 | [Pandoc](pandoc.md)                                                                | 官方二进制、各平台版本                                  |
 | [qpdf](qpdf.md)                                                                    | conda-forge 来源                                        |
-| [Agent 侧入口](../../apps/zcode-cli/docs/design/v2/preinstalled-document-tools.md) | `ZCODE_PREINSTALLED_TOOLS_AVAILABLE`、PATH 与 Bash 快照 |
+| [Agent 侧入口](../../apps/codez-cli/docs/design/v2/preinstalled-document-tools.md) | `CODEZ_PREINSTALLED_TOOLS_AVAILABLE`、PATH 与 Bash 快照 |
 | [文档类官方插件](../document-skills-plugin.md)                                     | 插件来源与依赖边界                                      |
 | [法务确认](../issues/preinstalled-tools/01-license-review.md)                      | 资源进入正式 catalog 前的待办                           |
 
@@ -19,7 +19,7 @@ Status: ready-for-agent
 
 文档插件依赖 Python、Poppler、Pandoc、qpdf 和 LibreOffice。用户电脑上不一定有这些程序。Agent 在任务中途安装它们，任务会变慢，也容易失败。
 
-ZCode 在本机后台准备这些程序，供 Agent 使用。规则只有三条：
+Codez 在本机后台准备这些程序，供 Agent 使用。规则只有三条：
 
 1. 某个工具的预装版本已就绪，且该工具的“Agent 使用预装版本”开关打开：Agent 用预装版本。
 2. 否则：Agent 用这台电脑上已有的程序。
@@ -33,11 +33,11 @@ ZCode 在本机后台准备这些程序，供 Agent 使用。规则只有三条�
 
 | toolId        | 显示名      | 入口                                            | 入口方式 | 规格                             |
 | ------------- | ----------- | ----------------------------------------------- | -------- | -------------------------------- |
-| `python`      | Python      | `zcode-python`                                  | 专用     | [python.md](python.md)           |
+| `python`      | Python      | `codez-python`                                  | 专用     | [python.md](python.md)           |
 | `qpdf`        | qpdf        | `qpdf`                                          | 抢先     | [qpdf.md](qpdf.md)               |
 | `pandoc`      | Pandoc      | `pandoc`                                        | 抢先     | [pandoc.md](pandoc.md)           |
 | `poppler`     | Poppler     | `pdftoppm`、`pdftotext`、`pdfimages`、`pdfinfo` | 抢先     | [poppler.md](poppler.md)         |
-| `libreoffice` | LibreOffice | `zcode-soffice`                                 | 专用     | [libreoffice.md](libreoffice.md) |
+| `libreoffice` | LibreOffice | `codez-soffice`                                 | 专用     | [libreoffice.md](libreoffice.md) |
 
 表中顺序就是 catalog 顺序、对话框卡片顺序和自动准备顺序。Python 排第一，因为插件脚本和 LibreOffice 统一入口都要用它。其余按体积从小到大排。
 
@@ -50,7 +50,7 @@ ZCode 在本机后台准备这些程序，供 Agent 使用。规则只有三条�
 - **catalog**：随 App 构建内置的工具与资源清单。
 - **入口**：固定入口目录 `bin/` 中的一个小脚本，把调用转给预装程序。
   - **抢先入口**：入口名和系统命令名相同，例如 `pdftoppm`。`bin/` 排在 Agent PATH 最前，所以 Agent 先找到它。
-  - **专用入口**：入口名带 `zcode-` 前缀，例如 `zcode-python`。只有插件显式调用时才用到，不改变用户的 `python3`。
+  - **专用入口**：入口名带 `codez-` 前缀，例如 `codez-python`。只有插件显式调用时才用到，不改变用户的 `python3`。
 - **发布身份**：`production`、`preview`、`development`。每个发布身份使用独立的根目录。身份由 runtime 环境与 product flavor 决定，不由后端环境决定。
 - **安装记录**：`tools/<toolId>/installation.json`。它是“这个工具当前装了哪个版本”的唯一事实。
 - **自动预装**：全局开关，默认开启。决定 App 启动时是否自动准备。
@@ -75,9 +75,9 @@ Agent PATH = bin/ + 原 PATH           ← Host 启动 Agent 时注入一次，�
 ## 目录
 
 ```text
-<数据根>/.zcode/preinstalled-tools/<发布身份>/
+<数据根>/.codez/preinstalled-tools/<发布身份>/
 ├─ bin/                                  固定入口目录，只由预装进程写
-│   pdftoppm pdftotext pdfimages pdfinfo qpdf pandoc zcode-python zcode-soffice
+│   pdftoppm pdftotext pdfimages pdfinfo qpdf pandoc codez-python codez-soffice
 │   （Windows 上每个入口是 <name>.exe 与 <name>.shim，另有 .retired/）
 └─ tools/<toolId>/
     ├─ installation.json                 安装记录，即发布点
@@ -118,7 +118,7 @@ catalog 是一个工具列表。每个工具有 `toolId`、`displayName` 和若�
 catalog 校验：
 
 - `toolId` 唯一；同一工具在同一平台上最多只有一个资源。
-- 所有工具的入口名互不相同。名字以 `zcode-` 开头的是专用入口，其余是抢先入口。
+- 所有工具的入口名互不相同。名字以 `codez-` 开头的是专用入口，其余是抢先入口。
 - `requiredFiles` 包含所有入口目标；`runtimeChecks[].entry` 必须是本资源的入口。
 - catalog 只接受 `archive.path`，不接受完整下载地址、显式下载列表或地域分组。
 
@@ -130,12 +130,12 @@ catalog 不写完整地址。下载地址由 Main 把 `archive.path` 拼到有�
 候选地址 = <基址>/<archive.path>（path 按段做 URL 编码）
 
 基址列表：
-  ZCODE_PREINSTALLED_TOOLS_CDN_BASE_URL 已设置 ──► 只用它（逗号分隔，按书写顺序）
-  未设置 ──► https://cdn-zcode.z.ai/zcode/preinstalled-tools
+  CODEZ_PREINSTALLED_TOOLS_CDN_BASE_URL 已设置 ──► 只用它（逗号分隔，按书写顺序）
+  未设置 ──► https://cdn-zcode.z.ai/codez/preinstalled-tools
 ```
 
 - 2026-11-06 用户确认默认只使用 `cdn-zcode.z.ai`，不再按语言或时区选择 CDN。覆盖变量中的候选仍按配置顺序尝试，重复基址只保留第一次出现的位置。
-- 规则不区分 `ZCODE_ENV` 和发布身份。需要从内网或其他服务器下载时，启动 App 前设置 `ZCODE_PREINSTALLED_TOOLS_CDN_BASE_URL`。它与 `ZCODE_REMOTE_ASSET_CDN_BASE_URL` 相互独立：远程资源按 App 版本分目录，预装资源按 `resourceId` 分目录。
+- 规则不区分 `CODEZ_ENV` 和发布身份。需要从内网或其他服务器下载时，启动 App 前设置 `CODEZ_PREINSTALLED_TOOLS_CDN_BASE_URL`。它与 `CODEZ_REMOTE_ASSET_CDN_BASE_URL` 相互独立：远程资源按 App 版本分目录，预装资源按 `resourceId` 分目录。
 - 变量中有不合法的地址（不是 http 或 https，例如漏写协议）时，工具描述照常取自 catalog，所有工具的目标为 `null`，Main 写错误日志；不回退到官方基址，避免设置写错时静默改用公网。这不表示工具已移出 catalog：已安装的版本、入口和 Python 附加区保持不变，状态按“没有目标但有已安装版本”显示为 `ready`。
 - 服务器目录结构由发布命令决定，见“资源制作与发布”。官方 CDN 与内网服务器使用相同的结构，所以同一个 catalog 换基址即可下载。
 
@@ -162,7 +162,7 @@ catalog 不写完整地址。下载地址由 Main 把 `archive.path` 拼到有�
 - Main 按上一节生成下载地址。
 - Main 把装配结果交给预装进程。Host 不接收 catalog，也不等待这一步。
 - 内置 catalog 保留本期五个工具描述；没有可用资源的工具使用空 `resources`，不放示例地址或未验证的资源身份。本文的“无发布资源”不表示另设 UI 工具列表。
-- 仅在打开 E2E 编译开关的构建中，`ZCODE_E2E_PREINSTALLED_TOOLS_CATALOG` 可以覆盖内置 catalog。生产构建即使继承了这个变量也忽略它。
+- 仅在打开 E2E 编译开关的构建中，`CODEZ_E2E_PREINSTALLED_TOOLS_CATALOG` 可以覆盖内置 catalog。生产构建即使继承了这个变量也忽略它。
 - catalog 本身无法读取或未通过校验时，清单不可用：Main 写错误日志，交给预装进程的工具列表为“不可用”，而不是空列表。工具归属未知，预装进程不清理无主入口，也不删除任何工具目录；对话框没有工具卡片。下次清单可用的启动再按正常规则对齐。空列表只表示 catalog 确实没有工具。
 
 ## 进程与状态
@@ -173,7 +173,7 @@ catalog 不写完整地址。下载地址由 Main 把 `archive.path` 拼到有�
 - 它不放在 Host 里，因为 Host 随窗口创建和销毁，本机工具不属于任何工作区。它也不放在 scheduler 里，因为 scheduler 不发 HTTP，下载故障也不能连带停掉定时任务。
 - 它在报告初始化完成后意外退出时，Main 重新拉起它。新进程清理 staging，重新核对磁盘，但不自动下载。
 - 它在报告初始化完成前就退出时（例如安装包损坏导致模块加载失败），视为启动失败。Main 不再拉起它，等待中和之后的查询与操作都以错误结束，直到下次 App 启动。立即重拉只会形成无上限的启动循环。对话框据此显示启动失败提示，见“UI”。
-- 仅在打开 E2E 编译开关的构建中，`ZCODE_E2E_PREINSTALLED_TOOLS_EXIT_BEFORE_INIT=1` 让预装进程在初始化前退出，用于验证上一条（PT-30、PT-31）。生产构建即使继承了这个变量也忽略它。
+- 仅在打开 E2E 编译开关的构建中，`CODEZ_E2E_PREINSTALLED_TOOLS_EXIT_BEFORE_INIT=1` 让预装进程在初始化前退出，用于验证上一条（PT-30、PT-31）。生产构建即使继承了这个变量也忽略它。
 - 初始化时的目录或设置故障留在进程内，表现为可重试的失败状态，进程不退出，避免反复重启。
 
 进程内部：
@@ -272,13 +272,13 @@ catalog 不写完整地址。下载地址由 Main 把 `archive.path` 拼到有�
 新版本就绪前，Agent 继续用已安装的旧版本。
 
 ```text
-旧 App：python 记录 = r1，入口 zcode-python → r1
+旧 App：python 记录 = r1，入口 codez-python → r1
 新 App：catalog 中 python 的目标 = r2，其余工具目标不变
   其余工具：记录 = 目标 → 不做任何事，入口一直可用
   python：记录 r1 ≠ 目标 r2 → status = not-installed，installed = r1
      自动预装开启 → 排队准备 r2；关闭 → 等用户点“更新”
      准备期间：入口仍指向 r1，Agent 照常使用
-     r2 发布：原子替换安装记录 → 重写 zcode-python 指向 r2
+     r2 发布：原子替换安装记录 → 重写 codez-python 指向 r2
      下次真正的 App 启动：删除 r1 的版本目录（有进程占用就保留到以后）
 ```
 
@@ -290,10 +290,10 @@ catalog 不写完整地址。下载地址由 Main 把 `archive.path` 拼到有�
 
 ### 注入
 
-- 桌面 Local Host 启动本机 Agent 时，把 `<发布根>/bin` 加到 Agent PATH 的最前面，并注入 `ZCODE_PREINSTALLED_TOOLS_AVAILABLE=1`。路径由数据根和发布身份按固定规则算出，不依赖 catalog，也不等待预装进程。
+- 桌面 Local Host 启动本机 Agent 时，把 `<发布根>/bin` 加到 Agent PATH 的最前面，并注入 `CODEZ_PREINSTALLED_TOOLS_AVAILABLE=1`。路径由数据根和发布身份按固定规则算出，不依赖 catalog，也不等待预装进程。
 - 本机桌面总会注入。当前平台没有资源时，插件仍可能提示“帮助 → 预装工具”，对话框里显示“当前版本暂未提供此工具”。
 - 远端工作区（SSH、WSL、Docker）、Web 服务端和独立 CLI 不注入。Agent 进程管理在 spawn 边界只采用执行端 Host 给出的值，不继承 shell 或部署命令中的同名值。
-- Agent 侧的细节见 [Agent 侧入口](../../apps/zcode-cli/docs/design/v2/preinstalled-document-tools.md)。
+- Agent 侧的细节见 [Agent 侧入口](../../apps/codez-cli/docs/design/v2/preinstalled-document-tools.md)。
 
 ### 入口文件
 
@@ -330,7 +330,7 @@ catalog 不写完整地址。下载地址由 Main 把 `archive.path` 拼到有�
 
 ### 已知风险，需要实测
 
-- Windows Git Bash 的登录 profile 会改变 PATH 顺序（已实测），CLI 在快照和退回路径中恢复 `<bin>` 的最前位置，见 [Agent 侧入口](../../apps/zcode-cli/docs/design/v2/preinstalled-document-tools.md)。
+- Windows Git Bash 的登录 profile 会改变 PATH 顺序（已实测），CLI 在快照和退回路径中恢复 `<bin>` 的最前位置，见 [Agent 侧入口](../../apps/codez-cli/docs/design/v2/preinstalled-document-tools.md)。
 - 其他 shell 在 Bash 快照创建失败时，命令退回 `-c -l` 执行，rc 文件可能改变顺序（推断）。
 - Windows 原来的 `.cmd` 入口在真机上有两个问题：不经 shell 的调用方找不到入口；运行中删除入口时调用方得到退出码 1。经用户确认改用 shim，原因与实测见 [Windows 入口 shim](windows-entry-shim.md#为什么改)。shim 的参数透传、退出码、撤下与结束进程树，按该文的验收表在 Windows 真机上验证。
 
@@ -366,10 +366,10 @@ catalog 不写完整地址。下载地址由 Main 把 `archive.path` 拼到有�
 插件只改调用方式和缺失时的引导，不替换依赖。各工具的写法见对应规格。
 
 - **抢先入口的工具**：插件继续使用原来的命令名。命令找不到时，按下面的“工具不可用时的引导”处理。
-- **Python**：运行脚本和安装包都用 `"$(command -v zcode-python || command -v python3)"`。PowerShell 脚本先找 `zcode-python`，再用原有的 Python 选择逻辑。工程门禁禁止 skills 中出现裸 `python` 或 `python3` 调用。见 [Python 规格](python.md#插件调用规则)。
+- **Python**：运行脚本和安装包都用 `"$(command -v codez-python || command -v python3)"`。PowerShell 脚本先找 `codez-python`，再用原有的 Python 选择逻辑。工程门禁禁止 skills 中出现裸 `python` 或 `python3` 调用。见 [Python 规格](python.md#插件调用规则)。
 - **LibreOffice**：继续通过插件统一入口调用。见 [LibreOffice 规格](libreoffice.md#插件统一入口)。
 - **工具不可用时的引导**（五个工具一致；Poppler 包括 pdf2image 报告找不到 Poppler 的情况）：
-  - 有 `ZCODE_PREINSTALLED_TOOLS_AVAILABLE` 时，先停下，不安装任何东西。说明“预装版本未就绪或已关闭，请在 帮助 → 预装工具 中查看”，再由用户选择：等待准备（或打开开关），或按插件原有方式继续，例如让 Agent 按 setup.md 或依赖说明安装，或换用插件已有的替代做法。
+  - 有 `CODEZ_PREINSTALLED_TOOLS_AVAILABLE` 时，先停下，不安装任何东西。说明“预装版本未就绪或已关闭，请在 帮助 → 预装工具 中查看”，再由用户选择：等待准备（或打开开关），或按插件原有方式继续，例如让 Agent 按 setup.md 或依赖说明安装，或换用插件已有的替代做法。
   - 没有这个变量时，保持插件原有的安装引导。
   - Agent 只知道“预装版本能不能用”，不区分“还没装好”和“开关已关闭”。准确状态在对话框中查看。
 - 不改系统提示词，不改 App ↔ Agent 协议，不新增 Agent 工具。不自动暂停、恢复或重发任务。工具就绪后由用户让 Agent 继续。
@@ -381,7 +381,7 @@ catalog 不写完整地址。下载地址由 Main 把 `archive.path` 拼到有�
 - 右上角帮助菜单中，“预装工具”位于“资源管理器”之后。macOS 原生菜单栏不新增入口。
 - 不做主动提示：开始准备和准备失败都不弹 Toast；帮助菜单项不显示状态或标记。
 - 主窗口内的模态对话框，从上到下依次是：标题“预装工具”和说明“这些工具安装在本机，供文档任务使用。”；当前打开远端工作区时显示提示；“自动预装”开关；分隔线；每个工具一张卡片，顺序与 catalog 一致。
-- 每次打开对话框都读取一次完整状态，读取期间卡片区域显示“正在读取…”。读取以错误结束、且尚未收到状态推送时，结束读取，在卡片区域显示警示“预装工具未能启动。请重启 ZCode 后再试；如果仍然失败，请通过“帮助 → 导出日志”反馈问题。”。这时没有工具卡片，“自动预装”开关不可用，也不提供重新读取的按钮：预装进程在下次 App 启动前不会恢复（见“进程与状态”）。之后收到状态推送时，按推送显示。
+- 每次打开对话框都读取一次完整状态，读取期间卡片区域显示“正在读取…”。读取以错误结束、且尚未收到状态推送时，结束读取，在卡片区域显示警示“预装工具未能启动。请重启 Codez 后再试；如果仍然失败，请通过“帮助 → 导出日志”反馈问题。”。这时没有工具卡片，“自动预装”开关不可用，也不提供重新读取的按钮：预装进程在下次 App 启动前不会恢复（见“进程与状态”）。之后收到状态推送时，按推送显示。
 - 对话框遵循 [DESIGN.md](../../DESIGN.md) 的颜色、状态映射、主题、国际化和键盘规则。
 
 每张卡片从上到下依次是：
@@ -425,7 +425,7 @@ catalog 不写完整地址。下载地址由 Main 把 `archive.path` 拼到有�
 删除：
 
 - 确认框标题“删除 {name}？”，正文“将释放约 Y GB 磁盘空间。”
-- 自动预装开启时追加“自动预装开启时，下次启动 ZCode 会重新下载。”
+- 自动预装开启时追加“自动预装开启时，下次启动 Codez 会重新下载。”
 - 工具可以追加一句自己的删除说明，例如 Python 为“Agent 额外安装的 Python 包也会删除。”
 - 按钮为“取消”和“删除”（危险样式）。
 - 被占用时，卡片内显示警示“{name} 正在被 Agent 使用，请稍后再试。”
@@ -443,7 +443,7 @@ catalog 不写完整地址。下载地址由 Main 把 `archive.path` 拼到有�
 - conda 包内 recipe 只有 HTTP 源码地址时，输入 recipe 可用 `sourceArchives` 显式补充 HTTPS 资产（文件名、URL、大小、SHA-256）。只接受原地址同 host/path/query 的 HTTP → HTTPS 等价，摘要必须与原 recipe 一致，并实际下载或读取缓存核对大小与摘要；不自动猜地址、不允许任意换源。原 HTTP 地址保留在产物来源证明或核验日志，`SOURCES.json` 写已核对的 HTTPS 地址。
 - conda 许可优先取包内 `info/licenses/`；包将许可放在 `share/licenses/` 等载荷路径时，由 recipe 显式列出相对路径。缺少完整许可文本时，只能用固定官方 URL、大小和 SHA-256 的显式补充输入补齐；构建 recipe 自身的许可不能冒充库的许可，许可缺失仍拒绝制作。这不替代法务确认。
 - 打包时必须通过的检查，任一项失败就不产出：
-  - 资源根目录的身份文件 `zcode-tool-resource.json` 与 recipe 一致。运行时只依赖 catalog 中的 SHA-256，不再读取这个文件。
+  - 资源根目录的身份文件 `codez-tool-resource.json` 与 recipe 一致。运行时只依赖 catalog 中的 SHA-256，不再读取这个文件。
   - 所有 Mach-O 的最低系统版本不高于 13.0（桌面最低支持的 macOS 版本）。
   - 所有 ELF 需要的 GLIBC 不高于 2.28。
   - 所有 PE 的架构与 `binaryArch` 一致。例外：recipe 可以把不会被加载执行的上游数据文件（例如启动器模板）声明为架构例外，每项写明精确相对路径、SHA-256、来源和用途，不允许通配符。
@@ -476,12 +476,12 @@ Windows 11 的智能应用控制（SAC）在强制模式下会拦截没有可信
 
 | 值      | 含义                                    | 本期使用                                                                  |
 | ------- | --------------------------------------- | ------------------------------------------------------------------------- |
-| `zcode` | 签名步骤给资源中的 PE 文件签名          | Python、qpdf、Poppler                                                     |
+| `codez` | 签名步骤给资源中的 PE 文件签名          | Python、qpdf、Poppler                                                     |
 | `none`  | 不签名。必须写 `reason`，制作时原样保留 | Pandoc（官方程序已签名）；LibreOffice（没有签名的文件，文档转换不会加载） |
 
 没有 `windowsSigning` 的 Windows recipe，制作失败。
 
-**签哪些文件**（`zcode`）：
+**签哪些文件**（`codez`）：
 
 - 前两个字节是 `MZ` 的文件，并且没有有效的 Authenticode 签名。判断依据是文件内容，不是扩展名。
 - 已有有效签名的文件保留原签名，不重签，例如微软的 VC++ 运行库、Python Software Foundation 签名的文件。
@@ -525,7 +525,7 @@ recipe ──► 转换器（任意 Windows 制作机）
 - 签名证书的指纹；
 - 签过的文件、保留原签名的文件和排除的文件，各自按路径排序。
 
-**发布**：`windowsSigning` 为 `zcode` 的 Windows 资源，资源描述中没有 `provenance.windowsSigning` 时，发布命令拒绝生成 catalog 条目。
+**发布**：`windowsSigning` 为 `codez` 的 Windows 资源，资源描述中没有 `provenance.windowsSigning` 时，发布命令拒绝生成 catalog 条目。
 
 **安装**：预装进程只核对 catalog 中的 SHA-256，不检查 Authenticode 签名。安装不改写 PE 文件，所以签名在用户电脑上保持有效。
 
@@ -584,7 +584,7 @@ recipe ──► 转换器（任意 Windows 制作机）
 | PT-24 | catalog 为空，或当前平台没有资源                                             | 卡片显示“当前版本暂未提供此工具。”；没有下载请求                                       |
 | PT-25 | 初始化时目录或设置读取失败                                                   | 显示可重试的失败状态；聊天不受影响；进程不反复重启                                     |
 | PT-26 | Windows 上各类调用方经 shim 调用入口；撤下运行中的入口                       | 人工验证，见 [Windows 入口 shim](windows-entry-shim.md#验收)                           |
-| PT-27 | 已安装工具后，把 `ZCODE_PREINSTALLED_TOOLS_CDN_BASE_URL` 写错再启动          | 五张卡片都没有目标；已安装版本、入口与 Python 附加区保留；错误日志；没有下载请求       |
+| PT-27 | 已安装工具后，把 `CODEZ_PREINSTALLED_TOOLS_CDN_BASE_URL` 写错再启动          | 五张卡片都没有目标；已安装版本、入口与 Python 附加区保留；错误日志；没有下载请求       |
 | PT-28 | 已安装工具后，catalog 无法读取或校验失败再启动                               | 错误日志；入口与工具目录保留；下次清单可用的启动恢复正常对齐                           |
 | PT-29 | 运行检查的目标派生后代，检查超时或被取消                                     | 检查返回时目标及其后代都已结束；检查目录已清理；报告 `runtime` 或取消                  |
 | PT-30 | 预装进程在报告初始化完成前退出（如进程文件损坏）                             | Main 只拉起一次，不循环重启；状态查询以错误结束，不挂起；聊天不受影响                  |
@@ -596,7 +596,7 @@ recipe ──► 转换器（任意 Windows 制作机）
 
 下列待审核的桌面 E2E 候选按新合同改写，再改实现：`conversation-session-preinstalled-tools-{env,tracer,controls,faults,delete,release-isolation,clear-data,empty-catalog,startup,real-loopback,remote-context}`。`env` 改为断言入口目录与 PATH 顺序；`delete` 不再依赖调用标记；所有候选的状态断言改为按 `toolId` 读取。[用例目录](../conversation-session-case-catalog.md) 和覆盖矩阵同步更新。候选仍按 [E2E 用例生命周期](../../.agents/skills/e2e-case-lifecycle/SKILL.md) 推进，未经人工审核不转正。
 
-所有候选的夹具都通过 `ZCODE_PREINSTALLED_TOOLS_CDN_BASE_URL` 把基址指向本地服务，catalog 只写 `archive.path`。这个变量在 App 启动时读取，同一个用例内不变。所以主／备候选用两个本地基址表示；代理与私有 CA 场景需要一个只能经代理访问的域名作为基址，单独放在 `conversation-session-preinstalled-tools-proxy` 候选中，不和 `faults` 共用一次启动。
+所有候选的夹具都通过 `CODEZ_PREINSTALLED_TOOLS_CDN_BASE_URL` 把基址指向本地服务，catalog 只写 `archive.path`。这个变量在 App 启动时读取，同一个用例内不变。所以主／备候选用两个本地基址表示；代理与私有 CA 场景需要一个只能经代理访问的域名作为基址，单独放在 `conversation-session-preinstalled-tools-proxy` 候选中，不和 `faults` 共用一次启动。
 
 ### 工程测试
 
@@ -617,9 +617,9 @@ recipe ──► 转换器（任意 Windows 制作机）
 实施票为 `docs/issues/preinstalled-tools/` 下的 02～14，依赖关系写在各票的“Blocked by”中。下面是对应的步骤：
 
 1. 规格：本文、各工具规格、CLI 规格（本次）。
-2. 契约与预装进程：catalog、记录和状态 schema 带 `toolId`；按工具分子树；每个工具一个 owner；串行队列；两个开关；入口派生；改写与重签；简化删除与清理；删除旧环境变量 `ZCODE_PREINSTALLED_TOOLS_RECORD` 及调用标记、删除门、删除意图记录。同时维护小包 E2E 候选。
+2. 契约与预装进程：catalog、记录和状态 schema 带 `toolId`；按工具分子树；每个工具一个 owner；串行队列；两个开关；入口派生；改写与重签；简化删除与清理；删除旧环境变量 `CODEZ_PREINSTALLED_TOOLS_RECORD` 及调用标记、删除门、删除意图记录。同时维护小包 E2E 候选。
 3. 打包工具：抽出 `scripts/preinstalled-tools/common/`，迁移 LibreOffice 转换器；新增 Python、Poppler、Pandoc、qpdf 转换器；本机产出 macOS arm64 真实资源。
-4. Host：注入 PATH 与 `ZCODE_PREINSTALLED_TOOLS_AVAILABLE`；Host 启动不再等待 Main 读取 catalog。
+4. Host：注入 PATH 与 `CODEZ_PREINSTALLED_TOOLS_AVAILABLE`；Host 启动不再等待 Main 读取 catalog。
 5. 插件：按各工具规格修改调用写法和统一入口，增加工程门禁，升版。
 6. UI：多张卡片、开关、排队与升级文案、国际化。
 7. 本机 macOS arm64 真实资源全链路验收，包括 Poppler 的中文 PDF 验收。
@@ -629,7 +629,7 @@ recipe ──► 转换器（任意 Windows 制作机）
 | 01 的规定                                                                                | 现在                                                                                                     |
 | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | 只预装 LibreOffice                                                                       | 预装五个工具，链路不区分工具                                                                             |
-| `ZCODE_PREINSTALLED_TOOLS_RECORD` 指向 LibreOffice 的安装记录，统一入口读取并核对记录    | 固定入口目录放在 PATH 最前，另有 `ZCODE_PREINSTALLED_TOOLS_AVAILABLE=1` 表示本机桌面；Agent 不读安装记录 |
+| `CODEZ_PREINSTALLED_TOOLS_RECORD` 指向 LibreOffice 的安装记录，统一入口读取并核对记录    | 固定入口目录放在 PATH 最前，另有 `CODEZ_PREINSTALLED_TOOLS_AVAILABLE=1` 表示本机桌面；Agent 不读安装记录 |
 | 记录地址带目标身份：`records/<resourceId>/<version>-<platform>-<arch>/installation.json` | `tools/<toolId>/installation.json`                                                                       |
 | 调用标记 `usage/`、删除门、`deleting-record.json`、`installationId`                      | 删除。删除时先撤入口，再做进程占用检查                                                                   |
 | 启动时分三套清理规则                                                                     | 一条规则：只保留安装记录指向的目录                                                                       |

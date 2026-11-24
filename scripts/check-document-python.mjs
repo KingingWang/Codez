@@ -4,9 +4,9 @@ import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root =
-  process.argv[2] || fileURLToPath(new URL("../apps/zcode-cli/packages", import.meta.url));
+  process.argv[2] || fileURLToPath(new URL("../apps/codez-cli/packages", import.meta.url));
 const extensions = new Set([".md", ".sh", ".ps1", ".py", ".js", ".mjs", ".ts"]);
-const selection = /\$\(command -v zcode-python \|\| command -v python3\)/g;
+const selection = /\$\(command -v codez-python \|\| command -v python3\)/g;
 
 // 只匹配命令形态；语言名、包名、围栏标签、shebang 和字典键不是调用。
 function hasBareCommand(line, extension) {

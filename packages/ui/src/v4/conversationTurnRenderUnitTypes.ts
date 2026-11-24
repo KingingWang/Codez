@@ -1,5 +1,5 @@
 import type { PluginUiRowPinResolver } from "@/plugin-ui/index.js";
-import type { BotTopicPreparation } from "@zcode/shared";
+import type { BotTopicPreparation } from "@codez/shared";
 import type {
   AssistantTextRow,
   ConversationRow,
@@ -9,7 +9,7 @@ import type {
   TurnHeaderRow,
   UserInputRow,
   WorkflowLaunchMeta,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import type { AssistantWorkRow, ConversationTurnFlowItem } from "@/v4/conversationTurnFlowItems.js";
 import type {
   ConversationTurnWorkSegment,

@@ -4,7 +4,7 @@
 
 ## 本次目标
 
-本次只实现 Git checkpoint 的底层能力与服务接线，不接入上层 ZCode task turn 编排，也不接入 UI 交互。
+本次只实现 Git checkpoint 的底层能力与服务接线，不接入上层 Codez task turn 编排，也不接入 UI 交互。
 
 完成范围：
 
@@ -41,7 +41,7 @@
 
 - Git 域的通用文件 checkpoint 底座已可用
 - 能在真实 Git 仓库中完成 create / diff / restore / delete 的完整闭环
-- 还未进入 ZCode task turn 级 checkpoint 编排，也未暴露给 UI 直接操作
+- 还未进入 Codez task turn 级 checkpoint 编排，也未暴露给 UI 直接操作
 
 ## 关键文件
 
@@ -86,7 +86,7 @@
 
 ```mermaid
 flowchart LR
-  Client["ZCode task / 其它业务服务"] --> Accessor["IServiceAccessor.gitCheckpointService"]
+  Client["Codez task / 其它业务服务"] --> Accessor["IServiceAccessor.gitCheckpointService"]
   Accessor --> RPC["ProxyChannel / RPC"]
   RPC --> Service["GitCheckpointService"]
   Service --> Store["GitCheckpointStore"]
@@ -94,8 +94,8 @@ flowchart LR
   Repo --> GitRepo["GitCliRepo.resolveRepository"]
   Repo --> Cmd["GitCommandProvider"]
   Cmd --> GitCLI["System Git CLI"]
-  Store --> Manifest["~/.zcode/v2/checkpoints/{workspaceHash}/{checkpointId}.json"]
-  Repo --> HiddenRef["refs/zcode/checkpoints/{workspaceHash}/{checkpointId}"]
+  Store --> Manifest["~/.codez/v2/checkpoints/{workspaceHash}/{checkpointId}.json"]
+  Repo --> HiddenRef["refs/codez/checkpoints/{workspaceHash}/{checkpointId}"]
 ```
 
 这张图对应当前实现的两条关键原则：
@@ -161,7 +161,7 @@ export interface IGitCheckpointService {
 默认 manifest 目录：
 
 ```text
-~/.zcode/v2/checkpoints/{workspaceHash}/{checkpointId}.json
+~/.codez/v2/checkpoints/{workspaceHash}/{checkpointId}.json
 ```
 
 manifest 当前只保存：
@@ -180,7 +180,7 @@ manifest 当前只保存：
 每个 checkpoint 都会创建一个 hidden ref：
 
 ```text
-refs/zcode/checkpoints/{workspaceHash}/{checkpointId}
+refs/codez/checkpoints/{workspaceHash}/{checkpointId}
 ```
 
 当前实现里，hidden ref 的作用是：
@@ -205,7 +205,7 @@ refs/zcode/checkpoints/{workspaceHash}/{checkpointId}
 4. 执行 `git add -A -- <workspace pathspec>`，把当前 workspace scope 的 live 状态写入临时 index
 5. 执行 `git write-tree`
 6. 执行 `git commit-tree`
-7. 执行 `git update-ref refs/zcode/checkpoints/...`
+7. 执行 `git update-ref refs/codez/checkpoints/...`
 8. 返回 `GitCheckpointMeta`
 9. `GitCheckpointStore.save()` 写入 manifest
 
@@ -372,7 +372,7 @@ Git object 本身不做业务侧显式清理，交给 Git GC。
 - 只处理 repo 内文件
 - 不处理 repo 外副作用
 - 默认不保证 ignored 文件
-- 不处理 ZCode session / task / turn 语义
+- 不处理 Codez session / task / turn 语义
 - 不提供 worktree 隔离
 
 当前尚未实现：
@@ -380,11 +380,11 @@ Git object 本身不做业务侧显式清理，交给 Git GC。
 - checkpoint 列表 / GC
 - ignored 文件策略
 - submodule / nested repo / sparse checkout 的专项支持
-- ZCode turn 级 `baseFileCheckpoint/resultFileCheckpoint` 编排
+- Codez turn 级 `baseFileCheckpoint/resultFileCheckpoint` 编排
 - UI 层直接使用 checkpoint 能力
 
 ## 当前推荐结论
 
 - Git checkpoint 底层能力已经形成可复用的 service/repo/store 闭环
 - `restoreBetweenCheckpoints(from, to)` 已经可以作为通用文件回滚底座使用
-- 后续 ZCode task 若要支持真正的文件撤销、re-edit、fork 后文件恢复，应直接复用这套能力，而不是继续扩展 `beforeContent/afterContent` 方案
+- 后续 Codez task 若要支持真正的文件撤销、re-edit、fork 后文件恢复，应直接复用这套能力，而不是继续扩展 `beforeContent/afterContent` 方案

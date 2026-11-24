@@ -1,5 +1,5 @@
 // AAB01–AAB02 子智能体总在后台运行开关（docs/conversation-session-case-catalog.md「子智能体总在后台运行」）。
-// 规格见 apps/zcode-cli/docs/design/v2/tool/07-subagent.md「ZCode 当前实现」。
+// 规格见 apps/codez-cli/docs/design/v2/tool/07-subagent.md「Codez 当前实现」。
 // 开关缺省开启，只在创建 runtime 时读取；wdio.conf.ts 为其他用例写入关闭，本用例不写，保留产品缺省。
 // wdio 按 worker 判定是否写入，所以本用例必须独占一个 worker：和其他 spec 同组时，它们会按开启运行，回放对不上。
 // 断言读取上游请求体与 Composer 的后台工作计数。不读 Agent 卡片的后台区块：V4 时间线里 Agent 有子会话时，
@@ -11,7 +11,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom, readSettings } from "#e2e/helpers/desktop-app";
 import { getUpstreamRequestEvidence } from "#e2e/helpers/conversation-session-network";
 import {

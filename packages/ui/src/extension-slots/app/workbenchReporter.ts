@@ -1,4 +1,4 @@
-import type { IExtensionsService } from "@zcode/services";
+import type { IExtensionsService } from "@codez/services";
 import { logger } from "@/logger.js";
 import { buildWorkbenchReport } from "@/extension-slots/domain/workbenchReport.js";
 import type { WorkbenchPaneReport } from "@/extension-slots/contract.js";

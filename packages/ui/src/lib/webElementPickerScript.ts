@@ -4,9 +4,9 @@ import {
   type ElementInspectorOptions,
   type PageElementSnapshot,
   type PageElementStyleSummary,
-} from "@zcode/design-runtime";
+} from "@codez/design-runtime";
 
-// 选择元素的悬停高亮与浮窗；元素读取（选择器、样式、文字等）与设计模式共用 @zcode/design-runtime 的 inspector。
+// 选择元素的悬停高亮与浮窗；元素读取（选择器、样式、文字等）与设计模式共用 @codez/design-runtime 的 inspector。
 // 本函数经 `.toString()` 注入页面，函数体只能用参数和页面全局对象。
 
 export type WebElementPickerScriptResult =
@@ -39,7 +39,7 @@ function webElementPickerScript(
   options: WebElementPickerScriptOptions,
   inspector: ElementInspector,
 ) {
-  const stateKey = "__zcodeWebElementPicker";
+  const stateKey = "__codezWebElementPicker";
   const existing = (window as unknown as Record<string, { cancel?: () => void }>)[stateKey];
   existing?.cancel?.();
 
@@ -62,7 +62,7 @@ function webElementPickerScript(
     );
 
   const overlay = document.createElement("div");
-  overlay.setAttribute("data-zcode-web-element-picker", "overlay");
+  overlay.setAttribute("data-codez-web-element-picker", "overlay");
   Object.assign(overlay.style, {
     background: "rgba(37, 99, 235, 0.12)",
     border: "2px solid #2563eb",
@@ -370,7 +370,7 @@ export function buildWebElementPickerScript({
 export function buildCancelWebElementPickerScript() {
   return [
     "(() => {",
-    "const picker = window.__zcodeWebElementPicker;",
+    "const picker = window.__codezWebElementPicker;",
     "if (picker && typeof picker.cancel === 'function') picker.cancel();",
     "})()",
   ].join("\n");

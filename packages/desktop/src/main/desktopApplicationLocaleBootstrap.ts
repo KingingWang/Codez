@@ -1,16 +1,16 @@
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { isLocale, resolvePersistedUiLocale } from "@zcode/shared";
-import type { Locale } from "@zcode/shared";
+import { isLocale, resolvePersistedUiLocale } from "@codez/shared";
+import type { Locale } from "@codez/shared";
 
 /**
- * 与 settingService 的 resolveUserHomeDir 保持同一优先级：独立 Dev 实例用 ZCODE_DESKTOP_HOME_DIR，
+ * 与 settingService 的 resolveUserHomeDir 保持同一优先级：独立 Dev 实例用 CODEZ_DESKTOP_HOME_DIR，
  * 否则用 HOME / USERPROFILE。不能直接用 os.homedir()，否则隔离实例会读到真实用户的设置。
  */
 function resolveBootstrapHomeDir(): string {
   const envHome =
-    process.env.ZCODE_DESKTOP_HOME_DIR?.trim() ||
+    process.env.CODEZ_DESKTOP_HOME_DIR?.trim() ||
     process.env.HOME?.trim() ||
     process.env.USERPROFILE?.trim();
   return envHome && envHome.length > 0 ? envHome : homedir();
@@ -19,7 +19,7 @@ function resolveBootstrapHomeDir(): string {
 export function resolveApplicationLocaleBootstrapSettingsFile(
   homePath: string = resolveBootstrapHomeDir(),
 ): string {
-  return join(homePath, ".zcode", "v2", "setting.json");
+  return join(homePath, ".codez", "v2", "setting.json");
 }
 
 export function extractBootstrapApplicationLocale(rawValue: unknown): Locale | undefined {

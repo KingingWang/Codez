@@ -6,7 +6,7 @@
 
 ## 1. 背景与已确认裁决
 
-调查时服务器已在 `data.configs.builtin_provider_config_json` 返回 CDN URL，而 App／CLI 还读旧的 `configs.zcodeBuiltin` 对象。最初生产文件是 schemaVersion 1、revision 19。当时的同版结论已过时：本轮本地为 revision 21；线上仍为 19，且含已删除的 `teamApiKeyManagementUrl`，新版严格校验会拒绝并保留本地候选，须另行发布新文件。
+调查时服务器已在 `data.configs.builtin_provider_config_json` 返回 CDN URL，而 App／CLI 还读旧的 `configs.codezBuiltin` 对象。最初生产文件是 schemaVersion 1、revision 19。当时的同版结论已过时：本轮本地为 revision 21；线上仍为 19，且含已删除的 `teamApiKeyManagementUrl`，新版严格校验会拒绝并保留本地候选，须另行发布新文件。
 
 - 用户确认：**每次发布新 URL，不覆盖同一个 URL**。长期 CDN 缓存无需通过每次随机 query 绕开。
 - 包内、CDN、Active 继续使用同一个 `{ schemaVersion: 1, revision, config }`；Provider 与 Model 一起原子替换，不新增 Overlay、配置文件或数据表。
@@ -41,7 +41,7 @@ interface BuiltinClientConfigFields {
 
 接口仅展示形状，实现从 schema 推导类型。该字段的值仅是 URL，不兼容成 JSON 字符串或混合对象；字段缺省不清除当前配置。字段存在但非法、HTTP 失败、超时、坏 JSON／不支持 schemaVersion 均进入有原因的失败路径，保留有效本地候选。
 
-App Services 与独立 CLI 共用解析／下载／Release 解码逻辑，通过依赖注入接入网络。避免两份实现再次分叉，也不为此统一所有 client/configs 消费者。是否删除旧 `zcodeBuiltin` 解码导出，实施时查引用；不默认引入双协议优先级或永久兼容分支。
+App Services 与独立 CLI 共用解析／下载／Release 解码逻辑，通过依赖注入接入网络。避免两份实现再次分叉，也不为此统一所有 client/configs 消费者。是否删除旧 `codezBuiltin` 解码导出，实施时查引用；不默认引入双协议优先级或永久兼容分支。
 
 下载边界已确认，以下取代此前待定数值：
 
@@ -123,8 +123,8 @@ App 正常 Account 重建与 Worker 协议继续复用。Managed Worker 收到�
 
 ### 2.5 实施顺序与修改落点
 
-1. **共用下载边界**：`packages/provider-node/src/` 承接新字段解析、两阶段下载和现有 Release 校验；修改 Services `zcodeBuiltinRemoteConfig.ts` 与 CLI `provider-runtime-env.ts` 的装配，先通过 BR117-01／02／03。
-2. **Account 对齐与恢复**：围绕 `apps/zcode-cli/packages/bootstrap/src/app/process-provider-registry-runtime.ts`、Standalone Account 派生、Provider Node Runtime 和 App Account 装配补齐变化触发、过期结果处理；保留 `ProviderRegistryService` 的版本护栏，先通过 BR117-06／07。
+1. **共用下载边界**：`packages/provider-node/src/` 承接新字段解析、两阶段下载和现有 Release 校验；修改 Services `codezBuiltinRemoteConfig.ts` 与 CLI `provider-runtime-env.ts` 的装配，先通过 BR117-01／02／03。
+2. **Account 对齐与恢复**：围绕 `apps/codez-cli/packages/bootstrap/src/app/process-provider-registry-runtime.ts`、Standalone Account 派生、Provider Node Runtime 和 App Account 装配补齐变化触发、过期结果处理；保留 `ProviderRegistryService` 的版本护栏，先通过 BR117-06／07。
 3. **生命周期调度**：在共用 Provider Node 运行时接入每分钟检查和既有刷新协调机制，App／Standalone 生命周期装配负责启停；同一检查入口也驱动未对齐 Account 恢复。验证 BR117-04／05，不把职责放进 Renderer 或 Managed Worker。
 4. **整链验收**：完成 BR117-08 至 11，验证 Personal、冻结执行、真实消费者与最终发布文件；再执行门禁并记录未测平台。各步骤均先补失败测试，再实现，不把接口重组扩大为全局 ClientConfigService 或 Account 协议重构。
 
@@ -145,7 +145,7 @@ App 正常 Account 重建与 Worker 协议继续复用。Managed Worker 收到�
 
 ### Feature Summary
 
-模式为 planning；能力是 Built-in 在线配置供给，改动层为 option-source、validation、persistence 和生命周期。主要 seeds：`fetchZCodeBuiltinRemoteRelease`、`fetchCliZCodeBuiltinRelease`、`ZCodeBuiltinRemoteSynchronizer`、`NodeProviderConfigRuntime`、`NodeProviderRegistryRuntime`、`ProviderRegistryService`、Standalone Account 装配。
+模式为 planning；能力是 Built-in 在线配置供给，改动层为 option-source、validation、persistence 和生命周期。主要 seeds：`fetchCodezBuiltinRemoteRelease`、`fetchCliCodezBuiltinRelease`、`CodezBuiltinRemoteSynchronizer`、`NodeProviderConfigRuntime`、`NodeProviderRegistryRuntime`、`ProviderRegistryService`、Standalone Account 装配。
 
 ### UI Surface Matrix
 
@@ -172,7 +172,7 @@ App 与 CLI 共用 Release、下载和刷新算法，网络能力由装配层注
 
 已使用 feature-boundary-planner 的语义图和 domain map；当前无 codegraph 工具，未执行 codegraph 深度 2 扫描。改用直接源码调用／订阅追踪并运行复现，不能宣称已完成机械影响面扫描。
 
-已追踪 App `node.ts → fetchZCodeBuiltinRemoteRelease → Source → Config → Registry`、`useModelProviders → refreshSources`、CLI `prepareCliProviderRuntimeEnv → bootstrap`、Host `zcodeAgentService → Account 同步`。语义图中的旧 remote provider authority／defaultModelRef 文字有历史漂移，现行 Design V2 的目标 Environment 权威优先；本 Todo 不改图谱或恢复旧行为。拟增图关系为在线源传输→现有 Model capability Source，实施稳定后再整理，不在审查中扩大范围。
+已追踪 App `node.ts → fetchCodezBuiltinRemoteRelease → Source → Config → Registry`、`useModelProviders → refreshSources`、CLI `prepareCliProviderRuntimeEnv → bootstrap`、Host `codezAgentService → Account 同步`。语义图中的旧 remote provider authority／defaultModelRef 文字有历史漂移，现行 Design V2 的目标 Environment 权威优先；本 Todo 不改图谱或恢复旧行为。拟增图关系为在线源传输→现有 Model capability Source，实施稳定后再整理，不在审查中扩大范围。
 
 ### Unresolved Questions / Planning Handoff
 

@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
-import { TID_SETTINGS_DYNAMIC_WORKFLOW_MODE_ITEM } from "@zcode/shared";
-import { testId } from "@zcode/shared/test-ids";
+import { TID_SETTINGS_DYNAMIC_WORKFLOW_MODE_ITEM } from "@codez/shared";
+import { testId } from "@codez/shared/test-ids";
 import {
   clearAppData,
   pinE2ELocale,

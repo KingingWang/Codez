@@ -14,7 +14,7 @@ v4/conversation/subscribe
        ├─ 创建 record / runtime
        ├─ 恢复 workspace、模型、thought、mode、restoreWarning
        ├─ app.resume() 与事件接线
-       └─ 构建完整 ZCodeSessionStateSnapshot  ──> 返回值被 V4 丢弃
+       └─ 构建完整 CodezSessionStateSnapshot  ──> 返回值被 V4 丢弃
   -> V4 durable transcript hydration
   -> getSessionUsageSeed
        └─ legacy readSession/full snapshot   ──> 只读取 runtime.contextUsage
@@ -92,7 +92,7 @@ V4 冷恢复不能为了 `runtime.contextUsage` 再调用 `readSession`。窄投
 runtime projection contextUsed/contextWindow
   + active-branch persisted context usage/cache
   + latest matching main-turn ModelComplete breakdown
-  -> ZCodeSessionContextUsage
+  -> CodezSessionContextUsage
   -> SessionUsageSeed
 ```
 

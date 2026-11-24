@@ -47,7 +47,7 @@ export function assertNonEmptyE2EScheduledSpecFiles(
       `specs=${JSON.stringify(options.specs)}`,
       `exclude=${JSON.stringify(options.exclude)}`,
       `requestedSpecs=${JSON.stringify(options.requestedSpecs)}`,
-      `ZCODE_E2E_SPEC=${options.envSpec ?? ""}`,
+      `CODEZ_E2E_SPEC=${options.envSpec ?? ""}`,
       `argv=${JSON.stringify(options.argv)}`,
     ].join("\n"),
   );
@@ -166,9 +166,9 @@ function escapeRegExp(char: string): string {
  * 配置，所以在调度前拒绝其他取值，不能运行中才出现交错。要支持并行，须先为每个 worker 隔离 home 与 mock。
  */
 export function resolveE2EMaxInstances(env: Record<string, string | undefined>): number {
-  const raw = env.ZCODE_E2E_MAX_INSTANCES?.trim();
+  const raw = env.CODEZ_E2E_MAX_INSTANCES?.trim();
   if (!raw || raw === "1") return 1;
   throw new Error(
-    `ZCODE_E2E_MAX_INSTANCES=${raw} is not supported: desktop E2E workers share .e2e-home and the launcher-owned account mock, so they must run serially (use 1 or leave it unset).`,
+    `CODEZ_E2E_MAX_INSTANCES=${raw} is not supported: desktop E2E workers share .e2e-home and the launcher-owned account mock, so they must run serially (use 1 or leave it unset).`,
   );
 }

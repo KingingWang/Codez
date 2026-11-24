@@ -41,7 +41,7 @@ import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 //      远端仍是团队）→ 恢复可写 → Composer API → 个人：走原流程保存并重新推送，远端变回个人
 const CASE_MARKER = "E2E_REMOTE_PLAN_RESELECT";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-composer-plan-reselect",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-composer-plan-reselect",
 );
 
 // 共用步骤见 remote-composer-plan-connection（RPR-01 / RPR-02 共用）；这里绑定本用例的 marker。
@@ -82,11 +82,11 @@ describe(`${CASE_MARKER}: 远端 Composer 切回已生效套餐连接`, () => {
     await seedSignedInIndividualPlan();
     await prepareSSHConnectionPage(CASE_MARKER);
     await prepareV4ConversationE2E();
-    // 远端按下发的 ZCODE_BASE_URL（宿主 127.0.0.1:<port>）查询套餐权益；在容器内监听同一端口转发到宿主。
+    // 远端按下发的 CODEZ_BASE_URL（宿主 127.0.0.1:<port>）查询套餐权益；在容器内监听同一端口转发到宿主。
     const tunnel = await createSSHReplayTunnel(config, CASE_MARKER, {
       username: "tunnel",
       mirrorLocalPort: true,
-      targetBaseURL: process.env.ZCODE_E2E_CODING_PLAN_MOCK_URL,
+      targetBaseURL: process.env.CODEZ_E2E_CODING_PLAN_MOCK_URL,
     });
     closeTunnel = tunnel.close;
     // 远端查个人/团队套餐权益读 BIGMODEL_API_BASE_URL，它不在 Desktop 转发给远端的运行时变量里；

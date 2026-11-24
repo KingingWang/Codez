@@ -15,7 +15,7 @@ Browser Use 截图从固定 `1500ms` surface preparation timeout 改成了成功
 - 工具结果中只有一张图片，因此不是 conversation UI 重复插入。
 
 消息轨迹
-`C:\Users\dev\.zcode\cli\debug\model-io-sess_5c7bc8b8-f95f-43eb-b075-cf9f59d5278a.jsonl`
+`C:\Users\dev\.codez\cli\debug\model-io-sess_5c7bc8b8-f95f-43eb-b075-cf9f59d5278a.jsonl`
 显示模型只显式调用了一次 `tab.screenshot()`。Desktop main 日志同时记录：
 
 1. `21:18:14` 的显式截图；

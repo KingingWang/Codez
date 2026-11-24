@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { readFileSync } from "node:fs";
-import { TID_DOCKER_CONTAINER_INPUT, TID_REMOTE_KIND_DOCKER } from "@zcode/shared/test-ids";
+import { TID_DOCKER_CONTAINER_INPUT, TID_REMOTE_KIND_DOCKER } from "@codez/shared/test-ids";
 import { readLastConnectRemoteError } from "#e2e/helpers/connect-remote-error-log";
 import { clearAppData, clickTestIdByDom } from "#e2e/helpers/desktop-app";
 import { readRemoteDockerContainer } from "#e2e/helpers/remote-docker-target";
@@ -32,7 +32,7 @@ const ROOT: RemoteAccount = { user: "root", home: "/root" };
 const DEAD_PID = 4_000_000;
 const desktopRoot = process.cwd();
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-restart-stale-lock-docker",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-restart-stale-lock-docker",
 );
 
 describe(`${MARKER}: 容器重启后接管残留锁`, () => {

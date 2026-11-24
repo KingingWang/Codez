@@ -1,4 +1,4 @@
-import { BUILTIN_MODEL_PROVIDER_IDS, ServiceChannels } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS, ServiceChannels } from "@codez/shared";
 import {
   installHandoffRpcProbe,
   callHandoffHost,
@@ -22,7 +22,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -125,7 +125,7 @@ async function createOffPeakTask() {
 }
 
 async function waitForOffPeakRequest(): Promise<OffPeakRequestRecord[]> {
-  const port = Number(process.env.ZCODE_OFFPEAK_MOCK_PORT ?? "45197");
+  const port = Number(process.env.CODEZ_OFFPEAK_MOCK_PORT ?? "45197");
   let records: OffPeakRequestRecord[] = [];
   await browser.waitUntil(
     async () => {

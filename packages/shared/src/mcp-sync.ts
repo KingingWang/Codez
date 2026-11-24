@@ -1,6 +1,6 @@
 import type { McpServerConfig } from "./mcp.js";
 
-export type McpSyncSource = "zcode" | "agents";
+export type McpSyncSource = "codez" | "agents";
 
 /** 数据同步：MCP export 的结果，也是 import 的输入。目标端按这里的来源路径做改写。 */
 export interface McpDataSyncPayload {

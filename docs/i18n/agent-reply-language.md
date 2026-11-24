@@ -23,7 +23,7 @@
 每个窗口有自己的 Local Host（[runtime 边界](../agents/runtime-boundaries.md)）。值由 Main 持有并推送给所有窗口的 Host，否则只有发起保存的窗口能拿到新值。
 
 ```text
-设置页输入框 ──失焦 / 回车──► platform.setReplyLanguage(raw)（IPC zcode:set-reply-language）
+设置页输入框 ──失焦 / 回车──► platform.setReplyLanguage(raw)（IPC codez:set-reply-language）
 Main.applyReplyLanguage
    1. value = raw.trim() || null
    2. 写 setting.json（mainSettingService.update；设置 schema 校验 ≤256；null 删除该字段；
@@ -46,7 +46,7 @@ CLI 主线程 collectInputAttachments（轮首 / 完整工具批次后 / 纯文�
 - 冷重启：Host 先从 InitLocal 拿到值，再 spawn CLI，CLI 不会读到"尚未加载"而误发清除公告。
 - Host 不向 CLI 推送语言变化。只有正在执行的会话才拉取；空闲、dormant 会话和空闲 CLI 进程都不读取。
 - "已经公告过什么"只看历史，冷恢复不需要额外状态。
-- `ZCODE_CLIENT_LANGUAGE`（spawn 时注入，用于 `X-Client-Language`）跟随界面语言，与回复语言无关。
+- `CODEZ_CLIENT_LANGUAGE`（spawn 时注入，用于 `X-Client-Language`）跟随界面语言，与回复语言无关。
 
 ## Host 应答
 
@@ -57,19 +57,19 @@ CLI 主线程 collectInputAttachments（轮首 / 完整工具批次后 / 纯文�
 | Web + Server                                                               | `{ language: null }`     | Web 不提供输入框                                                                                       |
 | 旧版 desktop-attached stdio 远端                                           | `{ language: null }`     | 同上                                                                                                   |
 
-依赖注入：只有 Desktop Host 给 `createLocalServices` 注入 `resolveReplyLanguage`，`zcodeAgentService` 用它应答。
+依赖注入：只有 Desktop Host 给 `createLocalServices` 注入 `resolveReplyLanguage`，`codezAgentService` 用它应答。
 没有注入的 Host 一律回答 `null`，不读 `setting.json`。
 
 ## 协议
 
-`session/readReplyLanguage`（`packages/shared/src/zcode-protocol/index.ts`）：
+`session/readReplyLanguage`（`packages/shared/src/codez-protocol/index.ts`）：
 
 - Params：`{ sessionId }`，`.strict()`。`sessionId` 只用于 trace 与日志。
 - Result：`{ language: string | null }`，`.strict()`。字符串去掉首尾空格后非空，最多 256 个字符。`null` 表示没有设置。
-- 超时：`ZCODE_REPLY_LANGUAGE_REQUEST_TIMEOUT_MS = 2_000`。
+- 超时：`CODEZ_REPLY_LANGUAGE_REQUEST_TIMEOUT_MS = 2_000`。
 - Host 在 workspace 路由守卫之前处理它：值是 Host 级的，不按 workspace 路由；放在守卫之后，服务多个 workspace 的 CLI 会被误拒。
 
-方法放在旧协议文件里：CLI→Host 反向请求（如 `subagents/readRuntimeConfig`、`session/requestRuntimePreferences`）只存在于这一层；它读取 Host 设置，不是聊天能力，不受 [ZCode Protocol](../zcode-protocol.md)"旧协议不承接新的聊天能力"的限制。
+方法放在旧协议文件里：CLI→Host 反向请求（如 `subagents/readRuntimeConfig`、`session/requestRuntimePreferences`）只存在于这一层；它读取 Host 设置，不是聊天能力，不受 [Codez Protocol](../codez-protocol.md)"旧协议不承接新的聊天能力"的限制。
 
 ## CLI 公告
 
@@ -106,6 +106,6 @@ Maintain full orthographic correctness for <Language>, including all required di
 
 ## 验证
 
-- CLI：`apps/zcode-cli/packages/core/tests/runtime-context-announcements.test.ts`（首次公告、不重复、工具批次后重读、失败跳过、`null` 清除、subagent 不读、顺序、转义、反解往返、compaction 重述与清除不重述、标题规则）；`apps/zcode-cli/packages/bootstrap/tests/reply-language-reader.test.ts`（请求参数与超时、`null` 映射、错误原样抛给 core）。
+- CLI：`apps/codez-cli/packages/core/tests/runtime-context-announcements.test.ts`（首次公告、不重复、工具批次后重读、失败跳过、`null` 清除、subagent 不读、顺序、转义、反解往返、compaction 重述与清除不重述、标题规则）；`apps/codez-cli/packages/bootstrap/tests/reply-language-reader.test.ts`（请求参数与超时、`null` 映射、错误原样抛给 core）。
 - E2E：`packages/desktop/test/e2e/conversation-session/context/conversation-session-reply-language.test.ts`（RL01–RL09，non-MCS 与 MCS 两种投影各一遍），设置入口见 `packages/desktop/test/e2e/settings/agent/settings-agent-behavior-reply-language.test.ts`（SAB04）；两者已转正。RL 在 `conversation-session/**` 下，随 CI 的 conversation-session 清单运行；SAB04 不在 CI 清单里；两者都没有做 Docker 准入。已转正的 `settings/agent/settings-agent-behavior.test.ts`（SAB01/SAB03）同步覆盖这一行的分类清单与布局。
 - Web 远控：浏览器验收，确认显示本机提示（深浅主题）。

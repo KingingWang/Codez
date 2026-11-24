@@ -10,18 +10,18 @@ describe("远程单目录项目展示", () => {
   before(async function () {
     this.timeout(120_000);
     await prepareV4ConversationE2E({ skipProvider: true });
-    const home = process.env.ZCODE_E2E_HOME_DIR;
+    const home = process.env.CODEZ_E2E_HOME_DIR;
     // 根因：旧守卫只接受手工运行的目录名，拒绝队列按批次/case 分配的独立 HOME。
     // 本例只验离线缓存，可由普通 runner 执行；仍要求统一隔离 HOME 前缀。
-    // 修复原因：旧守卫只认 `.e2e-home-` 前缀，Windows CI 未设 ZCODE_E2E_HOME_DIR 时默认 HOME 是
+    // 修复原因：旧守卫只认 `.e2e-home-` 前缀，Windows CI 未设 CODEZ_E2E_HOME_DIR 时默认 HOME 是
     // `.e2e-home`，before 直接抛错。统一用 isE2EHomeDirName，只接受 `.e2e-home` 与 `.e2e-home-*`。
     const isolatedRunnerHome = home && isE2EHomeDirName(basename(home));
     if (
       !home ||
-      (!basename(home).startsWith("zcode-remote-project-policy-e2e-") && !isolatedRunnerHome)
+      (!basename(home).startsWith("codez-remote-project-policy-e2e-") && !isolatedRunnerHome)
     )
       throw new Error("isolated HOME required");
-    const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
+    const db = new DatabaseSync(join(home, ".codez/v2/tasks-index.sqlite"));
     try {
       db.exec("BEGIN IMMEDIATE");
       db.prepare(
@@ -122,7 +122,7 @@ describe("远程单目录项目展示", () => {
     const readOrderPreference = () =>
       browser.execute(
         () =>
-          JSON.parse(localStorage.getItem("zcode-project-sidebar-preferences") ?? "{}")
+          JSON.parse(localStorage.getItem("codez-project-sidebar-preferences") ?? "{}")
             .order as string[],
       );
     const preferenceBefore = await readOrderPreference();

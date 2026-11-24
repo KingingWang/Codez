@@ -8,7 +8,7 @@
 
 ## 1. 功能摘要
 
-`--browser-use=headless` 启动的 Chromium 使用临时 profile，每个 ZCode session 使用一个隔离的
+`--browser-use=headless` 启动的 Chromium 使用临时 profile，每个 Codez session 使用一个隔离的
 BrowserContext。所以任务开始时浏览器没有任何登录态；需要扫码登录的网站在 headless 下很难完成登录。
 
 本功能让 CLI 在创建 BrowserContext 时注入一份只读的登录态快照（Playwright storage state 文件）。
@@ -69,18 +69,18 @@ C1 的实验记录（Playwright 1.59.1 + macOS 本机 Chrome，2026-11-17）：
 --no-browser-state
 ```
 
-默认文件：`<home>/.zcode/cli/browser-state.json`。`<home>` 和 `os.homedir()` 规则相同：Windows 取
-`USERPROFILE`，其他平台取 `HOME`，为空时回退 `os.homedir()`。这样默认文件和 `~/.zcode/cli/db/db.sqlite`
+默认文件：`<home>/.codez/cli/browser-state.json`。`<home>` 和 `os.homedir()` 规则相同：Windows 取
+`USERPROFILE`，其他平台取 `HOME`，为空时回退 `os.homedir()`。这样默认文件和 `~/.codez/cli/db/db.sqlite`
 等 CLI 文件位置一致；Windows 上 Git Bash 等环境设置的 `HOME` 不会改变默认位置。
 
 示例：
 
 ```bash
-zcode --browser-use=headless --browser-state ./app-state.json \
+codez --browser-use=headless --browser-state ./app-state.json \
   --prompt "打开 https://app.example.com/docs/123 并总结内容"
 
 # 默认文件存在时，本次不加载它
-zcode --browser-use=headless --no-browser-state --prompt "..."
+codez --browser-use=headless --no-browser-state --prompt "..."
 ```
 
 来源解析（在 `run.ts` 中，和 `--browser-executable` 的校验放在同一处）：
@@ -109,7 +109,7 @@ zcode --browser-use=headless --no-browser-state --prompt "..."
   未知字段警告（§5.2）、文件权限警告（§5.3）。三类提示在所有入口都写 stderr，同时写日志。
   TUI 使用 alternate screen，这些提示在会话中看不到，退出后才出现在终端里；本规格不为此给 TUI
   新增启动通知通道。
-- `zcode app-server` 拒绝这两个参数，和 `--browser-use` 的作用域规则一致；Desktop、Web Remote
+- `codez app-server` 拒绝这两个参数，和 `--browser-use` 的作用域规则一致；Desktop、Web Remote
   不受影响。
 - 不新增环境变量，不新增配置文件键。
 - `--no-browser` 仍然只表示 OAuth 登录时不打开浏览器，和本功能无关。
@@ -217,13 +217,13 @@ S 中的 cookie 和 storage 变化
 
 | 位置                                                                      | 改动                                                                                                   |
 | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `apps/zcode-cli/packages/cli/src/arguments.ts`                            | 新增 `browser-state`（string）和 `no-browser-state`（boolean）                                         |
-| `apps/zcode-cli/packages/cli/src/run.ts`                                  | 在 `--browser-executable` 校验旁解析来源、调用校验、处理报错和默认文件提示                             |
-| `apps/zcode-cli/packages/shared-types/src/index.ts`                       | `GlobalOptions` 增加登录态来源字段                                                                     |
-| `apps/zcode-cli/packages/cli/src/headless-browser.ts`                     | 把来源传给 `createManagedCdpBrowserRuntime`                                                            |
-| `apps/zcode-cli/packages/adapters/src/browser/storage-state.ts`（新文件） | 默认路径、zod schema、异步读取与校验、未知字段收集、POSIX 权限检查                                     |
-| `apps/zcode-cli/packages/adapters/src/browser/index.ts`                   | `ManagedCdpBrowserRuntimeOptions` 增加 `storageStatePath`；`ensureSession` 读取后注入                  |
-| 文档                                                                      | `apps/zcode-cli/docs/design/v2/commands.md`、`apps/zcode-cli/docs/usage/02-cli-reference.md`、上位规格 |
+| `apps/codez-cli/packages/cli/src/arguments.ts`                            | 新增 `browser-state`（string）和 `no-browser-state`（boolean）                                         |
+| `apps/codez-cli/packages/cli/src/run.ts`                                  | 在 `--browser-executable` 校验旁解析来源、调用校验、处理报错和默认文件提示                             |
+| `apps/codez-cli/packages/shared-types/src/index.ts`                       | `GlobalOptions` 增加登录态来源字段                                                                     |
+| `apps/codez-cli/packages/cli/src/headless-browser.ts`                     | 把来源传给 `createManagedCdpBrowserRuntime`                                                            |
+| `apps/codez-cli/packages/adapters/src/browser/storage-state.ts`（新文件） | 默认路径、zod schema、异步读取与校验、未知字段收集、POSIX 权限检查                                     |
+| `apps/codez-cli/packages/adapters/src/browser/index.ts`                   | `ManagedCdpBrowserRuntimeOptions` 增加 `storageStatePath`；`ensureSession` 读取后注入                  |
+| 文档                                                                      | `apps/codez-cli/docs/design/v2/commands.md`、`apps/codez-cli/docs/usage/02-cli-reference.md`、上位规格 |
 
 文件 I/O 只出现在 CLI 入口层和 adapters，符合 CLI 的外部 I/O 边界规则。
 
@@ -261,7 +261,7 @@ S 中的 cookie 和 storage 变化
 | BST-009 | 未知字段、权限 0644                                                                                          | 警告列出字段路径和权限建议；不阻止启动                                                                                         | schema unit + CLI unit                         |
 | BST-010 | 本地 HTTP fixture：`/echo` 返回请求的 Cookie 头，页面读取 localStorage；运行时生成指向 fixture origin 的文件 | 经过 `mcp__node_repl__js` → browser-client → broker → port → Chromium，cookie 和 localStorage 都生效；未带文件的运行看不到它们 | `test:browser-headless` real Chromium E2E      |
 | BST-011 | 同一 TUI 两个 session                                                                                        | 都有登录态，tab 互不可见                                                                                                       | adapter integration                            |
-| BST-012 | 真实网站：用户导出登录态后，用实现后的 `zcode --browser-use=headless --browser-state` 打开需要登录的页面     | 页面停在目标页，不跳转登录页                                                                                                   | 人工验收记录（§10 的实验已用同等启动方式通过） |
+| BST-012 | 真实网站：用户导出登录态后，用实现后的 `codez --browser-use=headless --browser-state` 打开需要登录的页面     | 页面停在目标页，不跳转登录页                                                                                                   | 人工验收记录（§10 的实验已用同等启动方式通过） |
 
 ## 10. 待验证风险
 

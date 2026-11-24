@@ -17,7 +17,7 @@ const PREVIEW_CASE_MARKER = "E2E_CONVERSATION_SHARE_PREVIEW_V1";
 // 回放 fixture 每条只匹配一次（maxMatches: 1），本用例使用独立 marker，不与 SHARE18/SHARE25 抢录制。
 const REJECT_CASE_MARKER = "E2E_CONVERSATION_SHARE_REJECT_V1";
 const ARTIFACT_LIMIT_CASE_MARKER = "E2E_CONVERSATION_SHARE_ARTIFACT_LIMIT_V1";
-const PREVIEW_CASE_ROOT = join(DEFAULT_WORKSPACE, ".zcode-e2e", "conversation-share-preview");
+const PREVIEW_CASE_ROOT = join(DEFAULT_WORKSPACE, ".codez-e2e", "conversation-share-preview");
 const PREVIEW_PDF = "晨报_2026-09-08_早会版.pdf";
 const PREVIEW_VIDEOS = ["condensed.mp4", "纵横四海_电影解说.mp4", "final_subtitled.mp4"] as const;
 
@@ -385,7 +385,7 @@ describe(`${CASE_MARKER}: Desktop local 分享发布与导入入口`, () => {
 
   it("SHARE-E2E-04：服务端拒绝产物上传时指出文件与轮次，需取消该轮后才能重新生成", async function () {
     this.timeout(240_000);
-    const mockBaseUrl = process.env.ZCODE_CODING_PLAN_TEAM_MOCK_BASE_URL?.trim();
+    const mockBaseUrl = process.env.CODEZ_CODING_PLAN_TEAM_MOCK_BASE_URL?.trim();
     expect(mockBaseUrl).toBeTruthy();
     await prepareV4ConversationE2E();
     // 上一个用例的成功浮窗仍停在原会话；新建草稿保证本用例从干净会话开始。
@@ -459,7 +459,7 @@ describe(`${CASE_MARKER}: Desktop local 分享发布与导入入口`, () => {
 
   it("SHARE-E2E-05：产物数量上限按当前选中轮聚合，取消产物轮即解除、重新勾选即重现", async function () {
     this.timeout(240_000);
-    const mockBaseUrl = process.env.ZCODE_CODING_PLAN_TEAM_MOCK_BASE_URL?.trim();
+    const mockBaseUrl = process.env.CODEZ_CODING_PLAN_TEAM_MOCK_BASE_URL?.trim();
     expect(mockBaseUrl).toBeTruthy();
     const setCapabilities = async (overrides: Record<string, number>) => {
       const response = await fetch(`${mockBaseUrl}/api/v1/shares/__e2e/capabilities`, {

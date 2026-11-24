@@ -21,7 +21,7 @@ import {
   type SlotScopeKey,
   type StaticView,
   type WorkspaceRef,
-} from "@zcode/shared/extension-host";
+} from "@codez/shared/extension-host";
 
 // 纯函数：静态表 ⊕ 运行状态 ⊕ 动态值 → 插槽要渲染的条目（docs/plugins/extension-host.md §16.1）。
 // 三份数据各有唯一 owner（静态表：Window Host；运行状态与动态值：扩展进程；扩展进程状态：Main），

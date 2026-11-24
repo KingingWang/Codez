@@ -4,7 +4,7 @@ import {
   type MarketingAsset,
   type MarketingTouchSnapshot,
   type MarketingVisual,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 /** 下载授权只来自宿主已验证的投放响应；Renderer 不能自行授权地址。 */
 export function createMarketingAssetRegistry(

@@ -1,8 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { ServiceChannels } from "@zcode/shared";
-import type { ProjectTree } from "@zcode/services";
+import { ServiceChannels } from "@codez/shared";
+import type { ProjectTree } from "@codez/services";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import {
   callHandoffHost,
@@ -107,7 +107,7 @@ describe("会话区 Goal 恢复 stale target 复现", () => {
 });
 
 function writeStaleTaskTarget(taskId: string) {
-  const db = new DatabaseSync(join(homedir(), ".zcode", "v2", "tasks-index.sqlite"));
+  const db = new DatabaseSync(join(homedir(), ".codez", "v2", "tasks-index.sqlite"));
   try {
     const row = db.prepare("SELECT meta_json FROM tasks WHERE task_id = ?").get(taskId) as
       | { meta_json: string }

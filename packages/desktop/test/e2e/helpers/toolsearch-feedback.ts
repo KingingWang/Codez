@@ -72,7 +72,7 @@ export async function saveSearchEvidence(
   fixture: SearchFixture,
   extra: Record<string, unknown> = {},
 ) {
-  const root = process.env.ZCODE_E2E_ARTIFACT_DIR;
+  const root = process.env.CODEZ_E2E_ARTIFACT_DIR;
   if (!root) throw new Error("Missing E2E artifact directory");
   const directory = join(root, "toolsearch-wire");
   await mkdir(directory, { recursive: true });

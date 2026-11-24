@@ -46,7 +46,7 @@ describe("复用构建时的共享只读快照", () => {
 
   it("文件签名随修改时间变化；文件不存在时返回 null", async () => {
     const dir = await root();
-    const file = join(dir, "zcode.cjs");
+    const file = join(dir, "codez.cjs");
     expect(fileSignature(file)).toBeNull();
     await writeFile(file, "cli");
     const first = fileSignature(file);

@@ -54,7 +54,7 @@ sequenceDiagram
 | 插件目录与插件内 skill 目录                          | 否                  | 插件内容只由安装流程写入；手改不会热生效                                 |
 | 内置 skill 目录                                      | 否                  | 随 CLI 版本固定                                                          |
 
-- 目录条目的锚点是目录本身。目录不存在时，只在已知边界之内向上找已存在的目录：用户根以 `~/.zcode`、`~/.agents` 为边界，项目根以 worktree 根（没有 git 时为工作目录）为边界，附加目录和 `skills.roots` 以自身为边界。边界之外不监听，不会监听用户目录这类大目录。
+- 目录条目的锚点是目录本身。目录不存在时，只在已知边界之内向上找已存在的目录：用户根以 `~/.codez`、`~/.agents` 为边界，项目根以 worktree 根（没有 git 时为工作目录）为边界，附加目录和 `skills.roots` 以自身为边界。边界之外不监听，不会监听用户目录这类大目录。
 - 直接子文件不登记就不开句柄，所以 `.DS_Store`、`README.md` 这类文件不占句柄。原生事件不带文件类型：点文件的事件按名字过滤，不触发重读；`README.md` 这类普通文件的事件触发一次全量重读，结果不变。
 - 新绑定的 watcher 就绪后再读一次，消除"读取与绑定之间"的写入窗口。不轮询，不用超时决定状态；唯一例外是下面的绑定超时断路，它只决定是否继续监听，配置内容仍由全量读盘决定。
 - 监听失败上限（MCP 配置源同样适用）：同一锚点、同一身份（`dev:ino`、覆盖的文件、目录列表）的 watcher 失败两次就停止监听，记一条 warn（`<label> watcher stopped after repeated failures`，带锚点路径和错误）。
@@ -88,7 +88,7 @@ sequenceDiagram
 - 当前目录按显示名排序，指纹不在已发集合里的行进入本次公告。没有新行时不追加。
 - 删除的 skill 不发通知；模型调用它时 `Skill` tool 返回 `Unknown skill: <name>`（端口抛 `SkillNotFoundError`，
   message 仍是 `Skill not found: <name>`；目录里有编辑距离不超过 2 的名称时加 `. Did you mean <other>?`，
-  规则见 `apps/zcode-cli/docs/design/v2/tool/00-tool-change-chain.md`「工具错误的包装与文字」）。删除后用相同内容恢复，不重发。
+  规则见 `apps/codez-cli/docs/design/v2/tool/00-tool-change-chain.md`「工具错误的包装与文字」）。删除后用相同内容恢复，不重发。
 - 内容变化（描述、`when_to_use`、别名、路径、限定名）产生新指纹，在同一头部下重发这一行。
 - 本次公告超过 `skills.metadataBudget` 时，本次所有行降级为名称加路径，与现有规则相同。
 - 工具表里没有 `Skill` 时不发列表，主会话和 subagent 规则相同。改动前 subagent 不检查工具表，总带列表；现在 `tools` 里没有 `Skill` 的自定义 subagent 收不到列表（Explore 带 `Skill`，不受影响）。
@@ -111,7 +111,7 @@ sequenceDiagram
 - 调用被取消时（例如用户停止）在 flush 前后检查：已取消就不开始重读；重读中途取消时，工具执行器立即结束这次调用，后台的重读继续完成并更新快照。
 - 命中后只读该 `SKILL.md` 的正文，截断上限不变。
 - 插件 skill 读正文前，对它所在的插件根重跑一次插件扫描规则：根、skill 目录、`SKILL.md` 都不能是链接（Windows junction 也算链接）。命中项不在扫描结果里时按未命中处理，flush 一次后端口抛 `SkillNotFoundError`（模型收到 `Unknown skill: <name>`）。原因：插件目录不在监听范围，快照建立后文件被换成指向插件外的链接时没有事件，只按快照路径读取会把插件外的文件交给模型；改动前每次调用都全量扫描，由同一条规则拒绝。检查与读取之间仍有毫秒级窗口，与改动前相同。规则只检查这三级；根以上的目录（插件安装目录、manifest 嵌套根的中间目录）不检查，也与改动前相同。用户、项目 skill 不做这项检查，继续跟随链接。
-- 行为变化：Bash `cd` 到子目录后，子目录 `.zcode/skills` 里的 skill 不再能加载（以前能加载但不在列表里）。目录始终按会话工作目录解析。
+- 行为变化：Bash `cd` 到子目录后，子目录 `.codez/skills` 里的 skill 不再能加载（以前能加载但不在列表里）。目录始终按会话工作目录解析。
 
 ## 其他入口
 

@@ -1,4 +1,4 @@
-import { ServiceChannels, type ZCodeTaskMeta } from "@zcode/shared";
+import { ServiceChannels, type CodezTaskMeta } from "@codez/shared";
 import { createServiceDescriptor } from "#src/descriptors.js";
 
 export type TaskGroupColor = "gray" | "red" | "orange" | "yellow" | "green" | "blue" | "purple";
@@ -29,7 +29,7 @@ export interface MoveGroupNode {
   anchor?: { node: GroupNode; side: "before" | "after" };
 }
 export type GroupTaskFact = GroupTaskRef &
-  Pick<ZCodeTaskMeta, "cronAutomationId" | "offPeakTaskId"> & {
+  Pick<CodezTaskMeta, "cronAutomationId" | "offPeakTaskId"> & {
     createdAt?: number;
     archived?: boolean;
     deleted?: boolean;

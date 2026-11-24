@@ -1,7 +1,7 @@
 import {
   parseWebRemoteControlRpcTransportPayload,
   type WebRemoteControlRpcTransportFramePayload,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 type WireMessage = string | Buffer;
 type Frame = WebRemoteControlRpcTransportFramePayload;

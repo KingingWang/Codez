@@ -6,7 +6,7 @@ Updated behavior, 2026-06-17.
 
 ## Goal
 
-For ZAI, BigModel, ZAPI, custom, and dynamic GLM-5.2-like models, and for every GLM dated temporary model, keep the `high` thought level visible and selectable, but default model switches into these models to `max`. The behavior must be consistent across frontend configOptions, model switching, workspace defaults, active task config, zcode-cli model capability, and provider request mapping.
+For ZAI, BigModel, ZAPI, custom, and dynamic GLM-5.2-like models, and for every GLM dated temporary model, keep the `high` thought level visible and selectable, but default model switches into these models to `max`. The behavior must be consistent across frontend configOptions, model switching, workspace defaults, active task config, codez-cli model capability, and provider request mapping.
 
 ## Scope
 
@@ -26,7 +26,7 @@ For ZAI, BigModel, ZAPI, custom, and dynamic GLM-5.2-like models, and for every 
 
 The frontend stores the thought-level options returned by the agent without a GLM-specific `high` filter. General normalization still applies: if the current value is missing from the available option list, the store falls back to the first legal option.
 
-The zcode-cli reasoning metadata is the source of truth for runtime usage. GLM-5.2-like and GLM dated temporary model capability must include `high`; the providerOptions for `high` must be present so runtime model snapshots and session updates can pass the selected level through to the actual provider request.
+The codez-cli reasoning metadata is the source of truth for runtime usage. GLM-5.2-like and GLM dated temporary model capability must include `high`; the providerOptions for `high` must be present so runtime model snapshots and session updates can pass the selected level through to the actual provider request.
 
 When the toolbar receives authoritative configOptions after a successful model switch, the UI detects whether the selected model is GLM-5.2-like or a GLM dated temporary model. If so, and the returned thought-level option includes `max`, the toolbar updates the active task or workspace default thought level to `max`. This keeps runtime state aligned with the visible default instead of only changing local display state.
 
@@ -38,5 +38,5 @@ When creating or reading a draft session for a new task, the workspace prepare p
 - Update model switch tests to prove switching to a GLM dated temporary model forces runtime/workspace thought level from `high` to `max`.
 - Update workspace prepare tests to prove new draft sessions for GLM-5.2-like and GLM dated temporary models prefer `max` over a stored `high` preference.
 - Add neighbor coverage proving non-GLM-5.2-like models do not get forced to `max`.
-- Update zcode-cli adapter and bootstrap tests to prove GLM-5.2-like and GLM dated temporary capability includes `max`, `high`, and `nothink`, including generated OpenAI-compatible and Anthropic-compatible providerOptions.
-- Run targeted UI and zcode-cli tests, then repository `pnpm typecheck` and `pnpm lint`.
+- Update codez-cli adapter and bootstrap tests to prove GLM-5.2-like and GLM dated temporary capability includes `max`, `high`, and `nothink`, including generated OpenAI-compatible and Anthropic-compatible providerOptions.
+- Run targeted UI and codez-cli tests, then repository `pnpm typecheck` and `pnpm lint`.

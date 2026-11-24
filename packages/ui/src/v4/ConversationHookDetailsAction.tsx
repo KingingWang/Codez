@@ -11,13 +11,13 @@ import {
   TID_V4_HOOK_DETAILS_CONTENT,
   TID_V4_HOOK_DETAILS_TRIGGER,
   testId,
-} from "@zcode/shared/test-ids";
-import type { HookExecutionProjection, HookInvocationRow } from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/test-ids";
+import type { HookExecutionProjection, HookInvocationRow } from "@codez/shared/codez-protocol-v4";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.js";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 
 type HookDetailStatus = "running" | "blocked" | "failed" | "cancelled" | "timedOut";
 
@@ -91,7 +91,7 @@ const HookStatusIcon = memo(function HookStatusIcon({ status }: { status: HookDe
 });
 
 const HookDetailItemRow = memo(function HookDetailItemRow({ item }: { item: HookDetailItem }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const sourceLabel = intl.formatMessage({ id: `chat.hooks.source.${item.sourceKind}` });
   const durationLabel = item.durationMs === undefined ? null : formatHookDuration(item.durationMs);
   return (
@@ -127,7 +127,7 @@ export const ConversationHookDetailsAction = memo(function ConversationHookDetai
   rows: readonly HookInvocationRow[];
   turnId: string;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [open, setOpen] = useState(false);
   const items = useMemo(() => buildHookDetailItems(rows), [rows]);
   if (items.length === 0) return null;

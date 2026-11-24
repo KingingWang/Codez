@@ -6,7 +6,7 @@
 
 - UI 只负责收集当前草稿和最近对话上下文，并把增强后的文本回填到 composer。
 - 真正的网络请求下沉到 `modelProviderService.enhancePrompt()`，由 host 侧按 `modelProviderId` 重新读取最新 provider 配置。
-- 请求格式会按当前 ZCode provider 选择优先级：
+- 请求格式会按当前 Codez provider 选择优先级：
   - `claude` 优先 Anthropic
   - `codex` / `opencode` 优先 Responses
   - `glm` 优先 OpenAI Chat

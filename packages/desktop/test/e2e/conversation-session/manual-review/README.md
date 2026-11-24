@@ -24,19 +24,19 @@
 运行方式：
 
 ```bash
-ZCODE_E2E_MANUAL_REVIEW=1 pnpm --filter @zcode/desktop test:e2e
+CODEZ_E2E_MANUAL_REVIEW=1 pnpm --filter @codez/desktop test:e2e
 ```
 
 指定单条：
 
 ```bash
-ZCODE_E2E_MANUAL_REVIEW=1 pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/conversation-session/manual-review/pending/<case>.test.ts'
+CODEZ_E2E_MANUAL_REVIEW=1 pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/conversation-session/manual-review/pending/<case>.test.ts'
 ```
 
 已有 case-local fixture 的 pending spec 可以在转正前执行合同检查：
 
 ```bash
-pnpm --filter @zcode/desktop e2e:fixture:check -- --spec \
+pnpm --filter @codez/desktop e2e:fixture:check -- --spec \
   './test/e2e/conversation-session/manual-review/pending/<case>.test.ts'
 ```
 

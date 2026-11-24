@@ -3,8 +3,8 @@
 // 由调用方（Git 服务 / Trust identity resolver）完成。
 import { basename, isAbsolute, join, relative, sep } from "node:path";
 
-/** 受管根目录相对数据根目录的路径段：<dataBaseDir>/.zcode/worktrees。 */
-export const MANAGED_WORKTREE_HOME_SEGMENTS = [".zcode", "worktrees"] as const;
+/** 受管根目录相对数据根目录的路径段：<dataBaseDir>/.codez/worktrees。 */
+export const MANAGED_WORKTREE_HOME_SEGMENTS = [".codez", "worktrees"] as const;
 
 /** bucket 是 4 位小写 hex；位数同时用来控制 Windows 路径长度。 */
 export const MANAGED_WORKTREE_BUCKET_LENGTH = 4;

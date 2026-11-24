@@ -9,7 +9,7 @@
   "fileFixtures": [
     {
       "kind": "app-config-seed",
-      "path": "~/.zcode/v2/credentials.json",
+      "path": "~/.codez/v2/credentials.json",
       "purpose": "隔离账号与本地 Relay 返回有效 App 设备资格；验证 HTTP 通知资格不建立 WS、开启远控建连及关闭后的连接释放；MP13 另由 Relay 记录并回执 POST /api/v1/remote/notification/events，验证本机推送开关。",
       "description": "隔离账号与本地 Relay 返回有效 App 设备资格；验证 HTTP 通知资格不建立 WS、开启远控建连及关闭后的连接释放；MP13 另由 Relay 记录并回执 POST /api/v1/remote/notification/events，验证本机推送开关。",
       "source": "created-by-helper"

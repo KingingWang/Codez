@@ -8,7 +8,7 @@
 
 ## 1. 背景
 
-项目配置 `<workspace>/.zcode/config.json`（以及 `zcode.json`、显式 `projectConfigPath`）可以用
+项目配置 `<workspace>/.codez/config.json`（以及 `codez.json`、显式 `projectConfigPath`）可以用
 `plugins.dirs` 声明随仓库分发的目录插件。2026-10 的安全修复（`fix(plugins): block workspace plugin
 directories`）为了堵住「打开仓库即执行插件 Hook、启动插件 MCP」的攻击链，直接在读取时丢弃了项目
 `plugins.dirs`。结果是团队无法再靠仓库分发插件，设置页「项目」视图也看不到这些插件。
@@ -49,20 +49,20 @@ directories`）为了堵住「打开仓库即执行插件 Hook、启动插件 MC
   路径由 `resolveWorkspaceHookTrustStorePath` 推出）。项目文件不能改写用户存储根，仓库里同名文件
   不会被读取。写入用文件锁加原子写。存储读不出或损坏时按「没有信任」处理，候选仍显示为待信任。
 - **Trust identity**：复用 Hook 信任的 `resolveWorkspaceHookTrustIdentityForWorkspace`。远程工作区
-  用 `workspaceIdentity`；ZCode 受管 worktree 归一到源仓库路径，所以沿用源仓库的信任
+  用 `workspaceIdentity`；Codez 受管 worktree 归一到源仓库路径，所以沿用源仓库的信任
   （规则见 Workspace Hook Trust D23）。换工作区、换远程主机、换电脑都要重新信任。
 - **插件根键**：插件根相对工作区目录的路径，统一用 `/`。受管 worktree 与源仓库得到同一个键。
 - **声明摘要（v1）**：sha256，输入为插件根键，以及下列文件的原文（换行统一为 `\n`，缺失记为 null）：
   manifest、`hooks/hooks.json`、`.mcp.json`、manifest `hooks` / `mcpServers` 里以路径引用的文件。
   内联在 manifest 里的 Hook/MCP 声明随 manifest 原文覆盖；以嵌套数组引用的文件与 MCP 加载一样递归展开。文件按路径的码点顺序排列，不受系统语言设置影响。实现集中在
-  `apps/zcode-cli/packages/adapters/src/plugins/workspace-plugin-declaration/`，启动发现、打开会话的实时
+  `apps/codez-cli/packages/adapters/src/plugins/workspace-plugin-declaration/`，启动发现、打开会话的实时
   目录和信任写入共用。
 - **一次信任放行全部组件**：插件自带的 Hook 不再按项目 Hook 规则逐条信任。
 
 ## 4. 准入位置
 
 - 启动发现与 `plugins/list` 共用 `NodePluginAdapter.discoverPlugins`。bootstrap 在构造请求时调用
-  `resolveWorkspacePluginDiscovery`（`apps/zcode-cli/packages/bootstrap/src/workspace-plugin-trust/`）读入候选与本工作区的信任记录；发现时摘要与 manifest 读自同一批
+  `resolveWorkspacePluginDiscovery`（`apps/codez-cli/packages/bootstrap/src/workspace-plugin-trust/`）读入候选与本工作区的信任记录；发现时摘要与 manifest 读自同一批
   发现材料，材料在本次发现中途变化时整体重建，准入判定的声明就是随后被解析执行的声明。
 - 打开会话里的 MCP 配置与技能实时目录只沿用会话启动时已准入的项目插件（来自启动发现结果的
   `workspaceTrust.state === "trusted"`），每次重读都重算摘要；会话中途声明变了就撤下该插件的 MCP
@@ -71,7 +71,7 @@ directories`）为了堵住「打开仓库即执行插件 Hook、启动插件 MC
 
 ## 5. 协议与多端
 
-- `ZCodePluginInfo.workspaceTrust`：`{ state: "pending" | "trusted", pluginRoot, declarationDigest }`，
+- `CodezPluginInfo.workspaceTrust`：`{ state: "pending" | "trusted", pluginRoot, declarationDigest }`，
   只有项目目录插件才有。
 - `plugins/workspaceTrust`：参数 `{ workspace, pluginRoot, declarationDigest, trusted }`，结果
   `{ accepted, reasonCode? }`。信任时在文件锁内重读项目配置与插件声明，摘要必须与设置页看到的一致，

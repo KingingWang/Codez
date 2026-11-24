@@ -40,9 +40,9 @@ describe.skipIf(isWindows)("cdn-preload.sh", () => {
     writeFileSync(
       cdnUrlsIn,
       [
-        "https://cdn-zcode.z.ai/zcode/electron/releases/1.3.0/ZCode-1.3.0-mac-arm64.dmg\t3145728",
-        "https://cdn-zcode.z.ai/zcode/electron/releases/update/mac/arm64/latest-mac.yml\t128",
-        "https://cdn-zcode.z.ai/zcode/electron/releases/1.3.0/ZCode-1.3.0-mac-arm64.zip",
+        "https://cdn-zcode.z.ai/codez/electron/releases/1.3.0/Codez-1.3.0-mac-arm64.dmg\t3145728",
+        "https://cdn-zcode.z.ai/codez/electron/releases/update/mac/arm64/latest-mac.yml\t128",
+        "https://cdn-zcode.z.ai/codez/electron/releases/1.3.0/Codez-1.3.0-mac-arm64.zip",
         "",
       ].join("\n"),
       "utf-8",
@@ -115,7 +115,7 @@ process.stdout.write("\\n");
     expect(output).toContain("no minimum file size threshold is applied");
     expect(output).toContain("Filtered URLs: 2, Skipped URLs: 1");
     expect(output).toContain(
-      "skip preload (missing/invalid recorded size): https://cdn-zcode.z.ai/zcode/electron/releases/1.3.0/ZCode-1.3.0-mac-arm64.zip",
+      "skip preload (missing/invalid recorded size): https://cdn-zcode.z.ai/codez/electron/releases/1.3.0/Codez-1.3.0-mac-arm64.zip",
     );
 
     const aliyunCalls = readFileSync(aliyunLogPath, "utf-8")
@@ -128,7 +128,7 @@ process.stdout.write("\\n");
     const describeCalls = aliyunCalls.filter((line) => line.includes("DescribeRefreshTaskById"));
     expect(pushCalls).toHaveLength(2);
     expect(pushCalls.some((line) => line.includes("latest-mac.yml"))).toBe(true);
-    expect(pushCalls.some((line) => line.includes("ZCode-1.3.0-mac-arm64.dmg"))).toBe(true);
+    expect(pushCalls.some((line) => line.includes("Codez-1.3.0-mac-arm64.dmg"))).toBe(true);
     expect(pushCalls.every((line) => !line.includes("--Area"))).toBe(true);
     expect(output).not.toContain("--Area");
     expect(describeCalls).toHaveLength(2);
@@ -144,8 +144,8 @@ process.stdout.write("\\n");
     writeFileSync(
       cdnUrlsIn,
       [
-        "https://cdn-zcode.z.ai/zcode/electron/releases/1.3.0/ZCode-1.3.0-linux-arm64.AppImage\t3145728",
-        "https://cdn.zcode-ai.com/zcode/electron/releases/1.3.0/ZCode-1.3.0-linux-arm64.AppImage\t3145728",
+        "https://cdn-zcode.z.ai/codez/electron/releases/1.3.0/Codez-1.3.0-linux-arm64.AppImage\t3145728",
+        "https://cdn.codez-ai.com/codez/electron/releases/1.3.0/Codez-1.3.0-linux-arm64.AppImage\t3145728",
       ].join("\n"),
       "utf-8",
     );
@@ -168,8 +168,8 @@ done
 if [[ "$2" == "PushObjectCache" ]]; then
   if [[ "$profile" == "z-ai-account" ]]; then
     printf '%s\\n' '{"PushTaskId":"task-z-ai"}'
-  elif [[ "$profile" == "zcode-ai-account" ]]; then
-    printf '%s\\n' '{"PushTaskId":"task-zcode-ai"}'
+  elif [[ "$profile" == "codez-ai-account" ]]; then
+    printf '%s\\n' '{"PushTaskId":"task-codez-ai"}'
   else
     echo "unexpected profile: $profile" >&2
     exit 1
@@ -207,8 +207,8 @@ else process.stdout.write("\\n");
         ...process.env,
         PATH: `${binDir}:${process.env.PATH ?? ""}`,
         CDN_URLS_IN: cdnUrlsIn,
-        CDN_DOMAIN: "cdn-zcode.z.ai,cdn.zcode-ai.com",
-        CDN_PRELOAD_PROFILE: "z-ai-account,zcode-ai-account",
+        CDN_DOMAIN: "cdn-zcode.z.ai,cdn.codez-ai.com",
+        CDN_PRELOAD_PROFILE: "z-ai-account,codez-ai-account",
         POLL_INTERVAL: "0",
       },
       timeout: 25_000,
@@ -234,7 +234,7 @@ else process.stdout.write("\\n");
     ).toBe(true);
     expect(
       pushCalls.some(
-        (line) => line.includes("cdn.zcode-ai.com") && line.includes("--profile zcode-ai-account"),
+        (line) => line.includes("cdn.codez-ai.com") && line.includes("--profile codez-ai-account"),
       ),
     ).toBe(true);
     expect(pushCalls.every((line) => !line.includes("--region"))).toBe(true);
@@ -246,7 +246,7 @@ else process.stdout.write("\\n");
     ).toBe(true);
     expect(
       describeCalls.some(
-        (line) => line.includes("task-zcode-ai") && line.includes("--profile zcode-ai-account"),
+        (line) => line.includes("task-codez-ai") && line.includes("--profile codez-ai-account"),
       ),
     ).toBe(true);
     expect(describeCalls.every((line) => !line.includes("--region"))).toBe(true);
@@ -262,8 +262,8 @@ else process.stdout.write("\\n");
     writeFileSync(
       cdnUrlsIn,
       [
-        "https://cdn.codegeex.cn/zcode/electron/releases/1.3.0/ZCode-1.3.0-mac-arm64.dmg\t3145728",
-        "https://cdn.codegeex.cn/zcode/electron/releases/update/mac/arm64/latest-mac.yml\t128",
+        "https://cdn.codegeex.cn/codez/electron/releases/1.3.0/Codez-1.3.0-mac-arm64.dmg\t3145728",
+        "https://cdn.codegeex.cn/codez/electron/releases/update/mac/arm64/latest-mac.yml\t128",
       ].join("\n"),
       "utf-8",
     );
@@ -327,7 +327,7 @@ else process.stdout.write("\\n");
 
     expect(aliyunCalls).toHaveLength(2);
     expect(aliyunCalls[0]).toContain("PushObjectCache");
-    expect(aliyunCalls[0]).toContain("ZCode-1.3.0-mac-arm64.dmg");
+    expect(aliyunCalls[0]).toContain("Codez-1.3.0-mac-arm64.dmg");
     expect(aliyunCalls[1]).toContain("DescribeRefreshTaskById");
   }, 30_000);
 
@@ -341,7 +341,7 @@ else process.stdout.write("\\n");
     mkdirSync(binDir, { recursive: true });
     writeFileSync(
       cdnUrlsIn,
-      "https://cdn.codegeex.cn/zcode/electron/releases/1.6.0/ZCode-1.6.0-mac-arm64.dmg\t3145728\n",
+      "https://cdn.codegeex.cn/codez/electron/releases/1.6.0/Codez-1.6.0-mac-arm64.dmg\t3145728\n",
       "utf-8",
     );
 
@@ -422,7 +422,7 @@ else process.stdout.write("\\n");
     mkdirSync(binDir, { recursive: true });
     writeFileSync(
       cdnUrlsIn,
-      "https://cdn.codegeex.cn/zcode/electron/releases/1.6.0/ZCode-1.6.0-mac-arm64.dmg\t3145728\n",
+      "https://cdn.codegeex.cn/codez/electron/releases/1.6.0/Codez-1.6.0-mac-arm64.dmg\t3145728\n",
       "utf-8",
     );
 
@@ -487,7 +487,7 @@ process.stdout.write("\\n");
     mkdirSync(binDir, { recursive: true });
     writeFileSync(
       cdnUrlsIn,
-      "https://cdn.codegeex.cn/zcode/electron/releases/1.6.0/ZCode-1.6.0-mac-arm64.dmg\t3145728\n",
+      "https://cdn.codegeex.cn/codez/electron/releases/1.6.0/Codez-1.6.0-mac-arm64.dmg\t3145728\n",
       "utf-8",
     );
 

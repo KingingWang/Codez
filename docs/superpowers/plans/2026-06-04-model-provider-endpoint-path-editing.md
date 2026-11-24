@@ -6,7 +6,7 @@
 
 **Architecture:** Keep endpoint paths owned by provider config, not models. Add draft path state in add/edit provider forms, route it through `ProviderDraftSave`, and use one display helper so API format labels resolve paths from current provider or draft data.
 
-**Tech Stack:** React, TypeScript, Vitest, existing shadcn-style `Input`/`Select` components, `@zcode/shared` model provider helpers.
+**Tech Stack:** React, TypeScript, Vitest, existing shadcn-style `Input`/`Select` components, `@codez/shared` model provider helpers.
 
 ---
 

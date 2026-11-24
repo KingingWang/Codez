@@ -25,7 +25,7 @@ function publish(next: EditorIdentity) {
 function holdEditorLock(locks: LockManager, editorId: string): Promise<boolean> {
   return new Promise((acquired) => {
     void locks
-      .request(`zcode-v4-editor:${editorId}`, { ifAvailable: true }, (lock) => {
+      .request(`codez-v4-editor:${editorId}`, { ifAvailable: true }, (lock) => {
         acquired(lock !== null);
         // 返回不结束的 Promise：锁一直保持到页面卸载。
         return lock ? new Promise<never>(() => {}) : undefined;

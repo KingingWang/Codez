@@ -1,7 +1,7 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { dirname } from "node:path";
-import { TID_TASK_ARCHIVE, TID_TASK_ITEM, testId } from "@zcode/shared/test-ids";
+import { TID_TASK_ARCHIVE, TID_TASK_ITEM, testId } from "@codez/shared/test-ids";
 import { DEFAULT_WORKSPACE, clearAppData, clickTestIdByDom } from "#e2e/helpers/desktop-app";
 import { getPassiveAgentStartupWorkspacePaths } from "#e2e/helpers/passive-agent-startup-fixture";
 import { waitForSuccessfulToolCallByToolCallId } from "#e2e/helpers/conversation-session-tool";

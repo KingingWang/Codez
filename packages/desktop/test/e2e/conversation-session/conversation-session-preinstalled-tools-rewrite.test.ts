@@ -9,7 +9,7 @@ import { reloadElectronSessionPreservingBrowserProfile } from "#e2e/helpers/e2e-
 import { resolveE2EStorageRoot } from "#e2e/helpers/e2e-runtime-paths";
 
 const exec = promisify(execFile);
-const fixtureUrl = () => process.env.ZCODE_E2E_PREINSTALL_FIXTURE_URL!;
+const fixtureUrl = () => process.env.CODEZ_E2E_PREINSTALL_FIXTURE_URL!;
 async function openDialog() {
   // macOS 首帧跟随宿主语言；路径改写的错误文案按中文合同验证。
   await pinE2ELocale("zh-CN");
@@ -110,7 +110,7 @@ describe("预装工具安装路径改写（待审核）", () => {
         .update(await readFile(join(record.installationDir, "bin/unchanged")))
         .digest("hex"),
     ).toBe(fixture.originalBinarySha256);
-    await browser.saveScreenshot(`${process.env.ZCODE_E2E_ARTIFACT_DIR}/rewrite-ready.png`);
+    await browser.saveScreenshot(`${process.env.CODEZ_E2E_ARTIFACT_DIR}/rewrite-ready.png`);
     await restart("dir-prefix");
     await waitStatus("ready");
     record = JSON.parse(await readFile(recordPath, "utf8"));
@@ -165,7 +165,7 @@ describe("预装工具安装路径改写（待审核）", () => {
       expect(await readdir(join(tool, "versions"))).not.toContain(
         `rewrite-${scenario}-${process.arch}`,
       );
-      await browser.saveScreenshot(`${process.env.ZCODE_E2E_ARTIFACT_DIR}/rewrite-${scenario}.png`);
+      await browser.saveScreenshot(`${process.env.CODEZ_E2E_ARTIFACT_DIR}/rewrite-${scenario}.png`);
     }
     await restart("cancel");
     const cancel = $('[data-testid="preinstalled-tools-cancel"]');
@@ -181,7 +181,7 @@ describe("预装工具安装路径改写（待审核）", () => {
       `rewrite-ok:${record.installationDir}`,
     );
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "rewrite-evidence.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "rewrite-evidence.json"),
       JSON.stringify(
         {
           platform: process.platform,
@@ -198,6 +198,6 @@ describe("预装工具安装路径改写（待审核）", () => {
         2,
       ),
     );
-    await browser.saveScreenshot(`${process.env.ZCODE_E2E_ARTIFACT_DIR}/rewrite-cancelled.png`);
+    await browser.saveScreenshot(`${process.env.CODEZ_E2E_ARTIFACT_DIR}/rewrite-cancelled.png`);
   });
 });

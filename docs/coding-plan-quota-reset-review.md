@@ -1,7 +1,7 @@
 # Coding Plan Quota Reset 分支审查与联调记录
 
 > 分支：`codex/feat-quota-reset-ui`（基准 `staging`）
-> 审查日期：2026-08-12 ｜ 审查人：团队成员 + ZCode agent
+> 审查日期：2026-08-12 ｜ 审查人：团队成员 + Codez agent
 > 状态：**分支审查记录**（随联调与修复进展更新）
 
 ## 0. 范围与方法
@@ -19,7 +19,7 @@ UI 组件 (packages/ui/components/coding-plan-quota-reset/*)
        ├─ zustand 窗口内共享（codingPlanQuotaResetUiBySource，不广播不持久化）
        ├─ lib/codingPlanQuotaResetUi（状态机纯函数 available/processing/completed）
        └─ IUsageStatsService ── BigModelUsageQuotaProvider
-            ├─ Authorization: zcode JWT（credentials["zcodejwttoken"]）
+            ├─ Authorization: codez JWT（credentials["codezjwttoken"]）
             ├─ X-Bigmodel-Authorization: MaaS 登录态 JWT（credentials["oauth:bigmodel:access_token"]）
             ├─ TEAM scope: Bigmodel-Organization / Bigmodel-Project
             └─ GET /status  POST /opportunity  POST /use  POST /history/read
@@ -33,10 +33,10 @@ UI 组件 (packages/ui/components/coding-plan-quota-reset/*)
 | 08-12 | `X-Bigmodel-Authorization` 由 Coding Plan API key 改传 **MaaS 登录态 JWT**（`oauth:bigmodel:access_token`，直传不套 Bearer） | `6a06e7e8dd` | 后端按 JWT 识别用户；provider 解析只剩「确认 Coding Plan 已配置 + 推导 Team scope」两个用途；Team 不再复制项目 API key |
 | 08-12 | envelope 业务错误的 error message 追加 ` (x-request-id:xxx)`                                                                 | `3cc99c4f69` | RPC FAIL 日志与 UI warn 可直接按 request-id 与后端对账；前缀契约不变；无该 header 时 message 原样                      |
 
-## 3. 联调运行时观察（`~/.zcode/v2/logs/2026-08-12.log`）
+## 3. 联调运行时观察（`~/.codez/v2/logs/2026-08-12.log`）
 
 - 当日 500+ 条 `[coding-plan-reset] status refresh failed`，**无一次成功**。
-- 错误演进：`bigmodel_coding_plan_api_key_required`（11-13 点，key 未就位）→ 2007（主）+ 3101/429/zcode_jwt_required 混合。
+- 错误演进：`bigmodel_coding_plan_api_key_required`（11-13 点，key 未就位）→ 2007（主）+ 3101/429/codez_jwt_required 混合。
 - **JWT 修复后（16:07 bundle / 16:14 进程）2007 依旧**（41 条，含 16:26:28.680 最新一条），
   且 0 条 `maas_jwt_required`（守卫未触发）⇒ 请求已带 MaaS JWT 发出，**2007 属后端 → MAAS 链路问题**，待后端按 request-id 排查。
 - 429 共 11 次：四接口限频下 60s 轮询本不该触发，疑似多入口/多 tab 并发重放，频率低暂不阻塞。
@@ -92,7 +92,7 @@ UI 组件 (packages/ui/components/coding-plan-quota-reset/*)
 
 ## 6. 后端对齐遗留问题
 
-1. manual/auto 核销来源：status 接口无法区分（MAAS query 不带来源，ZCODE status 不读自 MySQL 流水）。
+1. manual/auto 核销来源：status 接口无法区分（MAAS query 不带来源，CODEZ status 不读自 MySQL 流水）。
    若产品要求展示区分来源，方案为「按 scope 查最近一条 use 流水 + used_at 精确等值匹配 + null 兜底」；
    后端称「不好区分」，待按真/伪困难清单（见对话记录）继续推进或降级为前端本地推导。
 2. 2007 定位：等后端按 16:26:28.680 / `GET /status` / personal scope 查网关日志；

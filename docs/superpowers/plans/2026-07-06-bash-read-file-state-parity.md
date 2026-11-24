@@ -6,7 +6,7 @@
 
 **Architecture:** 本次只在 agent/core 的 Bash tool runtime 层新增一个保守的 read-state producer，不改 prompt、provider-visible tool 列表、protocol、desktop、UI、remote control。`bashHandler` 在 foreground Bash 返回前先基于旧 read state 生成 stale hint，再按保守的读命令语义回填 Bash 读状态。
 
-**Tech Stack:** TypeScript、Vitest、`unbash`、`@zcode/contracts` 的 `FileSystemPort` / `ExecutionResult` / `BashOutput`、现有 `ReadFileStateMap`。
+**Tech Stack:** TypeScript、Vitest、`unbash`、`@codez/contracts` 的 `FileSystemPort` / `ExecutionResult` / `BashOutput`、现有 `ReadFileStateMap`。
 
 ## Global Constraints
 
@@ -18,7 +18,7 @@
 - 不新增 protocol 字段；`staleReadFileStateHint` 已存在于 `BashOutput` contract。
 - 不把 Bash read-state metadata 持久化到 session store；初版只维护本 turn/runtime 内 `context.readFileState`。
 - 不自动提交 commit；如果执行者被用户明确要求提交，使用 Conventional Commits。
-- 完成代码改动后必须运行 `pnpm --filter @zcode/core exec vitest run tests/bash-handler.test.ts`、`pnpm --filter @zcode/core typecheck`、`pnpm --filter @zcode/core lint`，最终按仓库约束运行 `pnpm typecheck` 和 `pnpm lint`。
+- 完成代码改动后必须运行 `pnpm --filter @codez/core exec vitest run tests/bash-handler.test.ts`、`pnpm --filter @codez/core typecheck`、`pnpm --filter @codez/core lint`，最终按仓库约束运行 `pnpm typecheck` 和 `pnpm lint`。
 
 ---
 
@@ -55,7 +55,7 @@
 
 ## 背景
 
-ZCode 不依赖 `# Using your tools` 之类的 prompt 文案来要求模型先 Read，而是在 Bash runtime 内维护 read-state producer：保守识别的简单读类 Bash 命令会把文件内容写入 readFileState，使后续 Edit/Write 的 read-before-write guard 认为该文件已被读取。
+Codez 不依赖 `# Using your tools` 之类的 prompt 文案来要求模型先 Read，而是在 Bash runtime 内维护 read-state producer：保守识别的简单读类 Bash 命令会把文件内容写入 readFileState，使后续 Edit/Write 的 read-before-write guard 认为该文件已被读取。
 
 ## 本轮范围
 
@@ -94,11 +94,11 @@ Expected: 只新增上述 spec 文档，无 runtime 代码变更。
 **Purpose:** 先用单测锁定真实缺口和边界，避免只补 `cat` 一个点。
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/tests/bash-handler.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/bash-handler.test.ts`
 
 **Test helper changes:**
 
-- [ ] 从 `@zcode/contracts` 引入 `FileSystemPort`、`FileSystemReadTextResult`、`FileSystemStatResult`。
+- [ ] 从 `@codez/contracts` 引入 `FileSystemPort`、`FileSystemReadTextResult`、`FileSystemStatResult`。
 - [ ] 从 `../src/tool/read-file-state.js` 引入 `createReadFileStateKey`。
 - [ ] 从 `../src/tool/types.js` 引入 `ReadFileStateMap` 类型。
 - [ ] 扩展 `contextWith` options：
@@ -265,7 +265,7 @@ readFileState.set(createReadFileStateKey(filePath, 1, undefined), {
 **Run failing tests:**
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/bash-handler.test.ts
+pnpm --filter @codez/core exec vitest run tests/bash-handler.test.ts
 ```
 
 Expected before implementation: the new read-state/stale producer tests fail because Bash handler currently never writes `readFileState` and never fills `staleReadFileStateHint`.
@@ -277,12 +277,12 @@ Expected before implementation: the new read-state/stale producer tests fail bec
 **Purpose:** 新增一个小而集中的 runtime helper，承载保守的命令识别、文件读取、read-state 写入、stale hint 生成。
 
 **Files:**
-- Create: `apps/zcode-cli/packages/core/src/tool/handlers/bash-read-file-state.ts`
+- Create: `apps/codez-cli/packages/core/src/tool/handlers/bash-read-file-state.ts`
 
 **Imports:**
 
 ```ts
-import type { BashOutput, ExecutionResult, FileSystemPort, FileSystemStatResult, TraceContext } from "@zcode/contracts";
+import type { BashOutput, ExecutionResult, FileSystemPort, FileSystemStatResult, TraceContext } from "@codez/contracts";
 import { resolveWorkspacePath } from "../path-policy.js";
 import {
   createReadFileStateKey,
@@ -525,7 +525,7 @@ function createBashReadFileStateTrace(context: ToolExecutionContext): TraceConte
 **Run focused tests:**
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/bash-handler.test.ts
+pnpm --filter @codez/core exec vitest run tests/bash-handler.test.ts
 ```
 
 Expected after Phase 2 only: tests still fail until handler integration imports and calls the helper.
@@ -537,10 +537,10 @@ Expected after Phase 2 only: tests still fail until handler integration imports 
 **Purpose:** 把 helper 接到 foreground Bash 完成路径，保持 output formatter 和 image/background 分支不被污染。
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/src/tool/handlers/bash.ts`
-- Do not modify unless tests reveal necessity: `apps/zcode-cli/packages/core/src/tool/handlers/bash-output.ts`
-- Do not modify: `apps/zcode-cli/packages/contracts/src/tools/bash.ts`
-- Do not modify: `apps/zcode-cli/packages/core/src/tool/handlers/bash-model-content.ts`
+- Modify: `apps/codez-cli/packages/core/src/tool/handlers/bash.ts`
+- Do not modify unless tests reveal necessity: `apps/codez-cli/packages/core/src/tool/handlers/bash-output.ts`
+- Do not modify: `apps/codez-cli/packages/contracts/src/tools/bash.ts`
+- Do not modify: `apps/codez-cli/packages/core/src/tool/handlers/bash-model-content.ts`
 
 **Steps:**
 
@@ -582,7 +582,7 @@ return output;
 **Run focused tests:**
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/bash-handler.test.ts
+pnpm --filter @codez/core exec vitest run tests/bash-handler.test.ts
 ```
 
 Expected: new Bash read-state and stale hint tests pass.
@@ -594,8 +594,8 @@ Expected: new Bash read-state and stale hint tests pass.
 **Purpose:** 防止实现只覆盖 happy path；把保守边界锁死。
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/core/tests/bash-handler.test.ts`
-- Modify if gaps are found: `apps/zcode-cli/packages/core/src/tool/handlers/bash-read-file-state.ts`
+- Modify: `apps/codez-cli/packages/core/tests/bash-handler.test.ts`
+- Modify if gaps are found: `apps/codez-cli/packages/core/src/tool/handlers/bash-read-file-state.ts`
 
 **Checklist:**
 
@@ -617,7 +617,7 @@ Expected: new Bash read-state and stale hint tests pass.
 **Run focused tests:**
 
 ```bash
-pnpm --filter @zcode/core exec vitest run tests/bash-handler.test.ts
+pnpm --filter @codez/core exec vitest run tests/bash-handler.test.ts
 ```
 
 Expected: all Bash handler tests pass.
@@ -631,27 +631,27 @@ Expected: all Bash handler tests pass.
 **Commands:**
 
 ```bash
-pnpm --filter @zcode/core typecheck
-pnpm --filter @zcode/core lint
+pnpm --filter @codez/core typecheck
+pnpm --filter @codez/core lint
 pnpm typecheck
 pnpm lint
 ```
 
 **Checklist:**
 
-- [ ] `pnpm --filter @zcode/core exec vitest run tests/bash-handler.test.ts` passes.
-- [ ] `pnpm --filter @zcode/core typecheck` passes.
-- [ ] `pnpm --filter @zcode/core lint` passes.
+- [ ] `pnpm --filter @codez/core exec vitest run tests/bash-handler.test.ts` passes.
+- [ ] `pnpm --filter @codez/core typecheck` passes.
+- [ ] `pnpm --filter @codez/core lint` passes.
 - [ ] `pnpm typecheck` passes.
 - [ ] `pnpm lint` passes.
 - [ ] `git diff --stat` only includes:
   - `docs/runtime-tools/bash-read-file-state.md`
-  - `apps/zcode-cli/packages/core/src/tool/handlers/bash-read-file-state.ts`
-  - `apps/zcode-cli/packages/core/src/tool/handlers/bash.ts`
-  - `apps/zcode-cli/packages/core/tests/bash-handler.test.ts`
+  - `apps/codez-cli/packages/core/src/tool/handlers/bash-read-file-state.ts`
+  - `apps/codez-cli/packages/core/src/tool/handlers/bash.ts`
+  - `apps/codez-cli/packages/core/tests/bash-handler.test.ts`
   - this plan file if it is part of the same branch.
 - [ ] Confirm no changes in:
-  - `apps/zcode-cli/packages/contracts/src/tools/bash.ts`
+  - `apps/codez-cli/packages/contracts/src/tools/bash.ts`
   - `packages/ui`
   - desktop/app/service/protocol files
 - [ ] Manually inspect provider-visible output for stale hint:
@@ -677,7 +677,7 @@ pnpm lint
 
 ## Implementation Acceptance
 
-本计划完成后，ZCode 应满足：
+本计划完成后，Codez 应满足：
 
 - `Bash cat .env.example` 能让后续 `Edit .env.example` 通过 read-before-write guard。
 - `Bash head/tail/sed -n/grep` 的简单安全形态能按上述保守语义产生 read-state。

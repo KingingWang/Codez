@@ -1,4 +1,4 @@
-import type { ZCodePersistedFileChange } from "@zcode/shared";
+import type { CodezPersistedFileChange } from "@codez/shared";
 import type { CodeViewerSource } from "@/lib/codeViewer.js";
 import type { CodeViewerWorkspaceScope } from "@/lib/codeViewerWorkspaceScope.js";
 
@@ -13,7 +13,7 @@ export function buildChangeSummaryDiffViewerSource({
 }: {
   patch?: string;
   path?: string;
-  snapshot: ZCodePersistedFileChange["snapshots"][number] | undefined;
+  snapshot: CodezPersistedFileChange["snapshots"][number] | undefined;
   relativePath: string;
 } & CodeViewerWorkspaceScope): CodeViewerSource | undefined {
   const workspaceScope = {

@@ -1,4 +1,4 @@
-import { channelContentText, type BotActor, type ChannelContentPart } from "@zcode/shared";
+import { channelContentText, type BotActor, type ChannelContentPart } from "@codez/shared";
 import {
   createBotsServiceHarness,
   createFeishuConfig,
@@ -127,9 +127,9 @@ describe("BOT-E2E-MN-01 native channel mentions", () => {
         };
         const botId = `${provider}-native-${topic}`;
         const h = createBotsServiceHarness({ config: createFeishuConfig(provider, botId) });
-        h.zcodeTaskService.readBotTopicExecution = async () => undefined;
-        h.zcodeTaskService.invalidateBotTopicInputs = async () => undefined;
-        h.zcodeTaskService.submitBotGroupInput = async (params: { commandId: string }) => ({
+        h.codezTaskService.readBotTopicExecution = async () => undefined;
+        h.codezTaskService.invalidateBotTopicInputs = async () => undefined;
+        h.codezTaskService.submitBotGroupInput = async (params: { commandId: string }) => ({
           commandId: params.commandId,
           status: "accepted",
           revisionAtDecision: 1,
@@ -146,7 +146,7 @@ describe("BOT-E2E-MN-01 native channel mentions", () => {
           await h.service.handleInboundMessage({ botId, actor, text: "/enable" });
           const commandReply = await h.service.handleProviderCallback(provider, {
             botId,
-            zcodeBotOpenId: "ou_bot",
+            codezBotOpenId: "ou_bot",
             event: {
               sender: { sender_type: "user", sender_id: { open_id: actor.providerUserId } },
               message: {
@@ -192,7 +192,7 @@ describe("BOT-E2E-MN-01 native channel mentions", () => {
           expect(
             await h.service.handleProviderCallback(provider, {
               botId,
-              zcodeBotOpenId: "ou_bot",
+              codezBotOpenId: "ou_bot",
               event: {
                 sender: { sender_type: "bot", sender_id: { open_id: "ou_other_bot" } },
                 message: {
@@ -229,7 +229,7 @@ describe("BOT-E2E-MN-01 native channel mentions", () => {
           expect(
             await h.service.handleProviderCallback(provider, {
               botId,
-              zcodeBotOpenId: "ou_bot",
+              codezBotOpenId: "ou_bot",
               event: {
                 sender: { sender_type: "bot", sender_id: { open_id: "ou_other_bot" } },
                 message: {
@@ -258,7 +258,7 @@ describe("BOT-E2E-MN-01 native channel mentions", () => {
           expect(
             await h.service.handleProviderCallback(provider, {
               botId,
-              zcodeBotOpenId: "ou_bot",
+              codezBotOpenId: "ou_bot",
               event: {
                 sender: { sender_type: "bot", sender_id: { open_id: "ou_other_bot" } },
                 message: {
@@ -457,8 +457,8 @@ describe("BOT-E2E-MN-01 native channel mentions", () => {
             // 使用真实接收事件的 bot 类型；机器人命令正文也只能作为普通输入。
             const payload = {
               botId,
-              zcodeProvider: provider,
-              zcodeBotOpenId: "ou_bot",
+              codezProvider: provider,
+              codezBotOpenId: "ou_bot",
               event: {
                 sender: { sender_type: "bot", sender_id: { open_id: "ou_other_bot" } },
                 message: {

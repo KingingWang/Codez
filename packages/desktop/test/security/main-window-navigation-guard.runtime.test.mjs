@@ -1,4 +1,4 @@
-// 运行时验收：挂载 window.zcode 的窗口顶层导航守卫（ZP-20261105-19 / ZP-20261110-03）。
+// 运行时验收：挂载 window.codez 的窗口顶层导航守卫（ZP-20261105-19 / ZP-20261110-03）。
 // 从 desktopWindowChrome.ts 抽取生产中的 guardWindowNavigation 与 isAppOriginMainWindowUrl（不复制判定逻辑），
 // 在真实 Electron 中对两个独立窗口分别验证：外部导航被拦截、应用渲染入口内的导航保持可用。
 // 本脚本不构造完整的 createBrowserWindow 或更新状态窗口；两者接线由 typecheck、grep 与代码评审确认。
@@ -105,8 +105,8 @@ app.whenReady().then(async () => {
 `;
 }
 
-test("挂载 window.zcode 的主窗口与更新状态窗口都拦截外部顶层导航，应用入口可用", { timeout: 120000 }, async () => {
-  const base = await mkdtemp(join(tmpdir(), "zcode-nav-guard-"));
+test("挂载 window.codez 的主窗口与更新状态窗口都拦截外部顶层导航，应用入口可用", { timeout: 120000 }, async () => {
+  const base = await mkdtemp(join(tmpdir(), "codez-nav-guard-"));
   const appDir = join(base, "app");
   const mainDir = join(appDir, "main");
   const rendererDir = join(appDir, "renderer");

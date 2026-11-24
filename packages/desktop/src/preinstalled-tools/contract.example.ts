@@ -1,4 +1,4 @@
-import type { PreinstalledToolsState } from "@zcode/shared/preinstalled-tools";
+import type { PreinstalledToolsState } from "@codez/shared/preinstalled-tools";
 export const unavailableExample: PreinstalledToolsState = {
   autoInstallEnabled: true,
   tools: [

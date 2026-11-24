@@ -8,7 +8,7 @@ import {
   TID_BROWSER_DESIGN_TOOLBAR,
   TID_BROWSER_DESIGN_VARIANT_OPTION,
   TID_BROWSER_DESIGN_VARIANT_SELECT,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import type { BrowserDesignModeController } from "@/browser-use/useBrowserDesignMode.js";
 import { Button } from "@/components/ui/button.js";
 import {
@@ -18,12 +18,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 
 // 设计工具行（docs/browser-use/2026-11-03-browser-design-mode-spec.md）：属性面板开关、版本、翻页、设备预设。
 // 纯展示：状态和动作都来自 useBrowserDesignMode。
 
-const ALL_VARIANTS_VALUE = "__zcode-all-variants__";
+const ALL_VARIANTS_VALUE = "__codez-all-variants__";
 
 function ToolButton({
   active,
@@ -65,7 +65,7 @@ export function BrowserDesignToolbar({
   /** 自由尺寸打开时的设备预设控件：放进同一行中间，不再单独占一行 */
   viewportControls?: ReactNode;
 }): React.JSX.Element {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const info = design.pageInfo;
   const { slide } = design;
   return (

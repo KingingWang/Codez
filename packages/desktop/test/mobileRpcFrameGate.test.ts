@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { encodeWebRemoteControlRpcTransportMessage } from "@zcode/shared";
+import { encodeWebRemoteControlRpcTransportMessage } from "@codez/shared";
 import { MobileRpcFrameGate } from "#e2e/helpers/mobile-rpc-frame-gate";
 
 const frame = (seq: number, bridge = "bridge-a", generation = 1, recoveryId = "recovery-a") =>

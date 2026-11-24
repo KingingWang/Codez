@@ -4,7 +4,7 @@ Status: done
 
 ## 现象
 
-Anthropic Messages 请求因 thinking 块被拒（HTTP 400，`not created in this conversation` / `bound to a different conversation` / 签名无效）时，adapter 去掉已签名的 reasoning 后重发一次。原 spec 规定这次修复只作用于本次请求的副本，不改 MessageHistory 和持久化消息（[anthropic-reasoning-history-replay.md](../../../apps/zcode-cli/docs/design/v2/model/anthropic-reasoning-history-replay.md)「Signature rejection」）。
+Anthropic Messages 请求因 thinking 块被拒（HTTP 400，`not created in this conversation` / `bound to a different conversation` / 签名无效）时，adapter 去掉已签名的 reasoning 后重发一次。原 spec 规定这次修复只作用于本次请求的副本，不改 MessageHistory 和持久化消息（[anthropic-reasoning-history-replay.md](../../../apps/codez-cli/docs/design/v2/model/anthropic-reasoning-history-replay.md)「Signature rejection」）。
 
 历史里的 thinking 块不变，之后每个请求都会带上它们：
 

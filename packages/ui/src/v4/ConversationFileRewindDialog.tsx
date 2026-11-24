@@ -4,8 +4,8 @@ import {
   TID_V4_EDIT_WORKSPACE_CONFLICT_CONVERSATION_ONLY,
   TID_V4_EDIT_WORKSPACE_CONFLICT_DIALOG,
   TID_V4_FILE_REWIND_CONFIRM_LOCKED,
-} from "@zcode/shared/test-ids";
-import type { V4ConversationFileRewindPreviewResult } from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/test-ids";
+import type { V4ConversationFileRewindPreviewResult } from "@codez/shared/codez-protocol-v4";
 import { Button } from "@/components/ui/button.js";
 import {
   Dialog,
@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 
 type FileRewindPreviewFile =
   | V4ConversationFileRewindPreviewResult["safeFiles"][number]
@@ -37,7 +37,7 @@ interface ConversationFileRewindDialogProps {
   onConversationOnly?: () => void;
 }
 
-function formatReason(reason: string, intl: ReturnType<typeof useZCodeIntl>["intl"]) {
+function formatReason(reason: string, intl: ReturnType<typeof useCodezIntl>["intl"]) {
   const fallbackReasonKey = "chat.changeSummary.rewindDialog.reason.unsupportedCheckpoint";
   const keyByReason: Record<string, string> = {
     bash_ignored: "chat.changeSummary.rewindDialog.reason.bashIgnored",
@@ -57,7 +57,7 @@ function PreviewFileList({
   files: readonly FileRewindPreviewFile[];
   type: "safe" | "unsafe" | "ignored";
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   if (files.length === 0) return null;
   return (
     <div className="grid gap-1">
@@ -93,7 +93,7 @@ export function ConversationFileRewindDialog({
   variant = "fileRewind",
   onConversationOnly,
 }: ConversationFileRewindDialogProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const safeCount = preview?.safeFiles.length ?? 0;
   const unsafeCount = preview?.unsafeFiles.length ?? 0;
   const ignoredCount = preview?.ignoredFiles.length ?? 0;
@@ -233,7 +233,7 @@ export function FileRewindLockedHint({
   triggerTestId: string;
   children: ReactNode;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   if (!locked) return <>{children}</>;
   return (
     <ControlHintTooltip title={intl.formatMessage({ id: "chat.changeSummary.rewindLocked" })}>

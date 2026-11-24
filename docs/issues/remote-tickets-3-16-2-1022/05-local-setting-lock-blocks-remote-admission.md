@@ -6,7 +6,7 @@ Status: needs-info
 
 ## 现象
 
-Windows 用户连接 SSH 设备，4 次都在约 8s 报 `Timed out after 8018ms waiting for the ZCode file lock`，界面显示“连接超时”，阶段标签是 probe。同一会话里 `setting.update` 也 8s 锁超时，`getSnapshot` 两次约 8s。上一次会话同一路径 136ms 就连上了。
+Windows 用户连接 SSH 设备，4 次都在约 8s 报 `Timed out after 8018ms waiting for the Codez file lock`，界面显示“连接超时”，阶段标签是 probe。同一会话里 `setting.update` 也 8s 锁超时，`getSnapshot` 两次约 8s。上一次会话同一路径 136ms 就连上了。
 
 ## 已确认的失败机制
 
@@ -16,12 +16,12 @@ SSH 新连接 → connectSourceServerTarget（host/index.ts:1970）
      └─ admitConnection（:826-831）→ intent=add → service.saveHost（remote-projects/connection-membership.ts）
          └─ SQLite 写 hosts → await changed()（remote-projects/index.ts:162-181）
              └─ publishProjectChange → settingService.update({})（services/src/node.ts:2162-2166）
-                 └─ withAtomicFileLock(~/.zcode/v2/setting.json)（setting/settingService.ts:228）
+                 └─ withAtomicFileLock(~/.codez/v2/setting.json)（setting/settingService.ts:228）
                      └─ acquireFileLock 最多等 8s（fs/atomicFileUtils.ts:10）→ owner PID 被判“存活” → 超时
  └─ 文案含 “Timed out” → remote-connection-timeout → UI “连接超时”；阶段标签停在默认值 probe
 ```
 
-- 锁是本机 Windows 的 `%USERPROFILE%\.zcode\v2\setting.json.lock`（目录锁）。不是远端锁，远端设备没有参与。
+- 锁是本机 Windows 的 `%USERPROFILE%\.codez\v2\setting.json.lock`（目录锁）。不是远端锁，远端设备没有参与。
 - 判活只看 PID：`shared/src/node/atomicFileLock.ts:55-62`（只有 `ESRCH` 算退出）、`:72-88`（锁年龄只对无 PID 的锁生效）。Windows 上 PID 被复用或进程无权打开（`EPERM`）都被当成存活，锁永久不回收。
 - 释放失败被静默吞掉（`atomicFileLock.ts:218-224`）。
 - 探针（真实 v3.16.2 `acquireFileLock`）：owner PID 已退出 → 2ms 回收；owner PID 存活或 `EPERM` → 8002ms 超时，文案与 cause `EEXIST` 与用户一致。限制：在 macOS 上模拟 `EPERM`，未在 Windows 上运行。
@@ -47,12 +47,12 @@ SSH 新连接 → connectSourceServerTarget（host/index.ts:1970）
 ## 待补（先不要删锁）
 
 ```powershell
-Get-ChildItem -Force "$env:USERPROFILE\.zcode\v2\setting.json.lock"
-Get-Content "$env:USERPROFILE\.zcode\v2\setting.json.lock\owner-*.json"   # pid、createdAt
-Get-Process -Id <pid>; tasklist /FI "PID eq <pid>" /V; Get-Process ZCode
+Get-ChildItem -Force "$env:USERPROFILE\.codez\v2\setting.json.lock"
+Get-Content "$env:USERPROFILE\.codez\v2\setting.json.lock\owner-*.json"   # pid、createdAt
+Get-Process -Id <pid>; tasklist /FI "PID eq <pid>" /V; Get-Process Codez
 echo $env:HOME
 ```
 
-PID 不是当前 ZCode 或启动晚于 createdAt → H1；PID 等于当前 Main/Host 且 createdAt 晚于本次启动 → H2。另问重启 ZCode 后是否恢复。
+PID 不是当前 Codez 或启动晚于 createdAt → H1；PID 等于当前 Main/Host 且 createdAt 晚于本次启动 → H2。另问重启 Codez 后是否恢复。
 
-临时处理：从托盘完全退出 ZCode，确认没有 ZCode.exe，删除 `setting.json.lock` 目录后再启动。
+临时处理：从托盘完全退出 Codez，确认没有 Codez.exe，删除 `setting.json.lock` 目录后再启动。

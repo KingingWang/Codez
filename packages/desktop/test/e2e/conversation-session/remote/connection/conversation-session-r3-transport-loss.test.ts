@@ -39,9 +39,9 @@ import {
 
 const CASE_MARKER = "E2E_R3_TRANSPORT_LOSS";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-transport-loss",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-transport-loss",
 );
-const REMOTE_PERMISSION_DIR = "/home/dev/r3-workspace-a/.zcode-e2e/r3-transport-loss";
+const REMOTE_PERMISSION_DIR = "/home/dev/r3-workspace-a/.codez-e2e/r3-transport-loss";
 const REMOTE_PERMISSION_FILE = `${REMOTE_PERMISSION_DIR}/permission-output.txt`;
 const PERMISSION_EXECUTION = { toolCallId: "toolu_r3_task_permission", toolName: "Write" };
 const run = promisify(execFile);
@@ -94,7 +94,7 @@ async function remoteAgentAlive(config: SSHConnectionConfig, workspacePath: stri
     "r=none",
     'for d in /proc/[0-9]*; do c=$(tr "\\0" " " < "$d/cmdline" 2>/dev/null) || continue',
     // agent spawnArgs 恒为 "app-server --stdio"(3.12+ release 优先 glm 原生二进制,
-    // 旧 dev 态才是 node zcode.cjs);按 args 匹配与实现形态无关。
+    // 旧 dev 态才是 node codez.cjs);按 args 匹配与实现形态无关。
     `case "$c" in *"app-server --stdi"[o]*) [ "$(readlink $d/cwd)" = "${workspacePath}" ] && r=$(basename "$d");; esac; done`,
     "echo $r",
   ].join("; ");
@@ -117,8 +117,8 @@ describe(`${CASE_MARKER}: 产品 SSH 连接中断期间远端任务继续，恢�
 
   it("R3A-REC-01/03/09 running 中断连→daemon 与任务继续、A/B 自动换代；permission 阻塞跨断连恢复同 ID 并只响应一次", async function () {
     this.timeout(35 * 60_000);
-    const container = process.env.ZCODE_E2E_SSH_CONTAINER?.trim();
-    if (!container) throw new Error(`${CASE_MARKER}: 缺少 ZCODE_E2E_SSH_CONTAINER`);
+    const container = process.env.CODEZ_E2E_SSH_CONTAINER?.trim();
+    if (!container) throw new Error(`${CASE_MARKER}: 缺少 CODEZ_E2E_SSH_CONTAINER`);
     const prepared = await prepareSSHLifecycle(CASE_MARKER, {
       apiType: "anthropic-messages",
       tunnelUsername: "tunnel",

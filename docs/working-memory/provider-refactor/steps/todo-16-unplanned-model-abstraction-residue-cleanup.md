@@ -56,14 +56,14 @@ Current Personal Provider / Model Config
 ### 1.1 删除 Core 的假 Model Selection 与可选 ModelFactory
 
 当前 `AgentRuntimeDeps.modelFactory` 仍为可选；`AgentRuntime` 在缺少 `config.modelSelection` 时会制造
-`zcode-unconfigured/missing-model`，Contracts 仍公开导出同值 `DEFAULT_MODEL`。这与 Todo 01 已确认的生产边界
+`codez-unconfigured/missing-model`，Contracts 仍公开导出同值 `DEFAULT_MODEL`。这与 Todo 01 已确认的生产边界
 不一致：所有根执行 Model 必须来自正式 ModelFactory，Core 不得制造假 Model、假 Selection 或 fallback Model。
 
 裁决如下：
 
 - 生产 `AgentRuntime` 构造必须取得 `RuntimeModelFactory`；类型上改为必填；
 - 生产 `AgentRuntimeConfig` 必须取得结构化 `ModelSelection`；Todo 13 的目标 Host initial selection 负责提供；
-- 删除 `zcode-unconfigured/missing-model`、`DEFAULT_MODEL` 及围绕它们建立的解析、展示和测试断言；
+- 删除 `codez-unconfigured/missing-model`、`DEFAULT_MODEL` 及围绕它们建立的解析、展示和测试断言；
 - 删除 Runtime 内“未配置 ModelFactory”才可能触发的延迟运行期分支；
 - 低层测试显式注入 Fake ModelFactory 或 Unavailable ModelFactory，并显式提供测试 Selection；
 - 不建立新的 `stateOnly`、`unconfigured`、`default` 或 sentinel Model 类型；
@@ -74,13 +74,13 @@ Current Personal Provider / Model Config
 
 ### 1.2 删除 `reasoning.enabled` 冗余状态
 
-当前 Protocol 的 `ZCodeModelReasoningOptions` 同时具有 `enabled` 和 `levels`，但生产 Mapper 只会在 Reasoning
+当前 Protocol 的 `CodezModelReasoningOptions` 同时具有 `enabled` 和 `levels`，但生产 Mapper 只会在 Reasoning
 Option Spec 存在时创建该对象，并固定写入 `enabled: true`。是否存在 Reasoning 选择能力已经由对象/Option Spec
 是否存在完整表达，额外布尔值没有独立状态。
 
 裁决如下：
 
-- 从 `zcodeModelReasoningOptionsSchema` 和 `ZCodeModelReasoningOptions` 删除 `enabled`；
+- 从 `codezModelReasoningOptionsSchema` 和 `CodezModelReasoningOptions` 删除 `enabled`；
 - Bootstrap Mapper、Agent Model State、UI Projection 和测试不再读取或生成该字段；
 - `reasoning === undefined` 表示没有 Reasoning 选项；存在时使用其 `levels/defaultLevel`；
 - 不用空 levels、disabled enum 或另一个布尔字段替代；
@@ -88,15 +88,15 @@ Option Spec 存在时创建该对象，并固定写入 `enabled: true`。是否�
   当前 Personal Model Config Rule；
 - 不改变 `ModelSelection.options.reasoningLevel`、Option Spec 默认值和 Adapter `reasoningMapping`。
 
-### 1.3 删除 ZCode Protocol 中零引用的旧 Provider DTO
+### 1.3 删除 Codez Protocol 中零引用的旧 Provider DTO
 
-`packages/shared/src/zcode-protocol/index.ts` 仍公开一套没有生产消费者的旧 Provider 输入/输出 Schema，包括：
+`packages/shared/src/codez-protocol/index.ts` 仍公开一套没有生产消费者的旧 Provider 输入/输出 Schema，包括：
 
-- `ZCodeModelProviderKind`；
-- `ZCodeModelProviderSource`；
-- `ZCodeModelProviderModel`；
-- `ZCodeModelProviderConfig`；
-- `ZCodeModelProviderInput`；
+- `CodezModelProviderKind`；
+- `CodezModelProviderSource`；
+- `CodezModelProviderModel`；
+- `CodezModelProviderConfig`；
+- `CodezModelProviderInput`；
 - 仅被上述 DTO 使用的 Secret Input/Ref、API Format 和 Schema；
 - `models-dev`、`apiKeyRequired`、`providerOptions`、`modelsDevProviderId` 等旧字段。
 
@@ -104,7 +104,7 @@ Option Spec 存在时创建该对象，并固定写入 `enabled: true`。是否�
 
 - 先用 `pnpm dep:refs` 逐 export 复核零引用，再直接删除 Schema、类型和只服务它们的测试；
 - 不把它们迁入另一个 Shared 文件，不新增 deprecated alias；
-- 保留当前仍在使用的 `ZCodeAccountAccess` 及其独立 Schema；不得因源文件相邻而误删；
+- 保留当前仍在使用的 `CodezAccountAccess` 及其独立 Schema；不得因源文件相邻而误删；
 - 若发现某个旧 DTO 只被测试 fixture 使用，fixture 改用当前 Provider Config 契约；
 - 若发现真实 Legacy importer 消费者，只把所需最小 serialized shape 移入 importer 私有模块，不恢复公共协议。
 
@@ -162,7 +162,7 @@ Todo 14 已要求从 `RuntimeModelFactoryInput` 删除无效的 `contextWindow/p
 
 第一类包括：
 
-- `apps/zcode-cli/docs/design/v2/model/model-capability-resolution.md`；
+- `apps/codez-cli/docs/design/v2/model/model-capability-resolution.md`；
 - `docs/chat/manual-model-switch-resolution-chain.md`；
 - `docs/model-request-output-tokens.md`；
 - `docs/compact-media-capability-projection.md`；
@@ -211,19 +211,19 @@ Active Model
 
 ### 1.7 收紧当前 Model Option Protocol 的无效投影
 
-旧 Provider DTO 之外，当前 `zcodeModelOptionSchema` 仍保留一组没有形成有效产品语义的字段：
+旧 Provider DTO 之外，当前 `codezModelOptionSchema` 仍保留一组没有形成有效产品语义的字段：
 
 - `providerSource`、`providerLogoUrl` 没有生产者，也没有 Renderer/Services 消费者；
 - `supportsTools`、`supportsStructuredOutput` 由 Bootstrap 从完整 Model Properties 平铺生成，但 Renderer 没有
   消费；它们同时形成了 `Model.properties` 之外的第二份 capability 投影；
-- 旧 `zcodeModelProviderModelSchema` 中的同名字段仍按 1.3 的旧 Provider DTO 整体删除，不与当前
-  `zcodeModelOptionSchema` 混为一个兼容理由。
+- 旧 `codezModelProviderModelSchema` 中的同名字段仍按 1.3 的旧 Provider DTO 整体删除，不与当前
+  `codezModelOptionSchema` 混为一个兼容理由。
 
 裁决如下：
 
-- 从当前 `zcodeModelOptionSchema/ZCodeModelOption` 删除 `providerSource`、`providerLogoUrl`、`supportsTools`、
+- 从当前 `codezModelOptionSchema/CodezModelOption` 删除 `providerSource`、`providerLogoUrl`、`supportsTools`、
   `supportsStructuredOutput`；
-- 删除 Bootstrap 内部重复的 `ZCodeModelOption` DTO 和中间投影；保留从 Registry 到当前 Protocol 所需的唯一直接投影，并删除上述无效字段及其专属测试；
+- 删除 Bootstrap 内部重复的 `CodezModelOption` DTO 和中间投影；保留从 Registry 到当前 Protocol 所需的唯一直接投影，并删除上述无效字段及其专属测试；
 - 不把 `supportsTools/supportsStructuredOutput` 搬到另一套展示 DTO；未来若有真实 UI 场景，先基于当前
   Model Properties 契约设计最小投影；
 - 保留 `properties.input_format/output_format` 的同结构 Protocol 契约；本项不退回平铺媒体字段；
@@ -232,8 +232,8 @@ Active Model
 
 ### 1.8 删除 Bootstrap 的 Built-in Provider 展示名硬编码
 
-`apps/zcode-cli/packages/bootstrap/src/zcode-protocol/model-mapper.ts` 仍维护 `BUILTIN_PROVIDER_LABELS`，按
-Provider ID 硬编码 Z.AI、BigModel、ZAPI 等展示名。这是 ZCode Built-in Provider Config 之外的第二份静态
+`apps/codez-cli/packages/bootstrap/src/codez-protocol/model-mapper.ts` 仍维护 `BUILTIN_PROVIDER_LABELS`，按
+Provider ID 硬编码 Z.AI、BigModel、ZAPI 等展示名。这是 Codez Built-in Provider Config 之外的第二份静态
 Provider 元数据来源。
 
 裁决如下：
@@ -276,7 +276,7 @@ Todo 14
 Todo 16
 |- Core fake sentinel removal
 |- reasoning.enabled removal
-|- zero-reference ZCode Protocol Provider DTO removal
+|- zero-reference Codez Protocol Provider DTO removal
 |- current Model Option Protocol projection narrowing
 |- Legacy CLI Model Config privatization
 |- AgentRuntime secondary model-fact channel removal
@@ -300,14 +300,14 @@ Todo 16
 | Capability       | Model/Provider Config、Registry/ModelFactory、模型候选 Protocol projection                        |
 | Change layer     | `presentation`、`option-source`；文档部分属于架构契约修正                                         |
 | Operating mode   | planning                                                                                          |
-| Primary seeds    | `design/model/model.md`、`zcode-protocol/index.ts`、`zcode-protocol/model-mapper.ts`              |
+| Primary seeds    | `design/model/model.md`、`codez-protocol/index.ts`、`codez-protocol/model-mapper.ts`              |
 | Out of scope     | 模型候选状态、Selection 默认值、提交、执行、配置持久化、remote/continuous/replayable 和 Telemetry |
 
 ### 3.2 UI Surface Matrix
 
 | 用户场景       | UI 入口       | 共享实现                 | 展示 owner                | 默认/校验/提交                      | 模式边界                | 必须隔离                         |
 | -------------- | ------------- | ------------------------ | ------------------------- | ----------------------------------- | ----------------------- | -------------------------------- |
-| 查看模型候选组 | 模型选择控件  | `zcodeSessionProjection` | Target Host Protocol View | 本项只收口字段和 label 来源；无提交 | Desktop/Web/Mobile 同构 | Draft、Recent、Session Selection |
+| 查看模型候选组 | 模型选择控件  | `codezSessionProjection` | Target Host Protocol View | 本项只收口字段和 label 来源；无提交 | Desktop/Web/Mobile 同构 | Draft、Recent、Session Selection |
 | 编辑 Provider  | Provider 设置 | Provider Settings Facade | Effective Provider Config | 无字段、保存或测试连接行为变化      | Local/Remote 不变       | Personal Config 与账号状态       |
 
 ### 3.3 Shared And Divergent Behavior
@@ -348,7 +348,7 @@ Todo 16
 ### 3.7 Codegraph Evidence And Graph Delta
 
 - 当前环境没有可调用的 codegraph 工具；以 feature graph seed、`rg`、`dep:refs` 和 `knip` 做深度 2 的静态替代；
-- 直接路径为 Registry Provider/Model -> Bootstrap Model Mapper -> ZCode Protocol -> UI Session Projection；
+- 直接路径为 Registry Provider/Model -> Bootstrap Model Mapper -> Codez Protocol -> UI Session Projection；
 - `supportsTools/supportsStructuredOutput` 只有生产端写入，没有 Renderer 读取；
 - `providerSource/providerLogoUrl` 在当前 Model Option 链中没有生产者和消费者；
 - feature graph 已正确声明 Model Properties 与 Provider Registry 的权威关系，本轮没有新的产品语义节点，
@@ -379,7 +379,7 @@ Todo 16
 ### Step C：收紧 Protocol 与 Reasoning Projection
 
 1. 删除零引用旧 Provider Protocol DTO；
-2. 保留并回归 `ZCodeAccountAccess`；
+2. 保留并回归 `CodezAccountAccess`；
 3. 删除 `reasoning.enabled` 的 Schema、Mapper、UI 与测试字段；
 4. 删除当前 Model Option 中零消费字段及 Bootstrap 的平铺 capability 输出；
 5. 删除 `BUILTIN_PROVIDER_LABELS`，确认 `providerLabel = config label ?? providerId`；
@@ -407,7 +407,7 @@ Todo 16
 | RZ-02   | 测试构造不可执行 Runtime                | 显式使用 Unavailable ModelFactory，不存在 sentinel Model      |
 | RZ-03   | 模型无 Reasoning Option Spec            | Protocol/UI 中 `reasoning` 缺失，不出现 `enabled=false`       |
 | RZ-04   | 模型有 Reasoning Option Spec            | 只传 levels/defaultLevel，不出现固定 `enabled=true`           |
-| RZ-05   | Shared Protocol export scan             | 旧 ZCode Provider DTO 和仅属其字段为零                        |
+| RZ-05   | Shared Protocol export scan             | 旧 Codez Provider DTO 和仅属其字段为零                        |
 | RZ-06   | 读取已发布旧 CLI 配置                   | importer 私有解析并生成当前 Personal Config                   |
 | RZ-07   | 正常请求、Compact、Memory、Title、Child | context/output facts 只来自本次 Active Model                  |
 | RZ-08   | Model Config 默认 max output 更新       | 只影响后来创建的 Model，不反写旧 Selection/Runtime snapshot   |
@@ -420,9 +420,9 @@ Todo 16
 
 ## 6. 完成定义
 
-1. `AgentRuntimeDeps.modelFactory?`、`zcode-unconfigured/missing-model`、公共 `DEFAULT_MODEL` 为零；
-2. 当前 Protocol/Projection 中 `ZCodeModelReasoningOptions.enabled` 为零；
-3. 零引用旧 ZCode Provider Protocol DTO 和公共 Schema/export 为零；
+1. `AgentRuntimeDeps.modelFactory?`、`codez-unconfigured/missing-model`、公共 `DEFAULT_MODEL` 为零；
+2. 当前 Protocol/Projection 中 `CodezModelReasoningOptions.enabled` 为零；
+3. 零引用旧 Codez Provider Protocol DTO 和公共 Schema/export 为零；
 4. 公共 Contracts/Adapters 中 Legacy CLI `RuntimeModelConfig/ModelTargetConfig` 为零；
 5. `AgentRuntimeConfig.modelProviderOptions` 及其传递链为零；
 6. 已取得 Active Model 的执行路径对 Runtime `contextWindow/maxOutputTokens` fallback 为零；

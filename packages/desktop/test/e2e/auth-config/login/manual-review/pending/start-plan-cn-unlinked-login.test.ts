@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { BUILTIN_MODEL_PROVIDER_IDS as ids } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS as ids } from "@codez/shared";
 import {
   TID_LOGIN_TRIGGER,
   TID_MODEL_PROVIDER_NAV_ITEM,
@@ -9,7 +9,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -22,7 +22,7 @@ import { reloadElectronSessionPreservingBrowserProfile } from "#e2e/helpers/e2e-
 import { skipOccupationOnboardingIfPresent } from "#e2e/helpers/occupation-onboarding";
 import {
   CN_UNLINKED_E2E_UPSTREAM_TOKEN,
-  CN_UNLINKED_E2E_ZCODE_JWT,
+  CN_UNLINKED_E2E_CODEZ_JWT,
   buildCnUnlinkedSessionCredentials,
 } from "#e2e/helpers/start-plan-cn-unlinked-fixture";
 import { selectRegistryProviderModelById } from "#e2e/helpers/upstream-provider";
@@ -37,7 +37,7 @@ interface MockRequest {
 /**
  * AUTH-CN-START：国内入口（zai_cn）登录、从未注册 BigModel 的新账号。
  * 修复前 Start Plan 身份必须来自套餐家族材料：两个 Start 都判为未连接、显示“需要登录”，
- * 设置页同时出现两个 Start 入口。Start 是 ZCode 用户级权益，只需要 ZCode JWT。
+ * 设置页同时出现两个 Start 入口。Start 是 Codez 用户级权益，只需要 Codez JWT。
  */
 describe("AUTH-CN-START: 国内登录未关联 BigModel 时使用 Start Plan", () => {
   after(async () => {
@@ -45,9 +45,9 @@ describe("AUTH-CN-START: 国内登录未关联 BigModel 时使用 Start Plan", (
     await clearAppData();
   });
 
-  it("CNS-01: 只显示 BigModel 的 Start，用 ZCode JWT 查询并可选择 Start 模型", async function () {
+  it("CNS-01: 只显示 BigModel 的 Start，用 Codez JWT 查询并可选择 Start 模型", async function () {
     this.timeout(240_000);
-    const upstream = process.env.ZCODE_E2E_CODING_PLAN_MOCK_URL;
+    const upstream = process.env.CODEZ_E2E_CODING_PLAN_MOCK_URL;
     if (!upstream) throw new Error("Missing isolated account control plane");
     await prepareV4ConversationE2E({ skipProvider: true });
     // Start balance 返回有效体验套餐与 GLM-5.3 额度；同时清空控制面请求记录。
@@ -67,7 +67,7 @@ describe("AUTH-CN-START: 国内登录未关联 BigModel 时使用 Start Plan", (
           string
         >;
         for (const key of Object.keys(credentials)) {
-          if (key.startsWith("oauth:") || key === "zcodejwttoken") delete credentials[key];
+          if (key.startsWith("oauth:") || key === "codezjwttoken") delete credentials[key];
         }
         Object.assign(credentials, buildCnUnlinkedSessionCredentials());
         await writeFile(credentialsFile, JSON.stringify(credentials), "utf8");
@@ -113,7 +113,7 @@ describe("AUTH-CN-START: 国内登录未关联 BigModel 时使用 Start Plan", (
       upstream,
       (request) =>
         request.path === "/api/v1/oauth/profile" &&
-        request.headers.authorization === `Bearer ${CN_UNLINKED_E2E_ZCODE_JWT}`,
+        request.headers.authorization === `Bearer ${CN_UNLINKED_E2E_CODEZ_JWT}`,
       "启动后台补关联没有查询 profile",
     );
     const availability = await readAccountAvailability();
@@ -140,13 +140,13 @@ describe("AUTH-CN-START: 国内登录未关联 BigModel 时使用 Start Plan", (
       unavailableReason: "not-connected",
     });
 
-    // Start 只消费 ZCode JWT；中国区上游 OAuth token 不能出现在任何业务请求里。
+    // Start 只消费 Codez JWT；中国区上游 OAuth token 不能出现在任何业务请求里。
     const requests = await readMockRequests(upstream);
     expect(
       requests.some(
         (request) =>
           request.path === "/api/v1/zcode-plan/billing/balance" &&
-          request.headers.authorization === `Bearer ${CN_UNLINKED_E2E_ZCODE_JWT}`,
+          request.headers.authorization === `Bearer ${CN_UNLINKED_E2E_CODEZ_JWT}`,
       ),
     ).toBe(true);
     expect(
@@ -189,7 +189,7 @@ describe("AUTH-CN-START: 国内登录未关联 BigModel 时使用 Start Plan", (
 async function artifactPath(name: string): Promise<string> {
   // 产物目录可能尚未创建；截图与诊断 JSON 写入前统一确保存在。
   const dir = join(
-    process.env.ZCODE_E2E_ARTIFACT_DIR || join(process.cwd(), ".e2e-artifacts"),
+    process.env.CODEZ_E2E_ARTIFACT_DIR || join(process.cwd(), ".e2e-artifacts"),
     "start-plan-cn-unlinked",
   );
   await mkdir(dir, { recursive: true });

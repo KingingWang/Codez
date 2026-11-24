@@ -19,7 +19,7 @@ async function writeSource(path: string, text: string) {
 }
 
 beforeEach(async () => {
-  desktopDir = await mkdtemp(join(tmpdir(), "zcode-remote-release-requirement-"));
+  desktopDir = await mkdtemp(join(tmpdir(), "codez-remote-release-requirement-"));
   await writeSource("test/e2e/helpers/ssh-remote-p0.ts", "export const ssh = 1;\n");
   await writeSource(
     "test/e2e/helpers/ssh-remote-lifecycle.ts",
@@ -65,7 +65,7 @@ describe("listSpecsRequiringRemoteRelease", () => {
     );
     await writeSource(
       "test/e2e/local/plain.test.ts",
-      'import { app } from "#e2e/helpers/desktop-app";\nimport { x } from "@zcode/shared";\n',
+      'import { app } from "#e2e/helpers/desktop-app";\nimport { x } from "@codez/shared";\n',
     );
 
     const required = await listSpecsRequiringRemoteRelease({
@@ -153,7 +153,7 @@ describe("assertRemoteReleaseStaged", () => {
   it("skips the check for packaged apps, which never read mock-cdn", () => {
     expect(() =>
       assertRemoteReleaseStaged("CASE-1", {
-        ZCODE_E2E_PACKAGED_APP_PATH: "/Applications/ZCode.app",
+        CODEZ_E2E_PACKAGED_APP_PATH: "/Applications/Codez.app",
       }),
     ).not.toThrow();
   });

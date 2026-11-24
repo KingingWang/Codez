@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": "~/.zcode/commands/e2e-draft-catalog.md",
+      "path": "~/.codez/commands/e2e-draft-catalog.md",
       "source": "created-by-spec",
       "description": "S02/S03 在隔离 E2E HOME 写入真实 user-scope 自定义命令，用于验证 completed task → draft 的独立水合，以及 draft → 已知 completed task 的 workspace 目录保留。"
     }

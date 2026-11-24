@@ -9,8 +9,8 @@ Status: needs-triage
 
 ## 证据
 
-- `apps/zcode-cli/packages/core/src/runtime/methods/turn-tool-visibility.ts`：本轮过滤只作用于请求工具名单。
-- `apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts`：按 registry（以及晚到解析）取 entry，没有可见性检查。
+- `apps/codez-cli/packages/core/src/runtime/methods/turn-tool-visibility.ts`：本轮过滤只作用于请求工具名单。
+- `apps/codez-cli/packages/core/src/tool/executor/call-runner.ts`：按 registry（以及晚到解析）取 entry，没有可见性检查。
 - 以上是代码阅读结论，还没有运行复现；HEAD `843cd99740` 已经如此。
 
 ## 影响

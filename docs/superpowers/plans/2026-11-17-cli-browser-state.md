@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** `zcode --browser-use=headless` 在每个 session 创建 BrowserContext 时注入只读的 Playwright storage state 文件；来源是 `--browser-state <path>`，或自动加载的默认文件，可用 `--no-browser-state` 关闭。
+**Goal:** `codez --browser-use=headless` 在每个 session 创建 BrowserContext 时注入只读的 Playwright storage state 文件；来源是 `--browser-state <path>`，或自动加载的默认文件，可用 `--no-browser-state` 关闭。
 
 **Architecture:** adapters 新增 `storage-state.ts`，负责读取、zod 校验、统计和告警，CLI 启动校验和 adapter 每个 session 的读取共用它。CLI 入口解析来源，在创建 app/session 之前失败；adapter 在 `ensureSession` 里把解析后的对象传给 `newContext`。进程模型、session 隔离和生命周期都不变。
 
@@ -14,7 +14,7 @@
 
 - 工作目录：本特性的 worktree，分支 `feat/cli-browser-state`。下面的命令都从 worktree 根目录执行。
 - 参数：`--browser-state <path>`（string）、`--no-browser-state`（boolean）；只能和 `--browser-use=headless` 一起用，两者互斥。
-- 默认文件：`<home>/.zcode/cli/browser-state.json`；`<home>` 与 `os.homedir()` 同一规则：Windows 取 `env.USERPROFILE`，其他平台取 `env.HOME`，为空时回退 `os.homedir()`（最终审查修正，见 spec §4）。
+- 默认文件：`<home>/.codez/cli/browser-state.json`；`<home>` 与 `os.homedir()` 同一规则：Windows 取 `env.USERPROFILE`，其他平台取 `env.HOME`，为空时回退 `os.homedir()`（最终审查修正，见 spec §4）。
 - 相对路径按 CLI 启动目录 `(deps.cwd ?? process.cwd)()` 解析，在 `--cwd` 覆盖 `commandDeps.cwd` 之前取值。
 - 所有参数和文件错误：退出码 1，发生在 app/session 创建前，不发模型请求，不启动 Chromium。
 - 未开 headless 时不访问任何登录态文件。
@@ -40,14 +40,14 @@
 
 **Files:**
 
-- Create: `apps/zcode-cli/packages/adapters/src/browser/storage-state.ts`
-- Modify: `apps/zcode-cli/packages/adapters/src/browser/index.ts`（文件末尾 re-export）
-- Test: `apps/zcode-cli/packages/adapters/tests/browser-storage-state.test.ts`
+- Create: `apps/codez-cli/packages/adapters/src/browser/storage-state.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/browser/index.ts`（文件末尾 re-export）
+- Test: `apps/codez-cli/packages/adapters/tests/browser-storage-state.test.ts`
 
 **Interfaces:**
 
 - Consumes: 无。
-- Produces（从 `@zcode/adapters/browser` 导出）:
+- Produces（从 `@codez/adapters/browser` 导出）:
 
   ```ts
   export function resolveDefaultBrowserStatePath(env: NodeJS.ProcessEnv): string;
@@ -81,7 +81,7 @@
 
 - [ ] **Step 0: 准备 worktree 依赖和构建产物**
 
-Run: `pnpm install && pnpm --dir apps/zcode-cli build`
+Run: `pnpm install && pnpm --dir apps/codez-cli build`
 Expected: 安装和构建成功。CLI 各包的测试和 typecheck 依赖上游包的 `dist`，dist 陈旧会造成大量假失败。
 
 - [ ] **Step 1: 写失败测试 `browser-storage-state.test.ts`**
@@ -101,7 +101,7 @@ Expected: 安装和构建成功。CLI 各包的测试和 typecheck 依赖上游�
 
 - [ ] **Step 2: 运行测试，确认失败**
 
-Run: `pnpm --dir apps/zcode-cli/packages/adapters exec vitest run tests/browser-storage-state.test.ts`
+Run: `pnpm --dir apps/codez-cli/packages/adapters exec vitest run tests/browser-storage-state.test.ts`
 Expected: FAIL，找不到 `../src/browser/storage-state.js`。
 
 - [ ] **Step 3: 实现 `storage-state.ts`**
@@ -116,13 +116,13 @@ Expected: FAIL，找不到 `../src/browser/storage-state.js`。
 
 - [ ] **Step 4: 运行测试，确认通过**
 
-Run: `pnpm --dir apps/zcode-cli/packages/adapters exec vitest run tests/browser-storage-state.test.ts`
+Run: `pnpm --dir apps/codez-cli/packages/adapters exec vitest run tests/browser-storage-state.test.ts`
 Expected: PASS
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add apps/zcode-cli/packages/adapters/src/browser/storage-state.ts apps/zcode-cli/packages/adapters/src/browser/index.ts apps/zcode-cli/packages/adapters/tests/browser-storage-state.test.ts
+git add apps/codez-cli/packages/adapters/src/browser/storage-state.ts apps/codez-cli/packages/adapters/src/browser/index.ts apps/codez-cli/packages/adapters/tests/browser-storage-state.test.ts
 git commit -m "feat(adapters): load and validate browser storage state files"
 ```
 
@@ -130,9 +130,9 @@ git commit -m "feat(adapters): load and validate browser storage state files"
 
 **Files:**
 
-- Modify: `apps/zcode-cli/packages/adapters/src/browser/index.ts`（`ManagedCdpBrowserRuntimeOptions` 约 :24；`ensureSession` 约 :236-268）
-- Modify: `apps/zcode-cli/packages/adapters/src/browser/request.ts`（`classifyError`）
-- Test: `apps/zcode-cli/packages/adapters/tests/browser.test.ts`（扩展 `createFakePlaywright`，约 :353）
+- Modify: `apps/codez-cli/packages/adapters/src/browser/index.ts`（`ManagedCdpBrowserRuntimeOptions` 约 :24；`ensureSession` 约 :236-268）
+- Modify: `apps/codez-cli/packages/adapters/src/browser/request.ts`（`classifyError`）
+- Test: `apps/codez-cli/packages/adapters/tests/browser.test.ts`（扩展 `createFakePlaywright`，约 :353）
 
 **Interfaces:**
 
@@ -150,7 +150,7 @@ git commit -m "feat(adapters): load and validate browser storage state files"
 
 - [ ] **Step 2: 运行测试，确认失败**
 
-Run: `pnpm --dir apps/zcode-cli/packages/adapters exec vitest run tests/browser.test.ts`
+Run: `pnpm --dir apps/codez-cli/packages/adapters exec vitest run tests/browser.test.ts`
 Expected: 新用例 FAIL（`storageState` 未注入，错误码为 `execution_error`）。
 
 - [ ] **Step 3: 实现**
@@ -160,15 +160,15 @@ Expected: 新用例 FAIL（`storageState` 未注入，错误码为 `execution_er
 
 - [ ] **Step 4: 运行测试，确认通过**
 
-Run: `pnpm --dir apps/zcode-cli/packages/adapters exec vitest run tests/browser.test.ts tests/browser-storage-state.test.ts`
+Run: `pnpm --dir apps/codez-cli/packages/adapters exec vitest run tests/browser.test.ts tests/browser-storage-state.test.ts`
 Expected: PASS
 
 - [ ] **Step 5: 构建 adapters 并提交**
 
-Run: `pnpm --dir apps/zcode-cli/packages/adapters build`（CLI 通过 `@zcode/adapters/browser` 读 dist）
+Run: `pnpm --dir apps/codez-cli/packages/adapters build`（CLI 通过 `@codez/adapters/browser` 读 dist）
 
 ```bash
-git add apps/zcode-cli/packages/adapters/src/browser/index.ts apps/zcode-cli/packages/adapters/src/browser/request.ts apps/zcode-cli/packages/adapters/tests/browser.test.ts
+git add apps/codez-cli/packages/adapters/src/browser/index.ts apps/codez-cli/packages/adapters/src/browser/request.ts apps/codez-cli/packages/adapters/tests/browser.test.ts
 git commit -m "feat(adapters): inject browser storage state into session contexts"
 ```
 
@@ -176,14 +176,14 @@ git commit -m "feat(adapters): inject browser storage state into session context
 
 **Files:**
 
-- Modify: `apps/zcode-cli/packages/shared-types/src/index.ts`（`GlobalOptions`，约 :30）
-- Modify: `apps/zcode-cli/packages/cli/src/arguments.ts`（约 :24-29）
-- Create: `apps/zcode-cli/packages/cli/src/browser-state-option.ts`
-- Modify: `apps/zcode-cli/packages/cli/src/run.ts`（`--browser-executable` 校验约 :412；scope 检查约 :499-508 之后）
-- Modify: `apps/zcode-cli/packages/cli/src/headless-browser.ts`
-- Modify: `apps/zcode-cli/packages/cli/src/tui-command.ts`（约 :41-55）、`apps/zcode-cli/packages/cli/src/tui-prompt-handler.ts`（约 :53-67、:153）
-- Modify: `apps/zcode-cli/packages/i18n/src/locales/en-US.ts`、`zh-CN.ts`（帮助文本，约 :35 之后）
-- Test: Create `apps/zcode-cli/packages/cli/tests/browser-state-option.test.ts`；Modify `apps/zcode-cli/packages/cli/package.json` 的 `test` 脚本，加入该文件
+- Modify: `apps/codez-cli/packages/shared-types/src/index.ts`（`GlobalOptions`，约 :30）
+- Modify: `apps/codez-cli/packages/cli/src/arguments.ts`（约 :24-29）
+- Create: `apps/codez-cli/packages/cli/src/browser-state-option.ts`
+- Modify: `apps/codez-cli/packages/cli/src/run.ts`（`--browser-executable` 校验约 :412；scope 检查约 :499-508 之后）
+- Modify: `apps/codez-cli/packages/cli/src/headless-browser.ts`
+- Modify: `apps/codez-cli/packages/cli/src/tui-command.ts`（约 :41-55）、`apps/codez-cli/packages/cli/src/tui-prompt-handler.ts`（约 :53-67、:153）
+- Modify: `apps/codez-cli/packages/i18n/src/locales/en-US.ts`、`zh-CN.ts`（帮助文本，约 :35 之后）
+- Test: Create `apps/codez-cli/packages/cli/tests/browser-state-option.test.ts`；Modify `apps/codez-cli/packages/cli/package.json` 的 `test` 脚本，加入该文件
 
 **Interfaces:**
 
@@ -228,14 +228,14 @@ git commit -m "feat(adapters): inject browser storage state into session context
 参照 `tests/workflow-mode-option.test.ts` 的 `createContext` 和假 deps。用 `deps.env = { HOME: <临时目录> }` 控制默认路径，用 `deps.cwd = () => <临时目录>` 控制启动目录；`createManagedCdpBrowserRuntime` 替身记录收到的 `storageStatePath`。用例：
 
 - `does not touch any state file without --browser-use=headless`：HOME 下放一个无效默认文件，跑普通 `--prompt` → 退出码 0。
-- `rejects state flags without headless`：`--browser-state x.json --prompt p` 和 `--no-browser-state --prompt p` → 退出码 1，stderr 等于 `BROWSER_STATE_REQUIRES_HEADLESS_ERROR + "\n"`，没有调用 `createZCodeApp`。
+- `rejects state flags without headless`：`--browser-state x.json --prompt p` 和 `--no-browser-state --prompt p` → 退出码 1，stderr 等于 `BROWSER_STATE_REQUIRES_HEADLESS_ERROR + "\n"`，没有调用 `createCodezApp`。
 - `rejects both state flags together` → 退出码 1，stderr 含 `BROWSER_STATE_CONFLICT_ERROR`。
 - `keeps app-server rejecting headless browser flags`：`["app-server", "--browser-use=headless", "--browser-state", <无效文件>]` → 退出码 1，stderr 是现有的 `--browser-use=headless can only be used with --prompt, --target, or tui.`，不是文件错误（说明没有读取文件）。
 - `passes no state path when the default file is absent` → `storageStatePath` 为 `undefined`，stderr 为空。
-- `loads the default file and prints a notice` → `storageStatePath` 等于 `<HOME>/.zcode/cli/browser-state.json`；stderr 含 `"Loaded default browser state"` 和 `"--no-browser-state"`。
+- `loads the default file and prints a notice` → `storageStatePath` 等于 `<HOME>/.codez/cli/browser-state.json`；stderr 含 `"Loaded default browser state"` 和 `"--no-browser-state"`。
 - `skips the default file with --no-browser-state`：默认文件内容无效 → 退出码 0，`storageStatePath` 为 `undefined`。
 - `resolves an explicit relative path against the launch directory`：`--cwd` 指向另一个目录，`--browser-state ./state.json` 相对启动目录 → `storageStatePath` 等于 `<launchCwd>/state.json`。
-- `reports the resolved path when an explicit file is missing`：`--browser-state=~/missing.json` → 退出码 1，stderr 含 `join(launchCwd, "~", "missing.json")`，没有调用 `createManagedCdpBrowserRuntime` 和 `createZCodeApp`。
+- `reports the resolved path when an explicit file is missing`：`--browser-state=~/missing.json` → 退出码 1，stderr 含 `join(launchCwd, "~", "missing.json")`，没有调用 `createManagedCdpBrowserRuntime` 和 `createCodezApp`。
 - `fails closed when the default file is invalid`：默认文件为 `"{"` → 退出码 1，stderr 含默认文件路径和 `"--no-browser-state"`。
 - `fails closed when the default path is a directory` → 同上。
 - `prints schema issues without values`：cookie value 为 `"secret-cookie-value"`、`sameSite: "lax"` → 退出码 1，stderr 含 `cookies[0].sameSite`，不含 `"secret-cookie-value"`。
@@ -244,7 +244,7 @@ git commit -m "feat(adapters): inject browser storage state into session context
 
 - [ ] **Step 2: 运行测试，确认失败**
 
-Run: `pnpm --dir apps/zcode-cli/packages/cli exec node --disable-warning=DEP0205 --import tsx --test tests/browser-state-option.test.ts`
+Run: `pnpm --dir apps/codez-cli/packages/cli exec node --disable-warning=DEP0205 --import tsx --test tests/browser-state-option.test.ts`
 Expected: FAIL（参数未知，或缺少 `browser-state-option.js`）。
 
 - [ ] **Step 3: 实现**
@@ -255,23 +255,23 @@ Expected: FAIL（参数未知，或缺少 `browser-state-option.js`）。
 - `headless-browser.ts`：`options` 的 Pick 加上 `browserState`，传 `storageStatePath: options.browserState?.path`。
 - TUI：`tui-command.ts` 把 `options.browserState` 作为 `createTuiSubmitPrompt` 的最后一个参数；`tui-prompt-handler.ts` 新增同名最后一个参数，并在 :153 一起传给 `createCliHeadlessBrowserRuntime`。
 - i18n：两份帮助文本在 `--browser-executable` 之后各加两行：
-  - en-US：`--browser-state <path> Playwright storage state injected into headless Browser Use sessions`、`--no-browser-state Skip the default browser state file (~/.zcode/cli/browser-state.json)`
-  - zh-CN：`--browser-state <path> 注入 headless Browser Use 会话的 Playwright 登录态文件`、`--no-browser-state 不加载默认登录态文件（~/.zcode/cli/browser-state.json）`
+  - en-US：`--browser-state <path> Playwright storage state injected into headless Browser Use sessions`、`--no-browser-state Skip the default browser state file (~/.codez/cli/browser-state.json)`
+  - zh-CN：`--browser-state <path> 注入 headless Browser Use 会话的 Playwright 登录态文件`、`--no-browser-state 不加载默认登录态文件（~/.codez/cli/browser-state.json）`
 
 - [ ] **Step 4: 运行测试，确认通过**
 
-Run: `pnpm --dir apps/zcode-cli/packages/shared-types build && pnpm --dir apps/zcode-cli/packages/cli exec node --disable-warning=DEP0205 --import tsx --test tests/browser-state-option.test.ts`
+Run: `pnpm --dir apps/codez-cli/packages/shared-types build && pnpm --dir apps/codez-cli/packages/cli exec node --disable-warning=DEP0205 --import tsx --test tests/browser-state-option.test.ts`
 Expected: PASS
 
 - [ ] **Step 5: 跑 CLI 全量测试、typecheck、lint**
 
-Run: `pnpm --dir apps/zcode-cli/packages/cli test && pnpm --dir apps/zcode-cli typecheck && pnpm --dir apps/zcode-cli lint`
+Run: `pnpm --dir apps/codez-cli/packages/cli test && pnpm --dir apps/codez-cli typecheck && pnpm --dir apps/codez-cli lint`
 Expected: 全部通过。已有的 `cli.unit.test.ts` headless 用例不受影响。
 
 - [ ] **Step 6: 提交**
 
 ```bash
-git add apps/zcode-cli/packages/shared-types/src/index.ts apps/zcode-cli/packages/cli apps/zcode-cli/packages/i18n/src/locales
+git add apps/codez-cli/packages/shared-types/src/index.ts apps/codez-cli/packages/cli apps/codez-cli/packages/i18n/src/locales
 git commit -m "feat(cli): add --browser-state and default browser state loading"
 ```
 
@@ -279,8 +279,8 @@ git commit -m "feat(cli): add --browser-state and default browser state loading"
 
 **Files:**
 
-- Modify: `apps/zcode-cli/packages/browser-use-plugin/test/headless-browser.e2e.test.ts`
-- Modify: `apps/zcode-cli/docs/usage/02-cli-reference.md`（约 :29）
+- Modify: `apps/codez-cli/packages/browser-use-plugin/test/headless-browser.e2e.test.ts`
+- Modify: `apps/codez-cli/docs/usage/02-cli-reference.md`（约 :29）
 - Modify: `docs/browser-use/2026-11-17-cli-browser-state-spec.md`（状态行与 §12）
 
 **Interfaces:**
@@ -293,7 +293,7 @@ git commit -m "feat(cli): add --browser-state and default browser state loading"
 
 - [ ] **Step 2: 运行真实浏览器链路**
 
-Run: `pnpm --dir apps/zcode-cli test:browser-headless`
+Run: `pnpm --dir apps/codez-cli test:browser-headless`
 Expected: 两个用例都 PASS（需要本机有 Chrome/Chromium）。
 
 - [ ] **Step 3: 更新文档**
@@ -303,16 +303,16 @@ Expected: 两个用例都 PASS（需要本机有 Chrome/Chromium）。
 
 - [ ] **Step 4: 架构与开源检查**
 
-Run: `pnpm architecture:check --changed && node opensource/tools/check-competitor-terms.mjs docs/browser-use/2026-11-17-cli-browser-state-spec.md apps/zcode-cli/docs/usage/02-cli-reference.md`
+Run: `pnpm architecture:check --changed && node opensource/tools/check-competitor-terms.mjs docs/browser-use/2026-11-17-cli-browser-state-spec.md apps/codez-cli/docs/usage/02-cli-reference.md`
 Expected: 通过；竞品词 0 处。
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add apps/zcode-cli/packages/browser-use-plugin/test/headless-browser.e2e.test.ts apps/zcode-cli/docs/usage/02-cli-reference.md docs/browser-use/2026-11-17-cli-browser-state-spec.md
+git add apps/codez-cli/packages/browser-use-plugin/test/headless-browser.e2e.test.ts apps/codez-cli/docs/usage/02-cli-reference.md docs/browser-use/2026-11-17-cli-browser-state-spec.md
 git commit -m "test(browser-use): cover storage state injection end to end"
 ```
 
 - [ ] **Step 6: 人工验收 BST-012（需要用户参与）**
 
-用户用 `node node_modules/playwright-core/cli.js open --channel chrome --save-storage <0700 目录>/state.json <需要登录的站点>` 登录后关闭窗口。然后运行构建后的 CLI：`zcode --browser-use=headless --browser-state <file> --prompt "打开 <目标页面> 并告诉我页面标题"`。期望：回答里是目标页面的标题，不是登录页。把结果记入 spec §12（不写内部域名），之后删除 state 文件。
+用户用 `node node_modules/playwright-core/cli.js open --channel chrome --save-storage <0700 目录>/state.json <需要登录的站点>` 登录后关闭窗口。然后运行构建后的 CLI：`codez --browser-use=headless --browser-state <file> --prompt "打开 <目标页面> 并告诉我页面标题"`。期望：回答里是目标页面的标题，不是登录页。把结果记入 spec §12（不写内部域名），之后删除 state 文件。

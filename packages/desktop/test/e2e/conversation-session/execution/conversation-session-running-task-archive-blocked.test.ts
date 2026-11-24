@@ -3,7 +3,7 @@ import {
   TID_TASK_ITEM,
   TID_WORKSPACE_MORE_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import {
   clickV4Stop,

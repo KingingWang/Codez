@@ -1,14 +1,14 @@
 import {
-  DEFAULT_ZCODE_ENDPOINT_ORIGIN,
-  ZCODE_VERSION,
+  DEFAULT_CODEZ_ENDPOINT_ORIGIN,
+  CODEZ_VERSION,
   buildHelpAppConfigUrl,
   createHelpAppConfigReader,
-  resolveOptionalZCodeAuthorization,
+  resolveOptionalCodezAuthorization,
   resolveHelpAppConfig,
   toZhOrEnLocale,
   type Locale,
-  type ZCodeJwtTokenResolver,
-} from "@zcode/shared";
+  type CodezJwtTokenResolver,
+} from "@codez/shared";
 import { BrowserOAuthCredentialRepo } from "#src/auth/browserOAuthCredentialRepo.js";
 import localDefaultAppConfig from "../../../config/default.json" with { type: "json" };
 
@@ -16,7 +16,7 @@ interface ResolveWebCommunityUrlOptions {
   fetchImpl?: typeof fetch;
   localConfig?: unknown;
   endpointOrigin?: string;
-  resolveZcodeJwtToken?: ZCodeJwtTokenResolver;
+  resolveZcodeJwtToken?: CodezJwtTokenResolver;
 }
 
 const readHelpConfig = createHelpAppConfigReader({
@@ -27,14 +27,14 @@ export async function resolveWebHelpConfig(options: ResolveWebCommunityUrlOption
   const env = import.meta.env;
   const endpoint =
     options.endpointOrigin ??
-    (env?.VITE_ZCODE_BASE_URL?.trim() ||
-      env?.VITE_ZCODE_ENDPOINT_ORIGIN?.trim() ||
-      DEFAULT_ZCODE_ENDPOINT_ORIGIN);
+    (env?.VITE_CODEZ_BASE_URL?.trim() ||
+      env?.VITE_CODEZ_ENDPOINT_ORIGIN?.trim() ||
+      DEFAULT_CODEZ_ENDPOINT_ORIGIN);
   // 服务端拒绝 platform=web；浏览器省略可选平台参数，避免伪装桌面系统。
-  const url = buildHelpAppConfigUrl(endpoint, ZCODE_VERSION);
-  const authorization = await resolveOptionalZCodeAuthorization(
+  const url = buildHelpAppConfigUrl(endpoint, CODEZ_VERSION);
+  const authorization = await resolveOptionalCodezAuthorization(
     // 可选配置读取不能顺带清理过期或残缺的登录态；恢复/登出仍由原认证入口处理。
-    options.resolveZcodeJwtToken ?? (() => new BrowserOAuthCredentialRepo().loadZCodeJwtToken()),
+    options.resolveZcodeJwtToken ?? (() => new BrowserOAuthCredentialRepo().loadCodezJwtToken()),
   );
   let remote: unknown;
   try {

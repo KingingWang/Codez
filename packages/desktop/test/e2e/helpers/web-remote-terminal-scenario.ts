@@ -1,11 +1,11 @@
 import { writeFile } from "node:fs/promises";
-import { BufferReader, BufferWriter, deserialize, serialize, VSBuffer } from "@zcode/rpc";
+import { BufferReader, BufferWriter, deserialize, serialize, VSBuffer } from "@codez/rpc";
 import { basename, join } from "node:path";
 import {
   parseWebRemoteControlAppPayload,
   ServiceChannels,
   type WebRemoteControlWorkspaceBridgeReadyPayload,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   callHandoffHost,
   installHandoffRpcProbe,
@@ -28,7 +28,7 @@ import {
   TID_SIDE_PANE_TOGGLE,
   TID_TASK_ITEM,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   DEFAULT_WORKSPACE,
@@ -230,7 +230,7 @@ export function createMobileTerminalScenario(remote: boolean) {
 
   const evidence: Record<string, unknown> = {};
 
-  const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR;
+  const artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR;
   const cleanup = async () => {
     if (artifacts) {
       await mobilePage
@@ -294,14 +294,14 @@ export function createMobileTerminalScenario(remote: boolean) {
       if (!taskId) throw new Error(`${CASE}: remote persisted task required`);
     }
     const pairingUrl = await obtainUnreadPairingUrl(
-      new URL(process.env.ZCODE_WEB_REMOTE_CONTROL_URL!).origin,
+      new URL(process.env.CODEZ_WEB_REMOTE_CONTROL_URL!).origin,
     );
     webBrowser = await chromium.launch({
-      ...(process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE
-        ? { executablePath: process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE }
+      ...(process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE
+        ? { executablePath: process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE }
         : { channel: "chrome" }),
       headless: true,
-      args: process.env.ZCODE_E2E_BROWSER_NO_PROXY === "1" ? ["--no-proxy-server"] : [],
+      args: process.env.CODEZ_E2E_BROWSER_NO_PROXY === "1" ? ["--no-proxy-server"] : [],
     });
     const context = await webBrowser.newContext({
       recordVideo: { dir: artifacts, size: { width: 390, height: 844 } },

@@ -1,4 +1,4 @@
-import type { UserConfigSyncCategory, UserConfigSyncPayloadMap } from "@zcode/shared";
+import type { UserConfigSyncCategory, UserConfigSyncPayloadMap } from "@codez/shared";
 import { createCommandDataSyncMethods } from "./commandDataSync.js";
 import type { IDataSyncCategoryService, IUserConfigSyncService } from "./contract.js";
 import { createHookDataSyncMethods } from "./hookDataSync.js";

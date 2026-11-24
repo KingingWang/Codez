@@ -3,7 +3,7 @@
 ## 2026-09-12 制作工作区迁移
 
 Banner / Hero 源码、模板、数据样例及打包工具已迁到独立本地工作区
-`/Users/dev/Projects/zcode-marketing-resources`（不建立 Git），本 App 仓库不再维护资源制作目录。
+`/Users/dev/Projects/codez-marketing-resources`（不建立 Git），本 App 仓库不再维护资源制作目录。
 当前入口为该工作区 README.md，资源分别在 packages/weekend-banner、packages/weekend-hero，
 产物在 dist/<包名>/<版本>/。运行 `npm test`、`npm run check`、`npm run test:browser`、`npm run build`。
 原有完整目录和旧协议草稿保留在该工作区 archive/app-cleanup-20260912-qJ2R6s；
@@ -17,10 +17,10 @@ Hero v4 重播按钮尺寸与 App 关闭按钮一致：24×24px，图标 12×12p
 
 ## 2026-09-11 额度规则更新
 
-Hero v4 与 Banner 共用包内 quota.js，直接读取 init.data.zcode_plan.entitlements。
+Hero v4 与 Banner 共用包内 quota.js，直接读取 init.data.codez_plan.entitlements。
 仅 model_usage 且 period=one_time/daily 的非负有限 grant_units 参与计算。
 存在一次性权益时只合计一次性，否则合计每日权益，并显示 Tokens / 天或 Tokens / day。
-未知周期不参与，空权益为 0；没有 zcode_plan 时保留旧显式文案数据兼容。
+未知周期不参与，空权益为 0；没有 codez_plan 时保留旧显式文案数据兼容。
 模型说明/权益列表仅展示本次选中的周期，避免日额度混入一次性展示。
 Banner 保持 18px 数值字号，完整千分位数字，不使用紧凑单位、不截断数字、不缩放。
 不改变 App 领取、上报或实际额度。
@@ -42,11 +42,11 @@ Hero 权益明细行的单项额度按语言缩写（10亿 / 1B），顶部合�
   → destroy → 清理
 ```
 
-沿用 `zcode-cloud-hero-v1`。visibility/reducedMotion 无动画可暂停，保持静态。
+沿用 `codez-cloud-hero-v1`。visibility/reducedMotion 无动画可暂停，保持静态。
 仅接受 parent 消息及当前 instanceId；所有可配置文字转义后绘制。
 args 支持 titleZh/titleEn、amountZh/amountEn、modelsZh/modelsEn、unit；旧 cta 字段忽略。
 未配置时使用原模板示例（100亿 / 10B）；这些是展示样例，不是用户实时权益。
-`args.zcode_plan.entitlements` 自动适配 model_usage 权益：一次性优先、同周期累加，
+`args.codez_plan.entitlements` 自动适配 model_usage 权益：一次性优先、同周期累加，
 完整千分位显示总额，show_name 生成所选周期的模型说明。
 已有 plan 但无有效权益显示 0，不回退示例额度。显式 amountZh/amountEn、modelsZh/modelsEn
 优先于 plan；没有 plan 时也支持 App 的 amountValue/amountUnit 字段。

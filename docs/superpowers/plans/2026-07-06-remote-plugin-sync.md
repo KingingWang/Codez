@@ -4,14 +4,14 @@
 
 **Goal:** Add explicit SSH remote sync for user-level inline plugins.
 
-**Architecture:** Add a restricted `IPluginSyncService` parallel to skill/MCP sync. Local base services enumerate/export user inline plugins; remote workspace services status/import the archive into remote `~/.zcode/plugins` and remote user config.
+**Architecture:** Add a restricted `IPluginSyncService` parallel to skill/MCP sync. Local base services enumerate/export user inline plugins; remote workspace services status/import the archive into remote `~/.codez/plugins` and remote user config.
 
 **Tech Stack:** TypeScript, Vitest, React settings UI, existing RPC service descriptors, existing remote service collection.
 
 ## Global Constraints
 
 - Spec before code lives at `docs/superpowers/specs/2026-07-06-remote-plugin-sync-design.md`.
-- V1 only supports user-level inline plugins from `~/.zcode/cli/config.json.plugins.dirs`.
+- V1 only supports user-level inline plugins from `~/.codez/cli/config.json.plugins.dirs`.
 - Do not sync marketplace/cache/builtin plugins, plugin data, or plugin options.
 - Do not overwrite existing remote plugins.
 - UI changes must follow `DESIGN.md`, support i18n, desktop, web, light and dark themes.
@@ -49,8 +49,8 @@
 - Consumes: types and descriptor from Task 1.
 - Produces: `createPluginSyncService(options?: { maxArchiveBytes?: number }): IPluginSyncService`.
 
-- [ ] Implement config reading/writing for `~/.zcode/cli/config.json`.
-- [ ] Implement manifest discovery for `.zcode-plugin`, `.claude-plugin`, `.codex-plugin`.
+- [ ] Implement config reading/writing for `~/.codez/cli/config.json`.
+- [ ] Implement manifest discovery for `.codez-plugin`, `.claude-plugin`, `.codex-plugin`.
 - [ ] Implement safe archive create/extract with size limits.
 - [ ] Implement remote import with no-overwrite conflict checks.
 - [ ] Run service tests until green.

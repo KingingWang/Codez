@@ -17,10 +17,10 @@
   linux-x64/
   linux-arm64/
   source-server-release.json
-  zcode-server-linux-x64.tar.gz
-  zcode-server-linux-arm64.tar.gz
-  zcode-server-darwin-x64.tar.gz
-  zcode-server-darwin-arm64.tar.gz
+  codez-server-linux-x64.tar.gz
+  codez-server-linux-arm64.tar.gz
+  codez-server-darwin-x64.tar.gz
+  codez-server-darwin-arm64.tar.gz
 ```
 
 每个 `<platform>-<arch>/` 子目录内只放对应平台架构的安装包、blockmap、`latest*.yml` 和该目录自己的 `manifest.json`。Source Server descriptor/archive 保留在 release 根目录，供 `release:upload:macos:arm64` 附带上传。
@@ -39,4 +39,4 @@
 - 每个平台 build job 只能把安装包、blockmap、`latest*.yml` 和 `manifest.json` 写入对应平台架构目录。
 - 复用共享目录时，build job 必须清理根目录历史安装包副本，但不能删除本轮 Source Server descriptor/archive。
 - upload job 的 `SOURCE_DIR` 必须指向平台架构子目录。
-- remote assets 上传只读取 release 根目录下的 `source-server-release.json` 和 `zcode-server-*.tar.gz`。
+- remote assets 上传只读取 release 根目录下的 `source-server-release.json` 和 `codez-server-*.tar.gz`。

@@ -15,5 +15,5 @@ Agent/session/runtime 日志统一用 [createServiceLogger(scope)](src/logger/se
 
 - 与消息流同数量级的日志必须使用 debug，避免生产日志随流量膨胀。
 - debug 默认只在本地开发运行时启用，判据由 [nodeEnv.ts](src/runtime-tools/nodeEnv.ts) 提供；非开发运行时为 no-op，测试可通过 logger 选项覆盖。沿用该统一判据，不自行从 shell 的 NODE_ENV 推断。
-- `ZCODE_ENV` 仅表达产品环境（test/production），不用于判断本地开发形态。
+- `CODEZ_ENV` 仅表达产品环境（test/production），不用于判断本地开发形态。
 - RPC 的频道、命令和耗时已有 [logging middleware](../rpc/src/logging-middleware.ts)；排查前先核对已有记录，避免重复高频日志。

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import type { IZCodeTaskService } from "@zcode/services";
-import type { BotProvider, ZCodeStreamEvent } from "@zcode/shared";
+import type { ICodezTaskService } from "@codez/services";
+import type { BotProvider, CodezStreamEvent } from "@codez/shared";
 import {
   createBotModelSelectionView,
   createBotsServiceHarness,
@@ -10,7 +10,7 @@ import {
   type RecordedRequest,
 } from "#e2e/bots/helpers/bots-service-harness";
 
-type Prompt = Parameters<IZCodeTaskService["sendPrompt"]>[0];
+type Prompt = Parameters<ICodezTaskService["sendPrompt"]>[0];
 type Harness = ReturnType<typeof createBotsServiceHarness>;
 type InboundAttachments = Parameters<Harness["service"]["handleInboundMessage"]>[0]["attachments"];
 
@@ -73,10 +73,10 @@ function setupProvider(provider: BotProvider) {
       },
     },
   });
-  h.zcodeTaskService.getTaskModelSelection = async () => selection;
+  h.codezTaskService.getTaskModelSelection = async () => selection;
   // 任务服务替身按 CLI 命令账本回复：同一个 commandId 第二次提交返回 duplicate，不开新一轮。
   const admitted = new Set<string>();
-  h.zcodeTaskService.sendPrompt = async (params: Prompt) => {
+  h.codezTaskService.sendPrompt = async (params: Prompt) => {
     h.sendPromptCalls.push(params);
     const duplicate = admitted.has(params.traceId);
     admitted.add(params.traceId);
@@ -87,7 +87,7 @@ function setupProvider(provider: BotProvider) {
     };
   };
   let taskStatus = "running";
-  h.zcodeTaskService.getTaskSnapshot = async () => ({ meta: { status: taskStatus } });
+  h.codezTaskService.getTaskSnapshot = async () => ({ meta: { status: taskStatus } });
   const replies: unknown[] = [];
   const send = async (
     providerMessageId: string,
@@ -125,8 +125,8 @@ function setupProvider(provider: BotProvider) {
       type: "task_run_started",
       startedAt: Date.now(),
       inputOrigin: "desktop",
-    } as ZCodeStreamEvent);
-    await emit({ ...base, type: "task_complete", stopReason: "end_turn" } as ZCodeStreamEvent);
+    } as CodezStreamEvent);
+    await emit({ ...base, type: "task_complete", stopReason: "end_turn" } as CodezStreamEvent);
   };
   return {
     h,

@@ -30,7 +30,7 @@ Status: done
   - 必需文件齐全；重复制作，结果一致。
 - **发布命令**：只接受 `downloadUrlsByRegion`，输出 catalog 条目。
 - **LibreOffice 转换器**：
-  - 输出 `entries`（`zcode-soffice`，含 macOS 的参数与环境）、`runtimeChecks`、`platforms` 和 `binaryArch`，并汇总 `LICENSES/` 和 `SOURCES.json`。
+  - 输出 `entries`（`codez-soffice`，含 macOS 的参数与环境）、`runtimeChecks`、`platforms` 和 `binaryArch`，并汇总 `LICENSES/` 和 `SOURCES.json`。
   - 迁移现有 recipe，`resourceId` 的修订号加一。
 - **产出**：
   - 在本机重新产出 macOS arm64 资源。
@@ -42,7 +42,7 @@ Status: done
 - [x] 架构例外的每种拒绝情况都有失败用例：把入口目标、运行检查目标、`rewrite` 目标或导入表可达依赖声明为例外，摘要不符，路径不存在，文件不需要例外，以及使用通配符。来源未核对或与来源文件字节不同也不能放行；许可、来源、路径与重定位门禁仍执行。
 - [x] recipe 的上游路径豁免只有在前缀、已核对来源和原始文件逐字节一致性均满足时才生效；把上游路径写进打包生成的文件时，门禁拒绝。
 - [x] 把本次打包环境路径写进任意文件时，门禁拒绝，不因上游路径豁免而放行；未声明 `rewrite` 的文件中出现已知重定位占位符时，同样拒绝。
-- [x] 新的 macOS arm64 资源制作两次，归档摘要一致；经本地 loopback 由预装进程安装后，`zcode-soffice` 的运行检查通过，应用签名有效。
+- [x] 新的 macOS arm64 资源制作两次，归档摘要一致；经本地 loopback 由预装进程安装后，`codez-soffice` 的运行检查通过，应用签名有效。
 - [x] 资源根目录有 `LICENSES/` 与 `SOURCES.json`，覆盖 LibreOffice 和随包字体；Windows 资源还要覆盖 VC++ 运行库。
 - [x] 发布命令拒绝显式下载列表、空分组和非法 URL。
 - [x] 其余目标的产出情况记录在本票 Comments 中；没有运行过的目标标为 not-run。
@@ -66,7 +66,7 @@ Status: done
 - 工程检查先补失败回归再实现。已运行 `pnpm test:engineering scripts/preinstalled-tools`：6 个文件、86 个测试通过。覆盖各打包门禁、架构例外各拒绝类型、三种二进制导入表及符号别名的传递依赖保护、原始来源/摘要、生成文件和本次打包路径、重定位占位符、Java class 与 Mach-O fat 共用魔数的格式区分，以及旧转换器回归。
 - 已运行根 `pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed`，均退出 0；lint 有 172 个已有 warning、0 error，本票新增 warning 已消除；架构检查 0 violation。修改文件格式检查、开源术语检查及 `git diff --check` 通过。未改 CLI，不以根检查替代 CLI 验证。
 - 真实 macOS arm64 资源制作两次，均为 `libreoffice-26.8.1-darwin-arm64-r2.tar.gz`，大小 **331093482 bytes**，SHA-256 **`43fd76bcd0eb55446ce7da77aaa821ff6ed7f205a7c0f0e8ff0c27d3248815d2`**；实际重新读取两份归档计算摘要并比较。官方 GPG 验签、复制前后应用签名和全部公共门禁通过；218 个 Mach-O 的最高最低系统要求为 11.0.0，14 个 PE 中仅 10 个有逐文件声明的非运行模板使用架构例外。
-- 通过本地 loopback 服务，由真实 Electron `utilityProcess` 运行预装 worker，使用公共初始化协议安装到含中文和空格的 `用户 验收` 路径。一次资源请求后状态为 `ready`，资源定义的运行检查成功；生成的 `zcode-soffice` 独立版本检查也成功，运行前后 `codesign --verify --deep --strict` 均通过。`SOURCES.json` 覆盖官方安装包、完整签名指纹、对应源码归档及字体，`LICENSES/` 内容齐全。
+- 通过本地 loopback 服务，由真实 Electron `utilityProcess` 运行预装 worker，使用公共初始化协议安装到含中文和空格的 `用户 验收` 路径。一次资源请求后状态为 `ready`，资源定义的运行检查成功；生成的 `codez-soffice` 独立版本检查也成功，运行前后 `codesign --verify --deep --strict` 均通过。`SOURCES.json` 覆盖官方安装包、完整签名指纹、对应源码归档及字体，`LICENSES/` 内容齐全。
 - 证据存于仓库外的本次 artifacts `07/`：`reproducibility.json`、`installed-validation.json`、`loopback-first/result.json`、`resources/mac-first/`、`resources/mac-repeat/` 及 `logs/`。最初失败的回归、真实制作和下载日志均保留；生产描述中的 `validation.runtime: not-run` 表示制作阶段不运行安装检查，实际安装结果由上述独立证据记录。
 
 ### 其他目标与未验证项

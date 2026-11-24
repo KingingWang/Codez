@@ -5,7 +5,7 @@
 手机 Web 远控打开历史 task 时走 `web-remote-replayable` 快照恢复。当前
 `getTaskSnapshot` 在缺少显式模型参数时会从 task index 回填历史模型，再调用
 `session/resume`。如果历史模型的 exact provider/model 已经从当前 registry 中不可用，
-服务层会抛出 `ZCODE_RUNTIME_MODEL_UNAVAILABLE`。
+服务层会抛出 `CODEZ_RUNTIME_MODEL_UNAVAILABLE`。
 
 桌面端 `desktop-continuous` 已经在 UI helper 中对这个错误做了降级：恢复历史显示，
 并要求用户选择当前可用模型后再续聊。手机端没有同等降级，首屏 snapshot 直接失败，
@@ -23,7 +23,7 @@
   `resumeModelPolicy: "task-index" | "ui-resolved-only"`。
 - 默认策略为 `"task-index"`，保持现有行为。
 - 只有 `clientMode === "web-remote-replayable"` 且策略为
-  `"ui-resolved-only"` 时，`zcodeTaskServiceAdapter.getTaskSnapshot` 不再从 task index
+  `"ui-resolved-only"` 时，`codezTaskServiceAdapter.getTaskSnapshot` 不再从 task index
   回填历史模型。
 - `useTaskRestore` 在手机 replayable 分支中，如果恢复前模型解析结果表明历史模型不可用，
   且没有可见模型 fallback，则首屏 snapshot 使用 `"ui-resolved-only"`。
@@ -37,7 +37,7 @@
   同样使用 `"ui-resolved-only"`，避免 host 在 UI fallback 判断前从 task index 回填旧模型。
 - 同一只读恢复分支跳过后续 `resumeTask`，避免它再次从 task index 回填同一个不可用模型。
   UI 使用 snapshot meta 完成历史展示，并保留 task-scoped
-  `ZCODE_RUNTIME_MODEL_UNAVAILABLE` 状态。
+  `CODEZ_RUNTIME_MODEL_UNAVAILABLE` 状态。
 - 手机 `web-remote-replayable` 打开 task 后，stream event / session event / gap recovery
   触发的后续只读 snapshot 同步也使用 `"ui-resolved-only"`。这些同步只用于校准
   UI 消息、队列和运行态，不能在用户已经切到可用模型后再次从 task index 回填历史模型。
@@ -46,7 +46,7 @@
 
 ## Boundaries
 
-- 不修改 `zcodeAgentService.resolveRuntimeModelConfig` 的历史 session 硬校验。
+- 不修改 `codezAgentService.resolveRuntimeModelConfig` 的历史 session 硬校验。
 - 不让历史 session 静默切到 registry 第一个模型。
 - 不改变桌面 `desktop-continuous` 的 snapshot、resume、queue 或 stream 语义。
 - 不在 relay 或 desktop main 下沉 task/model 业务状态。

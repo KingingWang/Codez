@@ -31,7 +31,7 @@ const MARKER = "E2E_SSH_REMOTE_CRASH_LOOP_DETAIL";
 const DEV: RemoteAccount = { user: "dev", home: "/home/dev" };
 const desktopRoot = process.cwd();
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-remote-crash-loop-detail",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-remote-crash-loop-detail",
 );
 
 describe(`${MARKER}: crash-loop-stopped 时连接错误带出现有 Supervisor 状态`, () => {
@@ -48,7 +48,7 @@ describe(`${MARKER}: crash-loop-stopped 时连接错误带出现有 Supervisor �
           `HOME=${DEV.home}`,
           "sh",
           "-c",
-          '"$HOME/.zcode/server/bin/zcode" stop --wait --server-root "$HOME/.zcode/server" --json',
+          '"$HOME/.codez/server/bin/codez" stop --wait --server-root "$HOME/.codez/server" --json',
         ],
         { user: DEV.user },
       ).catch(() => undefined);
@@ -100,13 +100,13 @@ describe(`${MARKER}: crash-loop-stopped 时连接错误带出现有 Supervisor �
       "running supervisor: state=crash-loop-stopped, last exit: core exited",
     );
     // 新 Supervisor 被 crash-loop-stopped 的实例挡在锁外，取锁失败摘要一并带出。
-    expect(rawError).toContain("supervisor: Another ZCode Server instance is already running");
+    expect(rawError).toContain("supervisor: Another Codez Server instance is already running");
     if (serviceMode) {
       expect(rawError).toMatch(/^Timed out waiting for Server ready \(/);
       expect(failure?.code).toBe("remote-connection-timeout");
     } else {
       expect(rawError).toMatch(
-        /^ZCode Server daemon exited before ready \(code=1 signal=none\) \(/,
+        /^Codez Server daemon exited before ready \(code=1 signal=none\) \(/,
       );
       expect(failure?.code).toBe("remote-connection-unknown");
     }

@@ -2,7 +2,7 @@
  * MCP 用户目录模块 - TOML 解析和序列化
  */
 
-import type { McpServerConfig } from "@zcode/shared";
+import type { McpServerConfig } from "@codez/shared";
 
 /**
  * 解析 TOML 内联表格格式

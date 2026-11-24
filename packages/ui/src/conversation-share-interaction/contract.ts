@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
-import type { ConversationSharePreflightResult } from "@zcode/services";
+import type { ConversationSharePreflightResult } from "@codez/services";
 export type {
   ConversationSharePreflightResult,
   ConversationShareTurnPreflightResult,
   ConversationShareFailureIssue,
-} from "@zcode/services";
+} from "@codez/services";
 
 /** UI 状态只用于展示，预检结果与缓存的唯一 owner 是 SessionPane。 */
 export type ConversationSharePreflightState =

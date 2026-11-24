@@ -69,7 +69,7 @@ versions/<resourceId>/
 │   └─ lib/python3.12/EXTERNALLY-MANAGED   （Windows 为 python\Lib\EXTERNALLY-MANAGED）
 ├─ overlay/                      附加区：打包时建好的虚拟环境，Agent 额外安装的包写在这里
 │   └─ pyvenv.cfg                home 指向 python/ 的解释器目录
-├─ zcode/constraints.txt         全部预装包的“名称==版本”
+├─ codez/constraints.txt         全部预装包的“名称==版本”
 ├─ LICENSES/
 └─ SOURCES.json
 ```
@@ -106,18 +106,18 @@ Agent 额外安装的包放在附加区，不写进预装区。这样新装的�
 2. POSIX 上，把 `overlay/bin/python` 等链接改成指向 `../../python/bin/python3.12` 的相对链接。删除 `activate` 等用不到的脚本。
 3. 把 `pyvenv.cfg` 中的构建机绝对路径换成占位符，并在清单的 `rewrite` 中以 `text` 模式声明。安装时，通用的改写步骤把占位符换成真实的版本目录。
 
-固定预装包的版本：入口设置 `PIP_CONSTRAINT=${INSTALL_DIR_URL}/zcode/constraints.txt`。用 file URL 而不用 pip 配置文件里的路径，是因为 pip 会按空白拆分约束路径，含空格的用户目录（Windows 上常见）会出错；file URL 中的空格已编码。
+固定预装包的版本：入口设置 `PIP_CONSTRAINT=${INSTALL_DIR_URL}/codez/constraints.txt`。用 file URL 而不用 pip 配置文件里的路径，是因为 pip 会按空白拆分约束路径，含空格的用户目录（Windows 上常见）会出错；file URL 中的空格已编码。
 
 效果：
 
 ```text
-zcode-python 的模块查找顺序
+codez-python 的模块查找顺序
 1. 插件自己的目录（sys.path.insert、PYTHONPATH）
 2. 预装解释器的标准库
 3. 附加区的 site-packages   ← Agent 额外安装的包
 4. 预装区的 site-packages   ← 预装包
 
-zcode-python -m pip install X
+codez-python -m pip install X
   → pip 来自预装区，包写进附加区
   → 约束文件固定预装包的版本：X 需要不同版本时，安装报错，不覆盖预装包
 ```
@@ -128,7 +128,7 @@ zcode-python -m pip install X
 
 ## 入口
 
-- 入口名 `zcode-python`，专用入口。
+- 入口名 `codez-python`，专用入口。
 - 目标：`overlay/bin/python`，Windows 为 `overlay/Scripts/python.exe`。
 - 环境：
   - 设置 `PYTHONNOUSERSITE=1`。不设时，用户装在 `~/.local` 的包排在预装包前面，会盖过预装版本。
@@ -138,29 +138,29 @@ zcode-python -m pip install X
 
 ## 运行检查
 
-- `zcode-python -c "import openpyxl, xlsxwriter, defusedxml, docx, lxml, reportlab, pypdf, pikepdf, pdfplumber, pypdfium2, pdf2image, PIL, pptx, matplotlib, pandas, numpy; print('zcode-python-ok')"`，输出必须包含 `zcode-python-ok`。超时 180 秒：首次导入要加载大量新写入的扩展库，macOS 首次检查实测约 45～63 秒（见通用规格的运行检查一步），原来的 60 秒没有余量。
-- `zcode-python -m pip --version`，输出必须包含 `pip`。超时 30 秒。
+- `codez-python -c "import openpyxl, xlsxwriter, defusedxml, docx, lxml, reportlab, pypdf, pikepdf, pdfplumber, pypdfium2, pdf2image, PIL, pptx, matplotlib, pandas, numpy; print('codez-python-ok')"`，输出必须包含 `codez-python-ok`。超时 180 秒：首次导入要加载大量新写入的扩展库，macOS 首次检查实测约 45～63 秒（见通用规格的运行检查一步），原来的 60 秒没有余量。
+- `codez-python -m pip --version`，输出必须包含 `pip`。超时 30 秒。
 
 ## 插件调用规则
 
-- 运行脚本：`"$(command -v zcode-python || command -v python3)" "$XLSX_SKILL_DIR/xlsx.py" ...`
-- 安装包：`"$(command -v zcode-python || command -v python3)" -m pip install ...`
-- Bash 的 setup 与 env_check 脚本在开头解析一次 `PY="$(command -v zcode-python || command -v python3)"`，之后的 Python 检查、包检查和 `pip install` 都用 `$PY`。
-- PowerShell 脚本先用 `Get-Command zcode-python -ErrorAction SilentlyContinue` 查找，找不到再用原有的 `py`、`python3`、`python` 选择逻辑。
+- 运行脚本：`"$(command -v codez-python || command -v python3)" "$XLSX_SKILL_DIR/xlsx.py" ...`
+- 安装包：`"$(command -v codez-python || command -v python3)" -m pip install ...`
+- Bash 的 setup 与 env_check 脚本在开头解析一次 `PY="$(command -v codez-python || command -v python3)"`，之后的 Python 检查、包检查和 `pip install` 都用 `$PY`。
+- PowerShell 脚本先用 `Get-Command codez-python -ErrorAction SilentlyContinue` 查找，找不到再用原有的 `py`、`python3`、`python` 选择逻辑。
   - 文档中明确标注为 PowerShell 的原生示例使用相同的 `Get-Command` 选择规则和调用运算符 `&`；Bash 示例使用上面的 `command -v` 表达式。两者都只在入口不存在时选择系统解释器，不按运行结果自动回退。
-- 插件 Python 代码中用 `sys.executable -m pip install` 的地方不改，例如 `pdf.py` 的 env.fix 和 pypdf 自动安装。在 `zcode-python` 下运行时，`sys.executable` 就是附加区的解释器，包会装进附加区。
+- 插件 Python 代码中用 `sys.executable -m pip install` 的地方不改，例如 `pdf.py` 的 env.fix 和 pypdf 自动安装。在 `codez-python` 下运行时，`sys.executable` 就是附加区的解释器，包会装进附加区。
 - 工程门禁检查四个文档插件的 skills 和 scripts：除上述表达式外，不得出现裸 `python` 或 `python3` 调用。
   - 检查 Markdown 命令示例、脚本命令及脚本输出的调用提示：解释器后接选项、脚本路径或参数，或出现在 shell 命令位置时，视为调用；裸 `pip install` 同样改为所选解释器的 `-m pip install`。在命令位置直接执行带参数的 `.py` 脚本路径（例如 `"$XLSX_SKILL_DIR/xlsx.py" pivot`）也视为调用，因为它经 shebang 落到系统 `python3`。
   - 普通说明中的语言名、`python-docx` 等包名、代码围栏的语言标记、Python shebang、Python 字典键不算调用。shebang 仅声明脚本格式，插件仍通过上面的表达式启动脚本。
-  - PowerShell 的系统解释器候选列表保留，但只在找不到 `zcode-python` 时使用；Python 内部的 `sys.executable` 调用保留。
+  - PowerShell 的系统解释器候选列表保留，但只在找不到 `codez-python` 时使用；Python 内部的 `sys.executable` 调用保留。
 - 远端、独立 CLI 和开关关闭时，表达式自然落到 `python3`，行为与现在相同。系统 Python 低于 3.11 或缺包时，按 setup.md 处理。
 
 ## 出问题时
 
 “出问题”包括：
 
-- 用 `zcode-python` 安装包失败：当前平台没有这个包、与预装包的版本冲突、网络失败。
-- `zcode-python` 本身无法运行。
+- 用 `codez-python` 安装包失败：当前平台没有这个包、与预装包的版本冲突、网络失败。
+- `codez-python` 本身无法运行。
 
 脚本自身的错误不算，例如文档内容有问题。
 
@@ -188,7 +188,7 @@ Agent 不自动回退。回退可能要往用户自己的 Python 里安装包，
 
 ## Windows 签名
 
-- `windowsSigning` 为 `zcode`，规则见通用规格的 [Windows 签名](README.md#windows-签名)。
+- `windowsSigning` 为 `codez`，规则见通用规格的 [Windows 签名](README.md#windows-签名)。
 - 2026-11-04 核对 `python-3.12.16-20261026-win32-x64-r2`：PE 文件 163 个。已有有效签名的 10 个（Python Software Foundation 5 个，微软 5 个），保留不变。没有签名的 153 个：`.pyd` 131 个，`.dll` 10 个，`.exe` 12 个。
 - 排除 pip 的 6 个启动器模板：`python/Lib/site-packages/pip/_vendor/distlib/` 下的 `t32.exe`、`t64.exe`、`t64-arm.exe`、`w32.exe`、`w64.exe`、`w64-arm.exe`。pip 生成命令启动器时，复制模板并在文件末尾追加脚本，签名会失效。
 - 签名的文件有 147 个，包括 `python.exe`、`pythonw.exe`、`python312.dll`、`DLLs/` 下的扩展、site-packages 中的 `.pyd` 和随包 DLL，以及 `overlay/Scripts/` 和 `Lib/venv/scripts/nt/` 下的 `python.exe`、`pythonw.exe`。venv 原样复制这两个文件，签名仍然有效。
@@ -198,15 +198,15 @@ Agent 不自动回退。回退可能要往用户自己的 Python 里安装包，
 
 | ID    | 前置条件与操作                                                        | 必须观察到的结果                                                                                                                |
 | ----- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| PY-01 | Python 已就绪，四个插件各跑一个依赖 Python 的主流程                   | 都用 `zcode-python` 运行；预装包可导入；docx 目录脚本、pdf 的 reportlab 流程、xlsx 重算后的扫描、pptx 的 python-pptx 检查都成功 |
+| PY-01 | Python 已就绪，四个插件各跑一个依赖 Python 的主流程                   | 都用 `codez-python` 运行；预装包可导入；docx 目录脚本、pdf 的 reportlab 流程、xlsx 重算后的扫描、pptx 的 python-pptx 检查都成功 |
 | PY-02 | 关闭 Python 开关，再打开                                              | 关闭后表达式落到用户的 `python3`；打开后恢复                                                                                    |
-| PY-03 | 运行插件主流程，并用 `zcode-python -m pip install` 安装一个未预装的包 | 包在附加区中；预装区不新增文件，原有文件摘要也不变；下一次调用可以导入，预编译遗漏不能被忽略                                    |
+| PY-03 | 运行插件主流程，并用 `codez-python -m pip install` 安装一个未预装的包 | 包在附加区中；预装区不新增文件，原有文件摘要也不变；下一次调用可以导入，预编译遗漏不能被忽略                                    |
 | PY-04 | 安装一个要求不同版本预装包的包                                        | pip 因约束失败；预装包不变；Agent 按“出问题时”处理                                                                              |
 | PY-05 | 直接用预装解释器 `python/bin/python3 -m pip install`                  | 被 `EXTERNALLY-MANAGED` 拒绝                                                                                                    |
-| PY-06 | 用户 `~/.local` 中装有另一版本的 numpy                                | `zcode-python` 导入的是预装的 numpy                                                                                             |
+| PY-06 | 用户 `~/.local` 中装有另一版本的 numpy                                | `codez-python` 导入的是预装的 numpy                                                                                             |
 | PY-07 | Python 升级到新的 `resourceId`                                        | 新版本的附加区为空；旧版本（含旧附加区）在下次启动时删除                                                                        |
 | PY-08 | 删除 Python                                                           | 确认框有附加区提示；附加区随版本目录删除                                                                                        |
-| PY-09 | 安装目录路径含空格和中文                                              | 改写后 `zcode-python` 可以运行；`-m pip install` 写进附加区，约束生效                                                           |
+| PY-09 | 安装目录路径含空格和中文                                              | 改写后 `codez-python` 可以运行；`-m pip install` 写进附加区，约束生效                                                           |
 | PY-10 | macOS 13 和 15 真机首次运行（人工）                                   | 没有 Gatekeeper 或安全软件弹窗                                                                                                  |
 | PY-11 | Windows 真机（人工）                                                  | 改写 `pyvenv.cfg` 后附加区可用；约束生效；入口 shim 正确传参                                                                    |
 | PY-12 | 检查新制作的资源                                                      | 预装区 site-packages 中没有 `tests` 目录；没有 `.opt-1.pyc`、`.opt-2.pyc`；运行检查与 PY-01 通过                                |
@@ -216,4 +216,4 @@ Agent 不自动回退。回退可能要往用户自己的 Python 里安装包，
 - 改写 `pyvenv.cfg` 后的虚拟环境在三个系统上能否正常运行；POSIX 的相对链接是否被正确解析。
 - 用 `--without-pip` 创建的虚拟环境借用预装区的 pip，能否把包装进附加区。
 - `PIP_CONSTRAINT` 使用 file URL 时，对所有安装命令是否都生效。
-- `PIP_CONSTRAINT` 会被 `zcode-python` 启动的子进程继承。如果插件脚本在其中调用另一个 Python 的 pip，约束也会作用于它。现有插件的安装代码都用 `sys.executable`，不受影响。
+- `PIP_CONSTRAINT` 会被 `codez-python` 启动的子进程继承。如果插件脚本在其中调用另一个 Python 的 pip，约束也会作用于它。现有插件的安装代码都用 `sys.executable`，不受影响。

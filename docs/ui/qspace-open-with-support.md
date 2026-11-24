@@ -4,7 +4,7 @@
 
 ## 背景
 
-ZCode 的“打开方式”菜单不直接枚举 macOS 系统 Open With 列表，而是由 desktop main 进程维护一份跨平台外部 App 候选，再通过 `platform.getInstalledEditors()` 暴露给 UI。macOS 上已安装的 QSpace / QSpace Pro 不在候选列表中，因此不会出现在 workspace header、文件树、消息文件链接和预览打开菜单里。
+Codez 的“打开方式”菜单不直接枚举 macOS 系统 Open With 列表，而是由 desktop main 进程维护一份跨平台外部 App 候选，再通过 `platform.getInstalledEditors()` 暴露给 UI。macOS 上已安装的 QSpace / QSpace Pro 不在候选列表中，因此不会出现在 workspace header、文件树、消息文件链接和预览打开菜单里。
 
 ## 范围
 

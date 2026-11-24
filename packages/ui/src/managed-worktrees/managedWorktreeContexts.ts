@@ -1,7 +1,7 @@
 // worktree 相关的 SessionPane → 行组件通道（docs/git/worktree.md §3.6）。
 // 用 context 而非逐层透传 props：fork 目的地只在桌面主工作区存在，手机与旧壳缺省为不可用。
 import { createContext, useContext } from "react";
-import type { ConversationRowTarget } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationRowTarget } from "@codez/shared/codez-protocol-v4";
 
 /**
  * 分叉目的地。forkToWorktree 为 null 时只保留"在当前目录分叉"的一键行为；

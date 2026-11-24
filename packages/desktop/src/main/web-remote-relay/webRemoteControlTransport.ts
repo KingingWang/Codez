@@ -2,12 +2,12 @@ import { WebSocket, type RawData } from "ws";
 import {
   WebRemoteControlRelayPayloadSerializer,
   type WebRemoteControlPayloadSendResult,
-} from "@zcode/client";
+} from "@codez/client";
 import {
   WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS,
   parseWebRemoteControlAppPayload,
   type WebRemoteControlAppPayload,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   WEB_REMOTE_CONTROL_V2_HEARTBEAT_ACK_TIMEOUT_MS,
   WebRemoteControlV2ConnectionError,
@@ -17,7 +17,7 @@ import {
   parseWebRemoteControlRelayV2IncomingMessage,
   type WebRemoteControlRelayV2IncomingMessage,
   type WebRemoteControlRelayV2OutgoingMessage,
-} from "@zcode/shared/web-remote-relay";
+} from "@codez/shared/web-remote-relay";
 import {
   noteWebRemoteRelayConnectAttempt,
   noteWebRemoteRelayReconnect,

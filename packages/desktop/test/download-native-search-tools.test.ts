@@ -31,7 +31,7 @@ import {
 const temporaryDirectories: string[] = [];
 
 function createTemporaryDirectory(): string {
-  const directory = mkdtempSync(join(tmpdir(), "zcode-native-search-download-test-"));
+  const directory = mkdtempSync(join(tmpdir(), "codez-native-search-download-test-"));
   temporaryDirectories.push(directory);
   return directory;
 }
@@ -92,7 +92,7 @@ describe("downloadNativeSearchTools", () => {
     ).toBe(true);
     expect(
       shouldUsePrebuiltDownloadProxy(
-        "http://intranet.example.invalid:12345/zcode/deps/native-search-tools/rg.tar.gz",
+        "http://intranet.example.invalid:12345/codez/deps/native-search-tools/rg.tar.gz",
       ),
     ).toBe(false);
     expect(shouldUsePrebuiltDownloadProxy("https://github.com.example.test/rg.tar.gz")).toBe(false);

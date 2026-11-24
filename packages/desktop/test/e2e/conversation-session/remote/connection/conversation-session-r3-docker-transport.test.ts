@@ -13,8 +13,8 @@ import { execFile } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
-import { TID_DOCKER_CONTAINER_INPUT, TID_REMOTE_KIND_DOCKER } from "@zcode/shared/test-ids";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
+import { TID_DOCKER_CONTAINER_INPUT, TID_REMOTE_KIND_DOCKER } from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom } from "#e2e/helpers/desktop-app";
 import {
   selectUpstreamProviderModelById,
@@ -46,7 +46,7 @@ import {
 
 const CASE_MARKER = "E2E_R3_DOCKER_TRANSPORT";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-docker-transport",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-docker-transport",
 );
 const run = promisify(execFile);
 
@@ -61,7 +61,7 @@ async function dockerSh(container: string, command: string): Promise<string> {
 
 async function connectDockerTargetUntilReady(
   container: string,
-  workspacePath = process.env.ZCODE_E2E_SSH_WORKSPACE_PATH,
+  workspacePath = process.env.CODEZ_E2E_SSH_WORKSPACE_PATH,
 ): Promise<{ identity: string; remoteSessionId: string; kind: string | null }> {
   // Composer 的旧远程入口已退役；与 SSH 一样从项目创建进入 transport 选择。
   await openRemoteProjectSelection();
@@ -98,8 +98,8 @@ describe(`${CASE_MARKER}: Desktop Docker transport 首装、首发与关闭重�
 
   it("R3A-TRN-01-UID 数字 UID 无 passwd 条目仍可首装并打开 Docker 项目", async function () {
     this.timeout(15 * 60_000);
-    const container = `zcode-e2e-numeric-uid-${process.pid}`;
-    const fixtureHome = "/tmp/zcode-uid-home";
+    const container = `codez-e2e-numeric-uid-${process.pid}`;
+    const fixtureHome = "/tmp/codez-uid-home";
     const workspacePath = `${fixtureHome}/project`;
     try {
       await run("docker", [
@@ -147,7 +147,7 @@ describe(`${CASE_MARKER}: Desktop Docker transport 首装、首发与关闭重�
         "-e",
         `const { readFile } = require("node:fs/promises");
         async function main() {
-          const root = process.env.HOME + "/.zcode/server/run/";
+          const root = process.env.HOME + "/.codez/server/run/";
           const status = JSON.parse(await readFile(root + "status.json", "utf8"));
           const token = (await readFile(root + "ingress-token", "utf8")).trim();
           const response = await fetch("http://127.0.0.1:" + status.port + "/api/server-info", {
@@ -181,16 +181,16 @@ describe(`${CASE_MARKER}: Desktop Docker transport 首装、首发与关闭重�
 
   it("R3A-TRN-01 独立 Docker 容器：Docker 入口安装、Provisioning、真实首发、断开后重连", async function () {
     this.timeout(30 * 60_000);
-    // 本机 runner 已把同一 SSH / Docker 目标写入 ZCODE_E2E_SSH_CONTAINER；旧用例只读服务器队列
+    // 本机 runner 已把同一 SSH / Docker 目标写入 CODEZ_E2E_SSH_CONTAINER；旧用例只读服务器队列
     // 的别名，尚未执行产品操作就报缺变量。保留显式目标优先，否则复用 runner 创建的隔离容器。
     const container =
-      process.env.R3_DOCKER_TARGET?.trim() || process.env.ZCODE_E2E_SSH_CONTAINER?.trim();
+      process.env.R3_DOCKER_TARGET?.trim() || process.env.CODEZ_E2E_SSH_CONTAINER?.trim();
     if (!container) throw new Error(`${CASE_MARKER}: 需设置 R3_DOCKER_TARGET`);
     facts.container = container;
     facts.containerUser = (
       await dockerSh(
         container,
-        "id -un; test -e ~/.zcode/server/current.json && echo installed || echo fresh",
+        "id -un; test -e ~/.codez/server/current.json && echo installed || echo fresh",
       )
     ).trim();
     await prepareV4ConversationE2E({ skipProvider: true });
@@ -211,7 +211,7 @@ describe(`${CASE_MARKER}: Desktop Docker transport 首装、首发与关闭重�
     // 且每段 grep 兜底 || true，保证命令 exit 0 时 stdout 不被丢弃。
     const installState = await dockerSh(
       container,
-      'grep -o \'"archiveSha256": *"[0-9a-f]*"\' ~/.zcode/server/current.json || true; cat ~/.zcode/server/run/status.json | tr -d "\\n "; echo; grep -o "\\"providerName\\": *\\"[^\\"]*\\"" ~/.zcode/v2/provider_config.json || true',
+      'grep -o \'"archiveSha256": *"[0-9a-f]*"\' ~/.codez/server/current.json || true; cat ~/.codez/server/run/status.json | tr -d "\\n "; echo; grep -o "\\"providerName\\": *\\"[^\\"]*\\"" ~/.codez/v2/provider_config.json || true',
     );
     facts.remoteAfterConnect = installState.split("\n").filter(Boolean).slice(0, 8);
     expect(installState).toContain("archiveSha256");
@@ -263,7 +263,7 @@ describe(`${CASE_MARKER}: Desktop Docker transport 首装、首发与关闭重�
     expect(await countUpstreamRequests(requestMatch, { afterIndex: replayBefore - 1 })).toBe(1);
     const remoteRequests = await dockerSh(
       container,
-      'F=$(ls -t ~/.zcode/cli/log/*.jsonl | head -n1); grep -c "model.network.completed" "$F" || true; grep -o "\\"baseURL\\":\\"[^\\"]*\\"" "$F" | sort | uniq -c',
+      'F=$(ls -t ~/.codez/cli/log/*.jsonl | head -n1); grep -c "model.network.completed" "$F" || true; grep -o "\\"baseURL\\":\\"[^\\"]*\\"" "$F" | sort | uniq -c',
     );
     facts.remoteModelNetwork = remoteRequests.trim().split("\n");
     expect(remoteRequests).toContain(provider.tunnel.baseURL);
@@ -276,7 +276,7 @@ describe(`${CASE_MARKER}: Desktop Docker transport 首装、首发与关闭重�
 
     const daemonAfterDisconnect = await dockerSh(
       container,
-      'cat ~/.zcode/server/run/status.json | tr -d "\\n " | cut -c1-120',
+      'cat ~/.codez/server/run/status.json | tr -d "\\n " | cut -c1-120',
     );
     expect(daemonAfterDisconnect).toContain('"state":"ready"');
     await reconnectRemoteProject(ready.identity, CASE_MARKER);

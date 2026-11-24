@@ -1,6 +1,6 @@
 // 受管 worktree 服务的注入端口（docs/git/worktree.md §5、§6）：git、任务行、会话命令、终端查询、
 // 删除租约都经这里注入，由 node.ts 装配。
-import type { CommandAck, CommandEnvelope, CommandKey } from "@zcode/shared/zcode-protocol-v4";
+import type { CommandAck, CommandEnvelope, CommandKey } from "@codez/shared/codez-protocol-v4";
 import type { GitWorktreeRepo } from "#src/git/managed-worktree/contract.js";
 import type { WorktreeRemovalGate } from "#src/managed-worktree-tasks/removal-gate.js";
 import type { ProjectRepositoryContract } from "#src/project-storage/contract.js";

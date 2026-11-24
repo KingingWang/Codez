@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
-  title: ZCode Release Platform API
+  title: Codez Release Platform API
   version: 1.0.0
-  description: Candidate/build/approval/publication contract for the ZCode packaging platform.
+  description: Candidate/build/approval/publication contract for the Codez packaging platform.
 servers:
   - url: https://packaging.example.internal/v1
 security:

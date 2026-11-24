@@ -30,8 +30,8 @@ Read/Search/Browser/MCP 等其他工具未统一简化。手动压缩措辞保�
 
 ```text
 设置页 / 头像菜单
-    -> ZCodeStore.setInterfaceMode
-        -> localStorage: zcode-interface-mode
+    -> CodezStore.setInterfaceMode
+        -> localStorage: codez-interface-mode
         -> state:interfaceMode 广播 -> 其他窗口 setter（抑制回声）
         -> 共享 UI 的展示 / 新建入口
 
@@ -44,7 +44,7 @@ CLI/runtime -> 原始事件与任务状态（模式不参与）
 - Desktop 与 Web 共用 UI；Desktop 的偏好通过现有广播同步，Web 可使用现有 no-op 广播。不会引入新的服务端偏好或任务配置。
 - workspace 身份仍使用 `workspaceIdentity?.trim() || workspacePath`。模式切换不改变远程连接、owner 或任务作用域。
 - Desktop continuous 与手机 Web replayable 链路保持原有边界，不新增恢复消息或 runtime 状态。
-- 独立 Dev 实例设置服务遵循显式 `ZCODE_DESKTOP_HOME_DIR`；未设置时保留 HOME / USERPROFILE / homedir 回退，避免外观操作写到其他实例。
+- 独立 Dev 实例设置服务遵循显式 `CODEZ_DESKTOP_HOME_DIR`；未设置时保留 HOME / USERPROFILE / homedir 回退，避免外观操作写到其他实例。
 
 ## 提交前覆盖
 

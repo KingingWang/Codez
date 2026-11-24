@@ -31,13 +31,13 @@ async function requestCapture(webContentsId: number): Promise<CaptureResult> {
   return (await browser.execute(async (id) => {
     const bridge = (
       window as unknown as {
-        zcode: {
+        codez: {
           captureBrowserGuestPage(payload: {
             webContentsId: number;
           }): Promise<{ success: boolean; error?: string }>;
         };
       }
-    ).zcode;
+    ).codez;
     try {
       const result = await bridge.captureBrowserGuestPage({ webContentsId: id });
       return { success: result.success, code: result.error ?? "ok" };

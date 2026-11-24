@@ -4,14 +4,14 @@
 
 **Goal:** 让 Plan mode 下的 MCP 工具跳过普通 readonly 判定，但仍保留 MCP 身份识别、显式 destructive 拦截、项目 deny/ask 规则和现有非 MCP 写保护。
 
-**Architecture:** 不改 MCP registry、metadata、protocol 或 UI。MCP 工具继续由 `apps/zcode-cli/packages/core/src/mcp/index.ts` 注册，权限层通过 `permission.permission === "mcp"` 形成的 `capability.permissionName` 识别 MCP；Plan mode 只新增一个 MCP 专用 permission 分支，避免把普通 unknown tool 或伪 `mcp__` 名称一起放过。
+**Architecture:** 不改 MCP registry、metadata、protocol 或 UI。MCP 工具继续由 `apps/codez-cli/packages/core/src/mcp/index.ts` 注册，权限层通过 `permission.permission === "mcp"` 形成的 `capability.permissionName` 识别 MCP；Plan mode 只新增一个 MCP 专用 permission 分支，避免把普通 unknown tool 或伪 `mcp__` 名称一起放过。
 
-**Tech Stack:** TypeScript, Vitest, `@zcode/core` permission service, MCP bridge, ZCode runtime tool loop.
+**Tech Stack:** TypeScript, Vitest, `@codez/core` permission service, MCP bridge, Codez runtime tool loop.
 
 ## Global Constraints
 
 - 先更新 docs spec，再改测试和代码。
-- 不修改 `packages/shared/src/zcode-protocol/index.ts`，因为本次不新增协议字段。
+- 不修改 `packages/shared/src/codez-protocol/index.ts`，因为本次不新增协议字段。
 - 不修改 MCP registry / metadata / model-visible tool contract。
 - 不修改 UI，不涉及 `packages/ui` 和 `DESIGN.md`。
 - 不靠 `toolName.startsWith("mcp__")` 作为主判断；MCP 身份以 `permission.permission === "mcp"` 为准。
@@ -29,21 +29,21 @@
 
 - Modify: `docs/plan-mode-approval-boundary.md`
   - 记录 Plan mode 的 MCP 例外语义，明确“跳过 readonly 判定”不等于“跳过 destructive / project rules”。
-- Modify: `apps/zcode-cli/packages/core/src/permission/service.ts`
+- Modify: `apps/codez-cli/packages/core/src/permission/service.ts`
   - 在 `PermissionService.checkPlanMode()` 中增加 MCP 专用分支。
   - 新增私有 helper，集中判断 `capability.permissionName === "mcp"`。
-- Modify: `apps/zcode-cli/packages/core/tests/permission-service.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/permission-service.test.ts`
   - 覆盖 permission service 层的 MCP plan-mode 策略。
-- Modify: `apps/zcode-cli/packages/core/tests/mcp-runtime.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/mcp-runtime.test.ts`
   - 覆盖真实 runtime 中 MCP tool 在 Plan mode 下能被执行，且不走 permission broker。
 
 **不改文件：**
 
-- `apps/zcode-cli/packages/core/src/mcp/index.ts`
+- `apps/codez-cli/packages/core/src/mcp/index.ts`
   - MCP 仍按 descriptor annotation 映射 `readOnly` / `destructive`。
-- `apps/zcode-cli/packages/core/src/tool/executor/permission-flow.ts`
+- `apps/codez-cli/packages/core/src/tool/executor/permission-flow.ts`
   - 已经会把 `entry.permission.permission` 合并为 `PermissionToolCapability.permission.permission`。
-- `packages/shared/src/zcode-protocol/index.ts`
+- `packages/shared/src/codez-protocol/index.ts`
   - 没有协议变更。
 - `packages/ui/**`
   - 没有 UI 交互变更。
@@ -114,7 +114,7 @@ docs/plan-mode-approval-boundary.md:<line>:- 显式声明 `destructiveHint: true
 
 **Files:**
 
-- Modify: `apps/zcode-cli/packages/core/tests/permission-service.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/permission-service.test.ts`
 
 **Interfaces:**
 
@@ -299,7 +299,7 @@ const fakeMcpNameCapability: PermissionToolCapability = {
 Run:
 
 ```sh
-pnpm --filter @zcode/core exec vitest run tests/permission-service.test.ts
+pnpm --filter @codez/core exec vitest run tests/permission-service.test.ts
 ```
 
 Expected before implementation:
@@ -318,7 +318,7 @@ expected ... ruleId ... "mode.plan.mcp"
 
 **Files:**
 
-- Modify: `apps/zcode-cli/packages/core/src/permission/service.ts`
+- Modify: `apps/codez-cli/packages/core/src/permission/service.ts`
 
 **Interfaces:**
 
@@ -390,7 +390,7 @@ expected ... ruleId ... "mode.plan.mcp"
 Run:
 
 ```sh
-pnpm --filter @zcode/core exec vitest run tests/permission-service.test.ts
+pnpm --filter @codez/core exec vitest run tests/permission-service.test.ts
 ```
 
 Expected:
@@ -407,7 +407,7 @@ Test Files  1 passed (1)
 
 **Files:**
 
-- Modify: `apps/zcode-cli/packages/core/tests/mcp-tool-bridge.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/mcp-tool-bridge.test.ts`
 
 **Interfaces:**
 
@@ -456,7 +456,7 @@ Test Files  1 passed (1)
 Run:
 
 ```sh
-pnpm --filter @zcode/core exec vitest run tests/mcp-tool-bridge.test.ts
+pnpm --filter @codez/core exec vitest run tests/mcp-tool-bridge.test.ts
 ```
 
 Expected:
@@ -469,7 +469,7 @@ Test Files  1 passed (1)
 
 **Files:**
 
-- Modify: `apps/zcode-cli/packages/core/tests/mcp-runtime.test.ts`
+- Modify: `apps/codez-cli/packages/core/tests/mcp-runtime.test.ts`
 
 **Interfaces:**
 
@@ -498,7 +498,7 @@ import {
   type PermissionBrokerPort,
   type SessionEventStorePort,
   type SessionId,
-} from "@zcode/contracts";
+} from "@codez/contracts";
 ```
 
 - [ ] **Step 2: 增加 Plan mode MCP 执行测试**
@@ -743,7 +743,7 @@ import {
 Run:
 
 ```sh
-pnpm --filter @zcode/core exec vitest run tests/mcp-runtime.test.ts
+pnpm --filter @codez/core exec vitest run tests/mcp-runtime.test.ts
 ```
 
 Expected:
@@ -772,7 +772,7 @@ Test Files  1 passed (1)
 Run:
 
 ```sh
-pnpm --filter @zcode/core exec vitest run \
+pnpm --filter @codez/core exec vitest run \
   tests/permission-service.test.ts \
   tests/mcp-tool-bridge.test.ts \
   tests/mcp-runtime.test.ts
@@ -789,7 +789,7 @@ Test Files  3 passed (3)
 Run:
 
 ```sh
-pnpm --filter @zcode/core exec vitest run tests/runtime-tool-loop.test.ts -t "continues later tool calls after a blocking permission denial"
+pnpm --filter @codez/core exec vitest run tests/runtime-tool-loop.test.ts -t "continues later tool calls after a blocking permission denial"
 ```
 
 Expected:
@@ -808,13 +808,13 @@ Purpose:
 Run:
 
 ```sh
-pnpm --filter @zcode/core typecheck
+pnpm --filter @codez/core typecheck
 ```
 
 Expected:
 
 ```text
-No TypeScript errors from @zcode/core
+No TypeScript errors from @codez/core
 ```
 
 - [ ] **Step 4: 跑根 lint**
@@ -859,10 +859,10 @@ If root typecheck still fails on known unrelated desktop e2e Istanbul declaratio
 
 - Review:
   - `docs/plan-mode-approval-boundary.md`
-  - `apps/zcode-cli/packages/core/src/permission/service.ts`
-  - `apps/zcode-cli/packages/core/tests/permission-service.test.ts`
-  - `apps/zcode-cli/packages/core/tests/mcp-tool-bridge.test.ts`
-  - `apps/zcode-cli/packages/core/tests/mcp-runtime.test.ts`
+  - `apps/codez-cli/packages/core/src/permission/service.ts`
+  - `apps/codez-cli/packages/core/tests/permission-service.test.ts`
+  - `apps/codez-cli/packages/core/tests/mcp-tool-bridge.test.ts`
+  - `apps/codez-cli/packages/core/tests/mcp-runtime.test.ts`
 
 **Interfaces:**
 
@@ -881,10 +881,10 @@ Expected files only:
 
 ```text
 docs/plan-mode-approval-boundary.md
-apps/zcode-cli/packages/core/src/permission/service.ts
-apps/zcode-cli/packages/core/tests/permission-service.test.ts
-apps/zcode-cli/packages/core/tests/mcp-tool-bridge.test.ts
-apps/zcode-cli/packages/core/tests/mcp-runtime.test.ts
+apps/codez-cli/packages/core/src/permission/service.ts
+apps/codez-cli/packages/core/tests/permission-service.test.ts
+apps/codez-cli/packages/core/tests/mcp-tool-bridge.test.ts
+apps/codez-cli/packages/core/tests/mcp-runtime.test.ts
 docs/superpowers/plans/2026-07-07-plan-mode-mcp-permission.md
 ```
 
@@ -893,7 +893,7 @@ docs/superpowers/plans/2026-07-07-plan-mode-mcp-permission.md
 Run:
 
 ```sh
-rg -n "startsWith\\(\\\"mcp__\\\"\\)|mode\\.plan\\.mcp|permissionName === \\\"mcp\\\"" apps/zcode-cli/packages/core/src/permission apps/zcode-cli/packages/core/tests
+rg -n "startsWith\\(\\\"mcp__\\\"\\)|mode\\.plan\\.mcp|permissionName === \\\"mcp\\\"" apps/codez-cli/packages/core/src/permission apps/codez-cli/packages/core/tests
 ```
 
 Expected:
@@ -907,7 +907,7 @@ Expected:
 Run:
 
 ```sh
-rg -n "destructive MCP|destructiveHint|mode.plan.nonReadOnly|mode.plan.mcp" apps/zcode-cli/packages/core/tests docs/plan-mode-approval-boundary.md
+rg -n "destructive MCP|destructiveHint|mode.plan.nonReadOnly|mode.plan.mcp" apps/codez-cli/packages/core/tests docs/plan-mode-approval-boundary.md
 ```
 
 Expected:
@@ -935,17 +935,17 @@ Expected:
 建议 commit message:
 
 ```text
-fix(zcode-cli): allow non-destructive mcp tools in plan mode
+fix(codez-cli): allow non-destructive mcp tools in plan mode
 ```
 
 提交前必须重新运行：
 
 ```sh
-pnpm --filter @zcode/core exec vitest run \
+pnpm --filter @codez/core exec vitest run \
   tests/permission-service.test.ts \
   tests/mcp-tool-bridge.test.ts \
   tests/mcp-runtime.test.ts
-pnpm --filter @zcode/core typecheck
+pnpm --filter @codez/core typecheck
 pnpm lint
 ```
 
@@ -954,12 +954,12 @@ pnpm lint
 ```sh
 git add \
   docs/plan-mode-approval-boundary.md \
-  apps/zcode-cli/packages/core/src/permission/service.ts \
-  apps/zcode-cli/packages/core/tests/permission-service.test.ts \
-  apps/zcode-cli/packages/core/tests/mcp-tool-bridge.test.ts \
-  apps/zcode-cli/packages/core/tests/mcp-runtime.test.ts \
+  apps/codez-cli/packages/core/src/permission/service.ts \
+  apps/codez-cli/packages/core/tests/permission-service.test.ts \
+  apps/codez-cli/packages/core/tests/mcp-tool-bridge.test.ts \
+  apps/codez-cli/packages/core/tests/mcp-runtime.test.ts \
   docs/superpowers/plans/2026-07-07-plan-mode-mcp-permission.md
-git commit -m "fix(zcode-cli): allow non-destructive mcp tools in plan mode"
+git commit -m "fix(codez-cli): allow non-destructive mcp tools in plan mode"
 ```
 
 ---

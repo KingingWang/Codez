@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { TID_TASK_SETTINGS_BUTTON, TID_SETTINGS_SECTION_NAV, testId } from "@zcode/shared/test-ids";
+import { TID_TASK_SETTINGS_BUTTON, TID_SETTINGS_SECTION_NAV, testId } from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom } from "#e2e/helpers/desktop-app";
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
@@ -25,7 +25,7 @@ describe("E2E_PROJECT_DEVICE_VISIBILITY", () => {
     await $(toggleSelector).waitForDisplayed();
     expect(await $(toggleSelector).getAttribute("aria-checked")).toBe("true");
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "device-name-hidden.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "device-name-hidden.png"),
     );
     await $(toggleSelector).click();
     expect(await $(toggleSelector).getAttribute("aria-checked")).toBe("false");

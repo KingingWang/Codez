@@ -1,4 +1,4 @@
-import { ZCODE_AGENT_PROVIDER } from "@zcode/shared";
+import { CODEZ_AGENT_PROVIDER } from "@codez/shared";
 import { useSubagents } from "@/hooks/useSubagents.js";
 import { SUBAGENT_WORKFLOW_COLOR } from "@/lib/subagentColors.js";
 import {
@@ -607,7 +607,7 @@ function SubagentTabAvatar({
 }: {
   tab: Extract<WorkspaceSidePaneTab, { type: "subagent-session" }>;
 }) {
-  const { agents } = useSubagents(tab.workspacePath, ZCODE_AGENT_PROVIDER, tab.workspaceIdentity);
+  const { agents } = useSubagents(tab.workspacePath, CODEZ_AGENT_PROVIDER, tab.workspaceIdentity);
   const key = tab.subagentType.trim().toLowerCase();
   const color = agents.find(
     (agent) => agent.name.trim().toLowerCase() === key || agent.id.trim().toLowerCase() === key,

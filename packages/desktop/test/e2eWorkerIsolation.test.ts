@@ -51,10 +51,10 @@ describe("desktop e2e worker isolation", () => {
       ],
       undefined,
     );
-    expect(env.ZCODE_MODEL_RETRY_MAX_RETRIES).toBe("0");
+    expect(env.CODEZ_MODEL_RETRY_MAX_RETRIES).toBe("0");
 
     applyE2EWorkerModelRetryEnv(env, ["./test/e2e/conversation-session/smoke.test.ts"], undefined);
-    expect(env.ZCODE_MODEL_RETRY_MAX_RETRIES).toBeUndefined();
+    expect(env.CODEZ_MODEL_RETRY_MAX_RETRIES).toBeUndefined();
 
     applyE2EWorkerModelRetryEnv(
       env,
@@ -63,7 +63,7 @@ describe("desktop e2e worker isolation", () => {
       ],
       "4",
     );
-    expect(env.ZCODE_MODEL_RETRY_MAX_RETRIES).toBe("0");
+    expect(env.CODEZ_MODEL_RETRY_MAX_RETRIES).toBe("0");
 
     applyE2EWorkerModelRetryEnv(
       env,
@@ -72,16 +72,16 @@ describe("desktop e2e worker isolation", () => {
       ],
       "4",
     );
-    expect(env.ZCODE_MODEL_RETRY_MAX_RETRIES).toBe("0");
+    expect(env.CODEZ_MODEL_RETRY_MAX_RETRIES).toBe("0");
 
     applyE2EWorkerModelRetryEnv(env, ["./test/e2e/conversation-session/smoke.test.ts"], "4");
-    expect(env.ZCODE_MODEL_RETRY_MAX_RETRIES).toBe("4");
+    expect(env.CODEZ_MODEL_RETRY_MAX_RETRIES).toBe("4");
   });
 
   it("routes BG25 and I55 through replay proxy while keeping BG26 direct", () => {
     const env: Record<string, string | undefined> = {
-      ZCODE_HTTP_PROXY: "http://configured-proxy:8080",
-      ZCODE_NO_PROXY: "localhost",
+      CODEZ_HTTP_PROXY: "http://configured-proxy:8080",
+      CODEZ_NO_PROXY: "localhost",
     };
 
     applyE2EWorkerReplayProxyEnv(
@@ -95,8 +95,8 @@ describe("desktop e2e worker isolation", () => {
         noProxy: "localhost",
       },
     );
-    expect(env.ZCODE_HTTP_PROXY).toBe("http://configured-proxy:8080");
-    expect(env.ZCODE_NO_PROXY).toBe("localhost");
+    expect(env.CODEZ_HTTP_PROXY).toBe("http://configured-proxy:8080");
+    expect(env.CODEZ_NO_PROXY).toBe("localhost");
 
     applyE2EWorkerReplayProxyEnv(
       env,
@@ -109,8 +109,8 @@ describe("desktop e2e worker isolation", () => {
         noProxy: "localhost",
       },
     );
-    expect(env.ZCODE_HTTP_PROXY).toBe("http://127.0.0.1:43126");
-    expect(env.ZCODE_NO_PROXY).toBe("");
+    expect(env.CODEZ_HTTP_PROXY).toBe("http://127.0.0.1:43126");
+    expect(env.CODEZ_NO_PROXY).toBe("");
 
     applyE2EWorkerReplayProxyEnv(
       env,
@@ -123,8 +123,8 @@ describe("desktop e2e worker isolation", () => {
         noProxy: "localhost",
       },
     );
-    expect(env.ZCODE_HTTP_PROXY).toBe("http://127.0.0.1:43125");
-    expect(env.ZCODE_NO_PROXY).toBe("");
+    expect(env.CODEZ_HTTP_PROXY).toBe("http://127.0.0.1:43125");
+    expect(env.CODEZ_NO_PROXY).toBe("");
 
     applyE2EWorkerReplayProxyEnv(
       env,
@@ -135,8 +135,8 @@ describe("desktop e2e worker isolation", () => {
         noProxy: "localhost",
       },
     );
-    expect(env.ZCODE_HTTP_PROXY).toBe("http://configured-proxy:8080");
-    expect(env.ZCODE_NO_PROXY).toBe("localhost");
+    expect(env.CODEZ_HTTP_PROXY).toBe("http://configured-proxy:8080");
+    expect(env.CODEZ_NO_PROXY).toBe("localhost");
 
     applyE2EWorkerReplayProxyEnv(
       env,
@@ -144,8 +144,8 @@ describe("desktop e2e worker isolation", () => {
       "http://127.0.0.1:43124",
       { httpProxy: undefined, noProxy: undefined },
     );
-    expect(env.ZCODE_HTTP_PROXY).toBeUndefined();
-    expect(env.ZCODE_NO_PROXY).toBeUndefined();
+    expect(env.CODEZ_HTTP_PROXY).toBeUndefined();
+    expect(env.CODEZ_NO_PROXY).toBeUndefined();
   });
 
   it("shortens stream idle recovery only for BG25 and I55 replay workers", () => {
@@ -170,7 +170,7 @@ describe("desktop e2e worker isolation", () => {
   });
 
   it("assigns each worker a separate Chromium profile and replaces stale profile args", () => {
-    const rootDir = "/tmp/zcode-e2e/chromium-profiles";
+    const rootDir = "/tmp/codez-e2e/chromium-profiles";
     const firstProfile = resolveE2EWorkerChromiumProfileDir(rootDir, "0-1");
     const secondProfile = resolveE2EWorkerChromiumProfileDir(rootDir, "0/2");
 

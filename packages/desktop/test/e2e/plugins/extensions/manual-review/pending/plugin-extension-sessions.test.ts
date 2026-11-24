@@ -6,10 +6,10 @@
 // - e2e-ext-sessions-late：带代码的扩展，初始禁用；已有扩展持有会话权限时，启用它要先确认。
 // 正式会话用 replay 创建：提示词带 upstream-e2e-ok，命中 provider-basic.json 的 upstream-provider-basic。
 // 运行时证据：Main 日志（[extensions] / [extension-slots] / fixture 的 E2E_SESSIONS_*）、隔离 HOME 的
-// ~/.zcode/v2/extensions/grants.json 与 audit/*.jsonl、启动页与详情页 DOM。
+// ~/.codez/v2/extensions/grants.json 与 audit/*.jsonl、启动页与详情页 DOM。
 import { cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { EXTENSION_SESSION_CONSENT_REVISION } from "@zcode/shared/extension-host";
+import { EXTENSION_SESSION_CONSENT_REVISION } from "@codez/shared/extension-host";
 import {
   TID_CONFIRM_DIALOG_CONFIRM,
   TID_EXTENSION_ENABLE_CONFIRM_DIALOG,
@@ -19,7 +19,7 @@ import {
   TID_EXTENSION_PERMISSIONS_REVOKE,
   TID_SETTINGS_BACK_BUTTON,
   TID_SIDE_PANE_EXTENSION_GRANT,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -76,13 +76,13 @@ async function seedFixtures(): Promise<void> {
   for (const name of PLUGINS) {
     await cp(join(FIXTURE_ROOT, name), join(target, name), { recursive: true, force: true });
   }
-  const configPath = join(getE2EAppDataPaths().homeDir, ".zcode", "cli", "config.json");
+  const configPath = join(getE2EAppDataPaths().homeDir, ".codez", "cli", "config.json");
   const config = JSON.parse(await readFile(configPath, "utf8").catch(() => "{}")) as Record<
     string,
     unknown
   >;
   const plugins = (config.plugins ?? {}) as Record<string, unknown>;
-  await mkdir(join(getE2EAppDataPaths().homeDir, ".zcode", "cli"), { recursive: true });
+  await mkdir(join(getE2EAppDataPaths().homeDir, ".codez", "cli"), { recursive: true });
   await writeFile(
     configPath,
     JSON.stringify(
@@ -329,7 +329,7 @@ describe("PLM-EXT-P3A 扩展的会话读权限、授权与审计", () => {
   after(async () => {
     evidence.screenshots = screenshots;
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR ?? process.cwd(), "plm-ext-p3a-evidence.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR ?? process.cwd(), "plm-ext-p3a-evidence.json"),
       JSON.stringify(evidence, null, 2),
     ).catch(() => undefined);
     await clearAppData();

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef } from "react";
-import type { ISourceServerManagementService } from "@zcode/services";
-import type { RemoteTarget, SourceServerManagementSnapshot } from "@zcode/shared";
+import type { ISourceServerManagementService } from "@codez/services";
+import type { RemoteTarget, SourceServerManagementSnapshot } from "@codez/shared";
 import { dismissToast, toast, type ToastOptions } from "@/components/ui/toast.js";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { findSourceServerUpgradeProfileId } from "@/lib/remoteConnectionWizard.js";
 import {
   getSourceServerForceUpdateDescription,
@@ -280,7 +280,7 @@ export function useSourceServerUpdateNotifications(options: {
     connectionTargetRef.current = target;
     controllerRef.current?.refresh();
   }, []);
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const confirmDialog = useConfirmDialog();
   const openSettingsTab = useTabStore((state) => state.openSettingsTab);
   useEffect(() => {

@@ -14,7 +14,7 @@ session 标题通过 `useOptionalProjectSelectionDirectory` 读取同一 owner �
 
 桌面和手机共用组件；沿用现有 task 行操作、shared-host attachment、continuous/replayable 传输。CLI 不接收项目 ID。
 
-SCT03 显式 App 导航通过桌面平台注入的单窗口请求调用 `useProjectTaskNavigation`，复用任务行的同一导航 owner 和实际查看/未读规则。返回 `opened` 必须观察到原任务选择入口已把精确 workspace identity + task 设为活动任务；发送事件、连接完成或 Controller open 校验均不代表导航完成。取消、卸载、请求被替换或 owner 拒绝选择返回 `unavailable`，迟到远端结果不得重新选择。手机不注册桌面导航处理器；后台 read/send 不调用此入口。目标必须已出现在当前窗口目录投影；尚未水合或归档过滤导致缺行时明确返回 `project.task-not-found`，不创建连接、重试导航或将未知目标冒充打开。见 `docs/architecture/zcode-app-control-design.md`。
+SCT03 显式 App 导航通过桌面平台注入的单窗口请求调用 `useProjectTaskNavigation`，复用任务行的同一导航 owner 和实际查看/未读规则。返回 `opened` 必须观察到原任务选择入口已把精确 workspace identity + task 设为活动任务；发送事件、连接完成或 Controller open 校验均不代表导航完成。取消、卸载、请求被替换或 owner 拒绝选择返回 `unavailable`，迟到远端结果不得重新选择。手机不注册桌面导航处理器；后台 read/send 不调用此入口。目标必须已出现在当前窗口目录投影；尚未水合或归档过滤导致缺行时明确返回 `project.task-not-found`，不创建连接、重试导航或将未知目标冒充打开。见 `docs/architecture/codez-app-control-design.md`。
 
 composer 的“创建项目”复用侧栏 ProjectCreation：当前为远程会话时默认该设备，其余默认本地。项目服务可用即可创建，不能沿用打开原生文件夹的能力门禁。保存只刷新目录，取消不写入，两者不切换项目/工作区或改写聊天草稿。独立设备连接后的创建继续受当前聊天返回资格约束，普通创建不继承该设备。
 

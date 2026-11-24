@@ -1,6 +1,6 @@
 import { realpath } from "node:fs/promises";
 import { basename, win32 } from "node:path";
-import type { Locale } from "@zcode/shared";
+import type { Locale } from "@codez/shared";
 import { BrowserWindow, dialog } from "electron";
 
 /**
@@ -147,7 +147,7 @@ export function createExecutableFileOpenConfirmer(
     const messages = MESSAGES[getLocale()];
     const options = {
       type: "warning" as const,
-      title: "ZCode",
+      title: "Codez",
       message: messages.message,
       detail: messages.detail(win32.basename(basename(path))),
       buttons: [messages.cancel, messages.open],

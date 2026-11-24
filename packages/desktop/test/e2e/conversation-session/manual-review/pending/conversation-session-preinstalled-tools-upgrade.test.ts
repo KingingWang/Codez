@@ -5,7 +5,7 @@ import { join } from "node:path";
 import {
   preinstalledToolsCatalogSchema,
   type PreinstalledToolsState,
-} from "@zcode/shared/preinstalled-tools";
+} from "@codez/shared/preinstalled-tools";
 import { getLatestUpstreamToolResultByToolCallId } from "#e2e/helpers/conversation-session-network";
 import { reloadElectronSessionPreservingBrowserProfile } from "#e2e/helpers/e2e-electron-reload";
 import { resolveE2ERuntimePath, resolveE2EStorageRoot } from "#e2e/helpers/e2e-runtime-paths";
@@ -25,15 +25,15 @@ import {
   waitForV4ConversationState,
 } from "#e2e/helpers/v4-conversation";
 
-const fixtureUrl = () => process.env.ZCODE_E2E_PREINSTALL_FIXTURE_URL!;
+const fixtureUrl = () => process.env.CODEZ_E2E_PREINSTALL_FIXTURE_URL!;
 const card = (toolId = "libreoffice") => `[data-tool-id="${toolId}"]`;
 const state = async () =>
   browser.execute(async () =>
     (
       window as typeof window & {
-        zcode: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
+        codez: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
       }
-    ).zcode.getPreinstalledToolsState(),
+    ).codez.getPreinstalledToolsState(),
   );
 const http = async () =>
   (await fetch(`${fixtureUrl()}/status`)).json() as Promise<{
@@ -78,7 +78,7 @@ async function captureUpgradePresentation() {
       });
       expect(fits).toBe(true);
       await browser.saveScreenshot(
-        `${process.env.ZCODE_E2E_ARTIFACT_DIR}/upgrade-${locale}-${theme}.png`,
+        `${process.env.CODEZ_E2E_ARTIFACT_DIR}/upgrade-${locale}-${theme}.png`,
       );
     }
   }
@@ -155,7 +155,7 @@ describe("预装工具升级与启动清理（待审核）", () => {
     expect(
       (await state()).tools.find((tool) => tool.toolId === "libreoffice")?.installed,
     ).toMatchObject({ resourceId: previous.resourceId });
-    const catalogPath = process.env.ZCODE_E2E_PREINSTALLED_TOOLS_CATALOG!;
+    const catalogPath = process.env.CODEZ_E2E_PREINSTALLED_TOOLS_CATALOG!;
     const catalog = preinstalledToolsCatalogSchema.parse(
       JSON.parse(await readFile(catalogPath, "utf8")),
     );
@@ -177,7 +177,7 @@ describe("预装工具升级与启动清理（待审核）", () => {
     expect((await state()).tools.find((tool) => tool.toolId === "libreoffice")?.error).toBe(
       "runtime",
     );
-    const logDir = await browser.electron.execute(() => process.env.ZCODE_E2E_RUNTIME_LOG_DIR!);
+    const logDir = await browser.electron.execute(() => process.env.CODEZ_E2E_RUNTIME_LOG_DIR!);
     let failureDiagnostic: Record<string, unknown> | null = null;
     await browser.waitUntil(
       async () => {
@@ -206,15 +206,15 @@ describe("预装工具升级与启动清理（待审核）", () => {
     );
     expect(await $(card()).getText()).toContain("正在使用版本 26.8.1");
     expect(await $(`${card()} [data-testid="preinstalled-tools-delete"]`).isDisplayed()).toBe(true);
-    const publicEntry = preinstalledEntryPath(join(root, "bin"), "zcode-soffice");
+    const publicEntry = preinstalledEntryPath(join(root, "bin"), "codez-soffice");
     expect(
       (
-        await executePreinstalledEntry(join(root, "bin"), "zcode-soffice", ["--fixture-location"])
+        await executePreinstalledEntry(join(root, "bin"), "codez-soffice", ["--fixture-location"])
       ).stdout.trim(),
     ).toBe(join(previous.installationDir, preinstalledFixtureTarget("libreoffice")));
     expect(JSON.parse(await readFile(recordPath, "utf8")).resourceId).toBe(previous.resourceId);
     await browser.saveScreenshot(
-      `${process.env.ZCODE_E2E_ARTIFACT_DIR}/upgrade-failed-old-ready.png`,
+      `${process.env.CODEZ_E2E_ARTIFACT_DIR}/upgrade-failed-old-ready.png`,
     );
 
     resource.binaryArch = nativeArch;
@@ -250,7 +250,7 @@ describe("预装工具升级与启动清理（待审核）", () => {
     await waitStatus("preparing");
     expect(await $(card()).getText()).toContain("正在使用版本 26.8.1");
     await browser.saveScreenshot(
-      `${process.env.ZCODE_E2E_ARTIFACT_DIR}/upgrade-preparing-old-ready.png`,
+      `${process.env.CODEZ_E2E_ARTIFACT_DIR}/upgrade-preparing-old-ready.png`,
     );
     await browser.keys("Escape");
     await observe("during", previous.installationDir);
@@ -270,14 +270,14 @@ describe("预装工具升级与启动清理（待审核）", () => {
     await writeFile(join(staging, "interrupted.tmp"), "unpublished");
     const workerPid = await browser.electron.execute(
       (electron) =>
-        electron.app.getAppMetrics().find((item) => item.name === "zcode-preinstalled-tools")!.pid,
+        electron.app.getAppMetrics().find((item) => item.name === "codez-preinstalled-tools")!.pid,
     );
     process.kill(workerPid, "SIGKILL");
     await browser.waitUntil(
       async () =>
         (await browser.electron.execute(
           (electron) =>
-            electron.app.getAppMetrics().find((item) => item.name === "zcode-preinstalled-tools")
+            electron.app.getAppMetrics().find((item) => item.name === "codez-preinstalled-tools")
               ?.pid,
         )) !== workerPid,
       { timeout: 30000 },
@@ -334,7 +334,7 @@ describe("预装工具升级与启动清理（待审核）", () => {
     expect(await $(card()).getText()).toContain("当前版本暂未提供此工具");
     expect(await $(card()).getText()).toContain("正在使用版本 26.8.2");
     await browser.saveScreenshot(
-      `${process.env.ZCODE_E2E_ARTIFACT_DIR}/upgrade-installed-without-target.png`,
+      `${process.env.CODEZ_E2E_ARTIFACT_DIR}/upgrade-installed-without-target.png`,
     );
     await $(`${card()} [data-testid="preinstalled-tools-delete"]`).click();
     await $('[data-testid="preinstalled-tools-delete-confirm-accept"]').click();
@@ -344,7 +344,7 @@ describe("预装工具升级与启动清理（待审核）", () => {
     ).toBeNull();
     await expect(stat(publicEntry)).rejects.toHaveProperty("code", "ENOENT");
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "upgrade-facts.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "upgrade-facts.json"),
       JSON.stringify(
         { previous, installed, qpdf, observations, failureDiagnostic, requests: await http() },
         null,

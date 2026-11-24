@@ -1,7 +1,7 @@
 // DMM-09：账号套餐草稿的迁移按当前有效连接判定，规格见 docs/chat/draft-model-migration.md。
 // 原选择保存为个人 Coding Plan，当前连接为团队套餐；View 把有效 Provider 对应到团队套餐，
 // 迁移后仍保留原 providerId，请求按当前连接发出。规则经 team mock 的 client/configs 下发。
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 import {
   TID_CHAT_MODEL_GUIDE,
   TID_MODEL_PROVIDER_CONNECTION_MODE_ITEM,
@@ -11,7 +11,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -42,7 +42,7 @@ const TEAM_CONNECTION_KEY = "team:bigmodel:product-team-a:org-team-a:proj-team-a
 const NOTICE_ZH_CN = "E2E 账号套餐文案：草稿模型已按服务端规则切换";
 
 async function setMockClientConfigs(configs: Record<string, unknown>) {
-  const baseUrl = process.env.ZCODE_E2E_CODING_PLAN_MOCK_URL?.trim();
+  const baseUrl = process.env.CODEZ_E2E_CODING_PLAN_MOCK_URL?.trim();
   if (!baseUrl) throw new Error("coding plan team mock 未启动，无法下发 client/configs");
   const response = await fetch(`${baseUrl}/__e2e/coding-plan/client-configs`, {
     body: JSON.stringify({ configs }),
@@ -76,12 +76,12 @@ async function readProjectRecent() {
   return browser.execute((workspacePath) => {
     const state = (
       window as Window & {
-        __zcodeSessionStoreE2E?: {
+        __codezSessionStoreE2E?: {
           getState(): { workspaces: Record<string, { draftProjectId?: string | null }> };
         };
       }
-    ).__zcodeSessionStoreE2E?.getState().workspaces[workspacePath];
-    const key = `zcode-composer-recent:v2:${JSON.stringify(["desktop", "local", state?.draftProjectId ?? null])}`;
+    ).__codezSessionStoreE2E?.getState().workspaces[workspacePath];
+    const key = `codez-composer-recent:v2:${JSON.stringify(["desktop", "local", state?.draftProjectId ?? null])}`;
     const raw = window.localStorage.getItem(key);
     return { key, value: raw ? (JSON.parse(raw) as Record<string, unknown>) : null };
   }, DEFAULT_WORKSPACE);

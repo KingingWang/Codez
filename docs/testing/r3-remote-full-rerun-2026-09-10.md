@@ -67,7 +67,7 @@ soak 批次结案:soak-reconnect 50 轮全绿;soak-dual 56 轮(5 分钟定案轮
 3. **DOM 虚拟化对账**:全量收尾对账在高轮次下必失效;逐轮增量对账(标记刚发送必在窗口底部)+ 等待式回显(容忍断网轮重挂载)是正确模式(§55)
 4. **主控 exit= 陷阱**:完成标记的 exit 值是 runner 进程码恒 0,判 PASS/FAIL 必须读 results.json(§54 附记)
 5. **删除器模式**:等 `[rec] <case> exit=`(until grep -q,勿用 `grep -c` 计数比较——zsh 零匹配时 `$()` 捕获双行致整数比较死循环)→ sleep 5 → 读 results.json status → FAIL 才删标记 → 主控重调度;PASS 不动;删标记用**全量重写**(open w + replace,同路径不换 inode,tail 监控不丢;r+ seek 原地写单字节实测不可靠,§59 附记)
-6. **FAIL 现场保留**:wdio.conf `onComplete` 曾无条件删 case home,已改 `exitCode!==0 && ZCODE_E2E_KEEP_HOME_ON_FAIL=1` 时保留(§47)
+6. **FAIL 现场保留**:wdio.conf `onComplete` 曾无条件删 case home,已改 `exitCode!==0 && CODEZ_E2E_KEEP_HOME_ON_FAIL=1` 时保留(§47)
 7. **ssh2 噪音**:REQUEST_FAILURE 紧跟 keepalive ping 的是 sshd 拒 global request,无害,勿误判连接故障(§57)
 
 ## 环境侧修复史(假失败消除)
@@ -91,7 +91,7 @@ soak 批次结案:soak-reconnect 50 轮全绿;soak-dual 56 轮(5 分钟定案轮
 
 修正合同见 `r3-remote-automation-case-matrix.md` 的 BLD-04/06 补充：按每台远端架构选包，注入后 finally 恢复，保留严格失败及安装对账断言。新增实跑发现 B 首装后仍在线，会复用会话而跳过安装包校验；测试已补通过设备菜单断开并等待同一 identity 离线的前置条件。断开后显式切回本地草稿。**2026-09-11 14:42:13–14:43:49（北京时间）完整 GUI E2E PASS**，test body 66.984s，历史 49 case 结果仍保留原始记录。
 
-验证：新增 fixture 回归与真实 resolver 单测 14/14 通过；当前修改的聚焦 TypeScript 检查、architecture:check（0 violation）、oxfmt、lint（0 errors；59 个现有 warnings）通过。`pnpm typecheck` 与 `pnpm --filter @zcode/desktop typecheck:e2e` 已执行，但被现有 `r3-docker-transport.test.ts:72–74` 和 `r3-live-zapi.test.ts:61–64` 的 7 处 ProviderAccessConfig/nullability 类型错误阻塞；本次不修改这两个文件。
+验证：新增 fixture 回归与真实 resolver 单测 14/14 通过；当前修改的聚焦 TypeScript 检查、architecture:check（0 violation）、oxfmt、lint（0 errors；59 个现有 warnings）通过。`pnpm typecheck` 与 `pnpm --filter @codez/desktop typecheck:e2e` 已执行，但被现有 `r3-docker-transport.test.ts:72–74` 和 `r3-live-zapi.test.ts:61–64` 的 7 处 ProviderAccessConfig/nullability 类型错误阻塞；本次不修改这两个文件。
 
 完整新证据：`packages/desktop/.e2e-artifacts/r3-install-faults-fix-final-20260911/cases/r3-install-faults/` 的 result.json、test-results.ndjson（末条 passed=true）、install-faults.json、install-cancel.json。四种 A 故障全部 error/none/null；B 故障明确报错且 SHA 不变；取消后 none/null；所有 Host 对账为单一 Local Host。最后恢复包后的安装 SHA 与 A 对应 descriptor 一致，项目打开成功。
 
@@ -140,7 +140,7 @@ soak 批次结案:soak-reconnect 50 轮全绿;soak-dual 56 轮(5 分钟定案轮
 
 **2026-09-11 16:14:13–16:15:45（北京时间）完整 GUI PASS**。facts：initialContainsSeeded、onlineSave、b05ExistingAgentRefresh、deletePropagated、offlineEditsNotSyncedWhileOffline、afterReconnectHasBothOfflineEdits 全部通过；project/conversation 均恢复且 session 不同，原任务选择为 lifecycle model/disabled，并成功完成续发。证据：`packages/desktop/.e2e-artifacts/r3-provisioning-fix-verified-20260911/cases/r3-provisioning-gui/`。首次修复验证重新构建当前 Desktop 源码，后续仅调整 E2E 时复用同一构建；历史失败产物保留于独立目录，原 49 case results.json 未覆盖。
 
-验证：Host/Main 与新增生命周期测试的聚焦类型检查通过；Lint 0 errors（59 个原有 warnings）、architecture 0 violations。`pnpm typecheck` 与 `pnpm --filter @zcode/desktop typecheck:e2e` 已执行，仍受原有 r3-docker-transport:72–74、r3-live-zapi:61–64 共 7 处类型错误阻塞。未在 Windows/WSL 真机重跑；手机边界由 shared-host/relay 聚焦测试覆盖，未执行手机 GUI。
+验证：Host/Main 与新增生命周期测试的聚焦类型检查通过；Lint 0 errors（59 个原有 warnings）、architecture 0 violations。`pnpm typecheck` 与 `pnpm --filter @codez/desktop typecheck:e2e` 已执行，仍受原有 r3-docker-transport:72–74、r3-live-zapi:61–64 共 7 处类型错误阻塞。未在 Windows/WSL 真机重跑；手机边界由 shared-host/relay 聚焦测试覆盖，未执行手机 GUI。
 
 自动恢复补测：`r3-transport-loss` 在同一修复构建上 PASS，覆盖运行中断开后的 A/B 同组 session 换代、远端任务继续，以及 permission 阻塞跨断连恢复后完成、哨兵只执行一次。该用例前后 permissionDialogId 采样均为 null，不能据此证明请求 ID 连续性。证据：`packages/desktop/.e2e-artifacts/r3-provisioning-fix-verified-20260911/cases/r3-transport-loss/`。
 

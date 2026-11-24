@@ -36,11 +36,11 @@ interface ModelProperties {
 
 ## Config Rule 与 Overlay
 
-ZCode Built-in Model Config Rules 和 Personal Model Config Rules 使用同一结构。Rule 可以只声明
+Codez Built-in Model Config Rules 和 Personal Model Config Rules 使用同一结构。Rule 可以只声明
 需要覆盖的叶子字段；嵌套字段逐叶 overlay，Personal 规则拼接在 Built-in 规则之后：
 
 ```text
-ZCode Built-in Model Config Rules ─┐
+Codez Built-in Model Config Rules ─┐
                                     ├─ resolve against Effective Provider Config
 Personal Model Config Rules ────────┘
                                               |

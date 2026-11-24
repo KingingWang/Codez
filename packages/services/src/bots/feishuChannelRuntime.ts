@@ -4,7 +4,7 @@ import {
   type BotProvider,
   type BotProviderCallbackResult,
   type BotsConfigFile,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { ICredentialService } from "../credential/credential.js";
 import { startFeishuBotWebSocket, type FeishuWebSocketClient } from "./providers/feishuProvider.js";
 import {
@@ -88,7 +88,7 @@ export function createFeishuChannelRuntime(deps: FeishuChannelRuntimeDeps) {
           botId: bot.id,
           provider: bot.provider,
           status: "idle",
-          message: "Feishu WebSocket is handled by another ZCode window.",
+          message: "Feishu WebSocket is handled by another Codez window.",
         });
         await waitFor(BOT_RUNTIME_LOCK_RETRY_MS, signal);
         continue;

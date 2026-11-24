@@ -56,7 +56,7 @@ Status: done
 2026-09-29 实施与验收：
 
 - 起点 `44ac7aeedd23924b4c4aa214117c5e92c22b353e`，开始时工作区干净。引入远程辅助文字 token，补齐标签、状态描述、密码显隐、历史候选及 Docker 列表键盘操作；拖拽保留设备名；删除无生产引用的旧设备分组组件和辅助函数，保留稳定身份与 legacy alias 解析。
-- `pnpm typecheck`、`pnpm --filter @zcode/desktop typecheck:e2e`、`pnpm lint`、`pnpm architecture:check --changed` 通过。Lint 为 65 个既有 warning、0 error；架构 0 violation。
+- `pnpm typecheck`、`pnpm --filter @codez/desktop typecheck:e2e`、`pnpm lint`、`pnpm architecture:check --changed` 通过。Lint 为 65 个既有 warning、0 error；架构 0 violation。
 - 受影响单测覆盖 373 个文件、3892 项。最终批次 372 个文件通过；剩余项目行测试将可见短标签与新增读屏描述分开断言后，10 项定向复跑全部通过。没有运行全量单测。包含既有手机 Web 布局、远控任务和 relay 恢复相关单测。
 - 起点范围选择器因两个未改动的静态资源 import（mp3 / html?url）及已删除旧组头报告不完整；将它识别的测试、新增历史键盘测试及侧栏分区测试写为显式清单，经 `pnpm test:unit:affected --files-manifest` 执行。旧组头与分组函数已通过无范围限制的 dep:refs 和全仓引用搜索确认无生产调用，身份辅助函数保留回归。
 - 真实 SSH E2E `conversation-session-remote-accessibility.test.ts` 通过：新目标安装、密码显隐、下载切换、目录输入、项目回车、详情/更多菜单、设置卡断开与连接、稍后选择、历史候选回填和关闭均通过键盘操作；另用指针拖拽验证设备标签。测试凭据由 fixture 注入。

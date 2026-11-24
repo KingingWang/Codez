@@ -214,7 +214,7 @@
         "description": "研究任务",
         "whenToUse": "研究时",
         "scope": "project",
-        "path": ".zcode/workflows/research.ts",
+        "path": ".codez/workflows/research.ts",
         "argNames": ["topic"]
       }
     ],

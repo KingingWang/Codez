@@ -1,5 +1,5 @@
-import type { IPluginManagementService } from "@zcode/services";
-import type { ZCodePluginScope } from "@zcode/shared";
+import type { IPluginManagementService } from "@codez/services";
+import type { CodezPluginScope } from "@codez/shared";
 import { logger } from "@/logger.js";
 import {
   buildWorkspaceKey,
@@ -19,7 +19,7 @@ function buildToggleRequestKey(input: {
   workspacePath: string;
   workspaceIdentity: string | null;
   authorityKey: string | null;
-  configScope: ZCodePluginScope | null;
+  configScope: CodezPluginScope | null;
   pluginId: string;
 }): string {
   const workspaceKey = buildWorkspaceKey(
@@ -36,7 +36,7 @@ export async function setPluginEnabledOptimistically(
   pluginId: string,
   enabled: boolean,
   pluginService: IPluginManagementService,
-  scope: ZCodePluginScope = "user",
+  scope: CodezPluginScope = "user",
 ): Promise<boolean> {
   const { workspacePath, workspaceIdentity, authorityKey, configScope } = get();
   if (!workspacePath) return false;

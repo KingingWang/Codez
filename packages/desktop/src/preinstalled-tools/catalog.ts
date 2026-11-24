@@ -2,13 +2,13 @@ import { readFile } from "node:fs/promises";
 import {
   resolvePreinstalledToolsCatalog,
   type PreinstalledToolConfiguration,
-} from "@zcode/shared/preinstalled-tools";
+} from "@codez/shared/preinstalled-tools";
 import preinstalledToolCatalog from "@desktop/preinstalled-tools/catalog.json" with { type: "json" };
 
-declare const __ZCODE_PREINSTALL_TEST_BUILD__: boolean;
+declare const __CODEZ_PREINSTALL_TEST_BUILD__: boolean;
 
-const PREINSTALLED_TOOLS_CDN_BASE_URL = "https://cdn-zcode.z.ai/zcode/preinstalled-tools";
-const PREINSTALLED_TOOLS_CDN_BASE_URL_ENV = "ZCODE_PREINSTALLED_TOOLS_CDN_BASE_URL";
+const PREINSTALLED_TOOLS_CDN_BASE_URL = "https://cdn-zcode.z.ai/codez/preinstalled-tools";
+const PREINSTALLED_TOOLS_CDN_BASE_URL_ENV = "CODEZ_PREINSTALLED_TOOLS_CDN_BASE_URL";
 
 /** 设置了覆盖变量就按书写顺序使用候选；默认仅使用已经部署资源的官方 CDN。 */
 function resolvePreinstalledToolsCdnBaseUrls(): string[] {
@@ -31,8 +31,8 @@ export async function loadPreinstalledToolsCatalog(logger: {
 }): Promise<PreinstalledToolConfiguration[] | null> {
   try {
     const catalog: unknown =
-      __ZCODE_PREINSTALL_TEST_BUILD__ && process.env.ZCODE_E2E_PREINSTALLED_TOOLS_CATALOG
-        ? JSON.parse(await readFile(process.env.ZCODE_E2E_PREINSTALLED_TOOLS_CATALOG, "utf8"))
+      __CODEZ_PREINSTALL_TEST_BUILD__ && process.env.CODEZ_E2E_PREINSTALLED_TOOLS_CATALOG
+        ? JSON.parse(await readFile(process.env.CODEZ_E2E_PREINSTALLED_TOOLS_CATALOG, "utf8"))
         : preinstalledToolCatalog;
     const { tools, downloadBaseUrlsError } = resolvePreinstalledToolsCatalog(
       catalog,

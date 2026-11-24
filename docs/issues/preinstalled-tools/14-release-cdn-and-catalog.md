@@ -8,7 +8,7 @@ Status: in-progress
 
 ## What to build
 
-资源发布方把验证过的资源部署到 CDN，内置 catalog 填入相对路径。2026-11-06 用户确认接入已经上传的 15 个资源，默认只使用 `https://cdn-zcode.z.ai/zcode/preinstalled-tools`；环境变量覆盖仍保留有序候选。完成后，用户可以下载对应平台的预装工具。
+资源发布方把验证过的资源部署到 CDN，内置 catalog 填入相对路径。2026-11-06 用户确认接入已经上传的 15 个资源，默认只使用 `https://cdn-zcode.z.ai/codez/preinstalled-tools`；环境变量覆盖仍保留有序候选。完成后，用户可以下载对应平台的预装工具。
 
 本票接手旧票 [文档工具预装 11](../document-tool-preinstall/11-real-resources-and-local-full-chain.md) 中真实 CDN 的部分。第一步由发布方完成（人工）；部署完成后，再由 Agent 写入 catalog 并做验证。
 

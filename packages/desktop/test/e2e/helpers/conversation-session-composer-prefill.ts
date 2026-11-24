@@ -52,7 +52,7 @@ export async function setComposerPrefill(
     (taskIdArg, nextExpectation, pngBase64, pngSizeBytes) => {
       const bridge = (
         window as typeof window & {
-          __zcodeSessionStoreE2E?: {
+          __codezSessionStoreE2E?: {
             getState?: () => {
               setPendingComposerPrefill?: (
                 workspacePath: string,
@@ -83,7 +83,7 @@ export async function setComposerPrefill(
             };
           };
         }
-      ).__zcodeSessionStoreE2E;
+      ).__codezSessionStoreE2E;
       const state = bridge?.getState?.();
       if (!state?.setPendingComposerPrefill) {
         return { ok: false, reason: "store-missing" };

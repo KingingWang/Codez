@@ -50,7 +50,7 @@ test("session tools summary and details", { timeout: 240000 }, async () => {
     );
     // 使用生产序列化器生成超限结果，避免手写 envelope 掩盖协议变化。
     const { serializeOutput } = await server.ssrLoadModule(
-      "/apps/zcode-cli/packages/core/src/tool/executor/result-serialization.ts",
+      "/apps/codez-cli/packages/core/src/tool/executor/result-serialization.ts",
     );
     const budgetCases = [];
     const largeText = "Large message\n".repeat(4000);

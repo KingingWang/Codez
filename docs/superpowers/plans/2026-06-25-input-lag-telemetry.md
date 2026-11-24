@@ -14,7 +14,7 @@
 - 埋点属观测链路,**上报失败只 warn,绝不阻断输入主流程**(复用现有 `emit()`)。
 - 复用现有分组 `UI_PERF_ARMS_GROUP = "ui_perf"`,不新建 reporter,不改 `Root.tsx`。
 - 阈值 `INPUT_LAG_REPORT_THRESHOLD_MS = 500`;哨兵上限 `INPUT_LAG_SANITY_MAX_MS = 5000`。
-- 单测命令:`pnpm --filter @zcode/ui exec vitest run test/uiPerfArmsTelemetry.test.ts`。
+- 单测命令:`pnpm --filter @codez/ui exec vitest run test/uiPerfArmsTelemetry.test.ts`。
 - 类型检查:`pnpm typecheck`(根目录,含 packages/ui)。
 - 不写组件层重型 E2E:Lexical 在 jsdom 下 update 行为不稳;判定逻辑由纯函数测试覆盖。
 
@@ -156,7 +156,7 @@ describe("input lag - recordInputLag", () => {
 
 - [ ] **Step 2: 运行测试,确认失败**
 
-Run: `pnpm --filter @zcode/ui exec vitest run test/uiPerfArmsTelemetry.test.ts`
+Run: `pnpm --filter @codez/ui exec vitest run test/uiPerfArmsTelemetry.test.ts`
 Expected: FAIL —— 报 `shouldReportInputLag`/`recordInputLag`/`UI_PERF_EVENT_INPUT_LAG` 等未导出。
 
 - [ ] **Step 3: 实现 telemetry 层**
@@ -222,7 +222,7 @@ export function recordInputLag(params: {
 
 - [ ] **Step 4: 运行测试,确认通过**
 
-Run: `pnpm --filter @zcode/ui exec vitest run test/uiPerfArmsTelemetry.test.ts`
+Run: `pnpm --filter @codez/ui exec vitest run test/uiPerfArmsTelemetry.test.ts`
 Expected: PASS(新增 8 个 case 全绿,原有 case 不受影响)。
 
 - [ ] **Step 5: 提交**
@@ -241,7 +241,7 @@ git commit -m "feat(ui): perf_ui_input_lag 埋点 telemetry 层(判定纯函数+
 
 **Interfaces:**
 - Consumes: Task 1 的 `recordInputLag`;Lexical `editor.isComposing()`、update listener 回调的 `tags: Set<string>`、`editor.update(fn, { tag })`。
-- Produces: 模块级常量 `PROGRAMMATIC_UPDATE_TAG = "zcode-programmatic"`(仅本文件内用,无外部消费方)。
+- Produces: 模块级常量 `PROGRAMMATIC_UPDATE_TAG = "codez-programmatic"`(仅本文件内用,无外部消费方)。
 
 说明:本任务改动是 Lexical 运行时接线,jsdom 下 update 行为不稳,**不写组件单测**;判定逻辑已由 Task 1 的纯函数测试覆盖。本任务以 `pnpm typecheck` + `oxlint` 作为验证门槛。
 
@@ -252,7 +252,7 @@ git commit -m "feat(ui): perf_ui_input_lag 埋点 telemetry 层(判定纯函数+
 ```ts
 // 程序化改写(setText/mention 插入/历史回填等非用户敲键的 editor.update)统一打此 tag,
 // 输入卡顿埋点在 update listener 里见到该 tag 即跳过,避免把批量改写误判为打字卡顿。
-const PROGRAMMATIC_UPDATE_TAG = "zcode-programmatic";
+const PROGRAMMATIC_UPDATE_TAG = "codez-programmatic";
 ```
 
 - [ ] **Step 2: 给所有程序化 editor.update 加 tag**
@@ -380,12 +380,12 @@ Expected: PASS,无新增类型错误。
 
 - [ ] **Step 6: lint**
 
-Run: `pnpm --filter @zcode/ui lint`
+Run: `pnpm --filter @codez/ui lint`
 Expected: PASS(无新增告警;`editor.update` 第二参对象写法符合 oxlint 规则)。
 
 - [ ] **Step 7: 回归单测**
 
-Run: `pnpm --filter @zcode/ui exec vitest run test/uiPerfArmsTelemetry.test.ts test/lexicalChatInputEnter.test.ts`
+Run: `pnpm --filter @codez/ui exec vitest run test/uiPerfArmsTelemetry.test.ts test/lexicalChatInputEnter.test.ts`
 Expected: PASS(telemetry 测试 + 已有 Lexical Enter 行为测试均不受影响)。
 
 - [ ] **Step 8: 提交**

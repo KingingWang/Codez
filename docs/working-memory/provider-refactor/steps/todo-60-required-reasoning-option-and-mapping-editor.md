@@ -159,6 +159,6 @@ Reasoning 编辑区始终展示，不因当前 Effective Spec 缺失或只有一
 - `pnpm lint`：通过，34 条仓库既有 warning、0 error。
 - `pnpm test:unit`：12,809 通过、25 skipped；唯一失败的
   `componentCache` 符号链接归档用例单独复跑 6/6 通过，确认是并行环境波动。
-- `pnpm --filter @zcode/desktop typecheck:e2e`：通过。
+- `pnpm --filter @codez/desktop typecheck:e2e`：通过。
 - `settings-ui-polish.test.ts`：生产构建成功，但当前 Linux 无 `DISPLAY` 且没有 `xvfb-run`，
   Chrome session 创建前退出；未把该环境失败记作功能通过。

@@ -4,10 +4,10 @@ import {
   type CodingPlanStaticTeamProduct,
   type EnterpriseCodingPlanPricingResponse,
   type ProviderFamilyDomain,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { useOptionalServices } from "@/hooks/useServices.js";
 import { isRemoteWorkspaceDisconnectedError } from "@/lib/remoteWorkspaceServiceError.js";
-import { useZCodeStoreWithDefault } from "@/store/StoreProvider.js";
+import { useCodezStoreWithDefault } from "@/store/StoreProvider.js";
 import { logger } from "@/logger.js";
 import {
   resolveEnterpriseCodingPlanProductList,
@@ -99,7 +99,7 @@ export function useEnterpriseCodingPlanProducts({
 }) {
   const services = useOptionalServices();
   const service = services?.codingPlanSubscriptionService;
-  const authScope = useZCodeStoreWithDefault(
+  const authScope = useCodezStoreWithDefault(
     (state) => (state.user ? state.user.id + ":" + state.authSessionSeq : "signed-out"),
     "unscoped",
   );

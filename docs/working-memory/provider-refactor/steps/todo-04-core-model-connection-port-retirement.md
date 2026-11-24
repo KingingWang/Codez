@@ -46,7 +46,7 @@ Adapter private execution
 3. Connection 是 Adapter 请求实现细节，不是 Tool/Runtime 的查询服务；
 4. API Key 和 Header 不应为了能力判断进入 Core；
 5. 本 Todo 不重构 Telemetry，不新增脱敏 Connection、Observation 或 Context DTO；
-6. 若 Adapter 内部仍需连接参数，使用私有类型，不能从 `@zcode/contracts` 导出。
+6. 若 Adapter 内部仍需连接参数，使用私有类型，不能从 `@codez/contracts` 导出。
 
 ## 3. 当前消费者与目标处理
 
@@ -87,7 +87,7 @@ useMidConversationSystem
 
 ### 3.2.1 Model Config 能力规则
 
-`supportsNativeWebSearch` 和 `supportsMidConversationSystem` 统一写入 ZCode Built-in / Personal Model
+`supportsNativeWebSearch` 和 `supportsMidConversationSystem` 统一写入 Codez Built-in / Personal Model
 Config Rules，最终成为 Effective Model Config.properties。配置归属在 Model Config，不等于规则只能按
 modelId 匹配：
 
@@ -204,7 +204,7 @@ Telemetry 的长期设计另行讨论。
 
 ### 5.3 机械归零
 
-- `rg 'ModelConnectionPort|ModelConnectionInfo' apps/zcode-cli/packages/core` 为零；
+- `rg 'ModelConnectionPort|ModelConnectionInfo' apps/codez-cli/packages/core` 为零；
 - 公共 Contracts 不再导出 Connection 类型；
 - `resolveConnection` 不再是 Adapter 公共能力；
 - Core 中按 baseURL/providerKind/modelId 判断 MCS/WebSearch 的 helper 为零；

@@ -1,7 +1,7 @@
 import {
-  createZCodeApp,
+  createCodezApp,
   startProcessProviderRegistryRuntime,
-} from "../../../../../../apps/zcode-cli/packages/bootstrap/dist/index.js";
+} from "../../../../../../apps/codez-cli/packages/bootstrap/dist/index.js";
 
 // 当前产品不提供 MCP 热更新。此 driver 只用于 Runtime/Adapter HTTP 集成测试：
 // 注入目录变化，不替换模型 adapter、compact、持久化或公告逻辑，不计为 MCP 用户流程 E2E。
@@ -9,7 +9,7 @@ const providers = await startProcessProviderRegistryRuntime(process.env);
 const options = JSON.parse(process.argv[3] ?? "{}");
 const recordingTool = "mcp__catalog__lookup";
 const recordedRequests = [];
-const app = await createZCodeApp({
+const app = await createCodezApp({
   providerRegistry: providers.runtime.registryService,
   configuredDefaultModelSelection: providers.configuredDefaultModelSelection,
   env: process.env,

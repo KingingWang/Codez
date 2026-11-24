@@ -6,7 +6,7 @@ import { promisify } from "node:util";
 import type {
   PreinstalledToolResource,
   PreinstalledToolsState,
-} from "@zcode/shared/preinstalled-tools";
+} from "@codez/shared/preinstalled-tools";
 import {
   countUpstreamRequests,
   getLatestUpstreamToolResultByToolCallId,
@@ -26,14 +26,14 @@ import {
 const CASE = "conversation-session-preinstalled-tools-real-loopback";
 const tools = ["python", "qpdf", "pandoc", "poppler", "libreoffice"];
 const card = (id: string) => `[data-tool-id="${id}"]`;
-const fixture = () => process.env.ZCODE_E2E_PREINSTALL_FIXTURE_URL!;
+const fixture = () => process.env.CODEZ_E2E_PREINSTALL_FIXTURE_URL!;
 const state = () =>
   browser.execute(async () =>
     (
       window as typeof window & {
-        zcode: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
+        codez: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
       }
-    ).zcode.getPreinstalledToolsState(),
+    ).codez.getPreinstalledToolsState(),
   );
 const http = async () =>
   (await fetch(`${fixture()}/status`)).json() as Promise<{
@@ -56,9 +56,9 @@ async function waitStatus(id: string, expected: string) {
       const current = await browser.execute(async (toolId: string) => {
         const snapshot = await (
           window as typeof window & {
-            zcode: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
+            codez: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
           }
-        ).zcode.getPreinstalledToolsState();
+        ).codez.getPreinstalledToolsState();
         const tool = snapshot.tools.find((item) => item.toolId === toolId)!;
         return { status: tool.status, phase: tool.phase, errorKind: tool.error };
       }, id);
@@ -99,7 +99,7 @@ describe("五个真实预装工具 loopback（待审核）", () => {
     try {
       await cp(
         resolveE2ERuntimePath(CASE),
-        `${process.env.ZCODE_E2E_ARTIFACT_DIR}/real-document-results`,
+        `${process.env.CODEZ_E2E_ARTIFACT_DIR}/real-document-results`,
         { recursive: true },
       );
     } catch (error) {
@@ -111,12 +111,12 @@ describe("五个真实预装工具 loopback（待审核）", () => {
     this.timeout(1500000);
     // 平台与 resourceId 以真实 .artifact.json 为准，不按开发机写死。
     const artifactPaths = JSON.parse(
-      await readFile(process.env.ZCODE_E2E_PREINSTALL_ARTIFACTS!, "utf8"),
+      await readFile(process.env.CODEZ_E2E_PREINSTALL_ARTIFACTS!, "utf8"),
     ) as string[];
     const readResource = async (path: string) =>
       (JSON.parse(await readFile(path, "utf8")) as { resource: PreinstalledToolResource }).resource;
     const resources = await Promise.all(artifactPaths.map(readResource));
-    const upgradeResource = await readResource(process.env.ZCODE_E2E_PREINSTALL_UPGRADE_ARTIFACT!);
+    const upgradeResource = await readResource(process.env.CODEZ_E2E_PREINSTALL_UPGRADE_ARTIFACT!);
     for (const resource of [...resources, upgradeResource])
       if (
         !resource.platforms.some(
@@ -128,10 +128,10 @@ describe("五个真实预装工具 loopback（待审核）", () => {
       before: resources.find((resource) => resource.toolId === "qpdf")!.resourceId,
       after: upgradeResource.resourceId,
     };
-    const python = process.env.ZCODE_E2E_DOCUMENT_PYTHON;
-    const samples = process.env.ZCODE_E2E_DOCUMENT_SAMPLES;
-    const systemApplication = process.env.ZCODE_E2E_LIBREOFFICE_SYSTEM_APP;
-    const defaultProfile = process.env.ZCODE_E2E_LIBREOFFICE_DEFAULT_PROFILE;
+    const python = process.env.CODEZ_E2E_DOCUMENT_PYTHON;
+    const samples = process.env.CODEZ_E2E_DOCUMENT_SAMPLES;
+    const systemApplication = process.env.CODEZ_E2E_LIBREOFFICE_SYSTEM_APP;
+    const defaultProfile = process.env.CODEZ_E2E_LIBREOFFICE_DEFAULT_PROFILE;
     if (!python || !samples || !systemApplication || !defaultProfile)
       throw new Error("必须提供准备用 Python、真实样例、系统 LibreOffice 和默认配置路径");
     const sourcePackageVersion = JSON.parse(
@@ -153,7 +153,7 @@ describe("五个真实预装工具 loopback（待审核）", () => {
       await cp(join(samples, name), join(directory, "中文 空格", name));
     }
     const helper = new URL(
-      "../../../../../../../apps/zcode-cli/packages/documents-plugin/scripts/zcode_libreoffice.py",
+      "../../../../../../../apps/codez-cli/packages/documents-plugin/scripts/codez_libreoffice.py",
       import.meta.url,
     );
     await writeFile(
@@ -224,7 +224,7 @@ describe("五个真实预装工具 loopback（待审核）", () => {
         ),
       ),
     ).toEqual(tools);
-    await browser.saveScreenshot(`${process.env.ZCODE_E2E_ARTIFACT_DIR}/five-tools-ready.png`);
+    await browser.saveScreenshot(`${process.env.CODEZ_E2E_ARTIFACT_DIR}/five-tools-ready.png`);
     await $('[data-testid="preinstalled-tools-auto-install"]').click();
     await browser.waitUntil(async () => !(await state()).autoInstallEnabled);
     await browser.keys("Escape");
@@ -376,7 +376,7 @@ describe("五个真实预装工具 loopback（待审核）", () => {
       }
     }
     expect((await http()).requests).toBe(6);
-    await browser.saveScreenshot(`${process.env.ZCODE_E2E_ARTIFACT_DIR}/five-tools-deleted.png`);
+    await browser.saveScreenshot(`${process.env.CODEZ_E2E_ARTIFACT_DIR}/five-tools-deleted.png`);
     await writeFile(
       join(directory, "deletion-evidence.json"),
       JSON.stringify(
@@ -385,7 +385,7 @@ describe("五个真实预装工具 loopback（待审核）", () => {
         2,
       ),
     );
-    await cp(directory, `${process.env.ZCODE_E2E_ARTIFACT_DIR}/real-document-results`, {
+    await cp(directory, `${process.env.CODEZ_E2E_ARTIFACT_DIR}/real-document-results`, {
       recursive: true,
     });
   });

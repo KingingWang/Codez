@@ -15,9 +15,9 @@
 
 ## 当前问题与相关入口
 
-- `apps/zcode-cli/packages/core/src/runtime/methods/turn-model.ts` 的 `applySubmissionExecutionState()` 收到 Selection 后会创建并返回 Model。已有选择比较只控制 Session 模型选择事件，不阻止返回 Model。
-- `apps/zcode-cli/packages/core/src/runtime/methods/turn-guide-drain.ts` 当前只判断 `if (guideModel)`，随即替换执行 Model 并调用 `rebuildContextPrefix()`；错误在于把获得 Model 与发生切换混为一谈。
-- `apps/zcode-cli/packages/core/src/runtime/methods/turn.ts` 的新 Turn / compact 路径也使用上述公共函数，不能为 Guide 修改公共行为而破坏这些调用。
+- `apps/codez-cli/packages/core/src/runtime/methods/turn-model.ts` 的 `applySubmissionExecutionState()` 收到 Selection 后会创建并返回 Model。已有选择比较只控制 Session 模型选择事件，不阻止返回 Model。
+- `apps/codez-cli/packages/core/src/runtime/methods/turn-guide-drain.ts` 当前只判断 `if (guideModel)`，随即替换执行 Model 并调用 `rebuildContextPrefix()`；错误在于把获得 Model 与发生切换混为一谈。
+- `apps/codez-cli/packages/core/src/runtime/methods/turn.ts` 的新 Turn / compact 路径也使用上述公共函数，不能为 Guide 修改公共行为而破坏这些调用。
 - Session 保存的选择与当前 Loop 已绑定的执行模型可能不同：Bot 等入口可以更新 Session。因此，Guide 是否改变本次执行选择，应对比当前 Loop 的实际 Model，而非仅对比可变 Session 值。
 
 ## 预期链路

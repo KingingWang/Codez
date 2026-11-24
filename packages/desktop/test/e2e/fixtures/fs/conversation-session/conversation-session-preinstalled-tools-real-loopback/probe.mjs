@@ -40,7 +40,7 @@ const verifySignatures = async () => {
 const sameFile = (actual, expected) =>
   isWindows ? actual?.toLowerCase() === expected.toLowerCase() : actual === expected;
 
-assert.equal(process.env.ZCODE_PREINSTALLED_TOOLS_AVAILABLE, "1");
+assert.equal(process.env.CODEZ_PREINSTALLED_TOOLS_AVAILABLE, "1");
 assert.ok(sameFile(process.env.PATH.split(delimiter)[0], join(config.root, "bin")));
 assert.equal(process.env.PYTHONDONTWRITEBYTECODE, undefined);
 assert.equal(process.env.PYTHONPYCACHEPREFIX, undefined);
@@ -69,7 +69,7 @@ if (phase === "before") {
   const documents = await plugin("documents");
   const initial = await execute(
     config.python,
-    [join(documents, "scripts/zcode_libreoffice.py"), "check"],
+    [join(documents, "scripts/codez_libreoffice.py"), "check"],
     0,
     { env: { ...process.env, PATH: systemOnlyPath } },
   );
@@ -123,7 +123,7 @@ if (phase === "before") {
           name,
           {
             path,
-            metadata: JSON.parse(await readFile(join(path, ".zcode-plugin/plugin.json"), "utf8")),
+            metadata: JSON.parse(await readFile(join(path, ".codez-plugin/plugin.json"), "utf8")),
           },
         ]),
       ),
@@ -134,7 +134,7 @@ if (phase === "before") {
       assert.ok(sameFile(await selected(name), entryPath(name)), `${name} 未解析到预装入口`);
   await verifySignatures();
   const runPlugin = (label, path, args, expected = 0) =>
-    execute("zcode-python", [documentChecks, "run", label, path, ...args], expected);
+    execute("codez-python", [documentChecks, "run", label, path, ...args], expected);
   await runPlugin(
     "documents",
     join(roots.documents, "skills/docx/scripts/add_toc_placeholders.py"),
@@ -150,12 +150,12 @@ if (phase === "before") {
     "12",
   ]);
   await writeFile(join(directory, "palette.json"), palette.stdout);
-  await execute("zcode-python", [documentChecks, "report"]);
+  await execute("codez-python", [documentChecks, "report"]);
   for (const name of ["Word PDF", "PPT PDF", "旧文档"])
     await mkdir(join(docs, name), { recursive: true });
   // 两个独立文档并行转换，复用真实插件的隔离配置；不会共享用户默认 profile。
   await Promise.all([
-    runPlugin("word-conversion", join(roots.documents, "scripts/zcode_libreoffice.py"), [
+    runPlugin("word-conversion", join(roots.documents, "scripts/codez_libreoffice.py"), [
       "run",
       "--",
       "--convert-to",
@@ -164,7 +164,7 @@ if (phase === "before") {
       join(docs, "Word PDF"),
       join(docs, "中文 字体验收.docx"),
     ]),
-    runPlugin("presentations", join(roots.presentations, "scripts/zcode_libreoffice.py"), [
+    runPlugin("presentations", join(roots.presentations, "scripts/codez_libreoffice.py"), [
       "run",
       "--",
       "--convert-to",
@@ -174,7 +174,7 @@ if (phase === "before") {
       join(docs, "中文 字体验收.pptx"),
     ]),
   ]);
-  await runPlugin("legacy-word", join(roots.documents, "scripts/zcode_libreoffice.py"), [
+  await runPlugin("legacy-word", join(roots.documents, "scripts/codez_libreoffice.py"), [
     "run",
     "--",
     "--convert-to",
@@ -217,7 +217,7 @@ if (phase === "before") {
     join(docs, "PPT PDF/中文 字体验收.pdf"),
     join(docs, "PPT PDF/slide"),
   ]);
-  await execute("zcode-python", [documentChecks, "check"]);
+  await execute("codez-python", [documentChecks, "check"]);
   const checks = await get("document-results");
   const render = await get("runtime-pdf2image");
   // pdf2image 在 Windows 上调用 pdftoppm.exe；两种写法都按 PATH 上实际解析到的程序核对。
@@ -245,26 +245,26 @@ if (phase === "before") {
   }
   const defaultImports = JSON.parse(
     (
-      await execute("zcode-python", [
+      await execute("codez-python", [
         "-c",
         "import sys,json; assert not sys.dont_write_bytecode; assert sys.pycache_prefix is None; import openpyxl,xlsxwriter,defusedxml,docx,lxml,reportlab,pypdf,pikepdf,pdfplumber,pypdfium2,pdf2image,PIL,pptx,matplotlib,pandas,numpy; print(json.dumps({'dontWriteBytecode':sys.dont_write_bytecode,'pycachePrefix':sys.pycache_prefix,'executable':sys.executable}))",
       ])
     ).stdout,
   );
   await put("default-cache-imports", defaultImports);
-  await execute("zcode-python", [
+  await execute("codez-python", [
     "-m",
     "pip",
     "install",
     "--no-index",
     "--no-deps",
-    join(docs, "zcode_full_chain_probe-1.0-py3-none-any.whl"),
+    join(docs, "codez_full_chain_probe-1.0-py3-none-any.whl"),
   ]);
   const addon = JSON.parse(
     (
-      await execute("zcode-python", [
+      await execute("codez-python", [
         "-c",
-        "import json,zcode_full_chain_probe as p;print(json.dumps({'value':p.value,'path':p.__file__}))",
+        "import json,codez_full_chain_probe as p;print(json.dumps({'value':p.value,'path':p.__file__}))",
       ])
     ).stdout,
   );
@@ -307,7 +307,7 @@ if (phase === "before") {
       bash,
       [
         "-c",
-        '"$(command -v zcode-python || command -v python3)" -c "import sys;print(sys.executable)"',
+        '"$(command -v codez-python || command -v python3)" -c "import sys;print(sys.executable)"',
       ],
       isWindows ? null : 0,
     );
@@ -315,13 +315,13 @@ if (phase === "before") {
     assert.ok(!actual.startsWith((await record("python")).installationDir));
   } else {
     actual = (
-      await execute("zcode-python", ["-c", "import sys;print(sys.executable)"])
+      await execute("codez-python", ["-c", "import sys;print(sys.executable)"])
     ).stdout.trim();
     assert.ok(actual.startsWith((await record("python")).installationDir));
   }
   if (phase.startsWith("libreoffice")) {
-    const check = await execute("zcode-python", [
-      join(await plugin("documents"), "scripts/zcode_libreoffice.py"),
+    const check = await execute("codez-python", [
+      join(await plugin("documents"), "scripts/codez_libreoffice.py"),
       "check",
     ]);
     assert.equal(JSON.parse(check.stdout).source, disabled ? "system" : "managed");
@@ -351,7 +351,7 @@ if (phase === "before") {
   };
 } else if (phase === "fallbacks") {
   await assertSameAgent();
-  await execute("zcode-python", [join(directory, "fallback_checks.py")]);
+  await execute("codez-python", [join(directory, "fallback_checks.py")]);
   result = await get("fallback-results");
 } else if (phase.startsWith("upgrade-")) {
   const currentAncestors = await ancestors();

@@ -1,6 +1,6 @@
 import { access, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { decodeCustomModelValue, encodeCustomModelValue } from "@zcode/shared";
+import { decodeCustomModelValue, encodeCustomModelValue } from "@codez/shared";
 import {
   TID_CHAT_MODEL_SELECT_GROUP,
   TID_CHAT_MODEL_SELECT_ITEM,
@@ -15,7 +15,7 @@ import {
   TID_SUBAGENT_ROW,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -94,7 +94,7 @@ const REMOVED_DOCUMENT_JUDGE_AGENT_NAMES = [
   "presentations:visual-judge",
   "spreadsheets:visual-judge",
 ];
-const WORKSPACE_AGENT_ROOT = join(DEFAULT_WORKSPACE, ".zcode", "agents");
+const WORKSPACE_AGENT_ROOT = join(DEFAULT_WORKSPACE, ".codez", "agents");
 const SUBAGENT_FORM_SELECTOR = `form:has(input[type="text"]):has(${sel(
   TID_CHAT_MODEL_SELECT_TRIGGER,
 )})`;

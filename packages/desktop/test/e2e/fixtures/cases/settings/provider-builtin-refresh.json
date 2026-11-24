@@ -6,7 +6,7 @@
   "fileFixtures": [
     {
       "kind": "runtime-generated",
-      "path": ".zcode-e2e/builtin-refresh",
+      "path": ".codez-e2e/builtin-refresh",
       "purpose": "测试 HTTPS 代理的版本化 Release、CA 与网络证据；不直接覆盖产品 Active。两次模型响应由 case 内本机 HTTP server 提供，不依赖共享 replay fixture。"
     }
   ],

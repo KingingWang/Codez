@@ -41,7 +41,7 @@ Runtime Provider 快照，CLI 再把它注入 Runtime Overlay、临时切换 Ses
 Provider Config 固定按以下顺序 Overlay：
 
 ```text
-ZCode Built-in Provider Config
+Codez Built-in Provider Config
               |
               v
      Account Provider Config
@@ -54,12 +54,12 @@ ZCode Built-in Provider Config
 ```
 
 ```ts
-const effectiveProviders = zcodeBuiltinProviders
+const effectiveProviders = codezBuiltinProviders
   .overlay(accountProviders)
   .overlay(personalProviders);
 ```
 
-Account 只补充或约束 ZCode Built-in 中的账号 Provider，不读取 Personal 自定义 Provider。
+Account 只补充或约束 Codez Built-in 中的账号 Provider，不读取 Personal 自定义 Provider。
 Personal 最后生效，表达用户对模型 API 调用封装的最终配置。
 
 ### 2.2 Model Config Rules
@@ -68,7 +68,7 @@ Model Config Rules 是数组拼接，Personal 在后：
 
 ```ts
 const effectiveModelRules = new ModelConfigRules([
-  ...zcodeBuiltinModelRules.rules(),
+  ...codezBuiltinModelRules.rules(),
   ...personalModelRules.rules(),
 ]);
 ```
@@ -146,7 +146,7 @@ Hidden Provider 不再获得 `access` 或 `baseURL` 的校验豁免。
 
 ## 5. 闲时 Built-in Provider
 
-`builtin:offpeak-idle-plan` 是普通的 ZCode Built-in Provider，只是用户不可见并使用请求期鉴权：
+`builtin:offpeak-idle-plan` 是普通的 Codez Built-in Provider，只是用户不可见并使用请求期鉴权：
 
 ```json
 {
@@ -166,7 +166,7 @@ Hidden Provider 不再获得 `access` 或 `baseURL` 的校验豁免。
 生产 Endpoint 是 Built-in Provider Config 的静态事实。测试和 mock 通过注入测试用 Built-in Config
 Source 改写整份测试配置，不把 Endpoint 重新放入单次 Turn payload。
 
-模型的 context、max output、输入输出格式、reasoning levels 和 reasoning mapping 来自 ZCode
+模型的 context、max output、输入输出格式、reasoning levels 和 reasoning mapping 来自 Codez
 Built-in Model Config Rules。Host 不再按 modelId、Provider family 或远端 `builtinModels` 重新推断。
 
 `enable_offpeak_task` 可以继续作为闲时任务产品灰度。远端 `allowed_models` 不再作为 Provider.models、
@@ -390,7 +390,7 @@ M4 完成时通过 `dep:refs`、`rg` 和 `knip` 审计以下闲时用途：
 
 - `ProviderConfig.executionOnly`；
 - `sendText.turnRuntimeModel`；
-- 闲时用途的完整 `ZCodeModelRuntimeConfig`；
+- 闲时用途的完整 `CodezModelRuntimeConfig`；
 - `buildOffPeakTurnRuntimeModel`；
 - `TurnExecutionModel`；
 - `ExecutionScopedModelSource` / `createTurnExecutionModelSource`；
@@ -617,7 +617,7 @@ Execution-scoped Submission 不执行 Session 模型预检，不读取或修复 
 
 以下生产结构及其专用测试已经删除：
 
-- `turnRuntimeModel` 与 `ZCodeModelRuntimeConfig` 单轮快照；
+- `turnRuntimeModel` 与 `CodezModelRuntimeConfig` 单轮快照；
 - `TurnExecutionModel`；
 - `ExecutionScopedModelSource`；
 - `runtime-model-factory.ts`；
@@ -627,7 +627,7 @@ Execution-scoped Submission 不执行 Session 模型预检，不读取或修复 
 
 ### 23.4 Mock 与凭据边界
 
-`ZCODE_OFFPEAK_MOCK=1` 的 Desktop E2E 会从正式 `official.json` 派生一份测试 Official Config，只改写
+`CODEZ_OFFPEAK_MOCK=1` 的 Desktop E2E 会从正式 `official.json` 派生一份测试 Official Config，只改写
 `builtin:offpeak-idle-plan.api.baseURL` 指向进程内 mock gateway，再通过 Official Config Source 路径注入 Host 和
 Worker。Mock Endpoint 因此仍属于测试 Config，不回到单次 Turn payload。
 
@@ -663,7 +663,7 @@ background Child 被拒绝，闲时完成后同一 Session 的普通 Prompt 恢�
 
 - Protocol Agent 与 CLI/TUI 一样读取 Environment 级 Model Selection Config；显式 configured default
   可以引用 hidden Provider，只有无显式选择时的用户 fallback 跳过 hidden 候选；
-- Desktop main/host/scheduler bundle 内联 `@zcode/provider` 与 `@zcode/provider-node`，避免 Electron
+- Desktop main/host/scheduler bundle 内联 `@codez/provider` 与 `@codez/provider-node`，避免 Electron
   worker 在干净运行环境中从 TypeScript source export 解析不存在的 `.js` 文件；
 - Adapter 只有在 Active Model 绑定 `accountAccessId` 时才消费 Host 的账号 runtime-header Port；普通
   API-key Model 直接使用 Provider Config 的静态访问材料，`request-auth` Model 使用创建时冻结的
@@ -672,8 +672,8 @@ background Child 被拒绝，闲时完成后同一 Session 的普通 Prompt 恢�
 复现命令：
 
 ```text
-ZCODE_E2E_CONTAINER=1 \
-ZCODE_E2E_SPEC=./test/e2e/conversation-session/manual-review/pending/\
+CODEZ_E2E_CONTAINER=1 \
+CODEZ_E2E_SPEC=./test/e2e/conversation-session/manual-review/pending/\
 conversation-session-offpeak-subagent-model-inheritance.test.ts \
-pnpm --filter @zcode/desktop test:e2e:serial
+pnpm --filter @codez/desktop test:e2e:serial
 ```

@@ -25,7 +25,7 @@ sequenceDiagram
 
 ## 证据
 
-- Agent：`apps/zcode-cli/packages/bootstrap/src/zcode-protocol/mcp-ui/protocol.ts` 的 `onMcpAppConnectionInvalidated` 关闭实例，并发出 `PluginUiInstanceClosed`。
+- Agent：`apps/codez-cli/packages/bootstrap/src/codez-protocol/mcp-ui/protocol.ts` 的 `onMcpAppConnectionInvalidated` 关闭实例，并发出 `PluginUiInstanceClosed`。
 - UI：`packages/ui/src/plugin-ui/adapters/pluginUiManagedPage.ts` 的 `onInstanceClosed` 把页面置为 `error`，页面仍在 registry 里；`ensure()` 遇到 `phase === "error"` 直接返回。`usePluginUiHost` 用同一个 surface key 取回这个页面。
 - 运行时（PLM-UI-001 远端运行 `desktop-e2e-20261113093800335-p61934-02894b31e50a6f53`，临时取证日志已删除）：
   - 17:39:12：关闭标签后页面仍为 running。

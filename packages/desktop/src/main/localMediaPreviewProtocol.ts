@@ -1,7 +1,7 @@
 import { realpath as fsRealpath } from "node:fs/promises";
 import { realpathSync as fsRealpathSync, statSync as fsStatSync } from "node:fs";
 import { isAbsolute } from "node:path";
-import { LOCAL_MEDIA_PREVIEW_SCHEME, buildLocalMediaPreviewUrl } from "@zcode/shared";
+import { LOCAL_MEDIA_PREVIEW_SCHEME, buildLocalMediaPreviewUrl } from "@codez/shared";
 
 interface LocalMediaPreviewSchemeRegistrar {
   registerSchemesAsPrivileged(
@@ -137,7 +137,7 @@ export function createLocalMediaPreviewPathRegistry(
 export function registerLocalMediaPreviewScheme(
   protocol: LocalMediaPreviewSchemeRegistrar,
   // registerSchemesAsPrivileged 只能调用一次（后一次覆盖前一次），其他 privileged scheme
-  // （如插件 UI 沙箱的 zcode-sandbox）必须在这同一次调用里一起注册。
+  // （如插件 UI 沙箱的 codez-sandbox）必须在这同一次调用里一起注册。
   additionalSchemes: Array<{ scheme: string; privileges: Record<string, boolean> }> = [],
 ): void {
   protocol.registerSchemesAsPrivileged([

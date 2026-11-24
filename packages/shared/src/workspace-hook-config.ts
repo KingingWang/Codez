@@ -18,7 +18,7 @@ export const WORKSPACE_HOOK_EVENT_NAMES = [
 ] as const;
 
 export type WorkspaceHookEventName = (typeof WORKSPACE_HOOK_EVENT_NAMES)[number];
-export type WorkspaceHookConfigFileKind = "zcode.json" | ".zcode/config.json" | "explicit";
+export type WorkspaceHookConfigFileKind = "codez.json" | ".codez/config.json" | "explicit";
 
 const positiveNumberSchema = z.number().finite().positive();
 
@@ -182,8 +182,8 @@ export function resolveWorkspaceHookConfiguredGates(input: {
  */
 function buildWorkspaceHookCandidatePaths(directories: readonly string[]): string[] {
   return directories.flatMap((directory) => [
-    join(directory, "zcode.json"),
-    join(directory, ".zcode", "config.json"),
+    join(directory, "codez.json"),
+    join(directory, ".codez", "config.json"),
   ]);
 }
 
@@ -241,17 +241,17 @@ export function createWorkspaceHookSourceInput(input: {
   const configDirectory = dirname(canonicalPath);
   return {
     canonicalPath,
-    baseDir: basename(configDirectory) === ".zcode" ? dirname(configDirectory) : configDirectory,
+    baseDir: basename(configDirectory) === ".codez" ? dirname(configDirectory) : configDirectory,
     discoveryOrder: input.discoveryOrder,
     configFileKind: explicitProjectConfig
       ? "explicit"
-      : basename(canonicalPath) === "zcode.json"
-        ? "zcode.json"
-        : ".zcode/config.json",
+      : basename(canonicalPath) === "codez.json"
+        ? "codez.json"
+        : ".codez/config.json",
     explicitProjectConfig,
     editable:
       !explicitProjectConfig &&
-      canonicalPath === resolve(input.workingDirectory, ".zcode", "config.json"),
+      canonicalPath === resolve(input.workingDirectory, ".codez", "config.json"),
     hooks: input.hooks,
   };
 }
@@ -400,7 +400,7 @@ const SCRIPT_INTERPRETERS = new Set([
   "ruby",
   "perl",
 ]);
-const PROJECT_DIR_VARIABLES = ["ZCODE_PROJECT_DIR", "CLAUDE_PROJECT_DIR"] as const;
+const PROJECT_DIR_VARIABLES = ["CODEZ_PROJECT_DIR", "CLAUDE_PROJECT_DIR"] as const;
 // process 不经过 shell，`${VAR}` 由 Runtime 按文本展开为 cwd，作为单个 argv 传递。
 const PROCESS_PROJECT_DIR_PREFIXES = PROJECT_DIR_VARIABLES.map((name) => `\${${name}}/`);
 // 修复原因（第五轮 SG-01）：command 经 shell 执行，未加引号的 $VAR 会被 shell 按 cwd 中的空格拆开；

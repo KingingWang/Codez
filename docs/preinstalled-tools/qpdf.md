@@ -29,7 +29,7 @@ pdf 插件在 Bash 中调用 `qpdf` 做页面拆分与合并、体积优化、�
 
 运行检查：`qpdf --version`，输出必须包含 `qpdf version <版本>`。
 
-Windows 签名：`windowsSigning` 为 `zcode`，见通用规格的 [Windows 签名](README.md#windows-签名)。2026-11-04 核对 `qpdf-12.4.2-win32-x64-r1`：PE 文件 12 个，微软签名的 VC++ 运行库 6 个保留不变，没有签名的 6 个（`qpdf.exe` 和 5 个 DLL）要签名。
+Windows 签名：`windowsSigning` 为 `codez`，见通用规格的 [Windows 签名](README.md#windows-签名)。2026-11-04 核对 `qpdf-12.4.2-win32-x64-r1`：PE 文件 12 个，微软签名的 VC++ 运行库 6 个保留不变，没有签名的 6 个（`qpdf.exe` 和 5 个 DLL）要签名。
 
 ## 许可
 

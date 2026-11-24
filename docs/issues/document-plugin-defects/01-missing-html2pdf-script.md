@@ -6,8 +6,8 @@ Status: needs-triage
 
 `pdf.py` 的 `convert.html`（`convert_html`）和 `convert.blueprint`（`convert_blueprint`）都要求 `scripts/html2pdf.js`：
 
-- `apps/zcode-cli/packages/pdf-plugin/skills/pdf/scripts/pdf.py:1838`：找不到时报 `DependencyMissing`。
-- `apps/zcode-cli/packages/pdf-plugin/skills/pdf/scripts/pdf.py:2044`：同样使用 `html2pdf.js`。
+- `apps/codez-cli/packages/pdf-plugin/skills/pdf/scripts/pdf.py:1838`：找不到时报 `DependencyMissing`。
+- `apps/codez-cli/packages/pdf-plugin/skills/pdf/scripts/pdf.py:2044`：同样使用 `html2pdf.js`。
 
 `scripts/` 中只有 `html2pdf-next.js` 和 `html2poster.js`，没有 `html2pdf.js`。所以这两个命令一定失败。
 

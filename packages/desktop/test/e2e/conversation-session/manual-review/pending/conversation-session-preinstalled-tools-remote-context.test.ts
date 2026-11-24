@@ -41,7 +41,7 @@ describe("远端工作区的本机预装工具（待审核）", () => {
     const before = await execInRemoteContainer(container, [
       "sh",
       "-c",
-      'test ! -e "$HOME/.zcode/preinstalled-tools" && printf "E2E_LOP_REMOTE_ABSENT\\n"',
+      'test ! -e "$HOME/.codez/preinstalled-tools" && printf "E2E_LOP_REMOTE_ABSENT\\n"',
     ]);
     expect(before.stdout.trim()).toBe("E2E_LOP_REMOTE_ABSENT");
     await $('[data-testid="workspace-help-menu-trigger"]').click();
@@ -57,14 +57,14 @@ describe("远端工作区的本机预装工具（待审核）", () => {
         ).getAttribute("data-status")) === "preparing",
       { timeout: 30000 },
     );
-    const fixtureUrl = process.env.ZCODE_E2E_PREINSTALL_FIXTURE_URL!;
+    const fixtureUrl = process.env.CODEZ_E2E_PREINSTALL_FIXTURE_URL!;
     const initial = (await (await fetch(`${fixtureUrl}/status`)).json()) as {
       requests: number;
       pending: number;
     };
     expect(initial).toMatchObject({ requests: 1, pending: 1 });
     await browser.saveScreenshot(
-      `${process.env.ZCODE_E2E_ARTIFACT_DIR}/lop-remote-context-preparing.png`,
+      `${process.env.CODEZ_E2E_ARTIFACT_DIR}/lop-remote-context-preparing.png`,
     );
     await $('[data-testid="preinstalled-tools-auto-install"]').click();
     await browser.waitUntil(
@@ -92,7 +92,7 @@ describe("远端工作区的本机预装工具（待审核）", () => {
     const after = await execInRemoteContainer(container, [
       "sh",
       "-c",
-      'test ! -e "$HOME/.zcode/preinstalled-tools" && printf "E2E_LOP_REMOTE_ABSENT\\n"',
+      'test ! -e "$HOME/.codez/preinstalled-tools" && printf "E2E_LOP_REMOTE_ABSENT\\n"',
     ]);
     expect(after.stdout.trim()).toBe("E2E_LOP_REMOTE_ABSENT");
     // CLI 会设置 process.title，Linux 的 cmdline 因而不再保留 app-server 参数。
@@ -107,8 +107,8 @@ for file in /proc/[0-9]*/cmdline; do
   [ -r "$file" ] || continue
   command=$(tr '\\000' ' ' < "$file" 2>/dev/null) || continue
   case "$command" in
-    "zcode-cli "*|*" app-server --stdio"*)
-      if grep -zq '^ZCODE_PREINSTALLED_TOOLS_AVAILABLE=' "/proc/$pid/environ"; then
+    "codez-cli "*|*" app-server --stdio"*)
+      if grep -zq '^CODEZ_PREINSTALLED_TOOLS_AVAILABLE=' "/proc/$pid/environ"; then
         available=present
       else
         result=$?
@@ -149,7 +149,7 @@ done
       expect(agent.binPresent).toBe(false);
     }
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "lop-remote-context.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "lop-remote-context.json"),
       JSON.stringify(
         {
           localPlatform: process.platform,
@@ -165,7 +165,7 @@ done
       ),
     );
     await browser.saveScreenshot(
-      `${process.env.ZCODE_E2E_ARTIFACT_DIR}/lop-remote-context-cancelled.png`,
+      `${process.env.CODEZ_E2E_ARTIFACT_DIR}/lop-remote-context-cancelled.png`,
     );
   });
 });

@@ -7,11 +7,11 @@ import {
   TID_SSH_DIALOG,
   TID_SSH_ERROR,
   TID_SSH_SUCCESS,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { AlertTriangleIcon } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button.js";
 import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import {
   useRemoteConnectionFlow,
   type RemoteConnectionFlowOptions,
@@ -41,7 +41,7 @@ export function RemoteConnectionDialog(props: RemoteConnectionDialogProps) {
     hideTriggerWhenClosed = false,
     allowBackground = true,
   } = props;
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const flow = useRemoteConnectionFlow(props);
   const { open, currentStep, error, handleOpenChange } = flow;
   usePublishRemoteConnectionProgress(flow.minimizedProgress);

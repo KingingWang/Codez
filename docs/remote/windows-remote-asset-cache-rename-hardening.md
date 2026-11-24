@@ -6,12 +6,12 @@ Windows users can fail to connect to WSL after remote asset artifacts have alrea
 
 ```text
 EPERM: operation not permitted, rename
-C:\Users\<user>\AppData\Roaming\ZCode\remote-assets-cache\staging\remote-release-component-glm-linux-x64-...\component
+C:\Users\<user>\AppData\Roaming\Codez\remote-assets-cache\staging\remote-release-component-glm-linux-x64-...\component
 ->
-C:\Users\<user>\AppData\Roaming\ZCode\remote-assets-cache\releases\3.1.2\linux-x64\glm\linux-x64
+C:\Users\<user>\AppData\Roaming\Codez\remote-assets-cache\releases\3.1.2\linux-x64\glm\linux-x64
 ```
 
-Running ZCode as administrator does not reliably fix this failure.
+Running Codez as administrator does not reliably fix this failure.
 
 ## Root Cause
 

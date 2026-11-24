@@ -46,7 +46,7 @@
 | Agent SDK／签名／Model 6 文件 | **173/173**，含新增第二轮真实 SDK wire 58 项；`/tmp/provider113-sdk-final.log`                                                               |
 | 迁移／Bootstrap／Core 7 文件  | **241/241**，`/tmp/provider-final-cli-tests.log`                                                                                             |
 | 独立入口契约                  | **4/4**，`/tmp/provider-final-entry-tests.log`                                                                                               |
-| 真实 React 浏览器交互         | **20/20**，桌面宽度英文深色、手机宽度中文浅色；`/tmp/provider-final-browser2.log`，截图 `/tmp/zcode-provider-settings-batch`                 |
+| 真实 React 浏览器交互         | **20/20**，桌面宽度英文深色、手机宽度中文浅色；`/tmp/provider-final-browser2.log`，截图 `/tmp/codez-provider-settings-batch`                 |
 | 类型检查                      | 根、Adapter、Bootstrap 均通过；`/tmp/provider-final-{types,adapter-types,bootstrap-types}.log`                                               |
 | 根 lint／架构                 | lint **0 errors / 42 warnings**；architecture **0 violations**；`/tmp/provider-final-lint3.log`、`/tmp/provider-final-architecture2.log`     |
 | CLI Adapter 全量 lint         | **未通过**，26 项 max-lines；与开工日志比较错误文件及规则集合一致，未扩修原有超长文件。`/tmp/provider-final-cli-lint.log`                    |

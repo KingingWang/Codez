@@ -39,7 +39,7 @@ host frame ──► ConversationProjectionStore.handleFrame
   - 绝不修改 `next`：`next` 可能来自 apply.ts 的结构复用，被其他地方引用着。
 - **snapshot 帧**：每一行都做共享。如果共享后的每一行都和当前 window 的对应行 `===`、而且长度相同，就连 window 数组也复用。
 - **`row.delta` 不做比较。** 流式追加产生的新字符串本来就是新的，逐帧深比较只会白白消耗 CPU；这里只把新行登记进池，等最终的 `row.upserted` 到来时再与它共享。
-- **语义不变。** 共享只复用引用，值仍然深相等。共享逻辑放在 UI store 层，不改 `@zcode/shared` 的 `applyConversationDelta`，因为 apply.ts 约定客户端 apply 不增加语义分支。
+- **语义不变。** 共享只复用引用，值仍然深相等。共享逻辑放在 UI store 层，不改 `@codez/shared` 的 `applyConversationDelta`，因为 apply.ts 约定客户端 apply 不增加语义分支。
 
 ## 影响面
 

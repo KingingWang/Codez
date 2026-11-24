@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import type { ConnectionProfile } from "@zcode/shared";
+import type { ConnectionProfile } from "@codez/shared";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 
 /** 编辑框只保留表单草稿；打开时按当前展示状态关联的连接读取权威记录。 */

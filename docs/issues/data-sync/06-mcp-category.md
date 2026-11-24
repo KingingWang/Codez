@@ -22,10 +22,10 @@ Status: done
 - [x] 导入参数改名为 `sourceHomeDir`、`sourceWorkspacePath`、`targetWorkspacePath`。本票只做 home 改写，workspace 改写在 14 接入。
 - [x] 改写按目标路径风格（POSIX / Windows）拼接。
 - [x] 更新时只替换选中的 server，保留远端启用状态和其他字段；写入沿用现有的严格读取、原子写入和 0600 权限。
-- [x] 远端 `.zcode` 中没有任何 server、实际生效的是 `~/.agents/mcp.json` 时，本分类所有行都不可选，原因写「远端使用 ~/.agents 兼容配置，推送会使其失效」。
+- [x] 远端 `.codez` 中没有任何 server、实际生效的是 `~/.agents/mcp.json` 时，本分类所有行都不可选，原因写「远端使用 ~/.agents 兼容配置，推送会使其失效」。
 - [x] 推送后刷新远端的 MCP 列表。
 - [x] 中英文文案齐全。
-- [x] 主进程 MCP 设置页写入方（`packages/desktop/src/main/mcpUserDirectory/index.ts` 的 `writeZCodeServersToFile`、`writeServerEnabledToFile`、`cleanupLegacyMcpEnabledOverride`）改为严格读取 + 写前重读 + 原子替换（0600）；文件损坏时拒绝写入且字节不变。单独一个 fix commit。
+- [x] 主进程 MCP 设置页写入方（`packages/desktop/src/main/mcpUserDirectory/index.ts` 的 `writeCodezServersToFile`、`writeServerEnabledToFile`、`cleanupLegacyMcpEnabledOverride`）改为严格读取 + 写前重读 + 原子替换（0600）；文件损坏时拒绝写入且字节不变。单独一个 fix commit。
 - [x] 先补测试再改代码。
 
 ## Verification

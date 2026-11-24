@@ -27,7 +27,7 @@ Status: done
  │  ○ z-code             │
  │ ──────────────────── │
  │ Ubuntu Server         │
- │  ● 用户   ← 远端 ~/.zcode，经 source-settings attachment
+ │  ● 用户   ← 远端 ~/.codez，经 source-settings attachment
  │  ○ api-service        │
  │ ──────────────────── │
  │ Ubuntu 24.04（WSL）   │

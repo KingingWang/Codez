@@ -1,16 +1,16 @@
 import { useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import type { IPlatformService, WebRemoteControlStatus } from "@zcode/shared";
-import type { IServiceAccessor, IBroadcastService } from "@zcode/services";
-import type { ConversationSnapshot } from "@zcode/shared/zcode-protocol-v4";
+import type { IPlatformService, WebRemoteControlStatus } from "@codez/shared";
+import type { IServiceAccessor, IBroadcastService } from "@codez/services";
+import type { ConversationSnapshot } from "@codez/shared/codez-protocol-v4";
 import { ConversationComposer } from "@/v4/ConversationComposer.js";
 import { PlatformProvider } from "@/hooks/usePlatform.js";
 import { useWebRemoteControlStatus } from "@/hooks/useWebRemoteControlStatus.js";
 import { ServiceProvider } from "@/hooks/useServices.js";
 import { StoreContext } from "@/store/StoreProvider.js";
 import { TabStoreProvider } from "@/store/TabStoreProvider.js";
-import { createZCodeStore } from "@/store/index.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { createCodezStore } from "@/store/index.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import "@/styles.css";
 
@@ -19,11 +19,11 @@ document.documentElement.className = params.get("theme") ?? "light";
 const noop = () => {};
 const dispose = () => ({ dispose: noop });
 const broadcast = { send: async () => {}, onMessage: dispose } as unknown as IBroadcastService;
-const store = createZCodeStore(broadcast);
+const store = createCodezStore(broadcast);
 const services = {
   broadcastService: broadcast,
   settingService: { get: async () => ({}), update: async () => {} },
-  zcodeAgentService: { onAgentRuntimeRestarted: dispose },
+  codezAgentService: { onAgentRuntimeRestarted: dispose },
   subagentsService: { list: async () => ({ agents: [], capability: null }) },
   skillsService: { list: async () => ({ skills: [] }) },
   clientConfigService: { getSnapshot: async () => ({}) },
@@ -203,13 +203,13 @@ function Fixture() {
 createRoot(document.getElementById("root")!).render(
   <ServiceProvider services={services}>
     <StoreContext.Provider value={store}>
-      <ZCodeIntlProvider initialLocale={params.get("locale") === "zh-CN" ? "zh-CN" : "en-US"}>
+      <CodezIntlProvider initialLocale={params.get("locale") === "zh-CN" ? "zh-CN" : "en-US"}>
         <TabStoreProvider>
           <TooltipProvider>
             <Fixture />
           </TooltipProvider>
         </TabStoreProvider>
-      </ZCodeIntlProvider>
+      </CodezIntlProvider>
     </StoreContext.Provider>
   </ServiceProvider>,
 );

@@ -4,7 +4,7 @@ import {
   validatePreinstalledCatalog,
 } from "#src/preinstalled-tools/validation.js";
 
-export const ZCODE_PREINSTALLED_TOOLS_AVAILABLE_ENV = "ZCODE_PREINSTALLED_TOOLS_AVAILABLE";
+export const CODEZ_PREINSTALLED_TOOLS_AVAILABLE_ENV = "CODEZ_PREINSTALLED_TOOLS_AVAILABLE";
 export const preinstalledToolsReleaseSchema = z.enum(["production", "preview", "development"]);
 export const preinstalledToolPlatformSchema = z.enum(["darwin", "win32", "linux"]);
 export const preinstalledToolArchSchema = z.enum(["x64", "arm64"]);
@@ -186,7 +186,7 @@ export const preinstalledToolInstallationSchema = z
     installedAt: z.iso.datetime(),
   })
   .superRefine(validatePreinstalledEntries);
-export const PREINSTALLED_TOOL_ARCHIVE_IDENTITY_FILE = "zcode-tool-resource.json";
+export const PREINSTALLED_TOOL_ARCHIVE_IDENTITY_FILE = "codez-tool-resource.json";
 export const preinstalledToolArchiveIdentitySchema = z.strictObject({
   schemaVersion: z.literal(1),
   ...identityShape,

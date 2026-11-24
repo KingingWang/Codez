@@ -9,15 +9,15 @@ import {
   createProviderProvisioningTarget,
   EmptyAccountProviderConfigSource,
   OAuthCredentialRepo,
-} from "@zcode/services/node";
+} from "@codez/services/node";
 
-const base = process.env.ZCODE_DATA_BASE_DIR;
+const base = process.env.CODEZ_DATA_BASE_DIR;
 if (!base?.includes("oauth-provisioning-e2e-"))
   throw new Error("isolated provisioning HOME required");
-const configDir = join(base, ".zcode", "v2");
+const configDir = join(base, ".codez", "v2");
 const personalConfigFilePath = join(configDir, "provider_config.json");
 const configRuntime = createProviderConfigRuntime({
-  zcodeBuiltinFilePath: resolve("../../config/provider/zcode-builtin.json"),
+  codezBuiltinFilePath: resolve("../../config/provider/codez-builtin.json"),
   personalFilePath: personalConfigFilePath,
   watch: false,
   personalPollingIntervalMs: false,
@@ -59,7 +59,7 @@ store.updateMany = async (changes, options) => {
     await update({
       ...changes,
       "oauth:session_revision": "e2e-concurrent-revision",
-      zcodejwttoken: "e2e-concurrent-primary",
+      codezjwttoken: "e2e-concurrent-primary",
     });
   }
   throw new Error("e2e failure after atomic credential write");

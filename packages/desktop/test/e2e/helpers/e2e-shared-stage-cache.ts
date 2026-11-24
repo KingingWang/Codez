@@ -11,11 +11,11 @@ import { stageE2EAppOutput } from "./e2e-app-output-stage.js";
  * 修复原因：每个 WDIO 进程按 runId 复制一份桌面产物、重新 seed 一份官方插件缓存模板。
  * macOS 的写时复制几乎不花时间，Windows 没有写时复制：复制 out（约 6700 个文件、157MB，
  * 其中 renderer 占 6650 个）要 11s，seed 插件缓存要 8–16s，测试池和 CI 子 shard 的每一批
- * 都要再付一遍。复用构建（ZCODE_E2E_SKIP_BUILD=1）时产物和 CLI 在整轮里不变，按内容签名
+ * 都要再付一遍。复用构建（CODEZ_E2E_SKIP_BUILD=1）时产物和 CLI 在整轮里不变，按内容签名
  * 只做一次，之后的批次直接用。快照建好后只读；签名一变就另建，隔离效果与按 runId 复制相同。
  */
 
-const COMPLETE_MARKER = ".zcode-e2e-snapshot-complete";
+const COMPLETE_MARKER = ".codez-e2e-snapshot-complete";
 const KEEP_SNAPSHOTS = 3;
 
 /** 目录内容签名：相对路径 + 大小 + 修改时间。不读文件内容，Windows 上 6700 个文件约 0.3s */

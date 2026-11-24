@@ -1,4 +1,4 @@
-import { withPluginTelemetry } from "@zcode/services";
+import { withPluginTelemetry } from "@codez/services";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useServices } from "@/hooks/useServices.js";
 import { useScopedPluginManagementStore } from "@/store/pluginManagementStore.js";
@@ -8,7 +8,7 @@ import {
   type StorePluginItem,
 } from "@/settings/pluginStoreListing.js";
 import { useUiPluginRecommendations } from "@/plugin-ui/adapters/useUiPluginRecommendations.js";
-import { invalidateDeferredDraftSessionForSkillChange } from "@/lib/zcodeDraftSkillInvalidation.js";
+import { invalidateDeferredDraftSessionForSkillChange } from "@/lib/codezDraftSkillInvalidation.js";
 import { refreshSharedSkillStoreForWorkspace } from "@/lib/skillStoreRefresh.js";
 import { logger } from "@/logger.js";
 

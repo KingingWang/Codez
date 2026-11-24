@@ -5,7 +5,7 @@ Status: needs-triage
 ## 现象
 
 - E2E `conversation-session-mcp-oauth-status-isolation` 的 MO01/MO03 在设置页完成插件 OAuth 授权后断言 `authorizedInitializeCount: 1`，实际是 2，用例失败。
-- 多出的一次来自应用启动时预热的草稿会话（默认项目 `ZCodeProject`）：它在 `session/create` 时就连接全部 MCP server，包括插件的 authorization-code HTTP server。
+- 多出的一次来自应用启动时预热的草稿会话（默认项目 `CodezProject`）：它在 `session/create` 时就连接全部 MCP server，包括插件的 authorization-code HTTP server。
 
 ## 时序（发布基线运行 `desktop-e2e-20261026-214541-765` 的 Agent 日志）
 

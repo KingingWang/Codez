@@ -21,9 +21,9 @@ it("keeps cached-account business requests inside the auth-gate fixture and rest
       workspacePath: root,
     });
     expect(close).not.toBeNull();
-    expect(process.env.ZAI_BUSINESS_BASE_URL).toBe(process.env.ZCODE_E2E_REMOTE_AUTH_GATE_URL);
+    expect(process.env.ZAI_BUSINESS_BASE_URL).toBe(process.env.CODEZ_E2E_REMOTE_AUTH_GATE_URL);
     const scenes = await (
-      await fetch(`${process.env.ZCODE_E2E_REMOTE_AUTH_GATE_URL}/api/v1/client/scenes`)
+      await fetch(`${process.env.CODEZ_E2E_REMOTE_AUTH_GATE_URL}/api/v1/client/scenes`)
     ).json();
     expect(scenes.data).toEqual([]);
     expect(mapClientScenesToDraftSuggestedPromptItems(scenes.data)).toEqual([]);
@@ -42,7 +42,7 @@ it("seeds a last-enabled target that the startup-restore case does not reopen", 
   const root = await mkdtemp(join(tmpdir(), "remote-startup-restore-fixture-"));
   const credentialsFile = join(root, "credentials.json");
   const settingsFile = join(root, "setting.json");
-  const workspacePath = join(root, "ZCodeProject");
+  const workspacePath = join(root, "CodezProject");
   let close: (() => Promise<void>) | null = null;
   try {
     await writeFile(settingsFile, "{}");
@@ -90,7 +90,7 @@ it.each([
     const root = await mkdtemp(join(tmpdir(), "remote-mobile-fixture-"));
     const credentialsFile = join(root, "credentials.json");
     const settingsFile = join(root, "setting.json");
-    const previousUrl = process.env.ZCODE_WEB_REMOTE_CONTROL_URL;
+    const previousUrl = process.env.CODEZ_WEB_REMOTE_CONTROL_URL;
     const previousForceColor = process.env.FORCE_COLOR;
     // wdio CLI 会给 worker 注入 FORCE_COLOR（非 TTY 为 "0"，TTY 为 "1"），fixture 必须在该环境下识别 Web 就绪。
     process.env.FORCE_COLOR = "0";
@@ -105,11 +105,11 @@ it.each([
         webUrl: "http://127.0.0.1:0/remote/v4",
       });
       expect(close).not.toBeNull();
-      const webUrl = new URL(process.env.ZCODE_WEB_REMOTE_CONTROL_URL!);
+      const webUrl = new URL(process.env.CODEZ_WEB_REMOTE_CONTROL_URL!);
       expect(webUrl.hostname).toBe("127.0.0.1");
       expect(Number(webUrl.port)).toBeGreaterThan(0);
       expect(webUrl.pathname).toBe("/remote/v4");
-      const origin = process.env.ZCODE_E2E_REMOTE_AUTH_GATE_URL!;
+      const origin = process.env.CODEZ_E2E_REMOTE_AUTH_GATE_URL!;
       expect(new URL(origin).hostname).toBe("127.0.0.1");
       expect(process.env.ZAI_BUSINESS_BASE_URL).toBe(origin);
       const credentials = JSON.parse(await readFile(credentialsFile, "utf8"));
@@ -117,7 +117,7 @@ it.each([
       const token = await fetch(new URL("/api/v1/remote/token", origin), {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${credentials.zcodejwttoken}`,
+          Authorization: `Bearer ${credentials.codezjwttoken}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ role: "terminal" }),
@@ -128,7 +128,7 @@ it.each([
         const highspeedToken = await fetch(new URL("/api/v1/remote/token", origin), {
           method: "POST",
           headers: {
-            Authorization: "Bearer e2e-highspeed-zcode-jwt",
+            Authorization: "Bearer e2e-highspeed-codez-jwt",
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ role: "terminal" }),
@@ -139,7 +139,7 @@ it.each([
       expect(mapClientScenesToDraftSuggestedPromptItems(scenes.data)).toEqual([]);
       await close!();
       close = null;
-      expect(process.env.ZCODE_WEB_REMOTE_CONTROL_URL).toBe(previousUrl);
+      expect(process.env.CODEZ_WEB_REMOTE_CONTROL_URL).toBe(previousUrl);
       await expect(fetch(new URL("/api/v1/remote/device", origin))).rejects.toThrow();
     } finally {
       await close?.();

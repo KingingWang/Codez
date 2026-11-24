@@ -18,9 +18,9 @@ async function readActivity() {
   return browser.execute(async () => {
     const bridge = (
       window as unknown as {
-        zcode: { getDesktopSessionActivity(): Promise<{ runningAgentSessionCount: number }> };
+        codez: { getDesktopSessionActivity(): Promise<{ runningAgentSessionCount: number }> };
       }
-    ).zcode;
+    ).codez;
     return bridge.getDesktopSessionActivity();
   });
 }
@@ -80,7 +80,7 @@ describe("Session activity close confirmation (pending SAC)", () => {
   });
 
   after(async () => {
-    const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR;
+    const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR;
     if (artifactDir) {
       await mkdir(artifactDir, { recursive: true });
       await writeFile(
@@ -119,7 +119,7 @@ describe("Session activity close confirmation (pending SAC)", () => {
   it("SAC01: production Main cancels real app.quit without stopping the active session", async function () {
     this.timeout(120_000);
     // 普通 WDIO 构建固定 test 后端，不能命中 production 退出门控；此段仅接收显式打包验收。
-    // 打包产物也必须由当前源码以 production 后端构建；仅设置运行时 ZCODE_ENV 不生效。
+    // 打包产物也必须由当前源码以 production 后端构建；仅设置运行时 CODEZ_ENV 不生效。
     if (!(await browser.electron.execute((electron) => electron.app.isPackaged))) this.skip();
     await prepareShellAndDismissOnboarding();
     await prepareV4ConversationE2E({ skipProvider: true });
@@ -147,7 +147,7 @@ describe("Session activity close confirmation (pending SAC)", () => {
     expect(state.state).toBe("streaming");
     await waitForControlledReplay("sac-quit");
     await expectActivity("quit-cancelled-still-running", 1);
-    await browser.saveScreenshot(join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "SAC01-cancelled.png"));
+    await browser.saveScreenshot(join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "SAC01-cancelled.png"));
     await releaseControlledReplay("sac-quit");
     await waitForV4ConversationState(
       (snapshot) => snapshot.state === "idle",

@@ -11,7 +11,7 @@ MCP 2025-11-25 Authorization 规范把授权定义在 HTTP-based transport 上�
 - stdio MCP 不走该规范，仍从进程环境变量读取凭据。
 - access token 禁止进入 URL query，必须通过 `Authorization: Bearer <access-token>` 发送。
 
-ZCode 当前 MCP adapter 已支持 `stdio`、`http`、`sse` transport，但 HTTP/SSE 原先只支持静态 headers。受保护 MCP server 返回 401 时，客户端必须能发现 OAuth metadata、完成用户授权或机器凭据授权、保存 token、重试请求，否则 Figma remote MCP 这类 OAuth server 无法开箱即用。
+Codez 当前 MCP adapter 已支持 `stdio`、`http`、`sse` transport，但 HTTP/SSE 原先只支持静态 headers。受保护 MCP server 返回 401 时，客户端必须能发现 OAuth metadata、完成用户授权或机器凭据授权、保存 token、重试请求，否则 Figma remote MCP 这类 OAuth server 无法开箱即用。
 
 ## 目标
 
@@ -40,7 +40,7 @@ ZCode 当前 MCP adapter 已支持 `stdio`、`http`、`sse` transport，但 HTTP
         "url": "https://mcp.example.com/mcp",
         "oauth": {
           "type": "authorization_code",
-          "clientName": "ZCode",
+          "clientName": "Codez",
           "scope": "mcp:connect"
         }
       }
@@ -160,7 +160,7 @@ CLI adapter 与 desktop host process 会共同读写同一个 `credentials.json`
 自动化验证需要覆盖：
 
 - 配置 schema 接受 HTTP/SSE `oauth.authorization_code` 和 `oauth.client_credentials`，并拒绝缺少必要字段的配置。
-- ZCode Protocol DTO 在 session create/resume/mcp list 链路中保留 `oauth` 配置。
+- Codez Protocol DTO 在 session create/resume/mcp list 链路中保留 `oauth` 配置。
 - MCP adapter 对 HTTP/SSE transport 传入 `authProvider`，且静态 headers 仍保留。
 - MCP status snapshot 在 pending authorization_code OAuth 时返回 authorization URL，设置页展示手动打开按钮。
 - 端到端测试确认受保护 Streamable HTTP MCP server 在 401 -> authorize redirect -> callback code -> token -> retry 后连接成功并列出工具。

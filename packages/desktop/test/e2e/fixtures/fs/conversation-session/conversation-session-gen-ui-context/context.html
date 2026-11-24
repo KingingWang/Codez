@@ -3,7 +3,7 @@
 <button id="later" onclick="save('GEN_UI_LATER')">Later</button>
 <script>
   async function save(stage) {
-    await window.zcode.setWidgetState({
+    await window.codez.setWidgetState({
       modelContent: { stage },
       privateContent: { secret: "GEN_UI_PRIVATE_ONLY" },
     });

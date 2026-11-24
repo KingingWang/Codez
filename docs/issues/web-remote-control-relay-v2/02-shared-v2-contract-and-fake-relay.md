@@ -25,5 +25,5 @@
 
 - 契约依据与夹具 API 见 [Relay V2 配对契约](../../web-remote-control/relay-v2-pairing.md)。shared 独立 V2 消息/HTTP 解析、显式 V2 二维码解析、V2 心跳常量及共用假 relay 已实现，V1 默认行为保留。
 - `pnpm typecheck`、`pnpm lint`（0 errors，60 个既有 warnings）、`pnpm architecture:check --changed` 通过；最终共享包及桌面/手机既有 transport 回归为 133 文件、1,504 测试通过。
-- implement 要求的全量 `pnpm test:unit` 已执行：1,914 文件通过、4 文件失败、2 文件跳过；17,943 测试通过。定向复跑后 CUA staging、TTFT 超时及 teardown 错误未再出现，仍失败的是 `e2eRuntimePaths.test.ts`（既有 `feedback-upload-privacy.test.ts:105` 使用 `/private/tmp`）和 `storagePreparationProtocol.test.ts`（`@zcode/adapters/storage` 导出的本地 dist 缺少源码已有的 `SqliteSessionStore.openStartup`）。相关源码相对任务开始基线无改动；未混入与本票无关的修复。
+- implement 要求的全量 `pnpm test:unit` 已执行：1,914 文件通过、4 文件失败、2 文件跳过；17,943 测试通过。定向复跑后 CUA staging、TTFT 超时及 teardown 错误未再出现，仍失败的是 `e2eRuntimePaths.test.ts`（既有 `feedback-upload-privacy.test.ts:105` 使用 `/private/tmp`）和 `storagePreparationProtocol.test.ts`（`@codez/adapters/storage` 导出的本地 dist 缺少源码已有的 `SqliteSessionStore.openStartup`）。相关源码相对任务开始基线无改动；未混入与本票无关的修复。
 - code-review 双轴评审：Standards 无发现；Spec 发现的删除 HTTP 状态/业务码差异已修复并复核关闭。全量门禁未通过，遵循根规则保留改动，不自动 commit。

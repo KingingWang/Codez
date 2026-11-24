@@ -6,7 +6,7 @@ import {
   TID_CONFIRM_DIALOG_CONFIRM,
   TID_CRON_CREATE_CARD,
   TID_CRON_CREATE_OPEN,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,

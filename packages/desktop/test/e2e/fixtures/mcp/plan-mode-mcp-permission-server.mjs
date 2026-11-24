@@ -6,7 +6,7 @@ import { dirname } from "node:path";
 
 const requireFromMcpAdapter = createRequire(
   new URL(
-    "../../../../../../apps/zcode-cli/packages/adapters/package.json",
+    "../../../../../../apps/codez-cli/packages/adapters/package.json",
     import.meta.url,
   ),
 );

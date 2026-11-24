@@ -34,7 +34,7 @@ unavailableReason?:
   | "not-entitled";
 ```
 
-原因枚举在 shared schema 定义一次，类型由 schema 推导，Provider 通过已有 shared 依赖复用。同步仍使用 `zcodeProviderUpdateAccountConfigParamsSchema`，不新建命令、不降低 strict、不另建状态 owner。
+原因枚举在 shared schema 定义一次，类型由 schema 推导，Provider 通过已有 shared 依赖复用。同步仍使用 `codezProviderUpdateAccountConfigParamsSchema`，不新建命令、不降低 strict、不另建状态 owner。
 
 ### 状态与重试链路
 
@@ -103,7 +103,7 @@ T105-UI01：分别渲染 Z.ai、BigModel 个人套餐“获取失败”卡片；
 - 先补测试得到 8 个预期失败：4 个协议原因、2 个 BigModel 分类、2 个重试按钮；实现后全部修复。
 - 最终 7 个定向测试文件 280/280 通过：协议往返/严格拒绝、模型配置构建闭包、套餐可用性、账号 Connection Resolver、Account State 投影、卡片详情、导航投影。`/tmp/todo105-final-unit.log`。
 - 服务集成测试使用真实 Family Availability → Connection Resolver → Account Config Resolver → 同步 schema：两家缺 Key 都发布 `credential-failed`，同快照的可用 Start Plan 不被阻断。没有用源码搜索代替运行时协议验证。
-- 组件浏览器 T105-UI01 四组通过：两家 ×（390px 中文浅色 / 1200px 英文深色）。真实点击验证重试请求次数、刷新中禁用、失败后再次点击、恢复后订阅按钮、登录调用为零、无页面 JS 异常。日志 `/tmp/todo105-browser.log`；截图与浏览器日志 `/tmp/zcode-todo105-browser/`。初次环境缺 Chromium / libatk，安装浏览器并复用已有临时动态库后运行；首次英文断言误写为 Failed to fetch，按产品既有翻译 Fetch failed 修正，不改产品文案。
+- 组件浏览器 T105-UI01 四组通过：两家 ×（390px 中文浅色 / 1200px 英文深色）。真实点击验证重试请求次数、刷新中禁用、失败后再次点击、恢复后订阅按钮、登录调用为零、无页面 JS 异常。日志 `/tmp/todo105-browser.log`；截图与浏览器日志 `/tmp/codez-todo105-browser/`。初次环境缺 Chromium / libatk，安装浏览器并复用已有临时动态库后运行；首次英文断言误写为 Failed to fetch，按产品既有翻译 Fetch failed 修正，不改产品文案。
 - `pnpm typecheck` 通过（包含 desktop `tsconfig.e2e.json`）；`pnpm lint` 0 error / 41 warning，warning 不在本次修改的生产代码中；`pnpm architecture:check --changed` 0 violation / 0 baseline / 0 new。格式与 `git diff --check` 通过。
 - 改动模块 shared、provider、services、ui 均是当前 policy 中 unmanaged 模块，context 未声明独立 CONTRACT；本次没有新增跨层 IO 或可变状态 owner。
 

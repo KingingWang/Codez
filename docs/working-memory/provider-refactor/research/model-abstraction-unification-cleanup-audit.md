@@ -280,7 +280,7 @@ Legacy Config -> 私有 Importer -> 新 Config
 
 ### 5.5.1 Reasoning 选择器复用模型选择链
 
-`ZCodeModelReasoningState` 不是模型运行状态。它当前随 `ZCodeModelOption` 跨进程发送，主要为输入框、
+`CodezModelReasoningState` 不是模型运行状态。它当前随 `CodezModelOption` 跨进程发送，主要为输入框、
 Subagent、闲时任务和 Repo Wiki 等模型选择界面提供 reasoning 档位和默认值。目标不是建立独立 reasoning
 查询或状态链，而是复用模型选择候选项：
 
@@ -302,7 +302,7 @@ Effective Model Config.optionSpecs.reasoningLevel
 
 - 可用档位和默认值属于模型选择候选项的 `optionSpecs.reasoningLevel`，前端从当前选中候选项直接读取；
 - `ModelSelection` 只保存用户明确选择的 `options.reasoningLevel`，不复制整个档位规格；
-- 删除独立的 `ZCodeModelReasoningState` 概念和误导性的 `State` 命名；不建立第二个 reasoning fetch、store
+- 删除独立的 `CodezModelReasoningState` 概念和误导性的 `State` 命名；不建立第二个 reasoning fetch、store
   或同步通道；
 - `enabled` 是冗余字段：是否存在 `optionSpecs.reasoningLevel` 已经完整表达该模型是否提供此选项；
 - `providerOptionsByLevel` 不进入 Protocol/UI。Provider 请求参数映射只保留在 Effective Model Config 的

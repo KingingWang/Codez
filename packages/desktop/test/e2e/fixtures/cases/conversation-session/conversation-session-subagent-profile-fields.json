@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": "~/.zcode/agents/e2e-profile-fields.md",
+      "path": "~/.codez/agents/e2e-profile-fields.md",
       "source": "created-by-spec",
       "description": "经真实 Settings 创建和逐字段保存；不直接写配置。"
     }

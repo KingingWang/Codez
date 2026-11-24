@@ -26,7 +26,7 @@ export function registerSessionSelectionCases({
           await page.addInitScript(trackProjectRenders);
           await page.addInitScript(() =>
             localStorage.setItem(
-              "zcode-project-sidebar-preferences",
+              "codez-project-sidebar-preferences",
               JSON.stringify({
                 order: [],
                 view: "projects",

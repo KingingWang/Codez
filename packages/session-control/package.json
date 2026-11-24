@@ -1,5 +1,5 @@
 {
-  "name": "@zcode/session-control",
+  "name": "@codez/session-control",
   "private": true,
   "type": "module",
   "imports": {

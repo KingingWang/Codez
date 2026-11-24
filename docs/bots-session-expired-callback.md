@@ -2,7 +2,7 @@
 
 ## 背景
 
-Bot 用户可能点击旧消息按钮，或在已失效的 active task 上继续发送消息。此时 ZCode Agent 协议层会在恢复任务时返回 `Session not found: <id>` / `Session is not active: <id>`。旧逻辑会把底层错误包装为“处理机器人回调失败”，用户无法知道下一步该怎么做。
+Bot 用户可能点击旧消息按钮，或在已失效的 active task 上继续发送消息。此时 Codez Agent 协议层会在恢复任务时返回 `Session not found: <id>` / `Session is not active: <id>`。旧逻辑会把底层错误包装为“处理机器人回调失败”，用户无法知道下一步该怎么做。
 
 ## 方案
 

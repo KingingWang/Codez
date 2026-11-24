@@ -27,7 +27,7 @@
 - 正式文件 SHA-256：`2af7b0cac658e9507413f5b1f5f9754e17c18fd29745522592d8b6ae699030ab`。
 - 测试文件 SHA-256：`5a2ba4d7bf05eef50b479196a198cbe493c908a75fbc80d3db6d2acd80e459df`。hash 针对 Git 内容（LF）；本地 CRLF checkout 需要按仓库换行归一后比较。
 
-清单直接从[正式 JSON](../../config/provider/zcode-builtin.json)提取。下面的启停是模板精确规则，不包含用户覆盖或实际 Key/权益；存在于列表不等于该入口在本轮已真实验证。
+清单直接从[正式 JSON](../../config/provider/codez-builtin.json)提取。下面的启停是模板精确规则，不包含用户覆盖或实际 Key/权益；存在于列表不等于该入口在本轮已真实验证。
 
 ## 模板摘要
 
@@ -312,7 +312,7 @@ revision 38 的测试与验证结果见[M3.1 Flash 规格](./minimax-m31-flash.m
 ```bash
 node --input-type=module - <<'JS'
 import { readFile } from 'node:fs/promises';
-const release = JSON.parse(await readFile('config/provider/zcode-builtin.json', 'utf8'));
+const release = JSON.parse(await readFile('config/provider/codez-builtin.json', 'utf8'));
 const rules = release.config.modelConfigRules.templateModelRules;
 for (const template of release.config.providerConfigRules.templateRules) {
   console.log(template.templateId, template.config.api);

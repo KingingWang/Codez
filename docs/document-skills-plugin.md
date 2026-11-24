@@ -4,10 +4,10 @@
 
 | 插件          | Skill | 源码目录                                       |
 | ------------- | ----- | ---------------------------------------------- |
-| documents     | docx  | `apps/zcode-cli/packages/documents-plugin`     |
-| pdf           | pdf   | `apps/zcode-cli/packages/pdf-plugin`           |
-| presentations | pptx  | `apps/zcode-cli/packages/presentations-plugin` |
-| spreadsheets  | xlsx  | `apps/zcode-cli/packages/spreadsheets-plugin`  |
+| documents     | docx  | `apps/codez-cli/packages/documents-plugin`     |
+| pdf           | pdf   | `apps/codez-cli/packages/pdf-plugin`           |
+| presentations | pptx  | `apps/codez-cli/packages/presentations-plugin` |
+| spreadsheets  | xlsx  | `apps/codez-cli/packages/spreadsheets-plugin`  |
 
 ## 来源
 
@@ -15,7 +15,7 @@
 
 此前的生产内容来自插件主仓库，LibreOffice 增量最后一次导入自本地上游 commit `583d3759112d8350d93f58cb4848600da590d6b5`（TREE `970a9044e75d27355913f5cf01b1a43b8cfc70b6`）。来源及 63 项逐文件记录见 [08-source-import.json](issues/document-tool-preinstall/08-source-import.json)，仅作历史记录。
 
-查看器产物仍由本仓库 [office-runtime](../apps/zcode-cli/packages/office-runtime/CONTRACT.md) 构建，遵循 [内置查看面板规格](plugins/2026-10-15-office-viewer-builtin-panels-spec.md)。
+查看器产物仍由本仓库 [office-runtime](../apps/codez-cli/packages/office-runtime/CONTRACT.md) 构建，遵循 [内置查看面板规格](plugins/2026-10-15-office-viewer-builtin-panels-spec.md)。
 
 非受管环境保留已有的程序发现与安装语义；系统程序不设最低版本门槛。
 
@@ -29,7 +29,7 @@
 
 Bootstrap 官方 definition 是内置目录与默认启用的权威来源；Settings 默认名单须与其一致。
 启动 → seed 四个独立缓存 → 重建内置市场分片 → 既有插件发现读取分片 → 暴露 skills 与查看面板。
-缓存分别为 `~/.zcode/cli/plugins/cache/zcode-plugins-official/<插件名>/<该插件版本>/`，版本取 package/manifest 与 Bootstrap 的一致声明。
+缓存分别为 `~/.codez/cli/plugins/cache/zcode-plugins-official/<插件名>/<该插件版本>/`，版本取 package/manifest 与 Bootstrap 的一致声明。
 每个插件可以独立启停、卸载与恢复，不再发布内置 `document-skills` 条目。
 旧聚合插件缓存和用户配置不删除；重建后的内置分片不再引用旧目录。
 用户另行安装的市场插件仍按既有安装与启用配置处理，不自动改写或卸载。
@@ -39,13 +39,13 @@ Bootstrap 官方 definition 是内置目录与默认启用的权威来源；Sett
 `<插件名>:visual-judge`。生成文档时不派子代理做视觉验收；需要视觉检查时，Agent 把产物渲染成图片后
 自己看图检查一次，不调用外部 VLM。不提供插件子代理的单独开关。
 原 `judge` 名称同样不再提供。每个插件只携带自己的格式 skill；四个插件本身不再声明
-`image_search` MCP，图片搜索由默认启用的 `image-search` 插件提供，版本为 `0.1.1`，通过既有官方 JWT 认证访问 `${ZCODE_BASE_URL}/api/v1/mcp/server/image_search`；不新增本地 MCP runtime。
-`image-search` 缓存路径为 `~/.zcode/cli/plugins/cache/zcode-plugins-official/image-search/0.1.1/`。
+`image_search` MCP，图片搜索由默认启用的 `image-search` 插件提供，版本为 `0.1.1`，通过既有官方 JWT 认证访问 `${CODEZ_BASE_URL}/api/v1/mcp/server/image_search`；不新增本地 MCP runtime。
+`image-search` 缓存路径为 `~/.codez/cli/plugins/cache/zcode-plugins-official/image-search/0.1.1/`。
 
 ## 打包与验收
 
 filesystem seed、SEA、Electron Node bundle、remote prebuild、server remote 部署与容器评测
-必须使用五个目录。四个文档插件还须保留 `scripts/zcode_libreoffice.py` 和完整 `scripts/libreoffice-profile/`；四份内容必须逐字节一致，由工程门禁检查。每个发布单元必须校验自己的 `skills/<格式>/SKILL.md`
+必须使用五个目录。四个文档插件还须保留 `scripts/codez_libreoffice.py` 和完整 `scripts/libreoffice-profile/`；四份内容必须逐字节一致，由工程门禁检查。每个发布单元必须校验自己的 `skills/<格式>/SKILL.md`
 与 `skills/<格式>-viewer/SKILL.md`；缺少任意必需资产不得标记成完整缓存。四个文档插件不再携带 `agents/`，也不再把子代理文件列为必需资产。
 所有版本权威（package、manifest、Bootstrap、SEA）与缓存路径必须一致，内容变化必须升版。
 
@@ -65,13 +65,13 @@ Settings 子智能体列表不出现四个 `<插件名>:visual-judge`；filesyst
 | 工具                  | 插件调用方式                                                                                                                     | 未就绪或开关关闭时               |
 | --------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
 | Poppler、Pandoc、qpdf | 原命令名，例如 `pdftoppm`。预装入口排在 Agent PATH 最前                                                                          | 找到用户自己装的程序             |
-| Python                | 先找 `zcode-python`，找不到再用 `python3`；运行脚本和安装包都这样写，见 [Python 规格](preinstalled-tools/python.md#插件调用规则) | 落到用户的 `python3`             |
-| LibreOffice           | 统一入口 `scripts/zcode_libreoffice.py`，它先找 `zcode-soffice`                                                                  | 使用系统版本（不限版本，含 Dev） |
+| Python                | 先找 `codez-python`，找不到再用 `python3`；运行脚本和安装包都这样写，见 [Python 规格](preinstalled-tools/python.md#插件调用规则) | 落到用户的 `python3`             |
+| LibreOffice           | 统一入口 `scripts/codez_libreoffice.py`，它先找 `codez-soffice`                                                                  | 使用系统版本（不限版本，含 Dev） |
 
 - 预装 Python 下安装的包写进它的附加区，不改动预装包。安装失败或预装 Python 无法运行时，Agent 先说明原因，再由用户选择是否改用自己的 Python。
 - LibreOffice 预装版本启动或运行失败时，统一入口先清理，再用系统版本重跑一次；系统失败直接报告，取消不重跑。每次调用使用独立 profile；重算使用本次的宏回执；不修改用户默认配置。
-- 工具都不可用时（五个工具一致）：有 `ZCODE_PREINSTALLED_TOOLS_AVAILABLE` 的桌面端先说明预装版本未就绪或已关闭，提示“帮助 → 预装工具”，由用户选择等待、打开开关，或按插件原有方式继续（例如按 setup.md 安装）；其他环境保持原有安装引导。
+- 工具都不可用时（五个工具一致）：有 `CODEZ_PREINSTALLED_TOOLS_AVAILABLE` 的桌面端先说明预装版本未就绪或已关闭，提示“帮助 → 预装工具”，由用户选择等待、打开开关，或按插件原有方式继续（例如按 setup.md 安装）；其他环境保持原有安装引导。
 - 不预装：Node.js 与 npm 包、tectonic、Chromium、Ghostscript、tesseract、pytesseract、markitdown、adjustText、PyMuPDF。它们仍按插件已有的环境检查和安装说明处理。
 - Web 服务端、独立 CLI、容器和远端环境没有入口目录和变量，行为与现在相同。预装只在本机，不部署到 SSH、WSL、Docker 或其他远端工作区。
 
-脚本相对路径以 Skill 工具返回的 base directory 为准。四个格式 Skill 位于 `skills/<格式>/`，统一入口从该目录定位为 `../../scripts/zcode_libreoffice.py`，配置模板位于同一脚本目录下的 `libreoffice-profile/`。
+脚本相对路径以 Skill 工具返回的 base directory 为准。四个格式 Skill 位于 `skills/<格式>/`，统一入口从该目录定位为 `../../scripts/codez_libreoffice.py`，配置模板位于同一脚本目录下的 `libreoffice-profile/`。

@@ -14,7 +14,7 @@ const root = fileURLToPath(new URL("../../../../../../", import.meta.url));
 const entry =
   "/packages/ui/test/browser/manual-review/pending/reasoning-render-performance.fixture.tsx";
 const artifacts =
-  process.env.ZCODE_E2E_ARTIFACT_DIR ||
+  process.env.CODEZ_E2E_ARTIFACT_DIR ||
   join(root, "packages/desktop/.e2e-artifacts/reasoning-render-performance");
 let server, browser, origin;
 before(async () => {
@@ -25,7 +25,7 @@ before(async () => {
   );
   // 用同一夹具加载指定基线的三个实现，比较生产 React，排除开发检查与热更新开销。
   const baseline = new Map();
-  for (const path of process.env.ZCODE_REASONING_BASELINE_REF
+  for (const path of process.env.CODEZ_REASONING_BASELINE_REF
     ? [
         "packages/ui/src/v4/conversationAssistantWorkItems.ts",
         "packages/ui/src/v4/ConversationTurnGroup.tsx",
@@ -34,7 +34,7 @@ before(async () => {
     : []) {
     const { stdout } = await promisify(execFile)(
       "git",
-      ["show", `${process.env.ZCODE_REASONING_BASELINE_REF}:${path}`],
+      ["show", `${process.env.CODEZ_REASONING_BASELINE_REF}:${path}`],
       { cwd: root },
     );
     baseline.set(root + path, stdout);
@@ -115,7 +115,7 @@ for (const mobile of [false, true])
         );
       const evidence = {
         build: "production",
-        baseline: process.env.ZCODE_REASONING_BASELINE_REF ?? null,
+        baseline: process.env.CODEZ_REASONING_BASELINE_REF ?? null,
         streaming: [],
         folds: [],
         errors,
@@ -138,7 +138,7 @@ for (const mobile of [false, true])
         // 热身后对同一批不可变历史行进行尾部更新，不以开发构建冷加载时间冒充交互开销。
         await page.evaluate(() => window.__reasoningPerf.step());
         await frames(page);
-        if (process.env.ZCODE_REASONING_CPU_PROFILE) {
+        if (process.env.CODEZ_REASONING_CPU_PROFILE) {
           await client.send("Profiler.enable");
           await client.send("Profiler.start");
         }
@@ -164,7 +164,7 @@ for (const mobile of [false, true])
             frameMax: Math.max(...times),
           });
         }
-        if (process.env.ZCODE_REASONING_CPU_PROFILE) {
+        if (process.env.CODEZ_REASONING_CPU_PROFILE) {
           const { profile } = await client.send("Profiler.stop");
           await writeFile(
             join(artifacts, `${mobile ? "mobile" : "desktop"}-${theme}.cpuprofile`),

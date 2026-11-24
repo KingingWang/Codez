@@ -20,8 +20,8 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import type { ConversationRow } from "@zcode/shared/zcode-protocol-v4";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import type { ConversationRow } from "@codez/shared/codez-protocol-v4";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import {
   createConversationSelectionReference,
   setHoveredConversationAnnotation,
@@ -121,7 +121,7 @@ export function ConversationSelectionTooltip({
   /** 不提供时不显示“在辅助对话中提问”：辅助对话自身的时间线不能再开辅助对话。 */
   onAskInSideChat?: (reference: ConversationSelectionReference) => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const selectionTextCacheRef = useRef<{
     rawText: string;
     codeSignature: string;

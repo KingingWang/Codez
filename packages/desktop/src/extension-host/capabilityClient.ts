@@ -5,7 +5,7 @@ import {
   isExtensionError,
   type CapabilitySubscriptionErrorListener,
   type IExtensionWindowChannel,
-} from "@zcode/shared/extension-host";
+} from "@codez/shared/extension-host";
 import { hostLog, runAsPlugin } from "#src/extension-host/runtime.js";
 
 // 能力部分的通用包装（docs/plugins/extension-host.md §7.2）：

@@ -1,5 +1,5 @@
-import { Emitter, type Event } from "@zcode/rpc";
-import type { ExtensionEnv } from "@zcode/shared/extension-host";
+import { Emitter, type Event } from "@codez/rpc";
+import type { ExtensionEnv } from "@codez/shared/extension-host";
 
 // App 环境（docs/plugins/extension-host.md §16.11）：唯一 owner 是 Renderer（界面语言只在 Renderer）。
 // 与 workbench 报告同一条路径：Renderer 报告，Window Host 只持最近一份，内容没变不触发。

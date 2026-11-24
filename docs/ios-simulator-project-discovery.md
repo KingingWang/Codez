@@ -43,6 +43,6 @@ MCP 工具授权不等于对插件内部每个子进程的独立审批。
 3. 构建时动态列举仍能选中自动生成的 scheme；显式 project 不被自动 workspace 覆盖；
    显式 scheme 不触发列举。
 4. macOS 真实运行：本地清单只运行 `/usr/bin/id -u`，将 UID 写入产品名。
-   直接 Xcode 列举可产生 `ZCODE_ID_UID_<uid>`；打包后的 MCP 发现调用不求值清单，
+   直接 Xcode 列举可产生 `CODEZ_ID_UID_<uid>`；打包后的 MCP 发现调用不求值清单，
    返回静态结果，进程探针记录的 `xcodebuild` 启动次数为零。用独立临时目录避免清单缓存影响判断。
 5. 静态发现测试不依赖 macOS、Xcode 或模拟器；实际 Xcode 行为只在 macOS 验证。

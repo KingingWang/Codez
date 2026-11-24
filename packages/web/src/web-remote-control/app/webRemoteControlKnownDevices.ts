@@ -1,7 +1,7 @@
 import type { WebRemoteControlDeviceGroup, KnownDevice } from "#src/web-remote-control/contract.js";
 
 // 键名沿用旧版“设备名”缓存，旧的 [mid, name] 条目可直接读出。
-export const KNOWN_DEVICES_KEY = "zcode-web-remote-device-names";
+export const KNOWN_DEVICES_KEY = "codez-web-remote-device-names";
 /** 记录只是展示偏好，设上限防止 localStorage 无限增长；超出时淘汰最久未更新的条目。 */
 export const KNOWN_DEVICES_LIMIT = 50;
 

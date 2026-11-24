@@ -15,7 +15,7 @@ main 收到 bounds → `browserViewManager.setBounds(key, rect)`（WebContentsVi
 
 ## 2. 何时出现（P0 最小）
 
-受控 view 属于某个 zcode session（key=sessionId）。T7 P0：新增 side-pane tab 类型 `browser-use`，当它可见时渲染占位并上报 bounds；main 把对应 session 的 view 覆盖上去。tab 的创建时机（agent 首次 browser 命令自动开 / 手动开）留后续；T7 先支持「存在该 tab 时正确显示」。
+受控 view 属于某个 codez session（key=sessionId）。T7 P0：新增 side-pane tab 类型 `browser-use`，当它可见时渲染占位并上报 bounds；main 把对应 session 的 view 覆盖上去。tab 的创建时机（agent 首次 browser 命令自动开 / 手动开）留后续；T7 先支持「存在该 tab 时正确显示」。
 
 > 简化：P0 不做自动开 tab。先让 `BrowserViewManager` 在 view 创建时记录，renderer 侧提供一个 `BrowserUseViewPane` 组件；接入 side-pane 渲染分支。手动验证时可临时在 UI 触发。自动开 tab（agent 命令 → 展开 pane）记为 T7.1/后续。
 
@@ -23,8 +23,8 @@ main 收到 bounds → `browserViewManager.setBounds(key, rect)`（WebContentsVi
 
 ### 契约 / IPC（`packages/shared/src/channels.ts`）
 - `PlatformChannels` 增：
-  - `BrowserViewSetBounds: "zcode:browser-view-set-bounds"`（renderer→main，invoke/send，payload `{key, rect:{x,y,width,height}}`）。
-  - `BrowserViewSetVisible: "zcode:browser-view-set-visible"`（payload `{key, visible}`）。
+  - `BrowserViewSetBounds: "codez:browser-view-set-bounds"`（renderer→main，invoke/send，payload `{key, rect:{x,y,width,height}}`）。
+  - `BrowserViewSetVisible: "codez:browser-view-set-visible"`（payload `{key, visible}`）。
 - channel 类型表加 request/response（response void）。
 
 ### main

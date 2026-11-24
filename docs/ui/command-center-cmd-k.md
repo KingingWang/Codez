@@ -11,7 +11,7 @@
 1. `Recent changes`
    - 数据来源是当前 active task 已加载的 assistant messages。
    - 与聊天区每轮 `summary changes` 保持同源：从 assistant tool calls 的 `raw` / `input` / `output` / `display` 结构中解析文件变更摘要。
-   - 不读取 sqlite 的 `summary_*` 字段，不读取 `ZCodeTaskMeta.changeSummary`，也不从 `perTurnFileChangesByTaskId` / `perTurnSummariesByTaskId` 做兜底。
+   - 不读取 sqlite 的 `summary_*` 字段，不读取 `CodezTaskMeta.changeSummary`，也不从 `perTurnFileChangesByTaskId` / `perTurnSummariesByTaskId` 做兜底。
    - 只展示当前任务最近修改过的文件，不能使用整个 workspace 的 Git unstaged/staged 变更。
    - 默认展示最多 3 条。
    - 每行展示文件图标、workspace 相对路径、`+added -removed`。

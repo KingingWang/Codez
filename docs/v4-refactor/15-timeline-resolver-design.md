@@ -109,7 +109,7 @@ assistant A1.2 final
 2. **输入生命周期独立于模型执行**。prompt 先 durable admitted，再在 safe boundary promoted 成 transcript message；queue 不依赖 renderer 内存证明自己存在过。
 3. **DB 存领域事实，不存 UI 布局**。transcript projection 是领域事实，不是“第几个气泡/哪个卡片/哪条泳道”的 UI schema。
 
-按 id 合并 message/part 的兼容层只属于 legacy client merge，不是排序权威。ZCode 采用 `event_sequence + input ledger + domain projection`，而不是把 UI rows 继续当事实源。
+按 id 合并 message/part 的兼容层只属于 legacy client merge，不是排序权威。Codez 采用 `event_sequence + input ledger + domain projection`，而不是把 UI rows 继续当事实源。
 
 ## 总体架构
 
@@ -632,18 +632,18 @@ background 守恒
 
 ```text
 UI v4 virtual projection
-  <- zcode protocol snapshot/live
-    <- CLI transcript store: ~/.zcode/cli/db/db.sqlite
+  <- codez protocol snapshot/live
+    <- CLI transcript store: ~/.codez/cli/db/db.sqlite
        - session
        - message(id, session_id, time_created, time_updated, data JSON, sequence)
        - part(id, message_id, session_id, time_created, time_updated, data JSON, sequence)
        - session_entry(...)
 
-App metadata store: ~/Library/Application Support/ai.z.zcode/zcode.db
+App metadata store: ~/Library/Application Support/ai.z.codez/codez.db
   - sessions / workspaces / follow_up_queue / session_notifications
   - 不存完整 transcript
 
-Task list/search index: ~/.zcode/v2/tasks-index.sqlite
+Task list/search index: ~/.codez/v2/tasks-index.sqlite
   - tasks / task_groups / searchable_text
   - 只服务列表、分组、搜索，不应作为消息顺序真相源
 ```
@@ -713,8 +713,8 @@ timeline 类型分布：
 
 本文不要求把所有 resolver 字段都直接变成数据库列。正确分层应是：
 
-1. `~/.zcode/cli/db/db.sqlite` 的 `session/message/part/session_entry` 是 conversation transcript 的权威事实源。
-2. app `zcode.db` 只存 app 元数据、通知、renderer-local queue，不作为 transcript 顺序源。
+1. `~/.codez/cli/db/db.sqlite` 的 `session/message/part/session_entry` 是 conversation transcript 的权威事实源。
+2. app `codez.db` 只存 app 元数据、通知、renderer-local queue，不作为 transcript 顺序源。
 3. `tasks-index.sqlite` 只存任务列表、搜索、分组，不作为 transcript 顺序源。
 4. 新写入 `message` / `part` 必须通过统一 repository，保证 `sequence` 非空且同 session / message 内稳定单调。
 5. 新写入 timeline part 时必须记录 anchor 和 semantic fields，例如 `anchorMessageId`、`anchorTurnId`、`lifecycleKey`、`visibility`、`timelineType`。

@@ -6,7 +6,7 @@
 
 文档插件用 LibreOffice 做文档转 PDF、PPT 转换、旧版 `.doc` 转 `.docx` 和表格公式重算。
 
-- LibreOffice 在预装链路中是普通工具：`toolId` 为 `libreoffice`，专用入口 `zcode-soffice`，不占用 `soffice` 这个名字。
+- LibreOffice 在预装链路中是普通工具：`toolId` 为 `libreoffice`，专用入口 `codez-soffice`，不占用 `soffice` 这个名字。
 - 预装链路不再有 LibreOffice 专用的代码、环境变量或安装记录格式。
 - 正确调用 LibreOffice 的逻辑（独立配置、重算宏、字体替换、失败重跑）属于插件统一入口。用户自己的 LibreOffice 也需要这些逻辑。
 
@@ -29,7 +29,7 @@
 ## 来源与转换
 
 - 使用 LibreOffice 官方发布的二进制，并核对官方 GPG 签名。不自己编译，不修改官方二进制。
-- 官方镜像只保留最近几个版本，所以资源放在 ZCode CDN，运行时不从公共镜像下载。
+- 官方镜像只保留最近几个版本，所以资源放在 Codez CDN，运行时不从公共镜像下载。
 - 源下载按 recipe 中的字节数设上限，超出时立即中止并清理。完整的源缓存用不覆盖的原子发布写入；并发制作遇到同名输入时，重新核对大小与摘要。
 - macOS：从 dmg 取出 `.app`，保持官方签名封存不变。复制前后都严格检查签名，用 `lipo` 检查架构。随包字体放在安装目录内一个独立的资源视图 `resource-base/` 中。
 - macOS 官方应用的 `LibreOffice.app/Contents/Frameworks/LibreOfficePython.framework/Versions/3.13/lib/python3.13/site-packages/pip/_vendor/distlib/` 中包含 `t32.exe`、`w32.exe`、`t64.exe`、`w64.exe`、`t64-arm.exe`、`w64-arm.exe`。它们是 pip 生成 Windows 命令脚本时读取和复制的启动器模板，不是本资源的运行入口或加载库；删除它们会破坏应用签名封存。recipe 按通用规则为架构不匹配的模板逐文件声明精确路径、SHA-256、来源和用途；架构本来匹配的模板不能声明为例外。模板升级后的路径或摘要变化必须重新审阅，不按目录或扩展名批量放行。
@@ -55,7 +55,7 @@
 
 | 字段                        | macOS                                                  | Windows                           | Linux                         |
 | --------------------------- | ------------------------------------------------------ | --------------------------------- | ----------------------------- |
-| 入口 `zcode-soffice` 的目标 | `LibreOffice.app/Contents/MacOS/soffice`               | `LibreOffice/program/soffice.com` | `LibreOffice/program/soffice` |
+| 入口 `codez-soffice` 的目标 | `LibreOffice.app/Contents/MacOS/soffice`               | `LibreOffice/program/soffice.com` | `LibreOffice/program/soffice` |
 | 入口参数                    | `-env:BRAND_BASE_DIR=${INSTALL_DIR_URL}/resource-base` | 无                                | 无                            |
 | 入口环境                    | `SAL_USE_VCLPLUGIN` 默认为 `osx`                       | 无                                | 无                            |
 | `rewrite`                   | 无                                                     | 无                                | 无                            |
@@ -63,12 +63,12 @@
 - macOS 入口参数让官方签名的 `.app` 读取资源视图中的随包字体，不修改应用本身。
 - macOS 入口环境：无头调用默认的 `svp` 后端在真实官方 26.8.1 中识别不到系统 PingFang，所以默认用 `osx` 后端。调用方显式设置了后端时，保留调用方的设置。
 - Windows 使用控制台入口 `soffice.com`。
-- 运行检查：`zcode-soffice -env:UserInstallation=${CHECK_TEMP_URL} --version`，输出必须包含 `LibreOffice <版本>`，超时 30 秒。独立配置目录保证检查不读写用户默认配置。
+- 运行检查：`codez-soffice -env:UserInstallation=${CHECK_TEMP_URL} --version`，输出必须包含 `LibreOffice <版本>`，超时 30 秒。独立配置目录保证检查不读写用户默认配置。
 - 下载不续传。网速慢且经常退出 App 的用户，可能要多次重新下载；本期实测体积见下文。
 
 ## 插件统一入口
 
-四个文档插件各带一份相同的 `scripts/zcode_libreoffice.py` 和 `scripts/libreoffice-profile/`。插件运行时不跨插件目录查找。工程门禁检查四份内容逐字节一致。
+四个文档插件各带一份相同的 `scripts/codez_libreoffice.py` 和 `scripts/libreoffice-profile/`。插件运行时不跨插件目录查找。工程门禁检查四份内容逐字节一致。
 
 命令：`check`、`run -- <LibreOffice 参数>`、`recalc <文件>`。统一入口只用 Python 标准库，任何 3.9 以上的 Python 都能运行。它自己的启动方式见 [Python 规格](python.md#插件调用规则)。
 
@@ -76,17 +76,17 @@
 
 ```text
 每次调用重新查找，不缓存
-1. PATH 上的 zcode-soffice（Windows 上按 PATHEXT 查找，即 zcode-soffice.exe）→ 预装版本
+1. PATH 上的 codez-soffice（Windows 上按 PATHEXT 查找，即 codez-soffice.exe）→ 预装版本
 2. 系统已装的 LibreOffice（不限版本，含开发版）→ 系统版本
 3. 都没有 → 引导
-     有 ZCODE_PREINSTALLED_TOOLS_AVAILABLE：说明预装版本未就绪或已关闭，提示“帮助 → 预装工具”，
+     有 CODEZ_PREINSTALLED_TOOLS_AVAILABLE：说明预装版本未就绪或已关闭，提示“帮助 → 预装工具”，
                                       由用户选择等待、打开开关，或让 Agent 按 setup.md 安装
      没有这个变量：按 setup.md 安装
    安装后仍通过统一入口调用，不直接调用 soffice
 ```
 
 - 使用系统版本时，输出它的版本，以及未使用预装版本的原因：“未就绪或已关闭”，或“运行失败：<原因>”。
-- 系统程序存在但版本探测失败（无法启动、非零退出或超时）时，不按“没有”处理：报告“系统 LibreOffice 无法运行：<程序与原因>”。有 `ZCODE_PREINSTALLED_TOOLS_AVAILABLE` 时仍附上预装状态的说明，但不给“未找到”的安装引导。
+- 系统程序存在但版本探测失败（无法启动、非零退出或超时）时，不按“没有”处理：报告“系统 LibreOffice 无法运行：<程序与原因>”。有 `CODEZ_PREINSTALLED_TOOLS_AVAILABLE` 时仍附上预装状态的说明，但不给“未找到”的安装引导。
 - 系统程序的符号链接入口保留原调用路径；解析出的目标只用来检查文件是否有效。
 - 预装版本启动失败、非零退出、超时或缺少重算回执时：先终止本次进程，清理配置和回执，再用系统版本重跑一次。系统版本失败时直接报告，不再重试。用户取消或用户参数错误不触发重跑。重算文件不存在属于参数错误，在查找程序前直接报告。
 - 入口在调用途中被删除时，本次调用按“启动失败”处理，同样用系统版本重跑一次。
@@ -113,7 +113,7 @@
 
 ### 相对首期删除的内容
 
-- 读取 `ZCODE_PREINSTALLED_TOOLS_RECORD` 和安装记录，核对记录地址身份与安装目录。
+- 读取 `CODEZ_PREINSTALLED_TOOLS_RECORD` 和安装记录，核对记录地址身份与安装目录。
 - `usage/` 调用标记、`deletion-gate` 检查和 `installationId` 复读。删除保护改为通用规格中的“先撤入口，再查进程”。
 - 按程序目录判断预装版本是否有原生插件。预装版本的后端由入口环境提供。
 

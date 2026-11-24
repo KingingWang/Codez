@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 把「应用用量」面板的数据源从「本地 session JSON 文件 + 字符估算」整条替换为 zcode agent SQLite 库（`model_usage` / `turn_usage` / `tool_usage`）的真实统计，并新增真实 token 拆分、可靠性指标、工具使用区块。
+**Goal:** 把「应用用量」面板的数据源从「本地 session JSON 文件 + 字符估算」整条替换为 codez agent SQLite 库（`model_usage` / `turn_usage` / `tool_usage`）的真实统计，并新增真实 token 拆分、可靠性指标、工具使用区块。
 
-**Architecture:** agent 子进程内用 SQL 聚合（adapters repo）→ 纯函数 builder 组装快照（bootstrap）→ 新增 ZCode Protocol 方法 `usage/stats`（shared schema + bootstrap handler）→ 宿主 `usageStatsService` 经 `zcodeAgentService` 走协议取数（packages/services）→ UI 重绘 4 个区块（packages/ui）。聚合放在 agent 侧，天然受 30 天保留期约束。
+**Architecture:** agent 子进程内用 SQL 聚合（adapters repo）→ 纯函数 builder 组装快照（bootstrap）→ 新增 Codez Protocol 方法 `usage/stats`（shared schema + bootstrap handler）→ 宿主 `usageStatsService` 经 `codezAgentService` 走协议取数（packages/services）→ UI 重绘 4 个区块（packages/ui）。聚合放在 agent 侧，天然受 30 天保留期约束。
 
 **Tech Stack:** TypeScript, Node.js `node:sqlite` (`DatabaseSync`), zod, React, vitest, lucide-react, recharts。
 
@@ -17,7 +17,7 @@
 - 新时间范围类型：`AppUsageRange = "7d" | "30d"`（App Usage 专用，**不复用** `UsageStatsRange`，后者仍服务 Coding Plan/monitor 路径）。
 - 新协议方法常量名：`usageStats`，方法字符串 `"usage/stats"`。
 - agent 侧只读聚合端口方法：`UsageStorePort.queryAppUsage(input: AppUsageQueryInput): Promise<AppUsageQueryResult>`。
-- 纯函数 builder：`buildAppUsageSnapshot(result, opts): AppUsageSnapshot`，位于 `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/usage-stats-builder.ts`。
+- 纯函数 builder：`buildAppUsageSnapshot(result, opts): AppUsageSnapshot`，位于 `apps/codez-cli/packages/bootstrap/src/codez-protocol/usage-stats-builder.ts`。
 - 时区按「固定偏移」归日：`tzOffsetMs`（由 handler 用 Intl 计算并下传），`dayIndex = floor((started_at + tzOffsetMs) / 86400000)`。DST 边界有微小误差，可接受（注释里写明）。
 
 ## 文件结构图（创建 / 修改）
@@ -26,22 +26,22 @@
 - Modify `packages/shared/src/usage-stats.ts` — 删字符估算类型，新增 App Usage zod schema + 类型 + `AppUsageRange`。
 
 **Phase 1 — agent 读层**
-- Modify `apps/zcode-cli/packages/contracts/src/interfaces/session-store.port.ts` — 新增 `AppUsageQueryInput` / `AppUsageQueryResult` 等 raw 类型 + `queryAppUsage` 端口方法。
-- Modify `apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/usage.ts` — 新增 `queryAppUsage(db, input)` 的 SQL 聚合。
-- Modify `apps/zcode-cli/packages/adapters/src/storage/session-store/sqlite-session-store.ts` — 代理 `queryAppUsage`。
-- Test `apps/zcode-cli/packages/adapters/tests/usage-query.test.ts` — repo 聚合断言。
+- Modify `apps/codez-cli/packages/contracts/src/interfaces/session-store.port.ts` — 新增 `AppUsageQueryInput` / `AppUsageQueryResult` 等 raw 类型 + `queryAppUsage` 端口方法。
+- Modify `apps/codez-cli/packages/adapters/src/storage/session-store/repositories/usage.ts` — 新增 `queryAppUsage(db, input)` 的 SQL 聚合。
+- Modify `apps/codez-cli/packages/adapters/src/storage/session-store/sqlite-session-store.ts` — 代理 `queryAppUsage`。
+- Test `apps/codez-cli/packages/adapters/tests/usage-query.test.ts` — repo 聚合断言。
 
 **Phase 2 — builder + 协议**
-- Create `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/usage-stats-builder.ts` — 纯函数 builder + `tzOffsetMs` 助手。
-- Test `apps/zcode-cli/packages/bootstrap/tests/usage-stats-builder.test.ts`。
-- Modify `packages/shared/src/zcode-protocol/index.ts` — 注册 `usageStats` 方法 + 入参/结果 schema。
-- Modify `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts` — `usageStats` handler。
-- Modify `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server.ts` — dispatch case。
-- Modify `packages/services/src/zcode-agent/zcodeAgentService.ts` (+ 其类型/接口文件) — `getAppUsageStats` 方法。
+- Create `apps/codez-cli/packages/bootstrap/src/codez-protocol/usage-stats-builder.ts` — 纯函数 builder + `tzOffsetMs` 助手。
+- Test `apps/codez-cli/packages/bootstrap/tests/usage-stats-builder.test.ts`。
+- Modify `packages/shared/src/codez-protocol/index.ts` — 注册 `usageStats` 方法 + 入参/结果 schema。
+- Modify `apps/codez-cli/packages/bootstrap/src/codez-protocol/server-operations.ts` — `usageStats` handler。
+- Modify `apps/codez-cli/packages/bootstrap/src/codez-protocol/server.ts` — dispatch case。
+- Modify `packages/services/src/codez-agent/codezAgentService.ts` (+ 其类型/接口文件) — `getAppUsageStats` 方法。
 
 **Phase 3 — 宿主服务**
 - Modify `packages/services/src/usage-stats/usageStatsService.ts` — 重写 `getAppUsageSnapshot` 走协议。
-- Modify `packages/desktop/src/host/remoteWorkspaceServiceCollection.ts` — 注入 `zcodeAgentService`。
+- Modify `packages/desktop/src/host/remoteWorkspaceServiceCollection.ts` — 注入 `codezAgentService`。
 - Delete `packages/services/src/usage-stats/usageStatsAggregator.ts`、`repo/sessionUsageRepo.ts`、`usageStatsSeries.ts`（若存在）。
 - Modify `packages/services/src/usage-stats/usageStats.ts` — `getAppUsageSnapshot` 入参类型改 `AppUsageRequest`（range: AppUsageRange）。
 
@@ -209,7 +209,7 @@ git commit -m "feat(usage): add app usage db-backed DTO schemas"
 ### Task 1: contracts 增加 raw 查询类型与端口方法
 
 **Files:**
-- Modify: `apps/zcode-cli/packages/contracts/src/interfaces/session-store.port.ts`
+- Modify: `apps/codez-cli/packages/contracts/src/interfaces/session-store.port.ts`
 
 - [ ] **Step 1: 在 `UsageStorePort` 之前插入 raw 查询类型**
 
@@ -303,13 +303,13 @@ export interface UsageStorePort {
 
 - [ ] **Step 3: 编译验证**
 
-Run: `cd apps/zcode-cli/packages/contracts && npx tsc --noEmit`
+Run: `cd apps/codez-cli/packages/contracts && npx tsc --noEmit`
 Expected: PASS（实现类 `SqliteSessionStore` 未实现新方法的报错会在它的包里出现，不在 contracts 包内，本步 PASS）。
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add apps/zcode-cli/packages/contracts/src/interfaces/session-store.port.ts
+git add apps/codez-cli/packages/contracts/src/interfaces/session-store.port.ts
 git commit -m "feat(contracts): add app usage read port + raw query types"
 ```
 
@@ -318,13 +318,13 @@ git commit -m "feat(contracts): add app usage read port + raw query types"
 ### Task 2: adapters 实现 SQL 聚合 + 代理（先写测试）
 
 **Files:**
-- Test: `apps/zcode-cli/packages/adapters/tests/usage-query.test.ts`
-- Modify: `apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/usage.ts`
-- Modify: `apps/zcode-cli/packages/adapters/src/storage/session-store/sqlite-session-store.ts`
+- Test: `apps/codez-cli/packages/adapters/tests/usage-query.test.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/storage/session-store/repositories/usage.ts`
+- Modify: `apps/codez-cli/packages/adapters/src/storage/session-store/sqlite-session-store.ts`
 
 - [ ] **Step 1: 写失败测试**
 
-创建 `apps/zcode-cli/packages/adapters/tests/usage-query.test.ts`：
+创建 `apps/codez-cli/packages/adapters/tests/usage-query.test.ts`：
 
 ```typescript
 import { mkdtemp, rm } from "node:fs/promises";
@@ -337,14 +337,14 @@ import {
   createToolCallId,
   createTraceId,
   createTurnId,
-} from "@zcode/contracts";
+} from "@codez/contracts";
 import { createSqliteSessionStore } from "../src/storage/index.js";
 
 const DAY = 24 * 60 * 60 * 1000;
 
 describe("queryAppUsage", () => {
   it("aggregates tokens, tools, and per-day buckets within range", async () => {
-    const tempRoot = await mkdtemp(join(tmpdir(), "zcode-usage-query-"));
+    const tempRoot = await mkdtemp(join(tmpdir(), "codez-usage-query-"));
     const dbPath = join(tempRoot, "session.sqlite");
     const store = createSqliteSessionStore({ dbPath });
     const sessionID = createSessionId("uq");
@@ -462,12 +462,12 @@ describe("queryAppUsage", () => {
 
 - [ ] **Step 2: 运行确认失败**
 
-Run: `cd apps/zcode-cli && npx vitest run packages/adapters/tests/usage-query.test.ts`
+Run: `cd apps/codez-cli && npx vitest run packages/adapters/tests/usage-query.test.ts`
 Expected: FAIL（`store.queryAppUsage is not a function`）。
 
 - [ ] **Step 3: 在 repo 实现 `queryAppUsage`**
 
-在 `apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/usage.ts` 末尾（`function integer` 之前）加：
+在 `apps/codez-cli/packages/adapters/src/storage/session-store/repositories/usage.ts` 末尾（`function integer` 之前）加：
 
 ```typescript
 import type {
@@ -477,7 +477,7 @@ import type {
   AppUsageDayModelRow,
   AppUsageModelRow,
   AppUsageToolRow,
-} from "@zcode/contracts";
+} from "@codez/contracts";
 
 // 说明：按本地日归桶用固定偏移 tzOffsetMs，dayIndex = floor((started_at + off)/DAY)。
 // DST 跨日边界存在最多 1 小时误差，对用量统计可接受。
@@ -672,12 +672,12 @@ export async function queryAppUsage(
 
 - [ ] **Step 4: 在 sqlite-session-store 代理新方法**
 
-在 `apps/zcode-cli/packages/adapters/src/storage/session-store/sqlite-session-store.ts` 的 usage 代理段（约 203-217 行，`pruneUsage` 之后）加：
+在 `apps/codez-cli/packages/adapters/src/storage/session-store/sqlite-session-store.ts` 的 usage 代理段（约 203-217 行，`pruneUsage` 之后）加：
 
 ```typescript
 async queryAppUsage(
-  input: import("@zcode/contracts").AppUsageQueryInput,
-): Promise<import("@zcode/contracts").AppUsageQueryResult> {
+  input: import("@codez/contracts").AppUsageQueryInput,
+): Promise<import("@codez/contracts").AppUsageQueryResult> {
   return usageRepository.queryAppUsage(this.db, input);
 }
 ```
@@ -686,15 +686,15 @@ async queryAppUsage(
 
 - [ ] **Step 5: 运行测试至通过**
 
-Run: `cd apps/zcode-cli && npx vitest run packages/adapters/tests/usage-query.test.ts`
+Run: `cd apps/codez-cli && npx vitest run packages/adapters/tests/usage-query.test.ts`
 Expected: PASS。
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/usage.ts \
-        apps/zcode-cli/packages/adapters/src/storage/session-store/sqlite-session-store.ts \
-        apps/zcode-cli/packages/adapters/tests/usage-query.test.ts
+git add apps/codez-cli/packages/adapters/src/storage/session-store/repositories/usage.ts \
+        apps/codez-cli/packages/adapters/src/storage/session-store/sqlite-session-store.ts \
+        apps/codez-cli/packages/adapters/tests/usage-query.test.ts
 git commit -m "feat(adapters): aggregate app usage from sqlite usage tables"
 ```
 
@@ -705,20 +705,20 @@ git commit -m "feat(adapters): aggregate app usage from sqlite usage tables"
 ### Task 3: 纯函数 builder（先写测试）
 
 **Files:**
-- Test: `apps/zcode-cli/packages/bootstrap/tests/usage-stats-builder.test.ts`
-- Create: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/usage-stats-builder.ts`
+- Test: `apps/codez-cli/packages/bootstrap/tests/usage-stats-builder.test.ts`
+- Create: `apps/codez-cli/packages/bootstrap/src/codez-protocol/usage-stats-builder.ts`
 
 - [ ] **Step 1: 写失败测试**
 
-创建 `apps/zcode-cli/packages/bootstrap/tests/usage-stats-builder.test.ts`：
+创建 `apps/codez-cli/packages/bootstrap/tests/usage-stats-builder.test.ts`：
 
 ```typescript
 import { describe, expect, it } from "vitest";
-import type { AppUsageQueryResult } from "@zcode/contracts";
+import type { AppUsageQueryResult } from "@codez/contracts";
 import {
   buildAppUsageSnapshot,
   resolveTzOffsetMs,
-} from "../src/zcode-protocol/usage-stats-builder.js";
+} from "../src/codez-protocol/usage-stats-builder.js";
 
 const DAY = 86_400_000;
 
@@ -825,22 +825,22 @@ describe("buildAppUsageSnapshot", () => {
 
 - [ ] **Step 2: 运行确认失败**
 
-Run: `cd apps/zcode-cli && npx vitest run packages/bootstrap/tests/usage-stats-builder.test.ts`
+Run: `cd apps/codez-cli && npx vitest run packages/bootstrap/tests/usage-stats-builder.test.ts`
 Expected: FAIL（模块不存在）。
 
 - [ ] **Step 3: 实现 builder**
 
-创建 `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/usage-stats-builder.ts`：
+创建 `apps/codez-cli/packages/bootstrap/src/codez-protocol/usage-stats-builder.ts`：
 
 ```typescript
-import type { AppUsageQueryResult } from "@zcode/contracts";
+import type { AppUsageQueryResult } from "@codez/contracts";
 import type {
   AppUsageHeatmap,
   AppUsageHeatmapCell,
   AppUsageHeatmapWeek,
   AppUsageRange,
   AppUsageSnapshot,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 const DAY_MS = 86_400_000;
 
@@ -1041,14 +1041,14 @@ export function buildAppUsageSnapshot(
 
 - [ ] **Step 4: 运行测试至通过**
 
-Run: `cd apps/zcode-cli && npx vitest run packages/bootstrap/tests/usage-stats-builder.test.ts`
+Run: `cd apps/codez-cli && npx vitest run packages/bootstrap/tests/usage-stats-builder.test.ts`
 Expected: PASS。
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add apps/zcode-cli/packages/bootstrap/src/zcode-protocol/usage-stats-builder.ts \
-        apps/zcode-cli/packages/bootstrap/tests/usage-stats-builder.test.ts
+git add apps/codez-cli/packages/bootstrap/src/codez-protocol/usage-stats-builder.ts \
+        apps/codez-cli/packages/bootstrap/tests/usage-stats-builder.test.ts
 git commit -m "feat(bootstrap): pure app usage snapshot builder"
 ```
 
@@ -1057,58 +1057,58 @@ git commit -m "feat(bootstrap): pure app usage snapshot builder"
 ### Task 4: 协议方法 `usage/stats`（schema + handler + dispatch + 宿主 agentService）
 
 **Files:**
-- Modify: `packages/shared/src/zcode-protocol/index.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts`
-- Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server.ts`
-- Modify: `packages/services/src/zcode-agent/zcodeAgentService.ts`（及其参数/接口类型定义文件）
+- Modify: `packages/shared/src/codez-protocol/index.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/server-operations.ts`
+- Modify: `apps/codez-cli/packages/bootstrap/src/codez-protocol/server.ts`
+- Modify: `packages/services/src/codez-agent/codezAgentService.ts`（及其参数/接口类型定义文件）
 
 - [ ] **Step 1: 在 shared 协议文件加方法与 schema**
 
-在 `packages/shared/src/zcode-protocol/index.ts`：
+在 `packages/shared/src/codez-protocol/index.ts`：
 
-(a) `zcodeProtocolMethods` 对象（约第 1687 行）内，在 `promptEnhance` 行附近加一项：
+(a) `codezProtocolMethods` 对象（约第 1687 行）内，在 `promptEnhance` 行附近加一项：
 
 ```typescript
   usageStats: "usage/stats",
 ```
 
-(b) 在 schema 定义区（与 `zcodeSessionListParamsSchema` 同段，约第 1255 行附近）加入参 schema，并引用 Task 0 的 `appUsageSnapshotSchema`：
+(b) 在 schema 定义区（与 `codezSessionListParamsSchema` 同段，约第 1255 行附近）加入参 schema，并引用 Task 0 的 `appUsageSnapshotSchema`：
 
 ```typescript
 import { appUsageSnapshotSchema, APP_USAGE_RANGES } from "../usage-stats.js";
 
-export const zcodeUsageStatsParamsSchema = z
+export const codezUsageStatsParamsSchema = z
   .object({
     range: z.enum(APP_USAGE_RANGES),
     timeZone: z.string().optional(),
   })
   .strict();
-export type ZCodeUsageStatsParams = z.infer<typeof zcodeUsageStatsParamsSchema>;
+export type CodezUsageStatsParams = z.infer<typeof codezUsageStatsParamsSchema>;
 
-export const zcodeUsageStatsResultSchema = appUsageSnapshotSchema;
-export type ZCodeUsageStatsResult = z.infer<typeof zcodeUsageStatsResultSchema>;
+export const codezUsageStatsResultSchema = appUsageSnapshotSchema;
+export type CodezUsageStatsResult = z.infer<typeof codezUsageStatsResultSchema>;
 ```
 
 > 若 `index.ts` 已从 `../usage-stats.js` 导入其它符号，合并到同一条 import。
 
-(c) 在方法→schema 契约映射对象（约第 1731 行，`[zcodeProtocolMethods.sessionList]: {...}` 同款）加：
+(c) 在方法→schema 契约映射对象（约第 1731 行，`[codezProtocolMethods.sessionList]: {...}` 同款）加：
 
 ```typescript
-[zcodeProtocolMethods.usageStats]: {
-  params: zcodeUsageStatsParamsSchema,
-  result: zcodeUsageStatsResultSchema,
+[codezProtocolMethods.usageStats]: {
+  params: codezUsageStatsParamsSchema,
+  result: codezUsageStatsResultSchema,
 },
 ```
 
 - [ ] **Step 2: 写 handler**
 
-在 `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts`，仿 `listSessions`（约第 114 行）加：
+在 `apps/codez-cli/packages/bootstrap/src/codez-protocol/server-operations.ts`，仿 `listSessions`（约第 114 行）加：
 
 ```typescript
 import {
-  zcodeUsageStatsParamsSchema,
+  codezUsageStatsParamsSchema,
   // ...已有 import
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   buildAppUsageSnapshot,
   resolveTzOffsetMs,
@@ -1117,10 +1117,10 @@ import {
 const APP_USAGE_RANGE_DAYS: Record<string, number> = { "7d": 7, "30d": 30 };
 
 export async function getUsageStats(
-  context: ZCodeProtocolAgentServerContext,
+  context: CodezProtocolAgentServerContext,
   rawParams: unknown,
 ) {
-  const params = parseParams(zcodeUsageStatsParamsSchema, rawParams ?? {});
+  const params = parseParams(codezUsageStatsParamsSchema, rawParams ?? {});
   const timeZone = params.timeZone ?? "UTC";
   const until = Date.now();
   const tzOffsetMs = resolveTzOffsetMs(timeZone, until);
@@ -1169,63 +1169,63 @@ export async function getUsageStats(
 
 - [ ] **Step 3: 在 dispatch switch 加 case**
 
-在 `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server.ts` 的 `dispatchRequest` switch（约第 99 行）内，仿 `sessionList` 加：
+在 `apps/codez-cli/packages/bootstrap/src/codez-protocol/server.ts` 的 `dispatchRequest` switch（约第 99 行）内，仿 `sessionList` 加：
 
 ```typescript
-    case zcodeProtocolMethods.usageStats:
+    case codezProtocolMethods.usageStats:
       return await getUsageStats(this.context, request.params);
 ```
 
 并在该文件顶部从 `./server-operations.js` 的具名 import 中加入 `getUsageStats`。
 
-- [ ] **Step 4: 宿主 zcodeAgentService 加 `getAppUsageStats`**
+- [ ] **Step 4: 宿主 codezAgentService 加 `getAppUsageStats`**
 
-在 `packages/services/src/zcode-agent/zcodeAgentService.ts`，仿 `listSessions`（约第 382 行）加方法：
+在 `packages/services/src/codez-agent/codezAgentService.ts`，仿 `listSessions`（约第 382 行）加方法：
 
 ```typescript
-async getAppUsageStats(params: ZCodeAgentAppUsageParams) {
+async getAppUsageStats(params: CodezAgentAppUsageParams) {
   const client = await getClient(params);
   return client.request(
-    zcodeProtocolMethods.usageStats,
+    codezProtocolMethods.usageStats,
     { range: params.range, timeZone: params.timeZone },
-    zcodeUsageStatsResultSchema,
+    codezUsageStatsResultSchema,
   );
 },
 ```
 
-在该文件顶部 import 加 `zcodeUsageStatsResultSchema`（来自 `@zcode/shared`）。
+在该文件顶部 import 加 `codezUsageStatsResultSchema`（来自 `@codez/shared`）。
 
-定义参数类型 `ZCodeAgentAppUsageParams`（放在该 service 现有参数类型旁，复用其 `ZCodeAgentWorkspaceTarget` 基类）：
+定义参数类型 `CodezAgentAppUsageParams`（放在该 service 现有参数类型旁，复用其 `CodezAgentWorkspaceTarget` 基类）：
 
 ```typescript
-export interface ZCodeAgentAppUsageParams extends ZCodeAgentWorkspaceTarget {
+export interface CodezAgentAppUsageParams extends CodezAgentWorkspaceTarget {
   range: AppUsageRange;
   timeZone?: string;
 }
 ```
 
-并在 `IZCodeAgentService` 接口（该 service 的接口声明文件）加：
+并在 `ICodezAgentService` 接口（该 service 的接口声明文件）加：
 
 ```typescript
-getAppUsageStats(params: ZCodeAgentAppUsageParams): Promise<AppUsageSnapshot>;
+getAppUsageStats(params: CodezAgentAppUsageParams): Promise<AppUsageSnapshot>;
 ```
 
-> `AppUsageRange` / `AppUsageSnapshot` 从 `@zcode/shared` 导入。
+> `AppUsageRange` / `AppUsageSnapshot` 从 `@codez/shared` 导入。
 
-> **架构说明（实现者必读）**：usage 表位于全局 session 库（`~/.zcode/sessions/default.db`），任意 workspace 的 agent client 查询到的都是全应用范围数据。`getAppUsageStats` 沿用 `getClient(params)` 拿到当前活动 workspace 的 client 即可；它需要一个 `ZCodeAgentWorkspaceTarget`。宿主服务（Task 5）会传入当前活动 workspace 目标，与其它 `zcodeAgentService` 调用一致。
+> **架构说明（实现者必读）**：usage 表位于全局 session 库（`~/.codez/sessions/default.db`），任意 workspace 的 agent client 查询到的都是全应用范围数据。`getAppUsageStats` 沿用 `getClient(params)` 拿到当前活动 workspace 的 client 即可；它需要一个 `CodezAgentWorkspaceTarget`。宿主服务（Task 5）会传入当前活动 workspace 目标，与其它 `codezAgentService` 调用一致。
 
 - [ ] **Step 5: 类型编译验证**
 
-Run: `cd /Users/dev/workspace/z-code && npx tsc --noEmit -p packages/shared && npx tsc --noEmit -p apps/zcode-cli/packages/bootstrap`
+Run: `cd /Users/dev/workspace/z-code && npx tsc --noEmit -p packages/shared && npx tsc --noEmit -p apps/codez-cli/packages/bootstrap`
 Expected: PASS。
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add packages/shared/src/zcode-protocol/index.ts \
-        apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts \
-        apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server.ts \
-        packages/services/src/zcode-agent/zcodeAgentService.ts
+git add packages/shared/src/codez-protocol/index.ts \
+        apps/codez-cli/packages/bootstrap/src/codez-protocol/server-operations.ts \
+        apps/codez-cli/packages/bootstrap/src/codez-protocol/server.ts \
+        packages/services/src/codez-agent/codezAgentService.ts
 git commit -m "feat(protocol): add usage/stats method end to end"
 ```
 
@@ -1243,13 +1243,13 @@ git commit -m "feat(protocol): add usage/stats method end to end"
 
 - [ ] **Step 1: 更新接口入参类型**
 
-`packages/services/src/usage-stats/usageStats.ts` 第 15 行 `getAppUsageSnapshot` 的入参 `AppUsageRequest` 现已是新类型（range: AppUsageRange，Task 0 已改）。确认该文件 import 的 `AppUsageRequest` / `AppUsageSnapshot` 来自 `@zcode/shared` 的新定义即可，无需改签名文字。
+`packages/services/src/usage-stats/usageStats.ts` 第 15 行 `getAppUsageSnapshot` 的入参 `AppUsageRequest` 现已是新类型（range: AppUsageRange，Task 0 已改）。确认该文件 import 的 `AppUsageRequest` / `AppUsageSnapshot` 来自 `@codez/shared` 的新定义即可，无需改签名文字。
 
 - [ ] **Step 2: 改 `createUsageStatsService` 依赖与方法体**
 
 `packages/services/src/usage-stats/usageStatsService.ts`：
 
-(a) 依赖接口加 `zcodeAgentService`：
+(a) 依赖接口加 `codezAgentService`：
 
 ```typescript
 interface UsageStatsServiceDependencies {
@@ -1257,16 +1257,16 @@ interface UsageStatsServiceDependencies {
   modelProviderService: IModelProviderService;
   credentialService?: Pick<ICredentialService, "load">;
   env?: NodeJS.ProcessEnv;
-  zcodeAgentService: Pick<IZCodeAgentService, "getAppUsageStats">;
+  codezAgentService: Pick<ICodezAgentService, "getAppUsageStats">;
   /** 解析当前活动 workspace 目标（与其它 agent 调用一致）。 */
-  resolveActiveWorkspaceTarget: () => ZCodeAgentWorkspaceTarget;
+  resolveActiveWorkspaceTarget: () => CodezAgentWorkspaceTarget;
 }
 ```
 
 (b) 顶部 import：
 
 ```typescript
-import type { IZCodeAgentService, ZCodeAgentWorkspaceTarget } from "../zcode-agent/zcodeAgentService.js";
+import type { ICodezAgentService, CodezAgentWorkspaceTarget } from "../codez-agent/codezAgentService.js";
 ```
 
 (c) 重写 `getAppUsageSnapshot`（替换第 45-52 行）：
@@ -1274,9 +1274,9 @@ import type { IZCodeAgentService, ZCodeAgentWorkspaceTarget } from "../zcode-age
 ```typescript
 async getAppUsageSnapshot(request: AppUsageRequest): Promise<AppUsageSnapshot> {
   // App Usage 现读取 agent 数据库真实统计（model_usage/turn_usage/tool_usage），
-  // 经 ZCode Protocol usage/stats 取回。不再读本地 session JSON 估算。
+  // 经 Codez Protocol usage/stats 取回。不再读本地 session JSON 估算。
   const target = dependencies.resolveActiveWorkspaceTarget();
-  return dependencies.zcodeAgentService.getAppUsageStats({
+  return dependencies.codezAgentService.getAppUsageStats({
     ...target,
     range: request.range,
     timeZone: request.timeZone,
@@ -1307,13 +1307,13 @@ git rm packages/services/src/usage-stats/usageStatsAggregator.ts \
           apiClient: localApiClient,
           modelProviderService: localModelProviderService,
           credentialService: localCredentialService,
-          zcodeAgentService: params.connectionServices.zcodeAgentService,
+          codezAgentService: params.connectionServices.codezAgentService,
           resolveActiveWorkspaceTarget: params.resolveActiveWorkspaceTarget,
         }),
       )
 ```
 
-> `params.resolveActiveWorkspaceTarget` 若当前 params 未提供：在 `createRemoteWorkspaceServiceCollection` 的入参里加该函数，由调用方（已持有当前 workspace 上下文处）传入。沿用 `buildWorkspaceRef` / 现有 workspace target 构造逻辑——搜索本文件其它 `params.connectionServices.zcodeAgentService` 的调用上游，确认 workspace 目标来源后接入。
+> `params.resolveActiveWorkspaceTarget` 若当前 params 未提供：在 `createRemoteWorkspaceServiceCollection` 的入参里加该函数，由调用方（已持有当前 workspace 上下文处）传入。沿用 `buildWorkspaceRef` / 现有 workspace target 构造逻辑——搜索本文件其它 `params.connectionServices.codezAgentService` 的调用上游，确认 workspace 目标来源后接入。
 
 - [ ] **Step 5: 编译验证**
 
@@ -1345,13 +1345,13 @@ git commit -m "feat(services): app usage reads agent db via protocol; drop local
 在 `usageStatsUiParts.tsx` 找到 `RANGE_OPTIONS` 定义，改为：
 
 ```typescript
-import type { AppUsageRange } from "@zcode/shared";
+import type { AppUsageRange } from "@codez/shared";
 export const RANGE_OPTIONS: AppUsageRange[] = ["7d", "30d"];
 ```
 
 - [ ] **Step 2: `useAppUsageStats` 形参类型改 `AppUsageRange`**
 
-`packages/ui/src/hooks/useUsageStats.ts`：把 `useAppUsageStats(range: UsageStatsRange)`（第 163 行）改为 `range: AppUsageRange`，并在顶部 import 加 `AppUsageRange`（来自 `@zcode/shared`）。`useUsageStats` / `useCodingPlanUsageStats` 保持 `UsageStatsRange` / `CodingPlanUsageRange` 不动。
+`packages/ui/src/hooks/useUsageStats.ts`：把 `useAppUsageStats(range: UsageStatsRange)`（第 163 行）改为 `range: AppUsageRange`，并在顶部 import 加 `AppUsageRange`（来自 `@codez/shared`）。`useUsageStats` / `useCodingPlanUsageStats` 保持 `UsageStatsRange` / `CodingPlanUsageRange` 不动。
 
 - [ ] **Step 3: 面板默认值与 tabs 类型**
 
@@ -1503,7 +1503,7 @@ git commit -m "feat(ui): real-token summary cards for app usage"
 - [ ] **Step 1: `UsageHeatmap` props 与单元格字段适配**
 
 `usageStatsUiParts.tsx` 中 `UsageHeatmap` 组件：
-- props `weeks` 类型从 `UsageStatsHeatmapWeek[]` 改为 `AppUsageHeatmapWeek[]`（import 自 `@zcode/shared`）。
+- props `weeks` 类型从 `UsageStatsHeatmapWeek[]` 改为 `AppUsageHeatmapWeek[]`（import 自 `@codez/shared`）。
 - 单元格 tooltip 与配色：用 `cell.totalTokens`（替换原 `totalEstimatedTokens`/`activityScore`），tooltip 文案改用新 i18n：
 
 ```tsx
@@ -1580,7 +1580,7 @@ git commit -m "feat(ui): real-token trend and model ranking"
 
 ```tsx
 function AppUsageToolUsageSection({ snapshot }: { snapshot: AppUsageSnapshot }) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const tools = snapshot.tools;
   const maxCalls = tools.reduce((m, t) => Math.max(m, t.callCount), 0);
 
@@ -1737,7 +1737,7 @@ Expected: 无业务代码命中（仅 spec/plan 文档或 Coding Plan monitor �
 
 ## 自检（计划 vs spec）
 
-- **数据流（ZCode Protocol）**：Task 1-5 覆盖 contracts→adapters→bootstrap handler→shared schema→host service 全链路。✓
+- **数据流（Codez Protocol）**：Task 1-5 覆盖 contracts→adapters→bootstrap handler→shared schema→host service 全链路。✓
 - **删除字符估算管线**：Task 0（类型）+ Task 5（删文件/引用）。✓
 - **概要 8 卡（真实 token/缓存命中/会话/轮次/工具/错误率/TTFT/最常用模型）**：Task 7。✓
 - **30 天热力图**：Task 3（builder weeks）+ Task 8（UI）。✓

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { mapToolStatus } from "@/lib/mapToolStatus.js";
 import { buildToolDisplayModel } from "@/lib/toolDisplay.js";
 import { getToolCallErrorText } from "@/lib/toolError.js";
@@ -32,7 +32,7 @@ export function ToolPresentation({
     | "showTodoToolCalls"
   >
 >) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const capabilities = useToolPresentationCapabilities();
   const { childToolCalls } = toolCallNode;
   const normalizedNode = useMemo(() => {

@@ -1,5 +1,5 @@
 import type { Server } from "node:http";
-import { TID_BROWSER_DESIGN_TOOLBAR, TID_TASK_ITEM, testId } from "@zcode/shared/test-ids";
+import { TID_BROWSER_DESIGN_TOOLBAR, TID_TASK_ITEM, testId } from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom } from "#e2e/helpers/desktop-app";
 import { openFirstBrowserTab } from "#e2e/helpers/browser-side-pane";
 import {
@@ -32,7 +32,7 @@ import {
 const PIN_SHOT = "element-1.png";
 
 const FIXTURE_HTML = `<!doctype html>
-<html data-zcode-design><head><title>E2E design cross session</title></head>
+<html data-codez-design><head><title>E2E design cross session</title></head>
 <body><button id="cta">E2E_CROSS_SESSION_CTA</button></body></html>`;
 
 let fixtureServer: Server | null = null;

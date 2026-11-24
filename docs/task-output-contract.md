@@ -51,7 +51,7 @@ Provider `input_schema.required` 固定为
 `["task_id", "block", "timeout"]`。其中 `block`、`timeout` 同时保留 runtime default；
 required 约束模型生成的 wire input，default 继续兼容本地别名、历史调用和手工调用。
 
-工具只读、并发安全、无需审批。不声明 deferred-loading（`shouldDefer`），ZCode 当前不实现 ToolSearch 发现机制。
+工具只读、并发安全、无需审批。不声明 deferred-loading（`shouldDefer`），Codez 当前不实现 ToolSearch 发现机制。
 
 Provider-facing 输入错误分为两层：
 
@@ -86,7 +86,7 @@ terminal                         -> success + 当前 task
 ```
 
 - 初次查找不到任务：`No task found with ID: <task_id>`。
-- `block=true` 在等待前发出一次标准 `ToolCallProgress`。ZCode 复用现有 progress
+- `block=true` 在等待前发出一次标准 `ToolCallProgress`。Codez 复用现有 progress
   schema，不新增 TaskOutput 专属 Protocol 字段；该内部投影不影响
   provider-visible result。
 - `timeout=0` 不 sleep，直接返回当前快照。
@@ -108,7 +108,7 @@ terminal                         -> success + 当前 task
   - framework error、timeout/cancel 文本仍可能存在于结构化 stderr。TaskOutput 将其追加到 canonical command output 后；由于 canonical file 不包含这部分文本，此时不得把该文件描述为完整合并输出。
   - 历史 split-path snapshot 仍可按 stdout 后 stderr 读取，但两个不同文件共同组成结果时，不新增合并 artifact，也不把任一单流路径伪装成 `Full output`。超大文本交给 TaskOutput 自身的 100000 字符持久化边界处理。
 - `local_agent`：终态优先取 Agent result content blocks，以单个 `\n` 拼接；否则读取任务输出文件。输出文件缺失不影响任务存在性或状态。
-- 其他已注册 ZCode task type：读取 registry 记录的通用输出文件。
+- 其他已注册 Codez task type：读取 registry 记录的通用输出文件。
 - 输出文件读取失败或不存在时返回空字符串。
 - 通用及终态输出文件最多读取末尾 8 MiB；省略前部时添加
   `[NKB of earlier output omitted]\n`。运行中 Bash 使用上述独立的文件头部读取规则。
@@ -151,7 +151,7 @@ terminal                         -> success + 当前 task
 - `error` 仅在 truthy 时输出。
 - 禁止输出 `description`、`prompt`、`result`、`output_file`、`truncated` 或 JSON wrapper。
 
-映射后的完整文本超过 100000 字符时，以 `text/plain` 保存完整文本（本地 artifact 使用 `.txt`），并向 provider 返回 `<persisted-output>` envelope；持久化失败时保留原始文本。ZCode 通用 `resultBudget` 不得再次改写 TaskOutput 文本。
+映射后的完整文本超过 100000 字符时，以 `text/plain` 保存完整文本（本地 artifact 使用 `.txt`），并向 provider 返回 `<persisted-output>` envelope；持久化失败时保留原始文本。Codez 通用 `resultBudget` 不得再次改写 TaskOutput 文本。
 
 ## UI display projection
 

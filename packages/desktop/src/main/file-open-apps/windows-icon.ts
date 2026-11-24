@@ -124,8 +124,8 @@ export function resolveWindowsAssociationIcon(application: NativeFileApplication
 /** 只按系统 AppID 定位真实套件入口；同一查询内只解析和提取一次。 */
 export const WINDOWS_SUITE_ICON_SCRIPT = `
 $suiteId = ${JSON.stringify(WPS_SUITE_APP_ID)}
-$suiteRows = @($zcodeQuery.applications | Where-Object { $_.appId -ieq $suiteId })
-if (($env:ZCODE_FILE_APP_INCLUDE_ICONS -ne '0') -and $suiteRows.Count -gt 0) {
+$suiteRows = @($codezQuery.applications | Where-Object { $_.appId -ieq $suiteId })
+if (($env:CODEZ_FILE_APP_INCLUDE_ICONS -ne '0') -and $suiteRows.Count -gt 0) {
   $suiteShell = $null; $suiteFolder = $null; $suiteItem = $null
   try {
     $suiteShell = New-Object -ComObject Shell.Application

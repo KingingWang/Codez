@@ -17,7 +17,7 @@
 中的 “keeps the wheel scroll position when candidates refresh” 用例：
 
 1. 工作区放 40 个同前缀文件，输入 `@前缀` 得到长列表。
-2. 真实滚轮滚到中段；用 `.zcodeignore` 去掉最后一个文件（让刷新结果和刷新前有差异），经 Host 广播 `state:projects`。
+2. 真实滚轮滚到中段；用 `.codezignore` 去掉最后一个文件（让刷新结果和刷新前有差异），经 Host 广播 `state:projects`。
 3. 等到列表少了这一条（证明新结果已替换上去），断言滚动位置不变、没有加载占位。
 4. 连按 15 次下键，每次选中项都在视口内。
 5. 再滚到中段并追加输入，列表回到开头、首项可见。

@@ -122,7 +122,7 @@ describe("会话区草稿模型切换首发 E2E", () => {
             (JSON.parse(window.localStorage.getItem(key) ?? "{}") as { scopes?: object }).scopes ??
               {},
           ),
-        `zcode-v4-composer-drafts:v1:${encodeURIComponent(DEFAULT_WORKSPACE)}`,
+        `codez-v4-composer-drafts:v1:${encodeURIComponent(DEFAULT_WORKSPACE)}`,
       );
       throw new Error(
         `Session scope 草稿没有落盘; sessionId=${sessionId}; scopes=${JSON.stringify(scopes)}`,

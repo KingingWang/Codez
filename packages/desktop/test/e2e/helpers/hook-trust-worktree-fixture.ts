@@ -15,17 +15,17 @@ import { DEFAULT_WORKSPACE } from "./desktop-app.js";
 export const HOOK_TRUST_WORKTREE_ENTRY_LABEL = "hook-trust-worktree-entry";
 
 const execGit = promisify(execFile);
-const ZCODE_DIR = join(DEFAULT_WORKSPACE, ".zcode");
-const CONFIG_RELATIVE_PATH = join(".zcode", "config.json");
+const CODEZ_DIR = join(DEFAULT_WORKSPACE, ".codez");
+const CONFIG_RELATIVE_PATH = join(".codez", "config.json");
 // 相对路径的 node 入口会被识别为直接入口脚本，内容参与 digest（D24）。
-const SCRIPT_RELATIVE_PATH = ".zcode/hook-trust-worktree.mjs";
+const SCRIPT_RELATIVE_PATH = ".codez/hook-trust-worktree.mjs";
 
 async function git(...args: string[]): Promise<void> {
   await execGit("git", args, { cwd: DEFAULT_WORKSPACE });
 }
 
 export async function installHookTrustWorktreeFixture(): Promise<void> {
-  await mkdir(ZCODE_DIR, { recursive: true });
+  await mkdir(CODEZ_DIR, { recursive: true });
   await writeFile(
     join(DEFAULT_WORKSPACE, CONFIG_RELATIVE_PATH),
     `${JSON.stringify(
@@ -58,8 +58,8 @@ export async function installHookTrustWorktreeFixture(): Promise<void> {
   const scriptPath = join(DEFAULT_WORKSPACE, SCRIPT_RELATIVE_PATH);
   await writeFile(scriptPath, "// hook-trust-worktree v1\n", "utf8");
   await git("init", "-q", "-b", "main");
-  await git("config", "user.email", "zcode-e2e@example.invalid");
-  await git("config", "user.name", "ZCode E2E");
+  await git("config", "user.email", "codez-e2e@example.invalid");
+  await git("config", "user.name", "Codez E2E");
   await git("add", CONFIG_RELATIVE_PATH, SCRIPT_RELATIVE_PATH);
   await git("commit", "-qm", "test: workspace hook v1");
   // 未提交的 v2 只存在于源仓库；新建的 worktree 检出已提交的 v1。

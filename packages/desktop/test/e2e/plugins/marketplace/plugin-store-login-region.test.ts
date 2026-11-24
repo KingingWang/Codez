@@ -4,7 +4,7 @@ import {
   TID_LOGIN_API_KEY_SKIP_BUTTON,
   TID_LOGIN_USE_API_KEY_BUTTON,
   TID_TASK_SETTINGS_BUTTON,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -16,7 +16,7 @@ import { skipOccupationOnboardingIfPresent } from "#e2e/helpers/occupation-onboa
 import { sel } from "#e2e/helpers/selectors";
 import {
   CN_UNLINKED_E2E_USER_ID,
-  CN_UNLINKED_E2E_ZCODE_JWT,
+  CN_UNLINKED_E2E_CODEZ_JWT,
   buildCnUnlinkedSessionCredentials,
 } from "#e2e/helpers/start-plan-cn-unlinked-fixture";
 import {
@@ -56,7 +56,7 @@ const SCREENSHOT_HEIGHT = 900;
 type LoginProvider = "zai" | "zai_cn" | null;
 
 /**
- * 目标渠道的合成登录会话。启动恢复要求有 ZCode JWT（缺失时 zai 会被送回登录页），
+ * 目标渠道的合成登录会话。启动恢复要求有 Codez JWT（缺失时 zai 会被送回登录页），
  * 这里复用国内新账号夹具的 JWT 与用户：本地账号控制面只认这枚 JWT 的 profile 请求，
  * 其余账号接口也留在本地 mock，不会触发线上 401。zai_cn 直接用该夹具，zai 只换渠道键。
  */
@@ -70,7 +70,7 @@ function buildLoginCredentials(provider: Exclude<LoginProvider, null>): Record<s
       user_id: CN_UNLINKED_E2E_USER_ID,
       name: "Region User",
     }),
-    zcodejwttoken: CN_UNLINKED_E2E_ZCODE_JWT,
+    codezjwttoken: CN_UNLINKED_E2E_CODEZ_JWT,
   };
 }
 
@@ -84,7 +84,7 @@ async function relaunchWithLogin(provider: LoginProvider): Promise<void> {
         string
       >;
       for (const key of Object.keys(credentials)) {
-        if (key.startsWith("oauth:") || key === "zcodejwttoken" || key === "auth_token") {
+        if (key.startsWith("oauth:") || key === "codezjwttoken" || key === "auth_token") {
           delete credentials[key];
         }
       }

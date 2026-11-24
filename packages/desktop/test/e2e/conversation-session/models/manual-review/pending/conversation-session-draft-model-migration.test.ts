@@ -7,7 +7,7 @@ import {
   TID_CHAT_MODEL_GUIDE_DISMISS,
   TID_CHAT_MODEL_SELECT_TRIGGER,
   TID_V4_COMPOSER,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   DEFAULT_WORKSPACE,
@@ -44,12 +44,12 @@ const SOURCE_MODEL = "e2e-dmm-model-a";
 const TARGET_MODEL = "e2e-dmm-model-b";
 const REASONING = "disabled";
 const TASK_SCOPE_KEY = JSON.stringify(["desktop", "local", null]);
-const NOTICE_KEY = "zcode-draft-model-migration-notice:v1";
+const NOTICE_KEY = "codez-draft-model-migration-notice:v1";
 // 服务端下发 60 秒刷新间隔；等待略长于它，让 ClientConfigService 的快照过期。
 const REFRESH_INTERVAL_SECONDS = 60;
 const REFRESH_WAIT_MS = (REFRESH_INTERVAL_SECONDS + 2) * 1000;
 const EVIDENCE_DIR = join(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? join(process.cwd(), ".e2e-artifacts"),
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? join(process.cwd(), ".e2e-artifacts"),
   CASE_NAME,
 );
 
@@ -84,9 +84,9 @@ function clientConfigs(revision?: number, notice?: Notice) {
   };
 }
 
-const recentKey = (scopeKey: string) => `zcode-composer-recent:v2:${scopeKey}`;
-const markerKey = (scopeKey: string) => `zcode-draft-model-migration:v1:${scopeKey}`;
-const rootDraftKey = (scopeKey: string) => `zcode-v4-composer-project-drafts:v1:${scopeKey}`;
+const recentKey = (scopeKey: string) => `codez-composer-recent:v2:${scopeKey}`;
+const markerKey = (scopeKey: string) => `codez-draft-model-migration:v1:${scopeKey}`;
+const rootDraftKey = (scopeKey: string) => `codez-v4-composer-project-drafts:v1:${scopeKey}`;
 const guide = () => $(`[data-testid="${TID_CHAT_MODEL_GUIDE}"]`);
 const INFLIGHT_PROMPT = "E2E_DMM_INFLIGHT_SEND 请回复固定内容。";
 
@@ -115,11 +115,11 @@ async function readProjectScopeKey(): Promise<string> {
   const projectId = await browser.execute((workspacePath) => {
     const state = (
       window as Window & {
-        __zcodeSessionStoreE2E?: {
+        __codezSessionStoreE2E?: {
           getState(): { workspaces: Record<string, { draftProjectId?: string | null }> };
         };
       }
-    ).__zcodeSessionStoreE2E?.getState().workspaces[workspacePath];
+    ).__codezSessionStoreE2E?.getState().workspaces[workspacePath];
     return state?.draftProjectId ?? null;
   }, DEFAULT_WORKSPACE);
   if (!projectId) throw new Error("默认项目草稿没有项目归属，无法计算 Recent 作用域");
@@ -136,14 +136,14 @@ async function startTaskDraft() {
       (await getV4PaneSnapshot()).sessionId === "draft" &&
       (await browser.execute((pendingKey) => {
         const w = window as unknown as {
-          __zcodeTabStoreE2E: { getState(): { activeWorkspacePath: string } };
+          __codezTabStoreE2E: { getState(): { activeWorkspacePath: string } };
         };
         const pending = JSON.parse(localStorage.getItem(pendingKey) ?? "null");
         return Boolean(
           pending?.workspacePath &&
-          pending.workspacePath === w.__zcodeTabStoreE2E.getState().activeWorkspacePath,
+          pending.workspacePath === w.__codezTabStoreE2E.getState().activeWorkspacePath,
         );
-      }, `zcode-pending-task-draft:v1:${TASK_SCOPE_KEY}`)),
+      }, `codez-pending-task-draft:v1:${TASK_SCOPE_KEY}`)),
     { timeout: 30_000, timeoutMsg: "任务分区草稿没有就绪" },
   );
 }
@@ -277,10 +277,10 @@ async function capture(step: string) {
     Object.fromEntries(
       Object.entries(window.localStorage).filter(
         ([key]) =>
-          key.startsWith("zcode-composer-recent:") ||
-          key.startsWith("zcode-draft-model") ||
-          key.startsWith("zcode-v4-composer-") ||
-          key.startsWith("zcode-pending-task-draft:"),
+          key.startsWith("codez-composer-recent:") ||
+          key.startsWith("codez-draft-model") ||
+          key.startsWith("codez-v4-composer-") ||
+          key.startsWith("codez-pending-task-draft:"),
       ),
     ),
   );
@@ -339,7 +339,7 @@ describe("草稿模型迁移（服务端规则）", () => {
           name: "Custom Provider",
           models: [TARGET_MODEL, SOURCE_MODEL],
         });
-        await seedSettings({ zcodeEndpointOrigin: control!.origin });
+        await seedSettings({ codezEndpointOrigin: control!.origin });
       },
     });
     // 规则只有中文文案；英文系统下迁移成功也不会弹气泡，须先固定应用语言再触发迁移。

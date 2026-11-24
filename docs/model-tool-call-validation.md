@@ -138,7 +138,7 @@ AI SDK final tool-call(input)
        普通工具 lookup / schema    InputValidationError（无法解析的 JSON）
 ```
 
-解析失败标记是 `{}` 上的一个 symbol 键（`@zcode/contracts` 的 `markUnparsedToolInput` /
+解析失败标记是 `{}` 上的一个 symbol 键（`@codez/contracts` 的 `markUnparsedToolInput` /
 `readUnparsedToolInput`），值为 `{ preview, length }`：`preview` 是原始字符串的前 200 个 UTF-16 码元（末尾是高位代理时
 去掉它），`length` 是原始字符串的 UTF-16 长度。symbol 键不进 JSON：provider 请求、持久化 tool part、model-io、
 协议事件与日志看到的都是 `{}`，与原来相同；标记只在进程内跟着同一个 input 对象到达 executor。
@@ -274,7 +274,7 @@ JSON。例如 `WebFetch {"url": "not a url"}` 要先确认再失败。
 这些输入不再运行 PreToolUse hook，所以 hook 的 `updatedInput` 不能修正 runtime schema 不通过的原始输入（例如给
 不带 scheme 的 url 补上 `https://`）。顺序与目标版本相同：先校验，再运行 hook。
 
-内置工具的 runtime schema 都使用 zod 4（工具契约 `@zcode/contracts` 与 core 用同一个 zod 版本），runtime
+内置工具的 runtime schema 都使用 zod 4（工具契约 `@codez/contracts` 与 core 用同一个 zod 版本），runtime
 issues 的结构、message 与顺序就是目标版本的输出，不再转换结构或重排顺序。superRefine 的 issue 按 `addIssue` 对象
 的 key 顺序输出，所以工具契约里的 `addIssue` 按 `code`、`path`、`message` 书写，与 refine 生成的 issue 顺序相同。
 修复原因：工具契约原来使用 zod 3，executor 先把 zod 3 issue 转成 zod 4 结构，再与 JSON Schema issues 逐条配对、
@@ -295,7 +295,7 @@ issues 的结构、message 与顺序就是目标版本的输出，不再转换�
 工具级 `validateInput` 属于语义/环境校验，失败内容不经过参数错误 formatter；REPL inner tool call 是独立调用点。
 延迟工具还没有被 ToolSearch 发现时，
 schema failure 会在错误正文后接一段发现提示，这段提示在 `</tool_use_error>` 之内，规则见
-`apps/zcode-cli/docs/design/v2/tool/19-tool-search.md`。
+`apps/codez-cli/docs/design/v2/tool/19-tool-search.md`。
 
 PreToolUse hook 改写后的输入用 JSON Schema 再校验一次。失败时用同一个 formatter 输出逐条问题，结果不包装
 （与 hook 拒绝相同）：
@@ -306,7 +306,7 @@ The tool input from the model was valid; the hook's rewrite of it was not.
 ```
 
 修复原因：原来只有 `Tool input failed inputSchema validation`，模型以为是自己的输入错了，会改输入重试。
-ZCode 合并多个 hook 的结果后不知道改写来自哪一个 hook，所以不写 hook 来源。
+Codez 合并多个 hook 的结果后不知道改写来自哪一个 hook，所以不写 hook 来源。
 
 该逻辑没有 provider/model gate；所有支持工具调用的模型共用同一分支，不增加模型专属判断。
 
@@ -329,7 +329,7 @@ live ToolExecutionResult.modelContent
 - hydration 优先使用 string 类型的 `metadata.modelContent`，旧数据、缺失值或非 string 值继续
   fallback 到 `state.error`，无需迁移。
 - `metadata.modelContent` 仅供 Agent 冷恢复使用，映射 App / remote 消息时必须移除，不改变
-  ZCode protocol 或 UI 可见 tool metadata。
+  Codez protocol 或 UI 可见 tool metadata。
 - hydration 不根据当前工具 schema 重新格式化历史错误，避免 schema 或 formatter 版本变化改写
   模型当时实际看到的内容。
 

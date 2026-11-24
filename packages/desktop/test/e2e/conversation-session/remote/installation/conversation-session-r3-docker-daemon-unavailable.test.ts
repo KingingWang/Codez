@@ -12,7 +12,7 @@ import {
   TID_DOCKER_CONTAINER_INPUT,
   TID_REMOTE_KIND_DOCKER,
   TID_SSH_DIALOG,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom, getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
 import { readRemoteDockerContainer } from "#e2e/helpers/remote-docker-target";
 import {
@@ -23,11 +23,11 @@ import {
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
 const MARKER = "E2E_R3_DOCKER_DAEMON_UNAVAILABLE";
-const CONTEXT_NAME = `zcode-e2e-daemon-down-${process.pid}`;
-const MISSING_SOCKET = `/tmp/zcode-e2e-docker-missing-${process.pid}.sock`;
-const DENIED_SOCKET = `/tmp/zcode-e2e-docker-denied-${process.pid}.sock`;
+const CONTEXT_NAME = `codez-e2e-daemon-down-${process.pid}`;
+const MISSING_SOCKET = `/tmp/codez-e2e-docker-missing-${process.pid}.sock`;
+const DENIED_SOCKET = `/tmp/codez-e2e-docker-denied-${process.pid}.sock`;
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-docker-daemon-unavailable",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-docker-daemon-unavailable",
 );
 const run = promisify(execFile);
 

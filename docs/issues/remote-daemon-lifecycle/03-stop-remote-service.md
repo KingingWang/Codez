@@ -14,7 +14,7 @@ Status: done
 [R3 主规格](../../architecture/r3-source-server-remote-architecture.md) §8.4.5、
 [连接 UX RDLC-01](../../architecture/remote-device-connection-ux-spec.md#停止与重启远端服务rdlc-01)。
 
-- **远端 CLI**：`zcode stop --wait` 使用 #02 的停止等待函数，锁释放且 status 为 stopped 后才返回最终 ServerStatus。
+- **远端 CLI**：`codez stop --wait` 使用 #02 的停止等待函数，锁释放且 status 为 stopped 后才返回最终 ServerStatus。
   daemon 未运行时立即成功。Supervisor 进入 `stop-failed` 时返回 `source-server-stop-failed`，control 超时返回
   `source-server-control-unresponsive`。两个错误码加入公开错误码表，并有 UI 文案。
 - **Host**：连接管理器新增按设备停止的能力。先完整执行显式断开收口（删除恢复意图），再经 transport 执行
@@ -57,7 +57,7 @@ Status: done
   取根 `package.json` 当前版本作占位；已发布的 3.16.2 远端不支持 `stop --wait`，**发版时必须改为真正首发本功能的版本**。
   2026-10-21 已改为 `3.16.3`，见 [01 完成记录](01-stop-restart-remote-service.md#2026-10-21-完成记录)；
   2026-10-27 改为 `3.17.0`，见 [01 版本门禁改为 3.17.0](01-stop-restart-remote-service.md#2026-10-27-版本门禁改为-3170)。
-- 验证：`pnpm typecheck`、`pnpm --filter @zcode/desktop typecheck:e2e` 通过；`pnpm lint` 0 error；`pnpm architecture:check --changed` 0 violation；
+- 验证：`pnpm typecheck`、`pnpm --filter @codez/desktop typecheck:e2e` 通过；`pnpm lint` 0 error；`pnpm architecture:check --changed` 0 violation；
   `pnpm test:unit:affected --base 272d9f8f87` 通过（1487 文件 / 16731 例，6 例跳过）；server-cli、Host、UI 定向测试通过；
   `e2e:fixture:check`、`pnpm audit:conversation-session-coverage` 通过；改动文件 `oxfmt --check` 通过；`check-competitor-terms` 0 处。
 - E2E：`conversation-session-r3-stop-remote-service`（R3A-BLD-10，pending），macOS Desktop + 本机 Docker 远端（OrbStack linux/arm64，

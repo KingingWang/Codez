@@ -22,7 +22,7 @@ Workspace 现在有底部 Terminal 面板，也有右侧 side pane tabs。用户
 
 - workspace 级命名继续使用当前 workspace path；远程/本地服务隔离仍由当前窗口 services 和 `workspaceIdentity` 上下文承载。
 - 远程 workspace 继续通过当前窗口的 services 和 `workspacePath` 创建终端，不新增独立 Agent runtime、local host、SSH/WSL/Docker session。
-- 该功能只改变 UI 承载位置，不修改 ZCode session/task realtime 消息流，不涉及 `desktop-continuous` 与 `web-remote-replayable` 传输边界。
+- 该功能只改变 UI 承载位置，不修改 Codez session/task realtime 消息流，不涉及 `desktop-continuous` 与 `web-remote-replayable` 传输边界。
 - 手机 Web 远控复用现有 side pane overlay 渲染路径；Terminal tab 不改变 replayable 恢复语义。
 
 ## 实现入口

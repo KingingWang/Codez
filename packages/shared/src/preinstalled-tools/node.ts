@@ -3,7 +3,7 @@ import {
   preinstalledToolsReleaseSchema,
   preinstalledToolIdSchema,
   type PreinstalledToolsRelease,
-} from "@zcode/shared/preinstalled-tools";
+} from "@codez/shared/preinstalled-tools";
 
 /** 发布根与 catalog 无关，Host 在资源准备前即可注入固定目录。 */
 export function resolvePreinstalledToolsPaths(input: {

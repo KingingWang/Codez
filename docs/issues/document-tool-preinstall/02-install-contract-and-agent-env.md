@@ -38,7 +38,7 @@ None (can start immediately)
 
 全部在本机 macOS arm64 上完成。
 
-- `pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed`；CLI 侧运行 `pnpm --dir apps/zcode-cli typecheck`、`lint` 和受影响测试。
+- `pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed`；CLI 侧运行 `pnpm --dir apps/codez-cli typecheck`、`lint` 和受影响测试。
 - CLI 测试：建立 Bash 快照后执行新命令，断言变量值为预期路径。
 - 桌面 E2E（provider replay）：本机会话中让 Agent 执行读取变量的命令，断言输出路径。新用例按
   [E2E 用例生命周期](../../../.agents/skills/e2e-case-lifecycle/SKILL.md)走待审核、回放证据、人工审核后再转正。
@@ -61,7 +61,7 @@ None (can start immediately)
 - 实现 commit：`18d4df69d47`、`5f378dd2932`。已合入基线修复 `d2a08f9e74e`，
   该前置提交只移动既有 CLI model 类型，解除原有 max-lines lint 阻塞。
 - 共享契约：`packages/shared/src/preinstalled-tools/contract.ts`、`node.ts`；CLI spec：
-  `apps/zcode-cli/docs/design/v2/preinstalled-document-tools.md`。桌面 Local Host 注入固定记录路径，
+  `apps/codez-cli/docs/design/v2/preinstalled-document-tools.md`。桌面 Local Host 注入固定记录路径，
   远端和 Web 装配不注入；Agent spawn 边界清除继承来的同名值。
 - 先更新 spec 01 再实现：统一 tar.gz、发布身份目录和严格记录格式；为保留 macOS 官方 `.app` 签名，
   加入指向安装内私有资源视图的可选 `resourceBasePath`。为避免删除后重装的身份混淆，

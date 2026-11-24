@@ -10,12 +10,12 @@ The development cache synchronizer currently stages the complete Sharp runtime
 directly into:
 
 ```text
-~/.zcode/cli/plugins/cache/zcode-plugins-official/zcode-cua/0.5.2/node_modules
+~/.codez/cli/plugins/cache/zcode-plugins-official/codez-cua/0.5.2/node_modules
 ```
 
 That cache is not the durable source of truth. On desktop startup, bootstrap
 computes the filesystem seed from
-`apps/zcode-cli/packages/zcode-cua-plugin`, removes a stale cache root, and
+`apps/codez-cli/packages/codez-cua-plugin`, removes a stale cache root, and
 atomically recreates it from the seed. The source plugin's `node_modules` does
 not contain Sharp, so the restart deletes the runtime staged by `sync:cache`.
 The next screenshot or zoom call fails with `Cannot find module 'sharp'`.
@@ -35,11 +35,11 @@ screenshot -> loadSharp() -> MODULE_NOT_FOUND
 ```
 
 The Helper source override is unrelated: logs prove the Windows Helper starts
-from `ZCODE_CUA_DEV_ROOT` and reports ready before the MCP image encoder fails.
+from `CODEZ_CUA_DEV_ROOT` and reports ready before the MCP image encoder fails.
 
 ## Requirements
 
-- `ZCODE_CUA_DEV_MODE=1` desktop startup must prepare the filesystem seed source
+- `CODEZ_CUA_DEV_MODE=1` desktop startup must prepare the filesystem seed source
   before bootstrap can read it.
 - The prepared source must contain the same minimal, platform-specific Sharp
   runtime closure used by desktop packaging.
@@ -51,7 +51,7 @@ from `ZCODE_CUA_DEV_ROOT` and reports ready before the MCP image encoder fails.
   transient replacement races alongside `EEXIST` and `ENOTEMPTY`.
 - `sharp` must be loadable from the reseeded cache's `package.json` resolution
   base after an actual restart-equivalent seed pass.
-- Startup without `ZCODE_CUA_DEV_MODE=1` must not stage CUA runtime assets.
+- Startup without `CODEZ_CUA_DEV_MODE=1` must not stage CUA runtime assets.
 - The implementation must reuse `stageSharpIntoBundledAgents`; it must not
   duplicate native package lists or platform suffix rules.
 - The fix must work on Windows, macOS, and Linux using `process.platform` and
@@ -63,8 +63,8 @@ from `ZCODE_CUA_DEV_ROOT` and reports ready before the MCP image encoder fails.
 ### A. Prepare the filesystem seed source before dev startup — selected
 
 Add a focused dev staging script that copies the Sharp runtime closure into
-`apps/zcode-cli/packages/zcode-cua-plugin/node_modules` when
-`ZCODE_CUA_DEV_MODE=1`. Invoke it from the desktop-agent CLI preparation path
+`apps/codez-cli/packages/codez-cua-plugin/node_modules` when
+`CODEZ_CUA_DEV_MODE=1`. Invoke it from the desktop-agent CLI preparation path
 before Electron starts. Bootstrap then hashes and copies a self-contained
 source plugin, exactly as it does for packaged plugin roots.
 
@@ -106,7 +106,7 @@ stageDevCuaPluginRuntime({
 }): StagedRuntimePackage[]
 ```
 
-It returns without mutation unless `env.ZCODE_CUA_DEV_MODE === "1"`. When
+It returns without mutation unless `env.CODEZ_CUA_DEV_MODE === "1"`. When
 enabled, it validates the plugin manifest exists and delegates to
 `stageSharpIntoBundledAgents` with the plugin root as the staging destination.
 Missing roots or dependencies fail startup loudly rather than launching a
@@ -116,7 +116,7 @@ partially functional CUA plugin.
 
 `scripts/build-desktop-agent-cli.mjs` calls the staging entry after building the
 desktop-agent CLI. Both `dev:desktop:prod` and direct
-`@zcode/desktop dev:local-cli` already pass through this script, so there is one
+`@codez/desktop dev:local-cli` already pass through this script, so there is one
 startup boundary to maintain.
 
 ### Bootstrap seed
@@ -138,7 +138,7 @@ the commit operation, with Windows transient error classification covering
 
 1. A dev-staging test runs the real staging entry against a temporary plugin
    root and asserts that Sharp loads through `createRequire(<root>/package.json)`.
-2. The same test proves staging is a no-op without `ZCODE_CUA_DEV_MODE=1`.
+2. The same test proves staging is a no-op without `CODEZ_CUA_DEV_MODE=1`.
 3. A restart-equivalent integration test prepares a filesystem plugin source,
    runs the real official bootstrap seed into a temporary storage root, and
    asserts Sharp loads from the resulting cache after replacement.
@@ -148,12 +148,12 @@ the commit operation, with Windows transient error classification covering
    from a second process, and proves the waiting seed action runs only after the
    lock is released. A stale lock fixture proves crash recovery.
 6. Final verification runs targeted tests, full `pnpm typecheck`, full
-   `pnpm lint`, restarts desktop with `ZCODE_CUA_DEV_MODE=1` and
-   `ZCODE_CUA_DEV_ROOT`, and checks that the live cache resolves Sharp.
+   `pnpm lint`, restarts desktop with `CODEZ_CUA_DEV_MODE=1` and
+   `CODEZ_CUA_DEV_ROOT`, and checks that the live cache resolves Sharp.
 
 ## Non-Goals
 
 - Changing screenshot encoding or crop behavior.
-- Adding a host-level Sharp fallback such as `ZCODE_ALLOW_HOST_SHARP`.
+- Adding a host-level Sharp fallback such as `CODEZ_ALLOW_HOST_SHARP`.
 - Persisting runtime dependencies outside the plugin seed contract.
 - Changing packaged application plugin layout.

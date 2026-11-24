@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
-const SCAN_ROOTS = ["docs", "apps/zcode-cli/docs"];
+const SCAN_ROOTS = ["docs", "apps/codez-cli/docs"];
 const EXCLUDED_PREFIXES = ["docs/plans/", "docs/v4-refactor/"];
 
 const STALE_PHRASES = [

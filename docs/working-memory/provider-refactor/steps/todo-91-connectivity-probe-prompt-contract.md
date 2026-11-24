@@ -13,7 +13,7 @@
 连接测试统一使用以下固定消息，保留精确文本、大小写、标点、角色与顺序：
 
 ```yaml
-system: You are ZCode connectivity probe.
+system: You are Codez connectivity probe.
 user: hi
 ```
 
@@ -58,7 +58,7 @@ user: hi
 | invariant-only | 保存/刷新、最低公开 reasoning 档位、输出预算、超时/重试、错误反馈、工作区隔离均保持；不改 Session/Active Model |
 | evidence-only | 旧 staging helper 与上层 Service、旧权益测试用于说明历史，不整文件恢复 |
 
-代码图工具不可用，已从 `surface.provider-settings` / `service.provider-settings` 的种子以直接调用追踪核对；默认两层，跨 App–Agent 的执行落点进一步追到 Core/Adapter。相关路径为 ModelProviderSection → useModelProviders → Provider Settings Service → zcodeAgentService → workspace-model-runtime → Core testModelConnectivity。图谱增加本 Todo 来源链接；暂不重写其他历史图谱语义。
+代码图工具不可用，已从 `surface.provider-settings` / `service.provider-settings` 的种子以直接调用追踪核对；默认两层，跨 App–Agent 的执行落点进一步追到 Core/Adapter。相关路径为 ModelProviderSection → useModelProviders → Provider Settings Service → codezAgentService → workspace-model-runtime → Core testModelConnectivity。图谱增加本 Todo 来源链接；暂不重写其他历史图谱语义。
 
 ## 4. 实现与清理边界
 
@@ -97,7 +97,7 @@ user: hi
 | C91-04 | pending E2E 从真实设置模型行发起，case-local loopback server 返回成功 SSE/400 失败；两次最终请求均为固定模板，Personal 文件、连接选择和 Composer 草稿保持原样 |
 | 代码复审 | 生产只改连接测试消息及命名常量；未修改通用 generateWorkspaceText、Adapter、Request Auth、协议、预算、重试或连接状态。删除旧 Prompt 断言，没有恢复 staging 旧分流 |
 | 本地验证 | CLI 3 个定向文件 32 测试通过；Core typecheck、根 pnpm typecheck 通过；根 lint 0 errors / 40 既有 warnings |
-| Pro | `desktop-e2e-20260908-102455-529`，1/1 通过，隔离目录 `/Users/dev/zcode-todo93-e2e.88xgST`；已重新构建 Agent，复跑只复用该新构建 |
+| Pro | `desktop-e2e-20260908-102455-529`，1/1 通过，隔离目录 `/Users/dev/codez-todo93-e2e.88xgST`；已重新构建 Agent，复跑只复用该新构建 |
 
 首轮 E2E `desktop-e2e-20260908-102321-138` 已出现成功/失败 UI，但失败断言错误期待原始网关文案；正式链路归一化为 `Provider rejected the model request.`。按既有契约修正断言后通过，未为测试改变产品错误处理。
 

@@ -31,7 +31,7 @@ import {
   selectUpstreamThoughtLevelValue,
 } from "#e2e/helpers/upstream-provider";
 const evidence: unknown[] = [];
-const out = process.env.ZCODE_E2E_ARTIFACT_DIR!;
+const out = process.env.CODEZ_E2E_ARTIFACT_DIR!;
 
 async function installProbe() {
   await browser.execute(() => {
@@ -79,7 +79,7 @@ async function installProbe() {
           (node) => node.innerText,
         ),
         rowCount: pane?.querySelectorAll("[data-row-id]").length,
-        activeWorkspace: w.__zcodeTabStoreE2E?.getState().activeWorkspacePath,
+        activeWorkspace: w.__codezTabStoreE2E?.getState().activeWorkspacePath,
         centered: composer?.classList.contains("max-w-2xl"),
         stop: Boolean(pane?.querySelector('[data-testid="v4-stop"]')),
         x: rect?.x,
@@ -134,7 +134,7 @@ async function mark(label: string) {
 
 async function verifyMobileSwitch(taskId: string, expectedTitle: string) {
   const pairingUrl = await obtainUnreadPairingUrl(
-    new URL(process.env.ZCODE_WEB_REMOTE_CONTROL_URL!).origin,
+    new URL(process.env.CODEZ_WEB_REMOTE_CONTROL_URL!).origin,
   );
   const mobile = await chromium.launch({ channel: "chrome", headless: true });
   try {
@@ -354,7 +354,7 @@ describe("SSV01/02/04 后台运行 session 的切换稳定性", () => {
       expect(returned.some((sample: any) => sample.stop)).toBe(true);
       expect(
         returned.filter((sample: any) =>
-          /询问任何|Ask (?:ZCode )?anything|开始新|新任务/.test(sample.placeholder ?? ""),
+          /询问任何|Ask (?:Codez )?anything|开始新|新任务/.test(sample.placeholder ?? ""),
         ),
       ).toEqual([]);
       expect(new Set(returned.map((sample: any) => sample.editor)).size).toBe(1);

@@ -20,7 +20,7 @@ it.each([false, true])(
       querySelectorAll: () => projectIds.map((id) => ({ getAttribute: () => id })),
     };
     const window = {
-      __zcodeTabStoreE2E: {
+      __codezTabStoreE2E: {
         getState: () => {
           if (switching && ++reads > 1) activeIdentity = second;
           return {
@@ -101,7 +101,7 @@ it("无筛选条件时读取当前激活工作区，不能把不存在的路径�
     execute: async (fn: (...args: unknown[]) => unknown, ...args: unknown[]) =>
       runInNewContext(`(${fn.toString()})(...args)`, {
         args,
-        window: { __zcodeTabStoreE2E: { getState: () => state } },
+        window: { __codezTabStoreE2E: { getState: () => state } },
       }),
   });
   expect(await readRemoteTabSnapshot()).toMatchObject({

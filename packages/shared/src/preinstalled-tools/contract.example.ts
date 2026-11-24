@@ -2,7 +2,7 @@ import {
   resolvePreinstalledToolsCatalog,
   resolvePreinstalledToolsRelease,
   type PreinstalledToolCatalogEntry,
-} from "@zcode/shared/preinstalled-tools";
+} from "@codez/shared/preinstalled-tools";
 
 export const previewReleaseExample = resolvePreinstalledToolsRelease({
   runtimeEnv: "production",
@@ -12,6 +12,6 @@ export const previewReleaseExample = resolvePreinstalledToolsRelease({
 /** 只有已发布条目才可装配；基址由调用方按地域或覆盖变量给出。 */
 export function publishedResourceExample(entry: PreinstalledToolCatalogEntry) {
   return resolvePreinstalledToolsCatalog([entry], "darwin", "arm64", [
-    "https://cdn.example.com/zcode/preinstalled-tools",
+    "https://cdn.example.com/codez/preinstalled-tools",
   ]).tools;
 }

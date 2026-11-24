@@ -1,8 +1,8 @@
 import { once } from "node:events";
 import { createServer } from "node:http";
 import type { BrowserContext, Page } from "playwright-core";
-import { parseWebRemoteControlAppPayload, type WebRemoteControlStatus } from "@zcode/shared";
-import { parseWebRemoteControlRelayV2IncomingMessage } from "@zcode/shared/web-remote-relay";
+import { parseWebRemoteControlAppPayload, type WebRemoteControlStatus } from "@codez/shared";
+import { parseWebRemoteControlRelayV2IncomingMessage } from "@codez/shared/web-remote-relay";
 
 /** 只延迟真实回包和丢弃重申；不改 epoch、Reporter 或 Main 查看事实。 */
 export async function replayStaleBootstrapAfterReconnect(context: BrowserContext) {
@@ -66,9 +66,9 @@ export async function readMobileTaskView() {
   return browser.execute(async () => {
     const bridge = (
       window as Window & {
-        zcode?: { getWebRemoteControlStatus(): Promise<WebRemoteControlStatus> };
+        codez?: { getWebRemoteControlStatus(): Promise<WebRemoteControlStatus> };
       }
-    ).zcode;
+    ).codez;
     if (!bridge) throw new Error("MRO03 desktop platform missing");
     const status = await bridge.getWebRemoteControlStatus();
     return {

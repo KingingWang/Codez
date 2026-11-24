@@ -12,7 +12,7 @@ export type {
   AppProjectRef,
   AppSessionRef,
   AppWorkspaceRef,
-} from "@zcode/session-control/contracts";
+} from "@codez/session-control/contracts";
 
 type SessionCallId = {
   [K in CapabilityId]: K extends `sessions.${string}`

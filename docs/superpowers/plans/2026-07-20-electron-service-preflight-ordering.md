@@ -16,7 +16,7 @@
 - preflight 失败不得在 worker hook 内创建第二个 Electron session。
 - bug 原因和修复理由使用中文注释，并记录独立 `before-suite` lifecycle。
 - 保留用户已有 I55 未提交改动，本次 commit 只包含此计划列出的文件。
-- 必须执行 `pnpm --filter @zcode/desktop typecheck:e2e`、`pnpm typecheck`、`pnpm lint`。
+- 必须执行 `pnpm --filter @codez/desktop typecheck:e2e`、`pnpm typecheck`、`pnpm lint`。
 
 ---
 
@@ -75,7 +75,7 @@ Expected: PASS，0 failures。
 
 - [ ] **Step 5: 执行强制验证**
 
-Run: `pnpm --filter @zcode/desktop typecheck:e2e`
+Run: `pnpm --filter @codez/desktop typecheck:e2e`
 
 Run: `pnpm typecheck`
 

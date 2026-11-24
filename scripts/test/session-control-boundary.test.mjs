@@ -11,7 +11,7 @@ const exec = promisify(execFile);
 const root = resolve(import.meta.dirname, "../..");
 
 async function withLintFixture(run) {
-  const cwd = await mkdtemp(join(tmpdir(), "zcode-session-control-boundary-"));
+  const cwd = await mkdtemp(join(tmpdir(), "codez-session-control-boundary-"));
   try {
     const { config } = ts.parseConfigFileTextToJson(
       ".oxlintrc.json",
@@ -42,9 +42,9 @@ test("会话控制核心拒绝环境 IO 与宿主实现依赖", async () => {
       "node:child_process",
       "electron",
       "react",
-      "@zcode/services",
-      "@zcode/shared/zcode-protocol-v4",
-      "@zcode/core",
+      "@codez/services",
+      "@codez/shared/codez-protocol-v4",
+      "@codez/core",
       "../../../../services/src/node.js",
     ]) {
       const diagnostics = await lint(
@@ -80,7 +80,7 @@ test("CLI 与 App 用例不得相互导入", async () => {
     ]) {
       for (const specifier of [
         `../${other}/index.js`,
-        `@zcode/session-control/${other}`,
+        `@codez/session-control/${other}`,
         `#session-control/application/${other}/index`,
       ]) {
         const diagnostics = await lint(
@@ -137,7 +137,7 @@ test("核心隔离检查限制跨目录和跨用例引用", async () => {
       `#session-control/application/${other}`,
       "../../testing",
       "../../../../../services/src/node.js",
-      "@zcode/services",
+      "@codez/services",
     ]) {
       assert.ok(
         checkSessionControlSource(file, `export { value } from ${JSON.stringify(specifier)};`)

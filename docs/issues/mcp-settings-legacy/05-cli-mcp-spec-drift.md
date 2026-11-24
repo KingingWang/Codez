@@ -9,8 +9,8 @@ Status: needs-triage
 
 ## 证据
 
-1. `apps/zcode-cli/docs/design/v2/mcp.md:152`；代码见 `apps/zcode-cli/packages/adapters/src/config/config-factory.ts` 的 `resolveEffectiveMcpServers`。隔离 HOME 探针：user 有完整的 foo，project 只写 `{enabled:false}` → 条目被丢弃，foo 仍启用；project 写完整条目加 `enabled:false` → user 层胜出，foo 仍启用。
-2. `apps/zcode-cli/docs/design/v2/mcp.md:256`；代码见 `apps/zcode-cli/packages/adapters/src/mcp/index.ts` 的 `disconnectServer`。
+1. `apps/codez-cli/docs/design/v2/mcp.md:152`；代码见 `apps/codez-cli/packages/adapters/src/config/config-factory.ts` 的 `resolveEffectiveMcpServers`。隔离 HOME 探针：user 有完整的 foo，project 只写 `{enabled:false}` → 条目被丢弃，foo 仍启用；project 写完整条目加 `enabled:false` → user 层胜出，foo 仍启用。
+2. `apps/codez-cli/docs/design/v2/mcp.md:256`；代码见 `apps/codez-cli/packages/adapters/src/mcp/index.ts` 的 `disconnectServer`。
 
 ## 影响
 

@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { TID_WORKSPACE_PATH } from "@zcode/shared/test-ids";
+import { TID_WORKSPACE_PATH } from "@codez/shared/test-ids";
 import { clearAppData, DEFAULT_WORKSPACE } from "#e2e/helpers/desktop-app";
 import {
   getUpstreamRequestRecordCount,
@@ -33,7 +33,7 @@ import { openWorkspaceDraftFromSidebar } from "#e2e/helpers/workspace-agent-warm
 const CASE_MARKER = "E2E_RPN_SAME_PATH_LOCAL_TASK";
 const REPLY = "RPN_SAME_PATH_LOCAL_TASK_REPLY";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/rpn-same-path-local-task",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/rpn-same-path-local-task",
 );
 
 interface TabRow {
@@ -51,7 +51,7 @@ function readTabs(): Promise<{
   return browser.execute(() => {
     const state = (
       window as Window & {
-        __zcodeTabStoreE2E?: {
+        __codezTabStoreE2E?: {
           getState(): {
             activeWorkspacePath: string | null;
             activeWorkspaceIdentity: string | null;
@@ -65,7 +65,7 @@ function readTabs(): Promise<{
           };
         };
       }
-    ).__zcodeTabStoreE2E?.getState();
+    ).__codezTabStoreE2E?.getState();
     if (!state) throw new Error("导航 store 未就绪");
     return {
       activeWorkspacePath: state.activeWorkspacePath,

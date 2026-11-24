@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { BufferWriter, serialize } from "@zcode/rpc";
+import { BufferWriter, serialize } from "@codez/rpc";
 import {
   readUpdateDisconnectEvidence,
   restoreUpdateDisconnectProbe,

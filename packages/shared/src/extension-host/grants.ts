@@ -198,7 +198,7 @@ export const extensionEnableImpactSchema = z.strictObject({
 export type ExtensionEnableImpact = z.infer<typeof extensionEnableImpactSchema>;
 
 /**
- * 审计日志的一行（`~/.zcode/v2/extensions/audit/<日期>.jsonl`，§17.8）。写操作每次一行；授权与撤销也各记
+ * 审计日志的一行（`~/.codez/v2/extensions/audit/<日期>.jsonl`，§17.8）。写操作每次一行；授权与撤销也各记
  * 一行（capability 为 `grants.grant` / `grants.revoke`）。不写提示词、标题、正文、路径、设置值、错误原文。
  * pluginId 在能力调用里是扩展进程自报的，只用于归因（§7.3）。
  */

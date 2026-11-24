@@ -7,7 +7,7 @@ import {
   TID_CHAT_MODE_SELECT_TRIGGER,
   TID_CHAT_MODE_SELECT_ITEM,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 
 async function selectYolo() {
   await $(`[data-testid="${TID_CHAT_MODE_SELECT_TRIGGER}"]`).click();

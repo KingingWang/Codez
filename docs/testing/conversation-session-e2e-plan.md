@@ -20,8 +20,8 @@ F09、G11、G12 的产品语义已于 2026-07-05 裁决，不再属于 undefined
 
 | 层                     | 用途                                 | 运行方式                                                                                                         |
 | ---------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| desktop capture        | 连接线上 DeepSeek，验证真实桌面链路  | `E2E_PROVIDER_HTTP_MODE=capture E2E_PROVIDER_API_KEY=... pnpm --filter @zcode/desktop test:e2e -- --spec <spec>` |
-| desktop replay         | 本地快速认证，使用已录制 SSE fixture | `pnpm --filter @zcode/desktop test:e2e -- --spec <spec>`                                                         |
+| desktop capture        | 连接线上 DeepSeek，验证真实桌面链路  | `E2E_PROVIDER_HTTP_MODE=capture E2E_PROVIDER_API_KEY=... pnpm --filter @codez/desktop test:e2e -- --spec <spec>` |
+| desktop replay         | 本地快速认证，使用已录制 SSE fixture | `pnpm --filter @codez/desktop test:e2e -- --spec <spec>`                                                         |
 | docker replay-isolated | 隔离网络后的最终可复现认证           | `E2E_NETWORK_MODE=replay-isolated E2E_SPEC=<spec> bash scripts/test-desktop-e2e-container.sh`                    |
 
 当前先放大桌面端 case，Docker 只作为阶段性认证，不阻塞 case 编写。
@@ -37,7 +37,7 @@ conversation 主路径 spec 先统一放在 `packages/desktop/test/e2e/conversat
 3. 产品预期确认后，补充确定性断言和需要的 `data-testid` / 协议 / 日志 / 抓包 / snapshot 校验。
 4. 断言稳定后，把 spec 移回 `packages/desktop/test/e2e/conversation-session/`，并同步更新 [conversation-session-e2e-coverage-matrix.md](./conversation-session-e2e-coverage-matrix.md)。
 
-WDIO 默认全量 E2E 会排除 `manual-review`；显式传入 `manual-review` spec 或设置 `ZCODE_E2E_MANUAL_REVIEW=1` 时才运行这些人工 review case。`ZCODE_E2E_MANUAL_REVIEW=1` 且没有显式 `--spec` 时，默认只运行 `manual-review/**/*.test.ts`。
+WDIO 默认全量 E2E 会排除 `manual-review`；显式传入 `manual-review` spec 或设置 `CODEZ_E2E_MANUAL_REVIEW=1` 时才运行这些人工 review case。`CODEZ_E2E_MANUAL_REVIEW=1` 且没有显式 `--spec` 时，默认只运行 `manual-review/**/*.test.ts`。
 
 ## Spec 拆分
 
@@ -107,7 +107,7 @@ conversation-session 目录，并在覆盖矩阵里更新为正式路径。
 - stop 后存在 queue 时，queue 进入 held 状态，默认不自动消费；只有队列项“立即发送/继续队列”会显式请求 stop 后 drain。
 - stop 后 runtime 已完成且清掉 `activeInputId` 时，允许用户发 `/compact`；不能被 stale composer `streaming` 状态误判为仍在 running。
 - 手动 compact 如果历史不足，terminal marker 可以是 `skipped`；成功路径 E2E 需要先构造至少两轮已完成历史，再断言 `started -> completed`。
-- fork 入口对 ZCode agent provider 开放，但只允许稳定 `completed(success)` assistant message；被 stop 的 interrupted partial 不提供可用 fork 入口。fork 后切换到派生 session，父 session queue 不复制。
+- fork 入口对 Codez agent provider 开放，但只允许稳定 `completed(success)` assistant message；被 stop 的 interrupted partial 不提供可用 fork 入口。fork 后切换到派生 session，父 session queue 不复制。
 - user query edit 是显式重跑动作；stop 后 held queue 存在时仍应立即重跑，queue 保留且不自动 drain；assistant/tool 不暴露 edit 入口。
 - tool call 预期渲染为 assistant message 内部的 `TID_CHAT_TOOL_CALL_BLOCK`，不是独立 message；tool 负向能力断言只检查 tool block 内没有 edit/fork 入口，assistant message 自身的 fork 入口按 assistant 规则另行判断。
 - edit 重跑 running 中，后续普通文本和 `/goal` 都只能进入 queue，不能抢占当前重跑 turn。

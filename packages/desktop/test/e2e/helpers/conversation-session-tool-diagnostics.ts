@@ -7,7 +7,7 @@ import {
   TID_CHAT_TOOL_CALL_BLOCK,
   TID_CHAT_VIEW,
   TID_V4_SESSION_PANE,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 
 export interface ToolCallBlockSnapshot {
   exists: boolean;
@@ -228,7 +228,7 @@ export function getToolCallDiagnostics(
         chatView?.getAttribute("data-task-id") ||
         (v4SessionId && v4SessionId !== "draft" ? v4SessionId : null);
       const e2eWindow = window as Window & {
-        __zcodeSessionStoreE2E?: {
+        __codezSessionStoreE2E?: {
           getState: () => {
             workspaces?: Record<
               string,
@@ -239,7 +239,7 @@ export function getToolCallDiagnostics(
           };
         };
       };
-      const storeApi = e2eWindow.__zcodeSessionStoreE2E;
+      const storeApi = e2eWindow.__codezSessionStoreE2E;
       const rendererStore = (() => {
         if (!storeApi) {
           return {

@@ -30,13 +30,13 @@ official request_access success (macOS only)
 read-only text result + namespaced typed permission metadata
         |
         v
-trusted ZCode Host may ask the user whether to open onboarding
+trusted Codez Host may ask the user whether to open onboarding
 ```
 
 - 不存在 producer 级 macOS 权限翻译分支。
 - 不存在 consumer 级错误文本扫描或由普通错误触发的自动权限弹窗。
 - `request_access` 保持只读，只报告当前授权主体、权限状态和能力，不主动弹系统框。
-- macOS 成功结果在 MCP result `_meta["zcode.cua/request-access-status-v1"]` 携带严格、
+- macOS 成功结果在 MCP result `_meta["codez.cua/request-access-status-v1"]` 携带严格、
   版本化的权限快照，供已经验证 official-CUA authority 的可信 Host 响应；模型可见 JSON
   文本保持原样。非 macOS、字段缺失或枚举非法时不输出该 metadata。
 - `accessibility=denied|stale` 与 `screenRecording=denied` 是确定缺权；`unknown`

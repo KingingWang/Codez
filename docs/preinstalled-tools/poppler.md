@@ -80,7 +80,7 @@ conda 包中有编译时写死的路径。conda 安装时会改写它们；直�
 
 运行检查：`pdftoppm -v` 与 `pdftotext -v`，输出（Poppler 的版本信息写到 stderr）必须包含 `pdftoppm version <版本>` 和 `pdftotext version <版本>`。每项超时 60 秒：macOS 首次加载这 49 个 ad-hoc 签名的库约需 21～24 秒（见通用规格的运行检查一步），原来的 10 秒会让全新安装稳定失败。
 
-Windows 签名：`windowsSigning` 为 `zcode`，见通用规格的 [Windows 签名](README.md#windows-签名)。2026-11-04 核对 `poppler-26.10.0-win32-x64-r1`：PE 文件 39 个，微软签名的 VC++ 运行库 6 个保留不变，没有签名的 33 个（4 个命令和 29 个 DLL）要签名。Windows 资源没有 `rewrite`。
+Windows 签名：`windowsSigning` 为 `codez`，见通用规格的 [Windows 签名](README.md#windows-签名)。2026-11-04 核对 `poppler-26.10.0-win32-x64-r1`：PE 文件 39 个，微软签名的 VC++ 运行库 6 个保留不变，没有签名的 33 个（4 个命令和 29 个 DLL）要签名。Windows 资源没有 `rewrite`。
 
 ## 许可
 

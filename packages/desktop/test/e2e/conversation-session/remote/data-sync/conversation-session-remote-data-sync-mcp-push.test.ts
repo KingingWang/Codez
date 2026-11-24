@@ -5,7 +5,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -31,10 +31,10 @@ const STDIO_SERVER = "E2E-Dsync-Stdio";
 const STDIO_KEY = STDIO_SERVER.toLowerCase();
 const FILESYSTEM_SERVER = "filesystem";
 const REMOTE_HOME = "/home/dev";
-const REMOTE_CONFIG = `${REMOTE_HOME}/.zcode/cli/config.json`;
+const REMOTE_CONFIG = `${REMOTE_HOME}/.codez/cli/config.json`;
 
 async function writeLocalMcpServers(home: string): Promise<void> {
-  const dir = join(home, ".zcode", "cli");
+  const dir = join(home, ".codez", "cli");
   await mkdir(dir, { recursive: true });
   await writeFile(
     join(dir, "config.json"),

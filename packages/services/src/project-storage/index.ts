@@ -1,6 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import { ProjectRepository } from "#src/project-storage/project-repository.js";
-import { sqliteMigrations } from "@zcode/shared/sqlite-migrations";
+import { sqliteMigrations } from "@codez/shared/sqlite-migrations";
 import type { ProjectStorageContract } from "#src/project-storage/contract.js";
 import type { ProjectDataRepositoryContract } from "#src/project-storage/purge/contract.js";
 import {

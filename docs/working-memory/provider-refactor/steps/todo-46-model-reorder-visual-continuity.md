@@ -83,7 +83,7 @@ Last model row  -> no bottom divider
 - UI 单测：受控延迟、旧 View 重投影、失败回滚、连续调序、成员变化；
 - Provider 设置 E2E：真实 pointer drag 后 DOM 顺序不闪回；
 - 边框结构测试：外框一个、最后一行无 divider；
-- `@zcode/ui` typecheck 与定向测试；
+- `@codez/ui` typecheck 与定向测试；
 - Desktop E2E typecheck；
 - 根 `pnpm typecheck`、`pnpm lint`、格式检查与 `git diff --check`。
 
@@ -101,10 +101,10 @@ Last model row  -> no bottom divider
 - `pnpm exec vitest run packages/ui/test/modelProviderModelRowEditor.test.ts packages/ui/test/useOptimisticReorder.test.ts`：
   43 项通过；
 - `pnpm exec tsc -p packages/ui/tsconfig.json --noEmit`：通过；
-- `pnpm --filter @zcode/desktop typecheck:e2e`：通过；
+- `pnpm --filter @codez/desktop typecheck:e2e`：通过；
 - `pnpm typecheck`：通过；
 - `pnpm lint`：0 error，33 个既存 warning；
 - 修改文件经 `oxfmt --write` 且 `git diff --check` 通过；全仓 `pnpm fmt:check` 仍被 Electron 上游 fiddle
-  HTML 与 `apps/zcode-cli/tests/gb2312.js` 的既存解析问题阻断；
+  HTML 与 `apps/codez-cli/tests/gb2312.js` 的既存解析问题阻断；
 - Desktop E2E 已完成生产构建，但当前 Linux 宿主没有 `xvfb-run`，Chromedriver 在测试代码运行前因无 Display
   无法创建 session；用例本身已通过 E2E TypeScript 校验，待有图形环境执行。

@@ -3,7 +3,7 @@
 Status: implemented. This document describes what a workflow run leaves behind in the chat
 transcript and in the main agent's notifications; its siblings `presentation.md` (the graph
 and run pane), `authoring.md` (the artifact system), and
-`apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md` (terminal states, the
+`apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md` (terminal states, the
 journal) own the things these surfaces display.
 
 ## What a run leaves behind
@@ -36,7 +36,7 @@ row.
 ### The payload
 
 `workflowNotification` is a discriminated union on `BackgroundResultOriginMeta`. The zod
-source is `packages/shared/src/zcode-protocol-v4/rows.ts`; the contracts package carries a
+source is `packages/shared/src/codez-protocol-v4/rows.ts`; the contracts package carries a
 hand-synchronized TypeScript mirror.
 
 ```ts
@@ -597,12 +597,12 @@ Save opens a popover (`WorkflowSavePopover`, the settings popover's shell: `alig
 320 px, `rounded-xl`, title 「保存工作流」). It offers two ways to save, in the order of their
 value, not of their cost:
 
-1. **The lead**, one full-width primary button: 「让 ZCode 帮我提炼保存」 / "Let ZCode refine
-   and save it", with one line under it — 「ZCode 会帮你提炼出可复用的工作流，再交你确认。」 A
+1. **The lead**, one full-width primary button: 「让 Codez 帮我提炼保存」 / "Let Codez refine
+   and save it", with one line under it — 「Codez 会帮你提炼出可复用的工作流，再交你确认。」 A
    script that just ran is a one-off; what makes it reusable is lifting the values that change
    between runs into `args` and writing the description and when-to-use, and only a reader of
    the script can do that. The button sends one user message into this session (below), shows
-   「已交给 ZCode…」 for that moment, and closes. The model loads the skill, calls `SaveWorkflow`,
+   「已交给 Codez…」 for that moment, and closes. The model loads the skill, calls `SaveWorkflow`,
    and the existing confirmation window asks for approval, arguments table and all. When the
    session does not take the message (a paused queue waiting for its own confirmation), the
    popover stays open and the button returns: nothing was handed over.

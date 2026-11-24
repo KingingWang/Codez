@@ -8,17 +8,17 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/conversation-session-permission-hook-race/write-output.txt",
+      "path": ".codez-e2e/conversation-session-permission-hook-race/write-output.txt",
       "source": "created-by-provider-tool",
       "description": "spec 创建父目录，fixture 驱动 Write 工具在用户批准胜出后创建目标文件。"
     },
     {
-      "path": ".zcode/permission-hook-race-blocker.mjs",
+      "path": ".codez/permission-hook-race-blocker.mjs",
       "source": "created-by-helper",
-      "description": "阻塞型 PermissionRequest hook 脚本：记录 started 后睡眠 120s、不产出决定；由 user config（隔离 E2E HOME 的 .zcode/cli/config.json）以绝对路径引用。"
+      "description": "阻塞型 PermissionRequest hook 脚本：记录 started 后睡眠 120s、不产出决定；由 user config（隔离 E2E HOME 的 .codez/cli/config.json）以绝对路径引用。"
     },
     {
-      "path": ".zcode/permission-hook-race-trace.jsonl",
+      "path": ".codez/permission-hook-race-trace.jsonl",
       "source": "created-by-helper",
       "description": "hook 生命周期 trace：由 helper 安装的阻塞 hook 在运行时追加；spec 用 started 记录证明竞速真实成立，用缺失 settled-without-decision 证明 hook 未参与决定。"
     }

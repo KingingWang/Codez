@@ -5,7 +5,7 @@ import { setRendererViewport, clearRendererViewport } from "#e2e/helpers/rendere
 import { chromium } from "playwright-core";
 import { openMobilePairingPage, seedMobileFixtureLogin } from "#e2e/helpers/mobile-pairing";
 import { obtainUnreadPairingUrl, showMobileTaskHome } from "#e2e/helpers/web-remote-unread";
-import { TID_TASK_ITEM, TID_TASK_NEW_BUTTON, testId } from "@zcode/shared/test-ids";
+import { TID_TASK_ITEM, TID_TASK_NEW_BUTTON, testId } from "@codez/shared/test-ids";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import {
   E2E_REPLY_TOKEN,
@@ -20,7 +20,7 @@ import {
   waitForV4UserMessageContaining,
 } from "#e2e/helpers/v4-conversation";
 
-const artifactDir = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/composer-width");
+const artifactDir = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/composer-width");
 let completedTaskId: string;
 
 const WIDE_VIEWPORT = { width: 1800, height: 1000 };
@@ -170,10 +170,10 @@ describe("会话区 status panel inline layout E2E", () => {
 
   it("手机 Web 打开历史对话和刷新时输入区无布局过渡，深浅主题均不溢出", async function () {
     this.timeout(180000);
-    const endpoint = process.env.ZCODE_WEB_REMOTE_CONTROL_URL;
+    const endpoint = process.env.CODEZ_WEB_REMOTE_CONTROL_URL;
     if (!endpoint || !completedTaskId) throw new Error("mobile fixture or completed task missing");
     const pairingUrl = await obtainUnreadPairingUrl(new URL(endpoint).origin);
-    const executablePath = process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE;
+    const executablePath = process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE;
     const chrome = await chromium.launch({
       ...(executablePath ? { executablePath } : { channel: "chrome" }),
       headless: true,

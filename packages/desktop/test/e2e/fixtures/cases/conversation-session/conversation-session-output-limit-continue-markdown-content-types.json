@@ -8,24 +8,24 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/continue-markdown-otc10/one.svg",
+      "path": ".codez-e2e/continue-markdown-otc10/one.svg",
       "source": "created-by-spec",
       "description": "OTC10 single-image 与 image-gallery 使用的第一张固定本地 SVG。"
     },
     {
-      "path": ".zcode-e2e/continue-markdown-otc10/two.svg",
+      "path": ".codez-e2e/continue-markdown-otc10/two.svg",
       "source": "created-by-spec",
       "description": "OTC10 image-gallery 使用的第二张固定本地 SVG。"
     },
     {
-      "path": ".zcode-e2e/continue-markdown-otc10/link-target.md",
+      "path": ".codez-e2e/continue-markdown-otc10/link-target.md",
       "source": "created-by-spec",
       "description": "OTC10 workspace-file-link 的固定存在文件。"
     },
     {
-      "path": ".zcode-e2e/continue-markdown-otc10/citation.txt",
+      "path": ".codez-e2e/continue-markdown-otc10/citation.txt",
       "source": "created-by-spec",
-      "description": "OTC10 zcode-file-citation 的固定目标文件。"
+      "description": "OTC10 codez-file-citation 的固定目标文件。"
     }
   ],
   "requests": [
@@ -454,20 +454,20 @@
       "syntheticReason": "确定性验证 OTC10/mermaid 自己的 Continue 拼接缝，不依赖其他 Markdown 类型。"
     },
     {
-      "id": "otc10-zcode-file-citation-partial",
-      "description": "OTC10/zcode-file-citation 首段在本类型 token 内以 max_tokens 截断。",
+      "id": "otc10-codez-file-citation-partial",
+      "description": "OTC10/codez-file-citation 首段在本类型 token 内以 max_tokens 截断。",
       "kind": "main",
       "source": "synthetic",
       "timingPolicy": "fast-text",
-      "syntheticReason": "确定性验证 OTC10/zcode-file-citation 自己的 Continue 拼接缝，不依赖其他 Markdown 类型。"
+      "syntheticReason": "确定性验证 OTC10/codez-file-citation 自己的 Continue 拼接缝，不依赖其他 Markdown 类型。"
     },
     {
-      "id": "otc10-zcode-file-citation-final",
-      "description": "OTC10/zcode-file-citation 续段闭合本类型并正常结束。",
+      "id": "otc10-codez-file-citation-final",
+      "description": "OTC10/codez-file-citation 续段闭合本类型并正常结束。",
       "kind": "main",
       "source": "synthetic",
       "timingPolicy": "fast-text",
-      "syntheticReason": "确定性验证 OTC10/zcode-file-citation 自己的 Continue 拼接缝，不依赖其他 Markdown 类型。"
+      "syntheticReason": "确定性验证 OTC10/codez-file-citation 自己的 Continue 拼接缝，不依赖其他 Markdown 类型。"
     }
   ]
 }

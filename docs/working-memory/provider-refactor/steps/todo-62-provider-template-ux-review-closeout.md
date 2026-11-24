@@ -166,7 +166,7 @@ Reasoning 编辑器测试不能再只用“紧凑标签”作为测试名称，�
 - Reasoning Level 编辑器明显收紧，同时完整保留有序编辑能力；
 - Built-in Template 与纯自定义 Provider 的真实交互链路均有 E2E 证据；
 - Provider、Provider Node、Services、UI 定向单测通过；
-- `pnpm --filter @zcode/desktop typecheck:e2e` 通过；
+- `pnpm --filter @codez/desktop typecheck:e2e` 通过；
 - 受影响 Desktop E2E 在具备图形环境的机器或 CI 中实际执行通过；
 - `pnpm typecheck`、`pnpm lint` 和 `git diff --check` 通过；
 - 完成后提交 Conventional Commit，并在提交信息中加入真实的 Agent 会话 trailer。
@@ -197,11 +197,11 @@ Reasoning 编辑器测试不能再只用“紧凑标签”作为测试名称，�
 ## 9. 验证记录
 
 - Provider/UI 定向测试：`5` 个文件、`15` 条测试全部通过；
-- `pnpm --filter @zcode/ui exec tsc --noEmit`：通过；
-- `pnpm --filter @zcode/desktop typecheck:e2e`：通过；
+- `pnpm --filter @codez/ui exec tsc --noEmit`：通过；
+- `pnpm --filter @codez/desktop typecheck:e2e`：通过；
 - `pnpm typecheck`：通过；
 - `pnpm lint`：通过，只有仓库既有 warning；
-- 本轮修改文件的 `oxfmt --check`：通过；全仓 `pnpm fmt:check` 仍被 `docs/electron` 的既有非法 HTML 与 `apps/zcode-cli/tests/gb2312.js` 读取失败阻塞；
+- 本轮修改文件的 `oxfmt --check`：通过；全仓 `pnpm fmt:check` 仍被 `docs/electron` 的既有非法 HTML 与 `apps/codez-cli/tests/gb2312.js` 读取失败阻塞；
 - `pnpm test:unit:affected`：因相对 staging 存在已删除文件而升级为全量 unit；`1531` 个文件通过、`1` 个跳过、`2` 个失败，合计 `13078` 条测试通过、`25` 条跳过。两条失败分别是既有 pre-push `mise-run` 断言和 E2E CLI Config 常量计数断言，均不涉及本 Todo 修改；
 - Desktop 设置 E2E：应用与 Agent 构建成功，但当前 Linux 环境缺少 `xvfb-run`，Chromedriver 在执行任何 case 前无法创建图形会话；该结果属于执行环境阻塞，不代表 case 断言失败；
 - `git diff --check`：通过。

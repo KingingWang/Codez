@@ -52,6 +52,6 @@
 
 ## 落地形态建议
 
-- L1 测试与 reducer 同包（`apps/zcode-cli` 内），fixture 为**事件序列 JSON**——可从现有 e2e replay 轨迹中提取，也可手写最小序列；每条 catalog case id 出现在测试名中，供 coverage matrix 审计脚本对账。
+- L1 测试与 reducer 同包（`apps/codez-cli` 内），fixture 为**事件序列 JSON**——可从现有 e2e replay 轨迹中提取，也可手写最小序列；每条 catalog case id 出现在测试名中，供 coverage matrix 审计脚本对账。
 - formal-proof 全枚举跑一个独立测试入口（组合量大，与逐 case 测试分开计时）。
 - L3 重建时机在 M3 竖切之后（testid contract v2 就绪），选题以本表 L3 列为准，不再全量平移旧 52 个 spec。

@@ -49,7 +49,7 @@
           "id": "toolu_lop_startup_continue",
           "name": "Bash",
           "input": {
-            "command": "node -e \"const fs=require('node:fs/promises');const path=require('node:path');const p=path.join(process.env.PATH.split(path.delimiter)[0],'zcode-soffice'+(process.platform==='win32'?'.shim':''));fs.readFile(p,'utf8').then(content=>console.log(JSON.stringify({entryPath:p,available:process.env.ZCODE_PREINSTALLED_TOOLS_AVAILABLE,exists:true,content})),()=>console.log(JSON.stringify({entryPath:p,available:process.env.ZCODE_PREINSTALLED_TOOLS_AVAILABLE,exists:false})))\"",
+            "command": "node -e \"const fs=require('node:fs/promises');const path=require('node:path');const p=path.join(process.env.PATH.split(path.delimiter)[0],'codez-soffice'+(process.platform==='win32'?'.shim':''));fs.readFile(p,'utf8').then(content=>console.log(JSON.stringify({entryPath:p,available:process.env.CODEZ_PREINSTALLED_TOOLS_AVAILABLE,exists:true,content})),()=>console.log(JSON.stringify({entryPath:p,available:process.env.CODEZ_PREINSTALLED_TOOLS_AVAILABLE,exists:false})))\"",
             "description": "Read the fixed preinstalled entry and availability"
           }
         }
@@ -103,7 +103,7 @@
           "id": "toolu_lop_startup_before",
           "name": "Bash",
           "input": {
-            "command": "node -e \"const fs=require('node:fs/promises');const path=require('node:path');const p=path.join(process.env.PATH.split(path.delimiter)[0],'zcode-soffice'+(process.platform==='win32'?'.shim':''));fs.readFile(p,'utf8').then(content=>console.log(JSON.stringify({entryPath:p,available:process.env.ZCODE_PREINSTALLED_TOOLS_AVAILABLE,exists:true,content})),()=>console.log(JSON.stringify({entryPath:p,available:process.env.ZCODE_PREINSTALLED_TOOLS_AVAILABLE,exists:false})))\"",
+            "command": "node -e \"const fs=require('node:fs/promises');const path=require('node:path');const p=path.join(process.env.PATH.split(path.delimiter)[0],'codez-soffice'+(process.platform==='win32'?'.shim':''));fs.readFile(p,'utf8').then(content=>console.log(JSON.stringify({entryPath:p,available:process.env.CODEZ_PREINSTALLED_TOOLS_AVAILABLE,exists:true,content})),()=>console.log(JSON.stringify({entryPath:p,available:process.env.CODEZ_PREINSTALLED_TOOLS_AVAILABLE,exists:false})))\"",
             "description": "Read the fixed preinstalled entry and availability"
           }
         }

@@ -1,12 +1,12 @@
 import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, LoaderCircle } from "lucide-react";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import type { ModelSelectGroup } from "@/ModelConfigSelect.js";
 import { ProviderLogo } from "@/settings/model-provider-section/ProviderLogo.js";
 import * as RovingFocusGroup from "@radix-ui/react-roving-focus";
 import { Button } from "@/components/ui/button.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.js";
-import { TID_CHAT_MODEL_SELECT_GROUP, testId } from "@zcode/shared/test-ids";
+import { TID_CHAT_MODEL_SELECT_GROUP, testId } from "@codez/shared/test-ids";
 
 const query = "(max-width: 639px)";
 function subscribe(listener: () => void) {
@@ -54,7 +54,7 @@ export function ComposerProviderMenu({
   children: ReactNode;
   error?: string | null;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const narrow = useSyncExternalStore(subscribe, snapshot, () => false);
   const [open, setOpen] = useState(false);
   // 切换失败后回到对应操作区域，避免错误藏在已关闭的 Provider 子菜单。

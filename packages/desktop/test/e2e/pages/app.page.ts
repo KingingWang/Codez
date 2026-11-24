@@ -42,7 +42,7 @@ import {
   TID_WORKSPACE_HEADER,
   TID_WORKSPACE_TITLE,
   TID_WORKSPACE_PATH,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { sel } from "../helpers/selectors.js";
 
 class AppPage {

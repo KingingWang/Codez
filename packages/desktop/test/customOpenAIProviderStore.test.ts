@@ -7,8 +7,8 @@ import {
   ProviderConfigMap,
   ProviderConfigResolver,
   ProviderRegistry,
-} from "@zcode/provider";
-import { decodeProviderConfigFile } from "@zcode/provider-node";
+} from "@codez/provider";
+import { decodeProviderConfigFile } from "@codez/provider-node";
 
 describe("custom OpenAI Provider E2E seed", () => {
   afterEach(() => {
@@ -17,13 +17,13 @@ describe("custom OpenAI Provider E2E seed", () => {
   });
 
   it("只写版本化 Personal Config，不再制造旧 Provider 事实来源", async () => {
-    const homeDir = await mkdtemp(join(tmpdir(), "zcode-provider-seed-"));
-    const cliConfigFile = join(homeDir, ".zcode", "cli", "config.json");
+    const homeDir = await mkdtemp(join(tmpdir(), "codez-provider-seed-"));
+    const cliConfigFile = join(homeDir, ".codez", "cli", "config.json");
     await writeFileWithParents(
       cliConfigFile,
       JSON.stringify({ mcp: { example: { command: "example" } } }),
     );
-    vi.stubEnv("ZCODE_E2E_HOME_DIR", homeDir);
+    vi.stubEnv("CODEZ_E2E_HOME_DIR", homeDir);
     vi.stubEnv("E2E_PROVIDER_RUNTIME_BASE_URL", "http://127.0.0.1:43123");
 
     const { seedCustomOpenAIChatCompletionsProvider } =
@@ -36,13 +36,13 @@ describe("custom OpenAI Provider E2E seed", () => {
     });
 
     const personalConfig = JSON.parse(
-      await readFile(join(homeDir, ".zcode", "v2", "provider_config.json"), "utf-8"),
+      await readFile(join(homeDir, ".codez", "v2", "provider_config.json"), "utf-8"),
     ) as { config: { modelConfigRules: unknown } };
     const personal = decodeProviderConfigFile(personalConfig);
     const resolved = new ProviderConfigResolver().resolve({
-      zcodeBuiltinProviders: new ProviderConfigMap(),
+      codezBuiltinProviders: new ProviderConfigMap(),
       accountProviders: new ProviderConfigMap(),
-      zcodeBuiltinModelRules: new ModelConfigRules(),
+      codezBuiltinModelRules: new ModelConfigRules(),
       personalProviders: personal.providers,
       personalModels: personal.models,
     });
@@ -91,7 +91,7 @@ describe("custom OpenAI Provider E2E seed", () => {
       }),
     );
 
-    await expect(stat(join(homeDir, ".zcode", "v2", "model-providers.json"))).rejects.toMatchObject(
+    await expect(stat(join(homeDir, ".codez", "v2", "model-providers.json"))).rejects.toMatchObject(
       { code: "ENOENT" },
     );
     expect(JSON.parse(await readFile(cliConfigFile, "utf-8"))).toEqual({
@@ -118,10 +118,10 @@ describe("custom OpenAI Provider E2E seed", () => {
   });
 
   it("E2E 观察保留 Coding Plan API Key，而不把已保存凭据投影为空", async () => {
-    const homeDir = await mkdtemp(join(tmpdir(), "zcode-provider-key-read-"));
-    vi.stubEnv("ZCODE_E2E_HOME_DIR", homeDir);
+    const homeDir = await mkdtemp(join(tmpdir(), "codez-provider-key-read-"));
+    vi.stubEnv("CODEZ_E2E_HOME_DIR", homeDir);
     await writeFileWithParents(
-      join(homeDir, ".zcode", "v2", "provider_config.json"),
+      join(homeDir, ".codez", "v2", "provider_config.json"),
       JSON.stringify({
         schemaVersion: 1,
         config: {
@@ -151,9 +151,9 @@ describe("custom OpenAI Provider E2E seed", () => {
   });
 
   it("E2E 诊断不再读取旧 Provider Store", async () => {
-    const homeDir = await mkdtemp(join(tmpdir(), "zcode-provider-read-"));
+    const homeDir = await mkdtemp(join(tmpdir(), "codez-provider-read-"));
     await writeFileWithParents(
-      join(homeDir, ".zcode", "v2", "model-providers.json"),
+      join(homeDir, ".codez", "v2", "model-providers.json"),
       JSON.stringify([
         {
           id: "legacy-provider",
@@ -162,7 +162,7 @@ describe("custom OpenAI Provider E2E seed", () => {
         },
       ]),
     );
-    vi.stubEnv("ZCODE_E2E_HOME_DIR", homeDir);
+    vi.stubEnv("CODEZ_E2E_HOME_DIR", homeDir);
 
     const { readModelProviders } = await import("./e2e/helpers/desktop-app.js");
     expect(await readModelProviders()).toEqual([]);

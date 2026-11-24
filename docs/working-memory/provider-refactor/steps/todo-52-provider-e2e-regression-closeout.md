@@ -209,7 +209,7 @@ CPUW-01/CPUW-03 保留，购买完成后的用户可见行为收口为：
 
 对应技术修复：
 
-- mock control plane 使用显式 `ZCODE_CODING_PLAN_UPGRADE_MOCK_BASE_URL`；
+- mock control plane 使用显式 `CODEZ_CODING_PLAN_UPGRADE_MOCK_BASE_URL`；
 - 不从 Personal Config 查 Account Provider API Key；
 - 不断言旧 `enabled`、Family current selection 或 private credential；
 - 使用刷新请求作为 WebView 完成事件的正式结果；模型选择变化不由购买弹窗测试代为定义。
@@ -257,7 +257,7 @@ CPUW-01/CPUW-03 保留，购买完成后的用户可见行为收口为：
 - 受影响 case 的 fixture check；
 - 原生 Desktop E2E 与必要的 case-local replay；
 - 删除/修改 formal Case 后运行 `pnpm audit:conversation-session-coverage`；
-- `pnpm --filter @zcode/desktop typecheck:e2e`；
+- `pnpm --filter @codez/desktop typecheck:e2e`；
 - `pnpm typecheck`；
 - `pnpm lint`；
 - 本轮文件格式检查与 `git diff --check`。
@@ -296,7 +296,7 @@ macOS 原生 Desktop E2E：
 
 - `pnpm typecheck`：通过；
 - `pnpm lint`：通过，只有仓库既有 warning；
-- `pnpm --filter @zcode/desktop typecheck:e2e`：通过；
+- `pnpm --filter @codez/desktop typecheck:e2e`：通过；
 - 修改文件 `oxfmt`：通过；全仓 `pnpm fmt:check` 被 Electron 文档示例的既有 HTML 语法和 `gb2312.js` 读取问题阻断；
 - `pnpm audit:conversation-session-coverage`：本轮 generated docs、manifest 与 fixture 均一致；仍被独立的
   `conversation-session-hooks-lifecycle` request ledger 顺序/metadata 基线问题阻断；

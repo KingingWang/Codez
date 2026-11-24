@@ -13,7 +13,7 @@
 
 ## 边界
 
-- 本改动只影响 UI composer 建议面板和 mention 序列化，不修改 `@zcode/protocol`、session stream、task queue、snapshot 或远控 replayable/continuous 语义。
+- 本改动只影响 UI composer 建议面板和 mention 序列化，不修改 `@codez/protocol`、session stream、task queue、snapshot 或远控 replayable/continuous 语义。
 - 桌面和 Web 远控都通过现有 shared skill store 读取 skills；远程 workspace 继续由既有 `workspaceIdentity` 绑定逻辑隔离。
 - 如果 skill store 未加载或报错，`/` 面板只在技能分组显示加载/错误状态，不阻塞 commands 和 subagents。
 

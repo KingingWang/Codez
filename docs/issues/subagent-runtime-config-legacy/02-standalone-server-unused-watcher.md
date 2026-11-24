@@ -11,7 +11,7 @@ Status: needs-triage
 
 - 只跳过 `desktop-attached-remote`：`packages/services/src/node.ts:2337`。
 - Server Host 使用 `standalone-server`：`packages/services/src/node.ts:3242`。
-- CLI 是否读取 Host 快照：`packages/services/src/zcode-agent/zcodeAgentService.ts:2510-2515`（远程 identity 时为 false）。
+- CLI 是否读取 Host 快照：`packages/services/src/codez-agent/codezAgentService.ts:2510-2515`（远程 identity 时为 false）。
 - 远程 identity 前缀：`packages/shared/src/remote-workspace-identity.ts:25`。
 
 ## 影响

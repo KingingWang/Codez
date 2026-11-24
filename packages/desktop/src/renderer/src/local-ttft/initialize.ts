@@ -1,5 +1,5 @@
-import type { IPlatformService, LocalTtftRecord } from "@zcode/shared";
-import { LocalTtftObserver, setLocalTtftObserver } from "@zcode/ui";
+import type { IPlatformService, LocalTtftRecord } from "@codez/shared";
+import { LocalTtftObserver, setLocalTtftObserver } from "@codez/ui";
 
 /** 本地日志默认开启；原有云端出口选择在发送开始时冻结。 */
 export function initializeDesktopLocalTtft(platform: IPlatformService): () => void {

@@ -3,7 +3,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clickTestIdByDom } from "#e2e/helpers/desktop-app";
 import { sel } from "#e2e/helpers/selectors";
 

@@ -37,7 +37,7 @@
 ```
 UI 调用 reportXxx(...)
   → uiPerfArmsTelemetry 单例 reporter.reportArmsCustomEvent({name, group, value, properties})
-  → window.zcode.reportArmsCustomEvent (packages/desktop/src/renderer/src/main.tsx:147)
+  → window.codez.reportArmsCustomEvent (packages/desktop/src/renderer/src/main.tsx:147)
   → IPC PlatformChannels.ReportArmsCustomEvent
   → packages/desktop/src/main/desktopMainIpcRemote.ts:119 handler
      自动补公共维度：event_name / app_version / arms_env / device_mid / platform / renderer_id / metric_value
@@ -65,7 +65,7 @@ UI 调用 reportXxx(...)
 
 | name                       | value                    | 触发 / 数据来源                                                           | properties                                                     |
 | -------------------------- | ------------------------ | ------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `perf_ui_first_screen`     | 首屏耗时 ms              | `main.tsx` 模块加载记起点 → 现有 `"zcode-react-startup-ready"` 事件为终点 | `phase`（可选）                                                |
+| `perf_ui_first_screen`     | 首屏耗时 ms              | `main.tsx` 模块加载记起点 → 现有 `"codez-react-startup-ready"` 事件为终点 | `phase`（可选）                                                |
 | `perf_ui_first_token`      | `time_to_first_token` ms | 复用 `finalizePromptTelemetry()` 已算好的值，镜像双发                     | `model`, `talk_id`, `message_id`                               |
 | `perf_ui_message_complete` | `duration_ms` ms         | 复用现有 `message_completion` 计算结果，镜像双发                          | `result`(success/fail/user_interrupt), `talk_id`, `message_id` |
 | `perf_ui_stream_stall`     | 真实停顿时长 ms          | 流式期间相邻 chunk 间隔 > `STREAM_STALL_REPORT_THRESHOLD_MS`(3000)        | `stall_ms`, `waiting_tool`, `talk_id`                          |
@@ -73,7 +73,7 @@ UI 调用 reportXxx(...)
 ### 1. perf_ui_first_screen（首屏可交互耗时）
 
 - **起点**：`packages/desktop/src/renderer/src/main.tsx` 模块加载早期记录时间戳（`performance.now()`，模块级变量）。
-- **终点**：现有 `StartupReadyNotifier` 在 React commit 后派发的 `window` 事件 `"zcode-react-startup-ready"`（main.tsx:217-224）。在 `main.tsx` 内监听该事件，计算 `endNow - startNow` 并调用 `reportUiFirstScreen(elapsedMs)`。
+- **终点**：现有 `StartupReadyNotifier` 在 React commit 后派发的 `window` 事件 `"codez-react-startup-ready"`（main.tsx:217-224）。在 `main.tsx` 内监听该事件，计算 `endNow - startNow` 并调用 `reportUiFirstScreen(elapsedMs)`。
 - **注意（已修正的根因）**:`StartupReadyNotifier` 的 effect 按 React tree post-order **早于** `RootInner` 注入 reporter 的 effect 执行(前序兄弟子树先刷 effect),因此事件派发时 reporter 仍为 null——若直接静默丢弃则 `perf_ui_first_screen` **100% 不上报**。首屏每进程仅一次、丢失无法重来,故 `reportUiFirstScreen` 在 reporter 未注入时**暂存 payload**,`setUiPerfArmsReporter` 注入后**补发一次**(见 `uiPerfArmsTelemetry.ts` 的 `pendingFirstScreenPayload`)。
 - `value` = 首屏耗时 ms。
 
@@ -104,8 +104,8 @@ UI 调用 reportXxx(...)
 | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `packages/ui/src/lib/uiPerfArmsTelemetry.ts`               | **新建**：单例 reporter + `setUiPerfArmsReporter` + 4 个 report 函数 + 常量                                                                  |
 | `packages/ui/src/Root.tsx`                                 | 注入 / 清理 reporter（挨着 L150 既有 reporter 注入）                                                                                         |
-| `packages/desktop/src/renderer/src/main.tsx`               | 模块层记首屏起点；监听 `zcode-react-startup-ready` 算首屏并上报                                                                              |
-| `packages/ui/src/hooks/useZCodeChat.ts`                    | `reportPromptCompletionTelemetry` 内镜像首 token / 完成到 ARMS(复用 `completionTelemetry.eventExtraDetail`,保持 messageTelemetry 为纯计算器) |
+| `packages/desktop/src/renderer/src/main.tsx`               | 模块层记首屏起点；监听 `codez-react-startup-ready` 算首屏并上报                                                                              |
+| `packages/ui/src/hooks/useCodezChat.ts`                    | `reportPromptCompletionTelemetry` 内镜像首 token / 完成到 ARMS(复用 `completionTelemetry.eventExtraDetail`,保持 messageTelemetry 为纯计算器) |
 | `packages/ui/src/hooks/taskStreamEventHandlers.ts`         | 维护 `lastChunkAt`，超阈值上报停顿                                                                                                           |
 | `packages/ui/src/hooks/taskStreamEventTerminalHandlers.ts` | 消息结束清理 `lastChunkAt` 状态                                                                                                              |
 | `docs/monitoring/performance-monitoring.md`                | 新增 "P0 端侧 UI 性能 / group=ui_perf" 一节                                                                                                  |

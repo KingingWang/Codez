@@ -2,7 +2,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { app, BrowserWindow, dialog, ipcMain, Menu } from "electron";
-import type { ISettingService } from "@zcode/services";
+import type { ISettingService } from "@codez/services";
 import pkg, { CancellationToken } from "electron-updater";
 import semver from "semver";
 const { autoUpdater } = pkg;
@@ -10,20 +10,20 @@ const execFileAsync = promisify(execFile);
 const LINUX_SUDO_PROBE_TIMEOUT_MS = 3_000;
 import {
   DEFAULT_LOCALE,
-  DEFAULT_ZCODE_ENDPOINT_ORIGIN,
-  TEST_ZCODE_ENDPOINT_ORIGIN,
+  DEFAULT_CODEZ_ENDPOINT_ORIGIN,
+  TEST_CODEZ_ENDPOINT_ORIGIN,
   PlatformChannels,
-  ZCODE_VERSION,
+  CODEZ_VERSION,
   desktopMenuMessageIds,
   formatDesktopMenuMessage,
   getDesktopMenuMessage,
-  resolveRuntimeZCodeEndpointOrigin,
+  resolveRuntimeCodezEndpointOrigin,
   type ElectronReleaseChannel,
   type Locale,
   type PostUpdateReleaseNotesPayload,
   type UpdateCheckResultPayload,
   type UpdateStatePayload,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { logger } from "./logger.js";
 import { verifyWindowsAuthenticodeSignature } from "../../scripts/powershell-command.mjs";
 import { ManifestUpdateProvider, getElectronReleasePlatform } from "./manifestUpdateProvider.js";
@@ -31,12 +31,12 @@ import { ManifestUpdateProvider, getElectronReleasePlatform } from "./manifestUp
 export const CHECK_FOR_UPDATE_MENU_ID = "check-for-update";
 const AUTO_UPDATE_POLL_INTERVAL_MS = 15 * 60 * 1000;
 const AUTO_UPDATE_VISIBLE_POLL_INTERVAL_MS = 2 * 60 * 1000;
-const UPDATE_FEED_URL_ENV = "ZCODE_UPDATE_FEED_URL";
-const UPDATE_FEED_URL_SWITCH = "--zcode-update-feed-url";
-const DEV_AUTO_UPDATE_ENV = "ZCODE_AUTO_UPDATE_DEV";
-const DEV_AUTO_UPDATE_SWITCH = "--zcode-auto-update-dev";
-const DEV_AUTO_UPDATE_VERSION_ENV = "ZCODE_AUTO_UPDATE_DEV_VERSION";
-const DEV_AUTO_UPDATE_VERSION_SWITCH = "--zcode-auto-update-dev-version";
+const UPDATE_FEED_URL_ENV = "CODEZ_UPDATE_FEED_URL";
+const UPDATE_FEED_URL_SWITCH = "--codez-update-feed-url";
+const DEV_AUTO_UPDATE_ENV = "CODEZ_AUTO_UPDATE_DEV";
+const DEV_AUTO_UPDATE_SWITCH = "--codez-auto-update-dev";
+const DEV_AUTO_UPDATE_VERSION_ENV = "CODEZ_AUTO_UPDATE_DEV_VERSION";
+const DEV_AUTO_UPDATE_VERSION_SWITCH = "--codez-auto-update-dev-version";
 let readyUpdateVersion: string | null = null;
 let readyUpdateReleaseNotes: PostUpdateReleaseNotesPayload | null = null;
 let readyUpdateRestoredFromPendingReleaseNotes = false;
@@ -81,7 +81,7 @@ type UpdateDownloadedInfoLike = {
   path?: string | null;
   files?: Array<{ url?: string | null } | null> | null;
   packages?: Record<string, { path?: string | null } | null> | null;
-  zcodeReleaseChannel?: ElectronReleaseChannel | null;
+  codezReleaseChannel?: ElectronReleaseChannel | null;
   releaseName?: string | null;
   releaseNotes?: string | ReleaseNoteInfoLike[] | null;
   releaseDate?: string | Date | null;
@@ -194,7 +194,7 @@ function resolveDevAutoUpdateVersion(): string | null {
   const configuredVersion =
     process.env[DEV_AUTO_UPDATE_VERSION_ENV]?.trim() ||
     readCommandLineSwitchValue(DEV_AUTO_UPDATE_VERSION_SWITCH)?.trim() ||
-    ZCODE_VERSION;
+    CODEZ_VERSION;
   const parsed = semver.parse(configuredVersion);
   if (!parsed) {
     logger.warn(`[auto-update] ignore invalid dev update version=${configuredVersion}`);
@@ -280,8 +280,8 @@ function getAutoUpdaterReleaseChannelForCurrentState(): ElectronReleaseChannel {
 function readUpdateInfoReleaseChannel(
   info: UpdateDownloadedInfoLike,
 ): ElectronReleaseChannel | null {
-  return info.zcodeReleaseChannel === "preview" || info.zcodeReleaseChannel === "stable"
-    ? info.zcodeReleaseChannel
+  return info.codezReleaseChannel === "preview" || info.codezReleaseChannel === "stable"
+    ? info.codezReleaseChannel
     : null;
 }
 
@@ -487,8 +487,8 @@ async function confirmLinuxPackageAuthorization(): Promise<boolean> {
     title: isZh ? "可能需要系统授权" : "System authorization may be required",
     message: isZh ? "更新可能需要管理员权限" : "This update may require administrator permission",
     detail: isZh
-      ? "请留意系统授权窗口；如果你从终端启动 ZCode，请查看启动 ZCode 的终端。ZCode 不会读取或保存密码。"
-      : "Watch for a system authorization dialog. If you started ZCode from a terminal, check that terminal. ZCode does not read or store your password.",
+      ? "请留意系统授权窗口；如果你从终端启动 Codez，请查看启动 Codez 的终端。Codez 不会读取或保存密码。"
+      : "Watch for a system authorization dialog. If you started Codez from a terminal, check that terminal. Codez does not read or store your password.",
     buttons: isZh ? ["继续", "稍后"] : ["Continue", "Later"],
     defaultId: 0,
     cancelId: 1,
@@ -925,22 +925,22 @@ function applyManifestUpdateProvider(options: InitAutoUpdaterOptions): void {
   autoUpdater.setFeedURL({
     provider: "custom",
     updateProvider: ManifestUpdateProvider,
-    endpointOrigin: DEFAULT_ZCODE_ENDPOINT_ORIGIN,
+    endpointOrigin: DEFAULT_CODEZ_ENDPOINT_ORIGIN,
     ...(manifestUrl ? { manifestUrl } : {}),
     releasePlatform: getElectronReleasePlatform(),
     deviceMid: options.deviceMid,
     resolveZcodeJwtToken: options.resolveZcodeJwtToken,
     resolveEndpointOrigin: async () => {
       const origin = await (
-        options.resolveEndpointOrigin ?? (() => resolveRuntimeZCodeEndpointOrigin(process.env))
+        options.resolveEndpointOrigin ?? (() => resolveRuntimeCodezEndpointOrigin(process.env))
       )();
       // 通用后端覆盖不是更新发布授权；正式包只允许既有官方 HTTPS 入口。
       if (
         app.isPackaged &&
-        origin !== DEFAULT_ZCODE_ENDPOINT_ORIGIN &&
-        origin !== TEST_ZCODE_ENDPOINT_ORIGIN
+        origin !== DEFAULT_CODEZ_ENDPOINT_ORIGIN &&
+        origin !== TEST_CODEZ_ENDPOINT_ORIGIN
       ) {
-        return DEFAULT_ZCODE_ENDPOINT_ORIGIN;
+        return DEFAULT_CODEZ_ENDPOINT_ORIGIN;
       }
       return origin;
     },

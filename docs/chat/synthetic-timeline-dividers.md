@@ -18,7 +18,7 @@
 
 ## 稳定身份
 
-- `ZCodePersistedMessage.id` 保存协议侧原始 `messageId`。snapshot 恢复时优先使用该 id，避免实时消息与恢复消息使用不同 id。
+- `CodezPersistedMessage.id` 保存协议侧原始 `messageId`。snapshot 恢复时优先使用该 id，避免实时消息与恢复消息使用不同 id。
 - 旧 snapshot 没有 `id` 时，UI 根据 timeline 语义生成 fallback id：
   - `context_compaction`: `operationId`
   - `goal_verification`: `targetId + goalIteration`；`verificationId` 只表示 verifier attempt

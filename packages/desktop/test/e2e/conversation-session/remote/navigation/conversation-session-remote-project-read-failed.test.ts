@@ -20,7 +20,7 @@ import { selectTaskOrganizeMode } from "#e2e/helpers/workspace-agent-warmup";
 
 const MARKER = "E2E_REMOTE_PROJECT_READ_FAILED";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-project-read-failed",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-project-read-failed",
 );
 const FAILED_LABELS = ["连接失败", "Connection failed"];
 
@@ -29,14 +29,14 @@ async function closeWorkspaceTab(workspaceIdentity: string): Promise<void> {
   await browser.execute((identity) => {
     const store = (
       window as Window & {
-        __zcodeTabStoreE2E?: {
+        __codezTabStoreE2E?: {
           getState(): {
             tabs: Array<{ id: string; workspaceIdentity?: string }>;
             closeTab(id: string, origin?: "user-close"): void;
           };
         };
       }
-    ).__zcodeTabStoreE2E;
+    ).__codezTabStoreE2E;
     const tab = store?.getState().tabs.find((item) => item.workspaceIdentity === identity);
     if (!store || !tab) throw new Error(`Missing remote workspace tab: ${identity}`);
     store.getState().closeTab(tab.id, "user-close");

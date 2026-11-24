@@ -1,9 +1,9 @@
-import type { ZCodeMessageWithParts } from "./zcode-protocol-legacy-types.js";
-import { textFromZCodeMessageParts } from "./zcode-protocol-legacy-types.js";
-import type { ZCodeStreamEvent } from "./zcode-task-types-core.js";
-import { subagentResultMetaSchema } from "./zcode-protocol-v4/workflow-row-meta.js";
+import type { CodezMessageWithParts } from "./codez-protocol-legacy-types.js";
+import { textFromCodezMessageParts } from "./codez-protocol-legacy-types.js";
+import type { CodezStreamEvent } from "./codez-task-types-core.js";
+import { subagentResultMetaSchema } from "./codez-protocol-v4/workflow-row-meta.js";
 
-export interface ZCodeBackgroundTaskNotificationInfo {
+export interface CodezBackgroundTaskNotificationInfo {
   error?: string;
   outputFile?: string;
   result?: string;
@@ -15,8 +15,8 @@ export interface ZCodeBackgroundTaskNotificationInfo {
 const TASK_NOTIFICATION_OPEN = "<task-notification>";
 const TASK_NOTIFICATION_CLOSE = "</task-notification>";
 
-export interface ZCodeParsedBackgroundTaskNotification {
-  notification: ZCodeBackgroundTaskNotificationInfo;
+export interface CodezParsedBackgroundTaskNotification {
+  notification: CodezBackgroundTaskNotificationInfo;
   toolUseId: string;
 }
 
@@ -28,10 +28,10 @@ export interface ZCodeParsedBackgroundTaskNotification {
  * `subagentResult` 为准，通知正文不带 <error>；它只描述单条通知，所以只在只有一个块时使用。
  * 旧会话和合并轮没有它，读块内的 <status> / <error>。不解析 summary 文本：产品数据不依赖模型可见文案。
  */
-export function parseZCodeBackgroundTaskNotifications(
+export function parseCodezBackgroundTaskNotifications(
   text: string | undefined,
   originMeta?: unknown,
-): ZCodeParsedBackgroundTaskNotification[] {
+): CodezParsedBackgroundTaskNotification[] {
   const trimmed = text?.trim();
   if (!trimmed?.startsWith(TASK_NOTIFICATION_OPEN)) {
     return [];
@@ -78,16 +78,16 @@ function isModelOnlyPartialResult(block: string, status: string | undefined): bo
   return status === "failed" && readTaskNotificationTag(block, "note") !== undefined;
 }
 
-export function collectZCodeBackgroundTaskNotificationsByToolUseId(
-  messages: readonly ZCodeMessageWithParts[],
-): Map<string, ZCodeBackgroundTaskNotificationInfo> {
-  const notifications = new Map<string, ZCodeBackgroundTaskNotificationInfo>();
+export function collectCodezBackgroundTaskNotificationsByToolUseId(
+  messages: readonly CodezMessageWithParts[],
+): Map<string, CodezBackgroundTaskNotificationInfo> {
+  const notifications = new Map<string, CodezBackgroundTaskNotificationInfo>();
   for (const message of messages) {
     if (message.info.role !== "user") {
       continue;
     }
-    for (const parsed of parseZCodeBackgroundTaskNotifications(
-      textFromZCodeMessageParts(message.parts),
+    for (const parsed of parseCodezBackgroundTaskNotifications(
+      textFromCodezMessageParts(message.parts),
       message.info.metadata?.originMeta,
     )) {
       notifications.set(parsed.toolUseId, parsed.notification);
@@ -100,16 +100,16 @@ export function collectZCodeBackgroundTaskNotificationsByToolUseId(
  * 失败通知在 App 上展示的原因：优先用结构化结果或 <error> 原文；合并轮两者都没有时，
  * 用这条通知自己的 result / summary 整句（与 V4 投影相同），不从 summary 里截取原因。
  */
-export function zcodeBackgroundTaskNotificationFailureText(
-  notification: ZCodeBackgroundTaskNotificationInfo,
+export function codezBackgroundTaskNotificationFailureText(
+  notification: CodezBackgroundTaskNotificationInfo,
 ): string | undefined {
   return notification.error ?? notification.result ?? notification.summary;
 }
 
-export function zcodeBackgroundTaskNotificationToolUpdateStatus(
+export function codezBackgroundTaskNotificationToolUpdateStatus(
   status: string | undefined,
 ): Extract<
-  Extract<ZCodeStreamEvent, { type: "tool_call_update" }>["status"],
+  Extract<CodezStreamEvent, { type: "tool_call_update" }>["status"],
   "completed" | "failed" | "stopped"
 > {
   if (status === "failed" || status === "lost") {
@@ -122,22 +122,22 @@ export function zcodeBackgroundTaskNotificationToolUpdateStatus(
   return "completed";
 }
 
-export function attachZCodeBackgroundTaskNotificationToRaw(
+export function attachCodezBackgroundTaskNotificationToRaw(
   raw: unknown,
-  notification: ZCodeBackgroundTaskNotificationInfo | undefined,
+  notification: CodezBackgroundTaskNotificationInfo | undefined,
 ): unknown {
   if (!notification) {
     return raw;
   }
   const record = asPlainRecord(raw);
   const meta = asPlainRecord(record._meta);
-  const zcode = asPlainRecord(meta.zcode);
+  const codez = asPlainRecord(meta.codez);
   return {
     ...record,
     _meta: {
       ...meta,
-      zcode: {
-        ...zcode,
+      codez: {
+        ...codez,
         taskNotification: notification,
       },
     },

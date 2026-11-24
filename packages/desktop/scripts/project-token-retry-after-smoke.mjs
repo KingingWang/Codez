@@ -126,14 +126,14 @@ await build({
     {
       name: "workspace-and-header-mutation",
       setup(api) {
-        api.onResolve({ filter: /^@zcode\/model-option-map$/ }, () => ({
+        api.onResolve({ filter: /^@codez\/model-option-map$/ }, () => ({
           path: resolve(desktopDir, "../model-option-map/src/index.ts"),
         }));
-        api.onResolve({ filter: /^@zcode\/shared$/ }, () => ({
+        api.onResolve({ filter: /^@codez\/shared$/ }, () => ({
           path: resolve(desktopDir, "../shared/src/index.ts"),
         }));
         // shared 重新导出会话控制契约；它是工作区源码，不能留给独立 probe.mjs 外部解析。
-        api.onResolve({ filter: /^@zcode\/session-control\/contracts$/ }, () => ({
+        api.onResolve({ filter: /^@codez\/session-control\/contracts$/ }, () => ({
           path: resolve(desktopDir, "../session-control/src/contract.ts"),
         }));
         if (omitHeader)

@@ -8,7 +8,7 @@ import {
   TID_V4_COMPOSER_INPUT,
   TID_WORKSPACE_FILE_TREE_ROW,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   DEFAULT_WORKSPACE,
@@ -48,7 +48,7 @@ describe("内置 Office 预览安全边界", () => {
     if (this.currentTest?.state !== "failed") return;
     await browser.saveScreenshot(
       join(
-        process.env.ZCODE_E2E_ARTIFACT_DIR ?? ROOT,
+        process.env.CODEZ_E2E_ARTIFACT_DIR ?? ROOT,
         `${this.currentTest.title.slice(0, 5)}-failure.png`,
       ),
     );
@@ -67,7 +67,7 @@ describe("内置 Office 预览安全边界", () => {
   it("OPS01：PPTX 气泡 tooltip 把 HTML 系列名显示为文本", async () => {
     await clickFile(join(ROOT, "tooltip.pptx"));
     const chart = $(
-      '[data-zcode-pptx-render-surface="true"].pointer-events-auto [_echarts_instance_]',
+      '[data-codez-pptx-render-surface="true"].pointer-events-auto [_echarts_instance_]',
     );
     await chart.waitForDisplayed({ timeout: 30000 });
     // 夹具只有一个蓝色气泡；从真实 Canvas 像素定位，避免 fit 缩放后固定坐标漏掉气泡。
@@ -76,7 +76,7 @@ describe("内置 Office 预览安全边界", () => {
       async () => {
         bubble = await browser.execute(() => {
           const canvas = document.querySelector<HTMLCanvasElement>(
-            '[data-zcode-pptx-render-surface="true"].pointer-events-auto [_echarts_instance_] canvas',
+            '[data-codez-pptx-render-surface="true"].pointer-events-auto [_echarts_instance_] canvas',
           );
           if (!canvas) return null;
           const pixels = canvas
@@ -131,7 +131,7 @@ describe("内置 Office 预览安全边界", () => {
     ).toEqual({ injected: false, executed: 0 });
     // 仅替代系统路径选择；真实执行打印和文件写入，覆盖同一渲染器的导出入口。
     const exportedPath = join(
-      process.env.ZCODE_E2E_ARTIFACT_DIR ?? ROOT,
+      process.env.CODEZ_E2E_ARTIFACT_DIR ?? ROOT,
       "office-preview-export.pdf",
     );
     const saveDialog = await browser.electron.mock("dialog", "showSaveDialog");
@@ -226,7 +226,7 @@ describe("内置 Office 预览安全边界", () => {
       "javascript:window.__officePreviewXss=1",
       "data:text/html,blocked",
       "file:///office-preview-blocked",
-      "zcode://office-preview-blocked",
+      "codez://office-preview-blocked",
     ]) {
       await browser.execute((target) => {
         window.open(target, "_blank");

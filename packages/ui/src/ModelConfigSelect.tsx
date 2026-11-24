@@ -15,7 +15,7 @@ import { Portal } from "radix-ui";
 import * as RovingFocusGroup from "@radix-ui/react-roving-focus";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import type { ProviderConfigObject } from "@zcode/provider";
+import type { ProviderConfigObject } from "@codez/provider";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
 import {
@@ -53,7 +53,7 @@ import {
   TID_CHAT_MODEL_SELECT_ITEM,
   TID_CHAT_MODEL_SELECT_TRIGGER,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   isCoarseTouchDevice,
   shouldRestoreChatInputFocusAfterPickerClose,

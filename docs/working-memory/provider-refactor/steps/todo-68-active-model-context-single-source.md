@@ -139,12 +139,12 @@ Subagent 继承父 Model 时，child Selection、child prompt 中的模型身份
 验证结果：
 
 - Core 全量单测：`2207 passed / 36 skipped / 2 todo`；
-- `@zcode/core` typecheck：通过；
+- `@codez/core` typecheck：通过；
 - 根 `pnpm typecheck`：通过；
 - 根 `pnpm lint`：通过（仅有仓库既存 warning）；
 - 本轮修改文件格式检查与 `git diff --check`：通过；
 - 全仓 `pnpm fmt:check` 仍被仓库既有的 Electron fiddle 非法 HTML 和
-  `apps/zcode-cli/tests/gb2312.js` 读取失败阻塞，本轮未修改这些基线文件。
+  `apps/codez-cli/tests/gb2312.js` 读取失败阻塞，本轮未修改这些基线文件。
 
 ## 7. Review 后的最终收口范围
 

@@ -1,9 +1,9 @@
-# Federated ZCode Node / Hub 状态与迁移规划
+# Federated Codez Node / Hub 状态与迁移规划
 
 ## 状态
 
 - 文档状态：架构草案，等待产品裁决。
-- 范围：同一 Desktop 或 Browser Web 同时管理本机与多个 ZCode Lite / Server Node。
+- 范围：同一 Desktop 或 Browser Web 同时管理本机与多个 Codez Lite / Server Node。
 - 本文规划统一进程模型、通信栈、状态权威、任务聚合、扩展能力和旧数据迁移；不修改现有产品代码。
 - 已确认的上层架构边界：
   - Desktop UI 和 Browser Web 都是统一 UI。
@@ -31,19 +31,19 @@
 1. Task 列表持久行来自各 endpoint 的 `tasks-index.sqlite`，Session runtime 和正文仍由 CLI
    Session Store 权威持有。当前 UI 会把每个 endpoint 的 active / pinned / archived 全量拉回，
    再在 renderer 合并、排序和裁剪。
-2. `ZCodeTaskListQuery` 只有 `limit`，没有 cursor；当前“显示更多”仍会重新读取完整前缀。
+2. `CodezTaskListQuery` 只有 `limit`，没有 cursor；当前“显示更多”仍会重新读取完整前缀。
 3. 自定义分组当前存于单个 `tasks-index.sqlite` 的
    `task_groups / task_group_members / task_group_view_node_orders`，排序是用户显式顺序，
    不是时间排序；当前 Grouped 视图明确不聚合 remote endpoint。
-4. App 模型配置权威文件为 `~/.zcode/v2/config.json`。当前 Provider metadata、Base URL 和
+4. App 模型配置权威文件为 `~/.codez/v2/config.json`。当前 Provider metadata、Base URL 和
    自定义 API Key 仍混在同一配置 / registry snapshot 中。
 5. SSH / WSL 当前是混合权威：
    - 文件、Git、Terminal、Agent、Task、Skills、Plugins 在远端；
    - Settings、Credential、Model Provider 在 Desktop；
    - Subagent 设置服务仍在 Desktop，但远端 CLI runtime 实际读取远端定义和状态，存在事实源分裂。
 6. 旧 SSH Task 数据实际同时落在目标机的两套数据库：
-   - `~/.zcode/v2/tasks-index.sqlite`
-   - `~/.zcode/cli/db/db.sqlite`
+   - `~/.codez/v2/tasks-index.sqlite`
+   - `~/.codez/cli/db/db.sqlite`
 7. 旧 SSH workspace key 的格式为：
 
 ```text
@@ -53,13 +53,13 @@ remote:ssh:<host>:<port>:<username>:<workspacePath>
 同一目标机经不同 hostname、端口、用户名或 SSH alias 连接，会形成不同 key。
 
 8. 当前 SSH / WSL / Docker 虽已复用
-   `IRemoteBackend -> deployServer -> connectRemote -> zcode-server`，进程复用和回收仍不一致：
+   `IRemoteBackend -> deployServer -> connectRemote -> codez-server`，进程复用和回收仍不一致：
    - SSH：同窗口、同 SSH 身份共享 Host，通常留到窗口关闭；
    - WSL：同窗口、同 distro / user 共享 Host，使用 workspace generation 和 60 秒 idle TTL；
    - Docker：每个 remote session 独立 Host，session 关闭即回收整套 runtime。
-9. 当前 SSH / WSL / Docker 启动的是前台 stdio `zcode-server`。它由 Desktop Host 持有生命周期，
+9. 当前 SSH / WSL / Docker 启动的是前台 stdio `codez-server`。它由 Desktop Host 持有生命周期，
    不监听长期端口；连接 EOF 或 Host 退出会触发 Server 和 Agent 清理。
-10. 当前 ZCode Lite 使用 `entry-http.js` 创建另一种长期 HTTP / WebSocket Server；它与 stdio Server
+10. 当前 Codez Lite 使用 `entry-http.js` 创建另一种长期 HTTP / WebSocket Server；它与 stdio Server
     都调用 `createLocalServices()`，但入口、认证、连接复用和生命周期仍是两套。
 11. 当前手机 `/remote` 经 relay 附着 Desktop 窗口已有 Local / Remote Host；relay 和 Desktop main
     只透传 `rpc-frame` 与 attachment 控制，不拥有 task / session / stream / queue / snapshot。
@@ -119,7 +119,7 @@ Mobile /remote
 - Browser Web 的 Hub 位于它所连接的 Lite / Server 进程；Desktop 的 Hub 是由 Electron Main 监督、
   供多个窗口共享的 app-wide 独立进程，不属于任一 per-window Host。
 - Node 是本机 workspace、task、session、file、git、terminal、resource 和 extension inventory 的权威。
-- Account Control Plane 是一个逻辑接口，可以由 ZCode 账户服务、自托管同步服务或离线本地 Profile
+- Account Control Plane 是一个逻辑接口，可以由 Codez 账户服务、自托管同步服务或离线本地 Profile
   实现；不把云实现细节写死到 Node RPC。
 
 ## 统一进程与通信模型
@@ -131,7 +131,7 @@ Desktop / Browser / Mobile UI 只连接 Hub
 TUI 只连接本机 Node
 Hub 只连接 Node
 Node 持有本机业务服务和 workspace runtime
-Node 按 workspaceKey 懒启动 ZCode Agent
+Node 按 workspaceKey 懒启动 Codez Agent
 SSH / WSL / Docker 只是 bootstrap + tunnel adapter
 ```
 
@@ -142,9 +142,9 @@ SSH / WSL / Docker 只是 bootstrap + tunnel adapter
 | 角色                       | 数量与位置                                           | 职责                                                                                                  | 明确不负责                                                          |
 | -------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
 | UI Client                  | Desktop Renderer、Browser Web、Mobile Web            | 展示统一 Node / Workspace / Task 视图，提交用户意图                                                   | 不持有业务权威，不直接 SSH，不直接启动 Agent                        |
-| ZCode Hub                  | 每个 Desktop 实例一个；每个 Lite Web origin 一个     | Node registry、连接管理、Task Summary 聚合、离线目录缓存、账户 Profile 同步、UI attachment            | 不执行文件命令，不拼 conversation，不拥有 queue / stream / snapshot |
-| ZCode Node                 | 每台目标机器、WSL distro 或容器一个稳定实例          | Workspace Registry、file/git/terminal、Task Index、Resource Store、Agent manager、extension inventory | 不聚合其他 Node，不递归充当远端 Hub                                 |
-| ZCode Agent                | 每个活跃 workspaceKey 最多一个主聊天 runtime         | Session、V4 CommandInbox、projection、stream、permission、tool、model runtime                         | 不管理跨 Node 连接或 UI 布局                                        |
+| Codez Hub                  | 每个 Desktop 实例一个；每个 Lite Web origin 一个     | Node registry、连接管理、Task Summary 聚合、离线目录缓存、账户 Profile 同步、UI attachment            | 不执行文件命令，不拼 conversation，不拥有 queue / stream / snapshot |
+| Codez Node                 | 每台目标机器、WSL distro 或容器一个稳定实例          | Workspace Registry、file/git/terminal、Task Index、Resource Store、Agent manager、extension inventory | 不聚合其他 Node，不递归充当远端 Hub                                 |
+| Codez Agent                | 每个活跃 workspaceKey 最多一个主聊天 runtime         | Session、V4 CommandInbox、projection、stream、permission、tool、model runtime                         | 不管理跨 Node 连接或 UI 布局                                        |
 | Bootstrap / Tunnel Adapter | 每条 SSH / WSL / Docker 连接一个短生命周期 connector | 安装、升级、发现 Node，建立到 Node endpoint 的字节隧道                                                | 不创建第二套 ServiceCollection，不保存业务状态                      |
 | Relay                      | 外部可选基础设施                                     | 手机与 Hub 的鉴权、配对、心跳、opaque frame 透传                                                      | 不解析 Node / task / session，不做 replayable snapshot              |
 | Account Control Plane      | 账户服务、自托管服务或离线实现                       | Model Profile、Credential policy、Federated View revision                                             | 不承载实时 conversation                                             |
@@ -159,7 +159,7 @@ Desktop machine C
 │ - 不拥有 Node registry / task / session                             │
 │                                                                     │
 │ ├─ Renderer Window 1 ─┐                                             │
-│ ├─ Renderer Window 2 ─┼─ MessagePort ──> App-wide ZCode Hub Process │
+│ ├─ Renderer Window 2 ─┼─ MessagePort ──> App-wide Codez Hub Process │
 │ └─ Mobile relay ──────┘                         │                    │
 │                                                ├─ local connector   │
 │                                                ├─ direct WSS        │
@@ -187,13 +187,13 @@ Desktop Hub
   -> Local Node Core
 ```
 
-Node 数据目录必须有 single-owner lock。若用户已经通过 ZCode Lite 启动同一数据目录的 Node，
+Node 数据目录必须有 single-owner lock。若用户已经通过 Codez Lite 启动同一数据目录的 Node，
 Desktop 必须复用它，不能再启动第二个 SQLite / Agent owner。
 
-### ZCode Lite / Browser Web 进程模型
+### Codez Lite / Browser Web 进程模型
 
 ```text
-zcode-lite serve
+codez-lite serve
 ┌──────────────────────────────────────────────────────────────┐
 │ Lite Supervisor                                              │
 │ ├─ Node Core / Node Process                                  │
@@ -237,7 +237,7 @@ MVP 可以让 Node Core、Hub Core 和 HTTP Gateway 同处一个 Node.js 进程�
 | per-window Remote Host                    | 窗口级 SSH / WSL pool，Docker dedicated         | app-wide Hub connector pool                               |
 | Desktop Main mobile bridge                | relay frame 接到某个窗口已有 Host               | relay device transport 接到 Hub logical attachment        |
 
-当前 Browser Web 只读取一个 `ZCODE_SERVER_WORKSPACE`，不能管理动态 workspace catalog；普通 Web
+当前 Browser Web 只读取一个 `CODEZ_SERVER_WORKSPACE`，不能管理动态 workspace catalog；普通 Web
 也不能完整处理长文本临时附件。目标 Hub / Workspace Registry 和 Resource Store 必须先补齐这些合同，
 再开放跨 Node Web 管理，不能只把 UI 入口显示出来。
 
@@ -259,14 +259,14 @@ TUI on A
 建议最终发布同一套 runtime，以子命令区分角色：
 
 ```text
-zcode node serve       # 长期 Node daemon
-zcode node connect     # 只做 stdio <-> local Node socket 字节桥
-zcode hub serve        # 可独立运行的 Hub Gateway
-zcode lite serve       # 监督 local Node + Hub + Web 静态入口
-zcode tui              # 本机 UI，直接连接 local Node
+codez node serve       # 长期 Node daemon
+codez node connect     # 只做 stdio <-> local Node socket 字节桥
+codez hub serve        # 可独立运行的 Hub Gateway
+codez lite serve       # 监督 local Node + Hub + Web 静态入口
+codez tui              # 本机 UI，直接连接 local Node
 ```
 
-`zcode node connect` 不调用 `createLocalServices()`，也不启动 Agent；它只是 SSH / WSL / Docker
+`codez node connect` 不调用 `createLocalServices()`，也不启动 Agent；它只是 SSH / WSL / Docker
 无法直接转发本地 socket 时的 transport shim。
 
 ### Authority 与 Transport 正交
@@ -304,7 +304,7 @@ Authority profile:
 │  ├─ workspace / file / git / terminal / task index
 │  ├─ extension inventory / readiness
 │  └─ resource begin / chunk / commit
-├─ ZCode Protocol V4
+├─ Codez Protocol V4
 │  ├─ command ACK / query
 │  ├─ conversation / sessions-index / workspace-config topic
 │  └─ snapshot / delta / gap recovery
@@ -313,7 +313,7 @@ Authority profile:
    └─ NodeId / version / capability / endpoint
 
 统一 RPC / frame 层
-└─ @zcode/rpc IMessagePassingProtocol + typed runtime schema
+└─ @codez/rpc IMessagePassingProtocol + typed runtime schema
 
 Transport adapter
 ├─ MessagePort
@@ -341,7 +341,7 @@ Transport adapter
 | Hub -> SSH Node                   | SSH tunnel 中的 socket frames                        | 与 direct Node 完全相同   | 由 logical attachment 决定 |
 | Hub -> WSL Node                   | stdio connector -> distro local socket               | 与 direct Node 完全相同   | 由 logical attachment 决定 |
 | Hub -> Docker Node                | `docker exec -i` connector -> container local socket | 与 direct Node 完全相同   | 由 logical attachment 决定 |
-| Node -> Agent                     | child-process stdio NDJSON                           | ZCode Protocol V4         | Node 内部连接              |
+| Node -> Agent                     | child-process stdio NDJSON                           | Codez Protocol V4         | Node 内部连接              |
 
 `browser-replayable` 和 `mobile-remote-replayable` 可以复用同一种 replayable 算法，但必须保留不同
 client role，避免把手机 pairing、Hub attachment 和 Browser same-origin 权限混成一个模式。
@@ -429,19 +429,19 @@ interface NodeBootstrapResult {
 ```text
 ssh2
   1. 上传/升级统一 Node runtime
-  2. 启动或发现 zcode node serve
+  2. 启动或发现 codez node serve
   3. Node 仅监听远端 loopback
   4. ssh2.forwardOut 建 direct-tcpip tunnel
   5. tunnel 上运行与 direct WSS 相同的 Node frame
 ```
 
-若目标环境无法使用 direct-tcpip，则执行 `zcode node connect`，把 SSH stdio 纯转发到 Node local
+若目标环境无法使用 direct-tcpip，则执行 `codez node connect`，把 SSH stdio 纯转发到 Node local
 socket。旧 `entry-stdio.ts -> createLocalServices()` 只保留一个迁移周期，不作为长期架构。
 
 ### WSL
 
 ```text
-wsl.exe ... zcode node connect
+wsl.exe ... codez node connect
   -> distro 内 Unix socket
   -> persistent Node daemon
 ```
@@ -452,7 +452,7 @@ wsl.exe ... zcode node connect
 ### Docker
 
 ```text
-docker exec -i <container> zcode node connect
+docker exec -i <container> codez node connect
   -> container 内 Unix socket
   -> persistent Node daemon
 ```
@@ -463,7 +463,7 @@ tunnel，不要求用户重建容器增加 `-p`。Node 生命周期跟随容器�
 
 ### 手动安装的 Lite / Headless Node
 
-用户通过 `zcode lite serve` 或 `zcode node serve` 启动后：
+用户通过 `codez lite serve` 或 `codez node serve` 启动后：
 
 - Browser Web 连接本机 Hub endpoint；
 - Desktop 使用 direct URL 连接同端口的 Node endpoint；
@@ -592,14 +592,14 @@ Conversation lifetime        = Agent session store，不等于任何进程连接
 | credential | API Key、OAuth token、Coding Plan key、runtime header                                 | 与 metadata 分离；按策略使用 E2E 同步、Node 本地 vault 或短期 lease |
 | hub/device | Node connection profile、连接状态、UI 布局、持久化离线目录缓存                        | 设备本地；不能成为 Task / Session 权威                              |
 | node       | Plugin 实际安装、user Skill / Subagent、工具链、Node capability、runtime cache        | 每台机器独立，可显式复制，不自动求并或覆盖                          |
-| workspace  | Repo 内 `.zcode/*` / `.agents/*`、workspace extension、项目设置                       | 位于目标 Node 的 workspace；由 Git / 文件系统自然传播               |
+| workspace  | Repo 内 `.codez/*` / `.agents/*`、workspace extension、项目设置                       | 位于目标 Node 的 workspace；由 Git / 文件系统自然传播               |
 | session    | 当前 provider / model / thought / mode、消息、queue、owner、stream、permission        | 只在执行该 Session 的 Node runtime                                  |
 
 ## 模型配置
 
 ### 目标拆分
 
-历史 `ZCodeProviderRegistrySnapshot` 曾同时包含 metadata 和 raw secret；该快照链已经删除。多 Node
+历史 `CodezProviderRegistrySnapshot` 曾同时包含 metadata 和 raw secret；该快照链已经删除。多 Node
 目标设计仍需把期望配置、Credential Binding 和执行时 Lease 保持为三条独立链：
 
 ```text
@@ -866,16 +866,16 @@ GlobalTaskRef      = { nodeId, workspaceId, taskId }
 
 ```text
 目标 Node
-├─ ~/.zcode/v2/tasks-index.sqlite
+├─ ~/.codez/v2/tasks-index.sqlite
 │  ├─ tasks
 │  ├─ task_group_members
 │  ├─ task_group_view_node_orders
 │  ├─ task_group_workspace_bootstraps
 │  ├─ automations
 │  └─ automation_runs
-├─ ~/.zcode/cli/db/db.sqlite
+├─ ~/.codez/cli/db/db.sqlite
 │  └─ session.workspace_id
-├─ ~/.zcode/v2/sessions/<legacyWorkspaceHash>/
+├─ ~/.codez/v2/sessions/<legacyWorkspaceHash>/
 ├─ workspace config / provider isolation hash directories
 └─ Hub / Desktop lastWorkspaceSession 与 connection credentials
 ```
@@ -1004,7 +1004,7 @@ prepared
 
 - SSH / WSL / Docker 只负责安装、启动、升级、发现和连接 Node daemon。
 - Direct URL、Browser Web、Desktop 和 TUI 使用同一 Node API。
-- SSH 使用 direct-tcpip，WSL / Docker 使用 `zcode node connect` 到 local socket。
+- SSH 使用 direct-tcpip，WSL / Docker 使用 `codez node connect` 到 local socket。
 - 引入统一 `WorkspaceLeaseManager`，消除三种不同 Host / Agent 回收语义。
 - 长文本、图片和外部文件统一进入 Node Resource Store。
 - 旧 stdio business server 保留一个兼容周期；compat shim 只做 transport。
@@ -1093,10 +1093,10 @@ prepared
 
 - `packages/shared/src/remote-workspace-identity.ts`
 - `packages/shared/src/remoteTarget.ts`
-- `packages/shared/src/zcode-protocol/index.ts`
+- `packages/shared/src/codez-protocol/index.ts`
 - `packages/services/src/session/taskIndexRepo.ts`
 - `packages/services/src/session/automationRepo.ts`
-- `apps/zcode-cli/packages/adapters/src/storage/session-store/`
+- `apps/codez-cli/packages/adapters/src/storage/session-store/`
 - `packages/ui/src/hooks/useWorkspaceTaskLists.ts`
 - `packages/ui/src/hooks/useGlobalTaskList.ts`
 - `packages/ui/src/hooks/useGroupedTaskView.ts`
@@ -1116,8 +1116,8 @@ prepared
 - `packages/server/src/remote/wsl-backend.ts`
 - `packages/server/src/remote/docker-backend.ts`
 - `packages/services/src/node.ts`
-- `packages/services/src/zcode-agent/zcodeAgentProcessManager.ts`
-- `scripts/build-zcode-lite.mjs`
+- `packages/services/src/codez-agent/codezAgentProcessManager.ts`
+- `scripts/build-codez-lite.mjs`
 
 ### should-inspect
 

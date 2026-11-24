@@ -5,7 +5,7 @@ import {
   preinstalledFixtureTarget,
   preinstalledEntryPath,
 } from "#e2e/helpers/preinstalled-tools-fixture";
-import { TID_VIRTUAL_PROJECT_ADD } from "@zcode/shared/test-ids";
+import { TID_VIRTUAL_PROJECT_ADD } from "@codez/shared/test-ids";
 import {
   startDraftFromProject,
   selectNativeProjectDirectories,
@@ -21,7 +21,7 @@ import {
   waitForV4AssistantMessageContaining,
 } from "#e2e/helpers/v4-conversation";
 
-const fixtureUrl = () => process.env.ZCODE_E2E_PREINSTALL_FIXTURE_URL!;
+const fixtureUrl = () => process.env.CODEZ_E2E_PREINSTALL_FIXTURE_URL!;
 const status = async () =>
   (await fetch(`${fixtureUrl()}/status`)).json() as Promise<{
     requests: number;
@@ -56,7 +56,7 @@ async function waitStatus(value: string, toolId = "qpdf") {
 async function preinstallPid() {
   return browser.electron.execute(
     (electron) =>
-      electron.app.getAppMetrics().find((metric) => metric.name === "zcode-preinstalled-tools")
+      electron.app.getAppMetrics().find((metric) => metric.name === "codez-preinstalled-tools")
         ?.pid ?? null,
   );
 }
@@ -84,7 +84,7 @@ describe("预装工具后台准备（待审核）", () => {
     );
     expect(await status()).toMatchObject({ requests: 1, pending: 1 });
     expect(await $$("[data-sonner-toast]").length).toBe(0);
-    await browser.saveScreenshot(`${process.env.ZCODE_E2E_ARTIFACT_DIR}/lop-tracer-preparing.png`);
+    await browser.saveScreenshot(`${process.env.CODEZ_E2E_ARTIFACT_DIR}/lop-tracer-preparing.png`);
     await browser.keys("Escape");
     await sendV4Prompt("E2E_LOP_TRACER_CHAT: Reply with E2E_LOP_TRACER_CHAT_DONE.");
     await waitForV4AssistantMessageContaining("E2E_LOP_TRACER_CHAT_DONE", 90000);
@@ -101,7 +101,7 @@ describe("预装工具后台准备（待审核）", () => {
     expect(
       await $('[data-tool-id="qpdf"] [role="progressbar"]').getAttribute("aria-valuenow"),
     ).toBeNull();
-    await browser.saveScreenshot(`${process.env.ZCODE_E2E_ARTIFACT_DIR}/lop-tracer-checking.png`);
+    await browser.saveScreenshot(`${process.env.CODEZ_E2E_ARTIFACT_DIR}/lop-tracer-checking.png`);
     await browser.waitUntil(async () => (await status()).runtimeChecks === 1, {
       timeout: 10000,
       timeoutMsg: "运行检查请求未到达受控服务",
@@ -133,7 +133,7 @@ describe("预装工具后台准备（待审核）", () => {
       expect(await readlink(join(record.installationDir, "bin/qpdf"))).toBe("office");
       expect((await stat(program)).mode & 0o111).not.toBe(0);
     }
-    await browser.saveScreenshot(`${process.env.ZCODE_E2E_ARTIFACT_DIR}/lop-tracer-ready.png`);
+    await browser.saveScreenshot(`${process.env.CODEZ_E2E_ARTIFACT_DIR}/lop-tracer-ready.png`);
     await browser.keys("Escape");
     const workspaceB = join(getE2EAppDataPaths().homeDir, "preinstalled-tools-workspace-b");
     await mkdir(workspaceB, { recursive: true });
@@ -165,7 +165,7 @@ describe("预装工具后台准备（待审核）", () => {
       stat(await preinstalledFixtureRecordPath(root, "libreoffice")),
     ).resolves.toBeDefined();
     await expect(
-      stat(preinstalledEntryPath(join(root, "bin"), "zcode-soffice")),
+      stat(preinstalledEntryPath(join(root, "bin"), "codez-soffice")),
     ).resolves.toBeDefined();
     await fetch(`${fixtureUrl()}/qpdf/hold`);
     await reloadElectronSessionPreservingBrowserProfile(browser, {
@@ -191,7 +191,7 @@ describe("预装工具后台准备（待审核）", () => {
     expect((await status()).requests).toBe(3);
     await expect(stat(recordPath)).rejects.toHaveProperty("code", "ENOENT");
     expect(await readdir(join(root, "tools", "qpdf", "staging"))).toEqual([]);
-    await browser.saveScreenshot(`${process.env.ZCODE_E2E_ARTIFACT_DIR}/lop-tracer-recovered.png`);
+    await browser.saveScreenshot(`${process.env.CODEZ_E2E_ARTIFACT_DIR}/lop-tracer-recovered.png`);
 
     // 活动项取消后队列必须继续；关闭自动预装不能取消已经排队的另一项。
     await $('[data-tool-id="libreoffice"] [data-testid="preinstalled-tools-delete"]').click();
@@ -235,7 +235,7 @@ describe("预装工具后台准备（待审核）", () => {
     const invocation = await executePreinstalledEntry(join(root, "bin"), "qpdf", ["--version"]);
     expect(invocation.stderr).toContain("qpdf fixture");
     await browser.saveScreenshot(
-      `${process.env.ZCODE_E2E_ARTIFACT_DIR}/pt-active-cancel-queue-continued.png`,
+      `${process.env.CODEZ_E2E_ARTIFACT_DIR}/pt-active-cancel-queue-continued.png`,
     );
   });
 });

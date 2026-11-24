@@ -3,11 +3,11 @@ import { createWriteStream } from "node:fs";
 import { rm, statfs } from "node:fs/promises";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import type { HostApiNetworkTransport, createServiceLogger } from "@zcode/services/node";
+import type { HostApiNetworkTransport, createServiceLogger } from "@codez/services/node";
 import type {
   PreinstalledToolError,
   PreinstalledToolManifest,
-} from "@zcode/shared/preinstalled-tools";
+} from "@codez/shared/preinstalled-tools";
 
 export class PreinstalledToolFailure extends Error {
   constructor(

@@ -131,8 +131,8 @@ describe("e2e reporting summary skipped tests", () => {
 
   it("writes skipped per-case rows that downstream runners can read without guessing", () => {
     const artifactDir = createTempDir();
-    const previous = process.env.ZCODE_E2E_ARTIFACT_DIR;
-    process.env.ZCODE_E2E_ARTIFACT_DIR = artifactDir;
+    const previous = process.env.CODEZ_E2E_ARTIFACT_DIR;
+    process.env.CODEZ_E2E_ARTIFACT_DIR = artifactDir;
     try {
       const reporter = createE2EReporter({
         containerE2E: false,
@@ -158,8 +158,8 @@ describe("e2e reporting summary skipped tests", () => {
       expect(rows[1]).toMatchObject({ passed: false, status: "failed" });
       expect(rows[1].errorCategory).toBeDefined();
     } finally {
-      if (previous === undefined) delete process.env.ZCODE_E2E_ARTIFACT_DIR;
-      else process.env.ZCODE_E2E_ARTIFACT_DIR = previous;
+      if (previous === undefined) delete process.env.CODEZ_E2E_ARTIFACT_DIR;
+      else process.env.CODEZ_E2E_ARTIFACT_DIR = previous;
     }
   });
 });

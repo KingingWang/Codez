@@ -5,7 +5,7 @@ import { waitForControlledReplay } from "#e2e/helpers/controlled-replay";
 // dispatchCommand("sendGoalCommand") → v4-bridge goalSession(set) → TargetChanged 事件 →
 // reducer 更新 goal 状态 → unified status-panel shell 投影 objective + active。
 // 证明 goal slash 入口 + goal 状态投影 + 摘要 timer/pause/resume UI 全链路。
-import { TID_V4_COMPOSER_INPUT } from "@zcode/shared/test-ids";
+import { TID_V4_COMPOSER_INPUT } from "@codez/shared/test-ids";
 import { clearAppData, setInputValueByTestIdDom } from "#e2e/helpers/desktop-app";
 import { selectUpstreamThoughtLevelValue } from "#e2e/helpers/upstream-provider";
 import {

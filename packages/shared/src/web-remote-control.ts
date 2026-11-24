@@ -18,8 +18,8 @@ import type {
   MigrateLegacyCommonMcpResult,
   SaveCliMcpToUserDirectoryRequest,
 } from "./mcp.js";
-import type { ZCodeProvider } from "./zcode-task-types-core.js";
-import type { SessionWorkflowActivity } from "./zcode-protocol-v4/sessions-index-workflow-activity.js";
+import type { CodezProvider } from "./codez-task-types-core.js";
+import type { SessionWorkflowActivity } from "./codez-protocol-v4/sessions-index-workflow-activity.js";
 import type { WebRemoteControlRpcTransportPayload } from "./web-remote-control-rpc-transport.js";
 import type { WebRemoteControlMobileLogAppPayload } from "#src/web-remote-relay/index.js";
 import type { WorkspacePurpose } from "./workspacePurpose.js";
@@ -146,7 +146,7 @@ export function resolveWebRemoteControlRoutePathFromBaseUrl(baseUrl: string): st
   let pathname = "/";
 
   try {
-    pathname = new URL(rawBaseUrl, "https://zcode.invalid").pathname;
+    pathname = new URL(rawBaseUrl, "https://codez.invalid").pathname;
   } catch {
     pathname = rawBaseUrl.startsWith("/") ? rawBaseUrl : `/${rawBaseUrl}`;
   }
@@ -674,7 +674,7 @@ export interface WebRemoteControlTaskTarget {
   workspaceKind: "local" | "remote";
   createdAt: number;
   updatedAt: number;
-  provider?: ZCodeProvider;
+  provider?: CodezProvider;
   unreadAt?: number;
 }
 

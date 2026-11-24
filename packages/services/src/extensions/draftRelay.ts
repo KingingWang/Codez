@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { Emitter, type Event } from "@zcode/rpc";
-import { ExtensionError, type WorkbenchStartDraftInput } from "@zcode/shared/extension-host";
+import { Emitter, type Event } from "@codez/rpc";
+import { ExtensionError, type WorkbenchStartDraftInput } from "@codez/shared/extension-host";
 import type { ServiceLogger } from "#src/logger/serviceLogger.js";
 import type { ExtensionDraftAck, ExtensionDraftRequest } from "#src/extensions/views/contract.js";
 

@@ -9,8 +9,8 @@ Status: needs-triage
 
 ## 证据
 
-- `apps/zcode-cli/packages/core/src/tool/executor/batch-runner.ts`：`executeToolSchedule` 调 `executeBatch` 的选项对象。
-- `apps/zcode-cli/packages/core/src/tool/handlers/off-peak.ts`：`assertNotOffPeakTurn`；调用方 `OffPeakCreate`、`Workflow`。
+- `apps/codez-cli/packages/core/src/tool/executor/batch-runner.ts`：`executeToolSchedule` 调 `executeBatch` 的选项对象。
+- `apps/codez-cli/packages/core/src/tool/handlers/off-peak.ts`：`assertNotOffPeakTurn`；调用方 `OffPeakCreate`、`Workflow`。
 - HEAD `843cd99740` 与 `origin/staging` 上同样缺这一项。以上是代码阅读结论，还没有运行复现。
 
 ## 影响

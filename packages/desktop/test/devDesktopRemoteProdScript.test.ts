@@ -19,15 +19,15 @@ describe("dev desktop remote production-like script", () => {
     );
   });
 
-  it("macOS 默认应复用正式版 ZCode remote cache", () => {
+  it("macOS 默认应复用正式版 Codez remote cache", () => {
     expect(resolveProductionRemoteAssetCacheDir({}, "darwin", "/Users/alice")).toBe(
-      "/Users/alice/Library/Application Support/ZCode/remote-assets-cache",
+      "/Users/alice/Library/Application Support/Codez/remote-assets-cache",
     );
   });
 
-  it("Linux 默认应复用正式版 ZCode remote cache", () => {
+  it("Linux 默认应复用正式版 Codez remote cache", () => {
     expect(resolveProductionRemoteAssetCacheDir({}, "linux", "/home/alice")).toBe(
-      "/home/alice/.config/ZCode/remote-assets-cache",
+      "/home/alice/.config/Codez/remote-assets-cache",
     );
     expect(
       resolveProductionRemoteAssetCacheDir(
@@ -35,33 +35,33 @@ describe("dev desktop remote production-like script", () => {
         "linux",
         "/home/alice",
       ),
-    ).toBe("/home/alice/.config-custom/ZCode/remote-assets-cache");
+    ).toBe("/home/alice/.config-custom/Codez/remote-assets-cache");
   });
 
-  it("Windows 默认应复用正式版 ZCode remote cache", () => {
+  it("Windows 默认应复用正式版 Codez remote cache", () => {
     expect(
       resolveProductionRemoteAssetCacheDir(
         { APPDATA: "C:\\Users\\Alice\\AppData\\Roaming" },
         "win32",
         "C:\\Users\\Alice",
       ),
-    ).toBe("C:\\Users\\Alice\\AppData\\Roaming\\ZCode\\remote-assets-cache");
+    ).toBe("C:\\Users\\Alice\\AppData\\Roaming\\Codez\\remote-assets-cache");
   });
 
   it("启动 env 应强制走 CDN，并允许显式 cache 覆盖", () => {
     const env = buildDesktopRemoteProdEnv(
       {
-        ZCODE_ENV: "test",
-        ZCODE_DEV_REMOTE_ASSET_USE_CDN: "0",
-        ZCODE_REMOTE_ASSET_CACHE_DIR: "/tmp/custom-cache",
+        CODEZ_ENV: "test",
+        CODEZ_DEV_REMOTE_ASSET_USE_CDN: "0",
+        CODEZ_REMOTE_ASSET_CACHE_DIR: "/tmp/custom-cache",
       },
       "darwin",
       "/Users/alice",
     );
 
-    expect(env.ZCODE_ENV).toBe("production");
-    expect(env.ZCODE_DEV_REMOTE_ASSET_USE_CDN).toBe("1");
-    expect(env.ZCODE_REMOTE_ASSET_CACHE_DIR).toBe("/tmp/custom-cache");
+    expect(env.CODEZ_ENV).toBe("production");
+    expect(env.CODEZ_DEV_REMOTE_ASSET_USE_CDN).toBe("1");
+    expect(env.CODEZ_REMOTE_ASSET_CACHE_DIR).toBe("/tmp/custom-cache");
   });
 
   it("Windows 下应使用 pnpm.cmd 启动", () => {

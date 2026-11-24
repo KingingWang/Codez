@@ -121,7 +121,7 @@ Provider ID。当前登录账号由 Account Connection Service 内部参与解�
 
 ### 2.2 Start、Individual 与 Team 是独立 Built-in Provider
 
-同一 Family 的 Start Plan、Individual Coding Plan、Team Coding Plan 分别定义为独立 ZCode Built-in
+同一 Family 的 Start Plan、Individual Coding Plan、Team Coding Plan 分别定义为独立 Codez Built-in
 Provider。每个 Provider 的 `access.family` 和 `access.planKind` 固定，不允许一个 Coding Plan Provider
 在运行时于 Individual 与 Team 之间变形。
 
@@ -193,7 +193,7 @@ type ZhipuAccountAccessConfig =
     };
 ```
 
-ZCode Built-in Provider Config 先声明固定 `family + planKind`；Team 的具体 Scope 和所有 Plan 的
+Codez Built-in Provider Config 先声明固定 `family + planKind`；Team 的具体 Scope 和所有 Plan 的
 `accessId` 可以缺省。Account Connection Resolver 使用这些字段与 Settings 选择、当前账号和权益查找连接；
 Account Built-in Provider Config 整体替换为同一 Plan 的完整 Access。Registry 要求 enabled Account
 Provider 的 `accessId` 非空，Team 还要求完整 Scope。
@@ -332,7 +332,7 @@ Automation、Subagent 与 Repo Wiki 只共享 Registry 模型候选，不拥有 
 
 ### Step D：删除跨层 selection 透传
 
-- 删除 ZCodeTask、ZCodeSession、Agent、workspace prepare、Repo Wiki、thought catalog 中的 selected keys 参数；
+- 删除 CodezTask、CodezSession、Agent、workspace prepare、Repo Wiki、thought catalog 中的 selected keys 参数；
 - Runtime 只通过 Registry 中的 Provider/Model 取得执行 Access；
 - Renderer 只在 Provider Settings 修改 selection，不把它塞进 ModelSelection 或 Session state；
 - Remote Workspace 继续由目标 Environment 的 Account Source 产生 Account Built-in Config。

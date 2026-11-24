@@ -75,15 +75,15 @@ async function installTelemetryFetchRecorder(): Promise<TelemetryFetchRecorder> 
   await browser.electron.execute((electron) => {
     type Recorded = [string, { body?: string }];
     type RecordingFetch = ((input: unknown, init?: { body?: unknown }) => Promise<unknown>) & {
-      __zcodeTelemetryRecorder?: true;
+      __codezTelemetryRecorder?: true;
     };
     const host = globalThis as typeof globalThis & {
-      __zcodeTelemetryFetchE2E?: { calls: Recorded[] };
+      __codezTelemetryFetchE2E?: { calls: Recorded[] };
     };
-    const recorder = (host.__zcodeTelemetryFetchE2E ??= { calls: [] });
+    const recorder = (host.__codezTelemetryFetchE2E ??= { calls: [] });
     recorder.calls.length = 0;
     const net = electron.net as unknown as { fetch: RecordingFetch };
-    if (net.fetch.__zcodeTelemetryRecorder) return;
+    if (net.fetch.__codezTelemetryRecorder) return;
     const recording: RecordingFetch = (input, init) => {
       recorder.calls.push([
         String(input),
@@ -91,7 +91,7 @@ async function installTelemetryFetchRecorder(): Promise<TelemetryFetchRecorder> 
       ]);
       return Promise.resolve({ ok: true, status: 204 });
     };
-    recording.__zcodeTelemetryRecorder = true;
+    recording.__codezTelemetryRecorder = true;
     net.fetch = recording;
   });
   const recorder: TelemetryFetchRecorder = {
@@ -101,17 +101,17 @@ async function installTelemetryFetchRecorder(): Promise<TelemetryFetchRecorder> 
         () =>
           (
             globalThis as typeof globalThis & {
-              __zcodeTelemetryFetchE2E?: { calls: Array<[string, { body?: string }]> };
+              __codezTelemetryFetchE2E?: { calls: Array<[string, { body?: string }]> };
             }
-          ).__zcodeTelemetryFetchE2E?.calls ?? [],
+          ).__codezTelemetryFetchE2E?.calls ?? [],
       );
     },
     async mockClear() {
       await browser.electron.execute(() => {
         const host = globalThis as typeof globalThis & {
-          __zcodeTelemetryFetchE2E?: { calls: unknown[] };
+          __codezTelemetryFetchE2E?: { calls: unknown[] };
         };
-        if (host.__zcodeTelemetryFetchE2E) host.__zcodeTelemetryFetchE2E.calls.length = 0;
+        if (host.__codezTelemetryFetchE2E) host.__codezTelemetryFetchE2E.calls.length = 0;
       });
       recorder.mock.calls = [];
     },
@@ -243,15 +243,15 @@ async function prepareArmsCapture(): Promise<FinalArmsCaptureMode> {
   const hasFinalBridge = await browser.execute(
     async (targetArmsEvents) => {
       type DebugWindow = Window & {
-        __zcodeArmsCustomEventsE2E?: Array<ArmsCustomEventPayload & { recordedAt?: number }>;
-        __zcodeFinalArmsCustomEventsE2E?: {
+        __codezArmsCustomEventsE2E?: Array<ArmsCustomEventPayload & { recordedAt?: number }>;
+        __codezFinalArmsCustomEventsE2E?: {
           clear(): Promise<void>;
           configure(request: { suppressedEventNames: string[] }): Promise<void>;
         };
       };
       const host = window as DebugWindow;
-      host.__zcodeArmsCustomEventsE2E = [];
-      const finalBridge = host.__zcodeFinalArmsCustomEventsE2E;
+      host.__codezArmsCustomEventsE2E = [];
+      const finalBridge = host.__codezFinalArmsCustomEventsE2E;
       if (!finalBridge) return false;
       await finalBridge.clear();
       await finalBridge.configure({ suppressedEventNames: [...targetArmsEvents] });
@@ -260,7 +260,7 @@ async function prepareArmsCapture(): Promise<FinalArmsCaptureMode> {
     [...CONVERSATION_ARMS_EVENT_NAMES],
   );
   if (hasFinalBridge) return "bridge";
-  if (!process.env.ZCODE_TELEMETRY_PARITY_LEGACY_ARMS_PATH?.trim()) {
+  if (!process.env.CODEZ_TELEMETRY_PARITY_LEGACY_ARMS_PATH?.trim()) {
     throw new Error("旧版缺少 main sendCustom 临时捕获路径，已在发送前停止");
   }
   return "legacy-file";
@@ -322,9 +322,9 @@ async function readTargetRendererArms(): Promise<ArmsCustomEventPayload[]> {
       const buffer =
         (
           window as Window & {
-            __zcodeArmsCustomEventsE2E?: Array<ArmsCustomEventPayload & { recordedAt?: number }>;
+            __codezArmsCustomEventsE2E?: Array<ArmsCustomEventPayload & { recordedAt?: number }>;
           }
-        ).__zcodeArmsCustomEventsE2E ?? [];
+        ).__codezArmsCustomEventsE2E ?? [];
       return buffer
         .filter(
           (entry) =>
@@ -453,7 +453,7 @@ async function waitForTargetFinalArms(
 
 async function readTargetFinalArms(mode: FinalArmsCaptureMode): Promise<JsonRecord[]> {
   if (mode === "legacy-file") {
-    const capturePath = process.env.ZCODE_TELEMETRY_PARITY_LEGACY_ARMS_PATH?.trim();
+    const capturePath = process.env.CODEZ_TELEMETRY_PARITY_LEGACY_ARMS_PATH?.trim();
     if (!capturePath) return [];
     try {
       const contents = await readFile(capturePath, "utf8");
@@ -471,11 +471,11 @@ async function readTargetFinalArms(mode: FinalArmsCaptureMode): Promise<JsonReco
     async (targetArmsEvents) => {
       const bridge = (
         window as Window & {
-          __zcodeFinalArmsCustomEventsE2E?: {
+          __codezFinalArmsCustomEventsE2E?: {
             read(): Promise<Array<{ payload: JsonRecord }>>;
           };
         }
-      ).__zcodeFinalArmsCustomEventsE2E;
+      ).__codezFinalArmsCustomEventsE2E;
       if (!bridge) return [];
       const entries = await bridge.read();
       return entries
@@ -501,7 +501,7 @@ function isTargetFinalArmsPayload(payload: unknown): payload is JsonRecord {
 }
 
 async function writeParityArtifact(artifact: ConversationTelemetryParityCapture): Promise<void> {
-  const artifactPath = process.env.ZCODE_TELEMETRY_PARITY_CAPTURE_PATH?.trim();
+  const artifactPath = process.env.CODEZ_TELEMETRY_PARITY_CAPTURE_PATH?.trim();
   if (!artifactPath) return;
   await mkdir(dirname(artifactPath), { recursive: true });
   await writeFile(artifactPath, `${JSON.stringify(artifact, null, 2)}\n`, "utf8");
@@ -510,7 +510,7 @@ async function writeParityArtifact(artifact: ConversationTelemetryParityCapture)
 async function writeParityCaseArtifact(
   artifact: ConversationTelemetryParityCapture,
 ): Promise<void> {
-  const captureDir = process.env.ZCODE_TELEMETRY_PARITY_CAPTURE_DIR?.trim();
+  const captureDir = process.env.CODEZ_TELEMETRY_PARITY_CAPTURE_DIR?.trim();
   if (!captureDir) {
     await writeParityArtifact(artifact);
     return;

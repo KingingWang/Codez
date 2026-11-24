@@ -55,7 +55,7 @@ workspace identity、session ID 和文件路径沿用原请求；不增加缓存
 
 会话输出目录随 session ID 变化，所以不写进 system，只写进环境公告
 （` - Visualization directory for this session: <path>`，见
-`apps/zcode-cli/docs/design/v2/loop/meta-user-context.md`）。App 装配直接复用官方 visualize 插件的
+`apps/codez-cli/docs/design/v2/loop/meta-user-context.md`）。App 装配直接复用官方 visualize 插件的
 有效启用态；禁用或卸载时不向 runtime 提供输出根目录。因此新会话既不注入目录，也不注入
 Desktop 段的整个 `Interactive views`（含控件状态说明），不另发“不可用”的替代提示。
 启用且有目录时保留现有说明；其余 Desktop 上下文保持不变。

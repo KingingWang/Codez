@@ -1,7 +1,7 @@
 /**
  * shortcuts 标准用法：消费方只认命令 ID，键位匹配交给内核，生效表来自 useEffectiveShortcutBindings。
  */
-import type { ShortcutCommandId } from "@zcode/shared";
+import type { ShortcutCommandId } from "@codez/shared";
 import { isShortcutEventNoise, matchesShortcutBinding } from "./bindings.js";
 import type { EffectiveShortcutBindings } from "./contract.js";
 

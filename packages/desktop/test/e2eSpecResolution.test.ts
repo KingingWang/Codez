@@ -16,7 +16,7 @@ function writeSpec(baseDir: string, relativePath: string): void {
 }
 
 function withFixture<T>(run: (baseDir: string) => T): T {
-  const baseDir = mkdtempSync(join(tmpdir(), "zcode-e2e-spec-resolution-"));
+  const baseDir = mkdtempSync(join(tmpdir(), "codez-e2e-spec-resolution-"));
   try {
     return run(baseDir);
   } finally {
@@ -108,14 +108,14 @@ describe("E2E spec scheduling resolution", () => {
 describe("resolveE2EMaxInstances", () => {
   it("defaults to one serial worker", () => {
     expect(resolveE2EMaxInstances({})).toBe(1);
-    expect(resolveE2EMaxInstances({ ZCODE_E2E_MAX_INSTANCES: "1" })).toBe(1);
-    expect(resolveE2EMaxInstances({ ZCODE_E2E_MAX_INSTANCES: " " })).toBe(1);
+    expect(resolveE2EMaxInstances({ CODEZ_E2E_MAX_INSTANCES: "1" })).toBe(1);
+    expect(resolveE2EMaxInstances({ CODEZ_E2E_MAX_INSTANCES: " " })).toBe(1);
   });
 
   it("rejects parallel or invalid worker counts before scheduling", () => {
     for (const value of ["2", "4", "0", "abc"]) {
-      expect(() => resolveE2EMaxInstances({ ZCODE_E2E_MAX_INSTANCES: value })).toThrow(
-        /ZCODE_E2E_MAX_INSTANCES/u,
+      expect(() => resolveE2EMaxInstances({ CODEZ_E2E_MAX_INSTANCES: value })).toThrow(
+        /CODEZ_E2E_MAX_INSTANCES/u,
       );
     }
   });

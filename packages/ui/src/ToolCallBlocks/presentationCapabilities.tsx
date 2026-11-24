@@ -1,5 +1,5 @@
 import { createContext, useContext, type ReactNode } from "react";
-import type { AgentColor, ApplicationIconRequest, FileMediaPreview } from "@zcode/shared";
+import type { AgentColor, ApplicationIconRequest, FileMediaPreview } from "@codez/shared";
 
 export interface ToolPresentationCapabilities {
   readMediaPreview?: (path: string) => Promise<FileMediaPreview>;

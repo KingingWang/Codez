@@ -5,7 +5,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -34,11 +34,11 @@ import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
 // DSYNC-08：设置 → 数据同步 → 设备 → 推送 marketplace 插件（docs/remote/data-sync.md「插件 · marketplace 插件」）。
 // 本机从 Personal Source 的本地目录 marketplace 安装插件；推送时先把 marketplace 清单与插件源码镜像到远端，
-// 再在远端 add + install。远端断言用 docker exec 读容器内 ~/.zcode。覆盖旧插件同步弹窗 WPL-011 的场景。
+// 再在远端 add + install。远端断言用 docker exec 读容器内 ~/.codez。覆盖旧插件同步弹窗 WPL-011 的场景。
 const CASE_MARKER = "E2E_DSYNC_08_MARKETPLACE_PLUGIN_PUSH";
 const ROW_KEY = PLUGIN_LIFECYCLE_ID.toLowerCase();
-const REMOTE_PLUGIN_STORAGE = "/home/dev/.zcode/cli/plugins";
-const REMOTE_CONFIG = "/home/dev/.zcode/cli/config.json";
+const REMOTE_PLUGIN_STORAGE = "/home/dev/.codez/cli/plugins";
+const REMOTE_CONFIG = "/home/dev/.codez/cli/config.json";
 
 /** 本机把该插件设为停用（直接写 User config，CLI 每次请求重新读取），用于断言启用状态随推送一致。 */
 async function disableLocalPlugin(): Promise<void> {
@@ -163,13 +163,13 @@ describe(`${CASE_MARKER}: 数据同步页推送 marketplace 插件`, () => {
       ),
     ).toBeNull();
 
-    // 远端：marketplace 来源是镜像到 ~/.zcode/plugins/marketplace-sources 的副本，插件以 User scope 安装且停用。
+    // 远端：marketplace 来源是镜像到 ~/.codez/plugins/marketplace-sources 的副本，插件以 User scope 安装且停用。
     const knownMarketplaces = await readRemoteContainerFile(
       container,
       `${REMOTE_PLUGIN_STORAGE}/known_marketplaces.json`,
     );
     expect(knownMarketplaces).toContain(PLUGIN_LIFECYCLE_MARKETPLACE_ID);
-    expect(knownMarketplaces).toContain("/home/dev/.zcode/plugins/marketplace-sources/");
+    expect(knownMarketplaces).toContain("/home/dev/.codez/plugins/marketplace-sources/");
     const installed = await readRemoteContainerFile(
       container,
       `${REMOTE_PLUGIN_STORAGE}/installed_plugins.json`,

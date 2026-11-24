@@ -1,4 +1,4 @@
-import { ExtensionError, type ExtensionModel } from "@zcode/shared/extension-host";
+import { ExtensionError, type ExtensionModel } from "@codez/shared/extension-host";
 import type { IModelSelectionService } from "#src/model-provider/providerFacadeServices.js";
 import type { ServiceLogger } from "#src/logger/serviceLogger.js";
 

@@ -11,7 +11,7 @@ import type {
   WebContents,
   WindowOpenHandlerResponse,
 } from "electron";
-import type { DesktopTitleBarTheme, Locale } from "@zcode/shared";
+import type { DesktopTitleBarTheme, Locale } from "@codez/shared";
 import {
   DEFAULT_LOCALE,
   desktopMenuMessageIds,
@@ -19,7 +19,7 @@ import {
   isTrustedCodingPlanWebviewOrigin,
   isTrustedRewardsUrl,
   PlatformChannels,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { loadWindow, type WindowBootstrapOptions } from "./desktopHostProcess.js";
 import {
   buildWindowsTitleBarOverlayForZoomLevel,
@@ -50,8 +50,8 @@ const ALLOWED_EMBEDDED_BROWSER_PROTOCOLS = new Set([
   "data:",
   "http:",
   "https:",
-  "zcode-browser-restore:",
-  "zcode-html:",
+  "codez-browser-restore:",
+  "codez-html:",
 ]);
 const ALLOWED_EMBEDDED_BROWSER_NEW_WINDOW_PROTOCOLS = new Set(["http:", "https:"]);
 const EXTERNAL_BROWSER_DISPOSITIONS = new Set(["background-tab"]);
@@ -60,7 +60,7 @@ const embeddedBrowserJavaScriptDialogPreloadPath = join(
   import.meta.dirname,
   "../preload/embeddedBrowserJavaScriptDialog.cjs",
 );
-// Coding Plan 官网页专用 preload：挂 window.zcodeBridge 供官网回传购买完成信号。
+// Coding Plan 官网页专用 preload：挂 window.codezBridge 供官网回传购买完成信号。
 const codingPlanWebviewPreloadPath = join(import.meta.dirname, "../preload/codingPlanWebview.cjs");
 
 /**
@@ -75,7 +75,7 @@ function isCodingPlanEmbeddedWebviewSrc(src: string | undefined): boolean {
     if (url.protocol !== "http:" && url.protocol !== "https:") return false;
     if (
       !isTrustedCodingPlanWebviewOrigin(url.origin, {
-        e2eStoreBridgeEnabled: process.env.VITE_ZCODE_E2E_STORE_BRIDGE === "1",
+        e2eStoreBridgeEnabled: process.env.VITE_CODEZ_E2E_STORE_BRIDGE === "1",
       })
     ) {
       return false;
@@ -102,7 +102,7 @@ function isCodingPlanWebviewUrl(src: string | undefined): boolean {
     if (url.protocol !== "http:" && url.protocol !== "https:") return false;
     if (
       !isTrustedCodingPlanWebviewOrigin(url.origin, {
-        e2eStoreBridgeEnabled: process.env.VITE_ZCODE_E2E_STORE_BRIDGE === "1",
+        e2eStoreBridgeEnabled: process.env.VITE_CODEZ_E2E_STORE_BRIDGE === "1",
       })
     ) {
       return false;
@@ -121,7 +121,7 @@ function isCodingPlanPaymentCallbackUrl(src: string | undefined): boolean {
     if (url.protocol !== "http:" && url.protocol !== "https:") return false;
     if (
       !isTrustedCodingPlanWebviewOrigin(url.origin, {
-        e2eStoreBridgeEnabled: process.env.VITE_ZCODE_E2E_STORE_BRIDGE === "1",
+        e2eStoreBridgeEnabled: process.env.VITE_CODEZ_E2E_STORE_BRIDGE === "1",
       })
     ) {
       return false;
@@ -294,7 +294,7 @@ function isAllowedEmbeddedBrowserNewWindowUrl(url: string): boolean {
   }
 }
 
-// 挂载 window.zcode preload 的窗口（主窗口、更新状态窗口）顶层导航只能停留在应用自身的渲染入口。
+// 挂载 window.codez preload 的窗口（主窗口、更新状态窗口）顶层导航只能停留在应用自身的渲染入口。
 // Mermaid SVG 的 <a xlink:href> 不经过应用链接组件，点击即在窗口内顶层导航，因此在主进程导航边界统一拦截。
 // 子 frame 不注入 preload（未开启 nodeIntegrationInSubFrames），不在此范围内。
 export function guardWindowNavigation(
@@ -511,7 +511,7 @@ function attachEmbeddedBrowserWindowOpenHandler(options: {
       if (
         isTrustedRewardsUrl(url, {
           dev: !app.isPackaged,
-          e2e: process.env.VITE_ZCODE_E2E_STORE_BRIDGE === "1",
+          e2e: process.env.VITE_CODEZ_E2E_STORE_BRIDGE === "1",
         })
       )
         return;
@@ -546,7 +546,7 @@ function attachEmbeddedBrowserWindowOpenHandler(options: {
     }
 
     // Coding Plan 专用 preload 会在后续主 frame 导航中继续存在。
-    // 离开可信购买页时必须阻断 guest 导航并交给系统浏览器，避免第三方页面继承 zcodeBridge。
+    // 离开可信购买页时必须阻断 guest 导航并交给系统浏览器，避免第三方页面继承 codezBridge。
     event.preventDefault();
     void shell.openExternal(url).catch((error: unknown) => {
       options.logger.warn("[browser-pane] failed to open coding-plan navigation externally", {
@@ -680,7 +680,7 @@ export function createBrowserWindow(options: {
     return { action: "deny" };
   });
 
-  // ZP-20261105-19 / ZP-20261110-03：挂载了 window.zcode preload 的窗口，导航到远程页面后
+  // ZP-20261105-19 / ZP-20261110-03：挂载了 window.codez preload 的窗口，导航到远程页面后
   // 该页面会获得全部特权 IPC。远程链接只记录日志、不自动外开：守卫只负责拦截，链接如何打开由 UI 层决定。
   guardWindowNavigation(win.webContents, options.logger);
 
@@ -737,7 +737,7 @@ export function createBrowserWindow(options: {
     // Chromium NSAlert。固定 preload 在每个 frame 调用原生 API 前拦截，且隔离世界只
     // 暴露 alert/confirm 同步桥；网页主世界仍没有 Node 或任意 IPC 能力。
     //
-    // Coding Plan 官网页例外：它需要 window.zcodeBridge 回传购买完成信号，
+    // Coding Plan 官网页例外：它需要 window.codezBridge 回传购买完成信号，
     // 改用专用 preload（codingPlanWebview.ts），其余 webview 保持原生 Dialog 桥。
     const targetUrl = params.src ?? "about:blank";
     // 插件 UI 沙箱 guest：独立分支，不走内置浏览器的 preload / allowpopups / 协议白名单。
@@ -764,14 +764,14 @@ export function createBrowserWindow(options: {
       : embeddedBrowserJavaScriptDialogPreloadPath;
     const isRewardsWebview = isTrustedRewardsUrl(targetUrl, {
       dev: !app.isPackaged,
-      e2e: process.env.VITE_ZCODE_E2E_STORE_BRIDGE === "1",
+      e2e: process.env.VITE_CODEZ_E2E_STORE_BRIDGE === "1",
     });
     if (isRewardsWebview) {
       webPreferences.preload = join(import.meta.dirname, "../preload/rewardsWebview.cjs");
       if (!app.isPackaged)
         webPreferences.additionalArguments = [
           ...(webPreferences.additionalArguments ?? []),
-          "--zcode-rewards-dev",
+          "--codez-rewards-dev",
         ];
     }
     webPreferences.contextIsolation = true;
@@ -789,7 +789,7 @@ export function createBrowserWindow(options: {
     delete params.allowpopups;
 
     // webview 内 target=_blank/window.open 如果完全禁用 popup 会表现为点击无响应；
-    // 如果放任 Electron 默认处理，又会创建脱离 ZCode 的 BrowserWindow。这里由宿主重新打开
+    // 如果放任 Electron 默认处理，又会创建脱离 Codez 的 BrowserWindow。这里由宿主重新打开
     // allowpopups，并在 did-attach-webview 中用 setWindowOpenHandler 统一 deny 默认窗口创建，
     // 再把合法 URL 路由到内部 Browser tab 或系统浏览器。
     params.allowpopups = "true";

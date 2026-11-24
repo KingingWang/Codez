@@ -1,9 +1,9 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { chromium, type Browser, type Page } from "playwright-core";
-import { ServiceChannels } from "@zcode/shared";
-import type { ProjectTask, ProjectTree } from "@zcode/services";
-import { TID_TASK_ITEM, TID_V4_SESSION_PANE, testId } from "@zcode/shared/test-ids";
+import { ServiceChannels } from "@codez/shared";
+import type { ProjectTask, ProjectTree } from "@codez/services";
+import { TID_TASK_ITEM, TID_V4_SESSION_PANE, testId } from "@codez/shared/test-ids";
 import { clearAppData, DEFAULT_WORKSPACE } from "#e2e/helpers/desktop-app";
 import {
   buildReadonlyToolPrompt,
@@ -44,7 +44,7 @@ import {
 const CASE = "E2E_SCT04";
 const CALLER_TITLE = "SCT04 调用会话";
 const TITLE = "SCT04 生命周期分叉";
-const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR!;
+const artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR!;
 const tools: AppControlToolEvidence = {};
 const assertions: Record<string, unknown> = {};
 const evidence = { tools, assertions };
@@ -169,8 +169,8 @@ describe(`${CASE}: App session lifecycle through actual tools`, () => {
 
     const pairUrl = await obtainUnreadPairingUrl();
     mobile = await chromium.launch({
-      ...(process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE
-        ? { executablePath: process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE }
+      ...(process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE
+        ? { executablePath: process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE }
         : { channel: "chrome" }),
       headless: true,
     });
@@ -197,7 +197,7 @@ describe(`${CASE}: App session lifecycle through actual tools`, () => {
 
     const projects = await action<{
       projects: Array<{ project: NonNullable<SessionRef["project"]> }>;
-    }>("projects", "Call ListProjects with query=ZCodeProject.");
+    }>("projects", "Call ListProjects with query=CodezProject.");
     expect(projects.projects).toHaveLength(1);
     const created = await action<Creation>(
       "create",

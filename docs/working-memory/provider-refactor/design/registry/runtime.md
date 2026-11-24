@@ -1,7 +1,7 @@
 # Registry 运行边界
 
 Provider Registry 在一个进程中维护所属 Environment 的 Provider View。调用方可以随时读取一致的当前
-视图；ZCode Built-in、Account Built-in 或 Personal Provider Config 变化后，Registry 发布新视图，已经创建的
+视图；Codez Built-in、Account Built-in 或 Personal Provider Config 变化后，Registry 发布新视图，已经创建的
 Model 保持不变。
 
 ```text
@@ -95,7 +95,7 @@ Core 不维护把 Session Selection 复制到 Context 再反复刷新的同步�
 
 ## 发布新 View
 
-ZCode Built-in、Account 或 Personal ProviderConfigMap 变化后，Registry 重新执行 Provider 与 Model
+Codez Built-in、Account 或 Personal ProviderConfigMap 变化后，Registry 重新执行 Provider 与 Model
 两轮解析：
 
 ```text
@@ -174,7 +174,7 @@ Registry 对象和内存 View 不跨进程共享；Config、Account 和 Registry
 ```text
 ProviderRuntime
 ├─ ProviderConfigRuntime
-│  ├─ ZCode Built-in Config Source
+│  ├─ Codez Built-in Config Source
 │  └─ Personal Config Repository
 ├─ injected Account Built-in Config Source
 ├─ ProviderRegistryService
@@ -187,22 +187,22 @@ Provider 仍能完整运行；需要 Account 进一步约束的 Built-in Provide
 `access.entitled=false`。这个缺省只表达当前 Entry 没有账号权益，不回退到旧 Snapshot。
 
 文件读取、原子写入、文件锁、Built-in watcher 与 Personal revision polling 属于 Node.js 运行环境，不进入纯领域包。
-它们集中在 `@zcode/provider-node`：
+它们集中在 `@codez/provider-node`：
 
 ```text
-@zcode/provider
+@codez/provider
 └─ Config / Resolver / Registry / Facade
 
-@zcode/provider-node
-├─ ZCode Built-in file source
+@codez/provider-node
+├─ Codez Built-in file source
 ├─ Personal file repository
 ├─ Config runtime
 └─ process registry runtime
 ```
 
-Entry 负责定位物理文件并显式注入路径；`@zcode/provider-node` 不假设 Desktop、Worker、CLI 或 TUI 的安装目录。Host 与 Worker 各自读取同一 Environment 的文件，Registry 对象和 View 不跨进程传输。
+Entry 负责定位物理文件并显式注入路径；`@codez/provider-node` 不假设 Desktop、Worker、CLI 或 TUI 的安装目录。Host 与 Worker 各自读取同一 Environment 的文件，Registry 对象和 View 不跨进程传输。
 
-ZCode Built-in 的远端同步由 Environment 组合根拥有。Local Host、Remote Host、Standalone Server 和没有
+Codez Built-in 的远端同步由 Environment 组合根拥有。Local Host、Remote Host、Standalone Server 和没有
 Host 的 Prompt CLI/TUI 各自为所属 Environment 建立一个同步 owner；普通 Core Worker 只读、监听 Host
 注入的同一个 `active.json`，不独立请求 `/client/configs`：
 
@@ -213,10 +213,10 @@ Remote Release ───┘                              └──────> 
 ```
 
 本地有效候选先完成 ready，远端刷新随后在后台执行。多个进程通过 Active 旁的
-`refresh-control.json`、文件锁和短期 lease 合并请求；Active 与刷新控制按规范化 ZCode 控制面 Endpoint
+`refresh-control.json`、文件锁和短期 lease 合并请求；Active 与刷新控制按规范化 Codez 控制面 Endpoint
 物理隔离，成功使用一小时量级 TTL，失败递增退避，Endpoint
 变化不继承旧 TTL。显式刷新可以越过 TTL，但不能越过仍有效的 lease。远端仅接受
-`/api/v1/client/configs.data.configs.zcodeBuiltin`，解析成功且 revision 更高时先原子替换 Active，再由现有
+`/api/v1/client/configs.data.configs.codezBuiltin`，解析成功且 revision 更高时先原子替换 Active，再由现有
 Source change 链触发 Account 与 Registry 刷新。请求期间 Endpoint 已变化的旧响应，以及 dispose 后到达的
 响应，都不能写盘或发布。
 
@@ -236,7 +236,7 @@ Selection 校验覆盖完整的通用选择语义：Provider 与 Model 必须存
 
 Host 的组合根先创建 Config Runtime，再用它的 Config Service 创建 Account Provider Service，最后把 Config
 Service 与 Account Source 一起装配进 Registry。`ProviderRuntime` 接受已经创建的 Config Runtime，不在
-内部隐藏第二次构造。Account Source 只以 ZCode Built-in Provider Config 为账号 Provider 的静态边界，再
+内部隐藏第二次构造。Account Source 只以 Codez Built-in Provider Config 为账号 Provider 的静态边界，再
 根据账号事实形成约束；它不读取或吸收 Personal Provider Config，Personal 始终在 Account 之后覆盖。
 
 ```text
@@ -293,7 +293,7 @@ Local Host -> Local Worker           Remote Host -> Remote Worker
 上图只定义 Environment 所有权边界。远程 Provisioning、远程设置操作、登录和配置同步是独立产品能力，
 不属于 Provider Refactor 或 M4 的实施范围。
 
-消息中的 Provider Config 是普通可序列化对象，到达 Worker 后由 `@zcode/provider` 的同一
+消息中的 Provider Config 是普通可序列化对象，到达 Worker 后由 `@codez/provider` 的同一
 Schema 校验解析。Account Source 只接受 `builtinModelIds`，并只允许对固定 `zhipu-account` Access 覆盖
 `entitled`；Provider 顶层 `enabled`、Access 身份、API Key、Secret 和请求期鉴权材料不能通过该入口进入
 Registry。相同 revision 不重复发布，新进程在开始
@@ -303,16 +303,16 @@ Off-Peak Provider 的动态凭据只在 Model request attempt 上注入，不属
 Request Auth 时，Model 在发出网络请求前返回明确的缺凭据错误；Registry 不为它保存临时 Secret。
 
 Host 内的 `AccountProviderService` 同时是 Registry 的 Account Source。它读取 Config Service 当前的
-ZCode Built-in Provider Config，把账号、套餐和团队连接解析为 Account Built-in Provider Config。Account 的职责是
+Codez Built-in Provider Config，把账号、套餐和团队连接解析为 Account Built-in Provider Config。Account 的职责是
 对 Built-in 中与账号相关的 Provider 做进一步约束，不参与 Personal Overlay。远端请求通过注入的 Account
-Resolver 完成，`@zcode/provider` 中的 Service 本身不依赖网络、文件系统或 OAuth 实现。
+Resolver 完成，`@codez/provider` 中的 Service 本身不依赖网络、文件系统或 OAuth 实现。
 
-Account Source 每次发布都记录 `basedOnZCodeBuiltinRevision`。Registry 收到 Built-in change 时，在对应
+Account Source 每次发布都记录 `basedOnCodezBuiltinRevision`。Registry 收到 Built-in change 时，在对应
 Account 刷新完成前继续保留上一份完整 Registry，不能发布新 Built-in 与旧 Account 的组合；即使 Overlay
 内容未变，来源 revision 变化也必须形成新 Account Snapshot。Personal change 不触发这道等待。
 
 ```text
-ZCode Built-in Provider Config
+Codez Built-in Provider Config
           |
           | Account Resolver 施加账号约束
           v
@@ -321,7 +321,7 @@ Account Built-in ProviderConfigMap
 
 首次 `read()` 是账号事实的首次解析尝试；后续 Config 变化或账号事件调用 `refresh()`。刷新成功后原子替换
 Account Snapshot 并通知 Registry。刷新失败时保留上一份成功 Snapshot，并通过错误事件报告；首次刷新尚无
-成功 Snapshot 时，基于同一份 ZCode Built-in revision 发布显式 `access.entitled=false` 的 fail-closed Account Overlay，
+成功 Snapshot 时，基于同一份 Codez Built-in revision 发布显式 `access.entitled=false` 的 fail-closed Account Overlay，
 让普通 API Provider 与 Personal Provider 继续启动。该降级不伪造账号可用性、模型成员或 Access，后续刷新成功
 后再原子替换。
 
@@ -332,7 +332,7 @@ Registry 只接收 Source 已变化的统一信号：
 ```text
 设置保存 ───────────────┐
 外部配置变化 ────────────┤
-ZCode Built-in Config 更新 ┼─> Source invalidate ─> Registry rebuild
+Codez Built-in Config 更新 ┼─> Source invalidate ─> Registry rebuild
 Account Built-in Config 更新 ─┘
 ```
 

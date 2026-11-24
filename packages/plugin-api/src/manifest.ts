@@ -1,4 +1,4 @@
-// @zcode-dev/plugin-api/manifest（docs/plugins/extension-host.md §17.9）：清单 `extension` 键与顶层 `slots` 的类型。
+// @codez-dev/plugin-api/manifest（docs/plugins/extension-host.md §17.9）：清单 `extension` 键与顶层 `slots` 的类型。
 export type {
   ExtensionGrant,
   ExtensionManifest,
@@ -11,4 +11,4 @@ export type {
   ManifestSlots,
   ManifestSlotTarget,
   SlotTargetKind,
-} from "@zcode/shared/extension-host";
+} from "@codez/shared/extension-host";

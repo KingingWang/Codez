@@ -7,10 +7,10 @@ import {
   TID_V4_COMPOSER_EDIT_CANCEL,
   TID_V4_EDIT_REWIND_WORKSPACE,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { Button } from "@/components/ui/button.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import type {
   ComposerEditInvalidReason,
   ComposerEditTarget,
@@ -34,7 +34,7 @@ export function ComposerEditBar({
   onRewindWorkspace,
   onCancel,
 }: ComposerEditBarProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const targetId = target.kind === "userQuery" ? String(target.rowId) : target.queueItemId;
   const label = invalidReason
     ? intl.formatMessage({ id: `chat.composerEdit.invalid.${invalidReason}` })

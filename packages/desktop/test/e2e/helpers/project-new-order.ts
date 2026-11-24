@@ -4,12 +4,12 @@ import { createServer } from "node:http";
 import { join } from "node:path";
 import { userInfo } from "node:os";
 import { chromium, type Browser } from "playwright-core";
-import { ServiceChannels } from "@zcode/shared";
+import { ServiceChannels } from "@codez/shared";
 import { DEFAULT_WORKSPACE, waitForWorkspaceApp } from "#e2e/helpers/desktop-app";
 import { openMobilePairingPage, seedMobileFixtureLogin } from "#e2e/helpers/mobile-pairing";
 import { callHandoffHost, installHandoffRpcProbe } from "#e2e/helpers/remote-project-handoff-probe";
 
-const ORDER_KEY = "zcode-project-sidebar-preferences";
+const ORDER_KEY = "codez-project-sidebar-preferences";
 const PROJECTS = '[data-testid="project-section"] [data-project-id]';
 
 function readProjectOrder() {
@@ -79,7 +79,7 @@ export async function verifyNewProjectOrderOnMobile(): Promise<void> {
   const address = receiver.address();
   if (!address || typeof address === "string") throw new Error("PRO02: pairing receiver missing");
   let mobile: Browser | undefined;
-  const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR!;
+  const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR!;
   try {
     await installHandoffRpcProbe();
     await browser.execute((port) => {
@@ -114,8 +114,8 @@ export async function verifyNewProjectOrderOnMobile(): Promise<void> {
     if (new URL(pairUrl).hostname !== "127.0.0.1")
       throw new Error("PRO02: local Web fixture required");
     mobile = await chromium.launch({
-      ...(process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE
-        ? { executablePath: process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE }
+      ...(process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE
+        ? { executablePath: process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE }
         : { channel: "chrome" }),
       // 修复原因：wdio 把 USERPROFILE 改成隔离 HOME，Windows 版 Edge/Chrome 据此解析不到用户目录，
       // 启动即退出（"DevTools remote debugging requires a non-default data directory"）；
@@ -125,7 +125,7 @@ export async function verifyNewProjectOrderOnMobile(): Promise<void> {
         ...(process.platform === "win32" ? { USERPROFILE: userInfo().homedir } : {}),
       } as Record<string, string>,
       headless: true,
-      args: process.env.ZCODE_E2E_BROWSER_NO_PROXY === "1" ? ["--no-proxy-server"] : [],
+      args: process.env.CODEZ_E2E_BROWSER_NO_PROXY === "1" ? ["--no-proxy-server"] : [],
     });
     const context = await mobile.newContext({
       viewport: { width: 390, height: 844 },

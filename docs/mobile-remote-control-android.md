@@ -1,13 +1,13 @@
 # Android 远程控制壳
 
-`packages/android` 当前是 ZCode 手机远控的 Android 壳。第一版不重写 ZCode Agent、relay 或
+`packages/android` 当前是 Codez 手机远控的 Android 壳。第一版不重写 Codez Agent、relay 或
 RPC 协议，而是用原生入口承载现有 `/remote` 手机 Web 远控页面。
 
 ## 入口
 
 - 粘贴或分享 `https://zcode.z.ai/remote?...` 链接。
 - 扫描桌面端生成的远控二维码。
-- 通过 `zcode://remote?...` deep link 打开。
+- 通过 `codez://remote?...` deep link 打开。
 - 首页会保存最近 5 条成功打开过的远控链接，App 重启后可以直接点开。列表只展示设备名、host
   和时间；实际完整链接保存在 App 私有 `SharedPreferences` 中。
 

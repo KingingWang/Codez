@@ -13,7 +13,7 @@ app
   .whenReady()
   .then(async () => {
     // 单例回归只使用显式注入的 MCP；默认内置插件会引入认证和网络等待，污染恢复时序。
-    const configDir = join(root, "agent-data/.zcode/cli");
+    const configDir = join(root, "agent-data/.codez/cli");
     await mkdir(configDir, { recursive: true });
     await writeFile(
       join(configDir, "config.json"),

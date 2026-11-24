@@ -9,8 +9,8 @@
 
 WSL remote workspace 当前复用统一 `IRemoteBackend` / `connectRemote` / Desktop Host
 链路。WSL 的主连接是一个由 Desktop Host 启动的
-`wsl.exe -- bash -lc "...zcode-server..."` stdio 子进程；正常释放依赖客户端关闭
-stdin，WSL 内 `zcode-server` 收到 EOF 后再释放其托管的 ZCode Agent。
+`wsl.exe -- bash -lc "...codez-server..."` stdio 子进程；正常释放依赖客户端关闭
+stdin，WSL 内 `codez-server` 收到 EOF 后再释放其托管的 Codez Agent。
 
 当时已有 per-session、per-window 和 Host 内部资源释放，但应用级退出只等待
 `windowHostProcessMap` 中的 Local Host。当时的 WSL/Docker/Server dedicated Host、窗口级共享
@@ -19,18 +19,18 @@ Dispose，却没有被 app quit / update install 统一等待。与此同时，�
 RPC stop，会在总 deadline 后直接退出，可能跳过 Agent dispose；`disconnect` 路径也没有有界的
 最终退出保证。
 
-这使“已经发起释放”和“所有 ZCode-owned 远程进程已经退出”之间存在空窗。在主进程提前退出、
-Host cleanup 卡住或旧版本异常退出时，WSL 内 detached `zcode-cli` 可能被 PID 1 接管并长期残留。
+这使“已经发起释放”和“所有 Codez-owned 远程进程已经退出”之间存在空窗。在主进程提前退出、
+Host cleanup 卡住或旧版本异常退出时，WSL 内 detached `codez-cli` 可能被 PID 1 接管并长期残留。
 
 ## 目标
 
 - 用户真正关闭窗口、退出应用或安装更新时，确定性回收该 owner 持有的 Remote Host、
-  WSL `zcode-server` 和 ZCode Agent。
+  WSL `codez-server` 和 Codez Agent。
 - app quit / update install 在有界时间内等待 Local Host 与全部 Remote Host；超时后留下明确日志并
   执行进程级兜底。
 - RPC stop 超时不能阻止 Agent cleanup 被尝试。
 - main 与 Host 的 disconnect / signal / Dispose 入口收敛到同一幂等释放状态机。
-- 为新启动的 WSL ZCode 进程留下 owner 身份，使后续启动可以安全识别“owner 已死亡”的孤儿；
+- 为新启动的 WSL Codez 进程留下 owner 身份，使后续启动可以安全识别“owner 已死亡”的孤儿；
   不按进程名全局扫描和误杀。
 - 不改变 Desktop `desktop-continuous`、Mobile `web-remote-replayable`、owner/lease、
   CommandInbox 或 workspace identity 语义。
@@ -38,9 +38,9 @@ Host cleanup 卡住或旧版本异常退出时，WSL 内 detached `zcode-cli` �
 ## 非目标
 
 - 不调用 `wsl --terminate` 或 `wsl --shutdown`。WSL distro 是用户共享环境，不属于单个
-  ZCode session。
+  Codez session。
 - 不在手机断线、Web bridge 重建、renderer reload、窗口最小化或隐藏到托盘时销毁 Host/Agent。
-- 不清理无法证明归属 ZCode 的任意 `node`、`zcode-cli` 或用户 shell 进程。
+- 不清理无法证明归属 Codez 的任意 `node`、`codez-cli` 或用户 shell 进程。
 - 不改变 SSH Host 的窗口级共享策略，也不把 WSL/Docker 改成共享 Host。
 - 不把 task/session/queue/snapshot 状态下沉到 desktop main、relay 或清理 registry。
 
@@ -212,7 +212,7 @@ Docker backend 保持相同接口语义；SSH backend 继续关闭 ssh2 connecti
 - server PID 与 Linux process start time
 - 由该 server 启动的 Agent PID 与 process start time
 
-registry 放在 WSL 用户自己的 `~/.zcode/server/owners/`，使用原子写入；不放在 desktop main、relay 或
+registry 放在 WSL 用户自己的 `~/.codez/server/owners/`，使用原子写入；不放在 desktop main、relay 或
 task repository。正常退出删除 registry。
 
 下一次同用户启动 WSL remote server 时，只回收同时满足以下条件的记录：
@@ -220,7 +220,7 @@ task repository。正常退出删除 registry。
 1. registry schema、owner kind 和 distro 均匹配。
 2. 记录的 server PID 已死亡，或 PID start time 与记录不一致。
 3. Agent 当前 PID start time 与记录一致，且进程环境仍带相同 `ownerId`。
-4. 目标 executable/command 属于 ZCode 部署路径。
+4. 目标 executable/command 属于 Codez 部署路径。
 
 任一校验失败只记录 warn 并跳过。旧版本没有 owner registry 的孤儿不能自动按名称清理；首次发布后可在
 诊断中提示用户手动处理，避免误杀无法证明归属的进程。
@@ -301,7 +301,7 @@ remote kind 和 elapsedMs；高频协议帧不得提升到 info。
 1. 打开 WSL workspace 并启动一条真实 Agent session。
 2. 最小化、隐藏到托盘、renderer reload，确认原 Host/server/Agent PID 保持。
 3. 关闭真实窗口，确认该窗口 WSL Host、server、Agent 在 deadline 内退出，distro 仍 Running。
-4. 再次连接并退出整个 App，确认全部 ZCode-owned WSL 进程退出。
+4. 再次连接并退出整个 App，确认全部 Codez-owned WSL 进程退出。
 5. 再次连接并触发 update install preparation，确认交接前进程退出。
 6. 注入 Host disconnect、RPC stop pending 与 service dispose pending，确认有界收口且无新孤儿。
 7. 制造带合法 owner registry 的孤儿，再次连接后确认只回收该 owner；普通 WSL 用户进程不受影响。
@@ -339,10 +339,10 @@ pnpm lint
 
 ## 验收标准
 
-- 正常关闭窗口、退出 App、更新安装三个 owner teardown 路径均能证明对应 ZCode Host/server/Agent
+- 正常关闭窗口、退出 App、更新安装三个 owner teardown 路径均能证明对应 Codez Host/server/Agent
   在 deadline 内退出。
 - 托盘隐藏、最小化、renderer reload 和手机断线不会终止仍属有效 owner 的 runtime。
 - shutdown 任一阶段 pending/throw 都不会阻止后续 cleanup phase 被尝试。
-- WSL distro 保持可用，非 ZCode 用户进程不受影响。
-- 不产生新的 PPID 1 ZCode Agent；合法 owner registry 的历史孤儿可在下一次连接时安全回收。
+- WSL distro 保持可用，非 Codez 用户进程不受影响。
+- 不产生新的 PPID 1 Codez Agent；合法 owner registry 的历史孤儿可在下一次连接时安全回收。
 - typecheck、lint 和相关单元/集成测试全部通过。

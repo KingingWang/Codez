@@ -27,7 +27,7 @@
 
 ### 1.2 一句话结果
 
-这个 MR 新增了一套桌面本地的“一次性闲时任务”产品：用户先向服务端取号，客户端持久化任务并轮询票据，服务端放行后由独立 scheduler 派发到承载目标 workspaceKey 的窗口 Local Host，Host 创建或复用一个普通 ZCode session，并仅对自动执行的那一轮临时注入内置 `builtin:offpeak-idle-plan` provider；遇到容量型 `429/3105` 时遵从 `Retry-After` 无限等待而不消耗普通重试预算，票据 `3102` 失效时换票并在同一 session 续跑，任务结束后异步核销票据。
+这个 MR 新增了一套桌面本地的“一次性闲时任务”产品：用户先向服务端取号，客户端持久化任务并轮询票据，服务端放行后由独立 scheduler 派发到承载目标 workspaceKey 的窗口 Local Host，Host 创建或复用一个普通 Codez session，并仅对自动执行的那一轮临时注入内置 `builtin:offpeak-idle-plan` provider；遇到容量型 `429/3105` 时遵从 `Retry-After` 无限等待而不消耗普通重试预算，票据 `3102` 失效时换票并在同一 session 续跑，任务结束后异步核销票据。
 
 ### 1.3 本 MR 的实际范围
 
@@ -44,7 +44,7 @@
 同时夹带两个非核心但确实属于 MR 的改动：
 
 - GitLab CI 允许 API source 触发部分手动测试/构建链路。
-- `mise run dev` 使用独立 `~/.zcode-dev-home`，隔离生产数据目录。
+- `mise run dev` 使用独立 `~/.codez-dev-home`，隔离生产数据目录。
 
 ## 2. 最终产品语义
 
@@ -120,7 +120,7 @@ Window Local Host Process
   │
   ├─ OffPeakTaskRepo ─────────► tasks-index.sqlite / off_peak_tasks
   │
-  └─ ZCodeTaskService / Agent session
+  └─ CodezTaskService / Agent session
          ▲
          │ OffPeakRun routed to the window Local Host owning the workspaceKey scope
          │
@@ -132,7 +132,7 @@ Desktop Main Process ◄──────── Scheduler Utility Process
   │
   └─ powerSaveBlocker (global setting)
 
-Agent / zcode-cli
+Agent / codez-cli
   ├─ persistent session model = user's workspace model
   ├─ per-turn catalog/model overlay = builtin:offpeak-idle-plan
   ├─ POST /api/v1/off-peak/anthropic/v1/messages
@@ -210,7 +210,7 @@ POST /ticket
 
 - `offPeakTaskId`：本地主键，同时作为服务端稳定 `task_id`；跨多张 ticket 不变。
 - `serverTicketId`：当前服务端票据；每次重取号覆盖。
-- `conversationId`：宿主 ZCode task id；首次派发后回填。
+- `conversationId`：宿主 Codez task id；首次派发后回填。
 - `sessionId`：Agent session id；首次执行后回填，续跑复用。
 - `workspaceKey = workspaceIdentity?.trim() || workspacePath`：身份隔离 key。
 - `workspacePath`：文件、cwd、展示等真实路径语义。
@@ -225,7 +225,7 @@ POST /ticket
 | `off_peak_task_id` | 稳定任务主键/服务端 task_id |
 | `server_ticket_id` | 当前 ticket id |
 | `title` | 用户标题 |
-| `conversation_id` | ZCode task id |
+| `conversation_id` | Codez task id |
 | `session_id` | 可复用 Agent session id |
 | `prompt` | Instructions |
 | `permission_mode` | build/edit/plan/yolo 等现有 task mode |
@@ -438,9 +438,9 @@ desktop/scheduler restart
 
 ### 7.2 鉴权
 
-- ticket JSON 接口统一带 `Authorization: Bearer <ZCode JWT>` 和 `x-coding-plan-api-key`。
+- ticket JSON 接口统一带 `Authorization: Bearer <Codez JWT>` 和 `x-coding-plan-api-key`。
 - messages 端点还带 `X-Off-Peak-Ticket-ID`。
-- JWT 从 credential key `zcodejwttoken` 读取。
+- JWT 从 credential key `codezjwttoken` 读取。
 - Coding Plan key 按当前 provider family 与 selected connection 解析：ZAI/BigModel 个人套餐读取所选
   provider 的原始 `apiKey`，BigModel Team 复用既有 runtime-key helper 生成 `${apiKey}.${secretKey}`。
 - Start Plan、API Key mode、未选择、active OAuth provider 与所选 family 不一致、disabled/stale
@@ -606,16 +606,16 @@ MR 中间曾实现 `limit.max_tasks/sliding_window` 静态配置和按本地 `cr
 
 | 变量 | 作用 |
 |---|---|
-| `ZCODE_OFFPEAK_MOCK` | 开启 mock |
-| `ZCODE_OFFPEAK_MOCK_PORT` | 覆盖固定端口 |
-| `ZCODE_OFFPEAK_MOCK_READY_DELAY_MS` | queued 到 ready 延迟，默认 15 秒 |
-| `ZCODE_OFFPEAK_MOCK_READY_TTL_MS` | ready 未使用有效期，默认 5 分钟 |
-| `ZCODE_OFFPEAK_MOCK_ACTIVE_MS` | active 时长，默认 3 小时 |
-| `ZCODE_OFFPEAK_MOCK_QUEUE_429_COUNT` | messages 前 N 次回 429/3105 |
-| `ZCODE_OFFPEAK_MOCK_QUOTA_COUNT` | take 前 N 次回 3103 |
-| `ZCODE_OFFPEAK_MOCK_AVAILABILITY_BLOCK_MS` | availability 暂时不可取号 |
-| `ZCODE_OFFPEAK_MOCK_RETRY_AFTER_S` | Retry-After，默认 5 秒 |
-| `ZCODE_OFFPEAK_MOCK_NEXT_POLL_S` | next_poll_after，默认 5 秒 |
+| `CODEZ_OFFPEAK_MOCK` | 开启 mock |
+| `CODEZ_OFFPEAK_MOCK_PORT` | 覆盖固定端口 |
+| `CODEZ_OFFPEAK_MOCK_READY_DELAY_MS` | queued 到 ready 延迟，默认 15 秒 |
+| `CODEZ_OFFPEAK_MOCK_READY_TTL_MS` | ready 未使用有效期，默认 5 分钟 |
+| `CODEZ_OFFPEAK_MOCK_ACTIVE_MS` | active 时长，默认 3 小时 |
+| `CODEZ_OFFPEAK_MOCK_QUEUE_429_COUNT` | messages 前 N 次回 429/3105 |
+| `CODEZ_OFFPEAK_MOCK_QUOTA_COUNT` | take 前 N 次回 3103 |
+| `CODEZ_OFFPEAK_MOCK_AVAILABILITY_BLOCK_MS` | availability 暂时不可取号 |
+| `CODEZ_OFFPEAK_MOCK_RETRY_AFTER_S` | Retry-After，默认 5 秒 |
+| `CODEZ_OFFPEAK_MOCK_NEXT_POLL_S` | next_poll_after，默认 5 秒 |
 
 WDIO 管理流把 ready delay 设为 60 秒，避免任务在 UI 操作过程中抢先执行；额度 pre-gate spec 将 availability block 设为 1 小时。
 
@@ -744,11 +744,11 @@ AppSettings.keepAwakeWhileRunning
 
 ### 16.2 mise 开发目录隔离
 
-- `mise run dev` 增加 `ZCODE_DATA_BASE_DIR={{env.HOME}}/.zcode-dev-home`。
-- 开发态桌面数据与默认 `~/.zcode` 生产数据隔离。
+- `mise run dev` 增加 `CODEZ_DATA_BASE_DIR={{env.HOME}}/.codez-dev-home`。
+- 开发态桌面数据与默认 `~/.codez` 生产数据隔离。
 - 文档和 root build script test 同步。
 - `pnpm dev:desktop:test` 的既有语义未被改成相同入口。
-- OAuth 自定义 scheme `zcode://` 仍可能与已安装正式版竞争，这是隔离 data dir 无法解决的系统注册边界。
+- OAuth 自定义 scheme `codez://` 仍可能与已安装正式版竞争，这是隔离 data dir 无法解决的系统注册边界。
 
 ### 16.3 文档
 
@@ -871,7 +871,7 @@ ADR supersession 规则；批准切 provider 仍被标为未实现能力，而�
 | 41 | `80e8d13ee0` | 2026-07-17 | docs(off-peak-task): D36 收口——确认 limit.{max_tasks,sliding_window} 字段名 + sliding_window 单位秒 |
 | 42 | `3ede57ca8e` | 2026-07-17 | feat(off-peak-task): D36 实现——配置预判置灰 + 3103 兜底 |
 | 43 | `eac5bb9e24` | 2026-07-17 | test(off-peak-task): D36 达上限 pre-emptive 置灰 E2E + wdio mock 钩子 |
-| 44 | `7e7a52ebf6` | 2026-07-17 | chore(off-peak-task): startOffPeakE2EMock 注入 ZCODE_OFFPEAK_MOCK_LIMIT |
+| 44 | `7e7a52ebf6` | 2026-07-17 | chore(off-peak-task): startOffPeakE2EMock 注入 CODEZ_OFFPEAK_MOCK_LIMIT |
 | 45 | `f290620194` | 2026-07-20 | merge: origin/main into feat/off-peak-task |
 | 46 | `90a0a8bcc6` | 2026-07-20 | fix(build): repair merged development blockers |
 | 47 | `03e9661b15` | 2026-07-20 | docs(automations): align idle-time figma behavior |
@@ -899,24 +899,24 @@ ADR supersession 规则；批准切 provider 仍被标为未实现能力，而�
 | 2 | M | +2/-2 | `.gitlab/ci/20-test.yml` | 测试 job 的规则同步接受 API source，覆盖手动 conversation E2E 等入口。 |
 | 3 | M | +1/-1 | `.gitlab/ci/30-build.yml` | 构建阶段的 source 条件补充 API 触发。 |
 | 4 | M | +3/-3 | `.gitlab/ci/50-release.yml` | release/sandbox 相关手动 job 放行 API source。 |
-| 5 | A | +62/-0 | `apps/zcode-cli/packages/adapters/src/model/offpeak-retry.ts` | 新增闲时 provider 专用失败分类：429/3105 排队等待、3102/legacy 3001 票据失效标记、Retry-After 钳制。 |
-| 6 | M | +40/-4 | `apps/zcode-cli/packages/adapters/src/model/runner-generate.ts` | generate runner 接入 Off-Peak 决策；容量等待不消耗普通 retry budget，并支持 abort。 |
-| 7 | M | +75/-5 | `apps/zcode-cli/packages/adapters/src/model/runner-stream.ts` | stream runner 接入同类重试，但仅在尚未越过可见输出边界时重放。 |
-| 8 | A | +296/-0 | `apps/zcode-cli/packages/adapters/tests/offpeak-retry.test.ts` | 覆盖 Off-Peak 专用 generate/stream 重试、Retry-After、业务码和普通 provider 隔离。 |
-| 9 | M | +45/-15 | `apps/zcode-cli/packages/bootstrap/src/app/model-catalog-overlay.ts` | 把 runtime overlay 拆成 workspace 层与 turn 层，支持单轮安装、清理及 registry 刷新。 |
-| 10 | M | +19/-8 | `apps/zcode-cli/packages/bootstrap/src/app/session-facade.ts` | session facade 增加 turn runtime model 生命周期，并在 turn 结束恢复用户模型。 |
-| 11 | M | +14/-1 | `apps/zcode-cli/packages/bootstrap/src/app/types.ts` | 扩展 model catalog overlay/session 类型，表达 turn-scoped overlay。 |
-| 12 | M | +51/-12 | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/handlers/session-flow.ts` | session 创建/恢复流处理显式用户模型及 turn overlay 清理顺序。 |
-| 13 | M | +18/-0 | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/prompt-turn.ts` | prompt turn 接收并安装 turnRuntimeModel，记录前一模型以便终态恢复。 |
-| 14 | M | +10/-0 | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/commands/types.ts` | 命令上下文类型增加 turn runtime model/恢复信息。 |
-| 15 | M | +3/-0 | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/product-projection.ts` | 把 Off-Peak queued retry 投影为可恢复 rate-limit fault。 |
-| 16 | M | +61/-0 | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/v4-bridge.ts` | 旧桥接层透传 turnRuntimeModel，保持 v4 native/bridge 两条命令路径一致。 |
-| 17 | M | +53/-3 | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts` | workspace catalog 热更新时保留 turn overlay，并处理已移除原模型的安全回退。 |
-| 18 | M | +69/-0 | `apps/zcode-cli/packages/bootstrap/tests/model-catalog-overlay.test.ts` | 验证 workspace/turn 双层 overlay 的合并、替换和清理。 |
-| 19 | A | +131/-0 | `apps/zcode-cli/packages/bootstrap/tests/offpeak-turn-model-overlay.test.ts` | 验证闲时单轮 provider 生效、终态前恢复、排队用户消息不串用临时 provider。 |
-| 20 | M | +69/-0 | `apps/zcode-cli/packages/bootstrap/tests/v4-native-commands.test.ts` | 覆盖 native v4 sendText 的 turnRuntimeModel 参数和 busy 拒绝边界。 |
-| 21 | M | +53/-0 | `apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts` | 覆盖 bridge 协议的临时模型透传和恢复行为。 |
-| 22 | M | +2/-0 | `apps/zcode-cli/packages/contracts/src/model/index.ts` | 模型合同增加 Off-Peak queued retry reason。 |
+| 5 | A | +62/-0 | `apps/codez-cli/packages/adapters/src/model/offpeak-retry.ts` | 新增闲时 provider 专用失败分类：429/3105 排队等待、3102/legacy 3001 票据失效标记、Retry-After 钳制。 |
+| 6 | M | +40/-4 | `apps/codez-cli/packages/adapters/src/model/runner-generate.ts` | generate runner 接入 Off-Peak 决策；容量等待不消耗普通 retry budget，并支持 abort。 |
+| 7 | M | +75/-5 | `apps/codez-cli/packages/adapters/src/model/runner-stream.ts` | stream runner 接入同类重试，但仅在尚未越过可见输出边界时重放。 |
+| 8 | A | +296/-0 | `apps/codez-cli/packages/adapters/tests/offpeak-retry.test.ts` | 覆盖 Off-Peak 专用 generate/stream 重试、Retry-After、业务码和普通 provider 隔离。 |
+| 9 | M | +45/-15 | `apps/codez-cli/packages/bootstrap/src/app/model-catalog-overlay.ts` | 把 runtime overlay 拆成 workspace 层与 turn 层，支持单轮安装、清理及 registry 刷新。 |
+| 10 | M | +19/-8 | `apps/codez-cli/packages/bootstrap/src/app/session-facade.ts` | session facade 增加 turn runtime model 生命周期，并在 turn 结束恢复用户模型。 |
+| 11 | M | +14/-1 | `apps/codez-cli/packages/bootstrap/src/app/types.ts` | 扩展 model catalog overlay/session 类型，表达 turn-scoped overlay。 |
+| 12 | M | +51/-12 | `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/commands/handlers/session-flow.ts` | session 创建/恢复流处理显式用户模型及 turn overlay 清理顺序。 |
+| 13 | M | +18/-0 | `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/commands/prompt-turn.ts` | prompt turn 接收并安装 turnRuntimeModel，记录前一模型以便终态恢复。 |
+| 14 | M | +10/-0 | `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/commands/types.ts` | 命令上下文类型增加 turn runtime model/恢复信息。 |
+| 15 | M | +3/-0 | `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/product-projection.ts` | 把 Off-Peak queued retry 投影为可恢复 rate-limit fault。 |
+| 16 | M | +61/-0 | `apps/codez-cli/packages/bootstrap/src/codez-protocol/v4-bridge.ts` | 旧桥接层透传 turnRuntimeModel，保持 v4 native/bridge 两条命令路径一致。 |
+| 17 | M | +53/-3 | `apps/codez-cli/packages/bootstrap/src/codez-protocol/workspace-model-catalog.ts` | workspace catalog 热更新时保留 turn overlay，并处理已移除原模型的安全回退。 |
+| 18 | M | +69/-0 | `apps/codez-cli/packages/bootstrap/tests/model-catalog-overlay.test.ts` | 验证 workspace/turn 双层 overlay 的合并、替换和清理。 |
+| 19 | A | +131/-0 | `apps/codez-cli/packages/bootstrap/tests/offpeak-turn-model-overlay.test.ts` | 验证闲时单轮 provider 生效、终态前恢复、排队用户消息不串用临时 provider。 |
+| 20 | M | +69/-0 | `apps/codez-cli/packages/bootstrap/tests/v4-native-commands.test.ts` | 覆盖 native v4 sendText 的 turnRuntimeModel 参数和 busy 拒绝边界。 |
+| 21 | M | +53/-0 | `apps/codez-cli/packages/bootstrap/tests/codez-protocol.test.ts` | 覆盖 bridge 协议的临时模型透传和恢复行为。 |
+| 22 | M | +2/-0 | `apps/codez-cli/packages/contracts/src/model/index.ts` | 模型合同增加 Off-Peak queued retry reason。 |
 | 23 | M | +30/-0 | `docs/conversation-session-case-catalog.md` | 登记 OP01–OP09 闲时 session 生命周期、续跑、恢复和 provider 边界案例。 |
 | 24 | M | +6/-1 | `docs/development-mise-runtime.md` | 记录 mise dev 使用独立数据目录及与其他开发入口/OAuth scheme 的边界。 |
 | 25 | M | +277/-4 | `docs/off-peak-task/decisions.md` | 累计 D22–D39 设计决策，包括接口、两轴状态、per-turn provider、UI、额度和 History 演进。 |
@@ -927,7 +927,7 @@ ADR supersession 规则；批准切 provider 仍被标为未实现能力，而�
 | 30 | M | +327/-128 | `docs/off-peak-task/tech-design.md` | 原 MR Head 扩充设计但混有规划期语义；2026-07-22 follow-up 已对齐最终接口、额度、Provider 和 permission 边界。 |
 | 31 | M | +23/-0 | `docs/testing/conversation-session-e2e-coverage-matrix.md` | 增加 Off-Peak case 覆盖矩阵，区分已覆盖、planned 与 pending execution。 |
 | 32 | M | +9/-4 | `docs/ui/scheduled-tasks-main-view.md` | 明确 Scheduled 与 Idle-time task 在 Automations 主视图中的并存和边界。 |
-| 33 | M | +2/-1 | `mise.toml` | 为 mise dev 注入 ZCODE_DATA_BASE_DIR=~/.zcode-dev-home，隔离正式数据。 |
+| 33 | M | +2/-1 | `mise.toml` | 为 mise dev 注入 CODEZ_DATA_BASE_DIR=~/.codez-dev-home，隔离正式数据。 |
 | 34 | M | +5/-0 | `packages/client/src/remoteServiceAccess.ts` | remote service accessor 暴露 IOffPeakTaskService 合同；不等于 mobile remote 开启产品。 |
 | 35 | M | +381/-0 | `packages/desktop/src/host/index.ts` | 实现 host 侧 Off-Peak runtime 装配、双凭证、用户模型解析、首次 session 创建、续跑派发、终态订阅与 3102 闭环。 |
 | 36 | M | +62/-0 | `packages/desktop/src/main/desktopCronScheduler.ts` | 在 main 调度桥中转 OffPeakRun/Result、scheduler wake 和 active count 消息。 |
@@ -955,18 +955,18 @@ ADR supersession 规则；批准切 provider 仍被标为未实现能力，而�
 | 58 | A | +44/-0 | `packages/services/src/session/offPeakTask.ts` | 定义 IOffPeakTaskService RPC 合同、编辑参数和 service descriptor。 |
 | 59 | A | +727/-0 | `packages/services/src/session/offPeakTaskRepo.ts` | 新增 off_peak_tasks SQLite schema、迁移、查询、条件状态转换、事务 claim、恢复、续跑及 settle outbox。 |
 | 60 | A | +453/-0 | `packages/services/src/session/offPeakTaskService.ts` | 新增取号后落库、CRUD、暂停/继续、ticket 批量同步、重取、scheduler wake 和核销编排。 |
-| 61 | M | +11/-0 | `packages/services/src/session/zcodeTaskService.ts` | sendText 请求支持可选 turnRuntimeModel。 |
-| 62 | M | +2/-0 | `packages/services/src/zcode-agent/zcodeAgent.ts` | Agent 发送接口类型透传临时 runtime model。 |
-| 63 | M | +5/-0 | `packages/services/src/zcode-agent/zcodeAgentService.ts` | Agent service 继续透传 turnRuntimeModel 到协议层。 |
-| 64 | M | +12/-2 | `packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts` | task adapter 将临时模型放入 session/sendText，并保持旧调用兼容。 |
+| 61 | M | +11/-0 | `packages/services/src/session/codezTaskService.ts` | sendText 请求支持可选 turnRuntimeModel。 |
+| 62 | M | +2/-0 | `packages/services/src/codez-agent/codezAgent.ts` | Agent 发送接口类型透传临时 runtime model。 |
+| 63 | M | +5/-0 | `packages/services/src/codez-agent/codezAgentService.ts` | Agent service 继续透传 turnRuntimeModel 到协议层。 |
+| 64 | M | +12/-2 | `packages/services/src/codez-agent/codezTaskServiceAdapter.ts` | task adapter 将临时模型放入 session/sendText，并保持旧调用兼容。 |
 | 65 | A | +115/-0 | `packages/services/test/offPeakClientConfig.test.ts` | 覆盖灰度 enable、allowed models、计划状态和配置缺失边界。 |
 | 66 | A | +173/-0 | `packages/services/test/offPeakE2eIntegration.test.ts` | 以 mock 验证取号、ready、消息准入、终态/续跑等服务级闭环。 |
 | 67 | A | +101/-0 | `packages/services/test/offPeakRuntimeModel.test.ts` | 覆盖凭证缺失、provider 配置、header 和多 provider 用户模型选择。 |
 | 68 | A | +259/-0 | `packages/services/test/offPeakServerClient.test.ts` | 覆盖五类 server interaction 的解析、信封、null、超时/错误和 availability 约束。 |
 | 69 | A | +487/-0 | `packages/services/test/offPeakTaskRepo.test.ts` | 系统覆盖 schema、CRUD、编辑守卫、claim、终态、恢复、History 和 outbox。 |
 | 70 | A | +301/-0 | `packages/services/test/offPeakTaskService.test.ts` | 覆盖 create/cancel/pause/continue/sync/retake/settle 与服务端异常分支。 |
-| 71 | M | +2/-0 | `packages/services/test/zcodeAgentService.providerRegistry.test.ts` | 调整 provider registry 测试以容纳临时 runtime model 透传。 |
-| 72 | M | +20/-0 | `packages/services/test/zcodeLegacyTaskCompatTaskIndex.test.ts` | 确保新增 off_peak_tasks 不破坏 legacy task index 兼容和初始化。 |
+| 71 | M | +2/-0 | `packages/services/test/codezAgentService.providerRegistry.test.ts` | 调整 provider registry 测试以容纳临时 runtime model 透传。 |
+| 72 | M | +20/-0 | `packages/services/test/codezLegacyTaskCompatTaskIndex.test.ts` | 确保新增 off_peak_tasks 不破坏 legacy task index 兼容和初始化。 |
 | 73 | M | +8/-0 | `packages/shared/src/channels.ts` | 新增 Off-Peak service channel 与跨进程消息名。 |
 | 74 | M | +14/-0 | `packages/shared/src/coding-plan-subscription.ts` | 增加 Off-Peak client config/allowed model 共享类型。 |
 | 75 | M | +1/-0 | `packages/shared/src/index.ts` | 从 shared barrel 导出 off-peak-types。 |
@@ -975,9 +975,9 @@ ADR supersession 规则；批准切 provider 仍被标为未实现能力，而�
 | 78 | M | +12/-0 | `packages/shared/src/test-ids.ts` | 新增闲时创建、列表、表单和额度门控 E2E test id。 |
 | 79 | M | +38/-0 | `packages/shared/src/validation.ts` | 为 OffPeakRun、Result、wake 和 sendText 临时模型增加运行时 schema。 |
 | 80 | M | +2/-0 | `packages/shared/src/validationAppSettings.ts` | AppSettings schema 增加 keepAwakeWhileRunning，默认 false。 |
-| 81 | M | +4/-0 | `packages/shared/src/zcode-protocol-v4/command.ts` | v4 sendText command 增加 turnRuntimeModel 字段。 |
-| 82 | M | +2/-0 | `packages/shared/src/zcode-protocol/index.ts` | 协议公共入口导出新的 runtime model 结构。 |
-| 83 | M | +17/-0 | `packages/shared/test/zcodeProtocol.test.ts` | 验证协议 schema 接受合法 turnRuntimeModel 并拒绝非法形态。 |
+| 81 | M | +4/-0 | `packages/shared/src/codez-protocol-v4/command.ts` | v4 sendText command 增加 turnRuntimeModel 字段。 |
+| 82 | M | +2/-0 | `packages/shared/src/codez-protocol/index.ts` | 协议公共入口导出新的 runtime model 结构。 |
+| 83 | M | +17/-0 | `packages/shared/test/codezProtocol.test.ts` | 验证协议 schema 接受合法 turnRuntimeModel 并拒绝非法形态。 |
 | 84 | M | +8/-0 | `packages/ui/src/App.tsx` | 应用根部挂载 Off-Peak 系统通知 hook。 |
 | 85 | M | +26/-20 | `packages/ui/src/ConfirmDialog.tsx` | 扩展确认框 compact/destructive/关闭控制和快捷键行为。 |
 | 86 | M | +15/-0 | `packages/ui/src/SettingsPage.tsx` | General Settings 增加全局 keep-awake switch。 |

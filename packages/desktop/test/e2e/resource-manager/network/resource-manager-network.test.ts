@@ -55,7 +55,7 @@ describe("资源管理器网络", () => {
       const externalResult = await browser.electron.execute(async (electron, origin) => {
         return (
           await electron.session
-            .fromPartition("persist:zcode-embedded-browser")
+            .fromPartition("persist:codez-embedded-browser")
             .fetch(`${origin}/excluded-external-page`)
         ).text();
       }, url);
@@ -92,8 +92,8 @@ describe("资源管理器网络", () => {
       ]) {
         await browser.execute(
           (themeValue, localeValue) => {
-            localStorage.setItem("zcode-theme", themeValue!);
-            localStorage.setItem("zcode-locale-preference", localeValue!);
+            localStorage.setItem("codez-theme", themeValue!);
+            localStorage.setItem("codez-locale-preference", localeValue!);
           },
           theme,
           locale,
@@ -106,7 +106,7 @@ describe("资源管理器网络", () => {
             "renderer-network-test",
           ),
         );
-        await browser.saveScreenshot(join(tmpdir(), `zcode-network-${theme}.png`));
+        await browser.saveScreenshot(join(tmpdir(), `codez-network-${theme}.png`));
       }
       await $('//button[normalize-space(.)="Clear" or normalize-space(.)="清空"]').click();
       await browser.waitUntil(

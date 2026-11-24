@@ -13,7 +13,7 @@ describe("document LibreOffice distribution gate", () => {
     try {
       for (const name of ["documents", "pdf", "presentations", "spreadsheets"]) {
         await cp(
-          `apps/zcode-cli/packages/${name}-plugin/scripts`,
+          `apps/codez-cli/packages/${name}-plugin/scripts`,
           join(root, `${name}-plugin`, "scripts"),
           { recursive: true },
         );

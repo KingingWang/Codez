@@ -1,7 +1,7 @@
 import {
   WORKFLOW_HOLE_SITE_ID_PATTERN,
   type WorkflowRunState,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import type { WorkflowCausalityGraphData } from "@/components/workflow-graph/types.js";
 import type { TimelineRail, TimelineStation, WorkflowTimelineModel } from "./timeline-model.js";
 

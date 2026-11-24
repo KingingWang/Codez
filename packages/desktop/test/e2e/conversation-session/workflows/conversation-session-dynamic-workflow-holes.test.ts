@@ -1,4 +1,4 @@
-import { TID_CHAT_WORKFLOW_RUN_DIGEST } from "@zcode/shared";
+import { TID_CHAT_WORKFLOW_RUN_DIGEST } from "@codez/shared";
 import { clearAppData, pinE2ELocale } from "#e2e/helpers/desktop-app";
 import {
   approveV4Permission,
@@ -17,7 +17,7 @@ import { isOutsideClosedHistory, openClosedHistoryFolds } from "#e2e/helpers/v4-
 // case-local 回放只决定模型调用；真实 Skill、工作流编译、审批、留白通知与补全仍走产品链路。
 // 第一处留白的等待态检查完成后，再发送真实补全指令，避免自动回复抢先消除待验证的 UI 状态。
 const RUN_DIGEST = `[data-testid^="${TID_CHAT_WORKFLOW_RUN_DIGEST}"]`;
-// 留白 id 是名字的键（apps/zcode-cli/packages/dynamic-workflow/docs/analysis.md「Sites」）：「决定分组」→ 这个 id。
+// 留白 id 是名字的键（apps/codez-cli/packages/dynamic-workflow/docs/analysis.md「Sites」）：「决定分组」→ 这个 id。
 const DECIDE_HOLE_ID = "hole#21b40fca";
 
 describe("动态工作流 · 留白", () => {

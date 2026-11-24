@@ -55,7 +55,7 @@ Catalog enrichment、设置页默认回填、账号运行态与已经退役的�
 ### 3.1 Built-in
 
 `source=builtin` 整体丢弃，不产生 Provider Overlay 或 Model Rule。API Key、Endpoint、Schema、Headers、
-enabled、模型新增/删除、模型顺序和所有账号状态均不抢救。当前 ZCode Built-in Config 与 Account Overlay
+enabled、模型新增/删除、模型顺序和所有账号状态均不抢救。当前 Codez Built-in Config 与 Account Overlay
 重新提供正式事实。
 
 ### 3.2 用户自定义 Provider
@@ -118,7 +118,7 @@ Todo 33 的生命周期保持不变：仅当 `provider_config.json` 不存在时
 
 ## 7. 完成标准
 
-- Legacy Importer 不再依赖 ZCode Built-in Snapshot 或 Effective diff projection；
+- Legacy Importer 不再依赖 Codez Built-in Snapshot 或 Effective diff projection；
 - Built-in、Catalog/账号状态和退役模型能力不会进入 Personal Config；
 - 自定义 Provider 在迁移后具有完整 group、调用配置、成员与排序；
 - Personal Model Rule 只可能包含 `properties.contextWindow`；
@@ -127,7 +127,7 @@ Todo 33 的生命周期保持不变：仅当 `provider_config.json` 不存在时
 
 ## 8. 实施结果
 
-- Importer 已删除 ZCode Built-in Snapshot 输入与 Effective diff projection，`source=builtin`、退役
+- Importer 已删除 Codez Built-in Snapshot 输入与 Effective diff projection，`source=builtin`、退役
   `models-dev` 和非 Personal 的 `workspace` 输入均不会写入正式文件；
 - 仅为旧迁移提供的 `projectEffectiveProvidersToPersonalConfig` 已确认无生产调用方，并连同公开导出和
   自测一并删除，避免继续暴露“从 Effective Config 反推 Personal 意图”的错误入口；
@@ -142,6 +142,6 @@ Todo 33 的生命周期保持不变：仅当 `provider_config.json` 不存在时
 - 后续生命周期 Review 发现 Standalone CLI importer 仍引用已经删除的 Effective→Personal projection；现已同步
   改为直接生成 `standard-personal` Provider，并同样只保留模型成员、顺序与合法 `contextWindow`，避免 CLI
   启动时因缺失导出而把迁移静默降级为空配置；
-- 定向 Services 测试 13 条、`@zcode/provider` 151 条、`@zcode/provider-node` 44 条全部通过；根
+- 定向 Services 测试 13 条、`@codez/provider` 151 条、`@codez/provider-node` 44 条全部通过；根
   `pnpm typecheck` 与 `pnpm lint` 通过，lint 仅报告 33 条本轮无关既存 warning；全量 `pnpm test:unit`
   1486 个文件通过、1 个跳过，12672 条测试通过、25 条跳过。

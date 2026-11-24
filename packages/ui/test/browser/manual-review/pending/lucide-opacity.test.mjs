@@ -12,7 +12,7 @@ import { Plus, Cloud, Settings, Square } from "lucide-react";
 import sharp from "sharp";
 
 const root = fileURLToPath(new URL("../../../../../../", import.meta.url));
-const artifacts = join(tmpdir(), "zcode-lucide-opacity");
+const artifacts = join(tmpdir(), "codez-lucide-opacity");
 let browser;
 let css;
 const icon = (className = "", component = Plus) =>

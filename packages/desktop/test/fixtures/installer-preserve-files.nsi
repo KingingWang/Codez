@@ -1,7 +1,7 @@
 Unicode true
-Name "ZCode preserve-files smoke"
+Name "Codez preserve-files smoke"
 OutFile "${OUTPUT_FILE}"
-InstallDir "$TEMP\zcode-preserve-files-smoke"
+InstallDir "$TEMP\codez-preserve-files-smoke"
 RequestExecutionLevel user
 SilentInstall silent
 
@@ -10,14 +10,14 @@ SilentInstall silent
 !addplugindir /x86-unicode "${NSIS_PLUGIN_DIR}"
 !include "LogicLib.nsh"
 
-!define APP_FILENAME "ZCode"
-!define APP_EXECUTABLE_FILENAME "ZCode.exe"
-!define APP_ID "dev.zcode.preserve-files-smoke"
-!define UNINSTALL_REGISTRY_KEY "Software\\ZCode\\InstallerPreserveFilesSmoke"
+!define APP_FILENAME "Codez"
+!define APP_EXECUTABLE_FILENAME "Codez.exe"
+!define APP_ID "dev.codez.preserve-files-smoke"
+!define UNINSTALL_REGISTRY_KEY "Software\\Codez\\InstallerPreserveFilesSmoke"
 !define isUpdated `1 == 1`
 ; This fixture has no electron-builder uninstaller.nsh section; use a normal function for log smoke coverage.
 !ifdef BUILD_UNINSTALLER
-  !define ZCODE_UNINSTALLER_FUNCTION_PREFIX ""
+  !define CODEZ_UNINSTALLER_FUNCTION_PREFIX ""
 !endif
 
 Var appExe
@@ -26,11 +26,11 @@ Var appExe
   Var installationDir
 !endif
 
-!include "${ZCODE_INSTALLER_NSH}"
+!include "${CODEZ_INSTALLER_NSH}"
 ; 正式构建先加载自定义 include，再由 common.nsh 声明卸载器名称。
 !define UNINSTALL_FILENAME "uninstaller.exe"
 !ifndef BUILD_UNINSTALLER
-  ; customHeader 已包含 ZCodeDefineCleanupSnapshot 与日志初始化函数；
+  ; customHeader 已包含 CodezDefineCleanupSnapshot 与日志初始化函数；
   ; 单独再展开会导致宏重复定义。
   !insertmacro customHeader
 
@@ -41,24 +41,24 @@ Var appExe
 
 Section
   SetOutPath "$INSTDIR"
-  File /oname=ZCode.exe "${FIXTURE_EXE}"
-  StrCpy $appExe "$INSTDIR\ZCode.exe"
+  File /oname=Codez.exe "${FIXTURE_EXE}"
+  StrCpy $appExe "$INSTDIR\Codez.exe"
   !ifndef OMIT_MANIFEST
-    FileOpen $0 "$INSTDIR\.zcode-install-manifest" w
-    FileWrite $0 "ZCode.exe$\r$\n"
-    FileWrite $0 "owned-by-zcode.txt$\r$\n"
+    FileOpen $0 "$INSTDIR\.codez-install-manifest" w
+    FileWrite $0 "Codez.exe$\r$\n"
+    FileWrite $0 "owned-by-codez.txt$\r$\n"
     !ifdef SELF_MANIFEST
-      FileWrite $0 ".zcode-install-manifest$\r$\n"
+      FileWrite $0 ".codez-install-manifest$\r$\n"
     !endif
     FileWrite $0 "..\user-data.txt$\r$\n"
     FileClose $0
   !endif
   !ifdef FAIL_DELETE
     ; Keep the file handle open so Windows denies the manifest cleanup delete.
-    FileOpen $0 "$INSTDIR\owned-by-zcode.txt" w
+    FileOpen $0 "$INSTDIR\owned-by-codez.txt" w
     FileWrite $0 "old app payload"
   !else
-    FileOpen $0 "$INSTDIR\owned-by-zcode.txt" w
+    FileOpen $0 "$INSTDIR\owned-by-codez.txt" w
     FileWrite $0 "old app payload"
     FileClose $0
   !endif
@@ -66,7 +66,7 @@ Section
   FileWrite $0 "keep me"
   FileClose $0
   !ifdef RECOVERY_TEST
-    FileOpen $0 "$INSTDIR\ZCode.exe" w
+    FileOpen $0 "$INSTDIR\Codez.exe" w
     FileWrite $0 "old application payload"
     FileClose $0
     InitPluginsDir
@@ -74,7 +74,7 @@ Section
     StrCpy $installationDir "$INSTDIR"
     !ifdef BACKUP_FAILURE
       ; 先备份主程序，再用独占句柄阻止下一项复制，验证半份备份不能用于恢复。
-      System::Call 'kernel32::CreateFileW(w "$INSTDIR\owned-by-zcode.txt", i 0x80000000, i 0, p 0, i 3, i 0, p 0) p.R8'
+      System::Call 'kernel32::CreateFileW(w "$INSTDIR\owned-by-codez.txt", i 0x80000000, i 0, p 0, i 3, i 0, p 0) p.R8'
     !endif
     !insertmacro customOldUninstallPrepare
     !ifdef BACKUP_FAILURE
@@ -82,18 +82,18 @@ Section
       System::Call 'kernel32::CloseHandle(p R8)'
     !endif
     FileOpen $8 "$INSTDIR\backup-dir.txt" w
-    FileWrite $8 "$ZCodeCleanupBackup"
+    FileWrite $8 "$CodezCleanupBackup"
     FileClose $8
     OneMoreAttempt:
     ExecWait '"$PLUGINSDIR\old-cleanup.exe" /S /D=$INSTDIR' $R0
     !ifdef RESTORE_FAILURE
       ; 同名目录阻止恢复主程序，必须保留备份，不能误报恢复成功。
-      CreateDirectory "$INSTDIR\ZCode.exe"
+      CreateDirectory "$INSTDIR\Codez.exe"
     !endif
     !ifdef BACKUP_DELETE_FAILURE
       ; 句柄保持打开，阻止安装器删除备份目录；关闭会让 RMDir 成功，场景失效。
-      CreateDirectory "$ZCodeCleanupBackup\hold"
-      FileOpen $7 "$ZCodeCleanupBackup\hold\locked.txt" w
+      CreateDirectory "$CodezCleanupBackup\hold"
+      FileOpen $7 "$CodezCleanupBackup\hold\locked.txt" w
       FileWrite $7 "keep backup"
     !endif
     ${If} $R0 != 0
@@ -105,13 +105,13 @@ Section
   !endif
   ; 成功清理后模拟新版本文件落盘；失败路径必须在此前返回。
   SetOutPath "$INSTDIR"
-  File /oname=ZCode.exe "${FIXTURE_EXE}"
-  IfFileExists "$INSTDIR\owned-by-zcode.txt" 0 zcodeOwnedRemoved
+  File /oname=Codez.exe "${FIXTURE_EXE}"
+  IfFileExists "$INSTDIR\owned-by-codez.txt" 0 codezOwnedRemoved
     StrCpy $1 "present"
-    Goto zcodeWriteMarker
-  zcodeOwnedRemoved:
+    Goto codezWriteMarker
+  codezOwnedRemoved:
     StrCpy $1 "removed"
-  zcodeWriteMarker:
+  codezWriteMarker:
   FileOpen $0 "$INSTDIR\remove-result.txt" w
   FileWrite $0 "$1"
   FileClose $0

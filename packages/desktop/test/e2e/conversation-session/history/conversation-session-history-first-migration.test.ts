@@ -2,7 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { TID_V4_COMPOSER_INPUT, TID_V4_COMPOSER_SEND } from "@zcode/shared/test-ids";
+import { TID_V4_COMPOSER_INPUT, TID_V4_COMPOSER_SEND } from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -19,7 +19,7 @@ import {
   HISTORY_FIRST_TEXT,
 } from "#e2e/helpers/session-history-first-fixture";
 
-const root = join(DEFAULT_WORKSPACE, ".zcode", "history-first-e2e");
+const root = join(DEFAULT_WORKSPACE, ".codez", "history-first-e2e");
 
 describe("HF04：旧标题迁移与历史首帧边界", () => {
   after(async () => {
@@ -35,10 +35,10 @@ describe("HF04：旧标题迁移与历史首帧边界", () => {
       async () => (await readFile(join(root, "entered"), "utf8").catch(() => "")) === "entered",
       { timeout: 30_000, timeoutMsg: "旧标题交接没有启动冷恢复" },
     );
-    const cli = new DatabaseSync(join(homedir(), ".zcode", "cli", "db", "db.sqlite"), {
+    const cli = new DatabaseSync(join(homedir(), ".codez", "cli", "db", "db.sqlite"), {
       readOnly: true,
     });
-    const host = new DatabaseSync(join(homedir(), ".zcode", "v2", "tasks-index.sqlite"), {
+    const host = new DatabaseSync(join(homedir(), ".codez", "v2", "tasks-index.sqlite"), {
       readOnly: true,
     });
     try {

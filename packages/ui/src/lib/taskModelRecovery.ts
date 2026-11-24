@@ -1,9 +1,9 @@
-import type { ZCodeConfigOption, ZCodeTaskMeta } from "@zcode/shared";
-import { getZCodeAgentModeSelectOptions } from "@zcode/shared";
+import type { CodezConfigOption, CodezTaskMeta } from "@codez/shared";
+import { getCodezAgentModeSelectOptions } from "@codez/shared";
 import {
   decodeCustomModelValue,
   encodeCustomModelValue,
-} from "@/lib/zcodeCustomModelValue.js";
+} from "@/lib/codezCustomModelValue.js";
 
 function parseProviderQualifiedModel(
   model: string,
@@ -52,7 +52,7 @@ export function resolveGlmRecoveredTaskModelValue(
 }
 
 export function resolveRecoveredTaskModelValue(
-  taskMeta: Pick<ZCodeTaskMeta, "provider" | "model">,
+  taskMeta: Pick<CodezTaskMeta, "provider" | "model">,
 ): string | null {
   const normalizedTaskModel = taskMeta.model?.trim();
   if (!normalizedTaskModel || isSyntheticModelPlaceholder(normalizedTaskModel)) {
@@ -73,9 +73,9 @@ function resolveModelOptionName(modelValue: string): string {
 }
 
 function ensureModelOptionValue(
-  option: ZCodeConfigOption,
+  option: CodezConfigOption,
   modelValue: string,
-): ZCodeConfigOption {
+): CodezConfigOption {
   const options = option.options ?? [];
   const hasOption = options.some((candidate) => candidate.value === modelValue);
   if (hasOption && option.currentValue === modelValue) {
@@ -97,7 +97,7 @@ function ensureModelOptionValue(
   };
 }
 
-function createRecoveredModelOption(modelValue: string): ZCodeConfigOption {
+function createRecoveredModelOption(modelValue: string): CodezConfigOption {
   return {
     category: "model",
     currentValue: modelValue,
@@ -113,18 +113,18 @@ function createRecoveredModelOption(modelValue: string): ZCodeConfigOption {
   };
 }
 
-function createRecoveredModeOption(modeValue: string): ZCodeConfigOption {
+function createRecoveredModeOption(modeValue: string): CodezConfigOption {
   return {
     category: "mode",
     currentValue: modeValue,
     id: "mode",
     name: "Mode",
-    options: getZCodeAgentModeSelectOptions(),
+    options: getCodezAgentModeSelectOptions(),
     type: "select",
   };
 }
 
-function createRecoveredThoughtLevelOption(thoughtLevel: string): ZCodeConfigOption {
+function createRecoveredThoughtLevelOption(thoughtLevel: string): CodezConfigOption {
   return {
     category: "thought_level",
     currentValue: thoughtLevel,
@@ -141,9 +141,9 @@ function createRecoveredThoughtLevelOption(thoughtLevel: string): ZCodeConfigOpt
 }
 
 function ensureSelectOptionCurrentValue(
-  option: ZCodeConfigOption,
+  option: CodezConfigOption,
   value: string,
-): ZCodeConfigOption {
+): CodezConfigOption {
   const options = option.options ?? [];
   const hasOption = options.some((candidate) => candidate.value === value);
   if (hasOption && option.currentValue === value) {
@@ -169,9 +169,9 @@ export function mergeRecoveredTaskModelConfigOptions({
   taskMeta,
   configOptions,
 }: {
-  taskMeta: Pick<ZCodeTaskMeta, "provider" | "model">;
-  configOptions: readonly ZCodeConfigOption[];
-}): ZCodeConfigOption[] | null {
+  taskMeta: Pick<CodezTaskMeta, "provider" | "model">;
+  configOptions: readonly CodezConfigOption[];
+}): CodezConfigOption[] | null {
   const recoveredModelValue = resolveRecoveredTaskModelValue(taskMeta);
   if (!recoveredModelValue) {
     return null;
@@ -206,10 +206,10 @@ export function resolveTaskRestorePreloadConfigOptions({
   taskMeta,
   cachedTaskConfigOptions,
 }: {
-  taskMeta: Pick<ZCodeTaskMeta, "provider" | "model"> &
-    Partial<Pick<ZCodeTaskMeta, "mode" | "thoughtLevel">>;
-  cachedTaskConfigOptions?: readonly ZCodeConfigOption[];
-}): ZCodeConfigOption[] {
+  taskMeta: Pick<CodezTaskMeta, "provider" | "model"> &
+    Partial<Pick<CodezTaskMeta, "mode" | "thoughtLevel">>;
+  cachedTaskConfigOptions?: readonly CodezConfigOption[];
+}): CodezConfigOption[] {
   let cachedOptions = [...(cachedTaskConfigOptions ?? [])];
   const recoveredOptions = mergeRecoveredTaskModelConfigOptions({
     taskMeta,
@@ -265,9 +265,9 @@ export function mergeGlmRecoveredTaskModelConfigOptions({
   taskMeta,
   configOptions,
 }: {
-  taskMeta: Pick<ZCodeTaskMeta, "provider" | "model">;
-  configOptions: readonly ZCodeConfigOption[];
-}): ZCodeConfigOption[] | null {
+  taskMeta: Pick<CodezTaskMeta, "provider" | "model">;
+  configOptions: readonly CodezConfigOption[];
+}): CodezConfigOption[] | null {
   if (taskMeta.provider !== "glm") {
     return null;
   }

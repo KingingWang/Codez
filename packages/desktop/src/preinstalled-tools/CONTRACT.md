@@ -12,7 +12,7 @@ owner 完整投影 → coordinator {autoInstallEnabled, tools[]} → Main → pr
 ```
 
 - 初始化由各 owner 撤销本工具入口，成功后清理旧版本并重建有效记录入口；失败保留目录并标记 entryOutOfSync。coordinator 仅清理无主文件，完成后才回收移出 catalog 的目录；没有有效记录不保留入口。清单不可用（`tools` 为 null）时 coordinator 没有 owner，也不清理无主文件或回收目录。
-- catalog 顺序同时决定状态/卡片与自动准备顺序。内置五个工具的 15 个资源，按资源声明的平台选择；未提供资源的平台没有目标。默认下载基址为 `https://cdn-zcode.z.ai/zcode/preinstalled-tools`，覆盖变量仍支持有序候选。
+- catalog 顺序同时决定状态/卡片与自动准备顺序。内置五个工具的 15 个资源，按资源声明的平台选择；未提供资源的平台没有目标。默认下载基址为 `https://cdn-zcode.z.ai/codez/preinstalled-tools`，覆盖变量仍支持有序候选。
 - 队列只运行一个安装事务，清理结束后才运行下一项。排队时显示 `queued`；重复请求加入同一 flight。
 - 取消排队项只移除该项；取消活动项只中止该项。关闭自动预装不取消队列。
 - 删除先接纳本工具归属，等待该工具已接纳的准备结束；撤入口、检查占用、删记录、删全部版本。有占用或无法确认时恢复入口。

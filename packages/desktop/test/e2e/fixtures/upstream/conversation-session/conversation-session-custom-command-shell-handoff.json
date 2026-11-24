@@ -52,7 +52,7 @@
           "id": "toolu_e2e_cch_deny",
           "name": "Bash",
           "input": {
-            "command": "printf '%s' \"$CLAUDE_CODE_SESSION_ID\" > \"${CLAUDE_PROJECT_DIR}/.zcode-e2e-cch.marker\""
+            "command": "printf '%s' \"$CLAUDE_CODE_SESSION_ID\" > \"${CLAUDE_PROJECT_DIR}/.codez-e2e-cch.marker\""
           }
         }
       }
@@ -107,7 +107,7 @@
           "id": "toolu_e2e_cch_approve",
           "name": "Bash",
           "input": {
-            "command": "printf '%s' \"$CLAUDE_CODE_SESSION_ID\" > \"${CLAUDE_PROJECT_DIR}/.zcode-e2e-cch.marker\""
+            "command": "printf '%s' \"$CLAUDE_CODE_SESSION_ID\" > \"${CLAUDE_PROJECT_DIR}/.codez-e2e-cch.marker\""
           }
         }
       }

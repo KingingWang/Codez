@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium } from "playwright-core";
-import { TID_V4_COMPOSER_INPUT } from "@zcode/shared/test-ids";
+import { TID_V4_COMPOSER_INPUT } from "@codez/shared/test-ids";
 import { clearAppData, DEFAULT_WORKSPACE, seedSettings } from "#e2e/helpers/desktop-app";
 import { openMobilePairingPage, seedMobileFixtureLogin } from "#e2e/helpers/mobile-pairing";
 import { skipOccupationOnboardingIfPresent } from "#e2e/helpers/occupation-onboarding";
@@ -14,11 +14,11 @@ import { openWorkspaceDraftFromSidebar } from "#e2e/helpers/workspace-agent-warm
 // 被错误边界替换为“这块界面出了点问题”；Worker 全局也缺 Promise.withResolvers。
 // 本用例在手机 Web 输入框粘贴 PDF（数据源是 blob URL）并打开预览，断言页面渲染、
 // 使用真实 Worker 而不是退化为 fake worker。默认用新版 Chrome 做回归，
-// 设置 ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE 可换成低版本浏览器验证 legacy 构建。
+// 设置 CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE 可换成低版本浏览器验证 legacy 构建。
 const CASE_MARKER = "PDF-MOB-01";
 const PDF_FILE = "e2e-pdf-mob-01.pdf";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/pdf-preview-mobile",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/pdf-preview-mobile",
 );
 // 最小合法 PDF（单页空白），pdf.js 可以解析并渲染出一页画布。
 const MINIMAL_PDF = `%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n`;
@@ -42,10 +42,10 @@ describe("PDF 预览手机 Web 远控", () => {
     this.timeout(240000);
     await openWorkspaceDraftFromSidebar(DEFAULT_WORKSPACE);
 
-    const endpoint = process.env.ZCODE_WEB_REMOTE_CONTROL_URL;
+    const endpoint = process.env.CODEZ_WEB_REMOTE_CONTROL_URL;
     if (!endpoint) throw new Error("mobile fixture missing");
     const pairingUrl = await obtainUnreadPairingUrl(new URL(endpoint).origin);
-    const executablePath = process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE;
+    const executablePath = process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE;
     const chrome = await chromium.launch({
       ...(executablePath ? { executablePath } : { channel: "chrome" }),
       headless: true,
@@ -80,7 +80,7 @@ describe("PDF 预览手机 Web 远控", () => {
       const dialog = page.getByRole("dialog");
       const pdfPage = dialog.locator(".react-pdf__Page canvas");
       try {
-        const project = page.locator('[data-project-name="ZCodeProject"]');
+        const project = page.locator('[data-project-name="CodezProject"]');
         await project.waitFor({ timeout: 60000 });
         await project.getByTestId("virtual-project-create-task").tap();
         await page.locator('[data-mobile-page="chat"]').waitFor();

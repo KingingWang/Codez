@@ -304,7 +304,7 @@ Git pane 左侧建议有一个变更来源下拉，不同模式切换不同的�
 
 范围外：
 
-- CLI 工作流（`apps/zcode-cli` 的 `workflow-git-world-read.ts`）是独立进程，argv 在其构造模块内声明同样两个参数。
+- CLI 工作流（`apps/codez-cli` 的 `workflow-git-world-read.ts`）是独立进程，argv 在其构造模块内声明同样两个参数。
   CLI 自动 git 快照（`git-snapshot.ts`）使用自己的固定环境与 `-c` 覆盖，不经过本入口。
 
 回归验收：`pnpm test:git-invocation`，在临时目录创建同时带 `diff.external`、`diff.<driver>.textconv`、`core.fsmonitor`

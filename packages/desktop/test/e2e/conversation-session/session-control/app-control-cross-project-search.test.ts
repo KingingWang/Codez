@@ -1,14 +1,14 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { chromium, type Browser, type Page } from "playwright-core";
-import { ServiceChannels } from "@zcode/shared";
-import type { ProjectTask, ProjectTree } from "@zcode/services";
+import { ServiceChannels } from "@codez/shared";
+import type { ProjectTask, ProjectTree } from "@codez/services";
 import {
   TID_TASK_ARCHIVE,
   TID_TASK_ITEM,
   TID_V4_SESSION_PANE,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, DEFAULT_WORKSPACE } from "#e2e/helpers/desktop-app";
 import {
   buildReadonlyToolPrompt,
@@ -47,7 +47,7 @@ import {
 
 const CASE = "E2E_SCT07";
 const TITLE = "2000字小说创作";
-const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR!;
+const artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR!;
 const tools: AppControlToolEvidence = {};
 const evidence: Record<string, unknown> = { tools };
 type SessionRef = {
@@ -157,8 +157,8 @@ describe(`${CASE}: cross-project App search, read and explicit open`, () => {
 
     const pairUrl = await obtainUnreadPairingUrl();
     mobile = await chromium.launch({
-      ...(process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE
-        ? { executablePath: process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE }
+      ...(process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE
+        ? { executablePath: process.env.CODEZ_E2E_MOBILE_BROWSER_EXECUTABLE }
         : { channel: "chrome" }),
       headless: true,
     });

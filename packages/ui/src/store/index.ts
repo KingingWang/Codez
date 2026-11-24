@@ -5,9 +5,9 @@
  * 广播频道前缀 "state:" 表示状态同步类消息。
  */
 import { create } from "zustand";
-import type { IBroadcastService, BroadcastMessage } from "@zcode/services";
-import type { OAuthProviderId, UserInfo } from "@zcode/shared";
-import type { CodingPlanResetType } from "@zcode/shared";
+import type { IBroadcastService, BroadcastMessage } from "@codez/services";
+import type { OAuthProviderId, UserInfo } from "@codez/shared";
+import type { CodingPlanResetType } from "@codez/shared";
 import type { CodePreviewSettings } from "@/lib/codePreviewSettings.js";
 import type {
   CodingPlanQuotaResetUiEntries,
@@ -67,18 +67,18 @@ export interface LoginEntryAttempt {
   status: LoginEntryAttemptStatus;
 }
 
-const CODE_PREVIEW_SETTINGS_KEY = "zcode-code-preview-settings";
-const FONT_SMOOTHING_STORAGE_KEY = "zcode-macos-font-smoothing";
+const CODE_PREVIEW_SETTINGS_KEY = "codez-code-preview-settings";
+const FONT_SMOOTHING_STORAGE_KEY = "codez-macos-font-smoothing";
 
 function applyFontSmoothing(enabled: boolean): void {
   // 仅设置展示标记；CSS 以本机 macOS desktop 为边界，远端设备与 Web 不受影响。
   document.documentElement.classList.toggle("font-smoothing-enabled", enabled);
 }
 
-const PERFORMANCE_MODE_STORAGE_KEY = "zcode-performance-mode";
-const HIDE_PROJECT_DEVICE_NAMES_STORAGE_KEY = "zcode-hide-project-device-names";
+const PERFORMANCE_MODE_STORAGE_KEY = "codez-performance-mode";
+const HIDE_PROJECT_DEVICE_NAMES_STORAGE_KEY = "codez-hide-project-device-names";
 export const FILE_MANAGER_NAVIGATION_PREFERENCES_STORAGE_KEY =
-  "zcode-file-manager-navigation-preferences";
+  "codez-file-manager-navigation-preferences";
 
 function loadFileManagerNavigationPreferences(): Record<string, boolean> {
   try {
@@ -127,7 +127,7 @@ function loadPerformanceMode(): boolean {
 // State 定义
 // ============================================================================
 
-export interface ZCodeState {
+export interface CodezState {
   /** 展示详情偏好，不改变 Agent 权限或执行能力。 */
   interfaceMode: InterfaceMode;
   setInterfaceMode: (mode: InterfaceMode) => void;
@@ -284,7 +284,7 @@ const STATE_CHANNEL_PREFIX = "state:";
  *
  * @param broadcastService - 广播服务。Desktop 走 RPC，Web 可传 no-op 实现
  */
-export function createZCodeStore(
+export function createCodezStore(
   broadcastService: IBroadcastService,
   options: {
     initialIsRestoringOAuthSession?: boolean;
@@ -296,7 +296,7 @@ export function createZCodeStore(
   let cleanupSystemThemeListener: (() => void) | null = null;
   let syncSystemThemeListener = (_theme: Theme) => {};
 
-  const useStore = create<ZCodeState>()((set, get) => ({
+  const useStore = create<CodezState>()((set, get) => ({
     interfaceMode: normalizeInterfaceMode(readSafeLocalStorage(INTERFACE_MODE_STORAGE_KEY)),
     setInterfaceMode: (mode) => {
       const interfaceMode = normalizeInterfaceMode(mode);
@@ -311,19 +311,19 @@ export function createZCodeStore(
     },
     // 默认主题统一收敛到 Zai dark，避免首次启动时 store 与其他主题入口表现不一致。
     // 仍然优先尊重 localStorage 中已保存的用户选择，不覆盖已有偏好。
-    theme: normalizeThemePreference((readSafeLocalStorage("zcode-theme") as Theme) || "zai-dark"),
+    theme: normalizeThemePreference((readSafeLocalStorage("codez-theme") as Theme) || "zai-dark"),
     setTheme: (theme: Theme) => {
       const normalizedTheme = normalizeThemePreference(theme);
-      writeSafeLocalStorage("zcode-theme", normalizedTheme);
+      writeSafeLocalStorage("codez-theme", normalizedTheme);
       syncSystemThemeListener(normalizedTheme);
       applyTheme(normalizedTheme);
 
       set({ theme: normalizedTheme });
     },
 
-    locale: readSafeLocalStorage("zcode-locale") || "zh-CN",
+    locale: readSafeLocalStorage("codez-locale") || "zh-CN",
     setLocale: (locale: string) => {
-      writeSafeLocalStorage("zcode-locale", locale);
+      writeSafeLocalStorage("codez-locale", locale);
       set({ locale });
     },
 
@@ -593,4 +593,4 @@ export function createZCodeStore(
   return useStore;
 }
 
-export type ZCodeStore = ReturnType<typeof createZCodeStore>;
+export type CodezStore = ReturnType<typeof createCodezStore>;

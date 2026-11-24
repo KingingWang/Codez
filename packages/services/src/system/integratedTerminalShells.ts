@@ -1,5 +1,5 @@
-import type { IntegratedTerminalShellOption } from "@zcode/shared";
-import { discoverWindowsGitBash, type WindowsGitBashDiscoveryOptions } from "@zcode/shared/node";
+import type { IntegratedTerminalShellOption } from "@codez/shared";
+import { discoverWindowsGitBash, type WindowsGitBashDiscoveryOptions } from "@codez/shared/node";
 
 export async function listIntegratedTerminalShellOptions(options: {
   env: NodeJS.ProcessEnv;

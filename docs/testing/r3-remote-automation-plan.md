@@ -98,7 +98,7 @@ Mobile replayable -------+                 +-> 独立 mobile gap/snapshot
 
 ### Graph Drift Candidates / Graph Delta
 
-已确认的过期关系：旧 `provider-sync` service/journal、Source 设置中的旧 model-provider hook；它们被自动 Provisioning 替代，更新语义图的当前边与文档入口。`zcode-domain-cross-products.md` 的旧双队列、Desktop Provider Registry 权威同步描述同时改成现行 CLI/Environment 合同。
+已确认的过期关系：旧 `provider-sync` service/journal、Source 设置中的旧 model-provider hook；它们被自动 Provisioning 替代，更新语义图的当前边与文档入口。`codez-domain-cross-products.md` 的旧双队列、Desktop Provider Registry 权威同步描述同时改成现行 CLI/Environment 合同。
 
 历史文档里的“本地删除不会撤销远端凭据”与当前 allowlist replace/delete 相冲突，以 [Provisioning 当前规格](../remote/provider-provisioning.md) 及 Target 正式 store 写入为准，修正文档漂移。旧 R3 的一般性多窗口非承诺不取消具体的跨窗口 lane 和 RCONV-16 合同；其余未定义窗口角色行为留在矩阵的 undefined 区。
 
@@ -116,12 +116,12 @@ Mobile replayable -------+                 +-> 独立 mobile gap/snapshot
 
 隔离要求：
 
-1. 当前桌面 SSH adapter 固定远端用户 `~/.zcode/server`。CLI 虽支持 `--server-root`，该能力未贯穿桌面入口；不得把本地 `ZCODE_DATA_BASE_DIR` 或两个项目目录当作远端环境隔离。
-2. 专用本地 E2E profile + 专用远端用户/容器；真实模型只将选定代表配置通过产品写入口导入隔离 profile，再由正式 Provisioning 下发。不得盲拷用户完整 `.zcode`。App数据/Chromium/CLI/Helper目录必须分别检查：旧版Helper还需要独立 `ZCODE_HOME`，仅设置 `ZCODE_DATA_BASE_DIR` 与 `ZCODE_DESKTOP_HOME_DIR` 不足以隔离它。
-3. 项目 fixture 位于各自实际 workspace 的 `.zcode-e2e/<run>/<case>`；两个 Source 使用相同 POSIX path 验证身份隔离；同时保留一个本地 workspace 作为反向污染哨兵。
-4. 专属环境串行执行 `ZCODE_E2E_MAX_INSTANCES=1`；独立环境可由未来 runner 做有界并行，不能共享默认安装根、provider store、端口或录像输出。
+1. 当前桌面 SSH adapter 固定远端用户 `~/.codez/server`。CLI 虽支持 `--server-root`，该能力未贯穿桌面入口；不得把本地 `CODEZ_DATA_BASE_DIR` 或两个项目目录当作远端环境隔离。
+2. 专用本地 E2E profile + 专用远端用户/容器；真实模型只将选定代表配置通过产品写入口导入隔离 profile，再由正式 Provisioning 下发。不得盲拷用户完整 `.codez`。App数据/Chromium/CLI/Helper目录必须分别检查：旧版Helper还需要独立 `CODEZ_HOME`，仅设置 `CODEZ_DATA_BASE_DIR` 与 `CODEZ_DESKTOP_HOME_DIR` 不足以隔离它。
+3. 项目 fixture 位于各自实际 workspace 的 `.codez-e2e/<run>/<case>`；两个 Source 使用相同 POSIX path 验证身份隔离；同时保留一个本地 workspace 作为反向污染哨兵。
+4. 专属环境串行执行 `CODEZ_E2E_MAX_INSTANCES=1`；独立环境可由未来 runner 做有界并行，不能共享默认安装根、provider store、端口或录像输出。
 5. systemd 容器不得因使用 private cgroup namespace 就视为完全隔离。启动前必须持久 mask `systemd-binfmt.service`，核对 Docker VM 的 binfmt 注册前后不变，并复验已有 x64 目标。未验证这些前置条件的 privileged fixture 禁止复用；不得通过手工重写共享 binfmt 来绕过失败。
-6. 故障只作用于登记的容器/用户、连接和 PID。PID 操作前复核 start time、运行路径、releaseId、归属；不再用 `zcode-server.cjs` 名字或新旧 PID 差集猜所有权。不操作宿主 sshd、系统网络或填满共享磁盘。
+6. 故障只作用于登记的容器/用户、连接和 PID。PID 操作前复核 start time、运行路径、releaseId、归属；不再用 `codez-server.cjs` 名字或新旧 PID 差集猜所有权。不操作宿主 sshd、系统网络或填满共享磁盘。
 7. 网络和文件故障优先外部 TCP 代理、限额测试文件系统、权限控制与已支持的服务依赖注入。若准确事务阶段没有控制点，先建测试 seam 并单测，不能靠 sleep 猜测写入窗口。
 
 ## 4. 测试执行链与实现缺口
@@ -148,7 +148,7 @@ pnpm bootstrap:with-remote
 pnpm dev:desktop
 
 # 单项 pending 的现有 WDIO 入口；SSH 凭据在受控运行环境注入。
-ZCODE_E2E_MANUAL_REVIEW=1 pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/conversation-session/manual-review/pending/<case>.test.ts'
+CODEZ_E2E_MANUAL_REVIEW=1 pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/conversation-session/manual-review/pending/<case>.test.ts'
 ```
 
 `bootstrap:with-remote` 最后重新 stage remote archives，但不构建 Desktop bundle。WDIO 自身构建 E2E Desktop；开发入口验收另用 `pnpm dev:desktop`。两者必须从同一确定源码状态准备，不能将 WDIO PASS 写成已验证开发启动方式。跳过构建仅在 build receipt 的源码/配置/产物摘要匹配时允许。
@@ -184,7 +184,7 @@ Git HEAD + 工作树变更摘要 + Node/pnpm/构建配置
 
 旧材料分为：
 
-- 本轮用户指定旧端：`/Applications/ZCode.app`，实际版本 `3.11.2`、包内 build commit `89817f5b`；保留原安装，仅用隔离 profile 启动。新端当前源码声明 `3.11.1`，验证基线为 `e31f76568f`。这是旧代码/新代码角色，不是按版本号大小排序；不得为了满足“同版本”假设修改版本元数据。先前 Downloads 3.10.0 探针保留为历史，不再作为默认旧端。精确同版本异 SHA 分支仍需单独证明，不能把这个实际版本不相等的组合计为通过。
+- 本轮用户指定旧端：`/Applications/Codez.app`，实际版本 `3.11.2`、包内 build commit `89817f5b`；保留原安装，仅用隔离 profile 启动。新端当前源码声明 `3.11.1`，验证基线为 `e31f76568f`。这是旧代码/新代码角色，不是按版本号大小排序；不得为了满足“同版本”假设修改版本元数据。先前 Downloads 3.10.0 探针保留为历史，不再作为默认旧端。精确同版本异 SHA 分支仍需单独证明，不能把这个实际版本不相等的组合计为通过。
 - 合并前 R3：固定 `8009d8cd08`，可在隔离 checkout 重建旧 Desktop/Server；版本相同不代表提交相同。
 - 支持的旧版本：选用经过来源、SHA、平台/包内 manifest 及实际启动验证的 App/Server 组合。现有旧包首先是候选，不把“文件存在/校验匹配”写成可运行或正式发行认证。
 - 旧数据：由对应旧程序在专属环境创建项目、对话、选中模型、账号窄状态，再备份并在当前版迁移；数据库异常分支可用有明确 schema 来源的合成 fixture，报告标注 synthetic。
@@ -250,7 +250,7 @@ run/
 3. 补配置/身份/恢复包，再补升级迁移、Docker/Mobile/live；在资源独立时继续其他测试包。
 4. case-local provider/file fixture，确定性流用 controlled-stream，协议故障用 fault-stream；真实 SSH case 不因在容器中运行就自动获得 Docker transport 或平台证明。
 5. 首次 GUI/行为审阅后按 `e2e-case-lifecycle` promotion dry run → fixture check → apply → default replay。需入 Docker preset 的用例先独立 admission，再批量跑稳定 preset。
-6. 机械检查：`pnpm --filter @zcode/desktop typecheck:e2e`、`pnpm typecheck`、`pnpm lint`、相关 fixture/coverage audit。受影响测试足够时不追加无关全量 UT。
+6. 机械检查：`pnpm --filter @codez/desktop typecheck:e2e`、`pnpm typecheck`、`pnpm lint`、相关 fixture/coverage audit。受影响测试足够时不追加无关全量 UT。
 7. 实施提交遵守 Conventional Commits 与[仓库提交规范](../git/ai-agent-commit-message-guidelines.md)。完成报告分别列方案状态、harness 状态、测试执行状态，避免混为“已完成”。
 
 ### Planning Handoff / 未决项

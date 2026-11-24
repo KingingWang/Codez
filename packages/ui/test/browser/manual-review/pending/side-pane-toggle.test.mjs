@@ -11,13 +11,13 @@ test(
   { timeout: 120_000 },
   async () => {
     const connection = await chromium.connectOverCDP(
-      process.env.ZCODE_E2E_CDP_URL ?? "http://localhost:9229",
+      process.env.CODEZ_E2E_CDP_URL ?? "http://localhost:9229",
     );
     const page = connection
       .contexts()[0]
       .pages()
       .find((candidate) => /localhost:517/.test(candidate.url()));
-    assert.ok(page, "需要已运行的 ZCode Dev");
+    assert.ok(page, "需要已运行的 Codez Dev");
     const toggle = () => page.getByTestId("side-pane-toggle").filter({ visible: true });
     const originalLabel = await toggle().getAttribute("aria-label");
     const originalClass = await page.locator("html").getAttribute("class");

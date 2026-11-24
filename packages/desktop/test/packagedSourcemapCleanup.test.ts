@@ -23,7 +23,7 @@ describe("packaged sourcemap cleanup", () => {
   });
 
   it("应递归清理发布资源目录里的 sourcemap 文件和路径注释", () => {
-    const rootDir = mkdtempSync(resolve(tmpdir(), "zcode-sourcemap-cleanup-test-"));
+    const rootDir = mkdtempSync(resolve(tmpdir(), "codez-sourcemap-cleanup-test-"));
     try {
       const nestedDir = resolve(rootDir, "nested");
       mkdirSync(nestedDir, { recursive: true });

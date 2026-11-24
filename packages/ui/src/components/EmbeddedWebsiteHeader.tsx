@@ -1,7 +1,7 @@
 import { ChevronLeftIcon, ChevronRightIcon, RefreshCwIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { DesktopOverlayWindowControls } from "@/DesktopOverlayWindowControls.js";
 
 export function EmbeddedWebsiteHeader({
@@ -23,7 +23,7 @@ export function EmbeddedWebsiteHeader({
   onReload: () => void;
   onClose: () => void;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   return (
     <header className="bg-background px-6 py-4 pb-0 max-sm:px-4">
       <DesktopOverlayWindowControls />

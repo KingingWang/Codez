@@ -4,12 +4,12 @@
 
 When the BigModel Team Plan project API key cannot be projected into a runtime key, the local model provider registry no longer contains `builtin:bigmodel-coding-plan`. A draft session may recover by creating a fallback session on another available provider, but the UI can still keep an older local `last selected model` value such as `custom:builtin%3Abigmodel-coding-plan:GLM-5.2`.
 
-If first send later reuses that stale value, the service rejects the request with `ZCODE_RUNTIME_MODEL_UNAVAILABLE` before any model request is sent.
+If first send later reuses that stale value, the service rejects the request with `CODEZ_RUNTIME_MODEL_UNAVAILABLE` before any model request is sent.
 
 ## Expected Behavior
 
 - Historical task restore errors that only say the old task model is unavailable remain hidden by the chat banner.
-- Current draft/send failures with `ZCODE_RUNTIME_MODEL_UNAVAILABLE` must be visible so the user can switch models or report the issue.
+- Current draft/send failures with `CODEZ_RUNTIME_MODEL_UNAVAILABLE` must be visible so the user can switch models or report the issue.
 - Repeating the same send action after a failure must produce a fresh visible error; dismissing or retrying the previous banner must not suppress the next failure with the same message.
 - If the unavailable runtime model is BigModel Team Plan Coding Plan, the error must concisely ask the user to check whether the current account has been added to the project member list instead of using a generic model-unavailable message.
 - Once provider snapshot hydration proves a local agent model preference points to a provider that no longer exists, prepare must not reapply that stale preference over the agent session settings.
@@ -19,7 +19,7 @@ If first send later reuses that stale value, the service rejects the request wit
 
 The model selection reconciliation uses the hydrated provider snapshot as the boundary. A custom local preference is reapplied only while providers are not hydrated yet, or when the referenced provider still exists in the snapshot. If it is missing, the agent returned config options remain the source of truth.
 
-`ChatErrorBanner` suppresses `ZCODE_RUNTIME_MODEL_UNAVAILABLE` only for historical-task messages. Current session or current selection messages are rendered like other actionable chat errors.
+`ChatErrorBanner` suppresses `CODEZ_RUNTIME_MODEL_UNAVAILABLE` only for historical-task messages. Current session or current selection messages are rendered like other actionable chat errors.
 
 Current first-send failures attach a local trace id when upstream does not provide one. That keeps the visible error key distinct across repeated failures with the same code and message.
 

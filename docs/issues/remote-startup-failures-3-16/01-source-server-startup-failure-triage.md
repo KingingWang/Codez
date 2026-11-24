@@ -14,7 +14,7 @@ Status: in-progress
 ## 失败点
 
 ```text
-Desktop ensureDaemon ── exec: zcode serve --daemon --json
+Desktop ensureDaemon ── exec: codez serve --daemon --json
   ▼
 CLI runServe
   ├─ 已有 Supervisor 处于 starting → 直接当成功返回 port=null ─────────▶ [F] ingress port 无效
@@ -50,14 +50,14 @@ Desktop
 ### 根因
 
 - 现象：Core 启动失败时，`serve --daemon` 只报 `Timed out waiting for Server ready`（service 模式）或
-  `ZCode Server daemon exited before ready (code=1 …); check status.json for details`（fallback）。远端
+  `Codez Server daemon exited before ready (code=1 …); check status.json for details`（fallback）。远端
   `status.json` 只有 `core exited code=1 signal=none`，远端也没有日志文件。上面 A 类 7 条 SSH 工单因此无法定根因。
 - 首次出错：`supervisor.ts` 的 `handleTerminal` 在 Core 退出时用退出码覆盖了 Core 先前发来的 `fatal`。
   `cli.ts` 的等待失败分支也不读取本次启动写下的 `state` 与 `lastExitReason`。
 - 复现（已复现，真实模块边界）：本机 Docker、`debian:bookworm-slim` arm64、3.16.2 官方 linux-arm64 包、fallback 模式。
   - uid 10001 无 passwd 条目：CLI 10.4s 后只报超时；`status.json` 最终为 `state: stopped`、
     `lastExitReason: core exited code=1 signal=none`，Core 报告的 `uv_os_get_passwd returned ENOENT` 不在任何地方。
-  - 普通用户、`~/.zcode/v2` 不可写：同样的形状。
+  - 普通用户、`~/.codez/v2` 不可写：同样的形状。
   - Supervisor 与等待代码从 3.16.2 到修复前的本分支没有变化，复现结论适用于修复前的本分支。
 
 ### 修复
@@ -83,13 +83,13 @@ Desktop
 
 ## 本机 Docker 验证
 
-2026-10-22，macOS arm64 Desktop（E2E 构建）连接本机 Docker arm64 容器。SSH 目标用 `zcode-remote-ssh:test`
+2026-10-22，macOS arm64 Desktop（E2E 构建）连接本机 Docker arm64 容器。SSH 目标用 `codez-remote-ssh:test`
 （ubuntu 22.04 + sshd，没有 systemd，SSH 走 detached fallback）；Source Server 为本分支构建的 linux-arm64 包。
 环境变量按 `harness/remote/run-wdio-server.mjs` 的方式注入，用例保持 pending，未转正。
 
 | 验证                                                              | 对应修复                              | 结果                                                                                                                                                                                                                                                                                                                              |
 | ----------------------------------------------------------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `conversation-session-ssh-remote-core-start-failure`              | 本次修复                              | 修复后 PASS：错误为 `ZCode Server daemon exited before ready (code=1 signal=none) (state=stopped, last exit: core exited code=1 signal=none: EACCES: permission denied, mkdir [redacted-path])`，类别 `remote-connection-unknown`。修复前对照 FAIL：只有 `…; check [redacted-path]`，status 只有 `core exited code=1 signal=none` |
+| `conversation-session-ssh-remote-core-start-failure`              | 本次修复                              | 修复后 PASS：错误为 `Codez Server daemon exited before ready (code=1 signal=none) (state=stopped, last exit: core exited code=1 signal=none: EACCES: permission denied, mkdir [redacted-path])`，类别 `remote-connection-unknown`。修复前对照 FAIL：只有 `…; check [redacted-path]`，status 只有 `core exited code=1 signal=none` |
 | `conversation-session-ssh-remote-daemon-starting-reuse`           | F：`6e6dc621cd`；版本头：`6800bdb696` | PASS：连接复用处于 starting 的同一个 Supervisor，等到 ready 后连上                                                                                                                                                                                                                                                                |
 | `conversation-session-ssh-remote-install-killed`                  | 安装 shell 被杀：`02f8241f0c`         | PASS                                                                                                                                                                                                                                                                                                                              |
 | `conversation-session-remote-restart-stale-daemon-ssh`            | B 与快照复用：`e9c1bc2e8b`            | PASS：接管残留锁，占用旧 PID 的进程不受影响                                                                                                                                                                                                                                                                                       |

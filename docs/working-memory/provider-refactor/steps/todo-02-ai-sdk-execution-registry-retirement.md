@@ -128,8 +128,8 @@ Adapter.createModel
 ```
 
 Adapter 可以忽略 `label`、`visibility`、模型成员等非执行字段；“只消费其中一部分”不构成再声明一个
-`Pick<>` 公共类型或复制执行投影的理由。`@zcode/adapters` 可以依赖纯领域包 `@zcode/provider` 的完整类型；
-不得为了规避该依赖，把 Provider/Model Config 复制到 `@zcode/contracts`。
+`Pick<>` 公共类型或复制执行投影的理由。`@codez/adapters` 可以依赖纯领域包 `@codez/provider` 的完整类型；
+不得为了规避该依赖，把 Provider/Model Config 复制到 `@codez/contracts`。
 
 ### 2.5 Config、绑定选项与执行依赖分工
 
@@ -247,9 +247,9 @@ Provider/Model 查询。
 - 网络、签名、Endpoint Routing、runtime 和 env 等执行基础设施可以保留并改为准确命名；
 - Probe/E2E helper 改为显式创建测试 Model，而不是先造一整个 Registry。
 
-### 4.5 Reasoning 差异归入 ZCode Built-in Model Config Rules
+### 4.5 Reasoning 差异归入 Codez Built-in Model Config Rules
 
-所有正式模型和 API 类型的 Reasoning 差异事实统一由 ZCode Built-in Model Config Rules 声明：
+所有正式模型和 API 类型的 Reasoning 差异事实统一由 Codez Built-in Model Config Rules 声明：
 
 - `optionSpecs.reasoningLevel.values/default` 声明公开档位；
 - `reasoningMapping[level]` 声明该档位对应的 Provider 请求参数；

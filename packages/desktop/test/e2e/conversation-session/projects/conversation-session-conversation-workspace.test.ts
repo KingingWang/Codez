@@ -8,7 +8,7 @@ import {
   TID_V4_COMPOSER_INPUT,
   TID_VIRTUAL_PROJECT_ADD,
   TID_VIRTUAL_PROJECT_NEW_TASK,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_CONVERSATION_WORKSPACE,
   DEFAULT_WORKSPACE,
@@ -105,7 +105,7 @@ describe("非项目对话工作区 E2E", () => {
     await expectPurposeSectionOrder(TID_CONVERSATION_SECTION, TID_PROJECT_SECTION);
 
     const persistedOrder = await browser.execute(() => {
-      const rawValue = window.localStorage.getItem("zcode-sidebar-purpose-section-preferences");
+      const rawValue = window.localStorage.getItem("codez-sidebar-purpose-section-preferences");
       if (!rawValue) {
         return null;
       }

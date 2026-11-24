@@ -3,7 +3,7 @@ import { execFile } from "node:child_process";
 import { readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { promisify } from "node:util";
-import { TID_LOGIN_TRIGGER } from "@zcode/shared/test-ids";
+import { TID_LOGIN_TRIGGER } from "@codez/shared/test-ids";
 import { reloadElectronSessionPreservingBrowserProfile } from "#e2e/helpers/e2e-electron-reload";
 import { clearAppData, getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
 
@@ -11,7 +11,7 @@ import { clearAppData, getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
 const KEY = "bot:e2e:auto-reset";
 const OLD_VALUE = "E2E_AUTO_RESET_OLD_SYNTHETIC_VALUE";
 const NEW_VALUE = "E2E_AUTO_RESET_NEW_SYNTHETIC_VALUE";
-const SERVICE = "ZCode Credential Encryption";
+const SERVICE = "Codez Credential Encryption";
 const SHELL_SELECTOR = `[data-testid="${TID_LOGIN_TRIGGER}"], [data-testid="onboarding-page"], [data-testid="oauth-login-button"]`;
 
 type HostResult = { ok: true; value: string | null } | { ok: false; message: string };
@@ -81,7 +81,7 @@ describe("System credential storage automatic reset", () => {
         if (error.code !== 44) throw error;
       });
     // 真实系统库专项：不得注入托管密钥，否则来源永远是 env，走不到系统库。
-    expect(await browser.electron.execute(() => Boolean(process.env.ZCODE_CREDENTIAL_SECRET))).toBe(
+    expect(await browser.electron.execute(() => Boolean(process.env.CODEZ_CREDENTIAL_SECRET))).toBe(
       false,
     );
     try {

@@ -107,7 +107,7 @@ R2 采用 CLI 随机完成标识 + main 唯一出口去重，覆盖跨 window Ho
 ## PRT-031：Desktop 连接旧 Server 的 E2E 边界
 
 已接受的真实 Desktop 案例：在隔离 localhost 启动固定旧版独立 Server，从现有 preload
-`window.zcode.connectRemote` 发起连接，经过 Main → Window Host → `host/index.ts` 的正式能力门禁。
+`window.codez.connectRemote` 发起连接，经过 Main → Window Host → `host/index.ts` 的正式能力门禁。
 旧 server-info 缺少资源能力时，不发送这组遥测订阅；Server 持续存活，连接成功返回 sessionId，
 既有业务 RPC 可用，最后通过正式 disposeRemoteSession 回收。本例不发送模型请求。
 

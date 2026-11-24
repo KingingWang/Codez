@@ -14,7 +14,7 @@ Status: wontfix
 
 ## 静态分析（未经运行时抓包确认）
 
-- [ToolSearch 设计](../../../apps/zcode-cli/docs/design/v2/tool/19-tool-search.md)「历史定义交付」规定：已交付定义的工具离开目录后原位重新声明。实现见 `apps/zcode-cli/packages/core/src/tool/search/exposure.ts:209-213`（departed 分支）与 `:144`（有 retained 定义就不再 strip 引用）。
+- [ToolSearch 设计](../../../apps/codez-cli/docs/design/v2/tool/19-tool-search.md)「历史定义交付」规定：已交付定义的工具离开目录后原位重新声明。实现见 `apps/codez-cli/packages/core/src/tool/search/exposure.ts:209-213`（departed 分支）与 `:144`（有 retained 定义就不再 strip 引用）。
 - 常驻 MCP 分支会检查 `input.registry?.get(...)`，departed 分支不检查。所以用户用 `--disallowedTools` 显式禁用、或 MCP 被禁用的工具，也会被重新声明。
 
 ## 待决定

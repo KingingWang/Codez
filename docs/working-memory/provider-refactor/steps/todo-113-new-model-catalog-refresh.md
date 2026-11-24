@@ -37,7 +37,7 @@
 
 ### 0.3 内置模型列表逐模板计划
 
-修改源为 `config/provider/zcode-builtin.json` 的 `providerConfigRules.templateRules[].config.builtinModelIds`，配套检查 `modelConfigRules.templateModelRules`。新增成员的排序与默认启停需要在最终研究结果中明确，按现行模板策略处理；不能将“官方已提供”直接等同于“应默认全部启用”。无法从现行策略确定时执行阶段讨论。
+修改源为 `config/provider/codez-builtin.json` 的 `providerConfigRules.templateRules[].config.builtinModelIds`，配套检查 `modelConfigRules.templateModelRules`。新增成员的排序与默认启停需要在最终研究结果中明确，按现行模板策略处理；不能将“官方已提供”直接等同于“应默认全部启用”。无法从现行策略确定时执行阶段讨论。
 
 | 模板 ID                                                                | 内置列表变动与保留边界                                                                                                                                                                                                                                                                                                            |
 | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -159,7 +159,7 @@ Fable5.1 的普通 auto 工具调用与 JSON schema 输出沿用既有链路；�
 
 ### Feature Summary
 
-能力为模型目录及智能配置；变更层为 option-source / validation。主要种子是 `config/provider/zcode-builtin.json` 的模板、模型规则、API/站点规则和模板精确规则。范围外是选择持久化、账号架构及 UI 重设计。
+能力为模型目录及智能配置；变更层为 option-source / validation。主要种子是 `config/provider/codez-builtin.json` 的模板、模型规则、API/站点规则和模板精确规则。范围外是选择持久化、账号架构及 UI 重设计。
 
 ### UI Surface Matrix
 

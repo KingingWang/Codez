@@ -5,7 +5,7 @@ import {
   TID_V4_SESSION_PANE,
   TID_V4_STOP,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import {
   getV4PaneSnapshot,

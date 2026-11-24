@@ -2,7 +2,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
-import { TID_BROWSER_WEBVIEW } from "@zcode/shared/test-ids";
+import { TID_BROWSER_WEBVIEW } from "@codez/shared/test-ids";
 import { clearAppData, getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
 import {
   getUpstreamRequestRecordCount,
@@ -374,9 +374,9 @@ async function readMcpLogContexts(): Promise<McpLogContext[]> {
 }
 
 async function resolveMcpLogDirs(): Promise<string[]> {
-  const explicit = process.env.ZCODE_LOG_DIR?.trim();
+  const explicit = process.env.CODEZ_LOG_DIR?.trim();
   if (explicit) return [explicit];
-  const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR?.trim();
+  const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR?.trim();
   if (artifactDir) {
     const runtimeLogDir = join(artifactDir, "runtime-logs");
     const workers = await readdir(runtimeLogDir, { withFileTypes: true }).catch(() => []);

@@ -39,13 +39,13 @@ Lexical 编辑器、模式选择、模型选择器、思考深度、context usag
 ## e2e 契约
 
 - `TID_V4_COMPOSER_INPUT` 变为 Lexical contenteditable：`setInputValueByTestIdDom`
-  增加 `__zcodeLexicalInputE2E` bridge 分支（驱动真实 editor state；Lexical update
+  增加 `__codezLexicalInputE2E` bridge 分支（驱动真实 editor state；Lexical update
   微任务后才 commit，写入采用轮询确认），spec 断言语义不变。
 - Radix 控件驱动口径：受控 DropdownMenu 触发用 WebDriver 真实点击（element.click()
   不含 pointerdown）；Radix SelectItem 的确认合成 pointer 手势会被忽略，统一走
   「item 聚焦 + Enter」键盘路径（`selectRadixOption` helper）+ 菜单关闭校验。
 - 可观测性：生产 renderer 日志关闭，v4 命令 ack 摘要写入
-  `window.__zcodeV4CommandAcksE2E` 有界环形缓冲（`v4/commandAckObservability.ts`），
+  `window.__codezV4CommandAcksE2E` 有界环形缓冲（`v4/commandAckObservability.ts`），
   spec 失败报文自动附带。
 - M4 调试表单（v4-model-provider-input 等 4 个 testid）退役；`switchV4Model` helper 适配为
   驱动 `TID_CHAT_MODEL_SELECT_*` / `TID_CHAT_THOUGHT_LEVEL_SELECT_*`（真实选择器）。

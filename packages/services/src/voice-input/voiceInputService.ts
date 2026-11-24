@@ -1,5 +1,5 @@
-import { Emitter } from "@zcode/rpc";
-import type { ApiClient } from "@zcode/shared";
+import { Emitter } from "@codez/rpc";
+import type { ApiClient } from "@codez/shared";
 import type { WebSocket } from "undici";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import type {
@@ -10,7 +10,7 @@ import type {
 
 const log = createServiceLogger("voice-input");
 
-// zcode-server ASR 协议见其仓库 docs/asr.md；这里只用 realtime 模式。
+// codez-server ASR 协议见其仓库 docs/asr.md；这里只用 realtime 模式。
 const TICKET_PATH = "/api/v1/asr/tickets";
 const TICKET_TIMEOUT_MS = 10_000;
 

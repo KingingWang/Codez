@@ -7,7 +7,7 @@ import {
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -34,7 +34,7 @@ const HOST_PRELOAD = fileURLToPath(
   new URL("../../helpers/subagent-host-faults.cjs", import.meta.url),
 );
 
-// spec：docs/zcode-endpoint-client-language-header.md。
+// spec：docs/codez-endpoint-client-language-header.md。
 // Host 请求经 NodeApiClient，带 x-request-id；Main 请求经 Electron net，不带。以此区分两条链路。
 const isHost = (request: Request) => Boolean(request.headers["x-request-id"]);
 function expectLanguage(requests: Request[], locale: Locale) {
@@ -75,7 +75,7 @@ async function expectPersistedLocale(locale: Locale) {
   expect(last).toEqual(expected);
 }
 
-describe("ZCode endpoint X-Client-Language 跟随界面语言", () => {
+describe("Codez endpoint X-Client-Language 跟随界面语言", () => {
   let external: Awaited<ReturnType<typeof browser.electron.mock>>;
   const servers: HelpServer[] = [];
 
@@ -119,8 +119,8 @@ describe("ZCode endpoint X-Client-Language 跟随界面语言", () => {
     const before = server.requests.filter((request) => !isHost(request)).length;
     await browser.execute(async () => {
       await (
-        window as unknown as { zcode: { executeDesktopCommand(command: string): Promise<void> } }
-      ).zcode.executeDesktopCommand("openCommunity");
+        window as unknown as { codez: { executeDesktopCommand(command: string): Promise<void> } }
+      ).codez.executeDesktopCommand("openCommunity");
     });
     await browser.waitUntil(
       async () => server.requests.filter((request) => !isHost(request)).length > before,
@@ -161,7 +161,7 @@ describe("ZCode endpoint X-Client-Language 跟随界面语言", () => {
     await seedSettings({
       locale: PERSISTED,
       localePreference: PERSISTED,
-      zcodeEndpointOrigin: server.origin,
+      codezEndpointOrigin: server.origin,
       lastWorkspaceSession: [
         { kind: "local", workspacePath: DEFAULT_WORKSPACE, workspacePurpose: "project" },
       ],
@@ -196,7 +196,7 @@ describe("ZCode endpoint X-Client-Language 跟随界面语言", () => {
     const firstHandle = await browser.getWindowHandle();
     // 只让第二个窗口的 Host 写 setting.json 失败；语言由该窗口的设置页切换，持久化必然失败。
     const second = await openFaultInjectedHostWindow(HOST_PRELOAD, {
-      ZCODE_E2E_FS_FAULTS: JSON.stringify([
+      CODEZ_E2E_FS_FAULTS: JSON.stringify([
         {
           id: "client-language-settings-write",
           code: "EACCES",
@@ -215,7 +215,7 @@ describe("ZCode endpoint X-Client-Language 跟随界面语言", () => {
 
       // 公共配置按 endpoint 缓存 1 小时；换新 endpoint 才会发出新请求。
       const server = await startServer();
-      await seedSettings({ zcodeEndpointOrigin: server.origin });
+      await seedSettings({ codezEndpointOrigin: server.origin });
 
       expectLanguage(await openHelpMenuForHostRequests(server), SWITCHED);
       await browser.switchToWindow(firstHandle);
@@ -242,7 +242,7 @@ describe("ZCode endpoint X-Client-Language 跟随界面语言", () => {
       await expectPersistedLocale(locale);
       // 公共配置按 endpoint 缓存 1 小时；每种语言换一个新 endpoint，确保请求真实发出。
       const server = await startServer();
-      await seedSettings({ zcodeEndpointOrigin: server.origin });
+      await seedSettings({ codezEndpointOrigin: server.origin });
       expectLanguage(await openHelpMenuForHostRequests(server), locale);
       expectLanguage(await openCommunityForMainRequests(server), locale);
       // 社群渠道只配中英；非中文界面语言打开英文渠道。
@@ -261,11 +261,11 @@ describe("ZCode endpoint X-Client-Language 跟随界面语言", () => {
     const server = await startServer();
     // 渲染进程的 localStorage 偏好优先于 setting.json，且跨重启保留；清掉上一个用例（CLH-03 最后切到
     // ko-KR）的残留，本例只验证 setting.json 的读取。
-    await browser.execute(() => localStorage.removeItem("zcode-locale-preference"));
+    await browser.execute(() => localStorage.removeItem("codez-locale-preference"));
     await quitElectronAppGracefully();
     await seedSettings({
       ...seed,
-      zcodeEndpointOrigin: server.origin,
+      codezEndpointOrigin: server.origin,
       lastWorkspaceSession: [
         { kind: "local", workspacePath: DEFAULT_WORKSPACE, workspacePurpose: "project" },
       ],

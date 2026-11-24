@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const fsp = require("node:fs/promises");
 const { join } = require("node:path");
 const { syncBuiltinESMExports } = require("node:module");
-const root = process.env.ZCODE_E2E_HOST_FAULT_ROOT;
+const root = process.env.CODEZ_E2E_HOST_FAULT_ROOT;
 const controlPath = join(root, "host-fault-control.json");
 const logPath = join(root, `host-boundary-${process.pid}.jsonl`);
 const control = () => JSON.parse(fs.readFileSync(controlPath, "utf8"));

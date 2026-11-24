@@ -4,7 +4,7 @@
 
 桌面端通过父 task 的 sessionId 订阅动态 session event。Explore 子 agent 在 CLI 内部会创建独立的子 sessionId，用于子会话事件、持久化和 trace 归档。
 
-Start Plan / bigmodel Start Plan 在每次真实模型请求前需要刷新 `provider-runtime-headers`，例如官方版本请求安全校验所需的一次性 header。这个刷新不是普通 session event，也不会经过 `mirrorSubagentToolEvent` 镜像回父 task，而是独立的 ZCode Protocol 请求。
+Start Plan / bigmodel Start Plan 在每次真实模型请求前需要刷新 `provider-runtime-headers`，例如官方版本请求安全校验所需的一次性 header。这个刷新不是普通 session event，也不会经过 `mirrorSubagentToolEvent` 镜像回父 task，而是独立的 Codez Protocol 请求。
 
 ## 问题
 

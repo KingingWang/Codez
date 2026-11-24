@@ -3,8 +3,8 @@ import {
   applyContributionMessage,
   type ContributionSnapshot,
   type ExtensionStaticTable,
-} from "@zcode/shared/extension-host";
-import type { ExtensionsContributionsMessage, IExtensionsService } from "@zcode/services";
+} from "@codez/shared/extension-host";
+import type { ExtensionsContributionsMessage, IExtensionsService } from "@codez/services";
 import { logger } from "@/logger.js";
 import type { ExtensionSlotsSources } from "@/extension-slots/contract.js";
 

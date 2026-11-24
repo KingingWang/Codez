@@ -54,5 +54,5 @@
 - `packages/ui/src/settings/model-provider-section/ProviderFormControls.tsx`：模型行测试按钮条件。
 - `packages/ui/src/settings/model-provider-section/InlineEditableProviderCard.tsx`、`ProviderCardSections.tsx`：Provider 状态与测试回调传递。
 - `packages/services/src/model-provider/providerFacadeServices.ts`、`providerSettingsConnectivity.ts`：连接测试服务入口及错误返回。
-- `apps/zcode-cli/packages/bootstrap/src/app/session-facade.ts`：辅助档位补齐及正式连接测试入口。
+- `apps/codez-cli/packages/bootstrap/src/app/session-facade.ts`：辅助档位补齐及正式连接测试入口。
 - `packages/provider/src/resolver.ts`、`registry.ts`：现有执行资格与校验事实，原则上不改。

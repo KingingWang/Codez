@@ -3,7 +3,7 @@
 // same-session branch cut。冲突路径还断言 blocked 期间文件/对话/provider request 均不变。
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { TID_V4_FEEDBACK_LIKE } from "@zcode/shared/test-ids";
+import { TID_V4_FEEDBACK_LIKE } from "@codez/shared/test-ids";
 import { clearAppData, DEFAULT_WORKSPACE } from "#e2e/helpers/desktop-app";
 import { countUpstreamRequestsContaining } from "#e2e/helpers/conversation-session-network";
 import {

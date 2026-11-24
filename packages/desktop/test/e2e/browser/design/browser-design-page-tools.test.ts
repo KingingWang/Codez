@@ -20,7 +20,7 @@ import {
   TID_BROWSER_SITE_SETTINGS_ITEM,
   TID_SIDE_PANE_FULL_VIEW_TOGGLE,
   TID_SIDE_PANE_TOGGLE,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom, clickTestIdByWebDriver } from "#e2e/helpers/desktop-app";
 import { openFirstBrowserTab } from "#e2e/helpers/browser-side-pane";
 import {
@@ -58,7 +58,7 @@ function pageHtml(): string {
     { length: SLIDE_COUNT },
     (_, index) => `<section class="slide" id="s${index + 1}"><h2>Slide ${index + 1}</h2></section>`,
   ).join("");
-  return `<!doctype html><html data-zcode-design><head><title>${PAGE_TITLE}</title>
+  return `<!doctype html><html data-codez-design><head><title>${PAGE_TITLE}</title>
 <link rel="stylesheet" href="style.css"></head><body><h1 id="title">E2E_PAGE_TOOLS</h1>${slides}</body></html>`;
 }
 
@@ -72,12 +72,12 @@ describe("BU-E2E-023：内置浏览器设备预设、导出、file:// 自动刷�
   let saveDialog: ElectronMock;
 
   before(async () => {
-    tempDir = await mkdtemp(join(tmpdir(), "zcode-e2e-design-page-"));
+    tempDir = await mkdtemp(join(tmpdir(), "codez-e2e-design-page-"));
     await writeFile(join(tempDir, "index.html"), pageHtml(), "utf8");
     await writeFile(join(tempDir, "style.css"), styleCss("rgb(255, 0, 0)"), "utf8");
     await writeFile(join(tempDir, "unrelated.txt"), "v1", "utf8");
-    // 本机 HTML 经 zcode-html:// 预览协议加载，guest 的地址不是 file://
-    pagePrefix = "zcode-html://";
+    // 本机 HTML 经 codez-html:// 预览协议加载，guest 的地址不是 file://
+    pagePrefix = "codez-html://";
     site = await startFixtureServer((_request, response) => {
       response.setHeader("content-type", "text/html; charset=utf-8");
       response.end(`<!doctype html><title>${SITE_TITLE}</title><p>site</p>`);
@@ -193,7 +193,7 @@ describe("BU-E2E-023：内置浏览器设备预设、导出、file:// 自动刷�
       pagePrefix,
       `(() => { const frame = document.createElement("iframe");
         frame.srcdoc = ${JSON.stringify(
-          `<script>parent.postMessage({ __zcodeDesign: 1, events: [{ type: "slide-changed", index: 1, count: ${SLIDE_COUNT} }] }, "*");</script>`,
+          `<script>parent.postMessage({ __codezDesign: 1, events: [{ type: "slide-changed", index: 1, count: ${SLIDE_COUNT} }] }, "*");</script>`,
         )};
         document.body.appendChild(frame); return true; })()`,
     );
@@ -394,7 +394,7 @@ async function postSlideChanged(index: number, padding?: string): Promise<void> 
   };
   await guestEval(
     pagePrefix,
-    `window.postMessage({ __zcodeDesign: 1, events: [${JSON.stringify(event)}] }, "*"); true`,
+    `window.postMessage({ __codezDesign: 1, events: [${JSON.stringify(event)}] }, "*"); true`,
   );
   if (padding) {
     await browser.pause(2_000);

@@ -26,7 +26,7 @@ export const exampleSandboxHandle: PluginSandboxHandle = {
   },
   sandboxId: "sb-01",
   initId: 1,
-  shellUrl: "zcode-sandbox://shell-sb-01/",
+  shellUrl: "codez-sandbox://shell-sb-01/",
   partition: "persist:plugin-sandbox-v1-0123456789abcdef",
   // 句柄能带的全部资源级字段都写上：contract.test 用它过 host 的 strict 回包 schema，字段漏同步会在这里失败。
   resourceMeta: {

@@ -4,12 +4,12 @@ import type {
   PreinstalledToolConfiguration,
   PreinstalledToolsRelease,
   PreinstalledToolsState,
-} from "@zcode/shared/preinstalled-tools";
+} from "@codez/shared/preinstalled-tools";
 import {
   resolvePreinstalledToolPaths,
   resolvePreinstalledToolsPaths,
-} from "@zcode/shared/preinstalled-tools/node";
-import type { createServiceLogger, HostApiNetworkTransport } from "@zcode/services/node";
+} from "@codez/shared/preinstalled-tools/node";
+import type { createServiceLogger, HostApiNetworkTransport } from "@codez/services/node";
 import { PreinstalledToolOwner } from "@desktop/preinstalled-tools/installation.js";
 import { removePreinstalledEntryFile } from "@desktop/preinstalled-tools/entries.js";
 import { guardedRemoveDirectories } from "@desktop/preinstalled-tools/removal.js";

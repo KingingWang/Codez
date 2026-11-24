@@ -27,7 +27,7 @@ const builtShim = join(
   "bundled-tools",
   `win32-${process.arch}`,
   "preinstalled-entry-shim",
-  "zcode-preinstalled-entry-shim.exe",
+  "codez-preinstalled-entry-shim.exe",
 );
 const echoProgram = [
   "process.stdout.write(JSON.stringify({",
@@ -182,7 +182,7 @@ describe.skipIf(process.platform !== "win32")("Windows 入口 shim", () => {
     await breakConfig(exe);
     const result = spawnSync(exe, [], { encoding: "utf8" });
     expect(result.status).toBe(127);
-    expect(result.stderr).toContain("zcode-preinstalled-entry-shim:");
+    expect(result.stderr).toContain("codez-preinstalled-entry-shim:");
   });
 
   it("结束 shim 时，目标及其后代一起结束，版本目录可以删除", async () => {

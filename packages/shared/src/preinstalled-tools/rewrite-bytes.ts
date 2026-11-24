@@ -1,4 +1,4 @@
-import type { PreinstalledToolManifest } from "@zcode/shared/preinstalled-tools";
+import type { PreinstalledToolManifest } from "@codez/shared/preinstalled-tools";
 
 type RewriteRule = NonNullable<PreinstalledToolManifest["rewrite"]>[number];
 

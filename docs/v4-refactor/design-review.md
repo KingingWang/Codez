@@ -32,7 +32,7 @@
 
 ### 2.1 属实（抽查全中）
 
-四个 renderer 锚点行为与描述一致（zcodeChatMessages.ts:549/:904/:1457/:2431）；规模数字全部准确（3089 / 1056 / 2141 / 5871 行）；`afterSeq`+`includeSnapshot`（zcode-protocol:2109）、`expectedRevision`（:2270）、`reduce()`（event-reducer.ts:517）、`buildTraceTree`（model.ts:241）、channelClient.ts:173 无合批、base64 双编码（webRemoteControlManager.ts:781）、`Pause=7` 确为未实现空位（`ReplayRequest=6`/`Resume=8` 同样只在枚举里）、`@tanstack/react-virtual` 依赖与 GitPane 等参考实现、`content-visibility` 兜底（ChatConversationContent.tsx:9）、旧协议源码已清。
+四个 renderer 锚点行为与描述一致（codezChatMessages.ts:549/:904/:1457/:2431）；规模数字全部准确（3089 / 1056 / 2141 / 5871 行）；`afterSeq`+`includeSnapshot`（codez-protocol:2109）、`expectedRevision`（:2270）、`reduce()`（event-reducer.ts:517）、`buildTraceTree`（model.ts:241）、channelClient.ts:173 无合批、base64 双编码（webRemoteControlManager.ts:781）、`Pause=7` 确为未实现空位（`ReplayRequest=6`/`Resume=8` 同样只在枚举里）、`@tanstack/react-virtual` 依赖与 GitPane 等参考实现、`content-visibility` 兜底（ChatConversationContent.tsx:9）、旧协议源码已清。
 
 ### 2.2 失真 / 需要改写（按影响排序）
 
@@ -59,11 +59,11 @@ TopicFrame 无任何字段区分新旧订阅的帧；09§4 apply 只有两分支
 **R-02 rpc 层补课清单（对应 M1）。** Phase 2 的 rpc 工作至少五项：收端按 msgId 去重；服务端协议会话注册表 + 重连令牌握手（否则 replaceSocket 只有客户端一半）；显式 ACK 发送节奏；判死粒度修正；再加设计已列的拥塞信号与重放缓冲加界。首次生产化必须配 E-01 混沌回归，且「对端去重」在实现前不是可以假设存在的能力。
 
 **R-03 snapshot 必须从内存投影原子生成。**（P2-2，本次扫描单点最大病根）
-现状 snapshot 从落盘态生成、追不上内存流：zcodeSessionEventOrder.ts:93「running snapshot 的 eventSeq 只能说明控制状态追到这里，不代表流式正文已写入 snapshot」，客户端为此长出 [0,50,100,200]ms 轮询追赶 + 半截快照补偿 + 七个 ephemeral 字段各自的恢复补丁（taskSnapshotRuntimeStateSync.ts 整个文件）。v4 的「snapshot = seq=W 时刻完整投影」必须实现为**从内存 reducer 状态原子取值**（含截至 W 的半截 row 文本与 A 区全部字段），并把 `snapshot(W) + replay(W, now] ≡ 全量 replay` 列为 Phase 1 黄金测试第一用例——否则 09§7 的走查场景不成立，「整体替换」会把现在「吞首段正文」的 bug 放大成「吞任意段」。
+现状 snapshot 从落盘态生成、追不上内存流：codezSessionEventOrder.ts:93「running snapshot 的 eventSeq 只能说明控制状态追到这里，不代表流式正文已写入 snapshot」，客户端为此长出 [0,50,100,200]ms 轮询追赶 + 半截快照补偿 + 七个 ephemeral 字段各自的恢复补丁（taskSnapshotRuntimeStateSync.ts 整个文件）。v4 的「snapshot = seq=W 时刻完整投影」必须实现为**从内存 reducer 状态原子取值**（含截至 W 的半截 row 文本与 A 区全部字段），并把 `snapshot(W) + replay(W, now] ≡ 全量 replay` 列为 Phase 1 黄金测试第一用例——否则 09§7 的走查场景不成立，「整体替换」会把现在「吞首段正文」的 bug 放大成「吞任意段」。
 
 **R-04 seq / rowId / revision 三个标识的确定性。**（第一轮 A5，CLI 扫描强印证）
 - seq：升格为持久事件日志属性，跨重启稳定，与 deliveryKind 无关（profile 差异靠区间记账，不靠重编号）；回放配 `getEventsAfter` 索引（现状 O(全史) 重扫）。
-- rowId：必须是 event log 的确定性纯函数（重放重建后不变），含 07 的 fallback rows——否则「实时 id 与恢复 id 不同」（zcodeChatMessages.ts:2793）换成 rowId 马甲回来，客户端持久化的 targetRowId/已拉取 ranges 全部作废。
+- rowId：必须是 event log 的确定性纯函数（重放重建后不变），含 07 的 fallback rows——否则「实时 id 与恢复 id 不同」（codezChatMessages.ts:2793）换成 rowId 马甲回来，客户端持久化的 targetRowId/已拉取 ranges 全部作废。
 - revision：由 reducer 从事件派生（建议直接 revision = eventSeq 或给出明确递进表），废除现状 15+ 处手工 `stateRevision++`（server-operations.ts:1207 等）；revision 纯内存重启归零的问题一并消失。
 
 **R-05 禁止 live-only 事件旁路。**（P5-2）
@@ -74,7 +74,7 @@ index 在 suffix 截断 + 新 append 后会被复用，与滞后的订阅流按 
 
 **R-07 optimistic 收口锚点补全。**（第一轮 A4，两路强印证）
 - `QueueItem` 必带 `sourceCommandId`：running 时 sendText 的权威结果是 queue 更新而非 row，现状缺锚点导致 15 秒窗口模糊去重（taskStreamEventHandlers.ts:148 按「内容+附件+时间差≤15s+id 前缀」启发式）；
-- `timelineMarker` row 也带 `sourceCommandId`：compact 这类不产 userInput row 的命令，现状靠 **1 秒时钟容差**对账（zcodeChatMessages.ts:2740）；
+- `timelineMarker` row 也带 `sourceCommandId`：compact 这类不产 userInput row 的命令，现状靠 **1 秒时钟容差**对账（codezChatMessages.ts:2740）；
 - 权威 userInput row 的 `text` 必须是用户原文：现状 /goal 的 mirror 正文回传的是落库后的 objective，会把气泡里的 `/goal` 抹掉（handlers:165）；
 - `resolveInteraction` 的乐观置灰/待确认态写进 03 overlay 纪律：幂等只保正确性，秒级 RTT 下不给乐观反馈用户会重复点击。
 
@@ -107,7 +107,7 @@ clientId 现状即存 localStorage（main.tsx:851，含 iOS private mode 指纹 
 另：compact 后 provider replay 内容去重（现状 renderUnits:389 在 UI 做 toolId 差集 + startsWith 文本裁剪）也必须由 reducer 收敛，rows 不得出现重复活动。
 
 **R-16 sessionKey 的 workspace 分量必须是 workspaceIdentity 键，不是裸 path。**（P3-7）
-现状有明确前科：「同一路径的不同 SSH/WSL/Docker 窗口互相读到对方 task config、队列和错误态」（zcodeSessionStoreSelectors.ts:203/:241）。06 的 `sessionKey = workspace + sessionId` 与分屏二期的 `Map<workspaceKey, Connection>` 都按 identity 键控。
+现状有明确前科：「同一路径的不同 SSH/WSL/Docker 窗口互相读到对方 task config、队列和错误态」（codezSessionStoreSelectors.ts:203/:241）。06 的 `sessionKey = workspace + sessionId` 与分屏二期的 `Map<workspaceKey, Connection>` 都按 identity 键控。
 
 **R-17 模型切换 marker 的暂存语义由 CLI 定义。**（P3-5）
 产品语义是「切模型后未发送前 marker 暂存、下一轮 turn 开始才落 timeline」，现状是 UI 旁路列表 + turnIndex 挂载补丁。写进 09§3 marker 定义由 CLI 实现，否则实现期以 UI 分支复活。
@@ -130,10 +130,10 @@ snapshot 只有 `hasBackgroundWork` 布尔；背景抽屉需要每项状态与�
 taskSnapshotRuntimeStateSync.ts 为这七类旁路字段各写了恢复补丁（plan「以前只存 ChatView 组件内存，切走即丢」handlers:1200；apiRetry 不恢复则「用户只能空等」）。不进投影（A 区或独立 topic），恢复补丁换地方重写。
 
 **G-05 时间戳、权威工时、turn 级元数据、perTurn 文件摘要。**（第一轮 B2，三路证据汇合）
-09 全 schema 无 wall-clock 时间戳；「已工作 N 秒」的语义现状全在客户端推算且补丁密集：权限等待时间被误计入（zcodeChatMessages.ts:636）、进 verifier 前必须冻结耗时（:1020）、duration 三方择优不允许回退变短（:1962）。另有 perTurnSummaries/perTurnFileChanges（每轮文件变更摘要）现状分帧发布导致高度跳变（taskSlice:1535）。需要：RowBase.createdAt（服务器时钟）、CLI 下发的权威工时区间（明确哪些等待不计入）、turnsMeta 或 turn 头 marker row（含折叠组归属——auto compact 附着上一 assistant 的「已工作」块，09 的 turnId 相邻性表达不了）、turn 级摘要与 rows 同帧原子应用。
+09 全 schema 无 wall-clock 时间戳；「已工作 N 秒」的语义现状全在客户端推算且补丁密集：权限等待时间被误计入（codezChatMessages.ts:636）、进 verifier 前必须冻结耗时（:1020）、duration 三方择优不允许回退变短（:1962）。另有 perTurnSummaries/perTurnFileChanges（每轮文件变更摘要）现状分帧发布导致高度跳变（taskSlice:1535）。需要：RowBase.createdAt（服务器时钟）、CLI 下发的权威工时区间（明确哪些等待不计入）、turnsMeta 或 turn 头 marker row（含折叠组归属——auto compact 附着上一 assistant 的「已工作」块，09 的 turnId 相邻性表达不了）、turn 级摘要与 rows 同帧原子应用。
 
 **G-06 mailbox / session-message 类消息在 rows 无落点。**（P1-8）
-现状靠正则解析 XML 属性 + 文案前缀嗅探（后台 agent ACK 靠**三代文案字符串匹配**兼容，zcodeChatMessages.ts:219-252）。09 的 userInput.origin 枚举没有 mailbox 位置，迁移时会被迫继续文本嗅探。
+现状靠正则解析 XML 属性 + 文案前缀嗅探（后台 agent ACK 靠**三代文案字符串匹配**兼容，codezChatMessages.ts:219-252）。09 的 userInput.origin 枚举没有 mailbox 位置，迁移时会被迫继续文本嗅探。
 
 **G-07 命令全集缺口。**（第一轮 B1 扩充）
 `retry`（RowActions.canRetry 有字段无命令）、`resumeGoal`（stopPausesActiveGoalTarget 要求显式 resume）、autoDrain 恢复/held queue 排空方式、rewind-to-checkpoint 与 editUserQuery 的关系、附件上传通道（web/远控下 AttachmentRef 字节如何上行）、session 删除/改名归属域 + **删除的联动清理**（现状：删除不同步清 composer 草稿 localStorage 桶会残留，taskSlice:1924；删除正在查看的 task 后 activeTaskId 悬挂，:2001——v4 需定义他端删除时 pane 回空态 + sessionKey 本地态 GC）。
@@ -264,16 +264,16 @@ taskSnapshotRuntimeStateSync.ts 为这七类旁路字段各写了恢复补丁（
 
 | # | 病类 | 证据 | 判定 |
 | --- | --- | --- | --- |
-| P1-1 | stream/snapshot 双来源归并启发式（richness 打分、滑窗覆盖、前缀比较） | zcodeChatMessages.ts:904,:1887,:2088,:2144 | 灭（04 整体替换）＋前提 R-03 |
+| P1-1 | stream/snapshot 双来源归并启发式（richness 打分、滑窗覆盖、前缀比较） | codezChatMessages.ts:904,:1887,:2088,:2144 | 灭（04 整体替换）＋前提 R-03 |
 | P1-2 | 流式容器切分错误、拼旧尾巴（turnId/inputId/traceId 三级猜测） | :549,:1481,:1068 | 灭（09§3 状态机 + 新轮新 rowId） |
-| P1-3 | timeline 错位/重复/anchor 漂移（1 秒时钟容差匹配、4 种身份键互认） | :1115,:2740,:2793; zcodeTimelineIdentity.ts | 灭（marker=普通 row）＋钉 R-04(rowId) |
+| P1-3 | timeline 错位/重复/anchor 漂移（1 秒时钟容差匹配、4 种身份键互认） | :1115,:2740,:2793; codezTimelineIdentity.ts | 灭（marker=普通 row）＋钉 R-04(rowId) |
 | P1-4 | optimistic 被合并而非覆盖（operationId 回填、本地行接管） | :787,:816 | 灭（03 纪律）＋钉 R-07(marker 锚点) |
 | P1-5 | 迟到终态与内容流乱序（task_complete 先于迟到包、stop 后 Write 预览合回） | helpers:431,:595; :2403,:1280 | 灭（客户端侧）＋钉 R-15(reducer 收口) |
 | P1-6 | UI 猜 turn 分组（`turnIndex ?? Math.floor(index/2)`） | :1439; chatViewMessageTurns.ts:27 | 灭（07 turnId 落盘） |
-| P1-7 | 控制 flag 从消息数组反推（canFork 等 backfill、goal 续跑运行态识别） | zcodeTimelineRuntime.ts:49; renderUnits:27 | 灭（02 sessionControl/actions） |
+| P1-7 | 控制 flag 从消息数组反推（canFork 等 backfill、goal 续跑运行态识别） | codezTimelineRuntime.ts:49; renderUnits:27 | 灭（02 sessionControl/actions） |
 | P1-8 | provider 语义文本嗅探（三代文案匹配、stopReason 正则、mailbox XML 正则） | :219-252,:62,:378,:1236 | 部分灭＋缺 G-06(mailbox) |
-| P1-9 | snapshot 水位非一致性水位 | zcodeSessionEventOrder.ts:93 | 钉 R-03 |
-| P1-10 | 客户端乱序缓存补偿（gap 检测/pending 缓存/万条去重表） | zcodeSessionEventOrder.ts 全文 | 灭（04 规则2）＋前提 R-01 |
+| P1-9 | snapshot 水位非一致性水位 | codezSessionEventOrder.ts:93 | 钉 R-03 |
+| P1-10 | 客户端乱序缓存补偿（gap 检测/pending 缓存/万条去重表） | codezSessionEventOrder.ts 全文 | 灭（04 规则2）＋前提 R-01 |
 | P1-11 | 工时/时长本地推算与双源择优（权限等待误计、verifier 前冻结、不允许回退变短） | :636,:1020,:1962; helpers:701 | 缺 G-05 |
 | P1-12 | compact 归属/折叠桥接启发式 + replay 内容去重（toolId 差集+startsWith 裁剪） | renderUnits:48,:389 | a) 钉 R-15；b) 缺 G-05(折叠组) |
 

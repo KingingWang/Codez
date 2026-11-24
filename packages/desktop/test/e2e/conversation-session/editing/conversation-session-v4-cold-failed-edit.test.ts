@@ -1,6 +1,6 @@
 // PV4-06 × C07 pending：provider 在首 token 前失败后，必须从持久 transcript
 // cold hydration 出可寻址的 latest user row；编辑提交要命中同一 transcript messageId。
-import { TID_V4_EDIT, TID_V4_ROW } from "@zcode/shared/test-ids";
+import { TID_V4_EDIT, TID_V4_ROW } from "@codez/shared/test-ids";
 import { clearAppData, waitForDefaultWorkspaceReady } from "#e2e/helpers/desktop-app";
 import { waitForUpstreamNetworkCapture } from "#e2e/helpers/upstream-capture";
 import { openV4UserQueryEditInComposer } from "#e2e/helpers/v4-composer-edit";

@@ -2,7 +2,7 @@
 
 ## 目标
 
-设置页「命令」支持从外部 Agent 的本地 commands 目录一键导入到 ZCode。交互与「技能」导入保持一致，只处理命令文件，不导入 skills、MCP 服务器或插件。
+设置页「命令」支持从外部 Agent 的本地 commands 目录一键导入到 Codez。交互与「技能」导入保持一致，只处理命令文件，不导入 skills、MCP 服务器或插件。
 
 ## 来源范围
 
@@ -30,14 +30,14 @@
 
 - 只处理 `.md` 命令文件，跳过隐藏目录与隐藏文件。
 - 导入目标由用户在导入按钮下拉菜单中选择：
-  - `Global` 写入 `~/.zcode/commands/`。
-  - `Project` 写入 `<workspace>/.zcode/commands/`。
+  - `Global` 写入 `~/.codez/commands/`。
+  - `Project` 写入 `<workspace>/.codez/commands/`。
 - 导入时保留命令文件相对来源根目录的层级，例如 `review/code.md` 仍导入为 `review/code.md`。
 - 导入方式与技能一致：
   - `软链`：在目标路径创建指向来源命令文件的符号链接，默认选项。
   - `直接复制`：复制命令文件到目标路径。
 - 若没有打开工作区，`Project` 目标不可选。
-- 已存在同名目标文件，或目标 ZCode commands 中已存在相同 slash command 名称时跳过，不覆盖现有 ZCode 命令。
+- 已存在同名目标文件，或目标 Codez commands 中已存在相同 slash command 名称时跳过，不覆盖现有 Codez 命令。
 - 打开弹窗或重新扫描后默认停留在 `Global`，但 `Global` 与 `Project` 来源都不默认勾选，需要用户显式选择。
 
 ## UI 行为

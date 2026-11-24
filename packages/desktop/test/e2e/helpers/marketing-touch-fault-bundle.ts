@@ -14,7 +14,7 @@ export async function createMarketingTouchFaultBundle() {
   return createMarketingTouchZip(
     Buffer.from(`<!doctype html><script>
     addEventListener('message', ({data}) => {
-      if (data?.channel !== 'zcode-cloud-hero-v1' || data.type !== 'init') return;
+      if (data?.channel !== 'codez-cloud-hero-v1' || data.type !== 'init') return;
       if (data.data?.mode === 'wrong-instance') {
         parent.postMessage({channel: data.channel, instanceId: data.instanceId + '-other', type: 'ready'}, '*');
         document.documentElement.dataset.sent = 'wrong-instance';

@@ -92,7 +92,7 @@ describe("Activity Workflow retention candidate", () => {
     expect(await $(trigger).getText()).toMatch(/Completed|已完成/);
     expect(await $(trigger).isDisplayed()).toBe(true);
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "activity-mixed-ended.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "activity-mixed-ended.png"),
     );
     await $('[data-testid="activity-subagent-directory"]').waitForDisplayed({ timeout: 30000 });
     expect(await $('[data-testid="activity-workflow-directory"]').isExisting()).toBe(false);

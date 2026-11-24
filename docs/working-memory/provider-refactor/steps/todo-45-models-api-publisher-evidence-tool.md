@@ -13,7 +13,7 @@
 `builtinModelIds` 的差异报告。
 
 ```text
-ZCode Built-in Provider Config
+Codez Built-in Provider Config
         |
         | Endpoint + API Schema + builtinModelIds
         v
@@ -30,7 +30,7 @@ Publisher Models API Inspector <--- 执行期访问材料
 ```
 
 它是发布者维护工具，不是客户端 Runtime、Registry、Config Source 或第四层 Config Overlay。工具默认只报告，
-不得自动改写 `zcode-builtin.json`。
+不得自动改写 `codez-builtin.json`。
 
 ## 1. 放置与边界
 
@@ -41,7 +41,7 @@ packages/provider-node/src/publisher/model-discovery/
 ```
 
 这里可以复用正式 Built-in Release Parser、Provider Schema 和 Node 网络能力，但不得从
-`@zcode/provider-node` 公共根入口导出，避免应用运行时依赖发布工具。
+`@codez/provider-node` 公共根入口导出，避免应用运行时依赖发布工具。
 
 薄命令入口放在：
 

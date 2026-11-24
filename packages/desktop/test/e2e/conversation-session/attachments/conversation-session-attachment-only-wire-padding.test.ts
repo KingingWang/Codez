@@ -1,6 +1,6 @@
 // T06W：附件-only query 的 UI/session 事实保持空正文，只在 provider wire 边界补固定 (no content)。
 // 证据层 L3：真实 paste → begin/chunk/commit → draft firstInput → Anthropic Messages request matcher。
-import { TID_V4_COMPOSER_INPUT, TID_V4_ROW_ATTACHMENTS } from "@zcode/shared/test-ids";
+import { TID_V4_COMPOSER_INPUT, TID_V4_ROW_ATTACHMENTS } from "@codez/shared/test-ids";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import { waitForUpstreamNetworkCapture } from "#e2e/helpers/upstream-capture";
 import {

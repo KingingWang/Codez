@@ -32,7 +32,7 @@ const PAGE = `<!doctype html>
     <h1>E2E MCP panel</h1>
     <div id="opened">No document</div>
     <script>
-      const host = window.zcode;
+      const host = window.codez;
       const render = () => {
         const variables = host.hostContext?.styles?.variables ?? {};
         for (const [name, value] of Object.entries(variables)) {

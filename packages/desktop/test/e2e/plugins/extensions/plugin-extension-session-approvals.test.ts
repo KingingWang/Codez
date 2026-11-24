@@ -10,14 +10,14 @@
 // 运行时证据：Main 日志（fixture 的 E2E_APPROVALS_*）、Window Host 项目树、磁盘上的文件、审计文件、对话框 DOM、截图。
 import { access, cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join, normalize, resolve } from "node:path";
-import { ServiceChannels } from "@zcode/shared";
-import { EXTENSION_SESSION_CONSENT_REVISION } from "@zcode/shared/extension-host";
+import { ServiceChannels } from "@codez/shared";
+import { EXTENSION_SESSION_CONSENT_REVISION } from "@codez/shared/extension-host";
 import {
   TID_CONFIRM_DIALOG_CONFIRM,
   TID_EXTENSION_GRANT_DIALOG,
   TID_SIDE_PANE_EXTENSION_GRANT,
-} from "@zcode/shared/test-ids";
-import type { ProjectTree } from "@zcode/services";
+} from "@codez/shared/test-ids";
+import type { ProjectTree } from "@codez/services";
 import { DEFAULT_WORKSPACE, clearAppData, getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
 import { resolveE2ERuntimeRoot, resolveE2EStorageRoot } from "#e2e/helpers/e2e-runtime-paths";
 import { restartIntoWorkspacePreservingProfile } from "#e2e/helpers/model-provider-restart-runtime";
@@ -64,7 +64,7 @@ const PROMPTS = {
 } as const;
 const QUESTION = "E2E_P3E_ASK_QUESTION: which answer?";
 const ANSWER = "E2E_P3E_ANSWER_B";
-const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR ?? process.cwd();
+const artifacts = process.env.CODEZ_E2E_ARTIFACT_DIR ?? process.cwd();
 
 interface Op {
   name: string;
@@ -113,7 +113,7 @@ const exists = (path: string) =>
   );
 
 async function writeManifestGrants(grants: string[]): Promise<void> {
-  const path = join(fixturesDir(), PLUGIN, ".zcode-plugin", "plugin.json");
+  const path = join(fixturesDir(), PLUGIN, ".codez-plugin", "plugin.json");
   const manifest = JSON.parse(await readFile(path, "utf8")) as {
     extension: { grants: string[] };
   };

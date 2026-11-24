@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
-import { TID_CONFIRM_DIALOG_CONFIRM, TID_SETTINGS_BACK_BUTTON } from "@zcode/shared/test-ids";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
+import { TID_CONFIRM_DIALOG_CONFIRM, TID_SETTINGS_BACK_BUTTON } from "@codez/shared/test-ids";
 import { clearAppData, clickTestIdByDom } from "#e2e/helpers/desktop-app";
 import { getToastMessages } from "#e2e/helpers/conversation-session-toast";
 import {
@@ -21,7 +21,7 @@ import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
 const CASE_MARKER = "E2E_R3_STOP_REMOTE_SERVICE";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-stop-remote-service",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-stop-remote-service",
 );
 // 连接管理器的在线重试档位为 2/4/8 秒；多等一段余量，覆盖完整一个自动重试周期。
 const AUTOMATIC_RETRY_CYCLE_MS = 2_000 + 4_000 + 8_000 + 6_000;
@@ -40,8 +40,8 @@ async function readRemoteDaemon(config: SSHConnectionConfig): Promise<RemoteDaem
     [
       // pgrep -f 会匹配承载模式串的 shell 自身；用 glob 括号切断字面匹配。
       'n=0; for d in /proc/[0-9]*; do c=$(tr "\\0" " " < "$d/cmdline" 2>/dev/null) || continue; case "$c" in *runtime/server-cor[e].js*|*"serve --superviso"[r]*) n=$((n+1));; esac; done; echo "alive=$n"',
-      'echo "lock=$(cat "$HOME/.zcode/server/run/server.lock" 2>/dev/null | tr -d "\\n")"',
-      'echo "status=$(cat "$HOME/.zcode/server/run/status.json" 2>/dev/null | tr -d "\\n")"',
+      'echo "lock=$(cat "$HOME/.codez/server/run/server.lock" 2>/dev/null | tr -d "\\n")"',
+      'echo "status=$(cat "$HOME/.codez/server/run/status.json" 2>/dev/null | tr -d "\\n")"',
     ].join("; "),
   );
   const line = (key: string) =>
@@ -88,7 +88,7 @@ async function countOtherSSHSessions(config: SSHConnectionConfig): Promise<numbe
 async function readRemoteRunningTasksOutput(config: SSHConnectionConfig): Promise<string> {
   const result = await runSSHCommand(
     config,
-    '"$HOME/.zcode/server/bin/zcode" running-tasks --json --server-root "$HOME/.zcode/server"',
+    '"$HOME/.codez/server/bin/codez" running-tasks --json --server-root "$HOME/.codez/server"',
   );
   return `exit=${result.code} ${result.stdout.trim()}`;
 }
@@ -113,7 +113,7 @@ async function setTheme(theme: "light" | "dark"): Promise<void> {
 
 /** 深浅主题截图，供人工复核 destructive 菜单项与确认弹窗的可辨识度；结束后恢复浅色。 */
 async function captureThemeScreenshots(name: string): Promise<void> {
-  const root = process.env.ZCODE_E2E_ARTIFACT_DIR?.trim();
+  const root = process.env.CODEZ_E2E_ARTIFACT_DIR?.trim();
   if (!root) return;
   const dir = resolve(root, "r3-stop-remote-service");
   await mkdir(dir, { recursive: true });
@@ -155,7 +155,7 @@ interface ConfirmOverflowProbe {
  * 断言说明区纵向滚动、长路径不横向溢出、按钮仍在视口内，并截图复核可滚动。
  */
 async function probeConfirmDialogLayouts(): Promise<ConfirmOverflowProbe> {
-  const root = process.env.ZCODE_E2E_ARTIFACT_DIR?.trim();
+  const root = process.env.CODEZ_E2E_ARTIFACT_DIR?.trim();
   const dir = root ? resolve(root, "r3-stop-remote-service") : undefined;
   if (dir) await mkdir(dir, { recursive: true });
   const capture = async (name: string) => {
@@ -255,8 +255,8 @@ describe(`${CASE_MARKER}: 设备卡停止远端服务`, () => {
     expect(confirmText).toMatch(
       /此设备当前没有运行中的任务|设备未提供任务清单|No tasks are running|didn't provide a task list/u,
     );
-    expect(confirmText).toMatch(/其他电脑上的 ZCode|ZCode on another computer/u);
-    expect(confirmText).toMatch(/下次打开 ZCode 时会重新启动远端服务|next time you open ZCode/u);
+    expect(confirmText).toMatch(/其他电脑上的 Codez|Codez on another computer/u);
+    expect(confirmText).toMatch(/下次打开 Codez 时会重新启动远端服务|next time you open Codez/u);
     facts.confirmText = confirmText;
     const focused = await browser.execute(() => document.activeElement?.textContent ?? "");
     expect(["取消", "Cancel"].some((label) => focused.includes(label))).toBe(true);

@@ -76,7 +76,7 @@ getCustomerInfo
 个人 organization / project
         |
         v
-查找或创建 zcode-api-key
+查找或创建 codez-api-key
         |
         v
 copy secret
@@ -99,7 +99,7 @@ Team Coding Plan 不复用上述“自动发现个人 organization/project”的
 - `zhipu-account / mode=api-key` 从正式契约中删除；
 - `account:zai-api-key` / `account:bigmodel-api-key` 删除，不再和普通 API Provider 重复；
 - `zai-api` / `bigmodel-api` 作为每个 Family 唯一的手动 API Provider；其固定 Endpoint、API Schema 和 Built-in
-  模型成员来自 ZCode Built-in，Personal 只保存 Key 和允许的 Overlay；
+  模型成员来自 Codez Built-in，Personal 只保存 Key 和允许的 Overlay；
 - `zai-api` / `bigmodel-api` 分别使用 `zai-family` / `bigmodel-family`，固定占据 Family 的“按量 API”槽位，
   不再进入普通“添加供应商”候选；
 - 两个 Family 按量 API Provider 的 Built-in `enabled=true`，表示固定加入 Family 配置。缺少 Key 时保持可见但配置不完整、不可执行，不通过

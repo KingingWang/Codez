@@ -4,7 +4,7 @@
 
 - 状态：已实现（MR1/MR2 落地于 feat/cua-helper-lazy-startup + producer feat/win-lazy-fork@5bcdde06）；全部门禁绿（typecheck/lint/architecture/services 单测 3141）；darwin 实机 MC-1/2/3 与 Windows 全链路 MC-4~7/9 待实机验证
 - 日期：2026-09-21
-- 适用范围：Desktop Host（services）、Agent spawn/session 链路、zcode-cua SDK（producer）、
+- 适用范围：Desktop Host（services）、Agent spawn/session 链路、codez-cua SDK（producer）、
   Computer Use Helper
 - 平台：macOS 与 Windows；Linux 不在本规范范围
 - 前置：M7 已在 darwin 落地懒启动基线（spawn 恒注入稳定 socket、SDK 首次 CUA 调用自拉、
@@ -68,7 +68,7 @@ startup（含 750–1080ms bundle 验签 + Gatekeeper + 健康），而它要发
 
 | 平台 | 传输路径 | pluginAuthority |
 | --- | --- | --- |
-| darwin | `resolveBrokerSocketPath()` 稳定推导（ZCODE_HOME 派生），零 IO | spawn 时铸造（per-bootstrap config-provenance，保留现状） |
+| darwin | `resolveBrokerSocketPath()` 稳定推导（CODEZ_HOME 派生），零 IO | spawn 时铸造（per-bootstrap config-provenance，保留现状） |
 | win32 | Host app 进程铸一次的稳定 pipe 名（含随机段；模块级 singleton；Host 重建复用同名；跨 app 运行必不相同） | 同 darwin |
 
 - spawn env 注入 = 纯查表，函数体内不得出现任何 `await` Helper 相关 IO。
@@ -157,7 +157,7 @@ Agent(SDK)                                    Helper
 - `ensureStandaloneHelperLaunched` 增加 win32 分支：
   `fork(recipe.entryPath, ["--socket", 稳定pipe名, "--parent-pid", recipe.hostPid],`
   `{ env: { ELECTRON_RUN_AS_NODE: "1", [ADDON_ENV]: recipe.addonPath, …白名单 } })`。
-- recipe 经 spawn env 注入，键名定稿为 `ZCODE_CUA_WIN_HELPER_RECIPE`（值为 JSON：
+- recipe 经 spawn env 注入，键名定稿为 `CODEZ_CUA_WIN_HELPER_RECIPE`（值为 JSON：
   `entryPath`、`command`、`root`、`addonPath`、`commandEnv`、`hostPid`；常量登记进
   producer helperConstants，z-code 侧用同名字面量，两处一致属跨仓契约）。
 - `--parent-pid` 恒为 **hostPid**：Helper 生命周期挂 Host（watchdog 只认 Host pid），
@@ -231,7 +231,7 @@ Agent(SDK)                                    Helper
 - producer：`ensureStandaloneHelperLaunched` 增加 win32 fork 分支 + 单测；删除
   `warmHelperForBuiltInPlugin` 预热路径（懒启动下「无候选即预热」与不变量 3 冲突）；
   producer pin bump 用原子命令
-  `pnpm --filter @zcode/zcode-cua-plugin bump:producer`。
+  `pnpm --filter @codez/codez-cua-plugin bump:producer`。
 - services：稳定 pipe 名 singleton；spawn env 注入 pipe 名 + authority + recipe（删除
   win32 acquire / `waitForTransport`）；`getStatus` win32 对齐 3.5。
 - 清理（可并入本 MR 或单独 MR3）：删除 `buildCuaProductHelperAgentEnv` 尸体、
@@ -261,8 +261,8 @@ Agent(SDK)                                    Helper
 - 非 CUA 模块启动耗时不包含 Helper health budget。
 
 必要验证命令（按根 AGENTS.md）：`pnpm typecheck`、`pnpm lint`、
-`pnpm architecture:check --changed`、受影响单测；涉及 apps/zcode-cli 的改动另按
-[CLI 规则](../../apps/zcode-cli/AGENTS.md)验证；desktop CUA E2E 按现 case catalog 执行。
+`pnpm architecture:check --changed`、受影响单测；涉及 apps/codez-cli 的改动另按
+[CLI 规则](../../apps/codez-cli/AGENTS.md)验证；desktop CUA E2E 按现 case catalog 执行。
 
 ## 七、风险与未验证项
 

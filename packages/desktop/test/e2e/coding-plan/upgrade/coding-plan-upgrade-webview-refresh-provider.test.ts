@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
-import { TID_LOGIN_TRIGGER } from "@zcode/shared/test-ids";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
+import { TID_LOGIN_TRIGGER } from "@codez/shared/test-ids";
 import {
   clearAppData,
   getE2EAppDataPaths,
@@ -34,7 +34,7 @@ describe("BigModel Coding Plan 官网 webview 支付完成 E2E", () => {
 
     const setInventoryMode = async (mode: "hold" | "fail" | "ready") => {
       const base =
-        process.env.ZCODE_CODING_PLAN_UPGRADE_MOCK_BASE_URL ??
+        process.env.CODEZ_CODING_PLAN_UPGRADE_MOCK_BASE_URL ??
         process.env.BIGMODEL_TEST_API_BASE_URL;
       if (!base) throw new Error("Missing mock URL");
       const response = await fetch(`${base}/__e2e/coding-plan/inventory-mode`, {
@@ -115,14 +115,14 @@ describe("BigModel Coding Plan 官网 webview 支付完成 E2E", () => {
     if (!entry) throw new Error("App 入口事件不存在");
     expect(entry.event_extra_detail.purchase_funnel_id).toBeTruthy();
     expect(entry.event_extra_detail.entry_plan_list).toBe(
-      "coding_plan__personal_pro,start_plan__zcode_v3_start_plan",
+      "coding_plan__personal_pro,start_plan__codez_v3_start_plan",
     );
     await browser.waitUntil(
       async () => {
         const storage = await readCodingPlanWebviewLocalStorage([
-          "zcode:coding-plan:report-context",
+          "codez:coding-plan:report-context",
         ]);
-        const context = JSON.parse(storage["zcode:coding-plan:report-context"] || "{}");
+        const context = JSON.parse(storage["codez:coding-plan:report-context"] || "{}");
         return (
           context.purchase_funnel_id === entry.event_extra_detail.purchase_funnel_id &&
           context.purchase_entry_reporter === "app" &&
@@ -147,9 +147,9 @@ describe("BigModel Coding Plan 官网 webview 支付完成 E2E", () => {
     await browser.waitUntil(
       async () => {
         const storage = await readCodingPlanWebviewLocalStorage([
-          "zcode:coding-plan:report-context",
+          "codez:coding-plan:report-context",
         ]);
-        const context = JSON.parse(storage["zcode:coding-plan:report-context"] || "{}");
+        const context = JSON.parse(storage["codez:coding-plan:report-context"] || "{}");
         return (
           context.purchase_entry_reporter === "app" &&
           context.purchase_funnel_id === entry.event_extra_detail.purchase_funnel_id
@@ -196,7 +196,7 @@ describe("BigModel Coding Plan 官网 webview 支付完成 E2E", () => {
         customerId: "e2e-user",
         accessToken: "e2e-linked-bigmodel-jwt",
       }),
-      zcodejwttoken: "e2e-cn-zcode-jwt",
+      codezjwttoken: "e2e-cn-codez-jwt",
     });
     await writeFile(credentialsFile, JSON.stringify(saved), "utf8");
     await seedSettings({
@@ -220,13 +220,13 @@ describe("BigModel Coding Plan 官网 webview 支付完成 E2E", () => {
       { timeout: 10000 },
     );
     const storage = await readCodingPlanWebviewLocalStorage([
-      "zcodejwttoken",
+      "codezjwttoken",
       "oauth:zai_cn:access_token",
       "oauth:bigmodel:access_token",
       "oauth:zai:access_token",
     ]);
     expect(storage).toEqual({
-      zcodejwttoken: "e2e-cn-zcode-jwt",
+      codezjwttoken: "e2e-cn-codez-jwt",
       "oauth:zai_cn:access_token": null,
       "oauth:bigmodel:access_token": null,
       "oauth:zai:access_token": null,
@@ -295,7 +295,7 @@ describe("BigModel Coding Plan 官网 webview 支付完成 E2E", () => {
           "oauth:session_revision",
           "e2e-upgraded-revision",
         );
-        await state.services.credentialService.save("zcodejwttoken", "e2e-new-zcode-jwt");
+        await state.services.credentialService.save("codezjwttoken", "e2e-new-codez-jwt");
         state.release();
       });
       await browser.waitUntil(
@@ -305,8 +305,8 @@ describe("BigModel Coding Plan 官网 webview 支付完成 E2E", () => {
       await browser.executeAsync((done) =>
         requestAnimationFrame(() => requestAnimationFrame(() => done())),
       );
-      expect((await readCodingPlanWebviewLocalStorage(["zcodejwttoken"])).zcodejwttoken).not.toBe(
-        "e2e-cn-zcode-jwt",
+      expect((await readCodingPlanWebviewLocalStorage(["codezjwttoken"])).codezjwttoken).not.toBe(
+        "e2e-cn-codez-jwt",
       );
       expect(await $('[data-testid="coding-plan-upgrade-surface"]').getText()).toMatch(
         /Couldn't sign you into the plan page|无法登录到套餐页/,
@@ -398,12 +398,12 @@ async function waitForZaiWebviewCredentialsInjected() {
     async () => {
       latestStorage = await readCodingPlanWebviewLocalStorage([
         "oauth:zai:access_token",
-        "zcodejwttoken",
+        "codezjwttoken",
         "oauth:bigmodel:access_token",
       ]);
       return (
         latestStorage["oauth:zai:access_token"] === "zai-webview-oauth-token" &&
-        latestStorage.zcodejwttoken === "zai-webview-oauth-token" &&
+        latestStorage.codezjwttoken === "zai-webview-oauth-token" &&
         latestStorage["oauth:bigmodel:access_token"] === null
       );
     },

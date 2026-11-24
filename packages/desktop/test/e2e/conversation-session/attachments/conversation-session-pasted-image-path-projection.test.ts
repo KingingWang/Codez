@@ -50,7 +50,7 @@ const IMAGE_SOURCE_PREFIX = "[Image: source: ";
 const VALID_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4AWMAAQAABQABNtCI3QAAAABJRU5ErkJggg==";
 const paths = getE2EAppDataPaths();
-const imageCacheRoot = join(paths.homeDir, ".zcode", "cli", "image-cache");
+const imageCacheRoot = join(paths.homeDir, ".codez", "cli", "image-cache");
 
 let modelProviderReplayServer: Awaited<
   ReturnType<typeof startConversationModelProviderReplayServer>

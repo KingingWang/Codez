@@ -48,7 +48,7 @@
 
 ## Todo118 首次迁移（实现批次）
 
-- 先扩展真实旧文件 → 导入 → Repository → Resolver → 保存后重新打开的用例，外层 false/true 与 zcode.enabled 冲突、扩展 false、缺省分别验证。修复前显式启停均在新规则中丢失（3 个区分性失败）；另纠正测试错误访问不存在的 ResolvedProvider.executable，执行资格应检查模型及实际 Registry 成员。
+- 先扩展真实旧文件 → 导入 → Repository → Resolver → 保存后重新打开的用例，外层 false/true 与 codez.enabled 冲突、扩展 false、缺省分别验证。修复前显式启停均在新规则中丢失（3 个区分性失败）；另纠正测试错误访问不存在的 ResolvedProvider.executable，执行资格应检查模型及实际 Registry 成员。
 - 实现只在自定义分支向 Provider 规则外层复制明确 enabled，缺省不物化；旧内置 API 只迁 Key、账号身份跳过、模型/Key/顺序/context 原值不变。未修改运行时 Resolver 或正常读取。
 - 三个迁移文件 20 tests 通过；包含真实临时目录往返，旧 config.json 字节不变、升级后主动反转启停保持且不再次导入。并非仅 mock 导入输出。
 - 局部 review：配置位置、false 保留、缺省默认、内置身份优先与新文件权威满足。账号不可禁用由 Todo117 联合验收，故本项不提前标全量完成；类型/lint 和补充资格负例在批量门禁收口。
@@ -57,5 +57,5 @@
 
 - 0022 已追加；19 个失败用例先红，再与旧全库迁移及 GLM 迁移合跑，29 项通过。未改 0020/0021，也未改数据库表/列结构。
 - 正式 runner 及 Reader 证明两种升级路径、保守跳过、原内容/时间保持、失败回滚与不重跑。局部 review 通过，详见 Todo121 实施节。
-- 根 typecheck 通过；根 lint 0 errors / 41 warnings；Adapter typecheck 通过；架构 0 violations。Adapter 全量 lint **未通过**：现有多处 max-lines 错误（包括原本已超限的 migrations.ts，本轮仅追加注册项）；新增 0022 文件单独 lint 通过。不扩修无关超长文件，最终门禁仍须区分既有错误与新增问题。日志 `/tmp/provider-stabilization-20260911-{typecheck,lint,adapters-typecheck,adapters-lint}.log`。此前误用不存在的架构模块名 cli-adapters 已纠正为实际 zcode-cli，未修改策略或基线。
+- 根 typecheck 通过；根 lint 0 errors / 41 warnings；Adapter typecheck 通过；架构 0 violations。Adapter 全量 lint **未通过**：现有多处 max-lines 错误（包括原本已超限的 migrations.ts，本轮仅追加注册项）；新增 0022 文件单独 lint 通过。不扩修无关超长文件，最终门禁仍须区分既有错误与新增问题。日志 `/tmp/provider-stabilization-20260911-{typecheck,lint,adapters-typecheck,adapters-lint}.log`。此前误用不存在的架构模块名 cli-adapters 已纠正为实际 codez-cli，未修改策略或基线。
 - 继续执行 Todo117；批量门禁不是 19 项完成声明。

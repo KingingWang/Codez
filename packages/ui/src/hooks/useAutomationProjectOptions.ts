@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { VirtualProject } from "@zcode/services";
+import type { VirtualProject } from "@codez/services";
 import type { WorkspaceTabState } from "@/store/tabStore.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { logger } from "@/logger.js";

@@ -2,15 +2,15 @@
 
 ## Goal
 
-OpenAI Responses sessions must carry each step's reasoning into the next request, so the model keeps its reasoning across tool-call steps. Replay must not depend on server-side storage: ZCode never sends `previous_response_id` or a conversation id, and partially compatible `/responses` providers may not resolve stored item ids.
+OpenAI Responses sessions must carry each step's reasoning into the next request, so the model keeps its reasoning across tool-call steps. Replay must not depend on server-side storage: Codez never sends `previous_response_id` or a conversation id, and partially compatible `/responses` providers may not resolve stored item ids.
 
 ## Problem
 
-ZCode keeps provider-visible history in a protocol-neutral message list and replays the full history on every request (stateless replay).
+Codez keeps provider-visible history in a protocol-neutral message list and replays the full history on every request (stateless replay).
 
-The earlier boundary sent no `store` and no `include`. The upstream then used `store=true` and returned reasoning items without `encrypted_content`. Such an item can only be replayed as an `item_reference` by id. Some compatible providers cannot resolve that reference and return HTTP 502 on the tool-result follow-up, so ZCode dropped every reasoning item with an id. The next request then had no reasoning for any model, and model quality fell.
+The earlier boundary sent no `store` and no `include`. The upstream then used `store=true` and returned reasoning items without `encrypted_content`. Such an item can only be replayed as an `item_reference` by id. Some compatible providers cannot resolve that reference and return HTTP 502 on the tool-result follow-up, so Codez dropped every reasoning item with an id. The next request then had no reasoning for any model, and model quality fell.
 
-The AI SDK adds `include: ["reasoning.encrypted_content"]` only when `store === false` and the model id is in its built-in reasoning list (o1, o3, o4-mini, gpt-5\* except gpt-5-chat). Newer models such as gpt-6 are not in that list, so ZCode must send `include` itself.
+The AI SDK adds `include: ["reasoning.encrypted_content"]` only when `store === false` and the model id is in its built-in reasoning list (o1, o3, o4-mini, gpt-5\* except gpt-5-chat). Newer models such as gpt-6 are not in that list, so Codez must send `include` itself.
 
 ## Required Boundary
 
@@ -31,8 +31,8 @@ request N+1  input: reasoning { id: rs_1, encrypted_content: <opaque>, summary }
 - The built-in API rule for `openai-responses` writes `reasoning` for every model, so by default every model on this transport sends `include`. A non-reasoning model must have an option map that does not write `reasoning`; on OpenAI that is already required, because OpenAI also rejects `reasoning` for such a model.
 - Residual risk, not verified: an upstream or gateway that ignores `reasoning` but rejects `include` fails every request after this change, and the encrypted reasoning repair below does not cover that 400. The built-in non-OpenAI endpoints on this transport and custom gateways have not been tested against a real upstream.
 - The AI SDK also adds the same `include` by itself when `store` is `false` and the model ID is in its built-in reasoning list. A non-reasoning model whose ID matches that list must also write `"include": null` in its option map; the option map merge patch then removes the key.
-- Encrypted reasoning is bound to the model and service that produced it. For every `openai-responses` request, when the source message's provider or model differs from the target, encrypted OpenAI reasoning is dropped before serialization. The identity rule is the one used for Anthropic signed reasoning ([Anthropic Reasoning History Replay](../apps/zcode-cli/docs/design/v2/model/anthropic-reasoning-history-replay.md)); a message without source identity is kept. The repair marker projection in the next section also applies to every `openai-responses` request.
-- The serialization rules below apply only to stateless replay on this transport: `providerKind === "openai"`, `apiFormat === "openai-responses"`, no `openai.previousResponseId`, and no `openai.conversation`. With either stateful boundary the SDK handling is unchanged. ZCode never sends either boundary, so in practice they always apply. The projection applies the rules below in one pass over each assistant message's request parts, after the block order is resolved.
+- Encrypted reasoning is bound to the model and service that produced it. For every `openai-responses` request, when the source message's provider or model differs from the target, encrypted OpenAI reasoning is dropped before serialization. The identity rule is the one used for Anthropic signed reasoning ([Anthropic Reasoning History Replay](../apps/codez-cli/docs/design/v2/model/anthropic-reasoning-history-replay.md)); a message without source identity is kept. The repair marker projection in the next section also applies to every `openai-responses` request.
+- The serialization rules below apply only to stateless replay on this transport: `providerKind === "openai"`, `apiFormat === "openai-responses"`, no `openai.previousResponseId`, and no `openai.conversation`. With either stateful boundary the SDK handling is unchanged. Codez never sends either boundary, so in practice they always apply. The projection applies the rules below in one pass over each assistant message's request parts, after the block order is resolved.
 - With `store: false`, a reasoning item is replayed inline only when the same assistant message holds encrypted content for its `itemId`. One item can span several summary blocks and only the last block may carry the encrypted content, so the check is per `itemId`, not per block.
 - A reasoning block with an `itemId` but no non-empty encrypted content for that item is dropped. This covers history written before this boundary, cancelled streams, and providers that do not return encrypted content. With `store: false` the AI SDK also drops reasoning whose encrypted content is `null`, but it logs one warn-level SDK warning per request for it, and it sends an empty-string encrypted content as is. Dropping at the projection boundary avoids both.
 - When `store` is not `false`, every reasoning block with an `itemId` is dropped, so the SDK never emits a reasoning `item_reference`. Model resolution always sends `store: false`; the check keeps the projection consistent with the SDK, which reads the same `store`.
@@ -52,7 +52,7 @@ request (projected history with encrypted reasoning)
 next request: before the last marked assistant, encrypted OpenAI reasoning is dropped again
 ```
 
-- The repair reuses the signature repair of [Anthropic Reasoning History Replay](../apps/zcode-cli/docs/design/v2/model/anthropic-reasoning-history-replay.md#signature-rejection): the same one-shot credit, retry status reason (`reasoning_signature_repair`), log event, `signedReasoningReset` marker, and marker projection. Only the error check and the removed blocks are specific to OpenAI Responses.
+- The repair reuses the signature repair of [Anthropic Reasoning History Replay](../apps/codez-cli/docs/design/v2/model/anthropic-reasoning-history-replay.md#signature-rejection): the same one-shot credit, retry status reason (`reasoning_signature_repair`), log event, `signedReasoningReset` marker, and marker projection. Only the error check and the removed blocks are specific to OpenAI Responses.
 - The error check requires HTTP 400 and one of: the structured provider error code `invalid_encrypted_content`; or, for providers that send no code, a message that names encrypted content and says it "could not be verified" or "has expired". The text forms are the confirmed wordings of compatible gateways; other 400 responses are not repaired.
 - The repair removes only reasoning blocks that carry non-empty OpenAI encrypted content. The remaining blocks of the same `itemId` are dropped by the projection rule above. Text, tool calls, and tool results are unchanged, and no placeholder is added: the Responses API accepts an assistant turn without output items.
 - The repair and the marker never rewrite MessageHistory or persisted parts.
@@ -61,7 +61,7 @@ next request: before the last marked assistant, encrypted OpenAI reasoning is dr
 
 ## Verification
 
-Tests live in `apps/zcode-cli/packages/adapters/tests/`. Each rule above was mutation-checked: removing or loosening the rule makes a test fail.
+Tests live in `apps/codez-cli/packages/adapters/tests/`. Each rule above was mutation-checked: removing or loosening the rule makes a test fail.
 
 - `openai-responses-encrypted-reasoning-wire.test.ts`: request options, replay (with and without reasoning summaries), model and provider switch, repair retry, and marker, through the real AI SDK and a local fetch fixture.
 - `openai-responses-reasoning-projection.test.ts`: the projection rules on ordered messages, and the boundaries that keep trailing reasoning.

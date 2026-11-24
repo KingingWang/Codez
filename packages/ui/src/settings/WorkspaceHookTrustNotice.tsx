@@ -1,6 +1,6 @@
-import type { Hook } from "@zcode/shared";
+import type { Hook } from "@codez/shared";
 import { CircleAlert } from "lucide-react";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 
 /** 与 HooksList 行内 Trust 按钮保持同一判定，避免风险提示形成第二套审核状态。 */
 export function requiresWorkspaceHookTrust(hook: Hook): boolean {
@@ -44,7 +44,7 @@ export function WorkspaceHookTrustNotice({
   hooks: readonly Hook[];
   worktreeSourcePath?: string;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
 
   if (!hasWorkspaceHooksRequiringReview(hooks)) return null;
 

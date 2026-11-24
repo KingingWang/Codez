@@ -44,7 +44,7 @@ commit `41bb6b7af`（`fix(plugins): include installed marketplace resources`）�
 ## 范围（已与用户对齐）
 
 - **做**：发现（discovery）+ 插件管理界面展示 + 规范名称/唯一裸名称的运行时调用投影。
-- **不做**：不物理拷贝文件到 `~/.zcode/agents`——采用就地扫描，卸载即消失，无重名/陈旧拷贝问题。
+- **不做**：不物理拷贝文件到 `~/.codez/agents`——采用就地扫描，卸载即消失，无重名/陈旧拷贝问题。
 
 ## 关键架构事实（探索结论）
 
@@ -56,7 +56,7 @@ commit `41bb6b7af`（`fix(plugins): include installed marketplace resources`）�
   - `AgentSummary.source` 类型已是 `"user" | "plugin"`（`packages/shared/src/subagents-types.ts:3`）。
   - `AgentsListResult.pluginAgents` 字段已存在（同文件 `:28`）。
 - **唯一缺口**：没有人扫描插件包的 `agents/` 目录并填充 `pluginAgents`。
-- **项目风格是「各自复制」**：`skillsService` 与 `commandsService` 各自复制了一份完全相同的插件发现 helper（`PluginRootCandidate`、`readPluginConfigFromConfig`、`resolvePluginStorageRoot`、`scanOfficialPluginCacheRoots`、`readPluginManifest`/`findPluginManifestPath`、`parsePathList`、`resolveInside`、`DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS`、`ZCODE_*_MARKETPLACE` 常量），**仅 `readInstalledPluginRoots`（`packages/services/src/plugins/installedPluginRoots.ts`）是共享模块**。Agent 照此办理：在 `subagentsService.ts` 内复制同一套发现逻辑，把组件目录从 `skills`/`commands` 换成 `agents`。
+- **项目风格是「各自复制」**：`skillsService` 与 `commandsService` 各自复制了一份完全相同的插件发现 helper（`PluginRootCandidate`、`readPluginConfigFromConfig`、`resolvePluginStorageRoot`、`scanOfficialPluginCacheRoots`、`readPluginManifest`/`findPluginManifestPath`、`parsePathList`、`resolveInside`、`DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS`、`CODEZ_*_MARKETPLACE` 常量），**仅 `readInstalledPluginRoots`（`packages/services/src/plugins/installedPluginRoots.ts`）是共享模块**。Agent 照此办理：在 `subagentsService.ts` 内复制同一套发现逻辑，把组件目录从 `skills`/`commands` 换成 `agents`。
 - `subagentsService.ts` 已有可复用的 agent 解析原语：`collectAgentMarkdownPaths(rootPath)`（支持 `<name>.md`、`<name>/agent.md`、`<name>/index.md` 三种布局）与 `readAgentFrontmatter(content)`（解析 name/description/color/model/tools/systemPrompt，兼容 CRLF 与中文冒号）。
 
 ## 方案
@@ -70,9 +70,9 @@ commit `41bb6b7af`（`fix(plugins): include installed marketplace resources`）�
 - `readCliConfigFile()`、`readPluginConfigFromConfig(config)` —— 读取 CLI 配置中的插件配置（`enabled`、`dirs`、`storageDir`、`enabledPlugins`）。
 - `resolvePluginStorageRoot(storageDir)`、`resolveConfigPath(path)` —— 解析插件存储根。
 - `scanOfficialPluginCacheRoots(pluginStorageRoot)` —— 扫描官方 marketplace cache 下的 `<plugin>/<version>` 目录。
-- `readPluginManifest(rootPath)` / `findPluginManifestPath(rootPath)` —— 兼容 `.zcode-plugin/plugin.json`、`.claude-plugin/plugin.json`、`.codex-plugin/plugin.json` 三种 manifest，按同一优先级回退；manifest 需读出 `name` 与 `agents` 字段。
+- `readPluginManifest(rootPath)` / `findPluginManifestPath(rootPath)` —— 兼容 `.codez-plugin/plugin.json`、`.claude-plugin/plugin.json`、`.codex-plugin/plugin.json` 三种 manifest，按同一优先级回退；manifest 需读出 `name` 与 `agents` 字段。
 - `parsePathList(value)`、`resolveInside(rootPath, rawPath)` —— 解析 manifest 的 `agents` 字段为路径列表，并防止目录逃逸（绝对路径或 `..` 越界返回 `null`）。
-- `DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS`、`ZCODE_OFFICIAL_PLUGIN_MARKETPLACE`、`ZCODE_INLINE_PLUGIN_MARKETPLACE` 常量。
+- `DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS`、`CODEZ_OFFICIAL_PLUGIN_MARKETPLACE`、`CODEZ_INLINE_PLUGIN_MARKETPLACE` 常量。
 - 复用已有的共享模块 `readInstalledPluginRoots(pluginStorageRoot)`（读 `installed_plugins.json`）。
 
 > 实现注意：这些 helper 在 skills/commands 里已存在两份，本次按项目既定风格复制第三份到 subagents，不顺带抽公共模块（避免无关重构）。`PluginManifestSummary` 在本文件内的形状为 `{ name: string; agents?: unknown }`。
@@ -106,7 +106,7 @@ commit `41bb6b7af`（`fix(plugins): include installed marketplace resources`）�
 
 ### 2. `packages/services/test/subagentsService.test.ts`
 
-参考 `packages/services/test/skillsService.test.ts` 的 fixture 写法（用临时 HOME、写 `installed_plugins.json`、写 `.zcode-plugin/plugin.json` 或 `.claude-plugin/plugin.json`）：
+参考 `packages/services/test/skillsService.test.ts` 的 fixture 写法（用临时 HOME、写 `installed_plugins.json`、写 `.codez-plugin/plugin.json` 或 `.claude-plugin/plugin.json`）：
 
 - **发现已安装插件的 agent**：造一个带 `agents/foo.md`（含 frontmatter）的已安装插件 + `installed_plugins.json`，断言 `list().pluginAgents` 含该 agent，且 `source === "plugin"`、`path` 指向该文件、`name`/`description` 来自 frontmatter。
 - **资源/运行时投影分离**：断言 `list().agents` 同时包含规范名称和唯一裸名称，而
@@ -127,7 +127,7 @@ commit `41bb6b7af`（`fix(plugins): include installed marketplace resources`）�
 
 - 不修改 agent 文件格式或 subagent 执行协议。
 - 不改 i18n、不扩展 `AgentSummary` / `AgentsListResult` 契约。
-- 不物理拷贝到 `~/.zcode/agents`。
+- 不物理拷贝到 `~/.codez/agents`。
 - 不把插件发现 helper 抽成公共模块（保持与 skills/commands 同样的「各自复制」风格）。
 
 ## 验证

@@ -192,7 +192,7 @@ connectGate.promise
 
 (window as any).saveWidget = (widgetState: unknown) =>
   app.request({ method: "ui/set-widget-state", params: { widgetState } }, EmptyResultSchema);
-(window as any).readWidget = () => app.getHostContext()?.["zcode/widgetState"] ?? null;
+(window as any).readWidget = () => app.getHostContext()?.["codez/widgetState"] ?? null;
 (window as any).startStorageWriter = () =>
   new Promise<void>((resolve, reject) => {
     const request = indexedDB.open("host-fixture");

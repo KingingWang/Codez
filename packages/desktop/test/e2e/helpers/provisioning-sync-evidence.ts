@@ -3,7 +3,7 @@ import {
   providerProvisioningTriggerSchema,
   type ProviderProvisioningResult,
   type ProviderProvisioningTrigger,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 export interface ProvisioningSyncEvent {
   kind: "completed" | "warning";

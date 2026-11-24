@@ -15,7 +15,7 @@ import {
   TID_AUTOMATIONS_OPEN,
   TID_TASK_ITEM,
   testId,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -126,7 +126,7 @@ describe("定时任务立即运行：会话归属不符提示 E2E", () => {
 });
 
 function tasksDatabasePath(): string {
-  return join(homedir(), ".zcode", "v2", "tasks-index.sqlite");
+  return join(homedir(), ".codez", "v2", "tasks-index.sqlite");
 }
 
 function bindAutomationToForeignHostTask(title: string, taskId: string): void {
@@ -159,7 +159,7 @@ function readTaskHostId(taskId: string): string | null {
 }
 
 async function waitForHostMismatchDiagnostic(taskId: string): Promise<void> {
-  const logDir = await browser.electron.execute(() => process.env.ZCODE_E2E_RUNTIME_LOG_DIR);
+  const logDir = await browser.electron.execute(() => process.env.CODEZ_E2E_RUNTIME_LOG_DIR);
   expect(logDir).toBeTruthy();
   let matched: string[] = [];
   await browser.waitUntil(

@@ -21,7 +21,7 @@ import {
 // 真实高度、滚轮去向、粘性表头由 Electron 回放验证。
 const MARKER = "E2E_DWF_SAVE_WINDOW_BOUNDS";
 const FINAL_MARKER = "E2E_DWF_SAVE_WINDOW_BOUNDS_DONE";
-const SAVED_FILE = join(DEFAULT_WORKSPACE, ".zcode", "workflows", "release-check-overlong.dwf.ts");
+const SAVED_FILE = join(DEFAULT_WORKSPACE, ".codez", "workflows", "release-check-overlong.dwf.ts");
 const PANEL = '[data-permission-dialog-bounded="true"]';
 const SCROLL_AREA = '[data-permission-dialog-scroll="true"]';
 // 与组件同值：min(72dvh, 42rem)，根字号 16px。

@@ -58,7 +58,7 @@ function trackProjectRenders() {
 const root = fileURLToPath(new URL("../../../../../../", import.meta.url));
 const entry = "/packages/ui/test/browser/manual-review/pending/new-task-rendering.fixture.tsx";
 const artifacts =
-  process.env.ZCODE_E2E_ARTIFACT_DIR ||
+  process.env.CODEZ_E2E_ARTIFACT_DIR ||
   join(root, "packages/desktop/.e2e-artifacts/new-task-rendering");
 let server, browser, origin;
 before(async () => {
@@ -78,7 +78,7 @@ before(async () => {
           if (id.endsWith("/store/TabStoreProvider.tsx"))
             return "export const useTabStoreApi=()=>window.__renderFixture.tabStore; export const useTabStore=s=>s(window.__renderFixture.tabStore.getState()); export const useOptionalTabStore=useTabStore;";
           if (id.endsWith("/store/StoreProvider.tsx"))
-            return "import {createContext} from 'react'; export const StoreContext=createContext(null); const state={setTheme:()=>{},interfaceMode:'coding'}; export const useZCodeStore=s=>s(state); export const useZCodeStoreWithDefault=(_s,value)=>value;";
+            return "import {createContext} from 'react'; export const StoreContext=createContext(null); const state={setTheme:()=>{},interfaceMode:'coding'}; export const useCodezStore=s=>s(state); export const useCodezStoreWithDefault=(_s,value)=>value;";
           if (id.endsWith("/hooks/usePlatform.tsx"))
             return "export const useOptionalPlatform=()=>null; export const usePlatform=()=>({}); export const useSelectDirectory=()=>async()=>null;";
           if (id.endsWith("/hooks/useConfirmDialog.ts"))
@@ -116,7 +116,7 @@ before(async () => {
   });
   await server.listen();
   origin = server.resolvedUrls.local[0];
-  if (process.env.ZCODE_RENDER_ELECTRON_PATH) {
+  if (process.env.CODEZ_RENDER_ELECTRON_PATH) {
     const main = join(artifacts, "renderer.cjs");
     await writeFile(
       main,
@@ -125,7 +125,7 @@ before(async () => {
     const env = { ...process.env };
     delete env.ELECTRON_RUN_AS_NODE;
     const electron = await _electron.launch({
-      executablePath: process.env.ZCODE_RENDER_ELECTRON_PATH,
+      executablePath: process.env.CODEZ_RENDER_ELECTRON_PATH,
       args: [main],
       env,
     });
@@ -216,7 +216,7 @@ for (const mobile of [false, true])
         const evidence = { mobile, theme, motions: [] };
         const project = (id) => page.locator(`[data-project-id="${id}"]`);
         const toggle = (id) => project(id).getByTestId("virtual-project-toggle");
-        const preferenceKey = "zcode-project-sidebar-preferences";
+        const preferenceKey = "codez-project-sidebar-preferences";
         const key = (id) => JSON.stringify(["local", id]);
         const preferences = () =>
           page.evaluate((name) => JSON.parse(localStorage.getItem(name)), preferenceKey);

@@ -1,5 +1,5 @@
 // STR01–STR02 静默提醒按时间计时（docs/conversation-session-case-catalog.md「静默提醒（STR）」）。规格见
-// apps/zcode-cli/docs/design/v2/loop/meta-user-context.md「Silent-turn reminder」。
+// apps/codez-cli/docs/design/v2/loop/meta-user-context.md「Silent-turn reminder」。
 // 断言读上游请求体：慢响应满 60 秒后的请求带一次提醒，冷恢复后按原位置原字节回放；快速连续的静默响应不带提醒。
 import { clearAppData, waitForDefaultWorkspaceReady } from "#e2e/helpers/desktop-app";
 import { getUpstreamRequestEvidence } from "#e2e/helpers/conversation-session-network";

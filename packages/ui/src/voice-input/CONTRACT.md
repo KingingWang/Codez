@@ -5,7 +5,7 @@ Composer 语音输入的 UI 模块（`docs/chat/composer-voice-input.md`）。
 - `useComposerVoiceInput({ inputApiRef, sessionId, enabled })`：状态机唯一 owner，返回 `available`、`state`、`toggle`、`settle(reason)`。
 - `VoiceInputButton`：纯展示组件；按下时不抢输入框焦点。tooltip 显示 `shortcut`（未分配时为空串）。
 - `ui/useVoiceInputShortcut.ts`：快捷键 `toggleVoiceInput`。匹配读生效表；归属由调用方的 `ownsEvent` 判定（SessionPane 按对话区域路由）；命中后先聚焦输入框再调用 `toggle`，不持有状态。「识别中」完全不响应；纯 Shift 字符绑定在可编辑目标内不匹配。
-- `ui/useMicrophonePermissionGuide.ts`：macOS / Windows 权限被拒时的引导浮层状态（重新授权、打开系统设置、重启 ZCode、窗口获焦时重查一次权限）；浮层由 `VoiceInputButton` 渲染。
+- `ui/useMicrophonePermissionGuide.ts`：macOS / Windows 权限被拒时的引导浮层状态（重新授权、打开系统设置、重启 Codez、窗口获焦时重查一次权限）；浮层由 `VoiceInputButton` 渲染。
 - `adapters/pcmCapture.ts`：getUserMedia + AudioWorklet，输出 16kHz 单声道 PCM16，每 100ms 一块。
 - `domain/voiceInputFailure.ts`：失败分类、静音判定和提示文案选择，纯函数。
 

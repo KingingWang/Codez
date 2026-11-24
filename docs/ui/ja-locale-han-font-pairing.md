@@ -3,7 +3,7 @@
 ## 背景
 
 无衬线正文字体栈是 `ui-sans-serif, system-ui, sans-serif`，中日韩汉字的字形由 `<html lang>` 决定
-（`ZCodeIntlProvider` 跟随界面语言写入）。界面语言为日文时 `lang="ja-JP"`，日文汉字得到正确的日文字形。
+（`CodezIntlProvider` 跟随界面语言写入）。界面语言为日文时 `lang="ja-JP"`，日文汉字得到正确的日文字形。
 
 ## 问题（已修复）
 
@@ -21,8 +21,8 @@ macOS 日文界面下显示中文内容（中文消息、任务标题、文件�
 
 - 仅在 `:root:lang(ja)` 下生效，其他界面语言保持系统默认。
 - 用带 `unicode-range` 的 `@font-face` 只接管汉字和 CJK 标点，西文仍走 SF，假名仍走系统日文字体：
-  - `ZCode Han JP`：Hiragino Sans（W3 / W6），保证日文汉字仍是日文字形。
-  - `ZCode Han SC`：Hiragino Sans GB（W3 / W6），补日文字体缺失的简体字。
+  - `Codez Han JP`：Hiragino Sans（W3 / W6），保证日文汉字仍是日文字形。
+  - `Codez Han SC`：Hiragino Sans GB（W3 / W6），补日文字体缺失的简体字。
 - 两者同属 Hiragino 家族，字面大小和字重档位一致，混排时观感统一。
 - 日文界面里显式标了其他语言的局部元素（`lang` 不是日文，例如语言选择列表里 `lang="zh-CN"` 的
   「简体中文」）恢复默认字体栈，由浏览器按元素自身的 `lang` 选字形。该规则放在 `@layer base`，

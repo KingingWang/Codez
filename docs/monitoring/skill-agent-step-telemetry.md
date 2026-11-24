@@ -70,7 +70,7 @@ metadata 通过 `ToolCallError` 保留到最终失败的 `agent_step`。
 
 ## 验收
 
-- `zcode`、`agents`、`bundled`、`remote`、`plugin` 来源均上报符合遥测规则的解析后 `skill_name`，不合规名称为 `unknown`。
+- `codez`、`agents`、`bundled`、`remote`、`plugin` 来源均上报符合遥测规则的解析后 `skill_name`，不合规名称为 `unknown`。
 - 插件限定请求名在成功解析后变为原始技能名，原有插件字段不变。
 - 解析前失败、拒绝、停止一律 `unknown`，不保留任何请求名称。
 - 兼容旧 `input.name`、只到达终态、旧 metadata；缺少解析名称为 `unknown`，非 Skill 工具不携带 `skill_name`。

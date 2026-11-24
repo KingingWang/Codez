@@ -6,8 +6,8 @@ import {
   TID_WORKFLOW_DETAIL,
   TID_WORKFLOW_LAUNCH_ARG,
   TID_WORKFLOW_LAUNCH_DIALOG,
-} from "@zcode/shared";
-import { TID_AUTOMATIONS_OPEN, testId } from "@zcode/shared/test-ids";
+} from "@codez/shared";
+import { TID_AUTOMATIONS_OPEN, testId } from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByDom,
@@ -39,17 +39,17 @@ import { isOutsideClosedHistory, openClosedHistoryFolds } from "#e2e/helpers/v4-
 //
 // 文件名带 `gray-always-on`：配置 mock 网关按文件名下发 alwaysOn，工作流工具才在工具集里。
 // 回放只决定模型的选择；Skill 门、确认窗、写盘、saved 解析、编译、run 引擎与通知走产品链路。
-// 新会话必须从项目行开：侧栏「新任务」落在一个 draft 虚拟工作区，那里的 `.zcode/workflows/` 不是这个项目的。
+// 新会话必须从项目行开：侧栏「新任务」落在一个 draft 虚拟工作区，那里的 `.codez/workflows/` 不是这个项目的。
 // 写失败靠把目录换成同名普通文件制造：容器里可能是 root，权限位挡不住写入，而这条路 root 也过不去。
 const NAME = "dws-release-check";
-const WORKFLOWS_DIR = join(DEFAULT_WORKSPACE, ".zcode", "workflows");
+const WORKFLOWS_DIR = join(DEFAULT_WORKSPACE, ".codez", "workflows");
 const WORKFLOW_FILE = join(WORKFLOWS_DIR, `${NAME}.dwf.ts`);
 const VERBATIM_NAME = "dws-verbatim";
 const VERBATIM_FILE = join(WORKFLOWS_DIR, `${VERBATIM_NAME}.dwf.ts`);
 const BROKEN_FILE = join(WORKFLOWS_DIR, "dws-broken.dwf.ts");
 const SHADOWED_NAME = "dws-shadowed";
 // agent 进程的 HOME 是 DEFAULT_WORKSPACE 的上一级（automations-workflows-hub 同一事实）。
-const GLOBAL_DIR = join(dirname(DEFAULT_WORKSPACE), ".zcode", "workflows");
+const GLOBAL_DIR = join(dirname(DEFAULT_WORKSPACE), ".codez", "workflows");
 const SHADOWED_FILE = join(GLOBAL_DIR, `${SHADOWED_NAME}.dwf.ts`);
 // 与回放里的脚本逐字一致。
 const SCRIPT_V1 =
@@ -72,7 +72,7 @@ async function textOf(selector: string): Promise<string> {
   return String((await $(selector).getProperty("textContent")) ?? "").trim();
 }
 
-// 确认窗的落点是宿主 OS 的原生绝对路径（Windows 是 `C:\...\.zcode\workflows\x.dwf.ts`）。
+// 确认窗的落点是宿主 OS 的原生绝对路径（Windows 是 `C:\...\.codez\workflows\x.dwf.ts`）。
 // 断言只关心项目内的相对段，所以先把分隔符归一成 `/` 再比，否则 Windows 上必然失败。
 function toPosixSeparators(text: string): string {
   return text.replaceAll("\\", "/");
@@ -144,7 +144,7 @@ describe("动态工作流 · 从对话保存", () => {
     await pinE2ELocale("zh-CN");
     await rm(WORKFLOWS_DIR, { recursive: true, force: true });
     await mkdir(GLOBAL_DIR, { recursive: true });
-    await writeFile(SHADOWED_FILE, `/* zcode-workflow\ndescription: E2E 全局同名\n*/\nreturn 1;\n`);
+    await writeFile(SHADOWED_FILE, `/* codez-workflow\ndescription: E2E 全局同名\n*/\nreturn 1;\n`);
   });
 
   after(async () => {
@@ -164,7 +164,7 @@ describe("动态工作流 · 从对话保存", () => {
     const block = await textOf(BLOCK);
     expect(block).toContain("把这个工作流保存到项目里？");
     expect(block).toContain(NAME);
-    expect(toPosixSeparators(block)).toContain(`.zcode/workflows/${NAME}.dwf.ts`);
+    expect(toPosixSeparators(block)).toContain(`.codez/workflows/${NAME}.dwf.ts`);
     expect(block).toContain("E2E 发布前检查");
     expect(block).toContain("用户要做发布前检查时");
     await expect($(`${BLOCK} [data-workflow-overwrite-hint="true"]`)).not.toBeExisting();
@@ -179,9 +179,9 @@ describe("动态工作流 · 从对话保存", () => {
     await approveV4Permission();
     await waitForV4AssistantMessageContaining("E2E_DWS_A_DONE", 60000);
 
-    // 文件：`/* zcode-workflow` 元数据块 + 逐字节脚本；名字与作用域不写进文件。
+    // 文件：`/* codez-workflow` 元数据块 + 逐字节脚本；名字与作用域不写进文件。
     const saved = await readFile(WORKFLOW_FILE, "utf-8");
-    expect(saved.startsWith("/* zcode-workflow\n")).toBe(true);
+    expect(saved.startsWith("/* codez-workflow\n")).toBe(true);
     expect(saved.endsWith(`*/\n${SCRIPT_V1}`)).toBe(true);
     expect(saved).toContain("description: E2E 发布前检查");
     expect(saved).toContain("whenToUse: 用户要做发布前检查时");
@@ -305,14 +305,14 @@ describe("动态工作流 · 从对话保存", () => {
     // 全局档同名、项目档没有：后果句补上遮蔽那一句。
     await setName(SHADOWED_NAME);
     await waitForText(consequence, "同名的全局工作流将被这一份遮蔽", "没有说出遮蔽事实");
-    expect(await textOf(consequence)).toContain(`.zcode/workflows/${SHADOWED_NAME}.dwf.ts`);
+    expect(await textOf(consequence)).toContain(`.codez/workflows/${SHADOWED_NAME}.dwf.ts`);
     await waitForText('[data-testid="workflow-save-submit"]', "直接保存", "按钮没有改回直接保存");
 
     // 换到全局档：路径换到 `~`；项目里已有同名时说「会遮蔽它」。
     await setName(NAME);
     await waitForText(overwrite, "本项目已有同名工作流", "切作用域前的覆盖警告没出现");
     await chooseScope("全局");
-    await waitForText(consequence, `~/.zcode/workflows/${NAME}.dwf.ts`, "全局档路径不对");
+    await waitForText(consequence, `~/.codez/workflows/${NAME}.dwf.ts`, "全局档路径不对");
     await waitForText(consequence, "本项目里已有同名工作流，在这里会遮蔽它", "全局档没说遮蔽");
     await chooseScope("项目");
 
@@ -322,7 +322,7 @@ describe("动态工作流 · 从对话保存", () => {
     await writeFile(WORKFLOWS_DIR, "");
     try {
       await setName(VERBATIM_NAME);
-      await waitForText(consequence, `.zcode/workflows/${VERBATIM_NAME}.dwf.ts`, "后果句没有路径");
+      await waitForText(consequence, `.codez/workflows/${VERBATIM_NAME}.dwf.ts`, "后果句没有路径");
       await waitForText(consequence, "按名字再次运行", "后果句不完整");
       await submit.click();
       const failure = '[data-testid="workflow-save-failure"]';
@@ -406,7 +406,7 @@ describe("动态工作流 · 从对话保存", () => {
     expect(await textOf(`${source} [data-workflow-saved-name="true"]`)).toBe(NAME);
     expect(
       toPosixSeparators(await textOf(`${source} [data-workflow-saved-path="true"]`)),
-    ).toContain(`.zcode/workflows/${NAME}.dwf.ts`);
+    ).toContain(`.codez/workflows/${NAME}.dwf.ts`);
     const grid = await textOf(`${source} [data-workflow-saved-args="true"]`);
     expect(grid).toContain("target");
     expect(grid).toContain("beta");

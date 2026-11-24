@@ -13,7 +13,7 @@
 | 主要 surface | V4 composer、session pane、assistant feedback、quota banner、错误 banner |
 | 实际上报端 | `/event/report` 与 ARMS custom event |
 | 客户端范围 | desktop `desktop-continuous` 实际上报；Web/手机仅验证 no-op 和隔离 |
-| Provider 范围 | 通用埋点使用任意 scripted provider；quota 使用 Start Plan 等价类；官方版本安全校验 case 使用 `zcode-plan` endpoint 等价类 |
+| Provider 范围 | 通用埋点使用任意 scripted provider；quota 使用 Start Plan 等价类；官方版本安全校验 case 使用 `codez-plan` endpoint 等价类 |
 | 非目标 | 购买产品/周期/支付/结果、启动性能、输入框卡顿、ARMS 全局稳定性/资源/网络 |
 
 ## 澄清记录
@@ -118,7 +118,7 @@ case-local provider fixture / synthetic fault
 | delivery | live、duplicate live、initial、hydration、recovery | 只有 live 可产生 fact |
 | timing | first token 负值、stall 3000/3001、tool 清除 stall、permission wait | 精确边界用 fake clock/recorded stream，不复制所有耗时值 |
 | model network | started、completed、failed、retry_scheduled、stream_stalled | 不从 accepted/queued/apiRetry 推断 |
-| provider | generic、custom hostname、Start Plan、`zcode-plan` endpoint | 不按具体模型名或供应商品牌全排列 |
+| provider | generic、custom hostname、Start Plan、`codez-plan` endpoint | 不按具体模型名或供应商品牌全排列 |
 | compaction | success、failed、interrupted、non-terminal、duplicate | terminal status 做 golden；前后台做代表 E2E |
 | error banner | visible、suppressed、same-key duplicate、new key、3007 | mount 内去重；不可见不报 |
 | workspace | local、相同 path 不同 identity/remoteSession、service generation replacement | 路径展示不与身份隔离混用 |
@@ -170,7 +170,7 @@ payload。这里的“已验证”不等于 formal E2E 晋升：新差分 spec �
 - TDP01-TDP15、TDP18-TDP19 默认使用本地 scripted provider；不需要真实账号、API key 或 GLM。
 - custom provider case 只需要 endpoint hostname/path 的 fixture，用于证明只上报 hostname、不泄漏 path/query。
 - TDP16 使用 Start Plan provider ID 与 entitlement fixture；不依赖真实 quota 账号。
-- TDP17 使用 endpoint 以 `/zcode-plan` 或 `/zcode-plan/anthropic` 结尾的 provider fixture；
+- TDP17 使用 endpoint 以 `/codez-plan` 或 `/codez-plan/anthropic` 结尾的 provider fixture；
   安全校验配置与 3007 由本地服务模拟，不要求模型名为 GLM（仅官方版本适用）。
 - 真实账号/模型只用于全部自动化通过后的可选 production smoke，不进入 CI 合同。
 
@@ -178,7 +178,7 @@ payload。这里的“已验证”不等于 formal E2E 晋升：新差分 spec �
 
 ### 隔离运行
 
-旧版和当前版本使用独立的 `ZCODE_E2E_HOME_DIR`、network capture、artifact 和 runtime log 目录。
+旧版和当前版本使用独立的 `CODEZ_E2E_HOME_DIR`、network capture、artifact 和 runtime log 目录。
 同一 case 配对串行运行，避免端口、协议注册、provider replay 与机器负载互相干扰。每次 artifact 记录：
 
 - legacy/current git SHA、构建版本和 case ID。
@@ -223,7 +223,7 @@ payload。这里的“已验证”不等于 formal E2E 晋升：新差分 spec �
 及[界面模式归属](../monitoring/conversation-telemetry-v4.md#界面模式归属)。
 
 默认自动更新该合同文件，产生可审查的工作区 diff，不自动提交或推送。
-`ZCODE_E2E_TELEMETRY_FIELD_SYNC=0` 可用于只读 CI；仍查询并报告依据。并发更新使用独占锁、
+`CODEZ_E2E_TELEMETRY_FIELD_SYNC=0` 可用于只读 CI；仍查询并报告依据。并发更新使用独占锁、
 持锁后重读和原子替换；锁被占用或文件不可写时只报告本轮未归并，不覆盖其他运行的写入。
 日常运行不改双版本 golden，也不把字段值复制到白名单。
 
@@ -239,17 +239,17 @@ payload。这里的“已验证”不等于 formal E2E 晋升：新差分 spec �
 也可使用已保存的本轮 capture 独立执行维护：
 
 ```bash
-pnpm --filter @zcode/desktop e2e:telemetry:fields --capture <capture.json> --artifact-dir <report-directory>
+pnpm --filter @codez/desktop e2e:telemetry:fields --capture <capture.json> --artifact-dir <report-directory>
 # 只查看依据和建议，不更新合同
-pnpm --filter @zcode/desktop e2e:telemetry:fields --capture <capture.json> --artifact-dir <report-directory> --no-sync
+pnpm --filter @codez/desktop e2e:telemetry:fields --capture <capture.json> --artifact-dir <report-directory> --no-sync
 ```
 
-独立命令的输入使用本例 `ZCODE_TELEMETRY_PARITY_CAPTURE_PATH` 生成的
+独立命令的输入使用本例 `CODEZ_TELEMETRY_PARITY_CAPTURE_PATH` 生成的
 `{ "eventReport": [...] }`。调用者只应提供已经通过消息关系断言的本轮 capture；
 命令检查字段合同，不替代真实 E2E。读取未知事件或非法 detail 会报错，不能据此归并。
 
 本例只验证普通 generation step；离线回放可用现有
-`ZCODE_DYNAMIC_WORKFLOW_MODE=disabled` 固定关闭动态工作流灰度。2026-10-27 的默认回放
+`CODEZ_DYNAMIC_WORKFLOW_MODE=disabled` 固定关闭动态工作流灰度。2026-10-27 的默认回放
 现场中，真实 `client/configs` 请求耗时超过首轮发送等待，输入框未清空，尚未进入字段检查。
 固定该无关维度不延长超时、不重发消息，也不表示已覆盖动态工作流模式。
 

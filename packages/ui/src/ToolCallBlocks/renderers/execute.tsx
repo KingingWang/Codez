@@ -2,11 +2,11 @@ import { ExecuteCommand } from "@/ToolCallBlocks/renderers/ExecuteCommand.js";
 import {
   bashOutputDisplaySchema,
   executionOutputPreviewSchema,
-} from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared/codez-protocol-v4";
 import { ExecuteOutput } from "@/ToolCallBlocks/renderers/ExecuteOutput.js";
 import { SquareTerminalIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { ToolSnapshotFieldNotice } from "@/ToolCallBlocks/ToolSnapshotFieldNotice.js";
 import { ToolLayout } from "../ToolLayout.js";
 import type { ToolCallBlockRenderContext } from "../shared.js";
@@ -267,7 +267,7 @@ function extractExecuteResultText(output: unknown): string | null {
 }
 
 export function ExecuteToolCallBlock(context: ToolCallBlockRenderContext) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const { toolCallNode, isRunning, statusLabel, errorText, isOfficeMode = false } = context;
   const { toolCall } = toolCallNode;
   // 摘要展示调用意图，详情仍从原始 input 读取命令，避免 description 替代真实执行内容。

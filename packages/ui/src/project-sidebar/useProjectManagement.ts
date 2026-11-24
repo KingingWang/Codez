@@ -7,7 +7,7 @@ import {
 import { useProjectDirectory } from "@/project-sidebar/ProjectDirectoryProvider.js";
 import { formatProjectError, projectKey } from "@/project-sidebar/view.js";
 import { dismissToast, toast, updateToast } from "@/components/ui/toast.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import { formatBytes } from "@/resource-manager/resourceUsageView.js";
 
@@ -25,7 +25,7 @@ export interface ProjectManagementFailure {
   retry(): Promise<void>;
 }
 
-/** 确认对话框里「同时删除 ZCode 数据」的测量汇总；只含本机候选。 */
+/** 确认对话框里「同时删除 Codez 数据」的测量汇总；只含本机候选。 */
 export interface ProjectDataTotals {
   projects: number;
   sessions: number;
@@ -45,7 +45,7 @@ export const isProjectDataCandidate = (row: ProjectManagementRow) =>
 
 export function useProjectManagement() {
   const directory = useProjectDirectory();
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<ProjectManagementFailure | null>(null);
   const queue = useRef<Promise<void>>(Promise.resolve());

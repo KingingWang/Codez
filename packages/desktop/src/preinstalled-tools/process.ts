@@ -3,23 +3,23 @@ import {
   mainToPreinstalledToolsSchema,
   type MainToPreinstalledToolsMessage,
   type PreinstalledToolsToMainMessage,
-} from "@zcode/shared/preinstalled-tools";
+} from "@codez/shared/preinstalled-tools";
 import {
   createSettingService,
   createHostApiNetworkTransport,
   createServiceLogger,
   setDataBaseDir,
-} from "@zcode/services/node";
+} from "@codez/services/node";
 import { PreinstalledToolsCoordinator } from "@desktop/preinstalled-tools/coordinator.js";
 
-declare const __ZCODE_PREINSTALL_TEST_BUILD__: boolean;
+declare const __CODEZ_PREINSTALL_TEST_BUILD__: boolean;
 
 const parent = process.parentPort;
 if (!parent) throw new Error("预装工具进程需要父进程通信端口");
 // 仅 E2E 构建：模拟安装包损坏导致的初始化前退出（PT-30/31）；生产构建整段移除。
 if (
-  __ZCODE_PREINSTALL_TEST_BUILD__ &&
-  process.env.ZCODE_E2E_PREINSTALLED_TOOLS_EXIT_BEFORE_INIT === "1"
+  __CODEZ_PREINSTALL_TEST_BUILD__ &&
+  process.env.CODEZ_E2E_PREINSTALLED_TOOLS_EXIT_BEFORE_INIT === "1"
 )
   process.exit(1);
 const post = (message: PreinstalledToolsToMainMessage) => parent.postMessage(message);

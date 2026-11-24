@@ -4,7 +4,7 @@
 >
 > 历史说明：本 Todo 建立的 Host/Repository 权威和细粒度保存边界仍有效；Provider/Model 创建、删除、来源、启用、
 > 重复成员与排序交互已由
-> [`Todo 21`](./todo-21-zcode-builtin-config-ownership-and-model-activation-order.md) 重新裁决。
+> [`Todo 21`](./todo-21-codez-builtin-config-ownership-and-model-activation-order.md) 重新裁决。
 >
 > 日期：2026-08-25
 >
@@ -33,7 +33,7 @@
 Provider Config 路径
 ====================
 
-ZCode Built-in Provider Config（在线配置）
+Codez Built-in Provider Config（在线配置）
                     +
 Account Built-in Provider Config（只约束 Built-in）
                     |
@@ -49,7 +49,7 @@ Effective Provider Config
 Model Config 路径
 =================
 
-ZCode Built-in Model Config Rules
+Codez Built-in Model Config Rules
                     |
                     | 对当前 Effective Provider 中的 providerId/modelId/api.type 解析
                     v
@@ -121,7 +121,7 @@ Built-in Model Rules 必须作用于最终 `Effective Provider Config`。因此 
 Personal Model 只要能匹配 Built-in Rule，也会先得到 Built-in 默认模型配置，再叠加 Personal Rules。
 
 `Effective Built-in Model Config` 只是“Built-in Rules 对当前模型的解析结果”，不替代
-`ZCode Built-in Model Config Rules` 这个在线配置事实源。
+`Codez Built-in Model Config Rules` 这个在线配置事实源。
 
 ### 2.2 Settings View 返回层次，Renderer 只编辑 Personal
 
@@ -533,9 +533,9 @@ PRS-05 比较解析后 Rule 的身份、顺序、匹配条件和配置内容，�
 
 必须保持：
 
-- Provider Overlay 顺序是 ZCode Built-in -> Account Built-in -> Personal。
-- Account Built-in 只约束 ZCode Built-in Provider；Personal 始终最后覆盖。
-- Model Rules 是 ZCode Built-in Rules + Personal Rules，并作用于 Effective Provider。
+- Provider Overlay 顺序是 Codez Built-in -> Account Built-in -> Personal。
+- Account Built-in 只约束 Codez Built-in Provider；Personal 始终最后覆盖。
+- Model Rules 是 Codez Built-in Rules + Personal Rules，并作用于 Effective Provider。
 - Personal Config 与 Personal exact Rule 始终稀疏，不能从 Effective 反向展开。
 - `builtinModelIds` 和 `modelIds` 的所有权、冲突、顺序与 enabled 设计不变。
 - Config 更新只影响之后创建的 Model；已创建 Active Model 不被热修改。

@@ -77,8 +77,8 @@ sequenceDiagram
 
 - 改动层级：presentation / validation / commit-effect / persistence；既有状态归属不变。
 - 页面级目录、组件、函数、类型、i18n、日志、测试标识与构建入口统一 Rewards/rewards；本地环境配置改为 VITE_REWARDS_WEBVIEW_ORIGIN，不读取旧变量。
-- 新分区为 persist:zcode-rewards，新上下文事件为 zcode-rewards-context；window.zcodeBridge、OAuth/JWT key 不变。
-- 不迁移、不读取、不自动清理旧 persist:zcode-referrals 分区，不订阅旧事件、不导出旧别名、不兼容旧路径，不添加重定向或切换失败时回旧页。现有非法配置校验、安全拒绝及普通 Web 无 bridge 行为不属于迁移兜底，继续保留。
+- 新分区为 persist:codez-rewards，新上下文事件为 codez-rewards-context；window.codezBridge、OAuth/JWT key 不变。
+- 不迁移、不读取、不自动清理旧 persist:codez-referrals 分区，不订阅旧事件、不导出旧别名、不兼容旧路径，不添加重定向或切换失败时回旧页。现有非法配置校验、安全拒绝及普通 Web 无 bridge 行为不属于迁移兜底，继续保留。
 - Website 的 /invite、/invite/accept、/invite/unavailable 与 /referrals/unavailable 是实际邀请业务，不属于被移除的奖励主页，保持原语义；仅旧 /{cn|en}/referrals 根页面返回 404。
 - 升级、领取、营销上报、任务/session、手机 replayable 与桌面 continuous 均不改变。用户数据/奖励仍归服务端，页面展示状态归 Website，登录续接归窗口 Provider。
 
@@ -91,9 +91,9 @@ sequenceDiagram
 
 以上用例已按用户决定 accepted；迁移/旧版本兼容组合 pruned，不增加迁移测试。沿用 REF-01…12 的原登录/桥接隔离用例 ID；初始新增 E2E 保持 pending，2026-09-16 转正决定见下文，不使用 Docker。图谱保留稳定 capability ID，增加 Rewards 别名及营销入口关系；codegraph 不可用，采用二层静态调用核对，不声称完整索引扫描。
 
-window.zcodeBridge 提供 getTheme/onThemeChange、getLang/onLangChange、getAuthState/onAuthChange。订阅返回取消函数；读取在尚未就绪时返回 null。theme 为 zai-light/zai-dark，locale 为 zh-CN/en-US。AuthState 为 {status: ready|anonymous, provider: zai|bigmodel|null, revision: number}，ready 仅表示注入完成，不等于服务端验签成功。事件不携带 token。禁止购买完成能力出现在邀请页。
+window.codezBridge 提供 getTheme/onThemeChange、getLang/onLangChange、getAuthState/onAuthChange。订阅返回取消函数；读取在尚未就绪时返回 null。theme 为 zai-light/zai-dark，locale 为 zh-CN/en-US。AuthState 为 {status: ready|anonymous, provider: zai|bigmodel|null, revision: number}，ready 仅表示注入完成，不等于服务端验签成功。事件不携带 token。禁止购买完成能力出现在邀请页。
 
-凭据 key 与购买页一致：当前渠道 oauth:zai:access_token 或 oauth:bigmodel:access_token，以及 zcodejwttoken。切账号和关闭时清除旧值；每次注入前与异步读取后都检查当前 URL、组件生命周期和账号代次，旧结果不能写进新页面。不添加主动邀请提交或鉴权失败自动业务重试。
+凭据 key 与购买页一致：当前渠道 oauth:zai:access_token 或 oauth:bigmodel:access_token，以及 codezjwttoken。切账号和关闭时清除旧值；每次注入前与异步读取后都检查当前 URL、组件生命周期和账号代次，旧结果不能写进新页面。不添加主动邀请提交或鉴权失败自动业务重试。
 
 ## 影响面（静态核对）
 

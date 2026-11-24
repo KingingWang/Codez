@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { getRemoteTransferProgressKey, type RemoteConnectionRuntimeLog } from "@zcode/shared";
+import { getRemoteTransferProgressKey, type RemoteConnectionRuntimeLog } from "@codez/shared";
 import { usePlatform } from "@/hooks/usePlatform.js";
 
 export interface RemoteConnectionLogEntry {

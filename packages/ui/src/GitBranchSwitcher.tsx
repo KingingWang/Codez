@@ -9,7 +9,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import type { GitRepositorySummary } from "@zcode/shared";
+import type { GitRepositorySummary } from "@codez/shared";
 import { Button } from "@/components/ui/button.js";
 import {
   Command,
@@ -27,7 +27,7 @@ import {
 } from "@/git-branch-switcher/GitBranchDialogs.js";
 import { GitGraphDialog } from "@/git-graph/GitGraphDialog.js";
 import { useGitBranchSwitcher } from "@/hooks/useGitBranchSwitcher.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import {
   matchesGitBranchSearch,
   resolveGitBranchTriggerLabel,
@@ -151,7 +151,7 @@ function GitBranchSwitcherView({
   avoidPopoverCollisions = true,
   showFooterActions = true,
 }: GitBranchSwitcherProps & { controller: BranchController; mode: "all" | "trigger" | "dialogs" }) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const numberFormatter = useMemo(() => new Intl.NumberFormat(locale), [locale]);
   const commandListRef = useRef<HTMLDivElement | null>(null);
   const {

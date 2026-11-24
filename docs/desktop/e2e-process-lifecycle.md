@@ -4,11 +4,11 @@
 
 Desktop WDIO E2E uses one run identity for both file isolation and process cleanup:
 
-- `ZCODE_E2E_RUN_ID`
-- `ZCODE_E2E_HOME_DIR`
-- Electron app arg `--zcode-e2e-run-id=<runId>`
+- `CODEZ_E2E_RUN_ID`
+- `CODEZ_E2E_HOME_DIR`
+- Electron app arg `--codez-e2e-run-id=<runId>`
 
-`ZCODE_E2E_HOME_DIR` isolates persisted app data. `ZCODE_E2E_RUN_ID` is also passed on the Electron command line so process scans can identify the root process for the current WDIO run without relying on shared build paths.
+`CODEZ_E2E_HOME_DIR` isolates persisted app data. `CODEZ_E2E_RUN_ID` is also passed on the Electron command line so process scans can identify the root process for the current WDIO run without relying on shared build paths.
 
 ## Cleanup Boundary
 
@@ -19,7 +19,7 @@ host 或 crash handler 的命令行仍会携带当前 run 的 HOME/profile 路�
 精确命中的后代向上补齐连续的 Electron main 与 ChromeDriver 父链，再从得到的根节点
 向下回收整棵树；遇到 WDIO controller、shell、terminal 或其他非 Electron/ChromeDriver
 父进程必须停止。反向追溯必须由当前 runId/HOME 的精确命中触发；不能仅凭
-`ZCode E2E`、共享 build 路径或进程名称直接选择清理根。
+`Codez E2E`、共享 build 路径或进程名称直接选择清理根。
 
 `beforeSession` 的进程退出屏障、fixture/mock 初始化和 HOME reset 是一个 fail-closed
 前置事务。WDIO config hook 会吞掉普通 rejection，因此事务失败时必须保存原始错误，并由
@@ -28,11 +28,11 @@ root-hook failure，不能带着缺失的 replay/capture、日志目录或旧 HO
 
 Shared markers are intentionally not cleanup identities:
 
-- `ZCode E2E`
+- `Codez E2E`
 - `APP_ENTRY_POINT`
 - `out/main`
 
-Those values only prove that a process belongs to this repository or product test build. They do not prove it belongs to the current WDIO run. Using them as kill conditions lets one shard or local run terminate another shard with a different `ZCODE_E2E_HOME_DIR`, causing DevTools disconnects, `DevToolsActivePort` failures, white screens, or random suite exits.
+Those values only prove that a process belongs to this repository or product test build. They do not prove it belongs to the current WDIO run. Using them as kill conditions lets one shard or local run terminate another shard with a different `CODEZ_E2E_HOME_DIR`, causing DevTools disconnects, `DevToolsActivePort` failures, white screens, or random suite exits.
 
 ## Platform Notes
 
@@ -44,7 +44,7 @@ The same boundary applies on macOS, Linux, and Windows. Windows retry cleanup af
 
 1. enters the configured z-code checkout;
 2. fetches `staging` from the configured HTTPS repository and updates the local branch with a fast-forward merge;
-3. clears inherited spec filters and runs the desktop E2E suite once, without entering the shard runner, through `pnpm --filter @zcode/desktop test:e2e:serial`;
+3. clears inherited spec filters and runs the desktop E2E suite once, without entering the shard runner, through `pnpm --filter @codez/desktop test:e2e:serial`;
 4. invokes `scripts/ci/push-e2e-metrics-to-bitable.mjs` and then `scripts/ci/push-e2e-report-to-feedback.mjs` for that artifact directory, including when the E2E command fails. Failure artifact collection is enabled so the report upload can attach failed-case videos.
 
 The continuous loop owns exactly one run-specific output directory:
@@ -56,7 +56,7 @@ create run-specific `packages/desktop/.e2e-home-<run>-shard-*` siblings. The
 serial entry point applies only to this continuous loop. Other E2E entry points
 may keep their own sharding policy.
 
-The loop never resets or discards repository changes. A dirty checkout, failed fetch, or non-fast-forward branch skips that iteration and retries after the configured delay. Generated E2E HOME directories are ignored by Git so test state from a prior interrupted run is not mistaken for a source change. Bitable credentials and `ZCODE_FEEDBACK_NOTIFICATION_TOKEN` remain environment variables consumed by the upload scripts. `-Once` runs one iteration for maintenance or validation.
+The loop never resets or discards repository changes. A dirty checkout, failed fetch, or non-fast-forward branch skips that iteration and retries after the configured delay. Generated E2E HOME directories are ignored by Git so test state from a prior interrupted run is not mistaken for a source change. Bitable credentials and `CODEZ_FEEDBACK_NOTIFICATION_TOKEN` remain environment variables consumed by the upload scripts. `-Once` runs one iteration for maintenance or validation.
 
 Before each fetch, the loop removes only runner-owned transient state from the
 previous iteration: the fixed `packages/desktop/.e2e-home/`, legacy
@@ -75,4 +75,4 @@ pwsh -File .\scripts\ci\run-e2e-bitable-loop.ps1
 pwsh -File .\scripts\ci\run-e2e-bitable-loop.ps1 -Once
 ```
 
-The runner validates `LARK_E2E_APP_ID`, `LARK_E2E_APP_SECRET`, `LARK_E2E_BITABLE_TOKEN`, `LARK_E2E_TABLE_ID`, and `ZCODE_FEEDBACK_NOTIFICATION_TOKEN` before starting the first E2E run. `ZCODE_FEEDBACK_BASE_URL` remains optional and uses the report uploader default when omitted.
+The runner validates `LARK_E2E_APP_ID`, `LARK_E2E_APP_SECRET`, `LARK_E2E_BITABLE_TOKEN`, `LARK_E2E_TABLE_ID`, and `CODEZ_FEEDBACK_NOTIFICATION_TOKEN` before starting the first E2E run. `CODEZ_FEEDBACK_BASE_URL` remains optional and uses the report uploader default when omitted.

@@ -11,7 +11,7 @@ ModelSelection 转化为能够稳定封装模型 API 调用的 Model。
 Provider Config 路径                         Model Config 路径
 ====================                       =================
 
-ZCode Built-in Provider Config             ZCode Built-in Model Config Rules
+Codez Built-in Provider Config             Codez Built-in Model Config Rules
               |                                         |
               v                                         +
 Account Built-in Provider Config           Personal Model Config Rules
@@ -71,11 +71,11 @@ Effective Built-in Provider Config         Effective Model Config Rules
 Provider Config 固定按以下顺序解析：
 
 ```ts
-effectiveBuiltinProviders = zcodeBuiltinProviders.overlay(accountBuiltinProviders);
+effectiveBuiltinProviders = codezBuiltinProviders.overlay(accountBuiltinProviders);
 effectiveProviders = effectiveBuiltinProviders.overlay(personalProviders);
 ```
 
-优先级是 `Personal > Account Built-in > ZCode Built-in`。Account Built-in 只处理 ZCode Built-in 已声明
+优先级是 `Personal > Account Built-in > Codez Built-in`。Account Built-in 只处理 Codez Built-in 已声明
 的账号 Provider；其结果是 Effective Built-in Provider Config。Personal 保存用户自定义 Provider 和最终
 覆盖。
 
@@ -87,10 +87,10 @@ effectiveProviders = effectiveBuiltinProviders.overlay(personalProviders);
 Model Config Rules 固定按以下顺序组合：
 
 ```ts
-effectiveModelRules = ModelConfigRules.composeEffective(zcodeBuiltinModelRules, personalModelRules);
+effectiveModelRules = ModelConfigRules.composeEffective(codezBuiltinModelRules, personalModelRules);
 ```
 
-其内部顺序是 `ZCode Built-in + Personal provider-model`。Personal JSON 只保存精确 Rule，物理排列
+其内部顺序是 `Codez Built-in + Personal provider-model`。Personal JSON 只保存精确 Rule，物理排列
 不改变精确 Rule 最后覆盖的语义。
 
 Rules 解析 Effective Provider Config 中的模型，不能先解析模型再追加 Account 或 Personal Provider
@@ -99,9 +99,9 @@ Overlay。`Effective` 只表示 Overlay/解析已经完成，不产生第二套�
 完整字段、Overlay、可见性、Access、存储和迁移见
 [`registry/configuration.md`](./registry/configuration.md)。
 
-ZCode Built-in Release 的 Provider/Rule 排列、Match/Exact Rule 写作层级、Endpoint 特化、证据边界和默认
+Codez Built-in Release 的 Provider/Rule 排列、Match/Exact Rule 写作层级、Endpoint 特化、证据边界和默认
 启用目录维护规范见
-[`registry/zcode-builtin-provider-config.md`](./registry/zcode-builtin-provider-config.md)。
+[`registry/codez-builtin-provider-config.md`](./registry/codez-builtin-provider-config.md)。
 
 模型历史回放、请求编码兼容与 Provider Access 产品协议的归属见
 [`registry/request-compatibility-and-access-protocols.md`](./registry/request-compatibility-and-access-protocols.md)。
@@ -131,7 +131,7 @@ Request Auth 缺失时，Model/Adapter 在网络请求前返回类型化鉴权�
 一次性安全校验 Header、Off-Peak Ticket 等动态材料不进入 Provider Config 或 Registry View。普通 API Key
 Provider 仍可以由 Personal Config 保存 API Key。
 
-账号 Access 类别由 ZCode Built-in 声明；Account Overlay 只写入 `access.entitled`，并在服务端返回
+账号 Access 类别由 Codez Built-in 声明；Account Overlay 只写入 `access.entitled`，并在服务端返回
 账号模型集合时约束对应 Provider 的模型成员。
 `productId`、`organizationId`、`projectId`、账号身份与动态凭据由 Account Connection Service 拥有，
 在请求期按静态 `family + mode` 解析，不进入 Provider Config 或 Active Model。
@@ -269,7 +269,7 @@ Desktop continuous、Mobile replayable、Queue、snapshot 和 workspace identity
 
 - [`registry/registry.md`](./registry/registry.md)：Config 如何成为 Registry 和 Model。
 - [`registry/configuration.md`](./registry/configuration.md)：字段、Overlay、Visibility、Access、Rules 和存储。
-- [`registry/zcode-builtin-provider-config.md`](./registry/zcode-builtin-provider-config.md)：Built-in Provider/Model Rule 的发布维护规范。
+- [`registry/codez-builtin-provider-config.md`](./registry/codez-builtin-provider-config.md)：Built-in Provider/Model Rule 的发布维护规范。
 - [`registry/model-membership-and-enablement.md`](./registry/model-membership-and-enablement.md)：模型成员所有权、重名冲突、启停与 UI。
 - [`registry/model-creation.md`](./registry/model-creation.md)：ModelFactory、Adapter 和请求期鉴权。
 - [`model/model.md`](./model/model.md)：Model、ModelRequest、Options、生命周期和归因。

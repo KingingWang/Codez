@@ -227,7 +227,7 @@ message B turn.started/facts ----+---- buffer ----------> activate/replay B
 
 ## 追记（2026-09-14）：第三种来源——动态工作流子代理
 
-规则见 `apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md`「Token telemetry for subagents」。与前两种来源的差异只有三点：
+规则见 `apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md`「Token telemetry for subagents」。与前两种来源的差异只有三点：
 
 - 登记事实不是 `subagent.lifecycle`，而是由父会话 `DynamicWorkflowRunProgress` 派生的
   `workflow.lifecycle`（`actor-spawned` / `run-settled`）；归属键是 `runId + childSessionId`，

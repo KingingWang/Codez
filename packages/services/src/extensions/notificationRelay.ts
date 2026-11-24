@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Emitter, type Event } from "@zcode/rpc";
+import { Emitter, type Event } from "@codez/rpc";
 import {
   ExtensionError,
   NOTIFICATION_DAILY_LIMIT,
@@ -10,7 +10,7 @@ import {
   type ExtensionStaticTable,
   type NotificationsShowInput,
   type NotificationsShowResult,
-} from "@zcode/shared/extension-host";
+} from "@codez/shared/extension-host";
 import type { ServiceLogger } from "#src/logger/serviceLogger.js";
 import type {
   ExtensionNotificationAck,

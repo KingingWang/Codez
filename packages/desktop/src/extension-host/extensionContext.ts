@@ -18,7 +18,7 @@ import {
   type SlotScopeKey,
   type ViewDefinition,
   type ViewServerFactory,
-} from "@zcode/shared/extension-host";
+} from "@codez/shared/extension-host";
 import type { CapabilityClient } from "#src/extension-host/capabilityClient.js";
 import { formatLogArgs, hostLog } from "#src/extension-host/runtime.js";
 

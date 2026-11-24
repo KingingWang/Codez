@@ -49,7 +49,7 @@
           "id": "toolu_pt_real_before",
           "name": "Bash",
           "input": {
-            "command": "node .zcode-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs before",
+            "command": "node .codez-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs before",
             "timeout": 180000,
             "description": "Run real preinstalled tools phase: before"
           }
@@ -104,7 +104,7 @@
           "id": "toolu_pt_real_main",
           "name": "Bash",
           "input": {
-            "command": "node .zcode-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs main",
+            "command": "node .codez-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs main",
             "timeout": 360000,
             "description": "Run real preinstalled tools phase: main"
           }
@@ -159,7 +159,7 @@
           "id": "toolu_pt_real_python_off",
           "name": "Bash",
           "input": {
-            "command": "node .zcode-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs python-off",
+            "command": "node .codez-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs python-off",
             "timeout": 180000,
             "description": "Run real preinstalled tools phase: python-off"
           }
@@ -214,7 +214,7 @@
           "id": "toolu_pt_real_python_on",
           "name": "Bash",
           "input": {
-            "command": "node .zcode-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs python-on",
+            "command": "node .codez-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs python-on",
             "timeout": 180000,
             "description": "Run real preinstalled tools phase: python-on"
           }
@@ -269,7 +269,7 @@
           "id": "toolu_pt_real_qpdf_off",
           "name": "Bash",
           "input": {
-            "command": "node .zcode-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs qpdf-off",
+            "command": "node .codez-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs qpdf-off",
             "timeout": 180000,
             "description": "Run real preinstalled tools phase: qpdf-off"
           }
@@ -324,7 +324,7 @@
           "id": "toolu_pt_real_qpdf_on",
           "name": "Bash",
           "input": {
-            "command": "node .zcode-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs qpdf-on",
+            "command": "node .codez-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs qpdf-on",
             "timeout": 180000,
             "description": "Run real preinstalled tools phase: qpdf-on"
           }
@@ -379,7 +379,7 @@
           "id": "toolu_pt_real_pandoc_off",
           "name": "Bash",
           "input": {
-            "command": "node .zcode-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs pandoc-off",
+            "command": "node .codez-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs pandoc-off",
             "timeout": 180000,
             "description": "Run real preinstalled tools phase: pandoc-off"
           }
@@ -434,7 +434,7 @@
           "id": "toolu_pt_real_pandoc_on",
           "name": "Bash",
           "input": {
-            "command": "node .zcode-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs pandoc-on",
+            "command": "node .codez-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs pandoc-on",
             "timeout": 180000,
             "description": "Run real preinstalled tools phase: pandoc-on"
           }
@@ -489,7 +489,7 @@
           "id": "toolu_pt_real_poppler_off",
           "name": "Bash",
           "input": {
-            "command": "node .zcode-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs poppler-off",
+            "command": "node .codez-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs poppler-off",
             "timeout": 180000,
             "description": "Run real preinstalled tools phase: poppler-off"
           }
@@ -544,7 +544,7 @@
           "id": "toolu_pt_real_poppler_on",
           "name": "Bash",
           "input": {
-            "command": "node .zcode-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs poppler-on",
+            "command": "node .codez-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs poppler-on",
             "timeout": 180000,
             "description": "Run real preinstalled tools phase: poppler-on"
           }
@@ -599,7 +599,7 @@
           "id": "toolu_pt_real_libreoffice_off",
           "name": "Bash",
           "input": {
-            "command": "node .zcode-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs libreoffice-off",
+            "command": "node .codez-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs libreoffice-off",
             "timeout": 180000,
             "description": "Run real preinstalled tools phase: libreoffice-off"
           }
@@ -654,7 +654,7 @@
           "id": "toolu_pt_real_libreoffice_on",
           "name": "Bash",
           "input": {
-            "command": "node .zcode-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs libreoffice-on",
+            "command": "node .codez-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs libreoffice-on",
             "timeout": 180000,
             "description": "Run real preinstalled tools phase: libreoffice-on"
           }
@@ -709,7 +709,7 @@
           "id": "toolu_pt_real_fallbacks",
           "name": "Bash",
           "input": {
-            "command": "node .zcode-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs fallbacks",
+            "command": "node .codez-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs fallbacks",
             "timeout": 180000,
             "description": "Run real preinstalled tools phase: fallbacks"
           }
@@ -764,7 +764,7 @@
           "id": "toolu_pt_real_upgrade_before",
           "name": "Bash",
           "input": {
-            "command": "node .zcode-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs upgrade-before",
+            "command": "node .codez-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs upgrade-before",
             "timeout": 180000,
             "description": "Run real preinstalled tools phase: upgrade-before"
           }
@@ -819,7 +819,7 @@
           "id": "toolu_pt_real_upgrade_after",
           "name": "Bash",
           "input": {
-            "command": "node .zcode-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs upgrade-after",
+            "command": "node .codez-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs upgrade-after",
             "timeout": 180000,
             "description": "Run real preinstalled tools phase: upgrade-after"
           }
@@ -874,7 +874,7 @@
           "id": "toolu_pt_real_finish",
           "name": "Bash",
           "input": {
-            "command": "node .zcode-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs finish",
+            "command": "node .codez-e2e/conversation-session-preinstalled-tools-real-loopback/probe.mjs finish",
             "timeout": 180000,
             "description": "Run real preinstalled tools phase: finish"
           }

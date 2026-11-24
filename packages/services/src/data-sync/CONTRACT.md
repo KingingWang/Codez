@@ -3,7 +3,7 @@
 数据同步（`docs/remote/data-sync.md`）的服务侧：各分类在两端实现同一组方法，Renderer 用本机 base services 作为 source、设备的 source-settings attachment 作为 target，比较在 Renderer 纯函数中完成。
 
 - `IDataSyncCategoryService<TPayload>`：`listSyncItems` / `getSyncContentHashes` / `checkSyncWriteAccess` / `exportSyncItems` / `importSyncItems`。分类服务（技能、MCP、插件……）在自己的通道上实现这组方法；技能实现见 `skillDataSync.ts`，由 `createSkillSyncService` 组合进 `skill-sync` 通道。inline 插件实现见 `inlinePluginDataSync.ts`（key `name@inline` 小写，排除插件目录顶层 `data/`），由 `createPluginSyncService` 组合进 `plugin-sync` 通道。 MCP 实现见 `mcpDataSync.ts`，由 `createMcpSyncService` 组合进 `mcp-sync` 通道。
-- `IUserConfigSyncService`（通道 `user-config-sync`）：子智能体、命令、钩子共用一个通道，方法同上，每个方法多一个 `category` 参数（`UserConfigSyncCategory`）。`userConfigSyncService.ts` 按 category 分派，未知 category 报错；子智能体实现见 `subagentDataSync.ts`；命令实现见 `commandDataSync.ts`（合并 `~/.zcode/commands` 与 `~/.agents/commands`，`.zcode` 优先，统一写入 `~/.zcode/commands`）。两端都经 `createLocalServices` 注册，加入远程 workspace RPC 合同、source-settings 集合和远端 bundle 标记，不进手机白名单。
+- `IUserConfigSyncService`（通道 `user-config-sync`）：子智能体、命令、钩子共用一个通道，方法同上，每个方法多一个 `category` 参数（`UserConfigSyncCategory`）。`userConfigSyncService.ts` 按 category 分派，未知 category 报错；子智能体实现见 `subagentDataSync.ts`；命令实现见 `commandDataSync.ts`（合并 `~/.codez/commands` 与 `~/.agents/commands`，`.codez` 优先，统一写入 `~/.codez/commands`）。两端都经 `createLocalServices` 注册，加入远程 workspace RPC 合同、source-settings 集合和远端 bundle 标记，不进手机白名单。
 - 公共入口：`index.ts` 只导出契约（Renderer 可用）；`node.ts` 导出实现（Host / Server）。
 - `IDeviceSyncStateService`：本机 Host 按 sourceServerId 记录 `lastSyncAt` / `lastResult`，文件为 `<appConfigDir>/data-sync-state.json`。
 

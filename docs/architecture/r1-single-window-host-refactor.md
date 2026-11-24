@@ -20,7 +20,7 @@
 | 连接入口 | 保留 `IPlatformService -> Main`；Main 只做请求、状态事件和 MessagePort 薄转发 |
 | Remote Host 合并 | 合并 UI、手机、Bot 创建的全部 Desktop Remote Host |
 | 投影持久化 | `ControllerProjection` 仅驻内存并可从 source 重建，不增加数据库 |
-| 远端协议 | 不修改现有 SSH/WSL/Docker/Server 的 zcode-server service channel |
+| 远端协议 | 不修改现有 SSH/WSL/Docker/Server 的 codez-server service channel |
 | 列表写路由 | 跨 workspace 列表操作由 Controller 路由；进入 workspace/conversation 后继续使用 scoped facade |
 | Realtime Host 身份 | 每窗口一个 `hostId`，内部按 `workspaceKey + taskId` 路由 |
 | `remoteSessionId` | 由 Local Host 分配和管理；Main 只保存异步请求关联信息 |
@@ -43,8 +43,8 @@
 
 ```text
 Renderer ─┬─ base port ────> Local Host ─────────> Local CLI
-          ├─ remote port ──> SSH Remote Host ────> zcode-server
-          ├─ remote port ──> WSL Remote Host ────> zcode-server
+          ├─ remote port ──> SSH Remote Host ────> codez-server
+          ├─ remote port ──> WSL Remote Host ────> codez-server
           └─ remote port ──> Docker/Server Host ─> remote service
 
 Mobile -> relay/Main -> Local Host 或独立 Remote Host
@@ -124,7 +124,7 @@ SSH online cache cancel ----------------------> 保持 window cache，不销毁�
 ```
 
 取消期间可能已经创建 SSH 远端 owner staging。旧 backend 一旦进入 dispose barrier 不得为 cleanup
-重新连接；下一次使用新 backend 的 SSH 部署会在写入前执行 best-effort janitor，只删除 ZCode 自己的
+重新连接；下一次使用新 backend 的 SSH 部署会在写入前执行 best-effort janitor，只删除 Codez 自己的
 UUID staging 命名且已超过 24 小时的项。当前 owner、正式路径、WSL/Docker/Server staging 均不在本次
 清理边界内。
 

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import type { CommandEnvelope } from "@zcode/shared/zcode-protocol-v4";
+import type { CommandEnvelope } from "@codez/shared/codez-protocol-v4";
 import { getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
 import { createWorkerSelectionIntegration } from "#e2e/helpers/worker-selection-integration";
 
@@ -38,7 +38,7 @@ DatabaseSync.prototype.prepare = function(sql) {
 };
 `,
   );
-  const configPath = join(homeDir, ".zcode/cli/config.json");
+  const configPath = join(homeDir, ".codez/cli/config.json");
   const originalConfig = await readFile(configPath).catch((error: NodeJS.ErrnoException) => {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -53,7 +53,7 @@ DatabaseSync.prototype.prepare = function(sql) {
       () => {},
     );
     const receipt = JSON.parse(await readFile(receiptPath, "utf8"));
-    const database = new DatabaseSync(join(homeDir, ".zcode/cli/db/db.sqlite"), { readOnly: true });
+    const database = new DatabaseSync(join(homeDir, ".codez/cli/db/db.sqlite"), { readOnly: true });
     try {
       const input = database.prepare("SELECT * FROM session_input WHERE id=?").get(receipt.inputId);
       assert.equal(input?.status, "admitted");

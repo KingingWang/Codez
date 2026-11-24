@@ -1,10 +1,10 @@
 import "@/styles.css";
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
-import type { IPlatformService } from "@zcode/shared";
-import type { ToolCallRow } from "@zcode/shared/zcode-protocol-v4";
+import type { IPlatformService } from "@codez/shared";
+import type { ToolCallRow } from "@codez/shared/codez-protocol-v4";
 import { PlatformProvider } from "@/hooks/usePlatform.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import { DEFAULT_CODE_PREVIEW_SETTINGS } from "@/lib/codePreviewSettings.js";
 import { ConversationTurnGroup } from "@/v4/ConversationTurnGroup.js";
@@ -45,7 +45,7 @@ function Fixture() {
     timelineOnly: false,
   };
   return (
-    <ZCodeIntlProvider initialLocale="en-US">
+    <CodezIntlProvider initialLocale="en-US">
       <PlatformProvider platform={{} as IPlatformService}>
         <TooltipProvider>
           <button onClick={() => setJoined(true)}>Join run</button>
@@ -68,7 +68,7 @@ function Fixture() {
           />
         </TooltipProvider>
       </PlatformProvider>
-    </ZCodeIntlProvider>
+    </CodezIntlProvider>
   );
 }
 createRoot(document.getElementById("root")!).render(<Fixture />);

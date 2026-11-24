@@ -49,7 +49,7 @@ const DATE_ANNOUNCEMENT = "Today's date is ";
 const INSTRUCTIONS_PREAMBLE = "Codebase and user instructions are shown below.";
 const WORKSPACE_AGENTS_MARKER = "E2E_SUBAGENT_WORKSPACE_AGENTS_INSTRUCTION";
 const TEST_HOME_DIR = resolveE2EHomeDir();
-const USER_AGENTS_PATH = join(TEST_HOME_DIR, ".zcode", "AGENTS.md");
+const USER_AGENTS_PATH = join(TEST_HOME_DIR, ".codez", "AGENTS.md");
 const WORKSPACE_AGENTS_PATH = join(DEFAULT_WORKSPACE, "AGENTS.md");
 const CUSTOM_AGENT_PROFILE = `---
 name: ${CUSTOM_AGENT_NAME}
@@ -73,12 +73,12 @@ ${ISOLATED_CUSTOM_AGENT_PROMPT_MARKER}
 Reply only with the requested marker.
 `;
 const CUSTOM_AGENT_PATHS = [
-  join(TEST_HOME_DIR, ".zcode", "agents", `${CUSTOM_AGENT_NAME}.md`),
-  join(TEST_HOME_DIR, ".zcode", "cli", "agents", `${CUSTOM_AGENT_NAME}.md`),
+  join(TEST_HOME_DIR, ".codez", "agents", `${CUSTOM_AGENT_NAME}.md`),
+  join(TEST_HOME_DIR, ".codez", "cli", "agents", `${CUSTOM_AGENT_NAME}.md`),
 ];
 const ISOLATED_CUSTOM_AGENT_PATHS = [
-  join(TEST_HOME_DIR, ".zcode", "agents", `${ISOLATED_CUSTOM_AGENT_NAME}.md`),
-  join(TEST_HOME_DIR, ".zcode", "cli", "agents", `${ISOLATED_CUSTOM_AGENT_NAME}.md`),
+  join(TEST_HOME_DIR, ".codez", "agents", `${ISOLATED_CUSTOM_AGENT_NAME}.md`),
+  join(TEST_HOME_DIR, ".codez", "cli", "agents", `${ISOLATED_CUSTOM_AGENT_NAME}.md`),
 ];
 
 describe("会话区 subagent prompt assembly E2E", () => {
@@ -96,7 +96,7 @@ describe("会话区 subagent prompt assembly E2E", () => {
 
     await runSubagentPromptAssemblyScenario({
       agentPromptIncludes: [
-        "You are an agent for ZCode CLI",
+        "You are an agent for Codez CLI",
         "the caller will relay this to the user",
       ],
       agentPromptExcludes: [CUSTOM_AGENT_PROMPT_MARKER],
@@ -113,7 +113,7 @@ describe("会话区 subagent prompt assembly E2E", () => {
     // 全局新建会改变 cwd，导致 custom child 缺少本项目的 AGENTS.md 指令。
     await prepareV4ConversationE2E({ skipProvider: true });
     await runSubagentPromptAssemblyScenario({
-      agentPromptIncludes: ["You are ZCode Explore", "READ-ONLY MODE"],
+      agentPromptIncludes: ["You are Codez Explore", "READ-ONLY MODE"],
       agentPromptExcludes: [CUSTOM_AGENT_PROMPT_MARKER],
       childMarker: EXPLORE_CHILD_MARKER,
       childReplyToken: EXPLORE_CHILD_REPLY_TOKEN,
@@ -130,7 +130,7 @@ describe("会话区 subagent prompt assembly E2E", () => {
         CUSTOM_AGENT_PROMPT_MARKER,
         "Reply only with the requested marker.",
       ],
-      agentPromptExcludes: ["You are an agent for ZCode CLI"],
+      agentPromptExcludes: ["You are an agent for Codez CLI"],
       childMarker: CUSTOM_CHILD_MARKER,
       childReplyToken: CUSTOM_CHILD_REPLY_TOKEN,
       finalToken: CUSTOM_FINAL_TOKEN,
@@ -146,7 +146,7 @@ describe("会话区 subagent prompt assembly E2E", () => {
         ISOLATED_CUSTOM_AGENT_PROMPT_MARKER,
         "Reply only with the requested marker.",
       ],
-      agentPromptExcludes: ["You are an agent for ZCode CLI"],
+      agentPromptExcludes: ["You are an agent for Codez CLI"],
       childMarker: ISOLATED_CUSTOM_CHILD_MARKER,
       childReplyToken: ISOLATED_CUSTOM_CHILD_REPLY_TOKEN,
       finalToken: ISOLATED_CUSTOM_FINAL_TOKEN,
@@ -166,7 +166,7 @@ describe("会话区 subagent prompt assembly E2E", () => {
       mcs: true,
       modelId,
       agentPromptIncludes: [
-        "You are an agent for ZCode CLI",
+        "You are an agent for Codez CLI",
         "the caller will relay this to the user",
       ],
       agentPromptExcludes: [CUSTOM_AGENT_PROMPT_MARKER],
@@ -346,7 +346,7 @@ function assertChildSystemPromptShape(
     { type: "ephemeral" },
     { type: "ephemeral" },
   ]);
-  expect(systems[0]).toBe("You are ZCode, an interactive agent");
+  expect(systems[0]).toBe("You are Codez, an interactive agent");
   for (const expected of input.agentPromptIncludes) {
     expect(systems[1]).toContain(expected);
   }

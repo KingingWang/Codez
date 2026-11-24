@@ -1,10 +1,10 @@
-import { ServiceChannels } from "@zcode/shared";
-import type { Event } from "@zcode/rpc";
+import { ServiceChannels } from "@codez/shared";
+import type { Event } from "@codez/rpc";
 import { createServiceDescriptor } from "../descriptors.js";
 
 /**
  * 语音输入失败原因（docs/chat/composer-voice-input.md「服务端失败」）。
- * UI 只按这里的分类给提示，不感知 zcode-server 的原始错误码。
+ * UI 只按这里的分类给提示，不感知 codez-server 的原始错误码。
  */
 export type VoiceInputErrorCode =
   | "network"

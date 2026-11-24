@@ -1,4 +1,4 @@
-// 彻底删除项目数据（设置 → 项目的「同时删除 ZCode 数据」）。
+// 彻底删除项目数据（设置 → 项目的「同时删除 Codez 数据」）。
 // 规格：docs/superpowers/specs/2026-10-24-project-management.md「彻底删除数据」。
 import { z } from "zod";
 import type { ProjectRepositoryContract } from "#src/project-storage/contract.js";

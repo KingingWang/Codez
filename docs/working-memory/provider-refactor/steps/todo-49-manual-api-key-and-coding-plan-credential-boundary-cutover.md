@@ -83,7 +83,7 @@ ModelFactory / Adapter 直接使用该 Key
 
 ## 3. Config 与 Registry 修改
 
-1. 从 ZCode Built-in Config 删除：
+1. 从 Codez Built-in Config 删除：
    - `account:zai-api-key`；
    - `account:bigmodel-api-key`。
 2. 从 `ZhipuAccountMode` 删除 `api-key`；`zhipu-account` 只保留真实账号产品 Mode。

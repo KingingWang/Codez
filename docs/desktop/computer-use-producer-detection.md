@@ -2,8 +2,8 @@
 
 ## 规则
 
-Computer Use 的真实实现来自 workspace 包 `@zcode/zcode-cua`（producer）。开源导出用 `packages/zcode-cua`
-占位包替换它，占位包在 `package.json` 声明 `zcodeCuaPlaceholder: true`，所有能力 fail-closed。
+Computer Use 的真实实现来自 workspace 包 `@codez/codez-cua`（producer）。开源导出用 `packages/codez-cua`
+占位包替换它，占位包在 `package.json` 声明 `codezCuaPlaceholder: true`，所有能力 fail-closed。
 
 占位包保留公共 `build` 和 `tsconfig.json` 入口，构建只检查随包类型声明。
 日志回调的 traceId 与参数类型和真实 producer 一致，使公共调用方无需按发行版本分支。
@@ -25,8 +25,8 @@ Sharp 的暂存与校验仍以“producer 是否声明 Sharp 依赖”为准（`
 ## 所有者与接口
 
 - 唯一判定：`packages/desktop/scripts/computer-use-producer.mjs` 的 `readComputerUseProducer` /
-  `isRealComputerUseProducerInstalled`。从桌面包目录向上查找最近一次安装的 `@zcode/zcode-cua`，
-  读取清单的 `zcodeCuaPlaceholder` 字段。
+  `isRealComputerUseProducerInstalled`。从桌面包目录向上查找最近一次安装的 `@codez/codez-cua`，
+  读取清单的 `codezCuaPlaceholder` 字段。
 - 构建配置同步求值，判定只做一次小文件同步读取。
 
 ## 验收

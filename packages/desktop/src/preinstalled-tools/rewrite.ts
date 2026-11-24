@@ -2,9 +2,9 @@ import { execFile } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { rewritePreinstalledToolBytes } from "@zcode/shared/preinstalled-tools/node";
-import type { PreinstalledToolManifest } from "@zcode/shared/preinstalled-tools";
-import type { createServiceLogger } from "@zcode/services/node";
+import { rewritePreinstalledToolBytes } from "@codez/shared/preinstalled-tools/node";
+import type { PreinstalledToolManifest } from "@codez/shared/preinstalled-tools";
+import type { createServiceLogger } from "@codez/services/node";
 import { validatePreinstalledFiles } from "@desktop/preinstalled-tools/archive.js";
 import { PreinstalledToolFailure } from "@desktop/preinstalled-tools/download.js";
 

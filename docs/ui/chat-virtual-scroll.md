@@ -2,7 +2,7 @@
 
 > **V4 当前事实**：滚动视口、虚拟化、底部跟随与 renderer-local 滚动记忆由
 > `packages/ui/src/v4/ConversationTimeline.tsx` 持有；消息事实仍来自
-> `packages/shared/src/zcode-protocol-v4/` 与 `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/`。
+> `packages/shared/src/codez-protocol-v4/` 与 `apps/codez-cli/packages/bootstrap/src/codez-protocol-v4/`。
 
 ## 目标
 
@@ -116,7 +116,7 @@ getConversationRowsPartition(rows) = { history, tail }
 ```
 
 - 分区是 `rows` 的纯派生缓存，用 `WeakMap` 以 window 数组身份为键。它不是第二份状态：`history` 与 `tail` 拼接后逐项等于 `rows`，读取方拿到的永远是与当前 `rows` 对应的分区，不需要层层透传，也不存在两份数据错配。
-- 分区类型 `ConversationRowsPartition` 定义在 `@zcode/shared/zcode-protocol-v4`，与 `ConversationRow` 放在同一文件。它只是行数组的视图类型，不上 wire，没有运行时 schema。构造和缓存（`getConversationRowsPartition`、`memoizeByRows`）留在 renderer 的 `conversationProjectionStore`。所有消费方都从 shared 引用这个类型；插件 UI 的 domain 层因此只依赖协议类型，不依赖 v4 store。
+- 分区类型 `ConversationRowsPartition` 定义在 `@codez/shared/codez-protocol-v4`，与 `ConversationRow` 放在同一文件。它只是行数组的视图类型，不上 wire，没有运行时 schema。构造和缓存（`getConversationRowsPartition`、`memoizeByRows`）留在 renderer 的 `conversationProjectionStore`。所有消费方都从 shared 引用这个类型；插件 UI 的 domain 层因此只依赖协议类型，不依赖 v4 store。
 - `tail` 是 window 的后缀，包含最后一行所在轮的全部行，可能包含多轮，与 `history` 的轮次不相交。整窗重建时，若尾段某一轮在更早位置也出现过，起点前移到那里；快路径沿用上一份 history 时，尾段可能留着已完成的轮（见下面的尾轮内截断）。消费方不能假设 `tail` 只有一轮；按轮分组的派生可以分段计算再拼接。
 - 只改尾轮的判定：`row.delta` / `row.upserted` 的 rowId ≥ 尾轮首行 rowId（窗口按 rowId 升序）；`row.appended` 的轮次已在尾轮中；`row.removed` 的起点在尾轮首行之后。新轮开始、旧行更新、前插、rewind 和 snapshot 帧都会让历史变化，此时整窗重建一次。
 - 成本边界：常数只针对流式帧，而且与历史轮数无关，不是与最后一轮的大小无关。尾轮的切片、分组和派生每帧都要算，所以单轮里有上千个工具调用时，每帧成本随这一轮增长。改到历史行的事件每次多付一帧 O(N)。这类事件都是一次性的：新轮开始（上一轮的行级 actions 交给新轮）、后台结果改写原工具行、subagent 启停、点赞与 rewind。轮开始/结束和 compact 开始/结束翻转的 fork / 文件撤销 session 锁走 `availability`，不改历史行（见 [02-projection](../v4-refactor/02-projection.md)「会话锁与行级资格」）。CLI 的流式 `row.delta` 只指向当前轮的行，后台任务进度走 `state.updated`，所以都走快路径。
@@ -139,7 +139,7 @@ getConversationRowsPartition(rows) = { history, tail }
 可重复的性能验收入口是 PERF04（`packages/desktop/test/e2e/conversation-session/presentation/manual-review/pending/conversation-session-streaming-history-performance.test.ts`，覆盖记录见 coverage matrix「PERF04 长历史流式渲染」）。它经 Host 导入服务建立 1000 回合 / 3000 行历史，回放 thinking 与正文流式输出，断言完成态正文逐字一致、帧间隔 P95 低于预算，并输出帧间隔、长任务和 renderer CPU profile。
 
 ```bash
-ZCODE_E2E_MANUAL_REVIEW=1 pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts \
+CODEZ_E2E_MANUAL_REVIEW=1 pnpm --filter @codez/desktop exec wdio run wdio.conf.ts \
   --spec ./test/e2e/conversation-session/presentation/manual-review/pending/conversation-session-streaming-history-performance.test.ts
 ```
 
@@ -161,7 +161,7 @@ ZCODE_E2E_MANUAL_REVIEW=1 pnpm --filter @zcode/desktop exec wdio run wdio.conf.t
 
 ## 远控边界
 
-本改动只影响 UI 层渲染，不改变 ZCode task 消息流、snapshot、queue 或恢复语义：
+本改动只影响 UI 层渲染，不改变 Codez task 消息流、snapshot、queue 或恢复语义：
 
 - 桌面端 `desktop-continuous` 仍保持 direct continuous 主链路。
 - 手机远控 `web-remote-replayable` 仍通过 replayable snapshot/gap 恢复边界展示消息。

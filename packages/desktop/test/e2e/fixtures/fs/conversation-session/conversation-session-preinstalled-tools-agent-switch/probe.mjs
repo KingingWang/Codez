@@ -23,8 +23,8 @@ const resolved = (
     [
       "-c",
       windows
-        ? 'cygpath -w "$(command -v qpdf)"; p="$(command -v zcode-soffice)" && cygpath -w "$p" || true'
-        : "command -v qpdf; command -v zcode-soffice || true",
+        ? 'cygpath -w "$(command -v qpdf)"; p="$(command -v codez-soffice)" && cygpath -w "$p" || true'
+        : "command -v qpdf; command -v codez-soffice || true",
     ],
     { env },
   )
@@ -37,7 +37,7 @@ const qpdf = windows
 const cache = join(config.storageRoot, "cli/plugins/cache/zcode-plugins-official/documents");
 const versions = await readdir(cache);
 if (versions.length !== 1) throw new Error("Expected one distributed documents plugin");
-const helper = join(cache, versions[0], "scripts/zcode_libreoffice.py");
+const helper = join(cache, versions[0], "scripts/codez_libreoffice.py");
 const office = await exec(config.python, [helper, "check"], { env, timeout: 30000 });
 console.log(
   JSON.stringify({

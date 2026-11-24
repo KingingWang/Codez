@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { BUILTIN_MODEL_PROVIDER_IDS as ids } from "@zcode/shared";
-import { TID_LOGIN_TRIGGER } from "@zcode/shared/test-ids";
+import { BUILTIN_MODEL_PROVIDER_IDS as ids } from "@codez/shared";
+import { TID_LOGIN_TRIGGER } from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -52,22 +52,22 @@ describe("AUTH-CN-STALE-DOMAIN: 国内关联账号纠正登录前跳过写入的
           string
         >;
         for (const key of Object.keys(credentials)) {
-          if (key.startsWith("oauth:") || key === "zcodejwttoken") delete credentials[key];
+          if (key.startsWith("oauth:") || key === "codezjwttoken") delete credentials[key];
         }
         Object.assign(credentials, {
           "oauth:active_provider": "zai_cn",
           "oauth:session_revision": "e2e-stale-domain-revision",
           "oauth:zai_cn:access_token": "e2e-cn-upstream-oauth",
           "oauth:zai_cn:user_info": JSON.stringify({
-            user_id: "zcode-primary-user",
+            user_id: "codez-primary-user",
             name: "CN User",
           }),
           "oauth:linked_bigmodel": JSON.stringify({
-            userId: "zcode-primary-user",
+            userId: "codez-primary-user",
             customerId: "e2e-user",
             accessToken: "e2e-linked-bigmodel-jwt",
           }),
-          zcodejwttoken: "e2e-cn-zcode-jwt",
+          codezjwttoken: "e2e-cn-codez-jwt",
         });
         await writeFile(credentialsFile, JSON.stringify(credentials), "utf8");
         await seedSettings({

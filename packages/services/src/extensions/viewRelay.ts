@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { Emitter, type Event } from "@zcode/rpc";
+import { Emitter, type Event } from "@codez/rpc";
 import {
   ExtensionError,
   extensionGlobalId,
@@ -10,9 +10,9 @@ import {
   type IExtensionHostChannel,
   type ResolvedScope,
   type ScopeInput,
-} from "@zcode/shared/extension-host";
-import type { PluginSandboxHandle, PluginSandboxRegisterInput } from "@zcode/shared/mcp-apps";
-import { zcodeMcpReadResourceResultSchema } from "@zcode/shared";
+} from "@codez/shared/extension-host";
+import type { PluginSandboxHandle, PluginSandboxRegisterInput } from "@codez/shared/mcp-apps";
+import { codezMcpReadResourceResultSchema } from "@codez/shared";
 import { pickHtmlResource } from "#src/plugin-ui-bridge/index.js";
 import type { ServiceLogger } from "#src/logger/serviceLogger.js";
 import type { WorkbenchState } from "#src/extensions/workbenchState.js";
@@ -162,7 +162,7 @@ export function createExtensionViewRelay(deps: {
         const pageUri = extensionViewResourceUri(view.pluginId, localViewId);
         // 与 MCP App 同一套 HTML 挑选与限额：只认 HTML 文本项，资源级 _meta 读 CSP 与呈现提示。
         const { html, meta } = pickHtmlResource(
-          zcodeMcpReadResourceResultSchema.parse({
+          codezMcpReadResourceResultSchema.parse({
             contents: opened.contents.map((content) => ({
               uri: String(content.uri ?? ""),
               ...(typeof content.mimeType === "string" ? { mimeType: content.mimeType } : {}),

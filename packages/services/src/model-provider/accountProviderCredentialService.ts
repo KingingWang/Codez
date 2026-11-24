@@ -1,4 +1,4 @@
-import type { ProviderFamilyDomain, ProjectAccessTokenMaterial } from "@zcode/shared";
+import type { ProviderFamilyDomain, ProjectAccessTokenMaterial } from "@codez/shared";
 import {
   isSameOAuthAccountMaterial,
   type OAuthAccountMaterial,

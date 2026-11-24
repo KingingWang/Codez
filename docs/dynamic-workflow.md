@@ -115,9 +115,9 @@ subagent transcript ends in a folded engine epilogue.
 | Document | Scope |
 |---|---|
 | `docs/dynamic-workflow/authoring.md` | the facade, `/workflow` and the skill, subagent prompts, compile-time rules, artifacts, `world.run`, the snippet tool, usage accounting |
-| `apps/zcode-cli/packages/dynamic-workflow/docs/analysis.md` | sites, diagnostics, the interpreter, the four graphs, joining runtime instances |
+| `apps/codez-cli/packages/dynamic-workflow/docs/analysis.md` | sites, diagnostics, the interpreter, the four graphs, joining runtime instances |
 | `docs/dynamic-workflow/launch.md` | `CreateWorkflow`, the confirmation window, saved workflows and scopes, the hub page, direct launch, CLI/TUI, run introspection tools |
-| `apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md` | lowering, the sandbox, the engine core, ask lifecycle, the journal, resume, amend, terminal states, escalation, the fault-matrix test bed |
+| `apps/codez-cli/packages/dynamic-workflow/docs/execution-engine.md` | lowering, the sandbox, the engine core, ask lifecycle, the journal, resume, amend, terminal states, escalation, the fault-matrix test bed |
 | `docs/dynamic-workflow/concurrency.md` | the two bounds, request tickets, the adaptive controller, the model-error policy, tool-side requests |
 | `docs/dynamic-workflow/presentation.md` | the display contract, the timeline model, the live overlay, the run card and run pane |
 | `docs/dynamic-workflow/transcript-and-notifications.md` | notifications, the completion card, the script transcript, the epilogue fold |
@@ -176,8 +176,8 @@ so.
 | **run** | one execution of one script under one run id | `dwfrun-<uuid>`; noun 实例 (工作流实例, N 个实例), verbs stay 运行 (停止运行, 恢复运行) |
 | **phase** | a named stage the script declares with `phase("…")`; a station on the timeline | 阶段 |
 | **artifact** | on the facade and every user surface: what the script publishes for the user to keep (`artifact.file`, `.markdown`, or a `chart`/`table`/`metrics`/`board` fed by tagged `report` items). At most one is the **primary**, the deliverable the surfaces lead with (`primary: true`; a lone artifact counts). In engine identifiers only: a site's typed output or the script's return value | 产物; the primary is never labelled in the UI |
-| **saved workflow** | a `<name>.dwf.ts` file: a `/* zcode-workflow */` metadata block, then the script | 已保存的工作流 |
-| **scope** | where a saved workflow lives: `project` (`<cwd>/.zcode/workflows/`) or `global` (`~/.zcode/workflows/`); a project workflow hides a global one of the same name | 「项目」 / 「全局」 |
+| **saved workflow** | a `<name>.dwf.ts` file: a `/* codez-workflow */` metadata block, then the script | 已保存的工作流 |
+| **scope** | where a saved workflow lives: `project` (`<cwd>/.codez/workflows/`) or `global` (`~/.codez/workflows/`); a project workflow hides a global one of the same name | 「项目」 / 「全局」 |
 | **world read** | a journaled call into the workspace: `files.*`, `git.*`, `world.run` | `world-read#N` |
 | **journal** | the durable record of a run: run, subagents, nodes, events | `dwf_run`, `dwf_actor`, `dwf_node`, `dwf_event` |
 | **question** | a subagent's `escalate` call waiting for the main agent | `dwfq-…`; 询问主代理 |

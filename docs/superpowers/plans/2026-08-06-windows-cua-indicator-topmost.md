@@ -8,7 +8,7 @@
 
 - `packages/desktop/test/windowsCuaOperationIndicator.test.ts`
 - `packages/desktop/src/main/windowsCuaOperationIndicator.ts`
-- 不修改 CUA 生命周期协议、Host tracker、Renderer 或 `zcode-cua` helper。
+- 不修改 CUA 生命周期协议、Host tracker、Renderer 或 `codez-cua` helper。
 
 ## 实施步骤
 
@@ -17,7 +17,7 @@
 3. 提取统一显示函数，在每次 `showInactive()` 后重新声明 `screen-saver` 层级并调用 `moveTop()`；用中文注释记录 Windows 隐藏透明窗口会丢失原生 topmost 状态的根因。
 4. 重新运行目标单测，确认首次显示、复用显示和既有显隐/异常路径全部通过。
 5. 执行 `pnpm typecheck`、`pnpm lint` 与 `git diff --check`，提交实现。
-6. 设置 `ZCODE_CUA_DEV_ROOT=C:\Users\dev\zcode-cua` 后重启 desktop dev，交给用户进行真实前台窗口遮挡验证。
+6. 设置 `CODEZ_CUA_DEV_ROOT=C:\Users\dev\codez-cua` 后重启 desktop dev，交给用户进行真实前台窗口遮挡验证。
 
 ## 验证重点
 

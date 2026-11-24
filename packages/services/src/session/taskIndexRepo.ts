@@ -10,20 +10,20 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import {
   isRemoteWorkspaceIdentity,
-  normalizeAgentProviderToZCodeAgent,
-  zcodeTaskMetaSchema,
+  normalizeAgentProviderToCodezAgent,
+  codezTaskMetaSchema,
   resolveWorkspaceKey,
-  type ZCodeProvider,
-  type ZCodeTaskMeta,
-} from "@zcode/shared";
+  type CodezProvider,
+  type CodezTaskMeta,
+} from "@codez/shared";
 import type {
-  ZCodeTaskListQuery,
-  ZCodeTaskListResult,
-  ZCodeTaskListItem,
-} from "#src/session/zcodeTaskListTypes.js";
+  CodezTaskListQuery,
+  CodezTaskListResult,
+  CodezTaskListItem,
+} from "#src/session/codezTaskListTypes.js";
 
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
-import { getTasksIndexDatabasePath, getZCodeDataRootDir } from "#src/paths.js";
+import { getTasksIndexDatabasePath, getCodezDataRootDir } from "#src/paths.js";
 import {
   createProjectDataRepository,
   projectStorage,
@@ -34,12 +34,12 @@ import { runTasksDatabaseMigrations } from "#src/session/tasksDatabase/migration
 const require = createRequire(import.meta.url);
 const { DatabaseSync } = require("node:sqlite") as typeof import("node:sqlite");
 
-function appendZCodeAgentIndexedProviderFilter(
+function appendCodezAgentIndexedProviderFilter(
   where: string[],
   args: Array<string | number>,
-  provider: ZCodeProvider,
+  provider: CodezProvider,
 ): void {
-  // Bugfix: ZCode Agent 列表入口只展示当前 glm runtime 产生的 task。
+  // Bugfix: Codez Agent 列表入口只展示当前 glm runtime 产生的 task。
   // 旧 Claude Code 导入也不再例外，否则非 glm 历史数据仍会混入项目树与任务区。
   where.push("provider = ?");
   args.push(provider);
@@ -90,7 +90,7 @@ interface LegacyAcpTaskIndexRow extends TaskIndexRow {
 }
 
 interface TaskIndexWriteRecord {
-  meta: ZCodeTaskMeta;
+  meta: CodezTaskMeta;
   pinned: boolean;
   archived: boolean;
   deleted: boolean;
@@ -131,7 +131,7 @@ function resolveTaskIndexRowWorkspaceIdentity(row: TaskIndexRow): string | undef
 }
 
 /** worktree 任务的 cwd 与根目录只来自列（唯一数据源），不写进 meta_json。 */
-function readWorktreePlacement(row: TaskIndexRow): Pick<ZCodeTaskMeta, "worktreeRoot" | "cwd"> {
+function readWorktreePlacement(row: TaskIndexRow): Pick<CodezTaskMeta, "worktreeRoot" | "cwd"> {
   const worktreeRoot = row.worktree_root ?? undefined;
   const cwd = row.root_path && row.root_path !== row.workspace_path ? row.root_path : undefined;
   return {
@@ -140,7 +140,7 @@ function readWorktreePlacement(row: TaskIndexRow): Pick<ZCodeTaskMeta, "worktree
   };
 }
 
-function rowToMeta(row: TaskIndexRow): ZCodeTaskMeta {
+function rowToMeta(row: TaskIndexRow): CodezTaskMeta {
   const meta = readPresentation(row);
   return {
     ...meta,
@@ -154,13 +154,13 @@ function rowToMeta(row: TaskIndexRow): ZCodeTaskMeta {
   };
 }
 
-function readPresentation(row: TaskIndexRow): ZCodeTaskMeta {
+function readPresentation(row: TaskIndexRow): CodezTaskMeta {
   const workspaceIdentity = resolveTaskIndexRowWorkspaceIdentity(row);
   try {
-    const parsed = zcodeTaskMetaSchema.safeParse(JSON.parse(row.meta_json));
+    const parsed = codezTaskMetaSchema.safeParse(JSON.parse(row.meta_json));
     if (parsed.success) {
       return {
-        ...(parsed.data as ZCodeTaskMeta),
+        ...(parsed.data as CodezTaskMeta),
         // SQLite 使用这些字段查询并隔离实体，旧 meta_json 里的 identity
         // 可能缺失或属于旧远端。读取时必须与行主键投影一致，sessions-index 才能
         // 按 workspaceKey + taskId 附加 running activity。
@@ -188,20 +188,20 @@ function readPresentation(row: TaskIndexRow): ZCodeTaskMeta {
 
   return {
     taskId: row.task_id,
-    traceId: `zcode-${row.task_id}`,
+    traceId: `codez-${row.task_id}`,
     title: "",
     titleOverridden: row.title_overridden === 1,
     workspacePath: row.workspace_path,
     workspaceIdentity,
     createdAt: 0,
     updatedAt: 0,
-    mode: row.mode as ZCodeTaskMeta["mode"],
+    mode: row.mode as CodezTaskMeta["mode"],
     model: row.model ?? undefined,
     // 旧行 provider 列可能残留三方 CLI 值；meta 回退投影时统一归一为 glm。
     provider: row.provider
-      ? normalizeAgentProviderToZCodeAgent(row.provider as ZCodeTaskMeta["provider"])
+      ? normalizeAgentProviderToCodezAgent(row.provider as CodezTaskMeta["provider"])
       : undefined,
-    migrationSource: (row.migration_source as ZCodeTaskMeta["migrationSource"]) ?? undefined,
+    migrationSource: (row.migration_source as CodezTaskMeta["migrationSource"]) ?? undefined,
     forkedFromTaskId: row.forked_from_task_id ?? undefined,
     cronAutomationId: row.cron_automation_id ?? undefined,
     offPeakTaskId: row.off_peak_task_id ?? undefined,
@@ -210,7 +210,7 @@ function readPresentation(row: TaskIndexRow): ZCodeTaskMeta {
 }
 
 /** 序列化 meta 到 meta_json。cron 身份随 meta 一起写入（单一来源），另在 writeRecord 投影到 cron_automation_id 索引列。 */
-function serializeMetaJson(meta: ZCodeTaskMeta): string {
+function serializeMetaJson(meta: CodezTaskMeta): string {
   // worktreeRoot / cwd 是列投影，写回 meta_json 会形成第二份数据源。
   const { worktreeRoot: _worktreeRoot, cwd: _cwd, ...persisted } = meta;
   return JSON.stringify(persisted);
@@ -284,7 +284,7 @@ function buildSearchSnippets(searchableText: string, search: string | null): str
   return snippets;
 }
 
-function rowToTaskListItem(row: TaskIndexRow, search: string | null): ZCodeTaskListItem {
+function rowToTaskListItem(row: TaskIndexRow, search: string | null): CodezTaskListItem {
   const meta = rowToMeta(row);
   const snippets = buildSearchSnippets(row.searchable_text, search);
   if (snippets.length === 0) {
@@ -305,9 +305,9 @@ function migrateLegacyTaskMetaJson(
     mode: string;
     provider?: string;
     model?: string;
-    status?: ZCodeTaskMeta["status"];
+    status?: CodezTaskMeta["status"];
   },
-): ZCodeTaskMeta {
+): CodezTaskMeta {
   let parsed: Record<string, unknown> = {};
   try {
     const raw = JSON.parse(rawMetaJson) as unknown;
@@ -323,7 +323,7 @@ function migrateLegacyTaskMetaJson(
     traceId:
       typeof parsed.traceId === "string" && parsed.traceId
         ? parsed.traceId
-        : `zcode-${fallback.taskId}`,
+        : `codez-${fallback.taskId}`,
     title: fallback.title,
     workspacePath: fallback.workspacePath,
     workspaceIdentity: fallback.workspaceIdentity,
@@ -335,7 +335,7 @@ function migrateLegacyTaskMetaJson(
     status: typeof parsed.status === "string" ? parsed.status : fallback.status,
     migrationSource: undefined,
   };
-  return zcodeTaskMetaSchema.parse(meta) as ZCodeTaskMeta;
+  return codezTaskMetaSchema.parse(meta) as CodezTaskMeta;
 }
 
 export class TaskIndexRepo {
@@ -354,7 +354,7 @@ export class TaskIndexRepo {
   ) {}
 
   /** Host 装配层共用迁移后的组织库；UI 只能通过 project/remote-projects 服务访问。 */
-  private admitTaskGroup(meta: ZCodeTaskMeta, archived: boolean, deleted: boolean) {
+  private admitTaskGroup(meta: CodezTaskMeta, archived: boolean, deleted: boolean) {
     if (this.storageHostId && this.storageHostId !== "local") return;
     // 本机只登记本机事实；远程成员由控制端服务验证远端投影后写入。
     if (meta.workspaceIdentity?.trim()) return;
@@ -423,12 +423,12 @@ export class TaskIndexRepo {
     const migration = await projectStorage.migrate(this.getDatabase(), {
       settings: this.migrationSettings,
       hostId: this.storageHostId,
-      backupDirectories: [join(getZCodeDataRootDir(), "backup")],
+      backupDirectories: [join(getCodezDataRootDir(), "backup")],
       warn: (message, details) => createServiceLogger("project-migration").warn(message, details),
     });
     this.migrationBackupSkipped = taskMigration.backupSkipped || migration.backupSkipped;
     this.backfillOffPeakTaskMarkers();
-    // Bugfix: z-code-2 早期列表 task_id 是 wrapper id，真实 ZCode session id 在旧列
+    // Bugfix: z-code-2 早期列表 task_id 是 wrapper id，真实 Codez session id 在旧列
     // acp_session_id。直接运行时映射会让 read/send/subscribe 到处变成双 ID 兜底；
     // 初始化时把索引行迁到真实 session id，后续统一走新协议正常路径。
     this.migrateLegacyAcpTaskIds();
@@ -605,7 +605,7 @@ export class TaskIndexRepo {
       }
       db.exec("COMMIT");
       if (migrated > 0) {
-        logger.info(undefined, `已迁移 legacy ACP task_id 到 ZCode session id 数量=${migrated}`);
+        logger.info(undefined, `已迁移 legacy ACP task_id 到 Codez session id 数量=${migrated}`);
       }
     } catch (error) {
       db.exec("ROLLBACK");
@@ -628,7 +628,7 @@ export class TaskIndexRepo {
       mode: source.mode,
       provider: source.provider ?? undefined,
       model: source.model ?? undefined,
-      status: source.task_status ? (source.task_status as ZCodeTaskMeta["status"]) : undefined,
+      status: source.task_status ? (source.task_status as CodezTaskMeta["status"]) : undefined,
     });
     if (!target) {
       return {
@@ -666,9 +666,9 @@ export class TaskIndexRepo {
       provider: target.provider ?? source.provider ?? undefined,
       model: target.model ?? source.model ?? undefined,
       status: target.task_status
-        ? (target.task_status as ZCodeTaskMeta["status"])
+        ? (target.task_status as CodezTaskMeta["status"])
         : source.task_status
-          ? (source.task_status as ZCodeTaskMeta["status"])
+          ? (source.task_status as CodezTaskMeta["status"])
           : undefined,
     });
     const title = source.title_overridden === 1 ? source.title : target.title || source.title;
@@ -779,7 +779,7 @@ export class TaskIndexRepo {
     return row ?? null;
   }
 
-  private writeRecord(record: TaskIndexWriteRecord): ZCodeTaskMeta {
+  private writeRecord(record: TaskIndexWriteRecord): CodezTaskMeta {
     const database = this.getDatabase();
     const ownTransaction = !database.isTransaction;
     if (ownTransaction) database.exec("BEGIN IMMEDIATE");
@@ -917,7 +917,7 @@ export class TaskIndexRepo {
   async listReconciliationRows(target: {
     workspacePath: string;
     workspaceIdentity?: string;
-  }): Promise<Array<{ meta: ZCodeTaskMeta; handoffPending: number }>> {
+  }): Promise<Array<{ meta: CodezTaskMeta; handoffPending: number }>> {
     await this.ensureReady();
     const rows = this.getDatabase()
       .prepare("SELECT * FROM tasks WHERE workspace_key=?")
@@ -980,11 +980,11 @@ export class TaskIndexRepo {
 
   /** 仅 syncer 调用：CLI 事实是唯一来源，组织态写者不得合成这些值。 */
   async applyCliFacts(params: {
-    meta: ZCodeTaskMeta;
+    meta: CodezTaskMeta;
     titleSource?: string;
     lastOutcome?: "completed" | "interrupted" | "error";
     deleted?: boolean;
-  }): Promise<ZCodeTaskMeta> {
+  }): Promise<CodezTaskMeta> {
     await this.ensureReady();
     return this.enqueueWrite(params.meta, () => {
       const db = this.getDatabase();
@@ -1059,7 +1059,7 @@ export class TaskIndexRepo {
     workspaceIdentity?: string;
     taskId: string;
     expectedUnreadAt: number;
-  }): Promise<{ meta: ZCodeTaskMeta; cleared: boolean }> {
+  }): Promise<{ meta: CodezTaskMeta; cleared: boolean }> {
     await this.ensureReady();
     return this.enqueueWrite(params, () => {
       const db = this.getDatabase();
@@ -1087,7 +1087,7 @@ export class TaskIndexRepo {
     workspacePath: string;
     workspaceIdentity?: string;
     taskId: string;
-  }): Promise<ZCodeTaskMeta | null> {
+  }): Promise<CodezTaskMeta | null> {
     await this.ensureReady();
     return this.enqueueWrite(params, () => {
       const database = this.getDatabase();
@@ -1127,7 +1127,7 @@ export class TaskIndexRepo {
     workspaceIdentity?: string;
     taskId: string;
     patch: TaskIndexStatePatch;
-  }): Promise<ZCodeTaskMeta> {
+  }): Promise<CodezTaskMeta> {
     await this.ensureReady();
     return this.enqueueWrite(params, () => {
       const db = this.getDatabase();
@@ -1174,7 +1174,7 @@ export class TaskIndexRepo {
     taskId: string;
     presentation: Partial<
       Pick<
-        ZCodeTaskMeta,
+        CodezTaskMeta,
         | "mode"
         | "model"
         | "thoughtLevel"
@@ -1186,7 +1186,7 @@ export class TaskIndexRepo {
       >
     >;
     searchableText?: string;
-  }): Promise<ZCodeTaskMeta | null> {
+  }): Promise<CodezTaskMeta | null> {
     await this.ensureReady();
     return this.enqueueWrite(params, () => {
       const db = this.getDatabase();
@@ -1227,11 +1227,11 @@ export class TaskIndexRepo {
   async listTaskMetas(params: {
     workspacePath?: string;
     workspaceIdentity?: string;
-    provider?: ZCodeProvider;
+    provider?: CodezProvider;
     pinned?: boolean;
     archived?: boolean;
     includeDeleted?: boolean;
-  }): Promise<ZCodeTaskMeta[]> {
+  }): Promise<CodezTaskMeta[]> {
     await this.ensureReady();
     // listTaskMetas 支持不传 workspacePath 查询全部任务，但 workspaceKey 只接受必填路径。
     // 先把可选入参收窄成明确的 workspace target，避免类型层把全量查询和 workspace 查询混在一起。
@@ -1270,7 +1270,7 @@ export class TaskIndexRepo {
         WHERE (@workspace_key IS NULL OR workspace_key = @workspace_key)
           AND cli_created_at IS NOT NULL
           AND (@include_deleted = 1 OR (deleted = 0 AND coalesce(cli_deleted,0) = 0))
-          -- Bugfix: ZCode Agent 列表只接受当前 glm provider；Claude Code 导入也属于非 glm 历史数据。
+          -- Bugfix: Codez Agent 列表只接受当前 glm provider；Claude Code 导入也属于非 glm 历史数据。
           AND (@provider IS NULL OR provider = @provider)
           AND (@pinned IS NULL OR pinned = @pinned)
           AND (@archived IS NULL OR archived = @archived)
@@ -1295,7 +1295,7 @@ export class TaskIndexRepo {
   async listDeletedTaskIds(params: {
     workspacePath: string;
     workspaceIdentity?: string;
-    provider?: ZCodeProvider;
+    provider?: CodezProvider;
   }): Promise<string[]> {
     await this.ensureReady();
     const workspaceKeyValue = workspaceKey({
@@ -1320,8 +1320,8 @@ export class TaskIndexRepo {
   }
 
   async queryTaskList(
-    params: ZCodeTaskListQuery & { provider?: ZCodeProvider },
-  ): Promise<ZCodeTaskListResult> {
+    params: CodezTaskListQuery & { provider?: CodezProvider },
+  ): Promise<CodezTaskListResult> {
     await this.ensureReady();
     const scopes = params.workspaceScopes === "host" ? [] : params.workspaceScopes;
     const workspaceKeys = normalizeWorkspaceKeys(scopes);
@@ -1344,7 +1344,7 @@ export class TaskIndexRepo {
       args.push(...workspaceKeys);
     }
     if (params.provider) {
-      appendZCodeAgentIndexedProviderFilter(where, args, params.provider);
+      appendCodezAgentIndexedProviderFilter(where, args, params.provider);
     }
     if (params.taskIds) {
       if (params.taskIds.length === 0) return { items: [], total: 0, hasMore: false };
@@ -1524,7 +1524,7 @@ export class TaskIndexRepo {
     workspacePath: string;
     workspaceIdentity?: string;
     taskId: string;
-  }): Promise<ZCodeTaskMeta | null> {
+  }): Promise<CodezTaskMeta | null> {
     await this.ensureReady();
     const row = this.getTaskRow(params);
     if (!row || row.deleted === 1) {

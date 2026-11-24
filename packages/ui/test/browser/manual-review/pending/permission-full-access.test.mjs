@@ -62,13 +62,13 @@ for (const proof of ["ack", "queryOnly"])
       assert.equal(await page.getByTestId("sent-options").textContent(), "allowAndSwitchGuarded");
       assert.deepEqual(
         await page.evaluate(() =>
-          Object.keys(localStorage).filter((k) => k.startsWith("zcode-composer-recent:")),
+          Object.keys(localStorage).filter((k) => k.startsWith("codez-composer-recent:")),
         ),
         [],
       );
       await page.getByRole("button", { name: "Release scope" }).click();
       await page.waitForFunction(() =>
-        Object.keys(localStorage).some((k) => k.startsWith("zcode-composer-recent:")),
+        Object.keys(localStorage).some((k) => k.startsWith("codez-composer-recent:")),
       );
       await page.getByRole("button", { name: "New A" }).click();
       assert.equal(await page.getByTestId("draft-mode").textContent(), "guarded");
@@ -89,7 +89,7 @@ for (const current of ["build", "guarded"])
       await page.getByRole("button", { name: "New A" }).waitFor({ timeout: 5000 });
       assert.deepEqual(
         await page.evaluate(() =>
-          Object.keys(localStorage).filter((key) => key.startsWith("zcode-composer-recent:")),
+          Object.keys(localStorage).filter((key) => key.startsWith("codez-composer-recent:")),
         ),
         [],
       );

@@ -66,7 +66,7 @@ describe("Activity Subagent retention candidate", () => {
       .getAttribute("data-activity-id");
     const sessionId = (await getV4PaneSnapshot()).sessionId!;
     await browser.saveScreenshot(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "activity-subagents-ended.png"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "activity-subagents-ended.png"),
     );
     await browser.keys("Escape");
     await $(trigger).click();

@@ -4,14 +4,14 @@
 
 **Goal:** Browser 与 browser-use tab 在 Electron guest 被异常终止后，保持稳定 tab 身份和对话归属，以最近有效 URL 原位恢复并重新接入 CDP。
 
-**Architecture:** 正常对话切换继续保留原 `<webview>`。`UnifiedBrowserView` 监听 guest `render-process-gone`，仅对 killed/crashed/oom/memory-eviction 等可恢复原因递增 guest generation，让 `BrowserViewportSurface` 替换失效节点；最近非 `about:blank` URL 保存在 renderer workspaceKey 隔离内存中，新 guest `dom-ready` 后用同一 browserKey/tabId 上报新的 webContentsId 并恢复 URL。main 的旧 guest 监听清理改为 best-effort，避免已销毁 session 阻断替代 guest attach；relay 与 ZCode session protocol 不新增状态。
+**Architecture:** 正常对话切换继续保留原 `<webview>`。`UnifiedBrowserView` 监听 guest `render-process-gone`，仅对 killed/crashed/oom/memory-eviction 等可恢复原因递增 guest generation，让 `BrowserViewportSurface` 替换失效节点；最近非 `about:blank` URL 保存在 renderer workspaceKey 隔离内存中，新 guest `dom-ready` 后用同一 browserKey/tabId 上报新的 webContentsId 并恢复 URL。main 的旧 guest 监听清理改为 best-effort，避免已销毁 session 阻断替代 guest attach；relay 与 Codez session protocol 不新增状态。
 
 **Tech Stack:** React 19、Electron `<webview>`、TypeScript、Vitest + Testing Library。
 
 ## Global Constraints
 
 - 普通 A → B → A 切换不得重建、刷新或卸载仍存活的 `<webview>`。
-- 用户显式关闭 tab/窗口与 ZCode 进程退出不得自动恢复。
+- 用户显式关闭 tab/窗口与 Codez 进程退出不得自动恢复。
 - desktop `desktop-continuous` 只使用 renderer/main 既有 attach 链路；手机 `web-remote-replayable` 不新增 snapshot 或 runtime。
 - URL 隔离 key 使用 `workspaceIdentity?.trim() || workspacePath`，实际 tab URL 再按稳定 side-pane tab id 分桶。
 - UI 日志统一使用 `packages/ui/src/logger.ts`；异常退出为低频 lifecycle `warn`，普通事件不新增生产 info 流量。

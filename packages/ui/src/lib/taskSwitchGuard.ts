@@ -1,4 +1,4 @@
-import type { ModelSwitchStage } from "@/store/zcodeSessionStoreTypes.js";
+import type { ModelSwitchStage } from "@/store/codezSessionStoreTypes.js";
 
 export function shouldBlockTaskSelectionDuringModelRestart(
   modelSwitchPending: boolean,

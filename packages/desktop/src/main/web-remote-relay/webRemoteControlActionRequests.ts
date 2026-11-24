@@ -5,7 +5,7 @@ import {
   type WebRemoteControlTaskArchiveRequestPayload,
   type WebRemoteControlTaskPinRequestPayload,
   type WebRemoteControlWorkspaceCreateRequestPayload,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type {
   WebRemoteControlRendererActionInput,
   WebRemoteControlRendererActionSuccess,

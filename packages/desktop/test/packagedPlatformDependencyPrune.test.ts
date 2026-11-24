@@ -36,7 +36,7 @@ function nativeFilesInAsar(asarPath: string) {
 
 describe("packaged platform dependency prune", () => {
   it("removes incompatible packages before repack and drops stale unpacked native files", async () => {
-    const root = mkdtempSync(resolve(tmpdir(), "zcode-platform-prune-"));
+    const root = mkdtempSync(resolve(tmpdir(), "codez-platform-prune-"));
     try {
       const source = resolve(root, "source");
       const nodeModules = resolve(source, "node_modules/@img");

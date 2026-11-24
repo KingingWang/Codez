@@ -9,9 +9,9 @@ Status: needs-info
 
 ## 证据
 
-- 超时：`apps/zcode-cli/packages/core/src/mcp/index.ts:49`（`MCP_TOOL_TIMEOUT_MS = 30_000`）。
-- `ToolDeadline` 的 `pause`（`apps/zcode-cli/packages/core/src/tool/executor/timeout.ts:37`）只由模型请求排队事件驱动；工具 handler 拿不到 deadline。
-- elicitation 端口：`apps/zcode-cli/packages/adapters/src/mcp/index.ts:158`。
+- 超时：`apps/codez-cli/packages/core/src/mcp/index.ts:49`（`MCP_TOOL_TIMEOUT_MS = 30_000`）。
+- `ToolDeadline` 的 `pause`（`apps/codez-cli/packages/core/src/tool/executor/timeout.ts:37`）只由模型请求排队事件驱动；工具 handler 拿不到 deadline。
+- elicitation 端口：`apps/codez-cli/packages/adapters/src/mcp/index.ts:158`。
 - 以上是代码阅读结论，还没有运行复现。
 
 ## 影响

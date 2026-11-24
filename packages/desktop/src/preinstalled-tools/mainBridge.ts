@@ -1,14 +1,14 @@
 import { ipcMain, utilityProcess, type BrowserWindow, type UtilityProcess } from "electron";
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import { PlatformChannels } from "@zcode/shared";
+import { PlatformChannels } from "@codez/shared";
 import {
   preinstalledToolsToMainSchema,
   preinstalledToolsCommandSchema,
   type PreinstalledToolsCommand,
   type MainToPreinstalledToolsMessage,
   type PreinstalledToolsState,
-} from "@zcode/shared/preinstalled-tools";
+} from "@codez/shared/preinstalled-tools";
 import { buildHostProcessEnv } from "@desktop/main/desktopRuntimeEnv.js";
 import { isMainApplicationWindowWebContents } from "@desktop/main/resourceManagerWindow.js";
 import type { PreinstalledToolsProcessHandle } from "@desktop/preinstalled-tools/contract.js";
@@ -50,11 +50,11 @@ export function spawnPreinstalledToolsProcess(options: {
       join(import.meta.dirname, "../preinstalled-tools/process.js"),
       [],
       {
-        serviceName: "zcode-preinstalled-tools",
+        serviceName: "codez-preinstalled-tools",
         execArgv: ["--no-warnings"],
         env: {
           ...buildHostProcessEnv(options.hostProcessLocalEnv),
-          ZCODE_PROCESS_LABEL: "preinstalled-tools",
+          CODEZ_PROCESS_LABEL: "preinstalled-tools",
         },
       },
     );

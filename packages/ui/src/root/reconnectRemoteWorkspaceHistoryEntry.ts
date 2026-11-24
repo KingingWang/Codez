@@ -6,14 +6,14 @@ import type {
   IPlatformService,
   RemoteTargetSnapshot,
   RemoteWorkspaceSessionEntry,
-} from "@zcode/shared";
+} from "@codez/shared";
 import {
   isCredentialDecryptError,
   REMOTE_WORKSPACE_DIRECTORY_UNAVAILABLE_ERROR_CODE,
   REMOTE_WORKSPACE_DIRECTORY_UNRESPONSIVE_ERROR_CODE,
   stripRemoteTargetSecrets,
-} from "@zcode/shared";
-import type { IServiceAccessor } from "@zcode/services";
+} from "@codez/shared";
+import type { IServiceAccessor } from "@codez/services";
 import { toast } from "@/components/ui/toast.js";
 import {
   buildRemoteWorkspaceSessionMutation,
@@ -103,7 +103,7 @@ export interface ReconnectRemoteWorkspaceOptions {
 
 /**
  * 读取 Profile secret；本机无法解密等同缺失，与 Host `SourceServerDirectory` 的规则一致。
- * Bug 原因：~/.zcode 换机/换用户后，保存的密码解不开。Renderer 直接读取凭据，解密错误一路上抛，
+ * Bug 原因：~/.codez 换机/换用户后，保存的密码解不开。Renderer 直接读取凭据，解密错误一路上抛，
  * 点项目或设置页连接只显示通用的“连接失败”，到不了已有的补充凭据分支。其他读取错误照常上抛。
  */
 async function loadUsableProfileCredential(

@@ -30,7 +30,7 @@ describe("FX13：fork 回滚后的会话隔离与桌面冷恢复", () => {
         // 等旧 Electron/Host/Agent 全部退出，再通过真实 store 制造交错；不直接改 CLI 数据库行。
         // 旧代码会把其他会话的成功写入包含在 fork 事务中回滚，worker 断言会先失败。
         const worker = resolve(
-          "../../apps/zcode-cli/packages/adapters/tests/fixtures/session-transaction-process.ts",
+          "../../apps/codez-cli/packages/adapters/tests/fixtures/session-transaction-process.ts",
         );
         const { stdout } = await promisify(execFile)(
           process.execPath,
@@ -39,7 +39,7 @@ describe("FX13：fork 回滚后的会话隔离与桌面冷恢复", () => {
             "tsx",
             worker,
             "seed",
-            join(homedir(), ".zcode", "cli", "db", "db.sqlite"),
+            join(homedir(), ".codez", "cli", "db", "db.sqlite"),
             DEFAULT_WORKSPACE,
           ],
           { env: { ...process.env, NODE_NO_WARNINGS: "1" } },
@@ -72,7 +72,7 @@ function seedTaskMembership(sessionId: string): void {
   // 正式桌面任务同时拥有 Host membership 和 CLI 历史。只写 CLI 会构造不完整夹具，
   // 不能依赖 sessions-index 反向补齐侧栏。这里只补 Host 归属，不改刚验证的 CLI 库。
   // Node 内置 SQLite 仅提供 DatabaseSync；旧进程已退出，句柄在启动新进程前关闭。
-  const database = new DatabaseSync(join(homedir(), ".zcode", "v2", "tasks-index.sqlite"));
+  const database = new DatabaseSync(join(homedir(), ".codez", "v2", "tasks-index.sqlite"));
   const now = Date.now();
   try {
     database

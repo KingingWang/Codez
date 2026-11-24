@@ -2,11 +2,11 @@
 
 ## 目标
 
-在不依赖本地 `zcode-cua` 源码目录、不控制 SSH/WSL/Docker/远程工作区的前提下，让
-Windows x64/arm64 的 ZCode 安装包能够按需启动本机 Computer Use Helper，并复用现有
-`@zcode/protocol`、CUA broker、官方 `zcode-cua` 插件和桌面本地 host 生命周期。
+在不依赖本地 `codez-cua` 源码目录、不控制 SSH/WSL/Docker/远程工作区的前提下，让
+Windows x64/arm64 的 Codez 安装包能够按需启动本机 Computer Use Helper，并复用现有
+`@codez/protocol`、CUA broker、官方 `codez-cua` 插件和桌面本地 host 生命周期。
 
-源码开发仍允许使用 `ZCODE_CUA_DEV_ROOT` 覆盖产品资源；产品安装包默认只读取自身
+源码开发仍允许使用 `CODEZ_CUA_DEV_ROOT` 覆盖产品资源；产品安装包默认只读取自身
 `resources/tools/cua-helper`，不搜索相邻目录、不下载 Helper、不回退到 macOS 实现。
 
 ## 设计结论
@@ -16,14 +16,14 @@ Windows 沿用 macOS 已验证的“Agent 只连接 broker、Helper 独立持有
 授权主体要求，因此 Helper 由安装包内的 Electron Node 运行时启动，原生
 `ax_native.node` 作为安装资源发布。
 
-`@zcode/zcode-cua` 是 Helper JavaScript、native source、addon 与版本校验的唯一包身份；不得再为同一 Git 提交声明 helper-runtime alias。macOS/Windows CI 必须从 canonical 包重建目标架构 addon，缺少 `binding.gyp` 或对应平台源码时 fail closed。
+`@codez/codez-cua` 是 Helper JavaScript、native source、addon 与版本校验的唯一包身份；不得再为同一 Git 提交声明 helper-runtime alias。macOS/Windows CI 必须从 canonical 包重建目标架构 addon，缺少 `binding.gyp` 或对应平台源码时 fail closed。
 
 ```text
 构建期
 
-固定提交的 @zcode/zcode-cua（或构建期显式 ZCODE_CUA_HELPER_RUNTIME_PACKAGE_DIR）
-  ├─ package.json:zcodeCuaRuntime.windows.entry
-  ├─ package.json:zcodeCuaRuntime.windows.nativeAddon
+固定提交的 @codez/codez-cua（或构建期显式 CODEZ_CUA_HELPER_RUNTIME_PACKAGE_DIR）
+  ├─ package.json:codezCuaRuntime.windows.entry
+  ├─ package.json:codezCuaRuntime.windows.nativeAddon
   └─ 外置运行依赖 express / sharp
                  |
                  v
@@ -51,7 +51,7 @@ electron-builder extraResources + Windows signExts(.node/.dll)
 
 官方 CUA 插件启用
   -> host 延迟解析 Windows runtime
-     -> 若 ZCODE_CUA_DEV_ROOT 非空：严格使用显式源码根
+     -> 若 CODEZ_CUA_DEV_ROOT 非空：严格使用显式源码根
      -> 否则：严格使用 process.resourcesPath/tools/cua-helper
         -> 校验 manifest / win32 / arch / Electron 版本 / 文件哈希
            -> Electron.exe + ELECTRON_RUN_AS_NODE=1 fork windows-helper.js
@@ -71,7 +71,7 @@ electron-builder extraResources + Windows signExts(.node/.dll)
 
 ```json
 {
-  "zcodeCuaRuntime": {
+  "codezCuaRuntime": {
     "schema": 1,
     "windows": {
       "entry": "dist/windows-helper.js",
@@ -105,7 +105,7 @@ manifest schema 版本为 `1`，字段固定为：
 ```json
 {
   "schemaVersion": 1,
-  "packageName": "@zcode/zcode-cua",
+  "packageName": "@codez/codez-cua",
   "packageVersion": "0.5.2",
   "platform": "win32",
   "arch": "x64",
@@ -121,19 +121,19 @@ manifest schema 版本为 `1`，字段固定为：
 
 上例路径和版本只用于展示。staging 必须把当前生产者的契约路径原样写入 `entry`/`addon`，
 把当前 package version 原样写入 `packageVersion` 作为来源追踪；运行时只要求它是非空字符串，
-不与 ZCode 内的版本常量比较。真正的发布版本选择仍由 lockfile 的精确 commit 管理。
+不与 Codez 内的版本常量比较。真正的发布版本选择仍由 lockfile 的精确 commit 管理。
 
 `arch` 允许 `x64` 或 `arm64`。构建期必须检查 `.node` 的 PE machine：
 `0x8664` 对应 x64，`0xaa64` 对应 arm64。目标不匹配时构建立即失败，禁止把宿主
 x64 产物误装进 arm64 包。
 
-发布依赖必须固定到可从远端获取的 `zcode-cua` 精确 commit；不能使用分支浮动引用、
-相邻目录猜测或安装时临时编译。`ZCODE_CUA_DEV_ROOT` 只作为显式本地开发覆盖。
+发布依赖必须固定到可从远端获取的 `codez-cua` 精确 commit；不能使用分支浮动引用、
+相邻目录猜测或安装时临时编译。`CODEZ_CUA_DEV_ROOT` 只作为显式本地开发覆盖。
 
 ## 运行时准入与失败语义
 
 1. 平台不是 `win32` 时，Windows resolver 返回稳定的 `unsupported-platform`。
-2. `ZCODE_CUA_DEV_ROOT` 非空时必须是绝对路径，并继续执行 package/entry/addon 校验；
+2. `CODEZ_CUA_DEV_ROOT` 非空时必须是绝对路径，并继续执行 package/entry/addon 校验；
    配错后 fail closed，不回退产品资源。
 3. 未设置开发覆盖时必须存在绝对 `resourcesPath`，产品根固定派生为
    `tools/cua-helper`。
@@ -181,7 +181,7 @@ staging manifest（未签名字节 hash）
 - source override 与 packaged runtime 两种解析路径；
 - 配错 source override 不回退；
 - manifest schema/platform/arch/Electron/hash 任一不匹配均 fail closed；
-- Windows 特性在无 `ZCODE_CUA_DEV_ROOT` 时仍可创建延迟产品 host；
+- Windows 特性在无 `CODEZ_CUA_DEV_ROOT` 时仍可创建延迟产品 host；
 - 非 desktop-local 与 remote workspace identity 继续拒绝创建；
 - staging 的 x64/arm64 PE machine 校验；
 - source/staging 拒绝 symlink、junction/reparse point 造成的物理越界；
@@ -202,19 +202,19 @@ Windows `--dir` 验收必须显式加载仓库的非默认配置文件名；裸�
 `extraMetadata.version` 注入前错误报告 desktop `package.json` 缺少 version。正确命令为：
 
 ```powershell
-Remove-Item Env:ZCODE_CUA_DEV_ROOT -ErrorAction SilentlyContinue
-$env:ZCODE_CUA_HELPER_RUNTIME_PACKAGE_DIR='D:\path\to\zcode-cua'
-$env:ZCODE_SKIP_REMOTE_ASSETS='1'
-$env:ZCODE_TARGET_OS='win32'
-$env:ZCODE_TARGET_ARCH='x64'
-pnpm --filter @zcode/desktop build
-pnpm --filter @zcode/desktop exec electron-builder `
+Remove-Item Env:CODEZ_CUA_DEV_ROOT -ErrorAction SilentlyContinue
+$env:CODEZ_CUA_HELPER_RUNTIME_PACKAGE_DIR='D:\path\to\codez-cua'
+$env:CODEZ_SKIP_REMOTE_ASSETS='1'
+$env:CODEZ_TARGET_OS='win32'
+$env:CODEZ_TARGET_ARCH='x64'
+pnpm --filter @codez/desktop build
+pnpm --filter @codez/desktop exec electron-builder `
   --config electron-builder.config.js --win --x64 --dir
-Remove-Item Env:ZCODE_CUA_HELPER_RUNTIME_PACKAGE_DIR
+Remove-Item Env:CODEZ_CUA_HELPER_RUNTIME_PACKAGE_DIR
 ```
 
-本机通过显式 `ZCODE_CUA_HELPER_RUNTIME_PACKAGE_DIR` 选择本地 producer 完成
-`@zcode/zcode-cua` staging；workspace/lockfile 仍保持远端可获取的精确 pinned dependency，目标为
+本机通过显式 `CODEZ_CUA_HELPER_RUNTIME_PACKAGE_DIR` 选择本地 producer 完成
+`@codez/codez-cua` staging；workspace/lockfile 仍保持远端可获取的精确 pinned dependency，目标为
 win32/x64，addon PE machine 为 `0x8664`。产物资源目录为
 `<workspace>\packages\desktop\dist\win-unpacked\resources`，manifest 为
 `resources\tools\cua-helper\runtime-manifest.json`。GitHub 下载中断后复用了已缓存并按
@@ -222,7 +222,7 @@ Electron 官方 `checksums.json` 验证的 `electron-v41.0.3-win32-x64.zip`；zi
 `93346b31dfcd779c4c4cdfdfb2e3f9642e7a9888e388a8971ff3e95dbf948887`。
 
 本地命令执行器的 20 分钟上限恰好在 `rcedit` 修改 branded
-`ZCode Preview.exe` 时中断，遗留 exe 的版本仍是 Electron `41.0.3`，hash 也不同于
+`Codez Preview.exe` 时中断，遗留 exe 的版本仍是 Electron `41.0.3`，hash 也不同于
 cache 原始 `electron.exe`；Windows Application Control 因而拒绝启动它。该次命令没有
 可采信的最终 exit code，不能记为 branded unpacked build 成功。独立运行与 afterPack
 相同的 `verifyPackagedWindowsCuaHelper` 已验证最终 resources 中的 manifest、entry/addon

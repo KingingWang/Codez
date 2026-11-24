@@ -1,10 +1,10 @@
 import { createRoot } from "react-dom/client";
-import { channelContentText, type ChannelContentPart } from "@zcode/shared";
+import { channelContentText, type ChannelContentPart } from "@codez/shared";
 import { ConversationUserInputBubble } from "@/v4/ConversationUserInputBubble.js";
 import { BotTopicPreparationList } from "@/v4/BotTopicPreparation.js";
 import { ConversationQueuePanel } from "@/v4/ConversationQueuePanel.js";
-import type { QueueState } from "@zcode/shared/zcode-protocol-v4";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import type { QueueState } from "@codez/shared/codez-protocol-v4";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import "@/styles.css";
 const theme = new URLSearchParams(location.search).get("theme");
@@ -46,7 +46,7 @@ const queue = {
   revision: 1,
 } as unknown as QueueState;
 createRoot(document.getElementById("root")!).render(
-  <ZCodeIntlProvider initialLocale="zh-CN">
+  <CodezIntlProvider initialLocale="zh-CN">
     <TooltipProvider>
       <main className="min-h-screen bg-background p-6 text-foreground">
         <div className="mx-auto flex max-w-3xl flex-col gap-6">
@@ -71,5 +71,5 @@ createRoot(document.getElementById("root")!).render(
         </div>
       </main>
     </TooltipProvider>
-  </ZCodeIntlProvider>,
+  </CodezIntlProvider>,
 );

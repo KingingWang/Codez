@@ -7,15 +7,15 @@
   "files": [
     {
       "source": "plugins/documents/scripts/README.md",
-      "target": "apps/zcode-cli/packages/documents-plugin/scripts/README.md",
+      "target": "apps/codez-cli/packages/documents-plugin/scripts/README.md",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "ec127a6addb445617680c0c7b82f173ac0cebead",
       "targetSha256": "5fe15ce6b7b8893eb01bf23de4efa5b5209fca00202a35b3cbedf381d04fcf39"
     },
     {
-      "source": "plugins/documents/scripts/libreoffice-profile/user/basic/Standard/ZCode.xba",
-      "target": "apps/zcode-cli/packages/documents-plugin/scripts/libreoffice-profile/user/basic/Standard/ZCode.xba",
+      "source": "plugins/documents/scripts/libreoffice-profile/user/basic/Standard/Codez.xba",
+      "target": "apps/codez-cli/packages/documents-plugin/scripts/libreoffice-profile/user/basic/Standard/Codez.xba",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "a602176fc6fa96235a22e097246c41761824519b",
@@ -23,7 +23,7 @@
     },
     {
       "source": "plugins/documents/scripts/libreoffice-profile/user/basic/Standard/dialog.xlb",
-      "target": "apps/zcode-cli/packages/documents-plugin/scripts/libreoffice-profile/user/basic/Standard/dialog.xlb",
+      "target": "apps/codez-cli/packages/documents-plugin/scripts/libreoffice-profile/user/basic/Standard/dialog.xlb",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "2ab265388003b4a6cc21cf5c4f0ee6c4a80d442a",
@@ -31,7 +31,7 @@
     },
     {
       "source": "plugins/documents/scripts/libreoffice-profile/user/basic/Standard/script.xlb",
-      "target": "apps/zcode-cli/packages/documents-plugin/scripts/libreoffice-profile/user/basic/Standard/script.xlb",
+      "target": "apps/codez-cli/packages/documents-plugin/scripts/libreoffice-profile/user/basic/Standard/script.xlb",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "167fa21a60b9ab8287b5b7b7aa2cef4c437c4c20",
@@ -39,7 +39,7 @@
     },
     {
       "source": "plugins/documents/scripts/libreoffice-profile/user/basic/dialog.xlc",
-      "target": "apps/zcode-cli/packages/documents-plugin/scripts/libreoffice-profile/user/basic/dialog.xlc",
+      "target": "apps/codez-cli/packages/documents-plugin/scripts/libreoffice-profile/user/basic/dialog.xlc",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "d4a36840f3c268f120689a08dd8565d246d0dd2e",
@@ -47,7 +47,7 @@
     },
     {
       "source": "plugins/documents/scripts/libreoffice-profile/user/basic/script.xlc",
-      "target": "apps/zcode-cli/packages/documents-plugin/scripts/libreoffice-profile/user/basic/script.xlc",
+      "target": "apps/codez-cli/packages/documents-plugin/scripts/libreoffice-profile/user/basic/script.xlc",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "d4a36840f3c268f120689a08dd8565d246d0dd2e",
@@ -55,15 +55,15 @@
     },
     {
       "source": "plugins/documents/scripts/libreoffice-profile/user/registrymodifications.xcu",
-      "target": "apps/zcode-cli/packages/documents-plugin/scripts/libreoffice-profile/user/registrymodifications.xcu",
+      "target": "apps/codez-cli/packages/documents-plugin/scripts/libreoffice-profile/user/registrymodifications.xcu",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "2103f9d7822345c68207a119d9bdea3af452e45f",
       "targetSha256": "481bba1c7f990a44e7ccb168d9485126f5430c67b4dd1db30edcd9d182cec27a"
     },
     {
-      "source": "plugins/documents/scripts/zcode_libreoffice.py",
-      "target": "apps/zcode-cli/packages/documents-plugin/scripts/zcode_libreoffice.py",
+      "source": "plugins/documents/scripts/codez_libreoffice.py",
+      "target": "apps/codez-cli/packages/documents-plugin/scripts/codez_libreoffice.py",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "fbcec76c9ba5f86688774517dbbee3ab770a276c",
@@ -71,7 +71,7 @@
     },
     {
       "source": "plugins/documents/skills/docx/SKILL.md",
-      "target": "apps/zcode-cli/packages/documents-plugin/skills/docx/SKILL.md",
+      "target": "apps/codez-cli/packages/documents-plugin/skills/docx/SKILL.md",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "4b5ad09d77d998916697d190fd48d4da46f8783d",
@@ -79,7 +79,7 @@
     },
     {
       "source": "plugins/documents/skills/docx/env_setup/env_check.sh",
-      "target": "apps/zcode-cli/packages/documents-plugin/skills/docx/env_setup/env_check.sh",
+      "target": "apps/codez-cli/packages/documents-plugin/skills/docx/env_setup/env_check.sh",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "a8c22414e5a4735ef1f794b03dd03c2e0ac2a160",
@@ -87,7 +87,7 @@
     },
     {
       "source": "plugins/documents/skills/docx/env_setup/libreoffice-unmanaged.md",
-      "target": "apps/zcode-cli/packages/documents-plugin/skills/docx/env_setup/libreoffice-unmanaged.md",
+      "target": "apps/codez-cli/packages/documents-plugin/skills/docx/env_setup/libreoffice-unmanaged.md",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "22e2fd539eadfb8956f4b89d82a69310edbf1971",
@@ -95,7 +95,7 @@
     },
     {
       "source": "plugins/documents/skills/docx/env_setup/setup.md",
-      "target": "apps/zcode-cli/packages/documents-plugin/skills/docx/env_setup/setup.md",
+      "target": "apps/codez-cli/packages/documents-plugin/skills/docx/env_setup/setup.md",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "3197fd42205473e946ec838d55ae07e65db5465d",
@@ -103,7 +103,7 @@
     },
     {
       "source": "plugins/documents/skills/docx/env_setup/setup_windows.ps1",
-      "target": "apps/zcode-cli/packages/documents-plugin/skills/docx/env_setup/setup_windows.ps1",
+      "target": "apps/codez-cli/packages/documents-plugin/skills/docx/env_setup/setup_windows.ps1",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "33c72e8f00535a66979b19520b677498b6897241",
@@ -111,7 +111,7 @@
     },
     {
       "source": "plugins/documents/skills/docx/references/docx-js-advanced.md",
-      "target": "apps/zcode-cli/packages/documents-plugin/skills/docx/references/docx-js-advanced.md",
+      "target": "apps/codez-cli/packages/documents-plugin/skills/docx/references/docx-js-advanced.md",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "cec9c0a943e41253c39d2b9d2b06d15da9525cfd",
@@ -119,7 +119,7 @@
     },
     {
       "source": "plugins/documents/skills/docx/routes/edit.md",
-      "target": "apps/zcode-cli/packages/documents-plugin/skills/docx/routes/edit.md",
+      "target": "apps/codez-cli/packages/documents-plugin/skills/docx/routes/edit.md",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "787802b78006739161324903a5f34d2a05aa9907",
@@ -127,7 +127,7 @@
     },
     {
       "source": "plugins/documents/skills/docx/routes/format.md",
-      "target": "apps/zcode-cli/packages/documents-plugin/skills/docx/routes/format.md",
+      "target": "apps/codez-cli/packages/documents-plugin/skills/docx/routes/format.md",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "1c10e1cf3d5de89c81f23c9ed49aaf8d65b357cf",
@@ -135,7 +135,7 @@
     },
     {
       "source": "plugins/documents/skills/docx/routes/read.md",
-      "target": "apps/zcode-cli/packages/documents-plugin/skills/docx/routes/read.md",
+      "target": "apps/codez-cli/packages/documents-plugin/skills/docx/routes/read.md",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "661d6cbc7672c9ef60d0db237a652378a481a2b8",
@@ -143,7 +143,7 @@
     },
     {
       "source": "plugins/documents/skills/docx/setup.sh",
-      "target": "apps/zcode-cli/packages/documents-plugin/skills/docx/setup.sh",
+      "target": "apps/codez-cli/packages/documents-plugin/skills/docx/setup.sh",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "ec3db97569aee2b229c75578bc4593d47b6372e3",
@@ -151,15 +151,15 @@
     },
     {
       "source": "plugins/pdf/scripts/README.md",
-      "target": "apps/zcode-cli/packages/pdf-plugin/scripts/README.md",
+      "target": "apps/codez-cli/packages/pdf-plugin/scripts/README.md",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "ec127a6addb445617680c0c7b82f173ac0cebead",
       "targetSha256": "5fe15ce6b7b8893eb01bf23de4efa5b5209fca00202a35b3cbedf381d04fcf39"
     },
     {
-      "source": "plugins/pdf/scripts/libreoffice-profile/user/basic/Standard/ZCode.xba",
-      "target": "apps/zcode-cli/packages/pdf-plugin/scripts/libreoffice-profile/user/basic/Standard/ZCode.xba",
+      "source": "plugins/pdf/scripts/libreoffice-profile/user/basic/Standard/Codez.xba",
+      "target": "apps/codez-cli/packages/pdf-plugin/scripts/libreoffice-profile/user/basic/Standard/Codez.xba",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "a602176fc6fa96235a22e097246c41761824519b",
@@ -167,7 +167,7 @@
     },
     {
       "source": "plugins/pdf/scripts/libreoffice-profile/user/basic/Standard/dialog.xlb",
-      "target": "apps/zcode-cli/packages/pdf-plugin/scripts/libreoffice-profile/user/basic/Standard/dialog.xlb",
+      "target": "apps/codez-cli/packages/pdf-plugin/scripts/libreoffice-profile/user/basic/Standard/dialog.xlb",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "2ab265388003b4a6cc21cf5c4f0ee6c4a80d442a",
@@ -175,7 +175,7 @@
     },
     {
       "source": "plugins/pdf/scripts/libreoffice-profile/user/basic/Standard/script.xlb",
-      "target": "apps/zcode-cli/packages/pdf-plugin/scripts/libreoffice-profile/user/basic/Standard/script.xlb",
+      "target": "apps/codez-cli/packages/pdf-plugin/scripts/libreoffice-profile/user/basic/Standard/script.xlb",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "167fa21a60b9ab8287b5b7b7aa2cef4c437c4c20",
@@ -183,7 +183,7 @@
     },
     {
       "source": "plugins/pdf/scripts/libreoffice-profile/user/basic/dialog.xlc",
-      "target": "apps/zcode-cli/packages/pdf-plugin/scripts/libreoffice-profile/user/basic/dialog.xlc",
+      "target": "apps/codez-cli/packages/pdf-plugin/scripts/libreoffice-profile/user/basic/dialog.xlc",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "d4a36840f3c268f120689a08dd8565d246d0dd2e",
@@ -191,7 +191,7 @@
     },
     {
       "source": "plugins/pdf/scripts/libreoffice-profile/user/basic/script.xlc",
-      "target": "apps/zcode-cli/packages/pdf-plugin/scripts/libreoffice-profile/user/basic/script.xlc",
+      "target": "apps/codez-cli/packages/pdf-plugin/scripts/libreoffice-profile/user/basic/script.xlc",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "d4a36840f3c268f120689a08dd8565d246d0dd2e",
@@ -199,15 +199,15 @@
     },
     {
       "source": "plugins/pdf/scripts/libreoffice-profile/user/registrymodifications.xcu",
-      "target": "apps/zcode-cli/packages/pdf-plugin/scripts/libreoffice-profile/user/registrymodifications.xcu",
+      "target": "apps/codez-cli/packages/pdf-plugin/scripts/libreoffice-profile/user/registrymodifications.xcu",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "2103f9d7822345c68207a119d9bdea3af452e45f",
       "targetSha256": "481bba1c7f990a44e7ccb168d9485126f5430c67b4dd1db30edcd9d182cec27a"
     },
     {
-      "source": "plugins/pdf/scripts/zcode_libreoffice.py",
-      "target": "apps/zcode-cli/packages/pdf-plugin/scripts/zcode_libreoffice.py",
+      "source": "plugins/pdf/scripts/codez_libreoffice.py",
+      "target": "apps/codez-cli/packages/pdf-plugin/scripts/codez_libreoffice.py",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "fbcec76c9ba5f86688774517dbbee3ab770a276c",
@@ -215,7 +215,7 @@
     },
     {
       "source": "plugins/pdf/skills/pdf/SKILL.md",
-      "target": "apps/zcode-cli/packages/pdf-plugin/skills/pdf/SKILL.md",
+      "target": "apps/codez-cli/packages/pdf-plugin/skills/pdf/SKILL.md",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "93a11f16459548cef05d937cb77c49503ea6e239",
@@ -223,7 +223,7 @@
     },
     {
       "source": "plugins/pdf/skills/pdf/briefs/process.md",
-      "target": "apps/zcode-cli/packages/pdf-plugin/skills/pdf/briefs/process.md",
+      "target": "apps/codez-cli/packages/pdf-plugin/skills/pdf/briefs/process.md",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "61bb903853ccc390b4e131ea999d5b8293a8ba3d",
@@ -231,7 +231,7 @@
     },
     {
       "source": "plugins/pdf/skills/pdf/env_setup/env_check.sh",
-      "target": "apps/zcode-cli/packages/pdf-plugin/skills/pdf/env_setup/env_check.sh",
+      "target": "apps/codez-cli/packages/pdf-plugin/skills/pdf/env_setup/env_check.sh",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "a7f5963d728aa6899e381fa644e717a6a26df000",
@@ -239,7 +239,7 @@
     },
     {
       "source": "plugins/pdf/skills/pdf/env_setup/libreoffice-unmanaged.md",
-      "target": "apps/zcode-cli/packages/pdf-plugin/skills/pdf/env_setup/libreoffice-unmanaged.md",
+      "target": "apps/codez-cli/packages/pdf-plugin/skills/pdf/env_setup/libreoffice-unmanaged.md",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "892f9e0eac0b1f39ebfc9d23fab3dca311ebb4dc",
@@ -247,7 +247,7 @@
     },
     {
       "source": "plugins/pdf/skills/pdf/env_setup/setup.md",
-      "target": "apps/zcode-cli/packages/pdf-plugin/skills/pdf/env_setup/setup.md",
+      "target": "apps/codez-cli/packages/pdf-plugin/skills/pdf/env_setup/setup.md",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "23809536f93cd0c65a7388901f68fd661156aca8",
@@ -255,7 +255,7 @@
     },
     {
       "source": "plugins/pdf/skills/pdf/env_setup/setup_mac_linux.sh",
-      "target": "apps/zcode-cli/packages/pdf-plugin/skills/pdf/env_setup/setup_mac_linux.sh",
+      "target": "apps/codez-cli/packages/pdf-plugin/skills/pdf/env_setup/setup_mac_linux.sh",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "110b5519aad65c3380c75f5e2ebdc53a2901100e",
@@ -263,7 +263,7 @@
     },
     {
       "source": "plugins/pdf/skills/pdf/env_setup/setup_windows.ps1",
-      "target": "apps/zcode-cli/packages/pdf-plugin/skills/pdf/env_setup/setup_windows.ps1",
+      "target": "apps/codez-cli/packages/pdf-plugin/skills/pdf/env_setup/setup_windows.ps1",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "d7357462c1c7db389949819661ec366cc93fe160",
@@ -271,7 +271,7 @@
     },
     {
       "source": "plugins/pdf/skills/pdf/scripts/pdf.py",
-      "target": "apps/zcode-cli/packages/pdf-plugin/skills/pdf/scripts/pdf.py",
+      "target": "apps/codez-cli/packages/pdf-plugin/skills/pdf/scripts/pdf.py",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "704847f48d5202656ac4fe72c21498a9b5ea17f3",
@@ -279,7 +279,7 @@
     },
     {
       "source": "plugins/pdf/skills/pdf/scripts/setup.sh",
-      "target": "apps/zcode-cli/packages/pdf-plugin/skills/pdf/scripts/setup.sh",
+      "target": "apps/codez-cli/packages/pdf-plugin/skills/pdf/scripts/setup.sh",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "cff123cef7c3dd11400b46c0e942fa549b4cba43",
@@ -287,15 +287,15 @@
     },
     {
       "source": "plugins/presentations/scripts/README.md",
-      "target": "apps/zcode-cli/packages/presentations-plugin/scripts/README.md",
+      "target": "apps/codez-cli/packages/presentations-plugin/scripts/README.md",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "ec127a6addb445617680c0c7b82f173ac0cebead",
       "targetSha256": "5fe15ce6b7b8893eb01bf23de4efa5b5209fca00202a35b3cbedf381d04fcf39"
     },
     {
-      "source": "plugins/presentations/scripts/libreoffice-profile/user/basic/Standard/ZCode.xba",
-      "target": "apps/zcode-cli/packages/presentations-plugin/scripts/libreoffice-profile/user/basic/Standard/ZCode.xba",
+      "source": "plugins/presentations/scripts/libreoffice-profile/user/basic/Standard/Codez.xba",
+      "target": "apps/codez-cli/packages/presentations-plugin/scripts/libreoffice-profile/user/basic/Standard/Codez.xba",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "a602176fc6fa96235a22e097246c41761824519b",
@@ -303,7 +303,7 @@
     },
     {
       "source": "plugins/presentations/scripts/libreoffice-profile/user/basic/Standard/dialog.xlb",
-      "target": "apps/zcode-cli/packages/presentations-plugin/scripts/libreoffice-profile/user/basic/Standard/dialog.xlb",
+      "target": "apps/codez-cli/packages/presentations-plugin/scripts/libreoffice-profile/user/basic/Standard/dialog.xlb",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "2ab265388003b4a6cc21cf5c4f0ee6c4a80d442a",
@@ -311,7 +311,7 @@
     },
     {
       "source": "plugins/presentations/scripts/libreoffice-profile/user/basic/Standard/script.xlb",
-      "target": "apps/zcode-cli/packages/presentations-plugin/scripts/libreoffice-profile/user/basic/Standard/script.xlb",
+      "target": "apps/codez-cli/packages/presentations-plugin/scripts/libreoffice-profile/user/basic/Standard/script.xlb",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "167fa21a60b9ab8287b5b7b7aa2cef4c437c4c20",
@@ -319,7 +319,7 @@
     },
     {
       "source": "plugins/presentations/scripts/libreoffice-profile/user/basic/dialog.xlc",
-      "target": "apps/zcode-cli/packages/presentations-plugin/scripts/libreoffice-profile/user/basic/dialog.xlc",
+      "target": "apps/codez-cli/packages/presentations-plugin/scripts/libreoffice-profile/user/basic/dialog.xlc",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "d4a36840f3c268f120689a08dd8565d246d0dd2e",
@@ -327,7 +327,7 @@
     },
     {
       "source": "plugins/presentations/scripts/libreoffice-profile/user/basic/script.xlc",
-      "target": "apps/zcode-cli/packages/presentations-plugin/scripts/libreoffice-profile/user/basic/script.xlc",
+      "target": "apps/codez-cli/packages/presentations-plugin/scripts/libreoffice-profile/user/basic/script.xlc",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "d4a36840f3c268f120689a08dd8565d246d0dd2e",
@@ -335,15 +335,15 @@
     },
     {
       "source": "plugins/presentations/scripts/libreoffice-profile/user/registrymodifications.xcu",
-      "target": "apps/zcode-cli/packages/presentations-plugin/scripts/libreoffice-profile/user/registrymodifications.xcu",
+      "target": "apps/codez-cli/packages/presentations-plugin/scripts/libreoffice-profile/user/registrymodifications.xcu",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "2103f9d7822345c68207a119d9bdea3af452e45f",
       "targetSha256": "481bba1c7f990a44e7ccb168d9485126f5430c67b4dd1db30edcd9d182cec27a"
     },
     {
-      "source": "plugins/presentations/scripts/zcode_libreoffice.py",
-      "target": "apps/zcode-cli/packages/presentations-plugin/scripts/zcode_libreoffice.py",
+      "source": "plugins/presentations/scripts/codez_libreoffice.py",
+      "target": "apps/codez-cli/packages/presentations-plugin/scripts/codez_libreoffice.py",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "fbcec76c9ba5f86688774517dbbee3ab770a276c",
@@ -351,7 +351,7 @@
     },
     {
       "source": "plugins/presentations/skills/pptx/SKILL.md",
-      "target": "apps/zcode-cli/packages/presentations-plugin/skills/pptx/SKILL.md",
+      "target": "apps/codez-cli/packages/presentations-plugin/skills/pptx/SKILL.md",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "c56ff163493c78200a56bccb78a8c52612513b86",
@@ -359,7 +359,7 @@
     },
     {
       "source": "plugins/presentations/skills/pptx/env_setup/libreoffice-unmanaged.md",
-      "target": "apps/zcode-cli/packages/presentations-plugin/skills/pptx/env_setup/libreoffice-unmanaged.md",
+      "target": "apps/codez-cli/packages/presentations-plugin/skills/pptx/env_setup/libreoffice-unmanaged.md",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "1f5180b2dc7f075e19bc8562bac3c7c36b7faf97",
@@ -367,7 +367,7 @@
     },
     {
       "source": "plugins/presentations/skills/pptx/env_setup/setup.md",
-      "target": "apps/zcode-cli/packages/presentations-plugin/skills/pptx/env_setup/setup.md",
+      "target": "apps/codez-cli/packages/presentations-plugin/skills/pptx/env_setup/setup.md",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "9e218ab06e5dc002f11bfd9d45bc1c01bb1ddbca",
@@ -375,15 +375,15 @@
     },
     {
       "source": "plugins/spreadsheets/scripts/README.md",
-      "target": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/README.md",
+      "target": "apps/codez-cli/packages/spreadsheets-plugin/scripts/README.md",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "ec127a6addb445617680c0c7b82f173ac0cebead",
       "targetSha256": "5fe15ce6b7b8893eb01bf23de4efa5b5209fca00202a35b3cbedf381d04fcf39"
     },
     {
-      "source": "plugins/spreadsheets/scripts/libreoffice-profile/user/basic/Standard/ZCode.xba",
-      "target": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/libreoffice-profile/user/basic/Standard/ZCode.xba",
+      "source": "plugins/spreadsheets/scripts/libreoffice-profile/user/basic/Standard/Codez.xba",
+      "target": "apps/codez-cli/packages/spreadsheets-plugin/scripts/libreoffice-profile/user/basic/Standard/Codez.xba",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "a602176fc6fa96235a22e097246c41761824519b",
@@ -391,7 +391,7 @@
     },
     {
       "source": "plugins/spreadsheets/scripts/libreoffice-profile/user/basic/Standard/dialog.xlb",
-      "target": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/libreoffice-profile/user/basic/Standard/dialog.xlb",
+      "target": "apps/codez-cli/packages/spreadsheets-plugin/scripts/libreoffice-profile/user/basic/Standard/dialog.xlb",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "2ab265388003b4a6cc21cf5c4f0ee6c4a80d442a",
@@ -399,7 +399,7 @@
     },
     {
       "source": "plugins/spreadsheets/scripts/libreoffice-profile/user/basic/Standard/script.xlb",
-      "target": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/libreoffice-profile/user/basic/Standard/script.xlb",
+      "target": "apps/codez-cli/packages/spreadsheets-plugin/scripts/libreoffice-profile/user/basic/Standard/script.xlb",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "167fa21a60b9ab8287b5b7b7aa2cef4c437c4c20",
@@ -407,7 +407,7 @@
     },
     {
       "source": "plugins/spreadsheets/scripts/libreoffice-profile/user/basic/dialog.xlc",
-      "target": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/libreoffice-profile/user/basic/dialog.xlc",
+      "target": "apps/codez-cli/packages/spreadsheets-plugin/scripts/libreoffice-profile/user/basic/dialog.xlc",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "d4a36840f3c268f120689a08dd8565d246d0dd2e",
@@ -415,7 +415,7 @@
     },
     {
       "source": "plugins/spreadsheets/scripts/libreoffice-profile/user/basic/script.xlc",
-      "target": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/libreoffice-profile/user/basic/script.xlc",
+      "target": "apps/codez-cli/packages/spreadsheets-plugin/scripts/libreoffice-profile/user/basic/script.xlc",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "d4a36840f3c268f120689a08dd8565d246d0dd2e",
@@ -423,15 +423,15 @@
     },
     {
       "source": "plugins/spreadsheets/scripts/libreoffice-profile/user/registrymodifications.xcu",
-      "target": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/libreoffice-profile/user/registrymodifications.xcu",
+      "target": "apps/codez-cli/packages/spreadsheets-plugin/scripts/libreoffice-profile/user/registrymodifications.xcu",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "2103f9d7822345c68207a119d9bdea3af452e45f",
       "targetSha256": "481bba1c7f990a44e7ccb168d9485126f5430c67b4dd1db30edcd9d182cec27a"
     },
     {
-      "source": "plugins/spreadsheets/scripts/zcode_libreoffice.py",
-      "target": "apps/zcode-cli/packages/spreadsheets-plugin/scripts/zcode_libreoffice.py",
+      "source": "plugins/spreadsheets/scripts/codez_libreoffice.py",
+      "target": "apps/codez-cli/packages/spreadsheets-plugin/scripts/codez_libreoffice.py",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "fbcec76c9ba5f86688774517dbbee3ab770a276c",
@@ -439,7 +439,7 @@
     },
     {
       "source": "plugins/spreadsheets/skills/xlsx/SKILL.md",
-      "target": "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/SKILL.md",
+      "target": "apps/codez-cli/packages/spreadsheets-plugin/skills/xlsx/SKILL.md",
       "strategy": "task-delta",
       "mode": "100644",
       "sourceBlob": "7df9e293402006014da00c454ca6afcb4cd5cc2b",
@@ -447,7 +447,7 @@
     },
     {
       "source": "plugins/spreadsheets/skills/xlsx/env_setup/env_check.sh",
-      "target": "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/env_setup/env_check.sh",
+      "target": "apps/codez-cli/packages/spreadsheets-plugin/skills/xlsx/env_setup/env_check.sh",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "387e46a4fd87e4d5f9c7373584d6d39dcd4dbf24",
@@ -455,7 +455,7 @@
     },
     {
       "source": "plugins/spreadsheets/skills/xlsx/env_setup/libreoffice-unmanaged.md",
-      "target": "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/env_setup/libreoffice-unmanaged.md",
+      "target": "apps/codez-cli/packages/spreadsheets-plugin/skills/xlsx/env_setup/libreoffice-unmanaged.md",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "04e67cb0ffd92a56723537464b6ebea1bbe8acfe",
@@ -463,7 +463,7 @@
     },
     {
       "source": "plugins/spreadsheets/skills/xlsx/env_setup/setup.md",
-      "target": "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/env_setup/setup.md",
+      "target": "apps/codez-cli/packages/spreadsheets-plugin/skills/xlsx/env_setup/setup.md",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "8d2fc6edd3a40efc76fb3fc952941b3867ab9b4f",
@@ -471,7 +471,7 @@
     },
     {
       "source": "plugins/spreadsheets/skills/xlsx/env_setup/setup_mac_linux.sh",
-      "target": "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/env_setup/setup_mac_linux.sh",
+      "target": "apps/codez-cli/packages/spreadsheets-plugin/skills/xlsx/env_setup/setup_mac_linux.sh",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "ea9e37db2c437d0cedf961296cf7e24a8632c54c",
@@ -479,7 +479,7 @@
     },
     {
       "source": "plugins/spreadsheets/skills/xlsx/env_setup/setup_windows.ps1",
-      "target": "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/env_setup/setup_windows.ps1",
+      "target": "apps/codez-cli/packages/spreadsheets-plugin/skills/xlsx/env_setup/setup_windows.ps1",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "434ed3625bbdac6696e7393e696d0076c819cb95",
@@ -487,7 +487,7 @@
     },
     {
       "source": "plugins/spreadsheets/skills/xlsx/quality/pipeline.md",
-      "target": "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/quality/pipeline.md",
+      "target": "apps/codez-cli/packages/spreadsheets-plugin/skills/xlsx/quality/pipeline.md",
       "strategy": "task-delta",
       "mode": "100644",
       "sourceBlob": "13f7df3916a930b9cfe09178b2ddb00dacc88699",
@@ -495,7 +495,7 @@
     },
     {
       "source": "plugins/spreadsheets/skills/xlsx/setup.sh",
-      "target": "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/setup.sh",
+      "target": "apps/codez-cli/packages/spreadsheets-plugin/skills/xlsx/setup.sh",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "a058482cbe88f6ebb21f6afdbc06e92172636f7c",
@@ -503,7 +503,7 @@
     },
     {
       "source": "plugins/spreadsheets/skills/xlsx/xlsx.py",
-      "target": "apps/zcode-cli/packages/spreadsheets-plugin/skills/xlsx/xlsx.py",
+      "target": "apps/codez-cli/packages/spreadsheets-plugin/skills/xlsx/xlsx.py",
       "strategy": "source-blob",
       "mode": "100644",
       "sourceBlob": "640b63e4394f45f33c994755b162c228c0fe9a18",

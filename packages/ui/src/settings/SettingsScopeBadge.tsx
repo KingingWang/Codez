@@ -1,6 +1,6 @@
 import { CircleDashed, Folder, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 
 export function SettingsScopeBadge({
   scope,
@@ -11,7 +11,7 @@ export function SettingsScopeBadge({
   label?: string;
   includeMcpTestAttribute?: boolean;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   return (
     <Badge
       variant="secondary"

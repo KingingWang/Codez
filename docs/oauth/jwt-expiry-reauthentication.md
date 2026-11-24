@@ -1,15 +1,15 @@
-# ZCode JWT 过期重新认证
+# Codez JWT 过期重新认证
 
 ## 状态
 
-- 本文定义桌面端与 Web 端在 `zcodejwttoken` 过期后的认证恢复语义。
-- `zcodejwttoken` 的签名与最终有效性仍由服务端负责；客户端只解析 JWT `exp`，用于避免恢复明显过期的本地会话。
+- 本文定义桌面端与 Web 端在 `codezjwttoken` 过期后的认证恢复语义。
+- `codezjwttoken` 的签名与最终有效性仍由服务端负责；客户端只解析 JWT `exp`，用于避免恢复明显过期的本地会话。
 
 ## 问题
 
-旧实现使用缓存的 `user_info` 恢复登录展示态，只检查 `zcodejwttoken` 是否存在，不检查 JWT `exp`。因此 JWT 过期后，UI 仍显示已登录，但余额、模型和其他业务请求会继续携带过期凭据并失败。
+旧实现使用缓存的 `user_info` 恢复登录展示态，只检查 `codezjwttoken` 是否存在，不检查 JWT `exp`。因此 JWT 过期后，UI 仍显示已登录，但余额、模型和其他业务请求会继续携带过期凭据并失败。
 
-旧的 `useTokenRefresh` 只暴露回调，没有实际监听 401；同时 Z.AI / BigModel 当前没有可用于续期 `zcodejwttoken` 的客户端 refresh 实现，所以已确认过期时必须重新登录。
+旧的 `useTokenRefresh` 只暴露回调，没有实际监听 401；同时 Z.AI / BigModel 当前没有可用于续期 `codezjwttoken` 的客户端 refresh 实现，所以已确认过期时必须重新登录。
 
 ## 产品语义
 
@@ -27,7 +27,7 @@ JWT 无法解析或缺少 `exp` 时，客户端不能证明它已经过期，继
 持久化 OAuth 会话
         |
         v
-读取 user_info + zcodejwttoken
+读取 user_info + codezjwttoken
         |
         +-- 会话不完整 ----------------------> signed-out
         |
@@ -37,7 +37,7 @@ JWT 无法解析或缺少 `exp` 时，客户端不能证明它已经过期，继
                 |
                 v
         在 mutation 队列内复核 provider、user_info、
-        zcodejwttoken 与会话 generation 是否仍匹配读取快照
+        codezjwttoken 与会话 generation 是否仍匹配读取快照
                 |
                 +-- 快照已变化（新登录/provider 切换）
                 |       |
@@ -48,7 +48,7 @@ JWT 无法解析或缺少 `exp` 时，客户端不能证明它已经过期，继
                 |       |
                 |       v
         原子清理 active provider、OAuth token、
-        zcodejwttoken 和缓存 user_info
+        codezjwttoken 和缓存 user_info
                 |
                 v
         尽力清理派生 Coding / Start Plan provider

@@ -2,9 +2,9 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 import { useShallow } from "zustand/react/shallow";
 import { shallow } from "zustand/shallow";
-import type { ConversationRow, ToolCallRow } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationRow, ToolCallRow } from "@codez/shared/codez-protocol-v4";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { DEFAULT_CODE_PREVIEW_SETTINGS } from "@/lib/codePreviewSettings.js";
 import { ConversationTurnGroup } from "@/v4/ConversationTurnGroup.js";
 import {
@@ -30,7 +30,7 @@ import {
   subscribePluginUiDisclosure,
 } from "@/plugin-ui/app/pluginUiDisclosureStore.js";
 import { deriveLogicalUiInstances } from "@/plugin-ui/index.js";
-import { toolCallCreateWorkflowDisplaySchema } from "@zcode/shared/zcode-protocol-v4";
+import { toolCallCreateWorkflowDisplaySchema } from "@codez/shared/codez-protocol-v4";
 import * as highspeed from "@/highspeed/highspeedTurnStore.js";
 import "@/styles.css";
 
@@ -484,8 +484,8 @@ function Fixture() {
 }
 createRoot(document.getElementById("root")!).render(
   <TooltipProvider>
-    <ZCodeIntlProvider initialLocale={mobile ? "en-US" : "zh-CN"}>
+    <CodezIntlProvider initialLocale={mobile ? "en-US" : "zh-CN"}>
       <Fixture />
-    </ZCodeIntlProvider>
+    </CodezIntlProvider>
   </TooltipProvider>,
 );

@@ -14,7 +14,7 @@ import {
   type ExtensionLogLevel,
   type MainToExtensionHostMessage,
   type MainToExtensionWindowMessage,
-} from "@zcode/shared/extension-host";
+} from "@codez/shared/extension-host";
 import type {
   ExtensionHostNetworkSettings,
   ExtensionHostSupervisor,
@@ -123,7 +123,7 @@ export function buildExtensionHostEnv(
   if (noProxy) setEnv(env, NO_PROXY_ENV_KEYS, noProxy, platform);
   const caCertPath = network.caCertPath?.trim();
   if (caCertPath) setEnv(env, CA_ENV_KEYS, caCertPath, platform);
-  env.ZCODE_PROCESS_LABEL = "extension-host";
+  env.CODEZ_PROCESS_LABEL = "extension-host";
   return env;
 }
 
@@ -332,7 +332,7 @@ export function createExtensionHostSupervisor(
     const env = buildExtensionHostEnv(process.env, process.platform, network);
     log("info", `network ${describeNetworkSources(network)}`, { gen: myGen });
     const next = electronUtilityProcess.fork(extensionHostModulePath, [], {
-      serviceName: "zcode-extension-host",
+      serviceName: "codez-extension-host",
       execArgv: ["--no-warnings"],
       env,
       stdio: "pipe",

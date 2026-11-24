@@ -19,9 +19,9 @@
           "python/bin/python3.12",
           "overlay/bin/python",
           "overlay/pyvenv.cfg",
-          "zcode/constraints.txt",
+          "codez/constraints.txt",
           "python/lib/python3.12/EXTERNALLY-MANAGED",
-          "zcode-tool-resource.json",
+          "codez-tool-resource.json",
           "SOURCES.json",
           "LICENSES/python/LICENSE.cpython.txt",
           "LICENSES/python/LICENSE.bzip2.txt",
@@ -165,13 +165,13 @@
         "rewrite": [
           {
             "path": "overlay/pyvenv.cfg",
-            "placeholder": "/__zcode_python_install__",
+            "placeholder": "/__codez_python_install__",
             "mode": "text"
           }
         ],
         "entries": [
           {
-            "name": "zcode-python",
+            "name": "codez-python",
             "target": "overlay/bin/python",
             "args": [],
             "env": [
@@ -183,7 +183,7 @@
               {
                 "name": "PIP_CONSTRAINT",
                 "action": "set",
-                "value": "${INSTALL_DIR_URL}/zcode/constraints.txt"
+                "value": "${INSTALL_DIR_URL}/codez/constraints.txt"
               },
               {
                 "name": "PYTHONHOME",
@@ -194,16 +194,16 @@
         ],
         "runtimeChecks": [
           {
-            "entry": "zcode-python",
+            "entry": "codez-python",
             "args": [
               "-c",
-              "import openpyxl, xlsxwriter, defusedxml, docx, lxml, reportlab, pypdf, pikepdf, pdfplumber, pypdfium2, pdf2image, PIL, pptx, matplotlib, pandas, numpy; print('zcode-python-ok')"
+              "import openpyxl, xlsxwriter, defusedxml, docx, lxml, reportlab, pypdf, pikepdf, pdfplumber, pypdfium2, pdf2image, PIL, pptx, matplotlib, pandas, numpy; print('codez-python-ok')"
             ],
-            "expectedOutput": "zcode-python-ok",
+            "expectedOutput": "codez-python-ok",
             "timeoutMs": 180000
           },
           {
-            "entry": "zcode-python",
+            "entry": "codez-python",
             "args": ["-m", "pip", "--version"],
             "expectedOutput": "pip",
             "timeoutMs": 30000
@@ -232,9 +232,9 @@
           "python/bin/python3.12",
           "overlay/bin/python",
           "overlay/pyvenv.cfg",
-          "zcode/constraints.txt",
+          "codez/constraints.txt",
           "python/lib/python3.12/EXTERNALLY-MANAGED",
-          "zcode-tool-resource.json",
+          "codez-tool-resource.json",
           "SOURCES.json",
           "LICENSES/python/LICENSE.cpython.txt",
           "LICENSES/python/LICENSE.bzip2.txt",
@@ -378,13 +378,13 @@
         "rewrite": [
           {
             "path": "overlay/pyvenv.cfg",
-            "placeholder": "/__zcode_python_install__",
+            "placeholder": "/__codez_python_install__",
             "mode": "text"
           }
         ],
         "entries": [
           {
-            "name": "zcode-python",
+            "name": "codez-python",
             "target": "overlay/bin/python",
             "args": [],
             "env": [
@@ -396,7 +396,7 @@
               {
                 "name": "PIP_CONSTRAINT",
                 "action": "set",
-                "value": "${INSTALL_DIR_URL}/zcode/constraints.txt"
+                "value": "${INSTALL_DIR_URL}/codez/constraints.txt"
               },
               {
                 "name": "PYTHONHOME",
@@ -407,16 +407,16 @@
         ],
         "runtimeChecks": [
           {
-            "entry": "zcode-python",
+            "entry": "codez-python",
             "args": [
               "-c",
-              "import openpyxl, xlsxwriter, defusedxml, docx, lxml, reportlab, pypdf, pikepdf, pdfplumber, pypdfium2, pdf2image, PIL, pptx, matplotlib, pandas, numpy; print('zcode-python-ok')"
+              "import openpyxl, xlsxwriter, defusedxml, docx, lxml, reportlab, pypdf, pikepdf, pdfplumber, pypdfium2, pdf2image, PIL, pptx, matplotlib, pandas, numpy; print('codez-python-ok')"
             ],
-            "expectedOutput": "zcode-python-ok",
+            "expectedOutput": "codez-python-ok",
             "timeoutMs": 180000
           },
           {
-            "entry": "zcode-python",
+            "entry": "codez-python",
             "args": ["-m", "pip", "--version"],
             "expectedOutput": "pip",
             "timeoutMs": 30000
@@ -445,9 +445,9 @@
           "python/python.exe",
           "overlay/Scripts/python.exe",
           "overlay/pyvenv.cfg",
-          "zcode/constraints.txt",
+          "codez/constraints.txt",
           "python/Lib/EXTERNALLY-MANAGED",
-          "zcode-tool-resource.json",
+          "codez-tool-resource.json",
           "SOURCES.json",
           "LICENSES/python/LICENSE.cpython.txt",
           "LICENSES/python/LICENSE.bzip2.txt",
@@ -596,13 +596,13 @@
         "rewrite": [
           {
             "path": "overlay/pyvenv.cfg",
-            "placeholder": "/__zcode_python_install__",
+            "placeholder": "/__codez_python_install__",
             "mode": "text"
           }
         ],
         "entries": [
           {
-            "name": "zcode-python",
+            "name": "codez-python",
             "target": "overlay/Scripts/python.exe",
             "args": [],
             "env": [
@@ -614,7 +614,7 @@
               {
                 "name": "PIP_CONSTRAINT",
                 "action": "set",
-                "value": "${INSTALL_DIR_URL}/zcode/constraints.txt"
+                "value": "${INSTALL_DIR_URL}/codez/constraints.txt"
               },
               {
                 "name": "PYTHONHOME",
@@ -625,16 +625,16 @@
         ],
         "runtimeChecks": [
           {
-            "entry": "zcode-python",
+            "entry": "codez-python",
             "args": [
               "-c",
-              "import openpyxl, xlsxwriter, defusedxml, docx, lxml, reportlab, pypdf, pikepdf, pdfplumber, pypdfium2, pdf2image, PIL, pptx, matplotlib, pandas, numpy; print('zcode-python-ok')"
+              "import openpyxl, xlsxwriter, defusedxml, docx, lxml, reportlab, pypdf, pikepdf, pdfplumber, pypdfium2, pdf2image, PIL, pptx, matplotlib, pandas, numpy; print('codez-python-ok')"
             ],
-            "expectedOutput": "zcode-python-ok",
+            "expectedOutput": "codez-python-ok",
             "timeoutMs": 180000
           },
           {
-            "entry": "zcode-python",
+            "entry": "codez-python",
             "args": ["-m", "pip", "--version"],
             "expectedOutput": "pip",
             "timeoutMs": 30000
@@ -676,7 +676,7 @@
           "lib/libqpdf.30.dylib",
           "lib/libz.1.3.2.dylib",
           "lib/libz.1.dylib",
-          "zcode-tool-resource.json",
+          "codez-tool-resource.json",
           "SOURCES.json",
           "LICENSES/qpdf/LICENSE.txt",
           "LICENSES/libcxx/libcxx/LICENSE.TXT",
@@ -737,7 +737,7 @@
           "lib/libqpdf.30.dylib",
           "lib/libz.1.3.2.dylib",
           "lib/libz.1.dylib",
-          "zcode-tool-resource.json",
+          "codez-tool-resource.json",
           "SOURCES.json",
           "LICENSES/qpdf/LICENSE.txt",
           "LICENSES/libzlib/LICENSE",
@@ -800,7 +800,7 @@
           "vcruntime140.dll",
           "vcruntime140_1.dll",
           "zlib.dll",
-          "zcode-tool-resource.json",
+          "codez-tool-resource.json",
           "SOURCES.json",
           "LICENSES/qpdf/LICENSE.txt",
           "LICENSES/libzlib/LICENSE",
@@ -853,7 +853,7 @@
         "installedSizeBytes": 181323120,
         "requiredFiles": [
           "bin/pandoc",
-          "zcode-tool-resource.json",
+          "codez-tool-resource.json",
           "SOURCES.json",
           "LICENSES/pandoc/COPYRIGHT"
         ],
@@ -898,7 +898,7 @@
         "installedSizeBytes": 239178319,
         "requiredFiles": [
           "pandoc.exe",
-          "zcode-tool-resource.json",
+          "codez-tool-resource.json",
           "SOURCES.json",
           "LICENSES/pandoc/COPYRIGHT"
         ],
@@ -939,7 +939,7 @@
         "installedSizeBytes": 119450201,
         "requiredFiles": [
           "bin/pandoc",
-          "zcode-tool-resource.json",
+          "codez-tool-resource.json",
           "SOURCES.json",
           "LICENSES/pandoc/COPYRIGHT"
         ],
@@ -1318,7 +1318,7 @@
           "share/poppler/unicodeMap/TIS-620",
           "share/poppler/unicodeMap/Windows-1255",
           "etc/fonts/fonts.conf",
-          "zcode-tool-resource.json",
+          "codez-tool-resource.json",
           "SOURCES.json",
           "LICENSES/fontconfig/COPYING",
           "LICENSES/graphite2/COPYING",
@@ -1830,7 +1830,7 @@
           "share/poppler/unicodeMap/TIS-620",
           "share/poppler/unicodeMap/Windows-1255",
           "etc/fonts/fonts.conf",
-          "zcode-tool-resource.json",
+          "codez-tool-resource.json",
           "SOURCES.json",
           "LICENSES/fontconfig/COPYING",
           "LICENSES/graphite2/COPYING",
@@ -2316,7 +2316,7 @@
           "vcruntime140_1.dll",
           "zlib.dll",
           "etc/fonts/fonts.conf",
-          "zcode-tool-resource.json",
+          "codez-tool-resource.json",
           "SOURCES.json",
           "LICENSES/graphite2/COPYING",
           "LICENSES/icu/LICENSE",
@@ -2461,7 +2461,7 @@
           "fonts/NotoSerifCJKsc-Regular.otf",
           "provenance.json",
           "THIRD_PARTY_NOTICES.md",
-          "zcode-tool-resource.json",
+          "codez-tool-resource.json",
           "SOURCES.json",
           "LICENSES/LibreOffice-LICENSE.txt",
           "LICENSES/NotoSansCJKsc-Regular.otf.LICENSE.txt",
@@ -2469,7 +2469,7 @@
         ],
         "entries": [
           {
-            "name": "zcode-soffice",
+            "name": "codez-soffice",
             "target": "LibreOffice.app/Contents/MacOS/soffice",
             "args": ["-env:BRAND_BASE_DIR=${INSTALL_DIR_URL}/resource-base"],
             "env": [
@@ -2483,7 +2483,7 @@
         ],
         "runtimeChecks": [
           {
-            "entry": "zcode-soffice",
+            "entry": "codez-soffice",
             "args": [
               "-env:UserInstallation=${CHECK_TEMP_URL}/profile",
               "--headless",
@@ -2522,7 +2522,7 @@
           "fonts/NotoSerifCJKsc-Regular.otf",
           "provenance.json",
           "THIRD_PARTY_NOTICES.md",
-          "zcode-tool-resource.json",
+          "codez-tool-resource.json",
           "SOURCES.json",
           "LICENSES/LibreOffice-LICENSE.txt",
           "LICENSES/NotoSansCJKsc-Regular.otf.LICENSE.txt",
@@ -2530,7 +2530,7 @@
         ],
         "entries": [
           {
-            "name": "zcode-soffice",
+            "name": "codez-soffice",
             "target": "LibreOffice.app/Contents/MacOS/soffice",
             "args": ["-env:BRAND_BASE_DIR=${INSTALL_DIR_URL}/resource-base"],
             "env": [
@@ -2544,7 +2544,7 @@
         ],
         "runtimeChecks": [
           {
-            "entry": "zcode-soffice",
+            "entry": "codez-soffice",
             "args": [
               "-env:UserInstallation=${CHECK_TEMP_URL}/profile",
               "--headless",
@@ -2596,7 +2596,7 @@
           "fonts/NotoSerifCJKsc-Regular.otf",
           "provenance.json",
           "THIRD_PARTY_NOTICES.md",
-          "zcode-tool-resource.json",
+          "codez-tool-resource.json",
           "SOURCES.json",
           "LICENSES/LibreOffice-LICENSE.txt",
           "LICENSES/NotoSansCJKsc-Regular.otf.LICENSE.txt",
@@ -2605,7 +2605,7 @@
         ],
         "entries": [
           {
-            "name": "zcode-soffice",
+            "name": "codez-soffice",
             "target": "LibreOffice/program/soffice.com",
             "args": [],
             "env": []
@@ -2613,7 +2613,7 @@
         ],
         "runtimeChecks": [
           {
-            "entry": "zcode-soffice",
+            "entry": "codez-soffice",
             "args": [
               "-env:UserInstallation=${CHECK_TEMP_URL}/profile",
               "--headless",

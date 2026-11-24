@@ -23,8 +23,8 @@ function ensureCachedBinaryExecutable(binaryPath, targetPlatform) {
 }
 
 export async function downloadNativeSearchTools({
-  platform = process.env.ZCODE_TARGET_OS || process.platform,
-  arch = process.env.ZCODE_TARGET_ARCH || process.arch,
+  platform = process.env.CODEZ_TARGET_OS || process.platform,
+  arch = process.env.CODEZ_TARGET_ARCH || process.arch,
   outputDir,
   env = process.env,
   prebuiltPlan,
@@ -81,8 +81,8 @@ function readOption(name) {
 
 async function main() {
   await downloadNativeSearchTools({
-    platform: readOption("platform") ?? process.env.ZCODE_TARGET_OS ?? process.platform,
-    arch: readOption("arch") ?? process.env.ZCODE_TARGET_ARCH ?? process.arch,
+    platform: readOption("platform") ?? process.env.CODEZ_TARGET_OS ?? process.platform,
+    arch: readOption("arch") ?? process.env.CODEZ_TARGET_ARCH ?? process.arch,
     outputDir: readOption("output-dir"),
   });
 }

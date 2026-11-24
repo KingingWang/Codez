@@ -1,20 +1,20 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 
-export const ZCODE_OFFICIAL_PLUGIN_MARKETPLACE = "zcode-plugins-official";
+export const CODEZ_OFFICIAL_PLUGIN_MARKETPLACE = "zcode-plugins-official";
 
 /**
- * 与 apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts 的 defaultEnabled 保持一致。
- * services 侧（skills / commands / subagents）共用这一份，避免再出现 zcode-guide 那样某一处漏掉的分叉。
+ * 与 apps/codez-cli/packages/bootstrap/src/app/official-plugin-definitions.ts 的 defaultEnabled 保持一致。
+ * services 侧（skills / commands / subagents）共用这一份，避免再出现 codez-guide 那样某一处漏掉的分叉。
  */
 export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set([
   "browser-use@zcode-plugins-official",
   "document-skills@zcode-plugins-official",
   // 宿主不贡献 skill/command/subagent，列在这里只为与 definitions 的 defaultEnabled 逐一对应
-  // （见 @zcode/shared 的同名集合注释）；这份没有机械对照单测兜着，漏掉只会静默分叉。
+  // （见 @codez/shared 的同名集合注释）；这份没有机械对照单测兜着，漏掉只会静默分叉。
   "node-repl-host@zcode-plugins-official",
   "skill-creator@zcode-plugins-official",
-  "zcode-guide@zcode-plugins-official",
+  "codez-guide@zcode-plugins-official",
 ]);
 
 export interface OfficialPluginCacheRoot {
@@ -32,7 +32,7 @@ export interface OfficialPluginCacheRoot {
 export async function scanOfficialPluginCacheRoots(
   pluginStorageRoot: string,
 ): Promise<OfficialPluginCacheRoot[]> {
-  const cacheRoot = join(pluginStorageRoot, "cache", ZCODE_OFFICIAL_PLUGIN_MARKETPLACE);
+  const cacheRoot = join(pluginStorageRoot, "cache", CODEZ_OFFICIAL_PLUGIN_MARKETPLACE);
   let pluginEntries;
   try {
     pluginEntries = await readdir(cacheRoot, { withFileTypes: true });

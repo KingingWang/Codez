@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, open, readFile, stat, writeFile } from "node:fs/promise
 import { createServer, type ServerResponse } from "node:http";
 import { join } from "node:path";
 import { pipeline } from "node:stream/promises";
-import type { PreinstalledToolResource } from "@zcode/shared/preinstalled-tools";
+import type { PreinstalledToolResource } from "@codez/shared/preinstalled-tools";
 
 type ResourceStream = {
   resource: PreinstalledToolResource;
@@ -18,7 +18,7 @@ type ResourceStream = {
 /** 大包保留原始字节；只暂停下载边界，不替换实际应用或运行检查。 */
 export async function startPreinstalledToolsRealFixture(
   artifactDirectory: string,
-  artifactPaths: string | string[] | undefined = process.env.ZCODE_E2E_LIBREOFFICE_ARTIFACT,
+  artifactPaths: string | string[] | undefined = process.env.CODEZ_E2E_LIBREOFFICE_ARTIFACT,
   upgradeArtifact?: string,
 ) {
   const paths = typeof artifactPaths === "string" ? [artifactPaths] : artifactPaths;

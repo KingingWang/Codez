@@ -3,9 +3,9 @@ import type {
   BotInboundAttachment,
   BotsConfigFile,
   BotsStateFile,
-  ZCodeProtocolTrace,
-} from "@zcode/shared";
-import { PROTOCOL_V4_LIMITS } from "@zcode/shared/zcode-protocol-v4";
+  CodezProtocolTrace,
+} from "@codez/shared";
+import { PROTOCOL_V4_LIMITS } from "@codez/shared/codez-protocol-v4";
 
 export interface TopicResourceRequest {
   taskId: string;
@@ -16,7 +16,7 @@ export interface TopicResourceRequest {
   workspaceIdentity?: string;
   resourceIndex?: number;
   signal?: AbortSignal;
-  trace?: ZCodeProtocolTrace;
+  trace?: CodezProtocolTrace;
   remoteSessionId?: string;
 }
 

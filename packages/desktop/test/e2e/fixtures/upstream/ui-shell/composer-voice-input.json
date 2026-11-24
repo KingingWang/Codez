@@ -47,7 +47,7 @@
           "id": "toolu_E2E_VOICE_BLOCKED",
           "name": "Bash",
           "input": {
-            "command": "rm -r .zcode-e2e/composer-voice-input/vi22-missing-target"
+            "command": "rm -r .codez-e2e/composer-voice-input/vi22-missing-target"
           }
         }
       }

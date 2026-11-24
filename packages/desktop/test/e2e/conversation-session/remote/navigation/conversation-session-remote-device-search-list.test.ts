@@ -6,7 +6,7 @@ import {
   buildServerRemoteWorkspaceIdentity,
   parseRemoteWorkspaceIdentity,
   type SourceServerRecord,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { clearAppData, getE2EAppDataPaths, readSettings } from "#e2e/helpers/desktop-app";
 import { reloadElectronSessionPreservingBrowserProfile } from "#e2e/helpers/e2e-electron-reload";
 import {
@@ -18,7 +18,7 @@ import { waitForRendererAfterColdRestart } from "#e2e/helpers/ssh-remote-lifecyc
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
 const MARKER = "E2E_REMOTE_DEVICE_SEARCH_LIST";
-const artifactDir = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR!, "remote-device-search-list");
+const artifactDir = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR!, "remote-device-search-list");
 const LIST = "[data-source-server-device-list]";
 
 async function deviceIds(): Promise<string[]> {

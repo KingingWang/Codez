@@ -11,7 +11,7 @@
 
 ## 1. 问题
 
-当前 Personal Provider Config 默认落在 Environment 配置目录的 `config.json`。该文件名同时被旧 ZCode/CLI
+当前 Personal Provider Config 默认落在 Environment 配置目录的 `config.json`。该文件名同时被旧 Codez/CLI
 综合配置使用，导致正式 Personal 文件、Legacy Importer 输入和其他产品配置在物理命名上发生冲突。Repository 为了
 在同一文件上原地改写旧格式，还引入了 `pre-provider-v1` 备份与损坏恢复覆盖。
 
@@ -35,7 +35,7 @@ providers
 modelConfigRules
 ```
 
-`provider_config.json` 是唯一正式 Personal Provider/Model Config 文件。`model-selection.json`、ZCode Built-in
+`provider_config.json` 是唯一正式 Personal Provider/Model Config 文件。`model-selection.json`、Codez Built-in
 Active/LKG、Account Config、MCP/Plugin/Hook 使用的其他 `config.json` 均保持独立。
 
 本功能尚未上线，因此：
@@ -77,12 +77,12 @@ Desktop 每个窗口拥有一个 Local Host；多个窗口可以共享同一 Env
 
 ### 3.2 Desktop Agent Worker
 
-Desktop 派发的 Agent Worker 只通过 `ZCODE_PERSONAL_PROVIDER_CONFIG_FILE` 读取 `provider_config.json`。它不持有
+Desktop 派发的 Agent Worker 只通过 `CODEZ_PERSONAL_PROVIDER_CONFIG_FILE` 读取 `provider_config.json`。它不持有
 Legacy Importer，不参与迁移；长期存活时继续使用 Bugfix 05 的 content-revision 轮询追踪外部写入。
 
 ### 3.3 Standalone CLI
 
-Standalone Prompt CLI/TUI 是自身 Environment 的组合根。它在 `~/.zcode/v2/provider_config.json` 缺失时，只读既有
+Standalone Prompt CLI/TUI 是自身 Environment 的组合根。它在 `~/.codez/v2/provider_config.json` 缺失时，只读既有
 CLI 用户 `config.json` 并执行一次性导入。协议 Worker 路径仍只读正式文件。
 
 ## 4. Repository 语义
@@ -109,7 +109,7 @@ CLI 用户 `config.json` 并执行一次性导入。协议 Worker 路径仍只�
 ### 5.1 `model-providers.json`
 
 - 删除 Desktop Legacy Reader 的文件回退、旧 Store 多版解析和相关日志；
-- 剩余 Legacy Reader 只表达“读取旧 ZCode `config.json` 中的 Provider”，并按职责重命名；
+- 剩余 Legacy Reader 只表达“读取旧 Codez `config.json` 中的 Provider”，并按职责重命名；
 - 删除只覆盖 `model-providers.json` 的测试和辅助类型；
 - 不监听、不迁移、不删除磁盘上可能残留的文件。
 
@@ -125,25 +125,25 @@ CLI 用户 `config.json` 并执行一次性导入。协议 Worker 路径仍只�
 必须统一修改：
 
 - Desktop Local Host 默认 Personal Config 路径；
-- Host 派发给本地/远程 Agent 的 `ZCODE_PERSONAL_PROVIDER_CONFIG_FILE`；
-- Standalone CLI 的 `~/.zcode/v2/provider_config.json`；
+- Host 派发给本地/远程 Agent 的 `CODEZ_PERSONAL_PROVIDER_CONFIG_FILE`；
+- Standalone CLI 的 `~/.codez/v2/provider_config.json`；
 - Desktop E2E 的 Provider Config seed；
 - Provider Node、Services、CLI、Desktop 的路径与迁移测试。
 
 不得批量改名其他 `config.json`。以下文件明确不属于本 Todo：
 
-- `~/.zcode/cli/config.json`；
-- workspace `.zcode/config.json`；
+- `~/.codez/cli/config.json`；
+- workspace `.codez/config.json`；
 - MCP、Plugin、Hook、Command、Skill 配置；
 - `model-selection.json`；
-- ZCode Built-in Active/LKG 文件。
+- Codez Built-in Active/LKG 文件。
 
 ## 7. 测试计划
 
 先写失败测试，再改生产实现：
 
 1. Desktop/Services 默认目标为同目录 `provider_config.json`；
-2. Standalone CLI 默认目标为 `~/.zcode/v2/provider_config.json`；
+2. Standalone CLI 默认目标为 `~/.codez/v2/provider_config.json`；
 3. 目标不存在时从旧 `config.json` 一次性导入，旧文件字节不变且不产生 `.bak`；
 4. 目标存在时不调用 Legacy Importer；
 5. `model-providers.json` 即使存在也不会被读取；
@@ -173,7 +173,7 @@ CLI 用户 `config.json` 并执行一次性导入。协议 Worker 路径仍只�
   不再被当作无版本输入，也不再生成或恢复 `.bak`；无效正式文件保持原样并以内存空 Overlay 降级；
 - Local Host 在派发 Agent Runtime Env 前等待 Provider Runtime 初始化，Worker 只接收正式文件路径并继续使用
   content-revision 轮询；
-- 旧 Reader 已按剩余职责改名为 `legacyZCodeConfigProviderReader`，只读取已发布旧 `config.json`；生产源码中
+- 旧 Reader 已按剩余职责改名为 `legacyCodezConfigProviderReader`，只读取已发布旧 `config.json`；生产源码中
   `model-providers.json` 引用归零；
 - `legacyAccountProviderApiKeyLoader`、Credential Store/Service 的 `loadLegacy` 参数和 Remote Workspace 旧 Key
   搬运全部删除；

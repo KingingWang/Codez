@@ -1,6 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import { CODING_PLAN_TEAM_MOCK_BASE_URL_ENV } from "#e2e/helpers/coding-plan-mock-env";
 import {
@@ -51,7 +51,7 @@ async function tokenControl(patch: Partial<Pick<TokenState, "lifetimeSeconds" | 
 }
 
 async function save(name: string, state: TokenState) {
-  const dir = process.env.ZCODE_E2E_ARTIFACT_DIR!;
+  const dir = process.env.CODEZ_E2E_ARTIFACT_DIR!;
   await browser.saveScreenshot(join(dir, `${name}.png`));
   await writeFile(join(dir, `${name}.json`), JSON.stringify(state, null, 2));
 }

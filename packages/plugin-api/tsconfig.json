@@ -10,8 +10,8 @@
     "lib": ["es2024", "dom"],
     "types": [],
     "paths": {
-      "@zcode/shared/extension-host": ["../shared/src/extension-host/index.ts"],
-      "@zcode/shared/zcode-protocol-v4": ["../shared/src/zcode-protocol-v4/index.ts"]
+      "@codez/shared/extension-host": ["../shared/src/extension-host/index.ts"],
+      "@codez/shared/codez-protocol-v4": ["../shared/src/codez-protocol-v4/index.ts"]
     }
   },
   "include": ["src"],

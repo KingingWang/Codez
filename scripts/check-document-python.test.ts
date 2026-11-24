@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 
 const exec = promisify(execFile);
 const checker = resolve("scripts/check-document-python.mjs");
-const selection = '"$(command -v zcode-python || command -v python3)"';
+const selection = '"$(command -v codez-python || command -v python3)"';
 
 describe("document Python command gate", () => {
   it("checks all distributed plugin commands", async () => {
@@ -28,11 +28,11 @@ describe("document Python command gate", () => {
       );
       await writeFile(
         join(root, "documents-plugin/skills/table.md"),
-        '| Command |\n| --- |\n| `"$(command -v zcode-python \\|\\| command -v python3)" task.py` |\n',
+        '| Command |\n| --- |\n| `"$(command -v codez-python \\|\\| command -v python3)" task.py` |\n',
       );
       await writeFile(
         join(root, "documents-plugin/scripts/setup.ps1"),
-        "$Python = Get-Command zcode-python -ErrorAction SilentlyContinue\n",
+        "$Python = Get-Command codez-python -ErrorAction SilentlyContinue\n",
       );
       await writeFile(
         join(root, "documents-plugin/scripts/helper.py"),

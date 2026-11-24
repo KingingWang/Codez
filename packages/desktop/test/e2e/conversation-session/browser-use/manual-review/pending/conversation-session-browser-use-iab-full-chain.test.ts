@@ -1,6 +1,6 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { PlatformChannels } from "@zcode/shared";
+import { PlatformChannels } from "@codez/shared";
 import {
   TID_BROWSER_RESPONSIVE_HEIGHT_INPUT,
   TID_BROWSER_RESPONSIVE_SCALED_FRAME,
@@ -11,7 +11,7 @@ import {
   TID_BROWSER_WEBVIEW,
   TID_V4_COMPOSER_INPUT,
   TID_V4_TIMELINE,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   clearAppData,
   clickTestIdByWebDriver,
@@ -49,7 +49,7 @@ const ACTIONABILITY_RESULT_MARKER = "E2E_BROWSER_USE_IAB_ACTIONABILITY_OK";
 const BOOTSTRAP_PERMISSION_TITLE = "打开 Browser Use 测试页面";
 const ACTION_PERMISSION_TITLE = "填写并截图 Browser Use 测试页面";
 const FIXTURE_TITLE = "E2E Browser Use Fixture";
-const SUBMITTED_TEXT = "Submitted ZCode / ZCode";
+const SUBMITTED_TEXT = "Submitted Codez / Codez";
 const DESKTOP_ZOOM_LEVEL_CHANGED = PlatformChannels.DesktopZoomLevelChanged;
 const SHOT_MARKER = "E2E_BROWSER_USE_IAB_TURN_SHOT";
 const SHOT_FINAL_MARKER = "E2E_BROWSER_USE_IAB_SHOT_DONE";
@@ -116,9 +116,9 @@ describe("Browser Use Desktop IAB 全链 E2E", () => {
 
     await prepareV4ConversationE2E();
     const prompt = [
-      `${PROMPT_MARKER}: control the ZCode in-app browser against the supplied local fixture.`,
+      `${PROMPT_MARKER}: control the Codez in-app browser against the supplied local fixture.`,
       `E2E_BROWSER_FIXTURE_URL:${fixtureUrl}`,
-      "Inspect the form, fill Name with ZCode, submit it, take one explicit screenshot, and report the result.",
+      "Inspect the form, fill Name with Codez, submit it, take one explicit screenshot, and report the result.",
     ].join(" ");
 
     await sendV4Prompt(prompt);
@@ -204,8 +204,8 @@ describe("Browser Use Desktop IAB 全链 E2E", () => {
     const guest = await waitForGuestSnapshot(originalWebContentsId as number);
     expect(guest.url).toBe(fixtureUrl);
     expect(guest.title).toBe(FIXTURE_TITLE);
-    expect(guest.inputValue).toBe("ZCode");
-    expect(guest.animatedInputValue).toBe("ZCode");
+    expect(guest.inputValue).toBe("Codez");
+    expect(guest.animatedInputValue).toBe("Codez");
     expect(guest.hiddenInputValue).toBe("");
     expect(guest.coveredClicks).toBe(0);
     expect(guest.status).toBe(SUBMITTED_TEXT);
@@ -303,7 +303,7 @@ describe("Browser Use Desktop IAB 全链 E2E", () => {
   });
 
   // 修复回归：以前冷恢复把轮尾截图 part 变成一次工具调用加结果，冷恢复后的请求和 live 不同。
-  // 规格见 apps/zcode-cli/docs/design/v2/model/assistant-block-order.md「测试」。
+  // 规格见 apps/codez-cli/docs/design/v2/model/assistant-block-order.md「测试」。
   it("BTA01/BTA05: 轮尾截图不进入模型历史，冷恢复前后截图这一轮的请求不变", async function () {
     this.timeout(240000);
 
@@ -651,13 +651,13 @@ function readV4ComposerSnapshot() {
     const bridge = (
       element as
         | (HTMLElement & {
-            __zcodeLexicalInputE2E?: {
+            __codezLexicalInputE2E?: {
               focus: () => void;
               getText: () => string;
             };
           })
         | null
-    )?.__zcodeLexicalInputE2E;
+    )?.__codezLexicalInputE2E;
     return {
       focused: Boolean(
         element && document.activeElement && element.contains(document.activeElement),
@@ -676,13 +676,13 @@ async function focusEmptyV4Composer(timeout = 10000) {
         const bridge = (
           element as
             | (HTMLElement & {
-                __zcodeLexicalInputE2E?: {
+                __codezLexicalInputE2E?: {
                   focus: () => void;
                   getText: () => string;
                 };
               })
             | null
-        )?.__zcodeLexicalInputE2E;
+        )?.__codezLexicalInputE2E;
         bridge?.focus();
         return {
           focused: Boolean(

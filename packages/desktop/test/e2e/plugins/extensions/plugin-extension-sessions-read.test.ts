@@ -15,7 +15,7 @@ import {
   TID_CONFIRM_DIALOG_CONFIRM,
   TID_EXTENSION_ACTIVATION_DIALOG,
   TID_SIDE_PANE_EXTENSION_ACTIVATION,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,
@@ -25,7 +25,7 @@ import {
 import { resolveE2EStorageRoot } from "#e2e/helpers/e2e-runtime-paths";
 import { restartIntoWorkspacePreservingProfile } from "#e2e/helpers/model-provider-restart-runtime";
 import { seedProviderReadinessHistoryFixture } from "#e2e/helpers/provider-readiness-history-fixture";
-import { ServiceChannels } from "@zcode/shared";
+import { ServiceChannels } from "@codez/shared";
 import {
   callHandoffHost,
   installHandoffRpcProbe,
@@ -62,7 +62,7 @@ import {
 const CASE_ID = "PLM-EXT-P3B";
 // WDIO 以 packages/desktop 为 cwd；按 cwd 解析，晋级移动 spec 后路径不变。
 const FIXTURE_ROOT = resolve(process.cwd(), "test/e2e/fixtures/fs/plugins/plugin-extension-reads");
-const CLI_ENTRY = resolve(process.cwd(), "../../apps/zcode-cli/packages/cli/dist/zcode.cjs");
+const CLI_ENTRY = resolve(process.cwd(), "../../apps/codez-cli/packages/cli/dist/codez.cjs");
 const PLUGIN = "e2e-ext-reads";
 const PLUGIN_ID = `${PLUGIN}@inline`;
 /** 长历史的轮数：行镜像的窗口装不下，要往前翻页（与原 PLM-JARVIS-1 相同）。 */
@@ -108,13 +108,13 @@ async function seedPlugin(): Promise<void> {
   const target = fixturesDir();
   await mkdir(target, { recursive: true });
   await cp(join(FIXTURE_ROOT, PLUGIN), join(target, PLUGIN), { recursive: true, force: true });
-  const configPath = join(getE2EAppDataPaths().homeDir, ".zcode", "cli", "config.json");
+  const configPath = join(getE2EAppDataPaths().homeDir, ".codez", "cli", "config.json");
   const config = JSON.parse(await readFile(configPath, "utf8").catch(() => "{}")) as Record<
     string,
     unknown
   >;
   const plugins = (config.plugins ?? {}) as Record<string, unknown>;
-  await mkdir(join(getE2EAppDataPaths().homeDir, ".zcode", "cli"), { recursive: true });
+  await mkdir(join(getE2EAppDataPaths().homeDir, ".codez", "cli"), { recursive: true });
   await writeFile(
     configPath,
     JSON.stringify(
@@ -328,7 +328,7 @@ describe("PLM-EXT-P3B 扩展的会话读连接与商店安装后的激活确认"
   after(async () => {
     evidence.screenshots = screenshots;
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR ?? process.cwd(), "plm-ext-p3b-evidence.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR ?? process.cwd(), "plm-ext-p3b-evidence.json"),
       JSON.stringify(evidence, null, 2),
     ).catch(() => undefined);
     await restoreHandoffProbes().catch(() => undefined);
@@ -516,7 +516,7 @@ describe("PLM-EXT-P3B 扩展的会话读连接与商店安装后的激活确认"
     }).flat();
     const beforeImport = (await log.lines()).length;
     const imported = await callHandoffHost<{ session: { sessionId: string } }>(
-      ServiceChannels.ZCodeAgent,
+      ServiceChannels.CodezAgent,
       "createSession",
       [
         {

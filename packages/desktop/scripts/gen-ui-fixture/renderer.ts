@@ -1,14 +1,14 @@
 import { createGenUiPage } from "../../../ui/src/gen-ui/adapters/page.js";
 import { registerPluginUiSessionActions } from "../../../ui/src/plugin-ui/hostPrimitives.js";
 import type { GenUiPage } from "../../../ui/src/gen-ui/contract.js";
-import type { IGenUiService } from "@zcode/services";
-import type { GenUiStateChange } from "@zcode/shared/gen-ui";
-import type { PluginSandboxPortsEvent } from "@zcode/shared/mcp-apps";
+import type { IGenUiService } from "@codez/services";
+import type { GenUiStateChange } from "@codez/shared/gen-ui";
+import type { PluginSandboxPortsEvent } from "@codez/shared/mcp-apps";
 const harness = (window as any).harness;
 let portListener: ((event: PluginSandboxPortsEvent) => void) | undefined;
 let stateListener: ((event: GenUiStateChange) => void) | undefined;
 window.addEventListener("message", (event) => {
-  if (event.data?.type === "zcode:plugin-sandbox-ports")
+  if (event.data?.type === "codez:plugin-sandbox-ports")
     portListener?.({ ...event.data, port: event.ports[0] });
   if (event.data?.type === "fixture-notification") stateListener?.(event.data.payload);
 });
@@ -80,8 +80,8 @@ void (async () => {
         return prompt;
       },
       platform: {
-        supportsRetainedMove: window.zcodePluginSandbox?.supportsRetainedMove,
-        copyImage: (request) => window.zcodePluginSandbox!.copyImage!(request),
+        supportsRetainedMove: window.codezPluginSandbox?.supportsRetainedMove,
+        copyImage: (request) => window.codezPluginSandbox!.copyImage!(request),
         getOwnerWebContentsId: () => harness.owner(),
         disposeSandbox: (id, init) => harness.dispose(id, init),
         consumeUserGesture: () => harness.gesture(),

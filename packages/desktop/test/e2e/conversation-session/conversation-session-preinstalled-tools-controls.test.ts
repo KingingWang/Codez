@@ -6,7 +6,7 @@ import { reloadElectronSessionPreservingBrowserProfile } from "#e2e/helpers/e2e-
 import { setPluginPresentation } from "#e2e/helpers/plugin-management-lifecycle";
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
-const fixtureUrl = () => process.env.ZCODE_E2E_PREINSTALL_FIXTURE_URL!;
+const fixtureUrl = () => process.env.CODEZ_E2E_PREINSTALL_FIXTURE_URL!;
 const fixtureStatus = async () =>
   (await fetch(`${fixtureUrl()}/status`)).json() as Promise<{
     requests: number;
@@ -43,14 +43,14 @@ async function repeatPrepare() {
   const result = await browser.executeAsync((done: (error: string | null) => void) => {
     const api = (
       window as typeof window & {
-        zcode: {
+        codez: {
           executePreinstalledToolsCommand(command: {
             type: "prepare";
             toolId: string;
           }): Promise<void>;
         };
       }
-    ).zcode;
+    ).codez;
     void Promise.all(
       Array.from({ length: 4 }, () =>
         api.executePreinstalledToolsCommand({ type: "prepare", toolId: "libreoffice" }),
@@ -76,13 +76,13 @@ async function visualMatrix(phase: string) {
       );
       await assertDialogFits();
       await browser.saveScreenshot(
-        `${process.env.ZCODE_E2E_ARTIFACT_DIR}/lop-controls-${phase}-${locale}-${theme}.png`,
+        `${process.env.CODEZ_E2E_ARTIFACT_DIR}/lop-controls-${phase}-${locale}-${theme}.png`,
       );
     }
   await setPluginPresentation({ locale: "en-US", theme: "zai-light", width: 760, height: 640 });
   await assertDialogFits();
   await browser.saveScreenshot(
-    `${process.env.ZCODE_E2E_ARTIFACT_DIR}/lop-controls-${phase}-small.png`,
+    `${process.env.CODEZ_E2E_ARTIFACT_DIR}/lop-controls-${phase}-small.png`,
   );
   await setPluginPresentation({ locale: "zh-CN", theme: "zai-dark", width: 1000, height: 760 });
   await browser.waitUntil(
@@ -187,14 +187,14 @@ describe("预装工具完整控制（待审核）", () => {
     await browser.execute(async () => {
       const api = (
         window as typeof window & {
-          zcode: {
+          codez: {
             executePreinstalledToolsCommand(command: {
               type: "cancel" | "prepare";
               toolId: string;
             }): Promise<void>;
           };
         }
-      ).zcode;
+      ).codez;
       await Promise.all([
         api.executePreinstalledToolsCommand({ type: "cancel", toolId: "libreoffice" }),
         api.executePreinstalledToolsCommand({ type: "prepare", toolId: "libreoffice" }),
@@ -241,7 +241,7 @@ describe("预装工具完整控制（待审核）", () => {
       timeoutMsg: "检查阶段的滚动指示条没有移动",
     });
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "lop-indeterminate-motion.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "lop-indeterminate-motion.json"),
       JSON.stringify({ phase: "checking", initialX, movedX: await indicatorX() }),
     );
     try {
@@ -270,14 +270,14 @@ describe("预装工具完整控制（待审核）", () => {
     await browser.execute(async () => {
       await (
         window as typeof window & {
-          zcode: {
+          codez: {
             executePreinstalledToolsCommand(command: {
               type: "cancel";
               toolId: string;
             }): Promise<void>;
           };
         }
-      ).zcode.executePreinstalledToolsCommand({ type: "cancel", toolId: "libreoffice" });
+      ).codez.executePreinstalledToolsCommand({ type: "cancel", toolId: "libreoffice" });
     });
     await waitStatus("ready");
     const record = JSON.parse(await readFile(recordPath, "utf8"));
@@ -327,7 +327,7 @@ describe("预装工具完整控制（待审核）", () => {
     expect(await readdir(join(root, "tools", "libreoffice", "versions"))).toEqual([]);
     expect(await readdir(join(root, "tools", "libreoffice", "staging"))).toEqual([]);
     await browser.saveScreenshot(
-      `${process.env.ZCODE_E2E_ARTIFACT_DIR}/lop-controls-publication-failed.png`,
+      `${process.env.CODEZ_E2E_ARTIFACT_DIR}/lop-controls-publication-failed.png`,
     );
     await rm(recordPath, { recursive: true });
     await $('[data-testid="preinstalled-tools-retry"]').click();

@@ -2,7 +2,7 @@ import {
   TID_CHAT_ERROR_BANNER,
   TID_SETTINGS_BACK_BUTTON,
   TID_V4_COMPOSER_SEND,
-} from "@zcode/shared/test-ids";
+} from "@codez/shared/test-ids";
 import {
   DEFAULT_WORKSPACE,
   clearAppData,

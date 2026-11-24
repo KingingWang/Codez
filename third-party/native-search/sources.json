@@ -4,7 +4,7 @@
   "licenseSelections": {
     "ripgrep": "MIT OR Unlicense (both texts retained)",
     "zstd": "BSD-3-Clause alternative",
-    "gcc-runtime": "GPL-3.0 with GCC Runtime Library Exception 3.1; this does not relicense ZCode as GPL"
+    "gcc-runtime": "GPL-3.0 with GCC Runtime Library Exception 3.1; this does not relicense Codez as GPL"
   },
   "inputs": {
     "scripts/native-search-tools-config.mjs": "7cadab538877a3f64a3161f1c64ec50fe06c83aa32dbebef3553941c314a689a",

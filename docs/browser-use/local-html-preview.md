@@ -3,8 +3,8 @@
 ## 边界
 
 内置浏览器打开本机 `file://` 的 `.html` / `.htm` 时，由 main 转成
-`zcode-html://` 地址。卡片、文件树、地址栏仍使用现有打开入口。
-仅 `persist:zcode-embedded-browser` 安装协议 handler；defaultSession 沿用现有加载逻辑，
+`codez-html://` 地址。卡片、文件树、地址栏仍使用现有打开入口。
+仅 `persist:codez-embedded-browser` 安装协议 handler；defaultSession 沿用现有加载逻辑，
 Web 和手机端不注入本机预览能力。HTTP/HTTPS 的导航语义不变。
 
 修复原因：Electron 默认赋予 file 页面额外的跨文件读取权限，sandbox 和
@@ -96,7 +96,7 @@ renderer 继续沿用现有 pendingUrl 和 guest 接管回执，不增加导航�
 可重复运行安全用例（仅使用本地 fixture，不调用模型）：
 
 ```bash
-pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/browser/files/browser-local-html-preview.test.ts'
+pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/browser/files/browser-local-html-preview.test.ts'
 ```
 
 ### 验证记录（2026-11-16，ZP-20261105-09 硬链接绕过修复）
@@ -113,4 +113,4 @@ pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/browser/files/browse
 
 - 分支已 rebase 到 `origin/staging`（`8ef505a287`）；`browser-local-html-preview.test.ts` 在该基线上通过（macOS / Electron）。
 - 多链接文件保持 403（决策见上文「多链接一律拒绝」），不放行 `node_modules` 或目标不敏感的文件。
-- 运行前需先执行 `pnpm build:cua`，否则 `node-repl-host` 的构建因缺少 `@zcode/zcode-cua` 产物而失败（与本改动无关）。
+- 运行前需先执行 `pnpm build:cua`，否则 `node-repl-host` 的构建因缺少 `@codez/codez-cua` 产物而失败（与本改动无关）。

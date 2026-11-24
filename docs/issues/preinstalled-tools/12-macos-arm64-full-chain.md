@@ -14,7 +14,7 @@ Status: done
 - 改写 real-loopback 候选，覆盖下列场景：
   - 自动准备的顺序为 Python → qpdf → Pandoc → Poppler → LibreOffice。
   - Bash 快照建立后才准备完成，原会话的下一条命令就使用预装版本（PT-13）。
-  - 四个插件各跑一个主流程，都用 `zcode-python`（PY-01）。
+  - 四个插件各跑一个主流程，都用 `codez-python`（PY-01）。
   - 用真实的 Word、PPT、中文样例和公式工作簿做转换与重算（LO-02、LO-03、LO-05）。
   - pdf2image 使用预装的 `pdftoppm`（PP-03）。
 - 每个工具都先关闭再打开开关（PY-02、PP-05、PD-02、QP-02、LO-06）。
@@ -36,7 +36,7 @@ Status: done
 
 - [04 — 升级时保留旧版本与启动清理](04-upgrade-and-startup-cleanup.md)
 - [05 — 每个工具的“Agent 使用预装版本”开关](05-agent-use-switch.md)
-- [08 — 文档插件改用预装 Python](08-plugins-use-zcode-python.md)
+- [08 — 文档插件改用预装 Python](08-plugins-use-codez-python.md)
 - [09 — Python 资源](09-python-resource.md)
 - [11 — Poppler 资源](11-poppler-resource.md)
 
@@ -64,7 +64,7 @@ Status: done
 
 - 实现 commit：`08a0b87330269c81cbab5cac3ca3ce5874a7b9d7`（`test(preinstall): verify real five-tool workflows`）。
 - 已执行并通过：根 `pnpm typecheck`（包含 E2E 类型项目）、`pnpm lint`（172 条既有 warning、0 error）、`pnpm architecture:check --changed`（0 violation）；受影响工程四文件 23/23，覆盖真实 HTTP 完成/中断、owner 身份与跨加载实例绑定、既有重启/bridge 边界。候选 fixture 校验、E2E 类型校验、当前改动格式、相对文档链接及 diff 检查通过。旧格式检查的 Pandoc 文档失败保留，修正后最终格式检查通过。
-- CLI 自身入口已执行：`pnpm --dir apps/zcode-cli typecheck`，33/33 成功且全部为 Turbo 缓存命中，日志回放旧 worktree 路径不表示在旧目录执行本次命令；`pnpm --dir apps/zcode-cli lint`，0 error、71 条既有 warning及 9 条原样上游行数接纳。adapters 的预装环境、LibreOffice/Python 入口与 MCP 网络测试 19/19，bootstrap 的真实 MCP/Hook 环境测试 1/1。
+- CLI 自身入口已执行：`pnpm --dir apps/codez-cli typecheck`，33/33 成功且全部为 Turbo 缓存命中，日志回放旧 worktree 路径不表示在旧目录执行本次命令；`pnpm --dir apps/codez-cli lint`，0 error、71 条既有 warning及 9 条原样上游行数接纳。adapters 的预装环境、LibreOffice/Python 入口与 MCP 网络测试 19/19，bootstrap 的真实 MCP/Hook 环境测试 1/1。
 - 最终完整候选 `desktop-e2e-20261029-192126-373` 1/1 PASS，143.3 秒；此前完整 attempt06 也为 PASS，之后仅修复 HTTP 夹具账本并以最终源码重建桌面产物重放。启动重启边界 `desktop-e2e-20261029-185358-964` 及原默认启动 upgrade `desktop-e2e-20261029-190953-866` 均 PASS。所有候选仍 pending。实际旧进程树退出、Host 收尾与新 PID 有证据；原始终止信号收据保留，不写成 App exit0。
 - 源码包版本 3.16.3、Electron 44.7.0；default-App 的 `app.getVersion()` 原值是 44.7.0，已与产品源码版本分字段记录。运行基线 HEAD、当时未提交的测试源码及 App/CLI 产物 SHA 均保留，未将 WIP 验收冒称只对应基线提交。
 - 五资源依次准备，完整原会话四插件与开关阶段保持 Agent PID 97105；升级阶段重启 App 后，qpdf r1/r2 两次实际执行保持新的 Agent PID 3590。预装 Python 23003 条目（21787 文件/链接）在默认缓存导入和真实 pip 附加包安装后严格一致；旧 qpdf 在后续真实 App 启动回收，五工具经 UI 全部删除。最终中文 PNG 与已逐张查看的同资源页面逐字节一致。

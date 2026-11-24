@@ -8,9 +8,9 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/conversation-session-preinstalled-tools-real-loopback/",
+      "path": ".codez-e2e/conversation-session-preinstalled-tools-real-loopback/",
       "source": "created-by-spec",
-      "description": "隔离目录的真实五工具probe、DOCX/PPTX/DOC与无缓存公式样例；外部Python只用于before准备，插件主流程通过实际Agent PATH的zcode-python。五资源与升级归档由外部artifact路径流式读取。"
+      "description": "隔离目录的真实五工具probe、DOCX/PPTX/DOC与无缓存公式样例；外部Python只用于before准备，插件主流程通过实际Agent PATH的codez-python。五资源与升级归档由外部artifact路径流式读取。"
     }
   ],
   "requests": [

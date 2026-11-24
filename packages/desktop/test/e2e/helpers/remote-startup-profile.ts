@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { onboardingRecordFileSchema } from "@zcode/shared";
+import { onboardingRecordFileSchema } from "@codez/shared";
 
 /** 远程场景从已完成引导的隔离账号开始；导航专项仍走自己的真实引导链。 */
 export async function seedRemoteOnboardingFixture(options: {
@@ -21,7 +21,7 @@ export async function seedRemoteOnboardingFixture(options: {
   // 保留匿名条目供 live 账号登录认领，不伪造真实账号或绕开服务的认领规则。
   const record = onboardingRecordFileSchema.parse({
     version: 1,
-    deviceMid: "zcode-remote-e2e-device",
+    deviceMid: "codez-remote-e2e-device",
     entries: [options.userId, null].map((userId) => ({
       userId,
       occupation: "developer",

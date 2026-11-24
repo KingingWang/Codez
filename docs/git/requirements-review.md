@@ -27,7 +27,7 @@
 
 - Git UI 接入真实 `IGitService`
 - `未暂存` / `已暂存` / `全部分支更改` 切到真实仓库数据
-- `上一轮更改` 保留 ZCode task per-turn 快照链路
+- `上一轮更改` 保留 Codez task per-turn 快照链路
 - Git pane 支持真实单文件 diff 按需加载
 - 顶部 Git 入口与 Git pane 复用同一份 Git 状态
 

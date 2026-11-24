@@ -1,4 +1,4 @@
-import type { BotsConfigFile, BotsStateFile } from "@zcode/shared";
+import type { BotsConfigFile, BotsStateFile } from "@codez/shared";
 
 import {
   createBotsServiceHarness,
@@ -78,9 +78,9 @@ describe("Bot remote workspace delivery E2E", () => {
           ensureConnectedCalls += 1;
           return { ok: true };
         },
-        getZCodeTaskService: async () => {
+        getCodezTaskService: async () => {
           remoteTaskServiceCalls += 1;
-          return harness.zcodeTaskService;
+          return harness.codezTaskService;
         },
       },
     });

@@ -41,7 +41,7 @@
 - [x] **Step 1:** Run the pending spec with manual review enabled and explicit common + case-local fixture paths.
 - [x] **Step 2:** Confirm failure occurs only at the message-scoped count assertion and preserve the output as reproduction evidence.
 - [x] **Step 3:** Change matrix status for R01 from `planned` to `failing`.
-- [x] **Step 4:** Run `pnpm --filter @zcode/desktop typecheck:e2e`, `pnpm typecheck`, and `pnpm lint`.
+- [x] **Step 4:** Run `pnpm --filter @codez/desktop typecheck:e2e`, `pnpm typecheck`, and `pnpm lint`.
 - [x] **Step 5:** Run `git diff --check`, inspect the final diff, and commit with Conventional Commits.
 
 ### Task 4: Promote the reviewed reproduction

@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/shared/readonly-tool.txt",
+      "path": ".codez-e2e/shared/readonly-tool.txt",
       "source": "created-by-helper",
       "description": "真实 Read 工具执行文件，随后在受控回复窗口中验证 FIFO 队列。"
     }

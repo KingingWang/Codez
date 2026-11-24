@@ -65,7 +65,7 @@ static __declspec(noreturn) void fail(const wchar_t *format, ...) {
   wchar_t message[2048];
   va_list arguments;
   int prefix = _snwprintf_s(message, _countof(message), _TRUNCATE,
-                            L"zcode-preinstalled-entry-shim: ");
+                            L"codez-preinstalled-entry-shim: ");
   va_start(arguments, format);
   _vsnwprintf_s(message + prefix, _countof(message) - (size_t)prefix, _TRUNCATE, format,
                 arguments);

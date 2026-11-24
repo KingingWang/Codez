@@ -4,10 +4,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const home = await mkdtemp(join(tmpdir(), "oauth-attribution-recovery-"));
-process.env.ZCODE_DATA_BASE_DIR = home;
-const { createCredentialService, createOAuthService } = await import("@zcode/services/node");
-const file = join(home, ".zcode/v2/credentials.json");
-await mkdir(join(home, ".zcode/v2"), { recursive: true });
+process.env.CODEZ_DATA_BASE_DIR = home;
+const { createCredentialService, createOAuthService } = await import("@codez/services/node");
+const file = join(home, ".codez/v2/credentials.json");
+await mkdir(join(home, ".codez/v2"), { recursive: true });
 const credential = createCredentialService({
   cipherProvider: { encrypt: (value) => value, decrypt: (value) => value },
 });
@@ -32,9 +32,9 @@ try {
     const empty = await readFile(file, "utf8");
     const generation = await readFile(`${file}.recovery-generation`, "utf8");
     const callback = (state: string) =>
-      `zcode://oauth/callback?state=${state}&utm_source=synthetic-${provider}`;
+      `codez://oauth/callback?state=${state}&utm_source=synthetic-${provider}`;
     await assert.rejects(oauth.handleCallback(callback(flow.state)), {
-      code: "ZCODE_CREDENTIAL_STORE_CHANGED",
+      code: "CODEZ_CREDENTIAL_STORE_CHANGED",
     });
     assert.equal(await readFile(file, "utf8"), empty);
     assert.equal(await readFile(`${file}.recovery-generation`, "utf8"), generation);

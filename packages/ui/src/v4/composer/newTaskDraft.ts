@@ -1,6 +1,6 @@
-import type { ComposerInitialConfig } from "@/store/zcodeSessionStoreTypes.js";
-import type { ModelSelection } from "@zcode/shared/model-selection";
-import type { ModelSelectionView } from "@zcode/services";
+import type { ComposerInitialConfig } from "@/store/codezSessionStoreTypes.js";
+import type { ModelSelection } from "@codez/shared/model-selection";
+import type { ModelSelectionView } from "@codez/services";
 import { readComposerRecent, resolveDraftInitialModelSelection } from "@/lib/composerRecent.js";
 import {
   readV4ComposerDraft,

@@ -32,7 +32,7 @@ terminal assistant text (complete/interrupted latest row)
   -> visible cards (10 max)
        -> conversation-share candidate (same visible set)
   -> PreviewPane media source
-       -> local Desktop: authorized zcode-media:// URL
+       -> local Desktop: authorized codez-media:// URL
        -> Desktop SSH/WSL/Docker: Host loopback HTTP Range URL
        -> mobile /remote: bounded inline preview when the file is small enough
 ```
@@ -48,7 +48,7 @@ continues through the selected workspace Host.
 ## Data-plane boundary
 
 Desktop local playback uses the existing canonical-path authorization registry
-and `zcode-media://` file protocol. Main only authorizes exact real paths and
+and `codez-media://` file protocol. Main only authorizes exact real paths and
 maps the privileged protocol; it does not own media or conversation state.
 
 Desktop remote workspace media does not use a server upload or object-storage
@@ -64,7 +64,7 @@ The inline mobile preview limit is 8 MiB. Desktop remote Range previews allow
 files up to 512 MiB, with a 1 MiB maximum chunk, four active Host requests, a
 10-minute idle lease timeout and a 2-hour absolute lease TTL. Opening a card
 starts preparation lazily; card rendering alone does not read or transfer media
-files. The kill switch `ZCODE_REMOTE_MEDIA_RANGE_PREVIEW_ENABLED=0` disables
+files. The kill switch `CODEZ_REMOTE_MEDIA_RANGE_PREVIEW_ENABLED=0` disables
 the Desktop remote Range service and falls back to the existing inline limit.
 
 The media service state is `validating`, `local`, `host-range`, `inline`, or
@@ -75,7 +75,7 @@ and Host-global request slots. A changed or expired lease fails closed. The
 player keeps the card and external-open action when native decoding, Range
 forwarding or inline preview is unavailable.
 
-Local `zcode-media://` authorization is limited to 256 canonical paths with a
+Local `codez-media://` authorization is limited to 256 canonical paths with a
 30-minute TTL. The synchronous protocol callback revalidates the current
 realpath and regular-file type before handing a path to Electron's native file
 loader, and the registry is cleared during app shutdown.

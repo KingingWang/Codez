@@ -1,5 +1,5 @@
-import { Emitter, VSBuffer, type IMessagePassingProtocol } from "@zcode/rpc";
-import type { WebRemoteControlAppPayload, WebRemoteControlRpcFramePayload } from "@zcode/shared";
+import { Emitter, VSBuffer, type IMessagePassingProtocol } from "@codez/rpc";
+import type { WebRemoteControlAppPayload, WebRemoteControlRpcFramePayload } from "@codez/shared";
 
 export {
   ACKNOWLEDGED_WEB_REMOTE_CONTROL_RELAY_LIMITS,

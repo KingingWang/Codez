@@ -1,10 +1,10 @@
 // TT01–TT10 token 预算提醒默认关闭（docs/conversation-session-case-catalog.md「token 预算提醒」）。
-// 规格见 apps/zcode-cli/docs/design/v2/loop/meta-user-context.md「Total-tokens reminder」。
+// 规格见 apps/codez-cli/docs/design/v2/loop/meta-user-context.md「Total-tokens reminder」。
 // 用例沿用覆盖各收集点的流程：轮首、工具批次、输出续写、冷恢复、三种压缩、子 agent、旧快照、
 // chat completions。所有断言读取上游请求体：system 与 messages 里都没有 `<total_tokens>`。
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { TID_V4_COMPOSER_INPUT } from "@zcode/shared/test-ids";
+import { TID_V4_COMPOSER_INPUT } from "@codez/shared/test-ids";
 import {
   clearAppData,
   DEFAULT_WORKSPACE,
@@ -259,9 +259,9 @@ function blocksText(content: unknown): string {
 
 // 在快照 system 的动态段末尾补上预算行。node:sqlite 只提供同步接口；调用时应用已退出，没有并发写入。
 function rewriteSnapshotWithLine(sessionId: string) {
-  const home = process.env.ZCODE_E2E_HOME_DIR;
-  if (!home) throw new Error("缺少 ZCODE_E2E_HOME_DIR");
-  const database = new DatabaseSync(join(home, ".zcode", "cli", "db", "db.sqlite"));
+  const home = process.env.CODEZ_E2E_HOME_DIR;
+  if (!home) throw new Error("缺少 CODEZ_E2E_HOME_DIR");
+  const database = new DatabaseSync(join(home, ".codez", "cli", "db", "db.sqlite"));
   try {
     const id = `${sessionId}:runtime-prompt-snapshot`;
     const row = database.prepare("select data from session_entry where id = ?").get(id) as

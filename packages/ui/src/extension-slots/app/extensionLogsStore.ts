@@ -1,6 +1,6 @@
 import { createStore, type StoreApi } from "zustand/vanilla";
-import type { ExtensionLogEntry, ExtensionLogsSnapshot } from "@zcode/shared/extension-host";
-import type { IExtensionsService } from "@zcode/services";
+import type { ExtensionLogEntry, ExtensionLogsSnapshot } from "@codez/shared/extension-host";
+import type { IExtensionsService } from "@codez/services";
 import { logger } from "@/logger.js";
 import { appendExtensionLogs } from "@/extension-slots/domain/logSelectors.js";
 

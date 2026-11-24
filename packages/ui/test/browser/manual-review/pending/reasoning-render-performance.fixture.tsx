@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import type { ConversationRow } from "@zcode/shared/zcode-protocol-v4";
-import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+import type { ConversationRow } from "@codez/shared/codez-protocol-v4";
+import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import { DEFAULT_CODE_PREVIEW_SETTINGS } from "@/lib/codePreviewSettings.js";
 import { ConversationTimeline } from "@/v4/ConversationTimeline.js";
@@ -96,7 +96,7 @@ function Fixture() {
   });
   return (
     <TooltipProvider>
-      <ZCodeIntlProvider initialLocale={mobile ? "en-US" : "zh-CN"}>
+      <CodezIntlProvider initialLocale={mobile ? "en-US" : "zh-CN"}>
         <div className="flex h-dvh flex-col bg-background text-foreground">
           <output data-testid="tick">{tick}</output>
           <ConversationTimeline
@@ -109,7 +109,7 @@ function Fixture() {
             rowContext={context}
           />
         </div>
-      </ZCodeIntlProvider>
+      </CodezIntlProvider>
     </TooltipProvider>
   );
 }

@@ -2,7 +2,7 @@
 
 ## 背景
 
-本地同时运行开发版（`pnpm dev:desktop`）和正式版 ZCode 时，两套 Dock 图标完全相同，无法区分。
+本地同时运行开发版（`pnpm dev:desktop`）和正式版 Codez 时，两套 Dock 图标完全相同，无法区分。
 
 ## 方案
 

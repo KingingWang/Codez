@@ -10,7 +10,7 @@ import { chromium } from "playwright-core";
 import {
   observeSessionDebug,
   readSessionDebug,
-} from "../../../../../../apps/zcode-cli/packages/bootstrap/src/zcode-protocol/session-debug.ts";
+} from "../../../../../../apps/codez-cli/packages/bootstrap/src/codez-protocol/session-debug.ts";
 const root = fileURLToPath(new URL("../../../../../../", import.meta.url));
 const entry = "/packages/ui/test/browser/manual-review/pending/developer-tools.fixture.tsx";
 const record = { app: { sessionId: "session-1" } };

@@ -19,7 +19,7 @@
 ## 交互和布局
 
 - `/goal` 目前只在消息开头按命令解析；既有会话或非空草稿隐藏目标，避免中间插入无效命令。
-- `/workflow` 是 zcode-guide 内置插件的自定义命令，同样只在消息开头展开（`custom-command-prompt.ts` 的 `^\/` 模式）；非空草稿隐藏工作流。它不绑定会话级状态，所以新草稿与既有会话都提供；catalog 缺少 `workflow`（插件被禁用）时隐藏，避免把 CLI 不会展开的裸文本发给模型。
+- `/workflow` 是 codez-guide 内置插件的自定义命令，同样只在消息开头展开（`custom-command-prompt.ts` 的 `^\/` 模式）；非空草稿隐藏工作流。它不绑定会话级状态，所以新草稿与既有会话都提供；catalog 缺少 `workflow`（插件被禁用）时隐藏，避免把 CLI 不会展开的裸文本发给模型。
 - 点击候选关闭菜单，在打开前的光标处插入标签；保留光标两侧草稿，选中文本时替换选区。随后回到编辑器。
 - 附件使用既有平台选择链路；手机远控未提供 attachmentAction 时隐藏附件项。
 - 上下键循环并跳过禁选项，Enter/Tab/Space 选择，Escape/点击外部关闭。
@@ -102,6 +102,6 @@ CLI listProtocolSlashCommands
 
 测试：`chatPromptActionMenuInteraction.test.ts`（顺序、任意会话可见、catalog 缺失/非空草稿/排除名隐藏、
 插入 `/workflow`）；`promptMentionNode.test.ts`（图标节点）；
-`apps/zcode-cli/packages/bootstrap/tests/protocol-slash-commands.test.ts`（catalog 顺序）；
+`apps/codez-cli/packages/bootstrap/tests/protocol-slash-commands.test.ts`（catalog 顺序）；
 Electron pending 用例 PLUS05。
 

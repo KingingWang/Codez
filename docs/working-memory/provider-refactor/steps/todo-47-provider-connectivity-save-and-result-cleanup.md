@@ -93,7 +93,7 @@ type ModelConnectivityResult = { success: true } | { success: false; error: { me
 
 ### 2.5 本 Todo 不改变请求归因 Header
 
-`x-zcode-session-type` 是 Coding Plan 服务端消费的模型请求来源归因 Header。所有正式模型请求继续发送，并按来源
+`x-codez-session-type` 是 Coding Plan 服务端消费的模型请求来源归因 Header。所有正式模型请求继续发送，并按来源
 使用 `main`、`subagent` 或 `other`；Provider 连接测试属于无主 Agent/Subagent 的辅助调用，继续发送 `other`。
 该 Header 不属于 Provider Config，也不在本 Todo 增加 Provider 特判。
 
@@ -124,7 +124,7 @@ type ModelConnectivityResult = { success: true } | { success: false; error: { me
 - 连接测试不会用 Renderer 模型快照写入 Personal Model Rule；
 - `savePersonalModelConfig`、`deletePersonalModelConfig`、`ModelConnectivitySummary`、
   `noEndpointResult` 与重复错误分类从生产代码及公共类型中消失；
-- 正式 Registry/Model、Account 动态凭据、`x-zcode-session-type` 与最低 reasoning 行为保持不变；
+- 正式 Registry/Model、Account 动态凭据、`x-codez-session-type` 与最低 reasoning 行为保持不变；
 - 交互、单测、类型检查和 lint 均通过后提交 Conventional Commit。
 
 ## 6. 实施结果与验证
@@ -134,7 +134,7 @@ type ModelConnectivityResult = { success: true } | { success: false; error: { me
 - 连接测试不再接收 Renderer Model Config，也不再保存或删除 Personal Model Rule；
   `savePersonalModelConfig` / `deletePersonalModelConfig` 公共入口已从 UI、Facade、Runtime 和协议转发中删除。
 - 结果契约已缩成成功或真实错误消息；`ModelConnectivitySummary`、`noEndpointResult` 和设置页字符串错误分类已删除。
-- `x-zcode-session-type` 未进入 Provider Config；正式请求继续由统一执行链按 `main`、`subagent`、`other`
+- `x-codez-session-type` 未进入 Provider Config；正式请求继续由统一执行链按 `main`、`subagent`、`other`
   写入，连接测试使用 `other`。
 - UI、Services、Provider、CLI Adapter/Bootstrap/Core 定向单测通过；Desktop E2E 类型检查通过。桌面 case
   `coding-plan-team-usage` 已完成构建，但当前 Linux 环境缺少 `xvfb-run`，Chrome 无显示会话启动失败，因此运行态

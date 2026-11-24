@@ -16,7 +16,7 @@ App 侧外部业务 API 已经收敛到 `ApiClient`，错误诊断也会读取�
 
 ## 非目标
 
-- 不新增协议字段，不修改 `@zcode/protocol`。
+- 不新增协议字段，不修改 `@codez/protocol`。
 - 不给 WebSocket、RPC、IPC、SSH、浏览器本地资源读取添加该 header。
 - 不强制给任意第三方 bot provider、MCP URL 探测、用户配置的 webhook URL 注入该 header，避免破坏第三方兼容或 CORS。
 - 不把 `x-request-id` 写入生产 info 日志；只允许记录 header key，避免高频请求把日志刷爆。
@@ -29,7 +29,7 @@ App 侧外部业务 API 已经收敛到 `ApiClient`，错误诊断也会读取�
 2. 若没有现有 `x-request-id`，调用 `createUuid()` 生成 UUID 并写入小写 `x-request-id`。
 3. 若调用方已传入同名 header，保持原值。
 
-`NodeApiClient.request()` 在 endpoint rewrite 和 ZCode source header 合并后，再统一调用 helper。
+`NodeApiClient.request()` 在 endpoint rewrite 和 Codez source header 合并后，再统一调用 helper。
 这样无论目标是默认 endpoint、测试 endpoint 还是普通外部 API，都能拿到请求级 ID，
 同时 source header 的覆盖规则保持不变。
 
@@ -40,6 +40,6 @@ App 侧外部业务 API 已经收敛到 `ApiClient`，错误诊断也会读取�
 ## 验证
 
 - `NodeApiClient` 单测覆盖默认生成 `x-request-id`、保留显式传入的 request id、外部主动 abort 不影响 header 生成。
-- endpoint rewrite 单测覆盖 ZCode endpoint source headers 与 `x-request-id` 共存，普通外部请求也会带 header。
+- endpoint rewrite 单测覆盖 Codez endpoint source headers 与 `x-request-id` 共存，普通外部请求也会带 header。
 - `FeedbackHttpClient` 单测覆盖普通反馈 API、日志 chunk PUT、单次附件 PUT 都带 `x-request-id`。
 - 完成后执行定向 vitest，并按仓库要求执行 `pnpm typecheck` 和 `pnpm lint`。

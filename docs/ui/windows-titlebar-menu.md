@@ -16,7 +16,7 @@
 
 ## 当前菜单项
 
-- 合并菜单：New task、Open Workspace、Open in File Explorer、About ZCode、Check for Updates（检查中/下载中会显示状态与百分比）、Feedback、Community（有可用入口时）、Export Logs、Toggle Developer Tools（开发态）、Resource Manager（资源管理器，开发态）、Close Window
+- 合并菜单：New task、Open Workspace、Open in File Explorer、About Codez、Check for Updates（检查中/下载中会显示状态与百分比）、Feedback、Community（有可用入口时）、Export Logs、Toggle Developer Tools（开发态）、Resource Manager（资源管理器，开发态）、Close Window
 
 ## Windows 工作区外沿
 
@@ -35,7 +35,7 @@
 
 以 Windows build `>= 22000` 作为 Windows 11 原生圆角能力边界。build 与最大化状态由
 Electron main 进程读取，通过 preload 和 `IPlatformService` 注入 UI；UI 不直接读取 Node 或
-`window.zcode`。
+`window.codez`。
 
 Windows 11 最大化时，renderer 工作区内容面板与 DWM 外轮廓统一使用直角。本功能不通过
 伪最大化、窗口 shape 或修改 work area bounds 改变系统窗口形态。

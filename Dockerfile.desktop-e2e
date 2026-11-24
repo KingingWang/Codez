@@ -15,8 +15,8 @@ ENV CI=1 \
     PNPM_STORE_DIR=/pnpm/store \
     XDG_CACHE_HOME=/workspace/.cache \
     WDIO_BROWSER_DRIVER_CACHE_DIR=/workspace/.cache/wdio-browser-drivers \
-    ZCODE_E2E_CONTAINER=1 \
-    ZCODE_E2E_SPEC=./test/e2e/container-boot.test.ts,./test/e2e/smoke.test.ts,./test/e2e/e2ecase-regression.test.ts,./test/e2e/upstream-provider.test.ts \
+    CODEZ_E2E_CONTAINER=1 \
+    CODEZ_E2E_SPEC=./test/e2e/container-boot.test.ts,./test/e2e/smoke.test.ts,./test/e2e/e2ecase-regression.test.ts,./test/e2e/upstream-provider.test.ts \
     ELECTRON_DISABLE_SECURITY_WARNINGS=1 \
     TURBO_TELEMETRY_DISABLED=1
 
@@ -83,7 +83,7 @@ WORKDIR /workspace
 
 COPY . .
 
-RUN --mount=type=cache,id=zcode-desktop-e2e-pnpm-store,target=/pnpm/store \
+RUN --mount=type=cache,id=codez-desktop-e2e-pnpm-store,target=/pnpm/store \
     pnpm config set store-dir "${PNPM_STORE_DIR}" && \
     pnpm install --frozen-lockfile
 
@@ -93,4 +93,4 @@ RUN apt-get update -qq && \
 
 RUN mkdir -p "${WDIO_BROWSER_DRIVER_CACHE_DIR}"
 
-CMD ["bash", "-lc", "dbus-run-session -- pnpm --filter @zcode/desktop test:e2e ${EXTRA_WDIO_ARGS:-}"]
+CMD ["bash", "-lc", "dbus-run-session -- pnpm --filter @codez/desktop test:e2e ${EXTRA_WDIO_ARGS:-}"]

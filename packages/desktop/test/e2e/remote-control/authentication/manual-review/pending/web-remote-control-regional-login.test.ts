@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { chromium } from "playwright-core";
-import { parseWebRemoteControlAppPayload, type WebRemoteControlStatus } from "@zcode/shared";
-import { TID_LOGIN_TRIGGER } from "@zcode/shared/test-ids";
+import { parseWebRemoteControlAppPayload, type WebRemoteControlStatus } from "@codez/shared";
+import { TID_LOGIN_TRIGGER } from "@codez/shared/test-ids";
 import { DEFAULT_WORKSPACE, waitForWorkspaceApp } from "#e2e/helpers/desktop-app";
 import { openMobilePairingPage } from "#e2e/helpers/mobile-pairing";
 import { obtainUnreadPairingUrl } from "#e2e/helpers/web-remote-unread";
@@ -9,7 +9,7 @@ import { WEB_REMOTE_CONTROL_FIXTURE_CREDENTIALS } from "#e2e/helpers/web-remote-
 
 async function remoteStatus(): Promise<WebRemoteControlStatus> {
   const raw = await browser.execute(async () =>
-    JSON.stringify(await (window as any).zcode.getWebRemoteControlStatus()),
+    JSON.stringify(await (window as any).codez.getWebRemoteControlStatus()),
   );
   return JSON.parse(raw);
 }
@@ -17,9 +17,9 @@ async function remoteStatus(): Promise<WebRemoteControlStatus> {
 describe("中国区桌面与手机 Web 共享身份", () => {
   it("AUTH-CN-MOBILE: 已登录手机连接中国区桌面，补关联后保留连接，退出后撤销", async function () {
     this.timeout(180_000);
-    const artifactDir = process.env.ZCODE_E2E_ARTIFACT_DIR;
-    const relay = process.env.ZCODE_E2E_REMOTE_AUTH_GATE_URL;
-    const web = process.env.ZCODE_WEB_REMOTE_CONTROL_URL;
+    const artifactDir = process.env.CODEZ_E2E_ARTIFACT_DIR;
+    const relay = process.env.CODEZ_E2E_REMOTE_AUTH_GATE_URL;
+    const web = process.env.CODEZ_WEB_REMOTE_CONTROL_URL;
     if (!artifactDir || !relay || !web) throw new Error("缺少隔离手机/relay配置");
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 60_000);
     const pairingUrl = await obtainUnreadPairingUrl(new URL(web).origin);
@@ -38,7 +38,7 @@ describe("中国区桌面与手机 Web 共享身份", () => {
         },
         {
           ...WEB_REMOTE_CONTROL_FIXTURE_CREDENTIALS,
-          zcodejwttoken: "mobile-own-token",
+          codezjwttoken: "mobile-own-token",
           "oauth:zai:access_token": "mobile-own-upstream",
         },
       );

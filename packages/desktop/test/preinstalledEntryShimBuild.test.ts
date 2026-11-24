@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 const exec = promisify(execFile);
 const repoRoot = resolve(import.meta.dirname, "../../..");
 const directories: string[] = [];
-const shimName = "zcode-preinstalled-entry-shim.exe";
+const shimName = "codez-preinstalled-entry-shim.exe";
 
 afterEach(async () => {
   await Promise.all(
@@ -56,7 +56,7 @@ if (!building) {
   await mkdir(value("-B"), { recursive: true });
   await writeFile(join(value("-B"), "fixture.json"), JSON.stringify({
     source: value("-S"), arch: value("-A"),
-    output: args.find((arg) => arg.startsWith("-DZCODE_SHIM_OUTPUT_DIR=")).split("=").slice(1).join("=")
+    output: args.find((arg) => arg.startsWith("-DCODEZ_SHIM_OUTPUT_DIR=")).split("=").slice(1).join("=")
   }));
 } else {
   if (process.env.SHIM_BUILD_HANG === "1") {
@@ -91,7 +91,7 @@ if (!building) {
       env: {
         ...process.env,
         CMAKE: command,
-        ZCODE_TARGET_ARCH: "x64",
+        CODEZ_TARGET_ARCH: "x64",
         SHIM_BUILD_EVENTS: events,
         SHIM_BUILD_CHILD_PID: childPid,
         ...env,

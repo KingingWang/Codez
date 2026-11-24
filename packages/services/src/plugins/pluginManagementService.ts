@@ -3,13 +3,13 @@ import {
   resolveWorkspaceTelemetryDetail,
   ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
   type RendererTelemetryEventPayload,
-} from "@zcode/shared";
-import type { ConversationTelemetryFact } from "@zcode/shared/zcode-protocol-v4";
+} from "@codez/shared";
+import type { ConversationTelemetryFact } from "@codez/shared/codez-protocol-v4";
 // 设置页插件管理薄服务实现——plugins/* 旧协议词的唯一 host 侧消费点。
-// 插件安装/市场/启停的事实源在 zcode-cli 进程（读写 ~/.zcode 插件目录并热更新
+// 插件安装/市场/启停的事实源在 codez-cli 进程（读写 ~/.codez 插件目录并热更新
 // 运行态），host 无副本，故实现保持 agent 协议往返；收敛价值在 UI 层不再直触
-// IZCodeAgentService，词表消费面从 UI 散点收拢到本文件一处。
-import type { IZCodeAgentService } from "../zcode-agent/zcodeAgent.js";
+// ICodezAgentService，词表消费面从 UI 散点收拢到本文件一处。
+import type { ICodezAgentService } from "../codez-agent/codezAgent.js";
 import type { IPluginManagementService } from "./pluginManagement.js";
 
 /** 插件管理变更成功的信号（Window Host 侧）。action 与遥测的动作名相同。 */
@@ -29,8 +29,8 @@ export interface PluginManagementServiceDependencies {
    */
   onMutationSucceeded?: (event: PluginMutationSucceededEvent) => void;
   now?: () => number;
-  zcodeAgentService: Pick<
-    IZCodeAgentService,
+  codezAgentService: Pick<
+    ICodezAgentService,
     | "listPlugins"
     | "getPluginReferenceCatalog"
     | "resolveSuggestedPluginReference"
@@ -56,10 +56,10 @@ export interface PluginManagementServiceDependencies {
 export function createPluginManagementService(
   dependencies: PluginManagementServiceDependencies,
 ): IPluginManagementService {
-  const agent = dependencies.zcodeAgentService;
+  const agent = dependencies.codezAgentService;
   const now = dependencies.now ?? Date.now;
   type Params =
-    import("../zcode-agent/zcodeAgentPluginParams.js").ZCodeAgentPluginMutationTarget & {
+    import("../codez-agent/codezAgentPluginParams.js").CodezAgentPluginMutationTarget & {
       pluginId?: string;
       pluginName?: string;
       marketplace?: string;

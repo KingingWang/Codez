@@ -2,7 +2,7 @@
 import { appendFileSync, existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { arch, cpus, platform, totalmem } from "node:os";
 import { resolve } from "node:path";
-import { createE2EReportViewerUrl } from "@zcode/e2e-report";
+import { createE2EReportViewerUrl } from "@codez/e2e-report";
 import {
   BYTES_PER_KB,
   BYTES_PER_MB,

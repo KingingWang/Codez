@@ -14,7 +14,7 @@ Status: done
 [R2 §8.1](../../architecture/r2-server-cli-and-daemon.md#81-stop---wait-与整棵进程树-restart2026-10-20)、
 [R3 主规格](../../architecture/r3-source-server-remote-architecture.md) §7.1 与 §8.4.5。
 
-- **远端 CLI**：`zcode restart` 改为由发起命令的 CLI 协调的整棵进程树重启：
+- **远端 CLI**：`codez restart` 改为由发起命令的 CLI 协调的整棵进程树重启：
   - daemon 在运行时，用 #02 的停止等待函数停止现有 Supervisor；未运行或 Supervisor 已死时跳过（残留锁按 stale 回收）；
   - 以 current release 执行 `serve --daemon` 并等待 ready，输出新 ServerStatus；
   - 保持原启动方式：OS service 继续由服务管理器托管，跳过服务注册的环境继续 detached fallback；

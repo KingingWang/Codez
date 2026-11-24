@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { LoaderCircle } from "lucide-react";
-import { resolveLocalizedText } from "@zcode/shared";
-import type { PluginInstallRequestPayload } from "@zcode/shared/zcode-protocol-v4";
+import { resolveLocalizedText } from "@codez/shared";
+import type { PluginInstallRequestPayload } from "@codez/shared/codez-protocol-v4";
 import { Button } from "@/components/ui/button.js";
 import { PluginIcon } from "@/components/PluginIcon.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 
 export function PluginInstallCard({
   request,
@@ -13,7 +13,7 @@ export function PluginInstallCard({
   request: PluginInstallRequestPayload;
   onRespond: (choice: "install" | "skip") => Promise<boolean>;
 }) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const [submitting, setSubmitting] = useState(false);
   const [failed, setFailed] = useState(false);
   const name =

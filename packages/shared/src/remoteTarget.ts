@@ -27,7 +27,7 @@ export interface DockerConnectOptions {
 
 export interface ServerConnectOptions {
   kind: "server";
-  /** 已运行的 zcode-server HTTP(S)/WS(S) 入口。 */
+  /** 已运行的 codez-server HTTP(S)/WS(S) 入口。 */
   url: string;
   /** 用户可读名称，仅用于展示。 */
   name?: string;

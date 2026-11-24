@@ -10,11 +10,11 @@
 
 ## 背景与目标
 
-Windows 用户在 ZCode 通过 Computer Use 观察或操作桌面时，当前只能从会话工具卡和操作结果判断是否仍在执行。ZCode 窗口被其他应用遮挡后，这些信息不可见，用户无法持续确认当前机器是否仍由 Agent 操作。
+Windows 用户在 Codez 通过 Computer Use 观察或操作桌面时，当前只能从会话工具卡和操作结果判断是否仍在执行。Codez 窗口被其他应用遮挡后，这些信息不可见，用户无法持续确认当前机器是否仍由 Agent 操作。
 
 本功能在 Windows 桌面顶部显示一个不抢焦点、可点击穿透的轻量提示：
 
-> ZCode 正在操作电脑
+> Codez 正在操作电脑
 
 提示从一个 turn 首次真正开始执行官方 Computer Use 工具时出现，在该 turn 结束或控制链路异常终止时消失。它不提供暂停、停止或接管按钮；这些控制能力不在本次范围内。
 
@@ -41,7 +41,7 @@ Windows 用户在 ZCode 通过 Computer Use 观察或操作桌面时，当前只
 - Web/手机端自行渲染提示。
 - 暂停、停止、人工接管等交互按钮。
 - 实时画面、步骤列表、目标窗口标题或 per-action 文案。
-- 修改 `zcode-cua` broker/native wire protocol。
+- 修改 `codez-cua` broker/native wire protocol。
 
 ## 设计原则
 
@@ -114,7 +114,7 @@ v4 conversation frame -----------------------------------------------> Renderer�
 - 最近一次 CUA `tool-started` 后 10 秒无新的 CUA 工具触发
 - workspace runtime restart/dispose
 - Host process exit
-- ZCode app quit
+- Codez app quit
 
 CLI 不为单个 `tool_call_result|tool_call_error` 发送旁路通知。工具结果不会主动隐藏提示；提示由最近一次 CUA `tool-started` 后的 10 秒安全计时器收口，后续 CUA 工具会重新计时。这样既不会在连续工具之间闪烁，也不会因工具失败或终态通知丢失而永久残留。
 
@@ -126,10 +126,10 @@ CLI 旁路通知和 Reporter 都是 best-effort 桌面投影旁路。通知构�
 
 ### App ↔ Agent：`computer-use/operation-event`
 
-在 `packages/shared/src/zcode-protocol/index.ts` 新增严格校验的单向通知，method 固定为 `computer-use/operation-event`。`computer-use` 与 `operation-event` 全部使用中划线。Payload 是以下判别联合：
+在 `packages/shared/src/codez-protocol/index.ts` 新增严格校验的单向通知，method 固定为 `computer-use/operation-event`。`computer-use` 与 `operation-event` 全部使用中划线。Payload 是以下判别联合：
 
 ```ts
-type ZCodeComputerUseOperationEvent =
+type CodezComputerUseOperationEvent =
   | {
       kind: "turn-started" | "turn-completed" | "turn-failed";
       eventId: string;
@@ -175,7 +175,7 @@ CLI 在 runtime `onSessionEvent` 入口、任何 `record.deliveryKind` 判断之
 
 职责：
 
-- 消费已经通过 `zcodeComputerUseOperationEventSchema` 校验的临时生命周期通知；
+- 消费已经通过 `codezComputerUseOperationEventSchema` 校验的临时生命周期通知；
 - 维护 current turn、tool name 和 active CUA turn；
 - 只在 inactive → active 或 active → inactive 时调用 reporter；
 - workspace/runtime dispose 时清理全部相关状态；
@@ -183,7 +183,7 @@ CLI 在 runtime `onSessionEvent` 入口、任何 `record.deliveryKind` 判断之
 
 它不依赖 UI、Electron 或具体 Helper 实现。
 
-`ZCodeAgentService.wireClient` 校验 `computer-use/operation-event` 后直接交给 tracker。现有 `session/event` 仍服务旧协议消费者，但不再作为 CUA tracker 输入，避免 raw `sequenceNumber` 与协议投影 `seq` 两个序号域互相覆盖。
+`CodezAgentService.wireClient` 校验 `computer-use/operation-event` 后直接交给 tracker。现有 `session/event` 仍服务旧协议消费者，但不再作为 CUA tracker 输入，避免 raw `sequenceNumber` 与协议投影 `seq` 两个序号域互相覆盖。
 
 ### Host → Main 消息
 
@@ -218,7 +218,7 @@ Main 不解析 `tool.updated`，不维护 session 业务状态，也不向 Host/
 
 默认视觉：
 
-- 文案：中文 `ZCode 正在操作电脑`；英文 `ZCode is controlling your computer`；
+- 文案：中文 `Codez 正在操作电脑`；英文 `Codez is controlling your computer`；
 - 顶部间距：可见卡片顶边位于 work area 顶边下方 `12px`；
 - 可见卡片高度保持 `38px`；中文/英文宽度分别保持 `234px`/`308px`；
 - 透明窗口在卡片外预留左/右 `8px`、上 `6px`、下 `12px` 的阴影安全区，因此中文/英文窗口分别为 `250px × 56px`/`324px × 56px`；窗口自身向上偏移 `6px`，保证扩大画布后可见卡片的位置不变；
@@ -347,7 +347,7 @@ window.setContentProtection(true);
 
 ### Windows 运行时验证
 
-1. 启动开发版 ZCode，前台打开记事本。
+1. 启动开发版 Codez，前台打开记事本。
 2. 发起包含截图、点击和输入的 CUA turn。
 3. 观察提示在首个 CUA 工具开始后出现，连续操作期间不闪烁。
 4. 验证目标应用始终保持焦点，提示不可点击。

@@ -38,7 +38,7 @@ export async function resolveChromedriverBuild({
 }
 
 function cacheRecordPath({ cacheDir, electronVersion, platform }) {
-  return join(cacheDir, `zcode-chromedriver-${electronVersion}-${platform}.json`);
+  return join(cacheDir, `codez-chromedriver-${electronVersion}-${platform}.json`);
 }
 
 export async function prepareChromedriver({

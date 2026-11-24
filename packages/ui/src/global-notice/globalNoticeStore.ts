@@ -42,7 +42,7 @@ export interface GlobalNoticeStore {
   subscribe(listener: () => void): () => void;
 }
 
-const STORAGE_KEY = "zcode:global-notice:v1";
+const STORAGE_KEY = "codez:global-notice:v1";
 
 function emptyState(): PersistedGlobalNoticeState {
   return {

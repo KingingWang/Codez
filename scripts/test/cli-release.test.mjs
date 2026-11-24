@@ -13,11 +13,11 @@ const repoRoot = resolve(import.meta.dirname, "../..");
 async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), "cli release-"));
   t.after(() => rm(root, { force: true, recursive: true }));
-  const cliRoot = join(root, "apps/zcode-cli");
+  const cliRoot = join(root, "apps/codez-cli");
   await mkdir(cliRoot, { recursive: true });
   for (const [relative, version] of [
     ["package.json", "9.9.9"],
-    ["apps/zcode-cli/package.json", "1.2.3"],
+    ["apps/codez-cli/package.json", "1.2.3"],
   ]) {
     const original = JSON.parse(await readFile(join(repoRoot, relative), "utf8"));
     const scripts = Object.fromEntries(
@@ -30,7 +30,7 @@ async function fixture(t) {
   }
   await writeFile(
     join(cliRoot, ".release-it.json"),
-    await readFile(join(repoRoot, "apps/zcode-cli/.release-it.json")),
+    await readFile(join(repoRoot, "apps/codez-cli/.release-it.json")),
   );
   await writeFile(
     join(root, ".release-it.mjs"),
@@ -88,7 +88,7 @@ test("独立 release-it 通过根脚本支持 patch/minor/显式版本，只修�
       JSON.parse(await readFile(join(f.cliRoot, "package.json"), "utf8")).version,
       expected,
     );
-    await assertIsolated(f, "M apps/zcode-cli/package.json");
+    await assertIsolated(f, "M apps/codez-cli/package.json");
   }
 });
 
@@ -110,5 +110,5 @@ test("CLI 直接入口支持独立升级版本", async (t) => {
     JSON.parse(await readFile(join(f.cliRoot, "package.json"), "utf8")).version,
     "2.0.0",
   );
-  await assertIsolated(f, "M apps/zcode-cli/package.json");
+  await assertIsolated(f, "M apps/codez-cli/package.json");
 });

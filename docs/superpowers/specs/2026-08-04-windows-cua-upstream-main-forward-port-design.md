@@ -4,11 +4,11 @@
 >
 > 状态：已确认
 >
-> 关联仓库：`C:\Users\dev\zcode-cua`、`C:\Users\dev\z-code`
+> 关联仓库：`C:\Users\dev\codez-cua`、`C:\Users\dev\z-code`
 
 ## 1. 目标
 
-以 `zcode-cua` 最新 `origin/main` 中上游已合入的实现为唯一基线，把 Windows 移植
+以 `codez-cua` 最新 `origin/main` 中上游已合入的实现为唯一基线，把 Windows 移植
 分支上已经验证过的 Windows UIA、WGC、指针、剪贴板、AUMID 和 Helper runtime
 能力正向迁移到该基线；随后让 `z-code` 当前分支通过显式本地 producer 路径消费新的
 producer commit，恢复 clean consumer tree 下可生成、校验、暂存和打包的 Windows CUA
@@ -21,14 +21,14 @@ Esc 中断、用户输入失效检测、PiP 和 UIA-only 后台模式属于后�
 ## 2. 已确认的仓库与历史边界
 
 - `z-code` 继续在当前 `feat/cua-helper-app` 分支修改，不新建功能分支。
-- `zcode-cua` 的工作基线是最新 `origin/main`；本地 `main` 对齐该基线后直接产生新 commit。
+- `codez-cua` 的工作基线是最新 `origin/main`；本地 `main` 对齐该基线后直接产生新 commit。
 - Windows 移植当前 `codex/windows-cua-pointer-foundation` 分支保留为迁移来源和安全备份。
 - Windows 移植从共同基线分叉出的 Windows 提交合并为一个新 commit，放在最新 `main` 顶部。
 - 不改写、不 rebase、不覆盖任何上游已存在的 commit。
 - 两个仓库都只创建本地 commit，不 push。
 
 ```text
-zcode-cua
+codez-cua
 
 共同基线 f285ccd8
       |\
@@ -68,7 +68,7 @@ adapter 和生成产物。逐提交 rebase 会反复解决同一语义冲突，�
 不采用。当前 `0.5.2` producer 不发布 `dist/windows-helper.js`，并缺少完整 Windows
 WGC、pointer、clipboard ABI；消费者放宽检查会把缺失能力伪装成可用产品资源。
 
-## 4. Producer 设计：zcode-cua
+## 4. Producer 设计：codez-cua
 
 ### 4.1 迁移原则
 
@@ -87,7 +87,7 @@ Windows Helper 的入口和必需产物由 producer 在根 `package.json` 声明
 
 ```json
 {
-  "zcodeCuaRuntime": {
+  "codezCuaRuntime": {
     "schema": 1,
     "windows": {
       "entry": "dist/windows-helper.js",
@@ -101,7 +101,7 @@ Windows Helper 的入口和必需产物由 producer 在根 `package.json` 声明
 
 - `schema` 必须精确等于 `1`；未知 schema fail closed。
 - 路径必须是 `/` 分隔、无 `.`/`..`、无绝对路径、无符号链接逃逸的 canonical relative path。
-- package name 仍必须为 `@zcode/zcode-cua`。
+- package name 仍必须为 `@codez/codez-cua`。
 - package version 是 provenance 信息，由实际 producer package 读取，不在 consumer 重复硬编码。
 - producer commit 仍由 `pnpm-workspace.yaml` 的完整 Git SHA 固定；运行时 contract 不能替代 Git pin。
 - `pnpm build` 必须生成 Helper entry；`pnpm pack --dry-run` 必须包含 entry、native build
@@ -138,7 +138,7 @@ Windows Helper 的入口和必需产物由 producer 在根 `package.json` 声明
 ### 5.1 Staging
 
 `packages/desktop/scripts/windows-cua-helper-assets.mjs` 从固定 Git dependency 的
-`package.json.zcodeCuaRuntime.windows` 读取入口和 native addon，不再维护独立的
+`package.json.codezCuaRuntime.windows` 读取入口和 native addon，不再维护独立的
 `0.3.28`/`dist/windows-helper.js` 真相。
 
 staging 仍然负责：
@@ -155,7 +155,7 @@ Electron version、target triplet 和所有文件 digest。
 ### 5.2 Runtime resolver
 
 `windowsCuaDevRuntime.ts` 使用同一个 producer contract/manifest schema 校验开发目录和
-产品资源。产品运行时只信任 app `resources/tools/cua-helper`；`ZCODE_CUA_DEV_ROOT` 只作为
+产品资源。产品运行时只信任 app `resources/tools/cua-helper`；`CODEZ_CUA_DEV_ROOT` 只作为
 显式本地开发覆盖，不扫描相邻目录、不下载资源。
 
 ### 5.3 Clean checkout
@@ -231,7 +231,7 @@ runtime、snapshot、queue 或 owner command。
 
 实现严格遵循 RED → GREEN → REFACTOR。
 
-### 8.1 zcode-cua
+### 8.1 codez-cua
 
 先在最新 main 上补失败测试，证明当前缺口：
 
@@ -273,7 +273,7 @@ Windows live smoke 在自动化门禁后运行，覆盖 WGC、pointer、clipboar
 pnpm exec vitest run packages/desktop/test/windows-cua-helper-assets.test.ts
 pnpm exec vitest run packages/services/test/windowsCuaDevRuntime.test.ts
 pnpm exec vitest run packages/services/test/windowsCuaDevHelperHost.test.ts
-pnpm --filter @zcode/zcode-cua-plugin test
+pnpm --filter @codez/codez-cua-plugin test
 pnpm typecheck
 pnpm lint
 ```
@@ -302,7 +302,7 @@ pnpm lint
 
 | 等级           | 关系                                          | 原因                                   |
 | -------------- | --------------------------------------------- | -------------------------------------- |
-| must-inspect   | zcode-cua package -> z-code staging/resolver  | producer/consumer 同一运行时契约       |
+| must-inspect   | codez-cua package -> z-code staging/resolver  | producer/consumer 同一运行时契约       |
 | must-inspect   | Host lifecycle -> official plugin credentials | Helper ready 后才可投影 authority      |
 | should-inspect | electron-builder/runtime preparation          | clean checkout 必须可重现              |
 | invariant-only | macOS Helper/TCC/PiP                          | Windows 迁移不得改变上游 macOS 语义 |
@@ -319,7 +319,7 @@ runtime/Host code seeds；是否“发布可用”仍由本 spec 的 clean-packa
 
 | ID      | Setup                                      | Action                 | Assertions                                  | 状态               |
 | ------- | ------------------------------------------ | ---------------------- | ------------------------------------------- | ------------------ |
-| WCFR-01 | clean zcode-cua latest main                | build/package          | contract、entry、native source 均在 pack 中 | accepted           |
+| WCFR-01 | clean codez-cua latest main                | build/package          | contract、entry、native source 均在 pack 中 | accepted           |
 | WCFR-02 | clean z-code checkout + fixed producer SHA | prepare runtime        | 不依赖 ignored 文件，生成 digest manifest   | accepted           |
 | WCFR-03 | packaged Windows local desktop             | enable official plugin | Helper ready，30 tools 可调用，退出无孤儿   | accepted           |
 | WCFR-04 | occluded non-minimized test window         | capture                | WGC 返回与 HWND 绑定的非空图片              | accepted           |
@@ -332,7 +332,7 @@ runtime/Host code seeds；是否“发布可用”仍由本 spec 的 clean-packa
 
 ## 11. 提交策略
 
-- `zcode-cua/main`：一个 `feat(windows): forward-port CUA runtime onto current main` commit。
+- `codez-cua/main`：一个 `feat(windows): forward-port CUA runtime onto current main` commit。
 - `z-code/feat/cua-helper-app`：设计 spec commit 与后续实现 commit 分开；实现使用
   Conventional Commits。
 - 不 push、不建 MR、不创建 tag。
@@ -341,7 +341,7 @@ runtime/Host code seeds；是否“发布可用”仍由本 spec 的 clean-packa
 
 只有同时满足以下条件才进入 Windows 设置页里程碑：
 
-1. `zcode-cua` 最新 main + 单一 Windows forward-port commit 可通过全部必需门禁；
+1. `codez-cua` 最新 main + 单一 Windows forward-port commit 可通过全部必需门禁；
 2. 新 producer commit 可由 `z-code` 通过显式本地 producer 路径消费；
 3. clean consumer tree 可生成 Windows runtime assets，且不依赖历史 ignored 文件；
 4. packaged runtime resolver 能校验并启动真实 Helper；

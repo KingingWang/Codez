@@ -3,7 +3,7 @@ import {
   resolveZaiBusinessBaseUrl,
   type ApiClient,
   type ProviderFamilyDomain,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { LegacyTeamConnection } from "#src/setting/legacyAccountConnectionSettings.js";
 import type {
   RemoteCustomerInfo,
@@ -17,16 +17,16 @@ export function createLegacyTeamOrganizationResolver(dependencies: {
     family: ProviderFamilyDomain,
   ) => Promise<{
     accessToken: string;
-    zcodeJwtToken?: string | null;
+    codezJwtToken?: string | null;
     sessionRevision?: string | null;
     accountIdentity?: string;
-    zcodeUserId?: string;
+    codezUserId?: string;
   } | null>;
 }): (connection: LegacyTeamConnection) => Promise<string | null> {
   return async ({ family, projectId }) => {
     const tokens = await dependencies.loadOAuthTokenSet(family);
     const token = tokens?.accessToken.trim();
-    if (!token || (family === "bigmodel" && token === tokens?.zcodeJwtToken)) return null;
+    if (!token || (family === "bigmodel" && token === tokens?.codezJwtToken)) return null;
     const origin =
       family === "zai"
         ? resolveZaiBusinessBaseUrl(process.env)
@@ -47,10 +47,10 @@ export function createLegacyTeamOrganizationResolver(dependencies: {
     const latest = await dependencies.loadOAuthTokenSet(family);
     if (
       latest?.accessToken.trim() !== token ||
-      latest?.zcodeJwtToken !== tokens?.zcodeJwtToken ||
+      latest?.codezJwtToken !== tokens?.codezJwtToken ||
       latest?.sessionRevision !== tokens?.sessionRevision ||
       latest?.accountIdentity !== tokens?.accountIdentity ||
-      latest?.zcodeUserId !== tokens?.zcodeUserId
+      latest?.codezUserId !== tokens?.codezUserId
     )
       return null;
     const organizations = new Set(

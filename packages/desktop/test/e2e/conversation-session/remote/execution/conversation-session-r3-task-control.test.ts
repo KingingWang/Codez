@@ -36,8 +36,8 @@ import {
 } from "#e2e/helpers/v4-composer-edit";
 
 const CASE_MARKER = "E2E_R3_TASK_CONTROL";
-const artifactDir = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-task-control");
-const REMOTE_PERMISSION_DIR = "/home/dev/r3-workspace-a/.zcode-e2e/r3-task-control";
+const artifactDir = resolve(process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/r3-task-control");
+const REMOTE_PERMISSION_DIR = "/home/dev/r3-workspace-a/.codez-e2e/r3-task-control";
 const REMOTE_PERMISSION_FILE = `${REMOTE_PERMISSION_DIR}/permission-output.txt`;
 
 describe(`${CASE_MARKER}: 远端 running 窗口内的 stop/queue 与权限阻塞`, () => {

@@ -3,4 +3,4 @@ export type {
   IManagedWorktreeService,
   ManagedWorktreeGroup,
   StartManagedWorktreeCreationResult,
-} from "@zcode/services";
+} from "@codez/services";

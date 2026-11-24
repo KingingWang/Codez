@@ -1,11 +1,11 @@
-import type { AcknowledgedWebRemoteControlRelayProtocolAdapter } from "@zcode/client";
+import type { AcknowledgedWebRemoteControlRelayProtocolAdapter } from "@codez/client";
 import {
   isWebRemoteControlBridgeableWorkspaceTarget,
   remoteHostIdFromWorkspaceIdentity,
   resolveWebRemoteControlInitialWorkspaceSelection,
   resolveWebRemoteControlWorkspaceKey,
   type WebRemoteControlWindowBootstrapResult,
-} from "@zcode/shared";
+} from "@codez/shared";
 
 const WEB_REMOTE_CONTROL_BRIDGE_RECOVERY_RETRY_DELAYS_MS = [1_000, 2_000, 5_000] as const;
 

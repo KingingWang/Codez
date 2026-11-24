@@ -6,8 +6,8 @@ Status: needs-triage
 
 插件的约定是：大体积或可选的依赖先问用户，再安装。下面两处直接安装：
 
-- `apps/zcode-cli/packages/pdf-plugin/skills/pdf/scripts/html2pdf-next.js:89`：找不到 Chromium 时执行 `npx playwright install chromium`。只有设置 `PDF_SKIP_BROWSER_INSTALL=1` 才跳过（`:562`）。
-- `apps/zcode-cli/packages/pdf-plugin/skills/pdf/scripts/pdf.py:1909-1912`：`_pdf_stats` 缺少 pypdf 时，依次尝试 `pip install`、`--break-system-packages` 和 `--user`。
+- `apps/codez-cli/packages/pdf-plugin/skills/pdf/scripts/html2pdf-next.js:89`：找不到 Chromium 时执行 `npx playwright install chromium`。只有设置 `PDF_SKIP_BROWSER_INSTALL=1` 才跳过（`:562`）。
+- `apps/codez-cli/packages/pdf-plugin/skills/pdf/scripts/pdf.py:1909-1912`：`_pdf_stats` 缺少 pypdf 时，依次尝试 `pip install`、`--break-system-packages` 和 `--user`。
 
 ## 影响
 

@@ -3,7 +3,7 @@ import { AppErrorBoundary } from "@/ErrorBoundary.js";
 import "@/styles.css";
 
 const params = new URLSearchParams(location.search);
-localStorage.setItem("zcode-locale-preference", params.get("locale") ?? "en-US");
+localStorage.setItem("codez-locale-preference", params.get("locale") ?? "en-US");
 document.documentElement.className =
   params.get("theme") === "light" ? "theme-zai-light" : "theme-zai-dark dark";
 function Broken(): never {

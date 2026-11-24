@@ -55,7 +55,7 @@ Windows WSL 用户反馈“连接失败”，附带的连接日志只有两条 I
 
 ## 待补
 
-重启后旧项目的侧栏状态与点击结果；侧栏行、向导、设置页设备卡截图；WSL 内 `ls -l ~/.zcode/server/bin/zcode; cat ~/.zcode/server/current.json`。
+重启后旧项目的侧栏状态与点击结果；侧栏行、向导、设置页设备卡截图；WSL 内 `ls -l ~/.codez/server/bin/codez; cat ~/.codez/server/current.json`。
 
 ## 验证要求
 
@@ -72,7 +72,7 @@ B1、B2 已修复；D1（Profile 分裂）与 B3 仍待决定，所以本票保�
 - B2：`RemoteConnectionConnectingStep.tsx` 错误面板主按钮在存在安装确认时执行 `installConfirmation.onConfirm()`，不再落到无确认的 `onRetry()`。
 - 验证：
   - 单测：`useRemoteWorkspaceHistoryDirectoryProjection.test.ts`「设备尚未识别的旧项目 tab 重连时…」（修复前不重连、直接判失败）；`remoteConnectionInstallProgress.test.ts`「等待安装确认时，错误面板的‘安装并连接’执行安装确认」（修复前调用 onRetry）。
-  - E2E LIH-02（SSH 形状复现 WSL 工单：恢复的旧 tab，取消安装后 `lastActiveWorkspace` 留下“远程设备尚未安装 ZCode Server，需要先确认安装。”的无码失败记录）：修复后第二次连接仍显示安装确认，点错误面板“安装并连接”完成安装；只还原 B1 时第二次连接只显示“连接失败 / 暂时无法连接”。B2 的修复前对照只在单测中完成。
+  - E2E LIH-02（SSH 形状复现 WSL 工单：恢复的旧 tab，取消安装后 `lastActiveWorkspace` 留下“远程设备尚未安装 Codez Server，需要先确认安装。”的无码失败记录）：修复后第二次连接仍显示安装确认，点错误面板“安装并连接”完成安装；只还原 B1 时第二次连接只显示“连接失败 / 暂时无法连接”。B2 的修复前对照只在单测中完成。
 - 新观察（未处理，待查）：迁移的旧项目首次安装上线后，向导打开原项目时报 `project.not-found`（E2E 新容器没有该旧 workspace 的会话，属夹具差异；与 WSL 工单 03:06“会话释放、未绑定原目录”形状相同），需在带真实 3.15 远端数据的环境确认。
 
 ## 实施记录（2026-10-22，B1 修订）

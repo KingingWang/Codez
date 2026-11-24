@@ -1,12 +1,12 @@
-# ZCode CUA SDK v3 API 设计（模型可见面，仅 CUA）
+# Codez CUA SDK v3 API 设计（模型可见面，仅 CUA）
 
 > 状态：Draft，待评审
 > 日期：2026-09-10
-> 上游方案：[ZCode CUA 重构技术方案：从 30 个 MCP 工具到 node_repl 代码执行](https://internal-docs.example.invalid/redacted)
+> 上游方案：[Codez CUA 重构技术方案：从 30 个 MCP 工具到 node_repl 代码执行](https://internal-docs.example.invalid/redacted)
 >
 > **修订记录**
-> - v2 draft（同日，废弃）：ZCode 风格绑定对象，方法名/签名自行设计。
-> - v3 draft（同日，废弃）：绑定对象 API 固化为最小模型面，但 ZCode 独有能力仅「下沉」到
+> - v2 draft（同日，废弃）：Codez 风格绑定对象，方法名/签名自行设计。
+> - v3 draft（同日，废弃）：绑定对象 API 固化为最小模型面，但 Codez 独有能力仅「下沉」到
 >   逃逸口，30 个工具全部保留。
 > - **v3.1（本文）**：评审推翻「下沉即可」。**模型可见成员固定为既有 17 个交互面成员 +
 >   `requestAccess` + `stop`；新增能力先问能不能删；不能删且不能被组合替代的，只允许
@@ -16,7 +16,7 @@
 >   删除 detail」的独立改动。工具面 **30 → 14**，broker 协议 **63 → 49**，详见 §3。
 >   评审确认接受两项能力收缩：「按住 → 观察 → 释放」与剪贴板读取。
 
-本文范围：重构 `@zcode/cua` SDK 的模型可见 API、其内部分层，以及**工具面与 broker 协议的一次显式瘦身**。
+本文范围：重构 `@codez/cua` SDK 的模型可见 API、其内部分层，以及**工具面与 broker 协议的一次显式瘦身**。
 不改 Helper 鉴权（M1）、Helper 生命周期（M2）、AX 规范化（M3）、node_repl MCP 工具面；
 但**会 bump broker IPC 协议版本**（1 → 2）以删除失去消费者的方法，走 M2 已有的
 `version_mismatch` fail-closed 路径（§7.3）。
@@ -87,7 +87,7 @@ R2 是 v3.1 相对 v3 draft 的核心变化。上一版把独有能力一律塞�
 
 ### 2.1 完整 TypeScript 声明
 
-`// + ZCode` 表示按 R2 附加的项（只能是可选键 / 尾部可选参数）。
+`// + Codez` 表示按 R2 附加的项（只能是可选键 / 尾部可选参数）。
 
 ```ts
 // ───────────────────────────────────────────── 标量
@@ -106,8 +106,8 @@ interface StateOptions extends ObservationOptions {
 interface ClickOptions {
   mouseButton?: MouseButton;
   clickCount?: number;
-  modifiers?: string;                               // + ZCode（"cmd+shift"）
-  strategy?: "auto" | "a11y" | "event";             // + ZCode（默认 auto）
+  modifiers?: string;                               // + Codez（"cmd+shift"）
+  strategy?: "auto" | "a11y" | "event";             // + Codez（默认 auto）
 }
 interface SelectTextOptions {
   prefix?: string;
@@ -121,14 +121,14 @@ interface StateAndScreenshot {
   state: string;
   screenshot?: Uint8Array;
 }
-interface PressKeyOptions {                         // + ZCode（整个第二参数是附加的）
+interface PressKeyOptions {                         // + Codez（整个第二参数是附加的）
   holdSeconds?: number;                             //   > 0 时走 hold_key
   strategy?: "auto" | "a11y" | "event";
 }                                                   // ← repeat 已删除（§3.4）
-interface ScrollOptions {                           // + ZCode
+interface ScrollOptions {                           // + Codez
   strategy?: "auto" | "a11y" | "event";
 }                                                   // ← amount 已删除（§3.4）
-interface DragOptions {                             // + ZCode
+interface DragOptions {                             // + Codez
   modifiers?: string;
   strategy?: "auto" | "a11y" | "event";
 }
@@ -170,7 +170,7 @@ interface AppInfo {
 }
 interface State {
   apps: AppInfo[];
-  // ZCode 不融合 BUA，该键**不存在**（§5.3）。
+  // Codez 不融合 BUA，该键**不存在**（§5.3）。
 }
 
 // ───────────────────────────────────────────── 根对象
@@ -180,7 +180,7 @@ declare const cua: {
   listApps(options?: ObservationOptions): Promise<AppInfo[]>;
   computer: Computer;                               // 内容见 §3.5
 
-  /** + ZCode：安全面。刻意放顶层，不藏进逃逸口。 */
+  /** + Codez：安全面。刻意放顶层，不藏进逃逸口。 */
   requestAccess(capabilities?: string[]): Promise<AccessStatus>;
   stop(reason?: string): Promise<void>;
 };
@@ -207,7 +207,7 @@ browser 半边（`browsers` / `getBrowser` / `createBrowserTab` / `getTab` /
 
 ### 2.3 语义规则（不只是签名）
 
-模型可见语义按 `apps/zcode-cli/packages/zcode-cua-plugin/docs/computer-use.md` 定义，不做随意化改动：
+模型可见语义按 `apps/codez-cli/packages/codez-cua-plugin/docs/computer-use.md` 定义，不做随意化改动：
 
 - **观察方法自动展示结果**，动作方法不展示。`{emit:false}` 关闭。
 - **绑定即观察**：`cua.getApp(...)` 返回前展示该 app 的**全量** AX 树。
@@ -245,7 +245,7 @@ browser 半边（`browsers` / `getBrowser` / `createBrowserTab` / `getTab` /
 显示器选择状态只被 `screenshot` 和 `cursor_position` 消费。
 所以删掉这一簇不影响 `getApp` / `getAXState` / `app.getScreenshot()`（per-app 路径）。
 
-`zoom` 单独说明。它不是一项能力，是**对自身有损压缩的补偿**：ZCode 截图走 JPEG
+`zoom` 单独说明。它不是一项能力，是**对自身有损压缩的补偿**：Codez 截图走 JPEG
 质量阶梯，压不进字节预算就链式缩小尺寸（`jpeg-budget.ts:124`），小字会糊，
 所以需要放大重拍。
 删除它有一个额外收益：`frame-registry.ts:31` 写明精确栅格字节
@@ -371,10 +371,10 @@ request_access  stop_computer_control
 ```
 
 `cua.computer` 的角色是暴露**平台特定的底层 computer API**（语义见
-`apps/zcode-cli/packages/zcode-cua-plugin/docs/computer-use.md`）。
+`apps/codez-cli/packages/codez-cua-plugin/docs/computer-use.md`）。
 模型文档提一句、不展开。
 
-住在这里的 ZCode 独有能力：**窗口寻址**（`list_windows` + `app_ref.window_id`，§4.1）、
+住在这里的 Codez 独有能力：**窗口寻址**（`list_windows` + `app_ref.window_id`，§4.1）、
 **pid 精确选择**、**`open_application` 的 `activate` / `confirm_focus_steal` /
 `new_instance` / `urls`**（strategy=event 流程的前置，`cua-14-tool-e2e-validity.md`
 写明文件面板需要「confirmed open_application followed by a fresh observation」）、
@@ -384,7 +384,7 @@ request_access  stop_computer_control
 
 | 能力 | 证据 |
 |---|---|
-| `strategy: "event"` | `cua-14-tool-e2e-validity.md`：Finder 重命名（M01/M04）、TextEdit 字符样式（M08-M10）、Chromium 键盘导航（C16）**必须** `strategy=event` + 精确 `window_id`，否则 AX 返回成功但文档模型没变（responder chain 的现实）。ZCode 的「不抢用户焦点」是核心卖点，代价就是需要这个逃生门 |
+| `strategy: "event"` | `cua-14-tool-e2e-validity.md`：Finder 重命名（M01/M04）、TextEdit 字符样式（M08-M10）、Chromium 键盘导航（C16）**必须** `strategy=event` + 精确 `window_id`，否则 AX 返回成功但文档模型没变（responder chain 的现实）。Codez 的「不抢用户焦点」是核心卖点，代价就是需要这个逃生门 |
 | 窗口寻址 | 同一份文档：M01 / M04 / M08-M10 / C16 都要绑定精确窗口。`observation.ts:1008-1011` 的 tool description 就是教模型回填 `window_id` |
 | `modifiers` | cmd+click（新标签页打开）、shift+click（范围选择）无法用组合表达 —— 修饰键必须在按下那一瞬生效 |
 
@@ -397,7 +397,7 @@ request_access  stop_computer_control
 
 ### 4.1 窗口寻址
 
-ZCode 的工具面跨三平台统一命名（AGENTS.md §2 的核心决定），`getApp` 在三平台
+Codez 的工具面跨三平台统一命名（AGENTS.md §2 的核心决定），`getApp` 在三平台
 都可用，不按平台拆成两套绑定形态。R1 优先：
 
 - **文档面**：`App` 无窗口成员。`getApp` 绑主 / 键窗口。
@@ -463,7 +463,7 @@ z-code 2026-08-25 那条「结构化 AppState 是 Worker 唯一事实来源」�
 
 ### 5.1 Worker 无状态与跨 cell 状态
 
-ZCode 是 2026-07-28 无状态规格：每次 `js` 一个一次性 Worker，`const app` 活不到下一个 cell。
+Codez 是 2026-07-28 无状态规格：每次 `js` 一个一次性 Worker，`const app` 活不到下一个 cell。
 
 缓解：`stateId` / `frameId` / diff 基线 / 首用文档标记全部由 **shared host 的 runtime
 session** 持有。下一个 cell 里 `await cua.getApp("Notes")` 是**重新绑定，不重新观察**：
@@ -475,7 +475,7 @@ session** 持有。下一个 cell 里 `await cua.getApp("Notes")` 是**重新绑
 
 动作公开签名是 `Promise<void>`，失败抛
 `ComputerUseError{code, errorName}`（字符串错误码）。
-「动作可能已下发」的信息不占签名位：ZCode 的 `action_sent` / `dispatch_status`
+「动作可能已下发」的信息不占签名位：Codez 的 `action_sent` / `dispatch_status`
 是事故驱动的：
 一次点击可能已经落地，盲重试会双击。R3 要求只藏不删：
 
@@ -503,7 +503,7 @@ declare class ComputerUseError extends Error {
 `STRUCTURED_STATE_UNAVAILABLE` `INTERNAL`。
 
 第二处保留：**frame 精确栅格契约**。
-ZCode 的 `frame-contract/` + `official-frame-integrity-v1` 必须保留，
+Codez 的 `frame-contract/` + `official-frame-integrity-v1` 必须保留，
 做法是完全内部化：`getScreenshot()` 返回裸 `Uint8Array`，`frameId` 由 SDK 记在 target 上，
 坐标动作内部绑定，模型永远看不到也不需要传。
 
@@ -519,7 +519,7 @@ ZCode 的 `frame-contract/` + `official-frame-integrity-v1` 必须保留，
 ### 5.4 明确不做
 
 音频录制、组织级 app 黑名单与逐 app 审批弹窗
-（ZCode 用 controller lease + kill switch + 外层 `js` 一次性高风险审批覆盖同类需求；
+（Codez 用 controller lease + kill switch + 外层 `js` 一次性高风险审批覆盖同类需求；
 上游方案已定：内层不新增逐动作审批）。
 
 ### 5.5 索引与坐标的解析
@@ -544,7 +544,7 @@ function bindTarget(t: number | Vec2, ctx: TargetSession): ResolvedTarget;
 ```
 Worker（模型代码）
   globalThis.cua / App                     ← 重写：scripts/computer-use-client.mjs
-       │  bridge.call(method, input)        ← 不变（Symbol zcode.node-repl.computer-use-bridge）
+       │  bridge.call(method, input)        ← 不变（Symbol codez.node-repl.computer-use-bridge）
        ▼
 shared host：CuaRuntimePool                 ← 不变
   └─ ComputerUseRuntime.execute({toolName, arguments, context})
@@ -581,7 +581,7 @@ TOCTOU 加固（`app_ref` 的 pid / window_id 后验重写绑定目标）已有�
 ### 6.3 `selectText` 按内容匹配
 
 模型面签名是 `selectText(elementIndex, text, {prefix, suffix, selectionType})`，
-ZCode 现有的是 `select_text({target, text_range:[start,length]})`。
+Codez 现有的是 `select_text({target, text_range:[start,length]})`。
 
 **不需要 Helper 改动**：SDK 读该元素的 value（走现有 `read_element`），
 host 侧用 `prefix` / `suffix` 定位唯一匹配，算出 `[start, length]`，
@@ -609,7 +609,7 @@ app 专属提示只展示一次（`Set` 去重）。
 **实现方式：原生 Helper 动作，不是 host 侧拼装。**
 Helper 内部完成剪贴板保存 → 写入 → 发粘贴键 → 还原。
 
-ZCode 新增一个 broker 方法 `paste`，参数 `{app_ref, target?, text, format}`，
+Codez 新增一个 broker 方法 `paste`，参数 `{app_ref, target?, text, format}`，
 Helper 侧原生实现（macOS NSPasteboard、Windows / Linux 各自剪贴板 API），
 保存 / 还原全在 Helper 内部完成。
 
@@ -649,30 +649,30 @@ Helper 侧原生实现（macOS NSPasteboard、Windows / Linux 各自剪贴板 AP
 
 | 文件 | 改动 |
 |---|---|
-| `z-code .../zcode-cua-plugin/scripts/computer-use-client.mjs` | **重写**：`cua` 全局、`Target`/`App`、自动 emit、错误映射、`cua.computer`(14)、未文档化成员 |
-| `z-code .../zcode-cua-plugin/docs/computer-use.md` | 重写为 v3.1 参考（去 browser 半边 + per-cell bootstrap 段） |
-| `z-code .../zcode-cua-plugin/skills/computer-use/SKILL.md` | 重写 |
-| `zcode-cua/plugin/skills/computer-use/SKILL.md` | 重写（producer 事实源） |
-| `zcode-cua/src/tools/zoom.ts` | **删除**（480 行） |
-| `zcode-cua/src/broker/server/electronDisplaySelection.ts` | **删除**（S0c；选屏状态层，topology 留在 `lib/display-topology.ts`） |
-| `zcode-cua/src/tools/manifest.ts` | `TOOL_NAMES` 30 → 14；`APP_ASSOCIATION_MODE_BY_TOOL` 同步 |
-| `zcode-cua/src/tools/tier-table.ts` | `TIER_TABLE` / `READ_ONLY_TOOLS` / `SAFETY_CONTROL_TOOLS` 同步（`left_mouse_up` 退出 SAFETY_CONTROL） |
-| `zcode-cua/src/tools/schemas/{observation,pointer,keyboard,runtime}.ts` | 删除 16 个工具的 schema；删 `detail` / `repeat` / `amount` |
-| `zcode-cua/src/tools/{observation,pointer,keyboard-runtime}.ts` | 删除对应 handler；`type`/`key` 去掉 repeat 分支 |
-| `zcode-cua/src/targeting/format.ts` | compact 无条件带 `actions`、永不带 `bounds`；删 `detail` 分支（§3.3） |
-| `zcode-cua/src/targeting/frame-registry.ts` | 不再为 zoom 保留精确栅格字节；错误文案去掉 `zoom` 提示 |
-| `zcode-cua/src/targeting/session.ts` | 删 `selectedDisplayId` 状态 |
-| `zcode-cua/src/tools/observation.ts` | 放开 delta：三态都映射为完整内部 AppState；去掉两处无条件 `force_full:true`（:644、:1092） |
-| `zcode-cua/src/broker/server/axReadOnly.ts` | delta / no_change 响应补齐 `elements` 全表 + 签发新 `state_id` |
-| `zcode-cua/src/runtime/action-settler.ts` | 新增（§6.4） |
-| `zcode-cua/src/runtime/target-session-store.ts` | 新增（§6.5） |
-| `zcode-cua/src/tools/action-policy.ts` | 新增（§6.2），替换 `withKillSwitchPreflight` 调用点 |
-| `zcode-cua/src/tools/target-binder.ts` | 新增（§5.5） |
-| `zcode-cua/src/broker/types.ts` / `ipcVersion.ts` | **S0c**：`BROKER_METHODS` 63 → 49；IPC 版本 1 → 2（§7.3） |
+| `z-code .../codez-cua-plugin/scripts/computer-use-client.mjs` | **重写**：`cua` 全局、`Target`/`App`、自动 emit、错误映射、`cua.computer`(14)、未文档化成员 |
+| `z-code .../codez-cua-plugin/docs/computer-use.md` | 重写为 v3.1 参考（去 browser 半边 + per-cell bootstrap 段） |
+| `z-code .../codez-cua-plugin/skills/computer-use/SKILL.md` | 重写 |
+| `codez-cua/plugin/skills/computer-use/SKILL.md` | 重写（producer 事实源） |
+| `codez-cua/src/tools/zoom.ts` | **删除**（480 行） |
+| `codez-cua/src/broker/server/electronDisplaySelection.ts` | **删除**（S0c；选屏状态层，topology 留在 `lib/display-topology.ts`） |
+| `codez-cua/src/tools/manifest.ts` | `TOOL_NAMES` 30 → 14；`APP_ASSOCIATION_MODE_BY_TOOL` 同步 |
+| `codez-cua/src/tools/tier-table.ts` | `TIER_TABLE` / `READ_ONLY_TOOLS` / `SAFETY_CONTROL_TOOLS` 同步（`left_mouse_up` 退出 SAFETY_CONTROL） |
+| `codez-cua/src/tools/schemas/{observation,pointer,keyboard,runtime}.ts` | 删除 16 个工具的 schema；删 `detail` / `repeat` / `amount` |
+| `codez-cua/src/tools/{observation,pointer,keyboard-runtime}.ts` | 删除对应 handler；`type`/`key` 去掉 repeat 分支 |
+| `codez-cua/src/targeting/format.ts` | compact 无条件带 `actions`、永不带 `bounds`；删 `detail` 分支（§3.3） |
+| `codez-cua/src/targeting/frame-registry.ts` | 不再为 zoom 保留精确栅格字节；错误文案去掉 `zoom` 提示 |
+| `codez-cua/src/targeting/session.ts` | 删 `selectedDisplayId` 状态 |
+| `codez-cua/src/tools/observation.ts` | 放开 delta：三态都映射为完整内部 AppState；去掉两处无条件 `force_full:true`（:644、:1092） |
+| `codez-cua/src/broker/server/axReadOnly.ts` | delta / no_change 响应补齐 `elements` 全表 + 签发新 `state_id` |
+| `codez-cua/src/runtime/action-settler.ts` | 新增（§6.4） |
+| `codez-cua/src/runtime/target-session-store.ts` | 新增（§6.5） |
+| `codez-cua/src/tools/action-policy.ts` | 新增（§6.2），替换 `withKillSwitchPreflight` 调用点 |
+| `codez-cua/src/tools/target-binder.ts` | 新增（§5.5） |
+| `codez-cua/src/broker/types.ts` / `ipcVersion.ts` | **S0c**：`BROKER_METHODS` 63 → 49；IPC 版本 1 → 2（§7.3） |
 | Helper 原生层 | **S0c**：删已失去消费者的原生导出；新增原生 `paste`（三平台各一份，§6.6） |
-| `zcode-cua/src/tools/keyboard-runtime.ts` | 键位别名（§6.7）；`select_text` 内容匹配（§6.3） |
-| `zcode-cua/src/tools/legacyToolMap.ts` | 加两列：`computer`（存活的 14）与 `v3`；被删工具标 `removed` + 替代路径 |
-| `zcode-cua/docs/cua-30-tool-e2e-validity.md` | **改名 + 改内容**：30 → 14，`FULL_SURFACE_ORACLE_CHECKS` 集合缩小，写明解冻理由（§4.3） |
+| `codez-cua/src/tools/keyboard-runtime.ts` | 键位别名（§6.7）；`select_text` 内容匹配（§6.3） |
+| `codez-cua/src/tools/legacyToolMap.ts` | 加两列：`computer`（存活的 14）与 `v3`；被删工具标 `removed` + 替代路径 |
+| `codez-cua/docs/cua-30-tool-e2e-validity.md` | **改名 + 改内容**：30 → 14，`FULL_SURFACE_ORACLE_CHECKS` 集合缩小，写明解冻理由（§4.3） |
 
 ---
 
@@ -692,7 +692,7 @@ Helper 侧原生实现（macOS NSPasteboard、Windows / Linux 各自剪贴板 AP
 | `test/manifest.test.ts` 4-way drift gate | 基线 30 → 14，四方仍需一致 |
 | `test/tier-table.test.ts` / `annotations.test.ts` | 同步 |
 | `docs/cua-14-tool-e2e-validity.md`（normative） | `protocol.all_30_tools_have_passing_oracles` → 14；`FULL_SURFACE_ORACLE_CHECKS` 删除对应条目；写明解冻 |
-| `evals/zcode-gui-eval/` | 删除或改写针对被删工具的场景（C18 全表面覆盖用例受影响最大） |
+| `evals/codez-gui-eval/` | 删除或改写针对被删工具的场景（C18 全表面覆盖用例受影响最大） |
 | `scripts/cua_act_verify*.py` + `docs/cua-act-verify-{,windows-,linux-}scenarios.md` | 三平台场景各扫一遍；`hold_key` / `wait` / `select_text` 出现在场景里，需改写为新形态 |
 | `scripts/windows-*-live-smoke.mjs` / `verify_linux_*.mjs` | 同步 |
 | `test/legacy-tool-map.test.ts` | 加 `removed` 断言 |
@@ -723,15 +723,15 @@ Helper 侧原生实现（macOS NSPasteboard、Windows / Linux 各自剪贴板 AP
 
 | 测试 | 现状断言 | 改动 |
 |---|---|---|
-| `z-code .../zcode-cua-plugin/tests/sdk.node-test.mjs` | `METHOD_NAMES.length === 30` | 改为：`cua.computer` 14 项 + `Target` 12 个成员齐 + `cua` 无任何 browser 成员 |
+| `z-code .../codez-cua-plugin/tests/sdk.node-test.mjs` | `METHOD_NAMES.length === 30` | 改为：`cua.computer` 14 项 + `Target` 12 个成员齐 + `cua` 无任何 browser 成员 |
 | 同上 | 动作结果含 `action_sent` / `dispatch_status` | 成功 resolve 为 `undefined`；`possibly_sent` reject 且 `actionSent === true` |
-| `zcode-cua/test/skill-keyboard-contract.test.ts` | 钉死 `nodeRepl.write(nextState.text)`、`return_state="none"`、22KB 上限 | 改为钉死「观察方法自动展示」「禁止对观察结果再 write」「per-cell bootstrap」 |
-| `zcode-cua/test/observation-tools.test.ts` | delta / no_change → `null` | 反转：三态都返回完整内部 AppState |
+| `codez-cua/test/skill-keyboard-contract.test.ts` | 钉死 `nodeRepl.write(nextState.text)`、`return_state="none"`、22KB 上限 | 改为钉死「观察方法自动展示」「禁止对观察结果再 write」「per-cell bootstrap」 |
+| `codez-cua/test/observation-tools.test.ts` | delta / no_change → `null` | 反转：三态都返回完整内部 AppState |
 | 新增 | —— | surface 精确断言（§7.5）、`target-binder.test.ts`、`action-settler.test.ts`、`key-alias.test.ts`、`paste.test.ts`、`error-mapping.test.ts`、`compact-carries-actions.test.ts` |
 
 ### 7.5 surface 门禁
 
-`apps/zcode-cli/packages/zcode-cua-plugin/tests/sdk.node-test.mjs` 对模型可见面做
+`apps/codez-cli/packages/codez-cua-plugin/tests/sdk.node-test.mjs` 对模型可见面做
 surface 精确断言：
 
 1. `Target` 的 12 个交互面成员**存在且位置参数同名同序**；
@@ -745,7 +745,7 @@ surface 精确断言：
 ### 7.6 bootstrap 模板
 
 ```js
-const root = process.env.ZCODE_CUA_PLUGIN_ROOT ?? process.env.ZCODE_PLUGIN_ROOT
+const root = process.env.CODEZ_CUA_PLUGIN_ROOT ?? process.env.CODEZ_PLUGIN_ROOT
   ?? process.env.CLAUDE_PLUGIN_ROOT;
 const { join } = await import("node:path");
 const { pathToFileURL } = await import("node:url");
@@ -779,7 +779,7 @@ await app.getAXState();
 
 S0a 可以立即开工，不依赖任何模型面决定。S0b 先做能让后续改动面小一半。
 S0c 必须在 S1 之前，因为 `paste` 依赖它。
-灰度开关 `ZCODE_CUA_SDK_SURFACE=v1|v3`（默认 v1，观察期后翻 v3）。
+灰度开关 `CODEZ_CUA_SDK_SURFACE=v1|v3`（默认 v1，观察期后翻 v3）。
 
 ---
 
@@ -794,12 +794,12 @@ S0c 必须在 S1 之前，因为 `paste` 依赖它。
 | S0c 回滚会一起回滚 `paste` | S1 起的 `paste` 测试在 `paste` 方法缺失时跳过而非失败（§7.3） |
 | 原生 `paste` 三平台各写一份，工作量与回归面比 host 侧组合大 | 换来的是少两个 broker 原语 + 修掉还原竞态（§6.6）；S0c 只做 `text`，`md`/`html` 推到 S5 |
 | `getAXState()` 返回 string 使「发现元素」多一个 round trip | `app.elements()` 兜底；S4 已结论为提升为文档化成员（§4.2） |
-| `possibly_sent` 从文本提示变 throw，Electron/Chromium 可能高频抛错 | S1 先只**统计**（照旧 resolve + 打点频率），确认基线后再翻；保留 `ZCODE_CUA_POSSIBLY_SENT=throw\|warn` |
+| `possibly_sent` 从文本提示变 throw，Electron/Chromium 可能高频抛错 | S1 先只**统计**（照旧 resolve + 打点频率），确认基线后再翻；保留 `CODEZ_CUA_POSSIBLY_SENT=throw\|warn` |
 | 放开 delta 后模型复用旧索引 | delta 也签发新 `stateId`；索引由 SDK 用当前 `stateId` 解析；stale 一律 fail-closed（比今天更严） |
 | 自动 emit 与宿主 structured sink 双写导致重复输出 | 沿用现有 `hostProjectionResult` / `imageAuthorityResult` 边界；`format-model-facing-budget.test.ts` 扩一条重复检测 |
 | 绑定不跨 cell 被误解为「状态丢了」 | 文档明写「每 cell 重新 `getApp`，UI 状态与 stateId 由 host 保留」；reattach 只输出一行 |
 | 解冻 30 工具契约削弱防漂移能力 | 门禁保留，只改基线；解冻理由与删除清单写进 normative 文档与 commit message |
-| Windows / Linux 上 `getApp` 语义与 macOS 不一致 | ZCode **不**在非 macOS 抛错（三平台统一是既有优势）；能力缺失走类型化错误：Linux 无 AX 元素 → `ELEMENT_UNAVAILABLE`；Linux/Windows 键盘无 pid 定向 → `FOREGROUND_REQUIRED`。`cua.computer.target` 暴露平台供模型分支 |
+| Windows / Linux 上 `getApp` 语义与 macOS 不一致 | Codez **不**在非 macOS 抛错（三平台统一是既有优势）；能力缺失走类型化错误：Linux 无 AX 元素 → `ELEMENT_UNAVAILABLE`；Linux/Windows 键盘无 pid 定向 → `FOREGROUND_REQUIRED`。`cua.computer.target` 暴露平台供模型分支 |
 
 ---
 
@@ -819,7 +819,7 @@ const png = await app2.getScreenshot();       // per-app 截图，建立内部 f
 await app2.click([640, 240]);                 // 像素取自这张栅格
 await app2.getAXStateAndScreenshot();
 
-// ── 配方 3：ZCode 附加项（只在选项袋里）
+// ── 配方 3：Codez 附加项（只在选项袋里）
 await app.click(42, { mouseButton: "right", modifiers: "cmd", strategy: "a11y" });
 await app.pressKey("Return", { holdSeconds: 0.5 });
 for (let i = 0; i < 3; i++) await app.pressKey("Down");   // 取代已删除的 repeat
@@ -838,7 +838,7 @@ try {
   if (e.code === "ACTION_UNAVAILABLE") {
     await app.getAXState({ disableDiffing: true });   // compact 已带 actions，看清合法取值
   } else if (e.code === "CONTROLLER_BUSY") {
-    nodeRepl.write(`another ZCode Computer Use session owns control: ${e.details.owner}`);
+    nodeRepl.write(`another Codez Computer Use session owns control: ${e.details.owner}`);
   } else if (e.actionSent) {
     await app.getAXState();                            // 可能已落地，先看状态再决定
   } else throw e;

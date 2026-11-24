@@ -6,7 +6,7 @@ import type {
   DataSyncImportResultItem,
   McpDataSyncPayload,
   McpServerConfig,
-} from "@zcode/shared";
+} from "@codez/shared";
 import { updateJsonObjectFile } from "#src/fs/atomicFileUtils.js";
 import {
   cloneMcpConfig,
@@ -33,7 +33,7 @@ const COMPAT_CONFIG_ERROR =
 
 interface ResolvedUserMcp {
   byKey: Map<string, UserMcpRecord>;
-  /** `.zcode` 中没有任何 server，实际生效的是 `~/.agents/mcp.json`。 */
+  /** `.codez` 中没有任何 server，实际生效的是 `~/.agents/mcp.json`。 */
   usesCompatConfig: boolean;
 }
 
@@ -170,7 +170,7 @@ export function createMcpDataSyncMethods(): IDataSyncCategoryService<McpDataSync
         results: params.items.map((item) => ({ key: item.key, status: "failed", error })),
       });
       try {
-        // 远端只在使用 ~/.agents 兼容配置时，写入 .zcode 会让它整体失效：整类拒绝。
+        // 远端只在使用 ~/.agents 兼容配置时，写入 .codez 会让它整体失效：整类拒绝。
         if ((await resolveUserMcp()).usesCompatConfig) return failAll(COMPAT_CONFIG_ERROR);
         const payloadByKey = new Map(params.payload.items.map((item) => [item.key, item]));
         const paths: McpPathRewrite = {

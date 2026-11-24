@@ -50,12 +50,12 @@ E2E_DSYNC_04_SKILL_PUSH: remote tab identity/session 没有收敛，latest={"act
 ### 3.2 自然失败时序（两次独立复现，形态相同）
 
 ```
-03:19:54.733 [zcode-host] remote-projects.connectHost OK                      ← A
-03:19:54.734 [zcode-host] connecting window-scoped remote source, requestId=6cb12fa7…
-03:19:54.825 [zcode-host] window Host topology, reason=remote-connected, logicalSessions=1
-03:19:55.119 [zcode-host] remote-projects.connectHost OK                      ← B（与 A 相隔 386ms）
+03:19:54.733 [codez-host] remote-projects.connectHost OK                      ← A
+03:19:54.734 [codez-host] connecting window-scoped remote source, requestId=6cb12fa7…
+03:19:54.825 [codez-host] window Host topology, reason=remote-connected, logicalSessions=1
+03:19:55.119 [codez-host] remote-projects.connectHost OK                      ← B（与 A 相隔 386ms）
 03:19:55.121 [renderer] [DIAG] {"at":"attach.findSession",...,"existing":null}
-03:19:55.123 [zcode-host] connecting window-scoped remote source, requestId=806bbcce…
+03:19:55.123 [codez-host] connecting window-scoped remote source, requestId=806bbcce…
 03:19:55.158 [error] [main] [connect-remote] caught error: {"message":"远程 workspace route 尚无可用 renderer attachment，sessionId=[redacted]",...}
 03:19:55.162 [renderer] [DIAG] {"at":"startNewTask.catch","sequence":2,"current":true,"error":"Error: 远程 workspace route 尚无可用 renderer attachment…"}
 03:19:55.326 [main] [provider-provisioning] Environment sync completed {...,"durationMs":501.09}
@@ -63,7 +63,7 @@ E2E_DSYNC_04_SKILL_PUSH: remote tab identity/session 没有收敛，latest={"act
 03:19:55.338 [renderer] [DIAG] {"at":"attach.connected","sessionId":"cb16a52d…","reused":false,"current":false}
 03:19:55.339 [renderer] [DIAG] {"at":"attach.catch",...,"willCancel":true,"current":false,"error":"Error: project.navigation-cancelled"}
 03:19:55.339 [renderer] [DIAG] {"at":"cancelRemoteProject","sessionId":"cb16a52d…"}
-03:19:55.340 [zcode-host] window Host topology, reason=remote-session-disposed, connections=0, logicalSessions=0
+03:19:55.340 [codez-host] window Host topology, reason=remote-session-disposed, connections=0, logicalSessions=0
 ```
 
 加压运行的第二次复现：两次 connectHost 相隔 510ms，provisioning 耗时 784ms，B 同样报「尚无可用 renderer attachment」，A ready 后同样立即 cancel 并 dispose。
@@ -75,7 +75,7 @@ E2E_DSYNC_04_SKILL_PUSH: remote tab identity/session 没有收敛，latest={"act
 03:14:16.245 [renderer] [DIAG] {"at":"startNewTask","sequence":2}                              ← B
 03:14:16.263 [renderer] [DIAG] {"at":"attach.findSession",...,"existing":"f30e0f64…"}            ← B 复用 A 的 session
 03:14:17.124 [renderer] [DIAG] {"at":"attach.catch","sessionId":"f30e0f64…","existing":null,"willCancel":true,"error":"…navigation-cancelled"}
-03:14:17.126 [zcode-host] window Host topology, reason=remote-session-disposed, connections=0  ← A 销毁了 B 正在用的 session
+03:14:17.126 [codez-host] window Host topology, reason=remote-session-disposed, connections=0  ← A 销毁了 B 正在用的 session
 03:14:17.275 [renderer] [DIAG] {"at":"select.addTab","sessionId":"f30e0f64…"}                    ← B 把 tab 挂到一个已死的 session
 03:14:17.331 [renderer] [DIAG] {"at":"attach.catch",...,"error":"Error: project.workspace-identity-mismatch"}
 ```
@@ -142,7 +142,7 @@ assertCurrent() ✖ navigation-cancelled
 ## 6. 相关现象：DSYNC-07+08 同批在 `virtual-project-add` 失败
 
 - **未复现**：7 个同批运行（4×07+08、2×07+08+04、1×高负载 07+08）中，没有一次在 `virtual-project-add` 失败。08 的原始失败工件已经不在。
-- **runner 事实**：`harness/remote/remote-wdio-env.mjs:111` 强制 `ZCODE_E2E_MAX_INSTANCES=1`，所以「双 worker」实际是同一批次里**串行**执行的 0-0 和 0-1。两者共享同一个容器和同一个 run 级 `ZCODE_HOME`（`workers.ndjson` 的 capturedAt 前后错开，可以证明是串行）。并不存在两个 Electron 并行抢占的情况。
+- **runner 事实**：`harness/remote/remote-wdio-env.mjs:111` 强制 `CODEZ_E2E_MAX_INSTANCES=1`，所以「双 worker」实际是同一批次里**串行**执行的 0-0 和 0-1。两者共享同一个容器和同一个 run 级 `CODEZ_HOME`（`workers.ndjson` 的 capturedAt 前后错开，可以证明是串行）。并不存在两个 Electron 并行抢占的情况。
 - **与第 2 条的关系**：`virtual-project-add` 是 `openRemoteProjectSelection` 的第一步（`ssh-remote-p0.ts:289-304`），发生在任何 connectHost 之前。第 2 条的竞态发生在保存项目之后。从阶段上看二者**不是同一根因**。高负载同批运行中确实出现过 DSYNC-07 失败，但报错是第 2 条的「remote tab … 没有收敛」，不是 `virtual-project-add`。
 - **推测（未验证）**：当时多个 worktree 的 runner 同时运行，负载很高，侧栏的 `virtual-project-add` 没能在 10s 的 `waitForClickable` 内可点。建议再遇到时保留 `failures/<cid>/…/video.webm` 和 desktop 日志再判断。修复第 2 条之后，同批失败中属于第 2 条的那部分会消失。
 

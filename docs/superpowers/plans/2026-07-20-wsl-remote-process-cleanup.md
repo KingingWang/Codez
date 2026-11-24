@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make real window close, application quit, and update installation deterministically release all ZCode-owned Remote Hosts and WSL server/Agent processes without terminating the WSL distro.
+**Goal:** Make real window close, application quit, and update installation deterministically release all Codez-owned Remote Hosts and WSL server/Agent processes without terminating the WSL distro.
 
-**Architecture:** Desktop Main will use the remote session manager as the lifecycle authority and wait for all unique Local/Remote Hosts through one idempotent shutdown barrier. Host and remote stdio shutdown become bounded phase machines that always attempt Agent cleanup, while WSL tracks only the child processes it created. A strict owner registry provides safe cleanup for newly created, provably orphaned ZCode Agent processes.
+**Architecture:** Desktop Main will use the remote session manager as the lifecycle authority and wait for all unique Local/Remote Hosts through one idempotent shutdown barrier. Host and remote stdio shutdown become bounded phase machines that always attempt Agent cleanup, while WSL tracks only the child processes it created. A strict owner registry provides safe cleanup for newly created, provably orphaned Codez Agent processes.
 
 **Tech Stack:** TypeScript, Electron UtilityProcess, Node.js child_process/stdio, Vitest, Zustand-independent Desktop Main/Host services.
 
@@ -261,16 +261,16 @@ git commit -m "fix(remote): await WSL server process shutdown"
 ### Task 4: Safe WSL Owner Registry and Orphan Reaper
 
 **Files:**
-- Create: `packages/services/src/zcode-agent/remoteAgentOwnerRegistry.ts`
+- Create: `packages/services/src/codez-agent/remoteAgentOwnerRegistry.ts`
 - Create: `packages/services/test/remoteAgentOwnerRegistry.test.ts`
-- Modify: `packages/services/src/zcode-agent/zcodeAgentProcessManager.ts`
+- Modify: `packages/services/src/codez-agent/codezAgentProcessManager.ts`
 - Modify: `packages/services/src/node.ts`
 - Modify: `packages/server/src/remote/connect.ts`
 - Modify: `packages/server/src/entry-stdio.ts`
 
 **Interfaces:**
 - Produces: `RemoteAgentOwnerRegistry` with `registerAgent`, `unregisterAgent`, `reapDeadOwners`, and `dispose`.
-- Consumes: `ZCODE_REMOTE_OWNER_ID`, `ZCODE_REMOTE_OWNER_KIND`, and an owner registry root under `$HOME/.zcode/server/owners`.
+- Consumes: `CODEZ_REMOTE_OWNER_ID`, `CODEZ_REMOTE_OWNER_KIND`, and an owner registry root under `$HOME/.codez/server/owners`.
 
 - [ ] **Step 1: Write failing registry tests**
 
@@ -290,12 +290,12 @@ Persist owner records atomically with schema version, ownerId, server PID/start 
 
 - [ ] **Step 4: Integrate owner environment and process callbacks**
 
-Generate the ownerId in `connectRemote`, inject it into the remote server command, initialize the registry only for `desktop-attached-remote`, and register/unregister child PIDs in `ZCodeAgentProcessManager`. Normal service disposal removes the owner record.
+Generate the ownerId in `connectRemote`, inject it into the remote server command, initialize the registry only for `desktop-attached-remote`, and register/unregister child PIDs in `CodezAgentProcessManager`. Normal service disposal removes the owner record.
 
 - [ ] **Step 5: Run registry and process-manager tests**
 
 ```sh
-pnpm exec vitest run packages/services/test/remoteAgentOwnerRegistry.test.ts packages/services/test/zcodeAgentProcessManager.test.ts packages/server/test/remoteConnect.test.ts
+pnpm exec vitest run packages/services/test/remoteAgentOwnerRegistry.test.ts packages/services/test/codezAgentProcessManager.test.ts packages/server/test/remoteConnect.test.ts
 ```
 
 Expected: all tests PASS.
@@ -303,7 +303,7 @@ Expected: all tests PASS.
 - [ ] **Step 6: Commit**
 
 ```sh
-git add packages/services/src/zcode-agent packages/services/src/node.ts packages/services/test packages/server/src/remote/connect.ts packages/server/src/entry-stdio.ts packages/server/test
+git add packages/services/src/codez-agent packages/services/src/node.ts packages/services/test packages/server/src/remote/connect.ts packages/server/src/entry-stdio.ts packages/server/test
 git commit -m "fix(remote): reap owned orphan agents safely"
 ```
 
@@ -311,7 +311,7 @@ git commit -m "fix(remote): reap owned orphan agents safely"
 
 **Files:**
 - Modify: `docs/wsl-remote-workspace-design.md`
-- Modify: `docs/architecture/zcode-code-architecture-overview.md`
+- Modify: `docs/architecture/codez-code-architecture-overview.md`
 - Modify: `docs/web-remote-control/web-remote-control-architecture.md`
 - Modify: `docs/web-remote-control/task-realtime-sync.md`
 
@@ -325,7 +325,7 @@ Document app/update shutdown barriers, WSL child ownership, owner reaping, and e
 - [ ] **Step 2: Run all focused suites**
 
 ```sh
-pnpm exec vitest run packages/desktop/test/desktopRemoteSessions.test.ts packages/desktop/test/desktopHostProcess.test.ts packages/desktop/test/desktopWindowLifecycle.test.ts packages/desktop/test/e2eProcessCleanup.test.ts packages/desktop/test/hostShutdownPhases.test.ts packages/server/test/stdioLifecycle.test.ts packages/server/test/remoteConnect.test.ts packages/server/test/wslBackend.test.ts packages/server/test/dockerBackend.test.ts packages/services/test/remoteAgentOwnerRegistry.test.ts packages/services/test/zcodeAgentProcessManager.test.ts
+pnpm exec vitest run packages/desktop/test/desktopRemoteSessions.test.ts packages/desktop/test/desktopHostProcess.test.ts packages/desktop/test/desktopWindowLifecycle.test.ts packages/desktop/test/e2eProcessCleanup.test.ts packages/desktop/test/hostShutdownPhases.test.ts packages/server/test/stdioLifecycle.test.ts packages/server/test/remoteConnect.test.ts packages/server/test/wslBackend.test.ts packages/server/test/dockerBackend.test.ts packages/services/test/remoteAgentOwnerRegistry.test.ts packages/services/test/codezAgentProcessManager.test.ts
 ```
 
 Expected: all tests PASS.
@@ -341,7 +341,7 @@ Expected: both commands exit 0.
 
 - [ ] **Step 4: Perform runtime WSL verification**
 
-Record before/after PID evidence for tray hide, real window close, app quit, and update preparation. Confirm ZCode Host/server/Agent exit while `wsl.exe -l -v` may continue showing the distro as Running.
+Record before/after PID evidence for tray hide, real window close, app quit, and update preparation. Confirm Codez Host/server/Agent exit while `wsl.exe -l -v` may continue showing the distro as Running.
 
 - [ ] **Step 5: Commit**
 

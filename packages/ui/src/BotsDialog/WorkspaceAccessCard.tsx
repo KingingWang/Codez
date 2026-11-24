@@ -1,6 +1,6 @@
 import { Check, LoaderCircle } from "lucide-react";
-import type { BotConfig, BotWorkspaceRef } from "@zcode/shared";
-import { ALL_BOT_WORKSPACES } from "@zcode/shared";
+import type { BotConfig, BotWorkspaceRef } from "@codez/shared";
+import { ALL_BOT_WORKSPACES } from "@codez/shared";
 import {
   Select,
   SelectContent,
@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { SettingsRow } from "@/settings/SettingsPageParts.js";
 import { cn } from "@/components/lib/utils.js";
 import { isAllWorkspacesAllowed } from "./shared.js";
@@ -26,7 +26,7 @@ export function WorkspaceAccessCard({
   onPatchAllowedWorkspaces: (allowedWorkspaces: string[]) => Promise<void>;
   onToggleWorkspaceAccess: (workspaceId: string, checked: boolean) => Promise<void>;
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const allAllowed = isAllWorkspacesAllowed(bot.allowedWorkspaces);
   const allowedCount = allAllowed
     ? workspaceRefs.length

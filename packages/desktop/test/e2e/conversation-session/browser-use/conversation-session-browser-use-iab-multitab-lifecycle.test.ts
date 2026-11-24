@@ -1,6 +1,6 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { TID_BROWSER_WEBVIEW } from "@zcode/shared/test-ids";
+import { TID_BROWSER_WEBVIEW } from "@codez/shared/test-ids";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import {
   prepareV4ConversationE2E,

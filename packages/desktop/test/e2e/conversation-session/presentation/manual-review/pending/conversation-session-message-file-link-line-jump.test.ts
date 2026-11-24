@@ -1,6 +1,6 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { TID_PREVIEW_PANE, TID_SIDE_PANE_TOGGLE } from "@zcode/shared/test-ids";
+import { TID_PREVIEW_PANE, TID_SIDE_PANE_TOGGLE } from "@codez/shared/test-ids";
 import { clearAppData, DEFAULT_WORKSPACE } from "#e2e/helpers/desktop-app";
 import {
   prepareV4ConversationE2E,

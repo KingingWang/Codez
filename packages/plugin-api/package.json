@@ -1,12 +1,12 @@
 {
-  "name": "@zcode-dev/plugin-api",
+  "name": "@codez-dev/plugin-api",
   "version": "1.4.0",
-  "description": "Type definitions for ZCode plugin extensions.",
+  "description": "Type definitions for Codez plugin extensions.",
   "keywords": [
     "extension",
     "plugin",
     "types",
-    "zcode"
+    "codez"
   ],
   "license": "Apache-2.0",
   "files": [

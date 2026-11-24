@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { readFileSync } from "node:fs";
-import { TID_DOCKER_CONTAINER_INPUT, TID_REMOTE_KIND_DOCKER } from "@zcode/shared/test-ids";
+import { TID_DOCKER_CONTAINER_INPUT, TID_REMOTE_KIND_DOCKER } from "@codez/shared/test-ids";
 import { readLastConnectRemoteError } from "#e2e/helpers/connect-remote-error-log";
 import { clearAppData, clickTestIdByDom } from "#e2e/helpers/desktop-app";
 import {
@@ -36,7 +36,7 @@ const MARKER = "E2E_REMOTE_ZOMBIE_LOCK_DOCKER";
 const ROOT: RemoteAccount = { user: "root", home: "/root" };
 const desktopRoot = process.cwd();
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-zombie-lock-docker",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/remote-zombie-lock-docker",
 );
 
 async function readProcessState(container: string, pid: number): Promise<string> {

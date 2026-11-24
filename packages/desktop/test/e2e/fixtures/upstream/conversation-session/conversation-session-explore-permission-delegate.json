@@ -54,7 +54,7 @@
           "name": "Agent",
           "input": {
             "description": "Run Explore Bash permission case",
-            "prompt": "E2E_EXPLORE_PERMISSION_CHILD: Run Bash command mkdir -p .zcode-e2e/conversation-session-explore-permission-delegate && printf 'E2E_EXPLORE_PERMISSION_SHOULD_NOT_RUN\\n' > .zcode-e2e/conversation-session-explore-permission-delegate/output.txt, then reply exactly E2E_EXPLORE_PERMISSION_CHILD_DONE.",
+            "prompt": "E2E_EXPLORE_PERMISSION_CHILD: Run Bash command mkdir -p .codez-e2e/conversation-session-explore-permission-delegate && printf 'E2E_EXPLORE_PERMISSION_SHOULD_NOT_RUN\\n' > .codez-e2e/conversation-session-explore-permission-delegate/output.txt, then reply exactly E2E_EXPLORE_PERMISSION_CHILD_DONE.",
             "subagent_type": "Explore"
           }
         }
@@ -87,7 +87,7 @@
           "id": "toolu_e2e_explore_permission_bash",
           "name": "Bash",
           "input": {
-            "command": "mkdir -p .zcode-e2e/conversation-session-explore-permission-delegate && printf 'E2E_EXPLORE_PERMISSION_SHOULD_NOT_RUN\\n' > .zcode-e2e/conversation-session-explore-permission-delegate/output.txt",
+            "command": "mkdir -p .codez-e2e/conversation-session-explore-permission-delegate && printf 'E2E_EXPLORE_PERMISSION_SHOULD_NOT_RUN\\n' > .codez-e2e/conversation-session-explore-permission-delegate/output.txt",
             "description": "Write E2E_EXPLORE_PERMISSION_SHOULD_NOT_RUN"
           }
         }

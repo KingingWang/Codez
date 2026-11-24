@@ -9,8 +9,8 @@ import type {
   RemoteSyncWriteAccessResult,
   UserConfigSyncCategory,
   UserConfigSyncPayloadMap,
-} from "@zcode/shared";
-import { ServiceChannels } from "@zcode/shared";
+} from "@codez/shared";
+import { ServiceChannels } from "@codez/shared";
 import { createServiceDescriptor } from "#src/descriptors.js";
 
 /**

@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { isRemoteWorkspaceIdentity } from "@zcode/shared";
+import { isRemoteWorkspaceIdentity } from "@codez/shared";
 import type {
   PreinstalledToolsCommand,
   PreinstalledToolsState,
   PreinstalledToolState,
-} from "@zcode/shared/preinstalled-tools";
+} from "@codez/shared/preinstalled-tools";
 import {
   Dialog,
   DialogContent,
@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/alert-dialog.js";
 import { Separator } from "@/components/ui/separator.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useOptionalTabStore } from "@/store/TabStoreProvider.js";
 import { logger } from "@/logger.js";
 import type { PreinstalledToolsDialogProps } from "@/preinstalled-tools/contract.js";
@@ -99,7 +99,7 @@ function PreinstalledToolCard({
   state: PreinstalledToolState;
   autoInstallEnabled: boolean;
 }) {
-  const { intl, locale } = useZCodeIntl();
+  const { intl, locale } = useCodezIntl();
   const { execute, pending, error } = usePreinstalledCommand();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const text = (key: string) => intl.formatMessage({ id: `preinstalledTools.${key}` });
@@ -360,7 +360,7 @@ function PreinstalledToolCard({
   );
 }
 export function PreinstalledToolsDialog({ open, onOpenChange }: PreinstalledToolsDialogProps) {
-  const { intl } = useZCodeIntl();
+  const { intl } = useCodezIntl();
   const { state, loadFailed } = usePreinstalledToolsState(open);
   const { execute, pending, error } = usePreinstalledCommand();
   const remoteWorkspace = useOptionalTabStore((store) =>

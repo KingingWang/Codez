@@ -6,7 +6,7 @@ Status: in-progress
 
 本文只覆盖"埋点已实现"之后的部署动作：把数据打通到北京 ARMS、完成平台验收、开灰度、核容量与费用。埋点合同本身见父合同，查询口径见查询合同。
 
-**2026-09-15：阶段 0 已完成**，新 service `zcode-local-ttft` 的 Trace 与 Metric 在北京 ARMS 可查，分位数、瀑布关联、标签与诊断口径全部核对通过，实测数据见 [local-ttft-platform-evidence.json](local-ttft-platform-evidence.json)。本地 OTLP 证据见 [local-ttft-evidence.json](local-ttft-evidence.json)、[local-ttft-diagnostics-evidence.json](local-ttft-diagnostics-evidence.json)。阶段 1~3 仍未完成。
+**2026-09-15：阶段 0 已完成**，新 service `codez-local-ttft` 的 Trace 与 Metric 在北京 ARMS 可查，分位数、瀑布关联、标签与诊断口径全部核对通过，实测数据见 [local-ttft-platform-evidence.json](local-ttft-platform-evidence.json)。本地 OTLP 证据见 [local-ttft-evidence.json](local-ttft-evidence.json)、[local-ttft-diagnostics-evidence.json](local-ttft-diagnostics-evidence.json)。阶段 1~3 仍未完成。
 
 ## 现状
 
@@ -22,12 +22,12 @@ Status: in-progress
 
 平台验收不依赖 CI 与灰度下发；本机 dev 直连即可解掉 Ticket 01/02 的平台项。
 
-- [x] 取现有 `zcode-cli-agent` 在用的那对接入值（CI 变量 `ZCODE_PACKAGED_AGENT_OTEL_ENDPOINT` / `ZCODE_PACKAGED_AGENT_OTEL_HEADERS`）。写入密钥不进看板、不进本仓库文档。
+- [x] 取现有 `codez-cli-agent` 在用的那对接入值（CI 变量 `CODEZ_PACKAGED_AGENT_OTEL_ENDPOINT` / `CODEZ_PACKAGED_AGENT_OTEL_HEADERS`）。写入密钥不进看板、不进本仓库文档。
 - [x] **确认该 endpoint 是 OTLP base。** 实测 base 为 `/apm/trace/opentelemetry`；`base + /v1/traces` 与 `base + /v1/metrics` 都返回 200，独立的 `/apm/metric/opentelemetry/v1/metrics` 反而是 404。原先担心的"base 里带 trace 段导致 metrics 打到不存在的 URL"不成立，`packages/desktop/src/main/localTtftExporter.ts:31` 的拼接可用。
 - [x] 确认后端同一接入点接受 metrics signal。**结论：接受**，因此不需要给桌面 main 增加独立 metrics endpoint 注入通道（注入白名单 `packages/desktop/src/main/desktopRuntimeEnv.ts:216` 保持现状即可）。
 - [x] 用真实运行产生受控样本。实际用两个真实 E2E（`conversation-session-ttft-stages` 跑 2 次，各 3/3 通过；`conversation-session-ttft-diagnostics` 6/6 通过），共 12 次发送；出口按线上形态只设 base endpoint，未单独设置 `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT`。转发 85 次全部 200，无失败。
-- [x] Trace 验收：`service.name = zcode-local-ttft` 可查（此前为 0）；`observation_id` 去连字符确实等于 traceID；单条发送 62 个 span，根 701.70ms 与六个主阶段并集 701.69ms 对账一致，`unattributed_ms=0` 得到印证；`local_ttft.checkpoint`、`.start`、`.first_text` 与根同属一条 Trace；`.started` 点记录 duration 为 0。
-- [x] 核对指标实际序列名：**不追加单位后缀**，查询合同里的 `zcode_local_ttft_*` 默认名成立。
+- [x] Trace 验收：`service.name = codez-local-ttft` 可查（此前为 0）；`observation_id` 去连字符确实等于 traceID；单条发送 62 个 span，根 701.70ms 与六个主阶段并集 701.69ms 对账一致，`unattributed_ms=0` 得到印证；`local_ttft.checkpoint`、`.start`、`.first_text` 与根同属一条 Trace；`.started` 点记录 duration 为 0。
+- [x] 核对指标实际序列名：**不追加单位后缀**，查询合同里的 `codez_local_ttft_*` 默认名成立。
 - [x] 跑总 P50/P95、阶段 P95、准备子阶段 P95 与配套 `_count`，DELTA + `sum_over_time` 口径成立。阶段样本数 18 = 3 次发送 × 6 阶段，未被 attempt 放大。
 - [x] 诊断口径（Ticket 02）：`records` 按 kind 齐全（start 16 / first_output 12 / first_text 12 / excluded 4 / checkpoint 442）；`excluded` 区分 cancelled / failed / guided；`attempt` 按 role+outcome 区分失败重试与首输出；`no_output.wait` 记录 cancelled 与 failed；`preparation` 覆盖 context / hooks / persistence / mcp / tools / request_assembly / user_confirmation / retry_wait。
 - [x] 标签为受控低基数（app_version、os、provider、model、quality、send_mode、visibility、stage、role、outcome、kind），未发现关联 ID 泄漏进指标标签。
@@ -51,7 +51,7 @@ Status: in-progress
 
 - [ ] 服务端 `GET /api/v1/client/configs` 返回 `data.configs.rendererActionTrace.localTtftEnabled = true`（解析见 `packages/desktop/src/main/rendererActionTraceRollout.ts:53`）。请求携带 `app_version` 与 `platform`，可按版本/平台圈人。
 - [ ] 从小人群起步。灰度内是有界全量采集、不主动抽样，先按阶段 3 观察量再扩。
-- [ ] 内部验证用 `ZCODE_LOCAL_TTFT_ENABLED=1` 单机强开（`packages/desktop/src/main/rendererActionTraceIpc.ts:123`），不动线上配置。
+- [ ] 内部验证用 `CODEZ_LOCAL_TTFT_ENABLED=1` 单机强开（`packages/desktop/src/main/rendererActionTraceIpc.ts:123`），不动线上配置。
 - [ ] 确认开灰度后旧业务 completion、RUM TTFT 与发送漏斗的计数口径没有变化。
 
 ## 阶段 3：容量、费用与保留期
@@ -60,7 +60,7 @@ Status: in-progress
 
 - [ ] 序列量：10 Histogram + 2 Counter，15 个显式桶 + `+Inf` + sum/count，理论上限约 46,592 条序列/同资源组。另需检查后端资源标签映射与是否产生 overflow 序列。
 - [ ] cardinality 未顶上限：每个 instrument 上限 256、provider/model 最多 16 组（`packages/desktop/src/main/localTtftExporter.ts:71`）。顶到上限会归入 `other`，等于丢失区分度。
-- [ ] `zcode.local_ttft.dropped` 在线上为 0；非 0 说明队列或容量边界需要调整，按 reason 区分队列满、去重容量、传输超时与截断。
+- [ ] `codez.local_ttft.dropped` 在线上为 0；非 0 说明队列或容量边界需要调整，按 reason 区分队列满、去重容量、传输超时与截断。
 - [ ] 保留期达到目标：明细 7 天、聚合 ≥30 天，并给出实际费用估算。该项在父合同中标为待核验的部署条件。
 
 ## 阶段 4：看板落地

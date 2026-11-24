@@ -29,7 +29,7 @@ const WEB_AUTH_COPY = {
     waiting: "等待授权完成",
     authorizationHint: "正在前往授权页面，授权完成后会自动返回。",
     cancelAction: "取消",
-    brand: "ZCode",
+    brand: "Codez",
     loginTitle: "登录后继续使用 Web 远程控制",
     loginDescription: "请选择与电脑端相同的登录平台，并使用同一账号。",
     loginAction: {
@@ -52,7 +52,7 @@ const WEB_AUTH_COPY = {
     authorizationHint:
       "Opening the authorization page. You will return here automatically after authorizing.",
     cancelAction: "Cancel",
-    brand: "ZCode",
+    brand: "Codez",
     loginTitle: "Sign In To Continue",
     loginDescription: "Choose the same sign-in provider and account as on your computer.",
     loginAction: {

@@ -161,7 +161,7 @@ describe("会话区 Held Queue 操作 E2E", () => {
         await setRendererViewport(900, 900);
         await queueElement.waitForDisplayed();
         await browser.saveScreenshot(
-          join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `${fixtureId}-narrow.png`),
+          join(process.env.CODEZ_E2E_ARTIFACT_DIR!, `${fixtureId}-narrow.png`),
         );
         const remove = $(`[data-testid="v4-queue-item-delete-${queue[1]!.id}"]`);
         await remove.waitForDisplayed();

@@ -53,7 +53,7 @@
           "id": "toolu_bpr_prefix_first",
           "name": "Bash",
           "input": {
-            "command": "pnpm --dir .zcode-e2e/conversation-session-v4-bash-command-prefix-permission run lint -- --first"
+            "command": "pnpm --dir .codez-e2e/conversation-session-v4-bash-command-prefix-permission run lint -- --first"
           }
         }
       }
@@ -109,7 +109,7 @@
           "id": "toolu_bpr_prefix_same",
           "name": "Bash",
           "input": {
-            "command": "pnpm --dir .zcode-e2e/conversation-session-v4-bash-command-prefix-permission run lint -- --second"
+            "command": "pnpm --dir .codez-e2e/conversation-session-v4-bash-command-prefix-permission run lint -- --second"
           }
         }
       }
@@ -164,7 +164,7 @@
           "id": "toolu_bpr_prefix_sibling",
           "name": "Bash",
           "input": {
-            "command": "pnpm --dir .zcode-e2e/conversation-session-v4-bash-command-prefix-permission run test -- --sibling"
+            "command": "pnpm --dir .codez-e2e/conversation-session-v4-bash-command-prefix-permission run test -- --sibling"
           }
         }
       }

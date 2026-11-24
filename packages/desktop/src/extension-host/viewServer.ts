@@ -1,15 +1,15 @@
 import { readFile, realpath } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
 import { INVALID_PARAMS, ProtocolError, Server } from "@modelcontextprotocol/server";
-import { MCP_APPS_RESOURCE_MIME_TYPE } from "@zcode/shared/mcp-apps";
-import type { ViewCall, ViewDefinition } from "@zcode/shared/extension-host";
+import { MCP_APPS_RESOURCE_MIME_TYPE } from "@codez/shared/mcp-apps";
+import type { ViewCall, ViewDefinition } from "@codez/shared/extension-host";
 import { runAsPlugin } from "#src/extension-host/runtime.js";
 
 // 扩展视图写法一（docs/plugins/extension-host.md §8）：宿主把 ViewDefinition 包成一个 MCP server。
 // 用低层 Server：插件给的 inputSchema 是普通 JSON Schema，宿主原样放进 tools/list，不替插件校验入参。
 // resources/subscribe 由宿主应答；订阅记账与 view.notify 的过滤在 viewHost（请求层），两种写法共用。
 
-const SERVER_INFO = { name: "zcode-extension-view", version: "1" } as const;
+const SERVER_INFO = { name: "codez-extension-view", version: "1" } as const;
 const DEFAULT_RESOURCE_MIME_TYPE = "text/plain";
 
 function describe(error: unknown): string {

@@ -115,7 +115,7 @@
 ### D16：桌面 E2E 前置构建发现 CLI alias 清单遗漏新迁移子路径
 
 - 原预期：shared exports 已声明迁移模块，CLI 构建也应能解析。
-- 实际：首次桌面 E2E 在 app 构建后、CLI bundle 构建时失败：手工 alias 将 `@zcode/shared/sqlite-migrations` 拼成 `src/index.ts/sqlite-migrations`。该轮未进入 GUI，不记为界面测试失败或通过。
+- 实际：首次桌面 E2E 在 app 构建后、CLI bundle 构建时失败：手工 alias 将 `@codez/shared/sqlite-migrations` 拼成 `src/index.ts/sqlite-migrations`。该轮未进入 GUI，不记为界面测试失败或通过。
 - 处理：删除手工维护的 shared 子路径清单，直接从 shared package exports 派生精确 alias，把通用入口放在最后；补全部 exports 的构建契约测试。
 - 验证：构建契约 11 个测试通过；完整前置构建通过，后续实际桌面 E2E 两例通过，见 D18。
 
@@ -213,7 +213,7 @@
 ### D30：并行 typecheck 覆盖 E2E Host bundle，导致启动进程退出
 
 - 原预期：类型检查与完整构建/GUI 验证互相独立，可以并行执行。
-- 实际：packages/desktop/tsconfig.host.json 开启 emit，outDir 与 tsup 都是 out/host。typecheck 把打包后的 index.js 覆盖为源码导入版本。Electron Host fork 后约 126ms 以 code 1 退出，页面仅 root-startup-loading。检查产物并在隔离 HOME 运行，复现 ERR_MODULE_NOT_FOUND（@zcode/rpc/src/foundation.js）。
+- 实际：packages/desktop/tsconfig.host.json 开启 emit，outDir 与 tsup 都是 out/host。typecheck 把打包后的 index.js 覆盖为源码导入版本。Electron Host fork 后约 126ms 以 code 1 退出，页面仅 root-startup-loading。检查产物并在隔离 HOME 运行，复现 ERR_MODULE_NOT_FOUND（@codez/rpc/src/foundation.js）。
 - 处理：本次验证串行执行 typecheck → 完整构建 → E2E，后续 E2E 运行期间禁止会重写 out 的类型检查/构建。未用延长 UI 等待掩盖 Host 启动失败。
 - 验证：run desktop-e2e-20260910194608389-p65882-0bfd4916e3bf8f3b 为启动失败，不能用于业务验收；串行 typecheck 完成后强制重建，run `desktop-e2e-20260910195101440-p67448-3e05911527984db6` 四例通过。
 
@@ -349,7 +349,7 @@
 ### U02：迁移屏障在 desktop main 与 CLI 启动间的落点
 
 - 发现：app 库已在 main 建服务/窗口前升级；CLI 库由 CLI 启动时升级。设计文字要求“两库 main 建窗前”。两者时序并不完全相同。
-- 处理：main 复用现有 executable resolver 执行一次性 storage-migrate，CLI 同一个 Store/runner 负责升级并关闭数据库；严格 JSON 和零退出后才放行。失败复用重试/备份/退出交互。子进程适配器五例、CLI 命令三例（含真实进程自定义路径/幂等/checksum 失败）已通过；真实 run `desktop-e2e-20260910210656230-p6013-8e20a30e8015402d` 五例通过，首窗已可读两库 ledger，main 日志中的屏障完成早于建窗。CLI 路径继续由已有 storage.sessionDbPath / ZCODE_SESSION_DB_PATH 解析；ZCODE_DATA_BASE_DIR 不是 CLI 历史库路径的替代品，不迁移旧文件。
+- 处理：main 复用现有 executable resolver 执行一次性 storage-migrate，CLI 同一个 Store/runner 负责升级并关闭数据库；严格 JSON 和零退出后才放行。失败复用重试/备份/退出交互。子进程适配器五例、CLI 命令三例（含真实进程自定义路径/幂等/checksum 失败）已通过；真实 run `desktop-e2e-20260910210656230-p6013-8e20a30e8015402d` 五例通过，首窗已可读两库 ledger，main 日志中的屏障完成早于建窗。CLI 路径继续由已有 storage.sessionDbPath / CODEZ_SESSION_DB_PATH 解析；CODEZ_DATA_BASE_DIR 不是 CLI 历史库路径的替代品，不迁移旧文件。
 
 ### U03：产品入口的实现与验收进度
 
@@ -363,7 +363,7 @@
 
 ### U05：环境证据有边界
 
-- 基线新鲜度：首次远端 fetch 返回 HTTP 504，当时只确认本地 `--no-fetch` 通过；最终重新执行正常检查已通过（`/tmp/zcode-project-freshness-final.log`），当前分支无 upstream，落后 origin/main 6 个提交，低于 50 的阈值。
+- 基线新鲜度：首次远端 fetch 返回 HTTP 504，当时只确认本地 `--no-fetch` 通过；最终重新执行正常检查已通过（`/tmp/codez-project-freshness-final.log`），当前分支无 upstream，落后 origin/main 6 个提交，低于 50 的阈值。
 - 影响面：CodeGraph 无工作区索引，使用定向检索与 dep:refs；未执行 CodeGraph 影响面扫描。
 - CLI 测试：部分 bootstrap 引用 adapter 的构建产物，改源码后必须先重建对应包，不能把旧 dist 的结果当作新实现证据。
 - 工作区：预先存在的未跟踪 `packages/remote-desktop/` 不属于本次任务，未纳入本次重构。
@@ -417,7 +417,7 @@ D52/D54 GUI 回写：run `desktop-e2e-20260910230731227-p71459-4419b0f2ce0a071f`
 
 ### D56：Bot state 整份写回会丢失并发绑定
 
-- 证据校正：首轮回归误用了相同授权用户，第二个 Bot 被鉴权拒绝，该结果不能证明丢更新。改为不同合法用户并断言两次 /status 都成功；隔离恢复旧 writer 的对照运行 `/tmp/zcode-bot-state-race-confirmed-red.log` 只留下 webhook-2，确认整份快照写回丢失 webhook-1。对照后已恢复新实现。旧内存测试桩共享对象引用会掩盖该竞态。
+- 证据校正：首轮回归误用了相同授权用户，第二个 Bot 被鉴权拒绝，该结果不能证明丢更新。改为不同合法用户并断言两次 /status 都成功；隔离恢复旧 writer 的对照运行 `/tmp/codez-bot-state-race-confirmed-red.log` 只留下 webhook-2，确认整份快照写回丢失 webhook-1。对照后已恢复新实现。旧内存测试桩共享对象引用会掩盖该竞态。
 - 处理：Repo 单文件锁覆盖单 context 读改写；初始化 CAS、命令更新和 provider cursor 共用此入口，命令不覆盖独立 cursor 字段。删除也不再写回整份旧 state。
 - 状态：回归已先失败，修复验证中。
 
@@ -439,7 +439,7 @@ D55/D56 验证回写：项目候选、绑定、任务归属与真实双 Repo 并
 
 ### D59：Bot legacy canonical 未映射稳定 Host，绑定只比较项目 ID
 
-- 证据：新增回归三例失败：SSH canonical 被误当持库 host，项目被交接为 NULL；入口移除重加后旧 prepare 结果仍写入 context；已固化的 legacy identity 离开入口后不能按 host 路由。见 /tmp/zcode-bot-legacy-admission-red.log。
+- 证据：新增回归三例失败：SSH canonical 被误当持库 host，项目被交接为 NULL；入口移除重加后旧 prepare 结果仍写入 context；已固化的 legacy identity 离开入口后不能按 host 路由。见 /tmp/codez-bot-legacy-admission-red.log。
 - 处理：首次交接借入口解析稳定 hostId，保留原 canonical/cwd；后续传递已固化 hostId，不再依赖入口反推。稳定 server identity 与 hostId 冲突拒绝。绑定前后同时验证 membershipId 与入口 ID。
 - 状态：先红后修复，验证中。
 
@@ -461,13 +461,13 @@ D58–D60 验证回写：Bot/侧栏/footer 14 文件 193 例通过；typecheck 5
 
 ### D62：导航请求在 Host 返回目录后过早移出 pending
 
-- 证据：新 main 回归中，目录已返回但首次 Provider 配置同步尚未结束；关闭窗口后再回成功配置响应，导航仍返回 success。`/tmp/zcode-mobile-project-window-close-red.log` 为 38 pass / 1 fail。此前 Host 退出用例本来就通过，不能当作此问题的失败证据。
+- 证据：新 main 回归中，目录已返回但首次 Provider 配置同步尚未结束；关闭窗口后再回成功配置响应，导航仍返回 success。`/tmp/codez-mobile-project-window-close-red.log` 为 38 pass / 1 fail。此前 Host 退出用例本来就通过，不能当作此问题的失败证据。
 - 处理：请求保留到完整 admission/初次配置同步结束；关窗、取消、Host 退出、shutdown 均结束 pending。迟到结果只能交付给仍持有相同请求与 scope 的调用方，不建立第二份任务状态。
-- 状态：先红后修复，main/Registry/应用模块/协议 132 个测试通过（`/tmp/zcode-mobile-project-admission-green.log`）。后续 main bridge/协议 94 个测试、Root 草稿 14 个测试通过；Host、main、Web、Root 已接入，真实手机 E2E 仍待执行。
+- 状态：先红后修复，main/Registry/应用模块/协议 132 个测试通过（`/tmp/codez-mobile-project-admission-green.log`）。后续 main bridge/协议 94 个测试、Root 草稿 14 个测试通过；Host、main、Web、Root 已接入，真实手机 E2E 仍待执行。
 
 ### D63：旧手机 bridge 没有项目意图与导航去重
 
-- 证据：新增协议与 main 测试先出现 5 fail / 89 pass（`/tmp/zcode-mobile-project-manager-red.log`）；Root 交接 2 fail / 5 pass（`/tmp/zcode-mobile-project-draft-red.log`），旧协议剥掉项目字段、Root 在原 scope 准备草稿。
+- 证据：新增协议与 main 测试先出现 5 fail / 89 pass（`/tmp/codez-mobile-project-manager-red.log`）；Root 交接 2 fail / 5 pass（`/tmp/codez-mobile-project-draft-red.log`），旧协议剥掉项目字段、Root 在原 scope 准备草稿。
 - 处理：严格项目意图只带 projectId/hostId；同一 bridge transport identity 复用整个 admission promise，新导航使旧请求失效，取消只命中对应 requestId。新 Root 先初始化项目/provider/输入再放开 bootstrap；手机旧 peer 缺 admission 时显式拒绝，不能隐式建立另一套 runtime。
 - 验证：main/协议 94 pass，Root 与导航 14 pass。完整 typecheck 首轮发现 currentWorkspaceKey 可空与 randomUUID 默认参数推导过窄两项类型错误，已按契约修正，待复跑；手机 GUI 尚未完成。
 
@@ -475,7 +475,7 @@ D58–D60 验证回写：Bot/侧栏/footer 14 文件 193 例通过；typecheck 5
 
 - 证据：WorkspaceShellLayout 的窄屏分支挂载 WebRemoteControlMobileShell，后者直接渲染 WebRemoteControlMobileTaskHome；新 ProjectSidebar 的手机单测只验证单独组件，没有验证真实窄屏入口。旧首页仍拥有分组/排序/model 与列表请求，不能把此前结果当作全手机项目覆盖。
 - 处理：先补 spec 6.0.3，窄屏与桌面共用同一侧栏渲染入口；手机 shell 只拥有 home/chat 导航和弹层，删除旧首页及仅供它使用的派生逻辑。静态引用扫描后再删除。
-- 状态：实际窄屏 Shell 挂载回归先失败后通过；Shell/共用 sidebar 44 个测试通过（`/tmp/zcode-mobile-project-home-green.log`），旧手机首页、model 与旧模型专用测试已删除。第 28 轮 VP13 草稿 GUI 通过；既有任务扩展仍待通过，见 D67/D68。
+- 状态：实际窄屏 Shell 挂载回归先失败后通过；Shell/共用 sidebar 44 个测试通过（`/tmp/codez-mobile-project-home-green.log`），旧手机首页、model 与旧模型专用测试已删除。第 28 轮 VP13 草稿 GUI 通过；既有任务扩展仍待通过，见 D67/D68。
 
 ### D65：dep:refs 对本次 alias 消费出现漏报
 
@@ -484,9 +484,9 @@ D58–D60 验证回写：Bot/侧栏/footer 14 文件 193 例通过；typecheck 5
 
 ### D66：手机目录 scope 的 join 与失效边界遗漏
 
-- 证据：手机主路径 E2E 通过后继续检查交叉生命周期，新增 3 个回归全部失败（`/tmp/zcode-mobile-project-join-red.log`，3 fail / 97 pass）：第二个导航提前绕过首次 Provider 同步、桌面采用手机 scope 漏记连接成功、Source replacement 后旧 bridge retry 仍返回已失效 descriptor。
+- 证据：手机主路径 E2E 通过后继续检查交叉生命周期，新增 3 个回归全部失败（`/tmp/codez-mobile-project-join-red.log`，3 fail / 97 pass）：第二个导航提前绕过首次 Provider 同步、桌面采用手机 scope 漏记连接成功、Source replacement 后旧 bridge retry 仍返回已失效 descriptor。
 - 处理：join 共享同一配置屏障与 pending owner 校验；桌面沿原 renderer-ready 提交；去重不能覆盖已有 bridge invalidation。
-- 状态：修复后 100 个 main 回归通过（`/tmp/zcode-mobile-project-join-green.log`）。Source lifecycle 证据来自本组独立测试，不能以 VP13 主路径通过代替。
+- 状态：修复后 100 个 main 回归通过（`/tmp/codez-mobile-project-join-green.log`）。Source lifecycle 证据来自本组独立测试，不能以 VP13 主路径通过代替。
 
 本轮验证补记：完整 typecheck 第 67 轮通过；组合单测 234 pass，D66 新增回归后的 main 单测 100 pass；architecture 第 57 轮 baseline 0 / new 0；lint 第 22 轮退出 0，仍有未清理 warnings。VP13 本地手机 GUI 1 pass，使用当前仓库 Web :5173、实际 external relay、隔离 HOME，未发送用户消息，未声明真实远端或调度执行覆盖。
 
@@ -564,13 +564,13 @@ D58–D60 验证回写：Bot/侧栏/footer 14 文件 193 例通过；typecheck 5
 
 ### D79：冷重启测试 helper 强制等待已不应打开的默认目录
 
-- 证据：VP16 第 39 轮实际模型请求已证明 CREATE/LIVE 均使用 A+B 能力、只读取 A 的 AGENTS；完整进程重启后 helper 却先等待 ZCodeProject，报“主界面没有切到工作区”。F5/F13 只恢复上次活动的 A，不应额外创建默认 tab。helper 的目标参数已是 A，前置等待仍写死默认目录。
+- 证据：VP16 第 39 轮实际模型请求已证明 CREATE/LIVE 均使用 A+B 能力、只读取 A 的 AGENTS；完整进程重启后 helper 却先等待 CodezProject，报“主界面没有切到工作区”。F5/F13 只恢复上次活动的 A，不应额外创建默认 tab。helper 的目标参数已是 A，前置等待仍写死默认目录。
 - 处理：两种重启 helper 都只等待其明确请求的 workspacePath，复用原进程退出与 profile 刷盘屏障；不为测试改变产品启动行为。
 - 验证：两个参数化回归先失败，修正后 2 文件 3 例通过；第 42 轮完整冷进程恢复通过，见 D81。
 
 ### D80：独立旧 checkout 的测试启动器没有 tsx 命令入口
 
-- 证据：跨版本探针前两次启动分别因旧 checkout 的 `pnpm exec tsx` 不存在、错误假设 `apps/zcode-cli/node_modules/.bin/tsx` 存在而失败，没有进入仓库写入逻辑。
+- 证据：跨版本探针前两次启动分别因旧 checkout 的 `pnpm exec tsx` 不存在、错误假设 `apps/codez-cli/node_modules/.bin/tsx` 存在而失败，没有进入仓库写入逻辑。
 - 处理：显式使用当前已安装的 tsx loader 加载脚本，业务模块仍全部从传入的旧/新 checkout 解析；旧 CLI contracts 单独在旧 checkout 编译，不把新版 workspace 包软链给旧代码。三个数据路径环境变量在进程启动前固定到同一隔离 HOME，脚本有目录前缀和环境一致性断言。
 - 验证：持久化脚本 `scripts/verify-project-upgrade.mts` 第 5 轮四阶段全部通过；旧 writer 实际改名、删除、新建，新 facts owner 经注入的真实 CLI Store 确认并清位，正文/外键/历史 checksum/归属均保留。此项不声明覆盖旧 Server 二进制与 stdio 传输。
 
@@ -660,7 +660,7 @@ VP18 测试设施说明：runtime lifecycle 在公共接口上是可选能力，
 
 migrateGroups 在 hosts.length === 0 时显式创建空项目，与“无 session 不迁移”相反。首次迁移只处理未删除成员；本机容器按备份核对来源，不按 Group 名称删除手建空项目。SQL/checksum 不变。
 
-D93 本机修复：原备份中 19 个手建 Group 与 19 个覆盖名称的迁移项目按同一顺序逐项对应，其中 11 个零成员、零 root。核对当前行未变且无任务/调度/Bot/远端入口引用后，先备份再在事务内移除这 11 个误生成容器。备份：`~/.zcode/backup/empty-group-repair-20260911-gq2grh`。4101 条任务保留、其余 15 表哈希未变；41 个有用项目保留，quick_check 和外键检查通过。
+D93 本机修复：原备份中 19 个手建 Group 与 19 个覆盖名称的迁移项目按同一顺序逐项对应，其中 11 个零成员、零 root。核对当前行未变且无任务/调度/Bot/远端入口引用后，先备份再在事务内移除这 11 个误生成容器。备份：`~/.codez/backup/empty-group-repair-20260911-gq2grh`。4101 条任务保留、其余 15 表哈希未变；41 个有用项目保留，quick_check 和外键检查通过。
 
 ### D94 纠偏回归的测试问题与连接生命周期
 
@@ -692,7 +692,7 @@ D95 架构收口：project 公共服务增加 1 个目录查询意图后，发�
 
 用户指出 `v3_projects` 把 schema 代号混入了 migration ID。CLI 使用四位补零序号加语义名，task-index 此前没有版本化账本，故第一条应为 `0001_projects`，两个库各自递增。仅更名声明和启动/升级测试中的预期；SQL 文本（包括 checksum 输入中的 v3 注释）保持原样，并新增固定 checksum 断言。不为开发期临时名称给公共 runner 添加别名或第二套迁移逻辑。
 
-本机先备份、在副本中更名并调用当前 projectStorage.migrate，确认 applied=[]、所有业务表哈希不变后，在真实库事务中仅更新 schema_migration.id。checksum、app_version 和 applied_at 未变；4102 条任务、41 个项目和全部 15 张业务表内容不变，quick_check/外键检查通过。备份与报告：`~/.zcode/backup/migration-id-20260911-cppLK7/`。第一次副本断言因 Node SQLite 返回的 null-prototype row 与普通对象原型不同而失败，发生在真实库修改前；比较时统一行对象后通过，未放宽字段断言。
+本机先备份、在副本中更名并调用当前 projectStorage.migrate，确认 applied=[]、所有业务表哈希不变后，在真实库事务中仅更新 schema_migration.id。checksum、app_version 和 applied_at 未变；4102 条任务、41 个项目和全部 15 张业务表内容不变，quick_check/外键检查通过。备份与报告：`~/.codez/backup/migration-id-20260911-cppLK7/`。第一次副本断言因 Node SQLite 返回的 null-prototype row 与普通对象原型不同而失败，发生在真实库修改前；比较时统一行对象后通过，未放宽字段断言。
 
 D98 验证：5 文件 / 34 项单测通过（含首次升级、重复启动、downgrade 和公共 runner）；root typecheck 通过，lint 为 48 warnings / 0 errors，architecture baseline/new/violations 均为 0，格式与 diff 检查通过。第 63 轮 `desktop-e2e-20260911044122173-p94329-bf236dca664095c7` 重新构建后 9/9 桌面 E2E 通过，首窗确认 app `0001_projects` 与 CLI `0020_session_soft_delete_outcome` 已完成。影响模块为 project-storage 的迁移声明；schema_migration 仍由公共 runner 独占，启动顺序与桌面/手机时序不变。代码含测试新增 15 行、删除 8 行，净增 7 行。
 
@@ -740,7 +740,7 @@ D101 最终验证：第二轮 `desktop-e2e-20260911051449253-p26668-5ffc16408305
 
 最终复核：简化 pin 在途状态后，相关单测为 16 文件 / 73 项全通过，root typecheck 再次通过。重新构建后的列表 E2E `desktop-e2e-20260911054637517-p44337-88f4615fa4853a48` 3/3 通过，包含取消置顶后仍可见、折叠未读、偏好重载及更新后的 1200/390 明暗主题截图。结合主文件 11/11，桌面共 14 个用例通过；手机 AUTH_FAILED 与真实 SSH/WSL 同步未验收的限制保留。
 
-架构收口记录：变更模块为 project-sidebar（UI）、remote-projects（adapter 契约及只读投影）与既有 Host 装配。CLI/Host 保持原单写者；UI 只拥有偏好、展示目标和在途意图。命令路径沿用 windowController/zcodeTaskService、归档 UI 清理及远端同步 dialogs，desktop continuous / mobile replayable 不改。最终门禁 baseline/new/violations 全部 0；本轮 TypeScript 含测试新增 2085 行、删除 391 行，净增 1694 行。44 个本任务文件格式及暂存 diff 检查通过；工作区原有 ProjectNode 间距修改未纳入本次提交。
+架构收口记录：变更模块为 project-sidebar（UI）、remote-projects（adapter 契约及只读投影）与既有 Host 装配。CLI/Host 保持原单写者；UI 只拥有偏好、展示目标和在途意图。命令路径沿用 windowController/codezTaskService、归档 UI 清理及远端同步 dialogs，desktop continuous / mobile replayable 不改。最终门禁 baseline/new/violations 全部 0；本轮 TypeScript 含测试新增 2085 行、删除 391 行，净增 1694 行。44 个本任务文件格式及暂存 diff 检查通过；工作区原有 ProjectNode 间距修改未纳入本次提交。
 
 ### D103 首次迁移丢失旧设置的项目顺序
 
@@ -754,13 +754,13 @@ D101 最终验证：第二轮 `desktop-e2e-20260911051449253-p26668-5ffc16408305
 
 ### D104 本机需要恢复旧输入后由用户重测首次迁移
 
-只读审计确认：本机 position 仍是旧迁移结果，前几项为 default、DEMO、ZCodeProject；保留的 9 月 10 日历史设置中 test-2、z-m、ios-demo、zcode-v4-ios 在当前库分别排第 22、29、18、30。当前 setting.json 已从错误顺序反向派生，不能当作升级前输入。用户明确要求不手改排序，并接受回退部分近期数据，改为恢复旧备份后自行启动验收。
+只读审计确认：本机 position 仍是旧迁移结果，前几项为 default、DEMO、CodezProject；保留的 9 月 10 日历史设置中 test-2、z-m、ios-demo、codez-v4-ios 在当前库分别排第 22、29、18、30。当前 setting.json 已从错误顺序反向派生，不能当作升级前输入。用户明确要求不手改排序，并接受回退部分近期数据，改为恢复旧备份后自行启动验收。
 
-可用完整快照为 `~/.zcode/backup/session-projects-20260909-141705/`：旧任务索引有 4078 行，无 projects 表、无 schema_migration；旧设置的前五个项目为 z-m、ios-demo、test-2、zcode-v4-ios、ios-demo-2。回撤前索引有 4111 行（新增 33、旧行无缺失），共同任务中 1 个标题、1518 个归档标记、17 个未读值不同。原始副本完整性和外键检查通过。现存两个 tasks_index 自动表级备份均为零行，不能用于本机恢复。
+可用完整快照为 `~/.codez/backup/session-projects-20260909-141705/`：旧任务索引有 4078 行，无 projects 表、无 schema_migration；旧设置的前五个项目为 z-m、ios-demo、test-2、codez-v4-ios、ios-demo-2。回撤前索引有 4111 行（新增 33、旧行无缺失），共同任务中 1 个标题、1518 个归档标记、17 个未读值不同。原始副本完整性和外键检查通过。现存两个 tasks_index 自动表级备份均为零行，不能用于本机恢复。
 
 CLI 旧快照额外发现 `0019_dwf_journal` checksum 与当前库不同，并含另一分支的 `0020_dwf_run_result`；此次只重测 app 项目迁移，因此保留当前 CLI 正文库，不回退其 schema、不修改 checksum。当前 CLI 有 5076 个 session，旧快照 5054 个；本次没有覆盖正文。
 
-执行前确认应用/数据库无持有进程，保存当前 SQLite 一致快照与设置，再以旧备份的完整文件替换任务索引和 setting.json；原文件及 WAL/SHM 同时保留，未手改 position、project_id 或 migration ledger。备份及审计：`~/.zcode/backup/project-migration-retest-20260911-Siq1ag/manifest.json`。还原文件 SHA-256 与旧备份逐字一致，quick_check/外键检查通过，当前库 4078 行、projects/ledger 均不存在；CLI 主文件及 WAL 哈希前后不变。
+执行前确认应用/数据库无持有进程，保存当前 SQLite 一致快照与设置，再以旧备份的完整文件替换任务索引和 setting.json；原文件及 WAL/SHM 同时保留，未手改 position、project_id 或 migration ledger。备份及审计：`~/.codez/backup/project-migration-retest-20260911-Siq1ag/manifest.json`。还原文件 SHA-256 与旧备份逐字一致，quick_check/外键检查通过，当前库 4078 行、projects/ledger 均不存在；CLI 主文件及 WAL 哈希前后不变。
 
 状态：已回撤，等待用户用当前代码启动；未提前执行 migration，不能把恢复检查当作这次人工升级验收通过。9 月 9 日快照比保留的 9 月 10 日设置更早，项目原顺序应按此次成套恢复的 9 月 9 日 setting.json 验收。只有本机数据操作与文档更新，没有生产代码改动。
 
@@ -789,11 +789,11 @@ CLI 旧快照额外发现 `0019_dwf_journal` checksum 与当前库不同，并�
 
 用户报告 `sess_c9fe3101-8917-4968-9bcc-62452a655837` 未读点清不掉、列表为 `1111` 而详情为“新建任务”。只读 SQLite、Renderer React props 与当日日志得到：
 
-- CLI session.title 和 Host tasks.cli_title 均为 `1111`，标题未丢失。Renderer 当前实际打开的是同目录另一条 `sess_92389c86-7b37-4966-9114-1a38617bbb0a`，其 `resolvedActiveTaskMeta=null`；15:01:49.795 的 `zcode-session.readSession` 报 `Session is not active`，随后 15:01:50.945 V4 conversation subscription 成功。头部仍依赖旧 workspace/query-cache 元数据，未消费项目树的新投影；轻量 snapshot 失败被 catch 置 null，正文订阅成功不会重新触发这次标题读取，最终显示默认标题。
+- CLI session.title 和 Host tasks.cli_title 均为 `1111`，标题未丢失。Renderer 当前实际打开的是同目录另一条 `sess_92389c86-7b37-4966-9114-1a38617bbb0a`，其 `resolvedActiveTaskMeta=null`；15:01:49.795 的 `codez-session.readSession` 报 `Session is not active`，随后 15:01:50.945 V4 conversation subscription 成功。头部仍依赖旧 workspace/query-cache 元数据，未消费项目树的新投影；轻量 snapshot 失败被 catch 置 null，正文订阅成功不会重新触发这次标题读取，最终显示默认标题。
 - 设置为自动归档开启、保留 7 天。当前打开的 `sess_92389…` 已是 `unread_at=NULL, archived=1`；`sess_c9fe…` 则仍为未读、未归档。日志中 15:01:19–49 连续打开多条不同 ID 的同名历史任务，每次 setTaskUnread 成功，未见显式 archiveTask 调用。项目 Provider 的内存行与数据库上述值一致，排除本次是旧 JSON unread 残留或界面缓存未刷新。
 - 链路为：点击旧任务 -> CAS 清未读 -> 项目树刷新 -> readTree 执行 archiveInactive -> 刚已读的 28 天前 completed 任务符合 7 天归档条件 -> 同名下一条未读任务补位。Host 的 activeTaskRefs 仅包含非终态任务，并不包含“正在查看的已完成任务”。因此用户感知为原位置蓝点一直不消失，右侧还停在已经归档的任务；是否保护当前查看任务需要在自动归档交互合同中明确，不能用恢复旧未读缓存来解决。
 
-定位文件：`packages/services/src/project/index.ts` 的 readTree/autoArchive、`packages/services/src/zcode-agent/zcodeTaskIndexSyncer.ts` 的 activeTaskRefs、`packages/ui/src/hooks/useWorkspaceActiveTaskState.ts` 与 `useActiveTaskSnapshotMeta.ts`。本轮未修改实现或用户数据库。
+定位文件：`packages/services/src/project/index.ts` 的 readTree/autoArchive、`packages/services/src/codez-agent/codezTaskIndexSyncer.ts` 的 activeTaskRefs、`packages/ui/src/hooks/useWorkspaceActiveTaskState.ts` 与 `useActiveTaskSnapshotMeta.ts`。本轮未修改实现或用户数据库。
 
 ### 归档管理实施记录
 
@@ -816,18 +816,18 @@ CLI 旧快照额外发现 `0019_dwf_journal` checksum 与当前库不同，并�
 
 开发中额外发现：仅以 service 对象 + workspaceKey + taskId 判定标题请求资格，无法覆盖 attachment 重建但复用 service 的情形。先补失败单测，再将 remoteSessionId 加入读取身份；同任务刷新乱序与切任务首帧清理均已覆盖。
 
-运行证据：首次隔离 E2E 在 15:35:09.849 完成 getTaskMeta（0.6ms），15:35:12.339 才完成 V4 subscribe（2484.8ms），真实历史正文及 E2E_AMT_COLD_TITLE 正常显示；没有标题 readSession 请求。首次第二项失败为测试使用了不存在的 sidebar-settings ID，改为公共 TID_TASK_SETTINGS_BUTTON 后桌面两项均通过。全部 fixture 写入 zcode-active-task-e2e-* 隔离 HOME，未修改用户数据库。最终验证与产物见 AMT coverage matrix。
+运行证据：首次隔离 E2E 在 15:35:09.849 完成 getTaskMeta（0.6ms），15:35:12.339 才完成 V4 subscribe（2484.8ms），真实历史正文及 E2E_AMT_COLD_TITLE 正常显示；没有标题 readSession 请求。首次第二项失败为测试使用了不存在的 sidebar-settings ID，改为公共 TID_TASK_SETTINGS_BUTTON 后桌面两项均通过。全部 fixture 写入 codez-active-task-e2e-* 隔离 HOME，未修改用户数据库。最终验证与产物见 AMT coverage matrix。
 
 
 ### 用户追加要求恢复 CLI 原始库（2026-09-11）
 
-用户在再次恢复 app 索引/设置后明确要求 cli/db/db.sqlite 也恢复到同一份 9 月 9 日 14:17 备份。已确认没有使用数据库的应用进程，先保存一致快照，再离线替换完整 CLI 文件；原文件与 WAL/SHM 留存，未逐表删除正文、未修改 migration ID/checksum。备份和审计：`~/.zcode/backup/cli-migration-retest-20260911-EQXKVM/`。还原前 session/message/part 为 5076/71350/239427，还原后为 5054/71269/239180；恢复文件 SHA-256 与旧备份一致，quick_check 与 foreign_key_check 通过。app 任务索引及设置哈希前后不变。
+用户在再次恢复 app 索引/设置后明确要求 cli/db/db.sqlite 也恢复到同一份 9 月 9 日 14:17 备份。已确认没有使用数据库的应用进程，先保存一致快照，再离线替换完整 CLI 文件；原文件与 WAL/SHM 留存，未逐表删除正文、未修改 migration ID/checksum。备份和审计：`~/.codez/backup/cli-migration-retest-20260911-EQXKVM/`。还原前 session/message/part 为 5076/71350/239427，还原后为 5054/71269/239180；恢复文件 SHA-256 与旧备份一致，quick_check 与 foreign_key_check 通过。app 任务索引及设置哈希前后不变。
 
 旧库与还原前库的共同 migration 中仍有 `0019_dwf_journal` checksum 差异，旧库还含另一分支的 `0020_dwf_run_result`；按用户要求保留真实旧输入，没有修改账本规避校验。未启动应用或执行 migration，等待用户手动测试；还原成功不代表此次旧 CLI 版本的升级验证通过。
 
 ### 再次成套还原任务索引与 CLI（2026-09-11）
 
-用户再次要求恢复两库，沿用 `session-projects-20260909-141705` 完整快照，同时恢复配套旧 setting.json。离线备份后，tasks-index.sqlite 从 4092 行恢复至 4078 行且无 projects 表；CLI 恢复至 5054 个 session、71269 个 message、239180 个 part（与本次还原前计数相同）。两库恢复文件与来源 SHA-256 一致，quick_check/外键检查通过；CLI 阶段确认刚恢复的 app 文件未变。当前快照、原文件及附属文件分别保存在 `~/.zcode/backup/project-migration-retest-20260911-ZeaZCj/` 和 `~/.zcode/backup/cli-migration-retest-20260911-PBjmXq/`，README 与 manifest 记录本次审计。没有修改 migration 账本或手工调整顺序，未启动应用或执行 migration，留给用户测试。
+用户再次要求恢复两库，沿用 `session-projects-20260909-141705` 完整快照，同时恢复配套旧 setting.json。离线备份后，tasks-index.sqlite 从 4092 行恢复至 4078 行且无 projects 表；CLI 恢复至 5054 个 session、71269 个 message、239180 个 part（与本次还原前计数相同）。两库恢复文件与来源 SHA-256 一致，quick_check/外键检查通过；CLI 阶段确认刚恢复的 app 文件未变。当前快照、原文件及附属文件分别保存在 `~/.codez/backup/project-migration-retest-20260911-ZeaZCj/` 和 `~/.codez/backup/cli-migration-retest-20260911-PBjmXq/`，README 与 manifest 记录本次审计。没有修改 migration 账本或手工调整顺序，未启动应用或执行 migration，留给用户测试。
 
 ### 自动归档触发点脱离项目树查询（2026-09-14）
 

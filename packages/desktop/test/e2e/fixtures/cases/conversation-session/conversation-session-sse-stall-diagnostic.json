@@ -8,7 +8,7 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/shared/readonly-tool.txt",
+      "path": ".codez-e2e/shared/readonly-tool.txt",
       "source": "created-by-helper",
       "description": "ensureReadonlyToolFixtureFile 写入固定内容，SSE-ST-05/06 用真实 Read 成功结果验证工具提交边界和 stall 恢复不重复执行。"
     }

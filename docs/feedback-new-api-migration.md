@@ -2,7 +2,7 @@
 
 ## 背景
 
-问题反馈服务从旧的独立反馈域名接口迁移到 ZCode Server 新接口：
+问题反馈服务从旧的独立反馈域名接口迁移到 Codez Server 新接口：
 
 - 旧接口：`https://feedback.example.invalid/v1/tickets`
 - 生产新接口：`https://zcode.z.ai/api/v1/feedback/*`
@@ -10,14 +10,14 @@
 
 UI 和 RPC 服务接口暂不扩展，`IFeedbackService` 继续向 UI 暴露现有的创建、列表、详情、评论和附件上传能力。迁移只收敛在 services 层的 HTTP 协议、鉴权和字段映射。
 
-默认 feedback API base 必须跟随统一的 ZCode endpoint resolver：
+默认 feedback API base 必须跟随统一的 Codez endpoint resolver：
 
-- `ZCODE_ENV=production` 或未显式设置时，默认 `https://zcode.z.ai/api/v1`。
-- `ZCODE_ENV=test` 时，默认 `https://zcode.z.ai/api/v1`。
-- `ZCODE_BASE_URL`、`ZCODE_TEST_BASE_URL`、`ZCODE_PRODUCTION_BASE_URL` 等统一 endpoint 覆盖继续生效。
-- `ZCODE_FEEDBACK_API_BASE` 或显式传入的 `apiBaseUrl` 只作为人工覆盖，优先级高于环境默认值。
+- `CODEZ_ENV=production` 或未显式设置时，默认 `https://zcode.z.ai/api/v1`。
+- `CODEZ_ENV=test` 时，默认 `https://zcode.z.ai/api/v1`。
+- `CODEZ_BASE_URL`、`CODEZ_TEST_BASE_URL`、`CODEZ_PRODUCTION_BASE_URL` 等统一 endpoint 覆盖继续生效。
+- `CODEZ_FEEDBACK_API_BASE` 或显式传入的 `apiBaseUrl` 只作为人工覆盖，优先级高于环境默认值。
 
-反馈 API 的 HTTP 出口必须通过 services 层统一 `ApiClient` 收口，不直接调用全局 `fetch`。统一 `ApiClient` 负责 ZCode Server endpoint 重写、`x-request-id` 以及 `buildZCodeSourceHeaders()` 中的通参注入；反馈模块只在此基础上叠加接口自身关注的 header 和请求体。这样后续新增 ZCode Server 通参时，只需要修改统一 API client/source headers，不需要逐个业务模块补字段。
+反馈 API 的 HTTP 出口必须通过 services 层统一 `ApiClient` 收口，不直接调用全局 `fetch`。统一 `ApiClient` 负责 Codez Server endpoint 重写、`x-request-id` 以及 `buildCodezSourceHeaders()` 中的通参注入；反馈模块只在此基础上叠加接口自身关注的 header 和请求体。这样后续新增 Codez Server 通参时，只需要修改统一 API client/source headers，不需要逐个业务模块补字段。
 
 ## 新接口契约
 
@@ -48,15 +48,15 @@ UI 和 RPC 服务接口暂不扩展，`IFeedbackService` 继续向 UI 暴露现�
 
 未登录用户的反馈身份是服务端签发的 access token。device_mid 会出现在通用请求头、日志和远控设备列表中，不能作为访问凭证。
 
-- access token 保存在 services 统一凭据存储（`credentials.json`，加密），key 为 `zcodefeedbackaccesstoken`，与 `zcodejwttoken` 同级保护。
+- access token 保存在 services 统一凭据存储（`credentials.json`，加密），key 为 `codezfeedbackaccesstoken`，与 `codezjwttoken` 同级保护。
 - 只在第一次匿名提交时申请。只看列表、详情或登录状态下都不申请。
 - 一个 access token 就是一个匿名身份。本地凭据丢失后，之前的匿名反馈无法找回；登录后也看不到匿名期间的反馈。登录不删除 access token，退出登录后匿名期间的反馈重新可见。
 - 升级前用 device_mid 提交的匿名反馈不再出现在新版客户端的列表中；旧的本地缓存 `tickets.json` 不再读取，也不专门清理。
 
 请求头规则：
 
-- 反馈请求通过统一 `ApiClient` 发送，自动携带 ZCode Server 通参，例如 `User-Agent`、`HTTP-Referer`、`X-ZCode-App-Version`、`X-Platform`、`X-Release-Channel`、`X-Client-Language`、`X-Client-Timezone`、`X-Os-Category`、`X-Os-Version`、`X-Device-Mid` 和 `x-request-id`。服务端按通参里的 `X-Device-Mid` 记录工单设备，用于设备维度统计。
-- 已登录（本地凭据存在 `zcodejwttoken`）时只发送 `Authorization: Bearer <token>`。
+- 反馈请求通过统一 `ApiClient` 发送，自动携带 Codez Server 通参，例如 `User-Agent`、`HTTP-Referer`、`X-Codez-App-Version`、`X-Platform`、`X-Release-Channel`、`X-Client-Language`、`X-Client-Timezone`、`X-Os-Category`、`X-Os-Version`、`X-Device-Mid` 和 `x-request-id`。服务端按通参里的 `X-Device-Mid` 记录工单设备，用于设备维度统计。
+- 已登录（本地凭据存在 `codezjwttoken`）时只发送 `Authorization: Bearer <token>`。
 - 未登录时只发送 `X-Feedback-AccessToken: <access token>`。
 - 未登录且本地没有 access token 时：列表直接返回空，不请求服务端；详情、追加消息和上传附件直接报错。不能发送不带凭证的请求，否则服务端会按通参里的 `X-Device-Mid` 走旧版鉴权。
 - 反馈模块不再单独处理 device_mid：不读取宿主 deviceMid、不自行发送 `X-Device-Mid`、创建请求体不带 `device_mid`。

@@ -19,7 +19,7 @@ export type DataSyncBlockedReason =
   | "contains-symlink"
   | "target-symlink"
   | "compat-directory"
-  /** 目标端同名 inline 插件不在 `~/.zcode/plugins` 下（例如开发中的 checkout）。 */
+  /** 目标端同名 inline 插件不在 `~/.codez/plugins` 下（例如开发中的 checkout）。 */
   | "external-directory"
   /** 目标端整类不能导入：远端实际生效的是 `~/.agents` 兼容配置（MCP），推送会使其失效。 */
   | "target-compat-config"

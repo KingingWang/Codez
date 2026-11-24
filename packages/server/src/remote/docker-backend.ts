@@ -1,28 +1,28 @@
 import { spawn, execFile } from "node:child_process";
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
-import type { DockerConnectOptions, PublicZCodeErrorCode } from "@zcode/shared";
+import type { DockerConnectOptions, PublicCodezErrorCode } from "@codez/shared";
 import type {
   IRemoteBackend,
   RemoteEnvironment,
   RemoteUploadOptions,
   StdioStream,
-} from "@zcode/server/remote/backend.js";
+} from "@codez/server/remote/backend.js";
 import {
   createCloseEventController,
   resolveRemoteExitCode,
-} from "@zcode/server/remote/closeEvent.js";
+} from "@codez/server/remote/closeEvent.js";
 import {
   probeDockerDaemon,
   listDockerContainers,
   resolveDockerCommand,
   type DockerContainerInfo,
-} from "@zcode/server/remote/docker-detect.js";
+} from "@codez/server/remote/docker-detect.js";
 import {
   normalizeRemoteArch,
   normalizeRemotePlatform,
   resolveRemotePlatform,
-} from "@zcode/server/remote/detectEnv.js";
+} from "@codez/server/remote/detectEnv.js";
 
 interface ResolvedDockerInfo {
   containerName: string;
@@ -92,7 +92,7 @@ export class DockerBackend implements IRemoteBackend {
     const parentDir = this.dirname(resolvedRemotePath);
 
     // 上传流不会帮我们创建父目录。
-    // 如果直接写入 `~/.zcode/server/...` 这类首次连接路径，上传会因为目录不存在而失败。
+    // 如果直接写入 `~/.codez/server/...` 这类首次连接路径，上传会因为目录不存在而失败。
     // 先显式 `mkdir -p`，再由容器当前用户写入目标文件，和 SSH/WSL 保持一致。
     await this.execSimple(`mkdir -p ${quotePosixShellArg(parentDir)}`);
 
@@ -292,7 +292,7 @@ export class DockerBackend implements IRemoteBackend {
               ? `当前系统未检测到可用的 Docker 环境：${detail}`
               : "当前系统未检测到可用的 Docker 环境",
           ),
-          { code: "remote-connection-unknown" satisfies PublicZCodeErrorCode },
+          { code: "remote-connection-unknown" satisfies PublicCodezErrorCode },
         );
       });
     }

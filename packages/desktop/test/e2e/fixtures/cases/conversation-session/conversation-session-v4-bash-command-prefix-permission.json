@@ -8,12 +8,12 @@
   ],
   "fileFixtures": [
     {
-      "path": ".zcode-e2e/conversation-session-v4-bash-command-prefix-permission/package.json",
+      "path": ".codez-e2e/conversation-session-v4-bash-command-prefix-permission/package.json",
       "source": "created-by-spec",
       "description": "spec 创建只含 lint/test 的最小 package scripts，不访问 npm registry。"
     },
     {
-      "path": ".zcode-e2e/conversation-session-v4-bash-command-prefix-permission/bin/pnpm",
+      "path": ".codez-e2e/conversation-session-v4-bash-command-prefix-permission/bin/pnpm",
       "source": "created-by-spec",
       "description": "beforeSession 安装 case-owned pnpm shim 并仅向本 spec 的 PATH 前置，隔离全局 pnpm store/启动状态。"
     }

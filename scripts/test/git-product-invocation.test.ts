@@ -13,7 +13,7 @@ import { getGitNullDevicePath } from "../../packages/services/src/git/config.ts"
 // 脚本只追加一行通道名到标记文件，textconv 额外输出可区分的文本，用于断言 patch 来自原文。
 
 const execFileAsync = promisify(execFile);
-const GIT_IDENTITY = ["-c", "user.name=zcode-test", "-c", "user.email=zcode-test@example.com"];
+const GIT_IDENTITY = ["-c", "user.name=codez-test", "-c", "user.email=codez-test@example.com"];
 
 let root: string;
 let repo: string;
@@ -37,7 +37,7 @@ async function clearMarkers(): Promise<void> {
 
 describe("产品 Git 子进程不执行仓库配置的外部命令", () => {
   before(async () => {
-    root = await mkdtemp(join(tmpdir(), "zcode-git-invocation-"));
+    root = await mkdtemp(join(tmpdir(), "codez-git-invocation-"));
     repo = join(root, "repo");
     markerPath = join(root, "markers.log");
     const payloadPath = join(root, "payload", "channel.mjs");

@@ -5,8 +5,8 @@ import type {
   MicrophoneAccessResetResult,
   MicrophoneAccessResult,
   MicrophoneSettingsTarget,
-} from "@zcode/shared";
-import { PlatformChannels } from "@zcode/shared";
+} from "@codez/shared";
+import { PlatformChannels } from "@codez/shared";
 import { app, ipcMain, shell, systemPreferences } from "electron";
 
 const execFileAsync = promisify(execFile);
@@ -57,7 +57,7 @@ async function readOwnBundleId(): Promise<string> {
 /**
  * macOS「重新授权」（docs/chat/composer-voice-input.md「权限引导浮层」）。
  * 原因：macOS 麦克风列表没有「+」，用户拒绝过或系统静默拒绝后，askForMediaAccess 不再弹框，
- * 设置页里也可能找不到 ZCode。只重置 ZCode 自己的记录，让系统重新弹框，用户仍需点「允许」。
+ * 设置页里也可能找不到 Codez。只重置 Codez 自己的记录，让系统重新弹框，用户仍需点「允许」。
  * 是否需要重启由重置后的状态决定，不做计时判断。
  */
 export async function resetMicrophoneAccess(logger: {

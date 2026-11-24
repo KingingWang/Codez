@@ -1,6 +1,6 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { TID_TOOL_SUMMARY_TRIGGER } from "@zcode/shared/test-ids";
+import { TID_TOOL_SUMMARY_TRIGGER } from "@codez/shared/test-ids";
 import { clearAppData, seedSettings } from "#e2e/helpers/desktop-app";
 import { waitForUpstreamRequestContaining } from "#e2e/helpers/conversation-session-network";
 import { waitForToolCallBlockByToolName } from "#e2e/helpers/conversation-session-tool";

@@ -22,7 +22,7 @@ import {
   mutationResultSchema,
   openSessionResultSchema,
   sessionControlErrorCodeSchema,
-} from "@zcode/session-control/contracts";
+} from "@codez/session-control/contracts";
 
 const bindingFields = {
   // 由 CLI tool runtime 注入；Host 仍需用活跃连接及根会话事实核对。

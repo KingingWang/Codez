@@ -46,14 +46,14 @@
 ## Tech Stack
 
 - Electron `WebContentsView` + CDP（已由 `BrowserViewManager` 封装）。
-- 共享类型 / Zod：`@zcode/shared`（`packages/shared/src/browser-use/*`）。
+- 共享类型 / Zod：`@codez/shared`（`packages/shared/src/browser-use/*`）。
 - renderer：React + `usePlatform` hook + `packages/ui/src/logger.ts`。
 - 测试：Vitest（纯逻辑/schema/payload builder）+ jsdom + `@testing-library/react`（组件）。
 
 ## Global Constraints
 
 1. **中文注释**：所有新增代码块的注释用中文。
-2. **绝对路径 import**：新增文件之间引用沿用仓库既有别名（`@zcode/shared`、renderer 的 `@/…`），不写脆弱相对深路径。
+2. **绝对路径 import**：新增文件之间引用沿用仓库既有别名（`@codez/shared`、renderer 的 `@/…`），不写脆弱相对深路径。
 3. **Conventional Commits**：每个 task 一条 commit，`feat(browser-use): …` / `test(browser-use): …`。
 4. **分支**：留在 `feat/browser-use-cdp`，**绝不**新建/切换分支，绝不提交到 `staging`。
 5. **renderer 日志**：一律 `import { logger } from "@/logger.js"`（`packages/ui/src/logger.ts`），禁止 `console.*`。
@@ -117,7 +117,7 @@ export function toNavigateCommand(url: string): BrowserCommand {
 }
 ```
 
-在该 `browser-use` 目录的 barrel（`index.ts`，与 `commands.ts` 同级、被 `@zcode/shared` 再导出处）追加：
+在该 `browser-use` 目录的 barrel（`index.ts`，与 `commands.ts` 同级、被 `@codez/shared` 再导出处）追加：
 
 ```ts
 export * from "./viewNavigation.js";
@@ -180,7 +180,7 @@ describe("toNavigateCommand", () => {
 });
 ```
 
-**verify**：`pnpm --filter @zcode/shared test viewNavigation`（红→绿）；`pnpm --filter @zcode/shared typecheck`。
+**verify**：`pnpm --filter @codez/shared test viewNavigation`（红→绿）；`pnpm --filter @codez/shared typecheck`。
 
 ### Step 1.3 — shared Platform 类型：新增导航方法（紧挨 `browserViewSetBounds`）
 
@@ -197,13 +197,13 @@ describe("toNavigateCommand", () => {
   browserViewOpenDevTools?: (payload: BrowserViewKeyRequest) => Promise<void>;
 ```
 
-并确保该文件顶部 `import` 处引入类型（若该文件从 `@zcode/shared` 内部导入，则加）：
+并确保该文件顶部 `import` 处引入类型（若该文件从 `@codez/shared` 内部导入，则加）：
 
 ```ts
 import type {
   BrowserViewNavigateRequest,
   BrowserViewKeyRequest,
-} from "@zcode/shared";
+} from "@codez/shared";
 ```
 
 ### Step 1.4 — preload：暴露导航 invoke（紧挨 `browserViewSetBounds`）
@@ -225,17 +225,17 @@ import type {
 
 ### Step 1.5 — renderer platform impl（`main.tsx`）：转发到 preload（紧挨 `browserViewSetBounds`）
 
-在 renderer 构造 platform 对象处（`browserViewSetBounds` 转发的同一对象，`packages/desktop/src/renderer/main.tsx`）追加，桥接全局名沿用 `browserViewSetBounds` 用的同一个（下例以 `window.zcodePlatform` 表示，改成本文件里 `browserViewSetBounds` 实际引用的那个全局）：
+在 renderer 构造 platform 对象处（`browserViewSetBounds` 转发的同一对象，`packages/desktop/src/renderer/main.tsx`）追加，桥接全局名沿用 `browserViewSetBounds` 用的同一个（下例以 `window.codezPlatform` 表示，改成本文件里 `browserViewSetBounds` 实际引用的那个全局）：
 
 ```ts
   browserViewNavigate: (payload) =>
-    window.zcodePlatform.browserViewNavigate(payload),
-  browserViewGoBack: (payload) => window.zcodePlatform.browserViewGoBack(payload),
+    window.codezPlatform.browserViewNavigate(payload),
+  browserViewGoBack: (payload) => window.codezPlatform.browserViewGoBack(payload),
   browserViewGoForward: (payload) =>
-    window.zcodePlatform.browserViewGoForward(payload),
-  browserViewReload: (payload) => window.zcodePlatform.browserViewReload(payload),
+    window.codezPlatform.browserViewGoForward(payload),
+  browserViewReload: (payload) => window.codezPlatform.browserViewReload(payload),
   browserViewOpenDevTools: (payload) =>
-    window.zcodePlatform.browserViewOpenDevTools(payload),
+    window.codezPlatform.browserViewOpenDevTools(payload),
 ```
 
 ### Step 1.6 — main：`ipcMain.handle` 导航 handler（紧挨 `BrowserViewSetBounds` handler）
@@ -252,7 +252,7 @@ import type {
   browserViewOpenDevTools?: (win: BrowserWindow, key: string) => void;
 ```
 
-顶部 `@zcode/shared` 具名导入处补 `BrowserCommand`、`toNavigateCommand`、`browserViewNavigateRequestSchema`、`browserViewKeyRequestSchema`：
+顶部 `@codez/shared` 具名导入处补 `BrowserCommand`、`toNavigateCommand`、`browserViewNavigateRequestSchema`、`browserViewKeyRequestSchema`：
 
 ```ts
   type BrowserCommand,
@@ -323,12 +323,12 @@ import type {
 ```
 
 **verify（Task 1 整体）**：
-- `pnpm --filter @zcode/shared test viewNavigation && pnpm --filter @zcode/shared typecheck`
+- `pnpm --filter @codez/shared test viewNavigation && pnpm --filter @codez/shared typecheck`
 - 单独 typecheck 三工程（根 typecheck 不含）：
-  - `pnpm --filter @zcode/desktop exec tsc -p src/main/tsconfig.json --noEmit`
-  - `pnpm --filter @zcode/desktop exec tsc -p src/preload/tsconfig.json --noEmit`
-  - `pnpm --filter @zcode/desktop exec tsc -p src/renderer/tsconfig.json --noEmit`
-  - `pnpm --filter @zcode/ui typecheck`
+  - `pnpm --filter @codez/desktop exec tsc -p src/main/tsconfig.json --noEmit`
+  - `pnpm --filter @codez/desktop exec tsc -p src/preload/tsconfig.json --noEmit`
+  - `pnpm --filter @codez/desktop exec tsc -p src/renderer/tsconfig.json --noEmit`
+  - `pnpm --filter @codez/ui typecheck`
   （各 tsconfig 路径以仓库实际为准；目的是覆盖 renderer/main/preload。）
 
 commit：`feat(browser-use): add human navigation IPC surface for unified browser view (Phase 2 Task 1)`
@@ -417,13 +417,13 @@ describe("buildBrowserViewStatePayload", () => {
 });
 ```
 
-**verify**：`pnpm --filter @zcode/shared test viewNavigation`（新增用例红→绿）。
+**verify**：`pnpm --filter @codez/shared test viewNavigation`（新增用例红→绿）。
 
 ### Step 2.2 — main：`BrowserViewManager.ensureView` 挂 webContents 监听 → send
 
 在 `browserViewManager.ts`：
 
-顶部 import 追加（`buildBrowserViewStatePayload` + `PlatformChannels`；`PlatformChannels` 从 `@zcode/shared` 取）：
+顶部 import 追加（`buildBrowserViewStatePayload` + `PlatformChannels`；`PlatformChannels` 从 `@codez/shared` 取）：
 
 ```ts
 import {
@@ -431,7 +431,7 @@ import {
   PlatformChannels,
   type BrowserCommand,
   type BrowserCommandResult,
-} from "@zcode/shared";
+} from "@codez/shared";
 ```
 
 `ManagedView` 接口加一个「已接线」标记，避免重复挂监听：
@@ -525,11 +525,11 @@ renderer platform impl（`main.tsx`）转发：
 
 ```ts
   onBrowserViewState: (listener) =>
-    window.zcodePlatform.onBrowserViewState(listener),
+    window.codezPlatform.onBrowserViewState(listener),
 ```
 
 **verify（Task 2 整体）**：
-- `pnpm --filter @zcode/shared test viewNavigation`
+- `pnpm --filter @codez/shared test viewNavigation`
 - 三工程单独 typecheck（同 Task 1 verify 列表）。
 
 commit：`feat(browser-use): push controlled view state from main to renderer (Phase 2 Task 2)`
@@ -557,7 +557,7 @@ commit：`feat(browser-use): push controlled view state from main to renderer (P
 
 ```tsx
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { BrowserViewState } from "@zcode/shared";
+import type { BrowserViewState } from "@codez/shared";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { logger } from "@/logger.js";
 import {
@@ -703,13 +703,13 @@ export function UnifiedBrowserView({
 
 ### Step 3.2 — 组件测试（jsdom + testing-library）
 
-新增 `packages/ui/src/browser-use/UnifiedBrowserView.test.tsx`（若 `@zcode/ui` 现有 vitest 未启 jsdom，则在其 vitest 配置为该文件启用 `environment: "jsdom"`，或文件头加 `// @vitest-environment jsdom`）：
+新增 `packages/ui/src/browser-use/UnifiedBrowserView.test.tsx`（若 `@codez/ui` 现有 vitest 未启 jsdom，则在其 vitest 配置为该文件启用 `environment: "jsdom"`，或文件头加 `// @vitest-environment jsdom`）：
 
 ```tsx
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import type { BrowserViewState } from "@zcode/shared";
+import type { BrowserViewState } from "@codez/shared";
 import { UnifiedBrowserView } from "./UnifiedBrowserView.js";
 
 // 捕获注入的 onBrowserViewState 回调，用于手动触发状态推送。
@@ -789,8 +789,8 @@ describe("UnifiedBrowserView", () => {
 > 测试断言依赖 `BrowserToolbar` 渲染出 `role="textbox"` 地址栏与可辨识的后退 `button`（disabled 反映 `canGoBack`）。若 Step 3.0 发现 prop/可访问名不同，同步微调选择器与传参——测试意图（回车触发 navigate、推送驱动禁用态）不变。
 
 **verify（Task 3 整体）**：
-- `pnpm --filter @zcode/ui test UnifiedBrowserView`（红→绿）。
-- `pnpm --filter @zcode/ui typecheck`。
+- `pnpm --filter @codez/ui test UnifiedBrowserView`（红→绿）。
+- `pnpm --filter @codez/ui typecheck`。
 
 commit：`feat(browser-use): add UnifiedBrowserView component with chrome/state binding (Phase 2 Task 3)`
 
@@ -838,4 +838,4 @@ commit（如有临时入口需保留为 dev-only 开关）：`chore(browser-use)
 - `setBounds`/`setVisible` 与 `browserViewSetBounds`/`browserViewSetVisible` 端到端范式对齐（`BrowserUseViewPane.tsx` + `desktopMainIpcPlatform.ts`）✓
 - handler 复用 `BrowserWindow.fromWebContents(event.sender)` + `win.isDestroyed()` 守卫 ✓
 - 新增 schema 均 `.strict()`，与 `commands.ts`/`browserCommandContextSchema` 风格一致 ✓
-- 三工程（desktop main/preload/renderer）+ `@zcode/ui` 均列出单独 `tsc`/typecheck（根 typecheck 不含）✓
+- 三工程（desktop main/preload/renderer）+ `@codez/ui` 均列出单独 `tsc`/typecheck（根 typecheck 不含）✓

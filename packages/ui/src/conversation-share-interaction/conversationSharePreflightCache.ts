@@ -3,8 +3,8 @@ import type {
   ConversationSharePreflightResult,
   ConversationShareTurnPreflightResult,
 } from "@/conversation-share-interaction/contract.js";
-import { extractConversationPreviewFileReferences } from "@zcode/shared";
-import type { ConversationRow } from "@zcode/shared/zcode-protocol-v4";
+import { extractConversationPreviewFileReferences } from "@codez/shared";
+import type { ConversationRow } from "@codez/shared/codez-protocol-v4";
 
 function hashString(value: string): string {
   let hash = 2166136261;

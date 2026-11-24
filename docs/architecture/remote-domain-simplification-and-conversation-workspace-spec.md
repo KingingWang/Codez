@@ -80,7 +80,7 @@ interface AppSettings {
 旧版本一旦写回 settings，可能丢弃这个新字段；新版本再次连接 Source 后必须能幂等重建，
 不能把它当作远端数据权威或不可恢复记录。设备被显式删除时清理对应 map entry；单纯 disconnect 不清理。
 
-不允许通过 `.zcode/workspace/default` 等路径前缀猜 purpose。
+不允许通过 `.codez/workspace/default` 等路径前缀猜 purpose。
 
 ### 5.3 长期 R4 简化
 

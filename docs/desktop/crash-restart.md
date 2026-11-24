@@ -62,8 +62,8 @@ Web / 手机根边界 → 原有页面刷新
 复跑候选用例：
 
 ```sh
-ZCODE_E2E_MANUAL_REVIEW=1 E2E_PROVIDER_HTTP_MODE=replay \
+CODEZ_E2E_MANUAL_REVIEW=1 E2E_PROVIDER_HTTP_MODE=replay \
 E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json \
-pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/ui-shell/recovery/manual-review/pending/desktop-crash-restart.test.ts'
+pnpm --filter @codez/desktop test:e2e -- --spec './test/e2e/ui-shell/recovery/manual-review/pending/desktop-crash-restart.test.ts'
 node --test packages/ui/test/browser/manual-review/pending/crash-restart.test.mjs
 ```

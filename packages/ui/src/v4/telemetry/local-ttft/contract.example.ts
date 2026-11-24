@@ -1,5 +1,5 @@
 import { LocalTtftObserver } from "./contract.js";
-import type { LocalTtftRecord } from "@zcode/shared";
+import type { LocalTtftRecord } from "@codez/shared";
 
 /** 桌面本地观测默认不进入云端出口。 */
 export function createLocalObserver(onRecord: (record: LocalTtftRecord) => void) {

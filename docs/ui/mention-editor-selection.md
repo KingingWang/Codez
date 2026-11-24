@@ -44,7 +44,7 @@ Lexical state
 - 修改后：7 个 focused 文件共 53 项通过（节点、序列化、剪贴板、试用预填、历史、触发词、slash payload）；其中图标异步失败保留文字与原生选区的单测再次独立通过。
 - Desktop macOS / Chromium 146：chat-input-mention-navigation 全部 10 项通过。artifact：`desktop-e2e-20260904072116235-p84305-52c75b5dcb36d31a`。最终复测重建 desktop，复用本任务已成功构建且源码未修改的 Agent 产物。
 - 截图：`packages/desktop/.e2e-artifacts/mention-selection/native-select-all.png`，截图复核确认文件图标与全选高亮正常。
-- `pnpm typecheck`、`pnpm --filter @zcode/desktop typecheck:e2e`、`pnpm lint`、conversation coverage audit 均通过；lint 为仓库现有 42 warnings / 0 errors，修改文件无新增告警。
+- `pnpm typecheck`、`pnpm --filter @codez/desktop typecheck:e2e`、`pnpm lint`、conversation coverage audit 均通过；lint 为仓库现有 42 warnings / 0 errors，修改文件无新增告警。
 - 测试环境记录：typecheck 会 emit 到 out/host，不能与 Desktop bundle 构建并行，否则覆盖 Host bundle 导致启动失败。最终验证按顺序执行。首次纯文本 setup 使用异步 focus 导致全页选区，已改为真实点击并断言输入框焦点；没有放宽选区断言。
 - 待补平台证据：Windows/Linux Ctrl+A、手机 Web 触屏长按、WebKit、浅色主题及消息行内编辑的独立 E2E。共享实现和协议保持兼容，但不将本次 macOS 主输入框证据冒充这些场景已实测。
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CodeBlock, CodeBlockHeader } from "@/components/ai-elements/code-block.js";
-import { useZCodeStoreWithDefault } from "@/store/StoreProvider.js";
+import { useCodezStoreWithDefault } from "@/store/StoreProvider.js";
 import { DEFAULT_CODE_PREVIEW_SETTINGS } from "@/lib/codePreviewSettings.js";
 import { resolveTheme, type Theme } from "@/useTheme.js";
 import { Checkbox } from "@/components/ui/checkbox.js";
@@ -15,7 +15,7 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/ui/alert-dialog.js";
-import { TID_CONFIRM_DIALOG_CONFIRM } from "@zcode/shared/test-ids";
+import { TID_CONFIRM_DIALOG_CONFIRM } from "@codez/shared/test-ids";
 import { Button } from "@/components/ui/button.js";
 import {
   Dialog,
@@ -26,7 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { useConfirmDialogStore } from "@/store/confirmDialogStore.js";
 import { cn } from "@/components/lib/utils.js";
 import {
@@ -36,9 +36,9 @@ import {
 import { SourceServerBoundaryDialogContent } from "@/remote/SourceServerBoundaryDialogContent.js";
 
 export function ConfirmDialogHost() {
-  const { intl } = useZCodeIntl();
-  const theme = useZCodeStoreWithDefault<Theme>((state) => state.theme, "system");
-  const codeSettings = useZCodeStoreWithDefault(
+  const { intl } = useCodezIntl();
+  const theme = useCodezStoreWithDefault<Theme>((state) => state.theme, "system");
+  const codeSettings = useCodezStoreWithDefault(
     (state) => state.codePreviewSettings,
     DEFAULT_CODE_PREVIEW_SETTINGS,
   );

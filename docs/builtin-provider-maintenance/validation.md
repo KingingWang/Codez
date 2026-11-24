@@ -21,7 +21,7 @@
 
 其他入口继续完成官方资料核验、两环境配置、规则解析和参数映射检查，并准备待执行清单，明确记录“真实 API 未执行”。缺凭据或未进入当前验证范围，不等于调用失败，也不要求新模型默认关闭；符合维护原则的新增仍可提交。OpenAI Luna/Terra 本轮属于待实测范围，不自动混入优先清单。
 
-后续具备验证条件时，复用现有 ZCode 执行链补测，每项默认 1 pass；一次通过只代表该入口和型号。对外区分“静态检查通过”“真实调用通过”和“已交付”，不得将部分 Provider 的结果扩展为全量验证。
+后续具备验证条件时，复用现有 Codez 执行链补测，每项默认 1 pass；一次通过只代表该入口和型号。对外区分“静态检查通过”“真实调用通过”和“已交付”，不得将部分 Provider 的结果扩展为全量验证。
 
 ## 获取 API Key 的人工交接
 
@@ -67,7 +67,7 @@ pnpm architecture:check --changed
 
 通过现有产品 Decoder/Resolver 和自动回归工具加载正式、测试两份 Release，检查完整执行配置、参数映射及用户显式覆盖。模型回归使用本目录的测试清单，桌面继承与选择使用已有 E2E；不把生成同步检查当作模型能力验证，也不另造产品实现。
 
-普通代码变更执行 `pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed` 和 `pnpm test:engineering:affected --base <起点commit>`。CLI 代码另执行 `pnpm --dir apps/zcode-cli typecheck`、`pnpm --dir apps/zcode-cli lint`，并使用其包脚本/Turbo 选择受影响包及调用方的测试；根工程检查不能代替 CLI 测试。CLI 范围无法可靠确定或改动公共测试基础设施时，执行 `pnpm --dir apps/zcode-cli test`。
+普通代码变更执行 `pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed` 和 `pnpm test:engineering:affected --base <起点commit>`。CLI 代码另执行 `pnpm --dir apps/codez-cli typecheck`、`pnpm --dir apps/codez-cli lint`，并使用其包脚本/Turbo 选择受影响包及调用方的测试；根工程检查不能代替 CLI 测试。CLI 范围无法可靠确定或改动公共测试基础设施时，执行 `pnpm --dir apps/codez-cli test`。
 
 APP 交互变化先补桌面 E2E 场景，再实现；覆盖新增实例、已有实例继承、显式覆盖保留、模型选择及真实执行链，按影响补手机路径。场景、spec 和测试 case 保持一致；验证使用 `pnpm test:e2e` 并按实际受影响 spec 选择范围，不把一次本地 HTTP fixture 的通过当作供应商公网验证。视觉变化还需桌面/手机、深浅主题及相关语言检查。缺环境时列出未验证组合，不写成全部通过。
 

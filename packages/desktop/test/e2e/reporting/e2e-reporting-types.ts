@@ -105,7 +105,7 @@ export interface CIMetadata {
   runnerDescription?: string;
 }
 
-/** job 用 ZCODE_E2E_RUN_SCOPE 声明的运行范围；与平台组合成上报的 run_type。 */
+/** job 用 CODEZ_E2E_RUN_SCOPE 声明的运行范围；与平台组合成上报的 run_type。 */
 export type E2ERunScope = "full" | "incremental";
 
 export interface VersionsMetadata {

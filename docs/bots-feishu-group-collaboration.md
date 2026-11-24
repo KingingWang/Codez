@@ -40,7 +40,7 @@ Session 持久选择 → 冷恢复保留值 → V4 模型校验与输入接纳 �
                               ↑ 当前运行选择优先
 ```
 
-回归入口：`apps/zcode-cli/packages/bootstrap/tests/protocol-unbound-resume.test.ts`，
+回归入口：`apps/codez-cli/packages/bootstrap/tests/protocol-unbound-resume.test.ts`，
 使用真实 Protocol/App/SQLite，在 Provider 缺席时恢复，再发布 Provider 并提交 Bot 输入。
 
 ## Topic collaboration (implementation contract)
@@ -525,7 +525,7 @@ queue attribution retains its compact layout.
 
 # 话题原文回查实现契约
 
-2026-11-03 起，Agent 不再用工具回查话题原文。`ReadSessionContext` 已删除，见 `docs/architecture/zcode-app-control-design.md` 0.8。话题增量已作为 `text/plain` 话题历史附件随用户消息给模型。旧 `topicContext` 原文的兼容读取一并删除。下载话题里的文件或图片改用 `ReadTopicResource`。不把摘要当作原文；尚未获取的消息不声称已归档。下一次 @ 的有限原生 API 读取继续负责新增归档。
+2026-11-03 起，Agent 不再用工具回查话题原文。`ReadSessionContext` 已删除，见 `docs/architecture/codez-app-control-design.md` 0.8。话题增量已作为 `text/plain` 话题历史附件随用户消息给模型。旧 `topicContext` 原文的兼容读取一并删除。下载话题里的文件或图片改用 `ReadTopicResource`。不把摘要当作原文；尚未获取的消息不声称已归档。下一次 @ 的有限原生 API 读取继续负责新增归档。
 
 任务摘要来自 model-only `bot_topic_context` 记录，原文与摘要都保留引用依据。
 

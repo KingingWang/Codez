@@ -43,7 +43,7 @@ async function packWithUnsafeLink(payload: string, target: string): Promise<Buff
   const pack = new Pack({ gzip: true, portable: true, cwd: payload });
   const bytes = buffer(pack);
   pack.add("bin");
-  pack.add("zcode-tool-resource.json");
+  pack.add("codez-tool-resource.json");
   const link = new ReadEntry(
     new Header({
       path: target,
@@ -97,7 +97,7 @@ export async function startPreinstalledToolsFaultFixture(
           : process.platform,
       arch: process.arch,
     };
-    await writeFile(join(payload, "zcode-tool-resource.json"), JSON.stringify(identity));
+    await writeFile(join(payload, "codez-tool-resource.json"), JSON.stringify(identity));
     const target = preinstalledFixtureTarget("libreoffice");
     if (scenario === "missing" || scenario === "unsafe-link") await rm(join(payload, target));
     if (scenario === "unsafe-link" && !isWindows)
@@ -113,7 +113,7 @@ export async function startPreinstalledToolsFaultFixture(
     const archive = join(directory, `${scenario}.tar.gz`);
     await createTar({ gzip: true, portable: true, cwd: payload, file: archive }, [
       "bin",
-      "zcode-tool-resource.json",
+      "codez-tool-resource.json",
     ]);
     const bytes =
       scenario === "extract"

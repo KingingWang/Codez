@@ -191,8 +191,8 @@ export async function checkCombinations(context: {
       assert.equal(new URL(ownUrl).host, new URL(peerUrl).host);
       assert.notEqual(ownUrl, peerUrl);
       // 使用 CSP 本来允许的 self script：避免 connect-src none 让正负样本都失败，掩盖 guest 校验。
-      const ownAsset = new URL("__zcode__/alias.js", ownUrl).href;
-      const peerAsset = new URL("__zcode__/alias.js", peerUrl).href;
+      const ownAsset = new URL("__codez__/alias.js", ownUrl).href;
+      const peerAsset = new URL("__codez__/alias.js", peerUrl).href;
       const loadAsset = (target: BrowserWindow, url: string) =>
         evalPage(
           target,

@@ -1,6 +1,6 @@
 # shortcuts
 
-快捷键内核（`docs/desktop/shortcut-settings-spec.md`）：命令 ID → 生效绑定 → 键盘事件匹配。全仓库只有本模块和 `@zcode/shared` 的 `shortcutCommands.ts` 认识键位，其他代码只认命令 ID。
+快捷键内核（`docs/desktop/shortcut-settings-spec.md`）：命令 ID → 生效绑定 → 键盘事件匹配。全仓库只有本模块和 `@codez/shared` 的 `shortcutCommands.ts` 认识键位，其他代码只认命令 ID。
 
 - `bindings.ts`：匹配、录制、生效表 `resolveEffectiveShortcutBindings`、物理等价口径 `canonicalShortcutBindingKey`。
 - `conflicts.ts`：保留键、占用检测、抢绑与拆行构建器。

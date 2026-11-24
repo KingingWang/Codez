@@ -1,5 +1,5 @@
 import { SidebarNativeTooltip } from "@/ControlHintTooltip.js";
-import type { ProjectTask as ZCodeTaskMeta } from "@/project-sidebar/contract.js";
+import type { ProjectTask as CodezTaskMeta } from "@/project-sidebar/contract.js";
 
 import {
   ContextMenuContent,
@@ -33,7 +33,7 @@ export function GroupedTaskContextMenuContent({
   disabledReason,
   archiveDisabledReason,
 }: {
-  task: ZCodeTaskMeta;
+  task: CodezTaskMeta;
   currentGroupId?: string;
   groups: TaskGroupMenuItem[];
   intl: {
@@ -43,11 +43,11 @@ export function GroupedTaskContextMenuContent({
   taskSessionFile: { loading: boolean; path: string | null };
   taskNativeSessionLogFile: { loading: boolean; path: string | null };
   providerConfigFile: { loading: boolean; path: string | null };
-  onMoveTaskToGroup: (task: ZCodeTaskMeta, groupId: string | null) => void;
-  onMoveTaskToTop: (task: ZCodeTaskMeta) => void;
-  onStartRenameTask: (task: ZCodeTaskMeta) => void;
-  onArchiveTask: (task: ZCodeTaskMeta) => void;
-  onMarkTaskAsUnread: (task: ZCodeTaskMeta) => void;
+  onMoveTaskToGroup: (task: CodezTaskMeta, groupId: string | null) => void;
+  onMoveTaskToTop: (task: CodezTaskMeta) => void;
+  onStartRenameTask: (task: CodezTaskMeta) => void;
+  onArchiveTask: (task: CodezTaskMeta) => void;
+  onMarkTaskAsUnread: (task: CodezTaskMeta) => void;
   onOpenTaskPathInFileManager: () => void;
   onCopyText: (label: string, text: string | null) => void;
   onOpenProviderConfig: () => void;

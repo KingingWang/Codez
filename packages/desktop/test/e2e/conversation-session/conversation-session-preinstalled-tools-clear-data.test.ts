@@ -3,7 +3,7 @@ import { readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import type { PreinstalledToolsState } from "@zcode/shared/preinstalled-tools";
+import type { PreinstalledToolsState } from "@codez/shared/preinstalled-tools";
 import { resolveE2EHomeDir, resolveE2EStorageRoot } from "#e2e/helpers/e2e-runtime-paths";
 import { reloadE2EElectronServiceBridge } from "#e2e/helpers/e2e-electron-service-lifecycle";
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
@@ -31,7 +31,7 @@ describe("预装工具清除数据边界（待审核）", () => {
   it("LOP-28: 真实清除隔离 v2、退出写入方并冷启动复用资源", async function () {
     this.timeout(120000);
     await prepareV4ConversationE2E();
-    const fixture = process.env.ZCODE_E2E_PREINSTALL_FIXTURE_URL!;
+    const fixture = process.env.CODEZ_E2E_PREINSTALL_FIXTURE_URL!;
     await fetch(`${fixture}/release`);
     await fetch(`${fixture}/finish-check`);
     await browser.waitUntil(
@@ -40,9 +40,9 @@ describe("预装工具清除数据边界（待审核）", () => {
           await browser.execute(async () =>
             (
               window as typeof window & {
-                zcode: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
+                codez: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
               }
-            ).zcode.getPreinstalledToolsState(),
+            ).codez.getPreinstalledToolsState(),
           )
         ).tools.find((tool) => tool.toolId === "libreoffice")?.status === "ready",
       { timeout: 30000 },
@@ -52,12 +52,12 @@ describe("预装工具清除数据边界（待审核）", () => {
     const recordPath = await preinstalledFixtureRecordPath(join(roots, (await readdir(roots))[0]!));
     const record = JSON.parse(await readFile(recordPath, "utf8"));
     const environment = await browser.electron.execute(() => ({
-      home: process.env.ZCODE_DESKTOP_HOME_DIR,
-      base: process.env.ZCODE_DATA_BASE_DIR,
+      home: process.env.CODEZ_DESKTOP_HOME_DIR,
+      base: process.env.CODEZ_DATA_BASE_DIR,
     }));
     expect(resolve(environment.home!)).toBe(resolve(resolveE2EHomeDir()));
     if (environment.base) expect(resolve(environment.base)).toBe(resolve(resolveE2EHomeDir()));
-    expect(storageRoot).toBe(join(resolveE2EHomeDir(), ".zcode"));
+    expect(storageRoot).toBe(join(resolveE2EHomeDir(), ".codez"));
     const sentinel = join(storageRoot, "v2", "lop-clear-canary.txt");
     await writeFile(sentinel, "must-be-cleared");
     const identities = await browser.electron.execute((electron) => {
@@ -81,7 +81,7 @@ describe("预装工具清除数据边界（待审核）", () => {
         browserPid: electron.app.getAppMetrics().find((item) => item.type === "Browser")?.pid,
         workerPid: electron.app
           .getAppMetrics()
-          .find((item) => item.name === "zcode-preinstalled-tools")?.pid,
+          .find((item) => item.name === "codez-preinstalled-tools")?.pid,
       };
     });
     expect(identities.mainPid).toBe(identities.browserPid);
@@ -90,9 +90,9 @@ describe("预装工具清除数据边界（待审核）", () => {
     await browser.execute(() => {
       void (
         window as typeof window & {
-          zcode: { executeDesktopCommand(command: string): Promise<void> };
+          codez: { executeDesktopCommand(command: string): Promise<void> };
         }
-      ).zcode.executeDesktopCommand("clearAllData");
+      ).codez.executeDesktopCommand("clearAllData");
     });
     let exitState = "";
     await browser.waitUntil(
@@ -111,9 +111,9 @@ describe("预装工具清除数据边界（待审核）", () => {
     const restored = await browser.execute(async () =>
       (
         window as typeof window & {
-          zcode: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
+          codez: { getPreinstalledToolsState(): Promise<PreinstalledToolsState> };
         }
-      ).zcode.getPreinstalledToolsState(),
+      ).codez.getPreinstalledToolsState(),
     );
     expect(restored.tools.find((tool) => tool.toolId === "libreoffice")?.status).toBe("ready");
     expect(restored.tools.find((tool) => tool.toolId === "libreoffice")?.installed).toMatchObject({
@@ -129,7 +129,7 @@ describe("预装工具清除数据边界（待审核）", () => {
     expect(status.requests).toBe(1);
     expect(status.runtimeChecks).toBe(1);
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "lop-clear-facts.json"),
+      join(process.env.CODEZ_E2E_ARTIFACT_DIR!, "lop-clear-facts.json"),
       JSON.stringify(
         {
           ...identities,

@@ -16,7 +16,7 @@ AI 生成 Git commit message 时需要遵循当前界面语言。用户选择固
 
 ## 数据流
 
-- UI 通过 `useZCodeIntl()` 读取当前已解析的 `locale`。
+- UI 通过 `useCodezIntl()` 读取当前已解析的 `locale`。
 - Git commit message 生成请求把 `locale` 传给服务层。
 - 同一个请求也会携带当前会话最近文本上下文；语言规则仍以 `locale` 为准，会话上下文只用于理解修改意图。
 - 如果当前会话已有文件修改 summary，UI 同时传入 `currentSessionFilePaths`；服务层只用这些文件匹配到的 staged/unstaged changes 和 diff 生成提交信息，避免其它工作区变更污染主题。

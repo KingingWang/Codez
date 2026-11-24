@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { parseRemoteWorkspaceIdentity } from "@zcode/shared";
+import { parseRemoteWorkspaceIdentity } from "@codez/shared";
 import { clearAppData, readSettings } from "#e2e/helpers/desktop-app";
 import {
   disconnectRemoteSource,
@@ -17,7 +17,7 @@ import { runSSHCommand, waitForRemoteTab } from "#e2e/helpers/ssh-remote-p0";
 
 const MARKER = "E2E_SSH_ACCOUNT_ISOLATION";
 const artifactDir = resolve(
-  process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-account-isolation",
+  process.env.CODEZ_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/ssh-account-isolation",
 );
 
 describe(`${MARKER}: 同地址不同登录账号`, () => {

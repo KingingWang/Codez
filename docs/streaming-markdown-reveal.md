@@ -65,12 +65,12 @@ processor，受 LRU 上限约束。这依赖 Streamdown 没有写进文档的缓
   「拍板」「决策」切成一块，两个字一起出现，没有逐字的打字感。
 - 跳过 `pre` / `svg` / `math` 下的文本：代码块的高亮是异步的，逐字会与高亮打架。
   这些文本仍计入偏移，前缀比较与渲染顺序一致。
-- 行内 code（不在 `pre` 里的 `code`）整个元素算一个单元：`data-zcode-reveal` 和延迟直接写在
+- 行内 code（不在 `pre` 里的 `code`）整个元素算一个单元：`data-codez-reveal` 和延迟直接写在
   `<code>` 上，行内 code 渲染器透传属性，底色和文字一起按排期淡入。不能跳过它，否则它一挂载就全亮，
   左边的字还在淡入，看起来是行内 code 先出来。行内公式此时还是 `code.math-inline`，
   随后被 rehype-katex（排在本插件之后）整个替换，只计偏移、不排期。
 - 列表圆点和序号是 `li::marker` 伪元素，不是文本节点，包不到 span。插件给新挂载的 `li`
-  写 `data-zcode-reveal-marker`，延迟取这个 `li` 第一个单元的排期，圆点和第一个字一起淡入，见下面「CSS」。
+  写 `data-codez-reveal-marker`，延迟取这个 `li` 第一个单元的排期，圆点和第一个字一起淡入，见下面「CSS」。
 - 已知边界：行内 code 还在流式增长时，显示出底色后新增的字直接出现；引用块左边框、表格边框、
   分割线、任务列表复选框随元素挂载直接出现，不参与排期。
 
@@ -79,8 +79,8 @@ processor，受 LRU 上限约束。这依赖 Streamdown 没有写进文档的缓
 流式期间 block 内的每个非空白单元都包一个 span，纯空白保留为文本节点：
 
 ```html
-<span data-zcode-reveal="settled">已</span>
-<span data-zcode-reveal="new" style="--zcode-reveal-delay:12.0ms">新</span>
+<span data-codez-reveal="settled">已</span>
+<span data-codez-reveal="new" style="--codez-reveal-delay:12.0ms">新</span>
 ```
 
 不能只包新单元。`hast-util-to-jsx-runtime` 按「标签名 + 同级序号」生成 React key
@@ -198,7 +198,7 @@ ease-out 下 30ms 就到 38%、90ms 到 91%，每个字只有 2–3 帧在渐变
 - 250ms 硬上限同时封住单帧大批量的累计延迟：Streamdown 内置动画没有封顶，1000 词 × 40ms
   = 末尾 40 秒后才可见。
 
-淡入时长统一取 `:root` 的 `--zcode-reveal-duration`（300ms），不写在单元上；排期只写延迟。
+淡入时长统一取 `:root` 的 `--codez-reveal-duration`（300ms），不写在单元上；排期只写延迟。
 
 排期时序：
 
@@ -214,7 +214,7 @@ ease-out 下 30ms 就到 38%、90ms 到 91%，每个字只有 2–3 帧在渐变
   再切 static，即用时间同步状态，不采用。
 - **排期有少量偏差。** delay 从排期时刻算，transition 从挂载后第一次样式计算算；
   Streamdown 的 block 更新走 `startTransition`，两者之间的耗时不固定。
-- 单元在延迟期间会在下一帧变成 `settled`，`--zcode-reveal-delay` 被移除。按 CSS Transitions
+- 单元在延迟期间会在下一帧变成 `settled`，`--codez-reveal-delay` 被移除。按 CSS Transitions
   规范，已经创建的 transition（包括延迟阶段）不受之后 delay 变化影响；SWR01 实测验证这一点。
 - 如果 E2E 证明延迟中被打断，或节奏抖动肉眼可见，改用 rAF：只写视觉标记，不经过 React state，
   进度按经过的时间计算，后台窗口切回时直接追上。
@@ -222,19 +222,19 @@ ease-out 下 30ms 就到 38%、90ms 到 91%，每个字只有 2–3 帧在渐变
 ## CSS
 
 ```css
-[data-zcode-reveal] {
-  transition: opacity var(--zcode-reveal-duration) … var(--zcode-reveal-delay, 0ms);
+[data-codez-reveal] {
+  transition: opacity var(--codez-reveal-duration) … var(--codez-reveal-delay, 0ms);
 }
 @starting-style {
-  [data-zcode-reveal="new"] {
+  [data-codez-reveal="new"] {
     opacity: 0;
   }
 }
-[data-zcode-reveal-marker]::marker {
-  transition: color var(--zcode-reveal-duration) … var(--zcode-reveal-marker-delay, 0ms);
+[data-codez-reveal-marker]::marker {
+  transition: color var(--codez-reveal-duration) … var(--codez-reveal-marker-delay, 0ms);
 }
 @starting-style {
-  [data-zcode-reveal-marker="new"]::marker {
+  [data-codez-reveal-marker="new"]::marker {
     color: transparent;
   }
 }
@@ -248,7 +248,7 @@ ease-out 下 30ms 就到 38%、90ms 到 91%，每个字只有 2–3 帧在渐变
 列表圆点：`::marker` 只支持少数属性，opacity 无效，所以改 color。Electron 44.7（Chrome 152）
 探针确认：color 过渡在 `::marker` 上可用，延迟期内改成 `settled` 不取消，能覆盖 Tailwind 分层的
 `marker:text-foreground-subtlest`，颜色从透明插值过去、中间不会先变黑。marker 的延迟用单独的
-变量名，避免 `li` 上的值被子元素里的词继承；时长与正文共用 `--zcode-reveal-duration`。
+变量名，避免 `li` 上的值被子元素里的词继承；时长与正文共用 `--codez-reveal-duration`。
 
 历史：2026-06 曾在 `li::marker` 上用 keyframes 做过圆点淡入（`b55e915d387`），重写打字机时
 随之删除（`67a2a559136`），之后圆点一直随 `li` 挂载直接出现。
@@ -260,10 +260,10 @@ ease-out 下 30ms 就到 38%、90ms 到 91%，每个字只有 2–3 帧在渐变
 
 | 变量                      | 值                              | 用途                                       |
 | ------------------------- | ------------------------------- | ------------------------------------------ |
-| `--zcode-reveal-duration` | 300ms                           | 逐字 / 逐词浮现、列表圆点                  |
-| `--zcode-reveal-ease`     | `ease-out`                      | 逐字 / 逐词浮现、列表圆点                  |
-| `--zcode-enter-duration`  | 260ms                           | 整块入场（预览卡片、变更摘要、loading 行） |
-| `--zcode-enter-ease`      | `cubic-bezier(0.16, 1, 0.3, 1)` | 整块入场                                   |
+| `--codez-reveal-duration` | 300ms                           | 逐字 / 逐词浮现、列表圆点                  |
+| `--codez-reveal-ease`     | `ease-out`                      | 逐字 / 逐词浮现、列表圆点                  |
+| `--codez-enter-duration`  | 260ms                           | 整块入场（预览卡片、变更摘要、loading 行） |
+| `--codez-enter-ease`      | `cubic-bezier(0.16, 1, 0.3, 1)` | 整块入场                                   |
 
 逐字浮现的时长固定 300ms，不随吐字速度变化；吐字速度只影响起跳延迟（滞后），见「节奏」。
 

@@ -3,7 +3,7 @@ import {
   ZAI_PROVIDER_ID,
   ZAI_CN_PROVIDER_ID,
   type ApiClient,
-} from "@zcode/shared";
+} from "@codez/shared";
 import type { OAuthRuntimeConfig } from "../runtimeConfig.js";
 import { BigModelProviderAdapter } from "./bigmodelProviderAdapter.js";
 import type { OAuthProviderAdapter } from "./providerAdapter.js";

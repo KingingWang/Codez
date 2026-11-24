@@ -12,7 +12,7 @@ import {
 } from "node:fs/promises";
 import { dirname, basename, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
-import { acquireFileLock, atomicWritePrivateTextFile } from "@zcode/shared/node";
+import { acquireFileLock, atomicWritePrivateTextFile } from "@codez/shared/node";
 import { isInjectedFsFaultError, maybeThrowInjectedFsFault } from "./fsFaultInjection.js";
 
 const DEFAULT_RENAME_RETRY_DELAYS_MS = [50, 100, 200, 400, 800, 1600, 3200] as const;
@@ -180,7 +180,7 @@ export async function atomicWriteText(
   await mkdir(dir, { recursive: true });
   // Windows 上多个窗口/host process 可能同时保存同一个 task JSON，
   // 进程内 writeChains 无法覆盖这种抢写，最终在 rename 替换目标文件时高频 EPERM。
-  // 这里用同目录 lock 文件做 ZCode 进程间协作串行化，再保留 rename 重试处理杀软/索引器的短暂占用。
+  // 这里用同目录 lock 文件做 Codez 进程间协作串行化，再保留 rename 重试处理杀软/索引器的短暂占用。
   const releaseLock =
     options?.useFileLock === false
       ? null
@@ -282,7 +282,7 @@ export async function readJsonObjectFileForUpdate(
 }
 
 /**
- * `~/.zcode/cli/config.json` 有多个写入方（命令、钩子、技能、MCP、插件、同步导入，以及 CLI 自身），彼此不加锁。
+ * `~/.codez/cli/config.json` 有多个写入方（命令、钩子、技能、MCP、插件、同步导入，以及 CLI 自身），彼此不加锁。
  * 每个写入方都按「写前重读 → 只改自己的字段 → 原子替换」执行：
  * - update 拿到的是读取那一刻磁盘上的内容，只能改自己负责的字段；
  * - 临时文件 + rename 替换，写入中途失败不会留下半截文件；

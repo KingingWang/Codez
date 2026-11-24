@@ -1,5 +1,5 @@
 // TSL42：双击任务行打开同一个重命名弹窗；覆盖按项目与按分组两套行组件。
-import { TID_TASK_ITEM } from "@zcode/shared/test-ids";
+import { TID_TASK_ITEM } from "@codez/shared/test-ids";
 import { clearAppData } from "#e2e/helpers/desktop-app";
 import {
   getV4PaneSnapshot,
