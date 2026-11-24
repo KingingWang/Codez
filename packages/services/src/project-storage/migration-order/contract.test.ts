@@ -217,7 +217,8 @@ describe("project-storage migration order", () => {
     const stableIdentity = "remote:server:stable-srv:/home/dev/ZCode";
     const stableHostId = "remote:server:stable-srv";
     add("ssh-task", "/home/dev/ZCode", sshIdentity);
-    db.prepare("INSERT INTO automations VALUES('auto-1',?,?)").run(sshIdentity, "/home/dev/ZCode");
+    // 夹具 automations 现在带归档暂停所需列，按列名插入以免依赖列序。
+    db.prepare("INSERT INTO automations(automation_id,workspace_key,workspace_path) VALUES('auto-1',?,?)").run(sshIdentity, "/home/dev/ZCode");
     const settings = {
       recentProjects: [],
       sourceServers: [

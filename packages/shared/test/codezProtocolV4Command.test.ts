@@ -620,10 +620,12 @@ describe("codez-protocol-v4 command", () => {
   });
 
   it("CAS command set matches the spec table", () => {
+    // 对齐现状（docs/ui/composer-edit-mode.md「不走 CAS」小节）：editQueueItem 已从
+    // COMMANDS_REQUIRING_BASE_REVISION 移除——运行中 revision 随 control/queue 投影频繁递增，
+    // CAS 会把用户的排队消息编辑提交误判成 proto.staleRevision；并发保护改由 CLI 编辑锁承担。
     expect([...COMMANDS_REQUIRING_BASE_REVISION].sort()).toEqual(
       [
         "deleteQueueItem",
-        "editQueueItem",
         "editUserQuery",
         "applyFileRewind",
         "forkAssistant",

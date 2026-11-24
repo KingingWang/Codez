@@ -155,6 +155,8 @@ it("并发 Source/Core 初始化只记账一次，默认业务表与远端扩展
         { id: "0005_codex_automation_stopped" },
         { id: "0005_source_server_workspace_schema" },
         { id: "0006_task_group_admissions" },
+        // fork 的会话永久删除迁移（task_purge 表 + 恢复/插入守卫触发器）随 base scope 一起登记。
+        { id: "0007_task_permanent_deletion" },
       ]);
       expect(db.prepare("PRAGMA integrity_check").get()?.integrity_check).toBe("ok");
     } finally {
@@ -325,7 +327,7 @@ it.each(["base", "controller-remote", "source-server"] as const)(
         migration,
         onProgress: (phase) => phases.push(phase),
       });
-      const expectedCount = scope === "base" ? 7 : 1;
+      const expectedCount = scope === "base" ? 8 : 1;
       expect(db.isTransaction).toBe(false);
       expect(migration).toEqual({
         kind: "initialize",

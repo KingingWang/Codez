@@ -110,6 +110,9 @@ describe("project-storage migration contract", () => {
       { id: "0009_session_creation_commands" },
       // 上游 3.17.2 新增的一次性远端归属修复迁移；集成后顺延在 fork 的 0009 之后。
       { id: "0010_remote_task_ownership" },
+      // fork worktree 特性迁移（见 CONTRACT.md）：与 0010_remote_task_ownership 是两个独立 ID，
+      // 合并后按字典序排在其后，各自保留 SQL/checksum。
+      { id: "0010_task_worktree_root" },
     ]);
   });
 
@@ -117,7 +120,8 @@ describe("project-storage migration contract", () => {
     const { db, add, context } = await fixture(["/work/a"]);
     add("s", "/work/a");
     db.exec(
-      "UPDATE tasks SET deleted=1,title_overridden=1; INSERT INTO automations VALUES ('a','/work/a','/work/a')",
+      // 夹具 automations 现在带归档暂停所需列，按列名插入以免依赖列序。
+      "UPDATE tasks SET deleted=1,title_overridden=1; INSERT INTO automations(automation_id,workspace_key,workspace_path) VALUES ('a','/work/a','/work/a')",
     );
     const before = tableHashes(db);
     const result = await port.migrate(db, context);
@@ -135,6 +139,7 @@ describe("project-storage migration contract", () => {
       "0008_remote_entry_deleted_cache",
       "0009_session_creation_commands",
       "0010_remote_task_ownership",
+      "0010_task_worktree_root",
     ]);
     expect(
       db.prepare("SELECT id,checksum FROM schema_migration WHERE id='0005_projects'").all(),

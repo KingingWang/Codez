@@ -5,6 +5,7 @@ import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ConnectionProfile } from "@codez/shared";
 import { projectStorage } from "#src/project-storage/index.js";
+import { runTasksDatabaseMigrations } from "#src/session/tasksDatabase/migrations.js";
 import type { IRemoteProjectService, RemoteProjectHost } from "#src/remote-projects/contract.js";
 import {
   createRemoteProjectService,
@@ -79,6 +80,9 @@ describe("remote connection membership admission", () => {
       () => rm(directory, { recursive: true, force: true }),
     );
     db.exec("PRAGMA foreign_keys=ON");
+    // 修复依据：projectStorage.migrate 是 tasks 库之上的后续端口（0005_projects 会读 tasks 做归属修复），
+    // 直接对空库调用会报 no such table: tasks。先按真实启动顺序跑 base scope 任务迁移建表。
+    await runTasksDatabaseMigrations(db);
     await projectStorage.migrate(db, { backupDirectories: [directory] });
     const service = createRemoteProjectService({ database: async () => db });
     const admit = createRemoteProjectConnectionAdmission(service);

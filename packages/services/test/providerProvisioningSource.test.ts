@@ -125,7 +125,9 @@ describe("Provider Provisioning Source", () => {
       "oauth:active_provider",
       "oauth:zai:access_token",
     ]);
-    expect(snapshot.schemaVersion).toBe(2);
+    // 对齐现状：上游 3.18 起 Source 固定发出 v3 信封（完整 OAuth 会话组），
+    // 临时 Key 改由 personalConfig 的 runtime key 引用 + configFingerprint 表达。
+    expect(snapshot.schemaVersion).toBe(3);
     expect(snapshot.personalConfig).toEqual(
       encodeProviderConfigFile(await repository.read()).config,
     );

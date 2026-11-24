@@ -89,12 +89,51 @@ async function createTarget(
   const credentialSave = vi.fn(async (key: string, value: string) => {
     credentialValues.set(key, value);
   });
+  const credentialLoad = vi.fn(async (key: string) => credentialValues.get(key) ?? null);
+  const credentialDelete = vi.fn(async (key: string) => {
+    credentialValues.set(key, null);
+  });
+  // 对齐现状：Target 的凭据访问已收敛为批量 CAS 接口
+  // Pick<LocalCredentialService, "loadMany" | "updateMany">，不再是单键 load/save/delete。
+  // 夹具仍按单键记录调用，保持既有断言（credentialSave / credentialLoad / credentialDelete）语义不变：
+  // loadMany 逐键走 credentialLoad；updateMany 先按 expected 做整组 CAS 比较，再逐键落 save/delete，
+  // 这样并发修改时整组拒绝写入（与真实 Credential Store 的 CAS 行为一致），不会先删一半再失败。
   const credentialService = {
-    load: vi.fn(async (key: string) => credentialValues.get(key) ?? null),
+    // legacy v1 夹具仍走单键 load/save/delete（见 fixtures/provisioning-v1/target.ts），
+    // 保留这三个方法让「旧 Target 基线缺失 Key 删除行为」对照组继续有效。
+    load: credentialLoad,
     save: credentialSave,
-    delete: vi.fn(async (key: string) => {
-      credentialValues.set(key, null);
+    delete: credentialDelete,
+    loadMany: vi.fn(async (keys: readonly string[]) => {
+      const entries = await Promise.all(
+        keys.map(async (key) => [key, await credentialLoad(key)] as const),
+      );
+      return Object.fromEntries(entries);
     }),
+    updateMany: vi.fn(
+      async (
+        changes: Readonly<Record<string, string | null>>,
+        options?: { expected?: Readonly<Record<string, string | null>> },
+      ) => {
+        if (options?.expected) {
+          const current = await Promise.all(
+            Object.keys(options.expected).map(async (key) => [
+              key,
+              await credentialLoad(key),
+            ] as const),
+          );
+          const matched = current.every(
+            ([key, value]) => (options.expected?.[key] ?? null) === (value ?? null),
+          );
+          if (!matched) return false;
+        }
+        for (const [key, value] of Object.entries(changes)) {
+          if (value === null) await credentialDelete(key);
+          else await credentialSave(key, value);
+        }
+        return true;
+      },
+    ),
   };
   const target = (overrides.legacy ? createLegacyTarget : createProviderProvisioningTarget)({
     providerRuntime: {
@@ -122,8 +161,8 @@ async function createTarget(
     replacePersonalConfig,
     settingUpdate,
     credentialSave,
-    credentialLoad: credentialService.load,
-    credentialDelete: credentialService.delete,
+    credentialLoad,
+    credentialDelete,
     credentialValues,
     personalConfigFilePath,
     directory,
@@ -300,7 +339,8 @@ describe("Provider Provisioning Target", () => {
           ],
         }),
       ),
-    ).rejects.toThrow("Provisioning v2 only accepts OAuth credentials");
+    // 对齐现状：协议新增 v3 信封后，校验文案覆盖 v2/v3 两代（Provisioning v2/v3 only accepts OAuth credentials）。
+    ).rejects.toThrow("Provisioning v2/v3 only accepts OAuth credentials");
     expect(f.settingUpdate).not.toHaveBeenCalled();
     expect(f.credentialSave).not.toHaveBeenCalled();
   });

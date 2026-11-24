@@ -94,8 +94,10 @@ it("SILENTDB-01/02: reports maintenance separately and no migration for a prepar
       expect.objectContaining({
         migration: {
           kind: "initialize",
-          executedCount: 7,
-          committedCount: 7,
+          // fork 新增 base scope 迁移 0007_task_permanent_deletion（task_purge + 守卫触发器），
+          // 首次初始化因此执行 8 笔迁移。
+          executedCount: 8,
+          committedCount: 8,
           lastAppliedMigrationId: null,
         },
       }),
@@ -104,7 +106,8 @@ it("SILENTDB-01/02: reports maintenance separately and no migration for a prepar
     await prepareTasksIndexStorage(path, (phase, migration) => second.push({ phase, migration }));
     expect(second.some((s) => s.phase === "migrating")).toBe(false);
     expect(second.at(-1)).toMatchObject({
-      migration: { lastAppliedMigrationId: "0006_task_group_admissions" },
+      // 账本基线取 id 最大的一条；fork 新增的 0007_task_permanent_deletion 现在是最大 id。
+      migration: { lastAppliedMigrationId: "0007_task_permanent_deletion" },
     });
     expect(second.some((s) => s.phase === "maintaining")).toBe(true);
     expect(second).toContainEqual(
@@ -135,8 +138,8 @@ it("retains committed facts if closing the migration connection fails", async ()
     expect(states.at(-1)).toMatchObject({
       migration: {
         kind: "initialize",
-        executedCount: 7,
-        committedCount: 7,
+        executedCount: 8,
+        committedCount: 8,
         lastAppliedMigrationId: null,
       },
     });
@@ -188,7 +191,9 @@ it("keeps the pre-upgrade task ledger ID after committing an earlier missing mig
         kind: "upgrade",
         executedCount: 1,
         committedCount: 1,
-        lastAppliedMigrationId: "0005_codex_automation_stopped",
+        // 基线取账本里 id 最大的一条（ORDER BY id DESC）；fork 的 0007_task_permanent_deletion
+        // 现在是最大 id，删掉 0006 后它仍在账本中。
+        lastAppliedMigrationId: "0007_task_permanent_deletion",
       },
     });
   } finally {

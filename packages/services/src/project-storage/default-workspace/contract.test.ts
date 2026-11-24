@@ -60,7 +60,9 @@ describe("系统 default 项目纠偏", () => {
         db
           .prepare("SELECT * FROM tasks ORDER BY task_id")
           .all()
-          .map(({ project_id: _project, ...task }) => task);
+          // worktree_root 由 fork 的 0010_task_worktree_root 迁移新增（纯加列，默认 NULL），
+          // 本断言校验的是「任务事实值不变」，因此与 project_id 一样从比较中剔除该新列。
+          .map(({ project_id: _project, worktree_root: _worktreeRoot, ...task }) => task);
       const taskFacts = facts();
       expect((await port.migrate(db, context)).applied).toEqual([
         "0006_default_workspace_tasks",
@@ -69,6 +71,8 @@ describe("系统 default 项目纠偏", () => {
         "0009_session_creation_commands",
         // 上游 3.17.2 的一次性远端归属修复迁移在 0006 纠偏之后执行，不改变本用例的任务事实断言。
         "0010_remote_task_ownership",
+        // fork worktree 特性迁移紧随其后（见 project-storage/CONTRACT.md），同样不改变任务事实。
+        "0010_task_worktree_root",
       ]);
       expect(
         db.prepare("SELECT project_id FROM tasks WHERE task_id IN ('normal','archived')").all(),

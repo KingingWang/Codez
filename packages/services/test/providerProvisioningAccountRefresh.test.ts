@@ -8,7 +8,7 @@ import {
   type ProviderSource,
 } from "@codez/provider";
 import { NodePersonalProviderConfigRepository } from "@codez/provider-node";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@codez/shared";
+import { BUILTIN_MODEL_PROVIDER_IDS, OAUTH_SESSION_REVISION_KEY } from "@codez/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { bindAccountProviderInvalidation } from "../src/model-provider/accountProviderInvalidation.js";
 import { createAccountProviderConfigSource } from "../src/model-provider/accountProviderConnectionResolver.js";
@@ -134,9 +134,51 @@ async function createRemoteTarget() {
       await delay(2);
       credentials.delete(key);
     },
+    // 对齐现状：Target 的凭据访问已收敛为批量 CAS 接口
+    // Pick<LocalCredentialService, "loadMany" | "updateMany">；缺这两个方法时 apply 会在
+    // captureBeforeState 直接抛错，本用例的 gate 永远等不到捕获点而超时。
+    // 批量入口逐键转发到既有单键 save/delete（delete 仍是整键移除），并按 expected 做整组 CAS：
+    // 不一致时整组不写，与真实 Credential Store 的行为一致。
+    loadMany: async (keys: readonly string[]) =>
+      Object.fromEntries(keys.map((key) => [key, credentials.get(key) ?? null])),
+    updateMany: async (
+      changes: Readonly<Record<string, string | null>>,
+      options?: { expected?: Readonly<Record<string, string | null>> },
+    ) => {
+      if (
+        options?.expected &&
+        !Object.entries(options.expected).every(
+          ([key, value]) => (credentials.get(key) ?? null) === (value ?? null),
+        )
+      )
+        return false;
+      for (const [key, value] of Object.entries(changes)) {
+        if (value === null) await credentialService.delete(key);
+        else await credentialService.save(key, value);
+      }
+      return true;
+    },
   };
   const accountSource = createAccountProviderConfigSource({
     configSource: new StaticConfigSource(),
+    // 对齐现状：连接解析器把「会话代次」和「Start Plan 材料」纳入过期结果守卫
+    // （AccountProviderConnectionResolverOptions 的必填项）。夹具按 node.ts 的真实接线，
+    // 从同一份内存 Credential 快照派生：Target 每次 apply 都会写新的 oauth:session_revision，
+    // 因此写入期间启动的那一轮必然被判过期——正是本用例要验证的语义。
+    loadSessionRevision: async () => credentials.get(OAUTH_SESSION_REVISION_KEY) ?? null,
+    loadStartPlanMaterial: async (family) => {
+      const raw = credentials.get(`oauth:${family}:user_info`);
+      const accountIdentity = raw ? ((JSON.parse(raw) as { id?: string }).id ?? "") : "";
+      if (!accountIdentity) return null;
+      return {
+        family,
+        loginProvider: family,
+        codezUserId: accountIdentity,
+        sessionRevision: credentials.get(OAUTH_SESSION_REVISION_KEY) ?? null,
+        accountIdentity,
+        codezJwtToken: credentials.get("codezjwttoken") ?? null,
+      };
+    },
     readSettings: async () =>
       ({
         providerFamilyDomain: settings.providerFamilyDomain ?? null,
@@ -280,6 +322,8 @@ describe("Provider Provisioning Target 与真实账号刷新链路", () => {
       "codezjwttoken",
       "oauth:active_provider",
       "oauth:bigmodel:user_info",
+      // Target 每次真正应用都会写一个新的目标代次（不复用 Source 旧代次，避免 A→B→A 重放）。
+      "oauth:session_revision",
     ]);
     const snapshot = await accountSource.read();
     expect(snapshot.states[BUILTIN_MODEL_PROVIDER_IDS.bigmodelStartPlan]).toMatchObject({

@@ -7,7 +7,13 @@ it("远端首次迁移按已保存目录及历史任务目录建项目，会话�
   for (const path of ["/repo", "/history"]) {
     const identity = `remote:ssh:legacy:22:user:${path}`;
     add(path, path, identity);
-    db.prepare("INSERT INTO automations VALUES(?,?,?)").run(path, identity, path);
+    // 夹具的 automations 现在带 target_task_id/enabled/lifecycle_status/updated_at（归档暂停自动化需要），
+    // 因此按列名插入，不再依赖列序。
+    db.prepare("INSERT INTO automations(automation_id,workspace_key,workspace_path) VALUES(?,?,?)").run(
+      path,
+      identity,
+      path,
+    );
     db.prepare("INSERT INTO off_peak_tasks VALUES(?,?,?)").run(path, identity, path);
   }
   await port.migrate(db, owner);

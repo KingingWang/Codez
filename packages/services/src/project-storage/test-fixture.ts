@@ -34,7 +34,13 @@ export async function fixture(savedWorkspaces: readonly string[] = []) {
     CREATE TABLE task_group_members(group_id TEXT,workspace_key TEXT,workspace_path TEXT,workspace_identity TEXT,task_id TEXT,sort_order INTEGER);
     CREATE TABLE task_group_workspace_bootstraps(workspace_key TEXT PRIMARY KEY,group_id TEXT);
     CREATE TABLE task_group_view_node_orders(node_type TEXT,node_key TEXT,sort_order INTEGER);
-    CREATE TABLE automations(automation_id TEXT PRIMARY KEY,workspace_key TEXT,workspace_path TEXT);
+    /* 同 tasks 的理由：真实 automations 基线（session/tasksDatabase/schema-v1.ts）自开源首版起
+       就带 target_task_id/enabled/lifecycle_status/updated_at；fork 的「归档同时暂停自动化」
+       （session/automationRepo.pauseAutomationsForArchivedTask）在同一归档事务里 UPDATE 这些列，
+       旧库夹具缺列会让 archiveInactive 直接报 no such column: enabled。 */
+    CREATE TABLE automations(automation_id TEXT PRIMARY KEY,workspace_key TEXT,workspace_path TEXT,
+      target_task_id TEXT,enabled INTEGER NOT NULL DEFAULT 1,
+      lifecycle_status TEXT NOT NULL DEFAULT 'active',updated_at INTEGER);
     CREATE TABLE off_peak_tasks(off_peak_task_id TEXT PRIMARY KEY,workspace_key TEXT,workspace_path TEXT);
     CREATE TABLE untouched(id TEXT PRIMARY KEY,value TEXT);
     INSERT INTO untouched VALUES ('keep','unchanged');`);
