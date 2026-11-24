@@ -54,7 +54,14 @@ vi.mock("@/voice-input/index.js", async (importOriginal) => {
   };
 });
 
-const { attachmentState, chatPromptEditorProps, dialogOpenStates, inputClear, inputSetText } =
+const {
+  attachmentState,
+  chatPromptEditorProps,
+  dialogOpenStates,
+  inputClear,
+  inputClearHistory,
+  inputSetText,
+} =
   vi.hoisted(() => ({
     attachmentState: {
       adoptSentAttachments: vi.fn(async () => {}),
@@ -64,12 +71,15 @@ const { attachmentState, chatPromptEditorProps, dialogOpenStates, inputClear, in
     chatPromptEditorProps: [] as Array<Record<string, unknown>>,
     dialogOpenStates: [] as boolean[],
     inputClear: vi.fn(),
+    inputClearHistory: vi.fn(),
     inputSetText: vi.fn(),
   }));
 
 function expectedTelemetrySendOptions() {
   return expect.objectContaining({
-    telemetrySeed: {
+    // telemetrySeed 用 objectContaining：localTtft 等计时字段由发送时刻决定，
+    // 不属于本用例（prompt history）的断言目标。
+    telemetrySeed: expect.objectContaining({
       sendTime: expect.any(Number),
       extraDetail: {
         ask_mode: "",
@@ -82,8 +92,10 @@ function expectedTelemetrySendOptions() {
         task_trigger: "",
         // 上游 3.17.1 给 prompt telemetry 增加 ui_mode；renderer 未提供界面模式时归一化为 unknown。
         ui_mode: "unknown",
+        // composer 普通发送固定 send_type=normal；编辑重发由 SessionPane.handleEdit 改写为 edit。
+        send_type: "normal",
       },
-    },
+    }),
   });
 }
 
@@ -124,6 +136,9 @@ vi.mock("@/prompt-editor/ChatPromptEditor.js", async () => {
       if (inputApiRef) {
         inputApiRef.current = {
           clear: inputClear,
+          // Composer 跨 scope 复用时要先断开旧 undo 历史（ConversationComposer.restoreDraftInto
+          // 在 scopeToken 变化且非晋升时调用 api.clearHistory()）；缺这个方法会直接 TypeError。
+          clearHistory: inputClearHistory,
           focus: vi.fn(),
           getEditorState: () => null,
           getMarkdown: () => "",

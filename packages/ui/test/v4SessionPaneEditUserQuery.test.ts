@@ -43,6 +43,7 @@ const {
   queueProps,
   sendCommandMock,
   timelineProps,
+  composerProps,
 } = vi.hoisted(() => ({
   draftConfigMock: {
     modelSelectionState: { status: "loading" } as Record<string, unknown>,
@@ -58,6 +59,8 @@ const {
     acquire: vi.fn(() => ({
       store: {
         markCommandPending: vi.fn(),
+        // editUserQuery 的 ACK 早于 replacement 行时要等编辑呈现，避免行内编辑器先收起。
+        waitForEditPresentation: vi.fn(async () => {}),
         expectAcceptedInputProjection: vi.fn(),
         recoverFromStaleAuthority: vi.fn(),
         onOnlineModelTransition: vi.fn(() => () => {}),
@@ -90,11 +93,15 @@ const {
     };
     onFork?: (target: ConversationRowTarget) => void;
     onRetry?: (target: ConversationRowTarget) => void;
-    onEdit?: (
-      target: ConversationRowTarget,
-      newText: string,
-      attachments?: readonly AttachmentRef[],
-    ) => Promise<boolean | void> | boolean | void;
+    // 对齐现状：timeline 的 onEdit 就是 composerEdit.beginUserQueryEdit(target)，
+    // 只负责进入编辑态并回填原文/附件；editUserQuery 由 composer 发送路由提交（见 beginEditAndSend）。
+    onEdit?: (target: ConversationRowTarget) => Promise<void> | void;
+  }>,
+  composerProps: [] as Array<{
+    onSendText?: (
+      text: string,
+      options?: { attachments?: readonly AttachmentRef[]; conversationQuotes?: unknown[] },
+    ) => Promise<unknown>;
   }>,
 }));
 
@@ -253,7 +260,10 @@ vi.mock("@/v4/composer/useDraftSessionPrewarm.js", () => ({
 vi.mock("@/v4/ConversationComposer.js", async () => {
   const React = await import("react");
   return {
-    ConversationComposer: () => React.createElement("div", { "data-testid": "mock-composer" }),
+    ConversationComposer: (props: Record<string, unknown>) => {
+      composerProps.push(props as unknown as (typeof composerProps)[number]);
+      return React.createElement("div", { "data-testid": "mock-composer" });
+    },
   };
 });
 
@@ -352,10 +362,51 @@ function createMinimalElement(ownerDocument: Document, tagName = "div") {
   return element as unknown as Element;
 }
 
+/**
+ * 对齐现状：editUserQuery 与普通发送共用 fail-closed 提交门禁——
+ * createComposerSubmissionConfig 要求 draftConfig 带有效 modelSelection，且 modelSelectionView
+ * 能校验该选择；否则 handleEdit 直接 toast「发送失败」并返回 blocked，一条命令都不会发。
+ * 编辑类用例必须先给 composer 一个可提交配置。
+ */
+function armComposerSubmission() {
+  // validateModelSelectionOptions 要求 model.config.optionSpecs.reasoningLevel.values 存在，
+  // 且选择必须带一个在候选内的 reasoningLevel；缺任一个都判不可提交。
+  draftConfigMock.modelSelectionState = {
+    status: "ready",
+    view: {
+      revision: 1,
+      providers: [
+        {
+          providerId: "edit-provider",
+          models: [
+            {
+              modelId: "edit-model",
+              config: { optionSpecs: { reasoningLevel: { values: ["low", "high"] } } },
+            },
+          ],
+        },
+      ],
+    },
+  };
+  draftConfigMock.draftConfig = {
+    mode: "build",
+    planEnabled: false,
+    modelSelection: {
+      providerId: "edit-provider",
+      modelId: "edit-model",
+      options: { reasoningLevel: "high" },
+    },
+  };
+}
+
 function installMinimalDom() {
   const documentMock = {
     // IntlProvider 会写 document.documentElement.lang；最小 DOM 需补齐该节点。
     documentElement: { lang: "" },
+    // toast() 会 document.body.appendChild(host)；提交门禁失败等分支会走到这里，
+    // 缺 body 会抛 TypeError 把真正的失败原因盖掉。body 需要 ownerDocument 指回自己，
+    // 因此先占位、构造完成后再回填（对象字面量里直接引用自身会踩 TDZ）。
+    body: undefined as unknown as Element,
     addEventListener: () => {},
     createElement: (tagName: string) =>
       createMinimalElement(documentMock as unknown as Document, tagName),
@@ -370,22 +421,32 @@ function installMinimalDom() {
     nodeType: 9,
     removeEventListener: () => {},
   } as unknown as Document;
+  (documentMock as unknown as { body: Element }).body = createMinimalElement(documentMock, "body");
+  // toast() 在宿主未挂载时用 requestAnimationFrame 重试入队；编辑提交被 blocked 的分支
+  // （failed/rejected/stale ACK）会走到 toast，最小 DOM 必须补上这个计时器 shim。
+  const requestAnimationFrameShim = (callback: FrameRequestCallback) =>
+    setTimeout(() => callback(Date.now()), 0) as unknown as number;
+  const cancelAnimationFrameShim = (handle: number) => clearTimeout(handle);
   const windowMock = {
     addEventListener: () => {},
+    cancelAnimationFrame: cancelAnimationFrameShim,
     clearTimeout,
     document: documentMock,
     HTMLElement: function HTMLElement() {},
     HTMLIFrameElement: function HTMLIFrameElement() {},
     Node: function Node() {},
     removeEventListener: () => {},
+    requestAnimationFrame: requestAnimationFrameShim,
     setTimeout,
   } as unknown as Window & typeof globalThis;
   Object.assign(globalThis, {
+    cancelAnimationFrame: cancelAnimationFrameShim,
     document: documentMock,
     HTMLElement: windowMock.HTMLElement,
     HTMLIFrameElement: windowMock.HTMLIFrameElement,
     IS_REACT_ACT_ENVIRONMENT: true,
     Node: windowMock.Node,
+    requestAnimationFrame: requestAnimationFrameShim,
     window: windowMock,
   });
   return createMinimalElement(documentMock, "div");
@@ -396,7 +457,7 @@ async function flushMicrotasks(): Promise<void> {
   await Promise.resolve();
 }
 
-function makeSnapshot(): ConversationSnapshot {
+function makeSnapshot(rows: ConversationSnapshot["rows"]["window"] = []): ConversationSnapshot {
   return {
     protocolVersion: 1,
     sessionId: "session-1",
@@ -450,8 +511,52 @@ function makeSnapshot(): ConversationSnapshot {
     backgroundWorks: [],
     goal: null,
     plan: null,
-    rows: { window: [], totalCount: 0, firstRowId: null },
+    rows: { window: rows, totalCount: rows.length, firstRowId: rows[0]?.rowId ?? null },
   };
+}
+
+/**
+ * 可编辑的用户输入行。beginUserQueryEdit 只在 snapshot.rows.window 里找到
+ * kind === "userInput" 且 actions.canEdit 的行时才进入编辑态，因此编辑类用例必须把它投进快照。
+ */
+function editableUserRow(
+  rowId = 42,
+  entityId = "message-user-42",
+  text = "原问题",
+): ConversationSnapshot["rows"]["window"][number] {
+  return {
+    rowId,
+    turnId: "turn-1",
+    createdAt: 1_700_000_000_000 + rowId,
+    createdAtSeq: rowId,
+    kind: "userInput",
+    entityId,
+    origin: "realUser",
+    text,
+    actions: { canEdit: true },
+  } as ConversationSnapshot["rows"]["window"][number];
+}
+
+/**
+ * 两步编辑流：timeline onEdit 进入编辑态 → composer 发送路由提交 editUserQuery。
+ * 旧的一步式 onEdit(target, newText, attachments) 已不存在。
+ */
+async function beginEditAndSend(
+  target: ConversationRowTarget,
+  newText: string,
+  attachments?: readonly AttachmentRef[],
+) {
+  await act(async () => {
+    await timelineProps.at(-1)?.onEdit?.(target);
+    await flushMicrotasks();
+  });
+  await act(async () => {
+    await composerProps.at(-1)?.onSendText?.(newText, {
+      ...(attachments ? { attachments } : {}),
+      conversationQuotes: [],
+    });
+    await flushMicrotasks();
+  });
 }
 
 function makeEmptyFileChanges(): V4ConversationFileChangesResult {
@@ -466,10 +571,19 @@ function makeEmptyFileChanges(): V4ConversationFileChangesResult {
 afterEach(() => {
   fileChangesMock.mockReset();
   fileRewindPreviewMock.mockReset();
-  sendCommandMock.mockClear();
+  // 用 mockReset 而不是 mockClear：mockClear 不会清掉未消费的 mockResolvedValueOnce /
+  // mockImplementationOnce 队列。编辑类用例一旦没有真正发出命令，排好的 ACK 就会泄漏到
+  // 下一个用例，把它的 fork/edit ACK 顶掉（表现为 fork 收到默认 accepted 而不导航）。
+  sendCommandMock.mockReset();
+  sendCommandMock.mockImplementation(async (envelope: CommandEnvelope): Promise<CommandAck> => ({
+    commandId: envelope.commandId,
+    revisionAtDecision: envelope.baseRevision ?? 0,
+    status: "accepted",
+  }));
   layerMock.acquire.mockImplementation(() => ({
     store: {
       markCommandPending: vi.fn(),
+      waitForEditPresentation: vi.fn(async () => {}),
       expectAcceptedInputProjection: vi.fn(),
       recoverFromStaleAuthority: vi.fn(),
       onOnlineModelTransition: vi.fn(() => () => {}),
@@ -481,6 +595,9 @@ afterEach(() => {
   headerProps.length = 0;
   queueProps.length = 0;
   timelineProps.length = 0;
+  composerProps.length = 0;
+  draftConfigMock.modelSelectionState = { status: "loading" };
+  draftConfigMock.draftConfig = {};
   servicesMock.highspeedCardService.prepareTurn.mockReset();
   servicesMock.highspeedCardService.prepareTurn.mockResolvedValue({
     kind: "fallback",
@@ -831,6 +948,8 @@ describe("SessionPane user query editing", () => {
     layerMock.acquire.mockReturnValue({
       store: {
         markCommandPending: vi.fn(),
+        // editUserQuery 的 ACK 早于 replacement 行时要等编辑呈现，避免行内编辑器先收起。
+        waitForEditPresentation: vi.fn(async () => {}),
         expectAcceptedInputProjection: vi.fn(),
         onOnlineModelTransition: vi.fn(() => () => {}),
         refreshPlans: vi.fn(async () => {}),
@@ -885,6 +1004,7 @@ describe("SessionPane user query editing", () => {
       layerMock.acquire.mockReturnValue({
         store: {
           markCommandPending: vi.fn(),
+          waitForEditPresentation: vi.fn(async () => {}),
           expectAcceptedInputProjection: vi.fn(),
           onOnlineModelTransition: vi.fn(() => () => {}),
           refreshPlans: vi.fn(async () => {}),
@@ -936,6 +1056,8 @@ describe("SessionPane user query editing", () => {
     layerMock.acquire.mockReturnValue({
       store: {
         markCommandPending: vi.fn(),
+        // editUserQuery 的 ACK 早于 replacement 行时要等编辑呈现，避免行内编辑器先收起。
+        waitForEditPresentation: vi.fn(async () => {}),
         expectAcceptedInputProjection: vi.fn(),
         onOnlineModelTransition: vi.fn(() => () => {}),
         refreshPlans: vi.fn(async () => {}),
@@ -1032,6 +1154,7 @@ describe("SessionPane user query editing", () => {
   });
 
   it("dispatches editUserQuery with edited text and original attachments", async () => {
+    armComposerSubmission();
     const attachments: AttachmentRef[] = [
       {
         bytes: 12,
@@ -1042,7 +1165,7 @@ describe("SessionPane user query editing", () => {
     ];
     projectionState.current = {
       status: "live",
-      snapshot: makeSnapshot(),
+      snapshot: makeSnapshot([editableUserRow()]),
       subscriptionId: "sub-1",
       lastError: null,
       optimisticCommands: [],
@@ -1065,11 +1188,7 @@ describe("SessionPane user query editing", () => {
       await flushMicrotasks();
     });
 
-    await act(async () => {
-      await timelineProps
-        .at(-1)
-        ?.onEdit?.({ rowId: 42, entityId: "message-user-42" }, "改过的问题", attachments);
-    });
+    await beginEditAndSend({ rowId: 42, entityId: "message-user-42" }, "改过的问题", attachments);
 
     expect(sendCommandMock).toHaveBeenCalledTimes(1);
     expect(sendCommandMock.mock.calls[0]?.[0]).toMatchObject({
@@ -1124,7 +1243,7 @@ describe("SessionPane user query editing", () => {
     };
     projectionState.current = {
       status: "live",
-      snapshot: makeSnapshot(),
+      snapshot: makeSnapshot([editableUserRow()]),
       subscriptionId: "sub-1",
       lastError: null,
       optimisticCommands: [],
@@ -1148,11 +1267,7 @@ describe("SessionPane user query editing", () => {
         await flushMicrotasks();
       });
 
-      await act(async () => {
-        await timelineProps
-          .at(-1)
-          ?.onEdit?.({ rowId: 42, entityId: "message-user-42" }, "切换模型后的问题", []);
-      });
+      await beginEditAndSend({ rowId: 42, entityId: "message-user-42" }, "切换模型后的问题", []);
 
       expect(sendCommandMock).toHaveBeenCalledTimes(1);
       expect(servicesMock.projectService.resolveSessionDirectories).toHaveBeenCalledWith(
@@ -1187,7 +1302,8 @@ describe("SessionPane user query editing", () => {
   });
 
   it("重新编辑时重新准备 Highspeed，并随 editUserQuery 提交本次卡和 runtime", async () => {
-    const snapshot = makeSnapshot();
+    armComposerSubmission();
+    const snapshot = makeSnapshot([editableUserRow()]);
     snapshot.config = {
       ...snapshot.config,
       provider: "builtin:bigmodel-coding-plan",
@@ -1246,11 +1362,7 @@ describe("SessionPane user query editing", () => {
       );
       await flushMicrotasks();
     });
-    await act(async () => {
-      await timelineProps
-        .at(-1)
-        ?.onEdit?.({ rowId: 42, entityId: "message-user-42" }, "重新加速的问题", []);
-    });
+    await beginEditAndSend({ rowId: 42, entityId: "message-user-42" }, "重新加速的问题", []);
 
     expect(servicesMock.highspeedCardService.prepareTurn).toHaveBeenCalledWith(
       expect.objectContaining({ taskId: "session-1" }),
@@ -1383,9 +1495,10 @@ describe("SessionPane user query editing", () => {
   });
 
   it("serializes an explicit empty attachment list when edit removes every ref", async () => {
+    armComposerSubmission();
     projectionState.current = {
       status: "live",
-      snapshot: makeSnapshot(),
+      snapshot: makeSnapshot([editableUserRow()]),
       subscriptionId: "sub-1",
       lastError: null,
       optimisticCommands: [],
@@ -1408,11 +1521,7 @@ describe("SessionPane user query editing", () => {
       await flushMicrotasks();
     });
 
-    await act(async () => {
-      await timelineProps
-        .at(-1)
-        ?.onEdit?.({ rowId: 42, entityId: "message-user-42" }, "保留正文", []);
-    });
+    await beginEditAndSend({ rowId: 42, entityId: "message-user-42" }, "保留正文", []);
 
     expect(sendCommandMock.mock.calls[0]?.[0]).toMatchObject({
       payload: {
@@ -1427,9 +1536,10 @@ describe("SessionPane user query editing", () => {
   });
 
   it("keeps accepted legacy fork-disposition edit ACK on the current session", async () => {
+    armComposerSubmission();
     projectionState.current = {
       status: "live",
-      snapshot: makeSnapshot(),
+      snapshot: makeSnapshot([editableUserRow()]),
       subscriptionId: "sub-1",
       lastError: null,
       optimisticCommands: [],
@@ -1463,20 +1573,20 @@ describe("SessionPane user query editing", () => {
       await flushMicrotasks();
     });
 
-    await act(async () => {
-      await timelineProps
-        .at(-1)
-        ?.onEdit?.({ rowId: 42, entityId: "message-user-42" }, "edited child text");
-    });
+    await beginEditAndSend({ rowId: 42, entityId: "message-user-42" }, "edited child text");
 
+    // 编辑 ACK 即使带 fork disposition 与 sessionId 也不导航：导航只属于 forkAssistant ACK。
+    expect(sendCommandMock).toHaveBeenCalledOnce();
+    expect(sendCommandMock.mock.calls[0]?.[0]).toMatchObject({ type: "editUserQuery" });
     expect(onSessionCreated).not.toHaveBeenCalled();
     await act(async () => root.unmount());
   });
 
   it("duplicate fork ACK 导航既有 child，edit 与失败 ACK 即使带 result 也不导航", async () => {
+    armComposerSubmission();
     projectionState.current = {
       status: "live",
-      snapshot: makeSnapshot(),
+      snapshot: makeSnapshot([editableUserRow(42, "message-target-42")]),
       subscriptionId: "sub-1",
       lastError: null,
       optimisticCommands: [],
@@ -1518,12 +1628,20 @@ describe("SessionPane user query editing", () => {
     });
     const target = { rowId: 42, entityId: "message-target-42" };
     await act(async () => {
-      await timelineProps.at(-1)?.onEdit?.(target, "duplicate edit");
+      await timelineProps.at(-1)?.onEdit?.(target);
+      await composerProps.at(-1)?.onSendText?.("duplicate edit", { attachments: [], conversationQuotes: [] });
       timelineProps.at(-1)?.onFork?.(target);
       await flushMicrotasks();
-      await timelineProps.at(-1)?.onEdit?.(target, "failed edit");
-      await timelineProps.at(-1)?.onEdit?.(target, "rejected edit");
-      await timelineProps.at(-1)?.onEdit?.(target, "stale edit");
+      await timelineProps.at(-1)?.onEdit?.(target);
+      await composerProps.at(-1)?.onSendText?.("failed edit", { attachments: [], conversationQuotes: [] });
+      await timelineProps.at(-1)?.onEdit?.(target);
+      await composerProps.at(-1)?.onSendText?.("rejected edit", { attachments: [], conversationQuotes: [] });
+      await timelineProps.at(-1)?.onEdit?.(target);
+      await composerProps.at(-1)?.onSendText?.("stale edit", { attachments: [], conversationQuotes: [] });
+      await flushMicrotasks();
+      // handleFork 是 void dispatchCommand(...).then(...)，dispatchCommand 内部有多次 await
+      // （lease 获取、ACK 后处理），两轮微任务不足以让 fork 的 then 落地；补一次宏任务排空。
+      await new Promise((resolve) => setTimeout(resolve, 0));
       await flushMicrotasks();
     });
 
