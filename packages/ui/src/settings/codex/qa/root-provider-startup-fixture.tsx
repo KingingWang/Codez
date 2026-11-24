@@ -66,6 +66,17 @@ const services = {
   },
   oauthService: {
     getActiveProvider: async () => null,
+    // 上游 v4.0.0 的登录/启动刷新链路先读账号可用性（availability）并可能纠正 domain；
+    // 夹具固定 zai 登录场景，给出确定性可用性。缺这个方法会让初始化抛 TypeError，
+    // familyReadsHeld 等后续断言全部挂起。
+    async getAccountAvailability() {
+      return {
+        loginProvider: "zai" as const,
+        userId: "isolated-fixture",
+        sessionRevision: "isolated-revision",
+        families: ["zai" as const],
+      };
+    },
     async restoreCachedSessionState() {
       counts.oauthRestores++;
       if (nextRestoreRequiresReauthentication) {
