@@ -200,8 +200,47 @@ function renderProbe(options: ProbeOptions) {
   };
 }
 
+// 对齐现状：openAttachmentPicker 不再调用 platform.selectFiles，而是点击隐藏的
+// <input type="file">，由 handleAttachmentInputChange 把 File[] 交给 addAttachmentFiles，
+// 本地路径再经 platform.getPathForFile 解析（见 useComposerAttachments.ts 的 openAttachmentPicker）。
+// Probe 渲染 null，没有真实 input 节点，这里挂一个假 input：click() 时按队列取出待选路径，
+// 包成 File 并回调 change 处理器，等价于用户在选择器里选中这些文件。
+// File 一律给非图片 MIME：选择器路径下源码会剥离 File、只保留原路径附件
+// （createChatComposerPathAttachment），与旧 selectFiles 流程产出的附件形状一致。
+const picker = {
+  clicks: 0,
+  installed: false,
+  pathByFile: new Map<File, string>(),
+  queue: [] as string[][],
+};
+
+function armPicker(paths: string[]) {
+  picker.queue.push(paths);
+  if (picker.installed || !latestApi) return;
+  picker.installed = true;
+  mocks.platform.getPathForFile.mockImplementation(
+    (file: File) => picker.pathByFile.get(file) ?? "",
+  );
+  latestApi.attachmentInputRef.current = {
+    click: () => {
+      picker.clicks += 1;
+      const next = picker.queue.shift() ?? [];
+      const files = next.map((path) => {
+        const file = new File(["content"], path.split("/").pop() ?? path, {
+          type: "text/plain",
+        });
+        picker.pathByFile.set(file, path);
+        return file;
+      });
+      act(() => {
+        latestApi?.handleAttachmentInputChange({ currentTarget: { files, value: "" } } as never);
+      });
+    },
+  } as unknown as HTMLInputElement;
+}
+
 async function addPaths(paths: string[]) {
-  mocks.platform.selectFiles.mockResolvedValueOnce(paths);
+  armPicker(paths);
   act(() => latestApi?.openAttachmentPicker());
   await vi.waitFor(() => expect(latestApi?.attachments).toHaveLength(paths.length));
 }
@@ -220,6 +259,10 @@ beforeEach(() => {
   mocks.platform.createTempTextAttachment.mockReset();
   mocks.platform.getPathForFile.mockReset();
   mocks.platform.selectFiles.mockReset();
+  picker.clicks = 0;
+  picker.installed = false;
+  picker.pathByFile.clear();
+  picker.queue.length = 0;
   mocks.toast.mockClear();
   useComposerAttachmentUploadStore.setState({ scopes: {} });
 });
@@ -271,14 +314,12 @@ describe("useComposerAttachments eager upload", () => {
       scopeId: "full-limit",
       localDesktop: true,
     });
-    mocks.platform.selectFiles.mockResolvedValueOnce(
-      Array.from({ length: 8 }, (_, index) => `/workspace/${index}.txt`),
-    );
+    armPicker(Array.from({ length: 8 }, (_, index) => `/workspace/${index}.txt`));
     await act(async () => latestApi?.openAttachmentPicker());
-    mocks.platform.selectFiles.mockClear();
+    picker.clicks = 0;
 
     act(() => latestApi?.openAttachmentPicker());
-    expect(mocks.platform.selectFiles).not.toHaveBeenCalled();
+    expect(picker.clicks).toBe(0);
     expect(mocks.toast).toHaveBeenCalledWith(
       "chat.attachments.maxFiles",
       expect.objectContaining({ variant: "warning" }),
@@ -301,10 +342,10 @@ describe("useComposerAttachments eager upload", () => {
     expect(latestApi?.attachments.some((item) => item.filename === "extra.txt")).toBe(false);
 
     act(() => latestApi?.removeAttachment(latestApi.attachments[0]!.id));
-    mocks.platform.selectFiles.mockResolvedValueOnce(["/workspace/replacement.txt"]);
+    armPicker(["/workspace/replacement.txt"]);
     await act(async () => latestApi?.openAttachmentPicker());
     await vi.waitFor(() => expect(latestApi?.attachments).toHaveLength(8));
-    expect(mocks.platform.selectFiles).toHaveBeenCalledTimes(1);
+    expect(picker.clicks).toBe(1);
     expect(mocks.toast).toHaveBeenCalledTimes(3);
     act(() => root.unmount());
   });
@@ -316,14 +357,9 @@ describe("useComposerAttachments eager upload", () => {
       scopeId: "partial-limit",
       localDesktop: true,
     });
-    mocks.platform.selectFiles.mockResolvedValueOnce(
-      Array.from({ length: 7 }, (_, index) => `/workspace/${index}.txt`),
-    );
+    armPicker(Array.from({ length: 7 }, (_, index) => `/workspace/${index}.txt`));
     await act(async () => latestApi?.openAttachmentPicker());
-    mocks.platform.selectFiles.mockResolvedValueOnce([
-      "/workspace/accepted.txt",
-      "/workspace/rejected.txt",
-    ]);
+    armPicker(["/workspace/accepted.txt", "/workspace/rejected.txt"]);
     await act(async () => latestApi?.openAttachmentPicker());
     await vi.waitFor(() => expect(latestApi?.attachments).toHaveLength(8));
     expect(latestApi?.attachments.at(-1)?.filename).toBe("accepted.txt");
@@ -707,7 +743,7 @@ describe("useComposerAttachments eager upload", () => {
     await vi.waitFor(() => expect(latestApi?.attachments[0]?.uploadStatus).toBe("ready"));
     const submitted = latestApi!.attachments.map((item) => item.id);
     const submittedOperation = latestApi!.attachments[0]!.operationId;
-    mocks.platform.selectFiles.mockResolvedValueOnce(["/tmp/next.png"]);
+    armPicker(["/tmp/next.png"]);
     act(() => latestApi!.openAttachmentPicker());
     await vi.waitFor(() => expect(latestApi!.attachments).toHaveLength(2));
     await vi.waitFor(() => expect(latestApi!.attachments[1]!.uploadStatus).toBe("ready"));
@@ -754,7 +790,7 @@ describe("useComposerAttachments eager upload", () => {
     const pending = deferred<ReturnType<typeof resultFor>>();
     transfer.stage.mockImplementation(() => pending.promise);
     const { root } = renderProbe({ attachmentSessionId: "session-1", scopeId: "task-a" });
-    mocks.platform.selectFiles.mockResolvedValueOnce(["/tmp/a.png"]);
+    armPicker(["/tmp/a.png"]);
     act(() => latestApi?.openAttachmentPicker());
     await act(async () => Promise.resolve());
     const operationId = latestApi?.attachments[0]?.operationId ?? "";
@@ -789,7 +825,7 @@ describe("useComposerAttachments eager upload", () => {
       .mockRejectedValueOnce(new Error("ECONNRESET"))
       .mockResolvedValueOnce(resultFor("manual"));
     const { root } = renderProbe({ attachmentSessionId: "session-1", scopeId: "task-a" });
-    mocks.platform.selectFiles.mockResolvedValueOnce(["/tmp/a.png"]);
+    armPicker(["/tmp/a.png"]);
     act(() => latestApi?.openAttachmentPicker());
     await act(async () => Promise.resolve());
     await act(async () => vi.advanceTimersByTimeAsync(500));
