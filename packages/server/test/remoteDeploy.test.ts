@@ -2064,7 +2064,7 @@ describe("deployServer legacy agent node-script bundle deployment", () => {
     expect(installRequests).toEqual(["glm:directory:~/.codez/server/agents/glm/packages"]);
   });
 
-  it("开发态官方插件资产必须包含 Browser client、effective docs 与 document judge agent", () => {
+  it("开发态官方插件资产必须包含 Browser client、effective docs 与办公插件调用脚本", () => {
     // 回归原因：开发态远程上传曾漏掉 scripts，node_repl 能启动但首次 Browser bootstrap 必然导入失败。
     expect(REMOTE_AGENT_OFFICIAL_PLUGIN_INCLUDED_TOP_LEVEL_PATHS).toEqual(
       expect.arrayContaining(["agents", "dist", "docs", "scripts", "skills"]),
@@ -2073,14 +2073,13 @@ describe("deployServer legacy agent node-script bundle deployment", () => {
       expect.arrayContaining([
         ...BROWSER_USE_REQUIRED_RELATIVE_PATHS,
         "image-search-plugin/.mcp.json",
-        "documents-plugin/agents/visual-judge.md",
         "documents-plugin/skills/docx/SKILL.md",
-        "pdf-plugin/agents/visual-judge.md",
         "pdf-plugin/skills/pdf/SKILL.md",
-        "presentations-plugin/agents/visual-judge.md",
         "presentations-plugin/skills/pptx/SKILL.md",
-        "spreadsheets-plugin/agents/visual-judge.md",
         "spreadsheets-plugin/skills/xlsx/SKILL.md",
+        // 上游 v4.0.0 移除四个办公插件的 visual-judge agent，改以 LibreOffice 调用脚本
+        // 与技能正文作为必需资产；这里按新合同抽样校验。
+        "documents-plugin/scripts/codez_libreoffice.py",
       ]),
     );
   });
