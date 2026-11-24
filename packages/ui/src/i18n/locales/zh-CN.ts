@@ -2043,6 +2043,14 @@ const zhCN: Record<string, string> = {
   //
   // 页脚行刻意是「已结束的工作流」而不是「已完成」：这个桶里也有失败与取消的 run，
   // 而恰恰是它们最值得回去看（可恢复的那些）。
+  "chat.statusPanel.endedAgents": "已结束",
+  // workflow run 目录（任务页脚行 → 这一页 → 详情页）。状态词复用
+  // chat.toolCall.workflow.run.status.*，这里只有页面自己的结构文案。
+  //
+  // 页脚行刻意是「已结束的工作流」而不是「已完成」：这个桶里也有失败与取消的 run，
+  // 而恰恰是它们最值得回去看（可恢复的那些）。,
+  "chat.statusPanel.endedWorkflows": "已结束的工作流",
+  "chat.statusPanel.workflowsLive": "{count} 个运行中",
   "workflowDirectory.title": "工作流实例",
   "workflowDirectory.running": "正在运行",
   "workflowDirectory.runningEmpty": "没有正在运行的工作流",
@@ -6501,9 +6509,19 @@ const zhCN: Record<string, string> = {
   "chat.target.pause": "暂停",
   "chat.target.resume": "继续",
   "chat.target.clear": "清空目标",
+  "chat.summaryPanel.title": "状态",
   "chat.summaryPanel.duration.hours": "小时",
   "chat.summaryPanel.duration.minutes": "分",
   "chat.summaryPanel.duration.seconds": "秒",
+  "chat.summaryPanel.showMini": "收起为胶囊",
+  "chat.summaryPanel.showPanel": "展开状态",
+  "chat.summaryPanel.displayMode": "状态面板展开策略",
+  "chat.summaryPanel.displayModeAuto": "自动展开",
+  "chat.summaryPanel.displayModeExpanded": "始终展开",
+  "chat.summaryPanel.displayModeCollapsed": "始终收起",
+  "chat.summaryPanel.runningBackgroundTasks": "运行中的后台任务",
+  "chat.summaryPanel.runningBackgroundTasksMiniValue": "{count} 后台",
+  "chat.summaryPanel.runningBackgroundTasksMiniValuePlural": "{count} 后台",
   "chat.summaryPanel.stopRunningBackgroundTask": "停止运行中的后台任务",
   "chat.summaryPanel.stopRunningSubagent": "停止运行中的智能体",
   "chat.summaryPanel.stopSubagentFailed": "未能停止智能体，请重试。",
@@ -6514,7 +6532,40 @@ const zhCN: Record<string, string> = {
   // workflow 从 bash 拆出后 badge 有三类：
   // 恰好一类时用该类文案，混合仍走 tooltipMixed——三类两两组合再各写一句只会堆出六条同义句。
   // 唯一在跑的工作流直达详情页时，徽标如实说出落点。
+  "chat.composer.backgroundWorks.tooltipWorkflow": "打开运行中的工作流",
+  // 唯一在跑的工作流直达详情页时，徽标如实说出落点。,
+  "chat.composer.backgroundWorks.tooltipWorkflowDetails": "打开工作流详情",
+  "chat.composer.backgroundWorks.tooltipMixed": "打开运行中的终端与智能体",
+  "chat.composer.backgroundWorks.ariaLabel":
+    "打开运行中的后台任务：Bash {bashCount} 个，工作流 {workflowCount} 个，子智能体 {subagentCount} 个，共 {count} 个",
   "chat.summaryPanel.goalIterationValue": "第 {count} 次迭代",
+  "chat.summaryPanel.todoGoalIterationGroup": "第 {count} 轮迭代",
+  "chat.summaryPanel.todoSessionGroup": "整个会话",
+  "chat.statusPanel.environment": "Git 工具",
+  "chat.statusPanel.changes": "更改",
+  "chat.statusPanel.branch": "分支",
+  "chat.statusPanel.commitPush": "提交 / 推送",
+  "chat.statusPanel.clean": "干净",
+  "chat.statusPanel.goal": "目标",
+  "chat.statusPanel.sessionPlans": "计划",
+  "chat.statusPanel.planFallback": "计划",
+  "chat.statusPanel.openPlan": "打开计划：{title}",
+  "chat.statusPanel.todo": "进程",
+  "chat.statusPanel.todoCompletedExpanded": "收起 {count} 项已完成",
+  "chat.statusPanel.todoCompletedFold": "已完成 {count} 项",
+  "chat.statusPanel.todoEarlierFold": "前面 {count} 项",
+  "chat.statusPanel.todoLaterFold": "后面 {count} 项",
+  "chat.statusPanel.todoWaitingExpanded": "收起 {count} 项待处理",
+  "chat.statusPanel.todoWaitingFold": "待处理 {count} 项",
+  "chat.statusPanel.terminals": "终端",
+  "chat.statusPanel.agents": "智能体",
+  // Workflows 分区：与 Terminals / Agents 并列的
+  // 第三类实时活动。行内的状态词与步数复用 chat.toolCall.workflow.* 那一组，不另造词汇。,
+  "chat.statusPanel.workflows": "工作流",
+  "chat.statusPanel.runningStatusValue": "{count} 个后台运行",
+  "chat.statusPanel.runningStatusValuePlural": "{count} 个后台运行",
+  "chat.statusPanel.runningAgentsValue": "{count} 运行",
+  "chat.statusPanel.runningAgentsValuePlural": "{count} 运行",
   "chat.statusPanel.viewAllChanges": "查看全部变更",
   // Workflows 分区：与 Terminals / Agents 并列的
   // 第三类实时活动。行内的状态词与步数复用 chat.toolCall.workflow.* 那一组，不另造词汇。
