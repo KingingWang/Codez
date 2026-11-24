@@ -17,6 +17,17 @@ test("restored legacy OAuth cannot refresh Provider after settings resolves on a
   let providerRefreshes = 0;
   const services = {
     settingService: { get: () => settings },
+    // 上游 v4.0.0 起两条刷新链路都先读账号可用性（availability）并可能纠正 domain；夹具需补齐。
+    oauthService: {
+      async getAccountAvailability() {
+        return {
+          loginProvider: "zai",
+          userId: "user-1",
+          sessionRevision: "rev-1",
+          families: [domain],
+        };
+      },
+    },
     providerSettingsService: {
       async refresh() {
         providerRefreshes++;
@@ -40,6 +51,8 @@ test("restored legacy OAuth cannot refresh Provider after settings resolves on a
 });
 
 test("unselected legacy OAuth cannot start a Provider read after initial settings resolves stale", async () => {
+  const domain = resolveProviderFamilyDomainFromOAuthProvider("zai");
+  assert.ok(domain);
   let releaseSettings!: (value: unknown) => void;
   const settings = new Promise<unknown>((resolve) => {
     releaseSettings = resolve;
@@ -51,6 +64,16 @@ test("unselected legacy OAuth cannot start a Provider read after initial setting
       get: () => settings,
       async update() {
         selectionWrites++;
+      },
+    },
+    oauthService: {
+      async getAccountAvailability() {
+        return {
+          loginProvider: "zai",
+          userId: "user-1",
+          sessionRevision: "rev-1",
+          families: [domain],
+        };
       },
     },
     providerSettingsService: {
@@ -97,6 +120,16 @@ test("restored legacy selection still refreshes the saved account while its Host
         };
       },
     },
+    oauthService: {
+      async getAccountAvailability() {
+        return {
+          loginProvider: "zai",
+          userId: "user-1",
+          sessionRevision: "rev-1",
+          families: [domain],
+        };
+      },
+    },
     providerSettingsService: {
       async refresh() {
         providerRefreshes++;
@@ -116,6 +149,8 @@ test("restored legacy selection still refreshes the saved account while its Host
 });
 
 test("old Host entitlements cannot conditionally write a new legacy selection after switching Codex", async () => {
+  const domain = resolveProviderFamilyDomainFromOAuthProvider("zai");
+  assert.ok(domain);
   let entitlementStarted!: () => void;
   const started = new Promise<void>((resolve) => {
     entitlementStarted = resolve;
@@ -149,6 +184,16 @@ test("old Host entitlements cannot conditionally write a new legacy selection af
     codingPlanSubscriptionService: {
       async getEnterprisePricing() {
         return { productList: [] };
+      },
+    },
+    oauthService: {
+      async getAccountAvailability() {
+        return {
+          loginProvider: "zai",
+          userId: "user-1",
+          sessionRevision: "rev-1",
+          families: [domain],
+        };
       },
     },
   } as unknown as IServiceAccessor;

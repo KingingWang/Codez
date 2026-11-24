@@ -149,9 +149,14 @@ export async function refreshLatestModelProviderFamilySelectionAfterLogin(params
   // 外层恢复 effect 的检查晚于本函数内部 IO；在这里阻断迟到的旧 Host 读数。
   if (params.isCurrent?.() === false) return null;
   const availability = await params.services.oauthService.getAccountAvailability();
+  const storedSettings = await params.services.settingService.get();
+  // fork 回归合同（oauthProviderFamilySelectionRefresh.test.ts）：上游 v4.0.0 把 availability
+  // 前移到设置读取之前，但旧 Host 的 staleness 复查必须仍紧跟设置解析完成，否则迟到的旧 Host
+  // 读数会先发起 Provider 刷新与设置写入，绕过「陈旧即终止」的守卫。
+  if (params.isCurrent?.() === false) return null;
   const currentSettings = await correctUnusableProviderFamilyDomain(
     params.services,
-    await params.services.settingService.get(),
+    storedSettings,
     availability,
   );
   const domain = currentSettings.providerFamilyDomain ?? availability.families[0] ?? null;
