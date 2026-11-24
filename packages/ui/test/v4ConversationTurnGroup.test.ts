@@ -296,6 +296,13 @@ function baseUnit(overrides: Partial<ConversationTurnRenderUnit>): ConversationT
   };
 }
 
+// 上游 v4.0.0 给流式正文加了逐字揭示动画：streaming 文本的每个字符被包一层
+// <span data-codez-reveal="new" style="--codez-reveal-delay:...">，连续文案在静态标记里不再相邻。
+// 断言正文前先剥掉这层包装，只比较文本本身，避免把动画实现细节写进业务断言。
+function revealedText(markup: string): string {
+  return markup.replace(/<span data-codez-reveal="[^"]*"[^>]*>([^<]*)<\/span>/g, "$1");
+}
+
 function renderUnit(
   unit: ConversationTurnRenderUnit,
   options: {
@@ -353,7 +360,11 @@ function renderUnit(
 }
 
 describe("ConversationTurnGroup layout", () => {
-  it("removes the complete external assistant container after its response becomes CUA", () => {
+  // 对齐现状：fork 旧的 CUA Group（把同一 assistantResponseId 的正文/思考/工具合成一个
+  // 「N 个事件, M 条消息」容器）随上游 v3.18.0 sync 整体下线，conversationCuaGroups.ts 已删除。
+  // 现在 CUA 工具与其它工具一样按行渲染，assistant 正文仍是独立行；聚合展示由
+  // groupConsecutiveAssistantSummaries 的摘要分组承担。
+  it("renders the CUA response and its assistant text as independent rows", () => {
     const responseId = "assistant-response-cua";
     const message = assistantTextRow(3, {
       assistantResponseId: responseId,
@@ -374,18 +385,15 @@ describe("ConversationTurnGroup layout", () => {
     ]);
     const html = renderUnit(unit!);
 
-    expect(unit?.flowItems.map((item) => item.kind)).toContain("cuaGroup");
-    expect(unit?.flowItems.some((item) => item.kind === "assistantText")).toBe(false);
-    const group = unit?.flowItems.find((item) => item.kind === "cuaGroup");
-    expect(
-      group?.kind === "cuaGroup"
-        ? group.events.some((event) => event.kind === "assistantMessage" && event.row === message)
-        : false,
-    ).toBe(true);
-    expect(html).not.toContain(`data-row-id="${message.rowId}"`);
+    expect(unit?.flowItems.map((item) => item.kind)).toEqual(["userInput", "assistantHistory"]);
+    // 正文不再被 CUA 容器吞掉：它和 CUA 工具各自成行。
+    expect(html).toContain(`data-row-id="${message.rowId}"`);
+    expect(html).toContain("我先检查电脑操作权限与应用列表。");
+    expect(html).toContain('data-tool-call-id="tool-4"');
+    expect(html).toContain('data-tool-name="mcp__computer-use__list_apps"');
   });
 
-  it("groups response reasoning and counts only reasoning visible under the existing setting", () => {
+  it("folds consecutive response reasoning into one summary group under the existing setting", () => {
     const responseId = "assistant-response-cua-reasoning";
     const firstReasoning: ReasoningRow = {
       ...reasoningRow(),
@@ -423,10 +431,23 @@ describe("ConversationTurnGroup layout", () => {
     const hiddenHtml = renderUnit(hiddenUnit!, { messageStreamShowReasoning: false });
     const visibleHtml = renderUnit(hiddenUnit!, { messageStreamShowReasoning: true });
 
-    expect(hiddenUnit?.flowItems.map((item) => item.kind)).toContain("cuaGroup");
-    expect(hiddenHtml).toContain("3 个事件, 1 条消息");
-    expect(hiddenHtml).not.toContain("4 个事件");
-    expect(visibleHtml).toContain("4 个事件, 1 条消息");
+    // 关闭思考：每轮首条 reasoning 仍可见，且它与正文/CUA 工具之间被边界隔开，
+    // 没有连续可摘要项，因此不产生摘要组，三行各自独立渲染。
+    expect(hiddenUnit?.flowItems.map((item) => item.kind)).toEqual([
+      "userInput",
+      "assistantHistory",
+    ]);
+    expect(hiddenHtml).not.toContain("data-consecutive-summary-group");
+    expect(hiddenHtml).toContain('data-row-id="3"');
+    expect(hiddenHtml).not.toContain('data-row-id="4"');
+    expect(hiddenHtml).toContain('data-tool-call-id="tool-6"');
+    // 开启思考：两条连续 reasoning 折进同一摘要组，折叠态不挂载子行 DOM，
+    // 组头统计回落到纯思考文案；正文与 CUA 工具在组外照常渲染。
+    expect(visibleHtml).toContain("data-consecutive-summary-group");
+    expect(visibleHtml).toContain("思考");
+    expect(visibleHtml).not.toContain('data-row-id="4"');
+    expect(visibleHtml).toContain('data-row-id="5"');
+    expect(visibleHtml).toContain('data-tool-call-id="tool-6"');
   });
 
   it("does not mount an empty history collapsible after inner work projection", () => {
@@ -646,15 +667,35 @@ describe("ConversationTurnGroup message stream display settings", () => {
       messageStreamShowTodos: scenario.showTodos,
     });
 
-    // 每轮第一条 reasoning 不受开关影响；后续 reasoning 只在开关开启时展示。
-    expect(html).toContain('data-row-id="3"');
-    expect(html.includes('data-row-id="6"')).toBe(scenario.showReasoning);
+    // 对齐现状（上游 v3.18.0 起）：连续可摘要项会被 groupConsecutiveAssistantSummaries
+    // 折进 ConsecutiveSummaryGroup，折叠态不挂载子行 DOM；Todo 行不可摘要，是分组边界。
+    // 于是两个开关的可观测结果分两种形态：
+    // - Todo 隐藏：首条 reasoning 与 shell 合成一个折叠摘要组，静态标记里只剩组头统计；
+    // - Todo 展示：它把摘要组切开，reasoning 与 shell 各自单独渲染成行。
+    // 「每轮第一条 reasoning 不受开关影响、后续 reasoning 只在开关开启时展示」的语义不变，
+    // 只是观测点从裸行 id 变成「是否被折进摘要组 + 组头统计」。
+    // Todo 行本身可直接观测：它是摘要分组的边界，展示时总是独立成行。
     expect(html.includes('data-tool-call-id="tool-4"')).toBe(scenario.todoVisible);
-    // 单个 Execute 不创建父分组，仍直接展示原始工具。
-    expect(html).toContain("tool-summary-trigger-tool-5");
+    // shell 是否独立成行，取决于它有没有可摘要的相邻项：
+    // - Todo 展示且思考关闭：reasoning(3)/Todo(4)/shell(5) 被 Todo 边界切开，shell 单独渲染；
+    // - 其余组合：shell 与相邻 reasoning 折进同一摘要组，静态标记里只留组头统计与代表图标。
+    const shellStandalone = scenario.todoVisible && !scenario.showReasoning;
+    expect(html.includes("tool-summary-trigger-tool-5")).toBe(shellStandalone);
+    expect(html.includes("data-consecutive-summary-group")).toBe(!shellStandalone);
+    // 折叠组头统计只计可摘要工具：本夹具里只有 1 次 shell 执行。
+    if (!shellStandalone) expect(html).toContain("已执行 1 命令");
+    // 首条 reasoning 只在没有被折进摘要组时才出现在静态标记里。
+    expect(html.includes('data-row-id="3"')).toBe(scenario.todoVisible);
+    // 后续 reasoning(row 6) 的可见性由 messageStreamShowReasoning 决定，但在本夹具的任何开关组合下
+    // 它都会与 shell 折进同一摘要组，折叠态不挂载子行 DOM；该开关的数据层语义改由
+    // test/v4AssistantWorkRenderItems.test.ts 的「hides later reasoning…」与
+    // 「hides todo tool rows unless messageStreamShowTodos is on」两条用例断言。
+    expect(html.includes('data-row-id="6"')).toBe(false);
+    // 正文永远是分组边界，独立渲染。
+    expect(html).toContain('data-row-id="7"');
   });
 
-  it("关闭思考时跨隐藏 reasoning 合并 Explore，开启时保持原始边界", () => {
+  it("关闭思考时隐藏 reasoning 不计数，开启时并入同一摘要组且统计不变", () => {
     const firstReasoning = reasoningRow();
     const firstExplore = toolCallRow(4, "Read", { file_path: "package.json" });
     const hiddenReasoning: ReasoningRow = {
@@ -685,15 +726,23 @@ describe("ConversationTurnGroup message stream display settings", () => {
     const hiddenReasoningHtml = renderUnit(exploreUnit, {
       messageStreamShowReasoning: false,
     });
-    expect(hiddenReasoningHtml).toContain('data-tool-call-id="explore:tool-4"');
+    // 对齐现状：fork 旧的 explore:<toolId> 合成父分组已随上游 v3.18.0 sync 下线。
+    // 关闭思考时，隐藏的 reasoning 根本不进入渲染项；剩下的连续可摘要项
+    // （首条 reasoning + Read + 只读 Shell）折进同一个摘要组，组头统计只计可见工具。
     expect(hiddenReasoningHtml).not.toContain('data-row-id="5"');
+    expect(hiddenReasoningHtml).toContain("data-consecutive-summary-group");
+    expect(hiddenReasoningHtml).toContain("已查阅 1 项，已执行 1 命令");
 
     const visibleReasoningHtml = renderUnit(exploreUnit, {
       messageStreamShowReasoning: true,
     });
-    expect(visibleReasoningHtml).toContain('data-tool-call-id="tool-4"');
-    expect(visibleReasoningHtml).toContain('data-tool-call-id="tool-6"');
-    expect(visibleReasoningHtml).toContain('data-row-id="5"');
+    // 开启思考后 row 5 成为摘要组成员，同样处于折叠态（折叠不挂载子行 DOM）；
+    // 统计口径不变——思考本身不计数，这正是「思考开关不改变工具统计」的不变量。
+    expect(visibleReasoningHtml).toContain("data-consecutive-summary-group");
+    expect(visibleReasoningHtml).not.toContain('data-row-id="5"');
+    expect(visibleReasoningHtml).toContain("已查阅 1 项，已执行 1 命令");
+    // 正文是分组边界，任何开关组合下都独立渲染。
+    expect(visibleReasoningHtml).toContain('data-row-id="7"');
   });
 });
 
@@ -1110,11 +1159,13 @@ describe("ConversationTurnGroup assistant history status", () => {
     expect(html).toContain("Goal");
     expect(html).toContain("开发一个招投标管理系统");
     expect(html).not.toContain("已工作 1 秒");
-    // 上游把运行中工时从折叠头文案移到聊天 loading 槽（「工作中」标签 + 独立等宽 span 的
-    // 十分位时长），且整轮生成期间不再渲染折叠头。H17 的不变量是「/goal query 与 continuation
-    // 合计只显示一个工作状态」，因此按 loading 槽计数，并锁定时长文案只出现一次。
+    // 上游把运行中工时从折叠头文案移到聊天 loading 槽（「工作中」标签 + 独立等宽 span 的时长），
+    // 且整轮生成期间不再渲染折叠头。H17 的不变量是「/goal query 与 continuation 合计只显示一个
+    // 工作状态」，因此按 loading 槽计数，并锁定时长文案只出现一次。
+    // 对齐现状：v4.0.0 的 formatConversationWorkDuration 用 Math.round 取整秒（3 秒），
+    // 不再输出十分位（3.0 秒）；该实现与上游逐字节一致。
     expect(html.match(/data-testid="chat-loading"/g)).toHaveLength(1);
-    expect(html.match(/3\.0 秒/g)).toHaveLength(1);
+    expect(html.match(/3 秒/g)).toHaveLength(1);
     // 上游把运行中的工作状态整体移出折叠头（整轮生成期间不渲染折叠入口），
     // 所以这里不再有 trigger；「合计只显示一个工作状态」由上面唯一的 loading 槽承载。
     expect(html.match(/chat-assistant-history-trigger/g)).toBeNull();
@@ -1129,12 +1180,17 @@ describe("ConversationTurnGroup assistant history status", () => {
       }),
     );
 
-    // 同上：运行中的工时由 loading 槽承载，标签与十分位时长分属两个 span。
+    // 同上：运行中的工时由 loading 槽承载，标签与时长分属两个 span。
+    // 对齐现状：v4.0.0 起时长按整秒渲染（5 秒），不再保留十分位。
     expect(html).toContain("工作中");
-    expect(html).toContain("5.0 秒");
+    expect(html).toContain("5 秒");
   });
 
-  it("ETS01/ETS03：运行工作段尾部的单个 Explore 工具不创建父分组", () => {
+  // 对齐现状：fork 旧的 Explore/Terminal/Changes/CUA 合成父分组已随上游 v3.18.0 sync 下线，
+  // 工具聚合改由 groupConsecutiveAssistantSummaries 负责，且单个可摘要项也会进摘要组。
+  // 因此这里保留仍然成立的不变量：工具按原始 toolCallId 渲染，不再出现 explore: 合成父 id；
+  // 原来的 animated-gradient-text 断言已失效——运行中「工作中」标签本身就用这个扫光类。
+  it("ETS01/ETS03：单个 Explore 工具仍按原始 tool id 渲染，不出现合成父分组 id", () => {
     const explore = toolCallRow(10, "Read", { file_path: "AGENTS.md" });
     const text = assistantTextRow(11);
     const tailHtml = renderUnit(
@@ -1162,8 +1218,8 @@ describe("ConversationTurnGroup assistant history status", () => {
 
     expect(tailHtml).toContain('data-tool-call-id="tool-10"');
     expect(tailHtml).not.toContain('data-tool-call-id="explore:tool-10"');
-    expect(tailHtml).not.toContain("animated-gradient-text");
-    expect(boundedHtml).not.toContain("animated-gradient-text");
+    expect(boundedHtml).toContain('data-tool-call-id="tool-10"');
+    expect(boundedHtml).not.toContain('data-tool-call-id="explore:tool-10"');
   });
 
   it("labels a completed turn as worked with the final duration", () => {
@@ -1500,7 +1556,11 @@ describe("ConversationTurnGroup assistant history status", () => {
     expect(html).toContain("flaky-test-triage");
   });
 
-  it("在 background result 的 history 兼容路径保留 CUA Group 内 Assistant message 事件", () => {
+  // 对齐现状：fork 旧的 CUA Group 已随上游 v3.18.0 sync 整体下线，不再有
+  // 「N 个事件, M 条消息」的合成容器与事件计数。本用例保留的不变量改为：
+  // background result 的 history 兼容路径仍完整渲染 reasoning + 正文 + CUA 工具三行，
+  // 没有退化成「只剩 child tools」。
+  it("在 background result 的 history 兼容路径保留 reasoning、正文与 CUA 工具三行", () => {
     const responseId = "background-cua-response";
     const reasoning = {
       ...reasoningRow(),
@@ -1532,10 +1592,14 @@ describe("ConversationTurnGroup assistant history status", () => {
       }),
     );
 
-    // 折叠态不挂载详情正文；计数同时包含 reasoning 与 message，证明兼容路径没有退化为仅 child tools。
-    // CuaGroupToolCallBlock 的 forceOpen 测试另行覆盖详情正文渲染。
-    expect(html).toContain("3 个事件, 1 条消息");
-    expect(html).not.toContain("1 个事件");
+    // reasoning 行折叠态不挂载正文，但行本身必须在；正文与 CUA 工具各自独立成行。
+    expect(html).toContain('data-row-id="3"');
+    expect(html).toContain('data-row-id="4"');
+    expect(html).toContain("我先检查电脑操作权限与应用列表。");
+    expect(html).toContain('data-tool-call-id="tool-5"');
+    expect(html).toContain('data-tool-name="mcp__computer-use__list_apps"');
+    // 三行之间被正文边界隔开，不存在连续可摘要项，因此不产生摘要组。
+    expect(html).not.toContain("data-consecutive-summary-group");
   });
 
   it("旧 background result 缺少结构化标题时保持耗时折叠兼容分支", () => {
@@ -2005,7 +2069,8 @@ describe("ConversationTurnGroup assistant history status", () => {
     );
 
     expect(html).toContain('data-tool-call-id="tool-5"');
-    expect(html).toContain("已设置：");
+    // 正文处于 streaming 态，逐字揭示会把「已设置：」拆成多个 span；按文本内容断言。
+    expect(revealedText(html)).toContain("已设置：");
     expect(html).not.toContain(`data-testid="${TID_CRON_CREATE_CARD}"`);
   });
 
