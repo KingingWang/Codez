@@ -1,0 +1,211 @@
+{
+  "version": 2,
+  "database": "cli",
+  "migrations": [
+    "0001_base_session_store",
+    "0002_local_setting",
+    "0003_backfill_permission_local_setting",
+    "0004_session_target",
+    "0005_session_target_accounting",
+    "0006_input_history_attachments",
+    "0007_workflow_script_runtime",
+    "0008_workflow_definition_scope",
+    "0009_session_title_metadata",
+    "0010_usage_observability",
+    "0011_session_target_summary_title",
+    "0012_session_trace_id",
+    "0013_session_target_active_run_accounting",
+    "0014_message_part_sequence",
+    "0015_message_part_sequence_backfill_and_guard",
+    "0016_session_input_ledger",
+    "0017_session_input_start_now_delivery",
+    "0018_session_input_failed_status",
+    "0019_dwf_journal",
+    "0020_provider_model_selection",
+    "0021_official_glm_selection",
+    "0022_backfilled_session_reasoning",
+    "0023_session_soft_delete_outcome",
+    "0024_session_database_identity",
+    "0025_session_permanent_deletion",
+    "0026_dwf_run_parent_session_index"
+  ],
+  "tables": [
+    {
+      "name": "input_history",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "message",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "part",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "permission",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "session",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "session_entry",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "todo",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "local_setting",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "session_target",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "session_target_next",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "session_task_link",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "workflow_activity",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "workflow_definition",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "workflow_event",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "workflow_run",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "model_usage",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "tool_usage",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "turn_usage",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "session_input",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "session_input_before_start_now",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "session_input_before_failed_status",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "dwf_run",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "dwf_actor",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "dwf_artifact",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "dwf_node",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "dwf_event",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "codez_database_identity",
+      "columns": [
+        "scope",
+        "identity"
+      ],
+      "rows": 1,
+      "hash": "b3e300603df865d3f34094b72a547e6b6088d30d24fe0ad1e2160426b2e432a0"
+    },
+    {
+      "name": "session_purge",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "session_runtime_presence",
+      "columns": [],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    }
+  ]
+}

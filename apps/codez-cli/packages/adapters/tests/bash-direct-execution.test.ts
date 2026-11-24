@@ -180,7 +180,12 @@ const timer = setInterval(() => {
       expect(outcome.kind).toBe("backgrounded");
       if (outcome.kind !== "backgrounded") return;
       const id = outcome.task.taskId;
-      await vi.waitFor(async () => expect(await readFile(path, "utf8")).toContain("stderr-first"));
+      // 修复原因：vi.waitFor 默认只等 1s。后台任务要先 spawn bash 再冷启动 node 写第一行 stderr，
+      // 本机实测需要 1~2s，默认超时会让断言在输出落盘前失败。同文件「取消后仍可后台读取」
+      // 那条已用显式 timeout，这里补齐同样的容差。
+      await vi.waitFor(async () => expect(await readFile(path, "utf8")).toContain("stderr-first"), {
+        timeout: 10_000,
+      });
       expect(await adapter.readBackgroundBashOutput(id, "other-session")).toEqual({
         kind: "unavailable",
         workId: id,
@@ -225,7 +230,10 @@ const timer = setInterval(() => {
     const { adapter, request, path } = await fixture(shell, gatedWriter);
     const outcome = await adapter.runBashWithBackgroundLifecycle(request, { mode: "explicit" });
     if (outcome.kind !== "backgrounded") throw new Error("expected background");
-    await vi.waitFor(async () => expect(await readFile(path, "utf8")).toContain("stderr-first"));
+    // 同上：后台首行输出落盘可能超过 vi.waitFor 的 1s 默认超时。
+    await vi.waitFor(async () => expect(await readFile(path, "utf8")).toContain("stderr-first"), {
+      timeout: 10_000,
+    });
     let releaseRead!: () => void;
     const gate = new Promise<void>((resolve) => {
       releaseRead = resolve;
@@ -301,13 +309,20 @@ const timer = setInterval(() => {
     },
   );
 
-  it("does not background an exited root while its result is being read", async () => {
+  // 修复原因：本用例的前提是「root 在 timeoutMs 内已退出，只是读取结果被人为拖慢」。
+  // 原来 timeoutMs=1000，而 spawn bash + 冷启动 node 在本机实测就要 ~1.3s（裸 bash+node 约 400ms，
+  // 加上适配器建目录/建输出文件与 vitest 插桩开销），前台 deadline 反而先到，root 被误判为仍在
+  // 运行而转后台，断言收到 backgrounded。放大到 2500ms 仍保持「读取耗时 > 超时」的关系，
+  // 前提与断言语义不变；读取拖慢后整条用例超过 vitest 默认 5s，因此显式放宽到 20s。
+  it(
+    "does not background an exited root while its result is being read",
+    async () => {
     const { adapter, request } = await fixture(shell, "require('node:fs').writeSync(1, 'done')");
-    request.timeoutMs = 1_000;
+    request.timeoutMs = 2_500;
     const original = BashFileOutput.prototype.result;
     vi.spyOn(BashFileOutput.prototype, "result").mockImplementation(async function (maxBytes) {
       const result = await original.call(this, maxBytes);
-      await sleep(1_100);
+      await sleep(2_600);
       return result;
     });
     const result = await adapter.runBashWithBackgroundLifecycle(request, {
@@ -315,7 +330,9 @@ const timer = setInterval(() => {
     });
     expect(result.kind).toBe("foreground");
     if (result.kind === "foreground") expect(result.result.stdout.text).toBe("done");
-  });
+    },
+    20_000,
+  );
 
   it("writes a regular file before exit without collector or chunk events", async () => {
     const { adapter, request, path, release } = await fixture(shell, gatedWriter);

@@ -73,6 +73,21 @@ vi.mock("node:fs/promises", async (importOriginal) => {
   };
 });
 
+// 修复原因：上面的 vi.mock 把 node:fs/promises 的五个查询函数包成 vi.fn(actual.*)，
+// 但多个用例会用 mockImplementation / mockResolvedValue 覆盖它们且从不复原，
+// 于是后续用例读到的是上一个用例留下的桩。实测两条假失败都源于此：
+// 「keeps real checks for case-equivalent and nonstandard directory entries」拿不到真实 stat 调用，
+// 「parses once and returns independent values while validating current file metadata」的
+// validate() 被固定成 true。单独 -t 运行两条都通过，正是跨用例污染的特征。
+// mockReset() 会把实现还原成 vi.fn(actual.*) 传入的真实 fs，因此这里逐用例复位即可。
+afterEach(() => {
+  vi.mocked(asyncFs.readFile).mockReset();
+  vi.mocked(asyncFs.readdir).mockReset();
+  vi.mocked(asyncFs.lstat).mockReset();
+  vi.mocked(asyncFs.stat).mockReset();
+  vi.mocked(asyncFs.realpath).mockReset();
+});
+
 describe("NodePluginAdapter", () => {
   it("shares concurrent path checks and reuses their type in Skill scanning", async () => {
     const root = await mkdtemp(join(tmpdir(), "codez-shared-path-check-"));
@@ -163,6 +178,19 @@ describe("NodePluginAdapter", () => {
         join(root, "CUSTOM~1"),
       ]);
       await mkdir(join(root, "技能"));
+      // 修复原因：PluginMaterialCache 的目录快照失效判定只看 stat 指纹
+      // （dev/ino/size/mtimeNs/ctimeNs/mode）。本机 overlay 文件系统的内核时间戳是粗粒度的，
+      // 同一个 tick 内 mkdir 之后父目录 mtimeNs/ctimeNs 完全不变，目录 size 也可能不变，
+      // 于是 cache 认为 root 没变化，复用「只有 SKILLS」的旧快照；旧快照全是 ASCII，
+      // helpers.ts 里的 ASCII 快路径（directories.set）被启用，missing() 就不再真实 stat，
+      // 用例结果随时间戳 tick 边界偶发翻转（单独 -t 跑恰好跨 tick 就通过）。
+      // 显式把 root 的 mtime 推到未来，确保新增的 Unicode 目录项一定被重新读取。
+      const rootBeforeUnicode = await asyncFs.stat(root);
+      await asyncFs.utimes(
+        root,
+        rootBeforeUnicode.atime,
+        new Date(rootBeforeUnicode.mtimeMs + 2_000),
+      );
       const uncertain = cache.reader("scope");
       await uncertain.directory(root);
       vi.mocked(asyncFs.stat).mockClear();
@@ -578,6 +606,13 @@ describe("NodePluginAdapter", () => {
       const inFlight = cache.reader("scope");
       await inFlight.json(path);
       await writeFile(path, '{"value":2}');
+      // 修复原因：物证缓存的失效判定只看 stat 指纹（dev/ino/size/mtimeNs/ctimeNs/mode）。
+      // 本机 overlay 文件系统在内核粗粒度时间戳同一个 tick 内连续写入时，mtimeNs/ctimeNs
+      // 完全不变；而这里新旧内容都是 11 字节，size 也不变，于是 validate() 恒为 true，
+      // 用例通过与否取决于两次写入是否跨 tick（单独 -t 跑就恰好通过）。
+      // 这里显式把 mtime 推到未来，确定性地表达「文件元数据已变化」，与用例名一致。
+      const touched = await asyncFs.stat(path);
+      await asyncFs.utimes(path, touched.atime, new Date(touched.mtimeMs + 2_000));
       expect(await inFlight.validate()).toBe(false);
       expect(await cache.reader("scope").json(path)).toEqual({ value: 2 });
     } finally {

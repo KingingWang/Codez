@@ -1,0 +1,145 @@
+{
+  "version": 2,
+  "database": "cli",
+  "migrations": [
+    "0020_provider_model_selection",
+    "0021_official_glm_selection",
+    "0022_backfilled_session_reasoning",
+    "0023_session_soft_delete_outcome",
+    "0024_session_database_identity",
+    "0025_session_permanent_deletion",
+    "0026_dwf_run_parent_session_index"
+  ],
+  "tables": [
+    {
+      "name": "message",
+      "columns": [
+        "id",
+        "session_id",
+        "time_created",
+        "time_updated",
+        "data",
+        "sequence"
+      ],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "part",
+      "columns": [
+        "id",
+        "message_id",
+        "session_id",
+        "time_created",
+        "time_updated",
+        "data",
+        "sequence"
+      ],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "session_entry",
+      "columns": [
+        "id",
+        "session_id",
+        "type",
+        "time_created",
+        "time_updated",
+        "data"
+      ],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "session",
+      "columns": [
+        "id",
+        "project_id",
+        "workspace_id",
+        "parent_id",
+        "slug",
+        "directory",
+        "path",
+        "title",
+        "version",
+        "share_url",
+        "summary_additions",
+        "summary_deletions",
+        "summary_files",
+        "summary_diffs",
+        "revert",
+        "permission",
+        "time_created",
+        "time_updated",
+        "time_compacting",
+        "time_archived",
+        "task_type",
+        "title_source",
+        "title_message_id",
+        "time_title_updated",
+        "trace_id",
+        "time_deleted",
+        "last_outcome"
+      ],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "codez_database_identity",
+      "columns": [
+        "scope",
+        "identity"
+      ],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "session_purge",
+      "columns": [
+        "session_id",
+        "root_id",
+        "operation_id",
+        "retained_artifacts",
+        "workspace_path",
+        "workspace_identity",
+        "state"
+      ],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "session_runtime_presence",
+      "columns": [
+        "session_id",
+        "owner_id",
+        "process_id"
+      ],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    },
+    {
+      "name": "dwf_run",
+      "columns": [
+        "id",
+        "parent_session_id",
+        "cwd",
+        "name",
+        "script_text",
+        "script_hash",
+        "args_json",
+        "tool_call_id",
+        "resumed_from",
+        "caps_max_concurrency",
+        "spent_tokens",
+        "status",
+        "result_json",
+        "failure_json",
+        "time_created",
+        "time_updated"
+      ],
+      "rows": 0,
+      "hash": "b01c50b2b2885e1708b06a5b98f5d351de92fe46c046a808d47b4fd06867d4fd"
+    }
+  ]
+}

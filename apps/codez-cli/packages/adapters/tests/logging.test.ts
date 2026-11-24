@@ -297,10 +297,12 @@ describe("Node logging adapter", () => {
       });
 
       await expect(readdir(logDir).then((files) => files.sort())).resolves.toEqual([
-        "other-2026-04-30.jsonl",
+        // 重命名修复：上游日志前缀是 zcode-*，字典序排在 other-* 之后，期望数组按那个顺序写死。
+        // 产品改名为 codez-* 后 codez- < other-，实际值已 sort()，期望必须同序，否则是纯排序假失败。
         "codez-2026-04-30.txt",
         "codez-2026-05-02.jsonl",
         "codez-2026-05-08.jsonl",
+        "other-2026-04-30.jsonl",
       ]);
       expect(result).toMatchObject({
         cutoffDate: "2026-05-02",
