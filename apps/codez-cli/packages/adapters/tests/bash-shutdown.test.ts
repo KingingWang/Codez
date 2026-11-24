@@ -44,7 +44,12 @@ async function main() {
       command: '"$TEST_NODE" "$TEST_DRIVER" root "$TEST_ROOT"',
     },
     cwd: root,
-    timeoutMs: mode === 'timeout' ? 2000 : 10000,
+    // 修复原因：timeout 档原来只给 2000ms，而这段时间里 worker 还要完成
+    // 「spawn bash + 冷启动 node + 写出 ready 文件」。本机实测该启动空载约 1.3s，
+    // 全量套件并行时可达数秒，于是 root 进程组在 worker 写出 ready 前就被超时清掉，
+    // 驱动只能报 'Worker did not start'（表现为 timeout/close 档随机红，单独跑又通过）。
+    // 放宽到 8000ms：仍远小于外层 it.each 的 20s 上限，且 timed_out 语义不变。
+    timeoutMs: mode === 'timeout' ? 8000 : 10000,
     env: { set: { TEST_NODE: process.execPath, TEST_DRIVER: process.argv[1], TEST_ROOT: root } },
     outputLimit: { persistOutput: 'always', ...(mode === 'output_limit' ? { maxPersistedBytes: 1 } : {}) },
   };
@@ -56,7 +61,11 @@ async function main() {
     : adapter.run(request, options);
   const background = mode === 'background' || mode === 'crash' ? await pending : undefined;
   if (background) console.log('ROOT_PID ' + background.task.pid);
-  const deadline = Date.now() + 5000;
+  // 修复原因：这里等的是「真实 spawn bash + 冷启动 node 的 worker 写出 ready 文件」。
+  // 全量套件并行时（214 个文件、forks pool）本机实测该启动可超过 5s，于是驱动进程以
+  // exit code 1 报 'Worker did not start'，用例收到 code=1 而不是 0（单独跑通过，属负载敏感）。
+  // 放宽到 15s，仍留在外层 it.each 的 20s 上限内，给后续 close/结算断言留出余量。
+  const deadline = Date.now() + 15000;
   while (true) {
     try { await access(ready); break; } catch {}
     if (Date.now() >= deadline) throw new Error('Worker did not start');
