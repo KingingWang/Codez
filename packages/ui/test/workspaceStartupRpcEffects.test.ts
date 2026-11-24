@@ -48,6 +48,8 @@ function createMinimalElement(ownerDocument: Document, tagName = "div") {
 
 function installMinimalDom() {
   const documentMock = {
+    // IntlProvider 会写 document.documentElement.lang；最小 DOM 需补齐该节点。
+    documentElement: { lang: "" },
     addEventListener: () => {},
     createElement: (tagName: string) =>
       createMinimalElement(documentMock as unknown as Document, tagName),

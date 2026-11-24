@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { createElement, type ReactNode } from "react";
+import { createElement, type ComponentProps, type ReactNode } from "react";
 import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
@@ -7,8 +7,45 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ConversationSnapshot } from "@codez/shared/codez-protocol-v4";
 import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { SessionPane } from "@/v4/SessionPane.js";
+import { TabStoreProvider } from "@/store/TabStoreProvider.js";
 import type { ConversationShareSelectionDraft } from "@/store/conversationShareSelectionStore.js";
 import type { ConversationRowRenderContext } from "@/v4/conversationRowContext.js";
+
+// SSR（renderToStaticMarkup）下 zustand useStore 需要 getServerSnapshot；布局/只读断言不消费
+// tab 状态，这里让 useTabStore 直接读空回退 store 的快照，保持服务端渲染可用。
+vi.mock("@/store/TabStoreProvider.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/store/TabStoreProvider.js")>();
+  const { createTabStore } = await import("@/store/tabStore.js");
+  const fallback = createTabStore(null);
+  const readSnapshot = (selector: (state: never) => unknown) =>
+    selector(fallback.getState() as never);
+  return {
+    ...actual,
+    useTabStore: readSnapshot,
+    useOptionalTabStore: readSnapshot,
+    useTabStoreApi: () => fallback,
+  };
+});
+
+// fork worktree 特性使 SessionPane 经 useTaskWorktreePlacement → useIndexedTaskMeta →
+// useCodezTaskService → useWorkspaceServices 引入 useTabStore（要求 TabStoreProvider）。
+// 本文件不验证 worktree 语义，按仓库既有隔离做法桩掉该入口：普通任务恒可用、cwd 即 workspace。
+vi.mock("@/managed-worktrees/index.js", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    useTaskWorktreePlacement: ({ workspacePath }: { workspacePath: string }) => ({
+      cwd: workspacePath,
+      worktreeRoot: undefined,
+      worktreeAvailable: true,
+    }),
+  };
+});
+// SessionPane 的多个 hook（useSubagents、连接解析等）经 useTabStore 要求 TabStoreProvider；
+// 宿主渲染树统一包一层真实 Tab store（默认空 tab 状态），保持各文件既有服务桩不变。
+function SessionPaneWithTabStore(props: ComponentProps<typeof SessionPane>) {
+  return createElement(TabStoreProvider, null, createElement(SessionPane, props));
+}
 
 const sessionPaneSource = readFileSync("packages/ui/src/v4/SessionPane.tsx", "utf8");
 
@@ -65,6 +102,20 @@ const workflowRunsQueryMock = vi.hoisted(() =>
 );
 
 const servicesMock = vi.hoisted(() => ({
+  // useSubagents 用 subagentsService 作 WeakMap authority 键并发起 list；给惰性桩避免 WeakMap 崩溃。
+  subagentsService: {
+    list: vi.fn(async () => ({ agents: [], capability: null })),
+    setEnabled: vi.fn(async () => {}),
+  },
+  // SessionPane 的 Highspeed owner effect 无守卫地订阅 oauthService.onDidChangeSession。
+  oauthService: {
+    onDidChangeSession: vi.fn(() => ({ dispose() {} })),
+  },
+  // AgentRuntimeExitBanner 等直接解构 codezAgentService；给惰性桩避免 undefined 成员访问。
+  codezAgentService: {
+    onAgentRuntimeExited: vi.fn(() => ({ dispose() {} })),
+    onDynamicPluginStartupDegraded: vi.fn(() => () => ({ dispose() {} })),
+  },
   highspeedCardService: {
     getSnapshot: vi.fn(() => new Promise(() => {})),
     prepareTurn: vi.fn(async () => ({
@@ -74,7 +125,10 @@ const servicesMock = vi.hoisted(() => ({
     })),
     healthy: vi.fn(),
     share: vi.fn(),
-  },
+  
+      getCurrentOwnerKey: vi.fn(async () => null),
+      invalidateCard: vi.fn(async () => {}),
+    },
   codezSessionService: {
     updateProviderRegistry: vi.fn(),
   },
@@ -174,6 +228,21 @@ vi.mock("@/v4/composer/useDraftConfigControl.js", () => ({
     handleDraftSelectModel: vi.fn(),
     handleDraftSelectThought: vi.fn(),
     handleDraftSwitchMode: vi.fn(),
+    // 上游 v4.0.0 扩充了 hook 返回形状（composerDraft/staging 等）；SessionPane 会解构消费，
+    // 本文件不验证这些语义，按惰性缺省补齐，保持既有字段原值。
+    composerDraft: {},
+    composerDraftScopeToken: undefined,
+    draftConfig: {},
+    resolveInitialDraftConfig: () => ({}),
+    stageComposerContent: vi.fn(),
+    captureComposerContentLifecycleCommit: vi.fn(),
+    captureComposerSubmissionDraftTransaction: vi.fn(),
+    persistComposerContent: vi.fn(),
+    updateComposerContent: vi.fn(),
+    replaceComposerDraft: vi.fn(),
+    promoteComposerDraft: () => true,
+    observeDraftPermissionGrant: vi.fn(),
+    keepEditConfigOnExit: vi.fn(),
   }),
 }));
 
@@ -354,7 +423,7 @@ function renderReadOnlyPane({
     createElement(
       CodezIntlProvider,
       { initialLocale: locale },
-      createElement(SessionPane, {
+      createElement(SessionPaneWithTabStore, {
         allowWorkspaceFileRewind,
         paneId: "pane-1",
         readOnly,
@@ -540,7 +609,7 @@ describe("SessionPane read-only mode", () => {
       createElement(
         CodezIntlProvider,
         { initialLocale: "zh-CN" },
-        createElement(SessionPane, {
+        createElement(SessionPaneWithTabStore, {
           paneId: "pane-1",
           readOnly: false,
           sessionId: "child-session",
@@ -601,7 +670,7 @@ describe("SessionPane 分享模式接线", () => {
       createElement(
         CodezIntlProvider,
         { initialLocale: "zh-CN" },
-        createElement(SessionPane, {
+        createElement(SessionPaneWithTabStore, {
           paneId: "pane-1",
           readOnly: false,
           sessionId: "child-session",

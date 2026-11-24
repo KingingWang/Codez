@@ -3,8 +3,29 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ConversationSnapshot } from "@codez/shared/codez-protocol-v4";
 import { SessionPane } from "@/v4/SessionPane.js";
+import { TabStoreProvider } from "@/store/TabStoreProvider.js";
 import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import type { ConversationComposer } from "@/v4/ConversationComposer.js";
+
+// fork worktree 特性使 SessionPane 经 useTaskWorktreePlacement → useIndexedTaskMeta →
+// useCodezTaskService → useWorkspaceServices 引入 useTabStore（要求 TabStoreProvider）。
+// 本文件不验证 worktree 语义，按仓库既有隔离做法桩掉该入口：普通任务恒可用、cwd 即 workspace。
+vi.mock("@/managed-worktrees/index.js", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    useTaskWorktreePlacement: ({ workspacePath }: { workspacePath: string }) => ({
+      cwd: workspacePath,
+      worktreeRoot: undefined,
+      worktreeAvailable: true,
+    }),
+  };
+});
+// SessionPane 的多个 hook（useSubagents、连接解析等）经 useTabStore 要求 TabStoreProvider；
+// 宿主渲染树统一包一层真实 Tab store（默认空 tab 状态），保持各文件既有服务桩不变。
+function SessionPaneWithTabStore(props: ComponentProps<typeof SessionPane>) {
+  return createElement(TabStoreProvider, null, createElement(SessionPane, props));
+}
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -38,7 +59,10 @@ const mocks = vi.hoisted(() => ({
       durationSeconds: 10,
     })),
     share: vi.fn(),
-  },
+  
+      getCurrentOwnerKey: vi.fn(async () => null),
+      invalidateCard: vi.fn(async () => {}),
+    },
   layer: {
     acquire: vi.fn((sessionId: string) => ({
       sessionId,
@@ -120,6 +144,20 @@ vi.mock("@/hooks/useCodexModelCatalog.js", () => ({
 vi.mock("@/hooks/useServices.js", () => ({
   useComposerClientNamespace: () => "desktop",
   useServices: () => ({
+    // useSubagents 用 subagentsService 作 WeakMap authority 键并发起 list；给惰性桩避免 WeakMap 崩溃。
+    subagentsService: {
+      list: vi.fn(async () => ({ agents: [], capability: null })),
+      setEnabled: vi.fn(async () => {}),
+    },
+    // SessionPane 的 Highspeed owner effect 无守卫地订阅 oauthService.onDidChangeSession。
+    oauthService: {
+      onDidChangeSession: vi.fn(() => ({ dispose() {} })),
+    },
+    // AgentRuntimeExitBanner 等直接解构 codezAgentService；给惰性桩避免 undefined 成员访问。
+    codezAgentService: {
+      onAgentRuntimeExited: vi.fn(() => ({ dispose() {} })),
+      onDynamicPluginStartupDegraded: vi.fn(() => () => ({ dispose() {} })),
+    },
     botsService: mocks.botsService,
     broadcastService: mocks.broadcastService,
     highspeedCardService: mocks.highspeedCardService,
@@ -176,6 +214,15 @@ vi.mock("@/v4/composer/useDraftConfigControl.js", async (importOriginal) => {
       promoteComposerDraft: () => {},
       replaceComposerDraft: () => {},
       updateComposerContent: () => {},
+      composerDraft: {},
+      composerDraftScopeToken: undefined,
+      draftConfig: {},
+      stageComposerContent: vi.fn(),
+      captureComposerContentLifecycleCommit: vi.fn(),
+      captureComposerSubmissionDraftTransaction: vi.fn(),
+      persistComposerContent: vi.fn(),
+      observeDraftPermissionGrant: vi.fn(),
+      keepEditConfigOnExit: vi.fn(),
     }),
   };
 });
@@ -259,6 +306,8 @@ function dispatchRecorded(target: Map<string, Set<() => void>>, type: string): v
 
 function installMinimalDom(): HTMLElement {
   const documentMock = {
+    // IntlProvider 会写 document.documentElement.lang；最小 DOM 需补齐该节点。
+    documentElement: { lang: "" },
     addEventListener: (type: string, listener: () => void) =>
       recordListener(domListeners.document, type, listener),
     removeEventListener: (type: string, listener: () => void) =>
@@ -430,7 +479,7 @@ async function renderExpiredCardPane(cardId: string, sourceCommandId: string): P
       createElement(
         CodezIntlProvider,
         { initialLocale: "zh-CN" },
-        createElement(SessionPane, {
+        createElement(SessionPaneWithTabStore, {
           paneId: "workspace-main",
           sessionId: "session-vis",
           workspacePath: "/workspace",

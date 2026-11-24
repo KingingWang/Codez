@@ -53,11 +53,16 @@ export function deleteConversationAnnotationWithUndo(options: {
 
 /** 时间线读取主 composer 作用域里的注释与已发送注释；存储里的数组引用稳定，可直接做快照。 */
 export function useConversationAnnotationScope(sessionId: string, workspaceKey: string) {
-  const references = useSyncExternalStore(subscribeConversationSelectionReferenceScopes, () =>
-    getConversationSelectionReferenceScope(sessionId, workspaceKey),
+  // SSR（renderToStaticMarkup）要求 getServerSnapshot：存储数组引用稳定，同一 getter 即可。
+  const references = useSyncExternalStore(
+    subscribeConversationSelectionReferenceScopes,
+    () => getConversationSelectionReferenceScope(sessionId, workspaceKey),
+    () => getConversationSelectionReferenceScope(sessionId, workspaceKey),
   );
-  const sent = useSyncExternalStore(subscribeConversationSelectionReferenceScopes, () =>
-    getSentConversationSelections(sessionId, workspaceKey),
+  const sent = useSyncExternalStore(
+    subscribeConversationSelectionReferenceScopes,
+    () => getSentConversationSelections(sessionId, workspaceKey),
+    () => getSentConversationSelections(sessionId, workspaceKey),
   );
   return { references, sent };
 }

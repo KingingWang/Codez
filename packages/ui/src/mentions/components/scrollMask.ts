@@ -9,6 +9,21 @@ export interface ScrollMetrics {
   scrollTop: number;
 }
 
+/** 底部锁定区阈值：距底 ≤2px 视为仍在底部，新内容继续自动跟随。 */
+export const BOTTOM_FOLLOWING_LOCK_DISTANCE_PX = 2;
+
+// 修复原因：fork 的 reasoning 底部跟随回归（reasoningLayout.test.ts）依赖
+// getReasoningBottomDistance/isReasoningScrollAtBottom 两个导出；上游 v4.0.0 把同一
+// 计算内联进 useBottomFollowingScroll 后丢失了导出。这里提取为共享纯函数，
+// reasoning.tsx 按 fork 名字再导出，hook 与回归共用同一事实源。
+export function getBottomFollowingDistance({ clientHeight, scrollHeight, scrollTop }: ScrollMetrics) {
+  return Math.max(0, scrollHeight - clientHeight - scrollTop);
+}
+
+export function isBottomFollowingLock(metrics: ScrollMetrics) {
+  return getBottomFollowingDistance(metrics) <= BOTTOM_FOLLOWING_LOCK_DISTANCE_PX;
+}
+
 export interface ScrollMaskState {
   showBottom: boolean;
   showTop: boolean;
@@ -84,7 +99,7 @@ export function useBottomFollowingScroll(active: boolean, contentVersion: unknow
   const onScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
-    followingRef.current = Math.max(0, el.scrollHeight - el.clientHeight - el.scrollTop) <= 2;
+    followingRef.current = isBottomFollowingLock(el);
     updateMask();
   }, [updateMask]);
   useEffect(() => {

@@ -52,10 +52,25 @@ vi.mock("@/i18n/IntlProvider.js", () => ({
   }),
 }));
 
-vi.mock("@/store/StoreProvider.js", () => ({
-  useCodezStore: (selector: (state: { isRestoringOAuthSession: boolean }) => unknown) =>
-    selector({ isRestoringOAuthSession: false }),
-}));
+// 上游 v4.0.0 起组件树还会从 StoreProvider 读取 StoreContext 等导出；
+// 用 importOriginal 保留真实导出，只覆盖 useCodezStore 的状态投影。
+vi.mock("@/store/StoreProvider.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/store/StoreProvider.js")>();
+  const { createContext } = await import("react");
+  // WorkspaceSidebarFooter 经 useSetInterfaceModeWithTelemetry 直接读 StoreContext；
+  // SSR 夹具没有真实 Provider，用带缺省 store 的 context 满足 getState/setInterfaceMode。
+  const storeStub = {
+    getState: () => ({ interfaceMode: "desktop", setInterfaceMode: () => {} }),
+    setState: () => {},
+    subscribe: () => () => {},
+  };
+  return {
+    ...actual,
+    StoreContext: createContext(storeStub),
+    useCodezStore: (selector: (state: { isRestoringOAuthSession: boolean }) => unknown) =>
+      selector({ isRestoringOAuthSession: false }),
+  };
+});
 
 vi.mock("@/hooks/useModelProviders.js", () => ({
   useModelProviders: () => ({

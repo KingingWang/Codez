@@ -450,7 +450,9 @@ describe("buildConversationStatusPanelModel", () => {
     ]);
   });
 
-  it("joins running Agent controls only by exact child session identity", () => {
+  // 设计变更：子智能体 Stop 资格由 running 投影的 stopControl 显式给出；
+  // 旧 backgroundWorks 联接会把另一条任务的控制柄误挂到目录行上（见模型注释），已移除。
+  it("running Agent 的停止资格来自 running 投影自身，backgroundWorks 不参与联接", () => {
     const model = buildConversationStatusPanelModel({
       backgroundWorks: [
         backgroundWork({
@@ -483,6 +485,7 @@ describe("buildConversationStatusPanelModel", () => {
           subagentType: "Explore",
           title: "相同标题",
           status: "running",
+          stopControl: { taskId: "child-match", executionId: "exec-match" },
         },
         {
           childSessionId: "child-disabled",
@@ -508,13 +511,10 @@ describe("buildConversationStatusPanelModel", () => {
     expect(model.runningSubagentWorks).toMatchObject([
       {
         childSessionId: "child-match",
-        controlWorkId: "agent-control-work",
-        cancellable: true,
+        stopControl: { taskId: "child-match", executionId: "exec-match" },
       },
       {
         childSessionId: "child-disabled",
-        controlWorkId: "agent-disabled-work",
-        cancellable: false,
       },
       {
         childSessionId: "child-foreground",
@@ -523,11 +523,14 @@ describe("buildConversationStatusPanelModel", () => {
         childSessionId: "child-ambiguous",
       },
     ]);
-    expect(model.runningSubagentWorks[2]).not.toHaveProperty("controlWorkId");
-    expect(model.runningSubagentWorks[3]).not.toHaveProperty("controlWorkId");
+    // 透传契约：不从 backgroundWorks 附加任何控制柄字段。
+    for (const work of model.runningSubagentWorks) {
+      expect(work).not.toHaveProperty("controlWorkId");
+      expect(work).not.toHaveProperty("cancellable");
+    }
   });
 
-  it("keeps a uniquely identified running Agent controllable while directory projection catches up", () => {
+  it("running 投影为空时不从 backgroundWorks 生成 Agent 行（目录补偿已下线）", () => {
     const model = buildConversationStatusPanelModel({
       backgroundWorks: [
         backgroundWork({
@@ -549,15 +552,7 @@ describe("buildConversationStatusPanelModel", () => {
       runningSubagents: [],
     });
 
-    expect(model.runningSubagentWorks).toEqual([
-      expect.objectContaining({
-        agentId: "agent-runtime-work",
-        childSessionId: "child-runtime",
-        controlWorkId: "agent-runtime-work",
-        status: "blocked",
-        title: "运行中的 Agent",
-      }),
-    ]);
+    expect(model.runningSubagentWorks).toEqual([]);
   });
 
   it("retains collapsed git tools for a clean repository without worktree line changes", () => {

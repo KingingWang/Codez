@@ -1,4 +1,4 @@
-import { createElement } from "react";
+import { createElement, type ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type {
@@ -8,11 +8,48 @@ import type {
   UserInputRow,
 } from "@codez/shared/codez-protocol-v4";
 import { SessionPane } from "@/v4/SessionPane.js";
+import { TabStoreProvider } from "@/store/TabStoreProvider.js";
 import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import type {
   OpenScopedSubagentSideTabRequest,
   OpenScopedWorkflowRunSideTabRequest,
 } from "@/lib/workspaceSidePane.js";
+
+// SSR（renderToStaticMarkup）下 zustand useStore 需要 getServerSnapshot；布局/只读断言不消费
+// tab 状态，这里让 useTabStore 直接读空回退 store 的快照，保持服务端渲染可用。
+vi.mock("@/store/TabStoreProvider.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/store/TabStoreProvider.js")>();
+  const { createTabStore } = await import("@/store/tabStore.js");
+  const fallback = createTabStore(null);
+  const readSnapshot = (selector: (state: never) => unknown) =>
+    selector(fallback.getState() as never);
+  return {
+    ...actual,
+    useTabStore: readSnapshot,
+    useOptionalTabStore: readSnapshot,
+    useTabStoreApi: () => fallback,
+  };
+});
+
+// fork worktree 特性使 SessionPane 经 useTaskWorktreePlacement → useIndexedTaskMeta →
+// useCodezTaskService → useWorkspaceServices 引入 useTabStore（要求 TabStoreProvider）。
+// 本文件不验证 worktree 语义，按仓库既有隔离做法桩掉该入口：普通任务恒可用、cwd 即 workspace。
+vi.mock("@/managed-worktrees/index.js", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    useTaskWorktreePlacement: ({ workspacePath }: { workspacePath: string }) => ({
+      cwd: workspacePath,
+      worktreeRoot: undefined,
+      worktreeAvailable: true,
+    }),
+  };
+});
+// SessionPane 的多个 hook（useSubagents、连接解析等）经 useTabStore 要求 TabStoreProvider；
+// 宿主渲染树统一包一层真实 Tab store（默认空 tab 状态），保持各文件既有服务桩不变。
+function SessionPaneWithTabStore(props: ComponentProps<typeof SessionPane>) {
+  return createElement(TabStoreProvider, null, createElement(SessionPane, props));
+}
 
 const projectionState = vi.hoisted(() => ({
   current: null as {
@@ -102,6 +139,26 @@ vi.mock("@/hooks/useServices.js", () => ({
   useComposerClientNamespace: () => "desktop",
   useOptionalServices: () => null,
   useServices: () => ({
+    // useSubagents 用 subagentsService 作 WeakMap authority 键并发起 list；给惰性桩避免 WeakMap 崩溃。
+    subagentsService: {
+      list: vi.fn(async () => ({ agents: [], capability: null })),
+      setEnabled: vi.fn(async () => {}),
+    },
+    // SessionPane 的 Highspeed owner effect 无守卫地订阅 oauthService.onDidChangeSession。
+    oauthService: {
+      onDidChangeSession: vi.fn(() => ({ dispose() {} })),
+    },
+    // AgentRuntimeExitBanner 等直接解构 codezAgentService；给惰性桩避免 undefined 成员访问。
+    codezAgentService: {
+      onAgentRuntimeExited: vi.fn(() => ({ dispose() {} })),
+      onDynamicPluginStartupDegraded: vi.fn(() => () => ({ dispose() {} })),
+    },
+    // SessionPane 无条件读取 highspeedCardService；给惰性桩避免 effect TypeError。
+    highspeedCardService: {
+      getCurrentOwnerKey: vi.fn(async () => null),
+      invalidateCard: vi.fn(async () => {}),
+      getSnapshot: vi.fn(() => new Promise(() => {})),
+    },
     codezSessionService: {},
     codezTaskService: {
       restartWorkspaceProcess: vi.fn(),
@@ -121,6 +178,19 @@ vi.mock("@/v4/composer/useDraftConfigControl.js", () => ({
     handleDraftSelectModel: vi.fn(),
     handleDraftSelectThought: vi.fn(),
     handleDraftSwitchMode: vi.fn(),
+    // 上游 v4.0.0 扩充了 hook 返回形状（composerDraft/staging 等）；SessionPane 会解构消费，
+    // 本文件不验证这些语义，按惰性缺省补齐，保持既有字段原值。
+    composerDraft: {},
+    composerDraftScopeToken: undefined,
+    stageComposerContent: vi.fn(),
+    captureComposerContentLifecycleCommit: vi.fn(),
+    captureComposerSubmissionDraftTransaction: vi.fn(),
+    persistComposerContent: vi.fn(),
+    updateComposerContent: vi.fn(),
+    replaceComposerDraft: vi.fn(),
+    promoteComposerDraft: () => true,
+    observeDraftPermissionGrant: vi.fn(),
+    keepEditConfigOnExit: vi.fn(),
   }),
 }));
 
@@ -362,7 +432,7 @@ function renderPane({
     createElement(
       CodezIntlProvider,
       { initialLocale: "zh-CN" },
-      createElement(SessionPane, {
+      createElement(SessionPaneWithTabStore, {
         paneId: "workspace-main",
         sessionId,
         workspacePath: "/workspace",
@@ -665,7 +735,9 @@ describe("SessionPane v4 chat layout parity", () => {
     expect(onSummaryPanelVariantOverrideChange).toHaveBeenCalledWith("panel");
   });
 
-  it("keeps the Composer Agent count while the directory projection catches up", () => {
+  // 设计变更：Composer 的 Agent 计数只跟随 running 投影（子智能体 Stop 资格由投影显式给出），
+  // backgroundWorks 不再参与补偿计数；投影追上后计数由投影恢复。
+  it("Composer Agent 计数只跟随 running 投影，不由 backgroundWorks 补偿", () => {
     const snapshot = makeSnapshot({
       backgroundWorks: [
         {
@@ -687,7 +759,26 @@ describe("SessionPane v4 chat layout parity", () => {
     });
 
     renderPane({ snapshot });
-    const composerProps = statusPanelCapture.composerProps.at(-1);
+    let composerProps = statusPanelCapture.composerProps.at(-1);
+    expect(composerProps?.runningSubagentCount).toBe(0);
+
+    const caughtUp = makeSnapshot({
+      subagents: {
+        revision: 3,
+        childSessionIds: ["child-session"],
+        running: [
+          {
+            childSessionId: "child-session",
+            subagentType: "Explore",
+            title: "后台分析",
+            status: "running",
+          },
+        ],
+        endedTotal: 0,
+      },
+    });
+    renderPane({ snapshot: caughtUp });
+    composerProps = statusPanelCapture.composerProps.at(-1);
     expect(composerProps?.runningSubagentCount).toBe(1);
     expect(composerProps?.onOpenRunningBackgroundWorks).toEqual(expect.any(Function));
   });

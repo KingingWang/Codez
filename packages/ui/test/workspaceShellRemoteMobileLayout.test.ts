@@ -5,6 +5,16 @@ import type { V4ChatPaneProps } from "@/v4/V4ChatPane.js";
 import { V4_PRIMARY_PANE_ID } from "@/v4/paneLayoutStore.js";
 import { useWorkbenchGroupStore } from "@/v4/workbenchGroupStore.js";
 
+// fork worktree 入口经 useWorktreeSupport → useServices（要求 ServiceProvider）；
+// 本文件 SSR 渲染不验证 worktree 入口，按既有隔离做法桩掉为隐藏态。
+vi.mock("@/managed-worktrees/index.js", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    useWorktreeSupport: () => ({ visible: false, available: false }),
+  };
+});
+
 vi.mock("@/app-shell/AnimatedSidePanePanel.js", () => ({
   AnimatedSidePanePanel: ({
     isVisible,
@@ -179,6 +189,9 @@ vi.mock("@/hooks/useWorkspaceServices.js", () => ({
   useBaseWorkspaceServices: () => ({}),
   // 布局断言不启动远端挂回；保留 services resolver 的本地 ready 合同。
   useWorkspaceServicesResolution: () => ({ services: {}, connectionKind: "local-ready" }),
+  // useDraftConfigControl 等消费者还会读取这两个导出；布局断言不消费服务，给惰性桩。
+  useWorkspaceServices: () => ({ services: {} }),
+  useOptionalBaseWorkspaceServices: () => undefined,
 }));
 
 vi.mock("@/store/TabStoreProvider.js", () => ({
@@ -431,6 +444,9 @@ describe("WorkspaceShellLayout Web remote control mobile layout", () => {
       capturedChatPaneProps.length = 0;
       vi.stubGlobal("window", {
         innerHeight: 800,
+        // browserRecentVisitsStore 等模块在导入期向 window 挂 storage 监听；桩 window 需具备事件方法。
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
         matchMedia: vi.fn(() => ({
           addEventListener: vi.fn(),
           addListener: vi.fn(),
@@ -669,6 +685,9 @@ describe("WorkspaceShellLayout Web remote control mobile layout", () => {
   it("renders the dedicated mobile task shell on Web remote control mobile viewports", async () => {
     vi.stubGlobal("window", {
       innerHeight: 800,
+      // browserRecentVisitsStore 等模块在导入期向 window 挂 storage 监听；桩 window 需具备事件方法。
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
       matchMedia: vi.fn(() => ({
         addEventListener: vi.fn(),
         addListener: vi.fn(),
@@ -700,6 +719,9 @@ describe("WorkspaceShellLayout Web remote control mobile layout", () => {
     capturedChatPaneProps.length = 0;
     vi.stubGlobal("window", {
       innerHeight: 800,
+      // browserRecentVisitsStore 等模块在导入期向 window 挂 storage 监听；桩 window 需具备事件方法。
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
       matchMedia: vi.fn(() => ({
         addEventListener: vi.fn(),
         addListener: vi.fn(),
@@ -734,6 +756,9 @@ describe("WorkspaceShellLayout Web remote control mobile layout", () => {
     const handleOpenPlanDetail = vi.fn();
     vi.stubGlobal("window", {
       innerHeight: 800,
+      // browserRecentVisitsStore 等模块在导入期向 window 挂 storage 监听；桩 window 需具备事件方法。
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
       matchMedia: vi.fn(() => ({
         addEventListener: vi.fn(),
         addListener: vi.fn(),
@@ -766,6 +791,9 @@ describe("WorkspaceShellLayout Web remote control mobile layout", () => {
   it("passes side pane content as a right-side overlay into the dedicated mobile chat shell", async () => {
     vi.stubGlobal("window", {
       innerHeight: 800,
+      // browserRecentVisitsStore 等模块在导入期向 window 挂 storage 监听；桩 window 需具备事件方法。
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
       matchMedia: vi.fn(() => ({
         addEventListener: vi.fn(),
         addListener: vi.fn(),
@@ -817,6 +845,9 @@ describe("WorkspaceShellLayout Web remote control mobile layout", () => {
   it("routes mobile task find through the shell overlay instead of chat content", async () => {
     vi.stubGlobal("window", {
       innerHeight: 800,
+      // browserRecentVisitsStore 等模块在导入期向 window 挂 storage 监听；桩 window 需具备事件方法。
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
       matchMedia: vi.fn(() => ({
         addEventListener: vi.fn(),
         addListener: vi.fn(),
@@ -956,6 +987,9 @@ describe("WorkspaceShellLayout Web remote control mobile layout", () => {
   it("does not inject the workspace header into mobile remote chat while a new task draft is active", async () => {
     vi.stubGlobal("window", {
       innerHeight: 800,
+      // browserRecentVisitsStore 等模块在导入期向 window 挂 storage 监听；桩 window 需具备事件方法。
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
       matchMedia: vi.fn(() => ({
         addEventListener: vi.fn(),
         addListener: vi.fn(),

@@ -24,6 +24,11 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("@/hooks/useWorkspaceServices.js", () => ({
   useBaseWorkspaceServices: () => ({ windowControllerService: mocks, codezTaskService: {} }),
+  // 上游 v4.0.0 的 useDraftConfigControl 等消费者改读 optional 形态；给同一桩。
+  useOptionalBaseWorkspaceServices: () => ({
+    windowControllerService: mocks,
+    codezTaskService: {},
+  }),
 }));
 vi.mock("@/hooks/useResolvedRemoteWorkspaceSessionId.js", () => ({
   useResolvedRemoteWorkspaceSessionId: () => null,

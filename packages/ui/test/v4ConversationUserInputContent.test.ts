@@ -3,12 +3,28 @@
 import { fireEvent, render } from "@testing-library/react";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   ConversationUserInputContent,
   parseV4UserInputGoalQuery,
 } from "@/v4/ConversationUserInputContent.js";
 import { PluginReferenceIconProvider } from "@/v4/pluginReferenceIconContext.js";
+
+// 组件链路新增了 useCodezIntl 消费（上游 i18n 演进）；SSR 夹具不挂真实 Provider，
+// 用 id 直返的 intl 桩满足渲染，不断言翻译文案。
+vi.mock("@/i18n/IntlProvider.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/i18n/IntlProvider.js")>();
+  return {
+    ...actual,
+    useCodezIntl: () => ({
+      intl: {
+        formatMessage: ({ id }: { id: string }, values?: Record<string, unknown>) =>
+          values ? `${id} ${JSON.stringify(values)}` : id,
+      },
+      locale: "zh-CN",
+    }),
+  };
+});
 
 function pluginContent(text: string, iconByPluginId: ReadonlyMap<string, string>) {
   return createElement(

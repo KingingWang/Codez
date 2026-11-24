@@ -44,6 +44,15 @@ function captureComposerRecentSubmission(...args: Parameters<typeof captureScope
   );
 }
 import { resolveImportedComposerConfig } from "@/v4/composer/newTaskDraft.js";
+
+// 动态插件启动降级订阅经 useCodezAgentService → useWorkspaceServices → useServices
+// （要求 ServiceProvider）；本文件不验证降级提示，按仓库既有隔离做法桩掉该入口。
+vi.mock("@/hooks/useCodezAgentService.js", () => ({
+  useCodezAgentService: () => ({
+    // 订阅返回 { dispose }；hook 在 cleanup 时调用 subscription.dispose()。
+    onDynamicPluginStartupDegraded: () => () => ({ dispose() {} }),
+  }),
+}));
 function activateImportedSession(result: Parameters<typeof resolveImportedComposerConfig>[0]) {
   useCodezSessionStore
     .getState()
@@ -212,6 +221,8 @@ function createMinimalElement(ownerDocument: Document, tagName = "div") {
 function installMinimalDom() {
   const storage = new Map<string, string>();
   const documentMock = {
+    // IntlProvider 会写 document.documentElement.lang；最小 DOM 需补齐该节点。
+    documentElement: { lang: "" },
     addEventListener: () => {},
     createElement: (tagName: string) =>
       createMinimalElement(documentMock as unknown as Document, tagName),

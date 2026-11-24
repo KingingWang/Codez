@@ -6,6 +6,34 @@ import { ConversationComposer } from "@/v4/ConversationComposer.js";
 import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
 import { RemoteConversationAvailability } from "@/v4/RemoteConversationAvailability.js";
 
+// 上游 v4.0.0 语音输入 hook 经 useBaseWorkspaceServices → useServices（要求 ServiceProvider）；
+// 本文件不验证语音输入，按仓库既有隔离做法桩掉整个入口：恒不可用态。
+vi.mock("@/voice-input/index.js", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    useComposerVoiceInput: () => ({
+      available: false,
+      state: "idle",
+      toggle: () => {},
+      settle: () => {},
+      subscribeLevel: () => () => {},
+      permissionGuide: {
+        phase: null,
+        os: "mac",
+        available: false,
+        busy: false,
+        show: () => {},
+        close: () => {},
+        openSettings: () => {},
+        reauthorize: () => {},
+        relaunch: () => {},
+      },
+    }),
+    useVoiceInputShortcut: () => "",
+  };
+});
+
 const captured = vi.hoisted(() => ({
   chatErrorBannerProps: null as Record<string, unknown> | null,
   chatPromptEditorProps: null as Record<string, unknown> | null,

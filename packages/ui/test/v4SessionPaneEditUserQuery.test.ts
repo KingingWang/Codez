@@ -1,4 +1,5 @@
 import { act, createElement, Fragment, type ReactNode } from "react";
+import type { ComponentProps } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
@@ -10,7 +11,28 @@ import type {
   V4ConversationFileChangesResult,
 } from "@codez/shared/codez-protocol-v4";
 import { SessionPane } from "@/v4/SessionPane.js";
+import { TabStoreProvider } from "@/store/TabStoreProvider.js";
 import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
+
+// fork worktree 特性使 SessionPane 经 useTaskWorktreePlacement → useIndexedTaskMeta →
+// useCodezTaskService → useWorkspaceServices 引入 useTabStore（要求 TabStoreProvider）。
+// 本文件不验证 worktree 语义，按仓库既有隔离做法桩掉该入口：普通任务恒可用、cwd 即 workspace。
+vi.mock("@/managed-worktrees/index.js", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    useTaskWorktreePlacement: ({ workspacePath }: { workspacePath: string }) => ({
+      cwd: workspacePath,
+      worktreeRoot: undefined,
+      worktreeAvailable: true,
+    }),
+  };
+});
+// SessionPane 的多个 hook（useSubagents、连接解析等）经 useTabStore 要求 TabStoreProvider；
+// 宿主渲染树统一包一层真实 Tab store（默认空 tab 状态），保持各文件既有服务桩不变。
+function SessionPaneWithTabStore(props: ComponentProps<typeof SessionPane>) {
+  return createElement(TabStoreProvider, null, createElement(SessionPane, props));
+}
 
 const {
   draftConfigMock,
@@ -92,6 +114,20 @@ const projectionState = vi.hoisted(() => ({
 }));
 
 const servicesMock = vi.hoisted(() => ({
+  // useSubagents 用 subagentsService 作 WeakMap authority 键并发起 list；给惰性桩避免 WeakMap 崩溃。
+  subagentsService: {
+    list: vi.fn(async () => ({ agents: [], capability: null })),
+    setEnabled: vi.fn(async () => {}),
+  },
+  // SessionPane 的 Highspeed owner effect 无守卫地订阅 oauthService.onDidChangeSession。
+  oauthService: {
+    onDidChangeSession: vi.fn(() => ({ dispose() {} })),
+  },
+  // AgentRuntimeExitBanner 等直接解构 codezAgentService；给惰性桩避免 undefined 成员访问。
+  codezAgentService: {
+    onAgentRuntimeExited: vi.fn(() => ({ dispose() {} })),
+    onDynamicPluginStartupDegraded: vi.fn(() => () => ({ dispose() {} })),
+  },
   projectService: {
     resolveSessionDirectories: vi.fn(async (task) => ({
       ...task,
@@ -108,7 +144,10 @@ const servicesMock = vi.hoisted(() => ({
     })),
     healthy: vi.fn(),
     share: vi.fn(),
-  },
+  
+      getCurrentOwnerKey: vi.fn(async () => null),
+      invalidateCard: vi.fn(async () => {}),
+    },
   // 修复原因：readiness hook 将 service 作为 effect 依赖；每次 render 重建会导致无限重渲染直至 OOM。
   codezSessionService: {
     updateProviderRegistry: vi.fn(),
@@ -189,6 +228,19 @@ vi.mock("@/v4/composer/useDraftConfigControl.js", () => ({
     handleDraftSelectThought: vi.fn(),
     handleDraftSwitchMode: vi.fn(),
     resolveInitialDraftConfig: vi.fn(),
+    // 上游 v4.0.0 扩充了 hook 返回形状（composerDraft/staging 等）；SessionPane 会解构消费，
+    // 本文件不验证这些语义，按惰性缺省补齐，保持既有字段原值。
+    composerDraft: {},
+    composerDraftScopeToken: undefined,
+    stageComposerContent: vi.fn(),
+    captureComposerContentLifecycleCommit: vi.fn(),
+    captureComposerSubmissionDraftTransaction: vi.fn(),
+    persistComposerContent: vi.fn(),
+    updateComposerContent: vi.fn(),
+    replaceComposerDraft: vi.fn(),
+    promoteComposerDraft: () => true,
+    observeDraftPermissionGrant: vi.fn(),
+    keepEditConfigOnExit: vi.fn(),
   }),
 }));
 
@@ -302,6 +354,8 @@ function createMinimalElement(ownerDocument: Document, tagName = "div") {
 
 function installMinimalDom() {
   const documentMock = {
+    // IntlProvider 会写 document.documentElement.lang；最小 DOM 需补齐该节点。
+    documentElement: { lang: "" },
     addEventListener: () => {},
     createElement: (tagName: string) =>
       createMinimalElement(documentMock as unknown as Document, tagName),
@@ -456,7 +510,7 @@ describe("SessionPane user query editing", () => {
         createElement(
           CodezIntlProvider,
           { initialLocale: "zh-CN" },
-          createElement(SessionPane, {
+          createElement(SessionPaneWithTabStore, {
             paneId: "pane-2",
             sessionId: "session-1",
             workspaceIdentity: "ssh://demo",
@@ -495,7 +549,7 @@ describe("SessionPane user query editing", () => {
       createElement(
         CodezIntlProvider,
         { initialLocale: "zh-CN" },
-        createElement(SessionPane, {
+        createElement(SessionPaneWithTabStore, {
           paneId: "workspace-main",
           sessionId: "session-1",
           workspacePath: "/workspace",
@@ -581,7 +635,7 @@ describe("SessionPane user query editing", () => {
       createElement(
         CodezIntlProvider,
         { initialLocale: "zh-CN" },
-        createElement(SessionPane, {
+        createElement(SessionPaneWithTabStore, {
           paneId: "workspace-main",
           sessionId: "session-1",
           workspacePath: "/workspace",
@@ -664,7 +718,7 @@ describe("SessionPane user query editing", () => {
         createElement(
           CodezIntlProvider,
           { initialLocale: "zh-CN" },
-          createElement(SessionPane, {
+          createElement(SessionPaneWithTabStore, {
             paneId: "workspace-main",
             sessionId: "session-1",
             workspacePath: "/workspace",
@@ -718,7 +772,7 @@ describe("SessionPane user query editing", () => {
       createElement(
         CodezIntlProvider,
         { initialLocale: "zh-CN" },
-        createElement(SessionPane, {
+        createElement(SessionPaneWithTabStore, {
           paneId: "workspace-main",
           sessionId: "session-1",
           workspacePath: "/workspace",
@@ -805,7 +859,7 @@ describe("SessionPane user query editing", () => {
         createElement(
           CodezIntlProvider,
           { initialLocale: "zh-CN" },
-          createElement(SessionPane, {
+          createElement(SessionPaneWithTabStore, {
             paneId: "workspace-main",
             sessionId: "session-1",
             workspacePath: "/workspace",
@@ -859,7 +913,7 @@ describe("SessionPane user query editing", () => {
           createElement(
             CodezIntlProvider,
             { initialLocale: "zh-CN" },
-            createElement(SessionPane, {
+            createElement(SessionPaneWithTabStore, {
               paneId: "workspace-main",
               sessionId: "session-1",
               workspacePath: "/workspace",
@@ -906,7 +960,7 @@ describe("SessionPane user query editing", () => {
         createElement(
           CodezIntlProvider,
           { initialLocale: "zh-CN" },
-          createElement(SessionPane, {
+          createElement(SessionPaneWithTabStore, {
             paneId: "workspace-main",
             sessionId: "session-1",
             workspacePath: "/workspace",
@@ -956,7 +1010,7 @@ describe("SessionPane user query editing", () => {
         createElement(
           CodezIntlProvider,
           { initialLocale: "zh-CN" },
-          createElement(SessionPane, {
+          createElement(SessionPaneWithTabStore, {
             paneId: "workspace-main",
             sessionId: "session-1",
             workspacePath: "/workspace",
@@ -1001,7 +1055,7 @@ describe("SessionPane user query editing", () => {
         createElement(
           CodezIntlProvider,
           { initialLocale: "zh-CN" },
-          createElement(SessionPane, {
+          createElement(SessionPaneWithTabStore, {
             paneId: "workspace-main",
             sessionId: "session-1",
             workspacePath: "/workspace",
@@ -1084,7 +1138,7 @@ describe("SessionPane user query editing", () => {
           createElement(
             CodezIntlProvider,
             { initialLocale: "zh-CN" },
-            createElement(SessionPane, {
+            createElement(SessionPaneWithTabStore, {
               paneId: "workspace-main",
               sessionId: "session-1",
               workspacePath: "/workspace",
@@ -1183,7 +1237,7 @@ describe("SessionPane user query editing", () => {
         createElement(
           CodezIntlProvider,
           { initialLocale: "zh-CN" },
-          createElement(SessionPane, {
+          createElement(SessionPaneWithTabStore, {
             paneId: "workspace-main",
             sessionId: "session-1",
             workspacePath: "/workspace",
@@ -1296,7 +1350,7 @@ describe("SessionPane user query editing", () => {
         createElement(
           CodezIntlProvider,
           { initialLocale: "zh-CN" },
-          createElement(SessionPane, {
+          createElement(SessionPaneWithTabStore, {
             paneId: "workspace-main",
             sessionId: "session-1",
             workspacePath: "/workspace",
@@ -1344,7 +1398,7 @@ describe("SessionPane user query editing", () => {
         createElement(
           CodezIntlProvider,
           { initialLocale: "zh-CN" },
-          createElement(SessionPane, {
+          createElement(SessionPaneWithTabStore, {
             paneId: "workspace-main",
             sessionId: "session-1",
             workspacePath: "/workspace",
@@ -1398,7 +1452,7 @@ describe("SessionPane user query editing", () => {
         createElement(
           CodezIntlProvider,
           { initialLocale: "zh-CN" },
-          createElement(SessionPane, {
+          createElement(SessionPaneWithTabStore, {
             paneId: "workspace-main",
             sessionId: "session-1",
             workspacePath: "/workspace",
@@ -1452,7 +1506,7 @@ describe("SessionPane user query editing", () => {
         createElement(
           CodezIntlProvider,
           { initialLocale: "zh-CN" },
-          createElement(SessionPane, {
+          createElement(SessionPaneWithTabStore, {
             paneId: "workspace-main",
             sessionId: "session-1",
             workspacePath: "/workspace",
@@ -1493,7 +1547,7 @@ describe("SessionPane user query editing", () => {
         createElement(
           CodezIntlProvider,
           { initialLocale: "zh-CN" },
-          createElement(SessionPane, {
+          createElement(SessionPaneWithTabStore, {
             paneId: "workspace-main",
             sessionId: "session-1",
             workspacePath: "/workspace",

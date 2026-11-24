@@ -17,6 +17,13 @@ import { useCodezIntl } from "@/i18n/IntlProvider.js";
 import { QueuedSummaryContent } from "@/ToolCallBlocks/QueuedSummaryContent.js";
 import type { ComponentProps, CSSProperties, ReactNode } from "react";
 import { useBottomFollowingScroll } from "@/mentions/components/scrollMask.js";
+
+// fork 底部跟随回归契约（reasoningLayout.test.ts）：按历史名字导出共享 scroll helper，
+// 与 useBottomFollowingScroll 的判定保持同一事实源（scrollMask.ts）。
+export {
+  getBottomFollowingDistance as getReasoningBottomDistance,
+  isBottomFollowingLock as isReasoningScrollAtBottom,
+} from "@/mentions/components/scrollMask.js";
 import {
   createContext,
   memo,

@@ -50,9 +50,18 @@ it.each([
   expect(feedback.toast).toHaveBeenCalledTimes(visible ? 1 : 0);
   expect(feedback.error).toHaveBeenCalledTimes(visible ? 1 : 0);
 });
-vi.mock("@/store/TabStoreProvider.js", () => ({
-  useTabStore: (select: (state: unknown) => unknown) => select({ activeWorkspaceIdentity: null }),
-}));
+// 导航链路还会经 useProjectTaskNavigation 读取 useTabStoreApi；用真实空 store 提供
+// 完整状态与 API（getState/subscribe/setState），避免手写子集缺字段。
+vi.mock("@/store/TabStoreProvider.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/store/TabStoreProvider.js")>();
+  const { createTabStore } = await import("@/store/tabStore.js");
+  const store = createTabStore(null);
+  return {
+    ...actual,
+    useTabStore: (select: (state: unknown) => unknown) => select(store.getState()),
+    useTabStoreApi: () => store,
+  };
+});
 it("keeps the row action stable across tree refreshes and uses the latest navigation callback", async () => {
   const first = vi.fn();
   const second = vi.fn();

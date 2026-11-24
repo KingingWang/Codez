@@ -26,6 +26,34 @@ import type {
 } from "@codez/shared/codez-protocol-v4";
 import type { ComposerSubmissionConfig } from "@/v4/composer/composerSubmissionConfig.js";
 
+// 上游 v4.0.0 语音输入 hook 经 useBaseWorkspaceServices → useServices（要求 ServiceProvider）；
+// 本文件不验证语音输入，按仓库既有隔离做法桩掉整个入口：恒不可用态。
+vi.mock("@/voice-input/index.js", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    useComposerVoiceInput: () => ({
+      available: false,
+      state: "idle",
+      toggle: () => {},
+      settle: () => {},
+      subscribeLevel: () => () => {},
+      permissionGuide: {
+        phase: null,
+        os: "mac",
+        available: false,
+        busy: false,
+        show: () => {},
+        close: () => {},
+        openSettings: () => {},
+        reauthorize: () => {},
+        relaunch: () => {},
+      },
+    }),
+    useVoiceInputShortcut: () => "",
+  };
+});
+
 const { attachmentState, chatPromptEditorProps, dialogOpenStates, inputClear, inputSetText } =
   vi.hoisted(() => ({
     attachmentState: {
@@ -233,6 +261,8 @@ function createStorageMock(): Storage {
 function installMinimalDom() {
   const target = new EventTarget();
   const documentMock = {
+    // IntlProvider 会写 document.documentElement.lang；最小 DOM 需补齐该节点。
+    documentElement: { lang: "" },
     addEventListener: () => {},
     createComment: (nodeValue: string) => ({
       nodeType: 8,

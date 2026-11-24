@@ -236,6 +236,16 @@ export function countUnreadTasksSinceBaseline(
   return count;
 }
 
+/**
+ * 全量未读口径：与基线角标（countUnreadTasksSinceBaseline）共用 selectUnreadProjectRows，
+ * 过滤与去重规则与侧栏蓝点一致（非归档 + 有 unreadAt + host/workspace/task 去重）。
+ * 蓝点=全部未读、任务栏角标=本次运行新增；本函数提供前者合计（回归口径见
+ * projectSidebarViewCount.test.ts）。
+ */
+export function countProjectTreeUnreadTasks(tree: ProjectTree): number {
+  return selectUnreadProjectRows(tree).length;
+}
+
 function unreadTaskKey(task: ProjectTask): string {
   return JSON.stringify([
     task.hostId,

@@ -166,11 +166,15 @@ export function useProjectTaskNavigation(
         .catch((error): ProjectTaskNavigationResult => {
           // Bug 原因：首连等待期间连点任务，被替代的旧点击会抛 navigation-cancelled，或与新点击共享
           // 同一连接失败，每次都弹错误。被替代是用户的新意图，结果只由最新导航提示。
+          // 修复原因：rebase 重构时曾把取消分类退化为只认 navigation-cancelled 字面量，
+          // bind canceled / AbortError / remote-connection-canceled 会误弹错误提示；
+          // 恢复统一走 isProjectNavigationCanceledError（与 remote-navigation 合同一致）。
           if (
             options?.signal?.aborted ||
             supersededByNavigation ||
             sequence.current !== request ||
-            (error instanceof Error && error.message === "project.navigation-cancelled")
+            (error instanceof Error && error.message === "project.navigation-cancelled") ||
+            isProjectNavigationCanceledError(error)
           )
             return cancelled;
           logger.error("[project-sidebar] 打开任务失败", error);

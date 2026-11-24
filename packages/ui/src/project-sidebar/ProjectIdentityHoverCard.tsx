@@ -147,6 +147,9 @@ export function ProjectIdentityHoverCard({
         role="tooltip"
         side="right"
         align="start"
+        // 旧 RemoteIdentityHoverCard 的键盘可达性合同：Escape 立即关闭详情。
+        // 受控 open 不经过 Radix 的默认关闭链路，必须显式接回。
+        onEscapeKeyDown={() => changeOpen(false)}
         onPointerEnter={(event) => {
           event.preventDefault();
           overDetails.current = true;

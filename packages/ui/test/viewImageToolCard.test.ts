@@ -9,6 +9,8 @@ import { createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ToolCallRow } from "@codez/shared/codez-protocol-v4";
 import { CodezIntlProvider } from "@/i18n/IntlProvider.js";
+// 上游 v4.0.0 起工具卡内部使用受控 Tooltip（radix 要求外层 TooltipProvider）。
+import { TooltipProvider } from "@/components/ui/tooltip.js";
 import { AgentToolCallBlock } from "@/ToolCallBlocks/renderers/agent.js";
 import { McpToolCallBlock } from "@/ToolCallBlocks/renderers/mcp.js";
 import { buildReadSummary, ReadToolCallBlock } from "@/ToolCallBlocks/renderers/read.js";
@@ -93,8 +95,12 @@ describe("codex view_image tool card seam", () => {
         CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(
-          ReadToolCallBlock as never,
-          buildContext(node, { onOpenCodeViewer }) as never,
+          TooltipProvider,
+          null,
+          createElement(
+            ReadToolCallBlock as never,
+            buildContext(node, { onOpenCodeViewer }) as never,
+          ),
         ),
       ),
     );
@@ -190,8 +196,12 @@ describe("codex view_image tool card seam", () => {
         CodezIntlProvider,
         { initialLocale: "en-US" },
         createElement(
-          McpToolCallBlock as never,
-          buildContext(node, { forceOpen: true, canToggle: true }) as never,
+          TooltipProvider,
+          null,
+          createElement(
+            McpToolCallBlock as never,
+            buildContext(node, { forceOpen: true, canToggle: true }) as never,
+          ),
         ),
       ),
     );

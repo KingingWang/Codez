@@ -448,7 +448,19 @@ it.each([false, true])("头部读取项目错误/恢复事实（恢复=%s）", a
 const headerDirectory = vi.hoisted(() => ({ current: null as unknown }));
 vi.mock("@/project-sidebar/index.js", () => ({
   useOptionalProjectDirectory: () => headerDirectory.current,
+  // 上游 v4.0.0 把标题区改读 selection 目录（避免展开偏好触发重渲染）；共用同一夹具。
+  useOptionalProjectSelectionDirectory: () => headerDirectory.current,
 }));
+
+// data-sync 入口的 available 还要求 DataSyncDialogProvider 的 openDialog；SSR 夹具没有
+// 该 Provider，这里桩成可用，保留真实的 sourceServerId 解析与菜单项渲染。
+vi.mock("@/data-sync/index.js", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    useDataSyncEntry: () => ({ available: true, open: () => {}, dialog: null }),
+  };
+});
 
 it("远控 Header 从身份索引读取连接并从同一 Host 读取名称，连接换代和删除会更新", async () => {
   const identity = "remote:server:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb:/srv";

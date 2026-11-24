@@ -14,6 +14,22 @@ import { CallCard } from "@/ModelTrajectoryPaneParts.js";
 import { TrajectorySearchRevealContext } from "@/ModelTrajectorySearch.js";
 import { trajectoryToolOutputs } from "@/ModelTrajectoryToolPayload.js";
 
+// 组件链路新增了 useCodezIntl 消费（上游 i18n 演进）；SSR 夹具不挂真实 Provider，
+// 用 id 直返的 intl 桩满足渲染，不断言翻译文案。
+vi.mock("@/i18n/IntlProvider.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/i18n/IntlProvider.js")>();
+  return {
+    ...actual,
+    useCodezIntl: () => ({
+      intl: {
+        formatMessage: ({ id }: { id: string }, values?: Record<string, unknown>) =>
+          values ? `${id} ${JSON.stringify(values)}` : id,
+      },
+      locale: "zh-CN",
+    }),
+  };
+});
+
 const messages: Record<string, string> = {
   "modelTrajectory.inputSection": "输入",
   "modelTrajectory.attempt": "第 {attempt} 次尝试",

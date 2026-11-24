@@ -121,6 +121,8 @@ function installMinimalDom() {
   const windowTarget = new EventTarget();
   const documentTarget = new EventTarget();
   const documentMock = {
+    // IntlProvider 会写 document.documentElement.lang；最小 DOM 需补齐该节点。
+    documentElement: { lang: "" },
     addEventListener: documentTarget.addEventListener.bind(documentTarget),
     createComment: () => ({ nodeType: 8, parentNode: null }),
     createElement: () => createMinimalElement(documentMock as unknown as Document),
