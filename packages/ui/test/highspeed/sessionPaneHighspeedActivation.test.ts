@@ -36,6 +36,14 @@ function SessionPaneWithTabStore(props: ComponentProps<typeof SessionPane>) {
 
 // spec §9.2：激活动效只属于本端发送路径的 draw 新命中；切回、恢复与同卡复用都按 restore 呈现。
 
+// 编辑重发用例需要一个「可提交」的 composer 配置（见 armComposerSubmission）；
+// 其余用例保持原来的 loading/空配置，避免改动 sendText 路径上的既有门禁行为。
+const draftConfigMock = vi.hoisted(() => ({
+  modelSelectionState: { status: "loading" } as Record<string, unknown>,
+  draftConfig: {} as Record<string, unknown>,
+  editableRow: false,
+}));
+
 const { composerProps, layerMock, sendCommandMock, timelineProps } = vi.hoisted(() => ({
   composerProps: [] as Array<{
     highspeedCard?: HighspeedCardSnapshot | null;
@@ -47,6 +55,8 @@ const { composerProps, layerMock, sendCommandMock, timelineProps } = vi.hoisted(
     acquire: vi.fn(() => ({
       store: {
         markCommandPending: vi.fn(),
+        // editUserQuery 的 ACK 早于 replacement 行时要等编辑呈现；缺这个方法会直接 TypeError。
+        waitForEditPresentation: vi.fn(async () => {}),
         expectAcceptedInputProjection: vi.fn(),
         recoverFromStaleAuthority: vi.fn(),
         onOnlineModelTransition: vi.fn(() => () => {}),
@@ -172,6 +182,12 @@ vi.mock("@/app-shell/useWorkspaceSessionReload.js", async (importOriginal) => {
   return { ...actual, useSessionRuntimeRestart: () => sessionRuntimeRestartStub };
 });
 
+// 最小 DOM 没有 body / requestAnimationFrame，真实 toast() 会在 ensureHost 里抛 TypeError，
+// 把用例真正的断言失败盖掉（编辑提交被 blocked 时 SessionPane 会弹「保存失败」）。
+// 这里桩掉 toast，只保留“是否弹过提示”的可观测性。
+const toastMock = vi.hoisted(() => vi.fn());
+vi.mock("@/components/ui/toast.js", () => ({ toast: toastMock }));
+
 vi.mock("@/hooks/useStartPlanRecommendation.js", () => ({
   useStartPlanRecommendation: () => startPlanRecommendation.recommend,
 }));
@@ -215,12 +231,16 @@ vi.mock("@/store/StoreProvider.js", () => ({
   useCodezStoreWithDefault: (_selector: unknown, fallback: unknown) => fallback,
 }));
 
-vi.mock("@/v4/composer/useDraftConfigControl.js", () => ({
+vi.mock("@/v4/composer/useDraftConfigControl.js", () => {
+  return {
   buildDraftCreateConfigPayload: () => ({}),
   useDraftConfigControl: () => ({
-    modelSelectionRead: { state: { status: "loading" }, reload: vi.fn() },
+    // 对齐现状：editUserQuery 与普通发送共用 fail-closed 提交门禁，
+    // createComposerSubmissionConfig 需要 draftConfig 带有效 modelSelection 且 View 能校验它，
+    // 否则 handleEdit 直接 blocked，一条命令都不会发（激活动效也就无从登记）。
+    modelSelectionRead: { state: draftConfigMock.modelSelectionState, reload: vi.fn() },
     captureAcceptedModelSelection: () => vi.fn(),
-    draftConfigRef: { current: {} },
+    draftConfigRef: { current: draftConfigMock.draftConfig },
     draftConfigSeedSignal: 0,
     handleDraftSelectModel: vi.fn(),
     handleDraftSelectThought: vi.fn(),
@@ -230,7 +250,7 @@ vi.mock("@/v4/composer/useDraftConfigControl.js", () => ({
     // 本文件不验证这些语义，按惰性缺省补齐，保持既有字段原值。
     composerDraft: {},
     composerDraftScopeToken: undefined,
-    draftConfig: {},
+    draftConfig: draftConfigMock.draftConfig,
     stageComposerContent: vi.fn(),
     captureComposerContentLifecycleCommit: vi.fn(),
     captureComposerSubmissionDraftTransaction: vi.fn(),
@@ -241,7 +261,8 @@ vi.mock("@/v4/composer/useDraftConfigControl.js", () => ({
     observeDraftPermissionGrant: vi.fn(),
     keepEditConfigOnExit: vi.fn(),
   }),
-}));
+  };
+});
 
 vi.mock("@/v4/composer/useDraftSessionPrewarm.js", () => ({
   useDraftSessionPrewarm: () => ({
@@ -364,6 +385,10 @@ function installMinimalDom() {
   const documentMock = {
     // IntlProvider 会写 document.documentElement.lang；最小 DOM 需补齐该节点。
     documentElement: { lang: "" },
+    // toast() 会 document.body.appendChild(host)；编辑提交被 blocked 时会走到这里，
+    // 缺 body 会抛 TypeError 把真正的失败原因盖掉。body 的 ownerDocument 要指回自己，
+    // 因此先占位、构造完成后回填（对象字面量里直接引用自身会踩 TDZ）。
+    body: undefined as unknown as Element,
     addEventListener: (type: string, handler: () => void) => {
       domEventListeners.push({ target: "document", type, handler });
     },
@@ -381,6 +406,7 @@ function installMinimalDom() {
     removeEventListener: () => {},
     visibilityState: "visible",
   } as unknown as Document;
+  (documentMock as unknown as { body: Element }).body = createMinimalElement(documentMock, "body");
   const windowMock = {
     addEventListener: (type: string, handler: () => void) => {
       domEventListeners.push({ target: "window", type, handler });
@@ -464,7 +490,30 @@ function makeSnapshot(sessionId: string): ConversationSnapshot {
     backgroundWorks: [],
     goal: null,
     plan: null,
-    rows: { window: [], totalCount: 0, firstRowId: null },
+    // beginUserQueryEdit 只在 rows.window 里找到 kind=userInput 且 actions.canEdit 的行时
+    // 才进入编辑态；编辑重发类用例必须有这一行，否则 onEdit 直接早退。
+    // 但 sendText 类用例的快照必须保持空行窗口：多一条用户输入行会改变发送路径上的
+    // 既有门禁与 Highspeed prepare 时序（startPlanRecommendation 不再被调用）。
+    // 因此该行由 armComposerSubmission 一并打开，afterEach 复位。
+    rows: {
+      window: (draftConfigMock.editableRow
+        ? [
+            {
+              rowId: 42,
+              turnId: "turn-1",
+              createdAt: 1_700_000_000_042,
+              createdAtSeq: 42,
+              kind: "userInput",
+              entityId: "message-user-42",
+              origin: "realUser",
+              text: "原问题",
+              actions: { canEdit: true },
+            },
+          ]
+        : []) as ConversationSnapshot["rows"]["window"],
+      totalCount: draftConfigMock.editableRow ? 1 : 0,
+      firstRowId: draftConfigMock.editableRow ? 42 : null,
+    },
   };
 }
 
@@ -519,11 +568,54 @@ async function renderPane(root: Root, sessionId: string): Promise<void> {
 }
 
 /** 走行内编辑重发路径：与 sendText 共用 prepareHighspeedTurnForSend 的发送前抽卡。 */
+/**
+ * 对齐现状：editUserQuery 与普通发送共用 fail-closed 提交门禁——
+ * createComposerSubmissionConfig 需要 draftConfig 带有效 modelSelection，且 View 能按
+ * optionSpecs.reasoningLevel 校验该选择；否则 handleEdit 直接 blocked，一条命令都不会发。
+ * 只有编辑重发用例需要它；sendText 用例自带 submission，不能改它们的默认门禁状态。
+ */
+function armComposerSubmission(): void {
+  draftConfigMock.editableRow = true;
+  draftConfigMock.modelSelectionState = {
+    status: "ready",
+    view: {
+      revision: 1,
+      providers: [
+        {
+          providerId: "builtin:bigmodel-coding-plan",
+          models: [
+            {
+              modelId: "GLM-5.3",
+              config: { optionSpecs: { reasoningLevel: { values: ["low", "high"] } } },
+            },
+          ],
+        },
+      ],
+    },
+  };
+  draftConfigMock.draftConfig = {
+    mode: "build",
+    planEnabled: false,
+    modelSelection: {
+      providerId: "builtin:bigmodel-coding-plan",
+      modelId: "GLM-5.3",
+      options: { reasoningLevel: "high" },
+    },
+  };
+}
+
 async function sendThroughEdit(): Promise<void> {
+  // 对齐现状：编辑重发是两步——timeline onEdit 只进入编辑态并回填原文/附件，
+  // editUserQuery 由 composer 的发送路由（handleSendText → submitComposerEdit）提交。
   await act(async () => {
-    await timelineProps
-      .at(-1)
-      ?.onEdit?.({ rowId: 42, entityId: "message-user-42" }, "再加速一轮", []);
+    await timelineProps.at(-1)?.onEdit?.({ rowId: 42, entityId: "message-user-42" });
+    await flushMicrotasks();
+  });
+  await act(async () => {
+    await composerProps.at(-1)?.onSendText?.("再加速一轮", {
+      attachments: [],
+      conversationQuotes: [],
+    });
     await flushMicrotasks();
   });
 }
@@ -590,7 +682,19 @@ function captureExpiryTimers(expiresAt: number) {
 }
 
 afterEach(() => {
-  sendCommandMock.mockClear();
+  toastMock.mockClear();
+  draftConfigMock.modelSelectionState = { status: "loading" };
+  draftConfigMock.draftConfig = {};
+  draftConfigMock.editableRow = false;
+  // 用 mockReset 而不是 mockClear：mockClear 不清除未消费的 mockResolvedValueOnce 队列。
+  // 编辑重发用例会排队一次性 ACK，一旦某条用例没有真正发出命令，残留 ACK 就会泄漏到
+  // 下一个用例，把它的 editUserQuery 判成 rejected/stale，handleEdit 返回 false 并弹「保存失败」。
+  sendCommandMock.mockReset();
+  sendCommandMock.mockImplementation(async (envelope: { commandId: string; baseRevision?: number }) => ({
+    commandId: envelope.commandId,
+    revisionAtDecision: envelope.baseRevision ?? 0,
+    status: "accepted",
+  }));
   composerProps.length = 0;
   timelineProps.length = 0;
   servicesMock.highspeedCardService.getSnapshot.mockReset();
@@ -610,6 +714,7 @@ afterEach(() => {
 
 describe("SessionPane Highspeed 激活动效请求", () => {
   it("draw 新命中只登记一次激活；切走再切回与同卡再次发送都不重播", async () => {
+    armComposerSubmission();
     const card = makeCard("card-1");
     const root = createRoot(installMinimalDom());
     try {
@@ -655,6 +760,7 @@ describe("SessionPane Highspeed 激活动效请求", () => {
   });
 
   it("Renderer 重载后经 getSnapshot 恢复的卡，再次发送也不补播激活", async () => {
+    armComposerSubmission();
     const card = makeCard("card-restored");
     servicesMock.highspeedCardService.getSnapshot.mockResolvedValue({
       card,
@@ -677,6 +783,7 @@ describe("SessionPane Highspeed 激活动效请求", () => {
   });
 
   it("换到新卡时重新登记激活；迟到的旧卡消费回调不清掉新请求", async () => {
+    armComposerSubmission();
     const restoredCard = makeCard("card-old");
     servicesMock.highspeedCardService.getSnapshot.mockResolvedValue({
       card: restoredCard,
@@ -703,6 +810,7 @@ describe("SessionPane Highspeed 激活动效请求", () => {
   });
 
   it("息屏期间到期的卡在窗口唤醒时立即清退，不残留 00:00:00 僵尸加速态", async () => {
+    armComposerSubmission();
     // 回归（spec §9.2/§9.3 清退时钟补偿）：清卡 setTimeout 在页面冻结期间停摆，
     // 唤醒后若不按真实时钟重估，输入框会停在加速态、倒计时却已显示 00:00:00。
     const card = makeCard("card-wake");
@@ -731,6 +839,7 @@ describe("SessionPane Highspeed 激活动效请求", () => {
   });
 
   it("清退 timer 早于墙钟到期触发时按剩余时长重挂，到期后清卡", async () => {
+    armComposerSubmission();
     // 回归：setTimeout 按单调时钟计时，到期判定读墙钟 Date.now()；两者的毫秒级偏差或 NTP
     // 回拨会让 timer 在墙钟到期前触发。若此时只判定不重挂，窗口常驻前台时加速态永不退出。
     const startedAt = Date.now();
@@ -769,6 +878,7 @@ describe("SessionPane Highspeed 激活动效请求", () => {
   });
 
   it("抽卡返回前已切到其他 Task 时，旧 Task 的卡不呈现到当前 Task、也不登记激活", async () => {
+    armComposerSubmission();
     // 回归（spec §9.2「卡片不属于当前 Task 时恢复普通态」）：SessionPane 跨 Task 复用同一实例，
     // prepare 在 await 期间用户切走，返回后若直接写卡片状态，A 的卡会出现在 B 的输入框并播放激活。
     const card = makeCard("card-late", "session-a");
@@ -782,11 +892,17 @@ describe("SessionPane Highspeed 激活动效请求", () => {
         }),
       );
       let sending: Promise<unknown> = Promise.resolve();
+      // 两步编辑流：onEdit 只进入编辑态，editUserQuery 与 Highspeed prepare 由 composer 发送触发。
+      await act(async () => {
+        await timelineProps.at(-1)?.onEdit?.({ rowId: 42, entityId: "message-user-42" });
+        await flushMicrotasks();
+      });
       await act(async () => {
         sending = Promise.resolve(
-          timelineProps
-            .at(-1)
-            ?.onEdit?.({ rowId: 42, entityId: "message-user-42" }, "再加速一轮", []),
+          composerProps.at(-1)?.onSendText?.("再加速一轮", {
+            attachments: [],
+            conversationQuotes: [],
+          }),
         );
         await flushMicrotasks();
       });
@@ -868,6 +984,7 @@ describe("SessionPane Highspeed 激活动效请求", () => {
   });
 
   it("唤醒时未到期的卡保持加速态并重挂剩余时长的清退 timer", async () => {
+    armComposerSubmission();
     const startedAt = Date.now();
     const nowSpy = vi.spyOn(Date, "now").mockReturnValue(startedAt);
     const card = makeCard("card-early-wake");
