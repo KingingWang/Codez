@@ -28,6 +28,9 @@ vi.mock("../src/plugins/helpers.js", async (importOriginal) => {
 
 describe("Codez official marketplace partitions", () => {
   const cleanups: string[] = [];
+  // fork 语义：官方（bundled）分片断言 manifest.name 必须等于 CODEZ_OFFICIAL_PLUGIN_MARKETPLACE
+  // （codez-plugins-official）。品牌转换的 CDN 例外保留了首用例里的上游 CDN 标识字面量，
+  // 导致 assertOfficialManifest 拒绝、entered 永不 resolve 而超时；夹具按 fork 打包标识对齐。
 
   afterEach(async () => {
     vi.resetAllMocks();
@@ -62,7 +65,7 @@ describe("Codez official marketplace partitions", () => {
     const bundled = writeBundledOfficialMarketplacePartition({
       storageRoot,
       manifest: {
-        name: "zcode-plugins-official",
+        name: "codez-plugins-official",
         plugins: [{ name: "bundled", version: "1" }],
       },
     });
@@ -70,7 +73,7 @@ describe("Codez official marketplace partitions", () => {
     const cdn = writeCdnOfficialMarketplacePartition({
       storageRoot,
       manifest: {
-        name: "zcode-plugins-official",
+        name: "codez-plugins-official",
         plugins: [{ name: "cdn", version: "2" }],
       },
     });
@@ -83,7 +86,7 @@ describe("Codez official marketplace partitions", () => {
     }
     const manifest = JSON.parse(
       await readFile(
-        join(storageRoot, "marketplaces", "zcode-plugins-official", "marketplace.json"),
+        join(storageRoot, "marketplaces", "codez-plugins-official", "marketplace.json"),
         "utf8",
       ),
     );

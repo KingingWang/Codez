@@ -18,7 +18,9 @@ afterEach(async () => {
 describe("永久删除迁移兼容", () => {
   const migrationId = "0025_session_permanent_deletion";
   // 固定已发布 SQL 的摘要，防止测试夹具随实现一起变化而漏掉旧库 checksum 不兼容。
-  const publishedChecksum = "608f3ea3aad458679a4b377968413575749f2231c88133765a088564fc20691e";
+  // fork 已发布的 0025 SQL 含品牌字符串 codez-artifact://（上游为 zcode-artifact://），
+  // 摘要与上游不同；这里钉住 fork 已发布 SQL 的实际 sha256，保护旧库 checksum 兼容。
+  const publishedChecksum = "0ba7d8c7a45faf7df39142902d7937bbaeedbd0bb69a54048e152c95153a714e";
 
   function contentHashes(db: DatabaseSync) {
     return Object.fromEntries(

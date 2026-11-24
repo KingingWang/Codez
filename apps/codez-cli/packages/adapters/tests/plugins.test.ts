@@ -2446,7 +2446,9 @@ describe("NodePluginAdapter", () => {
     async (catalogState) => {
       const dir = await mkdtemp(join(tmpdir(), "codez-official-install-"));
       const storageRoot = join(dir, "storage");
-      const marketplace = "zcode-plugins-official";
+      // fork 打包标识：官方目录 hydrate/分片写入断言 manifest.name 必须等于
+      // CODEZ_OFFICIAL_PLUGIN_MARKETPLACE；CDN 例外保留的上游字面量在此是夹具数据，按 fork 语义对齐。
+      const marketplace = "codez-plugins-official";
       const requests: string[] = [];
       const archives = new Map(
         ["remote", "dependency"].map((name) => [
