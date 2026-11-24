@@ -76,8 +76,6 @@ export async function handleOAuthCallbackSuccess(params: {
       // 连接域初始化失败时也要走一次刷新，否则 UI 会停在旧套餐快照上。
       selection =
         (await params.refreshLatestModelProviderFamilySelection?.(params.result.provider)) ?? null;
-      // 没有新选择时也可能已纠正账号用不了的 domain；设置缓存只在显式刷新时更新，所以总是刷新。
-      await params.refreshAppSettings?.();
     } catch (error) {
       // 账号已完成登录；自动初始化冲突或权益查询失败不能回滚主身份。
       logger.warn("[Root] OAuth 登录后保留既有连接，初始化未完成", {
@@ -85,17 +83,24 @@ export async function handleOAuthCallbackSuccess(params: {
       });
     }
     if (params.isCurrent?.() === false) return;
-    const selectedConnection = selection ? JSON.stringify(selection) : "";
-    if ((selection || !connectionInitialized) && params.refreshAppSettings) {
+    // 修复原因：上游 v4.0.0 已把「设置快照刷新」收敛为选择刷新之后无条件执行一次，
+    // 而 fork 早先为「有新选择 / 连接域初始化冲突」又保留了一段条件刷新。两段叠加后，
+    // 一次登录收尾会把 App settings 读两遍（回归里 events 出现两次 settings），纯属重复 IO，
+    // 且两次刷新之间没有任何写入，第二次不可能读到不同结果。
+    // 这里合并为单一出口：无论有没有新选择、连接域初始化是否冲突、选择刷新是否抛错，
+    // 都只刷新一次快照，再统一刷新 Provider 状态。
+    // 依据：docs/composer-model-thinking.md「CAS 冲突保留并发新设置、单独记录初始化失败，
+    // 继续 Provider 刷新及登录成功标记」；docs/testing/coding-plan-team-e2e-cases.md
+    // 「断言仅一次初始化提交尝试……设置快照/Provider 刷新与成功标记完成」。
+    // selectedKey 由 settingService 直接落盘，输入框和 context hover 读取的是 renderer
+    // settings 快照，不刷新会让 UI 一直拿旧 selectedKey，直到打开设置页或重启。
+    if (params.refreshAppSettings) {
       try {
-        // selectedKey 由 settingService 直接落盘，输入框和 context hover
-        // 读取的是 renderer settings 快照。登录后必须先刷新快照，再按最终套餐刷新
-        // 模型可用态和剩余额度，否则 UI 会一直拿旧 selectedKey，直到打开设置页或重启。
         await params.refreshAppSettings();
       } catch (error) {
         logger.warn("[Root] OAuth 登录后刷新 App settings 快照失败", {
           provider: params.result.provider,
-          selectedConnection,
+          selectedConnection: selection ? JSON.stringify(selection) : "",
           error,
         });
       }

@@ -99,7 +99,15 @@ describe("handleOAuthCallbackSuccess", () => {
     expect(setUser).toHaveBeenCalledWith({ id: "user-1", username: "user" });
     expect(setOAuthError).toHaveBeenCalledExactlyOnceWith(null);
     expect(refreshProviderState).toHaveBeenCalledOnce();
-    expect(refreshLatestModelProviderFamilySelection).not.toHaveBeenCalled();
+    // 对齐现状：连接域初始化是登录成功后的独立辅助步骤，CAS 冲突只记录失败、保留并发新设置，
+    // 不改变「已提供选择刷新回调就要跑一次」的契约——上游 handleOAuthCallbackSuccess 在
+    // 回调存在时始终调用它，fork 还显式扩成 `|| !connectionInitialized`（初始化失败时也要刷新，
+    // 否则 UI 会停在旧套餐快照上）。依据见 docs/composer-model-thinking.md
+    // 「CAS 冲突保留并发新设置、单独记录初始化失败，继续 Provider 刷新及登录成功标记」。
+    // 本用例的核心是不否定已成功的 session：登录态、Provider 刷新与遥测都照常完成。
+    expect(refreshLatestModelProviderFamilySelection).toHaveBeenCalledExactlyOnceWith(
+      BIGMODEL_PROVIDER_ID,
+    );
     expect(reportAppTelemetryEventMock).toHaveBeenCalledOnce();
   });
 
@@ -302,10 +310,13 @@ function createStartupRestoreServices(params: {
   events: string[];
   settings: {
     providerFamilyConnectionSelections: Record<string, unknown>;
+    providerFamilyDomain?: string;
   };
   codingPlanEntitlement?: UsageEntitlementSnapshot | null;
   startPlanEntitlement?: UsageEntitlementSnapshot | null;
   enterprisePricingError?: Error;
+  /** 夹具对应的登录 family；上游启动恢复链路据此解析 providerFamilyDomain。 */
+  oauthFamilies?: Array<"bigmodel" | "zai">;
 }) {
   const update = vi.fn(async (patch) => {
     params.events.push("update");
@@ -313,6 +324,17 @@ function createStartupRestoreServices(params: {
   });
   return {
     services: {
+      // 对齐现状：上游 v4.0.0 的启动恢复/登录刷新链路（oauthProviderFamilySelectionRefresh 的
+      // 151/245/273 行）先读账号可用性再决定是否纠正 domain。夹具原先没有 oauthService，
+      // getAccountAvailability 直接 TypeError，让全部断言挂在 IO 之前。
+      oauthService: {
+        getAccountAvailability: vi.fn(async () => ({
+          loginProvider: params.oauthFamilies?.[0] ?? "bigmodel",
+          userId: "startup-fixture-user",
+          sessionRevision: "startup-fixture-revision",
+          families: params.oauthFamilies ?? ["bigmodel"],
+        })),
+      },
       settingService: {
         get: vi.fn(async () => params.settings),
         update,
@@ -418,7 +440,15 @@ describe("refreshRestoredOAuthProviderFamilyAfterStartup", () => {
       ]) {
         const { services, update } = createStartupRestoreServices({
           events: [],
-          settings: { providerFamilyConnectionSelections: { [family]: selection } },
+          // 已登录的启动恢复场景里 providerFamilyDomain 必然已写入；缺了它，源码会走
+          // 「saved 但 domain 未定」分支再跑一次登录后初始化并条件写入，update 就会被调用。
+          settings: {
+            providerFamilyDomain: family,
+            providerFamilyConnectionSelections: { [family]: selection },
+          },
+          // 启动恢复用 availability.families[0] 作为 domain；zai 场景必须给出 zai，
+          // 否则会去读 bigmodel 下的已保存选择，断言「保留已保存连接」失真。
+          oauthFamilies: [family as "bigmodel" | "zai"],
           startPlanEntitlement: { checkedAt: 1, unavailableReason: "no_plan" },
           codingPlanEntitlement: { checkedAt: 1, unavailableReason: "no_plan" },
         });
@@ -438,7 +468,11 @@ describe("refreshRestoredOAuthProviderFamilyAfterStartup", () => {
       await import("@/root/useRootOAuthEffects.js");
     const { services, update } = createStartupRestoreServices({
       events: [],
-      settings: { providerFamilyConnectionSelections: { bigmodel: { kind: "start-plan" } } },
+      // 同上：启动恢复场景 providerFamilyDomain 已写入，否则源码会再跑一次登录后初始化并写设置。
+      settings: {
+        providerFamilyDomain: "bigmodel",
+        providerFamilyConnectionSelections: { bigmodel: { kind: "start-plan" } },
+      },
     });
     services.providerSettingsService.refresh.mockRejectedValue(new Error("offline"));
     expect(
