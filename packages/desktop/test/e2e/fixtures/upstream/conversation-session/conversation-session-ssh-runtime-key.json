@@ -1,7 +1,7 @@
 {
   "version": 1,
   "caseName": "conversation-session-ssh-runtime-key",
-  "spec": "./test/e2e/conversation-session/conversation-session-ssh-runtime-key.test.ts",
+  "spec": "./test/e2e/conversation-session/remote/installation/conversation-session-ssh-runtime-key.test.ts",
   "fixtures": [
     {
       "id": "ssh-runtime-key-title",
