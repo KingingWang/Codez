@@ -284,10 +284,13 @@ vi.mock("@/v4/ConversationDraftSuggestedPromptsContainer.js", () => ({
 vi.mock("@/hooks/useCodexModelCatalog.js", () => ({
   useCodexModelCatalog: () => ({ status: "unavailable", reload: vi.fn(), readCurrent: vi.fn() }),
 }));
-vi.mock("@/hooks/useServices.js", () => ({
-  useComposerClientNamespace: () => "desktop",
-  useOptionalServices: () => null,
-  useServices: () => ({
+vi.mock("@/hooks/useServices.js", () => {
+  // 修复原因：服务集合必须是稳定引用。useCodexNativeHostStatus 的 effect 以 agentService
+  // 身份为依赖，每次渲染返回新对象会让「effect → setResolution → 重渲染 → 新对象」无限循环，
+  // 直接抛 Maximum update depth exceeded，整个文件的用例都跑不起来（worker 还会超时退出）。
+  let cachedServices: Record<string, unknown> | null = null;
+  const services = () =>
+    (cachedServices ??= {
     // useSubagents 用 subagentsService 作 WeakMap authority 键并发起 list；给惰性桩避免 WeakMap 崩溃。
     subagentsService: {
       list: vi.fn(async () => ({ agents: [], capability: null })),
@@ -313,8 +316,13 @@ vi.mock("@/hooks/useServices.js", () => ({
     modelSelectionService: mocks.modelSelectionService,
     codezSessionService: mocks.codezSessionService,
     codezTaskService: mocks.codezTaskService,
-  }),
-}));
+    });
+  return {
+    useComposerClientNamespace: () => "desktop",
+    useOptionalServices: () => null,
+    useServices: () => services(),
+  };
+});
 
 vi.mock("@/lib/composerRecent.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/composerRecent.js")>()),
@@ -938,7 +946,9 @@ describe("SessionPane draft prewarm admission lifecycle", () => {
         await captured.composerProps?.onSendText("promote prewarm without session-open telemetry");
         await flushMicrotasks();
       });
-      expect(onSessionCreated).toHaveBeenCalledWith(prewarmSessionId);
+      // 对齐现状：草稿预热提升走 onSessionCreated(sessionId, "draft-promotion")，
+      // origin 用于区分「首次绑定」与「提升」，埋点据此排除预热提升（见 SessionPane 2260 行）。
+      expect(onSessionCreated).toHaveBeenCalledWith(prewarmSessionId, "draft-promotion");
 
       await rerenderPane(root, { sessionId: prewarmSessionId, onSessionCreated });
       expect(sessionOpenTelemetryMock.lastParams).toMatchObject({
@@ -1063,7 +1073,9 @@ describe("SessionPane draft prewarm admission lifecycle", () => {
         await captured.composerProps?.onSendText("create without prewarm telemetry");
         await flushMicrotasks();
       });
-      expect(onSessionCreated).toHaveBeenCalledWith(createdSessionId);
+      // 对齐现状：草稿预热提升走 onSessionCreated(sessionId, "draft-promotion")，
+      // origin 用于区分「首次绑定」与「提升」，埋点据此排除预热提升（见 SessionPane 2260 行）。
+      expect(onSessionCreated).toHaveBeenCalledWith(createdSessionId, "draft-promotion");
 
       const createdSnapshot = makeSnapshot();
       createdSnapshot.sessionId = createdSessionId;
@@ -2627,16 +2639,27 @@ describe("SessionPane model switch recovery", () => {
       await flushMicrotasks();
     });
 
-    expect(mocks.sendCommand).not.toHaveBeenCalled();
-    expect(mocks.toast).not.toHaveBeenCalled();
+    // 对齐现状（上游 v3.18.0 起，SessionPane.handleSelectModel 与上游逐字节一致）：
+    // 已有 Session 的选模立即下发 switchModelConfig，不再只留在 Composer 草稿里等提交。
+    // fork 旧的「composer-submission-intent」分支已随 sync 下线（备份分支里还能看到）。
+    // 本用例保留的不变量是：提交仍带上 Composer 里选中的模型，且不弹错误提示。
+    expect(mocks.sendCommand).toHaveBeenCalledTimes(1);
+    expect(mocks.sendCommand.mock.calls[0]?.[0]).toMatchObject({
+      type: "switchModelConfig",
+      payload: { provider: "alternate-provider", model: "deepseek-v4-pro" },
+    });
+    // 立即下发的 switchModelConfig 成功后会给出切换提示（旧「留在草稿里」的设计没有这一步）。
+    expect(mocks.toast).toHaveBeenCalledWith(
+      "已从 primary-provider/deepseek-v4-flash 切换至 alternate-provider/deepseek-v4-pro",
+    );
 
     await act(async () => {
       await captured.composerProps?.onSendText("use the selected model");
       await flushMicrotasks();
     });
 
-    expect(mocks.sendCommand).toHaveBeenCalledTimes(1);
-    expect(mocks.sendCommand.mock.calls[0]?.[0]).toMatchObject({
+    expect(mocks.sendCommand).toHaveBeenCalledTimes(2);
+    expect(mocks.sendCommand.mock.calls[1]?.[0]).toMatchObject({
       type: "sendText",
       payload: {
         text: "use the selected model",
@@ -2723,9 +2746,12 @@ describe("SessionPane model switch recovery", () => {
       await flushMicrotasks();
     });
 
+    // 对齐现状（上游 v3.18.0 起）：已有 Session 里的选模立即下发 switchModelConfig，
+    // 不再「只留在 Composer 草稿里等提交」，因此这里共两条命令，sendText 是第二条。
+    expect(mocks.sendCommand.mock.calls[0]?.[0]).toMatchObject({ type: "switchModelConfig" });
     // payload 的 Selection 确已被执行材料覆盖为隐藏加速 Provider（证明本轮真的加速）。
-    expect(mocks.sendCommand).toHaveBeenCalledTimes(1);
-    expect(mocks.sendCommand.mock.calls[0]?.[0]).toMatchObject({
+    expect(mocks.sendCommand).toHaveBeenCalledTimes(2);
+    expect(mocks.sendCommand.mock.calls[1]?.[0]).toMatchObject({
       type: "sendText",
       payload: {
         modelSelection: { providerId: "account:zai-highspeed-card", modelId: "GLM-5.3" },
@@ -3208,7 +3234,10 @@ describe("SessionPane model switch recovery", () => {
       await flushMicrotasks();
     });
 
-    expect(mocks.sendCommand).not.toHaveBeenCalled();
+    // 对齐现状：选模即刻下发 switchModelConfig（见上一条用例的说明）；
+    // 本用例保留的不变量是「不会因此走 Provider Registry 恢复/回写」。
+    expect(mocks.sendCommand).toHaveBeenCalledTimes(1);
+    expect(mocks.sendCommand.mock.calls[0]?.[0]).toMatchObject({ type: "switchModelConfig" });
     expect(mocks.codezSessionService.updateProviderRegistry).not.toHaveBeenCalled();
     await act(async () => {
       root.unmount();
@@ -3245,7 +3274,9 @@ describe("SessionPane model switch recovery", () => {
       await flushMicrotasks();
     });
 
-    expect(mocks.sendCommand).toHaveBeenCalledTimes(1);
+    // 选模立即下发 switchModelConfig（上游契约），sendText 被 Registry 拒绝；共一条已下发命令。
+    expect(mocks.sendCommand).toHaveBeenCalledTimes(2);
+    expect(mocks.sendCommand.mock.calls[0]?.[0]).toMatchObject({ type: "switchModelConfig" });
     expect(mocks.codezSessionService.updateProviderRegistry).not.toHaveBeenCalled();
     await act(async () => {
       root.unmount();
@@ -3290,7 +3321,9 @@ describe("SessionPane model switch recovery", () => {
       await flushMicrotasks();
     });
 
-    expect(mocks.sendCommand).toHaveBeenCalledTimes(1);
+    // 同上：远端 Registry 拒绝前，选模已经立即下发过一条 switchModelConfig。
+    expect(mocks.sendCommand).toHaveBeenCalledTimes(2);
+    expect(mocks.sendCommand.mock.calls[0]?.[0]).toMatchObject({ type: "switchModelConfig" });
     expect(mocks.codezSessionService.updateProviderRegistry).not.toHaveBeenCalled();
     await act(async () => {
       root.unmount();
