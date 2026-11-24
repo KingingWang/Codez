@@ -495,6 +495,11 @@ credential-recovery-fence、exec、mcp-oauth-cross-process、provider-builtin-to
 | `packages/ui/src/v4/CodexRetryStatus.tsx` + 新增 `chat-input-toolbar/RetryErrorDetailsPopover.tsx` | `display.tsx` 转出 contextUsage → CodingPlanUsageRemainingPanel → oauthProviderIcon（`.svg`），纯 Node/tsx 回归加载即 `ERR_UNKNOWN_FILE_EXTENSION` | 把只依赖 `cn` + Popover 的 `RetryErrorDetailsPopover` 拆成窄模块，`display.tsx` 原样转出，公开面不变 |
 | `packages/services/src/project-storage/test-fixture.ts` | 旧库夹具的 `automations` 缺列，而 fork「归档同时暂停自动化」在同一事务里 UPDATE `enabled/lifecycle_status/target_task_id/updated_at` | 夹具按真实基线（`session/tasksDatabase/schema-v1.ts`）补列 |
 
+架构治理口径：新增的 `RetryErrorDetailsPopover.tsx` 落在 unmanaged 的 `ui` 模块，按仓库既有做法在
+`architecture-policy.yaml` 追加 `unmanaged-new-file` 例外（id `retry-error-details-popover-new-file`），
+不新建模块、不借机接管整个 `packages/ui`；`project-storage/contract.test.ts` 的迁移说明注释合并为
+单行，保持契约文件不超过 300 行上限。
+
 #### 已退役、按现行契约对齐的 fork 旧特性（需产品确认）
 
 以下两项都是**上游 sync 提交整体删除**的 fork 特性，上游同时给出了替代设计；旧 main 也已是

@@ -110,8 +110,7 @@ describe("project-storage migration contract", () => {
       { id: "0009_session_creation_commands" },
       // 上游 3.17.2 新增的一次性远端归属修复迁移；集成后顺延在 fork 的 0009 之后。
       { id: "0010_remote_task_ownership" },
-      // fork worktree 特性迁移（见 CONTRACT.md）：与 0010_remote_task_ownership 是两个独立 ID，
-      // 合并后按字典序排在其后，各自保留 SQL/checksum。
+      // fork worktree 迁移（CONTRACT.md）：与上一行是独立 ID，字典序在其后，各自保留 SQL/checksum。
       { id: "0010_task_worktree_root" },
     ]);
   });

@@ -3673,3 +3673,8 @@ exceptions:
     paths:
       - apps/codez-cli/packages/cli/src/browser-state-option.ts
     reason: --browser-state 与 --no-browser-state 的参数校验与来源解析（docs/browser-use/2026-11-17-cli-browser-state-spec.md §4），只被已有 unmanaged 的 CLI 入口 run.ts 调用。不新增模块边界或状态 owner；接管整个 codez-cli 不在本次范围内。
+  - id: retry-error-details-popover-new-file
+    rule: unmanaged-new-file
+    paths:
+      - packages/ui/src/chat-input-toolbar/RetryErrorDetailsPopover.tsx
+    reason: 重试次数与最近 API 错误详情浮窗从同目录 display.tsx 原样拆出（display.tsx 继续 re-export，公开面不变），只依赖 cn 与 Popover。目的是让 v4/CodexRetryStatus.tsx 的纯 Node/tsx 回归不再经 display.tsx→contextUsage→CodingPlanUsageRemainingPanel→oauthProviderIcon 拉入 .svg 而触发 ERR_UNKNOWN_FILE_EXTENSION。不新增 owner、协议或模块边界。
