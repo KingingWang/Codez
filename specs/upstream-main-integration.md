@@ -458,13 +458,126 @@ adapters 包套件（不在任何 workflow 门禁内）失败分类：3 处 fork
 `codez-plugins-official`，改为 fork 语义后 official-marketplace 7/7、plugins 相关 4 例转绿）；
 `0025_session_permanent_deletion` 的已发布摘要钉住值改回 fork 实际 checksum
 （fork SQL 含 `codez-artifact://` 品牌串，摘要与上游 `608f…` 不同；0026 新迁移不影响 0025）。
-其余失败分类如下且不再处理：skills/plugins 权限模拟用例在 root 环境误报（chmod 000 对
-root 无效，属任务预认可类别）；runner-options（12 例）与 logging（1 例）为基线红
-（源与测试同旧 main 逐字节一致，`maxOutputTokensSource` 等逻辑在旧 main 亦不存在）；
-plugins 的 case-equivalent/parse-once 等为上游套件隔离抖动（单独运行通过，源与测试与
-上游 v4.0.0 逐字节一致）。credential-recovery-fence、exec、mcp-oauth-cross-process、
-provider-builtin-tool-rounds 在设置 `CODEZ_CREDENTIAL_SECRET` 后全部通过（本机无
-OS 凭据库的环境性失败）。
+其余失败当时分类为「不再处理」，已在下方 `### 4.0.0 存量红修复` 全部收口或明确归类：
+skills 权限模拟用例在 root 环境误报（chmod 000 对 root 无效，属任务预认可类别）；
+credential-recovery-fence、exec、mcp-oauth-cross-process、provider-builtin-tool-rounds
+在设置 `CODEZ_CREDENTIAL_SECRET` 后全部通过（本机无 OS 凭据库的环境性失败）。
+
+### 4.0.0 存量红修复
+
+旧 main 的 fork 回归套件本身存在大面积存量红。本轮除「root 权限类环境误报」外全部修复，
+修复口径分三类，逐条在测试或源码里写明依据：
+
+1. **对齐现行契约**（源码与上游一致或 fork 已有明确注释/spec，测试停留在旧行为）；
+2. **恢复丢失的 fork 接缝**（实现仍在仓库、只是调用点或夹具在历次 sync 中被冲掉）；
+3. **消除环境/时序敏感**（本机 overlay 粗粒度时间戳、`vi.waitFor` 默认 1s、
+   跨用例 mock 泄漏、最小 DOM 缺 `body`/`requestAnimationFrame`）。
+
+最终结果（`env -u CODEZ_SERVER_CREDENTIAL_FORMAT -u CODEZ_SERVER_RUNTIME_ROOT
+-u CODEZ_SERVER_ROOT` 干净环境，本机常驻服务会注入这些变量掩盖失败）：
+
+| 范围 | 修复前 | 修复后 |
+| ---- | ------ | ------ |
+| packages/ui fork vitest（140 文件） | 446 失败 | 2244/2244 通过，0 unhandled error |
+| packages/services fork vitest（40 文件） | 27 失败 | 793/793 通过 |
+| packages/desktop fork vitest（29 文件） | 8 失败 | 548 通过（10 skip） |
+| packages/shared CAS 命令集 | 1 失败 | 通过 |
+| apps/codez-cli adapters vitest（214 文件） | 12+1+2+4 失败 | 3368+ 通过，仅 skills root 误报 1 例 |
+| apps/codez-cli CLI sea-runtime-tools（node:test） | 6 失败 | 8/8 通过 |
+| packages/ui tsx node 测试 codexRetryStatus | 加载即失败 | 4/4 通过 |
+
+#### 恢复的 fork 接缝（源码改动）
+
+| 位置 | 丢失原因 | 恢复内容 |
+| ---- | -------- | -------- |
+| `packages/ui/src/v4/agentConversationTransport.ts` | v3.18.0 sync 冲掉两处调用点（`logWire` 助手本身仍在） | `v4.conversation.wire.received`（initial/recovery 的最后一片物理帧）与 `v4.conversation.runtime.invalidated`（只记订阅数与代次，不含 workspace 路径） |
+| `packages/ui/src/root/useRootOAuthEffects.ts` | v4.0.0 把「设置快照刷新」收敛为选择刷新后无条件执行一次，fork 旧的条件刷新段被保留，叠加成两次读盘 | 合并为单一出口：无论有无新选择、连接域初始化是否冲突、选择刷新是否抛错，登录收尾只刷新一次 App settings |
+| `packages/ui/src/v4/CodexRetryStatus.tsx` + 新增 `chat-input-toolbar/RetryErrorDetailsPopover.tsx` | `display.tsx` 转出 contextUsage → CodingPlanUsageRemainingPanel → oauthProviderIcon（`.svg`），纯 Node/tsx 回归加载即 `ERR_UNKNOWN_FILE_EXTENSION` | 把只依赖 `cn` + Popover 的 `RetryErrorDetailsPopover` 拆成窄模块，`display.tsx` 原样转出，公开面不变 |
+| `packages/services/src/project-storage/test-fixture.ts` | 旧库夹具的 `automations` 缺列，而 fork「归档同时暂停自动化」在同一事务里 UPDATE `enabled/lifecycle_status/target_task_id/updated_at` | 夹具按真实基线（`session/tasksDatabase/schema-v1.ts`）补列 |
+
+#### 已退役、按现行契约对齐的 fork 旧特性（需产品确认）
+
+以下两项都是**上游 sync 提交整体删除**的 fork 特性，上游同时给出了替代设计；旧 main 也已是
+删除后的状态（即用户近两周实际运行的行为）。按 AGENTS.md「不自行恢复已移除的模块或内部
+依赖」，本轮只对齐测试与文档口径，未擅自把特性加回来：
+
+1. **工具分组（Explore / Terminal / Changes / CUA 合成父节点）**：`b95ebaffe chore: sync
+   ZCode source v3.18.0` 删除 654 行（`conversationCuaGroups.ts` 整文件、
+   `exploreToolCall.ts` 的 `isExploreToolCall`/`isExecuteToolCall`、设置页三个开关），
+   上游改由 `groupConsecutiveAssistantSummaries` 的摘要分组接管同一块 UI。
+   影响 `v4AssistantWorkRenderItems`（16 例）、`v4ConversationTurnGroup`（5 例）、
+   `toolCallBlocks` 的 `isExploreToolCall` 用例、`settingsDataBaseDirControl` 的工具分组开关用例；
+   `docs/chat/explore-tool-call-stage-status.md` 与 locale 里的 `chat.toolCall.*Group.*`、
+   `settings.toolGrouping*` 键成为残留。**若产品要恢复该特性，需要与上游摘要分组二选一或
+   明确共存规则，属源码级改动，不在本轮测试修复范围内。**
+2. **Composer 选模「只留草稿、提交时才下发」**：同一 sync 把 `handleSelectModel` 换成上游的
+   「已有 Session 立即下发 `switchModelConfig` + 切换提示」；HEAD 与旧 main 逐字节一致。
+   影响 `v4SessionPaneModelSwitchRecovery` 8 例。**若产品要恢复旧语义，需改
+   `SessionPane.handleSelectModel` 并接受与上游持续冲突。**
+
+`apps/codez-cli/packages/adapters/tests/runner-options.test.ts` 的 12 例同属此类但更彻底：
+它们断言的 canonical 输出预算（`maxOutputTokens` + `maxOutputTokensSource`）、
+`extra_body` 投影到 `providerOptionsName` 命名空间、`AiSdkModelAdapterError` 校验，
+在本仓库 9 个 backup 分支与 `upstream/main` 的实现里**从未存在**，只出现在
+`docs/superpowers/plans/2026-07-13-model-request-output-token-provider-compatibility.md`
+与该测试文件；用例还引用了未 import 的符号与非 `ResolvedAiSdkModel` 字段，自相矛盾、
+不可能通过。本文件保留的上游断言（两处 `not.toHaveProperty("maxOutputTokens")`）正是现行契约。
+已按计划书预写、随 CLI 快照更新未落地的死测试删除，并在原位留下判定依据。
+**若产品确认要在 adapter 侧恢复输出预算能力，应先改
+`apps/codez-cli/packages/adapters/src/model/runner-options.ts` 并同步上游契约，再补测试。**
+
+#### 批量凭据 CAS 接缝（夹具类）
+
+上游把 Target/OAuth 的凭据访问收敛为 `Pick<LocalCredentialService, "loadMany" | "updateMany">`
+（`OAuthCredentialRepo.localStore` 还要求 `deleteUnreadable`），并把 Provider Provisioning
+信封固定为 v3。旧夹具只有单键 `load/save/delete`，导致
+`providerProvisioningTarget`（14 例）、`providerProvisioningAccountRefresh`（超时）、
+`webRemoteControlManagerV2`、`hostRemoteWorkspaceServices`（`scopeCredentialServiceForRpc`
+需要 `load/save/delete` 才能 bind）连锁失败。修法统一：夹具同时提供单键与批量入口，
+批量入口逐键转发并按 `expected` 做整组 CAS（不一致整组不写），与真实 Credential Store 一致；
+legacy v1 夹具仍走单键，保留对照组语义。
+
+#### 环境与时序硬化
+
+- `sea-runtime-tools`：`ensureSeaRuntimeTools` 缺省读 `process.env`，本机常驻 Codez Server
+  注入 `CODEZ_BFS_BINARY/CODEZ_RG_BINARY/CODEZ_UGREP_BINARY` 会让三个工具整体跳过。
+  所有用例改为显式传 `env`，宿主机导出这些变量时同样 8/8 通过。
+- `logging`：`zcode-*` → `codez-*` 改名后字典序反转（`codez-` < `other-`），
+  期望数组未跟着 `sort()`，属重命名基线必须处理的排序假失败。
+- `plugins`：`vi.mock("node:fs/promises")` 的五个查询函数被单个用例覆盖后从不复原，
+  加 `afterEach` 逐用例 `mockReset`；`parses once … validate()` 与
+  `case-equivalent …` 两例还依赖文件系统时间戳——本机 overlay 在内核粗粒度时间戳同一 tick 内
+  连续写入时 `mtimeNs/ctimeNs` 完全不变、同尺寸写入 `size` 也不变，指纹恒定导致假通过/假失败，
+  改为显式 `utimes` 把 mtime 推到未来，确定性表达「元数据已变化」。
+- `bash-direct-execution`：后台任务首行输出落盘在本机需 1~2s，超过 `vi.waitFor` 默认 1s；
+  「已退出的 root 不应转后台」依赖子进程在 `timeoutMs` 内退出，而 spawn bash + 冷启动 node
+  实测约 1.3s。分别补显式 `timeout: 10_000`、把 `timeoutMs` 放大到 2500ms（保持
+  「读取耗时 > 超时」关系）并给该用例 20s 上限。
+- 跨用例 mock 泄漏：`sendCommandMock.mockClear()` 不清除未消费的 `mockResolvedValueOnce`
+  队列；一旦某用例没有真正发出命令，残留 ACK 会顶掉下一个用例的 fork/edit ACK。
+  改为 `mockReset()` + 复原默认实现。
+- 最小 DOM：补 `document.body`（`toast()` 的 `ensureHost`）与
+  `requestAnimationFrame`/`cancelAnimationFrame`（toast 入队重试），
+  并桩掉 `@/components/ui/toast.js`，避免 TypeError 盖住真实断言失败。
+- 服务桩必须是稳定引用：`useServices: () => ({...})` 每次渲染返回新对象，
+  会让 `useCodexNativeHostStatus` 的 effect 依赖每轮变化 → `setResolution` → 重渲染死循环
+  （`Maximum update depth exceeded`，`highspeedVisibilityRefresh` 3 例与
+  `v4SessionPaneModelSwitchRecovery` 30 例全灭、worker 超时退出）。
+- `v4SessionPaneComposerContinuity` 的 `afterEach` 先 `await setImmediate` 排空 React 19
+  scheduler 回调再删除 `window`，消除全量跑时的 3 条 `window is not defined` unhandled error。
+- `useWorkflowRunJournalSummaries`：先等「查询发起一次」再断言状态，在全量负载下会在
+  setState 提交前放行；改成直接等状态收敛。
+
+#### 两步编辑流（测试口径统一）
+
+`timeline.onEdit` 现在就是 `composerEdit.beginUserQueryEdit(target)`：只进入编辑态并回填
+原文/附件，`editUserQuery` 由 composer 发送路由 `handleSendText → submitComposerEdit` 提交。
+旧的一步式 `onEdit(target, newText, attachments)` 已不存在。相关夹具同步补齐：
+快照必须含 `kind: "userInput"` 且 `actions.canEdit` 的行；composer 需有可提交配置
+（`draftConfig.modelSelection` + 能按 `optionSpecs.reasoningLevel` 校验它的 View）；
+`commandLease.store.waitForEditPresentation` 必须存在。
+涉及 `v4SessionPaneEditUserQuery`（5 例）、`sessionPaneHighspeedActivation`（6 例）、
+`useComposerAttachmentsUpload`（20 例，选择器改为驱动隐藏 `<input type="file">`）。
 
 ## Unresolved Questions
 
