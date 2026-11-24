@@ -172,7 +172,6 @@ import { reconnectWebRemoteControlWorkspaceInRenderer } from "./webRemoteControl
 import { sendWebRemoteControlStatusChangedToWindow } from "./webRemoteControlStatusEvents.js";
 import {
   executeDesktopCommand,
-  showRendererCrashDialog,
   resolveDesktopCodexBridgePath,
 } from "@desktop/main/desktopCommandHandlers.js";
 import { localBrowserMcpAvailability } from "@desktop/main/desktopCodexMcpAvailability.js";
@@ -2379,20 +2378,9 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
     },
   });
   registerStabilityMainWindow(win);
-  // 只为主业务窗口提供应用级恢复；网页 guest 和辅助窗口仍由各自 owner 处理。
-  win.webContents.on("render-process-gone", (_event, details) => {
-    // Electron 的 forcefullyCrashRenderer 在部分平台报告 killed + 非零退出码；
-    // 不能把所有 killed 当作正常退出，否则真实 renderer 崩溃仍没有重启入口。
-    if (details.reason === "clean-exit" || (details.reason === "killed" && details.exitCode === 0))
-      return;
-    void showRendererCrashDialog({
-      window: win,
-      locale: currentApplicationLocale,
-      isQuitting: () =>
-        forceQuitRef.current || hasPreparedAppQuit || appQuitPreparationInFlight !== null,
-      logger,
-    });
-  });
+  // 崩溃恢复只保留 fork 的有界原地 reload 链路（见下方 rendererCrashRecovery 接线与
+  // codexRendererCrashRecovery 回归）：上游 v4.0.0 的 showRendererCrashDialog 若同时注册，
+  // 同一次 render-process-gone 会既弹重启对话框又自动 reload，两种恢复互相打架。
   return win;
 }
 
