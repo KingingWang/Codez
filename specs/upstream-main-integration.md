@@ -7,7 +7,7 @@
 | 目的     | 将 Codez 定制提交迁移到 ZCode 上游 main，保留已有产品行为                     |
 | 上游     | `fec975905a2abd4c07e35c40d51fa097a2258ec9`，3.18.2                            |
 | 原项目   | `38ef71e1cde75ba1ed8d56c8adeaa0400867e776`                                    |
-| 原基准   | `b95ebaffe` → `a35460ec6cef530293206a8a95668d92606de15d`（原重命名提交）       |
+| 原基准   | `b95ebaffe` → `a35460ec6cef530293206a8a95668d92606de15d`（原重命名提交）      |
 | 新基准   | `27e6bf6207a9edaf05a4f4e0881bab9ec33afb3c`，纯产品品牌及路径转换              |
 | 本地备份 | `backup/pre-rebase-3.18.0-local`                                              |
 | 改动层   | presentation / validation / persistence / recovery 的兼容迁移，不新增产品语义 |
@@ -288,12 +288,12 @@ E2EE 与 UI 回归依赖，不能把后续 install 同步的定制依赖变化�
 
 v3.18.1 回放阶段：182 个定制提交逐条回放，4 处冲突：
 
-| 提交          | 冲突文件                                             | 处理                                                                                                                                                                                                       |
-| ------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `2fddb58bd`   | `.gitignore`                                         | 并列保留上游新增的 CR-01 `packages/desktop/build/generated/` 与 fork 的本地产物忽略块；`.zcode-runtime/` 沿用 fork 形态                                                                                     |
-| `da02d6a`     | `architecture-policy.yaml`                           | 同一插入点做 union：上游 `cli-memory-diagnostics` 模块与 fork 5 个 helper 模块并存；YAML 解析、模块总数与两侧模块 id 存在性复核                                                                              |
-| `6d8def3`     | `packages/web/.../remote-task-open.mjs`              | 以 fork E2EE 版本为基，补入上游新增的 `getSessionLifecycle` handler 与任务首页返回箭头／导航历史断言，`results` 保留 `taskHomeArrow`；上游新增行逐行校验全部命中                                            |
-| `38ef71e1c`   | `scripts/build-windows-runtime-host.mjs`             | 保留 fork 的 CMake 生成器探测循环，把上游第二个目标 `codez-installer-process-helper` 并入同一次 configure 后的构建、PE 校验、拷贝与 `build.json` 的 `installerProcessHelper`；产物路径改用生成器感知的 `resolveBuiltRuntimeHostBinary`，不沿用上游写死的 `Release/` 目录 |
+| 提交        | 冲突文件                                 | 处理                                                                                                                                                                                                                                                                     |
+| ----------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `2fddb58bd` | `.gitignore`                             | 并列保留上游新增的 CR-01 `packages/desktop/build/generated/` 与 fork 的本地产物忽略块；`.zcode-runtime/` 沿用 fork 形态                                                                                                                                                  |
+| `da02d6a`   | `architecture-policy.yaml`               | 同一插入点做 union：上游 `cli-memory-diagnostics` 模块与 fork 5 个 helper 模块并存；YAML 解析、模块总数与两侧模块 id 存在性复核                                                                                                                                          |
+| `6d8def3`   | `packages/web/.../remote-task-open.mjs`  | 以 fork E2EE 版本为基，补入上游新增的 `getSessionLifecycle` handler 与任务首页返回箭头／导航历史断言，`results` 保留 `taskHomeArrow`；上游新增行逐行校验全部命中                                                                                                         |
+| `38ef71e1c` | `scripts/build-windows-runtime-host.mjs` | 保留 fork 的 CMake 生成器探测循环，把上游第二个目标 `codez-installer-process-helper` 并入同一次 configure 后的构建、PE 校验、拷贝与 `build.json` 的 `installerProcessHelper`；产物路径改用生成器感知的 `resolveBuiltRuntimeHostBinary`，不沿用上游写死的 `Release/` 目录 |
 
 回放后按「上游新增行与 fork 新增行都必须存在」逐文件机械校验 32 个交互文件，
 除上表刻意合并的 13 行外全部命中；`pnpm typecheck` 通过。
@@ -301,9 +301,9 @@ v3.18.1 回放阶段：182 个定制提交逐条回放，4 处冲突：
 v3.18.2 前移阶段：把已解决历史整体重放到新基准，只新增 1 处冲突
 （v3.18.1 的 4 处冲突点上游未再改动，既有解决结果直接干净应用）：
 
-| 提交        | 冲突文件                                          | 处理                                                                                                                                                                                                                       |
-| ----------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `2fddb58bd` | `packages/desktop/src/main/desktopHostProcess.ts`  | `@codez/shared` import 列表做 union：上游为「切换数据存储路径后凭据密钥共享」新增的 `CREDENTIAL_KEY_SHARE_UNAVAILABLE_ERROR_CODE` 与 fork 的 `type DesktopCodexMcpServer` 并存；上游新增的 `CredentialKeyShareRequest` 分支整体保留 |
+| 提交        | 冲突文件                                          | 处理                                                                                                                                                                                                                                |
+| ----------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `2fddb58bd` | `packages/desktop/src/main/desktopHostProcess.ts` | `@codez/shared` import 列表做 union：上游为「切换数据存储路径后凭据密钥共享」新增的 `CREDENTIAL_KEY_SHARE_UNAVAILABLE_ERROR_CODE` 与 fork 的 `type DesktopCodexMcpServer` 并存；上游新增的 `CredentialKeyShareRequest` 分支整体保留 |
 
 v3.18.2 阶段同样按「上游新增行与 fork 新增行都必须存在」校验 15 个交互文件，0 缺失行。
 
@@ -320,10 +320,134 @@ v3.18.2 阶段同样按「上游新增行与 fork 新增行都必须存在」校
 memory-diagnostics 夹具版本是既成事实，不改；relay wire 断言继续为 `zcode_type`。
 README 更新段同时保留上游 3.18.2 / 3.18.1 条目与 Codez Computer Use / Codex bridge 条目。
 
+### 4.0.0 迁移验收
+
+原工作树干净；原 main（`793daafc0`）在 rename `27e6bf620` 之后是 195 个线性定制提交。
+rebase 前 HEAD 已备份到本地分支 `backup/pre-rebase-4.0.0-local`，推送前再备份为
+`origin/backup/pre-rebase-4.0.0`。上游 v4.0.0 sync 为 `a4b444514`（tag v4.0.0），
+相对 v3.18.2 基线累积 2209 文件 / 149753 插入 / 24801 删除，是 fork 以来最大的一次上游跳跃。
+
+品牌转换沿用可重放脚本：先对 v3.18.2 基线重算，得到与原重命名提交完全相同的 tree
+（`ff0b24f9a230244df64b89641e94c65b02d71c97`），再在 `a4b444514` 上生成新基准
+`25163202468e14702636ce1f512a97d4a94b5d0b`（tree `f0d670ca8bff8643cb155880a38c200002d92157`）。
+verify-pure 复核 19355 文件 / 8191 blob 逐字节校验 / 0 错误；`pnpm-lock.yaml` 与
+`scripts/architecture/upstream-snapshot.json` 均为纯转换结果。例外集与上一轮一致
+（`cdn-zcode.z.ai`、`zcode.z.ai`、`/api/v1/zcode-plan`、`zcode-plugins-official`、
+`ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID`、`.zcode-runtime`、relay 线级 `zcode_type`、
+混合大小写 `Zcode*`；`packages/codex-bridge/**` 与 specs/codex-zcode-plugin-compatibility.md
+的 `ZCode*` / `ZCODE_PLUGIN_ROOT` 例外只作用于 fork 自有文件）。等长替换后
+`config/provider/regression/fixtures/marker.pdf` 的 Adler-32 由脚本重算。
+
+195 个定制提交全部回放（计数与原 main 一致），另加本轮适配提交。大合并提交
+`ff2e1e305` → `3384ca86c` 共 42 个冲突文件，处理分组如下：
+
+| 分组         | 冲突文件                                                                          | 处理                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------ | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CUA          | `packages/zcode-cua` vs `packages/codez-cua`                                      | 上游 v4.0.0 的 zcode-cua 0.6.6 仍是 fail-closed 占位包（package.json 自述 placeholder），按合同保留自研 codez-cua 0.1.0；上游占位 availability.test.ts 删除                                                                                                                                                                                                                                                                                                     |
+| 插件市场     | marketplace 标识                                                                  | fork 打包标识 `codez-plugins-official` 保留；上游 CDN 例外 `zcode-plugins-official` 原样保留                                                                                                                                                                                                                                                                                                                                                                    |
+| 打包         | electron-builder、afterPack                                                       | 上游 preinstalled-entry-shim 块保留，叠加 fork `isCodexBuild` codex/glm 三元；上游 extraResources cua-helper 块弃用（fork 经 afterPack `finalizePackagedWindowsCuaHelper` 打包，两条路径均在合并后 afterPack 内核实）                                                                                                                                                                                                                                           |
+| Desktop main | node.ts、desktopCommandHandlers、main/index.ts、web/main.tsx                      | node.ts 取上游 `getCredentialsFilePath`（合并后 `resolveCredentialFilePath` 不存在）+ fork providerRuntimeApiKeyCredentialKey / nativeBrowserCua / desktopCodexMcpServers / desktopBrowserMcpStateSource / createDesktopBrowserRelay / preinstalledToolsBinDir + 合并 env 块；desktopCommandHandlers 双函数并存（上游 crash-recovery + fork resolveDesktopCodexBridgePath）；web/main.tsx 以 fork imports 为准（resolveWebRemoteControlWebSocketCtor 仍被使用） |
+| 协议         | updateConfig、types.ts                                                            | updateConfig 不再含 `language`（上游移除且无调用方）；types.ts language 字段与 replyLanguage 经 union 保留；fork memory 方法保留                                                                                                                                                                                                                                                                                                                                |
+| 任务索引     | codezTaskIndexSyncer、product-projection                                          | 上游活动基线（hasActivityBaseline/reportActiveSessions）+ fork seedDiscoveredTaskRows 播种；product-projection union（completedActivityCount + compactSettledRowPayloads）                                                                                                                                                                                                                                                                                      |
+| Git UI       | GitBranchSwitcher                                                                 | 上游 controller 模式为骨架，移植 fork worktree 能力（worktreeMenu hook、useEffect 刷新、GitBranchListItem onDeleteBranch、GitWorktreeMenuActions）                                                                                                                                                                                                                                                                                                              |
+| Composer     | slashCommandPanelSections、newTaskDraft、useDraftConfigControl                    | fork icons+BUILTIN_SLASH_MESSAGE_IDS 叠加上游 isAppSlashCommandSuggestion 兜底；fork options.codex/defaultMode/permissionModeGen 并入上游 {draft, recentModelSelection} 返回；fork codexUsesCatalog 三元重构为 if/else-if/else 并保留上游 recentModelSelection 迁移                                                                                                                                                                                             |
+| E2E/SEA      | e2e subagent、build-sea.test.mjs                                                  | 取上游重构版（fork 差异仅品牌改名；doc-plugin visual-judge 已被上游移除）；fork marketplace 断言改由 sea-official-plugin-assets.mjs 强制                                                                                                                                                                                                                                                                                                                        |
+| v4 会话 UI   | SessionPane、ConversationComposer、ConversationStatusPanel、ConversationTurnGroup | 四个深耦合文件整体取 fork 版：上游重写 ConversationStatusPanel（1202+/1822-，移除 GitStatusSection/gitAuxiliaryGenerationSupported），与 fork SessionPane 传参不兼容；fork 版自洽                                                                                                                                                                                                                                                                               |
+
+后续冲突提交（旧 hash → 新 hash）：
+
+| 提交                      | 冲突文件                                                           | 处理                                                                                                                                                                                                                                                                    |
+| ------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `12262f1bf` → `37589717a` | webAuthService、useRootOAuthEffects、browserOAuthCredentialRepo    | webAuthService 双方法并存（上游 resolveCallbackReturnTo + fork startPollingLogin）；useRootOAuthEffects 取上游 selection-capture + 可选调用 + HEAD always-refresh；browserOAuthCredentialRepo union（appReturnTo+regional+hash 校验）                                   |
+| `02a41bf09` → `e01e87f41` | startLogin                                                         | fork popup-polling + e2ee-hash 形态（与原 main 一致）                                                                                                                                                                                                                   |
+| `7050c6d41` → `31aa9cd59` | startLogin                                                         | `const pollToken` → `const token` 更名修正 + regionalProvider 收窄                                                                                                                                                                                                      |
+| `4f6b9ee2d` → `e8ced0436` | pnpm-lock.yaml、package.json、cli test script、architecture-policy | lockfile 取上游版（最终 pnpm install 归一）；保留 @codez/shared 依赖并去重 @codez/codez-cua；cli test script = HEAD 减 3 个已删除 CUA 测试文件；architecture-policy 保留 HEAD roots（vitest.config.ts、wait-for-mcp-servers、tool-search-hydration 为上游 v4.0.0 新增） |
+| `c0cf153f5` → `581f9e84b` | core.ts                                                            | import union，去掉未使用的 join                                                                                                                                                                                                                                         |
+| `793daafc0` → `2f4b8b6c7` | locales                                                            | 取上游新 i18n 键（fork 专用键事后补回，见下）                                                                                                                                                                                                                           |
+| 文档类                    | docs/specs recurring 冲突                                          | 按 fix-docs-general 策略：保留 fork 累计版（RDUX-13-LOG-01、IPv6 RDUX-13-02、BG26 细节、models/ 子目录测试路径）；换入上游 RDUX-13-04 行；SAC×2 并列；新章节 CSAQ34/MNCP 合并；task-sqlite-index.md 双章节合并                                                          |
+
+typecheck 暴露的合并缝隙及修复（本轮适配提交）：
+
+1. fork v4 UI 依赖的 sibling 模块被上游 v4.0.0 重写/删除（conversationLayout、
+   conversationStatusPanelModel、legacyChatViewTypes、ConversationTimeline、test-ids、
+   conversationSharePreflightCache）：这些文件 fork 从未定制（与上游 v3.18.2 逐字节一致），
+   上游移除的是 v3.18.2 状态面板布局体系。因 fork 四 UI 文件保留，sibling 按 fork 版恢复；
+   ConversationTimeline 合并保留上游 v4.0.0 改进（回底按钮样式、onAskInSideChat 可选、导航间距）。
+   conversationSharePreflightCache 上游移入 conversation-share-interaction/，SessionPane 改指新路径。
+2. 语音输入：上游 v4.0.0 新增 blocked/shortcut API；fork Composer 接 voiceInputBlocked =
+   disabled || blockingRequestId !== null，移植上游 ownsComposerKeyboardShortcut 归属判定
+   （isKeyboardEventForPane + data-session-pane-root）到 fork SessionPane/Composer。
+3. ConversationBackgroundWorkTrigger（上游删除的 composer 后台任务入口）按 fork 版恢复，
+   TID_V4_COMPOSER_BACKGROUND_WORK_TRIGGER、TID_CHAT_SUMMARY_PANEL 补回 test-ids。
+4. locales「取上游」丢失 42 个 zh-CN / 38 个 en-US fork 专用键（chat.statusPanel._、
+   chat.summaryPanel._、chat.composer.backgroundWorks.\*）：按旧 main 原值全量补回；
+   chat.slash.app.plan.label 重复键去重。
+5. CodezProductFlavor 含 "codex"，上游 resolvePreinstalledToolsRelease 只认 production/preview：
+   main/host 两处调用点将 codex 映射为 production（codex 安装包复用 production 预装资产）。
+6. 上游新增 E2E 门禁 mobile-rpc-frame-gate.ts 按上游 wire 断言 zcode_type；fork 的 RPC 传输
+   载荷字段是 codez_type（e83d15f5c 确立的边界：只有 relay 信封保留 zcode_type），门禁适配 fork wire。
+7. OAuth：上游 v4.0.0 把 availability 前移到设置读取之前并新增 domain 纠正流程，绕过了
+   fork「陈旧 Host 即终止」守卫；在设置解析完成后补回 isCurrent 复查（保留上游纠正流程），
+   四个回归夹具补齐 oauthService。
+8. 崩溃恢复：合并同时保留了上游 showRendererCrashDialog 接线与 fork rendererCrashRecovery
+   接线，同一 render-process-gone 会双重处理；移除上游对话框接线，保留 fork 有界原地 reload
+   （codexRendererCrashRecovery 回归守护）。desktopCommandHandlers 的对话框函数与
+   restartAppAfterCrash 机制保留（命令处理器仍用）。
+9. SEA computer-use 插件条目重复（上游占位 0.6.6 条目 + fork 0.1.0 条目）：移除上游条目与
+   sea-cua-runtime-assets.mjs 占位机制，保留 fork 条目；build-sea.test.mjs 补 codez-cua-plugin
+   skill-only fixture。
+10. 测试对齐上游 v4.0.0 合同（沿用 02a41bf09 先例）：messageTelemetry 新增首响归属字段
+    （is*first_message/send_mode/ttft*\*）与 agent_step error_code；WorkspaceHelpMenuButton
+    新增 preinstalledTools.title 菜单项；WorkflowRunDirectorySidePane completed 行不再渲染
+    状态词；gitCliRepo 安全参数集中到 GitCommandProvider.buildProductGitArgs（fake argv 对齐）；
+    codezAgentService 运行时偏好投影新增 agentAlwaysBackgroundEnabled/totalTokensReminderEnabled；
+    desktopWindowLifecycle 夹具补必填 currentReplyLanguage（上游 v4.0.0 特性）；
+    remoteDeploy 官方插件资产断言随 visual-judge 移除改抽样 LibreOffice 调用脚本；
+    test-codex-distribution-runtime 打包夹具 stub @napi-rs/keyring 原生模块与 node:os 新导出。
+
+发行版本断言同步到 4.0.0：`scripts/test-codex-distribution-release.mjs`（13 处）、
+`scripts/test-codex-distribution-remote-index.mjs`（19 处 + 1 处转义正则）、
+`packages/server/test/remoteAssetCdn.test.ts`（1 处）。project-storage 迁移账本 appVersion、
+历史文档验收编号、memory-diagnostics 夹具版本与源码内历史 bugfix 注释不改；
+relay wire 断言继续 `zcode_type`。README 更新段同时保留上游 4.0.0 条目与
+Codez Computer Use / Codex bridge 条目。lockfile 经 pnpm install 归一（fork importers +
+上游 v4.0.0 依赖），`--frozen-lockfile` 复核通过。
+
+验证结果（真实数据）：
+
+| 项                                                                       | 结果                                                                                                                                                                                                                                                                    |
+| ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| pnpm install / --frozen-lockfile                                         | 通过（lockfile 收敛 fork importers）                                                                                                                                                                                                                                    |
+| pnpm typecheck                                                           | 通过（exit 0）                                                                                                                                                                                                                                                          |
+| pnpm lint                                                                | 0 errors / 622 warnings（基线存量；改动区域无新增 hooks 诊断）                                                                                                                                                                                                          |
+| codex-bridge test                                                        | 880 tests：875 pass / 0 fail / 5 skip（首轮全量）；event-loop lag 预算测试在高环境负载下偶发超预算（70-83ms > 60ms），单文件运行通过，非代码回归                                                                                                                        |
+| test:codex 分发脚本                                                      | 98/98 通过                                                                                                                                                                                                                                                              |
+| fork vitest web（13 文件）                                               | 189/189 通过                                                                                                                                                                                                                                                            |
+| fork vitest services（40 文件）                                          | 766 pass / 27 fail，失败集合与旧 main 基线完全一致（0 新增）                                                                                                                                                                                                            |
+| fork vitest ui（140 文件）                                               | 1800 pass / 446 fail；对照旧 main 基线（同文件集 433 fail）逐项 comm 比对：7 个真实新增失败已修复，其余为基线存量或负载抖动（单独复跑通过）                                                                                                                             |
+| fork vitest desktop（29 文件）                                           | 530 pass / 8 fail / 10 skip，失败集合与旧 main 基线完全一致（0 新增）                                                                                                                                                                                                   |
+| fork vitest 其余（server/client/provider/rpc/shared/server-cli 30 文件） | 485 pass / 3 fail → remoteDeploy 修复后 2 fail 均为基线存量（serverCore、CAS 表）                                                                                                                                                                                       |
+| Node 批次 ui / services / server / shared / desktop                      | 290/291（1 个 .svg 加载器基线红）、219/219、38+1skip、12/12、84/84                                                                                                                                                                                                      |
+| codez-cli build + test                                                   | build 通过；553 tests：547 pass / 6 fail（sea-runtime-tools 与旧 main 基线完全一致）                                                                                                                                                                                    |
+| verify:pre-push（CODEZ_PRE_PUSH_BASE=25163202468）                       | exit 0：worktree / e2e-remote-targets / lint（0 errors）/ stale-phrases / db-schema / test:architecture（62 pass）/ architecture:check（0 违规）全部通过；engineering-affected 因公共配置变更按合同选中整套件（185 规格）并报告跳过、不阻止推送                         |
+| pnpm test:engineering（185 规格全量，串行）                              | 首轮 1164 pass / 1 fail：上游 v4.0.0 新增审计对 3 个 fork pending 会话夹具报 PENDING_FIXTURE_FORMAL_TARGET_MISMATCH（fixture 声明的转正路径还是旧扁平布局，pending 实际在 remote/installation 场景目录）；修正 6 个 JSON 的 spec 字段后全量绿（181 文件 pass / 3 skip） |
+
+基线对照方法：`git worktree add /tmp/codez-old-main-baseline 793daafc0`，逐包重建
+node_modules 符号链接（@codez/\* 指回 worktree 源码），用同一 vitest.fork.config.ts /
+tsx 入口运行失败文件集，`comm` 比对失败用例集合。旧 main 的 fork 回归套件本身存在
+大面积存量红（ui 433 例、services 27 例、desktop 8 例、server 2 例、CLI 6 例、
+ui Node 4 例），本轮不扩大也不掩盖：新增失败全部修复，存量红如实报告。
+
+需用户确认的上游语义变化：CUA 绑定观察改为 emit:false 投影（身份收敛代码保留）；
+四个 v4 会话 UI 文件以 fork 版覆盖上游重写；updateConfig 移除 language；
+上游崩溃对话框让位 fork 有界恢复；SEA computer-use 按 fork 0.1.0 合同去重；
+visual-judge 资产随上游移除；preinstalledTools 菜单项与回复语言接线为上游新特性，
+codex flavor 映射 production 预装资产。
+
 ## Unresolved Questions
 
-| 项                       | 处理边界                                                                                                                                                                                              |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 项                       | 处理边界                                                                                                                                                                                                                     |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 最终 lockfile 与定制依赖 | 按任务第 1 步重命名基准的边界，rename 保持纯转换；最终由 pnpm install 同步真实 importer、依赖和 patch hash，并复核 frozen install。已向用户说明这一解释；snapshot 始终纯转换，不用忽略 manifest 或安装后恢复 lock 掩盖不一致 |
-| 上游 API 变化            | 按具体冲突审查；改变原定制产品语义时需用户确认                                                                                                                                                        |
-| 运行时 / 平台验证        | 未实际运行的 GUI、手机或其他 OS 验收不能宣称通过                                                                                                                                                      |
+| 上游 API 变化            | 按具体冲突审查；改变原定制产品语义时需用户确认                                                                                                                                                                               |
+| 运行时 / 平台验证        | 未实际运行的 GUI、手机或其他 OS 验收不能宣称通过                                                                                                                                                                             |
