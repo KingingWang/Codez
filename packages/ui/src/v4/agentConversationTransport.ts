@@ -253,9 +253,27 @@ export function createAgentConversationTransport(
             logger.debug("[local-ttft] checkpoint failed", { error });
           }
         });
-      upstream = agentService.onDynamicConversationFrame(workspace)((frame) =>
-        barrier.accept(frame),
-      );
+      upstream = agentService.onDynamicConversationFrame(workspace)((frame) => {
+        // 物理到达诊断（fork 定制，随 v3.18.0 sync 一度丢失，此处按原语义恢复）：
+        // 只在 initial/recovery 的逻辑帧「最后一片物理帧」到达时记一次 received，
+        // 与 assembled 成对出现；online 帧由 logWire 内部直接跳过，不落任何内容。
+        if (frame.deliveryKind === "initial" || frame.deliveryKind === "recovery") {
+          if (
+            frame.kind === "complete" ||
+            (typeof frame.fragmentIndex === "number" &&
+              typeof frame.fragmentCount === "number" &&
+              frame.fragmentIndex === frame.fragmentCount - 1)
+          ) {
+            logWire("received", {
+              topic: frame.topic,
+              subscriptionId: frame.subscriptionId,
+              deliveryKind: frame.deliveryKind,
+              logicalFrameOrdinal: frame.logicalFrameOrdinal,
+            });
+          }
+        }
+        barrier.accept(frame);
+      });
       logger.lifecycle.info("v4 conversation frame upstream attached", {
         ...lifecycleContext,
         event: "v4.conversation.frames.upstream_attached",
@@ -269,6 +287,19 @@ export function createAgentConversationTransport(
   const attachRuntimeRestartUpstream = () => {
     runtimeRestartUpstream ??= agentService.onAgentRuntimeRestarted((event) => {
       if (event.workspaceKey !== targetWorkspaceKey) return;
+      // runtime 换代诊断（fork 定制，随 v3.18.0 sync 一度丢失，此处按原语义恢复）：
+      // 只记被失效的订阅数与即将启用的代次，不写 workspacePath/workspaceKey，
+      // 避免把用户目录带进打包版日志。
+      try {
+        logger.lifecycle.warn("v4 conversation runtime invalidated subscriptions", {
+          event: "v4.conversation.runtime.invalidated",
+          invalidatedSubscriptions: topicBySubscriptionId.size,
+          runtimeGeneration: runtimeGeneration + 1,
+          module: "ui.v4.conversation_transport",
+        });
+      } catch {
+        // 诊断失败不影响旧 route 清理。
+      }
       if (!target.workspaceIdentity?.trim())
         getLocalTtftObserver()?.interrupt(target.workspacePath);
       runtimeGeneration += 1;

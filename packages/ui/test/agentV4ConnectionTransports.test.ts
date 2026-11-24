@@ -191,17 +191,25 @@ describe("agent V4 connection transports", () => {
           payload: { kind: "deltas", deltas: "invalid" },
         } as unknown as ConversationTopicFrame,
       });
+      // 对齐现状：物理组装拒收的诊断事件名是 v4.topic_wire.physical_assembly.rejected
+      // （topicWireDecoder.ts，2026-11-03 现场排障后从 logger.warn 改走 lifecycle 通道，
+      // 让打包版也留痕），载荷按 topic 而非 sessionId 表达，并刻意保留 logicalFrameId /
+      // logicalFrameOrdinal 用于与 CLI 的 fault 报告对齐。旧的
+      // v4.conversation.wire.assembly_fault 名称在本仓库任何分支的实现里都不存在。
       const event = warn.mock.calls.find(
         ([, value]) =>
-          (value as { event?: string })?.event === "v4.conversation.wire.assembly_fault",
+          (value as { event?: string })?.event === "v4.topic_wire.physical_assembly.rejected",
       )?.[1];
       expect(event).toMatchObject({
-        sessionId: "session-1",
+        topic: "conversation/session-1",
         subscriptionId: "sub-1",
         reasonCode: "proto.frameAssemblyInvalidPayload",
         deliveryKind: "initial",
+        logicalFrameId: "logical-broken",
       });
-      expect(JSON.stringify(event)).not.toContain("logical-broken");
+      // 不变量：诊断只带标识与故障码，绝不带帧内容（这里的非法 deltas 值）。
+      expect(JSON.stringify(event)).not.toContain("invalid");
+      expect(JSON.stringify(event)).not.toContain("deltas");
     } finally {
       warn.mockRestore();
     }
