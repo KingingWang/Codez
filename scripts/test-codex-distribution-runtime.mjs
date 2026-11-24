@@ -273,6 +273,25 @@ async function loadRuntimeModule(t, source, flavor = "codex", plugins = []) {
   const directory = await mkdtemp(join(tmpdir(), "codez-identity-test-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const outfile = join(directory, "test.cjs");
+  // 修复原因：上游 v4.0.0 的系统凭据库在 credential-security 链路里动态 import
+  // @napi-rs/keyring（原生 .node 二进制），esbuild 没有对应 loader 会直接构建失败。
+  // 这里的被测模块只读取凭据文件路径常量，从不触发系统凭据路径；stub 掉原生模块即可，
+  // 真实 keyring 行为仍由 packages/shared 的凭据测试覆盖。
+  const nativeKeyringStub = {
+    name: "stub-native-keyring",
+    setup(build) {
+      build.onResolve({ filter: /^@napi-rs\/keyring/ }, ({ path }) => ({
+        path,
+        namespace: "native-keyring-stub",
+      }));
+      build.onLoad({ filter: /.*/, namespace: "native-keyring-stub" }, () => ({
+        contents:
+          "export class AsyncEntry { constructor() { throw new Error('keyring stub'); } }\n" +
+          "export class Entry { constructor() { throw new Error('keyring stub'); } }\n",
+        loader: "js",
+      }));
+    },
+  };
   await build({
     entryPoints: [resolve(codexWorkspaceRoot, source)],
     outfile,
@@ -280,7 +299,7 @@ async function loadRuntimeModule(t, source, flavor = "codex", plugins = []) {
     platform: "node",
     format: "cjs",
     logLevel: "silent",
-    plugins,
+    plugins: [nativeKeyringStub, ...plugins],
     define: {
       __CODEZ_PRODUCT_FLAVOR__: JSON.stringify(flavor),
       __CODEZ_ENV__: '"production"',
@@ -441,7 +460,11 @@ test("early bootstrap ignores upstream settings and namespaces a fork custom roo
         build.onLoad({ filter: /.*/, namespace: "fixture" }, ({ path }) => ({
           contents:
             path === "node:os"
-              ? `export const homedir = () => ${JSON.stringify(home)};`
+              ? // 上游 v4.0.0 的 systemCredentialCipher 还从 node:os 读 platform/userInfo；
+                // bootstrap 用例不触发凭据路径，给出最小实现即可满足打包期导出解析。
+                `export const homedir = () => ${JSON.stringify(home)};\n` +
+                `export const platform = () => "linux";\n` +
+                `export const userInfo = () => ({ username: "codez-test" });\n`
               : "export function setDataBaseDir(dir) { globalThis.__codexTestBase = dir; }",
         }));
       },
