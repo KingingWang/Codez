@@ -7,6 +7,9 @@ import { mkdtemp, rm } from "node:fs/promises";
 import test from "node:test";
 import { ensureSeaRuntimeTools, type SeaRuntimeModule } from "../src/sea-runtime-tools.js";
 
+// 每个用例都显式传 env：ensureSeaRuntimeTools 缺省读 process.env，若宿主机已导出
+// CODEZ_BFS_BINARY / CODEZ_RG_BINARY / CODEZ_UGREP_BINARY（例如本机常驻 Codez Server 运行时），
+// 三个工具会被判定为“已显式覆盖”而整体跳过，返回 {} 让断言假失败/假通过。
 type ToolFixture = {
   binaryName: string;
   bytes: Buffer;
@@ -40,6 +43,7 @@ test("extracts target tools into version and hash addressed cache directories", 
   try {
     const runtimeEnv = await ensureSeaRuntimeTools({
       arch: "arm64",
+      env: {},
       platform: "darwin",
       sea: fixture.sea,
       storageRoot,
@@ -86,6 +90,7 @@ test("reuses unchanged tools when another tool changes", async () => {
   try {
     const first = await ensureSeaRuntimeTools({
       arch: "arm64",
+      env: {},
       platform: "darwin",
       sea: firstFixture.sea,
       storageRoot,
@@ -94,6 +99,7 @@ test("reuses unchanged tools when another tool changes", async () => {
 
     const second = await ensureSeaRuntimeTools({
       arch: "arm64",
+      env: {},
       platform: "darwin",
       sea: secondFixture.sea,
       storageRoot,
@@ -116,6 +122,7 @@ test("repairs caches with invalid size, hash, marker, or executable mode", async
   });
   const options = {
     arch: "arm64",
+    env: {},
     platform: "darwin" as const,
     sea: fixture.sea,
     storageRoot,
@@ -156,6 +163,7 @@ test("concurrent first runs converge without temporary cache residue", async () 
   });
   const options = {
     arch: "arm64",
+    env: {},
     platform: "darwin" as const,
     sea: fixture.sea,
     storageRoot,
@@ -225,6 +233,7 @@ test("extracts Windows SEA tools using the win target and executable name", asyn
   try {
     const runtimeEnv = await ensureSeaRuntimeTools({
       arch: "x64",
+      env: {},
       platform: "win32",
       sea: fixture.sea,
       storageRoot,
@@ -255,6 +264,7 @@ test("rejects corrupt assets and target mismatches", async () => {
     await assert.rejects(
       ensureSeaRuntimeTools({
         arch: "arm64",
+        env: {},
         platform: "darwin",
         sea: corruptSea,
         storageRoot,
@@ -264,6 +274,7 @@ test("rejects corrupt assets and target mismatches", async () => {
     await assert.rejects(
       ensureSeaRuntimeTools({
         arch: "x64",
+        env: {},
         platform: "darwin",
         sea: fixture.sea,
         storageRoot,

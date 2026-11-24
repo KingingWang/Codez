@@ -1,5 +1,7 @@
 import type { useCodezIntl } from "@/i18n/IntlProvider.js";
-import { RetryErrorDetailsPopover } from "@/chat-input-toolbar/display.js";
+// 只取窄模块：display.tsx 会连带拉入 contextUsage → CodingPlanUsageRemainingPanel →
+// oauthProviderIcon（.svg 资源），本组件的纯 Node/tsx 回归无法加载 svg。
+import { RetryErrorDetailsPopover } from "@/chat-input-toolbar/RetryErrorDetailsPopover.js";
 
 export function CodexRetryStatus({
   httpStatusCode,

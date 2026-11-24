@@ -4,7 +4,6 @@ import {
   useMemo,
   type ComponentProps,
   type KeyboardEvent as ReactKeyboardEvent,
-  type ReactNode,
   type RefObject,
 } from "react";
 import {
@@ -47,7 +46,7 @@ import {
 } from "lucide-react";
 import { CODEZ_MODE_OPTION_DESCRIPTION_IDS, CODEZ_MODE_OPTION_LABEL_IDS } from "./display-help.js";
 import { RollingToolbarLabel } from "@/chat-input-toolbar/RollingToolbarLabel.js";
-import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover.js";
+import { RetryErrorDetailsPopover } from "@/chat-input-toolbar/RetryErrorDetailsPopover.js";
 
 export {
   ChatContextUsage,
@@ -55,81 +54,9 @@ export {
   getRenderableTaskUsage,
 } from "@/chat-input-toolbar/contextUsage.js";
 
-/**
- * 重试态详情只绑定当前 live snapshot，不写入 transcript。
- * 有详情时让状态本身成为触发器，避免用户还要在另一处寻找同一次失败。
- */
-export function RetryErrorDetailsPopover({
-  detail,
-  intl,
-  retryLabel,
-  children,
-  className,
-  testId,
-}: {
-  detail?: string | null;
-  intl: ReturnType<typeof useCodezIntl>["intl"];
-  retryLabel: string;
-  children: ReactNode;
-  className?: string;
-  testId: string;
-}) {
-  const normalizedDetail = detail?.trim();
-  const detailsLabel = intl.formatMessage({ id: "chat.apiRetryDetails.open" });
-  const statusProps = {
-    role: "status" as const,
-    "aria-live": "polite" as const,
-    "data-testid": testId,
-  };
-
-  if (!normalizedDetail) {
-    return (
-      <span
-        {...statusProps}
-        className={cn("inline-flex min-h-7 max-w-full min-w-0 items-center", className)}
-        title={retryLabel}
-      >
-        {children}
-      </span>
-    );
-  }
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          {...statusProps}
-          aria-label={detailsLabel}
-          title={detailsLabel}
-          className={cn(
-            "inline-flex min-h-7 max-w-full min-w-0 cursor-pointer items-center rounded-md text-left",
-            "hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            className,
-          )}
-          onClick={(event) => event.stopPropagation()}
-        >
-          {children}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        side="top"
-        align="start"
-        collisionPadding={12}
-        data-testid={`${testId}-details`}
-        className="w-96 max-w-[calc(100vw-1.5rem)] gap-2 p-3"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <PopoverTitle className="text-ui-base font-medium">
-          {intl.formatMessage({ id: "chat.apiRetryDetails.title" })}
-        </PopoverTitle>
-        <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words font-mono text-ui-xs text-foreground-subtle select-text">
-          {normalizedDetail}
-        </pre>
-      </PopoverContent>
-    </Popover>
-  );
-}
+// RetryErrorDetailsPopover 已拆到独立窄模块（原因见该文件头注释）；这里原样转出，
+// 保持 @/chat-input-toolbar/display.js 的既有公开面不变。
+export { RetryErrorDetailsPopover } from "@/chat-input-toolbar/RetryErrorDetailsPopover.js";
 
 type ConfigSelectTriggerSize = ComponentProps<typeof SelectTrigger>["size"];
 type ConfigSelectTriggerVariant = ComponentProps<typeof SelectTrigger>["variant"];
