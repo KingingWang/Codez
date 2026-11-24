@@ -825,6 +825,11 @@ test("allows skill-only official plugins when SEA runtime assets are required", 
     await writeTestFile(root, "packages/design-plugin/.codez-plugin/plugin.json", "{}");
     for (const seedPath of designPlugin?.requiredSeedPaths ?? [])
       await writeTestFile(root, join("packages/design-plugin", seedPath), "");
+    // fork 自研 Computer Use 插件（0.1.0）同为内容型条目；skill-only 采集需要它的 seed fixture。
+    const cuaPlugin = officialSeaPlugins.find((plugin) => plugin.name === "computer-use");
+    await writeTestFile(root, "packages/codez-cua-plugin/.codez-plugin/plugin.json", "{}");
+    for (const seedPath of cuaPlugin?.requiredSeedPaths ?? [])
+      await writeTestFile(root, join("packages/codez-cua-plugin", seedPath), "");
 
     const { manifest } = await collectSeaOfficialPluginAssets({
       requireRuntime: true,

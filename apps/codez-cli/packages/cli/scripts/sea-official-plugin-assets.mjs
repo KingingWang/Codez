@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
-import { CUA_SEA_TARGETS, collectCuaRuntimeFiles } from "./sea-cua-runtime-assets.mjs";
 
 export const seaOfficialPluginAssetPrefix = "codez-official-plugins/";
 export const seaOfficialPluginManifestAssetKey = `${seaOfficialPluginAssetPrefix}manifest.json`;
@@ -275,25 +274,12 @@ export const officialSeaPlugins = [
     version: "0.8.0",
   },
   {
-    // 只在 darwin / win SEA 内置：进程内 broker 需要随插件 seed 的 ax_native.node 与 sharp 运行时，
-    // 见 apps/codez-cli/docs/design/v2/cua-standalone-in-process-broker.md「发布物（SEA）」。
-    collectRuntimeFiles: collectCuaRuntimeFiles,
-    marketplace: "zcode-plugins-official",
-    name: "computer-use",
-    packageName: "@codez/codez-cua-plugin",
-    requiredSeedPaths: [
-      "docs/computer-use.md",
-      "scripts/computer-use-client.mjs",
-      "skills/computer-use/SKILL.md",
-    ],
-    requiresRuntime: false,
-    rootPath: join("packages", "codez-cua-plugin"),
-    targets: CUA_SEA_TARGETS,
-    version: "0.6.6",
-  },
-  {
     marketplace: "codez-plugins-official",
     name: "computer-use",
+    // fork 保留自研 Computer Use（packages/codez-cua，0.1.0）：上游 v4.0.0 为占位
+    // zcode-cua 0.6.6 增加的进程内 broker SEA 条目（zcode-plugins-official marketplace、
+    // collectCuaRuntimeFiles/CUA_SEA_TARGETS）不适用于 fork 插件布局，随占位机制一并移除；
+    // SEA 只嵌入公开 SDK、文档与 skill，executable host 归 node-repl-host。
     packageName: "@codez/codez-cua-plugin",
     requiresRuntime: false,
     // Computer Use 的 executable host 归 node-repl-host；这里必须只嵌入公开 SDK、文档和
@@ -310,7 +296,6 @@ export const officialSeaPlugins = [
 ];
 
 export const collectSeaOfficialPluginAssets = async ({
-  cuaRuntime,
   requireRuntime = false,
   root,
   stagingDirectory,
@@ -327,15 +312,6 @@ export const collectSeaOfficialPluginAssets = async ({
 
   for (const plugin of officialSeaPlugins) {
     if (plugin.targets && !plugin.targets.includes(target)) continue;
-    const runtimeFiles = plugin.collectRuntimeFiles
-      ? await plugin.collectRuntimeFiles({
-          ...cuaRuntime,
-          root,
-          stagingDirectory: join(stagingDirectory, plugin.name),
-          target,
-        })
-      : [];
-    if (runtimeFiles === null) continue;
     const pluginRoot = resolve(root, plugin.rootPath);
     assertPluginRoot(pluginRoot, plugin);
     assertPluginRequiredSeedAssets(pluginRoot, plugin);
@@ -348,9 +324,6 @@ export const collectSeaOfficialPluginAssets = async ({
     for await (const sourcePath of walkFiles(pluginRoot)) {
       const relativePath = relative(pluginRoot, sourcePath);
       if (shouldIncludePluginFile(relativePath)) pluginSources.push({ relativePath, sourcePath });
-    }
-    for (const file of runtimeFiles) {
-      pluginSources.push({ relativePath: file.path.split("/").join(sep), sourcePath: file.sourcePath });
     }
     for (const { relativePath, sourcePath } of pluginSources) {
       const bytes = await readFile(sourcePath);
