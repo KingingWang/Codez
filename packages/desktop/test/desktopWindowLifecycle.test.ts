@@ -62,6 +62,8 @@ describe("desktopWindowLifecycle createWindow", () => {
     const fallbackCwd = "/Users/demo/.codez/workspace/default";
 
     createWindow({
+      // 上游 v4.0.0 将回复语言接线设为必填（InitLocal 随 spawn 下发）；用例统一给未设置态。
+      currentReplyLanguage: () => null,
       nativeBrowserCua: () => ({ browserAvailable: false, cuaAvailable: false }),
       iconPath: "/tmp/icon.png",
       preloadPath: "/tmp/preload.js",
@@ -126,6 +128,7 @@ describe("desktopWindowLifecycle createWindow", () => {
     let locale: "zh-CN" | "en-US" = "en-US";
 
     createWindow({
+      currentReplyLanguage: () => null,
       nativeBrowserCua: () => ({ browserAvailable: false, cuaAvailable: false }),
       iconPath: "/tmp/icon.png",
       preloadPath: "/tmp/preload.js",
@@ -180,6 +183,7 @@ describe("desktopWindowLifecycle createWindow", () => {
     const spawnHostProcess = vi.fn(() => ({ pid: 1235 }) as never);
 
     createWindow({
+      currentReplyLanguage: () => null,
       nativeBrowserCua: () => ({ browserAvailable: false, cuaAvailable: false }),
       iconPath: "/tmp/icon.png",
       preloadPath: "/tmp/preload.js",
@@ -243,6 +247,7 @@ describe("desktopWindowLifecycle createWindow", () => {
     const reattachRemoteWorkspaceSessionsForWindow = vi.fn();
 
     createWindow({
+      currentReplyLanguage: () => null,
       nativeBrowserCua: () => ({ browserAvailable: false, cuaAvailable: false }),
       iconPath: "/tmp/icon.png",
       preloadPath: "/tmp/preload.js",
@@ -308,6 +313,7 @@ describe("desktopWindowLifecycle createWindow", () => {
     const fallbackPatch = { PATH: "/usr/local/bin:/usr/bin:/bin" };
 
     createWindow({
+      currentReplyLanguage: () => null,
       nativeBrowserCua: () => ({ browserAvailable: false, cuaAvailable: false }),
       iconPath: "/tmp/icon.png",
       preloadPath: "/tmp/preload.js",
@@ -367,6 +373,7 @@ describe("desktopWindowLifecycle createWindow", () => {
     const fallbackPatch = { PATH: "/usr/local/bin:/usr/bin:/bin" };
 
     createWindow({
+      currentReplyLanguage: () => null,
       nativeBrowserCua: () => ({ browserAvailable: false, cuaAvailable: false }),
       iconPath: "/tmp/icon.png",
       preloadPath: "/tmp/preload.js",
@@ -427,6 +434,7 @@ describe("desktopWindowLifecycle createWindow", () => {
     const spawnHostProcess = vi.fn(() => ({ pid: 1239 }) as never);
 
     createWindow({
+      currentReplyLanguage: () => null,
       nativeBrowserCua: () => ({ browserAvailable: false, cuaAvailable: false }),
       iconPath: "/tmp/icon.png",
       preloadPath: "/tmp/preload.js",
