@@ -10,7 +10,6 @@ import type { ToolCallRow } from "@codez/shared/codez-protocol-v4";
 import { ToolCallBlock } from "../src/ToolCallBlocks.js";
 import { ToolCallBody } from "../src/ToolCallBlocks/ToolCallBody.js";
 import { readRawToolCallFileSummaries } from "../src/ToolCallBlocks/shared.js";
-import { isExploreToolCall } from "../src/lib/exploreToolCall.js";
 import { buildToolDisplayModel } from "../src/lib/toolDisplay.js";
 import { toolCallRowToLegacyNode } from "../src/v4/toolCallRowAdapter.js";
 
@@ -93,18 +92,10 @@ vi.mock("@/ToolCallBlocks/renderers/agent.js", () => ({
 
 afterEach(cleanup);
 
-describe("isExploreToolCall", () => {
-  it("does not classify redirect write commands as explore", () => {
-    const result = isExploreToolCall({
-      kind: "execute",
-      input: {
-        command: ["/bin/zsh", "-lc", "cat > index.html <<'EOF' <!doctype html>"],
-      },
-    });
-
-    expect(result).toBe(false);
-  });
-});
+// 已移除的 fork 专属用例：isExploreToolCall / isExecuteToolCall 是旧 Explore/Terminal 合成
+// 父分组的判定函数，随上游 v3.18.0 sync（b95ebaffe）与 conversationCuaGroups.ts 一并删除。
+// 现行分类走 getAssistantSummaryToolCategory（explore/run/change/session），其回归在
+// test/v4AssistantWorkRenderItems.test.ts 覆盖，包含「只读 shell 归 explore、写命令归 run」。
 
 describe("ToolCallBlock agent routing", () => {
   it("renders compact trusted MCP labels from the real plugin-scoped payload", () => {
@@ -188,7 +179,14 @@ describe("ToolCallBlock agent routing", () => {
     expect(summary.textContent).toContain("Firebase");
     expect(summary.textContent).toContain("Get environment");
     expect(summary.textContent).toContain("已停止");
-    expect(summary.innerHTML).toContain(">·</span>");
+    // 对齐现状：MCP 摘要行改用 flex gap 分隔来源标签/工具名/状态，stopped 与 cancelled 态
+    // 不再插入「·」分隔符（renderers/mcp.tsx 的 stoppedSummaryStatus 只渲染状态本身）。
+    // 原来的分隔符断言改为「来源标签与状态标签各自独立成 span」，仍能防止两者被拼成一坨。
+    const stoppedSpans = Array.from(summary.querySelectorAll("span")).map(
+      (element) => element.textContent,
+    );
+    expect(stoppedSpans).toContain("Firebase");
+    expect(stoppedSpans).toContain("已停止");
     expect(summary.textContent).not.toContain(syntheticName);
 
     fireEvent.click(summary);
@@ -283,11 +281,11 @@ describe("ToolCallBlock agent routing", () => {
       expect(summary.textContent).not.toContain(label);
     } else {
       expect(summary.textContent).toContain(label);
-      expect(
-        Array.from(summary.querySelectorAll("span")).filter(
-          (element) => element.textContent === "·",
-        ),
-      ).toHaveLength(2);
+      // 对齐现状：cancelled 走 stoppedSummaryStatus，状态前不带「·」分隔符；
+      // 该分隔符只保留给 failed 与 auto-approval review 态（见下条用例）。
+      const statusSpans = Array.from(summary.querySelectorAll("span"));
+      expect(statusSpans.filter((element) => element.textContent === "·")).toHaveLength(0);
+      expect(statusSpans.some((element) => element.textContent === label)).toBe(true);
     }
     fireEvent.click(summary);
     if (canExpand) {
@@ -332,9 +330,11 @@ describe("ToolCallBlock agent routing", () => {
     );
 
     const summary = screen.getByTestId("tool-summary-trigger-call-mcp-failed");
+    // failedSummaryStatus 只在状态标签前保留唯一一个「·」分隔符；来源标签与工具名之间由
+    // flex gap 分隔，不再各插一个分隔符。
     expect(
       Array.from(summary.querySelectorAll("span")).filter((element) => element.textContent === "·"),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
     fireEvent.click(summary);
     const detail = screen.getByTestId("mcp-expanded-content");
     expect(detail.textContent).toContain("Firebase authentication failed.");
@@ -791,7 +791,11 @@ describe("readRawToolCallFileSummaries", () => {
       createElement(
         CodezIntlProvider,
         { initialLocale: "zh-CN" },
-        createElement(ToolCallBlock, {
+        // 读取渲染器现在把文件路径包在 Tooltip 里，静态渲染也需要 TooltipProvider 上下文。
+        createElement(
+          TooltipProvider,
+          null,
+          createElement(ToolCallBlock, {
           toolCallNode: {
             toolCall: {
               toolId: "tool-read-weird",
@@ -821,6 +825,7 @@ describe("readRawToolCallFileSummaries", () => {
           },
           workspacePath: "/workspace",
         }),
+        ),
       ),
     );
 
@@ -1219,7 +1224,12 @@ describe("readRawToolCallFileSummaries", () => {
       ),
     );
 
-    expect(html).toContain("终端");
+    // 对齐现状：execute renderer 的完成态标签是 chat.toolCall.execute.ran（「已执行」）。
+    // 旧断言写的「终端」对应 chat.toolCall.execute.terminal / chat.toolCall.kind.terminal，
+    // 这两个 key 在 src 里已无任何引用（仅残留在 locale 文件），不能作为渲染器归属的判据。
+    // 本用例真正的不变量是：带 delete 语义 raw changes 的 execute 工具不进 edit renderer。
+    expect(html).toContain("已执行");
+    expect(html).toContain("rm snake/game.ts");
     expect(html).not.toContain("已删除");
     expect(html).not.toContain("已编辑");
     expect(html).not.toContain("Deleting");
