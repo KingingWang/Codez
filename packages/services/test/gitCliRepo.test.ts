@@ -42,6 +42,10 @@ function createMockCommandProvider(): {
   commandProvider: GitCommandProvider;
   run: ReturnType<typeof vi.fn>;
 } {
+  // 上游 v4.0.0 把 `-c core.fsmonitor=` 与 patch 输出防护（--no-ext-diff/--no-textconv）
+  // 集中到 GitCommandProvider.buildProductGitArgs 在 spawn 前统一追加；调用方传入原始 argv。
+  // fake provider 替换的是整个 GitCommandProvider，因此这里的命令串不再带这些前缀/防护参数，
+  // 真实加固语义由 gitCommandProvider 的回归覆盖（ZP-20261105-08）。
   const run = vi.fn(
     async (options: GitCommandExecutionOptions): Promise<GitCommandExecutionResult> => {
       const command = options.args.join(" ");
@@ -50,12 +54,12 @@ function createMockCommandProvider(): {
           return createCommandResult(options, {
             stdout: "/repo\npackages/app/\n/repo/.git\n.git\n",
           });
-        case "-c core.fsmonitor= status --porcelain=v2 --branch --untracked-files=all -z":
+        case "status --porcelain=v2 --branch --untracked-files=all -z":
           return createCommandResult(options, {
             stdout: "# branch.head main\0# branch.upstream origin/main\0# branch.ab +0 -0\0",
           });
-        case "-c core.fsmonitor= diff --cached --numstat -z --find-renames --":
-        case "-c core.fsmonitor= diff --numstat -z --find-renames --":
+        case "diff --cached --numstat -z --find-renames --":
+        case "diff --numstat -z --find-renames --":
           return createCommandResult(options);
         case "config --show-scope --show-origin --get user.name":
           return createCommandResult(options, {
@@ -106,9 +110,9 @@ describe("gitCliRepo", () => {
     expect(right.summary.workspaceInRepoPath).toBe("packages/app");
     expect(run.mock.calls.map(([options]) => options.args.join(" "))).toEqual([
       "rev-parse --show-toplevel --show-prefix --absolute-git-dir --git-common-dir",
-      "-c core.fsmonitor= status --porcelain=v2 --branch --untracked-files=all -z",
-      "-c core.fsmonitor= diff --cached --numstat -z --find-renames --",
-      "-c core.fsmonitor= diff --numstat -z --find-renames --",
+      "status --porcelain=v2 --branch --untracked-files=all -z",
+      "diff --cached --numstat -z --find-renames --",
+      "diff --numstat -z --find-renames --",
     ]);
   });
 
@@ -122,17 +126,17 @@ describe("gitCliRepo", () => {
             return createCommandResult(options, {
               stdout: "/repo\npackages/app/\n/repo/.git\n.git\n",
             });
-          case "-c core.fsmonitor= status --porcelain=v2 --branch --untracked-files=all -z":
+          case "status --porcelain=v2 --branch --untracked-files=all -z":
             return createCommandResult(options, {
               stdout: "# branch.head main\0? packages/app/.npm/cache/partial-entry\0",
               outputTruncated: true,
             });
-          case "-c core.fsmonitor= status --porcelain=v2 --branch --untracked-files=normal -z":
+          case "status --porcelain=v2 --branch --untracked-files=normal -z":
             return createCommandResult(options, {
               stdout: "# branch.head main\0? packages/app/.npm/\0",
             });
-          case "-c core.fsmonitor= diff --cached --numstat -z --find-renames --":
-          case "-c core.fsmonitor= diff --numstat -z --find-renames --":
+          case "diff --cached --numstat -z --find-renames --":
+          case "diff --numstat -z --find-renames --":
             return createCommandResult(options);
           default:
             throw new Error(`Unexpected git command in test: ${command}`);
@@ -162,14 +166,14 @@ describe("gitCliRepo", () => {
       run.mock.calls.filter(
         ([options]) =>
           options.args.join(" ") ===
-          "-c core.fsmonitor= status --porcelain=v2 --branch --untracked-files=all -z",
+          "status --porcelain=v2 --branch --untracked-files=all -z",
       ),
     ).toHaveLength(1);
     expect(
       run.mock.calls.filter(
         ([options]) =>
           options.args.join(" ") ===
-          "-c core.fsmonitor= status --porcelain=v2 --branch --untracked-files=normal -z",
+          "status --porcelain=v2 --branch --untracked-files=normal -z",
       ),
     ).toHaveLength(3);
   });
@@ -273,12 +277,12 @@ describe("gitCliRepo", () => {
             return createCommandResult(options, {
               stdout: `${worktreeRoot}\n\n${worktreeGitDir}\n${commonGitDir}\n`,
             });
-          case "-c core.fsmonitor= status --porcelain=v2 --branch --untracked-files=all -z":
+          case "status --porcelain=v2 --branch --untracked-files=all -z":
             return createCommandResult(options, {
               stdout: "# branch.head feature\0",
             });
-          case "-c core.fsmonitor= diff --cached --numstat -z --find-renames --":
-          case "-c core.fsmonitor= diff --numstat -z --find-renames --":
+          case "diff --cached --numstat -z --find-renames --":
+          case "diff --numstat -z --find-renames --":
             return createCommandResult(options);
           default:
             throw new Error(`Unexpected git command in test: ${command}`);
@@ -441,7 +445,7 @@ describe("gitCliRepo", () => {
             return createCommandResult(options, {
               stdout: "/repo\npackages/app/\n/repo/.git\n.git\n",
             });
-          case "diff --no-ext-diff --no-color --binary -- packages/app/index.vue":
+          case "diff --no-color --binary -- packages/app/index.vue":
             return createCommandResult(options, { stdout: patch });
           case "show :packages/app/index.vue":
             return createCommandResult(options, {
@@ -526,10 +530,10 @@ describe("gitCliRepo worktree list -z capability guard", () => {
             return createCommandResult(command, { stdout: NUL_PORCELAIN_STDOUT });
           case "worktree list --porcelain":
             throw new Error("本轮不做无 -z 降级：不应执行该命令");
-          case "-c core.fsmonitor= status --porcelain=v2 --branch --untracked-files=all -z":
+          case "status --porcelain=v2 --branch --untracked-files=all -z":
             return createCommandResult(command, { stdout: "# branch.head main\0" });
-          case "-c core.fsmonitor= diff --cached --numstat -z --find-renames --":
-          case "-c core.fsmonitor= diff --numstat -z --find-renames --":
+          case "diff --cached --numstat -z --find-renames --":
+          case "diff --numstat -z --find-renames --":
             return createCommandResult(command);
           default:
             throw new Error(`Unexpected git command in test: ${argv}`);

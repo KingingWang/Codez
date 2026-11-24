@@ -2238,6 +2238,8 @@ describe("createCodezAgentService", () => {
         nativeSearchEnhancementsEnabled: boolean;
         subagentRuntimeConfigEnabled: boolean;
         memoryEnabled: boolean;
+        agentAlwaysBackgroundEnabled: boolean;
+        totalTokensReminderEnabled: boolean;
         toolSearchMode?: "auto" | "local" | "off";
         modelContextBudgetStrategy: "legacy" | "preflight-v1";
       };
@@ -2260,6 +2262,9 @@ describe("createCodezAgentService", () => {
           memoryEnabled: false,
           // 上游 3.18 无条件投影 appControlEnabled（未注入 App Control 服务时为 false）。
           appControlEnabled: false,
+          // 上游 v4.0.0 新增运行时设置投影：总在后台缺省 true，token 预算提醒缺省 false。
+          agentAlwaysBackgroundEnabled: true,
+          totalTokensReminderEnabled: false,
           modelContextBudgetStrategy: "preflight-v1" as const,
         },
         expectedResolverCalls: 1,
@@ -2274,6 +2279,8 @@ describe("createCodezAgentService", () => {
           memoryEnabled: false,
           // 上游 3.18 无条件投影 appControlEnabled（未注入 App Control 服务时为 false）。
           appControlEnabled: false,
+          agentAlwaysBackgroundEnabled: true,
+          totalTokensReminderEnabled: false,
           modelContextBudgetStrategy: "preflight-v1" as const,
         },
         expectedResolverCalls: 0,
