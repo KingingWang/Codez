@@ -270,6 +270,50 @@ describe("V2 manager public API with real relay", () => {
         delete: async (key) => {
           credentials.delete(key);
         },
+        // 对齐现状：OAuth 会话提交改走 Host 私有批量凭据存储
+        // （OAuthCredentialRepo.localStore 要求 loadMany/updateMany/deleteUnreadable，
+        // 缺任一个就抛「OAuth 会话提交需要 Host 私有批量凭据存储」，logout 走不到
+        // onProviderLogout 的派生设置失败分支）。批量入口逐键转发到上面的单键实现，
+        // 并按 expected 做整组 CAS：不一致时整组不写，与真实 Credential Store 一致。
+        loadMany: async (keys: readonly string[]) =>
+          Object.fromEntries(keys.map((key) => [key, credentials.get(key) ?? null])),
+        updateMany: async (
+          changes: Readonly<Record<string, string | null>>,
+          options?: { expected?: Readonly<Record<string, string | null>> },
+        ) => {
+          if (
+            options?.expected &&
+            !Object.entries(options.expected).every(
+              ([key, value]) => (credentials.get(key) ?? null) === (value ?? null),
+            )
+          )
+            return false;
+          for (const [key, value] of Object.entries(changes)) {
+            if (value === null) credentials.delete(key);
+            else credentials.set(key, value);
+          }
+          return true;
+        },
+        deleteUnreadable: async (
+          keys: readonly string[],
+          options?: {
+            expected?: Readonly<Record<string, string | null>>;
+            removeKeys?: readonly string[];
+            replacements?: Readonly<Record<string, string>>;
+          },
+        ) => {
+          if (
+            options?.expected &&
+            !Object.entries(options.expected).every(
+              ([key, value]) => (credentials.get(key) ?? null) === (value ?? null),
+            )
+          )
+            return false;
+          for (const key of [...keys, ...(options?.removeKeys ?? [])]) credentials.delete(key);
+          for (const [key, value] of Object.entries(options?.replacements ?? {}))
+            credentials.set(key, value);
+          return true;
+        },
       },
       {
         apiClient: { request: vi.fn<typeof fetch>() },
@@ -567,13 +611,32 @@ describe("V2 manager public API with real relay", () => {
     f.manager.syncAvailableWorkspaces(1, [remote]);
     pending.resolve(local);
     await login;
-    expect(f.manager.getStatus(1).status).toBe("idle");
+    // 对齐现状（上游 3.18.0 起，回归要求见 docs/web-remote-control/web-remote-control-architecture.md
+    // 「最后目标不在重启后的窗口中时，桌面自动进入 running，初始目标为窗口中的 workspace」）：
+    // 读取存储期间被关闭的本地目标不再被旧快照复活，恢复改用磁盘读取完成后的最新窗口快照，
+    // 因此落到窗口里剩下的可 bridge 远端目标并保持 running，而不是停在 idle 让设备离线。
+    expect(f.manager.getStatus(1)).toMatchObject({
+      status: "running",
+      workspacePath: "/remote",
+      workspaceIdentity: "ssh://host/remote",
+      remoteSessionId: "remote-1",
+    });
   });
-  it("远程恢复等待当前remoteSessionId，不为离线占位tab启动relay", async () => {
+  it("上次目标是离线 SSH 项目时仍恢复设备连接，但不为未连接目标建 host", async () => {
     const context = { workspacePath: "/remote", workspaceIdentity: "ssh://host/remote" };
     const f = await fixture({}, { webRemoteControlLastEnabledContext: context });
-    expect(await f.manager.restorePreviouslyEnabled(1, [context])).toBe(false);
-    expect(f.relay.httpCalls).toEqual([]);
+    // 对齐现状（验收见 docs/testing/desktop-auth-config-e2e-cases.md#AUTH-09-R 第 3 步，
+    // E2E：conversation-session-r3-mobile-startup-restore）：远端离线不再是恢复门槛。
+    // 桌面先进入 running 让 relay 上有在线设备，状态目标不带 remoteSessionId；
+    // 等 tab 重连后由 workspace 同步补上会话，手机此期间落在 home-only。
+    expect(await f.manager.restorePreviouslyEnabled(1, [context])).toBe(true);
+    expect(f.manager.getStatus(1)).toMatchObject({
+      status: "running",
+      workspacePath: "/remote",
+      workspaceIdentity: "ssh://host/remote",
+    });
+    expect(f.manager.getStatus(1).remoteSessionId).toBeUndefined();
+    // 没有可 bridge 的远端会话：仍不得为占位 tab 建 host attachment 或 bridge。
     expect(f.attachWorkspaceHost).not.toHaveBeenCalled();
   });
   it("换账号重注册，旧记录删除无权限仍可启动", async () => {

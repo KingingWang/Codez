@@ -251,10 +251,27 @@ describe("Window Host 的 Source 重连与数据库启动整合", () => {
         }),
         createTaskRealtimeBridgeForHostInit: () => null,
         createE2ERepoWikiGenerationFixtureFromEnv: () => undefined,
+        // 同理：initializeServices 现在会解构 setWorkspaceProjection，并立刻
+        // void settingService.get() 读取持久化语言作为 X-Client-Language 兜底；
+        // 桩必须给出可调用的 get，否则启动屏障在 initializeServices 处直接 TypeError。
         createSettingServiceWithMigrations: () => ({
-          service: {},
+          service: { get: async () => ({}) },
           prepareLegacyAccountConnections() {},
+          setWorkspaceProjection() {},
         }),
+        // 同理：initializeServices 现在把模块级函数 shareCredentialKeyWithDataRoot 作为依赖
+        // 传给 createSettingServiceWithMigrations（数据目录迁移时共享凭据密钥）。抽出来的
+        // handler 在新上下文里没有这个模块绑定，求值实参就会 ReferenceError。
+        shareCredentialKeyWithDataRoot: async () => {},
+        // 同理：initializeServices 会把持久化语言写回模块级 let persistedApplicationLocale，
+        // establishOwner 里还要用预装工具目录解析链（dataRoot + release + runtimeEnv + flavor）。
+        // 这些都是 index.ts 的模块级绑定，抽取出的 handler 在新上下文里必须显式注入。
+        persistedApplicationLocale: undefined,
+        getCodezDataRootDir: () => "/data-root",
+        resolveCodezRuntimeEnv: () => ({}),
+        resolvePreinstalledToolsRelease: () => "production",
+        resolvePreinstalledToolsBinDir: () => "/data-root/bin",
+        CODEZ_PRODUCT_FLAVOR: "production",
         createHostApiNetworkTransport: () => ({ fetch() {} }),
         initializeHostApiNetworkTransportOwner: async (params: { establishOwner(): unknown }) =>
           params.establishOwner(),
@@ -305,6 +322,63 @@ describe("Window Host 的 Source 重连与数据库启动整合", () => {
         },
         randomUUID: () => "id",
         logWindowHostTopology() {},
+        // 同理：InitLocal handler 的 establishOwner/createLocalServices 参数表还引用了一批
+        // index.ts 模块级绑定（项目身份登记、扩展宿主、App Control 发现、远端项目身份解析等）。
+        // 本用例只验证「数据库准备前不创建业务服务 + Source 初始化不阻塞 base attachment/ready」
+        // 的启动屏障顺序，因此给惰性桩，避免逐个 ReferenceError 打断在断言点之前。
+        appControlNavigation: null,
+        // createLocalServices 会把 credentialCipherBridge.cipher 作为 credentialCipherProvider 传入。
+        credentialCipherBridge: { cipher: {}, dispose() {}, receive() {} },
+        managerProjectIdentityRegistrations: new Map(),
+        registryProjectIdentityRegistrations: new Map(),
+        quitBlockerReporter: {},
+        replyLanguage: undefined,
+        windowHostControllerRuntime: {
+          readTaskRows: async () => [],
+          subscribeTaskRows: () => ({ dispose() {} }),
+        },
+        windowHostExtensions: null,
+        windowRemoteConnectionRegistry: {
+          connectSource: async () => undefined,
+          getOnlineSource: () => undefined,
+          listConnections: () => [],
+          listSessions: () => [],
+        },
+        ICodezAgentService: {},
+        IExtensionGrantsService: {},
+        IExtensionViewsService: {},
+        IExtensionsService: {},
+        IModelSelectionService: {},
+        IPluginManagementService: {},
+        IProjectService: {},
+        bindRemoteProjectIdentities: () => {},
+        buildRemoteHostWorkspaceIdentity: () => "",
+        buildServerRemoteWorkspaceIdentity: () => "",
+        createAppControlDiscoverySourceResolver: () => () => undefined,
+        createReportingRemoteCodezTaskService: () => ({}),
+        // handler 里 windowHostExtensions = createWindowHostExtensions(...)，随后调用
+        // announceReady()（服务就绪后请 Main 牵线扩展进程），桩必须带这个方法。
+        createWindowHostExtensions: () => ({
+          announceReady() {},
+          service: {},
+          grantsService: {},
+          viewsService: {},
+          dispose() {},
+        }),
+        findRemoteProjectHostIdForProfile: () => undefined,
+        getPluginUserOptionsReader: () => async () => ({}),
+        parseRemoteWorkspaceIdentity: () => undefined,
+        pushDynamicWorkflowUserModeToRemoteHosts: async () => {},
+        releaseRemoteProjectProfileHost: async () => {},
+        remoteHostIdFromWorkspaceIdentity: () => undefined,
+        remoteProjectHostIdForProfile: () => "",
+        remoteProjectHostIdForTarget: () => "",
+        resolveBotRemoteWorkspace: () => undefined,
+        resolveHostClientLanguage: () => undefined,
+        resolveServerProjectService: () => undefined,
+        resolveSourceServerReleaseAsset: () => undefined,
+        shouldDetachSourceSettingsAttachment: () => false,
+        warmUpCodezAgent: async () => {},
       },
     ) as () => Promise<void>;
     const complete = run();

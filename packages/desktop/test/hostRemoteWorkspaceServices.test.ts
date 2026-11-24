@@ -45,6 +45,16 @@ function makeServerRemoteServices(): IServiceAccessor {
       REMOTE_WORKSPACE_RPC_CHANNELS.map((channel) => [channel, { remote: channel }]),
     ),
     systemService: { info: vi.fn(async () => ({ platform: "linux", homedir: "/home/remote" })) },
+    // 对齐现状：exposeOnChannelServer 对凭据通道统一走 scopeCredentialServiceForRpc，
+    // 会 bind load/save/delete；占位对象 {remote: channel} 没有这些方法会直接 TypeError。
+    // 这里给最小 ICredentialService 形状，恢复通道仍由 scope 侧禁用（本用例不验证恢复）。
+    credentialService: {
+      load: vi.fn(async () => null),
+      save: vi.fn(async () => {}),
+      delete: vi.fn(async () => {}),
+      inspectStore: vi.fn(async () => ({ status: "healthy" as const })),
+      recoverStore: vi.fn(async () => ({ status: "changed" as const })),
+    },
   } as unknown as IServiceAccessor;
 }
 
