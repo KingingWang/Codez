@@ -32,6 +32,7 @@ import { ZaiWebOAuthProvider } from "./zaiWebOAuthProvider.js";
 import { isCodezBrowserExtension } from "../webRemoteControlNativeSocket.js";
 
 interface WebAuthServiceRuntime {
+  openAuthorization?(): { navigate(url: string): void; close(): void; isClosed(): boolean } | null;
   assign(url: string): void;
   createNonce(): string;
   getCurrentHref(): string;

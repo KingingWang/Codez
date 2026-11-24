@@ -323,6 +323,8 @@ export const TID_CHAT_SEND_BUTTON = "chat-send-button";
 export const TID_CHAT_STOP_BUTTON = "chat-stop-button";
 /** 聊天加载指示器 */
 export const TID_CHAT_LOADING = "chat-loading";
+/** 聊天右上角状态摘要面板 */
+export const TID_CHAT_SUMMARY_PANEL = "chat-summary-panel";
 /** 聊天上下文压缩 timeline 横条（动态后缀为 inputId 或 operationId） */
 export const TID_CHAT_COMPACT_MARKER = "chat-compact-marker";
 /** 聊天上下文压缩失败/中断后的重试按钮（动态后缀为 inputId 或 operationId） */
@@ -645,6 +647,8 @@ export const TID_V4_WORKSPACE_MCP_PENDING_DISMISS = "v4-workspace-mcp-pending-di
 export const TID_V4_COMPOSER = "v4-composer";
 /** v4 composer 文本输入 */
 export const TID_V4_COMPOSER_INPUT = "v4-composer-input";
+/** v4 composer 当前会话后台任务入口 */
+export const TID_V4_COMPOSER_BACKGROUND_WORK_TRIGGER = "v4-composer-background-work-trigger";
 /** v4 composer 电脑操作（CUA）常驻入口按钮 */
 export const TID_V4_COMPOSER_CUA_ENTRY = "v4-composer-cua-entry";
 /** v4 composer 发送按钮 */

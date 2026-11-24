@@ -13,3 +13,5 @@ export interface ConversationFindMatchState {
   matchCount: number;
   activeIndex?: number;
 }
+
+export type ChatViewSummaryPanelVariant = "panel" | "mini";

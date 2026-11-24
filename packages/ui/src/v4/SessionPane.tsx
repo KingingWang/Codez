@@ -277,7 +277,7 @@ import {
   dedupeConversationShareIssues,
   aggregateConversationShareBlockingIssues,
   getMissingConversationSharePreflightTurnIds,
-} from "@/v4/conversationSharePreflightCache.js";
+} from "@/conversation-share-interaction/conversationSharePreflightCache.js";
 import { createConversationSharePreflightResponseHandlers } from "@/conversation-share-interaction/conversationSharePreflightResponse.js";
 import { scheduleConversationSharePreflightRequest } from "@/conversation-share-interaction/conversationSharePreflightRequest.js";
 import { ConversationBottomDockTransition } from "@/v4/ConversationBottomDockTransition.js";
@@ -5952,6 +5952,12 @@ export function SessionPane({
   // 主、辅对话可同时 focused（各自布局的可见态），不能据此争抢窗口 Esc。
   // 面板打开时按 DOM 归属隔离；关闭时由 Shell 授权主区接收对话外 Esc，避免焦点离开输入框后无法停止。
   // 保留窗口冒泡阶段，让 mention/slash 的 preventDefault 和 dialog 优先处理。
+  // 语音输入快捷键沿用同一归属判定：区域内按事件目标归属，区域外只归焦点主区（isKeyboardEventForPane）。
+  const ownsComposerKeyboardShortcut = useCallback(
+    (event: KeyboardEvent) =>
+      isKeyboardEventForPane(event, paneRef.current, focused && allowEscapeStopOutsidePane),
+    [allowEscapeStopOutsidePane, focused],
+  );
   useEffect(() => {
     if (!focused || readOnly || writerConflictReadOnly) return;
     if (!sessionId || !snapshot?.control.canStop) return;
@@ -7026,6 +7032,7 @@ export function SessionPane({
       externalTextInsertRequest={focused && sessionId === null ? composerTextInsertRequest : null}
       onExternalTextInsertApplied={handleExternalTextInsertApplied}
       autoFocusEnabled={focused}
+      ownsKeyboardShortcut={ownsComposerKeyboardShortcut}
       disabled={
         connecting ||
         codexNativeRemoteHostPending ||
@@ -7370,6 +7377,8 @@ export function SessionPane({
     >
       <div
         ref={paneRef}
+        // 窗口级快捷键按此标记路由到所在对话区域（isKeyboardEventForPane）
+        data-session-pane-root=""
         data-testid={testId(TID_V4_SESSION_PANE, paneId)}
         data-session-id={sessionId ?? "draft"}
         data-session-lifecycle={state.lifecycle?.state}
@@ -7705,4 +7714,28 @@ export function SessionPane({
       {paneContent}
     </ToolPresentationCapabilitiesProvider>
   );
+}
+
+const SESSION_PANE_ROOT_SELECTOR = "[data-session-pane-root]";
+// TaskFindDialog 的行内查找条是 aria-modal="false" 的非模态 dialog，不拦截。
+const MODAL_DIALOG_SELECTOR = '[role="dialog"]:not([aria-modal="false"]), [role="alertdialog"]';
+
+/**
+ * 窗口级快捷键的对话区域路由（docs/chat/composer-voice-input.md「快捷键」）。
+ * 一个窗口可能同时挂着多个 SessionPane（分屏、侧栏辅助对话、未显示的 workspace），各自在 window 上监听，
+ * 按事件目标所在的对话区域决定归属，保证只有一个 pane 响应：
+ * - 目标在某个 SessionPane 根节点内：只归该 pane；
+ * - 目标不在任何 SessionPane 内：在模态对话框里不处理，否则只归可接收区域外按键的 pane。
+ */
+function isKeyboardEventForPane(
+  event: KeyboardEvent,
+  pane: HTMLElement | null,
+  acceptOutsidePane: boolean,
+): boolean {
+  if (!pane) return false;
+  const target = event.target instanceof Element ? event.target : null;
+  const targetPane = target?.closest(SESSION_PANE_ROOT_SELECTOR) ?? null;
+  if (targetPane) return targetPane === pane;
+  if (target?.closest(MODAL_DIALOG_SELECTOR)) return false;
+  return acceptOutsidePane;
 }

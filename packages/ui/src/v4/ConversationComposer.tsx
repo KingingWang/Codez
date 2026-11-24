@@ -105,7 +105,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog.js";
 import { Spinner } from "@/components/ui/spinner.js";
-import { useComposerVoiceInput, VoiceInputButton } from "@/voice-input/index.js";
+import {
+  useComposerVoiceInput,
+  useVoiceInputShortcut,
+  VoiceInputButton,
+} from "@/voice-input/index.js";
 import { ImagePreviewDialog } from "@/components/ai-elements/image-preview-dialog.js";
 import {
   ChatMediaAttachmentPreviewDialog,
@@ -451,6 +455,8 @@ export interface ConversationComposerProps {
    * v4 bottom dock 阻塞交互 id。存在时 composer 只隐藏不卸载，保留草稿、附件与编辑器实例。
    */
   blockingRequestId?: string | null;
+  /** 这次按键是否归本 Composer 处理（窗口级语音快捷键归属）；缺省表示本 Composer 不接收快捷键。 */
+  ownsKeyboardShortcut?: (event: KeyboardEvent) => boolean;
   disabled?: boolean;
   modelSelectionPending?: boolean;
   onRetryInitialization?: () => void;
@@ -618,6 +624,7 @@ function ConversationComposerImpl({
   layout = "stacked",
   workingDurationMs,
   blockingRequestId = null,
+  ownsKeyboardShortcut,
   disabled: disabledProp = false,
   modelSelectionPending = false,
   onRetryInitialization,
@@ -811,12 +818,23 @@ function ConversationComposerImpl({
   const pendingShareContext = activeShareContext?.status === "pending" ? activeShareContext : null;
   const inputApiRef = useRef<LexicalChatInputHandle | null>(null);
   // 语音输入只在桌面本机可用（docs/chat/composer-voice-input.md）；手机远控不显示。
+  // 输入框不可用（禁用，或被审批/问答卡片隐藏）时语音输入一起不可用：按钮禁用、快捷键不注册、
+  // 进行中的录音取消。按钮、快捷键与 hook 共用这一个值。
+  const voiceInputBlocked = disabled || blockingRequestId !== null;
   const voiceInput = useComposerVoiceInput({
     inputApiRef,
     sessionId,
     enabled: !isWebRemoteControl,
+    blocked: voiceInputBlocked,
   });
   const settleVoiceInput = voiceInput.settle;
+  const voiceInputShortcut = useVoiceInputShortcut({
+    enabled: voiceInput.available && remoteAvailable && !voiceInputBlocked,
+    ownsEvent: ownsKeyboardShortcut,
+    inputApiRef,
+    state: voiceInput.state,
+    toggle: voiceInput.toggle,
+  });
   const composerMountedRef = useRef(true);
   useEffect(() => {
     composerMountedRef.current = true;
@@ -2890,6 +2908,8 @@ function ConversationComposerImpl({
             onToggle={voiceInput.toggle}
             subscribeLevel={voiceInput.subscribeLevel}
             permissionGuide={voiceInput.permissionGuide}
+            shortcut={voiceInputShortcut}
+            disabled={voiceInputBlocked}
           />
         ) : null}
         {remoteAvailable && nativeCodexFollowup && canStop && mode !== "reject" ? (
