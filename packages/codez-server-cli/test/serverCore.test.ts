@@ -19,6 +19,9 @@ vi.mock("@codez/services/node", () => ({
   createTopicResourcePeers: () => ({ getChannel: vi.fn() }),
   disposeServiceResourcesAndWait,
   getAppConfigDir: () => environmentConfigRoot,
+  // 上游 v4.0.0：未设置 CODEZ_SERVER_CREDENTIAL_FORMAT 时按旧 Supervisor 回滚分支读取
+  // 旧格式凭据路径（core.ts 的 legacyUpdateOwner）；CI 干净环境必走该分支，mock 必须提供。
+  getCredentialsFilePath: () => join(environmentConfigRoot, "credentials.json"),
   materializeCodezBuiltinProviderConfig,
 }));
 vi.mock("../src/server-core/http.js", () => ({ createCoreHttpServer }));
