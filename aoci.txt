@@ -1,7 +1,7 @@
 #AOCI-ROOT-MANIFEST: 1
 #Format-Version: cognition-volumes/v1
 #Locale: en-US
-#Project: ZCode
-#Global-Invariants: -
+#Project: Codez is a cross-platform AI agent workspace: Electron desktop, Web, and mobile remote clients share one conversation, workspace, and plugin surface backed by a resident CLI runtime.
+#Global-Invariants: Specs precede behavior changes; workspaceIdentity isolates state while workspacePath only drives files, cwd, Git, and display; each fact has one owner with no duplicate write path; UI never calls Repo and Service never references Runtime implementations; relay and Main only authenticate, pair, heartbeat, and forward; Host owner/lease routes commands with serial CommandInbox admission; desktop-continuous and web-remote-replayable semantics stay distinct; architecture policy, manifests, and checks must agree.
 #Volume: id=meta kind=meta path=aoci.meta.txt format=meta-v1 depends=- state=enabled
 #Volume: id=code kind=code path=aoci.code.txt format=object-fras-v2 depends=meta state=enabled

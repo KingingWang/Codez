@@ -94,3 +94,8 @@ packages/desktop/.e2e-network-capture/
 # （backup.json + tables.sqlite）。它们是测试产物，不能进版本库，否则每次跑完都会脏工作树、
 # 挡住 verify:pre-push 的「Push 工作区不干净」门禁。
 apps/codez-cli/packages/adapters/backup/
+
+# AOCI agent host integration (machine-bound; do not commit)
+.codex/config.toml
+.codex/config.toml.backup.*
+AGENTS.md.backup.*
