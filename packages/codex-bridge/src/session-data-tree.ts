@@ -58,6 +58,8 @@ export interface TreeMember {
   absent: boolean;
   /** 原生 metadata.cwd；只用于校验删除原语与审计，绝不作为过滤条件。 */
   cwd?: string;
+  /** 清单版本只取原生活动时间，不使用 bridge 收到响应的时间。 */
+  updatedAt?: number;
 }
 
 export interface SessionTree {
@@ -331,6 +333,7 @@ export async function resolveSessionTree(
       writerConflict: state?.readOnly === "writer-conflict",
       absent,
       ...(resolved?.cwd ? { cwd: resolved.cwd } : {}),
+      ...(resolved ? { updatedAt: resolved.updatedAt } : {}),
     });
   }
   // 排队输入等价 legacy residency 的 hasQueuedCommands → busy：整树 id 集确定后一次读完。

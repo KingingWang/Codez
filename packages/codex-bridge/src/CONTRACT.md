@@ -181,3 +181,11 @@ native events ───────── continuous ordered projection ──�
 
 See specs/codex-session-data-purge.md for the global local carrier, shared references,
 actual released bytes and retry boundaries.
+
+Archive `sessionData/deletionPreview`, `deletionPreviewBatch` and `deletionExecute`
+reuse that control plane and native deletion path. The target's physical cwd,
+not the management carrier's cwd, validates ownership; Host workspace identity
+binds the revision and durable completion receipt. Execute verifies the same
+tree/file facts under the maintenance barrier. Minimal receipts retain only
+operation/revision/session IDs so lost responses can clean the complete Host
+index after restart. Native fork-history refusal remains fail-closed.

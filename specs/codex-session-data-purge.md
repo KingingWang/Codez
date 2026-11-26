@@ -1,11 +1,57 @@
 # Codex 后端的会话数据测量与彻底删除
 
-状态：已实现（2026-11-02）。本 spec 只覆盖 Codex 原生桥接后端（`packages/codex-bridge`）对
-`v4/storage/sessionData/measure` 与 `v4/storage/sessionData/purge` 的执行面；产品交互、Host 目录
+状态：已实现（2026-11-02；归档协议补齐于 2026-11-26）。本 spec 覆盖 Codex 原生桥接后端（`packages/codex-bridge`）对
+`v4/storage/sessionData/measure`、`purge` 及归档 `deletionPreview` / `deletionPreviewBatch` / `deletionExecute` 的执行面；产品交互、Host 目录
 扣除、任务索引行与检查点删除的规则不变，见
 [2026-10-24-project-management.md](../docs/superpowers/specs/2026-10-24-project-management.md)
 「彻底删除数据」与 legacy CLI 合同
 [session-data/CONTRACT.md](../packages/shared/src/codez-protocol-v4/session-data/CONTRACT.md)。
+
+## 2026-11-26：归档永久删除协议（#38）
+
+4.0.0 的归档页调用 `deletionPreview`、`deletionPreviewBatch`、`deletionExecute`，bridge
+未登记这三个方法，返回 -32601，导致确认框始终显示 0 个可删会话。本节补齐执行面，不改变
+Host 的归档准入、原 source 路由、确认 UI、分享或目录级数据范围。
+
+- 三个方法与 purge 共用 session-data 本机控制面，可由 cwd 不同的管理面载体执行。
+  只对这三个方法跳过载体 workspace 判等；逐项校验请求路径与目标原生 cwd 的物理目录一致。
+  `workspaceIdentity?.trim() || workspacePath` 绑定清单版本与删除凭据，不混合不同身份。
+  远端继续由 Host 的已有连接路由，不增加本机回退。
+- 预检只读，不 resume、不创建删除凭据。批量按输入顺序逐项返回结果或错误，共用一次
+  rollout/附件扫描；坏项不影响好项。owned tree、运行态、队列与写权保护复用 purge。
+- revision 绑定完整身份、整树成员及其原生活动时间、rollout/附件文件的路径与 stat 身份。
+  执行在原 CommandRouter 维护屏障内重新收集同一事实并验证 revision；变化返回 blocked/changed，
+  不调用原生删除。运行中返回 blocked/running，写权冲突返回 blocked/in-use，未知状态不删。
+- 只有原生 `thread/delete(root)` 删除 Codex 内容，整树一次调用。独立 fork 不在 spawn 树中，
+  不级联删除；原生仍引用父 rollout 的 fork 会使原生拒绝删除，返回 blocked/in-use。
+  这是原生现有保护的保守边界，不拆开 fork 历史、不伪造“共享历史已清除”。
+  bridge 附件按 manifest 独立授权，不存在跨会话借用原对象的可读引用，retainedArtifacts 为 0。
+- pending 索引中的后代纳入预检和清理，防止原生行已删、附件清理失败后漏掉后代。
+  全部清理成功后先原子写最小完成凭据（身份哈希、operationId、revision、sessionIds），
+  再清 pending 和 tombstone。凭据不保留标题、正文、文件路径或原始快照。
+  回包丢失/bridge 重启后可返回相同已删除集合；中途失败返回 incomplete，保留 pending 供重新预检。
+  未知原生结果不在一次执行内重试。
+
+```text
+Host 固定归档身份 → bridge 只读预检 → 用户确认 revision
+  → CommandRouter 维护屏障（原生事件继续）
+  → 同源事实 + revision 复检 → 原生整树删除 → bridge 附件清理
+  → 最小完成凭据 → 清 pending / tombstone → Host 清索引 → 桌面/手机原投影
+```
+
+验收先补 bridge 协议回归和隔离原生 smoke，再实现；不新增 App 业务单测。
+覆盖单项/批量、管理面载体、错误身份、清单变化、运行/写权保护、fork 原生拒绝、
+附件与后代、部分失败续删、重复/重启幂等。原生 smoke 使用临时 CODEX_HOME 和本地模型响应，
+验证三个协议实际穿过打包 bridge、rollout 消失、reconcile 删除与非目标数据保留。
+既有 ARM/APD 是 legacy runtime 证据，不能算 Codex GUI 或手机传输已验证。
+
+本轮验证（Node 24.14.0 / pnpm 10.33.2，Linux）：bridge runtime、session-data/files、
+command-maintenance 四文件 97/97 通过；打包 bridge + pinned 原生 Codex smoke 1/1 通过，
+包含不同 cwd/identity 的冷管理载体、批量坏项隔离、原生 rollout 实际消失、重启重复确认与
+reconcile 删除。全仓 typecheck 通过；lint 0 errors / 621 个既有 warnings，
+本次改动文件专项扫描 0 warnings / 0 errors。日志：
+`packages/desktop/.e2e-artifacts/issue-38-xsO8DfTq/`。
+未执行 Codex GUI、macOS/Windows、真实远端/手机及双窗口竞争验收；不将这些组合标记为通过。
 
 ## 问题
 

@@ -48,6 +48,11 @@ import {
 } from "./runtime-notices.js";
 import { BridgeConversationObservations } from "./conversation-observations.js";
 import { measureSessionData, purgeSessionData } from "./session-data.js";
+import {
+  previewSessionDeletion,
+  previewSessionDeletions,
+  executeSessionDeletion,
+} from "./session-deletion.js";
 import { observeConversationSafely } from "./conversation-observation-types.js";
 
 export interface BridgeResponse {
@@ -370,7 +375,12 @@ export class BridgeRuntime {
       typeof rawWorkspacePath === "string" && rawWorkspacePath.trim().length > 0
         ? rawWorkspacePath
         : undefined;
-    params = await scopeWorkspaceParams(params, cwd, workspaceId);
+    // 修复 #38：归档删除可由管理面载体接收；校验目标自己的 cwd，不能拿载体 cwd 拒绝冷项目。
+    const sessionDeletion =
+      method === V4_METHODS.sessionDeletionPreview ||
+      method === V4_METHODS.sessionDeletionPreviewBatch ||
+      method === V4_METHODS.sessionDeletionExecute;
+    if (!sessionDeletion) params = await scopeWorkspaceParams(params, cwd, workspaceId);
     if (this.auxiliary.supports(method))
       return { result: await this.auxiliary.handle(method, params) };
     if (method === "codex/request")
@@ -485,6 +495,32 @@ export class BridgeRuntime {
             carrier: { cwd, workspaceId, stateRoot: this.options.stateRoot },
           }),
         };
+      case V4_METHODS.sessionDeletionPreview:
+      case V4_METHODS.sessionDeletionPreviewBatch: {
+        const deps = {
+          rpc,
+          store: this.store,
+          carrier: { cwd, workspaceId, stateRoot: this.options.stateRoot },
+        };
+        return {
+          result: await (method === V4_METHODS.sessionDeletionPreview
+            ? previewSessionDeletion(params, deps)
+            : previewSessionDeletions(params, deps)),
+        };
+      }
+      case V4_METHODS.sessionDeletionExecute: {
+        const result = await this.commands.exclusiveMaintenance(async () => {
+          await this.eventTail;
+          return executeSessionDeletion(params, {
+            rpc,
+            store: this.store,
+            carrier: { cwd, workspaceId, stateRoot: this.options.stateRoot },
+          });
+        });
+        if (result.status === "deleted") for (const id of result.sessionIds) this.title.cancel(id);
+        this.refreshSidebar("sessions-index");
+        return { result };
+      }
       case V4_METHODS.sessionDataPurge: {
         const result = await this.commands.exclusiveMaintenance(async () => {
           // 屏障只挡命令 admission；先消费已到达原生事实，预检期间的 native events 仍持续推进。

@@ -150,6 +150,10 @@ E2E 放 manual-review/pending，fixture 在隔离 HOME/工作区创建；只用�
 
 ## 2026-11-04：归档会话永久删除
 
+Codex bridge 的同形协议执行面与原生 fork 历史保护边界见
+[Codex session-data #38 修复](../../../specs/codex-session-data-purge.md#2026-11-26归档永久删除协议38)。
+Host 归档与原 source 准入不变；不能把 legacy CLI 的 ARM/APD 验收当作 Codex runtime 验收。
+
 本节替代前文归档管理中单条、分组和当前筛选结果的软删除语义。实现采用预检、二次确认和
 物理清理。取消归档、普通会话删除、项目管理和分享管理保持既有语义。验证范围见文末。
 

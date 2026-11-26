@@ -19,8 +19,10 @@ test(
     const codexHome = join(temporary, "codex-home");
     const directory = join(temporary, "physical-workspace");
     const workspace = join(temporary, "workspace-alias");
+    const managementWorkspace = join(temporary, "management-workspace");
     await mkdir(codexHome);
     await mkdir(directory);
+    await mkdir(managementWorkspace);
     await symlink(directory, workspace, process.platform === "win32" ? "junction" : "dir");
     const modelRequests = [];
     const { server, requests } = createSmokeModelServer({
@@ -65,8 +67,12 @@ test(
     let closeChild;
     const frames = [];
     let stderr = "";
-    const start = () => {
-      child = spawn(process.execPath, [bridge], { cwd: workspace, env, stdio: "pipe" });
+    const start = (carrierWorkspace = workspace) => {
+      child = spawn(process.execPath, [bridge], {
+        cwd: carrierWorkspace,
+        env: { ...env, CODEZ_WORKSPACE_IDENTITY: carrierWorkspace },
+        stdio: "pipe",
+      });
       closeChild = once(child, "close");
       closeChild.catch(() => {});
       child.stderr.on("data", (chunk) => {
@@ -549,6 +555,15 @@ test(
       const repeatPurge = await rpc("v4/storage/sessionData/purge", dataParams);
       assert.deepEqual(repeatPurge.deleted, [{ sessionId, bytes: 0 }]);
       assert.deepEqual(repeatPurge.failed, []);
+      await assert.rejects(
+        rpc("v4/attachment/read", {
+          sessionId,
+          ref: originalUser.attachments[0].ref,
+          offset: 0,
+          limit: 4096,
+        }),
+        /deleted/,
+      );
       const purgeCreated = await rpc("v4/command", {
         commandId: "purge-create",
         clientId: "desktop",
@@ -590,12 +605,32 @@ test(
         measuredNative.sessions[0].bytes > 0,
         "native rollout bytes are measured before deletion",
       );
-      const purgedNative = await rpc("v4/storage/sessionData/purge", nativeDataParams);
-      assert.deepEqual(purgedNative.failed, []);
-      assert.deepEqual(purgedNative.kept, []);
-      assert.ok(
-        purgedNative.deleted[0].bytes > 0,
-        "native thread/delete actually releases the persisted rollout",
+      // #38：必须穿过归档专用协议，不能用已支持的项目 purge 掩盖缺少处理器。
+      // 冷项目由不同 cwd/identity 的管理面进程接收，仍按目标的原生 cwd 校验。
+      await stop();
+      rpc = start(managementWorkspace);
+      const archiveParams = { sessionId: purgeSessionId, workspace: { workspacePath: workspace } };
+      const archivePreview = await rpc("v4/storage/sessionData/deletionPreview", archiveParams);
+      assert.equal(archivePreview.blockedReason, undefined);
+      assert.ok(archivePreview.deletedFiles > 0);
+      const previewBatch = await rpc("v4/storage/sessionData/deletionPreviewBatch", {
+        items: [archiveParams, { ...archiveParams, sessionId: "invalid-native-id" }],
+      });
+      assert.deepEqual(previewBatch.results[0], { preview: archivePreview });
+      assert.equal(previewBatch.results[1].error.code, "invalid-session-id");
+      const deletionParams = {
+        ...archiveParams,
+        revision: archivePreview.revision,
+        operationId: "archive-smoke",
+      };
+      const purgedNative = await rpc("v4/storage/sessionData/deletionExecute", deletionParams);
+      assert.equal(purgedNative.status, "deleted");
+      assert.deepEqual(purgedNative.sessionIds, [purgeSessionId]);
+      await stop();
+      rpc = start();
+      assert.deepEqual(
+        await rpc("v4/storage/sessionData/deletionExecute", deletionParams),
+        purgedNative,
       );
       const nativeAfterPurge = await rpc("v4/storage/sessionData/measure", nativeDataParams);
       assert.deepEqual(nativeAfterPurge.sessions, [{ sessionId: purgeSessionId, bytes: 0 }]);
@@ -604,15 +639,6 @@ test(
         sessionIds: [purgeSessionId],
       });
       assert.equal(nativeReconciled.sessions[0].deleted, true);
-      await assert.rejects(
-        rpc("v4/attachment/read", {
-          sessionId,
-          ref: originalUser.attachments[0].ref,
-          offset: 0,
-          limit: 4096,
-        }),
-        /deleted/,
-      );
       await stop();
     } catch (error) {
       t.diagnostic(`Native smoke failure before cleanup: ${error.stack ?? error}`);

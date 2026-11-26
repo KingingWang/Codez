@@ -5,7 +5,7 @@
 // 结果未知不盲重试并保留重试索引；字节只统计真实消失的文件；memory 恒为 0 且不碰用户文件。
 import assert from "node:assert/strict";
 import { rmSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -15,6 +15,11 @@ import type { JsonObject } from "../src/json.js";
 import { CodexRpcError, CodexTransportError } from "../src/rpc-errors.js";
 import { listExistingPaths, readPendingTree } from "../src/session-data-files.js";
 import { measureSessionData, purgeSessionData, type SessionDataDeps } from "../src/session-data.js";
+import {
+  previewSessionDeletion,
+  previewSessionDeletions,
+  executeSessionDeletion,
+} from "../src/session-deletion.js";
 
 const ROOT = "11111111-1111-4111-8111-111111111111";
 const CHILD = "22222222-2222-4222-8222-222222222222";
@@ -616,4 +621,198 @@ test("会话 id 的大写拼写不会让后代与附件静默漏删", async (t) 
   assert.deepEqual(result.deleted, [{ sessionId: ROOT.toUpperCase(), bytes: 11 + 5 + 7 }]);
   assert.deepEqual(h.deleteCalls(), [{ threadId: ROOT }]);
   assert.deepEqual([...h.store.removed].sort(), [CHILD, ROOT].sort());
+});
+
+const deletion = { sessionId: ROOT, workspace: { workspacePath: SESSION_CWD } };
+const execute = (revision: string, operationId = "archive-operation") => ({
+  ...deletion,
+  revision,
+  operationId,
+});
+
+test("归档预检只读，批量与单项一致，坏项不影响好项（#38）", async (t) => {
+  const h = await setup(t);
+  await coldTree(h);
+  await h.writeAttachment(CHILD, 7);
+  const single = await previewSessionDeletion(deletion, h.deps);
+  assert.equal(single.blockedReason, undefined);
+  assert.deepEqual(single.sessionIds, [ROOT, CHILD].sort());
+  assert.equal(single.deletedFiles, 4);
+  const batch = await previewSessionDeletions(
+    { items: [deletion, { ...deletion, sessionId: "invalid-native-id" }, deletion] },
+    h.deps,
+  );
+  assert.deepEqual(batch.results, [
+    { preview: single },
+    { error: { code: "invalid-session-id" } },
+    { preview: single },
+  ]);
+  assert.deepEqual(h.deleteCalls(), []);
+  assert.equal(h.rpc.params("thread/resume").length, 0);
+  assert.equal(await readPendingTree(h.pendingRoot, ROOT), undefined);
+});
+
+test("归档执行实际删除整树附件，重启后同一清单幂等返回完整集合（#38）", async (t) => {
+  const h = await setup(t);
+  await coldTree(h);
+  const independent = "33333333-3333-4333-8333-333333333333";
+  h.threads.set(independent, threadRow(independent));
+  const independentRollout = await h.writeRollout(independent, 9);
+  h.flush();
+  const blob = await h.writeAttachment(CHILD, 7);
+  const preview = await previewSessionDeletion(deletion, h.deps);
+  const result = await executeSessionDeletion(execute(preview.revision), h.deps);
+  assert.equal(result.status, "deleted");
+  assert.deepEqual(result.sessionIds, [ROOT, CHILD].sort());
+  assert.deepEqual(await listExistingPaths([blob]), []);
+  assert.deepEqual(h.deleteCalls(), [{ threadId: ROOT }]);
+  assert.equal(h.threads.has(independent), true, "独立会话不属于 spawn 子树");
+  assert.deepEqual(await listExistingPaths([independentRollout]), [independentRollout]);
+  const restarted = { ...h.deps, store: new FakeStore() };
+  assert.deepEqual(await executeSessionDeletion(execute(preview.revision), restarted), result);
+  const completed = await previewSessionDeletion(deletion, restarted);
+  assert.equal(completed.completed, true);
+  assert.deepEqual(completed.sessionIds, result.sessionIds);
+  assert.equal(h.deleteCalls().length, 1);
+});
+
+test("归档批量已完成项不受其他项原生事实读取失败影响（#38）", async (t) => {
+  const h = await setup(t);
+  await coldTree(h);
+  const preview = await previewSessionDeletion(deletion, h.deps);
+  const deleted = await executeSessionDeletion(execute(preview.revision), h.deps);
+  assert.equal(deleted.status, "deleted");
+  await rm(join(h.codexHome, "state_5.sqlite"));
+  const other = "33333333-3333-4333-8333-333333333333";
+  h.threads.set(other, threadRow(other));
+  const batch = await previewSessionDeletions(
+    { items: [deletion, { ...deletion, sessionId: other }] },
+    h.deps,
+  );
+  assert.equal("preview" in batch.results[0]! && batch.results[0].preview.completed, true);
+  assert.deepEqual(batch.results[1], { error: { code: "state-db-unavailable" } });
+});
+
+test("归档清单绑定身份、成员时间和文件集合，过期确认不删除（#38）", async (t) => {
+  const h = await setup(t);
+  await coldTree(h);
+  const preview = await previewSessionDeletion(deletion, h.deps);
+  const identity = await executeSessionDeletion(
+    {
+      ...execute(preview.revision),
+      workspace: { ...deletion.workspace, workspaceIdentity: "other" },
+    },
+    h.deps,
+  );
+  assert.equal(identity.status, "blocked");
+  assert.equal(identity.reason, "changed");
+  h.threads.set(CHILD, { ...h.threads.get(CHILD)!, updatedAt: 121 });
+  h.flush();
+  const changed = await executeSessionDeletion(execute(preview.revision), h.deps);
+  assert.equal(changed.reason, "changed");
+  const refreshed = await previewSessionDeletion(deletion, h.deps);
+  await h.writeAttachment(ROOT, 7);
+  assert.equal(
+    (await executeSessionDeletion(execute(refreshed.revision), h.deps)).reason,
+    "changed",
+  );
+  const wrongPath = await previewSessionDeletion(
+    { ...deletion, workspace: { workspacePath: "/different/project" } },
+    h.deps,
+  );
+  assert.equal(wrongPath.blockedReason, "unavailable");
+  assert.deepEqual(h.deleteCalls(), []);
+});
+
+test("归档运行/写权/fork 原生保护不删除，也不伪造成功（#38）", async (t) => {
+  const h = await setup(t);
+  await coldTree(h);
+  const preview = await previewSessionDeletion(deletion, h.deps);
+  h.store.observe(CHILD, true);
+  assert.equal((await previewSessionDeletion(deletion, h.deps)).blockedReason, "running");
+  assert.equal((await executeSessionDeletion(execute(preview.revision), h.deps)).reason, "running");
+  h.store.observe(CHILD, false);
+  h.store.setState(ROOT, { readOnly: "writer-conflict" });
+  assert.equal((await previewSessionDeletion(deletion, h.deps)).blockedReason, "in-use");
+  assert.equal((await executeSessionDeletion(execute(preview.revision), h.deps)).reason, "in-use");
+  assert.deepEqual(h.deleteCalls(), []);
+  h.store.setState(ROOT, {});
+  h.rpc.handlers.set("thread/delete", () => {
+    throw new CodexRpcError(-32600, "forked history still references it");
+  });
+  const fork = await executeSessionDeletion(execute(preview.revision), h.deps);
+  assert.equal(fork.status, "blocked");
+  assert.equal(fork.reason, "in-use");
+  assert.deepEqual(h.store.removed, []);
+  assert.equal(h.threads.size, 2);
+});
+
+test("归档未知删除结果保留 pending，重查后仍清掉已无原生行的后代附件（#38）", async (t) => {
+  const h = await setup(t);
+  await coldTree(h);
+  const blob = await h.writeAttachment(CHILD, 7);
+  const nativeDelete = h.rpc.handlers.get("thread/delete")!;
+  h.rpc.handlers.set("thread/delete", async (params) => {
+    await nativeDelete(params);
+    throw new CodexTransportError("TIMEOUT", "lost response");
+  });
+  const preview = await previewSessionDeletion(deletion, h.deps);
+  const failed = await executeSessionDeletion(execute(preview.revision), h.deps);
+  assert.equal(failed.status, "incomplete");
+  assert.equal(h.deleteCalls().length, 1);
+  assert.deepEqual(await listExistingPaths([blob]), [blob]);
+  h.rpc.handlers.set("thread/delete", nativeDelete);
+  const retry = await previewSessionDeletion(deletion, h.deps);
+  assert.equal(retry.incomplete, true);
+  assert.deepEqual(retry.sessionIds, [ROOT, CHILD].sort());
+  assert.equal(retry.blockedReason, undefined);
+  assert.equal(
+    (await executeSessionDeletion(execute(retry.revision, "retry"), h.deps)).status,
+    "deleted",
+  );
+  assert.deepEqual(await listExistingPaths([blob]), []);
+});
+
+test("归档完成凭据写失败不报成功，保留 pending 供跨重启续删（#38）", async (t) => {
+  const h = await setup(t);
+  await coldTree(h);
+  const receiptDirectory = join(h.bridgeHome, "session-deletions");
+  const preview = await previewSessionDeletion(deletion, h.deps);
+  const nativeDelete = h.rpc.handlers.get("thread/delete")!;
+  h.rpc.handlers.set("thread/delete", async (params) => {
+    await nativeDelete(params);
+    await writeFile(receiptDirectory, "blocked");
+    return {};
+  });
+  assert.equal(
+    (await executeSessionDeletion(execute(preview.revision), h.deps)).status,
+    "incomplete",
+  );
+  assert.deepEqual(h.store.removed, []);
+  assert.ok(await readPendingTree(h.pendingRoot, ROOT));
+  await rm(receiptDirectory);
+  h.rpc.handlers.set("thread/delete", nativeDelete);
+  const restarted = { ...h.deps, store: new FakeStore() };
+  const retry = await previewSessionDeletion(deletion, restarted);
+  assert.equal(retry.incomplete, true);
+  assert.deepEqual(retry.sessionIds, [ROOT, CHILD].sort());
+  const result = await executeSessionDeletion(execute(retry.revision), restarted);
+  assert.equal(result.status, "deleted");
+  assert.deepEqual(result.sessionIds, [ROOT, CHILD].sort());
+});
+
+test("归档损坏完成凭据 fail-closed，不能当成空凭据或重发删除（#38）", async (t) => {
+  const h = await setup(t);
+  await coldTree(h);
+  const preview = await previewSessionDeletion(deletion, h.deps);
+  assert.equal((await executeSessionDeletion(execute(preview.revision), h.deps)).status, "deleted");
+  const directory = join(h.bridgeHome, "session-deletions");
+  const [name] = await readdir(directory);
+  assert.ok(name);
+  await writeFile(join(directory, name), "{ corrupt");
+  assert.equal((await previewSessionDeletion(deletion, h.deps)).blockedReason, "unavailable");
+  const retried = await executeSessionDeletion(execute(preview.revision), h.deps);
+  assert.equal(retried.status, "incomplete");
+  assert.equal(retried.reason, "deletion-receipt-unreadable");
+  assert.equal(h.deleteCalls().length, 1);
 });

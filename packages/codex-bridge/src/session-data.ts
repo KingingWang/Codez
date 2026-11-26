@@ -67,9 +67,11 @@ export interface SessionDataDeps {
   limits?: { maxMembers?: number; maxLiveReads?: number; maxQueueChecks?: number };
 }
 
-interface SessionFacts {
+export interface SessionFacts {
   tree?: SessionTree;
   fault?: SessionDataFault;
+  threadIds: string[];
+  pending?: { threadIds: string[] };
   /** threadId → rollout 绝对路径（含 `.jsonl` 与 `.jsonl.zst`）。 */
   rollouts: Map<string, string[]>;
   /** 归属该会话树的 bridge 附件对象。 */
@@ -83,11 +85,11 @@ function failureCode(error: unknown): string {
   return typeof code === "string" && code ? code : "unknown";
 }
 
-function bridgeHomeOf(deps: SessionDataDeps): string {
+export function bridgeHomeOf(deps: SessionDataDeps): string {
   return deps.bridgeHome ?? dirname(deps.carrier.stateRoot);
 }
 
-function codexHomeOf(deps: SessionDataDeps): string {
+export function codexHomeOf(deps: SessionDataDeps): string {
   return deps.codexHome ?? resolveCodexHomeDir(deps.env ?? process.env);
 }
 
@@ -129,16 +131,21 @@ function assertDeletableRoot(tree: SessionTree): void {
  * 逐会话收集树与磁盘事实。measure 要求全部成功（没有 failed 通道），purge 允许单会话失败并继续。
  * rollout 目录与附件作用域整批只走一次，不按会话重复遍历。
  */
-async function collectFacts(
+export async function collectFacts(
   deps: SessionDataDeps,
   rootIds: readonly string[],
-  options: { tolerateFaults: boolean },
+  options: { tolerateFaults: boolean; includePending?: boolean },
 ): Promise<Map<string, SessionFacts>> {
   const codexHome = codexHomeOf(deps);
   const facts = new Map<string, SessionFacts>(
     rootIds.map((id) => [
       id,
-      { rollouts: new Map<string, string[]>(), attachments: [], unreadableManifests: 0 },
+      {
+        threadIds: [],
+        rollouts: new Map<string, string[]>(),
+        attachments: [],
+        unreadableManifests: 0,
+      },
     ]),
   );
   const resolved = await mapWithConcurrency(rootIds, TREE_CONCURRENCY, async (rootId) => {
@@ -150,7 +157,12 @@ async function collectFacts(
         limits: deps.limits,
       });
       assertDeletableRoot(tree);
-      return { rootId, tree };
+      // 修复 #38：原生行已删而附件清理失败时，后代只能从 pending 找回。
+      // 预检和执行必须扫描同一并集；不能在确认后再悄悄扩大附件清理集合。
+      const pending = options.includePending
+        ? await readPendingTree(`${bridgeHomeOf(deps)}/session-data-pending`, rootId)
+        : undefined;
+      return { rootId, tree, pending };
     } catch (error) {
       const fault =
         error instanceof SessionDataFault
@@ -167,6 +179,8 @@ async function collectFacts(
     if (entry.fault) fact.fault = entry.fault;
     else {
       fact.tree = entry.tree;
+      fact.pending = entry.pending;
+      fact.threadIds = [...new Set([...entry.tree.threadIds, ...(entry.pending?.threadIds ?? [])])];
       trees.set(entry.rootId, entry.tree);
     }
   }
@@ -175,8 +189,8 @@ async function collectFacts(
   // 归属表一律用小写线程 id 做键：磁盘与 SQLite 事实都是小写 UUID，而 Host 传进来的会话 id
   // 可能是另一种拼写；不规范化会让附件与 rollout 静默对不上号（该删的没删、该计的没计）。
   const ownerOfThread = new Map<string, string>();
-  for (const [rootId, tree] of trees)
-    for (const id of tree.threadIds) {
+  for (const rootId of trees.keys())
+    for (const id of facts.get(rootId)!.threadIds) {
       const key = id.toLowerCase();
       if (!ownerOfThread.has(key)) ownerOfThread.set(key, rootId);
     }
@@ -355,6 +369,7 @@ async function purgeOne(
   rootId: string,
   fact: SessionFacts,
   result: V4SessionDataPurgeResult,
+  hooks: SessionPurgeHooks,
 ): Promise<void> {
   if (fact.fault) {
     result.failed.push({ sessionId: rootId, code: fact.fault.code });
@@ -381,25 +396,14 @@ async function purgeOne(
   }
 
   // 上一次失败留下的整树 id 集：原生行可能已删而附件还在，必须靠索引找回后代。
-  const pending = await readPendingTree(pendingRoot, rootId);
-  const threadIds = [...new Set([...tree.threadIds, ...(pending?.threadIds ?? [])])];
+  const threadIds = fact.threadIds;
   // 附件 manifest 里的 sessionId 一律小写，比对前必须规范化，否则大写拼写会静默漏删。
   const idSet = new Set(threadIds.map((id) => id.toLowerCase()));
   const attachments = fact.attachments.filter((entry) => idSet.has(entry.sessionId));
-  if (pending) {
-    const scopes = await listBridgeAttachmentScopes(bridgeHomeOf(deps));
-    const extra = await listOwnedAttachmentObjects(scopes, idSet);
-    if (extra.unreadable > 0) {
-      result.failed.push({ sessionId: rootId, code: "attachment-manifest-unreadable" });
-      return;
-    }
-    // 去重键必须是 scope 内的具体路径：不同 scope 可能出现同 id 的对象，只按 id 去重会漏删一份。
-    const known = new Set(attachments.map((entry) => entry.dataPath));
-    for (const entry of extra.objects) if (!known.has(entry.dataPath)) attachments.push(entry);
-  }
 
   // 计量必须在删除之前：原生删除成功后文件就没了，删后再量只能得到 0。
   const rollouts = await measureRollouts([...fact.rollouts.values()].flat());
+  await hooks.beforeDelete?.(rootId, fact);
 
   // 先落重试索引再动任何数据：索引写不进去就不开始破坏性步骤。
   await writePendingTree(pendingRoot, { rootId, threadIds, updatedAt: Date.now() });
@@ -440,6 +444,8 @@ async function purgeOne(
     result.failed.push({ sessionId: rootId, code: removed.failed[0]!.code });
     return;
   }
+  // 完成凭据先于 pending 清理；回包丢失或进程退出后仍能返回完整的已删除后代集合。
+  await hooks.afterDelete?.(rootId, threadIds);
   await clearPendingTree(pendingRoot, rootId);
   // 全部成功才写 tombstone：后续 v4/sessionsIndex/reconcile 据此确认删除。
   for (const id of threadIds) deps.store.remove(id);
@@ -448,20 +454,27 @@ async function purgeOne(
   result.deleted.push({ sessionId: rootId, bytes: rollouts.bytes + removed.bytes });
 }
 
+/** 归档适配只增加清单校验与完成凭据，不另建原生删除路径。 */
+export interface SessionPurgeHooks {
+  beforeDelete?(rootId: string, facts: SessionFacts): Promise<void>;
+  afterDelete?(rootId: string, threadIds: string[]): Promise<void>;
+}
+
 export async function purgeSessionData(
   rawParams: unknown,
   deps: SessionDataDeps,
+  hooks: SessionPurgeHooks = {},
 ): Promise<V4SessionDataPurgeResult> {
   const params = v4SessionDataParamsSchema.parse(rawParams);
   const codexHome = codexHomeOf(deps);
   const pendingRoot = `${bridgeHomeOf(deps)}/session-data-pending`;
   const rootIds = [...new Set(params.sessionIds)];
   const result: V4SessionDataPurgeResult = { deleted: [], kept: [], failed: [], memory: [] };
-  const facts = await collectFacts(deps, rootIds, { tolerateFaults: true });
+  const facts = await collectFacts(deps, rootIds, { tolerateFaults: true, includePending: true });
   // 破坏性步骤逐会话串行：一个会话的失败不影响其他会话，也不与另一个 purge 交错。
   for (const rootId of rootIds) {
     try {
-      await purgeOne(deps, codexHome, pendingRoot, rootId, facts.get(rootId)!, result);
+      await purgeOne(deps, codexHome, pendingRoot, rootId, facts.get(rootId)!, result, hooks);
     } catch (error) {
       result.failed.push({ sessionId: rootId, code: failureCode(error) });
     }

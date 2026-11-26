@@ -7527,6 +7527,13 @@ XSG02 Bash 展开保留描述（2026-11-04，pending-review）：浏览器 8/8 �
 
 ## 归档永久删除（APD）
 
+Codex runtime 维度（#38，2026-11-26）：partial，执行面已验证，GUI/跨端仍待验。
+bridge 协议与维护屏障回归 97/97、`scripts/test-codex-bridge-smoke.mjs` 的隔离原生场景 1/1 通过；
+证据 `packages/desktop/.e2e-artifacts/issue-38-xsO8DfTq/`。覆盖 APD01/03/05/07/08/09 的
+后端子集：整树/附件清理、运行/写权保护、旧清单拒绝、未知结果续删、完成凭据重启幂等、
+冷管理面载体与工作区路径隔离；旧 ARM/TSL39 只证明 legacy runtime，不覆盖 Codex。
+Codex GUI、真实远端、手机 shared-host/replayable 和跨窗口竞争仍待单独验收。
+
 2026-11-04：已实现。扩展既有 ARM 与 TSL39，不新增或晋升 CI 用例。
 [用例定义](../conversation-session-case-catalog.md#归档永久删除apd)；
 [规格与例外确认](../superpowers/specs/2026-09-11-archive-management.md#2026-11-04归档会话永久删除)。

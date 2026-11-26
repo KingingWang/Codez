@@ -179,6 +179,24 @@ async function fixture(
   };
 }
 
+test("归档删除三个协议使用管理面载体，不落到 unsupported 或载体 scope 校验（#38）", async (t) => {
+  const h = await fixture(t);
+  const item = { sessionId: "invalid-native-id", workspace: { workspacePath: "/cold/project" } };
+  const single = await h.runtime.request(V4_METHODS.sessionDeletionPreview, item);
+  assert.equal((single.result as { blockedReason: string }).blockedReason, "unavailable");
+  const batch = await h.runtime.request(V4_METHODS.sessionDeletionPreviewBatch, { items: [item] });
+  assert.equal(
+    (batch.result as { results: Array<{ error: { code: string } }> }).results[0]?.error.code,
+    "invalid-session-id",
+  );
+  const execution = await h.runtime.request(V4_METHODS.sessionDeletionExecute, {
+    ...item,
+    revision: "old",
+    operationId: "archive-1",
+  });
+  assert.equal((execution.result as { status: string }).status, "incomplete");
+});
+
 test("CSAQ34-05: desktop and mobile share live deadline, sidebar summary, refresh and idempotent snooze", async (t) => {
   const START = 1_700_000_000_000;
   t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: START });
